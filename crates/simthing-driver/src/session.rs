@@ -1107,7 +1107,7 @@ fn resolve_resource_flow_execution(
         ResourceFlowOptInMode::Disabled => {
             if game_mode
                 .resource_flow_execution_profile
-                .enables_flat_star_resource_flow()
+                .enables_arena_resource_flow()
             {
                 flags.use_accumulator_resource_flow = true;
                 ResourceFlowFlagSource::ScenarioClassDefaultOn

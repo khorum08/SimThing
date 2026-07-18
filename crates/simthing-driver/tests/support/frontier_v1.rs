@@ -350,7 +350,7 @@ pub fn frontier_v1_happy_path_skeleton() -> FrontierV1ScenarioSkeleton {
         enabled_by_default: false,
         mapping_execution_profile: MappingExecutionProfile::SparseRegionFieldV1,
         resource_flow_opt_in: ResourceFlowOptInMode::FlatStarOptIn,
-        resource_flow_execution_profile: ResourceFlowExecutionProfile::FlatStarResourceFlow,
+        resource_flow_execution_profile: ResourceFlowExecutionProfile::RecursiveArenaResourceFlow,
         theater: FrontierTheaterSpec {
             theater_count: 1,
             grid_width: 32,
@@ -1003,7 +1003,7 @@ fn validate_default_off(
     if skeleton.enabled_by_default
         && skeleton
             .resource_flow_execution_profile
-            .enables_flat_star_resource_flow()
+            .enables_arena_resource_flow()
     {
         rejected.push("resource flow execution profile must not default-on");
         ok = false;

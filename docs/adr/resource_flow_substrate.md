@@ -31,6 +31,20 @@ for the continuous-flow case.
 
 This ADR formalizes the substrate that replaces it.
 
+### Landed execution posture (RF-2A / RF-2 / RF-3)
+
+RF-2A and RF-2 are DA-graduated and merged at `c206b0ef` (`#1411`). The admitted recursive Arena
+plan is the ordinary `GameModeSpec` execution-profile default and executes through
+`SimSession::step_once`; `DefaultDisabled` is the explicit opt-out. Flat and nested participant
+topologies are shapes of the same materialized plan, never separate execution sources.
+
+The independent RF-1 conservation oracle is the judge for recipe exactness, allocator residual
+closure, and structural/no-orphan evidence. Its source remains independent of the executed plan.
+RUNTIME-0080 RR-3/RR-4 remain bounded falsification rehearsals only and are not production tick
+authority. The historical serialized profile spelling `FlatStarResourceFlow` is accepted solely as
+an input alias for `RecursiveArenaResourceFlow`; canonical serialization and runtime dispatch use
+only the recursive Arena name and path.
+
 ---
 
 ## Decision

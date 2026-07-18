@@ -1,4 +1,4 @@
-//! RF-T5: scenario-class burn-in / telemetry soak via `ResourceFlowExecutionProfile::FlatStarResourceFlow`.
+//! RF-T5: scenario-class burn-in / telemetry soak via the ordinary recursive Arena profile.
 
 use simthing_spec::{ResourceFlowExecutionProfile, ResourceFlowOptInMode};
 
@@ -26,7 +26,7 @@ pub use crate::resource_flow_opt_in_burn_in::{
 pub fn open_profile_session(fixture: &RfT2BurnInFixture) -> Result<RfT2OptInSession, SessionError> {
     open_fixture_session_with_execution_profile(
         fixture,
-        ResourceFlowExecutionProfile::FlatStarResourceFlow,
+        ResourceFlowExecutionProfile::RecursiveArenaResourceFlow,
     )
 }
 
@@ -55,7 +55,10 @@ pub fn assert_profile_telemetry_contract(
         telemetry.flag_source,
         ResourceFlowFlagSource::ScenarioClassDefaultOn
     );
-    assert_eq!(telemetry.execution_profile_name, "FlatStarResourceFlow");
+    assert_eq!(
+        telemetry.execution_profile_name,
+        "RecursiveArenaResourceFlow"
+    );
     assert!(telemetry.resource_flow_enabled);
     if fixture.expected_admissions > 0 || fixture.expected_rejections > 0 {
         assert_eq!(telemetry.dynamic_admissions, fixture.expected_admissions);

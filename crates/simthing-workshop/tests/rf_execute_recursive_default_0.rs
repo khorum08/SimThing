@@ -253,7 +253,8 @@ fn execute_step(
 
     let mut session = SimSession::open_from_spec(fixture.scenario, &fixture.game_mode)
         .expect("default admitted Arena RF requires a supported GPU adapter");
-    let expected_active = execution_profile == ResourceFlowExecutionProfile::FlatStarResourceFlow;
+    let expected_active =
+        execution_profile == ResourceFlowExecutionProfile::RecursiveArenaResourceFlow;
     assert_eq!(
         session.proto.flags.use_accumulator_resource_flow,
         expected_active
@@ -466,8 +467,17 @@ fn default_step_once_recursively_reduces_named_child_and_writes_local_allocation
     let default_profile = ResourceFlowExecutionProfile::default();
     assert_eq!(
         default_profile,
-        ResourceFlowExecutionProfile::FlatStarResourceFlow,
+        ResourceFlowExecutionProfile::RecursiveArenaResourceFlow,
         "RF-2 must keep the admitted Arena profile as the authored default"
+    );
+    let legacy_name: ResourceFlowExecutionProfile =
+        serde_json::from_str("\"FlatStarResourceFlow\"")
+            .expect("historical profile name must remain an input alias");
+    assert_eq!(legacy_name, default_profile);
+    assert_eq!(
+        serde_json::to_string(&legacy_name).expect("serialize canonical RF profile"),
+        "\"RecursiveArenaResourceFlow\"",
+        "the compatibility alias must not reactivate or re-emit a legacy dispatch name"
     );
     let (with_child, with_report) = execute_step(NAMED_CHILD_MARGINAL, true, default_profile);
     let (replay, replay_report) = execute_step(NAMED_CHILD_MARGINAL, true, default_profile);

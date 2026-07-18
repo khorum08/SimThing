@@ -284,22 +284,23 @@ pub enum ResourceFlowOptInMode {
 pub enum ResourceFlowExecutionProfile {
     /// Explicitly disable Arena Resource Flow GPU execution for this game mode.
     DefaultDisabled,
-    /// Execute the admitted Arena plan. The historical serialized name remains compatible;
-    /// nested participant topology executes recursively through the same OrderBand plan.
+    /// Execute the admitted recursive Arena plan through the ordinary session tick.
+    /// The historical serialized name is an inert input alias for this same variant.
+    #[serde(alias = "FlatStarResourceFlow")]
     #[default]
-    FlatStarResourceFlow,
+    RecursiveArenaResourceFlow,
 }
 
 impl ResourceFlowExecutionProfile {
     pub fn as_str(self) -> &'static str {
         match self {
             Self::DefaultDisabled => "DefaultDisabled",
-            Self::FlatStarResourceFlow => "FlatStarResourceFlow",
+            Self::RecursiveArenaResourceFlow => "RecursiveArenaResourceFlow",
         }
     }
 
-    pub fn enables_flat_star_resource_flow(self) -> bool {
-        matches!(self, Self::FlatStarResourceFlow)
+    pub fn enables_arena_resource_flow(self) -> bool {
+        matches!(self, Self::RecursiveArenaResourceFlow)
     }
 }
 

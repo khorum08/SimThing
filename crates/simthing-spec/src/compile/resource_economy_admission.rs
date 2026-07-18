@@ -4,7 +4,7 @@
 //! for designers and agents. Does not execute economy at runtime.
 
 use crate::compile::resource_economy::{
-    compile_resource_economy, CompiledResourceEconomy, ResourceEconomyDiagnostic,
+    CompiledResourceEconomy, ResourceEconomyDiagnostic, compile_resource_economy,
 };
 use crate::error::SpecError;
 use crate::spec::game_mode::GameModeSpec;
@@ -138,7 +138,7 @@ fn resource_flow_enabled_for_game_mode(game_mode: &GameModeSpec) -> bool {
     }
     game_mode
         .resource_flow_execution_profile
-        .enables_flat_star_resource_flow()
+        .enables_arena_resource_flow()
 }
 
 fn build_preview_report(

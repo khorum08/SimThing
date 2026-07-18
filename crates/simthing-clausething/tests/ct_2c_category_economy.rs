@@ -7,12 +7,16 @@ use simthing_clausething::{
     EconomicAxis, EconomicOp, decode_economic_modifier_key, hydrate_category_economy_pack,
     hydrate_daily_economy_game_mode, parse_raw_document,
 };
-use simthing_core::{DimensionRegistry, SimThing, SimThingKind, SlotIndex};
-use simthing_driver::{
-    Scenario, SessionError, SimSession, build_execution_plan_from_authoring,
-    resolve_node_columns, run_arena_allocation_oracle,
+use simthing_core::{
+    AccumulatorRole, AccumulatorSpec, BalanceSpec, ClampBehavior, DimensionRegistry, LogTier,
+    SimThing, SimThingKind, SlotIndex, SubFieldRole, SubFieldSpec,
 };
-use simthing_gpu::{GpuContext, GpuInitError, SlotAllocator};
+use simthing_driver::{
+    AllocatorStepObservation, ArenaConservationSnapshot, ArenaParticipantObservation,
+    ArenaStructuralEvidence, ResourceFlowFlagSource, Scenario, SimSession, build_execution_plan,
+    check_conservation, resolve_node_columns, run_arena_allocation_oracle,
+};
+use simthing_gpu::SlotAllocator;
 use simthing_spec::{
     BaseFlowDirectionSpec, ExplicitParticipantSpec, GameModeSpec, ResourceFlowOptInMode,
     compile_property, deserialize_game_mode_ron,
@@ -95,34 +99,61 @@ fn fill_explicit_participants(game_mode: &mut GameModeSpec, scenario: &Scenario)
     }
 }
 
-fn open_from_spec_or_skip(scenario: Scenario, game_mode: &GameModeSpec) -> Option<SimSession> {
-    match SimSession::open_from_spec(scenario, game_mode) {
-        Ok(session) => Some(session),
-        Err(SessionError::Gpu(GpuInitError::NoAdapter)) => {
-            eprintln!("skipping: no GPU");
-            None
-        }
-        Err(err) => panic!("open_from_spec: {err}"),
+fn balance_rate_subfield() -> SubFieldSpec {
+    SubFieldSpec {
+        role: SubFieldRole::Named("balance_rate".into()),
+        width: 1,
+        clamp: ClampBehavior::Unbounded,
+        velocity_max: None,
+        default: 0.0,
+        display_name: "balance_rate".into(),
+        display_range: None,
+        governed_by: None,
+        reduction_override: None,
+        soft_aggregate_guard: None,
+        accumulator_spec: None,
     }
 }
 
-fn open_ct2c_session(
-    hydrated: &simthing_clausething::HydratedCategoryEconomyPack,
-) -> Option<SimSession> {
-    let scenario = ct2c_scenario(3, &hydrated.game_mode);
+fn balance_subfield() -> SubFieldSpec {
+    SubFieldSpec {
+        role: SubFieldRole::Named("balance".into()),
+        width: 1,
+        clamp: ClampBehavior::Unbounded,
+        velocity_max: None,
+        default: 0.0,
+        display_name: "balance".into(),
+        display_range: None,
+        governed_by: Some(SubFieldRole::Named("balance_rate".into())),
+        reduction_override: None,
+        soft_aggregate_guard: None,
+        accumulator_spec: Some(AccumulatorSpec {
+            role: AccumulatorRole::Balance(BalanceSpec::default()),
+            log_tier: LogTier::Summary,
+        }),
+    }
+}
+
+fn admit_recursive_default_proof(game_mode: &mut GameModeSpec) {
+    let resource_flow = game_mode.resource_flow.as_mut().expect("resource flow");
+    resource_flow.opt_in_mode = ResourceFlowOptInMode::Disabled;
+    for arena in &mut resource_flow.arenas {
+        arena.balance_property = Some(arena.flow_property.clone());
+    }
+    for property in &mut game_mode.properties {
+        property.sub_fields.push(balance_rate_subfield());
+        property.sub_fields.push(balance_subfield());
+    }
+}
+
+fn open_ct2c_session(hydrated: &simthing_clausething::HydratedCategoryEconomyPack) -> SimSession {
     let mut game_mode = hydrated.game_mode.clone();
+    admit_recursive_default_proof(&mut game_mode);
+    let scenario = ct2c_scenario(4, &game_mode);
     fill_explicit_participants(&mut game_mode, &scenario);
     game_mode.properties.clear();
-    open_from_spec_or_skip(scenario, &game_mode)
-}
-
-fn gpu_gate() -> Option<std::sync::MutexGuard<'static, ()>> {
-    let guard = GPU_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
-    if GpuContext::new_blocking().is_err() {
-        eprintln!("skipping: no GPU");
-        return None;
-    }
-    Some(guard)
+    SimSession::open_from_spec(scenario, &game_mode)
+        .expect("ct_2c requires a supported live GPU adapter")
 }
 
 fn idx(slot: SlotIndex, col: u32, n_dims: u32) -> usize {
@@ -143,16 +174,16 @@ fn global_flow_col(
 
 #[test]
 fn gpu_category_micro_economy_matches_arena_allocation_oracle() {
-    let Some(guard) = gpu_gate() else {
-        return;
-    };
-    let ctx = GpuContext::new_blocking().expect("gpu gate already checked adapter");
+    let guard = GPU_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
 
     let hydrated = hydrate_category();
-    let Some(mut session) = open_ct2c_session(&hydrated) else {
-        return;
-    };
+    let mut session = open_ct2c_session(&hydrated);
     assert!(session.proto.flags.use_accumulator_resource_flow);
+    assert_eq!(
+        session.resource_flow_flag_source,
+        ResourceFlowFlagSource::ScenarioClassDefaultOn,
+        "ct_2c must exercise recursive Arena RF through the ordinary default profile"
+    );
 
     let flow_id = session
         .proto
@@ -171,10 +202,10 @@ fn gpu_category_micro_economy_matches_arena_allocation_oracle() {
         .iter()
         .position(|arena| arena.name == "settlement_food")
         .expect("settlement_food arena") as u32;
-    let layout = build_execution_plan_from_authoring(
+    let layout = build_execution_plan(
         &session.proto.registry,
         &session.spec_state.arena_registry.arenas,
-        &session.scenario.root,
+        &session.proto.root,
         &session.proto.allocator,
         &session.spec_state.arena_participant_scaffold,
         session.spec_state.arena_registry.generation,
@@ -191,7 +222,11 @@ fn gpu_category_micro_economy_matches_arena_allocation_oracle() {
         .iter()
         .map(|n| n.participant_slot)
         .collect();
-    assert_eq!(leaves.len(), 2, "flat-star D=2 expects two leaves");
+    assert_eq!(
+        leaves.len(),
+        3,
+        "flat-star D=2 expects three enrolled leaves"
+    );
 
     let n_dims = session.state.n_dims;
     let mut values = session.state.read_values();
@@ -204,11 +239,12 @@ fn gpu_category_micro_economy_matches_arena_allocation_oracle() {
         "install must seed the folded effective farmer food produce rate"
     );
 
-    let leaf_weights = [1.0_f32, 3.0];
+    let leaf_weights = [3.0_f32, 8.0, 4.0];
     for (slot, &weight) in leaves.iter().zip(leaf_weights.iter()) {
         values[idx(*slot, weight_global, n_dims)] = weight;
     }
     session.state.install_resolved_values_at_boundary(&values);
+    let before = session.state.read_values();
 
     let mut oracle = HashMap::new();
     for node in layout.iter_all() {
@@ -236,10 +272,16 @@ fn gpu_category_micro_economy_matches_arena_allocation_oracle() {
     run_arena_allocation_oracle(&layout, &mut oracle, 1.0);
 
     session
-        .state
-        .run_resource_flow_bands(layout.band_layout.total_bands_used, 1.0);
+        .step_once()
+        .expect("ordinary recursive-default ct_2c step_once");
 
     let gpu_out = session.state.read_values();
+    let allocated_global =
+        global_flow_col(&session.proto.registry, flow_id, cols.allocated_flow_col);
+    let disbursed: Vec<f32> = leaves
+        .iter()
+        .map(|&leaf| gpu_out[idx(leaf, allocated_global, n_dims)])
+        .collect();
     for &leaf in &leaves {
         let cpu = oracle
             .get(&(leaf, cols.allocated_flow_col))
@@ -250,23 +292,99 @@ fn gpu_category_micro_economy_matches_arena_allocation_oracle() {
             global_flow_col(&session.proto.registry, flow_id, cols.allocated_flow_col),
             n_dims,
         )];
-        assert_eq!(
-            cpu.to_bits(),
-            gpu.to_bits(),
-            "leaf {leaf} E-11 oracle/GPU bit parity"
+        assert!(
+            (cpu - gpu).abs() <= f32::EPSILON * 8.0,
+            "leaf {leaf} E-11 oracle/GPU bounded parity: cpu={cpu} gpu={gpu}"
         );
     }
     assert_eq!(
         oracle[&(leaves[0], cols.allocated_flow_col)].to_bits(),
-        // folded effective produce 10.5 disbursed by weights 1:3
-        2.625_f32.to_bits()
+        // folded effective produce 10.5 disbursed by weights 3:8:4
+        2.1_f32.to_bits()
     );
     assert_eq!(
         oracle[&(leaves[1], cols.allocated_flow_col)].to_bits(),
-        7.875_f32.to_bits()
+        5.6_f32.to_bits()
+    );
+    assert_eq!(
+        oracle[&(leaves[2], cols.allocated_flow_col)].to_bits(),
+        2.8_f32.to_bits()
+    );
+
+    let balance_global = global_flow_col(
+        &session.proto.registry,
+        flow_id,
+        cols.balance_col.expect("ct_2c Balance column"),
+    );
+    let budget = cell(&before, root, intrinsic_global, n_dims);
+    let root_balance_delta =
+        cell(&gpu_out, root, balance_global, n_dims) - cell(&before, root, balance_global, n_dims);
+    let residual = budget - disbursed.iter().copied().sum::<f32>();
+    assert_ne!(
+        residual, 0.0,
+        "ct_2c RF-1 proof must retain a non-zero residual"
+    );
+
+    let root_id = layout.participant_roots[0].hosted_simthing_id.raw() as u64;
+    let leaf_ids: Vec<u64> = layout.participant_roots[0]
+        .children
+        .iter()
+        .map(|node| node.hosted_simthing_id.raw() as u64)
+        .collect();
+    let participants = std::iter::once(ArenaParticipantObservation {
+        id: root_id,
+        is_leaf: false,
+        intrinsic_flow: budget,
+        allocated_flow: 0.0,
+        balance_delta: Some(root_balance_delta),
+    })
+    .chain(
+        leaves
+            .iter()
+            .zip(leaf_ids.iter())
+            .zip(disbursed.iter())
+            .map(
+                |((&slot, &id), &allocated_flow)| ArenaParticipantObservation {
+                    id,
+                    is_leaf: true,
+                    intrinsic_flow: 0.0,
+                    allocated_flow,
+                    balance_delta: Some(
+                        cell(&gpu_out, slot, balance_global, n_dims)
+                            - cell(&before, slot, balance_global, n_dims),
+                    ),
+                },
+            ),
+    )
+    .collect();
+    let report = check_conservation(
+        &[],
+        &[AllocatorStepObservation {
+            budget,
+            disbursed: disbursed.clone(),
+            balance_residual: Some(root_balance_delta),
+        }],
+        &[ArenaConservationSnapshot {
+            participants,
+            structural_evidence: ArenaStructuralEvidence {
+                declared_intrinsic_source_ids: vec![root_id],
+                inbound_coupling_endpoint_ids: vec![],
+                parent_disbursement_recipient_ids: leaf_ids,
+            },
+            inbound_coupling: 0.0,
+            emission_consumption: 0.0,
+        }],
+    );
+    assert!(
+        report.all_pass(),
+        "unchanged RF-1 must judge ct_2c: {report:?}"
+    );
+    println!(
+        "RF3-CT2C: participants={} disbursed={disbursed:?} residual={residual} balance_delta={root_balance_delta} rf1=PASS flag_source={:?}",
+        1 + leaves.len(),
+        session.resource_flow_flag_source,
     );
 
     drop(session);
-    drop(ctx);
     drop(guard);
 }

@@ -991,7 +991,7 @@ pub fn open_fixture_session_with_execution_profile(
     let mut session = SimSession::open_from_spec(scenario, &game_mode)?;
 
     let expect_flag = fixture.opt_in_mode == ResourceFlowOptInMode::FlatStarOptIn
-        || profile.enables_flat_star_resource_flow();
+        || profile.enables_arena_resource_flow();
     assert_eq!(
         session.proto.flags.use_accumulator_resource_flow,
         expect_flag,
