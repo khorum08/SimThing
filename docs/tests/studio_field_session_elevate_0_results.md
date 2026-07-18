@@ -2,7 +2,9 @@
 
 ## Status
 
-**OWNER OVL PASS / orchestration-review-complete / DA-relay-ready / RF-5 SPLIT APPROVED.** Owner ruling [comment `5012654906`](https://github.com/khorum08/SimThing/pull/1413#issuecomment-5012654906) closes the replacement [OVL], accepts the crash-fenced executable and existing screenshots, and lifts emergency hold `5012226484` for runtime evidence. Codex did not self-close [OVL] and does not self-relay to DA.
+**DA-GRADUATED / merged [#1413](https://github.com/khorum08/SimThing/pull/1413) @ `99fa9d06`** — 2026-07-18.
+
+Owner ruling [comment `5012654906`](https://github.com/khorum08/SimThing/pull/1413#issuecomment-5012654906) closed the replacement [OVL], accepted the crash-fenced executable and existing screenshots, and lifted emergency hold `5012226484`. Need/`weight_profile` transport remains the approved bounded RF-5 split (`RF-NEED-WEIGHT-PROFILE-TRANSPORT-0`); screenshot C is out of RF-4 scope.
 
 ## Identity
 

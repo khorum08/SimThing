@@ -45,7 +45,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 211b860c2a424d0386a01a2dc93d5c563abfd1411c1f58ec55c7b69d97426cb8 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | be04669f2dfb66096af019ad61f225de91bf4433c22d46fbdeff42578634da49 |
-| design_0_0_8_6_studio_live_ops.md | 975e1c1cd92b841477b63e76b1678ec0e7e8e337d9c4fc25069b172e1cd8e3fb |
+| design_0_0_8_6_studio_live_ops.md | 1e4f8fa8a8e8d05a335df4490f45cb9105178f11e53d76b201ca46a91586d21e |
 | relay_lint.sh | 4163f715cdc3b549dbf57c1744aff61ea96b9f9f0a2237376665fbdb24e986c8 |
 | doctrine_anchors.tsv | acddc6ad84d6dcefcbc8942f603186ae82e47e6495833b29aafbb5805d49aa0f |
 
@@ -55,8 +55,7 @@ Track state: `open`
 
 | # | rung | deliverable | exit proof |
 | --- | --- | --- | --- |
-| 12.8 | TP-CLAUSE-ECONOMY-AUTHOR-0 | **Needs 12.6 + 12.7.** Author the canonical economy **in `scenarios/terran_pirat | **ORCHESTRATOR-GRADUATED / merged [#1403](https://github.com/khorum08/SimThing/pull/1403)** — 2026-07-17 (AUTONOMOUS;... |
-| 12.9 | STUDIO-FIELD-SESSION-ELEVATE-0 | **Needs 12.8.** The Studio live bridge opens the **field-bearing session path**  | **OWNER OVL PASS / orchestration-review-complete / DA-relay-ready / RF-5 SPLIT APPROVED** — Owner/orchestration rulin... |
+| 12.9 | STUDIO-FIELD-SESSION-ELEVATE-0 | **Needs 12.8.** The Studio live bridge opens the **field-bearing session path**  | **DA-GRADUATED / merged [#1413](https://github.com/khorum08/SimThing/pull/1413) @ `99fa9d06`** — 2026-07-18. Field-be... |
 | 12.10 | TP-EMERGENT-TENSION-PROOF-0 | **Needs 12.9.** Falsification battery for **emergence, not scripting**: (a) mult | TODO |
 | 12.11 | SCANNER-SELFTEST-DELTA-GATE-0 | **Harness — executes NOW (pointer-active), ahead of the TP chain. Owner-mandate  | **DA-GRADUATED / merged [#1400](https://github.com/khorum08/SimThing/pull/1400) @ `6193289e`** — 2026-07-17 (AUTONOMO... |
 | 12.1 | STUDIO-LOADER-DIALOG-REPAIR-0 | **Minimal load dialog.** The load dialog shows **only**: scenario-path text box  | **DA-GRADUATED / merged [PR #1324](https://github.com/khorum08/SimThing/pull/1324) @ `827fcbe0`** — Owner OVL PASS + ... |
@@ -66,12 +65,13 @@ Track state: `open`
 | RF-2A | RF-GOVERNED-INTEGRATION-ORDERBAND-0 | Repair the existing governed-integration adapter so both authored targets surviv | **DA-GRADUATED / merged [#1411](https://github.com/khorum08/SimThing/pull/1411) @ `c206b0ef`** — 2026-07-18. Adapter ... |
 | RF-2 | RF-EXECUTE-RECURSIVE-DEFAULT-0 | Flip `resource_flow_execution_profile` default to recursive executed source; wir | **DA-GRADUATED / merged [#1411](https://github.com/khorum08/SimThing/pull/1411) @ `c206b0ef`** — 2026-07-18. Ordinary... |
 | RF-3 | RF-LEGACY-RETIRE-REANCHOR-0 | Repoint existing RF tests + `runtime_0080_*` rehearsal + recursive-source oracle | **DA-GRADUATED / merged [#1412](https://github.com/khorum08/SimThing/pull/1412) @ `d42b9109`** — 2026-07-18. Recursiv... |
-| RF-4 | (12.9 resumes) `STUDIO-FIELD-SESSION-ELEVATE-0 | Studio field-bearing consumes the now-executing RF; telemetry binds to the real  | **OWNER OVL PASS / orchestration-review-complete / DA-relay-ready / RF-5 SPLIT APPROVED** — ruling `5012654906` accep... |
+| RF-4 | (12.9 resumes) `STUDIO-FIELD-SESSION-ELEVATE-0 | Studio field-bearing consumes the now-executing RF; telemetry binds to the real  | **DA-GRADUATED / merged [#1413](https://github.com/khorum08/SimThing/pull/1413) @ `99fa9d06`** — 2026-07-18. Recursiv... |
+| RF-5 | RF-NEED-WEIGHT-PROFILE-TRANSPORT-0 | **Bounded need/`weight_profile` transport (approved RF-4 split).** One generic s | **DISPATCHED / DRAFT** — PR #1414; HD-RECEIPT `9132665903e6`. |
 | OWNER | STUDIO-OWNER-CLOSURE-0 | **Track closeout (docs + harness lifecycle only).** Runs the `track_closeout.sh` | **DEFERRED / Owner-gated** — binding condition `track-closeout-blocked-until-explicit-owner-authorization` (Owner-202... |
 
 ## Next Rung Pointer
 
-Active pointer: `STUDIO-FIELD-SESSION-ELEVATE-0`
+Active pointer: `RF-NEED-WEIGHT-PROFILE-TRANSPORT-0`
 
 
 ## Cold-Start Spine (constitutional pointers)
