@@ -51,7 +51,7 @@ pub fn compile_local_participant_effects_plan(
         tick_shell_plan,
         effects_report,
         gpu_effect_aggregate_proof_plans,
-        economy_execution_deferred: true,
+        economy_execution_deferred: false,
         participant_property_mutation_deferred: true,
         scenario_authority_mutation_deferred: true,
     })

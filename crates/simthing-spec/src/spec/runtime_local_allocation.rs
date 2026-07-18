@@ -59,7 +59,7 @@ pub fn apply_runtime_local_allocations_from_disburse_down(
             allocated_total: 0,
             unmet_total: 0,
             states: Vec::new(),
-            economy_execution_deferred: true,
+            economy_execution_deferred: false,
             scenario_authority_mutation_deferred: true,
         });
     }
@@ -178,7 +178,7 @@ pub fn apply_runtime_local_allocations_from_disburse_down(
         allocated_total,
         unmet_total,
         states,
-        economy_execution_deferred: true,
+        economy_execution_deferred: false,
         scenario_authority_mutation_deferred: true,
     })
 }

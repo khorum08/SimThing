@@ -9,7 +9,7 @@ use crate::compile::resource_economy::{
 use crate::error::SpecError;
 use crate::spec::game_mode::GameModeSpec;
 use crate::spec::resource_economy::{ResourceEconomyOptInMode, ResourceEconomySpec};
-use crate::spec::resource_flow::{ResourceFlowExecutionProfile, ResourceFlowOptInMode};
+use crate::spec::resource_flow::ResourceFlowOptInMode;
 use crate::spec::script::PropertyKey;
 use simthing_core::{DimensionRegistry, EmlExpressionRegistry, SubFieldRole};
 use std::collections::{BTreeMap, BTreeSet};
@@ -136,10 +136,9 @@ fn resource_flow_enabled_for_game_mode(game_mode: &GameModeSpec) -> bool {
     if spec_opt_in == ResourceFlowOptInMode::FlatStarOptIn {
         return true;
     }
-    matches!(
-        game_mode.resource_flow_execution_profile,
-        ResourceFlowExecutionProfile::FlatStarResourceFlow
-    )
+    game_mode
+        .resource_flow_execution_profile
+        .enables_flat_star_resource_flow()
 }
 
 fn build_preview_report(

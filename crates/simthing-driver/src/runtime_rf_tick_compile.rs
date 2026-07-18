@@ -75,7 +75,7 @@ pub fn compile_runtime_rf_tick_plan(
         runtime_local_allocation_plan,
         tick_report,
         gpu_proof_summary,
-        economy_execution_deferred: true,
+        economy_execution_deferred: false,
         scenario_authority_mutation_deferred: true,
         local_effect_application_deferred: true,
     })

@@ -274,17 +274,19 @@ pub enum ResourceFlowOptInMode {
     FlatStarOptIn,
 }
 
-/// RF-T4 — scenario-class / execution-profile enablement for flat-star Resource Flow GPU path.
+/// RF-T4 / RF-2 — execution-profile enablement for the admitted Arena Resource Flow GPU path.
 ///
 /// Distinct from `ResourceFlowOptInMode`: profile enablement applies at session open when
-/// spec `opt_in_mode` is `Disabled` or omitted. Does not flip global `PipelineFlags` default.
+/// spec `opt_in_mode` is `Disabled` or omitted. The admitted Arena plan selects flat or nested
+/// topology from the materialized participant tree; no second runtime source is selected here.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub enum ResourceFlowExecutionProfile {
-    /// No scenario-class Resource Flow GPU enablement.
-    #[default]
+    /// Explicitly disable Arena Resource Flow GPU execution for this game mode.
     DefaultDisabled,
-    /// Enable E-11 flat-star D=2 GPU path via named execution profile (RF-T4).
+    /// Execute the admitted Arena plan. The historical serialized name remains compatible;
+    /// nested participant topology executes recursively through the same OrderBand plan.
+    #[default]
     FlatStarResourceFlow,
 }
 

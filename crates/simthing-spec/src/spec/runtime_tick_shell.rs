@@ -122,7 +122,7 @@ pub fn evaluate_runtime_tick_shell(
         local_allocated_total: tick_report.local_allocated_total,
         local_unmet_total: tick_report.local_unmet_total,
         gpu_stage_proof_available: false,
-        economy_execution_deferred: true,
+        economy_execution_deferred: false,
         scenario_authority_mutation_deferred: true,
         local_effect_application_deferred: true,
         errors: Vec::new(),
@@ -132,10 +132,6 @@ pub fn evaluate_runtime_tick_shell(
 
 fn default_deferrals() -> Vec<RuntimeTickShellDeferral> {
     vec![
-        RuntimeTickShellDeferral {
-            kind: RuntimeTickShellDeferralKind::EconomyExecutionDeferred,
-            reason: "full economy execution remains deferred".to_string(),
-        },
         RuntimeTickShellDeferral {
             kind: RuntimeTickShellDeferralKind::ScenarioAuthorityMutationDeferred,
             reason: "Scenario authority is not mutated by runtime tick shell".to_string(),
