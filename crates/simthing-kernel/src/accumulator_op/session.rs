@@ -2541,4 +2541,89 @@ mod tests {
         run_case(4.0, -1.0, 2.0);
     }
 
+    #[test]
+    fn governed_integration_executes_only_on_its_authored_orderband() {
+        set_debug_readback_allowed(true);
+        let ctx = GpuContext::new_blocking().expect("gpu context");
+        let initial = [10.0_f32, 2.0_f32];
+        let values = ctx
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("governed_orderband_values"),
+                contents: bytemuck::cast_slice(&initial),
+                usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC | BufferUsages::COPY_DST,
+            });
+        let previous = ctx
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("governed_orderband_previous"),
+                contents: bytemuck::cast_slice(&initial),
+                usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC | BufferUsages::COPY_DST,
+            });
+        let op = AccumulatorOp {
+            source: SourceSpec::SlotValue {
+                slot: SlotIndex::new(0),
+                col: ColumnIndex::new(1),
+            },
+            combine: CombineFn::IntegrateWithClamp {
+                dt: 0.0,
+                vel_max: 100.0,
+                amount_min: f32::NEG_INFINITY,
+                amount_max: f32::INFINITY,
+            },
+            gate: GateSpec::OrderBand(1),
+            scale: ScaleSpec::Identity,
+            consume: ConsumeMode::None,
+            targets: vec![
+                (SlotIndex::new(0), ColumnIndex::new(0)),
+                (SlotIndex::new(0), ColumnIndex::new(1)),
+            ],
+        };
+        let mut session = AccumulatorOpSession::new(&ctx, 1, 2);
+        session
+            .upload_packed_ops(&ctx, &PackedAccumulatorUpload::from_ops(&[op]).unwrap())
+            .unwrap();
+
+        let mut encoder = ctx
+            .device
+            .create_command_encoder(&CommandEncoderDescriptor {
+                label: Some("governed_nonmatching_orderband_encoder"),
+            });
+        session.encode_orderband_with_eml_into(
+            &ctx,
+            &mut encoder,
+            &values,
+            &previous,
+            1,
+            1.0,
+            None,
+        );
+        ctx.queue.submit(Some(encoder.finish()));
+        assert_eq!(
+            session.read_buffer_f32(&ctx, &values),
+            initial,
+            "non-matching runtime band must mutate neither governed target"
+        );
+
+        let mut encoder = ctx
+            .device
+            .create_command_encoder(&CommandEncoderDescriptor {
+                label: Some("governed_matching_orderband_encoder"),
+            });
+        session.encode_orderband_with_eml_into(
+            &ctx,
+            &mut encoder,
+            &values,
+            &previous,
+            2,
+            1.0,
+            None,
+        );
+        ctx.queue.submit(Some(encoder.finish()));
+        assert_eq!(
+            session.read_buffer_f32(&ctx, &values),
+            vec![12.0, 2.0],
+            "matching runtime band must integrate exactly once and retain eligible velocity"
+        );
+    }
 }

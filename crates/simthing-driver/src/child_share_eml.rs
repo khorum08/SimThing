@@ -125,6 +125,7 @@ mod tests {
             intrinsic_flow_sum_col: 4,
             allocated_flow_col: 1,
             balance_col: Some(3),
+            balance_governing_col: None,
             weight_col: 2,
             weight_sum_col: 5,
             propagated_intrinsic_flow_col: 6,
@@ -149,5 +150,4 @@ mod tests {
             0.0_f32.to_bits()
         );
     }
-
 }

@@ -713,7 +713,9 @@ fn dispatch_one_op_for_band(op_idx: u32, op: AccumulatorOpGpu, current_band: u32
     // C-7 GovernedPair velocity integration — multi-target write with legacy
     // semantics (amount integrate + optional velocity pinning at floor/ceiling).
     if (op.combine_kind == COMBINE_INTEGRATE_CLAMP) {
-        integrate_clamp_at_slots(op, op.target0_slot, op.target1_slot);
+        if (gate_matches_for_band(op, current_band)) {
+            integrate_clamp_at_slots(op, op.target0_slot, op.target1_slot);
+        }
         return;
     }
 

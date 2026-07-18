@@ -234,15 +234,6 @@ fn cell(values: &[f32], slot: SlotIndex, col: u32, n_dims: u32) -> f32 {
     values[(slot.raw() * n_dims + col) as usize]
 }
 
-fn allocator_residual(budget: f32, weights: &[f32]) -> f32 {
-    let weight_sum: f32 = weights.iter().copied().sum();
-    let disbursed: f32 = weights
-        .iter()
-        .map(|weight| budget * (*weight / weight_sum))
-        .sum();
-    budget - disbursed
-}
-
 fn execute_step(
     named_child_intrinsic: f32,
     connect_governed_rate: bool,
@@ -343,15 +334,11 @@ fn execute_step(
         values[(slot.raw() * n_dims + cols.intrinsic_flow_col) as usize] = intrinsic;
     }
 
-    // The rate is independently derived from the authored f32 budget and
-    // normalized-weight quotients.
-    // Ordinary step_once must dispatch the existing governed_by integration to turn
-    // this non-zero allocator residual into the measured Balance delta.
-    let owner_intrinsic: f32 = leaf_intrinsics.iter().copied().sum();
-    let expected_root_residual = allocator_residual(ROOT_BUDGET, &[1.0]);
-    let expected_owner_residual = allocator_residual(ROOT_BUDGET + owner_intrinsic, &LEAF_WEIGHTS);
-    values[(root_slot.raw() * n_dims + balance_rate_col) as usize] = expected_root_residual;
-    values[(owner_slot.raw() * n_dims + balance_rate_col) as usize] = expected_owner_residual;
+    // The governed rate starts at zero. Ordinary Arena OrderBands must derive the
+    // allocator residual from the executed budget and disbursements before the
+    // existing governed_by integration mutates Balance.
+    values[(root_slot.raw() * n_dims + balance_rate_col) as usize] = 0.0;
+    values[(owner_slot.raw() * n_dims + balance_rate_col) as usize] = 0.0;
     let root_balance_before = cell(&values, root_slot, balance_col, n_dims);
     let owner_balance_before = cell(&values, owner_slot, balance_col, n_dims);
     let leaf_balance_before = leaf_slots.map(|slot| cell(&values, slot, balance_col, n_dims));
@@ -531,7 +518,10 @@ fn default_step_once_recursively_reduces_named_child_and_writes_local_allocation
         allocation_diff_error <= allocation_diff_bound,
         "downstream leaf allocation differential must retain the selected marginal: error={allocation_diff_error} bound={allocation_diff_bound}"
     );
-    assert!(with_child.n_bands >= 8, "D=3 requires recursive OrderBands");
+    assert!(
+        with_child.n_bands >= 12,
+        "D=3 governed conservation requires recursive, residual, and integration OrderBands"
+    );
 
     let owner_budget = ROOT_BUDGET + with_aggregate;
     let owner_residual = owner_budget - with_leaf_sum;
@@ -575,8 +565,9 @@ fn default_step_once_recursively_reduces_named_child_and_writes_local_allocation
         with_child.leaf_allocation_bits
     );
     assert_eq!(
-        balance_disconnected.owner_balance_rate_bits, with_child.owner_balance_rate_bits,
-        "negative must preserve the executed residual rate"
+        balance_disconnected.owner_balance_rate_bits,
+        0.0_f32.to_bits(),
+        "disconnecting governed Balance must remove the Arena-generated residual route"
     );
     assert_eq!(
         balance_disconnected.owner_balance_delta_bits,
@@ -619,7 +610,7 @@ fn default_step_once_recursively_reduces_named_child_and_writes_local_allocation
         .iter()
         .all(|bits| *bits == 0.0_f32.to_bits()));
     eprintln!(
-        "RF2-EXECUTED-DEFAULT: depth=3 bands={} named_child_marginal={} sibling_aggregate={} owner_aggregate_with={} owner_aggregate_without={} leaf_allocations_with={:?} leaf_allocations_without={:?} owner_residual={} owner_balance_delta={} rf1_allocator=PASS rf1_structural=PASS rf1_recipe=VACUOUS deterministic_bits=PASS economy_execution_deferred=false",
+        "RF2-EXECUTED-DEFAULT: depth=3 bands={} named_child_marginal={} sibling_aggregate={} owner_aggregate_with={} owner_aggregate_without={} leaf_allocations_with={:?} leaf_allocations_without={:?} owner_residual={} arena_generated_owner_rate={} owner_balance_delta={} rf1_allocator=PASS rf1_structural=PASS rf1_recipe=VACUOUS deterministic_bits=PASS economy_execution_deferred=false",
         with_child.n_bands,
         NAMED_CHILD_MARGINAL,
         sibling_aggregate,
@@ -628,6 +619,7 @@ fn default_step_once_recursively_reduces_named_child_and_writes_local_allocation
         with_leaves,
         without_leaves,
         owner_residual,
+        f32::from_bits(with_child.owner_balance_rate_bits),
         measured_owner_delta,
     );
     eprintln!(
