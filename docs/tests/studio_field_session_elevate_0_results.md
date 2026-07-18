@@ -21,6 +21,8 @@
 | Emergency DA hold | [comment `5012226484`](https://github.com/khorum08/SimThing/pull/1413#issuecomment-5012226484) |
 | GPU remedial handoff | [comment `5012228350`](https://github.com/khorum08/SimThing/pull/1413#issuecomment-5012228350) |
 | Remedial implementation / tested-code SHA | `b99fa6326b729cd6fb8a1e9adba364795015dccd` |
+| Remedial evidence head | `b1785e0d455e517fd4f2b2e3a1b26c48259cee89` |
+| Doctrine scan base | `e60082b1e0358fe793257e4151d037c03da250ef` |
 
 ## Implemented path
 
@@ -139,8 +141,8 @@ Replacement OVL remains Owner-only and open. Use the exact executable identity a
 | `cargo check -p simthing-mapeditor` | PASS |
 | Studio debug build | PASS @ implementation/test SHA `b99fa6326b729cd6fb8a1e9adba364795015dccd`; executable identity above |
 | Owner-local exact-adapter launch | PASS; actual telemetry was RTX 4080 Laptop / `0x10de:0x27a0` / `DiscreteGpu` / `Dx12` / policy satisfied |
-| Doctrine PR scan | PASS; `WORKSHOP-HOMING-DETECTION PASS 0`, `TEST-BUDGET PASS 0`, inspect `0` |
-| Agent scan | `AGENT-SCAN-VERDICT: PASS delta_inspect=0` |
+| Doctrine PR scan | PASS at `e60082b1..b1785e0d`; `WORKSHOP-HOMING-DETECTION PASS 0`, `TEST-BUDGET PASS 0`, inspect `0` |
+| Agent scan | PASS at `e60082b1..b1785e0d`; `AGENT-SCAN-VERDICT: PASS delta_inspect=0` |
 | Orientation | `gen_orientation --check: PASS` |
 | Inventory | `TEST-INVENTORY-DRIFT-CHECK-VERDICT: PASS` |
 | Doc budget | `DOC-BUDGET-VERDICT: PASS` |
