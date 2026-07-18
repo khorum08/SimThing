@@ -32,6 +32,7 @@ pub mod studio_disruption_readout;
 pub mod studio_frame_phase_gpu_telemetry;
 pub mod studio_fleet_presence;
 pub mod studio_frosted_glass;
+pub mod studio_gpu_adapter_policy;
 pub mod studio_performance_telemetry;
 pub mod studio_planet_child_location;
 pub mod studio_render_loop_dirty_gate;
@@ -173,6 +174,13 @@ pub use studio_frosted_glass::{
     FrostedGlassSettings, StudioFrostedGlassPlugin, FROSTED_GLASS_BLUR_PASS_COUNT,
     FROSTED_GLASS_DOWNSAMPLE_FACTOR, FROSTED_GLASS_MAX_PANELS,
     FROSTED_GLASS_SHARED_TARGET_COUNT,
+};
+pub use studio_gpu_adapter_policy::{
+    populate_and_validate_studio_gpu_telemetry, required_studio_wgpu_settings,
+    validate_studio_gpu_adapter, StudioGpuAdapterPolicyViolation, StudioGpuAdapterSnapshot,
+    BLOCKED_STUDIO_GPU_BACKEND, REQUIRED_STUDIO_GPU_ADAPTER_NAME,
+    REQUIRED_STUDIO_GPU_DEVICE_TYPE, REQUIRED_STUDIO_GPU_VENDOR_ID,
+    STUDIO_GPU_FORCE_FALLBACK_ADAPTER, STUDIO_GPU_POLICY_SATISFIED_PREFIX,
 };
 pub use studio_performance_telemetry::{
     bytes_to_vram_mb, estimate_image_vram_bytes, estimate_mesh_vram_bytes,

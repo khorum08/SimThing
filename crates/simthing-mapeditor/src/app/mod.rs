@@ -13,6 +13,7 @@ mod window;
 
 use bevy::diagnostic::FrameTimeDiagnosticsPlugin;
 use bevy::prelude::*;
+use bevy::render::RenderPlugin;
 use bevy_egui::{EguiPlugin, EguiPrimaryContextPass};
 
 use crate::dialog::{SettingsDialogModel, TelemetryDialogModel};
@@ -100,6 +101,10 @@ pub fn run_studio() {
                 .set(bevy::log::LogPlugin {
                     level: bevy::log::Level::WARN,
                     filter: "warn,simthing_mapeditor=info".into(),
+                    ..default()
+                })
+                .set(RenderPlugin {
+                    render_creation: crate::required_studio_wgpu_settings().into(),
                     ..default()
                 }),
         )

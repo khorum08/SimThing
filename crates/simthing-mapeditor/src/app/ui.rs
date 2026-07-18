@@ -2098,10 +2098,29 @@ fn draw_studio_ops_telemetry(ctx: &egui::Context, state: &mut StudioAppState) {
             ui.separator();
             ui.heading("Live session path");
             let bridge = &state.live_bridge_readout;
+            let clock = state.sim_clock_transport.readout();
             egui::Grid::new("studio_ops_session_path")
                 .num_columns(2)
                 .striped(true)
                 .show(ui, |ui| {
+                    ui.label("scenario");
+                    ui.label(
+                        state
+                            .session
+                            .as_ref()
+                            .and_then(|session| session.scenario_path.as_ref())
+                            .map(|path| path.display().to_string())
+                            .or_else(|| bridge.scenario_id.clone())
+                            .unwrap_or_else(|| "(none)".into()),
+                    );
+                    ui.end_row();
+                    ui.label("tick / transport");
+                    ui.label(format!(
+                        "{} / {}",
+                        bridge.executed_ticks,
+                        if clock.paused { "paused" } else { "playing" }
+                    ));
+                    ui.end_row();
                     ui.label("session path");
                     ui.label(bridge.session_path_label);
                     ui.end_row();
@@ -2119,6 +2138,55 @@ fn draw_studio_ops_telemetry(ctx: &egui::Context, state: &mut StudioAppState) {
                         "{} / {}",
                         bridge.last_decision_event_count, bridge.cumulative_decision_events
                     ));
+                    ui.end_row();
+                });
+
+            ui.separator();
+            ui.heading("Recursive Arena Resource Flow");
+            let recursive = &bridge.recursive_rf;
+            egui::Grid::new("studio_ops_recursive_rf")
+                .num_columns(2)
+                .striped(true)
+                .show(ui, |ui| {
+                    ui.label("profile / activity");
+                    ui.label(format!(
+                        "{} / {}",
+                        recursive.execution_profile,
+                        if recursive.active {
+                            "active"
+                        } else {
+                            "inactive"
+                        }
+                    ));
+                    ui.end_row();
+                    ui.label("arena");
+                    ui.label(recursive.arena.as_deref().unwrap_or("--"));
+                    ui.end_row();
+                    ui.label("named child");
+                    ui.label(recursive.named_child.as_deref().unwrap_or("--"));
+                    ui.end_row();
+                    ui.label("real ancestor / siblings");
+                    ui.label(format!(
+                        "{} / {} siblings",
+                        recursive.ancestor.as_deref().unwrap_or("--"),
+                        recursive.sibling_count
+                    ));
+                    ui.end_row();
+                    ui.label("ancestor aggregate (loaded / live)");
+                    ui.label(format!(
+                        "{} / {}",
+                        recursive
+                            .ancestor_aggregate_before
+                            .map(|value| format!("{value:.6}"))
+                            .unwrap_or_else(|| "--".into()),
+                        recursive
+                            .ancestor_aggregate_after
+                            .map(|value| format!("{value:.6}"))
+                            .unwrap_or_else(|| "--".into()),
+                    ));
+                    ui.end_row();
+                    ui.label("need / weight_profile");
+                    ui.label("not admitted in RF-4; bounded RF-5 split required");
                     ui.end_row();
                 });
 

@@ -2,24 +2,36 @@
 rung: STUDIO-FIELD-SESSION-ELEVATE-0
 kind: rung
 track: 0.0.8.6
-base_sha: 456946421b662b0207b78405ba39b44c3c54fa5d
+base_sha: c0e2202694bc9c2a329e5a6d4620a078c7ba71ea
 audience: coding
 model_tier: frontier
 owner_approved: true
-expected_route: DA-RESERVE(unclassified-scope)
-owner_notes: "Fully-automated: coder=Grok CLI. Orchestrator owns CI/clearance/tree-review/remands + delegated merge. Escalations→orchestrator not DA. [OVL] Owner screenshots close visual gate. Windows debug Studio build only after adjudication-clean final SHA (not committed)."
-surfaces: ["crates/simthing-mapeditor", "crates/simthing-workshop", "docs/design_0_0_8_6_studio_live_ops.md"]
-forbidden: ["bespoke economy code in the tick", "CPU planner / AI-tick / decisions outside threshold crossings", "ScenarioSpec mutation from render/camera/UI", "new grammar/primitives in clausething or spec", "TP-specific code in a sealed crate (home to simthing-workshop)", "kernel/WGSL semantics"]
-required_checks: ["cargo-check", "focused-tests", "doctrine-scan", "orientation-check", "doc-budget"]
-stop_conditions: ["stale-orient-receipt", "scope-widening", "tick-needs-bespoke-economy-code", "decision-fires-outside-threshold-crossing"]
+expected_route: DA-RESERVE(gate-wiring)
+owner_notes: "RF-3 DA-graduated/merged #1412 at d42b9109; stamp c0e22026. RF-4 resumes 12.9 on recursive Arena RF. #1405 stays open as salvage-only provenance until mined. Orchestration owns review/merge; Owner alone closes [OVL]."
+surfaces: ["crates/simthing-mapeditor/src", "crates/simthing-mapeditor/tests", "crates/simthing-workshop/tests", "crates/simthing-workshop/Cargo.toml", "crates/simthing-clausething/src", "crates/simthing-spec/src", "docs/design_0_0_8_6_studio_live_ops.md", "docs/tests", "docs/orchestrator_orientation.md", "scripts/ci"]
+forbidden: ["merge/rebase/wholesale cherry-pick #1405", "Studio-side RF arithmetic, synthetic parent growth, feeder patches, or direct accumulator mutation", "RR-3/RR-4 production transplant", "new kernel/WGSL primitive, grammar, planner, or scenario API", "parallel/synthetic Owner hierarchy", "emission loci as RF proof or [OVL] closure"]
+required_checks: ["cargo-check+studio-build", "focused-tests", "gpu-proof", "agent+doctrine-scan", "orientation+inventory", "doc-budget"]
+stop_conditions: ["stale-orient-receipt", "scope-widening", "salvage-or-need-requires-new-contract", "ancestor-proof-collapses-to-emission-or-copy"]
 ---
 ## BUILD
-- Open Studio live bridge **field-bearing** path (`open_from_spec` + authored profile); elevate residue so authored fields accrete under live ticks (disruption emitters; production/**need** + policy overlays; decisions only as threshold crossings). Keep structural-shell fallback.
-- **[OVL]** ops-telemetry (session path + per-tick field accretion samples bound to resolved emission slot/col). Windows **debug** `simthing-studio` at exact final source SHA for Owner screenshots (runbook in results; exe not committed) — build only after need-seam adjudication clean.
+- Stamp RF-3 **DA-GRADUATED / merged #1412 @ `d42b9109`**, make RF-4 active, regenerate orientation, and preserve the master results stamp.
+- Treat #1405 head `34bb730fb24b550eeac520e83fbf5e2408a0f7c4` as salvage-only. Produce accepted/rejected file+hunk manifest; mine only accepted loader/profile/path/telemetry work; leave #1405 open for orchestration to close after mining.
+- Rebase the field-bearing Studio path on `RecursiveArenaResourceFlow`, ordinary `step_once`, and unchanged RF-1; remove the obsolete missing-production-RF assumption.
+- Compose from the canonical authority tree and an admitted `ResourceFlowSpec`/ArenaRegistry derived from existing 12.6/12.8 authoring; no synthetic Owners or location-only RF authority.
+- Transport existing need/`weight_profile` stacks through an admitted GameMode/open seam. If that needs a new contract, STOP and propose bounded RF-5.
+- Bind telemetry to live ancestor/Owner aggregates; keep emission loci diagnostic. Rewrite salvaged tests on this base, preserving fallback, ingest, pause, and threshold-only decisions.
+
 ## FENCES
-- Generic RF/STEAD only — **no bespoke economy in the tick**. Decisions = FIELD_POLICY threshold crossings only; ScenarioSpec sole authority.
-- No new clausething/spec grammar. §12 `workshop-candidate-homing`; WORKSHOP-HOMING-DETECTION PASS 0. Do not invent need/weight-profile install APIs in this PR.
+- Generic RF/STEAD only; no bespoke Studio economy loop or UI/Bevy mutation of ScenarioSpec.
+- No new ClauseScript syntax or sealed-crate TP special case; scenario proofs remain workshop-homed.
+- #1405 evidence is historical input, not current proof; reproduce every retained claim post-RF-3.
+- Code may reach PROBATION before screenshots, but only Owner screenshots close [OVL].
+
 ## EXIT-PROOF
-- Multi-tick headless: disruption accretes; **production/need accrete from authored buildings and policy overlays** (design 12.9); threshold fires under live ticks (zero at open / zero without threshold). Tests BITE. Studio readout samples show multi-tick value deltas.
-- **BLOCKED (need half):** no admitted GameMode/open_from_spec seam for field-economy `weight_profile` EML stacks — need live output not proven; not self-narrowed to production/policy. Owner/orchestrator adjudicate (e.g. 12.9a seam rung) before full 12.9 PROBATION.
-- cargo/doctrine-scan/orient/doc-budget green; tests ledgered. **[OVL] open** until Owner screenshots (identity + live accretion + progression).
+- Production Studio clause ingest opens field-bearing and ordinary `step_once` executes recursive Arena RF; structural-shell fallback remains selectable and frozen.
+- A named child increases a real ancestor/Owner sibling aggregate; disabling only that child removes exactly its marginal while siblings/inputs remain fixed. The ancestor is not a one-to-one copy.
+- The run passes unchanged RF-1 over measured GPU Balance and fails when governed Balance or child enrollment is removed.
+- Telemetry reports path, named child/ancestor, before/after aggregate, and RF activity; emission loci cannot satisfy proof.
+- Authored need/`weight_profile` affects live state, or an orchestrator-approved RF-5 split is recorded before graduation.
+- Decisions fire only on FIELD_POLICY threshold crossings; a below-threshold control fires none.
+- Focused proofs, Studio build, inventory, scans, orientation, and budget are green; metadata binds SHAs, receipts, salvage manifest, and Owner [OVL] status. #1405 closes only after orchestration confirms mining.

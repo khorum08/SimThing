@@ -10,6 +10,10 @@ use simthing_clausething::{
     hydrate_scenario_with_source_base, parse_raw_document, HydratedScenarioPack,
 };
 use simthing_core::SubFieldRole;
+use simthing_driver::{
+    allocator_eps_bound, allocator_from_disbursements, check_allocator_step, resolve_node_columns,
+    AllocatorConservationViolation,
+};
 use simthing_mapeditor::{
     authored_live_profile_from_pack, runtime_vertical_seed_scenario_spec, StudioLiveSessionBridge,
     StudioLiveSessionBridgeError, StudioLiveSessionPath, StudioLiveSessionPathPreference,
@@ -59,6 +63,221 @@ fn open_field_bridge(studio: &StudioSession) -> StudioLiveSessionBridge {
     }
     assert_eq!(bridge.session_path(), StudioLiveSessionPath::FieldBearing);
     bridge
+}
+
+#[derive(Debug)]
+struct RecursiveRfObservation {
+    loaded_ancestor_aggregate: f32,
+    live_ancestor_aggregate: f32,
+    ancestor_aggregate: f32,
+    ancestor_allocation: f32,
+    leaf_allocations: Vec<f32>,
+    measured_balance_delta: f32,
+    named_child_intrinsic: f32,
+}
+
+fn execute_canonical_recursive_rf(
+    disable_named_child: bool,
+    disconnect_governed_balance: bool,
+) -> RecursiveRfObservation {
+    let pack = hydrate_canonical();
+    let mut profile = authored_live_profile_from_pack(&pack);
+    let rf = profile
+        .recursive_rf
+        .clone()
+        .expect("canonical pack must compose an admitted recursive RF profile");
+    let named_obligation = profile
+        .game_mode
+        .resource_flow
+        .as_mut()
+        .expect("RF spec")
+        .base_obligations
+        .iter_mut()
+        .find(|obligation| obligation.id == "studio_rf_child_0_intrinsic")
+        .expect("named child base obligation");
+    let named_child_intrinsic = named_obligation.rate;
+    if disable_named_child {
+        named_obligation.rate = 0.0;
+    }
+    if disconnect_governed_balance {
+        let property = profile
+            .game_mode
+            .properties
+            .iter_mut()
+            .find(|property| {
+                property.namespace == rf.property_namespace && property.name == rf.property_name
+            })
+            .expect("RF property");
+        property
+            .sub_fields
+            .iter_mut()
+            .find(|subfield| subfield.role == SubFieldRole::Named("balance".into()))
+            .expect("Balance subfield")
+            .governed_by = None;
+    }
+
+    let mut studio = studio_from_pack(&pack);
+    studio.authored_live_profile = Some(profile);
+    let mut bridge = open_field_bridge(&studio);
+    let before = bridge.readout().recursive_rf;
+    assert!(before.active, "recursive RF runtime flag must be active");
+    assert_eq!(before.sibling_count, 3);
+    let balance_before = {
+        let sim = bridge.sim_session().expect("attached");
+        let property_id = sim
+            .proto
+            .registry
+            .id_of(&rf.property_namespace, &rf.property_name)
+            .expect("RF property id");
+        let cols =
+            resolve_node_columns(&sim.proto.registry.property(property_id).layout, &rf.arena)
+                .expect("RF columns");
+        let balance_col = cols.balance_col.expect("Balance column");
+        let owner_slot = sim
+            .spec_state
+            .arena_participant_scaffold
+            .index
+            .by_host_and_arena[&(rf.ancestor_id, 0)]
+            .raw();
+        let values = sim.state.read_values();
+        values[(owner_slot * sim.state.n_dims + balance_col) as usize]
+    };
+
+    bridge
+        .consume_scheduled_ticks(1)
+        .expect("ordinary live step_once");
+    let live_readout = bridge.readout().recursive_rf;
+    let sim = bridge.sim_session().expect("attached");
+    let property_id = sim
+        .proto
+        .registry
+        .id_of(&rf.property_namespace, &rf.property_name)
+        .expect("RF property id");
+    let cols = resolve_node_columns(&sim.proto.registry.property(property_id).layout, &rf.arena)
+        .expect("RF columns");
+    let balance_col = cols.balance_col.expect("Balance column");
+    let participant_slot = |hosted_id| {
+        sim.spec_state
+            .arena_participant_scaffold
+            .index
+            .by_host_and_arena[&(hosted_id, 0)]
+            .raw()
+    };
+    let owner_slot = participant_slot(rf.ancestor_id);
+    let resource_flow = profile_resource_flow(&studio);
+    let arena = resource_flow.arenas.first().expect("one RF arena");
+    let leaf_ids: Vec<_> = arena
+        .explicit_participants
+        .iter()
+        .filter(|participant| {
+            participant.parent_subtree_root_id == Some(rf.ancestor_id.raw() as u64)
+        })
+        .map(|participant| simthing_core::SimThingId::from_session_raw(participant.subtree_root_id))
+        .collect();
+    assert_eq!(leaf_ids.len(), 3, "real Owner must have three RF siblings");
+    let values = sim.state.read_values();
+    let cell = |slot: u32, col: u32| values[(slot * sim.state.n_dims + col) as usize];
+    let leaf_allocations = leaf_ids
+        .iter()
+        .map(|id| {
+            let slot = participant_slot(*id);
+            cell(slot, cols.allocated_flow_col)
+        })
+        .collect();
+    RecursiveRfObservation {
+        loaded_ancestor_aggregate: before
+            .ancestor_aggregate_before
+            .expect("loaded Owner aggregate readout"),
+        live_ancestor_aggregate: live_readout
+            .ancestor_aggregate_after
+            .expect("live Owner aggregate readout"),
+        ancestor_aggregate: cell(owner_slot, cols.intrinsic_flow_sum_col),
+        ancestor_allocation: cell(owner_slot, cols.allocated_flow_col),
+        leaf_allocations,
+        measured_balance_delta: cell(owner_slot, balance_col) - balance_before,
+        named_child_intrinsic,
+    }
+}
+
+fn profile_resource_flow(studio: &StudioSession) -> &simthing_spec::ResourceFlowSpec {
+    studio
+        .authored_live_profile
+        .as_ref()
+        .and_then(|profile| profile.game_mode.resource_flow.as_ref())
+        .expect("Studio authored RF profile")
+}
+
+/// catches: Studio path reports RF while ordinary step_once never executes the recursive Arena;
+/// catches: measured governed Balance integration disconnected while arithmetic still looks bounded.
+#[test]
+fn canonical_recursive_rf_bites_with_real_owner_aggregate_and_runtime_balance_negative() {
+    let enabled = execute_canonical_recursive_rf(false, false);
+    let replay = execute_canonical_recursive_rf(false, false);
+    let disabled = execute_canonical_recursive_rf(true, false);
+    assert_eq!(
+        enabled.ancestor_aggregate.to_bits(),
+        replay.ancestor_aggregate.to_bits(),
+        "live recursive RF must replay bit-exactly"
+    );
+    assert_eq!(enabled.loaded_ancestor_aggregate, 0.0);
+    assert_eq!(
+        enabled.live_ancestor_aggregate.to_bits(),
+        enabled.ancestor_aggregate.to_bits(),
+        "Studio telemetry must read the actual post-dispatch Owner aggregate"
+    );
+    assert!(
+        disabled.ancestor_aggregate > 0.0,
+        "fixed real siblings must keep the Owner aggregate non-zero"
+    );
+    assert_eq!(
+        (enabled.ancestor_aggregate - disabled.ancestor_aggregate).to_bits(),
+        enabled.named_child_intrinsic.to_bits(),
+        "disabling only the named real child must remove exactly its Owner marginal"
+    );
+
+    let budget = enabled.ancestor_aggregate + enabled.ancestor_allocation;
+    let sum_disbursed: f32 = enabled.leaf_allocations.iter().copied().sum();
+    let arithmetic_residual = budget - sum_disbursed;
+    let bound = allocator_eps_bound(enabled.leaf_allocations.len(), budget);
+    assert_ne!(
+        arithmetic_residual, 0.0,
+        "fixture must retain a deterministic non-zero f32 allocator residual"
+    );
+    check_allocator_step(&allocator_from_disbursements(
+        budget,
+        enabled.leaf_allocations.clone(),
+        Some(enabled.measured_balance_delta),
+    ))
+    .expect("RF-1 must accept the measured governed Balance delta");
+    println!(
+        "RF4_LIVE loaded_owner_aggregate={} live_owner_aggregate={} disabled_aggregate={} named_marginal={} budget={} sum_disbursed={} arithmetic_residual={} measured_balance_delta={} bound={}",
+        enabled.loaded_ancestor_aggregate,
+        enabled.ancestor_aggregate,
+        disabled.ancestor_aggregate,
+        enabled.named_child_intrinsic,
+        budget,
+        sum_disbursed,
+        arithmetic_residual,
+        enabled.measured_balance_delta,
+        bound,
+    );
+
+    let disconnected = execute_canonical_recursive_rf(false, true);
+    let disconnected_budget = disconnected.ancestor_aggregate + disconnected.ancestor_allocation;
+    let violation = check_allocator_step(&allocator_from_disbursements(
+        disconnected_budget,
+        disconnected.leaf_allocations.clone(),
+        Some(disconnected.measured_balance_delta),
+    ))
+    .expect_err("actual GPU readout must fail when governed Balance is disconnected");
+    assert!(matches!(
+        violation,
+        AllocatorConservationViolation::ResidualNotIntegrated { .. }
+    ));
+    println!(
+        "RF4_RUNTIME_NEGATIVE governed_balance=disconnected actual_gpu_balance_delta={} violation={violation:?}",
+        disconnected.measured_balance_delta,
+    );
 }
 
 fn amount_col(sim: &simthing_driver::SimSession, namespace: &str, name: &str) -> usize {
@@ -158,7 +377,10 @@ fn pack_below_threshold_disruption() -> HydratedScenarioPack {
 #[test]
 fn canonical_disruption_accretes_from_authored_emitter() {
     let pack = hydrate_canonical();
-    assert!(pack.field_economy.is_some(), "12.8 field economy must hydrate");
+    assert!(
+        pack.field_economy.is_some(),
+        "12.8 field economy must hydrate"
+    );
     let studio = studio_from_pack(&pack);
     let mut bridge = open_field_bridge(&studio);
     assert_eq!(
@@ -187,8 +409,8 @@ fn canonical_disruption_accretes_from_authored_emitter() {
         .filter(|s| s.property_key.contains("disruption_presence"))
         .map(|s| s.amount)
         .collect();
-    let changed = (after - open_amount).abs() > 1e-4
-        || series.windows(2).any(|w| (w[0] - w[1]).abs() > 1e-4);
+    let changed =
+        (after - open_amount).abs() > 1e-4 || series.windows(2).any(|w| (w[0] - w[1]).abs() > 1e-4);
     assert!(
         changed,
         "canonical disruption must show a live per-tick delta: open={open_amount} after={after} series={series:?}"
@@ -226,8 +448,12 @@ fn canonical_production_need_accrete_from_buildings_and_overlays() {
     );
 
     // Authored policy targets (not minerals proxy): terran hulls + pirate disruption.
-    let hulls_with =
-        amount_at_install_target(sim, "terran", "tp_economy", "terran_shipyard_hulls_quantity");
+    let hulls_with = amount_at_install_target(
+        sim,
+        "terran",
+        "tp_economy",
+        "terran_shipyard_hulls_quantity",
+    );
     let disruption_with = amount_at_install_target(
         sim,
         "pirate",
