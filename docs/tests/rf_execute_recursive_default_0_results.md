@@ -2,11 +2,11 @@
 
 ## Status
 
-**PROBATION — remand implementation and local evidence complete; ready for orchestration review** (2026-07-17).
+**PROBATION — governed-integration remedial implementation and local evidence complete; ready for orchestration review** (2026-07-17).
 
-Tested code commit: `6aa302b59ad29cded8060434b519303531be9ff8`.
+Tested code commit: `15250f6f507225c37f4e6ce18d32893d3592b6f6`.
 
-Clearance routing observed on the reviewed head: `DA-RESERVE(unclassified-scope)`.
+Expected clearance route: `DA-RESERVE(kernel-contract)`.
 
 The admitted Arena Resource Flow plan is now the `GameModeSpec` execution-profile default. Ordinary
 `SimSession::open_from_spec` plus `step_once` executes the already-materialized flat or nested topology
@@ -29,8 +29,8 @@ and execution path remain bit-identical.
 Observed output:
 
 ```text
-RF2-EXECUTED-DEFAULT: depth=3 bands=8 named_child_marginal=5.5 sibling_aggregate=5.375 owner_aggregate_with=10.875 owner_aggregate_without=5.375 leaf_allocations_with=[4.5750003, 12.200001, 6.1000004] leaf_allocations_without=[3.4750001, 9.266667, 4.6333337] owner_residual=-0.0000019073486 owner_balance_delta=-0.0000019073486 rf1_allocator=PASS rf1_structural=PASS rf1_recipe=VACUOUS deterministic_bits=PASS economy_execution_deferred=false
-RF2-RUNTIME-BALANCE-REMOVED: owner_budget=22.875 leaf_allocations=[4.5750003, 12.200001, 6.1000004] residual=-0.0000019073486 owner_rate=-0.0000019073486 actual_owner_delta=0 result=ResidualNotIntegrated
+RF2-EXECUTED-DEFAULT: depth=3 bands=12 named_child_marginal=5.5 sibling_aggregate=5.375 owner_aggregate_with=10.875 owner_aggregate_without=5.375 leaf_allocations_with=[4.5750003, 12.200001, 6.1000004] leaf_allocations_without=[3.4750001, 9.266667, 4.6333337] owner_residual=-0.0000019073486 arena_generated_owner_rate=-0.0000019073486 owner_balance_delta=-0.0000019073486 rf1_allocator=PASS rf1_structural=PASS rf1_recipe=VACUOUS deterministic_bits=PASS economy_execution_deferred=false
+RF2-RUNTIME-BALANCE-REMOVED: owner_budget=22.875 leaf_allocations=[4.5750003, 12.200001, 6.1000004] residual=-0.0000019073486 owner_rate=0 actual_owner_delta=0 result=ResidualNotIntegrated
 RF2-DEFAULT-DISABLED: flag_source=DefaultDisabled rf_active=false bands=0 owner_aggregate=0 owner_allocation=0 leaf_allocations=[0.0, 0.0, 0.0]
 test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
 ```
@@ -49,11 +49,28 @@ participant IDs, declared intrinsic-source IDs, and parent-disbursement recipien
 passes allocator and structural/no-orphan checks; no recipe executes, so recipe exactness is explicitly
 vacuous.
 
-The executed Owner allocator has budget `22.875` and a deterministic non-zero arithmetic residual
-`-0.0000019073486`, within `O(epsilon * 3)`. Its actual measured Balance delta is
-`-0.0000019073486`. The paired runtime negative removes only the Balance `governed_by` connection; its
-topology, weights, intrinsic inputs, residual rate, and GPU disbursements are unchanged, but the actual
-Balance delta is `0`, so RF-1 returns `ResidualNotIntegrated`.
+The governed rate is explicitly initialized to zero. Four ordinary Arena OrderBands derive the
+allocator residual from the GPU-executed budget and child `AllocatedFlow` cells before the existing
+governed integration band. The executed Owner allocator has budget `22.875` and a deterministic
+non-zero arithmetic residual `-0.0000019073486`, within `O(epsilon * 3)`. Its Arena-generated rate and
+actual measured Balance delta are both `-0.0000019073486`.
+
+The paired runtime negative removes only the Balance `governed_by` connection. Topology, weights,
+intrinsic inputs, budget, and GPU disbursements remain identical, while no residual route or integration
+targets the observed Balance cell. Its actual GPU rate and Balance delta remain zero, so independent
+RF-1 returns `ResidualNotIntegrated`. No post-readout corruption is used by this load-bearing falsifier.
+
+## Governed integration contract repair
+
+The existing GPU-to-CPU adapter now carries the authored `n_targets=2` pair in exact order: target 0
+is the governed amount/Balance cell and target 1 is its eligible velocity/rate cell. It also retains the
+authored `OrderBand`. The existing `COMBINE_INTEGRATE_CLAMP` WGSL branch now checks that gate before
+executing, without changing the affine or threshold branches.
+
+The adapter unit falsifier fails on omitted/swapped target 1, wrong target count, or a lost band. The
+live kernel falsifier dispatches the same two-target integration first with only a nonmatching band and
+observes `[10.0, 2.0]` unchanged, then includes matching band 1 and observes `[12.0, 2.0]`: amount
+integrated exactly once and the eligible rate remained unchanged.
 
 ## Explicit opt-out
 
@@ -66,6 +83,8 @@ bypassed by unconditional execution wiring.
 
 - `cargo check -p simthing-spec` — **PASS** (pre-existing warnings only).
 - `cargo check -p simthing-driver` — **PASS** (pre-existing warnings only).
+- `cargo test -p simthing-driver --lib governed_adapter_preserves_authored_targets_and_orderband -- --nocapture` — **PASS**, 1 passed.
+- `cargo test -p simthing-kernel --lib governed_integration_executes_only_on_its_authored_orderband -- --nocapture` — **PASS**, 1 passed; nonmatching `[10.0, 2.0]`, matching `[12.0, 2.0]`.
 - `cargo test -p simthing-workshop --test rf_execute_recursive_default_0 -- --nocapture` — **PASS**, 1 passed; sibling aggregate, live RF-1 judge, runtime disconnect, and opt-out outputs above.
 - `cargo test -p simthing-driver --test rf_conservation_oracle_0 -- --nocapture` — **PASS**, 2 passed.
 - `cargo test -p simthing-driver --lib` — **PASS**, 8 passed.
@@ -77,10 +96,16 @@ bypassed by unconditional execution wiring.
 - `bash scripts/ci/gen_orientation.sh --check` — **PASS** after regeneration.
 - `bash scripts/ci/doc_budget_check.sh --check` — **PASS**.
 
+Coverage basis: the two exact unit falsifiers cover the repaired adapter and kernel dispatch seams; the
+workshop integration proof covers ordinary `SimSession::step_once`, zero-seeded Arena residual
+generation, actual GPU Balance readout, RF-1 closure, the real disconnected runtime negative, D=3
+sibling marginal, deterministic replay, and `DefaultDisabled`. The carried RF-1 flat-star integration
+test remains unchanged and green.
+
 ## Scope and fences
 
-- Existing `AccumulatorOp`, governed integration, and OrderBand execution only; no kernel, WGSL, GPU,
-  grammar, spec-role, or accumulator primitive was added.
+- Existing `AccumulatorOp`, governed integration, and OrderBand execution only; no new kernel primitive,
+  shader entry point, accumulator role/combine/gate, grammar, serialization shape, or scenario API.
 - No RUNTIME-0080 RR-3/RR-4 transplant and no CPU runtime planner/decision path.
 - No Studio-side RF arithmetic and no scenario-specific code or tests outside `simthing-workshop`.
 - RF-1 source, tests, independence fence, and bite remain unchanged.
@@ -90,9 +115,10 @@ bypassed by unconditional execution wiring.
 
 ## Orientation receipt
 
-- `HD-RECEIPT 6a2771cb341f`
+- `HD-RECEIPT b9669edafb72`
 - `ORIENT-RECEIPT 46d89a04fc85`
-- Doctrine ACKs: field-policy `ae2d4c2c0c7d`; founding `b960ed2d493d`; one-tree `c88002b72898`;
-  property-value `084ee935326b`; stead `b4a112cd02e8`; structural `17fa0732f44d`; workshop `3e584f0ad175`.
-- Harness ACKs required by the remand: orientation-harness-core `8a365d1c0864`;
-  scanner-selftest-delta-gate `34fb2662baae`.
+- Doctrine ACKs: admission ladder `4bedf826f6f7`; EML extension ladder `7755bc72ffbe`;
+  exact numeric Candidate-F `6938a2efadb5`; field-policy `ae2d4c2c0c7d`; founding
+  `b960ed2d493d`; property-value/RF overlays `084ee935326b`; seal residue `49ee7c4ba6f4`;
+  STEAD `b4a112cd02e8`; structural convergence `17fa0732f44d`; workshop homing
+  `3e584f0ad175`.
