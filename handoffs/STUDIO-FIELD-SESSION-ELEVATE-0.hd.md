@@ -10,8 +10,8 @@ expected_route: DA-RESERVE(gate-wiring)
 owner_notes: "RF-3 DA-graduated/merged #1412 at d42b9109; stamp c0e22026. RF-4 resumes 12.9 on recursive Arena RF. #1405 stays open as salvage-only provenance until mined. Orchestration owns review/merge; Owner alone closes [OVL]."
 surfaces: ["crates/simthing-mapeditor/src", "crates/simthing-mapeditor/tests", "crates/simthing-workshop/tests", "crates/simthing-workshop/Cargo.toml", "crates/simthing-clausething/src", "crates/simthing-spec/src", "docs/design_0_0_8_6_studio_live_ops.md", "docs/tests", "docs/orchestrator_orientation.md", "scripts/ci"]
 forbidden: ["merge/rebase/wholesale cherry-pick #1405", "Studio-side RF arithmetic, synthetic parent growth, feeder patches, or direct accumulator mutation", "RR-3/RR-4 production transplant", "new kernel/WGSL primitive, grammar, planner, or scenario API", "parallel/synthetic Owner hierarchy", "emission loci as RF proof or [OVL] closure"]
-required_checks: ["cargo-check", "focused-tests", "gpu-proof", "studio-build", "agent+doctrine-scan", "orientation+inventory", "doc-budget"]
-stop_conditions: ["stale-orient-receipt", "scope-widening", "salvage-needs-wholesale-1405", "need-install-needs-new-contract", "ancestor-proof-collapses-to-emission-or-copy"]
+required_checks: ["cargo-check+studio-build", "focused-tests", "gpu-proof", "agent+doctrine-scan", "orientation+inventory", "doc-budget"]
+stop_conditions: ["stale-orient-receipt", "scope-widening", "salvage-or-need-requires-new-contract", "ancestor-proof-collapses-to-emission-or-copy"]
 ---
 ## BUILD
 - Stamp RF-3 **DA-GRADUATED / merged #1412 @ `d42b9109`**, make RF-4 active, regenerate orientation, and preserve the master results stamp.
