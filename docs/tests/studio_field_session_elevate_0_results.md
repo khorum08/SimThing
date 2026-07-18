@@ -103,7 +103,8 @@ The executable is built only after the implementation/test SHA is frozen and all
 | `cargo check -p simthing-spec` | PASS |
 | `cargo check -p simthing-mapeditor` | PASS |
 | Studio debug build | PENDING frozen-SHA build |
-| Doctrine PR scan | PENDING final SHA |
+| Doctrine PR scan | PASS; `WORKSHOP-HOMING-DETECTION PASS 0`, `TEST-BUDGET PASS 0`, inspect `0` |
+| Agent scan | `AGENT-SCAN-VERDICT: PASS delta_inspect=0` |
 | Orientation | `gen_orientation --check: PASS` |
 | Inventory | `TEST-INVENTORY-DRIFT-CHECK-VERDICT: PASS` |
 | Doc budget | `DOC-BUDGET-VERDICT: PASS` |
