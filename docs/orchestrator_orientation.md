@@ -45,9 +45,9 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 211b860c2a424d0386a01a2dc93d5c563abfd1411c1f58ec55c7b69d97426cb8 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | be04669f2dfb66096af019ad61f225de91bf4433c22d46fbdeff42578634da49 |
-| design_0_0_8_6_studio_live_ops.md | ba308b0596d6b1f7e29e97f7d6301eb272cfeaae042000f251993b6ea1db030b |
+| design_0_0_8_6_studio_live_ops.md | 1dbd19b643dbe64dd9f72835e6160104a77f3bf9235d4c15b9c861e396066263 |
 | relay_lint.sh | 4163f715cdc3b549dbf57c1744aff61ea96b9f9f0a2237376665fbdb24e986c8 |
-| doctrine_anchors.tsv | 25de4317faa8f0c4bd0a3d3a18ee4500ad945fc2858915d4e8564644101fd5b5 |
+| doctrine_anchors.tsv | acddc6ad84d6dcefcbc8942f603186ae82e47e6495833b29aafbb5805d49aa0f |
 
 ## Active Track / Rung Summary (`design_0_0_8_6_studio_live_ops.md`)
 
@@ -63,14 +63,15 @@ Track state: `open`
 | 12.3 | STUDIO-DISRUPTION-SELECT-SCREEN-0 | **Needs 12.2.** Selecting **any** star (owned, neutral, hostile) screens the **s | TODO |
 | 12.5 | STUDIO-FLEET-ICONS-0 | **Needs 12.4.** Tiny ship icon (rocket/destroyer silhouette; **≤75% of the base  | TODO |
 | RF-1 | RF-CONSERVATION-ORACLE-0 | **Oracle-first.** Independent closed-form conservation oracle (ADR three invaria | **DA-GRADUATED / merged [#1408](https://github.com/khorum08/SimThing/pull/1408) @ `5fa10ab5`** — 2026-07-17 (coder=Gr... |
-| RF-2 | RF-EXECUTE-RECURSIVE-DEFAULT-0 | Flip `resource_flow_execution_profile` default to recursive executed source; wir | **PROBATION (remand-proof-present, orchestration-review-pending)** — 2026-07-17 @ tested code `6aa302b5`. Ordinary de... |
-| RF-3 | RF-LEGACY-RETIRE-REANCHOR-0 | Repoint existing RF tests + `runtime_0080_*` rehearsal + recursive-source oracle | TODO |
+| RF-2A | RF-GOVERNED-INTEGRATION-ORDERBAND-0 | Repair the existing governed-integration adapter so both authored targets surviv | **DA-GRADUATED / merged [#1411](https://github.com/khorum08/SimThing/pull/1411) @ `c206b0ef`** — 2026-07-18. Adapter ... |
+| RF-2 | RF-EXECUTE-RECURSIVE-DEFAULT-0 | Flip `resource_flow_execution_profile` default to recursive executed source; wir | **DA-GRADUATED / merged [#1411](https://github.com/khorum08/SimThing/pull/1411) @ `c206b0ef`** — 2026-07-18. Ordinary... |
+| RF-3 | RF-LEGACY-RETIRE-REANCHOR-0 | Repoint existing RF tests + `runtime_0080_*` rehearsal + recursive-source oracle | **PROBATION (proof-present, orchestration-review-pending)** — tested code `63d89ff9d4994f390f6bfede08f0d5b0823c7d66`;... |
 | RF-4 | (12.9 resumes) `STUDIO-FIELD-SESSION-ELEVATE-0 | Studio field-bearing consumes the now-executing RF; telemetry binds to the real  | BLOCKED→RF-2 |
 | OWNER | STUDIO-OWNER-CLOSURE-0 | **Track closeout (docs + harness lifecycle only).** Runs the `track_closeout.sh` | **DEFERRED / Owner-gated** — binding condition `track-closeout-blocked-until-explicit-owner-authorization` (Owner-202... |
 
 ## Next Rung Pointer
 
-Active pointer: `RF-EXECUTE-RECURSIVE-DEFAULT-0`
+Active pointer: `RF-LEGACY-RETIRE-REANCHOR-0`
 
 
 ## Cold-Start Spine (constitutional pointers)

@@ -3,6 +3,9 @@
 //! Consumes RR-0 recursive world/oracle, RR-1 nested residency, and RR-2 GPU surface production.
 //! Runs distinct GPU tier transitions surface→planet→system→galaxy→faction stockpile and staged
 //! disburse-down with bit-exact parity vs RR-0 recursive CPU oracle.
+//!
+//! This module is a falsification rehearsal, not production tick authority. Ordinary Arena Resource
+//! Flow execution is owned by `SimSession::step_once`; RR-3 is never imported into that path.
 
 use simthing_core::{
     rebuild_discrete_transfer_ops, AccumulatorOp, AccumulatorOpBuilder, AccumulatorOpBuilderError,

@@ -1,8 +1,8 @@
 //! RF-CONSERVATION-ORACLE-0 — independent conservation oracle live validation.
 //!
-//! Validates the oracle against the CURRENT executed flat path
-//! (`SimSession::open_from_spec` + `ResourceFlowOptInMode::FlatStarOptIn`),
-//! mirroring ct_2a_intrinsic_flow / ct_2c_category_economy posture.
+//! Validates the independent judge against an admitted flat-topology control using the historical
+//! explicit-opt-in input. Ordinary production authority is the recursive Arena default exercised by
+//! ct_2a, ct_2c, and the RF-2 workshop proof; this control does not select a second runtime source.
 //!
 //! Independence fence: this file must not import `owner_silo_recursive_rf_source`
 //! or the recursive branch of `runtime_rf_tick_source`.

@@ -107,10 +107,12 @@ of the one recursive hierarchy — same machinery, different settling depth. Thi
 the "combat is flat-star within the cell, nesting lives only above" carve-out in
 `docs/workshop/mobility_and_transfer_allocation.md` §3.2: a cell-local arena is the leaf-most level of
 the recursive hierarchy, not a different mechanism.
-> *Status note:* the recursive ladder is proven end-to-end on GPU against a recursive CPU oracle
-> (RUNTIME-0080-RR-0…RR-4, §4A); §0.2 is demonstrated doctrine, not yet default `SimSession`
-> wiring. Bounded by §0.6: parking specified depth is honest only as a recorded, approved
-> Deviation — never a silent flat proxy.
+> *Status note:* RF-2A and RF-2 are DA-graduated and merged at `c206b0ef` (`#1411`). The admitted
+> recursive Arena plan is the ordinary `GameModeSpec` profile default and executes through
+> `SimSession::step_once`; `DefaultDisabled` is the explicit opt-out. The independent RF-1 oracle
+> judges conservation. RUNTIME-0080 RR-3/RR-4 remain falsification rehearsals, never tick authority.
+> Bounded by §0.6: parking specified depth is honest only as a recorded, approved Deviation — never
+> a silent flat proxy.
 
 ### 0.3 All conflict is resource flow
 **Every adversarial interaction is expressed as resource-flow dynamics** — accumulation, reduction, and

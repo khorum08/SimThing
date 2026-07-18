@@ -3,6 +3,9 @@
 //! Consumes RR-0 recursive CPU oracle, RR-1 nested residency, RR-2 GPU surface economy, and
 //! RR-3 recursive GPU reduce-up/disburse-down. Runs 100 persistent-GPU recursive ticks with
 //! bit-exact per-tick and final-state parity vs the RR-0 oracle.
+//!
+//! This is a bounded falsification rehearsal only. It does not supply, wrap, or replace ordinary
+//! `SimSession::step_once` recursive Arena execution.
 
 use std::time::Instant;
 

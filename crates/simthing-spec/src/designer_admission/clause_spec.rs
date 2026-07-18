@@ -11,10 +11,10 @@ use crate::spec::region_field::MappingExecutionProfile;
 use crate::spec::resource_flow::{ResourceFlowExecutionProfile, ResourceFlowOptInMode};
 
 use super::artifact_target::{
-    accepted_frontier_v2_artifact_target_ids, AcceptedFrontierArtifactTarget,
+    AcceptedFrontierArtifactTarget, accepted_frontier_v2_artifact_target_ids,
 };
 use super::diagnostic::{
-    designer_admission_diagnostic, DesignerAdmissionDiagnostic, DesignerAdmissionDiagnosticCode,
+    DesignerAdmissionDiagnostic, DesignerAdmissionDiagnosticCode, designer_admission_diagnostic,
 };
 use super::manifest::DesignerAdmissionPreflightManifest;
 use super::preflight::resolve_frontier_artifact_target_id;
@@ -278,7 +278,7 @@ impl ClauseSpecFrontierV2Scenario {
             ],
             resource_flow: ClauseSpecResourceFlow {
                 opt_in: ResourceFlowOptInMode::FlatStarOptIn,
-                execution_profile: ResourceFlowExecutionProfile::FlatStarResourceFlow,
+                execution_profile: ResourceFlowExecutionProfile::RecursiveArenaResourceFlow,
                 route: ClauseSpecResourceFlowRoute::ResourceFlowAllocator,
                 depth_cap: 2,
                 global_default_on: false,
@@ -512,10 +512,10 @@ fn validate_clause_spec_frontier_v2_fields(
         diagnostics.push(malformed("resource_flow.opt_in must be FlatStarOptIn"));
     }
     if scenario.resource_flow.execution_profile
-        != ResourceFlowExecutionProfile::FlatStarResourceFlow
+        != ResourceFlowExecutionProfile::RecursiveArenaResourceFlow
     {
         diagnostics.push(malformed(
-            "resource_flow.execution_profile must be FlatStarResourceFlow",
+            "resource_flow.execution_profile must be RecursiveArenaResourceFlow",
         ));
     }
     if scenario.mapping.execution_profile != MappingExecutionProfile::SparseRegionFieldV1 {

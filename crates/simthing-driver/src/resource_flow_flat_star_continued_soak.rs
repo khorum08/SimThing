@@ -1,6 +1,6 @@
 //! Continued flat-star Resource Flow soak checkpoint (confidence/observability only).
 //!
-//! Reuses RF-T5 `FlatStarResourceFlow` profile fixtures and telemetry. Does not expand
+//! Reuses RF-T5 recursive Arena profile fixtures and telemetry. Does not expand
 //! Resource Flow semantics.
 
 use simthing_spec::ResourceFlowOptInMode;

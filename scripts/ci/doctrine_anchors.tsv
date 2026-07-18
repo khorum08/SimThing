@@ -13,7 +13,7 @@ clausething-closed-vertical	docs/design_0_0_8_3.md	heading:## A. Closeout addend
 structural-execution-convergence	docs/stead_spatial_contract.md	heading:## 10. Structural execution convergence (Studio → GPU horizon)	gpu,driver,mapeditor-gpu,studio,structural-execution	17fa0732f44d2e630a7d353e8c257ffedae2469d12d0eaa15f83ddb77b529687
 session-lifecycle-adr-family	docs/adr/README.md	heading:# Architecture Decision Records	driver-session,feeder-session,mapeditor-session	d73fe5a83f25055d741a542c270d40849cbda207d6417983b000f9f068a7f844
 peripheral-scope-adrs	docs/adr/capability_effect_target_scope.md	heading:## Context	feeder,capability-paths	7c85dbf18e48f6fa43d57bf2d3641c577d71227f8b15d64d134490b8fdb4dfab
-founding-ontology-invariants	docs/design_0_0_8_3.md	lines:100-129	founding-ontology	b960ed2d493d0073af656b1b2fd06bd60a0262926e97005ec0dfa316296f0bbf
+founding-ontology-invariants	docs/design_0_0_8_3.md	lines:100-129	founding-ontology	46802793fba78f7823cc1896246fc70f6486f56e6e88c7eab1fa3ad29bd0167e
 orientation-harness-core	docs/design_0_0_8_4_7_orchestration_harness.md	heading:## 1. Root cause this track closes	orientation,gate-wiring,receipt-admission	8a365d1c086487ee32150d457754df35becc4ad93465874253fc7d40baf2582f
 scanner-selftest-delta-gate	docs/ci_screening_surface.md	heading:### Scanner selftest delta gate	scanner-selftest-gate,gate-wiring	34fb2662baae168aade990530e837bf633a91e9e08956ecbd15caad50efba737
 movement-front	docs/simthing_core_design.md	heading:## 7. Mapping — the Movement-Front automaton over gridcell SimThings	movement-front,map-domain	a0592b2f37caf3c3e13a5012c91fdcb981e15db634bcac593cbfd7f42f068b37
