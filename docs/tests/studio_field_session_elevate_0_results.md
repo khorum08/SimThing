@@ -35,7 +35,7 @@ cargo test -p simthing-workshop --test tp_field_session_elevate_0 -- --nocapture
 Observed actual GPU output:
 
 ```text
-RF4_LIVE owner_aggregate=15 disabled_aggregate=10 named_marginal=5 budget=27.1 sum_disbursed=27.100002 arithmetic_residual=-0.0000019073486 measured_balance_delta=-0.0000019073486 bound=0.000077533725
+RF4_LIVE loaded_owner_aggregate=0 live_owner_aggregate=15 disabled_aggregate=10 named_marginal=5 budget=27.1 sum_disbursed=27.100002 arithmetic_residual=-0.0000019073486 measured_balance_delta=-0.0000019073486 bound=0.000077533725
 RF4_RUNTIME_NEGATIVE governed_balance=disconnected actual_gpu_balance_delta=0 violation=ResidualNotIntegrated { arithmetic_residual: -1.9073486e-6, reported_balance_residual: Some(0.0) }
 ```
 
@@ -98,12 +98,15 @@ The executable is built only after the implementation/test SHA is frozen and all
 | Check | Result |
 |---|---|
 | Focused RF-4 workshop suite | PASS, 4/4; output above |
-| `cargo check -p simthing-spec` | PENDING final run |
-| `cargo check -p simthing-mapeditor` | PENDING final run |
+| Focused Studio field-bearing suite | PASS, 8/8 |
+| Studio bridge regression suite | PASS, 8/8 |
+| `cargo check -p simthing-spec` | PASS |
+| `cargo check -p simthing-mapeditor` | PASS |
 | Studio debug build | PENDING frozen-SHA build |
 | Doctrine PR scan | PENDING final SHA |
-| Orientation / inventory | PENDING final regeneration |
-| Doc budget | PENDING final run |
+| Orientation | `gen_orientation --check: PASS` |
+| Inventory | `TEST-INVENTORY-DRIFT-CHECK-VERDICT: PASS` |
+| Doc budget | `DOC-BUDGET-VERDICT: PASS` |
 
 ## Graduation routing
 
