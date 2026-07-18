@@ -2,7 +2,7 @@
 
 ## Status
 
-**PROBATION / GPU remedial proof-present / OWNER replacement OVL OPEN / RF-5 SPLIT APPROVED / DA-HOLD.** The Owner-triggered adapter remand supersedes the prior executable and OVL ruling. Codex does not self-close replacement [OVL].
+**OWNER OVL PASS / orchestration-review-complete / DA-relay-ready / RF-5 SPLIT APPROVED.** Owner ruling [comment `5012654906`](https://github.com/khorum08/SimThing/pull/1413#issuecomment-5012654906) closes the replacement [OVL], accepts the crash-fenced executable and existing screenshots, and lifts emergency hold `5012226484` for runtime evidence. Codex did not self-close [OVL] and does not self-relay to DA.
 
 ## Identity
 
@@ -15,16 +15,18 @@
 | HD-RECEIPT | `a8e70c897f36` |
 | Handoff head | `7cd17c7e9a9666b2e20ed54b7f4627ce6e163c13` |
 | Salvage source | PR #1405 @ `34bb730fb24b550eeac520e83fbf5e2408a0f7c4` (read-only provenance; salvage complete; closed unmerged) |
-| Owner [OVL] verdict | **PASS**, [comment `5012128000`](https://github.com/khorum08/SimThing/pull/1413#issuecomment-5012128000) |
+| Final Owner [OVL] verdict | **PASS / CLOSED**, [comment `5012654906`](https://github.com/khorum08/SimThing/pull/1413#issuecomment-5012654906) |
+| Superseded first-executable Owner verdict | [comment `5012128000`](https://github.com/khorum08/SimThing/pull/1413#issuecomment-5012128000) |
 | RF-5 split approval | **APPROVED**, [comment `5012077482`](https://github.com/khorum08/SimThing/pull/1413#issuecomment-5012077482) |
 | Evidence-amendment ruling | [comment `5012132787`](https://github.com/khorum08/SimThing/pull/1413#issuecomment-5012132787) |
 | Emergency DA hold | [comment `5012226484`](https://github.com/khorum08/SimThing/pull/1413#issuecomment-5012226484) |
 | GPU remedial handoff | [comment `5012228350`](https://github.com/khorum08/SimThing/pull/1413#issuecomment-5012228350) |
+| Final OVL correction / closeout handoff | [comment `5012654906`](https://github.com/khorum08/SimThing/pull/1413#issuecomment-5012654906) |
 | Superseded DX12-only remedial SHA | `b99fa6326b729cd6fb8a1e9adba364795015dccd` |
 | Superseded backend-all correction SHA | `d6688bb704927d9fd909b0082d7265ffcb57f147` |
-| Owner-directed DX12 load-crash fence / tested-code SHA | `4334acda94284622c4502bf67ff09c94f766b85a` |
-| Remedial evidence head | `b1785e0d455e517fd4f2b2e3a1b26c48259cee89` |
-| Doctrine scan base | `e60082b1e0358fe793257e4151d037c03da250ef` |
+| Tested / implementation / executable-source SHA | `4334acda94284622c4502bf67ff09c94f766b85a` |
+| Orchestrator-reviewed pre-closeout evidence head | `059881f64cb18265d23ebbd664579c11ce01ea06` |
+| Doctrine scan / PR base | `c0e2202694bc9c2a329e5a6d4620a078c7ba71ea` |
 
 ## Implemented path
 
@@ -172,14 +174,17 @@ This executable later selected DX12 during Owner capture and reproduced the desc
 | Build command | `CARGO_TARGET_DIR=target/rf4-gpu-safe-4334acda cargo build -p simthing-mapeditor --bin simthing-studio` |
 | Live load proof | PASS on Vulkan; canonical 1,500-system scene rendered and remained live for an additional 60-second stability interval |
 
-## Owner replacement OVL runbook
+## Final Owner [OVL] evidence — PASS / CLOSED
 
-Replacement OVL remains Owner-only and open. Use only the current crash-fenced executable identity above; do not reuse `target/rf4-ovl-clean`, `target/rf4-gpu-remedial-b99fa632`, `target/rf4-gpu-backend-d6688bb7`, or any superseded image.
+The Owner exercised the final crash-fenced executable and supplied the existing evidence artifacts below. Orchestration bound those artifacts and issued the authoritative **OWNER [OVL]: PASS / CLOSED** ruling in [comment `5012654906`](https://github.com/khorum08/SimThing/pull/1413#issuecomment-5012654906). The ruling explicitly supersedes the duplicate recapture request in comment `5012637592`; nothing is to be rebuilt or recaptured.
 
-1. Capture `RF4_OVL_P_rebuilt_exe_provenance.png`: show implementation SHA `4334acda94284622c4502bf67ff09c94f766b85a`, current branch head, `sha256sum`, byte size, UTC modify time, and full path for `target/rf4-gpu-safe-4334acda/debug/simthing-studio.exe`.
-2. Launch that executable from the repository root. Open Performance Telemetry, collapse Nameplate debug, and expand Render loop / GPU / VRAM. Capture `RF4_OVL_GPU_required_adapter.png` with actual RTX/NVIDIA/discrete identity, a non-DX12 backend, the satisfied policy row, and no `unavailable` field.
-3. Load `scenarios/terran_pirate_galaxy.clause`, advance the ordinary field-bearing bridge to the recursive transition, pause, and open Studio_ops Telemetry. Capture `RF4_OVL_AB_recursive_transition_rebuilt.png` showing the canonical scenario, ordinary `open_from_spec + step_once`, recursive RF active, real `Owner terran / 3 siblings`, and retained loaded/live aggregate `0.000000 / 15.000000`.
-4. Post all three named images as the replacement Owner OVL. Only the Owner/orchestrator may close the OVL and lift DA-HOLD.
+| Owner artifact | Durable ruling binding | Accepted observation |
+|---|---|---|
+| `RF4_OVL_P_rebuilt_exe_provenance.png` | [Final Owner OVL ruling](https://github.com/khorum08/SimThing/pull/1413#issuecomment-5012654906) | Source `4334acda94284622c4502bf67ff09c94f766b85a`; executable SHA-256 `4f2fa46b3152974e7957117c99ef50190614a319ed3ba8fecda4a89b688ff4c9`; path, size, and build identity match the frozen executable above. |
+| `RF4_OVL_GPU_required_adapter.png` | [Final Owner OVL ruling](https://github.com/khorum08/SimThing/pull/1413#issuecomment-5012654906) | Actual `NVIDIA GeForce RTX 4080 Laptop GPU`, vendor `0x10de`, `DiscreteGpu`, Vulkan/non-DX12, policy satisfied, with truthful initialized telemetry. |
+| `RF4_OVL_AB_recursive_transition_rebuilt.png` | [Final Owner OVL ruling](https://github.com/khorum08/SimThing/pull/1413#issuecomment-5012654906) | Canonical 1,500-system / 2,714-link scene; field-bearing `open_from_spec + step_once`; recursive RF active; real `Owner terran / 3 siblings`; loaded/live aggregate `0.000000 / 15.000000`; scene remained live. |
+
+The headless bite remains enabled Owner aggregate `15`, named-child-disabled aggregate `10`, exact marginal `5`, and governed-Balance disconnect → `ResidualNotIntegrated`. Screenshot C remains outside RF-4 under the approved bounded RF-5 split. Owner—not Codex—supplied and ruled the visual evidence; no additional Owner action is required.
 
 ## Verification ledger
 
@@ -192,14 +197,14 @@ Replacement OVL remains Owner-only and open. Use only the current crash-fenced e
 | `cargo check -p simthing-spec` | PASS |
 | `cargo check -p simthing-mapeditor` | PASS |
 | Studio debug build | PASS @ crash-fence SHA `4334acda94284622c4502bf67ff09c94f766b85a`; current executable identity above |
-| Owner-local exact-adapter launch | PASS; actual telemetry was RTX 4080 Laptop / `0x10de:0x27a0` / `DiscreteGpu` / `Vulkan` / policy satisfied |
-| Owner-local canonical scenario load | PASS; 1,500 systems and 2,714 links rendered on Vulkan; process remained live for an additional 60 seconds; DX12 excluded |
-| Doctrine PR scan | PASS at `e60082b1..b1785e0d`; `WORKSHOP-HOMING-DETECTION PASS 0`, `TEST-BUDGET PASS 0`, inspect `0` |
-| Agent scan | PASS at `e60082b1..b1785e0d`; `AGENT-SCAN-VERDICT: PASS delta_inspect=0` |
+| Owner-local exact-adapter launch / [OVL] | **PASS / CLOSED**; actual telemetry was RTX 4080 Laptop / `0x10de:0x27a0` / `DiscreteGpu` / `Vulkan` / policy satisfied; ruling `5012654906` |
+| Owner-local canonical scenario load / [OVL] | **PASS / CLOSED**; 1,500 systems and 2,714 links rendered on Vulkan; process remained live; DX12 excluded; ruling `5012654906` |
+| Doctrine PR scan | PASS at reviewed head `059881f6`; `WORKSHOP-HOMING-DETECTION PASS 0`, `TEST-BUDGET PASS 0`, inspect `0` |
+| Agent scan | PASS at reviewed head `059881f6`; `AGENT-SCAN-VERDICT: PASS delta_inspect=0` |
 | Orientation | `gen_orientation --check: PASS` |
 | Inventory | `TEST-INVENTORY-DRIFT-CHECK-VERDICT: PASS` |
 | Doc budget | `DOC-BUDGET-VERDICT: PASS` |
 
 ## Graduation routing
 
-Recommended posture is **PROBATION / GPU remedial proof-present / OWNER replacement OVL OPEN / RF-5 SPLIT APPROVED / DA-HOLD**. This ledger does not claim replacement OVL closure, graduation, merge authorization, RF-5 need transport, or DA approval.
+Posture is **OWNER OVL PASS / orchestration-review-complete / DA-relay-ready / RF-5 SPLIT APPROVED**. This ledger records the Owner/orchestration closure but does not claim graduation, merge authorization, RF-5 need transport, or DA approval. PR #1413 remains draft/open; orchestration alone performs the final exact-head review and DA relay.
