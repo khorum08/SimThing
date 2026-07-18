@@ -4,7 +4,7 @@
 
 **PROBATION / proof-present / DA-review-pending** — 2026-07-18 (coder=Grok-CLI).
 
-Remand `5013016439` corrections landed. Owner alone closes screenshot-C [OVL]. Coding agent does not graduate, mark ready, or merge.
+Remand `5013106236` + ontology addendum `5013140700` landed. Owner alone closes screenshot-C [OVL]. Coding agent does not graduate, mark ready, or merge. No executable freeze.
 
 ## Identity
 
@@ -17,61 +17,66 @@ Remand `5013016439` corrections landed. Owner alone closes screenshot-C [OVL]. C
 | HD-RECEIPT | `9132665903e6` |
 | ORIENT-RECEIPT | `2c9fde39d1d6` (role=coding) |
 | Expected route | `DA-RESERVE(gate-wiring)` |
-| tested_code_sha | `4880101b6b4c91e2c7a86210b4e0fe56d2e5f504` |
-| implementation_sha | `df55d7d218008484846e70306d6ab95e7ad5e6e6` |
-| coverage_basis | PASS (workshop RF-5 4/4 + mapeditor RF-4 elevate 8/8 + AGENT-SCAN PASS) |
+| tested_code_sha | *(bound after implementation commit)* |
+| implementation_sha | *(bound after implementation commit)* |
+| evidence_sha | *(bound after results commit)* |
+| coverage_basis | PASS (workshop RF-5 8/8 + mapeditor RF-4 elevate 8/8 + AGENT-SCAN INSPECT justified) |
 
-## Remand corrections
+## Ontology addendum (`5013140700`)
+
+GPU state is `slots × columns`. Live locus is always **`(slot, column)`**.
+
+| Violation (remanded) | Fix |
+|---|---|
+| CPU copy of host PropertyValue + CPU overlay Add/Multiply into participant | **Removed.** No install-time mirror. |
+| Missing source row identity | `NeedWeightSourceCell { source_slot, source_id, col, property }` on every input/weight |
+| Cross-row transport | On-device `AccumulatorOp` Identity projection `(source_slot, col) → (participant_slot, col)` band 0, then EvalEML band 1 |
+| Live mutation | Open once, mutate host input Amount, step — need rises without reopen/reseed/CPU copy |
+
+## Remand-2 corrections (`5013106236`)
 
 | Defect | Fix |
 |---|---|
-| Studio fabricates seeds/inputs/thresholds/owners | **Removed** `studio_need_weight_profile_bindings`. Studio only preserves already-admitted `GameModeSpec.resource_flow.need_weight_profiles`. |
-| Threshold proof was `value >= thr` | Need thresholds inject into `resource_economy.emit_on_threshold`; sealed substrate proven via `rebuild_emit_on_threshold_ops` + `execute_threshold_ops_cpu` (same encode path as economy/Studio upload). Fabric post-RF rescan added for live GPU event path. |
-| Synthetic `rf_need::*` property | **Removed.** Need writes existing Arena **AllocatorWeight** cell via `col_for_role(Named("weight"))`. |
-| Missing falsifiers | Paired **clause** authorings (amount_add 0.2 vs 3.0 only); empty weight_properties fail-closed; misbind fail-closed; canonical TP multi-owner separation + neutral second scenario via same promoter. |
-| scans.tsv self-exclusion | **Reverted.** ColumnIndex mints go through `column_range.col_for_role` (registry-excluded path only). |
+| Production binding absent | `compose_need_weight_bindings` — id-matched stacks only; Studio consumes production compose |
+| Positional zip invents joins | Removed; explicit complete companion bindings or AdmissionGap |
+| Live sealed event | Exit proof is post-`step_once` GPU `readback_threshold_events` |
+| Full post-RF rescan | Need-only **append** rescan (no prepare/wipe); dual-threshold bite |
+| Canonical + neutral path | Both compose/open/step same production path; bare TP → AdmissionGap |
 
-## Where authority comes from
+## Admission gap (honest handoff)
 
-| Quantity | Origin |
-|---|---|
-| Weight profile stack | Clause `weight_profile` → hydrate → `HydratedFieldEconomyWeightProfile.stack` |
-| Install target | Clause `owner_policy_overlay.owner` (ScenarioListed) |
-| Weight Amount | Overlay `amount_add`/`amount_mult` on `targets_property` + emission Constant seeds on that property |
-| Input Amount | Stockpile/current (or other existing Amount property) on the same install host |
-| Live need cell | Existing Arena participant **AllocatorWeight** (`Named("weight")` on flow property) |
-| Threshold / events | `NeedWeightProfileThresholdSpec` → injected `EmitOnThresholdRegistration` → sealed AccumulatorOp threshold encode |
+Clause `weight_profile` authors EML stack + profile kind only. Without complete `NeedWeightProfileBindingSpec` companion rows (install / input / weight / threshold), compose returns `AdmissionGap`. No positional zip, name-stem, or first-stockpile authority.
 
 ## Load-bearing proofs
 
 | Claim | Result |
 |---|---|
-| Paired clause authorings (overlay amount_add only) diverge live need | PASS |
-| Below-threshold sealed oracle fires 0 events | PASS |
-| Crossing sealed oracle fires ≥1 event | PASS |
+| Bare weight_profiles → AdmissionGap | PASS |
+| Host source_slot ≠ participant wrapper | PASS |
+| Paired overlays diverge live need | PASS |
+| Below thr: post-step_once sealed need events = 0 | PASS |
+| Crossing: post-step_once sealed need events > 0 | PASS |
+| Live host mutation raises need without reopen | PASS |
 | Empty weight_properties fail closed | PASS |
 | Misbound install fail closed | PASS |
-| Canonical TP multi-profile owners separated (terran + pirate) | PASS |
-| Neutral second scenario same promoter path | PASS |
-| No synthetic `rf_need` property | PASS |
-| RF-4 mapeditor elevate battery | *(re-run at final head)* |
-| agent_scan | *(re-run at final head)* |
+| Post-RF need-only rescan; ordinary not duplicated | PASS |
+| Canonical TP + neutral same production path | PASS |
+| RF-4 mapeditor elevate 8/8 | PASS |
+| agent_scan | INSPECT (TEST-BUDGET justified) |
 
 ## Fences held
 
-- No new ClauseScript syntax or kernel/WGSL primitive.
-- No Studio feeder/mirror/arithmetic inventing weights, inputs, thresholds, or owners.
+- No new ClauseScript syntax / kernel WGSL primitive / Studio feeder.
 - No synthetic need host property.
-- No `value >= thr` presentation comparison as the event proof.
+- No CPU PropertyValue mirror or CPU overlay arithmetic.
+- No `value >= thr` as event proof.
 - No 12.10 macro-emergence claim.
-- No scans.tsv feature self-exclusion.
 
 ## Owner [OVL]
 
-**Blocked until orchestration accepts.** Do not freeze executable or request screenshot C until then.
+**Blocked until orchestration accepts.** Do not freeze executable or request screenshot C.
 
 ## Graduation routing
 
 - Risk class: gate-wiring / DA-reserve (expected)
-- Falsification: workshop RF-5 4/4 + RF-4 elevate nonregression
-- Recommended posture: DEEP-TREE after Owner OVL when orchestration unblocks
+- Falsification: workshop RF-5 8/8 + RF-4 elevate nonregression

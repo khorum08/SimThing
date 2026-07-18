@@ -90,15 +90,24 @@ pub fn sync_resource_flow_accumulator(
         combined_cpu.extend(alloc.cpu_ops);
     }
 
-    let pre_band_ops = !gated_rates.is_empty() || !need_weight_profiles.is_empty();
-    if pre_band_ops {
+    // Need-weight uses two OrderBands (0=project host→participant, 1=EvalEML).
+    // Gated rates alone use one. Shift allocation ops after those pre-bands.
+    let need_pre_bands: u32 = if !need_weight_profiles.is_empty() {
+        2
+    } else if !gated_rates.is_empty() {
+        1
+    } else {
+        0
+    };
+    if need_pre_bands > 0 {
         for op in &mut combined_cpu {
             if let simthing_core::GateSpec::OrderBand(band) = op.gate {
-                op.gate = simthing_core::GateSpec::OrderBand(band + 1);
+                op.gate = simthing_core::GateSpec::OrderBand(band + need_pre_bands);
             }
         }
         let mut all_ops = Vec::new();
         if !gated_rates.is_empty() {
+            // Gated rates share band 0 with projections when both present.
             all_ops.extend(crate::gated_rates::build_gated_rate_ops(
                 gated_rates,
                 &mut eml_registry,
@@ -112,7 +121,7 @@ pub fn sync_resource_flow_accumulator(
         }
         all_ops.extend(combined_cpu);
         combined_cpu = all_ops;
-        max_bands += 1;
+        max_bands += need_pre_bands;
     }
 
     state.sync_resource_flow_ops_from_cpu(&combined_cpu, max_bands, &eml_registry)?;

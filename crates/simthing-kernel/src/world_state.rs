@@ -253,6 +253,10 @@ pub struct WorldGpuState {
     /// E-11 resource-flow allocation OrderBand dispatch (default off).
     pub accumulator_resource_flow_active: bool,
     pub accumulator_resource_flow_bands: u32,
+    /// Full threshold registration set last uploaded (restored after need-only rescan).
+    post_rf_full_threshold_regs: Vec<ThresholdRegistration>,
+    /// Need-cell thresholds only — post-RF rescan appends these without wiping pre-RF events.
+    post_rf_need_threshold_regs: Vec<ThresholdRegistration>,
 }
 
 impl WorldGpuState {
@@ -417,6 +421,8 @@ impl WorldGpuState {
             accumulator_emission_bands: 0,
             accumulator_resource_flow_active: false,
             accumulator_resource_flow_bands: 0,
+            post_rf_full_threshold_regs: Vec::new(),
+            post_rf_need_threshold_regs: Vec::new(),
         }
     }
 
@@ -1105,6 +1111,16 @@ impl WorldGpuState {
         &mut self,
         regs: &[ThresholdRegistration],
     ) -> Result<(), crate::AccumulatorOpSessionError> {
+        self.n_thresholds = regs.len() as u32;
+        self.post_rf_full_threshold_regs = regs.to_vec();
+        if !self.post_rf_need_threshold_regs.is_empty() {
+            let full_keys: std::collections::HashSet<(u32, u32, u32)> = regs
+                .iter()
+                .map(|r| (r.slot, r.col, r.event_kind))
+                .collect();
+            self.post_rf_need_threshold_regs
+                .retain(|r| full_keys.contains(&(r.slot, r.col, r.event_kind)));
+        }
         if let Some(runtime) = self.accumulator_runtime.as_mut() {
             runtime.upload_threshold_ops(&self.ctx, regs)
         } else {
@@ -1112,22 +1128,43 @@ impl WorldGpuState {
         }
     }
 
-    /// Re-run the sealed AccumulatorOp threshold scan after RF bands wrote need.
+    /// Register need-cell thresholds for the post-RF append-only rescan.
+    pub fn set_post_rf_need_threshold_regs(&mut self, regs: Vec<ThresholdRegistration>) {
+        self.post_rf_need_threshold_regs = regs;
+    }
+
+    /// Need-only sealed threshold rescan after RF bands wrote need.
     ///
-    /// Ordinary tick threshold scan runs *before* RF OrderBands. RF-5 need
-    /// EvalEML writes `AllocatorWeight` inside those bands; without this rescan,
-    /// Rising edges on post-RF need values would never emit in the same hot step.
+    /// Does **not** prepare (wipe) the emission buffer; scans only need regs so
+    /// ordinary pre-RF thresholds are neither duplicated nor erased. Restores
+    /// the full op set for the next ordinary tick.
     pub fn rescan_accumulator_thresholds_after_resource_flow(&mut self) {
-        if self.n_thresholds == 0 {
+        if self.post_rf_need_threshold_regs.is_empty() {
             return;
         }
+        let need = self.post_rf_need_threshold_regs.clone();
+        let full = self.post_rf_full_threshold_regs.clone();
         let Some(runtime) = self.accumulator_runtime.as_mut() else {
             return;
         };
         let Some(mut session) = runtime.take_threshold_session() else {
             return;
         };
-        session.prepare_threshold_scan(&self.ctx);
+        let need_upload = match crate::PackedThresholdUpload::from_registrations(&need) {
+            Ok(u) => u,
+            Err(_) => {
+                runtime.restore_threshold_session(Some(session));
+                return;
+            }
+        };
+        if session
+            .upload_packed_threshold_ops(&self.ctx, &need_upload)
+            .is_err()
+        {
+            runtime.restore_threshold_session(Some(session));
+            return;
+        }
+        // Append only — no prepare_threshold_scan (would wipe pre-RF events).
         let mut encoder = self
             .ctx
             .device
@@ -1144,6 +1181,9 @@ impl WorldGpuState {
         );
         self.ctx.queue.submit(Some(encoder.finish()));
         session.finish_threshold_scan(&self.ctx);
+        if let Ok(full_upload) = crate::PackedThresholdUpload::from_registrations(&full) {
+            let _ = session.upload_packed_threshold_ops(&self.ctx, &full_upload);
+        }
         runtime.restore_threshold_session(Some(session));
     }
 

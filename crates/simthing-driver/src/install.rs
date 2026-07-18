@@ -172,9 +172,21 @@ pub fn compile_and_install(
         )?;
     }
 
-    // Global overlays from the game mode envelope are deferred per the ADR
-    // (`docs/adr/game_mode_session_installation.md` §4). Capability tree
-    // overlays compile inline through `CapabilityTreeBuilder::build` below.
+    // RF-5 / field-economy owner_policy overlays land on GameModeSpec.overlays
+    // (not domain packs). Install them through the same standalone Overlay path
+    // so GPU overlay OrderBands apply amount_add/mult live on the host row —
+    // never a CPU recompute into a participant mirror.
+    for overlay_spec in &game_mode.overlays {
+        let installed = install_standalone_overlay(overlay_spec, registry, scenario, root)?;
+        if !overlay_spec.id.is_empty() && !installed.is_empty() {
+            overlay_ref_ids
+                .entry(overlay_spec.id.clone())
+                .or_default()
+                .extend(installed);
+        }
+    }
+
+    // Capability tree overlays compile inline through `CapabilityTreeBuilder::build` below.
 
     // ── 2. Build each capability tree once. Collect per-pack provenance so
     //      diagnostics can name the originating pack later (not used in v0).
@@ -255,7 +267,14 @@ pub fn compile_and_install(
         crate::gated_rates::seed_gated_rate_base_columns(&gated, registry, root, allocator)?;
         state.resolved_gated_rates = gated;
         let need_profiles = crate::need_weight_profile::resolve_need_weight_profiles(
-            &resolved, scenario, root, registry, &scaffold,
+            &resolved, scenario, root, registry, &scaffold, allocator,
+        )?;
+        // Host must own input/weight Amount properties before economy materialize
+        // so emission/overlay slots resolve to the source host row (not World root).
+        crate::need_weight_profile::ensure_need_weight_source_properties_on_hosts(
+            &need_profiles,
+            registry,
+            root,
         )?;
         state.resolved_need_weight_profiles = need_profiles;
         state.arena_registry = arena_registry;
@@ -277,9 +296,9 @@ pub fn compile_and_install(
         )?);
     }
 
-    // RF-5: after overlays/emissions land on hosted nodes, copy authored Amounts
-    // onto arena participant wrappers (EvalEML is slot-local), then inject sealed
-    // need thresholds into the economy emit_on_threshold list.
+    // RF-5: zero participant need cell only. Authored input/weight Amounts stay
+    // on the host row; on-device AccumulatorOp projection carries them live each
+    // RF band (no CPU PropertyValue mirror / overlay recompute).
     if !state.resolved_need_weight_profiles.is_empty() {
         if state.resource_economy_registry.is_none() {
             state.resource_economy_registry = Some(
@@ -295,13 +314,11 @@ pub fn compile_and_install(
                 },
             );
         }
-        crate::need_weight_profile::seed_need_weight_property_values_on_participants(
+        crate::need_weight_profile::prepare_need_weight_participant_cells(
             &state.resolved_need_weight_profiles,
             registry,
             root,
             allocator,
-            game_mode,
-            state.resource_economy_registry.as_ref(),
         )?;
         if let Some(economy) = state.resource_economy_registry.as_mut() {
             crate::need_weight_profile::inject_need_threshold_into_economy(

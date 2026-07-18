@@ -946,6 +946,10 @@ fn ensure_resource_economy_threshold_ops(session: &mut SimSession) -> Result<(),
         .state
         .upload_accumulator_threshold_ops(&gpu_regs)
         .map_err(|e| format!("upload emit_on_threshold: {e}"))?;
+    simthing_driver::register_post_rf_need_threshold_rescan(
+        &mut session.state,
+        &session.spec_state.resolved_need_weight_profiles,
+    );
     Ok(())
 }
 
@@ -1434,15 +1438,19 @@ fn compose_recursive_rf_profile(
 
     let mut game_mode = pack.game_mode.clone();
     game_mode.properties.push(studio_recursive_rf_property());
-    // RF-5: do not invent need/weight_profile bindings here. Studio only
-    // consumes bindings already present on the authored GameModeSpec (hydrate
-    // or production composition). Fabricating seeds/inputs/thresholds/owners
-    // is a forbidden feeder/mirror.
-    let admitted_need_bindings = game_mode
+    // RF-5 production composition: attach hydrate stacks by binding.id only.
+    // Never invent install/input/weight/threshold. Incomplete → empty bindings.
+    let authored_need = game_mode
         .resource_flow
         .as_ref()
         .map(|rf| rf.need_weight_profiles.clone())
         .unwrap_or_default();
+    let admitted_need_bindings =
+        match simthing_clausething::compose_need_weight_bindings(pack, STUDIO_RF_ARENA, &authored_need)
+        {
+            simthing_clausething::NeedWeightComposeOutcome::Bindings(b) => b,
+            simthing_clausething::NeedWeightComposeOutcome::AdmissionGap { .. } => Vec::new(),
+        };
     game_mode.resource_flow = Some(ResourceFlowSpec {
         opt_in_mode: ResourceFlowOptInMode::Disabled,
         arenas: vec![ArenaSpec {
@@ -1521,8 +1529,29 @@ pub fn authored_live_profile_from_pack(
             .entry(owner.owner_key.clone())
             .or_insert_with(|| vec![root.id]);
     }
+    let mut game_mode = pack.game_mode.clone();
+    let authored_need = game_mode
+        .resource_flow
+        .as_ref()
+        .map(|rf| rf.need_weight_profiles.clone())
+        .unwrap_or_default();
+    let arena_name = game_mode
+        .resource_flow
+        .as_ref()
+        .and_then(|rf| rf.arenas.first().map(|a| a.name.clone()))
+        .unwrap_or_else(|| STUDIO_RF_ARENA.to_string());
+    if let Some(rf) = game_mode.resource_flow.as_mut() {
+        match simthing_clausething::compose_need_weight_bindings(pack, &arena_name, &authored_need) {
+            simthing_clausething::NeedWeightComposeOutcome::Bindings(b) => {
+                rf.need_weight_profiles = b;
+            }
+            simthing_clausething::NeedWeightComposeOutcome::AdmissionGap { .. } => {
+                rf.need_weight_profiles.clear();
+            }
+        }
+    }
     StudioAuthoredLiveProfile::from_hydrated_pack(
-        pack.game_mode.clone(),
+        game_mode,
         install_targets,
         root,
         pack.field_economy.is_some(),

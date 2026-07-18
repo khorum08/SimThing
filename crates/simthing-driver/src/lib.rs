@@ -376,9 +376,10 @@ pub use gated_rates::{
     RATE_BASE_SUB_FIELD,
 };
 pub use need_weight_profile::{
-    binding_from_hydrated_stack, build_need_weight_profile_ops, extract_weighted_accumulator,
-    inject_need_threshold_into_economy, resolve_need_weight_profiles,
-    seed_need_weight_property_values_on_participants, ResolvedNeedWeightProfile,
+    binding_from_hydrated_stack, build_need_weight_profile_ops, ensure_need_weight_source_properties_on_hosts,
+    extract_weighted_accumulator, inject_need_threshold_into_economy,
+    prepare_need_weight_participant_cells, register_post_rf_need_threshold_rescan,
+    resolve_need_weight_profiles, NeedWeightSourceCell, ResolvedNeedWeightProfile,
 };
 pub use gpu_measure_0080_0::{
     render_gpu_measure_0080_0_report, replay_gpu_measure_0080_0, run_gpu_measure_0080_0,
