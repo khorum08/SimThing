@@ -1,4 +1,4 @@
-//! STUDIO-GPU-ADAPTER-ENFORCE-0 — exact Windows Studio renderer policy and telemetry mapping.
+//! STUDIO-GPU-ADAPTER-ENFORCE-0 — exact Windows Studio adapter policy and telemetry mapping.
 
 use std::fmt;
 
@@ -11,23 +11,22 @@ use crate::studio_performance_telemetry::StudioPerformanceTelemetry;
 
 pub const REQUIRED_STUDIO_GPU_ADAPTER_NAME: &str = "NVIDIA GeForce RTX 4080 Laptop GPU";
 pub const REQUIRED_STUDIO_GPU_VENDOR_ID: u32 = 0x10de;
-pub const REQUIRED_STUDIO_GPU_BACKEND: &str = "Dx12";
 pub const REQUIRED_STUDIO_GPU_DEVICE_TYPE: &str = "DiscreteGpu";
-pub const STUDIO_GPU_POLICY_SATISFIED: &str =
-    "satisfied: exact NVIDIA GeForce RTX 4080 Laptop GPU / NVIDIA / DiscreteGpu / Dx12";
+pub const STUDIO_GPU_POLICY_SATISFIED_PREFIX: &str =
+    "satisfied: exact NVIDIA GeForce RTX 4080 Laptop GPU / NVIDIA / DiscreteGpu / backend";
 
 /// Bevy 0.16 automatic adapter requests leave `force_fallback_adapter` at its `false` default.
 /// The exact post-init validator below then rejects every non-required adapter rather than falling
 /// back or silently honoring an environment-selected downgrade.
 pub const STUDIO_GPU_FORCE_FALLBACK_ADAPTER: bool = false;
 
-/// Renderer settings that cannot be weakened by `WGPU_BACKEND`, `WGPU_POWER_PREF`, or debug flags.
+/// Renderer settings that allow Bevy-supported backends while preferring the discrete adapter.
 ///
-/// `VALIDATION` stays enabled. `DEBUG` is intentionally not requested because DX12's optional debug
-/// interface requires Windows Graphics Tools and emits `0x887A002D` when that component is absent.
+/// `VALIDATION` stays enabled. `DEBUG` is intentionally not requested because optional backend debug
+/// layers are host-dependent and must not turn a missing developer component into a startup warning.
 pub fn required_studio_wgpu_settings() -> WgpuSettings {
     let mut settings = WgpuSettings::default();
-    settings.backends = Some(Backends::DX12);
+    settings.backends = Some(Backends::all());
     settings.power_preference = PowerPreference::HighPerformance;
     settings.instance_flags = InstanceFlags::VALIDATION;
     settings
@@ -96,12 +95,11 @@ impl fmt::Display for StudioGpuAdapterPolicyViolation {
         write!(
             f,
             "Studio GPU adapter policy mismatch ({}) — required name={:?}, vendor={:#06x}, \
-             device_type={}, backend={}; observed {}",
+             device_type={}; observed {}",
             self.mismatches.join(", "),
             REQUIRED_STUDIO_GPU_ADAPTER_NAME,
             REQUIRED_STUDIO_GPU_VENDOR_ID,
             REQUIRED_STUDIO_GPU_DEVICE_TYPE,
-            REQUIRED_STUDIO_GPU_BACKEND,
             self.observed.observed_details(),
         )
     }
@@ -121,9 +119,6 @@ pub fn validate_studio_gpu_adapter(
     }
     if observed.device_type != REQUIRED_STUDIO_GPU_DEVICE_TYPE {
         mismatches.push("device type");
-    }
-    if observed.backend != REQUIRED_STUDIO_GPU_BACKEND {
-        mismatches.push("backend");
     }
     if mismatches.is_empty() {
         Ok(())
@@ -149,7 +144,8 @@ pub fn populate_and_validate_studio_gpu_telemetry(
 
     match validate_studio_gpu_adapter(observed) {
         Ok(()) => {
-            telemetry.gpu_adapter_policy_status = STUDIO_GPU_POLICY_SATISFIED.into();
+            telemetry.gpu_adapter_policy_status =
+                format!("{STUDIO_GPU_POLICY_SATISFIED_PREFIX}: {}", observed.backend);
             Ok(())
         }
         Err(violation) => {
@@ -170,13 +166,22 @@ mod tests {
             REQUIRED_STUDIO_GPU_VENDOR_ID,
             0x2860,
             REQUIRED_STUDIO_GPU_DEVICE_TYPE,
-            REQUIRED_STUDIO_GPU_BACKEND,
+            "Dx12",
         )
     }
 
     #[test]
-    fn exact_policy_accepts_required_adapter_and_rejects_all_mandated_mismatches() {
+    fn exact_adapter_policy_accepts_supported_backends_and_rejects_identity_mismatches() {
         assert_eq!(validate_studio_gpu_adapter(&exact_adapter()), Ok(()));
+
+        let vulkan_adapter = StudioGpuAdapterSnapshot::new(
+            REQUIRED_STUDIO_GPU_ADAPTER_NAME,
+            REQUIRED_STUDIO_GPU_VENDOR_ID,
+            0x2860,
+            REQUIRED_STUDIO_GPU_DEVICE_TYPE,
+            "Vulkan",
+        );
+        assert_eq!(validate_studio_gpu_adapter(&vulkan_adapter), Ok(()));
 
         let rejected = [
             StudioGpuAdapterSnapshot::new(
@@ -194,32 +199,25 @@ mod tests {
                 "Dx12",
             ),
             StudioGpuAdapterSnapshot::new(
-                REQUIRED_STUDIO_GPU_ADAPTER_NAME,
-                REQUIRED_STUDIO_GPU_VENDOR_ID,
-                0x2860,
-                REQUIRED_STUDIO_GPU_DEVICE_TYPE,
-                "Vulkan",
-            ),
-            StudioGpuAdapterSnapshot::new(
                 "NVIDIA GeForce RTX 4090 Laptop GPU",
                 REQUIRED_STUDIO_GPU_VENDOR_ID,
                 0x2718,
                 REQUIRED_STUDIO_GPU_DEVICE_TYPE,
-                REQUIRED_STUDIO_GPU_BACKEND,
+                "Vulkan",
             ),
         ];
         for adapter in rejected {
             let violation = validate_studio_gpu_adapter(&adapter)
-                .expect_err("every non-exact adapter must fail closed");
+                .expect_err("every non-exact adapter identity must fail closed");
             assert_eq!(violation.observed(), &adapter);
             assert!(violation.to_string().contains("observed"));
         }
     }
 
     #[test]
-    fn renderer_settings_are_dx12_high_performance_validated_and_nonfallback() {
+    fn renderer_settings_allow_all_backends_and_remain_high_performance_validated_nonfallback() {
         let settings = required_studio_wgpu_settings();
-        assert_eq!(settings.backends, Some(Backends::DX12));
+        assert_eq!(settings.backends, Some(Backends::all()));
         assert_eq!(settings.power_preference, PowerPreference::HighPerformance);
         assert_eq!(settings.instance_flags, InstanceFlags::VALIDATION);
         assert!(!STUDIO_GPU_FORCE_FALLBACK_ADAPTER);
@@ -241,11 +239,11 @@ mod tests {
         );
         assert_eq!(
             telemetry.gpu_backend.as_deref(),
-            Some(REQUIRED_STUDIO_GPU_BACKEND)
+            Some(adapter.backend.as_str())
         );
         assert_eq!(
             telemetry.gpu_adapter_policy_status,
-            STUDIO_GPU_POLICY_SATISFIED
+            format!("{STUDIO_GPU_POLICY_SATISFIED_PREFIX}: {}", adapter.backend)
         );
         assert!(gpu_context_settings_lines(&telemetry)
             .iter()

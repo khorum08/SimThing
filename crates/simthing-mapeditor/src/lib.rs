@@ -178,9 +178,9 @@ pub use studio_frosted_glass::{
 pub use studio_gpu_adapter_policy::{
     populate_and_validate_studio_gpu_telemetry, required_studio_wgpu_settings,
     validate_studio_gpu_adapter, StudioGpuAdapterPolicyViolation, StudioGpuAdapterSnapshot,
-    REQUIRED_STUDIO_GPU_ADAPTER_NAME, REQUIRED_STUDIO_GPU_BACKEND,
-    REQUIRED_STUDIO_GPU_DEVICE_TYPE, REQUIRED_STUDIO_GPU_VENDOR_ID,
-    STUDIO_GPU_FORCE_FALLBACK_ADAPTER, STUDIO_GPU_POLICY_SATISFIED,
+    REQUIRED_STUDIO_GPU_ADAPTER_NAME, REQUIRED_STUDIO_GPU_DEVICE_TYPE,
+    REQUIRED_STUDIO_GPU_VENDOR_ID, STUDIO_GPU_FORCE_FALLBACK_ADAPTER,
+    STUDIO_GPU_POLICY_SATISFIED_PREFIX,
 };
 pub use studio_performance_telemetry::{
     bytes_to_vram_mb, estimate_image_vram_bytes, estimate_mesh_vram_bytes,
