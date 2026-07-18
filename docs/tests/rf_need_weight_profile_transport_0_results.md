@@ -17,8 +17,9 @@ Owner alone closes screenshot-C [OVL]. Coding agent does not graduate, mark read
 | HD-RECEIPT | `9132665903e6` |
 | ORIENT-RECEIPT | `2c9fde39d1d6` (role=coding) |
 | Expected route | `DA-RESERVE(gate-wiring)` |
-| tested_code_sha | `5ca3b3e093fbd84f7683741ed19f8477e1b7b427` |
-| coverage_basis | PASS (workshop RF-5 3/3 + mapeditor RF-4 elevate 8/8 + agent_scan) |
+| tested_code_sha | `208ed6356a5ce3262c1431cde0f26b16a9ced4a8` |
+| implementation_sha | `5ca3b3e093fbd84f7683741ed19f8477e1b7b427` |
+| coverage_basis | PASS (workshop RF-5 3/3 + mapeditor RF-4 elevate 8/8 + AGENT-SCAN-VERDICT PASS) |
 
 ## What landed
 
