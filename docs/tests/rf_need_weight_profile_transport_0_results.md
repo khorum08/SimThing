@@ -19,7 +19,7 @@ Remand `5013106236` + ontology addendum `5013140700` landed. Owner alone closes 
 | Expected route | `DA-RESERVE(gate-wiring)` |
 | tested_code_sha | `37188055f54a17fad26b20023458cc937c3b8fa9` |
 | implementation_sha | `37188055f54a17fad26b20023458cc937c3b8fa9` |
-| evidence_sha | *(bound after results commit)* |
+| evidence_sha | `337847f7d31cd92ffb822691307a5b0ccd592c39` |
 | coverage_basis | PASS (workshop RF-5 8/8 + mapeditor RF-4 elevate 8/8 + AGENT-SCAN INSPECT justified) |
 
 ## Ontology addendum (`5013140700`)
