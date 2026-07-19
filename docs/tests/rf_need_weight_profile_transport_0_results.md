@@ -2,10 +2,12 @@
 
 ## Status
 
-**REMAND `5016280732` corrected / local GPU proofs green / owner OVL still blocked** — 2026-07-19.
+**DA Fork A corpus-red correction green locally / Owner OVL remains valid / draft-open hold** —
+2026-07-19.
 
-No executable freeze, owner OVL, screenshot C, DA relay, ready-for-review transition, or merge
-is authorized before orchestration accepts this correction and exact-head governance is green.
+This tests/evidence-only correction does not change the accepted implementation, canonical scenario,
+or frozen executable. No rebuild, re-freeze, or new Owner screenshot is required. PR #1414 remains
+draft/open/unmerged pending fresh exact-head governance and DA adjudication.
 
 ## Identity
 
@@ -19,9 +21,36 @@ is authorized before orchestration accepts this correction and exact-head govern
 | RF-5 original implementation / evidence | `9ef5ba0cb56b77ab5acf970e7925ceab85b38a51` / `4a962f6987ea272e0546441b68bde854f59568f3` |
 | remand-corrected tested implementation | `71005e59af05dc12105d63b585159b09ac0a8f6a` |
 | corrected evidence commit | `afeaa4f15a22a48738caf97abba5a2a540837100` |
+| frozen source head | `85056ee19aab744507b4dfc2b8a4a2f641b718be` |
+| frozen executable SHA-256 | `81d346791553be551323fb38e82945c91ece7fedb6b019e57d4047ea361d5a71` |
+| Owner screenshot C closure | comment `5017017028` — remains valid under DA Fork A |
 | ORIENT-RECEIPT | `2c9fde39d1d6` (role=coding) |
 
-## Remand correction
+## DA Fork A corpus-red correction
+
+- Orchestrator remand `5017072249` adjudicates the RF-5 single-pair `expansion-need`
+  profile as intentional canonical truth: one admitted semantic `need_binding`, one input source,
+  and one weight source.
+- RF-5 intentionally amended the 12.8 canonical expansion profile from exact columns
+  `[0, 1] / [10, 11] / 12` to `[0] / [10] / 12`, matching the admitted one-pair semantic
+  `need_binding` and the accepted live oracle `101 × 0.020000 = 2.020000`.
+- The 12.8 workshop assertion now requires exactly `input_cols == [0]`,
+  `weight_cols == [10]`, and `output_col == Some(12)`. It remains an exact equality proof;
+  no length, subset, `contains`, or shape-only weakening was introduced.
+- Manufacturing and disruption profile assertions are unchanged. No production Rust, grammar,
+  scenario, Studio, GPU, threshold, adapter-policy, planning, or doctrine surface changed.
+
+Local corpus proof:
+
+```text
+cargo test -p simthing-workshop --test tp_clause_economy_author_0 -- --nocapture
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
+
+cargo test -p simthing-workshop --test rf_need_binding_authoring_0 -- --nocapture
+test result: ok. 24 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
+```
+
+## RF-5 implementation remand correction
 
 - Removed `ensure_resource_economy_threshold_ops` and
   `materialize_authored_constant_emission_seeds` from the Studio bridge. The bridge no longer
@@ -96,6 +125,24 @@ test canonical_recursive_rf_bites_with_real_owner_aggregate_and_runtime_balance_
 ## Verification
 
 ```text
+cargo test -p simthing-workshop --test tp_field_session_elevate_0 -- --nocapture
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
+
+cargo test -p simthing-driver --test rf_conservation_oracle_0 -- --nocapture
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
+
+cargo test -p simthing-driver --test owner_silo_gpu_tick -- --nocapture
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
+
+cargo test -p simthing-spec --test owner_silo_disburse_down -- --nocapture
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
+
+cargo test -p simthing-mapeditor --test studio_field_session_elevate_0 -- --nocapture
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
+
+cargo build -p simthing-mapeditor --bin simthing-studio
+Finished `dev` profile [optimized + debuginfo] target(s) in 0.60s
+
 cargo check -p simthing-spec
 Finished `dev` profile [optimized + debuginfo] target(s) in 0.23s
 
@@ -134,4 +181,4 @@ are unchanged by RF-5.
   boundary install, reopen, registration edit, or proof-only production API.
 - No first-DFS/first-owner or positional property mapping.
 - No scenario-specific production code and no `§12.10` claim.
-- No executable freeze, screenshot C, DA relay, ready-for-review transition, or merge.
+- No rebuild, re-freeze, new screenshot, ready-for-review transition, or merge.

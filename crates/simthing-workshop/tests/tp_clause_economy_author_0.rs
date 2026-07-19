@@ -110,8 +110,8 @@ fn canonical_tp_clause_hydrates_field_economy_to_existing_surfaces() {
             output_col,
             ..
         } => {
-            assert_eq!(input_cols, &vec![0, 1]);
-            assert_eq!(weight_cols, &vec![10, 11]);
+            assert_eq!(input_cols, &vec![0]);
+            assert_eq!(weight_cols, &vec![10]);
             assert_eq!(*output_col, Some(12));
         }
         other => panic!("expected WeightedAccumulator expansion-need, got {other:?}"),
