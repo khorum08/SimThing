@@ -18,7 +18,7 @@ is authorized before orchestration accepts this correction and exact-head govern
 | RF-5A integration commit | `5be1012a7eec60d21886915b76b3810ef306603e` |
 | RF-5 original implementation / evidence | `9ef5ba0cb56b77ab5acf970e7925ceab85b38a51` / `4a962f6987ea272e0546441b68bde854f59568f3` |
 | remand-corrected tested implementation | `71005e59af05dc12105d63b585159b09ac0a8f6a` |
-| corrected evidence commit | `PENDING` |
+| corrected evidence commit | `afeaa4f15a22a48738caf97abba5a2a540837100` |
 | ORIENT-RECEIPT | `2c9fde39d1d6` (role=coding) |
 
 ## Remand correction
