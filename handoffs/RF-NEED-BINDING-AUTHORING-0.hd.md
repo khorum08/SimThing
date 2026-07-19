@@ -1,6 +1,6 @@
 ---
 rung: RF-NEED-BINDING-AUTHORING-0
-kind: prerequisite
+kind: rung
 track: 0.0.8.6
 base_sha: cecde41f7ed73287f309020eec6db8f57776feb9
 audience: coding
