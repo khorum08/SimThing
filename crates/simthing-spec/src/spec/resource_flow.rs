@@ -1,6 +1,5 @@
 use crate::error::SpecError;
 use crate::spec::install_target::InstallTargetSpec;
-use crate::spec::need_weight_profile::NeedWeightProfileBindingSpec;
 use crate::spec::scenario::SCENARIO_STRUCTURAL_INTEGER_MAX;
 use crate::spec::script::PropertyKey;
 use serde::{Deserialize, Serialize};
@@ -37,11 +36,9 @@ pub struct ResourceFlowSpec {
     /// transforms directly on rate columns are rejected (compounding).
     #[serde(default)]
     pub gated_rates: Vec<GatedRateSpec>,
-    /// RF-5: generic need / weight_profile transport bindings. Each binds a
-    /// hydrated WeightedAccumulator EML stack to an admitted Arena participant
-    /// need cell, installed at ordinary session open.
+    /// RF-5A: semantic need bindings (full-cell resolve at session admission).
     #[serde(default)]
-    pub need_weight_profiles: Vec<NeedWeightProfileBindingSpec>,
+    pub need_bindings: Vec<super::need_binding::NeedBindingSpec>,
 }
 
 /// Budgeted RF capacity surfaces. Inputs are authoring/session budgets, not runtime semantics.

@@ -127,6 +127,8 @@ pub struct FabricPreTickEnqueueError(pub String);
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum FabricHotStepError {
     Mapping(MappingHotDispatchError),
+    /// Post-RF need-only threshold rescan failed (upload/scan/restore).
+    PostRfNeedThresholdRescan(String),
 }
 
 impl From<MappingHotDispatchError> for FabricHotStepError {
@@ -269,12 +271,12 @@ pub fn run_simulation_fabric_hot_step(
     let tick = run_simulation_fabric_tick(fabric);
     let resource_flow_band_dispatched =
         run_resource_flow_bands_if_active(fabric, params.resource_flow_pipeline_enabled);
-    // RF-5: need EvalEML writes AllocatorWeight inside RF bands, which run
-    // *after* the ordinary-tick threshold scan. Rescan sealed thresholds so
-    // emit_on_threshold registrations see the post-RF need values in the same
-    // hot step (Rising edges from 0 → need fire here).
+    // RF-5A: need EvalEML writes AllocatorWeight after ordinary threshold scan.
     if resource_flow_band_dispatched {
-        fabric.state.rescan_accumulator_thresholds_after_resource_flow();
+        fabric
+            .state
+            .rescan_accumulator_thresholds_after_resource_flow()
+            .map_err(FabricHotStepError::PostRfNeedThresholdRescan)?;
     }
     let mapping = match params.mapping {
         Some(hot) => Some(run_mapping_hot_dispatch(fabric.state, hot)?),

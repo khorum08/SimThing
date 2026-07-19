@@ -404,7 +404,7 @@ pub fn hydrate_shipsize_decoder_pack(
                     base_obligations: vec![],
                     capacity_budget: None,
                     gated_rates,
-                    need_weight_profiles: vec![],
+                    need_bindings: vec![],
                 })
             },
             resource_economy: None,

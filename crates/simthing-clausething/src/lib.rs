@@ -27,7 +27,6 @@ pub mod jomini;
 pub mod raw;
 pub mod scope;
 
-mod compose_need_weight_bindings;
 mod emit;
 mod hydrate;
 mod hydrate_category_economy;
@@ -52,10 +51,6 @@ mod scope_json;
 mod scope_lab;
 mod stellaris_names;
 
-pub use compose_need_weight_bindings::{
-    admission_gap_telemetry, compose_need_weight_bindings, merge_need_weight_bindings_into_resource_flow,
-    NeedWeightComposeOutcome,
-};
 pub use emit::emit_text;
 pub use error::{EmitError, ExpandError, HydrateError, ParseError};
 pub use expand::{

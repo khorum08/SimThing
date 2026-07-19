@@ -44,6 +44,8 @@ pub enum SessionError {
     Mapping(String),
     #[error("resource flow opt-in: {0}")]
     ResourceFlowOptIn(String),
+    #[error("threshold install: {0}")]
+    ThresholdInstall(String),
 }
 
 /// Outcome of a single [`SimSession::step_once`] production hot-cycle.
@@ -366,7 +368,52 @@ impl SimSession {
         self.sync_spec_threshold_registrations();
         self.sync_resource_flow_if_enabled()?;
         self.sync_resource_economy_at_install()?;
+        // Re-project tree (including entity-hosted Constant PropertyValue seeds)
+        // then upload thresholds. No dense install_resolved_values authority.
         self.proto.initial_gpu_sync(&self.coord, &mut self.state);
+        self.sync_resource_economy_threshold_ops_at_install()?;
+        Ok(())
+    }
+
+    /// Open-time: upload economy emit_on_threshold regs + arm post-RF need rescan.
+    /// Value authority remains tree PropertyValue → project_tree_to_values only.
+    fn sync_resource_economy_threshold_ops_at_install(&mut self) -> Result<(), SessionError> {
+        let Some(registry) = self.spec_state.resource_economy_registry.as_ref() else {
+            if !self.spec_state.resolved_need_bindings.is_empty() {
+                crate::need_binding::register_post_rf_need_threshold_rescan(
+                    &mut self.state,
+                    &self.spec_state.resolved_need_bindings,
+                )
+                .map_err(|e| {
+                    SessionError::ThresholdInstall(format!("post-RF need threshold arm: {e}"))
+                })?;
+            }
+            return Ok(());
+        };
+        if !registry.registrations.emit_on_threshold.is_empty() {
+            let gpu_regs = simthing_gpu::emit_on_threshold_registrations_to_gpu(
+                &registry.registrations.emit_on_threshold,
+            );
+            self.state.ensure_threshold_accumulator(
+                simthing_gpu::DEFAULT_THRESHOLD_EMISSION_CAPACITY
+                    .max(gpu_regs.len() as u32)
+                    .max(1),
+            );
+            self.state
+                .upload_accumulator_threshold_ops(&gpu_regs)
+                .map_err(|e| {
+                    SessionError::ThresholdInstall(format!("upload emit_on_threshold: {e}"))
+                })?;
+        }
+        if !self.spec_state.resolved_need_bindings.is_empty() {
+            crate::need_binding::register_post_rf_need_threshold_rescan(
+                &mut self.state,
+                &self.spec_state.resolved_need_bindings,
+            )
+            .map_err(|e| {
+                SessionError::ThresholdInstall(format!("post-RF need threshold arm: {e}"))
+            })?;
+        }
         Ok(())
     }
 
@@ -384,6 +431,8 @@ impl SimSession {
     /// Sync E-11 resource-flow AccumulatorOps when the pipeline flag is enabled.
     pub fn sync_resource_flow_if_enabled(&mut self) -> Result<(), SessionError> {
         let enabled = self.proto.flags.use_accumulator_resource_flow;
+        // Production always includes stage projections. DISCONNECT harness uses
+        // `harness_resync_resource_flow_without_need_stage_projections`.
         crate::arena_allocation_sync::sync_resource_flow_accumulator(
             &mut self.state,
             &self.proto.registry,
@@ -392,8 +441,31 @@ impl SimSession {
             &self.proto.root,
             &self.proto.allocator,
             &self.spec_state.resolved_gated_rates,
-            &self.spec_state.resolved_need_weight_profiles,
+            &self.spec_state.resolved_need_bindings,
             enabled,
+        )?;
+        Ok(())
+    }
+
+    /// **Harness-only DISCONNECT control** — omit Identity stage projections.
+    /// Compiled only under the workshop's `rf-test-harness` feature and cannot
+    /// be selected by production authoring or a normal driver build.
+    #[cfg(feature = "rf-test-harness")]
+    pub fn harness_resync_resource_flow_without_need_stage_projections(
+        &mut self,
+    ) -> Result<(), SessionError> {
+        let enabled = self.proto.flags.use_accumulator_resource_flow;
+        crate::arena_allocation_sync::sync_resource_flow_accumulator_with_options(
+            &mut self.state,
+            &self.proto.registry,
+            &self.spec_state.arena_registry,
+            &self.spec_state.arena_participant_scaffold,
+            &self.proto.root,
+            &self.proto.allocator,
+            &self.spec_state.resolved_gated_rates,
+            &self.spec_state.resolved_need_bindings,
+            enabled,
+            false,
         )?;
         Ok(())
     }
@@ -726,19 +798,12 @@ impl SimSession {
     }
 
     /// Shared hot-cycle + optional boundary body for [`Self::run`] / [`Self::step_once`].
-    fn step_once_into_summary(
-        &mut self,
-        summary: &mut RunSummary,
-    ) -> Result<bool, SessionError> {
+    fn step_once_into_summary(&mut self, summary: &mut RunSummary) -> Result<bool, SessionError> {
         let cycle = self.run_hot_cycle()?;
         summary.submit_tick_patches_ms += cycle.pre_tick_enqueue_ms;
         accumulate_tick_outcome(summary, &cycle.hot, cycle.hot_step_ms);
         if let Some(mapping) = &cycle.hot.mapping {
-            journal_mapping_commitments(
-                &mut self.mapping_commitments,
-                summary.ticks_run,
-                mapping,
-            );
+            journal_mapping_commitments(&mut self.mapping_commitments, summary.ticks_run, mapping);
         }
 
         let tick = cycle.hot.tick;

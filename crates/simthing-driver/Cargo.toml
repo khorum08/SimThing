@@ -4,6 +4,12 @@ version.workspace = true
 edition.workspace = true
 authors.workspace = true
 
+[features]
+default = []
+# Workshop-only control used to prove that removing only need-stage projections
+# disconnects live sources. Normal production builds do not expose the hook.
+rf-test-harness = []
+
 [[bin]]
 name = "simthing"
 path = "src/main.rs"

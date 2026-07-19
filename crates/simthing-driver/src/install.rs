@@ -26,8 +26,7 @@ use thiserror::Error;
 
 use crate::arena_participant::materialize_arena_participants;
 use crate::resource_economy_compile::{
-    find_property_owner, materialize_resource_economy_registry_for_session,
-    ResourceEconomyCompileError,
+    materialize_resource_economy_registry_for_session, ResourceEconomyCompileError,
 };
 use crate::resource_flow_compile::compile_and_materialize_resource_flow;
 use crate::resource_flow_enrollment::resolve_resource_flow_enrollment;
@@ -83,6 +82,14 @@ pub enum InstallError {
     #[error("Resource Flow base obligation `{obligation}` arena `{arena}` flow property has no IntrinsicFlow sub-field")]
     BaseFlowObligationMissingIntrinsicFlow { obligation: String, arena: String },
 
+    #[error("need_binding `{binding}` invalid: {reason} (span_token={span_token:?})")]
+    NeedBindingInvalid {
+        binding: String,
+        reason: String,
+        /// Clause token index for spanned admission diagnostics.
+        span_token: Option<usize>,
+    },
+
     #[error("event `{event_id}` references unknown overlay `{overlay_ref}` (no standalone pack overlay with that authored id)")]
     UnknownOverlayRef {
         event_id: String,
@@ -106,21 +113,6 @@ pub enum InstallError {
 
     #[error("gated rate `{gated}` references unresolvable trigger property `{property}`")]
     GatedRateUnknownTriggerProperty { gated: String, property: String },
-
-    #[error("need weight profile `{binding}` invalid: {reason}")]
-    NeedWeightProfileInvalid { binding: String, reason: String },
-
-    #[error(
-        "need weight profile `{binding}` targets SimThing {subtree_root_id} which is not admitted to arena `{arena}`"
-    )]
-    NeedWeightProfileTargetNotAdmitted {
-        binding: String,
-        arena: String,
-        subtree_root_id: u32,
-    },
-
-    #[error("need weight profile `{binding}` participant slot {slot} has no owner")]
-    NeedWeightProfileParticipantSlotMissing { binding: String, slot: u32 },
 }
 
 /// Compile a `GameModeSpec` against the supplied scenario state and return a
@@ -172,10 +164,9 @@ pub fn compile_and_install(
         )?;
     }
 
-    // Global overlays from the game mode envelope remain deferred per ADR
-    // (`docs/adr/game_mode_session_installation.md` §4). RF-5 must not overturn
-    // that posture. Capability tree overlays compile inline through
-    // `CapabilityTreeBuilder::build` below.
+    // Global overlays from the game mode envelope are deferred per the ADR
+    // (`docs/adr/game_mode_session_installation.md` §4). Capability tree
+    // overlays compile inline through `CapabilityTreeBuilder::build` below.
 
     // ── 2. Build each capability tree once. Collect per-pack provenance so
     //      diagnostics can name the originating pack later (not used in v0).
@@ -235,7 +226,6 @@ pub fn compile_and_install(
 
     // ── 4b. Resource Flow admission (E-10 + E-10R): spec compile after properties,
     //      identity preflight after live slot allocation, then materialize registry.
-    let mut enrolled_flow_for_need = None;
     if let Some(resource_flow) = &game_mode.resource_flow {
         let resolved = resolve_resource_flow_enrollment(resource_flow, scenario, root, allocator)?;
         let base_obligations = resolve_base_flow_obligation_targets(&resolved, scenario, root)?;
@@ -259,12 +249,13 @@ pub fn compile_and_install(
         state.arena_registry = arena_registry;
         state.arena_participant_scaffold = scaffold;
         state.resource_flow_capacity_budget = report.capacity_budget;
-        enrolled_flow_for_need = Some(resolved);
     }
 
     // ── 4c. Resource economy (Phase T): compile + live-slot materialization.
+    // Properties are placed on authored entity hosts (stockpile owner / install
+    // target prefix), not invented by need_binding.
     if let Some(resource_economy) = &game_mode.resource_economy {
-        ensure_resource_economy_properties(resource_economy, registry, root)?;
+        ensure_resource_economy_properties(resource_economy, registry, root, scenario)?;
         let eml_registry = simthing_core::EmlExpressionRegistry::new();
         let compiled = compile_resource_economy(resource_economy, registry, &eml_registry)?;
         state.resource_economy_registry = Some(materialize_resource_economy_registry_for_session(
@@ -273,25 +264,25 @@ pub fn compile_and_install(
             &eml_registry,
             root,
             allocator,
+            scenario,
         )?);
     }
 
-    // RF-5: resolve need bindings only after economy properties exist on the tree.
-    // Sources use find_property_owner — never invent property instances on the install host.
-    if let Some(resolved_flow) = enrolled_flow_for_need {
-        let need_profiles = crate::need_weight_profile::resolve_need_weight_profiles(
-            &resolved_flow,
-            scenario,
-            root,
-            registry,
-            &state.arena_participant_scaffold,
-            allocator,
-        )?;
-        state.resolved_need_weight_profiles = need_profiles;
-        if !state.resolved_need_weight_profiles.is_empty() {
+    // RF-5A: resolve full-cell bindings only from already-authored property instances.
+    if let Some(resource_flow) = &game_mode.resource_flow {
+        if !resource_flow.need_bindings.is_empty() {
+            let resolved = crate::need_binding::resolve_need_bindings(
+                resource_flow,
+                scenario,
+                root,
+                registry,
+                &state.arena_participant_scaffold,
+                allocator,
+            )?;
+            crate::need_binding::prepare_need_binding_cells(&resolved, registry, root)?;
             if state.resource_economy_registry.is_none() {
-                state.resource_economy_registry = Some(
-                    crate::resource_economy_compile::ResourceEconomyRegistry {
+                state.resource_economy_registry =
+                    Some(crate::resource_economy_compile::ResourceEconomyRegistry {
                         registrations:
                             crate::resource_economy_compile::ResourceEconomyRegistrations {
                                 transfers: vec![],
@@ -301,21 +292,12 @@ pub fn compile_and_install(
                                 report: Default::default(),
                             },
                         generation: 1,
-                    },
-                );
+                    });
             }
-            crate::need_weight_profile::prepare_need_weight_participant_cells(
-                &state.resolved_need_weight_profiles,
-                registry,
-                root,
-                allocator,
-            )?;
             if let Some(economy) = state.resource_economy_registry.as_mut() {
-                crate::need_weight_profile::inject_need_threshold_into_economy(
-                    &state.resolved_need_weight_profiles,
-                    economy,
-                );
+                crate::need_binding::inject_need_binding_thresholds(&resolved, economy);
             }
+            state.resolved_need_bindings = resolved;
         }
     }
 
@@ -442,46 +424,164 @@ fn install_standalone_overlay(
     Ok(installed_ids)
 }
 
+/// Materialize resource-economy property instances onto **explicit** entity hosts.
+///
+/// Host authority comes only from authored `host_entity` / `*_host_entity` fields
+/// (or World root when host is absent). No `{entity}_` name-prefix inference.
+/// Constant emission formulas seed tree `PropertyValue` defaults (not dense GPU writes).
 fn ensure_resource_economy_properties(
     spec: &ResourceEconomySpec,
     registry: &DimensionRegistry,
     root: &mut SimThing,
+    scenario: &Scenario,
 ) -> Result<(), InstallError> {
-    for key in resource_economy_property_keys(spec) {
+    let placements = resource_economy_property_placements(spec);
+    let mut qualified_hosts = HashMap::new();
+    for placement in &placements {
+        let Some(entity) = placement.host_entity.as_deref() else {
+            continue;
+        };
         let property_id = registry
-            .id_of(&key.namespace, &key.name)
+            .id_of(&placement.key.namespace, &placement.key.name)
             .ok_or_else(|| SpecError::ValidationFailed)?;
-        if find_property_owner(root, property_id).is_none() {
+        let host_id = resolve_unique_install_host(scenario, entity, placement.host_span)?;
+        if let Some(previous_host) = qualified_hosts.insert(property_id, host_id) {
+            if previous_host != host_id {
+                return Err(InstallError::NeedBindingInvalid {
+                    binding: "resource_economy".into(),
+                    reason: format!(
+                        "property {}::{} has duplicate/conflicting economy host placement; PropertyKey is not row authority",
+                        placement.key.namespace, placement.key.name
+                    ),
+                    span_token: placement.host_span,
+                });
+            }
+        }
+    }
+
+    for placement in placements {
+        let property_id = registry
+            .id_of(&placement.key.namespace, &placement.key.name)
+            .ok_or_else(|| SpecError::ValidationFailed)?;
+        let host_id = match &placement.host_entity {
+            Some(entity) => resolve_unique_install_host(scenario, entity, placement.host_span)?,
+            None => {
+                // Unqualified: keep existing host if already placed; else World root.
+                if let Some(existing) =
+                    crate::resource_economy_compile::find_property_owner(root, property_id)
+                {
+                    existing
+                } else {
+                    root.id
+                }
+            }
+        };
+        let host = find_simthing_mut(root, host_id)
+            .ok_or_else(|| InstallError::Spec(SpecError::ValidationFailed))?;
+        if !host.properties.contains_key(&property_id) {
             let layout = registry.property(property_id).layout.clone();
-            root.add_property(property_id, PropertyValue::from_layout(&layout));
+            host.add_property(property_id, PropertyValue::from_layout(&layout));
+        }
+        if let Some((role, value)) = placement.seed {
+            let layout = registry.property(property_id).layout.clone();
+            if let Some(pv) = host.properties.get_mut(&property_id) {
+                pv.set_role(&role, &layout, value);
+            }
         }
     }
     Ok(())
 }
 
-fn resource_economy_property_keys(spec: &ResourceEconomySpec) -> Vec<PropertyKey> {
-    let mut keys = Vec::new();
+fn resolve_unique_install_host(
+    scenario: &Scenario,
+    entity: &str,
+    span: Option<usize>,
+) -> Result<SimThingId, InstallError> {
+    let Some(hosts) = scenario.install_targets.get(entity) else {
+        return Err(InstallError::NeedBindingInvalid {
+            binding: "resource_economy".into(),
+            reason: format!("economy host entity `{entity}` is not in install_targets"),
+            span_token: span,
+        });
+    };
+    if hosts.len() != 1 {
+        return Err(InstallError::NeedBindingInvalid {
+            binding: "resource_economy".into(),
+            reason: format!(
+                "entity `{entity}` host is ambiguous ({} hosts) for economy property placement",
+                hosts.len()
+            ),
+            span_token: span,
+        });
+    }
+    Ok(hosts[0])
+}
+
+struct EconomyPropertyPlacement {
+    key: PropertyKey,
+    host_entity: Option<String>,
+    host_span: Option<usize>,
+    /// Optional tree seed from authored Constant emission (role, value).
+    seed: Option<(simthing_core::SubFieldRole, f32)>,
+}
+
+fn resource_economy_property_placements(
+    spec: &ResourceEconomySpec,
+) -> Vec<EconomyPropertyPlacement> {
+    let mut out = Vec::new();
     for transfer in &spec.transfers {
-        keys.push(transfer.source.clone());
-        keys.push(transfer.target.clone());
+        out.push(EconomyPropertyPlacement {
+            key: transfer.source.clone(),
+            host_entity: transfer.source_host_entity.clone(),
+            host_span: transfer.source_host_span_token,
+            seed: None,
+        });
+        out.push(EconomyPropertyPlacement {
+            key: transfer.target.clone(),
+            host_entity: transfer.target_host_entity.clone(),
+            host_span: transfer.target_host_span_token,
+            seed: None,
+        });
     }
     for recipe in &spec.recipes {
         for input in &recipe.inputs {
-            keys.push(input.property.clone());
+            out.push(EconomyPropertyPlacement {
+                key: input.property.clone(),
+                host_entity: None,
+                host_span: None,
+                seed: None,
+            });
         }
-        keys.push(recipe.target.clone());
+        out.push(EconomyPropertyPlacement {
+            key: recipe.target.clone(),
+            host_entity: None,
+            host_span: None,
+            seed: None,
+        });
     }
     for emission in &spec.emissions {
-        keys.push(emission.source.clone());
+        let seed = match &emission.formula {
+            simthing_spec::EmissionFormulaSpec::Constant(v) if v.is_finite() => {
+                Some((emission.source_role.clone(), *v))
+            }
+            _ => None,
+        };
+        out.push(EconomyPropertyPlacement {
+            key: emission.source.clone(),
+            host_entity: emission.host_entity.clone(),
+            host_span: emission.host_span_token,
+            seed,
+        });
     }
     for emit in &spec.emit_on_threshold {
-        keys.push(emit.source.clone());
+        out.push(EconomyPropertyPlacement {
+            key: emit.source.clone(),
+            host_entity: emit.host_entity.clone(),
+            host_span: emit.host_span_token,
+            seed: None,
+        });
     }
-    keys.sort_by(|a, b| {
-        (a.namespace.as_str(), a.name.as_str()).cmp(&(b.namespace.as_str(), b.name.as_str()))
-    });
-    keys.dedup_by(|a, b| a.namespace == b.namespace && a.name == b.name);
-    keys
+    out
 }
 
 #[derive(Clone, Debug)]

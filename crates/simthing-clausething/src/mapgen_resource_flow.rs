@@ -421,7 +421,7 @@ pub fn generate_mapgen_resource_flow_enrollment(
         base_obligations,
         capacity_budget: options.capacity_budget.clone(),
         gated_rates: vec![],
-                need_weight_profiles: vec![],
+                need_bindings: vec![],
     };
     validate_resource_flow_enrollment(&resource_flow)?;
 

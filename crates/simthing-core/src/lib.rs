@@ -39,8 +39,8 @@ pub use accumulator_spec::{
     AccumulatorRole, AccumulatorSpec, ArenaName, BalanceSpec, LogTier, NumCountSource,
 };
 pub use arena_layout::{
-    arena_internal_columns_present, expand_arena_internal_columns,
-    property_needs_arena_internal_columns, ARENA_INTERNAL_COLUMN_ROLES,
+    arena_internal_columns_present, expand_arena_internal_columns, need_stage_role_names,
+    property_needs_arena_internal_columns, ARENA_INTERNAL_COLUMN_ROLES, NEED_STAGE_MAX_PAIRS,
 };
 pub use column_index::ColumnIndex;
 pub use compiled_accumulator_plan::{

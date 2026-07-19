@@ -253,9 +253,9 @@ pub struct WorldGpuState {
     /// E-11 resource-flow allocation OrderBand dispatch (default off).
     pub accumulator_resource_flow_active: bool,
     pub accumulator_resource_flow_bands: u32,
-    /// Full threshold registration set last uploaded (restored after need-only rescan).
+    /// Full threshold regs last uploaded (restore after need-only rescan).
     post_rf_full_threshold_regs: Vec<ThresholdRegistration>,
-    /// Need-cell thresholds only — post-RF rescan appends these without wiping pre-RF events.
+    /// Need-cell thresholds only for post-RF append-only rescan.
     post_rf_need_threshold_regs: Vec<ThresholdRegistration>,
 }
 
@@ -1114,12 +1114,12 @@ impl WorldGpuState {
         self.n_thresholds = regs.len() as u32;
         self.post_rf_full_threshold_regs = regs.to_vec();
         if !self.post_rf_need_threshold_regs.is_empty() {
-            let full_keys: std::collections::HashSet<(u32, u32, u32)> = regs
+            let keys: std::collections::HashSet<(u32, u32, u32)> = regs
                 .iter()
                 .map(|r| (r.slot, r.col, r.event_kind))
                 .collect();
             self.post_rf_need_threshold_regs
-                .retain(|r| full_keys.contains(&(r.slot, r.col, r.event_kind)));
+                .retain(|r| keys.contains(&(r.slot, r.col, r.event_kind)));
         }
         if let Some(runtime) = self.accumulator_runtime.as_mut() {
             runtime.upload_threshold_ops(&self.ctx, regs)
@@ -1128,43 +1128,48 @@ impl WorldGpuState {
         }
     }
 
-    /// Register need-cell thresholds for the post-RF append-only rescan.
     pub fn set_post_rf_need_threshold_regs(&mut self, regs: Vec<ThresholdRegistration>) {
         self.post_rf_need_threshold_regs = regs;
     }
 
-    /// Need-only sealed threshold rescan after RF bands wrote need.
+    /// Need-only append rescan after RF (no prepare wipe of pre-RF events).
     ///
-    /// Does **not** prepare (wipe) the emission buffer; scans only need regs so
-    /// ordinary pre-RF thresholds are neither duplicated nor erased. Restores
-    /// the full op set for the next ordinary tick.
-    pub fn rescan_accumulator_thresholds_after_resource_flow(&mut self) {
+    /// Failures propagate — callers must not treat a silent skip as success.
+    pub fn rescan_accumulator_thresholds_after_resource_flow(
+        &mut self,
+    ) -> Result<(), String> {
         if self.post_rf_need_threshold_regs.is_empty() {
-            return;
+            return Ok(());
         }
         let need = self.post_rf_need_threshold_regs.clone();
         let full = self.post_rf_full_threshold_regs.clone();
         let Some(runtime) = self.accumulator_runtime.as_mut() else {
-            return;
+            return Err(
+                "post-RF need threshold rescan requires accumulator_runtime".into(),
+            );
         };
         let Some(mut session) = runtime.take_threshold_session() else {
-            return;
+            runtime.restore_threshold_session(None);
+            return Err(
+                "post-RF need threshold rescan requires an active threshold session".into(),
+            );
         };
         let need_upload = match crate::PackedThresholdUpload::from_registrations(&need) {
             Ok(u) => u,
-            Err(_) => {
+            Err(e) => {
                 runtime.restore_threshold_session(Some(session));
-                return;
+                return Err(format!("pack need threshold regs: {e}"));
             }
         };
-        if session
-            .upload_packed_threshold_ops(&self.ctx, &need_upload)
-            .is_err()
-        {
+        if let Err(e) = session.upload_packed_threshold_ops(&self.ctx, &need_upload) {
             runtime.restore_threshold_session(Some(session));
-            return;
+            return Err(format!("upload need threshold regs: {e}"));
         }
-        // Append only — no prepare_threshold_scan (would wipe pre-RF events).
+        // upload_packed_threshold_ops changes n_ops. Refresh the dispatch
+        // uniform without resetting the existing per-tick event counter;
+        // otherwise retained full-scan ops past the shorter need packet run
+        // again under the stale full-scan n_ops value.
+        session.prepare_threshold_append_scan(&self.ctx);
         let mut encoder = self
             .ctx
             .device
@@ -1181,10 +1186,20 @@ impl WorldGpuState {
         );
         self.ctx.queue.submit(Some(encoder.finish()));
         session.finish_threshold_scan(&self.ctx);
-        if let Ok(full_upload) = crate::PackedThresholdUpload::from_registrations(&full) {
-            let _ = session.upload_packed_threshold_ops(&self.ctx, &full_upload);
+        match crate::PackedThresholdUpload::from_registrations(&full) {
+            Ok(full_upload) => {
+                if let Err(e) = session.upload_packed_threshold_ops(&self.ctx, &full_upload) {
+                    runtime.restore_threshold_session(Some(session));
+                    return Err(format!("restore full threshold regs after need rescan: {e}"));
+                }
+            }
+            Err(e) => {
+                runtime.restore_threshold_session(Some(session));
+                return Err(format!("pack full threshold regs after need rescan: {e}"));
+            }
         }
         runtime.restore_threshold_session(Some(session));
+        Ok(())
     }
 
     pub fn append_accumulator_threshold_ops(

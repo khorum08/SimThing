@@ -30,7 +30,7 @@ pub mod first_slice_mapping_runtime;
 pub mod gameplay_0080_0;
 pub mod gameplay_0080_1;
 pub mod gated_rates;
-pub mod need_weight_profile;
+pub mod need_binding;
 pub mod gpu_measure_0080_0;
 pub mod gradient_follow_0080_2;
 pub mod install;
@@ -374,12 +374,6 @@ pub use gameplay_0080_1::{
 pub use gated_rates::{
     build_gated_rate_ops, resolve_gated_rates, seed_gated_rate_base_columns, ResolvedGatedRate,
     RATE_BASE_SUB_FIELD,
-};
-pub use need_weight_profile::{
-    binding_from_hydrated_stack, build_need_weight_profile_ops, extract_weighted_accumulator,
-    inject_need_threshold_into_economy, prepare_need_weight_participant_cells,
-    register_post_rf_need_threshold_rescan, resolve_need_weight_profiles, NeedWeightSourceCell,
-    ResolvedNeedWeightProfile,
 };
 pub use gpu_measure_0080_0::{
     render_gpu_measure_0080_0_report, replay_gpu_measure_0080_0, run_gpu_measure_0080_0,

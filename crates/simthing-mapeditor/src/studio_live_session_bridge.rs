@@ -18,10 +18,7 @@ use simthing_core::{
     OverlayKind, SimProperty, SimThing, SimThingId, SubFieldRole, SubFieldSpec,
 };
 use simthing_driver::{resolve_node_columns, Scenario, SessionError, SimSession, StepOnceOutcome};
-use simthing_gpu::{
-    emit_on_threshold_registrations_to_gpu, EmissionFormula, SlotAllocator,
-    DEFAULT_THRESHOLD_EMISSION_CAPACITY,
-};
+use simthing_gpu::{EmissionFormula, SlotAllocator};
 use simthing_spec::{
     compile_property, game_session_child, game_session_owners, owner_entity_id,
     planet_child_rf_participant_inputs, validate_scenario_links,
@@ -137,9 +134,6 @@ pub struct StudioAuthoredLiveProfile {
     /// Canonical recursive Arena RF projection, when the authority tree exposes
     /// an admitted Owner plus at least three authored producer children.
     pub recursive_rf: Option<StudioRecursiveRfProfile>,
-    /// RF-5: typed AdmissionGap when weight_profiles lack complete bindings.
-    /// Must not be swallowed into empty need_weight_profiles.
-    pub rf5_admission_gap: Option<String>,
 }
 
 /// Stable labels/identities for the live RF locus shown by Studio and asserted by CI.
@@ -169,7 +163,6 @@ impl StudioAuthoredLiveProfile {
             session_root,
             field_economy_present,
             recursive_rf: None,
-            rf5_admission_gap: None,
         }
     }
 
@@ -210,12 +203,11 @@ pub struct StudioRecursiveRfReadout {
     /// RF-5 admitted need / weight_profile transport (read-only).
     pub need_profile_id: Option<String>,
     pub need_profile_kind: Option<String>,
-    pub need_weight_seeds: Option<String>,
+    pub need_weight_values: Option<String>,
     pub need_live_value: Option<f32>,
     pub need_threshold: Option<f32>,
     pub need_threshold_result: Option<&'static str>,
-    /// Typed AdmissionGap when complete need bindings are absent (not silent empty).
-    pub need_admission_gap: Option<String>,
+    pub need_threshold_event_count: u32,
 }
 
 /// One per-tick sample of field accretion (presentation / ops telemetry only).
@@ -496,9 +488,6 @@ impl StudioLiveSessionBridge {
                     .authored_live_profile
                     .as_ref()
                     .ok_or(StudioLiveSessionBridgeError::FieldBearingProfileMissing)?;
-                // RF-5 AdmissionGap is carried on profile.rf5_admission_gap (typed
-                // blocking diagnostic for need transport). Field-bearing open still
-                // proceeds for RF-4 field accretion; RF-5 transport remains unbound.
                 let scenario = driver_scenario_field_bearing_from_profile(profile)
                     .map_err(StudioLiveSessionBridgeError::ScenarioConversion)?;
                 // Field-bearing open installs RF/resource-economy + property surfaces only.
@@ -519,16 +508,12 @@ impl StudioLiveSessionBridge {
                         self.field_accretion_samples =
                             collect_field_accretion_sample(&sim, &self.sample_loci, 0);
                         if let Some(rf_profile) = profile.recursive_rf.as_ref() {
-                            let (locus, mut readout) = recursive_rf_locus_from_session(
+                            let (locus, readout) = recursive_rf_locus_from_session(
                                 &sim, rf_profile,
                             )
                             .map_err(StudioLiveSessionBridgeError::FieldBearingOpenFailed)?;
-                            // Surface typed RF-5 AdmissionGap (never silent empty transport).
-                            readout.need_admission_gap = profile.rf5_admission_gap.clone();
                             self.recursive_rf_locus = Some(locus);
                             self.recursive_rf_readout = readout;
-                        } else if let Some(gap) = profile.rf5_admission_gap.as_ref() {
-                            self.recursive_rf_readout.need_admission_gap = Some(gap.clone());
                         }
                         Ok(sim)
                     }
@@ -615,10 +600,11 @@ impl StudioLiveSessionBridge {
                     self.executed_ticks = self.executed_ticks.saturating_add(step_ticks);
                     // Re-read AccumulatorOp threshold emissions left by the production tick
                     // (existing public runtime API — no driver/kernel seam widening).
-                    let threshold_event_count = {
+                    let threshold_event_kinds = {
                         let sim = self.sim.as_mut().expect("sim present");
-                        last_tick_threshold_event_count(sim)
+                        last_tick_threshold_event_kinds(sim)
                     };
+                    let threshold_event_count = threshold_event_kinds.len() as u32;
                     self.last_decision_event_count = threshold_event_count;
                     self.cumulative_decision_events = self
                         .cumulative_decision_events
@@ -647,7 +633,12 @@ impl StudioLiveSessionBridge {
                         if let (Some(sim), Some(locus)) =
                             (self.sim.as_ref(), self.recursive_rf_locus.as_ref())
                         {
-                            update_recursive_rf_readout(&mut self.recursive_rf_readout, sim, locus);
+                            update_recursive_rf_readout(
+                                &mut self.recursive_rf_readout,
+                                sim,
+                                locus,
+                                &threshold_event_kinds,
+                            );
                         }
                     }
                 }
@@ -938,44 +929,23 @@ pub fn driver_scenario_field_bearing_from_profile(
 
 /// Open-time wiring for field-bearing sessions:
 /// 1. Seed property columns from authored Constant emission formulas (initial state only)
-/// 2. Upload authored `emit_on_threshold` registrations through the generic GPU threshold bridge
-///
-/// Not per-tick economy logic — install/profile residue elevation only. Does **not**
-/// fabricate an open-time decision edge; decisions are observed only after live `step_once`.
+/// Generic threshold registrations and post-RF need rescans are installed by
+/// `SimSession::install_spec_state`. This bridge only materializes the authored
+/// Constant field seeds used by the existing Studio elevation path.
 fn ensure_resource_economy_threshold_ops(session: &mut SimSession) -> Result<(), String> {
-    materialize_authored_constant_emission_seeds(session)?;
-    let Some(registry) = session.spec_state.resource_economy_registry.as_ref() else {
-        return Ok(());
-    };
-    if registry.registrations.emit_on_threshold.is_empty() {
-        return Ok(());
-    }
-    let gpu_regs =
-        emit_on_threshold_registrations_to_gpu(&registry.registrations.emit_on_threshold);
-    session
-        .state
-        .ensure_threshold_accumulator(DEFAULT_THRESHOLD_EMISSION_CAPACITY);
-    session
-        .state
-        .upload_accumulator_threshold_ops(&gpu_regs)
-        .map_err(|e| format!("upload emit_on_threshold: {e}"))?;
-    simthing_driver::register_post_rf_need_threshold_rescan(
-        &mut session.state,
-        &session.spec_state.resolved_need_weight_profiles,
-    );
-    Ok(())
+    materialize_authored_constant_emission_seeds(session)
 }
 
-/// Count sealed AccumulatorOp threshold events from the most recent production tick.
+/// Read sealed AccumulatorOp threshold event kinds from the most recent production tick.
 /// Uses the existing public runtime readback (events remain until the next prepare).
-fn last_tick_threshold_event_count(sim: &mut SimSession) -> u32 {
+fn last_tick_threshold_event_kinds(sim: &mut SimSession) -> Vec<u32> {
     let Some(runtime) = sim.state.accumulator_runtime.as_mut() else {
-        return 0;
+        return Vec::new();
     };
     runtime
         .readback_threshold_events(&sim.state.ctx)
-        .map(|events| events.len() as u32)
-        .unwrap_or(0)
+        .map(|events| events.into_iter().map(|event| event.event_kind()).collect())
+        .unwrap_or_default()
 }
 
 fn materialize_authored_constant_emission_seeds(session: &mut SimSession) -> Result<(), String> {
@@ -1130,7 +1100,7 @@ fn recursive_rf_locus_from_session(
         root_balance_after: balance_before,
         ..Default::default()
     };
-    fill_need_weight_profile_readout(&mut readout, sim);
+    fill_need_binding_readout(&mut readout, sim, None);
     Ok((locus, readout))
 }
 
@@ -1138,6 +1108,7 @@ fn update_recursive_rf_readout(
     readout: &mut StudioRecursiveRfReadout,
     sim: &SimSession,
     locus: &RecursiveRfSampleLocus,
+    threshold_event_kinds: &[u32],
 ) {
     let values = sim.state.read_values();
     let n_dims = sim.state.n_dims;
@@ -1148,68 +1119,57 @@ fn update_recursive_rf_readout(
     readout.root_balance_after = values
         .get((locus.root_slot * n_dims + locus.balance_col) as usize)
         .copied();
-    fill_need_weight_profile_readout(readout, sim);
+    fill_need_binding_readout(readout, sim, Some(threshold_event_kinds));
 }
 
-fn fill_need_weight_profile_readout(readout: &mut StudioRecursiveRfReadout, sim: &SimSession) {
-    let Some(binding) = sim.spec_state.resolved_need_weight_profiles.first() else {
+fn fill_need_binding_readout(
+    readout: &mut StudioRecursiveRfReadout,
+    sim: &SimSession,
+    threshold_event_kinds: Option<&[u32]>,
+) {
+    let Some(binding) = sim.spec_state.resolved_need_bindings.first() else {
         readout.need_profile_id = None;
         readout.need_profile_kind = None;
-        readout.need_weight_seeds = None;
+        readout.need_weight_values = None;
         readout.need_live_value = None;
         readout.need_threshold = None;
         readout.need_threshold_result = None;
-        // Preserve need_admission_gap if already set from profile compose.
+        readout.need_threshold_event_count = 0;
         return;
     };
-    readout.need_admission_gap = None;
     let values = sim.state.read_values();
     let n_dims = sim.state.n_dims as usize;
     let idx = binding.participant_slot as usize * n_dims + binding.need_col.raw();
     let live = values.get(idx).copied();
     readout.need_profile_id = Some(binding.id.clone());
     readout.need_profile_kind = Some(binding.profile.clone());
-    // Authored weight identity is the property keys — not invented seed constants.
-    readout.need_weight_seeds = Some(
+    readout.need_weight_values = Some(
         binding
-            .weight_property_keys
+            .weights
             .iter()
-            .map(|k| format!("{}::{}", k.namespace, k.name))
+            .map(|weight| {
+                let idx = weight.slot as usize * n_dims + weight.col.raw();
+                let value = values.get(idx).copied().unwrap_or(f32::NAN);
+                format!("{}={value:.6}", weight.entity)
+            })
             .collect::<Vec<_>>()
             .join(","),
     );
     readout.need_live_value = live;
-    if let Some(th) = &binding.threshold {
-        readout.need_threshold = Some(th.threshold);
-        // Authoritative result is sealed threshold-event presence on the economy
-        // registry / last tick event stream — not a presentation recompute.
-        let thr_regs = sim
-            .spec_state
-            .resource_economy_registry
-            .as_ref()
-            .map(|r| {
-                r.registrations
-                    .emit_on_threshold
-                    .iter()
-                    .filter(|reg| {
-                        reg.slot.raw() == binding.participant_slot
-                            && reg.col == binding.need_col
-                            && (reg.threshold - th.threshold).abs() < 1e-6
-                    })
-                    .count()
-            })
-            .unwrap_or(0);
-        readout.need_threshold_result = Some(if thr_regs == 0 {
-            "no-threshold-reg"
-        } else {
-            // Event firing is reported via cumulative_decision_events / last_decision_event_count
-            // (sealed readback). This field only confirms the binding's threshold is admitted.
-            "threshold-admitted"
-        });
-    } else {
-        readout.need_threshold = None;
-        readout.need_threshold_result = None;
-    }
+    readout.need_threshold = Some(binding.threshold);
+    readout.need_threshold_event_count = threshold_event_kinds
+        .map(|kinds| {
+            kinds
+                .iter()
+                .filter(|kind| **kind == binding.event_kind)
+                .count() as u32
+        })
+        .unwrap_or(0);
+    readout.need_threshold_result = Some(match threshold_event_kinds {
+        None => "not-run",
+        Some(_) if readout.need_threshold_event_count > 0 => "event",
+        Some(_) => "no-event",
+    });
 }
 
 fn strip_property_maps(node: &mut simthing_core::SimThing) {
@@ -1369,7 +1329,6 @@ fn compose_recursive_rf_profile(
     HashMap<String, Vec<SimThingId>>,
     GameModeSpec,
     StudioRecursiveRfProfile,
-    Option<String>,
 )> {
     let scenario = simthing_clausething::project_pack_to_authority_tree_candidate(pack).ok()?;
     let session_root_id = game_session_child(&scenario).ok()?.id;
@@ -1454,22 +1413,11 @@ fn compose_recursive_rf_profile(
 
     let mut game_mode = pack.game_mode.clone();
     game_mode.properties.push(studio_recursive_rf_property());
-    // RF-5 production composition: attach hydrate stacks by binding.id only.
-    // AdmissionGap is fail-closed (never silently empty bindings).
     let authored_need = game_mode
         .resource_flow
         .as_ref()
-        .map(|rf| rf.need_weight_profiles.clone())
+        .map(|rf| rf.need_bindings.clone())
         .unwrap_or_default();
-    let (admitted_need_bindings, rf5_gap) =
-        match simthing_clausething::compose_need_weight_bindings(pack, STUDIO_RF_ARENA, &authored_need)
-        {
-            simthing_clausething::NeedWeightComposeOutcome::Bindings(b) => (b, None),
-            gap @ simthing_clausething::NeedWeightComposeOutcome::AdmissionGap { .. } => (
-                Vec::new(),
-                simthing_clausething::admission_gap_telemetry(&gap),
-            ),
-        };
     game_mode.resource_flow = Some(ResourceFlowSpec {
         opt_in_mode: ResourceFlowOptInMode::Disabled,
         arenas: vec![ArenaSpec {
@@ -1488,8 +1436,7 @@ fn compose_recursive_rf_profile(
             wildcard_admission: None,
         }],
         base_obligations,
-        // Keep empty when gap — open path must surface rf5_admission_gap, not pretend success.
-        need_weight_profiles: admitted_need_bindings,
+        need_bindings: authored_need,
         ..Default::default()
     });
     game_mode.resource_flow_execution_profile =
@@ -1514,7 +1461,6 @@ fn compose_recursive_rf_profile(
             session_root_id,
             sibling_count: selected_children.len() as u32,
         },
-        rf5_gap,
     ))
 }
 
@@ -1526,7 +1472,7 @@ fn compose_recursive_rf_profile(
 pub fn authored_live_profile_from_pack(
     pack: &simthing_clausething::HydratedScenarioPack,
 ) -> StudioAuthoredLiveProfile {
-    if let Some((root, install_targets, game_mode, recursive_rf, rf5_gap)) =
+    if let Some((root, install_targets, game_mode, recursive_rf)) =
         compose_recursive_rf_profile(pack)
     {
         let mut profile = StudioAuthoredLiveProfile::from_hydrated_pack(
@@ -1536,7 +1482,6 @@ pub fn authored_live_profile_from_pack(
             pack.field_economy.is_some(),
         );
         profile.recursive_rf = Some(recursive_rf);
-        profile.rf5_admission_gap = rf5_gap;
         return profile;
     }
 
@@ -1551,44 +1496,12 @@ pub fn authored_live_profile_from_pack(
             .entry(owner.owner_key.clone())
             .or_insert_with(|| vec![root.id]);
     }
-    let mut game_mode = pack.game_mode.clone();
-    let authored_need = game_mode
-        .resource_flow
-        .as_ref()
-        .map(|rf| rf.need_weight_profiles.clone())
-        .unwrap_or_default();
-    let arena_name = game_mode
-        .resource_flow
-        .as_ref()
-        .and_then(|rf| rf.arenas.first().map(|a| a.name.clone()))
-        .unwrap_or_else(|| STUDIO_RF_ARENA.to_string());
-    let mut rf5_gap = None;
-    if let Some(rf) = game_mode.resource_flow.as_mut() {
-        match simthing_clausething::compose_need_weight_bindings(pack, &arena_name, &authored_need) {
-            simthing_clausething::NeedWeightComposeOutcome::Bindings(b) => {
-                rf.need_weight_profiles = b;
-            }
-            gap @ simthing_clausething::NeedWeightComposeOutcome::AdmissionGap { .. } => {
-                rf.need_weight_profiles.clear();
-                rf5_gap = simthing_clausething::admission_gap_telemetry(&gap);
-            }
-        }
-    } else {
-        match simthing_clausething::compose_need_weight_bindings(pack, &arena_name, &[]) {
-            gap @ simthing_clausething::NeedWeightComposeOutcome::AdmissionGap { .. } => {
-                rf5_gap = simthing_clausething::admission_gap_telemetry(&gap);
-            }
-            simthing_clausething::NeedWeightComposeOutcome::Bindings(_) => {}
-        }
-    }
-    let mut profile = StudioAuthoredLiveProfile::from_hydrated_pack(
-        game_mode,
+    StudioAuthoredLiveProfile::from_hydrated_pack(
+        pack.game_mode.clone(),
         install_targets,
         root,
         pack.field_economy.is_some(),
-    );
-    profile.rf5_admission_gap = rf5_gap;
-    profile
+    )
 }
 
 #[cfg(test)]
