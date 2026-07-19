@@ -19,7 +19,7 @@ Orchestration remander `5013877587` on PR #1416. No Studio, no canonical TP data
 | ORIENT-RECEIPT | `2c9fde39d1d6` (coding) |
 | tested_code_sha | `80cdbfc268a6ea5ca25dc11d320a4ea837518e18` |
 | implementation_sha | `80cdbfc268a6ea5ca25dc11d320a4ea837518e18` |
-| evidence_sha | `b2cf718e1d07c2039afb32c799b1840bf270a917` |
+| evidence_sha | `676d856537ce19159e4e3bda9e6a1269d890d75d` |
 | coverage_basis | workshop RF-5A 18/18 PASS + field_economy_grammar 7/7 + production open threshold arm |
 
 ## Remander disposition (5013877587)
