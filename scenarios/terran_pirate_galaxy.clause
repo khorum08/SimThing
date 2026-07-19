@@ -154,6 +154,11 @@ scenario = terran_pirate_galaxy {
             resource = "minerals"
             current = 40
         }
+        stockpile_silo = terran_expansion_weight {
+            owner = "terran"
+            resource = "expansion_weight"
+            current = 0.02
+        }
         disruption_presence = pirate_raid_presence {
             location = "pirate_outpost"
             resource = "disruption"
@@ -180,8 +185,24 @@ scenario = terran_pirate_galaxy {
         weight_profile = terran_expansion_need {
             profile = "expansion-need"
             input = { input_col = 0 weight_col = 10 }
-            input = { input_col = 1 weight_col = 11 }
             output_col = 12
+        }
+        need_binding = terran_expansion_need {
+            profile = "expansion-need"
+            participant = "terran"
+            arena = "studio_recursive_owner_flow"
+            input = {
+                entity = "terran_shipyard"
+                property = "tp_economy::terran_shipyard_minerals_quantity"
+                role = Amount
+            }
+            weight = {
+                entity = "terran"
+                property = "tp_economy::terran_expansion_weight_stockpile"
+                role = Amount
+            }
+            threshold = 1.0
+            event_kind = 91
         }
         weight_profile = terran_manufacturing_need {
             profile = "manufacturing-need"

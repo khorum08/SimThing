@@ -6,7 +6,9 @@
 
 use std::path::PathBuf;
 
-use simthing_clausething::{hydrate_scenario, parse_raw_document, HydratedScenarioPack};
+use simthing_clausething::{
+    hydrate_scenario, hydrate_scenario_with_source_base, parse_raw_document, HydratedScenarioPack,
+};
 use simthing_core::SubFieldRole;
 use simthing_mapeditor::clause_scenario_picker::{
     run_clause_picker_action_staged, ClausePickerActionResult, ClausePickerSelection,
@@ -88,6 +90,20 @@ fn hydrate_foundry() -> HydratedScenarioPack {
     hydrate_scenario(&document).expect("hydrate foundry")
 }
 
+fn canonical_tp_source() -> String {
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../scenarios/terran_pirate_galaxy.clause")
+        .canonicalize()
+        .expect("canonical TP clause path");
+    std::fs::read_to_string(path).expect("read canonical TP clause")
+}
+
+fn hydrate_source(source: &str) -> Result<HydratedScenarioPack, String> {
+    let document = parse_raw_document(source.as_bytes()).map_err(|e| e.to_string())?;
+    let source_base = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../scenarios");
+    hydrate_scenario_with_source_base(&document, Some(&source_base)).map_err(|e| e.to_string())
+}
+
 fn field_bearing_studio_session_from(pack: &HydratedScenarioPack) -> StudioSession {
     let mut studio = StudioSession::from_loaded_scenario(
         runtime_vertical_seed_scenario_spec(),
@@ -117,6 +133,36 @@ fn open_fail_closed(
         }
         Err(e) => Err(e),
     }
+}
+
+fn run_canonical_need_variant(source: &str) -> simthing_mapeditor::StudioLiveSessionBridgeReadout {
+    let pack = hydrate_source(source).expect("hydrate canonical TP need variant");
+    let studio = field_bearing_studio_session_from(&pack);
+    let mut bridge = StudioLiveSessionBridge::new();
+    bridge.set_path_preference(StudioLiveSessionPathPreference::FieldBearing);
+    open_fail_closed(&mut bridge, &studio)
+        .expect("open canonical TP through production Studio path");
+    assert_eq!(bridge.session_path(), StudioLiveSessionPath::FieldBearing);
+    assert_eq!(
+        bridge.readout().production_path,
+        "simthing_driver::SimSession::open_from_spec + step_once"
+    );
+    bridge
+        .consume_scheduled_ticks(1)
+        .expect("one canonical TP production tick");
+    let readout = bridge.readout();
+    eprintln!(
+        "RF-5 LIVE scenario={} tick={} profile={:?} weights={:?} need={:?} threshold={:?} result={:?} field_policy_events={}",
+        readout.scenario_id.as_deref().unwrap_or("--"),
+        readout.executed_ticks,
+        readout.recursive_rf.need_profile_id,
+        readout.recursive_rf.need_weight_values,
+        readout.recursive_rf.need_live_value,
+        readout.recursive_rf.need_threshold,
+        readout.recursive_rf.need_threshold_result,
+        readout.recursive_rf.need_threshold_event_count,
+    );
+    readout
 }
 
 fn amount_col(sim: &simthing_driver::SimSession, namespace: &str, name: &str) -> usize {
@@ -225,6 +271,104 @@ fn field_bearing_path_opens_via_open_from_spec_when_profile_present() {
     assert!(!bridge.readout().field_accretion_samples.is_empty());
 }
 
+/// RF-5 load-bearing proof: the canonical authored scalar is the only difference
+/// between the pair, and the generic need_binding drives both the live need cell
+/// and the sealed FIELD_POLICY threshold outcome through the production Studio path.
+#[test]
+fn canonical_tp_generic_need_binding_live_weight_controls_need_and_field_policy() {
+    let high_source = canonical_tp_source();
+    assert_eq!(high_source.matches("current = 0.02").count(), 1);
+    let low_source = high_source.replacen("current = 0.02", "current = 0.005", 1);
+
+    let high = run_canonical_need_variant(&high_source);
+    let low = run_canonical_need_variant(&low_source);
+    for readout in [&high, &low] {
+        assert_eq!(readout.scenario_id.as_deref(), Some("terran_pirate_galaxy"));
+        assert_eq!(readout.executed_ticks, 1);
+        assert_eq!(
+            readout.recursive_rf.need_profile_id.as_deref(),
+            Some("terran_expansion_need")
+        );
+        assert_eq!(
+            readout.recursive_rf.need_profile_kind.as_deref(),
+            Some("expansion-need")
+        );
+        assert_eq!(readout.recursive_rf.need_threshold, Some(1.0));
+    }
+
+    let high_need = high
+        .recursive_rf
+        .need_live_value
+        .expect("high live need GPU readout");
+    let low_need = low
+        .recursive_rf
+        .need_live_value
+        .expect("low live need GPU readout");
+    assert!(
+        high_need > low_need && high_need > 1.0 && low_need < 1.0,
+        "authored weight only must change actual live need across threshold: high={high_need} low={low_need}"
+    );
+    assert!(
+        high.recursive_rf
+            .need_weight_values
+            .as_deref()
+            .is_some_and(|v| v.contains("terran=0.020000")),
+        "Studio must show actual high GPU weight value: {:?}",
+        high.recursive_rf.need_weight_values
+    );
+    assert!(
+        low.recursive_rf
+            .need_weight_values
+            .as_deref()
+            .is_some_and(|v| v.contains("terran=0.005000")),
+        "Studio must show actual low GPU weight value: {:?}",
+        low.recursive_rf.need_weight_values
+    );
+    assert_eq!(high.recursive_rf.need_threshold_event_count, 1);
+    assert_eq!(high.recursive_rf.need_threshold_result, Some("event"));
+    assert_eq!(low.recursive_rf.need_threshold_event_count, 0);
+    assert_eq!(low.recursive_rf.need_threshold_result, Some("no-event"));
+}
+
+/// RF-5 fail-closed proof: neither a missing profile join nor a property typo
+/// degrades to an empty/neutral binding.
+#[test]
+fn canonical_tp_need_binding_removed_or_misbound_fails_closed() {
+    let source = canonical_tp_source();
+    let missing_profile = source.replacen(
+        "weight_profile = terran_expansion_need",
+        "weight_profile = terran_expansion_need_removed",
+        1,
+    );
+    let error =
+        hydrate_source(&missing_profile).expect_err("missing profile join must fail hydrate");
+    assert!(
+        error.contains("no weight_profile with the same id"),
+        "unexpected missing-profile diagnostic: {error}"
+    );
+
+    let misbound = source.replacen(
+        "tp_economy::terran_expansion_weight_stockpile",
+        "tp_economy::terran_expansion_weight_missing",
+        1,
+    );
+    let pack =
+        hydrate_source(&misbound).expect("semantic typo survives parse/hydrate to admission");
+    let studio = field_bearing_studio_session_from(&pack);
+    let mut bridge = StudioLiveSessionBridge::new();
+    bridge.set_path_preference(StudioLiveSessionPathPreference::FieldBearing);
+    let error = bridge
+        .open_from_loaded_studio_session(&studio)
+        .expect_err("misbound property must fail production session admission");
+    let message = error.to_string();
+    assert!(
+        message.contains("terran_expansion_weight_missing")
+            || message.contains("need binding")
+            || message.contains("need_binding"),
+        "unexpected misbound-property diagnostic: {message}"
+    );
+}
+
 /// catches: structural-shell fallback deleted or no longer selectable under field profile.
 #[test]
 fn structural_shell_fallback_still_selectable() {
@@ -232,7 +376,10 @@ fn structural_shell_fallback_still_selectable() {
     let mut bridge = StudioLiveSessionBridge::new();
     bridge.set_path_preference(StudioLiveSessionPathPreference::StructuralShell);
     open_fail_closed(&mut bridge, &studio).expect("shell open");
-    assert_eq!(bridge.session_path(), StudioLiveSessionPath::StructuralShell);
+    assert_eq!(
+        bridge.session_path(),
+        StudioLiveSessionPath::StructuralShell
+    );
     assert_eq!(
         bridge.readout().production_path,
         "simthing_driver::SimSession::open + step_once"
@@ -270,9 +417,7 @@ fn disruption_accretes_from_authored_emitter_under_live_ticks() {
         .map(|s| s.amount)
         .collect();
     let changed = (after - open_amount).abs() > 1e-4
-        || sample_series
-            .windows(2)
-            .any(|w| (w[0] - w[1]).abs() > 1e-4);
+        || sample_series.windows(2).any(|w| (w[0] - w[1]).abs() > 1e-4);
     assert!(
         changed,
         "disruption must show a live per-tick delta: open={open_amount} after={after} samples={sample_series:?}"
@@ -294,13 +439,15 @@ fn production_and_need_accrete_from_buildings_and_overlays() {
     let sim = bridge.sim_session().expect("attached");
     let current_before = amount_for_property(sim, "forge", "guild_ore_current");
     let stockpile_before = amount_for_property(sim, "forge", "guild_ore_stockpile");
-    assert!(current_before >= 20.0, "silo current seed: {current_before}");
+    assert!(
+        current_before >= 20.0,
+        "silo current seed: {current_before}"
+    );
     bridge.consume_scheduled_ticks(TICKS).expect("ticks");
     let sim = bridge.sim_session().expect("attached");
     let current_after = amount_for_property(sim, "forge", "guild_ore_current");
     let stockpile_after = amount_for_property(sim, "forge", "guild_ore_stockpile");
-    let ore_with_policy =
-        amount_at_install_target(sim, "guild", "forge", "ridge_ore_quantity");
+    let ore_with_policy = amount_at_install_target(sim, "guild", "forge", "ridge_ore_quantity");
     assert!(
         stockpile_after > stockpile_before || current_after < current_before,
         "silo transfer must move mass: current {current_before}->{current_after} stockpile {stockpile_before}->{stockpile_after}"
@@ -431,7 +578,10 @@ fn field_bearing_ticks_do_not_mutate_scenario_spec() {
     open_fail_closed(&mut bridge, &studio).expect("open");
     let _ = bridge.consume_scheduled_ticks(2).expect("ticks");
     let after = serialize_scenario_authority(&studio.scenario_authority).expect("ser");
-    assert_eq!(before, after, "Spec authority must be unchanged by bridge ticks");
+    assert_eq!(
+        before, after,
+        "Spec authority must be unchanged by bridge ticks"
+    );
     studio.scenario_authority.scenario_id.push_str("_mut");
     let mutated = serialize_scenario_authority(&studio.scenario_authority).expect("ser");
     assert_ne!(before, mutated);
@@ -456,9 +606,7 @@ fn field_bearing_readout_samples_show_live_accretion_delta() {
         "readout must retain ≥2 tick samples for disruption property; got {series:?}"
     );
     let amounts: Vec<f32> = series.iter().map(|(_, a)| *a).collect();
-    let changed = amounts
-        .windows(2)
-        .any(|w| (w[0] - w[1]).abs() > 1e-4)
+    let changed = amounts.windows(2).any(|w| (w[0] - w[1]).abs() > 1e-4)
         || (amounts.first().copied().unwrap_or(0.0) - amounts.last().copied().unwrap_or(0.0)).abs()
             > 1e-4;
     assert!(
