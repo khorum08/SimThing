@@ -20,7 +20,7 @@ RF-5/#1414 remains **BLOCKED-PAUSED**. No Studio, TP amendment, OVL, freeze, mer
 | ORIENT-RECEIPT | `2c9fde39d1d6` |
 | tested_code_sha | *(bind after green push)* |
 | implementation_sha | *(bind after green push)* |
-| evidence_sha | *(bind after green push)* |
+| evidence_sha | \cbc8a7e32a18b7340a87892c62cb6630f3227183\ |
 | coverage_basis | workshop RF-5A 20/20 + field_economy_grammar nonregression |
 
 ## Contract landed (Modified Option A)
