@@ -113,6 +113,7 @@ pub fn run_scenario_burn_in(
         &fx.session.proto.root,
         &fx.session.proto.allocator,
         &[],
+        &[],
         true,
     )
     .expect("scenario sync");

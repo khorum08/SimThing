@@ -1,8 +1,12 @@
 # STUDIO-FIELD-SESSION-ELEVATE-0 Results
 
-## Status
+Status: HOLD — remedial governance addendum; historical RF-4 closure is retained below.
 
-**OWNER OVL PASS / orchestration-review-complete / DA-relay-ready / RF-5 SPLIT APPROVED.** Owner ruling [comment `5012654906`](https://github.com/khorum08/SimThing/pull/1413#issuecomment-5012654906) closes the replacement [OVL], accepts the crash-fenced executable and existing screenshots, and lifts emergency hold `5012226484` for runtime evidence. Codex did not self-close [OVL] and does not self-relay to DA.
+## RF-4 historical status
+
+**DA-GRADUATED / merged [#1413](https://github.com/khorum08/SimThing/pull/1413) @ `99fa9d06`** — 2026-07-18.
+
+Owner ruling [comment `5012654906`](https://github.com/khorum08/SimThing/pull/1413#issuecomment-5012654906) closed the replacement [OVL], accepted the crash-fenced executable and existing screenshots, and lifted emergency hold `5012226484`. Need/`weight_profile` transport remains the approved bounded RF-5 split (`RF-NEED-WEIGHT-PROFILE-TRANSPORT-0`); screenshot C is out of RF-4 scope.
 
 ## Identity
 
@@ -205,6 +209,77 @@ The headless bite remains enabled Owner aggregate `15`, named-child-disabled agg
 | Inventory | `TEST-INVENTORY-DRIFT-CHECK-VERDICT: PASS` |
 | Doc budget | `DOC-BUDGET-VERDICT: PASS` |
 
-## Graduation routing
+## RF-4 historical graduation routing
 
 Posture is **OWNER OVL PASS / orchestration-review-complete / DA-relay-ready / RF-5 SPLIT APPROVED**. This ledger records the Owner/orchestration closure but does not claim graduation, merge authorization, RF-5 need transport, or DA approval. PR #1413 remains draft/open; orchestration alone performs the final exact-head review and DA relay.
+
+## PR / branch / merge
+
+| Field | Value |
+|---|---|
+| PR | #1414 |
+| Branch | `coder/rf-need-weight-profile-transport-0` |
+| Merge | held; draft/open/unmerged pending DA adjudication |
+
+## What changed
+
+- This governance-only addendum makes the already-changed RF-4 results ledger a valid relay-lint
+  target when GitHub selects the final changed `*_results.md` file for PR #1414.
+- The RF-5 Fork A tested correction remains solely the exact `[0]/[10]/Some(12)` workshop
+  assertion plus its RF-5 results record. Historical RF-4 implementation and Owner OVL evidence
+  above are unchanged.
+
+## Load-bearing proofs
+
+tested_code_sha: fd6d166276aeffded4e6b4418461878e511dafa5
+
+coverage_basis: PASS — `fd6d1662` contains the complete RF-5 Fork A assertion/evidence correction;
+all later remedial commits are results/governance metadata only and do not change tested code,
+production code, the canonical scenario, or either frozen executable lineage.
+
+- `tp_clause_economy_author_0`: 4/4 PASS.
+- `rf_need_binding_authoring_0`: 24/24 PASS.
+- RF-5 canonical/Studio and RF-4 capacity/conservation regression sweep: PASS.
+- Explicit Studio build: PASS.
+
+## Scope Ledger
+
+| Path | Classification | Disposition |
+|---|---|---|
+| `crates/simthing-workshop/tests/tp_clause_economy_author_0.rs` | workshop-homed exact assertion | Fork A equality correction |
+| `docs/tests/rf_need_weight_profile_transport_0_results.md` | RF-5 results/evidence | records complete local battery and identities |
+| this addendum | final governance metadata | relay target conformance only |
+| production/scenario/executable surfaces | unchanged | accepted and frozen identities retained |
+
+## Conformance
+
+- Homing boundary classification: the only code correction is scenario-specific proof in
+  `simthing-workshop`; no sealed production-crate code changed after the frozen head.
+- No grammar, kernel/WGSL, Studio runtime, GPU, threshold, adapter-policy, scenario, or doctrine
+  change; no rebuild or replacement Owner screenshot required.
+
+ANCHOR-ACK: field-policy-time-decisions@ae2d4c2c0c7d
+ANCHOR-ACK: founding-ontology-invariants@46802793fba7
+ANCHOR-ACK: movement-front@a0592b2f37ca
+ANCHOR-ACK: orientation-harness-core@8a365d1c0864
+ANCHOR-ACK: property-value-rf-overlays@084ee935326b
+ANCHOR-ACK: scanner-selftest-delta-gate@34fb2662baae
+ANCHOR-ACK: session-lifecycle-adr-family@d73fe5a83f25
+ANCHOR-ACK: stead-spatial-contract-core@b4a112cd02e8
+ANCHOR-ACK: structural-execution-convergence@17fa0732f44d
+ANCHOR-ACK: workshop-candidate-homing@3e584f0ad175
+
+## Known gaps / next
+
+- Fresh hosted clearance and relay lint must bind the exact final metadata head. PR #1414 remains
+  draft/open/unmerged until external DA adjudication.
+
+## Graduation routing
+
+| Field | Value |
+|---|---|
+| CI verdict | PASS-RELIABLE — complete local corpus, regression, Studio build, and doctrine checks green |
+| Triage entries | none; final doctrine scan has `failures=0 inspect=0` |
+| Risk class | tests/evidence-only correction; accepted implementation and frozen executable unchanged |
+| Falsification check | exact 12.8 equality is 4/4; RF-5 high/low and RF-4 live/runtime-negative proofs bite |
+| Recommended posture | hold draft/open/unmerged for fresh exact-head governance and DA adjudication |

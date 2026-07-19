@@ -36,6 +36,17 @@ fn hydrate_canonical() -> HydratedScenarioPack {
     hydrate_scenario_with_source_base(&document, Some(base)).expect("hydrate")
 }
 
+fn canonical_source() -> String {
+    std::fs::read_to_string(repo_root().join("scenarios/terran_pirate_galaxy.clause"))
+        .expect("read canonical clause")
+}
+
+fn hydrate_canonical_source(source: &str) -> Result<HydratedScenarioPack, String> {
+    let document = parse_raw_document(source.as_bytes()).map_err(|e| e.to_string())?;
+    let source_base = repo_root().join("scenarios");
+    hydrate_scenario_with_source_base(&document, Some(&source_base)).map_err(|e| e.to_string())
+}
+
 /// Production Studio session + authored live profile (same elevation path as Studio UI).
 fn studio_from_pack(pack: &HydratedScenarioPack) -> StudioSession {
     let mut studio = StudioSession::from_loaded_scenario(
@@ -63,6 +74,61 @@ fn open_field_bridge(studio: &StudioSession) -> StudioLiveSessionBridge {
     }
     assert_eq!(bridge.session_path(), StudioLiveSessionPath::FieldBearing);
     bridge
+}
+
+fn run_canonical_need_variant(source: &str) -> simthing_mapeditor::StudioLiveSessionBridgeReadout {
+    let pack = hydrate_canonical_source(source).expect("hydrate canonical TP need variant");
+    let studio = studio_from_pack(&pack);
+    let mut bridge = open_field_bridge(&studio);
+    assert_eq!(
+        bridge.readout().production_path,
+        "simthing_driver::SimSession::open_from_spec + step_once"
+    );
+    let (open_input, open_weight, open_need) = {
+        let sim = bridge.sim_session().expect("attached canonical session");
+        let binding = sim
+            .spec_state
+            .resolved_need_bindings
+            .first()
+            .expect("canonical need binding");
+        let values = sim.state.read_values();
+        let n_dims = sim.state.n_dims as usize;
+        let cell =
+            |slot: u32, col: simthing_core::ColumnIndex| values[slot as usize * n_dims + col.raw()];
+        (
+            cell(binding.inputs[0].slot, binding.inputs[0].col),
+            cell(binding.weights[0].slot, binding.weights[0].col),
+            cell(binding.participant_slot, binding.need_col),
+        )
+    };
+    assert!(
+        open_input > 0.0,
+        "authored input may be installed through the generic property path"
+    );
+    assert_eq!(
+        (open_weight, open_need),
+        (0.0, 0.0),
+        "emission-backed weight and derived need must be zero after open; only ordinary GPU execution may make them live"
+    );
+    bridge
+        .consume_scheduled_ticks(1)
+        .expect("one canonical TP production tick");
+    let readout = bridge.readout();
+    println!(
+        "RF-5 LIVE scenario={} open_input={} open_weight={} open_need={} tick={} profile={:?} weights={:?} need={:?} threshold={:?} result={:?} field_policy_events={}",
+        readout.scenario_id.as_deref().unwrap_or("--"),
+        open_input,
+        open_weight,
+        open_need,
+        readout.executed_ticks,
+        readout.recursive_rf.need_profile_id,
+        readout.recursive_rf.need_weight_values,
+        readout.recursive_rf.need_live_value,
+        readout.recursive_rf.need_threshold,
+        readout.recursive_rf.need_threshold_result,
+        readout.recursive_rf.need_threshold_event_count,
+    );
+    readout
 }
 
 #[derive(Debug)]
@@ -277,6 +343,104 @@ fn canonical_recursive_rf_bites_with_real_owner_aggregate_and_runtime_balance_ne
     println!(
         "RF4_RUNTIME_NEGATIVE governed_balance=disconnected actual_gpu_balance_delta={} violation={violation:?}",
         disconnected.measured_balance_delta,
+    );
+}
+
+/// RF-5 load-bearing proof: the canonical authored scalar is the only difference
+/// between the pair, and the generic need_binding drives both the live need cell
+/// and sealed FIELD_POLICY outcome through the production Studio path.
+#[test]
+fn canonical_tp_generic_need_binding_live_weight_controls_need_and_field_policy() {
+    let high_source = canonical_source();
+    assert_eq!(high_source.matches("current = 0.02").count(), 1);
+    let low_source = high_source.replacen("current = 0.02", "current = 0.005", 1);
+
+    let high = run_canonical_need_variant(&high_source);
+    let low = run_canonical_need_variant(&low_source);
+    for readout in [&high, &low] {
+        assert_eq!(readout.scenario_id.as_deref(), Some("terran_pirate_galaxy"));
+        assert_eq!(readout.executed_ticks, 1);
+        assert_eq!(
+            readout.recursive_rf.need_profile_id.as_deref(),
+            Some("terran_expansion_need")
+        );
+        assert_eq!(
+            readout.recursive_rf.need_profile_kind.as_deref(),
+            Some("expansion-need")
+        );
+        assert_eq!(readout.recursive_rf.need_threshold, Some(1.0));
+    }
+
+    let high_need = high
+        .recursive_rf
+        .need_live_value
+        .expect("high live need GPU readout");
+    let low_need = low
+        .recursive_rf
+        .need_live_value
+        .expect("low live need GPU readout");
+    assert!(
+        high_need > low_need && high_need > 1.0 && low_need < 1.0,
+        "authored weight only must change actual live need across threshold: high={high_need} low={low_need}"
+    );
+    assert!(
+        high.recursive_rf
+            .need_weight_values
+            .as_deref()
+            .is_some_and(|v| v.contains("terran=0.020000")),
+        "Studio must show actual high GPU weight value: {:?}",
+        high.recursive_rf.need_weight_values
+    );
+    assert!(
+        low.recursive_rf
+            .need_weight_values
+            .as_deref()
+            .is_some_and(|v| v.contains("terran=0.005000")),
+        "Studio must show actual low GPU weight value: {:?}",
+        low.recursive_rf.need_weight_values
+    );
+    assert_eq!(high.recursive_rf.need_threshold_event_count, 1);
+    assert_eq!(high.recursive_rf.need_threshold_result, Some("event"));
+    assert_eq!(low.recursive_rf.need_threshold_event_count, 0);
+    assert_eq!(low.recursive_rf.need_threshold_result, Some("no-event"));
+}
+
+/// RF-5 fail-closed proof: neither a missing profile join nor a property typo
+/// degrades to an empty/neutral binding.
+#[test]
+fn canonical_tp_need_binding_removed_or_misbound_fails_closed() {
+    let source = canonical_source();
+    let missing_profile = source.replacen(
+        "weight_profile = terran_expansion_need",
+        "weight_profile = terran_expansion_need_removed",
+        1,
+    );
+    let error = hydrate_canonical_source(&missing_profile)
+        .expect_err("missing profile join must fail hydrate");
+    assert!(
+        error.contains("no weight_profile with the same id"),
+        "unexpected missing-profile diagnostic: {error}"
+    );
+
+    let misbound = source.replacen(
+        "tp_economy::terran_expansion_weight_stockpile",
+        "tp_economy::terran_expansion_weight_missing",
+        1,
+    );
+    let pack = hydrate_canonical_source(&misbound)
+        .expect("semantic typo survives parse/hydrate to admission");
+    let studio = studio_from_pack(&pack);
+    let mut bridge = StudioLiveSessionBridge::new();
+    bridge.set_path_preference(StudioLiveSessionPathPreference::FieldBearing);
+    let error = bridge
+        .open_from_loaded_studio_session(&studio)
+        .expect_err("misbound property must fail production session admission");
+    let message = error.to_string();
+    assert!(
+        message.contains("terran_expansion_weight_missing")
+            || message.contains("need binding")
+            || message.contains("need_binding"),
+        "unexpected misbound-property diagnostic: {message}"
     );
 }
 
@@ -555,10 +719,14 @@ fn canonical_decision_fires_only_on_threshold_crossing() {
         "ordinary live ticks must produce a positive sealed threshold-event count; got {decisions} (open={open_disruption} after={after} thr={thr})"
     );
 
-    // No-threshold control: same below-threshold pack with thresholds stripped.
+    // No-threshold control: same below-threshold pack with both resource-economy
+    // and RF need threshold producers stripped.
     let mut pack_none = pack_below_threshold_disruption();
     if let Some(economy) = pack_none.game_mode.resource_economy.as_mut() {
         economy.emit_on_threshold.clear();
+    }
+    if let Some(resource_flow) = pack_none.game_mode.resource_flow.as_mut() {
+        resource_flow.need_bindings.clear();
     }
     let studio_none = studio_from_pack(&pack_none);
     let mut bridge_none = open_field_bridge(&studio_none);

@@ -232,7 +232,10 @@ fn structural_shell_fallback_still_selectable() {
     let mut bridge = StudioLiveSessionBridge::new();
     bridge.set_path_preference(StudioLiveSessionPathPreference::StructuralShell);
     open_fail_closed(&mut bridge, &studio).expect("shell open");
-    assert_eq!(bridge.session_path(), StudioLiveSessionPath::StructuralShell);
+    assert_eq!(
+        bridge.session_path(),
+        StudioLiveSessionPath::StructuralShell
+    );
     assert_eq!(
         bridge.readout().production_path,
         "simthing_driver::SimSession::open + step_once"
@@ -270,9 +273,7 @@ fn disruption_accretes_from_authored_emitter_under_live_ticks() {
         .map(|s| s.amount)
         .collect();
     let changed = (after - open_amount).abs() > 1e-4
-        || sample_series
-            .windows(2)
-            .any(|w| (w[0] - w[1]).abs() > 1e-4);
+        || sample_series.windows(2).any(|w| (w[0] - w[1]).abs() > 1e-4);
     assert!(
         changed,
         "disruption must show a live per-tick delta: open={open_amount} after={after} samples={sample_series:?}"
@@ -294,13 +295,15 @@ fn production_and_need_accrete_from_buildings_and_overlays() {
     let sim = bridge.sim_session().expect("attached");
     let current_before = amount_for_property(sim, "forge", "guild_ore_current");
     let stockpile_before = amount_for_property(sim, "forge", "guild_ore_stockpile");
-    assert!(current_before >= 20.0, "silo current seed: {current_before}");
+    assert!(
+        current_before >= 20.0,
+        "silo current seed: {current_before}"
+    );
     bridge.consume_scheduled_ticks(TICKS).expect("ticks");
     let sim = bridge.sim_session().expect("attached");
     let current_after = amount_for_property(sim, "forge", "guild_ore_current");
     let stockpile_after = amount_for_property(sim, "forge", "guild_ore_stockpile");
-    let ore_with_policy =
-        amount_at_install_target(sim, "guild", "forge", "ridge_ore_quantity");
+    let ore_with_policy = amount_at_install_target(sim, "guild", "forge", "ridge_ore_quantity");
     assert!(
         stockpile_after > stockpile_before || current_after < current_before,
         "silo transfer must move mass: current {current_before}->{current_after} stockpile {stockpile_before}->{stockpile_after}"
@@ -431,7 +434,10 @@ fn field_bearing_ticks_do_not_mutate_scenario_spec() {
     open_fail_closed(&mut bridge, &studio).expect("open");
     let _ = bridge.consume_scheduled_ticks(2).expect("ticks");
     let after = serialize_scenario_authority(&studio.scenario_authority).expect("ser");
-    assert_eq!(before, after, "Spec authority must be unchanged by bridge ticks");
+    assert_eq!(
+        before, after,
+        "Spec authority must be unchanged by bridge ticks"
+    );
     studio.scenario_authority.scenario_id.push_str("_mut");
     let mutated = serialize_scenario_authority(&studio.scenario_authority).expect("ser");
     assert_ne!(before, mutated);
@@ -456,9 +462,7 @@ fn field_bearing_readout_samples_show_live_accretion_delta() {
         "readout must retain ≥2 tick samples for disruption property; got {series:?}"
     );
     let amounts: Vec<f32> = series.iter().map(|(_, a)| *a).collect();
-    let changed = amounts
-        .windows(2)
-        .any(|w| (w[0] - w[1]).abs() > 1e-4)
+    let changed = amounts.windows(2).any(|w| (w[0] - w[1]).abs() > 1e-4)
         || (amounts.first().copied().unwrap_or(0.0) - amounts.last().copied().unwrap_or(0.0)).abs()
             > 1e-4;
     assert!(
