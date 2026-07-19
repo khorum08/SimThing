@@ -18,7 +18,7 @@ use simthing_core::{
     OverlayKind, SimProperty, SimThing, SimThingId, SubFieldRole, SubFieldSpec,
 };
 use simthing_driver::{resolve_node_columns, Scenario, SessionError, SimSession, StepOnceOutcome};
-use simthing_gpu::{EmissionFormula, SlotAllocator};
+use simthing_gpu::SlotAllocator;
 use simthing_spec::{
     compile_property, game_session_child, game_session_owners, owner_entity_id,
     planet_child_rf_participant_inputs, validate_scenario_links,
@@ -286,6 +286,8 @@ pub enum StudioLiveSessionBridgeError {
     FieldBearingProfileMissing,
     #[error("field-bearing open_from_spec failed: {0}")]
     FieldBearingOpenFailed(String),
+    #[error("threshold event readback failed after {executed} executed ticks: {message}")]
+    ThresholdReadbackFailed { executed: u64, message: String },
 }
 
 /// Production live handle over a loaded StudioSession authority.
@@ -495,13 +497,9 @@ impl StudioLiveSessionBridge {
                 // and are not required for 12.8 field accretion under live ticks).
                 let field_mode = field_bearing_game_mode(&profile.game_mode);
                 match SimSession::open_from_spec(scenario, &field_mode) {
-                    Ok(mut sim) => {
-                        if let Err(e) = ensure_resource_economy_threshold_ops(&mut sim) {
-                            return Err(StudioLiveSessionBridgeError::FieldBearingOpenFailed(e));
-                        }
-                        // Authored Constant seeds are initial state only — not a time-zero
-                        // decision. Decision counts accumulate from live step_once only.
-                        // Bind telemetry to materialized emission source_slot/source_col.
+                    Ok(sim) => {
+                        // Bind telemetry to admitted emission source_slot/source_col. Values
+                        // become live only through ordinary production GPU execution.
                         self.sample_loci = emission_sample_loci_from_session(&sim);
                         // Tick-0 sample: open-time field state before the first step_once so
                         // the OVL table can show open→live deltas (not only post-tick plateaus).
@@ -600,10 +598,12 @@ impl StudioLiveSessionBridge {
                     self.executed_ticks = self.executed_ticks.saturating_add(step_ticks);
                     // Re-read AccumulatorOp threshold emissions left by the production tick
                     // (existing public runtime API — no driver/kernel seam widening).
-                    let threshold_event_kinds = {
+                    let threshold_observation = {
                         let sim = self.sim.as_mut().expect("sim present");
                         last_tick_threshold_event_kinds(sim)
                     };
+                    let threshold_event_kinds =
+                        self.apply_threshold_event_observation(threshold_observation)?;
                     let threshold_event_count = threshold_event_kinds.len() as u32;
                     self.last_decision_event_count = threshold_event_count;
                     self.cumulative_decision_events = self
@@ -733,6 +733,20 @@ impl StudioLiveSessionBridge {
 
     pub fn sim_session_mut(&mut self) -> Option<&mut SimSession> {
         self.sim.as_mut()
+    }
+
+    fn apply_threshold_event_observation(
+        &mut self,
+        observation: Result<Vec<u32>, String>,
+    ) -> Result<Vec<u32>, StudioLiveSessionBridgeError> {
+        observation.map_err(|message| {
+            self.status = StudioLiveSessionBridgeStatus::Errored;
+            self.last_error = Some(message.clone());
+            StudioLiveSessionBridgeError::ThresholdReadbackFailed {
+                executed: self.executed_ticks,
+                message,
+            }
+        })
     }
 }
 
@@ -927,61 +941,16 @@ pub fn driver_scenario_field_bearing_from_profile(
     })
 }
 
-/// Open-time wiring for field-bearing sessions:
-/// 1. Seed property columns from authored Constant emission formulas (initial state only)
-/// Generic threshold registrations and post-RF need rescans are installed by
-/// `SimSession::install_spec_state`. This bridge only materializes the authored
-/// Constant field seeds used by the existing Studio elevation path.
-fn ensure_resource_economy_threshold_ops(session: &mut SimSession) -> Result<(), String> {
-    materialize_authored_constant_emission_seeds(session)
-}
-
 /// Read sealed AccumulatorOp threshold event kinds from the most recent production tick.
 /// Uses the existing public runtime readback (events remain until the next prepare).
-fn last_tick_threshold_event_kinds(sim: &mut SimSession) -> Vec<u32> {
+fn last_tick_threshold_event_kinds(sim: &mut SimSession) -> Result<Vec<u32>, String> {
     let Some(runtime) = sim.state.accumulator_runtime.as_mut() else {
-        return Vec::new();
+        return Err("threshold event runtime unavailable after production tick".into());
     };
     runtime
         .readback_threshold_events(&sim.state.ctx)
         .map(|events| events.into_iter().map(|event| event.event_kind()).collect())
-        .unwrap_or_default()
-}
-
-fn materialize_authored_constant_emission_seeds(session: &mut SimSession) -> Result<(), String> {
-    let Some(registry) = session.spec_state.resource_economy_registry.as_ref() else {
-        return Ok(());
-    };
-    let n_dims = session.state.n_dims as usize;
-    let mut values = session.state.read_values();
-    let mut prev = values.clone();
-    let mut any = false;
-    for emission in &registry.registrations.emissions {
-        let EmissionFormula::Constant { value } = emission.formula else {
-            continue;
-        };
-        if !value.is_finite() {
-            continue;
-        }
-        let idx = emission.source_slot as usize * n_dims + emission.source_col as usize;
-        if let Some(slot) = values.get_mut(idx) {
-            // Authored constant is the emission's field seed (overlay-coupled initial pressure).
-            *slot = (*slot).max(value);
-            any = true;
-        }
-        // Previous stays at 0 (or lower) so Rising thresholds can observe a first-tick crossing.
-        if let Some(slot) = prev.get_mut(idx) {
-            *slot = 0.0;
-        }
-    }
-    if !any {
-        return Ok(());
-    }
-    session.state.install_resolved_values_at_boundary(&values);
-    session
-        .state
-        .install_resolved_previous_values_at_boundary(&prev);
-    Ok(())
+        .map_err(|error| format!("sealed threshold event readback failed: {error}"))
 }
 
 /// Build telemetry loci from **materialized** emission registrations (slot/col authority).
@@ -1515,6 +1484,31 @@ mod unit_smoke {
         assert_eq!(b.executed_ticks(), 0);
         assert_eq!(b.session_path(), StudioLiveSessionPath::StructuralShell);
         assert!(bridge_module_source_forbids_workshop_residue());
+    }
+
+    #[test]
+    fn threshold_observation_error_is_not_no_event() {
+        let mut bridge = StudioLiveSessionBridge::new();
+        let error = bridge
+            .apply_threshold_event_observation(Err(
+                "threshold event runtime unavailable after production tick".into(),
+            ))
+            .expect_err("missing sealed readback must fail closed");
+        assert!(matches!(
+            error,
+            StudioLiveSessionBridgeError::ThresholdReadbackFailed { .. }
+        ));
+        assert_eq!(bridge.status(), StudioLiveSessionBridgeStatus::Errored);
+        assert_eq!(bridge.recursive_rf_readout.need_threshold_result, None);
+    }
+
+    #[test]
+    fn field_bridge_forbids_dense_boundary_seeding() {
+        let source = include_str!("studio_live_session_bridge.rs");
+        let values_install = [".install_resolved", "_values_at_boundary("].concat();
+        let previous_install = [".install_resolved_previous", "_values_at_boundary("].concat();
+        assert!(!source.contains(&values_install));
+        assert!(!source.contains(&previous_install));
     }
 
     #[test]

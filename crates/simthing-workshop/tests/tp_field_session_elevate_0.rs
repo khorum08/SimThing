@@ -84,13 +84,42 @@ fn run_canonical_need_variant(source: &str) -> simthing_mapeditor::StudioLiveSes
         bridge.readout().production_path,
         "simthing_driver::SimSession::open_from_spec + step_once"
     );
+    let (open_input, open_weight, open_need) = {
+        let sim = bridge.sim_session().expect("attached canonical session");
+        let binding = sim
+            .spec_state
+            .resolved_need_bindings
+            .first()
+            .expect("canonical need binding");
+        let values = sim.state.read_values();
+        let n_dims = sim.state.n_dims as usize;
+        let cell =
+            |slot: u32, col: simthing_core::ColumnIndex| values[slot as usize * n_dims + col.raw()];
+        (
+            cell(binding.inputs[0].slot, binding.inputs[0].col),
+            cell(binding.weights[0].slot, binding.weights[0].col),
+            cell(binding.participant_slot, binding.need_col),
+        )
+    };
+    assert!(
+        open_input > 0.0,
+        "authored input may be installed through the generic property path"
+    );
+    assert_eq!(
+        (open_weight, open_need),
+        (0.0, 0.0),
+        "emission-backed weight and derived need must be zero after open; only ordinary GPU execution may make them live"
+    );
     bridge
         .consume_scheduled_ticks(1)
         .expect("one canonical TP production tick");
     let readout = bridge.readout();
     println!(
-        "RF-5 LIVE scenario={} tick={} profile={:?} weights={:?} need={:?} threshold={:?} result={:?} field_policy_events={}",
+        "RF-5 LIVE scenario={} open_input={} open_weight={} open_need={} tick={} profile={:?} weights={:?} need={:?} threshold={:?} result={:?} field_policy_events={}",
         readout.scenario_id.as_deref().unwrap_or("--"),
+        open_input,
+        open_weight,
+        open_need,
         readout.executed_ticks,
         readout.recursive_rf.need_profile_id,
         readout.recursive_rf.need_weight_values,
@@ -690,10 +719,14 @@ fn canonical_decision_fires_only_on_threshold_crossing() {
         "ordinary live ticks must produce a positive sealed threshold-event count; got {decisions} (open={open_disruption} after={after} thr={thr})"
     );
 
-    // No-threshold control: same below-threshold pack with thresholds stripped.
+    // No-threshold control: same below-threshold pack with both resource-economy
+    // and RF need threshold producers stripped.
     let mut pack_none = pack_below_threshold_disruption();
     if let Some(economy) = pack_none.game_mode.resource_economy.as_mut() {
         economy.emit_on_threshold.clear();
+    }
+    if let Some(resource_flow) = pack_none.game_mode.resource_flow.as_mut() {
+        resource_flow.need_bindings.clear();
     }
     let studio_none = studio_from_pack(&pack_none);
     let mut bridge_none = open_field_bridge(&studio_none);
