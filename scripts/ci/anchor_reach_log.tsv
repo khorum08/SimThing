@@ -71,3 +71,5 @@ date	role	query	anchors_served	hit
 2026-07-18T04:37:52Z	coding	--grep field-policy-time-decisions	field-policy-time-decisions	hit
 2026-07-18T04:37:56Z	coding	--grep founding-ontology-invariants	founding-ontology-invariants	hit
 2026-07-18T04:38:00Z	coding	--grep property-value-rf-overlays	property-value-rf-overlays	hit
+2026-07-19T03:01:46Z	coding	--grep need_binding	none	none
+2026-07-19T03:01:46Z	coding	--domain field-policy	field-policy-time-decisions	hit

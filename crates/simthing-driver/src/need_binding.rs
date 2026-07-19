@@ -1,7 +1,8 @@
 //! RF-5A: admit semantic need_binding → full-cell EvalEML + sealed threshold.
 //!
 //! Row authority = **entity-name uniqueness** (install_targets). PropertyKey alone
-//! is never a row. No first-DFS owner, no participant property invent.
+//! is never a row. No first-DFS owner, no participant property invent, no binding
+//! re-home of World-root stockpile state.
 
 use simthing_core::{
     eml_nodes, rebuild_emit_on_threshold_ops, AccumulatorOp, ColumnIndex, CombineFn, ConsumeMode,
@@ -42,8 +43,20 @@ pub struct ResolvedNeedBinding {
     pub inputs: Vec<ResolvedFullCell>,
     pub weights: Vec<ResolvedFullCell>,
     pub nodes: Vec<EmlNodeGpu>,
-    pub threshold: Option<f32>,
-    pub event_kind: Option<u32>,
+    pub threshold: f32,
+    pub event_kind: u32,
+}
+
+fn nb_err(
+    binding: &NeedBindingSpec,
+    reason: impl Into<String>,
+    span: Option<usize>,
+) -> InstallError {
+    InstallError::NeedBindingInvalid {
+        binding: binding.id.clone(),
+        reason: reason.into(),
+        span_token: span.or(binding.source_span_token),
+    }
 }
 
 pub fn resolve_need_bindings(
@@ -73,22 +86,17 @@ fn resolve_one(
     allocator: &SlotAllocator,
 ) -> Result<ResolvedNeedBinding, InstallError> {
     if binding.inputs.is_empty() || binding.weights.is_empty() {
-        return Err(InstallError::NeedBindingInvalid {
-            binding: binding.id.clone(),
-            reason: "inputs and weights required".into(),
-        });
+        return Err(nb_err(binding, "inputs and weights required", None));
     }
     if binding.inputs.len() != binding.weights.len() {
-        return Err(InstallError::NeedBindingInvalid {
-            binding: binding.id.clone(),
-            reason: "input/weight arity mismatch".into(),
-        });
+        return Err(nb_err(binding, "input/weight arity mismatch", None));
     }
     if binding.stack.gadgets.len() != 1 {
-        return Err(InstallError::NeedBindingInvalid {
-            binding: binding.id.clone(),
-            reason: "stack must contain exactly one WeightedAccumulator".into(),
-        });
+        return Err(nb_err(
+            binding,
+            "stack must contain exactly one WeightedAccumulator",
+            None,
+        ));
     }
     match &binding.stack.gadgets[0] {
         EmlGadgetInstanceSpec::WeightedAccumulator {
@@ -99,64 +107,75 @@ fn resolve_one(
             if input_cols.len() != binding.inputs.len()
                 || weight_cols.len() != binding.weights.len()
             {
-                return Err(InstallError::NeedBindingInvalid {
-                    binding: binding.id.clone(),
-                    reason: "stack arity vs input/weight loci mismatch".into(),
-                });
+                return Err(nb_err(
+                    binding,
+                    "stack arity vs input/weight loci mismatch",
+                    None,
+                ));
             }
         }
         other => {
-            return Err(InstallError::NeedBindingInvalid {
-                binding: binding.id.clone(),
-                reason: format!("expected WeightedAccumulator, got {}", other.kind_name()),
-            });
+            return Err(nb_err(
+                binding,
+                format!("expected WeightedAccumulator, got {}", other.kind_name()),
+                None,
+            ));
         }
     }
 
-    let (arena_idx, arena) = if let Some((i, a)) = spec
+    // Explicit arena only — no first-arena fallback.
+    let (arena_idx, arena) = spec
         .arenas
         .iter()
         .enumerate()
         .find(|(_, a)| a.name == binding.arena)
-    {
-        (i, a)
-    } else if (binding.arena == "default" || binding.arena.is_empty()) && !spec.arenas.is_empty() {
-        (0, &spec.arenas[0])
-    } else {
-        return Err(InstallError::Spec(SpecError::UnknownArenaReference {
-            arena: binding.arena.clone(),
-            context: format!("need_bindings.{}", binding.id),
-        }));
-    };
+        .ok_or_else(|| {
+            nb_err(
+                binding,
+                format!(
+                    "arena `{}` not found (explicit arena required; no first-arena guess)",
+                    binding.arena
+                ),
+                binding.arena_span_token,
+            )
+        })?;
 
-    let participant_hosted = resolve_unique_entity(scenario, &binding.participant, &binding.id)?;
+    let participant_hosted =
+        resolve_unique_entity(scenario, &binding.participant, binding, binding.participant_span_token)?;
     let raw = participant_hosted.raw();
     if !arena
         .explicit_participants
         .iter()
         .any(|p| p.subtree_root_id == raw)
     {
-        return Err(InstallError::NeedBindingInvalid {
-            binding: binding.id.clone(),
-            reason: format!(
+        return Err(nb_err(
+            binding,
+            format!(
                 "participant entity `{}` is not admitted to arena `{}`",
                 binding.participant, arena.name
             ),
-        });
+            binding.participant_span_token,
+        ));
     }
     let participant_slot = scaffold
         .index
         .participant_slot(participant_hosted, arena_idx as u32)
-        .ok_or_else(|| InstallError::NeedBindingInvalid {
-            binding: binding.id.clone(),
-            reason: "participant has no arena wrapper slot".into(),
+        .ok_or_else(|| {
+            nb_err(
+                binding,
+                "participant has no arena wrapper slot",
+                binding.participant_span_token,
+            )
         })?
         .raw();
     let participant_wrapper_id = allocator
         .owner_of(SlotIndex::new(participant_slot))
-        .ok_or_else(|| InstallError::NeedBindingInvalid {
-            binding: binding.id.clone(),
-            reason: "participant slot has no owner".into(),
+        .ok_or_else(|| {
+            nb_err(
+                binding,
+                "participant slot has no owner",
+                binding.participant_span_token,
+            )
         })?;
 
     let flow_property_id = registry
@@ -169,15 +188,15 @@ fn resolve_one(
                 ),
             })
         })?;
-    // Fail closed: wrapper must already own the flow property (no invent).
     if !entity_has_property(root, participant_wrapper_id, flow_property_id) {
-        return Err(InstallError::NeedBindingInvalid {
-            binding: binding.id.clone(),
-            reason: format!(
-                "arena participant wrapper for `{}` does not already own flow property {}::{}",
+        return Err(nb_err(
+            binding,
+            format!(
+                "arena participant wrapper for `{}` does not already own flow property {}::{} (no install invent)",
                 binding.participant, arena.flow_property.namespace, arena.flow_property.name
             ),
-        });
+            binding.participant_span_token,
+        ));
     }
     let flow_layout = &registry.property(flow_property_id).layout;
     let _ = resolve_node_columns(flow_layout, &arena.name).map_err(|_| {
@@ -188,9 +207,12 @@ fn resolve_one(
     let need_col = registry
         .column_range(flow_property_id)
         .col_for_role(&SubFieldRole::Named("weight".into()), flow_layout)
-        .ok_or_else(|| InstallError::NeedBindingInvalid {
-            binding: binding.id.clone(),
-            reason: "flow property missing AllocatorWeight Named(\"weight\")".into(),
+        .ok_or_else(|| {
+            nb_err(
+                binding,
+                "flow property missing AllocatorWeight Named(\"weight\")",
+                binding.participant_span_token,
+            )
         })?;
 
     let inputs = resolve_loci(
@@ -199,7 +221,7 @@ fn resolve_one(
         root,
         registry,
         allocator,
-        &binding.id,
+        binding,
     )?;
     let weights = resolve_loci(
         &binding.weights,
@@ -207,20 +229,23 @@ fn resolve_one(
         root,
         registry,
         allocator,
-        &binding.id,
+        binding,
     )?;
 
-    // EvalEML is slot-local: all sources must share one row.
+    // EvalEML is slot-local. Cross-entity loci need multi-slot EML (not admitted).
     let eml_source_slot = inputs[0].slot;
     for cell in inputs.iter().chain(weights.iter()) {
         if cell.slot != eml_source_slot {
-            return Err(InstallError::NeedBindingInvalid {
-                binding: binding.id.clone(),
-                reason: format!(
-                    "input/weight sources span multiple entity rows (slot {} vs {})",
+            return Err(nb_err(
+                binding,
+                format!(
+                    "STOP: input/weight sources span multiple entity rows (slot {} vs {}). \
+                     DA-admitted multi-locus shape requires multi-slot EvalEML or OrderBand \
+                     product without unowned mirrors — not available; all loci must share one entity for RF-5A",
                     eml_source_slot, cell.slot
                 ),
-            });
+                None,
+            ));
         }
     }
 
@@ -246,28 +271,32 @@ fn resolve_one(
 fn resolve_unique_entity(
     scenario: &Scenario,
     entity: &str,
-    binding_id: &str,
+    binding: &NeedBindingSpec,
+    span: Option<usize>,
 ) -> Result<SimThingId, InstallError> {
     let Some(ids) = scenario.install_targets.get(entity) else {
-        return Err(InstallError::NeedBindingInvalid {
-            binding: binding_id.into(),
-            reason: format!("entity `{entity}` is not defined in scenario install_targets"),
-        });
+        return Err(nb_err(
+            binding,
+            format!("entity `{entity}` is not defined in scenario install_targets"),
+            span,
+        ));
     };
     if ids.is_empty() {
-        return Err(InstallError::NeedBindingInvalid {
-            binding: binding_id.into(),
-            reason: format!("entity `{entity}` has zero install hosts"),
-        });
+        return Err(nb_err(
+            binding,
+            format!("entity `{entity}` has zero install hosts"),
+            span,
+        ));
     }
     if ids.len() != 1 {
-        return Err(InstallError::NeedBindingInvalid {
-            binding: binding_id.into(),
-            reason: format!(
+        return Err(nb_err(
+            binding,
+            format!(
                 "entity `{entity}` is ambiguous ({} hosts); entity-name uniqueness required",
                 ids.len()
             ),
-        });
+            span,
+        ));
     }
     Ok(ids[0])
 }
@@ -278,43 +307,54 @@ fn resolve_loci(
     root: &SimThing,
     registry: &DimensionRegistry,
     allocator: &SlotAllocator,
-    binding_id: &str,
+    binding: &NeedBindingSpec,
 ) -> Result<Vec<ResolvedFullCell>, InstallError> {
     let mut out = Vec::with_capacity(loci.len());
     for locus in loci {
-        let simthing_id = resolve_unique_entity(scenario, &locus.entity, binding_id)?;
+        let simthing_id =
+            resolve_unique_entity(scenario, &locus.entity, binding, locus.source_span_token)?;
         let prop_id = registry
             .id_of(&locus.property.namespace, &locus.property.name)
             .ok_or_else(|| {
-                InstallError::Spec(SpecError::UnknownResourceFlowProperty {
-                    property: format!("{}::{}", locus.property.namespace, locus.property.name),
-                })
+                nb_err(
+                    binding,
+                    format!(
+                        "property {}::{} not registered",
+                        locus.property.namespace, locus.property.name
+                    ),
+                    locus.source_span_token,
+                )
             })?;
         if !entity_has_property(root, simthing_id, prop_id) {
-            return Err(InstallError::NeedBindingInvalid {
-                binding: binding_id.into(),
-                reason: format!(
-                    "entity `{}` does not own property {}::{}",
+            return Err(nb_err(
+                binding,
+                format!(
+                    "entity `{}` does not own property {}::{} (no binding invent/re-home)",
                     locus.entity, locus.property.namespace, locus.property.name
                 ),
-            });
+                locus.source_span_token,
+            ));
         }
         let layout = &registry.property(prop_id).layout;
         let col = registry
             .column_range(prop_id)
             .col_for_role(&locus.role, layout)
-            .ok_or_else(|| InstallError::NeedBindingInvalid {
-                binding: binding_id.into(),
-                reason: format!(
-                    "property {}::{} missing role {:?}",
-                    locus.property.namespace, locus.property.name, locus.role
-                ),
+            .ok_or_else(|| {
+                nb_err(
+                    binding,
+                    format!(
+                        "property {}::{} missing role {:?}",
+                        locus.property.namespace, locus.property.name, locus.role
+                    ),
+                    locus.source_span_token,
+                )
             })?;
         let slot = allocator.slot_of(simthing_id).ok_or_else(|| {
-            InstallError::NeedBindingInvalid {
-                binding: binding_id.into(),
-                reason: format!("entity `{}` has no GPU slot", locus.entity),
-            }
+            nb_err(
+                binding,
+                format!("entity `{}` has no GPU slot", locus.entity),
+                locus.source_span_token,
+            )
         })?.raw();
         out.push(ResolvedFullCell {
             entity: locus.entity.clone(),
@@ -402,6 +442,7 @@ pub fn prepare_need_binding_cells(
             return Err(InstallError::NeedBindingInvalid {
                 binding: binding.id.clone(),
                 reason: "participant wrapper missing".into(),
+                span_token: None,
             });
         };
         let Some(flow_pid) = registry
@@ -412,12 +453,14 @@ pub fn prepare_need_binding_cells(
             return Err(InstallError::NeedBindingInvalid {
                 binding: binding.id.clone(),
                 reason: "need column has no property owner in registry".into(),
+                span_token: None,
             });
         };
         let Some(value) = wrapper.properties.get_mut(&flow_pid) else {
             return Err(InstallError::NeedBindingInvalid {
                 binding: binding.id.clone(),
                 reason: "participant flow property missing (no install-time invent)".into(),
+                span_token: None,
             });
         };
         let layout = registry.property(flow_pid).layout.clone();
@@ -483,15 +526,12 @@ pub fn inject_need_binding_thresholds(
 ) {
     let mut injected = false;
     for binding in resolved {
-        let (Some(threshold), Some(event_kind)) = (binding.threshold, binding.event_kind) else {
-            continue;
-        };
         let reg = EmitOnThresholdRegistration {
             slot: SlotIndex::new(binding.participant_slot),
             col: binding.need_col,
-            threshold,
+            threshold: binding.threshold,
             direction: ThresholdDirection::Upward,
-            event_kind,
+            event_kind: binding.event_kind,
             buffer: EmitOnThresholdBuffer::Values,
         };
         let _ = rebuild_emit_on_threshold_ops(std::slice::from_ref(&reg));
@@ -513,22 +553,19 @@ pub fn inject_need_binding_thresholds(
 pub fn register_post_rf_need_threshold_rescan(
     state: &mut simthing_gpu::WorldGpuState,
     resolved: &[ResolvedNeedBinding],
-) {
+) -> Result<(), String> {
     use simthing_gpu::{DIR_UPWARD, THRESH_BUF_VALUES, ThresholdRegistration};
     let need_regs: Vec<ThresholdRegistration> = resolved
         .iter()
-        .filter_map(|b| {
-            let threshold = b.threshold?;
-            let event_kind = b.event_kind?;
-            Some(ThresholdRegistration {
-                slot: b.participant_slot,
-                col: b.need_col.raw_u32(),
-                threshold,
-                direction: DIR_UPWARD,
-                event_kind,
-                buffer: THRESH_BUF_VALUES,
-            })
+        .map(|b| ThresholdRegistration {
+            slot: b.participant_slot,
+            col: b.need_col.raw_u32(),
+            threshold: b.threshold,
+            direction: DIR_UPWARD,
+            event_kind: b.event_kind,
+            buffer: THRESH_BUF_VALUES,
         })
         .collect();
     state.set_post_rf_need_threshold_regs(need_regs);
+    Ok(())
 }

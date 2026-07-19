@@ -1133,28 +1133,37 @@ impl WorldGpuState {
     }
 
     /// Need-only append rescan after RF (no prepare wipe of pre-RF events).
-    pub fn rescan_accumulator_thresholds_after_resource_flow(&mut self) {
+    ///
+    /// Failures propagate — callers must not treat a silent skip as success.
+    pub fn rescan_accumulator_thresholds_after_resource_flow(
+        &mut self,
+    ) -> Result<(), String> {
         if self.post_rf_need_threshold_regs.is_empty() {
-            return;
+            return Ok(());
         }
         let need = self.post_rf_need_threshold_regs.clone();
         let full = self.post_rf_full_threshold_regs.clone();
         let Some(runtime) = self.accumulator_runtime.as_mut() else {
-            return;
+            return Err(
+                "post-RF need threshold rescan requires accumulator_runtime".into(),
+            );
         };
         let Some(mut session) = runtime.take_threshold_session() else {
-            return;
+            runtime.restore_threshold_session(None);
+            return Err(
+                "post-RF need threshold rescan requires an active threshold session".into(),
+            );
         };
-        let Ok(need_upload) = crate::PackedThresholdUpload::from_registrations(&need) else {
-            runtime.restore_threshold_session(Some(session));
-            return;
+        let need_upload = match crate::PackedThresholdUpload::from_registrations(&need) {
+            Ok(u) => u,
+            Err(e) => {
+                runtime.restore_threshold_session(Some(session));
+                return Err(format!("pack need threshold regs: {e}"));
+            }
         };
-        if session
-            .upload_packed_threshold_ops(&self.ctx, &need_upload)
-            .is_err()
-        {
+        if let Err(e) = session.upload_packed_threshold_ops(&self.ctx, &need_upload) {
             runtime.restore_threshold_session(Some(session));
-            return;
+            return Err(format!("upload need threshold regs: {e}"));
         }
         let mut encoder = self
             .ctx
@@ -1172,10 +1181,20 @@ impl WorldGpuState {
         );
         self.ctx.queue.submit(Some(encoder.finish()));
         session.finish_threshold_scan(&self.ctx);
-        if let Ok(full_upload) = crate::PackedThresholdUpload::from_registrations(&full) {
-            let _ = session.upload_packed_threshold_ops(&self.ctx, &full_upload);
+        match crate::PackedThresholdUpload::from_registrations(&full) {
+            Ok(full_upload) => {
+                if let Err(e) = session.upload_packed_threshold_ops(&self.ctx, &full_upload) {
+                    runtime.restore_threshold_session(Some(session));
+                    return Err(format!("restore full threshold regs after need rescan: {e}"));
+                }
+            }
+            Err(e) => {
+                runtime.restore_threshold_session(Some(session));
+                return Err(format!("pack full threshold regs after need rescan: {e}"));
+            }
         }
         runtime.restore_threshold_session(Some(session));
+        Ok(())
     }
 
     pub fn append_accumulator_threshold_ops(

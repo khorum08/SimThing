@@ -83,8 +83,13 @@ pub enum InstallError {
     #[error("Resource Flow base obligation `{obligation}` arena `{arena}` flow property has no IntrinsicFlow sub-field")]
     BaseFlowObligationMissingIntrinsicFlow { obligation: String, arena: String },
 
-    #[error("need_binding `{binding}` invalid: {reason}")]
-    NeedBindingInvalid { binding: String, reason: String },
+    #[error("need_binding `{binding}` invalid: {reason} (span_token={span_token:?})")]
+    NeedBindingInvalid {
+        binding: String,
+        reason: String,
+        /// Clause token index for spanned admission diagnostics.
+        span_token: Option<usize>,
+    },
 
     #[error("event `{event_id}` references unknown overlay `{overlay_ref}` (no standalone pack overlay with that authored id)")]
     UnknownOverlayRef {
@@ -247,17 +252,11 @@ pub fn compile_and_install(
         state.resource_flow_capacity_budget = report.capacity_budget;
     }
 
-    // RF-5A: place need_binding property instances on named entities *before*
-    // economy materialize so emission slots bind to entity rows (not World root).
-    if let Some(resource_flow) = &game_mode.resource_flow {
-        if !resource_flow.need_bindings.is_empty() {
-            seed_need_binding_entity_properties(resource_flow, scenario, registry, root)?;
-        }
-    }
-
     // ── 4c. Resource economy (Phase T): compile + live-slot materialization.
+    // Properties are placed on authored entity hosts (stockpile owner / install
+    // target prefix), not invented by need_binding.
     if let Some(resource_economy) = &game_mode.resource_economy {
-        ensure_resource_economy_properties(resource_economy, registry, root)?;
+        ensure_resource_economy_properties(resource_economy, registry, root, scenario)?;
         let eml_registry = simthing_core::EmlExpressionRegistry::new();
         let compiled = compile_resource_economy(resource_economy, registry, &eml_registry)?;
         state.resource_economy_registry = Some(materialize_resource_economy_registry_for_session(
@@ -269,7 +268,7 @@ pub fn compile_and_install(
         )?);
     }
 
-    // RF-5A: resolve full-cell bindings after economy materialize + RF scaffold.
+    // RF-5A: resolve full-cell bindings only from already-authored property instances.
     if let Some(resource_flow) = &game_mode.resource_flow {
         if !resource_flow.need_bindings.is_empty() {
             let resolved = crate::need_binding::resolve_need_bindings(
@@ -426,76 +425,51 @@ fn install_standalone_overlay(
     Ok(installed_ids)
 }
 
+/// Materialize resource-economy property instances onto authored entity hosts.
+///
+/// Stockpile/field naming uses `{entity}_{resource}_…`. When the property name
+/// starts with a unique `install_targets` entity id, the instance is placed on
+/// that entity — not World root. This is generic economy placement, not
+/// need_binding-specific re-homing.
 fn ensure_resource_economy_properties(
     spec: &ResourceEconomySpec,
     registry: &DimensionRegistry,
     root: &mut SimThing,
+    scenario: &Scenario,
 ) -> Result<(), InstallError> {
     for key in resource_economy_property_keys(spec) {
         let property_id = registry
             .id_of(&key.namespace, &key.name)
             .ok_or_else(|| SpecError::ValidationFailed)?;
-        if find_property_owner(root, property_id).is_none() {
-            let layout = registry.property(property_id).layout.clone();
-            root.add_property(property_id, PropertyValue::from_layout(&layout));
+        if find_property_owner(root, property_id).is_some() {
+            continue;
         }
+        let layout = registry.property(property_id).layout.clone();
+        let host_id = infer_entity_host_for_property(&key, scenario).unwrap_or(root.id);
+        let host = find_simthing_mut(root, host_id).ok_or_else(|| {
+            InstallError::Spec(SpecError::ValidationFailed)
+        })?;
+        host.add_property(property_id, PropertyValue::from_layout(&layout));
     }
     Ok(())
 }
 
-/// Place registered properties on named entity hosts for need_binding loci.
-/// Does not invent property schema — only materializes instances on the entity
-/// named by the authored binding (entity-name uniqueness supplies the row).
-fn seed_need_binding_entity_properties(
-    flow: &ResourceFlowSpec,
+/// Map `{entity}_…` property names onto unique install_targets keys.
+fn infer_entity_host_for_property(
+    key: &PropertyKey,
     scenario: &Scenario,
-    registry: &DimensionRegistry,
-    root: &mut SimThing,
-) -> Result<(), InstallError> {
-    for binding in &flow.need_bindings {
-        for locus in binding.inputs.iter().chain(binding.weights.iter()) {
-            let Some(hosts) = scenario.install_targets.get(&locus.entity) else {
-                return Err(InstallError::NeedBindingInvalid {
-                    binding: binding.id.clone(),
-                    reason: format!("entity `{}` not in install_targets", locus.entity),
-                });
-            };
-            if hosts.len() != 1 {
-                return Err(InstallError::NeedBindingInvalid {
-                    binding: binding.id.clone(),
-                    reason: format!(
-                        "entity `{}` is ambiguous ({} hosts)",
-                        locus.entity,
-                        hosts.len()
-                    ),
-                });
-            }
-            let host_id = hosts[0];
-            let prop_id = registry
-                .id_of(&locus.property.namespace, &locus.property.name)
-                .ok_or_else(|| {
-                    InstallError::Spec(SpecError::UnknownResourceFlowProperty {
-                        property: format!("{}::{}", locus.property.namespace, locus.property.name),
-                    })
-                })?;
-            let host = find_simthing_mut(root, host_id).ok_or_else(|| {
-                InstallError::NeedBindingInvalid {
-                    binding: binding.id.clone(),
-                    reason: format!("entity host {} missing", host_id.raw()),
-                }
-            })?;
-            if !host.properties.contains_key(&prop_id) {
-                let layout = registry.property(prop_id).layout.clone();
-                host.add_property(prop_id, PropertyValue::from_layout(&layout));
-            }
-            // Prefer named-entity ownership for emission/overlay slot resolution
-            // (DFS find_property_owner would otherwise hit World root).
-            if host_id != root.id {
-                root.properties.remove(&prop_id);
-            }
+) -> Option<SimThingId> {
+    let mut matches: Vec<SimThingId> = Vec::new();
+    for (entity, hosts) in &scenario.install_targets {
+        if key.name.starts_with(&format!("{entity}_")) && hosts.len() == 1 {
+            matches.push(hosts[0]);
         }
     }
-    Ok(())
+    if matches.len() == 1 {
+        Some(matches[0])
+    } else {
+        None
+    }
 }
 
 fn resource_economy_property_keys(spec: &ResourceEconomySpec) -> Vec<PropertyKey> {

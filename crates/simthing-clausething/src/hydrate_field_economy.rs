@@ -286,7 +286,21 @@ fn parse_field_economy_property(
     let mut joined_bindings = Vec::with_capacity(need_bindings.len());
     for mut binding in need_bindings {
         if binding.stack.gadgets.is_empty() {
-            let Some(profile) = weight_profiles.iter().find(|p| p.id == binding.id) else {
+            let matches: Vec<_> = weight_profiles
+                .iter()
+                .filter(|p| p.id == binding.id)
+                .collect();
+            if matches.len() > 1 {
+                return Err(HydrateError::new_spanned(
+                    format!(
+                        "need_binding `{}` profile-id join is ambiguous ({} weight_profile ids)",
+                        binding.id,
+                        matches.len()
+                    ),
+                    Some(property.key.span.clone()),
+                ));
+            }
+            let Some(profile) = matches.first() else {
                 return Err(HydrateError::new_spanned(
                     format!(
                         "need_binding `{}` has empty stack and no weight_profile with the same id",
@@ -298,10 +312,15 @@ fn parse_field_economy_property(
             binding.stack = profile.stack.clone();
             if binding.profile.is_empty() {
                 binding.profile = profile.profile.clone();
+            } else if binding.profile != profile.profile {
+                return Err(HydrateError::new_spanned(
+                    format!(
+                        "need_binding `{}` profile `{}` mismatches weight_profile profile `{}`",
+                        binding.id, binding.profile, profile.profile
+                    ),
+                    Some(property.key.span.clone()),
+                ));
             }
-        }
-        if binding.arena.is_empty() {
-            binding.arena = "default".into();
         }
         joined_bindings.push(binding);
     }
@@ -614,7 +633,9 @@ fn parse_need_binding(property: &RawProperty) -> Result<NeedBindingSpec, Hydrate
     let mut id = header_id;
     let mut profile = String::new();
     let mut participant = None;
-    let mut arena = String::new();
+    let mut participant_span = None;
+    let mut arena = None;
+    let mut arena_span = None;
     let mut inputs = Vec::new();
     let mut weights = Vec::new();
     let mut threshold = None;
@@ -623,8 +644,14 @@ fn parse_need_binding(property: &RawProperty) -> Result<NeedBindingSpec, Hydrate
         match field.key.text.as_str() {
             "id" => id = read_checked_id(field, &id)?,
             "profile" => profile = read_scalar_text(field, "profile")?,
-            "participant" => participant = Some(read_scalar_text(field, "participant")?),
-            "arena" => arena = read_scalar_text(field, "arena")?,
+            "participant" => {
+                participant_span = Some(field.key.span.token_index);
+                participant = Some(read_scalar_text(field, "participant")?);
+            }
+            "arena" => {
+                arena_span = Some(field.key.span.token_index);
+                arena = Some(read_scalar_text(field, "arena")?);
+            }
             "input" => inputs.push(parse_semantic_locus(field, "input")?),
             "weight" => weights.push(parse_semantic_locus(field, "weight")?),
             "threshold" => threshold = Some(read_scalar_f32(field, "threshold")?),
@@ -639,6 +666,13 @@ fn parse_need_binding(property: &RawProperty) -> Result<NeedBindingSpec, Hydrate
     }
     let id = require_id(id, "need_binding", property)?;
     let participant = require_local(participant, "participant", property)?;
+    let arena = require_local(arena, "arena", property)?;
+    if arena.trim().is_empty() || arena == "default" {
+        return Err(HydrateError::new_spanned(
+            "need_binding.arena must be an explicit arena name (no first-arena fallback)",
+            Some(property.key.span.clone()),
+        ));
+    }
     if inputs.is_empty() {
         return Err(HydrateError::new_spanned(
             "need_binding requires at least one input",
@@ -657,15 +691,8 @@ fn parse_need_binding(property: &RawProperty) -> Result<NeedBindingSpec, Hydrate
             Some(property.key.span.clone()),
         ));
     }
-    match (threshold, event_kind) {
-        (Some(_), Some(_)) | (None, None) => {}
-        _ => {
-            return Err(HydrateError::new_spanned(
-                "need_binding threshold and event_kind must both be present or both absent",
-                Some(property.key.span.clone()),
-            ));
-        }
-    }
+    let threshold = require_local(threshold, "threshold", property)?;
+    let event_kind = require_local(event_kind, "event_kind", property)?;
     Ok(NeedBindingSpec {
         id,
         profile,
@@ -676,6 +703,9 @@ fn parse_need_binding(property: &RawProperty) -> Result<NeedBindingSpec, Hydrate
         weights,
         threshold,
         event_kind,
+        source_span_token: Some(property.key.span.token_index),
+        participant_span_token: participant_span,
+        arena_span_token: arena_span,
     })
 }
 
@@ -687,10 +717,18 @@ fn parse_semantic_locus(
     let mut entity = None;
     let mut property_key = None;
     let mut role = None;
+    // Prefer the most specific authored field span (entity > property > role > block).
+    let mut locus_span = property.key.span.token_index;
     for field in &block.properties {
         match field.key.text.as_str() {
-            "entity" => entity = Some(read_scalar_text(field, "entity")?),
+            "entity" => {
+                locus_span = field.key.span.token_index;
+                entity = Some(read_scalar_text(field, "entity")?);
+            }
             "property" => {
+                if entity.is_none() {
+                    locus_span = field.key.span.token_index;
+                }
                 let raw = read_scalar_text(field, "property")?;
                 let (ns, name) = raw.split_once("::").ok_or_else(|| {
                     HydrateError::new_spanned(
@@ -703,6 +741,9 @@ fn parse_semantic_locus(
                 property_key = Some(PropertyKey::new(ns, name));
             }
             "role" => {
+                if entity.is_none() && property_key.is_none() {
+                    locus_span = field.key.span.token_index;
+                }
                 let text = read_scalar_text(field, "role")?;
                 role = Some(match text.as_str() {
                     "Amount" | "amount" => SubFieldRole::Amount,
@@ -728,6 +769,7 @@ fn parse_semantic_locus(
         entity: require_local(entity, "entity", property)?,
         property: require_local(property_key, "property", property)?,
         role: require_local(role, "role", property)?,
+        source_span_token: Some(locus_span),
     })
 }
 

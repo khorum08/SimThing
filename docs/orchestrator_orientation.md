@@ -45,7 +45,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 211b860c2a424d0386a01a2dc93d5c563abfd1411c1f58ec55c7b69d97426cb8 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | be04669f2dfb66096af019ad61f225de91bf4433c22d46fbdeff42578634da49 |
-| design_0_0_8_6_studio_live_ops.md | 975e1c1cd92b841477b63e76b1678ec0e7e8e337d9c4fc25069b172e1cd8e3fb |
+| design_0_0_8_6_studio_live_ops.md | 7e9752d63eac115c46fe1d306ea014d1ff6f4c6b97cc94de5d42873fc61ff56e |
 | relay_lint.sh | 4163f715cdc3b549dbf57c1744aff61ea96b9f9f0a2237376665fbdb24e986c8 |
 | doctrine_anchors.tsv | acddc6ad84d6dcefcbc8942f603186ae82e47e6495833b29aafbb5805d49aa0f |
 
@@ -66,12 +66,14 @@ Track state: `open`
 | RF-2A | RF-GOVERNED-INTEGRATION-ORDERBAND-0 | Repair the existing governed-integration adapter so both authored targets surviv | **DA-GRADUATED / merged [#1411](https://github.com/khorum08/SimThing/pull/1411) @ `c206b0ef`** — 2026-07-18. Adapter ... |
 | RF-2 | RF-EXECUTE-RECURSIVE-DEFAULT-0 | Flip `resource_flow_execution_profile` default to recursive executed source; wir | **DA-GRADUATED / merged [#1411](https://github.com/khorum08/SimThing/pull/1411) @ `c206b0ef`** — 2026-07-18. Ordinary... |
 | RF-3 | RF-LEGACY-RETIRE-REANCHOR-0 | Repoint existing RF tests + `runtime_0080_*` rehearsal + recursive-source oracle | **DA-GRADUATED / merged [#1412](https://github.com/khorum08/SimThing/pull/1412) @ `d42b9109`** — 2026-07-18. Recursiv... |
-| RF-4 | (12.9 resumes) `STUDIO-FIELD-SESSION-ELEVATE-0 | Studio field-bearing consumes the now-executing RF; telemetry binds to the real  | **OWNER OVL PASS / orchestration-review-complete / DA-relay-ready / RF-5 SPLIT APPROVED** — ruling `5012654906` accep... |
+| RF-4 | (12.9 resumes) `STUDIO-FIELD-SESSION-ELEVATE-0 | Studio field-bearing consumes the now-executing RF; telemetry binds to the real  | **DA-GRADUATED / merged [#1413](https://github.com/khorum08/SimThing/pull/1413) @ `99fa9d06`** — 2026-07-18. Recursiv... |
+| RF-5 | RF-NEED-WEIGHT-PROFILE-TRANSPORT-0 | **Bounded need/`weight_profile` transport.** Generic binding of hydrated need/we | **BLOCKED-PAUSED / DA Option A** — PR [#1414](https://github.com/khorum08/SimThing/pull/1414) @ `39b4b392` (2026-07-1... |
+| RF-5A | RF-NEED-BINDING-AUTHORING-0 | **Prerequisite authoring surface for RF-5.** Generic scenario-agnostic ClauseScr | **DISPATCHED / DRAFT** — PR [#1416](https://github.com/khorum08/SimThing/pull/1416); HD-RECEIPT `5844fdbd66f4`; base ... |
 | OWNER | STUDIO-OWNER-CLOSURE-0 | **Track closeout (docs + harness lifecycle only).** Runs the `track_closeout.sh` | **DEFERRED / Owner-gated** — binding condition `track-closeout-blocked-until-explicit-owner-authorization` (Owner-202... |
 
 ## Next Rung Pointer
 
-Active pointer: `STUDIO-FIELD-SESSION-ELEVATE-0`
+Active pointer: `RF-NEED-BINDING-AUTHORING-0`
 
 
 ## Cold-Start Spine (constitutional pointers)
