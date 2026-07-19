@@ -2,12 +2,15 @@
 
 ## Status
 
-**DA Fork A corpus-red correction green locally / Owner OVL remains valid / draft-open hold** —
-2026-07-19.
+**DA-GRADUATED / merged [#1414](https://github.com/khorum08/SimThing/pull/1414)
+@ `da8f7035c8b876c8e81d0450b68289230ef8f87e`** — 2026-07-19.
 
-This tests/evidence-only correction does not change the accepted implementation, canonical scenario,
-or frozen executable. No rebuild, re-freeze, or new Owner screenshot is required. PR #1414 remains
-draft/open/unmerged pending fresh exact-head governance and DA adjudication.
+DA graduation authority is [comment `5017421913`](https://github.com/khorum08/SimThing/pull/1414#issuecomment-5017421913)
+at exact final head `59d76baf0001563d62e4943167512498e84320f2`. The accepted implementation remains
+`71005e59af05dc12105d63b585159b09ac0a8f6a`; the frozen executable source remains
+`85056ee19aab744507b4dfc2b8a4a2f641b718be`, SHA-256
+`81d346791553be551323fb38e82945c91ece7fedb6b019e57d4047ea361d5a71`; Owner screenshot-C
+closure `5017017028` remains authoritative under DA Fork A.
 
 ## PR / branch / merge
 
@@ -15,7 +18,7 @@ draft/open/unmerged pending fresh exact-head governance and DA adjudication.
 |---|---|
 | PR | #1414 |
 | Branch | `coder/rf-need-weight-profile-transport-0` |
-| Merge | held; draft/open/unmerged pending DA adjudication |
+| Merge | `da8f7035c8b876c8e81d0450b68289230ef8f87e` |
 
 ## Identity
 
