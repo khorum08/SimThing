@@ -18,7 +18,7 @@ DA Option A prerequisite for RF-5. No Studio, no canonical TP data amendment, no
 | ORIENT-RECEIPT | `2c9fde39d1d6` |
 | tested_code_sha | `98777b8a2bad5518ff35cdc229172ed50a8b4dfb` |
 | implementation_sha | `98777b8a2bad5518ff35cdc229172ed50a8b4dfb` |
-| evidence_sha | *(bound after evidence)* |
+| evidence_sha | `ea2ca3ce05e897126fecc55f797893cb3061b9dc` |
 | coverage_basis | PASS workshop RF-5A 5/5 + field_economy_grammar nonregression |
 
 ## What landed
