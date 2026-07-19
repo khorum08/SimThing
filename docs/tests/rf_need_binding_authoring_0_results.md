@@ -16,11 +16,11 @@ Orchestration remander `5013877587` on PR #1416. No Studio, no canonical TP data
 | HD-RECEIPT | `5844fdbd66f4` |
 | DA ruling | #1414 comment `5013802819` Option A |
 | Remander | issue comment `5013877587` |
-| ORIENT-RECEIPT | `2c9fde39d1d6` (coding; regenerate after orientation write) |
-| tested_code_sha | *(bind after green push)* |
-| implementation_sha | *(bind after green push)* |
-| evidence_sha | *(bind after green push)* |
-| coverage_basis | workshop RF-5A 18 tests + production open threshold arm |
+| ORIENT-RECEIPT | `2c9fde39d1d6` (coding) |
+| tested_code_sha | `80cdbfc268a6ea5ca25dc11d320a4ea837518e18` |
+| implementation_sha | `80cdbfc268a6ea5ca25dc11d320a4ea837518e18` |
+| evidence_sha | *(docs bind commit follows)* |
+| coverage_basis | workshop RF-5A 18/18 PASS + field_economy_grammar 7/7 + production open threshold arm |
 
 ## Remander disposition (5013877587)
 
