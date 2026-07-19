@@ -292,6 +292,7 @@ pub fn hydrate_category_economy_pack(
                 base_obligations,
                 capacity_budget: None,
                 gated_rates,
+                need_bindings: vec![],
             }),
             resource_economy: None,
             resource_flow_execution_profile: Default::default(),

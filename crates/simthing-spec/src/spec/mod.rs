@@ -16,6 +16,7 @@ pub mod local_allocation_recursive_rf_source;
 pub mod local_effect_application;
 pub mod local_effect_recursive_rf_source;
 pub mod local_participant_effects;
+pub mod need_binding;
 pub mod overlay;
 pub mod owner_silo_disburse_down;
 pub mod owner_silo_recursive_rf_source;
@@ -118,6 +119,7 @@ pub use local_effect_recursive_rf_source::{
     LocalEffectRecursiveSourceError, LocalEffectRecursiveSourceErrorKind, LocalEffectRfSourceMode,
     LocalEffectRfSourceSelection,
 };
+pub use need_binding::{NeedBindingSpec, SemanticPropertyLocusSpec};
 pub use local_participant_effects::{
     evaluate_local_participant_effects, local_participant_effects_aggregate_totals,
     local_participant_effects_from_allocations, LocalParticipantEffectsDeferral,

@@ -392,6 +392,7 @@ impl SimSession {
             &self.proto.root,
             &self.proto.allocator,
             &self.spec_state.resolved_gated_rates,
+            &self.spec_state.resolved_need_bindings,
             enabled,
         )?;
         Ok(())

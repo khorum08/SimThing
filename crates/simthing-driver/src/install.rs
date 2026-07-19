@@ -83,6 +83,9 @@ pub enum InstallError {
     #[error("Resource Flow base obligation `{obligation}` arena `{arena}` flow property has no IntrinsicFlow sub-field")]
     BaseFlowObligationMissingIntrinsicFlow { obligation: String, arena: String },
 
+    #[error("need_binding `{binding}` invalid: {reason}")]
+    NeedBindingInvalid { binding: String, reason: String },
+
     #[error("event `{event_id}` references unknown overlay `{overlay_ref}` (no standalone pack overlay with that authored id)")]
     UnknownOverlayRef {
         event_id: String,
@@ -244,6 +247,14 @@ pub fn compile_and_install(
         state.resource_flow_capacity_budget = report.capacity_budget;
     }
 
+    // RF-5A: place need_binding property instances on named entities *before*
+    // economy materialize so emission slots bind to entity rows (not World root).
+    if let Some(resource_flow) = &game_mode.resource_flow {
+        if !resource_flow.need_bindings.is_empty() {
+            seed_need_binding_entity_properties(resource_flow, scenario, registry, root)?;
+        }
+    }
+
     // ── 4c. Resource economy (Phase T): compile + live-slot materialization.
     if let Some(resource_economy) = &game_mode.resource_economy {
         ensure_resource_economy_properties(resource_economy, registry, root)?;
@@ -256,6 +267,40 @@ pub fn compile_and_install(
             root,
             allocator,
         )?);
+    }
+
+    // RF-5A: resolve full-cell bindings after economy materialize + RF scaffold.
+    if let Some(resource_flow) = &game_mode.resource_flow {
+        if !resource_flow.need_bindings.is_empty() {
+            let resolved = crate::need_binding::resolve_need_bindings(
+                resource_flow,
+                scenario,
+                root,
+                registry,
+                &state.arena_participant_scaffold,
+                allocator,
+            )?;
+            crate::need_binding::prepare_need_binding_cells(&resolved, registry, root)?;
+            if state.resource_economy_registry.is_none() {
+                state.resource_economy_registry = Some(
+                    crate::resource_economy_compile::ResourceEconomyRegistry {
+                        registrations:
+                            crate::resource_economy_compile::ResourceEconomyRegistrations {
+                                transfers: vec![],
+                                recipes: vec![],
+                                emissions: vec![],
+                                emit_on_threshold: vec![],
+                                report: Default::default(),
+                            },
+                        generation: 1,
+                    },
+                );
+            }
+            if let Some(economy) = state.resource_economy_registry.as_mut() {
+                crate::need_binding::inject_need_binding_thresholds(&resolved, economy);
+            }
+            state.resolved_need_bindings = resolved;
+        }
     }
 
     // ── 5. Scripted events: one definition + N per-owner instances per
@@ -393,6 +438,61 @@ fn ensure_resource_economy_properties(
         if find_property_owner(root, property_id).is_none() {
             let layout = registry.property(property_id).layout.clone();
             root.add_property(property_id, PropertyValue::from_layout(&layout));
+        }
+    }
+    Ok(())
+}
+
+/// Place registered properties on named entity hosts for need_binding loci.
+/// Does not invent property schema — only materializes instances on the entity
+/// named by the authored binding (entity-name uniqueness supplies the row).
+fn seed_need_binding_entity_properties(
+    flow: &ResourceFlowSpec,
+    scenario: &Scenario,
+    registry: &DimensionRegistry,
+    root: &mut SimThing,
+) -> Result<(), InstallError> {
+    for binding in &flow.need_bindings {
+        for locus in binding.inputs.iter().chain(binding.weights.iter()) {
+            let Some(hosts) = scenario.install_targets.get(&locus.entity) else {
+                return Err(InstallError::NeedBindingInvalid {
+                    binding: binding.id.clone(),
+                    reason: format!("entity `{}` not in install_targets", locus.entity),
+                });
+            };
+            if hosts.len() != 1 {
+                return Err(InstallError::NeedBindingInvalid {
+                    binding: binding.id.clone(),
+                    reason: format!(
+                        "entity `{}` is ambiguous ({} hosts)",
+                        locus.entity,
+                        hosts.len()
+                    ),
+                });
+            }
+            let host_id = hosts[0];
+            let prop_id = registry
+                .id_of(&locus.property.namespace, &locus.property.name)
+                .ok_or_else(|| {
+                    InstallError::Spec(SpecError::UnknownResourceFlowProperty {
+                        property: format!("{}::{}", locus.property.namespace, locus.property.name),
+                    })
+                })?;
+            let host = find_simthing_mut(root, host_id).ok_or_else(|| {
+                InstallError::NeedBindingInvalid {
+                    binding: binding.id.clone(),
+                    reason: format!("entity host {} missing", host_id.raw()),
+                }
+            })?;
+            if !host.properties.contains_key(&prop_id) {
+                let layout = registry.property(prop_id).layout.clone();
+                host.add_property(prop_id, PropertyValue::from_layout(&layout));
+            }
+            // Prefer named-entity ownership for emission/overlay slot resolution
+            // (DFS find_property_owner would otherwise hit World root).
+            if host_id != root.id {
+                root.properties.remove(&prop_id);
+            }
         }
     }
     Ok(())

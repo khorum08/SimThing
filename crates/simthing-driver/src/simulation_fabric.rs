@@ -269,6 +269,12 @@ pub fn run_simulation_fabric_hot_step(
     let tick = run_simulation_fabric_tick(fabric);
     let resource_flow_band_dispatched =
         run_resource_flow_bands_if_active(fabric, params.resource_flow_pipeline_enabled);
+    // RF-5A: need EvalEML writes AllocatorWeight after ordinary threshold scan.
+    if resource_flow_band_dispatched {
+        fabric
+            .state
+            .rescan_accumulator_thresholds_after_resource_flow();
+    }
     let mapping = match params.mapping {
         Some(hot) => Some(run_mapping_hot_dispatch(fabric.state, hot)?),
         None => None,

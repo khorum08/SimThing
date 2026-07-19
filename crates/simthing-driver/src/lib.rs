@@ -30,6 +30,7 @@ pub mod first_slice_mapping_runtime;
 pub mod gameplay_0080_0;
 pub mod gameplay_0080_1;
 pub mod gated_rates;
+pub mod need_binding;
 pub mod gpu_measure_0080_0;
 pub mod gradient_follow_0080_2;
 pub mod install;

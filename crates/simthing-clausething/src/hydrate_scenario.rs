@@ -744,6 +744,12 @@ pub fn hydrate_scenario_with_source_base(
             .emit_on_threshold
             .extend(lowering.resource_economy.emit_on_threshold);
         game_mode.resource_economy = Some(economy);
+        // RF-5A: lower semantic need_bindings onto ResourceFlowSpec (full-cell resolve at install).
+        if !lowering.need_bindings.is_empty() {
+            let mut flow = game_mode.resource_flow.take().unwrap_or_default();
+            flow.need_bindings.extend(lowering.need_bindings);
+            game_mode.resource_flow = Some(flow);
+        }
         field_economy = Some(lowering.hydrated);
     }
     dedupe_property_specs_by_name(&mut game_mode.properties);
