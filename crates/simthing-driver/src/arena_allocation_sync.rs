@@ -31,6 +31,31 @@ pub enum ResourceFlowSyncError {
     OpUpload(#[from] simthing_gpu::AccumulatorOpSessionError),
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct PreBandMap {
+    gated_start: Option<u32>,
+    need_stage: Option<u32>,
+    need_eval: Option<u32>,
+    arena_start: u32,
+}
+
+fn compose_pre_band_map(has_gated_rates: bool, has_need_bindings: bool) -> PreBandMap {
+    let gated_width = u32::from(has_gated_rates);
+    let need_stage = has_need_bindings.then_some(gated_width);
+    let need_eval = has_need_bindings.then_some(gated_width + 1);
+    PreBandMap {
+        gated_start: has_gated_rates.then_some(0),
+        need_stage,
+        need_eval,
+        arena_start: gated_width
+            + if has_need_bindings {
+                crate::need_binding::NEED_BINDING_PRE_BANDS
+            } else {
+                0
+            },
+    }
+}
+
 /// Plan and upload E-11 allocation ops when `use_accumulator_resource_flow` is enabled.
 ///
 /// When gated rates exist (CT-RF-EML-RATE-0), every arena op shifts up one
@@ -62,7 +87,7 @@ pub fn sync_resource_flow_accumulator(
 }
 
 /// Same as [`sync_resource_flow_accumulator`] with RF-5A stage-projection control.
-pub fn sync_resource_flow_accumulator_with_options(
+pub(crate) fn sync_resource_flow_accumulator_with_options(
     state: &mut WorldGpuState,
     registry: &DimensionRegistry,
     arena_registry: &ArenaRegistry,
@@ -117,15 +142,13 @@ pub fn sync_resource_flow_accumulator_with_options(
         combined_cpu.extend(alloc.cpu_ops);
     }
 
-    // RF-2A / RF-5A: pre-bands occupy low OrderBands before arena reduce.
-    // Gated rates: 1 band (EvalEML@0). Need bindings: 2 bands (stage@0, EvalEML@1).
-    let gated_pre = u32::from(!gated_rates.is_empty());
-    let need_pre = if need_bindings.is_empty() {
-        0
-    } else {
-        crate::need_binding::NEED_BINDING_PRE_BANDS
-    };
-    let pre_bands = gated_pre.max(need_pre);
+    // RF-2A / RF-5A additive pre-bands (deterministic producer → stage → eval):
+    //   gated-rate EvalEML @ 0..gated_pre-1
+    //   need stage @ gated_pre + 0
+    //   need EvalEML @ gated_pre + 1
+    //   arena reduce/disburse @ gated_pre + need_pre + ...
+    let band_map = compose_pre_band_map(!gated_rates.is_empty(), !need_bindings.is_empty());
+    let pre_bands = band_map.arena_start;
     if pre_bands > 0 {
         for op in &mut combined_cpu {
             if let simthing_core::GateSpec::OrderBand(band) = op.gate {
@@ -144,6 +167,7 @@ pub fn sync_resource_flow_accumulator_with_options(
                 need_bindings,
                 &mut eml_registry,
                 include_need_stage_projections,
+                band_map.need_stage.expect("need stage band exists"),
             ));
         }
         all_ops.extend(combined_cpu);
@@ -159,6 +183,23 @@ pub fn sync_resource_flow_accumulator_with_options(
         n_bands: max_bands,
         enabled: true,
     })
+}
+
+#[cfg(test)]
+mod pre_band_tests {
+    use super::*;
+
+    #[test]
+    fn gated_rate_and_need_binding_bands_are_dependency_ordered() {
+        let map = compose_pre_band_map(true, true);
+        assert_eq!(map.gated_start, Some(0));
+        assert_eq!(map.need_stage, Some(1));
+        assert_eq!(map.need_eval, Some(2));
+        assert_eq!(map.arena_start, 3);
+        assert!(map.gated_start.unwrap() < map.need_stage.unwrap());
+        assert!(map.need_stage.unwrap() < map.need_eval.unwrap());
+        assert!(map.need_eval.unwrap() < map.arena_start);
+    }
 }
 
 pub fn build_plan_for_tests(

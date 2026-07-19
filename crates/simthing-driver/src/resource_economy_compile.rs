@@ -71,6 +71,15 @@ pub enum ResourceEconomyCompileError {
     #[error("resource economy transfer `{id}` source and target cells must differ")]
     SameSourceAndTarget { id: String },
 
+    #[error("resource economy host entity `{entity}` is not in install_targets")]
+    UnknownHostEntity { entity: String },
+
+    #[error("resource economy host entity `{entity}` is ambiguous ({hosts} hosts)")]
+    AmbiguousHostEntity { entity: String, hosts: usize },
+
+    #[error("resource economy host `{entity}` does not own property id {property_id}")]
+    HostMissingProperty { entity: String, property_id: u32 },
+
     #[error(transparent)]
     TransferBuilder(#[from] AccumulatorOpBuilderError),
 
@@ -228,24 +237,244 @@ pub fn materialize_resource_economy_registrations_with_slots(
 }
 
 /// Materialize for production session install using live tree + allocator slots.
+///
+/// Host-qualified rows resolve through `scenario.install_targets` + entity-owned
+/// property instance (never first-DFS PropertyKey ownership).
 pub fn materialize_resource_economy_registry_for_session(
     compiled: &CompiledResourceEconomy,
     registry: &DimensionRegistry,
     eml_registry: &EmlExpressionRegistry,
     root: &SimThing,
     allocator: &SlotAllocator,
+    scenario: &crate::scenario::Scenario,
 ) -> Result<ResourceEconomyRegistry, ResourceEconomyCompileError> {
-    let resolve =
-        |property_id: SimPropertyId| resolve_live_property_slot(property_id, root, allocator);
-    Ok(ResourceEconomyRegistry {
-        registrations: materialize_resource_economy_registrations_with_slots(
-            compiled,
-            registry,
-            eml_registry,
-            &resolve,
-        )?,
+    materialize_resource_economy_registrations_host_qualified(
+        compiled,
+        registry,
+        eml_registry,
+        root,
+        allocator,
+        scenario,
+    )
+    .map(|registrations| ResourceEconomyRegistry {
+        registrations,
         generation: 1,
     })
+}
+
+/// Host-qualified materialize: each transfer/emission/threshold source uses
+/// authored host entity when present.
+pub fn materialize_resource_economy_registrations_host_qualified(
+    compiled: &CompiledResourceEconomy,
+    registry: &DimensionRegistry,
+    eml_registry: &EmlExpressionRegistry,
+    root: &SimThing,
+    allocator: &SlotAllocator,
+    scenario: &crate::scenario::Scenario,
+) -> Result<ResourceEconomyRegistrations, ResourceEconomyCompileError> {
+    let resolve_host = |property_id: SimPropertyId,
+                        host: Option<&str>|
+     -> Result<u32, ResourceEconomyCompileError> {
+        match host {
+            Some(entity) => {
+                resolve_entity_hosted_property_slot(entity, property_id, scenario, root, allocator)
+            }
+            None => resolve_live_property_slot(property_id, root, allocator),
+        }
+    };
+
+    let emission_reg_idx_by_id = assign_emission_reg_indices(&compiled.emissions);
+    let mut transfers = Vec::with_capacity(compiled.transfers.len());
+    let mut transfer_ids = Vec::with_capacity(compiled.transfers.len());
+    let mut transfer_order_band_by_id = BTreeMap::new();
+
+    for transfer in &compiled.transfers {
+        ensure_property_known(registry, transfer.source_property)?;
+        ensure_property_known(registry, transfer.target_property)?;
+        let source_slot = resolve_host(
+            transfer.source_property,
+            transfer.source_host_entity.as_deref(),
+        )?;
+        let target_slot = resolve_host(
+            transfer.target_property,
+            transfer.target_host_entity.as_deref(),
+        )?;
+        if source_slot == target_slot && transfer.source_col == transfer.target_col {
+            return Err(ResourceEconomyCompileError::SameSourceAndTarget {
+                id: transfer.id.clone(),
+            });
+        }
+        let reg = DiscreteTransferRegistration {
+            source_slot: SlotIndex::new(source_slot),
+            source_col: ColumnIndex::new(transfer.source_col as usize),
+            target_slot: SlotIndex::new(target_slot),
+            target_col: ColumnIndex::new(transfer.target_col as usize),
+            amount: transfer.amount,
+            order_band: transfer.order_band,
+        };
+        discrete_transfer_registration_to_op(&reg)?;
+        transfers.push(reg);
+        transfer_ids.push(transfer.id.clone());
+        transfer_order_band_by_id.insert(transfer.id.clone(), transfer.order_band);
+    }
+
+    let mut recipes = Vec::with_capacity(compiled.recipes.len());
+    let mut recipe_ids = Vec::with_capacity(compiled.recipes.len());
+    for recipe in &compiled.recipes {
+        ensure_property_known(registry, recipe.target_property)?;
+        let inputs = recipe
+            .inputs
+            .iter()
+            .map(|input| {
+                ensure_property_known(registry, input.property)?;
+                Ok(ConjunctiveRecipeInput {
+                    slot: SlotIndex::new(resolve_host(input.property, None)?),
+                    col: ColumnIndex::new(input.col as usize),
+                    unit_cost: input.unit_cost,
+                })
+            })
+            .collect::<Result<Vec<_>, ResourceEconomyCompileError>>()?;
+        let reg = ConjunctiveRecipeRegistration {
+            inputs,
+            target_slot: SlotIndex::new(resolve_host(recipe.target_property, None)?),
+            target_col: ColumnIndex::new(recipe.target_col as usize),
+            throttle_hint_max_per_tick: recipe.throttle_hint_max_per_tick,
+        };
+        rebuild_conjunctive_recipe_ops(std::slice::from_ref(&reg))?;
+        recipes.push(reg);
+        recipe_ids.push(recipe.id.clone());
+    }
+
+    let mut emissions = Vec::with_capacity(compiled.emissions.len());
+    for emission in &compiled.emissions {
+        ensure_property_known(registry, emission.source_property)?;
+        let reg_idx = *emission_reg_idx_by_id
+            .get(&emission.id)
+            .expect("every compiled emission id receives a reg_idx");
+        let source_slot = resolve_host(emission.source_property, emission.host_entity.as_deref())?;
+        let (formula, tree_id) = match &emission.formula {
+            CompiledEmissionFormula::IdentityFloor => (EmissionFormula::IdentityFloor, None),
+            CompiledEmissionFormula::Constant(value) => {
+                (EmissionFormula::Constant { value: *value }, None)
+            }
+            CompiledEmissionFormula::EvalEml { tree_id, .. } => (
+                EmissionFormula::EvalEml { tree_id: *tree_id },
+                Some(*tree_id),
+            ),
+        };
+        emissions.push(EmissionRegistration {
+            source_slot,
+            source_col: emission.source_col,
+            tree_id,
+            formula,
+            max_emit: None,
+            reg_idx,
+        });
+    }
+
+    let mut emit_on_threshold = Vec::with_capacity(compiled.emit_on_threshold.len());
+    let mut threshold_emit_ids = Vec::with_capacity(compiled.emit_on_threshold.len());
+    for emit in &compiled.emit_on_threshold {
+        ensure_property_known(registry, emit.source_property)?;
+        let reg = EmitOnThresholdRegistration {
+            slot: SlotIndex::new(resolve_host(
+                emit.source_property,
+                emit.host_entity.as_deref(),
+            )?),
+            col: ColumnIndex::new(emit.source_col as usize),
+            threshold: emit.threshold,
+            direction: emit.direction,
+            event_kind: emit.event_kind,
+            buffer: map_emit_buffer(emit.buffer),
+        };
+        rebuild_emit_on_threshold_ops(std::slice::from_ref(&reg));
+        emit_on_threshold.push(reg);
+        threshold_emit_ids.push(emit.id.clone());
+    }
+
+    rebuild_discrete_transfer_ops(&transfers)?;
+    rebuild_conjunctive_recipe_ops(&recipes)?;
+    plan_emission_ops(&emissions, Some(eml_registry))?;
+
+    let recipe_input_count: usize = recipes.iter().map(|r| r.inputs.len()).sum();
+    let eval_eml_emission_count = emissions
+        .iter()
+        .filter(|e| matches!(e.formula, EmissionFormula::EvalEml { .. }))
+        .count();
+    let transfer_count = transfers.len();
+    let recipe_count = recipes.len();
+    let emission_count = emissions.len();
+    let threshold_emit_count = emit_on_threshold.len();
+
+    Ok(ResourceEconomyRegistrations {
+        transfers,
+        recipes,
+        emissions,
+        emit_on_threshold,
+        report: ResourceEconomyMaterializationReport {
+            transfer_count,
+            recipe_count,
+            recipe_input_count,
+            emission_count,
+            threshold_emit_count,
+            eval_eml_emission_count,
+            emission_reg_idx_by_id,
+            transfer_ids,
+            recipe_ids,
+            threshold_emit_ids,
+            transfer_order_band_by_id,
+        },
+    })
+}
+
+/// Resolve property instance on a named entity host (entity-name uniqueness).
+pub fn resolve_entity_hosted_property_slot(
+    entity: &str,
+    property_id: SimPropertyId,
+    scenario: &crate::scenario::Scenario,
+    root: &SimThing,
+    allocator: &SlotAllocator,
+) -> Result<u32, ResourceEconomyCompileError> {
+    let Some(hosts) = scenario.install_targets.get(entity) else {
+        return Err(ResourceEconomyCompileError::UnknownHostEntity {
+            entity: entity.to_string(),
+        });
+    };
+    if hosts.len() != 1 {
+        return Err(ResourceEconomyCompileError::AmbiguousHostEntity {
+            entity: entity.to_string(),
+            hosts: hosts.len(),
+        });
+    }
+    let host_id = hosts[0];
+    if !entity_owns_property(root, host_id, property_id) {
+        return Err(ResourceEconomyCompileError::HostMissingProperty {
+            entity: entity.to_string(),
+            property_id: property_id.0,
+        });
+    }
+    allocator
+        .slot_of(host_id)
+        .ok_or(ResourceEconomyCompileError::UnknownPropertySlot {
+            property_id: property_id.0,
+        })
+        .map(SlotIndex::raw)
+}
+
+fn entity_owns_property(
+    root: &SimThing,
+    id: simthing_core::SimThingId,
+    prop: SimPropertyId,
+) -> bool {
+    if root.id == id {
+        return root.properties.contains_key(&prop);
+    }
+    for child in &root.children {
+        if entity_owns_property(child, id, prop) {
+            return true;
+        }
+    }
+    false
 }
 
 /// Wrap materialized registrations in the subtree-refresh registry scaffold.
@@ -396,5 +625,4 @@ mod tests {
             intensity_labels: vec![],
         })
     }
-
 }

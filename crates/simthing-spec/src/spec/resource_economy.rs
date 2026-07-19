@@ -61,6 +61,11 @@ pub struct ResourceTransferSpec {
     /// Explicit entity host for the target property instance.
     #[serde(default)]
     pub target_host_entity: Option<String>,
+    /// Clause token for source host field (diagnostics; not serialised authority).
+    #[serde(skip)]
+    pub source_host_span_token: Option<usize>,
+    #[serde(skip)]
+    pub target_host_span_token: Option<usize>,
 }
 
 /// Conjunctive production recipe (E-3 authoring surface).
@@ -98,6 +103,9 @@ pub struct ResourceEmissionSpec {
     /// Required for entity-hosted placement; never inferred from property names.
     #[serde(default)]
     pub host_entity: Option<String>,
+    /// Clause token for host_entity field (diagnostics).
+    #[serde(skip)]
+    pub host_span_token: Option<usize>,
 }
 
 /// Landed emission formula shapes only (`ExactDeterministic` admission at compile time).
@@ -124,6 +132,12 @@ pub struct EmitOnThresholdSpec {
     pub event_kind: u32,
     #[serde(default)]
     pub buffer: EmitBufferSpec,
+    /// Explicit entity host for the observed property instance.
+    #[serde(default)]
+    pub host_entity: Option<String>,
+    /// Clause token for the host field (diagnostics only).
+    #[serde(skip)]
+    pub host_span_token: Option<usize>,
 }
 
 /// Which GPU buffer a threshold registration observes for crossing detection.

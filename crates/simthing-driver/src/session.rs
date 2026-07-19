@@ -431,7 +431,30 @@ impl SimSession {
     /// Sync E-11 resource-flow AccumulatorOps when the pipeline flag is enabled.
     pub fn sync_resource_flow_if_enabled(&mut self) -> Result<(), SessionError> {
         let enabled = self.proto.flags.use_accumulator_resource_flow;
-        let include_stage = !self.spec_state.need_stage_projections_disabled;
+        // Production always includes stage projections. DISCONNECT harness uses
+        // `harness_resync_resource_flow_without_need_stage_projections`.
+        crate::arena_allocation_sync::sync_resource_flow_accumulator(
+            &mut self.state,
+            &self.proto.registry,
+            &self.spec_state.arena_registry,
+            &self.spec_state.arena_participant_scaffold,
+            &self.proto.root,
+            &self.proto.allocator,
+            &self.spec_state.resolved_gated_rates,
+            &self.spec_state.resolved_need_bindings,
+            enabled,
+        )?;
+        Ok(())
+    }
+
+    /// **Harness-only DISCONNECT control** — omit Identity stage projections.
+    /// Compiled only under the workshop's `rf-test-harness` feature and cannot
+    /// be selected by production authoring or a normal driver build.
+    #[cfg(feature = "rf-test-harness")]
+    pub fn harness_resync_resource_flow_without_need_stage_projections(
+        &mut self,
+    ) -> Result<(), SessionError> {
+        let enabled = self.proto.flags.use_accumulator_resource_flow;
         crate::arena_allocation_sync::sync_resource_flow_accumulator_with_options(
             &mut self.state,
             &self.proto.registry,
@@ -442,7 +465,7 @@ impl SimSession {
             &self.spec_state.resolved_gated_rates,
             &self.spec_state.resolved_need_bindings,
             enabled,
-            include_stage,
+            false,
         )?;
         Ok(())
     }
@@ -775,19 +798,12 @@ impl SimSession {
     }
 
     /// Shared hot-cycle + optional boundary body for [`Self::run`] / [`Self::step_once`].
-    fn step_once_into_summary(
-        &mut self,
-        summary: &mut RunSummary,
-    ) -> Result<bool, SessionError> {
+    fn step_once_into_summary(&mut self, summary: &mut RunSummary) -> Result<bool, SessionError> {
         let cycle = self.run_hot_cycle()?;
         summary.submit_tick_patches_ms += cycle.pre_tick_enqueue_ms;
         accumulate_tick_outcome(summary, &cycle.hot, cycle.hot_step_ms);
         if let Some(mapping) = &cycle.hot.mapping {
-            journal_mapping_commitments(
-                &mut self.mapping_commitments,
-                summary.ticks_run,
-                mapping,
-            );
+            journal_mapping_commitments(&mut self.mapping_commitments, summary.ticks_run, mapping);
         }
 
         let tick = cycle.hot.tick;

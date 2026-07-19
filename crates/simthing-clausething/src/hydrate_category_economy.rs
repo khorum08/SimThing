@@ -1464,6 +1464,8 @@ fn parse_transfer_block(property: &RawProperty) -> Result<ResourceTransferSpec, 
         order_band: require_field(order_band, "order_band", property)?,
                 source_host_entity: None,
             target_host_entity: None,
+            source_host_span_token: None,
+            target_host_span_token: None,
         })
 }
 

@@ -144,6 +144,7 @@ fn open_session(pack: &HydratedScenarioPack) -> SimSession {
             &eml_registry,
             &session.scenario.root,
             &session.proto.allocator,
+            &session.scenario,
         )
         .expect("materialize combat transfer slots on ships");
         rematerialized.generation = session

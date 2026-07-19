@@ -7,9 +7,9 @@
 
 use simthing_core::{
     eml_nodes, rebuild_emit_on_threshold_ops, AccumulatorOp, ColumnIndex, CombineFn, ConsumeMode,
-    DimensionRegistry, EmlConsumerMask, EmlExecutionClass, EmlExpressionRegistry, EmlFormulaMeta,
-    EmlNodeGpu, EmlTreeId, EmitOnThresholdBuffer, EmitOnThresholdRegistration, GateSpec, ScaleSpec,
-    SimThing, SimThingId, SlotIndex, SourceSpec, SubFieldRole, ThresholdDirection,
+    DimensionRegistry, EmitOnThresholdBuffer, EmitOnThresholdRegistration, EmlConsumerMask,
+    EmlExecutionClass, EmlExpressionRegistry, EmlFormulaMeta, EmlNodeGpu, EmlTreeId, GateSpec,
+    ScaleSpec, SimThing, SimThingId, SlotIndex, SourceSpec, SubFieldRole, ThresholdDirection,
     NEED_STAGE_MAX_PAIRS,
 };
 use simthing_spec::{
@@ -82,9 +82,19 @@ pub fn resolve_need_bindings(
     allocator: &SlotAllocator,
 ) -> Result<Vec<ResolvedNeedBinding>, InstallError> {
     let mut out = Vec::with_capacity(spec.need_bindings.len());
+    // Per-participant stage lane cursor so two bindings cannot share stage cells.
+    let mut stage_cursor: std::collections::HashMap<SimThingId, usize> =
+        std::collections::HashMap::new();
     for binding in &spec.need_bindings {
         out.push(resolve_one(
-            binding, spec, scenario, root, registry, scaffold, allocator,
+            binding,
+            spec,
+            scenario,
+            root,
+            registry,
+            scaffold,
+            allocator,
+            &mut stage_cursor,
         )?);
     }
     Ok(out)
@@ -98,6 +108,7 @@ fn resolve_one(
     registry: &DimensionRegistry,
     scaffold: &ArenaParticipantScaffold,
     allocator: &SlotAllocator,
+    stage_cursor: &mut std::collections::HashMap<SimThingId, usize>,
 ) -> Result<ResolvedNeedBinding, InstallError> {
     if binding.inputs.is_empty() || binding.weights.is_empty() {
         return Err(nb_err(binding, "inputs and weights required", None));
@@ -164,8 +175,12 @@ fn resolve_one(
             )
         })?;
 
-    let participant_hosted =
-        resolve_unique_entity(scenario, &binding.participant, binding, binding.participant_span_token)?;
+    let participant_hosted = resolve_unique_entity(
+        scenario,
+        &binding.participant,
+        binding,
+        binding.participant_span_token,
+    )?;
     let raw = participant_hosted.raw();
     if !arena
         .explicit_participants
@@ -256,29 +271,46 @@ fn resolve_one(
         binding,
     )?;
 
-    // Staged columns on participant flow property (role pathway — no raw mint).
-    let mut staged_input_cols = Vec::with_capacity(inputs.len());
-    let mut staged_weight_cols = Vec::with_capacity(weights.len());
-    for i in 0..inputs.len() {
-        let in_role = SubFieldRole::Named(format!("need_stage_in_{i}"));
-        let w_role = SubFieldRole::Named(format!("need_stage_w_{i}"));
-        let in_col = flow_range.col_for_role(&in_role, flow_layout).ok_or_else(|| {
-            nb_err(
-                binding,
-                format!("flow property missing staged role need_stage_in_{i}"),
-                None,
-            )
-        })?;
-        let w_col = flow_range.col_for_role(&w_role, flow_layout).ok_or_else(|| {
-            nb_err(
-                binding,
-                format!("flow property missing staged role need_stage_w_{i}"),
-                None,
-            )
-        })?;
+    // Non-overlapping staged slice per participant (role pathway — no raw mint).
+    let arity = inputs.len();
+    let base = *stage_cursor.get(&participant_wrapper_id).unwrap_or(&0);
+    if base + arity > NEED_STAGE_MAX_PAIRS {
+        return Err(nb_err(
+            binding,
+            format!(
+                "participant stage capacity exceeded: need {arity} pairs at base {base}, max {NEED_STAGE_MAX_PAIRS}"
+            ),
+            None,
+        ));
+    }
+    let mut staged_input_cols = Vec::with_capacity(arity);
+    let mut staged_weight_cols = Vec::with_capacity(arity);
+    for i in 0..arity {
+        let lane = base + i;
+        let in_role = SubFieldRole::Named(format!("need_stage_in_{lane}"));
+        let w_role = SubFieldRole::Named(format!("need_stage_w_{lane}"));
+        let in_col = flow_range
+            .col_for_role(&in_role, flow_layout)
+            .ok_or_else(|| {
+                nb_err(
+                    binding,
+                    format!("flow property missing staged role need_stage_in_{lane}"),
+                    None,
+                )
+            })?;
+        let w_col = flow_range
+            .col_for_role(&w_role, flow_layout)
+            .ok_or_else(|| {
+                nb_err(
+                    binding,
+                    format!("flow property missing staged role need_stage_w_{lane}"),
+                    None,
+                )
+            })?;
         staged_input_cols.push(in_col);
         staged_weight_cols.push(w_col);
     }
+    stage_cursor.insert(participant_wrapper_id, base + arity);
 
     let nodes = build_weighted_need_nodes(&staged_input_cols, &staged_weight_cols);
 
@@ -401,7 +433,11 @@ fn resolve_loci(
     Ok(out)
 }
 
-fn entity_has_property(root: &SimThing, id: SimThingId, prop_id: simthing_core::SimPropertyId) -> bool {
+fn entity_has_property(
+    root: &SimThing,
+    id: SimThingId,
+    prop_id: simthing_core::SimPropertyId,
+) -> bool {
     if root.id == id {
         return root.properties.contains_key(&prop_id);
     }
@@ -503,14 +539,20 @@ pub fn prepare_need_binding_cells(
     Ok(())
 }
 
-fn project_op(src_slot: u32, src_col: ColumnIndex, dst_slot: u32, dst_col: ColumnIndex) -> AccumulatorOp {
+fn project_op(
+    src_slot: u32,
+    src_col: ColumnIndex,
+    dst_slot: u32,
+    dst_col: ColumnIndex,
+    band: u32,
+) -> AccumulatorOp {
     AccumulatorOp {
         source: SourceSpec::SlotValue {
             slot: SlotIndex::new(src_slot),
             col: src_col,
         },
         combine: CombineFn::Identity,
-        gate: GateSpec::OrderBand(NEED_STAGE_ORDER_BAND),
+        gate: GateSpec::OrderBand(band),
         scale: ScaleSpec::Identity,
         consume: ConsumeMode::ResetTarget,
         targets: vec![(SlotIndex::new(dst_slot), dst_col)],
@@ -519,21 +561,41 @@ fn project_op(src_slot: u32, src_col: ColumnIndex, dst_slot: u32, dst_col: Colum
 
 /// Build Identity stage projections + EvalEML need write.
 ///
-/// When `include_stage_projections` is false (DISCONNECT control), only EvalEML
-/// remains — sources may move while staged/need freeze.
+/// `band_base` shifts stage/eval when gated-rate pre-bands occupy lower bands.
+/// When `include_stage_projections` is false (harness DISCONNECT only), EvalEML
+/// remains and sources may move while staged/need freeze.
 pub fn build_need_binding_ops_with_options(
     resolved: &[ResolvedNeedBinding],
     eml_registry: &mut EmlExpressionRegistry,
     include_stage_projections: bool,
+    band_base: u32,
 ) -> Vec<AccumulatorOp> {
     let mut ops = Vec::new();
+    let stage_band = band_base + NEED_STAGE_ORDER_BAND;
+    let eval_band = band_base + NEED_EVAL_ORDER_BAND;
     for (idx, binding) in resolved.iter().enumerate() {
         if include_stage_projections {
             for (src, dst) in binding.inputs.iter().zip(binding.staged_input_cols.iter()) {
-                ops.push(project_op(src.slot, src.col, binding.participant_slot, *dst));
+                ops.push(project_op(
+                    src.slot,
+                    src.col,
+                    binding.participant_slot,
+                    *dst,
+                    stage_band,
+                ));
             }
-            for (src, dst) in binding.weights.iter().zip(binding.staged_weight_cols.iter()) {
-                ops.push(project_op(src.slot, src.col, binding.participant_slot, *dst));
+            for (src, dst) in binding
+                .weights
+                .iter()
+                .zip(binding.staged_weight_cols.iter())
+            {
+                ops.push(project_op(
+                    src.slot,
+                    src.col,
+                    binding.participant_slot,
+                    *dst,
+                    stage_band,
+                ));
             }
         }
         let tree_id = EmlTreeId(NEED_BINDING_TREE_BASE + idx as u32);
@@ -569,13 +631,10 @@ pub fn build_need_binding_ops_with_options(
                 col: source_col,
             },
             combine: CombineFn::EvalEML { tree_id: tree_id.0 },
-            gate: GateSpec::OrderBand(NEED_EVAL_ORDER_BAND),
+            gate: GateSpec::OrderBand(eval_band),
             scale: ScaleSpec::Identity,
             consume: ConsumeMode::ResetTarget,
-            targets: vec![(
-                SlotIndex::new(binding.participant_slot),
-                binding.need_col,
-            )],
+            targets: vec![(SlotIndex::new(binding.participant_slot), binding.need_col)],
         });
     }
     ops
@@ -585,7 +644,7 @@ pub fn build_need_binding_ops(
     resolved: &[ResolvedNeedBinding],
     eml_registry: &mut EmlExpressionRegistry,
 ) -> Vec<AccumulatorOp> {
-    build_need_binding_ops_with_options(resolved, eml_registry, true)
+    build_need_binding_ops_with_options(resolved, eml_registry, true, 0)
 }
 
 pub fn inject_need_binding_thresholds(
@@ -622,7 +681,7 @@ pub fn register_post_rf_need_threshold_rescan(
     state: &mut simthing_gpu::WorldGpuState,
     resolved: &[ResolvedNeedBinding],
 ) -> Result<(), String> {
-    use simthing_gpu::{DIR_UPWARD, THRESH_BUF_VALUES, ThresholdRegistration};
+    use simthing_gpu::{ThresholdRegistration, DIR_UPWARD, THRESH_BUF_VALUES};
     let need_regs: Vec<ThresholdRegistration> = resolved
         .iter()
         .map(|b| ThresholdRegistration {

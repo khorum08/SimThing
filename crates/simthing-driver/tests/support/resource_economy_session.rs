@@ -53,7 +53,9 @@ pub fn amount_transfer(id: &str, source: &str, target: &str, amount: f32) -> Res
                 source_host_entity: None,
             target_host_entity: None,
         }
-}
+            source_host_span_token: None,
+            target_host_span_token: None,
+        }
 
 pub fn identity_emission(id: &str, source: &str) -> ResourceEmissionSpec {
     ResourceEmissionSpec {
@@ -63,7 +65,8 @@ pub fn identity_emission(id: &str, source: &str) -> ResourceEmissionSpec {
         formula: EmissionFormulaSpec::IdentityFloor,
                 host_entity: None,
         }
-}
+            host_span_token: None,
+        }
 
 pub fn base_game_mode() -> GameModeSpec {
     GameModeSpec {

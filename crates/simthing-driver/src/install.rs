@@ -264,6 +264,7 @@ pub fn compile_and_install(
             &eml_registry,
             root,
             allocator,
+            scenario,
         )?);
     }
 
@@ -280,8 +281,8 @@ pub fn compile_and_install(
             )?;
             crate::need_binding::prepare_need_binding_cells(&resolved, registry, root)?;
             if state.resource_economy_registry.is_none() {
-                state.resource_economy_registry = Some(
-                    crate::resource_economy_compile::ResourceEconomyRegistry {
+                state.resource_economy_registry =
+                    Some(crate::resource_economy_compile::ResourceEconomyRegistry {
                         registrations:
                             crate::resource_economy_compile::ResourceEconomyRegistrations {
                                 transfers: vec![],
@@ -291,8 +292,7 @@ pub fn compile_and_install(
                                 report: Default::default(),
                             },
                         generation: 1,
-                    },
-                );
+                    });
             }
             if let Some(economy) = state.resource_economy_registry.as_mut() {
                 crate::need_binding::inject_need_binding_thresholds(&resolved, economy);
@@ -435,13 +435,46 @@ fn ensure_resource_economy_properties(
     root: &mut SimThing,
     scenario: &Scenario,
 ) -> Result<(), InstallError> {
-    for placement in resource_economy_property_placements(spec) {
+    let placements = resource_economy_property_placements(spec);
+    let mut qualified_hosts = HashMap::new();
+    for placement in &placements {
+        let Some(entity) = placement.host_entity.as_deref() else {
+            continue;
+        };
+        let property_id = registry
+            .id_of(&placement.key.namespace, &placement.key.name)
+            .ok_or_else(|| SpecError::ValidationFailed)?;
+        let host_id = resolve_unique_install_host(scenario, entity, placement.host_span)?;
+        if let Some(previous_host) = qualified_hosts.insert(property_id, host_id) {
+            if previous_host != host_id {
+                return Err(InstallError::NeedBindingInvalid {
+                    binding: "resource_economy".into(),
+                    reason: format!(
+                        "property {}::{} has duplicate/conflicting economy host placement; PropertyKey is not row authority",
+                        placement.key.namespace, placement.key.name
+                    ),
+                    span_token: placement.host_span,
+                });
+            }
+        }
+    }
+
+    for placement in placements {
         let property_id = registry
             .id_of(&placement.key.namespace, &placement.key.name)
             .ok_or_else(|| SpecError::ValidationFailed)?;
         let host_id = match &placement.host_entity {
-            Some(entity) => resolve_unique_install_host(scenario, entity)?,
-            None => root.id,
+            Some(entity) => resolve_unique_install_host(scenario, entity, placement.host_span)?,
+            None => {
+                // Unqualified: keep existing host if already placed; else World root.
+                if let Some(existing) =
+                    crate::resource_economy_compile::find_property_owner(root, property_id)
+                {
+                    existing
+                } else {
+                    root.id
+                }
+            }
         };
         let host = find_simthing_mut(root, host_id)
             .ok_or_else(|| InstallError::Spec(SpecError::ValidationFailed))?;
@@ -462,10 +495,13 @@ fn ensure_resource_economy_properties(
 fn resolve_unique_install_host(
     scenario: &Scenario,
     entity: &str,
+    span: Option<usize>,
 ) -> Result<SimThingId, InstallError> {
     let Some(hosts) = scenario.install_targets.get(entity) else {
-        return Err(InstallError::UnknownInstallTarget {
-            key: entity.to_string(),
+        return Err(InstallError::NeedBindingInvalid {
+            binding: "resource_economy".into(),
+            reason: format!("economy host entity `{entity}` is not in install_targets"),
+            span_token: span,
         });
     };
     if hosts.len() != 1 {
@@ -475,7 +511,7 @@ fn resolve_unique_install_host(
                 "entity `{entity}` host is ambiguous ({} hosts) for economy property placement",
                 hosts.len()
             ),
-            span_token: None,
+            span_token: span,
         });
     }
     Ok(hosts[0])
@@ -484,6 +520,7 @@ fn resolve_unique_install_host(
 struct EconomyPropertyPlacement {
     key: PropertyKey,
     host_entity: Option<String>,
+    host_span: Option<usize>,
     /// Optional tree seed from authored Constant emission (role, value).
     seed: Option<(simthing_core::SubFieldRole, f32)>,
 }
@@ -496,11 +533,13 @@ fn resource_economy_property_placements(
         out.push(EconomyPropertyPlacement {
             key: transfer.source.clone(),
             host_entity: transfer.source_host_entity.clone(),
+            host_span: transfer.source_host_span_token,
             seed: None,
         });
         out.push(EconomyPropertyPlacement {
             key: transfer.target.clone(),
             host_entity: transfer.target_host_entity.clone(),
+            host_span: transfer.target_host_span_token,
             seed: None,
         });
     }
@@ -509,12 +548,14 @@ fn resource_economy_property_placements(
             out.push(EconomyPropertyPlacement {
                 key: input.property.clone(),
                 host_entity: None,
+                host_span: None,
                 seed: None,
             });
         }
         out.push(EconomyPropertyPlacement {
             key: recipe.target.clone(),
             host_entity: None,
+            host_span: None,
             seed: None,
         });
     }
@@ -528,13 +569,15 @@ fn resource_economy_property_placements(
         out.push(EconomyPropertyPlacement {
             key: emission.source.clone(),
             host_entity: emission.host_entity.clone(),
+            host_span: emission.host_span_token,
             seed,
         });
     }
     for emit in &spec.emit_on_threshold {
         out.push(EconomyPropertyPlacement {
             key: emit.source.clone(),
-            host_entity: None,
+            host_entity: emit.host_entity.clone(),
+            host_span: emit.host_span_token,
             seed: None,
         });
     }

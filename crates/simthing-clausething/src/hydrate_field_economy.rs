@@ -74,6 +74,9 @@ pub struct HydratedStockpileSilo {
     pub owner: String,
     pub resource: String,
     pub current: f32,
+    /// Owner field clause token for spanned host diagnostics.
+    #[serde(skip)]
+    pub owner_span_token: Option<usize>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -82,6 +85,9 @@ pub struct HydratedFieldResourceQuantity {
     pub location: String,
     pub resource: String,
     pub amount: f32,
+    /// Location field clause token for spanned host diagnostics.
+    #[serde(skip)]
+    pub location_span_token: Option<usize>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -93,6 +99,9 @@ pub struct HydratedDisruptionPresence {
     pub threshold: f32,
     pub event_kind: u32,
     pub direction: TriggerDirection,
+    /// Location field clause token for spanned host diagnostics.
+    #[serde(skip)]
+    pub location_span_token: Option<usize>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -386,13 +395,17 @@ fn parse_stockpile_silo(property: &RawProperty) -> Result<HydratedStockpileSilo,
     let (header_id, block) = header_or_block_body(property, "stockpile_silo")?;
     let mut id = header_id;
     let mut owner = None;
+    let mut owner_span = None;
     let mut resource = None;
     let mut current = None;
 
     for field in &block.properties {
         match field.key.text.as_str() {
             "id" => id = read_checked_id(field, &id)?,
-            "owner" => owner = Some(read_scalar_text(field, "owner")?),
+            "owner" => {
+                owner_span = Some(field.key.span.token_index);
+                owner = Some(read_scalar_text(field, "owner")?);
+            }
             "resource" => resource = Some(read_scalar_text(field, "resource")?),
             "current" => current = Some(read_scalar_f32(field, "current")?),
             other => {
@@ -408,6 +421,7 @@ fn parse_stockpile_silo(property: &RawProperty) -> Result<HydratedStockpileSilo,
         owner: require_local(owner, "owner", property)?,
         resource: require_local(resource, "resource", property)?,
         current: require_local(current, "current", property)?,
+        owner_span_token: owner_span,
     })
 }
 
@@ -417,13 +431,17 @@ fn parse_field_resource_quantity(
     let (header_id, block) = header_or_block_body(property, "field_resource_quantity")?;
     let mut id = header_id;
     let mut location = None;
+    let mut location_span = None;
     let mut resource = None;
     let mut amount = None;
 
     for field in &block.properties {
         match field.key.text.as_str() {
             "id" => id = read_checked_id(field, &id)?,
-            "location" => location = Some(read_scalar_text(field, "location")?),
+            "location" => {
+                location_span = Some(field.key.span.token_index);
+                location = Some(read_scalar_text(field, "location")?);
+            }
             "resource" => resource = Some(read_scalar_text(field, "resource")?),
             "amount" => amount = Some(read_scalar_f32(field, "amount")?),
             other => {
@@ -439,6 +457,7 @@ fn parse_field_resource_quantity(
         location: require_local(location, "location", property)?,
         resource: require_local(resource, "resource", property)?,
         amount: require_local(amount, "amount", property)?,
+        location_span_token: location_span,
     })
 }
 
@@ -448,6 +467,7 @@ fn parse_disruption_presence(
     let (header_id, block) = header_or_block_body(property, "disruption_presence")?;
     let mut id = header_id;
     let mut location = None;
+    let mut location_span = None;
     let mut resource = None;
     let mut amount = None;
     let mut threshold = None;
@@ -457,7 +477,10 @@ fn parse_disruption_presence(
     for field in &block.properties {
         match field.key.text.as_str() {
             "id" => id = read_checked_id(field, &id)?,
-            "location" => location = Some(read_scalar_text(field, "location")?),
+            "location" => {
+                location_span = Some(field.key.span.token_index);
+                location = Some(read_scalar_text(field, "location")?);
+            }
             "resource" => resource = Some(read_scalar_text(field, "resource")?),
             "amount" => amount = Some(read_scalar_f32(field, "amount")?),
             "threshold" => threshold = Some(read_scalar_f32(field, "threshold")?),
@@ -479,6 +502,7 @@ fn parse_disruption_presence(
         threshold: require_local(threshold, "threshold", property)?,
         event_kind: require_local(event_kind, "event_kind", property)?,
         direction,
+        location_span_token: location_span,
     })
 }
 
@@ -960,6 +984,8 @@ fn lower_field_economy(parsed: ParsedFieldEconomy) -> Result<FieldEconomyLowerin
             order_band: index as u32,
             source_host_entity: Some(silo.owner.clone()),
             target_host_entity: Some(silo.owner.clone()),
+            source_host_span_token: silo.owner_span_token,
+            target_host_span_token: silo.owner_span_token,
         })
         .collect();
 
@@ -971,6 +997,7 @@ fn lower_field_economy(parsed: ParsedFieldEconomy) -> Result<FieldEconomyLowerin
             source_role: SubFieldRole::Amount,
             formula: EmissionFormulaSpec::Constant(silo.current),
             host_entity: Some(silo.owner.clone()),
+            host_span_token: silo.owner_span_token,
         });
     }
     for quantity in &parsed.field_resource_quantities {
@@ -987,6 +1014,7 @@ fn lower_field_economy(parsed: ParsedFieldEconomy) -> Result<FieldEconomyLowerin
             // Location-hosted quantity: install on scenario root until location
             // entity-host seam is generalized; host is still explicit (not name-guess).
             host_entity: Some(quantity.location.clone()),
+            host_span_token: quantity.location_span_token,
         });
     }
     for presence in &parsed.disruption_presences {
@@ -996,6 +1024,7 @@ fn lower_field_economy(parsed: ParsedFieldEconomy) -> Result<FieldEconomyLowerin
             source_role: SubFieldRole::Amount,
             formula: EmissionFormulaSpec::Constant(presence.amount),
             host_entity: Some(presence.location.clone()),
+            host_span_token: presence.location_span_token,
         });
     }
 
@@ -1010,6 +1039,8 @@ fn lower_field_economy(parsed: ParsedFieldEconomy) -> Result<FieldEconomyLowerin
             direction: presence.direction,
             event_kind: presence.event_kind,
             buffer: EmitBufferSpec::Values,
+            host_entity: Some(presence.location.clone()),
+            host_span_token: presence.location_span_token,
         })
         .collect();
 
