@@ -18,7 +18,7 @@ and screenshot C remain blocked until orchestration accepts the implementation a
 | RF-5A implementation / evidence | `d53d5253aad066e0fe8b187e1b2dc21ed7279e7c` / `79e5ed4c666522b5fb97c50c6b381e3b89ea78e4` |
 | RF-5A integration commit | `5be1012a7eec60d21886915b76b3810ef306603e` |
 | tested / implementation head | `9ef5ba0cb56b77ab5acf970e7925ceab85b38a51` |
-| evidence commit | `EVIDENCE_SHA_PENDING` |
+| evidence commit | `4a962f6987ea272e0546441b68bde854f59568f3` |
 | ORIENT-RECEIPT | `2c9fde39d1d6` (role=coding) |
 
 ## Implemented surface
