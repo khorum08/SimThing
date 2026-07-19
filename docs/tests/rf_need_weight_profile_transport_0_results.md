@@ -9,6 +9,14 @@ This tests/evidence-only correction does not change the accepted implementation,
 or frozen executable. No rebuild, re-freeze, or new Owner screenshot is required. PR #1414 remains
 draft/open/unmerged pending fresh exact-head governance and DA adjudication.
 
+## PR / branch / merge
+
+| Field | Value |
+|---|---|
+| PR | #1414 |
+| Branch | `coder/rf-need-weight-profile-transport-0` |
+| Merge | held; draft/open/unmerged pending DA adjudication |
+
 ## Identity
 
 | Field | Value |
@@ -27,7 +35,9 @@ draft/open/unmerged pending fresh exact-head governance and DA adjudication.
 | Owner screenshot C closure | comment `5017017028` — remains valid under DA Fork A |
 | ORIENT-RECEIPT | `2c9fde39d1d6` (role=coding) |
 
-## DA Fork A corpus-red correction
+## What changed
+
+### DA Fork A corpus-red correction
 
 - Orchestrator remand `5017072249` adjudicates the RF-5 single-pair `expansion-need`
   profile as intentional canonical truth: one admitted semantic `need_binding`, one input source,
@@ -71,7 +81,13 @@ test result: ok. 24 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
 - Missing profile joins and misbound properties still fail closed. Scenario-specific proof code
   remains homed in `simthing-workshop`; the production bridge remains generic.
 
-## Load-bearing local GPU proof
+## Load-bearing proofs
+
+tested_code_sha: fd6d166276aeffded4e6b4418461878e511dafa5
+
+coverage_basis: PASS — `fd6d1662` contains the complete assertion and evidence correction; every
+later commit in this remand is results/governance metadata only and does not change tested code,
+production code, the canonical scenario, or the frozen executable.
 
 Command:
 
@@ -186,7 +202,15 @@ GPU/desktop proofs above are owner-local by design; GitHub Actions has no GPU or
 The exact NVIDIA RTX 4080 Laptop GPU identity policy and owner-authorized non-DX12 backend support
 are unchanged by RF-5.
 
-## Fences held
+## Scope Ledger
+
+| Path | Classification | Disposition |
+|---|---|---|
+| `crates/simthing-workshop/tests/tp_clause_economy_author_0.rs` | workshop-homed exact canonical assertion | `[0]/[10]/Some(12)` equality retained |
+| `docs/tests/rf_need_weight_profile_transport_0_results.md` | results/evidence and governance metadata | records Fork A and complete local battery |
+| production Rust / grammar / scenario / GPU / Studio runtime | unchanged | frozen implementation and OVL lineage retained |
+
+## Conformance
 
 - No new binding type, grammar family, kernel/WGSL/EvalEML/accumulator primitive, or staged projection.
 - No execution-default flip, raw column mint, Studio arithmetic, feeder/mirror, direct dense seed,
@@ -194,3 +218,31 @@ are unchanged by RF-5.
 - No first-DFS/first-owner or positional property mapping.
 - No scenario-specific production code and no `§12.10` claim.
 - No rebuild, re-freeze, new screenshot, ready-for-review transition, or merge.
+- Homing boundary classification: scenario-specific proof remains in `simthing-workshop`; no sealed
+  production-crate code changed in this remedial delta.
+
+ANCHOR-ACK: field-policy-time-decisions@ae2d4c2c0c7d
+ANCHOR-ACK: founding-ontology-invariants@46802793fba7
+ANCHOR-ACK: movement-front@a0592b2f37ca
+ANCHOR-ACK: orientation-harness-core@8a365d1c0864
+ANCHOR-ACK: property-value-rf-overlays@084ee935326b
+ANCHOR-ACK: scanner-selftest-delta-gate@34fb2662baae
+ANCHOR-ACK: session-lifecycle-adr-family@d73fe5a83f25
+ANCHOR-ACK: stead-spatial-contract-core@b4a112cd02e8
+ANCHOR-ACK: structural-execution-convergence@17fa0732f44d
+ANCHOR-ACK: workshop-candidate-homing@3e584f0ad175
+
+## Known gaps / next
+
+- Fresh hosted clearance and relay lint must bind the exact final metadata head before this remedial
+  relay returns to the DA. PR #1414 remains draft/open/unmerged until that external adjudication.
+
+## Graduation routing
+
+| Field | Value |
+|---|---|
+| CI verdict | PASS-RELIABLE — complete local corpus, RF regression, Studio build, and doctrine checks green |
+| Triage entries | none; final doctrine scan has `failures=0 inspect=0` |
+| Risk class | tests/evidence-only correction; accepted implementation and frozen executable unchanged |
+| Falsification check | exact 12.8 equality is 4/4; RF-5 high/low and RF-4 live/runtime-negative proofs bite |
+| Recommended posture | hold draft/open/unmerged for fresh exact-head governance and DA adjudication |
