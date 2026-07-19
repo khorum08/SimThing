@@ -18,9 +18,9 @@ RF-5/#1414 remains **BLOCKED-PAUSED**. No Studio, TP amendment, OVL, freeze, mer
 | DA ruling | `5014178941` Modified Option A |
 | Remander | `5014217843` (handoff stamp `5014219181` on #1414) |
 | ORIENT-RECEIPT | `2c9fde39d1d6` |
-| tested_code_sha | *(bind after green push)* |
-| implementation_sha | *(bind after green push)* |
-| evidence_sha | \cbc8a7e32a18b7340a87892c62cb6630f3227183\ |
+| tested_code_sha | `cbc8a7e32a18b7340a87892c62cb6630f3227183` |
+| implementation_sha | `cbc8a7e32a18b7340a87892c62cb6630f3227183` |
+| evidence_sha | `f05f0a8c0613168fa4fa6c71a0d587ce661769ea` |
 | coverage_basis | workshop RF-5A 20/20 + field_economy_grammar nonregression |
 
 ## Contract landed (Modified Option A)
