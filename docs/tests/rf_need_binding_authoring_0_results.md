@@ -20,7 +20,7 @@ Remander `5015916255`, following remander `5014412811`, is implemented on the ex
 | Current remander | `5015916255` |
 | ORIENT-RECEIPT | `2c9fde39d1d6` |
 | implementation_sha / tested_code_sha | `d53d5253aad066e0fe8b187e1b2dc21ed7279e7c` |
-| evidence_sha | self (reported in the relay; a Git commit cannot embed its own hash) |
+| evidence_sha | `79e5ed4c666522b5fb97c50c6b381e3b89ea78e4` |
 | coverage_basis | RF-5A workshop 24/24 plus targeted RF/RF-4/OrderBand/adapter regressions; GPU/desktop rows are owner-local only |
 
 ## Remander remedies
