@@ -39,6 +39,10 @@ pub struct CompiledResourceTransfer {
     pub target_col: u32,
     pub amount: f32,
     pub order_band: u32,
+    /// Explicit install_targets entity for source slot (RF-5A host-qualified).
+    pub source_host_entity: Option<String>,
+    /// Explicit install_targets entity for target slot.
+    pub target_host_entity: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -76,6 +80,8 @@ pub struct CompiledResourceEmission {
     pub source_role: SubFieldRole,
     pub source_col: u32,
     pub formula: CompiledEmissionFormula,
+    /// Explicit install_targets entity for emission source slot.
+    pub host_entity: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -88,6 +94,8 @@ pub struct CompiledEmitOnThreshold {
     pub direction: ThresholdDirection,
     pub event_kind: u32,
     pub buffer: EmitBufferSpec,
+    /// Explicit install_targets entity for the observed source slot.
+    pub host_entity: Option<String>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -280,6 +288,8 @@ fn compile_transfer(
         target_col,
         amount: transfer.amount,
         order_band: transfer.order_band,
+        source_host_entity: transfer.source_host_entity.clone(),
+        target_host_entity: transfer.target_host_entity.clone(),
     })
 }
 
@@ -446,6 +456,7 @@ fn compile_emission(
         source_role: emission.source_role.clone(),
         source_col,
         formula,
+        host_entity: emission.host_entity.clone(),
     })
 }
 
@@ -485,6 +496,7 @@ fn compile_emit_on_threshold(
         direction: map_threshold_direction(emit.direction),
         event_kind: emit.event_kind,
         buffer: emit.buffer,
+        host_entity: emit.host_entity.clone(),
     })
 }
 
@@ -508,14 +520,16 @@ fn resolve_property_col(
         .ok_or_else(|| unknown_property(key.namespace.clone(), key.name.clone()))?;
     let layout = &registry.property(property_id).layout;
     let range = registry.column_range(property_id);
-    let col = range.col_for_role(role, layout).ok_or_else(|| {
-        invalid_role(
-            context.to_string(),
-            format!("{}::{}", key.namespace, key.name),
-            format_role(role),
-        )
-    })?
-    .raw_u32();
+    let col = range
+        .col_for_role(role, layout)
+        .ok_or_else(|| {
+            invalid_role(
+                context.to_string(),
+                format!("{}::{}", key.namespace, key.name),
+                format_role(role),
+            )
+        })?
+        .raw_u32();
     Ok((property_id, col))
 }
 
@@ -598,5 +612,4 @@ mod tests {
             }],
         )
     }
-
 }

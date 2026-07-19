@@ -386,6 +386,10 @@ fn build_combat_transfers(
                 target_role: SubFieldRole::Amount,
                 amount: COMBAT_TRANSFER_CAP,
                 order_band: 0,
+                source_host_entity: None,
+                target_host_entity: None,
+                source_host_span_token: None,
+                target_host_span_token: None,
             });
         }
     }

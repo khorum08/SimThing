@@ -3,10 +3,10 @@
 //! This lowers authoring blocks onto existing spec surfaces only: `PropertySpec`,
 //! `OverlaySpec`, `ResourceEconomySpec`, and `EmlGadgetStackSpec`.
 //!
-//! HORIZON-ENTRY(2026-07-16): 12.7+ may author production output coefficients
-//! and stockpile clamps only after an execution-bearing recipe-yield/storage-capacity
-//! surface exists; this rung rejects those fields instead of lowering them to
-//! event-shaped emissions or permanent overlays.
+//! Production output coefficients / stockpile clamps remain deferred until an
+//! execution-bearing recipe-yield/storage-capacity surface exists (reject, do not
+//! lower to emissions/overlays). RF-5A discharges need-binding authoring via
+//! `need_binding` (semantic entity/property/role → full-cell admission).
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -18,6 +18,7 @@ use simthing_core::{
 };
 use simthing_spec::spec::eml_gadget::{EmlGadgetInstanceSpec, EmlGadgetStackSpec};
 use simthing_spec::spec::install_target::InstallTargetSpec;
+use simthing_spec::spec::need_binding::{NeedBindingSpec, SemanticPropertyLocusSpec};
 use simthing_spec::spec::overlay::OverlaySpec;
 use simthing_spec::spec::property::PropertySpec;
 use simthing_spec::spec::resource_economy::{
@@ -53,6 +54,8 @@ pub struct HydratedFieldEconomy {
     pub disruption_presences: Vec<HydratedDisruptionPresence>,
     pub owner_policy_overlays: Vec<HydratedOwnerPolicyOverlay>,
     pub weight_profiles: Vec<HydratedFieldEconomyWeightProfile>,
+    /// RF-5A semantic need bindings (profile-id join + entity/property/role loci).
+    pub need_bindings: Vec<NeedBindingSpec>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -71,6 +74,9 @@ pub struct HydratedStockpileSilo {
     pub owner: String,
     pub resource: String,
     pub current: f32,
+    /// Owner field clause token for spanned host diagnostics.
+    #[serde(skip)]
+    pub owner_span_token: Option<usize>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -79,6 +85,9 @@ pub struct HydratedFieldResourceQuantity {
     pub location: String,
     pub resource: String,
     pub amount: f32,
+    /// Location field clause token for spanned host diagnostics.
+    #[serde(skip)]
+    pub location_span_token: Option<usize>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -90,6 +99,9 @@ pub struct HydratedDisruptionPresence {
     pub threshold: f32,
     pub event_kind: u32,
     pub direction: TriggerDirection,
+    /// Location field clause token for spanned host diagnostics.
+    #[serde(skip)]
+    pub location_span_token: Option<usize>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -119,6 +131,7 @@ pub struct FieldEconomyLowering {
     pub properties: Vec<PropertySpec>,
     pub overlays: Vec<OverlaySpec>,
     pub resource_economy: ResourceEconomySpec,
+    pub need_bindings: Vec<NeedBindingSpec>,
 }
 
 #[derive(Debug, Clone)]
@@ -131,6 +144,7 @@ struct ParsedFieldEconomy {
     disruption_presences: Vec<HydratedDisruptionPresence>,
     owner_policy_overlays: Vec<HydratedOwnerPolicyOverlay>,
     weight_profiles: Vec<HydratedFieldEconomyWeightProfile>,
+    need_bindings: Vec<NeedBindingSpec>,
     span: RawSpan,
 }
 
@@ -174,6 +188,7 @@ fn parse_field_economy_property(
     let mut disruption_presences = Vec::new();
     let mut owner_policy_overlays = Vec::new();
     let mut weight_profiles = Vec::new();
+    let mut need_bindings = Vec::new();
     let mut seen_ids = BTreeSet::new();
 
     for field in &block.properties {
@@ -239,6 +254,12 @@ fn parse_field_economy_property(
                 admit_unique_field_economy_id(&mut seen_ids, "weight_profile", &profile.id, field)?;
                 weight_profiles.push(profile);
             }
+            "need_binding" => {
+                let binding = parse_need_binding(field)?;
+                // Profile-id join: need_binding id may match weight_profile id.
+                // Uniqueness among need_bindings only (separate set).
+                need_bindings.push(binding);
+            }
             other => {
                 return Err(HydrateError::new_spanned(
                     format!("unsupported field_economy field `{other}`"),
@@ -260,6 +281,58 @@ fn parse_field_economy_property(
             Some(property.key.span.clone()),
         ));
     }
+    // Uniqueness among need_bindings; id may equal a weight_profile (profile-id join).
+    let mut seen_need_ids = BTreeSet::new();
+    for binding in &need_bindings {
+        if !seen_need_ids.insert(binding.id.clone()) {
+            return Err(HydrateError::new_spanned(
+                format!("duplicate need_binding id `{}`", binding.id),
+                Some(property.key.span.clone()),
+            ));
+        }
+    }
+    // Profile-id join: attach stack from matching weight_profile (same id).
+    let mut joined_bindings = Vec::with_capacity(need_bindings.len());
+    for mut binding in need_bindings {
+        if binding.stack.gadgets.is_empty() {
+            let matches: Vec<_> = weight_profiles
+                .iter()
+                .filter(|p| p.id == binding.id)
+                .collect();
+            if matches.len() > 1 {
+                return Err(HydrateError::new_spanned(
+                    format!(
+                        "need_binding `{}` profile-id join is ambiguous ({} weight_profile ids)",
+                        binding.id,
+                        matches.len()
+                    ),
+                    Some(property.key.span.clone()),
+                ));
+            }
+            let Some(profile) = matches.first() else {
+                return Err(HydrateError::new_spanned(
+                    format!(
+                        "need_binding `{}` has empty stack and no weight_profile with the same id",
+                        binding.id
+                    ),
+                    Some(property.key.span.clone()),
+                ));
+            };
+            binding.stack = profile.stack.clone();
+            if binding.profile.is_empty() {
+                binding.profile = profile.profile.clone();
+            } else if binding.profile != profile.profile {
+                return Err(HydrateError::new_spanned(
+                    format!(
+                        "need_binding `{}` profile `{}` mismatches weight_profile profile `{}`",
+                        binding.id, binding.profile, profile.profile
+                    ),
+                    Some(property.key.span.clone()),
+                ));
+            }
+        }
+        joined_bindings.push(binding);
+    }
     Ok(ParsedFieldEconomy {
         id,
         namespace,
@@ -269,6 +342,7 @@ fn parse_field_economy_property(
         disruption_presences,
         owner_policy_overlays,
         weight_profiles,
+        need_bindings: joined_bindings,
         span: property.key.span.clone(),
     })
 }
@@ -321,13 +395,17 @@ fn parse_stockpile_silo(property: &RawProperty) -> Result<HydratedStockpileSilo,
     let (header_id, block) = header_or_block_body(property, "stockpile_silo")?;
     let mut id = header_id;
     let mut owner = None;
+    let mut owner_span = None;
     let mut resource = None;
     let mut current = None;
 
     for field in &block.properties {
         match field.key.text.as_str() {
             "id" => id = read_checked_id(field, &id)?,
-            "owner" => owner = Some(read_scalar_text(field, "owner")?),
+            "owner" => {
+                owner_span = Some(field.key.span.token_index);
+                owner = Some(read_scalar_text(field, "owner")?);
+            }
             "resource" => resource = Some(read_scalar_text(field, "resource")?),
             "current" => current = Some(read_scalar_f32(field, "current")?),
             other => {
@@ -343,6 +421,7 @@ fn parse_stockpile_silo(property: &RawProperty) -> Result<HydratedStockpileSilo,
         owner: require_local(owner, "owner", property)?,
         resource: require_local(resource, "resource", property)?,
         current: require_local(current, "current", property)?,
+        owner_span_token: owner_span,
     })
 }
 
@@ -352,13 +431,17 @@ fn parse_field_resource_quantity(
     let (header_id, block) = header_or_block_body(property, "field_resource_quantity")?;
     let mut id = header_id;
     let mut location = None;
+    let mut location_span = None;
     let mut resource = None;
     let mut amount = None;
 
     for field in &block.properties {
         match field.key.text.as_str() {
             "id" => id = read_checked_id(field, &id)?,
-            "location" => location = Some(read_scalar_text(field, "location")?),
+            "location" => {
+                location_span = Some(field.key.span.token_index);
+                location = Some(read_scalar_text(field, "location")?);
+            }
             "resource" => resource = Some(read_scalar_text(field, "resource")?),
             "amount" => amount = Some(read_scalar_f32(field, "amount")?),
             other => {
@@ -374,6 +457,7 @@ fn parse_field_resource_quantity(
         location: require_local(location, "location", property)?,
         resource: require_local(resource, "resource", property)?,
         amount: require_local(amount, "amount", property)?,
+        location_span_token: location_span,
     })
 }
 
@@ -383,6 +467,7 @@ fn parse_disruption_presence(
     let (header_id, block) = header_or_block_body(property, "disruption_presence")?;
     let mut id = header_id;
     let mut location = None;
+    let mut location_span = None;
     let mut resource = None;
     let mut amount = None;
     let mut threshold = None;
@@ -392,7 +477,10 @@ fn parse_disruption_presence(
     for field in &block.properties {
         match field.key.text.as_str() {
             "id" => id = read_checked_id(field, &id)?,
-            "location" => location = Some(read_scalar_text(field, "location")?),
+            "location" => {
+                location_span = Some(field.key.span.token_index);
+                location = Some(read_scalar_text(field, "location")?);
+            }
             "resource" => resource = Some(read_scalar_text(field, "resource")?),
             "amount" => amount = Some(read_scalar_f32(field, "amount")?),
             "threshold" => threshold = Some(read_scalar_f32(field, "threshold")?),
@@ -414,6 +502,7 @@ fn parse_disruption_presence(
         threshold: require_local(threshold, "threshold", property)?,
         event_kind: require_local(event_kind, "event_kind", property)?,
         direction,
+        location_span_token: location_span,
     })
 }
 
@@ -560,6 +649,151 @@ fn parse_resource_ref(
     }
     Ok(ResourceRef {
         resource: require_local(resource, "resource", property)?,
+    })
+}
+
+fn parse_need_binding(property: &RawProperty) -> Result<NeedBindingSpec, HydrateError> {
+    let (header_id, block) = header_or_block_body(property, "need_binding")?;
+    let mut id = header_id;
+    let mut profile = String::new();
+    let mut participant = None;
+    let mut participant_span = None;
+    let mut arena = None;
+    let mut arena_span = None;
+    let mut inputs = Vec::new();
+    let mut weights = Vec::new();
+    let mut threshold = None;
+    let mut event_kind = None;
+    for field in &block.properties {
+        match field.key.text.as_str() {
+            "id" => id = read_checked_id(field, &id)?,
+            "profile" => profile = read_scalar_text(field, "profile")?,
+            "participant" => {
+                participant_span = Some(field.key.span.token_index);
+                participant = Some(read_scalar_text(field, "participant")?);
+            }
+            "arena" => {
+                arena_span = Some(field.key.span.token_index);
+                arena = Some(read_scalar_text(field, "arena")?);
+            }
+            "input" => inputs.push(parse_semantic_locus(field, "input")?),
+            "weight" => weights.push(parse_semantic_locus(field, "weight")?),
+            "threshold" => threshold = Some(read_scalar_f32(field, "threshold")?),
+            "event_kind" => event_kind = Some(read_scalar_u32(field, "event_kind")?),
+            other => {
+                return Err(HydrateError::new_spanned(
+                    format!("unsupported need_binding field `{other}`"),
+                    Some(field.key.span.clone()),
+                ));
+            }
+        }
+    }
+    let id = require_id(id, "need_binding", property)?;
+    let participant = require_local(participant, "participant", property)?;
+    let arena = require_local(arena, "arena", property)?;
+    if arena.trim().is_empty() || arena == "default" {
+        return Err(HydrateError::new_spanned(
+            "need_binding.arena must be an explicit arena name (no first-arena fallback)",
+            Some(property.key.span.clone()),
+        ));
+    }
+    if inputs.is_empty() {
+        return Err(HydrateError::new_spanned(
+            "need_binding requires at least one input",
+            Some(property.key.span.clone()),
+        ));
+    }
+    if weights.is_empty() {
+        return Err(HydrateError::new_spanned(
+            "need_binding requires at least one weight",
+            Some(property.key.span.clone()),
+        ));
+    }
+    if inputs.len() != weights.len() {
+        return Err(HydrateError::new_spanned(
+            "need_binding input/weight arity must match",
+            Some(property.key.span.clone()),
+        ));
+    }
+    let threshold = require_local(threshold, "threshold", property)?;
+    let event_kind = require_local(event_kind, "event_kind", property)?;
+    Ok(NeedBindingSpec {
+        id,
+        profile,
+        participant,
+        arena,
+        stack: EmlGadgetStackSpec { gadgets: vec![] },
+        inputs,
+        weights,
+        threshold,
+        event_kind,
+        source_span_token: Some(property.key.span.token_index),
+        participant_span_token: participant_span,
+        arena_span_token: arena_span,
+    })
+}
+
+fn parse_semantic_locus(
+    property: &RawProperty,
+    field_name: &str,
+) -> Result<SemanticPropertyLocusSpec, HydrateError> {
+    let block = require_block(property, field_name)?;
+    let mut entity = None;
+    let mut property_key = None;
+    let mut role = None;
+    // Prefer the most specific authored field span (entity > property > role > block).
+    let mut locus_span = property.key.span.token_index;
+    for field in &block.properties {
+        match field.key.text.as_str() {
+            "entity" => {
+                locus_span = field.key.span.token_index;
+                entity = Some(read_scalar_text(field, "entity")?);
+            }
+            "property" => {
+                if entity.is_none() {
+                    locus_span = field.key.span.token_index;
+                }
+                let raw = read_scalar_text(field, "property")?;
+                let (ns, name) = raw.split_once("::").ok_or_else(|| {
+                    HydrateError::new_spanned(
+                        format!(
+                            "need_binding.{field_name}.property must be `namespace::name`, got `{raw}`"
+                        ),
+                        Some(field.key.span.clone()),
+                    )
+                })?;
+                property_key = Some(PropertyKey::new(ns, name));
+            }
+            "role" => {
+                if entity.is_none() && property_key.is_none() {
+                    locus_span = field.key.span.token_index;
+                }
+                let text = read_scalar_text(field, "role")?;
+                role = Some(match text.as_str() {
+                    "Amount" | "amount" => SubFieldRole::Amount,
+                    other => {
+                        return Err(HydrateError::new_spanned(
+                            format!(
+                                "need_binding.{field_name}.role `{other}` unsupported (Amount only in RF-5A)"
+                            ),
+                            Some(field.key.span.clone()),
+                        ));
+                    }
+                });
+            }
+            other => {
+                return Err(HydrateError::new_spanned(
+                    format!("unsupported need_binding.{field_name} field `{other}`"),
+                    Some(field.key.span.clone()),
+                ));
+            }
+        }
+    }
+    Ok(SemanticPropertyLocusSpec {
+        entity: require_local(entity, "entity", property)?,
+        property: require_local(property_key, "property", property)?,
+        role: require_local(role, "role", property)?,
+        source_span_token: Some(locus_span),
     })
 }
 
@@ -748,6 +982,10 @@ fn lower_field_economy(parsed: ParsedFieldEconomy) -> Result<FieldEconomyLowerin
             target_role: SubFieldRole::Amount,
             amount: silo.current,
             order_band: index as u32,
+            source_host_entity: Some(silo.owner.clone()),
+            target_host_entity: Some(silo.owner.clone()),
+            source_host_span_token: silo.owner_span_token,
+            target_host_span_token: silo.owner_span_token,
         })
         .collect();
 
@@ -758,6 +996,8 @@ fn lower_field_economy(parsed: ParsedFieldEconomy) -> Result<FieldEconomyLowerin
             source: owner_resource_key(&parsed.namespace, &silo.owner, &silo.resource, "current"),
             source_role: SubFieldRole::Amount,
             formula: EmissionFormulaSpec::Constant(silo.current),
+            host_entity: Some(silo.owner.clone()),
+            host_span_token: silo.owner_span_token,
         });
     }
     for quantity in &parsed.field_resource_quantities {
@@ -771,6 +1011,10 @@ fn lower_field_economy(parsed: ParsedFieldEconomy) -> Result<FieldEconomyLowerin
             ),
             source_role: SubFieldRole::Amount,
             formula: EmissionFormulaSpec::Constant(quantity.amount),
+            // Location-hosted quantity: install on scenario root until location
+            // entity-host seam is generalized; host is still explicit (not name-guess).
+            host_entity: Some(quantity.location.clone()),
+            host_span_token: quantity.location_span_token,
         });
     }
     for presence in &parsed.disruption_presences {
@@ -779,6 +1023,8 @@ fn lower_field_economy(parsed: ParsedFieldEconomy) -> Result<FieldEconomyLowerin
             source: presence_key(&parsed.namespace, &presence.location, &presence.resource),
             source_role: SubFieldRole::Amount,
             formula: EmissionFormulaSpec::Constant(presence.amount),
+            host_entity: Some(presence.location.clone()),
+            host_span_token: presence.location_span_token,
         });
     }
 
@@ -793,6 +1039,8 @@ fn lower_field_economy(parsed: ParsedFieldEconomy) -> Result<FieldEconomyLowerin
             direction: presence.direction,
             event_kind: presence.event_kind,
             buffer: EmitBufferSpec::Values,
+            host_entity: Some(presence.location.clone()),
+            host_span_token: presence.location_span_token,
         })
         .collect();
 
@@ -854,6 +1102,7 @@ fn lower_field_economy(parsed: ParsedFieldEconomy) -> Result<FieldEconomyLowerin
             }),
     );
 
+    let need_bindings = parsed.need_bindings;
     let hydrated = HydratedFieldEconomy {
         id: parsed.id,
         namespace: parsed.namespace,
@@ -863,6 +1112,7 @@ fn lower_field_economy(parsed: ParsedFieldEconomy) -> Result<FieldEconomyLowerin
         disruption_presences: parsed.disruption_presences,
         owner_policy_overlays: parsed.owner_policy_overlays,
         weight_profiles: parsed.weight_profiles,
+        need_bindings: need_bindings.clone(),
     };
     Ok(FieldEconomyLowering {
         hydrated,
@@ -875,6 +1125,7 @@ fn lower_field_economy(parsed: ParsedFieldEconomy) -> Result<FieldEconomyLowerin
             emissions,
             emit_on_threshold,
         },
+        need_bindings,
     })
 }
 

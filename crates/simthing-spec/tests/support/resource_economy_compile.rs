@@ -61,8 +61,12 @@ pub fn amount_property(
         target_role: SubFieldRole::Named("amount".into()),
         amount,
         order_band,
+        source_host_entity: None,
+        target_host_entity: None,
     }
-}
+            source_host_span_token: None,
+            target_host_span_token: None,
+        }
 
 pub fn exact_eml_registry(entries: &[(&str, u32)]) -> EmlExpressionRegistry {
     let mut eml = EmlExpressionRegistry::new();

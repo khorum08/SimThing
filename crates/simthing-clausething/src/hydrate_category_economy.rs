@@ -292,6 +292,7 @@ pub fn hydrate_category_economy_pack(
                 base_obligations,
                 capacity_budget: None,
                 gated_rates,
+                need_bindings: vec![],
             }),
             resource_economy: None,
             resource_flow_execution_profile: Default::default(),
@@ -1461,7 +1462,11 @@ fn parse_transfer_block(property: &RawProperty) -> Result<ResourceTransferSpec, 
         target_role: amount_role(),
         amount: require_field(amount, "amount", property)?,
         order_band: require_field(order_band, "order_band", property)?,
-    })
+                source_host_entity: None,
+            target_host_entity: None,
+            source_host_span_token: None,
+            target_host_span_token: None,
+        })
 }
 
 fn parse_recipe_block(property: &RawProperty) -> Result<ResourceRecipeSpec, HydrateError> {

@@ -36,6 +36,9 @@ pub struct ResourceFlowSpec {
     /// transforms directly on rate columns are rejected (compounding).
     #[serde(default)]
     pub gated_rates: Vec<GatedRateSpec>,
+    /// RF-5A: semantic need bindings (full-cell resolve at session admission).
+    #[serde(default)]
+    pub need_bindings: Vec<super::need_binding::NeedBindingSpec>,
 }
 
 /// Budgeted RF capacity surfaces. Inputs are authoring/session budgets, not runtime semantics.

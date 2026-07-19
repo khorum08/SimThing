@@ -1226,6 +1226,16 @@ impl AccumulatorOpSession {
         self.write_tick_uniform(ctx, 0);
     }
 
+    /// Prepare an append scan without clearing events emitted by the earlier
+    /// scan in the same tick. Rewrites the uniform after replacing the op
+    /// packet so retained buffer entries beyond `n_ops` cannot execute.
+    pub(crate) fn prepare_threshold_append_scan(&mut self, ctx: &GpuContext) {
+        if self.n_ops == 0 {
+            return;
+        }
+        self.write_tick_uniform(ctx, 0);
+    }
+
     /// Public timestamp readback hook for callers that drove
     /// `encode_threshold_scan_into` directly.
     pub fn finish_threshold_scan(&mut self, ctx: &GpuContext) {

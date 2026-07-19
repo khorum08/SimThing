@@ -522,6 +522,7 @@ pub use spec::resource_economy::{
     ResourceEconomyOptInMode, ResourceEconomySpec, ResourceEmissionSpec, ResourceRecipeSpec,
     ResourceTransferSpec,
 };
+pub use spec::need_binding::{NeedBindingSpec, SemanticPropertyLocusSpec};
 pub use spec::resource_flow::{
     effective_resource_flow_arena_caps, resolve_resource_flow_capacity_budget,
     spatial_arena_explicit_participants, ArenaSpec, BaseFlowDirectionSpec, BaseFlowObligationSpec,

@@ -19,7 +19,7 @@ wgpu = { workspace = true }
 
 [dev-dependencies]
 tempfile = "3"
-simthing-driver = { path = "../simthing-driver" }
+simthing-driver = { path = "../simthing-driver", features = ["rf-test-harness"] }
 simthing-feeder = { path = "../simthing-feeder" }
 simthing-gpu = { path = "../simthing-gpu" }
 simthing-mapeditor = { path = "../simthing-mapeditor" }

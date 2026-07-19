@@ -96,6 +96,8 @@ pub struct SpecSessionState {
     /// CT-RF-EML-RATE-0: install-resolved gated rate terms consumed by the
     /// resource-flow sync (effective-rate EvalEML band before reduce bands).
     pub resolved_gated_rates: Vec<crate::gated_rates::ResolvedGatedRate>,
+    /// RF-5A: install-resolved need bindings (full-cell loci).
+    pub resolved_need_bindings: Vec<crate::need_binding::ResolvedNeedBinding>,
     /// Checked RF capacity budget used for session slot and emission reservations.
     pub resource_flow_capacity_budget: Option<ResolvedResourceFlowCapacityBudget>,
     /// Materialized production transfer/recipe/emission/threshold registrations (Phase T-3/T-4).
@@ -687,5 +689,4 @@ mod tests {
             .next()
             .expect("crossing event")
     }
-
 }
