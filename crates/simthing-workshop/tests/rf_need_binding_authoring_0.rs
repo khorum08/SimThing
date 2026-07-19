@@ -947,39 +947,28 @@ fn cross_row_sources_project_via_stage_happy_path() {
 }
 
 #[test]
-fn two_bindings_same_participant_use_disjoint_stage_slices() {
-    let mut sim = open_clause_opts(
+fn two_bindings_same_participant_need_target_collision_fails_spanned() {
+    let expected_span = first_participant_span(FOUNDRY_HIGH);
+    let result = open_clause_opts(
         FOUNDRY_HIGH,
         OpenOpts {
             static_installed_source: true,
             second_binding_same_participant: true,
             ..Default::default()
         },
-    )
-    .expect("two bindings admit");
-    let first = &sim.spec_state.resolved_need_bindings[0];
-    let second = &sim.spec_state.resolved_need_bindings[1];
-    assert_eq!(first.participant_slot, second.participant_slot);
-    assert!(
-        first
-            .staged_input_cols
-            .iter()
-            .chain(&first.staged_weight_cols)
-            .all(|col| !second.staged_input_cols.contains(col)
-                && !second.staged_weight_cols.contains(col)),
-        "same-participant bindings must not share any staged target"
     );
-    let participant_slot = first.participant_slot;
-    let first_weight_col = first.staged_weight_cols[0];
-    let second_weight_col = second.staged_weight_cols[0];
-    sim.step_once().expect("stage both bindings");
-    let values = sim.state.read_values();
-    let n = sim.state.n_dims as usize;
-    let row = participant_slot as usize * n;
-    let first_weight = values[row + first_weight_col.raw()];
-    let second_weight = values[row + second_weight_col.raw()];
-    assert_measurement("binding 1 staged weight", first_weight, 3.0);
-    assert_measurement("binding 2 staged weight", second_weight, 1.0);
+    match result {
+        Ok(_) => panic!("duplicate participant need target must fail admission"),
+        Err(error) => {
+            assert_eq!(error.span_token(), Some(expected_span), "{error}");
+            let message = error.to_string();
+            assert!(message.contains("need target collision"), "{message}");
+            assert!(message.contains("participant slot"), "{message}");
+            println!(
+                "RF-5A duplicate need target rejected at span {expected_span}: {message}"
+            );
+        }
+    }
 }
 
 // ── Live open / sealed events ──────────────────────────────────────────────
@@ -1066,21 +1055,47 @@ fn ordinary_unrelated_threshold_fires_exactly_once() {
         guild_slot,
         "host-qualified threshold must materialize on authored guild row"
     );
-    sim.step_once().expect("step");
-    let mut ord = count_events(&mut sim, ORD_KIND);
-    let mut need = count_events(&mut sim, NEED_KIND);
-    if ord == 0 {
-        sim.step_once().expect("step2");
-        ord = count_events(&mut sim, ORD_KIND);
-        need = count_events(&mut sim, NEED_KIND);
+    // The authored 0.25 drip crosses the ordinary 0.1 threshold on tick 1.
+    // step_once includes both the full threshold scan and the post-RF need-only
+    // append rescan, so the final buffer proves that the latter neither erases
+    // nor duplicates the unrelated ordinary event.
+    sim.step_once().expect("named crossing tick 1");
+    {
+        let runtime = sim
+            .state
+            .accumulator_runtime
+            .as_mut()
+            .expect("threshold runtime");
+        let session = runtime.take_threshold_session().expect("threshold session");
+        let emissions = session
+            .readback_threshold_emissions(&sim.state.ctx)
+            .expect("threshold emissions");
+        println!(
+            "RF-5A crossing tick 1 raw threshold reg_idx={:?}",
+            emissions.iter().map(|event| event.reg_idx()).collect::<Vec<_>>()
+        );
+        let mut reg_indices = emissions
+            .iter()
+            .map(|event| event.reg_idx())
+            .collect::<Vec<_>>();
+        reg_indices.sort_unstable();
+        assert_eq!(
+            reg_indices,
+            vec![0, 1],
+            "full-scan ordinary and need-only append must retain distinct registration identities"
+        );
+        runtime.restore_threshold_session(Some(session));
     }
-    // Ordinary thr must fire (not erased by post-RF need rescan). Count may be 1
-    // or 2 if ordinary thr is in both full scan and retained buffer; never 0.
-    assert!(
-        ord >= 1 && ord <= 2,
-        "ordinary threshold must fire (got {ord})"
+    let ord = count_events(&mut sim, ORD_KIND);
+    let need = count_events(&mut sim, NEED_KIND);
+    assert_eq!(
+        ord, 1,
+        "kind {ORD_KIND} must remain exactly once after the post-RF need rescan"
     );
-    assert_eq!(need, 1, "need thr once under post-RF rescan (got {need})");
+    assert_eq!(need, 1, "need kind {NEED_KIND} must emit exactly once");
+    println!(
+        "RF-5A crossing tick 1 exact counts: ordinary kind {ORD_KIND}={ord}; need kind {NEED_KIND}={need}"
+    );
 }
 
 #[test]
@@ -1132,6 +1147,17 @@ fn first_input_span(text: &str) -> usize {
         .inputs[0]
         .source_span_token
         .expect("input source span")
+}
+
+fn first_participant_span(text: &str) -> usize {
+    let doc = parse_raw_document(text.as_bytes()).expect("parse span fixture");
+    let pack = hydrate_scenario(&doc).expect("hydrate span fixture");
+    pack.field_economy
+        .as_ref()
+        .expect("field economy")
+        .need_bindings[0]
+        .participant_span_token
+        .expect("participant span")
 }
 
 fn assert_spanned_error(result: Result<SimSession, OpenError>, expected_span: usize) {

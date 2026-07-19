@@ -1165,6 +1165,11 @@ impl WorldGpuState {
             runtime.restore_threshold_session(Some(session));
             return Err(format!("upload need threshold regs: {e}"));
         }
+        // upload_packed_threshold_ops changes n_ops. Refresh the dispatch
+        // uniform without resetting the existing per-tick event counter;
+        // otherwise retained full-scan ops past the shorter need packet run
+        // again under the stale full-scan n_ops value.
+        session.prepare_threshold_append_scan(&self.ctx);
         let mut encoder = self
             .ctx
             .device

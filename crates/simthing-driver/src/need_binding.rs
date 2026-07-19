@@ -85,8 +85,13 @@ pub fn resolve_need_bindings(
     // Per-participant stage lane cursor so two bindings cannot share stage cells.
     let mut stage_cursor: std::collections::HashMap<SimThingId, usize> =
         std::collections::HashMap::new();
+    // A participant has one authored need cell for this pathway. Distinct staging
+    // lanes do not make two writes to that cell independent, so reject the second
+    // claimant instead of silently imposing an un-authored combine order.
+    let mut need_targets: std::collections::HashMap<(u32, usize), String> =
+        std::collections::HashMap::new();
     for binding in &spec.need_bindings {
-        out.push(resolve_one(
+        let resolved = resolve_one(
             binding,
             spec,
             scenario,
@@ -95,7 +100,19 @@ pub fn resolve_need_bindings(
             scaffold,
             allocator,
             &mut stage_cursor,
-        )?);
+        )?;
+        let target = (resolved.participant_slot, resolved.need_col.raw());
+        if let Some(first_binding) = need_targets.insert(target, binding.id.clone()) {
+            return Err(nb_err(
+                binding,
+                format!(
+                    "need target collision: participant slot {} column {} is already claimed by binding `{first_binding}`",
+                    target.0, target.1
+                ),
+                binding.participant_span_token,
+            ));
+        }
+        out.push(resolved);
     }
     Ok(out)
 }
@@ -651,7 +668,7 @@ pub fn inject_need_binding_thresholds(
     resolved: &[ResolvedNeedBinding],
     economy: &mut ResourceEconomyRegistry,
 ) {
-    let mut injected = false;
+    let mut need_regs = Vec::with_capacity(resolved.len());
     for binding in resolved {
         let reg = EmitOnThresholdRegistration {
             slot: SlotIndex::new(binding.participant_slot),
@@ -662,15 +679,21 @@ pub fn inject_need_binding_thresholds(
             buffer: EmitOnThresholdBuffer::Values,
         };
         let _ = rebuild_emit_on_threshold_ops(std::slice::from_ref(&reg));
-        economy.registrations.emit_on_threshold.push(reg);
+        need_regs.push(reg);
         economy
             .registrations
             .report
             .threshold_emit_ids
             .push(format!("{}_need_threshold", binding.id));
-        injected = true;
     }
-    if injected {
+    if !need_regs.is_empty() {
+        // The post-RF append scan uploads this same need-only prefix. Keeping
+        // its packet indices identical to the full-scan sidecar indices makes
+        // retained pre-RF and appended post-RF emissions jointly decodable.
+        economy
+            .registrations
+            .emit_on_threshold
+            .splice(0..0, need_regs);
         economy.registrations.report.threshold_emit_count =
             economy.registrations.emit_on_threshold.len();
         economy.generation = economy.generation.saturating_add(1).max(2);
