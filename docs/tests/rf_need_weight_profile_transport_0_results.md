@@ -21,6 +21,7 @@ draft/open/unmerged pending fresh exact-head governance and DA adjudication.
 | RF-5 original implementation / evidence | `9ef5ba0cb56b77ab5acf970e7925ceab85b38a51` / `4a962f6987ea272e0546441b68bde854f59568f3` |
 | remand-corrected tested implementation | `71005e59af05dc12105d63b585159b09ac0a8f6a` |
 | corrected evidence commit | `afeaa4f15a22a48738caf97abba5a2a540837100` |
+| DA Fork A test/evidence commit | `fd6d166276aeffded4e6b4418461878e511dafa5` |
 | frozen source head | `85056ee19aab744507b4dfc2b8a4a2f641b718be` |
 | frozen executable SHA-256 | `81d346791553be551323fb38e82945c91ece7fedb6b019e57d4047ea361d5a71` |
 | Owner screenshot C closure | comment `5017017028` — remains valid under DA Fork A |
@@ -142,6 +143,17 @@ test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
 
 cargo build -p simthing-mapeditor --bin simthing-studio
 Finished `dev` profile [optimized + debuginfo] target(s) in 0.60s
+
+bash scripts/ci/doctrine_pr_scan.sh 3ad5add387e17bd2db22565cc102287b11e96484 fd6d166276aeffded4e6b4418461878e511dafa5
+TEST-BUDGET  PASS  0
+WORKSHOP-HOMING-DETECTION  PASS  0
+DOCTRINE-SCAN-VERDICT: PASS  failures=0 inspect=0 selftest=SKIPPED
+
+bash scripts/ci/gen_orientation.sh --check
+gen_orientation --check: PASS
+
+bash scripts/ci/doc_budget_check.sh --check
+DOC-BUDGET-VERDICT: PASS
 
 cargo check -p simthing-spec
 Finished `dev` profile [optimized + debuginfo] target(s) in 0.23s
