@@ -1,15 +1,14 @@
 //! RF-5: install + EvalEML transport for need / weight_profile bindings.
 //!
 //! Ontology (slots × columns):
-//! - Live value locus is always **(slot, column)** — never a column alone.
-//! - Authored input/weight Amounts live on the **source host** SimThing row.
-//! - Arena participant wrappers are distinct rows; EvalEML is slot-local.
-//! - Cross-row transport is **on-device projection** via AccumulatorOp Identity
-//!   from `(source_slot, col)` → `(participant_slot, col)` every RF band, then
-//!   EvalEML on the participant need cell.
-//!
-//! Forbidden: install-time CPU copy of PropertyValue, CPU overlay Add/Multiply
-//! recompute, shadow/second ledger, reopen/reseed to observe authored changes.
+//! - Live locus is always **(slot, column)** — never a column alone.
+//! - Each input/weight source is resolved from an **existing** property instance
+//!   on some SimThing (`find_property_owner`) — never re-homed onto the install host.
+//! - EvalEML is slot-local: all input/weight sources for one binding must share
+//!   one source slot; EvalEML runs **there** and writes need to the admitted
+//!   participant `AllocatorWeight` cell only.
+//! - No same-property projection into unowned participant columns.
+//! - No install-time CPU PropertyValue mirror / CPU overlay arithmetic.
 
 use simthing_core::{
     eml_nodes, rebuild_emit_on_threshold_ops, AccumulatorOp, ColumnIndex, CombineFn, ConsumeMode,
@@ -25,48 +24,44 @@ use simthing_spec::{
 use crate::arena_hierarchy::resolve_node_columns;
 use crate::arena_participant::ArenaParticipantScaffold;
 use crate::install::{resolve_install_target, InstallError};
-use crate::resource_economy_compile::ResourceEconomyRegistry;
+use crate::resource_economy_compile::{find_property_owner, ResourceEconomyRegistry};
 use crate::scenario::Scenario;
 use simthing_gpu::SlotAllocator;
 
 const NEED_WEIGHT_TREE_BASE: u32 = 7_200_000;
 
-/// One full-cell binding: authored Amount lives at `(source_slot, col)`.
+/// One full-cell binding: authored Amount at `(source_slot, col)` on an existing owner.
 #[derive(Clone, Debug, PartialEq)]
 pub struct NeedWeightSourceCell {
-    /// Host SimThing GPU row that owns the authored Amount (not the participant wrapper).
     pub source_slot: u32,
     pub source_id: SimThingId,
     pub col: ColumnIndex,
     pub property: PropertyKey,
 }
 
-/// Fully resolved binding ready for projection + EvalEML + threshold injection.
+/// Fully resolved binding: EvalEML on `eml_source_slot`, need write on participant.
 #[derive(Clone, Debug, PartialEq)]
 pub struct ResolvedNeedWeightProfile {
     pub id: String,
     pub profile: String,
-    /// Arena participant wrapper slot (EvalEML + need write target).
+    /// Arena participant wrapper slot (need **write** target only).
     pub participant_slot: u32,
     pub hosted_id: SimThingId,
-    /// ScenarioListed target_id used at resolve.
     pub install_target_id: String,
     pub arena: String,
     pub arena_idx: u32,
-    /// Global column of the existing AllocatorWeight cell (live need) on the participant.
+    /// Slot where EvalEML runs (must own every input/weight Amount).
+    pub eml_source_slot: u32,
+    pub eml_source_id: SimThingId,
     pub need_col: ColumnIndex,
-    /// Full-cell input sources (host row × Amount column).
     pub input_cells: Vec<NeedWeightSourceCell>,
-    /// Full-cell weight sources (host row × Amount column).
     pub weight_cells: Vec<NeedWeightSourceCell>,
-    /// Compiled EvalEML nodes (SLOT_VALUE of Amount cols; eval on participant after projection).
     pub nodes: Vec<EmlNodeGpu>,
     pub threshold: Option<NeedWeightProfileThresholdSpec>,
     pub weight_property_keys: Vec<PropertyKey>,
     pub input_property_keys: Vec<PropertyKey>,
 }
 
-/// Extract the single WeightedAccumulator from an authored stack (fail-closed).
 pub fn extract_weighted_accumulator(
     binding: &NeedWeightProfileBindingSpec,
 ) -> Result<(usize, usize), InstallError> {
@@ -97,7 +92,6 @@ pub fn extract_weighted_accumulator(
     }
 }
 
-/// Resolve every authored need/weight_profile binding against the live install.
 pub fn resolve_need_weight_profiles(
     spec: &ResourceFlowSpec,
     scenario: &Scenario,
@@ -205,31 +199,38 @@ fn resolve_one(
         })?
         .raw();
 
-    // Source host row: the admitted install target SimThing (distinct from wrapper).
-    let source_slot = allocator.slot_of(hosted_id).ok_or_else(|| {
-        InstallError::NeedWeightProfileInvalid {
-            binding: binding.id.clone(),
-            reason: format!(
-                "hosted SimThing {} has no GPU slot for full-cell source binding",
-                hosted_id.raw()
-            ),
-        }
-    })?.raw();
-
-    let input_cells = resolve_source_cells(
+    // Resolve each property from an existing tree instance — never invent on install host.
+    let input_cells = resolve_authored_source_cells(
+        root,
         registry,
+        allocator,
         &binding.input_properties,
         &binding.id,
-        source_slot,
-        hosted_id,
     )?;
-    let weight_cells = resolve_source_cells(
+    let weight_cells = resolve_authored_source_cells(
+        root,
         registry,
+        allocator,
         &binding.weight_properties,
         &binding.id,
-        source_slot,
-        hosted_id,
     )?;
+
+    // EvalEML is slot-local: all sources must share one row.
+    let eml_source_slot = input_cells[0].source_slot;
+    let eml_source_id = input_cells[0].source_id;
+    for cell in input_cells.iter().chain(weight_cells.iter()) {
+        if cell.source_slot != eml_source_slot {
+            return Err(InstallError::NeedWeightProfileInvalid {
+                binding: binding.id.clone(),
+                reason: format!(
+                    "input/weight sources span multiple SimThing rows (slot {} vs {}); \
+                     EvalEML is slot-local and multi-row need transport needs an admitted \
+                     multi-slot primitive (AdmissionGap / handoff stop)",
+                    eml_source_slot, cell.source_slot
+                ),
+            });
+        }
+    }
 
     let flow_property_id = registry
         .id_of(&arena.flow_property.namespace, &arena.flow_property.name)
@@ -270,6 +271,8 @@ fn resolve_one(
         install_target_id,
         arena: arena.name.clone(),
         arena_idx: arena_idx as u32,
+        eml_source_slot,
+        eml_source_id,
         need_col,
         input_cells,
         weight_cells,
@@ -280,12 +283,13 @@ fn resolve_one(
     })
 }
 
-fn resolve_source_cells(
+/// Resolve property keys to existing tree owners — fail closed if instance missing.
+fn resolve_authored_source_cells(
+    root: &SimThing,
     registry: &DimensionRegistry,
+    allocator: &SlotAllocator,
     keys: &[PropertyKey],
     binding_id: &str,
-    source_slot: u32,
-    source_id: SimThingId,
 ) -> Result<Vec<NeedWeightSourceCell>, InstallError> {
     let mut out = Vec::with_capacity(keys.len());
     for key in keys {
@@ -305,6 +309,24 @@ fn resolve_source_cells(
                     key.namespace, key.name
                 ),
             })?;
+        let source_id = find_property_owner(root, prop_id).ok_or_else(|| {
+            InstallError::NeedWeightProfileInvalid {
+                binding: binding_id.into(),
+                reason: format!(
+                    "property {}::{} has no authored SimThing instance — cannot invent host ownership",
+                    key.namespace, key.name
+                ),
+            }
+        })?;
+        let source_slot = allocator.slot_of(source_id).ok_or_else(|| {
+            InstallError::NeedWeightProfileInvalid {
+                binding: binding_id.into(),
+                reason: format!(
+                    "property owner SimThing {} has no GPU slot",
+                    source_id.raw()
+                ),
+            }
+        })?.raw();
         out.push(NeedWeightSourceCell {
             source_slot,
             source_id,
@@ -332,44 +354,7 @@ fn build_weighted_need_nodes(
     nodes
 }
 
-/// Place authored input/weight Amount properties on the **install host** SimThing
-/// so economy emission/overlay slot resolution binds to the source row (not the
-/// World root fallback). Does not copy values or recompute overlays.
-pub fn ensure_need_weight_source_properties_on_hosts(
-    resolved: &[ResolvedNeedWeightProfile],
-    registry: &DimensionRegistry,
-    root: &mut SimThing,
-) -> Result<(), InstallError> {
-    use crate::install::find_simthing_mut;
-    use simthing_core::PropertyValue;
-    for binding in resolved {
-        let host = find_simthing_mut(root, binding.hosted_id).ok_or_else(|| {
-            InstallError::NeedWeightProfileInvalid {
-                binding: binding.id.clone(),
-                reason: format!("hosted SimThing {} missing", binding.hosted_id.raw()),
-            }
-        })?;
-        for key in binding
-            .input_property_keys
-            .iter()
-            .chain(binding.weight_property_keys.iter())
-        {
-            let pid = registry.id_of(&key.namespace, &key.name).ok_or_else(|| {
-                InstallError::Spec(SpecError::UnknownResourceFlowProperty {
-                    property: format!("{}::{}", key.namespace, key.name),
-                })
-            })?;
-            if !host.properties.contains_key(&pid) {
-                let layout = registry.property(pid).layout.clone();
-                host.add_property(pid, PropertyValue::from_layout(&layout));
-            }
-        }
-    }
-    Ok(())
-}
-
-/// Zero the participant AllocatorWeight need cell only — no PropertyValue copy,
-/// no CPU overlay arithmetic. Authored inputs/weights stay on the host row.
+/// Zero only the admitted participant need cell (flow AllocatorWeight). No property invent.
 pub fn prepare_need_weight_participant_cells(
     resolved: &[ResolvedNeedWeightProfile],
     registry: &DimensionRegistry,
@@ -407,43 +392,14 @@ pub fn prepare_need_weight_participant_cells(
     Ok(())
 }
 
-/// Build AccumulatorOps: on-device projection of full-cell sources, then EvalEML need write.
-///
-/// Projection uses Identity `SlotValue(source_slot, col) → (participant_slot, col)` so
-/// EvalEML on the participant sees live host Amounts without a CPU mirror.
+/// Build EvalEML ops: evaluate on the **authored source row**, write need to
+/// the admitted participant AllocatorWeight only. No same-col projection mirror.
 pub fn build_need_weight_profile_ops(
     resolved: &[ResolvedNeedWeightProfile],
     eml_registry: &mut EmlExpressionRegistry,
 ) -> Vec<AccumulatorOp> {
-    let mut ops = Vec::new();
+    let mut ops = Vec::with_capacity(resolved.len());
     for (idx, binding) in resolved.iter().enumerate() {
-        // On-device projection of each distinct (source_slot, col) into the participant row.
-        let mut projected = std::collections::HashSet::new();
-        for cell in binding.input_cells.iter().chain(binding.weight_cells.iter()) {
-            if cell.source_slot == binding.participant_slot {
-                continue; // already in-place on the participant row
-            }
-            let key = (cell.source_slot, cell.col.raw());
-            if !projected.insert(key) {
-                continue;
-            }
-            // Band 0: project host → participant before EvalEML (band 1).
-            ops.push(AccumulatorOp {
-                source: SourceSpec::SlotValue {
-                    slot: SlotIndex::new(cell.source_slot),
-                    col: cell.col,
-                },
-                combine: CombineFn::Identity,
-                gate: GateSpec::OrderBand(0),
-                scale: ScaleSpec::Identity,
-                consume: ConsumeMode::ResetTarget,
-                targets: vec![(
-                    SlotIndex::new(binding.participant_slot),
-                    cell.col,
-                )],
-            });
-        }
-
         let tree_id = EmlTreeId(NEED_WEIGHT_TREE_BASE + idx as u32);
         eml_registry
             .register_formula(
@@ -471,17 +427,20 @@ pub fn build_need_weight_profile_ops(
             .weight_cells
             .first()
             .map(|c| c.col)
+            .or_else(|| binding.input_cells.first().map(|c| c.col))
             .unwrap_or(binding.need_col);
-        // Band 1: EvalEML after projection band 0 (same-band parallel would race).
+
         ops.push(AccumulatorOp {
+            // EvalEML context = authored source row (owns input/weight Amounts).
             source: SourceSpec::SlotValue {
-                slot: SlotIndex::new(binding.participant_slot),
+                slot: SlotIndex::new(binding.eml_source_slot),
                 col: source_col,
             },
             combine: CombineFn::EvalEML { tree_id: tree_id.0 },
-            gate: GateSpec::OrderBand(1),
+            gate: GateSpec::OrderBand(0),
             scale: ScaleSpec::Identity,
             consume: ConsumeMode::ResetTarget,
+            // Need write = admitted participant flow cell only.
             targets: vec![(
                 SlotIndex::new(binding.participant_slot),
                 binding.need_col,
@@ -491,8 +450,6 @@ pub fn build_need_weight_profile_ops(
     ops
 }
 
-/// Inject sealed emit_on_threshold registrations for need thresholds into the
-/// existing resource-economy registry (same path as disruption FIELD_POLICY).
 pub fn inject_need_threshold_into_economy(
     resolved: &[ResolvedNeedWeightProfile],
     economy: &mut ResourceEconomyRegistry,
@@ -526,7 +483,6 @@ pub fn inject_need_threshold_into_economy(
     }
 }
 
-/// Register need-cell thresholds for the fabric post-RF append-only rescan.
 pub fn register_post_rf_need_threshold_rescan(
     state: &mut simthing_gpu::WorldGpuState,
     resolved: &[ResolvedNeedWeightProfile],
@@ -571,9 +527,6 @@ fn op_node(opcode: u32) -> EmlNodeGpu {
     }
 }
 
-/// Build a binding from a hydrated stack + existing property keys (workshop/production helper).
-/// Callers must supply real PropertyKeys and InstallTargetSpec from authored data — never
-/// invent weight seeds or Studio constants.
 pub fn binding_from_hydrated_stack(
     id: impl Into<String>,
     profile: impl Into<String>,

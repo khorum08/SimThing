@@ -172,21 +172,10 @@ pub fn compile_and_install(
         )?;
     }
 
-    // RF-5 / field-economy owner_policy overlays land on GameModeSpec.overlays
-    // (not domain packs). Install them through the same standalone Overlay path
-    // so GPU overlay OrderBands apply amount_add/mult live on the host row —
-    // never a CPU recompute into a participant mirror.
-    for overlay_spec in &game_mode.overlays {
-        let installed = install_standalone_overlay(overlay_spec, registry, scenario, root)?;
-        if !overlay_spec.id.is_empty() && !installed.is_empty() {
-            overlay_ref_ids
-                .entry(overlay_spec.id.clone())
-                .or_default()
-                .extend(installed);
-        }
-    }
-
-    // Capability tree overlays compile inline through `CapabilityTreeBuilder::build` below.
+    // Global overlays from the game mode envelope remain deferred per ADR
+    // (`docs/adr/game_mode_session_installation.md` §4). RF-5 must not overturn
+    // that posture. Capability tree overlays compile inline through
+    // `CapabilityTreeBuilder::build` below.
 
     // ── 2. Build each capability tree once. Collect per-pack provenance so
     //      diagnostics can name the originating pack later (not used in v0).
@@ -246,6 +235,7 @@ pub fn compile_and_install(
 
     // ── 4b. Resource Flow admission (E-10 + E-10R): spec compile after properties,
     //      identity preflight after live slot allocation, then materialize registry.
+    let mut enrolled_flow_for_need = None;
     if let Some(resource_flow) = &game_mode.resource_flow {
         let resolved = resolve_resource_flow_enrollment(resource_flow, scenario, root, allocator)?;
         let base_obligations = resolve_base_flow_obligation_targets(&resolved, scenario, root)?;
@@ -266,20 +256,10 @@ pub fn compile_and_install(
         )?;
         crate::gated_rates::seed_gated_rate_base_columns(&gated, registry, root, allocator)?;
         state.resolved_gated_rates = gated;
-        let need_profiles = crate::need_weight_profile::resolve_need_weight_profiles(
-            &resolved, scenario, root, registry, &scaffold, allocator,
-        )?;
-        // Host must own input/weight Amount properties before economy materialize
-        // so emission/overlay slots resolve to the source host row (not World root).
-        crate::need_weight_profile::ensure_need_weight_source_properties_on_hosts(
-            &need_profiles,
-            registry,
-            root,
-        )?;
-        state.resolved_need_weight_profiles = need_profiles;
         state.arena_registry = arena_registry;
         state.arena_participant_scaffold = scaffold;
         state.resource_flow_capacity_budget = report.capacity_budget;
+        enrolled_flow_for_need = Some(resolved);
     }
 
     // ── 4c. Resource economy (Phase T): compile + live-slot materialization.
@@ -296,35 +276,46 @@ pub fn compile_and_install(
         )?);
     }
 
-    // RF-5: zero participant need cell only. Authored input/weight Amounts stay
-    // on the host row; on-device AccumulatorOp projection carries them live each
-    // RF band (no CPU PropertyValue mirror / overlay recompute).
-    if !state.resolved_need_weight_profiles.is_empty() {
-        if state.resource_economy_registry.is_none() {
-            state.resource_economy_registry = Some(
-                crate::resource_economy_compile::ResourceEconomyRegistry {
-                    registrations: crate::resource_economy_compile::ResourceEconomyRegistrations {
-                        transfers: vec![],
-                        recipes: vec![],
-                        emissions: vec![],
-                        emit_on_threshold: vec![],
-                        report: Default::default(),
-                    },
-                    generation: 1,
-                },
-            );
-        }
-        crate::need_weight_profile::prepare_need_weight_participant_cells(
-            &state.resolved_need_weight_profiles,
-            registry,
+    // RF-5: resolve need bindings only after economy properties exist on the tree.
+    // Sources use find_property_owner — never invent property instances on the install host.
+    if let Some(resolved_flow) = enrolled_flow_for_need {
+        let need_profiles = crate::need_weight_profile::resolve_need_weight_profiles(
+            &resolved_flow,
+            scenario,
             root,
+            registry,
+            &state.arena_participant_scaffold,
             allocator,
         )?;
-        if let Some(economy) = state.resource_economy_registry.as_mut() {
-            crate::need_weight_profile::inject_need_threshold_into_economy(
+        state.resolved_need_weight_profiles = need_profiles;
+        if !state.resolved_need_weight_profiles.is_empty() {
+            if state.resource_economy_registry.is_none() {
+                state.resource_economy_registry = Some(
+                    crate::resource_economy_compile::ResourceEconomyRegistry {
+                        registrations:
+                            crate::resource_economy_compile::ResourceEconomyRegistrations {
+                                transfers: vec![],
+                                recipes: vec![],
+                                emissions: vec![],
+                                emit_on_threshold: vec![],
+                                report: Default::default(),
+                            },
+                        generation: 1,
+                    },
+                );
+            }
+            crate::need_weight_profile::prepare_need_weight_participant_cells(
                 &state.resolved_need_weight_profiles,
-                economy,
-            );
+                registry,
+                root,
+                allocator,
+            )?;
+            if let Some(economy) = state.resource_economy_registry.as_mut() {
+                crate::need_weight_profile::inject_need_threshold_into_economy(
+                    &state.resolved_need_weight_profiles,
+                    economy,
+                );
+            }
         }
     }
 

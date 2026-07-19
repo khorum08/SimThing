@@ -137,6 +137,9 @@ pub struct StudioAuthoredLiveProfile {
     /// Canonical recursive Arena RF projection, when the authority tree exposes
     /// an admitted Owner plus at least three authored producer children.
     pub recursive_rf: Option<StudioRecursiveRfProfile>,
+    /// RF-5: typed AdmissionGap when weight_profiles lack complete bindings.
+    /// Must not be swallowed into empty need_weight_profiles.
+    pub rf5_admission_gap: Option<String>,
 }
 
 /// Stable labels/identities for the live RF locus shown by Studio and asserted by CI.
@@ -166,6 +169,7 @@ impl StudioAuthoredLiveProfile {
             session_root,
             field_economy_present,
             recursive_rf: None,
+            rf5_admission_gap: None,
         }
     }
 
@@ -210,6 +214,8 @@ pub struct StudioRecursiveRfReadout {
     pub need_live_value: Option<f32>,
     pub need_threshold: Option<f32>,
     pub need_threshold_result: Option<&'static str>,
+    /// Typed AdmissionGap when complete need bindings are absent (not silent empty).
+    pub need_admission_gap: Option<String>,
 }
 
 /// One per-tick sample of field accretion (presentation / ops telemetry only).
@@ -490,6 +496,9 @@ impl StudioLiveSessionBridge {
                     .authored_live_profile
                     .as_ref()
                     .ok_or(StudioLiveSessionBridgeError::FieldBearingProfileMissing)?;
+                // RF-5 AdmissionGap is carried on profile.rf5_admission_gap (typed
+                // blocking diagnostic for need transport). Field-bearing open still
+                // proceeds for RF-4 field accretion; RF-5 transport remains unbound.
                 let scenario = driver_scenario_field_bearing_from_profile(profile)
                     .map_err(StudioLiveSessionBridgeError::ScenarioConversion)?;
                 // Field-bearing open installs RF/resource-economy + property surfaces only.
@@ -510,12 +519,16 @@ impl StudioLiveSessionBridge {
                         self.field_accretion_samples =
                             collect_field_accretion_sample(&sim, &self.sample_loci, 0);
                         if let Some(rf_profile) = profile.recursive_rf.as_ref() {
-                            let (locus, readout) = recursive_rf_locus_from_session(
+                            let (locus, mut readout) = recursive_rf_locus_from_session(
                                 &sim, rf_profile,
                             )
                             .map_err(StudioLiveSessionBridgeError::FieldBearingOpenFailed)?;
+                            // Surface typed RF-5 AdmissionGap (never silent empty transport).
+                            readout.need_admission_gap = profile.rf5_admission_gap.clone();
                             self.recursive_rf_locus = Some(locus);
                             self.recursive_rf_readout = readout;
+                        } else if let Some(gap) = profile.rf5_admission_gap.as_ref() {
+                            self.recursive_rf_readout.need_admission_gap = Some(gap.clone());
                         }
                         Ok(sim)
                     }
@@ -1146,8 +1159,10 @@ fn fill_need_weight_profile_readout(readout: &mut StudioRecursiveRfReadout, sim:
         readout.need_live_value = None;
         readout.need_threshold = None;
         readout.need_threshold_result = None;
+        // Preserve need_admission_gap if already set from profile compose.
         return;
     };
+    readout.need_admission_gap = None;
     let values = sim.state.read_values();
     let n_dims = sim.state.n_dims as usize;
     let idx = binding.participant_slot as usize * n_dims + binding.need_col.raw();
@@ -1354,6 +1369,7 @@ fn compose_recursive_rf_profile(
     HashMap<String, Vec<SimThingId>>,
     GameModeSpec,
     StudioRecursiveRfProfile,
+    Option<String>,
 )> {
     let scenario = simthing_clausething::project_pack_to_authority_tree_candidate(pack).ok()?;
     let session_root_id = game_session_child(&scenario).ok()?.id;
@@ -1439,17 +1455,20 @@ fn compose_recursive_rf_profile(
     let mut game_mode = pack.game_mode.clone();
     game_mode.properties.push(studio_recursive_rf_property());
     // RF-5 production composition: attach hydrate stacks by binding.id only.
-    // Never invent install/input/weight/threshold. Incomplete → empty bindings.
+    // AdmissionGap is fail-closed (never silently empty bindings).
     let authored_need = game_mode
         .resource_flow
         .as_ref()
         .map(|rf| rf.need_weight_profiles.clone())
         .unwrap_or_default();
-    let admitted_need_bindings =
+    let (admitted_need_bindings, rf5_gap) =
         match simthing_clausething::compose_need_weight_bindings(pack, STUDIO_RF_ARENA, &authored_need)
         {
-            simthing_clausething::NeedWeightComposeOutcome::Bindings(b) => b,
-            simthing_clausething::NeedWeightComposeOutcome::AdmissionGap { .. } => Vec::new(),
+            simthing_clausething::NeedWeightComposeOutcome::Bindings(b) => (b, None),
+            gap @ simthing_clausething::NeedWeightComposeOutcome::AdmissionGap { .. } => (
+                Vec::new(),
+                simthing_clausething::admission_gap_telemetry(&gap),
+            ),
         };
     game_mode.resource_flow = Some(ResourceFlowSpec {
         opt_in_mode: ResourceFlowOptInMode::Disabled,
@@ -1469,6 +1488,7 @@ fn compose_recursive_rf_profile(
             wildcard_admission: None,
         }],
         base_obligations,
+        // Keep empty when gap — open path must surface rf5_admission_gap, not pretend success.
         need_weight_profiles: admitted_need_bindings,
         ..Default::default()
     });
@@ -1494,6 +1514,7 @@ fn compose_recursive_rf_profile(
             session_root_id,
             sibling_count: selected_children.len() as u32,
         },
+        rf5_gap,
     ))
 }
 
@@ -1505,7 +1526,7 @@ fn compose_recursive_rf_profile(
 pub fn authored_live_profile_from_pack(
     pack: &simthing_clausething::HydratedScenarioPack,
 ) -> StudioAuthoredLiveProfile {
-    if let Some((root, install_targets, game_mode, recursive_rf)) =
+    if let Some((root, install_targets, game_mode, recursive_rf, rf5_gap)) =
         compose_recursive_rf_profile(pack)
     {
         let mut profile = StudioAuthoredLiveProfile::from_hydrated_pack(
@@ -1515,6 +1536,7 @@ pub fn authored_live_profile_from_pack(
             pack.field_economy.is_some(),
         );
         profile.recursive_rf = Some(recursive_rf);
+        profile.rf5_admission_gap = rf5_gap;
         return profile;
     }
 
@@ -1540,22 +1562,33 @@ pub fn authored_live_profile_from_pack(
         .as_ref()
         .and_then(|rf| rf.arenas.first().map(|a| a.name.clone()))
         .unwrap_or_else(|| STUDIO_RF_ARENA.to_string());
+    let mut rf5_gap = None;
     if let Some(rf) = game_mode.resource_flow.as_mut() {
         match simthing_clausething::compose_need_weight_bindings(pack, &arena_name, &authored_need) {
             simthing_clausething::NeedWeightComposeOutcome::Bindings(b) => {
                 rf.need_weight_profiles = b;
             }
-            simthing_clausething::NeedWeightComposeOutcome::AdmissionGap { .. } => {
+            gap @ simthing_clausething::NeedWeightComposeOutcome::AdmissionGap { .. } => {
                 rf.need_weight_profiles.clear();
+                rf5_gap = simthing_clausething::admission_gap_telemetry(&gap);
             }
         }
+    } else {
+        match simthing_clausething::compose_need_weight_bindings(pack, &arena_name, &[]) {
+            gap @ simthing_clausething::NeedWeightComposeOutcome::AdmissionGap { .. } => {
+                rf5_gap = simthing_clausething::admission_gap_telemetry(&gap);
+            }
+            simthing_clausething::NeedWeightComposeOutcome::Bindings(_) => {}
+        }
     }
-    StudioAuthoredLiveProfile::from_hydrated_pack(
+    let mut profile = StudioAuthoredLiveProfile::from_hydrated_pack(
         game_mode,
         install_targets,
         root,
         pack.field_economy.is_some(),
-    )
+    );
+    profile.rf5_admission_gap = rf5_gap;
+    profile
 }
 
 #[cfg(test)]

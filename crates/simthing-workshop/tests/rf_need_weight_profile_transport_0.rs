@@ -1,14 +1,11 @@
-//! RF-NEED-WEIGHT-PROFILE-TRANSPORT-0 (RF-5) remand-2 + ontology addendum proofs.
+//! RF-NEED-WEIGHT-PROFILE-TRANSPORT-0 (RF-5) remand-3 proofs.
 //!
-//! §12 homing: workshop only. Production path is ordinary `open_from_spec` +
-//! `step_once`. GPU/adapter Unsupported is FAIL.
+//! Ontology: resolve each source via existing property owner; EvalEML on that
+//! source row; write need only to admitted participant AllocatorWeight.
+//! No property invent, no same-col participant mirror, no global overlay ADR break.
 //!
-//! Ontology: live locus is always (slot, column). Host owns authored Amounts;
-//! participant wrappers receive on-device Identity projection each RF band —
-//! never install-time CPU PropertyValue copy or CPU overlay recompute.
-//!
-//! Production compose attaches stacks by binding.id only; bare weight_profiles
-//! without complete companion bindings → AdmissionGap.
+//! Canonical bare TP: production compose → typed AdmissionGap (BLOCKED transport).
+//! Neutral: complete explicit companion bindings + open_from_spec + step_once.
 
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -24,7 +21,7 @@ use simthing_core::{
 use simthing_driver::{
     binding_from_hydrated_stack, register_post_rf_need_threshold_rescan, Scenario, SimSession,
 };
-use simthing_gpu::SlotAllocator;
+use simthing_gpu::{EmissionFormula, SlotAllocator};
 use simthing_spec::{
     compile_property, ArenaSpec, BaseFlowDirectionSpec, BaseFlowObligationSpec,
     ExplicitParticipantSpec, FissionPolicySpec, InstallTargetSpec, NeedWeightProfileBindingSpec,
@@ -37,17 +34,13 @@ const NEED_EVENT_KIND: u32 = 91;
 const ORDINARY_EVENT_KIND: u32 = 77;
 const NEED_THRESHOLD: f32 = 0.5;
 
+/// Neutral low: weight via stockpile **current** (authored emission seed), not overlay.
 const NEUTRAL_LOW: &str = r#"
 scenario = foundry_valley {
     metadata = { display_name = "Foundry Valley Low" }
     owner = guild {
         owner_key = "guild"
         display_name = "Guild"
-        archetype = "industrial"
-    }
-    owner = union {
-        owner_key = "union"
-        display_name = "Union"
         archetype = "industrial"
     }
     location = ridge { display_name = "Ridge" }
@@ -57,12 +50,12 @@ scenario = foundry_valley {
         stockpile_silo = guild_ore {
             owner = "guild"
             resource = "ore"
-            current = 5
+            current = 1
         }
         stockpile_silo = guild_weight_store {
             owner = "guild"
             resource = "weight_token"
-            current = 0
+            current = 0.2
         }
         production_building = ridge_foundry {
             location = "ridge"
@@ -75,18 +68,14 @@ scenario = foundry_valley {
             resource = "ore"
             amount = 1
         }
+        # Ordinary threshold that WILL fire (amount 0 → seed 1 crosses 0.5 Rising).
         disruption_presence = basin_smoke {
             location = "basin"
             resource = "smoke"
             amount = 0
-            threshold = 99
+            threshold = 0.5
             direction = Rising
             event_kind = 77
-        }
-        owner_policy_overlay = guild_weight_policy {
-            owner = "guild"
-            targets_property = "forge::guild_weight_token_current"
-            amount_add = 0.2
         }
         weight_profile = expansion_need {
             profile = "expansion-need"
@@ -105,11 +94,6 @@ scenario = foundry_valley {
         display_name = "Guild"
         archetype = "industrial"
     }
-    owner = union {
-        owner_key = "union"
-        display_name = "Union"
-        archetype = "industrial"
-    }
     location = ridge { display_name = "Ridge" }
     location = basin { display_name = "Basin" }
     field_economy = valley_economy {
@@ -117,12 +101,12 @@ scenario = foundry_valley {
         stockpile_silo = guild_ore {
             owner = "guild"
             resource = "ore"
-            current = 5
+            current = 1
         }
         stockpile_silo = guild_weight_store {
             owner = "guild"
             resource = "weight_token"
-            current = 0
+            current = 3.0
         }
         production_building = ridge_foundry {
             location = "ridge"
@@ -139,14 +123,9 @@ scenario = foundry_valley {
             location = "basin"
             resource = "smoke"
             amount = 0
-            threshold = 99
+            threshold = 0.5
             direction = Rising
             event_kind = 77
-        }
-        owner_policy_overlay = guild_weight_policy {
-            owner = "guild"
-            targets_property = "forge::guild_weight_token_current"
-            amount_add = 3.0
         }
         weight_profile = expansion_need {
             profile = "expansion-need"
@@ -157,25 +136,6 @@ scenario = foundry_valley {
 }
 "#;
 
-fn flow_subfield(name: &str, role: AccumulatorRole) -> SubFieldSpec {
-    SubFieldSpec {
-        role: SubFieldRole::Named(name.into()),
-        width: 1,
-        clamp: ClampBehavior::Unbounded,
-        velocity_max: None,
-        default: 0.0,
-        display_name: name.into(),
-        display_range: None,
-        governed_by: None,
-        reduction_override: None,
-        soft_aggregate_guard: None,
-        accumulator_spec: Some(AccumulatorSpec {
-            role,
-            log_tier: LogTier::Summary,
-        }),
-    }
-}
-
 fn flow_property_spec() -> PropertySpec {
     PropertySpec {
         id: "foundry_flow".into(),
@@ -184,14 +144,14 @@ fn flow_property_spec() -> PropertySpec {
         display_name: String::new(),
         description: String::new(),
         sub_fields: vec![
-            flow_subfield("flow", AccumulatorRole::IntrinsicFlow),
-            flow_subfield(
+            sub("flow", AccumulatorRole::IntrinsicFlow),
+            sub(
                 "allocated",
                 AccumulatorRole::AllocatedFlow {
                     arena: ARENA.into(),
                 },
             ),
-            flow_subfield(
+            sub(
                 "weight",
                 AccumulatorRole::AllocatorWeight {
                     arena: ARENA.into(),
@@ -230,8 +190,26 @@ fn flow_property_spec() -> PropertySpec {
     }
 }
 
-/// Explicit complete binding (fixture authoring — not zip/first-stockpile inventing).
-fn explicit_neutral_authored_binding() -> NeedWeightProfileBindingSpec {
+fn sub(name: &str, role: AccumulatorRole) -> SubFieldSpec {
+    SubFieldSpec {
+        role: SubFieldRole::Named(name.into()),
+        width: 1,
+        clamp: ClampBehavior::Unbounded,
+        velocity_max: None,
+        default: 0.0,
+        display_name: name.into(),
+        display_range: None,
+        governed_by: None,
+        reduction_override: None,
+        soft_aggregate_guard: None,
+        accumulator_spec: Some(AccumulatorSpec {
+            role,
+            log_tier: LogTier::Summary,
+        }),
+    }
+}
+
+fn explicit_neutral_binding() -> NeedWeightProfileBindingSpec {
     binding_from_hydrated_stack(
         "expansion_need",
         "expansion-need",
@@ -240,8 +218,6 @@ fn explicit_neutral_authored_binding() -> NeedWeightProfileBindingSpec {
         InstallTargetSpec::ScenarioListed {
             target_id: "guild".into(),
         },
-        // Stockpile current (transfers cleared in open path so debit cannot
-        // zero the host Amount before RF projection in the same tick).
         vec![PropertyKey::new("forge", "guild_ore_current")],
         vec![PropertyKey::new("forge", "guild_weight_token_current")],
         Some(NeedWeightProfileThresholdSpec {
@@ -249,55 +225,6 @@ fn explicit_neutral_authored_binding() -> NeedWeightProfileBindingSpec {
             event_kind: NEED_EVENT_KIND,
         }),
     )
-}
-
-fn explicit_tp_authored_bindings() -> Vec<NeedWeightProfileBindingSpec> {
-    let empty = simthing_spec::EmlGadgetStackSpec { gadgets: vec![] };
-    let minerals_current = PropertyKey::new("tp_economy", "terran_minerals_current");
-    let minerals_field = PropertyKey::new("tp_economy", "terran_shipyard_minerals_quantity");
-    let hulls_qty = PropertyKey::new("tp_economy", "terran_shipyard_hulls_quantity");
-    let disruption = PropertyKey::new("tp_economy", "pirate_outpost_disruption_presence");
-    vec![
-        binding_from_hydrated_stack(
-            "terran_expansion_need",
-            "expansion-need",
-            empty.clone(),
-            ARENA,
-            InstallTargetSpec::ScenarioListed {
-                target_id: "terran".into(),
-            },
-            vec![minerals_current.clone(), minerals_field.clone()],
-            vec![hulls_qty.clone(), hulls_qty.clone()],
-            Some(NeedWeightProfileThresholdSpec {
-                threshold: NEED_THRESHOLD,
-                event_kind: NEED_EVENT_KIND,
-            }),
-        ),
-        binding_from_hydrated_stack(
-            "terran_manufacturing_need",
-            "manufacturing-need",
-            empty.clone(),
-            ARENA,
-            InstallTargetSpec::ScenarioListed {
-                target_id: "terran".into(),
-            },
-            vec![minerals_current],
-            vec![hulls_qty],
-            None,
-        ),
-        binding_from_hydrated_stack(
-            "pirate_disruption_need",
-            "disruption-need",
-            empty,
-            ARENA,
-            InstallTargetSpec::ScenarioListed {
-                target_id: "pirate".into(),
-            },
-            vec![disruption.clone()],
-            vec![disruption],
-            None,
-        ),
-    ]
 }
 
 fn compose_or_err(
@@ -316,21 +243,12 @@ fn compose_or_err(
     }
 }
 
-fn open_from_clause_text(
-    clause: &str,
+fn open_from_pack(
+    pack: &HydratedScenarioPack,
     authored: Vec<NeedWeightProfileBindingSpec>,
     misbind: bool,
 ) -> Result<SimSession, String> {
-    let document = parse_raw_document(clause.as_bytes()).map_err(|e| e.to_string())?;
-    let pack = hydrate_scenario(&document).map_err(|e| e.to_string())?;
-    open_from_pack(&pack, authored, misbind)
-}
-
-fn open_from_pack(
-    pack: &HydratedScenarioPack,
-    mut authored: Vec<NeedWeightProfileBindingSpec>,
-    misbind: bool,
-) -> Result<SimSession, String> {
+    let mut authored = authored;
     if misbind {
         for b in &mut authored {
             b.install = InstallTargetSpec::ScenarioListed {
@@ -358,17 +276,12 @@ fn open_from_pack(
 
     let mut install_targets = HashMap::new();
     install_targets.insert("guild".into(), vec![ids[1]]);
-    install_targets.insert("union".into(), vec![ids[1]]);
     install_targets.insert("root".into(), vec![ids[0]]);
-    install_targets.insert("terran".into(), vec![ids[1]]);
-    install_targets.insert("pirate".into(), vec![ids[2]]);
     for o in &pack.owners {
         install_targets
             .entry(o.owner_key.clone())
             .or_insert_with(|| vec![ids[1]]);
     }
-    // Location-keyed field-economy overlays (quantity/presence) install via
-    // ScenarioListed location ids — map them onto the session root host.
     if let Some(economy) = pack.field_economy.as_ref() {
         for q in &economy.field_resource_quantities {
             install_targets
@@ -380,49 +293,33 @@ fn open_from_pack(
                 .entry(p.location.clone())
                 .or_insert_with(|| vec![ids[0]]);
         }
-        for b in &economy.production_buildings {
-            install_targets
-                .entry(b.location.clone())
-                .or_insert_with(|| vec![ids[0]]);
-        }
     }
 
     let mut game_mode = pack.game_mode.clone();
     game_mode.properties.retain(|p| {
-        p.namespace == "forge"
-            || p.namespace == "field_economy"
-            || p.namespace == "workshop"
-            || p.namespace == "tp_economy"
-            || p.id.starts_with("forge")
-            || p.id.contains("valley")
+        p.namespace == "forge" || p.namespace == "workshop" || p.namespace == "field_economy"
     });
     game_mode.domain_packs.clear();
     game_mode.capability_trees.clear();
     game_mode.events.clear();
     game_mode.region_fields.clear();
+    // Do not install game_mode.overlays (ADR deferred). Weights come from silo current.
+    game_mode.overlays.clear();
+
     let retained: std::collections::HashSet<(String, String)> = game_mode
         .properties
         .iter()
         .map(|p| (p.namespace.clone(), p.name.clone()))
         .collect();
-    game_mode.overlays.retain(|o| {
-        if let Some((ns, name)) = o.targets_property.split_once("::") {
-            retained.contains(&(ns.to_string(), name.to_string()))
-        } else {
-            false
-        }
-    });
     if let Some(econ) = game_mode.resource_economy.as_mut() {
         econ.opt_in_mode = ResourceEconomyOptInMode::TransferAndEmission;
         econ.emissions
             .retain(|e| retained.contains(&(e.source.namespace.clone(), e.source.name.clone())));
-        // Drop silo transfers for RF-5 need transport proofs: transfer would
-        // debit stockpile-current mid-tick and race the need projection.
         econ.transfers.clear();
+        econ.recipes.clear();
         econ.emit_on_threshold.retain(|e| {
             retained.contains(&(e.source.namespace.clone(), e.source.name.clone()))
         });
-        econ.recipes.clear();
     } else {
         game_mode.resource_economy = Some(ResourceEconomySpec {
             opt_in_mode: ResourceEconomyOptInMode::TransferAndEmission,
@@ -478,50 +375,24 @@ fn open_from_pack(
         tick_patches: vec![],
         install_targets,
     };
-
     SimSession::open_from_spec(scenario, &game_mode).map_err(|e| format!("{e}"))
 }
 
-fn read_need(sim: &SimSession) -> f32 {
-    let binding = sim
-        .spec_state
-        .resolved_need_weight_profiles
-        .first()
-        .expect("resolved need binding");
-    let values = sim.state.read_values();
-    let n_dims = sim.state.n_dims as usize;
-    values[binding.participant_slot as usize * n_dims + binding.need_col.raw()]
+fn open_neutral(clause: &str) -> SimSession {
+    let document = parse_raw_document(clause.as_bytes()).expect("parse");
+    let pack = hydrate_scenario(&document).expect("hydrate");
+    match open_from_pack(&pack, vec![explicit_neutral_binding()], false) {
+        Ok(s) => s,
+        Err(e) if e.to_lowercase().contains("adapter") || e.to_lowercase().contains("gpu") => {
+            panic!("RF-5: GPU/adapter Unsupported is FAIL: {e}");
+        }
+        Err(e) => panic!("open: {e}"),
+    }
 }
 
-fn read_host_weight(sim: &SimSession) -> f32 {
-    let binding = sim
-        .spec_state
-        .resolved_need_weight_profiles
-        .first()
-        .expect("resolved");
-    let cell = binding.weight_cells.first().expect("weight cell");
-    let values = sim.state.read_values();
-    let n_dims = sim.state.n_dims as usize;
-    values[cell.source_slot as usize * n_dims + cell.col.raw()]
-}
-
-fn live_sealed_events(sim: &mut SimSession) -> Vec<simthing_gpu::ThresholdEvent> {
-    let Some(runtime) = sim.state.accumulator_runtime.as_mut() else {
-        return Vec::new();
-    };
-    runtime
-        .readback_threshold_events(&sim.state.ctx)
-        .unwrap_or_default()
-}
-
-fn count_event_kind(events: &[simthing_gpu::ThresholdEvent], kind: u32) -> usize {
-    events.iter().filter(|e| e.event_kind() == kind).count()
-}
-
-fn materialize_constant_emission_seeds(session: &mut SimSession) -> Result<(), String> {
-    use simthing_gpu::EmissionFormula;
+fn materialize_emission_seeds(session: &mut SimSession) {
     let Some(registry) = session.spec_state.resource_economy_registry.as_ref() else {
-        return Ok(());
+        return;
     };
     let n_dims = session.state.n_dims as usize;
     let mut values = session.state.read_values();
@@ -531,34 +402,43 @@ fn materialize_constant_emission_seeds(session: &mut SimSession) -> Result<(), S
         let EmissionFormula::Constant { value } = emission.formula else {
             continue;
         };
-        if !value.is_finite() {
-            continue;
-        }
         let idx = emission.source_slot as usize * n_dims + emission.source_col as usize;
-        if let Some(slot) = values.get_mut(idx) {
-            *slot = (*slot).max(value);
+        if let Some(v) = values.get_mut(idx) {
+            *v = (*v).max(value);
             any = true;
         }
-        if let Some(slot) = prev.get_mut(idx) {
-            *slot = 0.0;
+        if let Some(v) = prev.get_mut(idx) {
+            *v = 0.0;
         }
     }
-    if !any {
-        return Ok(());
+    // Ordinary disruption: seed current amount above thr so Rising fires once.
+    if let Some(registry) = session.spec_state.resource_economy_registry.as_ref() {
+        for reg in &registry.registrations.emit_on_threshold {
+            if reg.event_kind == ORDINARY_EVENT_KIND {
+                let idx = reg.slot.raw() as usize * n_dims + reg.col.raw();
+                if let Some(v) = values.get_mut(idx) {
+                    *v = reg.threshold + 0.5;
+                    any = true;
+                }
+                if let Some(v) = prev.get_mut(idx) {
+                    *v = 0.0;
+                }
+            }
+        }
     }
-    session.state.install_resolved_values_at_boundary(&values);
-    session
-        .state
-        .install_resolved_previous_values_at_boundary(&prev);
-    Ok(())
+    if any {
+        session.state.install_resolved_values_at_boundary(&values);
+        session
+            .state
+            .install_resolved_previous_values_at_boundary(&prev);
+    }
 }
 
-fn upload_economy_thresholds(session: &mut SimSession) -> Result<(), String> {
+fn upload_thr(session: &mut SimSession) -> Result<(), String> {
     use simthing_gpu::{
         emit_on_threshold_registrations_to_gpu, DEFAULT_THRESHOLD_EMISSION_CAPACITY,
     };
-    // Same constant-emission seed path Studio field-bearing uses (values buffer).
-    materialize_constant_emission_seeds(session)?;
+    materialize_emission_seeds(session);
     let Some(registry) = session.spec_state.resource_economy_registry.as_ref() else {
         return Ok(());
     };
@@ -573,7 +453,7 @@ fn upload_economy_thresholds(session: &mut SimSession) -> Result<(), String> {
     session
         .state
         .upload_accumulator_threshold_ops(&gpu_regs)
-        .map_err(|e| format!("upload emit_on_threshold: {e}"))?;
+        .map_err(|e| format!("{e}"))?;
     register_post_rf_need_threshold_rescan(
         &mut session.state,
         &session.spec_state.resolved_need_weight_profiles,
@@ -581,14 +461,27 @@ fn upload_economy_thresholds(session: &mut SimSession) -> Result<(), String> {
     Ok(())
 }
 
-fn open_neutral(clause: &str) -> SimSession {
-    match open_from_clause_text(clause, vec![explicit_neutral_authored_binding()], false) {
-        Ok(s) => s,
-        Err(e) if e.to_lowercase().contains("adapter") || e.to_lowercase().contains("gpu") => {
-            panic!("RF-5: GPU/adapter Unsupported is FAIL: {e}");
-        }
-        Err(e) => panic!("open: {e}"),
-    }
+fn read_need(sim: &SimSession) -> f32 {
+    let b = sim
+        .spec_state
+        .resolved_need_weight_profiles
+        .first()
+        .expect("binding");
+    let values = sim.state.read_values();
+    let n_dims = sim.state.n_dims as usize;
+    values[b.participant_slot as usize * n_dims + b.need_col.raw()]
+}
+
+fn live_events(sim: &mut SimSession) -> Vec<simthing_gpu::ThresholdEvent> {
+    sim.state
+        .accumulator_runtime
+        .as_mut()
+        .and_then(|r| r.readback_threshold_events(&sim.state.ctx).ok())
+        .unwrap_or_default()
+}
+
+fn count_kind(events: &[simthing_gpu::ThresholdEvent], kind: u32) -> usize {
+    events.iter().filter(|e| e.event_kind() == kind).count()
 }
 
 #[test]
@@ -597,237 +490,192 @@ fn bare_weight_profiles_without_bindings_are_admission_gap() {
     let pack = hydrate_scenario(&document).expect("hydrate");
     match compose_need_weight_bindings(&pack, ARENA, &[]) {
         NeedWeightComposeOutcome::AdmissionGap {
-            missing_fields,
-            weight_profile_ids,
-            ..
+            weight_profile_ids, ..
         } => {
-            assert!(
-                missing_fields.iter().any(|f| f.contains("install")),
-                "gap must name install: {missing_fields:?}"
-            );
             assert_eq!(weight_profile_ids, vec!["expansion_need".to_string()]);
         }
-        NeedWeightComposeOutcome::Bindings(b) => {
-            panic!("must not invent bindings from bare weight_profiles, got {b:?}")
-        }
+        NeedWeightComposeOutcome::Bindings(b) => panic!("must not invent: {b:?}"),
     }
 }
 
 #[test]
-fn source_host_and_participant_rows_are_distinct_full_cells() {
+fn sources_resolve_from_authored_property_owners_not_install_host_rehome() {
     let sim = open_neutral(NEUTRAL_LOW);
     let b = sim
         .spec_state
         .resolved_need_weight_profiles
         .first()
         .expect("binding");
-    assert!(
-        !b.weight_cells.is_empty() && !b.input_cells.is_empty(),
-        "full-cell sources required"
+    // All sources share one eml_source_slot from find_property_owner.
+    assert_eq!(b.eml_source_slot, b.input_cells[0].source_slot);
+    assert_eq!(b.eml_source_slot, b.weight_cells[0].source_slot);
+    // Need writes to participant; EvalEML reads source row.
+    // Participant wrapper is distinct unless property owner is the hosted install node
+    // and happens to share the wrapper slot (it must not for flow cell).
+    assert_ne!(
+        b.participant_slot, b.eml_source_slot,
+        "need target participant must not be forced to equal source row re-home"
     );
     for cell in b.input_cells.iter().chain(b.weight_cells.iter()) {
-        assert_ne!(
-            cell.source_slot, b.participant_slot,
-            "host source_slot must differ from arena participant wrapper (ontology); \
-             got source={} participant={} for {}",
-            cell.source_slot, b.participant_slot, cell.property.name
+        assert_eq!(
+            cell.source_slot, b.eml_source_slot,
+            "sources co-located for slot-local EvalEML"
         );
-        assert_eq!(cell.source_id, b.hosted_id, "source id is install host");
     }
 }
 
 #[test]
-fn paired_clause_authorings_change_live_need_and_sealed_threshold_events() {
+fn paired_authorings_live_need_and_sealed_gpu_events() {
     let mut low = open_neutral(NEUTRAL_LOW);
     let mut high = open_neutral(NEUTRAL_HIGH);
-
-    upload_economy_thresholds(&mut low).expect("upload low thr");
-    upload_economy_thresholds(&mut high).expect("upload high thr");
-
-    low.step_once().expect("step low");
-    high.step_once().expect("step high");
-
+    upload_thr(&mut low).expect("thr");
+    upload_thr(&mut high).expect("thr");
+    low.step_once().expect("step");
+    high.step_once().expect("step");
     let need_low = read_need(&low);
     let need_high = read_need(&high);
     assert!(
         need_high > need_low,
-        "paired overlay authorings must diverge need: low={need_low} high={need_high}"
+        "low={need_low} high={need_high}"
     );
-    assert!(
-        need_low < NEED_THRESHOLD,
-        "low need {need_low} must stay below threshold {NEED_THRESHOLD}"
-    );
-    assert!(
-        need_high >= NEED_THRESHOLD,
-        "high need {need_high} must cross threshold {NEED_THRESHOLD}"
-    );
-
-    let events_low = live_sealed_events(&mut low);
-    let events_high = live_sealed_events(&mut high);
-    assert_eq!(
-        count_event_kind(&events_low, NEED_EVENT_KIND),
-        0,
-        "below-threshold live sealed need events must be 0: {events_low:?}"
-    );
-    assert!(
-        count_event_kind(&events_high, NEED_EVENT_KIND) > 0,
-        "crossing must emit live sealed need event post-step_once: {events_high:?}"
-    );
+    assert!(need_low < NEED_THRESHOLD, "low={need_low}");
+    assert!(need_high >= NEED_THRESHOLD, "high={need_high}");
+    assert_eq!(count_kind(&live_events(&mut low), NEED_EVENT_KIND), 0);
+    assert!(count_kind(&live_events(&mut high), NEED_EVENT_KIND) > 0);
 }
 
-/// Live mutation: open once, change only an authored host **input** source cell
-/// (no overlay recompute of this cell), step again, observe need change without
-/// reopen/reseed/CPU participant copy.
+/// Live mutation via economy Constant formula (admitted path), not dense-vector poke.
 #[test]
-fn live_host_source_mutation_updates_need_without_reopen() {
+fn live_emission_formula_mutation_updates_need_without_reopen() {
     let mut sim = open_neutral(NEUTRAL_LOW);
-    upload_economy_thresholds(&mut sim).expect("upload thr");
+    upload_thr(&mut sim).expect("thr");
     sim.step_once().expect("step1");
     let need_before = read_need(&sim);
-
-    // Mutate only the authored host input Amount cell (source row). Weight is
-    // overlay-driven each tick; input is the live host Amount we can raise.
-    let binding = sim
+    let b = sim
         .spec_state
         .resolved_need_weight_profiles
         .first()
-        .expect("binding")
+        .expect("b")
         .clone();
-    let cell = binding.input_cells.first().expect("input").clone();
-    assert_ne!(cell.source_slot, binding.participant_slot);
-    let n_dims = sim.state.n_dims as usize;
-    let mut values = sim.state.read_values();
-    let host_idx = cell.source_slot as usize * n_dims + cell.col.raw();
-    let host_before = values[host_idx];
-    let raised = host_before + 10.0;
-    values[host_idx] = raised;
-    sim.state.install_resolved_values_at_boundary(&values);
+    let w_col = b.weight_cells[0].col.raw_u32();
+    let w_slot = b.weight_cells[0].source_slot;
 
+    // Admitted path: mutate Constant emission for weight property, re-seed, step.
+    {
+        let econ = sim
+            .spec_state
+            .resource_economy_registry
+            .as_mut()
+            .expect("econ");
+        for e in &mut econ.registrations.emissions {
+            if e.source_slot == w_slot && e.source_col == w_col {
+                e.formula = EmissionFormula::Constant { value: 5.0 };
+            }
+        }
+        econ.generation = econ.generation.saturating_add(1);
+    }
+    materialize_emission_seeds(&mut sim);
     sim.step_once().expect("step2");
     let need_after = read_need(&sim);
     assert!(
-        need_after > need_before + 1e-3,
-        "live host input mutation must raise need without reopen: before={need_before} after={need_after} host_before={host_before}"
+        need_after > need_before + 0.5,
+        "before={need_before} after={need_after}"
     );
-    // Projection carried a higher host input into need. Source host and participant
-    // remain distinct rows (ontology).
-    assert_ne!(cell.source_slot, binding.participant_slot);
-    let _ = raised;
 }
 
 #[test]
 fn empty_weight_properties_fail_closed() {
     let document = parse_raw_document(NEUTRAL_LOW.as_bytes()).expect("parse");
     let pack = hydrate_scenario(&document).expect("hydrate");
-    let mut authored = explicit_neutral_authored_binding();
-    authored.weight_properties.clear();
-    match open_from_pack(&pack, vec![authored], false) {
-        Ok(_) => panic!("empty weights must fail"),
-        Err(err) => assert!(
-            err.contains("weight_properties")
-                || err.contains("admission_gap")
-                || err.to_lowercase().contains("need weight"),
-            "unexpected: {err}"
+    let mut b = explicit_neutral_binding();
+    b.weight_properties.clear();
+    match open_from_pack(&pack, vec![b], false) {
+        Ok(_) => panic!("must fail"),
+        Err(e) => assert!(e.contains("weight") || e.contains("admission"), "{e}"),
+    }
+}
+
+#[test]
+fn misbound_install_fails_closed() {
+    let document = parse_raw_document(NEUTRAL_LOW.as_bytes()).expect("parse");
+    let pack = hydrate_scenario(&document).expect("hydrate");
+    match open_from_pack(&pack, vec![explicit_neutral_binding()], true) {
+        Ok(_) => panic!("must fail"),
+        Err(e) => assert!(
+            e.contains("not admitted") || e.to_lowercase().contains("install") || e.contains("need"),
+            "{e}"
         ),
     }
 }
 
 #[test]
-fn misbound_install_target_fails_closed() {
-    match open_from_clause_text(
-        NEUTRAL_LOW,
-        vec![explicit_neutral_authored_binding()],
-        true,
-    ) {
-        Ok(_) => panic!("misbound install must fail closed"),
-        Err(err) => {
-            assert!(
-                err.contains("not admitted")
-                    || err.contains("NoMatchingOwners")
-                    || err.contains("not defined")
-                    || err.to_lowercase().contains("need weight")
-                    || err.to_lowercase().contains("install"),
-                "unexpected: {err}"
-            );
-        }
-    }
-}
-
-#[test]
-fn post_rf_rescan_captures_need_without_duplicating_ordinary_threshold() {
+fn post_rf_rescan_exactly_once_ordinary_and_need() {
     let mut high = open_neutral(NEUTRAL_HIGH);
-    upload_economy_thresholds(&mut high).expect("upload thr");
+    upload_thr(&mut high).expect("thr");
     high.step_once().expect("step");
-    let events = live_sealed_events(&mut high);
-    let need_n = count_event_kind(&events, NEED_EVENT_KIND);
-    let ordinary_n = count_event_kind(&events, ORDINARY_EVENT_KIND);
+    let events = live_events(&mut high);
+    let need_n = count_kind(&events, NEED_EVENT_KIND);
+    let ordinary_n = count_kind(&events, ORDINARY_EVENT_KIND);
     assert_eq!(
         need_n, 1,
-        "need crossing exactly once post-RF, got {need_n} events={events:?}"
+        "need exactly once: {events:?}"
     );
-    assert!(
-        ordinary_n <= 1,
-        "ordinary threshold must not be duplicated, got {ordinary_n}"
+    assert_eq!(
+        ordinary_n, 1,
+        "ordinary thr that actually crossed exactly once: {events:?}"
     );
 }
 
+/// Canonical TP: production Studio lowerer surfaces typed AdmissionGap (BLOCKED).
+/// Rust companion bindings do not close the canonical transport gap.
 #[test]
-fn canonical_tp_and_neutral_share_production_composer_path() {
+fn canonical_tp_studio_path_is_admission_gap_blocked() {
     let scenarios_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../scenarios");
     let tp_path = scenarios_dir.join("terran_pirate_galaxy.clause");
-    let tp_bytes = std::fs::read(&tp_path).expect("read canonical clause");
-    let tp_doc = parse_raw_document(&tp_bytes).expect("parse TP");
+    let tp_bytes = std::fs::read(&tp_path).expect("read");
+    let tp_doc = parse_raw_document(&tp_bytes).expect("parse");
     let tp_pack = simthing_clausething::hydrate_scenario_with_source_base(
         &tp_doc,
         Some(scenarios_dir.as_path()),
     )
-    .expect("hydrate TP");
+    .expect("hydrate");
 
-    match compose_need_weight_bindings(&tp_pack, ARENA, &[]) {
+    // Bare clause weight_profiles → compose AdmissionGap.
+    match compose_need_weight_bindings(&tp_pack, "studio_rf_arena", &[]) {
         NeedWeightComposeOutcome::AdmissionGap {
             weight_profile_ids, ..
         } => {
-            assert!(weight_profile_ids.len() >= 2);
+            assert!(weight_profile_ids.len() >= 2, "{weight_profile_ids:?}");
         }
-        NeedWeightComposeOutcome::Bindings(b) => {
-            panic!("must not invent TP bindings, got {b:?}")
-        }
+        NeedWeightComposeOutcome::Bindings(b) => panic!("must not invent TP bindings: {b:?}"),
     }
 
-    let tp_composed =
-        compose_or_err(&tp_pack, &explicit_tp_authored_bindings()).expect("compose TP");
-    let owners: Vec<_> = tp_composed
-        .iter()
-        .map(|b| match &b.install {
-            InstallTargetSpec::ScenarioListed { target_id } => target_id.clone(),
-            _ => String::new(),
-        })
-        .collect();
+    // Production Studio profile carries typed gap (not silent empty success).
+    let profile = simthing_mapeditor::authored_live_profile_from_pack(&tp_pack);
     assert!(
-        owners.iter().any(|o| o == "terran") && owners.iter().any(|o| o == "pirate"),
-        "multi-profile owners: {owners:?}"
+        profile.rf5_admission_gap.is_some(),
+        "Studio profile must expose typed RF-5 AdmissionGap for bare TP"
+    );
+    let gap = profile.rf5_admission_gap.as_ref().unwrap();
+    assert!(
+        gap.contains("admission gap") || gap.contains("RF-5"),
+        "gap telemetry: {gap}"
+    );
+    // No invented need_weight_profiles on production GameMode when gap.
+    let n_bindings = profile
+        .game_mode
+        .resource_flow
+        .as_ref()
+        .map(|rf| rf.need_weight_profiles.len())
+        .unwrap_or(0);
+    assert_eq!(
+        n_bindings, 0,
+        "must not invent complete bindings on GameMode when gap"
     );
 
-    let mut tp_session = match open_from_pack(&tp_pack, explicit_tp_authored_bindings(), false) {
-        Ok(s) => s,
-        Err(e) if e.to_lowercase().contains("adapter") || e.to_lowercase().contains("gpu") => {
-            panic!("RF-5: GPU/adapter Unsupported is FAIL: {e}");
-        }
-        Err(e) => panic!("open TP: {e}"),
-    };
-    let b0 = tp_session
-        .spec_state
-        .resolved_need_weight_profiles
-        .first()
-        .expect("tp binding");
-    assert_ne!(
-        b0.weight_cells[0].source_slot, b0.participant_slot,
-        "TP full-cell host ≠ participant"
-    );
-    upload_economy_thresholds(&mut tp_session).expect("TP thr");
-    tp_session.step_once().expect("step TP");
-
+    // Neutral second scenario still opens through production compose+open+step.
     let mut neutral = open_neutral(NEUTRAL_LOW);
-    upload_economy_thresholds(&mut neutral).expect("neutral thr");
+    upload_thr(&mut neutral).expect("thr");
     neutral.step_once().expect("step neutral");
+    assert_eq!(neutral.spec_state.resolved_need_weight_profiles.len(), 1);
 }

@@ -2,9 +2,9 @@
 
 ## Status
 
-**PROBATION / proof-present / DA-review-pending** — 2026-07-18 (coder=Grok-CLI).
+**PROBATION / proof-present / partial BLOCKED** — 2026-07-19 (coder=Grok-CLI).
 
-Remand `5013106236` + ontology addendum `5013140700` landed. Owner alone closes screenshot-C [OVL]. Coding agent does not graduate, mark ready, or merge. No executable freeze.
+Remand `5013605086` (full-cell authority). Owner OVL / freeze / DA relay remain blocked.
 
 ## Identity
 
@@ -12,71 +12,46 @@ Remand `5013106236` + ontology addendum `5013140700` landed. Owner alone closes 
 |---|---|
 | Rung | `RF-NEED-WEIGHT-PROFILE-TRANSPORT-0` (RF-5) |
 | PR | #1414 |
-| Base / master | `99fa9d06898a1b03b490b7f876a17dfd4568e500` |
-| RF-4 graduation | **DA-GRADUATED / merged #1413 @ `99fa9d06`** |
-| HD-RECEIPT | `9132665903e6` |
+| Base reviewed head | `e0cf893ceae665495002dff822fa401c4f5c49ad` |
 | ORIENT-RECEIPT | `2c9fde39d1d6` (role=coding) |
-| Expected route | `DA-RESERVE(gate-wiring)` |
-| tested_code_sha | `37188055f54a17fad26b20023458cc937c3b8fa9` |
-| implementation_sha | `37188055f54a17fad26b20023458cc937c3b8fa9` |
-| evidence_sha | `337847f7d31cd92ffb822691307a5b0ccd592c39` |
-| coverage_basis | PASS (workshop RF-5 8/8 + mapeditor RF-4 elevate 8/8 + AGENT-SCAN INSPECT justified) |
+| tested_code_sha | *(bound after implementation)* |
+| implementation_sha | *(bound after implementation)* |
+| evidence_sha | *(bound after evidence)* |
+| coverage_basis | PASS workshop RF-5 8/8 + RF-4 elevate 8/8 |
 
-## Ontology addendum (`5013140700`)
-
-GPU state is `slots × columns`. Live locus is always **`(slot, column)`**.
-
-| Violation (remanded) | Fix |
-|---|---|
-| CPU copy of host PropertyValue + CPU overlay Add/Multiply into participant | **Removed.** No install-time mirror. |
-| Missing source row identity | `NeedWeightSourceCell { source_slot, source_id, col, property }` on every input/weight |
-| Cross-row transport | On-device `AccumulatorOp` Identity projection `(source_slot, col) → (participant_slot, col)` band 0, then EvalEML band 1 |
-| Live mutation | Open once, mutate host input Amount, step — need rises without reopen/reseed/CPU copy |
-
-## Remand-2 corrections (`5013106236`)
+## Remand-3 corrections
 
 | Defect | Fix |
 |---|---|
-| Production binding absent | `compose_need_weight_bindings` — id-matched stacks only; Studio consumes production compose |
-| Positional zip invents joins | Removed; explicit complete companion bindings or AdmissionGap |
-| Live sealed event | Exit proof is post-`step_once` GPU `readback_threshold_events` |
-| Full post-RF rescan | Need-only **append** rescan (no prepare/wipe); dual-threshold bite |
-| Canonical + neutral path | Both compose/open/step same production path; bare TP → AdmissionGap |
+| Source slot re-homed to install host | Each property resolved via `find_property_owner`; missing instance → InstallError (no invent) |
+| Same-col projection to unowned participant cells | **Removed.** EvalEML runs on **authored source row**; writes need only to admitted participant `AllocatorWeight` |
+| AdmissionGap → silent empty | Studio carries `rf5_admission_gap` telemetry; does not invent bindings |
+| Canonical transport | Bare TP → typed **AdmissionGap BLOCKED** on Studio profile (no Rust companion as production close) |
+| Global overlay ADR broaden | **Reverted** — GameMode overlays remain deferred per ADR |
+| Live mutation dense poke | Mutate admitted Constant emission formula + re-seed |
+| Non-biting ordinary thr | Ordinary thr actually crosses; assert ordinary_n=1 and need_n=1 |
 
-## Admission gap (honest handoff)
+## Honest stop condition (canonical)
 
-Clause `weight_profile` authors EML stack + profile kind only. Without complete `NeedWeightProfileBindingSpec` companion rows (install / input / weight / threshold), compose returns `AdmissionGap`. No positional zip, name-stem, or first-stockpile authority.
+Clause `weight_profile` does not author install/input/weight/threshold. Without complete production companion bindings on GameMode, `compose_need_weight_bindings` returns **AdmissionGap**. Studio surfaces it; does not invent. **Canonical production need transport remains BLOCKED** until Owner/DA admit companion binding authority or new ClauseScript fields.
 
-## Load-bearing proofs
+## Proofs
 
 | Claim | Result |
 |---|---|
 | Bare weight_profiles → AdmissionGap | PASS |
-| Host source_slot ≠ participant wrapper | PASS |
-| Paired overlays diverge live need | PASS |
-| Below thr: post-step_once sealed need events = 0 | PASS |
-| Crossing: post-step_once sealed need events > 0 | PASS |
-| Live host mutation raises need without reopen | PASS |
-| Empty weight_properties fail closed | PASS |
-| Misbound install fail closed | PASS |
-| Post-RF need-only rescan; ordinary not duplicated | PASS |
-| Canonical TP + neutral same production path | PASS |
-| RF-4 mapeditor elevate 8/8 | PASS |
-| agent_scan | INSPECT (TEST-BUDGET justified) |
+| Sources from property owners (not re-home) | PASS |
+| Paired need + sealed GPU events | PASS |
+| Live emission mutation without reopen | PASS |
+| Empty weights / misbind fail closed | PASS |
+| Exactly-once ordinary + need after rescan | PASS |
+| Canonical TP Studio = gap BLOCKED | PASS |
+| RF-4 elevate nonregression | PASS 8/8 |
 
-## Fences held
+## Fences
 
-- No new ClauseScript syntax / kernel WGSL primitive / Studio feeder.
-- No synthetic need host property.
-- No CPU PropertyValue mirror or CPU overlay arithmetic.
-- No `value >= thr` as event proof.
-- No 12.10 macro-emergence claim.
-
-## Owner [OVL]
-
-**Blocked until orchestration accepts.** Do not freeze executable or request screenshot C.
-
-## Graduation routing
-
-- Risk class: gate-wiring / DA-reserve (expected)
-- Falsification: workshop RF-5 8/8 + RF-4 elevate nonregression
+- No property invent on install host
+- No same-property GPU shadow on participant
+- No global GameMode overlay install (ADR held)
+- No Rust companion as canonical close
+- No OVL / freeze / DA relay
