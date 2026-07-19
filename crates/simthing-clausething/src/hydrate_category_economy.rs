@@ -1462,7 +1462,9 @@ fn parse_transfer_block(property: &RawProperty) -> Result<ResourceTransferSpec, 
         target_role: amount_role(),
         amount: require_field(amount, "amount", property)?,
         order_band: require_field(order_band, "order_band", property)?,
-    })
+                source_host_entity: None,
+            target_host_entity: None,
+        })
 }
 
 fn parse_recipe_block(property: &RawProperty) -> Result<ResourceRecipeSpec, HydrateError> {

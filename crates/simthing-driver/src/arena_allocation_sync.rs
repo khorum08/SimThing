@@ -47,6 +47,33 @@ pub fn sync_resource_flow_accumulator(
     need_bindings: &[crate::need_binding::ResolvedNeedBinding],
     enabled: bool,
 ) -> Result<ResourceFlowSyncReport, ResourceFlowSyncError> {
+    sync_resource_flow_accumulator_with_options(
+        state,
+        registry,
+        arena_registry,
+        scaffold,
+        root,
+        allocator,
+        gated_rates,
+        need_bindings,
+        enabled,
+        true,
+    )
+}
+
+/// Same as [`sync_resource_flow_accumulator`] with RF-5A stage-projection control.
+pub fn sync_resource_flow_accumulator_with_options(
+    state: &mut WorldGpuState,
+    registry: &DimensionRegistry,
+    arena_registry: &ArenaRegistry,
+    scaffold: &ArenaParticipantScaffold,
+    root: &SimRuntimeTree,
+    allocator: &simthing_gpu::SlotAllocator,
+    gated_rates: &[crate::gated_rates::ResolvedGatedRate],
+    need_bindings: &[crate::need_binding::ResolvedNeedBinding],
+    enabled: bool,
+    include_need_stage_projections: bool,
+) -> Result<ResourceFlowSyncReport, ResourceFlowSyncError> {
     if !enabled || arena_registry.arenas.is_empty() {
         state.clear_resource_flow_accumulator();
         return Ok(ResourceFlowSyncReport {
@@ -90,11 +117,19 @@ pub fn sync_resource_flow_accumulator(
         combined_cpu.extend(alloc.cpu_ops);
     }
 
-    let pre_band = !gated_rates.is_empty() || !need_bindings.is_empty();
-    if pre_band {
+    // RF-2A / RF-5A: pre-bands occupy low OrderBands before arena reduce.
+    // Gated rates: 1 band (EvalEML@0). Need bindings: 2 bands (stage@0, EvalEML@1).
+    let gated_pre = u32::from(!gated_rates.is_empty());
+    let need_pre = if need_bindings.is_empty() {
+        0
+    } else {
+        crate::need_binding::NEED_BINDING_PRE_BANDS
+    };
+    let pre_bands = gated_pre.max(need_pre);
+    if pre_bands > 0 {
         for op in &mut combined_cpu {
             if let simthing_core::GateSpec::OrderBand(band) = op.gate {
-                op.gate = simthing_core::GateSpec::OrderBand(band + 1);
+                op.gate = simthing_core::GateSpec::OrderBand(band + pre_bands);
             }
         }
         let mut all_ops = Vec::new();
@@ -105,14 +140,15 @@ pub fn sync_resource_flow_accumulator(
             ));
         }
         if !need_bindings.is_empty() {
-            all_ops.extend(crate::need_binding::build_need_binding_ops(
+            all_ops.extend(crate::need_binding::build_need_binding_ops_with_options(
                 need_bindings,
                 &mut eml_registry,
+                include_need_stage_projections,
             ));
         }
         all_ops.extend(combined_cpu);
         combined_cpu = all_ops;
-        max_bands += 1;
+        max_bands += pre_bands;
     }
 
     state.sync_resource_flow_ops_from_cpu(&combined_cpu, max_bands, &eml_registry)?;

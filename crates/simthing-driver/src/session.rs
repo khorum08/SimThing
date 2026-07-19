@@ -368,19 +368,26 @@ impl SimSession {
         self.sync_spec_threshold_registrations();
         self.sync_resource_flow_if_enabled()?;
         self.sync_resource_economy_at_install()?;
+        // Re-project tree (including entity-hosted Constant PropertyValue seeds)
+        // then upload thresholds. No dense install_resolved_values authority.
         self.proto.initial_gpu_sync(&self.coord, &mut self.state);
-        // Production open residue (same family as Studio field-bearing install):
-        // seed authored Constant emissions once, upload economy emit_on_threshold
-        // regs, and arm post-RF need-only rescan. Not a mid-session reseed API.
         self.sync_resource_economy_threshold_ops_at_install()?;
         Ok(())
     }
 
-    /// Open-time only: Constant emission seeds + emit_on_threshold GPU upload +
-    /// post-RF need threshold arm. Failures propagate (no silent void skip).
+    /// Open-time: upload economy emit_on_threshold regs + arm post-RF need rescan.
+    /// Value authority remains tree PropertyValue → project_tree_to_values only.
     fn sync_resource_economy_threshold_ops_at_install(&mut self) -> Result<(), SessionError> {
-        self.materialize_authored_constant_emission_seeds_at_open()?;
         let Some(registry) = self.spec_state.resource_economy_registry.as_ref() else {
+            if !self.spec_state.resolved_need_bindings.is_empty() {
+                crate::need_binding::register_post_rf_need_threshold_rescan(
+                    &mut self.state,
+                    &self.spec_state.resolved_need_bindings,
+                )
+                .map_err(|e| {
+                    SessionError::ThresholdInstall(format!("post-RF need threshold arm: {e}"))
+                })?;
+            }
             return Ok(());
         };
         if !registry.registrations.emit_on_threshold.is_empty() {
@@ -410,43 +417,6 @@ impl SimSession {
         Ok(())
     }
 
-    /// Open-time seed of authored Constant emission formulas into GPU values.
-    /// Does not re-run after open; not a production mid-session refresh path.
-    fn materialize_authored_constant_emission_seeds_at_open(
-        &mut self,
-    ) -> Result<(), SessionError> {
-        let Some(registry) = self.spec_state.resource_economy_registry.as_ref() else {
-            return Ok(());
-        };
-        let n_dims = self.state.n_dims as usize;
-        let mut values = self.state.read_values();
-        let mut prev = values.clone();
-        let mut any = false;
-        for emission in &registry.registrations.emissions {
-            let simthing_gpu::EmissionFormula::Constant { value } = emission.formula else {
-                continue;
-            };
-            if !value.is_finite() {
-                continue;
-            }
-            let idx = emission.source_slot as usize * n_dims + emission.source_col as usize;
-            if let Some(slot) = values.get_mut(idx) {
-                *slot = (*slot).max(value);
-                any = true;
-            }
-            if let Some(slot) = prev.get_mut(idx) {
-                *slot = 0.0;
-            }
-        }
-        if !any {
-            return Ok(());
-        }
-        self.state.install_resolved_values_at_boundary(&values);
-        self.state
-            .install_resolved_previous_values_at_boundary(&prev);
-        Ok(())
-    }
-
     fn reserve_resource_flow_capacity_budget(&mut self) {
         let Some(budget) = &self.spec_state.resource_flow_capacity_budget else {
             return;
@@ -461,7 +431,8 @@ impl SimSession {
     /// Sync E-11 resource-flow AccumulatorOps when the pipeline flag is enabled.
     pub fn sync_resource_flow_if_enabled(&mut self) -> Result<(), SessionError> {
         let enabled = self.proto.flags.use_accumulator_resource_flow;
-        crate::arena_allocation_sync::sync_resource_flow_accumulator(
+        let include_stage = !self.spec_state.need_stage_projections_disabled;
+        crate::arena_allocation_sync::sync_resource_flow_accumulator_with_options(
             &mut self.state,
             &self.proto.registry,
             &self.spec_state.arena_registry,
@@ -471,6 +442,7 @@ impl SimSession {
             &self.spec_state.resolved_gated_rates,
             &self.spec_state.resolved_need_bindings,
             enabled,
+            include_stage,
         )?;
         Ok(())
     }

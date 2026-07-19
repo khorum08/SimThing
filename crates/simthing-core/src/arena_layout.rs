@@ -16,6 +16,22 @@ pub const ARENA_INTERNAL_COLUMN_ROLES: &[&str] = &[
     "hosted_simthing_id",
 ];
 
+/// RF-5A staged projection cells on the participant flow property (role pathway).
+///
+/// Per-tick Identity AccumulatorOps copy authored source cells here before
+/// slot-local EvalEML. Not a second ledger — refreshed every RF tick on-device.
+pub const NEED_STAGE_MAX_PAIRS: usize = 4;
+
+/// Named roles `need_stage_in_{i}` / `need_stage_w_{i}` for i in 0..NEED_STAGE_MAX_PAIRS.
+pub fn need_stage_role_names() -> impl Iterator<Item = String> {
+    (0..NEED_STAGE_MAX_PAIRS).flat_map(|i| {
+        [
+            format!("need_stage_in_{i}"),
+            format!("need_stage_w_{i}"),
+        ]
+    })
+}
+
 fn named(role: &str) -> SubFieldRole {
     SubFieldRole::Named(role.into())
 }
@@ -67,6 +83,15 @@ pub fn expand_arena_internal_columns(layout: PropertyLayout) -> PropertyLayout {
             continue;
         }
         out.sub_fields.push(internal_plumbing_subfield(role_name));
+    }
+    // RF-5A: participant-local staged input/weight range for cross-row projection.
+    for role_name in need_stage_role_names() {
+        let role = named(&role_name);
+        if out.offset_of(&role).is_some() {
+            continue;
+        }
+        out.sub_fields
+            .push(internal_plumbing_subfield(&role_name));
     }
     out
 }

@@ -69,7 +69,9 @@ pub fn amount_transfer(
         target_role: SubFieldRole::Named("amount".into()),
         amount,
         order_band: band,
-    }
+                source_host_entity: None,
+            target_host_entity: None,
+        }
 }
 
 pub fn exact_eml_registry(entries: &[(&str, u32)]) -> EmlExpressionRegistry {
@@ -143,13 +145,15 @@ pub fn full_fixture_spec() -> ResourceEconomySpec {
                 source: pk("core", "food"),
                 source_role: SubFieldRole::Named("amount".into()),
                 formula: EmissionFormulaSpec::IdentityFloor,
-            },
+                        host_entity: None,
+        },
             ResourceEmissionSpec {
                 id: "e_constant".into(),
                 source: pk("core", "food"),
                 source_role: SubFieldRole::Named("amount".into()),
                 formula: EmissionFormulaSpec::Constant(3.5),
-            },
+                        host_entity: None,
+        },
             ResourceEmissionSpec {
                 id: "e_eval".into(),
                 source: pk("core", "food"),
@@ -157,6 +161,7 @@ pub fn full_fixture_spec() -> ResourceEconomySpec {
                 formula: EmissionFormulaSpec::EvalEml {
                     formula_key: "food_emission_v1".into(),
                 },
+                host_entity: None,
             },
         ],
         emit_on_threshold: vec![EmitOnThresholdSpec {

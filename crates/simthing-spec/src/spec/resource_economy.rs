@@ -55,6 +55,12 @@ pub struct ResourceTransferSpec {
     pub amount: f32,
     /// OrderBand gate identity for the compiled AccumulatorOp.
     pub order_band: u32,
+    /// Explicit entity host for the source property instance.
+    #[serde(default)]
+    pub source_host_entity: Option<String>,
+    /// Explicit entity host for the target property instance.
+    #[serde(default)]
+    pub target_host_entity: Option<String>,
 }
 
 /// Conjunctive production recipe (E-3 authoring surface).
@@ -88,6 +94,10 @@ pub struct ResourceEmissionSpec {
     pub source: PropertyKey,
     pub source_role: SubFieldRole,
     pub formula: EmissionFormulaSpec,
+    /// Explicit entity host for the property instance (install_targets key).
+    /// Required for entity-hosted placement; never inferred from property names.
+    #[serde(default)]
+    pub host_entity: Option<String>,
 }
 
 /// Landed emission formula shapes only (`ExactDeterministic` admission at compile time).

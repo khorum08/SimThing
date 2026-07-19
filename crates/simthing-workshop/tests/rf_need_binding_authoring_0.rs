@@ -3,10 +3,8 @@
 //! §12 homing: workshop only. Two scenario-agnostic Clause fixtures.
 //! Zero TP tokens in clausething. Ordinary open_from_spec + step_once.
 //!
-//! Live mid-session authored-source refresh: **GAP** — no production driver
-//! API mutates an authored Constant emission / stockpile source and re-arms
-//! need without reopen or manual buffer reseed. See
-//! `production_mid_session_refresh_path_absent_stop`.
+//! DA Modified Option A: staged GPU projection + LIVE/DISCONNECT/STATIC controls.
+//! Mid-session re-authoring API is not required for RF-5A.
 
 use std::collections::HashMap;
 
@@ -270,10 +268,14 @@ struct OpenOpts {
     duplicate_entity: Option<&'static str>,
     /// Drop participant from arena explicit list.
     drop_participant_from_arena: bool,
-    /// Cross-row: map input entity to a different host than weight entity.
+    /// Cross-row happy path: second owner hosts weight stockpile.
     cross_row_second_owner: bool,
     /// Attach an ordinary (non-need) emit_on_threshold after hydrate for bite proof.
     ordinary_threshold_on_ore: bool,
+    /// LIVE-TRACKING: keep a per-tick transfer that depletes weight; drop runtime emissions.
+    live_tracking_transfer: bool,
+    /// Keep authored Constant emissions active (STATIC / ordinary path).
+    keep_emissions: bool,
 }
 
 fn open_clause_opts(text: &str, opts: OpenOpts) -> Result<SimSession, String> {
@@ -301,8 +303,8 @@ fn open_clause_opts(text: &str, opts: OpenOpts) -> Result<SimSession, String> {
     install_targets.insert("council".into(), vec![ids[1]]);
     install_targets.insert("root".into(), vec![ids[0]]);
     if opts.cross_row_second_owner {
-        // Weight entity stays on primary; force a second entity name onto owner2.
-        install_targets.insert("alt_row".into(), vec![ids[3]]);
+        // Second entity hosts weight stockpile (cross-row projection happy path).
+        install_targets.insert("union".into(), vec![ids[3]]);
     }
     if let Some(dup) = opts.duplicate_entity {
         install_targets
@@ -337,8 +339,39 @@ fn open_clause_opts(text: &str, opts: OpenOpts) -> Result<SimSession, String> {
     }
     if let Some(econ) = game_mode.resource_economy.as_mut() {
         econ.opt_in_mode = ResourceEconomyOptInMode::TransferAndEmission;
-        econ.transfers.clear();
         econ.recipes.clear();
+        if opts.live_tracking_transfer {
+            // Keep Constant emissions for tree seed at install; inject drip transfer.
+            // After open, caller disables emission pipeline so only transfers move sources.
+            use simthing_spec::ResourceTransferSpec;
+            let weight_key = econ
+                .transfers
+                .iter()
+                .find(|t| t.source.name.contains("weight"))
+                .map(|t| (t.source.clone(), t.target.clone(), t.source_host_entity.clone()))
+                .unwrap_or_else(|| {
+                    (
+                        PropertyKey::new("forge", "guild_weight_token_current"),
+                        PropertyKey::new("forge", "guild_weight_token_stockpile"),
+                        Some("guild".into()),
+                    )
+                });
+            // Only drip weight — do not keep full-silo ore transfers (would zero ore).
+            econ.transfers.clear();
+            econ.transfers.push(ResourceTransferSpec {
+                id: "live_weight_drip".into(),
+                source: weight_key.0,
+                source_role: SubFieldRole::Amount,
+                target: weight_key.1,
+                target_role: SubFieldRole::Amount,
+                amount: 0.25,
+                order_band: 0,
+                source_host_entity: weight_key.2.clone(),
+                target_host_entity: weight_key.2,
+            });
+        } else {
+            econ.transfers.clear();
+        }
         if opts.ordinary_threshold_on_ore {
             use simthing_spec::{EmitOnThresholdSpec, TriggerDirection};
             econ.emit_on_threshold.push(EmitOnThresholdSpec {
@@ -413,7 +446,20 @@ fn open_clause_opts(text: &str, opts: OpenOpts) -> Result<SimSession, String> {
         tick_patches: vec![],
         install_targets,
     };
-    SimSession::open_from_spec(scenario, &game_mode).map_err(|e| format!("{e}"))
+    let mut session = SimSession::open_from_spec(scenario, &game_mode).map_err(|e| format!("{e}"))?;
+    if opts.live_tracking_transfer {
+        // Tree already seeded; stop Constant emission rewrite so transfer drip moves sources.
+        session.proto.flags.use_accumulator_emission = false;
+        session.proto.flags.use_accumulator_transfer = true;
+        if let Some(reg) = session.spec_state.resource_economy_registry.as_mut() {
+            reg.registrations.emissions.clear();
+            reg.generation = reg.generation.saturating_add(1);
+        }
+        session
+            .sync_resource_economy_if_enabled()
+            .map_err(|e| format!("economy sync: {e}"))?;
+    }
+    Ok(session)
 }
 
 fn read_need(sim: &SimSession) -> f32 {
@@ -616,6 +662,8 @@ fn prepare_need_cells_does_not_invent_missing_flow() {
         need_col,
         inputs: vec![],
         weights: vec![],
+        staged_input_cols: vec![],
+        staged_weight_cols: vec![],
         nodes: vec![],
         threshold: 0.5,
         event_kind: NEED_KIND,
@@ -633,38 +681,87 @@ fn prepare_need_cells_does_not_invent_missing_flow() {
     }
 }
 
+const CROSS_ROW: &str = r#"
+scenario = foundry_valley {
+    owner = guild {
+        owner_key = "guild"
+        display_name = "Guild"
+        archetype = "industrial"
+    }
+    owner = union {
+        owner_key = "union"
+        display_name = "Union"
+        archetype = "industrial"
+    }
+    location = ridge { display_name = "Ridge" }
+    field_economy = valley_economy {
+        namespace = "forge"
+        stockpile_silo = guild_ore {
+            owner = "guild"
+            resource = "ore"
+            current = 1
+        }
+        stockpile_silo = union_weight {
+            owner = "union"
+            resource = "weight_token"
+            current = 3.0
+        }
+        production_building = ridge_foundry {
+            location = "ridge"
+            input = { resource = "ore" amount = 1 }
+            output = { resource = "tools" }
+            throttle_hint_max_per_tick = 1
+        }
+        weight_profile = expansion_need {
+            profile = "expansion-need"
+            input = { input_col = 0 weight_col = 10 }
+            output_col = 12
+        }
+        need_binding = expansion_need {
+            profile = "expansion-need"
+            participant = "guild"
+            arena = "foundry"
+            input = {
+                entity = "guild"
+                property = "forge::guild_ore_current"
+                role = Amount
+            }
+            weight = {
+                entity = "union"
+                property = "forge::union_weight_token_current"
+                role = Amount
+            }
+            threshold = 0.5
+            event_kind = 91
+        }
+    }
+}
+"#;
+
 #[test]
-fn cross_row_sources_stop_without_mirror() {
-    // Point weight entity at alt_row (different install host).
-    let bad = FOUNDRY.replace(
-        "weight = {\n                entity = \"guild\"",
-        "weight = {\n                entity = \"alt_row\"",
-    );
-    // alt_row must exist in install_targets and own the weight property — we
-    // only inject the entity name; property still named guild_weight so ownership
-    // may fail first. Force property ownership by also renaming won't work
-    // without invent. Prefer explicit multi-slot STOP when ownership resolves.
-    let r = open_clause_opts(
-        &bad,
+fn cross_row_sources_project_via_stage_happy_path() {
+    let mut sim = match open_clause_opts(
+        CROSS_ROW,
         OpenOpts {
             cross_row_second_owner: true,
             ..Default::default()
         },
+    ) {
+        Ok(s) => s,
+        Err(e) if e.to_lowercase().contains("adapter") => panic!("GPU FAIL: {e}"),
+        Err(e) => panic!("{e}"),
+    };
+    let b = &sim.spec_state.resolved_need_bindings[0];
+    assert_ne!(
+        b.inputs[0].slot, b.weights[0].slot,
+        "cross-row requires distinct source slots"
     );
-    match r {
-        Ok(_) => panic!("cross-row must fail closed"),
-        Err(e) => {
-            let lower = e.to_lowercase();
-            assert!(
-                lower.contains("multiple entity")
-                    || lower.contains("multi-slot")
-                    || lower.contains("stop")
-                    || lower.contains("does not own")
-                    || lower.contains("entity"),
-                "expected cross-row STOP or ownership fail, got {e}"
-            );
-        }
-    }
+    assert_eq!(b.eml_source_slot, b.participant_slot);
+    assert_ne!(b.inputs[0].slot, b.participant_slot);
+    sim.step_once().expect("step");
+    let need = read_need(&sim);
+    assert!(need >= NEED_THR, "cross-row staged need={need}");
+    assert_eq!(count_events(&mut sim, NEED_KIND), 1);
 }
 
 // ── Live open / sealed events ──────────────────────────────────────────────
@@ -739,30 +836,116 @@ fn aqueduct_second_scenario_same_generic_path() {
     assert!(read_need(&sim) > 0.0);
 }
 
-/// Handoff stop condition: mid-session production refresh of authored sources
-/// is **absent** on SimSession. Do not use manual reseed / registration edit
-/// as an exit proof.
+fn read_cell(sim: &SimSession, slot: u32, col: simthing_core::ColumnIndex) -> f32 {
+    let v = sim.state.read_values();
+    let n = sim.state.n_dims as usize;
+    v[slot as usize * n + col.raw()]
+}
+
+fn read_staged_weight(sim: &SimSession) -> f32 {
+    let b = &sim.spec_state.resolved_need_bindings[0];
+    read_cell(sim, b.participant_slot, b.staged_weight_cols[0])
+}
+
+fn read_source_weight(sim: &SimSession) -> f32 {
+    let b = &sim.spec_state.resolved_need_bindings[0];
+    read_cell(sim, b.weights[0].slot, b.weights[0].col)
+}
+
+/// LIVE-TRACKING: ordinary transfer drip changes source; stage + need track.
 #[test]
-fn production_mid_session_refresh_path_absent_stop() {
-    // Documented gap for orchestration/DA:
-    // Required: open once → mutate authored source through production refresh
-    // → ordinary tick → live need changes on-device.
-    // Observed: SimSession exposes open_from_spec, step_once, sync_resource_economy_if_enabled
-    // (generation-keyed re-upload of the *same* compiled registrations), and no
-    // public API to rebind authored Constant / stockpile source authority mid-session
-    // without reopen, install_resolved_values_at_boundary, or mutating
-    // resource_economy_registry.registrations in place.
-    //
-    // This test asserts the gap remains recognized (no false "live refresh" claim).
-    let sim = open_clause(FOUNDRY).expect("open");
-    let _ = sim;
-    // If a production refresh entry point is added later, replace this STOP with
-    // a biting live-mutation proof. Until then REMAND item #2 stays open.
-    const PRODUCTION_MID_SESSION_AUTHORED_SOURCE_REFRESH: Option<&str> = None;
+fn live_tracking_stage_and_need_follow_source() {
+    let mut sim = match open_clause_opts(
+        FOUNDRY_HIGH,
+        OpenOpts {
+            live_tracking_transfer: true,
+            ..Default::default()
+        },
+    ) {
+        Ok(s) => s,
+        Err(e) if e.to_lowercase().contains("adapter") => panic!("GPU FAIL: {e}"),
+        Err(e) => panic!("{e}"),
+    };
+    sim.step_once().expect("t1");
+    let src1 = read_source_weight(&sim);
+    let st1 = read_staged_weight(&sim);
+    let n1 = read_need(&sim);
+    sim.step_once().expect("t2");
+    let src2 = read_source_weight(&sim);
+    let st2 = read_staged_weight(&sim);
+    let n2 = read_need(&sim);
     assert!(
-        PRODUCTION_MID_SESSION_AUTHORED_SOURCE_REFRESH.is_none(),
-        "production mid-session authored-source refresh still absent — report to DA"
+        src2 < src1 - 0.1,
+        "source must move via transfer: t1={src1} t2={src2}"
     );
+    assert!(
+        (st2 - src2).abs() < 1e-3,
+        "staged must track live source: stage={st2} src={src2}"
+    );
+    assert!(
+        n2 < n1 - 0.05,
+        "need must track: n1={n1} n2={n2} (not install-time mirror)"
+    );
+}
+
+/// DISCONNECT: remove only stage projections → sources keep moving, stage/need freeze.
+#[test]
+fn disconnect_control_freezes_stage_without_projection() {
+    let mut sim = match open_clause_opts(
+        FOUNDRY_HIGH,
+        OpenOpts {
+            live_tracking_transfer: true,
+            ..Default::default()
+        },
+    ) {
+        Ok(s) => s,
+        Err(e) if e.to_lowercase().contains("adapter") => panic!("GPU FAIL: {e}"),
+        Err(e) => panic!("{e}"),
+    };
+    sim.step_once().expect("prime");
+    let st_before = read_staged_weight(&sim);
+    let n_before = read_need(&sim);
+    let src_before = read_source_weight(&sim);
+    sim.spec_state.need_stage_projections_disabled = true;
+    sim.sync_resource_flow_if_enabled()
+        .expect("resync without stage");
+    sim.step_once().expect("after disconnect");
+    let src_after = read_source_weight(&sim);
+    let st_after = read_staged_weight(&sim);
+    let n_after = read_need(&sim);
+    assert!(
+        src_after < src_before - 0.1,
+        "source still moves: before={src_before} after={src_after}"
+    );
+    assert!(
+        (st_after - st_before).abs() < 1e-3,
+        "staged freezes without projection: before={st_before} after={st_after}"
+    );
+    assert!(
+        (n_after - n_before).abs() < 1e-3,
+        "need freezes without projection: before={n_before} after={n_after}"
+    );
+}
+
+/// STATIC: sources held static → staged cells and need remain static.
+#[test]
+fn static_control_holds_stage_and_need() {
+    let mut sim = match open_clause(FOUNDRY_HIGH) {
+        Ok(s) => s,
+        Err(e) if e.to_lowercase().contains("adapter") => panic!("GPU FAIL: {e}"),
+        Err(e) => panic!("{e}"),
+    };
+    sim.step_once().expect("t1");
+    let src1 = read_source_weight(&sim);
+    let st1 = read_staged_weight(&sim);
+    let n1 = read_need(&sim);
+    sim.step_once().expect("t2");
+    let src2 = read_source_weight(&sim);
+    let st2 = read_staged_weight(&sim);
+    let n2 = read_need(&sim);
+    assert!((src2 - src1).abs() < 1e-3, "source static: {src1}→{src2}");
+    assert!((st2 - st1).abs() < 1e-3, "stage static: {st1}→{st2}");
+    assert!((n2 - n1).abs() < 1e-3, "need static: {n1}→{n2}");
 }
 
 #[test]
@@ -772,9 +955,10 @@ fn full_cell_source_of_authority_recorded() {
     for cell in b.inputs.iter().chain(b.weights.iter()) {
         assert!(!cell.entity.is_empty());
         assert!(cell.slot > 0 || cell.simthing_id.raw() > 0);
-        // Role-derived column, not raw authored index.
         let _ = cell.col;
         let _ = &cell.role;
     }
-    assert_eq!(b.eml_source_slot, b.inputs[0].slot);
+    assert_eq!(b.eml_source_slot, b.participant_slot);
+    assert!(!b.staged_input_cols.is_empty());
+    assert!(!b.staged_weight_cols.is_empty());
 }

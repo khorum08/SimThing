@@ -61,6 +61,8 @@ pub fn amount_property(
         target_role: SubFieldRole::Named("amount".into()),
         amount,
         order_band,
+        source_host_entity: None,
+        target_host_entity: None,
     }
 }
 

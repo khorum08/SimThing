@@ -98,6 +98,9 @@ pub struct SpecSessionState {
     pub resolved_gated_rates: Vec<crate::gated_rates::ResolvedGatedRate>,
     /// RF-5A: install-resolved need bindings (full-cell loci).
     pub resolved_need_bindings: Vec<crate::need_binding::ResolvedNeedBinding>,
+    /// RF-5A DISCONNECT control: when true, omit Identity stage projections.
+    /// Production leaves this false so sources project every tick.
+    pub need_stage_projections_disabled: bool,
     /// Checked RF capacity budget used for session slot and emission reservations.
     pub resource_flow_capacity_budget: Option<ResolvedResourceFlowCapacityBudget>,
     /// Materialized production transfer/recipe/emission/threshold registrations (Phase T-3/T-4).

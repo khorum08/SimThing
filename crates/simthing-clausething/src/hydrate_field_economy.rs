@@ -958,6 +958,8 @@ fn lower_field_economy(parsed: ParsedFieldEconomy) -> Result<FieldEconomyLowerin
             target_role: SubFieldRole::Amount,
             amount: silo.current,
             order_band: index as u32,
+            source_host_entity: Some(silo.owner.clone()),
+            target_host_entity: Some(silo.owner.clone()),
         })
         .collect();
 
@@ -968,6 +970,7 @@ fn lower_field_economy(parsed: ParsedFieldEconomy) -> Result<FieldEconomyLowerin
             source: owner_resource_key(&parsed.namespace, &silo.owner, &silo.resource, "current"),
             source_role: SubFieldRole::Amount,
             formula: EmissionFormulaSpec::Constant(silo.current),
+            host_entity: Some(silo.owner.clone()),
         });
     }
     for quantity in &parsed.field_resource_quantities {
@@ -981,6 +984,9 @@ fn lower_field_economy(parsed: ParsedFieldEconomy) -> Result<FieldEconomyLowerin
             ),
             source_role: SubFieldRole::Amount,
             formula: EmissionFormulaSpec::Constant(quantity.amount),
+            // Location-hosted quantity: install on scenario root until location
+            // entity-host seam is generalized; host is still explicit (not name-guess).
+            host_entity: Some(quantity.location.clone()),
         });
     }
     for presence in &parsed.disruption_presences {
@@ -989,6 +995,7 @@ fn lower_field_economy(parsed: ParsedFieldEconomy) -> Result<FieldEconomyLowerin
             source: presence_key(&parsed.namespace, &presence.location, &presence.resource),
             source_role: SubFieldRole::Amount,
             formula: EmissionFormulaSpec::Constant(presence.amount),
+            host_entity: Some(presence.location.clone()),
         });
     }
 

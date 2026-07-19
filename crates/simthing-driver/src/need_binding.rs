@@ -1,14 +1,16 @@
-//! RF-5A: admit semantic need_binding → full-cell EvalEML + sealed threshold.
+//! RF-5A: admit semantic need_binding → staged cross-row projection + EvalEML.
 //!
 //! Row authority = **entity-name uniqueness** (install_targets). PropertyKey alone
-//! is never a row. No first-DFS owner, no participant property invent, no binding
-//! re-home of World-root stockpile state.
+//! is never a row. Cross-row sources project into arena-layout staged cells on the
+//! participant row each RF tick (Identity OrderBand), then slot-local EvalEML
+//! writes AllocatorWeight. Staging is not a second ledger or open-time mirror.
 
 use simthing_core::{
     eml_nodes, rebuild_emit_on_threshold_ops, AccumulatorOp, ColumnIndex, CombineFn, ConsumeMode,
     DimensionRegistry, EmlConsumerMask, EmlExecutionClass, EmlExpressionRegistry, EmlFormulaMeta,
     EmlNodeGpu, EmlTreeId, EmitOnThresholdBuffer, EmitOnThresholdRegistration, GateSpec, ScaleSpec,
     SimThing, SimThingId, SlotIndex, SourceSpec, SubFieldRole, ThresholdDirection,
+    NEED_STAGE_MAX_PAIRS,
 };
 use simthing_spec::{
     EmlGadgetInstanceSpec, NeedBindingSpec, ResourceFlowSpec, SemanticPropertyLocusSpec, SpecError,
@@ -22,6 +24,13 @@ use crate::scenario::Scenario;
 use simthing_gpu::SlotAllocator;
 
 const NEED_BINDING_TREE_BASE: u32 = 7_300_000;
+
+/// OrderBand for Identity source→stage projections (before EvalEML).
+pub const NEED_STAGE_ORDER_BAND: u32 = 0;
+/// OrderBand for participant-local EvalEML need write.
+pub const NEED_EVAL_ORDER_BAND: u32 = 1;
+/// How many pre-bands need_binding occupies (stage + eval).
+pub const NEED_BINDING_PRE_BANDS: u32 = 2;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ResolvedFullCell {
@@ -38,10 +47,15 @@ pub struct ResolvedNeedBinding {
     pub profile: String,
     pub participant_slot: u32,
     pub participant_id: SimThingId,
+    /// EvalEML runs on the participant row (reads staged cells only).
     pub eml_source_slot: u32,
     pub need_col: ColumnIndex,
+    /// Authored source full cells (may span multiple entity rows).
     pub inputs: Vec<ResolvedFullCell>,
     pub weights: Vec<ResolvedFullCell>,
+    /// Participant-local staged columns (role pathway).
+    pub staged_input_cols: Vec<ColumnIndex>,
+    pub staged_weight_cols: Vec<ColumnIndex>,
     pub nodes: Vec<EmlNodeGpu>,
     pub threshold: f32,
     pub event_kind: u32,
@@ -91,6 +105,17 @@ fn resolve_one(
     if binding.inputs.len() != binding.weights.len() {
         return Err(nb_err(binding, "input/weight arity mismatch", None));
     }
+    if binding.inputs.len() > NEED_STAGE_MAX_PAIRS {
+        return Err(nb_err(
+            binding,
+            format!(
+                "need_binding arity {} exceeds staged pair capacity {}",
+                binding.inputs.len(),
+                NEED_STAGE_MAX_PAIRS
+            ),
+            None,
+        ));
+    }
     if binding.stack.gadgets.len() != 1 {
         return Err(nb_err(
             binding,
@@ -123,7 +148,6 @@ fn resolve_one(
         }
     }
 
-    // Explicit arena only — no first-arena fallback.
     let (arena_idx, arena) = spec
         .arenas
         .iter()
@@ -204,8 +228,8 @@ fn resolve_one(
             property: format!("{} flow columns", arena.name),
         })
     })?;
-    let need_col = registry
-        .column_range(flow_property_id)
+    let flow_range = registry.column_range(flow_property_id);
+    let need_col = flow_range
         .col_for_role(&SubFieldRole::Named("weight".into()), flow_layout)
         .ok_or_else(|| {
             nb_err(
@@ -232,36 +256,43 @@ fn resolve_one(
         binding,
     )?;
 
-    // EvalEML is slot-local. Cross-entity loci need multi-slot EML (not admitted).
-    let eml_source_slot = inputs[0].slot;
-    for cell in inputs.iter().chain(weights.iter()) {
-        if cell.slot != eml_source_slot {
-            return Err(nb_err(
+    // Staged columns on participant flow property (role pathway — no raw mint).
+    let mut staged_input_cols = Vec::with_capacity(inputs.len());
+    let mut staged_weight_cols = Vec::with_capacity(weights.len());
+    for i in 0..inputs.len() {
+        let in_role = SubFieldRole::Named(format!("need_stage_in_{i}"));
+        let w_role = SubFieldRole::Named(format!("need_stage_w_{i}"));
+        let in_col = flow_range.col_for_role(&in_role, flow_layout).ok_or_else(|| {
+            nb_err(
                 binding,
-                format!(
-                    "STOP: input/weight sources span multiple entity rows (slot {} vs {}). \
-                     DA-admitted multi-locus shape requires multi-slot EvalEML or OrderBand \
-                     product without unowned mirrors — not available; all loci must share one entity for RF-5A",
-                    eml_source_slot, cell.slot
-                ),
+                format!("flow property missing staged role need_stage_in_{i}"),
                 None,
-            ));
-        }
+            )
+        })?;
+        let w_col = flow_range.col_for_role(&w_role, flow_layout).ok_or_else(|| {
+            nb_err(
+                binding,
+                format!("flow property missing staged role need_stage_w_{i}"),
+                None,
+            )
+        })?;
+        staged_input_cols.push(in_col);
+        staged_weight_cols.push(w_col);
     }
 
-    let input_cols: Vec<ColumnIndex> = inputs.iter().map(|c| c.col).collect();
-    let weight_cols: Vec<ColumnIndex> = weights.iter().map(|c| c.col).collect();
-    let nodes = build_weighted_need_nodes(&input_cols, &weight_cols);
+    let nodes = build_weighted_need_nodes(&staged_input_cols, &staged_weight_cols);
 
     Ok(ResolvedNeedBinding {
         id: binding.id.clone(),
         profile: binding.profile.clone(),
         participant_slot,
         participant_id: participant_wrapper_id,
-        eml_source_slot,
+        eml_source_slot: participant_slot,
         need_col,
         inputs,
         weights,
+        staged_input_cols,
+        staged_weight_cols,
         nodes,
         threshold: binding.threshold,
         event_kind: binding.event_kind,
@@ -349,13 +380,16 @@ fn resolve_loci(
                     locus.source_span_token,
                 )
             })?;
-        let slot = allocator.slot_of(simthing_id).ok_or_else(|| {
-            nb_err(
-                binding,
-                format!("entity `{}` has no GPU slot", locus.entity),
-                locus.source_span_token,
-            )
-        })?.raw();
+        let slot = allocator
+            .slot_of(simthing_id)
+            .ok_or_else(|| {
+                nb_err(
+                    binding,
+                    format!("entity `{}` has no GPU slot", locus.entity),
+                    locus.source_span_token,
+                )
+            })?
+            .raw();
         out.push(ResolvedFullCell {
             entity: locus.entity.clone(),
             simthing_id,
@@ -469,12 +503,39 @@ pub fn prepare_need_binding_cells(
     Ok(())
 }
 
-pub fn build_need_binding_ops(
+fn project_op(src_slot: u32, src_col: ColumnIndex, dst_slot: u32, dst_col: ColumnIndex) -> AccumulatorOp {
+    AccumulatorOp {
+        source: SourceSpec::SlotValue {
+            slot: SlotIndex::new(src_slot),
+            col: src_col,
+        },
+        combine: CombineFn::Identity,
+        gate: GateSpec::OrderBand(NEED_STAGE_ORDER_BAND),
+        scale: ScaleSpec::Identity,
+        consume: ConsumeMode::ResetTarget,
+        targets: vec![(SlotIndex::new(dst_slot), dst_col)],
+    }
+}
+
+/// Build Identity stage projections + EvalEML need write.
+///
+/// When `include_stage_projections` is false (DISCONNECT control), only EvalEML
+/// remains — sources may move while staged/need freeze.
+pub fn build_need_binding_ops_with_options(
     resolved: &[ResolvedNeedBinding],
     eml_registry: &mut EmlExpressionRegistry,
+    include_stage_projections: bool,
 ) -> Vec<AccumulatorOp> {
-    let mut ops = Vec::with_capacity(resolved.len());
+    let mut ops = Vec::new();
     for (idx, binding) in resolved.iter().enumerate() {
+        if include_stage_projections {
+            for (src, dst) in binding.inputs.iter().zip(binding.staged_input_cols.iter()) {
+                ops.push(project_op(src.slot, src.col, binding.participant_slot, *dst));
+            }
+            for (src, dst) in binding.weights.iter().zip(binding.staged_weight_cols.iter()) {
+                ops.push(project_op(src.slot, src.col, binding.participant_slot, *dst));
+            }
+        }
         let tree_id = EmlTreeId(NEED_BINDING_TREE_BASE + idx as u32);
         eml_registry
             .register_formula(
@@ -498,9 +559,9 @@ pub fn build_need_binding_ops(
             )
             .expect("need_binding formula registers");
         let source_col = binding
-            .weights
+            .staged_input_cols
             .first()
-            .map(|c| c.col)
+            .copied()
             .unwrap_or(binding.need_col);
         ops.push(AccumulatorOp {
             source: SourceSpec::SlotValue {
@@ -508,7 +569,7 @@ pub fn build_need_binding_ops(
                 col: source_col,
             },
             combine: CombineFn::EvalEML { tree_id: tree_id.0 },
-            gate: GateSpec::OrderBand(0),
+            gate: GateSpec::OrderBand(NEED_EVAL_ORDER_BAND),
             scale: ScaleSpec::Identity,
             consume: ConsumeMode::ResetTarget,
             targets: vec![(
@@ -518,6 +579,13 @@ pub fn build_need_binding_ops(
         });
     }
     ops
+}
+
+pub fn build_need_binding_ops(
+    resolved: &[ResolvedNeedBinding],
+    eml_registry: &mut EmlExpressionRegistry,
+) -> Vec<AccumulatorOp> {
+    build_need_binding_ops_with_options(resolved, eml_registry, true)
 }
 
 pub fn inject_need_binding_thresholds(

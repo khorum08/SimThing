@@ -26,8 +26,7 @@ use thiserror::Error;
 
 use crate::arena_participant::materialize_arena_participants;
 use crate::resource_economy_compile::{
-    find_property_owner, materialize_resource_economy_registry_for_session,
-    ResourceEconomyCompileError,
+    materialize_resource_economy_registry_for_session, ResourceEconomyCompileError,
 };
 use crate::resource_flow_compile::compile_and_materialize_resource_flow;
 use crate::resource_flow_enrollment::resolve_resource_flow_enrollment;
@@ -425,76 +424,121 @@ fn install_standalone_overlay(
     Ok(installed_ids)
 }
 
-/// Materialize resource-economy property instances onto authored entity hosts.
+/// Materialize resource-economy property instances onto **explicit** entity hosts.
 ///
-/// Stockpile/field naming uses `{entity}_{resource}_…`. When the property name
-/// starts with a unique `install_targets` entity id, the instance is placed on
-/// that entity — not World root. This is generic economy placement, not
-/// need_binding-specific re-homing.
+/// Host authority comes only from authored `host_entity` / `*_host_entity` fields
+/// (or World root when host is absent). No `{entity}_` name-prefix inference.
+/// Constant emission formulas seed tree `PropertyValue` defaults (not dense GPU writes).
 fn ensure_resource_economy_properties(
     spec: &ResourceEconomySpec,
     registry: &DimensionRegistry,
     root: &mut SimThing,
     scenario: &Scenario,
 ) -> Result<(), InstallError> {
-    for key in resource_economy_property_keys(spec) {
+    for placement in resource_economy_property_placements(spec) {
         let property_id = registry
-            .id_of(&key.namespace, &key.name)
+            .id_of(&placement.key.namespace, &placement.key.name)
             .ok_or_else(|| SpecError::ValidationFailed)?;
-        if find_property_owner(root, property_id).is_some() {
-            continue;
+        let host_id = match &placement.host_entity {
+            Some(entity) => resolve_unique_install_host(scenario, entity)?,
+            None => root.id,
+        };
+        let host = find_simthing_mut(root, host_id)
+            .ok_or_else(|| InstallError::Spec(SpecError::ValidationFailed))?;
+        if !host.properties.contains_key(&property_id) {
+            let layout = registry.property(property_id).layout.clone();
+            host.add_property(property_id, PropertyValue::from_layout(&layout));
         }
-        let layout = registry.property(property_id).layout.clone();
-        let host_id = infer_entity_host_for_property(&key, scenario).unwrap_or(root.id);
-        let host = find_simthing_mut(root, host_id).ok_or_else(|| {
-            InstallError::Spec(SpecError::ValidationFailed)
-        })?;
-        host.add_property(property_id, PropertyValue::from_layout(&layout));
+        if let Some((role, value)) = placement.seed {
+            let layout = registry.property(property_id).layout.clone();
+            if let Some(pv) = host.properties.get_mut(&property_id) {
+                pv.set_role(&role, &layout, value);
+            }
+        }
     }
     Ok(())
 }
 
-/// Map `{entity}_…` property names onto unique install_targets keys.
-fn infer_entity_host_for_property(
-    key: &PropertyKey,
+fn resolve_unique_install_host(
     scenario: &Scenario,
-) -> Option<SimThingId> {
-    let mut matches: Vec<SimThingId> = Vec::new();
-    for (entity, hosts) in &scenario.install_targets {
-        if key.name.starts_with(&format!("{entity}_")) && hosts.len() == 1 {
-            matches.push(hosts[0]);
-        }
+    entity: &str,
+) -> Result<SimThingId, InstallError> {
+    let Some(hosts) = scenario.install_targets.get(entity) else {
+        return Err(InstallError::UnknownInstallTarget {
+            key: entity.to_string(),
+        });
+    };
+    if hosts.len() != 1 {
+        return Err(InstallError::NeedBindingInvalid {
+            binding: "resource_economy".into(),
+            reason: format!(
+                "entity `{entity}` host is ambiguous ({} hosts) for economy property placement",
+                hosts.len()
+            ),
+            span_token: None,
+        });
     }
-    if matches.len() == 1 {
-        Some(matches[0])
-    } else {
-        None
-    }
+    Ok(hosts[0])
 }
 
-fn resource_economy_property_keys(spec: &ResourceEconomySpec) -> Vec<PropertyKey> {
-    let mut keys = Vec::new();
+struct EconomyPropertyPlacement {
+    key: PropertyKey,
+    host_entity: Option<String>,
+    /// Optional tree seed from authored Constant emission (role, value).
+    seed: Option<(simthing_core::SubFieldRole, f32)>,
+}
+
+fn resource_economy_property_placements(
+    spec: &ResourceEconomySpec,
+) -> Vec<EconomyPropertyPlacement> {
+    let mut out = Vec::new();
     for transfer in &spec.transfers {
-        keys.push(transfer.source.clone());
-        keys.push(transfer.target.clone());
+        out.push(EconomyPropertyPlacement {
+            key: transfer.source.clone(),
+            host_entity: transfer.source_host_entity.clone(),
+            seed: None,
+        });
+        out.push(EconomyPropertyPlacement {
+            key: transfer.target.clone(),
+            host_entity: transfer.target_host_entity.clone(),
+            seed: None,
+        });
     }
     for recipe in &spec.recipes {
         for input in &recipe.inputs {
-            keys.push(input.property.clone());
+            out.push(EconomyPropertyPlacement {
+                key: input.property.clone(),
+                host_entity: None,
+                seed: None,
+            });
         }
-        keys.push(recipe.target.clone());
+        out.push(EconomyPropertyPlacement {
+            key: recipe.target.clone(),
+            host_entity: None,
+            seed: None,
+        });
     }
     for emission in &spec.emissions {
-        keys.push(emission.source.clone());
+        let seed = match &emission.formula {
+            simthing_spec::EmissionFormulaSpec::Constant(v) if v.is_finite() => {
+                Some((emission.source_role.clone(), *v))
+            }
+            _ => None,
+        };
+        out.push(EconomyPropertyPlacement {
+            key: emission.source.clone(),
+            host_entity: emission.host_entity.clone(),
+            seed,
+        });
     }
     for emit in &spec.emit_on_threshold {
-        keys.push(emit.source.clone());
+        out.push(EconomyPropertyPlacement {
+            key: emit.source.clone(),
+            host_entity: None,
+            seed: None,
+        });
     }
-    keys.sort_by(|a, b| {
-        (a.namespace.as_str(), a.name.as_str()).cmp(&(b.namespace.as_str(), b.name.as_str()))
-    });
-    keys.dedup_by(|a, b| a.namespace == b.namespace && a.name == b.name);
-    keys
+    out
 }
 
 #[derive(Clone, Debug)]
