@@ -106,6 +106,10 @@ Finished `dev` profile [optimized + debuginfo] target(s)
 cargo test -p simthing-mapeditor --test studio_field_session_elevate_0 -- --nocapture
 test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
 
+cargo test -p simthing-mapeditor --lib studio_gpu_adapter_policy::tests::exact_adapter_policy_accepts_non_dx12_backends_and_rejects_identity_or_dx12 -- --nocapture
+test studio_gpu_adapter_policy::tests::exact_adapter_policy_accepts_non_dx12_backends_and_rejects_identity_or_dx12 ... ok
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 35 filtered out
+
 bash scripts/ci/agent_scan.sh
 TEST-BUDGET  PASS  0
 WORKSHOP-HOMING-DETECTION  PASS  0
