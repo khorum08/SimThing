@@ -14,8 +14,8 @@ Remand `5013605086` (full-cell authority). Owner OVL / freeze / DA relay remain 
 | PR | #1414 |
 | Base reviewed head | `e0cf893ceae665495002dff822fa401c4f5c49ad` |
 | ORIENT-RECEIPT | `2c9fde39d1d6` (role=coding) |
-| tested_code_sha | *(bound after implementation)* |
-| implementation_sha | *(bound after implementation)* |
+| tested_code_sha | `d0ca1d89ce0b582fdf540fff3de957b05b15e626` |
+| implementation_sha | `d0ca1d89ce0b582fdf540fff3de957b05b15e626` |
 | evidence_sha | *(bound after evidence)* |
 | coverage_basis | PASS workshop RF-5 8/8 + RF-4 elevate 8/8 |
 
