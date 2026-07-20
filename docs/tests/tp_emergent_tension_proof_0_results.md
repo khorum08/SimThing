@@ -9,7 +9,7 @@ Canonical multi-tick GPU runs on `scenarios/terran_pirate_galaxy.clause` through
 - Branch: `coder/tp-emergent-tension-proof-0`
 - PR: https://github.com/khorum08/SimThing/pull/1418
 - Accepted first landing (governance only): `cbf3b81f`
-- Implementation head: _(set after push)_
+- Implementation head: `9614f063`
 
 ## Load-bearing proof
 
