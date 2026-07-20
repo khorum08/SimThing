@@ -10,8 +10,9 @@ Canonical multi-tick GPU runs on `scenarios/terran_pirate_galaxy.clause` through
 - PR: https://github.com/khorum08/SimThing/pull/1418
 - Accepted first landing (governance only): `cbf3b81f5659bbfdefafa1001276713178f54dab`
 - Remand base reviewed: `38c0185da63faa90812bcd6b8a3b550728c1d3ba`
-- Implementation / tested_code_sha: *(bind at commit)*
-- Evidence / final-head: *(bind at commit)*
+- Implementation / tested_code_sha: `25083f0d32209e00f65e140293e9972e34e1f207`
+- Evidence bind commit: *(next)*
+- Final head: *(after evidence bind)*
 
 ## Load-bearing proof
 
