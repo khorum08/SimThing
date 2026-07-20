@@ -10,7 +10,7 @@
 | handoff_head | `9f1949d9cd54c997414ea7a87004741e3c423500` |
 | implementation_code_sha | `d72036ce1fba5f7811e7b9a61db748f5e6d4beb5` |
 | tested_code_sha | `8bd4604c4187fd775529788c38d41c1a59b6b812` |
-| evidence_head_sha / final_head_sha | PENDING (this evidence commit) |
+| evidence_head_sha / final_head_sha | `0326b85985852730bde1d36fcc3adc27a1587dde` |
 
 ## DA ruling quote (`5027107657`) — operative authorization
 > **GENERIC STRUCTURAL-ENROLLMENT CONTRACT: APPROVED, inline on #1420 (`system_target` on `location`)**  
