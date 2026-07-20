@@ -6,88 +6,106 @@
 
 use std::path::PathBuf;
 
-use simthing_clausething::{hydrate_scenario, parse_raw_document, HydratedScenarioPack};
+use simthing_clausething::{
+    hydrate_scenario_with_source_base, parse_raw_document, HydratedScenarioPack,
+};
 use simthing_core::SubFieldRole;
 use simthing_mapeditor::clause_scenario_picker::{
     run_clause_picker_action_staged, ClausePickerActionResult, ClausePickerSelection,
 };
 use simthing_mapeditor::{
-    attach_disruption_host_structural_placements, authored_live_profile_from_pack,
-    disruption_host_entities_from_pack, runtime_vertical_seed_scenario_spec,
-    StudioLiveSessionBridge,
+    authored_live_profile_from_pack, runtime_vertical_seed_scenario_spec, StudioLiveSessionBridge,
     StudioLiveSessionBridgeError, StudioLiveSessionPath, StudioLiveSessionPathPreference,
     StudioSession,
 };
 use simthing_spec::serialize_scenario_authority;
 use tempfile::TempDir;
 
-/// Synthetic field-economy: disruption seeds **below** threshold so a Rising
-/// crossing can only fire after live tick overlay/RF evolution (not at open).
-const FOUNDRY_SCENARIO: &str = r#"
-scenario = foundry_valley {
-    metadata = {
+fn fixtures_dir() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures")
+}
+
+/// Synthetic field-economy on the vertical-seed lattice via authored `system_target`.
+fn foundry_clause_source() -> String {
+    let lattice = fixtures_dir()
+        .join("runtime_vertical_seed.simthing-scenario.json")
+        .to_string_lossy()
+        .replace('\\', "/");
+    format!(
+        r#"
+scenario = foundry_valley {{
+    metadata = {{
         display_name = "Foundry Valley"
-    }
-    owner = guild {
+    }}
+    static_galaxy_scenario = valley_base {{
+        namespace = "valley_base"
+        source_json = "{lattice}"
+        map_quality_status = PASS
+    }}
+    owner = guild {{
         owner_key = "guild"
         display_name = "Guild"
         archetype = "industrial"
-    }
-    owner = union {
+    }}
+    owner = union {{
         owner_key = "union"
         display_name = "Union"
         archetype = "industrial"
-    }
-    location = ridge {
+    }}
+    location = ridge {{
         display_name = "Ridge"
-    }
-    location = basin {
+        system_target = "row2_col3"
+    }}
+    location = basin {{
         display_name = "Basin"
-    }
-    field_economy = valley_economy {
+        system_target = "row2_col4"
+    }}
+    field_economy = valley_economy {{
         namespace = "forge"
-        field_resource_quantity = ridge_ore {
+        field_resource_quantity = ridge_ore {{
             location = "ridge"
             resource = "ore"
             amount = 12
-        }
-        production_building = ridge_foundry {
+        }}
+        production_building = ridge_foundry {{
             location = "ridge"
-            input = { resource = "ore" amount = 2 }
-            output = { resource = "tools" coefficient = 1.0 }
+            input = {{ resource = "ore" amount = 2 }}
+            output = {{ resource = "tools" coefficient = 1.0 }}
             throttle_hint_max_per_tick = 3
-        }
-        stockpile_silo = guild_ore {
+        }}
+        stockpile_silo = guild_ore {{
             owner = "guild"
             resource = "ore"
             current = 20
-        }
-        disruption_presence = basin_smoke {
+        }}
+        disruption_presence = basin_smoke {{
             location = "basin"
             resource = "smoke"
             amount = 1
             threshold = 1.5
             direction = Rising
             event_kind = 77
-        }
-        owner_policy_overlay = guild_ore_pressure {
+        }}
+        owner_policy_overlay = guild_ore_pressure {{
             owner = "guild"
             targets_property = "forge::ridge_ore_quantity"
             amount_add = 3.0
-        }
-        weight_profile = expansion_need {
+        }}
+        weight_profile = expansion_need {{
             profile = "expansion-need"
-            input = { input_col = 0 weight_col = 10 }
-            input = { input_col = 1 weight_col = 11 }
+            input = {{ input_col = 0 weight_col = 10 }}
+            input = {{ input_col = 1 weight_col = 11 }}
             output_col = 12
-        }
-    }
+        }}
+    }}
+}}
+"#
+    )
 }
-"#;
 
 fn hydrate_foundry() -> HydratedScenarioPack {
-    let document = parse_raw_document(FOUNDRY_SCENARIO.as_bytes()).expect("parse");
-    hydrate_scenario(&document).expect("hydrate foundry")
+    let document = parse_raw_document(foundry_clause_source().as_bytes()).expect("parse");
+    hydrate_scenario_with_source_base(&document, Some(fixtures_dir().as_path())).expect("hydrate foundry")
 }
 
 fn field_bearing_studio_session_from(pack: &HydratedScenarioPack) -> StudioSession {
@@ -99,10 +117,6 @@ fn field_bearing_studio_session_from(pack: &HydratedScenarioPack) -> StudioSessi
     .expect("studio session");
     studio.scenario_authority.scenario_id = pack.scenario_id.clone();
     studio.scenario_summary.scenario_id = pack.scenario_id.clone();
-    attach_disruption_host_structural_placements(
-        &mut studio.scenario_authority,
-        disruption_host_entities_from_pack(pack),
-    );
     studio.with_authored_live_profile(authored_live_profile_from_pack(pack))
 }
 
@@ -407,10 +421,6 @@ fn decision_fires_only_as_threshold_crossing() {
         None,
     )
     .expect("session");
-    attach_disruption_host_structural_placements(
-        &mut no_thr.scenario_authority,
-        disruption_host_entities_from_pack(&pack),
-    );
     no_thr = no_thr.with_authored_live_profile(authored_live_profile_from_pack(&pack));
     let mut bridge2 = StudioLiveSessionBridge::new();
     bridge2.set_path_preference(StudioLiveSessionPathPreference::FieldBearing);
@@ -512,9 +522,11 @@ scenario = foundry_valley {{
     }}
     location = ridge {{
         display_name = "Ridge"
+        system_target = "row199_col80"
     }}
     location = basin {{
         display_name = "Basin"
+        system_target = "row158_col110"
     }}
     planet_surface_payload = neutral_system_payload {{
         applies_to = neutral_systems
@@ -579,7 +591,7 @@ fn staged_clause_picker_preserves_profile_into_auto_field_bearing_live_bridge() 
     };
 
     let result = run_clause_picker_action_staged(&selection, None, &mut |_| {});
-    let mut session = match result {
+    let session = match result {
         ClausePickerActionResult::Loaded { session, .. } => session,
         other => panic!("staged picker must Loaded; got: {}", other.message()),
     };
@@ -594,20 +606,13 @@ fn staged_clause_picker_preserves_profile_into_auto_field_bearing_live_bridge() 
             .is_some_and(|p| p.supports_field_bearing()),
         "authored profile must support field-bearing (field_economy present)"
     );
-    // CI join only: production Clause hydrate does not invent host→star enrollment.
-    // Typed disruption loci require exact Spec location_id join under fail-loud mapping.
-    let hosts: Vec<String> = session
-        .authored_live_profile
-        .as_ref()
-        .map(|profile| {
-            profile
-                .disruption_observation_loci
-                .iter()
-                .map(|locus| locus.host_entity.clone())
-                .collect()
-        })
-        .unwrap_or_default();
-    attach_disruption_host_structural_placements(&mut session.scenario_authority, hosts);
+    assert!(
+        session
+            .authored_live_profile
+            .as_ref()
+            .is_some_and(|p| p.location_system_ids.contains_key("basin")),
+        "production system_target enrollment must join basin onto the lattice"
+    );
 
     let mut bridge = StudioLiveSessionBridge::new();
     bridge.set_path_preference(StudioLiveSessionPathPreference::Auto);

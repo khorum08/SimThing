@@ -15,10 +15,9 @@ use simthing_driver::{
     AllocatorConservationViolation,
 };
 use simthing_mapeditor::{
-    attach_disruption_host_structural_placements, authored_live_profile_from_pack,
-    disruption_host_entities_from_pack, runtime_vertical_seed_scenario_spec,
-    StudioLiveSessionBridge, StudioLiveSessionBridgeError, StudioLiveSessionPath,
-    StudioLiveSessionPathPreference, StudioSession,
+    authored_live_profile_from_pack, runtime_vertical_seed_scenario_spec, StudioLiveSessionBridge,
+    StudioLiveSessionBridgeError, StudioLiveSessionPath, StudioLiveSessionPathPreference,
+    StudioSession,
 };
 use simthing_spec::EmissionFormulaSpec;
 
@@ -143,10 +142,6 @@ fn studio_from_pack(pack: &HydratedScenarioPack) -> StudioSession {
     .expect("studio session");
     studio.scenario_authority.scenario_id = pack.scenario_id.clone();
     studio.scenario_summary.scenario_id = pack.scenario_id.clone();
-    attach_disruption_host_structural_placements(
-        &mut studio.scenario_authority,
-        disruption_host_entities_from_pack(pack),
-    );
     studio.with_authored_live_profile(authored_live_profile_from_pack(pack))
 }
 

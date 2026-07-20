@@ -1,4 +1,7 @@
-//! Live STEAD disruption readback — Remand 3 biting proofs (orch `5026225403`).
+//! Live STEAD disruption readback — Remand-4 / DA enrollment `5027107657` proofs.
+//!
+//! Production path only: Clause hydrate `system_target` → pack location_system_ids →
+//! Studio field-bearing open. No synthetic Spec placement attach.
 
 use std::collections::{BTreeMap, HashMap};
 use std::path::{Path, PathBuf};
@@ -7,24 +10,19 @@ use simthing_clausething::{
     hydrate_scenario_with_source_base, parse_raw_document, rebind_pack_to_structural_rebind_ready,
     HydratedScenarioPack,
 };
-use simthing_core::{
-    ClampBehavior, DimensionRegistry, SimThingId, SubFieldRole, SubFieldSpec, TransformOp,
-};
+use simthing_core::{SimThingId, SubFieldRole, TransformOp};
 use simthing_driver::{
-    observe_hosted_property_cell, system_id_by_host_raw_from_structural_authority,
-    GpuValuesSnapshot, HostedPropertyLocus, HostedPropertyObservationError,
-    LiveDisruptionAuthorityReadback,
+    observe_hosted_property_cell, system_id_by_host_raw_from_structural_authority, GpuValuesSnapshot,
+    HostedPropertyLocus, HostedPropertyObservationError,
 };
-use simthing_gpu::SlotAllocator;
 use simthing_mapeditor::{
-    attach_disruption_host_structural_placements, authored_live_profile_from_pack,
-    disruption_host_entities_from_pack, disruption_select_screen_from_raw,
+    authored_live_profile_from_pack, disruption_select_screen_from_raw,
     selected_disruption_select_screen, StudioLiveSessionBridge, StudioLiveSessionBridgeError,
     StudioLiveSessionPath, StudioLiveSessionPathPreference, StudioSession,
 };
 use simthing_spec::{
-    compile_property, DisruptionAuthorityReadback, EmissionFormulaSpec, PropertyKey, PropertySpec,
-    RecipeInputSpec, ResourceRecipeSpec, SimThingStructuralGridPlacement,
+    EmissionFormulaSpec, PropertyKey, RecipeInputSpec, ResourceRecipeSpec,
+    SimThingStructuralGridPlacement,
 };
 
 fn repo_root() -> PathBuf {
@@ -42,6 +40,12 @@ fn hydrate_canonical() -> HydratedScenarioPack {
         .expect("hydrate")
 }
 
+fn hydrate_source(source: &str) -> Result<HydratedScenarioPack, String> {
+    let document = parse_raw_document(source.as_bytes()).map_err(|e| e.to_string())?;
+    hydrate_scenario_with_source_base(&document, Some(repo_root().join("scenarios").as_path()))
+        .map_err(|e| e.to_string())
+}
+
 fn studio_from_pack(pack: &HydratedScenarioPack) -> StudioSession {
     let (scenario, _) =
         rebind_pack_to_structural_rebind_ready(pack).expect("StructuralRebindReady");
@@ -51,10 +55,6 @@ fn studio_from_pack(pack: &HydratedScenarioPack) -> StudioSession {
         None,
     )
     .expect("studio session");
-    attach_disruption_host_structural_placements(
-        &mut studio.scenario_authority,
-        disruption_host_entities_from_pack(pack),
-    );
     studio.with_authored_live_profile(authored_live_profile_from_pack(pack))
 }
 
@@ -72,35 +72,26 @@ fn open_field_bridge(studio: &StudioSession) -> StudioLiveSessionBridge {
     bridge
 }
 
-fn host_system_id(studio: &StudioSession, host: &str) -> u32 {
-    studio
-        .scenario_authority
-        .structural_grid
-        .placements
-        .iter()
-        .rev()
-        .find(|placement| placement.location_id == host || placement.target_id == host)
-        .map(|placement| placement.system_id)
-        .expect("host structural placement")
+fn host_system_id(pack: &HydratedScenarioPack, host: &str) -> u32 {
+    *authored_live_profile_from_pack(pack)
+        .location_system_ids
+        .get(host)
+        .unwrap_or_else(|| panic!("production system_target enrollment missing for `{host}`"))
 }
 
-fn unrelated_system_id(studio: &StudioSession, host_system: u32) -> u32 {
-    studio
-        .scenario_authority
-        .structural_grid
-        .placements
-        .iter()
-        .map(|placement| placement.system_id)
+fn unrelated_system_id(pack: &HydratedScenarioPack, host_system: u32) -> u32 {
+    authored_live_profile_from_pack(pack)
+        .location_system_ids
+        .values()
+        .copied()
         .find(|&system_id| system_id != host_system)
-        .expect("unrelated star system")
+        .expect("unrelated enrolled system")
 }
 
-/// Zero Crisis seed + recipe that credits presence under ordinary step_once.
 fn pack_zero_seed_presence_with_recipe() -> HydratedScenarioPack {
     let mut pack = hydrate_canonical();
     if let Some(economy) = pack.game_mode.resource_economy.as_mut() {
         for emission in &mut economy.emissions {
-            // Exact presence identity only — do not match `*_disruption_weight_*`.
             if emission.source.name.ends_with("_presence")
                 || emission.source.name == "pirate_outpost_disruption_presence"
             {
@@ -110,7 +101,6 @@ fn pack_zero_seed_presence_with_recipe() -> HydratedScenarioPack {
         economy.recipes.push(ResourceRecipeSpec {
             id: "disruption_from_pirate_weight".into(),
             inputs: vec![RecipeInputSpec {
-                // Seeded at open via silo current emission (stockpile fills later).
                 property: PropertyKey::new("tp_economy", "pirate_disruption_weight_current"),
                 role: SubFieldRole::Amount,
                 unit_cost: 1.0,
@@ -126,7 +116,7 @@ fn pack_zero_seed_presence_with_recipe() -> HydratedScenarioPack {
             throttle_hint_max_per_tick: 1,
         });
     } else {
-        panic!("canonical pack must expose resource_economy for recipe injection");
+        panic!("canonical pack must expose resource_economy");
     }
     for overlay in &mut pack.game_mode.overlays {
         if overlay.targets_property.contains("disruption_presence") {
@@ -146,39 +136,35 @@ fn pack_zero_seed_presence_with_recipe() -> HydratedScenarioPack {
 #[test]
 fn canonical_host_system_moves_zero_to_nonzero_unrelated_stays_zero() {
     let pack = pack_zero_seed_presence_with_recipe();
-    assert!(
-        pack.game_mode
-            .resource_economy
-            .as_ref()
-            .is_some_and(|e| e.recipes.iter().any(|r| r.id == "disruption_from_pirate_weight")),
-        "zero-seed fixture must retain injected recipe"
-    );
-    let studio = studio_from_pack(&pack);
-    let pirate_sys = host_system_id(&studio, "pirate_outpost");
-    let other_sys = unrelated_system_id(&studio, pirate_sys);
+    let pirate_sys = host_system_id(&pack, "pirate_outpost");
+    let other_sys = unrelated_system_id(&pack, pirate_sys);
     assert_ne!(pirate_sys, other_sys);
 
+    let studio = studio_from_pack(&pack);
     let mut bridge = open_field_bridge(&studio);
-    let open_map = bridge.readout().disruption_readout;
-    let open_pirate = open_map
+    let open_pirate = bridge
+        .readout()
+        .disruption_readout
         .by_system_id
         .get(&pirate_sys)
         .map(|r| r.max_disruption_accreted())
         .unwrap_or(0.0);
+    assert_eq!(open_pirate, 0.0, "pre-tick must be exact 0.0");
     assert_eq!(
-        open_pirate, 0.0,
-        "pre-tick typed disruption must be exact 0.0, got {open_pirate}"
+        bridge
+            .readout()
+            .disruption_readout
+            .by_system_id
+            .get(&other_sys)
+            .map(|r| r.max_disruption_accreted())
+            .unwrap_or(0.0),
+        0.0
     );
-    let open_other = open_map
-        .by_system_id
-        .get(&other_sys)
-        .map(|r| r.max_disruption_accreted())
-        .unwrap_or(0.0);
-    assert_eq!(open_other, 0.0);
 
     bridge.consume_scheduled_ticks(1).expect("step_once");
-    let after = bridge.readout().disruption_readout;
-    let after_pirate = after
+    let after_pirate = bridge
+        .readout()
+        .disruption_readout
         .by_system_id
         .get(&pirate_sys)
         .map(|r| r.max_disruption_accreted())
@@ -187,127 +173,115 @@ fn canonical_host_system_moves_zero_to_nonzero_unrelated_stays_zero() {
         after_pirate > 0.0,
         "ordinary step_once must move host 0 -> nonzero: after={after_pirate}"
     );
-    let after_other = after
-        .by_system_id
-        .get(&other_sys)
-        .map(|r| r.max_disruption_accreted())
-        .unwrap_or(0.0);
     assert_eq!(
-        after_other, 0.0,
-        "unrelated system must stay 0.0, got {after_other}"
+        bridge
+            .readout()
+            .disruption_readout
+            .by_system_id
+            .get(&other_sys)
+            .map(|r| r.max_disruption_accreted())
+            .unwrap_or(0.0),
+        0.0
     );
 }
 
-/// catches: host-placement swap ignored / hard-coded system id.
+/// catches: hard-coded system id / enrollment ignored when only system_target changes.
 #[test]
-fn authored_host_placement_swap_moves_system_id_with_zero_code_change() {
+fn authored_system_target_swap_moves_system_id_with_zero_code_change() {
     let pack = hydrate_canonical();
-    let mut studio = studio_from_pack(&pack);
-    let original = host_system_id(&studio, "pirate_outpost");
-    let swapped_sys = unrelated_system_id(&studio, original);
-    assert_ne!(original, swapped_sys);
+    let original = host_system_id(&pack, "pirate_outpost");
+    // Free lattice cell (not terran_shipyard / pirate_outpost): pirate_border sample.
+    const SWAP_TARGET: &str = "row186_col121";
 
-    for placement in &mut studio.scenario_authority.structural_grid.placements {
-        if placement.location_id == "pirate_outpost" || placement.target_id == "pirate_outpost"
-        {
-            placement.system_id = swapped_sys;
-        }
-    }
+    let swapped_source = std::fs::read_to_string(repo_root().join("scenarios/terran_pirate_galaxy.clause"))
+        .expect("clause")
+        .replacen(
+            "location = pirate_outpost {\n        display_name = \"Pirate Outpost\"\n        system_target = \"row158_col110\"\n    }",
+            &format!(
+                "location = pirate_outpost {{\n        display_name = \"Pirate Outpost\"\n        system_target = \"{SWAP_TARGET}\"\n    }}"
+            ),
+            1,
+        );
+    let swapped = hydrate_source(&swapped_source).expect("hydrate swap");
+    let swapped_sys = host_system_id(&swapped, "pirate_outpost");
+    assert_ne!(swapped_sys, original);
 
+    let studio = studio_from_pack(&swapped);
     let bridge = open_field_bridge(&studio);
     let map = bridge.readout().disruption_readout;
-    let on_swapped = map
-        .by_system_id
-        .get(&swapped_sys)
-        .map(|r| r.max_disruption_accreted())
-        .unwrap_or(0.0);
-    let on_original = map
-        .by_system_id
-        .get(&original)
-        .map(|r| r.max_disruption_accreted())
-        .unwrap_or(0.0);
     assert!(
-        on_swapped > 0.0,
-        "swapped host placement must read on the new system_id"
+        map.by_system_id
+            .get(&swapped_sys)
+            .map(|r| r.max_disruption_accreted())
+            .unwrap_or(0.0)
+            > 0.0,
+        "swapped system_target must read on the new enrolled system"
     );
     assert_eq!(
-        on_original, 0.0,
-        "original system must clear after placement swap"
+        map.by_system_id
+            .get(&original)
+            .map(|r| r.max_disruption_accreted())
+            .unwrap_or(0.0),
+        0.0
     );
 }
 
-/// catches: two loci reduce by sum/first/global instead of exact max via production readback.
+/// catches: two typed loci on one enrolled system reduce by production exact max.
 #[test]
-fn two_loci_in_one_system_report_exact_max() {
-    let mut registry = DimensionRegistry::new();
-    let property = PropertySpec {
-        id: "ns_p".into(),
-        namespace: "ns".into(),
-        name: "p".into(),
-        display_name: "p".into(),
-        description: "max proof".into(),
-        sub_fields: vec![SubFieldSpec {
-            role: SubFieldRole::Amount,
-            width: 1,
-            clamp: ClampBehavior::Unbounded,
-            velocity_max: None,
-            default: 0.0,
-            display_name: "amount".into(),
-            display_range: None,
-            governed_by: None,
-            reduction_override: None,
-            soft_aggregate_guard: None,
-            accumulator_spec: None,
-        }],
-    };
-    compile_property(&property, &mut registry).expect("compile");
-    let n_dims = registry.total_columns;
-    let host_a = SimThingId::from_session_raw(10);
-    let host_b = SimThingId::from_session_raw(11);
-    let mut allocator = SlotAllocator::new();
-    let slot_a = allocator.alloc(host_a);
-    let slot_b = allocator.alloc(host_b);
-    let mut values = vec![0.0f32; allocator.capacity() * n_dims];
-    let pid = registry.id_of("ns", "p").expect("pid");
-    let col = registry
-        .column_range(pid)
-        .col_for_role(&SubFieldRole::Amount, &registry.property(pid).layout)
-        .expect("amount col")
-        .raw();
-    values[usize::from(slot_a) * n_dims + col] = 3.0;
-    values[usize::from(slot_b) * n_dims + col] = 8.0;
-    let snapshot = GpuValuesSnapshot::from_values_for_test(values, n_dims);
-
-    let loci = vec![
-        HostedPropertyLocus {
-            host_id: host_a,
-            host_entity: Some("a".into()),
-            property: PropertyKey::new("ns", "p"),
-            role: SubFieldRole::Amount,
-        },
-        HostedPropertyLocus {
-            host_id: host_b,
-            host_entity: Some("b".into()),
-            property: PropertyKey::new("ns", "p"),
-            role: SubFieldRole::Amount,
-        },
-    ];
-    let system_id_by_host_raw = BTreeMap::from([(10u32, 7u32), (11u32, 7u32)]);
-    let readback = LiveDisruptionAuthorityReadback {
-        snapshot: &snapshot,
-        registry: &registry,
-        allocator: &allocator,
-        loci: &loci,
-        system_id_by_host_raw: &system_id_by_host_raw,
-    };
-    let by_system = readback
-        .max_disruption_accreted_by_system_id()
-        .expect("readback")
-        .expect("Some");
+fn two_typed_loci_on_one_enrolled_system_report_exact_max() {
+    let mut source =
+        std::fs::read_to_string(repo_root().join("scenarios/terran_pirate_galaxy.clause"))
+            .expect("clause");
+    let needle = r#"        disruption_presence = pirate_raid_presence {
+            location = "pirate_outpost"
+            resource = "disruption"
+            amount = 8
+            threshold = 3
+            direction = Rising
+            event_kind = 71
+        }"#;
+    let dual = r#"        disruption_presence = pirate_raid_presence {
+            location = "pirate_outpost"
+            resource = "disruption"
+            amount = 3
+            threshold = 99
+            direction = Rising
+            event_kind = 71
+        }
+        disruption_presence = pirate_smoke_presence {
+            location = "pirate_outpost"
+            resource = "raid_smoke"
+            amount = 8
+            threshold = 99
+            direction = Rising
+            event_kind = 72
+        }"#;
+    assert!(source.contains(needle), "canonical disruption block missing");
+    source = source.replacen(needle, dual, 1);
+    // Neutralize owner mult that would inflate the max away from exact authored amounts.
+    source = source.replacen(
+        r#"        owner_policy_overlay = pirate_disruption_policy {
+            owner = "pirate"
+            targets_property = "tp_economy::pirate_outpost_disruption_presence"
+            amount_mult = 1.35
+        }"#,
+        "",
+        1,
+    );
+    let pack = hydrate_source(&source).expect("hydrate dual presence");
+    let pirate_sys = host_system_id(&pack, "pirate_outpost");
+    let studio = studio_from_pack(&pack);
+    let bridge = open_field_bridge(&studio);
+    let raw = bridge
+        .readout()
+        .disruption_readout
+        .by_system_id
+        .get(&pirate_sys)
+        .map(|r| r.max_disruption_accreted())
+        .unwrap_or(0.0);
     assert_eq!(
-        by_system.get(&7),
-        Some(&8.0),
-        "production LiveDisruptionAuthorityReadback must report max(3,8)=8"
+        raw, 8.0,
+        "production max over two typed loci on one system must be exact max(3,8)=8"
     );
 }
 
@@ -315,8 +289,8 @@ fn two_loci_in_one_system_report_exact_max() {
 #[test]
 fn live_map_refreshes_when_runtime_disruption_changes() {
     let pack = hydrate_canonical();
+    let pirate_sys = host_system_id(&pack, "pirate_outpost");
     let studio = studio_from_pack(&pack);
-    let pirate_sys = host_system_id(&studio, "pirate_outpost");
     let mut bridge = open_field_bridge(&studio);
     let before = bridge
         .readout()
@@ -366,8 +340,8 @@ fn structural_shell_absent_field_stays_typed_zero() {
 #[test]
 fn selected_star_telemetry_matches_live_map_and_piecewise() {
     let pack = hydrate_canonical();
+    let pirate_sys = host_system_id(&pack, "pirate_outpost");
     let studio = studio_from_pack(&pack);
-    let pirate_sys = host_system_id(&studio, "pirate_outpost");
     let bridge = open_field_bridge(&studio);
     let raw = bridge
         .readout()
@@ -387,6 +361,46 @@ fn selected_star_telemetry_matches_live_map_and_piecewise() {
     assert_eq!(screen.red_fraction, expected.red_fraction);
 }
 
+/// catches: missing / unknown / duplicate system_target fail loud at hydrate admission.
+#[test]
+fn system_target_missing_unknown_and_duplicate_fail_loud() {
+    let base = std::fs::read_to_string(repo_root().join("scenarios/terran_pirate_galaxy.clause"))
+        .expect("clause");
+
+    let missing = base.replacen(
+        "        system_target = \"row158_col110\"\n",
+        "",
+        1,
+    );
+    let err = hydrate_source(&missing).expect_err("missing system_target on live host");
+    assert!(
+        err.contains("no system_target") || err.contains("live spatial"),
+        "unexpected missing-target diagnostic: {err}"
+    );
+
+    let unknown = base.replacen(
+        "system_target = \"row158_col110\"",
+        "system_target = \"row0_col0\"",
+        1,
+    );
+    let err = hydrate_source(&unknown).expect_err("unknown lattice cell");
+    assert!(
+        err.contains("not an embedded placement") || err.contains("system_target"),
+        "unexpected unknown-target diagnostic: {err}"
+    );
+
+    let duplicate = base.replacen(
+        "system_target = \"row158_col110\"",
+        "system_target = \"row199_col80\"",
+        1,
+    );
+    let err = hydrate_source(&duplicate).expect_err("duplicate cell claim");
+    assert!(
+        err.contains("already claimed") || err.contains("system_target"),
+        "unexpected duplicate-target diagnostic: {err}"
+    );
+}
+
 /// catches: nonempty typed loci with total/partial structural miss must fail loud.
 #[test]
 fn structural_mapping_total_and_partial_miss_fail_loud() {
@@ -403,10 +417,7 @@ fn structural_mapping_total_and_partial_miss_fail_loud() {
         &BTreeMap::new(),
     )
     .expect_err("all-miss must fail loud");
-    assert!(
-        total_err.to_string().contains("total structural mapping"),
-        "unexpected total-miss diagnostic: {total_err}"
-    );
+    assert!(total_err.to_string().contains("total structural mapping"));
 
     let placements = vec![SimThingStructuralGridPlacement {
         location_id: "a".into(),
@@ -437,85 +448,70 @@ fn structural_mapping_total_and_partial_miss_fail_loud() {
         &BTreeMap::from([("a".into(), 1u32)]),
     )
     .expect_err("partial must fail loud");
-    assert!(
-        partial_err.to_string().contains("partial structural mapping"),
-        "unexpected partial-miss diagnostic: {partial_err}"
-    );
+    assert!(partial_err.to_string().contains("partial structural mapping"));
 }
 
-/// catches: production field-bearing open with typed loci and no Spec join fails loud.
+/// catches: zero / multiple install_targets hosts fail loud on live refresh (no .first()).
 #[test]
-fn field_bearing_unmapped_typed_loci_fail_loud_on_open() {
+fn exact_one_install_target_host_cardinality_fail_loud() {
     let pack = hydrate_canonical();
-    let (scenario, _) =
-        rebind_pack_to_structural_rebind_ready(&pack).expect("StructuralRebindReady");
-    let mut studio = StudioSession::from_loaded_scenario(
-        scenario,
-        repo_root().join("scenarios/terran_pirate_galaxy.clause"),
-        None,
-    )
-    .expect("studio session");
-    // Deliberately omit attach_disruption_host_structural_placements.
-    studio = studio.with_authored_live_profile(authored_live_profile_from_pack(&pack));
+    let studio = studio_from_pack(&pack);
+    let mut bridge = open_field_bridge(&studio);
+    {
+        let sim = bridge.sim_session_mut().expect("sim");
+        sim.scenario
+            .install_targets
+            .insert("pirate_outpost".into(), vec![]);
+    }
+    let err = bridge
+        .consume_scheduled_ticks(1)
+        .expect_err("zero hosts must fail loud on refresh");
     assert!(
-        !studio
-            .authored_live_profile
-            .as_ref()
-            .unwrap()
-            .disruption_observation_loci
-            .is_empty(),
-        "typed disruption_presence loci must survive hydrate"
+        err.to_string().contains("zero install_targets")
+            || err.to_string().contains("DisruptionReadback"),
+        "unexpected zero-host diagnostic: {err}"
     );
 
-    let mut bridge = StudioLiveSessionBridge::new();
-    bridge.set_path_preference(StudioLiveSessionPathPreference::FieldBearing);
+    let studio = studio_from_pack(&pack);
+    let mut bridge = open_field_bridge(&studio);
+    {
+        let sim = bridge.sim_session_mut().expect("sim");
+        let a = SimThingId::from_session_raw(1);
+        let b = SimThingId::from_session_raw(2);
+        sim.scenario
+            .install_targets
+            .insert("pirate_outpost".into(), vec![a, b]);
+    }
     let err = bridge
-        .open_from_loaded_studio_session(&studio)
-        .expect_err("unmapped typed loci must fail loud");
-    let message = err.to_string();
+        .consume_scheduled_ticks(1)
+        .expect_err("ambiguous hosts must fail loud on refresh");
     assert!(
-        message.contains("structural mapping") || message.contains("DisruptionReadback"),
-        "unexpected unmapped-open diagnostic: {message}"
+        err.to_string().contains("ambiguous") || err.to_string().contains("DisruptionReadback"),
+        "unexpected ambiguous-host diagnostic: {err}"
     );
 }
 
 /// catches: forced unknown property / role / unallocated host fail loud on the observation door.
 #[test]
 fn observation_door_unknown_property_role_and_host_fail_loud() {
-    let mut registry = DimensionRegistry::new();
-    let property = PropertySpec {
-        id: "ns_p".into(),
-        namespace: "ns".into(),
-        name: "p".into(),
-        display_name: "p".into(),
-        description: "door".into(),
-        sub_fields: vec![SubFieldSpec {
-            role: SubFieldRole::Amount,
-            width: 1,
-            clamp: ClampBehavior::Unbounded,
-            velocity_max: None,
-            default: 0.0,
-            display_name: "amount".into(),
-            display_range: None,
-            governed_by: None,
-            reduction_override: None,
-            soft_aggregate_guard: None,
-            accumulator_spec: None,
-        }],
-    };
-    compile_property(&property, &mut registry).expect("compile");
-    let n_dims = registry.total_columns.max(1);
-    let host = SimThingId::from_session_raw(3);
-    let mut allocator = SlotAllocator::new();
-    allocator.alloc(host);
-    let snapshot = GpuValuesSnapshot::from_values_for_test(vec![0.0; n_dims * 4], n_dims);
+    let pack = hydrate_canonical();
+    let studio = studio_from_pack(&pack);
+    let bridge = open_field_bridge(&studio);
+    let sim = bridge.sim_session().expect("sim");
+    let host = sim
+        .scenario
+        .install_targets
+        .get("pirate_outpost")
+        .and_then(|ids| ids.first().copied())
+        .expect("pirate_outpost host");
+    let snapshot = GpuValuesSnapshot::from_session(sim);
 
     let unknown_property = observe_hosted_property_cell(
-        &registry,
-        &allocator,
+        &sim.proto.registry,
+        &sim.proto.allocator,
         &snapshot,
         host,
-        &PropertyKey::new("ns", "missing"),
+        &PropertyKey::new("tp_economy", "missing_property"),
         &SubFieldRole::Amount,
     )
     .expect_err("unknown property");
@@ -525,11 +521,11 @@ fn observation_door_unknown_property_role_and_host_fail_loud() {
     ));
 
     let unknown_role = observe_hosted_property_cell(
-        &registry,
-        &allocator,
+        &sim.proto.registry,
+        &sim.proto.allocator,
         &snapshot,
         host,
-        &PropertyKey::new("ns", "p"),
+        &PropertyKey::new("tp_economy", "pirate_outpost_disruption_presence"),
         &SubFieldRole::Named("nope".into()),
     )
     .expect_err("unknown role");
@@ -539,11 +535,11 @@ fn observation_door_unknown_property_role_and_host_fail_loud() {
     ));
 
     let unallocated = observe_hosted_property_cell(
-        &registry,
-        &allocator,
+        &sim.proto.registry,
+        &sim.proto.allocator,
         &snapshot,
-        SimThingId::from_session_raw(99),
-        &PropertyKey::new("ns", "p"),
+        SimThingId::from_session_raw(u32::MAX - 7),
+        &PropertyKey::new("tp_economy", "pirate_outpost_disruption_presence"),
         &SubFieldRole::Amount,
     )
     .expect_err("unallocated host");
