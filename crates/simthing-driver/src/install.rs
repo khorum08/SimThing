@@ -291,7 +291,6 @@ pub fn compile_and_install(
                                 emit_on_threshold: vec![],
                                 report: Default::default(),
                             },
-                        observation_loci: vec![],
                         generation: 1,
                     });
             }

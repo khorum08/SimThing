@@ -17,10 +17,7 @@ use simthing_gpu::{
 };
 use simthing_spec::{
     CompiledEmissionFormula, CompiledResourceEconomy, CompiledResourceEmission, EmitBufferSpec,
-    PropertyKey,
 };
-
-use crate::hosted_property_observation::HostedPropertyLocus;
 
 /// Driver-owned materialized registration bundle (T-3 output).
 #[derive(Clone, Debug, PartialEq)]
@@ -61,9 +58,6 @@ pub struct ResourceEconomyMaterializationReport {
 #[derive(Clone, Debug, PartialEq)]
 pub struct ResourceEconomyRegistry {
     pub registrations: ResourceEconomyRegistrations,
-    /// Typed hosted observation loci from compiled field-economy
-    /// `emit_on_threshold` rows (captured before need-binding inject).
-    pub observation_loci: Vec<HostedPropertyLocus>,
     pub generation: u64,
 }
 
@@ -264,18 +258,16 @@ pub fn materialize_resource_economy_registry_for_session(
     allocator: &SlotAllocator,
     scenario: &crate::scenario::Scenario,
 ) -> Result<ResourceEconomyRegistry, ResourceEconomyCompileError> {
-    let (registrations, observation_loci) =
-        materialize_resource_economy_registrations_host_qualified(
-            compiled,
-            registry,
-            eml_registry,
-            root,
-            allocator,
-            scenario,
-        )?;
-    Ok(ResourceEconomyRegistry {
+    materialize_resource_economy_registrations_host_qualified(
+        compiled,
+        registry,
+        eml_registry,
+        root,
+        allocator,
+        scenario,
+    )
+    .map(|registrations| ResourceEconomyRegistry {
         registrations,
-        observation_loci,
         generation: 1,
     })
 }
@@ -289,8 +281,7 @@ pub fn materialize_resource_economy_registrations_host_qualified(
     root: &SimThing,
     allocator: &SlotAllocator,
     scenario: &crate::scenario::Scenario,
-) -> Result<(ResourceEconomyRegistrations, Vec<HostedPropertyLocus>), ResourceEconomyCompileError>
-{
+) -> Result<ResourceEconomyRegistrations, ResourceEconomyCompileError> {
     let resolve_host = |property_id: SimPropertyId,
                         host: Option<&str>|
      -> Result<u32, ResourceEconomyCompileError> {
@@ -403,34 +394,8 @@ pub fn materialize_resource_economy_registrations_host_qualified(
 
     let mut emit_on_threshold = Vec::with_capacity(compiled.emit_on_threshold.len());
     let mut threshold_emit_ids = Vec::with_capacity(compiled.emit_on_threshold.len());
-    let mut observation_loci = Vec::with_capacity(compiled.emit_on_threshold.len());
     for emit in &compiled.emit_on_threshold {
         ensure_property_known(registry, emit.source_property)?;
-        let host_entity = emit.host_entity.clone();
-        let host_id = match host_entity.as_deref() {
-            Some(entity) => {
-                let hosts = scenario.install_targets.get(entity).ok_or_else(|| {
-                    ResourceEconomyCompileError::UnknownHostEntity {
-                        entity: entity.to_string(),
-                    }
-                })?;
-                if hosts.len() != 1 {
-                    return Err(ResourceEconomyCompileError::AmbiguousHostEntity {
-                        entity: entity.to_string(),
-                        hosts: hosts.len(),
-                    });
-                }
-                hosts[0]
-            }
-            None => {
-                // Unhosted threshold rows are not retained as observation loci.
-                // Slot still resolves through the property-owner fallback.
-                find_property_owner(root, emit.source_property)
-                    .ok_or(ResourceEconomyCompileError::UnknownPropertyOwner {
-                        property_id: emit.source_property.0,
-                    })?
-            }
-        };
         let reg = EmitOnThresholdRegistration {
             slot: SlotIndex::new(resolve_host(
                 emit.source_property,
@@ -445,15 +410,6 @@ pub fn materialize_resource_economy_registrations_host_qualified(
         rebuild_emit_on_threshold_ops(std::slice::from_ref(&reg));
         emit_on_threshold.push(reg);
         threshold_emit_ids.push(emit.id.clone());
-        if host_entity.is_some() {
-            let prop = registry.property(emit.source_property);
-            observation_loci.push(HostedPropertyLocus {
-                host_id,
-                host_entity,
-                property: PropertyKey::new(prop.namespace.clone(), prop.name.clone()),
-                role: emit.source_role.clone(),
-            });
-        }
     }
 
     rebuild_discrete_transfer_ops(&transfers)?;
@@ -470,30 +426,27 @@ pub fn materialize_resource_economy_registrations_host_qualified(
     let emission_count = emissions.len();
     let threshold_emit_count = emit_on_threshold.len();
 
-    Ok((
-        ResourceEconomyRegistrations {
-            transfers,
-            recipes,
-            emissions,
-            emit_on_threshold,
-            report: ResourceEconomyMaterializationReport {
-                transfer_count,
-                recipe_count,
-                recipe_input_count,
-                emission_count,
-                threshold_emit_count,
-                eval_eml_emission_count,
-                emission_reg_idx_by_id,
-                transfer_ids,
-                recipe_ids,
-                recipe_output_coefficients,
-                recipe_order_bands,
-                threshold_emit_ids,
-                transfer_order_band_by_id,
-            },
+    Ok(ResourceEconomyRegistrations {
+        transfers,
+        recipes,
+        emissions,
+        emit_on_threshold,
+        report: ResourceEconomyMaterializationReport {
+            transfer_count,
+            recipe_count,
+            recipe_input_count,
+            emission_count,
+            threshold_emit_count,
+            eval_eml_emission_count,
+            emission_reg_idx_by_id,
+            transfer_ids,
+            recipe_ids,
+            recipe_output_coefficients,
+            recipe_order_bands,
+            threshold_emit_ids,
+            transfer_order_band_by_id,
         },
-        observation_loci,
-    ))
+    })
 }
 
 /// Resolve property instance on a named entity host (entity-name uniqueness).
@@ -558,7 +511,6 @@ pub fn materialize_resource_economy_registry(
             registry,
             eml_registry,
         )?,
-        observation_loci: Vec::new(),
         generation: 1,
     })
 }

@@ -32,6 +32,11 @@ impl GpuValuesSnapshot {
         }
     }
 
+    /// Test/oracle helper: build a coherent snapshot without a live session.
+    pub fn from_values_for_test(values: Vec<f32>, n_dims: usize) -> Self {
+        Self { values, n_dims }
+    }
+
     pub fn values(&self) -> &[f32] {
         &self.values
     }
@@ -160,14 +165,17 @@ impl DisruptionAuthorityReadback for LiveDisruptionAuthorityReadback<'_> {
 /// Resolve host raw id → generated system id from Spec structural placements
 /// plus authored host entity keys (exact `location_id` / `target_id` match).
 ///
-/// Returns an empty map when no locus can be joined (caller fail-softs to Absent).
-/// Partial joins (some loci map, some do not) fail loud.
+/// Any unmapped locus in a nonempty set fails loud (including an all-miss set).
+/// Callers may fail-soft only when `loci` is empty.
 pub fn system_id_by_host_raw_from_structural_authority(
     placements: &[simthing_spec::SimThingStructuralGridPlacement],
     _install_targets: &std::collections::HashMap<String, Vec<SimThingId>>,
     loci: &[HostedPropertyLocus],
     location_system_ids: &BTreeMap<String, u32>,
 ) -> Result<BTreeMap<u32, u32>, DisruptionAuthorityReadbackError> {
+    if loci.is_empty() {
+        return Ok(BTreeMap::new());
+    }
     let mut by_raw: BTreeMap<u32, u32> = BTreeMap::new();
     let mut by_location: BTreeMap<&str, u32> = BTreeMap::new();
     for placement in placements {
@@ -195,17 +203,19 @@ pub fn system_id_by_host_raw_from_structural_authority(
         }
         unmapped.push(locus);
     }
-    if out.is_empty() {
-        return Ok(BTreeMap::new());
-    }
     if !unmapped.is_empty() {
         let detail = unmapped
             .iter()
             .map(|locus| format!("{:?} entity={:?}", locus.host_id, locus.host_entity))
             .collect::<Vec<_>>()
             .join("; ");
+        let kind = if out.is_empty() {
+            "total"
+        } else {
+            "partial"
+        };
         return Err(DisruptionAuthorityReadbackError::new(format!(
-            "partial structural mapping for hosted disruption loci: {detail}"
+            "{kind} structural mapping failure for hosted disruption loci: {detail}"
         )));
     }
     Ok(out)

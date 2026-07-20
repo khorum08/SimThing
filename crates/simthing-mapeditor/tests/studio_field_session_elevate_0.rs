@@ -12,7 +12,9 @@ use simthing_mapeditor::clause_scenario_picker::{
     run_clause_picker_action_staged, ClausePickerActionResult, ClausePickerSelection,
 };
 use simthing_mapeditor::{
-    authored_live_profile_from_pack, runtime_vertical_seed_scenario_spec, StudioLiveSessionBridge,
+    attach_disruption_host_structural_placements, authored_live_profile_from_pack,
+    disruption_host_entities_from_pack, runtime_vertical_seed_scenario_spec,
+    StudioLiveSessionBridge,
     StudioLiveSessionBridgeError, StudioLiveSessionPath, StudioLiveSessionPathPreference,
     StudioSession,
 };
@@ -97,6 +99,10 @@ fn field_bearing_studio_session_from(pack: &HydratedScenarioPack) -> StudioSessi
     .expect("studio session");
     studio.scenario_authority.scenario_id = pack.scenario_id.clone();
     studio.scenario_summary.scenario_id = pack.scenario_id.clone();
+    attach_disruption_host_structural_placements(
+        &mut studio.scenario_authority,
+        disruption_host_entities_from_pack(pack),
+    );
     studio.with_authored_live_profile(authored_live_profile_from_pack(pack))
 }
 
@@ -401,6 +407,10 @@ fn decision_fires_only_as_threshold_crossing() {
         None,
     )
     .expect("session");
+    attach_disruption_host_structural_placements(
+        &mut no_thr.scenario_authority,
+        disruption_host_entities_from_pack(&pack),
+    );
     no_thr = no_thr.with_authored_live_profile(authored_live_profile_from_pack(&pack));
     let mut bridge2 = StudioLiveSessionBridge::new();
     bridge2.set_path_preference(StudioLiveSessionPathPreference::FieldBearing);
@@ -569,7 +579,7 @@ fn staged_clause_picker_preserves_profile_into_auto_field_bearing_live_bridge() 
     };
 
     let result = run_clause_picker_action_staged(&selection, None, &mut |_| {});
-    let session = match result {
+    let mut session = match result {
         ClausePickerActionResult::Loaded { session, .. } => session,
         other => panic!("staged picker must Loaded; got: {}", other.message()),
     };
@@ -584,6 +594,20 @@ fn staged_clause_picker_preserves_profile_into_auto_field_bearing_live_bridge() 
             .is_some_and(|p| p.supports_field_bearing()),
         "authored profile must support field-bearing (field_economy present)"
     );
+    // CI join only: production Clause hydrate does not invent host→star enrollment.
+    // Typed disruption loci require exact Spec location_id join under fail-loud mapping.
+    let hosts: Vec<String> = session
+        .authored_live_profile
+        .as_ref()
+        .map(|profile| {
+            profile
+                .disruption_observation_loci
+                .iter()
+                .map(|locus| locus.host_entity.clone())
+                .collect()
+        })
+        .unwrap_or_default();
+    attach_disruption_host_structural_placements(&mut session.scenario_authority, hosts);
 
     let mut bridge = StudioLiveSessionBridge::new();
     bridge.set_path_preference(StudioLiveSessionPathPreference::Auto);

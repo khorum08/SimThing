@@ -19,7 +19,8 @@ use simthing_core::{
 };
 use simthing_driver::{
     resolve_node_columns, system_id_by_host_raw_from_structural_authority, GpuValuesSnapshot,
-    LiveDisruptionAuthorityReadback, Scenario, SessionError, SimSession, StepOnceOutcome,
+    HostedPropertyLocus, LiveDisruptionAuthorityReadback, Scenario, SessionError, SimSession,
+    StepOnceOutcome,
 };
 use simthing_gpu::SlotAllocator;
 use simthing_spec::{
@@ -29,6 +30,7 @@ use simthing_spec::{
     BaseFlowDirectionSpec, BaseFlowObligationSpec, ExplicitParticipantSpec, FissionPolicySpec,
     GameModeSpec, InstallTargetSpec, PropertyKey, PropertySpec, ResourceEconomyOptInMode,
     ResourceFlowExecutionProfile, ResourceFlowOptInMode, ResourceFlowSpec, SimThingScenarioSpec,
+    SimThingStructuralGridPlacement,
 };
 
 use crate::session::{StudioScenarioSummary, StudioSession};
@@ -141,6 +143,16 @@ pub struct StudioAuthoredLiveProfile {
     /// Authored location id → generated system id from STEAD (row,col) join to
     /// the embedded lattice / rebound Spec placements.
     pub location_system_ids: BTreeMap<String, u32>,
+    /// Typed disruption_presence loci from field-economy hydrate (not all thresholds).
+    pub disruption_observation_loci: Vec<StudioDisruptionObservationLocus>,
+}
+
+/// Authored disruption_presence observation identity retained from hydrate.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioDisruptionObservationLocus {
+    pub host_entity: String,
+    pub property: PropertyKey,
+    pub role: SubFieldRole,
 }
 
 /// Stable labels/identities for the live RF locus shown by Studio and asserted by CI.
@@ -171,6 +183,7 @@ impl StudioAuthoredLiveProfile {
             field_economy_present,
             recursive_rf: None,
             location_system_ids: BTreeMap::new(),
+            disruption_observation_loci: Vec::new(),
         }
     }
 
@@ -337,6 +350,8 @@ pub struct StudioLiveSessionBridge {
     readout_authority: Option<SimThingScenarioSpec>,
     /// Authored location → system_id join captured at open from the live profile.
     location_system_ids: BTreeMap<String, u32>,
+    /// Typed disruption_presence loci captured at open from the live profile.
+    disruption_observation_loci: Vec<StudioDisruptionObservationLocus>,
 }
 
 /// Exact GPU locus for one economy emission sample (authoritative materialization).
@@ -387,6 +402,7 @@ impl StudioLiveSessionBridge {
             recursive_rf_readout: StudioRecursiveRfReadout::default(),
             readout_authority: None,
             location_system_ids: BTreeMap::new(),
+            disruption_observation_loci: Vec::new(),
         }
     }
 
@@ -448,6 +464,7 @@ impl StudioLiveSessionBridge {
         self.recursive_rf_readout = StudioRecursiveRfReadout::default();
         self.readout_authority = None;
         self.location_system_ids.clear();
+        self.disruption_observation_loci.clear();
     }
 
     /// Resolve which path to open given preference + optional authored profile.
@@ -494,6 +511,7 @@ impl StudioLiveSessionBridge {
         self.recursive_rf_readout = StudioRecursiveRfReadout::default();
         self.readout_authority = None;
         self.location_system_ids.clear();
+        self.disruption_observation_loci.clear();
         self.disruption_readout = StudioDisruptionReadoutMap::default();
 
         let path = Self::resolve_session_path(
@@ -565,6 +583,11 @@ impl StudioLiveSessionBridge {
                     .authored_live_profile
                     .as_ref()
                     .map(|profile| profile.location_system_ids.clone())
+                    .unwrap_or_default();
+                self.disruption_observation_loci = studio
+                    .authored_live_profile
+                    .as_ref()
+                    .map(|profile| profile.disruption_observation_loci.clone())
                     .unwrap_or_default();
                 if path == StudioLiveSessionPath::FieldBearing {
                     self.refresh_live_disruption_readout()?;
@@ -807,13 +830,7 @@ impl StudioLiveSessionBridge {
         let Some(sim) = self.sim.as_ref() else {
             return Ok(());
         };
-        let loci = sim
-            .spec_state
-            .resource_economy_registry
-            .as_ref()
-            .map(|economy| economy.observation_loci.as_slice())
-            .unwrap_or(&[]);
-        if loci.is_empty() {
+        if self.disruption_observation_loci.is_empty() {
             self.disruption_readout = studio_disruption_readout_map_from_snapshot(
                 &simthing_spec::disruption_readout_snapshot(authority).map_err(|e| {
                     StudioLiveSessionBridgeError::DisruptionReadback(e.to_string())
@@ -821,28 +838,22 @@ impl StudioLiveSessionBridge {
             );
             return Ok(());
         }
+        let loci = resolve_typed_disruption_observation_loci(
+            &self.disruption_observation_loci,
+            &sim.scenario.install_targets,
+        )?;
         let system_id_by_host_raw = system_id_by_host_raw_from_structural_authority(
             &authority.structural_grid.placements,
             &sim.scenario.install_targets,
-            loci,
+            &loci,
             &self.location_system_ids,
         )
         .map_err(|e| StudioLiveSessionBridgeError::DisruptionReadback(e.to_string()))?;
-        if system_id_by_host_raw.is_empty() {
-            // Loci exist but no structural join is available on this authority
-            // (e.g. seed Spec over a synthetic field profile) — fail-soft Absent.
-            self.disruption_readout = studio_disruption_readout_map_from_snapshot(
-                &simthing_spec::disruption_readout_snapshot(authority).map_err(|e| {
-                    StudioLiveSessionBridgeError::DisruptionReadback(e.to_string())
-                })?,
-            );
-            return Ok(());
-        }
         let readback = LiveDisruptionAuthorityReadback {
             snapshot,
             registry: &sim.proto.registry,
             allocator: &sim.proto.allocator,
-            loci,
+            loci: &loci,
             system_id_by_host_raw: &system_id_by_host_raw,
         };
         let typed = disruption_readout_snapshot_with_readback(authority, &readback)
@@ -1648,6 +1659,7 @@ pub fn authored_live_profile_from_pack(
     pack: &simthing_clausething::HydratedScenarioPack,
 ) -> StudioAuthoredLiveProfile {
     let location_system_ids = location_system_ids_from_pack(pack);
+    let disruption_observation_loci = disruption_observation_loci_from_pack(pack);
     if let Some((root, install_targets, game_mode, recursive_rf)) =
         compose_recursive_rf_profile(pack)
     {
@@ -1659,6 +1671,7 @@ pub fn authored_live_profile_from_pack(
         );
         profile.recursive_rf = Some(recursive_rf);
         profile.location_system_ids = location_system_ids;
+        profile.disruption_observation_loci = disruption_observation_loci;
         return profile;
     }
 
@@ -1680,7 +1693,121 @@ pub fn authored_live_profile_from_pack(
         pack.field_economy.is_some(),
     );
     profile.location_system_ids = location_system_ids;
+    profile.disruption_observation_loci = disruption_observation_loci;
     profile
+}
+
+/// Typed disruption_presence loci retained from field-economy hydrate identity.
+fn disruption_observation_loci_from_pack(
+    pack: &simthing_clausething::HydratedScenarioPack,
+) -> Vec<StudioDisruptionObservationLocus> {
+    let Some(field_economy) = pack.field_economy.as_ref() else {
+        return Vec::new();
+    };
+    field_economy
+        .disruption_presences
+        .iter()
+        .map(|presence| StudioDisruptionObservationLocus {
+            host_entity: presence.location.clone(),
+            property: PropertyKey::new(
+                &field_economy.namespace,
+                format!(
+                    "{}_{}_presence",
+                    presence.location, presence.resource
+                ),
+            ),
+            role: SubFieldRole::Amount,
+        })
+        .collect()
+}
+
+/// Resolve typed disruption observation loci through install_targets (exact entity keys).
+fn resolve_typed_disruption_observation_loci(
+    typed: &[StudioDisruptionObservationLocus],
+    install_targets: &HashMap<String, Vec<SimThingId>>,
+) -> Result<Vec<HostedPropertyLocus>, StudioLiveSessionBridgeError> {
+    let mut out = Vec::with_capacity(typed.len());
+    for locus in typed {
+        let hosts = install_targets.get(&locus.host_entity).ok_or_else(|| {
+            StudioLiveSessionBridgeError::DisruptionReadback(format!(
+                "typed disruption locus host `{}` is not in install_targets",
+                locus.host_entity
+            ))
+        })?;
+        let host_id = hosts.first().copied().ok_or_else(|| {
+            StudioLiveSessionBridgeError::DisruptionReadback(format!(
+                "typed disruption locus host `{}` has empty install_targets",
+                locus.host_entity
+            ))
+        })?;
+        out.push(HostedPropertyLocus {
+            host_id,
+            host_entity: Some(locus.host_entity.clone()),
+            property: locus.property.clone(),
+            role: locus.role.clone(),
+        });
+    }
+    Ok(out)
+}
+
+/// Test/CI helper: attach Spec placements whose `location_id`/`target_id` exactly match
+/// typed disruption host entities, joining each to an existing star `system_id`.
+///
+/// This uses the existing structural-placement authority surface only (no new Clause grammar).
+pub fn attach_disruption_host_structural_placements(
+    authority: &mut SimThingScenarioSpec,
+    host_entities: impl IntoIterator<Item = impl AsRef<str>>,
+) -> BTreeMap<String, u32> {
+    let hosts: Vec<String> = host_entities
+        .into_iter()
+        .map(|host| host.as_ref().to_string())
+        .collect();
+    let mut out = BTreeMap::new();
+    if hosts.is_empty() {
+        return out;
+    }
+    let systems: Vec<(u32, u32, u32)> = authority
+        .structural_grid
+        .placements
+        .iter()
+        .map(|placement| (placement.system_id, placement.row, placement.col))
+        .collect();
+    if systems.is_empty() {
+        return out;
+    }
+    for (index, host) in hosts.into_iter().enumerate() {
+        let (system_id, row, col) = systems[index % systems.len()];
+        authority
+            .structural_grid
+            .placements
+            .push(SimThingStructuralGridPlacement {
+                location_id: host.clone(),
+                target_id: host.clone(),
+                system_id,
+                row,
+                col,
+                // Synthetic placement id space — join is by location_id / host_entity.
+                simthing_id_raw: 900_000 + index as u32,
+            });
+        out.insert(host, system_id);
+    }
+    out
+}
+
+/// Host entity ids for typed disruption_presence rows in a hydrated pack.
+pub fn disruption_host_entities_from_pack(
+    pack: &simthing_clausething::HydratedScenarioPack,
+) -> Vec<String> {
+    pack.field_economy
+        .as_ref()
+        .map(|economy| {
+            economy
+                .disruption_presences
+                .iter()
+                .map(|presence| presence.location.clone())
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 /// Join hydrate grid placements to embedded lattice system ids by exact (row,col).
