@@ -19,6 +19,17 @@ heatmaps ARE the Sim in SimThings; this track makes that a property of the *obje
 per-session configuration. Future scenarios — and other games — script onto SimThing trees and
 **work**.
 
+**The prize is emergence (Owner, 2026-07-20).** The unification is real and tonal — STEAD is
+control economics: the same allocation kernel run over a non-conserved signal commodity, where
+stocks are the plant, the field is the controller, the arena-pressure projection is the sensor,
+banded commitments are the actuator, and authored weights are the prices. But the unification is
+the *rail*, not the prize. **The value this track exists to capture is Wei's emergent behavior**:
+fronts, borders, escalations, and strategy arising UNSCRIPTED from one shared local rule plus
+authored prices (attractor dynamics — 12.10's `38/38/1` divergence from two weight scalars was an
+attractor-relocation proof, the first captured instance). Every phase privileges that emergence
+while aligning strictly to the SimThing recursive emission-band RF topology: mechanisms serve the
+dynamics and must never script the outcomes they exist to let emerge.
+
 Evidence base: the 0.0.8.6 RF sub-track (RF-1…RF-5A). Every expensive failure was the same
 gap — the RF kernel living as session wiring instead of object semantics (engine disengaged
 for three eras behind opt-in flags; RF-5A's manual plumbing; the cosplay era only possible
@@ -70,6 +81,13 @@ contracts (RF-2A) exist.
 
 ## 4. Binding laws (carry from day one)
 
+**Emergence-first (the prize law).** Every phase carries a 12.10-style emergence falsifier:
+authored-parameter changes must produce qualitatively different, UNSCRIPTED macro outcomes; a
+phase that leaves the mechanism sound but the dynamics inert — over-quantized bands, over-
+constrained admission, scripted outcomes, dead attractors — FAILS its exit-proof regardless of
+green checks. P1 bounded-horizon and P2 one-shared-rule are preserved as the conditions under
+which Wei’s emergence generalizes (per the paper); band ladders quantize the READING never the
+FIELD, so the continuous dynamics that carry the emergence are never discretized away.
 Promotion, not rewrite — existing code keeps working at every rung. Intrinsic ≠ implicit:
 all automatic behavior is derived at admission, typed, spanned-erroring — never runtime magic.
 Oracle-judged: RF-1 conservation + bit-exact replay at every phase. Deferred capabilities from
