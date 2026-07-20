@@ -45,7 +45,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 211b860c2a424d0386a01a2dc93d5c563abfd1411c1f58ec55c7b69d97426cb8 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | be04669f2dfb66096af019ad61f225de91bf4433c22d46fbdeff42578634da49 |
-| design_0_0_8_6_studio_live_ops.md | a27b6b2bade818408e64687a4d0d546ed208503755793c23fa0dfe7de9c7aa64 |
+| design_0_0_8_6_studio_live_ops.md | 5ab947c75da1c0ad0029877a329f629b68fd13e305671b87489893b3ffa73f29 |
 | relay_lint.sh | 4163f715cdc3b549dbf57c1744aff61ea96b9f9f0a2237376665fbdb24e986c8 |
 | doctrine_anchors.tsv | acddc6ad84d6dcefcbc8942f603186ae82e47e6495833b29aafbb5805d49aa0f |
 
@@ -57,7 +57,7 @@ Track state: `open`
 | --- | --- | --- | --- |
 | 12.8 | TP-CLAUSE-ECONOMY-AUTHOR-0 | **Needs 12.6 + 12.7.** Author the canonical economy **in `scenarios/terran_pirat | **ORCHESTRATOR-GRADUATED / merged [#1403](https://github.com/khorum08/SimThing/pull/1403)** — 2026-07-17 (AUTONOMOUS;... |
 | 12.9 | STUDIO-FIELD-SESSION-ELEVATE-0 | **Needs 12.8.** The Studio live bridge opens the **field-bearing session path**  | **OWNER OVL PASS / orchestration-review-complete / DA-relay-ready / RF-5 SPLIT APPROVED** — Owner/orchestration rulin... |
-| 12.10 | TP-EMERGENT-TENSION-PROOF-0 | **Needs 12.9.** Falsification battery for **emergence, not scripting**: (a) mult | **ACTIVE / DISPATCHED / DRAFT** — PR [#1418](https://github.com/khorum08/SimThing/pull/1418); dispatch `5017471356`; ... |
+| 12.10 | TP-EMERGENT-TENSION-PROOF-0 | **Needs 12.9.** Falsification battery for **emergence, not scripting**: (a) mult | **ACTIVE / DISPATCHED / DRAFT** — PR [#1418](https://github.com/khorum08/SimThing/pull/1418); coding continuation fro... |
 | 12.11 | SCANNER-SELFTEST-DELTA-GATE-0 | **Harness — executes NOW (pointer-active), ahead of the TP chain. Owner-mandate  | **DA-GRADUATED / merged [#1400](https://github.com/khorum08/SimThing/pull/1400) @ `6193289e`** — 2026-07-17 (AUTONOMO... |
 | 12.1 | STUDIO-LOADER-DIALOG-REPAIR-0 | **Minimal load dialog.** The load dialog shows **only**: scenario-path text box  | **DA-GRADUATED / merged [PR #1324](https://github.com/khorum08/SimThing/pull/1324) @ `827fcbe0`** — Owner OVL PASS + ... |
 | 12.3 | STUDIO-DISRUPTION-SELECT-SCREEN-0 | **Needs 12.2.** Selecting **any** star (owned, neutral, hostile) screens the **s | TODO |
