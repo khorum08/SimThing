@@ -91,6 +91,9 @@ fn canonical_tp_clause_hydrates_field_economy_to_existing_surfaces() {
     assert_eq!(economy.production_buildings[0].location, "terran_shipyard");
     assert_eq!(economy.production_buildings[0].input_resource, "minerals");
     assert_eq!(economy.production_buildings[0].output_resource, "hulls");
+    assert_eq!(economy.production_buildings[0].output_coefficient, 2.0);
+    assert_eq!(economy.flow_couplings.len(), 1);
+    assert_eq!(economy.flow_couplings[0].id, "pirate_raid_suppresses_shipyard");
     assert_eq!(economy.field_resource_quantities.len(), 1);
     assert_eq!(economy.disruption_presences.len(), 1);
     assert_eq!(economy.disruption_presences[0].location, "pirate_outpost");
@@ -204,7 +207,25 @@ fn canonical_tp_clause_hydrates_field_economy_to_existing_surfaces() {
     assert_eq!(recipe.target.namespace, "tp_economy");
     assert_eq!(recipe.target.name, "terran_shipyard_hulls_quantity");
     assert_eq!(recipe.target_role, SubFieldRole::Amount);
+    assert_eq!(recipe.output_coefficient, 2.0);
+    assert_eq!(recipe.order_band, 0);
     assert_eq!(recipe.throttle_hint_max_per_tick, 4);
+
+    let coupling = resource_economy
+        .recipes
+        .iter()
+        .find(|recipe| recipe.id == "tp_economy_coupling_pirate_raid_suppresses_shipyard")
+        .expect("disruption coupling recipe");
+    assert_eq!(coupling.inputs.len(), 3);
+    assert_eq!(
+        coupling.inputs[2].property.name,
+        "pirate_disruption_weight_stockpile"
+    );
+    assert_eq!(coupling.inputs[0].property.name, "terran_shipyard_hulls_quantity");
+    assert_eq!(coupling.inputs[1].property.name, "pirate_outpost_disruption_presence");
+    assert_eq!(coupling.target.name, "terran_shipyard_disrupted_hulls_quantity");
+    assert_eq!(coupling.output_coefficient, 1.0);
+    assert_eq!(coupling.order_band, 3);
 
     // Disruption presence emission 8 + threshold record (3, Rising, event 71).
     assert_eq!(

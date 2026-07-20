@@ -76,6 +76,18 @@ pub struct ResourceRecipeSpec {
     pub inputs: Vec<RecipeInputSpec>,
     pub target: PropertyKey,
     pub target_role: SubFieldRole,
+    /// Explicit entity host for the target property instance.
+    #[serde(default)]
+    pub target_host_entity: Option<String>,
+    #[serde(skip)]
+    pub target_host_span_token: Option<usize>,
+    /// Authored target units credited per exact affordable recipe unit.
+    /// This consumes the existing transfer planner's `output_scale`; it does
+    /// not add a kernel/WGSL operation.
+    pub output_coefficient: f32,
+    /// Existing transfer OrderBand used to sequence generic recipe/coupling
+    /// stages without introducing a second execution path.
+    pub order_band: u32,
     /// Boundary/throttle metadata only (E-3R). Not an enforced GPU or CPU cap.
     pub throttle_hint_max_per_tick: u32,
 }
@@ -87,6 +99,11 @@ pub struct RecipeInputSpec {
     pub property: PropertyKey,
     pub role: SubFieldRole,
     pub unit_cost: f32,
+    /// Explicit entity host for this consumed property instance.
+    #[serde(default)]
+    pub host_entity: Option<String>,
+    #[serde(skip)]
+    pub host_span_token: Option<usize>,
 }
 
 /// Event-shaped emission registration (C-8d authoring surface).

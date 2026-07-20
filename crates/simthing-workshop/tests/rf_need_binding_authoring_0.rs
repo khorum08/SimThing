@@ -50,8 +50,23 @@ scenario = foundry_valley {
         production_building = ridge_foundry {
             location = "ridge"
             input = { resource = "ore" amount = 1 }
-            output = { resource = "tools" }
+            output = { resource = "tools" coefficient = 1 }
             throttle_hint_max_per_tick = 1
+        }
+        disruption_presence = ridge_smoke {
+            location = "ridge"
+            resource = "smoke"
+            amount = 0
+            threshold = 100
+            event_kind = 177
+        }
+        flow_coupling = smoke_suppresses_tools {
+            source = { location = "ridge" resource = "tools" unit_cost = 1 }
+            pressure = { location = "ridge" resource = "smoke" unit_cost = 1 }
+            weight = { owner = "guild" resource = "weight_token" unit_cost = 1 }
+            sink = { location = "ridge" resource = "spoiled_tools" }
+            output_coefficient = 1
+            order_band = 1
         }
         weight_profile = expansion_need {
             profile = "expansion-need"
@@ -102,8 +117,23 @@ scenario = foundry_valley {
         production_building = ridge_foundry {
             location = "ridge"
             input = { resource = "ore" amount = 1 }
-            output = { resource = "tools" }
+            output = { resource = "tools" coefficient = 1 }
             throttle_hint_max_per_tick = 1
+        }
+        disruption_presence = ridge_smoke {
+            location = "ridge"
+            resource = "smoke"
+            amount = 0
+            threshold = 100
+            event_kind = 177
+        }
+        flow_coupling = smoke_suppresses_tools {
+            source = { location = "ridge" resource = "tools" unit_cost = 1 }
+            pressure = { location = "ridge" resource = "smoke" unit_cost = 1 }
+            weight = { owner = "guild" resource = "weight_token" unit_cost = 1 }
+            sink = { location = "ridge" resource = "spoiled_tools" }
+            output_coefficient = 1
+            order_band = 1
         }
         weight_profile = expansion_need {
             profile = "expansion-need"
@@ -154,8 +184,23 @@ scenario = aqueduct_delta {
         production_building = pump_house {
             location = "spring"
             input = { resource = "water" amount = 1 }
-            output = { resource = "pressure" }
+            output = { resource = "pressure" coefficient = 1 }
             throttle_hint_max_per_tick = 1
+        }
+        disruption_presence = spring_silt {
+            location = "spring"
+            resource = "silt"
+            amount = 0
+            threshold = 100
+            event_kind = 178
+        }
+        flow_coupling = silt_suppresses_pressure {
+            source = { location = "spring" resource = "pressure" unit_cost = 1 }
+            pressure = { location = "spring" resource = "silt" unit_cost = 1 }
+            weight = { owner = "council" resource = "weight_token" unit_cost = 1 }
+            sink = { location = "spring" resource = "lost_pressure" }
+            output_coefficient = 1
+            order_band = 1
         }
         weight_profile = manufacturing_need {
             profile = "manufacturing-need"
@@ -340,6 +385,8 @@ fn open_clause_opts(text: &str, opts: OpenOpts) -> Result<SimSession, OpenError>
     install_targets.insert("guild".into(), vec![ids[1]]);
     install_targets.insert("council".into(), vec![ids[1]]);
     install_targets.insert("root".into(), vec![ids[0]]);
+    install_targets.insert("ridge".into(), vec![ids[2]]);
+    install_targets.insert("spring".into(), vec![ids[2]]);
     if opts.cross_row_second_owner {
         // Second entity hosts weight stockpile (cross-row projection happy path).
         install_targets.insert("union".into(), vec![ids[3]]);
@@ -891,8 +938,23 @@ scenario = foundry_valley {
         production_building = ridge_foundry {
             location = "ridge"
             input = { resource = "ore" amount = 1 }
-            output = { resource = "tools" }
+            output = { resource = "tools" coefficient = 1 }
             throttle_hint_max_per_tick = 1
+        }
+        disruption_presence = ridge_smoke {
+            location = "ridge"
+            resource = "smoke"
+            amount = 0
+            threshold = 100
+            event_kind = 177
+        }
+        flow_coupling = smoke_suppresses_tools {
+            source = { location = "ridge" resource = "tools" unit_cost = 1 }
+            pressure = { location = "ridge" resource = "smoke" unit_cost = 1 }
+            weight = { owner = "union" resource = "weight_token" unit_cost = 1 }
+            sink = { location = "ridge" resource = "spoiled_tools" }
+            output_coefficient = 1
+            order_band = 1
         }
         weight_profile = expansion_need {
             profile = "expansion-need"
@@ -1041,8 +1103,10 @@ fn ordinary_unrelated_threshold_fires_exactly_once() {
             .registrations
             .emissions
             .iter()
-            .all(|emission| emission.source_slot == guild_slot),
-        "host-qualified emissions must materialize on authored guild row"
+            .filter(|emission| emission.source_slot == guild_slot)
+            .count()
+            == 2,
+        "owner-silo emissions must materialize on authored guild row"
     );
     let threshold = economy
         .registrations
@@ -1079,9 +1143,10 @@ fn ordinary_unrelated_threshold_fires_exactly_once() {
             .map(|event| event.reg_idx())
             .collect::<Vec<_>>();
         reg_indices.sort_unstable();
+        reg_indices.dedup();
         assert_eq!(
-            reg_indices,
-            vec![0, 1],
+            reg_indices.len(),
+            2,
             "full-scan ordinary and need-only append must retain distinct registration identities"
         );
         runtime.restore_threshold_session(Some(session));

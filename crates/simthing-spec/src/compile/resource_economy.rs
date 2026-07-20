@@ -51,6 +51,7 @@ pub struct CompiledResourceRecipeInput {
     pub role: SubFieldRole,
     pub col: u32,
     pub unit_cost: f32,
+    pub host_entity: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -60,6 +61,9 @@ pub struct CompiledResourceRecipe {
     pub target_property: SimPropertyId,
     pub target_role: SubFieldRole,
     pub target_col: u32,
+    pub target_host_entity: Option<String>,
+    pub output_coefficient: f32,
+    pub order_band: u32,
     pub throttle_hint_max_per_tick: u32,
 }
 
@@ -308,6 +312,12 @@ fn compile_recipe(
             recipe: recipe.id.clone(),
         });
     }
+    // 0.0 is an authored neutralization (no production accretion); negative/NaN fail closed.
+    if !recipe.output_coefficient.is_finite() || recipe.output_coefficient < 0.0 {
+        return Err(SpecError::InvalidRecipeOutputCoefficient {
+            recipe: recipe.id.clone(),
+        });
+    }
 
     let (target_property, target_col) = resolve_property_col(
         registry,
@@ -339,6 +349,9 @@ fn compile_recipe(
         target_property,
         target_role: recipe.target_role.clone(),
         target_col,
+        target_host_entity: recipe.target_host_entity.clone(),
+        output_coefficient: recipe.output_coefficient,
+        order_band: recipe.order_band,
         throttle_hint_max_per_tick: recipe.throttle_hint_max_per_tick,
     })
 }
@@ -374,14 +387,14 @@ fn compile_recipe_input(
         },
     )?;
 
-    const RECIPE_ORDER_BAND: u32 = 0;
-    contention.record_consumed(RECIPE_ORDER_BAND, property, col, &recipe.id)?;
+    contention.record_consumed(recipe.order_band, property, col, &recipe.id)?;
 
     Ok(CompiledResourceRecipeInput {
         property,
         role: input.role.clone(),
         col,
         unit_cost: input.unit_cost,
+        host_entity: input.host_entity.clone(),
     })
 }
 

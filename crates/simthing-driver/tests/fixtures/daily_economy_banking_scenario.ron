@@ -139,6 +139,8 @@ GameModeSpec(
                 ],
                 target: (namespace: "core", name: "producer"),
                 target_role: Named("amount"),
+                output_coefficient: 1.0,
+                order_band: 0,
                 throttle_hint_max_per_tick: 10,
             ),
         ],

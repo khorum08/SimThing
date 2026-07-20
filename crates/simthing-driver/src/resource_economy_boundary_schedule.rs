@@ -66,7 +66,10 @@ impl ResourceEconomyBoundaryScheduleReport {
             let recipe = &registry.registrations.recipes[idx];
             entries.push(BoundaryScheduleEntry {
                 key: BoundaryScheduleKey {
-                    order_band: 0,
+                    order_band: *report
+                        .recipe_order_bands
+                        .get(idx)
+                        .expect("materialized recipes carry an order band"),
                     kind_rank: KIND_RANK_RECIPE,
                     authoring_id,
                 },
@@ -74,7 +77,10 @@ impl ResourceEconomyBoundaryScheduleReport {
                 source_col: recipe.inputs.first().map(|i| i.col.raw_u32()).unwrap_or(0),
                 target_slot: recipe.target_slot.raw(),
                 target_col: recipe.target_col.raw_u32(),
-                amount: 0.0,
+                amount: *report
+                    .recipe_output_coefficients
+                    .get(idx)
+                    .expect("materialized recipes carry an output coefficient"),
             });
         }
 

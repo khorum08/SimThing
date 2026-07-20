@@ -3,17 +3,17 @@
 //! This lowers authoring blocks onto existing spec surfaces only: `PropertySpec`,
 //! `OverlaySpec`, `ResourceEconomySpec`, and `EmlGadgetStackSpec`.
 //!
-//! Production output coefficients / stockpile clamps remain deferred until an
-//! execution-bearing recipe-yield/storage-capacity surface exists (reject, do not
-//! lower to emissions/overlays). RF-5A discharges need-binding authoring via
-//! `need_binding` (semantic entity/property/role → full-cell admission).
+//! Production output coefficients and local-flow suppression couplings consume
+//! the existing conjunctive-transfer output scale and OrderBand surfaces. RF-5A
+//! discharges need-binding authoring via `need_binding` (semantic
+//! entity/property/role → full-cell admission).
 
 use std::collections::{BTreeMap, BTreeSet};
 
 use serde::{Deserialize, Serialize};
 use simthing_core::{
-    OverlayKind, OverlayLifecycle, OverlaySource, PlacedParticipantValidationError, SimThingKind,
-    StructuralCoord, StructuralGridPlacement, SubFieldRole, TransformOp,
+    ClampBehavior, OverlayKind, OverlayLifecycle, OverlaySource, PlacedParticipantValidationError,
+    SimThingKind, StructuralCoord, StructuralGridPlacement, SubFieldRole, SubFieldSpec, TransformOp,
     validate_location_ids_have_structural_placements,
 };
 use simthing_spec::spec::eml_gadget::{EmlGadgetInstanceSpec, EmlGadgetStackSpec};
@@ -49,6 +49,7 @@ pub struct HydratedFieldEconomy {
     pub id: String,
     pub namespace: String,
     pub production_buildings: Vec<HydratedProductionBuilding>,
+    pub flow_couplings: Vec<HydratedFlowCoupling>,
     pub stockpile_silos: Vec<HydratedStockpileSilo>,
     pub field_resource_quantities: Vec<HydratedFieldResourceQuantity>,
     pub disruption_presences: Vec<HydratedDisruptionPresence>,
@@ -65,7 +66,26 @@ pub struct HydratedProductionBuilding {
     pub input_resource: String,
     pub input_amount: f32,
     pub output_resource: String,
+    pub output_coefficient: f32,
     pub throttle_hint_max_per_tick: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct HydratedFlowCoupling {
+    pub id: String,
+    pub source_location: String,
+    pub source_resource: String,
+    pub source_unit_cost: f32,
+    pub pressure_location: String,
+    pub pressure_resource: String,
+    pub pressure_unit_cost: f32,
+    pub weight_owner: String,
+    pub weight_resource: String,
+    pub weight_unit_cost: f32,
+    pub sink_location: String,
+    pub sink_resource: String,
+    pub output_coefficient: f32,
+    pub order_band: u32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -139,6 +159,7 @@ struct ParsedFieldEconomy {
     id: String,
     namespace: String,
     production_buildings: Vec<HydratedProductionBuilding>,
+    flow_couplings: Vec<HydratedFlowCoupling>,
     stockpile_silos: Vec<HydratedStockpileSilo>,
     field_resource_quantities: Vec<HydratedFieldResourceQuantity>,
     disruption_presences: Vec<HydratedDisruptionPresence>,
@@ -155,8 +176,29 @@ struct ResourceAmount {
 }
 
 #[derive(Debug, Clone)]
-struct ResourceRef {
+struct ResourceOutput {
     resource: String,
+    coefficient: f32,
+}
+
+#[derive(Debug, Clone)]
+struct CouplingInput {
+    location: String,
+    resource: String,
+    unit_cost: f32,
+}
+
+#[derive(Debug, Clone)]
+struct CouplingSink {
+    location: String,
+    resource: String,
+}
+
+#[derive(Debug, Clone)]
+struct CouplingWeight {
+    owner: String,
+    resource: String,
+    unit_cost: f32,
 }
 
 #[derive(Debug, Clone)]
@@ -183,6 +225,7 @@ fn parse_field_economy_property(
     let mut id = header_id;
     let mut namespace = DEFAULT_NAMESPACE.to_string();
     let mut production_buildings = Vec::new();
+    let mut flow_couplings = Vec::new();
     let mut stockpile_silos = Vec::new();
     let mut field_resource_quantities = Vec::new();
     let mut disruption_presences = Vec::new();
@@ -213,6 +256,16 @@ fn parse_field_economy_property(
                     field,
                 )?;
                 production_buildings.push(building);
+            }
+            "flow_coupling" => {
+                let coupling = parse_flow_coupling(field)?;
+                admit_unique_field_economy_id(
+                    &mut seen_ids,
+                    "flow_coupling",
+                    &coupling.id,
+                    field,
+                )?;
+                flow_couplings.push(coupling);
             }
             "stockpile_silo" => {
                 let silo = parse_stockpile_silo(field)?;
@@ -337,6 +390,7 @@ fn parse_field_economy_property(
         id,
         namespace,
         production_buildings,
+        flow_couplings,
         stockpile_silos,
         field_resource_quantities,
         disruption_presences,
@@ -362,7 +416,7 @@ fn parse_production_building(
             "id" => id = read_checked_id(field, &id)?,
             "location" => location = Some(read_scalar_text(field, "location")?),
             "input" => input = Some(parse_resource_amount(field, "input")?),
-            "output" => output = Some(parse_resource_ref(field, "output")?),
+            "output" => output = Some(parse_resource_output(field)?),
             "throttle_hint_max_per_tick" => {
                 throttle_hint_max_per_tick =
                     Some(read_scalar_u32(field, "throttle_hint_max_per_tick")?)
@@ -383,11 +437,68 @@ fn parse_production_building(
         input_resource: input.resource,
         input_amount: input.amount,
         output_resource: output.resource,
+        output_coefficient: output.coefficient,
         throttle_hint_max_per_tick: require_local(
             throttle_hint_max_per_tick,
             "throttle_hint_max_per_tick",
             property,
         )?,
+    })
+}
+
+fn parse_flow_coupling(property: &RawProperty) -> Result<HydratedFlowCoupling, HydrateError> {
+    let (header_id, block) = header_or_block_body(property, "flow_coupling")?;
+    let mut id = header_id;
+    let mut source = None;
+    let mut pressure = None;
+    let mut weight = None;
+    let mut sink = None;
+    let mut output_coefficient = None;
+    let mut order_band = None;
+
+    for field in &block.properties {
+        match field.key.text.as_str() {
+            "id" => id = read_checked_id(field, &id)?,
+            "source" => source = Some(parse_coupling_input(field, "source")?),
+            "pressure" => pressure = Some(parse_coupling_input(field, "pressure")?),
+            "weight" => weight = Some(parse_coupling_weight(field)?),
+            "sink" => sink = Some(parse_coupling_sink(field)?),
+            "output_coefficient" => {
+                output_coefficient = Some(read_scalar_f32(field, "output_coefficient")?)
+            }
+            "order_band" => order_band = Some(read_scalar_u32(field, "order_band")?),
+            other => {
+                return Err(HydrateError::new_spanned(
+                    format!("unsupported flow_coupling field `{other}`"),
+                    Some(field.key.span.clone()),
+                ));
+            }
+        }
+    }
+
+    let source = require_local(source, "source", property)?;
+    let pressure = require_local(pressure, "pressure", property)?;
+    let weight = require_local(weight, "weight", property)?;
+    let sink = require_local(sink, "sink", property)?;
+    Ok(HydratedFlowCoupling {
+        id: require_id(id, "flow_coupling", property)?,
+        source_location: source.location,
+        source_resource: source.resource,
+        source_unit_cost: source.unit_cost,
+        pressure_location: pressure.location,
+        pressure_resource: pressure.resource,
+        pressure_unit_cost: pressure.unit_cost,
+        weight_owner: weight.owner,
+        weight_resource: weight.resource,
+        weight_unit_cost: weight.unit_cost,
+        sink_location: sink.location,
+        sink_resource: sink.resource,
+        output_coefficient: require_local(
+            output_coefficient,
+            "output_coefficient",
+            property,
+        )?,
+        order_band: require_local(order_band, "order_band", property)?,
     })
 }
 
@@ -630,15 +741,41 @@ fn parse_resource_amount(
     })
 }
 
-fn parse_resource_ref(
-    property: &RawProperty,
-    field_name: &str,
-) -> Result<ResourceRef, HydrateError> {
-    let block = require_block(property, field_name)?;
+fn parse_resource_output(property: &RawProperty) -> Result<ResourceOutput, HydrateError> {
+    let block = require_block(property, "output")?;
     let mut resource = None;
+    let mut coefficient = None;
     for field in &block.properties {
         match field.key.text.as_str() {
             "resource" => resource = Some(read_scalar_text(field, "resource")?),
+            "coefficient" => coefficient = Some(read_scalar_f32(field, "coefficient")?),
+            other => {
+                return Err(HydrateError::new_spanned(
+                    format!("unsupported output field `{other}`"),
+                    Some(field.key.span.clone()),
+                ));
+            }
+        }
+    }
+    Ok(ResourceOutput {
+        resource: require_local(resource, "resource", property)?,
+        coefficient: require_local(coefficient, "coefficient", property)?,
+    })
+}
+
+fn parse_coupling_input(
+    property: &RawProperty,
+    field_name: &str,
+) -> Result<CouplingInput, HydrateError> {
+    let block = require_block(property, field_name)?;
+    let mut location = None;
+    let mut resource = None;
+    let mut unit_cost = None;
+    for field in &block.properties {
+        match field.key.text.as_str() {
+            "location" => location = Some(read_scalar_text(field, "location")?),
+            "resource" => resource = Some(read_scalar_text(field, "resource")?),
+            "unit_cost" => unit_cost = Some(read_scalar_f32(field, "unit_cost")?),
             other => {
                 return Err(HydrateError::new_spanned(
                     format!("unsupported {field_name} field `{other}`"),
@@ -647,8 +784,57 @@ fn parse_resource_ref(
             }
         }
     }
-    Ok(ResourceRef {
+    Ok(CouplingInput {
+        location: require_local(location, "location", property)?,
         resource: require_local(resource, "resource", property)?,
+        unit_cost: require_local(unit_cost, "unit_cost", property)?,
+    })
+}
+
+fn parse_coupling_sink(property: &RawProperty) -> Result<CouplingSink, HydrateError> {
+    let block = require_block(property, "sink")?;
+    let mut location = None;
+    let mut resource = None;
+    for field in &block.properties {
+        match field.key.text.as_str() {
+            "location" => location = Some(read_scalar_text(field, "location")?),
+            "resource" => resource = Some(read_scalar_text(field, "resource")?),
+            other => {
+                return Err(HydrateError::new_spanned(
+                    format!("unsupported sink field `{other}`"),
+                    Some(field.key.span.clone()),
+                ));
+            }
+        }
+    }
+    Ok(CouplingSink {
+        location: require_local(location, "location", property)?,
+        resource: require_local(resource, "resource", property)?,
+    })
+}
+
+fn parse_coupling_weight(property: &RawProperty) -> Result<CouplingWeight, HydrateError> {
+    let block = require_block(property, "weight")?;
+    let mut owner = None;
+    let mut resource = None;
+    let mut unit_cost = None;
+    for field in &block.properties {
+        match field.key.text.as_str() {
+            "owner" => owner = Some(read_scalar_text(field, "owner")?),
+            "resource" => resource = Some(read_scalar_text(field, "resource")?),
+            "unit_cost" => unit_cost = Some(read_scalar_f32(field, "unit_cost")?),
+            other => {
+                return Err(HydrateError::new_spanned(
+                    format!("unsupported weight field `{other}`"),
+                    Some(field.key.span.clone()),
+                ));
+            }
+        }
+    }
+    Ok(CouplingWeight {
+        owner: require_local(owner, "owner", property)?,
+        resource: require_local(resource, "resource", property)?,
+        unit_cost: require_local(unit_cost, "unit_cost", property)?,
     })
 }
 
@@ -837,6 +1023,7 @@ fn validate_field_economy(
     grid_metadata: &HydratedScenarioGridMetadata,
 ) -> Result<(), HydrateError> {
     if parsed.production_buildings.is_empty()
+        && parsed.flow_couplings.is_empty()
         && parsed.stockpile_silos.is_empty()
         && parsed.field_resource_quantities.is_empty()
         && parsed.disruption_presences.is_empty()
@@ -848,13 +1035,34 @@ fn validate_field_economy(
             Some(parsed.span.clone()),
         ));
     }
-
+    // flow_coupling is optional authoring: absent means no suppression recipe is
+    // lowered. A present coupling block still fails closed on missing/malformed fields.
     let mut spatial_location_ids = Vec::new();
+    let produced_loci: BTreeSet<(String, String)> = parsed
+        .production_buildings
+        .iter()
+        .map(|building| (building.location.clone(), building.output_resource.clone()))
+        .chain(parsed.field_resource_quantities.iter().map(|quantity| {
+            (quantity.location.clone(), quantity.resource.clone())
+        }))
+        .collect();
+    let pressure_loci: BTreeSet<(String, String)> = parsed
+        .disruption_presences
+        .iter()
+        .map(|presence| (presence.location.clone(), presence.resource.clone()))
+        .collect();
     for building in &parsed.production_buildings {
         validate_location_ref(&building.location, root_node, &parsed.span)?;
         validate_positive_amount(
             building.input_amount,
             "production_building.input.amount",
+            &parsed.span,
+        )?;
+        // Coefficient is required at parse; 0.0 is an authored neutralization
+        // (no production accretion) for Clause-source bite controls.
+        validate_non_negative_amount(
+            building.output_coefficient,
+            "production_building.output.coefficient",
             &parsed.span,
         )?;
         if building.throttle_hint_max_per_tick == 0 {
@@ -864,6 +1072,86 @@ fn validate_field_economy(
             ));
         }
         spatial_location_ids.push(building.location.clone());
+    }
+    for coupling in &parsed.flow_couplings {
+        validate_location_ref(&coupling.source_location, root_node, &parsed.span)?;
+        validate_location_ref(&coupling.pressure_location, root_node, &parsed.span)?;
+        validate_location_ref(&coupling.sink_location, root_node, &parsed.span)?;
+        validate_owner_ref(&coupling.weight_owner, owners, &parsed.span)?;
+        validate_positive_amount(
+            coupling.source_unit_cost,
+            "flow_coupling.source.unit_cost",
+            &parsed.span,
+        )?;
+        validate_positive_amount(
+            coupling.pressure_unit_cost,
+            "flow_coupling.pressure.unit_cost",
+            &parsed.span,
+        )?;
+        validate_positive_amount(
+            coupling.weight_unit_cost,
+            "flow_coupling.weight.unit_cost",
+            &parsed.span,
+        )?;
+        validate_positive_amount(
+            coupling.output_coefficient,
+            "flow_coupling.output_coefficient",
+            &parsed.span,
+        )?;
+        if coupling.order_band == 0 {
+            return Err(HydrateError::new_spanned(
+                "flow_coupling.order_band must be greater than zero",
+                Some(parsed.span.clone()),
+            ));
+        }
+        if !produced_loci.contains(&(
+            coupling.source_location.clone(),
+            coupling.source_resource.clone(),
+        )) {
+            return Err(HydrateError::new_spanned(
+                format!(
+                    "flow_coupling `{}` source is not an authored production/quantity locus",
+                    coupling.id
+                ),
+                Some(parsed.span.clone()),
+            ));
+        }
+        if !pressure_loci.contains(&(
+            coupling.pressure_location.clone(),
+            coupling.pressure_resource.clone(),
+        )) {
+            return Err(HydrateError::new_spanned(
+                format!(
+                    "flow_coupling `{}` pressure is not an authored disruption locus",
+                    coupling.id
+                ),
+                Some(parsed.span.clone()),
+            ));
+        }
+        if !parsed.stockpile_silos.iter().any(|silo| {
+            silo.owner == coupling.weight_owner && silo.resource == coupling.weight_resource
+        }) {
+            return Err(HydrateError::new_spanned(
+                format!(
+                    "flow_coupling `{}` weight is not an authored owner stockpile locus",
+                    coupling.id
+                ),
+                Some(parsed.span.clone()),
+            ));
+        }
+        if coupling.source_location == coupling.sink_location
+            && coupling.source_resource == coupling.sink_resource
+        {
+            return Err(HydrateError::new_spanned(
+                format!("flow_coupling `{}` source and sink must differ", coupling.id),
+                Some(parsed.span.clone()),
+            ));
+        }
+        spatial_location_ids.extend([
+            coupling.source_location.clone(),
+            coupling.pressure_location.clone(),
+            coupling.sink_location.clone(),
+        ]);
     }
     for quantity in &parsed.field_resource_quantities {
         validate_location_ref(&quantity.location, root_node, &parsed.span)?;
@@ -912,6 +1200,14 @@ fn lower_field_economy(parsed: ParsedFieldEconomy) -> Result<FieldEconomyLowerin
             "quantity",
         ));
     }
+    for coupling in &parsed.flow_couplings {
+        properties.push(located_resource_property(
+            &parsed.namespace,
+            &coupling.sink_location,
+            &coupling.sink_resource,
+            "quantity",
+        ));
+    }
     for silo in &parsed.stockpile_silos {
         properties.push(owner_resource_property(
             &parsed.namespace,
@@ -944,7 +1240,7 @@ fn lower_field_economy(parsed: ParsedFieldEconomy) -> Result<FieldEconomyLowerin
     }
     dedupe_properties(&mut properties);
 
-    let recipes = parsed
+    let mut recipes: Vec<ResourceRecipeSpec> = parsed
         .production_buildings
         .iter()
         .map(|building| ResourceRecipeSpec {
@@ -958,6 +1254,8 @@ fn lower_field_economy(parsed: ParsedFieldEconomy) -> Result<FieldEconomyLowerin
                 ),
                 role: SubFieldRole::Amount,
                 unit_cost: building.input_amount,
+                host_entity: Some(building.location.clone()),
+                host_span_token: None,
             }],
             target: located_resource_key(
                 &parsed.namespace,
@@ -966,9 +1264,68 @@ fn lower_field_economy(parsed: ParsedFieldEconomy) -> Result<FieldEconomyLowerin
                 "quantity",
             ),
             target_role: SubFieldRole::Amount,
+            target_host_entity: Some(building.location.clone()),
+            target_host_span_token: None,
+            output_coefficient: building.output_coefficient,
+            order_band: 0,
             throttle_hint_max_per_tick: building.throttle_hint_max_per_tick,
         })
         .collect();
+    recipes.extend(parsed.flow_couplings.iter().map(|coupling| {
+        ResourceRecipeSpec {
+            id: format!("{}_coupling_{}", parsed.id, coupling.id),
+            inputs: vec![
+                RecipeInputSpec {
+                    property: located_resource_key(
+                        &parsed.namespace,
+                        &coupling.source_location,
+                        &coupling.source_resource,
+                        "quantity",
+                    ),
+                    role: SubFieldRole::Amount,
+                    unit_cost: coupling.source_unit_cost,
+                    host_entity: Some(coupling.source_location.clone()),
+                    host_span_token: None,
+                },
+                RecipeInputSpec {
+                    property: located_resource_key(
+                        &parsed.namespace,
+                        &coupling.pressure_location,
+                        &coupling.pressure_resource,
+                        "presence",
+                    ),
+                    role: SubFieldRole::Amount,
+                    unit_cost: coupling.pressure_unit_cost,
+                    host_entity: Some(coupling.pressure_location.clone()),
+                    host_span_token: None,
+                },
+                RecipeInputSpec {
+                    property: owner_resource_key(
+                        &parsed.namespace,
+                        &coupling.weight_owner,
+                        &coupling.weight_resource,
+                        "stockpile",
+                    ),
+                    role: SubFieldRole::Amount,
+                    unit_cost: coupling.weight_unit_cost,
+                    host_entity: Some(coupling.weight_owner.clone()),
+                    host_span_token: None,
+                },
+            ],
+            target: located_resource_key(
+                &parsed.namespace,
+                &coupling.sink_location,
+                &coupling.sink_resource,
+                "quantity",
+            ),
+            target_role: SubFieldRole::Amount,
+            target_host_entity: Some(coupling.sink_location.clone()),
+            target_host_span_token: None,
+            output_coefficient: coupling.output_coefficient,
+            order_band: coupling.order_band,
+            throttle_hint_max_per_tick: 1,
+        }
+    }));
 
     let transfers = parsed
         .stockpile_silos
@@ -1107,6 +1464,7 @@ fn lower_field_economy(parsed: ParsedFieldEconomy) -> Result<FieldEconomyLowerin
         id: parsed.id,
         namespace: parsed.namespace,
         production_buildings: parsed.production_buildings,
+        flow_couplings: parsed.flow_couplings,
         stockpile_silos: parsed.stockpile_silos,
         field_resource_quantities: parsed.field_resource_quantities,
         disruption_presences: parsed.disruption_presences,
@@ -1136,7 +1494,10 @@ fn resource_property(namespace: &str, resource: &str, suffix: &str) -> PropertyS
         name: format!("{resource}_{suffix}"),
         display_name: format!("{resource} {suffix}"),
         description: "field economy resource surface".into(),
-        sub_fields: Vec::new(),
+        // Keep the standard 3-lane width so authored weight_profile column indices
+        // stay stable, but leave Amount Unbounded and ungoverned so production /
+        // disruption can accrete above 1.0 under ordinary ticks.
+        sub_fields: field_economy_resource_subfields(),
     }
 }
 
@@ -1165,8 +1526,55 @@ fn presence_property(namespace: &str, location: &str, resource: &str, id: &str) 
         name: format!("{location}_{resource}_presence"),
         display_name: format!("{location} {resource} presence"),
         description: format!("field economy disruption presence authored by `{id}`"),
-        sub_fields: Vec::new(),
+        sub_fields: field_economy_resource_subfields(),
     }
+}
+
+fn field_economy_resource_subfields() -> Vec<SubFieldSpec> {
+    vec![
+        SubFieldSpec {
+            role: SubFieldRole::Amount,
+            width: 1,
+            clamp: ClampBehavior::Unbounded,
+            velocity_max: None,
+            default: 0.0,
+            display_name: "amount".into(),
+            display_range: None,
+            governed_by: None,
+            reduction_override: None,
+            soft_aggregate_guard: None,
+            accumulator_spec: None,
+        },
+        SubFieldSpec {
+            role: SubFieldRole::Velocity,
+            width: 1,
+            clamp: ClampBehavior::Bounded {
+                min: -1.0,
+                max: 1.0,
+            },
+            velocity_max: None,
+            default: 0.0,
+            display_name: "velocity".into(),
+            display_range: None,
+            governed_by: None,
+            reduction_override: None,
+            soft_aggregate_guard: None,
+            accumulator_spec: None,
+        },
+        SubFieldSpec {
+            role: SubFieldRole::Intensity,
+            width: 1,
+            clamp: ClampBehavior::Bounded { min: 0.0, max: 1.0 },
+            velocity_max: None,
+            default: 0.0,
+            display_name: "intensity".into(),
+            display_range: Some((0.0, 1.0)),
+            governed_by: None,
+            reduction_override: None,
+            soft_aggregate_guard: None,
+            accumulator_spec: None,
+        },
+    ]
 }
 
 fn resource_key(namespace: &str, resource: &str, suffix: &str) -> PropertyKey {
@@ -1302,7 +1710,7 @@ fn find_node<'a>(node: &'a HydratedScenarioNode, id: &str) -> Option<&'a Hydrate
 }
 
 fn validate_positive_amount(value: f32, field: &str, span: &RawSpan) -> Result<(), HydrateError> {
-    if value > 0.0 {
+    if value.is_finite() && value > 0.0 {
         return Ok(());
     }
     Err(HydrateError::new_spanned(

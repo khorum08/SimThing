@@ -983,6 +983,16 @@ impl WorldGpuState {
                 input_slots,
                 input_cols,
                 unit_cost_bits,
+                encoded_ops_fingerprint: gpu_ops.iter().fold(
+                    0xcbf2_9ce4_8422_2325u64,
+                    |mut hash, op| {
+                        for byte in bytemuck::bytes_of(op) {
+                            hash ^= u64::from(*byte);
+                            hash = hash.wrapping_mul(0x0000_0100_0000_01b3);
+                        }
+                        hash
+                    },
+                ),
             };
             runtime.upload_transfer_ops(&self.ctx, &gpu_ops, plan.n_bands, signature)?;
         }

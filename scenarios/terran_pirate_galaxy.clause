@@ -131,11 +131,11 @@ scenario = terran_pirate_galaxy {
         }
     }
 
-    # 12.8 — canonical TP field economy (12.6 grammar only; DATA, not code).
+    # 12.8/12.10 — canonical TP field economy (generic grammar only; DATA, not code).
     # Terran: minerals field -> shipyard factory -> hulls (ship-construction need).
-    # Pirate: disruption emitters + raid/disruption-need weight profile.
-    # Owner policy overlays weight expansion/manufacturing vs disruption.
-    # Production output coefficients: HORIZON-ENTRY(2026-07-16) — not authored here.
+    # Pirate: disruption emitters + authored local-flow coupling + disruption-need profile.
+    # Owner policy overlays are the paired weight axis for 12.10 OVL divergence.
+    # Production output coefficients consume HORIZON-ENTRY(2026-07-16).
     field_economy = tp_economy {
         namespace = "tp_economy"
         field_resource_quantity = shipyard_minerals {
@@ -146,7 +146,7 @@ scenario = terran_pirate_galaxy {
         production_building = shipyard_factory {
             location = "terran_shipyard"
             input = { resource = "minerals" amount = 5 }
-            output = { resource = "hulls" }
+            output = { resource = "hulls" coefficient = 2.0 }
             throttle_hint_max_per_tick = 4
         }
         stockpile_silo = terran_minerals {
@@ -159,6 +159,11 @@ scenario = terran_pirate_galaxy {
             resource = "expansion_weight"
             current = 0.02
         }
+        stockpile_silo = pirate_disruption_weight {
+            owner = "pirate"
+            resource = "disruption_weight"
+            current = 2
+        }
         disruption_presence = pirate_raid_presence {
             location = "pirate_outpost"
             resource = "disruption"
@@ -166,6 +171,14 @@ scenario = terran_pirate_galaxy {
             threshold = 3
             direction = Rising
             event_kind = 71
+        }
+        flow_coupling = pirate_raid_suppresses_shipyard {
+            source = { location = "terran_shipyard" resource = "hulls" unit_cost = 1.0 }
+            pressure = { location = "pirate_outpost" resource = "disruption" unit_cost = 1.0 }
+            weight = { owner = "pirate" resource = "disruption_weight" unit_cost = 1.0 }
+            sink = { location = "terran_shipyard" resource = "disrupted_hulls" }
+            output_coefficient = 1.0
+            order_band = 3
         }
         owner_policy_overlay = terran_expansion_policy {
             owner = "terran"
@@ -187,13 +200,20 @@ scenario = terran_pirate_galaxy {
             input = { input_col = 0 weight_col = 10 }
             output_col = 12
         }
-        need_binding = terran_expansion_need {
-            profile = "expansion-need"
+        weight_profile = terran_manufacturing_need {
+            profile = "manufacturing-need"
+            input = { input_col = 2 weight_col = 13 }
+            output_col = 14
+        }
+        # 12.10 construction need: sealed crossings from produced hulls (not RF-5 minerals).
+        # RF-5 expansion/minerals regressions keep event_kind 91 via test source variants.
+        need_binding = terran_manufacturing_need {
+            profile = "manufacturing-need"
             participant = "terran"
             arena = "studio_recursive_owner_flow"
             input = {
                 entity = "terran_shipyard"
-                property = "tp_economy::terran_shipyard_minerals_quantity"
+                property = "tp_economy::terran_shipyard_hulls_quantity"
                 role = Amount
             }
             weight = {
@@ -201,13 +221,10 @@ scenario = terran_pirate_galaxy {
                 property = "tp_economy::terran_expansion_weight_stockpile"
                 role = Amount
             }
-            threshold = 1.0
-            event_kind = 91
-        }
-        weight_profile = terran_manufacturing_need {
-            profile = "manufacturing-need"
-            input = { input_col = 2 weight_col = 13 }
-            output_col = 14
+            # Above RF-5's minerals threshold (1.0): high weight crosses from hull
+            # accretion; low-weight paired authoring stays below.
+            threshold = 5.0
+            event_kind = 92
         }
         weight_profile = pirate_disruption_need {
             profile = "disruption-need"

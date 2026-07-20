@@ -41,6 +41,91 @@ fn canonical_source() -> String {
         .expect("read canonical clause")
 }
 
+/// RF-5 graduated expansion/minerals regression source: same Clause grammar, restore
+/// the minerals need_binding (event_kind 91) while leaving 12.10 manufacturing as profile-only.
+fn rf5_expansion_minerals_source(base: &str) -> String {
+    const START: &str = "need_binding = terran_manufacturing_need";
+    const END: &str = "weight_profile = pirate_disruption_need";
+    let start = base
+        .find(START)
+        .expect("canonical must author manufacturing/hulls construction need_binding");
+    let end = base[start..]
+        .find(END)
+        .map(|rel| start + rel)
+        .expect("pirate disruption weight_profile follows construction need_binding");
+    let mut out = String::with_capacity(base.len() + 64);
+    out.push_str(&base[..start]);
+    out.push_str(
+        r#"need_binding = terran_expansion_need {
+            profile = "expansion-need"
+            participant = "terran"
+            arena = "studio_recursive_owner_flow"
+            input = {
+                entity = "terran_shipyard"
+                property = "tp_economy::terran_shipyard_minerals_quantity"
+                role = Amount
+            }
+            weight = {
+                entity = "terran"
+                property = "tp_economy::terran_expansion_weight_stockpile"
+                role = Amount
+            }
+            threshold = 1.0
+            event_kind = 91
+        }
+        "#,
+    );
+    out.push_str(&base[end..]);
+    out
+}
+
+fn coefficient_neutralized_source(base: &str) -> String {
+    base.replacen("coefficient = 2.0", "coefficient = 0.0", 1)
+}
+
+/// Coefficient-neutralized authoring with disruption presence seeded below its Rising
+/// threshold so unrelated event_kind 71 must fire while construction 92 cannot.
+fn construction_gauge_falsifier_source(base: &str) -> String {
+    let neutralized = coefficient_neutralized_source(base);
+    let with_low_disruption = neutralized.replacen(
+        "amount = 8\n            threshold = 3\n            direction = Rising\n            event_kind = 71",
+        "amount = 1\n            threshold = 3\n            direction = Rising\n            event_kind = 71",
+        1,
+    );
+    assert!(
+        with_low_disruption.contains("coefficient = 0.0"),
+        "falsifier source must neutralize production coefficient"
+    );
+    assert!(
+        with_low_disruption.contains("amount = 1"),
+        "falsifier source must seed disruption below Rising threshold"
+    );
+    with_low_disruption
+}
+
+fn sealed_threshold_event_kinds(sim: &mut simthing_driver::SimSession) -> Vec<u32> {
+    sim.state
+        .accumulator_runtime
+        .as_mut()
+        .and_then(|runtime| runtime.readback_threshold_events(&sim.state.ctx).ok())
+        .map(|events| events.into_iter().map(|event| event.event_kind()).collect())
+        .unwrap_or_default()
+}
+
+fn coupling_removed_source(base: &str) -> String {
+    const COUPLING: &str = r#"        flow_coupling = pirate_raid_suppresses_shipyard {
+            source = { location = "terran_shipyard" resource = "hulls" unit_cost = 1.0 }
+            pressure = { location = "pirate_outpost" resource = "disruption" unit_cost = 1.0 }
+            weight = { owner = "pirate" resource = "disruption_weight" unit_cost = 1.0 }
+            sink = { location = "terran_shipyard" resource = "disrupted_hulls" }
+            output_coefficient = 1.0
+            order_band = 3
+        }
+"#;
+    assert!(base.contains(COUPLING), "canonical must author the coupling block");
+    base.replacen(COUPLING, "", 1)
+}
+
 fn hydrate_canonical_source(source: &str) -> Result<HydratedScenarioPack, String> {
     let document = parse_raw_document(source.as_bytes()).map_err(|e| e.to_string())?;
     let source_base = repo_root().join("scenarios");
@@ -351,7 +436,7 @@ fn canonical_recursive_rf_bites_with_real_owner_aggregate_and_runtime_balance_ne
 /// and sealed FIELD_POLICY outcome through the production Studio path.
 #[test]
 fn canonical_tp_generic_need_binding_live_weight_controls_need_and_field_policy() {
-    let high_source = canonical_source();
+    let high_source = rf5_expansion_minerals_source(&canonical_source());
     assert_eq!(high_source.matches("current = 0.02").count(), 1);
     let low_source = high_source.replacen("current = 0.02", "current = 0.005", 1);
 
@@ -409,7 +494,7 @@ fn canonical_tp_generic_need_binding_live_weight_controls_need_and_field_policy(
 /// degrades to an empty/neutral binding.
 #[test]
 fn canonical_tp_need_binding_removed_or_misbound_fails_closed() {
-    let source = canonical_source();
+    let source = rf5_expansion_minerals_source(&canonical_source());
     let missing_profile = source.replacen(
         "weight_profile = terran_expansion_need",
         "weight_profile = terran_expansion_need_removed",
@@ -444,6 +529,375 @@ fn canonical_tp_need_binding_removed_or_misbound_fails_closed() {
     );
 }
 
+#[derive(Debug)]
+struct EmergentTensionObservation {
+    production_open: f32,
+    production_after: f32,
+    disruption_open: f32,
+    disruption_after: f32,
+    suppression_open: f32,
+    suppression_after: f32,
+    construction_crossings: u32,
+    production_path: String,
+}
+
+fn run_emergent_tension_variant(source: &str, ticks: u64) -> EmergentTensionObservation {
+    // Clause-source only — no post-hydration recipe/registry surgery.
+    let pack = hydrate_canonical_source(source).expect("hydrate policy authoring");
+    let studio = studio_from_pack(&pack);
+    let mut bridge = open_field_bridge(&studio);
+    let sim = bridge.sim_session().expect("attached");
+    let shipyard = sim
+        .scenario
+        .install_targets
+        .get("terran_shipyard")
+        .and_then(|ids| ids.first().copied())
+        .expect("terran_shipyard host");
+    let outpost = sim
+        .scenario
+        .install_targets
+        .get("pirate_outpost")
+        .and_then(|ids| ids.first().copied())
+        .expect("pirate_outpost host");
+    let session_root = studio
+        .authored_live_profile
+        .as_ref()
+        .and_then(|p| p.recursive_rf.as_ref())
+        .map(|rf| rf.session_root_id)
+        .expect("recursive RF session root");
+    assert_ne!(
+        shipyard, outpost,
+        "local coupling requires distinct location hosts"
+    );
+    assert_ne!(
+        shipyard, session_root,
+        "shipyard must not collapse onto GameSession root"
+    );
+    assert_ne!(
+        outpost, session_root,
+        "pirate_outpost must not collapse onto GameSession root"
+    );
+    let binding = sim
+        .spec_state
+        .resolved_need_bindings
+        .first()
+        .expect("construction need binding");
+    assert_eq!(binding.id, "terran_manufacturing_need");
+    assert_eq!(binding.profile, "manufacturing-need");
+    assert_eq!(binding.event_kind, 92);
+
+    let production_open = amount_at_install_target(
+        sim,
+        "terran_shipyard",
+        "tp_economy",
+        "terran_shipyard_hulls_quantity",
+    );
+    let disruption_open = amount_at_install_target(
+        sim,
+        "pirate_outpost",
+        "tp_economy",
+        "pirate_outpost_disruption_presence",
+    );
+    let suppression_open = amount_at_install_target_or_zero(
+        sim,
+        "terran_shipyard",
+        "tp_economy",
+        "terran_shipyard_disrupted_hulls_quantity",
+    );
+    for _ in 0..ticks {
+        bridge
+            .consume_scheduled_ticks(1)
+            .expect("ordinary canonical tick");
+    }
+    let readout = bridge.readout();
+    let construction_crossings = readout.cumulative_construction_crossings as u32;
+    let sim = bridge.sim_session().expect("attached");
+    println!(
+        "TP12_10_DIAG after_hulls={} crossings={} need={:?} weights={:?} thr={:?} last_result={:?} suppression={} hosts={{shipyard:{:?},outpost:{:?},root:{:?}}}",
+        amount_at_install_target(
+            sim,
+            "terran_shipyard",
+            "tp_economy",
+            "terran_shipyard_hulls_quantity",
+        ),
+        construction_crossings,
+        readout.recursive_rf.need_live_value,
+        readout.recursive_rf.need_weight_values,
+        readout.recursive_rf.need_threshold,
+        readout.recursive_rf.need_threshold_result,
+        amount_at_install_target(
+            sim,
+            "terran_shipyard",
+            "tp_economy",
+            "terran_shipyard_disrupted_hulls_quantity",
+        ),
+        shipyard,
+        outpost,
+        session_root,
+    );
+    EmergentTensionObservation {
+        production_open,
+        production_after: amount_at_install_target(
+            sim,
+            "terran_shipyard",
+            "tp_economy",
+            "terran_shipyard_hulls_quantity",
+        ),
+        disruption_open,
+        disruption_after: amount_at_install_target(
+            sim,
+            "pirate_outpost",
+            "tp_economy",
+            "pirate_outpost_disruption_presence",
+        ),
+        suppression_open,
+        suppression_after: amount_at_install_target_or_zero(
+            sim,
+            "terran_shipyard",
+            "tp_economy",
+            "terran_shipyard_disrupted_hulls_quantity",
+        ),
+        construction_crossings,
+        production_path: readout.production_path.to_string(),
+    }
+}
+
+/// TP-12.10 load-bearing proof: ordinary open_from_spec + step_once, same binary/path,
+/// paired authorings differ only in owner-policy weight silo scalars.
+#[test]
+fn canonical_policy_weights_diverge_live_production_disruption_and_construction() {
+    const TICKS: u64 = 8;
+    const MIN_PRODUCTION_DIVERGENCE: f32 = 6.0;
+    const MIN_SUPPRESSION_DIVERGENCE: f32 = 6.0;
+    const MIN_CROSSING_DIVERGENCE: u32 = 1;
+
+    // Construction need reads produced hulls (event_kind 92); policy-weight scalars
+    // alone must drive the construction-crossing divergence.
+    let productive_source = canonical_source();
+    assert!(
+        productive_source.contains("coefficient = 2.0"),
+        "canonical must author the HORIZON production output coefficient"
+    );
+    assert!(
+        productive_source.contains("flow_coupling = pirate_raid_suppresses_shipyard"),
+        "canonical must author the generic disruption coupling"
+    );
+    assert!(
+        productive_source.contains("terran_shipyard_hulls_quantity")
+            && productive_source.contains("event_kind = 92"),
+        "canonical must author manufacturing/hulls construction need_binding"
+    );
+    assert_eq!(productive_source.matches("current = 0.02").count(), 1);
+    assert!(
+        productive_source.contains("resource = \"disruption_weight\"")
+            && productive_source.contains("current = 2"),
+        "canonical must author the pirate disruption-weight silo"
+    );
+    // Paired authoring: swap expansion vs disruption weight scalars only.
+    let tension_source = productive_source
+        .replacen("current = 0.02", "current = __TERRAN_LOW__", 1)
+        .replacen(
+            "stockpile_silo = pirate_disruption_weight {\n            owner = \"pirate\"\n            resource = \"disruption_weight\"\n            current = 2\n        }",
+            "stockpile_silo = pirate_disruption_weight {\n            owner = \"pirate\"\n            resource = \"disruption_weight\"\n            current = 40\n        }",
+            1,
+        )
+        .replacen("current = __TERRAN_LOW__", "current = 0.005", 1);
+
+    let productive = run_emergent_tension_variant(&productive_source, TICKS);
+    let tension = run_emergent_tension_variant(&tension_source, TICKS);
+    assert_eq!(productive.production_path, tension.production_path);
+    assert_eq!(
+        productive.production_path,
+        "simthing_driver::SimSession::open_from_spec + step_once"
+    );
+    let production_divergence = productive.production_after - tension.production_after;
+    let suppression_divergence = tension.suppression_after - productive.suppression_after;
+    let crossing_divergence = productive
+        .construction_crossings
+        .abs_diff(tension.construction_crossings);
+    println!(
+        "TP12_10_PAIRED ticks={TICKS} path={} productive={{production:{} disruption:{} suppression:{} crossings:{}}} tension={{production:{} disruption:{} suppression:{} crossings:{}}} divergence={{production:{} suppression:{} crossings:{}}}",
+        productive.production_path,
+        productive.production_after,
+        productive.disruption_after,
+        productive.suppression_after,
+        productive.construction_crossings,
+        tension.production_after,
+        tension.disruption_after,
+        tension.suppression_after,
+        tension.construction_crossings,
+        production_divergence,
+        suppression_divergence,
+        crossing_divergence,
+    );
+    assert!(
+        productive.production_after > productive.production_open,
+        "authored coefficient must accrete production under ordinary ticks: open={} after={}",
+        productive.production_open,
+        productive.production_after
+    );
+    assert!(
+        productive.suppression_after > productive.suppression_open
+            || tension.suppression_after > tension.suppression_open,
+        "authored coupling must suppress local flow into the sink"
+    );
+    assert!(
+        production_divergence >= MIN_PRODUCTION_DIVERGENCE,
+        "predeclared production divergence did not bite: {production_divergence}"
+    );
+    assert!(
+        suppression_divergence >= MIN_SUPPRESSION_DIVERGENCE,
+        "predeclared suppression/disruption-coupling divergence did not bite: {suppression_divergence}"
+    );
+    assert!(
+        crossing_divergence >= MIN_CROSSING_DIVERGENCE,
+        "predeclared construction crossing divergence did not bite: {crossing_divergence}"
+    );
+    assert!(
+        tension.suppression_after > productive.suppression_after,
+        "stronger Pirate weight must produce more coupled suppression"
+    );
+
+    let coupling_removed =
+        run_emergent_tension_variant(&coupling_removed_source(&productive_source), TICKS);
+    assert!(
+        coupling_removed.disruption_after >= coupling_removed.disruption_open
+            && coupling_removed.disruption_after > productive.disruption_after,
+        "removing only coupling must preserve disruption (no conjunctive drain): open={} decoupled={} coupled={}",
+        coupling_removed.disruption_open,
+        coupling_removed.disruption_after,
+        productive.disruption_after
+    );
+    assert_eq!(coupling_removed.suppression_after, 0.0);
+    assert!(
+        coupling_removed.production_after > productive.production_after,
+        "removing coupling must remove local-flow suppression: coupled={} decoupled={}",
+        productive.production_after,
+        coupling_removed.production_after
+    );
+    println!(
+        "TP12_10_COUPLING_NEGATIVE ticks={TICKS} production={} disruption={} suppression={}",
+        coupling_removed.production_after,
+        coupling_removed.disruption_after,
+        coupling_removed.suppression_after,
+    );
+
+    let coefficient_removed =
+        run_emergent_tension_variant(&coefficient_neutralized_source(&productive_source), TICKS);
+    assert!(
+        coefficient_removed.production_after <= coefficient_removed.production_open + 1e-3
+            && coefficient_removed.production_after + MIN_PRODUCTION_DIVERGENCE
+                < productive.production_after,
+        "coefficient=0 must yield no production accretion: removed={} full={}",
+        coefficient_removed.production_after,
+        productive.production_after
+    );
+    assert_eq!(
+        coefficient_removed.construction_crossings, 0,
+        "coefficient=0 must yield no construction crossings: got {}",
+        coefficient_removed.construction_crossings
+    );
+    println!(
+        "TP12_10_COEFFICIENT_NEGATIVE ticks={TICKS} production_open={} production_after={} crossings={}",
+        coefficient_removed.production_open,
+        coefficient_removed.production_after,
+        coefficient_removed.construction_crossings,
+    );
+}
+
+/// catches: production gauge binding to disrupted_hulls via substring, or unrelated
+/// presence thresholds (event_kind 71) inflating the construction crossing gauge.
+#[test]
+fn studio_macro_gauges_use_exact_property_and_construction_event_kind() {
+    let source = construction_gauge_falsifier_source(&canonical_source());
+    let pack = hydrate_canonical_source(&source).expect("hydrate gauge falsifier");
+    let studio = studio_from_pack(&pack);
+    let mut bridge = open_field_bridge(&studio);
+    assert_eq!(
+        bridge.readout().recursive_rf.need_profile_id.as_deref(),
+        Some("terran_manufacturing_need")
+    );
+    assert_eq!(
+        bridge.readout().recursive_rf.need_profile_kind.as_deref(),
+        Some("manufacturing-need")
+    );
+    assert_eq!(bridge.readout().recursive_rf.need_threshold, Some(5.0));
+
+    let mut sealed_71 = 0u32;
+    let mut sealed_92 = 0u32;
+    for _ in 0..12 {
+        bridge
+            .consume_scheduled_ticks(1)
+            .expect("ordinary falsifier tick");
+        let kinds = {
+            let sim = bridge.sim_session_mut().expect("attached");
+            sealed_threshold_event_kinds(sim)
+        };
+        sealed_71 += kinds.iter().filter(|&&k| k == 71).count() as u32;
+        sealed_92 += kinds.iter().filter(|&&k| k == 92).count() as u32;
+        let readout = bridge.readout();
+        assert_eq!(
+            readout.recursive_rf.need_threshold_event_count, 0,
+            "construction gauge must stay zero while only unrelated thresholds may fire: kinds={kinds:?}"
+        );
+        assert_eq!(
+            readout.cumulative_construction_crossings, 0,
+            "cumulative construction crossings must stay zero under coefficient=0"
+        );
+    }
+
+    let readout = bridge.readout();
+    assert!(
+        sealed_71 > 0,
+        "sealed readback must prove unrelated disruption event_kind 71 fired"
+    );
+    assert_eq!(
+        sealed_92, 0,
+        "construction event_kind 92 must not fire under coefficient=0"
+    );
+    assert!(
+        readout.cumulative_decision_events > 0,
+        "global/other threshold evidence must be nonzero when event 71 fires"
+    );
+    assert!(
+        readout.last_decision_event_count > 0
+            || readout.cumulative_decision_events >= sealed_71 as u64,
+        "bridge decision-event counters must reflect sealed unrelated fires"
+    );
+    assert_eq!(readout.recursive_rf.need_threshold_event_count, 0);
+    assert_eq!(readout.cumulative_construction_crossings, 0);
+
+    let hulls = readout
+        .field_accretion_samples
+        .iter()
+        .rev()
+        .find(|s| s.property_key == "tp_economy::terran_shipyard_hulls_quantity");
+    let disrupted = readout
+        .field_accretion_samples
+        .iter()
+        .rev()
+        .find(|s| s.property_key == "tp_economy::terran_shipyard_disrupted_hulls_quantity");
+    assert!(
+        hulls.is_some(),
+        "exact hulls sample must be present: {:?}",
+        readout
+            .field_accretion_samples
+            .iter()
+            .map(|s| &s.property_key)
+            .collect::<Vec<_>>()
+    );
+    if let (Some(h), Some(d)) = (hulls, disrupted) {
+        assert_ne!(
+            h.property_key, d.property_key,
+            "production and suppression gauges must stay distinct"
+        );
+    }
+    println!(
+        "TP12_10_GAUGE_FALSIFIER sealed_71={sealed_71} sealed_92={sealed_92} cum_decision={} cum_construction={}",
+        readout.cumulative_decision_events, readout.cumulative_construction_crossings
+    );
+}
+
 fn amount_col(sim: &simthing_driver::SimSession, namespace: &str, name: &str) -> usize {
     let reg = &sim.proto.registry;
     let pid = reg
@@ -463,6 +917,19 @@ fn amount_at_install_target(
     namespace: &str,
     name: &str,
 ) -> f32 {
+    amount_at_install_target_or_zero(sim, target_id, namespace, name)
+}
+
+/// Coupling-removed Clause variants omit the sink property entirely.
+fn amount_at_install_target_or_zero(
+    sim: &simthing_driver::SimSession,
+    target_id: &str,
+    namespace: &str,
+    name: &str,
+) -> f32 {
+    if sim.proto.registry.id_of(namespace, name).is_none() {
+        return 0.0;
+    }
     let thing_id = sim
         .scenario
         .install_targets

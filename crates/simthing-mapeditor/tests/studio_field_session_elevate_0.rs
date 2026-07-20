@@ -52,7 +52,7 @@ scenario = foundry_valley {
         production_building = ridge_foundry {
             location = "ridge"
             input = { resource = "ore" amount = 2 }
-            output = { resource = "tools" }
+            output = { resource = "tools" coefficient = 1.0 }
             throttle_hint_max_per_tick = 3
         }
         stockpile_silo = guild_ore {
@@ -523,7 +523,7 @@ scenario = foundry_valley {{
         production_building = ridge_foundry {{
             location = "ridge"
             input = {{ resource = "ore" amount = 2 }}
-            output = {{ resource = "tools" }}
+            output = {{ resource = "tools" coefficient = 1.0 }}
             throttle_hint_max_per_tick = 3
         }}
         stockpile_silo = guild_ore {{
