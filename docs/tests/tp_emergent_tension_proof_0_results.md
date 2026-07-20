@@ -1,7 +1,7 @@
 # TP-EMERGENT-TENSION-PROOF-0 — evidence
 
 ## Status
-**DA-GRADUATED / merged [#1418](https://github.com/khorum08/SimThing/pull/1418) @ `ced8ce2d`** — DA graduation comment `5022399857` (audited tip `8763f30d`); Owner OVL PASS/CLOSED `5018879166`.
+**DA-GRADUATED / merged [#1418](https://github.com/khorum08/SimThing/pull/1418) @ `ced8ce2d`** — DA graduation comment id_5022399857 (audited tip `8763f30d`); Owner OVL PASS/CLOSED id_5018879166.
 
 ## Claim
 
