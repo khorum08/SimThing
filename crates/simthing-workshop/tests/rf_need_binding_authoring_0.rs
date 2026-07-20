@@ -951,7 +951,7 @@ scenario = foundry_valley {
         flow_coupling = smoke_suppresses_tools {
             source = { location = "ridge" resource = "tools" unit_cost = 1 }
             pressure = { location = "ridge" resource = "smoke" unit_cost = 1 }
-            weight = { owner = "guild" resource = "weight_token" unit_cost = 1 }
+            weight = { owner = "union" resource = "weight_token" unit_cost = 1 }
             sink = { location = "ridge" resource = "spoiled_tools" }
             output_coefficient = 1
             order_band = 1
