@@ -17,7 +17,7 @@ Canonical multi-tick GPU runs on `scenarios/terran_pirate_galaxy.clause` through
 | Remand 2 / freeze source head | `ccf31b38701f0697de08f2159671161cd54a09ee` |
 | Remand 3 Fork A fixture correction | `a14c63ccc7b6bb162fb9a2fa3b8a6db6ec2c7659` |
 | evidence_sha (this bind) | `3376333291344fd901d36ef660883071983c5920` |
-| final_head_sha | `FINAL_HEAD_SHA_PENDING` |
+| final_head_sha | `2909c25873997620c563fc8f8a8a60e608d620dc` |
 
 Frozen executable SHA-256 (unchanged): `66aa9ca8468ab8b18e046b145161747c9502eb09ceb3756625654d5f2e5e99c0`  
 Owner OVL PASS/CLOSED: comment `5018879166`
