@@ -210,6 +210,9 @@ pub struct HydratedScenarioNode {
     pub properties: Vec<PropertySpec>,
     pub overlays: Vec<OverlaySpec>,
     pub children: Vec<HydratedScenarioNode>,
+    /// Optional STEAD enrollment onto an ownership_volume anchor cell.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ownership_volume: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -545,7 +548,7 @@ pub fn hydrate_scenario_with_source_base(
         ));
     }
 
-    let grid_metadata = build_grid_metadata(
+    let mut grid_metadata = build_grid_metadata(
         &locations,
         raw_links,
         embedded_placements,
@@ -567,6 +570,7 @@ pub fn hydrate_scenario_with_source_base(
         properties: Vec::new(),
         overlays: Vec::new(),
         children: locations,
+        ownership_volume: None,
     };
 
     let mut properties = Vec::new();
@@ -638,6 +642,12 @@ pub fn hydrate_scenario_with_source_base(
     let ownership_volumes = finalize_ownership_volumes(
         &ownership_volume_drafts,
         &owners,
+        embedded_static_galaxy_scenarios.first(),
+    )?;
+    enroll_locations_at_ownership_volume_anchors(
+        &mut grid_metadata,
+        &root_node,
+        &ownership_volumes,
         embedded_static_galaxy_scenarios.first(),
     )?;
     let planet_surface_payloads = finalize_planet_surface_payloads(planet_surface_payload_drafts)?;
@@ -2157,6 +2167,72 @@ fn select_ownership_systems(
     ))
 }
 
+/// Rebind authored locations that declare `ownership_volume` onto that volume's
+/// anchor cell in the embedded lattice (exact authored volume id → anchor).
+fn enroll_locations_at_ownership_volume_anchors(
+    grid_metadata: &mut HydratedScenarioGridMetadata,
+    root_node: &HydratedScenarioNode,
+    ownership_volumes: &[HydratedOwnershipVolume],
+    embedded: Option<&HydratedEmbeddedStaticGalaxyScenario>,
+) -> Result<(), HydrateError> {
+    let Some(embedded) = embedded else {
+        for child in &root_node.children {
+            if child.ownership_volume.is_some() {
+                return Err(HydrateError::new(format!(
+                    "location `{}` declares ownership_volume but no embedded static galaxy is present",
+                    child.id
+                )));
+            }
+        }
+        return Ok(());
+    };
+    let volume_by_id: BTreeMap<&str, &HydratedOwnershipVolume> = ownership_volumes
+        .iter()
+        .map(|volume| (volume.id.as_str(), volume))
+        .collect();
+    let system_id_by_rc: BTreeMap<(u32, u32), u32> = embedded
+        .source_structural_grid
+        .placements
+        .iter()
+        .map(|placement| ((placement.row, placement.col), placement.system_id))
+        .collect();
+
+    for child in &root_node.children {
+        let Some(volume_id) = child.ownership_volume.as_deref() else {
+            continue;
+        };
+        let volume = volume_by_id.get(volume_id).ok_or_else(|| {
+            HydrateError::new(format!(
+                "location `{}` references unknown ownership_volume `{volume_id}`",
+                child.id
+            ))
+        })?;
+        if !system_id_by_rc.contains_key(&(volume.anchor_row, volume.anchor_col)) {
+            return Err(HydrateError::new(format!(
+                "ownership_volume `{volume_id}` anchor ({}, {}) is not an embedded placement",
+                volume.anchor_row, volume.anchor_col
+            )));
+        }
+        let mut found = false;
+        for placement in &mut grid_metadata.placements {
+            if placement.target_id == child.id || placement.location_id == child.id {
+                placement.row = volume.anchor_row;
+                placement.col = volume.anchor_col;
+                found = true;
+            }
+        }
+        if !found {
+            grid_metadata.placements.push(HydratedScenarioGridPlacement {
+                location_id: child.id.clone(),
+                target_id: child.id.clone(),
+                row: volume.anchor_row,
+                col: volume.anchor_col,
+            });
+        }
+    }
+    Ok(())
+}
+
 fn sorted_placements(
     placements: &[HydratedScenarioGridPlacement],
 ) -> Vec<HydratedScenarioGridPlacement> {
@@ -2369,6 +2445,7 @@ fn parse_node(
     let mut properties = Vec::new();
     let mut overlays = Vec::new();
     let mut children = Vec::new();
+    let mut ownership_volume = None;
 
     for field in &block.properties {
         reject_forbidden_node_field(field)?;
@@ -2392,6 +2469,9 @@ fn parse_node(
                     ));
                 }
                 kind = Some(parse_kind(field)?);
+            }
+            "ownership_volume" => {
+                ownership_volume = Some(read_scalar_text(field, "ownership_volume")?);
             }
             "properties" => {
                 properties = parse_properties_block(field, seen_property_ids)?;
@@ -2445,6 +2525,7 @@ fn parse_node(
         properties,
         overlays,
         children,
+        ownership_volume,
     })
 }
 

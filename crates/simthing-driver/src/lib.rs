@@ -33,6 +33,7 @@ pub mod gated_rates;
 pub mod need_binding;
 pub mod gpu_measure_0080_0;
 pub mod gradient_follow_0080_2;
+pub mod hosted_property_observation;
 pub mod install;
 pub mod loaded_scenario_recursive_rf_runtime_compile;
 pub mod loaded_scenario_runtime_report_chain_compile;
@@ -499,6 +500,11 @@ pub use resource_economy_boundary_schedule::{
 };
 pub use resource_economy_burn_in::{
     run_emission_burn_in, run_transfer_recipe_burn_in, ResourceEconomyBurnInReport,
+};
+pub use hosted_property_observation::{
+    observe_hosted_property_cell, system_id_by_host_raw_from_structural_authority,
+    GpuValuesSnapshot, HostedPropertyLocus, HostedPropertyObservationError,
+    LiveDisruptionAuthorityReadback,
 };
 pub use resource_economy_compile::{
     find_property_owner, materialize_resource_economy_registrations,

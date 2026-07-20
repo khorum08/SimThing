@@ -10,27 +10,31 @@
 //! - **field-bearing** (elevation): `SimSession::open_from_spec` + authored profile
 //!   (GameModeSpec / install_targets / session root from clause hydrate)
 
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::path::PathBuf;
 
 use simthing_core::{
     AccumulatorRole, AccumulatorSpec, BalanceSpec, ClampBehavior, DimensionRegistry, LogTier,
     OverlayKind, SimProperty, SimThing, SimThingId, SubFieldRole, SubFieldSpec,
 };
-use simthing_driver::{resolve_node_columns, Scenario, SessionError, SimSession, StepOnceOutcome};
+use simthing_driver::{
+    resolve_node_columns, system_id_by_host_raw_from_structural_authority, GpuValuesSnapshot,
+    LiveDisruptionAuthorityReadback, Scenario, SessionError, SimSession, StepOnceOutcome,
+};
 use simthing_gpu::SlotAllocator;
 use simthing_spec::{
-    compile_property, game_session_child, game_session_owners, owner_entity_id,
-    planet_child_rf_participant_inputs, validate_scenario_links,
-    validate_stead_mapping_consistency, ArenaSpec, BaseFlowDirectionSpec, BaseFlowObligationSpec,
-    ExplicitParticipantSpec, FissionPolicySpec, GameModeSpec, InstallTargetSpec, PropertyKey,
-    PropertySpec, ResourceEconomyOptInMode, ResourceFlowExecutionProfile, ResourceFlowOptInMode,
-    ResourceFlowSpec, SimThingScenarioSpec,
+    compile_property, disruption_readout_snapshot_with_readback, game_session_child,
+    game_session_owners, owner_entity_id, planet_child_rf_participant_inputs,
+    validate_scenario_links, validate_stead_mapping_consistency, ArenaSpec,
+    BaseFlowDirectionSpec, BaseFlowObligationSpec, ExplicitParticipantSpec, FissionPolicySpec,
+    GameModeSpec, InstallTargetSpec, PropertyKey, PropertySpec, ResourceEconomyOptInMode,
+    ResourceFlowExecutionProfile, ResourceFlowOptInMode, ResourceFlowSpec, SimThingScenarioSpec,
 };
 
 use crate::session::{StudioScenarioSummary, StudioSession};
 use crate::studio_disruption_readout::{
-    studio_disruption_readout_map_from_session, StudioDisruptionReadoutMap,
+    studio_disruption_readout_map_from_session, studio_disruption_readout_map_from_snapshot,
+    StudioDisruptionReadoutMap,
 };
 use crate::studio_fleet_presence::{
     studio_fleet_presence_map_from_session, StudioFleetPresenceMap,
@@ -134,6 +138,9 @@ pub struct StudioAuthoredLiveProfile {
     /// Canonical recursive Arena RF projection, when the authority tree exposes
     /// an admitted Owner plus at least three authored producer children.
     pub recursive_rf: Option<StudioRecursiveRfProfile>,
+    /// Authored location id → generated system id from STEAD (row,col) join to
+    /// the embedded lattice / rebound Spec placements.
+    pub location_system_ids: BTreeMap<String, u32>,
 }
 
 /// Stable labels/identities for the live RF locus shown by Studio and asserted by CI.
@@ -163,6 +170,7 @@ impl StudioAuthoredLiveProfile {
             session_root,
             field_economy_present,
             recursive_rf: None,
+            location_system_ids: BTreeMap::new(),
         }
     }
 
@@ -325,6 +333,10 @@ pub struct StudioLiveSessionBridge {
     /// Exact RF aggregate/Balance cells resolved from the installed Arena registry.
     recursive_rf_locus: Option<RecursiveRfSampleLocus>,
     recursive_rf_readout: StudioRecursiveRfReadout,
+    /// Spec authority retained for live disruption snapshot refresh.
+    readout_authority: Option<SimThingScenarioSpec>,
+    /// Authored location → system_id join captured at open from the live profile.
+    location_system_ids: BTreeMap<String, u32>,
 }
 
 /// Exact GPU locus for one economy emission sample (authoritative materialization).
@@ -373,6 +385,8 @@ impl StudioLiveSessionBridge {
             sample_loci: Vec::new(),
             recursive_rf_locus: None,
             recursive_rf_readout: StudioRecursiveRfReadout::default(),
+            readout_authority: None,
+            location_system_ids: BTreeMap::new(),
         }
     }
 
@@ -432,6 +446,8 @@ impl StudioLiveSessionBridge {
         self.sample_loci.clear();
         self.recursive_rf_locus = None;
         self.recursive_rf_readout = StudioRecursiveRfReadout::default();
+        self.readout_authority = None;
+        self.location_system_ids.clear();
     }
 
     /// Resolve which path to open given preference + optional authored profile.
@@ -476,6 +492,9 @@ impl StudioLiveSessionBridge {
         self.sample_loci.clear();
         self.recursive_rf_locus = None;
         self.recursive_rf_readout = StudioRecursiveRfReadout::default();
+        self.readout_authority = None;
+        self.location_system_ids.clear();
+        self.disruption_readout = StudioDisruptionReadoutMap::default();
 
         let path = Self::resolve_session_path(
             self.path_preference,
@@ -485,8 +504,6 @@ impl StudioLiveSessionBridge {
 
         let fleet_presence = studio_fleet_presence_map_from_session(studio)
             .map_err(|e| StudioLiveSessionBridgeError::FleetPresenceReadback(e.to_string()))?;
-        let disruption_readout = studio_disruption_readout_map_from_session(studio)
-            .map_err(|e| StudioLiveSessionBridgeError::DisruptionReadback(e.to_string()))?;
 
         let open_result = match path {
             StudioLiveSessionPath::StructuralShell => {
@@ -510,10 +527,14 @@ impl StudioLiveSessionBridge {
                         // Bind telemetry to admitted emission source_slot/source_col. Values
                         // become live only through ordinary production GPU execution.
                         self.sample_loci = emission_sample_loci_from_session(&sim);
+                        let snapshot = GpuValuesSnapshot::from_session(&sim);
                         // Tick-0 sample: open-time field state before the first step_once so
                         // the OVL table can show open→live deltas (not only post-tick plateaus).
-                        self.field_accretion_samples =
-                            collect_field_accretion_sample(&sim, &self.sample_loci, 0);
+                        self.field_accretion_samples = collect_field_accretion_sample_from_snapshot(
+                            &snapshot,
+                            &self.sample_loci,
+                            0,
+                        );
                         if let Some(rf_profile) = profile.recursive_rf.as_ref() {
                             let (locus, readout) = recursive_rf_locus_from_session(
                                 &sim, rf_profile,
@@ -539,7 +560,20 @@ impl StudioLiveSessionBridge {
                 self.open_links_valid = Some(studio.scenario_summary.links_valid);
                 self.open_source_path = studio.scenario_path.clone();
                 self.fleet_presence = fleet_presence;
-                self.disruption_readout = disruption_readout;
+                self.readout_authority = Some(studio.scenario_authority.clone());
+                self.location_system_ids = studio
+                    .authored_live_profile
+                    .as_ref()
+                    .map(|profile| profile.location_system_ids.clone())
+                    .unwrap_or_default();
+                if path == StudioLiveSessionPath::FieldBearing {
+                    self.refresh_live_disruption_readout()?;
+                } else {
+                    self.disruption_readout = studio_disruption_readout_map_from_session(studio)
+                        .map_err(|e| {
+                            StudioLiveSessionBridgeError::DisruptionReadback(e.to_string())
+                        })?;
+                }
                 Ok(())
             }
             Err(SessionError::Gpu(e)) => {
@@ -619,10 +653,15 @@ impl StudioLiveSessionBridge {
                         .cumulative_decision_events
                         .saturating_add(threshold_event_count as u64);
                     if field_bearing {
-                        let mut sample = {
+                        let snapshot = {
                             let sim = self.sim.as_ref().expect("sim present");
-                            collect_field_accretion_sample(sim, &sample_loci, self.executed_ticks)
+                            GpuValuesSnapshot::from_session(sim)
                         };
+                        let mut sample = collect_field_accretion_sample_from_snapshot(
+                            &snapshot,
+                            &sample_loci,
+                            self.executed_ticks,
+                        );
                         if let Some(first) = sample.first_mut() {
                             first.decision_events = threshold_event_count;
                         } else if threshold_event_count > 0 {
@@ -656,6 +695,7 @@ impl StudioLiveSessionBridge {
                             self.recursive_rf_readout.cumulative_construction_crossings =
                                 self.cumulative_construction_crossings;
                         }
+                        self.refresh_live_disruption_readout_from_snapshot(&snapshot)?;
                     }
                 }
                 Err(e) => {
@@ -746,6 +786,69 @@ impl StudioLiveSessionBridge {
     /// Access live session for headless multi-tick proofs (field samples).
     pub fn sim_session(&self) -> Option<&SimSession> {
         self.sim.as_ref()
+    }
+
+    /// Refresh `disruption_readout` from one coherent live GPU snapshot.
+    fn refresh_live_disruption_readout(&mut self) -> Result<(), StudioLiveSessionBridgeError> {
+        let Some(sim) = self.sim.as_ref() else {
+            return Ok(());
+        };
+        let snapshot = GpuValuesSnapshot::from_session(sim);
+        self.refresh_live_disruption_readout_from_snapshot(&snapshot)
+    }
+
+    fn refresh_live_disruption_readout_from_snapshot(
+        &mut self,
+        snapshot: &GpuValuesSnapshot,
+    ) -> Result<(), StudioLiveSessionBridgeError> {
+        let Some(authority) = self.readout_authority.as_ref() else {
+            return Ok(());
+        };
+        let Some(sim) = self.sim.as_ref() else {
+            return Ok(());
+        };
+        let loci = sim
+            .spec_state
+            .resource_economy_registry
+            .as_ref()
+            .map(|economy| economy.observation_loci.as_slice())
+            .unwrap_or(&[]);
+        if loci.is_empty() {
+            self.disruption_readout = studio_disruption_readout_map_from_snapshot(
+                &simthing_spec::disruption_readout_snapshot(authority).map_err(|e| {
+                    StudioLiveSessionBridgeError::DisruptionReadback(e.to_string())
+                })?,
+            );
+            return Ok(());
+        }
+        let system_id_by_host_raw = system_id_by_host_raw_from_structural_authority(
+            &authority.structural_grid.placements,
+            &sim.scenario.install_targets,
+            loci,
+            &self.location_system_ids,
+        )
+        .map_err(|e| StudioLiveSessionBridgeError::DisruptionReadback(e.to_string()))?;
+        if system_id_by_host_raw.is_empty() {
+            // Loci exist but no structural join is available on this authority
+            // (e.g. seed Spec over a synthetic field profile) — fail-soft Absent.
+            self.disruption_readout = studio_disruption_readout_map_from_snapshot(
+                &simthing_spec::disruption_readout_snapshot(authority).map_err(|e| {
+                    StudioLiveSessionBridgeError::DisruptionReadback(e.to_string())
+                })?,
+            );
+            return Ok(());
+        }
+        let readback = LiveDisruptionAuthorityReadback {
+            snapshot,
+            registry: &sim.proto.registry,
+            allocator: &sim.proto.allocator,
+            loci,
+            system_id_by_host_raw: &system_id_by_host_raw,
+        };
+        let typed = disruption_readout_snapshot_with_readback(authority, &readback)
+            .map_err(|e| StudioLiveSessionBridgeError::DisruptionReadback(e.to_string()))?;
+        self.disruption_readout = studio_disruption_readout_map_from_snapshot(&typed);
+        Ok(())
     }
 
     pub fn sim_session_mut(&mut self) -> Option<&mut SimSession> {
@@ -1019,8 +1122,17 @@ fn collect_field_accretion_sample(
     sample_loci: &[FieldAccretionSampleLocus],
     tick_index: u64,
 ) -> Vec<StudioFieldAccretionSample> {
-    let values = sim.state.read_values();
-    let n_dims = sim.state.n_dims as usize;
+    let snapshot = GpuValuesSnapshot::from_session(sim);
+    collect_field_accretion_sample_from_snapshot(&snapshot, sample_loci, tick_index)
+}
+
+fn collect_field_accretion_sample_from_snapshot(
+    snapshot: &GpuValuesSnapshot,
+    sample_loci: &[FieldAccretionSampleLocus],
+    tick_index: u64,
+) -> Vec<StudioFieldAccretionSample> {
+    let values = snapshot.values();
+    let n_dims = snapshot.n_dims();
     let mut samples = Vec::new();
     for locus in sample_loci {
         let idx = locus.source_slot as usize * n_dims + locus.source_col as usize;
@@ -1535,6 +1647,7 @@ fn compose_recursive_rf_profile(
 pub fn authored_live_profile_from_pack(
     pack: &simthing_clausething::HydratedScenarioPack,
 ) -> StudioAuthoredLiveProfile {
+    let location_system_ids = location_system_ids_from_pack(pack);
     if let Some((root, install_targets, game_mode, recursive_rf)) =
         compose_recursive_rf_profile(pack)
     {
@@ -1545,6 +1658,7 @@ pub fn authored_live_profile_from_pack(
             pack.field_economy.is_some(),
         );
         profile.recursive_rf = Some(recursive_rf);
+        profile.location_system_ids = location_system_ids;
         return profile;
     }
 
@@ -1559,12 +1673,35 @@ pub fn authored_live_profile_from_pack(
             .entry(owner.owner_key.clone())
             .or_insert_with(|| vec![root.id]);
     }
-    StudioAuthoredLiveProfile::from_hydrated_pack(
+    let mut profile = StudioAuthoredLiveProfile::from_hydrated_pack(
         pack.game_mode.clone(),
         install_targets,
         root,
         pack.field_economy.is_some(),
-    )
+    );
+    profile.location_system_ids = location_system_ids;
+    profile
+}
+
+/// Join hydrate grid placements to embedded lattice system ids by exact (row,col).
+fn location_system_ids_from_pack(
+    pack: &simthing_clausething::HydratedScenarioPack,
+) -> BTreeMap<String, u32> {
+    let mut by_rc: BTreeMap<(u32, u32), u32> = BTreeMap::new();
+    if let Some(embedded) = pack.embedded_static_galaxy_scenarios.first() {
+        for placement in &embedded.source_structural_grid.placements {
+            by_rc.insert((placement.row, placement.col), placement.system_id);
+        }
+    }
+    let mut out = BTreeMap::new();
+    for placement in &pack.grid_metadata.placements {
+        let Some(&system_id) = by_rc.get(&(placement.row, placement.col)) else {
+            continue;
+        };
+        out.insert(placement.location_id.clone(), system_id);
+        out.insert(placement.target_id.clone(), system_id);
+    }
+    out
 }
 
 #[cfg(test)]

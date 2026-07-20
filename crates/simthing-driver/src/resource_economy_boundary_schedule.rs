@@ -114,6 +114,7 @@ mod tests {
                     ..Default::default()
                 },
             },
+            observation_loci: vec![],
             generation: 1,
         }
     }
