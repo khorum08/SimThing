@@ -29,6 +29,7 @@ pub mod studio_admission_report;
 pub mod studio_antialiasing;
 pub mod studio_config;
 pub mod studio_disruption_readout;
+pub mod studio_disruption_select_screen;
 pub mod studio_frame_phase_gpu_telemetry;
 pub mod studio_fleet_presence;
 pub mod studio_frosted_glass;
@@ -156,6 +157,11 @@ pub use studio_config::{
 pub use studio_disruption_readout::{
     studio_disruption_readout_map_from_session, studio_disruption_readout_map_from_snapshot,
     StudioDisruptionReadoutMap,
+};
+pub use studio_disruption_select_screen::{
+    compose_disruption_blur_scale, compose_disruption_rgb, disruption_select_screen_from_raw,
+    quantize_blur_scale_milli, quantize_disruption_milli, quantize_red_fraction_milli,
+    raw_disruption_for_system, selected_disruption_select_screen, DisruptionSelectScreen,
 };
 pub use studio_frame_phase_gpu_telemetry::{
     apply_diagnostic_minimal_render, capture_normal_render_snapshot, format_present_mode_label,

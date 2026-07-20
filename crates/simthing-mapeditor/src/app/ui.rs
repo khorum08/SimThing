@@ -2212,6 +2212,49 @@ fn draw_studio_ops_telemetry(ctx: &egui::Context, state: &mut StudioAppState) {
                     ui.end_row();
                 });
 
+            // [OVL] STUDIO-DISRUPTION-SELECT-SCREEN-0 — selected-star disruption screen.
+            ui.separator();
+            ui.heading("Selected-star disruption screen");
+            let screen = crate::selected_disruption_select_screen(
+                state.selection.selected_system_id,
+                &bridge.disruption_readout,
+            );
+            egui::Grid::new("studio_ops_disruption_select_screen")
+                .num_columns(2)
+                .striped(true)
+                .show(ui, |ui| {
+                    ui.label("selected system id");
+                    ui.label(
+                        state
+                            .selection
+                            .selected_system_id
+                            .map(|id| id.to_string())
+                            .unwrap_or_else(|| "--".into()),
+                    );
+                    ui.end_row();
+                    ui.label("raw disruption");
+                    ui.label(if state.selection.selected_system_id.is_some() {
+                        format!("{:.3}", screen.raw_disruption)
+                    } else {
+                        "--".into()
+                    });
+                    ui.end_row();
+                    ui.label("blur scale");
+                    ui.label(if state.selection.selected_system_id.is_some() {
+                        format!("{:.3}", screen.blur_scale)
+                    } else {
+                        "--".into()
+                    });
+                    ui.end_row();
+                    ui.label("red fraction");
+                    ui.label(if state.selection.selected_system_id.is_some() {
+                        format!("{:.3}", screen.red_fraction)
+                    } else {
+                        "--".into()
+                    });
+                    ui.end_row();
+                });
+
             // [OVL] TP-EMERGENT-TENSION-PROOF-0 — read-only per-owner macro gauges
             // projected from exact admitted property keys (no substring / Studio mutation).
             ui.separator();
