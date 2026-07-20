@@ -16,9 +16,9 @@ Canonical multi-tick GPU runs on `scenarios/terran_pirate_galaxy.clause` through
 | Remand 2 reviewed head | `4c4170f682ce0f15e9d057c4bb543149ce31372b` |
 | Remand 2 load-bearing tested_code_sha (falsifier tip) | `7f6560e038123d74332fdd26f8c20d412cdebcc8` |
 | evidence_sha | `deac6f51edd9a974f40b0c052d7ed1056b6de8bd` |
-| final_head_sha | `FINAL_HEAD_SHA_PENDING` |
+| final_head_sha | `59ae931f3afd1d673d72c1a99c4c4c0ee87b8c51` |
 
-PR clearance identity: `tested_code_sha` and `current_pr_head_sha` are set to `final_head_sha` so `/clearance` emits `body_sha: fresh`. Load-bearing GPU falsifier tip remains `7f6560e038123d74332fdd26f8c20d412cdebcc8`.
+Load-bearing GPU falsifier tip remains `7f6560e038123d74332fdd26f8c20d412cdebcc8`. PR `tested_code_sha` / `current_pr_head_sha` equal the pushed tip for `body_sha: fresh`.
 
 ## Load-bearing proof
 
