@@ -11,20 +11,23 @@ use simthing_mapeditor::{
     owned_star_highlight_system_ids, quantize_blur_scale_milli, quantize_disruption_milli,
     quantize_red_fraction_milli, selected_disruption_select_screen,
     star_visual_per_star_should_write, star_visual_selected_for_owned_set, star_visuals_should_sync,
-    DisruptionSelectScreen, StarFalloffSettingsKey, StarVisualAppliedKey, StarVisualSyncKey,
-    StudioDisruptionReadoutMap,
+    studio_disruption_readout_map_from_snapshot, DisruptionSelectScreen, StarFalloffSettingsKey,
+    StarVisualAppliedKey, StarVisualSyncKey, StudioDisruptionReadoutMap,
 };
 use simthing_spec::{
-    apply_scenario_metadata_to_root, apply_star_system_display_name_metadata, make_galaxy_map,
-    make_owner_entity, scenario_metadata_string_value, structural_property_value_u32,
-    DisruptionReadoutRecord, SimThingScenarioGrid, SimThingScenarioProvenance,
-    SimThingScenarioSpec, SimThingStructuralGridFrame, SimThingStructuralGridPlacement,
+    apply_gridcell_role_metadata, apply_scenario_metadata_to_root,
+    apply_star_system_display_name_metadata, disruption_readout_snapshot_with_readback,
+    make_galaxy_map, make_owner_entity, scenario_metadata_string_value,
+    structural_property_value_u32, DisruptionAuthorityReadback, DisruptionAuthorityReadbackError,
+    SimThingScenarioGrid, SimThingScenarioProvenance, SimThingScenarioSpec,
+    SimThingStructuralGridFrame, SimThingStructuralGridPlacement, GALAXY_GRIDCELL_ROLE_STAR_SYSTEM,
     OWNER_FLOW_OWNER_REF_PROPERTY_ID, SCENARIO_GENERATED_SYSTEM_ID_PROPERTY_ID,
     SCENARIO_STRUCTURAL_COL_PROPERTY_ID, SCENARIO_STRUCTURAL_ROW_PROPERTY_ID,
 };
 
 fn cell_owned(system_id: u32, col: u32, owner: &str, name: &str) -> (SimThing, u32) {
     let mut cell = SimThing::new(SimThingKind::Location, 0);
+    apply_gridcell_role_metadata(&mut cell, GALAXY_GRIDCELL_ROLE_STAR_SYSTEM);
     cell.add_property(
         SCENARIO_GENERATED_SYSTEM_ID_PROPERTY_ID,
         structural_property_value_u32(system_id),
@@ -48,6 +51,7 @@ fn cell_owned(system_id: u32, col: u32, owner: &str, name: &str) -> (SimThing, u
 
 fn cell_unowned(system_id: u32, col: u32, name: &str) -> (SimThing, u32) {
     let mut cell = SimThing::new(SimThingKind::Location, 0);
+    apply_gridcell_role_metadata(&mut cell, GALAXY_GRIDCELL_ROLE_STAR_SYSTEM);
     cell.add_property(
         SCENARIO_GENERATED_SYSTEM_ID_PROPERTY_ID,
         structural_property_value_u32(system_id),
@@ -131,15 +135,25 @@ fn multi_owner_spec() -> SimThingScenarioSpec {
     spec
 }
 
-fn admitted_readout(rows: &[(u32, f32)]) -> StudioDisruptionReadoutMap {
-    let by_system_id: BTreeMap<u32, DisruptionReadoutRecord> = rows
-        .iter()
-        .map(|&(system_id, raw)| (system_id, DisruptionReadoutRecord::new(system_id, raw)))
-        .collect();
-    StudioDisruptionReadoutMap {
-        system_count: by_system_id.len(),
-        by_system_id,
+#[derive(Debug)]
+struct FixedReadback {
+    values: BTreeMap<u32, f32>,
+}
+
+impl DisruptionAuthorityReadback for FixedReadback {
+    fn max_disruption_accreted_by_system_id(
+        &self,
+    ) -> Result<Option<BTreeMap<u32, f32>>, DisruptionAuthorityReadbackError> {
+        Ok(Some(self.values.clone()))
     }
+}
+
+/// Build the typed admitted map through the landed 12.2 snapshot path (no Spec test constructors).
+fn admitted_readout(spec: &SimThingScenarioSpec, rows: &[(u32, f32)]) -> StudioDisruptionReadoutMap {
+    let values = rows.iter().copied().collect();
+    let snapshot = disruption_readout_snapshot_with_readback(spec, &FixedReadback { values })
+        .expect("admitted disruption snapshot");
+    studio_disruption_readout_map_from_snapshot(&snapshot)
 }
 
 fn sample_sync_key(selected: Option<u32>, disruption_raw: f32) -> StarVisualSyncKey {
@@ -210,12 +224,15 @@ fn disruption_select_screen_deselect_restores_identity() {
 #[test]
 fn disruption_select_screen_applies_to_owned_neutral_and_hostile_selection() {
     let spec = multi_owner_spec();
-    // Distinct admitted 12.2 values per ownership class.
-    let readout = admitted_readout(&[
-        (1, 50.0),  // owned foundry
-        (3, 100.0), // hostile union
-        (4, 25.0),  // neutral unowned
-    ]);
+    // Distinct admitted 12.2 values per ownership class via authority readback → snapshot → map.
+    let readout = admitted_readout(
+        &spec,
+        &[
+            (1, 50.0),  // owned foundry
+            (3, 100.0), // hostile union
+            (4, 25.0),  // neutral unowned
+        ],
+    );
     let selection_cases = [
         (1u32, 50.0, 2.0, 0.5),
         (3u32, 100.0, 5.0, 1.0),
@@ -277,7 +294,7 @@ fn disruption_select_screen_applies_to_owned_neutral_and_hostile_selection() {
 fn disruption_select_screen_coexists_with_11_6_owned_brighten() {
     let spec = multi_owner_spec();
     let selected = 1u32;
-    let readout = admitted_readout(&[(1, 100.0), (2, 100.0)]);
+    let readout = admitted_readout(&spec, &[(1, 100.0), (2, 100.0)]);
     let highlight = owned_star_highlight_system_ids(&spec, Some(selected));
     assert_eq!(
         highlight,
