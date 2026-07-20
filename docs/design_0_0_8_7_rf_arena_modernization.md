@@ -88,7 +88,10 @@ Hygiene disciplines govern PROOF (source loci cannot close an OVL or prove a flo
 (no side-channel writes) — never READ ACCESS. CPU-side consumer reads route through the one
 canonical generic read seam (hosted SimThingId + typed PropertyKey/role, role-pathway loci,
 coherent per-tick snapshots); observation never becomes CPU decision branching — decisions stay
-on-device threshold/band crossings. Born from the 12.3 stop: the 12.2→12.8 horizon seam was
+on-device threshold/band crossings. **The Consumer Law does NOT shield tests from lifecycle:**
+it governs production read access, never test/evidence retention — almost no test outlives its
+workplan/track (default-delete at closeout stands) unless deleting it breaks production code;
+"STEAD might consume this someday" is not a lifecycle exemption. Born from the 12.3 stop: the 12.2→12.8 horizon seam was
 dropped and the disruption map sat walled at 0.0 while macro disruption ran ~8446.
 **Emergence-first (the prize law).** Every phase carries a 12.10-style emergence falsifier:
 authored-parameter changes must produce qualitatively different, UNSCRIPTED macro outcomes; a
