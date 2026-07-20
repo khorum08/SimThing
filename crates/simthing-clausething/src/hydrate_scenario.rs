@@ -210,6 +210,13 @@ pub struct HydratedScenarioNode {
     pub properties: Vec<PropertySpec>,
     pub overlays: Vec<OverlaySpec>,
     pub children: Vec<HydratedScenarioNode>,
+    /// Optional structural enrollment onto an embedded lattice cell (`rowR_colC`).
+    /// Reuses combat-arena `system_target` vocabulary (DA ruling `5027107657`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub system_target: Option<String>,
+    /// Clause token for `system_target` (spanned admission diagnostics).
+    #[serde(skip)]
+    pub system_target_span_token: Option<usize>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -567,6 +574,8 @@ pub fn hydrate_scenario_with_source_base(
         properties: Vec::new(),
         overlays: Vec::new(),
         children: locations,
+        system_target: None,
+        system_target_span_token: None,
     };
 
     let mut properties = Vec::new();
@@ -751,6 +760,7 @@ pub fn hydrate_scenario_with_source_base(
             game_mode.resource_flow = Some(flow);
         }
         field_economy = Some(lowering.hydrated);
+        require_system_target_for_live_spatial_hosts(&root_node, field_economy.as_ref())?;
     }
     dedupe_property_specs_by_name(&mut game_mode.properties);
     Ok(HydratedScenarioPack {
@@ -2369,6 +2379,8 @@ fn parse_node(
     let mut properties = Vec::new();
     let mut overlays = Vec::new();
     let mut children = Vec::new();
+    let mut system_target = None;
+    let mut system_target_span_token = None;
 
     for field in &block.properties {
         reject_forbidden_node_field(field)?;
@@ -2392,6 +2404,16 @@ fn parse_node(
                     ));
                 }
                 kind = Some(parse_kind(field)?);
+            }
+            "system_target" => {
+                if system_target.is_some() {
+                    return Err(HydrateError::new_spanned(
+                        "duplicate `system_target` on location",
+                        Some(field.key.span.clone()),
+                    ));
+                }
+                system_target = Some(read_scalar_text(field, "system_target")?);
+                system_target_span_token = Some(field.key.span.token_index);
             }
             "properties" => {
                 properties = parse_properties_block(field, seen_property_ids)?;
@@ -2445,6 +2467,8 @@ fn parse_node(
         properties,
         overlays,
         children,
+        system_target,
+        system_target_span_token,
     })
 }
 
@@ -2688,6 +2712,11 @@ fn build_grid_metadata(
     let mut location_ids = BTreeSet::new();
     let mut placements = embedded_placements;
     let mut placement_by_id = BTreeMap::new();
+    let mut claimed_cells: BTreeMap<(u32, u32), String> = BTreeMap::new();
+    let embedded_cells: BTreeSet<(u32, u32)> = placements
+        .iter()
+        .map(|placement| (placement.row, placement.col))
+        .collect();
     for placement in &placements {
         location_ids.insert(placement.target_id.clone());
         placement_by_id.insert(placement.target_id.clone(), (placement.row, placement.col));
@@ -2695,12 +2724,29 @@ fn build_grid_metadata(
 
     for (index, location) in locations.iter().enumerate() {
         location_ids.insert(location.id.clone());
-        let index = index as u32;
+        let (row, col) = if let Some(target) = location.system_target.as_deref() {
+            let (row, col) = resolve_location_system_target(
+                &location.id,
+                target,
+                location.system_target_span_token,
+                &embedded_cells,
+            )?;
+            if let Some(previous) = claimed_cells.insert((row, col), location.id.clone()) {
+                return Err(HydrateError::new(format!(
+                    "location `{}` system_target `{target}` is already claimed by location `{previous}`",
+                    location.id
+                )));
+            }
+            (row, col)
+        } else {
+            let index = index as u32;
+            (index / grid_size, index % grid_size)
+        };
         let placement = HydratedScenarioGridPlacement {
             location_id: location.id.clone(),
             target_id: location.id.clone(),
-            row: index / grid_size,
-            col: index % grid_size,
+            row,
+            col,
         };
         placement_by_id.insert(location.id.clone(), (placement.row, placement.col));
         placements.push(placement);
@@ -2757,6 +2803,84 @@ fn build_grid_metadata(
         placements,
         links,
     })
+}
+
+/// Resolve `location.system_target` (`rowR_colC` or `ns::rowR_colC`) onto an embedded lattice cell.
+fn resolve_location_system_target(
+    location_id: &str,
+    target: &str,
+    span_token: Option<usize>,
+    embedded_cells: &BTreeSet<(u32, u32)>,
+) -> Result<(u32, u32), HydrateError> {
+    let local = target
+        .rsplit_once("::")
+        .map(|(_, local)| local)
+        .unwrap_or(target);
+    let Some((row, col)) = parse_row_col_system_target(local) else {
+        return Err(HydrateError::new(format!(
+            "location `{location_id}` system_target `{target}` is not a rowR_colC lattice id (span_token={span_token:?})"
+        )));
+    };
+    if embedded_cells.is_empty() {
+        return Err(HydrateError::new(format!(
+            "location `{location_id}` system_target `{target}` requires an embedded static_galaxy_scenario (span_token={span_token:?})"
+        )));
+    }
+    if !embedded_cells.contains(&(row, col)) {
+        return Err(HydrateError::new(format!(
+            "location `{location_id}` system_target `{target}` is not an embedded placement (span_token={span_token:?})"
+        )));
+    }
+    Ok((row, col))
+}
+
+fn parse_row_col_system_target(local: &str) -> Option<(u32, u32)> {
+    let rest = local.strip_prefix("row")?;
+    let (row_text, col_text) = rest.split_once("_col")?;
+    let row = row_text.parse().ok()?;
+    let col = col_text.parse().ok()?;
+    Some((row, col))
+}
+
+/// Field-economy Location hosts are live spatial loci and must author `system_target`.
+fn require_system_target_for_live_spatial_hosts(
+    root_node: &HydratedScenarioNode,
+    field_economy: Option<&HydratedFieldEconomy>,
+) -> Result<(), HydrateError> {
+    let Some(field_economy) = field_economy else {
+        return Ok(());
+    };
+    let mut hosts = BTreeSet::new();
+    for building in &field_economy.production_buildings {
+        hosts.insert(building.location.as_str());
+    }
+    for coupling in &field_economy.flow_couplings {
+        hosts.insert(coupling.source_location.as_str());
+        hosts.insert(coupling.pressure_location.as_str());
+        hosts.insert(coupling.sink_location.as_str());
+    }
+    for quantity in &field_economy.field_resource_quantities {
+        hosts.insert(quantity.location.as_str());
+    }
+    for presence in &field_economy.disruption_presences {
+        hosts.insert(presence.location.as_str());
+    }
+    for host in hosts {
+        let Some(location) = root_node
+            .children
+            .iter()
+            .find(|child| child.id == host && child.kind == SimThingKind::Location)
+        else {
+            continue;
+        };
+        if location.system_target.is_none() {
+            return Err(HydrateError::new(format!(
+                "location `{host}` hosts a live spatial field-economy locus but has no system_target enrollment (span_token={:?})",
+                location.system_target_span_token
+            )));
+        }
+    }
+    Ok(())
 }
 
 fn namespace_id(namespace: &str, id: &str) -> String {

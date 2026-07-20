@@ -45,9 +45,11 @@ scenario = terran_pirate_galaxy {
     # production/disruption fields without hand-editing sibling JSON.
     location = terran_shipyard {
         display_name = "Terran Shipyard"
+        system_target = "row199_col80"
     }
     location = pirate_outpost {
         display_name = "Pirate Outpost"
+        system_target = "row158_col110"
     }
 
     ownership_volume = terran_core {

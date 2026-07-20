@@ -32,11 +32,6 @@ impl GpuValuesSnapshot {
         }
     }
 
-    /// Test/oracle helper: build a coherent snapshot without a live session.
-    pub fn from_values_for_test(values: Vec<f32>, n_dims: usize) -> Self {
-        Self { values, n_dims }
-    }
-
     pub fn values(&self) -> &[f32] {
         &self.values
     }
@@ -219,4 +214,84 @@ pub fn system_id_by_host_raw_from_structural_authority(
         )));
     }
     Ok(out)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use simthing_core::{ClampBehavior, SubFieldSpec};
+    use simthing_spec::{compile_property, PropertySpec};
+
+    fn snapshot_from_values(values: Vec<f32>, n_dims: usize) -> GpuValuesSnapshot {
+        GpuValuesSnapshot { values, n_dims }
+    }
+
+    #[test]
+    fn two_loci_same_system_report_exact_max_via_live_readback() {
+        let mut registry = DimensionRegistry::new();
+        let property = PropertySpec {
+            id: "ns_p".into(),
+            namespace: "ns".into(),
+            name: "p".into(),
+            display_name: "p".into(),
+            description: "max".into(),
+            sub_fields: vec![SubFieldSpec {
+                role: SubFieldRole::Amount,
+                width: 1,
+                clamp: ClampBehavior::Unbounded,
+                velocity_max: None,
+                default: 0.0,
+                display_name: "amount".into(),
+                display_range: None,
+                governed_by: None,
+                reduction_override: None,
+                soft_aggregate_guard: None,
+                accumulator_spec: None,
+            }],
+        };
+        compile_property(&property, &mut registry).expect("compile");
+        let n_dims = registry.total_columns;
+        let host_a = SimThingId::from_session_raw(10);
+        let host_b = SimThingId::from_session_raw(11);
+        let mut allocator = SlotAllocator::new();
+        let slot_a = allocator.alloc(host_a);
+        let slot_b = allocator.alloc(host_b);
+        let mut values = vec![0.0f32; allocator.capacity() * n_dims];
+        let pid = registry.id_of("ns", "p").expect("pid");
+        let col = registry
+            .column_range(pid)
+            .col_for_role(&SubFieldRole::Amount, &registry.property(pid).layout)
+            .expect("col")
+            .raw();
+        values[usize::from(slot_a) * n_dims + col] = 3.0;
+        values[usize::from(slot_b) * n_dims + col] = 8.0;
+        let snapshot = snapshot_from_values(values, n_dims);
+        let loci = [
+            HostedPropertyLocus {
+                host_id: host_a,
+                host_entity: Some("a".into()),
+                property: PropertyKey::new("ns", "p"),
+                role: SubFieldRole::Amount,
+            },
+            HostedPropertyLocus {
+                host_id: host_b,
+                host_entity: Some("b".into()),
+                property: PropertyKey::new("ns", "p"),
+                role: SubFieldRole::Amount,
+            },
+        ];
+        let system_id_by_host_raw = BTreeMap::from([(10u32, 7u32), (11u32, 7u32)]);
+        let readback = LiveDisruptionAuthorityReadback {
+            snapshot: &snapshot,
+            registry: &registry,
+            allocator: &allocator,
+            loci: &loci,
+            system_id_by_host_raw: &system_id_by_host_raw,
+        };
+        let by_system = readback
+            .max_disruption_accreted_by_system_id()
+            .expect("ok")
+            .expect("Some");
+        assert_eq!(by_system.get(&7), Some(&8.0));
+    }
 }

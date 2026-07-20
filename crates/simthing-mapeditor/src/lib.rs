@@ -238,9 +238,8 @@ pub use studio_live_observe::{
     StudioLiveObservationSourceKind,
 };
 pub use studio_live_session_bridge::{
-    apply_live_bridge_reset_before_tick, attach_disruption_host_structural_placements,
-    authored_live_profile_from_pack, bridge_module_source_forbids_workshop_residue,
-    disruption_host_entities_from_pack, driver_scenario_field_bearing_from_profile,
+    apply_live_bridge_reset_before_tick, authored_live_profile_from_pack,
+    bridge_module_source_forbids_workshop_residue, driver_scenario_field_bearing_from_profile,
     driver_scenario_from_authority, field_bearing_game_mode,
     request_live_bridge_reset_after_session_replacement, revalidate_authority_stead,
     studio_summary_identity_eq, BridgeOpenIdentity, StudioAuthoredLiveProfile,

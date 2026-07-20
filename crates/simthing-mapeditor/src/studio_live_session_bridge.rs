@@ -30,7 +30,6 @@ use simthing_spec::{
     BaseFlowDirectionSpec, BaseFlowObligationSpec, ExplicitParticipantSpec, FissionPolicySpec,
     GameModeSpec, InstallTargetSpec, PropertyKey, PropertySpec, ResourceEconomyOptInMode,
     ResourceFlowExecutionProfile, ResourceFlowOptInMode, ResourceFlowSpec, SimThingScenarioSpec,
-    SimThingStructuralGridPlacement,
 };
 
 use crate::session::{StudioScenarioSummary, StudioSession};
@@ -1721,7 +1720,9 @@ fn disruption_observation_loci_from_pack(
         .collect()
 }
 
-/// Resolve typed disruption observation loci through install_targets (exact entity keys).
+/// Resolve typed disruption observation loci through install_targets.
+///
+/// Exact-one cardinality: zero or multiple hosts fail loud (no `.first()` selection).
 fn resolve_typed_disruption_observation_loci(
     typed: &[StudioDisruptionObservationLocus],
     install_targets: &HashMap<String, Vec<SimThingId>>,
@@ -1734,12 +1735,22 @@ fn resolve_typed_disruption_observation_loci(
                 locus.host_entity
             ))
         })?;
-        let host_id = hosts.first().copied().ok_or_else(|| {
-            StudioLiveSessionBridgeError::DisruptionReadback(format!(
-                "typed disruption locus host `{}` has empty install_targets",
-                locus.host_entity
-            ))
-        })?;
+        let host_id = match hosts.as_slice() {
+            [only] => *only,
+            [] => {
+                return Err(StudioLiveSessionBridgeError::DisruptionReadback(format!(
+                    "typed disruption locus host `{}` has zero install_targets hosts",
+                    locus.host_entity
+                )));
+            }
+            _ => {
+                return Err(StudioLiveSessionBridgeError::DisruptionReadback(format!(
+                    "typed disruption locus host `{}` has ambiguous install_targets ({} hosts)",
+                    locus.host_entity,
+                    hosts.len()
+                )));
+            }
+        };
         out.push(HostedPropertyLocus {
             host_id,
             host_entity: Some(locus.host_entity.clone()),
@@ -1748,66 +1759,6 @@ fn resolve_typed_disruption_observation_loci(
         });
     }
     Ok(out)
-}
-
-/// Test/CI helper: attach Spec placements whose `location_id`/`target_id` exactly match
-/// typed disruption host entities, joining each to an existing star `system_id`.
-///
-/// This uses the existing structural-placement authority surface only (no new Clause grammar).
-pub fn attach_disruption_host_structural_placements(
-    authority: &mut SimThingScenarioSpec,
-    host_entities: impl IntoIterator<Item = impl AsRef<str>>,
-) -> BTreeMap<String, u32> {
-    let hosts: Vec<String> = host_entities
-        .into_iter()
-        .map(|host| host.as_ref().to_string())
-        .collect();
-    let mut out = BTreeMap::new();
-    if hosts.is_empty() {
-        return out;
-    }
-    let systems: Vec<(u32, u32, u32)> = authority
-        .structural_grid
-        .placements
-        .iter()
-        .map(|placement| (placement.system_id, placement.row, placement.col))
-        .collect();
-    if systems.is_empty() {
-        return out;
-    }
-    for (index, host) in hosts.into_iter().enumerate() {
-        let (system_id, row, col) = systems[index % systems.len()];
-        authority
-            .structural_grid
-            .placements
-            .push(SimThingStructuralGridPlacement {
-                location_id: host.clone(),
-                target_id: host.clone(),
-                system_id,
-                row,
-                col,
-                // Synthetic placement id space — join is by location_id / host_entity.
-                simthing_id_raw: 900_000 + index as u32,
-            });
-        out.insert(host, system_id);
-    }
-    out
-}
-
-/// Host entity ids for typed disruption_presence rows in a hydrated pack.
-pub fn disruption_host_entities_from_pack(
-    pack: &simthing_clausething::HydratedScenarioPack,
-) -> Vec<String> {
-    pack.field_economy
-        .as_ref()
-        .map(|economy| {
-            economy
-                .disruption_presences
-                .iter()
-                .map(|presence| presence.location.clone())
-                .collect()
-        })
-        .unwrap_or_default()
 }
 
 /// Join hydrate grid placements to embedded lattice system ids by exact (row,col).
