@@ -953,7 +953,8 @@ fn last_tick_threshold_event_kinds(sim: &mut SimSession) -> Result<Vec<u32>, Str
         .map_err(|error| format!("sealed threshold event readback failed: {error}"))
 }
 
-/// Build telemetry loci from **materialized** emission registrations (slot/col authority).
+/// Build telemetry loci from **materialized** emission + recipe-target cells
+/// (slot/col authority only; read-only presentation sampling).
 fn emission_sample_loci_from_session(sim: &SimSession) -> Vec<FieldAccretionSampleLocus> {
     let Some(registry) = sim.spec_state.resource_economy_registry.as_ref() else {
         return Vec::new();
@@ -972,6 +973,19 @@ fn emission_sample_loci_from_session(sim: &SimSession) -> Vec<FieldAccretionSamp
             property_key,
             source_slot: emission.source_slot,
             source_col: emission.source_col,
+        });
+    }
+    for recipe in &registry.registrations.recipes {
+        let key = (recipe.target_slot.raw(), recipe.target_col.raw_u32());
+        if !seen.insert(key) {
+            continue;
+        }
+        let property_key = property_key_for_col(reg, recipe.target_col.raw_u32())
+            .unwrap_or_else(|| format!("col:{}", recipe.target_col.raw_u32()));
+        out.push(FieldAccretionSampleLocus {
+            property_key,
+            source_slot: recipe.target_slot.raw(),
+            source_col: recipe.target_col.raw_u32(),
         });
     }
     out

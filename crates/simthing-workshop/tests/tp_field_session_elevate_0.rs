@@ -444,6 +444,285 @@ fn canonical_tp_need_binding_removed_or_misbound_fails_closed() {
     );
 }
 
+#[derive(Debug)]
+struct EmergentTensionObservation {
+    production_open: f32,
+    production_after: f32,
+    disruption_open: f32,
+    disruption_after: f32,
+    suppression_open: f32,
+    suppression_after: f32,
+    construction_crossings: u32,
+    production_path: String,
+}
+
+#[derive(Clone, Copy, Debug)]
+enum EmergentTensionControl {
+    Full,
+    CouplingRemoved,
+    ProductionRecipeRemoved,
+}
+
+fn run_emergent_tension_variant(
+    source: &str,
+    ticks: u64,
+    control: EmergentTensionControl,
+) -> EmergentTensionObservation {
+    let mut pack = hydrate_canonical_source(source).expect("hydrate policy authoring");
+    match control {
+        EmergentTensionControl::Full => {}
+        EmergentTensionControl::CouplingRemoved => {
+            pack.game_mode
+                .resource_economy
+                .as_mut()
+                .expect("resource economy")
+                .recipes
+                .retain(|recipe| {
+                    recipe.id != "tp_economy_coupling_pirate_raid_suppresses_shipyard"
+                });
+        }
+        EmergentTensionControl::ProductionRecipeRemoved => {
+            pack.game_mode
+                .resource_economy
+                .as_mut()
+                .expect("resource economy")
+                .recipes
+                .retain(|recipe| recipe.id != "tp_economy_recipe_shipyard_factory");
+        }
+    }
+    // Drop presence threshold noise so sealed need crossings are the only
+    // FIELD_POLICY events the construction gauge accumulates.
+    if let Some(economy) = pack.game_mode.resource_economy.as_mut() {
+        economy.emit_on_threshold.clear();
+    }
+    let studio = studio_from_pack(&pack);
+    let mut bridge = open_field_bridge(&studio);
+    let sim = bridge.sim_session().expect("attached");
+    let production_open = amount_at_install_target(
+        sim,
+        "terran_shipyard",
+        "tp_economy",
+        "terran_shipyard_hulls_quantity",
+    );
+    let disruption_open = amount_at_install_target(
+        sim,
+        "pirate_outpost",
+        "tp_economy",
+        "pirate_outpost_disruption_presence",
+    );
+    let suppression_open = amount_at_install_target(
+        sim,
+        "terran_shipyard",
+        "tp_economy",
+        "terran_shipyard_disrupted_hulls_quantity",
+    );
+    // Rising construction crossings fire on the ingress tick only; the recursive
+    // RF readout exposes last-tick kinds, so accumulate sealed need events across
+    // ordinary step_once ticks (emit_on_threshold already cleared above).
+    let mut construction_crossings = 0u32;
+    for _ in 0..ticks {
+        bridge
+            .consume_scheduled_ticks(1)
+            .expect("ordinary canonical tick");
+        let tick_readout = bridge.readout();
+        construction_crossings = construction_crossings
+            .saturating_add(tick_readout.recursive_rf.need_threshold_event_count);
+    }
+    let readout = bridge.readout();
+    let sim = bridge.sim_session().expect("attached");
+    println!(
+        "TP12_10_DIAG control={control:?} after_hulls={} crossings={} need={:?} weights={:?} thr={:?} last_result={:?} suppression={}",
+        amount_at_install_target(
+            sim,
+            "terran_shipyard",
+            "tp_economy",
+            "terran_shipyard_hulls_quantity",
+        ),
+        construction_crossings,
+        readout.recursive_rf.need_live_value,
+        readout.recursive_rf.need_weight_values,
+        readout.recursive_rf.need_threshold,
+        readout.recursive_rf.need_threshold_result,
+        amount_at_install_target(
+            sim,
+            "terran_shipyard",
+            "tp_economy",
+            "terran_shipyard_disrupted_hulls_quantity",
+        ),
+    );
+    EmergentTensionObservation {
+        production_open,
+        production_after: amount_at_install_target(
+            sim,
+            "terran_shipyard",
+            "tp_economy",
+            "terran_shipyard_hulls_quantity",
+        ),
+        disruption_open,
+        disruption_after: amount_at_install_target(
+            sim,
+            "pirate_outpost",
+            "tp_economy",
+            "pirate_outpost_disruption_presence",
+        ),
+        suppression_open,
+        suppression_after: match control {
+            EmergentTensionControl::CouplingRemoved => 0.0,
+            _ => amount_at_install_target(
+                sim,
+                "terran_shipyard",
+                "tp_economy",
+                "terran_shipyard_disrupted_hulls_quantity",
+            ),
+        },
+        construction_crossings,
+        production_path: readout.production_path.to_string(),
+    }
+}
+
+/// TP-12.10 load-bearing proof: ordinary open_from_spec + step_once, same binary/path,
+/// paired authorings differ only in owner-policy weight silo scalars.
+#[test]
+fn canonical_policy_weights_diverge_live_production_disruption_and_construction() {
+    const TICKS: u64 = 8;
+    const MIN_PRODUCTION_DIVERGENCE: f32 = 6.0;
+    const MIN_SUPPRESSION_DIVERGENCE: f32 = 6.0;
+    const MIN_CROSSING_DIVERGENCE: u32 = 1;
+
+    // Keep RF-5's sealed need threshold (1.0) and minerals input; policy-weight
+    // scalars alone must drive the construction-crossing divergence.
+    let productive_source = canonical_source();
+    assert!(
+        productive_source.contains("coefficient = 2.0"),
+        "canonical must author the HORIZON production output coefficient"
+    );
+    assert!(
+        productive_source.contains("flow_coupling = pirate_raid_suppresses_shipyard"),
+        "canonical must author the generic disruption coupling"
+    );
+    assert_eq!(productive_source.matches("current = 0.02").count(), 1);
+    assert!(
+        productive_source.contains("resource = \"disruption_weight\"")
+            && productive_source.contains("current = 2"),
+        "canonical must author the pirate disruption-weight silo"
+    );
+    // Paired authoring: swap expansion vs disruption weight scalars only.
+    let tension_source = productive_source
+        .replacen("current = 0.02", "current = __TERRAN_LOW__", 1)
+        .replacen(
+            "stockpile_silo = pirate_disruption_weight {\n            owner = \"pirate\"\n            resource = \"disruption_weight\"\n            current = 2\n        }",
+            "stockpile_silo = pirate_disruption_weight {\n            owner = \"pirate\"\n            resource = \"disruption_weight\"\n            current = 40\n        }",
+            1,
+        )
+        .replacen("current = __TERRAN_LOW__", "current = 0.005", 1);
+
+    let productive =
+        run_emergent_tension_variant(&productive_source, TICKS, EmergentTensionControl::Full);
+    let tension =
+        run_emergent_tension_variant(&tension_source, TICKS, EmergentTensionControl::Full);
+    assert_eq!(productive.production_path, tension.production_path);
+    assert_eq!(
+        productive.production_path,
+        "simthing_driver::SimSession::open_from_spec + step_once"
+    );
+    let production_divergence = productive.production_after - tension.production_after;
+    let suppression_divergence = tension.suppression_after - productive.suppression_after;
+    let crossing_divergence = productive
+        .construction_crossings
+        .abs_diff(tension.construction_crossings);
+    println!(
+        "TP12_10_PAIRED ticks={TICKS} path={} productive={{production:{} disruption:{} suppression:{} crossings:{}}} tension={{production:{} disruption:{} suppression:{} crossings:{}}} divergence={{production:{} suppression:{} crossings:{}}}",
+        productive.production_path,
+        productive.production_after,
+        productive.disruption_after,
+        productive.suppression_after,
+        productive.construction_crossings,
+        tension.production_after,
+        tension.disruption_after,
+        tension.suppression_after,
+        tension.construction_crossings,
+        production_divergence,
+        suppression_divergence,
+        crossing_divergence,
+    );
+    assert!(
+        productive.production_after > productive.production_open,
+        "authored coefficient must accrete production under ordinary ticks: open={} after={}",
+        productive.production_open,
+        productive.production_after
+    );
+    assert!(
+        productive.suppression_after > productive.suppression_open
+            || tension.suppression_after > tension.suppression_open,
+        "authored coupling must suppress local flow into the sink"
+    );
+    assert!(
+        production_divergence >= MIN_PRODUCTION_DIVERGENCE,
+        "predeclared production divergence did not bite: {production_divergence}"
+    );
+    assert!(
+        suppression_divergence >= MIN_SUPPRESSION_DIVERGENCE,
+        "predeclared suppression/disruption-coupling divergence did not bite: {suppression_divergence}"
+    );
+    assert!(
+        crossing_divergence >= MIN_CROSSING_DIVERGENCE,
+        "predeclared construction crossing divergence did not bite: {crossing_divergence}"
+    );
+    assert!(
+        tension.suppression_after > productive.suppression_after,
+        "stronger Pirate weight must produce more coupled suppression"
+    );
+
+    let coupling_removed = run_emergent_tension_variant(
+        &productive_source,
+        TICKS,
+        EmergentTensionControl::CouplingRemoved,
+    );
+    assert!(
+        coupling_removed.disruption_after >= coupling_removed.disruption_open
+            && coupling_removed.disruption_after > productive.disruption_after,
+        "removing only coupling must preserve disruption (no conjunctive drain): open={} decoupled={} coupled={}",
+        coupling_removed.disruption_open,
+        coupling_removed.disruption_after,
+        productive.disruption_after
+    );
+    assert_eq!(coupling_removed.suppression_after, 0.0);
+    assert!(
+        coupling_removed.production_after > productive.production_after,
+        "removing coupling must remove local-flow suppression: coupled={} decoupled={}",
+        productive.production_after,
+        coupling_removed.production_after
+    );
+    println!(
+        "TP12_10_COUPLING_NEGATIVE ticks={TICKS} production={} disruption={} suppression={}",
+        coupling_removed.production_after,
+        coupling_removed.disruption_after,
+        coupling_removed.suppression_after,
+    );
+
+    let coefficient_removed = run_emergent_tension_variant(
+        &productive_source,
+        TICKS,
+        EmergentTensionControl::ProductionRecipeRemoved,
+    );
+    // RF-5 need_binding reads minerals (not hulls); sealed crossings may still fire.
+    // The coefficient bite is production Amount accretion through the recipe path.
+    assert!(
+        coefficient_removed.production_after <= coefficient_removed.production_open + 1e-3
+            && coefficient_removed.production_after + MIN_PRODUCTION_DIVERGENCE
+                < productive.production_after,
+        "removing the coefficient-bearing production recipe must yield no production accretion: removed={} full={}",
+        coefficient_removed.production_after,
+        productive.production_after
+    );
+    println!(
+        "TP12_10_COEFFICIENT_NEGATIVE ticks={TICKS} production_open={} production_after={} crossings={}",
+        coefficient_removed.production_open,
+        coefficient_removed.production_after,
+        coefficient_removed.construction_crossings,
+    );
+}
+
 fn amount_col(sim: &simthing_driver::SimSession, namespace: &str, name: &str) -> usize {
     let reg = &sim.proto.registry;
     let pid = reg

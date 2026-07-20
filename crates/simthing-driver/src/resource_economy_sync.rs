@@ -29,6 +29,15 @@ pub enum ResourceEconomySyncError {
     #[error("resource economy has emission registrations but use_accumulator_emission is false")]
     EmissionFlagOffPopulatedSpec,
 
+    #[error(
+        "materialized recipe execution metadata length mismatch: recipes={recipes}, coefficients={coefficients}, order_bands={order_bands}"
+    )]
+    RecipeExecutionMetadataMismatch {
+        recipes: usize,
+        coefficients: usize,
+        order_bands: usize,
+    },
+
     #[error(transparent)]
     TransferUpload(#[from] simthing_gpu::TransferSyncError),
 
@@ -88,9 +97,23 @@ pub fn sync_resource_economy_accumulator(
     } else if has_transfer && !skip_upload {
         let mut gpu_regs =
             discrete_transfer_registrations_to_transfer(&registry.registrations.transfers);
-        gpu_regs.extend(conjunctive_recipe_registrations_to_transfer(
+        let mut recipe_regs = conjunctive_recipe_registrations_to_transfer(
             &registry.registrations.recipes,
-        ));
+        );
+        let coefficients = &registry.registrations.report.recipe_output_coefficients;
+        let order_bands = &registry.registrations.report.recipe_order_bands;
+        if coefficients.len() != recipe_regs.len() || order_bands.len() != recipe_regs.len() {
+            return Err(ResourceEconomySyncError::RecipeExecutionMetadataMismatch {
+                recipes: recipe_regs.len(),
+                coefficients: coefficients.len(),
+                order_bands: order_bands.len(),
+            });
+        }
+        for (idx, recipe) in recipe_regs.iter_mut().enumerate() {
+            recipe.output_scale = coefficients[idx];
+            recipe.order_band = order_bands[idx];
+        }
+        gpu_regs.extend(recipe_regs);
         state.sync_transfer_accumulator(&gpu_regs)?;
         uploaded_this_sync = true;
     }

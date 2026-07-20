@@ -47,6 +47,9 @@ pub struct TransferOpPlanSignature {
     pub input_slots: Vec<u32>,
     pub input_cols: Vec<u32>,
     pub unit_cost_bits: Vec<u32>,
+    /// Full encoded-op cache key, including targets, scales/caps, and bands.
+    /// Kept crate-private so this correction does not widen the public surface.
+    pub(crate) encoded_ops_fingerprint: u64,
 }
 
 /// Cache key for uploaded C-8d emission ops (world shape + EML + registration plan).

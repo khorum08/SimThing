@@ -14,6 +14,8 @@ const FIELD_ECONOMY_SEMANTIC_CASES: &[&str] = &[
     "unsupported-silo-capacity",
     "silo-owner-current",
     "malformed-spanned-admission",
+    "missing-output-coefficient",
+    "missing-flow-coupling",
 ];
 
 fn hydrate(text: &str) -> simthing_clausething::HydratedScenarioPack {
@@ -86,7 +88,7 @@ scenario = foundry_valley {
         production_building = ridge_foundry {
             location = "ridge"
             input = { resource = "ore" amount = 2 }
-            output = { resource = "tools" }
+            output = { resource = "tools" coefficient = 1.5 }
             throttle_hint_max_per_tick = 3
         }
         stockpile_silo = guild_ore {
@@ -101,6 +103,14 @@ scenario = foundry_valley {
             threshold = 2
             direction = Rising
             event_kind = 77
+        }
+        flow_coupling = smoke_suppresses_tools {
+            source = { location = "ridge" resource = "tools" unit_cost = 1 }
+            pressure = { location = "basin" resource = "smoke" unit_cost = 1 }
+            weight = { owner = "guild" resource = "ore" unit_cost = 1 }
+            sink = { location = "ridge" resource = "spoiled_tools" }
+            output_coefficient = 1
+            order_band = 1
         }
         owner_policy_overlay = guild_tools {
             owner = "guild"
@@ -137,8 +147,28 @@ scenario = aqueduct_delta {
         production_building = pump_house {
             location = "spring"
             input = { resource = "water" amount = 5 }
-            output = { resource = "pressure" }
+            output = { resource = "pressure" coefficient = 1.25 }
             throttle_hint_max_per_tick = 1
+        }
+        stockpile_silo = council_gate {
+            owner = "council"
+            resource = "gate"
+            current = 1
+        }
+        disruption_presence = spring_silt {
+            location = "spring"
+            resource = "silt"
+            amount = 1
+            threshold = 0.5
+            event_kind = 78
+        }
+        flow_coupling = silt_suppresses_pressure {
+            source = { location = "spring" resource = "pressure" unit_cost = 1 }
+            pressure = { location = "spring" resource = "silt" unit_cost = 1 }
+            weight = { owner = "council" resource = "gate" unit_cost = 1 }
+            sink = { location = "spring" resource = "lost_pressure" }
+            output_coefficient = 1
+            order_band = 1
         }
         weight_profile = manufacturing_need {
             profile = "manufacturing-need"
@@ -152,7 +182,7 @@ scenario = aqueduct_delta {
 /// catches: lowering drift away from existing ResourceEconomySpec, OverlaySpec, and EML profile surfaces.
 #[test]
 fn field_economy_well_formed_hydrates_to_existing_surfaces() {
-    assert_eq!(FIELD_ECONOMY_SEMANTIC_CASES.len(), 7);
+    assert_eq!(FIELD_ECONOMY_SEMANTIC_CASES.len(), 9);
     let pack = hydrate(FOUNDRY_SCENARIO);
     let economy = pack.field_economy.as_ref().expect("field economy");
     assert_eq!(economy.id, "valley_economy");
@@ -180,7 +210,7 @@ fn field_economy_well_formed_hydrates_to_existing_surfaces() {
         resource_economy.opt_in_mode,
         ResourceEconomyOptInMode::TransferAndEmission
     );
-    assert_eq!(resource_economy.recipes.len(), 1);
+    assert_eq!(resource_economy.recipes.len(), 2);
     assert_eq!(
         resource_economy.recipes[0].id,
         "valley_economy_recipe_ridge_foundry"
@@ -192,6 +222,18 @@ fn field_economy_well_formed_hydrates_to_existing_surfaces() {
     assert_eq!(
         resource_economy.recipes[0].target.name,
         "ridge_tools_quantity"
+    );
+    assert_eq!(resource_economy.recipes[0].output_coefficient, 1.5);
+    assert_eq!(resource_economy.recipes[0].order_band, 0);
+    assert_eq!(resource_economy.recipes[1].inputs.len(), 3);
+    assert_eq!(
+        resource_economy.recipes[1].inputs[2].property.name,
+        "guild_ore_stockpile"
+    );
+    assert_eq!(resource_economy.recipes[1].order_band, 1);
+    assert_eq!(
+        resource_economy.recipes[1].target.name,
+        "ridge_spoiled_tools_quantity"
     );
     assert_eq!(resource_economy.transfers.len(), 1);
     assert_eq!(
@@ -242,6 +284,8 @@ fn second_synthetic_scenario_uses_same_field_economy_grammar() {
     let economy = pack.field_economy.as_ref().expect("field economy");
     assert_eq!(economy.namespace, "civic");
     assert_eq!(economy.production_buildings[0].output_resource, "pressure");
+    assert_eq!(economy.production_buildings[0].output_coefficient, 1.25);
+    assert_eq!(economy.flow_couplings.len(), 1);
     assert_eq!(economy.weight_profiles[0].profile, "manufacturing-need");
     let resource_economy = pack.game_mode.resource_economy.as_ref().unwrap();
     assert_eq!(resource_economy.recipes[0].inputs[0].unit_cost, 5.0);
@@ -259,7 +303,7 @@ fn second_synthetic_scenario_uses_same_field_economy_grammar() {
             .name,
         "spring_water_quantity"
     );
-    assert_eq!(resource_economy.emissions.len(), 1);
+    assert_eq!(resource_economy.emissions.len(), 3);
     assert!(
         resource_economy
             .emissions
@@ -272,8 +316,8 @@ fn second_synthetic_scenario_uses_same_field_economy_grammar() {
 #[test]
 fn production_output_amount_is_spanned_unsupported_authoring_error() {
     let unsupported = AQUEDUCT_SCENARIO.replace(
-        "output = { resource = \"pressure\" }",
-        "output = { resource = \"pressure\" amount = 2 }",
+        "output = { resource = \"pressure\" coefficient = 1.25 }",
+        "output = { resource = \"pressure\" coefficient = 1.25 amount = 2 }",
     );
     let document = parse_raw_document(unsupported.as_bytes()).expect("parse ClauseScript");
     let err = hydrate_scenario(&document).expect_err("must reject unsupported output amount");
@@ -282,6 +326,40 @@ fn production_output_amount_is_spanned_unsupported_authoring_error() {
         err.span.is_some(),
         "unsupported output amount must carry a source span"
     );
+}
+
+/// catches: omitted coefficient silently falling back to unit output.
+#[test]
+fn production_output_coefficient_is_required_and_spanned() {
+    let missing = AQUEDUCT_SCENARIO.replace(
+        "output = { resource = \"pressure\" coefficient = 1.25 }",
+        "output = { resource = \"pressure\" }",
+    );
+    let document = parse_raw_document(missing.as_bytes()).expect("parse ClauseScript");
+    let err = hydrate_scenario(&document).expect_err("missing coefficient must fail closed");
+    assert!(err.message.contains("coefficient"), "{}", err.message);
+    assert!(err.span.is_some(), "missing coefficient must carry a source span");
+}
+
+/// catches: production proceeding without the authored suppression coupling.
+#[test]
+fn production_flow_coupling_is_required_and_spanned() {
+    let missing = AQUEDUCT_SCENARIO.replace(
+        r#"        flow_coupling = silt_suppresses_pressure {
+            source = { location = "spring" resource = "pressure" unit_cost = 1 }
+            pressure = { location = "spring" resource = "silt" unit_cost = 1 }
+            weight = { owner = "council" resource = "gate" unit_cost = 1 }
+            sink = { location = "spring" resource = "lost_pressure" }
+            output_coefficient = 1
+            order_band = 1
+        }
+"#,
+        "",
+    );
+    let document = parse_raw_document(missing.as_bytes()).expect("parse ClauseScript");
+    let err = hydrate_scenario(&document).expect_err("missing coupling must fail closed");
+    assert!(err.message.contains("flow_coupling"), "{}", err.message);
+    assert!(err.span.is_some(), "missing coupling must carry a source span");
 }
 
 /// catches: authored spatial enrollment validating only sidecar references without changing targets.
@@ -303,6 +381,18 @@ fn location_authoring_changes_resource_targets_and_installs() {
         .replace(
             "targets_property = \"forge::ridge_tools_quantity\"",
             "targets_property = \"forge::basin_tools_quantity\"",
+        )
+        .replace(
+            "source = { location = \"ridge\" resource = \"tools\" unit_cost = 1 }",
+            "source = { location = \"basin\" resource = \"tools\" unit_cost = 1 }",
+        )
+        .replace(
+            "pressure = { location = \"basin\" resource = \"smoke\" unit_cost = 1 }",
+            "pressure = { location = \"ridge\" resource = \"smoke\" unit_cost = 1 }",
+        )
+        .replace(
+            "sink = { location = \"ridge\" resource = \"spoiled_tools\" }",
+            "sink = { location = \"basin\" resource = \"spoiled_tools\" }",
         );
     let ridge = hydrate(FOUNDRY_SCENARIO);
     let basin = hydrate(&moved);
@@ -381,6 +471,10 @@ fn silo_owner_and_current_change_existing_lowered_surfaces() {
         .replace(
             "owner = \"guild\"\n            resource = \"ore\"",
             "owner = \"union\"\n            resource = \"ore\"",
+        )
+        .replace(
+            "weight = { owner = \"guild\" resource = \"ore\" unit_cost = 1 }",
+            "weight = { owner = \"union\" resource = \"ore\" unit_cost = 1 }",
         )
         .replace("current = 20", "current = 25");
     let guild = hydrate(FOUNDRY_SCENARIO);

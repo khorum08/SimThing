@@ -2212,6 +2212,66 @@ fn draw_studio_ops_telemetry(ctx: &egui::Context, state: &mut StudioAppState) {
                     ui.end_row();
                 });
 
+            // [OVL] TP-EMERGENT-TENSION-PROOF-0 — read-only per-owner macro gauges
+            // projected from existing live bridge samples (no Studio mutation).
+            ui.separator();
+            ui.heading("Per-owner macro gauges");
+            let latest_sample = |needle: &str| {
+                bridge
+                    .field_accretion_samples
+                    .iter()
+                    .rev()
+                    .find(|sample| sample.property_key.contains(needle))
+                    .map(|sample| (sample.tick_index, sample.amount))
+            };
+            let terran_production = latest_sample("hulls");
+            let pirate_disruption = latest_sample("disruption");
+            egui::Grid::new("studio_ops_owner_macro_gauges")
+                .num_columns(2)
+                .striped(true)
+                .show(ui, |ui| {
+                    ui.label("terran production (hulls)");
+                    ui.label(
+                        terran_production
+                            .map(|(tick, amount)| format!("tick {tick}: {amount:.3}"))
+                            .unwrap_or_else(|| "--".into()),
+                    );
+                    ui.end_row();
+                    ui.label("pirate disruption (presence)");
+                    ui.label(
+                        pirate_disruption
+                            .map(|(tick, amount)| format!("tick {tick}: {amount:.3}"))
+                            .unwrap_or_else(|| "--".into()),
+                    );
+                    ui.end_row();
+                    ui.label("construction crossings (sealed need)");
+                    ui.label(format!(
+                        "last={} cumulative_field_policy={} need_status={}",
+                        bridge.recursive_rf.need_threshold_event_count,
+                        bridge.cumulative_decision_events,
+                        bridge
+                            .recursive_rf
+                            .need_threshold_result
+                            .unwrap_or("--"),
+                    ));
+                    ui.end_row();
+                    ui.label("need live / threshold");
+                    ui.label(format!(
+                        "{} / {}",
+                        bridge
+                            .recursive_rf
+                            .need_live_value
+                            .map(|v| format!("{v:.6}"))
+                            .unwrap_or_else(|| "--".into()),
+                        bridge
+                            .recursive_rf
+                            .need_threshold
+                            .map(|v| format!("{v:.3}"))
+                            .unwrap_or_else(|| "--".into()),
+                    ));
+                    ui.end_row();
+                });
+
             ui.separator();
             ui.heading("Field accretion samples");
             if bridge.field_accretion_samples.is_empty() {

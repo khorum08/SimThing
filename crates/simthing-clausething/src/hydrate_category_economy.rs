@@ -1462,11 +1462,11 @@ fn parse_transfer_block(property: &RawProperty) -> Result<ResourceTransferSpec, 
         target_role: amount_role(),
         amount: require_field(amount, "amount", property)?,
         order_band: require_field(order_band, "order_band", property)?,
-                source_host_entity: None,
-            target_host_entity: None,
-            source_host_span_token: None,
-            target_host_span_token: None,
-        })
+        source_host_entity: None,
+        target_host_entity: None,
+        source_host_span_token: None,
+        target_host_span_token: None,
+    })
 }
 
 fn parse_recipe_block(property: &RawProperty) -> Result<ResourceRecipeSpec, HydrateError> {
@@ -1479,12 +1479,18 @@ fn parse_recipe_block(property: &RawProperty) -> Result<ResourceRecipeSpec, Hydr
     let mut id = None;
     let mut inputs = Vec::new();
     let mut target = None;
+    let mut output_coefficient = None;
+    let mut order_band = None;
     let mut throttle = None;
     for field in &block.properties {
         match field.key.text.as_str() {
             "id" => id = Some(read_scalar_text(field, "id")?),
             "input" => inputs.push(parse_recipe_input_block(field)?),
             "target" => target = Some(parse_property_key(field)?),
+            "output_coefficient" => {
+                output_coefficient = Some(read_scalar_f32(field, "output_coefficient")?)
+            }
+            "order_band" => order_band = Some(read_scalar_u32(field, "order_band")?),
             "throttle" | "throttle_hint_max_per_tick" => {
                 throttle = Some(read_scalar_u32(field, &field.key.text)?)
             }
@@ -1507,6 +1513,14 @@ fn parse_recipe_block(property: &RawProperty) -> Result<ResourceRecipeSpec, Hydr
         inputs,
         target: require_field(target, "target", property)?,
         target_role: amount_role(),
+        target_host_entity: None,
+        target_host_span_token: None,
+        output_coefficient: require_field(
+            output_coefficient,
+            "output_coefficient",
+            property,
+        )?,
+        order_band: require_field(order_band, "order_band", property)?,
         throttle_hint_max_per_tick: require_field(throttle, "throttle", property)?,
     })
 }
@@ -1536,6 +1550,8 @@ fn parse_recipe_input_block(property: &RawProperty) -> Result<RecipeInputSpec, H
         property: require_field(property_key, "property", property)?,
         role: amount_role(),
         unit_cost: require_field(unit_cost, "unit_cost", property)?,
+        host_entity: None,
+        host_span_token: None,
     })
 }
 

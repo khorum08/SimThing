@@ -44,6 +44,10 @@ pub struct ResourceEconomyMaterializationReport {
     pub transfer_ids: Vec<String>,
     /// Authored recipe ids in compiled order.
     pub recipe_ids: Vec<String>,
+    /// Authored output coefficient in compiled recipe order.
+    pub recipe_output_coefficients: Vec<f32>,
+    /// Authored OrderBand in compiled recipe order.
+    pub recipe_order_bands: Vec<u32>,
     /// Authored threshold-emit ids in compiled order.
     pub threshold_emit_ids: Vec<String>,
     /// OrderBand gate identity per transfer authoring id.
@@ -145,6 +149,8 @@ pub fn materialize_resource_economy_registrations_with_slots(
 
     let mut recipes = Vec::with_capacity(compiled.recipes.len());
     let mut recipe_ids = Vec::with_capacity(compiled.recipes.len());
+    let mut recipe_output_coefficients = Vec::with_capacity(compiled.recipes.len());
+    let mut recipe_order_bands = Vec::with_capacity(compiled.recipes.len());
     for recipe in &compiled.recipes {
         ensure_property_known(registry, recipe.target_property)?;
         let inputs = recipe
@@ -169,6 +175,8 @@ pub fn materialize_resource_economy_registrations_with_slots(
         rebuild_conjunctive_recipe_ops(std::slice::from_ref(&reg))?;
         recipes.push(reg);
         recipe_ids.push(recipe.id.clone());
+        recipe_output_coefficients.push(recipe.output_coefficient);
+        recipe_order_bands.push(recipe.order_band);
     }
 
     let mut emissions = Vec::with_capacity(compiled.emissions.len());
@@ -223,6 +231,8 @@ pub fn materialize_resource_economy_registrations_with_slots(
         emission_reg_idx_by_id,
         transfer_ids,
         recipe_ids,
+        recipe_output_coefficients,
+        recipe_order_bands,
         threshold_emit_ids,
         transfer_order_band_by_id,
     };
@@ -320,6 +330,8 @@ pub fn materialize_resource_economy_registrations_host_qualified(
 
     let mut recipes = Vec::with_capacity(compiled.recipes.len());
     let mut recipe_ids = Vec::with_capacity(compiled.recipes.len());
+    let mut recipe_output_coefficients = Vec::with_capacity(compiled.recipes.len());
+    let mut recipe_order_bands = Vec::with_capacity(compiled.recipes.len());
     for recipe in &compiled.recipes {
         ensure_property_known(registry, recipe.target_property)?;
         let inputs = recipe
@@ -328,7 +340,10 @@ pub fn materialize_resource_economy_registrations_host_qualified(
             .map(|input| {
                 ensure_property_known(registry, input.property)?;
                 Ok(ConjunctiveRecipeInput {
-                    slot: SlotIndex::new(resolve_host(input.property, None)?),
+                    slot: SlotIndex::new(resolve_host(
+                        input.property,
+                        input.host_entity.as_deref(),
+                    )?),
                     col: ColumnIndex::new(input.col as usize),
                     unit_cost: input.unit_cost,
                 })
@@ -336,13 +351,18 @@ pub fn materialize_resource_economy_registrations_host_qualified(
             .collect::<Result<Vec<_>, ResourceEconomyCompileError>>()?;
         let reg = ConjunctiveRecipeRegistration {
             inputs,
-            target_slot: SlotIndex::new(resolve_host(recipe.target_property, None)?),
+            target_slot: SlotIndex::new(resolve_host(
+                recipe.target_property,
+                recipe.target_host_entity.as_deref(),
+            )?),
             target_col: ColumnIndex::new(recipe.target_col as usize),
             throttle_hint_max_per_tick: recipe.throttle_hint_max_per_tick,
         };
         rebuild_conjunctive_recipe_ops(std::slice::from_ref(&reg))?;
         recipes.push(reg);
         recipe_ids.push(recipe.id.clone());
+        recipe_output_coefficients.push(recipe.output_coefficient);
+        recipe_order_bands.push(recipe.order_band);
     }
 
     let mut emissions = Vec::with_capacity(compiled.emissions.len());
@@ -421,6 +441,8 @@ pub fn materialize_resource_economy_registrations_host_qualified(
             emission_reg_idx_by_id,
             transfer_ids,
             recipe_ids,
+            recipe_output_coefficients,
+            recipe_order_bands,
             threshold_emit_ids,
             transfer_order_band_by_id,
         },

@@ -547,15 +547,15 @@ fn resource_economy_property_placements(
         for input in &recipe.inputs {
             out.push(EconomyPropertyPlacement {
                 key: input.property.clone(),
-                host_entity: None,
-                host_span: None,
+                host_entity: input.host_entity.clone(),
+                host_span: input.host_span_token,
                 seed: None,
             });
         }
         out.push(EconomyPropertyPlacement {
             key: recipe.target.clone(),
-            host_entity: None,
-            host_span: None,
+            host_entity: recipe.target_host_entity.clone(),
+            host_span: recipe.target_host_span_token,
             seed: None,
         });
     }
