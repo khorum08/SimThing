@@ -127,17 +127,19 @@ fn multi_owner_spec() -> SimThingScenarioSpec {
     spec
 }
 
+const BREAKPOINT_CASES: &[(f32, f32, f32)] = &[
+    (0.0, 1.0, 0.0),
+    (50.0, 2.0, 0.5),
+    (100.0, 5.0, 1.0),
+    (100.1, 5.0, 1.0),
+    (250.0, 5.0, 1.0),
+    (25.0, 1.5, 0.25),
+    (75.0, 3.5, 0.75),
+];
+
 #[test]
 fn disruption_select_screen_breakpoints_and_above_100_clamp() {
-    for (raw, blur, red) in [
-        (0.0, 1.0, 0.0),
-        (50.0, 2.0, 0.5),
-        (100.0, 5.0, 1.0),
-        (100.1, 5.0, 1.0),
-        (250.0, 5.0, 1.0),
-        (25.0, 1.5, 0.25),
-        (75.0, 3.5, 0.75),
-    ] {
+    for &(raw, blur, red) in BREAKPOINT_CASES {
         let screen = disruption_select_screen_from_raw(raw);
         assert!(
             (screen.blur_scale - blur).abs() < 1e-6 && (screen.red_fraction - red).abs() < 1e-6,
