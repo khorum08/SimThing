@@ -83,6 +83,35 @@ fn coefficient_neutralized_source(base: &str) -> String {
     base.replacen("coefficient = 2.0", "coefficient = 0.0", 1)
 }
 
+/// Coefficient-neutralized authoring with disruption presence seeded below its Rising
+/// threshold so unrelated event_kind 71 must fire while construction 92 cannot.
+fn construction_gauge_falsifier_source(base: &str) -> String {
+    let neutralized = coefficient_neutralized_source(base);
+    let with_low_disruption = neutralized.replacen(
+        "amount = 8\n            threshold = 3\n            direction = Rising\n            event_kind = 71",
+        "amount = 1\n            threshold = 3\n            direction = Rising\n            event_kind = 71",
+        1,
+    );
+    assert!(
+        with_low_disruption.contains("coefficient = 0.0"),
+        "falsifier source must neutralize production coefficient"
+    );
+    assert!(
+        with_low_disruption.contains("amount = 1"),
+        "falsifier source must seed disruption below Rising threshold"
+    );
+    with_low_disruption
+}
+
+fn sealed_threshold_event_kinds(sim: &mut simthing_driver::SimSession) -> Vec<u32> {
+    sim.state
+        .accumulator_runtime
+        .as_mut()
+        .and_then(|runtime| runtime.readback_threshold_events(&sim.state.ctx).ok())
+        .map(|events| events.into_iter().map(|event| event.event_kind()).collect())
+        .unwrap_or_default()
+}
+
 fn coupling_removed_source(base: &str) -> String {
     const COUPLING: &str = r#"        flow_coupling = pirate_raid_suppresses_shipyard {
             source = { location = "terran_shipyard" resource = "hulls" unit_cost = 1.0 }
@@ -777,22 +806,67 @@ fn canonical_policy_weights_diverge_live_production_disruption_and_construction(
 }
 
 /// catches: production gauge binding to disrupted_hulls via substring, or unrelated
-/// presence thresholds inflating the construction crossing gauge.
+/// presence thresholds (event_kind 71) inflating the construction crossing gauge.
 #[test]
 fn studio_macro_gauges_use_exact_property_and_construction_event_kind() {
-    let pack = hydrate_canonical_source(&canonical_source()).expect("hydrate");
+    let source = construction_gauge_falsifier_source(&canonical_source());
+    let pack = hydrate_canonical_source(&source).expect("hydrate gauge falsifier");
     let studio = studio_from_pack(&pack);
     let mut bridge = open_field_bridge(&studio);
-    bridge.consume_scheduled_ticks(4).expect("ticks");
-    let readout = bridge.readout();
     assert_eq!(
-        readout.recursive_rf.need_profile_id.as_deref(),
+        bridge.readout().recursive_rf.need_profile_id.as_deref(),
         Some("terran_manufacturing_need")
     );
     assert_eq!(
-        readout.recursive_rf.need_profile_kind.as_deref(),
+        bridge.readout().recursive_rf.need_profile_kind.as_deref(),
         Some("manufacturing-need")
     );
+    assert_eq!(bridge.readout().recursive_rf.need_threshold, Some(5.0));
+
+    let mut sealed_71 = 0u32;
+    let mut sealed_92 = 0u32;
+    for _ in 0..12 {
+        bridge
+            .consume_scheduled_ticks(1)
+            .expect("ordinary falsifier tick");
+        let kinds = {
+            let sim = bridge.sim_session_mut().expect("attached");
+            sealed_threshold_event_kinds(sim)
+        };
+        sealed_71 += kinds.iter().filter(|&&k| k == 71).count() as u32;
+        sealed_92 += kinds.iter().filter(|&&k| k == 92).count() as u32;
+        let readout = bridge.readout();
+        assert_eq!(
+            readout.recursive_rf.need_threshold_event_count, 0,
+            "construction gauge must stay zero while only unrelated thresholds may fire: kinds={kinds:?}"
+        );
+        assert_eq!(
+            readout.cumulative_construction_crossings, 0,
+            "cumulative construction crossings must stay zero under coefficient=0"
+        );
+    }
+
+    let readout = bridge.readout();
+    assert!(
+        sealed_71 > 0,
+        "sealed readback must prove unrelated disruption event_kind 71 fired"
+    );
+    assert_eq!(
+        sealed_92, 0,
+        "construction event_kind 92 must not fire under coefficient=0"
+    );
+    assert!(
+        readout.cumulative_decision_events > 0,
+        "global/other threshold evidence must be nonzero when event 71 fires"
+    );
+    assert!(
+        readout.last_decision_event_count > 0
+            || readout.cumulative_decision_events >= sealed_71 as u64,
+        "bridge decision-event counters must reflect sealed unrelated fires"
+    );
+    assert_eq!(readout.recursive_rf.need_threshold_event_count, 0);
+    assert_eq!(readout.cumulative_construction_crossings, 0);
+
     let hulls = readout
         .field_accretion_samples
         .iter()
@@ -812,23 +886,15 @@ fn studio_macro_gauges_use_exact_property_and_construction_event_kind() {
             .map(|s| &s.property_key)
             .collect::<Vec<_>>()
     );
-    // Substring "hulls" must not be how production is resolved — if both exist,
-    // disrupted is a different exact key and must not alias production.
     if let (Some(h), Some(d)) = (hulls, disrupted) {
         assert_ne!(
             h.property_key, d.property_key,
             "production and suppression gauges must stay distinct"
         );
     }
-    let presence_events_last = readout.last_decision_event_count;
-    let construction_last = readout.recursive_rf.need_threshold_event_count;
-    assert!(
-        construction_last <= presence_events_last
-            || readout.cumulative_construction_crossings
-                <= readout.cumulative_decision_events,
-        "construction gauge must be event_kind-filtered, not a global FIELD_POLICY dump: construction_last={construction_last} presence_last={presence_events_last} cum_c={} cum_all={}",
-        readout.cumulative_construction_crossings,
-        readout.cumulative_decision_events
+    println!(
+        "TP12_10_GAUGE_FALSIFIER sealed_71={sealed_71} sealed_92={sealed_92} cum_decision={} cum_construction={}",
+        readout.cumulative_decision_events, readout.cumulative_construction_crossings
     );
 }
 
