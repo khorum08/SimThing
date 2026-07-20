@@ -11,7 +11,7 @@ Canonical multi-tick GPU runs on `scenarios/terran_pirate_galaxy.clause` through
 - Accepted first landing (governance only): `cbf3b81f5659bbfdefafa1001276713178f54dab`
 - Remand base reviewed: `38c0185da63faa90812bcd6b8a3b550728c1d3ba`
 - Implementation / tested_code_sha: `25083f0d32209e00f65e140293e9972e34e1f207`
-- Evidence / final-head: bound on next commit after this working tree (see PR body `current_pr_head_sha`)
+- Evidence / final-head: see PR body `current_pr_head_sha` (docs evidence-tail after tested_code_sha)
 
 ## Load-bearing proof
 
