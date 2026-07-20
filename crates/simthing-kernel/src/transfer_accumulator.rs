@@ -48,7 +48,7 @@ pub enum TransferPlanError {
     UnsupportedSingleSourceOutputScale { output_scale: f32 },
     #[error("non-finite or negative max_transfer")]
     InvalidMaxTransfer,
-    #[error("non-finite or non-positive output_scale")]
+    #[error("non-finite or negative output_scale")]
     InvalidOutputScale,
 }
 
@@ -67,7 +67,8 @@ fn validate_registration(reg: &TransferRegistration) -> Result<(), TransferPlanE
     if reg.inputs.is_empty() {
         return Err(TransferPlanError::EmptyInputs);
     }
-    if !reg.output_scale.is_finite() || reg.output_scale <= 0.0 {
+    // 0.0 is authored coefficient neutralization (no accretion); negatives/NaN fail closed.
+    if !reg.output_scale.is_finite() || reg.output_scale < 0.0 {
         return Err(TransferPlanError::InvalidOutputScale);
     }
     if let Some(max) = reg.max_transfer {

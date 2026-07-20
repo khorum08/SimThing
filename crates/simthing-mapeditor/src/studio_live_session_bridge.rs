@@ -208,6 +208,9 @@ pub struct StudioRecursiveRfReadout {
     pub need_threshold: Option<f32>,
     pub need_threshold_result: Option<&'static str>,
     pub need_threshold_event_count: u32,
+    /// Cumulative sealed crossings for the admitted construction/manufacturing need
+    /// binding's exact `event_kind` (not global FIELD_POLICY noise).
+    pub cumulative_construction_crossings: u64,
 }
 
 /// One per-tick sample of field accretion (presentation / ops telemetry only).
@@ -236,6 +239,7 @@ pub struct StudioLiveSessionBridgeReadout {
     pub field_accretion_samples: Vec<StudioFieldAccretionSample>,
     pub last_decision_event_count: u32,
     pub cumulative_decision_events: u64,
+    pub cumulative_construction_crossings: u64,
     pub fleet_presence: StudioFleetPresenceMap,
     pub disruption_readout: StudioDisruptionReadoutMap,
     pub recursive_rf: StudioRecursiveRfReadout,
@@ -258,6 +262,7 @@ impl StudioLiveSessionBridgeReadout {
             field_accretion_samples: Vec::new(),
             last_decision_event_count: 0,
             cumulative_decision_events: 0,
+            cumulative_construction_crossings: 0,
             fleet_presence: StudioFleetPresenceMap::default(),
             disruption_readout: StudioDisruptionReadoutMap::default(),
             recursive_rf: StudioRecursiveRfReadout::default(),
@@ -314,6 +319,7 @@ pub struct StudioLiveSessionBridge {
     field_accretion_samples: Vec<StudioFieldAccretionSample>,
     last_decision_event_count: u32,
     cumulative_decision_events: u64,
+    cumulative_construction_crossings: u64,
     /// Resolved emission loci (slot/col) sampled after each tick (field-bearing only).
     sample_loci: Vec<FieldAccretionSampleLocus>,
     /// Exact RF aggregate/Balance cells resolved from the installed Arena registry.
@@ -363,6 +369,7 @@ impl StudioLiveSessionBridge {
             field_accretion_samples: Vec::new(),
             last_decision_event_count: 0,
             cumulative_decision_events: 0,
+            cumulative_construction_crossings: 0,
             sample_loci: Vec::new(),
             recursive_rf_locus: None,
             recursive_rf_readout: StudioRecursiveRfReadout::default(),
@@ -421,6 +428,7 @@ impl StudioLiveSessionBridge {
         self.field_accretion_samples.clear();
         self.last_decision_event_count = 0;
         self.cumulative_decision_events = 0;
+        self.cumulative_construction_crossings = 0;
         self.sample_loci.clear();
         self.recursive_rf_locus = None;
         self.recursive_rf_readout = StudioRecursiveRfReadout::default();
@@ -464,6 +472,7 @@ impl StudioLiveSessionBridge {
         self.field_accretion_samples.clear();
         self.last_decision_event_count = 0;
         self.cumulative_decision_events = 0;
+        self.cumulative_construction_crossings = 0;
         self.sample_loci.clear();
         self.recursive_rf_locus = None;
         self.recursive_rf_readout = StudioRecursiveRfReadout::default();
@@ -639,6 +648,13 @@ impl StudioLiveSessionBridge {
                                 locus,
                                 &threshold_event_kinds,
                             );
+                            self.cumulative_construction_crossings = self
+                                .cumulative_construction_crossings
+                                .saturating_add(
+                                    self.recursive_rf_readout.need_threshold_event_count as u64,
+                                );
+                            self.recursive_rf_readout.cumulative_construction_crossings =
+                                self.cumulative_construction_crossings;
                         }
                     }
                 }
@@ -710,6 +726,7 @@ impl StudioLiveSessionBridge {
             field_accretion_samples: self.field_accretion_samples.clone(),
             last_decision_event_count: self.last_decision_event_count,
             cumulative_decision_events: self.cumulative_decision_events,
+            cumulative_construction_crossings: self.cumulative_construction_crossings,
             fleet_presence: self.fleet_presence.clone(),
             disruption_readout: self.disruption_readout.clone(),
             recursive_rf: self.recursive_rf_readout.clone(),
@@ -1155,6 +1172,65 @@ fn fill_need_binding_readout(
     });
 }
 
+fn tree_contains_simthing_id(node: &SimThing, id: SimThingId) -> bool {
+    if node.id == id {
+        return true;
+    }
+    node.children
+        .iter()
+        .any(|child| tree_contains_simthing_id(child, id))
+}
+
+fn find_simthing_in_tree(node: &SimThing, id: SimThingId) -> Option<&SimThing> {
+    if node.id == id {
+        return Some(node);
+    }
+    for child in &node.children {
+        if let Some(found) = find_simthing_in_tree(child, id) {
+            return Some(found);
+        }
+    }
+    None
+}
+
+fn graft_authored_location_hosts(
+    scenario: &mut simthing_spec::SimThingScenarioSpec,
+    pack: &simthing_clausething::HydratedScenarioPack,
+) -> Option<()> {
+    use simthing_core::SimThingKind;
+    let owner_keys: std::collections::HashSet<&str> = pack
+        .owners
+        .iter()
+        .map(|owner| owner.owner_key.as_str())
+        .collect();
+    let mut to_graft = Vec::new();
+    for (key, ids) in &pack.install_targets {
+        if owner_keys.contains(key.as_str()) || key == &pack.scenario_id {
+            continue;
+        }
+        let Some(host_id) = ids.first().copied() else {
+            continue;
+        };
+        if tree_contains_simthing_id(&scenario.root, host_id) {
+            continue;
+        }
+        let host = find_simthing_in_tree(&pack.root, host_id)?;
+        if host.kind != SimThingKind::Location {
+            continue;
+        }
+        to_graft.push(host.clone());
+    }
+    let session = scenario
+        .root
+        .children
+        .iter_mut()
+        .find(|child| child.kind == SimThingKind::GameSession)?;
+    for host in to_graft {
+        session.add_child(host);
+    }
+    Some(())
+}
+
 fn strip_property_maps(node: &mut simthing_core::SimThing) {
     node.properties.clear();
     for child in &mut node.children {
@@ -1313,7 +1389,12 @@ fn compose_recursive_rf_profile(
     GameModeSpec,
     StudioRecursiveRfProfile,
 )> {
-    let scenario = simthing_clausething::project_pack_to_authority_tree_candidate(pack).ok()?;
+    let mut scenario = simthing_clausething::project_pack_to_authority_tree_candidate(pack).ok()?;
+    // Authored Location hosts (terran_shipyard / pirate_outpost) live on the hydrate
+    // World tree (`pack.root`), not the GalaxyMap authority tree. Graft them under
+    // GameSession so local-flow couplings keep distinct source/pressure/sink identity
+    // without collapsing onto the session root.
+    graft_authored_location_hosts(&mut scenario, pack)?;
     let session_root_id = game_session_child(&scenario).ok()?.id;
     let owners = game_session_owners(&scenario).ok()?;
     let participant_inputs = planet_child_rf_participant_inputs(&scenario).ok()?;
@@ -1350,13 +1431,12 @@ fn compose_recursive_rf_profile(
         ),
     ];
 
-    let mut install_targets: HashMap<String, Vec<SimThingId>> = HashMap::new();
-    // Rebind the authored field-economy keys onto hosted canonical authority nodes.
-    // Owner keys retain their exact Owner host; location-only keys use the real
-    // GameSession host and remain diagnostic, never RF aggregate evidence.
-    for (key, _) in &pack.install_targets {
-        install_targets.insert(key.clone(), vec![session_root_id]);
-    }
+    let mut install_targets: HashMap<String, Vec<SimThingId>> = pack
+        .install_targets
+        .iter()
+        .map(|(key, ids)| (key.clone(), ids.clone()))
+        .collect();
+    // Owner keys retain their exact Owner host from the projected authority tree.
     for owner in game_session_owners(&scenario).ok()? {
         if let Some(key) = owner_entity_id(owner) {
             install_targets.insert(key, vec![owner.id]);

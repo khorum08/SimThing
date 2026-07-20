@@ -2213,19 +2213,24 @@ fn draw_studio_ops_telemetry(ctx: &egui::Context, state: &mut StudioAppState) {
                 });
 
             // [OVL] TP-EMERGENT-TENSION-PROOF-0 — read-only per-owner macro gauges
-            // projected from existing live bridge samples (no Studio mutation).
+            // projected from exact admitted property keys (no substring / Studio mutation).
             ui.separator();
             ui.heading("Per-owner macro gauges");
-            let latest_sample = |needle: &str| {
+            let latest_exact = |property_key: &str| {
                 bridge
                     .field_accretion_samples
                     .iter()
                     .rev()
-                    .find(|sample| sample.property_key.contains(needle))
+                    .find(|sample| sample.property_key == property_key)
                     .map(|sample| (sample.tick_index, sample.amount))
             };
-            let terran_production = latest_sample("hulls");
-            let pirate_disruption = latest_sample("disruption");
+            let terran_production =
+                latest_exact("tp_economy::terran_shipyard_hulls_quantity");
+            let terran_suppression =
+                latest_exact("tp_economy::terran_shipyard_disrupted_hulls_quantity");
+            let pirate_disruption =
+                latest_exact("tp_economy::pirate_outpost_disruption_presence");
+            let construction = &bridge.recursive_rf;
             egui::Grid::new("studio_ops_owner_macro_gauges")
                 .num_columns(2)
                 .striped(true)
@@ -2237,6 +2242,13 @@ fn draw_studio_ops_telemetry(ctx: &egui::Context, state: &mut StudioAppState) {
                             .unwrap_or_else(|| "--".into()),
                     );
                     ui.end_row();
+                    ui.label("terran suppression (disrupted_hulls)");
+                    ui.label(
+                        terran_suppression
+                            .map(|(tick, amount)| format!("tick {tick}: {amount:.3}"))
+                            .unwrap_or_else(|| "--".into()),
+                    );
+                    ui.end_row();
                     ui.label("pirate disruption (presence)");
                     ui.label(
                         pirate_disruption
@@ -2244,30 +2256,32 @@ fn draw_studio_ops_telemetry(ctx: &egui::Context, state: &mut StudioAppState) {
                             .unwrap_or_else(|| "--".into()),
                     );
                     ui.end_row();
-                    ui.label("construction crossings (sealed need)");
+                    ui.label("construction need profile");
                     ui.label(format!(
-                        "last={} cumulative_field_policy={} need_status={}",
-                        bridge.recursive_rf.need_threshold_event_count,
-                        bridge.cumulative_decision_events,
-                        bridge
-                            .recursive_rf
-                            .need_threshold_result
-                            .unwrap_or("--"),
+                        "id={} kind={}",
+                        construction.need_profile_id.as_deref().unwrap_or("--"),
+                        construction.need_profile_kind.as_deref().unwrap_or("--"),
                     ));
                     ui.end_row();
-                    ui.label("need live / threshold");
+                    ui.label("construction live / threshold / last");
                     ui.label(format!(
-                        "{} / {}",
-                        bridge
-                            .recursive_rf
+                        "{} / {} / {}",
+                        construction
                             .need_live_value
                             .map(|v| format!("{v:.6}"))
                             .unwrap_or_else(|| "--".into()),
-                        bridge
-                            .recursive_rf
+                        construction
                             .need_threshold
                             .map(|v| format!("{v:.3}"))
                             .unwrap_or_else(|| "--".into()),
+                        construction.need_threshold_result.unwrap_or("--"),
+                    ));
+                    ui.end_row();
+                    ui.label("construction crossings (event_kind)");
+                    ui.label(format!(
+                        "last_tick={} cumulative={}",
+                        construction.need_threshold_event_count,
+                        bridge.cumulative_construction_crossings,
                     ));
                     ui.end_row();
                 });

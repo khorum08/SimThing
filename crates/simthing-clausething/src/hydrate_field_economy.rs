@@ -1035,13 +1035,8 @@ fn validate_field_economy(
             Some(parsed.span.clone()),
         ));
     }
-    if !parsed.production_buildings.is_empty() && parsed.flow_couplings.is_empty() {
-        return Err(HydrateError::new_spanned(
-            "field_economy with production_building requires an authored flow_coupling",
-            Some(parsed.span.clone()),
-        ));
-    }
-
+    // flow_coupling is optional authoring: absent means no suppression recipe is
+    // lowered. A present coupling block still fails closed on missing/malformed fields.
     let mut spatial_location_ids = Vec::new();
     let produced_loci: BTreeSet<(String, String)> = parsed
         .production_buildings
@@ -1063,7 +1058,9 @@ fn validate_field_economy(
             "production_building.input.amount",
             &parsed.span,
         )?;
-        validate_positive_amount(
+        // Coefficient is required at parse; 0.0 is an authored neutralization
+        // (no production accretion) for Clause-source bite controls.
+        validate_non_negative_amount(
             building.output_coefficient,
             "production_building.output.coefficient",
             &parsed.span,

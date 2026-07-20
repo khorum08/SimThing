@@ -298,7 +298,7 @@ pub enum SpecError {
     #[error("resource economy recipe `{recipe}` throttle_hint_max_per_tick must be > 0")]
     InvalidRecipeThrottleHint { recipe: String },
 
-    #[error("resource economy recipe `{recipe}` output_coefficient must be finite and > 0")]
+    #[error("resource economy recipe `{recipe}` output_coefficient must be finite and >= 0")]
     InvalidRecipeOutputCoefficient { recipe: String },
 
     #[error(

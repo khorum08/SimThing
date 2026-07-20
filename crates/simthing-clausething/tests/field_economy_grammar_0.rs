@@ -341,9 +341,10 @@ fn production_output_coefficient_is_required_and_spanned() {
     assert!(err.span.is_some(), "missing coefficient must carry a source span");
 }
 
-/// catches: production proceeding without the authored suppression coupling.
+/// catches: optional coupling absence must hydrate without a suppression recipe
+/// (Clause-authored coupling-removed control), while a present malformed coupling fails closed.
 #[test]
-fn production_flow_coupling_is_required_and_spanned() {
+fn production_without_flow_coupling_hydrates_without_suppression_recipe() {
     let missing = AQUEDUCT_SCENARIO.replace(
         r#"        flow_coupling = silt_suppresses_pressure {
             source = { location = "spring" resource = "pressure" unit_cost = 1 }
@@ -357,9 +358,56 @@ fn production_flow_coupling_is_required_and_spanned() {
         "",
     );
     let document = parse_raw_document(missing.as_bytes()).expect("parse ClauseScript");
-    let err = hydrate_scenario(&document).expect_err("missing coupling must fail closed");
-    assert!(err.message.contains("flow_coupling"), "{}", err.message);
-    assert!(err.span.is_some(), "missing coupling must carry a source span");
+    let pack = hydrate_scenario(&document).expect("absent coupling is valid authoring");
+    assert!(
+        pack.field_economy
+            .as_ref()
+            .expect("field economy")
+            .flow_couplings
+            .is_empty()
+    );
+    let recipes = &pack
+        .game_mode
+        .resource_economy
+        .as_ref()
+        .expect("resource economy")
+        .recipes;
+    assert!(
+        recipes.iter().all(|recipe| !recipe.id.contains("coupling")),
+        "absent coupling must not lower a suppression recipe: {:?}",
+        recipes.iter().map(|r| &r.id).collect::<Vec<_>>()
+    );
+    let malformed = AQUEDUCT_SCENARIO.replace(
+        "source = { location = \"spring\" resource = \"pressure\" unit_cost = 1 }",
+        "source = { location = \"spring\" resource = \"pressure\" unit_cost = 0 }",
+    );
+    let document = parse_raw_document(malformed.as_bytes()).expect("parse ClauseScript");
+    let err = hydrate_scenario(&document).expect_err("zero unit_cost must fail closed");
+    assert!(
+        err.message.contains("greater than zero") || err.message.contains("unit_cost"),
+        "{}",
+        err.message
+    );
+    assert!(err.span.is_some(), "malformed coupling must carry a source span");
+}
+
+/// catches: coefficient = 0 authoring hydrates as neutralized production (Clause bite control).
+#[test]
+fn production_output_coefficient_zero_is_authored_neutralization() {
+    let zeroed = AQUEDUCT_SCENARIO.replace(
+        "output = { resource = \"pressure\" coefficient = 1.25 }",
+        "output = { resource = \"pressure\" coefficient = 0 }",
+    );
+    let document = parse_raw_document(zeroed.as_bytes()).expect("parse ClauseScript");
+    let pack = hydrate_scenario(&document).expect("coefficient=0 is valid authoring");
+    assert_eq!(
+        pack.field_economy
+            .as_ref()
+            .expect("field economy")
+            .production_buildings[0]
+            .output_coefficient,
+        0.0
+    );
 }
 
 /// catches: authored spatial enrollment validating only sidecar references without changing targets.

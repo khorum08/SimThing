@@ -312,7 +312,8 @@ fn compile_recipe(
             recipe: recipe.id.clone(),
         });
     }
-    if !recipe.output_coefficient.is_finite() || recipe.output_coefficient <= 0.0 {
+    // 0.0 is an authored neutralization (no production accretion); negative/NaN fail closed.
+    if !recipe.output_coefficient.is_finite() || recipe.output_coefficient < 0.0 {
         return Err(SpecError::InvalidRecipeOutputCoefficient {
             recipe: recipe.id.clone(),
         });

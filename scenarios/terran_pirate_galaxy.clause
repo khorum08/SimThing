@@ -200,13 +200,20 @@ scenario = terran_pirate_galaxy {
             input = { input_col = 0 weight_col = 10 }
             output_col = 12
         }
-        need_binding = terran_expansion_need {
-            profile = "expansion-need"
+        weight_profile = terran_manufacturing_need {
+            profile = "manufacturing-need"
+            input = { input_col = 2 weight_col = 13 }
+            output_col = 14
+        }
+        # 12.10 construction need: sealed crossings from produced hulls (not RF-5 minerals).
+        # RF-5 expansion/minerals regressions keep event_kind 91 via test source variants.
+        need_binding = terran_manufacturing_need {
+            profile = "manufacturing-need"
             participant = "terran"
             arena = "studio_recursive_owner_flow"
             input = {
                 entity = "terran_shipyard"
-                property = "tp_economy::terran_shipyard_minerals_quantity"
+                property = "tp_economy::terran_shipyard_hulls_quantity"
                 role = Amount
             }
             weight = {
@@ -214,13 +221,10 @@ scenario = terran_pirate_galaxy {
                 property = "tp_economy::terran_expansion_weight_stockpile"
                 role = Amount
             }
-            threshold = 1.0
-            event_kind = 91
-        }
-        weight_profile = terran_manufacturing_need {
-            profile = "manufacturing-need"
-            input = { input_col = 2 weight_col = 13 }
-            output_col = 14
+            # Above RF-5's minerals threshold (1.0): high weight crosses from hull
+            # accretion; low-weight paired authoring stays below.
+            threshold = 5.0
+            event_kind = 92
         }
         weight_profile = pirate_disruption_need {
             profile = "disruption-need"
