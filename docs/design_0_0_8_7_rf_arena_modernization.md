@@ -64,7 +64,9 @@ contracts (RF-2A) exist.
 | 3 | Specialization protocol (P3) | Richer-than-kind, kind-compatible; spatial/owner/session first citizens. |
 | 4 | Intrinsic GPU residency (P4) | Row/col + parent-slotting + child-row allocation as object semantics. |
 | 5 | Intrinsic STEAD influence (P5) | Falloff emission + heatmap interaction + Gu-Yang/PALMA consumption. |
-| 6 | Portability proof + CORE canonization (P6) | Non-TP domain works untouched; object model written into `simthing_core_design.md`; SimThing complete and distinct. |
+| 6 | **Movement-Front execution** (Owner-added 2026-07-20) | Fleet movement AUTHORITY: spatial SimThings move along STEAD need/falloff gradients (core §7 automaton, Gu-Yang pathfinding, PALMA borders) under the ordinary tick — decisions stay threshold crossings, movement state is sim authority. Fills the 12.4 `InTransit` readback seam ("test-private until authoritative movement readback exists"); the 12.5 icon descriptors start expressing real transit with zero icon-layer change (the renderer-seam design anticipates this). |
+| 7 | **Combat as RF arena** (Owner-added 2026-07-20) | The axiom made mechanical: combat = RF arena resolution (HP/damage as resource flows). Promote the R6/R6B/R6C dress rehearsals from falsification-oracle to executed default via the proven RF promotion pattern (oracle-first → executed → legacy/rehearsal re-anchored); RF-1-style conservation judging; rehearsals retain oracle role against the executed path. |
+| 8 | Portability proof + CORE canonization (P6) | Non-TP domain works untouched; object model written into `simthing_core_design.md`; SimThing complete and distinct. |
 
 ## 4. Binding laws (carry from day one)
 
