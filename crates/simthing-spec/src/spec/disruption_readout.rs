@@ -14,6 +14,14 @@ pub struct DisruptionReadoutRecord {
 }
 
 impl DisruptionReadoutRecord {
+    /// Construct an admitted per-system disruption row (presentation/tests).
+    pub fn new(system_id: u32, max_disruption_accreted: f32) -> Self {
+        Self {
+            system_id,
+            max_disruption_accreted,
+        }
+    }
+
     pub fn system_id(&self) -> u32 {
         self.system_id
     }
