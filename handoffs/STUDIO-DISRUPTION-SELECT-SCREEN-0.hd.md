@@ -2,12 +2,12 @@
 rung: STUDIO-DISRUPTION-SELECT-SCREEN-0
 kind: rung
 track: 0.0.8.6
-base_sha: da8f7035c8b876c8e81d0450b68289230ef8f87e
+base_sha: ced8ce2d80a24213676c4f606edd2126eb2bda6f
 audience: coding
 model_tier: std
 owner_approved: true
 expected_route: DA-RESERVE(unclassified-scope)
-owner_notes: "MANUAL PROGRESSION. Owner drives coder + orchestrator pokes; orchestrator owns review + delegated merge; escalations->orchestrator not DA. [OVL]: Owner screenshot closes the visual gate. 12.5 STUDIO-FLEET-ICONS-0 is queued next on this board."
+owner_notes: "MANUAL PROGRESSION. Owner drives coder + orchestrator pokes; orchestrator owns review + delegated merge; escalations->orchestrator not DA. 12.10 DA-GRADUATED by comment 5022399857 and merged #1418 @ ced8ce2d. [OVL]: Owner screenshot closes the visual gate. 12.5 STUDIO-FLEET-ICONS-0 is queued next on this board."
 surfaces: ["crates/simthing-mapeditor/src", "crates/simthing-mapeditor/tests", "docs/design_0_0_8_6_studio_live_ops.md", "docs/tests"]
 forbidden: ["ScenarioSpec mutation from render/camera/UI", "new WGSL kernel semantics (presentation shader if unavoidable is DA-reserve)", "CPU planner / decisions outside threshold crossings", "scenario-specific code in a sealed crate", "breaking the 11.6 owned-set brighten"]
 required_checks: ["cargo-check+studio-build", "focused-tests", "doctrine-scan", "orientation-check", "doc-budget"]
