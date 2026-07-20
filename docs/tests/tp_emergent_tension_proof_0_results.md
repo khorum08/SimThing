@@ -16,10 +16,10 @@ Canonical multi-tick GPU runs on `scenarios/terran_pirate_galaxy.clause` through
 | Remand 2 reviewed head | `4c4170f682ce0f15e9d057c4bb543149ce31372b` |
 | Remand 2 load-bearing tested_code_sha (falsifier tip) | `7f6560e038123d74332fdd26f8c20d412cdebcc8` |
 | evidence_sha | `deac6f51edd9a974f40b0c052d7ed1056b6de8bd` |
-| final_head_sha | `53223633608389f11a52f73ca5e3b85385e3ec5a` |
+| final_head_sha | `23b841f9802a95524bd37908beacb1b22227bb2a` |
 
 Load-bearing GPU falsifier tip: `7f6560e038123d74332fdd26f8c20d412cdebcc8`.
-Clearance `tested_code_sha` equals the pushed return tip for `body_sha: fresh`.
+`evidence_sha` / falsifier tip are full concrete commits above; return tip is the commit that lands this `final_head_sha` row.
 
 ## Load-bearing proof
 
