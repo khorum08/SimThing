@@ -81,6 +81,15 @@ contracts (RF-2A) exist.
 
 ## 4. Binding laws (carry from day one)
 
+**The Consumer Law (Owner mandate, 2026-07-20).** STEAD, PALMA, Gu-Yang, and Studio observation
+are STANDING CONSUMERS of all data accumulated at SimThings — accumulated data is never walled
+off as hygiene ("waiting for a consumer" is not a state that exists; STEAD is the consumer).
+Hygiene disciplines govern PROOF (source loci cannot close an OVL or prove a flow) and MUTATION
+(no side-channel writes) — never READ ACCESS. CPU-side consumer reads route through the one
+canonical generic read seam (hosted SimThingId + typed PropertyKey/role, role-pathway loci,
+coherent per-tick snapshots); observation never becomes CPU decision branching — decisions stay
+on-device threshold/band crossings. Born from the 12.3 stop: the 12.2→12.8 horizon seam was
+dropped and the disruption map sat walled at 0.0 while macro disruption ran ~8446.
 **Emergence-first (the prize law).** Every phase carries a 12.10-style emergence falsifier:
 authored-parameter changes must produce qualitatively different, UNSCRIPTED macro outcomes; a
 phase that leaves the mechanism sound but the dynamics inert — over-quantized bands, over-
