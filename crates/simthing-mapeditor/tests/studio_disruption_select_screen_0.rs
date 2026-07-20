@@ -1,4 +1,5 @@
 //! STUDIO-DISRUPTION-SELECT-SCREEN-0 — selected-star disruption blur/tint screen.
+//! Neutral synthetic fixture (no scenario-vocabulary owner tokens).
 
 use std::collections::BTreeSet;
 use std::path::Path;
@@ -10,11 +11,10 @@ use simthing_mapeditor::{
     star_visual_selected_for_owned_set, DisruptionSelectScreen, StudioDisruptionReadoutMap,
 };
 use simthing_spec::{
-    apply_owner_faction_identity_metadata, apply_scenario_metadata_to_root,
-    apply_star_system_display_name_metadata, make_galaxy_map, make_owner_entity,
-    scenario_metadata_string_value, structural_property_value_u32, SimThingScenarioGrid,
-    SimThingScenarioProvenance, SimThingScenarioSpec, SimThingStructuralGridFrame,
-    SimThingStructuralGridPlacement, OWNER_FLOW_OWNER_REF_PROPERTY_ID,
+    apply_scenario_metadata_to_root, apply_star_system_display_name_metadata, make_galaxy_map,
+    make_owner_entity, scenario_metadata_string_value, structural_property_value_u32,
+    SimThingScenarioGrid, SimThingScenarioProvenance, SimThingScenarioSpec,
+    SimThingStructuralGridFrame, SimThingStructuralGridPlacement, OWNER_FLOW_OWNER_REF_PROPERTY_ID,
     SCENARIO_GENERATED_SYSTEM_ID_PROPERTY_ID, SCENARIO_STRUCTURAL_COL_PROPERTY_ID,
     SCENARIO_STRUCTURAL_ROW_PROPERTY_ID,
 };
@@ -73,15 +73,13 @@ fn placement(system_id: u32, col: u32, raw: u32) -> SimThingStructuralGridPlacem
 }
 
 fn multi_owner_spec() -> SimThingScenarioSpec {
-    let mut terran = make_owner_entity("terran", "Terran Compact", "settler");
-    apply_owner_faction_identity_metadata(&mut terran, (64, 160, 255), "Terran", "none");
-    let mut pirate = make_owner_entity("pirate", "Pirate Cartel", "raider");
-    apply_owner_faction_identity_metadata(&mut pirate, (220, 64, 48), "Pirate", "none");
+    let foundry = make_owner_entity("foundry", "Foundry Compact", "settler");
+    let union = make_owner_entity("union", "Union Compact", "raider");
 
-    let (c1, r1) = cell_owned(1, 0, "terran", "Sol Gate");
-    let (c2, r2) = cell_owned(2, 1, "terran", "Terra Nova");
-    let (c3, r3) = cell_owned(3, 2, "pirate", "Corsair Reach");
-    let (c4, r4) = cell_unowned(4, 3, "Deep Null");
+    let (c1, r1) = cell_owned(1, 0, "foundry", "Gate One");
+    let (c2, r2) = cell_owned(2, 1, "foundry", "Gate Two");
+    let (c3, r3) = cell_owned(3, 2, "union", "Reach Three");
+    let (c4, r4) = cell_unowned(4, 3, "Null Four");
 
     let mut map = make_galaxy_map("galaxy", "Test Galaxy");
     let map_raw = map.id.raw();
@@ -91,8 +89,8 @@ fn multi_owner_spec() -> SimThingScenarioSpec {
     map.add_child(c4);
 
     let mut session = SimThing::new(SimThingKind::GameSession, 0);
-    session.add_child(terran);
-    session.add_child(pirate);
+    session.add_child(foundry);
+    session.add_child(union);
     session.add_child(map);
 
     let mut root = SimThing::new(SimThingKind::Scenario, 0);
@@ -137,6 +135,8 @@ fn disruption_select_screen_breakpoints_and_above_100_clamp() {
         (100.0, 5.0, 1.0),
         (100.1, 5.0, 1.0),
         (250.0, 5.0, 1.0),
+        (25.0, 1.5, 0.25),
+        (75.0, 3.5, 0.75),
     ] {
         let screen = disruption_select_screen_from_raw(raw);
         assert!(
@@ -146,12 +146,6 @@ fn disruption_select_screen_breakpoints_and_above_100_clamp() {
             screen.red_fraction
         );
     }
-    let mid = disruption_select_screen_from_raw(25.0);
-    assert!((mid.blur_scale - 1.5).abs() < 1e-6);
-    assert!((mid.red_fraction - 0.25).abs() < 1e-6);
-    let upper = disruption_select_screen_from_raw(75.0);
-    assert!((upper.blur_scale - 3.5).abs() < 1e-6);
-    assert!((upper.red_fraction - 0.75).abs() < 1e-6);
 }
 
 #[test]
@@ -168,7 +162,7 @@ fn disruption_select_screen_deselect_restores_identity() {
 #[test]
 fn disruption_select_screen_applies_to_owned_neutral_and_hostile_selection() {
     let spec = multi_owner_spec();
-    // Owned terran, hostile pirate, neutral unowned — any selection is eligible.
+    // Owned foundry, hostile union, neutral unowned — any selection is eligible.
     for selected in [1u32, 3, 4] {
         let screen = disruption_select_screen_from_raw(50.0);
         let scaled = compose_disruption_blur_scale(1.0, true, screen);
@@ -192,7 +186,7 @@ fn disruption_select_screen_coexists_with_11_6_owned_brighten() {
     assert_eq!(
         highlight,
         BTreeSet::from([1, 2]),
-        "selecting terran star must brighten owned set"
+        "selecting foundry star must brighten owned set"
     );
     let screen = disruption_select_screen_from_raw(100.0);
     // Co-owned star 2: 11.6 brighten yes, disruption screen no.
