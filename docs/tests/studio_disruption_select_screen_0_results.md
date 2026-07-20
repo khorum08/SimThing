@@ -10,7 +10,8 @@
 | branch | `coder/studio-disruption-select-screen-0` |
 | base | `ced8ce2d80a24213676c4f606edd2126eb2bda6f` (post-12.10 master) |
 | handoff_head | `9f1949d9cd54c997414ea7a87004741e3c423500` |
-| tested_code_sha | `4b2db7e8f8d450c718c8006a60bc7182598be906` (implementation; tip may include triage/fixture follow-up) |
+| tested_code_sha | `4b2db7e8f8d450c718c8006a60bc7182598be906` |
+| final_head_sha | `340c4b436b14da3d68eb6d527c164c2f24c85547` |
 
 ## What changed
 - Presentation mapper `studio_disruption_select_screen.rs`: exact piecewise 0/50/100 + clamp; deselect identity
