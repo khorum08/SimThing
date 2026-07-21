@@ -12,7 +12,8 @@
 | tested_code_sha | `8bd4604c4187fd775529788c38d41c1a59b6b812` |
 | evidence_head_sha | `0326b85985852730bde1d36fcc3adc27a1587dde` |
 | docs_governance_tail_after_evidence | `0326b859…` → tip (SHA-fill, relay false-positive fix, handoff restore, Remand-5 orientation regen) — docs/governance only; batteries not re-run on tail |
-| final_head_sha | PENDING (Remand-5 governance tip after this commit) |
+| remand_5_identity_bind_sha | `1e5517c075c43b1a051eb9c53e022ee656dff337` |
+| final_head_sha | PR tip after this Remand-5 governance package (docs-only tail) |
 
 Load-bearing production + test code ends at `tested_code_sha`. Evidence package lands at `evidence_head_sha`. Later commits are docs/governance only unless noted.
 
