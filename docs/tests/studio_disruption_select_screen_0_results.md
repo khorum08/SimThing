@@ -13,7 +13,7 @@
 | evidence_head_sha | `0326b85985852730bde1d36fcc3adc27a1587dde` |
 | remand_5_orientation_bind_sha | `1e5517c075c43b1a051eb9c53e022ee656dff337` |
 | tested_code_sha | `a581097f74c980448a4720fe8b22098de2571883` |
-| final_head_sha | PENDING (docs-only evidence-tail commit after Remand-5 re-verify) |
+| final_head_sha | `3aa28a2f8ab79a8345c84b63e4ace71f35867857` |
 
 `implementation_code_sha` is production landing. Remand-4 first green battery was at `remand_4_first_tested_code_sha`. Remand-5 re-ran enrollment/readback + 12.3 + cargo check + Studio build at `tested_code_sha` (includes docs/governance through orientation regen; no executable delta vs Remand-4 tested tree). `final_head_sha` is the docs-only identity bind after that re-verify.
 
