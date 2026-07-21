@@ -206,6 +206,17 @@ fn authored_system_target_swap_moves_system_id_with_zero_code_change() {
     let swapped_sys = host_system_id(&swapped, "pirate_outpost");
     assert_ne!(swapped_sys, original);
 
+    let profile = authored_live_profile_from_pack(&swapped);
+    assert_eq!(
+        profile.location_system_ids.get("pirate_outpost"),
+        Some(&swapped_sys),
+        "outpost enrollment must follow the authored system_target"
+    );
+    assert_ne!(
+        profile.location_system_ids.get("pirate_outpost"),
+        Some(&original)
+    );
+
     let studio = studio_from_pack(&swapped);
     let bridge = open_field_bridge(&studio);
     let map = bridge.readout().disruption_readout;
@@ -217,9 +228,82 @@ fn authored_system_target_swap_moves_system_id_with_zero_code_change() {
             > 0.0,
         "swapped system_target must read on the new enrolled system"
     );
+    // Original may still be nonzero via fleet-home fan-out; outpost enrollment alone moved.
+}
+
+/// catches: fleet-payload fan-out accretes per pirate fleet home; fleet-free stays zero.
+#[test]
+fn pirate_fleet_home_systems_accrue_local_disruption_independently() {
+    let pack = hydrate_canonical();
+    let pirate_payload = pack
+        .fleet_ship_payloads
+        .iter()
+        .find(|payload| payload.id == "pirate_fleets")
+        .expect("pirate_fleets payload");
+    let embedded = pack
+        .embedded_static_galaxy_scenarios
+        .first()
+        .expect("embedded");
+    let mut fleet_home_systems = std::collections::BTreeSet::new();
+    for placement in &pirate_payload.placements {
+        let local_target = placement
+            .target_id
+            .rsplit_once("::")
+            .map(|(_, local)| local)
+            .unwrap_or(placement.target_id.as_str());
+        let system_id = embedded
+            .source_structural_grid
+            .placements
+            .iter()
+            .find(|cell| {
+                cell.target_id == placement.target_id
+                    || cell.location_id == placement.target_id
+                    || cell.target_id == local_target
+                    || cell.location_id == local_target
+                    || (cell.row == placement.row && cell.col == placement.col)
+            })
+            .map(|cell| cell.system_id)
+            .unwrap_or_else(|| panic!("fleet home {} missing lattice join", placement.target_id));
+        fleet_home_systems.insert(system_id);
+    }
+    assert!(
+        fleet_home_systems.len() >= 2,
+        "need multiple pirate fleet-home systems for OVL falsifier"
+    );
+
+    let studio = studio_from_pack(&pack);
+    let bridge = open_field_bridge(&studio);
+    let map = bridge.readout().disruption_readout;
+    let mut nonzero_homes = 0usize;
+    for system_id in &fleet_home_systems {
+        let raw = map
+            .by_system_id
+            .get(system_id)
+            .map(|r| r.max_disruption_accreted())
+            .unwrap_or(0.0);
+        if raw > 0.0 {
+            nonzero_homes += 1;
+        }
+    }
+    assert!(
+        nonzero_homes >= 2,
+        "expected >=2 pirate fleet-home systems with local disruption, got {nonzero_homes}"
+    );
+
+    let fleet_free = (0..1500u32)
+        .find(|system_id| {
+            !fleet_home_systems.contains(system_id)
+                && map
+                    .by_system_id
+                    .get(system_id)
+                    .map(|r| r.max_disruption_accreted())
+                    .unwrap_or(0.0)
+                    == 0.0
+        })
+        .expect("fleet-free comparison system at zero");
     assert_eq!(
         map.by_system_id
-            .get(&original)
+            .get(&fleet_free)
             .map(|r| r.max_disruption_accreted())
             .unwrap_or(0.0),
         0.0

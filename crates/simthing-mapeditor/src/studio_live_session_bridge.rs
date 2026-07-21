@@ -1706,16 +1706,19 @@ fn disruption_observation_loci_from_pack(
     field_economy
         .disruption_presences
         .iter()
-        .map(|presence| StudioDisruptionObservationLocus {
-            host_entity: presence.location.clone(),
-            property: PropertyKey::new(
-                &field_economy.namespace,
-                format!(
-                    "{}_{}_presence",
-                    presence.location, presence.resource
+        .map(|presence| {
+            let stem = presence
+                .property_stem
+                .as_deref()
+                .unwrap_or(presence.location.as_str());
+            StudioDisruptionObservationLocus {
+                host_entity: presence.location.clone(),
+                property: PropertyKey::new(
+                    &field_economy.namespace,
+                    format!("{stem}_{}_presence", presence.resource),
                 ),
-            ),
-            role: SubFieldRole::Amount,
+                role: SubFieldRole::Amount,
+            }
         })
         .collect()
 }

@@ -174,6 +174,15 @@ scenario = terran_pirate_galaxy {
             direction = Rising
             event_kind = 71
         }
+        # Fleet-home fan-out: each unique pirate fleet system accretes its own disruption.
+        disruption_presence = pirate_fleet_raid_presence {
+            fleet_payload = "pirate_fleets"
+            resource = "disruption"
+            amount = 8
+            threshold = 3
+            direction = Rising
+            event_kind = 71
+        }
         flow_coupling = pirate_raid_suppresses_shipyard {
             source = { location = "terran_shipyard" resource = "hulls" unit_cost = 1.0 }
             pressure = { location = "pirate_outpost" resource = "disruption" unit_cost = 1.0 }

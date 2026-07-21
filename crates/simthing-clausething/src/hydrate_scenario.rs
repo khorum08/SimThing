@@ -676,7 +676,7 @@ pub fn hydrate_scenario_with_source_base(
     let mut authority_root = if owners.is_empty() {
         None
     } else {
-        Some(build_authority_root(
+        let (root, fleet_home_install_targets) = build_authority_root(
             &scenario_id,
             &metadata,
             &owners,
@@ -684,7 +684,11 @@ pub fn hydrate_scenario_with_source_base(
             &ownership_volumes,
             &planet_surface_payloads,
             &fleet_ship_payloads,
-        ))
+        );
+        for (target_id, host_id) in fleet_home_install_targets {
+            install_targets.insert(target_id, vec![host_id]);
+        }
+        Some(root)
     };
     let mut combat_arena_payload = None;
     if let (Some(draft), Some(root)) = (combat_arena_payload_draft, authority_root.as_mut()) {
@@ -721,7 +725,13 @@ pub fn hydrate_scenario_with_source_base(
     }
     let mut field_economy = None;
     if let Some(draft) = field_economy_draft.as_ref() {
-        let lowering = hydrate_field_economy_property(draft, &root_node, &owners, &grid_metadata)?;
+        let lowering = hydrate_field_economy_property(
+            draft,
+            &root_node,
+            &owners,
+            &grid_metadata,
+            &fleet_ship_payloads,
+        )?;
         for property in lowering.properties {
             if !seen_property_ids.insert(property.id.clone()) {
                 return Err(HydrateError::new_spanned(
@@ -760,7 +770,13 @@ pub fn hydrate_scenario_with_source_base(
             game_mode.resource_flow = Some(flow);
         }
         field_economy = Some(lowering.hydrated);
-        require_system_target_for_live_spatial_hosts(&root_node, field_economy.as_ref())?;
+        // Enrollment applies on the embedded-lattice path (canonical TP). Synthetic
+        // grammar fixtures without a static galaxy keep Location hosts without targets.
+        require_system_target_for_live_spatial_hosts(
+            &root_node,
+            field_economy.as_ref(),
+            !embedded_static_galaxy_scenarios.is_empty(),
+        )?;
     }
     dedupe_property_specs_by_name(&mut game_mode.properties);
     Ok(HydratedScenarioPack {
@@ -926,7 +942,7 @@ fn build_authority_root(
     ownership_volumes: &[HydratedOwnershipVolume],
     planet_surface_payloads: &[HydratedPlanetSurfacePayload],
     fleet_ship_payloads: &[HydratedFleetShipPayload],
-) -> SimThing {
+) -> (SimThing, BTreeMap<String, SimThingId>) {
     let mut root = SimThing::new(SimThingKind::Scenario, 0);
     let provenance = embedded
         .map(|embedded| embedded.provenance.clone())
@@ -954,8 +970,9 @@ fn build_authority_root(
         .map(String::as_str)
         .unwrap_or(scenario_id);
     let mut galaxy_map = make_galaxy_map(&map_id, display_name);
+    let mut fleet_home_install_targets = BTreeMap::new();
     if let Some(embedded) = embedded {
-        attach_embedded_gridcells(
+        fleet_home_install_targets = attach_embedded_gridcells(
             &mut galaxy_map,
             embedded,
             ownership_volumes,
@@ -965,7 +982,7 @@ fn build_authority_root(
     }
     session.add_child(galaxy_map);
     root.add_child(session);
-    root
+    (root, fleet_home_install_targets)
 }
 
 fn attach_embedded_gridcells(
@@ -974,7 +991,12 @@ fn attach_embedded_gridcells(
     ownership_volumes: &[HydratedOwnershipVolume],
     planet_surface_payloads: &[HydratedPlanetSurfacePayload],
     fleet_ship_payloads: &[HydratedFleetShipPayload],
-) {
+) -> BTreeMap<String, SimThingId> {
+    let fleet_home_targets: BTreeSet<&str> = fleet_ship_payloads
+        .iter()
+        .flat_map(|payload| payload.placements.iter().map(|placement| placement.target_id.as_str()))
+        .collect();
+    let mut fleet_home_install_targets = BTreeMap::new();
     let mut owner_by_target = BTreeMap::new();
     for volume in ownership_volumes {
         for system in &volume.assigned_systems {
@@ -1031,8 +1053,12 @@ fn attach_embedded_gridcells(
             owner_ref.as_deref(),
             fleet_ship_payloads,
         );
+        if fleet_home_targets.contains(placement.target_id.as_str()) {
+            fleet_home_install_targets.insert(placement.target_id.clone(), gridcell.id);
+        }
         galaxy_map.add_child(gridcell);
     }
+    fleet_home_install_targets
 }
 
 fn attach_planet_surface_payload_to_system(
@@ -2842,11 +2868,15 @@ fn parse_row_col_system_target(local: &str) -> Option<(u32, u32)> {
     Some((row, col))
 }
 
-/// Field-economy Location hosts are live spatial loci and must author `system_target`.
+/// Field-economy Location hosts on an embedded lattice must author `system_target`.
 fn require_system_target_for_live_spatial_hosts(
     root_node: &HydratedScenarioNode,
     field_economy: Option<&HydratedFieldEconomy>,
+    has_embedded_lattice: bool,
 ) -> Result<(), HydrateError> {
+    if !has_embedded_lattice {
+        return Ok(());
+    }
     let Some(field_economy) = field_economy else {
         return Ok(());
     };

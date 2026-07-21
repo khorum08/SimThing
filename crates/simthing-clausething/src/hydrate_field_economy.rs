@@ -31,8 +31,9 @@ use simthing_spec::spec::trigger::TriggerDirection;
 
 use crate::error::HydrateError;
 use crate::hydrate_scenario::{
-    HydratedScenarioGridMetadata, HydratedScenarioNode, HydratedScenarioOwner,
-    header_or_block_body, read_scalar_f32, read_scalar_text, read_scalar_u32, require_block,
+    HydratedFleetShipPayload, HydratedScenarioGridMetadata, HydratedScenarioNode,
+    HydratedScenarioOwner, header_or_block_body, read_scalar_f32, read_scalar_text, read_scalar_u32,
+    require_block,
 };
 use crate::raw::{RawProperty, RawSpan};
 
@@ -113,12 +114,17 @@ pub struct HydratedFieldResourceQuantity {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct HydratedDisruptionPresence {
     pub id: String,
+    /// Install-target host entity (`location` id, or fleet-home `target_id` after fan-out).
     pub location: String,
     pub resource: String,
     pub amount: f32,
     pub threshold: f32,
     pub event_kind: u32,
     pub direction: TriggerDirection,
+    /// Property-name stem. Defaults to `location` for Location hosts; fleet-payload
+    /// fan-out uses the payload id so every home system shares one property type.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub property_stem: Option<String>,
     /// Location field clause token for spanned host diagnostics.
     #[serde(skip)]
     pub location_span_token: Option<usize>,
@@ -162,11 +168,25 @@ struct ParsedFieldEconomy {
     flow_couplings: Vec<HydratedFlowCoupling>,
     stockpile_silos: Vec<HydratedStockpileSilo>,
     field_resource_quantities: Vec<HydratedFieldResourceQuantity>,
-    disruption_presences: Vec<HydratedDisruptionPresence>,
+    disruption_presences: Vec<ParsedDisruptionPresence>,
     owner_policy_overlays: Vec<HydratedOwnerPolicyOverlay>,
     weight_profiles: Vec<HydratedFieldEconomyWeightProfile>,
     need_bindings: Vec<NeedBindingSpec>,
     span: RawSpan,
+}
+
+/// Pre-expansion disruption presence: Location host or fleet-payload fan-out.
+#[derive(Debug, Clone)]
+struct ParsedDisruptionPresence {
+    id: String,
+    location: Option<String>,
+    fleet_payload: Option<String>,
+    resource: String,
+    amount: f32,
+    threshold: f32,
+    event_kind: u32,
+    direction: TriggerDirection,
+    location_span_token: Option<usize>,
 }
 
 #[derive(Debug, Clone)]
@@ -212,10 +232,13 @@ pub fn hydrate_field_economy_property(
     root_node: &HydratedScenarioNode,
     owners: &[HydratedScenarioOwner],
     grid_metadata: &HydratedScenarioGridMetadata,
+    fleet_ship_payloads: &[HydratedFleetShipPayload],
 ) -> Result<FieldEconomyLowering, HydrateError> {
     let parsed = parse_field_economy_property(property)?;
-    validate_field_economy(&parsed, root_node, owners, grid_metadata)?;
-    lower_field_economy(parsed)
+    validate_field_economy(&parsed, root_node, owners, grid_metadata, fleet_ship_payloads)?;
+    let disruption_presences =
+        expand_disruption_presences(&parsed.disruption_presences, fleet_ship_payloads, &parsed.span)?;
+    lower_field_economy(parsed, disruption_presences)
 }
 
 fn parse_field_economy_property(
@@ -574,10 +597,11 @@ fn parse_field_resource_quantity(
 
 fn parse_disruption_presence(
     property: &RawProperty,
-) -> Result<HydratedDisruptionPresence, HydrateError> {
+) -> Result<ParsedDisruptionPresence, HydrateError> {
     let (header_id, block) = header_or_block_body(property, "disruption_presence")?;
     let mut id = header_id;
     let mut location = None;
+    let mut fleet_payload = None;
     let mut location_span = None;
     let mut resource = None;
     let mut amount = None;
@@ -592,6 +616,7 @@ fn parse_disruption_presence(
                 location_span = Some(field.key.span.token_index);
                 location = Some(read_scalar_text(field, "location")?);
             }
+            "fleet_payload" => fleet_payload = Some(read_scalar_text(field, "fleet_payload")?),
             "resource" => resource = Some(read_scalar_text(field, "resource")?),
             "amount" => amount = Some(read_scalar_f32(field, "amount")?),
             "threshold" => threshold = Some(read_scalar_f32(field, "threshold")?),
@@ -605,9 +630,26 @@ fn parse_disruption_presence(
             }
         }
     }
-    Ok(HydratedDisruptionPresence {
-        id: require_id(id, "disruption_presence", property)?,
-        location: require_local(location, "location", property)?,
+    let id = require_id(id, "disruption_presence", property)?;
+    match (location.is_some(), fleet_payload.is_some()) {
+        (true, false) | (false, true) => {}
+        (false, false) => {
+            return Err(HydrateError::new_spanned(
+                "disruption_presence requires exactly one of `location` or `fleet_payload`",
+                Some(property.key.span.clone()),
+            ));
+        }
+        (true, true) => {
+            return Err(HydrateError::new_spanned(
+                "disruption_presence cannot set both `location` and `fleet_payload`",
+                Some(property.key.span.clone()),
+            ));
+        }
+    }
+    Ok(ParsedDisruptionPresence {
+        id,
+        location,
+        fleet_payload,
         resource: require_local(resource, "resource", property)?,
         amount: require_local(amount, "amount", property)?,
         threshold: require_local(threshold, "threshold", property)?,
@@ -615,6 +657,79 @@ fn parse_disruption_presence(
         direction,
         location_span_token: location_span,
     })
+}
+
+/// Expand Location hosts 1:1 and fleet-payload hosts onto unique fleet-home target_ids.
+fn expand_disruption_presences(
+    drafts: &[ParsedDisruptionPresence],
+    fleet_ship_payloads: &[HydratedFleetShipPayload],
+    span: &RawSpan,
+) -> Result<Vec<HydratedDisruptionPresence>, HydrateError> {
+    let mut out = Vec::new();
+    for draft in drafts {
+        if let Some(location) = draft.location.as_ref() {
+            out.push(HydratedDisruptionPresence {
+                id: draft.id.clone(),
+                location: location.clone(),
+                resource: draft.resource.clone(),
+                amount: draft.amount,
+                threshold: draft.threshold,
+                event_kind: draft.event_kind,
+                direction: draft.direction,
+                property_stem: None,
+                location_span_token: draft.location_span_token,
+            });
+            continue;
+        }
+        let payload_id = draft.fleet_payload.as_ref().expect("XOR checked at parse");
+        let payload = fleet_ship_payloads
+            .iter()
+            .find(|payload| payload.id == *payload_id)
+            .ok_or_else(|| {
+                HydrateError::new_spanned(
+                    format!(
+                        "disruption_presence `{}` references unknown fleet_payload `{payload_id}`",
+                        draft.id
+                    ),
+                    Some(span.clone()),
+                )
+            })?;
+        if payload.placements.is_empty() {
+            return Err(HydrateError::new_spanned(
+                format!(
+                    "disruption_presence `{}` fleet_payload `{payload_id}` has no fleet home placements",
+                    draft.id
+                ),
+                Some(span.clone()),
+            ));
+        }
+        let mut home_targets = BTreeSet::new();
+        for placement in &payload.placements {
+            home_targets.insert(placement.target_id.clone());
+        }
+        for target_id in home_targets {
+            // Unique PropertyKey per host: economy install forbids one property on many hosts.
+            out.push(HydratedDisruptionPresence {
+                id: format!("{}_{}", draft.id, target_id),
+                location: target_id,
+                resource: draft.resource.clone(),
+                amount: draft.amount,
+                threshold: draft.threshold,
+                event_kind: draft.event_kind,
+                direction: draft.direction,
+                property_stem: None,
+                location_span_token: draft.location_span_token,
+            });
+        }
+    }
+    Ok(out)
+}
+
+fn presence_stem(presence: &HydratedDisruptionPresence) -> &str {
+    presence
+        .property_stem
+        .as_deref()
+        .unwrap_or(presence.location.as_str())
 }
 
 fn parse_owner_policy_overlay(
@@ -1021,6 +1136,7 @@ fn validate_field_economy(
     root_node: &HydratedScenarioNode,
     owners: &[HydratedScenarioOwner],
     grid_metadata: &HydratedScenarioGridMetadata,
+    fleet_ship_payloads: &[HydratedFleetShipPayload],
 ) -> Result<(), HydrateError> {
     if parsed.production_buildings.is_empty()
         && parsed.flow_couplings.is_empty()
@@ -1049,7 +1165,12 @@ fn validate_field_economy(
     let pressure_loci: BTreeSet<(String, String)> = parsed
         .disruption_presences
         .iter()
-        .map(|presence| (presence.location.clone(), presence.resource.clone()))
+        .filter_map(|presence| {
+            presence
+                .location
+                .as_ref()
+                .map(|location| (location.clone(), presence.resource.clone()))
+        })
         .collect();
     for building in &parsed.production_buildings {
         validate_location_ref(&building.location, root_node, &parsed.span)?;
@@ -1163,14 +1284,33 @@ fn validate_field_economy(
         spatial_location_ids.push(quantity.location.clone());
     }
     for presence in &parsed.disruption_presences {
-        validate_location_ref(&presence.location, root_node, &parsed.span)?;
         validate_non_negative_amount(presence.amount, "disruption_presence.amount", &parsed.span)?;
         validate_non_negative_amount(
             presence.threshold,
             "disruption_presence.threshold",
             &parsed.span,
         )?;
-        spatial_location_ids.push(presence.location.clone());
+        if let Some(location) = presence.location.as_ref() {
+            validate_location_ref(location, root_node, &parsed.span)?;
+            spatial_location_ids.push(location.clone());
+            continue;
+        }
+        let payload_id = presence
+            .fleet_payload
+            .as_ref()
+            .expect("XOR checked at parse");
+        if !fleet_ship_payloads
+            .iter()
+            .any(|payload| payload.id == *payload_id)
+        {
+            return Err(HydrateError::new_spanned(
+                format!(
+                    "disruption_presence `{}` references unknown fleet_payload `{payload_id}`",
+                    presence.id
+                ),
+                Some(parsed.span.clone()),
+            ));
+        }
     }
     validate_structural_location_placements(&spatial_location_ids, grid_metadata, &parsed.span)?;
 
@@ -1184,7 +1324,10 @@ fn validate_field_economy(
     Ok(())
 }
 
-fn lower_field_economy(parsed: ParsedFieldEconomy) -> Result<FieldEconomyLowering, HydrateError> {
+fn lower_field_economy(
+    parsed: ParsedFieldEconomy,
+    disruption_presences: Vec<HydratedDisruptionPresence>,
+) -> Result<FieldEconomyLowering, HydrateError> {
     let mut properties = Vec::new();
     for building in &parsed.production_buildings {
         properties.push(located_resource_property(
@@ -1230,10 +1373,10 @@ fn lower_field_economy(parsed: ParsedFieldEconomy) -> Result<FieldEconomyLowerin
             "quantity",
         ));
     }
-    for presence in &parsed.disruption_presences {
+    for presence in &disruption_presences {
         properties.push(presence_property(
             &parsed.namespace,
-            &presence.location,
+            presence_stem(presence),
             &presence.resource,
             &presence.id,
         ));
@@ -1374,10 +1517,14 @@ fn lower_field_economy(parsed: ParsedFieldEconomy) -> Result<FieldEconomyLowerin
             host_span_token: quantity.location_span_token,
         });
     }
-    for presence in &parsed.disruption_presences {
+    for presence in &disruption_presences {
         emissions.push(ResourceEmissionSpec {
             id: format!("{}_presence_emission_{}", parsed.id, presence.id),
-            source: presence_key(&parsed.namespace, &presence.location, &presence.resource),
+            source: presence_key(
+                &parsed.namespace,
+                presence_stem(presence),
+                &presence.resource,
+            ),
             source_role: SubFieldRole::Amount,
             formula: EmissionFormulaSpec::Constant(presence.amount),
             host_entity: Some(presence.location.clone()),
@@ -1385,12 +1532,15 @@ fn lower_field_economy(parsed: ParsedFieldEconomy) -> Result<FieldEconomyLowerin
         });
     }
 
-    let emit_on_threshold = parsed
-        .disruption_presences
+    let emit_on_threshold = disruption_presences
         .iter()
         .map(|presence| EmitOnThresholdSpec {
             id: format!("{}_presence_threshold_{}", parsed.id, presence.id),
-            source: presence_key(&parsed.namespace, &presence.location, &presence.resource),
+            source: presence_key(
+                &parsed.namespace,
+                presence_stem(presence),
+                &presence.resource,
+            ),
             source_role: SubFieldRole::Amount,
             threshold: presence.threshold,
             direction: presence.direction,
@@ -1418,14 +1568,14 @@ fn lower_field_economy(parsed: ParsedFieldEconomy) -> Result<FieldEconomyLowerin
             OverlayKind::Infrastructure,
         )
     }));
-    overlays.extend(parsed.disruption_presences.iter().map(|presence| {
+    overlays.extend(disruption_presences.iter().map(|presence| {
         location_overlay(
             &parsed.id,
             "presence",
             &presence.id,
             &property_ref(&presence_key(
                 &parsed.namespace,
-                &presence.location,
+                presence_stem(presence),
                 &presence.resource,
             )),
             presence.amount,
@@ -1467,7 +1617,7 @@ fn lower_field_economy(parsed: ParsedFieldEconomy) -> Result<FieldEconomyLowerin
         flow_couplings: parsed.flow_couplings,
         stockpile_silos: parsed.stockpile_silos,
         field_resource_quantities: parsed.field_resource_quantities,
-        disruption_presences: parsed.disruption_presences,
+        disruption_presences,
         owner_policy_overlays: parsed.owner_policy_overlays,
         weight_profiles: parsed.weight_profiles,
         need_bindings: need_bindings.clone(),
