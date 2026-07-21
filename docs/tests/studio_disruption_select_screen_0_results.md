@@ -9,13 +9,13 @@
 | base / STOP tip | `8ffdaf610c4c9b48e76c673c155041fd9c5cde5d` |
 | handoff_head | `9f1949d9cd54c997414ea7a87004741e3c423500` |
 | implementation_code_sha | `d72036ce1fba5f7811e7b9a61db748f5e6d4beb5` |
-| tested_code_sha | `8bd4604c4187fd775529788c38d41c1a59b6b812` |
+| remand_4_first_tested_code_sha | `8bd4604c4187fd775529788c38d41c1a59b6b812` |
 | evidence_head_sha | `0326b85985852730bde1d36fcc3adc27a1587dde` |
-| docs_governance_tail_after_evidence | `0326b859…` → tip (SHA-fill, relay false-positive fix, handoff restore, Remand-5 orientation regen) — docs/governance only; batteries not re-run on tail |
-| remand_5_identity_bind_sha | `1e5517c075c43b1a051eb9c53e022ee656dff337` |
-| final_head_sha | PR tip after this Remand-5 governance package (docs-only tail) |
+| remand_5_orientation_bind_sha | `1e5517c075c43b1a051eb9c53e022ee656dff337` |
+| tested_code_sha | `a581097f74c980448a4720fe8b22098de2571883` |
+| final_head_sha | PENDING (docs-only evidence-tail commit after Remand-5 re-verify) |
 
-Load-bearing production + test code ends at `tested_code_sha`. Evidence package lands at `evidence_head_sha`. Later commits are docs/governance only unless noted.
+`implementation_code_sha` is production landing. Remand-4 first green battery was at `remand_4_first_tested_code_sha`. Remand-5 re-ran enrollment/readback + 12.3 + cargo check + Studio build at `tested_code_sha` (includes docs/governance through orientation regen; no executable delta vs Remand-4 tested tree). `final_head_sha` is the docs-only identity bind after that re-verify.
 
 ## DA ruling quote (`5027107657`) — operative authorization
 > **GENERIC STRUCTURAL-ENROLLMENT CONTRACT: APPROVED, inline on #1420 (`system_target` on `location`)**  
@@ -50,23 +50,23 @@ Typed disruption loci only; fail-loud total/partial mapping; biting 0→nonzero 
 | observation_door_unknown_property_role_and_host_fail_loud | silent observe misses |
 | driver two_loci_same_system_report_exact_max_via_live_readback | test-local reduce clone |
 
-## Local battery (Remand-4 @ tested_code_sha `8bd4604c…`)
+## Local battery
+### Remand-4 first green @ `8bd4604c…`
+enrollment/readback (10), 12.3, 11.6, field elevate, TP elevate, TP clause author, driver observation, cargo check, Studio build, agent_scan hard FAIL=0, inventory drift, doc_budget — PASS.
+
+### Remand-5 re-verify @ `tested_code_sha` `a581097f…`
 | target | result |
 |---|---|
 | `cargo test -p simthing-mapeditor --test studio_live_disruption_readback_0` | PASS (10) |
 | `cargo test -p simthing-mapeditor --test studio_disruption_select_screen_0` | PASS |
-| `cargo test -p simthing-mapeditor --test studio_owned_star_select_brighten_0` | PASS (11.6) |
-| `cargo test -p simthing-mapeditor --test studio_field_session_elevate_0` | PASS |
-| `cargo test -p simthing-workshop --test tp_field_session_elevate_0` | PASS |
-| `cargo test -p simthing-workshop --test tp_clause_economy_author_0` | PASS (12.8) |
-| `cargo test -p simthing-driver hosted_property_observation` | PASS |
 | `cargo check -p simthing-clausething -p simthing-driver -p simthing-mapeditor` | PASS |
 | `cargo build -p simthing-mapeditor --bin simthing-studio` | PASS |
-| `bash scripts/ci/agent_scan.sh` | hard FAIL=0 (HEURISTIC INSPECT only) |
-| `bash scripts/ci/test_inventory_drift_check.sh` | PASS (after ledger sync) |
+| `bash scripts/ci/gen_orientation.sh --check` | PASS |
+| `bash scripts/ci/gen_digest.sh --check` | PASS |
+| `bash scripts/ci/anchor_check.sh --check` | PASS |
 | `bash scripts/ci/doc_budget_check.sh --check` | PASS |
 
-Remand-5 does not re-run the executable battery: tip after `tested_code_sha` is docs/governance only (orientation regen + identity bind).
+Executable tree unchanged vs Remand-4 tested code; Remand-5 re-verify binds governance tip.
 
 ## Scope Ledger
 | | |
