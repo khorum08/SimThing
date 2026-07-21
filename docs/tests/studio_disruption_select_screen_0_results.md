@@ -1,7 +1,7 @@
 # STUDIO-DISRUPTION-SELECT-SCREEN-0 Results
 
 ## Status
-**PROBATION / DRAFT** — PR [#1420](https://github.com/khorum08/SimThing/pull/1420); DA enrollment ruling `5027107657`; coding resume `5027952564`. Production `location.system_target` enrollment landed. Owner OVL remains OPEN until orch accept + re-freeze + Owner capture. Prior freeze `715fdde4…fe58` is STOP provenance only.
+**PROBATION / DRAFT** — PR [#1420](https://github.com/khorum08/SimThing/pull/1420); DA enrollment ruling `5027107657`; Remand-5 governance `5028303162`. Production enrollment accepted through Remand-4 proofs. Owner OVL remains OPEN until orch accept + re-freeze + Owner capture. Prior freeze `715fdde4…fe58` is STOP provenance only.
 
 ## Identity SHAs
 | role | full SHA |
@@ -10,12 +10,18 @@
 | handoff_head | `9f1949d9cd54c997414ea7a87004741e3c423500` |
 | implementation_code_sha | `d72036ce1fba5f7811e7b9a61db748f5e6d4beb5` |
 | tested_code_sha | `8bd4604c4187fd775529788c38d41c1a59b6b812` |
-| evidence_head_sha / final_head_sha | `0326b85985852730bde1d36fcc3adc27a1587dde` |
+| evidence_head_sha | `0326b85985852730bde1d36fcc3adc27a1587dde` |
+| docs_governance_tail_after_evidence | `0326b859…` → tip (SHA-fill, relay false-positive fix, handoff restore, Remand-5 orientation regen) — docs/governance only; batteries not re-run on tail |
+| final_head_sha | PENDING (Remand-5 governance tip after this commit) |
+
+Load-bearing production + test code ends at `tested_code_sha`. Evidence package lands at `evidence_head_sha`. Later commits are docs/governance only unless noted.
 
 ## DA ruling quote (`5027107657`) — operative authorization
 > **GENERIC STRUCTURAL-ENROLLMENT CONTRACT: APPROVED, inline on #1420 (`system_target` on `location`)**  
 > Preferred shape ADOPTED — semantics 1–7 as written, with four DA riders: §7 transitional zero-target; RF-5A spanned admission for unknown/duplicate/ambiguous/non-lattice; second-synthetic falsifier; placement-swap falsifier stays king.  
 > Endorsed: exact-one `install_targets`; remove `from_values_for_test`; delete `attach_disruption_host_structural_placements`; TP explicitly places spatial field hosts.
+
+DA `5027107657` is the authorized class-widening authority for Remand-4 surfaces outside the prior narrow `studio-live-ops-ui-clock` envelope (clausething hydrate enrollment, driver observation door internalization, canonical clause placement). Clearance may still report `DA-RESERVE(class-envelope-violation)` until orch/class harness absorbs that ruling; the sticky cites this comment explicitly.
 
 ## Production authority path implemented
 1. Clause `location.system_target = "rowR_colC"` (combat vocabulary reuse).
@@ -43,7 +49,7 @@ Typed disruption loci only; fail-loud total/partial mapping; biting 0→nonzero 
 | observation_door_unknown_property_role_and_host_fail_loud | silent observe misses |
 | driver two_loci_same_system_report_exact_max_via_live_readback | test-local reduce clone |
 
-## Local battery (Remand-4)
+## Local battery (Remand-4 @ tested_code_sha `8bd4604c…`)
 | target | result |
 |---|---|
 | `cargo test -p simthing-mapeditor --test studio_live_disruption_readback_0` | PASS (10) |
@@ -59,6 +65,8 @@ Typed disruption loci only; fail-loud total/partial mapping; biting 0→nonzero 
 | `bash scripts/ci/test_inventory_drift_check.sh` | PASS (after ledger sync) |
 | `bash scripts/ci/doc_budget_check.sh --check` | PASS |
 
+Remand-5 does not re-run the executable battery: tip after `tested_code_sha` is docs/governance only (orientation regen + identity bind).
+
 ## Scope Ledger
 | | |
 |---|---|
@@ -72,4 +80,4 @@ Typed disruption loci only; fail-loud total/partial mapping; biting 0→nonzero 
 piecewise YES · clamp YES · deselect YES · live STEAD map YES · system_target swap YES · exact max YES · tick refresh YES · shell 0.0 YES · 12.3 match YES · fail-loud enrollment YES · production enrollment YES · OVL OPEN
 
 ## Sticky disposition
-Keep draft/open/unmerged. No re-freeze / Owner OVL until orchestration accepts the corrected production enrollment package.
+Keep draft/open/unmerged. No re-freeze / Owner OVL until orchestration accepts Remand-5 governance return.
