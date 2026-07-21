@@ -83,3 +83,6 @@ piecewise YES · clamp YES · deselect YES · live STEAD map YES · system_targe
 
 ## Sticky disposition
 Keep draft/open/unmerged. No re-freeze / Owner OVL until orchestration accepts Remand-6 integrated return.
+
+## 12.8 fan-out assertion reconciliation (DA `5036705635` / orch `5037364694`)
+Owner OVL stands; runtime/presentation untouched. `tp_clause_economy_author_0` exact battery updated to the adjudicated fleet-local truth: **9** hydrated `disruption_presences` = `pirate_outpost` + the eight unique `pirate_fleets` home `target_id`s (`tp_base::studio_gridcell_system_{96,244,250,466,755,908,1055,1420}`), with retained resource/amount/threshold/event semantics. Overlay count collateral: 13 `tp_economy_*` overlays.
