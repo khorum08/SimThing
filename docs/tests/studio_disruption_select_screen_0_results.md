@@ -15,7 +15,7 @@
 | integrated_master_sha | `d83a3bf7c15b221a68da82909a738f2011d6465d` |
 | integrated_tested_code_sha | `c774ad8158c362f1ed49b0898bc485f4bab0d91c` |
 | tested_code_sha | `c774ad8158c362f1ed49b0898bc485f4bab0d91c` |
-| final_head_sha | PENDING (docs-only evidence-tail after Remand-6) |
+| final_head_sha | `5c7a766b10ecf9867a27f0dcfca62375b875b00f` |
 
 No 12.3 production-code change in Remand-6. Master integrate brought Owner 0.0.8.7 doctrine docs only (`docs/design_0_0_8_7_rf_arena_modernization.md`). `gen_orientation.sh` regenerated against the integrated tree (output byte-identical to pre-commit tip; `--check` PASS).
 
