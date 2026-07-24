@@ -16,6 +16,7 @@ guard_kabuki_falsifier_result="FAIL"
 horizon_entry_falsifier_result="FAIL"
 test_budget_result="FAIL"
 drift_proof_result="FAIL"
+stock_gate_fail_emit_result="FAIL"
 DELTA_BASE_SHA=""
 DELTA_HEAD_SHA=""
 
@@ -649,15 +650,21 @@ run_positive_control() {
   out="$(mktemp "${TMPDIR:-/tmp}/selftest-positive-XXXXXX")"
   local exit_code verdict hard inspect
   set +e
-  bash "${SCAN_SH}" >"$out" 2>&1
+  # Engine-only control: live stock gates are owned by doctrine_pr_scan.sh /
+  # the workflow after selftest. Recursing into them here races inventory
+  # state and can abort before DOCTRINE-SCAN-VERDICT under a leaked set -e.
+  DOCTRINE_SCAN_SKIP_DRIFT=1 bash "${SCAN_SH}" >"$out" 2>&1
   exit_code=$?
   set -e
   read -r verdict hard inspect <<<"$(parse_footer_verdict "$out")"
-  rm -f "$out"
   if [[ "$exit_code" -eq 0 && "$hard" -eq 0 && ( "$verdict" == "PASS" || "$verdict" == "INSPECT" ) ]]; then
     positive_control="PASS"
+    rm -f "$out"
   else
     positive_control="FAIL (verdict=${verdict} exit=${exit_code})"
+    echo "positive-control scan output (preserved on UNKNOWN/nonzero):" >&2
+    cat "$out" >&2 || true
+    rm -f "$out"
     fail_selftest
   fi
 }
@@ -1082,6 +1089,54 @@ run_drift_proof() {
   rm -f "$out"
 }
 
+# Prove a failing live stock gate still reaches emit_report with
+# DOCTRINE-SCAN-VERDICT: FAIL (not UNKNOWN / premature abort).
+run_stock_gate_fail_emit_proof() {
+  local root out exit_code verdict hard inspect
+  root="$(mktemp -d "${TMPDIR:-/tmp}/stock-gate-fail-XXXXXX")"
+  out="${root}/scan.out"
+  copy_ci_bundle "$root"
+  ensure_minimal_crates "$root"
+  cat >"${root}/scripts/ci/test_inventory_drift_check.sh" <<'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+  cat >"${root}/scripts/ci/doc_budget_check.sh" <<'EOF'
+#!/usr/bin/env bash
+echo "DOC-BUDGET-VERDICT: PASS"
+exit 0
+EOF
+  cat >"${root}/scripts/ci/rule_expiry_check.sh" <<'EOF'
+#!/usr/bin/env bash
+echo "RULE-EXPIRY-VERDICT: PASS"
+exit 0
+EOF
+  cat >"${root}/scripts/ci/agents_stub_check.sh" <<'EOF'
+#!/usr/bin/env bash
+echo "AGENTS-STUB-VERDICT: FAIL(pointer-stub)" >&2
+exit 1
+EOF
+  cat >"${root}/scripts/ci/da_treeverify.sh" <<'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+  set +e
+  # Intentionally omit DOCTRINE_SCAN_SKIP_DRIFT so closing stock gates run.
+  (cd "$root" && bash "scripts/ci/doctrine_scan.sh") >"$out" 2>&1
+  exit_code=$?
+  set -e
+  read -r verdict hard inspect <<<"$(parse_footer_verdict "$out")"
+  if [[ "$verdict" == "FAIL" && "$hard" -ge 1 && "$exit_code" -ne 0 ]]; then
+    stock_gate_fail_emit_result="PASS"
+  else
+    stock_gate_fail_emit_result="FAIL (verdict=${verdict} hard=${hard} exit=${exit_code})"
+    echo "stock-gate-fail-emit scan output:" >&2
+    cat "$out" >&2 || true
+    fail_selftest
+  fi
+  rm -rf "$root"
+}
+
 run_all_cases() {
   expect_reliable_fail "b3_buffer_escape" "B3-BUFFER-ESCAPE" \
     setup_kernel_src b3_buffer_escape.rs
@@ -1183,6 +1238,7 @@ emit_report() {
   echo "  horizon entry falsifier: ${horizon_entry_falsifier_result}"
   echo "  test budget proof: ${test_budget_result}"
   echo "  inventory drift proof: ${drift_proof_result}"
+  echo "  stock-gate fail emit proof: ${stock_gate_fail_emit_result}"
   if [[ "$selftest_failures" -eq 0 ]]; then
     echo "DOCTRINE-SELFTEST-VERDICT: PASS"
   else
@@ -1217,6 +1273,7 @@ main() {
   run_horizon_entry_falsifier_test
   run_test_budget_proof
   run_drift_proof
+  run_stock_gate_fail_emit_proof
   emit_report
 
   if [[ "$selftest_failures" -gt 0 ]]; then

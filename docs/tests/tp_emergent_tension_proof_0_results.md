@@ -1,5 +1,8 @@
 # TP-EMERGENT-TENSION-PROOF-0 — evidence
 
+## Status
+**DA-GRADUATED / merged [#1418](https://github.com/khorum08/SimThing/pull/1418) @ `ced8ce2d`** — DA graduation comment id_5022399857 (audited tip `8763f30d`); Owner OVL PASS/CLOSED id_5018879166.
+
 ## Claim
 
 Canonical multi-tick GPU runs on `scenarios/terran_pirate_galaxy.clause` through ordinary `open_from_spec + step_once` accrete production from an authored output coefficient, suppress local flow through an authored `flow_coupling` on distinct location hosts, and diverge sealed **construction** crossings (manufacturing need on produced hulls, `event_kind = 92`) when only owner policy-weight silo scalars change. Clause-source coefficient=`0` and coupling-omitted controls bite. Unrelated disruption threshold `event_kind = 71` is proven sealed while construction gauges stay zero. RF-5 expansion/minerals regressions remain green via source variants. Owner OVL is **PASS/CLOSED** (`5018879166`).

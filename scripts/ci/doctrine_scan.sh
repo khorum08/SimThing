@@ -55,6 +55,23 @@ die_scanner() {
   scanner_errors=$((scanner_errors + 1))
 }
 
+
+# Restore the caller's prior errexit state. Helpers that temporarily use
+# `set +e` to capture nonzero status must not leave `set -e` enabled —
+# this script's default is `set -uo pipefail` (no errexit), and a leaked
+# `set -e` aborts stock-gate `return 1` paths before emit_report.
+errexit_is_on() {
+  case $- in *e*) return 0 ;; *) return 1 ;; esac
+}
+
+restore_errexit() {
+  if [[ "${1:-0}" == "1" ]]; then
+    set -e
+  else
+    set +e
+  fi
+}
+
 trim() {
   local s="$1"
   s="${s#"${s%%[![:space:]]*}"}"
@@ -712,6 +729,8 @@ run_rg_scan() {
 
   local rg_out=""
   local rg_status=0
+  _errexit_was_on=0
+  errexit_is_on && _errexit_was_on=1
   set +e
   if [[ "$use_relative_paths" -eq 1 ]]; then
     rg_out="$(cd "$REPO_ROOT" && rg "${rg_args[@]}" "${search_paths[@]}" 2>&1)"
@@ -719,7 +738,7 @@ run_rg_scan() {
     rg_out="$(cd "$REPO_ROOT" && rg "${rg_args[@]}" "${search_paths[0]}" 2>&1)"
   fi
   rg_status=$?
-  set -e
+  restore_errexit "$_errexit_was_on"
 
   if [[ "$rg_status" -eq 2 ]]; then
     die_scanner "ripgrep error (exit ${rg_status}) for pattern '${pattern}' on '${target_glob}': ${rg_out}"
@@ -764,10 +783,12 @@ run_allowlist_scan() {
 
   local out=""
   local py_status=0
+  _errexit_was_on=0
+  errexit_is_on && _errexit_was_on=1
   set +e
   out="$(python "$script" "$mode" 2>&1)"
   py_status=$?
-  set -e
+  restore_errexit "$_errexit_was_on"
 
   if [[ "$py_status" -eq 2 ]]; then
     die_scanner "allowlist scan error (${mode}): ${out}"
@@ -843,10 +864,12 @@ run_require_scan() {
 
   for f in "${files[@]}"; do
     local rg_status=0
+    _errexit_was_on=0
+    errexit_is_on && _errexit_was_on=1
     set +e
     rg -U --multiline -q -e "$pattern" "${REPO_ROOT}/${f}" 2>/dev/null
     rg_status=$?
-    set -e
+    restore_errexit "$_errexit_was_on"
     if [[ "$rg_status" -eq 2 ]]; then
       die_scanner "ripgrep error on require scan for '${f}'"
       return 2
@@ -987,10 +1010,12 @@ run_inventory_drift_gate() {
     return 1
   }
   local out status
+  _errexit_was_on=0
+  errexit_is_on && _errexit_was_on=1
   set +e
   out="$(bash "$drift_script" 2>&1)"
   status=$?
-  set -e
+  restore_errexit "$_errexit_was_on"
   if [[ "$status" -ne 0 ]]; then
     die_scanner "test inventory drift gate failed"
     while IFS= read -r line; do
@@ -1011,10 +1036,12 @@ run_stock_gate_script() {
     return 1
   }
   local out status verdict
+  _errexit_was_on=0
+  errexit_is_on && _errexit_was_on=1
   set +e
   out="$(bash "$script" --check 2>&1)"
   status=$?
-  set -e
+  restore_errexit "$_errexit_was_on"
   verdict="$(printf '%s\n' "$out" | grep -E '^[A-Z0-9_-]+-VERDICT:' | tail -n 1 || true)"
   if [[ -z "$verdict" ]]; then
     die_scanner "${scan_id} gate produced no verdict"
@@ -1063,10 +1090,12 @@ run_agents_stub_gate() {
 run_da_treeverify_lifecycle_gate() {
   # Non-core da_review_profile.tsv rows must carry expires_on and be deleted/retired after expiry.
   local out rc
+  _errexit_was_on=0
+  errexit_is_on && _errexit_was_on=1
   set +e
   out="$(bash "${SCRIPT_DIR}/da_treeverify.sh" --check-lifecycle 2>&1)"
   rc=$?
-  set -e
+  restore_errexit "$_errexit_was_on"
   printf '%s\n' "$out"
   if [[ $rc -ne 0 ]]; then
     echo "DA-TREEVERIFY-LIFECYCLE gate failed" >&2
@@ -1129,10 +1158,12 @@ run_addendum_proof() {
 
   local out status digest_path
 
+  _errexit_was_on=0
+  errexit_is_on && _errexit_was_on=1
   set +e
   out="$(bash "${SCRIPT_DIR}/doctrine_scan.sh" --track-doc "${tmp_rel}/active_track.md" 2>&1)"
   status=$?
-  set -e
+  restore_errexit "$_errexit_was_on"
   if [[ "$status" -eq 0 ]]; then
     echo "addendum proof failed (active addendum): expected nonzero scan status" >&2
     echo "$out" >&2
@@ -1140,10 +1171,12 @@ run_addendum_proof() {
   fi
   assert_contains "$out" "TRACK-LOCAL-BAD  FAIL  1" "active addendum" || return 1
 
+  _errexit_was_on=0
+  errexit_is_on && _errexit_was_on=1
   set +e
   out="$(bash "${SCRIPT_DIR}/doctrine_scan.sh" 2>&1)"
   status=$?
-  set -e
+  restore_errexit "$_errexit_was_on"
   if [[ "$status" -ne 0 ]]; then
     echo "addendum proof failed (no opt-in): expected global scan to pass" >&2
     echo "$out" >&2
@@ -1151,10 +1184,12 @@ run_addendum_proof() {
   fi
   assert_not_contains "$out" "TRACK-LOCAL-BAD" "no opt-in" || return 1
 
+  _errexit_was_on=0
+  errexit_is_on && _errexit_was_on=1
   set +e
   out="$(bash "${SCRIPT_DIR}/doctrine_scan.sh" --track-doc "${tmp_rel}/clean_track.md" 2>&1)"
   status=$?
-  set -e
+  restore_errexit "$_errexit_was_on"
   if [[ "$status" -ne 0 ]]; then
     echo "addendum proof failed (inactive detached): expected clean active track to pass" >&2
     echo "$out" >&2
@@ -1162,10 +1197,12 @@ run_addendum_proof() {
   fi
   assert_not_contains "$out" "INACTIVE-BAD" "inactive detached" || return 1
 
+  _errexit_was_on=0
+  errexit_is_on && _errexit_was_on=1
   set +e
   out="$(bash "${SCRIPT_DIR}/doctrine_scan.sh" --track-doc "${tmp_rel}/redefine_track.md" 2>&1)"
   status=$?
-  set -e
+  restore_errexit "$_errexit_was_on"
   if [[ "$status" -eq 0 ]]; then
     echo "addendum proof failed (forbidden global redefine): expected nonzero status" >&2
     echo "$out" >&2

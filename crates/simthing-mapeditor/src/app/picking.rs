@@ -192,6 +192,7 @@ pub fn sync_star_visuals_system(
         camera_position: quantize_billboard_camera_key(camera_pos.to_array()).position,
         selected_system_id: state.selection.selected_system_id,
         hovered_system_id: state.selection.hovered_system_id,
+        selected_disruption_milli: 0,
         render_mode: settings.render_mode,
         falloff_settings: star_falloff_settings_key(settings.falloff_settings()),
         view_model_generation: state.scene_render_revision,
@@ -242,6 +243,8 @@ pub fn sync_star_visuals_system(
             render_mode: settings.render_mode,
             depth_bucket_or_quantized_percent: quantize_star_depth_percent(depth_percent),
             layer: layer_code,
+            disruption_blur_milli: 1000,
+            disruption_red_milli: 0,
         };
         if !star_visual_per_star_should_write(force_resync, *applied_key, visual_key) {
             continue;

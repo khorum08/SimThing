@@ -432,6 +432,7 @@ in `crates/simthing-mapeditor` + `crates/simthing-tools` code and their live tes
 
 - [studio_faction_nameplates_0_results.md](studio_faction_nameplates_0_results.md) — STUDIO-FACTION-NAMEPLATES-0 **ORCHESTRATOR-GRADUATED** — star nameplates use authority display names + owner color_rgb; unowned neutral; presentation only.
 - [studio_owned_star_select_brighten_0_results.md](studio_owned_star_select_brighten_0_results.md) — STUDIO-OWNED-STAR-SELECT-BRIGHTEN-0 **PROBATION** — selected owned star brightens same-owner set; unowned no group; deselect clears; actual selection preserved.
+- [studio_disruption_select_screen_0_results.md](studio_disruption_select_screen_0_results.md) — STUDIO-DISRUPTION-SELECT-SCREEN-0 **PROBATION / DRAFT / PR #1420** — selected-star disruption blur/tint screen from admitted 12.2 readout; deselect restore; coexists with 11.6 brighten; Owner OVL open.
 - [studio_clause_loader_simplify_0_results.md](studio_clause_loader_simplify_0_results.md) — STUDIO-CLAUSE-LOADER-SIMPLIFY-0 **PROBATION** — ClauseScript-only Scenario Library; source_base wire; read-only Scenario telemetry; no Spec mutation.
 
 - [studio_frosted_glass_0_results.md](studio_frosted_glass_0_results.md) - STUDIO-FROSTED-GLASS-0 **DA-GRADUATED / merged #1314 @ `26327900`** - shared eighth-resolution two-pass WGSL backdrop blur + retained dark tint; Settings, Telemetry, side panels, and Scenario Library covered; loader repair and local frame-time/visual proof retained.

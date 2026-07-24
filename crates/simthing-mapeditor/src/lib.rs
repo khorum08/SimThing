@@ -29,6 +29,7 @@ pub mod studio_admission_report;
 pub mod studio_antialiasing;
 pub mod studio_config;
 pub mod studio_disruption_readout;
+pub mod studio_disruption_select_screen;
 pub mod studio_frame_phase_gpu_telemetry;
 pub mod studio_fleet_presence;
 pub mod studio_frosted_glass;
@@ -157,6 +158,11 @@ pub use studio_disruption_readout::{
     studio_disruption_readout_map_from_session, studio_disruption_readout_map_from_snapshot,
     StudioDisruptionReadoutMap,
 };
+pub use studio_disruption_select_screen::{
+    compose_disruption_blur_scale, compose_disruption_rgb, disruption_select_screen_from_raw,
+    quantize_blur_scale_milli, quantize_disruption_milli, quantize_red_fraction_milli,
+    raw_disruption_for_system, selected_disruption_select_screen, DisruptionSelectScreen,
+};
 pub use studio_frame_phase_gpu_telemetry::{
     apply_diagnostic_minimal_render, capture_normal_render_snapshot, format_present_mode_label,
     frame_phase_settings_lines, gpu_context_settings_lines, instrumented_render_loop_ms,
@@ -237,9 +243,9 @@ pub use studio_live_session_bridge::{
     driver_scenario_from_authority, field_bearing_game_mode,
     request_live_bridge_reset_after_session_replacement, revalidate_authority_stead,
     studio_summary_identity_eq, BridgeOpenIdentity, StudioAuthoredLiveProfile,
-    StudioFieldAccretionSample, StudioLiveSessionBridge, StudioLiveSessionBridgeError,
-    StudioLiveSessionBridgeReadout, StudioLiveSessionBridgeStatus, StudioLiveSessionPath,
-    StudioLiveSessionPathPreference,
+    StudioDisruptionObservationLocus, StudioFieldAccretionSample, StudioLiveSessionBridge,
+    StudioLiveSessionBridgeError, StudioLiveSessionBridgeReadout, StudioLiveSessionBridgeStatus,
+    StudioLiveSessionPath, StudioLiveSessionPathPreference,
 };
 pub use studio_sim_clock::{
     StudioSimClock, StudioSimClockError, StudioSimClockRate, STUDIO_SIM_CLOCK_DEFAULT_MAX_TPS,

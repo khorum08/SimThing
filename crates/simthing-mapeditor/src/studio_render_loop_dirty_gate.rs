@@ -66,6 +66,8 @@ pub struct StarVisualSyncKey {
     pub camera_position: [i32; 3],
     pub selected_system_id: Option<u32>,
     pub hovered_system_id: Option<u32>,
+    /// Quantized selected-star admitted disruption (12.3 screen dirty bit).
+    pub selected_disruption_milli: u32,
     pub render_mode: StarRenderMode,
     pub falloff_settings: StarFalloffSettingsKey,
     pub view_model_generation: u64,
@@ -86,6 +88,10 @@ pub struct StarVisualAppliedKey {
     pub render_mode: StarRenderMode,
     pub depth_bucket_or_quantized_percent: u16,
     pub layer: u8,
+    /// 12.3 selected-star disruption blur scale (milli); 1000 = identity.
+    pub disruption_blur_milli: u32,
+    /// 12.3 selected-star red fraction (milli).
+    pub disruption_red_milli: u32,
 }
 
 /// Cache state for star visual material/scale sync dirty gating.
@@ -369,6 +375,7 @@ mod tests {
             camera_position: [80, 70, 80],
             selected_system_id: None,
             hovered_system_id: None,
+            selected_disruption_milli: 0,
             render_mode: StarRenderMode::BloomStarburst,
             falloff_settings: StarFalloffSettingsKey {
                 base_blur_radius: 11,

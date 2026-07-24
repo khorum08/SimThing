@@ -30,6 +30,10 @@ use crate::star_render::{
 use crate::starburst::{
     generate_star_aura_image, generate_star_circle_image, generate_starburst_image,
 };
+use crate::studio_disruption_select_screen::{
+    compose_disruption_blur_scale, compose_disruption_rgb, quantize_blur_scale_milli,
+    quantize_disruption_milli, quantize_red_fraction_milli, selected_disruption_select_screen,
+};
 use crate::studio_render_loop_dirty_gate::{
     hyperlane_basis_mismatch_angle_deg, hyperlane_basis_mismatch_exceeds_epsilon,
     hyperlane_camera_basis_from_transform, hyperlane_render_settings_key,
@@ -1198,10 +1202,16 @@ pub fn sync_star_visuals_system(
         &session.scenario_authority,
         state.selection.selected_system_id,
     );
+    // 12.3: admitted disruption screen for the actual selected system only.
+    let disruption_screen = selected_disruption_select_screen(
+        state.selection.selected_system_id,
+        &state.live_bridge_readout.disruption_readout,
+    );
     let sync_key = StarVisualSyncKey {
         camera_position: quantize_billboard_camera_key(camera_pos.to_array()).position,
         selected_system_id: state.selection.selected_system_id,
         hovered_system_id: state.selection.hovered_system_id,
+        selected_disruption_milli: quantize_disruption_milli(disruption_screen.raw_disruption),
         render_mode: settings.render_mode,
         falloff_settings: star_falloff_settings_key(settings.falloff_settings()),
         view_model_generation: state.scene_render_revision,
@@ -1233,6 +1243,9 @@ pub fn sync_star_visuals_system(
             state.selection.selected_system_id,
             &owned_highlight,
         );
+        // 12.3: disruption screen only on the actual selected system (not co-owned set).
+        let is_actual_selected =
+            state.selection.selected_system_id == Some(star.instance.system_id);
         let hovered = state.selection.hovered_system_id == Some(star.instance.system_id);
         let instance = star.instance.with_view_state(visual_selected, hovered);
         let distance = camera_pos.distance(instance.anchor_position);
@@ -1251,12 +1264,19 @@ pub fn sync_star_visuals_system(
             StarVisualLayer::Core => 0,
             StarVisualLayer::Aura => 1,
         };
+        let star_screen = if is_actual_selected {
+            disruption_screen
+        } else {
+            crate::studio_disruption_select_screen::DisruptionSelectScreen::IDENTITY
+        };
         let visual_key = StarVisualAppliedKey {
             selected: visual_selected,
             hovered,
             render_mode: settings.render_mode,
             depth_bucket_or_quantized_percent: quantize_star_depth_percent(depth_percent),
             layer: layer_code,
+            disruption_blur_milli: quantize_blur_scale_milli(star_screen.blur_scale),
+            disruption_red_milli: quantize_red_fraction_milli(star_screen.red_fraction),
         };
         if !star_visual_per_star_should_write(force_resync, *applied_key, visual_key) {
             continue;
@@ -1269,7 +1289,7 @@ pub fn sync_star_visuals_system(
             &settings,
             use_plateau,
         );
-        let (layer_scale, alpha, emissive_factor, color, texture) =
+        let (base_layer_scale, alpha, emissive_factor, base_color_rgb, texture) =
             match (settings.render_mode, star.layer) {
                 (StarRenderMode::BloomStarburst, StarVisualLayer::Core) => (
                     visual.core_scale,
@@ -1300,16 +1320,25 @@ pub fn sync_star_visuals_system(
                     assets.aura_texture.clone(),
                 ),
             };
+        // Order-stable: 11.6 scale (inside visual) → 12.3 selected disruption blur/tint.
+        let layer_scale =
+            compose_disruption_blur_scale(base_layer_scale, is_actual_selected, star_screen);
+        let color = compose_disruption_rgb(base_color_rgb, is_actual_selected, star_screen);
         transform.translation = instance.anchor_position;
         transform.scale = Vec3::splat(instance.base_scale_variation * layer_scale);
         if let Some(material) = materials.get_mut(&material_handle.0) {
             let emissive =
                 star_emissive_strength(instance.base_intensity_variation, visual_selected, hovered);
             let base_color = Color::srgba(color.0, color.1, color.2, alpha);
+            let emissive_rgb = compose_disruption_rgb(
+                (emissive * 1.25, emissive * 1.32, emissive * 1.45),
+                is_actual_selected,
+                star_screen,
+            );
             let emissive_color = LinearRgba::new(
-                emissive * 1.25 * alpha * emissive_factor,
-                emissive * 1.32 * alpha * emissive_factor,
-                emissive * 1.45 * alpha * emissive_factor,
+                emissive_rgb.0 * alpha * emissive_factor,
+                emissive_rgb.1 * alpha * emissive_factor,
+                emissive_rgb.2 * alpha * emissive_factor,
                 1.0,
             );
             if material.base_color_texture.as_ref() != Some(&texture) {

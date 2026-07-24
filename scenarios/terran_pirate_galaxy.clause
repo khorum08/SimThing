@@ -45,9 +45,11 @@ scenario = terran_pirate_galaxy {
     # production/disruption fields without hand-editing sibling JSON.
     location = terran_shipyard {
         display_name = "Terran Shipyard"
+        system_target = "row199_col80"
     }
     location = pirate_outpost {
         display_name = "Pirate Outpost"
+        system_target = "row158_col110"
     }
 
     ownership_volume = terran_core {
@@ -166,6 +168,15 @@ scenario = terran_pirate_galaxy {
         }
         disruption_presence = pirate_raid_presence {
             location = "pirate_outpost"
+            resource = "disruption"
+            amount = 8
+            threshold = 3
+            direction = Rising
+            event_kind = 71
+        }
+        # Fleet-home fan-out: each unique pirate fleet system accretes its own disruption.
+        disruption_presence = pirate_fleet_raid_presence {
+            fleet_payload = "pirate_fleets"
             resource = "disruption"
             amount = 8
             threshold = 3

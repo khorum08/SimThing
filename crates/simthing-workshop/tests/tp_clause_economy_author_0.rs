@@ -95,8 +95,33 @@ fn canonical_tp_clause_hydrates_field_economy_to_existing_surfaces() {
     assert_eq!(economy.flow_couplings.len(), 1);
     assert_eq!(economy.flow_couplings[0].id, "pirate_raid_suppresses_shipyard");
     assert_eq!(economy.field_resource_quantities.len(), 1);
-    assert_eq!(economy.disruption_presences.len(), 1);
-    assert_eq!(economy.disruption_presences[0].location, "pirate_outpost");
+    // Fleet-local fan-out (Owner OVL / DA `5036705635`): 8 unique pirate fleet-home
+    // loci + pirate_outpost. Exact set — not >= / nonempty / count-only.
+    const EXPECTED_DISRUPTION_LOCATIONS: [&str; 9] = [
+        "pirate_outpost",
+        "tp_base::studio_gridcell_system_1055",
+        "tp_base::studio_gridcell_system_1420",
+        "tp_base::studio_gridcell_system_244",
+        "tp_base::studio_gridcell_system_250",
+        "tp_base::studio_gridcell_system_466",
+        "tp_base::studio_gridcell_system_755",
+        "tp_base::studio_gridcell_system_908",
+        "tp_base::studio_gridcell_system_96",
+    ];
+    assert_eq!(economy.disruption_presences.len(), EXPECTED_DISRUPTION_LOCATIONS.len());
+    let actual_locations: Vec<&str> = economy
+        .disruption_presences
+        .iter()
+        .map(|presence| presence.location.as_str())
+        .collect();
+    assert_eq!(actual_locations.as_slice(), EXPECTED_DISRUPTION_LOCATIONS.as_slice());
+    for presence in &economy.disruption_presences {
+        assert_eq!(presence.resource, "disruption");
+        assert_eq!(presence.amount, 8.0);
+        assert_eq!(presence.threshold, 3.0);
+        assert_eq!(presence.event_kind, 71);
+        assert_eq!(presence.direction, TriggerDirection::Rising);
+    }
     assert_eq!(economy.owner_policy_overlays.len(), 3);
     assert_eq!(economy.weight_profiles.len(), 3);
 
@@ -255,14 +280,15 @@ fn canonical_tp_clause_hydrates_field_economy_to_existing_surfaces() {
             .all(|entry| !entry.id.contains("production_yield"))
     );
 
-    // Five tp_economy_* overlays: quantity@shipyard, presence@outpost, three owner policies.
+    // Thirteen tp_economy_* overlays: quantity@shipyard, nine presence loci
+    // (outpost + eight fleet homes), three owner policies.
     let overlays: Vec<_> = pack
         .game_mode
         .overlays
         .iter()
         .filter(|overlay| overlay.id.starts_with("tp_economy_"))
         .collect();
-    assert_eq!(overlays.len(), 5, "expected five tp_economy_* overlays");
+    assert_eq!(overlays.len(), 13, "expected thirteen tp_economy_* overlays");
 
     let quantity = overlays
         .iter()
