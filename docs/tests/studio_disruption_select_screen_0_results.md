@@ -1,7 +1,7 @@
 # STUDIO-DISRUPTION-SELECT-SCREEN-0 Results
 
 ## Status
-**PROBATION / DRAFT** — PR [#1420](https://github.com/khorum08/SimThing/pull/1420); DA enrollment ruling `5027107657`; Remand-6 master integrate `5029305129`. Production enrollment accepted. Owner OVL remains OPEN until orch accept + re-freeze + Owner capture. Prior freeze `715fdde4…fe58` is STOP provenance only.
+**DA-GRADUATED / merged [#1420](https://github.com/khorum08/SimThing/pull/1420) @ `61abf63b`** — DA final ruling `5066605782`; graduated code head `38bfca1f`; Owner OVL CLOSED. Production enrollment + selected-star disruption screen accepted.
 
 ## Identity SHAs
 | role | full SHA |
