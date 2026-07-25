@@ -1,59 +1,56 @@
 # STUDIO-FLEET-ICONS-0 Results
 
 ## Status
-**PROBATION / DRAFT** — PR [#1426](https://github.com/khorum08/SimThing/pull/1426); HD-RECEIPT `c88f057a19fc`; Owner icon-base rider binding; [OVL] open until Owner screenshot.
+**PROBATION / DRAFT / remand-1 corrected** — PR [#1426](https://github.com/khorum08/SimThing/pull/1426); HD-RECEIPT `c88f057a19fc`; Owner [OVL] **not authorized** until orch accept.
 
 ## Identity
 | role | value |
 |---|---|
-| base_sha | `61abf63b` (12.3 merge) |
-| tested_code_sha | `9824ad0c46d5dd9d50a7459b175ef13d0aeb56cc` |
+| base_sha | `61abf63bba21ef95fdbd783040d69615376d7a1e` (12.3 merge) |
+| implementation_code_sha | *(same as tested after remand-1 package)* |
+| tested_code_sha | *(filled at commit)* |
+| final_head_sha | *(filled at commit)* |
 | branch | `coder/studio-fleet-icons-0` |
 | HD-RECEIPT | `c88f057a19fc` |
 | ORIENT-RECEIPT | `2c9fde39d1d6` |
+| remand | `5075963624` |
 
-## What landed
-1. **Renderer-agnostic descriptor layer** (`studio_fleet_icons.rs`): silhouette id, owner tint, anchor/transit placement, side, orientation, scale — no Bevy/render types.
-2. **One-site silhouette DATA** (`FLEET_ICON_SILHOUETTE_DESTROYER` outline table); look change is a one-site edit.
-3. **Narrow `FleetIconRenderer` seam** + `RecordingFleetIconRenderer` + `DummySecondFleetIconBackend` (forward-compat falsifier consumes identical descriptors).
-4. **Placement laws:** selected-owner anchored fleets Right; others Left (mirror); transit at 0.30 along source→dest; arrival snaps to Anchored; scale ≤ 75% base max star blur.
-5. **Existing-mechanism mesh path** (`sync_fleet_icons_system`): outline → Mesh + StandardMaterial only; no new pipeline/WGSL.
-6. **Studio_ops Telemetry** fleet icon table (owner / placement / side / scale) for Owner OVL.
-7. First-landing docs: 12.3 **DA-GRADUATED** @ `#1420`/`61abf63b`; pointer → 12.5; orientation regenerated.
+## Remand-1 corrections
+1. **Production renderer seam:** `MeshOutlineFleetIconRenderer` implements `FleetIconRenderer`; Bevy `sync_fleet_icons_system` applies only `production_fleet_icon_render_frame` draw plans. Dummy second backend shares the same draw-contract fingerprint; wrong-descriptor bypass diverges.
+2. **Per-system star blur scale:** `admitted_base_max_star_blur_world` / `admitted_base_star_blur_by_system` from star `sprite_scale` + unselected near visual (not `selected_star_scale_multiplier`). Each icon capped ≤75% of its own anchor star blur.
+3. **Scene cleanup:** `scene_cleanup` includes `fleet_icons`; reveal strips pending markers; pure cleanup-id falsifier bites.
+4. **Nose / legibility:** Bevy-consistent yaw; transformed local nose faces star/destination (dot>0.99); map-plane mesh normal +Y legible top-down.
+5. **Production lifecycle:** headless `FleetIconSceneState` proves side flip, add/remove, tint update, zero fleets, cleanup re-open with overlapping fleet ids.
+6. **PR body / identities:** refreshed at handback.
+7. **Hosted artifact-expiry:** left to orchestration (no unrelated deletions).
 
 ## Proof matrix
-| test | catches |
-|---|---|
-| selected_owner_right_others_left_mirror | wrong side / non-mirror |
-| transit_thirty_percent_and_orientation_toward_dest | wrong lane fraction / orientation |
-| arrival_snap_to_anchor_slot | sticky transit after arrival |
-| scale_bound_seventy_five_percent_of_base_max_star_blur | oversize icons |
-| dummy_second_backend_consumes_identical_descriptors | backend-coupled descriptors |
-| silhouette_is_one_site_data | scattered look hardcoding |
-| mapeditor_presence_map_feeds_descriptors | 12.4 wire break |
-| mesh_draw_plans_are_outline_pose_only | new pipeline requirement |
-| fleet_icons_module_has_no_wgsl_or_spec_mutation_surface | fence drift |
-| unit battery in `studio_fleet_icons.rs` (9) | same laws at unit layer |
+| battery | count | result |
+|---|---|---|
+| unit `studio_fleet_icons` | 11 | PASS |
+| integration `studio_fleet_icons_0` | 11 | PASS |
 
-## Local battery
+## Local battery (required by remand)
 | target | result |
 |---|---|
+| `cargo test -p simthing-mapeditor --lib studio_fleet_icons` | PASS 11/11 |
+| `cargo test -p simthing-mapeditor --test studio_fleet_icons_0` | PASS 11/11 |
 | `cargo check -p simthing-mapeditor` | PASS |
-| `cargo test -p simthing-mapeditor --lib studio_fleet_icons` | PASS 9/9 |
-| `cargo test -p simthing-mapeditor --test studio_fleet_icons_0` | PASS 9/9 |
 | `cargo build -p simthing-mapeditor --bin simthing-studio` | PASS |
 | `bash scripts/ci/test_inventory_drift_check.sh` | PASS |
 | `bash scripts/ci/gen_orientation.sh --check` | PASS |
+| `bash scripts/ci/doc_budget_check.sh --check` | PASS |
+| `bash scripts/ci/agent_scan.sh` | INSPECT delta_inspect=2 (TEST-BUDGET justified) |
 
 ## Scope ledger
 | | |
 |---|---|
-| Specified | Tiny fleet icons from 12.4 snapshot; descriptor base + narrow renderer seam; OVL telemetry |
-| Implemented | Descriptor layer, seam, mesh draw plans, Bevy sync, ops rows, inventory, 12.3 stamp |
+| Specified | Remand-1 production seam, per-system scale, cleanup, nose proofs, lifecycle |
+| Implemented | Seam frame + Bevy apply; admitted star blur; cleanup; nose/plane; lifecycle tests |
 | Proxied | none |
-| Deferred | Owner OVL screenshot |
-| Out of scope | movement authority; Spec mutation; new WGSL/pipeline; 12.5 self-graduation |
+| Deferred | Owner OVL; hosted artifact-expiry maintenance |
+| Out of scope | new pipeline/WGSL; movement authority; Spec mutation; self-graduation |
 
 ## Known gaps
-- Owner [OVL] open — screenshot against Studio_ops fleet icon table.
-- Default sessions may express no InTransit; transit is contract-proven via fixture records.
+- Owner [OVL] not authorized.
+- Hosted Doctrine Scan wall-clock artifact-expiry is repo-wide debt (orchestrator routes separately).

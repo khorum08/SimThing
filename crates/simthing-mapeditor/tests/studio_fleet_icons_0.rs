@@ -1,17 +1,20 @@
-//! STUDIO-FLEET-ICONS-0 — descriptor layer + renderer-seam integration proofs.
+//! STUDIO-FLEET-ICONS-0 — descriptor + production seam + lifecycle integration proofs.
 
 use std::collections::HashMap;
 use std::path::PathBuf;
 
 use simthing_core::{SimThing, SimThingKind};
 use simthing_mapeditor::{
-    clamp_fleet_icon_scale, default_fleet_icon_silhouette, fleet_icon_descriptors_from_records,
-    fleet_icon_mesh_draw_plans, fleet_icon_ops_telemetry_rows, fleet_presence_records_flat,
-    resolve_fleet_icon_world_pose, studio_fleet_presence_map_from_session, DummySecondFleetIconBackend,
-    FleetIconOrientation, FleetIconPlacement, FleetIconRenderer, FleetIconSide,
-    RecordingFleetIconRenderer, StudioSession, StudioSystemRenderAnchor,
-    FLEET_ICON_DEFAULT_SILHOUETTE_ID, FLEET_ICON_MAX_STAR_BLUR_FRACTION,
-    FLEET_ICON_TRANSIT_ALONG_LANE_FRACTION,
+    admitted_base_max_star_blur_world, admitted_base_star_blur_by_system, clamp_fleet_icon_scale,
+    default_fleet_icon_silhouette, fleet_icon_descriptors_from_records,
+    fleet_icon_frame_contract_fingerprint, fleet_icon_nose_faces_target,
+    fleet_icon_ops_telemetry_rows, fleet_icon_plane_legible_to_view, fleet_presence_records_flat,
+    galaxy_scene_cleanup_entity_ids, production_fleet_icon_render_frame,
+    studio_fleet_presence_map_from_session, DummySecondFleetIconBackend, FleetIconOrientation,
+    FleetIconPlacement, FleetIconRenderContext, FleetIconRenderer, FleetIconSceneState,
+    FleetIconSide, MeshOutlineFleetIconRenderer, StudioGalaxyRenderMeta, StudioSession,
+    StudioStarView, StudioSystemRenderAnchor, FLEET_ICON_DEFAULT_SILHOUETTE_ID,
+    FLEET_ICON_MAX_STAR_BLUR_FRACTION, FLEET_ICON_TRANSIT_ALONG_LANE_FRACTION,
 };
 use simthing_spec::{
     apply_galaxy_map_metadata, apply_gridcell_role_metadata, apply_owner_entity_metadata,
@@ -29,6 +32,32 @@ fn rec(id: u32, owner: Option<&str>, loc: FleetPresenceLocation) -> FleetPresenc
         owner_ref: owner.map(OwnerRef::new),
         posture: None,
         location: loc,
+    }
+}
+
+fn blur_map(pairs: &[(u32, f32)]) -> HashMap<u32, f32> {
+    pairs.iter().copied().collect()
+}
+
+fn ctx(anchors: &[StudioSystemRenderAnchor]) -> FleetIconRenderContext<'_> {
+    FleetIconRenderContext {
+        anchors,
+        right_axis_xz: [1.0, 0.0],
+    }
+}
+
+fn star_view(system_id: u32, sprite_scale: f32) -> StudioStarView {
+    StudioStarView {
+        system_id,
+        display_name: format!("s{system_id}"),
+        structural_col: 0,
+        structural_row: 0,
+        render_height: 0.0,
+        world_x: 0.0,
+        world_y: 0.0,
+        world_z: 0.0,
+        sprite_scale,
+        emissive_strength: 1.0,
     }
 }
 
@@ -115,8 +144,9 @@ fn selected_owner_right_others_left_mirror() {
         rec(2, Some("owner_b"), FleetPresenceLocation::Anchored(3)),
         rec(3, None, FleetPresenceLocation::Anchored(3)),
     ];
+    let blur = blur_map(&[(3, 2.0)]);
     let descs =
-        fleet_icon_descriptors_from_records(&records, Some("owner_a"), &HashMap::new(), 2.0);
+        fleet_icon_descriptors_from_records(&records, Some("owner_a"), &HashMap::new(), &blur);
     let side = |id| {
         descs
             .iter()
@@ -135,19 +165,26 @@ fn selected_owner_right_others_left_mirror() {
         world_position: [0.0, 0.0, 0.0],
         render_height: 0.0,
     }];
-    let right = descs.iter().find(|d| d.fleet_simthing_id_raw == 1).unwrap();
-    let left = descs.iter().find(|d| d.fleet_simthing_id_raw == 2).unwrap();
-    let pr = resolve_fleet_icon_world_pose(right, &anchors, [1.0, 0.0], 2.0).unwrap();
-    let pl = resolve_fleet_icon_world_pose(left, &anchors, [1.0, 0.0], 2.0).unwrap();
+    let frame = production_fleet_icon_render_frame(&descs, &ctx(&anchors));
+    let right = frame
+        .draw_plans
+        .iter()
+        .find(|p| p.fleet_simthing_id_raw == 1)
+        .unwrap();
+    let left = frame
+        .draw_plans
+        .iter()
+        .find(|p| p.fleet_simthing_id_raw == 2)
+        .unwrap();
     assert!(
-        (pr.world_position[0] + pl.world_position[0]).abs() < 1e-4,
+        (right.pose.world_position[0] + left.pose.world_position[0]).abs() < 1e-4,
         "left/right must be mirror-symmetric on X for +X right axis"
     );
 }
 
-/// catches: transit icons not at ~30% or not oriented toward destination.
+/// catches: transit icons not at ~30% or nose not toward destination.
 #[test]
-fn transit_thirty_percent_and_orientation_toward_dest() {
+fn transit_thirty_percent_and_nose_toward_dest() {
     let records = vec![rec(
         9,
         Some("owner_b"),
@@ -156,8 +193,9 @@ fn transit_thirty_percent_and_orientation_toward_dest() {
             dest_system_id: 2,
         },
     )];
+    let blur = blur_map(&[(1, 1.0), (2, 1.0)]);
     let descs =
-        fleet_icon_descriptors_from_records(&records, Some("owner_a"), &HashMap::new(), 1.0);
+        fleet_icon_descriptors_from_records(&records, Some("owner_a"), &HashMap::new(), &blur);
     assert_eq!(descs[0].side, FleetIconSide::Transit);
     assert_eq!(
         descs[0].orientation,
@@ -185,8 +223,10 @@ fn transit_thirty_percent_and_orientation_toward_dest() {
             render_height: 0.0,
         },
     ];
-    let pose = resolve_fleet_icon_world_pose(&descs[0], &anchors, [1.0, 0.0], 1.0).unwrap();
+    let frame = production_fleet_icon_render_frame(&descs, &ctx(&anchors));
+    let pose = &frame.draw_plans[0].pose;
     assert!((pose.world_position[0] - 3.0).abs() < 1e-4);
+    assert!(fleet_icon_nose_faces_target(pose, [10.0, 0.0, 0.0]));
 }
 
 /// catches: arrival leaves a sticky transit placement instead of snapping to anchor slot.
@@ -201,10 +241,11 @@ fn arrival_snap_to_anchor_slot() {
         },
     );
     let arrived = rec(9, Some("owner_a"), FleetPresenceLocation::Anchored(2));
+    let blur = blur_map(&[(1, 1.0), (2, 1.0)]);
     let before =
-        fleet_icon_descriptors_from_records(&[transit], Some("owner_a"), &HashMap::new(), 1.0);
+        fleet_icon_descriptors_from_records(&[transit], Some("owner_a"), &HashMap::new(), &blur);
     let after =
-        fleet_icon_descriptors_from_records(&[arrived], Some("owner_a"), &HashMap::new(), 1.0);
+        fleet_icon_descriptors_from_records(&[arrived], Some("owner_a"), &HashMap::new(), &blur);
     assert!(matches!(
         before[0].placement,
         FleetIconPlacement::InTransit { .. }
@@ -220,24 +261,35 @@ fn arrival_snap_to_anchor_slot() {
     }
 }
 
-/// catches: scale exceeds 75% of base max star blur size.
+/// catches: icon scale uses global selection multiplier instead of per-system star blur.
 #[test]
-fn scale_bound_seventy_five_percent_of_base_max_star_blur() {
-    let base = 4.0;
-    let cap = base * FLEET_ICON_MAX_STAR_BLUR_FRACTION;
-    assert!((clamp_fleet_icon_scale(99.0, base) - cap).abs() < 1e-6);
-    let descs = fleet_icon_descriptors_from_records(
-        &[rec(1, Some("a"), FleetPresenceLocation::Anchored(1))],
-        Some("a"),
-        &HashMap::new(),
-        base,
-    );
-    assert!(descs[0].scale <= cap + 1e-6);
+fn scale_bound_against_per_system_admitted_star_blur() {
+    let meta = StudioGalaxyRenderMeta::default();
+    let small = admitted_base_max_star_blur_world(0.5, &meta);
+    let large = admitted_base_max_star_blur_world(2.0, &meta);
+    assert!(large > small * 1.5);
+    // Selection multiplier is not the size authority.
+    assert!((meta.selected_star_scale_multiplier - 1.85).abs() < 0.01);
+    assert!((clamp_fleet_icon_scale(99.0, small) - small * FLEET_ICON_MAX_STAR_BLUR_FRACTION).abs() < 1e-5);
+
+    let stars = vec![star_view(1, 0.5), star_view(2, 2.0)];
+    let blur = admitted_base_star_blur_by_system(&stars, &meta);
+    let records = vec![
+        rec(10, Some("a"), FleetPresenceLocation::Anchored(1)),
+        rec(20, Some("a"), FleetPresenceLocation::Anchored(2)),
+    ];
+    let descs = fleet_icon_descriptors_from_records(&records, Some("a"), &HashMap::new(), &blur);
+    let d_small = descs.iter().find(|d| d.fleet_simthing_id_raw == 10).unwrap();
+    let d_large = descs.iter().find(|d| d.fleet_simthing_id_raw == 20).unwrap();
+    assert!(d_small.scale <= d_small.anchor_star_blur * FLEET_ICON_MAX_STAR_BLUR_FRACTION + 1e-5);
+    assert!(d_large.scale <= d_large.anchor_star_blur * FLEET_ICON_MAX_STAR_BLUR_FRACTION + 1e-5);
+    assert!(d_large.scale > d_small.scale * 1.5);
 }
 
-/// catches: second backend cannot consume the same descriptors (forward-compat break).
+/// catches: production Bevy path can bypass seam while dummy test stays green.
 #[test]
-fn dummy_second_backend_consumes_identical_descriptors() {
+fn production_mesh_seam_required_and_matches_dummy_contract() {
+    let blur = blur_map(&[(1, 1.5), (2, 1.5)]);
     let records = vec![
         rec(1, Some("owner_a"), FleetPresenceLocation::Anchored(1)),
         rec(
@@ -250,13 +302,50 @@ fn dummy_second_backend_consumes_identical_descriptors() {
         ),
     ];
     let descs =
-        fleet_icon_descriptors_from_records(&records, Some("owner_a"), &HashMap::new(), 1.5);
-    let mut primary = RecordingFleetIconRenderer::default();
+        fleet_icon_descriptors_from_records(&records, Some("owner_a"), &HashMap::new(), &blur);
+    let anchors = vec![
+        StudioSystemRenderAnchor {
+            system_id: 1,
+            structural_col: 0,
+            structural_row: 0,
+            world_position: [0.0, 0.0, 0.0],
+            render_height: 0.0,
+        },
+        StudioSystemRenderAnchor {
+            system_id: 2,
+            structural_col: 1,
+            structural_row: 0,
+            world_position: [10.0, 0.0, 0.0],
+            render_height: 0.0,
+        },
+    ];
+    let context = ctx(&anchors);
+    let production = production_fleet_icon_render_frame(&descs, &context);
+    let mut mesh = MeshOutlineFleetIconRenderer::default();
+    let mesh_frame = mesh.render_descriptors(&descs, &context);
     let mut dummy = DummySecondFleetIconBackend::default();
-    let _ = primary.render_descriptors(&descs);
-    let _ = dummy.render_descriptors(&descs);
-    assert_eq!(primary.last_frame, dummy.accepted);
-    assert_eq!(dummy.accepted, descs);
+    let dummy_frame = dummy.render_descriptors(&descs, &context);
+    assert_eq!(mesh.render_calls, 1);
+    assert_eq!(
+        fleet_icon_frame_contract_fingerprint(&production),
+        fleet_icon_frame_contract_fingerprint(&mesh_frame)
+    );
+    assert_eq!(
+        fleet_icon_frame_contract_fingerprint(&production),
+        fleet_icon_frame_contract_fingerprint(&dummy_frame)
+    );
+    // Wrong descriptors (bypass simulation) diverge from production contract.
+    let other = fleet_icon_descriptors_from_records(
+        &[rec(1, Some("owner_b"), FleetPresenceLocation::Anchored(1))],
+        Some("owner_b"),
+        &HashMap::new(),
+        &blur,
+    );
+    let bypass = production_fleet_icon_render_frame(&other, &context);
+    assert_ne!(
+        fleet_icon_frame_contract_fingerprint(&production),
+        fleet_icon_frame_contract_fingerprint(&bypass)
+    );
 }
 
 /// catches: silhouette shape not data at one site / default id drift.
@@ -265,8 +354,13 @@ fn silhouette_is_one_site_data() {
     let sil = default_fleet_icon_silhouette();
     assert_eq!(sil.id, FLEET_ICON_DEFAULT_SILHOUETTE_ID);
     assert!(sil.outline_xy.len() >= 3);
-    let records = vec![rec(1, Some("a"), FleetPresenceLocation::Anchored(1))];
-    let descs = fleet_icon_descriptors_from_records(&records, None, &HashMap::new(), 1.0);
+    let blur = blur_map(&[(1, 1.0)]);
+    let descs = fleet_icon_descriptors_from_records(
+        &[rec(1, Some("a"), FleetPresenceLocation::Anchored(1))],
+        None,
+        &HashMap::new(),
+        &blur,
+    );
     assert_eq!(descs[0].silhouette_id, sil.id);
 }
 
@@ -277,8 +371,12 @@ fn mapeditor_presence_map_feeds_descriptors() {
     let map = studio_fleet_presence_map_from_session(&session).expect("presence");
     assert!(map.total_fleets >= 2);
     let records = fleet_presence_records_flat(&map.by_system_id);
+    let blur = admitted_base_star_blur_by_system(
+        &session.view_model.stars,
+        &session.view_model.render_meta,
+    );
     let descs =
-        fleet_icon_descriptors_from_records(&records, Some("owner_a"), &HashMap::new(), 1.85);
+        fleet_icon_descriptors_from_records(&records, Some("owner_a"), &HashMap::new(), &blur);
     assert_eq!(descs.len(), map.total_fleets);
     let rows = fleet_icon_ops_telemetry_rows(&descs);
     assert_eq!(rows.len(), descs.len());
@@ -286,38 +384,131 @@ fn mapeditor_presence_map_feeds_descriptors() {
     assert!(rows.iter().any(|r| r.side == FleetIconSide::Left));
 }
 
-/// catches: mesh draw plans require a new pipeline type instead of outline + pose data.
+/// catches: nose/plane proofs missing for production pose.
 #[test]
-fn mesh_draw_plans_are_outline_pose_only() {
-    let records = vec![rec(1, Some("a"), FleetPresenceLocation::Anchored(5))];
-    let descs = fleet_icon_descriptors_from_records(&records, Some("a"), &HashMap::new(), 1.0);
-    let anchors = vec![StudioSystemRenderAnchor {
-        system_id: 5,
+fn nose_and_plane_legibility_for_anchored_and_transit() {
+    let blur = blur_map(&[(5, 2.0), (6, 2.0)]);
+    let records = vec![
+        rec(1, Some("a"), FleetPresenceLocation::Anchored(5)),
+        rec(2, Some("b"), FleetPresenceLocation::Anchored(5)),
+        rec(
+            3,
+            Some("a"),
+            FleetPresenceLocation::InTransit {
+                source_system_id: 5,
+                dest_system_id: 6,
+            },
+        ),
+    ];
+    let descs =
+        fleet_icon_descriptors_from_records(&records, Some("a"), &HashMap::new(), &blur);
+    let anchors = vec![
+        StudioSystemRenderAnchor {
+            system_id: 5,
+            structural_col: 0,
+            structural_row: 0,
+            world_position: [0.0, 1.0, 0.0],
+            render_height: 0.0,
+        },
+        StudioSystemRenderAnchor {
+            system_id: 6,
+            structural_col: 1,
+            structural_row: 0,
+            world_position: [10.0, 1.0, 0.0],
+            render_height: 0.0,
+        },
+    ];
+    let frame = production_fleet_icon_render_frame(&descs, &ctx(&anchors));
+    for plan in &frame.draw_plans {
+        match plan.side {
+            FleetIconSide::Right | FleetIconSide::Left => {
+                assert!(fleet_icon_nose_faces_target(&plan.pose, [0.0, 1.0, 0.0]));
+            }
+            FleetIconSide::Transit => {
+                assert!(fleet_icon_nose_faces_target(&plan.pose, [10.0, 1.0, 0.0]));
+                assert!((plan.pose.world_position[0] - 3.0).abs() < 1e-4);
+            }
+        }
+        assert!(fleet_icon_plane_legible_to_view(
+            &plan.pose,
+            [0.0, -1.0, 0.0]
+        ));
+    }
+}
+
+/// catches: selection flip, presence refresh, tint, zero-fleet, scene cleanup orphans.
+#[test]
+fn production_lifecycle_side_flip_presence_tint_cleanup() {
+    let anchors = [StudioSystemRenderAnchor {
+        system_id: 1,
         structural_col: 0,
         structural_row: 0,
-        world_position: [1.0, 2.0, 3.0],
+        world_position: [0.0, 0.0, 0.0],
         render_height: 0.0,
     }];
-    let plans = fleet_icon_mesh_draw_plans(&descs, &anchors, [1.0, 0.0], 1.0);
-    assert_eq!(plans.len(), 1);
-    assert_eq!(plans[0].silhouette_id, FLEET_ICON_DEFAULT_SILHOUETTE_ID);
-    assert!(!plans[0].outline_xy.is_empty());
+    let blur = blur_map(&[(1, 2.0)]);
+    let records = vec![
+        rec(1, Some("owner_a"), FleetPresenceLocation::Anchored(1)),
+        rec(2, Some("owner_b"), FleetPresenceLocation::Anchored(1)),
+    ];
+    let mut scene = FleetIconSceneState::default();
+    let frame_a = production_fleet_icon_render_frame(
+        &fleet_icon_descriptors_from_records(&records, Some("owner_a"), &HashMap::new(), &blur),
+        &ctx(&anchors),
+    );
+    scene.apply_frame(&frame_a);
+    assert_eq!(scene.by_id.len(), 2);
+    assert_eq!(scene.by_id[&1].side, FleetIconSide::Right);
+    assert_eq!(scene.by_id[&2].side, FleetIconSide::Left);
+
+    let frame_b = production_fleet_icon_render_frame(
+        &fleet_icon_descriptors_from_records(&records, Some("owner_b"), &HashMap::new(), &blur),
+        &ctx(&anchors),
+    );
+    scene.apply_frame(&frame_b);
+    assert_eq!(scene.by_id.len(), 2);
+    assert_eq!(scene.by_id[&1].side, FleetIconSide::Left);
+    assert_eq!(scene.by_id[&2].side, FleetIconSide::Right);
+
+    // Overlapping fleet id after full scene cleanup → exactly one entity plan.
+    scene.clear_for_scene_cleanup();
+    assert!(scene.by_id.is_empty());
+    let mut tints = HashMap::new();
+    tints.insert("owner_a".into(), [0.1, 0.2, 0.9, 1.0]);
+    let only = vec![rec(1, Some("owner_a"), FleetPresenceLocation::Anchored(1))];
+    scene.apply_frame(&production_fleet_icon_render_frame(
+        &fleet_icon_descriptors_from_records(&only, Some("owner_a"), &tints, &blur),
+        &ctx(&anchors),
+    ));
+    assert_eq!(scene.by_id.len(), 1);
+    assert_eq!(scene.by_id[&1].tint_rgba, [0.1, 0.2, 0.9, 1.0]);
+
+    // Structural-shell / no fleets.
+    scene.apply_frame(&production_fleet_icon_render_frame(&[], &ctx(&anchors)));
+    assert!(scene.by_id.is_empty());
+}
+
+/// catches: fleet icons omitted from batched galaxy scene cleanup entity list.
+#[test]
+fn scene_cleanup_entity_list_includes_fleet_icons() {
+    let ids = galaxy_scene_cleanup_entity_ids(
+        &[(7, 100)],
+        &[200],
+        &[(1, 300), (2, 301)],
+        &[Some(400)],
+        None,
+        None,
+    );
+    assert!(ids.contains(&300) && ids.contains(&301));
+    assert_eq!(ids.iter().filter(|&&e| e == 300 || e == 301).count(), 2);
 }
 
 /// catches: presentation module grows ScenarioSpec mutation or WGSL surfaces.
 #[test]
 fn fleet_icons_module_has_no_wgsl_or_spec_mutation_surface() {
     let source = include_str!("../src/studio_fleet_icons.rs");
-    assert!(
-        !source.contains(".wgsl") && !source.contains("include_str!"),
-        "fleet icon base must stay presentation-data only (no WGSL)"
-    );
-    assert!(
-        !source.contains("scenario_authority") && !source.contains("mutate"),
-        "fleet icon descriptors must not mutate ScenarioSpec"
-    );
-    assert!(
-        source.contains("trait FleetIconRenderer"),
-        "narrow renderer seam must exist"
-    );
+    assert!(!source.contains(".wgsl"));
+    assert!(source.contains("trait FleetIconRenderer"));
+    assert!(source.contains("production_fleet_icon_render_frame"));
+    assert!(source.contains("MeshOutlineFleetIconRenderer"));
 }

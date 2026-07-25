@@ -173,15 +173,19 @@ pub use studio_frame_phase_gpu_telemetry::{
     DIAGNOSTIC_MINIMAL_RENDER_BUTTON, RESTORE_NORMAL_RENDER_BUTTON,
 };
 pub use studio_fleet_icons::{
-    anchored_fleet_side, clamp_fleet_icon_scale, default_fleet_icon_scale,
-    default_fleet_icon_silhouette, fleet_icon_descriptors_from_records,
-    fleet_icon_mesh_draw_plans, fleet_icon_ops_telemetry_rows, fleet_icon_silhouette_by_id,
-    fleet_presence_records_flat, resolve_fleet_icon_world_pose, DummySecondFleetIconBackend,
-    FleetIconDescriptor, FleetIconMeshDrawPlan, FleetIconOpsTelemetryRow, FleetIconOrientation,
-    FleetIconPlacement, FleetIconRenderer, FleetIconSide, FleetIconSilhouetteSpec,
-    FleetIconWorldPose, RecordingFleetIconRenderer, FLEET_ICON_DEFAULT_SILHOUETTE_ID,
-    FLEET_ICON_MAX_STAR_BLUR_FRACTION, FLEET_ICON_SILHOUETTE_DESTROYER,
-    FLEET_ICON_TRANSIT_ALONG_LANE_FRACTION,
+    admitted_base_max_star_blur_world, admitted_base_star_blur_by_system, anchored_fleet_side,
+    clamp_fleet_icon_scale, default_fleet_icon_scale, default_fleet_icon_silhouette,
+    fleet_icon_descriptors_from_records, fleet_icon_entity_ops, fleet_icon_frame_contract_fingerprint,
+    fleet_icon_nose_faces_target, fleet_icon_nose_world_dir, fleet_icon_ops_telemetry_rows,
+    fleet_icon_plane_legible_to_view, fleet_icon_plane_normal_world, fleet_icon_silhouette_by_id,
+    fleet_presence_records_flat, galaxy_scene_cleanup_entity_ids, production_fleet_icon_render_frame,
+    resolve_fleet_icon_world_pose, rotate_yaw_y, yaw_toward_xz, DummySecondFleetIconBackend,
+    FleetIconDescriptor, FleetIconEntityOp, FleetIconMeshDrawPlan, FleetIconOpsTelemetryRow,
+    FleetIconOrientation, FleetIconPlacement, FleetIconRenderContext, FleetIconRenderFrame,
+    FleetIconRenderer, FleetIconSceneState, FleetIconSide, FleetIconSilhouetteSpec,
+    FleetIconWorldPose, MeshOutlineFleetIconRenderer, RecordingFleetIconRenderer,
+    FLEET_ICON_DEFAULT_SILHOUETTE_ID, FLEET_ICON_LOCAL_NOSE, FLEET_ICON_MAX_STAR_BLUR_FRACTION,
+    FLEET_ICON_SILHOUETTE_DESTROYER, FLEET_ICON_TRANSIT_ALONG_LANE_FRACTION,
 };
 pub use studio_fleet_presence::{
     studio_fleet_presence_map_from_session, studio_fleet_presence_map_from_snapshot,

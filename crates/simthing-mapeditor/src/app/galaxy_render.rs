@@ -35,8 +35,9 @@ use crate::studio_disruption_select_screen::{
     quantize_disruption_milli, quantize_red_fraction_milli, selected_disruption_select_screen,
 };
 use crate::studio_fleet_icons::{
-    fleet_icon_descriptors_from_records, fleet_icon_mesh_draw_plans, fleet_presence_records_flat,
-    FleetIconMeshDrawPlan,
+    admitted_base_star_blur_by_system, fleet_icon_descriptors_from_records,
+    fleet_presence_records_flat, production_fleet_icon_render_frame, FleetIconMeshDrawPlan,
+    FleetIconRenderContext,
 };
 use crate::studio_render_loop_dirty_gate::{
     hyperlane_basis_mismatch_angle_deg, hyperlane_basis_mismatch_exceeds_epsilon,
@@ -264,10 +265,16 @@ pub(super) struct BatchedGalaxySceneCleanup {
 
 fn scene_cleanup(root: GalaxySceneRoot) -> BatchedGalaxySceneCleanup {
     let mut entities = Vec::with_capacity(
-        root.stars.len() + root.nameplates.len() + root.hyperlane_buckets.len() + 2,
+        root.stars.len()
+            + root.nameplates.len()
+            + root.fleet_icons.len()
+            + root.hyperlane_buckets.len()
+            + 2,
     );
     entities.extend(root.stars.into_iter().map(|(_, entity)| entity));
     entities.extend(root.nameplates);
+    // STUDIO-FLEET-ICONS-0: fleet icons participate in batched scene cleanup (no orphans).
+    entities.extend(root.fleet_icons.into_iter().map(|(_, entity)| entity));
     entities.extend(root.hyperlane_buckets.into_iter().flatten());
     entities.extend(root.highlight_hyperlanes);
     entities.extend(root.core_glow);
@@ -309,6 +316,9 @@ pub(super) fn reveal_pending_galaxy_scene_parent(
         commands.entity(*entity).remove::<PendingSceneMember>();
     }
     for entity in &root.nameplates {
+        commands.entity(*entity).remove::<PendingSceneMember>();
+    }
+    for (_, entity) in &root.fleet_icons {
         commands.entity(*entity).remove::<PendingSceneMember>();
     }
     for entity in root.hyperlane_buckets.iter().flatten() {
@@ -1171,7 +1181,8 @@ pub fn sync_render_debug_visibility_system(
     }
 }
 
-/// Build a flat mesh from one-site silhouette outline (existing Mesh/StandardMaterial path).
+/// Build a flat map-plane mesh from one-site silhouette outline (existing Mesh/StandardMaterial path).
+/// Outline (x,y) maps to world (x, 0, y) so the silhouette lies on XZ with normal +Y (top-down legible).
 fn fleet_icon_outline_mesh(outline_xy: &[(f32, f32)]) -> Mesh {
     let mut mesh = Mesh::new(
         PrimitiveTopology::TriangleList,
@@ -1187,23 +1198,23 @@ fn fleet_icon_outline_mesh(outline_xy: &[(f32, f32)]) -> Mesh {
     let mut normals = Vec::with_capacity(outline_xy.len() * 3);
     let mut uvs = Vec::with_capacity(outline_xy.len() * 3);
     let mut indices = Vec::with_capacity((outline_xy.len() - 2) * 3);
-    // Triangle fan from centroid for a solid silhouette disc.
+    // Triangle fan from centroid for a solid silhouette on the map plane.
     let mut cx = 0.0f32;
-    let mut cy = 0.0f32;
-    for &(x, y) in outline_xy {
+    let mut cz = 0.0f32;
+    for &(x, z) in outline_xy {
         cx += x;
-        cy += y;
+        cz += z;
     }
     let n = outline_xy.len() as f32;
     cx /= n;
-    cy /= n;
-    positions.push([cx, cy, 0.0]);
-    normals.push([0.0, 0.0, 1.0]);
+    cz /= n;
+    positions.push([cx, 0.0, cz]);
+    normals.push([0.0, 1.0, 0.0]);
     uvs.push([0.5, 0.5]);
-    for &(x, y) in outline_xy {
-        positions.push([x, y, 0.0]);
-        normals.push([0.0, 0.0, 1.0]);
-        uvs.push([(x + 0.5).clamp(0.0, 1.0), (y + 0.5).clamp(0.0, 1.0)]);
+    for &(x, z) in outline_xy {
+        positions.push([x, 0.0, z]);
+        normals.push([0.0, 1.0, 0.0]);
+        uvs.push([(x + 0.5).clamp(0.0, 1.0), (z + 0.5).clamp(0.0, 1.0)]);
     }
     for i in 1..=outline_xy.len() {
         let next = if i == outline_xy.len() { 1 } else { i + 1 };
@@ -1223,8 +1234,8 @@ fn fleet_icon_transform(plan: &FleetIconMeshDrawPlan) -> Transform {
         .with_scale(Vec3::splat(plan.pose.scale.max(1e-4)))
 }
 
-/// STUDIO-FLEET-ICONS-0 — sync presentation mesh icons from 12.4 descriptors.
-/// Uses existing Mesh/StandardMaterial only (no new pipeline / WGSL).
+/// STUDIO-FLEET-ICONS-0 — apply production seam frame via existing Mesh/StandardMaterial.
+/// Draw plans MUST come from `production_fleet_icon_render_frame` (FleetIconRenderer seam).
 pub fn sync_fleet_icons_system(
     state: Res<super::StudioAppState>,
     camera: Query<&GlobalTransform, With<super::camera::MainCamera>>,
@@ -1246,7 +1257,6 @@ pub fn sync_fleet_icons_system(
         return;
     };
 
-    // Re-exported ownership presentation helpers (11.5/11.6) — generic owner tint path.
     let selected_owner = crate::selected_owner_id_for_system(
         &session.scenario_authority,
         state.selection.selected_system_id,
@@ -1256,12 +1266,11 @@ pub fn sync_fleet_icons_system(
     for (id, rgb) in owner_colors {
         tint_map.insert(id, crate::nameplate_rgba_from_color_rgb(rgb));
     }
-    let base_max = session
-        .view_model
-        .render_meta
-        .selected_star_scale_multiplier
-        .max(1.0);
-    // Prefer live bridge presence; fall soft to session authority snapshot when unattached.
+    // Per-system admitted base max star blur (unselected near visual) — not selection multiplier.
+    let star_blur = admitted_base_star_blur_by_system(
+        &session.view_model.stars,
+        &session.view_model.render_meta,
+    );
     let records = if !state
         .live_bridge_readout
         .fleet_presence
@@ -1278,7 +1287,7 @@ pub fn sync_fleet_icons_system(
         &records,
         selected_owner.as_deref(),
         &tint_map,
-        base_max,
+        &star_blur,
     );
 
     let right_axis = camera
@@ -1289,18 +1298,18 @@ pub fn sync_fleet_icons_system(
             [right.x, right.z]
         })
         .unwrap_or([1.0, 0.0]);
-    let plans = fleet_icon_mesh_draw_plans(
-        &descriptors,
-        &session.view_model.render_anchors,
-        right_axis,
-        base_max,
-    );
-    let wanted: HashMap<u32, &FleetIconMeshDrawPlan> = plans
+    let context = FleetIconRenderContext {
+        anchors: &session.view_model.render_anchors,
+        right_axis_xz: right_axis,
+    };
+    // Canonical production seam — never build plans outside this entry.
+    let frame = production_fleet_icon_render_frame(&descriptors, &context);
+    let wanted: HashMap<u32, &FleetIconMeshDrawPlan> = frame
+        .draw_plans
         .iter()
         .map(|p| (p.fleet_simthing_id_raw, p))
         .collect();
 
-    // Update / despawn existing.
     let mut alive = std::collections::HashSet::new();
     for (entity, icon, mut transform, material_handle) in &mut icons {
         if let Some(plan) = wanted.get(&icon.fleet_simthing_id_raw) {
@@ -1317,8 +1326,7 @@ pub fn sync_fleet_icons_system(
     }
     root.fleet_icons.retain(|(id, _)| alive.contains(id));
 
-    // Spawn missing.
-    for plan in &plans {
+    for plan in &frame.draw_plans {
         if alive.contains(&plan.fleet_simthing_id_raw) {
             continue;
         }

@@ -2233,11 +2233,16 @@ fn draw_studio_ops_telemetry(ctx: &egui::Context, state: &mut StudioAppState) {
                 for (id, rgb) in owner_colors {
                     tint_map.insert(id, crate::nameplate_rgba_from_color_rgb(rgb));
                 }
-                let base_max = state
+                let star_blur = state
                     .session
                     .as_ref()
-                    .map(|s| s.view_model.render_meta.selected_star_scale_multiplier.max(1.0))
-                    .unwrap_or(1.0);
+                    .map(|s| {
+                        crate::admitted_base_star_blur_by_system(
+                            &s.view_model.stars,
+                            &s.view_model.render_meta,
+                        )
+                    })
+                    .unwrap_or_default();
                 let records = if !bridge.fleet_presence.by_system_id.is_empty() {
                     crate::fleet_presence_records_flat(&bridge.fleet_presence.by_system_id)
                 } else if let Some(session) = state.session.as_ref() {
@@ -2251,7 +2256,7 @@ fn draw_studio_ops_telemetry(ctx: &egui::Context, state: &mut StudioAppState) {
                     &records,
                     selected_owner.as_deref(),
                     &tint_map,
-                    base_max,
+                    &star_blur,
                 );
                 let rows = crate::fleet_icon_ops_telemetry_rows(&descriptors);
                 if rows.is_empty() {
