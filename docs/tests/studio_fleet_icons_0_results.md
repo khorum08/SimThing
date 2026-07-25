@@ -7,9 +7,9 @@
 | role | value |
 |---|---|
 | base_sha | `61abf63bba21ef95fdbd783040d69615376d7a1e` |
-| implementation_code_sha | *(set at commit)* |
-| tested_code_sha | *(set at commit — battery ran here)* |
-| final_head_sha | *(docs-only tip after battery)* |
+| implementation_code_sha | `5015dc1869eb32f5b5d00af6da5f023c4b87de9b` |
+| tested_code_sha | `5015dc1869eb32f5b5d00af6da5f023c4b87de9b` |
+| final_head_sha | *(docs bind tip after this battery)* |
 | branch | `coder/studio-fleet-icons-0` |
 | HD-RECEIPT | `c88f057a19fc` |
 | ORIENT-RECEIPT | `2c9fde39d1d6` |
