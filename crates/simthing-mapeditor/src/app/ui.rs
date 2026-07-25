@@ -2212,6 +2212,80 @@ fn draw_studio_ops_telemetry(ctx: &egui::Context, state: &mut StudioAppState) {
                     ui.end_row();
                 });
 
+            // [OVL] STUDIO-FLEET-ICONS-0 — fleet icon placement table (read-only).
+            ui.separator();
+            ui.heading("Fleet icons");
+            {
+                let selected_owner = state.session.as_ref().and_then(|session| {
+                    crate::selected_owner_id_for_system(
+                        &session.scenario_authority,
+                        state.selection.selected_system_id,
+                    )
+                });
+                let owner_colors = state
+                    .session
+                    .as_ref()
+                    .map(|session| {
+                        crate::owner_color_rgb_map_from_authority(&session.scenario_authority)
+                    })
+                    .unwrap_or_default();
+                let mut tint_map = std::collections::HashMap::new();
+                for (id, rgb) in owner_colors {
+                    tint_map.insert(id, crate::nameplate_rgba_from_color_rgb(rgb));
+                }
+                let base_max = state
+                    .session
+                    .as_ref()
+                    .map(|s| s.view_model.render_meta.selected_star_scale_multiplier.max(1.0))
+                    .unwrap_or(1.0);
+                let records = if !bridge.fleet_presence.by_system_id.is_empty() {
+                    crate::fleet_presence_records_flat(&bridge.fleet_presence.by_system_id)
+                } else if let Some(session) = state.session.as_ref() {
+                    crate::studio_fleet_presence_map_from_session(session)
+                        .map(|map| crate::fleet_presence_records_flat(&map.by_system_id))
+                        .unwrap_or_default()
+                } else {
+                    Vec::new()
+                };
+                let descriptors = crate::fleet_icon_descriptors_from_records(
+                    &records,
+                    selected_owner.as_deref(),
+                    &tint_map,
+                    base_max,
+                );
+                let rows = crate::fleet_icon_ops_telemetry_rows(&descriptors);
+                if rows.is_empty() {
+                    ui.label("(no fleets in live presence snapshot)");
+                } else {
+                    egui::Grid::new("studio_ops_fleet_icons")
+                        .num_columns(5)
+                        .striped(true)
+                        .show(ui, |ui| {
+                            ui.label("fleet");
+                            ui.label("owner");
+                            ui.label("placement");
+                            ui.label("side");
+                            ui.label("scale");
+                            ui.end_row();
+                            for row in &rows {
+                                ui.label(row.fleet_simthing_id_raw.to_string());
+                                ui.label(
+                                    row.owner_id
+                                        .clone()
+                                        .unwrap_or_else(|| "--".into()),
+                                );
+                                ui.label(format!(
+                                    "{} ({})",
+                                    row.placement_kind, row.system_or_lane
+                                ));
+                                ui.label(format!("{:?}", row.side));
+                                ui.label(format!("{:.3}", row.scale));
+                                ui.end_row();
+                            }
+                        });
+                }
+            }
+
             // [OVL] STUDIO-DISRUPTION-SELECT-SCREEN-0 — selected-star disruption screen.
             ui.separator();
             ui.heading("Selected-star disruption screen");

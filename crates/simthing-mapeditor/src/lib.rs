@@ -31,6 +31,7 @@ pub mod studio_config;
 pub mod studio_disruption_readout;
 pub mod studio_disruption_select_screen;
 pub mod studio_frame_phase_gpu_telemetry;
+pub mod studio_fleet_icons;
 pub mod studio_fleet_presence;
 pub mod studio_frosted_glass;
 pub mod studio_gpu_adapter_policy;
@@ -171,6 +172,17 @@ pub use studio_frame_phase_gpu_telemetry::{
     vram_tracked_asset_lines, PerformanceDiagnosticFlags, PerformanceNormalRenderSnapshot,
     DIAGNOSTIC_MINIMAL_RENDER_BUTTON, RESTORE_NORMAL_RENDER_BUTTON,
 };
+pub use studio_fleet_icons::{
+    anchored_fleet_side, clamp_fleet_icon_scale, default_fleet_icon_scale,
+    default_fleet_icon_silhouette, fleet_icon_descriptors_from_records,
+    fleet_icon_mesh_draw_plans, fleet_icon_ops_telemetry_rows, fleet_icon_silhouette_by_id,
+    fleet_presence_records_flat, resolve_fleet_icon_world_pose, DummySecondFleetIconBackend,
+    FleetIconDescriptor, FleetIconMeshDrawPlan, FleetIconOpsTelemetryRow, FleetIconOrientation,
+    FleetIconPlacement, FleetIconRenderer, FleetIconSide, FleetIconSilhouetteSpec,
+    FleetIconWorldPose, RecordingFleetIconRenderer, FLEET_ICON_DEFAULT_SILHOUETTE_ID,
+    FLEET_ICON_MAX_STAR_BLUR_FRACTION, FLEET_ICON_SILHOUETTE_DESTROYER,
+    FLEET_ICON_TRANSIT_ALONG_LANE_FRACTION,
+};
 pub use studio_fleet_presence::{
     studio_fleet_presence_map_from_session, studio_fleet_presence_map_from_snapshot,
     StudioFleetPresenceMap,
@@ -276,4 +288,5 @@ pub use tp_base_disc::{
 };
 pub use view_model::{
     StudioGalaxyRenderMeta, StudioGalaxyViewModel, StudioHyperlaneView, StudioStarView,
+    StudioSystemRenderAnchor,
 };
