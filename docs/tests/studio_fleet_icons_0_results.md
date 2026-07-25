@@ -7,6 +7,7 @@
 | role | value |
 |---|---|
 | base_sha | `61abf63b` (12.3 merge) |
+| tested_code_sha | `fab3e7b1af447d2c4e74007c05ad675790839261` |
 | branch | `coder/studio-fleet-icons-0` |
 | HD-RECEIPT | `c88f057a19fc` |
 | ORIENT-RECEIPT | `2c9fde39d1d6` |

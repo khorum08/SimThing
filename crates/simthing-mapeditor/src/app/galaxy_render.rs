@@ -1246,20 +1246,15 @@ pub fn sync_fleet_icons_system(
         return;
     };
 
-    let selected_owner = crate::studio_faction_nameplates::selected_owner_id_for_system(
+    // Re-exported ownership presentation helpers (11.5/11.6) — generic owner tint path.
+    let selected_owner = crate::selected_owner_id_for_system(
         &session.scenario_authority,
         state.selection.selected_system_id,
     );
-    let owner_colors =
-        crate::studio_faction_nameplates::owner_color_rgb_map_from_authority(
-            &session.scenario_authority,
-        );
+    let owner_colors = crate::owner_color_rgb_map_from_authority(&session.scenario_authority);
     let mut tint_map = HashMap::new();
     for (id, rgb) in owner_colors {
-        tint_map.insert(
-            id,
-            crate::studio_faction_nameplates::nameplate_rgba_from_color_rgb(rgb),
-        );
+        tint_map.insert(id, crate::nameplate_rgba_from_color_rgb(rgb));
     }
     let base_max = session
         .view_model

@@ -7,8 +7,10 @@ use std::collections::HashMap;
 
 use simthing_spec::{FleetPresenceLocation, FleetPresenceRecord};
 
-use crate::studio_faction_nameplates::NEUTRAL_NAMEPLATE_RGBA;
 use crate::view_model::StudioSystemRenderAnchor;
+
+/// Neutral tint when owner color is absent (matches nameplate neutral; no Spec).
+const NEUTRAL_FLEET_ICON_RGBA: [f32; 4] = [0.92, 0.96, 1.0, 1.0];
 
 /// Icons must stay ≤ this fraction of the admitted base max star-blur size.
 pub const FLEET_ICON_MAX_STAR_BLUR_FRACTION: f32 = 0.75;
@@ -212,7 +214,7 @@ pub fn fleet_icon_descriptors_from_records(
         let tint = owner_id
             .as_ref()
             .and_then(|id| owner_tint_by_id.get(id).copied())
-            .unwrap_or(NEUTRAL_NAMEPLATE_RGBA);
+            .unwrap_or(NEUTRAL_FLEET_ICON_RGBA);
 
         let (placement, side, orientation) = match &record.location {
             FleetPresenceLocation::Anchored(system_id) => {
@@ -622,7 +624,7 @@ mod tests {
             fleet_simthing_id_raw: 1,
             silhouette_id: FLEET_ICON_DEFAULT_SILHOUETTE_ID,
             owner_id: None,
-            owner_tint_rgba: NEUTRAL_NAMEPLATE_RGBA,
+            owner_tint_rgba: NEUTRAL_FLEET_ICON_RGBA,
             placement: FleetIconPlacement::InTransit {
                 source_system_id: 1,
                 dest_system_id: 2,
@@ -651,7 +653,7 @@ mod tests {
             fleet_simthing_id_raw: 1,
             silhouette_id: FLEET_ICON_DEFAULT_SILHOUETTE_ID,
             owner_id: Some("a".into()),
-            owner_tint_rgba: NEUTRAL_NAMEPLATE_RGBA,
+            owner_tint_rgba: NEUTRAL_FLEET_ICON_RGBA,
             placement: FleetIconPlacement::Anchored {
                 system_id: 5,
                 side: FleetIconSide::Right,
