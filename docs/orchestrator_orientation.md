@@ -45,7 +45,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 211b860c2a424d0386a01a2dc93d5c563abfd1411c1f58ec55c7b69d97426cb8 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | be04669f2dfb66096af019ad61f225de91bf4433c22d46fbdeff42578634da49 |
-| design_0_0_8_6_studio_live_ops.md | dfd04b216a524f1b27d1f58788ade8a369919c386ffac8409411a5757082db7d |
+| design_0_0_8_6_studio_live_ops.md | e3cd0ed1bec691200b89985f4bf36f54fc737b0c0330b030d4277b003fcc1a06 |
 | relay_lint.sh | 4163f715cdc3b549dbf57c1744aff61ea96b9f9f0a2237376665fbdb24e986c8 |
 | doctrine_anchors.tsv | acddc6ad84d6dcefcbc8942f603186ae82e47e6495833b29aafbb5805d49aa0f |
 
@@ -53,18 +53,10 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 
 Track state: `open`
 
+> Compact view: showing last 5 of 38 rungs (track `open`); full ladder in the design doc.
+
 | # | rung | deliverable | exit proof |
 | --- | --- | --- | --- |
-| 12.8 | TP-CLAUSE-ECONOMY-AUTHOR-0 | **Needs 12.6 + 12.7.** Author the canonical economy **in `scenarios/terran_pirat | **ORCHESTRATOR-GRADUATED / merged [#1403](https://github.com/khorum08/SimThing/pull/1403)** — 2026-07-17 (AUTONOMOUS;... |
-| 12.9 | STUDIO-FIELD-SESSION-ELEVATE-0 | **Needs 12.8.** The Studio live bridge opens the **field-bearing session path**  | **OWNER OVL PASS / orchestration-review-complete / DA-relay-ready / RF-5 SPLIT APPROVED** — Owner/orchestration rulin... |
-| 12.10 | TP-EMERGENT-TENSION-PROOF-0 | **Needs 12.9.** Falsification battery for **emergence, not scripting**: (a) mult | **DA-GRADUATED / merged [#1418](https://github.com/khorum08/SimThing/pull/1418) @ `ced8ce2d`** — 2026-07-20 (DA gradu... |
-| 12.11 | SCANNER-SELFTEST-DELTA-GATE-0 | **Harness — executes NOW (pointer-active), ahead of the TP chain. Owner-mandate  | **DA-GRADUATED / merged [#1400](https://github.com/khorum08/SimThing/pull/1400) @ `6193289e`** — 2026-07-17 (AUTONOMO... |
-| 12.1 | STUDIO-LOADER-DIALOG-REPAIR-0 | **Minimal load dialog.** The load dialog shows **only**: scenario-path text box  | **DA-GRADUATED / merged [PR #1324](https://github.com/khorum08/SimThing/pull/1324) @ `827fcbe0`** — Owner OVL PASS + ... |
-| 12.3 | STUDIO-DISRUPTION-SELECT-SCREEN-0 | **Needs 12.2.** Selecting **any** star (owned, neutral, hostile) screens the **s | **DA-GRADUATED / merged [#1420](https://github.com/khorum08/SimThing/pull/1420) @ `61abf63b`** — DA final ruling `506... |
-| 12.5 | STUDIO-FLEET-ICONS-0 | **Needs 12.4.** Tiny ship icon (rocket/destroyer silhouette; **≤75% of the base  | **PROBATION / DRAFT** — PR [#1426](https://github.com/khorum08/SimThing/pull/1426); HD-RECEIPT `c88f057a19fc`; Owner ... |
-| RF-1 | RF-CONSERVATION-ORACLE-0 | **Oracle-first.** Independent closed-form conservation oracle (ADR three invaria | **DA-GRADUATED / merged [#1408](https://github.com/khorum08/SimThing/pull/1408) @ `5fa10ab5`** — 2026-07-17 (coder=Gr... |
-| RF-2A | RF-GOVERNED-INTEGRATION-ORDERBAND-0 | Repair the existing governed-integration adapter so both authored targets surviv | **DA-GRADUATED / merged [#1411](https://github.com/khorum08/SimThing/pull/1411) @ `c206b0ef`** — 2026-07-18. Adapter ... |
-| RF-2 | RF-EXECUTE-RECURSIVE-DEFAULT-0 | Flip `resource_flow_execution_profile` default to recursive executed source; wir | **DA-GRADUATED / merged [#1411](https://github.com/khorum08/SimThing/pull/1411) @ `c206b0ef`** — 2026-07-18. Ordinary... |
 | RF-3 | RF-LEGACY-RETIRE-REANCHOR-0 | Repoint existing RF tests + `runtime_0080_*` rehearsal + recursive-source oracle | **DA-GRADUATED / merged [#1412](https://github.com/khorum08/SimThing/pull/1412) @ `d42b9109`** — 2026-07-18. Recursiv... |
 | RF-4 | (12.9 resumes) `STUDIO-FIELD-SESSION-ELEVATE-0 | Studio field-bearing consumes the now-executing RF; telemetry binds to the real  | **DA-GRADUATED / merged [#1413](https://github.com/khorum08/SimThing/pull/1413) @ `99fa9d06`** — 2026-07-18. Recursiv... |
 | RF-5 | RF-NEED-WEIGHT-PROFILE-TRANSPORT-0 | **Bounded need/`weight_profile` transport.** Generic binding of hydrated need/we | **DA-GRADUATED / merged [#1414](https://github.com/khorum08/SimThing/pull/1414) @ `da8f7035`** — 2026-07-19. DA rulin... |
@@ -73,7 +65,7 @@ Track state: `open`
 
 ## Next Rung Pointer
 
-Active pointer: `STUDIO-FLEET-ICONS-0`
+Active pointer: `none`
 
 
 ## Cold-Start Spine (constitutional pointers)
