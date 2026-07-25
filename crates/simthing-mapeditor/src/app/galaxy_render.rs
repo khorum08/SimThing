@@ -37,8 +37,9 @@ use crate::studio_disruption_select_screen::{
 use crate::studio_fleet_icons::{
     admitted_base_star_blur_by_system, collect_galaxy_scene_cleanup_entities,
     fleet_icon_descriptors_from_records, fleet_icon_entity_ops, fleet_icon_outline_geometry,
-    fleet_icon_transform_data, fleet_presence_records_flat, production_fleet_icon_render_frame,
-    FleetIconEntityOp, FleetIconMeshDrawPlan, FleetIconRenderContext,
+    fleet_icon_transform_data, production_fleet_icon_render_frame,
+    select_fleet_presence_records_for_icons, FleetIconEntityOp, FleetIconMeshDrawPlan,
+    FleetIconRenderContext,
 };
 use crate::studio_render_loop_dirty_gate::{
     hyperlane_basis_mismatch_angle_deg, hyperlane_basis_mismatch_exceeds_epsilon,
@@ -1260,18 +1261,17 @@ pub fn sync_fleet_icons_system(
         &session.view_model.stars,
         &session.view_model.render_meta,
     );
-    let records = if !state
-        .live_bridge_readout
-        .fleet_presence
-        .by_system_id
-        .is_empty()
-    {
-        fleet_presence_records_flat(&state.live_bridge_readout.fleet_presence.by_system_id)
+    // Attachment-truthful source selection (shared with Studio_ops telemetry).
+    let session_fallback = if !state.live_bridge_readout.attached {
+        crate::studio_fleet_presence_map_from_session(session).ok()
     } else {
-        crate::studio_fleet_presence_map_from_session(session)
-            .map(|map| fleet_presence_records_flat(&map.by_system_id))
-            .unwrap_or_default()
+        None
     };
+    let records = select_fleet_presence_records_for_icons(
+        state.live_bridge_readout.attached,
+        &state.live_bridge_readout.fleet_presence,
+        session_fallback.as_ref(),
+    );
     let descriptors = fleet_icon_descriptors_from_records(
         &records,
         selected_owner.as_deref(),

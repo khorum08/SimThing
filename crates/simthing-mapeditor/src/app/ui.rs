@@ -2243,15 +2243,18 @@ fn draw_studio_ops_telemetry(ctx: &egui::Context, state: &mut StudioAppState) {
                         )
                     })
                     .unwrap_or_default();
-                let records = if !bridge.fleet_presence.by_system_id.is_empty() {
-                    crate::fleet_presence_records_flat(&bridge.fleet_presence.by_system_id)
-                } else if let Some(session) = state.session.as_ref() {
-                    crate::studio_fleet_presence_map_from_session(session)
-                        .map(|map| crate::fleet_presence_records_flat(&map.by_system_id))
-                        .unwrap_or_default()
+                let session_fallback = if !bridge.attached {
+                    state.session.as_ref().and_then(|session| {
+                        crate::studio_fleet_presence_map_from_session(session).ok()
+                    })
                 } else {
-                    Vec::new()
+                    None
                 };
+                let records = crate::select_fleet_presence_records_for_icons(
+                    bridge.attached,
+                    &bridge.fleet_presence,
+                    session_fallback.as_ref(),
+                );
                 let descriptors = crate::fleet_icon_descriptors_from_records(
                     &records,
                     selected_owner.as_deref(),

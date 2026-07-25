@@ -247,6 +247,9 @@ pub struct StudioFieldAccretionSample {
 pub struct StudioLiveSessionBridgeReadout {
     pub status: StudioLiveSessionBridgeStatus,
     pub status_label: &'static str,
+    /// True when a production `SimSession` is attached (`sim.is_some()`).
+    /// Independent of fleet-presence emptiness — empty live maps stay authoritative while attached.
+    pub attached: bool,
     pub executed_ticks: u64,
     pub last_scheduled_batch: u64,
     pub last_error: Option<String>,
@@ -270,6 +273,7 @@ impl StudioLiveSessionBridgeReadout {
         Self {
             status: StudioLiveSessionBridgeStatus::Unattached,
             status_label: status_label(StudioLiveSessionBridgeStatus::Unattached),
+            attached: false,
             executed_ticks: 0,
             last_scheduled_batch: 0,
             last_error: None,
@@ -776,6 +780,7 @@ impl StudioLiveSessionBridge {
         StudioLiveSessionBridgeReadout {
             status: self.status,
             status_label: status_label(self.status),
+            attached: self.sim.is_some(),
             executed_ticks: self.executed_ticks,
             last_scheduled_batch: self.last_scheduled_batch,
             last_error: self.last_error.clone(),
@@ -1795,7 +1800,33 @@ mod unit_smoke {
         assert_eq!(b.status(), StudioLiveSessionBridgeStatus::Unattached);
         assert_eq!(b.executed_ticks(), 0);
         assert_eq!(b.session_path(), StudioLiveSessionPath::StructuralShell);
+        assert!(!b.readout().attached);
         assert!(bridge_module_source_forbids_workshop_residue());
+    }
+
+    #[test]
+    fn readout_attached_tracks_sim_presence_not_fleet_emptiness() {
+        let mut b = StudioLiveSessionBridge::new();
+        // Unattached with empty fleet map.
+        let r0 = b.readout();
+        assert!(!r0.attached);
+        assert!(r0.fleet_presence.by_system_id.is_empty());
+        // Simulate attached session without going through GPU open: inject fleet emptiness while sim-attached
+        // is not directly settable; law is `attached: self.sim.is_some()` in readout.
+        // Prove default_unattached stays false independent of fleet_presence contents.
+        let mut r = StudioLiveSessionBridgeReadout::default_unattached();
+        r.fleet_presence.total_fleets = 0;
+        assert!(!r.attached);
+        r.fleet_presence.total_fleets = 9;
+        assert!(!r.attached);
+        // Attachment is only true when sim is present — covered by production open path identity;
+        // source-level contract: readout builds attached from sim.is_some().
+        let source = include_str!("studio_live_session_bridge.rs");
+        assert!(
+            source.contains("attached: self.sim.is_some()"),
+            "readout must bind attached to sim presence, not fleet emptiness"
+        );
+        let _ = b;
     }
 
     #[test]

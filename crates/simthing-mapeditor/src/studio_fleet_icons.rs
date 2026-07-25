@@ -318,6 +318,26 @@ pub fn fleet_presence_records_flat(
     out
 }
 
+/// Shared fleet-presence source selection for render + Studio_ops telemetry.
+///
+/// Law (Remand-3):
+/// - **attached** live bridge → `live_presence` is authoritative **even when empty**;
+/// - **unattached** → optional session fallback map;
+/// - never infer attachment from map emptiness / total_fleets.
+pub fn select_fleet_presence_records_for_icons(
+    bridge_attached: bool,
+    live_presence: &crate::studio_fleet_presence::StudioFleetPresenceMap,
+    session_fallback: Option<&crate::studio_fleet_presence::StudioFleetPresenceMap>,
+) -> Vec<FleetPresenceRecord> {
+    if bridge_attached {
+        return fleet_presence_records_flat(&live_presence.by_system_id);
+    }
+    match session_fallback {
+        Some(map) => fleet_presence_records_flat(&map.by_system_id),
+        None => Vec::new(),
+    }
+}
+
 pub fn fleet_icon_ops_telemetry_rows(
     descriptors: &[FleetIconDescriptor],
 ) -> Vec<FleetIconOpsTelemetryRow> {
@@ -1278,5 +1298,82 @@ mod tests {
         let sil = default_fleet_icon_silhouette();
         assert_eq!(sil.id, FLEET_ICON_DEFAULT_SILHOUETTE_ID);
         assert!(sil.outline_xy.len() >= 3);
+    }
+
+    #[test]
+    fn attached_empty_live_map_does_not_resurrect_session_fallback() {
+        use crate::studio_fleet_presence::StudioFleetPresenceMap;
+        use std::collections::BTreeMap;
+
+        let live = StudioFleetPresenceMap::default(); // empty, attached
+        let mut fallback_map = BTreeMap::new();
+        fallback_map.insert(
+            1u32,
+            vec![rec(42, Some("a"), FleetPresenceLocation::Anchored(1))],
+        );
+        let fallback = StudioFleetPresenceMap {
+            by_system_id: fallback_map,
+            total_fleets: 1,
+            transit_fleets: 0,
+        };
+        let records =
+            select_fleet_presence_records_for_icons(true, &live, Some(&fallback));
+        assert!(
+            records.is_empty(),
+            "attached empty live must stay empty, not resurrect fallback"
+        );
+    }
+
+    #[test]
+    fn unattached_empty_live_uses_session_fallback() {
+        use crate::studio_fleet_presence::StudioFleetPresenceMap;
+        use std::collections::BTreeMap;
+
+        let live = StudioFleetPresenceMap::default();
+        let mut fallback_map = BTreeMap::new();
+        fallback_map.insert(
+            1u32,
+            vec![rec(42, Some("a"), FleetPresenceLocation::Anchored(1))],
+        );
+        let fallback = StudioFleetPresenceMap {
+            by_system_id: fallback_map,
+            total_fleets: 1,
+            transit_fleets: 0,
+        };
+        let records =
+            select_fleet_presence_records_for_icons(false, &live, Some(&fallback));
+        assert_eq!(records.len(), 1);
+        assert_eq!(records[0].fleet_simthing_id_raw, 42);
+    }
+
+    #[test]
+    fn attached_nonempty_live_wins_over_fallback() {
+        use crate::studio_fleet_presence::StudioFleetPresenceMap;
+        use std::collections::BTreeMap;
+
+        let mut live_map = BTreeMap::new();
+        live_map.insert(
+            2u32,
+            vec![rec(7, Some("live"), FleetPresenceLocation::Anchored(2))],
+        );
+        let live = StudioFleetPresenceMap {
+            by_system_id: live_map,
+            total_fleets: 1,
+            transit_fleets: 0,
+        };
+        let mut fallback_map = BTreeMap::new();
+        fallback_map.insert(
+            1u32,
+            vec![rec(42, Some("fallback"), FleetPresenceLocation::Anchored(1))],
+        );
+        let fallback = StudioFleetPresenceMap {
+            by_system_id: fallback_map,
+            total_fleets: 1,
+            transit_fleets: 0,
+        };
+        let records =
+            select_fleet_presence_records_for_icons(true, &live, Some(&fallback));
+        assert_eq!(records.len(), 1);
+        assert_eq!(records[0].fleet_simthing_id_raw, 7);
     }
 }

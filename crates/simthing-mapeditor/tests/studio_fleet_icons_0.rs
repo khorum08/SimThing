@@ -511,4 +511,25 @@ fn fleet_icons_module_has_no_wgsl_or_spec_mutation_surface() {
     assert!(source.contains("trait FleetIconRenderer"));
     assert!(source.contains("production_fleet_icon_render_frame"));
     assert!(source.contains("MeshOutlineFleetIconRenderer"));
+    assert!(source.contains("select_fleet_presence_records_for_icons"));
+}
+
+/// catches: render/telemetry diverge from shared attachment-truthful source selector.
+#[test]
+fn render_and_telemetry_share_fleet_presence_source_selector() {
+    let icons = include_str!("../src/studio_fleet_icons.rs");
+    let render = include_str!("../src/app/galaxy_render.rs");
+    let ui = include_str!("../src/app/ui.rs");
+    assert!(icons.contains("pub fn select_fleet_presence_records_for_icons"));
+    assert!(
+        render.contains("select_fleet_presence_records_for_icons"),
+        "sync_fleet_icons_system must call shared selector"
+    );
+    assert!(
+        ui.contains("select_fleet_presence_records_for_icons"),
+        "Studio_ops telemetry must call shared selector"
+    );
+    // Emptiness-based attachment inference must not reappear in production paths.
+    assert!(!render.contains("fleet_presence.by_system_id.is_empty()"));
+    assert!(!ui.contains("fleet_presence.by_system_id.is_empty()"));
 }

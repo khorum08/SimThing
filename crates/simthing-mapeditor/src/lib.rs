@@ -181,6 +181,7 @@ pub use studio_fleet_icons::{
     fleet_icon_plane_normal_world, fleet_icon_silhouette_by_id, fleet_icon_transform_data,
     fleet_icon_transform_local_x_world, fleet_icon_transform_local_y_world,
     fleet_presence_records_flat, galaxy_scene_cleanup_entity_ids, production_fleet_icon_render_frame,
+    select_fleet_presence_records_for_icons,
     resolve_fleet_icon_world_pose, rotate_yaw_y, yaw_toward_xz, DummySecondFleetIconBackend,
     FleetIconDescriptor, FleetIconEntityOp, FleetIconMeshDrawPlan, FleetIconOpsTelemetryRow,
     FleetIconOrientation, FleetIconOutlineGeometry, FleetIconPlacement, FleetIconRenderContext,
