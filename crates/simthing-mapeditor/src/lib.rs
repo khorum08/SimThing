@@ -31,6 +31,7 @@ pub mod studio_config;
 pub mod studio_disruption_readout;
 pub mod studio_disruption_select_screen;
 pub mod studio_frame_phase_gpu_telemetry;
+pub mod studio_fleet_icons;
 pub mod studio_fleet_presence;
 pub mod studio_frosted_glass;
 pub mod studio_gpu_adapter_policy;
@@ -171,6 +172,25 @@ pub use studio_frame_phase_gpu_telemetry::{
     vram_tracked_asset_lines, PerformanceDiagnosticFlags, PerformanceNormalRenderSnapshot,
     DIAGNOSTIC_MINIMAL_RENDER_BUTTON, RESTORE_NORMAL_RENDER_BUTTON,
 };
+pub use studio_fleet_icons::{
+    admitted_base_max_star_blur_world, admitted_base_star_blur_by_system, anchored_fleet_side,
+    clamp_fleet_icon_scale, collect_galaxy_scene_cleanup_entities, default_fleet_icon_scale,
+    default_fleet_icon_silhouette, fleet_icon_descriptors_from_records, fleet_icon_entity_ops,
+    fleet_icon_frame_contract_fingerprint, fleet_icon_nose_faces_target, fleet_icon_nose_world_dir,
+    fleet_icon_ops_telemetry_rows, fleet_icon_outline_geometry, fleet_icon_plane_legible_to_view,
+    fleet_icon_plane_normal_world, fleet_icon_silhouette_by_id, fleet_icon_transform_data,
+    fleet_icon_transform_local_x_world, fleet_icon_transform_local_y_world,
+    fleet_presence_records_flat, galaxy_scene_cleanup_entity_ids, production_fleet_icon_render_frame,
+    select_fleet_presence_records_for_icons,
+    resolve_fleet_icon_world_pose, rotate_yaw_y, yaw_toward_xz, DummySecondFleetIconBackend,
+    FleetIconDescriptor, FleetIconEntityOp, FleetIconMeshDrawPlan, FleetIconOpsTelemetryRow,
+    FleetIconOrientation, FleetIconOutlineGeometry, FleetIconPlacement, FleetIconRenderContext,
+    FleetIconRenderFrame, FleetIconRenderer, FleetIconSceneState, FleetIconSide,
+    FleetIconSilhouetteSpec, FleetIconTransformData, FleetIconWorldPose,
+    MeshOutlineFleetIconRenderer, RecordingFleetIconRenderer, FLEET_ICON_DEFAULT_SILHOUETTE_ID,
+    FLEET_ICON_LOCAL_NOSE, FLEET_ICON_MAX_STAR_BLUR_FRACTION, FLEET_ICON_SILHOUETTE_DESTROYER,
+    FLEET_ICON_TRANSIT_ALONG_LANE_FRACTION,
+};
 pub use studio_fleet_presence::{
     studio_fleet_presence_map_from_session, studio_fleet_presence_map_from_snapshot,
     StudioFleetPresenceMap,
@@ -276,4 +296,5 @@ pub use tp_base_disc::{
 };
 pub use view_model::{
     StudioGalaxyRenderMeta, StudioGalaxyViewModel, StudioHyperlaneView, StudioStarView,
+    StudioSystemRenderAnchor,
 };

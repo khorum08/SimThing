@@ -170,6 +170,14 @@ pub fn run_studio() {
             PostUpdate,
             galaxy_render::sync_hyperlane_colors_system.after(camera::camera_control_system),
         )
+        // STUDIO-FLEET-ICONS-0: separate registration keeps the main Update chain under Bevy's
+        // IntoSystemConfigs arity limit while still running each frame after selection/star sync.
+        .add_systems(
+            Update,
+            galaxy_render::sync_fleet_icons_system
+                .after(galaxy_render::sync_star_visuals_system)
+                .after(picking::star_pick_system),
+        )
         .run();
 }
 
@@ -177,6 +185,8 @@ pub fn run_studio() {
 pub struct GalaxySceneRoot {
     pub stars: Vec<(u32, Entity)>,
     pub nameplates: Vec<Entity>,
+    /// STUDIO-FLEET-ICONS-0 presentation entities (fleet_simthing_id_raw → entity).
+    pub fleet_icons: Vec<(u32, Entity)>,
     pub hyperlane_buckets: [Option<Entity>; 3],
     pub highlight_hyperlanes: Option<Entity>,
     pub core_glow: Option<Entity>,
