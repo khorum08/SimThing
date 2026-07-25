@@ -9,7 +9,7 @@
 | base_sha | `61abf63bba21ef95fdbd783040d69615376d7a1e` (12.3 merge) |
 | implementation_code_sha | `4b24a90a5d4f082468745f2256873dbad1191926` |
 | tested_code_sha | `4b24a90a5d4f082468745f2256873dbad1191926` |
-| final_head_sha | *(docs bind commit after battery)* |
+| final_head_sha | `4508ad6219d45d5a9b8a5f4b100b67a6e1f66546` |
 | branch | `coder/studio-fleet-icons-0` |
 | HD-RECEIPT | `c88f057a19fc` |
 | ORIENT-RECEIPT | `2c9fde39d1d6` |
