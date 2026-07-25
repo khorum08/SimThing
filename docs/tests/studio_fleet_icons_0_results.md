@@ -7,9 +7,9 @@
 | role | value |
 |---|---|
 | base_sha | `61abf63bba21ef95fdbd783040d69615376d7a1e` |
-| implementation_code_sha | *(set at commit)* |
-| tested_code_sha | *(set at commit)* |
-| final_head_sha | *(docs tip after battery)* |
+| implementation_code_sha | `65bcb956f0314a1a960fc305d7dcfe8b7e988c9b` |
+| tested_code_sha | `65bcb956f0314a1a960fc305d7dcfe8b7e988c9b` |
+| final_head_sha | *(docs bind tip after battery)* |
 | HD-RECEIPT | `c88f057a19fc` |
 | ORIENT-RECEIPT | `2c9fde39d1d6` |
 | remands | `5075963624`, `5076130563`, `5076589218` |
