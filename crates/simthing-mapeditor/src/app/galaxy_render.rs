@@ -34,6 +34,10 @@ use crate::studio_disruption_select_screen::{
     compose_disruption_blur_scale, compose_disruption_rgb, quantize_blur_scale_milli,
     quantize_disruption_milli, quantize_red_fraction_milli, selected_disruption_select_screen,
 };
+use crate::studio_fleet_icons::{
+    fleet_icon_descriptors_from_records, fleet_icon_mesh_draw_plans, fleet_presence_records_flat,
+    FleetIconMeshDrawPlan,
+};
 use crate::studio_render_loop_dirty_gate::{
     hyperlane_basis_mismatch_angle_deg, hyperlane_basis_mismatch_exceeds_epsilon,
     hyperlane_camera_basis_from_transform, hyperlane_render_settings_key,
@@ -71,6 +75,12 @@ pub struct GalaxyHyperlanes(pub HyperlaneDepthBucket);
 
 #[derive(Component)]
 pub struct SelectedHyperlaneHighlight;
+
+/// STUDIO-FLEET-ICONS-0 — presentation-only mesh icon for one fleet descriptor.
+#[derive(Component, Debug, Clone, Copy)]
+pub struct GalaxyFleetIcon {
+    pub fleet_simthing_id_raw: u32,
+}
 
 #[derive(Resource)]
 pub struct StarVisualAssets {
@@ -580,6 +590,9 @@ fn despawn_galaxy(commands: &mut Commands, root: &mut GalaxySceneRoot) {
         commands.entity(entity).despawn();
     }
     for entity in root.nameplates.drain(..) {
+        commands.entity(entity).despawn();
+    }
+    for (_, entity) in root.fleet_icons.drain(..) {
         commands.entity(entity).despawn();
     }
     for slot in root.hyperlane_buckets.iter_mut() {
@@ -1155,6 +1168,184 @@ pub fn sync_render_debug_visibility_system(
         } else {
             Visibility::Hidden
         };
+    }
+}
+
+/// Build a flat mesh from one-site silhouette outline (existing Mesh/StandardMaterial path).
+fn fleet_icon_outline_mesh(outline_xy: &[(f32, f32)]) -> Mesh {
+    let mut mesh = Mesh::new(
+        PrimitiveTopology::TriangleList,
+        RenderAssetUsages::default(),
+    );
+    if outline_xy.len() < 3 {
+        mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, Vec::<[f32; 3]>::new());
+        mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, Vec::<[f32; 3]>::new());
+        mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, Vec::<[f32; 2]>::new());
+        return mesh;
+    }
+    let mut positions = Vec::with_capacity(outline_xy.len() * 3);
+    let mut normals = Vec::with_capacity(outline_xy.len() * 3);
+    let mut uvs = Vec::with_capacity(outline_xy.len() * 3);
+    let mut indices = Vec::with_capacity((outline_xy.len() - 2) * 3);
+    // Triangle fan from centroid for a solid silhouette disc.
+    let mut cx = 0.0f32;
+    let mut cy = 0.0f32;
+    for &(x, y) in outline_xy {
+        cx += x;
+        cy += y;
+    }
+    let n = outline_xy.len() as f32;
+    cx /= n;
+    cy /= n;
+    positions.push([cx, cy, 0.0]);
+    normals.push([0.0, 0.0, 1.0]);
+    uvs.push([0.5, 0.5]);
+    for &(x, y) in outline_xy {
+        positions.push([x, y, 0.0]);
+        normals.push([0.0, 0.0, 1.0]);
+        uvs.push([(x + 0.5).clamp(0.0, 1.0), (y + 0.5).clamp(0.0, 1.0)]);
+    }
+    for i in 1..=outline_xy.len() {
+        let next = if i == outline_xy.len() { 1 } else { i + 1 };
+        indices.extend_from_slice(&[0u32, i as u32, next as u32]);
+    }
+    mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
+    mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
+    mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
+    mesh.insert_indices(Indices::U32(indices));
+    mesh
+}
+
+fn fleet_icon_transform(plan: &FleetIconMeshDrawPlan) -> Transform {
+    let p = plan.pose.world_position;
+    Transform::from_translation(Vec3::new(p[0], p[1], p[2]))
+        .with_rotation(Quat::from_rotation_y(plan.pose.yaw_radians))
+        .with_scale(Vec3::splat(plan.pose.scale.max(1e-4)))
+}
+
+/// STUDIO-FLEET-ICONS-0 — sync presentation mesh icons from 12.4 descriptors.
+/// Uses existing Mesh/StandardMaterial only (no new pipeline / WGSL).
+pub fn sync_fleet_icons_system(
+    state: Res<super::StudioAppState>,
+    camera: Query<&GlobalTransform, With<super::camera::MainCamera>>,
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    mut root: ResMut<GalaxySceneRoot>,
+    mut icons: Query<(
+        Entity,
+        &GalaxyFleetIcon,
+        &mut Transform,
+        &MeshMaterial3d<StandardMaterial>,
+    )>,
+) {
+    let Some(session) = state.session.as_ref() else {
+        for (_, entity) in root.fleet_icons.drain(..) {
+            commands.entity(entity).despawn();
+        }
+        return;
+    };
+
+    // Re-exported ownership presentation helpers (11.5/11.6) — generic owner tint path.
+    let selected_owner = crate::selected_owner_id_for_system(
+        &session.scenario_authority,
+        state.selection.selected_system_id,
+    );
+    let owner_colors = crate::owner_color_rgb_map_from_authority(&session.scenario_authority);
+    let mut tint_map = HashMap::new();
+    for (id, rgb) in owner_colors {
+        tint_map.insert(id, crate::nameplate_rgba_from_color_rgb(rgb));
+    }
+    let base_max = session
+        .view_model
+        .render_meta
+        .selected_star_scale_multiplier
+        .max(1.0);
+    // Prefer live bridge presence; fall soft to session authority snapshot when unattached.
+    let records = if !state
+        .live_bridge_readout
+        .fleet_presence
+        .by_system_id
+        .is_empty()
+    {
+        fleet_presence_records_flat(&state.live_bridge_readout.fleet_presence.by_system_id)
+    } else {
+        crate::studio_fleet_presence_map_from_session(session)
+            .map(|map| fleet_presence_records_flat(&map.by_system_id))
+            .unwrap_or_default()
+    };
+    let descriptors = fleet_icon_descriptors_from_records(
+        &records,
+        selected_owner.as_deref(),
+        &tint_map,
+        base_max,
+    );
+
+    let right_axis = camera
+        .single()
+        .ok()
+        .map(|xf| {
+            let right = xf.right();
+            [right.x, right.z]
+        })
+        .unwrap_or([1.0, 0.0]);
+    let plans = fleet_icon_mesh_draw_plans(
+        &descriptors,
+        &session.view_model.render_anchors,
+        right_axis,
+        base_max,
+    );
+    let wanted: HashMap<u32, &FleetIconMeshDrawPlan> = plans
+        .iter()
+        .map(|p| (p.fleet_simthing_id_raw, p))
+        .collect();
+
+    // Update / despawn existing.
+    let mut alive = std::collections::HashSet::new();
+    for (entity, icon, mut transform, material_handle) in &mut icons {
+        if let Some(plan) = wanted.get(&icon.fleet_simthing_id_raw) {
+            *transform = fleet_icon_transform(plan);
+            if let Some(material) = materials.get_mut(&material_handle.0) {
+                let c = plan.tint_rgba;
+                material.base_color = Color::srgba(c[0], c[1], c[2], c[3].clamp(0.35, 1.0));
+                material.emissive = LinearRgba::new(c[0] * 0.6, c[1] * 0.6, c[2] * 0.6, 1.0);
+            }
+            alive.insert(icon.fleet_simthing_id_raw);
+        } else {
+            commands.entity(entity).despawn();
+        }
+    }
+    root.fleet_icons.retain(|(id, _)| alive.contains(id));
+
+    // Spawn missing.
+    for plan in &plans {
+        if alive.contains(&plan.fleet_simthing_id_raw) {
+            continue;
+        }
+        let mesh = meshes.add(fleet_icon_outline_mesh(plan.outline_xy));
+        let c = plan.tint_rgba;
+        let material = materials.add(StandardMaterial {
+            base_color: Color::srgba(c[0], c[1], c[2], c[3].clamp(0.35, 1.0)),
+            emissive: LinearRgba::new(c[0] * 0.6, c[1] * 0.6, c[2] * 0.6, 1.0),
+            unlit: true,
+            alpha_mode: AlphaMode::Blend,
+            cull_mode: None,
+            ..default()
+        });
+        let entity = commands
+            .spawn((
+                Mesh3d(mesh),
+                MeshMaterial3d(material),
+                fleet_icon_transform(plan),
+                GalaxyFleetIcon {
+                    fleet_simthing_id_raw: plan.fleet_simthing_id_raw,
+                },
+                Visibility::Visible,
+                Name::new(format!("FleetIcon-{}", plan.fleet_simthing_id_raw)),
+            ))
+            .id();
+        root.fleet_icons
+            .push((plan.fleet_simthing_id_raw, entity));
     }
 }
 
