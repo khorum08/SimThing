@@ -1,38 +1,42 @@
 # STUDIO-FLEET-ICONS-0 Results
 
 ## Status
-**PROBATION / DRAFT / remand-3 corrected** — PR [#1426](https://github.com/khorum08/SimThing/pull/1426); HD-RECEIPT `c88f057a19fc`; Owner [OVL] **not authorized**.
+**PROBATION / DRAFT / post-maintenance rebase / OWNER-OVL: PASSED** — PR [#1426](https://github.com/khorum08/SimThing/pull/1426); HD-RECEIPT `c88f057a19fc`.
 
-## Identity
+Owner OVL PASS: comment [`5078722454`](https://github.com/khorum08/SimThing/pull/1426#issuecomment-5078722454) — product behavior unchanged by rebase onto maintenance merge #1428.
+
+## Identity (post-rebase refresh)
 | role | value |
 |---|---|
-| base_sha | `61abf63bba21ef95fdbd783040d69615376d7a1e` |
-| implementation_code_sha | `65bcb956f0314a1a960fc305d7dcfe8b7e988c9b` |
-| tested_code_sha | `65bcb956f0314a1a960fc305d7dcfe8b7e988c9b` |
-| final_head_sha | *(docs bind tip after battery)* |
+| maintenance_merge / base_sha | `19653fc895b03c7fa1cd3033821ddf2f16c5f0e7` (PR #1428 merge) |
+| rebased_implementation_sha | `a0199e57` (remand-3 product; rebased) |
+| tested_code_sha | `8061444d5929fee7a768959a667341db832e2d60` (full accepted battery after rebase) |
+| final_head_sha | *(docs bind tip after this file)* |
+| branch | `coder/studio-fleet-icons-0` |
 | HD-RECEIPT | `c88f057a19fc` |
 | ORIENT-RECEIPT | `2c9fde39d1d6` |
-| remands | `5075963624`, `5076130563`, `5076589218` |
+| remands closed | `5075963624`, `5076130563`, `5076589218` |
+| OVL | PASS `5078722454` (carried; no recapture) |
 
-## Remand-3 correction
-**Empty attached live snapshot stays empty.**
+## Product laws (unchanged by rebase)
+- Renderer-agnostic descriptors → `MeshOutlineFleetIconRenderer` seam
+- Bevy lifecycle via `fleet_icon_entity_ops`
+- Scene cleanup via `collect_galaxy_scene_cleanup_entities`
+- Per-system admitted star blur; ≤75% cap
+- Attachment-truthful live presence selection (empty attached stays empty)
+- One-site silhouette; map-plane XZ / +Y; nose toward star/dest
 
-- `StudioLiveSessionBridgeReadout.attached` from `self.sim.is_some()` (not fleet emptiness).
-- Shared pure `select_fleet_presence_records_for_icons(attached, live, session_fallback)` used by:
-  - `sync_fleet_icons_system`
-  - Studio_ops fleet-icon telemetry
-- Law: attached → live authoritative even when empty; unattached → session fallback; never infer attachment from `by_system_id.is_empty()`.
-
-## Proof
-| battery | result |
+## Post-rebase battery @ `8061444d`
+| check | result |
 |---|---|
-| unit `studio_fleet_icons` | 16/16 PASS |
-| unit `readout_attached_tracks_sim_presence_not_fleet_emptiness` | PASS |
-| unit `galaxy_render::tests` fleet-icon | 3/3 PASS |
-| integration `studio_fleet_icons_0` | 12/12 PASS |
-| check + studio build | PASS |
+| `cargo test -p simthing-mapeditor --lib studio_fleet_icons` | PASS 16/16 |
+| `cargo test -p simthing-mapeditor --lib readout_attached` | PASS 1/1 |
+| `cargo test -p simthing-mapeditor --lib galaxy_render::tests` | PASS 3/3 |
+| `cargo test -p simthing-mapeditor --test studio_fleet_icons_0` | PASS 12/12 |
+| `cargo check` + studio build | PASS |
 | inventory / orient / doc-budget | PASS |
-| agent_scan | INSPECT (TEST-BUDGET justified) |
+| `agent_scan` | INSPECT delta_inspect=2 (TEST-BUDGET justified) |
+| `track_closeout.sh --artifact-expiry` | PASS expired=0 |
 
-## Hosted fence
-Closeout artifact-expiry remains orchestration issue #1427 — **not** modified on this branch.
+## Fences
+No feature changes in this refresh. No OVL recapture. No self-graduation.
