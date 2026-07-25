@@ -715,7 +715,31 @@ impl FleetIconSceneState {
     }
 }
 
-/// Entity ids that batched galaxy scene cleanup must despawn (includes fleet icons).
+/// Shared galaxy-scene cleanup collector — production `scene_cleanup` and headless
+/// tests MUST use this single law so omitting `fleet_icons` fails the test.
+pub fn collect_galaxy_scene_cleanup_entities<E: Copy>(
+    stars: impl IntoIterator<Item = (u32, E)>,
+    nameplates: impl IntoIterator<Item = E>,
+    fleet_icons: impl IntoIterator<Item = (u32, E)>,
+    hyperlane_buckets: impl IntoIterator<Item = Option<E>>,
+    highlight: Option<E>,
+    core_glow: Option<E>,
+) -> Vec<E> {
+    let mut entities = Vec::new();
+    entities.extend(stars.into_iter().map(|(_, e)| e));
+    entities.extend(nameplates);
+    entities.extend(fleet_icons.into_iter().map(|(_, e)| e));
+    entities.extend(hyperlane_buckets.into_iter().flatten());
+    if let Some(e) = highlight {
+        entities.push(e);
+    }
+    if let Some(e) = core_glow {
+        entities.push(e);
+    }
+    entities
+}
+
+/// Convenience wrapper for headless u64 entity-id fixtures (same collector as production).
 pub fn galaxy_scene_cleanup_entity_ids(
     stars: &[(u32, u64)],
     nameplates: &[u64],
@@ -724,18 +748,94 @@ pub fn galaxy_scene_cleanup_entity_ids(
     highlight: Option<u64>,
     core_glow: Option<u64>,
 ) -> Vec<u64> {
-    let mut entities = Vec::new();
-    entities.extend(stars.iter().map(|(_, e)| *e));
-    entities.extend(nameplates.iter().copied());
-    entities.extend(fleet_icons.iter().map(|(_, e)| *e));
-    entities.extend(hyperlane_buckets.iter().flatten().copied());
-    if let Some(e) = highlight {
-        entities.push(e);
+    collect_galaxy_scene_cleanup_entities(
+        stars.iter().copied(),
+        nameplates.iter().copied(),
+        fleet_icons.iter().copied(),
+        hyperlane_buckets.iter().copied(),
+        highlight,
+        core_glow,
+    )
+}
+
+// ─── Pure mesh/transform data (Bevy conversion consumes these) ────────────────
+
+/// Map-plane silhouette geometry: outline (x,z) → positions with y=0, normals +Y.
+#[derive(Debug, Clone, PartialEq)]
+pub struct FleetIconOutlineGeometry {
+    pub positions: Vec<[f32; 3]>,
+    pub normals: Vec<[f32; 3]>,
+    pub uvs: Vec<[f32; 2]>,
+    pub indices: Vec<u32>,
+}
+
+/// Pure geometry data consumed by the production mesh builder (no Bevy types).
+pub fn fleet_icon_outline_geometry(outline_xy: &[(f32, f32)]) -> FleetIconOutlineGeometry {
+    if outline_xy.len() < 3 {
+        return FleetIconOutlineGeometry {
+            positions: Vec::new(),
+            normals: Vec::new(),
+            uvs: Vec::new(),
+            indices: Vec::new(),
+        };
     }
-    if let Some(e) = core_glow {
-        entities.push(e);
+    let mut positions = Vec::with_capacity(outline_xy.len() + 1);
+    let mut normals = Vec::with_capacity(outline_xy.len() + 1);
+    let mut uvs = Vec::with_capacity(outline_xy.len() + 1);
+    let mut indices = Vec::with_capacity((outline_xy.len() - 2) * 3);
+    let mut cx = 0.0f32;
+    let mut cz = 0.0f32;
+    for &(x, z) in outline_xy {
+        cx += x;
+        cz += z;
     }
-    entities
+    let n = outline_xy.len() as f32;
+    cx /= n;
+    cz /= n;
+    positions.push([cx, 0.0, cz]);
+    normals.push([0.0, 1.0, 0.0]);
+    uvs.push([0.5, 0.5]);
+    for &(x, z) in outline_xy {
+        positions.push([x, 0.0, z]);
+        normals.push([0.0, 1.0, 0.0]);
+        uvs.push([(x + 0.5).clamp(0.0, 1.0), (z + 0.5).clamp(0.0, 1.0)]);
+    }
+    for i in 1..=outline_xy.len() {
+        let next = if i == outline_xy.len() { 1 } else { i + 1 };
+        indices.extend_from_slice(&[0u32, i as u32, next as u32]);
+    }
+    FleetIconOutlineGeometry {
+        positions,
+        normals,
+        uvs,
+        indices,
+    }
+}
+
+/// Pure transform data applied by Bevy `Transform` conversion.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct FleetIconTransformData {
+    pub translation: [f32; 3],
+    pub yaw_radians: f32,
+    pub scale: f32,
+}
+
+pub fn fleet_icon_transform_data(plan: &FleetIconMeshDrawPlan) -> FleetIconTransformData {
+    FleetIconTransformData {
+        translation: plan.pose.world_position,
+        yaw_radians: plan.pose.yaw_radians,
+        scale: plan.pose.scale.max(1e-4),
+    }
+}
+
+/// Rotate local +X by transform yaw (matches Bevy `Quat::from_rotation_y * Vec3::X`).
+pub fn fleet_icon_transform_local_x_world(data: &FleetIconTransformData) -> [f32; 3] {
+    rotate_yaw_y(FLEET_ICON_LOCAL_NOSE, data.yaw_radians)
+}
+
+/// Rotate local +Y plane normal (map-plane) by transform yaw.
+pub fn fleet_icon_transform_local_y_world(data: &FleetIconTransformData) -> [f32; 3] {
+    rotate_yaw_y(FLEET_ICON_LOCAL_PLANE_NORMAL, data.yaw_radians)
 }
 
 #[cfg(test)]
@@ -1091,6 +1191,86 @@ mod tests {
         assert!(ids.contains(&31));
         assert!(ids.contains(&10));
         assert_eq!(ids.len(), 7);
+        // Shared collector — omitting fleet_icons changes the vector (production uses this).
+        let without_fleets = collect_galaxy_scene_cleanup_entities(
+            [(1u32, 10u64)],
+            [20u64],
+            std::iter::empty::<(u32, u64)>(),
+            [Some(40u64), None],
+            Some(50u64),
+            Some(60u64),
+        );
+        assert!(!without_fleets.contains(&30));
+        assert_eq!(without_fleets.len(), 5);
+    }
+
+    #[test]
+    fn outline_geometry_lies_on_xz_with_up_normals() {
+        let geo = fleet_icon_outline_geometry(FLEET_ICON_SILHOUETTE_DESTROYER.outline_xy);
+        assert!(!geo.positions.is_empty());
+        for p in &geo.positions {
+            assert!((p[1]).abs() < 1e-6, "vertex y must be 0 (map plane), got {p:?}");
+        }
+        for n in &geo.normals {
+            assert!((n[0]).abs() < 1e-6 && (n[2]).abs() < 1e-6 && (n[1] - 1.0).abs() < 1e-6);
+        }
+    }
+
+    #[test]
+    fn transform_data_rotates_local_x_toward_targets() {
+        let anchors = vec![
+            StudioSystemRenderAnchor {
+                system_id: 5,
+                structural_col: 0,
+                structural_row: 0,
+                world_position: [0.0, 1.0, 0.0],
+                render_height: 0.0,
+            },
+            StudioSystemRenderAnchor {
+                system_id: 6,
+                structural_col: 1,
+                structural_row: 0,
+                world_position: [10.0, 1.0, 0.0],
+                render_height: 0.0,
+            },
+        ];
+        let blur = blur_map(&[(5, 2.0), (6, 2.0)]);
+        let records = vec![
+            rec(1, Some("a"), FleetPresenceLocation::Anchored(5)),
+            rec(2, Some("b"), FleetPresenceLocation::Anchored(5)),
+            rec(
+                3,
+                Some("a"),
+                FleetPresenceLocation::InTransit {
+                    source_system_id: 5,
+                    dest_system_id: 6,
+                },
+            ),
+        ];
+        let descs =
+            fleet_icon_descriptors_from_records(&records, Some("a"), &HashMap::new(), &blur);
+        let frame = production_fleet_icon_render_frame(&descs, &ctx(&anchors));
+        for plan in &frame.draw_plans {
+            let data = fleet_icon_transform_data(plan);
+            let nose = normalize3(fleet_icon_transform_local_x_world(&data));
+            let target = match plan.side {
+                FleetIconSide::Right | FleetIconSide::Left => [0.0, 1.0, 0.0],
+                FleetIconSide::Transit => [10.0, 1.0, 0.0],
+            };
+            let toward = normalize3([
+                target[0] - data.translation[0],
+                target[1] - data.translation[1],
+                target[2] - data.translation[2],
+            ]);
+            assert!(
+                dot3(nose, toward) > 0.99,
+                "transform local +X must face target for fleet {}",
+                plan.fleet_simthing_id_raw
+            );
+            let plane_n = normalize3(fleet_icon_transform_local_y_world(&data));
+            // Top-down view: plane normal should still be ~+Y.
+            assert!(plane_n[1] > 0.9);
+        }
     }
 
     #[test]

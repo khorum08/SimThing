@@ -35,9 +35,10 @@ use crate::studio_disruption_select_screen::{
     quantize_disruption_milli, quantize_red_fraction_milli, selected_disruption_select_screen,
 };
 use crate::studio_fleet_icons::{
-    admitted_base_star_blur_by_system, fleet_icon_descriptors_from_records,
-    fleet_presence_records_flat, production_fleet_icon_render_frame, FleetIconMeshDrawPlan,
-    FleetIconRenderContext,
+    admitted_base_star_blur_by_system, collect_galaxy_scene_cleanup_entities,
+    fleet_icon_descriptors_from_records, fleet_icon_entity_ops, fleet_icon_outline_geometry,
+    fleet_icon_transform_data, fleet_presence_records_flat, production_fleet_icon_render_frame,
+    FleetIconEntityOp, FleetIconMeshDrawPlan, FleetIconRenderContext,
 };
 use crate::studio_render_loop_dirty_gate::{
     hyperlane_basis_mismatch_angle_deg, hyperlane_basis_mismatch_exceeds_epsilon,
@@ -264,20 +265,15 @@ pub(super) struct BatchedGalaxySceneCleanup {
 }
 
 fn scene_cleanup(root: GalaxySceneRoot) -> BatchedGalaxySceneCleanup {
-    let mut entities = Vec::with_capacity(
-        root.stars.len()
-            + root.nameplates.len()
-            + root.fleet_icons.len()
-            + root.hyperlane_buckets.len()
-            + 2,
+    // Shared collector with headless proofs — omitting fleet_icons fails those tests.
+    let entities = collect_galaxy_scene_cleanup_entities(
+        root.stars,
+        root.nameplates,
+        root.fleet_icons,
+        root.hyperlane_buckets,
+        root.highlight_hyperlanes,
+        root.core_glow,
     );
-    entities.extend(root.stars.into_iter().map(|(_, entity)| entity));
-    entities.extend(root.nameplates);
-    // STUDIO-FLEET-ICONS-0: fleet icons participate in batched scene cleanup (no orphans).
-    entities.extend(root.fleet_icons.into_iter().map(|(_, entity)| entity));
-    entities.extend(root.hyperlane_buckets.into_iter().flatten());
-    entities.extend(root.highlight_hyperlanes);
-    entities.extend(root.core_glow);
     let cursor = crate::studio_scenario_library_ui::StudioSceneBatchCursor::new(
         entities.len(),
         SCENARIO_SCENE_DESPAWN_BATCH_SIZE,
@@ -287,6 +283,19 @@ fn scene_cleanup(root: GalaxySceneRoot) -> BatchedGalaxySceneCleanup {
         cursor,
         recursive_roots: Vec::new(),
     }
+}
+
+/// Production collector entry for tests — must include fleet icon entities.
+#[cfg(test)]
+pub(super) fn scene_cleanup_entity_list_for_test(root: &GalaxySceneRoot) -> Vec<Entity> {
+    collect_galaxy_scene_cleanup_entities(
+        root.stars.iter().copied(),
+        root.nameplates.iter().copied(),
+        root.fleet_icons.iter().copied(),
+        root.hyperlane_buckets.iter().copied(),
+        root.highlight_hyperlanes,
+        root.core_glow,
+    )
 }
 
 /// Swap committed scene resource to the finished pending tree; keep parent Hidden until reveal.
@@ -1182,60 +1191,41 @@ pub fn sync_render_debug_visibility_system(
 }
 
 /// Build a flat map-plane mesh from one-site silhouette outline (existing Mesh/StandardMaterial path).
-/// Outline (x,y) maps to world (x, 0, y) so the silhouette lies on XZ with normal +Y (top-down legible).
+/// Geometry data comes from `fleet_icon_outline_geometry` (shared pure helper).
 fn fleet_icon_outline_mesh(outline_xy: &[(f32, f32)]) -> Mesh {
+    let geo = fleet_icon_outline_geometry(outline_xy);
     let mut mesh = Mesh::new(
         PrimitiveTopology::TriangleList,
         RenderAssetUsages::default(),
     );
-    if outline_xy.len() < 3 {
-        mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, Vec::<[f32; 3]>::new());
-        mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, Vec::<[f32; 3]>::new());
-        mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, Vec::<[f32; 2]>::new());
-        return mesh;
+    mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, geo.positions);
+    mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, geo.normals);
+    mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, geo.uvs);
+    if !geo.indices.is_empty() {
+        mesh.insert_indices(Indices::U32(geo.indices));
     }
-    let mut positions = Vec::with_capacity(outline_xy.len() * 3);
-    let mut normals = Vec::with_capacity(outline_xy.len() * 3);
-    let mut uvs = Vec::with_capacity(outline_xy.len() * 3);
-    let mut indices = Vec::with_capacity((outline_xy.len() - 2) * 3);
-    // Triangle fan from centroid for a solid silhouette on the map plane.
-    let mut cx = 0.0f32;
-    let mut cz = 0.0f32;
-    for &(x, z) in outline_xy {
-        cx += x;
-        cz += z;
-    }
-    let n = outline_xy.len() as f32;
-    cx /= n;
-    cz /= n;
-    positions.push([cx, 0.0, cz]);
-    normals.push([0.0, 1.0, 0.0]);
-    uvs.push([0.5, 0.5]);
-    for &(x, z) in outline_xy {
-        positions.push([x, 0.0, z]);
-        normals.push([0.0, 1.0, 0.0]);
-        uvs.push([(x + 0.5).clamp(0.0, 1.0), (z + 0.5).clamp(0.0, 1.0)]);
-    }
-    for i in 1..=outline_xy.len() {
-        let next = if i == outline_xy.len() { 1 } else { i + 1 };
-        indices.extend_from_slice(&[0u32, i as u32, next as u32]);
-    }
-    mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
-    mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
-    mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
-    mesh.insert_indices(Indices::U32(indices));
     mesh
 }
 
 fn fleet_icon_transform(plan: &FleetIconMeshDrawPlan) -> Transform {
-    let p = plan.pose.world_position;
-    Transform::from_translation(Vec3::new(p[0], p[1], p[2]))
-        .with_rotation(Quat::from_rotation_y(plan.pose.yaw_radians))
-        .with_scale(Vec3::splat(plan.pose.scale.max(1e-4)))
+    let data = fleet_icon_transform_data(plan);
+    Transform::from_translation(Vec3::new(
+        data.translation[0],
+        data.translation[1],
+        data.translation[2],
+    ))
+    .with_rotation(Quat::from_rotation_y(data.yaw_radians))
+    .with_scale(Vec3::splat(data.scale))
+}
+
+fn apply_fleet_icon_tint(material: &mut StandardMaterial, tint_rgba: [f32; 4]) {
+    let c = tint_rgba;
+    material.base_color = Color::srgba(c[0], c[1], c[2], c[3].clamp(0.35, 1.0));
+    material.emissive = LinearRgba::new(c[0] * 0.6, c[1] * 0.6, c[2] * 0.6, 1.0);
 }
 
 /// STUDIO-FLEET-ICONS-0 — apply production seam frame via existing Mesh/StandardMaterial.
-/// Draw plans MUST come from `production_fleet_icon_render_frame` (FleetIconRenderer seam).
+/// Lifecycle ops MUST come from `fleet_icon_entity_ops` (same planner as headless tests).
 pub fn sync_fleet_icons_system(
     state: Res<super::StudioAppState>,
     camera: Query<&GlobalTransform, With<super::camera::MainCamera>>,
@@ -1266,7 +1256,6 @@ pub fn sync_fleet_icons_system(
     for (id, rgb) in owner_colors {
         tint_map.insert(id, crate::nameplate_rgba_from_color_rgb(rgb));
     }
-    // Per-system admitted base max star blur (unselected near visual) — not selection multiplier.
     let star_blur = admitted_base_star_blur_by_system(
         &session.view_model.stars,
         &session.view_model.render_meta,
@@ -1302,49 +1291,66 @@ pub fn sync_fleet_icons_system(
         anchors: &session.view_model.render_anchors,
         right_axis_xz: right_axis,
     };
-    // Canonical production seam — never build plans outside this entry.
     let frame = production_fleet_icon_render_frame(&descriptors, &context);
-    let wanted: HashMap<u32, &FleetIconMeshDrawPlan> = frame
-        .draw_plans
-        .iter()
-        .map(|p| (p.fleet_simthing_id_raw, p))
-        .collect();
 
-    let mut alive = std::collections::HashSet::new();
-    for (entity, icon, mut transform, material_handle) in &mut icons {
-        if let Some(plan) = wanted.get(&icon.fleet_simthing_id_raw) {
-            *transform = fleet_icon_transform(plan);
-            if let Some(material) = materials.get_mut(&material_handle.0) {
-                let c = plan.tint_rgba;
-                material.base_color = Color::srgba(c[0], c[1], c[2], c[3].clamp(0.35, 1.0));
-                material.emissive = LinearRgba::new(c[0] * 0.6, c[1] * 0.6, c[2] * 0.6, 1.0);
+    // Same lifecycle planner as headless FleetIconSceneState / integration tests.
+    let mut entity_by_id: HashMap<u32, Entity> = root.fleet_icons.drain(..).collect();
+    let mut live_ids: Vec<u32> = entity_by_id.keys().copied().collect();
+    live_ids.sort_unstable();
+    let ops = fleet_icon_entity_ops(&frame, &live_ids);
+
+    let mut update_plans: HashMap<u32, FleetIconMeshDrawPlan> = HashMap::new();
+    let mut spawn_plans: Vec<FleetIconMeshDrawPlan> = Vec::new();
+    for op in ops {
+        match op {
+            FleetIconEntityOp::Despawn {
+                fleet_simthing_id_raw,
+            } => {
+                if let Some(entity) = entity_by_id.remove(&fleet_simthing_id_raw) {
+                    commands.entity(entity).despawn();
+                }
             }
-            alive.insert(icon.fleet_simthing_id_raw);
-        } else {
-            commands.entity(entity).despawn();
+            FleetIconEntityOp::Update(plan) => {
+                update_plans.insert(plan.fleet_simthing_id_raw, plan);
+            }
+            FleetIconEntityOp::Spawn(plan) => {
+                spawn_plans.push(plan);
+            }
         }
     }
-    root.fleet_icons.retain(|(id, _)| alive.contains(id));
 
-    for plan in &frame.draw_plans {
-        if alive.contains(&plan.fleet_simthing_id_raw) {
+    for (entity, icon, mut transform, material_handle) in &mut icons {
+        // Skip entities despawned this frame (commands are deferred; query may still see them).
+        if !entity_by_id.contains_key(&icon.fleet_simthing_id_raw) {
             continue;
         }
+        let Some(plan) = update_plans.get(&icon.fleet_simthing_id_raw) else {
+            continue;
+        };
+        *transform = fleet_icon_transform(plan);
+        if let Some(material) = materials.get_mut(&material_handle.0) {
+            apply_fleet_icon_tint(material, plan.tint_rgba);
+        }
+        debug_assert_eq!(entity_by_id.get(&icon.fleet_simthing_id_raw), Some(&entity));
+    }
+
+    for plan in spawn_plans {
         let mesh = meshes.add(fleet_icon_outline_mesh(plan.outline_xy));
-        let c = plan.tint_rgba;
-        let material = materials.add(StandardMaterial {
-            base_color: Color::srgba(c[0], c[1], c[2], c[3].clamp(0.35, 1.0)),
-            emissive: LinearRgba::new(c[0] * 0.6, c[1] * 0.6, c[2] * 0.6, 1.0),
-            unlit: true,
-            alpha_mode: AlphaMode::Blend,
-            cull_mode: None,
-            ..default()
+        let material = materials.add({
+            let mut m = StandardMaterial {
+                unlit: true,
+                alpha_mode: AlphaMode::Blend,
+                cull_mode: None,
+                ..default()
+            };
+            apply_fleet_icon_tint(&mut m, plan.tint_rgba);
+            m
         });
         let entity = commands
             .spawn((
                 Mesh3d(mesh),
                 MeshMaterial3d(material),
-                fleet_icon_transform(plan),
+                fleet_icon_transform(&plan),
                 GalaxyFleetIcon {
                     fleet_simthing_id_raw: plan.fleet_simthing_id_raw,
                 },
@@ -1352,15 +1358,132 @@ pub fn sync_fleet_icons_system(
                 Name::new(format!("FleetIcon-{}", plan.fleet_simthing_id_raw)),
             ))
             .id();
-        root.fleet_icons
-            .push((plan.fleet_simthing_id_raw, entity));
+        entity_by_id.insert(plan.fleet_simthing_id_raw, entity);
     }
+
+    let mut tracked: Vec<(u32, Entity)> = entity_by_id.into_iter().collect();
+    tracked.sort_by_key(|(id, _)| *id);
+    root.fleet_icons = tracked;
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::compute_camera_facing_width_dir;
+    use crate::studio_fleet_icons::{
+        default_fleet_icon_silhouette, fleet_icon_nose_faces_target,
+        fleet_icon_transform_local_x_world, fleet_icon_transform_local_y_world,
+        FleetIconOrientation, FleetIconPlacement, FleetIconSide, FleetIconWorldPose,
+        FLEET_ICON_DEFAULT_SILHOUETTE_ID,
+    };
+
+    #[test]
+    fn scene_cleanup_collector_includes_fleet_icons_from_root() {
+        // Real Bevy entities so the production collector type-path is exercised.
+        let mut world = World::new();
+        let e_star = world.spawn_empty().id();
+        let e_name = world.spawn_empty().id();
+        let e_fleet_a = world.spawn_empty().id();
+        let e_fleet_b = world.spawn_empty().id();
+        let mut root = GalaxySceneRoot::default();
+        root.stars.push((1, e_star));
+        root.nameplates.push(e_name);
+        root.fleet_icons.push((10, e_fleet_a));
+        root.fleet_icons.push((11, e_fleet_b));
+        let ids = scene_cleanup_entity_list_for_test(&root);
+        assert!(ids.contains(&e_fleet_a));
+        assert!(ids.contains(&e_fleet_b));
+        assert!(ids.contains(&e_star));
+        assert!(ids.contains(&e_name));
+        // Omitting fleet_icons from the shared collector must shrink the list.
+        let without = collect_galaxy_scene_cleanup_entities(
+            root.stars.iter().copied(),
+            root.nameplates.iter().copied(),
+            std::iter::empty::<(u32, Entity)>(),
+            root.hyperlane_buckets.iter().copied(),
+            root.highlight_hyperlanes,
+            root.core_glow,
+        );
+        assert!(!without.contains(&e_fleet_a));
+        assert_eq!(ids.len(), without.len() + 2);
+    }
+
+    #[test]
+    fn fleet_icon_outline_mesh_vertices_on_xz_with_up_normals() {
+        let sil = default_fleet_icon_silhouette();
+        let mesh = fleet_icon_outline_mesh(sil.outline_xy);
+        let positions = mesh
+            .attribute(Mesh::ATTRIBUTE_POSITION)
+            .expect("positions")
+            .as_float3()
+            .expect("float3");
+        let normals = mesh
+            .attribute(Mesh::ATTRIBUTE_NORMAL)
+            .expect("normals")
+            .as_float3()
+            .expect("float3");
+        assert!(!positions.is_empty());
+        for p in positions {
+            assert!((p[1]).abs() < 1e-6, "mesh y must be 0, got {p:?}");
+        }
+        for n in normals {
+            assert!((n[1] - 1.0).abs() < 1e-6 && n[0].abs() < 1e-6 && n[2].abs() < 1e-6);
+        }
+    }
+
+    #[test]
+    fn fleet_icon_transform_rotates_local_x_toward_star_and_destination() {
+        let make_plan = |id, side, pose: FleetIconWorldPose| FleetIconMeshDrawPlan {
+            fleet_simthing_id_raw: id,
+            silhouette_id: FLEET_ICON_DEFAULT_SILHOUETTE_ID,
+            outline_xy: default_fleet_icon_silhouette().outline_xy,
+            tint_rgba: [1.0, 1.0, 1.0, 1.0],
+            pose,
+            side,
+            owner_id: None,
+        };
+        // Right of star at origin along +X, nose toward star (-X).
+        let right_pose = FleetIconWorldPose {
+            world_position: [2.0, 0.0, 0.0],
+            yaw_radians: crate::studio_fleet_icons::yaw_toward_xz(-2.0, 0.0),
+            scale: 0.5,
+        };
+        let left_pose = FleetIconWorldPose {
+            world_position: [-2.0, 0.0, 0.0],
+            yaw_radians: crate::studio_fleet_icons::yaw_toward_xz(2.0, 0.0),
+            scale: 0.5,
+        };
+        let transit_pose = FleetIconWorldPose {
+            world_position: [3.0, 0.0, 0.0],
+            yaw_radians: crate::studio_fleet_icons::yaw_toward_xz(10.0, 0.0),
+            scale: 0.5,
+        };
+        let right = make_plan(1, FleetIconSide::Right, right_pose);
+        let left = make_plan(2, FleetIconSide::Left, left_pose);
+        let transit = make_plan(3, FleetIconSide::Transit, transit_pose);
+        assert!(fleet_icon_nose_faces_target(&right.pose, [0.0, 0.0, 0.0]));
+        assert!(fleet_icon_nose_faces_target(&left.pose, [0.0, 0.0, 0.0]));
+        assert!(fleet_icon_nose_faces_target(&transit.pose, [10.0, 0.0, 0.0]));
+
+        for plan in [&right, &left, &transit] {
+            let xf = fleet_icon_transform(plan);
+            let local_x = xf.rotation * Vec3::X;
+            let data = fleet_icon_transform_data(plan);
+            let expected = fleet_icon_transform_local_x_world(&data);
+            assert!((local_x.x - expected[0]).abs() < 1e-5);
+            assert!((local_x.y - expected[1]).abs() < 1e-5);
+            assert!((local_x.z - expected[2]).abs() < 1e-5);
+            let local_y = xf.rotation * Vec3::Y;
+            let plane = fleet_icon_transform_local_y_world(&data);
+            assert!(local_y.y > 0.9 && plane[1] > 0.9);
+            let _ = FleetIconOrientation::TowardAnchorStar;
+            let _ = FleetIconPlacement::Anchored {
+                system_id: 0,
+                side: FleetIconSide::Right,
+                stack_index: 0,
+            };
+        }
+    }
 }
 
 // STUDIO-OWNED-STAR-SELECT-BRIGHTEN-0: star visual sync (admitted galaxy_render surface)
