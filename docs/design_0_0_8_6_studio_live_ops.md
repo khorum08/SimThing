@@ -1,8 +1,10 @@
 # 0.0.8.6 — Studio Live Ops (Phase 9)
 
-> **Status: OPEN / harness lifecycle.**
-> [`design_0_0_8_4_8_4_hd_board.md`](design_0_0_8_4_8_4_hd_board.md); further UI/UX phase ladders land
-> here when the Owner resumes. Closeout remains Owner-gated (`STUDIO-OWNER-CLOSURE-0`, active).
+> **Status: CLOSED (2026-07-25).** Owner authorized closure (relay `5081546684`, stamp confirm
+> `5081661320`); `STUDIO-OWNER-CLOSURE-0` discharged via `track_closeout.sh`
+> (CLOSEOUT-RECEIPT `21f77abb55c9`; report:
+> [`0.0.8.6-studio-live-ops_closeout_report.md`](tests/0.0.8.6-studio-live-ops_closeout_report.md)).
+> Board substrate per [`design_0_0_8_4_8_4_hd_board.md`](design_0_0_8_4_8_4_hd_board.md).
 > Production Studio track for **realtime observation and
 > control** of loaded scenarios (including clause-ingested StructuralRebindReady sessions). Sits **after**
 > 0.0.8.5 Phase 8 open/hydrate spine (transpile → API → picker) and **beside** (does not close) the
@@ -323,7 +325,7 @@ where removing that child removes the increase. No Studio-side arithmetic, no RR
 
 | Rung | ID | Scope | Exit proof | Tier |
 |---|---|---|---|---|
-| OWNER | `STUDIO-OWNER-CLOSURE-0` | **Track closeout (docs + harness lifecycle only).** Runs the `track_closeout.sh` protocol for 0.0.8.6 when — and only when — the Owner explicitly authorizes closure. Until then this rung is **DEFERRED**: no agent (DA included) opens, decomposes, or stages it; phase-ladder completion is never a closure trigger. | **DEFERRED / Owner-gated** — binding condition `track-closeout-blocked-until-explicit-owner-authorization` (Owner-2026-07-12). | Owner · DA-reserve |
+| OWNER | `STUDIO-OWNER-CLOSURE-0` | **Track closeout (docs + harness lifecycle only).** Runs the `track_closeout.sh` protocol for 0.0.8.6 when — and only when — the Owner explicitly authorizes closure. | **DISCHARGED 2026-07-25** — Owner authorized (relay `5081546684` + stamp confirm `5081661320`); protocol executed by DA; CLOSEOUT-RECEIPT `21f77abb55c9`. | Owner · DA-reserve |
 
 ---
 
@@ -337,9 +339,9 @@ New tests under this track use `birth_track = 0.0.8.6-studio-live-ops` once the 
 
 | Item | State |
 |---|---|
-| Active track | This file (after `--open`) |
-| Active open rung | none — Phase 12 presentation complete (12.5 **ORCHESTRATOR-GRADUATED / merged [#1426](https://github.com/khorum08/SimThing/pull/1426) @ `394560f4`**; Owner OVL `5078722454`; orch ruling `5080229553`). Next formal rung is `STUDIO-OWNER-CLOSURE-0` (**DEFERRED / Owner-gated** — not authorized by this stamp; no agent may open or stage it without explicit Owner authorization). |
+| Active track | none — this track is **CLOSED** (2026-07-25, receipt `21f77abb55c9`) |
+| Active open rung | none — Phase 12 presentation complete (12.5 **ORCHESTRATOR-GRADUATED / merged [#1426](https://github.com/khorum08/SimThing/pull/1426) @ `394560f4`**; Owner OVL `5078722454`; orch ruling `5080229553`); `STUDIO-OWNER-CLOSURE-0` **DISCHARGED** (Owner-authorized 2026-07-25). |
 | Debug baseline | `cargo build -p simthing-mapeditor --bin simthing-studio` |
 | Clause load baseline | Canonical `scenarios/terran_pirate_galaxy.clause` via production ingest `hydrate_scenario_with_source_base` (clause parent dir) |
 
-**Park instruction for agents:** Phase 9–11 complete; Phase 12 presentation ladder complete (12.5 graduated #1426). Active open rung is **none** pending Owner direction; `STUDIO-OWNER-CLOSURE-0` remains **DEFERRED / Owner-gated** and is not opened by the 12.5 stamp. Do not reopen 0.0.8.5.
+**Closed-track instruction for agents:** the track is CLOSED — do not dispatch from this doc. Next tracks are Owner-commitment-gated stubs: [`design_0_0_8_4_8_4_2_RF_harness.md`](design_0_0_8_4_8_4_2_RF_harness.md) and [`design_0_0_8_7_rf_arena_modernization.md`](design_0_0_8_7_rf_arena_modernization.md). Do not reopen 0.0.8.5.
