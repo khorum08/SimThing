@@ -44,25 +44,53 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | precedented_classes.tsv | 3324880cad9f966309c59a516378c84d404d3e8f03519ef88a1dc2053a5f755d |
 | binding_conditions.tsv | 211b860c2a424d0386a01a2dc93d5c563abfd1411c1f58ec55c7b69d97426cb8 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
-| active_track.txt | 17fb2e1e3b331fb68580e486431596c9f111b99f4b9de9699d57bf604f37a20c |
+| active_track.txt | 26eab30ec86c97ac8dfd6beef7ae8c5b4d3f18c38fdaa431ec40ccce855396d3 |
+| design_0_0_8_7_rf_arena_modernization.md | b4768ae10ce5949b07c84a3e04fdaa6ef36a745258c5139b7266c6703728e431 |
 | relay_lint.sh | 4163f715cdc3b549dbf57c1744aff61ea96b9f9f0a2237376665fbdb24e986c8 |
-| doctrine_anchors.tsv | acddc6ad84d6dcefcbc8942f603186ae82e47e6495833b29aafbb5805d49aa0f |
+| doctrine_anchors.tsv | c7296a3fec66bb25bdf0042294c019aaa6aac65ab853c4913641fa53774eaf4d |
 
-## Active Track / Rung Summary
+## Active Track / Rung Summary (`design_0_0_8_7_rf_arena_modernization.md`)
 
-No active production track is set.
+Track state: `open`
 
-Run:
-
-```bash
-bash scripts/ci/gen_orientation.sh --open docs/<track>.md
-```
-
-to open or create a production track before assigning coding work.
+| # | rung | deliverable | exit proof |
+| --- | --- | --- | --- |
+| 0.1 | RF-COLUMN-ADMISSION-GATE-0 | Phase 0: `ColumnIndex` constructor taxonomy, NON-BREAKING (fenced raw door); ret | Scan proves every remaining `::new` inside the fence; corpus green. |
+| 0.2 | EXECUTION-STATUS-TAXONOMY-0 | Phase 0: `executed / oracle / rehearsal / compile-plan` classification as data;  | Every driver/kernel execution surface classified; board digest renders it. |
+| 0.3 | CONSTITUTION-TRIPWIRES-0 | Phase 0: the three HEURISTIC tripwires (cell-storage polymorphism; bespoke pathf | Selftest fixtures prove each fires; INSPECT-only; reach-log rows land. |
+| 1.1 | ROOT-DERIVE-PARTICIPATION-0 | Phase 1: admission derives arena participation from resource properties + parent | TP scenario runs with ZERO explicit arena wiring; RF-1 green; seams deleted/reduced to overrides. |
+| 1.2 | SESSION-WIRING-KILL-SWEEP-0 | Phase 1: kill remaining opt-in toggles incl. `min_plus_traversal_field` enable/d | No constitutional-path session toggles remain (grep-proven); core day-refs = 0; corpus green. |
+| 1.3 | ARENA-PARTICIPANT-DEPRECATION-0 | Phase 1: deprecate the `ArenaParticipant` wrapper kind (P0 falsifier; StarSystem | Kind deprecated with ruling; no new authoring; compile-compat retained. |
+| 2.1 | OVERLAY-EFFECT-HOST-ADMISSION-0 | Phase 2: close the effect-target v0 trap — host placement + `overlay_hosts` admi | Misdelivery fixture hard-errors at admission; capability effects land on resolved hosts; corpus green. |
+| 2.2 | CAPABILITY-PREREQ-DAG-ADMISSION-0 | Phase 2: tiered + mutual prerequisites as admission-validated typed DAG; `max_ac | Cycle/dangling fixtures span at admission; unlock+sibling-suspend atomic at one barrier; replay green. |
+| 2.3 | ORDER-WEIGHT-CLASS-0 | Phase 2: authored finite order-weight class + `OverlaySource::Player` directive  | Destination-order exemplar drives a TP fleet via price dominance; RF-1 + bit-exact replay green. |
+| 3.1 | SPECIALIZATION-PROTOCOL-0 | Phase 3: the richer-than-kind protocol, kind-compatible (promotion not rewrite). | Existing full suite passes UNMODIFIED; protocol admits spatial/owner/session declarations. |
+| 3.2 | FIRST-CITIZEN-SPECIALISTS-0 | Phase 3: spatial / owner / session as first citizens on the protocol. | Each citizen expressed via protocol data; zero kind-branch additions; corpus green. |
+| 4.1 | ROW-SLOT-OBJECT-SEMANTICS-0 | Phase 4: parent-slotting + child-row allocation as object semantics through the  | Slot/column identity flows from the object model; no minting beside it; corpus green. |
+| 4.2 | PLAN-STRUCT-TYPING-0 | Phase 4: exclusion-audit Family B — `ColumnIndex` end-to-end in plan structs; ra | ~40 round-trip mints collapse to the fenced boundary module; corpus green. |
+| 5.1 | ANCHOR-DISPOSITION-ADMISSION-0 | Phase 5: P0(e) fulcrum 1 — default-Anchored disposition; authored `Unobserved{re | Property lands anchored with zero wiring; dark-cell set renders; 12.3-replay fixture impossible. |
+| 5.2 | WRITE-DOOR-BAND-DELTA-0 | Phase 5: fulcrum 2 — in-pass band-crossing derivation; structural ops refuse to  | Band deltas correct vs oracle in the fused pass; remap-less reallocation op spans; replay green. |
+| 5.3 | ANCHOR-TABLE-SURFACE-0 | Phase 5: fulcrum 3 — derived GPU anchor table as the SOLE observation surface; c | Studio/telemetry read only the table; no second observation path (grep-proven); corpus green. |
+| 5.4 | SEMIRING-FIELD-TAGS-0 | Phase 5: semiring tag on field registrations; PALMA `(min,+)` + Gu-Yang saturati | Same registration machinery runs all three algebras; `min_plus` parity vs CPU oracle; corpus green. |
+| 5.5 | GUYANG-COMPARATIVE-PROJECTIONS-0 | Phase 5: dominance/margin/contest/border-band/chokepoint projections; default-de | TP scenario surfaces fronts + a chokepoint event with zero scenario wiring; `stead_spatial_contract_guards` green. |
+| 6.1 | EVENT-GENERATION-STAMP-0 | Phase 6: generation stamps on emission/threshold events; stamped ring egress wit | Events carry stamps; forced observer lag honors declared backpressure without perturbing the sim. |
+| 6.2 | ASYNC-COMMAND-QUEUE-0 | Phase 6: async CPU action queue landing at generation barriers; injection genera | Replay bit-exact from the injection log; shadow-tree reads torn-free (double-buffer proof). |
+| 6.3 | CONTINUOUS-POSTURE-SOAK-0 | Phase 6: continuous posture (batched generations) + N-generation soak under forc | Soak exit-proof per the phase row; paced posture unchanged (TP regression green). |
+| 7.1 | MOVEMENT-DECISION-INGRESS-0 | Phase 7: movement authority — decisions as sealed Triad band crossings (need + p | Fleets move under the ordinary generation from band crossings only (no CPU branching on field reads); §7 automaton co... |
+| 7.2 | MOVEMENT-AUTHORITY-READBACK-0 | Phase 7: authoritative movement readback; 12.5 icon descriptors express real tra | Studio shows authoritative transit with ZERO icon-layer change; test-private seam retired. |
+| 8.1 | COMBAT-CONSERVATION-JUDGE-0 | Phase 8: RF-1-style conservation judge over combat flows (oracle-first). | Judge red/green proven on seeded violations against R6 rehearsal runs. |
+| 8.2 | COMBAT-ARENA-EXECUTED-0 | Phase 8: promote combat to executed RF arena (HP/damage as flows); rehearsals re | Executed path judged green; rehearsals retained as oracles; emergence falsifier (weight change → different battle out... |
+| 9.1 | GATED-RATES-EML-REWIRE-0 | Phase 9: exclusion-audit Family C — `gated_rates` gate evaluation → authored EML | Gate behavior parity via oracle; hardcoded cols gone; corpus green. |
+| 9.2 | RF-COLUMN-MINT-MIGRATE-0 | Phase 9: the sweep — remaining sites onto doors; DELETE the exclusion list; reti | Exclusion list empty; tripwire retired per its promotion-blocker; full build + RF batteries green. |
+| 10.1 | DOCTRINE-CI-RECONCILE-0 | Phase 10: retire impossible-state detectors; mechanize new gates (EML-addition D | Phase-row falsifier: zero impossible-state scans; zero unwatched new surfaces; selftests green. |
+| 11.1 | EMBEDDER-INTERFACE-0 | Phase 11: the five-verb Vendor Door API (formalization of existing mechanisms) + | Five verbs stand up a tree end-to-end in a test; posture choice on Run; no new subsystem (diff-proven). |
+| 11.2 | EMBEDDER-GUIDE-EXEMPLARS-0 | Phase 11: DOC-BUDGET-capped Embedder's Guide + two non-game exemplars (finance t | Cold-reader exit-proof per phase row; exemplars green in CI. |
+| 12.1 | PORTABILITY-PROOF-0 | Phase 12: non-TP domain through the Vendor Door end-to-end, zero engine edits. | Exemplar-seeded domain simulates + STEAD-observes + serializes untouched. |
+| 12.2 | CORE-CANONIZATION-0 | Phase 12: object model (P0 Root Contract + cycle + EML-ISA + Triad Doors + overl | Canonized sections land; net-prose discipline; SimThing complete and distinct; CLOSEOUT protocol run (Owner-gated). |
 
 ## Next Rung Pointer
 
-Active pointer: `none`
+Active pointer: `RF-COLUMN-ADMISSION-GATE-0`
 
 
 ## Cold-Start Spine (constitutional pointers)

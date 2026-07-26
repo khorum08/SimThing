@@ -1,11 +1,10 @@
 # 0.0.8.7 — RF Arena Modernization (the SimThing unification)
 
-> **Status: STUB / AUTHORED — NOT OPENED.** Owner-directed 2026-07-19. 0.0.8.6 is CLOSED
-> (2026-07-25); this track opens when the Owner commits the full plan
-> (via `gen_orientation.sh --open`; pointer-lifecycle gate applies). Absorbs the former
-> 0.0.8.4.8.4.2 RF-harness track (Owner ruling 2026-07-26; see §3 [HARNESS] phases and §5.2).
-> Do not flip the pointer; do not dispatch from this doc. Phase ladders below are
-> commitment-time placeholders — rung decomposition happens when the Owner commits.
+> **Status: COMMITTED / OPEN (Owner commitment 2026-07-26).** Track opened via
+> `gen_orientation.sh --open`; the active pointer is on this doc. Rung ladder = §3b
+> (dispatch from §3b ONLY; §3 phase rows carry the design detail each rung references).
+> Absorbs the former 0.0.8.4.8.4.2 RF-harness track ([HARNESS] phases; §5.2).
+> Next-Rung pointer governs; ONE rung in flight at a time.
 >
 > **CORE track.** At completion this is **built INTO THE CORE**: the canonized object model
 > lands as constitutional sections of `simthing_core_design.md`, and the **SimThing object is
@@ -229,6 +228,58 @@ interventions the Owner adds at commitment: **guards early, sweeps late.**
 | 11 | **Embedder's Interface — the Vendor Door** (Owner-added 2026-07-26) | **Short phase.** Formalize the onboarding/entry surface for vendoring the SimThing simulation kernel into ANY domain (network saturation / load-balancing, finance, population models, …) — an easily **human-readable interface inheriting the stem-cell simplicity: five verbs mirroring the object's anatomy, and nothing else.** (1) **Derive** — declare specialists as data (P3 specialization spec: kind/custom + properties; no engine code); (2) **Populate** — build the tree + RF property values; admission does the rest (arena participation derived per P1, anchors born per P0(e)); (3) **Overlay** — the P2 authored data/settings/directives layer; (4) **Bind** — boundary event trees as band→commitment bindings + threshold registrations (incl. Triad bands: need/corridor/front/chokepoint — declaring competing emitter classes in (1) makes dominance/border observables BORN per P5, and admitted stencil topology makes PALMA potentials born), and **CPU shadow tree objects** = the canonical consumer read seam formalized as an embedder-facing handle (coherent per-generation snapshots; strictly read-only observation — decisions stay on-device, never a second authority); (5) **Run** — one standard initialize / start / tick / serialize lifecycle (bit-exact replay included) with an **execution-posture choice: paced | continuous** (P0 atomic-tick ruling; same kernel, scheduling policy only). **Scale-invariant by construction:** the same five verbs for one SimThing or a tree of thousands — a tree is a node with children; any scale-dependent special case in the interface is a defect. **`simthing-clausething` is repositioned as ONE front-end** that lowers to this interface; other domains write specs directly or bring their own front-ends — the interface is the layer clause authoring already lowers into, formalized and documented, not a new subsystem. Deliverables: (a) the thin API surface (existing admission/hydrate/session mechanisms, formalized); (b) a DOC-BUDGET-capped **Embedder's Guide** (cold-start human-readable, owner_authoring_guide lineage); (c) two micro-exemplar specs from non-game domains (e.g. 3-node finance toy; N-node network-saturation toy — which exercises the full Triad natively: congestion impedance → PALMA potentials, saturating link flux → Gu-Yang fronts, load bands → STEAD) that are admission-checked in CI and double as Phase 12's portability seeds; (d) the vendoring crate boundary (which crates an embedder takes, feature-gated). Exit-proof: a cold reader stands up a running, serialized, STEAD-observed tree from the guide alone — zero engine edits, zero scenario-side wiring. |
 | 12 | Portability proof + CORE canonization (P6) | Non-TP domain works untouched **— scripted through the Phase 11 Embedder's Interface, which this proof exercises end-to-end**; object model — **P0 Root Contract, recursive cycle, and EML-ISA laws included** — written into `simthing_core_design.md` (HARNESS phases excluded — they canonize nothing); SimThing complete and distinct. |
 
+## 3b. Committed PR ladder (Owner commitment, 2026-07-26)
+
+**Cadence and protocol (binding):** ONE rung in flight at a time; handoffs via
+`handoff_dispatch.sh` (HD-RECEIPT, projection/ingress caps); the orchestrator owns the
+verification tier (exact-head clearance, remands); the DA rules once per relay and stamps
+graduation AT MERGE (pointer is machine truth); scenario-born candidate code homes in
+`simthing-workshop` (§12); default-delete at closeout stands. Corpus-green law: hosted green ≠
+corpus green — GPU/cargo batteries run at the head before graduation.
+
+**Greenfield discretion charter (Owner, 2026-07-26):** much of this ladder reconfigures known
+SimThing concepts, but where a rung builds **greenfield surfaces** — the anchor table, the EML
+core library, the generation transport spine, semiring tags, comparative projections, the
+embedder API — the DA is directed to **seize the opportunity for a stronger, more elegant,
+more performant core**. Canonical-simplicity choices within the binding laws need no Owner
+ping; anything that would alter a §2/§4 law escalates. The projected anchor library
+(`core-0087` domain) pre-seeds this guidance to every coder and orchestrator.
+
+| Rung | ID | Scope (details in the phase row) | Exit proof | Tier | Status |
+|---|---|---|---|---|---|
+| 0.1 | `RF-COLUMN-ADMISSION-GATE-0` | Phase 0: `ColumnIndex` constructor taxonomy, NON-BREAKING (fenced raw door); retarget `COLUMN-INDEX-MINT` to choke-point tokens; mechanize DA-gated exclusion edits. | Scan proves every remaining `::new` inside the fence; corpus green. | DA-reserve · Frontier | TODO |
+| 0.2 | `EXECUTION-STATUS-TAXONOMY-0` | Phase 0: `executed / oracle / rehearsal / compile-plan` classification as data; board-surfaced. | Every driver/kernel execution surface classified; board digest renders it. | Std | TODO |
+| 0.3 | `CONSTITUTION-TRIPWIRES-0` | Phase 0: the three HEURISTIC tripwires (cell-storage polymorphism; bespoke pathfinder; border service) + reach-log wiring. | Selftest fixtures prove each fires; INSPECT-only; reach-log rows land. | Std | TODO |
+| 1.1 | `ROOT-DERIVE-PARTICIPATION-0` | Phase 1: admission derives arena participation from resource properties + parent edge (typed, spanned; `DefaultDisabled` retained); collapse the default-path config seams. | TP scenario runs with ZERO explicit arena wiring; RF-1 green; seams deleted/reduced to overrides. | DA-reserve · Frontier | TODO |
+| 1.2 | `SESSION-WIRING-KILL-SWEEP-0` | Phase 1: kill remaining opt-in toggles incl. `min_plus_traversal_field` enable/disable → derived-at-admission; core calendar-vocabulary rename (`evaluate.rs day`, spawn-day → generation). | No constitutional-path session toggles remain (grep-proven); core day-refs = 0; corpus green. | Std | TODO |
+| 1.3 | `ARENA-PARTICIPANT-DEPRECATION-0` | Phase 1: deprecate the `ArenaParticipant` wrapper kind (P0 falsifier; StarSystem/Station disposition). | Kind deprecated with ruling; no new authoring; compile-compat retained. | Std | TODO |
+| 2.1 | `OVERLAY-EFFECT-HOST-ADMISSION-0` | Phase 2: close the effect-target v0 trap — host placement + `overlay_hosts` admission-checked; misdelivery = spanned error. | Misdelivery fixture hard-errors at admission; capability effects land on resolved hosts; corpus green. | DA-reserve · Frontier | TODO |
+| 2.2 | `CAPABILITY-PREREQ-DAG-ADMISSION-0` | Phase 2: tiered + mutual prerequisites as admission-validated typed DAG; `max_active` same-barrier atomicity; generation-aligned boundary protocol. | Cycle/dangling fixtures span at admission; unlock+sibling-suspend atomic at one barrier; replay green. | Std | TODO |
+| 2.3 | `ORDER-WEIGHT-CLASS-0` | Phase 2: authored finite order-weight class + `OverlaySource::Player` directive path (orders = price injections). | Destination-order exemplar drives a TP fleet via price dominance; RF-1 + bit-exact replay green. | Std | TODO |
+| 3.1 | `SPECIALIZATION-PROTOCOL-0` | Phase 3: the richer-than-kind protocol, kind-compatible (promotion not rewrite). | Existing full suite passes UNMODIFIED; protocol admits spatial/owner/session declarations. | DA-reserve · Frontier | TODO |
+| 3.2 | `FIRST-CITIZEN-SPECIALISTS-0` | Phase 3: spatial / owner / session as first citizens on the protocol. | Each citizen expressed via protocol data; zero kind-branch additions; corpus green. | Std | TODO |
+| 4.1 | `ROW-SLOT-OBJECT-SEMANTICS-0` | Phase 4: parent-slotting + child-row allocation as object semantics through the role pathway. | Slot/column identity flows from the object model; no minting beside it; corpus green. | DA-reserve · Frontier | TODO |
+| 4.2 | `PLAN-STRUCT-TYPING-0` | Phase 4: exclusion-audit Family B — `ColumnIndex` end-to-end in plan structs; raw u32 only at the single WGSL encode/decode boundary. | ~40 round-trip mints collapse to the fenced boundary module; corpus green. | Std | TODO |
+| 5.1 | `ANCHOR-DISPOSITION-ADMISSION-0` | Phase 5: P0(e) fulcrum 1 — default-Anchored disposition; authored `Unobserved{reason}`; dark-cell board surface. | Property lands anchored with zero wiring; dark-cell set renders; 12.3-replay fixture impossible. | DA-reserve · Frontier | TODO |
+| 5.2 | `WRITE-DOOR-BAND-DELTA-0` | Phase 5: fulcrum 2 — in-pass band-crossing derivation; structural ops refuse to encode without anchor remaps. | Band deltas correct vs oracle in the fused pass; remap-less reallocation op spans; replay green. | Std | TODO |
+| 5.3 | `ANCHOR-TABLE-SURFACE-0` | Phase 5: fulcrum 3 — derived GPU anchor table as the SOLE observation surface; consumers repointed. | Studio/telemetry read only the table; no second observation path (grep-proven); corpus green. | Std | TODO |
+| 5.4 | `SEMIRING-FIELD-TAGS-0` | Phase 5: semiring tag on field registrations; PALMA `(min,+)` + Gu-Yang saturating flux as tagged instances of ONE sweep; `W` = sealed EML cost projection. | Same registration machinery runs all three algebras; `min_plus` parity vs CPU oracle; corpus green. | DA-reserve · Frontier | TODO |
+| 5.5 | `GUYANG-COMPARATIVE-PROJECTIONS-0` | Phase 5: dominance/margin/contest/border-band/chokepoint projections; default-derived at ≥2 emitter classes; deterministic tie-break. | TP scenario surfaces fronts + a chokepoint event with zero scenario wiring; `stead_spatial_contract_guards` green. | Std | TODO |
+| 6.1 | `EVENT-GENERATION-STAMP-0` | Phase 6: generation stamps on emission/threshold events; stamped ring egress with admission-time backpressure. | Events carry stamps; forced observer lag honors declared backpressure without perturbing the sim. | Std | TODO |
+| 6.2 | `ASYNC-COMMAND-QUEUE-0` | Phase 6: async CPU action queue landing at generation barriers; injection generations logged; generation-consistent snapshots. | Replay bit-exact from the injection log; shadow-tree reads torn-free (double-buffer proof). | DA-reserve · Frontier | TODO |
+| 6.3 | `CONTINUOUS-POSTURE-SOAK-0` | Phase 6: continuous posture (batched generations) + N-generation soak under forced lag. | Soak exit-proof per the phase row; paced posture unchanged (TP regression green). | Std | TODO |
+| 7.1 | `MOVEMENT-DECISION-INGRESS-0` | Phase 7: movement authority — decisions as sealed Triad band crossings (need + potentials + fronts); fills the 12.4 `InTransit` seam. | Fleets move under the ordinary generation from band crossings only (no CPU branching on field reads); §7 automaton conformant. | DA-reserve · Frontier | TODO |
+| 7.2 | `MOVEMENT-AUTHORITY-READBACK-0` | Phase 7: authoritative movement readback; 12.5 icon descriptors express real transit. | Studio shows authoritative transit with ZERO icon-layer change; test-private seam retired. | Std | TODO |
+| 8.1 | `COMBAT-CONSERVATION-JUDGE-0` | Phase 8: RF-1-style conservation judge over combat flows (oracle-first). | Judge red/green proven on seeded violations against R6 rehearsal runs. | Std | TODO |
+| 8.2 | `COMBAT-ARENA-EXECUTED-0` | Phase 8: promote combat to executed RF arena (HP/damage as flows); rehearsals re-anchor as oracles; Triad-band combat context. | Executed path judged green; rehearsals retained as oracles; emergence falsifier (weight change → different battle outcome). | DA-reserve · Frontier | TODO |
+| 9.1 | `GATED-RATES-EML-REWIRE-0` | Phase 9: exclusion-audit Family C — `gated_rates` gate evaluation → authored EML library stack; role-pathway columns; delete `first_slice_mapping_runtime` (superseded by P0 derivation). | Gate behavior parity via oracle; hardcoded cols gone; corpus green. | Std | TODO |
+| 9.2 | `RF-COLUMN-MINT-MIGRATE-0` | Phase 9: the sweep — remaining sites onto doors; DELETE the exclusion list; retire `COLUMN-INDEX-MINT`. | Exclusion list empty; tripwire retired per its promotion-blocker; full build + RF batteries green. | Std | TODO |
+| 10.1 | `DOCTRINE-CI-RECONCILE-0` | Phase 10: retire impossible-state detectors; mechanize new gates (EML-addition DA-RESERVE, telemetry-lifecycle, Root-Contract admission errors); allowlist re-baseline (`kernel_surface` shrink); anchors re-pointed. | Phase-row falsifier: zero impossible-state scans; zero unwatched new surfaces; selftests green. | DA-reserve | TODO |
+| 11.1 | `EMBEDDER-INTERFACE-0` | Phase 11: the five-verb Vendor Door API (formalization of existing mechanisms) + vendoring crate boundary. | Five verbs stand up a tree end-to-end in a test; posture choice on Run; no new subsystem (diff-proven). | DA-reserve · Frontier | TODO |
+| 11.2 | `EMBEDDER-GUIDE-EXEMPLARS-0` | Phase 11: DOC-BUDGET-capped Embedder's Guide + two non-game exemplars (finance toy; network-saturation full-Triad exercise), CI admission-checked. | Cold-reader exit-proof per phase row; exemplars green in CI. | Std | TODO |
+| 12.1 | `PORTABILITY-PROOF-0` | Phase 12: non-TP domain through the Vendor Door end-to-end, zero engine edits. | Exemplar-seeded domain simulates + STEAD-observes + serializes untouched. | Std | TODO |
+| 12.2 | `CORE-CANONIZATION-0` | Phase 12: object model (P0 Root Contract + cycle + EML-ISA + Triad Doors + overlay law) into `simthing_core_design.md`; HARNESS phases canonize nothing; track closeout follows. | Canonized sections land; net-prose discipline; SimThing complete and distinct; CLOSEOUT protocol run (Owner-gated). | DA-reserve · Frontier | TODO |
+
 ## 4. Binding laws (carry from day one)
 
 **The Consumer Law (Owner mandate, 2026-07-20).** STEAD, PALMA, Gu-Yang, and Studio observation
@@ -291,4 +342,4 @@ here, not as scenario patches.
 
 1. ~~0.0.8.6 TP chain closed~~ **SATISFIED** — 0.0.8.6 CLOSED 2026-07-25 (receipt `21f77abb55c9`, PR #1431).
 2. ~~RF-harness (0.0.8.4.8.4.2) disposition~~ **RULED 2026-07-26** — folded into this track: RFH-1 = Phase 0 (guard, early, non-breaking), RFH-2 = Phase 9 (sweep, late, after Phase 4's object model). The separate track is dissolved; `design_0_0_8_4_8_4_2_RF_harness.md` reduced to a superseded pointer.
-3. Owner commits the full plan (rung decomposition of §3, including any further RF drift interventions — guards early, sweeps late); then `gen_orientation.sh --open`.
+3. ~~Owner commits the full plan~~ **SATISFIED 2026-07-26** — §3b ladder committed (guards early, sweeps late honored: 0.x guards lead, 9.x sweeps trail); track opened via `gen_orientation.sh --open`.
