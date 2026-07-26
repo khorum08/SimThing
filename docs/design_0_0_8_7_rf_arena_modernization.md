@@ -69,7 +69,20 @@ contracts (RF-2A) exist.
   boolean, integer, and float/complex ladder variability is anticipated and exposed as coding
   paths (per-domain EML evaluation paths), never intrinsic scalar assumptions — anything the
   SimThing GPU matrix stack holds gets free auditability, STEAD actionability, and parallel
-  evaluation. The STEAD model rides the recursive architecture for free: anchored emission
+  evaluation. **Two fences keep the rider lightweight (Owner-affirmed 2026-07-26):
+  (i) the matrix stays HOMOGENEOUS lanes — domains are admission-tag interpretations, never
+  storage types; wider values (complex, 64-bit) are multi-lane properties via the existing
+  layout width machinery; tagged-union / templated / heterogeneous cell storage is a
+  constitutional violation (it forfeits the dense-sweep economics the lightweight guarantee
+  rests on). (ii) band ladders bind ONLY to ordered scalars — non-ordered domains reach the
+  ladder through sealed EML projection stacks (magnitude / phase / component: one comparator,
+  N projections; "new domain" = new projection stack at library speed, zero object or kernel
+  change). Complex-magnitude projections needing deterministic sqrt route through the
+  sanctioned Candidate-F exact-magnitude door (bit-exact; cf. the workshop sqrt-candidate
+  track) rather than minting a new float path. Agents reaching for cell-storage polymorphism
+  are CAUGHT, not argued with: a heuristic tripwire (Phase 0 ride-along) flags the reach and
+  logs it to the reach log — accumulated reaches are the evidence base for any future
+  expansion of this ruling.** The STEAD model rides the recursive architecture for free: anchored emission
   reduces upward in the same passes as amounts, ladders are the same threshold registrations,
   urgency the same EML stacks — behavior and observation are one synchronous update (Wei).
   **Specialization is additive-only**: extend, never opt out of, reimplement, or
@@ -122,7 +135,7 @@ interventions the Owner adds at commitment: **guards early, sweeps late.**
 
 | Phase | Theme | Note |
 |---|---|---|
-| 0 | **[HARNESS]** RFH-1 `RF-COLUMN-ADMISSION-GATE-0` + hygiene prerequisites | **Type boundary (= OC-K2.1a; kernel lane, Owner-gated K2 lineage) — lands NON-BREAKING before core work begins.** `ColumnIndex` constructor taxonomy in `simthing-core`: `new` goes non-public; legal doors = layout-derived paths (`PropertyLayout::offset_of` / `col_for_role` / arena-layout ranges) + two doc-fenced choke points (GPU round-trip constructor; fenced raw door for oracle/rehearsal code — existing ~170 call sites keep compiling through it, only NEW code is steered). Retarget `COLUMN-INDEX-MINT` to the choke-point tokens; DA-gate exclusion edits on the scan. Rides along: execution-status taxonomy `executed / oracle / rehearsal / compile-plan`, board-surfaced. Falsifier: post-rung, the scan proves every remaining `::new` is inside the fence. **Interim standing order (in force NOW, until this phase lands): `COLUMN-INDEX-MINT` exclusion additions are FROZEN — DA sign-off required; peer-citation is not a valid justification.** |
+| 0 | **[HARNESS]** RFH-1 `RF-COLUMN-ADMISSION-GATE-0` + hygiene prerequisites | **Type boundary (= OC-K2.1a; kernel lane, Owner-gated K2 lineage) — lands NON-BREAKING before core work begins.** `ColumnIndex` constructor taxonomy in `simthing-core`: `new` goes non-public; legal doors = layout-derived paths (`PropertyLayout::offset_of` / `col_for_role` / arena-layout ranges) + two doc-fenced choke points (GPU round-trip constructor; fenced raw door for oracle/rehearsal code — existing ~170 call sites keep compiling through it, only NEW code is steered). Retarget `COLUMN-INDEX-MINT` to the choke-point tokens; DA-gate exclusion edits on the scan. Rides along: execution-status taxonomy `executed / oracle / rehearsal / compile-plan`, board-surfaced; **cell-storage-polymorphism tripwire (P0(e) fence i)** — HEURISTIC scan flagging tagged-union/templated/heterogeneous matrix-cell reaches, logged to the reach log as the evidence base for future ruling expansion. Falsifier: post-rung, the scan proves every remaining `::new` is inside the fence. **Interim standing order (in force NOW, until this phase lands): `COLUMN-INDEX-MINT` exclusion additions are FROZEN — DA sign-off required; peer-citation is not a valid justification.** |
 | 1 | Intrinsic RF kernel (P1) | Derived-at-admission participation; config-seam collapse; RF-1 oracle + determinism judge every rung. |
 | 2 | Overlay API canonization (P2) | Data → settings → directives → capability trees → user actions; one living surface. |
 | 3 | Specialization protocol (P3) | Richer-than-kind, kind-compatible; spatial/owner/session first citizens. |
