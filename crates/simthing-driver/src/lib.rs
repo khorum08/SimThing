@@ -31,7 +31,6 @@ pub mod gameplay_0080_0;
 pub mod gameplay_0080_1;
 pub mod gated_rates;
 pub mod need_binding;
-pub mod gpu_measure_0080_0;
 pub mod gradient_follow_0080_2;
 pub mod hosted_property_observation;
 pub mod install;
@@ -71,23 +70,6 @@ pub mod resource_flow_opt_in_telemetry;
 pub mod resource_flow_preflight;
 pub mod resource_flow_scenario_class_burn_in;
 pub mod rf_conservation_oracle;
-pub mod runtime_0080_0_r0;
-pub mod runtime_0080_0_r1a;
-pub mod runtime_0080_0_r1b;
-pub mod runtime_0080_0_r1c;
-pub mod runtime_0080_0_r1c_a;
-pub mod runtime_0080_0_r1c_b;
-pub mod runtime_0080_0_r1c_c;
-pub mod runtime_0080_0_r1c_d;
-pub mod runtime_0080_0_r1c_e;
-pub mod runtime_0080_0_r1c_f;
-pub mod runtime_0080_0_r2;
-pub(crate) mod runtime_0080_0_r2_substrate;
-pub mod runtime_0080_rr_0;
-pub mod runtime_0080_rr_1;
-pub mod runtime_0080_rr_2;
-pub mod runtime_0080_rr_3;
-pub mod runtime_0080_rr_4;
 pub mod runtime_local_allocation_compile;
 pub mod runtime_participant_property_mutation_boundary_compile;
 pub mod runtime_participant_state_mutation_compile;
@@ -376,13 +358,6 @@ pub use gated_rates::{
     build_gated_rate_ops, resolve_gated_rates, seed_gated_rate_base_columns, ResolvedGatedRate,
     RATE_BASE_SUB_FIELD,
 };
-pub use gpu_measure_0080_0::{
-    render_gpu_measure_0080_0_report, replay_gpu_measure_0080_0, run_gpu_measure_0080_0,
-    GpuMeasure0080AdapterReport, GpuMeasure0080Input, GpuMeasure0080Report,
-    GpuMeasure0080ShapeReport, GPU_MEASURE_0080_0_ID, GPU_MEASURE_0080_0_STATUS_PASS,
-    GPU_MEASURE_R4_F32_BOUND, GPU_MEASURE_VERDICT_INTEGER_BIT_EXACT,
-    GPU_MEASURE_VERDICT_UNMEASURED, GPU_MEASURE_VERDICT_VERIFIED_APPROXIMATE,
-};
 pub use gradient_follow_0080_2::{
     replay_gradient_follow_0080_2, run_gradient_follow_0080_2, GradientFollow0082ForbiddenRequests,
     GradientFollow0082Gate, GradientFollow0082Input, GradientFollow0082MoveRow,
@@ -586,152 +561,6 @@ pub use resource_flow_scenario_class_burn_in::{
     run_profile_soak_with_telemetry, RF_T5_PROFILE_DISABLED, RF_T5_PROFILE_DYNAMIC_FISSION,
     RF_T5_PROFILE_MULTI_ARENA, RF_T5_PROFILE_MULTI_SESSION, RF_T5_PROFILE_REJECTION,
     RF_T5_PROFILE_RESYNC, RF_T5_PROFILE_STATIC_128, RF_T5_PROFILE_STATIC_256,
-};
-pub use runtime_0080_0_r0::{
-    render_runtime_0080_r0_artifact, replay_runtime_0080_0_r0, run_runtime_0080_0_r0,
-    Runtime0080R0AdapterReport, Runtime0080R0Input, Runtime0080R0Report,
-    Runtime0080R0ResidencyTraceRow, RUNTIME_0080_0_R0_ID, RUNTIME_0080_0_R0_STATUS_PARTIAL,
-    RUNTIME_0080_0_R0_STATUS_PASS, RUNTIME_R0_EXPECTED_R6C_CHECKSUM, RUNTIME_R0_FOREGROUND_CAPTURE,
-    RUNTIME_R0_GPU_BLOCKED, RUNTIME_R0_R4_F32_BOUND, RUNTIME_R0_SUBSTRATE_GAP,
-    RUNTIME_R0_WHOLE_RUN_GPU_MEASURED, RUNTIME_R0_WHOLE_RUN_PARTIAL,
-    RUNTIME_R0_WHOLE_RUN_UNMEASURED,
-};
-pub use runtime_0080_0_r1a::{
-    render_runtime_0080_r1a_artifact, replay_runtime_0080_0_r1a, run_runtime_0080_0_r1a,
-    run_runtime_0080_0_r1a_negative_control, run_runtime_0080_0_r1a_with_transforms_enabled,
-    Runtime0080R1aAdapterReport, Runtime0080R1aAntiFakeEvidence, Runtime0080R1aBoundarySummary,
-    Runtime0080R1aCoveredColumnReport, Runtime0080R1aDisabledTransformRow,
-    Runtime0080R1aExactBitProof, Runtime0080R1aInput, Runtime0080R1aInputSource,
-    Runtime0080R1aMeasuredCounters, Runtime0080R1aReport, Runtime0080R1aSubstratePrimitiveReport,
-    Runtime0080R1aTraceRow, RUNTIME_0080_0_R1A_ID, RUNTIME_0080_0_R1A_PRIMITIVE,
-    RUNTIME_0080_0_R1A_STATUS_BLOCKED, RUNTIME_0080_0_R1A_STATUS_PARTIAL,
-    RUNTIME_0080_0_R1A_STATUS_PASS, RUNTIME_R1A_EXPECTED_REPORT_CHECKSUM,
-    RUNTIME_R1A_REGISTERS_WORLD_GPU_STATE_PIPELINES, RUNTIME_R1A_SCOPE,
-};
-pub use runtime_0080_0_r1b::{
-    render_runtime_0080_r1b_artifact, replay_runtime_0080_0_r1b, run_runtime_0080_0_r1b,
-    run_runtime_0080_0_r1b_with_event_writers_enabled, Runtime0080R1bEventWriterParityCheck,
-    Runtime0080R1bFreeSlotMarkSource, Runtime0080R1bInput, Runtime0080R1bKindRowCount,
-    Runtime0080R1bLocalBirthRequestSource, Runtime0080R1bReport, Runtime0080R1bTraceRow,
-    RUNTIME_0080_0_R1B_ID, RUNTIME_0080_0_R1B_PRIMITIVE, RUNTIME_0080_0_R1B_STATUS_BLOCKED,
-    RUNTIME_0080_0_R1B_STATUS_PARTIAL, RUNTIME_0080_0_R1B_STATUS_PASS, RUNTIME_R1B_SCOPE,
-};
-pub use runtime_0080_0_r1c::{
-    render_runtime_0080_r1c_artifact, replay_runtime_0080_0_r1c, run_runtime_0080_0_r1c,
-    Runtime0080R1cBackpressurePolicy, Runtime0080R1cInput, Runtime0080R1cPredecessorReport,
-    Runtime0080R1cReport, Runtime0080R1cShadowContractReport, Runtime0080R1cShadowSnapshot,
-    Runtime0080R1cStopLineReport, RUNTIME_0080_0_R1C_ID, RUNTIME_0080_0_R1C_PRIMITIVE,
-    RUNTIME_0080_0_R1C_STATUS_BLOCKED, RUNTIME_0080_0_R1C_STATUS_PARTIAL,
-    RUNTIME_R1C_EXPECTED_REPORT_CHECKSUM, RUNTIME_R1C_SCOPE,
-};
-pub use runtime_0080_0_r1c_a::{
-    render_runtime_0080_r1c_a_artifact, replay_runtime_0080_0_r1c_a, run_runtime_0080_0_r1c_a,
-    run_runtime_0080_0_r1c_a_with_mark_writers_enabled, Runtime0080R1cAInput,
-    Runtime0080R1cAMarkTraceRow, Runtime0080R1cAMarkerReport, Runtime0080R1cAPredecessorReport,
-    Runtime0080R1cAReport, RUNTIME_0080_0_R1C_A_ID, RUNTIME_0080_0_R1C_A_PRIMITIVE,
-    RUNTIME_0080_0_R1C_A_STATUS_BLOCKED, RUNTIME_0080_0_R1C_A_STATUS_PASS,
-    RUNTIME_R1C_A_EXPECTED_REPORT_CHECKSUM, RUNTIME_R1C_A_SCOPE,
-};
-pub use runtime_0080_0_r1c_b::{
-    render_runtime_0080_r1c_b_artifact, replay_runtime_0080_0_r1c_b, run_runtime_0080_0_r1c_b,
-    run_runtime_0080_0_r1c_b_with_allocation_writers_enabled, Runtime0080R1cBAllocationRow,
-    Runtime0080R1cBBoundaryPassReport, Runtime0080R1cBDisabledAllocationWriterCheck,
-    Runtime0080R1cBInput, Runtime0080R1cBPreservationSummary, Runtime0080R1cBReport,
-    RUNTIME_0080_0_R1C_B_ID, RUNTIME_0080_0_R1C_B_PRIMITIVE, RUNTIME_0080_0_R1C_B_STATUS_BLOCKED,
-    RUNTIME_0080_0_R1C_B_STATUS_PARTIAL, RUNTIME_0080_0_R1C_B_STATUS_PASS,
-    RUNTIME_R1C_B_EXPECTED_REPORT_CHECKSUM, RUNTIME_R1C_B_SCOPE,
-};
-pub use runtime_0080_0_r1c_c::{
-    render_runtime_0080_r1c_c_artifact, replay_runtime_0080_0_r1c_c, run_runtime_0080_0_r1c_c,
-    run_runtime_0080_0_r1c_c_with_membership_writers_enabled, Runtime0080R1cCCpuShadowReport,
-    Runtime0080R1cCDisabledMembershipWriterCheck, Runtime0080R1cCInput,
-    Runtime0080R1cCMembershipDeltaRow, Runtime0080R1cCPreservationSummary, Runtime0080R1cCReport,
-    RUNTIME_0080_0_R1C_C_ID, RUNTIME_0080_0_R1C_C_PRIMITIVE, RUNTIME_0080_0_R1C_C_STATUS_BLOCKED,
-    RUNTIME_0080_0_R1C_C_STATUS_PARTIAL, RUNTIME_0080_0_R1C_C_STATUS_PASS,
-    RUNTIME_R1C_C_EXPECTED_REPORT_CHECKSUM, RUNTIME_R1C_C_SCOPE,
-};
-pub use runtime_0080_0_r1c_d::{
-    render_runtime_0080_r1c_d_artifact, replay_runtime_0080_0_r1c_d, run_runtime_0080_0_r1c_d,
-    run_runtime_0080_0_r1c_d_with_writers_enabled, Runtime0080R1cDCompactedViewRow,
-    Runtime0080R1cDCompactionRow, Runtime0080R1cDCpuShadowReport,
-    Runtime0080R1cDDisabledWriterCheck, Runtime0080R1cDInput, Runtime0080R1cDLineageRow,
-    Runtime0080R1cDReport, RUNTIME_0080_0_R1C_D_ID, RUNTIME_0080_0_R1C_D_PRIMITIVE,
-    RUNTIME_0080_0_R1C_D_STATUS_BLOCKED, RUNTIME_0080_0_R1C_D_STATUS_PARTIAL,
-    RUNTIME_0080_0_R1C_D_STATUS_PASS, RUNTIME_R1C_D_EXPECTED_REPORT_CHECKSUM, RUNTIME_R1C_D_SCOPE,
-};
-pub use runtime_0080_0_r1c_e::{
-    render_runtime_0080_r1c_e_artifact, replay_runtime_0080_0_r1c_e, run_runtime_0080_0_r1c_e,
-    run_runtime_0080_0_r1c_e_with_writers_enabled, Runtime0080R1cECompactedSlotRow,
-    Runtime0080R1cECpuShadowReport, Runtime0080R1cEDisabledWriterCheck, Runtime0080R1cEInput,
-    Runtime0080R1cEMembershipRemapRow, Runtime0080R1cEReport, Runtime0080R1cESlotRemapRow,
-    RUNTIME_0080_0_R1C_E_ID, RUNTIME_0080_0_R1C_E_PRIMITIVE, RUNTIME_0080_0_R1C_E_STATUS_BLOCKED,
-    RUNTIME_0080_0_R1C_E_STATUS_PARTIAL, RUNTIME_0080_0_R1C_E_STATUS_PASS,
-    RUNTIME_R1C_E_EXPECTED_REPORT_CHECKSUM, RUNTIME_R1C_E_SCOPE,
-};
-pub use runtime_0080_0_r1c_f::{
-    render_runtime_0080_r1c_f_artifact, replay_runtime_0080_0_r1c_f, run_runtime_0080_0_r1c_f,
-    run_runtime_0080_0_r1c_f_with_zero_cohort_emitter_enabled, Runtime0080R1cFDisabledEmitterCheck,
-    Runtime0080R1cFInput, Runtime0080R1cFReport, Runtime0080R1cFZeroCohortRow,
-    RUNTIME_0080_0_R1C_F_ID, RUNTIME_0080_0_R1C_F_PRIMITIVE, RUNTIME_0080_0_R1C_F_STATUS_BLOCKED,
-    RUNTIME_0080_0_R1C_F_STATUS_PARTIAL, RUNTIME_0080_0_R1C_F_STATUS_PASS,
-    RUNTIME_R1C_F_EXPECTED_REPORT_CHECKSUM, RUNTIME_R1C_F_SCOPE,
-};
-pub use runtime_0080_0_r2::{
-    render_runtime_0080_r2_artifact, run_runtime_0080_0_r2, Runtime0080R2Input,
-    Runtime0080R2MemoryFootprint, Runtime0080R2Profiling, Runtime0080R2Report,
-    Runtime0080R2TickTimingRow, Runtime0080R2TickTraceRow, RUNTIME_0080_0_R2_ID,
-    RUNTIME_0080_0_R2_PRIMITIVE, RUNTIME_0080_0_R2_STATUS_BLOCKED,
-    RUNTIME_0080_0_R2_STATUS_PARTIAL, RUNTIME_0080_0_R2_STATUS_PASS,
-    RUNTIME_R2_EXPECTED_REPORT_CHECKSUM, RUNTIME_R2_SCOPE,
-};
-pub use runtime_0080_0_r2_substrate::R2SubstrateOutcome as Runtime0080R2SubstrateOutcome;
-pub use runtime_0080_rr_0::{
-    build_recursive_world, replay_runtime_0080_rr_0, run_runtime_0080_rr_0,
-    Runtime0080Rr0DeviationRecord, Runtime0080Rr0EntityCounts, Runtime0080Rr0FactionStockpile,
-    Runtime0080Rr0Galaxy, Runtime0080Rr0GalaxyCell, Runtime0080Rr0Input, Runtime0080Rr0OracleTick,
-    Runtime0080Rr0Owner, Runtime0080Rr0Planet, Runtime0080Rr0RecursiveWorld, Runtime0080Rr0Report,
-    Runtime0080Rr0ScopeLedgerRow, Runtime0080Rr0Starport, Runtime0080Rr0Surface,
-    Runtime0080Rr0SurfaceCell, Runtime0080Rr0SurfaceChild, Runtime0080Rr0System,
-    Runtime0080Rr0SystemGridCell, RUNTIME_0080_RR_0_ID, RUNTIME_0080_RR_0_STATUS_BLOCKED,
-    RUNTIME_0080_RR_0_STATUS_PARTIAL, RUNTIME_0080_RR_0_STATUS_PASS,
-    RUNTIME_RR_0_EXPECTED_REPORT_CHECKSUM,
-};
-pub use runtime_0080_rr_1::{
-    canonical_access_pattern, replay_runtime_0080_rr_1, run_runtime_0080_rr_1,
-    try_access_surface_for_system, try_access_system_at_galaxy_cell, Runtime0080Rr1ChildVisibility,
-    Runtime0080Rr1DeviationRecord, Runtime0080Rr1Input, Runtime0080Rr1LeakageProof,
-    Runtime0080Rr1MappingParityRow, Runtime0080Rr1Report, Runtime0080Rr1ResidencyRequest,
-    Runtime0080Rr1ResidencySnapshot, Runtime0080Rr1ScopeLedgerRow, Runtime0080Rr1SystemHandle,
-    Runtime0080Rr1TierCounts, Runtime0080Rr1TierId, RR_1_GALAXY_CELL_COUNT, RR_1_GALAXY_SIDE,
-    RR_1_SURFACE_CELL_COUNT, RR_1_SURFACE_SIDE, RR_1_SYSTEM_CELL_COUNT, RR_1_SYSTEM_COUNT,
-    RR_1_SYSTEM_SIDE, RUNTIME_0080_RR_1_ID, RUNTIME_0080_RR_1_STATUS_BLOCKED,
-    RUNTIME_0080_RR_1_STATUS_PARTIAL, RUNTIME_0080_RR_1_STATUS_PASS,
-    RUNTIME_RR_1_EXPECTED_REPORT_CHECKSUM,
-};
-pub use runtime_0080_rr_2::{
-    replay_runtime_0080_rr_2, run_runtime_0080_rr_2, Runtime0080Rr2DeviationRecord,
-    Runtime0080Rr2Input, Runtime0080Rr2ParityRow, Runtime0080Rr2Report,
-    Runtime0080Rr2ScopeLedgerRow, Runtime0080Rr2SurfaceCellBinding, Runtime0080Rr2SurfaceProof,
-    RR_2_ACTIVE_SURFACE_COUNT, RR_2_COL_LABOR, RR_2_COL_PRODUCTION, RR_2_SURFACE_CELL_COUNT,
-    RR_2_SURFACE_N_DIMS, RUNTIME_0080_RR_2_ID, RUNTIME_0080_RR_2_STATUS_BLOCKED,
-    RUNTIME_0080_RR_2_STATUS_PARTIAL, RUNTIME_0080_RR_2_STATUS_PASS,
-    RUNTIME_RR_2_EXPECTED_REPORT_CHECKSUM,
-};
-pub use runtime_0080_rr_3::{
-    replay_runtime_0080_rr_3, run_runtime_0080_rr_3, Runtime0080Rr3DeviationRecord,
-    Runtime0080Rr3Input, Runtime0080Rr3Report, Runtime0080Rr3ScopeLedgerRow,
-    Runtime0080Rr3SystemBinding, Runtime0080Rr3TierTransition, Runtime0080Rr3TransitionRow,
-    RR_3_COL_LABOR, RR_3_COL_PRODUCTION, RR_3_N_DIMS, RR_3_SLOTS_PER_SYSTEM, RUNTIME_0080_RR_3_ID,
-    RUNTIME_0080_RR_3_STATUS_BLOCKED, RUNTIME_0080_RR_3_STATUS_PARTIAL,
-    RUNTIME_0080_RR_3_STATUS_PASS, RUNTIME_RR_3_EXPECTED_REPORT_CHECKSUM,
-};
-pub use runtime_0080_rr_4::{
-    replay_runtime_0080_rr_4, run_runtime_0080_rr_4, Runtime0080Rr4DeviationRecord,
-    Runtime0080Rr4FinalStateRow, Runtime0080Rr4Input, Runtime0080Rr4MemoryFootprint,
-    Runtime0080Rr4Profiling, Runtime0080Rr4Report, Runtime0080Rr4ScopeLedgerRow,
-    Runtime0080Rr4TickParityRow, Runtime0080Rr4TickTimingRow, RUNTIME_0080_RR_4_ID,
-    RUNTIME_0080_RR_4_STATUS_BLOCKED, RUNTIME_0080_RR_4_STATUS_PARTIAL,
-    RUNTIME_0080_RR_4_STATUS_PASS, RUNTIME_RR_4_EXPECTED_REPORT_CHECKSUM,
 };
 pub use runtime_local_allocation_compile::{
     compile_runtime_local_allocation_application_plan, runtime_local_allocation_aggregate_slot,
