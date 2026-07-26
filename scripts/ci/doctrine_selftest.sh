@@ -80,7 +80,12 @@ copy_ci_bundle() {
   cp "${CI_SRC}/doctrine_scan.sh" \
     "${CI_SRC}/scans.tsv" \
     "${CI_SRC}/scan_allowlists.py" \
+    "${CI_SRC}/scan_execution_status.py" \
     "${root}/scripts/ci/"
+  # Taxonomy registry for EXECUTION-STATUS-UNCLASSIFIED (optional but required when the scan row is live).
+  if [[ -f "${CI_SRC}/execution_status_taxonomy.tsv" ]]; then
+    cp "${CI_SRC}/execution_status_taxonomy.tsv" "${root}/scripts/ci/"
+  fi
   cp "${CI_SRC}/allow/"*.txt "${root}/scripts/ci/allow/"
   # copy triage/justif tsv if present to avoid any outer state leakage in scans
   for f in inspect_justifications.tsv triage_log.tsv; do
@@ -245,6 +250,21 @@ setup_heuristic_kernel() {
   prepare_trap_baseline "$ROOT_SANDBOX"
   cp "${FIXTURES}/known_bad/${fixture}" \
     "${ROOT_SANDBOX}/crates/simthing-kernel/src/_selftest_fixture.rs"
+}
+
+setup_heuristic_execution_status_unclassified() {
+  # Path name must match the execution-flavored heuristic (contains "oracle")
+  # and must NOT appear in the taxonomy TSV.
+  prepare_trap_baseline "$ROOT_SANDBOX"
+  mkdir -p "${ROOT_SANDBOX}/crates/simthing-driver/src"
+  # Minimal taxonomy so the sandbox does not inherit live rows that map to absent paths;
+  # the probe path itself is intentionally omitted.
+  cat >"${ROOT_SANDBOX}/scripts/ci/execution_status_taxonomy.tsv" <<'EOF'
+# path	class	basis
+crates/simthing-kernel/src/cpu_oracle.rs	oracle	fixture seed row
+EOF
+  cp "${FIXTURES}/known_bad/execution_status_unclassified.rs" \
+    "${ROOT_SANDBOX}/crates/simthing-driver/src/rf_probe_oracle_unclassified.rs"
 }
 
 setup_heuristic_sim() {
@@ -1172,6 +1192,8 @@ run_all_cases() {
 
   expect_heuristic_inspect "column_index_mint" "COLUMN-INDEX-MINT" \
     setup_heuristic_kernel column_index_mint.rs
+  expect_heuristic_inspect "execution_status_unclassified" "EXECUTION-STATUS-UNCLASSIFIED" \
+    setup_heuristic_execution_status_unclassified
   expect_heuristic_inspect "sim_kind_read" "SIM-KIND-READ" \
     setup_heuristic_sim sim_kind_read.rs
   expect_heuristic_inspect "semantic_words_production" "SEMANTIC-WORDS" \
