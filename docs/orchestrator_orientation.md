@@ -48,13 +48,13 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | design_0_0_8_7_rf_arena_modernization.md | 0bcb4ab5e088005c0643b766deeb0b3247db0d4e345500808ec373de626bdbdf |
 | relay_lint.sh | 4163f715cdc3b549dbf57c1744aff61ea96b9f9f0a2237376665fbdb24e986c8 |
 | doctrine_anchors.tsv | c7296a3fec66bb25bdf0042294c019aaa6aac65ab853c4913641fa53774eaf4d |
-| execution_status_taxonomy.tsv | ef74a8466f11d4c6f3125dd4f51689fbd1526cda0602278958aea0431fe56918 |
+| execution_status_taxonomy.tsv | f3bf8344fb7e77125bb8107a0070646070450041881afc737b72e90f6f6a2ca9 |
+| execution_status_mixed_posture.tsv | 43b6f3db3c354c834a018eb72a9f28c20e56993d3cff6f9f2d1cbe93d1853fe2 |
+| execution_status_non_execution.tsv | 214c1b557dfd3fc465f0171051e20281ff1dcf6c53128dbb29cba01524f9be02 |
 
 ## Execution-status taxonomy (driver/kernel)
 
-executed=33 · oracle=6 · rehearsal=14 · compile-plan=39 (source: `scripts/ci/execution_status_taxonomy.tsv`)
-
-Posture drift (a rehearsal becoming executed, an oracle going dark) is visible as count change here; unclassified new surfaces trip `EXECUTION-STATUS-UNCLASSIFIED` (HEURISTIC).
+executed=56 oracle=6 rehearsal=14 compile-plan=44 mixed_pending_da=2 (taxonomy + mixed residual TSVs; census via `execution_status_census.py`; HEURISTIC `EXECUTION-STATUS-UNCLASSIFIED` is not the census proof).
 
 ## Active Track / Rung Summary (`design_0_0_8_7_rf_arena_modernization.md`)
 

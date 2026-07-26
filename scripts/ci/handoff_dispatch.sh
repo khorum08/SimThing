@@ -592,20 +592,28 @@ def board_json(path_arg=None):
     def execution_status_summary():
         # EXECUTION-STATUS-TAXONOMY-0: compact counts for the board mirror.
         path = ROOT / "scripts" / "ci" / "execution_status_taxonomy.tsv"
+        mixed_path = ROOT / "scripts" / "ci" / "execution_status_mixed_posture.tsv"
         legal = ("executed", "oracle", "rehearsal", "compile-plan")
         counts = {k: 0 for k in legal}
-        if not path.is_file():
-            return counts
-        for raw in path.read_text(encoding="utf-8").splitlines():
-            line = raw.strip()
-            if not line or line.startswith("#"):
-                continue
-            parts = line.split("\t")
-            if len(parts) < 2:
-                continue
-            cls = parts[1].strip()
-            if cls in counts:
-                counts[cls] += 1
+        counts["mixed_pending_da"] = 0
+        if path.is_file():
+            for raw in path.read_text(encoding="utf-8").splitlines():
+                line = raw.strip()
+                if not line or line.startswith("#"):
+                    continue
+                parts = line.split("\t")
+                if len(parts) < 2:
+                    continue
+                cls = parts[1].strip()
+                if cls in legal:
+                    counts[cls] += 1
+        if mixed_path.is_file():
+            for raw in mixed_path.read_text(encoding="utf-8").splitlines():
+                line = raw.strip()
+                if not line or line.startswith("#"):
+                    continue
+                if "\t" in line:
+                    counts["mixed_pending_da"] += 1
         return counts
 
     data = {
@@ -710,7 +718,8 @@ def render_board_markdown(data):
             f"executed={est.get('executed', 0)} "
             f"oracle={est.get('oracle', 0)} "
             f"rehearsal={est.get('rehearsal', 0)} "
-            f"compile-plan={est.get('compile-plan', 0)}"
+            f"compile-plan={est.get('compile-plan', 0)} "
+            f"mixed_pending_da={est.get('mixed_pending_da', 0)}"
         )
     handoff = data.get("current_handoff") or {}
     if handoff:

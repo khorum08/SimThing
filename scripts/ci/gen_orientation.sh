@@ -2345,6 +2345,20 @@ def execution_status_counts(path: pathlib.Path) -> dict:
     return counts
 
 
+def execution_status_mixed_count(path: pathlib.Path) -> int:
+    """Count mixed-posture residual rows (not a fifth class; DA ruling required)."""
+    if not path.is_file():
+        return 0
+    n = 0
+    with path.open(encoding="utf-8", newline="") as fh:
+        for row in csv.reader(fh, delimiter="\t"):
+            if not row or (row[0].startswith("#") if row[0] else True):
+                continue
+            if len(row) >= 2:
+                n += 1
+    return n
+
+
 def read_tsv_dict(path: pathlib.Path, header: list):
     if not path.is_file():
         return header, []
@@ -2660,8 +2674,15 @@ def render_orientation(active_info: dict) -> tuple:
     ])
     if EXECUTION_STATUS_TSV.is_file():
         sources.append(("execution_status_taxonomy.tsv", EXECUTION_STATUS_TSV))
+    mixed_status_tsv = REPO_ROOT / "scripts" / "ci" / "execution_status_mixed_posture.tsv"
+    if mixed_status_tsv.is_file():
+        sources.append(("execution_status_mixed_posture.tsv", mixed_status_tsv))
+    non_exec_tsv = REPO_ROOT / "scripts" / "ci" / "execution_status_non_execution.tsv"
+    if non_exec_tsv.is_file():
+        sources.append(("execution_status_non_execution.tsv", non_exec_tsv))
     manifest = [(name, sha256_file(path)) for name, path in sources]
     exec_counts = execution_status_counts(EXECUTION_STATUS_TSV)
+    mixed_count = execution_status_mixed_count(mixed_status_tsv)
 
     class_rows = []
     for row in classes:
@@ -2723,12 +2744,11 @@ def render_orientation(active_info: dict) -> tuple:
     "",
     "## Execution-status taxonomy (driver/kernel)",
     "",
-    f"executed={exec_counts['executed']} · oracle={exec_counts['oracle']} · "
-    f"rehearsal={exec_counts['rehearsal']} · compile-plan={exec_counts['compile-plan']} "
-    f"(source: `scripts/ci/execution_status_taxonomy.tsv`)",
-    "",
-    "Posture drift (a rehearsal becoming executed, an oracle going dark) is visible as count "
-    "change here; unclassified new surfaces trip `EXECUTION-STATUS-UNCLASSIFIED` (HEURISTIC).",
+    f"executed={exec_counts['executed']} oracle={exec_counts['oracle']} "
+    f"rehearsal={exec_counts['rehearsal']} compile-plan={exec_counts['compile-plan']} "
+    f"mixed_pending_da={mixed_count} "
+    f"(taxonomy + mixed residual TSVs; census via `execution_status_census.py`; "
+    f"HEURISTIC `EXECUTION-STATUS-UNCLASSIFIED` is not the census proof).",
     "",
 ])
     if design_doc is None:

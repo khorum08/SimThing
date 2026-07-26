@@ -1,0 +1,27 @@
+# path	basis  # exported modules outside RF execution-status envelope (census completeness)
+crates/simthing-driver/src/atlas_0080_0.rs	product atlas demo harness; not RF execution-status family
+crates/simthing-driver/src/bench_limits.rs	bench ceiling policy; not an execution posture surface
+crates/simthing-driver/src/child_share_eml.rs	EML formula helper registration; not tick/execution posture
+crates/simthing-driver/src/compound_field_0080_2.rs	product compound-field demo; not RF execution-status family
+crates/simthing-driver/src/control_0080_0.rs	control admission demo; not RF execution-status family
+crates/simthing-driver/src/control_0080_1.rs	control admission demo; not RF execution-status family
+crates/simthing-driver/src/default_schedule_0080_0.rs	default-schedule demo; not RF execution-status family
+crates/simthing-driver/src/default_schedule_0080_1.rs	default-schedule demo; not RF execution-status family
+crates/simthing-driver/src/demo_0080_0.rs	product demo harness; not RF execution-status family
+crates/simthing-driver/src/demo_0080_1.rs	product demo harness; not RF execution-status family
+crates/simthing-driver/src/disruption_decay_0080_2.rs	disruption demo; not RF execution-status family
+crates/simthing-driver/src/econ_scale_0080_0.rs	econ-scale demo; not RF execution-status family
+crates/simthing-driver/src/gameplay_0080_0.rs	gameplay demo; not RF execution-status family
+crates/simthing-driver/src/gameplay_0080_1.rs	gameplay demo; not RF execution-status family
+crates/simthing-driver/src/gradient_follow_0080_2.rs	gradient-follow demo; not RF execution-status family
+crates/simthing-driver/src/hosted_property_observation.rs	observation helper; not RF execution posture
+crates/simthing-driver/src/need_binding.rs	need-binding authoring helper; not RF execution posture
+crates/simthing-driver/src/production_path_0080_0.rs	production-path demo; not RF execution-status family
+crates/simthing-driver/src/production_path_0080_1.rs	production-path demo; not RF execution-status family
+crates/simthing-driver/src/scenario.rs	scenario load/IO surface; not RF execution posture
+crates/simthing-driver/src/spec_replay.rs	spec replay harness; not RF execution posture
+crates/simthing-driver/src/spec_session.rs	spec session harness; not RF execution posture
+crates/simthing-driver/src/stress_compose_bridge.rs	compose bridge; not RF execution posture
+crates/simthing-driver/src/structural_n4_atlas_partition.rs	atlas partition helper; not RF execution posture
+crates/simthing-driver/src/w_impedance_compose_bridge.rs	impedance compose bridge; not RF execution posture
+crates/simthing-kernel/src/sealed/mod.rs	module root re-export; classified via sealed leaf surfaces
