@@ -1703,6 +1703,9 @@ run_selftest() {
     clearance_selftest_docs_ladder_studio_stamp_clearable
     clearance_selftest_docs_ladder_studio_stamp_rejects_crates
     clearance_selftest_docs_ladder_studio_stamp_rejects_workflows
+    clearance_selftest_docs_ladder_evidence_index_stamp_clearable
+    clearance_selftest_docs_ladder_evidence_index_only_no_match
+    clearance_selftest_docs_ladder_evidence_index_rejects_crates
     clearance_selftest_engine_scope_violation_not_novelty
     clearance_selftest_explicit_novelty_claim_reserved
     clearance_selftest_matched_class_explicit_novelty_reserved

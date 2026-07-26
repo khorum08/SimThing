@@ -1,0 +1,4 @@
+tested_code_sha: 828543e9fc2af32857affd2d7e6c8f301799b1db
+coverage_basis: PASS - stamp shape plus forbidden crate must not clear
+ci_green: PASS
+novelty_claim: NO
