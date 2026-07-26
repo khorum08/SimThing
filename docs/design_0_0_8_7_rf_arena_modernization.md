@@ -41,6 +41,31 @@ contracts (RF-2A) exist.
 
 ## 2. Pillars (Owner requirements, binding at commitment)
 
+- **P0 — The Root Contract (Owner constitutional restoration, 2026-07-26).** SimThing is the
+  atomic root from which every specialist derives (SessionThing, GridcellThing, PopCohort,
+  FleetObject, PlanetaryBuilding, …) — an **interface in the hard-contour sense**, not an
+  abstract class: the contract is SHAPE (a dense-matrix row; columns reached only through the
+  role pathway; emission bands/thresholds on cells; a parent slot + child-row allocation) plus
+  PROTOCOL (the recursive cycle below). The implementation exists **exactly once — the unified
+  kernel** — and descendants cannot supply their own: an interface whose every method the
+  substrate itself implements. By derivation alone — no wiring, enrollment, or registry — every
+  SimThing possesses the root functions: (a) RF arena resolution when it carries resource
+  properties + a parent edge; (b) tree-wide effects queryable as GPU sweep reductions;
+  (c) EML emission-band threshold branching pulled from the core; (d) dense-matrix residency +
+  slotting. **Specialization is additive-only**: extend, never opt out of, reimplement, or
+  shadow a root function (`DefaultDisabled` is the single sanctioned opt-out, authored, never
+  kind-implied). **Lightweight guarantee:** a SimThing at rest is a row; core functions are
+  shared dense sweeps — cost scales with `slots × columns`, never object-count × dispatch.
+  **The recursive cycle (the core protocol):** each SimThing's resource property values reduce
+  UPWARD to its parent as a velocity (the GovernedPair rate cell); the parent applies overlay
+  modifications; final values disburse back DOWN — and it does the same to all its children.
+  One shared rule at every level: the constitutional cycle and Wei's P2 emergence prerequisite
+  are the same clause. The cycle resolves **within a single tick as ordered passes**
+  (OrderBand), never pipelined across ticks. It already executes as
+  `RecursiveArenaResourceFlow` — this track binds it to the *object*.
+  Falsifier: when P1 lands, the `ArenaParticipant` wrapper kind is deprecated
+  (StarSystem/Station disposition) — the wrapper kind existing was the symptom of
+  participation-by-wiring; its deprecation is the proof of participation-by-derivation.
 - **P1 — Intrinsic RF kernel at the object.** Resource properties + a parent edge ⇒ arena
   participation **derived at admission** (typed, inspectable, spanned hard-errors;
   `DefaultDisabled` opt-out retained). Behavior when parented and as a parent is intrinsic,
@@ -86,7 +111,7 @@ interventions the Owner adds at commitment: **guards early, sweeps late.**
 | 6 | **Movement-Front execution** (Owner-added 2026-07-20) | Fleet movement AUTHORITY: spatial SimThings move along STEAD need/falloff gradients (core §7 automaton, Gu-Yang pathfinding, PALMA borders) under the ordinary tick — decisions stay threshold crossings, movement state is sim authority. **Decision ingress = sealed band-crossing events from Phase 5's emission bands (OC-K-DECISION-INGRESS-0 pattern) — never CPU branching on raw field/heatmap reads** (the naive-Phase-6 temptation is pre-empted by design). Fills the 12.4 `InTransit` readback seam ("test-private until authoritative movement readback exists"); the 12.5 icon descriptors start expressing real transit with zero icon-layer change (the renderer-seam design anticipates this). |
 | 7 | **Combat as RF arena** (Owner-added 2026-07-20) | The axiom made mechanical: combat = RF arena resolution (HP/damage as resource flows). Promote the R6/R6B/R6C dress rehearsals from falsification-oracle to executed default via the proven RF promotion pattern (oracle-first → executed → legacy/rehearsal re-anchored); RF-1-style conservation judging; rehearsals retain oracle role against the executed path. |
 | 8 | **[HARNESS]** RFH-2 `RF-COLUMN-MINT-MIGRATE-0` | **Migration sweep (= OC-K2.1b) — deliberately LATE (Owner ruling 2026-07-26): Phase 4 makes row/col identity object semantics and rewrites most of the ~170 `ColumnIndex` call sites, so the sweep runs ONCE, onto the FINAL object-semantic doors, not twice onto interim ones.** Mechanically move all remaining call sites onto the legal doors; shrink/delete the fenced raw door; **delete the entire exclusion list; retire/demote `COLUMN-INDEX-MINT` per its own promotion-blocker.** RF-3-style sweep — wide, boring, safe only because Phase 0's doors + Phase 4's object model exist. Falsifier: exclusion list empty; tripwire retired; full build + RF batteries green. Part of track de-crufting, not the object model. |
-| 9 | Portability proof + CORE canonization (P6) | Non-TP domain works untouched; object model written into `simthing_core_design.md` (HARNESS phases excluded — they canonize nothing); SimThing complete and distinct. |
+| 9 | Portability proof + CORE canonization (P6) | Non-TP domain works untouched; object model — **P0 Root Contract, recursive cycle, and EML-ISA laws included** — written into `simthing_core_design.md` (HARNESS phases excluded — they canonize nothing); SimThing complete and distinct. |
 
 ## 4. Binding laws (carry from day one)
 
@@ -102,6 +127,26 @@ it governs production read access, never test/evidence retention — almost no t
 workplan/track (default-delete at closeout stands) unless deleting it breaks production code;
 "STEAD might consume this someday" is not a lifecycle exemption. Born from the 12.3 stop: the 12.2→12.8 horizon seam was
 dropped and the disruption map sat walled at 0.0 while macro disruption ran ~8446.
+**EML is the SimThing ISA; the kernel is its microarchitecture (Owner-ruled 2026-07-26).**
+Core derivable functions are canonically EXPRESSED as **sealed EML stacks** in a core library —
+the queryable, predictable spec every descendant pulls (including emission-band threshold
+branching). The lowerer recognizes well-known core stacks and EXECUTES them as the existing
+fused kernels (reduction passes, accumulator ops): the spec is inspectable, the invariant hot
+loop pays zero interpreter cost. Authored/variable logic — bands, urgency, allocation weights,
+specialization behavior — stays interpreted EvalEML. **Library growth law:** the library grows
+freely in posture, but **every addition — opcode or stack — is DA-approved**; core stacks are
+sealed (composable, never shadowed); the consuming-stack requirement is WAIVED for
+horizon-targeted additions, which must carry a dated `HORIZON-ENTRY(iso-date)` marker (undated
+horizon seams were dropped twice in 0.0.8.6 — dated markers are what the tripwires can assess).
+**Call-tracking telemetry:** per-slot × per-stack invocation profiles are always-on **iff bound
+to an existing checked/cleared lifecycle of matching scope** (bind candidate at implementation:
+the session observation/snapshot lifecycle); if no such lifecycle exists, fall back to global
+per-stack-id counters always-on + per-slot profiles as an opt-in observation channel. Telemetry
+is **write-only with respect to the sim** — counters never feed any tick computation (bit-exact
+replay; decisions stay on-device). The call profile is a standing Consumer-Law surface.
+**Bespoke parallel systems are constitutional violations, not conveniences.** Named
+transitional debts with scheduled promotions: the R6/R6B/R6C combat rehearsals (Phase 7) and
+the movement readback seam (Phase 6). Anything new of that shape fails admission.
 **Emergence-first (the prize law).** Every phase carries a 12.10-style emergence falsifier:
 authored-parameter changes must produce qualitatively different, UNSCRIPTED macro outcomes; a
 phase that leaves the mechanism sound but the dynamics inert — over-quantized bands, over-
