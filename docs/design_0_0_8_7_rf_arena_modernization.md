@@ -116,9 +116,40 @@ contracts (RF-2A) exist.
   `DefaultDisabled` opt-out retained). Behavior when parented and as a parent is intrinsic,
   natural, recursively automatic. Collapse the config seams (ResourceFlowSpec / ArenaRegistry /
   execution profiles / registrations) into the derivation.
-- **P2 — Overlays as THE data/settings/directives layer.** Canonize overlays with a full,
-  **living API surface**: lightweight and versatile enough to span capability-tree overlays
-  all the way to **user-action mechanisms**. One overlay law from authored data to operator input.
+- **P2 — Overlays as THE data/settings/directives layer (Owner re-grounding, 2026-07-26).**
+  Canonize overlays with a full, **living API surface** — one modification law from authored
+  data to operator input, per core design §6 ("every modifier is an overlay; there is no other
+  modification mechanism"). The canonized taxonomy, so agents cannot re-interpret it:
+  **(1) Capability bestowals** — the Capability Tree contract per `capability_tree_v1.md`:
+  a tree is ONE SimThing child of its owner (never a tree of SimThings); entries are
+  progress/rate sub-field pairs (GPU-tracked, threshold-detected, **anchored per P0(e)** —
+  unlock proximity is observable) plus one **suspended overlay** per entry; unlock = threshold
+  crossing → prerequisite gate → `ActivateOverlay` at the generation boundary; **tiered AND
+  mutual prerequisites are admission-validated data** (typed DAG — cycles/dangling refs are
+  spanned admission errors; the runtime gate check stays boundary work), with mutual
+  exclusivity (`max_active`) enforced by same-barrier sibling suspension — atomic at the
+  generation. **The effect-target discipline is load-bearing** (ADR
+  `capability_effect_target_scope.md`): overlay-prep applies by TREE POSITION, so every effect
+  overlay must live on its resolved host (`EffectTarget` Owner / tree / root via
+  `overlay_hosts`) — the documented v0 silent-misdelivery trap is CLOSED by canonization, not
+  re-documented. Bestowed values with `EffectTarget::Owner` write the **owner SimThing's
+  policy/weight columns** — a bestowal IS a standing policy delta at the operator's seat.
+  Fission inheritance rides `capability_container_kinds` / `clone_capability_children`.
+  **(2) Standing policies** — overlays writing weight columns read by the allocation sweep:
+  "a policy IS its numeric pressure on the flow" — never a policy enum, never a branch.
+  **(3) Lifecycled transient effects** — `Transient{DissolveConditions}` overlays (property
+  thresholds, generation timers, override) over the tree RF evaluation; activation/dissolution
+  is boundary-protocol work at generation barriers (under continuous posture, via the Phase 6
+  async command queue with logged injection generations), never mid-generation mutation.
+  **(4) Operator directives** — `OverlaySource::Player`, structurally IDENTICAL to AI policy:
+  **orders are price injections, never command channels.** The canonical example is binding:
+  a user-selected destination = a dominant weight overlay (e.g. +10000) on the fleet's need
+  columns — the fleet still behaves entirely by STEAD banded commitments, but the price
+  dominance makes the outcome undeniable, so it FEELS like a responsive order while remaining
+  lawful emergence. Dominance magnitudes are an **authored order-weight class** (sanctioned
+  band that dominates ambient prices; finite — never infinities, preserving RF-1 envelopes +
+  replay). Directive latency = decision-ingress latency (band crossing at the next
+  generation), giving orders their responsive feel by construction.
 - **P3 — Specialization protocol.** Specialized SimThings (spatial, owner, session, …) get a
   protocol **richer than a kind enumeration** — but it **must not break existing kind code**.
   Promotion, not rewrite; every rung keeps the existing corpus green (compatibility falsifier:
@@ -186,7 +217,7 @@ interventions the Owner adds at commitment: **guards early, sweeps late.**
 |---|---|---|
 | 0 | **[HARNESS]** RFH-1 `RF-COLUMN-ADMISSION-GATE-0` + hygiene prerequisites | **Type boundary (= OC-K2.1a; kernel lane, Owner-gated K2 lineage) — lands NON-BREAKING before core work begins.** `ColumnIndex` constructor taxonomy in `simthing-core`: `new` goes non-public; legal doors = layout-derived paths (`PropertyLayout::offset_of` / `col_for_role` / arena-layout ranges) + two doc-fenced choke points (GPU round-trip constructor; fenced raw door for oracle/rehearsal code — existing ~170 call sites keep compiling through it, only NEW code is steered). Retarget `COLUMN-INDEX-MINT` to the choke-point tokens; DA-gate exclusion edits on the scan. Rides along: execution-status taxonomy `executed / oracle / rehearsal / compile-plan`, board-surfaced; **cell-storage-polymorphism tripwire (P0(e) fence i)** — HEURISTIC scan flagging tagged-union/templated/heterogeneous matrix-cell reaches, logged to the reach log as the evidence base for future ruling expansion; **bespoke-pathfinder tripwire (P5 PALMA door)** — HEURISTIC scan flagging A*/Dijkstra/priority-queue graph-search reaches in production crates, logged to the reach log; **border-service tripwire (P5 Gu-Yang door)** — HEURISTIC scan flagging border/contour/frontline-service reaches (tracers, polyline engines, border objects) in production crates, logged to the reach log. Falsifier: post-rung, the scan proves every remaining `::new` is inside the fence. **Interim standing order (in force NOW, until this phase lands): `COLUMN-INDEX-MINT` exclusion additions are FROZEN — DA sign-off required; peer-citation is not a valid justification.** |
 | 1 | Intrinsic RF kernel (P1) | Derived-at-admission participation; config-seam collapse (incl. `min_plus_traversal_field` enable/disable — same session-wiring family); RF-1 oracle + determinism judge every rung; core calendar-vocabulary rename ride-along (P0 generation ruling). |
-| 2 | Overlay API canonization (P2) | Data → settings → directives → capability trees → user actions; one living surface. |
+| 2 | Overlay API canonization (P2: the four-family overlay law) | Canonizes the P2 taxonomy — capability bestowals / standing policies / lifecycled transients / operator directives — as ONE living surface. Concrete obligations: **close the effect-target v0 trap** (ADR `capability_effect_target_scope.md` — host placement + `overlay_hosts` become the admission-checked canonical path; silent misdelivery becomes a spanned error); **admission-validate prerequisite DAGs** (tiered + mutual; cycles/dangling = spanned errors; `max_active` same-barrier atomicity); **generation-align the unlock/activation boundary protocol** (day-boundary language retired per the P0 generation ruling; continuous posture routes through Phase 6's logged command queue); **land the authored order-weight class** (finite dominance band for operator directives — the "+10000 feels like an order" mechanism); capability progress sub-fields anchored per P0(e). Exit-proof: a capability unlock, a policy shift, a timed crisis, and a user destination-order all express as overlays through the one surface — zero bespoke channels — and the misdelivery fixture (effect authored against a host that lacks the property) hard-errors at admission instead of silently landing. |
 | 3 | Specialization protocol (P3) | Richer-than-kind, kind-compatible; spatial/owner/session first citizens. |
 | 4 | Intrinsic GPU residency (P4) | Row/col + parent-slotting + child-row allocation as object semantics. |
 | 5 | Intrinsic field influence (P5: the Field Triad — STEAD + PALMA + Gu-Yang) | Falloff emission + heatmap interaction + Gu-Yang/PALMA consumption. **STEAD-as-emission-bands (Owner correction 2026-07-20):** STEAD influence on a parent SimThing is READ as **emission-band thresholds** — a banded ladder of threshold registrations on the accumulated cell (existing machinery composed: N band edges = N threshold registrations, each with its own event kind/band id; the RF-5A append-scan proved multi-scan sequencing). Bands bind **1:1 to the falloff influence bands in the heatmap**; intensity (band), velocity (banded thresholds on the GovernedPair rate cell), and magnitude (value) are all observable/measurable through existing property mechanisms. **Quantize the READING, never the FIELD**: falloff superposition + conservation math stay continuous; bands are the observation/decision/coupling surface only — band edges must not enter accumulation math (replay determinism + RF-1 envelope). **Implements the P0(e) STEAD fulcrums (Owner ruling 2026-07-26):** (1) anchor disposition at admission — default-Anchored, authored `Unobserved{reason}` opt-out, dark-cell board surface; (2) write-door impact — band-crossing deltas derived in the fused mutation pass; fission/fusion + table-reallocation ops refuse to encode without anchor remaps; (3) the derived anchor table as the SOLE observation surface for heatmap/Gu-Yang/PALMA/Studio/telemetry; (4) domain-generic ladders — bool/int/float-complex band evaluation as per-domain EML coding paths. **Implements the P5 PALMA elevation (Owner ruling 2026-07-26):** semiring tag on field registrations (accumulate / min-plus / Boolean over ONE sweep mechanism); `W` = sealed EML cost projection over observables; `W`/`D` land as ordinary anchored property columns (D-field bands emit corridor events for free); promotes `min_plus_traversal_field` from its enable/disable session-wiring posture to derived-at-admission (the P1 kill-list pattern) — the existing GPU-resident dispatch + CPU oracle become the executed instance + judge. **Implements the P5 Gu-Yang elevation (Owner ruling 2026-07-26):** dominance/margin/contest/border-band/chokepoint as sealed EML comparative projections over co-located triad columns (all anchored -> free front events); default-derived for spatial specialists with >=2 admitted competing emitter classes (born, not wired; authored opt-out); deterministic authored tie-break at margin==0; `stead_spatial_contract_guards` + mapgen batteries stay green every rung (contract section 8). |
