@@ -73,3 +73,11 @@ date	role	query	anchors_served	hit
 2026-07-18T04:38:00Z	coding	--grep property-value-rf-overlays	property-value-rf-overlays	hit
 2026-07-19T03:01:46Z	coding	--grep need_binding	none	none
 2026-07-19T03:01:46Z	coding	--domain field-policy	field-policy-time-decisions	hit
+2026-07-26T18:05:36Z	coding	--domain core-0087	rf-arena-substrate,simthing-0087-binding-laws,simthing-0087-pillars	hit
+2026-07-26T18:05:36Z	coding	--grep pillars|binding laws|COLUMN-INDEX-MINT|ColumnIndex|admission	none	none
+2026-07-26T18:05:46Z	coding	--paths docs/adr/resource_flow_substrate.md	peripheral-scope-adrs,session-lifecycle-adr-family	hit
+2026-07-26T18:16:33Z	coding	--grep orientation-harness-core	orientation-harness-core	hit
+2026-07-26T18:16:33Z	coding	--grep scanner-selftest-delta-gate	scanner-selftest-delta-gate	hit
+2026-07-26T18:16:33Z	coding	--grep workshop-candidate-homing	workshop-candidate-homing	hit
+2026-07-26T18:16:34Z	coding	--grep OC-K2.1a	none	none
+2026-07-26T18:16:34Z	coding	--grep Phase 0	simthing-0087-binding-laws,simthing-0087-pillars	hit

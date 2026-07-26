@@ -1,12 +1,12 @@
-// CI fixture: COLUMN-INDEX-MINT — ungrandfathered public mint (HEURISTIC).
-// Must not match residual-grandfathered paths (registry, accumulator_op, runtime_0080, …).
+// CI fixture: COLUMN-INDEX-MINT — unfenced use of a named admission door (HEURISTIC).
+// Must not match the constructor definitions or the registry-owned layout pathway.
 struct ColumnIndex;
 impl ColumnIndex {
-    fn new(_: usize) -> Self {
+    fn from_raw_for_oracle_or_rehearsal(_: usize) -> Self {
         Self
     }
 }
 
 pub fn mint_unsealed_column_index() -> ColumnIndex {
-    ColumnIndex::new(0)
+    ColumnIndex::from_raw_for_oracle_or_rehearsal(0)
 }

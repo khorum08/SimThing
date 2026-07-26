@@ -63,7 +63,47 @@ impl std::fmt::Display for ColumnIndex {
 }
 
 impl ColumnIndex {
+    /// Compatibility alias for legacy column mints.
+    ///
+    /// New production code must use the layout-derived role pathway or the
+    /// explicitly fenced GPU round-trip and oracle/rehearsal doors.
+    /// Promotion blocker: rung 9.2 migrates legacy callers and removes this
+    /// compatibility surface.
+    #[deprecated(
+        note = "new code must use PropertyColumnRange::col_for_role, from_gpu_round_trip, or from_raw_for_oracle_or_rehearsal"
+    )]
     pub fn new(raw: usize) -> Self {
+        Self::from_raw_for_oracle_or_rehearsal(raw)
+    }
+
+    /// LAYOUT-DERIVED door: combines a registry-owned global range with a
+    /// [`RoleOffset`] resolved by [`crate::property::PropertyLayout::offset_of`].
+    ///
+    /// This constructor is crate-private so external callers must enter through
+    /// [`crate::registry::PropertyColumnRange::col_for_role`] (or its range
+    /// counterpart). Promotion blocker: none; this is the permanent P0/P4 role
+    /// pathway and must remain registry-owned.
+    pub(crate) fn from_layout_role(range_start: usize, local: RoleOffset) -> Self {
+        Self(range_start + local.lane())
+    }
+
+    /// GPU-ROUND-TRIP door: re-materializes a column from a `gpu.*_col`
+    /// adapter/plan field after a GPU representation round trip.
+    ///
+    /// Promotion blocker: rung 4.2 carries [`ColumnIndex`] through plan structs
+    /// end-to-end and confines raw `u32` columns to the single WGSL
+    /// encode/decode boundary.
+    pub fn from_gpu_round_trip(raw: u32) -> Self {
+        Self(raw as usize)
+    }
+
+    /// RAW-ORACLE-REHEARSAL door: mints an independent raw column only for CPU
+    /// oracles and bounded rehearsal code whose judging independence requires
+    /// construction without the production layout path.
+    ///
+    /// Promotion blocker: retire uses as each oracle/rehearsal gains a typed
+    /// input without depending on the production derivation it judges.
+    pub fn from_raw_for_oracle_or_rehearsal(raw: usize) -> Self {
         Self(raw)
     }
 
@@ -84,3 +124,27 @@ impl From<ColumnIndex> for usize {
 
 /// Compile-time guard: global column and layout lane must not mix at typed boundaries.
 pub fn _column_index_axis_distinct_from_role_offset(_col: ColumnIndex, _offset: RoleOffset) {}
+
+#[cfg(test)]
+mod tests {
+    use super::ColumnIndex;
+
+    #[test]
+    fn gpu_round_trip_door_preserves_column_bits() {
+        assert_eq!(ColumnIndex::from_gpu_round_trip(17).raw(), 17);
+    }
+
+    #[test]
+    fn raw_oracle_rehearsal_door_preserves_column_bits() {
+        assert_eq!(ColumnIndex::from_raw_for_oracle_or_rehearsal(23).raw(), 23);
+    }
+
+    #[test]
+    #[allow(deprecated)]
+    fn legacy_new_delegates_to_the_fenced_raw_door() {
+        assert_eq!(
+            ColumnIndex::new(31),
+            ColumnIndex::from_raw_for_oracle_or_rehearsal(31)
+        );
+    }
+}

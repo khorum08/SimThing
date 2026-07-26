@@ -13,7 +13,7 @@ This digest is a derived context artifact for low-context agents. If it disagree
 | scripts/ci/allow/inert_buffer_handles.txt | 2 | 9e2069fa5730f17cacde1c671ebc17beb59f50738d2dcb914bceae13f9b8b3a4 |
 | scripts/ci/allow/kernel_surface.txt | 227 | 1a783371527a949bb870d724903143ad98e1c7c35818613c7dcc79e8c8746a5a |
 | scripts/ci/allow/sealed_types.txt | 12 | 0465cdb467587a9fd44051ba281121b8bf5d718ac7e0ede1998856c6ded97a65 |
-| scripts/ci/scans.tsv | 17 | eb8f3e54e62ccc136bb3a1386f569cf131d79e1b2628d52ab54f423c9c5e186d |
+| scripts/ci/scans.tsv | 17 | f33f3872308011c4824282255677339207ed13967ed03a2d26f22eb8856c7d82 |
 
 ## Sanctioned Sealed Producers
 
@@ -301,7 +301,7 @@ This digest is a derived context artifact for low-context agents. If it disagree
 | UNSAFE-ALLOW-ATTR | RELIABLE | design §5 allow unsafe attr | crates/simthing-{kernel,sim}/src/lib.rs | #!\\[allow\\(unsafe_code\\)\\] | (none) | retire when crate attributes are admission-typed not prose | scans.tsv |
 | UNSAFE-FORBID-ATTR | RELIABLE | design §5 forbid unsafe attr | crates/simthing-{kernel,sim}/src/lib.rs | @REQUIRE:#!\\[forbid\\(unsafe_code\\)\\] | (none) | retire when semantic-free crate template enforces forbid at type boundary | scans.tsv |
 | DENY-TOML-STUB | RELIABLE | design §0.6.6 deny.toml stub | deny.toml | . | (none) | retire when dependency policy is compile-time typed not file-shaped | scans.tsv |
-| COLUMN-INDEX-MINT | HEURISTIC | design §5 ColumnIndex::new residual tripwire (OC-K-COLUMN-ROLE-0) | crates/**/src/** | ColumnIndex::new | column_index\\.rs;registry\\.rs;.*accumulator_op;cpu_oracle\\.rs;dress_rehearsal.;arena_allocation_plan\\.rs;resource_economy_compile\\.rs;first_slice_mapping_runtime\\.rs;gated_rates\\.rs;owner_silo_accumulator.;structural_link_accumulator.;transfer_accumulator\\.rs;emission_accumulator\\.rs;intensity_accumulator\\.rs;region_field_admission\\.rs;accumulator_op_builder\\.rs;compile_fail;^\\s*//!;^\\s*///;^\\s*// | retire when ColumnIndex::new is admission-gated (pub(crate) + layout-derived constructors only) — OC-K2.1 backlog | scans.tsv |
+| COLUMN-INDEX-MINT | HEURISTIC | design 0.0.8.7 §3 Phase 0 / §5 ColumnIndex admission doors (OC-K2.1a) | crates/**/src/** | ColumnIndex::(?:from_layout_role\|from_gpu_round_trip\|from_raw_for_oracle_or_rehearsal) | registry\\.rs;compile_fail;^\\s*//!;^\\s*///;^\\s*// | retire at rung 9.2 when legacy ColumnIndex::new sites migrate and raw/GPU doors collapse to typed boundaries | scans.tsv |
 | SIM-KIND-READ | HEURISTIC | design §5 sim .kind read | crates/simthing-sim/src/** | match .*\\.kind\|\\.kind\\b | compile_fail;^\\s*//!;^\\s*///;^\\s*//;delta_log;sim_runtime_tree;kind_production_audit;^\\s*assert_\|^\\s*#\\[test\\] | promote when runtime tree view is kind-free at type boundary | scans.tsv |
 | SEMANTIC-WORDS | HEURISTIC | design §5 semantic words below spec | crates/simthing-{sim,kernel}/src/** | faction\|combat\|terran\|pirate\|diplomacy | compile_fail;^\\s*//!;^\\s*///;^\\s*//;^\\s*assert_\|^\\s*#\\[test\\]\|SimThingKind:: | promote when game semantics are spec-boundary typed only | scans.tsv |
 | SPEC-STRING-CHANNEL | HEURISTIC | design §5 stringly channel identity | crates/simthing-spec/src/** | owner_ref *: *(Option<)?String\|resource_key *: *(Option<)?String | compile_fail;^\\s*//!;^\\s*///;^\\s*//;channel_key\\.rs | promote when channel identity is newtyped in spec admission | scans.tsv |
