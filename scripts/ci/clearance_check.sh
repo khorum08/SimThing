@@ -23,6 +23,7 @@ GATE_WIRING_PATHS=(
   "scripts/ci/anchor_reach_log.tsv"
   "scripts/ci/anchor_query.sh"
   "scripts/ci/anchor_check.sh"
+  "scripts/ci/scans.tsv"
   ".github/workflows/doctrine-exec-commands.yml"
   ".github/workflows/clearance.yml"
   "scripts/ci/doctrine_exec_commands.sh"
@@ -1681,6 +1682,7 @@ run_selftest() {
     clearance_selftest_gate_wiring_self_application
     clearance_selftest_gate_wiring_doctrine_anchors_tsv
     clearance_selftest_gate_wiring_anchor_triggers_tsv
+    clearance_selftest_gate_wiring_scans_exclusion_row
     clearance_selftest_required_anchors_kernel_path
     clearance_selftest_suspended_class
     clearance_selftest_missing_required_proof_fields

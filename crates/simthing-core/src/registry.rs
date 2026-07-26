@@ -32,7 +32,7 @@ impl PropertyColumnRange {
     ) -> Option<ColumnIndex> {
         layout
             .offset_of(role)
-            .map(|local| ColumnIndex::new(self.start + local.lane()))
+            .map(|local| ColumnIndex::from_layout_role(self.start, local))
     }
 
     /// Global GPU column range (start, len) for a multi-width sub-field.
@@ -43,7 +43,7 @@ impl PropertyColumnRange {
     ) -> Option<(ColumnIndex, usize)> {
         let local = layout.offset_of(role)?;
         let width = layout.width_of(role)?;
-        Some((ColumnIndex::new(self.start + local.lane()), width))
+        Some((ColumnIndex::from_layout_role(self.start, local), width))
     }
 }
 
@@ -171,6 +171,7 @@ mod tests {
 
     /// OC-K-COLUMN-ROLE-0: col_for_role mints ColumnIndex, not bare usize.
     #[test]
+    #[allow(deprecated)]
     fn oc_k_column_role_0_col_for_role_returns_column_index() {
         let layout = PropertyLayout {
             sub_fields: vec![

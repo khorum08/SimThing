@@ -26,7 +26,7 @@ agent's context window. Each pillar owns a rung-range:
 | Pillar | What it rustified | Enforcement form |
 |---|---|---|
 | **0.0.8.4 Admission Substrate** (AS-1–8B) | column access, channel/index identity, kind-free tick view, `SimulationFabric`, `StructuralCoord`, `PackedUpload` | **rung 1 — types.** The illegal state does not compile; one `compile_fail` per promoted invariant is its whole proof. |
-| **0.0.8.4.5 SimThing-Kernel** | constitutional spine — sole authoritative mutate/emit path | **rung 1 at architecture scale.** Seals + cross-crate seal law. **OC-K\*:** `ExactMagnitudeProof`, decision ingress, `OpcodeRegistrationGate`, role→`ColumnIndex` (residual `COLUMN-INDEX-MINT`). |
+| **0.0.8.4.5 SimThing-Kernel** | constitutional spine — sole authoritative mutate/emit path | **rung 1 at architecture scale.** Seals + cross-crate seal law. **OC-K\*:** `ExactMagnitudeProof`, decision ingress, `OpcodeRegistrationGate`, role→`ColumnIndex` (`COLUMN-INDEX-MINT` now watches the named admission doors through rung 9.2). |
 | **0.0.8.4.6 CI Scaffolding** (Tracks A/B/C/D) | everything types cannot yet or can never reach | **rungs 2–3, mechanized.** Allowlist/blocklist scans, the self-testing scanner, test-admission law, the digest/inner-loop carrot, and the clearance ladder below. |
 
 **How it is used — an admissions-based rigor and clearance system.** Nothing in this repo is *believed*;
@@ -347,7 +347,7 @@ source of truth** — it consumes the data in §2, so the discipline that keeps 
 
 ## 7. Agent onboarding procedure — do this, in order, every rung (the standard)
 
-1. **Read the digest first.** Kernel: `docs/sanctioned_surface.md` + `docs/eml_gadget_library.md`. Residual `COLUMN-INDEX-MINT` (retired: `RAW-DATA-INDEX` / `AS5-COLUMN-ALIAS`). No `lib.rs` rediscovery.
+1. **Read the digest first.** Kernel: `docs/sanctioned_surface.md` + `docs/eml_gadget_library.md`. Admission-door `COLUMN-INDEX-MINT` through rung 9.2 (retired: `RAW-DATA-INDEX` / `AS5-COLUMN-ALIAS`). No `lib.rs` rediscovery.
 1b. **Doctrine on trigger:** `bash scripts/ci/anchor_query.sh` — not raw greps. Anchored-doc edits: `anchor_check.sh --resync` + commit `doctrine_anchors.tsv`.
 2. **Run the coding loop as you edit.** After each small edit: `cargo check -p <touched-crate>`, then
    `bash scripts/ci/agent_scan.sh`. Fix a FAIL immediately from its printed remedy; do not accumulate.

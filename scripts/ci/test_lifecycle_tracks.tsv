@@ -8,3 +8,4 @@ harness-fixture	open	-	docs/ci_screening_surface.md	Fused fixture birth_track: f
 0.0.8.4.8.3-orientation-curation	closed	2026-07-10	docs/design_0_0_8_4_8_3_orientation_curation.md	Owner-directed curation-deficit correction; fixtures birth here
 0.0.8.4.8.4-hd-board	closed	2026-07-15	docs/design_0_0_8_4_8_4_hd_board.md	HD Board substrate; closed via HD-CLOSEOUT-0 (#1353); registered retroactively at HC closeout
 0.0.8.4.8.4.1-harness-corrections	closed	2026-07-16	docs/design_0_0_8_4_8_4_1_harness_corrections.md	Harness corrections (HC track); closes via HC-CLOSEOUT-0
+0.0.8.7-rf-arena-modernization	open	-	docs/design_0_0_8_7_rf_arena_modernization.md	RF Arena Modernization active CORE track; tests born during the 0.0.8.7 ladder use this track envelope
