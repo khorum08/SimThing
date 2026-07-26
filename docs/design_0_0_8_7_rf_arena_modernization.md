@@ -1,10 +1,11 @@
 # 0.0.8.7 — RF Arena Modernization (the SimThing unification)
 
-> **Status: STUB / AUTHORED — NOT OPENED.** Owner-directed 2026-07-19. Develops while the
-> 0.0.8.6 TP chain finishes; opens only after TP closes and the Owner commits the full plan
-> (via `gen_orientation.sh --open`; pointer-lifecycle gate applies). Do not flip the pointer;
-> do not dispatch from this doc. Phase ladders below are commitment-time placeholders — rung
-> decomposition happens when the Owner commits.
+> **Status: STUB / AUTHORED — NOT OPENED.** Owner-directed 2026-07-19. 0.0.8.6 is CLOSED
+> (2026-07-25); this track opens when the Owner commits the full plan
+> (via `gen_orientation.sh --open`; pointer-lifecycle gate applies). Absorbs the former
+> 0.0.8.4.8.4.2 RF-harness track (Owner ruling 2026-07-26; see §3 [HARNESS] phases and §5.2).
+> Do not flip the pointer; do not dispatch from this doc. Phase ladders below are
+> commitment-time placeholders — rung decomposition happens when the Owner commits.
 >
 > **CORE track.** At completion this is **built INTO THE CORE**: the canonized object model
 > lands as constitutional sections of `simthing_core_design.md`, and the **SimThing object is
@@ -56,7 +57,8 @@ contracts (RF-2A) exist.
   row/column setup is as intrinsic as RF flow, property-value emission bands, and thresholds.
   **A SimThing knows how to slot into a parent, and how child rows are allocated relative to
   it.** Slot/column identity flows from the object model through the role pathway — never
-  minted beside it (consumes the RF-harness column admission-gate).
+  minted beside it (consumes the Phase 0 column admission-gate; the Phase 8 sweep then
+  migrates legacy sites onto the object-semantic doors this phase defines).
 - **P5 — Intrinsic STEAD influence.** Resource accumulation on spatial SimThings emits
   influence falloff as *object behavior* (not authored emitters); falloff superposition forms
   the heatmaps; their interactions feed **Gu-Yang pathfinding and PALMA borders** through the
@@ -67,9 +69,15 @@ contracts (RF-2A) exist.
 
 ## 3. Phase ladder (stub; decomposed at commitment)
 
+Phases tagged **[HARNESS]** are guard/CI/lifecycle work — **not SimThing core simulation work**
+(Owner ruling 2026-07-26, absorbing the former 0.0.8.4.8.4.2 RF-harness track). They protect and
+de-cruft the substrate the core phases are built on, but they are NOT part of the object model
+and do NOT land in `simthing_core_design.md` at canonization. Split rule for any further RF drift
+interventions the Owner adds at commitment: **guards early, sweeps late.**
+
 | Phase | Theme | Note |
 |---|---|---|
-| 0 | Hygiene prerequisites | The 0.0.8.4.8.4.2 RF-harness interventions (column admission-gate + migration; execution-status taxonomy `executed / oracle / rehearsal / compile-plan`, board-surfaced; deferred candidates). Fold-in vs. precede = Owner decision at commitment. |
+| 0 | **[HARNESS]** RFH-1 `RF-COLUMN-ADMISSION-GATE-0` + hygiene prerequisites | **Type boundary (= OC-K2.1a; kernel lane, Owner-gated K2 lineage) — lands NON-BREAKING before core work begins.** `ColumnIndex` constructor taxonomy in `simthing-core`: `new` goes non-public; legal doors = layout-derived paths (`PropertyLayout::offset_of` / `col_for_role` / arena-layout ranges) + two doc-fenced choke points (GPU round-trip constructor; fenced raw door for oracle/rehearsal code — existing ~170 call sites keep compiling through it, only NEW code is steered). Retarget `COLUMN-INDEX-MINT` to the choke-point tokens; DA-gate exclusion edits on the scan. Rides along: execution-status taxonomy `executed / oracle / rehearsal / compile-plan`, board-surfaced. Falsifier: post-rung, the scan proves every remaining `::new` is inside the fence. **Interim standing order (in force NOW, until this phase lands): `COLUMN-INDEX-MINT` exclusion additions are FROZEN — DA sign-off required; peer-citation is not a valid justification.** |
 | 1 | Intrinsic RF kernel (P1) | Derived-at-admission participation; config-seam collapse; RF-1 oracle + determinism judge every rung. |
 | 2 | Overlay API canonization (P2) | Data → settings → directives → capability trees → user actions; one living surface. |
 | 3 | Specialization protocol (P3) | Richer-than-kind, kind-compatible; spatial/owner/session first citizens. |
@@ -77,7 +85,8 @@ contracts (RF-2A) exist.
 | 5 | Intrinsic STEAD influence (P5) | Falloff emission + heatmap interaction + Gu-Yang/PALMA consumption. **STEAD-as-emission-bands (Owner correction 2026-07-20):** STEAD influence on a parent SimThing is READ as **emission-band thresholds** — a banded ladder of threshold registrations on the accumulated cell (existing machinery composed: N band edges = N threshold registrations, each with its own event kind/band id; the RF-5A append-scan proved multi-scan sequencing). Bands bind **1:1 to the falloff influence bands in the heatmap**; intensity (band), velocity (banded thresholds on the GovernedPair rate cell), and magnitude (value) are all observable/measurable through existing property mechanisms. **Quantize the READING, never the FIELD**: falloff superposition + conservation math stay continuous; bands are the observation/decision/coupling surface only — band edges must not enter accumulation math (replay determinism + RF-1 envelope). |
 | 6 | **Movement-Front execution** (Owner-added 2026-07-20) | Fleet movement AUTHORITY: spatial SimThings move along STEAD need/falloff gradients (core §7 automaton, Gu-Yang pathfinding, PALMA borders) under the ordinary tick — decisions stay threshold crossings, movement state is sim authority. **Decision ingress = sealed band-crossing events from Phase 5's emission bands (OC-K-DECISION-INGRESS-0 pattern) — never CPU branching on raw field/heatmap reads** (the naive-Phase-6 temptation is pre-empted by design). Fills the 12.4 `InTransit` readback seam ("test-private until authoritative movement readback exists"); the 12.5 icon descriptors start expressing real transit with zero icon-layer change (the renderer-seam design anticipates this). |
 | 7 | **Combat as RF arena** (Owner-added 2026-07-20) | The axiom made mechanical: combat = RF arena resolution (HP/damage as resource flows). Promote the R6/R6B/R6C dress rehearsals from falsification-oracle to executed default via the proven RF promotion pattern (oracle-first → executed → legacy/rehearsal re-anchored); RF-1-style conservation judging; rehearsals retain oracle role against the executed path. |
-| 8 | Portability proof + CORE canonization (P6) | Non-TP domain works untouched; object model written into `simthing_core_design.md`; SimThing complete and distinct. |
+| 8 | **[HARNESS]** RFH-2 `RF-COLUMN-MINT-MIGRATE-0` | **Migration sweep (= OC-K2.1b) — deliberately LATE (Owner ruling 2026-07-26): Phase 4 makes row/col identity object semantics and rewrites most of the ~170 `ColumnIndex` call sites, so the sweep runs ONCE, onto the FINAL object-semantic doors, not twice onto interim ones.** Mechanically move all remaining call sites onto the legal doors; shrink/delete the fenced raw door; **delete the entire exclusion list; retire/demote `COLUMN-INDEX-MINT` per its own promotion-blocker.** RF-3-style sweep — wide, boring, safe only because Phase 0's doors + Phase 4's object model exist. Falsifier: exclusion list empty; tripwire retired; full build + RF batteries green. Part of track de-crufting, not the object model. |
+| 9 | Portability proof + CORE canonization (P6) | Non-TP domain works untouched; object model written into `simthing_core_design.md` (HARNESS phases excluded — they canonize nothing); SimThing complete and distinct. |
 
 ## 4. Binding laws (carry from day one)
 
@@ -108,6 +117,6 @@ here, not as scenario patches.
 
 ## 5. Open conditions
 
-1. 0.0.8.6 TP chain closed (RF-5A → RF-5 → 12.10) and 0.0.8.6 CLOSED/PARKED.
-2. RF-harness (0.0.8.4.8.4.2) disposition decided: folded as Phase 0 or run as pre-track.
-3. Owner commits the full plan (rung decomposition of §3); then `gen_orientation.sh --open`.
+1. ~~0.0.8.6 TP chain closed~~ **SATISFIED** — 0.0.8.6 CLOSED 2026-07-25 (receipt `21f77abb55c9`, PR #1431).
+2. ~~RF-harness (0.0.8.4.8.4.2) disposition~~ **RULED 2026-07-26** — folded into this track: RFH-1 = Phase 0 (guard, early, non-breaking), RFH-2 = Phase 8 (sweep, late, after Phase 4's object model). The separate track is dissolved; `design_0_0_8_4_8_4_2_RF_harness.md` reduced to a superseded pointer.
+3. Owner commits the full plan (rung decomposition of §3, including any further RF drift interventions — guards early, sweeps late); then `gen_orientation.sh --open`.

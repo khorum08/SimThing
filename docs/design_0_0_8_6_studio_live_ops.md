@@ -344,4 +344,4 @@ New tests under this track use `birth_track = 0.0.8.6-studio-live-ops` once the 
 | Debug baseline | `cargo build -p simthing-mapeditor --bin simthing-studio` |
 | Clause load baseline | Canonical `scenarios/terran_pirate_galaxy.clause` via production ingest `hydrate_scenario_with_source_base` (clause parent dir) |
 
-**Closed-track instruction for agents:** the track is CLOSED — do not dispatch from this doc. Next tracks are Owner-commitment-gated stubs: [`design_0_0_8_4_8_4_2_RF_harness.md`](design_0_0_8_4_8_4_2_RF_harness.md) and [`design_0_0_8_7_rf_arena_modernization.md`](design_0_0_8_7_rf_arena_modernization.md). Do not reopen 0.0.8.5.
+**Closed-track instruction for agents:** the track is CLOSED — do not dispatch from this doc. Next track is the Owner-commitment-gated stub [`design_0_0_8_7_rf_arena_modernization.md`](design_0_0_8_7_rf_arena_modernization.md) (which absorbed the RF-harness interventions as [HARNESS] phases, Owner ruling 2026-07-26). Do not reopen 0.0.8.5.
