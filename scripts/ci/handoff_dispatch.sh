@@ -589,6 +589,25 @@ def board_json(path_arg=None):
             degraded.append(f"{name}:{type(exc).__name__}")
             return default
 
+    def execution_status_summary():
+        # EXECUTION-STATUS-TAXONOMY-0: compact counts for the board mirror.
+        path = ROOT / "scripts" / "ci" / "execution_status_taxonomy.tsv"
+        legal = ("executed", "oracle", "rehearsal", "compile-plan")
+        counts = {k: 0 for k in legal}
+        if not path.is_file():
+            return counts
+        for raw in path.read_text(encoding="utf-8").splitlines():
+            line = raw.strip()
+            if not line or line.startswith("#"):
+                continue
+            parts = line.split("\t")
+            if len(parts) < 2:
+                continue
+            cls = parts[1].strip()
+            if cls in counts:
+                counts[cls] += 1
+        return counts
+
     data = {
         "track": _safe("track", active_track_id, ""),
         "active_pointer": _safe("active_pointer", active_pointer, ""),
@@ -599,6 +618,7 @@ def board_json(path_arg=None):
         "owner_directives": _safe("owner_directives", owner_directives, []),
         "leases": _safe("leases", lease_summary, {}),
         "ladder": _safe("ladder", ladder_states, []),
+        "execution_status": _safe("execution_status", execution_status_summary, {}),
     }
     if degraded:
         data["_degraded"] = degraded
@@ -683,6 +703,15 @@ def render_board_markdown(data):
     lines.append(f"- track: `{data.get('track', '')}`")
     lines.append(f"- active_pointer: `{data.get('active_pointer', '')}`")
     lines.append(f"- master_head: `{str(data.get('master_head', ''))[:12]}`")
+    est = data.get("execution_status") or {}
+    if est:
+        lines.append(
+            "- execution_status: "
+            f"executed={est.get('executed', 0)} "
+            f"oracle={est.get('oracle', 0)} "
+            f"rehearsal={est.get('rehearsal', 0)} "
+            f"compile-plan={est.get('compile-plan', 0)}"
+        )
     handoff = data.get("current_handoff") or {}
     if handoff:
         lines.append(f"- current_handoff: `{handoff.get('rung', '')}` `{handoff.get('hd_receipt', '')}`")

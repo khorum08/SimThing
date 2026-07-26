@@ -804,6 +804,74 @@ run_allowlist_scan() {
   return 0
 }
 
+# EXECUTION-STATUS-TAXONOMY-0: HEURISTIC unclassified execution-surface detector.
+# Whole-tree when not in PR-delta; delta-scoped (path list of changed files) when PR_DELTA_MODE=1.
+run_execution_status_scan() {
+  local -n _matches_out="$1"
+  _matches_out=()
+
+  if ! command -v python >/dev/null 2>&1 && ! command -v python3 >/dev/null 2>&1; then
+    die_scanner "python/python3 not found on PATH (required for @EXECUTION_STATUS_TAXONOMY)"
+    return 2
+  fi
+  local py_bin="python"
+  command -v python >/dev/null 2>&1 || py_bin="python3"
+
+  local script="${SCRIPT_DIR}/scan_execution_status.py"
+  if [[ ! -f "$script" ]]; then
+    die_scanner "missing scan_execution_status.py"
+    return 2
+  fi
+
+  local delta_args=()
+  local delta_file=""
+  if [[ "$PR_DELTA_MODE" -eq 1 ]]; then
+    delta_file="$(mktemp "${TMPDIR:-/tmp}/exec-status-delta-XXXXXX")"
+    local scope_file
+    while IFS= read -r scope_file; do
+      [[ -z "$scope_file" ]] && continue
+      printf '%s\n' "$scope_file" >>"$delta_file"
+    done < <(pr_delta_scope_files "crates/simthing-{driver,kernel}/src/**")
+    # Also accept plain globs if brace expand unavailable in helper
+    while IFS= read -r scope_file; do
+      [[ -z "$scope_file" ]] && continue
+      printf '%s\n' "$scope_file" >>"$delta_file"
+    done < <(pr_delta_scope_files "crates/simthing-driver/src/**")
+    while IFS= read -r scope_file; do
+      [[ -z "$scope_file" ]] && continue
+      printf '%s\n' "$scope_file" >>"$delta_file"
+    done < <(pr_delta_scope_files "crates/simthing-kernel/src/**")
+    delta_args=(--delta-list "$delta_file")
+  fi
+
+  local out=""
+  local py_status=0
+  _errexit_was_on=0
+  errexit_is_on && _errexit_was_on=1
+  set +e
+  out="$("$py_bin" "$script" "$REPO_ROOT" "${delta_args[@]}" 2>&1)"
+  py_status=$?
+  restore_errexit "$_errexit_was_on"
+  [[ -n "$delta_file" ]] && rm -f "$delta_file"
+
+  if [[ "$py_status" -eq 2 ]]; then
+    die_scanner "execution-status taxonomy scan error: ${out}"
+    return 2
+  fi
+  if [[ "$py_status" -ne 0 ]]; then
+    die_scanner "execution-status taxonomy scan failed (exit ${py_status}): ${out}"
+    return 2
+  fi
+
+  if [[ -n "$out" ]]; then
+    while IFS= read -r line; do
+      [[ -z "$line" ]] && continue
+      _matches_out+=("$line")
+    done <<<"$out"
+  fi
+  return 0
+}
+
 file_has_table_driven_form() {
   local file="$1"
   local abs="${REPO_ROOT}/${file}"
@@ -910,6 +978,7 @@ run_scan_file() {
     local require_mode=0
     local allowlist_mode=""
     local test_budget_mode=0
+    local execution_status_mode=0
 
     if [[ "${DOCTRINE_SCAN_ONLY_TEST_BUDGET:-0}" == "1" && "$scan_id" != "TEST-BUDGET" ]]; then
       continue
@@ -940,12 +1009,17 @@ run_scan_file() {
       allowlist_mode="${pattern#@ALLOWLIST:}"
     elif [[ "$pattern" == @TEST_BUDGET ]]; then
       test_budget_mode=1
+    elif [[ "$pattern" == @EXECUTION_STATUS_TAXONOMY ]]; then
+      execution_status_mode=1
     fi
 
     local matches=()
     local run_status=0
     if [[ "$test_budget_mode" -eq 1 ]]; then
       run_test_budget_scan "$target_glob" matches
+      run_status=$?
+    elif [[ "$execution_status_mode" -eq 1 ]]; then
+      run_execution_status_scan matches
       run_status=$?
     elif [[ -n "$allowlist_mode" ]]; then
       run_allowlist_scan "$allowlist_mode" matches

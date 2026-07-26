@@ -1,0 +1,93 @@
+# path	class	basis  # EXECUTION-STATUS-TAXONOMY-0; classes: executed|oracle|rehearsal|compile-plan
+crates/simthing-driver/src/arena_allocation_oracle.rs	oracle	CPU/judge independence surface for conservation or plan parity
+crates/simthing-driver/src/arena_allocation_plan.rs	compile-plan	Plan/compile builder producing GPU/session plans (not the live tick itself)
+crates/simthing-driver/src/arena_allocation_sync.rs	executed	Live driver/kernel execution or residency path in the recursive RF / arena stack
+crates/simthing-driver/src/dress_rehearsal_atlas_batch_0_gen.rs	rehearsal	Dress-rehearsal falsification surface (R1-R6C / atlas-batch family); not production default
+crates/simthing-driver/src/dress_rehearsal_atlas_batch_0_loc.rs	rehearsal	Dress-rehearsal falsification surface (R1-R6C / atlas-batch family); not production default
+crates/simthing-driver/src/dress_rehearsal_atlas_batch_0_pack.rs	rehearsal	Dress-rehearsal falsification surface (R1-R6C / atlas-batch family); not production default
+crates/simthing-driver/src/dress_rehearsal_atlas_batch_0_pack_gpu.rs	rehearsal	Dress-rehearsal falsification surface (R1-R6C / atlas-batch family); not production default
+crates/simthing-driver/src/dress_rehearsal_atlas_batch_0_store.rs	rehearsal	Dress-rehearsal falsification surface (R1-R6C / atlas-batch family); not production default
+crates/simthing-driver/src/dress_rehearsal_atlas_batch_0_store_gpu.rs	rehearsal	Dress-rehearsal falsification surface (R1-R6C / atlas-batch family); not production default
+crates/simthing-driver/src/dress_rehearsal_r1_disruption_heatmap.rs	rehearsal	Dress-rehearsal falsification surface (R1-R6C / atlas-batch family); not production default
+crates/simthing-driver/src/dress_rehearsal_r2_recursive_allocation.rs	rehearsal	Dress-rehearsal falsification surface (R1-R6C / atlas-batch family); not production default
+crates/simthing-driver/src/dress_rehearsal_r3_capability_mask_down.rs	rehearsal	Dress-rehearsal falsification surface (R1-R6C / atlas-batch family); not production default
+crates/simthing-driver/src/dress_rehearsal_r4_field_policy_consumption.rs	rehearsal	Dress-rehearsal falsification surface (R1-R6C / atlas-batch family); not production default
+crates/simthing-driver/src/dress_rehearsal_r5_movement_reenroll.rs	rehearsal	Dress-rehearsal falsification surface (R1-R6C / atlas-batch family); not production default
+crates/simthing-driver/src/dress_rehearsal_r6_combat_hp_damage.rs	rehearsal	Dress-rehearsal falsification surface (R1-R6C / atlas-batch family); not production default
+crates/simthing-driver/src/dress_rehearsal_r6b_ship_cohort_reinforcement.rs	rehearsal	Dress-rehearsal falsification surface (R1-R6C / atlas-batch family); not production default
+crates/simthing-driver/src/dress_rehearsal_r6c_integrated_run.rs	rehearsal	Dress-rehearsal falsification surface (R1-R6C / atlas-batch family); not production default
+crates/simthing-driver/src/gated_rates.rs	executed	Live driver/kernel execution or residency path in the recursive RF / arena stack
+crates/simthing-driver/src/loaded_scenario_recursive_rf_runtime_compile.rs	compile-plan	Plan/compile builder producing GPU/session plans (not the live tick itself)
+crates/simthing-driver/src/loaded_scenario_runtime_report_chain_compile.rs	compile-plan	Plan/compile builder producing GPU/session plans (not the live tick itself)
+crates/simthing-driver/src/loaded_scenario_studio_session_envelope_compile.rs	compile-plan	Plan/compile builder producing GPU/session plans (not the live tick itself)
+crates/simthing-driver/src/local_allocation_recursive_source_compile.rs	compile-plan	Plan/compile builder producing GPU/session plans (not the live tick itself)
+crates/simthing-driver/src/local_effect_application_compile.rs	compile-plan	Plan/compile builder producing GPU/session plans (not the live tick itself)
+crates/simthing-driver/src/local_effect_recursive_source_compile.rs	compile-plan	Plan/compile builder producing GPU/session plans (not the live tick itself)
+crates/simthing-driver/src/local_participant_effects_compile.rs	compile-plan	Plan/compile builder producing GPU/session plans (not the live tick itself)
+crates/simthing-driver/src/mapping_plan_compile.rs	compile-plan	Plan/compile builder producing GPU/session plans (not the live tick itself)
+crates/simthing-driver/src/min_plus_traversal_field.rs	executed	Live driver/kernel execution or residency path in the recursive RF / arena stack
+crates/simthing-driver/src/owner_silo_accumulator_compile.rs	compile-plan	Plan/compile builder producing GPU/session plans (not the live tick itself)
+crates/simthing-driver/src/owner_silo_disburse_down_compile.rs	compile-plan	Plan/compile builder producing GPU/session plans (not the live tick itself)
+crates/simthing-driver/src/owner_silo_recursive_source_compile.rs	compile-plan	Plan/compile builder producing GPU/session plans (not the live tick itself)
+crates/simthing-driver/src/owner_silo_runtime_writeback_compile.rs	compile-plan	Plan/compile builder producing GPU/session plans (not the live tick itself)
+crates/simthing-driver/src/planet_child_rf_accumulator_compile.rs	compile-plan	Plan/compile builder producing GPU/session plans (not the live tick itself)
+crates/simthing-driver/src/planet_child_rf_reduce_up_compile.rs	compile-plan	Plan/compile builder producing GPU/session plans (not the live tick itself)
+crates/simthing-driver/src/recursive_local_rf_compile.rs	compile-plan	Plan/compile builder producing GPU/session plans (not the live tick itself)
+crates/simthing-driver/src/recursive_rf_reconciliation_compile.rs	compile-plan	Plan/compile builder producing GPU/session plans (not the live tick itself)
+crates/simthing-driver/src/resource_economy_boundary_schedule.rs	executed	Live driver/kernel execution or residency path in the recursive RF / arena stack
+crates/simthing-driver/src/resource_economy_burn_in.rs	executed	Live driver/kernel execution or residency path in the recursive RF / arena stack
+crates/simthing-driver/src/resource_economy_compile.rs	compile-plan	Plan/compile builder producing GPU/session plans (not the live tick itself)
+crates/simthing-driver/src/resource_economy_oracle.rs	oracle	CPU/judge independence surface for conservation or plan parity
+crates/simthing-driver/src/resource_economy_sync.rs	executed	Live driver/kernel execution or residency path in the recursive RF / arena stack
+crates/simthing-driver/src/resource_flow_burn_in.rs	executed	Live driver/kernel execution or residency path in the recursive RF / arena stack
+crates/simthing-driver/src/resource_flow_compile.rs	compile-plan	Plan/compile builder producing GPU/session plans (not the live tick itself)
+crates/simthing-driver/src/resource_flow_dynamic_enrollment_soak.rs	executed	Live driver/kernel execution or residency path in the recursive RF / arena stack
+crates/simthing-driver/src/resource_flow_enrollment.rs	executed	Live driver/kernel execution or residency path in the recursive RF / arena stack
+crates/simthing-driver/src/resource_flow_fission_enrollment.rs	executed	Live driver/kernel execution or residency path in the recursive RF / arena stack
+crates/simthing-driver/src/resource_flow_flat_star_continued_soak.rs	executed	Live driver/kernel execution or residency path in the recursive RF / arena stack
+crates/simthing-driver/src/resource_flow_opt_in_burn_in.rs	executed	Live driver/kernel execution or residency path in the recursive RF / arena stack
+crates/simthing-driver/src/resource_flow_opt_in_product_soak.rs	executed	Live driver/kernel execution or residency path in the recursive RF / arena stack
+crates/simthing-driver/src/resource_flow_opt_in_telemetry.rs	executed	Live driver/kernel execution or residency path in the recursive RF / arena stack
+crates/simthing-driver/src/resource_flow_preflight.rs	executed	Live driver/kernel execution or residency path in the recursive RF / arena stack
+crates/simthing-driver/src/resource_flow_scenario_class_burn_in.rs	executed	Live driver/kernel execution or residency path in the recursive RF / arena stack
+crates/simthing-driver/src/rf_conservation_oracle.rs	oracle	CPU/judge independence surface for conservation or plan parity
+crates/simthing-driver/src/runtime_local_allocation_compile.rs	compile-plan	Plan/compile builder producing GPU/session plans (not the live tick itself)
+crates/simthing-driver/src/runtime_participant_property_mutation_boundary_compile.rs	compile-plan	Plan/compile builder producing GPU/session plans (not the live tick itself)
+crates/simthing-driver/src/runtime_participant_state_mutation_compile.rs	compile-plan	Plan/compile builder producing GPU/session plans (not the live tick itself)
+crates/simthing-driver/src/runtime_rf_tick_compile.rs	compile-plan	Plan/compile builder producing GPU/session plans (not the live tick itself)
+crates/simthing-driver/src/runtime_rf_tick_source_compile.rs	compile-plan	Plan/compile builder producing GPU/session plans (not the live tick itself)
+crates/simthing-driver/src/runtime_rf_tick_source_select_compile.rs	compile-plan	Plan/compile builder producing GPU/session plans (not the live tick itself)
+crates/simthing-driver/src/runtime_tick_history_compile.rs	compile-plan	Plan/compile builder producing GPU/session plans (not the live tick itself)
+crates/simthing-driver/src/runtime_tick_shell_compile.rs	compile-plan	Plan/compile builder producing GPU/session plans (not the live tick itself)
+crates/simthing-driver/src/scenario_candidate_from_runtime_compile.rs	compile-plan	Plan/compile builder producing GPU/session plans (not the live tick itself)
+crates/simthing-driver/src/scenario_candidate_save_reopen_compile.rs	compile-plan	Plan/compile builder producing GPU/session plans (not the live tick itself)
+crates/simthing-driver/src/scenario_canonical_io_compile.rs	compile-plan	Plan/compile builder producing GPU/session plans (not the live tick itself)
+crates/simthing-driver/src/scenario_ingestion_compile.rs	compile-plan	Plan/compile builder producing GPU/session plans (not the live tick itself)
+crates/simthing-driver/src/scenario_property_mutation_authority_boundary_compile.rs	compile-plan	Plan/compile builder producing GPU/session plans (not the live tick itself)
+crates/simthing-driver/src/scenario_stead_map_roundtrip_compile.rs	compile-plan	Plan/compile builder producing GPU/session plans (not the live tick itself)
+crates/simthing-driver/src/semantic_effect_execution_boundary_compile.rs	compile-plan	Plan/compile builder producing GPU/session plans (not the live tick itself)
+crates/simthing-driver/src/semantic_local_effects_compile.rs	compile-plan	Plan/compile builder producing GPU/session plans (not the live tick itself)
+crates/simthing-driver/src/semantic_local_effects_recursive_source_compile.rs	compile-plan	Plan/compile builder producing GPU/session plans (not the live tick itself)
+crates/simthing-driver/src/semantic_participant_delta_preview_compile.rs	compile-plan	Plan/compile builder producing GPU/session plans (not the live tick itself)
+crates/simthing-driver/src/session_resource_flow_silos.rs	executed	Live driver/kernel execution or residency path in the recursive RF / arena stack
+crates/simthing-driver/src/structural_link_accumulator_compile.rs	compile-plan	Plan/compile builder producing GPU/session plans (not the live tick itself)
+crates/simthing-driver/src/structural_n4_theater_compile.rs	compile-plan	Plan/compile builder producing GPU/session plans (not the live tick itself)
+crates/simthing-kernel/src/accumulator_op/bootstrap_validate.rs	executed	Live driver/kernel execution or residency path in the recursive RF / arena stack
+crates/simthing-kernel/src/accumulator_op/cpu_oracle.rs	oracle	CPU/judge independence surface for conservation or plan parity
+crates/simthing-kernel/src/accumulator_op/eml_program_table.rs	executed	Live driver/kernel execution or residency path in the recursive RF / arena stack
+crates/simthing-kernel/src/accumulator_op/encode.rs	executed	Live driver/kernel execution or residency path in the recursive RF / arena stack
+crates/simthing-kernel/src/accumulator_op/input_list_table.rs	executed	Live driver/kernel execution or residency path in the recursive RF / arena stack
+crates/simthing-kernel/src/accumulator_op/mod.rs	executed	Live driver/kernel execution or residency path in the recursive RF / arena stack
+crates/simthing-kernel/src/accumulator_op/packed_session_upload.rs	executed	Live driver/kernel execution or residency path in the recursive RF / arena stack
+crates/simthing-kernel/src/accumulator_op/runtime.rs	executed	Live driver/kernel execution or residency path in the recursive RF / arena stack
+crates/simthing-kernel/src/accumulator_op/session.rs	executed	Live driver/kernel execution or residency path in the recursive RF / arena stack
+crates/simthing-kernel/src/accumulator_op/types.rs	executed	Live driver/kernel execution or residency path in the recursive RF / arena stack
+crates/simthing-kernel/src/accumulator_op/wgsl_path.rs	executed	Live driver/kernel execution or residency path in the recursive RF / arena stack
+crates/simthing-kernel/src/accumulator_op/world_summary.rs	executed	Live driver/kernel execution or residency path in the recursive RF / arena stack
+crates/simthing-kernel/src/cpu_oracle.rs	oracle	CPU/judge independence surface for conservation or plan parity
+crates/simthing-kernel/src/emission_accumulator.rs	executed	Live driver/kernel execution or residency path in the recursive RF / arena stack
+crates/simthing-kernel/src/emission_oracle.rs	oracle	CPU/judge independence surface for conservation or plan parity
+crates/simthing-kernel/src/intensity_accumulator.rs	executed	Live driver/kernel execution or residency path in the recursive RF / arena stack
+crates/simthing-kernel/src/sealed/threshold_event.rs	executed	Live driver/kernel execution or residency path in the recursive RF / arena stack
+crates/simthing-kernel/src/transfer_accumulator.rs	executed	Live driver/kernel execution or residency path in the recursive RF / arena stack
+crates/simthing-kernel/src/velocity_accumulator.rs	executed	Live driver/kernel execution or residency path in the recursive RF / arena stack
