@@ -564,6 +564,18 @@ def ladder_states():
 
 
 def board_json(path_arg=None):
+    # When no path is given, resolve the live current handoff from orientation
+    # Active pointer → handoffs/<RUNG>.hd.md (CONSTITUTION-TRIPWIRES-0 repair:
+    # bare --board-json must mirror pointer/current_handoff, not silently none).
+    if not path_arg:
+        try:
+            resolved = current_handoff_path()
+            if resolved is not None and resolved.is_file():
+                path_arg = str(resolved)
+        except HDError:
+            path_arg = None
+        except Exception:
+            path_arg = None
     obj = parse_handoff(Path(path_arg)) if path_arg else None
     handoff = {}
     if obj:
@@ -595,7 +607,7 @@ def board_json(path_arg=None):
         mixed_path = ROOT / "scripts" / "ci" / "execution_status_mixed_posture.tsv"
         legal = ("executed", "oracle", "rehearsal", "compile-plan")
         counts = {k: 0 for k in legal}
-        counts["mixed_pending_da"] = 0
+        counts["mixed_ruled"] = 0
         if path.is_file():
             for raw in path.read_text(encoding="utf-8").splitlines():
                 line = raw.strip()
@@ -613,7 +625,7 @@ def board_json(path_arg=None):
                 if not line or line.startswith("#"):
                     continue
                 if "\t" in line:
-                    counts["mixed_pending_da"] += 1
+                    counts["mixed_ruled"] += 1
         return counts
 
     data = {
@@ -719,7 +731,7 @@ def render_board_markdown(data):
             f"oracle={est.get('oracle', 0)} "
             f"rehearsal={est.get('rehearsal', 0)} "
             f"compile-plan={est.get('compile-plan', 0)} "
-            f"mixed_pending_da={est.get('mixed_pending_da', 0)}"
+            f"mixed_ruled={est.get('mixed_ruled', 0)}"
         )
     handoff = data.get("current_handoff") or {}
     if handoff:
@@ -1156,17 +1168,19 @@ stop_conditions: ["scope-widening"]
             "HD_HANDOFFS_DIR": str(push_hoff),
             "HD_OPEN_PRS_JSON": "[]",
         }
-        # Pre-fix bite: push path never called --current-handoff → handoff stays "" → board none.
-        pre_fix_board = run_cmd(
+        # CONSTITUTION-TRIPWIRES-0: bare --board-json auto-resolves Active pointer → current handoff
+        # (no manual Board text; generator/source of truth). Empty pointer still yields none.
+        auto_board = run_cmd(
             [bash_cmd, script_arg, "--board-json"],
             env=live_env,
         )
-        pre_fix_data = json.loads(pre_fix_board.stdout) if pre_fix_board.returncode == 0 else {}
+        auto_data = json.loads(auto_board.stdout) if auto_board.returncode == 0 else {}
         check(
-            "push-sync-pre-fix-renders-none",
-            pre_fix_board.returncode == 0 and pre_fix_data.get("current_handoff") in ({}, None),
+            "board-json-auto-resolves-current-handoff",
+            auto_board.returncode == 0
+            and (auto_data.get("current_handoff") or {}).get("rung") == "VALID-HANDOFF-DISPATCH-FIXTURE-0"
+            and auto_data.get("active_pointer") == "VALID-HANDOFF-DISPATCH-FIXTURE-0",
         )
-        # Fixed path: resolve via --current-handoff on push; live .hd is rendered.
         fixed_handoff = push_sync_resolve("", live_env)
         check(
             "push-sync-resolves-live-current-handoff",

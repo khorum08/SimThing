@@ -45,16 +45,16 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 211b860c2a424d0386a01a2dc93d5c563abfd1411c1f58ec55c7b69d97426cb8 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | 26eab30ec86c97ac8dfd6beef7ae8c5b4d3f18c38fdaa431ec40ccce855396d3 |
-| design_0_0_8_7_rf_arena_modernization.md | 0bcb4ab5e088005c0643b766deeb0b3247db0d4e345500808ec373de626bdbdf |
+| design_0_0_8_7_rf_arena_modernization.md | 5d7a0372bac5002fd1430cfdd22ae9cd01b00b511f8cafe4dc7639aeebec1c40 |
 | relay_lint.sh | 4163f715cdc3b549dbf57c1744aff61ea96b9f9f0a2237376665fbdb24e986c8 |
 | doctrine_anchors.tsv | c7296a3fec66bb25bdf0042294c019aaa6aac65ab853c4913641fa53774eaf4d |
-| execution_status_taxonomy.tsv | f3bf8344fb7e77125bb8107a0070646070450041881afc737b72e90f6f6a2ca9 |
-| execution_status_mixed_posture.tsv | 3d835ef1b4ea2ffac39b102ac47b760130544ac62eba90c0a084fa1093da3f04 |
+| execution_status_taxonomy.tsv | 1bf185c3742dc6788c4c9763e914dbe4331b6b25fb4d7238ac253df1202c5040 |
+| execution_status_mixed_posture.tsv | 76b7246da5e2cb9680194bc30a79acc4126aaa89beb52447a0fc509e1495b1e8 |
 | execution_status_non_execution.tsv | 214c1b557dfd3fc465f0171051e20281ff1dcf6c53128dbb29cba01524f9be02 |
 
 ## Execution-status taxonomy (driver/kernel)
 
-executed=56 oracle=6 rehearsal=14 compile-plan=44 mixed_pending_da=2 (taxonomy + mixed residual TSVs; census via `execution_status_census.py`; HEURISTIC `EXECUTION-STATUS-UNCLASSIFIED` is not the census proof).
+executed=57 oracle=6 rehearsal=14 compile-plan=45 mixed_ruled=2 (primary-inclusive taxonomy; DA dual-posture residual; census `execution_status_census.py`).
 
 ## Active Track / Rung Summary (`design_0_0_8_7_rf_arena_modernization.md`)
 
@@ -62,9 +62,8 @@ Track state: `open`
 
 | # | rung | deliverable | exit proof |
 | --- | --- | --- | --- |
-| 0.1 | RF-COLUMN-ADMISSION-GATE-0 | Phase 0: `ColumnIndex` constructor taxonomy, NON-BREAKING (fenced raw door); ret | Scan proves every remaining `::new` inside the fence; corpus green. |
-| 0.2 | EXECUTION-STATUS-TAXONOMY-0 | Phase 0: `executed / oracle / rehearsal / compile-plan` classification as data;  | Every driver/kernel execution surface classified; board digest renders it. |
-| 0.3 | CONSTITUTION-TRIPWIRES-0 | Phase 0: the three HEURISTIC tripwires (cell-storage polymorphism; bespoke pathf | Selftest fixtures prove each fires; INSPECT-only; reach-log rows land. |
+| 0.2 | EXECUTION-STATUS-TAXONOMY-0 | Phase 0: `executed / oracle / rehearsal / compile-plan` classification as data;  | **DA-GRADUATED / merged [#1448](https://github.com/khorum08/SimThing/pull/1448) @ `407850e2`** — export-module census... |
+| 0.3 | CONSTITUTION-TRIPWIRES-0 | Phase 0: the three HEURISTIC tripwires (cell-storage polymorphism; bespoke pathf | Selftest fixtures prove each fires; INSPECT-only; reach-log rows land; primary-inclusive counts `mixed_ruled=2`. |
 | 1.1 | ROOT-DERIVE-PARTICIPATION-0 | Phase 1: admission derives arena participation from resource properties + parent | TP scenario runs with ZERO explicit arena wiring; RF-1 green; seams deleted/reduced to overrides. |
 | 1.2 | SESSION-WIRING-KILL-SWEEP-0 | Phase 1: kill remaining opt-in toggles incl. `min_plus_traversal_field` enable/d | No constitutional-path session toggles remain (grep-proven); core day-refs = 0; corpus green. |
 | 1.3 | ARENA-PARTICIPANT-DEPRECATION-0 | Phase 1: deprecate the `ArenaParticipant` wrapper kind (P0 falsifier; StarSystem | Kind deprecated with ruling; no new authoring; compile-compat retained. |
@@ -97,7 +96,7 @@ Track state: `open`
 
 ## Next Rung Pointer
 
-Active pointer: `RF-COLUMN-ADMISSION-GATE-0`
+Active pointer: `CONSTITUTION-TRIPWIRES-0`
 
 
 ## Cold-Start Spine (constitutional pointers)

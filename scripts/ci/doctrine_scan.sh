@@ -1063,10 +1063,43 @@ run_scan_file() {
 
     REPORT_LINES+=("${scan_id}  ${verdict}  ${count}  ${doctrine_ref}${path_summary}")
 
+    # CONSTITUTION-TRIPWIRES-0: HEURISTIC INSPECT hits append reach-log evidence rows
+    # (date, role=scan, scan id, file:line, hit) so accumulated reaches feed ruling expansions.
+    if [[ "$verdict" == "INSPECT" && "$count" -gt 0 ]]; then
+      case "$scan_id" in
+        CELL-STORAGE-POLYMORPHISM|BESPOKE-PATHFINDER|BORDER-SERVICE)
+          append_constitution_reach_log "$scan_id" "${matches[@]}"
+          ;;
+      esac
+    fi
+
     if [[ "$verdict" == "FAIL" ]]; then
       echo "remedy: if this is a legitimate new door, add a conforming record to scripts/ci/allow/<file>.txt with rationale and promotion-blocker; do not edit the scanner" >&2
     fi
   done <"$scan_file"
+}
+
+append_constitution_reach_log() {
+  local scan_id="$1"
+  shift
+  local log="${SCRIPT_DIR}/anchor_reach_log.tsv"
+  [[ -f "$log" ]] || return 0
+  local ts
+  ts="$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || true)"
+  [[ -n "$ts" ]] || ts="1970-01-01T00:00:00Z"
+  local match loc
+  for match in "$@"; do
+    [[ -z "$match" ]] && continue
+    # ripgrep line: path:line:content  → keep path:line
+    if [[ "$match" =~ ^(.+):([0-9]+): ]]; then
+      loc="${BASH_REMATCH[1]}:${BASH_REMATCH[2]}"
+    else
+      loc="${match%% *}"
+    fi
+    # Avoid blank/pathological rows
+    [[ -z "$loc" || "$loc" == "$match" && "$match" != *:* ]] && loc="$match"
+    printf '%s\tscan\t%s\t%s\thit\n' "$ts" "$scan_id" "$loc" >>"$log"
+  done
 }
 
 run_scans() {

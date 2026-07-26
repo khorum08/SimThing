@@ -5,13 +5,13 @@ Proves every `pub mod` exported from:
   crates/simthing-driver/src/lib.rs
   crates/simthing-kernel/src/lib.rs
 
-is accounted for by exactly one of:
-  1) scripts/ci/execution_status_taxonomy.tsv   (four legal classes)
-  2) scripts/ci/execution_status_mixed_posture.tsv  (DA residual; not a fifth class)
-  3) scripts/ci/execution_status_non_execution.tsv  (outside RF execution-status envelope)
+is accounted for by:
+  1) scripts/ci/execution_status_taxonomy.tsv   (four legal classes; primary class)
+  2) scripts/ci/execution_status_non_execution.tsv  (outside RF execution-status envelope)
 
-Directory modules require every descendant `*.rs` leaf to be accounted, unless the
-module root itself is listed (re-export-only roots may use non_execution).
+Optional secondary evidence:
+  scripts/ci/execution_status_mixed_posture.tsv — DA-ruled dual-posture files whose
+  PRIMARY class is already in the taxonomy. Not a fifth class. Counted as mixed_ruled.
 
 Exit 0 on complete census; exit 1 with uncovered paths; exit 2 on data errors.
 """
@@ -24,7 +24,7 @@ from pathlib import Path
 LEGAL = frozenset({"executed", "oracle", "rehearsal", "compile-plan"})
 
 
-def load_tab(path: Path, nfields: int) -> dict[str, tuple]:
+def load_tab(path: Path, min_fields: int) -> dict[str, tuple]:
     if not path.is_file():
         raise FileNotFoundError(f"missing {path}")
     out: dict[str, tuple] = {}
@@ -33,8 +33,8 @@ def load_tab(path: Path, nfields: int) -> dict[str, tuple]:
         if not line or line.startswith("#"):
             continue
         parts = line.split("\t")
-        if len(parts) != nfields or any(p == "" for p in parts):
-            raise ValueError(f"{path.name}:{lineno}: expected {nfields} tab fields")
+        if len(parts) < min_fields or any(p == "" for p in parts[:min_fields]):
+            raise ValueError(f"{path.name}:{lineno}: expected ≥{min_fields} tab fields")
         rel = parts[0].replace("\\", "/").strip()
         if rel in out:
             raise ValueError(f"{path.name}:{lineno}: duplicate path {rel}")
@@ -63,32 +63,46 @@ def main(argv: list[str]) -> int:
     non_path = repo / "scripts" / "ci" / "execution_status_non_execution.tsv"
     try:
         tax = load_tab(tax_path, 3)
-        mixed = load_tab(mixed_path, 3)
+        mixed = load_tab(mixed_path, 3) if mixed_path.is_file() else {}
         non_exec = load_tab(non_path, 2)
     except (OSError, ValueError, FileNotFoundError) as exc:
         print(f"CENSUS-ERROR: {exc}", file=sys.stderr)
         return 2
 
-    for rel, (cls, _basis) in tax.items():
+    for rel, fields in tax.items():
+        cls = fields[0]
         if cls not in LEGAL:
             print(f"CENSUS-ERROR: illegal class {cls!r} for {rel}", file=sys.stderr)
             return 2
 
-    # Paths must not overlap registries.
-    for a, b, na, nb in (
-        (tax, mixed, "taxonomy", "mixed"),
-        (tax, non_exec, "taxonomy", "non_execution"),
-        (mixed, non_exec, "mixed", "non_execution"),
-    ):
-        overlap = set(a) & set(b)
-        if overlap:
+    # Mixed residual is secondary evidence for taxonomy primaries (DA-ruled dual-posture).
+    for rel, fields in mixed.items():
+        primary = fields[0]
+        if primary not in LEGAL:
+            print(f"CENSUS-ERROR: mixed primary {primary!r} illegal for {rel}", file=sys.stderr)
+            return 2
+        if rel not in tax:
             print(
-                f"CENSUS-ERROR: path(s) in both {na} and {nb}: {sorted(overlap)[:8]}",
+                f"CENSUS-ERROR: mixed residual {rel} missing PRIMARY row in taxonomy",
+                file=sys.stderr,
+            )
+            return 2
+        if tax[rel][0] != primary:
+            print(
+                f"CENSUS-ERROR: mixed primary {primary!r} != taxonomy class {tax[rel][0]!r} for {rel}",
                 file=sys.stderr,
             )
             return 2
 
-    classified = set(tax) | set(mixed) | set(non_exec)
+    overlap_tax_non = set(tax) & set(non_exec)
+    if overlap_tax_non:
+        print(
+            f"CENSUS-ERROR: path(s) in both taxonomy and non_execution: {sorted(overlap_tax_non)[:8]}",
+            file=sys.stderr,
+        )
+        return 2
+
+    classified = set(tax) | set(non_exec)
     uncovered: list[str] = []
 
     for crate in ("simthing-driver", "simthing-kernel"):
@@ -110,15 +124,15 @@ def main(argv: list[str]) -> int:
                     uncovered.append(rel_root)
 
     counts = {k: 0 for k in ("executed", "oracle", "rehearsal", "compile-plan")}
-    for cls, _ in tax.values():
-        counts[cls] += 1
+    for fields in tax.values():
+        counts[fields[0]] += 1
 
     print(
         "EXECUTION-STATUS-CENSUS: "
         f"classified={len(tax)} "
         f"executed={counts['executed']} oracle={counts['oracle']} "
         f"rehearsal={counts['rehearsal']} compile-plan={counts['compile-plan']} "
-        f"mixed_pending_da={len(mixed)} non_execution={len(non_exec)}"
+        f"mixed_ruled={len(mixed)} non_execution={len(non_exec)}"
     )
     if uncovered:
         print(f"CENSUS-FAIL: uncovered={len(uncovered)}", file=sys.stderr)

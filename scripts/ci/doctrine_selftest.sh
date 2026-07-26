@@ -267,6 +267,29 @@ EOF
     "${ROOT_SANDBOX}/crates/simthing-driver/src/rf_probe_oracle_unclassified.rs"
 }
 
+expect_constitution_reach_log_append() {
+  # CONSTITUTION-TRIPWIRES-0: after a known-bad CELL-STORAGE hit, reach-log gains a row.
+  begin_sandbox
+  prepare_trap_baseline "$ROOT_SANDBOX"
+  # Seed a minimal reach log so append has a target file.
+  printf 'date\trole\tquery\tanchors_served\thit\n' >"${ROOT_SANDBOX}/scripts/ci/anchor_reach_log.tsv"
+  cp "${FIXTURES}/known_bad/cell_storage_polymorphism.rs" \
+    "${ROOT_SANDBOX}/crates/simthing-kernel/src/_selftest_fixture.rs"
+  local out="${ROOT_SANDBOX}/scan.out"
+  local exit_code before after
+  before="$(wc -l <"${ROOT_SANDBOX}/scripts/ci/anchor_reach_log.tsv" | tr -d ' ')"
+  exit_code="$(run_scan_in_sandbox "$ROOT_SANDBOX" "$out")"
+  after="$(wc -l <"${ROOT_SANDBOX}/scripts/ci/anchor_reach_log.tsv" | tr -d ' ')"
+  if [[ "$exit_code" -eq 0 && "$after" -gt "$before" ]] \
+    && grep -q $'\tscan\tCELL-STORAGE-POLYMORPHISM\t' "${ROOT_SANDBOX}/scripts/ci/anchor_reach_log.tsv"; then
+    HE_REPORT+=("CONSTITUTION-REACH-LOG (cell_storage append)  PASS")
+  else
+    HE_REPORT+=("CONSTITUTION-REACH-LOG (cell_storage append)  FAIL (exit=${exit_code} before=${before} after=${after})")
+    fail_selftest
+  fi
+  end_sandbox
+}
+
 setup_heuristic_sim() {
   local fixture="$1"
   prepare_trap_baseline "$ROOT_SANDBOX"
@@ -1194,6 +1217,13 @@ run_all_cases() {
     setup_heuristic_kernel column_index_mint.rs
   expect_heuristic_inspect "execution_status_unclassified" "EXECUTION-STATUS-UNCLASSIFIED" \
     setup_heuristic_execution_status_unclassified
+  expect_heuristic_inspect "cell_storage_polymorphism" "CELL-STORAGE-POLYMORPHISM" \
+    setup_heuristic_kernel cell_storage_polymorphism.rs
+  expect_heuristic_inspect "bespoke_pathfinder" "BESPOKE-PATHFINDER" \
+    setup_heuristic_kernel bespoke_pathfinder.rs
+  expect_heuristic_inspect "border_service" "BORDER-SERVICE" \
+    setup_heuristic_kernel border_service.rs
+  expect_constitution_reach_log_append
   expect_heuristic_inspect "sim_kind_read" "SIM-KIND-READ" \
     setup_heuristic_sim sim_kind_read.rs
   expect_heuristic_inspect "semantic_words_production" "SEMANTIC-WORDS" \

@@ -251,9 +251,9 @@ discretion); `Std — Grok CLI` (`grok-4.5` pinned); `Fable` = DA-implemented ha
 
 | Rung | ID | Scope (details in the phase row) | Exit proof | Tier — Coder | Status |
 |---|---|---|---|---|---|
-| 0.1 | `RF-COLUMN-ADMISSION-GATE-0` | Phase 0: `ColumnIndex` constructor taxonomy, NON-BREAKING (fenced raw door); retarget `COLUMN-INDEX-MINT` to choke-point tokens; mechanize DA-gated exclusion edits. | Scan proves every remaining `::new` inside the fence; corpus green. | DA-reserve · Frontier — Codex 5.6/Fable | **PROBATION / proof-present / DA-review-pending** — `HD-RECEIPT: 0678b924337a`; `ORIENT-RECEIPT: 66b3120ec980`. |
-| 0.2 | `EXECUTION-STATUS-TAXONOMY-0` | Phase 0: `executed / oracle / rehearsal / compile-plan` classification as data; board-surfaced. | Every driver/kernel execution surface classified; board digest renders it. | Std — Grok | **PROBATION / proof-present / DA-review-pending** — `HD-RECEIPT: aab9e82899c4`; `ORIENT-RECEIPT: 66b3120ec980`. |
-| 0.3 | `CONSTITUTION-TRIPWIRES-0` | Phase 0: the three HEURISTIC tripwires (cell-storage polymorphism; bespoke pathfinder; border service) + reach-log wiring. | Selftest fixtures prove each fires; INSPECT-only; reach-log rows land. | Std — Grok | TODO |
+| 0.1 | `RF-COLUMN-ADMISSION-GATE-0` | Phase 0: `ColumnIndex` constructor taxonomy, NON-BREAKING (fenced raw door); retarget `COLUMN-INDEX-MINT` to choke-point tokens; mechanize DA-gated exclusion edits. | **DA-GRADUATED / merged [#1447](https://github.com/khorum08/SimThing/pull/1447) @ `4db8ac14`** — ColumnIndex admission doors; scan proves remaining `::new` inside fence; corpus green. | DA-reserve · Frontier — Codex 5.6/Fable | **DA-GRADUATED / merged #1447** |
+| 0.2 | `EXECUTION-STATUS-TAXONOMY-0` | Phase 0: `executed / oracle / rehearsal / compile-plan` classification as data; board-surfaced. | **DA-GRADUATED / merged [#1448](https://github.com/khorum08/SimThing/pull/1448) @ `407850e2`** — export-module census; DA mixed-posture primaries (reduction=`compile-plan`, world_state=`executed`; relay `5085410594`). | Std — Grok | **DA-GRADUATED / merged #1448** |
+| 0.3 | `CONSTITUTION-TRIPWIRES-0` | Phase 0: the three HEURISTIC tripwires (cell-storage polymorphism; bespoke pathfinder; border service) + reach-log wiring; DA 0.2 primary-class fold + Board/orient pointer repair. | Selftest fixtures prove each fires; INSPECT-only; reach-log rows land; primary-inclusive counts `mixed_ruled=2`. | Std — Grok | **PROBATION / proof-present / DA-review-pending** — `HD-RECEIPT: bf9ece38aea8`; `ORIENT-RECEIPT: 66b3120ec980`. |
 | 1.1 | `ROOT-DERIVE-PARTICIPATION-0` | Phase 1: admission derives arena participation from resource properties + parent edge (typed, spanned; `DefaultDisabled` retained); collapse the default-path config seams. | TP scenario runs with ZERO explicit arena wiring; RF-1 green; seams deleted/reduced to overrides. | DA-reserve · Frontier — Codex 5.6/Fable | TODO |
 | 1.2 | `SESSION-WIRING-KILL-SWEEP-0` | Phase 1: kill remaining opt-in toggles incl. `min_plus_traversal_field` enable/disable → derived-at-admission; core calendar-vocabulary rename (`evaluate.rs day`, spawn-day → generation). | No constitutional-path session toggles remain (grep-proven); core day-refs = 0; corpus green. | Std — Grok | TODO |
 | 1.3 | `ARENA-PARTICIPANT-DEPRECATION-0` | Phase 1: deprecate the `ArenaParticipant` wrapper kind (P0 falsifier; StarSystem/Station disposition). | Kind deprecated with ruling; no new authoring; compile-compat retained. | Std — Grok | TODO |
@@ -283,6 +283,10 @@ discretion); `Std — Grok CLI` (`grok-4.5` pinned); `Fable` = DA-implemented ha
 | 11.2 | `EMBEDDER-GUIDE-EXEMPLARS-0` | Phase 11: DOC-BUDGET-capped Embedder's Guide + two non-game exemplars (finance toy; network-saturation full-Triad exercise), CI admission-checked. | Cold-reader exit-proof per phase row; exemplars green in CI. | Std — Grok | TODO |
 | 12.1 | `PORTABILITY-PROOF-0` | Phase 12: non-TP domain through the Vendor Door end-to-end, zero engine edits. | Exemplar-seeded domain simulates + STEAD-observes + serializes untouched. | Std — Grok | TODO |
 | 12.2 | `CORE-CANONIZATION-0` | Phase 12: object model (P0 Root Contract + cycle + EML-ISA + Triad Doors + overlay law) into `simthing_core_design.md`; HARNESS phases canonize nothing; track closeout follows. | Canonized sections land; net-prose discipline; SimThing complete and distinct; CLOSEOUT protocol run (Owner-gated). | DA-reserve · Frontier — Codex 5.6/Fable | TODO |
+
+| Item | State |
+|---|---|
+| Active open rung | `CONSTITUTION-TRIPWIRES-0` |
 
 ## 4. Binding laws (carry from day one)
 

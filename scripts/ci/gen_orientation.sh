@@ -2346,7 +2346,7 @@ def execution_status_counts(path: pathlib.Path) -> dict:
 
 
 def execution_status_mixed_count(path: pathlib.Path) -> int:
-    """Count mixed-posture residual rows (not a fifth class; DA ruling required)."""
+    """Count DA-ruled dual-posture residual rows (mixed_ruled; not a fifth class)."""
     if not path.is_file():
         return 0
     n = 0
@@ -2746,9 +2746,8 @@ def render_orientation(active_info: dict) -> tuple:
     "",
     f"executed={exec_counts['executed']} oracle={exec_counts['oracle']} "
     f"rehearsal={exec_counts['rehearsal']} compile-plan={exec_counts['compile-plan']} "
-    f"mixed_pending_da={mixed_count} "
-    f"(taxonomy + mixed residual TSVs; census via `execution_status_census.py`; "
-    f"HEURISTIC `EXECUTION-STATUS-UNCLASSIFIED` is not the census proof).",
+    f"mixed_ruled={mixed_count} "
+    f"(primary-inclusive taxonomy; DA dual-posture residual; census `execution_status_census.py`).",
     "",
 ])
     if design_doc is None:
