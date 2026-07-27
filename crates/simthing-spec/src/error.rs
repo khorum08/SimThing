@@ -232,13 +232,6 @@ pub enum SpecError {
         slot: u32,
     },
 
-    #[error("arena `{arena}` reserved_gap_per_intermediate {reserved} is smaller than expected_max_children_per_intermediate {expected}")]
-    ReservedGapTooSmall {
-        arena: String,
-        reserved: u32,
-        expected: u32,
-    },
-
     #[error("arena `{arena}` duplicate enrollment for hosted SimThing subtree_root_id {subtree_root_id}")]
     DuplicateEnrollmentHostedSimThing { arena: String, subtree_root_id: u32 },
 

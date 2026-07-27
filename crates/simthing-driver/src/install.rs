@@ -24,7 +24,7 @@ use simthing_spec::{
 use std::collections::{HashMap, HashSet};
 use thiserror::Error;
 
-use crate::arena_participant::materialize_arena_participants;
+use crate::arena_registry::ArenaRegistry;
 use crate::resource_economy_compile::{
     materialize_resource_economy_registry_for_session, ResourceEconomyCompileError,
 };
@@ -244,24 +244,26 @@ pub fn compile_and_install(
         let resolved = resolve_resource_flow_enrollment(resource_flow, scenario, root, allocator)?;
         let base_obligations = resolve_base_flow_obligation_targets(&resolved, scenario, root)?;
         validate_resource_flow_preflight(&resolved, allocator)?;
-        let scaffold = materialize_arena_participants(&resolved, registry, root, allocator)?;
-        if allocator.capacity() > n_slots_cap {
-            return Err(InstallError::ResourceFlowSlotOverflow {
-                capacity: allocator.capacity(),
-                cap: n_slots_cap,
-            });
-        }
         let (arena_registry, report) = compile_and_materialize_resource_flow(&resolved, registry)?;
-        seed_base_flow_obligations(&base_obligations, registry, root, allocator, &scaffold)?;
+        seed_base_flow_obligations(
+            &base_obligations,
+            registry,
+            root,
+            allocator,
+            &arena_registry,
+        )?;
         // CT-RF-EML-RATE-0: resolve gated rates and copy the folded static
         // rate into the base column the per-tick EvalEML band reads.
         let gated = crate::gated_rates::resolve_gated_rates(
-            &resolved, scenario, root, registry, &scaffold,
+            &resolved,
+            scenario,
+            root,
+            registry,
+            &arena_registry,
         )?;
         crate::gated_rates::seed_gated_rate_base_columns(&gated, registry, root, allocator)?;
         state.resolved_gated_rates = gated;
         state.arena_registry = arena_registry;
-        state.arena_participant_scaffold = scaffold;
         state.resource_flow_capacity_budget = report.capacity_budget;
     }
 
@@ -290,7 +292,7 @@ pub fn compile_and_install(
                 scenario,
                 root,
                 registry,
-                &state.arena_participant_scaffold,
+                &state.arena_registry,
                 allocator,
             )?;
             crate::need_binding::prepare_need_binding_cells(&resolved, registry, root)?;
@@ -662,7 +664,7 @@ fn seed_base_flow_obligations(
     registry: &DimensionRegistry,
     root: &mut SimThing,
     allocator: &SlotAllocator,
-    scaffold: &crate::arena_participant::ArenaParticipantScaffold,
+    arena_registry: &ArenaRegistry,
 ) -> Result<(), InstallError> {
     for obligation in obligations {
         let flow_property_id = resolve_base_flow_property(registry, &obligation.flow_property)?;
@@ -674,8 +676,7 @@ fn seed_base_flow_obligations(
                 }
             })?;
         for hosted_id in &obligation.hosted_ids {
-            let participant_slot = scaffold
-                .index
+            let participant_slot = arena_registry
                 .participant_slot(*hosted_id, obligation.arena_idx)
                 .ok_or_else(|| InstallError::BaseFlowObligationTargetNotAdmitted {
                     obligation: obligation.obligation.clone(),

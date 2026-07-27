@@ -437,9 +437,6 @@ impl SimSession {
             &mut self.state,
             &self.proto.registry,
             &self.spec_state.arena_registry,
-            &self.spec_state.arena_participant_scaffold,
-            &self.proto.root,
-            &self.proto.allocator,
             &self.spec_state.resolved_gated_rates,
             &self.spec_state.resolved_need_bindings,
             enabled,
@@ -459,9 +456,6 @@ impl SimSession {
             &mut self.state,
             &self.proto.registry,
             &self.spec_state.arena_registry,
-            &self.spec_state.arena_participant_scaffold,
-            &self.proto.root,
-            &self.proto.allocator,
             &self.spec_state.resolved_gated_rates,
             &self.spec_state.resolved_need_bindings,
             enabled,
@@ -575,11 +569,8 @@ impl SimSession {
         session.proto.root = SimRuntimeTree::admit(admitted);
         apply_resource_economy_opt_in(&mut session.proto.flags, game_mode);
         session.resource_flow_execution_profile = game_mode.resource_flow_execution_profile;
-        session.resource_flow_flag_source = resolve_resource_flow_execution(
-            &mut session.proto.flags,
-            game_mode,
-            &spec_state,
-        );
+        session.resource_flow_flag_source =
+            resolve_resource_flow_execution(&mut session.proto.flags, game_mode, &spec_state);
         if session.proto.flags.use_accumulator_resource_flow {
             validate_resource_flow_flat_star_execution(game_mode, &spec_state)?;
         }
@@ -655,7 +646,6 @@ impl SimSession {
             &self.scenario,
             &self.proto.registry,
             &self.spec_state.arena_registry,
-            &self.spec_state.arena_participant_scaffold,
             self.state.n_dims,
             field,
         )
@@ -1095,8 +1085,8 @@ impl SimSession {
         registered
     }
 
-    /// E-2B-5 Policy A: enroll fission-spawned hosted SimThings into parent's
-    /// Resource Flow arenas via arena-root sibling append.
+    /// E-2B-5 Policy A: enroll fission-spawned SimThings into the parent's
+    /// Resource Flow arenas on the child's existing row.
     pub fn react_to_fission_resource_flow_enrollment(
         &mut self,
         outcome: &BoundaryOutcome,
@@ -1111,10 +1101,7 @@ impl SimSession {
             crate::resource_flow_fission_enrollment::react_to_fission_resource_flow_enrollment(
                 &outcome.fission,
                 &mut self.spec_state.arena_registry,
-                &mut self.spec_state.arena_participant_scaffold,
-                &mut self.proto.root,
-                &self.proto.registry,
-                &mut self.proto.allocator,
+                &self.proto.allocator,
             );
         let should_sync = report.any_admissions() && self.proto.flags.use_accumulator_resource_flow;
         if !report.admissions.is_empty() || !report.rejections.is_empty() {

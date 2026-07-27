@@ -18,7 +18,18 @@ pub fn compile_and_materialize_resource_flow(
     registry: &DimensionRegistry,
 ) -> Result<(ArenaRegistry, ResourceFlowExpansionReport), SpecError> {
     let admission = compile_resource_flow_admission(spec, registry)?;
-    materialize_arena_registry(&admission).map_err(map_registry_error)
+    let (mut arena_registry, report) =
+        materialize_arena_registry(&admission).map_err(map_registry_error)?;
+    for member in &mut arena_registry.participants {
+        let arena = &spec.arenas[member.arena_idx as usize];
+        member.parent = arena
+            .explicit_participants
+            .iter()
+            .find(|candidate| candidate.subtree_root_id == member.subtree_root.raw())
+            .and_then(|candidate| candidate.parent_subtree_root_id)
+            .map(|raw| SimThingId::from_session_raw(raw as u32));
+    }
+    Ok((arena_registry, report))
 }
 
 /// Build `ArenaRegistry` from a validated [`CompiledResourceFlowAdmission`].
@@ -55,6 +66,7 @@ pub fn materialize_arena_registry(
                 idx,
                 SlotIndex::new(*slot),
                 SimThingId::from_session_raw(*subtree_root_raw),
+                None,
             )?;
         }
 
@@ -111,7 +123,7 @@ fn map_coupling_delay(delay: &CompiledCouplingDelay) -> CouplingDelay {
 }
 
 fn expansion_report_from_registry(registry: &ArenaRegistry) -> ResourceFlowExpansionReport {
-    let mut per_arena_participant_counts = Vec::with_capacity(registry.arenas.len());
+    let mut per_arena_member_counts = Vec::with_capacity(registry.arenas.len());
     let mut per_arena_coupling_fanout = Vec::with_capacity(registry.arenas.len());
     let mut out_fanout = vec![0u32; registry.arenas.len()];
     let mut in_fanout = vec![0u32; registry.arenas.len()];
@@ -123,7 +135,7 @@ fn expansion_report_from_registry(registry: &ArenaRegistry) -> ResourceFlowExpan
 
     let mut total_orderband_depth_reserved = 0u32;
     for (idx, arena) in registry.arenas.iter().enumerate() {
-        per_arena_participant_counts.push((arena.name.clone(), arena.participant_range.1));
+        per_arena_member_counts.push((arena.name.clone(), arena.participant_range.1));
         let fanout = out_fanout[idx].max(in_fanout[idx]);
         per_arena_coupling_fanout.push((arena.name.clone(), fanout));
         total_orderband_depth_reserved =
@@ -141,7 +153,7 @@ fn expansion_report_from_registry(registry: &ArenaRegistry) -> ResourceFlowExpan
         arena_count: registry.arenas.len(),
         participant_count,
         coupling_count,
-        per_arena_participant_counts,
+        per_arena_member_counts,
         per_arena_coupling_fanout,
         total_registration_estimate,
         total_orderband_depth_reserved,

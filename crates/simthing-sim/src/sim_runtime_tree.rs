@@ -124,11 +124,6 @@ impl SimRuntimeTree {
         std::mem::replace(self, other)
     }
 
-    /// Kind-free topology predicate for driver arena planning (no public `.kind`).
-    pub fn node_is_arena_participant(&self, id: SimThingId) -> bool {
-        find_node(&self.inner, id).is_some_and(simthing_core::is_arena_participant_node)
-    }
-
     /// Append an admitted child under `parent_id`.
     pub fn append_child(&mut self, parent_id: SimThingId, child: SimRuntimeTree) -> bool {
         if let Some(parent) = find_node_mut(&mut self.inner, parent_id) {

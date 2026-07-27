@@ -12,7 +12,7 @@ use simthing_core::{
 use simthing_driver::{
     allocator_eps_bound, allocator_from_disbursements, build_execution_plan, check_allocator_step,
     check_conservation, resolve_node_columns, AllocatorConservationViolation,
-    ArenaConservationSnapshot, ArenaParticipantObservation, ArenaStructuralEvidence,
+    ArenaConservationSnapshot, ArenaMemberObservation, ArenaStructuralEvidence,
     ResourceFlowFlagSource, Scenario, SimSession,
 };
 use simthing_gpu::{GpuContext, SlotAllocator};
@@ -179,8 +179,6 @@ fn authored_fixture(
                 max_orderband_depth: 16,
                 fission_policy: FissionPolicySpec::Reject,
                 reserved_orderband_depth: 0,
-                reserved_gap_per_intermediate: 0,
-                expected_max_children_per_intermediate: 0,
                 explicit_participants: participants,
                 enrollment: None,
                 wildcard_admission: None,
@@ -288,28 +286,19 @@ fn execute_step(
         .offset_of(&SubFieldRole::Named("balance_rate".into()))
         .expect("governed Balance rate column")
         .lane() as u32;
-    let layout = build_execution_plan(
-        &session.proto.registry,
-        &session.spec_state.arena_registry.arenas,
-        &session.proto.root,
-        &session.proto.allocator,
-        &session.spec_state.arena_participant_scaffold,
-        session.spec_state.arena_registry.generation,
-    )
-    .expect("recursive execution plan")
-    .arenas
-    .into_iter()
-    .next()
-    .expect("one arena");
+    let layout = build_execution_plan(&session.proto.registry, &session.spec_state.arena_registry)
+        .expect("recursive execution plan")
+        .arenas
+        .into_iter()
+        .next()
+        .expect("one arena");
     assert_eq!(layout.max_depth, 3, "fixture must execute nested D=3 RF");
 
     let participant_slot = |hosted| {
-        *session
+        session
             .spec_state
-            .arena_participant_scaffold
-            .index
-            .by_host_and_arena
-            .get(&(hosted, 0))
+            .arena_registry
+            .participant_slot(hosted, 0)
             .expect("admitted participant slot")
     };
     let root_slot = participant_slot(fixture.session_root);
@@ -377,14 +366,14 @@ fn execute_step(
         ),
     ];
     let participants = vec![
-        ArenaParticipantObservation {
+        ArenaMemberObservation {
             id: fixture.session_root.raw() as u64,
             is_leaf: false,
             intrinsic_flow: ROOT_BUDGET,
             allocated_flow: 0.0,
             balance_delta: Some(root_balance_delta),
         },
-        ArenaParticipantObservation {
+        ArenaMemberObservation {
             id: fixture.owner_aggregate.raw() as u64,
             is_leaf: false,
             intrinsic_flow: 0.0,
@@ -404,7 +393,7 @@ fn execute_step(
                     .zip(leaf_balance_deltas.iter().copied()),
             )
             .map(|((id, intrinsic_flow), (allocated_flow, balance_delta))| {
-                ArenaParticipantObservation {
+                ArenaMemberObservation {
                     id: id.raw() as u64,
                     is_leaf: true,
                     intrinsic_flow,

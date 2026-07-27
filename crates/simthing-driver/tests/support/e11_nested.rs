@@ -4,14 +4,15 @@
 
 use simthing_core::{
     AccumulatorRole, AccumulatorSpec, BalanceSpec, ClampBehavior, DimensionRegistry,
-    EmlExpressionRegistry, LogTier, SimThing, SimThingId, SimThingKind, SubFieldRole, SubFieldSpec,
+    EmlExpressionRegistry, LogTier, PropertyValue, SimThing, SimThingId, SimThingKind,
+    SubFieldRole, SubFieldSpec,
 };
 use simthing_driver::{
-    build_execution_plan, install_atomic, materialize_arena_participants, max_disbursement_band,
+    build_execution_plan, compile_and_materialize_resource_flow, install_atomic,
+    max_disbursement_band,
     nested_hierarchy_materialization_report, plan_arena_allocation, register_child_share_formula,
     resolve_node_columns, run_arena_allocation_oracle, validate_resource_flow_preflight,
-    ArenaParticipantScaffold, ArenaTreeLayout, GpuArenaDescriptor, HierarchyNode, NodeColumnRefs,
-    SimSession,
+    ArenaRegistry, ArenaTreeLayout, HierarchyNode, NodeColumnRefs, SimSession,
 };
 use simthing_gpu::{GpuContext, SlotAllocator, WorldGpuState};
 use simthing_spec::{
@@ -75,7 +76,6 @@ pub fn register_food_flow(reg: &mut DimensionRegistry) -> simthing_core::SimProp
 pub fn arena_spec(
     participants: Vec<ExplicitParticipantSpec>,
     max_orderband_depth: u32,
-    gap_k: u32,
 ) -> ArenaSpec {
     ArenaSpec {
         name: "food".into(),
@@ -86,8 +86,6 @@ pub fn arena_spec(
         max_orderband_depth,
         fission_policy: FissionPolicySpec::Reject,
         reserved_orderband_depth: 0,
-        reserved_gap_per_intermediate: gap_k,
-        expected_max_children_per_intermediate: 0,
         explicit_participants: participants,
         enrollment: None,
         wildcard_admission: None,
@@ -147,7 +145,7 @@ pub struct MaterializedNestedFixture {
     pub reg: DimensionRegistry,
     pub root: SimThing,
     pub alloc: SlotAllocator,
-    pub scaffold: ArenaParticipantScaffold,
+    pub arena_registry: ArenaRegistry,
     pub flow_id: simthing_core::SimPropertyId,
     pub cols: NodeColumnRefs,
 }
@@ -156,53 +154,46 @@ pub fn materialize_nested(
     hosted_count: usize,
     build_participants: impl Fn(&[SimThingId], &SlotAllocator) -> Vec<ExplicitParticipantSpec>,
     max_depth: u32,
-    gap_k: u32,
 ) -> MaterializedNestedFixture {
     let mut reg = DimensionRegistry::new();
     let flow_id = register_food_flow(&mut reg);
     let cols = resolve_node_columns(&reg.property(flow_id).layout, "food").unwrap();
     let (mut root, hosted) = hosted_cohorts(hosted_count);
+    fn seed(node: &mut SimThing, flow_id: simthing_core::SimPropertyId, value: &PropertyValue) {
+        if matches!(node.kind, SimThingKind::Cohort) {
+            node.add_property(flow_id, value.clone());
+        }
+        for child in &mut node.children {
+            seed(child, flow_id, value);
+        }
+    }
+    seed(
+        &mut root,
+        flow_id,
+        &PropertyValue::from_layout(&reg.property(flow_id).layout),
+    );
     let mut alloc = SlotAllocator::new();
     alloc.populate_from_tree(&root);
     let participants = build_participants(&hosted, &alloc);
     let spec = ResourceFlowSpec {
-        arenas: vec![arena_spec(participants, max_depth.max(16), gap_k)],
+        arenas: vec![arena_spec(participants, max_depth.max(16))],
         couplings: vec![],
         ..Default::default()
     };
     validate_resource_flow_preflight(&spec, &alloc).unwrap();
-    let scaffold = materialize_arena_participants(&spec, &reg, &mut root, &mut alloc).unwrap();
+    let (arena_registry, _) = compile_and_materialize_resource_flow(&spec, &reg).unwrap();
     MaterializedNestedFixture {
         reg,
         root,
         alloc,
-        scaffold,
+        arena_registry,
         flow_id,
         cols,
     }
 }
 
 pub fn layout_for(f: &MaterializedNestedFixture) -> ArenaTreeLayout {
-    let arena = GpuArenaDescriptor {
-        name: "food".into(),
-        flow_property_id: f.flow_id,
-        balance_property_id: None,
-        max_participants: 32,
-        max_coupling_fanout: 4,
-        max_orderband_depth: 16,
-        fission_policy: simthing_driver::FissionPolicy::Reject,
-        participant_range: (0, 0),
-        wildcard_max_expansion: None,
-        reserved_orderband_depth: 0,
-    };
-    build_execution_plan_from_authoring(
-        &f.reg,
-        std::slice::from_ref(&arena),
-        &f.root,
-        &f.alloc,
-        &f.scaffold,
-        1,
-    )
+    build_execution_plan_from_authoring(&f.reg, &f.arena_registry)
     .expect("execution plan")
     .arenas
     .into_iter()
@@ -328,7 +319,7 @@ pub fn nested_game_mode(
         capability_trees: vec![],
         events: vec![],
         resource_flow: Some(ResourceFlowSpec {
-            arenas: vec![arena_spec(participants, max_orderband_depth, 0)],
+            arenas: vec![arena_spec(participants, max_orderband_depth)],
             couplings: vec![],
             ..Default::default()
         }),
@@ -392,11 +383,7 @@ pub fn open_nested_session(
         .expect("cols");
     let layout = build_execution_plan_from_authoring(
         &session.proto.registry,
-        &session.spec_state.arena_registry.arenas,
-        &session.proto.root,
-        &session.proto.allocator,
-        &session.spec_state.arena_participant_scaffold,
-        session.spec_state.arena_registry.generation,
+        &session.spec_state.arena_registry,
     )
     .expect("plan")
     .arenas

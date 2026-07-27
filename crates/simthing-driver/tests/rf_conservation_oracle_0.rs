@@ -155,8 +155,6 @@ fn flat_star_game_mode() -> GameModeSpec {
                 max_orderband_depth: 16,
                 fission_policy: FissionPolicySpec::Reject,
                 reserved_orderband_depth: 0,
-                reserved_gap_per_intermediate: 0,
-                expected_max_children_per_intermediate: 0,
                 explicit_participants: Vec::new(),
                 enrollment: None,
                 wildcard_admission: None,
@@ -260,21 +258,12 @@ fn execute_live_flat_star(connect_root_balance: bool) -> LiveFlatStarObservation
             .is_some(),
         "live fixture must declare its Balance property"
     );
-    // Plan from the *admitted* runtime tree (install materializes ArenaParticipant
-    // nodes onto proto.root, not scenario.root).
-    let layout = build_execution_plan(
-        &session.proto.registry,
-        &session.spec_state.arena_registry.arenas,
-        &session.proto.root,
-        &session.proto.allocator,
-        &session.spec_state.arena_participant_scaffold,
-        session.spec_state.arena_registry.generation,
-    )
-    .expect("execution plan")
-    .arenas
-    .into_iter()
-    .next()
-    .expect("one arena");
+    let layout = build_execution_plan(&session.proto.registry, &session.spec_state.arena_registry)
+        .expect("execution plan")
+        .arenas
+        .into_iter()
+        .next()
+        .expect("one arena");
 
     let root = layout.participant_roots[0].participant_slot;
     let leaves: Vec<SlotIndex> = layout.participant_roots[0]
@@ -598,14 +587,14 @@ fn oracle_bite_nonconservative_fails_conservative_passes() {
     // Orphan participant fails structural.
     let arena_orphan = simthing_driver::ArenaConservationSnapshot {
         participants: vec![
-            simthing_driver::ArenaParticipantObservation {
+            simthing_driver::ArenaMemberObservation {
                 id: 1,
                 is_leaf: false,
                 intrinsic_flow: 4.0,
                 allocated_flow: 0.0,
                 balance_delta: Some(0.0),
             },
-            simthing_driver::ArenaParticipantObservation {
+            simthing_driver::ArenaMemberObservation {
                 id: 77,
                 is_leaf: true,
                 intrinsic_flow: 0.0,

@@ -9,7 +9,7 @@ use simthing_core::{
     SimThing, SimThingKind, SlotIndex, SubFieldRole, SubFieldSpec,
 };
 use simthing_driver::{
-    AllocatorStepObservation, ArenaConservationSnapshot, ArenaParticipantObservation,
+    AllocatorStepObservation, ArenaConservationSnapshot, ArenaMemberObservation,
     ArenaStructuralEvidence, ResourceFlowFlagSource, Scenario, SimSession, build_execution_plan,
     check_conservation, resolve_node_columns, run_arena_allocation_oracle,
 };
@@ -184,11 +184,7 @@ fn gpu_micro_economy_matches_arena_allocation_oracle() {
     .expect("column refs");
     let layout = build_execution_plan(
         &session.proto.registry,
-        &session.spec_state.arena_registry.arenas,
-        &session.proto.root,
-        &session.proto.allocator,
-        &session.spec_state.arena_participant_scaffold,
-        session.spec_state.arena_registry.generation,
+        &session.spec_state.arena_registry,
     )
     .expect("execution plan")
     .arenas
@@ -260,7 +256,7 @@ fn gpu_micro_economy_matches_arena_allocation_oracle() {
         .iter()
         .map(|node| node.hosted_simthing_id.raw() as u64)
         .collect();
-    let participants = std::iter::once(ArenaParticipantObservation {
+    let participants = std::iter::once(ArenaMemberObservation {
         id: root_id,
         is_leaf: false,
         intrinsic_flow: budget,
@@ -273,7 +269,7 @@ fn gpu_micro_economy_matches_arena_allocation_oracle() {
             .zip(leaf_ids.iter())
             .zip(disbursed.iter())
             .map(
-                |((&slot, &id), &allocated_flow)| ArenaParticipantObservation {
+                |((&slot, &id), &allocated_flow)| ArenaMemberObservation {
                     id,
                     is_leaf: true,
                     intrinsic_flow: 0.0,

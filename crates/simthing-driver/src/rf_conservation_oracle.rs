@@ -173,7 +173,7 @@ pub fn check_allocator_step(
 
 /// Participant lineage for structural / orphan checks.
 #[derive(Clone, Debug)]
-pub struct ArenaParticipantObservation {
+pub struct ArenaMemberObservation {
     pub id: u64,
     /// True when this participant is a leaf for allocation (receives allocated flow).
     pub is_leaf: bool,
@@ -197,7 +197,7 @@ pub struct ArenaStructuralEvidence {
 /// Full arena observation for structural conservation.
 #[derive(Clone, Debug)]
 pub struct ArenaConservationSnapshot {
-    pub participants: Vec<ArenaParticipantObservation>,
+    pub participants: Vec<ArenaMemberObservation>,
     pub structural_evidence: ArenaStructuralEvidence,
     /// Inbound coupling contributions into this arena this tick.
     pub inbound_coupling: f32,
@@ -367,7 +367,7 @@ pub fn flat_star_observations(
     };
 
     let mut participants = Vec::with_capacity(1 + leaf_slots.len());
-    participants.push(ArenaParticipantObservation {
+    participants.push(ArenaMemberObservation {
         id: root_slot,
         is_leaf: false,
         intrinsic_flow: root_intrinsic,
@@ -375,7 +375,7 @@ pub fn flat_star_observations(
         balance_delta: root_balance_delta,
     });
     for (i, &slot) in leaf_slots.iter().enumerate() {
-        participants.push(ArenaParticipantObservation {
+        participants.push(ArenaMemberObservation {
             id: slot,
             is_leaf: true,
             intrinsic_flow: 0.0,
@@ -556,14 +556,14 @@ mod tests {
     fn structural_orphan_or_mass_imbalance_fails() {
         let orphan_arena = ArenaConservationSnapshot {
             participants: vec![
-                ArenaParticipantObservation {
+                ArenaMemberObservation {
                     id: 1,
                     is_leaf: false,
                     intrinsic_flow: 5.0,
                     allocated_flow: 0.0,
                     balance_delta: Some(0.0),
                 },
-                ArenaParticipantObservation {
+                ArenaMemberObservation {
                     id: 99,
                     is_leaf: true,
                     intrinsic_flow: 0.0,
@@ -588,14 +588,14 @@ mod tests {
 
         let imbalanced = ArenaConservationSnapshot {
             participants: vec![
-                ArenaParticipantObservation {
+                ArenaMemberObservation {
                     id: 1,
                     is_leaf: false,
                     intrinsic_flow: 10.0,
                     allocated_flow: 0.0,
                     balance_delta: Some(0.0),
                 },
-                ArenaParticipantObservation {
+                ArenaMemberObservation {
                     id: 2,
                     is_leaf: true,
                     intrinsic_flow: 0.0,

@@ -1,7 +1,8 @@
 //! E-11 AccumulatorOp planner (memo §2.3).
 
 use simthing_core::{
-    AccumulatorOp, ColumnIndex, CombineFn, ConsumeMode, GateSpec, ScaleSpec, SlotIndex, SourceSpec,
+    AccumulatorOp, ColumnIndex, CombineFn, ConsumeMode, GateSpec, InputSpec, ScaleSpec, SlotIndex,
+    SourceSpec,
 };
 use simthing_gpu::{plan_governed_integration_at_band, GovernedPair, PlannerError};
 use thiserror::Error;
@@ -23,8 +24,6 @@ pub enum AllocationPlanError {
     Hierarchy(#[from] HierarchyError),
     #[error(transparent)]
     Integration(#[from] PlannerError),
-    #[error("non-contiguous participant children for parent slot {parent_slot}")]
-    NonContiguousChildren { parent_slot: SlotId },
 }
 
 pub fn plan_arena_allocation(
@@ -32,15 +31,6 @@ pub fn plan_arena_allocation(
     governed_pairs: &[GovernedPair],
     n_slots: u32,
 ) -> Result<ArenaAllocationPlan, AllocationPlanError> {
-    for node in layout.iter_all() {
-        node.verify_child_contiguity().map_err(|e| match e {
-            HierarchyError::NonContiguousChildren { parent_slot } => {
-                AllocationPlanError::NonContiguousChildren { parent_slot }
-            }
-            other => AllocationPlanError::Hierarchy(other),
-        })?;
-    }
-
     let mut ops_cpu = Vec::new();
     let bands = layout.band_layout;
     let d = layout.max_depth;
@@ -58,18 +48,15 @@ pub fn plan_arena_allocation(
                 if parent.children.is_empty() {
                     continue;
                 }
-                let (start, count) = child_range(parent);
-                ops_cpu.push(sum_reduction_op(
-                    start,
-                    count,
+                ops_cpu.extend(sum_reduction_ops(
+                    parent,
                     parent.participant_slot.raw(),
                     parent.cols.intrinsic_flow_col,
                     parent.cols.intrinsic_flow_sum_col,
                     band,
                 ));
-                ops_cpu.push(sum_reduction_op(
-                    start,
-                    count,
+                ops_cpu.extend(sum_reduction_ops(
+                    parent,
                     parent.participant_slot.raw(),
                     parent.cols.weight_col,
                     parent.cols.weight_sum_col,
@@ -252,10 +239,8 @@ pub(crate) fn append_residual_closure_ops(
                 ScaleSpec::Constant(-1.0),
             ));
         }
-        let (start, count) = child_range(parent);
-        ops_cpu.push(sum_accumulation_op(
-            start,
-            count,
+        ops_cpu.extend(sum_accumulation_ops(
+            parent,
             parent.participant_slot.raw(),
             parent.cols.propagated_allocated_flow_col,
             rate_col,
@@ -281,6 +266,13 @@ fn child_range(parent: &HierarchyNode) -> (u32, u32) {
     (start, count)
 }
 
+fn children_are_contiguous(parent: &HierarchyNode) -> bool {
+    parent
+        .children
+        .windows(2)
+        .all(|pair| pair[1].participant_slot.raw() == pair[0].participant_slot.raw() + 1)
+}
+
 fn reset_op(slot: u32, col: u32, band: u32) -> AccumulatorOp {
     AccumulatorOp {
         source: SourceSpec::Constant(0.0),
@@ -292,29 +284,42 @@ fn reset_op(slot: u32, col: u32, band: u32) -> AccumulatorOp {
     }
 }
 
-fn sum_reduction_op(
-    start: u32,
-    count: u32,
+fn sum_reduction_ops(
+    parent: &HierarchyNode,
     parent_slot: u32,
     source_col: u32,
     target_col: u32,
     band: u32,
-) -> AccumulatorOp {
-    AccumulatorOp {
-        source: SourceSpec::SlotRange {
-            start: SlotIndex::new(start),
-            count,
-            col: ColumnIndex::new(source_col as usize),
-        },
+) -> Vec<AccumulatorOp> {
+    if children_are_contiguous(parent) {
+        let (start, count) = child_range(parent);
+        return vec![AccumulatorOp {
+            source: SourceSpec::SlotRange {
+                start: SlotIndex::new(start),
+                count,
+                col: ColumnIndex::from_gpu_round_trip(source_col),
+            },
+            combine: CombineFn::Sum,
+            gate: GateSpec::OrderBand(band),
+            scale: ScaleSpec::Identity,
+            consume: ConsumeMode::ResetTarget,
+            targets: vec![(
+                SlotIndex::new(parent_slot),
+                ColumnIndex::from_gpu_round_trip(target_col),
+            )],
+        }];
+    }
+    vec![AccumulatorOp {
+        source: sparse_child_input_list(parent, source_col),
         combine: CombineFn::Sum,
         gate: GateSpec::OrderBand(band),
         scale: ScaleSpec::Identity,
         consume: ConsumeMode::ResetTarget,
         targets: vec![(
             SlotIndex::new(parent_slot),
-            ColumnIndex::new(target_col as usize),
+            ColumnIndex::from_gpu_round_trip(target_col),
         )],
-    }
+    }]
 }
 
 fn broadcast_op(
@@ -359,28 +364,55 @@ fn slot_value_op(
     }
 }
 
-fn sum_accumulation_op(
-    start: u32,
-    count: u32,
+fn sum_accumulation_ops(
+    parent: &HierarchyNode,
     parent_slot: u32,
     source_col: u32,
     target_col: u32,
     band: u32,
-) -> AccumulatorOp {
-    AccumulatorOp {
-        source: SourceSpec::SlotRange {
-            start: SlotIndex::new(start),
-            count,
-            col: ColumnIndex::new(source_col as usize),
-        },
+) -> Vec<AccumulatorOp> {
+    if children_are_contiguous(parent) {
+        let (start, count) = child_range(parent);
+        return vec![AccumulatorOp {
+            source: SourceSpec::SlotRange {
+                start: SlotIndex::new(start),
+                count,
+                col: ColumnIndex::from_gpu_round_trip(source_col),
+            },
+            combine: CombineFn::Sum,
+            gate: GateSpec::OrderBand(band),
+            scale: ScaleSpec::Identity,
+            consume: ConsumeMode::AddToTarget,
+            targets: vec![(
+                SlotIndex::new(parent_slot),
+                ColumnIndex::from_gpu_round_trip(target_col),
+            )],
+        }];
+    }
+    vec![AccumulatorOp {
+        source: sparse_child_input_list(parent, source_col),
         combine: CombineFn::Sum,
         gate: GateSpec::OrderBand(band),
         scale: ScaleSpec::Identity,
         consume: ConsumeMode::AddToTarget,
         targets: vec![(
             SlotIndex::new(parent_slot),
-            ColumnIndex::new(target_col as usize),
+            ColumnIndex::from_gpu_round_trip(target_col),
         )],
+    }]
+}
+
+fn sparse_child_input_list(parent: &HierarchyNode, source_col: u32) -> SourceSpec {
+    SourceSpec::ConjunctiveCrossing {
+        inputs: parent
+            .children
+            .iter()
+            .map(|child| InputSpec {
+                slot: child.participant_slot,
+                col: ColumnIndex::from_gpu_round_trip(source_col),
+                unit_cost: 1.0,
+            })
+            .collect(),
     }
 }
 
@@ -458,10 +490,8 @@ mod tests {
                 depth: 1,
                 children: vec![],
                 cols: c,
-                gap_used: 0,
             }],
             cols: c,
-            gap_used: 0,
         };
         build_custom_layout(
             0,
@@ -478,8 +508,6 @@ mod tests {
                 reserved_orderband_depth: 0,
             },
             c,
-            Default::default(),
-            SlotIndex::new(9),
             vec![root],
         )
         .unwrap()
@@ -524,6 +552,53 @@ mod tests {
                 (SlotIndex::new(17), ColumnIndex::new(4)),
                 (SlotIndex::new(17), ColumnIndex::new(3)),
             ]
+        );
+    }
+
+    #[test]
+    fn sparse_child_rows_compile_to_one_ordered_input_list_writer() {
+        let mut layout = d2_layout();
+        {
+            let root = &mut layout.participant_roots[0];
+            let mut second = root.children[0].clone();
+            second.participant_slot = SlotIndex::new(13);
+            root.children.push(second);
+        }
+
+        let plan = plan_arena_allocation(&layout, &[], 16).expect("sparse rows plan");
+        let root = &layout.participant_roots[0];
+        let root_slot = root.participant_slot;
+        let sparse_weight_sum_ops: Vec<_> = plan
+            .cpu_ops
+            .iter()
+            .filter(|op| {
+                op.gate == GateSpec::OrderBand(layout.band_layout.upsweep_band(0, 2))
+                    && op.targets
+                        == vec![(
+                            root_slot,
+                            ColumnIndex::from_raw_for_oracle_or_rehearsal(
+                                root.cols.weight_sum_col as usize,
+                            ),
+                        )]
+            })
+            .collect();
+        assert_eq!(
+            sparse_weight_sum_ops.len(),
+            1,
+            "a sparse reduction target must have exactly one writer in its band"
+        );
+        assert_eq!(sparse_weight_sum_ops[0].combine, CombineFn::Sum);
+        assert_eq!(sparse_weight_sum_ops[0].consume, ConsumeMode::ResetTarget);
+        let SourceSpec::ConjunctiveCrossing { inputs } = &sparse_weight_sum_ops[0].source else {
+            panic!("sparse children must lower through the admitted input-list source");
+        };
+        assert_eq!(
+            inputs
+                .iter()
+                .map(|input| input.slot.raw())
+                .collect::<Vec<_>>(),
+            vec![11, 13],
+            "input-list order must preserve hierarchy child order"
         );
     }
 }

@@ -338,8 +338,6 @@ fn food_arena_spec(max_participants: u32, fission: FissionPolicySpec) -> ArenaSp
         max_orderband_depth: 16,
         fission_policy: fission,
         reserved_orderband_depth: 0,
-        reserved_gap_per_intermediate: 0,
-        expected_max_children_per_intermediate: 0,
         explicit_participants: vec![],
         enrollment: None,
         wildcard_admission: None,
@@ -367,8 +365,6 @@ fn build_game_mode(fixture: &RfT2BurnInFixture, scenario: &Scenario) -> GameMode
                         max_orderband_depth: 16,
                         fission_policy: FissionPolicySpec::Inherit,
                         reserved_orderband_depth: 0,
-                        reserved_gap_per_intermediate: 0,
-                        expected_max_children_per_intermediate: 0,
                         explicit_participants: vec![],
                         enrollment: None,
                         wildcard_admission: None,
@@ -961,19 +957,12 @@ fn execution_layout(session: &SimSession) -> (ArenaTreeLayout, NodeColumnRefs) {
         .expect("food_flow");
     let cols = resolve_node_columns(&session.proto.registry.property(flow_id).layout, "food")
         .expect("cols");
-    let layout = build_execution_plan(
-        &session.proto.registry,
-        &session.spec_state.arena_registry.arenas,
-        &session.proto.root,
-        &session.proto.allocator,
-        &session.spec_state.arena_participant_scaffold,
-        session.spec_state.arena_registry.generation,
-    )
-    .expect("plan")
-    .arenas
-    .into_iter()
-    .next()
-    .expect("food arena");
+    let layout = build_execution_plan(&session.proto.registry, &session.spec_state.arena_registry)
+        .expect("plan")
+        .arenas
+        .into_iter()
+        .next()
+        .expect("food arena");
     (layout, cols)
 }
 
@@ -1177,8 +1166,6 @@ pub fn clone_for_replay(fx: &RfT2OptInSession, fixture: &RfT2BurnInFixture) -> R
     session.proto.allocator = fx.session.proto.allocator.clone();
     session.proto.registry = fx.session.proto.registry.clone();
     session.spec_state.arena_registry = fx.session.spec_state.arena_registry.clone();
-    session.spec_state.arena_participant_scaffold =
-        fx.session.spec_state.arena_participant_scaffold.clone();
     session.proto.flags = fx.session.proto.flags.clone();
     session
         .sync_resource_flow_if_enabled()

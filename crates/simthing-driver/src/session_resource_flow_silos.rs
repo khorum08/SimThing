@@ -57,8 +57,6 @@ pub fn build_owner_silo_resource_flow_spec(
             max_orderband_depth: 1,
             fission_policy: FissionPolicySpec::Reevaluate,
             reserved_orderband_depth: 0,
-            reserved_gap_per_intermediate: 0,
-            expected_max_children_per_intermediate: 0,
             explicit_participants,
             enrollment: None,
             wildcard_admission: None,

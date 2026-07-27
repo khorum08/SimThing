@@ -103,11 +103,7 @@ fn gpu_scatter_projection_matches_cpu_oracle_through_commitment() {
     let mut session = SimSession::open_from_spec(scenario, &game_mode).expect("open_from_spec");
     let plan = build_execution_plan_from_authoring(
         &session.proto.registry,
-        &session.spec_state.arena_registry.arenas,
-        &session.scenario.root,
-        &session.proto.allocator,
-        &session.spec_state.arena_participant_scaffold,
-        session.spec_state.arena_registry.generation,
+        &session.spec_state.arena_registry,
     )
     .expect("execution plan");
     let total_bands = plan
@@ -129,7 +125,6 @@ fn gpu_scatter_projection_matches_cpu_oracle_through_commitment() {
         &session.scenario,
         &session.proto.registry,
         &session.spec_state.arena_registry,
-        &session.spec_state.arena_participant_scaffold,
         &values,
         n_dims,
     )
@@ -156,7 +151,6 @@ fn gpu_scatter_projection_matches_cpu_oracle_through_commitment() {
         &session.scenario,
         &session.proto.registry,
         &session.spec_state.arena_registry,
-        &session.spec_state.arena_participant_scaffold,
         n_dims,
         &field,
     )
@@ -216,7 +210,6 @@ fn gpu_scatter_projection_matches_cpu_oracle_through_commitment() {
         &session.scenario,
         &session.proto.registry,
         &session.spec_state.arena_registry,
-        &session.spec_state.arena_participant_scaffold,
         n_dims,
         &field,
     )
@@ -236,7 +229,6 @@ fn gpu_scatter_projection_matches_cpu_oracle_through_commitment() {
             &session.scenario,
             &session.proto.registry,
             &session.spec_state.arena_registry,
-            &session.spec_state.arena_participant_scaffold,
             n_dims,
             &field,
         )

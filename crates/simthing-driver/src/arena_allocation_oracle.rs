@@ -263,7 +263,6 @@ mod tests {
                 depth: 1,
                 children: vec![],
                 cols: c,
-                gap_used: 0,
             },
             HierarchyNode {
                 participant_slot: SlotIndex::new(12),
@@ -271,7 +270,6 @@ mod tests {
                 depth: 1,
                 children: vec![],
                 cols: c,
-                gap_used: 0,
             },
         ];
         let root = HierarchyNode {
@@ -280,16 +278,7 @@ mod tests {
             depth: 0,
             children: leaves,
             cols: c,
-            gap_used: 0,
         };
-        build_custom_layout(
-            0,
-            &arena_desc(16),
-            c,
-            Default::default(),
-            SlotIndex::new(9),
-            vec![root],
-        )
-        .unwrap()
+        build_custom_layout(0, &arena_desc(16), c, vec![root]).unwrap()
     }
 }

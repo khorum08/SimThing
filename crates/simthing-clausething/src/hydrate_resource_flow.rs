@@ -117,8 +117,6 @@ pub fn hydrate_resource_flow_pack(
             max_orderband_depth,
             fission_policy: FissionPolicySpec::Reject,
             reserved_orderband_depth: 0,
-            reserved_gap_per_intermediate: 0,
-            expected_max_children_per_intermediate: 0,
             explicit_participants: Vec::new(),
             enrollment: None,
             wildcard_admission: None,

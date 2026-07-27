@@ -52,11 +52,13 @@ pub struct GpuArenaDescriptor {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct ArenaParticipant {
+pub struct ArenaMember {
     pub arena_idx: ArenaIdx,
     pub slot: SlotId,
-    /// Subtree root for incremental refresh scoping.
+    /// The admitted SimThing. Its own slot is the flow-property row.
     pub subtree_root: SimThingId,
+    /// Resource-parent membership edge, when the arena is recursive.
+    pub parent: Option<SimThingId>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -69,7 +71,7 @@ pub struct ArenaCoupling {
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ArenaRegistry {
     pub arenas: Vec<GpuArenaDescriptor>,
-    pub participants: Vec<ArenaParticipant>,
+    pub participants: Vec<ArenaMember>,
     pub couplings: Vec<ArenaCoupling>,
     pub generation: u64,
     /// Per-subtree refresh generation — bumped only by subtree-scoped refresh.
@@ -143,7 +145,7 @@ pub enum ArenaRegistryError {
 #[derive(Clone, Debug, Default)]
 pub struct ArenaRegistryBuilder {
     arenas: Vec<GpuArenaDescriptor>,
-    participants: Vec<ArenaParticipant>,
+    participants: Vec<ArenaMember>,
     couplings: Vec<ArenaCoupling>,
     /// Wildcard admission declared without explicit slots — requires `max_expansion`.
     wildcard_declarations: Vec<(ArenaIdx, Option<u32>)>,
@@ -168,12 +170,14 @@ impl ArenaRegistryBuilder {
         arena_idx: ArenaIdx,
         slot: SlotId,
         subtree_root: SimThingId,
+        parent: Option<SimThingId>,
     ) -> Result<(), ArenaRegistryError> {
         self.arena_name(arena_idx)?;
-        self.participants.push(ArenaParticipant {
+        self.participants.push(ArenaMember {
             arena_idx,
             slot,
             subtree_root,
+            parent,
         });
         Ok(())
     }
@@ -224,6 +228,21 @@ impl ArenaRegistryBuilder {
 impl ArenaRegistry {
     pub fn empty() -> Self {
         Self::default()
+    }
+
+    /// Resolve an admitted SimThing to the row it already owns.
+    pub fn participant_slot(&self, hosted: SimThingId, arena_idx: ArenaIdx) -> Option<SlotId> {
+        self.participants
+            .iter()
+            .find(|member| member.arena_idx == arena_idx && member.subtree_root == hosted)
+            .map(|member| member.slot)
+    }
+
+    pub fn participant_index(&self) -> HashMap<(SimThingId, ArenaIdx), SlotId> {
+        self.participants
+            .iter()
+            .map(|member| ((member.subtree_root, member.arena_idx), member.slot))
+            .collect()
     }
 
     /// Subtree-scoped refresh — re-evaluates admission only for participants
@@ -281,6 +300,7 @@ impl ArenaRegistry {
         arena_idx: ArenaIdx,
         slot: SlotId,
         subtree_root: SimThingId,
+        parent: Option<SimThingId>,
     ) -> Result<(), ArenaRegistryError> {
         let arena = self
             .arenas
@@ -298,10 +318,11 @@ impl ArenaRegistry {
         let insert_at = (start + len) as usize;
         self.participants.insert(
             insert_at,
-            ArenaParticipant {
+            ArenaMember {
                 arena_idx,
                 slot,
                 subtree_root,
+                parent,
             },
         );
         self.arenas[arena_idx as usize].participant_range.1 += 1;
@@ -434,7 +455,7 @@ fn validate_and_finalize(
 }
 
 /// Sort participants arena-major (0..n) preserving stable within-arena order.
-fn canonicalize_participants_arena_major(participants: &mut [ArenaParticipant]) {
+fn canonicalize_participants_arena_major(participants: &mut [ArenaMember]) {
     participants.sort_by_key(|p| p.arena_idx);
 }
 
@@ -516,14 +537,51 @@ mod tests {
         }
     }
 
-    fn participants_in_range<'a>(
-        reg: &'a ArenaRegistry,
-        arena_idx: ArenaIdx,
-    ) -> &'a [ArenaParticipant] {
+    fn participants_in_range<'a>(reg: &'a ArenaRegistry, arena_idx: ArenaIdx) -> &'a [ArenaMember] {
         let (start, len) = reg.arenas[arena_idx as usize].participant_range;
         let start = start as usize;
         let end = start + len as usize;
         &reg.participants[start..end]
     }
 
+    #[test]
+    fn admitted_members_keep_owned_rows_and_resource_parent_edges() {
+        let root = SimThingId::from_session_raw(10);
+        let child = SimThingId::from_session_raw(11);
+        let spawned = SimThingId::from_session_raw(12);
+        let mut builder = ArenaRegistryBuilder::new();
+        let arena_idx = builder.push_arena(food_arena(4));
+        builder
+            .admit_participant(arena_idx, SlotIndex::new(3), root, None)
+            .unwrap();
+        builder
+            .admit_participant(arena_idx, SlotIndex::new(8), child, Some(root))
+            .unwrap();
+        let (mut registry, _) = builder.build().unwrap();
+
+        assert_eq!(
+            registry.participant_slot(root, arena_idx),
+            Some(SlotIndex::new(3))
+        );
+        assert_eq!(
+            registry.participant_slot(child, arena_idx),
+            Some(SlotIndex::new(8))
+        );
+        assert_eq!(
+            participants_in_range(&registry, arena_idx)[1].parent,
+            Some(root)
+        );
+
+        registry
+            .admit_participant_runtime(arena_idx, SlotIndex::new(13), spawned, Some(child))
+            .unwrap();
+        assert_eq!(
+            registry.participant_slot(spawned, arena_idx),
+            Some(SlotIndex::new(13))
+        );
+        assert_eq!(
+            participants_in_range(&registry, arena_idx)[2].parent,
+            Some(child)
+        );
+    }
 }

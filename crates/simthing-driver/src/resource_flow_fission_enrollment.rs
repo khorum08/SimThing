@@ -1,13 +1,9 @@
 //! E-2B-5 — Policy A inherit-only dynamic fission enrollment for Resource Flow.
 
-use simthing_core::{DimensionRegistry, SimThingId};
+use simthing_core::SimThingId;
 use simthing_gpu::SlotAllocator;
-use simthing_sim::{FissionOutcome, SimRuntimeTree};
+use simthing_sim::FissionOutcome;
 
-use crate::arena_participant::{
-    commit_dynamic_arena_root_append, prepare_dynamic_arena_root_append, ArenaParticipantScaffold,
-    DynamicEnrollmentError,
-};
 use crate::arena_registry::{ArenaIdx, ArenaRegistry, FissionPolicy};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -40,14 +36,11 @@ impl DynamicFissionEnrollmentReport {
     }
 }
 
-/// Policy A: fission children inherit parent arena membership via arena-root sibling append.
+/// Policy A: fission children inherit membership on the row they already own.
 pub fn react_to_fission_resource_flow_enrollment(
     fission: &FissionOutcome,
     arena_registry: &mut ArenaRegistry,
-    scaffold: &mut ArenaParticipantScaffold,
-    root: &mut SimRuntimeTree,
-    dimension_registry: &DimensionRegistry,
-    allocator: &mut SlotAllocator,
+    allocator: &SlotAllocator,
 ) -> DynamicFissionEnrollmentReport {
     let generation_before = arena_registry.generation;
     let mut report = DynamicFissionEnrollmentReport {
@@ -90,51 +83,36 @@ pub fn react_to_fission_resource_flow_enrollment(
                 continue;
             }
 
-            if scaffold
-                .index
+            if arena_registry
                 .participant_slot(child_id, arena_idx)
                 .is_some()
             {
                 continue;
             }
 
-            match prepare_dynamic_arena_root_append(
-                scaffold,
-                root,
+            let Some(slot) = allocator.slot_of(child_id) else {
+                report.rejections.push(DynamicFissionEnrollmentRejection {
+                    parent_id,
+                    child_id,
+                    arena_idx,
+                    reason: "fission child has no owned slot".into(),
+                });
+                continue;
+            };
+            match arena_registry.admit_participant_runtime(
                 arena_idx,
-                &arena.name,
+                slot,
                 child_id,
-                arena.flow_property_id,
-                dimension_registry,
-                allocator,
-                arena_registry,
+                Some(parent_id),
             ) {
-                Ok(pending) => {
-                    match commit_dynamic_arena_root_append(
-                        pending,
-                        scaffold,
-                        root,
-                        arena_registry,
-                        allocator,
-                    ) {
-                        Ok(participant_slot) => {
-                            admitted_this_batch = true;
-                            report.admissions.push(DynamicFissionEnrollmentAdmission {
-                                parent_id,
-                                child_id,
-                                arena_idx,
-                                participant_slot: participant_slot.raw(),
-                            });
-                        }
-                        Err(err) => {
-                            report.rejections.push(DynamicFissionEnrollmentRejection {
-                                parent_id,
-                                child_id,
-                                arena_idx,
-                                reason: enrollment_error_reason(&err),
-                            });
-                        }
-                    }
+                Ok(()) => {
+                    admitted_this_batch = true;
+                    report.admissions.push(DynamicFissionEnrollmentAdmission {
+                        parent_id,
+                        child_id,
+                        arena_idx,
+                        participant_slot: slot.raw(),
+                    });
                 }
                 Err(err) => {
                     report.rejections.push(DynamicFissionEnrollmentRejection {
@@ -155,31 +133,13 @@ pub fn react_to_fission_resource_flow_enrollment(
     report
 }
 
-fn runtime_to_authoring(runtime: simthing_sim::SimRuntimeTree) -> simthing_core::SimThing {
-    let json = serde_json::to_string(&runtime).expect("serialize runtime tree");
-    serde_json::from_str(&json).expect("deserialize authoring tree")
-}
-
 /// Authoring/test path for Policy A dynamic fission enrollment.
 pub fn react_to_fission_resource_flow_enrollment_on_authoring(
     fission: &FissionOutcome,
     arena_registry: &mut ArenaRegistry,
-    scaffold: &mut ArenaParticipantScaffold,
-    root: &mut simthing_core::SimThing,
-    dimension_registry: &DimensionRegistry,
-    allocator: &mut SlotAllocator,
+    allocator: &SlotAllocator,
 ) -> DynamicFissionEnrollmentReport {
-    let mut runtime = simthing_sim::SimRuntimeTree::admit(root.clone());
-    let report = react_to_fission_resource_flow_enrollment(
-        fission,
-        arena_registry,
-        scaffold,
-        &mut runtime,
-        dimension_registry,
-        allocator,
-    );
-    *root = runtime_to_authoring(runtime);
-    report
+    react_to_fission_resource_flow_enrollment(fission, arena_registry, allocator)
 }
 
 fn fission_enrollment_allowed(policy: FissionPolicy) -> bool {
@@ -190,6 +150,6 @@ fn fission_enrollment_allowed(policy: FissionPolicy) -> bool {
     }
 }
 
-fn enrollment_error_reason(err: &DynamicEnrollmentError) -> String {
+fn enrollment_error_reason(err: &crate::arena_registry::ArenaRegistryError) -> String {
     err.to_string()
 }

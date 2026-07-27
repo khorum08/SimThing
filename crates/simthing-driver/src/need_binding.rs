@@ -17,7 +17,7 @@ use simthing_spec::{
 };
 
 use crate::arena_hierarchy::resolve_node_columns;
-use crate::arena_participant::ArenaParticipantScaffold;
+use crate::arena_registry::ArenaRegistry;
 use crate::install::{find_simthing_mut, InstallError};
 use crate::resource_economy_compile::ResourceEconomyRegistry;
 use crate::scenario::Scenario;
@@ -78,7 +78,7 @@ pub fn resolve_need_bindings(
     scenario: &Scenario,
     root: &SimThing,
     registry: &DimensionRegistry,
-    scaffold: &ArenaParticipantScaffold,
+    arena_registry: &ArenaRegistry,
     allocator: &SlotAllocator,
 ) -> Result<Vec<ResolvedNeedBinding>, InstallError> {
     let mut out = Vec::with_capacity(spec.need_bindings.len());
@@ -97,7 +97,7 @@ pub fn resolve_need_bindings(
             scenario,
             root,
             registry,
-            scaffold,
+            arena_registry,
             allocator,
             &mut stage_cursor,
         )?;
@@ -123,7 +123,7 @@ fn resolve_one(
     scenario: &Scenario,
     root: &SimThing,
     registry: &DimensionRegistry,
-    scaffold: &ArenaParticipantScaffold,
+    arena_registry: &ArenaRegistry,
     allocator: &SlotAllocator,
     stage_cursor: &mut std::collections::HashMap<SimThingId, usize>,
 ) -> Result<ResolvedNeedBinding, InstallError> {
@@ -213,18 +213,17 @@ fn resolve_one(
             binding.participant_span_token,
         ));
     }
-    let participant_slot = scaffold
-        .index
+    let participant_slot = arena_registry
         .participant_slot(participant_hosted, arena_idx as u32)
         .ok_or_else(|| {
             nb_err(
                 binding,
-                "participant has no arena wrapper slot",
+                "participant has no admitted own-row slot",
                 binding.participant_span_token,
             )
         })?
         .raw();
-    let participant_wrapper_id = allocator
+    let participant_id = allocator
         .owner_of(SlotIndex::new(participant_slot))
         .ok_or_else(|| {
             nb_err(
@@ -233,6 +232,13 @@ fn resolve_one(
                 binding.participant_span_token,
             )
         })?;
+    if participant_id != participant_hosted {
+        return Err(nb_err(
+            binding,
+            "admitted participant slot is not owned by the participant",
+            binding.participant_span_token,
+        ));
+    }
 
     let flow_property_id = registry
         .id_of(&arena.flow_property.namespace, &arena.flow_property.name)
@@ -244,11 +250,11 @@ fn resolve_one(
                 ),
             })
         })?;
-    if !entity_has_property(root, participant_wrapper_id, flow_property_id) {
+    if !entity_has_property(root, participant_id, flow_property_id) {
         return Err(nb_err(
             binding,
             format!(
-                "arena participant wrapper for `{}` does not already own flow property {}::{} (no install invent)",
+                "participant `{}` does not already own flow property {}::{} (no install invent)",
                 binding.participant, arena.flow_property.namespace, arena.flow_property.name
             ),
             binding.participant_span_token,
@@ -290,7 +296,7 @@ fn resolve_one(
 
     // Non-overlapping staged slice per participant (role pathway — no raw mint).
     let arity = inputs.len();
-    let base = *stage_cursor.get(&participant_wrapper_id).unwrap_or(&0);
+    let base = *stage_cursor.get(&participant_id).unwrap_or(&0);
     if base + arity > NEED_STAGE_MAX_PAIRS {
         return Err(nb_err(
             binding,
@@ -327,7 +333,7 @@ fn resolve_one(
         staged_input_cols.push(in_col);
         staged_weight_cols.push(w_col);
     }
-    stage_cursor.insert(participant_wrapper_id, base + arity);
+    stage_cursor.insert(participant_id, base + arity);
 
     let nodes = build_weighted_need_nodes(&staged_input_cols, &staged_weight_cols);
 
@@ -335,7 +341,7 @@ fn resolve_one(
         id: binding.id.clone(),
         profile: binding.profile.clone(),
         participant_slot,
-        participant_id: participant_wrapper_id,
+        participant_id,
         eml_source_slot: participant_slot,
         need_col,
         inputs,

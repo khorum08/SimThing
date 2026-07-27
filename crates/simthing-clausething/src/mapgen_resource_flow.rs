@@ -210,7 +210,7 @@ fn map_placed_participant_validation_error(
     MapGenResourceFlowError::new(err.message)
 }
 
-fn mint_spatial_arena_participants(
+fn mint_spatial_arena_members(
     gridcells: &[GridcellEnrollment],
     hierarchy: &MapGenLatticeHierarchy,
 ) -> Result<Vec<ExplicitParticipantSpec>, MapGenResourceFlowError> {
@@ -338,7 +338,7 @@ pub fn generate_mapgen_resource_flow_enrollment(
         })
         .collect::<Result<Vec<_>, _>>()?;
     let suppression_participants: Vec<ExplicitParticipantSpec> =
-        mint_spatial_arena_participants(&gridcells, hierarchy)?;
+        mint_spatial_arena_members(&gridcells, hierarchy)?;
 
     let deposit_arena = ArenaSpec {
         name: MAPGEN_RF_DEPOSIT_ARENA.into(),
@@ -349,8 +349,6 @@ pub fn generate_mapgen_resource_flow_enrollment(
         max_orderband_depth: options.max_orderband_depth,
         fission_policy: FissionPolicySpec::Reject,
         reserved_orderband_depth: 0,
-        reserved_gap_per_intermediate: 0,
-        expected_max_children_per_intermediate: 0,
         explicit_participants: deposit_participants.clone(),
         // DA repair (PR4): `explicit_participants` authoritatively lists EVERY deposit, so the deposit
         // arena enrolls via `ExplicitOnly` (matching the suppression arena). The earlier
@@ -370,8 +368,6 @@ pub fn generate_mapgen_resource_flow_enrollment(
         max_orderband_depth: options.max_orderband_depth,
         fission_policy: FissionPolicySpec::Reject,
         reserved_orderband_depth: 0,
-        reserved_gap_per_intermediate: 0,
-        expected_max_children_per_intermediate: 0,
         explicit_participants: suppression_participants.clone(),
         enrollment: Some(EnrollmentSelectorSpec::ExplicitOnly),
         wildcard_admission: None,
