@@ -289,11 +289,23 @@ fn detect_cycle(
 
 #[cfg(test)]
 mod tests {
+    //! Table-driven prereq-DAG admission referee (TEST-BUDGET form).
     use super::*;
     use crate::spec::capability::{
         CapabilityCategorySpec, CapabilityEffectSpec, CapabilityPrereqSpec, CapabilitySpec,
     };
     use simthing_core::{OverlayLifecycle, SubFieldRole, TransformOp};
+
+    #[derive(Clone, Copy, Debug)]
+    enum Expect {
+        Ok,
+        SelfPrereq { span: usize },
+        DanglingEntry { span: usize },
+        CrossTreeCategory { span: usize },
+        Cycle,
+        TierOrder { span: usize, entry_tier: u32, prereq_tier: u32 },
+        MalformedMaxActive { span: usize, reason_sub: &'static str },
+    }
 
     fn effect() -> CapabilityEffectSpec {
         CapabilityEffectSpec {
@@ -333,6 +345,7 @@ mod tests {
         tier: u32,
         max_active: Option<MaxActivePolicy>,
         entries: Vec<CapabilitySpec>,
+        span: Option<usize>,
     ) -> CapabilityCategorySpec {
         CapabilityCategorySpec {
             property_namespace: ns.into(),
@@ -341,7 +354,7 @@ mod tests {
             tier,
             max_active,
             entries,
-            source_span_token: None,
+            source_span_token: span,
         }
     }
 
@@ -363,227 +376,241 @@ mod tests {
         }
     }
 
-    #[test]
-    fn minimal_tree_admits() {
-        let spec = tree(vec![category(
-            "tech",
-            "propulsion",
-            0,
-            None,
-            vec![entry("drive", vec![])],
-        )]);
-        assert!(validate_capability_tree(&spec).is_ok());
-    }
-
-    #[test]
-    fn self_prereq_spans() {
-        let spec = tree(vec![category(
-            "tech",
-            "propulsion",
-            0,
-            None,
-            vec![entry("drive", vec![pre("tech::propulsion", "drive", Some(11))])],
-        )]);
-        match validate_capability_tree(&spec) {
-            Err(SpecError::SelfReferentialPrereq {
-                entry_id,
-                source_span_token,
-                ..
-            }) => {
-                assert_eq!(entry_id, "drive");
-                assert_eq!(source_span_token, Some(11));
-            }
-            other => panic!("expected SelfReferentialPrereq, got {other:?}"),
-        }
-    }
-
-    #[test]
-    fn dangling_prereq_entry_spans() {
-        let spec = tree(vec![category(
-            "tech",
-            "propulsion",
-            0,
-            None,
-            vec![entry(
-                "drive",
-                vec![pre("tech::propulsion", "missing", Some(22))],
-            )],
-        )]);
-        match validate_capability_tree(&spec) {
-            Err(SpecError::UnknownPrereqEntry {
-                prereq_entry_id,
-                source_span_token,
-                ..
-            }) => {
-                assert_eq!(prereq_entry_id, "missing");
-                assert_eq!(source_span_token, Some(22));
-            }
-            other => panic!("expected UnknownPrereqEntry, got {other:?}"),
-        }
-    }
-
-    #[test]
-    fn cross_tree_prereq_category_spans() {
-        let spec = tree(vec![category(
-            "tech",
-            "propulsion",
-            0,
-            None,
-            vec![entry(
-                "drive",
-                vec![pre("other::tree_cat", "foreign", Some(33))],
-            )],
-        )]);
-        match validate_capability_tree(&spec) {
-            Err(SpecError::UnknownPrereqCategory {
-                category,
-                source_span_token,
-                ..
-            }) => {
-                assert_eq!(category, "other::tree_cat");
-                assert_eq!(source_span_token, Some(33));
-            }
-            other => panic!("expected UnknownPrereqCategory, got {other:?}"),
-        }
-    }
-
-    #[test]
-    fn multi_entry_cycle_spans() {
-        let spec = tree(vec![category(
-            "tech",
-            "propulsion",
-            0,
-            None,
-            vec![
-                entry("a", vec![pre("tech::propulsion", "b", Some(44))]),
-                entry("b", vec![pre("tech::propulsion", "a", Some(45))]),
-            ],
-        )]);
-        match validate_capability_tree(&spec) {
-            Err(SpecError::PrereqCycle {
-                cycle_path,
-                source_span_token,
-                ..
-            }) => {
-                assert!(cycle_path.contains("a") && cycle_path.contains("b"));
-                assert!(source_span_token.is_some());
-            }
-            other => panic!("expected PrereqCycle, got {other:?}"),
-        }
-    }
-
-    #[test]
-    fn tier_order_conflict_spans() {
-        // Lower-tier entry requires higher-tier prereq — dup-tier / order conflict.
-        let spec = tree(vec![
-            category(
+    fn build_case(label: &str) -> CapabilityTreeSpec {
+        match label {
+            "minimal_admits" => tree(vec![category(
                 "tech",
-                "basic",
+                "propulsion",
+                0,
+                None,
+                vec![entry("drive", vec![])],
+                None,
+            )]),
+            "tiered_chain_admits" => tree(vec![
+                category(
+                    "tech",
+                    "basic",
+                    0,
+                    None,
+                    vec![entry("chem", vec![])],
+                    None,
+                ),
+                category(
+                    "tech",
+                    "advanced",
+                    1,
+                    None,
+                    vec![entry("ion", vec![pre("tech::basic", "chem", Some(88))])],
+                    None,
+                ),
+            ]),
+            "self_prereq" => tree(vec![category(
+                "tech",
+                "propulsion",
                 0,
                 None,
                 vec![entry(
-                    "low",
-                    vec![pre("tech::advanced", "high", Some(55))],
+                    "drive",
+                    vec![pre("tech::propulsion", "drive", Some(11))],
                 )],
-            ),
-            category(
-                "tech",
-                "advanced",
-                2,
                 None,
-                vec![entry("high", vec![])],
-            ),
-        ]);
-        match validate_capability_tree(&spec) {
-            Err(SpecError::PrereqTierOrderViolation {
-                entry_tier,
-                prereq_tier,
-                source_span_token,
-                ..
-            }) => {
-                assert_eq!(entry_tier, 0);
-                assert_eq!(prereq_tier, 2);
-                assert_eq!(source_span_token, Some(55));
-            }
-            other => panic!("expected PrereqTierOrderViolation, got {other:?}"),
-        }
-    }
-
-    #[test]
-    fn max_active_count_zero_malformed() {
-        let spec = tree(vec![category(
-            "ideas",
-            "tier1",
-            0,
-            Some(MaxActivePolicy::Limited {
-                count: 0,
-                replacement: ReplacementPolicy::SuspendOldest,
-            }),
-            vec![entry("idea_a", vec![])],
-        )]);
-        // Force a source span on the category for the malformed check.
-        let mut spec = spec;
-        spec.categories[0].source_span_token = Some(66);
-        match validate_capability_tree(&spec) {
-            Err(SpecError::MalformedMaxActive {
-                reason,
-                source_span_token,
-                ..
-            }) => {
-                assert!(reason.contains(">= 1"));
-                assert_eq!(source_span_token, Some(66));
-            }
-            other => panic!("expected MalformedMaxActive, got {other:?}"),
-        }
-    }
-
-    #[test]
-    fn max_active_empty_members_malformed() {
-        let mut spec = tree(vec![category(
-            "ideas",
-            "tier1",
-            0,
-            Some(MaxActivePolicy::Limited {
-                count: 1,
-                replacement: ReplacementPolicy::SuspendOldest,
-            }),
-            vec![],
-        )]);
-        spec.categories[0].source_span_token = Some(77);
-        match validate_capability_tree(&spec) {
-            Err(SpecError::MalformedMaxActive {
-                reason,
-                source_span_token,
-                ..
-            }) => {
-                assert!(reason.contains("member"));
-                assert_eq!(source_span_token, Some(77));
-            }
-            other => panic!("expected MalformedMaxActive, got {other:?}"),
-        }
-    }
-
-    #[test]
-    fn valid_chain_and_tiered_prereqs_admit() {
-        let spec = tree(vec![
-            category(
+            )]),
+            "dangling_entry" => tree(vec![category(
                 "tech",
-                "basic",
+                "propulsion",
                 0,
                 None,
-                vec![entry("chem", vec![])],
-            ),
-            category(
+                vec![entry(
+                    "drive",
+                    vec![pre("tech::propulsion", "missing", Some(22))],
+                )],
+                None,
+            )]),
+            "cross_tree_category" => tree(vec![category(
                 "tech",
-                "advanced",
-                1,
+                "propulsion",
+                0,
                 None,
                 vec![entry(
-                    "ion",
-                    vec![pre("tech::basic", "chem", Some(88))],
+                    "drive",
+                    vec![pre("other::tree_cat", "foreign", Some(33))],
                 )],
-            ),
-        ]);
-        assert!(validate_capability_tree(&spec).is_ok());
+                None,
+            )]),
+            "cycle" => tree(vec![category(
+                "tech",
+                "propulsion",
+                0,
+                None,
+                vec![
+                    entry("a", vec![pre("tech::propulsion", "b", Some(44))]),
+                    entry("b", vec![pre("tech::propulsion", "a", Some(45))]),
+                ],
+                None,
+            )]),
+            "tier_order" => tree(vec![
+                category(
+                    "tech",
+                    "basic",
+                    0,
+                    None,
+                    vec![entry(
+                        "low",
+                        vec![pre("tech::advanced", "high", Some(55))],
+                    )],
+                    None,
+                ),
+                category(
+                    "tech",
+                    "advanced",
+                    2,
+                    None,
+                    vec![entry("high", vec![])],
+                    None,
+                ),
+            ]),
+            "max_active_zero" => tree(vec![category(
+                "ideas",
+                "tier1",
+                0,
+                Some(MaxActivePolicy::Limited {
+                    count: 0,
+                    replacement: ReplacementPolicy::SuspendOldest,
+                }),
+                vec![entry("idea_a", vec![])],
+                Some(66),
+            )]),
+            "max_active_empty" => tree(vec![category(
+                "ideas",
+                "tier1",
+                0,
+                Some(MaxActivePolicy::Limited {
+                    count: 1,
+                    replacement: ReplacementPolicy::SuspendOldest,
+                }),
+                vec![],
+                Some(77),
+            )]),
+            other => panic!("unknown case label {other}"),
+        }
+    }
+
+    /// Table-driven prereq-DAG admission cases (admits + spanned negatives).
+    const CASES: &[(&str, Expect)] = &[
+        ("minimal_admits", Expect::Ok),
+        ("tiered_chain_admits", Expect::Ok),
+        ("self_prereq", Expect::SelfPrereq { span: 11 }),
+        ("dangling_entry", Expect::DanglingEntry { span: 22 }),
+        ("cross_tree_category", Expect::CrossTreeCategory { span: 33 }),
+        ("cycle", Expect::Cycle),
+        (
+            "tier_order",
+            Expect::TierOrder {
+                span: 55,
+                entry_tier: 0,
+                prereq_tier: 2,
+            },
+        ),
+        (
+            "max_active_zero",
+            Expect::MalformedMaxActive {
+                span: 66,
+                reason_sub: ">= 1",
+            },
+        ),
+        (
+            "max_active_empty",
+            Expect::MalformedMaxActive {
+                span: 77,
+                reason_sub: "member",
+            },
+        ),
+    ];
+
+    #[test]
+    fn prereq_dag_admission_table() {
+        for (label, expect) in CASES {
+            let spec = build_case(label);
+            let result = validate_capability_tree(&spec);
+            match (expect, result) {
+                (Expect::Ok, Ok(_)) => {}
+                (
+                    Expect::SelfPrereq { span },
+                    Err(SpecError::SelfReferentialPrereq {
+                        entry_id,
+                        source_span_token,
+                        ..
+                    }),
+                ) => {
+                    assert_eq!(entry_id, "drive", "{label}");
+                    assert_eq!(source_span_token, Some(*span), "{label}");
+                }
+                (
+                    Expect::DanglingEntry { span },
+                    Err(SpecError::UnknownPrereqEntry {
+                        prereq_entry_id,
+                        source_span_token,
+                        ..
+                    }),
+                ) => {
+                    assert_eq!(prereq_entry_id, "missing", "{label}");
+                    assert_eq!(source_span_token, Some(*span), "{label}");
+                }
+                (
+                    Expect::CrossTreeCategory { span },
+                    Err(SpecError::UnknownPrereqCategory {
+                        category,
+                        source_span_token,
+                        ..
+                    }),
+                ) => {
+                    assert_eq!(category, "other::tree_cat", "{label}");
+                    assert_eq!(source_span_token, Some(*span), "{label}");
+                }
+                (
+                    Expect::Cycle,
+                    Err(SpecError::PrereqCycle {
+                        cycle_path,
+                        source_span_token,
+                        ..
+                    }),
+                ) => {
+                    assert!(
+                        cycle_path.contains('a') && cycle_path.contains('b'),
+                        "{label}: {cycle_path}"
+                    );
+                    assert!(source_span_token.is_some(), "{label}");
+                }
+                (
+                    Expect::TierOrder {
+                        span,
+                        entry_tier,
+                        prereq_tier,
+                    },
+                    Err(SpecError::PrereqTierOrderViolation {
+                        entry_tier: got_entry,
+                        prereq_tier: got_prereq,
+                        source_span_token,
+                        ..
+                    }),
+                ) => {
+                    assert_eq!(got_entry, *entry_tier, "{label}");
+                    assert_eq!(got_prereq, *prereq_tier, "{label}");
+                    assert_eq!(source_span_token, Some(*span), "{label}");
+                }
+                (
+                    Expect::MalformedMaxActive { span, reason_sub },
+                    Err(SpecError::MalformedMaxActive {
+                        reason,
+                        source_span_token,
+                        ..
+                    }),
+                ) => {
+                    assert!(reason.contains(reason_sub), "{label}: {reason}");
+                    assert_eq!(source_span_token, Some(*span), "{label}");
+                }
+                (expect, other) => panic!("{label}: unexpected result {other:?} for {expect:?}"),
+            }
+        }
     }
 }

@@ -1,12 +1,39 @@
-//! CAPABILITY-PREREQ-DAG-ADMISSION-0 — authored-corpus census + builder gate.
+//! CAPABILITY-PREREQ-DAG-ADMISSION-0 — RON authored-corpus census + builder gate.
 //!
-//! Every fixture / example capability tree must admit under the new prereq DAG
-//! validation. If any fails, that is live malformed prereq data → STOP/DA-route.
+//! ClauseThing tradition trees and live GPU atomicity live in
+//! `simthing-clausething/tests/capability_prereq_dag_admission_0.rs` (crate
+//! dependency direction forbids clausething from being a simthing-spec
+//! dev-dep).
 
 use simthing_core::DimensionRegistry;
 use simthing_spec::{
-    validate_capability_tree, CapabilityTreeBuilder, CapabilityTreeSpec, GameModeSpec,
+    validate_capability_tree, CapabilityTreeBuilder, CapabilityTreeSpec, GameModeSpec, SpecError,
 };
+
+const MINIMAL_TECH: &str = include_str!("fixtures/minimal_tech_tree.ron");
+const MINIMAL_GAME_MODE: &str = include_str!("fixtures/minimal_game_mode.ron");
+const EXAMPLE_ALL_FACTIONS: &str =
+    include_str!("../../../docs/examples/game_mode_install_all_factions.ron");
+const EXAMPLE_SCENARIO_LISTED: &str =
+    include_str!("../../../docs/examples/game_mode_install_scenario_listed.ron");
+const EXAMPLE_SESSION_ROOT: &str =
+    include_str!("../../../docs/examples/game_mode_install_session_root.ron");
+
+/// RON authored-corpus labels checked by this crate's census.
+const RON_CORPUS_LABELS: &[&str] = &[
+    "minimal_tech_tree.ron",
+    "minimal_game_mode.ron",
+    "docs/examples/game_mode_install_all_factions.ron",
+    "docs/examples/game_mode_install_scenario_listed.ron",
+    "docs/examples/game_mode_install_session_root.ron",
+];
+
+fn strip_ron_comments(src: &str) -> String {
+    src.lines()
+        .skip_while(|l| l.trim_start().starts_with("//") || l.trim().is_empty())
+        .collect::<Vec<_>>()
+        .join("\n")
+}
 
 fn trees_from_game_mode(mode: &GameModeSpec) -> Vec<&CapabilityTreeSpec> {
     let mut out = Vec::new();
@@ -21,94 +48,81 @@ fn trees_from_game_mode(mode: &GameModeSpec) -> Vec<&CapabilityTreeSpec> {
     out
 }
 
-fn parse_game_mode(src: &str) -> GameModeSpec {
-    ron::from_str(src).expect("game mode fixture must parse")
-}
-
-fn parse_tree(src: &str) -> CapabilityTreeSpec {
-    ron::from_str(src).expect("capability tree fixture must parse")
-}
-
-const FIXTURES: &[(&str, &str)] = &[
-    (
-        "minimal_tech_tree.ron",
-        include_str!("fixtures/minimal_tech_tree.ron"),
-    ),
-    (
-        "minimal_game_mode.ron",
-        include_str!("fixtures/minimal_game_mode.ron"),
-    ),
-    (
-        "docs/examples/game_mode_install_all_factions.ron",
-        include_str!("../../../docs/examples/game_mode_install_all_factions.ron"),
-    ),
-    (
-        "docs/examples/game_mode_install_scenario_listed.ron",
-        include_str!("../../../docs/examples/game_mode_install_scenario_listed.ron"),
-    ),
-    (
-        "docs/examples/game_mode_install_session_root.ron",
-        include_str!("../../../docs/examples/game_mode_install_session_root.ron"),
-    ),
-];
-
-#[test]
-fn existing_authored_capability_trees_admit_unchanged() {
-    let mut admitted = 0usize;
-    for (label, src) in FIXTURES {
-        // Strip leading comment lines that are not RON.
-        let body = src
-            .lines()
-            .skip_while(|l| l.trim_start().starts_with("//") || l.trim().is_empty())
-            .collect::<Vec<_>>()
-            .join("\n");
-
-        if body.trim_start().starts_with("CapabilityTreeSpec") {
-            let tree = parse_tree(&body);
-            // Standalone tree RON has no property registry — admission
-            // validation is the census surface for prereq DAG shape.
-            validate_capability_tree(&tree)
-                .unwrap_or_else(|e| panic!("census FAIL on {label}: {e}"));
-            admitted += 1;
-        } else {
-            let mode = parse_game_mode(&body);
-            let trees = trees_from_game_mode(&mode);
-            assert!(
-                !trees.is_empty(),
-                "fixture {label} must contain at least one capability tree"
-            );
-            for tree in trees {
-                validate_capability_tree(tree)
-                    .unwrap_or_else(|e| panic!("census FAIL on {label} tree {}: {e}", tree.tree_id));
-                let mut registry = DimensionRegistry::new();
-                for prop in &mode.properties {
-                    let _ = simthing_spec::compile_property(prop, &mut registry);
-                }
-                for pack in &mode.domain_packs {
-                    for prop in &pack.properties {
-                        let _ = simthing_spec::compile_property(prop, &mut registry);
-                    }
-                }
-                CapabilityTreeBuilder::build(tree, &mut registry).unwrap_or_else(|e| {
-                    panic!("builder FAIL on {label} tree {}: {e}", tree.tree_id)
-                });
-                admitted += 1;
-            }
+fn seed_mode_properties(mode: &GameModeSpec, registry: &mut DimensionRegistry) {
+    for prop in &mode.properties {
+        let _ = simthing_spec::compile_property(prop, registry);
+    }
+    for pack in &mode.domain_packs {
+        for prop in &pack.properties {
+            let _ = simthing_spec::compile_property(prop, registry);
         }
     }
-    assert!(
-        admitted >= 4,
-        "expected at least 4 authored trees in the census, got {admitted}"
+}
+
+#[test]
+fn existing_authored_ron_capability_trees_admit_unchanged() {
+    let mut admitted_trees = 0usize;
+    let mut sources_checked = 0usize;
+
+    {
+        let tree: CapabilityTreeSpec =
+            ron::from_str(&strip_ron_comments(MINIMAL_TECH)).expect("minimal_tech_tree parse");
+        validate_capability_tree(&tree)
+            .unwrap_or_else(|e| panic!("census FAIL minimal_tech_tree.ron: {e}"));
+        admitted_trees += 1;
+        sources_checked += 1;
+    }
+
+    for (label, src) in [
+        ("minimal_game_mode.ron", MINIMAL_GAME_MODE),
+        (
+            "docs/examples/game_mode_install_all_factions.ron",
+            EXAMPLE_ALL_FACTIONS,
+        ),
+        (
+            "docs/examples/game_mode_install_scenario_listed.ron",
+            EXAMPLE_SCENARIO_LISTED,
+        ),
+        (
+            "docs/examples/game_mode_install_session_root.ron",
+            EXAMPLE_SESSION_ROOT,
+        ),
+    ] {
+        let mode: GameModeSpec =
+            ron::from_str(&strip_ron_comments(src)).unwrap_or_else(|e| panic!("{label}: {e}"));
+        let trees = trees_from_game_mode(&mode);
+        assert!(
+            !trees.is_empty(),
+            "{label} must contain at least one capability tree"
+        );
+        for tree in trees {
+            validate_capability_tree(tree)
+                .unwrap_or_else(|e| panic!("census FAIL {label} tree {}: {e}", tree.tree_id));
+            let mut registry = DimensionRegistry::new();
+            seed_mode_properties(&mode, &mut registry);
+            CapabilityTreeBuilder::build(tree, &mut registry).unwrap_or_else(|e| {
+                panic!("builder FAIL {label} tree {}: {e}", tree.tree_id)
+            });
+            admitted_trees += 1;
+        }
+        sources_checked += 1;
+    }
+
+    assert_eq!(sources_checked, RON_CORPUS_LABELS.len());
+    assert!(admitted_trees >= 4, "got {admitted_trees}");
+    eprintln!(
+        "CAPABILITY-PREREQ-DAG-RON-CENSUS sources={} trees_admitted={} labels={:?}",
+        sources_checked, admitted_trees, RON_CORPUS_LABELS
     );
 }
 
 #[test]
 fn builder_rejects_prereq_cycle_at_admission() {
+    use simthing_core::{OverlayLifecycle, SubFieldRole, TransformOp};
     use simthing_spec::{
         ActivationMode, CapabilityCategorySpec, CapabilityEffectSpec, CapabilityPrereqSpec,
-        CapabilitySpec, EffectTarget, SpecError,
+        CapabilitySpec, EffectTarget,
     };
-    use simthing_core::{OverlayLifecycle, SubFieldRole, TransformOp};
 
     let effect = CapabilityEffectSpec {
         targets_property: "military::fleet_speed".into(),
@@ -120,7 +134,7 @@ fn builder_rejects_prereq_cycle_at_admission() {
     let tree = CapabilityTreeSpec {
         tree_id: "cycle".into(),
         tree_kind: "tech_tree".into(),
-        owner_kind: "Faction".into(),
+        owner_kind: "Owner".into(),
         install: simthing_spec::InstallTargetSpec::faction_default(),
         categories: vec![CapabilityCategorySpec {
             property_namespace: "tech".into(),
