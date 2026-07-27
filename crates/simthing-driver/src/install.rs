@@ -158,6 +158,25 @@ pub fn compile_and_install(
 ) -> Result<SpecSessionState, InstallError> {
     let mut state = SpecSessionState::new();
 
+    // ── 0. Order-weight class table (ORDER-WEIGHT-CLASS-0).
+    simthing_spec::validate_order_weight_classes(&game_mode.order_weight_classes)
+        .map_err(InstallError::Spec)?;
+    for overlay_spec in &game_mode.overlays {
+        simthing_spec::validate_order_weight_overlay(
+            overlay_spec,
+            &game_mode.order_weight_classes,
+        )
+        .map_err(InstallError::Spec)?;
+    }
+    for pack in &game_mode.domain_packs {
+        for overlay_spec in &pack.overlays {
+            simthing_spec::validate_order_weight_overlay(
+                overlay_spec,
+                &game_mode.order_weight_classes,
+            )
+            .map_err(InstallError::Spec)?;
+        }
+    }
     // ── 1. Compile properties (domain packs first, then game mode top-level).
     for pack in &game_mode.domain_packs {
         compile_pack_properties(pack, registry)?;
@@ -178,6 +197,7 @@ pub fn compile_and_install(
             root,
             allocator,
             &mut overlay_ref_ids,
+            &game_mode.order_weight_classes,
         )?;
     }
 
@@ -276,6 +296,14 @@ pub fn compile_and_install(
         state.resolved_gated_rates = gated;
         state.arena_registry = arena_registry;
         state.resource_flow_capacity_budget = report.capacity_budget;
+    }
+    if !game_mode.order_weight_classes.is_empty() {
+        state.order_weight_classes = crate::order_directive::admit_order_weight_classes(
+            &game_mode.order_weight_classes,
+            registry,
+            root,
+            &state.arena_registry,
+        )?;
     }
 
     // ── 4c. Resource economy (Phase T): compile + live-slot materialization.
@@ -392,6 +420,7 @@ fn install_pack_standalone_overlays(
     root: &mut SimThing,
     allocator: &mut SlotAllocator,
     overlay_ref_ids: &mut HashMap<String, Vec<OverlayId>>,
+    order_weight_classes: &[simthing_spec::OrderWeightClassSpec],
 ) -> Result<(), InstallError> {
     for overlay_spec in &pack.overlays {
         if overlay_ref_ids.contains_key(&overlay_spec.id) {
@@ -399,7 +428,13 @@ fn install_pack_standalone_overlays(
                 overlay_ref: overlay_spec.id.clone(),
             });
         }
-        let installed = install_standalone_overlay(overlay_spec, registry, scenario, root)?;
+        let installed = install_standalone_overlay(
+            overlay_spec,
+            registry,
+            scenario,
+            root,
+            order_weight_classes,
+        )?;
         overlay_ref_ids.insert(overlay_spec.id.clone(), installed);
     }
     if !pack.overlays.is_empty() && allocator.slot_of(root.id).is_none() {
@@ -413,7 +448,10 @@ fn install_standalone_overlay(
     registry: &DimensionRegistry,
     scenario: &Scenario,
     root: &mut SimThing,
+    order_weight_classes: &[simthing_spec::OrderWeightClassSpec],
 ) -> Result<Vec<OverlayId>, InstallError> {
+    simthing_spec::validate_order_weight_overlay(overlay_spec, order_weight_classes)
+        .map_err(InstallError::Spec)?;
     let (template, diag) = compile_overlay(overlay_spec, registry).map_err(InstallError::Spec)?;
     if !diag.diagnostics.is_empty() {
         return Err(InstallError::Spec(SpecError::ValidationFailed));
@@ -1382,6 +1420,7 @@ mod tests {
             domain_packs: Vec::new(),
             properties: Vec::new(),
             overlays: Vec::new(),
+            order_weight_classes: vec![],
             capability_trees: vec![CapabilityTreeSpec {
                 tree_id: "doomed_tree".into(),
                 tree_kind: "doomed_tree".into(),
@@ -1420,6 +1459,7 @@ mod tests {
             domain_packs: Vec::new(),
             properties: Vec::new(),
             overlays: Vec::new(),
+            order_weight_classes: vec![],
             capability_trees: vec![CapabilityTreeSpec {
                 tree_id: "root_tree".into(),
                 tree_kind: "root_tree".into(),

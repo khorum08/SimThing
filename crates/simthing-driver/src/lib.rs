@@ -42,6 +42,7 @@ pub mod local_participant_effects_compile;
 pub mod mapping_plan_compile;
 pub mod min_plus_traversal_field;
 pub mod need_binding;
+pub mod order_directive;
 pub mod owner_silo_accumulator_compile;
 pub mod owner_silo_disburse_down_compile;
 pub mod owner_silo_recursive_source_compile;
@@ -618,6 +619,11 @@ pub use semantic_local_effects_recursive_source_compile::{
 };
 pub use semantic_participant_delta_preview_compile::{
     compile_semantic_participant_delta_preview_plan, SemanticParticipantDeltaPreviewPlan,
+};
+pub use order_directive::{
+    build_order_directive_overlay, order_directive_injections_from_frame,
+    AdmittedOrderWeightClass, OrderDirectiveError, OrderDirectiveInjection,
+    OrderDirectiveRequest,
 };
 pub use session::{RunSummary, SessionError, SimSession, StepOnceOutcome};
 pub use session_resource_flow_silos::{

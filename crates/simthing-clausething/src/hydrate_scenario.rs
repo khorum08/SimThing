@@ -1433,6 +1433,8 @@ fn payload_economy_overlays(
                 install: InstallTargetSpec::ScenarioListed {
                     target_id: scenario_id.to_string(),
                 },
+                order_weight_class: None,
+                source_span_token: None,
             }
         })
         .collect()
@@ -2670,6 +2672,8 @@ fn parse_modifier_spec(
         install: InstallTargetSpec::ScenarioListed {
             target_id: target_id.to_string(),
         },
+        order_weight_class: None,
+        source_span_token: None,
     })
 }
 

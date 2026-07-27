@@ -98,6 +98,10 @@ pub struct ReplayFrame {
     /// Old replays without this field parse cleanly via the `#[serde(default)]`.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub spec_entries: Vec<serde_json::Value>,
+    /// Generation-stamped CPU ingress records. The sim layer keeps these
+    /// opaque; the driver decodes and re-injects typed directives.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub injection_entries: Vec<serde_json::Value>,
 }
 
 /// Discriminated record written one-per-line to the replay stream.

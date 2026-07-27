@@ -446,6 +446,7 @@ pub fn apply_combat_arena_to_game_mode(
             cooldown: None,
             priority: Default::default(),
             install: InstallTargetSpec::ScenarioListed { target_id: install_key },
+
         });
     }
 
@@ -473,6 +474,8 @@ pub fn apply_combat_arena_to_game_mode(
                 install: InstallTargetSpec::ScenarioListed {
                     target_id: format!("combat_ship_{}", enrollment.id),
                 },
+                order_weight_class: None,
+                source_span_token: None,
             });
         }
     }

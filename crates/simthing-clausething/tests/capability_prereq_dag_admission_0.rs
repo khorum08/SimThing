@@ -75,6 +75,7 @@ fn game_mode_from_hydrated(id: &str, hydrated: HydratedEntityPack) -> GameModeSp
         domain_packs: vec![hydrated.domain_pack],
         properties: Vec::new(),
         overlays: Vec::new(),
+        order_weight_classes: vec![],
         capability_trees: Vec::new(),
         events: Vec::new(),
         resource_flow: None,

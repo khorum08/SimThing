@@ -114,6 +114,9 @@ pub struct SpecSessionState {
     session_root_owner: SimThingId,
     /// Generation last uploaded to GPU for resource economy registrations (T-4 skip gate).
     resource_economy_uploaded_generation: u64,
+    /// Admitted order-weight class table (ORDER-WEIGHT-CLASS-0). Used by the
+    /// typed directive submission surface and runtime Player magnitude gate.
+    pub order_weight_classes: Vec<crate::order_directive::AdmittedOrderWeightClass>,
 }
 
 impl SpecSessionState {

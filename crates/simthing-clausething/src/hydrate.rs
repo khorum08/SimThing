@@ -225,6 +225,11 @@ fn parse_modifier_block(property: &RawProperty) -> Result<OverlaySpec, HydrateEr
         kind: OverlayKind::Policy,
         source: OverlaySource::Player,
         install: InstallTargetSpec::SessionRoot,
+
+        order_weight_class: None,
+
+        source_span_token: None,
+
     })
 }
 
@@ -282,6 +287,7 @@ fn parse_triggered_modifier_block(
         cooldown: None,
         priority: Default::default(),
         install: InstallTargetSpec::SessionRoot,
+
     };
 
     Ok((overlay, event))
@@ -333,6 +339,7 @@ fn parse_tradition_tree_block(property: &RawProperty) -> Result<CapabilityTreeSp
         owner_kind: owner_kind.clone(),
         categories,
         install: InstallTargetSpec::AllOfKind { kind: owner_kind },
+
     })
 }
 

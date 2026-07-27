@@ -126,6 +126,23 @@ pub enum SpecError {
         source_span_token: Option<usize>,
     },
 
+    // ── Order-weight class (ORDER-WEIGHT-CLASS-0) ───────────────────────────
+    #[error("order_weight_class `{class_id}` is malformed: {reason} (source_span_token={source_span_token:?})")]
+    MalformedOrderWeightClass {
+        class_id: String,
+        reason: String,
+        source_span_token: Option<usize>,
+    },
+
+    #[error(
+        "overlay `{overlay_id}` order-weight directive invalid: {reason} (source_span_token={source_span_token:?})"
+    )]
+    OrderWeightDirectiveInvalid {
+        overlay_id: String,
+        reason: String,
+        source_span_token: Option<usize>,
+    },
+
     #[error(
         "entry `{entry_id}` effect #{effect_index} targets property `{targets_property}`: {reason}"
     )]

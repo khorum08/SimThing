@@ -13,6 +13,7 @@ use simthing_spec::{
     ResourceEconomyOptInMode, ResourceFlowExecutionProfile, ResourceFlowOptInMode,
 };
 use std::collections::HashMap;
+use std::sync::Mutex;
 use thiserror::Error;
 
 use crate::install::{install_atomic, InstallError, InstallPreview};
@@ -46,6 +47,8 @@ pub enum SessionError {
     ResourceFlowOptIn(String),
     #[error("threshold install: {0}")]
     ThresholdInstall(String),
+    #[error("player-intent admission: {0}")]
+    PlayerIntentAdmission(String),
 }
 
 /// Outcome of a single [`SimSession::step_once`] production hot-cycle.
@@ -204,6 +207,9 @@ pub struct SimSession {
     /// session loop, in tick order. Consumed at boundaries; diagnostic
     /// readback never feeds runtime decisions.
     pub mapping_commitments: Vec<MappingCommitmentRecord>,
+    resolved_order_directives: Mutex<crate::order_directive::OrderDirectiveGateState>,
+    order_directive_injection_log:
+        Mutex<Vec<crate::order_directive::OrderDirectiveInjection>>,
 }
 
 /// CT-3b+4a Line 3: everything the session loop needs to run the admitted
@@ -281,6 +287,20 @@ impl SimSession {
         let resource_flow_pipeline_enabled = self.proto.flags.use_accumulator_resource_flow;
         let mapping_hot = self.mapping.as_mut().map(|m| &mut m.hot);
         let tick_patches = &self.scenario.tick_patches;
+        let admitted = &self.spec_state.order_weight_classes;
+        let resolved = &self.resolved_order_directives;
+        let mut player_gate = |intent: &simthing_feeder::PlayerIntentOverlay| {
+            let mut resolved = resolved
+                .lock()
+                .map_err(|_| "order directive admission registry poisoned".to_string())?;
+            crate::order_directive::gate_ingested_player_intent(
+                intent.target,
+                &intent.overlay,
+                admitted,
+                &mut resolved,
+            )
+            .map_err(|error| error.to_string())
+        };
         let mut fabric = SimulationFabric::from_hot_parts(HotFabricParts {
             coord: &mut self.coord,
             patcher: &mut self.patcher,
@@ -291,8 +311,9 @@ impl SimSession {
             pipelines: &self.pipelines,
             state: &mut self.state,
             dt: self.scenario.dt,
+            player_intent_gate: Some(&mut player_gate),
         });
-        run_simulation_fabric_hot_cycle(
+        let cycle = run_simulation_fabric_hot_cycle(
             &mut fabric,
             FabricHotCycleParams {
                 tick_patches,
@@ -300,7 +321,13 @@ impl SimSession {
                 mapping: mapping_hot,
             },
         )
-        .map_err(|e| SessionError::Mapping(format!("{e:?}")))
+        .map_err(|e| SessionError::Mapping(format!("{e:?}")))?;
+        if !cycle.hot.tick.player_intent_rejections.is_empty() {
+            return Err(SessionError::PlayerIntentAdmission(
+                cycle.hot.tick.player_intent_rejections.join("; "),
+            ));
+        }
+        Ok(cycle)
     }
 
     pub fn open(scenario: Scenario) -> Result<Self, SessionError> {
@@ -351,6 +378,9 @@ impl SimSession {
             resource_flow_execution_profile: ResourceFlowExecutionProfile::DefaultDisabled,
             mapping: None,
             mapping_commitments: Vec::new(),
+            resolved_order_directives:
+                Mutex::new(crate::order_directive::OrderDirectiveGateState::default()),
+            order_directive_injection_log: Mutex::new(Vec::new()),
         })
     }
 
@@ -763,6 +793,67 @@ impl SimSession {
         Ok(true)
     }
 
+    /// Submit a class-bound operator directive (ORDER-WEIGHT-CLASS-0).
+    ///
+    /// Resolves the admitted class magnitude into an ordinary
+    /// `OverlaySource::Player` Transient overlay and parks it on the existing
+    /// player-intent feeder — never a second command channel.
+    pub fn submit_order_directive(
+        &self,
+        req: crate::order_directive::OrderDirectiveRequest,
+    ) -> Result<simthing_core::OverlayId, crate::order_directive::OrderDirectiveError> {
+        let class_id = req.class_id.clone();
+        let (overlay, _) = crate::order_directive::build_order_directive_overlay(
+            &self.spec_state.order_weight_classes,
+            &req,
+        )?;
+        let id = overlay.id;
+        self.resolved_order_directives
+            .lock()
+            .map_err(|_| {
+                crate::order_directive::OrderDirectiveError::Binding(
+                    "order directive admission registry poisoned".into(),
+                )
+            })?
+            .resolved
+            .insert(id, class_id);
+        if self.tx.submit_player_intent(req.target, overlay).is_err() {
+            if let Ok(mut resolved) = self.resolved_order_directives.lock() {
+                resolved.resolved.remove(&id);
+            }
+            return Err(crate::order_directive::OrderDirectiveError::FeederDisconnected);
+        }
+        self.order_directive_injection_log
+            .lock()
+            .map_err(|_| {
+                crate::order_directive::OrderDirectiveError::Binding(
+                    "order directive injection log poisoned".into(),
+                )
+            })?
+            .push(crate::order_directive::OrderDirectiveInjection {
+                generation: self.coord.day_index(),
+                request: req,
+            });
+        Ok(id)
+    }
+
+    /// Submit a raw Player overlay after the runtime class-magnitude gate.
+    ///
+    /// Dominant magnitudes that skip [`Self::submit_order_directive`] are rejected.
+    pub fn submit_player_intent_gated(
+        &self,
+        target: simthing_core::SimThingId,
+        overlay: simthing_core::Overlay,
+    ) -> Result<(), crate::order_directive::OrderDirectiveError> {
+        crate::order_directive::gate_raw_player_overlay(
+            &overlay,
+            &self.spec_state.order_weight_classes,
+        )?;
+        self.tx
+            .submit_player_intent(target, overlay)
+            .map_err(|_| crate::order_directive::OrderDirectiveError::FeederDisconnected)
+    }
+
     /// Execute one admitted production hot-cycle (and its boundary if reached).
     ///
     /// Studio live-session bridge / headless multi-tick proofs use this instead of
@@ -903,6 +994,8 @@ impl SimSession {
                         entries: Vec::new(),
                         shadow_values: None,
                         spec_entries: Vec::new(),
+                        injection_entries: self
+                            .take_order_directive_injections_through(day)?,
                     };
                     writer.write_frame(&frame)?;
                     summary.frames_written += 1;
@@ -953,6 +1046,8 @@ impl SimSession {
                     entries: self.proto.take_delta_log(),
                     shadow_values: Some(self.coord.shadow.clone()),
                     spec_entries,
+                    injection_entries: self
+                        .take_order_directive_injections_through(day)?,
                 };
                 writer.write_frame(&frame)?;
                 summary.frames_written += 1;
@@ -966,6 +1061,30 @@ impl SimSession {
         }
 
         Ok(summary)
+    }
+
+    fn take_order_directive_injections_through(
+        &self,
+        generation: u64,
+    ) -> Result<Vec<serde_json::Value>, SessionError> {
+        let mut log = self.order_directive_injection_log.lock().map_err(|_| {
+            SessionError::PlayerIntentAdmission("order directive injection log poisoned".into())
+        })?;
+        let mut ready = Vec::new();
+        let mut pending = Vec::new();
+        for injection in log.drain(..) {
+            if injection.generation <= generation {
+                ready.push(serde_json::to_value(injection).map_err(|error| {
+                    SessionError::PlayerIntentAdmission(format!(
+                        "serialize order directive injection: {error}"
+                    ))
+                })?);
+            } else {
+                pending.push(injection);
+            }
+        }
+        *log = pending;
+        Ok(ready)
     }
 
     fn sync_spec_threshold_registrations(&mut self) {

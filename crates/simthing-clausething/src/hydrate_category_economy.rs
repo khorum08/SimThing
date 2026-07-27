@@ -283,6 +283,7 @@ pub fn hydrate_category_economy_pack(
             domain_packs: vec![],
             properties,
             overlays: vec![],
+            order_weight_classes: vec![],
             capability_trees: vec![],
             events: vec![],
             resource_flow: Some(ResourceFlowSpec {
@@ -660,6 +661,7 @@ pub fn hydrate_daily_economy_game_mode(
         domain_packs: vec![],
         properties,
         overlays: vec![],
+        order_weight_classes: vec![],
         capability_trees: vec![],
         events: vec![],
         resource_flow: None,
