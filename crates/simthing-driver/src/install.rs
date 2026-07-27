@@ -884,7 +884,7 @@ fn install_tree_for_owner(
     };
     let mut cloned = SimThing::new(
         SimThingKind::Custom(tree_kind.clone()),
-        template.spawned_day,
+        template.spawned_generation,
     );
     cloned.properties = template.properties.clone();
 

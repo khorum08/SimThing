@@ -412,9 +412,8 @@ pub use min_plus_traversal_field::{
     TraversalFieldBandError, TraversalFieldBandSession, TraversalFieldDispatchReport,
     TraversalFieldExecutionMode, TraversalFieldExecutionOptions, TraversalFieldGpuInput,
     TraversalFieldGpuOutputHandle, TraversalFieldGridBinding,
-    TraversalFieldShadowColumnCompatInput, TraversalFieldWInputKind,
-    TRAVERSAL_FIELD_BAND_DEFAULT_ENABLED, TRAVERSAL_FIELD_ID, TRAVERSAL_FIELD_REGION_ID,
-    TRAVERSAL_FIELD_UTILITY_ID,
+    TraversalFieldShadowColumnCompatInput, TraversalFieldWInputKind, TRAVERSAL_FIELD_ID,
+    TRAVERSAL_FIELD_REGION_ID, TRAVERSAL_FIELD_UTILITY_ID,
 };
 pub use owner_silo_accumulator_compile::{
     compile_owner_silo_gpu_tick_plan, owner_silo_aggregate_slot, owner_silo_deficit_tick_inputs,
