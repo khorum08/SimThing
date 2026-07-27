@@ -69,8 +69,11 @@ pub struct CapabilityCategorySpec {
     #[serde(default)]
     pub max_active: Option<MaxActivePolicy>,
     pub entries: Vec<CapabilitySpec>,
+    /// Optional source token for category-level admission diagnostics
+    /// (malformed `max_active`, empty mutual-exclusivity sets).
+    #[serde(default)]
+    pub source_span_token: Option<usize>,
 }
-
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct CapabilitySpec {
     pub id: String,
@@ -109,6 +112,10 @@ pub struct CapabilitySpec {
 pub struct CapabilityPrereqSpec {
     pub category: String,
     pub entry_id: String,
+    /// Optional source token from a spanned authoring frontend. Admission
+    /// diagnostics echo this token when the prereq DAG is malformed.
+    #[serde(default)]
+    pub source_span_token: Option<usize>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

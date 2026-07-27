@@ -68,29 +68,62 @@ pub enum SpecError {
     )]
     OnPrereqMetAuthoredDefault(String),
 
-    #[error("entry `{entry_id}` in tree `{in_tree}` references unknown prereq category `{category}` (expected `namespace::name`)")]
+    #[error("entry `{entry_id}` in tree `{in_tree}` references unknown prereq category `{category}` (expected `namespace::name` in the same tree; source_span_token={source_span_token:?})")]
     UnknownPrereqCategory {
         in_tree: String,
         entry_id: String,
         category: String,
+        source_span_token: Option<usize>,
     },
 
-    #[error("entry `{entry_id}` in tree `{in_tree}` references unknown prereq entry `{prereq_entry_id}` in category `{category}`")]
+    #[error("entry `{entry_id}` in tree `{in_tree}` references unknown prereq entry `{prereq_entry_id}` in category `{category}` (source_span_token={source_span_token:?})")]
     UnknownPrereqEntry {
         in_tree: String,
         entry_id: String,
         category: String,
         prereq_entry_id: String,
+        source_span_token: Option<usize>,
     },
 
-    #[error("entry `{0}` declares itself as a prereq")]
-    SelfReferentialPrereq(String),
+    #[error("entry `{entry_id}` in tree `{in_tree}` declares itself as a prereq (source_span_token={source_span_token:?})")]
+    SelfReferentialPrereq {
+        in_tree: String,
+        entry_id: String,
+        source_span_token: Option<usize>,
+    },
 
-    #[error("category `{category}` in tree `{in_tree}` sets max_active = {count}; v0 supports only Unlimited (None) or Limited(1)")]
+    #[error("entry `{entry_id}` in tree `{in_tree}` participates in a prereq cycle `{cycle_path}` (source_span_token={source_span_token:?})")]
+    PrereqCycle {
+        in_tree: String,
+        entry_id: String,
+        cycle_path: String,
+        source_span_token: Option<usize>,
+    },
+
+    #[error("entry `{entry_id}` in tree `{in_tree}` prereq `{prereq_entry_id}` violates tier order (entry_tier={entry_tier}, prereq_tier={prereq_tier}; source_span_token={source_span_token:?})")]
+    PrereqTierOrderViolation {
+        in_tree: String,
+        entry_id: String,
+        prereq_entry_id: String,
+        entry_tier: u32,
+        prereq_tier: u32,
+        source_span_token: Option<usize>,
+    },
+
+    #[error("category `{category}` in tree `{in_tree}` sets max_active = {count}; v0 supports only Unlimited (None) or Limited(1) (source_span_token={source_span_token:?})")]
     UnsupportedMaxActive {
         in_tree: String,
         category: String,
         count: usize,
+        source_span_token: Option<usize>,
+    },
+
+    #[error("category `{category}` in tree `{in_tree}` has malformed max_active: {reason} (source_span_token={source_span_token:?})")]
+    MalformedMaxActive {
+        in_tree: String,
+        category: String,
+        reason: String,
+        source_span_token: Option<usize>,
     },
 
     #[error(

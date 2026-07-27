@@ -382,6 +382,7 @@ fn parse_tradition_category_block(
         tier: 0,
         max_active: None,
         entries,
+        source_span_token: Some(property.key.span.token_index),
     };
     // `possible { has_tradition = X }` prereqs are same-category in the v1
     // dialect; stamp the `namespace::name` category ref the parser could not
@@ -467,11 +468,17 @@ fn parse_possible_block(
     for field in &block.properties {
         match field.key.text.as_str() {
             "has_tradition" => {
+                let entry_id = read_scalar_text(field, "has_tradition")?;
+                let source_span_token = match &field.value {
+                    RawValue::Scalar(reference) => Some(reference.span.token_index),
+                    _ => Some(field.key.span.token_index),
+                };
                 prereqs.push(CapabilityPrereqSpec {
                     // Same-category in the v1 dialect; the category name is
                     // stamped by `parse_tradition_category_block`.
                     category: String::new(),
-                    entry_id: read_scalar_text(field, "has_tradition")?,
+                    entry_id,
+                    source_span_token,
                 });
             }
             other => {
