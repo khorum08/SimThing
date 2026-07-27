@@ -45,7 +45,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 211b860c2a424d0386a01a2dc93d5c563abfd1411c1f58ec55c7b69d97426cb8 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | 26eab30ec86c97ac8dfd6beef7ae8c5b4d3f18c38fdaa431ec40ccce855396d3 |
-| design_0_0_8_7_rf_arena_modernization.md | 5393bc737917a38e237af37e106c5ad3a7b720b19f2470762eda9798ca4106d0 |
+| design_0_0_8_7_rf_arena_modernization.md | d1c65162be0e1bee959d59d0589c935e36e5f91c3aca4226f664a5d042adeb35 |
 | relay_lint.sh | 4163f715cdc3b549dbf57c1744aff61ea96b9f9f0a2237376665fbdb24e986c8 |
 | doctrine_anchors.tsv | c7296a3fec66bb25bdf0042294c019aaa6aac65ab853c4913641fa53774eaf4d |
 | execution_status_taxonomy.tsv | 2641264b403bec7ab9bc27e851a690b027c5f27844f70ad9fc1e047c858fe353 |
@@ -62,9 +62,7 @@ Track state: `open`
 
 | # | rung | deliverable | exit proof |
 | --- | --- | --- | --- |
-| 0.2 | EXECUTION-STATUS-TAXONOMY-0 | Phase 0: `executed / oracle / rehearsal / compile-plan` classification as data;  | **DA-GRADUATED / merged [#1448](https://github.com/khorum08/SimThing/pull/1448) @ `407850e2`** — export-module census... |
-| 0.3 | CONSTITUTION-TRIPWIRES-0 | Phase 0: the three HEURISTIC tripwires (cell-storage polymorphism; bespoke pathf | Selftest fixtures prove each fires; INSPECT-only; reach-log rows land; primary-inclusive counts `mixed_ruled=2`. |
-| 1.1 | ROOT-DERIVE-PARTICIPATION-0 | Phase 1: admission derives arena participation from resource properties + parent | TP scenario runs with ZERO explicit arena wiring; RF-1 green; seams deleted/reduced to overrides. |
+| 1.1 | ROOT-DERIVE-PARTICIPATION-0 | Phase 1: admission derives arena participation from resource properties + parent | **DA-GRADUATED / merged [#1453](https://github.com/khorum08/SimThing/pull/1453) @ `488ad2c9`** — zero explicit arena ... |
 | 1.2 | SESSION-WIRING-KILL-SWEEP-0 | Phase 1: kill remaining opt-in toggles incl. `min_plus_traversal_field` enable/d | No constitutional-path session toggles remain (grep-proven); core day-refs = 0; corpus green. |
 | 1.3 | ARENA-PARTICIPANT-DEPRECATION-0 | Phase 1: deprecate the `ArenaParticipant` wrapper kind (P0 falsifier; StarSystem | Kind deprecated with ruling; no new authoring; compile-compat retained. |
 | 2.1 | OVERLAY-EFFECT-HOST-ADMISSION-0 | Phase 2: close the effect-target v0 trap — host placement + `overlay_hosts` admi | Misdelivery fixture hard-errors at admission; capability effects land on resolved hosts; corpus green. |
@@ -96,7 +94,7 @@ Track state: `open`
 
 ## Next Rung Pointer
 
-Active pointer: `ROOT-DERIVE-PARTICIPATION-0`
+Active pointer: `SESSION-WIRING-KILL-SWEEP-0`
 
 
 ## Cold-Start Spine (constitutional pointers)
