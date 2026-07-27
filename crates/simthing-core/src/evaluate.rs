@@ -61,7 +61,7 @@ pub struct EntitySnapshot {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct FieldSnapshot {
     /// Generation stamp for this snapshot (P0 generation ruling).
-    /// Serde alias preserves legacy wire field name for load compatibility.
+    /// Serde alias preserves the historical wire field name for load compatibility.
     #[serde(alias = "day")]
     pub generation: u32,
     pub entities: Vec<EntitySnapshot>,
@@ -211,11 +211,13 @@ mod tests {
         }
     }
 
-    /// SESSION-WIRING-KILL-SWEEP-0: legacy wire field loads into generation stamp.
+    /// SESSION-WIRING-KILL-SWEEP-0: historical wire key loads into generation stamp.
     #[test]
-    fn field_snapshot_deserializes_legacy_day_alias() {
+    fn field_snapshot_deserializes_legacy_generation_wire_alias() {
+        // Fixture retains the historical JSON key only; identifier is generation-vocabulary.
         let json = r#"{"day":7,"entities":[]}"#;
-        let snap: FieldSnapshot = serde_json::from_str(json).expect("legacy alias load");
+        let snap: FieldSnapshot =
+            serde_json::from_str(json).expect("legacy generation wire alias load");
         assert_eq!(snap.generation, 7);
     }
 }

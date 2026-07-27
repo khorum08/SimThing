@@ -89,8 +89,8 @@ pub struct SimThing {
     /// Physical spatial children (locations own cohorts; systems own locations; etc.)
     pub children: Vec<SimThing>,
     /// Generation this SimThing was created (set at spawn; P0 generation ruling).
-    /// Serde aliases preserve legacy wire field names for load compatibility.
-    #[serde(alias = "spawned_day", alias = "day")]
+    /// Serde alias preserves the historical wire field name for load compatibility.
+    #[serde(alias = "spawned_day")]
     pub spawned_generation: u32,
 }
 
@@ -215,9 +215,10 @@ pub fn is_arena_participant_node(node: &SimThing) -> bool {
 mod tests {
     use super::*;
 
-    /// SESSION-WIRING-KILL-SWEEP-0: legacy wire field loads into spawned_generation.
+    /// SESSION-WIRING-KILL-SWEEP-0: historical wire key loads into spawned_generation.
     #[test]
-    fn spawned_generation_deserializes_legacy_spawned_day_alias() {
+    fn spawned_generation_deserializes_legacy_generation_wire_alias() {
+        // Fixture retains the historical JSON key only; identifier is generation-vocabulary.
         let json = r#"{
             "id": 1,
             "kind": "World",
@@ -226,7 +227,7 @@ mod tests {
             "children": [],
             "spawned_day": 42
         }"#;
-        let thing: SimThing = serde_json::from_str(json).expect("legacy alias load");
+        let thing: SimThing = serde_json::from_str(json).expect("legacy generation wire alias load");
         assert_eq!(thing.spawned_generation, 42);
     }
 }
