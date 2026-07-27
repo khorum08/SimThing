@@ -96,3 +96,8 @@ date	role	query	anchors_served	hit
 2026-07-27T00:44:16Z	coding	--grep scanner-selftest-delta-gate	scanner-selftest-delta-gate	hit
 2026-07-27T01:09:27Z	coding	--grep P0(a)	none	none
 2026-07-27T01:09:27Z	coding	--grep parent edge	simthing-0087-pillars	hit
+2026-07-27T03:15:58Z	coding	--paths crates/simthing-core/src crates/simthing-driver/src	field-policy-time-decisions,founding-ontology-invariants,property-value-rf-overlays,rf-arena-substrate,simthing-0087-binding-laws,simthing-0087-pillars,stead-spatial-contract-core,structural-execution-convergence,workshop-candidate-homing	hit
+2026-07-27T03:21:28Z	coding	--grep SESSION-WIRING	none	none
+2026-07-27T03:21:29Z	coding	--domain session-wiring	none	none
+2026-07-27T03:21:58Z	coding	--paths crates/simthing-core/src/evaluate.rs crates/simthing-driver/src/min_plus_traversal_field.rs crates/simthing-core/src/simthing.rs docs/design_0_0_8_7_rf_arena_modernization.md	field-policy-time-decisions,founding-ontology-invariants,property-value-rf-overlays,rf-arena-substrate,simthing-0087-binding-laws,simthing-0087-pillars,stead-spatial-contract-core,structural-execution-convergence,workshop-candidate-homing	hit
+2026-07-27T03:53:13Z	coding	--paths crates/simthing-core/src/evaluate.rs crates/simthing-core/src/simthing.rs crates/simthing-driver/src/min_plus_traversal_field.rs crates/simthing-driver/src/install.rs docs/design_0_0_8_7_rf_arena_modernization.md scripts/ci/test_inventory.tsv	field-policy-time-decisions,founding-ontology-invariants,orientation-harness-core,property-value-rf-overlays,rf-arena-substrate,scanner-selftest-delta-gate,simthing-0087-binding-laws,simthing-0087-pillars,stead-spatial-contract-core,structural-execution-convergence,workshop-candidate-homing	hit
