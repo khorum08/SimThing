@@ -60,7 +60,7 @@ pub struct ResourceFlowExpansionReport {
     pub arena_count: usize,
     pub participant_count: usize,
     pub coupling_count: usize,
-    pub per_arena_participant_counts: Vec<(String, u32)>,
+    pub per_arena_member_counts: Vec<(String, u32)>,
     pub per_arena_coupling_fanout: Vec<(String, u32)>,
     pub total_registration_estimate: Option<u32>,
     pub total_orderband_depth_reserved: u32,

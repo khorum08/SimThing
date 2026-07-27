@@ -263,8 +263,6 @@ pub fn derive_resource_flow_admission(
                 max_orderband_depth: participant_cap.saturating_mul(2),
                 fission_policy: FissionPolicySpec::Reject,
                 reserved_orderband_depth: 0,
-                reserved_gap_per_intermediate: 0,
-                expected_max_children_per_intermediate: 0,
                 explicit_participants,
                 enrollment: None,
                 wildcard_admission: None,

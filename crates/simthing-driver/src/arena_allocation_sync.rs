@@ -2,7 +2,6 @@
 
 use simthing_core::{DimensionRegistry, EmlExpressionRegistry};
 use simthing_gpu::{build_governed_pairs, WorldGpuState};
-use simthing_sim::SimRuntimeTree;
 
 use crate::arena_allocation_plan::{
     append_residual_closure_ops, plan_arena_allocation, ArenaAllocationPlan,
@@ -10,7 +9,6 @@ use crate::arena_allocation_plan::{
 use crate::arena_hierarchy::{
     build_execution_plan, resolve_node_columns, ArenaExecutionPlan, HierarchyError,
 };
-use crate::arena_participant::ArenaParticipantScaffold;
 use crate::arena_registry::ArenaRegistry;
 use crate::child_share_eml::register_child_share_formula;
 use thiserror::Error;
@@ -65,9 +63,6 @@ pub fn sync_resource_flow_accumulator(
     state: &mut WorldGpuState,
     registry: &DimensionRegistry,
     arena_registry: &ArenaRegistry,
-    scaffold: &ArenaParticipantScaffold,
-    root: &SimRuntimeTree,
-    allocator: &simthing_gpu::SlotAllocator,
     gated_rates: &[crate::gated_rates::ResolvedGatedRate],
     need_bindings: &[crate::need_binding::ResolvedNeedBinding],
     enabled: bool,
@@ -76,9 +71,6 @@ pub fn sync_resource_flow_accumulator(
         state,
         registry,
         arena_registry,
-        scaffold,
-        root,
-        allocator,
         gated_rates,
         need_bindings,
         enabled,
@@ -91,9 +83,6 @@ pub(crate) fn sync_resource_flow_accumulator_with_options(
     state: &mut WorldGpuState,
     registry: &DimensionRegistry,
     arena_registry: &ArenaRegistry,
-    scaffold: &ArenaParticipantScaffold,
-    root: &SimRuntimeTree,
-    allocator: &simthing_gpu::SlotAllocator,
     gated_rates: &[crate::gated_rates::ResolvedGatedRate],
     need_bindings: &[crate::need_binding::ResolvedNeedBinding],
     enabled: bool,
@@ -107,14 +96,7 @@ pub(crate) fn sync_resource_flow_accumulator_with_options(
         });
     }
 
-    let plan = build_execution_plan(
-        registry,
-        &arena_registry.arenas,
-        root,
-        allocator,
-        scaffold,
-        arena_registry.generation,
-    )?;
+    let plan = build_execution_plan(registry, arena_registry)?;
 
     let mut eml_registry = EmlExpressionRegistry::new();
     for arena in &plan.arenas {

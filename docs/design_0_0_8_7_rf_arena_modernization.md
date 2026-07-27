@@ -107,9 +107,10 @@ contracts (RF-2A) exist.
   **paced** (front-end-scheduled generation barriers — the game model, default) and
   **continuous** (free-running batched generations; the CPU semantic side is a submission
   pump + observer). Posture is a scheduling policy, never a kernel fork.
-  Falsifier: when P1 lands, the `ArenaParticipant` wrapper kind is deprecated
-  (StarSystem/Station disposition) — the wrapper kind existing was the symptom of
-  participation-by-wiring; its deprecation is the proof of participation-by-derivation.
+  Falsifier: when P1 lands, the synthetic arena-participation wrapper kind is
+  **eliminated**, not retained as a compatibility fossil — the wrapper existing was the
+  symptom of participation-by-wiring; its absence is the proof of
+  participation-by-derivation.
 - **P1 — Intrinsic RF kernel at the object.** Resource properties + a parent edge ⇒ arena
   participation **derived at admission** (typed, inspectable, spanned hard-errors;
   `DefaultDisabled` opt-out retained). Behavior when parented and as a parent is intrinsic,
@@ -256,7 +257,7 @@ discretion); `Std — Grok CLI` (`grok-4.5` pinned); `Fable` = DA-implemented ha
 | 0.3 | `CONSTITUTION-TRIPWIRES-0` | Phase 0: the three HEURISTIC tripwires (cell-storage polymorphism; bespoke pathfinder; border service) + reach-log wiring; DA 0.2 primary-class fold + Board/orient pointer repair. | **DA-GRADUATED / merged [#1450](https://github.com/khorum08/SimThing/pull/1450) @ `1b7e2432`** — fixtures fire; INSPECT-only; reach-log lands; `mixed_ruled=2`. | Std — Grok | **DA-GRADUATED / merged #1450** — ruling `5086131411`; `HD-RECEIPT: bf9ece38aea8`. |
 | 1.1 | `ROOT-DERIVE-PARTICIPATION-0` | Phase 1: admission derives arena participation from resource properties + parent edge (typed, spanned; `DefaultDisabled` retained); collapse the default-path config seams. | **DA-GRADUATED / merged [#1453](https://github.com/khorum08/SimThing/pull/1453) @ `488ad2c9`** — zero explicit arena wiring; RF-1 + replay referees unedited, battery 108/0. | DA-reserve · Frontier — Codex 5.6/Fable | **DA-GRADUATED / merged #1453** — corpus battery 108/0 at `8333ec56`; `HD-RECEIPT: d0110f30ed12` |
 | 1.2 | `SESSION-WIRING-KILL-SWEEP-0` | Phase 1: kill remaining opt-in toggles incl. `min_plus_traversal_field` enable/disable → derived-at-admission; core calendar-vocabulary rename (`evaluate.rs day`, spawn-day → generation). | **DA-GRADUATED / merged [#1456](https://github.com/khorum08/SimThing/pull/1456) @ HEAD `dc53dfa8`** — toggles dead (constructor census 0 tree-wide); referee `mapgen_palma` unedited 19/0; serde aliases exactly `FieldSnapshot.day` + `SimThing.spawned_day` w/ round-trip tests; core day-refs = generation vocabulary | Std — Grok | **DA-GRADUATED / merged #1456** — corpus battery 108/0 reproduced at `dc53dfa8`; `HD-RECEIPT: b2a5237b0aa7`; ingress-cap sticky waived (wrapper-overhead defect → Phase 10) |
-| 1.3 | `ARENA-PARTICIPANT-DEPRECATION-0` | Phase 1: deprecate the `ArenaParticipant` wrapper kind (P0 falsifier; StarSystem/Station disposition). | Kind deprecated with ruling; no new authoring; compile-compat retained. | Std — Grok | TODO |
+| 1.3 | `ARENA-PARTICIPANT-DEPRECATION-0` | Phase 1: eliminate the synthetic participation wrapper, its scaffold, and reserved-gap pools; admitted SimThings host flow properties on their own rows and carry resource-parent membership in the registry. | **IMPLEMENTED / pending DA** — wrapper kind/module absent; consumers resolve own-row slots; sparse child rows compile through existing ops; RF economics referee is bit-identical to baseline; elimination ledger complete. | DA-reserve · Frontier — Codex 5.6/Fable | **EXIT-PROOF GREEN / pending DA** — `HD-RECEIPT: 28d2e8e276f2`; workspace build, live-GPU driver battery, RF-1, orientation, and doc budget PASS; doctrine hard failures 0; economics diff EMPTY; current harness clearance `DA-RESERVE(class-envelope-violation)`; evidence: `docs/tests/arena_participant_elimination_ledger.tsv` |
 | 2.1 | `OVERLAY-EFFECT-HOST-ADMISSION-0` | Phase 2: close the effect-target v0 trap — host placement + `overlay_hosts` admission-checked; misdelivery = spanned error. | Misdelivery fixture hard-errors at admission; capability effects land on resolved hosts; corpus green. | DA-reserve · Frontier — Codex 5.6/Fable | TODO |
 | 2.2 | `CAPABILITY-PREREQ-DAG-ADMISSION-0` | Phase 2: tiered + mutual prerequisites as admission-validated typed DAG; `max_active` same-barrier atomicity; generation-aligned boundary protocol. | Cycle/dangling fixtures span at admission; unlock+sibling-suspend atomic at one barrier; replay green. | Std — Grok | TODO |
 | 2.3 | `ORDER-WEIGHT-CLASS-0` | Phase 2: authored finite order-weight class + `OverlaySource::Player` directive path (orders = price injections). | Destination-order exemplar drives a TP fleet via price dominance; RF-1 + bit-exact replay green. | Std — Grok | TODO |
@@ -286,7 +287,7 @@ discretion); `Std — Grok CLI` (`grok-4.5` pinned); `Fable` = DA-implemented ha
 
 | Item | State |
 |---|---|
-| Active open rung | `ARENA-PARTICIPANT-DEPRECATION-0` |
+| Active open rung | `OVERLAY-EFFECT-HOST-ADMISSION-0` |
 
 ## 4. Binding laws (carry from day one)
 

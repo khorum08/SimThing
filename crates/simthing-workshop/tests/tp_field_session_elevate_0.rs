@@ -286,9 +286,9 @@ fn execute_canonical_recursive_rf(
         let balance_col = cols.balance_col.expect("Balance column");
         let owner_slot = sim
             .spec_state
-            .arena_participant_scaffold
-            .index
-            .by_host_and_arena[&(rf.ancestor_id, 0)]
+            .arena_registry
+            .participant_slot(rf.ancestor_id, 0)
+            .expect("ancestor admitted")
             .raw();
         let values = sim.state.read_values();
         values[(owner_slot * sim.state.n_dims + balance_col) as usize]
@@ -309,9 +309,9 @@ fn execute_canonical_recursive_rf(
     let balance_col = cols.balance_col.expect("Balance column");
     let participant_slot = |hosted_id| {
         sim.spec_state
-            .arena_participant_scaffold
-            .index
-            .by_host_and_arena[&(hosted_id, 0)]
+            .arena_registry
+            .participant_slot(hosted_id, 0)
+            .expect("participant admitted")
             .raw()
     };
     let owner_slot = participant_slot(rf.ancestor_id);

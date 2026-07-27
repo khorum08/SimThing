@@ -5,7 +5,6 @@ crates/simthing-driver/src/arena_allocation_oracle.rs	oracle	CPU/judge independe
 crates/simthing-driver/src/arena_allocation_plan.rs	compile-plan	Plan/compile builder producing GPU/session plans (not the live tick itself)
 crates/simthing-driver/src/arena_allocation_sync.rs	executed	Live driver/kernel execution or residency path in the recursive RF / arena stack
 crates/simthing-driver/src/arena_hierarchy.rs	compile-plan	Constructs ArenaExecutionPlan via build_execution_plan (hierarchy layout → plan)
-crates/simthing-driver/src/arena_participant.rs	executed	Arena participant materialization / enrollment / gap-pool ops for recursive arena
 crates/simthing-driver/src/arena_pressure.rs	compile-plan	compile_arena_pressure_scatter / pressure seed projection into plan-shaped outputs
 crates/simthing-driver/src/arena_registry.rs	executed	Arena registry participation and expansion for recursive arena residency
 crates/simthing-driver/src/dress_rehearsal_atlas_batch_0_gen.rs	rehearsal	Dress-rehearsal falsification surface (R1-R6C / atlas-batch family); not production default

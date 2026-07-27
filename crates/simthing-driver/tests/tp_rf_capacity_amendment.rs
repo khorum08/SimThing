@@ -106,8 +106,6 @@ fn arena(name: &str, property: &str, kind: &str, reserved_depth: u32) -> ArenaSp
         max_orderband_depth: 1,
         fission_policy: FissionPolicySpec::Reject,
         reserved_orderband_depth: reserved_depth,
-        reserved_gap_per_intermediate: 0,
-        expected_max_children_per_intermediate: 0,
         explicit_participants: Vec::new(),
         enrollment: Some(EnrollmentSelectorSpec::InstallTarget(
             InstallTargetSpec::AllOfKind { kind: kind.into() },

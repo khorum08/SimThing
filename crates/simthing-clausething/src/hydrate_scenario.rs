@@ -994,7 +994,12 @@ fn attach_embedded_gridcells(
 ) -> BTreeMap<String, SimThingId> {
     let fleet_home_targets: BTreeSet<&str> = fleet_ship_payloads
         .iter()
-        .flat_map(|payload| payload.placements.iter().map(|placement| placement.target_id.as_str()))
+        .flat_map(|payload| {
+            payload
+                .placements
+                .iter()
+                .map(|placement| placement.target_id.as_str())
+        })
         .collect();
     let mut fleet_home_install_targets = BTreeMap::new();
     let mut owner_by_target = BTreeMap::new();
@@ -2987,7 +2992,6 @@ fn parse_kind(property: &RawProperty) -> Result<SimThingKind, HydrateError> {
         "Cohort" => Ok(SimThingKind::Cohort),
         "Faction" => Ok(SimThingKind::Faction),
         "Fleet" => Ok(SimThingKind::Fleet),
-        "ArenaParticipant" => Ok(SimThingKind::ArenaParticipant),
         "World" | "StarSystem" | "Station" | "Custom" => Err(HydrateError::new_spanned(
             format!("scenario child kind `{text}` is not admitted for PR2"),
             Some(property.key.span.clone()),

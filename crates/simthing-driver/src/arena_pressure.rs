@@ -11,7 +11,6 @@ use simthing_spec::{ArenaPressureBindingSpec, PressureSourceSpec};
 use thiserror::Error;
 
 use crate::arena_hierarchy::resolve_node_columns;
-use crate::arena_participant::ArenaParticipantScaffold;
 use crate::arena_registry::ArenaRegistry;
 use crate::first_slice_mapping_runtime::FirstSliceSeed;
 use crate::scenario::Scenario;
@@ -44,7 +43,6 @@ pub fn project_arena_pressure_seeds(
     scenario: &Scenario,
     registry: &DimensionRegistry,
     arena_registry: &ArenaRegistry,
-    scaffold: &ArenaParticipantScaffold,
     values: &[f32],
     n_dims: u32,
 ) -> Result<Vec<FirstSliceSeed>, ArenaPressureError> {
@@ -92,10 +90,7 @@ pub fn project_arena_pressure_seeds(
         let mut pressure = 0.0f32;
         let mut resolved_any = false;
         for hosted_id in hosted {
-            let Some(slot) = scaffold
-                .index
-                .participant_slot(*hosted_id, arena_idx as u32)
-            else {
+            let Some(slot) = arena_registry.participant_slot(*hosted_id, arena_idx as u32) else {
                 continue;
             };
             pressure += values[slot.as_usize() * n_dims as usize + global_col as usize];
@@ -132,7 +127,6 @@ pub fn compile_arena_pressure_scatter(
     scenario: &Scenario,
     registry: &DimensionRegistry,
     arena_registry: &ArenaRegistry,
-    scaffold: &ArenaParticipantScaffold,
     session_n_dims: u32,
     field: &simthing_spec::RegionFieldSpec,
 ) -> Result<(Vec<simthing_gpu::ScatterEntry>, Vec<(u32, u32)>), ArenaPressureError> {
@@ -176,7 +170,7 @@ pub fn compile_arena_pressure_scatter(
             })?;
         let mut slots = hosted
             .iter()
-            .filter_map(|id| scaffold.index.participant_slot(*id, arena_idx as u32));
+            .filter_map(|id| arena_registry.participant_slot(*id, arena_idx as u32));
         let Some(slot) = slots.next() else {
             return Err(ArenaPressureError::TargetNotAdmitted {
                 target_id: placement.target_id.clone(),

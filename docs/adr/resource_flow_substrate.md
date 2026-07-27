@@ -45,6 +45,14 @@ authority. The historical serialized profile spelling `FlatStarResourceFlow` is 
 an input alias for `RecursiveArenaResourceFlow`; canonical serialization and runtime dispatch use
 only the recursive Arena name and path.
 
+The Phase 1 wrapper-elimination intervention removes the synthetic topology entirely. An admitted
+SimThing's existing dense-matrix row is the flow row; `ArenaRegistry` records that owned slot plus
+the resource-parent edge used to derive the hierarchy. Base obligations, gated rates, need
+bindings, allocation planning, pressure projection, conservation evidence, and fission enrollment
+all resolve through that same membership artifact. Non-contiguous child rows lower to the existing
+`SlotValue` accumulator operations, so this changes neither kernel nor WGSL semantics. No
+reserved-gap pool, scaffold, property move, or compatibility wrapper remains.
+
 ---
 
 ## Decision

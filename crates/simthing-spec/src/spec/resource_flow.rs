@@ -322,12 +322,6 @@ pub struct ArenaSpec {
     /// Structural OrderBand reservation for future E-11 allocation (0 until enrolled).
     #[serde(default)]
     pub reserved_orderband_depth: u32,
-    /// Reserved child slots per intermediate for fission contiguity (E-10R).
-    #[serde(default)]
-    pub reserved_gap_per_intermediate: u32,
-    /// Expected max children per intermediate — must fit in reserved gap (E-10R).
-    #[serde(default)]
-    pub expected_max_children_per_intermediate: u32,
     #[serde(default)]
     pub explicit_participants: Vec<ExplicitParticipantSpec>,
     /// E-2B: authored enrollment selector resolved to `explicit_participants` at session install.
@@ -415,7 +409,7 @@ impl ExplicitParticipantSpec {
     /// ```compile_fail
     /// use simthing_core::{SimThingId, StructuralCoord};
     /// use simthing_spec::ExplicitParticipantSpec;
-    /// fn spatial_arena_participant_without_placed_proof() {
+    /// fn spatial_arena_member_without_placed_proof() {
     ///     let _coord = StructuralCoord::new(0, 0);
     ///     let _id = SimThingId::from_session_raw(42);
     ///     let _ = ExplicitParticipantSpec::from_spatial_channel_identity(0, _id, _coord);

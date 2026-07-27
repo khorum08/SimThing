@@ -109,8 +109,6 @@ pub fn flat_star_game_mode(max_orderband_depth: u32) -> GameModeSpec {
                 max_orderband_depth,
                 fission_policy: FissionPolicySpec::Reject,
                 reserved_orderband_depth: 0,
-                reserved_gap_per_intermediate: 0,
-                expected_max_children_per_intermediate: 0,
                 explicit_participants: Vec::new(),
                 enrollment: None,
                 wildcard_admission: None,
@@ -172,11 +170,7 @@ pub fn open_flat_star_session(hosted_count: usize, flag_enabled: bool) -> FlatSt
         .expect("column refs");
     let layout = build_execution_plan_from_authoring(
         &session.proto.registry,
-        &session.spec_state.arena_registry.arenas,
-        &session.proto.root,
-        &session.proto.allocator,
-        &session.spec_state.arena_participant_scaffold,
-        session.spec_state.arena_registry.generation,
+        &session.spec_state.arena_registry,
     )
     .expect("execution plan")
     .arenas

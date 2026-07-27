@@ -2,7 +2,6 @@ pub mod arena_allocation_oracle;
 pub mod arena_allocation_plan;
 pub mod arena_allocation_sync;
 pub mod arena_hierarchy;
-pub mod arena_participant;
 pub mod arena_pressure;
 pub mod arena_registry;
 pub mod atlas_0080_0;
@@ -30,7 +29,6 @@ pub mod first_slice_mapping_runtime;
 pub mod gameplay_0080_0;
 pub mod gameplay_0080_1;
 pub mod gated_rates;
-pub mod need_binding;
 pub mod gradient_follow_0080_2;
 pub mod hosted_property_observation;
 pub mod install;
@@ -43,6 +41,7 @@ pub mod local_effect_recursive_source_compile;
 pub mod local_participant_effects_compile;
 pub mod mapping_plan_compile;
 pub mod min_plus_traversal_field;
+pub mod need_binding;
 pub mod owner_silo_accumulator_compile;
 pub mod owner_silo_disburse_down_compile;
 pub mod owner_silo_recursive_source_compile;
@@ -60,8 +59,8 @@ pub mod resource_economy_oracle;
 pub mod resource_economy_sync;
 pub mod resource_flow_burn_in;
 pub mod resource_flow_compile;
-pub mod resource_flow_dynamic_enrollment_soak;
 pub mod resource_flow_derivation;
+pub mod resource_flow_dynamic_enrollment_soak;
 pub mod resource_flow_enrollment;
 pub mod resource_flow_fission_enrollment;
 pub mod resource_flow_flat_star_continued_soak;
@@ -102,14 +101,6 @@ pub mod structural_n4_theater_compile;
 pub mod w_impedance_compose_bridge;
 
 pub use arena_allocation_oracle::{run_arena_allocation_oracle, ArenaAllocationOracleTrace};
-pub use rf_conservation_oracle::{
-    allocator_eps_bound, allocator_from_disbursements, check_allocator_step, check_arena_structural,
-    check_conservation, check_recipe_exact, flat_star_observations,
-    leaf_allocated_from_cells, orphan_ids, AllocatorConservationViolation,
-    AllocatorStepObservation, ArenaConservationSnapshot, ArenaParticipantObservation,
-    ArenaStructuralEvidence, ConservationReport, RecipeConservationViolation,
-    RecipeInvocationObservation, StructuralConservationViolation,
-};
 pub use arena_allocation_plan::{
     max_disbursement_band, plan_arena_allocation, AllocationPlanError, ArenaAllocationPlan,
 };
@@ -124,23 +115,11 @@ pub use arena_hierarchy::{
     ArenaTreeLayout, HierarchyError, HierarchyNode, NestedHierarchyMaterializationReport,
     NodeColumnRefs,
 };
-pub use arena_participant::{
-    all_reserved_gap_slots, arena_participant_sibling_slots, commit_dynamic_arena_root_append,
-    commit_dynamic_arena_root_append_to_authoring, gap_pool_snapshot,
-    materialize_arena_participants, nested_fission_gap_report, prepare_dynamic_arena_root_append,
-    prepare_dynamic_arena_root_append_from_authoring, refresh_fission_participant_child,
-    refresh_fission_participant_child_on_authoring, reserve_gap_pools_for_parent_slots,
-    slot_in_participant_sibling_range, slots_are_contiguous, try_alloc_participant_child_in_gap,
-    try_append_arena_root_sibling_participant,
-    try_append_arena_root_sibling_participant_on_authoring, ArenaParticipantAllocationReport,
-    ArenaParticipantIndex, ArenaParticipantScaffold, DynamicEnrollmentError, GapAllocError,
-    NestedFissionGapReport, PendingDynamicArenaRootParticipant, ReservedGapPool,
-};
 pub use arena_pressure::{
     compile_arena_pressure_scatter, project_arena_pressure_seeds, ArenaPressureError,
 };
 pub use arena_registry::{
-    ArenaCoupling, ArenaDiagnostic, ArenaExpansionReport, ArenaIdx, ArenaParticipant,
+    ArenaCoupling, ArenaDiagnostic, ArenaExpansionReport, ArenaIdx, ArenaMember,
     ArenaRefreshReport, ArenaRegistry, ArenaRegistryBuilder, ArenaRegistryError, CouplingDelay,
     FissionPolicy, GpuArenaDescriptor, SlotId,
 };
@@ -365,13 +344,13 @@ pub use gradient_follow_0080_2::{
     GradientFollow0082Report, GradientFollow0082Surface, GRADIENT_FOLLOW_0080_2_ID,
     GRADIENT_FOLLOW_0080_2_SCENARIO, GRADIENT_FOLLOW_0080_2_STATUS_PASS,
 };
+pub use hosted_property_observation::{
+    observe_hosted_property_cell, system_id_by_host_raw_from_structural_authority,
+    GpuValuesSnapshot, HostedPropertyLocus, HostedPropertyObservationError,
+    LiveDisruptionAuthorityReadback,
+};
 pub use install::{
     compile_and_install, install_atomic, preview_install, InstallError, InstallPreview,
-};
-pub use resource_flow_derivation::{
-    derive_resource_flow_admission, ArenaAdmissionOrigin, DerivedArenaParticipation,
-    DerivedParticipant, ResolvedResourceFlowAdmission, ResourceFlowDerivationError,
-    ResourceFlowDerivationReport,
 };
 pub use loaded_scenario_recursive_rf_runtime_compile::{
     compile_loaded_scenario_recursive_rf_runtime_plan_from_json_str,
@@ -481,11 +460,6 @@ pub use resource_economy_boundary_schedule::{
 pub use resource_economy_burn_in::{
     run_emission_burn_in, run_transfer_recipe_burn_in, ResourceEconomyBurnInReport,
 };
-pub use hosted_property_observation::{
-    observe_hosted_property_cell, system_id_by_host_raw_from_structural_authority,
-    GpuValuesSnapshot, HostedPropertyLocus, HostedPropertyObservationError,
-    LiveDisruptionAuthorityReadback,
-};
 pub use resource_economy_compile::{
     find_property_owner, materialize_resource_economy_registrations,
     materialize_resource_economy_registrations_with_slots, materialize_resource_economy_registry,
@@ -507,6 +481,11 @@ pub use resource_flow_burn_in::{
 };
 pub use resource_flow_compile::{
     compile_and_materialize_resource_flow, materialize_arena_registry,
+};
+pub use resource_flow_derivation::{
+    derive_resource_flow_admission, ArenaAdmissionOrigin, DerivedArenaParticipation,
+    DerivedParticipant, ResolvedResourceFlowAdmission, ResourceFlowDerivationError,
+    ResourceFlowDerivationReport,
 };
 pub use resource_flow_dynamic_enrollment_soak::{
     initial_dynamic_enrollment_sync, run_dynamic_enrollment_gpu_burn_in,
@@ -566,6 +545,14 @@ pub use resource_flow_scenario_class_burn_in::{
     run_profile_soak_with_telemetry, RF_T5_PROFILE_DISABLED, RF_T5_PROFILE_DYNAMIC_FISSION,
     RF_T5_PROFILE_MULTI_ARENA, RF_T5_PROFILE_MULTI_SESSION, RF_T5_PROFILE_REJECTION,
     RF_T5_PROFILE_RESYNC, RF_T5_PROFILE_STATIC_128, RF_T5_PROFILE_STATIC_256,
+};
+pub use rf_conservation_oracle::{
+    allocator_eps_bound, allocator_from_disbursements, check_allocator_step,
+    check_arena_structural, check_conservation, check_recipe_exact, flat_star_observations,
+    leaf_allocated_from_cells, orphan_ids, AllocatorConservationViolation,
+    AllocatorStepObservation, ArenaConservationSnapshot, ArenaMemberObservation,
+    ArenaStructuralEvidence, ConservationReport, RecipeConservationViolation,
+    RecipeInvocationObservation, StructuralConservationViolation,
 };
 pub use runtime_local_allocation_compile::{
     compile_runtime_local_allocation_application_plan, runtime_local_allocation_aggregate_slot,

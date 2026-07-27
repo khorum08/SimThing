@@ -2,17 +2,12 @@
 
 use simthing_core::{
     expand_arena_internal_columns, AccumulatorRole, DimensionRegistry, PropertyLayout,
-    SimPropertyId, SimThing, SimThingId, SlotIndex, SubFieldRole,
+    SimPropertyId, SimThingId, SubFieldRole,
 };
-use simthing_gpu::SlotAllocator;
-use simthing_sim::SimRuntimeTree;
 use std::collections::HashMap;
 use thiserror::Error;
 
-use crate::arena_participant::{
-    arena_participant_sibling_slots_runtime, slots_are_contiguous, ArenaParticipantScaffold,
-};
-use crate::arena_registry::{ArenaIdx, GpuArenaDescriptor, SlotId};
+use crate::arena_registry::{ArenaIdx, ArenaMember, ArenaRegistry, GpuArenaDescriptor, SlotId};
 
 /// E-11 child-share EML tree id (one registration per session).
 pub const CHILD_SHARE_FORMULA_TREE_ID: u32 = 0xE11_0001;
@@ -30,21 +25,18 @@ pub fn integration_band_for_depth(max_depth: u32) -> u32 {
 #[derive(Clone, Debug, Default)]
 pub struct ArenaExecutionPlan {
     pub arenas: Vec<ArenaTreeLayout>,
-    pub arena_participant_index: HashMap<(SimThingId, ArenaIdx), SlotId>,
+    pub member_index: HashMap<(SimThingId, ArenaIdx), SlotId>,
     pub generation: u64,
 }
 
 #[derive(Clone, Debug)]
 pub struct ArenaTreeLayout {
     pub arena_idx: ArenaIdx,
-    pub arena_root_simthing: SimThingId,
-    pub arena_root_slot: SlotId,
     pub participant_roots: Vec<HierarchyNode>,
     pub max_depth: u32,
     pub max_children_per_intermediate: u32,
     pub interior_count: u32,
     pub band_layout: ArenaBandLayout,
-    pub reserved_gap_per_intermediate: u32,
     pub flow_property_id: SimPropertyId,
 }
 
@@ -55,7 +47,6 @@ pub struct HierarchyNode {
     pub depth: u32,
     pub children: Vec<HierarchyNode>,
     pub cols: NodeColumnRefs,
-    pub gap_used: u32,
 }
 
 impl HierarchyNode {
@@ -143,8 +134,8 @@ pub enum HierarchyError {
     MissingAllocatorWeight { arena: String },
     #[error("arena `{arena}` missing IntrinsicFlow role on flow property")]
     MissingIntrinsicFlow { arena: String },
-    #[error("non-contiguous participant children for parent slot {parent_slot}")]
-    NonContiguousChildren { parent_slot: SlotId },
+    #[error("resource-parent edge names unknown arena member {member:?}")]
+    UnknownMember { member: SimThingId },
     #[error("arena `{arena}` has no participant slots")]
     EmptyParticipants { arena: String },
 }
@@ -193,22 +184,6 @@ impl HierarchyNode {
         for child in &self.children {
             child.walk_subtree(out);
         }
-    }
-
-    pub fn verify_child_contiguity(&self) -> Result<(), HierarchyError> {
-        if self.children.is_empty() {
-            return Ok(());
-        }
-        let slots: Vec<SlotId> = self.children.iter().map(|c| c.participant_slot).collect();
-        if !slots_are_contiguous(&slots) {
-            return Err(HierarchyError::NonContiguousChildren {
-                parent_slot: self.participant_slot,
-            });
-        }
-        for child in &self.children {
-            child.verify_child_contiguity()?;
-        }
-        Ok(())
     }
 
     pub fn active_child_slots(&self) -> Vec<SlotId> {
@@ -288,38 +263,20 @@ fn find_role_col(layout: &PropertyLayout, pred: impl Fn(&AccumulatorRole) -> boo
     })
 }
 
-/// Build a D=2 star hierarchy: first sibling participant is root, remainder are leaves.
+/// Build a D=2 star hierarchy: the first admitted member is root, remainder are leaves.
 pub fn build_flat_star_layout(
     arena_idx: ArenaIdx,
     arena: &GpuArenaDescriptor,
     cols: NodeColumnRefs,
-    root: &SimRuntimeTree,
-    allocator: &SlotAllocator,
-    scaffold: &ArenaParticipantScaffold,
-    index: &HashMap<(SimThingId, ArenaIdx), SlotId>,
+    members: &[ArenaMember],
 ) -> Result<ArenaTreeLayout, HierarchyError> {
-    let arena_root_id = *scaffold.arena_root_ids.get(&arena_idx).ok_or_else(|| {
-        HierarchyError::EmptyParticipants {
-            arena: arena.name.clone(),
-        }
-    })?;
-    let arena_root_slot = allocator
-        .slot_of(arena_root_id)
-        .expect("arena root allocated");
-
-    let sibling_slots = arena_participant_sibling_slots_runtime(root, arena_root_id, allocator);
-    if sibling_slots.is_empty() {
+    if members.is_empty() {
         return Err(HierarchyError::EmptyParticipants {
             arena: arena.name.clone(),
         });
     }
-    if !slots_are_contiguous(&sibling_slots) {
-        return Err(HierarchyError::NonContiguousChildren {
-            parent_slot: arena_root_slot,
-        });
-    }
 
-    let max_depth = if sibling_slots.len() <= 1 { 1 } else { 2 };
+    let max_depth = if members.len() <= 1 { 1 } else { 2 };
     let bands = ArenaBandLayout::for_depth_with_residual_closure(
         max_depth,
         cols.balance_governing_col.is_some(),
@@ -332,77 +289,65 @@ pub fn build_flat_star_layout(
         });
     }
 
-    let root_slot = sibling_slots[0];
-    let hosted_root = hosted_for_slot(index, arena_idx, root_slot);
-    let leaves: Vec<HierarchyNode> = sibling_slots
+    let root_member = &members[0];
+    let leaves: Vec<HierarchyNode> = members
         .iter()
         .skip(1)
-        .map(|&slot| HierarchyNode {
-            participant_slot: slot,
-            hosted_simthing_id: hosted_for_slot(index, arena_idx, slot),
+        .map(|member| HierarchyNode {
+            participant_slot: member.slot,
+            hosted_simthing_id: member.subtree_root,
             depth: 1,
             children: Vec::new(),
             cols,
-            gap_used: 0,
         })
         .collect();
 
     let root_node = HierarchyNode {
-        participant_slot: root_slot,
-        hosted_simthing_id: hosted_root,
+        participant_slot: root_member.slot,
+        hosted_simthing_id: root_member.subtree_root,
         depth: 0,
         children: leaves,
         cols,
-        gap_used: 0,
     };
-    root_node.verify_child_contiguity()?;
-
     let interior_count = if root_node.is_interior() { 1 } else { 0 };
     Ok(ArenaTreeLayout {
         arena_idx,
-        arena_root_simthing: arena_root_id,
-        arena_root_slot,
         participant_roots: vec![root_node],
         max_depth,
         max_children_per_intermediate: arena.max_participants,
         interior_count,
         band_layout: bands,
-        reserved_gap_per_intermediate: 0,
         flow_property_id: arena.flow_property_id,
     })
 }
 
-/// Build a nested participant hierarchy from already-materialized ArenaParticipant
-/// SimThing topology. SlotRange reductions require each parent's direct
-/// ArenaParticipant children to occupy a contiguous slot group.
+/// Build a nested hierarchy from the resource-parent edges carried by admitted rows.
 pub fn build_nested_layout(
     arena_idx: ArenaIdx,
     arena: &GpuArenaDescriptor,
     cols: NodeColumnRefs,
-    root: &SimRuntimeTree,
-    allocator: &SlotAllocator,
-    scaffold: &ArenaParticipantScaffold,
-    index: &HashMap<(SimThingId, ArenaIdx), SlotId>,
+    members: &[ArenaMember],
 ) -> Result<ArenaTreeLayout, HierarchyError> {
-    let arena_root_id = *scaffold.arena_root_ids.get(&arena_idx).ok_or_else(|| {
-        HierarchyError::EmptyParticipants {
-            arena: arena.name.clone(),
-        }
-    })?;
-    let arena_root_slot = allocator
-        .slot_of(arena_root_id)
-        .expect("arena root allocated");
-    let arena_root =
-        root.snapshot_node(arena_root_id)
-            .ok_or_else(|| HierarchyError::EmptyParticipants {
-                arena: arena.name.clone(),
-            })?;
-
-    let participant_roots: Vec<HierarchyNode> = arena_root
-        .children
+    let by_id: HashMap<SimThingId, &ArenaMember> = members
         .iter()
-        .filter(|&&child_id| root.node_is_arena_participant(child_id))
-        .map(|&child_id| build_nested_node(root, child_id, arena_idx, cols, allocator, index, 0))
+        .map(|member| (member.subtree_root, member))
+        .collect();
+    let mut children_by_parent: HashMap<SimThingId, Vec<SimThingId>> = HashMap::new();
+    for member in members {
+        if let Some(parent) = member.parent {
+            if !by_id.contains_key(&parent) {
+                return Err(HierarchyError::UnknownMember { member: parent });
+            }
+            children_by_parent
+                .entry(parent)
+                .or_default()
+                .push(member.subtree_root);
+        }
+    }
+    let participant_roots: Vec<HierarchyNode> = members
+        .iter()
+        .filter(|member| member.parent.is_none())
+        .map(|member| build_nested_node(member.subtree_root, cols, &by_id, &children_by_parent, 0))
         .collect::<Result<Vec<_>, _>>()?;
     if participant_roots.is_empty() {
         return Err(HierarchyError::EmptyParticipants {
@@ -422,22 +367,15 @@ pub fn build_nested_layout(
             max: arena.max_orderband_depth,
         });
     }
-    for root in &participant_roots {
-        root.verify_child_contiguity()?;
-    }
-
     let interior_count = participant_roots.iter().map(count_interiors).sum::<u32>();
 
     Ok(ArenaTreeLayout {
         arena_idx,
-        arena_root_simthing: arena_root_id,
-        arena_root_slot,
         participant_roots,
         max_depth,
         max_children_per_intermediate: arena.max_participants,
         interior_count,
         band_layout: bands,
-        reserved_gap_per_intermediate: 0,
         flow_property_id: arena.flow_property_id,
     })
 }
@@ -447,8 +385,6 @@ pub fn build_custom_layout(
     arena_idx: ArenaIdx,
     arena: &GpuArenaDescriptor,
     cols: NodeColumnRefs,
-    arena_root_id: SimThingId,
-    arena_root_slot: SlotId,
     roots: Vec<HierarchyNode>,
 ) -> Result<ArenaTreeLayout, HierarchyError> {
     let max_depth = {
@@ -474,9 +410,6 @@ pub fn build_custom_layout(
             max: arena.max_orderband_depth,
         });
     }
-    for root in &roots {
-        root.verify_child_contiguity()?;
-    }
     let interior_count = {
         let mut nodes = Vec::new();
         for root in &roots {
@@ -486,110 +419,82 @@ pub fn build_custom_layout(
     };
     Ok(ArenaTreeLayout {
         arena_idx,
-        arena_root_simthing: arena_root_id,
-        arena_root_slot,
         participant_roots: roots,
         max_depth,
         max_children_per_intermediate: arena.max_participants,
         interior_count,
         band_layout: bands,
-        reserved_gap_per_intermediate: 0,
         flow_property_id: arena.flow_property_id,
     })
 }
 
 pub fn build_execution_plan(
     registry: &DimensionRegistry,
-    arena_registry: &[GpuArenaDescriptor],
-    root: &SimRuntimeTree,
-    allocator: &SlotAllocator,
-    scaffold: &ArenaParticipantScaffold,
-    generation: u64,
+    arena_registry: &ArenaRegistry,
 ) -> Result<ArenaExecutionPlan, HierarchyError> {
     let mut arenas = Vec::new();
-    let index = scaffold.index.by_host_and_arena.clone();
+    let index = arena_registry.participant_index();
 
-    for (arena_idx, arena_desc) in arena_registry.iter().enumerate() {
+    for (arena_idx, arena_desc) in arena_registry.arenas.iter().enumerate() {
         let arena_idx = arena_idx as ArenaIdx;
+        let members: Vec<ArenaMember> = arena_registry
+            .participants
+            .iter()
+            .filter(|member| member.arena_idx == arena_idx)
+            .cloned()
+            .collect();
         let layout = registry
             .property(arena_desc.flow_property_id)
             .layout
             .clone();
         let cols = resolve_node_columns(&layout, &arena_desc.name)?;
-        let tree = if has_nested_participants(root, scaffold, arena_idx) {
-            build_nested_layout(
-                arena_idx, arena_desc, cols, root, allocator, scaffold, &index,
-            )?
+        let tree = if members.iter().any(|member| member.parent.is_some()) {
+            build_nested_layout(arena_idx, arena_desc, cols, &members)?
         } else {
-            build_flat_star_layout(
-                arena_idx, arena_desc, cols, root, allocator, scaffold, &index,
-            )?
+            build_flat_star_layout(arena_idx, arena_desc, cols, &members)?
         };
         arenas.push(tree);
     }
 
     Ok(ArenaExecutionPlan {
         arenas,
-        arena_participant_index: index,
-        generation,
+        member_index: index,
+        generation: arena_registry.generation,
     })
 }
 
-/// Authoring/test path: plan from a core tree without sim public extraction APIs.
+/// Authoring/test alias kept to make fixture intent explicit.
 pub fn build_execution_plan_from_authoring(
     registry: &DimensionRegistry,
-    arena_registry: &[GpuArenaDescriptor],
-    root: &SimThing,
-    allocator: &SlotAllocator,
-    scaffold: &ArenaParticipantScaffold,
-    generation: u64,
+    arena_registry: &ArenaRegistry,
 ) -> Result<ArenaExecutionPlan, HierarchyError> {
-    build_execution_plan(
-        registry,
-        arena_registry,
-        &SimRuntimeTree::admit(root.clone()),
-        allocator,
-        scaffold,
-        generation,
-    )
+    build_execution_plan(registry, arena_registry)
 }
 
 fn build_nested_node(
-    tree: &SimRuntimeTree,
     node_id: SimThingId,
-    arena_idx: ArenaIdx,
     cols: NodeColumnRefs,
-    allocator: &SlotAllocator,
-    index: &HashMap<(SimThingId, ArenaIdx), SlotId>,
+    by_id: &HashMap<SimThingId, &ArenaMember>,
+    children_by_parent: &HashMap<SimThingId, Vec<SimThingId>>,
     depth: u32,
 ) -> Result<HierarchyNode, HierarchyError> {
-    let participant_slot =
-        allocator
-            .slot_of(node_id)
-            .ok_or(HierarchyError::NonContiguousChildren {
-                parent_slot: SlotIndex::new(0),
-            })?;
-    let snapshot = tree
-        .snapshot_node(node_id)
-        .ok_or(HierarchyError::NonContiguousChildren {
-            parent_slot: SlotIndex::new(0),
-        })?;
-    let children = snapshot
-        .children
-        .iter()
-        .filter(|&&child_id| tree.node_is_arena_participant(child_id))
-        .map(|&child_id| {
-            build_nested_node(tree, child_id, arena_idx, cols, allocator, index, depth + 1)
-        })
+    let member = by_id
+        .get(&node_id)
+        .copied()
+        .ok_or(HierarchyError::UnknownMember { member: node_id })?;
+    let children = children_by_parent
+        .get(&node_id)
+        .into_iter()
+        .flatten()
+        .map(|&child_id| build_nested_node(child_id, cols, by_id, children_by_parent, depth + 1))
         .collect::<Result<Vec<_>, _>>()?;
 
     Ok(HierarchyNode {
-        participant_slot,
-        hosted_simthing_id: hosted_for_slot(index, arena_idx, participant_slot),
+        participant_slot: member.slot,
+        hosted_simthing_id: member.subtree_root,
         depth,
         children,
         cols,
-        gap_used: 0,
     })
 }
 
@@ -611,44 +516,6 @@ fn count_interiors(root: &HierarchyNode) -> u32 {
     nodes.iter().filter(|node| node.is_interior()).count() as u32
 }
 
-fn has_nested_participants(
-    root: &SimRuntimeTree,
-    scaffold: &ArenaParticipantScaffold,
-    arena_idx: ArenaIdx,
-) -> bool {
-    let Some(arena_root_id) = scaffold.arena_root_ids.get(&arena_idx).copied() else {
-        return false;
-    };
-    root.snapshot_node(arena_root_id)
-        .map(|arena_root| {
-            arena_root.children.iter().any(|&child_id| {
-                root.node_is_arena_participant(child_id)
-                    && contains_participant_child(root, child_id)
-            })
-        })
-        .unwrap_or(false)
-}
-
-fn contains_participant_child(tree: &SimRuntimeTree, node_id: SimThingId) -> bool {
-    let Some(snapshot) = tree.snapshot_node(node_id) else {
-        return false;
-    };
-    snapshot.children.iter().any(|&child_id| {
-        tree.node_is_arena_participant(child_id) || contains_participant_child(tree, child_id)
-    })
-}
-
-fn hosted_for_slot(
-    index: &HashMap<(SimThingId, ArenaIdx), SlotId>,
-    arena_idx: ArenaIdx,
-    slot: SlotId,
-) -> SimThingId {
-    index
-        .iter()
-        .find_map(|((hosted, idx), s)| (*s == slot && *idx == arena_idx).then_some(*hosted))
-        .unwrap_or_default()
-}
-
 /// Driver/test diagnostic for static nested hierarchy materialization (A-0).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct NestedHierarchyMaterializationReport {
@@ -656,28 +523,23 @@ pub struct NestedHierarchyMaterializationReport {
     pub participant_root_count: usize,
     pub total_bands: u32,
     pub integration_band: u32,
-    pub all_parents_contiguous: bool,
+    pub resource_parent_edge_count: usize,
 }
 
 /// Summarize a nested [`ArenaTreeLayout`] for boundary/materialization reporting.
 pub fn nested_hierarchy_materialization_report(
     layout: &ArenaTreeLayout,
 ) -> NestedHierarchyMaterializationReport {
-    let all_parents_contiguous = layout
+    let resource_parent_edge_count = layout
         .iter_all()
         .into_iter()
-        .filter(|node| !node.children.is_empty())
-        .all(|node| node.verify_child_contiguity().is_ok());
+        .map(|node| node.children.len())
+        .sum();
     NestedHierarchyMaterializationReport {
         max_depth: layout.max_depth,
         participant_root_count: layout.participant_roots.len(),
         total_bands: layout.band_layout.total_bands_used,
         integration_band: layout.band_layout.integration_band,
-        all_parents_contiguous,
+        resource_parent_edge_count,
     }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
 }

@@ -710,9 +710,8 @@ impl StudioLiveSessionBridge {
                                 locus,
                                 &threshold_event_kinds,
                             );
-                            self.cumulative_construction_crossings = self
-                                .cumulative_construction_crossings
-                                .saturating_add(
+                            self.cumulative_construction_crossings =
+                                self.cumulative_construction_crossings.saturating_add(
                                     self.recursive_rf_readout.need_threshold_event_count as u64,
                                 );
                             self.recursive_rf_readout.cumulative_construction_crossings =
@@ -833,9 +832,8 @@ impl StudioLiveSessionBridge {
         };
         if self.disruption_observation_loci.is_empty() {
             self.disruption_readout = studio_disruption_readout_map_from_snapshot(
-                &simthing_spec::disruption_readout_snapshot(authority).map_err(|e| {
-                    StudioLiveSessionBridgeError::DisruptionReadback(e.to_string())
-                })?,
+                &simthing_spec::disruption_readout_snapshot(authority)
+                    .map_err(|e| StudioLiveSessionBridgeError::DisruptionReadback(e.to_string()))?,
             );
             return Ok(());
         }
@@ -943,22 +941,29 @@ pub fn driver_scenario_from_authority(spec: &SimThingScenarioSpec) -> Result<Sce
 /// the field-bearing path executes its admitted recursive Arena through ordinary `step_once`.
 pub fn field_bearing_game_mode(mode: &GameModeSpec) -> GameModeSpec {
     let mut field = mode.clone();
-    let has_resource_property = field.properties.iter().chain(
-        field
-            .domain_packs
-            .iter()
-            .flat_map(|pack| pack.properties.iter()),
-    ).any(|property| {
-        property.sub_fields.iter().any(|sub_field| {
-            sub_field.accumulator_spec.as_ref().is_some_and(|accumulator| {
-                matches!(
-                    &accumulator.role,
-                    AccumulatorRole::AllocatedFlow { .. }
-                        | AccumulatorRole::AllocatorWeight { .. }
-                )
+    let has_resource_property = field
+        .properties
+        .iter()
+        .chain(
+            field
+                .domain_packs
+                .iter()
+                .flat_map(|pack| pack.properties.iter()),
+        )
+        .any(|property| {
+            property.sub_fields.iter().any(|sub_field| {
+                sub_field
+                    .accumulator_spec
+                    .as_ref()
+                    .is_some_and(|accumulator| {
+                        matches!(
+                            &accumulator.role,
+                            AccumulatorRole::AllocatedFlow { .. }
+                                | AccumulatorRole::AllocatorWeight { .. }
+                        )
+                    })
             })
-        })
-    });
+        });
     if field.resource_flow.is_none() && !has_resource_property {
         // Small field-economy fixtures have no admitted RF topology. Keep
         // their historical field-bearing economy path default-disabled.
@@ -966,13 +971,16 @@ pub fn field_bearing_game_mode(mode: &GameModeSpec) -> GameModeSpec {
     }
     let is_rf_property = |property: &PropertySpec| {
         property.sub_fields.iter().any(|sub_field| {
-            sub_field.accumulator_spec.as_ref().is_some_and(|accumulator| {
-                matches!(
-                    &accumulator.role,
-                    AccumulatorRole::AllocatedFlow { .. }
-                        | AccumulatorRole::AllocatorWeight { .. }
-                )
-            })
+            sub_field
+                .accumulator_spec
+                .as_ref()
+                .is_some_and(|accumulator| {
+                    matches!(
+                        &accumulator.role,
+                        AccumulatorRole::AllocatedFlow { .. }
+                            | AccumulatorRole::AllocatorWeight { .. }
+                    )
+                })
         })
     };
     // The recursive RF planner consumes property-local columns. The paired
@@ -1038,13 +1046,16 @@ pub fn driver_scenario_field_bearing_from_profile(
     );
     for property in authored_properties {
         let is_resource_property = property.sub_fields.iter().any(|sub_field| {
-            sub_field.accumulator_spec.as_ref().is_some_and(|accumulator| {
-                matches!(
-                    accumulator.role,
-                    AccumulatorRole::AllocatedFlow { .. }
-                        | AccumulatorRole::AllocatorWeight { .. }
-                )
-            })
+            sub_field
+                .accumulator_spec
+                .as_ref()
+                .is_some_and(|accumulator| {
+                    matches!(
+                        accumulator.role,
+                        AccumulatorRole::AllocatedFlow { .. }
+                            | AccumulatorRole::AllocatorWeight { .. }
+                    )
+                })
         });
         if is_resource_property
             && registry
@@ -1198,11 +1209,8 @@ fn recursive_rf_locus_from_session(
         .ok_or_else(|| "recursive RF property has no governed Balance column".to_string())?;
     let participant_slot = |hosted_id| {
         sim.spec_state
-            .arena_participant_scaffold
-            .index
-            .by_host_and_arena
-            .get(&(hosted_id, 0))
-            .copied()
+            .arena_registry
+            .participant_slot(hosted_id, 0)
             .map(|slot| slot.raw())
     };
     let ancestor_slot = participant_slot(profile.ancestor_id)

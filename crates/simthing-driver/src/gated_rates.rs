@@ -25,7 +25,7 @@ use simthing_spec::{
 use std::collections::BTreeMap;
 
 use crate::arena_hierarchy::resolve_node_columns;
-use crate::arena_participant::ArenaParticipantScaffold;
+use crate::arena_registry::ArenaRegistry;
 use crate::install::{find_simthing_mut, resolve_install_target, InstallError};
 use crate::scenario::Scenario;
 
@@ -80,7 +80,7 @@ pub fn resolve_gated_rates(
     scenario: &Scenario,
     root: &SimThing,
     registry: &DimensionRegistry,
-    scaffold: &ArenaParticipantScaffold,
+    arena_registry: &ArenaRegistry,
 ) -> Result<Vec<ResolvedGatedRate>, InstallError> {
     let mut out = Vec::with_capacity(spec.gated_rates.len());
     for gated in &spec.gated_rates {
@@ -177,8 +177,7 @@ pub fn resolve_gated_rates(
             });
         }
         for hosted_id in hosted {
-            let participant_slot = scaffold
-                .index
+            let participant_slot = arena_registry
                 .participant_slot(hosted_id, arena_idx as u32)
                 .ok_or_else(|| InstallError::BaseFlowObligationTargetNotAdmitted {
                     obligation: gated.id.clone(),

@@ -54,9 +54,6 @@ pub enum SimThingKind {
     /// properties / overlays. Retained only for compile-compatibility; do not author new entities
     /// of this kind.
     Station,
-    /// Driver/session topology marker for arena-participant wrapper nodes (E-10R2).
-    /// Not a spatial entity; `simthing-sim` must not branch on this variant.
-    ArenaParticipant,
     Custom(String),
 }
 
@@ -201,14 +198,8 @@ pub fn kind_matches(authored: &str, sim: &SimThingKind) -> bool {
         SimThingKind::Cohort => authored == "Cohort",
         SimThingKind::Fleet => authored == "Fleet",
         SimThingKind::Station => authored == "Station",
-        SimThingKind::ArenaParticipant => authored == "ArenaParticipant",
         SimThingKind::Custom(s) => s == authored,
     }
-}
-
-/// Kind-free topology predicate for callers that must not name [`SimThingKind`].
-pub fn is_arena_participant_node(node: &SimThing) -> bool {
-    kind_matches("ArenaParticipant", &node.kind)
 }
 
 #[cfg(test)]
@@ -227,7 +218,8 @@ mod tests {
             "children": [],
             "spawned_day": 42
         }"#;
-        let thing: SimThing = serde_json::from_str(json).expect("legacy generation wire alias load");
+        let thing: SimThing =
+            serde_json::from_str(json).expect("legacy generation wire alias load");
         assert_eq!(thing.spawned_generation, 42);
     }
 }

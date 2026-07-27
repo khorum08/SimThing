@@ -606,8 +606,6 @@ fn open_clause_opts(text: &str, opts: OpenOpts) -> Result<SimSession, OpenError>
             max_orderband_depth: 16,
             fission_policy: FissionPolicySpec::Reject,
             reserved_orderband_depth: 0,
-            reserved_gap_per_intermediate: 0,
-            expected_max_children_per_intermediate: 0,
             explicit_participants: participants,
             enrollment: None,
             wildcard_admission: None,

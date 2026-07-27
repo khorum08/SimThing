@@ -8,22 +8,12 @@ use simthing_core::SlotIndex;
 use simthing_gpu::SlotAllocator;
 use simthing_spec::{ResourceFlowSpec, SpecError};
 
-/// Validate explicit participant identity and reserved-gap admission against live session state.
+/// Validate explicit participant identity against live session state.
 pub fn validate_resource_flow_preflight(
     spec: &ResourceFlowSpec,
     allocator: &SlotAllocator,
 ) -> Result<(), SpecError> {
     for arena in &spec.arenas {
-        if arena.expected_max_children_per_intermediate > 0
-            && arena.reserved_gap_per_intermediate < arena.expected_max_children_per_intermediate
-        {
-            return Err(SpecError::ReservedGapTooSmall {
-                arena: arena.name.clone(),
-                reserved: arena.reserved_gap_per_intermediate,
-                expected: arena.expected_max_children_per_intermediate,
-            });
-        }
-
         for participant in &arena.explicit_participants {
             let id = SimThingId::from_session_raw(participant.subtree_root_id);
             match allocator.slot_of(id) {

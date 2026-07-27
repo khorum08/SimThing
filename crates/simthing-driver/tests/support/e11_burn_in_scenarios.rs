@@ -109,9 +109,6 @@ pub fn run_scenario_burn_in(
         &mut fx.session.state,
         &fx.session.proto.registry,
         &fx.session.spec_state.arena_registry,
-        &fx.session.spec_state.arena_participant_scaffold,
-        &fx.session.proto.root,
-        &fx.session.proto.allocator,
         &[],
         &[],
         true,
@@ -154,22 +151,13 @@ pub fn assert_flat_star_only_no_nested_claims(fx: &FlatStarSession) {
         "Resource Flow soak must avoid wildcard admission"
     );
     assert!(
-        !fx.session
-            .spec_state
-            .arena_participant_scaffold
-            .index
-            .by_host_and_arena
-            .is_empty(),
+        !fx.session.spec_state.arena_registry.participants.is_empty(),
         "Resource Flow soak must use explicit participants"
     );
 
     let execution = build_execution_plan_from_authoring(
         &fx.session.proto.registry,
-        &fx.session.spec_state.arena_registry.arenas,
-        &fx.session.proto.root,
-        &fx.session.proto.allocator,
-        &fx.session.spec_state.arena_participant_scaffold,
-        fx.session.spec_state.arena_registry.generation,
+        &fx.session.spec_state.arena_registry,
     )
     .expect("execution plan");
 
