@@ -89,6 +89,12 @@ pub struct SimThing {
     /// Serde alias preserves the historical wire field name for load compatibility.
     #[serde(alias = "spawned_day")]
     pub spawned_generation: u32,
+    /// Explicitly declared specialization profiles (SPECIALIZATION-PROTOCOL-0,
+    /// P3). Additive-only: legacy trees carry none and load unchanged; empty
+    /// declarations serialize to nothing (wire-identical to pre-3.1 trees).
+    /// Validated at admission — see [`crate::specialization`].
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub declared_specializations: Vec<String>,
 }
 
 impl SimThing {
@@ -101,6 +107,7 @@ impl SimThing {
             overlays: Vec::new(),
             children: Vec::new(),
             spawned_generation,
+            declared_specializations: Vec::new(),
         }
     }
 

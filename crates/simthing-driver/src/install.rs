@@ -71,6 +71,9 @@ pub enum InstallError {
     #[error("Resource Flow derivation: {0}")]
     ResourceFlowDerivation(#[from] ResourceFlowDerivationError),
 
+    #[error("Specialization protocol: {0}")]
+    Specialization(#[from] simthing_core::SpecializationError),
+
     #[error("Resource Flow base obligation `{obligation}` targets SimThing {subtree_root_id} which is not admitted to arena `{arena}`")]
     BaseFlowObligationTargetNotAdmitted {
         obligation: String,
@@ -260,6 +263,12 @@ pub fn compile_and_install(
             .unwrap_or_else(SimThingId::new);
         return Err(InstallError::SlotOverflow { owner_id });
     }
+
+    // ── 4a′. Specialization protocol (3.1): derive structural conformance and
+    //      validate any declared profiles. Observation + validation only —
+    //      nothing downstream consults profiles yet (consumers arrive in 3.2).
+    state.specialization =
+        simthing_core::derive_specializations(root, &simthing_core::seed_profiles())?;
 
     // ── 4b. Resource Flow admission: populated resource properties + typed
     //      parent edges derive the default arena. ResourceFlowSpec remains an
