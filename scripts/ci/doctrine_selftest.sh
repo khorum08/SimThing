@@ -267,6 +267,29 @@ EOF
     "${ROOT_SANDBOX}/crates/simthing-driver/src/rf_probe_oracle_unclassified.rs"
 }
 
+expect_constitution_reach_log_append() {
+  # CONSTITUTION-TRIPWIRES-0: after a known-bad CELL-STORAGE hit, reach-log gains a row.
+  begin_sandbox
+  prepare_trap_baseline "$ROOT_SANDBOX"
+  # Seed a minimal reach log so append has a target file.
+  printf 'date\trole\tquery\tanchors_served\thit\n' >"${ROOT_SANDBOX}/scripts/ci/anchor_reach_log.tsv"
+  cp "${FIXTURES}/known_bad/cell_storage_polymorphism.rs" \
+    "${ROOT_SANDBOX}/crates/simthing-kernel/src/_selftest_fixture.rs"
+  local out="${ROOT_SANDBOX}/scan.out"
+  local exit_code before after
+  before="$(wc -l <"${ROOT_SANDBOX}/scripts/ci/anchor_reach_log.tsv" | tr -d ' ')"
+  exit_code="$(run_scan_in_sandbox "$ROOT_SANDBOX" "$out")"
+  after="$(wc -l <"${ROOT_SANDBOX}/scripts/ci/anchor_reach_log.tsv" | tr -d ' ')"
+  if [[ "$exit_code" -eq 0 && "$after" -gt "$before" ]] \
+    && grep -q $'\tscan\tCELL-STORAGE-POLYMORPHISM\t' "${ROOT_SANDBOX}/scripts/ci/anchor_reach_log.tsv"; then
+    HE_REPORT+=("CONSTITUTION-REACH-LOG (cell_storage append)  PASS")
+  else
+    HE_REPORT+=("CONSTITUTION-REACH-LOG (cell_storage append)  FAIL (exit=${exit_code} before=${before} after=${after})")
+    fail_selftest
+  fi
+  end_sandbox
+}
+
 setup_heuristic_sim() {
   local fixture="$1"
   prepare_trap_baseline "$ROOT_SANDBOX"
@@ -569,6 +592,50 @@ expect_heuristic_inspect() {
     fail_selftest
   fi
   end_sandbox
+}
+
+# Named HEURISTIC scan must stay quiet (count 0) on a negative control fixture.
+expect_heuristic_quiet() {
+  local label="$1"
+  local scan_id="$2"
+  shift 2
+  begin_sandbox
+  "$@"
+  local out="${ROOT_SANDBOX}/scan.out"
+  local exit_code verdict hard inspect sv count
+  exit_code="$(run_scan_in_sandbox "$ROOT_SANDBOX" "$out")"
+  read -r verdict hard inspect <<<"$(parse_footer_verdict "$out")"
+  read -r sv count <<<"$(scan_line_verdict "$out" "$scan_id")"
+  if [[ "$hard" -eq 0 && "$sv" == "PASS" && "$count" -eq 0 && "$exit_code" -eq 0 ]]; then
+    HE_REPORT+=("${scan_id} (${label})  PASS")
+  else
+    HE_REPORT+=("${scan_id} (${label})  FAIL quiet (verdict=${verdict} scan=${sv} count=${count} exit=${exit_code})")
+    fail_selftest
+  fi
+  end_sandbox
+}
+
+setup_heuristic_mapeditor() {
+  local fixture="$1"
+  prepare_trap_baseline "$ROOT_SANDBOX"
+  mkdir -p "${ROOT_SANDBOX}/crates/simthing-mapeditor/src"
+  # Minimal lib so the crate path exists for whole-tree HEURISTIC globs.
+  if [[ ! -f "${ROOT_SANDBOX}/crates/simthing-mapeditor/src/lib.rs" ]]; then
+    echo '// mapeditor stub' >"${ROOT_SANDBOX}/crates/simthing-mapeditor/src/lib.rs"
+  fi
+  cp "${FIXTURES}/known_bad/${fixture}" \
+    "${ROOT_SANDBOX}/crates/simthing-mapeditor/src/_selftest_fixture.rs"
+}
+
+setup_trap_mapeditor() {
+  local trap_file="$1"
+  prepare_trap_baseline "$ROOT_SANDBOX"
+  mkdir -p "${ROOT_SANDBOX}/crates/simthing-mapeditor/src"
+  if [[ ! -f "${ROOT_SANDBOX}/crates/simthing-mapeditor/src/lib.rs" ]]; then
+    echo '// mapeditor stub' >"${ROOT_SANDBOX}/crates/simthing-mapeditor/src/lib.rs"
+  fi
+  cp "${FIXTURES}/${trap_file}" \
+    "${ROOT_SANDBOX}/crates/simthing-mapeditor/src/_selftest_trap.rs"
 }
 
 expect_workshop_homing_pr_delta() {
@@ -1194,6 +1261,21 @@ run_all_cases() {
     setup_heuristic_kernel column_index_mint.rs
   expect_heuristic_inspect "execution_status_unclassified" "EXECUTION-STATUS-UNCLASSIFIED" \
     setup_heuristic_execution_status_unclassified
+  expect_heuristic_inspect "cell_storage_polymorphism" "CELL-STORAGE-POLYMORPHISM" \
+    setup_heuristic_kernel cell_storage_polymorphism.rs
+  expect_heuristic_inspect "bespoke_pathfinder" "BESPOKE-PATHFINDER" \
+    setup_heuristic_kernel bespoke_pathfinder.rs
+  expect_heuristic_inspect "bespoke_pathfinder_dijkstra" "BESPOKE-PATHFINDER" \
+    setup_heuristic_kernel bespoke_pathfinder_dijkstra.rs
+  expect_heuristic_quiet "binary_heap_event_queue" "BESPOKE-PATHFINDER" \
+    setup_trap traps/binary_heap_event_queue.rs
+  expect_heuristic_inspect "border_service" "BORDER-SERVICE" \
+    setup_heuristic_kernel border_service.rs
+  expect_heuristic_inspect "border_service_mapeditor" "BORDER-SERVICE" \
+    setup_heuristic_mapeditor border_service_mapeditor.rs
+  expect_heuristic_quiet "mapeditor_polyline_projection_cache" "BORDER-SERVICE" \
+    setup_trap_mapeditor traps/mapeditor_polyline_projection_cache.rs
+  expect_constitution_reach_log_append
   expect_heuristic_inspect "sim_kind_read" "SIM-KIND-READ" \
     setup_heuristic_sim sim_kind_read.rs
   expect_heuristic_inspect "semantic_words_production" "SEMANTIC-WORDS" \
@@ -1229,6 +1311,7 @@ run_all_cases() {
   expect_trap_pass "comment_semantic_words" "traps/comment_semantic_words.rs"
   expect_trap_pass "cfg_test_semantic_words" "traps/cfg_test_semantic_words.rs"
   expect_trap_pass "cfg_test_kind_read" "traps/cfg_test_kind_read.rs"
+  expect_trap_pass "binary_heap_event_queue" "traps/binary_heap_event_queue.rs"
   expect_trap_pass_spec "role_resolution_kind_param_match" \
     traps/role_resolution_kind_param_match.rs
   expect_generated_trap_pass "guard_kabuki_ordinary_source_param" \

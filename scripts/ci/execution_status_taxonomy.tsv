@@ -1,7 +1,6 @@
 # path	class	basis  # EXECUTION-STATUS-TAXONOMY-0; classes: executed|oracle|rehearsal|compile-plan
-# Census basis: exported pub mod from crates/simthing-{driver,kernel}/src/lib.rs + handoff families
-# (executed recursive arena, oracles, dress-rehearsal, compile-plan builders, min_plus, accumulators/thresholds).
-# Mixed-posture files are NOT force-classed here — see execution_status_mixed_posture.tsv for DA ruling.
+# Census: every driver/kernel pub mod is taxonomy, mixed residual (secondary evidence), or non_execution.
+# DA-ruled dual-posture files hold PRIMARY class here; secondary evidence in execution_status_mixed_posture.tsv (mixed_ruled).
 crates/simthing-driver/src/arena_allocation_oracle.rs	oracle	CPU/judge independence surface for conservation or plan parity
 crates/simthing-driver/src/arena_allocation_plan.rs	compile-plan	Plan/compile builder producing GPU/session plans (not the live tick itself)
 crates/simthing-driver/src/arena_allocation_sync.rs	executed	Live driver/kernel execution or residency path in the recursive RF / arena stack
@@ -113,12 +112,14 @@ crates/simthing-kernel/src/participation.rs	executed	Placed-participant validati
 crates/simthing-kernel/src/passes.rs	executed	Authoritative GPU compute dispatch wrappers (run_snapshot / tick pipeline / accumulator dispatches)
 crates/simthing-kernel/src/projection.rs	executed	project_tree_to_values — tree→dense matrix projection for live kernel residency
 crates/simthing-kernel/src/readback.rs	executed	Kernel readback helpers for post-dispatch observation
+crates/simthing-kernel/src/reduction.rs	compile-plan	DA RULED 2026-07-26 (5085410594): PRIMARY=compile-plan; cpu_reduce_oracle is co-located judge (secondary). Split rides 4.2
 crates/simthing-kernel/src/reduction_orderband.rs	compile-plan	plan_reduction_orderband — OrderBand plan for reduction depths
 crates/simthing-kernel/src/registration.rs	executed	Threshold registration substrate consumed by executed threshold/emission paths
 crates/simthing-kernel/src/resolved.rs	executed	Resolved GPU buffer residency for live kernel dispatch
 crates/simthing-kernel/src/sealed/emission.rs	executed	Sealed emission record types used on the executed emission path
 crates/simthing-kernel/src/sealed/threshold_event.rs	executed	Live driver/kernel execution or residency path in the recursive RF / arena stack
+crates/simthing-kernel/src/sealed/write_authority.rs	executed	ResolvedWriteAuthority seal token for live resolved GPU column writes
 crates/simthing-kernel/src/slot.rs	executed	Slot allocator for dense-matrix residency used by executed RF/kernel paths
 crates/simthing-kernel/src/transfer_accumulator.rs	executed	Live driver/kernel execution or residency path in the recursive RF / arena stack
 crates/simthing-kernel/src/velocity_accumulator.rs	executed	Live driver/kernel execution or residency path in the recursive RF / arena stack
-crates/simthing-kernel/src/sealed/write_authority.rs	executed	ResolvedWriteAuthority seal token for live resolved GPU column writes
+crates/simthing-kernel/src/world_state.rs	executed	DA RULED 2026-07-26 (5085410594): PRIMARY=executed; encode helpers co-located assembly (secondary). Split rides 4.2
