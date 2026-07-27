@@ -247,6 +247,7 @@ impl CapabilityTreeBuilder {
                             in_tree: spec.tree_id.clone(),
                             entry_id: entry.id.clone(),
                             category: pre.category.clone(),
+                            source_span_token: pre.source_span_token,
                         }
                     })?;
 
@@ -260,6 +261,7 @@ impl CapabilityTreeBuilder {
                             entry_id: entry.id.clone(),
                             category: pre.category.clone(),
                             prereq_entry_id: pre.entry_id.clone(),
+                            source_span_token: pre.source_span_token,
                         })?
                         .raw();
 
@@ -271,6 +273,7 @@ impl CapabilityTreeBuilder {
                             entry_id: entry.id.clone(),
                             category: pre.category.clone(),
                             prereq_entry_id: pre.entry_id.clone(),
+                            source_span_token: pre.source_span_token,
                         })?;
 
                     prereqs.push(CapabilityPrereq {
@@ -371,6 +374,7 @@ fn parse_category_ref<'a>(
             in_tree: in_tree.to_owned(),
             entry_id: entry_id.to_owned(),
             category: refstr.to_owned(),
+            source_span_token: None,
         }),
     }
 }

@@ -161,6 +161,28 @@ impl SimRuntimeTree {
             .unwrap_or(false)
     }
 
+    /// Observation-only: whether the installed overlay is lifecycle-active
+    /// (`Permanent` / `Transient`). `None` if the host or overlay id is missing.
+    /// Used by capability atomicity referees that must prove Suspend/Activate on
+    /// the authoritative runtime tree, not only on spec-state books.
+    pub fn overlay_is_active(&self, host: SimThingId, overlay_id: OverlayId) -> Option<bool> {
+        let node = find_node(&self.inner, host)?;
+        let overlay = node.overlays.iter().find(|o| o.id == overlay_id)?;
+        Some(overlay.is_active())
+    }
+
+    /// Observation-only: whether the installed overlay is lifecycle-`Suspended`.
+    /// `None` if the host or overlay id is missing.
+    pub fn overlay_is_suspended(&self, host: SimThingId, overlay_id: OverlayId) -> Option<bool> {
+        use simthing_core::OverlayLifecycle;
+        let node = find_node(&self.inner, host)?;
+        let overlay = node.overlays.iter().find(|o| o.id == overlay_id)?;
+        Some(matches!(
+            overlay.lifecycle,
+            OverlayLifecycle::Suspended { .. }
+        ))
+    }
+
     pub fn contains_id(&self, id: SimThingId) -> bool {
         find_node(&self.inner, id).is_some()
     }

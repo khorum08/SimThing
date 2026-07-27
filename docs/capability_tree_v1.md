@@ -67,11 +67,18 @@ with `OverlayLifecycle::Suspended { when_activated: Box::new(Permanent) }`.
 Pass 7. The spec layer's boundary handler reads the threshold event,
 checks prereqs against the CPU shadow, and issues
 `BoundaryRequest::ActivateOverlay` for the corresponding overlay. The
-simulation executes the activation at boundary step 9.
+simulation executes the activation at the generation barrier (boundary step 9).
 
 **Reduction** — all tech sub-fields use `ReductionRule::Max`. The faction's
-`output_vectors[entry_col]` = 1.0 the tick after the entry unlocks, making
+`output_vectors[entry_col]` = 1.0 the generation after the entry unlocks, making
 "which factions have warp_drive" a flat buffer scan with no tree walk.
+
+> **Prereq DAG admission (0.0.8.7 rung 2.2):** At spec admission, each capability
+> tree's prereq graph is validated as typed DAG data — cycles, dangling entry
+> references, cross-tree references, and self-prerequisites are spanned hard
+> errors. Tiered AND mutual prerequisites both validate (tier order consistent
+> with edges; `max_active` well-formed). The runtime gate check stays boundary
+> work; only its DATA is proven-shaped at admission.
 
 ---
 
@@ -889,7 +896,9 @@ is currently active. The `max_active` field on `CapabilityCategorySpec`
 declares the constraint; the spec layer enforces it.
 
 The simulation executes all `ActivateOverlay` and `SuspendOverlay` requests
-in the same boundary step 9, so the transition is atomic at the day level.
+in the same boundary step 9, so the transition is atomic at the generation
+barrier (one generation; no observable intermediate where both siblings are
+active across a generation).
 
 ---
 

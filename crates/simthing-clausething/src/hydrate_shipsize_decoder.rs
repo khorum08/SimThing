@@ -455,6 +455,7 @@ fn build_ship_class_capability_tree(
                 unlocks_weapons: vec![],
                 effects: vec![],
             }],
+            source_span_token: None,
         }],
         install: InstallTargetSpec::AllOfKind {
             kind: "Ship".into(),

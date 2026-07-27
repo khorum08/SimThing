@@ -351,3 +351,228 @@ fn overlay_host(instance: &CapabilityTreeInstance, overlay_id: OverlayId) -> Sim
         .copied()
         .unwrap_or(instance.tree_thing_id)
 }
+
+#[cfg(test)]
+mod atomicity_tests {
+    //! CAPABILITY-PREREQ-DAG-ADMISSION-0 max_active same-barrier atomicity referee.
+    use super::*;
+    use crate::keys::CategoryKey;
+    use crate::runtime::{
+        CapabilityCategoryDefinition, CapabilityDefinition, CapabilityTreeDefinition,
+        CapabilityTreeDefinitionId,
+    };
+    use crate::spec::capability::EffectTarget;
+    use simthing_core::{
+        DimensionRegistry, PropertyTransformDelta, SimPropertyId, SubFieldRole, TransformOp,
+    };
+    use simthing_feeder::BoundaryRequest;
+
+    fn idea_entry(
+        category: CategoryKey,
+        entry_id: &str,
+        overlay_id: OverlayId,
+    ) -> (CapabilityEntryKey, CapabilityDefinition) {
+        let key = CapabilityEntryKey::new(category, entry_id);
+        let def = CapabilityDefinition {
+            key: key.clone(),
+            display_name: entry_id.into(),
+            description: String::new(),
+            flavor_text: None,
+            activation: ActivationMode::PlayerSelection,
+            overlay_ids: vec![overlay_id],
+            effect_keys: vec![],
+            effect_transforms: vec![PropertyTransformDelta {
+                property_id: SimPropertyId(0),
+                sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Add(1.0))],
+            }],
+            effect_targets: vec![EffectTarget::Owner],
+            prereqs: vec![],
+            progress_col: 0,
+            research_cost: 0.0,
+        };
+        (key, def)
+    }
+
+    fn limited_ideas_fixture() -> (
+        CapabilityTreeDefinition,
+        CapabilityTreeInstance,
+        CapabilityEntryKey,
+        CapabilityEntryKey,
+        OverlayId,
+        OverlayId,
+    ) {
+        let category = CategoryKey::new("ideas", "tier1");
+        let overlay_a = OverlayId::new();
+        let overlay_b = OverlayId::new();
+        let (key_a, def_a) = idea_entry(category.clone(), "idea_a", overlay_a);
+        let (key_b, def_b) = idea_entry(category.clone(), "idea_b", overlay_b);
+
+        let mut entries = HashMap::new();
+        entries.insert(key_a.clone(), def_a);
+        entries.insert(key_b.clone(), def_b);
+
+        let mut categories = HashMap::new();
+        categories.insert(
+            category.clone(),
+            CapabilityCategoryDefinition {
+                key: category,
+                property_id: SimPropertyId(0),
+                max_active: Some(MaxActivePolicy::Limited {
+                    count: 1,
+                    replacement: ReplacementPolicy::SuspendOldest,
+                }),
+                tier: 0,
+            },
+        );
+
+        let definition = CapabilityTreeDefinition {
+            id: CapabilityTreeDefinitionId::new(),
+            tree_id: "national_ideas".into(),
+            categories,
+            entries,
+            by_threshold: HashMap::new(),
+        };
+
+        let owner_id = SimThingId::new();
+        let tree_thing_id = SimThingId::new();
+        let mut by_overlay = HashMap::new();
+        by_overlay.insert(overlay_a, key_a.clone());
+        by_overlay.insert(overlay_b, key_b.clone());
+        let mut overlay_hosts = HashMap::new();
+        overlay_hosts.insert(overlay_a, owner_id);
+        overlay_hosts.insert(overlay_b, owner_id);
+
+        let instance = CapabilityTreeInstance {
+            owner_id,
+            definition_id: definition.id,
+            tree_thing_id,
+            tree_slot: 0,
+            by_overlay,
+            overlay_hosts,
+        };
+
+        (definition, instance, key_a, key_b, overlay_a, overlay_b)
+    }
+
+    /// Referee: activate A then B; Suspend(A)+Activate(B) land in one barrier
+    /// batch — no dual-active intermediate across a generation.
+    #[test]
+    fn max_active_sibling_suspend_is_atomic_at_generation_barrier() {
+        let (definition, instance, key_a, key_b, overlay_a, overlay_b) = limited_ideas_fixture();
+        let owner_id = instance.owner_id;
+        let def_id = definition.id;
+        let mut definitions = HashMap::new();
+        definitions.insert(def_id, definition);
+
+        let registry = DimensionRegistry::new();
+        let handler = CapabilityTreeBoundaryHandler {
+            registry: &registry,
+            definitions: &definitions,
+        };
+
+        let instances = HashMap::from([(owner_id, instance)]);
+        let mut states = HashMap::from([(
+            owner_id,
+            CapabilityTreeState {
+                owner_id,
+                definition_id: def_id,
+                activation_mode_by_entry: HashMap::new(),
+                active_by_category: HashMap::new(),
+            },
+        )]);
+
+        let mut shadow = vec![0.0_f32; 8];
+        let mut diagnostics = Vec::new();
+
+        // Barrier 1: activate idea_a alone.
+        let mut requests = Vec::new();
+        let mut notifications = Vec::new();
+        {
+            let mut ctx = CapabilityBoundaryContext {
+                n_dims: 1,
+                shadow: &mut shadow,
+                instances: &instances,
+                states: &mut states,
+                requests: &mut requests,
+                notifications: &mut notifications,
+                diagnostics: &mut diagnostics,
+            };
+            handler
+                .handle_player_selection(owner_id, key_a.clone(), &mut ctx)
+                .expect("first activation");
+        }
+        assert_eq!(requests.len(), 1);
+        assert!(matches!(
+            &requests[0],
+            BoundaryRequest::ActivateOverlay { overlay_id, .. } if *overlay_id == overlay_a
+        ));
+        let active: Vec<_> = states[&owner_id]
+            .active_by_category
+            .values()
+            .flatten()
+            .cloned()
+            .collect();
+        assert_eq!(active, vec![key_a.clone()]);
+
+        // Barrier 2: switch to idea_b — suspend+activate same batch.
+        requests.clear();
+        notifications.clear();
+        {
+            let mut ctx = CapabilityBoundaryContext {
+                n_dims: 1,
+                shadow: &mut shadow,
+                instances: &instances,
+                states: &mut states,
+                requests: &mut requests,
+                notifications: &mut notifications,
+                diagnostics: &mut diagnostics,
+            };
+            handler
+                .handle_player_selection(owner_id, key_b.clone(), &mut ctx)
+                .expect("second activation switches ideas");
+        }
+
+        let suspends: Vec<_> = requests
+            .iter()
+            .filter_map(|r| match r {
+                BoundaryRequest::SuspendOverlay { overlay_id, .. } => Some(*overlay_id),
+                _ => None,
+            })
+            .collect();
+        let activates: Vec<_> = requests
+            .iter()
+            .filter_map(|r| match r {
+                BoundaryRequest::ActivateOverlay { overlay_id, .. } => Some(*overlay_id),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(suspends, vec![overlay_a]);
+        assert_eq!(activates, vec![overlay_b]);
+        // Atomicity = both requests land in the SAME barrier batch (v1 §8 /
+        // generation barrier). Unlock emission order is unchanged; the
+        // maintainer drains the whole batch at one generation.
+        assert_eq!(
+            requests.len(),
+            2,
+            "switch must be exactly one suspend + one activate in one barrier"
+        );
+
+        let active_after: Vec<_> = states[&owner_id]
+            .active_by_category
+            .values()
+            .flatten()
+            .cloned()
+            .collect();
+        assert_eq!(active_after, vec![key_b.clone()]);
+        assert!(!active_after.contains(&key_a));
+
+        assert!(notifications.iter().any(|n| matches!(
+            n,
+            CapabilityTreeNotification::IdeaSwitched {
+                suspended,
+                activated,
+                ..
+            } if suspended == &key_a && activated == &key_b
+        )));
+    }
+}
