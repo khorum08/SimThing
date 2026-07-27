@@ -537,6 +537,7 @@ fn parse_tradition_effect_block(
         sub_field_deltas: vec![(SubFieldRole::Amount, transform)],
         when_activated: OverlayLifecycle::Permanent,
         effect_target: EffectTarget::Owner,
+        source_span_token: Some(property.key.span.token_index),
     })
 }
 

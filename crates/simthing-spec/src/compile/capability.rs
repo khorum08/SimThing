@@ -22,8 +22,8 @@ use std::collections::HashMap;
 #[derive(Debug)]
 pub struct CapabilityTreeBuildOutput {
     /// Authored template tree. Cloned per faction instance at session-init time;
-    /// the session coordinator is responsible for stamping faction-specific
-    /// ownership / `affects` on the overlays at activation.
+    /// the session installer is responsible for admitting concrete hosts and
+    /// stamping faction-specific `affects` on the overlays.
     pub tree: SimThing,
     pub definition: CapabilityTreeDefinition,
     /// One per `ActivationMode::Threshold` entry. `PlayerSelection` and
@@ -40,6 +40,9 @@ pub struct CapabilityTreeBuildOutput {
     /// `affects` list from this map at clone time
     /// (`docs/adr/capability_effect_target_scope.md`).
     pub template_effect_targets: HashMap<OverlayId, EffectTarget>,
+    /// Per-overlay source token from the authored effect. The driver carries
+    /// this into host-placement admission errors.
+    pub template_effect_source_spans: HashMap<OverlayId, Option<usize>>,
 }
 
 pub struct CapabilityTreeBuilder;
@@ -140,6 +143,7 @@ impl CapabilityTreeBuilder {
         > = HashMap::new();
         let mut by_overlay: HashMap<OverlayId, CapabilityEntryKey> = HashMap::new();
         let mut template_effect_targets: HashMap<OverlayId, EffectTarget> = HashMap::new();
+        let mut template_effect_source_spans: HashMap<OverlayId, Option<usize>> = HashMap::new();
         let mut unlock_registrations: Vec<CapabilityUnlockRegistration> = Vec::new();
 
         // Pre-pass: build a lookup of (CategoryKey, entry_id) → research_cost for
@@ -228,6 +232,7 @@ impl CapabilityTreeBuilder {
                     tree.add_overlay(overlay);
                     by_overlay.insert(overlay_id, entry_key.clone());
                     template_effect_targets.insert(overlay_id, effect.effect_target);
+                    template_effect_source_spans.insert(overlay_id, effect.source_span_token);
                 }
 
                 // ── 5. Resolve prereqs ────────────────────────────────────────
@@ -324,6 +329,7 @@ impl CapabilityTreeBuilder {
                 unlock_registrations,
                 template_by_overlay: by_overlay,
                 template_effect_targets,
+                template_effect_source_spans,
             },
             diagnostics,
         ))

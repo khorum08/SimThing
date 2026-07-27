@@ -57,10 +57,11 @@ Named("entry_id_rate")  — research rate, governed_by drives integration
 **Overlays** are attached to the capability tree node at session init
 with `OverlayLifecycle::Suspended { when_activated: Box::new(Permanent) }`.
 
-> **v0 install note (O1):** After `open_from_spec`, each owner gets a **cloned**
-> capability-tree `SimThing`. Suspended effect overlays on that clone currently
-> set `affects` to the **cloned tree id**, not the owning faction. See
-> [§14 — v0 capability effect target semantics](#14-addendum--v0-capability-effect-target-semantics-opus-p3-pending).
+> **Effect-host admission (0.0.8.7 rung 2.1):** After `open_from_spec`, each
+> owner gets one cloned capability-tree `SimThing`. Every suspended effect is
+> placed on its resolved `EffectTarget` host, and admission now rejects a host
+> that does not already carry the target property. See
+> [§14 — capability effect target semantics](#14-addendum--capability-effect-target-semantics-effecttarget-adr).
 
 **Unlock** fires when the progress sub-field crosses `research_cost` in
 Pass 7. The spec layer's boundary handler reads the threshold event,
@@ -1144,7 +1145,7 @@ rules — if a kind string does not match, installation fails loudly.
 ## 14. Addendum — Capability effect target semantics (EffectTarget ADR)
 
 **Status:** Accepted in [`adr/capability_effect_target_scope.md`](adr/capability_effect_target_scope.md)
-· **Implementation:** landed · **Gates cleared:**
+· **Implementation:** effect-host admission closed by 0.0.8.7 rung 2.1 · **Gates cleared:**
 `simthing_modder_object_guide.md`, `simthing-studio` effect authoring UI
 
 ### What the ADR decides
@@ -1183,16 +1184,22 @@ intentional and pre-content; see ADR consequence (g).
 3. `CapabilityPreviewInput` gains `owner_slot` and `root_slot`; the
    preview reads from whichever slot matches the effect's target so
    Studio previews show the actual transformed cell.
-4. `CapabilityTreeBoundaryHandler::emit_activation` is **unchanged** —
-   `target: instance.tree_thing_id` continues to point at the SimThing
-   the overlay lives on (the clone). The O1b fix
-   (`overlay_id` resolution via `instance.by_overlay`) is independent of
-   this ADR and gates the ignored
-   `open_from_spec_capability_unlock_activates_overlay_for_next_tick` test.
+4. `CapabilityTreeBoundaryHandler::emit_activation` resolves the live
+   cloned overlay id through `instance.by_overlay` and its admitted host
+   through `instance.overlay_hosts`; activation and suspension target the
+   owner, cloned tree, or session root where the overlay actually lives.
+5. Install admission treats `overlay_hosts` as the canonical placement map:
+   the overlay must live on the resolved host, `affects` must name exactly
+   that host, the host must already carry `targets_property`, and every
+   transformed role must resolve through the registered layout/column range.
+   A mismatch is a spanned hard error; install never repairs it by inventing
+   a property on the host.
 
 ### Authoring rule going forward
 
 `targets_property` columns must exist on the resolved target's slot. The
-default `Owner` target means faction-facing properties should be
-registered without kind restriction (or on the faction kind). The
-Studio property editor can validate this statically when it ships.
+default `Owner` target means faction-facing properties must be authored on
+the owner before capability installation. `CapabilityTree` effects may
+target the builder-seeded category properties on the cloned tree; root
+effects require the property on the session root. Violations fail admission
+with overlay id, resolved host, property key, and source span.

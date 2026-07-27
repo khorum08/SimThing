@@ -113,6 +113,17 @@ pub enum InstallError {
     DuplicateOverlayRefId { overlay_ref: String },
 
     #[error(
+        "capability overlay {overlay_id:?} resolved to host {resolved_host:?} for property `{property}` but failed admission: {reason} (source_span_token={source_span_token:?})"
+    )]
+    CapabilityOverlayHostAdmission {
+        overlay_id: OverlayId,
+        resolved_host: SimThingId,
+        property: String,
+        source_span_token: Option<usize>,
+        reason: String,
+    },
+
+    #[error(
         "gated rate `{gated}` requires a `rate_base` sub-field on arena `{arena}`'s flow property"
     )]
     GatedRateMissingBaseColumn { gated: String, arena: String },
@@ -891,15 +902,12 @@ fn install_tree_for_owner(
 
     let mut overlay_id_map: HashMap<OverlayId, OverlayId> = HashMap::new();
     let cloned_tree_id = cloned.id;
-    // Per-effect overlay placement and property seeding. GPU overlay-prep
+    // Per-effect overlay placement admission. GPU overlay-prep
     // walks the SimThing tree depth-first and applies each overlay's
     // transform to every node in its descendant subtree that carries the
     // target property. Therefore an overlay's HOST node must be an ancestor
     // of every affected slot — for `Owner`, host = owner (the clone's parent);
     // for `CapabilityTree`, host = clone; for `SessionRoot`, host = root.
-    let mut owner_target_props: HashSet<simthing_core::SimPropertyId> = HashSet::new();
-    let mut clone_target_props: HashSet<simthing_core::SimPropertyId> = HashSet::new();
-    let mut root_target_props: HashSet<simthing_core::SimPropertyId> = HashSet::new();
     let mut owner_overlays: Vec<Overlay> = Vec::new();
     let mut root_overlays: Vec<Overlay> = Vec::new();
     let mut overlay_hosts: HashMap<OverlayId, SimThingId> = HashMap::new();
@@ -918,18 +926,6 @@ fn install_tree_for_owner(
             EffectTarget::CapabilityTree => cloned_tree_id,
             EffectTarget::SessionRoot => root_id,
         };
-        overlay_hosts.insert(new_id, host);
-        match target {
-            EffectTarget::Owner => {
-                owner_target_props.insert(template_overlay.transform.property_id);
-            }
-            EffectTarget::CapabilityTree => {
-                clone_target_props.insert(template_overlay.transform.property_id);
-            }
-            EffectTarget::SessionRoot => {
-                root_target_props.insert(template_overlay.transform.property_id);
-            }
-        }
         let new_overlay = Overlay {
             id: new_id,
             kind: template_overlay.kind.clone(),
@@ -938,19 +934,37 @@ fn install_tree_for_owner(
             transform: template_overlay.transform.clone(),
             lifecycle: template_overlay.lifecycle.clone(),
         };
+        let source_span_token = compiled
+            .build_out
+            .template_effect_source_spans
+            .get(&template_overlay.id)
+            .copied()
+            .flatten();
+        let host_node = match target {
+            EffectTarget::CapabilityTree => &cloned,
+            EffectTarget::Owner | EffectTarget::SessionRoot => find_simthing(root, host)
+                .ok_or_else(|| {
+                    capability_overlay_admission_error(
+                        registry,
+                        &new_overlay,
+                        host,
+                        source_span_token,
+                        "resolved host is absent from the admitted SimThing tree",
+                    )
+                })?,
+        };
+        validate_capability_overlay_host(
+            registry,
+            host_node,
+            &new_overlay,
+            host,
+            source_span_token,
+        )?;
+        overlay_hosts.insert(new_id, host);
         match target {
             EffectTarget::CapabilityTree => cloned.add_overlay(new_overlay),
             EffectTarget::Owner => owner_overlays.push(new_overlay),
             EffectTarget::SessionRoot => root_overlays.push(new_overlay),
-        }
-    }
-
-    // Seed effect-target properties on the cloned tree where applicable
-    // (CapabilityTree-targeted effects). Owner- and SessionRoot-targeted
-    // properties are seeded below, after the clone is attached.
-    for prop_id in &clone_target_props {
-        if !cloned.properties.contains_key(prop_id) && registry.is_active(*prop_id) {
-            cloned.add_property(*prop_id, registry.property(*prop_id).default_value());
         }
     }
 
@@ -967,14 +981,7 @@ fn install_tree_for_owner(
         }
     }
 
-    // 2b. Seed effect-target properties on the owner and root SimThings so
-    //     the GPU overlay-prep stage emits deltas for Owner/SessionRoot-
-    //     targeted overlays. (CapabilityTree-targeted props were seeded on
-    //     the clone directly above, before attachment.)
-    seed_effect_props_on(root, owner_id, &owner_target_props, registry);
-    seed_effect_props_on(root, root_id, &root_target_props, registry);
-
-    // 2c. Attach owner/root overlays to their host SimThings. The GPU
+    // 2b. Attach owner/root overlays to their admitted host SimThings. The GPU
     //     ancestor walk requires the overlay to live on a node that is
     //     itself an ancestor of (or equal to) every affected slot.
     if !owner_overlays.is_empty() {
@@ -1064,13 +1071,119 @@ fn resolve_effect_target(
     }
 }
 
+fn validate_capability_overlay_host(
+    registry: &DimensionRegistry,
+    host: &SimThing,
+    overlay: &Overlay,
+    resolved_host: SimThingId,
+    source_span_token: Option<usize>,
+) -> Result<(), InstallError> {
+    if overlay.affects.as_slice() != [resolved_host] {
+        return Err(capability_overlay_admission_error(
+            registry,
+            overlay,
+            resolved_host,
+            source_span_token,
+            "overlay affects metadata diverges from its resolved host",
+        ));
+    }
+
+    let property_id = overlay.transform.property_id;
+    if !registry.is_active(property_id) {
+        return Err(capability_overlay_admission_error(
+            registry,
+            overlay,
+            resolved_host,
+            source_span_token,
+            "target property is not active in the dimension registry",
+        ));
+    }
+    let Some(host_value) = host.properties.get(&property_id) else {
+        return Err(capability_overlay_admission_error(
+            registry,
+            overlay,
+            resolved_host,
+            source_span_token,
+            "resolved host does not carry the target property",
+        ));
+    };
+
+    let Some(property) = registry.try_property(property_id) else {
+        return Err(capability_overlay_admission_error(
+            registry,
+            overlay,
+            resolved_host,
+            source_span_token,
+            "target property is not registered",
+        ));
+    };
+    let Some(columns) = registry.try_column_range(property_id) else {
+        return Err(capability_overlay_admission_error(
+            registry,
+            overlay,
+            resolved_host,
+            source_span_token,
+            "target property has no registered column range",
+        ));
+    };
+    if host_value.raw_lanes().len() != property.layout.stride() {
+        return Err(capability_overlay_admission_error(
+            registry,
+            overlay,
+            resolved_host,
+            source_span_token,
+            "resolved host property value does not match the registered layout",
+        ));
+    }
+    for (role, _) in &overlay.transform.sub_field_deltas {
+        if columns.col_for_role(role, &property.layout).is_none() {
+            return Err(capability_overlay_admission_error(
+                registry,
+                overlay,
+                resolved_host,
+                source_span_token,
+                &format!("target role `{role:?}` is not layout-resolvable"),
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn capability_overlay_admission_error(
+    registry: &DimensionRegistry,
+    overlay: &Overlay,
+    resolved_host: SimThingId,
+    source_span_token: Option<usize>,
+    reason: &str,
+) -> InstallError {
+    let property_id = overlay.transform.property_id;
+    let property = registry
+        .try_property(property_id)
+        .map(|property| format!("{}::{}", property.namespace, property.name))
+        .unwrap_or_else(|| format!("{property_id:?}"));
+    InstallError::CapabilityOverlayHostAdmission {
+        overlay_id: overlay.id,
+        resolved_host,
+        property,
+        source_span_token,
+        reason: reason.to_owned(),
+    }
+}
+
+fn find_simthing(node: &SimThing, target: SimThingId) -> Option<&SimThing> {
+    if node.id == target {
+        return Some(node);
+    }
+    node.children
+        .iter()
+        .find_map(|child| find_simthing(child, target))
+}
+
 /// Find `target_id` inside `root` (depth-first) and add `props` to its
-/// `properties` map with registry defaults if not already present. Used
-/// to seed effect-target properties on owner / session-root SimThings so
-/// the GPU overlay-prep stage emits deltas for cloned overlays whose
-/// `affects` list points outside the clone itself. Silently ignores
-/// targets not found in the tree (should not happen — owner_id came
-/// from install resolution against `root`).
+/// `properties` map with registry defaults if not already present.
+/// Standalone domain-pack overlays retain this explicit materialization
+/// behavior. Capability effects use `validate_capability_overlay_host`
+/// instead and never invent a missing target property.
 pub(crate) fn seed_effect_props_on(
     root: &mut SimThing,
     target_id: SimThingId,
@@ -1206,9 +1319,12 @@ pub fn install_atomic(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use simthing_core::{SimProperty, SimThing, SimThingKind};
+    use simthing_core::{
+        OverlayLifecycle, SimProperty, SimThing, SimThingKind, SubFieldRole, TransformOp,
+    };
     use simthing_spec::{
-        ActivationMode, CapabilityCategorySpec, CapabilitySpec, CapabilityTreeSpec, SpecVersion,
+        ActivationMode, CapabilityCategorySpec, CapabilityEffectSpec, CapabilitySpec,
+        CapabilityTreeSpec, SpecVersion,
     };
 
     fn empty_scenario(world: SimThing) -> Scenario {
@@ -1330,5 +1446,112 @@ mod tests {
         let mut allocator = SlotAllocator::new();
         allocator.populate_from_tree(&scenario.root);
         (scenario.registry.clone(), scenario.root.clone(), allocator)
+    }
+
+    fn effect_host_game_mode(source_span_token: usize) -> GameModeSpec {
+        let mut game_mode = succeeding_game_mode();
+        game_mode.capability_trees[0].categories[0].entries[0]
+            .effects
+            .push(CapabilityEffectSpec {
+                targets_property: "effect_host::pressure".into(),
+                sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Multiply(3.0))],
+                when_activated: OverlayLifecycle::Permanent,
+                effect_target: EffectTarget::Owner,
+                source_span_token: Some(source_span_token),
+            });
+        game_mode
+    }
+
+    #[test]
+    fn overlay_effect_host_admission_rejects_missing_property_with_source_span() {
+        let mut scenario = empty_scenario(SimThing::new(SimThingKind::World, 0));
+        let _ = scenario
+            .registry
+            .register(SimProperty::simple("effect_host", "pressure", 0));
+        let root_id = scenario.root.id;
+        let (mut registry, mut root, mut allocator) = fresh_caller_state(&scenario);
+
+        let error = match preview_install(
+            &effect_host_game_mode(5094),
+            &scenario,
+            &mut registry,
+            &mut root,
+            &mut allocator,
+        ) {
+            Ok(_) => panic!("missing effect-host property must fail admission"),
+            Err(error) => error,
+        };
+
+        match error {
+            InstallError::CapabilityOverlayHostAdmission {
+                resolved_host,
+                property,
+                source_span_token,
+                reason,
+                ..
+            } => {
+                assert_eq!(resolved_host, root_id);
+                assert_eq!(property, "effect_host::pressure");
+                assert_eq!(source_span_token, Some(5094));
+                assert!(reason.contains("does not carry"));
+            }
+            other => panic!("unexpected admission error: {other}"),
+        }
+    }
+
+    #[test]
+    fn overlay_effect_host_admission_accepts_and_transforms_correct_host() {
+        let mut scenario = empty_scenario(SimThing::new(SimThingKind::World, 0));
+        let property_id =
+            scenario
+                .registry
+                .register(SimProperty::simple("effect_host", "pressure", 0));
+        let layout = scenario.registry.property(property_id).layout.clone();
+        let mut value = scenario.registry.property(property_id).default_value();
+        value.set_role(&SubFieldRole::Amount, &layout, 2.0);
+        scenario.root.add_property(property_id, value);
+
+        let root_id = scenario.root.id;
+        let (mut registry, mut root, mut allocator) = fresh_caller_state(&scenario);
+        let preview = preview_install(
+            &effect_host_game_mode(5095),
+            &scenario,
+            &mut registry,
+            &mut root,
+            &mut allocator,
+        )
+        .expect("correctly hosted capability effect must admit");
+
+        let instance = preview
+            .state
+            .capability_instances
+            .values()
+            .next()
+            .expect("installed capability instance");
+        let overlay_id = *instance
+            .by_overlay
+            .keys()
+            .next()
+            .expect("installed capability overlay");
+        assert_eq!(instance.overlay_hosts.get(&overlay_id), Some(&root_id));
+
+        let overlay = preview
+            .root
+            .overlays
+            .iter()
+            .find(|overlay| overlay.id == overlay_id)
+            .expect("effect overlay lives on its resolved host");
+        assert_eq!(overlay.affects, vec![root_id]);
+
+        let mut transformed = preview.root.properties[&property_id].clone();
+        overlay
+            .transform
+            .apply_to_data(transformed.raw_lanes_mut(), &layout);
+        assert_eq!(
+            transformed
+                .get_role(&SubFieldRole::Amount, &layout)
+                .to_bits(),
+            6.0_f32.to_bits()
+        );
     }
 }

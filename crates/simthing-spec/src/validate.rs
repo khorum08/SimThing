@@ -127,6 +127,7 @@ mod tests {
                         sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Multiply(1.1))],
                         when_activated: OverlayLifecycle::Permanent,
                         effect_target: crate::spec::capability::EffectTarget::CapabilityTree,
+                        source_span_token: None,
                     }],
                 }],
             }],

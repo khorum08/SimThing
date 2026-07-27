@@ -122,6 +122,11 @@ pub struct CapabilityEffectSpec {
     /// `docs/adr/capability_effect_target_scope.md`.
     #[serde(default)]
     pub effect_target: EffectTarget,
+    /// Optional source token carried from a spanned authoring frontend.
+    /// Admission diagnostics echo this token when the resolved effect host
+    /// does not carry the target property.
+    #[serde(default)]
+    pub source_span_token: Option<usize>,
 }
 
 /// Authored selector for which SimThing a `CapabilityEffectSpec`'s
