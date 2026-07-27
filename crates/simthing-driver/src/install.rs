@@ -29,6 +29,9 @@ use crate::resource_economy_compile::{
     materialize_resource_economy_registry_for_session, ResourceEconomyCompileError,
 };
 use crate::resource_flow_compile::compile_and_materialize_resource_flow;
+use crate::resource_flow_derivation::{
+    derive_resource_flow_admission, ResourceFlowDerivationError,
+};
 use crate::resource_flow_enrollment::resolve_resource_flow_enrollment;
 use crate::resource_flow_preflight::validate_resource_flow_preflight;
 use crate::scenario::Scenario;
@@ -64,6 +67,9 @@ pub enum InstallError {
 
     #[error("resource economy compile: {0}")]
     ResourceEconomy(#[from] ResourceEconomyCompileError),
+
+    #[error("Resource Flow derivation: {0}")]
+    ResourceFlowDerivation(#[from] ResourceFlowDerivationError),
 
     #[error("Resource Flow base obligation `{obligation}` targets SimThing {subtree_root_id} which is not admitted to arena `{arena}`")]
     BaseFlowObligationTargetNotAdmitted {
@@ -224,9 +230,17 @@ pub fn compile_and_install(
         return Err(InstallError::SlotOverflow { owner_id });
     }
 
-    // ── 4b. Resource Flow admission (E-10 + E-10R): spec compile after properties,
-    //      identity preflight after live slot allocation, then materialize registry.
-    if let Some(resource_flow) = &game_mode.resource_flow {
+    // ── 4b. Resource Flow admission: populated resource properties + typed
+    //      parent edges derive the default arena. ResourceFlowSpec remains an
+    //      override surface and is resolved onto the same downstream plan.
+    let derived_resource_flow = derive_resource_flow_admission(
+        game_mode.resource_flow.as_ref(),
+        registry,
+        root,
+        allocator,
+    )?;
+    state.resource_flow_derivation = derived_resource_flow.report;
+    if let Some(resource_flow) = derived_resource_flow.spec.as_ref() {
         let resolved = resolve_resource_flow_enrollment(resource_flow, scenario, root, allocator)?;
         let base_obligations = resolve_base_flow_obligation_targets(&resolved, scenario, root)?;
         validate_resource_flow_preflight(&resolved, allocator)?;
@@ -269,7 +283,7 @@ pub fn compile_and_install(
     }
 
     // RF-5A: resolve full-cell bindings only from already-authored property instances.
-    if let Some(resource_flow) = &game_mode.resource_flow {
+    if let Some(resource_flow) = derived_resource_flow.spec.as_ref() {
         if !resource_flow.need_bindings.is_empty() {
             let resolved = crate::need_binding::resolve_need_bindings(
                 resource_flow,

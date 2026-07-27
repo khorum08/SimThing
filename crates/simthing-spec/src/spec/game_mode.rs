@@ -21,7 +21,8 @@ pub struct GameModeSpec {
     pub capability_trees: Vec<super::capability::CapabilityTreeSpec>,
     #[serde(default)]
     pub events: Vec<super::event::EventSpec>,
-    /// Resource Flow arena admission graph (E-10). Validated at session build.
+    /// Resource Flow authored override graph (E-10). Default admission derives
+    /// from populated resource properties and topology at session build.
     #[serde(default)]
     pub resource_flow: Option<super::resource_flow::ResourceFlowSpec>,
     /// Production transfer / recipe / emission / threshold-emit registrations (Phase T).
@@ -30,7 +31,7 @@ pub struct GameModeSpec {
     /// RF-2: admitted Arena Resource Flow execution profile at session open.
     ///
     /// Defaults to the executed Arena path. An explicit `DefaultDisabled` remains available;
-    /// execution still requires an authored, admitted `ResourceFlowSpec` arena.
+    /// execution still requires an admitted derived or authored-override arena.
     #[serde(default)]
     pub resource_flow_execution_profile: super::resource_flow::ResourceFlowExecutionProfile,
     /// Sparse RegionCell mapping field declarations (Phase M-3). Structure only; does not enable execution.

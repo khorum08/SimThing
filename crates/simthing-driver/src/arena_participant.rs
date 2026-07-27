@@ -109,7 +109,14 @@ pub fn materialize_arena_participants(
         for participant in &arena.explicit_participants {
             let hosted_id = SimThingId::from_session_raw(participant.subtree_root_id);
             let mut node = SimThing::new(SimThingKind::ArenaParticipant, 0);
-            seed_participant_property(&mut node, flow_property_id, registry, hosted_id);
+            let populated = take_property(root, hosted_id, flow_property_id);
+            seed_participant_property(
+                &mut node,
+                flow_property_id,
+                registry,
+                hosted_id,
+                populated,
+            );
             participant_node_by_hosted.insert(participant.subtree_root_id, node.id);
             nodes_by_hosted.insert(participant.subtree_root_id, node);
         }
@@ -474,6 +481,7 @@ pub fn prepare_dynamic_arena_root_append(
         flow_property_id,
         registry,
         child_hosted_id,
+        None,
     );
 
     Ok(PendingDynamicArenaRootParticipant {
@@ -612,6 +620,7 @@ pub fn refresh_fission_participant_child(
         flow_property_id,
         registry,
         child_hosted_id,
+        None,
     );
     let slot = try_alloc_participant_child_in_gap(
         scaffold,
@@ -900,16 +909,33 @@ fn seed_participant_property(
     property_id: SimPropertyId,
     registry: &DimensionRegistry,
     hosted_id: SimThingId,
+    populated: Option<PropertyValue>,
 ) {
     let layout = registry.property(property_id).layout.clone();
-    let mut value = PropertyValue::from_layout(&layout);
+    let mut value = populated.unwrap_or_else(|| PropertyValue::from_layout(&layout));
     set_hosted_simthing_id(&mut value, &layout, hosted_id);
     node.add_property(property_id, value);
 }
 
+fn take_property(
+    root: &mut SimThing,
+    id: SimThingId,
+    property_id: SimPropertyId,
+) -> Option<PropertyValue> {
+    if root.id == id {
+        return root.remove_property(&property_id);
+    }
+    for child in &mut root.children {
+        if let Some(value) = take_property(child, id, property_id) {
+            return Some(value);
+        }
+    }
+    None
+}
+
 fn set_hosted_simthing_id(value: &mut PropertyValue, layout: &PropertyLayout, hosted: SimThingId) {
     let role = SubFieldRole::Named("hosted_simthing_id".into());
-    if let Some(offset) = layout.offset_of(&role) {
+    if layout.offset_of(&role).is_some() {
         value.set_role(&role, layout, hosted.raw() as f32);
     }
 }

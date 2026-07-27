@@ -149,7 +149,9 @@ The runtime substrate cannot defend against explosive content
 authored at the spec layer. `simthing-spec` is the enforcement
 layer. The compiler **rejects at session build time** (not warns):
 
-- Implicit participation (property possession ≠ admission)
+- Ambiguous derived participation (one populated resource property must resolve
+  to exactly one arena and at most one resource-parent edge)
+- Authored wildcard overrides without declared bounds
 - Unbounded wildcards without declared upper bound
 - Per-arena cap violations (`max_participants`,
   `max_coupling_fanout`, `max_orderband_depth`)
@@ -354,7 +356,7 @@ allocation depth).
 
 | Rule | Enforced by |
 |---|---|
-| Arena participation is explicit | `simthing-spec` rejects implicit/wildcard admission without declared upper bound at session build; property possession alone never admits to an arena |
+| Arena participation is derived and inspectable | Admission derives rows from a populated resource property plus physical/resource-parent edges, emits an inspectable derivation report, and hard-errors with retained source spans on ambiguous property/arena or parent-edge identity. Authored `ResourceFlowSpec` rows remain overrides. |
 | Arena caps are declared and enforced | Every `GpuArenaDescriptor` carries `max_participants`, `max_coupling_fanout`, `max_orderband_depth`; spec compiler fails the build if computed expansion exceeds any declared cap |
 | Coupling cycles must contain a delay-bearing edge | Spec compiler walks the coupling graph; any cycle whose edges are all `CouplingDelay::Algebraic` fails the build |
 | Hierarchical conservation is approximate-deterministic | For every intermediate allocator, `|Σ disbursed − budget| ≤ O(ε × n_children)`. The residual integrates into the parent's `Balance` via existing `governed_by`. Error is deterministic; replay is bit-exact |
