@@ -9,8 +9,9 @@ GameModeSpec(
         (
             id: "destination_order",
             magnitude: 20.0,
-            ambient_ceiling: 2.0,
-            source_span_token: Some(11),
+            arena: "order_dest",
+            property: (namespace: "order", name: "food_flow"),
+            sub_field: Named("weight"),
         ),
     ],
     overlays: [
@@ -26,7 +27,6 @@ GameModeSpec(
             source: Player,
             install: SessionRoot,
             order_weight_class: None,
-            source_span_token: Some(77),
         ),
     ],
 )

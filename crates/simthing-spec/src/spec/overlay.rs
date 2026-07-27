@@ -30,7 +30,7 @@ pub struct OverlaySpec {
     /// must match the named finite class, and non-finite values are rejected.
     #[serde(default)]
     pub order_weight_class: Option<String>,
-    /// Optional source span for admission diagnostics.
-    #[serde(default)]
+    /// Loader-derived source position for admission diagnostics.
+    #[serde(skip)]
     pub source_span_token: Option<usize>,
 }

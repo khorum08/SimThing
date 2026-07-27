@@ -47,7 +47,7 @@
 //!   Day-boundary work; this module does not own it.
 
 use crate::patcher::{PatcherStats, TransformPatcher};
-use crate::work::FeederReceiver;
+use crate::work::{FeederReceiver, FeederWork, PlayerIntentOverlay};
 use simthing_core::DimensionRegistry;
 use simthing_gpu::{IntentDelta, Pipelines, SlotAllocator, ThresholdEvent, WorldGpuState};
 use std::time::Instant;
@@ -101,6 +101,8 @@ pub struct TickOutcome {
     pub day_index: u64,
     /// Structured GPU error when readback or AccumulatorOp work fails.
     pub gpu_error: Option<TickGpuError>,
+    /// Player intents rejected at the sole feeder ingestion point.
+    pub player_intent_rejections: Vec<String>,
 }
 
 // ── Coordinator ───────────────────────────────────────────────────────────────
@@ -148,9 +150,48 @@ impl DispatchCoordinator {
         state: &mut WorldGpuState,
         dt: f32,
     ) -> TickOutcome {
+        self.tick_with_player_intent_gate(
+            receiver,
+            patcher,
+            registry,
+            allocator,
+            pipelines,
+            state,
+            dt,
+            |_| Ok(()),
+        )
+    }
+
+    /// Run one tick while admitting every Player overlay at the canonical
+    /// feeder drain. Rejected intents are neither folded nor parked.
+    pub fn tick_with_player_intent_gate(
+        &mut self,
+        receiver: &FeederReceiver,
+        patcher: &mut TransformPatcher,
+        registry: &DimensionRegistry,
+        allocator: &SlotAllocator,
+        pipelines: &Pipelines,
+        state: &mut WorldGpuState,
+        dt: f32,
+        mut gate: impl FnMut(&PlayerIntentOverlay) -> Result<(), String>,
+    ) -> TickOutcome {
         // 1. Drain feeder queue into folded GPU intent deltas.
         let drain_started = Instant::now();
-        let feeder_items = receiver.drain_now();
+        let mut player_intent_rejections = Vec::new();
+        let feeder_items = receiver
+            .drain_now()
+            .into_iter()
+            .filter_map(|item| match item {
+                FeederWork::PlayerIntent(intent) => match gate(&intent) {
+                    Ok(()) => Some(FeederWork::PlayerIntent(intent)),
+                    Err(reason) => {
+                        player_intent_rejections.push(reason);
+                        None
+                    }
+                },
+                other => Some(other),
+            })
+            .collect();
         let ai_items = patcher.drain_ai_now();
         let (patcher_stats, intent_deltas) =
             patcher.apply_collected_as_intents(feeder_items, ai_items, registry, allocator);
@@ -328,6 +369,7 @@ impl DispatchCoordinator {
             tick_index: self.tick_counter,
             day_index: self.day_counter,
             gpu_error,
+            player_intent_rejections,
         }
     }
 

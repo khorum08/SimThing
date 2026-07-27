@@ -1,10 +1,10 @@
 //! ORDER-WEIGHT-CLASS-0 — finite order-weight class + Player directive path.
 //!
-//! Canonical exemplar (remand 5097206874): RF two-destination weight allocation
-//! under ordinary arena normalization. Orders are price injections
+//! Canonical exemplar: a TP fleet chooses between canonical STEAD destination
+//! gridcells through ordinary RF OrderBand normalization. Orders are price injections
 //! (`OverlaySource::Player` overlays via the typed class-bound feeder path),
 //! never command channels. Dominance is finite and arena-grounded
-//! (class magnitude > ambient_ceiling). Latency = next generation boundary.
+//! (class magnitude > install-derived ambient sum). Latency = next generation boundary.
 //! Arrival dissolve uses declarative `PropertyReaches`; twin + injection-log
 //! replay prove reversibility.
 
@@ -22,7 +22,7 @@ use simthing_driver::{
 };
 use simthing_spec::{
     compile_property, validate_order_weight_classes, validate_order_weight_overlay, ArenaSpec,
-    DomainPackSpec, ExplicitParticipantSpec, FissionPolicySpec, GameModeSpec, InstallTargetSpec,
+    ExplicitParticipantSpec, FissionPolicySpec, GameModeSpec, InstallTargetSpec,
     OrderWeightClassSpec, OverlaySpec, PropertyKey, PropertySpec, ResourceFlowOptInMode,
     ResourceFlowSpec, SpecError, SpecVersion,
 };
@@ -30,8 +30,8 @@ use simthing_spec::{
 static GPU_MUTEX: Mutex<()> = Mutex::new(());
 
 const ORDER_CLASS_ID: &str = "destination_order";
-/// Arena ambient weight ceiling (authored envelope for both destinations).
-const AMBIENT_CEILING: f32 = 2.0;
+/// Per-destination ambient weight authored by the canonical fixture.
+const AMBIENT_WEIGHT_EACH: f32 = 2.0;
 /// Class magnitude — strictly dominates ambient under 2-way proportional allocation.
 const ORDER_MAGNITUDE: f32 = 20.0;
 const ROOT_INTRINSIC: f32 = 30.0;
@@ -41,7 +41,9 @@ fn order_class() -> OrderWeightClassSpec {
     OrderWeightClassSpec {
         id: ORDER_CLASS_ID.into(),
         magnitude: ORDER_MAGNITUDE,
-        ambient_ceiling: AMBIENT_CEILING,
+        arena: ARENA.into(),
+        property: PropertyKey::new("order", "food_flow"),
+        sub_field: SubFieldRole::Named("weight".into()),
         source_span_token: Some(42),
     }
 }
@@ -62,29 +64,6 @@ fn flow_subfield(name: &str, role: AccumulatorRole, default: f32) -> SubFieldSpe
             role,
             log_tier: LogTier::Summary,
         }),
-    }
-}
-
-fn arrival_property() -> PropertySpec {
-    PropertySpec {
-        id: "arrival".into(),
-        namespace: "order".into(),
-        name: "arrival".into(),
-        display_name: "Arrival".into(),
-        description: String::new(),
-        sub_fields: vec![SubFieldSpec {
-            role: SubFieldRole::Amount,
-            width: 1,
-            clamp: ClampBehavior::Unbounded,
-            velocity_max: None,
-            default: 0.0,
-            display_name: "progress".into(),
-            display_range: None,
-            governed_by: None,
-            reduction_override: None,
-            soft_aggregate_guard: None,
-            accumulator_spec: None,
-        }],
     }
 }
 
@@ -115,73 +94,152 @@ fn food_flow_property() -> PropertySpec {
     }
 }
 
-/// Two destinations + root RF star. Ambient prices are Permanent System
-/// Set(ambient_ceiling) overlays so post-dissolve weights re-anchor to ambient
-/// (true reversibility vs residual Add).
-fn rf_two_destination_fixture() -> (Scenario, GameModeSpec, SimThingId, SimThingId, SimThingId) {
+fn canonical_tp_stead_authority() -> (SimThing, SimThingId, SimThingId, SimThingId) {
+    let fixture_json = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../simthing-mapeditor/tests/fixtures/tp_base_disc_1500.simthing-scenario.json")
+        .to_string_lossy()
+        .replace('\\', "/");
+    let source = include_str!(
+        "../../simthing-clausething/tests/fixtures/scenario/terran_pirate_galaxy.clause"
+    )
+    .replace("{{FIXTURE_JSON}}", &fixture_json);
+    let document =
+        simthing_clausething::parse_raw_document(source.as_bytes()).expect("parse canonical TP");
+    let pack = simthing_clausething::hydrate_scenario(&document).expect("hydrate canonical TP");
+    assert!(
+        pack.commitment.is_some(),
+        "canonical TP STEAD commitment feedstock"
+    );
+    assert_eq!(
+        pack.metadata
+            .get("fleet_movement_profile")
+            .map(String::as_str),
+        Some("palma_d_gradient_reparent")
+    );
+    let fleet_id = first_kind(
+        pack.authority_root.as_ref().expect("TP authority root"),
+        &SimThingKind::Fleet,
+    )
+    .expect("canonical TP fleet");
+    let mut destinations: Vec<_> = pack
+        .install_targets
+        .iter()
+        .filter(|(name, _)| name.starts_with("tp_base::"))
+        .flat_map(|(_, ids)| ids.iter().copied())
+        .collect();
+    destinations.sort_by_key(|id| id.raw());
+    destinations.dedup();
+    let [dest_a, dest_b, ..] = destinations.as_slice() else {
+        panic!("canonical TP must expose at least two STEAD destination gridcells");
+    };
+    let mut root = pack.authority_root.expect("TP authority root");
+    clear_runtime_values(&mut root);
+    (root, fleet_id, *dest_a, *dest_b)
+}
+
+fn first_kind(node: &SimThing, kind: &SimThingKind) -> Option<SimThingId> {
+    if &node.kind == kind {
+        return Some(node.id);
+    }
+    node.children
+        .iter()
+        .find_map(|child| first_kind(child, kind))
+}
+
+fn clear_runtime_values(node: &mut SimThing) {
+    node.properties.clear();
+    node.overlays.clear();
+    node.resource_parent_edges.clear();
+    for child in &mut node.children {
+        clear_runtime_values(child);
+    }
+}
+
+fn find_mut(node: &mut SimThing, id: SimThingId) -> Option<&mut SimThing> {
+    if node.id == id {
+        return Some(node);
+    }
+    node.children
+        .iter_mut()
+        .find_map(|child| find_mut(child, id))
+}
+
+/// Canonical TP fleet + two STEAD grid destinations in an RF star. Ambient prices are Permanent
+/// System Set overlays so post-dissolve weights re-anchor to the admitted ambient state.
+fn tp_stead_destination_fixture() -> (Scenario, GameModeSpec, SimThingId, SimThingId, SimThingId) {
     let mut registry = simthing_core::DimensionRegistry::new();
     compile_property(&food_flow_property(), &mut registry).expect("food_flow");
-    compile_property(&arrival_property(), &mut registry).expect("arrival");
     let flow_id = registry.id_of("order", "food_flow").expect("flow id");
-    let arrival_id = registry.id_of("order", "arrival").expect("arrival id");
     let flow_layout = registry.property(flow_id).layout.clone();
-    let arrival_layout = registry.property(arrival_id).layout.clone();
 
     let mut flow_default = registry.property(flow_id).default_value();
     flow_default.set_role(
         &SubFieldRole::Named("weight".into()),
         &flow_layout,
-        AMBIENT_CEILING,
+        AMBIENT_WEIGHT_EACH,
     );
-    let mut arrival_default = registry.property(arrival_id).default_value();
-    arrival_default.set_role(&SubFieldRole::Amount, &arrival_layout, 0.0);
-
-    let mut root = SimThing::new(SimThingKind::World, 0);
-    let mut dest_a = SimThing::new(SimThingKind::Fleet, 0);
-    let mut dest_b = SimThing::new(SimThingKind::Fleet, 0);
-    let a_id = dest_a.id;
-    let b_id = dest_b.id;
+    let (mut root, root_id, a_id, b_id) = canonical_tp_stead_authority();
 
     // Root carries intrinsic pool; leaves carry weights + allocated.
     let mut root_flow = registry.property(flow_id).default_value();
-    root_flow.set_role(
-        &SubFieldRole::Named("flow".into()),
-        &flow_layout,
-        ROOT_INTRINSIC,
-    );
-    root_flow.set_role(
-        &SubFieldRole::Named("weight".into()),
-        &flow_layout,
-        0.0,
-    );
-    root.add_property(flow_id, root_flow);
+    root_flow.set_role(&SubFieldRole::Named("flow".into()), &flow_layout, 0.0);
+    root_flow.set_role(&SubFieldRole::Named("weight".into()), &flow_layout, 0.0);
+    find_mut(&mut root, root_id)
+        .expect("TP fleet")
+        .add_property(flow_id, root_flow);
 
-    dest_a.add_property(flow_id, flow_default.clone());
-    dest_b.add_property(flow_id, flow_default);
-    // Arrival progress lives on ordered destination B (PropertyReaches dissolve).
-    dest_b.add_property(arrival_id, arrival_default);
-    root.add_child(dest_a);
-    root.add_child(dest_b);
-    let root_id = root.id;
+    find_mut(&mut root, a_id)
+        .expect("TP destination A")
+        .add_property(flow_id, flow_default.clone());
+    find_mut(&mut root, b_id)
+        .expect("TP destination B")
+        .add_property(flow_id, flow_default);
+    let ambient_overlay = |target: SimThingId| Overlay {
+        id: OverlayId::new(),
+        kind: OverlayKind::Policy,
+        source: OverlaySource::System,
+        affects: vec![target],
+        transform: PropertyTransformDelta {
+            property_id: flow_id,
+            sub_field_deltas: vec![(
+                SubFieldRole::Named("weight".into()),
+                TransformOp::Set(AMBIENT_WEIGHT_EACH),
+            )],
+        },
+        lifecycle: OverlayLifecycle::Permanent,
+    };
+    find_mut(&mut root, a_id)
+        .expect("TP destination A")
+        .add_overlay(ambient_overlay(a_id));
+    find_mut(&mut root, b_id)
+        .expect("TP destination B")
+        .add_overlay(ambient_overlay(b_id));
 
     let mut allocator = simthing_gpu::SlotAllocator::new();
     allocator.populate_from_tree(&root);
-    let participants = [root_id, a_id, b_id]
-        .into_iter()
-        .map(|id| {
-            ExplicitParticipantSpec::flat(
-                allocator.slot_of(id).expect("slot").raw(),
-                id.raw(),
-            )
-        })
-        .collect();
+    let participants = vec![
+        ExplicitParticipantSpec::flat(
+            allocator.slot_of(root_id).expect("fleet slot").raw(),
+            root_id.raw(),
+        ),
+        ExplicitParticipantSpec::nested(
+            allocator.slot_of(a_id).expect("destination A slot").raw(),
+            a_id.raw(),
+            root_id.raw() as u64,
+        ),
+        ExplicitParticipantSpec::nested(
+            allocator.slot_of(b_id).expect("destination B slot").raw(),
+            b_id.raw(),
+            root_id.raw() as u64,
+        ),
+    ];
 
     let scenario = Scenario {
         name: "order_weight_class_0_rf".into(),
         ticks_per_day: 1,
         max_days: 16,
         dt: 1.0,
-        n_slots: 16,
+        n_slots: root.subtree_size() as u32 + 16,
         registry,
         root,
         shadow_seeds: Vec::new(),
@@ -193,65 +251,13 @@ fn rf_two_destination_fixture() -> (Scenario, GameModeSpec, SimThingId, SimThing
         ]),
     };
 
-    // Standing ambient price policy: Permanent System Set(ambient) on each
-    // destination weight so dissolve returns weights to ambient by overlay law.
-    let ambient_overlay = |id: &str, target: &str| OverlaySpec {
-        id: id.into(),
-        display_name: String::new(),
-        targets_property: "order::food_flow".into(),
-        sub_field_deltas: vec![(
-            SubFieldRole::Named("weight".into()),
-            TransformOp::Set(AMBIENT_CEILING),
-        )],
-        lifecycle: OverlayLifecycle::Permanent,
-        kind: OverlayKind::Policy,
-        source: OverlaySource::System,
-        install: InstallTargetSpec::ScenarioListed {
-            target_id: target.into(),
-        },
-        order_weight_class: None,
-        source_span_token: None,
-    };
-    // Standing arrival clock on dest_b: System Add(1) each production tick so
-    // PropertyReaches(1.0) fires as declarative arrival after the first live
-    // production under the order (generation-boundary dissolve).
-    let arrival_clock = OverlaySpec {
-        id: "arrival_clock".into(),
-        display_name: String::new(),
-        targets_property: "order::arrival".into(),
-        sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Add(1.0))],
-        lifecycle: OverlayLifecycle::Permanent,
-        kind: OverlayKind::Policy,
-        source: OverlaySource::System,
-        install: InstallTargetSpec::ScenarioListed {
-            target_id: "dest_b".into(),
-        },
-        order_weight_class: None,
-        source_span_token: None,
-    };
-
-    // Domain-pack standalone overlays install (game_mode.overlays are deferred).
-    let pack = DomainPackSpec {
-        id: "order_weight_ambient".into(),
-        display_name: "Order Weight Ambient".into(),
-        metadata: Default::default(),
-        properties: vec![],
-        overlays: vec![
-            ambient_overlay("ambient_a", "dest_a"),
-            ambient_overlay("ambient_b", "dest_b"),
-            arrival_clock,
-        ],
-        capability_trees: vec![],
-        events: vec![],
-    };
-
     let game_mode = GameModeSpec {
         id: "order_weight_class_0_rf".into(),
         display_name: "Order Weight Class 0 RF".into(),
         description: String::new(),
         spec_version: SpecVersion::default(),
         metadata: Default::default(),
-        domain_packs: vec![pack],
+        domain_packs: vec![],
         // Properties already on scenario registry — avoid DuplicateProperty.
         properties: vec![],
         overlays: vec![],
@@ -308,23 +314,6 @@ fn read_named(
     session.state.read_values_row(slot.raw())[col.raw() as usize]
 }
 
-fn read_amount(session: &SimSession, host: SimThingId, prop_ns: &str, prop_name: &str) -> f32 {
-    let prop_id = session
-        .proto
-        .registry
-        .id_of(prop_ns, prop_name)
-        .expect("prop");
-    let slot = session.proto.allocator.slot_of(host).expect("slot");
-    let property = session.proto.registry.property(prop_id);
-    let col = session
-        .proto
-        .registry
-        .column_range(prop_id)
-        .col_for_role(&SubFieldRole::Amount, &property.layout)
-        .expect("Amount col");
-    session.state.read_values_row(slot.raw())[col.raw() as usize]
-}
-
 fn values_bits(session: &SimSession) -> Vec<u32> {
     session
         .state
@@ -341,20 +330,20 @@ fn order_weight_negative_admission_spans() {
         validate_order_weight_classes(&[OrderWeightClassSpec {
             id: "bad".into(),
             magnitude: f32::INFINITY,
-            ambient_ceiling: 1.0,
+            arena: ARENA.into(),
+            property: PropertyKey::new("order", "food_flow"),
+            sub_field: SubFieldRole::Named("weight".into()),
             source_span_token: Some(1),
         }]),
         Err(SpecError::MalformedOrderWeightClass { .. })
     ));
-    assert!(matches!(
-        validate_order_weight_classes(&[OrderWeightClassSpec {
-            id: "bad_ambient".into(),
-            magnitude: 2.0,
-            ambient_ceiling: 2.0,
-            source_span_token: Some(2),
-        }]),
-        Err(SpecError::MalformedOrderWeightClass { .. })
-    ));
+    let (scenario, mut game_mode, ..) = tp_stead_destination_fixture();
+    game_mode.order_weight_classes[0].magnitude = 2.0;
+    game_mode.order_weight_classes[0].source_span_token = Some(2);
+    assert!(
+        SimSession::open_from_spec(scenario, &game_mode).is_err(),
+        "install must derive the real arena ambient sum and reject a non-dominating class"
+    );
 
     let classes = vec![order_class()];
     let class_less = OverlaySpec {
@@ -417,7 +406,8 @@ fn order_weight_authored_ron_class_less_span_provenance() {
         "/tests/fixtures/order_weight_class_less_dominant.ron"
     );
     let text = std::fs::read_to_string(path).expect("read authored RON fixture");
-    let game_mode: GameModeSpec = ron::from_str(&text).expect("parse authored RON GameModeSpec");
+    let game_mode = simthing_spec::ron::deserialize_game_mode_ron(&text)
+        .expect("parse authored RON GameModeSpec");
     validate_order_weight_classes(&game_mode.order_weight_classes).expect("classes ok");
     assert_eq!(game_mode.overlays.len(), 1);
     let overlay = &game_mode.overlays[0];
@@ -432,11 +422,8 @@ fn order_weight_authored_ron_class_less_span_provenance() {
                 reason.contains("class-less") && reason.contains("order::food_flow"),
                 "diagnostic must name locus + class omission: {reason}"
             );
-            assert_eq!(
-                source_span_token,
-                Some(77),
-                "authored RON source_span_token must echo in the admission diagnostic"
-            );
+            let add_scalar = text.find("Add(20.0)").expect("offending scalar") + "Add(".len();
+            assert_eq!(source_span_token, Some(add_scalar));
         }
         other => panic!("expected class-less spanned error from RON fixture, got {other:?}"),
     }
@@ -451,7 +438,13 @@ fn destination_order_dominates_via_player_weight_overlay_on_live_gpu() {
     let _guard = GPU_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
 
     // ── Ordered branch ────────────────────────────────────────────────────
-    let (scenario, game_mode, root_id, dest_a, dest_b) = rf_two_destination_fixture();
+    let (scenario, game_mode, root_id, dest_a, dest_b) = tp_stead_destination_fixture();
+    let twin_scenario = scenario.clone();
+    let twin_game_mode = game_mode.clone();
+    let recorded_scenario = scenario.clone();
+    let recorded_game_mode = game_mode.clone();
+    let replay_scenario = scenario.clone();
+    let replay_game_mode = game_mode.clone();
     let mut ordered =
         SimSession::open_from_spec(scenario, &game_mode).expect("open live GPU session");
     let adapter = ordered.state.ctx.adapter.get_info();
@@ -460,32 +453,13 @@ fn destination_order_dominates_via_player_weight_overlay_on_live_gpu() {
         .registry
         .id_of("order", "food_flow")
         .expect("flow");
-    let arrival_id = ordered
-        .proto
-        .registry
-        .id_of("order", "arrival")
-        .expect("arrival");
 
     // Seed root intrinsic into dense values (property default + one production).
     // Explicit participant RF uses buffer values; ensure pool is present.
-    let root_slot = ordered
-        .proto
-        .allocator
-        .slot_of(root_id)
-        .expect("root slot");
-    let cols = resolve_node_columns(
-        &ordered.proto.registry.property(flow_id).layout,
-        ARENA,
-    )
-    .expect("flow columns");
+    let root_slot = ordered.proto.allocator.slot_of(root_id).expect("root slot");
+    let cols = resolve_node_columns(&ordered.proto.registry.property(flow_id).layout, ARENA)
+        .expect("flow columns");
     let n_dims = ordered.state.n_dims;
-    let mut seed = ordered.state.read_values();
-    let root_flow_idx = (root_slot.raw() * n_dims + cols.intrinsic_flow_col) as usize;
-    seed[root_flow_idx] = ROOT_INTRINSIC;
-    ordered
-        .state
-        .install_resolved_values_at_boundary(&seed);
-
     // Ambient baseline weights via Permanent System Set overlays (applied at
     // first production after open/sync). Advance one boundary+production so
     // ambient overlays are live before the order attaches.
@@ -496,9 +470,19 @@ fn destination_order_dominates_via_player_weight_overlay_on_live_gpu() {
     let w_a0 = read_named(&ordered, dest_a, "order", "food_flow", "weight");
     let w_b0 = read_named(&ordered, dest_b, "order", "food_flow", "weight");
     assert!(
-        (w_a0 - AMBIENT_CEILING).abs() < 1e-3 && (w_b0 - AMBIENT_CEILING).abs() < 1e-3,
-        "ambient weights must equal ambient_ceiling before order (a={w_a0} b={w_b0})"
+        (w_a0 - AMBIENT_WEIGHT_EACH).abs() < 1e-3 && (w_b0 - AMBIENT_WEIGHT_EACH).abs() < 1e-3,
+        "ambient weights must equal the admitted fixture state before order (a={w_a0} b={w_b0})"
     );
+    let arrival_before = read_named(&ordered, dest_b, "order", "food_flow", "allocated");
+    assert_eq!(
+        arrival_before.to_bits(),
+        0.0_f32.to_bits(),
+        "destination must be live and not arrived before the ordered path runs"
+    );
+    let mut seed = ordered.state.read_values();
+    let root_flow_idx = (root_slot.raw() * n_dims + cols.intrinsic_flow_col) as usize;
+    seed[root_flow_idx] = ROOT_INTRINSIC;
+    ordered.state.install_resolved_values_at_boundary(&seed);
 
     // Class-bound directive via typed API — no raw ORDER_MAGNITUDE bypass.
     ordered
@@ -508,8 +492,8 @@ fn destination_order_dominates_via_player_weight_overlay_on_live_gpu() {
             property_id: flow_id,
             sub_field: SubFieldRole::Named("weight".into()),
             dissolve: DissolveCondition::PropertyReaches {
-                property: arrival_id,
-                sub_field: SubFieldRole::Amount,
+                property: flow_id,
+                sub_field: SubFieldRole::Named("allocated".into()),
                 value: 1.0,
             },
         })
@@ -533,15 +517,16 @@ fn destination_order_dominates_via_player_weight_overlay_on_live_gpu() {
         },
     };
     assert!(
-        ordered
-            .submit_player_intent_gated(dest_a, bypass)
-            .is_err(),
+        ordered.submit_player_intent_gated(dest_a, bypass).is_err(),
         "raw dominant Player overlay must not bypass class law"
     );
 
     // Order attaches at next generation boundary (decision-ingress latency).
     let attach = ordered.step_once().expect("order attach boundary");
-    assert!(attach.boundary_reached, "order attaches at generation boundary");
+    assert!(
+        attach.boundary_reached,
+        "order attaches at generation boundary"
+    );
 
     // Production: ambient Set then order Add on dest_b; RF allocates by weight.
     ordered.step_once().expect("ordered live production");
@@ -549,14 +534,14 @@ fn destination_order_dominates_via_player_weight_overlay_on_live_gpu() {
     let w_b_live = read_named(&ordered, dest_b, "order", "food_flow", "weight");
     let alloc_a_live = read_named(&ordered, dest_a, "order", "food_flow", "allocated");
     let alloc_b_live = read_named(&ordered, dest_b, "order", "food_flow", "allocated");
-    let arrival_live = read_amount(&ordered, dest_b, "order", "arrival");
+    let arrival_live = read_named(&ordered, dest_b, "order", "food_flow", "allocated");
 
     assert!(
-        (w_a_live - AMBIENT_CEILING).abs() < 1e-2,
+        (w_a_live - AMBIENT_WEIGHT_EACH).abs() < 1e-2,
         "unordered dest stays ambient weight (got {w_a_live})"
     );
     assert!(
-        w_b_live + 1e-2 >= AMBIENT_CEILING + ORDER_MAGNITUDE
+        w_b_live + 1e-2 >= AMBIENT_WEIGHT_EACH + ORDER_MAGNITUDE
             || w_b_live + 1e-2 >= ORDER_MAGNITUDE,
         "ordered dest weight must carry class magnitude (got w_b={w_b_live})"
     );
@@ -565,14 +550,14 @@ fn destination_order_dominates_via_player_weight_overlay_on_live_gpu() {
         "ordered destination must dominate RF allocation (a={alloc_a_live} b={alloc_b_live})"
     );
     // Arena-grounded dominance: ordered share > ambient twin share under
-    // proportional normalization with ambient_ceiling envelope.
+    // proportional normalization with the loader-derived ambient envelope.
     assert!(
         alloc_b_live >= alloc_a_live + 1.0,
-        "dominance margin under ambient_ceiling={AMBIENT_CEILING} mag={ORDER_MAGNITUDE}"
+        "dominance margin under ambient_weight_each={AMBIENT_WEIGHT_EACH} mag={ORDER_MAGNITUDE}"
     );
     assert!(
         arrival_live + 1e-3 >= 1.0,
-        "arrival clock must reach threshold during ordered live production (got {arrival_live})"
+        "selected-destination allocation must causally advance arrival (got {arrival_live})"
     );
 
     // RF-1 conservation on live allocations.
@@ -596,8 +581,6 @@ fn destination_order_dominates_via_player_weight_overlay_on_live_gpu() {
         "RF-1 must stay green under order-class weight: {rf1:?}"
     );
 
-    let live_bits = values_bits(&ordered);
-
     // ── Arrival dissolve at generation boundary ───────────────────────────
     let dissolve = ordered.step_once().expect("arrival dissolve boundary");
     assert!(dissolve.boundary_reached);
@@ -607,7 +590,8 @@ fn destination_order_dominates_via_player_weight_overlay_on_live_gpu() {
     let alloc_a_post = read_named(&ordered, dest_a, "order", "food_flow", "allocated");
     let alloc_b_post = read_named(&ordered, dest_b, "order", "food_flow", "allocated");
     assert!(
-        (w_a_post - AMBIENT_CEILING).abs() < 1e-2 && (w_b_post - AMBIENT_CEILING).abs() < 1e-2,
+        (w_a_post - AMBIENT_WEIGHT_EACH).abs() < 1e-2
+            && (w_b_post - AMBIENT_WEIGHT_EACH).abs() < 1e-2,
         "post-dissolve weights re-anchor to ambient via Permanent System Set (a={w_a_post} b={w_b_post})"
     );
     assert!(
@@ -616,27 +600,22 @@ fn destination_order_dominates_via_player_weight_overlay_on_live_gpu() {
     );
 
     // ── Never-ordered twin forked from same pre-order fixture ─────────────
-    let (scenario_t, game_mode_t, root_id_t, dest_a_t, dest_b_t) = rf_two_destination_fixture();
-    let mut twin =
-        SimSession::open_from_spec(scenario_t, &game_mode_t).expect("open twin GPU session");
-    let root_slot_t = twin
-        .proto
-        .allocator
-        .slot_of(root_id_t)
-        .expect("root");
+    let root_id_t = root_id;
+    let dest_a_t = dest_a;
+    let dest_b_t = dest_b;
+    let mut twin = SimSession::open_from_spec(twin_scenario, &twin_game_mode)
+        .expect("open same-checkpoint twin GPU session");
+    let root_slot_t = twin.proto.allocator.slot_of(root_id_t).expect("root");
     let flow_id_t = twin.proto.registry.id_of("order", "food_flow").unwrap();
-    let cols_t = resolve_node_columns(
-        &twin.proto.registry.property(flow_id_t).layout,
-        ARENA,
-    )
-    .unwrap();
+    let cols_t =
+        resolve_node_columns(&twin.proto.registry.property(flow_id_t).layout, ARENA).unwrap();
     let n_dims_t = twin.state.n_dims;
-    let mut seed_t = twin.state.read_values();
-    seed_t[(root_slot_t.raw() * n_dims_t + cols_t.intrinsic_flow_col) as usize] = ROOT_INTRINSIC;
-    twin.state.install_resolved_values_at_boundary(&seed_t);
     // Same schedule as ordered branch, but never submit the order.
     twin.step_once().expect("twin warm boundary");
     twin.step_once().expect("twin warm production");
+    let mut seed_t = twin.state.read_values();
+    seed_t[(root_slot_t.raw() * n_dims_t + cols_t.intrinsic_flow_col) as usize] = ROOT_INTRINSIC;
+    twin.state.install_resolved_values_at_boundary(&seed_t);
     twin.step_once().expect("twin skip-order boundary");
     twin.step_once().expect("twin live production");
     twin.step_once().expect("twin dissolve-time boundary");
@@ -666,54 +645,101 @@ fn destination_order_dominates_via_player_weight_overlay_on_live_gpu() {
         twin_alloc_b.to_bits(),
         "post-dissolve alloc_b must match twin"
     );
+    assert_eq!(
+        values_bits(&ordered),
+        values_bits(&twin),
+        "complete dense state must converge at the first post-dissolve checkpoint"
+    );
+    for generation in 0..3 {
+        ordered.step_once().expect("ordered convergence step");
+        twin.step_once().expect("twin convergence step");
+        assert_eq!(
+            values_bits(&ordered),
+            values_bits(&twin),
+            "complete dense trajectory diverged after dissolve at convergence generation {generation}"
+        );
+        let ordered_snapshot =
+            serde_json::to_vec(&ordered.proto.snapshot(ordered.coord.day_index() as u32))
+                .expect("ordered structural checkpoint");
+        let twin_snapshot = serde_json::to_vec(&twin.proto.snapshot(twin.coord.day_index() as u32))
+            .expect("twin structural checkpoint");
+        assert_eq!(
+            ordered_snapshot, twin_snapshot,
+            "tree/overlay lifecycle checkpoint diverged at convergence generation {generation}"
+        );
+    }
 
     // ── Injection-log style re-injection replay (same directive at same gen) ─
-    let (scenario_r, game_mode_r, root_id_r, _a_r, dest_b_r) = rf_two_destination_fixture();
-    let mut replay =
-        SimSession::open_from_spec(scenario_r, &game_mode_r).expect("open replay session");
-    let root_slot_r = replay
-        .proto
-        .allocator
-        .slot_of(root_id_r)
-        .expect("root");
-    let flow_id_r = replay.proto.registry.id_of("order", "food_flow").unwrap();
-    let arrival_id_r = replay.proto.registry.id_of("order", "arrival").unwrap();
-    let cols_r = resolve_node_columns(
-        &replay.proto.registry.property(flow_id_r).layout,
-        ARENA,
-    )
-    .unwrap();
-    let n_dims_r = replay.state.n_dims;
-    let mut seed_r = replay.state.read_values();
-    seed_r[(root_slot_r.raw() * n_dims_r + cols_r.intrinsic_flow_col) as usize] = ROOT_INTRINSIC;
-    replay.state.install_resolved_values_at_boundary(&seed_r);
+    let root_id_r = root_id;
+    let dest_b_r = dest_b;
+    let mut recorded = SimSession::open_from_spec(recorded_scenario, &recorded_game_mode)
+        .expect("open recording session");
+    let mut replay = SimSession::open_from_spec(replay_scenario, &replay_game_mode)
+        .expect("open same-checkpoint replay session");
+    let root_slot_r = recorded.proto.allocator.slot_of(root_id_r).expect("root");
+    let flow_id_r = recorded.proto.registry.id_of("order", "food_flow").unwrap();
+    let cols_r =
+        resolve_node_columns(&recorded.proto.registry.property(flow_id_r).layout, ARENA).unwrap();
+    let n_dims_r = recorded.state.n_dims;
+    recorded.step_once().expect("record warm boundary");
+    recorded.step_once().expect("record warm production");
     replay.step_once().expect("replay warm boundary");
     replay.step_once().expect("replay warm production");
-    // Re-inject the same class-bound directive at the same generation as the live run.
-    replay
+    let mut seed_r = recorded.state.read_values();
+    seed_r[(root_slot_r.raw() * n_dims_r + cols_r.intrinsic_flow_col) as usize] = ROOT_INTRINSIC;
+    recorded.state.install_resolved_values_at_boundary(&seed_r);
+    replay.state.install_resolved_values_at_boundary(&seed_r);
+    recorded
         .submit_order_directive(OrderDirectiveRequest {
             class_id: ORDER_CLASS_ID.into(),
             target: dest_b_r,
             property_id: flow_id_r,
             sub_field: SubFieldRole::Named("weight".into()),
             dissolve: DissolveCondition::PropertyReaches {
-                property: arrival_id_r,
-                sub_field: SubFieldRole::Amount,
+                property: flow_id_r,
+                sub_field: SubFieldRole::Named("allocated".into()),
                 value: 1.0,
             },
         })
-        .expect("replay inject order");
-    replay.step_once().expect("replay attach");
-    replay.step_once().expect("replay live production");
-    let replay_live_bits = values_bits(&replay);
+        .expect("record directive ingress");
+    let replay_path = std::env::temp_dir().join(format!(
+        "simthing-order-weight-{}-{}.jsonl",
+        std::process::id(),
+        recorded.coord.day_index()
+    ));
+    recorded
+        .record_to_path(&replay_path, 2)
+        .expect("record through existing replay writer");
+    let loaded =
+        simthing_driver::read_spec_replay_file(&replay_path).expect("read directive replay log");
+    let mut injection_count = 0;
+    for (frame, _) in loaded.frames {
+        for injection in simthing_driver::order_directive_injections_from_frame(&frame)
+            .expect("decode typed directive ingress")
+        {
+            assert_eq!(
+                injection.generation,
+                replay.coord.day_index(),
+                "directive must re-enter at its recorded generation"
+            );
+            replay
+                .submit_order_directive(injection.request)
+                .expect("replay logged directive");
+            injection_count += 1;
+        }
+        replay.step_once().expect("replay logged frame");
+    }
+    std::fs::remove_file(&replay_path).expect("remove temporary replay");
+    assert_eq!(injection_count, 1, "one real directive ingress record");
     assert_eq!(
-        live_bits, replay_live_bits,
-        "injection re-play must be bit-exact with the live ordered values buffer at the ordered-live checkpoint"
+        values_bits(&recorded),
+        values_bits(&replay),
+        "existing replay-log re-injection must reproduce the complete values checkpoint bit-exact"
     );
 
     eprintln!(
         "ORDER-WEIGHT-CLASS-GPU-PROOF adapter={:?} backend={:?} device_type={:?} \
-         ambient_ceiling={AMBIENT_CEILING} class_magnitude={ORDER_MAGNITUDE} \
+         ambient_weight_each={AMBIENT_WEIGHT_EACH} class_magnitude={ORDER_MAGNITUDE} \
          live_weights=({w_a_live},{w_b_live}) live_alloc=({alloc_a_live},{alloc_b_live}) \
          post_weights=({w_a_post},{w_b_post}) post_alloc=({alloc_a_post},{alloc_b_post}) \
          twin_match=1 replay_bitexact=1 rf1_allocator_ok={} rf1_structural_ok={} arrival_live={arrival_live}",
@@ -725,17 +751,14 @@ fn destination_order_dominates_via_player_weight_overlay_on_live_gpu() {
     );
 
     // Keep execution plan / column resolution exercised (arena-grounded path).
-    let _plan = build_execution_plan(
-        &ordered.proto.registry,
-        &ordered.spec_state.arena_registry,
-    )
-    .expect("execution plan");
+    let _plan = build_execution_plan(&ordered.proto.registry, &ordered.spec_state.arena_registry)
+        .expect("execution plan");
 }
 
 /// Install-time admission rejects class-less dominant Player overlay.
 #[test]
 fn install_rejects_class_less_dominant_player_overlay() {
-    let (scenario, mut game_mode, _r, _a, _b) = rf_two_destination_fixture();
+    let (scenario, mut game_mode, _r, _a, _b) = tp_stead_destination_fixture();
     // Top-level game_mode.overlays are validated at install even if install is deferred.
     game_mode.overlays.push(OverlaySpec {
         id: "illegal_dominant".into(),
@@ -765,4 +788,99 @@ fn install_rejects_class_less_dominant_player_overlay() {
             );
         }
     }
+}
+
+#[test]
+fn raw_public_sender_cannot_bypass_canonical_player_drain_gate() {
+    let _guard = GPU_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+    let (scenario, game_mode, _root, dest_a, _dest_b) = tp_stead_destination_fixture();
+    let mut session = SimSession::open_from_spec(scenario, &game_mode).expect("open session");
+    let flow_id = session.proto.registry.id_of("order", "food_flow").unwrap();
+    let bypass = Overlay {
+        id: OverlayId::new(),
+        kind: OverlayKind::Instruction,
+        source: OverlaySource::Player,
+        affects: vec![dest_a],
+        transform: PropertyTransformDelta {
+            property_id: flow_id,
+            sub_field_deltas: vec![(
+                SubFieldRole::Named("weight".into()),
+                TransformOp::Add(ORDER_MAGNITUDE),
+            )],
+        },
+        lifecycle: OverlayLifecycle::Transient {
+            dissolution_conditions: vec![DissolveCondition::AfterTicks { remaining: 1 }],
+        },
+    };
+    session
+        .tx
+        .submit_player_intent(dest_a, bypass)
+        .expect("raw public sender accepts queue work");
+    let error = session
+        .step_once()
+        .expect_err("canonical drain must reject raw dominant Player overlay");
+    assert!(
+        error.to_string().contains("class-less dominant"),
+        "unexpected drain rejection: {error}"
+    );
+    assert!(
+        session.patcher.take_player_intents().is_empty(),
+        "rejected intent must be neither folded nor parked"
+    );
+
+    let wrong_target = session.submit_order_directive(OrderDirectiveRequest {
+        class_id: ORDER_CLASS_ID.into(),
+        target: SimThingId::new(),
+        property_id: flow_id,
+        sub_field: SubFieldRole::Named("weight".into()),
+        dissolve: DissolveCondition::AfterTicks { remaining: 1 },
+    });
+    assert!(
+        wrong_target.is_err(),
+        "class binding cannot be reused outside its admitted arena participants"
+    );
+
+    // Individually sub-dominant raw additions cannot defeat the class by accumulation.
+    let (scenario, game_mode, _root, dest_a, _dest_b) = tp_stead_destination_fixture();
+    let mut aggregate = SimSession::open_from_spec(scenario, &game_mode).expect("open session");
+    let flow_id = aggregate
+        .proto
+        .registry
+        .id_of("order", "food_flow")
+        .unwrap();
+    for _ in 0..2 {
+        aggregate
+            .tx
+            .submit_player_intent(
+                dest_a,
+                Overlay {
+                    id: OverlayId::new(),
+                    kind: OverlayKind::Instruction,
+                    source: OverlaySource::Player,
+                    affects: vec![dest_a],
+                    transform: PropertyTransformDelta {
+                        property_id: flow_id,
+                        sub_field_deltas: vec![(
+                            SubFieldRole::Named("weight".into()),
+                            TransformOp::Add(8.0),
+                        )],
+                    },
+                    lifecycle: OverlayLifecycle::Transient {
+                        dissolution_conditions: vec![DissolveCondition::AfterTicks {
+                            remaining: 1,
+                        }],
+                    },
+                },
+            )
+            .expect("queue individually sub-dominant raw addition");
+    }
+    let error = aggregate
+        .step_once()
+        .expect_err("aggregate raw additions must not reach the admitted class magnitude");
+    assert!(
+        error
+            .to_string()
+            .contains("aggregate Player ambient envelope"),
+        "unexpected aggregate drain rejection: {error}"
+    );
 }

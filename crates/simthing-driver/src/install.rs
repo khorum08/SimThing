@@ -177,8 +177,6 @@ pub fn compile_and_install(
             .map_err(InstallError::Spec)?;
         }
     }
-    state.order_weight_classes = game_mode.order_weight_classes.clone();
-
     // ── 1. Compile properties (domain packs first, then game mode top-level).
     for pack in &game_mode.domain_packs {
         compile_pack_properties(pack, registry)?;
@@ -298,6 +296,14 @@ pub fn compile_and_install(
         state.resolved_gated_rates = gated;
         state.arena_registry = arena_registry;
         state.resource_flow_capacity_budget = report.capacity_budget;
+    }
+    if !game_mode.order_weight_classes.is_empty() {
+        state.order_weight_classes = crate::order_directive::admit_order_weight_classes(
+            &game_mode.order_weight_classes,
+            registry,
+            root,
+            &state.arena_registry,
+        )?;
     }
 
     // ── 4c. Resource economy (Phase T): compile + live-slot materialization.

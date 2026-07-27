@@ -621,8 +621,9 @@ pub use semantic_participant_delta_preview_compile::{
     compile_semantic_participant_delta_preview_plan, SemanticParticipantDeltaPreviewPlan,
 };
 pub use order_directive::{
-    build_order_directive_overlay, gate_raw_player_overlay, submit_order_directive,
-    OrderDirectiveError, OrderDirectiveRequest,
+    build_order_directive_overlay, order_directive_injections_from_frame,
+    AdmittedOrderWeightClass, OrderDirectiveError, OrderDirectiveInjection,
+    OrderDirectiveRequest,
 };
 pub use session::{RunSummary, SessionError, SimSession, StepOnceOutcome};
 pub use session_resource_flow_silos::{

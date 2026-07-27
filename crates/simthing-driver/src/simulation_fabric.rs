@@ -170,6 +170,8 @@ pub struct HotFabricParts<'a> {
     pub pipelines: &'a Pipelines,
     pub state: &'a mut WorldGpuState,
     pub dt: f32,
+    pub player_intent_gate:
+        Option<&'a mut dyn FnMut(&simthing_feeder::PlayerIntentOverlay) -> Result<(), String>>,
 }
 
 /// GPU-resident tick resources without boundary-time planning state.
@@ -183,6 +185,8 @@ pub struct SimulationFabric<'a> {
     pipelines: &'a Pipelines,
     state: &'a mut WorldGpuState,
     dt: f32,
+    player_intent_gate:
+        Option<&'a mut dyn FnMut(&simthing_feeder::PlayerIntentOverlay) -> Result<(), String>>,
 }
 
 impl<'a> SimulationFabric<'a> {
@@ -197,6 +201,7 @@ impl<'a> SimulationFabric<'a> {
             pipelines: parts.pipelines,
             state: parts.state,
             dt: parts.dt,
+            player_intent_gate: parts.player_intent_gate,
         }
     }
 
@@ -208,15 +213,27 @@ impl<'a> SimulationFabric<'a> {
 
 /// Canonical hot-path tick entry — accepts only the fabric.
 pub fn run_simulation_fabric_tick(fabric: &mut SimulationFabric<'_>) -> FabricTickOutcome {
-    fabric.coord.tick(
-        fabric.rx,
-        fabric.patcher,
-        fabric.registry,
-        fabric.allocator,
-        fabric.pipelines,
-        fabric.state,
-        fabric.dt,
-    )
+    match fabric.player_intent_gate.as_deref_mut() {
+        Some(gate) => fabric.coord.tick_with_player_intent_gate(
+            fabric.rx,
+            fabric.patcher,
+            fabric.registry,
+            fabric.allocator,
+            fabric.pipelines,
+            fabric.state,
+            fabric.dt,
+            gate,
+        ),
+        None => fabric.coord.tick(
+            fabric.rx,
+            fabric.patcher,
+            fabric.registry,
+            fabric.allocator,
+            fabric.pipelines,
+            fabric.state,
+            fabric.dt,
+        ),
+    }
 }
 
 /// Dispatch RF OrderBand ops when the pipeline flag and GPU state agree.
