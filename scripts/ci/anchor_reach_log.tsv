@@ -110,3 +110,6 @@ date	role	query	anchors_served	hit
 2026-07-27T14:45:49Z	coding	--domain workshop-candidate	none	none
 2026-07-27T14:45:50Z	coding	--domain scanner-selftest	none	none
 2026-07-27T14:45:50Z	coding	--domain orientation-harness	none	none
+2026-07-27T21:59:14Z	coding	--grep order-weight	simthing-0087-pillars	hit
+2026-07-27T21:59:14Z	coding	--grep ORDER-WEIGHT	simthing-0087-pillars	hit
+2026-07-27T21:59:14Z	coding	--grep order weight	none	none

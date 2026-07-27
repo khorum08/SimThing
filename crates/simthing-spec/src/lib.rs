@@ -756,5 +756,8 @@ pub use spec::w_impedance_compose::{
     W_IMPEDANCE_COMPOSE_MAX_PROFILES,
 };
 pub use validate::validate_capability_tree;
-pub use validate_order_weight::{validate_order_weight_classes, validate_order_weight_overlay};
+pub use validate_order_weight::{
+    validate_order_weight_classes, validate_order_weight_overlay,
+    validate_runtime_player_overlay_magnitude,
+};
 pub use version::SpecVersion;

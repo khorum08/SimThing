@@ -177,6 +177,7 @@ pub fn compile_and_install(
             .map_err(InstallError::Spec)?;
         }
     }
+    state.order_weight_classes = game_mode.order_weight_classes.clone();
 
     // ── 1. Compile properties (domain packs first, then game mode top-level).
     for pack in &game_mode.domain_packs {

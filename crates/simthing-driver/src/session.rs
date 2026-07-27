@@ -763,6 +763,39 @@ impl SimSession {
         Ok(true)
     }
 
+    /// Submit a class-bound operator directive (ORDER-WEIGHT-CLASS-0).
+    ///
+    /// Resolves the admitted class magnitude into an ordinary
+    /// `OverlaySource::Player` Transient overlay and parks it on the existing
+    /// player-intent feeder — never a second command channel.
+    pub fn submit_order_directive(
+        &self,
+        req: crate::order_directive::OrderDirectiveRequest,
+    ) -> Result<simthing_core::OverlayId, crate::order_directive::OrderDirectiveError> {
+        crate::order_directive::submit_order_directive(
+            &self.tx,
+            &self.spec_state.order_weight_classes,
+            req,
+        )
+    }
+
+    /// Submit a raw Player overlay after the runtime class-magnitude gate.
+    ///
+    /// Dominant magnitudes that skip [`Self::submit_order_directive`] are rejected.
+    pub fn submit_player_intent_gated(
+        &self,
+        target: simthing_core::SimThingId,
+        overlay: simthing_core::Overlay,
+    ) -> Result<(), crate::order_directive::OrderDirectiveError> {
+        crate::order_directive::gate_raw_player_overlay(
+            &overlay,
+            &self.spec_state.order_weight_classes,
+        )?;
+        self.tx
+            .submit_player_intent(target, overlay)
+            .map_err(|_| crate::order_directive::OrderDirectiveError::FeederDisconnected)
+    }
+
     /// Execute one admitted production hot-cycle (and its boundary if reached).
     ///
     /// Studio live-session bridge / headless multi-tick proofs use this instead of
