@@ -22,14 +22,11 @@ use simthing_driver::{
     HostedPropertyLocus, LiveDisruptionAuthorityReadback, Scenario, SessionError, SimSession,
     StepOnceOutcome,
 };
-use simthing_gpu::SlotAllocator;
 use simthing_spec::{
     compile_property, disruption_readout_snapshot_with_readback, game_session_child,
     game_session_owners, owner_entity_id, planet_child_rf_participant_inputs,
-    validate_scenario_links, validate_stead_mapping_consistency, ArenaSpec,
-    BaseFlowDirectionSpec, BaseFlowObligationSpec, ExplicitParticipantSpec, FissionPolicySpec,
-    GameModeSpec, InstallTargetSpec, PropertyKey, PropertySpec, ResourceEconomyOptInMode,
-    ResourceFlowExecutionProfile, ResourceFlowOptInMode, ResourceFlowSpec, SimThingScenarioSpec,
+    validate_scenario_links, validate_stead_mapping_consistency, GameModeSpec, PropertyKey,
+    PropertySpec, ResourceEconomyOptInMode, ResourceFlowExecutionProfile, SimThingScenarioSpec,
 };
 
 use crate::session::{StudioScenarioSummary, StudioSession};
@@ -916,7 +913,7 @@ pub fn driver_scenario_from_authority(spec: &SimThingScenarioSpec) -> Result<Sce
     let _ = registry.register(SimProperty::simple("_studio_live_bridge", "seed", 0));
 
     let mut root = spec.root.clone();
-    strip_property_maps(&mut root);
+    strip_all_property_maps(&mut root);
 
     let mut n_slots = 0u32;
     count_tree_nodes(&root, &mut n_slots);
@@ -946,25 +943,37 @@ pub fn driver_scenario_from_authority(spec: &SimThingScenarioSpec) -> Result<Sce
 /// the field-bearing path executes its admitted recursive Arena through ordinary `step_once`.
 pub fn field_bearing_game_mode(mode: &GameModeSpec) -> GameModeSpec {
     let mut field = mode.clone();
-    if field.resource_flow.is_none() {
+    let has_resource_property = field.properties.iter().chain(
+        field
+            .domain_packs
+            .iter()
+            .flat_map(|pack| pack.properties.iter()),
+    ).any(|property| {
+        property.sub_fields.iter().any(|sub_field| {
+            sub_field.accumulator_spec.as_ref().is_some_and(|accumulator| {
+                matches!(
+                    &accumulator.role,
+                    AccumulatorRole::AllocatedFlow { .. }
+                        | AccumulatorRole::AllocatorWeight { .. }
+                )
+            })
+        })
+    });
+    if field.resource_flow.is_none() && !has_resource_property {
         // Small field-economy fixtures have no admitted RF topology. Keep
         // their historical field-bearing economy path default-disabled.
         field.resource_flow_execution_profile = ResourceFlowExecutionProfile::DefaultDisabled;
     }
-    let rf_property_keys: Vec<_> = field
-        .resource_flow
-        .as_ref()
-        .into_iter()
-        .flat_map(|rf| &rf.arenas)
-        .flat_map(|arena| {
-            std::iter::once(&arena.flow_property).chain(arena.balance_property.as_ref())
-        })
-        .map(|key| (key.namespace.clone(), key.name.clone()))
-        .collect();
     let is_rf_property = |property: &PropertySpec| {
-        rf_property_keys
-            .iter()
-            .any(|(namespace, name)| property.namespace == *namespace && property.name == *name)
+        property.sub_fields.iter().any(|sub_field| {
+            sub_field.accumulator_spec.as_ref().is_some_and(|accumulator| {
+                matches!(
+                    &accumulator.role,
+                    AccumulatorRole::AllocatedFlow { .. }
+                        | AccumulatorRole::AllocatorWeight { .. }
+                )
+            })
+        })
     };
     // The recursive RF planner consumes property-local columns. The paired
     // scenario builder pre-registers these properties first, so omit their
@@ -1020,31 +1029,31 @@ pub fn driver_scenario_field_bearing_from_profile(
 ) -> Result<Scenario, String> {
     let mut registry = DimensionRegistry::new();
     let mut registered_rf_property = false;
-    if let Some(resource_flow) = profile.game_mode.resource_flow.as_ref() {
-        let authored_properties = profile.game_mode.properties.iter().chain(
-            profile
-                .game_mode
-                .domain_packs
-                .iter()
-                .flat_map(|pack| pack.properties.iter()),
-        );
-        for property in authored_properties {
-            let referenced = resource_flow.arenas.iter().any(|arena| {
-                (arena.flow_property.namespace == property.namespace
-                    && arena.flow_property.name == property.name)
-                    || arena.balance_property.as_ref().is_some_and(|balance| {
-                        balance.namespace == property.namespace && balance.name == property.name
-                    })
-            });
-            if referenced
-                && registry
-                    .id_of(&property.namespace, &property.name)
-                    .is_none()
-            {
-                compile_property(property, &mut registry)
-                    .map_err(|e| format!("pre-register field-bearing RF property: {e}"))?;
-                registered_rf_property = true;
-            }
+    let authored_properties = profile.game_mode.properties.iter().chain(
+        profile
+            .game_mode
+            .domain_packs
+            .iter()
+            .flat_map(|pack| pack.properties.iter()),
+    );
+    for property in authored_properties {
+        let is_resource_property = property.sub_fields.iter().any(|sub_field| {
+            sub_field.accumulator_spec.as_ref().is_some_and(|accumulator| {
+                matches!(
+                    accumulator.role,
+                    AccumulatorRole::AllocatedFlow { .. }
+                        | AccumulatorRole::AllocatorWeight { .. }
+                )
+            })
+        });
+        if is_resource_property
+            && registry
+                .id_of(&property.namespace, &property.name)
+                .is_none()
+        {
+            compile_property(property, &mut registry)
+                .map_err(|e| format!("pre-register field-bearing RF property: {e}"))?;
+            registered_rf_property = true;
         }
     }
     if !registered_rf_property {
@@ -1052,7 +1061,7 @@ pub fn driver_scenario_field_bearing_from_profile(
     }
 
     let mut root = profile.session_root.clone();
-    strip_property_maps(&mut root);
+    strip_unregistered_property_maps(&mut root, &registry);
 
     let mut n_slots = 0u32;
     count_tree_nodes(&root, &mut n_slots);
@@ -1320,6 +1329,18 @@ fn find_simthing_in_tree(node: &SimThing, id: SimThingId) -> Option<&SimThing> {
     None
 }
 
+fn find_simthing_in_tree_mut(node: &mut SimThing, id: SimThingId) -> Option<&mut SimThing> {
+    if node.id == id {
+        return Some(node);
+    }
+    for child in &mut node.children {
+        if let Some(found) = find_simthing_in_tree_mut(child, id) {
+            return Some(found);
+        }
+    }
+    None
+}
+
 fn graft_authored_location_hosts(
     scenario: &mut simthing_spec::SimThingScenarioSpec,
     pack: &simthing_clausething::HydratedScenarioPack,
@@ -1358,10 +1379,21 @@ fn graft_authored_location_hosts(
     Some(())
 }
 
-fn strip_property_maps(node: &mut simthing_core::SimThing) {
+fn strip_unregistered_property_maps(
+    node: &mut simthing_core::SimThing,
+    registry: &DimensionRegistry,
+) {
+    node.properties
+        .retain(|property_id, _| registry.try_property(*property_id).is_some());
+    for child in &mut node.children {
+        strip_unregistered_property_maps(child, registry);
+    }
+}
+
+fn strip_all_property_maps(node: &mut simthing_core::SimThing) {
     node.properties.clear();
     for child in &mut node.children {
-        strip_property_maps(child);
+        strip_all_property_maps(child);
     }
 }
 
@@ -1508,6 +1540,34 @@ fn studio_recursive_rf_property() -> PropertySpec {
     }
 }
 
+fn populate_recursive_rf_participant(
+    root: &mut SimThing,
+    registry: &DimensionRegistry,
+    property_id: simthing_core::SimPropertyId,
+    participant_id: SimThingId,
+    parent_id: Option<SimThingId>,
+    intrinsic_flow: f32,
+) -> Option<()> {
+    let property = registry.property(property_id);
+    let mut value = property.default_value();
+    value.set_role(
+        &SubFieldRole::Named("flow".into()),
+        &property.layout,
+        intrinsic_flow,
+    );
+    let participant = find_simthing_in_tree_mut(root, participant_id)?;
+    participant.add_property(property_id, value);
+    if let Some(parent_id) = parent_id {
+        participant.add_resource_parent_edge(
+            STUDIO_RF_NAMESPACE,
+            STUDIO_RF_PROPERTY,
+            parent_id,
+            None,
+        );
+    }
+    Some(())
+}
+
 fn compose_recursive_rf_profile(
     pack: &simthing_clausething::HydratedScenarioPack,
 ) -> Option<(
@@ -1546,18 +1606,6 @@ fn compose_recursive_rf_profile(
     }
     let (owner_ref, owner_id) = selected_owner?;
 
-    let mut allocator = SlotAllocator::new();
-    allocator.populate_from_tree(&scenario.root);
-    let hosted_slot = |id: SimThingId| allocator.slot_of(id).map(|slot| slot.raw());
-    let mut participants = vec![
-        ExplicitParticipantSpec::flat(hosted_slot(session_root_id)?, session_root_id.raw()),
-        ExplicitParticipantSpec::nested(
-            hosted_slot(owner_id)?,
-            owner_id.raw(),
-            session_root_id.raw() as u64,
-        ),
-    ];
-
     let mut install_targets: HashMap<String, Vec<SimThingId>> = pack
         .install_targets
         .iter()
@@ -1570,67 +1618,42 @@ fn compose_recursive_rf_profile(
         }
     }
 
-    let root_target = "studio_rf_root".to_string();
-    install_targets.insert(root_target.clone(), vec![session_root_id]);
-    let mut base_obligations = vec![BaseFlowObligationSpec {
-        id: "studio_rf_root_budget".into(),
-        arena: STUDIO_RF_ARENA.into(),
-        install: InstallTargetSpec::ScenarioListed {
-            target_id: root_target,
-        },
-        direction: BaseFlowDirectionSpec::Produce,
-        rate: STUDIO_RF_ROOT_BUDGET,
-    }];
-    for (index, row) in selected_children.iter().enumerate() {
-        let id = SimThingId::from_session_raw(row.simthing_id_raw);
-        participants.push(ExplicitParticipantSpec::nested(
-            hosted_slot(id)?,
-            id.raw(),
-            owner_id.raw() as u64,
-        ));
-        let target_id = format!("studio_rf_child_{index}");
-        install_targets.insert(target_id.clone(), vec![id]);
-        base_obligations.push(BaseFlowObligationSpec {
-            id: format!("studio_rf_child_{index}_intrinsic"),
-            arena: STUDIO_RF_ARENA.into(),
-            install: InstallTargetSpec::ScenarioListed {
-                target_id: target_id.clone(),
-            },
-            direction: BaseFlowDirectionSpec::Produce,
-            rate: row.surplus as f32,
-        });
-    }
-
     let mut game_mode = pack.game_mode.clone();
-    game_mode.properties.push(studio_recursive_rf_property());
-    let authored_need = game_mode
-        .resource_flow
-        .as_ref()
-        .map(|rf| rf.need_bindings.clone())
-        .unwrap_or_default();
-    game_mode.resource_flow = Some(ResourceFlowSpec {
-        opt_in_mode: ResourceFlowOptInMode::Disabled,
-        arenas: vec![ArenaSpec {
-            name: STUDIO_RF_ARENA.into(),
-            flow_property: PropertyKey::new(STUDIO_RF_NAMESPACE, STUDIO_RF_PROPERTY),
-            balance_property: Some(PropertyKey::new(STUDIO_RF_NAMESPACE, STUDIO_RF_PROPERTY)),
-            max_participants: 8,
-            max_coupling_fanout: 4,
-            max_orderband_depth: 16,
-            fission_policy: FissionPolicySpec::Reject,
-            reserved_orderband_depth: 0,
-            reserved_gap_per_intermediate: 0,
-            expected_max_children_per_intermediate: 0,
-            explicit_participants: participants,
-            enrollment: None,
-            wildcard_admission: None,
-        }],
-        base_obligations,
-        need_bindings: authored_need,
-        ..Default::default()
-    });
-    game_mode.resource_flow_execution_profile =
-        ResourceFlowExecutionProfile::RecursiveArenaResourceFlow;
+    let resource_property = studio_recursive_rf_property();
+    let mut resource_registry = DimensionRegistry::new();
+    let (resource_property_id, _) =
+        compile_property(&resource_property, &mut resource_registry).ok()?;
+    // Authority-tree property IDs were minted by a different registry. Clear
+    // them before installing the profile-local property so an equal raw ID
+    // cannot masquerade as Resource Flow participation.
+    strip_all_property_maps(&mut scenario.root);
+    populate_recursive_rf_participant(
+        &mut scenario.root,
+        &resource_registry,
+        resource_property_id,
+        session_root_id,
+        None,
+        STUDIO_RF_ROOT_BUDGET,
+    )?;
+    populate_recursive_rf_participant(
+        &mut scenario.root,
+        &resource_registry,
+        resource_property_id,
+        owner_id,
+        Some(session_root_id),
+        0.0,
+    )?;
+    for row in &selected_children {
+        populate_recursive_rf_participant(
+            &mut scenario.root,
+            &resource_registry,
+            resource_property_id,
+            SimThingId::from_session_raw(row.simthing_id_raw),
+            Some(owner_id),
+            row.surplus as f32,
+        )?;
+    }
+    game_mode.properties.push(resource_property);
 
     let named = &selected_children[0];
     Some((

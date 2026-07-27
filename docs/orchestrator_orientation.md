@@ -45,16 +45,16 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 211b860c2a424d0386a01a2dc93d5c563abfd1411c1f58ec55c7b69d97426cb8 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | 26eab30ec86c97ac8dfd6beef7ae8c5b4d3f18c38fdaa431ec40ccce855396d3 |
-| design_0_0_8_7_rf_arena_modernization.md | 65a325e753f7b390e5ee862243187f5aeb724ca9555e5771c5c0e282a6b8fa42 |
+| design_0_0_8_7_rf_arena_modernization.md | fd9bf38bef0befa3ba74ac356685755607eaa4e27ef7bbc8cd1b4d5a566e0ffd |
 | relay_lint.sh | 4163f715cdc3b549dbf57c1744aff61ea96b9f9f0a2237376665fbdb24e986c8 |
 | doctrine_anchors.tsv | c7296a3fec66bb25bdf0042294c019aaa6aac65ab853c4913641fa53774eaf4d |
-| execution_status_taxonomy.tsv | 1bf185c3742dc6788c4c9763e914dbe4331b6b25fb4d7238ac253df1202c5040 |
+| execution_status_taxonomy.tsv | 2641264b403bec7ab9bc27e851a690b027c5f27844f70ad9fc1e047c858fe353 |
 | execution_status_mixed_posture.tsv | 76b7246da5e2cb9680194bc30a79acc4126aaa89beb52447a0fc509e1495b1e8 |
 | execution_status_non_execution.tsv | 214c1b557dfd3fc465f0171051e20281ff1dcf6c53128dbb29cba01524f9be02 |
 
 ## Execution-status taxonomy (driver/kernel)
 
-executed=57 oracle=6 rehearsal=14 compile-plan=45 mixed_ruled=2 (primary-inclusive taxonomy; DA dual-posture residual; census `execution_status_census.py`).
+executed=57 oracle=6 rehearsal=14 compile-plan=46 mixed_ruled=2 (primary-inclusive taxonomy; DA dual-posture residual; census `execution_status_census.py`).
 
 ## Active Track / Rung Summary (`design_0_0_8_7_rf_arena_modernization.md`)
 
@@ -96,7 +96,7 @@ Track state: `open`
 
 ## Next Rung Pointer
 
-Active pointer: `CONSTITUTION-TRIPWIRES-0`
+Active pointer: `ROOT-DERIVE-PARTICIPATION-0`
 
 
 ## Cold-Start Spine (constitutional pointers)

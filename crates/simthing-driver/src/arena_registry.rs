@@ -1,4 +1,4 @@
-//! E-9 — Resource Flow `ArenaRegistry` session artifact (driver/spec layer).
+//! E-9 — Derived Resource Flow `ArenaRegistry` session artifact (driver/spec layer).
 //!
 //! The registry is compile-time/session metadata. `simthing-sim` never imports
 //! or branches on these types; the driver compiles flat `AccumulatorOp`
@@ -161,7 +161,8 @@ impl ArenaRegistryBuilder {
         idx
     }
 
-    /// Explicit admission only — property possession does not enroll.
+    /// Materialize one already-admitted row. Default rows are derived before
+    /// this artifact is built; authored explicit rows use the same door.
     pub fn admit_participant(
         &mut self,
         arena_idx: ArenaIdx,

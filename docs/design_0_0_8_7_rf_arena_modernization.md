@@ -254,7 +254,7 @@ discretion); `Std — Grok CLI` (`grok-4.5` pinned); `Fable` = DA-implemented ha
 | 0.1 | `RF-COLUMN-ADMISSION-GATE-0` | Phase 0: `ColumnIndex` constructor taxonomy, NON-BREAKING (fenced raw door); retarget `COLUMN-INDEX-MINT` to choke-point tokens; mechanize DA-gated exclusion edits. | **DA-GRADUATED / merged [#1447](https://github.com/khorum08/SimThing/pull/1447) @ `4db8ac14`** — ColumnIndex admission doors; scan proves remaining `::new` inside fence; corpus green. | DA-reserve · Frontier — Codex 5.6/Fable | **DA-GRADUATED / merged #1447** |
 | 0.2 | `EXECUTION-STATUS-TAXONOMY-0` | Phase 0: `executed / oracle / rehearsal / compile-plan` classification as data; board-surfaced. | **DA-GRADUATED / merged [#1448](https://github.com/khorum08/SimThing/pull/1448) @ `407850e2`** — export-module census; DA mixed-posture primaries (reduction=`compile-plan`, world_state=`executed`; relay `5085410594`). | Std — Grok | **DA-GRADUATED / merged #1448** |
 | 0.3 | `CONSTITUTION-TRIPWIRES-0` | Phase 0: the three HEURISTIC tripwires (cell-storage polymorphism; bespoke pathfinder; border service) + reach-log wiring; DA 0.2 primary-class fold + Board/orient pointer repair. | Selftest fixtures prove each fires; INSPECT-only; reach-log rows land; primary-inclusive counts `mixed_ruled=2`. | Std — Grok | **DA-GRADUATED / merged #1450** — ruling `5086131411`; `HD-RECEIPT: bf9ece38aea8`. |
-| 1.1 | `ROOT-DERIVE-PARTICIPATION-0` | Phase 1: admission derives arena participation from resource properties + parent edge (typed, spanned; `DefaultDisabled` retained); collapse the default-path config seams. | TP scenario runs with ZERO explicit arena wiring; RF-1 green; seams deleted/reduced to overrides. | DA-reserve · Frontier — Codex 5.6/Fable | TODO |
+| 1.1 | `ROOT-DERIVE-PARTICIPATION-0` | Phase 1: admission derives arena participation from resource properties + parent edge (typed, spanned; `DefaultDisabled` retained); collapse the default-path config seams. | TP scenario runs with ZERO explicit arena wiring; RF-1 green; seams deleted/reduced to overrides. | DA-reserve · Frontier — Codex 5.6/Fable | **PROBATION — implementation `d0110f30ed12`; DA clearance pending** |
 | 1.2 | `SESSION-WIRING-KILL-SWEEP-0` | Phase 1: kill remaining opt-in toggles incl. `min_plus_traversal_field` enable/disable → derived-at-admission; core calendar-vocabulary rename (`evaluate.rs day`, spawn-day → generation). | No constitutional-path session toggles remain (grep-proven); core day-refs = 0; corpus green. | Std — Grok | TODO |
 | 1.3 | `ARENA-PARTICIPANT-DEPRECATION-0` | Phase 1: deprecate the `ArenaParticipant` wrapper kind (P0 falsifier; StarSystem/Station disposition). | Kind deprecated with ruling; no new authoring; compile-compat retained. | Std — Grok | TODO |
 | 2.1 | `OVERLAY-EFFECT-HOST-ADMISSION-0` | Phase 2: close the effect-target v0 trap — host placement + `overlay_hosts` admission-checked; misdelivery = spanned error. | Misdelivery fixture hard-errors at admission; capability effects land on resolved hosts; corpus green. | DA-reserve · Frontier — Codex 5.6/Fable | TODO |
@@ -286,7 +286,7 @@ discretion); `Std — Grok CLI` (`grok-4.5` pinned); `Fable` = DA-implemented ha
 
 | Item | State |
 |---|---|
-| Active open rung | `CONSTITUTION-TRIPWIRES-0` |
+| Active open rung | `ROOT-DERIVE-PARTICIPATION-0` |
 
 ## 4. Binding laws (carry from day one)
 

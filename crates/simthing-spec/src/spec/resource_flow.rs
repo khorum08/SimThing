@@ -5,10 +5,11 @@ use crate::spec::script::PropertyKey;
 use serde::{Deserialize, Serialize};
 use simthing_core::PlacedParticipant;
 
-/// Authored Resource Flow arena admission graph (E-10).
+/// Authored Resource Flow arena override graph (E-10).
 ///
-/// Declares explicit arena participation, caps, coupling edges, and fission policy.
-/// Property `accumulator_spec` metadata is validated against this graph at session build.
+/// Default participation derives from populated accumulator properties and typed
+/// resource-parent edges. This surface retains explicit rows, caps, coupling
+/// edges, and fission policy for authored overrides.
 ///
 /// `opt_in_mode` controls **GPU execution** for Resource Flow (RF-T1). Presence of arenas
 /// alone does not enable `use_accumulator_resource_flow`; scenarios must opt in explicitly.

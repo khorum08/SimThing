@@ -575,8 +575,11 @@ impl SimSession {
         session.proto.root = SimRuntimeTree::admit(admitted);
         apply_resource_economy_opt_in(&mut session.proto.flags, game_mode);
         session.resource_flow_execution_profile = game_mode.resource_flow_execution_profile;
-        session.resource_flow_flag_source =
-            resolve_resource_flow_execution(&mut session.proto.flags, game_mode);
+        session.resource_flow_flag_source = resolve_resource_flow_execution(
+            &mut session.proto.flags,
+            game_mode,
+            &spec_state,
+        );
         if session.proto.flags.use_accumulator_resource_flow {
             validate_resource_flow_flat_star_execution(game_mode, &spec_state)?;
         }
@@ -1156,6 +1159,7 @@ fn apply_resource_economy_opt_in(
 fn resolve_resource_flow_execution(
     flags: &mut simthing_sim::PipelineFlags,
     game_mode: &GameModeSpec,
+    spec_state: &SpecSessionState,
 ) -> crate::resource_flow_opt_in_telemetry::ResourceFlowFlagSource {
     use crate::resource_flow_opt_in_telemetry::ResourceFlowFlagSource;
 
@@ -1174,6 +1178,7 @@ fn resolve_resource_flow_execution(
             if game_mode
                 .resource_flow_execution_profile
                 .enables_arena_resource_flow()
+                && !spec_state.arena_registry.arenas.is_empty()
             {
                 flags.use_accumulator_resource_flow = true;
                 ResourceFlowFlagSource::ScenarioClassDefaultOn
@@ -1195,22 +1200,19 @@ fn validate_resource_flow_flat_star_opt_in(
     game_mode: &GameModeSpec,
     spec_state: &SpecSessionState,
 ) -> Result<(), SessionError> {
-    let Some(flow) = game_mode.resource_flow.as_ref() else {
+    if spec_state.arena_registry.arenas.is_empty() {
         return Err(SessionError::ResourceFlowOptIn(
-            "Resource Flow GPU execution requires authored ResourceFlowSpec".into(),
-        ));
-    };
-    if flow.arenas.is_empty() {
-        return Err(SessionError::ResourceFlowOptIn(
-            "Resource Flow GPU execution requires at least one arena".into(),
+            "Resource Flow GPU execution requires at least one admitted arena".into(),
         ));
     }
-    for arena in &flow.arenas {
-        if arena.wildcard_admission.is_some() {
-            return Err(SessionError::ResourceFlowOptIn(format!(
-                "arena `{}` wildcard admission is not supported for flat-star Resource Flow (E-11B deferred)",
-                arena.name
-            )));
+    if let Some(flow) = game_mode.resource_flow.as_ref() {
+        for arena in &flow.arenas {
+            if arena.wildcard_admission.is_some() {
+                return Err(SessionError::ResourceFlowOptIn(format!(
+                    "arena `{}` wildcard admission is not supported for flat-star Resource Flow (E-11B deferred)",
+                    arena.name
+                )));
+            }
         }
     }
     for arena in &spec_state.arena_registry.arenas {

@@ -61,6 +61,7 @@ pub mod resource_economy_sync;
 pub mod resource_flow_burn_in;
 pub mod resource_flow_compile;
 pub mod resource_flow_dynamic_enrollment_soak;
+pub mod resource_flow_derivation;
 pub mod resource_flow_enrollment;
 pub mod resource_flow_fission_enrollment;
 pub mod resource_flow_flat_star_continued_soak;
@@ -366,6 +367,11 @@ pub use gradient_follow_0080_2::{
 };
 pub use install::{
     compile_and_install, install_atomic, preview_install, InstallError, InstallPreview,
+};
+pub use resource_flow_derivation::{
+    derive_resource_flow_admission, ArenaAdmissionOrigin, DerivedArenaParticipation,
+    DerivedParticipant, ResolvedResourceFlowAdmission, ResourceFlowDerivationError,
+    ResourceFlowDerivationReport,
 };
 pub use loaded_scenario_recursive_rf_runtime_compile::{
     compile_loaded_scenario_recursive_rf_runtime_plan_from_json_str,

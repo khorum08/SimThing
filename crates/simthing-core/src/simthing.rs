@@ -9,6 +9,21 @@ use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use std::collections::HashMap;
 
+/// A typed, non-spatial parent edge for one resource property.
+///
+/// The edge is symbolic because a [`SimThing`] may be populated before its
+/// property registry is compiled. Admission resolves the key, verifies that
+/// both endpoints possess the property, and derives the arena topology.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ResourceParentEdge {
+    pub property_namespace: String,
+    pub property_name: String,
+    pub parent: SimThingId,
+    /// Front-end source token retained for admission diagnostics.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source_span_token: Option<usize>,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum SimThingKind {
     /// Serializable scenario file root. Authority/serialization marker only — not a runtime engine.
@@ -65,6 +80,10 @@ pub struct SimThing {
     /// Serialized as a list of pairs since JSON object keys must be strings.
     #[serde_as(as = "Vec<(_, _)>")]
     pub properties: HashMap<SimPropertyId, PropertyValue>,
+    /// Resource-channel parentage. This never expresses spatial containment;
+    /// physical containment remains exclusively in [`Self::children`].
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub resource_parent_edges: Vec<ResourceParentEdge>,
     /// All overlays directly owned by this SimThing (policy, governance, instructions, etc.)
     pub overlays: Vec<Overlay>,
     /// Physical spatial children (locations own cohorts; systems own locations; etc.)
@@ -79,6 +98,7 @@ impl SimThing {
             id: SimThingId::new(),
             kind,
             properties: HashMap::new(),
+            resource_parent_edges: Vec::new(),
             overlays: Vec::new(),
             children: Vec::new(),
             spawned_day,
@@ -99,6 +119,21 @@ impl SimThing {
 
     pub fn property_mut(&mut self, id: SimPropertyId) -> Option<&mut PropertyValue> {
         self.properties.get_mut(&id)
+    }
+
+    pub fn add_resource_parent_edge(
+        &mut self,
+        property_namespace: impl Into<String>,
+        property_name: impl Into<String>,
+        parent: SimThingId,
+        source_span_token: Option<usize>,
+    ) {
+        self.resource_parent_edges.push(ResourceParentEdge {
+            property_namespace: property_namespace.into(),
+            property_name: property_name.into(),
+            parent,
+            source_span_token,
+        });
     }
 
     pub fn add_overlay(&mut self, overlay: Overlay) {

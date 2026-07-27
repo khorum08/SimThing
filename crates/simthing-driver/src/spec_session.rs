@@ -93,6 +93,9 @@ pub struct SpecSessionState {
     pub arena_registry: ArenaRegistry,
     /// Arena-participant SimThing scaffold (E-10R2). Driver-only topology artifact.
     pub arena_participant_scaffold: crate::arena_participant::ArenaParticipantScaffold,
+    /// Inspectable admission provenance for property/topology-derived arenas.
+    pub resource_flow_derivation:
+        crate::resource_flow_derivation::ResourceFlowDerivationReport,
     /// CT-RF-EML-RATE-0: install-resolved gated rate terms consumed by the
     /// resource-flow sync (effective-rate EvalEML band before reduce bands).
     pub resolved_gated_rates: Vec<crate::gated_rates::ResolvedGatedRate>,
