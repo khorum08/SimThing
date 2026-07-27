@@ -2,33 +2,39 @@
 rung: ARENA-PARTICIPANT-DEPRECATION-0
 kind: rung
 track: 0.0.8.7
-base_sha: 3b2ee9d021a822221cf9a545b4ee601f05675aef
+base_sha: 426c7e4fc67ddffd95044f2bd7804bd4c1fe20dd
 audience: coding
-model_tier: std
+model_tier: frontier
 owner_approved: true
 expected_route: DA-RESERVE(unclassified-scope)
-owner_notes: "Rung 1.3, last Phase 1 rung. Std lane (Grok, pin -m grok-4.5). This is the P0 FALSIFIER rung: the ArenaParticipant wrapper kind existing was the symptom of participation-by-wiring; its deprecation is the proof of participation-by-derivation. StarSystem/Station disposition exactly."
-surfaces: ["crates/simthing-core/src/simthing.rs", "crates/simthing-core/src", "crates/simthing-driver/src", "crates/simthing-driver/tests", "scripts/ci", "docs/design_0_0_8_7_rf_arena_modernization.md"]
-forbidden: ["removing the ArenaParticipant variant (compile-compat retained — deprecation, not deletion)", "behavior changes to existing sessions that still carry wrapper nodes (they keep working)", "new authoring paths that mint the kind", "referee edits (RF-1/replay/palma untouched)"]
-required_checks: ["cargo build --workspace", "full simthing-driver battery on live GPU", "doctrine-scan", "orientation-check", "doc-budget", "clearance"]
-stop_conditions: ["stale-orient-receipt", "scope-widening", "a-production-path-still-REQUIRES-minting-the-kind (means 1.1 derivation has a gap — STOP, DA-route, do not paper over)"]
+owner_notes: "REWRITTEN per Owner elimination ruling + STOP 5091668622. Frontier lane (Codex 5.6). Owner: 'I MUCH prefer the elimination. The only evaluation that matters is which code gets blown up, whether it is crate or test, and whether/when to fix it.' The wrapper is ELIMINATED from the production path, not deprecated. The breakage ledger is a first-class deliverable."
+surfaces: ["crates/simthing-core/src", "crates/simthing-driver/src", "crates/simthing-driver/tests", "crates/simthing-clausething/src", "crates/simthing-clausething/tests", "crates/simthing-workshop/tests", "scripts/ci", "docs/design_0_0_8_7_rf_arena_modernization.md", "docs/tests"]
+forbidden: ["warning-only theater (deprecating while production mints)", "papering over a consumer by faking wrapper-shaped state", "changing resolved per-participant flow VALUES (RF-1 + economics-level identity judge)", "editing referee ASSERTION LOGIC (re-anchoring topology fixtures is allowed and ledgered; weakening checks is not)", "new ColumnIndex mints outside the 0.1 doors"]
+required_checks: ["cargo build --workspace", "full simthing-driver battery on live GPU", "RF-1 conservation at head", "doctrine-scan", "orientation-check", "doc-budget", "clearance"]
+stop_conditions: ["stale-orient-receipt", "scope-widening beyond the ledgered sites", "a-consumer-cannot-re-point-without-kernel/WGSL-semantics-changes", "per-participant resolved economics diverge pre/post"]
 ---
 ## BUILD
-- Deprecate `SimThingKind::ArenaParticipant` with the StarSystem/Station disposition
-  (ANCHOR-ACK core-0087): `#[deprecated]` + DA-ruling doc comment citing P0's falsifier
-  ("the wrapper kind existing was the symptom of participation-by-wiring; 1.1's derivation
-  is the cure; retained only for legacy serialized data / compile-compat — do not author").
-- Census + fence: prove no production construction site mints the kind post-1.1 (test/fixture
-  constructors may remain, `#[allow(deprecated)]`-annotated); if a production path still
-  REQUIRES it, that is a 1.1 derivation gap — STOP and DA-route.
-- Doctrine-CI co-evolution rides the PR: if any scan/anchor text names ArenaParticipant as a
-  live pattern, re-point it; stamp 1.3 exit-proof cell + advance the posture row to
-  `OVERLAY-EFFECT-HOST-ADMISSION-0` (Phase 2) in-diff; regen orientation.
+- ELIMINATE the wrapper from the production path (Owner ruling; DA census: ~85 refs, 14 src
+  files + 5 test files, driver-concentrated). Replacement authority (P0: a SimThing IS a row):
+  participants host their flow properties ON THEIR OWN ROWS — slot identity is the
+  participant's own slot via the role pathway + the 1.1 `ResourceFlowDerivationReport`;
+  `materialize_arena_participants` and `ArenaParticipantScaffold` are deleted; consumers
+  (base obligations, `gated_rates`, `need_binding`, allocation sync, arena pressure/hierarchy/
+  registry, conservation-oracle helpers) re-point at participant rows.
+- Delete `SimThingKind::ArenaParticipant` LAST (variant, serde/exhaustive arms, kind-tag
+  maps). Legacy carriers are fixtures only (pre-release): fix fixtures, no compat shim.
+- **BREAKAGE LEDGER (first-class deliverable):** `docs/tests/arena_participant_elimination_ledger.tsv`
+  — one row per blown-up site: `path | crate-or-test | disposition (fixed-now | deferred
+  HORIZON-ENTRY(date) + reason)`. Every compile error and every re-anchored test appears;
+  deferred rows need dated horizons. Greenfield charter applies to the re-hosting design.
 ## FENCES
-- Deprecation, never deletion: the exhaustive kind_matches / serde arms keep compiling;
-  legacy trees still load. Zero behavior deltas: full battery green with referees unedited.
+- Identity judge moves to the ECONOMICS level (topology legitimately changes): RF-1
+  conservation green; per-participant resolved flow values identical pre/post (capture a
+  pre-elimination baseline of the TP + fixture economies and diff); replay bit-exact within
+  the new topology. Referee assertion LOGIC unedited; topology-shaped fixtures re-anchored
+  and ledgered.
 ## EXIT-PROOF
-- Variant deprecated w/ ruling doc-comment; workspace build green (deprecation warnings on
-  test-only constructors are acceptable steering); full driver battery on live GPU green;
-  census proves zero production mint sites; grep proves no new authoring path. Stamp +
-  posture advance in-diff per the graduation ritual.
+- Zero `ArenaParticipant` references tree-wide (grep-proven); ledger complete (every touched
+  site rowed); workspace build + full driver battery green on live GPU; RF-1 green;
+  per-participant economics baseline diff EMPTY. Stamp 1.3 exit-proof cell + advance posture
+  row to `OVERLAY-EFFECT-HOST-ADMISSION-0` in-diff; regen orientation.
