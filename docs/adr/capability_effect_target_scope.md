@@ -22,8 +22,11 @@ a child of the owner. The install layer therefore:
 2. Stamps `CapabilityTreeInstance.overlay_hosts: HashMap<OverlayId,
    SimThingId>` so the boundary handler can pick the correct `target`
    on `ActivateOverlay` / `SuspendOverlay`.
-3. Seeds the target property on the host's `properties` map so the GPU
-   overlay-prep stage emits deltas for it.
+3. Admission proves that the target property already exists on the host,
+   resolves every transformed role through the registered layout/column
+   range, and verifies that `affects` names the same host recorded in
+   `overlay_hosts`. A mismatch is a spanned hard error; install never
+   fabricates the missing property.
 
 The `affects` field on the cloned overlay is set to the resolved target
 for documentation / debug-readability; the runtime hot path only reads
@@ -197,30 +200,26 @@ pub fn resolve_effect_target(
 }
 ```
 
-### 3. `emit_activation` is unchanged by this ADR
+### 3. `emit_activation` resolves the admitted overlay host
 
-[`capability_handler.rs:211–215`](../../crates/simthing-spec/src/boundary/capability_handler.rs)
-emits:
+The boundary handler resolves clone overlay ids through `instance.by_overlay`
+and their canonical placement through `instance.overlay_hosts`:
 
 ```rust
 ctx.requests.push(BoundaryRequest::ActivateOverlay {
-    target:     instance.tree_thing_id,
+    target:     overlay_host(instance, overlay_id),
     overlay_id: *overlay_id,
 });
 ```
 
 The `target` field here is "which SimThing's overlay list contains the
-overlay to activate" — that is **always** the cloned capability-tree
-(`instance.tree_thing_id`), because the overlay lives on the clone
-regardless of what its `affects` field points at. This is correct today
-and remains correct after this ADR.
+overlay to activate." It is the concrete host admitted at install time:
+owner, cloned capability tree, or session root. Older hand-built fixtures
+with no `overlay_hosts` entry retain the clone fallback.
 
-The O1b fix (use `instance.by_overlay` to resolve clone ids instead of
-reading template `entry.overlay_ids`) is **orthogonal** and must land
-independently. The ignored test
-`open_from_spec_capability_unlock_activates_overlay_for_next_tick` exists
-to catch O1b — it will start passing once Codex's fix lands, regardless of
-whether this ADR has been implemented yet.
+The O1b fix remains logically separate: `instance.by_overlay` resolves the
+clone's live overlay id, while `overlay_hosts` resolves where that overlay
+lives. Both are install-stamped admission facts.
 
 ### 4. Preview reads from the resolved target's slot
 
@@ -264,12 +263,11 @@ each delta. Modders see exactly which entity each effect lands on.
 ### 5. Property registration scope follows effect target
 
 `Owner`-targeted effects require their `targets_property` to be a property
-the owner's SimThing carries — i.e. registered in `DimensionRegistry`
-without a kind restriction, or registered on the owner's kind. The
-existing `compile_property` flow in `compile_and_install` registers
-properties globally (`registry` is one flat namespace), so no change is
-needed — any property declared in the game mode is reachable from any
-slot.
+the owner's SimThing carries — i.e. registered in `DimensionRegistry` and
+materialized on the owner by scenario/property admission. Global registry
+membership alone is not row authority. The same rule applies to
+`CapabilityTree` and `SessionRoot`: the resolved host must carry the
+property before capability installation.
 
 The modder guide adds a single rule: **`targets_property` columns must
 exist on the resolved target's slot**. This is a no-op for v0 content
@@ -396,10 +394,10 @@ no scope expressions, no resolution DSL.
   multiple `CapabilityEffectSpec` entries with different `effect_target`s.
 - **Cross-faction selection** (e.g. "debuff every enemy faction"). Needs
   a faction-relation model that does not exist yet in `simthing-core`.
-- **Validation that `targets_property` resolves on the install target's
-  kind.** A `validate_capability_tree` diagnostic in `simthing-spec` is
-  natural follow-up work; v1 trusts the modder and lets the GPU silently
-  ignore unknown columns.
+- **Superseded by 0.0.8.7 rung 2.1:** install admission validates the concrete
+  resolved host rather than trusting the modder or silently ignoring an
+  unknown row property. The diagnostic carries overlay id, resolved host,
+  property key, and authoring span.
 
 ## Alternatives considered
 

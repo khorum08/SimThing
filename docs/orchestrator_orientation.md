@@ -45,7 +45,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 211b860c2a424d0386a01a2dc93d5c563abfd1411c1f58ec55c7b69d97426cb8 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | 26eab30ec86c97ac8dfd6beef7ae8c5b4d3f18c38fdaa431ec40ccce855396d3 |
-| design_0_0_8_7_rf_arena_modernization.md | 9d7ea64ac371f2b9dc4a543c68d87de574b28c6acdeee0775874cfbd8cff1f9f |
+| design_0_0_8_7_rf_arena_modernization.md | 15c77109d6bc20ebaee63cab967221b1e3b109d77ccc6aed3e7b92b66641edfa |
 | relay_lint.sh | 4163f715cdc3b549dbf57c1744aff61ea96b9f9f0a2237376665fbdb24e986c8 |
 | doctrine_anchors.tsv | 08a34b6dac78478d2154fcd2735cf4a3f87a670d925805814cca0a8079448a84 |
 | execution_status_taxonomy.tsv | 377af7d8b4a403a63b04c32283f9669ae363dcfced008f7d0fcec11944f59feb |
@@ -62,8 +62,7 @@ Track state: `open`
 
 | # | rung | deliverable | exit proof |
 | --- | --- | --- | --- |
-| 1.3 | ARENA-PARTICIPANT-DEPRECATION-0 | Phase 1: eliminate the synthetic participation wrapper, its scaffold, and reserv | **DA-GRADUATED / merged [#1459](https://github.com/khorum08/SimThing/pull/1459) @ HEAD `cc29b588`** — ZERO ArenaParti... |
-| 2.1 | OVERLAY-EFFECT-HOST-ADMISSION-0 | Phase 2: close the effect-target v0 trap — host placement + `overlay_hosts` admi | Misdelivery fixture hard-errors at admission; capability effects land on resolved hosts; corpus green. |
+| 2.1 | OVERLAY-EFFECT-HOST-ADMISSION-0 | Phase 2: close the effect-target v0 trap — host placement + `overlay_hosts` admi | **DA-GRADUATED / merged [#1461](https://github.com/khorum08/SimThing/pull/1461) @ HEAD `1d09fede`** — misdelivery = s... |
 | 2.2 | CAPABILITY-PREREQ-DAG-ADMISSION-0 | Phase 2: tiered + mutual prerequisites as admission-validated typed DAG; `max_ac | Cycle/dangling fixtures span at admission; unlock+sibling-suspend atomic at one barrier; replay green. |
 | 2.3 | ORDER-WEIGHT-CLASS-0 | Phase 2: authored finite order-weight class + `OverlaySource::Player` directive  | Destination-order exemplar drives a TP fleet via price dominance; RF-1 + bit-exact replay green. |
 | 3.1 | SPECIALIZATION-PROTOCOL-0 | Phase 3: the richer-than-kind protocol, kind-compatible (promotion not rewrite). | Existing full suite passes UNMODIFIED; protocol admits spatial/owner/session declarations. |
@@ -92,7 +91,7 @@ Track state: `open`
 
 ## Next Rung Pointer
 
-Active pointer: `OVERLAY-EFFECT-HOST-ADMISSION-0`
+Active pointer: `CAPABILITY-PREREQ-DAG-ADMISSION-0`
 
 
 ## Cold-Start Spine (constitutional pointers)
