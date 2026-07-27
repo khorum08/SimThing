@@ -19,7 +19,6 @@ use crate::field_scheduler::{
 };
 
 pub const TRAVERSAL_FIELD_UTILITY_ID: &str = "min_plus_traversal_field_v1";
-pub const TRAVERSAL_FIELD_BAND_DEFAULT_ENABLED: bool = false;
 
 pub const TRAVERSAL_FIELD_ID: FieldId = FieldId(0xF1EE_0001);
 pub const TRAVERSAL_FIELD_REGION_ID: FieldRegionId = FieldRegionId(0);
@@ -123,13 +122,14 @@ pub enum TraversalFieldBandError {
     GridcellIdCount { expected: usize, actual: usize },
     #[error("shadow buffer too short: need {required}, got {actual}")]
     ShadowTooShort { required: usize, actual: usize },
-    #[error("traversal field band is disabled")]
-    Disabled,
 }
 
-/// Opt-in traversal field band: [`FieldScheduler`] cadence + generic GPU utility.
+/// Admitted traversal field band: [`FieldScheduler`] cadence + generic GPU utility.
+///
+/// SESSION-WIRING-KILL-SWEEP-0: session opt-in `enable()`/`disable()` is gone. Constructing
+/// this session **is** admission of the band registration; absence of a session is the off
+/// state. Cadence still gates which ticks dispatch.
 pub struct TraversalFieldBandSession {
-    enabled: bool,
     cadence_tick: u32,
     scheduler: FieldScheduler,
     binding: TraversalFieldGridBinding,
@@ -142,6 +142,7 @@ pub struct TraversalFieldBandSession {
 pub struct TraversalFieldDispatchReport {
     pub utility_id: &'static str,
     pub cadence_tick: u32,
+    /// Always true when a session exists (admission-derived on). Session wiring toggle removed.
     pub enabled: bool,
     pub scheduled: bool,
     pub execution_mode: MinPlusTraversalExecutionMode,
@@ -170,25 +171,12 @@ impl TraversalFieldBandSession {
             dirty: crate::field_scheduler::DirtyRegionState::default(),
         });
         Ok(Self {
-            enabled: TRAVERSAL_FIELD_BAND_DEFAULT_ENABLED,
             cadence_tick: 0,
             scheduler,
             binding,
             op: None,
             last_dispatch: None,
         })
-    }
-
-    pub fn enabled(&self) -> bool {
-        self.enabled
-    }
-
-    pub fn enable(&mut self) {
-        self.enabled = true;
-    }
-
-    pub fn disable(&mut self) {
-        self.enabled = false;
     }
 
     pub fn binding(&self) -> &TraversalFieldGridBinding {
@@ -400,16 +388,7 @@ impl TraversalFieldBandSession {
         let mode = request.mode;
         let cadence_tick = self.cadence_tick;
 
-        if !self.enabled {
-            self.cadence_tick += 1;
-            return Ok(empty_dispatch_report(
-                cadence_tick,
-                false,
-                mode,
-                w_input_kind,
-            ));
-        }
-
+        // Admission = session existence (registration in `new`). Cadence still gates dispatch.
         let (decisions, scheduler_report) = self.scheduler.decide_tick(cadence_tick)?;
         let scheduled = decisions.iter().any(|d| {
             d.field_id == TRAVERSAL_FIELD_ID
@@ -499,29 +478,4 @@ struct ScheduledTraversalDispatch<'a> {
     mode: MinPlusTraversalExecutionMode,
     w_oracle: Option<&'a [f32]>,
     shadow_writeback: bool,
-}
-
-fn empty_dispatch_report(
-    cadence_tick: u32,
-    enabled: bool,
-    mode: MinPlusTraversalExecutionMode,
-    w_input_kind: TraversalFieldWInputKind,
-) -> TraversalFieldDispatchReport {
-    TraversalFieldDispatchReport {
-        utility_id: TRAVERSAL_FIELD_UTILITY_ID,
-        cadence_tick,
-        enabled,
-        scheduled: false,
-        execution_mode: mode,
-        w_input_kind,
-        dispatch: None,
-        shadow_writeback: false,
-        scheduler_report: FieldSchedulerReport {
-            total_regions: 0,
-            scheduled_regions: 0,
-            skipped_regions: 0,
-            skip_ratio: 0.0,
-            false_skip_count: 0,
-        },
-    }
 }

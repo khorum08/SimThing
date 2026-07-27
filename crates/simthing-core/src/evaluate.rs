@@ -4,7 +4,7 @@
 //!   - Single-threaded and deterministic. No rayon here.
 //!   - Reads properties and applies transforms in a consistent order.
 //!   - Does NOT mutate the SimThing tree (no fission/fusion). That belongs to
-//!     the day-boundary protocol.
+//!     the generation-boundary protocol.
 //!   - Returns a `FieldSnapshot` so callers can diff against GPU output.
 
 use crate::ids::SimPropertyId;
@@ -60,7 +60,10 @@ pub struct EntitySnapshot {
 /// Complete evaluated world state. Used as oracle vs. GPU output.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct FieldSnapshot {
-    pub day: u32,
+    /// Generation stamp for this snapshot (P0 generation ruling).
+    /// Serde alias preserves legacy wire field name for load compatibility.
+    #[serde(alias = "day")]
+    pub generation: u32,
     pub entities: Vec<EntitySnapshot>,
 }
 
@@ -85,10 +88,13 @@ impl<'r> Evaluator<'r> {
         }
     }
 
-    pub fn evaluate(&self, root: &SimThing, day: u32) -> FieldSnapshot {
+    pub fn evaluate(&self, root: &SimThing, generation: u32) -> FieldSnapshot {
         let mut entities = Vec::new();
         self.evaluate_node(root, &TransformStack::default(), &mut entities);
-        FieldSnapshot { day, entities }
+        FieldSnapshot {
+            generation,
+            entities,
+        }
     }
 
     fn evaluate_node(
@@ -205,4 +211,11 @@ mod tests {
         }
     }
 
+    /// SESSION-WIRING-KILL-SWEEP-0: legacy wire field loads into generation stamp.
+    #[test]
+    fn field_snapshot_deserializes_legacy_day_alias() {
+        let json = r#"{"day":7,"entities":[]}"#;
+        let snap: FieldSnapshot = serde_json::from_str(json).expect("legacy alias load");
+        assert_eq!(snap.generation, 7);
+    }
 }

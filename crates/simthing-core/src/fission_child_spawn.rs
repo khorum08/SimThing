@@ -31,14 +31,17 @@ impl<'a> ResolvedFissionChildBlueprint<'a> {
         Self { template }
     }
 
-    pub fn spawn(self, current_day: u32) -> SimThing {
-        SimThing::new(kind_tag_to_kind(&self.template.child_kind), current_day)
+    pub fn spawn(self, current_generation: u32) -> SimThing {
+        SimThing::new(
+            kind_tag_to_kind(&self.template.child_kind),
+            current_generation,
+        )
     }
 }
 
 impl FissionTemplate {
-    pub fn spawn_child(&self, current_day: u32) -> SimThing {
-        ResolvedFissionChildBlueprint::from_template(self).spawn(current_day)
+    pub fn spawn_child(&self, current_generation: u32) -> SimThing {
+        ResolvedFissionChildBlueprint::from_template(self).spawn(current_generation)
     }
 }
 

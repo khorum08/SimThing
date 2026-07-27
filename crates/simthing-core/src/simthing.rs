@@ -88,12 +88,14 @@ pub struct SimThing {
     pub overlays: Vec<Overlay>,
     /// Physical spatial children (locations own cohorts; systems own locations; etc.)
     pub children: Vec<SimThing>,
-    /// Day this SimThing was created (set at spawn).
-    pub spawned_day: u32,
+    /// Generation this SimThing was created (set at spawn; P0 generation ruling).
+    /// Serde aliases preserve legacy wire field names for load compatibility.
+    #[serde(alias = "spawned_day", alias = "day")]
+    pub spawned_generation: u32,
 }
 
 impl SimThing {
-    pub fn new(kind: SimThingKind, spawned_day: u32) -> Self {
+    pub fn new(kind: SimThingKind, spawned_generation: u32) -> Self {
         Self {
             id: SimThingId::new(),
             kind,
@@ -101,7 +103,7 @@ impl SimThing {
             resource_parent_edges: Vec::new(),
             overlays: Vec::new(),
             children: Vec::new(),
-            spawned_day,
+            spawned_generation,
         }
     }
 
@@ -213,4 +215,18 @@ pub fn is_arena_participant_node(node: &SimThing) -> bool {
 mod tests {
     use super::*;
 
+    /// SESSION-WIRING-KILL-SWEEP-0: legacy wire field loads into spawned_generation.
+    #[test]
+    fn spawned_generation_deserializes_legacy_spawned_day_alias() {
+        let json = r#"{
+            "id": 1,
+            "kind": "World",
+            "properties": [],
+            "overlays": [],
+            "children": [],
+            "spawned_day": 42
+        }"#;
+        let thing: SimThing = serde_json::from_str(json).expect("legacy alias load");
+        assert_eq!(thing.spawned_generation, 42);
+    }
 }
