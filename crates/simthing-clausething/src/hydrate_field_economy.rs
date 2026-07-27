@@ -1606,6 +1606,8 @@ fn lower_field_economy(
                 install: InstallTargetSpec::ScenarioListed {
                     target_id: overlay.owner.clone(),
                 },
+                order_weight_class: None,
+                source_span_token: None,
             }),
     );
 
@@ -1772,6 +1774,8 @@ fn location_overlay(
         install: InstallTargetSpec::ScenarioListed {
             target_id: location.to_string(),
         },
+        order_weight_class: None,
+        source_span_token: None,
     }
 }
 

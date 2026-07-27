@@ -115,6 +115,7 @@ fn sparse_owned_row_fixture() -> (Scenario, GameModeSpec) {
         domain_packs: Vec::new(),
         properties: Vec::new(),
         overlays: Vec::new(),
+        order_weight_classes: vec![],
         capability_trees: Vec::new(),
         events: Vec::new(),
         resource_flow: Some(ResourceFlowSpec {

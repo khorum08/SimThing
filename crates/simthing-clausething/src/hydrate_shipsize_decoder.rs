@@ -392,6 +392,7 @@ pub fn hydrate_shipsize_decoder_pack(
             domain_packs: vec![],
             properties: game_properties,
             overlays,
+            order_weight_classes: vec![],
             capability_trees,
             events,
             resource_flow: if gated_rates.is_empty() {
@@ -540,6 +541,11 @@ fn build_overlay(
         kind: OverlayKind::Policy,
         source: OverlaySource::Player,
         install: overlay_install_for_key(decoded, custom_kinds),
+
+        order_weight_class: None,
+
+        source_span_token: None,
+
     })
 }
 
@@ -690,6 +696,7 @@ fn parse_triggered_modifier_block(
         cooldown: None,
         priority: Default::default(),
         install: InstallTargetSpec::SessionRoot,
+
     });
     Ok(())
 }

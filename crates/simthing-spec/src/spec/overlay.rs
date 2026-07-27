@@ -25,4 +25,12 @@ pub struct OverlaySpec {
     /// `SessionRoot` so existing RON omits the field.
     #[serde(default = "default_overlay_install")]
     pub install: InstallTargetSpec,
+    /// Optional order-weight class id (ORDER-WEIGHT-CLASS-0). When set, this
+    /// overlay is an operator directive: source must be `Player`, magnitude
+    /// must match the named finite class, and non-finite values are rejected.
+    #[serde(default)]
+    pub order_weight_class: Option<String>,
+    /// Optional source span for admission diagnostics.
+    #[serde(default)]
+    pub source_span_token: Option<usize>,
 }

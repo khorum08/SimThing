@@ -318,6 +318,7 @@ fn base_game_mode(id: &str) -> GameModeSpec {
         domain_packs: vec![],
         properties: vec![],
         overlays: vec![],
+        order_weight_classes: vec![],
         capability_trees: vec![],
         events: vec![],
         resource_flow: None,

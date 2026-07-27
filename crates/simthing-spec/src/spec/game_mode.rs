@@ -17,6 +17,10 @@ pub struct GameModeSpec {
     pub properties: Vec<super::property::PropertySpec>,
     #[serde(default)]
     pub overlays: Vec<super::overlay::OverlaySpec>,
+    /// Authored finite order-weight classes (ORDER-WEIGHT-CLASS-0).
+    /// Operator directives that claim dominance must reference a class id.
+    #[serde(default)]
+    pub order_weight_classes: Vec<super::order_weight::OrderWeightClassSpec>,
     #[serde(default)]
     pub capability_trees: Vec<super::capability::CapabilityTreeSpec>,
     #[serde(default)]

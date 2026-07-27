@@ -53,6 +53,7 @@ pub mod ron;
 pub mod runtime;
 pub mod spec;
 pub mod validate;
+pub mod validate_order_weight;
 pub mod version;
 
 pub use boundary::{
@@ -437,6 +438,7 @@ pub use spec::local_participant_effects::{
     LocalParticipantEffectsDeferralKind, LocalParticipantEffectsError,
     LocalParticipantEffectsErrorKind, LocalParticipantEffectsReport, RuntimeLocalParticipantEffect,
 };
+pub use spec::order_weight::OrderWeightClassSpec;
 pub use spec::overlay::OverlaySpec;
 pub use spec::owner_silo_disburse_down::{
     apply_owner_silo_runtime_disburse_down_cpu, owner_silo_demand_aggregate_totals,
@@ -754,4 +756,5 @@ pub use spec::w_impedance_compose::{
     W_IMPEDANCE_COMPOSE_MAX_PROFILES,
 };
 pub use validate::validate_capability_tree;
+pub use validate_order_weight::{validate_order_weight_classes, validate_order_weight_overlay};
 pub use version::SpecVersion;
