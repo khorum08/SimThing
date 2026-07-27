@@ -1,7 +1,7 @@
 //! E-11 boundary/session sync for resource-flow AccumulatorOp planning.
 
-use simthing_core::{DimensionRegistry, EmlExpressionRegistry};
-use simthing_gpu::{build_governed_pairs, WorldGpuState};
+use simthing_core::{DimensionRegistry, EmlExpressionRegistry, SourceSpec};
+use simthing_gpu::{build_governed_pairs, PackedAccumulatorUpload, WorldGpuState};
 
 use crate::arena_allocation_plan::{
     append_residual_closure_ops, plan_arena_allocation, ArenaAllocationPlan,
@@ -27,6 +27,8 @@ pub enum ResourceFlowSyncError {
     Hierarchy(#[from] HierarchyError),
     #[error(transparent)]
     OpUpload(#[from] simthing_gpu::AccumulatorOpSessionError),
+    #[error("resource-flow sparse input-list encoding failed: {0}")]
+    SparseInputListEncoding(String),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -158,6 +160,7 @@ pub(crate) fn sync_resource_flow_accumulator_with_options(
     }
 
     state.sync_resource_flow_ops_from_cpu(&combined_cpu, max_bands, &eml_registry)?;
+    resolve_sparse_input_lists(state, &combined_cpu, max_bands)?;
 
     Ok(ResourceFlowSyncReport {
         arenas_planned: plan.arenas.len() as u32,
@@ -165,6 +168,64 @@ pub(crate) fn sync_resource_flow_accumulator_with_options(
         n_bands: max_bands,
         enabled: true,
     })
+}
+
+/// Resolve sparse RF reductions through the substrate's admitted INPUT_LIST source.
+///
+/// `sync_resource_flow_ops_from_cpu` resolves the EML program ranges for the complete op set.
+/// The packed list upload then installs the explicit source rows, and the final pre-encoded
+/// upload retains that list buffer while restoring the complete EML-resolved op set. Dispatch
+/// cannot occur between these boundary-time uploads.
+fn resolve_sparse_input_lists(
+    state: &mut WorldGpuState,
+    ops: &[simthing_core::AccumulatorOp],
+    n_bands: u32,
+) -> Result<(), ResourceFlowSyncError> {
+    let sparse_ops: Vec<_> = ops
+        .iter()
+        .filter(|op| matches!(op.source, SourceSpec::ConjunctiveCrossing { .. }))
+        .cloned()
+        .collect();
+    if sparse_ops.is_empty() {
+        return Ok(());
+    }
+
+    let sparse_upload = PackedAccumulatorUpload::from_ops_resolving_input_lists(&sparse_ops)
+        .map_err(|err| ResourceFlowSyncError::SparseInputListEncoding(err.to_string()))?;
+    let mut patched_gpu_ops = state
+        .accumulator_runtime
+        .as_ref()
+        .expect("resource-flow runtime exists after logical upload")
+        .resource_flow_gpu_ops()
+        .to_vec();
+    let mut resolved_sparse = sparse_upload.ops().iter();
+    for (logical, gpu) in ops.iter().zip(&mut patched_gpu_ops) {
+        if matches!(logical.source, SourceSpec::ConjunctiveCrossing { .. }) {
+            let resolved = resolved_sparse
+                .next()
+                .expect("one packed input-list row per sparse logical op");
+            gpu.source_kind = resolved.source_kind;
+            gpu.source_slot = resolved.source_slot;
+            gpu.source_col = resolved.source_col;
+            gpu.source_count = resolved.source_count;
+        }
+    }
+    assert!(
+        resolved_sparse.next().is_none(),
+        "all packed sparse input-list rows must be consumed"
+    );
+
+    let ctx = &state.ctx;
+    let runtime = state
+        .accumulator_runtime
+        .as_mut()
+        .expect("resource-flow runtime exists after logical upload");
+    runtime
+        .resource_flow_session_mut()
+        .expect("resource-flow session exists after logical upload")
+        .upload_packed_ops(ctx, &sparse_upload)?;
+    runtime.upload_resource_flow_ops(ctx, &patched_gpu_ops, n_bands)?;
+    Ok(())
 }
 
 #[cfg(test)]

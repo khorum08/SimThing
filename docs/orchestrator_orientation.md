@@ -45,9 +45,9 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 211b860c2a424d0386a01a2dc93d5c563abfd1411c1f58ec55c7b69d97426cb8 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | 26eab30ec86c97ac8dfd6beef7ae8c5b4d3f18c38fdaa431ec40ccce855396d3 |
-| design_0_0_8_7_rf_arena_modernization.md | 0722f86465c86083a72eda20b2f7ee1148692677d130def71c12dfb69b92cbb1 |
+| design_0_0_8_7_rf_arena_modernization.md | b3a34708af85c01add42caf5e87226b3a6b91eb9e5762d70daec440ebff9cca8 |
 | relay_lint.sh | 4163f715cdc3b549dbf57c1744aff61ea96b9f9f0a2237376665fbdb24e986c8 |
-| doctrine_anchors.tsv | c7296a3fec66bb25bdf0042294c019aaa6aac65ab853c4913641fa53774eaf4d |
+| doctrine_anchors.tsv | 08a34b6dac78478d2154fcd2735cf4a3f87a670d925805814cca0a8079448a84 |
 | execution_status_taxonomy.tsv | 377af7d8b4a403a63b04c32283f9669ae363dcfced008f7d0fcec11944f59feb |
 | execution_status_mixed_posture.tsv | 76b7246da5e2cb9680194bc30a79acc4126aaa89beb52447a0fc509e1495b1e8 |
 | execution_status_non_execution.tsv | 214c1b557dfd3fc465f0171051e20281ff1dcf6c53128dbb29cba01524f9be02 |
@@ -63,7 +63,7 @@ Track state: `open`
 | # | rung | deliverable | exit proof |
 | --- | --- | --- | --- |
 | 1.2 | SESSION-WIRING-KILL-SWEEP-0 | Phase 1: kill remaining opt-in toggles incl. `min_plus_traversal_field` enable/d | **DA-GRADUATED / merged [#1456](https://github.com/khorum08/SimThing/pull/1456) @ HEAD `dc53dfa8`** — toggles dead (c... |
-| 1.3 | ARENA-PARTICIPANT-DEPRECATION-0 | Phase 1: eliminate the synthetic participation wrapper, its scaffold, and reserv | **IMPLEMENTED / pending DA** — wrapper kind/module absent; consumers resolve own-row slots; sparse child rows compile... |
+| 1.3 | ARENA-PARTICIPANT-DEPRECATION-0 | Phase 1: eliminate the synthetic participation wrapper, its scaffold, and reserv | **IMPLEMENTED / pending DA** — wrapper kind/module absent; consumers resolve own-row slots; sparse child sets lower t... |
 | 2.1 | OVERLAY-EFFECT-HOST-ADMISSION-0 | Phase 2: close the effect-target v0 trap — host placement + `overlay_hosts` admi | Misdelivery fixture hard-errors at admission; capability effects land on resolved hosts; corpus green. |
 | 2.2 | CAPABILITY-PREREQ-DAG-ADMISSION-0 | Phase 2: tiered + mutual prerequisites as admission-validated typed DAG; `max_ac | Cycle/dangling fixtures span at admission; unlock+sibling-suspend atomic at one barrier; replay green. |
 | 2.3 | ORDER-WEIGHT-CLASS-0 | Phase 2: authored finite order-weight class + `OverlaySource::Player` directive  | Destination-order exemplar drives a TP fleet via price dominance; RF-1 + bit-exact replay green. |

@@ -1,7 +1,8 @@
 //! E-11 AccumulatorOp planner (memo §2.3).
 
 use simthing_core::{
-    AccumulatorOp, ColumnIndex, CombineFn, ConsumeMode, GateSpec, ScaleSpec, SlotIndex, SourceSpec,
+    AccumulatorOp, ColumnIndex, CombineFn, ConsumeMode, GateSpec, InputSpec, ScaleSpec, SlotIndex,
+    SourceSpec,
 };
 use simthing_gpu::{plan_governed_integration_at_band, GovernedPair, PlannerError};
 use thiserror::Error;
@@ -296,7 +297,7 @@ fn sum_reduction_ops(
             source: SourceSpec::SlotRange {
                 start: SlotIndex::new(start),
                 count,
-                col: ColumnIndex::new(source_col as usize),
+                col: ColumnIndex::from_gpu_round_trip(source_col),
             },
             combine: CombineFn::Sum,
             gate: GateSpec::OrderBand(band),
@@ -304,30 +305,21 @@ fn sum_reduction_ops(
             consume: ConsumeMode::ResetTarget,
             targets: vec![(
                 SlotIndex::new(parent_slot),
-                ColumnIndex::new(target_col as usize),
+                ColumnIndex::from_gpu_round_trip(target_col),
             )],
         }];
     }
-    parent
-        .children
-        .iter()
-        .enumerate()
-        .map(|(index, child)| {
-            slot_value_op(
-                child.participant_slot.raw(),
-                source_col,
-                parent_slot,
-                target_col,
-                band,
-                if index == 0 {
-                    ConsumeMode::ResetTarget
-                } else {
-                    ConsumeMode::AddToTarget
-                },
-                ScaleSpec::Identity,
-            )
-        })
-        .collect()
+    vec![AccumulatorOp {
+        source: sparse_child_input_list(parent, source_col),
+        combine: CombineFn::Sum,
+        gate: GateSpec::OrderBand(band),
+        scale: ScaleSpec::Identity,
+        consume: ConsumeMode::ResetTarget,
+        targets: vec![(
+            SlotIndex::new(parent_slot),
+            ColumnIndex::from_gpu_round_trip(target_col),
+        )],
+    }]
 }
 
 fn broadcast_op(
@@ -385,7 +377,7 @@ fn sum_accumulation_ops(
             source: SourceSpec::SlotRange {
                 start: SlotIndex::new(start),
                 count,
-                col: ColumnIndex::new(source_col as usize),
+                col: ColumnIndex::from_gpu_round_trip(source_col),
             },
             combine: CombineFn::Sum,
             gate: GateSpec::OrderBand(band),
@@ -393,25 +385,35 @@ fn sum_accumulation_ops(
             consume: ConsumeMode::AddToTarget,
             targets: vec![(
                 SlotIndex::new(parent_slot),
-                ColumnIndex::new(target_col as usize),
+                ColumnIndex::from_gpu_round_trip(target_col),
             )],
         }];
     }
-    parent
-        .children
-        .iter()
-        .map(|child| {
-            slot_value_op(
-                child.participant_slot.raw(),
-                source_col,
-                parent_slot,
-                target_col,
-                band,
-                ConsumeMode::AddToTarget,
-                ScaleSpec::Identity,
-            )
-        })
-        .collect()
+    vec![AccumulatorOp {
+        source: sparse_child_input_list(parent, source_col),
+        combine: CombineFn::Sum,
+        gate: GateSpec::OrderBand(band),
+        scale: ScaleSpec::Identity,
+        consume: ConsumeMode::AddToTarget,
+        targets: vec![(
+            SlotIndex::new(parent_slot),
+            ColumnIndex::from_gpu_round_trip(target_col),
+        )],
+    }]
+}
+
+fn sparse_child_input_list(parent: &HierarchyNode, source_col: u32) -> SourceSpec {
+    SourceSpec::ConjunctiveCrossing {
+        inputs: parent
+            .children
+            .iter()
+            .map(|child| InputSpec {
+                slot: child.participant_slot,
+                col: ColumnIndex::from_gpu_round_trip(source_col),
+                unit_cost: 1.0,
+            })
+            .collect(),
+    }
 }
 
 fn const_broadcast_op(value: f32, dst_slot: u32, dst_col: u32, band: u32) -> AccumulatorOp {
@@ -554,27 +556,49 @@ mod tests {
     }
 
     #[test]
-    fn sparse_child_rows_compile_through_existing_slot_value_ops() {
+    fn sparse_child_rows_compile_to_one_ordered_input_list_writer() {
         let mut layout = d2_layout();
-        let root = &mut layout.participant_roots[0];
-        let mut second = root.children[0].clone();
-        second.participant_slot = SlotIndex::new(13);
-        root.children.push(second);
+        {
+            let root = &mut layout.participant_roots[0];
+            let mut second = root.children[0].clone();
+            second.participant_slot = SlotIndex::new(13);
+            root.children.push(second);
+        }
 
         let plan = plan_arena_allocation(&layout, &[], 16).expect("sparse rows plan");
-        let sparse_sources: Vec<u32> = plan
+        let root = &layout.participant_roots[0];
+        let root_slot = root.participant_slot;
+        let sparse_weight_sum_ops: Vec<_> = plan
             .cpu_ops
             .iter()
-            .filter_map(|op| match op.source {
-                SourceSpec::SlotValue { slot, .. }
-                    if slot == SlotIndex::new(11) || slot == SlotIndex::new(13) =>
-                {
-                    Some(slot.raw())
-                }
-                _ => None,
+            .filter(|op| {
+                op.gate == GateSpec::OrderBand(layout.band_layout.upsweep_band(0, 2))
+                    && op.targets
+                        == vec![(
+                            root_slot,
+                            ColumnIndex::from_raw_for_oracle_or_rehearsal(
+                                root.cols.weight_sum_col as usize,
+                            ),
+                        )]
             })
             .collect();
-        assert!(sparse_sources.contains(&11));
-        assert!(sparse_sources.contains(&13));
+        assert_eq!(
+            sparse_weight_sum_ops.len(),
+            1,
+            "a sparse reduction target must have exactly one writer in its band"
+        );
+        assert_eq!(sparse_weight_sum_ops[0].combine, CombineFn::Sum);
+        assert_eq!(sparse_weight_sum_ops[0].consume, ConsumeMode::ResetTarget);
+        let SourceSpec::ConjunctiveCrossing { inputs } = &sparse_weight_sum_ops[0].source else {
+            panic!("sparse children must lower through the admitted input-list source");
+        };
+        assert_eq!(
+            inputs
+                .iter()
+                .map(|input| input.slot.raw())
+                .collect::<Vec<_>>(),
+            vec![11, 13],
+            "input-list order must preserve hierarchy child order"
+        );
     }
 }

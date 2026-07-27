@@ -43,6 +43,7 @@ crates/simthing-driver/tests/support/e11_nested.rs	simthing-driver-test	fixed-no
 crates/simthing-driver/tests/support/e11_resource_flow_soak.rs	simthing-driver-test	fixed-now
 crates/simthing-driver/tests/support/e2b5_dynamic_enrollment_soak.rs	simthing-driver-test	fixed-now
 crates/simthing-driver/tests/support/mod.rs	simthing-driver-test	fixed-now
+crates/simthing-driver/tests/arena_participant_elimination_0.rs	simthing-driver-test	fixed-now
 crates/simthing-workshop/tests/rf_execute_recursive_default_0.rs	simthing-workshop-test	fixed-now
 crates/simthing-workshop/tests/rf_need_binding_authoring_0.rs	simthing-workshop-test	fixed-now
 crates/simthing-workshop/tests/tp_field_session_elevate_0.rs	simthing-workshop-test	fixed-now
@@ -54,5 +55,10 @@ docs/tests/arena_participant_elimination_ledger.tsv	elimination-ledger	fixed-now
 scripts/ci/test_inventory.tsv	ci-test-lifecycle	fixed-now
 # Economics baseline (before): RF2-EXECUTED-DEFAULT depth=3 bands=12 named_child_marginal=5.5 sibling_aggregate=5.375 owner_aggregate_with=10.875 owner_aggregate_without=5.375 leaf_allocations_with=[4.5750003,12.200001,6.1000004] leaf_allocations_without=[3.4750001,9.266667,4.6333337] owner_residual=-0.0000019073486.
 # Economics result (after): byte-for-byte identical verdict line; test PASS.
-# TP integration baseline/result: existing FAIL at named child base obligation at line 248 before and after; assertion and failure are unchanged and are not a regression introduced here.
+# Sparse GPU disposition: sparse child reductions lower to one ordered INPUT_LIST Sum writer per target/band through existing op/band machinery; no kernel or WGSL semantic change.
+# Dynamic-enrollment disposition: base 77ed81a631ef5256f03b7a7c53ef3dc7000a8f2b had no external call site for tests/support/e2b5_dynamic_enrollment_soak.rs; only tests/support/mod.rs declared the dead module. Its replacement live-GPU referee proves child-owned-row admission, retained parent edge, one generation bump, stable repeated resync, RF-1, and exact replay.
+# TP successful baseline/result: canonical_policy_weights_diverge_live_production_disruption_and_construction PASS at base 77ed81a631ef5256f03b7a7c53ef3dc7000a8f2b and final tree; exact TP12_10_PAIRED fingerprint diff EMPTY: ticks=8 productive={production:318 disruption:70 suppression:2 crossings:1} tension={production:280 disruption:32 suppression:40 crossings:0} divergence={production:38 suppression:38 crossings:1}.
+# Deleted-support census: at base 77ed81a631ef5256f03b7a7c53ef3dc7000a8f2b, e2b5_dynamic_enrollment_soak had exactly one reference outside its own file (the support/mod.rs declaration) and zero external call sites.
+# Zero-reference allowlist: executable/authoring scan roots crates,scripts,scenarios with extensions rs,ron,json,wgsl must contain zero ArenaParticipant/arena_participant/scaffold/materializer tokens; remaining full-tree hits are restricted to the exact canonical handoff, historical evidence files, and ledger/test-inventory prose enumerated in the landing report.
+# Fresh orientation: ORIENT-RECEIPT 16b366e49528; orientation_rule_stamp 76fd13d17f16f2f7.
 # Deferred rows: none.
