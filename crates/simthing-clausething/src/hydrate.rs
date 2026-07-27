@@ -496,6 +496,7 @@ fn parse_tradition_effect_block(
     };
 
     let mut targets_property = None;
+    let mut targets_property_span = None;
     let mut amount_mult = None;
     let mut amount_add = None;
 
@@ -503,6 +504,9 @@ fn parse_tradition_effect_block(
         match field.key.text.as_str() {
             "targets_property" => {
                 targets_property = Some(read_scalar_text(field, "targets_property")?);
+                if let RawValue::Scalar(reference) = &field.value {
+                    targets_property_span = Some(reference.span.token_index);
+                }
             }
             "amount_mult" => amount_mult = Some(read_scalar_f32(field, "amount_mult")?),
             "amount_add" => amount_add = Some(read_scalar_f32(field, "amount_add")?),
@@ -537,7 +541,7 @@ fn parse_tradition_effect_block(
         sub_field_deltas: vec![(SubFieldRole::Amount, transform)],
         when_activated: OverlayLifecycle::Permanent,
         effect_target: EffectTarget::Owner,
-        source_span_token: Some(property.key.span.token_index),
+        source_span_token: targets_property_span,
     })
 }
 
