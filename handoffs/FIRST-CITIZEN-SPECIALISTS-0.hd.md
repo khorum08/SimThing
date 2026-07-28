@@ -14,29 +14,11 @@ required_checks: ["cargo build --workspace", "full simthing-driver battery on li
 stop_conditions: ["stale-orient-receipt", "scope-widening", "an-enrichment-requires-a-new-requirement-kind (DA-route; do not improvise)", "guard-false-fires-on-legitimate-hydration-output"]
 ---
 ## BUILD
-- Make the three citizens fully AUTHORABLE (ANCHOR-ACK core-0087): extend the
-  `specialization = <profile>` clause key from owner blocks to location and entity blocks in
-  `hydrate_scenario.rs` (same scalar-token span capture; same
-  `DeclaredSpecialization{profile, span_token}` threading). Referee: an authored Location
-  declaring `spatial` admits when placed and spans correctly when unplaced; an entity
-  declaring `owner-seat` spans (Kind requirement unmet) with the exact token.
-- **Out-of-band stamp guard (3.1 graduation fence):** the typed
-  `OWNER_POLICY_WEIGHT_AUTHORITY` stamp may be written ONLY by hydration's field-economy
-  derivation. Add a HEURISTIC scans.tsv tripwire flagging authored scenario sources (clause /
-  scenario JSON fixtures) that mint property id `8_300_318` directly, + known_bad fixture +
-  selftest; INSPECT-only, reach-log wired (0.3 pattern). Legitimate hydration output must
-  stay quiet (delta-scoped, net-new only).
-- **Citizen observability (Consumer Law):** surface per-profile conformance counts
-  (spatial / owner-seat / session-root totals from `SpecSessionState.specialization`) through
-  the existing board/orientation generation path (0.2 execution-status pattern — generator
-  source, never hand-edited mirrors). Regression coverage for the render.
-- Doctrine-CI co-evolution rides the PR; stamp 3.2 + advance posture row to
-  `ROW-SLOT-OBJECT-SEMANTICS-0` (Phase 4) in-diff; regen orientation.
+- Make the three citizens fully AUTHORABLE (ANCHOR-ACK core-0087): extend the `specialization = <profile>` clause key from owner blocks to location and entity blocks in `hydrate_scenario.rs` (same scalar-token span capture; same `DeclaredSpecialization{profile, span_token}` threading). Referee: an authored Location declaring `spatial` admits when placed and spans correctly when unplaced; an entity declaring `owner-seat` spans (Kind requirement unmet) with the exact token.
+- **Out-of-band stamp guard (3.1 graduation fence):** the typed `OWNER_POLICY_WEIGHT_AUTHORITY` stamp may be written ONLY by hydration's field-economy derivation. Add a HEURISTIC scans.tsv tripwire flagging authored scenario sources (clause / scenario JSON fixtures) that mint property id `8_300_318` directly, + known_bad fixture + selftest; INSPECT-only, reach-log wired (0.3 pattern). Legitimate hydration output must stay quiet (delta-scoped, net-new only).
+- **Citizen observability (Consumer Law):** surface per-profile conformance counts (spatial / owner-seat / session-root totals from `SpecSessionState.specialization`) through the existing board/orientation generation path (0.2 execution-status pattern — generator source, never hand-edited mirrors). Regression coverage for the render.
+- Doctrine-CI co-evolution rides the PR; stamp 3.2 + advance posture row to `ROW-SLOT-OBJECT-SEMANTICS-0` (Phase 4) in-diff; regen orientation.
 ## FENCES
-- Profiles-as-data only: zero new requirement kinds, zero runtime consultation, zero
-  existing-test edits (full battery UNMODIFIED is the falsifier). The guard is INSPECT-only.
+- Profiles-as-data only: zero new requirement kinds, zero runtime consultation, zero existing-test edits (full battery UNMODIFIED is the falsifier). The guard is INSPECT-only.
 ## EXIT-PROOF
-- Authored-declaration referees green (location + entity, positive + spanned negatives);
-  guard fixture fires + clean tree quiet + reach-log append proven; board/orientation render
-  the citizen counts with regression coverage; workspace build + full driver battery green
-  UNMODIFIED on live GPU. Stamp + posture advance in-diff per the ritual.
+- Authored-declaration referees green (location + entity, positive + spanned negatives); guard fixture fires + clean tree quiet + reach-log append proven; board/orientation render the citizen counts with regression coverage; workspace build + full driver battery green UNMODIFIED on live GPU. Stamp + posture advance in-diff per the ritual.
