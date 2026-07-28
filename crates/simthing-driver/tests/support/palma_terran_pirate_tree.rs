@@ -73,13 +73,13 @@ impl PalmaAdmittedTree {
 
         let mut root = SimThing::new(SimThingKind::World, 0);
         let mut alloc = SlotAllocator::new();
-        alloc.alloc(root.id);
+        alloc.alloc_for_oracle_or_rehearsal(root.id);
 
         let location = with_id(
             SimThing::new(SimThingKind::Location, 0),
             location_simthing_id(),
         );
-        alloc.alloc(location.id);
+        alloc.alloc_for_oracle_or_rehearsal(location.id);
         root.add_child(location);
 
         let location_idx = root.children.len() - 1;
@@ -89,14 +89,14 @@ impl PalmaAdmittedTree {
                     SimThing::new(gridcell_kind(), 0),
                     gridcell_simthing_id(x, y),
                 );
-                alloc.alloc(cell.id);
+                alloc.alloc_for_oracle_or_rehearsal(cell.id);
                 root.children[location_idx].add_child(cell);
             }
         }
 
         let convoy_parent_gridcell_id = gridcell_simthing_id(CONVOY_START.0, CONVOY_START.1);
         let convoy = with_id(SimThing::new(SimThingKind::Fleet, 0), convoy_simthing_id());
-        alloc.alloc(convoy.id);
+        alloc.alloc_for_oracle_or_rehearsal(convoy.id);
 
         let cell = find_node_mut(&mut root, convoy_parent_gridcell_id)
             .expect("convoy start gridcell must exist in admitted tree");

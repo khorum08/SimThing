@@ -368,8 +368,8 @@ mod tests {
         let mut alloc = SlotAllocator::new();
         let a = SimThing::new(SimThingKind::Cohort, 0).id;
         let b = SimThing::new(SimThingKind::Cohort, 0).id;
-        alloc.alloc(a);
-        alloc.alloc(b);
+        alloc.alloc_for_oracle_or_rehearsal(a);
+        alloc.alloc_for_oracle_or_rehearsal(b);
         let n_dims = reg.total_columns as u32;
         (reg, alloc, n_dims)
     }
@@ -445,5 +445,4 @@ mod tests {
             commitment,
         )
     }
-
 }

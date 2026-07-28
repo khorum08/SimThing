@@ -142,6 +142,7 @@ overlay_prep | authority-export | Exported kernel module surface; authority-bear
 OverlayCompileCache | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
 OverlayDelta | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
 OverlayOrderBandPlan | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
+ObjectResidency | sealed-export | ROW-SLOT-OBJECT-SEMANTICS-0 kernel-minted object-to-row residency token with private fields | retire when object-derived residency is enforced by closed kernel type admission
 PackedAccumulatorUpload | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
 PackedIntentUpload | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
 PackedThresholdUpload | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
@@ -222,6 +223,7 @@ velocity_accumulator | authority-export | Exported kernel module surface; author
 VelocityAccumulatorPlan | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
 WEIGHT_COL_NONE | surface-inert | Inert public kernel constant | retire when kernel export set is closed by type-boundary admission
 WORKGROUP_SIZE | surface-inert | Inert public kernel constant | retire when kernel export set is closed by type-boundary admission
+wgsl_encode | authority-export | ROW-SLOT-OBJECT-SEMANTICS-0 single fenced raw WGSL encode boundary; no shader or opcode semantics | PLAN-STRUCT-TYPING-0 collapses round-trip mints into this boundary
 world_state | authority-export | Exported kernel module surface; authority-bearing namespace | retire when kernel export set is closed by type-boundary admission
 WorldAccumulatorRuntime | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
 WorldGpuState | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission

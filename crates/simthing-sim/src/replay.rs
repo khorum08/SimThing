@@ -328,15 +328,17 @@ impl ReplayDriver {
         let inner = self.root.inner_mut();
         match entry {
             BoundaryDeltaEntry::SimThingAdded { parent, node } => {
-                self.allocator.populate_from_tree(node.inner());
+                let node = node.into_admitted();
                 if let Some(p) = find_node_mut(inner, parent) {
-                    p.children.push(node.into_admitted());
+                    self.allocator.populate_subtree(p, &node);
+                    p.children.push(node);
                 }
             }
             BoundaryDeltaEntry::FissionOccurred { parent, node } => {
-                self.allocator.populate_from_tree(node.inner());
+                let node = node.into_admitted();
                 if let Some(p) = find_node_mut(inner, parent) {
-                    p.children.push(node.into_admitted());
+                    self.allocator.populate_subtree(p, &node);
+                    p.children.push(node);
                 }
             }
             BoundaryDeltaEntry::FissionLineageAdded { record } => {
@@ -380,6 +382,9 @@ impl ReplayDriver {
             BoundaryDeltaEntry::SimThingReparented { child, new_parent } => {
                 if let Some(subtree) = detach_subtree(inner, child) {
                     if let Some(parent) = find_node_mut(inner, new_parent) {
+                        self.allocator
+                            .reparent_residency(parent.child_residency_request(&subtree))
+                            .expect("replay reparent preserves admitted row identity");
                         parent.children.push(subtree);
                     }
                 }
@@ -399,12 +404,12 @@ impl ReplayDriver {
             }
             BoundaryDeltaEntry::SimThingRemoved { id } => {
                 if let Some(detached) = detach_subtree(inner, id) {
-                    tombstone_subtree(&detached, &mut self.allocator);
+                    self.allocator.release_subtree(&detached);
                 }
             }
             BoundaryDeltaEntry::FusionOccurred { parent: _, child } => {
                 if let Some(detached) = detach_subtree(inner, child) {
-                    tombstone_subtree(&detached, &mut self.allocator);
+                    self.allocator.release_subtree(&detached);
                 }
             }
             BoundaryDeltaEntry::VelocityAlert { .. } => { /* observation only */ }
@@ -442,13 +447,6 @@ fn detach_subtree(root: &mut SimThing, id: SimThingId) -> Option<SimThing> {
     None
 }
 
-fn tombstone_subtree(node: &SimThing, allocator: &mut SlotAllocator) {
-    allocator.tombstone(node.id);
-    for c in &node.children {
-        tombstone_subtree(c, allocator);
-    }
-}
-
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 #[cfg(test)]
@@ -474,5 +472,4 @@ mod tests {
     fn cohort_id(snap: &ReplaySnapshot) -> SimThingId {
         snap.root.direct_child_id(0).expect("cohort")
     }
-
 }

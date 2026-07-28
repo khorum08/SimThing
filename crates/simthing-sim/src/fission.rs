@@ -268,37 +268,42 @@ fn execute_fission(
     let mut new_child =
         ResolvedFissionChildBlueprint::from_template(&ft.template).spawn(current_day);
     let new_id = new_child.id;
-    let new_slot = allocator.alloc(new_id);
-
-    if let Some(parent) = node_paths
+    let Some(parent) = node_paths
         .get(&stid)
         .and_then(|path| node_at_path(root, path))
-    {
-        if let Some(parent_slot) = allocator.slot_of(parent.id) {
-            seed_fission_child(
-                parent,
-                &mut new_child,
-                registry,
-                pid,
-                parent_slot.raw(),
-                new_slot.raw(),
-                values_shadow,
-                n_dims,
-            );
-        }
-        if ft.template.clone_capability_children {
-            let cloned_roots = clone_capability_children(
-                parent,
-                &mut new_child,
-                allocator,
-                values_shadow,
-                n_dims,
-                &ft.template.capability_container_kinds,
-            );
-            if !cloned_roots.is_empty() {
-                out.cloned_capability_subtrees = true;
-                out.cloned_capability_roots.extend(cloned_roots);
-            }
+    else {
+        return false;
+    };
+    let Ok(new_residency) = allocator.execute_residency(parent.child_residency_request(&new_child))
+    else {
+        return false;
+    };
+    let new_slot = new_residency.slot();
+
+    if let Some(parent_slot) = allocator.slot_of(parent.id) {
+        seed_fission_child(
+            parent,
+            &mut new_child,
+            registry,
+            pid,
+            parent_slot.raw(),
+            new_slot.raw(),
+            values_shadow,
+            n_dims,
+        );
+    }
+    if ft.template.clone_capability_children {
+        let cloned_roots = clone_capability_children(
+            parent,
+            &mut new_child,
+            allocator,
+            values_shadow,
+            n_dims,
+            &ft.template.capability_container_kinds,
+        );
+        if !cloned_roots.is_empty() {
+            out.cloned_capability_subtrees = true;
+            out.cloned_capability_roots.extend(cloned_roots);
         }
     }
 
@@ -318,7 +323,7 @@ fn execute_fission(
     } else {
         // Parent disappeared between the check and the mutation — extremely
         // unlikely but defensive.
-        allocator.tombstone(new_id);
+        allocator.release_subtree(&new_child);
         false
     }
 }
@@ -388,12 +393,15 @@ fn clone_capability_children(
         let (cloned, id_pairs, overlay_id_pairs) =
             clone_subtree_with_fresh_ids(source_child, parent.id, child.id);
         let cloned_root_id = cloned.id;
+        allocator.populate_subtree(child, &cloned);
         let mut allocated_any = false;
         for (source_id, cloned_id) in id_pairs {
             let Some(source_slot) = allocator.slot_of(source_id) else {
                 continue;
             };
-            let cloned_slot = allocator.alloc(cloned_id);
+            let Some(cloned_slot) = allocator.slot_of(cloned_id) else {
+                continue;
+            };
             copy_shadow_row(source_slot.raw(), cloned_slot.raw(), values_shadow, n_dims);
             allocated_any = true;
         }
@@ -519,8 +527,8 @@ fn execute_fusion(
     );
 
     // Find and remove the child from its parent's children list.
-    if remove_child_from_tree(root, child_id) {
-        allocator.tombstone(child_id);
+    if let Some(removed) = remove_child_from_tree(root, child_id) {
+        allocator.release_subtree(&removed);
         out.fusion_pairs.push((parent_id, child_id));
         out.fusions_executed += 1;
         // Always record the lineage_removed entry on a successful tree mutation
@@ -617,17 +625,16 @@ fn check_secondary(
     }
 }
 
-fn remove_child_from_tree(node: &mut SimThing, child_id: SimThingId) -> bool {
+fn remove_child_from_tree(node: &mut SimThing, child_id: SimThingId) -> Option<SimThing> {
     if let Some(pos) = node.children.iter().position(|c| c.id == child_id) {
-        node.children.remove(pos);
-        return true;
+        return Some(node.children.remove(pos));
     }
     for child in &mut node.children {
-        if remove_child_from_tree(child, child_id) {
-            return true;
+        if let Some(removed) = remove_child_from_tree(child, child_id) {
+            return Some(removed);
         }
     }
-    false
+    None
 }
 
 #[cfg(test)]
@@ -674,15 +681,14 @@ mod tests {
             .spawn(1)
             .kind;
 
-        let mut alloc = SlotAllocator::new();
         let mut cohort = SimThing::new(SimThingKind::Cohort, 0);
         cohort.add_property(pid, reg.property(pid).default_value());
         let cid = cohort.id;
-        alloc.alloc(cid);
 
         let mut root = SimThing::new(SimThingKind::Location, 0);
-        alloc.alloc(root.id);
         root.add_child(cohort);
+        let mut alloc = SlotAllocator::new();
+        alloc.populate_from_tree(&root);
 
         let mut cpu_reg = ThresholdRegistry::new();
         let ek = cpu_reg.push(ThresholdSemantic::FissionTrigger {
@@ -716,9 +722,86 @@ mod tests {
         spawned.kind.clone()
     }
 
+    #[test]
+    fn row_slot_object_semantics_fission_clone_routes_all_rows_through_relations() {
+        let mut registry = DimensionRegistry::new();
+        let mut property = make_fission_property();
+        property.fission_templates[0]
+            .template
+            .clone_capability_children = true;
+        property.fission_templates[0]
+            .template
+            .capability_container_kinds = vec!["capability".into()];
+        let property_id = registry.register(property);
+
+        let mut parent = SimThing::new(SimThingKind::Cohort, 0);
+        parent.add_property(property_id, registry.property(property_id).default_value());
+        let parent_id = parent.id;
+        let mut capability = SimThing::new(SimThingKind::Custom("capability".into()), 0);
+        capability.add_child(SimThing::new(SimThingKind::Cohort, 0));
+        parent.add_child(capability);
+
+        let mut root = SimThing::new(SimThingKind::Location, 0);
+        root.add_child(parent);
+        prepare_fission_clone_sources_for_registry(&mut root, &registry);
+
+        let mut allocator = SlotAllocator::new();
+        allocator.populate_from_tree(&root);
+        let mut threshold_registry = ThresholdRegistry::new();
+        let event_kind = threshold_registry.push(ThresholdSemantic::FissionTrigger {
+            sim_thing_id: parent_id,
+            property_id,
+            template_idx: 0,
+        });
+        let n_dims = registry.total_columns.max(1);
+        let mut shadow = vec![0.0; 16 * n_dims];
+        let events = vec![
+            crate::threshold_event_test_fixtures::fixtures::upward_crossing(
+                allocator.slot_of(parent_id).unwrap().raw(),
+                0,
+                0.2,
+                event_kind,
+                n_dims,
+            ),
+        ];
+        let paths = build_node_paths(&root);
+
+        let outcome = resolve_fission_fusion(
+            &mut root,
+            &paths,
+            &registry,
+            &mut allocator,
+            &events,
+            &threshold_registry,
+            &mut shadow,
+            n_dims,
+            1,
+        );
+
+        assert_eq!(outcome.fissions_executed, 1);
+        assert!(outcome.cloned_capability_subtrees);
+        assert_eq!(outcome.cloned_capability_roots.len(), 1);
+        let spawned = &root.children[0].children[1];
+        let cloned = &spawned.children[0];
+        assert_eq!(
+            allocator.relation_of(spawned.id),
+            Some(simthing_core::ObjectResidencyRelation::ChildOf(parent_id))
+        );
+        assert_eq!(
+            allocator.relation_of(cloned.id),
+            Some(simthing_core::ObjectResidencyRelation::ChildOf(spawned.id))
+        );
+        assert_eq!(
+            allocator.relation_of(cloned.children[0].id),
+            Some(simthing_core::ObjectResidencyRelation::ChildOf(cloned.id))
+        );
+        assert!(allocator
+            .residency_for(root.children[0].child_residency_request(spawned))
+            .is_some());
+    }
+
     fn marker_lanes(node: &SimThing) -> Option<Vec<f32>> {
         node.property(FISSION_CLONE_SOURCE_PROPERTY_ID)
             .map(|value| value.raw_lanes_for_serialization().to_vec())
     }
-
 }

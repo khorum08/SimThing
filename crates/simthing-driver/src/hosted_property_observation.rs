@@ -10,9 +10,7 @@ use std::collections::BTreeMap;
 
 use simthing_core::{DimensionRegistry, SimThingId, SubFieldRole};
 use simthing_gpu::SlotAllocator;
-use simthing_spec::{
-    DisruptionAuthorityReadback, DisruptionAuthorityReadbackError, PropertyKey,
-};
+use simthing_spec::{DisruptionAuthorityReadback, DisruptionAuthorityReadbackError, PropertyKey};
 use thiserror::Error;
 
 use crate::session::SimSession;
@@ -83,12 +81,12 @@ pub fn observe_hosted_property_cell(
     property: &PropertyKey,
     role: &SubFieldRole,
 ) -> Result<f32, HostedPropertyObservationError> {
-    let property_id = registry.id_of(&property.namespace, &property.name).ok_or_else(|| {
-        HostedPropertyObservationError::UnknownProperty {
+    let property_id = registry
+        .id_of(&property.namespace, &property.name)
+        .ok_or_else(|| HostedPropertyObservationError::UnknownProperty {
             namespace: property.namespace.clone(),
             name: property.name.clone(),
-        }
-    })?;
+        })?;
     let layout = &registry.property(property_id).layout;
     let col = registry
         .column_range(property_id)
@@ -204,11 +202,7 @@ pub fn system_id_by_host_raw_from_structural_authority(
             .map(|locus| format!("{:?} entity={:?}", locus.host_id, locus.host_entity))
             .collect::<Vec<_>>()
             .join("; ");
-        let kind = if out.is_empty() {
-            "total"
-        } else {
-            "partial"
-        };
+        let kind = if out.is_empty() { "total" } else { "partial" };
         return Err(DisruptionAuthorityReadbackError::new(format!(
             "{kind} structural mapping failure for hosted disruption loci: {detail}"
         )));
@@ -254,8 +248,8 @@ mod tests {
         let host_a = SimThingId::from_session_raw(10);
         let host_b = SimThingId::from_session_raw(11);
         let mut allocator = SlotAllocator::new();
-        let slot_a = allocator.alloc(host_a);
-        let slot_b = allocator.alloc(host_b);
+        let slot_a = allocator.alloc_for_oracle_or_rehearsal(host_a);
+        let slot_b = allocator.alloc_for_oracle_or_rehearsal(host_b);
         let mut values = vec![0.0f32; allocator.capacity() * n_dims];
         let pid = registry.id_of("ns", "p").expect("pid");
         let col = registry

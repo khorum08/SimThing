@@ -34,6 +34,7 @@ crates/simthing-driver/src/local_effect_recursive_source_compile.rs	compile-plan
 crates/simthing-driver/src/local_participant_effects_compile.rs	compile-plan	Plan/compile builder producing GPU/session plans (not the live tick itself)
 crates/simthing-driver/src/mapping_plan_compile.rs	compile-plan	Plan/compile builder producing GPU/session plans (not the live tick itself)
 crates/simthing-driver/src/min_plus_traversal_field.rs	executed	Live driver/kernel execution or residency path in the recursive RF / arena stack
+crates/simthing-driver/src/order_directive.rs	executed	Class-bound order directive admission and live player-intent ingress gate
 crates/simthing-driver/src/owner_silo_accumulator_compile.rs	compile-plan	Plan/compile builder producing GPU/session plans (not the live tick itself)
 crates/simthing-driver/src/owner_silo_disburse_down_compile.rs	compile-plan	Plan/compile builder producing GPU/session plans (not the live tick itself)
 crates/simthing-driver/src/owner_silo_recursive_source_compile.rs	compile-plan	Plan/compile builder producing GPU/session plans (not the live tick itself)
@@ -112,7 +113,7 @@ crates/simthing-kernel/src/participation.rs	executed	Placed-participant validati
 crates/simthing-kernel/src/passes.rs	executed	Authoritative GPU compute dispatch wrappers (run_snapshot / tick pipeline / accumulator dispatches)
 crates/simthing-kernel/src/projection.rs	executed	project_tree_to_values — tree→dense matrix projection for live kernel residency
 crates/simthing-kernel/src/readback.rs	executed	Kernel readback helpers for post-dispatch observation
-crates/simthing-kernel/src/reduction.rs	compile-plan	DA RULED 2026-07-26 (5085410594): PRIMARY=compile-plan; cpu_reduce_oracle is co-located judge (secondary). Split rides 4.2
+crates/simthing-kernel/src/reduction.rs	compile-plan	Reduction topology and per-column rule compile plans; CPU judge relocated to cpu_oracle.rs by ROW-SLOT-OBJECT-SEMANTICS-0
 crates/simthing-kernel/src/reduction_orderband.rs	compile-plan	plan_reduction_orderband — OrderBand plan for reduction depths
 crates/simthing-kernel/src/registration.rs	executed	Threshold registration substrate consumed by executed threshold/emission paths
 crates/simthing-kernel/src/resolved.rs	executed	Resolved GPU buffer residency for live kernel dispatch
@@ -122,4 +123,5 @@ crates/simthing-kernel/src/sealed/write_authority.rs	executed	ResolvedWriteAutho
 crates/simthing-kernel/src/slot.rs	executed	Slot allocator for dense-matrix residency used by executed RF/kernel paths
 crates/simthing-kernel/src/transfer_accumulator.rs	executed	Live driver/kernel execution or residency path in the recursive RF / arena stack
 crates/simthing-kernel/src/velocity_accumulator.rs	executed	Live driver/kernel execution or residency path in the recursive RF / arena stack
-crates/simthing-kernel/src/world_state.rs	executed	DA RULED 2026-07-26 (5085410594): PRIMARY=executed; encode helpers co-located assembly (secondary). Split rides 4.2
+crates/simthing-kernel/src/wgsl_encode.rs	compile-plan	Single typed-plan to raw WGSL POD encoding boundary; promotion blocker PLAN-STRUCT-TYPING-0
+crates/simthing-kernel/src/world_state.rs	executed	Live WorldGpuState buffer residency and upload; compile-plan encoding helpers relocated to wgsl_encode.rs

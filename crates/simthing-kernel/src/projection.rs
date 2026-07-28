@@ -9,7 +9,7 @@
 //! `EvaluationBatch` builder. The transform-matrix half waits on the
 //! affine-encoding decision before it can be written.
 
-use simthing_core::{DimensionRegistry, SimThing};
+use simthing_core::{DimensionRegistry, ObjectResidencyRequest, SimThing};
 
 use crate::slot::SlotAllocator;
 
@@ -29,17 +29,26 @@ pub fn project_tree_to_values(
         allocator.capacity() * n_dims,
         "values buffer must be sized to allocator.capacity() * n_dims",
     );
-    project_node(root, registry, allocator, n_dims, values);
+    project_node(
+        root,
+        root.root_residency_request(),
+        registry,
+        allocator,
+        n_dims,
+        values,
+    );
 }
 
 fn project_node(
     node: &SimThing,
+    request: ObjectResidencyRequest,
     registry: &DimensionRegistry,
     allocator: &SlotAllocator,
     n_dims: usize,
     values: &mut [f32],
 ) {
-    if let Some(slot) = allocator.slot_of(node.id) {
+    if let Some(residency) = allocator.residency_for(request) {
+        let slot = residency.slot();
         let slot_base = slot.as_usize() * n_dims;
         for (&prop_id, pv) in &node.properties {
             let range = registry.column_range(prop_id);
@@ -49,7 +58,14 @@ fn project_node(
         }
     }
     for child in &node.children {
-        project_node(child, registry, allocator, n_dims, values);
+        project_node(
+            child,
+            node.child_residency_request(child),
+            registry,
+            allocator,
+            n_dims,
+            values,
+        );
     }
 }
 
@@ -66,5 +82,4 @@ mod tests {
         p.intensity_behavior = Some(IntensityBehavior::default());
         p
     }
-
 }
