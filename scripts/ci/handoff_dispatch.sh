@@ -556,7 +556,10 @@ def ladder_states():
             continue
         exit_proof = ""
         for c in cells:
-            if re.search(r"DA-GRADUATED|DA-CLOSED|DEFERRED|\bTODO\b|merged|amend|--cull|PARKED", c):
+            if re.search(
+                r"DA-GRADUATED|DA-CLOSED|DEFERRED|\bTODO\b|\bPROBATION\b|merged|amend|--cull|PARKED",
+                c,
+            ):
                 exit_proof = c
                 break
         out.append({"rung": rung, "exit_proof": exit_proof})
@@ -628,6 +631,28 @@ def board_json(path_arg=None):
                     counts["mixed_ruled"] += 1
         return counts
 
+    def specialization_citizen_summary():
+        # FIRST-CITIZEN-SPECIALISTS-0: board mirror of generator-source TSV.
+        path = ROOT / "scripts" / "ci" / "specialization_citizen_counts.tsv"
+        counts = {"spatial": 0, "owner-seat": 0, "session-root": 0}
+        if not path.is_file():
+            return counts
+        for raw in path.read_text(encoding="utf-8").splitlines():
+            line = raw.strip()
+            if not line or line.startswith("#"):
+                continue
+            parts = line.split("\t")
+            if len(parts) < 2:
+                continue
+            profile = parts[0].strip()
+            if profile not in counts:
+                continue
+            try:
+                counts[profile] = int(parts[1].strip())
+            except ValueError:
+                continue
+        return counts
+
     data = {
         "track": _safe("track", active_track_id, ""),
         "active_pointer": _safe("active_pointer", active_pointer, ""),
@@ -639,6 +664,9 @@ def board_json(path_arg=None):
         "leases": _safe("leases", lease_summary, {}),
         "ladder": _safe("ladder", ladder_states, []),
         "execution_status": _safe("execution_status", execution_status_summary, {}),
+        "specialization_citizens": _safe(
+            "specialization_citizens", specialization_citizen_summary, {}
+        ),
     }
     if degraded:
         data["_degraded"] = degraded
@@ -732,6 +760,14 @@ def render_board_markdown(data):
             f"rehearsal={est.get('rehearsal', 0)} "
             f"compile-plan={est.get('compile-plan', 0)} "
             f"mixed_ruled={est.get('mixed_ruled', 0)}"
+        )
+    citizens = data.get("specialization_citizens") or {}
+    if citizens:
+        lines.append(
+            "- specialization_citizens: "
+            f"spatial={citizens.get('spatial', 0)} "
+            f"owner-seat={citizens.get('owner-seat', 0)} "
+            f"session-root={citizens.get('session-root', 0)}"
         )
     handoff = data.get("current_handoff") or {}
     if handoff:

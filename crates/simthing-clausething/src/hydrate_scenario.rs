@@ -217,6 +217,10 @@ pub struct HydratedScenarioNode {
     /// Clause token for `system_target` (spanned admission diagnostics).
     #[serde(skip)]
     pub system_target_span_token: Option<usize>,
+    /// FIRST-CITIZEN-SPECIALISTS-0: authored profile declarations with their
+    /// clause scalar token indices (span provenance for admission errors).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub specializations: Vec<(String, usize)>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -579,6 +583,7 @@ pub fn hydrate_scenario_with_source_base(
         children: locations,
         system_target: None,
         system_target_span_token: None,
+        specializations: Vec::new(),
     };
 
     let mut properties = Vec::new();
@@ -589,6 +594,12 @@ pub fn hydrate_scenario_with_source_base(
         root.add_child(simthing_from_node(child));
     }
     install_targets.insert(root_node.id.clone(), vec![root_node.simthing_id]);
+    // FIRST-CITIZEN-SPECIALISTS-0: system_target enrollment is the authoritative
+    // placement artifact for authored Locations. Stamp structural col/row onto
+    // those SimThings during hydration so ordinary preview/install observes
+    // StructurallyPlaced without test-side property minting. Auto row-major
+    // placements (no system_target) stay unstamped.
+    apply_system_target_structural_placements(&mut root, &root_node.children, &grid_metadata);
 
     let mut game_mode = GameModeSpec {
         id: scenario_id.clone(),
@@ -2464,6 +2475,7 @@ fn parse_node(
     let mut children = Vec::new();
     let mut system_target = None;
     let mut system_target_span_token = None;
+    let mut specializations: Vec<(String, usize)> = Vec::new();
 
     for field in &block.properties {
         reject_forbidden_node_field(field)?;
@@ -2487,6 +2499,18 @@ fn parse_node(
                     ));
                 }
                 kind = Some(parse_kind(field)?);
+            }
+            "specialization" => {
+                let RawValue::Scalar(scalar) = &field.value else {
+                    return Err(HydrateError::new_spanned(
+                        format!(
+                            "{}.specialization must be a scalar profile id",
+                            property.key.text
+                        ),
+                        Some(field.key.span.clone()),
+                    ));
+                };
+                specializations.push((scalar.text.clone(), scalar.span.token_index));
             }
             "system_target" => {
                 if system_target.is_some() {
@@ -2552,6 +2576,7 @@ fn parse_node(
         children,
         system_target,
         system_target_span_token,
+        specializations,
     })
 }
 
@@ -3033,10 +3058,60 @@ fn flatten_node(
 fn simthing_from_node(node: &HydratedScenarioNode) -> SimThing {
     let mut simthing = SimThing::new(node.kind.clone(), 0);
     simthing.id = node.simthing_id;
+    for (profile, token) in &node.specializations {
+        simthing
+            .declared_specializations
+            .push(simthing_core::DeclaredSpecialization {
+                profile: profile.clone(),
+                span_token: Some(*token),
+            });
+    }
     for child in &node.children {
         simthing.add_child(simthing_from_node(child));
     }
     simthing
+}
+
+fn apply_system_target_structural_placements(
+    root: &mut SimThing,
+    locations: &[HydratedScenarioNode],
+    grid_metadata: &HydratedScenarioGridMetadata,
+) {
+    for location in locations {
+        if location.system_target.is_none() {
+            continue;
+        }
+        let Some(placement) = grid_metadata
+            .placements
+            .iter()
+            .find(|placement| placement.location_id == location.id)
+        else {
+            continue;
+        };
+        let Some(node) = find_simthing_mut(root, location.simthing_id.raw()) else {
+            continue;
+        };
+        node.add_property(
+            SCENARIO_STRUCTURAL_COL_PROPERTY_ID,
+            structural_property_value_u32(placement.col),
+        );
+        node.add_property(
+            SCENARIO_STRUCTURAL_ROW_PROPERTY_ID,
+            structural_property_value_u32(placement.row),
+        );
+    }
+}
+
+fn find_simthing_mut(root: &mut SimThing, id: u32) -> Option<&mut SimThing> {
+    if root.id.raw() == id {
+        return Some(root);
+    }
+    for child in &mut root.children {
+        if let Some(found) = find_simthing_mut(child, id) {
+            return Some(found);
+        }
+    }
+    None
 }
 
 fn parse_kind(property: &RawProperty) -> Result<SimThingKind, HydrateError> {

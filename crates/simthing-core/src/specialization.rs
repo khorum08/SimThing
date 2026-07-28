@@ -165,6 +165,32 @@ impl SpecializationReport {
             .map(|r| r.derived.iter().map(String::as_str).collect())
             .unwrap_or_default()
     }
+
+    /// FIRST-CITIZEN-SPECIALISTS-0: per-profile conformance totals from an
+    /// installed `SpecSessionState.specialization` report (Consumer Law board
+    /// / orientation surface — never a hand-edited mirror).
+    pub fn citizen_counts(&self) -> SpecializationCitizenCounts {
+        let mut counts = SpecializationCitizenCounts::default();
+        for row in &self.rows {
+            for profile in &row.derived {
+                match profile.as_str() {
+                    x if x == PROFILE_SPATIAL => counts.spatial += 1,
+                    x if x == PROFILE_OWNER_SEAT => counts.owner_seat += 1,
+                    x if x == PROFILE_SESSION_ROOT => counts.session_root += 1,
+                    _ => {}
+                }
+            }
+        }
+        counts
+    }
+}
+
+/// Per-seed-profile conformance counts (board/orientation generator source).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SpecializationCitizenCounts {
+    pub spatial: usize,
+    pub owner_seat: usize,
+    pub session_root: usize,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Error)]

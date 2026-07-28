@@ -1,0 +1,9 @@
+{
+  "scenario_id": "oob_stamp_mint",
+  "properties": [
+    {
+      "id": "8_300_318",
+      "note": "direct authored mint of OWNER_POLICY_WEIGHT_AUTHORITY"
+    }
+  ]
+}

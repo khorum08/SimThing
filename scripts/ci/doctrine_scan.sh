@@ -1067,7 +1067,7 @@ run_scan_file() {
     # (date, role=scan, scan id, file:line, hit) so accumulated reaches feed ruling expansions.
     if [[ "$verdict" == "INSPECT" && "$count" -gt 0 ]]; then
       case "$scan_id" in
-        CELL-STORAGE-POLYMORPHISM|BESPOKE-PATHFINDER|BORDER-SERVICE)
+        CELL-STORAGE-POLYMORPHISM|BESPOKE-PATHFINDER|BORDER-SERVICE|OWNER-POLICY-WEIGHT-AUTHORITY-MINT)
           append_constitution_reach_log "$scan_id" "${matches[@]}"
           ;;
       esac

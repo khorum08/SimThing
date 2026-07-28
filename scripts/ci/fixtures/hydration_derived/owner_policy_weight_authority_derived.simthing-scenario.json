@@ -1,0 +1,10 @@
+{
+  "scenario_id": "hydration_derived_authority_stamp",
+  "note": "Legitimate hydration-derived authority output carrying derived OWNER_POLICY_WEIGHT_AUTHORITY (8300318). Excluded from authored-source mint scan.",
+  "properties": [
+    {
+      "id": 8300318,
+      "source": "hydrate_field_economy_derivation"
+    }
+  ]
+}
