@@ -276,6 +276,9 @@ pub struct HydratedScenarioOwner {
     pub stockpile_seed: Option<u32>,
     pub stockpile_capacity: Option<u32>,
     pub policy_profile: Option<String>,
+    /// SPECIALIZATION-PROTOCOL-0: authored profile declarations with their
+    /// clause scalar token indices (span provenance for admission errors).
+    pub specializations: Vec<(String, usize)>,
     pub personality_profile: Option<String>,
     pub capability_profile: Option<String>,
     pub simthing_id: SimThingId,
@@ -778,6 +781,34 @@ pub fn hydrate_scenario_with_source_base(
             !embedded_static_galaxy_scenarios.is_empty(),
         )?;
     }
+    // SPECIALIZATION-PROTOCOL-0 (remand 5098731168): stamp the typed
+    // policy/weight AUTHORITY onto exactly the Owners the admitted field
+    // economy references — policy-overlay owners and flow-coupling weight
+    // owners. The inert default silo marker never implies this authority.
+    if let (Some(economy), Some(root)) = (field_economy.as_ref(), authority_root.as_mut()) {
+        let mut authority_keys: BTreeSet<&str> = BTreeSet::new();
+        for overlay in &economy.owner_policy_overlays {
+            authority_keys.insert(overlay.owner.as_str());
+        }
+        for coupling in &economy.flow_couplings {
+            authority_keys.insert(coupling.weight_owner.as_str());
+        }
+        if !authority_keys.is_empty() {
+            fn stamp(node: &mut SimThing, keys: &BTreeSet<&str>) {
+                if simthing_spec::is_owner_entity_kind(&node.kind) {
+                    if let Some(owner_id) = simthing_spec::owner_entity_id(node) {
+                        if keys.contains(owner_id.as_str()) {
+                            simthing_spec::apply_owner_policy_weight_authority(node);
+                        }
+                    }
+                }
+                for child in &mut node.children {
+                    stamp(child, keys);
+                }
+            }
+            stamp(root, &authority_keys);
+        }
+    }
     dedupe_property_specs_by_name(&mut game_mode.properties);
     Ok(HydratedScenarioPack {
         scenario_id,
@@ -818,6 +849,7 @@ fn parse_owner(property: &RawProperty) -> Result<HydratedScenarioOwner, HydrateE
     let mut faction_identity_reserved_0 = None;
     let mut faction_identity_reserved_1 = None;
     let mut policy_profile = None;
+    let mut specializations: Vec<(String, usize)> = Vec::new();
     let mut personality_profile = None;
     let mut capability_profile = None;
 
@@ -834,6 +866,15 @@ fn parse_owner(property: &RawProperty) -> Result<HydratedScenarioOwner, HydrateE
                 id = explicit_id;
             }
             "owner_key" => owner_key = Some(read_scalar_text(field, "owner_key")?),
+            "specialization" => {
+                let RawValue::Scalar(scalar) = &field.value else {
+                    return Err(HydrateError::new_spanned(
+                        "owner.specialization must be a scalar profile id".to_string(),
+                        Some(field.key.span.clone()),
+                    ));
+                };
+                specializations.push((scalar.text.clone(), scalar.span.token_index));
+            }
             "display_name" | "name" => {
                 display_name = Some(read_scalar_text(field, &field.key.text)?);
             }
@@ -927,6 +968,7 @@ fn parse_owner(property: &RawProperty) -> Result<HydratedScenarioOwner, HydrateE
         stockpile_seed,
         stockpile_capacity,
         policy_profile,
+        specializations,
         personality_profile,
         capability_profile,
         simthing_id: SimThingId::new(),
@@ -1110,6 +1152,14 @@ fn attach_planet_surface_payload_to_system(
 fn owner_simthing(owner: &HydratedScenarioOwner) -> SimThing {
     let mut simthing = make_owner_entity(&owner.owner_key, &owner.display_name, &owner.archetype);
     simthing.id = owner.simthing_id;
+    for (profile, token) in &owner.specializations {
+        simthing
+            .declared_specializations
+            .push(simthing_core::DeclaredSpecialization {
+                profile: profile.clone(),
+                span_token: Some(*token),
+            });
+    }
     if let Some(color_index) = owner.color_index {
         simthing.add_property(
             OWNER_COLOR_INDEX_PROPERTY_ID,

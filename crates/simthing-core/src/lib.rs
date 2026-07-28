@@ -17,6 +17,7 @@ pub mod property;
 pub mod reduction;
 pub mod registry;
 pub mod simthing;
+pub mod specialization;
 pub mod slot_index;
 pub mod structural_coord;
 
@@ -85,6 +86,12 @@ pub use property::{
 };
 pub use reduction::ReductionRule;
 pub use registry::{DimensionRegistry, PropertyColumnRange};
+pub use specialization::{
+    derive_specializations, kind_identity, seed_profiles, DeclaredSpecialization, KindIdentity,
+    SpecializationError, SpecializationObservations, SpecializationProfile, SpecializationReport,
+    SpecializationRequirement, SpecializationRow, PROFILE_OWNER_SEAT, PROFILE_SESSION_ROOT,
+    PROFILE_SPATIAL,
+};
 pub use simthing::{
     kind_matches, reserve_simthing_ids_from_tree, ResourceParentEdge, SimThing, SimThingKind,
 };

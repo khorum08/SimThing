@@ -71,6 +71,9 @@ pub enum InstallError {
     #[error("Resource Flow derivation: {0}")]
     ResourceFlowDerivation(#[from] ResourceFlowDerivationError),
 
+    #[error("Specialization protocol: {0}")]
+    Specialization(#[from] simthing_core::SpecializationError),
+
     #[error("Resource Flow base obligation `{obligation}` targets SimThing {subtree_root_id} which is not admitted to arena `{arena}`")]
     BaseFlowObligationTargetNotAdmitted {
         obligation: String,
@@ -271,6 +274,25 @@ pub fn compile_and_install(
         allocator,
     )?;
     state.resource_flow_derivation = derived_resource_flow.report;
+
+    // ── 4b′. Specialization protocol (3.1): derive structural conformance and
+    //      validate declared profiles against admission artifacts. Observation
+    //      + validation only; nothing downstream consults profiles yet (3.2).
+    //      Structural placements are spec-side artifacts not visible to this
+    //      install path; placement-gated profiles honestly do not derive here
+    //      (artifact-complete callers assemble full observations themselves).
+    // Observations derive from the INSTALLED TREE's authoritative hydration
+    // stamps (remand 5098731168): structural col/row coordinate properties for
+    // placement, and the typed policy/weight authority stamp for owner seats.
+    // There is no caller-supplied observation input — conformance facts cannot
+    // be fabricated by callers.
+    let mut spec_observations = simthing_core::SpecializationObservations::default();
+    collect_tree_observations(root, &mut spec_observations);
+    state.specialization = simthing_core::derive_specializations(
+        root,
+        &simthing_core::seed_profiles(),
+        &spec_observations,
+    )?;
     if let Some(resource_flow) = derived_resource_flow.spec.as_ref() {
         let resolved = resolve_resource_flow_enrollment(resource_flow, scenario, root, allocator)?;
         let base_obligations = resolve_base_flow_obligation_targets(&resolved, scenario, root)?;
@@ -1307,6 +1329,30 @@ pub struct InstallPreview {
 ///
 /// Memory: peaks at roughly 2× the registry + root + allocator size for the
 /// duration of the call. All three are small in practice.
+
+/// SPECIALIZATION-PROTOCOL-0 (remand 5098731168): derive specialization
+/// observations from the installed tree's authoritative hydration stamps.
+/// Placement = the structural col AND row coordinate properties the grid
+/// hydration writes; policy/weight seat = the typed authority stamp applied
+/// ONLY to field-economy-referenced Owners (`owner_hosts_policy_weight_authority`
+/// — the inert default silo marker never qualifies).
+fn collect_tree_observations(
+    node: &simthing_core::SimThing,
+    observations: &mut simthing_core::SpecializationObservations,
+) {
+    if simthing_spec::gridcell_structural_col(node).is_some()
+        && simthing_spec::gridcell_structural_row(node).is_some()
+    {
+        observations.structurally_placed.insert(node.id.raw());
+    }
+    if simthing_spec::owner_hosts_policy_weight_authority(node) {
+        observations.policy_weight_hosts.insert(node.id.raw());
+    }
+    for child in &node.children {
+        collect_tree_observations(child, observations);
+    }
+}
+
 pub fn preview_install(
     game_mode: &GameModeSpec,
     scenario: &Scenario,

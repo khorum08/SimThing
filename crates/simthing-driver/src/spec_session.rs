@@ -93,6 +93,8 @@ pub struct SpecSessionState {
     pub arena_registry: ArenaRegistry,
     /// Inspectable admission provenance for property/topology-derived arenas.
     pub resource_flow_derivation: crate::resource_flow_derivation::ResourceFlowDerivationReport,
+    /// SPECIALIZATION-PROTOCOL-0: inspectable per-SimThing profile conformance (3.1).
+    pub specialization: simthing_core::SpecializationReport,
     /// CT-RF-EML-RATE-0: install-resolved gated rate terms consumed by the
     /// resource-flow sync (effective-rate EvalEML band before reduce bands).
     pub resolved_gated_rates: Vec<crate::gated_rates::ResolvedGatedRate>,
