@@ -40,7 +40,7 @@
 | `doc_budget_check --check` | PASS |
 | `agent_scan` | INSPECT×2 (justified + triage_log green); 0 hard FAIL |
 
-Final SHA / hosted Doctrine Scan+Exec IDs are filled on the push that lands this evidence.
+Final SHA / hosted Doctrine Scan+Exec IDs: bound in PR #1470 body (`final_head_sha` / `clearance_pr_head`); hosted run IDs filled after Doctrine Scan+Exec re-run on that head.
 
 ## Fences held
 
