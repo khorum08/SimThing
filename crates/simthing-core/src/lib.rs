@@ -44,7 +44,7 @@ pub use arena_layout::{
     arena_internal_columns_present, expand_arena_internal_columns, need_stage_role_names,
     property_needs_arena_internal_columns, ARENA_INTERNAL_COLUMN_ROLES, NEED_STAGE_MAX_PAIRS,
 };
-pub use column_index::ColumnIndex;
+pub use column_index::{AuthoredColumnAdmitError, ColumnIndex};
 pub use compiled_accumulator_plan::{
     is_exact_integer_f32, CompiledAccumulatorOpPlan, StructuralScalarChannel,
     EXACT_INTEGER_F32_BOUND,

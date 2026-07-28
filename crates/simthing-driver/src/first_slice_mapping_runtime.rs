@@ -6,14 +6,14 @@
 
 use simthing_core::{
     column_aware_reduction_op, eml_opcode, AccumulatorOp, ColumnAwareReductionCombine,
-    ColumnAwareReductionSpec, CombineFn, ConsumeMode, EmlConsumerMask,
-    EmlExecutionClass, EmlExpressionRegistry, EmlFormulaMeta, EmlNodeGpu, EmlTreeId, GateSpec,
-    ScaleSpec, SlotIndex, SourceSpec, StructuralScalarChannel,
+    ColumnAwareReductionSpec, CombineFn, ConsumeMode, EmlConsumerMask, EmlExecutionClass,
+    EmlExpressionRegistry, EmlFormulaMeta, EmlNodeGpu, EmlTreeId, GateSpec, ScaleSpec, SlotIndex,
+    SourceSpec, StructuralScalarChannel,
 };
 use simthing_gpu::{
-    accumulator_op::set_debug_readback_allowed, column_from_wire, encode_column,
-    AccumulatorOpSession, EmlGpuProgramTable, GpuContext, PackedAccumulatorUpload,
-    PackedThresholdUpload, StructuredFieldExecutionOptions, StructuredFieldExecutionReport,
+    accumulator_op::set_debug_readback_allowed, encode_column, AccumulatorOpSession,
+    EmlGpuProgramTable, GpuContext, PackedAccumulatorUpload, PackedThresholdUpload,
+    StructuredFieldExecutionOptions, StructuredFieldExecutionReport,
     StructuredFieldStencilBoundaryMode, StructuredFieldStencilConfig,
     StructuredFieldStencilMaskMode, StructuredFieldStencilOp, StructuredFieldStencilOperator,
     StructuredFieldStencilSourcePolicy, ThresholdEvent, ThresholdRegistration, DIR_UPWARD,
@@ -43,8 +43,8 @@ pub fn compiled_stencil_to_gpu_config(
         width: compiled.width,
         height: compiled.height,
         n_dims: compiled.n_dims,
-        source_col: encode_column(column_from_wire(compiled.source_col)),
-        target_col: encode_column(column_from_wire(compiled.target_col)),
+        source_col: encode_column(compiled.source_col),
+        target_col: encode_column(compiled.target_col),
         horizon: compiled.horizon,
         alpha_self: compiled.alpha_self,
         gamma_neighbor: compiled.gamma_neighbor,
@@ -69,8 +69,7 @@ pub fn compiled_stencil_to_gpu_config(
             } => StructuredFieldStencilOperator::SaturatingFlux {
                 u_sat,
                 chi,
-                choke_output_col: choke_output_col
-                    .map(|col| encode_column(column_from_wire(col))),
+                choke_output_col: choke_output_col.map(encode_column),
             },
         },
         source_policy: StructuredFieldStencilSourcePolicy::CallerManagedOneShotSeedThenZero,
@@ -86,9 +85,9 @@ fn typed_region_field_reduction(
     ColumnAwareReductionSpec {
         child_slot_start: SlotIndex::new(reduction.child_slot_start),
         child_slot_count: reduction.child_slot_count,
-        child_col: column_from_wire(reduction.child_col),
+        child_col: reduction.child_col,
         parent_slot: SlotIndex::new(reduction.parent_slot),
-        parent_col: column_from_wire(reduction.parent_col),
+        parent_col: reduction.parent_col,
         combine: ColumnAwareReductionCombine::Sum,
         order_band: reduction.order_band,
     }
@@ -554,7 +553,7 @@ impl FirstSliceMappingSession {
             enabled,
             width: preview.grid_size,
             n_dims,
-            source_col: encode_column(column_from_wire(preview.stencil.source_col)),
+            source_col: encode_column(preview.stencil.source_col),
             preview,
             scheduler,
             stencil,
@@ -968,7 +967,7 @@ impl FirstSliceMappingSession {
             .map_err(|e| FirstSliceMappingError::Accumulator(format!("{e}")))?;
 
         let parent_slot = SlotIndex::new(reduction.parent_slot);
-        let parent_col = column_from_wire(reduction.parent_col);
+        let parent_col = reduction.parent_col;
         let cell_count = self.preview.cell_count;
 
         self.reduction_stencil_readbacks_this_tick = 0;

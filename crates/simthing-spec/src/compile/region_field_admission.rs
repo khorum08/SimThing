@@ -1,6 +1,6 @@
 //! Phase M-3 — RegionFieldSpec admission and compile preview (spec layer).
 
-use simthing_core::WHITELISTED_FORMULA_CLASSES;
+use simthing_core::{ColumnIndex, WHITELISTED_FORMULA_CLASSES};
 
 use crate::compile::region_field_budget::{
     estimate_region_field_budget, RegionFieldBudgetError, RegionFieldBudgetSpec,
@@ -44,8 +44,7 @@ pub enum CompiledRegionFieldOperator {
     SaturatingFlux {
         u_sat: f32,
         chi: f32,
-        /// Authored-wire column id (typed at the WGSL/`column_from_wire` boundary).
-        choke_output_col: Option<u32>,
+        choke_output_col: Option<ColumnIndex>,
     },
 }
 
@@ -83,10 +82,8 @@ pub struct CompiledRegionFieldStencilSpec {
     pub width: u32,
     pub height: u32,
     pub n_dims: u32,
-    /// Authored-wire column id (typed at the WGSL/`column_from_wire` boundary).
-    pub source_col: u32,
-    /// Authored-wire column id (typed at the WGSL/`column_from_wire` boundary).
-    pub target_col: u32,
+    pub source_col: ColumnIndex,
+    pub target_col: ColumnIndex,
     pub horizon: u32,
     pub alpha_self: f32,
     pub gamma_neighbor: f32,
@@ -115,14 +112,14 @@ pub struct CompiledRegionFieldPreview {
     pub summary_policy: CompiledRegionFieldSummaryPolicy,
 }
 
-/// Admitted child→parent reduction (authored-wire columns; typed at encode).
+/// Admitted child→parent reduction (typed columns after authored admission).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct CompiledRegionFieldReduction {
     pub child_slot_start: u32,
     pub child_slot_count: u32,
-    pub child_col: u32,
+    pub child_col: ColumnIndex,
     pub parent_slot: u32,
-    pub parent_col: u32,
+    pub parent_col: ColumnIndex,
     pub order_band: u32,
 }
 
@@ -135,8 +132,7 @@ pub enum CompiledFirstSliceCommitmentDirection {
 pub struct CompiledFirstSliceCommitmentThreshold {
     pub source_formula_class: String,
     pub parent_slot: u32,
-    /// Authored-wire column id (typed at the WGSL/`column_from_wire` boundary).
-    pub urgency_col: u32,
+    pub urgency_col: ColumnIndex,
     pub threshold: f32,
     pub direction: CompiledFirstSliceCommitmentDirection,
     pub event_kind: u32,
@@ -147,6 +143,20 @@ fn field_err(field: &str, reason: impl Into<String>) -> SpecError {
         field: field.into(),
         reason: reason.into(),
     }
+}
+
+/// Bounded authoring→compiled conversion: authored `u32` → typed [`ColumnIndex`].
+fn admit_authored_col(
+    field: &str,
+    raw: u32,
+    n_dims: u32,
+) -> Result<ColumnIndex, SpecError> {
+    ColumnIndex::try_from_admitted_authored(raw, n_dims).map_err(|e| {
+        field_err(
+            field,
+            format!("authored column {} out of range for n_dims {}", e.raw, e.bound),
+        )
+    })
 }
 
 fn max_grid_for_profile(profile: RegionFieldGridProfile) -> u32 {
@@ -412,18 +422,12 @@ fn compile_reduction(
             "reduction child_slot_count must be > 0",
         ));
     }
-    if reduction.child_col >= spec.n_dims || reduction.parent_col >= spec.n_dims {
-        return Err(field_err(
-            &spec.name,
-            "reduction column out of range for n_dims",
-        ));
-    }
     Ok(CompiledRegionFieldReduction {
         child_slot_start: reduction.child_slot_start,
         child_slot_count: reduction.child_slot_count,
-        child_col: reduction.child_col,
+        child_col: admit_authored_col(&spec.name, reduction.child_col, spec.n_dims)?,
         parent_slot: reduction.parent_slot,
-        parent_col: reduction.parent_col,
+        parent_col: admit_authored_col(&spec.name, reduction.parent_col, spec.n_dims)?,
         order_band: reduction.order_band,
     })
 }
@@ -526,16 +530,10 @@ fn compile_commitment(
             ),
         ));
     }
-    if commitment.urgency_col >= spec.n_dims {
-        return Err(field_err(
-            &spec.name,
-            "commitment urgency_col out of range for n_dims",
-        ));
-    }
     Ok(CompiledFirstSliceCommitmentThreshold {
         source_formula_class: commitment.source_formula_class.clone(),
         parent_slot: commitment.parent_slot,
-        urgency_col: commitment.urgency_col,
+        urgency_col: admit_authored_col(&spec.name, commitment.urgency_col, spec.n_dims)?,
         threshold: commitment.threshold,
         direction: CompiledFirstSliceCommitmentDirection::Upward,
         event_kind: commitment.event_kind,
@@ -767,20 +765,25 @@ pub fn compile_region_field_preview(
             u_sat,
             chi,
             choke_output_col,
-        } => (
-            CompiledRegionFieldOperator::SaturatingFlux {
-                u_sat,
-                chi,
-                choke_output_col,
-            },
-            1.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            spec.target_col,
-        ),
+        } => {
+            let choke = choke_output_col
+                .map(|c| admit_authored_col(&spec.name, c, spec.n_dims))
+                .transpose()?;
+            (
+                CompiledRegionFieldOperator::SaturatingFlux {
+                    u_sat,
+                    chi,
+                    choke_output_col: choke,
+                },
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                spec.target_col,
+            )
+        }
     };
 
     let cadence = compile_cadence(spec)?;
@@ -807,8 +810,8 @@ pub fn compile_region_field_preview(
         width: spec.grid_size,
         height: spec.grid_size,
         n_dims: spec.n_dims,
-        source_col: spec.source_col,
-        target_col,
+        source_col: admit_authored_col(&spec.name, spec.source_col, spec.n_dims)?,
+        target_col: admit_authored_col(&spec.name, target_col, spec.n_dims)?,
         horizon: spec.horizon,
         alpha_self,
         gamma_neighbor,
@@ -877,4 +880,82 @@ fn validate_budget_preview(
                 ),
             )
         })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::spec::region_field::{
+        RegionFieldCadenceSpec, RegionFieldGridProfile, RegionFieldOperatorSpec,
+        RegionFieldReductionSpec, RegionFieldSourcePolicySpec,
+    };
+
+    fn minimal_spec(n_dims: u32, source_col: u32, target_col: u32) -> RegionFieldSpec {
+        RegionFieldSpec {
+            name: "admit_col_referee".into(),
+            grid_size: 2,
+            n_dims,
+            source_col,
+            target_col,
+            operator: RegionFieldOperatorSpec::Normalized,
+            horizon: 1,
+            allow_extended_horizon: false,
+            alpha_self: 1.0,
+            gamma_neighbor: 0.0,
+            source_cap: None,
+            source_policy: RegionFieldSourcePolicySpec::CallerManagedOneShotSeedThenZero,
+            cadence: RegionFieldCadenceSpec::EveryTick,
+            grid_profile: RegionFieldGridProfile::StandardSquare,
+            reduction: Some(RegionFieldReductionSpec {
+                child_slot_start: 0,
+                child_slot_count: 4,
+                child_col: source_col.min(n_dims.saturating_sub(1)),
+                parent_slot: 4,
+                parent_col: target_col.min(n_dims.saturating_sub(1)),
+                order_band: 0,
+            }),
+            parent_formula: None,
+            commitment: None,
+            request_atlas_batching: false,
+            max_region_field_vram_bytes: None,
+            summary_policy: Default::default(),
+            pressure_binding: None,
+        }
+    }
+
+    #[test]
+    fn authored_region_field_columns_admit_as_typed_column_index() {
+        let preview = compile_region_field_preview(&minimal_spec(3, 1, 2)).expect("admit");
+        assert_eq!(
+            preview.stencil.source_col,
+            ColumnIndex::try_from_admitted_authored(1, 3).unwrap()
+        );
+        assert_eq!(
+            preview.stencil.target_col,
+            ColumnIndex::try_from_admitted_authored(2, 3).unwrap()
+        );
+        let reduction = preview.reduction.expect("reduction");
+        assert_eq!(
+            reduction.child_col,
+            ColumnIndex::try_from_admitted_authored(1, 3).unwrap()
+        );
+        assert_eq!(
+            reduction.parent_col,
+            ColumnIndex::try_from_admitted_authored(2, 3).unwrap()
+        );
+    }
+
+    #[test]
+    fn authored_region_field_columns_out_of_range_are_rejected() {
+        let err = compile_region_field_preview(&minimal_spec(2, 2, 0)).expect_err("reject");
+        match err {
+            SpecError::RegionFieldAdmission { reason, .. } => {
+                assert!(
+                    reason.contains("out of range"),
+                    "expected out-of-range admission error, got {reason}"
+                );
+            }
+            other => panic!("unexpected error: {other:?}"),
+        }
+    }
 }

@@ -92,4 +92,40 @@ if [[ -n "${hits}" ]]; then
 fi
 echo "PASS: zero direct plan/WGSL raw_u32 drops outside wgsl_encode (targeted POD fields)"
 
+# ── 7. Family-B compiled/intermediate plan records must not store column ids as u32
+# Authored/serde (`RegionFieldSpec`, scenario channels) and WGSL/POD wire structs
+# are classified elsewhere; this arm only scans named production compile/plan
+# records. Avoid whole-file test exemptions — production lines remain visible.
+FAMILY_B_PLAN_FILES=(
+  'crates/simthing-spec/src/compile/region_field_admission.rs'
+  'crates/simthing-spec/src/compile/resource_economy.rs'
+  'crates/simthing-driver/src/arena_hierarchy.rs'
+  'crates/simthing-driver/src/arena_allocation_plan.rs'
+  'crates/simthing-kernel/src/transfer_accumulator.rs'
+  'crates/simthing-kernel/src/emission_accumulator.rs'
+  'crates/simthing-kernel/src/intensity_accumulator.rs'
+  'crates/simthing-core/src/compiled_accumulator_plan.rs'
+)
+hits=""
+for f in "${FAMILY_B_PLAN_FILES[@]}"; do
+  if [[ ! -f "${f}" ]]; then
+    continue
+  fi
+  file_hits="$(
+    rg -n --glob "${f}" \
+      '^\s*(pub\s+)?(source_col|target_col|child_col|parent_col|urgency_col|weight_col|intrinsic_flow_col|allocated_flow_col|choke_output_col)\s*:\s*(Option<)?u32' \
+      "${f}" \
+      | normalize \
+      || true
+  )"
+  if [[ -n "${file_hits}" ]]; then
+    hits+="${file_hits}"$'\n'
+  fi
+done
+hits="$(printf '%s' "${hits}" | sed '/^$/d' || true)"
+if [[ -n "${hits}" ]]; then
+  fail "Family-B compiled/plan records still carry column identity as u32/Option<u32>:" "${hits}"
+fi
+echo "PASS: Family-B compiled/plan column identities are typed (no raw u32 plan fields)"
+
 echo "PASS(plan-struct-typing-census): full 4.2 authority + wire-boundary census green"
