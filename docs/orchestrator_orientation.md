@@ -45,7 +45,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 211b860c2a424d0386a01a2dc93d5c563abfd1411c1f58ec55c7b69d97426cb8 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | 26eab30ec86c97ac8dfd6beef7ae8c5b4d3f18c38fdaa431ec40ccce855396d3 |
-| design_0_0_8_7_rf_arena_modernization.md | d26146206c633e5a418d74aacbd3611dab8c672613c00a01e82d17543c0a0eb0 |
+| design_0_0_8_7_rf_arena_modernization.md | 777a56642c654a99e0eb9cb8c74cf6ae9d088e273e462e3915fd2ad28790e75b |
 | relay_lint.sh | 4163f715cdc3b549dbf57c1744aff61ea96b9f9f0a2237376665fbdb24e986c8 |
 | doctrine_anchors.tsv | 08a34b6dac78478d2154fcd2735cf4a3f87a670d925805814cca0a8079448a84 |
 | execution_status_taxonomy.tsv | 377af7d8b4a403a63b04c32283f9669ae363dcfced008f7d0fcec11944f59feb |
@@ -67,8 +67,7 @@ Track state: `open`
 
 | # | rung | deliverable | exit proof |
 | --- | --- | --- | --- |
-| 3.1 | SPECIALIZATION-PROTOCOL-0 | Phase 3: the richer-than-kind protocol, kind-compatible (promotion not rewrite). | **DA-GRADUATED / merged [#1467](https://github.com/khorum08/SimThing/pull/1467) @ HEAD `da0dbe4f`** — profiles = type... |
-| 3.2 | FIRST-CITIZEN-SPECIALISTS-0 | Phase 3: spatial / owner / session as first citizens on the protocol. | **PROBATION / proof-present / DA-review-pending** — authored `specialization=` on location+entity; OWNER_POLICY_WEIGH... |
+| 3.2 | FIRST-CITIZEN-SPECIALISTS-0 | Phase 3: spatial / owner / session as first citizens on the protocol. | **DA-GRADUATED / merged [#1470](https://github.com/khorum08/SimThing/pull/1470) @ HEAD `156f1570`** — authored `speci... |
 | 4.1 | ROW-SLOT-OBJECT-SEMANTICS-0 | Phase 4: parent-slotting + child-row allocation as object semantics through the  | Slot/column identity flows from the object model; no minting beside it; corpus green. |
 | 4.2 | PLAN-STRUCT-TYPING-0 | Phase 4: exclusion-audit Family B — `ColumnIndex` end-to-end in plan structs; ra | ~40 round-trip mints collapse to the fenced boundary module; corpus green. |
 | 5.1 | ANCHOR-DISPOSITION-ADMISSION-0 | Phase 5: P0(e) fulcrum 1 — default-Anchored disposition; authored `Unobserved{re | Property lands anchored with zero wiring; dark-cell set renders; 12.3-replay fixture impossible. |
