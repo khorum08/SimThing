@@ -267,6 +267,26 @@ EOF
     "${ROOT_SANDBOX}/crates/simthing-driver/src/rf_probe_oracle_unclassified.rs"
 }
 
+setup_heuristic_owner_policy_weight_authority_mint() {
+  # FIRST-CITIZEN-SPECIALISTS-0: authored scenario source minting 8_300_318.
+  prepare_trap_baseline "$ROOT_SANDBOX"
+  mkdir -p "${ROOT_SANDBOX}/scenarios/corpus"
+  cp "${FIXTURES}/known_bad/owner_policy_weight_authority_mint.simthing-scenario.json" \
+    "${ROOT_SANDBOX}/scenarios/corpus/oob_stamp_mint.simthing-scenario.json"
+}
+
+setup_quiet_owner_policy_weight_authority_mint() {
+  # Clean authored tree: no 8_300_318 mint in scenario sources.
+  prepare_trap_baseline "$ROOT_SANDBOX"
+  mkdir -p "${ROOT_SANDBOX}/scenarios/corpus"
+  cat >"${ROOT_SANDBOX}/scenarios/corpus/clean_no_authority_mint.simthing-scenario.json" <<'EOF'
+{
+  "scenario_id": "clean_no_authority_mint",
+  "properties": []
+}
+EOF
+}
+
 expect_constitution_reach_log_append() {
   # CONSTITUTION-TRIPWIRES-0: after a known-bad CELL-STORAGE hit, reach-log gains a row.
   begin_sandbox
@@ -285,6 +305,26 @@ expect_constitution_reach_log_append() {
     HE_REPORT+=("CONSTITUTION-REACH-LOG (cell_storage append)  PASS")
   else
     HE_REPORT+=("CONSTITUTION-REACH-LOG (cell_storage append)  FAIL (exit=${exit_code} before=${before} after=${after})")
+    fail_selftest
+  fi
+  end_sandbox
+}
+
+expect_owner_policy_weight_authority_mint_reach_log_append() {
+  # FIRST-CITIZEN-SPECIALISTS-0: known-bad scenario mint appends reach-log evidence.
+  begin_sandbox
+  setup_heuristic_owner_policy_weight_authority_mint
+  printf 'date\trole\tquery\tanchors_served\thit\n' >"${ROOT_SANDBOX}/scripts/ci/anchor_reach_log.tsv"
+  local out="${ROOT_SANDBOX}/scan.out"
+  local exit_code before after
+  before="$(wc -l <"${ROOT_SANDBOX}/scripts/ci/anchor_reach_log.tsv" | tr -d ' ')"
+  exit_code="$(run_scan_in_sandbox "$ROOT_SANDBOX" "$out")"
+  after="$(wc -l <"${ROOT_SANDBOX}/scripts/ci/anchor_reach_log.tsv" | tr -d ' ')"
+  if [[ "$exit_code" -eq 0 && "$after" -gt "$before" ]] \
+    && grep -q $'\tscan\tOWNER-POLICY-WEIGHT-AUTHORITY-MINT\t' "${ROOT_SANDBOX}/scripts/ci/anchor_reach_log.tsv"; then
+    HE_REPORT+=("CONSTITUTION-REACH-LOG (owner_policy_weight_authority_mint append)  PASS")
+  else
+    HE_REPORT+=("CONSTITUTION-REACH-LOG (owner_policy_weight_authority_mint append)  FAIL (exit=${exit_code} before=${before} after=${after})")
     fail_selftest
   fi
   end_sandbox
@@ -1275,7 +1315,12 @@ run_all_cases() {
     setup_heuristic_mapeditor border_service_mapeditor.rs
   expect_heuristic_quiet "mapeditor_polyline_projection_cache" "BORDER-SERVICE" \
     setup_trap_mapeditor traps/mapeditor_polyline_projection_cache.rs
+  expect_heuristic_inspect "owner_policy_weight_authority_mint" "OWNER-POLICY-WEIGHT-AUTHORITY-MINT" \
+    setup_heuristic_owner_policy_weight_authority_mint
+  expect_heuristic_quiet "owner_policy_weight_authority_mint_clean" "OWNER-POLICY-WEIGHT-AUTHORITY-MINT" \
+    setup_quiet_owner_policy_weight_authority_mint
   expect_constitution_reach_log_append
+  expect_owner_policy_weight_authority_mint_reach_log_append
   expect_heuristic_inspect "sim_kind_read" "SIM-KIND-READ" \
     setup_heuristic_sim sim_kind_read.rs
   expect_heuristic_inspect "semantic_words_production" "SEMANTIC-WORDS" \

@@ -449,6 +449,9 @@ in `crates/simthing-mapeditor` + `crates/simthing-tools` code and their live tes
 - [hd_catalog_library_0_results.md](hd_catalog_library_0_results.md) - HD-CATALOG-LIBRARY-0 **PROBATION / PR #1347** - `librarian.sh --catalog` v2 renders per-role anchor library, orientation spine, and dispatcher-derived payload sections; staleness adds harness-fixture gauge; catalog cap/read-only/per-role fixtures bite; required battery green; DA gate-wiring review required.
 - [hd_owner_authoring_guide_0_results.md](hd_owner_authoring_guide_0_results.md) - HD-OWNER-AUTHORING-GUIDE-0 **PROBATION / PR pending** - capped Owner authoring guide, role-slot onboarding/template sweep, cloud VM python caveat, prose-delta accounting, and required docs battery; DA gate-wiring review required.
 
+## 0.0.8.7 RF arena modernization
+- [first_citizen_specialists_0_results.md](first_citizen_specialists_0_results.md) - FIRST-CITIZEN-SPECIALISTS-0 **PROBATION** — location/entity `specialization=` authoring; OWNER_POLICY_WEIGHT_AUTHORITY mint HEURISTIC guard + reach-log; citizen counts board/orientation (`spatial=1500 owner-seat=2 session-root=1`).
+
 ## Notes
 - **No global structural lattice edge cap exists.** Structural scale is governed by `MapgenStructuralGridBudget` (default unbounded) + checked-`u128` math. `200×200` is a *small reference*; `65,535` was a temporary arithmetic ceiling and is **not doctrine** (removed in STEAD-SCALE-1).
 - **Execution-profile limits are separate** (`simthing-spec` `REGION_FIELD_STANDARD/EXTENDED_MAX_GRID` ≤10/32 per edge bounded local theater). A vast layout may pass structurally while a dense execution profile **defers to atlas** — that is not "the map is too large."

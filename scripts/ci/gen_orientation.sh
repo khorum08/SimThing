@@ -1905,6 +1905,7 @@ main() {
   export ORIENTATION_RELAY_LINT="${ORIENTATION_RELAY_LINT:-${SCRIPT_DIR}/relay_lint.sh}"
   export ORIENTATION_ANCHORS_TSV="${ORIENTATION_ANCHORS_TSV:-${SCRIPT_DIR}/doctrine_anchors.tsv}"
   export ORIENTATION_EXECUTION_STATUS_TSV="${ORIENTATION_EXECUTION_STATUS_TSV:-${SCRIPT_DIR}/execution_status_taxonomy.tsv}"
+  export ORIENTATION_SPECIALIZATION_CITIZEN_COUNTS_TSV="${ORIENTATION_SPECIALIZATION_CITIZEN_COUNTS_TSV:-${SCRIPT_DIR}/specialization_citizen_counts.tsv}"
   export ORIENTATION_OUTPUT="${ORIENTATION_OUTPUT:-${OUTPUT_PATH}}"
   export ORIENTATION_MODE="$MODE"
   export ORIENTATION_OPEN_TARGET="$OPEN_TARGET"
@@ -1950,6 +1951,12 @@ EXECUTION_STATUS_TSV = pathlib.Path(
     os.environ.get(
         "ORIENTATION_EXECUTION_STATUS_TSV",
         str(REPO_ROOT / "scripts/ci/execution_status_taxonomy.tsv"),
+    )
+)
+SPECIALIZATION_CITIZEN_COUNTS_TSV = pathlib.Path(
+    os.environ.get(
+        "ORIENTATION_SPECIALIZATION_CITIZEN_COUNTS_TSV",
+        str(REPO_ROOT / "scripts/ci/specialization_citizen_counts.tsv"),
     )
 )
 
@@ -2359,6 +2366,27 @@ def execution_status_mixed_count(path: pathlib.Path) -> int:
     return n
 
 
+def specialization_citizen_counts(path: pathlib.Path) -> dict:
+    """Return seed-profile citizen counts from specialization_citizen_counts.tsv."""
+    counts = {"spatial": 0, "owner-seat": 0, "session-root": 0}
+    if not path.is_file():
+        return counts
+    with path.open(encoding="utf-8", newline="") as fh:
+        for row in csv.reader(fh, delimiter="\t"):
+            if not row or (row[0].startswith("#") if row[0] else True):
+                continue
+            if len(row) < 2:
+                continue
+            profile = row[0].strip()
+            if profile not in counts:
+                continue
+            try:
+                counts[profile] = int(row[1].strip())
+            except ValueError:
+                continue
+    return counts
+
+
 def read_tsv_dict(path: pathlib.Path, header: list):
     if not path.is_file():
         return header, []
@@ -2680,9 +2708,12 @@ def render_orientation(active_info: dict) -> tuple:
     non_exec_tsv = REPO_ROOT / "scripts" / "ci" / "execution_status_non_execution.tsv"
     if non_exec_tsv.is_file():
         sources.append(("execution_status_non_execution.tsv", non_exec_tsv))
+    if SPECIALIZATION_CITIZEN_COUNTS_TSV.is_file():
+        sources.append(("specialization_citizen_counts.tsv", SPECIALIZATION_CITIZEN_COUNTS_TSV))
     manifest = [(name, sha256_file(path)) for name, path in sources]
     exec_counts = execution_status_counts(EXECUTION_STATUS_TSV)
     mixed_count = execution_status_mixed_count(mixed_status_tsv)
+    citizen_counts = specialization_citizen_counts(SPECIALIZATION_CITIZEN_COUNTS_TSV)
 
     class_rows = []
     for row in classes:
@@ -2748,6 +2779,12 @@ def render_orientation(active_info: dict) -> tuple:
     f"rehearsal={exec_counts['rehearsal']} compile-plan={exec_counts['compile-plan']} "
     f"mixed_ruled={mixed_count} "
     f"(primary-inclusive taxonomy; DA dual-posture residual; census `execution_status_census.py`).",
+    "",
+    "## Specialization citizens (canonical TP authority install)",
+    "",
+    f"spatial={citizen_counts['spatial']} owner-seat={citizen_counts['owner-seat']} "
+    f"session-root={citizen_counts['session-root']} "
+    f"(SpecSessionState.specialization.citizen_counts; source `specialization_citizen_counts.tsv`).",
     "",
 ])
     if design_doc is None:

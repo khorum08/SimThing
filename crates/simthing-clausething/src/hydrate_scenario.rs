@@ -217,6 +217,10 @@ pub struct HydratedScenarioNode {
     /// Clause token for `system_target` (spanned admission diagnostics).
     #[serde(skip)]
     pub system_target_span_token: Option<usize>,
+    /// FIRST-CITIZEN-SPECIALISTS-0: authored profile declarations with their
+    /// clause scalar token indices (span provenance for admission errors).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub specializations: Vec<(String, usize)>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -579,6 +583,7 @@ pub fn hydrate_scenario_with_source_base(
         children: locations,
         system_target: None,
         system_target_span_token: None,
+        specializations: Vec::new(),
     };
 
     let mut properties = Vec::new();
@@ -2464,6 +2469,7 @@ fn parse_node(
     let mut children = Vec::new();
     let mut system_target = None;
     let mut system_target_span_token = None;
+    let mut specializations: Vec<(String, usize)> = Vec::new();
 
     for field in &block.properties {
         reject_forbidden_node_field(field)?;
@@ -2487,6 +2493,18 @@ fn parse_node(
                     ));
                 }
                 kind = Some(parse_kind(field)?);
+            }
+            "specialization" => {
+                let RawValue::Scalar(scalar) = &field.value else {
+                    return Err(HydrateError::new_spanned(
+                        format!(
+                            "{}.specialization must be a scalar profile id",
+                            property.key.text
+                        ),
+                        Some(field.key.span.clone()),
+                    ));
+                };
+                specializations.push((scalar.text.clone(), scalar.span.token_index));
             }
             "system_target" => {
                 if system_target.is_some() {
@@ -2552,6 +2570,7 @@ fn parse_node(
         children,
         system_target,
         system_target_span_token,
+        specializations,
     })
 }
 
@@ -3033,6 +3052,14 @@ fn flatten_node(
 fn simthing_from_node(node: &HydratedScenarioNode) -> SimThing {
     let mut simthing = SimThing::new(node.kind.clone(), 0);
     simthing.id = node.simthing_id;
+    for (profile, token) in &node.specializations {
+        simthing
+            .declared_specializations
+            .push(simthing_core::DeclaredSpecialization {
+                profile: profile.clone(),
+                span_token: Some(*token),
+            });
+    }
     for child in &node.children {
         simthing.add_child(simthing_from_node(child));
     }
