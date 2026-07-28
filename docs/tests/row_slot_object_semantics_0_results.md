@@ -1,7 +1,7 @@
 # ROW-SLOT-OBJECT-SEMANTICS-0 results
 
 - Track: 0.0.8.7 RF arena modernization (rung 4.1)
-- Status: **PROBATION / proof-present / DA-review-pending**
+- Status: **COMPLETE — DA-GRADUATED / merged #1475 @ 272f82e2** (DA reproduced full corpus green incl. driver 119/0/13 on RTX 4080/Vulkan)
 - HD-RECEIPT: `f7797b9aa308`
 - ORIENT-RECEIPT: `16b366e49528`
 - orientation_rule_stamp: `76fd13d17f16f2f7`
