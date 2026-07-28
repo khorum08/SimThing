@@ -87,9 +87,10 @@ pub use property::{
 pub use reduction::ReductionRule;
 pub use registry::{DimensionRegistry, PropertyColumnRange};
 pub use specialization::{
-    derive_specializations, seed_profiles, SpecializationError, SpecializationProfile,
-    SpecializationReport, SpecializationRequirement, SpecializationRow, PROFILE_OWNER_SEAT,
-    PROFILE_SESSION_ROOT, PROFILE_SPATIAL,
+    derive_specializations, kind_identity, seed_profiles, DeclaredSpecialization, KindIdentity,
+    SpecializationError, SpecializationObservations, SpecializationProfile, SpecializationReport,
+    SpecializationRequirement, SpecializationRow, PROFILE_OWNER_SEAT, PROFILE_SESSION_ROOT,
+    PROFILE_SPATIAL,
 };
 pub use simthing::{
     kind_matches, reserve_simthing_ids_from_tree, ResourceParentEdge, SimThing, SimThingKind,

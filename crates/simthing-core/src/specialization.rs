@@ -2,40 +2,77 @@
 //! specialization protocol.
 //!
 //! A specialization is a **profile**: a data-declared bundle of root-contract
-//! usages a SimThing either structurally CONFORMS to (derived — observation,
-//! zero authoring burden) or explicitly DECLARES (validated at admission with
-//! hard errors). Profiles are data, never a trait hierarchy: a SimThing at
-//! rest remains a row, and no runtime path consults profiles (admission-time
-//! only). Kinds remain serialization/authority markers; a profile is a kind
-//! marker PLUS structural facts — richer than the kind alone, additive-only.
+//! usages a SimThing either structurally CONFORMS to (derived — observation
+//! against authoritative admission artifacts) or explicitly DECLARES
+//! (validated at admission with spanned hard errors). Profiles are data,
+//! never a trait hierarchy; no runtime path consults them (admission-time
+//! only). A profile is typed kind identity PLUS structural facts — richer
+//! than the kind alone, additive-only. Custom kinds can never impersonate
+//! built-in authority kinds.
 
+use crate::property::SimThingKindTag;
 use crate::simthing::{SimThing, SimThingKind};
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use thiserror::Error;
 
-/// Stable profile identifier (data; spec-authorable growth arrives in 3.2).
 pub type SpecializationProfileId = &'static str;
 
 pub const PROFILE_SESSION_ROOT: SpecializationProfileId = "session-root";
 pub const PROFILE_OWNER_SEAT: SpecializationProfileId = "owner-seat";
 pub const PROFILE_SPATIAL: SpecializationProfileId = "spatial";
 
-/// One structural requirement a profile imposes. Closed data enum — adding a
-/// requirement kind is a DA-gated protocol change, adding a PROFILE composed
-/// of existing requirements is ordinary data growth (the EML library law's
-/// shape applied to specialization).
+/// Typed kind identity for requirements. `Custom("Location")` is NOT
+/// [`SimThingKindTag::Location`]: a custom tag never satisfies a built-in
+/// identity requirement (remand `5098201367` collision fence).
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub enum SpecializationRequirement {
-    /// The SimThing carries this kind as its authority marker.
-    KindMarker(String),
-    /// The SimThing's tree parent carries this kind marker.
-    ParentKindMarker(String),
-    /// The SimThing is a tree root or the sole child of a `Scenario` root.
-    SessionRootPosture,
+pub enum KindIdentity {
+    BuiltIn(SimThingKindTag),
+    Custom(String),
 }
 
-/// A specialization profile: id + requirements, pure data.
+pub fn kind_identity(kind: &SimThingKind) -> KindIdentity {
+    match kind {
+        SimThingKind::Custom(name) => KindIdentity::Custom(name.clone()),
+        SimThingKind::Scenario => KindIdentity::BuiltIn(SimThingKindTag::Scenario),
+        SimThingKind::GameSession => KindIdentity::BuiltIn(SimThingKindTag::GameSession),
+        SimThingKind::World => KindIdentity::BuiltIn(SimThingKindTag::World),
+        SimThingKind::Owner => KindIdentity::BuiltIn(SimThingKindTag::Owner),
+        #[allow(deprecated)]
+        SimThingKind::Faction => KindIdentity::BuiltIn(SimThingKindTag::Faction),
+        #[allow(deprecated)]
+        SimThingKind::StarSystem => KindIdentity::BuiltIn(SimThingKindTag::StarSystem),
+        SimThingKind::Location => KindIdentity::BuiltIn(SimThingKindTag::Location),
+        SimThingKind::Cohort => KindIdentity::BuiltIn(SimThingKindTag::Cohort),
+        SimThingKind::Fleet => KindIdentity::BuiltIn(SimThingKindTag::Fleet),
+        #[allow(deprecated)]
+        SimThingKind::Station => KindIdentity::BuiltIn(SimThingKindTag::Station),
+    }
+}
+
+/// One structural requirement. Closed data enum — new requirement KINDS are
+/// DA-gated protocol changes; new PROFILES composed from existing kinds are
+/// ordinary data growth (the library growth law's shape).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum SpecializationRequirement {
+    /// Typed kind identity (built-in vs custom is never conflated).
+    Kind(KindIdentity),
+    /// The tree parent carries this typed kind identity.
+    ParentKind(KindIdentity),
+    /// The actual GameSession-root posture: the node is the absolute tree
+    /// root, or the SOLE `GameSession` child of a `Scenario` tree root.
+    SoleSessionRootPosture,
+    /// The node has an authoritative structural grid placement (coordinate
+    /// posture + membership of the spatial field lattice; §7: unoccupied
+    /// cells carrying ambient field are still spatial, so placement — not
+    /// arena enrollment — is the spatial-field participation fact).
+    StructurallyPlaced,
+    /// The node hosts at least one populated resource-bearing property
+    /// (a sub-field carrying an accumulator spec — the P0(a) hosting sense;
+    /// the owner stockpile/weight seat contract at 3.1 grain).
+    HostsPopulatedResourceProperty,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SpecializationProfile {
     pub id: String,
@@ -43,58 +80,72 @@ pub struct SpecializationProfile {
     pub requirements: Vec<SpecializationRequirement>,
 }
 
-/// The three seed profiles (3.1). All are satisfied by the existing corpus as
-/// authored today — the compatibility falsifier depends on it. 3.2 enriches
-/// these into full first citizens (placement conformance, hosted families).
+/// The three seed profiles (3.1; 3.2 enriches into full first citizens).
 pub fn seed_profiles() -> Vec<SpecializationProfile> {
     vec![
         SpecializationProfile {
             id: PROFILE_SESSION_ROOT.to_string(),
-            description: "GameSession contract: the running session root".to_string(),
+            description: "GameSession contract: the sole running session root".to_string(),
             requirements: vec![
-                SpecializationRequirement::KindMarker("GameSession".to_string()),
-                SpecializationRequirement::SessionRootPosture,
+                SpecializationRequirement::Kind(KindIdentity::BuiltIn(SimThingKindTag::GameSession)),
+                SpecializationRequirement::SoleSessionRootPosture,
             ],
         },
         SpecializationProfile {
             id: PROFILE_OWNER_SEAT.to_string(),
-            description: "Owner contract: operator seat, sibling child of the session root"
-                .to_string(),
+            description:
+                "Owner contract: session-root child hosting populated resource properties (the stockpile/weight seat)"
+                    .to_string(),
             requirements: vec![
-                SpecializationRequirement::KindMarker("Owner".to_string()),
-                SpecializationRequirement::ParentKindMarker("GameSession".to_string()),
+                SpecializationRequirement::Kind(KindIdentity::BuiltIn(SimThingKindTag::Owner)),
+                SpecializationRequirement::ParentKind(KindIdentity::BuiltIn(
+                    SimThingKindTag::GameSession,
+                )),
+                SpecializationRequirement::HostsPopulatedResourceProperty,
             ],
         },
         SpecializationProfile {
             id: PROFILE_SPATIAL.to_string(),
-            description: "Location contract: gridcell / spatial-arena participant (\u{a7}7: there is no non-spatial Location)"
-                .to_string(),
-            requirements: vec![SpecializationRequirement::KindMarker(
-                "Location".to_string(),
-            )],
+            description:
+                "Location contract: structurally placed gridcell of the spatial field lattice (\u{a7}7)"
+                    .to_string(),
+            requirements: vec![
+                SpecializationRequirement::Kind(KindIdentity::BuiltIn(SimThingKindTag::Location)),
+                SpecializationRequirement::StructurallyPlaced,
+            ],
         },
     ]
 }
 
-fn kind_marker(kind: &SimThingKind) -> String {
-    match kind {
-        SimThingKind::Custom(name) => name.clone(),
-        other => format!("{other:?}"),
-    }
+/// Authoritative admission-artifact observations the caller assembles for
+/// derivation. Facts, not behavior: which SimThings hold structural grid
+/// placements, and which host populated resource-bearing properties. Callers
+/// with partial artifacts (e.g. a driver install without spec-side grid
+/// metadata) pass what they have; requirements over absent artifacts simply
+/// do not derive — honesty over vacuous conformance.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct SpecializationObservations {
+    pub structurally_placed: BTreeSet<u32>,
+    pub resource_property_hosts: BTreeSet<u32>,
 }
 
-/// Per-SimThing conformance row in the inspectable report.
+/// One explicitly declared profile with its authored source token (clause
+/// scalar token index when authored; `None` for programmatic declarations).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DeclaredSpecialization {
+    pub profile: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub span_token: Option<usize>,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SpecializationRow {
     pub simthing: u32,
-    pub kind_marker: String,
-    /// Profiles this SimThing structurally conforms to (derived observation).
+    pub kind: KindIdentity,
     pub derived: Vec<String>,
-    /// Profiles the SimThing explicitly declared (all validated at admission).
     pub declared: Vec<String>,
 }
 
-/// Inspectable whole-tree report (the derivation-report pattern from 1.1).
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SpecializationReport {
     pub rows: Vec<SpecializationRow>,
@@ -111,102 +162,148 @@ impl SpecializationReport {
     }
 }
 
-/// Admission hard errors for declared-profile validation. Spanned where the
-/// authoring surface provides spans (clausething authoring lands in 3.2; the
-/// programmatic path reports ids + the precise unmet requirement).
 #[derive(Clone, Debug, PartialEq, Eq, Error)]
 pub enum SpecializationError {
-    #[error("SimThing {simthing} declares unknown specialization profile `{profile}`")]
-    UnknownProfile { simthing: u32, profile: String },
+    #[error(
+        "SimThing {simthing} declares unknown specialization profile `{profile}` (span_token={span_token:?})"
+    )]
+    UnknownProfile {
+        simthing: u32,
+        profile: String,
+        span_token: Option<usize>,
+    },
 
     #[error(
-        "SimThing {simthing} (kind `{kind_marker}`) declares profile `{profile}` but does not satisfy requirement {requirement:?}"
+        "SimThing {simthing} ({kind:?}) declares profile `{profile}` but does not satisfy requirement {requirement:?} (span_token={span_token:?})"
     )]
     RequirementUnmet {
         simthing: u32,
-        kind_marker: String,
+        kind: KindIdentity,
         profile: String,
         requirement: SpecializationRequirement,
+        span_token: Option<usize>,
     },
+}
+
+struct NodeContext<'a> {
+    parent_kind: Option<&'a SimThingKind>,
+    /// True when the node is the tree root, or the sole GameSession child of
+    /// a Scenario that is itself the tree root.
+    sole_session_root: bool,
 }
 
 fn requirement_met(
     req: &SpecializationRequirement,
     node: &SimThing,
-    parent_kind: Option<&SimThingKind>,
+    ctx: &NodeContext<'_>,
+    obs: &SpecializationObservations,
 ) -> bool {
     match req {
-        SpecializationRequirement::KindMarker(marker) => kind_marker(&node.kind) == *marker,
-        SpecializationRequirement::ParentKindMarker(marker) => {
-            parent_kind.map(kind_marker).as_deref() == Some(marker.as_str())
+        SpecializationRequirement::Kind(identity) => kind_identity(&node.kind) == *identity,
+        SpecializationRequirement::ParentKind(identity) => ctx
+            .parent_kind
+            .map(kind_identity)
+            .is_some_and(|k| k == *identity),
+        SpecializationRequirement::SoleSessionRootPosture => ctx.sole_session_root,
+        SpecializationRequirement::StructurallyPlaced => {
+            obs.structurally_placed.contains(&node.id.raw())
         }
-        SpecializationRequirement::SessionRootPosture => matches!(
-            parent_kind,
-            None | Some(SimThingKind::Scenario)
-        ),
+        SpecializationRequirement::HostsPopulatedResourceProperty => {
+            obs.resource_property_hosts.contains(&node.id.raw())
+        }
     }
 }
 
-/// Derive structural conformance and validate declared profiles for the whole
-/// tree. Pure observation + validation: mutates nothing, gates nothing beyond
-/// the declared-profile hard errors. Admission-time only.
+/// Derive structural conformance and validate declared profiles for the
+/// whole tree against caller-assembled admission-artifact observations.
 pub fn derive_specializations(
     root: &SimThing,
     profiles: &[SpecializationProfile],
+    observations: &SpecializationObservations,
 ) -> Result<SpecializationReport, SpecializationError> {
     let by_id: BTreeMap<&str, &SpecializationProfile> =
         profiles.iter().map(|p| (p.id.as_str(), p)).collect();
     let mut report = SpecializationReport::default();
-    walk(root, None, &by_id, &mut report)?;
+    let root_ctx = NodeContext {
+        parent_kind: None,
+        sole_session_root: true,
+    };
+    walk(root, &root_ctx, root, &by_id, observations, &mut report)?;
     Ok(report)
 }
 
 fn walk(
     node: &SimThing,
-    parent_kind: Option<&SimThingKind>,
+    ctx: &NodeContext<'_>,
+    tree_root: &SimThing,
     profiles: &BTreeMap<&str, &SpecializationProfile>,
+    obs: &SpecializationObservations,
     report: &mut SpecializationReport,
 ) -> Result<(), SpecializationError> {
-    let marker = kind_marker(&node.kind);
+    let identity = kind_identity(&node.kind);
     let derived: Vec<String> = profiles
         .values()
         .filter(|p| {
             p.requirements
                 .iter()
-                .all(|req| requirement_met(req, node, parent_kind))
+                .all(|req| requirement_met(req, node, ctx, obs))
         })
         .map(|p| p.id.clone())
         .collect();
 
     for declared in &node.declared_specializations {
-        let profile = profiles.get(declared.as_str()).ok_or_else(|| {
+        let profile = profiles.get(declared.profile.as_str()).ok_or_else(|| {
             SpecializationError::UnknownProfile {
                 simthing: node.id.raw(),
-                profile: declared.clone(),
+                profile: declared.profile.clone(),
+                span_token: declared.span_token,
             }
         })?;
         if let Some(unmet) = profile
             .requirements
             .iter()
-            .find(|req| !requirement_met(req, node, parent_kind))
+            .find(|req| !requirement_met(req, node, ctx, obs))
         {
             return Err(SpecializationError::RequirementUnmet {
                 simthing: node.id.raw(),
-                kind_marker: marker.clone(),
-                profile: declared.clone(),
+                kind: identity.clone(),
+                profile: declared.profile.clone(),
                 requirement: unmet.clone(),
+                span_token: declared.span_token,
             });
         }
     }
 
     report.rows.push(SpecializationRow {
         simthing: node.id.raw(),
-        kind_marker: marker,
+        kind: identity,
         derived,
-        declared: node.declared_specializations.clone(),
+        declared: node
+            .declared_specializations
+            .iter()
+            .map(|d| d.profile.clone())
+            .collect(),
     });
+
+    let scenario_root_is_tree_root = matches!(tree_root.kind, SimThingKind::Scenario);
+    let session_children_of_root = if scenario_root_is_tree_root {
+        tree_root
+            .children
+            .iter()
+            .filter(|c| c.kind == SimThingKind::GameSession)
+            .count()
+    } else {
+        0
+    };
     for child in &node.children {
-        walk(child, Some(&node.kind), profiles, report)?;
+        let child_ctx = NodeContext {
+            parent_kind: Some(&node.kind),
+            sole_session_root: std::ptr::eq(node, tree_root)
+                && scenario_root_is_tree_root
+                && child.kind == SimThingKind::GameSession
+                && session_children_of_root == 1,
+        };
+        walk(child, &child_ctx, tree_root, profiles, obs, report)?;
     }
     Ok(())
 }

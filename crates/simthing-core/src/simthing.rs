@@ -94,7 +94,7 @@ pub struct SimThing {
     /// declarations serialize to nothing (wire-identical to pre-3.1 trees).
     /// Validated at admission — see [`crate::specialization`].
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub declared_specializations: Vec<String>,
+    pub declared_specializations: Vec<crate::specialization::DeclaredSpecialization>,
 }
 
 impl SimThing {

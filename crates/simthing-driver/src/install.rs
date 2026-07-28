@@ -264,12 +264,6 @@ pub fn compile_and_install(
         return Err(InstallError::SlotOverflow { owner_id });
     }
 
-    // ── 4a′. Specialization protocol (3.1): derive structural conformance and
-    //      validate any declared profiles. Observation + validation only —
-    //      nothing downstream consults profiles yet (consumers arrive in 3.2).
-    state.specialization =
-        simthing_core::derive_specializations(root, &simthing_core::seed_profiles())?;
-
     // ── 4b. Resource Flow admission: populated resource properties + typed
     //      parent edges derive the default arena. ResourceFlowSpec remains an
     //      override surface and is resolved onto the same downstream plan.
@@ -280,6 +274,20 @@ pub fn compile_and_install(
         allocator,
     )?;
     state.resource_flow_derivation = derived_resource_flow.report;
+
+    // ── 4b′. Specialization protocol (3.1): derive structural conformance and
+    //      validate declared profiles against admission artifacts. Observation
+    //      + validation only; nothing downstream consults profiles yet (3.2).
+    //      Structural placements are spec-side artifacts not visible to this
+    //      install path; placement-gated profiles honestly do not derive here
+    //      (artifact-complete callers assemble full observations themselves).
+    let mut spec_observations = simthing_core::SpecializationObservations::default();
+    collect_resource_property_hosts(root, registry, &mut spec_observations);
+    state.specialization = simthing_core::derive_specializations(
+        root,
+        &simthing_core::seed_profiles(),
+        &spec_observations,
+    )?;
     if let Some(resource_flow) = derived_resource_flow.spec.as_ref() {
         let resolved = resolve_resource_flow_enrollment(resource_flow, scenario, root, allocator)?;
         let base_obligations = resolve_base_flow_obligation_targets(&resolved, scenario, root)?;
@@ -1316,6 +1324,27 @@ pub struct InstallPreview {
 ///
 /// Memory: peaks at roughly 2× the registry + root + allocator size for the
 /// duration of the call. All three are small in practice.
+
+/// SPECIALIZATION-PROTOCOL-0: collect SimThings hosting at least one populated
+/// resource-bearing property (any sub-field carrying an accumulator spec).
+fn collect_resource_property_hosts(
+    node: &simthing_core::SimThing,
+    registry: &DimensionRegistry,
+    observations: &mut simthing_core::SpecializationObservations,
+) {
+    let hosts = node.properties.keys().any(|pid| {
+        registry
+            .try_property(*pid)
+            .is_some_and(|prop| prop.layout.sub_fields.iter().any(|sf| sf.accumulator_spec.is_some()))
+    });
+    if hosts {
+        observations.resource_property_hosts.insert(node.id.raw());
+    }
+    for child in &node.children {
+        collect_resource_property_hosts(child, registry, observations);
+    }
+}
+
 pub fn preview_install(
     game_mode: &GameModeSpec,
     scenario: &Scenario,
