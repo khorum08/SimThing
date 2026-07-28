@@ -1,7 +1,7 @@
 # PLAN-STRUCT-TYPING-0 results (Remand 3 evidence)
 
 - Track: 0.0.8.7 RF arena modernization (rung 4.2)
-- Status: **PROBATION / proof-present / DA-review-pending** (remand 5109354146 discharged; draft retained)
+- Status: **COMPLETE — DA-GRADUATED / merged #1480 @ 6e7fa2b3** (DA reproduced corpus green incl. driver 123/0/13 across 64 harnesses on RTX 4080/Vulkan)
 - HD-RECEIPT: `769199b7423f`
 - ORIENT-RECEIPT: `16b366e49528`
 - orientation_rule_stamp: `76fd13d17f16f2f7`
