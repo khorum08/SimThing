@@ -623,6 +623,7 @@ mod tests {
         reg.register(SimProperty {
             namespace: "core".into(),
             name: name.into(),
+            admission_disposition: Default::default(),
             layout: PropertyLayout {
                 sub_fields: vec![SubFieldSpec {
                     role: SubFieldRole::Named("amount".into()),

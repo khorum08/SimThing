@@ -421,6 +421,7 @@ mod tests {
             name: "flow".into(),
             display_name: "flow".into(),
             description: String::new(),
+            admission_disposition: Default::default(),
             sub_fields: vec![
                 sub_field("intrinsic", AccumulatorRole::IntrinsicFlow),
                 sub_field(

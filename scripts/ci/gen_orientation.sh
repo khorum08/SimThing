@@ -1907,6 +1907,7 @@ main() {
   export ORIENTATION_ANCHORS_TSV="${ORIENTATION_ANCHORS_TSV:-${SCRIPT_DIR}/doctrine_anchors.tsv}"
   export ORIENTATION_EXECUTION_STATUS_TSV="${ORIENTATION_EXECUTION_STATUS_TSV:-${SCRIPT_DIR}/execution_status_taxonomy.tsv}"
   export ORIENTATION_SPECIALIZATION_CITIZEN_COUNTS_TSV="${ORIENTATION_SPECIALIZATION_CITIZEN_COUNTS_TSV:-${SCRIPT_DIR}/specialization_citizen_counts.tsv}"
+  export ORIENTATION_PROPERTY_ADMISSION_INVENTORY_TSV="${ORIENTATION_PROPERTY_ADMISSION_INVENTORY_TSV:-${SCRIPT_DIR}/property_admission_inventory.tsv}"
   # FIRST-CITIZEN-SPECIALISTS-0: citizen counts are executable-sourced (never
   # hand-edited). Generate refreshes the TSV; --check enforces freshness.
   if [[ "${ORIENTATION_SKIP_CITIZEN_COUNTS_CHECK:-0}" != "1" ]]; then
@@ -1918,6 +1919,20 @@ main() {
       check)
         bash "${SCRIPT_DIR}/gen_specialization_citizen_counts.sh" --check \
           --output "${ORIENTATION_SPECIALIZATION_CITIZEN_COUNTS_TSV}"
+        ;;
+    esac
+  fi
+  # ANCHOR-DISPOSITION-ADMISSION-0: the Board/orientation dark-cell surface is
+  # executable-sourced from canonical TP property admission.
+  if [[ "${ORIENTATION_SKIP_PROPERTY_ADMISSION_CHECK:-0}" != "1" ]]; then
+    case "$MODE" in
+      generate)
+        bash "${SCRIPT_DIR}/gen_property_admission_inventory.sh" \
+          --output "${ORIENTATION_PROPERTY_ADMISSION_INVENTORY_TSV}"
+        ;;
+      check)
+        bash "${SCRIPT_DIR}/gen_property_admission_inventory.sh" --check \
+          --output "${ORIENTATION_PROPERTY_ADMISSION_INVENTORY_TSV}"
         ;;
     esac
   fi
@@ -1972,6 +1987,12 @@ SPECIALIZATION_CITIZEN_COUNTS_TSV = pathlib.Path(
     os.environ.get(
         "ORIENTATION_SPECIALIZATION_CITIZEN_COUNTS_TSV",
         str(REPO_ROOT / "scripts/ci/specialization_citizen_counts.tsv"),
+    )
+)
+PROPERTY_ADMISSION_INVENTORY_TSV = pathlib.Path(
+    os.environ.get(
+        "ORIENTATION_PROPERTY_ADMISSION_INVENTORY_TSV",
+        str(REPO_ROOT / "scripts/ci/property_admission_inventory.tsv"),
     )
 )
 
@@ -2402,6 +2423,32 @@ def specialization_citizen_counts(path: pathlib.Path) -> dict:
     return counts
 
 
+def property_admission_inventory(path: pathlib.Path) -> dict:
+    """Return generated admission counts plus stable dark-property rows."""
+    inventory = {"anchored": 0, "unobserved": 0, "total": 0, "dark": []}
+    if not path.is_file():
+        return inventory
+    with path.open(encoding="utf-8", newline="") as fh:
+        for row in csv.reader(fh, delimiter="\t"):
+            if not row or (row[0].startswith("#") if row[0] else True):
+                continue
+            if row[0] == "summary" and len(row) >= 3 and row[1] in inventory:
+                try:
+                    inventory[row[1]] = int(row[2])
+                except ValueError:
+                    pass
+            elif row[0] == "dark" and len(row) >= 4:
+                inventory["dark"].append(
+                    {
+                        "property": row[1],
+                        "reason": row[2],
+                        "source_span_token": row[3],
+                    }
+                )
+    inventory["dark"].sort(key=lambda row: row["property"])
+    return inventory
+
+
 def read_tsv_dict(path: pathlib.Path, header: list):
     if not path.is_file():
         return header, []
@@ -2725,10 +2772,13 @@ def render_orientation(active_info: dict) -> tuple:
         sources.append(("execution_status_non_execution.tsv", non_exec_tsv))
     if SPECIALIZATION_CITIZEN_COUNTS_TSV.is_file():
         sources.append(("specialization_citizen_counts.tsv", SPECIALIZATION_CITIZEN_COUNTS_TSV))
+    if PROPERTY_ADMISSION_INVENTORY_TSV.is_file():
+        sources.append(("property_admission_inventory.tsv", PROPERTY_ADMISSION_INVENTORY_TSV))
     manifest = [(name, sha256_file(path)) for name, path in sources]
     exec_counts = execution_status_counts(EXECUTION_STATUS_TSV)
     mixed_count = execution_status_mixed_count(mixed_status_tsv)
     citizen_counts = specialization_citizen_counts(SPECIALIZATION_CITIZEN_COUNTS_TSV)
+    property_admission = property_admission_inventory(PROPERTY_ADMISSION_INVENTORY_TSV)
 
     class_rows = []
     for row in classes:
@@ -2795,13 +2845,27 @@ def render_orientation(active_info: dict) -> tuple:
     f"mixed_ruled={mixed_count} "
     f"(primary-inclusive taxonomy; DA dual-posture residual; census `execution_status_census.py`).",
     "",
-    "## Specialization citizens (canonical TP authority install)",
+    "## Canonical TP live inventories",
     "",
-    f"spatial={citizen_counts['spatial']} owner-seat={citizen_counts['owner-seat']} "
+    f"Specialization citizens: spatial={citizen_counts['spatial']} owner-seat={citizen_counts['owner-seat']} "
     f"session-root={citizen_counts['session-root']} "
     f"(SpecSessionState.specialization.citizen_counts; source `specialization_citizen_counts.tsv`).",
-    "",
+    f"Property admission: anchored={property_admission['anchored']} "
+    f"unobserved={property_admission['unobserved']} "
+    f"total={property_admission['total']} "
+    f"(SpecSessionState.property_admission; source `property_admission_inventory.tsv`).",
 ])
+    if property_admission["dark"]:
+        lines.append("Dark properties:")
+        lines.append("")
+        for dark in property_admission["dark"]:
+            lines.append(
+                f"- `{dark['property']}` — {dark['reason']} "
+                f"(source_span_token={dark['source_span_token']})"
+            )
+        lines.append("")
+    else:
+        lines.extend(["Dark properties: none.", ""])
     if design_doc is None:
         lines.extend([
             "## Active Track / Rung Summary",

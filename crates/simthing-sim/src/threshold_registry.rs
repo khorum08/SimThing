@@ -1078,6 +1078,7 @@ mod tests {
         SimProperty {
             namespace: "tech".into(),
             name: "propulsion".into(),
+            admission_disposition: Default::default(),
             layout: PropertyLayout {
                 sub_fields: vec![SubFieldSpec {
                     role: SubFieldRole::Named("chemical_drive".into()),
@@ -1118,6 +1119,7 @@ mod tests {
         SimProperty {
             namespace: namespace.into(),
             name: name.into(),
+            admission_disposition: Default::default(),
             layout: PropertyLayout {
                 sub_fields: vec![SubFieldSpec {
                     role: SubFieldRole::Amount,

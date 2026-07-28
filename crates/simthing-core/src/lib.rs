@@ -82,11 +82,14 @@ pub use placed_participant::{
 pub use property::{
     ClampBehavior, DecayBehavior, Direction, ExpireEffect, ExpireHandler, FissionTemplate,
     FissionThreshold, FusionThreshold, IntensityBehavior, IntensityRange, PropertyLayout,
-    PropertyValue, RoleOffset, SecondaryCondition, SimProperty, SimThingKindTag, SubFieldRole,
-    SubFieldSpec, TransformOp,
+    PropertyAdmissionDisposition, PropertyValue, RoleOffset, SecondaryCondition, SimProperty,
+    SimThingKindTag, SubFieldRole, SubFieldSpec, TransformOp,
 };
 pub use reduction::ReductionRule;
-pub use registry::{DimensionRegistry, PropertyColumnRange};
+pub use registry::{
+    DimensionRegistry, PropertyAdmissionReport, PropertyColumnRange,
+    ResourcePropertyDispositionRow,
+};
 pub use residency::{ObjectResidencyRelation, ObjectResidencyRelease, ObjectResidencyRequest};
 pub use simthing::{
     kind_matches, reserve_simthing_ids_from_tree, ResourceParentEdge, SimThing, SimThingKind,

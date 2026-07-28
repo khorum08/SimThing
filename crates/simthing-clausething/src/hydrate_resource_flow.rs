@@ -5,7 +5,8 @@
 //! Rates are carried separately for fixture seeding; they are not a runtime engine.
 
 use simthing_core::{
-    AccumulatorRole, AccumulatorSpec, ClampBehavior, LogTier, SubFieldRole, SubFieldSpec,
+    AccumulatorRole, AccumulatorSpec, ClampBehavior, LogTier, PropertyAdmissionDisposition,
+    SubFieldRole, SubFieldSpec,
 };
 use simthing_spec::spec::resource_flow::{ResourceFlowOptInMode, ResourceFlowSpec};
 use simthing_spec::spec::script::PropertyKey;
@@ -159,6 +160,7 @@ struct FlowPropertyIdentity {
     name: String,
     display_name: String,
     description: String,
+    admission_disposition: PropertyAdmissionDisposition,
 }
 
 fn parse_flow_property_block(property: &RawProperty) -> Result<FlowPropertyIdentity, HydrateError> {
@@ -174,6 +176,7 @@ fn parse_flow_property_block(property: &RawProperty) -> Result<FlowPropertyIdent
     let mut name = None;
     let mut display_name = String::new();
     let mut description = String::new();
+    let mut admission_disposition = PropertyAdmissionDisposition::Anchored;
 
     for field in &block.properties {
         match field.key.text.as_str() {
@@ -182,6 +185,10 @@ fn parse_flow_property_block(property: &RawProperty) -> Result<FlowPropertyIdent
             "name" => name = Some(read_scalar_text(field, "name")?),
             "display_name" => display_name = read_scalar_text(field, "display_name")?,
             "description" => description = read_scalar_text(field, "description")?,
+            "disposition" => {
+                admission_disposition =
+                    crate::hydrate_scenario::parse_property_disposition(field)?;
+            }
             other => {
                 return Err(HydrateError::new_spanned(
                     format!("unsupported flow_property field `{other}`"),
@@ -197,6 +204,7 @@ fn parse_flow_property_block(property: &RawProperty) -> Result<FlowPropertyIdent
         name: require_field(name, "name", property)?,
         display_name,
         description,
+        admission_disposition,
     })
 }
 
@@ -321,6 +329,7 @@ fn build_flow_property_spec(flow: &FlowPropertyIdentity, arena_name: &str) -> Pr
         name: flow.name.clone(),
         display_name: flow.display_name.clone(),
         description: flow.description.clone(),
+        admission_disposition: flow.admission_disposition.clone(),
         sub_fields: vec![
             flow_subfield("flow", AccumulatorRole::IntrinsicFlow),
             flow_subfield(

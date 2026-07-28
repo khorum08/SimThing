@@ -36,6 +36,7 @@ fn emission_registry_with_columns(cols: u32) -> DimensionRegistry {
     reg.register(SimProperty {
         namespace: "emission".into(),
         name: "resources".into(),
+        admission_disposition: Default::default(),
         layout: simthing_core::PropertyLayout { sub_fields },
         decay: None,
         intensity_behavior: None,
@@ -331,4 +332,3 @@ fn c8d_mismatched_registration_tree_id_rejected() {
         })
     );
 }
-

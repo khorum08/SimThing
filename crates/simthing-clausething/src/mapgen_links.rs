@@ -362,6 +362,7 @@ fn lane_coupling_property(coupling: &MapGenLaneCoupling) -> PropertySpec {
         name: name.clone(),
         display_name: name,
         description: format!("inert={}:{}", coupling.from, coupling.to),
+        admission_disposition: Default::default(),
         sub_fields: vec![],
     }
 }

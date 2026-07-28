@@ -1423,6 +1423,7 @@ fn parse_daily_property_block(property: &RawProperty) -> Result<PropertySpec, Hy
         name: require_field(name, "name", property)?,
         display_name,
         description: String::new(),
+        admission_disposition: Default::default(),
         sub_fields: vec![amount_subfield(default.unwrap_or(0.0))],
     })
 }
@@ -1898,6 +1899,7 @@ fn parse_trigger_property_block(property: &RawProperty) -> Result<PropertySpec, 
         name: name.ok_or_else(|| missing("name"))?,
         display_name,
         description: String::new(),
+        admission_disposition: Default::default(),
         sub_fields: vec![SubFieldSpec {
             role: SubFieldRole::Amount,
             width: 1,
@@ -1947,6 +1949,7 @@ fn build_flow_property_spec(
         name: property_name.into(),
         display_name: format!("{category} {display_resource} flow"),
         description: String::new(),
+        admission_disposition: Default::default(),
         sub_fields: vec![
             flow_subfield("flow", AccumulatorRole::IntrinsicFlow),
             flow_subfield(

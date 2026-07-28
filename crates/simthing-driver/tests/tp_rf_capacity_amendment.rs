@@ -46,6 +46,7 @@ fn register_flow(registry: &mut DimensionRegistry, property: &str, arena: &str) 
         name: property.into(),
         display_name: String::new(),
         description: String::new(),
+        admission_disposition: Default::default(),
         sub_fields: vec![
             flow_subfield("flow", AccumulatorRole::IntrinsicFlow),
             flow_subfield(

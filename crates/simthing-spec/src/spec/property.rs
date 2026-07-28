@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use simthing_core::SubFieldSpec;
+use simthing_core::{PropertyAdmissionDisposition, SubFieldSpec};
 
 /// Authored property dimension. Empty `sub_fields` defaults to the standard
 /// scalar layout (`PropertyLayout::standard(0)` = Amount + Velocity + Intensity)
@@ -18,4 +18,11 @@ pub struct PropertySpec {
     /// Sub-field layout. Empty = standard scalar layout.
     #[serde(default)]
     pub sub_fields: Vec<SubFieldSpec>,
+    /// Omitted authoring is Anchored. The sole opt-out is a spanned
+    /// `Unobserved` value hydrated from ordinary ClauseScript authoring.
+    #[serde(
+        default,
+        skip_serializing_if = "PropertyAdmissionDisposition::is_anchored"
+    )]
+    pub admission_disposition: PropertyAdmissionDisposition,
 }

@@ -411,6 +411,7 @@ pub fn compile_and_install(
         }
     }
 
+    state.property_admission = registry.property_admission_report();
     Ok(state)
 }
 

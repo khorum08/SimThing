@@ -653,6 +653,34 @@ def board_json(path_arg=None):
                 continue
         return counts
 
+    def property_admission_summary():
+        # ANCHOR-DISPOSITION-ADMISSION-0: board mirror of the generated live
+        # canonical property-admission inventory.
+        path = ROOT / "scripts" / "ci" / "property_admission_inventory.tsv"
+        inventory = {"anchored": 0, "unobserved": 0, "total": 0, "dark": []}
+        if not path.is_file():
+            return inventory
+        for raw in path.read_text(encoding="utf-8").splitlines():
+            line = raw.strip()
+            if not line or line.startswith("#"):
+                continue
+            parts = line.split("\t")
+            if parts[0] == "summary" and len(parts) >= 3 and parts[1] in inventory:
+                try:
+                    inventory[parts[1]] = int(parts[2])
+                except ValueError:
+                    pass
+            elif parts[0] == "dark" and len(parts) >= 4:
+                inventory["dark"].append(
+                    {
+                        "property": parts[1],
+                        "reason": parts[2],
+                        "source_span_token": parts[3],
+                    }
+                )
+        inventory["dark"].sort(key=lambda row: row["property"])
+        return inventory
+
     data = {
         "track": _safe("track", active_track_id, ""),
         "active_pointer": _safe("active_pointer", active_pointer, ""),
@@ -666,6 +694,9 @@ def board_json(path_arg=None):
         "execution_status": _safe("execution_status", execution_status_summary, {}),
         "specialization_citizens": _safe(
             "specialization_citizens", specialization_citizen_summary, {}
+        ),
+        "property_admission": _safe(
+            "property_admission", property_admission_summary, {}
         ),
     }
     if degraded:
@@ -769,6 +800,23 @@ def render_board_markdown(data):
             f"owner-seat={citizens.get('owner-seat', 0)} "
             f"session-root={citizens.get('session-root', 0)}"
         )
+    property_admission = data.get("property_admission") or {}
+    if property_admission:
+        dark = property_admission.get("dark") or []
+        lines.append(
+            "- property_admission: "
+            f"anchored={property_admission.get('anchored', 0)} "
+            f"unobserved={property_admission.get('unobserved', 0)} "
+            f"total={property_admission.get('total', 0)} "
+            f"dark={len(dark)}"
+        )
+        for row in dark:
+            lines.append(
+                "- dark_property: "
+                f"`{clip(row.get('property', ''), 80)}` "
+                f"reason={clip(row.get('reason', ''), 100)} "
+                f"source_span_token={row.get('source_span_token', '')}"
+            )
     handoff = data.get("current_handoff") or {}
     if handoff:
         lines.append(f"- current_handoff: `{handoff.get('rung', '')}` `{handoff.get('hd_receipt', '')}`")

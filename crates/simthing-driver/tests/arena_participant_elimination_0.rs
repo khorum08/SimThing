@@ -49,6 +49,7 @@ fn sparse_owned_row_fixture() -> (Scenario, GameModeSpec) {
             name: "food_flow".into(),
             display_name: String::new(),
             description: String::new(),
+            admission_disposition: Default::default(),
             sub_fields: vec![
                 flow_subfield("flow", AccumulatorRole::IntrinsicFlow),
                 flow_subfield(

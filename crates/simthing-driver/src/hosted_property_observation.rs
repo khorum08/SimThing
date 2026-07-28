@@ -229,6 +229,7 @@ mod tests {
             name: "p".into(),
             display_name: "p".into(),
             description: "max".into(),
+            admission_disposition: Default::default(),
             sub_fields: vec![SubFieldSpec {
                 role: SubFieldRole::Amount,
                 width: 1,

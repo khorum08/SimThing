@@ -576,6 +576,7 @@ fn combat_hull_property_spec(name: &str, recovery_per_tick: f32) -> PropertySpec
         name: name.into(),
         display_name: name.into(),
         description: String::new(),
+        admission_disposition: Default::default(),
         sub_fields,
     }
 }
@@ -587,6 +588,7 @@ fn combat_weapon_property_spec(name: &str, weapon_damage: f32) -> PropertySpec {
         name: name.into(),
         display_name: name.into(),
         description: String::new(),
+        admission_disposition: Default::default(),
         sub_fields: vec![simthing_core::SubFieldSpec {
             role: SubFieldRole::Amount,
             width: 1,

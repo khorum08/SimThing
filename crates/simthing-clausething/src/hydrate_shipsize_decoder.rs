@@ -471,6 +471,7 @@ fn property_spec_from_entry(entry: &ShipPropertyEntry) -> PropertySpec {
         name: entry.name.clone(),
         display_name: entry.display_name.clone(),
         description: String::new(),
+        admission_disposition: Default::default(),
         sub_fields: vec![simthing_core::SubFieldSpec {
             role: SubFieldRole::Amount,
             width: 1,
@@ -1121,6 +1122,7 @@ fn parse_trigger_property(property: &RawProperty) -> Result<PropertySpec, Hydrat
         name: require_field(name, "name", property)?,
         display_name,
         description: String::new(),
+        admission_disposition: Default::default(),
         sub_fields: vec![simthing_core::SubFieldSpec {
             role: SubFieldRole::Amount,
             width: 1,

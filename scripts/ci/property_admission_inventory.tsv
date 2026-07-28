@@ -1,0 +1,6 @@
+# ANCHOR-DISPOSITION-ADMISSION-0; GENERATED - do not hand-edit
+# Counts = SpecSessionState.property_admission over the canonical TP install.
+# Regenerate: bash scripts/ci/gen_property_admission_inventory.sh
+summary	anchored	25
+summary	unobserved	0
+summary	total	25

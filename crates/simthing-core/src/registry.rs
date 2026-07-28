@@ -5,7 +5,9 @@
 
 use crate::column_index::ColumnIndex;
 use crate::ids::SimPropertyId;
-use crate::property::{PropertyLayout, SimProperty, SubFieldRole};
+use crate::property::{
+    PropertyAdmissionDisposition, PropertyLayout, SimProperty, SubFieldRole,
+};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use std::collections::HashMap;
@@ -44,6 +46,50 @@ impl PropertyColumnRange {
         let local = layout.offset_of(role)?;
         let width = layout.width_of(role)?;
         Some((ColumnIndex::from_layout_role(self.start, local), width))
+    }
+}
+
+/// One deterministic reporting row derived from the live property registry.
+///
+/// The registry remains the authority; this owned value is an inspectable
+/// install/governance projection only.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ResourcePropertyDispositionRow {
+    pub property_id: SimPropertyId,
+    pub namespace: String,
+    pub name: String,
+    pub roles: Vec<SubFieldRole>,
+    pub disposition: PropertyAdmissionDisposition,
+}
+
+impl ResourcePropertyDispositionRow {
+    pub fn canonical_identity(&self) -> String {
+        format!("{}::{}", self.namespace, self.name)
+    }
+}
+
+/// Total disposition report for all resource-bearing properties in a registry.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PropertyAdmissionReport {
+    pub resource_properties: Vec<ResourcePropertyDispositionRow>,
+}
+
+impl PropertyAdmissionReport {
+    pub fn anchored_count(&self) -> usize {
+        self.resource_properties
+            .iter()
+            .filter(|row| row.disposition.is_anchored())
+            .count()
+    }
+
+    pub fn unobserved_count(&self) -> usize {
+        self.resource_properties.len() - self.anchored_count()
+    }
+
+    pub fn dark_properties(&self) -> impl Iterator<Item = &ResourcePropertyDispositionRow> {
+        self.resource_properties
+            .iter()
+            .filter(|row| !row.disposition.is_anchored())
     }
 }
 
@@ -154,6 +200,32 @@ impl DimensionRegistry {
 
     pub fn is_active(&self, id: SimPropertyId) -> bool {
         self.active.get(id.index()).copied().unwrap_or(false)
+    }
+
+    /// Derive the total resource-property disposition report from live
+    /// registry state in stable `SimPropertyId` order.
+    pub fn property_admission_report(&self) -> PropertyAdmissionReport {
+        let resource_properties = self
+            .properties
+            .iter()
+            .enumerate()
+            .filter(|(_, property)| property.is_resource_bearing())
+            .map(|(index, property)| ResourcePropertyDispositionRow {
+                property_id: SimPropertyId(index as u32),
+                namespace: property.namespace.clone(),
+                name: property.name.clone(),
+                roles: property
+                    .layout
+                    .sub_fields
+                    .iter()
+                    .map(|sub_field| sub_field.role.clone())
+                    .collect(),
+                disposition: property.admission_disposition.clone(),
+            })
+            .collect();
+        PropertyAdmissionReport {
+            resource_properties,
+        }
     }
 }
 
