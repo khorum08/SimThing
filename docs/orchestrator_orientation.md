@@ -45,7 +45,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 211b860c2a424d0386a01a2dc93d5c563abfd1411c1f58ec55c7b69d97426cb8 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | 26eab30ec86c97ac8dfd6beef7ae8c5b4d3f18c38fdaa431ec40ccce855396d3 |
-| design_0_0_8_7_rf_arena_modernization.md | c3c56a0404c8c9b1ed5b8f9a5cf84aeeec19ff924ab1986b1d37dea90f43f847 |
+| design_0_0_8_7_rf_arena_modernization.md | 95d0dc2ccf4e489b5493226a8a6649872c9caa6e13948d5a0ad9a0600db95d91 |
 | relay_lint.sh | 4163f715cdc3b549dbf57c1744aff61ea96b9f9f0a2237376665fbdb24e986c8 |
 | doctrine_anchors.tsv | 08a34b6dac78478d2154fcd2735cf4a3f87a670d925805814cca0a8079448a84 |
 | execution_status_taxonomy.tsv | 0e3e2c81a6005f09852ce0a0832277fd8c27a5fbb06da6b17df0b9e2e2ef7a0d |
@@ -71,8 +71,11 @@ Track state: `open`
 | 5.1 | ANCHOR-DISPOSITION-ADMISSION-0 | Phase 5: P0(e) fulcrum 1 — default-Anchored disposition; authored `Unobserved{re | Property lands anchored with zero wiring; dark-cell set renders; 12.3-replay fixture impossible. |
 | 5.2 | WRITE-DOOR-BAND-DELTA-0 | Phase 5: fulcrum 2 — in-pass band-crossing derivation; structural ops refuse to  | Band deltas correct vs oracle in the fused pass; remap-less reallocation op spans; replay green. |
 | 5.3 | ANCHOR-TABLE-SURFACE-0 | Phase 5: fulcrum 3 — derived GPU anchor table as the SOLE observation surface; c | Studio/telemetry read only the table; no second observation path (grep-proven); corpus green. |
-| 5.4 | SEMIRING-FIELD-TAGS-0 | Phase 5: semiring tag on field registrations; PALMA `(min,+)` + Gu-Yang saturati | Same registration machinery runs all three algebras; `min_plus` parity vs CPU oracle; corpus green. |
-| 5.5 | GUYANG-COMPARATIVE-PROJECTIONS-0 | Phase 5: dominance/margin/contest/border-band/chokepoint projections; default-de | TP scenario surfaces fronts + a chokepoint event with zero scenario wiring; `stead_spatial_contract_guards` green. |
+| 5.4 | FIELD-SWEEP-IR-PROBE-0 | Phase 5: workshop-leaf disposable probe — minimal target/neighbor-ctx EML map/fo | Parity absolute; N4 generic median <=1.25x bespoke, supported-adapter worst <=1.5x at matched measured occupancy with... |
+| 5.5 | FIELD-SWEEP-N4-PARITY-0 | Phase 5: engine landing — EML edge context {target_slot, neighbor_slot, accumula | PALMA + Gu-Yang reproduced bit-exact on N4 as authored instances ALONGSIDE the bespoke stencils; referees unedited; n... |
+| 5.6 | FIELD-ADJACENCY-GENERATORS-0 | Phase 5: adjacency as a registration axis — weighted `GridOffsets [(dx,dy,w)]` w | Emergence falsifier: the same authored map/fold on GridN4 vs GridN8 vs LinkGraph yields qualitatively distinct unscri... |
+| 5.7 | EML-RESOURCE-CLASS-ADMISSION-0 | Phase 5: specialized interpreter resource classes (pipeline-constant stack sizes | Resource classes measurably control occupancy; cap-to-budget re-expression reproduces the currently admitted set exac... |
+| 5.8 | GUYANG-COMPARATIVE-PROJECTIONS-0 | Phase 5: dominance/margin/contest/border-band/chokepoint projections; default-de | TP scenario surfaces fronts + a chokepoint event with zero scenario wiring; `stead_spatial_contract_guards` green. |
 | 6.1 | EVENT-GENERATION-STAMP-0 | Phase 6: generation stamps on emission/threshold events; stamped ring egress wit | Events carry stamps; forced observer lag honors declared backpressure without perturbing the sim. |
 | 6.2 | ASYNC-COMMAND-QUEUE-0 | Phase 6: async CPU action queue landing at generation barriers; injection genera | Replay bit-exact from the injection log; shadow-tree reads torn-free (double-buffer proof). |
 | 6.3 | CONTINUOUS-POSTURE-SOAK-0 | Phase 6: continuous posture (batched generations) + N-generation soak under forc | Soak exit-proof per the phase row; paced posture unchanged (TP regression green). |
