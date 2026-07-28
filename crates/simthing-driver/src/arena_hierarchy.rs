@@ -192,17 +192,18 @@ impl HierarchyNode {
 }
 
 pub fn resolve_node_columns(
+    range: &PropertyColumnRange,
     layout: &PropertyLayout,
     arena_name: &str,
 ) -> Result<NodeColumnRefs, HierarchyError> {
     let expanded = expand_arena_internal_columns(layout.clone());
-    let arena = arena_name.to_string();
-    // Preserve prior absolute-lane semantics: expanded layout lanes are the
-    // matrix columns carried by arena plans (range start 0 on this clone).
+    // Authoritative registry start — never fabricate a zero-start range as a
+    // substitute for registry.column_range(...).
     let range = PropertyColumnRange {
-        start: 0,
+        start: range.start,
         stride: expanded.stride(),
     };
+    let arena = arena_name.to_string();
 
     let intrinsic_flow_col =
         find_role_col(&range, &expanded, |r| matches!(r, AccumulatorRole::IntrinsicFlow)).ok_or_else(
@@ -256,6 +257,19 @@ pub fn resolve_node_columns(
         propagated_weight_sum_col: named("propagated_weight_sum"),
         hosted_simthing_id_col: named("hosted_simthing_id"),
     })
+}
+
+/// Resolve arena node columns from the registry-owned property range + layout.
+pub fn resolve_node_columns_for_property(
+    registry: &DimensionRegistry,
+    flow_property_id: SimPropertyId,
+    arena_name: &str,
+) -> Result<NodeColumnRefs, HierarchyError> {
+    resolve_node_columns(
+        registry.column_range(flow_property_id),
+        &registry.property(flow_property_id).layout,
+        arena_name,
+    )
 }
 
 fn find_role_col(
@@ -451,11 +465,11 @@ pub fn build_execution_plan(
             .filter(|member| member.arena_idx == arena_idx)
             .cloned()
             .collect();
-        let layout = registry
-            .property(arena_desc.flow_property_id)
-            .layout
-            .clone();
-        let cols = resolve_node_columns(&layout, &arena_desc.name)?;
+        let cols = resolve_node_columns_for_property(
+            registry,
+            arena_desc.flow_property_id,
+            &arena_desc.name,
+        )?;
         let tree = if members.iter().any(|member| member.parent.is_some()) {
             build_nested_layout(arena_idx, arena_desc, cols, &members)?
         } else {

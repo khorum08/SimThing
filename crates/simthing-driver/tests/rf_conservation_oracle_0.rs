@@ -18,7 +18,7 @@ use simthing_core::{
 use simthing_driver::{
     allocator_from_disbursements, build_execution_plan, check_allocator_step, check_conservation,
     check_recipe_exact, flat_star_observations, plan_arena_allocation,
-    register_child_share_formula, resolve_node_columns, run_arena_allocation_oracle,
+    register_child_share_formula, resolve_node_columns_for_property, run_arena_allocation_oracle,
     AllocatorConservationViolation, ArenaStructuralEvidence, RecipeInvocationObservation, Scenario,
     SimSession,
 };
@@ -239,8 +239,9 @@ fn execute_live_flat_star(connect_root_balance: bool) -> LiveFlatStarObservation
         .registry
         .id_of("simthing", "food_flow")
         .expect("food_flow registered");
-    let cols = resolve_node_columns(
-        &session.proto.registry.property(flow_id).layout,
+    let cols = resolve_node_columns_for_property(
+        &session.proto.registry,
+        flow_id,
         "ct2a_food",
     )
     .expect("column refs");

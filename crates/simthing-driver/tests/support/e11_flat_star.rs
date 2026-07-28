@@ -5,7 +5,7 @@ use simthing_core::{
     SubFieldRole, SubFieldSpec,
 };
 use simthing_driver::{
-    build_execution_plan, build_execution_plan_from_authoring, install_atomic, resolve_node_columns,
+    build_execution_plan, build_execution_plan_from_authoring, install_atomic, resolve_node_columns_for_property,
     ArenaTreeLayout, NodeColumnRefs, Scenario, SimSession,
 };
 use simthing_driver::arena_registry::SlotId;
@@ -168,7 +168,7 @@ pub fn open_flat_star_session(hosted_count: usize, flag_enabled: bool) -> FlatSt
         .registry
         .id_of("core", "food_flow")
         .expect("food_flow registered");
-    let cols = resolve_node_columns(&session.proto.registry.property(flow_id).layout, "food")
+    let cols = resolve_node_columns_for_property(&session.proto.registry, flow_id, "food")
         .expect("column refs");
     let layout = build_execution_plan_from_authoring(
         &session.proto.registry,

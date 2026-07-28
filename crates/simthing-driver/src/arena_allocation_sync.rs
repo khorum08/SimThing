@@ -7,7 +7,7 @@ use crate::arena_allocation_plan::{
     append_residual_closure_ops, plan_arena_allocation, ArenaAllocationPlan,
 };
 use crate::arena_hierarchy::{
-    build_execution_plan, resolve_node_columns, ArenaExecutionPlan, HierarchyError,
+    build_execution_plan, resolve_node_columns_for_property, ArenaExecutionPlan, HierarchyError,
 };
 use crate::arena_registry::ArenaRegistry;
 use crate::child_share_eml::register_child_share_formula;
@@ -102,9 +102,9 @@ pub(crate) fn sync_resource_flow_accumulator_with_options(
 
     let mut eml_registry = EmlExpressionRegistry::new();
     for arena in &plan.arenas {
-        let layout = registry.property(arena.flow_property_id).layout.clone();
-        let cols = resolve_node_columns(
-            &layout,
+        let cols = resolve_node_columns_for_property(
+            registry,
+            arena.flow_property_id,
             &arena_registry.arenas[arena.arena_idx as usize].name,
         )?;
         register_child_share_formula(&mut eml_registry, cols).expect("child_share EML registers");

@@ -2,17 +2,28 @@
 
 use crate::{AccumulatorOp, ColumnIndex};
 
-/// Column index for a structural scalar channel in the AccumulatorOp value grid.
-///
-/// Plan-local channel ids (for example 0 = input grid channel, 1 = output grid channel)
-/// are authored structural grid channels, not layout-resolved property role columns.
+/// Plan-local structural grid channel id (input/output lanes in a plan-owned
+/// `n_dims` buffer). Distinct from registry [`ColumnIndex`] — never a role-pathway
+/// global column by itself.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct StructuralScalarChannel(pub ColumnIndex);
+pub struct StructuralScalarChannel(u32);
 
 impl StructuralScalarChannel {
-    /// Mint a plan-local authored structural grid channel id.
-    pub fn from_authored_channel(raw: u32) -> Self {
-        Self(ColumnIndex::from_raw_for_oracle_or_rehearsal(raw as usize))
+    pub const INPUT: Self = Self(0);
+    pub const OUTPUT: Self = Self(1);
+
+    pub const fn new(raw: u32) -> Self {
+        Self(raw)
+    }
+
+    pub const fn raw(self) -> u32 {
+        self.0
+    }
+
+    /// Seal this plan-local channel into a [`ColumnIndex`] for AccumulatorOp
+    /// plans that own their own `n_dims` grid (not property-role pathway columns).
+    pub fn into_plan_column(self) -> ColumnIndex {
+        ColumnIndex::from_structural_plan_channel(self.0)
     }
 }
 

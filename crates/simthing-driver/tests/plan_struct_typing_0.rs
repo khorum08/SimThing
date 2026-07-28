@@ -2,8 +2,8 @@
 
 use simthing_core::{
     AccumulatorOp, AccumulatorRole, AccumulatorSpec, ClampBehavior, ColumnIndex, CombineFn,
-    ConsumeMode, GateSpec, LogTier, PropertyLayout, ScaleSpec, SlotIndex, SourceSpec, SubFieldRole,
-    SubFieldSpec,
+    ConsumeMode, GateSpec, LogTier, PropertyColumnRange, PropertyLayout, ScaleSpec, SlotIndex,
+    SourceSpec, SubFieldRole, SubFieldSpec,
 };
 use simthing_driver::arena_hierarchy::{resolve_node_columns, NodeColumnRefs};
 use simthing_driver::arena_allocation_plan::plan_arena_allocation;
@@ -71,9 +71,18 @@ fn flow_layout() -> PropertyLayout {
     }
 }
 
+fn resolve_flow_cols() -> NodeColumnRefs {
+    let layout = flow_layout();
+    let range = PropertyColumnRange {
+        start: 0,
+        stride: layout.stride(),
+    };
+    resolve_node_columns(&range, &layout, "food").expect("cols")
+}
+
 #[test]
 fn resolve_node_columns_returns_typed_column_index() {
-    let cols = resolve_node_columns(&flow_layout(), "food").expect("cols");
+    let cols = resolve_flow_cols();
     assert_eq!(
         cols.intrinsic_flow_col,
         ColumnIndex::from_raw_for_oracle_or_rehearsal(0)
@@ -92,8 +101,56 @@ fn resolve_node_columns_returns_typed_column_index() {
 }
 
 #[test]
+fn resolve_node_columns_honors_nonzero_authoritative_range_start() {
+    let layout = flow_layout();
+    let local = resolve_node_columns(
+        &PropertyColumnRange {
+            start: 0,
+            stride: layout.stride(),
+        },
+        &layout,
+        "food",
+    )
+    .expect("local cols");
+    let shifted = resolve_node_columns(
+        &PropertyColumnRange {
+            start: 40,
+            stride: layout.stride(),
+        },
+        &layout,
+        "food",
+    )
+    .expect("shifted cols");
+
+    assert_ne!(
+        local.intrinsic_flow_col, shifted.intrinsic_flow_col,
+        "nonzero authoritative range must change resolved global columns"
+    );
+    assert_eq!(
+        shifted.intrinsic_flow_col.raw(),
+        local.intrinsic_flow_col.raw() + 40
+    );
+    assert_eq!(
+        shifted.allocated_flow_col.raw(),
+        local.allocated_flow_col.raw() + 40
+    );
+    assert_eq!(shifted.weight_col.raw(), local.weight_col.raw() + 40);
+
+    // A bare local lane must not substitute for the resolved global column.
+    let local_lane = layout
+        .offset_of(&SubFieldRole::Named("intrinsic_flow".into()))
+        .expect("lane")
+        .lane();
+    assert_ne!(
+        shifted.intrinsic_flow_col.raw(),
+        local_lane,
+        "local RoleOffset lane must not equal global ColumnIndex under nonzero start"
+    );
+}
+
+#[test]
 fn arena_plan_ops_carry_resolved_column_index_without_remint() {
-    let cols = resolve_node_columns(&flow_layout(), "food").expect("cols");
+    let cols = resolve_flow_cols();
     let root = HierarchyNode {
         participant_slot: SlotIndex::new(10),
         hosted_simthing_id: Default::default(),

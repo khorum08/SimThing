@@ -37,13 +37,13 @@ pub fn compile_planet_child_rf_gpu_tick_plan(
     let participant_count = participants.len() as u32;
     let surplus_plan = compile_participant_channel_sum_plan(
         participant_count,
-        StructuralScalarChannel::from_authored_channel(0),
-        StructuralScalarChannel::from_authored_channel(1),
+        StructuralScalarChannel::INPUT,
+        StructuralScalarChannel::OUTPUT,
     );
     let deficit_plan = compile_participant_channel_sum_plan(
         participant_count,
-        StructuralScalarChannel::from_authored_channel(0),
-        StructuralScalarChannel::from_authored_channel(1),
+        StructuralScalarChannel::INPUT,
+        StructuralScalarChannel::OUTPUT,
     );
 
     Ok(PlanetChildRfGpuTickPlan {

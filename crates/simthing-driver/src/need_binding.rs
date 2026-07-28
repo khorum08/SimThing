@@ -16,7 +16,7 @@ use simthing_spec::{
     EmlGadgetInstanceSpec, NeedBindingSpec, ResourceFlowSpec, SemanticPropertyLocusSpec, SpecError,
 };
 
-use crate::arena_hierarchy::resolve_node_columns;
+use crate::arena_hierarchy::resolve_node_columns_for_property;
 use crate::arena_registry::ArenaRegistry;
 use crate::install::{find_simthing_mut, InstallError};
 use crate::resource_economy_compile::ResourceEconomyRegistry;
@@ -261,7 +261,7 @@ fn resolve_one(
         ));
     }
     let flow_layout = &registry.property(flow_property_id).layout;
-    let _ = resolve_node_columns(flow_layout, &arena.name).map_err(|_| {
+    let _ = resolve_node_columns_for_property(registry, flow_property_id, &arena.name).map_err(|_| {
         InstallError::Spec(SpecError::UnknownResourceFlowProperty {
             property: format!("{} flow columns", arena.name),
         })

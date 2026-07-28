@@ -114,7 +114,7 @@ fn validate_accumulator_plan_inputs(
 fn seed_value_grid(plan: &CompiledAccumulatorOpPlan, input_values: &[f32]) -> Vec<f32> {
     let slot_count = plan.slot_count as usize;
     let n_dims = plan.n_dims as usize;
-    let input_col = plan.input_channel.0.raw();
+    let input_col = plan.input_channel.raw() as usize;
     let mut values = vec![0.0f32; slot_count * n_dims];
     for (slot, &input) in input_values.iter().enumerate() {
         values[slot * n_dims + input_col] = input;
@@ -125,7 +125,7 @@ fn seed_value_grid(plan: &CompiledAccumulatorOpPlan, input_values: &[f32]) -> Ve
 fn extract_output_channel(plan: &CompiledAccumulatorOpPlan, values: &[f32]) -> Vec<f32> {
     let slot_count = plan.slot_count as usize;
     let n_dims = plan.n_dims as usize;
-    let output_col = plan.output_channel.0.raw();
+    let output_col = plan.output_channel.raw() as usize;
     (0..slot_count)
         .map(|slot| values[slot * n_dims + output_col])
         .collect()

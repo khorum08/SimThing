@@ -112,7 +112,8 @@ pub use arena_allocation_sync::{
 pub use arena_hierarchy::{
     build_custom_layout, build_execution_plan, build_execution_plan_from_authoring,
     build_flat_star_layout, build_nested_layout, nested_hierarchy_materialization_report,
-    resolve_node_columns, total_bands_for_depth, ArenaBandLayout, ArenaExecutionPlan,
+    resolve_node_columns, resolve_node_columns_for_property, total_bands_for_depth,
+    ArenaBandLayout, ArenaExecutionPlan,
     ArenaTreeLayout, HierarchyError, HierarchyNode, NestedHierarchyMaterializationReport,
     NodeColumnRefs,
 };

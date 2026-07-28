@@ -1765,7 +1765,7 @@ fn transfer_registrations_generation(regs: &[crate::TransferRegistration]) -> u6
         h = h
             .wrapping_mul(31)
             .wrapping_add(reg.target_slot as u64)
-            .wrapping_add(reg.target_col.raw_u32() as u64)
+            .wrapping_add(encode_column(reg.target_col) as u64)
             .wrapping_add(reg.output_scale.to_bits() as u64);
         if let Some(max) = reg.max_transfer {
             h = h.wrapping_add(max.to_bits() as u64);
@@ -1774,7 +1774,7 @@ fn transfer_registrations_generation(regs: &[crate::TransferRegistration]) -> u6
             h = h
                 .wrapping_mul(17)
                 .wrapping_add(inp.slot as u64)
-                .wrapping_add(inp.col.raw_u32() as u64)
+                .wrapping_add(encode_column(inp.col) as u64)
                 .wrapping_add(inp.unit_cost.to_bits() as u64);
         }
     }

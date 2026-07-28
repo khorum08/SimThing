@@ -419,10 +419,12 @@ fn const_broadcast_op(value: f32, dst_slot: u32, dst_col: ColumnIndex, band: u32
 
 fn disburse_op(child_slot: u32, a_f_col: ColumnIndex, band: u32) -> AccumulatorOp {
     AccumulatorOp {
+        // EvalEML reads columns from the formula tree; source SlotValue col is
+        // unused wire filler. Reuse the typed target column — never mint via
+        // column_from_wire(<literal>).
         source: SourceSpec::SlotValue {
             slot: SlotIndex::new(child_slot),
-            // EvalEML reads columns from the formula tree; source col is unused wire filler.
-            col: column_from_wire(0),
+            col: a_f_col,
         },
         combine: CombineFn::EvalEML {
             tree_id: child_share_tree_id().0,

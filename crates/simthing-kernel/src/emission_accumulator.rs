@@ -241,7 +241,7 @@ fn to_oracle_registration(reg: &EmissionRegistration) -> crate::EmissionOracleRe
     crate::EmissionOracleRegistration {
         reg_idx: reg.reg_idx,
         source_slot: reg.source_slot,
-        source_col: reg.source_col.raw_u32(),
+        source_col: encode_column(reg.source_col),
         formula,
     }
 }

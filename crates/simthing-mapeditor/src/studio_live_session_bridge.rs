@@ -18,10 +18,11 @@ use simthing_core::{
     OverlayKind, SimProperty, SimThing, SimThingId, SubFieldRole, SubFieldSpec,
 };
 use simthing_driver::{
-    resolve_node_columns, system_id_by_host_raw_from_structural_authority, GpuValuesSnapshot,
+    resolve_node_columns_for_property, system_id_by_host_raw_from_structural_authority, GpuValuesSnapshot,
     HostedPropertyLocus, LiveDisruptionAuthorityReadback, Scenario, SessionError, SimSession,
     StepOnceOutcome,
 };
+use simthing_gpu::encode_column;
 use simthing_spec::{
     compile_property, disruption_readout_snapshot_with_readback, game_session_child,
     game_session_owners, owner_entity_id, planet_child_rf_participant_inputs,
@@ -1118,7 +1119,7 @@ fn emission_sample_loci_from_session(sim: &SimSession) -> Vec<FieldAccretionSamp
     let mut out = Vec::new();
     let mut seen = std::collections::BTreeSet::new();
     for emission in &registry.registrations.emissions {
-        let source_col = emission.source_col.raw_u32();
+        let source_col = encode_column(emission.source_col);
         let key = (emission.source_slot, source_col);
         if !seen.insert(key) {
             continue;
@@ -1132,16 +1133,17 @@ fn emission_sample_loci_from_session(sim: &SimSession) -> Vec<FieldAccretionSamp
         });
     }
     for recipe in &registry.registrations.recipes {
-        let key = (recipe.target_slot.raw(), recipe.target_col.raw_u32());
+        let target_col = encode_column(recipe.target_col);
+        let key = (recipe.target_slot.raw(), target_col);
         if !seen.insert(key) {
             continue;
         }
-        let property_key = property_key_for_col(reg, recipe.target_col.raw_u32())
-            .unwrap_or_else(|| format!("col:{}", recipe.target_col.raw_u32()));
+        let property_key = property_key_for_col(reg, target_col)
+            .unwrap_or_else(|| format!("col:{target_col}"));
         out.push(FieldAccretionSampleLocus {
             property_key,
             source_slot: recipe.target_slot.raw(),
-            source_col: recipe.target_col.raw_u32(),
+            source_col: target_col,
         });
     }
     out
@@ -1200,8 +1202,9 @@ fn recursive_rf_locus_from_session(
                 profile.property_namespace, profile.property_name
             )
         })?;
-    let cols = resolve_node_columns(
-        &sim.proto.registry.property(property_id).layout,
+    let cols = resolve_node_columns_for_property(
+        &sim.proto.registry,
+        property_id,
         &profile.arena,
     )
     .map_err(|e| format!("resolve recursive RF columns: {e}"))?;

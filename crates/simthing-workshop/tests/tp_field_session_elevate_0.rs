@@ -11,7 +11,7 @@ use simthing_clausething::{
 };
 use simthing_core::SubFieldRole;
 use simthing_driver::{
-    allocator_eps_bound, allocator_from_disbursements, check_allocator_step, resolve_node_columns,
+    allocator_eps_bound, allocator_from_disbursements, check_allocator_step, resolve_node_columns_for_property,
     AllocatorConservationViolation,
 };
 use simthing_mapeditor::{
@@ -281,7 +281,7 @@ fn execute_canonical_recursive_rf(
             .id_of(&rf.property_namespace, &rf.property_name)
             .expect("RF property id");
         let cols =
-            resolve_node_columns(&sim.proto.registry.property(property_id).layout, &rf.arena)
+            resolve_node_columns_for_property(&sim.proto.registry, property_id, &rf.arena)
                 .expect("RF columns");
         let balance_col = cols.balance_col.expect("Balance column");
         let owner_slot = sim
@@ -304,7 +304,7 @@ fn execute_canonical_recursive_rf(
         .registry
         .id_of(&rf.property_namespace, &rf.property_name)
         .expect("RF property id");
-    let cols = resolve_node_columns(&sim.proto.registry.property(property_id).layout, &rf.arena)
+    let cols = resolve_node_columns_for_property(&sim.proto.registry, property_id, &rf.arena)
         .expect("RF columns");
     let balance_col = cols.balance_col.expect("Balance column");
     let participant_slot = |hosted_id| {

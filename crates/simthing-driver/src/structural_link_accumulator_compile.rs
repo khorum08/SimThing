@@ -120,9 +120,9 @@ pub fn compile_structural_link_neighbor_sum_plan(
     }
 
     let projection = build_dense_projection(scenario)?;
-    let input_col = input_channel.0;
-    let output_col = output_channel.0;
-    let n_dims = input_col.raw_u32().max(output_col.raw_u32()) + 1;
+    let input_col = input_channel.into_plan_column();
+    let output_col = output_channel.into_plan_column();
+    let n_dims = input_channel.raw().max(output_channel.raw()) + 1;
 
     let mut ops = Vec::new();
     for (target_slot, neighbors) in projection.adjacency.iter().enumerate() {

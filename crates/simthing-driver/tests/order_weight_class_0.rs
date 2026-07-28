@@ -17,7 +17,7 @@ use simthing_core::{
     SimThingId, SimThingKind, SubFieldRole, SubFieldSpec, TransformOp,
 };
 use simthing_driver::{
-    build_execution_plan, check_conservation, flat_star_observations, resolve_node_columns,
+    build_execution_plan, check_conservation, flat_star_observations, resolve_node_columns_for_property,
     OrderDirectiveRequest, Scenario, SimSession,
 };
 use simthing_spec::{
@@ -457,7 +457,7 @@ fn destination_order_dominates_via_player_weight_overlay_on_live_gpu() {
     // Seed root intrinsic into dense values (property default + one production).
     // Explicit participant RF uses buffer values; ensure pool is present.
     let root_slot = ordered.proto.allocator.slot_of(root_id).expect("root slot");
-    let cols = resolve_node_columns(&ordered.proto.registry.property(flow_id).layout, ARENA)
+    let cols = resolve_node_columns_for_property(&ordered.proto.registry, flow_id, ARENA)
         .expect("flow columns");
     let n_dims = ordered.state.n_dims;
     // Ambient baseline weights via Permanent System Set overlays (applied at
@@ -609,7 +609,7 @@ fn destination_order_dominates_via_player_weight_overlay_on_live_gpu() {
     let root_slot_t = twin.proto.allocator.slot_of(root_id_t).expect("root");
     let flow_id_t = twin.proto.registry.id_of("order", "food_flow").unwrap();
     let cols_t =
-        resolve_node_columns(&twin.proto.registry.property(flow_id_t).layout, ARENA).unwrap();
+        resolve_node_columns_for_property(&twin.proto.registry, flow_id_t, ARENA).unwrap();
     let n_dims_t = twin.state.n_dims;
     // Same schedule as ordered branch, but never submit the order.
     twin.step_once().expect("twin warm boundary");
@@ -681,7 +681,7 @@ fn destination_order_dominates_via_player_weight_overlay_on_live_gpu() {
     let root_slot_r = recorded.proto.allocator.slot_of(root_id_r).expect("root");
     let flow_id_r = recorded.proto.registry.id_of("order", "food_flow").unwrap();
     let cols_r =
-        resolve_node_columns(&recorded.proto.registry.property(flow_id_r).layout, ARENA).unwrap();
+        resolve_node_columns_for_property(&recorded.proto.registry, flow_id_r, ARENA).unwrap();
     let n_dims_r = recorded.state.n_dims;
     recorded.step_once().expect("record warm boundary");
     recorded.step_once().expect("record warm production");

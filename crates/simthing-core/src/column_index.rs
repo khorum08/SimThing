@@ -90,9 +90,9 @@ impl ColumnIndex {
     /// GPU-ROUND-TRIP door: re-materializes a column from a `gpu.*_col`
     /// adapter/plan field after a GPU representation round trip.
     ///
-    /// Promotion blocker: rung 4.2 carries [`ColumnIndex`] through plan structs
-    /// end-to-end and confines raw `u32` columns to the single WGSL
-    /// encode/decode boundary.
+    /// Production callers must enter through `simthing_kernel::wgsl_encode::column_from_wire`
+    /// (the sole WGSL/authored-wire rematerialize helper). Direct use outside that
+    /// helper is a census failure.
     pub fn from_gpu_round_trip(raw: u32) -> Self {
         Self(raw as usize)
     }
@@ -105,6 +105,14 @@ impl ColumnIndex {
     /// input without depending on the production derivation it judges.
     pub fn from_raw_for_oracle_or_rehearsal(raw: usize) -> Self {
         Self(raw)
+    }
+
+    /// STRUCTURAL-PLAN door: seal a plan-local structural grid channel into a
+    /// [`ColumnIndex`] for AccumulatorOp plans that own their own `n_dims` grid.
+    ///
+    /// Only [`crate::StructuralScalarChannel::into_plan_column`] may call this.
+    pub(crate) fn from_structural_plan_channel(raw: u32) -> Self {
+        Self(raw as usize)
     }
 
     pub fn raw(self) -> usize {

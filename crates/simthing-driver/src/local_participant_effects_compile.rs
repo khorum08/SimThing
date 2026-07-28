@@ -83,13 +83,13 @@ fn compile_effect_aggregate_proof_plans(
         let participant_count = source_effect_indices.len() as u32;
         let allocated_plan = compile_participant_channel_sum_plan(
             participant_count,
-            StructuralScalarChannel::from_authored_channel(0),
-            StructuralScalarChannel::from_authored_channel(1),
+            StructuralScalarChannel::INPUT,
+            StructuralScalarChannel::OUTPUT,
         );
         let unmet_plan = compile_participant_channel_sum_plan(
             participant_count,
-            StructuralScalarChannel::from_authored_channel(0),
-            StructuralScalarChannel::from_authored_channel(1),
+            StructuralScalarChannel::INPUT,
+            StructuralScalarChannel::OUTPUT,
         );
         plans.push(LocalParticipantEffectAggregateProofPlan {
             owner_ref,

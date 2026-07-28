@@ -40,13 +40,13 @@ pub fn compile_owner_silo_gpu_tick_plan(
     let participant_count = participants.len() as u32;
     let surplus_plan = compile_participant_channel_sum_plan(
         participant_count,
-        StructuralScalarChannel::from_authored_channel(0),
-        StructuralScalarChannel::from_authored_channel(1),
+        StructuralScalarChannel::INPUT,
+        StructuralScalarChannel::OUTPUT,
     );
     let deficit_plan = compile_participant_channel_sum_plan(
         participant_count,
-        StructuralScalarChannel::from_authored_channel(0),
-        StructuralScalarChannel::from_authored_channel(1),
+        StructuralScalarChannel::INPUT,
+        StructuralScalarChannel::OUTPUT,
     );
 
     Ok(OwnerSiloGpuTickPlan {
@@ -65,15 +65,13 @@ pub(crate) fn compile_participant_channel_sum_plan(
 ) -> CompiledAccumulatorOpPlan {
     let aggregate_slot = participant_count;
     let slot_count = participant_count + 1;
-    let n_dims = input_channel
-        .0
-        .raw_u32()
-        .max(output_channel.0.raw_u32())
-        + 1;
+    let n_dims = input_channel.raw().max(output_channel.raw()) + 1;
+    let input_col = input_channel.into_plan_column();
+    let output_col = output_channel.into_plan_column();
     let inputs: Vec<InputSpec> = (0..participant_count)
         .map(|slot| InputSpec {
             slot: SlotIndex::new(slot),
-            col: input_channel.0,
+            col: input_col,
             unit_cost: 1.0,
         })
         .collect();
@@ -84,7 +82,7 @@ pub(crate) fn compile_participant_channel_sum_plan(
         gate: GateSpec::Always,
         scale: ScaleSpec::Identity,
         consume: ConsumeMode::AddToTarget,
-        targets: vec![(SlotIndex::new(aggregate_slot), output_channel.0)],
+        targets: vec![(SlotIndex::new(aggregate_slot), output_col)],
     }];
 
     CompiledAccumulatorOpPlan {

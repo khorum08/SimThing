@@ -9,7 +9,7 @@ use simthing_core::{
 };
 use simthing_driver::{
     build_execution_plan, check_conservation, clone_for_replay, fixture_dynamic_single_fission,
-    flat_star_observations, open_fixture_session, resolve_node_columns,
+    flat_star_observations, open_fixture_session, resolve_node_columns_for_property,
     run_arena_allocation_oracle, run_dynamic_enrollment_resync_cycles, run_opt_in_burn_in,
     Scenario, SimSession,
 };
@@ -158,8 +158,9 @@ fn sparse_owned_rows_execute_single_writer_rf1_and_replay_exact_on_gpu() {
         .registry
         .id_of("remand", "food_flow")
         .expect("flow property");
-    let cols = resolve_node_columns(
-        &session.proto.registry.property(flow_id).layout,
+    let cols = resolve_node_columns_for_property(
+        &session.proto.registry,
+        flow_id,
         "sparse_food",
     )
     .expect("flow columns");

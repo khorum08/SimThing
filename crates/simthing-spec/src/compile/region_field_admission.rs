@@ -1,9 +1,6 @@
 //! Phase M-3 — RegionFieldSpec admission and compile preview (spec layer).
 
-use simthing_core::{
-    ColumnAwareReductionCombine, ColumnAwareReductionSpec, ColumnIndex, SlotIndex,
-    WHITELISTED_FORMULA_CLASSES,
-};
+use simthing_core::WHITELISTED_FORMULA_CLASSES;
 
 use crate::compile::region_field_budget::{
     estimate_region_field_budget, RegionFieldBudgetError, RegionFieldBudgetSpec,
@@ -47,7 +44,8 @@ pub enum CompiledRegionFieldOperator {
     SaturatingFlux {
         u_sat: f32,
         chi: f32,
-        choke_output_col: Option<ColumnIndex>,
+        /// Authored-wire column id (typed at the WGSL/`column_from_wire` boundary).
+        choke_output_col: Option<u32>,
     },
 }
 
@@ -85,8 +83,10 @@ pub struct CompiledRegionFieldStencilSpec {
     pub width: u32,
     pub height: u32,
     pub n_dims: u32,
-    pub source_col: ColumnIndex,
-    pub target_col: ColumnIndex,
+    /// Authored-wire column id (typed at the WGSL/`column_from_wire` boundary).
+    pub source_col: u32,
+    /// Authored-wire column id (typed at the WGSL/`column_from_wire` boundary).
+    pub target_col: u32,
     pub horizon: u32,
     pub alpha_self: f32,
     pub gamma_neighbor: f32,
@@ -109,10 +109,21 @@ pub struct CompiledRegionFieldPreview {
     pub cell_count: u32,
     pub stencil: CompiledRegionFieldStencilSpec,
     pub cadence: CompiledFieldCadence,
-    pub reduction: Option<ColumnAwareReductionSpec>,
+    pub reduction: Option<CompiledRegionFieldReduction>,
     pub parent_formula_class: Option<String>,
     pub commitment: Option<CompiledFirstSliceCommitmentThreshold>,
     pub summary_policy: CompiledRegionFieldSummaryPolicy,
+}
+
+/// Admitted child→parent reduction (authored-wire columns; typed at encode).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct CompiledRegionFieldReduction {
+    pub child_slot_start: u32,
+    pub child_slot_count: u32,
+    pub child_col: u32,
+    pub parent_slot: u32,
+    pub parent_col: u32,
+    pub order_band: u32,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -124,15 +135,11 @@ pub enum CompiledFirstSliceCommitmentDirection {
 pub struct CompiledFirstSliceCommitmentThreshold {
     pub source_formula_class: String,
     pub parent_slot: u32,
-    pub urgency_col: ColumnIndex,
+    /// Authored-wire column id (typed at the WGSL/`column_from_wire` boundary).
+    pub urgency_col: u32,
     pub threshold: f32,
     pub direction: CompiledFirstSliceCommitmentDirection,
     pub event_kind: u32,
-}
-
-/// Admit an authored wire `u32` column into compiled [`ColumnIndex`].
-fn admit_authored_col(raw: u32) -> ColumnIndex {
-    ColumnIndex::from_raw_for_oracle_or_rehearsal(raw as usize)
 }
 
 fn field_err(field: &str, reason: impl Into<String>) -> SpecError {
@@ -398,7 +405,7 @@ fn compile_cadence(spec: &RegionFieldSpec) -> Result<CompiledFieldCadence, SpecE
 fn compile_reduction(
     spec: &RegionFieldSpec,
     reduction: &RegionFieldReductionSpec,
-) -> Result<ColumnAwareReductionSpec, SpecError> {
+) -> Result<CompiledRegionFieldReduction, SpecError> {
     if reduction.child_slot_count == 0 {
         return Err(field_err(
             &spec.name,
@@ -411,13 +418,12 @@ fn compile_reduction(
             "reduction column out of range for n_dims",
         ));
     }
-    Ok(ColumnAwareReductionSpec {
-        child_slot_start: SlotIndex::new(reduction.child_slot_start),
+    Ok(CompiledRegionFieldReduction {
+        child_slot_start: reduction.child_slot_start,
         child_slot_count: reduction.child_slot_count,
-        child_col: admit_authored_col(reduction.child_col),
-        parent_slot: SlotIndex::new(reduction.parent_slot),
-        parent_col: admit_authored_col(reduction.parent_col),
-        combine: ColumnAwareReductionCombine::Sum,
+        child_col: reduction.child_col,
+        parent_slot: reduction.parent_slot,
+        parent_col: reduction.parent_col,
         order_band: reduction.order_band,
     })
 }
@@ -441,7 +447,7 @@ fn validate_formula_class(spec: &RegionFieldSpec, class: &str) -> Result<(), Spe
 fn compile_commitment(
     spec: &RegionFieldSpec,
     commitment: &FirstSliceCommitmentSpec,
-    reduction: Option<&ColumnAwareReductionSpec>,
+    reduction: Option<&CompiledRegionFieldReduction>,
     parent_formula_class: Option<&str>,
 ) -> Result<CompiledFirstSliceCommitmentThreshold, SpecError> {
     if !commitment.threshold.is_finite() {
@@ -506,7 +512,7 @@ fn compile_commitment(
             "commitment source_formula_class must be field_urgency",
         ));
     }
-    if commitment.parent_slot != reduction.parent_slot.raw() {
+    if commitment.parent_slot != reduction.parent_slot {
         return Err(field_err(
             &spec.name,
             "commitment parent_slot must match reduction parent_slot",
@@ -529,7 +535,7 @@ fn compile_commitment(
     Ok(CompiledFirstSliceCommitmentThreshold {
         source_formula_class: commitment.source_formula_class.clone(),
         parent_slot: commitment.parent_slot,
-        urgency_col: admit_authored_col(commitment.urgency_col),
+        urgency_col: commitment.urgency_col,
         threshold: commitment.threshold,
         direction: CompiledFirstSliceCommitmentDirection::Upward,
         event_kind: commitment.event_kind,
@@ -765,7 +771,7 @@ pub fn compile_region_field_preview(
             CompiledRegionFieldOperator::SaturatingFlux {
                 u_sat,
                 chi,
-                choke_output_col: choke_output_col.map(admit_authored_col),
+                choke_output_col,
             },
             1.0,
             0.0,
@@ -801,8 +807,8 @@ pub fn compile_region_field_preview(
         width: spec.grid_size,
         height: spec.grid_size,
         n_dims: spec.n_dims,
-        source_col: admit_authored_col(spec.source_col),
-        target_col: admit_authored_col(target_col),
+        source_col: spec.source_col,
+        target_col,
         horizon: spec.horizon,
         alpha_self,
         gamma_neighbor,

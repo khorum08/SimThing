@@ -11,7 +11,7 @@ use simthing_core::{
 use simthing_driver::{
     AllocatorStepObservation, ArenaConservationSnapshot, ArenaMemberObservation,
     ArenaStructuralEvidence, ResourceFlowFlagSource, Scenario, SimSession, build_execution_plan,
-    check_conservation, resolve_node_columns, run_arena_allocation_oracle,
+    check_conservation, resolve_node_columns_for_property, run_arena_allocation_oracle,
 };
 use simthing_gpu::SlotAllocator;
 use simthing_spec::{
@@ -177,8 +177,9 @@ fn gpu_micro_economy_matches_arena_allocation_oracle() {
         .registry
         .id_of("simthing", "food_flow")
         .expect("food_flow registered");
-    let cols = resolve_node_columns(
-        &session.proto.registry.property(flow_id).layout,
+    let cols = resolve_node_columns_for_property(
+        &session.proto.registry,
+        flow_id,
         "ct2a_food",
     )
     .expect("column refs");

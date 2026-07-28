@@ -11,7 +11,7 @@ use simthing_core::{
 };
 use simthing_driver::{
     allocator_eps_bound, allocator_from_disbursements, build_execution_plan, check_allocator_step,
-    check_conservation, resolve_node_columns, AllocatorConservationViolation,
+    check_conservation, resolve_node_columns_for_property, AllocatorConservationViolation,
     ArenaConservationSnapshot, ArenaMemberObservation, ArenaStructuralEvidence,
     ResourceFlowFlagSource, Scenario, SimSession,
 };
@@ -276,7 +276,7 @@ fn execute_step(
         .registry
         .id_of("workshop", "foundry_flow")
         .expect("flow property");
-    let cols = resolve_node_columns(&session.proto.registry.property(flow_id).layout, "foundry")
+    let cols = resolve_node_columns_for_property(&session.proto.registry, flow_id, "foundry")
         .expect("arena columns");
     let balance_col = cols.balance_col.expect("fixture Balance column");
     let balance_rate_col = session
