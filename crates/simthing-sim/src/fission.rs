@@ -268,22 +268,50 @@ fn execute_fission(
     let mut new_child =
         ResolvedFissionChildBlueprint::from_template(&ft.template).spawn(current_day);
     let new_id = new_child.id;
-    let Some(parent) = node_paths
-        .get(&stid)
-        .and_then(|path| node_at_path(root, path))
-    else {
-        return false;
+    let (parent_slot, parent_property_ids, prepared_clones) = {
+        let Some(parent) = node_paths
+            .get(&stid)
+            .and_then(|path| node_at_path(root, path))
+        else {
+            return false;
+        };
+        let Some(parent_slot) = allocator.slot_of(parent.id) else {
+            return false;
+        };
+        let parent_property_ids = parent.properties.keys().copied().collect::<Vec<_>>();
+        let prepared_clones = if ft.template.clone_capability_children {
+            prepare_capability_children(
+                parent,
+                &mut new_child,
+                &ft.template.capability_container_kinds,
+            )
+        } else {
+            Vec::new()
+        };
+        (parent_slot, parent_property_ids, prepared_clones)
     };
-    let Ok(new_residency) = allocator.execute_residency(parent.child_residency_request(&new_child))
-    else {
-        return false;
-    };
-    let new_slot = new_residency.slot();
 
-    if let Some(parent_slot) = allocator.slot_of(parent.id) {
+    let parent = node_paths
+        .get(&stid)
+        .and_then(|path| node_at_path_mut(root, path));
+    if let Some(p) = parent {
+        p.add_child(new_child);
+        let attached = p.children.last().expect("fission child just attached");
+        if allocator.populate_subtree(p, attached).is_err() {
+            p.children.pop();
+            return false;
+        }
+
+        let new_slot = allocator
+            .slot_of(new_id)
+            .expect("attached fission child received residency");
+        let attached = p
+            .children
+            .last_mut()
+            .expect("admitted fission child remains attached");
         seed_fission_child(
-            parent,
-            &mut new_child,
+            &parent_property_ids,
+            attached,
             registry,
             pid,
             parent_slot.raw(),
@@ -291,27 +319,29 @@ fn execute_fission(
             values_shadow,
             n_dims,
         );
-    }
-    if ft.template.clone_capability_children {
-        let cloned_roots = clone_capability_children(
-            parent,
-            &mut new_child,
-            allocator,
-            values_shadow,
-            n_dims,
-            &ft.template.capability_container_kinds,
-        );
+
+        let mut cloned_roots = Vec::new();
+        for (record, id_pairs) in prepared_clones {
+            let mut allocated_any = false;
+            for (source_id, cloned_id) in id_pairs {
+                let Some(source_slot) = allocator.slot_of(source_id) else {
+                    continue;
+                };
+                let Some(cloned_slot) = allocator.slot_of(cloned_id) else {
+                    continue;
+                };
+                copy_shadow_row(source_slot.raw(), cloned_slot.raw(), values_shadow, n_dims);
+                allocated_any = true;
+            }
+            if allocated_any {
+                cloned_roots.push(record);
+            }
+        }
         if !cloned_roots.is_empty() {
             out.cloned_capability_subtrees = true;
             out.cloned_capability_roots.extend(cloned_roots);
         }
-    }
 
-    let parent = node_paths
-        .get(&stid)
-        .and_then(|path| node_at_path_mut(root, path));
-    if let Some(p) = parent {
-        p.add_child(new_child);
         out.fission_pairs.push((stid, new_id));
         out.lineage_added.push(FissionLineageRecord {
             parent_id: stid,
@@ -323,13 +353,12 @@ fn execute_fission(
     } else {
         // Parent disappeared between the check and the mutation — extremely
         // unlikely but defensive.
-        allocator.release_subtree(&new_child);
         false
     }
 }
 
 fn seed_fission_child(
-    parent: &SimThing,
+    parent_property_ids: &[SimPropertyId],
     child: &mut SimThing,
     registry: &DimensionRegistry,
     activating_pid: SimPropertyId,
@@ -344,7 +373,7 @@ fn seed_fission_child(
     }
 
     let parent_base = parent_slot as usize * n_dims;
-    for &prop_id in parent.properties.keys() {
+    for &prop_id in parent_property_ids {
         if !registry.is_active(prop_id) {
             continue;
         }
@@ -373,47 +402,33 @@ fn seed_fission_child(
     }
 }
 
-/// Clone every resolved clone-source subtree from `parent` into `child`.
-/// Returns one `ClonedCapabilityRoot` per cloned subtree so the driver
-/// can register new `CapabilityTreeInstance`s + threshold registrations
+/// Prepare every resolved clone-source subtree inside the not-yet-attached
+/// fission child. Allocation is deferred until the complete subtree has been
+/// attached and admitted through its real parent relation.
 /// (S5 follow-up — fission-spawned trees otherwise have no thresholds
 /// and unlocks never fire). Empty return = no clones happened (driver
 /// no-op; Approach C append remains eligible).
-fn clone_capability_children(
+fn prepare_capability_children(
     parent: &SimThing,
     child: &mut SimThing,
-    allocator: &mut SlotAllocator,
-    values_shadow: &mut [f32],
-    n_dims: usize,
     container_kinds: &[String],
-) -> Vec<ClonedCapabilityRoot> {
+) -> Vec<(ClonedCapabilityRoot, Vec<(SimThingId, SimThingId)>)> {
     let mut roots = Vec::new();
     for source_child in fission_clone_source_children(parent, container_kinds) {
         let source_root_id = source_child.id;
         let (cloned, id_pairs, overlay_id_pairs) =
             clone_subtree_with_fresh_ids(source_child, parent.id, child.id);
         let cloned_root_id = cloned.id;
-        allocator.populate_subtree(child, &cloned);
-        let mut allocated_any = false;
-        for (source_id, cloned_id) in id_pairs {
-            let Some(source_slot) = allocator.slot_of(source_id) else {
-                continue;
-            };
-            let Some(cloned_slot) = allocator.slot_of(cloned_id) else {
-                continue;
-            };
-            copy_shadow_row(source_slot.raw(), cloned_slot.raw(), values_shadow, n_dims);
-            allocated_any = true;
-        }
         child.add_child(cloned);
-        if allocated_any {
-            roots.push(ClonedCapabilityRoot {
+        roots.push((
+            ClonedCapabilityRoot {
                 spawned_owner_id: child.id,
                 source_root_id,
                 cloned_root_id,
                 overlay_id_pairs,
-            });
-        }
+            },
+            id_pairs,
+        ));
     }
     roots
 }
@@ -795,9 +810,10 @@ mod tests {
             allocator.relation_of(cloned.children[0].id),
             Some(simthing_core::ObjectResidencyRelation::ChildOf(cloned.id))
         );
-        assert!(allocator
-            .residency_for(root.children[0].child_residency_request(spawned))
-            .is_some());
+        let request = root.children[0]
+            .attached_child_residency_request(spawned)
+            .expect("spawned fission child is attached to its parent");
+        assert!(allocator.residency_for(&request).is_some());
     }
 
     fn marker_lanes(node: &SimThing) -> Option<Vec<f32>> {

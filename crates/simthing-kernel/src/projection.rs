@@ -47,7 +47,7 @@ fn project_node(
     n_dims: usize,
     values: &mut [f32],
 ) {
-    if let Some(residency) = allocator.residency_for(request) {
+    if let Some(residency) = allocator.residency_for(&request) {
         let slot = residency.slot();
         let slot_base = slot.as_usize() * n_dims;
         for (&prop_id, pv) in &node.properties {
@@ -58,14 +58,10 @@ fn project_node(
         }
     }
     for child in &node.children {
-        project_node(
-            child,
-            node.child_residency_request(child),
-            registry,
-            allocator,
-            n_dims,
-            values,
-        );
+        let request = node
+            .attached_child_residency_request(child)
+            .expect("tree traversal holds the attached direct child");
+        project_node(child, request, registry, allocator, n_dims, values);
     }
 }
 

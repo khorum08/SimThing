@@ -271,14 +271,16 @@ fn walk(
     per_slot_children: &mut [Vec<u32>],
     depths: &mut [Option<u32>],
 ) {
-    let Some(residency) = allocator.residency_for(request) else {
+    let Some(residency) = allocator.residency_for(&request) else {
         return;
     };
     let slot = residency.slot();
     depths[slot.as_usize()] = Some(depth);
     for child in &node.children {
-        let child_request = node.child_residency_request(child);
-        if let Some(child_residency) = allocator.residency_for(child_request) {
+        let child_request = node
+            .attached_child_residency_request(child)
+            .expect("tree traversal holds the attached direct child");
+        if let Some(child_residency) = allocator.residency_for(&child_request) {
             per_slot_children[slot.as_usize()].push(child_residency.slot().raw());
         }
         walk(

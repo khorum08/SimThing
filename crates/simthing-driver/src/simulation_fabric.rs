@@ -366,10 +366,10 @@ mod tests {
         let mut reg = DimensionRegistry::new();
         reg.register(SimProperty::simple("core", "loyalty", 0));
         let mut alloc = SlotAllocator::new();
-        let a = SimThing::new(SimThingKind::Cohort, 0).id;
-        let b = SimThing::new(SimThingKind::Cohort, 0).id;
-        alloc.alloc_for_oracle_or_rehearsal(a);
-        alloc.alloc_for_oracle_or_rehearsal(b);
+        let mut root = SimThing::new(SimThingKind::Cohort, 0);
+        let child = SimThing::new(SimThingKind::Cohort, 0);
+        root.add_child(child);
+        alloc.populate_from_tree(&root);
         let n_dims = reg.total_columns as u32;
         (reg, alloc, n_dims)
     }

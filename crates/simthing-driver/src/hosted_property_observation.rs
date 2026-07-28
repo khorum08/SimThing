@@ -213,7 +213,7 @@ pub fn system_id_by_host_raw_from_structural_authority(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use simthing_core::{ClampBehavior, SubFieldSpec};
+    use simthing_core::{ClampBehavior, SimThing, SimThingKind, SubFieldSpec};
     use simthing_spec::{compile_property, PropertySpec};
 
     fn snapshot_from_values(values: Vec<f32>, n_dims: usize) -> GpuValuesSnapshot {
@@ -248,8 +248,14 @@ mod tests {
         let host_a = SimThingId::from_session_raw(10);
         let host_b = SimThingId::from_session_raw(11);
         let mut allocator = SlotAllocator::new();
-        let slot_a = allocator.alloc_for_oracle_or_rehearsal(host_a);
-        let slot_b = allocator.alloc_for_oracle_or_rehearsal(host_b);
+        let mut root = SimThing::new(SimThingKind::Cohort, 0);
+        root.id = host_a;
+        let mut child = SimThing::new(SimThingKind::Cohort, 0);
+        child.id = host_b;
+        root.add_child(child);
+        allocator.populate_from_tree(&root);
+        let slot_a = allocator.slot_of(host_a).expect("root slot");
+        let slot_b = allocator.slot_of(host_b).expect("child slot");
         let mut values = vec![0.0f32; allocator.capacity() * n_dims];
         let pid = registry.id_of("ns", "p").expect("pid");
         let col = registry

@@ -20,12 +20,14 @@ pub enum ObjectResidencyRelation {
     ChildOf(SimThingId),
 }
 
-/// Typed request emitted by a SimThing root or by a SimThing parent for one
-/// of its children.
+/// Linear request emitted by a SimThing root or by one verified direct-child
+/// attachment.
 ///
 /// Fields are private so downstream code cannot assemble a relation from raw
-/// ids beside the object-semantic door.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+/// ids beside the object-semantic door. The request is intentionally neither
+/// `Copy` nor `Clone`: one observed attachment emits one value for immediate
+/// allocator execution.
+#[derive(Debug, PartialEq, Eq, Hash)]
 pub struct ObjectResidencyRequest {
     object: SimThingId,
     relation: ObjectResidencyRelation,
@@ -39,24 +41,24 @@ impl ObjectResidencyRequest {
         }
     }
 
-    pub(crate) fn child(object: SimThingId, parent: SimThingId) -> Self {
+    pub(crate) fn attached_child(object: SimThingId, parent: SimThingId) -> Self {
         Self {
             object,
             relation: ObjectResidencyRelation::ChildOf(parent),
         }
     }
 
-    pub fn object(self) -> SimThingId {
+    pub fn object(&self) -> SimThingId {
         self.object
     }
 
-    pub fn relation(self) -> ObjectResidencyRelation {
+    pub fn relation(&self) -> ObjectResidencyRelation {
         self.relation
     }
 }
 
 /// Object-issued request to retire one ephemeral dense row.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, PartialEq, Eq, Hash)]
 pub struct ObjectResidencyRelease {
     object: SimThingId,
 }
@@ -66,7 +68,7 @@ impl ObjectResidencyRelease {
         Self { object }
     }
 
-    pub fn object(self) -> SimThingId {
+    pub fn object(&self) -> SimThingId {
         self.object
     }
 }

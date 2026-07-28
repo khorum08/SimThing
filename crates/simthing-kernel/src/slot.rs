@@ -32,10 +32,6 @@ use std::collections::{HashMap, HashSet};
 
 #[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
 pub enum SlotAllocError {
-    #[error("slot {slot:?} is not exclusively reserved for gap consumption")]
-    NotExclusiveReserved { slot: SlotIndex },
-    #[error("slot {slot:?} is live")]
-    SlotLive { slot: SlotIndex },
     #[error("cannot reserve adjacent gap at slot {slot:?}: occupied by live SimThing")]
     AdjacentOccupied { slot: SlotIndex },
     #[error("contiguous slot extension at {slot:?} blocked by exclusive reserved gap slot")]
@@ -44,6 +40,16 @@ pub enum SlotAllocError {
     MissingResidentParent {
         object: SimThingId,
         parent: SimThingId,
+    },
+    #[error("object {object:?} is not the attached direct child of {parent:?}")]
+    ChildNotAttached {
+        object: SimThingId,
+        parent: SimThingId,
+    },
+    #[error("allocator already admits root {existing:?}; cannot admit second root {requested:?}")]
+    RootAlreadyResident {
+        existing: SimThingId,
+        requested: SimThingId,
     },
     #[error(
         "object {object:?} is already resident as {existing:?}, not requested relation {requested:?}"
@@ -98,7 +104,7 @@ pub struct SlotAllocator {
     exclusive_reserved: HashSet<u32>,
     /// Admitted object relation for each production-resident row.
     ///
-    /// A raw compatibility allocation intentionally does not populate this
+    /// A test-only injected unbound row intentionally does not populate this
     /// table and therefore cannot satisfy [`Self::residency_for`].
     relations: HashMap<SimThingId, ObjectResidencyRelation>,
 }
@@ -125,14 +131,8 @@ impl SlotAllocator {
         SlotIndex::new(slot)
     }
 
-    /// Compatibility allocation for test/support code that needs an isolated
-    /// row without an object relation.
-    ///
-    /// This is not the production residency door: it intentionally does not
-    /// mint [`ObjectResidency`]. Production tree paths must execute an
-    /// object-issued request through [`Self::execute_residency`].
-    #[doc(hidden)]
-    pub fn alloc_for_oracle_or_rehearsal(&mut self, id: SimThingId) -> SlotIndex {
+    #[cfg(test)]
+    fn inject_unbound_row_for_escaped_bug_referee(&mut self, id: SimThingId) -> SlotIndex {
         self.alloc_slot(id)
     }
 
@@ -143,20 +143,7 @@ impl SlotAllocator {
     ) -> Result<ObjectResidency, SlotAllocError> {
         let object = request.object();
         let relation = request.relation();
-        if let ObjectResidencyRelation::ChildOf(parent) = relation {
-            if !self.relations.contains_key(&parent) {
-                return Err(SlotAllocError::MissingResidentParent { object, parent });
-            }
-        }
-        if let Some(existing) = self.relations.get(&object).copied() {
-            if existing != relation {
-                return Err(SlotAllocError::RelationConflict {
-                    object,
-                    existing,
-                    requested: relation,
-                });
-            }
-        }
+        self.validate_residency_request(object, relation)?;
         let slot = self.alloc_slot(object);
         self.relations.insert(object, relation);
         Ok(ObjectResidency {
@@ -196,7 +183,7 @@ impl SlotAllocator {
 
     /// Resolve a request only when both object identity and parent relation
     /// match the kernel's admitted residency table.
-    pub fn residency_for(&self, request: ObjectResidencyRequest) -> Option<ObjectResidency> {
+    pub fn residency_for(&self, request: &ObjectResidencyRequest) -> Option<ObjectResidency> {
         let object = request.object();
         let relation = request.relation();
         if self.relations.get(&object).copied()? != relation {
@@ -227,10 +214,7 @@ impl SlotAllocator {
     }
 
     /// Execute the object's release request and retire both relation and row.
-    pub fn release_residency(
-        &mut self,
-        request: ObjectResidencyRelease,
-    ) -> Option<ObjectResidency> {
+    fn release_residency(&mut self, request: ObjectResidencyRelease) -> Option<ObjectResidency> {
         let object = request.object();
         let relation = self.relations.remove(&object)?;
         let slot = self.tombstone_slot(object)?;
@@ -245,16 +229,52 @@ impl SlotAllocator {
     /// `None` if the id was not allocated. The slot remains indexed in the
     /// GPU buffer but is marked available; its row's float values are not
     /// auto-cleared — callers that care about residue should zero it.
-    pub fn tombstone(&mut self, id: SimThingId) -> Option<SlotIndex> {
-        self.relations.remove(&id);
-        self.tombstone_slot(id)
-    }
-
     fn tombstone_slot(&mut self, id: SimThingId) -> Option<SlotIndex> {
         let slot = self.by_id.remove(&id)?;
         self.slot_owners[slot as usize] = None;
         self.free.push(slot);
         Some(SlotIndex::new(slot))
+    }
+
+    fn validate_residency_request(
+        &self,
+        object: SimThingId,
+        relation: ObjectResidencyRelation,
+    ) -> Result<(), SlotAllocError> {
+        match relation {
+            ObjectResidencyRelation::Root => {
+                if let Some((&existing, _)) = self
+                    .relations
+                    .iter()
+                    .find(|(_, relation)| **relation == ObjectResidencyRelation::Root)
+                {
+                    if existing != object {
+                        return Err(SlotAllocError::RootAlreadyResident {
+                            existing,
+                            requested: object,
+                        });
+                    }
+                }
+            }
+            ObjectResidencyRelation::ChildOf(parent) => {
+                if !self.relations.contains_key(&parent) {
+                    return Err(SlotAllocError::MissingResidentParent { object, parent });
+                }
+            }
+        }
+        if self.by_id.contains_key(&object) && !self.relations.contains_key(&object) {
+            return Err(SlotAllocError::UnboundSidecarSlot { object });
+        }
+        if let Some(existing) = self.relations.get(&object).copied() {
+            if existing != relation {
+                return Err(SlotAllocError::RelationConflict {
+                    object,
+                    existing,
+                    requested: relation,
+                });
+            }
+        }
+        Ok(())
     }
 
     pub fn slot_of(&self, id: SimThingId) -> Option<SlotIndex> {
@@ -289,38 +309,85 @@ impl SlotAllocator {
     /// (depth-first, root before children). Existing allocations are
     /// preserved by the object-residency door's idempotency.
     pub fn populate_from_tree(&mut self, root: &SimThing) {
-        self.execute_residency(root.root_residency_request())
-            .expect("root object residency must admit");
-        self.populate_children(root);
+        let mut newly_admitted = Vec::new();
+        let result = self.populate_requested_subtree(
+            root,
+            root.root_residency_request(),
+            &mut newly_admitted,
+        );
+        if let Err(error) = result {
+            self.rollback_population(newly_admitted);
+            panic!("root object residency must admit: {error}");
+        }
     }
 
     /// Admit an attached subtree beneath an already-resident parent.
-    pub fn populate_subtree(&mut self, parent: &SimThing, root: &SimThing) {
-        self.execute_residency(parent.child_residency_request(root))
-            .expect("child object residency must admit");
-        self.populate_children(root);
+    pub fn populate_subtree(
+        &mut self,
+        parent: &SimThing,
+        root: &SimThing,
+    ) -> Result<(), SlotAllocError> {
+        let request = parent.attached_child_residency_request(root).ok_or(
+            SlotAllocError::ChildNotAttached {
+                object: root.id,
+                parent: parent.id,
+            },
+        )?;
+        let mut newly_admitted = Vec::new();
+        if let Err(error) = self.populate_requested_subtree(root, request, &mut newly_admitted) {
+            self.rollback_population(newly_admitted);
+            return Err(error);
+        }
+        Ok(())
     }
 
-    fn populate_children(&mut self, parent: &SimThing) {
-        for child in &parent.children {
-            self.execute_residency(parent.child_residency_request(child))
-                .expect("child object residency must admit");
-            self.populate_children(child);
+    fn populate_requested_subtree(
+        &mut self,
+        root: &SimThing,
+        request: ObjectResidencyRequest,
+        newly_admitted: &mut Vec<SimThingId>,
+    ) -> Result<(), SlotAllocError> {
+        let was_resident = self.relations.contains_key(&root.id);
+        self.execute_residency(request)?;
+        if !was_resident {
+            newly_admitted.push(root.id);
+        }
+        for child in &root.children {
+            let request = root.attached_child_residency_request(child).ok_or(
+                SlotAllocError::ChildNotAttached {
+                    object: child.id,
+                    parent: root.id,
+                },
+            )?;
+            self.populate_requested_subtree(child, request, newly_admitted)?;
+        }
+        Ok(())
+    }
+
+    fn rollback_population(&mut self, newly_admitted: Vec<SimThingId>) {
+        for object in newly_admitted.into_iter().rev() {
+            self.relations.remove(&object);
+            self.tombstone_slot(object);
         }
     }
 
     /// Release every row in a detached subtree through object-issued release
     /// requests. Traversal is pre-order to preserve the historical free-list
     /// and tombstone reporting order exactly.
-    pub fn release_subtree(&mut self, root: &SimThing) -> Vec<ObjectResidency> {
+    pub fn release_subtree(&mut self, root: &SimThing) -> Vec<SlotIndex> {
         let mut released = Vec::new();
         self.release_subtree_into(root, &mut released);
         released
     }
 
-    fn release_subtree_into(&mut self, root: &SimThing, released: &mut Vec<ObjectResidency>) {
+    fn release_subtree_into(&mut self, root: &SimThing, released: &mut Vec<SlotIndex>) {
         if let Some(residency) = self.release_residency(root.residency_release_request()) {
-            released.push(residency);
+            released.push(residency.slot());
+        } else if let Some(recovered_unbound) = self.tombstone_slot(root.id) {
+            // Defensive escaped-bug recovery: an old/test-injected row that
+            // lacks a relation must still be retired when its object subtree
+            // detaches. Production cannot create this state.
+            released.push(recovered_unbound);
         }
         for child in &root.children {
             self.release_subtree_into(child, released);
@@ -333,8 +400,8 @@ impl SlotAllocator {
     }
 
     /// Extend the high-water mark with `count` exclusively reserved tombstoned
-    /// slots (arena-local gap block). Returns ascending slot ids. Not placed on
-    /// the global LIFO `free` stack until claimed via [`Self::claim_exclusive_slot`].
+    /// slots (arena-local gap bookkeeping). Returns ascending slot ids. The
+    /// block creates no live row and has no relationless public claim door.
     pub fn reserve_exclusive_gap_block(&mut self, count: u32) -> Vec<SlotIndex> {
         if count == 0 {
             return Vec::new();
@@ -382,7 +449,7 @@ impl SlotAllocator {
         Ok(slots)
     }
 
-    /// Read-only preflight for [`Self::try_alloc_contiguous_after`].
+    /// Read-only arena-plan preflight for one contiguous slot after `after_slot`.
     pub fn can_alloc_contiguous_after(
         &self,
         after_slot: SlotIndex,
@@ -403,62 +470,6 @@ impl SlotAllocator {
         }
         Ok(SlotIndex::new(target))
     }
-
-    /// Allocate `id` at exactly `after_slot + 1` for arena-root sibling append.
-    ///
-    /// Rejects when the target slot is live, exclusively reserved (gap block),
-    /// or otherwise unavailable — never falls back to the rehearsal allocator.
-    pub fn try_alloc_contiguous_after(
-        &mut self,
-        after_slot: SlotIndex,
-        id: SimThingId,
-    ) -> Result<SlotIndex, SlotAllocError> {
-        if let Some(&existing) = self.by_id.get(&id) {
-            return Ok(SlotIndex::new(existing));
-        }
-        let target = after_slot.raw().saturating_add(1);
-        while self.capacity() as u32 <= target {
-            self.slot_owners.push(None);
-        }
-        if self.is_live(SlotIndex::new(target)) {
-            return Err(SlotAllocError::AdjacentOccupied {
-                slot: SlotIndex::new(target),
-            });
-        }
-        if self.exclusive_reserved.contains(&target) {
-            return Err(SlotAllocError::ContiguityBlockedByGap {
-                slot: SlotIndex::new(target),
-            });
-        }
-        if let Some(pos) = self.free.iter().position(|&s| s == target) {
-            self.free.remove(pos);
-        }
-        self.slot_owners[target as usize] = Some(id);
-        self.by_id.insert(id, target);
-        Ok(SlotIndex::new(target))
-    }
-
-    /// Assign `id` to an exclusively reserved tombstoned slot.
-    pub fn claim_exclusive_slot(
-        &mut self,
-        slot: SlotIndex,
-        id: SimThingId,
-    ) -> Result<(), SlotAllocError> {
-        if self.by_id.contains_key(&id) {
-            return Ok(());
-        }
-        let raw = slot.raw();
-        if !self.exclusive_reserved.contains(&raw) {
-            return Err(SlotAllocError::NotExclusiveReserved { slot });
-        }
-        if self.is_live(slot) {
-            return Err(SlotAllocError::SlotLive { slot });
-        }
-        self.exclusive_reserved.remove(&raw);
-        self.slot_owners[raw as usize] = Some(id);
-        self.by_id.insert(id, raw);
-        Ok(())
-    }
 }
 
 #[cfg(test)]
@@ -469,13 +480,6 @@ mod tests {
         DimensionRegistry, ObjectResidencyRelation, PropertyValue, SimProperty, SimThing,
         SimThingKind, SubFieldRole,
     };
-
-    fn allocate_legacy_dfs(allocator: &mut SlotAllocator, node: &SimThing) {
-        allocator.alloc_for_oracle_or_rehearsal(node.id);
-        for child in &node.children {
-            allocate_legacy_dfs(allocator, child);
-        }
-    }
 
     fn collect_ids(node: &SimThing, ids: &mut Vec<SimThingId>) {
         ids.push(node.id);
@@ -509,18 +513,18 @@ mod tests {
     #[test]
     fn row_slot_object_semantics_layout_identity_oracle_parity() {
         for root in [canonical_fixture(), uneven_fixture()] {
-            let mut legacy = SlotAllocator::new();
-            allocate_legacy_dfs(&mut legacy, &root);
-
             let mut derived = SlotAllocator::new();
             derived.populate_from_tree(&root);
 
             let mut ids = Vec::new();
             collect_ids(&root, &mut ids);
-            assert_eq!(legacy.capacity(), derived.capacity());
-            assert_eq!(legacy.live_count(), derived.live_count());
-            for id in ids {
-                assert_eq!(legacy.slot_of(id), derived.slot_of(id));
+            assert_eq!(derived.capacity(), ids.len());
+            assert_eq!(derived.live_count(), ids.len());
+            for (expected_slot, id) in ids.into_iter().enumerate() {
+                assert_eq!(
+                    derived.slot_of(id).map(SlotIndex::as_usize),
+                    Some(expected_slot)
+                );
                 assert!(derived.relation_of(id).is_some());
             }
         }
@@ -544,11 +548,23 @@ mod tests {
         let root_residency = allocator
             .execute_residency(root.root_residency_request())
             .unwrap();
-        let sidecar_slot = allocator.alloc_for_oracle_or_rehearsal(root.children[0].id);
-        let child_request = root.child_residency_request(&root.children[0]);
+        let sidecar_slot =
+            allocator.inject_unbound_row_for_escaped_bug_referee(root.children[0].id);
+        let child_request = root
+            .attached_child_residency_request(&root.children[0])
+            .expect("fixture child is attached");
 
         assert_eq!(root_residency.relation(), ObjectResidencyRelation::Root);
-        assert!(allocator.residency_for(child_request).is_none());
+        assert_eq!(
+            allocator.execute_residency(child_request),
+            Err(SlotAllocError::UnboundSidecarSlot {
+                object: root.children[0].id
+            })
+        );
+        let child_request = root
+            .attached_child_residency_request(&root.children[0])
+            .expect("fixture child remains attached");
+        assert!(allocator.residency_for(&child_request).is_none());
 
         let topology = build_topology(&root, &allocator);
         let root_slot = root_residency.slot().as_usize();
@@ -567,5 +583,49 @@ mod tests {
         let sidecar_row =
             &values[sidecar_slot.as_usize() * n_dims..(sidecar_slot.as_usize() + 1) * n_dims];
         assert!(sidecar_row.iter().all(|value| value.to_bits() == 0));
+    }
+
+    #[test]
+    fn row_slot_unattached_child_cannot_mint_or_leak_residency() {
+        let property = SimProperty::simple("referee", "unattached", 0);
+        let layout = property.layout.clone();
+        let mut registry = DimensionRegistry::new();
+        let property_id = registry.register(property);
+
+        let root = SimThing::new(SimThingKind::GameSession, 0);
+        let mut unattached = SimThing::new(SimThingKind::Location, 0);
+        let mut value = PropertyValue::from_layout(&layout);
+        value.set_role(&SubFieldRole::Amount, &layout, 11.0);
+        unattached.add_property(property_id, value);
+
+        let mut allocator = SlotAllocator::new();
+        let root_residency = allocator
+            .execute_residency(root.root_residency_request())
+            .unwrap();
+        let unbound_slot = allocator.inject_unbound_row_for_escaped_bug_referee(unattached.id);
+
+        assert!(root.attached_child_residency_request(&unattached).is_none());
+        assert!(allocator.residency_of(unattached.id).is_none());
+
+        let topology = build_topology(&root, &allocator);
+        assert!(topology
+            .child_indices
+            .iter()
+            .all(|slot| *slot != unbound_slot.raw()));
+        assert_eq!(
+            topology.depth_buckets,
+            vec![vec![root_residency.slot().raw()]]
+        );
+
+        let n_dims = registry.total_columns;
+        let mut values = vec![0.0; allocator.capacity() * n_dims];
+        project_tree_to_values(&root, &registry, &allocator, n_dims, &mut values);
+        let sidecar_row =
+            &values[unbound_slot.as_usize() * n_dims..(unbound_slot.as_usize() + 1) * n_dims];
+        assert!(sidecar_row.iter().all(|lane| lane.to_bits() == 0));
+
+        assert_eq!(allocator.release_subtree(&unattached), vec![unbound_slot]);
+        assert!(allocator.slot_of(unattached.id).is_none());
+        assert!(!allocator.is_live(unbound_slot));
     }
 }

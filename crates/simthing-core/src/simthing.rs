@@ -159,9 +159,19 @@ impl SimThing {
         ObjectResidencyRequest::root(self.id)
     }
 
-    /// Emit the child-row request owned by this parent/child relation.
-    pub fn child_residency_request(&self, child: &SimThing) -> ObjectResidencyRequest {
-        ObjectResidencyRequest::child(child.id, self.id)
+    /// Emit a child-row request only for the exact direct child reference
+    /// attached beneath this parent.
+    ///
+    /// An arbitrary `SimThing` reference beside the tree cannot mint this
+    /// request, even when it carries an otherwise valid object id.
+    pub fn attached_child_residency_request(
+        &self,
+        child: &SimThing,
+    ) -> Option<ObjectResidencyRequest> {
+        self.children
+            .iter()
+            .find(|attached| std::ptr::eq(*attached, child))
+            .map(|attached| ObjectResidencyRequest::attached_child(attached.id, self.id))
     }
 
     /// Emit the object-side request to retire this object's ephemeral row.

@@ -195,8 +195,14 @@ fn apply_add_child(
     // get a stable order (root before children); the SimThing we just
     // pushed is at the end of parent's children list.
     let attached = parent.children.last().expect("just pushed");
-    allocator.populate_subtree(parent, attached);
-    let attached_request = parent.child_residency_request(attached);
+    if allocator.populate_subtree(parent, attached).is_err() {
+        parent.children.pop();
+        out.rejected_unknown_target += 1;
+        return;
+    }
+    let attached_request = parent
+        .attached_child_residency_request(attached)
+        .expect("just-pushed subtree is an attached direct child");
 
     // Project the attached subtree's semantic properties into the shadow.
     // Rows are zeroed first so absent properties do not inherit stale slot data.
@@ -230,7 +236,7 @@ fn project_subtree_to_shadow(
     n_dims: usize,
     out: &mut MaintainerOutcome,
 ) {
-    if let Some(residency) = allocator.residency_for(request) {
+    if let Some(residency) = allocator.residency_for(&request) {
         let slot = residency.slot();
         let base = slot.as_usize() * n_dims;
         let end = base + n_dims;
@@ -254,9 +260,12 @@ fn project_subtree_to_shadow(
     }
 
     for child in &node.children {
+        let request = node
+            .attached_child_residency_request(child)
+            .expect("tree traversal holds the attached direct child");
         project_subtree_to_shadow(
             child,
-            node.child_residency_request(child),
+            request,
             allocator,
             registry,
             values_shadow,
@@ -296,10 +305,12 @@ fn apply_remove(
         return;
     };
 
-    for residency in allocator.release_subtree(&subtree) {
-        zero_shadow_row(values_shadow, n_dims, residency.slot().raw());
-        out.tombstoned.push(residency.object());
+    let mut removed_ids = Vec::new();
+    collect_subtree_ids(&subtree, &mut removed_ids);
+    for slot in allocator.release_subtree(&subtree) {
+        zero_shadow_row(values_shadow, n_dims, slot.raw());
     }
+    out.tombstoned.extend(removed_ids);
     out.removes += 1;
 }
 
@@ -340,6 +351,12 @@ fn apply_reparent(
         out.rejected_unknown_target += 1;
         return;
     }
+    let Some(simthing_core::ObjectResidencyRelation::ChildOf(old_parent)) =
+        allocator.relation_of(child)
+    else {
+        out.rejected_unknown_target += 1;
+        return;
+    };
 
     // Verify the new parent exists *before* detaching. Otherwise a missing
     // new parent would leave us with an orphaned subtree to dispose of.
@@ -370,23 +387,28 @@ fn apply_reparent(
         out.rejected_unknown_target += 1;
         return;
     };
-    let Some(parent) = lookup_node_mut(root, new_parent, node_paths) else {
-        // Race window: someone removed new_parent between check and detach.
-        // We checked first to make this practically impossible in single-
-        // threaded code; defensive log + reattach to root as fallback.
+    let Some(parent) = lookup_node_mut(root, new_parent, None) else {
+        // Restore the exact old attachment if the preflighted destination
+        // disappeared or its cached path was invalidated by detachment.
         out.rejected_unknown_target += 1;
-        root.add_child(subtree);
-        let attached = root.children.last().expect("fallback reattached");
-        allocator
-            .reparent_residency(root.child_residency_request(attached))
-            .expect("fallback root residency must preserve the stable row");
+        find_node_mut(root, old_parent)
+            .expect("resident child's old parent remains in the tree")
+            .add_child(subtree);
         return;
     };
     parent.add_child(subtree);
     let attached = parent.children.last().expect("reparented child attached");
-    allocator
-        .reparent_residency(parent.child_residency_request(attached))
-        .expect("reparented object residency must preserve the stable row");
+    let request = parent
+        .attached_child_residency_request(attached)
+        .expect("reparented subtree is attached before residency rebind");
+    if allocator.reparent_residency(request).is_err() {
+        let subtree = detach_subtree(root, child).expect("failed reparent remains attached");
+        find_node_mut(root, old_parent)
+            .expect("failed reparent restores the old attachment")
+            .add_child(subtree);
+        out.rejected_unknown_target += 1;
+        return;
+    }
     out.reparents += 1;
     out.reparented.push((child, new_parent));
 }
