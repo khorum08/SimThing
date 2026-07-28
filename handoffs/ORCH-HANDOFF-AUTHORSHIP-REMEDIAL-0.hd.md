@@ -29,10 +29,12 @@ stop_conditions: ["stale-orient-receipt", "scope-widening"]
 - Authoring budget: the coding render cap is 60 physical lines; keep authored
   content (body + stop/checks/forbidden items) near 45 lines. The Owner's
   cap raise to 90 lands in Phase 10.1, not now.
-- Open the draft as a PR and relay it to the DA for review. The DA applies
-  bounded corrections and issues; merge per the clearance verdict; refresh the
-  Board with the canonical HD-RECEIPT; then issue the pointer-only Grok
-  dispatch "Implement handoff PLAN-STRUCT-TYPING-0".
+- Open the draft as a PR and route it through the clearance ladder. NO DA
+  draft-review relay on Std-lane precedented rungs: on a clearable verdict,
+  self-merge, refresh the Board with the canonical HD-RECEIPT, and issue the
+  pointer-only Grok dispatch "Implement handoff PLAN-STRUCT-TYPING-0" without
+  waiting on the DA. Relay a draft to the DA only when the router returns
+  DA-RESERVE or the rung's committed lane is frontier/MAX.
 ## FENCES
 - The DA does not compose handoff bodies (Owner ruling, token economy). The
   DA's pass on your draft is review-and-issue: targeted corrections, receipt.
@@ -40,4 +42,5 @@ stop_conditions: ["stale-orient-receipt", "scope-widening"]
   dispatches; DA-issued corrections are binding before merge.
 ## EXIT-PROOF
 - Orchestrator acknowledgment carrying a fresh orientation receipt; the
-  `PLAN-STRUCT-TYPING-0.hd.md` draft PR exists and is relayed for DA review.
+  `PLAN-STRUCT-TYPING-0.hd.md` handoff is merged, board-visible with its
+  receipt, and the Grok dispatch is issued — no DA draft relay occurred.
