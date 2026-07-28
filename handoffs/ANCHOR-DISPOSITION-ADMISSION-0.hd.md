@@ -2,7 +2,7 @@
 rung: ANCHOR-DISPOSITION-ADMISSION-0
 kind: rung
 track: 0.0.8.7
-base_sha: 67e3d489c665ae917d1489656de44a531e6d55b3
+base_sha: 15149ff5b771fffb04cb6394cdb081bd6fef9f2e
 audience: coding
 model_tier: frontier
 owner_approved: true
