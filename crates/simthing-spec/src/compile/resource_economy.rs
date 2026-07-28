@@ -14,8 +14,8 @@ use crate::spec::resource_economy::{
 use crate::spec::script::PropertyKey;
 use crate::spec::trigger::TriggerDirection;
 use simthing_core::{
-    DimensionRegistry, EmlConsumerKind, EmlExecutionClass, EmlExpressionRegistry, EmlTreeId,
-    SimPropertyId, SubFieldRole, ThresholdDirection,
+    ColumnIndex, DimensionRegistry, EmlConsumerKind, EmlExecutionClass, EmlExpressionRegistry,
+    EmlTreeId, SimPropertyId, SubFieldRole, ThresholdDirection,
 };
 
 /// Compiled resource economy artifact (spec-owned; not GPU registration vectors).
@@ -33,10 +33,10 @@ pub struct CompiledResourceTransfer {
     pub id: String,
     pub source_property: SimPropertyId,
     pub source_role: SubFieldRole,
-    pub source_col: u32,
+    pub source_col: ColumnIndex,
     pub target_property: SimPropertyId,
     pub target_role: SubFieldRole,
-    pub target_col: u32,
+    pub target_col: ColumnIndex,
     pub amount: f32,
     pub order_band: u32,
     /// Explicit install_targets entity for source slot (RF-5A host-qualified).
@@ -49,7 +49,7 @@ pub struct CompiledResourceTransfer {
 pub struct CompiledResourceRecipeInput {
     pub property: SimPropertyId,
     pub role: SubFieldRole,
-    pub col: u32,
+    pub col: ColumnIndex,
     pub unit_cost: f32,
     pub host_entity: Option<String>,
 }
@@ -60,7 +60,7 @@ pub struct CompiledResourceRecipe {
     pub inputs: Vec<CompiledResourceRecipeInput>,
     pub target_property: SimPropertyId,
     pub target_role: SubFieldRole,
-    pub target_col: u32,
+    pub target_col: ColumnIndex,
     pub target_host_entity: Option<String>,
     pub output_coefficient: f32,
     pub order_band: u32,
@@ -82,7 +82,7 @@ pub struct CompiledResourceEmission {
     pub id: String,
     pub source_property: SimPropertyId,
     pub source_role: SubFieldRole,
-    pub source_col: u32,
+    pub source_col: ColumnIndex,
     pub formula: CompiledEmissionFormula,
     /// Explicit install_targets entity for emission source slot.
     pub host_entity: Option<String>,
@@ -93,7 +93,7 @@ pub struct CompiledEmitOnThreshold {
     pub id: String,
     pub source_property: SimPropertyId,
     pub source_role: SubFieldRole,
-    pub source_col: u32,
+    pub source_col: ColumnIndex,
     pub threshold: f32,
     pub direction: ThresholdDirection,
     pub event_kind: u32,
@@ -119,7 +119,7 @@ pub struct ResourceEconomyDiagnostic {
     pub message: String,
 }
 
-type ConsumedCellKey = (u32, SimPropertyId, u32);
+type ConsumedCellKey = (u32, SimPropertyId, ColumnIndex);
 
 struct ContentionTracker {
     cells: HashMap<ConsumedCellKey, String>,
@@ -136,14 +136,14 @@ impl ContentionTracker {
         &mut self,
         order_band: u32,
         property_id: SimPropertyId,
-        col: u32,
+        col: ColumnIndex,
         owner: &str,
     ) -> Result<(), SpecError> {
         let key = (order_band, property_id, col);
         if let Some(first) = self.cells.get(&key) {
             return Err(SpecError::ResourceEconomyConsumedInputContention {
                 property_id: property_id.0,
-                col,
+                col: col.raw_u32(),
                 order_band,
                 first: first.clone(),
                 second: owner.to_string(),
@@ -527,7 +527,7 @@ fn resolve_property_col(
     context: &str,
     unknown_property: impl FnOnce(String, String) -> SpecError,
     invalid_role: impl FnOnce(String, String, String) -> SpecError,
-) -> Result<(SimPropertyId, u32), SpecError> {
+) -> Result<(SimPropertyId, ColumnIndex), SpecError> {
     let property_id = registry
         .id_of(&key.namespace, &key.name)
         .ok_or_else(|| unknown_property(key.namespace.clone(), key.name.clone()))?;
@@ -541,8 +541,7 @@ fn resolve_property_col(
                 format!("{}::{}", key.namespace, key.name),
                 format_role(role),
             )
-        })?
-        .raw_u32();
+        })?;
     Ok((property_id, col))
 }
 

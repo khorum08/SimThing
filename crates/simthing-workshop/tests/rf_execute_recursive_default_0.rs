@@ -6,8 +6,8 @@
 use std::collections::HashMap;
 
 use simthing_core::{
-    AccumulatorRole, AccumulatorSpec, BalanceSpec, ClampBehavior, DimensionRegistry, LogTier,
-    SimThing, SimThingId, SimThingKind, SlotIndex, SubFieldRole, SubFieldSpec,
+    AccumulatorRole, AccumulatorSpec, BalanceSpec, ClampBehavior, ColumnIndex, DimensionRegistry,
+    LogTier, SimThing, SimThingId, SimThingKind, SlotIndex, SubFieldRole, SubFieldSpec,
 };
 use simthing_driver::{
     allocator_eps_bound, allocator_from_disbursements, build_execution_plan, check_allocator_step,
@@ -229,8 +229,8 @@ struct ExecutedObservation {
     rf_active: bool,
 }
 
-fn cell(values: &[f32], slot: SlotIndex, col: u32, n_dims: u32) -> f32 {
-    values[(slot.raw() * n_dims + col) as usize]
+fn cell(values: &[f32], slot: SlotIndex, col: ColumnIndex, n_dims: u32) -> f32 {
+    values[(slot.raw() * n_dims + col.raw_u32()) as usize]
 }
 
 fn execute_step(
@@ -313,16 +313,16 @@ fn execute_step(
 
     let n_dims = session.proto.registry.total_columns as u32;
     let mut values = session.state.read_values();
-    values[(root_slot.raw() * n_dims + cols.intrinsic_flow_col) as usize] = ROOT_BUDGET;
-    values[(owner_slot.raw() * n_dims + cols.weight_col) as usize] = 1.0;
+    values[(root_slot.raw() * n_dims + cols.intrinsic_flow_col.raw_u32()) as usize] = ROOT_BUDGET;
+    values[(owner_slot.raw() * n_dims + cols.weight_col.raw_u32()) as usize] = 1.0;
     let leaf_intrinsics = [
         named_child_intrinsic,
         FIXED_SIBLING_A_INTRINSIC,
         FIXED_SIBLING_B_INTRINSIC,
     ];
     for ((slot, weight), intrinsic) in leaf_slots.iter().zip(LEAF_WEIGHTS).zip(leaf_intrinsics) {
-        values[(slot.raw() * n_dims + cols.weight_col) as usize] = weight;
-        values[(slot.raw() * n_dims + cols.intrinsic_flow_col) as usize] = intrinsic;
+        values[(slot.raw() * n_dims + cols.weight_col.raw_u32()) as usize] = weight;
+        values[(slot.raw() * n_dims + cols.intrinsic_flow_col.raw_u32()) as usize] = intrinsic;
     }
 
     // The governed rate starts at zero. Ordinary Arena OrderBands must derive the
@@ -345,8 +345,10 @@ fn execute_step(
         .iter()
         .map(|slot| cell(&actual, *slot, cols.allocated_flow_col, n_dims))
         .collect();
-    let root_balance_rate = cell(&actual, root_slot, balance_rate_col, n_dims);
-    let owner_balance_rate = cell(&actual, owner_slot, balance_rate_col, n_dims);
+    let balance_rate_col_idx =
+        ColumnIndex::from_raw_for_oracle_or_rehearsal(balance_rate_col as usize);
+    let root_balance_rate = cell(&actual, root_slot, balance_rate_col_idx, n_dims);
+    let owner_balance_rate = cell(&actual, owner_slot, balance_rate_col_idx, n_dims);
     let root_balance_delta = cell(&actual, root_slot, balance_col, n_dims) - root_balance_before;
     let owner_balance_delta = cell(&actual, owner_slot, balance_col, n_dims) - owner_balance_before;
     let leaf_balance_deltas: Vec<f32> = leaf_slots

@@ -86,8 +86,8 @@ fn compile_demand_aggregate_proof_plans(
         let participant_count = source_demand_indices.len() as u32;
         let demand_plan = compile_participant_channel_sum_plan(
             participant_count,
-            StructuralScalarChannel(0),
-            StructuralScalarChannel(1),
+            StructuralScalarChannel::from_authored_channel(0),
+            StructuralScalarChannel::from_authored_channel(1),
         );
         plans.push(OwnerSiloDemandAggregateProofPlan {
             owner_ref,

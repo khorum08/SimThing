@@ -1118,16 +1118,17 @@ fn emission_sample_loci_from_session(sim: &SimSession) -> Vec<FieldAccretionSamp
     let mut out = Vec::new();
     let mut seen = std::collections::BTreeSet::new();
     for emission in &registry.registrations.emissions {
-        let key = (emission.source_slot, emission.source_col);
+        let source_col = emission.source_col.raw_u32();
+        let key = (emission.source_slot, source_col);
         if !seen.insert(key) {
             continue;
         }
-        let property_key = property_key_for_col(reg, emission.source_col)
-            .unwrap_or_else(|| format!("col:{}", emission.source_col));
+        let property_key = property_key_for_col(reg, source_col)
+            .unwrap_or_else(|| format!("col:{source_col}"));
         out.push(FieldAccretionSampleLocus {
             property_key,
             source_slot: emission.source_slot,
-            source_col: emission.source_col,
+            source_col,
         });
     }
     for recipe in &registry.registrations.recipes {
@@ -1206,7 +1207,8 @@ fn recursive_rf_locus_from_session(
     .map_err(|e| format!("resolve recursive RF columns: {e}"))?;
     let balance_col = cols
         .balance_col
-        .ok_or_else(|| "recursive RF property has no governed Balance column".to_string())?;
+        .ok_or_else(|| "recursive RF property has no governed Balance column".to_string())?
+        .raw_u32();
     let participant_slot = |hosted_id| {
         sim.spec_state
             .arena_registry
@@ -1219,7 +1221,7 @@ fn recursive_rf_locus_from_session(
         .ok_or_else(|| "recursive RF session-root participant is not hosted".to_string())?;
     let locus = RecursiveRfSampleLocus {
         ancestor_slot,
-        aggregate_col: cols.intrinsic_flow_sum_col,
+        aggregate_col: cols.intrinsic_flow_sum_col.raw_u32(),
         root_slot,
         balance_col,
     };

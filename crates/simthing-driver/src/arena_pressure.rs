@@ -67,15 +67,19 @@ pub fn project_arena_pressure_seeds(
         PressureSourceSpec::AllocatedFlow => cols.allocated_flow_col,
         // The gadget composition hook: any named column an EML/gadget op
         // writes on the flow property is projectable heatmap feedstock.
-        PressureSourceSpec::Named { sub_field } => layout
-            .offset_of(&simthing_core::SubFieldRole::Named(sub_field.clone()))
-            .ok_or_else(|| ArenaPressureError::ColumnResolution {
-                arena: binding.arena.clone(),
-                reason: format!("named sub-field `{sub_field}` not in flow layout"),
-            })?
-            .lane() as u32,
+        PressureSourceSpec::Named { sub_field } => {
+            let lane = layout
+                .offset_of(&simthing_core::SubFieldRole::Named(sub_field.clone()))
+                .ok_or_else(|| ArenaPressureError::ColumnResolution {
+                    arena: binding.arena.clone(),
+                    reason: format!("named sub-field `{sub_field}` not in flow layout"),
+                })?
+                .lane();
+            simthing_core::ColumnIndex::from_raw_for_oracle_or_rehearsal(lane)
+        }
     };
-    let global_col = registry.column_range(descriptor.flow_property_id).start as u32 + local_col;
+    let global_col =
+        registry.column_range(descriptor.flow_property_id).start as u32 + local_col.raw_u32();
 
     let mut seeds = Vec::with_capacity(binding.placements.len());
     for placement in &binding.placements {
@@ -148,15 +152,19 @@ pub fn compile_arena_pressure_scatter(
     let local_col = match &binding.source {
         PressureSourceSpec::IntrinsicFlow => cols.intrinsic_flow_col,
         PressureSourceSpec::AllocatedFlow => cols.allocated_flow_col,
-        PressureSourceSpec::Named { sub_field } => layout
-            .offset_of(&simthing_core::SubFieldRole::Named(sub_field.clone()))
-            .ok_or_else(|| ArenaPressureError::ColumnResolution {
-                arena: binding.arena.clone(),
-                reason: format!("named sub-field `{sub_field}` not in flow layout"),
-            })?
-            .lane() as u32,
+        PressureSourceSpec::Named { sub_field } => {
+            let lane = layout
+                .offset_of(&simthing_core::SubFieldRole::Named(sub_field.clone()))
+                .ok_or_else(|| ArenaPressureError::ColumnResolution {
+                    arena: binding.arena.clone(),
+                    reason: format!("named sub-field `{sub_field}` not in flow layout"),
+                })?
+                .lane();
+            simthing_core::ColumnIndex::from_raw_for_oracle_or_rehearsal(lane)
+        }
     };
-    let global_col = registry.column_range(descriptor.flow_property_id).start as u32 + local_col;
+    let global_col =
+        registry.column_range(descriptor.flow_property_id).start as u32 + local_col.raw_u32();
 
     let mut entries = Vec::with_capacity(binding.placements.len());
     let mut cells = Vec::with_capacity(binding.placements.len());

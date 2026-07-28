@@ -81,7 +81,7 @@ use simthing_core::{AccumulatorOp, EmlExpressionRegistry, InputSpec, SourceSpec}
 
 use crate::eml_opcode_gate::{combine_in_closed_vocabulary, OpcodeGateError};
 use crate::registration::ThresholdRegistration;
-
+use crate::wgsl_encode::encode_column;
 use crate::world_state::IntentDelta;
 
 use super::bootstrap_validate::validate_no_contention;
@@ -139,7 +139,7 @@ impl PackedAccumulatorUpload {
                 {
                     flat_inputs.push(AccumulatorInputGpu {
                         slot: slot.raw(),
-                        col: col.raw_u32(),
+                        col: encode_column(*col),
                         unit_cost_bits: unit_cost.to_bits(),
                         flags: 0,
                     });

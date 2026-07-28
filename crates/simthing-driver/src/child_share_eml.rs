@@ -2,9 +2,10 @@
 
 use simthing_core::eml_nodes::{self, EmlNode};
 use simthing_core::{
-    EmlConsumerMask, EmlExecutionClass, EmlExpressionRegistry, EmlFormulaMeta, EmlRegistryError,
-    EmlTreeId,
+    ColumnIndex, EmlConsumerMask, EmlExecutionClass, EmlExpressionRegistry, EmlFormulaMeta,
+    EmlRegistryError, EmlTreeId,
 };
+use simthing_gpu::encode_column;
 
 use crate::arena_hierarchy::{NodeColumnRefs, CHILD_SHARE_FORMULA_TREE_ID};
 
@@ -23,11 +24,11 @@ fn lit(v: f32) -> EmlNode {
     }
 }
 
-fn slot(col: u32) -> EmlNode {
+fn slot(col: ColumnIndex) -> EmlNode {
     EmlNode {
         opcode: eml_nodes::opcode::SLOT_VALUE,
         flags: 0,
-        a: col,
+        a: encode_column(col),
         b: 0,
         c: 0,
         d: 0,
@@ -120,18 +121,21 @@ mod tests {
     use crate::arena_hierarchy::NodeColumnRefs;
 
     fn sample_cols() -> NodeColumnRefs {
+        fn col(n: usize) -> ColumnIndex {
+            ColumnIndex::from_raw_for_oracle_or_rehearsal(n)
+        }
         NodeColumnRefs {
-            intrinsic_flow_col: 0,
-            intrinsic_flow_sum_col: 4,
-            allocated_flow_col: 1,
-            balance_col: Some(3),
+            intrinsic_flow_col: col(0),
+            intrinsic_flow_sum_col: col(4),
+            allocated_flow_col: col(1),
+            balance_col: Some(col(3)),
             balance_governing_col: None,
-            weight_col: 2,
-            weight_sum_col: 5,
-            propagated_intrinsic_flow_col: 6,
-            propagated_allocated_flow_col: 7,
-            propagated_weight_sum_col: 8,
-            hosted_simthing_id_col: 9,
+            weight_col: col(2),
+            weight_sum_col: col(5),
+            propagated_intrinsic_flow_col: col(6),
+            propagated_allocated_flow_col: col(7),
+            propagated_weight_sum_col: col(8),
+            hosted_simthing_id_col: col(9),
         }
     }
 

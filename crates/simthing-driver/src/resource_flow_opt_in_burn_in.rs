@@ -6,8 +6,8 @@
 use std::collections::HashMap;
 
 use simthing_core::{
-    AccumulatorRole, AccumulatorSpec, ClampBehavior, DimensionRegistry, LogTier, SimThing,
-    SimThingKind, SubFieldRole, SubFieldSpec,
+    AccumulatorRole, AccumulatorSpec, ClampBehavior, ColumnIndex, DimensionRegistry, LogTier,
+    SimThing, SimThingKind, SubFieldRole, SubFieldSpec,
 };
 use simthing_gpu::SlotAllocator;
 use simthing_sim::{BoundaryOutcome, FissionOutcome};
@@ -28,7 +28,7 @@ use crate::resource_flow_dynamic_enrollment_soak::{
 use crate::scenario::Scenario;
 use crate::session::{SessionError, SimSession};
 
-type CellKey = (crate::arena_registry::SlotId, u32);
+type CellKey = (crate::arena_registry::SlotId, ColumnIndex);
 
 pub const RF_T2_STATIC_FLAT_STAR_10: &str = "rf_t2_static_flat_star_10_participants";
 pub const RF_T2_STATIC_FLAT_STAR_64: &str = "rf_t2_static_flat_star_64_participants";

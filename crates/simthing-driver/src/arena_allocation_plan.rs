@@ -4,7 +4,9 @@ use simthing_core::{
     AccumulatorOp, ColumnIndex, CombineFn, ConsumeMode, GateSpec, InputSpec, ScaleSpec, SlotIndex,
     SourceSpec,
 };
-use simthing_gpu::{plan_governed_integration_at_band, GovernedPair, PlannerError};
+use simthing_gpu::{
+    column_from_wire, plan_governed_integration_at_band, GovernedPair, PlannerError,
+};
 use thiserror::Error;
 
 use crate::arena_hierarchy::{ArenaTreeLayout, HierarchyError, HierarchyNode, NodeColumnRefs};
@@ -160,12 +162,12 @@ fn cpu_op_from_integration_gpu(gpu: &simthing_gpu::AccumulatorOpGpu) -> Accumula
     let targets = encoded_targets
         .iter()
         .take(gpu.n_targets.min(encoded_targets.len() as u32) as usize)
-        .map(|(slot, col)| (SlotIndex::new(*slot), ColumnIndex::new(*col as usize)))
+        .map(|(slot, col)| (SlotIndex::new(*slot), column_from_wire(*col)))
         .collect();
     AccumulatorOp {
         source: SourceSpec::SlotValue {
             slot: SlotIndex::new(gpu.source_slot),
-            col: ColumnIndex::new(gpu.source_col as usize),
+            col: column_from_wire(gpu.source_col),
         },
         combine: CombineFn::IntegrateWithClamp {
             dt: 0.0,
@@ -249,7 +251,7 @@ pub(crate) fn append_residual_closure_ops(
     }
 }
 
-fn reset_columns(cols: NodeColumnRefs) -> Vec<u32> {
+fn reset_columns(cols: NodeColumnRefs) -> Vec<ColumnIndex> {
     vec![
         cols.allocated_flow_col,
         cols.intrinsic_flow_sum_col,
@@ -273,22 +275,22 @@ fn children_are_contiguous(parent: &HierarchyNode) -> bool {
         .all(|pair| pair[1].participant_slot.raw() == pair[0].participant_slot.raw() + 1)
 }
 
-fn reset_op(slot: u32, col: u32, band: u32) -> AccumulatorOp {
+fn reset_op(slot: u32, col: ColumnIndex, band: u32) -> AccumulatorOp {
     AccumulatorOp {
         source: SourceSpec::Constant(0.0),
         combine: CombineFn::Identity,
         gate: GateSpec::OrderBand(band),
         scale: ScaleSpec::Identity,
         consume: ConsumeMode::ResetTarget,
-        targets: vec![(SlotIndex::new(slot), ColumnIndex::new(col as usize))],
+        targets: vec![(SlotIndex::new(slot), col)],
     }
 }
 
 fn sum_reduction_ops(
     parent: &HierarchyNode,
     parent_slot: u32,
-    source_col: u32,
-    target_col: u32,
+    source_col: ColumnIndex,
+    target_col: ColumnIndex,
     band: u32,
 ) -> Vec<AccumulatorOp> {
     if children_are_contiguous(parent) {
@@ -297,16 +299,13 @@ fn sum_reduction_ops(
             source: SourceSpec::SlotRange {
                 start: SlotIndex::new(start),
                 count,
-                col: ColumnIndex::from_gpu_round_trip(source_col),
+                col: source_col,
             },
             combine: CombineFn::Sum,
             gate: GateSpec::OrderBand(band),
             scale: ScaleSpec::Identity,
             consume: ConsumeMode::ResetTarget,
-            targets: vec![(
-                SlotIndex::new(parent_slot),
-                ColumnIndex::from_gpu_round_trip(target_col),
-            )],
+            targets: vec![(SlotIndex::new(parent_slot), target_col)],
         }];
     }
     vec![AccumulatorOp {
@@ -315,38 +314,35 @@ fn sum_reduction_ops(
         gate: GateSpec::OrderBand(band),
         scale: ScaleSpec::Identity,
         consume: ConsumeMode::ResetTarget,
-        targets: vec![(
-            SlotIndex::new(parent_slot),
-            ColumnIndex::from_gpu_round_trip(target_col),
-        )],
+        targets: vec![(SlotIndex::new(parent_slot), target_col)],
     }]
 }
 
 fn broadcast_op(
     src_slot: u32,
-    src_col: u32,
+    src_col: ColumnIndex,
     dst_slot: u32,
-    dst_col: u32,
+    dst_col: ColumnIndex,
     band: u32,
 ) -> AccumulatorOp {
     AccumulatorOp {
         source: SourceSpec::SlotValue {
             slot: SlotIndex::new(src_slot),
-            col: ColumnIndex::new(src_col as usize),
+            col: src_col,
         },
         combine: CombineFn::Identity,
         gate: GateSpec::OrderBand(band),
         scale: ScaleSpec::Identity,
         consume: ConsumeMode::ResetTarget,
-        targets: vec![(SlotIndex::new(dst_slot), ColumnIndex::new(dst_col as usize))],
+        targets: vec![(SlotIndex::new(dst_slot), dst_col)],
     }
 }
 
 fn slot_value_op(
     src_slot: u32,
-    src_col: u32,
+    src_col: ColumnIndex,
     dst_slot: u32,
-    dst_col: u32,
+    dst_col: ColumnIndex,
     band: u32,
     consume: ConsumeMode,
     scale: ScaleSpec,
@@ -354,21 +350,21 @@ fn slot_value_op(
     AccumulatorOp {
         source: SourceSpec::SlotValue {
             slot: SlotIndex::new(src_slot),
-            col: ColumnIndex::new(src_col as usize),
+            col: src_col,
         },
         combine: CombineFn::Identity,
         gate: GateSpec::OrderBand(band),
         scale,
         consume,
-        targets: vec![(SlotIndex::new(dst_slot), ColumnIndex::new(dst_col as usize))],
+        targets: vec![(SlotIndex::new(dst_slot), dst_col)],
     }
 }
 
 fn sum_accumulation_ops(
     parent: &HierarchyNode,
     parent_slot: u32,
-    source_col: u32,
-    target_col: u32,
+    source_col: ColumnIndex,
+    target_col: ColumnIndex,
     band: u32,
 ) -> Vec<AccumulatorOp> {
     if children_are_contiguous(parent) {
@@ -377,16 +373,13 @@ fn sum_accumulation_ops(
             source: SourceSpec::SlotRange {
                 start: SlotIndex::new(start),
                 count,
-                col: ColumnIndex::from_gpu_round_trip(source_col),
+                col: source_col,
             },
             combine: CombineFn::Sum,
             gate: GateSpec::OrderBand(band),
             scale: ScaleSpec::Identity,
             consume: ConsumeMode::AddToTarget,
-            targets: vec![(
-                SlotIndex::new(parent_slot),
-                ColumnIndex::from_gpu_round_trip(target_col),
-            )],
+            targets: vec![(SlotIndex::new(parent_slot), target_col)],
         }];
     }
     vec![AccumulatorOp {
@@ -395,43 +388,41 @@ fn sum_accumulation_ops(
         gate: GateSpec::OrderBand(band),
         scale: ScaleSpec::Identity,
         consume: ConsumeMode::AddToTarget,
-        targets: vec![(
-            SlotIndex::new(parent_slot),
-            ColumnIndex::from_gpu_round_trip(target_col),
-        )],
+        targets: vec![(SlotIndex::new(parent_slot), target_col)],
     }]
 }
 
-fn sparse_child_input_list(parent: &HierarchyNode, source_col: u32) -> SourceSpec {
+fn sparse_child_input_list(parent: &HierarchyNode, source_col: ColumnIndex) -> SourceSpec {
     SourceSpec::ConjunctiveCrossing {
         inputs: parent
             .children
             .iter()
             .map(|child| InputSpec {
                 slot: child.participant_slot,
-                col: ColumnIndex::from_gpu_round_trip(source_col),
+                col: source_col,
                 unit_cost: 1.0,
             })
             .collect(),
     }
 }
 
-fn const_broadcast_op(value: f32, dst_slot: u32, dst_col: u32, band: u32) -> AccumulatorOp {
+fn const_broadcast_op(value: f32, dst_slot: u32, dst_col: ColumnIndex, band: u32) -> AccumulatorOp {
     AccumulatorOp {
         source: SourceSpec::Constant(value),
         combine: CombineFn::Identity,
         gate: GateSpec::OrderBand(band),
         scale: ScaleSpec::Identity,
         consume: ConsumeMode::ResetTarget,
-        targets: vec![(SlotIndex::new(dst_slot), ColumnIndex::new(dst_col as usize))],
+        targets: vec![(SlotIndex::new(dst_slot), dst_col)],
     }
 }
 
-fn disburse_op(child_slot: u32, a_f_col: u32, band: u32) -> AccumulatorOp {
+fn disburse_op(child_slot: u32, a_f_col: ColumnIndex, band: u32) -> AccumulatorOp {
     AccumulatorOp {
         source: SourceSpec::SlotValue {
             slot: SlotIndex::new(child_slot),
-            col: ColumnIndex::new(0),
+            // EvalEML reads columns from the formula tree; source col is unused wire filler.
+            col: column_from_wire(0),
         },
         combine: CombineFn::EvalEML {
             tree_id: child_share_tree_id().0,
@@ -439,10 +430,7 @@ fn disburse_op(child_slot: u32, a_f_col: u32, band: u32) -> AccumulatorOp {
         gate: GateSpec::OrderBand(band),
         scale: ScaleSpec::Identity,
         consume: ConsumeMode::AddToTarget,
-        targets: vec![(
-            SlotIndex::new(child_slot),
-            ColumnIndex::new(a_f_col as usize),
-        )],
+        targets: vec![(SlotIndex::new(child_slot), a_f_col)],
     }
 }
 
@@ -463,18 +451,21 @@ mod tests {
     use simthing_core::{SimPropertyId, SlotIndex};
 
     fn cols() -> NodeColumnRefs {
+        fn col(n: usize) -> ColumnIndex {
+            ColumnIndex::from_raw_for_oracle_or_rehearsal(n)
+        }
         NodeColumnRefs {
-            intrinsic_flow_col: 0,
-            intrinsic_flow_sum_col: 4,
-            allocated_flow_col: 1,
-            balance_col: Some(3),
+            intrinsic_flow_col: col(0),
+            intrinsic_flow_sum_col: col(4),
+            allocated_flow_col: col(1),
+            balance_col: Some(col(3)),
             balance_governing_col: None,
-            weight_col: 2,
-            weight_sum_col: 5,
-            propagated_intrinsic_flow_col: 6,
-            propagated_allocated_flow_col: 7,
-            propagated_weight_sum_col: 8,
-            hosted_simthing_id_col: 9,
+            weight_col: col(2),
+            weight_sum_col: col(5),
+            propagated_intrinsic_flow_col: col(6),
+            propagated_allocated_flow_col: col(7),
+            propagated_weight_sum_col: col(8),
+            hosted_simthing_id_col: col(9),
         }
     }
 
@@ -576,9 +567,7 @@ mod tests {
                     && op.targets
                         == vec![(
                             root_slot,
-                            ColumnIndex::from_raw_for_oracle_or_rehearsal(
-                                root.cols.weight_sum_col as usize,
-                            ),
+                            root.cols.weight_sum_col,
                         )]
             })
             .collect();

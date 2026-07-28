@@ -1,7 +1,7 @@
 //! C-8d emission substrate parity and validation tests.
 
 use simthing_core::{
-    eml_opcode, ClampBehavior, DimensionRegistry, EmlConsumerKind, EmlConsumerMask,
+    eml_opcode, ClampBehavior, ColumnIndex, DimensionRegistry, EmlConsumerKind, EmlConsumerMask,
     EmlExecutionClass, EmlExpressionRegistry, EmlFormulaMeta, EmlNodeGpu, EmlRegistryError,
     EmlTreeId, SimProperty, SubFieldRole, SubFieldSpec,
 };
@@ -173,7 +173,7 @@ fn c8d_eval_eml_exact_emission_matches_cpu_oracle() {
     register_slot_mul_tree(&mut state, 1);
     let regs = vec![EmissionRegistration {
         source_slot: 0,
-        source_col: 0,
+        source_col: ColumnIndex::from_raw_for_oracle_or_rehearsal(0),
         tree_id: Some(EmlTreeId(1)),
         formula: EmissionFormula::EvalEml {
             tree_id: EmlTreeId(1),
@@ -199,7 +199,7 @@ fn c8d_emission_overflow_count_exceeds_capacity() {
     let regs = vec![
         EmissionRegistration {
             source_slot: 0,
-            source_col: 0,
+            source_col: ColumnIndex::from_raw_for_oracle_or_rehearsal(0),
             tree_id: None,
             formula: EmissionFormula::Constant { value: 2.0 },
             max_emit: None,
@@ -207,7 +207,7 @@ fn c8d_emission_overflow_count_exceeds_capacity() {
         },
         EmissionRegistration {
             source_slot: 0,
-            source_col: 1,
+            source_col: ColumnIndex::from_raw_for_oracle_or_rehearsal(1),
             tree_id: None,
             formula: EmissionFormula::Constant { value: 3.0 },
             max_emit: None,
@@ -263,7 +263,7 @@ fn c8d_rejects_soft_or_fast_emission_without_tolerance_gate() {
     for id in [1, 2] {
         let regs = vec![EmissionRegistration {
             source_slot: 0,
-            source_col: 0,
+            source_col: ColumnIndex::from_raw_for_oracle_or_rehearsal(0),
             tree_id: Some(EmlTreeId(id)),
             formula: EmissionFormula::EvalEml {
                 tree_id: EmlTreeId(id),
@@ -287,7 +287,7 @@ fn c8d_emission_path_no_cpu_mediated_evaluation() {
     let mut state = setup_emission_state(1, &[4.5]);
     let regs = vec![EmissionRegistration {
         source_slot: 0,
-        source_col: 0,
+        source_col: ColumnIndex::from_raw_for_oracle_or_rehearsal(0),
         tree_id: None,
         formula: EmissionFormula::IdentityFloor,
         max_emit: None,
@@ -301,7 +301,7 @@ fn c8d_emission_path_no_cpu_mediated_evaluation() {
 fn constant_emission_reg(value: f32, reg_idx: u32) -> EmissionRegistration {
     EmissionRegistration {
         source_slot: 0,
-        source_col: 0,
+        source_col: ColumnIndex::from_raw_for_oracle_or_rehearsal(0),
         tree_id: None,
         formula: EmissionFormula::Constant { value },
         max_emit: None,
@@ -315,7 +315,7 @@ fn c8d_mismatched_registration_tree_id_rejected() {
         plan_emission_ops(
             &[EmissionRegistration {
                 source_slot: 0,
-                source_col: 0,
+                source_col: ColumnIndex::from_raw_for_oracle_or_rehearsal(0),
                 tree_id: Some(EmlTreeId(1)),
                 formula: EmissionFormula::EvalEml {
                     tree_id: EmlTreeId(2),

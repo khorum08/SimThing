@@ -1,10 +1,20 @@
 //! Driver-compiled AccumulatorOp execution plans (semantic-free).
 
-use crate::AccumulatorOp;
+use crate::{AccumulatorOp, ColumnIndex};
 
 /// Column index for a structural scalar channel in the AccumulatorOp value grid.
+///
+/// Plan-local channel ids (for example 0 = input grid channel, 1 = output grid channel)
+/// are authored structural grid channels, not layout-resolved property role columns.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct StructuralScalarChannel(pub u32);
+pub struct StructuralScalarChannel(pub ColumnIndex);
+
+impl StructuralScalarChannel {
+    /// Mint a plan-local authored structural grid channel id.
+    pub fn from_authored_channel(raw: u32) -> Self {
+        Self(ColumnIndex::from_raw_for_oracle_or_rehearsal(raw as usize))
+    }
+}
 
 /// AccumulatorOp plan assembled by `simthing-driver` and executed under `simthing-sim` tick ownership.
 #[derive(Debug, Clone, PartialEq)]

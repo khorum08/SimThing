@@ -6,11 +6,13 @@ use simthing_core::{
     SourceSpec, SubFieldRole,
 };
 
+use crate::wgsl_encode::encode_column;
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct IntensityEmlEntry {
     pub tree_id: simthing_core::EmlTreeId,
-    pub velocity_col: u32,
-    pub intensity_col: u32,
+    pub velocity_col: ColumnIndex,
+    pub intensity_col: ColumnIndex,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -41,8 +43,8 @@ pub fn build_intensity_eml_entries(registry: &DimensionRegistry) -> Vec<Intensit
         };
         entries.push(IntensityEmlEntry {
             tree_id: intensity_tree_id(idx as u32),
-            velocity_col: velocity_col.raw_u32(),
-            intensity_col: intensity_col.raw_u32(),
+            velocity_col,
+            intensity_col,
         });
     }
     entries
@@ -56,7 +58,7 @@ pub fn plan_intensity_eml_ops(entries: &[IntensityEmlEntry], n_slots: u32) -> Ve
             ops.push(AccumulatorOp {
                 source: SourceSpec::SlotValue {
                     slot: SlotIndex::new(slot),
-                    col: ColumnIndex::new(entry.intensity_col as usize),
+                    col: entry.intensity_col,
                 },
                 combine: CombineFn::EvalEML {
                     tree_id: entry.tree_id.0,
@@ -64,10 +66,7 @@ pub fn plan_intensity_eml_ops(entries: &[IntensityEmlEntry], n_slots: u32) -> Ve
                 gate: GateSpec::OrderBand(0),
                 scale: ScaleSpec::Identity,
                 consume: ConsumeMode::ResetTarget,
-                targets: vec![(
-                    SlotIndex::new(slot),
-                    ColumnIndex::new(entry.intensity_col as usize),
-                )],
+                targets: vec![(SlotIndex::new(slot), entry.intensity_col)],
             });
         }
     }
@@ -104,8 +103,8 @@ pub fn register_intensity_eml_formulas(
         let (meta, nodes) = compile_intensity_behavior_to_eml(
             behavior,
             entry.tree_id,
-            entry.velocity_col,
-            entry.intensity_col,
+            encode_column(entry.velocity_col),
+            encode_column(entry.intensity_col),
         );
         registry.replace_formula_if_changed(entry.tree_id, meta, nodes)?;
         registry.assert_consumer_admissible(entry.tree_id, EmlConsumerKind::Intensity)?;

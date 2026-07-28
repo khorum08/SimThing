@@ -162,3 +162,8 @@ date	role	query	anchors_served	hit
 2026-07-28T14:40:41Z	coding	--grep structural-execution-convergence	structural-execution-convergence	hit
 2026-07-28T14:40:41Z	coding	--grep eml-extension-ladder	eml-extension-ladder	hit
 2026-07-28T14:40:41Z	coding	--grep spec-fidelity-anti-ceremony	spec-fidelity-anti-ceremony	hit
+2026-07-28T17:34:05Z	coding	--domain core-0087	rf-arena-substrate,simthing-0087-binding-laws,simthing-0087-pillars	hit
+2026-07-28T17:36:17Z	coding	--grep ColumnIndex	admission-ladder-necessity-test,drift-detectors-six-line,exact-numeric-candidate-f,property-value-rf-overlays,spec-fidelity-anti-ceremony	hit
+2026-07-28T17:36:17Z	coding	--domain seal	admission-ladder-necessity-test,seal-residue-cross-crate	hit
+2026-07-28T17:36:17Z	coding	--domain kernel-columns	property-value-rf-overlays	hit
+2026-07-28T18:14:28Z	coding	--domain core-0087	rf-arena-substrate,simthing-0087-binding-laws,simthing-0087-pillars	hit

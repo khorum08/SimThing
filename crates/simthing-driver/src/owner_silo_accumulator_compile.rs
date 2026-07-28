@@ -1,7 +1,7 @@
 //! SIM-GPU-OWNER-SILO-RESOURCE-FLOW-TICK-0 — lower admitted owner-silo participants to AccumulatorOp plans.
 
 use simthing_core::{
-    AccumulatorOp, ColumnIndex, CombineFn, CompiledAccumulatorOpPlan, ConsumeMode, GateSpec,
+    AccumulatorOp, CombineFn, CompiledAccumulatorOpPlan, ConsumeMode, GateSpec,
     InputSpec, ScaleSpec, SlotIndex, SourceSpec, StructuralScalarChannel,
 };
 use simthing_spec::{
@@ -40,13 +40,13 @@ pub fn compile_owner_silo_gpu_tick_plan(
     let participant_count = participants.len() as u32;
     let surplus_plan = compile_participant_channel_sum_plan(
         participant_count,
-        StructuralScalarChannel(0),
-        StructuralScalarChannel(1),
+        StructuralScalarChannel::from_authored_channel(0),
+        StructuralScalarChannel::from_authored_channel(1),
     );
     let deficit_plan = compile_participant_channel_sum_plan(
         participant_count,
-        StructuralScalarChannel(0),
-        StructuralScalarChannel(1),
+        StructuralScalarChannel::from_authored_channel(0),
+        StructuralScalarChannel::from_authored_channel(1),
     );
 
     Ok(OwnerSiloGpuTickPlan {
@@ -65,11 +65,15 @@ pub(crate) fn compile_participant_channel_sum_plan(
 ) -> CompiledAccumulatorOpPlan {
     let aggregate_slot = participant_count;
     let slot_count = participant_count + 1;
-    let n_dims = input_channel.0.max(output_channel.0) + 1;
+    let n_dims = input_channel
+        .0
+        .raw_u32()
+        .max(output_channel.0.raw_u32())
+        + 1;
     let inputs: Vec<InputSpec> = (0..participant_count)
         .map(|slot| InputSpec {
             slot: SlotIndex::new(slot),
-            col: ColumnIndex::new(input_channel.0 as usize),
+            col: input_channel.0,
             unit_cost: 1.0,
         })
         .collect();
@@ -80,10 +84,7 @@ pub(crate) fn compile_participant_channel_sum_plan(
         gate: GateSpec::Always,
         scale: ScaleSpec::Identity,
         consume: ConsumeMode::AddToTarget,
-        targets: vec![(
-            SlotIndex::new(aggregate_slot),
-            ColumnIndex::new(output_channel.0 as usize),
-        )],
+        targets: vec![(SlotIndex::new(aggregate_slot), output_channel.0)],
     }];
 
     CompiledAccumulatorOpPlan {

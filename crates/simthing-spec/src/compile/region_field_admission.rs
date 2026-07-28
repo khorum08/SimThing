@@ -47,7 +47,7 @@ pub enum CompiledRegionFieldOperator {
     SaturatingFlux {
         u_sat: f32,
         chi: f32,
-        choke_output_col: Option<u32>,
+        choke_output_col: Option<ColumnIndex>,
     },
 }
 
@@ -85,8 +85,8 @@ pub struct CompiledRegionFieldStencilSpec {
     pub width: u32,
     pub height: u32,
     pub n_dims: u32,
-    pub source_col: u32,
-    pub target_col: u32,
+    pub source_col: ColumnIndex,
+    pub target_col: ColumnIndex,
     pub horizon: u32,
     pub alpha_self: f32,
     pub gamma_neighbor: f32,
@@ -124,10 +124,15 @@ pub enum CompiledFirstSliceCommitmentDirection {
 pub struct CompiledFirstSliceCommitmentThreshold {
     pub source_formula_class: String,
     pub parent_slot: u32,
-    pub urgency_col: u32,
+    pub urgency_col: ColumnIndex,
     pub threshold: f32,
     pub direction: CompiledFirstSliceCommitmentDirection,
     pub event_kind: u32,
+}
+
+/// Admit an authored wire `u32` column into compiled [`ColumnIndex`].
+fn admit_authored_col(raw: u32) -> ColumnIndex {
+    ColumnIndex::from_raw_for_oracle_or_rehearsal(raw as usize)
 }
 
 fn field_err(field: &str, reason: impl Into<String>) -> SpecError {
@@ -409,9 +414,9 @@ fn compile_reduction(
     Ok(ColumnAwareReductionSpec {
         child_slot_start: SlotIndex::new(reduction.child_slot_start),
         child_slot_count: reduction.child_slot_count,
-        child_col: ColumnIndex::new(reduction.child_col as usize),
+        child_col: admit_authored_col(reduction.child_col),
         parent_slot: SlotIndex::new(reduction.parent_slot),
-        parent_col: ColumnIndex::new(reduction.parent_col as usize),
+        parent_col: admit_authored_col(reduction.parent_col),
         combine: ColumnAwareReductionCombine::Sum,
         order_band: reduction.order_band,
     })
@@ -524,7 +529,7 @@ fn compile_commitment(
     Ok(CompiledFirstSliceCommitmentThreshold {
         source_formula_class: commitment.source_formula_class.clone(),
         parent_slot: commitment.parent_slot,
-        urgency_col: commitment.urgency_col,
+        urgency_col: admit_authored_col(commitment.urgency_col),
         threshold: commitment.threshold,
         direction: CompiledFirstSliceCommitmentDirection::Upward,
         event_kind: commitment.event_kind,
@@ -760,7 +765,7 @@ pub fn compile_region_field_preview(
             CompiledRegionFieldOperator::SaturatingFlux {
                 u_sat,
                 chi,
-                choke_output_col,
+                choke_output_col: choke_output_col.map(admit_authored_col),
             },
             1.0,
             0.0,
@@ -796,8 +801,8 @@ pub fn compile_region_field_preview(
         width: spec.grid_size,
         height: spec.grid_size,
         n_dims: spec.n_dims,
-        source_col: spec.source_col,
-        target_col,
+        source_col: admit_authored_col(spec.source_col),
+        target_col: admit_authored_col(target_col),
         horizon: spec.horizon,
         alpha_self,
         gamma_neighbor,

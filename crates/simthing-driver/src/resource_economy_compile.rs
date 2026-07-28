@@ -8,7 +8,7 @@ use std::collections::BTreeMap;
 use simthing_core::{
     discrete_transfer_registration_to_op, rebuild_conjunctive_recipe_ops,
     rebuild_discrete_transfer_ops, rebuild_emit_on_threshold_ops, AccumulatorOpBuilderError,
-    ColumnIndex, ConjunctiveRecipeInput, ConjunctiveRecipeRegistration, DimensionRegistry,
+    ConjunctiveRecipeInput, ConjunctiveRecipeRegistration, DimensionRegistry,
     DiscreteTransferRegistration, EmitOnThresholdBuffer, EmitOnThresholdRegistration,
     EmlExpressionRegistry, SimPropertyId, SimThing, SlotIndex,
 };
@@ -135,9 +135,9 @@ pub fn materialize_resource_economy_registrations_with_slots(
 
         let reg = DiscreteTransferRegistration {
             source_slot: SlotIndex::new(source_slot),
-            source_col: ColumnIndex::new(transfer.source_col as usize),
+            source_col: transfer.source_col,
             target_slot: SlotIndex::new(target_slot),
-            target_col: ColumnIndex::new(transfer.target_col as usize),
+            target_col: transfer.target_col,
             amount: transfer.amount,
             order_band: transfer.order_band,
         };
@@ -160,7 +160,7 @@ pub fn materialize_resource_economy_registrations_with_slots(
                 ensure_property_known(registry, input.property)?;
                 Ok(ConjunctiveRecipeInput {
                     slot: SlotIndex::new(resolve_slot(input.property)?),
-                    col: ColumnIndex::new(input.col as usize),
+                    col: input.col,
                     unit_cost: input.unit_cost,
                 })
             })
@@ -169,7 +169,7 @@ pub fn materialize_resource_economy_registrations_with_slots(
         let reg = ConjunctiveRecipeRegistration {
             inputs,
             target_slot: SlotIndex::new(resolve_slot(recipe.target_property)?),
-            target_col: ColumnIndex::new(recipe.target_col as usize),
+            target_col: recipe.target_col,
             throttle_hint_max_per_tick: recipe.throttle_hint_max_per_tick,
         };
         rebuild_conjunctive_recipe_ops(std::slice::from_ref(&reg))?;
@@ -200,7 +200,7 @@ pub fn materialize_resource_economy_registrations_with_slots(
         ensure_property_known(registry, emit.source_property)?;
         let reg = EmitOnThresholdRegistration {
             slot: SlotIndex::new(resolve_slot(emit.source_property)?),
-            col: ColumnIndex::new(emit.source_col as usize),
+            col: emit.source_col,
             threshold: emit.threshold,
             direction: emit.direction,
             event_kind: emit.event_kind,
@@ -316,9 +316,9 @@ pub fn materialize_resource_economy_registrations_host_qualified(
         }
         let reg = DiscreteTransferRegistration {
             source_slot: SlotIndex::new(source_slot),
-            source_col: ColumnIndex::new(transfer.source_col as usize),
+            source_col: transfer.source_col,
             target_slot: SlotIndex::new(target_slot),
-            target_col: ColumnIndex::new(transfer.target_col as usize),
+            target_col: transfer.target_col,
             amount: transfer.amount,
             order_band: transfer.order_band,
         };
@@ -344,7 +344,7 @@ pub fn materialize_resource_economy_registrations_host_qualified(
                         input.property,
                         input.host_entity.as_deref(),
                     )?),
-                    col: ColumnIndex::new(input.col as usize),
+                    col: input.col,
                     unit_cost: input.unit_cost,
                 })
             })
@@ -355,7 +355,7 @@ pub fn materialize_resource_economy_registrations_host_qualified(
                 recipe.target_property,
                 recipe.target_host_entity.as_deref(),
             )?),
-            target_col: ColumnIndex::new(recipe.target_col as usize),
+            target_col: recipe.target_col,
             throttle_hint_max_per_tick: recipe.throttle_hint_max_per_tick,
         };
         rebuild_conjunctive_recipe_ops(std::slice::from_ref(&reg))?;
@@ -401,7 +401,7 @@ pub fn materialize_resource_economy_registrations_host_qualified(
                 emit.source_property,
                 emit.host_entity.as_deref(),
             )?),
-            col: ColumnIndex::new(emit.source_col as usize),
+            col: emit.source_col,
             threshold: emit.threshold,
             direction: emit.direction,
             event_kind: emit.event_kind,

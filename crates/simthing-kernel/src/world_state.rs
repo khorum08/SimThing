@@ -14,7 +14,7 @@
 use crate::gpu_readback::ThresholdEventCandidatesReadback;
 use crate::resolved::ResolvedGpuBuffers;
 use crate::sealed::ResolvedWriteAuthority;
-use crate::wgsl_encode::{build_governed_pairs, GovernedPair};
+use crate::wgsl_encode::{build_governed_pairs, encode_column, GovernedPair};
 use bytemuck::{Pod, Zeroable};
 use simthing_core::DimensionRegistry;
 use wgpu::{Buffer, BufferDescriptor, BufferUsages, CommandEncoderDescriptor, Maintain, MapMode};
@@ -809,8 +809,8 @@ impl WorldGpuState {
                 n_entries: entries.len() as u32,
                 n_ops: ops.len() as u32,
                 tree_ids: entries.iter().map(|e| e.tree_id.0).collect(),
-                intensity_cols: entries.iter().map(|e| e.intensity_col).collect(),
-                velocity_cols: entries.iter().map(|e| e.velocity_col).collect(),
+                intensity_cols: entries.iter().map(|e| encode_column(e.intensity_col)).collect(),
+                velocity_cols: entries.iter().map(|e| encode_column(e.velocity_col)).collect(),
             };
             runtime
                 .upload_intensity_eml_ops(&self.ctx, &ops, n_bands, signature)
@@ -1765,7 +1765,7 @@ fn transfer_registrations_generation(regs: &[crate::TransferRegistration]) -> u6
         h = h
             .wrapping_mul(31)
             .wrapping_add(reg.target_slot as u64)
-            .wrapping_add(reg.target_col as u64)
+            .wrapping_add(reg.target_col.raw_u32() as u64)
             .wrapping_add(reg.output_scale.to_bits() as u64);
         if let Some(max) = reg.max_transfer {
             h = h.wrapping_add(max.to_bits() as u64);
@@ -1774,7 +1774,7 @@ fn transfer_registrations_generation(regs: &[crate::TransferRegistration]) -> u6
             h = h
                 .wrapping_mul(17)
                 .wrapping_add(inp.slot as u64)
-                .wrapping_add(inp.col as u64)
+                .wrapping_add(inp.col.raw_u32() as u64)
                 .wrapping_add(inp.unit_cost.to_bits() as u64);
         }
     }

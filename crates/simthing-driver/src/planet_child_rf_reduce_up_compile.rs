@@ -62,13 +62,13 @@ pub fn compile_planet_child_rf_reduce_up_gpu_proof_plan(
         let participant_count = participant_indices.len() as u32;
         let surplus_plan = compile_participant_channel_sum_plan(
             participant_count,
-            StructuralScalarChannel(0),
-            StructuralScalarChannel(1),
+            StructuralScalarChannel::from_authored_channel(0),
+            StructuralScalarChannel::from_authored_channel(1),
         );
         let deficit_plan = compile_participant_channel_sum_plan(
             participant_count,
-            StructuralScalarChannel(0),
-            StructuralScalarChannel(1),
+            StructuralScalarChannel::from_authored_channel(0),
+            StructuralScalarChannel::from_authored_channel(1),
         );
         bucket_plans.push(PlanetChildRfBucketAccumulatorPlan {
             scope: bucket.scope.clone(),

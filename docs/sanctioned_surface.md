@@ -11,7 +11,7 @@ This digest is a derived context artifact for low-context agents. If it disagree
 | --- | --- | --- |
 | scripts/ci/allow/sealed_producers.txt | 15 | 331dca91173adeaa5e78deb6e8a1999b44259aad46c0b0dd6c83b1a836bf46cf |
 | scripts/ci/allow/inert_buffer_handles.txt | 2 | 9e2069fa5730f17cacde1c671ebc17beb59f50738d2dcb914bceae13f9b8b3a4 |
-| scripts/ci/allow/kernel_surface.txt | 229 | dbccd032340af155e84f66fa1d26b003e0a9dac5872a52d198842e1a9c500245 |
+| scripts/ci/allow/kernel_surface.txt | 231 | 71e22251410233516ebb88c5eb2b2fd8780c91d9e8bb2de13b0c0c1be3b34fc6 |
 | scripts/ci/allow/sealed_types.txt | 12 | 0465cdb467587a9fd44051ba281121b8bf5d718ac7e0ede1998856c6ded97a65 |
 | scripts/ci/scans.tsv | 22 | e485dff731f83a0055e7daf3f0db935a68d55731b1dcd0837bf2925b5019c47a |
 
@@ -77,6 +77,7 @@ This digest is a derived context artifact for low-context agents. If it disagree
 | CLAMP_FLOORED | surface-inert | Inert public kernel constant | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |
 | CLAMP_UNBOUNDED | surface-inert | Inert public kernel constant | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |
 | classify_ao_wgsl0_plan | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |
+| column_from_wire | authority-export | PLAN-STRUCT-TYPING-0 WGSL-RAW-BOUNDARY rematerialize helper; sole production from_gpu_round_trip call site | RF-COLUMN-MINT-MIGRATE-0 retires residual raw doors | kernel_surface.txt |
 | ColumnRuleDescriptor | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |
 | combine_in_closed_vocabulary | authority-export | OC-K-EML-OPCODE-GATE-0 closed combine vocabulary predicate | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |
 | CombineRegistrationRequest | sealed-export | OC-K-EML-OPCODE-GATE-0 combine registration request class | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |
@@ -129,6 +130,7 @@ This digest is a derived context artifact for low-context agents. If it disagree
 | EmlGpuProgramTable | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |
 | EmlTreeRangeGpu | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |
 | EmlUploadError | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |
+| encode_column | authority-export | PLAN-STRUCT-TYPING-0 WGSL-RAW-BOUNDARY drop helper; sole production ColumnIndex::raw_u32 encode path for plan columns | RF-COLUMN-MINT-MIGRATE-0 retires residual raw doors | kernel_surface.txt |
 | encode_column_rules | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |
 | encode_emission_plan | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |
 | encode_rule | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |
@@ -175,6 +177,7 @@ This digest is a derived context artifact for low-context agents. If it disagree
 | NO_CONSTANT | surface-inert | Inert public kernel constant | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |
 | NO_MAX_EMIT | surface-inert | Inert public kernel constant | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |
 | NO_TREE_ID | surface-inert | Inert public kernel constant | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |
+| ObjectResidency | sealed-export | ROW-SLOT-OBJECT-SEMANTICS-0 kernel-minted object-to-row residency token with private fields | retire when object-derived residency is enforced by closed kernel type admission | kernel_surface.txt |
 | OP_ADD | surface-inert | Inert public kernel constant | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |
 | OP_MULTIPLY | surface-inert | Inert public kernel constant | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |
 | OP_SET | surface-inert | Inert public kernel constant | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |
@@ -189,7 +192,6 @@ This digest is a derived context artifact for low-context agents. If it disagree
 | OverlayCompileCache | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |
 | OverlayDelta | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |
 | OverlayOrderBandPlan | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |
-| ObjectResidency | sealed-export | ROW-SLOT-OBJECT-SEMANTICS-0 kernel-minted object-to-row residency token with private fields | retire when object-derived residency is enforced by closed kernel type admission | kernel_surface.txt |
 | PackedAccumulatorUpload | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |
 | PackedIntentUpload | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |
 | PackedThresholdUpload | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |
@@ -269,8 +271,8 @@ This digest is a derived context artifact for low-context agents. If it disagree
 | velocity_accumulator | authority-export | Exported kernel module surface; authority-bearing namespace | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |
 | VelocityAccumulatorPlan | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |
 | WEIGHT_COL_NONE | surface-inert | Inert public kernel constant | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |
-| WORKGROUP_SIZE | surface-inert | Inert public kernel constant | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |
 | wgsl_encode | authority-export | ROW-SLOT-OBJECT-SEMANTICS-0 single fenced raw WGSL encode boundary; no shader or opcode semantics | PLAN-STRUCT-TYPING-0 collapses round-trip mints into this boundary | kernel_surface.txt |
+| WORKGROUP_SIZE | surface-inert | Inert public kernel constant | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |
 | world_state | authority-export | Exported kernel module surface; authority-bearing namespace | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |
 | WorldAccumulatorRuntime | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |
 | WorldGpuState | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |

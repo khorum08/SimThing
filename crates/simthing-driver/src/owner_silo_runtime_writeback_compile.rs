@@ -99,13 +99,13 @@ fn compile_writeback_aggregate_proof_plans(
         let participant_count = source_bucket_indices.len() as u32;
         let surplus_plan = compile_participant_channel_sum_plan(
             participant_count,
-            StructuralScalarChannel(0),
-            StructuralScalarChannel(1),
+            StructuralScalarChannel::from_authored_channel(0),
+            StructuralScalarChannel::from_authored_channel(1),
         );
         let deficit_plan = compile_participant_channel_sum_plan(
             participant_count,
-            StructuralScalarChannel(0),
-            StructuralScalarChannel(1),
+            StructuralScalarChannel::from_authored_channel(0),
+            StructuralScalarChannel::from_authored_channel(1),
         );
         plans.push(OwnerSiloWritebackAggregateProofPlan {
             owner_ref: input.owner_ref.clone(),

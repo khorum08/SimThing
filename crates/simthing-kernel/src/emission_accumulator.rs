@@ -6,6 +6,7 @@ use simthing_core::{
 };
 
 use crate::{AccumulatorOpGpu, EncodeError};
+use crate::wgsl_encode::encode_column;
 
 /// Formula kind tags for [`EmissionOpPlanSignature::formula_kinds`].
 pub const FORMULA_KIND_IDENTITY_FLOOR: u32 = 0;
@@ -27,7 +28,7 @@ pub enum EmissionFormula {
 #[derive(Clone, Debug, PartialEq)]
 pub struct EmissionRegistration {
     pub source_slot: u32,
-    pub source_col: u32,
+    pub source_col: ColumnIndex,
     pub tree_id: Option<EmlTreeId>,
     pub formula: EmissionFormula,
     pub max_emit: Option<u32>,
@@ -121,7 +122,7 @@ pub fn plan_emission_ops(
             EmissionFormula::IdentityFloor => AccumulatorOp {
                 source: SourceSpec::SlotValue {
                     slot: SlotIndex::new(reg.source_slot),
-                    col: ColumnIndex::new(reg.source_col as usize),
+                    col: reg.source_col,
                 },
                 combine: CombineFn::Identity,
                 gate: GateSpec::OrderBand(0),
@@ -150,7 +151,7 @@ pub fn plan_emission_ops(
                 AccumulatorOp {
                     source: SourceSpec::SlotValue {
                         slot: SlotIndex::new(reg.source_slot),
-                        col: ColumnIndex::new(reg.source_col as usize),
+                        col: reg.source_col,
                     },
                     combine: CombineFn::EvalEML { tree_id: tree_id.0 },
                     gate: GateSpec::OrderBand(0),
@@ -205,7 +206,7 @@ pub fn emission_plan_signature_fields(
     let mut max_emit_values = Vec::with_capacity(registrations.len());
     for reg in registrations {
         source_slots.push(reg.source_slot);
-        source_cols.push(reg.source_col);
+        source_cols.push(encode_column(reg.source_col));
         tree_ids.push(
             formula_tree_id(&reg.formula)
                 .map(|t| t.0)
@@ -240,7 +241,7 @@ fn to_oracle_registration(reg: &EmissionRegistration) -> crate::EmissionOracleRe
     crate::EmissionOracleRegistration {
         reg_idx: reg.reg_idx,
         source_slot: reg.source_slot,
-        source_col: reg.source_col,
+        source_col: reg.source_col.raw_u32(),
         formula,
     }
 }
@@ -304,7 +305,7 @@ mod tests {
             .unwrap();
         let regs = vec![EmissionRegistration {
             source_slot: 0,
-            source_col: 0,
+            source_col: ColumnIndex::from_raw_for_oracle_or_rehearsal(0),
             tree_id: Some(id),
             formula: EmissionFormula::EvalEml { tree_id: id },
             max_emit: None,

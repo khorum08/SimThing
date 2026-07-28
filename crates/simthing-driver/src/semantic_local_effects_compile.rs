@@ -115,13 +115,13 @@ fn compile_semantic_aggregate_proof_plans(
         let shortfall_count = shortfall_indices.len().max(1) as u32;
         let runtime_applied_plan = compile_participant_channel_sum_plan(
             applied_count,
-            StructuralScalarChannel(0),
-            StructuralScalarChannel(1),
+            StructuralScalarChannel::from_authored_channel(0),
+            StructuralScalarChannel::from_authored_channel(1),
         );
         let shortfall_plan = compile_participant_channel_sum_plan(
             shortfall_count,
-            StructuralScalarChannel(0),
-            StructuralScalarChannel(1),
+            StructuralScalarChannel::from_authored_channel(0),
+            StructuralScalarChannel::from_authored_channel(1),
         );
         let mut source_output_indices = applied_indices;
         source_output_indices.extend(shortfall_indices);

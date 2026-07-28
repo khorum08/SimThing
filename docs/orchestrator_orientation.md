@@ -45,7 +45,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 211b860c2a424d0386a01a2dc93d5c563abfd1411c1f58ec55c7b69d97426cb8 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | 26eab30ec86c97ac8dfd6beef7ae8c5b4d3f18c38fdaa431ec40ccce855396d3 |
-| design_0_0_8_7_rf_arena_modernization.md | cd3201284c66b5b3e2eeb38aced461df7043b9035e1a428873fd2ce847d06f47 |
+| design_0_0_8_7_rf_arena_modernization.md | 5d296e33c44e48906a7d41b575d995f5a547988980aa6cf4b82fdeb945693d00 |
 | relay_lint.sh | 4163f715cdc3b549dbf57c1744aff61ea96b9f9f0a2237376665fbdb24e986c8 |
 | doctrine_anchors.tsv | 08a34b6dac78478d2154fcd2735cf4a3f87a670d925805814cca0a8079448a84 |
 | execution_status_taxonomy.tsv | 0e3e2c81a6005f09852ce0a0832277fd8c27a5fbb06da6b17df0b9e2e2ef7a0d |
@@ -68,7 +68,7 @@ Track state: `open`
 | # | rung | deliverable | exit proof |
 | --- | --- | --- | --- |
 | 4.1 | ROW-SLOT-OBJECT-SEMANTICS-0 | Phase 4: parent-slotting + child-row allocation as object semantics through the  | **DA-GRADUATED / merged #1475 @ 272f82e2** — typed object-issued residency is the sole production structural row door... |
-| 4.2 | PLAN-STRUCT-TYPING-0 | Phase 4: exclusion-audit Family B — `ColumnIndex` end-to-end in plan structs; ra | ~40 round-trip mints collapse to the fenced boundary module; corpus green. |
+| 4.2 | PLAN-STRUCT-TYPING-0 | Phase 4: exclusion-audit Family B — `ColumnIndex` end-to-end in plan structs; ra | **PROBATION / proof-present / DA-review-pending** — Family B plan/compile intermediates typed end-to-end; production ... |
 | 5.1 | ANCHOR-DISPOSITION-ADMISSION-0 | Phase 5: P0(e) fulcrum 1 — default-Anchored disposition; authored `Unobserved{re | Property lands anchored with zero wiring; dark-cell set renders; 12.3-replay fixture impossible. |
 | 5.2 | WRITE-DOOR-BAND-DELTA-0 | Phase 5: fulcrum 2 — in-pass band-crossing derivation; structural ops refuse to  | Band deltas correct vs oracle in the fused pass; remap-less reallocation op spans; replay green. |
 | 5.3 | ANCHOR-TABLE-SURFACE-0 | Phase 5: fulcrum 3 — derived GPU anchor table as the SOLE observation surface; c | Studio/telemetry read only the table; no second observation path (grep-proven); corpus green. |
@@ -91,7 +91,7 @@ Track state: `open`
 
 ## Next Rung Pointer
 
-Active pointer: `PLAN-STRUCT-TYPING-0`
+Active pointer: `ANCHOR-DISPOSITION-ADMISSION-0`
 
 
 ## Cold-Start Spine (constitutional pointers)

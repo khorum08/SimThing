@@ -69,8 +69,8 @@ fn terran_pirate_skeleton_dense_inputs() -> Vec<f32> {
 fn skeleton_plan() -> simthing_core::CompiledAccumulatorOpPlan {
     compile_structural_link_neighbor_sum_plan(
         &canonical_skeleton_scenario(),
-        StructuralScalarChannel(0),
-        StructuralScalarChannel(1),
+        StructuralScalarChannel::from_authored_channel(0),
+        StructuralScalarChannel::from_authored_channel(1),
     )
     .expect("compile")
 }
@@ -129,8 +129,8 @@ fn integration_gpu_resident_tick_does_not_mutate_scenario_authority() {
     let placements_before = scenario.structural_grid.placements.clone();
     let plan = compile_structural_link_neighbor_sum_plan(
         &scenario,
-        StructuralScalarChannel(0),
-        StructuralScalarChannel(1),
+        StructuralScalarChannel::from_authored_channel(0),
+        StructuralScalarChannel::from_authored_channel(1),
     )
     .expect("compile");
     let _ = execute_accumulator_plan_tick_cpu(&plan, &terran_pirate_skeleton_dense_inputs())

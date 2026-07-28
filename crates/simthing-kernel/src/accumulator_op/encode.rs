@@ -1,7 +1,7 @@
 //! Encode CPU-side [`AccumulatorOp`] registrations into GPU layout structs.
 
 use simthing_core::{
-    eml_nodes::execution_class_to_u32, AccumulatorOp, ColumnIndex, CombineFn, ConsumeMode,
+    eml_nodes::execution_class_to_u32, AccumulatorOp, CombineFn, ConsumeMode,
     EmitOnThresholdBuffer, EmitOnThresholdRegistration, EmlExecutionClass, EmlExpressionRegistry,
     EmlTreeId, GateSpec, ScaleSpec, SlotIndex, SourceSpec, ThresholdDirection,
 };
@@ -11,7 +11,7 @@ use crate::registration::{
     ThresholdRegistration, DIR_DOWNWARD, DIR_EITHER, DIR_UPWARD, THRESH_BUF_OUTPUT,
     THRESH_BUF_VALUES,
 };
-
+use crate::wgsl_encode::{column_from_wire, encode_column};
 use crate::world_state::IntentDelta;
 
 use super::bootstrap_validate::{validate_no_contention, BootstrapContention};
@@ -211,7 +211,7 @@ pub fn emit_on_threshold_registrations_to_gpu(
     regs.iter()
         .map(|r| ThresholdRegistration {
             slot: r.slot.raw(),
-            col: r.col.raw_u32(),
+            col: encode_column(r.col),
             threshold: r.threshold,
             direction: threshold_direction_to_u32(r.direction),
             event_kind: r.event_kind,
@@ -254,7 +254,7 @@ pub fn threshold_registrations_to_ops(
         ops.push(AccumulatorOp {
             source: SourceSpec::SlotValue {
                 slot: SlotIndex::new(r.slot),
-                col: ColumnIndex::new(r.col as usize),
+                col: column_from_wire(r.col),
             },
             combine: CombineFn::Identity,
             gate: GateSpec::Threshold {
@@ -359,10 +359,10 @@ fn encode_source(op: &AccumulatorOp) -> Result<(u32, u32, u32, u32), EncodeError
     match &op.source {
         SourceSpec::Constant(value) => Ok((source_kind::CONSTANT, value.to_bits(), 0, 0)),
         SourceSpec::SlotValue { slot, col } => {
-            Ok((source_kind::SLOT_VALUE, slot.raw(), col.raw_u32(), 0))
+            Ok((source_kind::SLOT_VALUE, slot.raw(), encode_column(*col), 0))
         }
         SourceSpec::SlotRange { start, count, col } => {
-            Ok((source_kind::SLOT_RANGE, start.raw(), col.raw_u32(), *count))
+            Ok((source_kind::SLOT_RANGE, start.raw(), encode_column(*col), *count))
         }
         SourceSpec::ConjunctiveCrossing { inputs } => {
             if inputs.is_empty() {
@@ -388,7 +388,7 @@ fn encode_combine(
         CombineFn::Max => Ok((combine_kind::MAX, 0, 0, 0, 0)),
         CombineFn::Min => Ok((combine_kind::MIN, 0, 0, 0, 0)),
         CombineFn::WeightedMean { weight_col } => {
-            Ok((combine_kind::WEIGHTED_MEAN, weight_col.raw_u32(), 0, 0, 0))
+            Ok((combine_kind::WEIGHTED_MEAN, encode_column(*weight_col), 0, 0, 0))
         }
         CombineFn::IntegrateWithClamp {
             dt: _,
@@ -472,7 +472,7 @@ fn encode_targets(
 ) -> ([(u32, u32); 4], u32) {
     let mut out = [(0u32, 0u32); 4];
     for (idx, target) in targets.iter().take(4).enumerate() {
-        out[idx] = (target.0.raw(), target.1.raw_u32());
+        out[idx] = (target.0.raw(), encode_column(target.1));
     }
     (out, targets.len() as u32)
 }

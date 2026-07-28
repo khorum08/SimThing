@@ -2,11 +2,13 @@
 
 use std::collections::HashMap;
 
+use simthing_core::ColumnIndex;
+
 use crate::arena_hierarchy::ArenaTreeLayout;
 use crate::arena_registry::SlotId;
 use crate::child_share_eml::child_share_cpu;
 
-type CellKey = (SlotId, u32);
+type CellKey = (SlotId, ColumnIndex);
 
 #[derive(Clone, Debug, Default)]
 pub struct ArenaAllocationOracleTrace {
@@ -29,15 +31,15 @@ impl ArenaAllocationOracleTrace {
     }
 }
 
-fn get(values: &HashMap<CellKey, f32>, slot: SlotId, col: u32) -> f32 {
+fn get(values: &HashMap<CellKey, f32>, slot: SlotId, col: ColumnIndex) -> f32 {
     values.get(&(slot, col)).copied().unwrap_or(0.0)
 }
 
-fn set(values: &mut HashMap<CellKey, f32>, slot: SlotId, col: u32, v: f32) {
+fn set(values: &mut HashMap<CellKey, f32>, slot: SlotId, col: ColumnIndex, v: f32) {
     values.insert((slot, col), v);
 }
 
-fn add(values: &mut HashMap<CellKey, f32>, slot: SlotId, col: u32, delta: f32) {
+fn add(values: &mut HashMap<CellKey, f32>, slot: SlotId, col: ColumnIndex, delta: f32) {
     let cell = values.entry((slot, col)).or_insert(0.0);
     *cell += delta;
 }
@@ -239,18 +241,21 @@ mod tests {
     }
 
     fn cols() -> NodeColumnRefs {
+        fn col(n: usize) -> ColumnIndex {
+            ColumnIndex::from_raw_for_oracle_or_rehearsal(n)
+        }
         NodeColumnRefs {
-            intrinsic_flow_col: 0,
-            intrinsic_flow_sum_col: 4,
-            allocated_flow_col: 1,
-            balance_col: Some(3),
+            intrinsic_flow_col: col(0),
+            intrinsic_flow_sum_col: col(4),
+            allocated_flow_col: col(1),
+            balance_col: Some(col(3)),
             balance_governing_col: None,
-            weight_col: 2,
-            weight_sum_col: 5,
-            propagated_intrinsic_flow_col: 6,
-            propagated_allocated_flow_col: 7,
-            propagated_weight_sum_col: 8,
-            hosted_simthing_id_col: 9,
+            weight_col: col(2),
+            weight_sum_col: col(5),
+            propagated_intrinsic_flow_col: col(6),
+            propagated_allocated_flow_col: col(7),
+            propagated_weight_sum_col: col(8),
+            hosted_simthing_id_col: col(9),
         }
     }
 

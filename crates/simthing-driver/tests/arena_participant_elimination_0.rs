@@ -4,8 +4,8 @@ use std::collections::HashMap;
 use std::sync::Mutex;
 
 use simthing_core::{
-    AccumulatorRole, AccumulatorSpec, ClampBehavior, DimensionRegistry, LogTier, SimThing,
-    SimThingKind, SubFieldRole, SubFieldSpec,
+    AccumulatorRole, AccumulatorSpec, ClampBehavior, ColumnIndex, DimensionRegistry, LogTier,
+    SimThing, SimThingKind, SubFieldRole, SubFieldSpec,
 };
 use simthing_driver::{
     build_execution_plan, check_conservation, clone_for_replay, fixture_dynamic_single_fission,
@@ -186,7 +186,7 @@ fn sparse_owned_rows_execute_single_writer_rf1_and_replay_exact_on_gpu() {
     );
 
     let n_dims = session.state.n_dims;
-    let cell_index = |slot: u32, col: u32| (slot * n_dims + col) as usize;
+    let cell_index = |slot: u32, col: ColumnIndex| (slot * n_dims + col.raw_u32()) as usize;
     let inputs = HashMap::from([
         ((root, cols.intrinsic_flow_col), 12.0_f32),
         ((leaves[0], cols.intrinsic_flow_col), 3.0_f32),

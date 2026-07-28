@@ -480,7 +480,8 @@ fn destination_order_dominates_via_player_weight_overlay_on_live_gpu() {
         "destination must be live and not arrived before the ordered path runs"
     );
     let mut seed = ordered.state.read_values();
-    let root_flow_idx = (root_slot.raw() * n_dims + cols.intrinsic_flow_col) as usize;
+    let root_flow_idx =
+        (root_slot.raw() * n_dims + cols.intrinsic_flow_col.raw_u32()) as usize;
     seed[root_flow_idx] = ROOT_INTRINSIC;
     ordered.state.install_resolved_values_at_boundary(&seed);
 
@@ -614,7 +615,8 @@ fn destination_order_dominates_via_player_weight_overlay_on_live_gpu() {
     twin.step_once().expect("twin warm boundary");
     twin.step_once().expect("twin warm production");
     let mut seed_t = twin.state.read_values();
-    seed_t[(root_slot_t.raw() * n_dims_t + cols_t.intrinsic_flow_col) as usize] = ROOT_INTRINSIC;
+    seed_t[(root_slot_t.raw() * n_dims_t + cols_t.intrinsic_flow_col.raw_u32()) as usize] =
+        ROOT_INTRINSIC;
     twin.state.install_resolved_values_at_boundary(&seed_t);
     twin.step_once().expect("twin skip-order boundary");
     twin.step_once().expect("twin live production");
@@ -686,7 +688,8 @@ fn destination_order_dominates_via_player_weight_overlay_on_live_gpu() {
     replay.step_once().expect("replay warm boundary");
     replay.step_once().expect("replay warm production");
     let mut seed_r = recorded.state.read_values();
-    seed_r[(root_slot_r.raw() * n_dims_r + cols_r.intrinsic_flow_col) as usize] = ROOT_INTRINSIC;
+    seed_r[(root_slot_r.raw() * n_dims_r + cols_r.intrinsic_flow_col.raw_u32()) as usize] =
+        ROOT_INTRINSIC;
     recorded.state.install_resolved_values_at_boundary(&seed_r);
     replay.state.install_resolved_values_at_boundary(&seed_r);
     recorded
