@@ -11,6 +11,10 @@ live sources on 2026-06-09; everything else is design-authority assessment.
 **ClauseThing transpiler**, on the strength of a named potential consumer (the Stellaris /
 Clausewitz-engine grand-strategy audience); the cliodynamics/cliometrics program is
 **back-burnered** to the §4 footnote, revivable.
+**Amended 2026-07-28 (case addition):** §4.1 records the **network-governance plug** — the
+semantic-port domain in which observation space *is* state space — with its committed Vendor Door
+(0.0.8.7 Phase 11), its tree-verified adjacency gap, and its counterweights. Nothing opened; §6
+governs the addition as it governs the rest of the file.
 
 ---
 
@@ -234,6 +238,156 @@ fatal.
 > application of the consumer-pulled principle: the gamer consumer is named and real; the
 > historical-science consumer is not yet.
 
+### 4.1 The network-governance plug — the strongest domain in the semantic-port family
+
+**Added 2026-07-28.** Case-file entry only: **nothing opened, authorized, or reordered** (§6 binds
+this section as it binds the rest). Origin is an Owner design intuition predating this file —
+*every client, trunk, failover, and load balancer as a SimThing node; resources, needs, and
+deficits as matrix values resolved by GPU parallelism*. It is recorded now because the 0.0.8.7
+track arrived independently at the same domain from the substrate side
+([`design_0_0_8_7_rf_arena_modernization.md`](design_0_0_8_7_rf_arena_modernization.md) Phase 11
+names "network saturation / load-balancing" as a Vendor Door target; rung `11.2` requires an
+N-node network-saturation exemplar exercising the full Field Triad). The plug therefore has a
+committed door and needs its evidentiary case on the record.
+
+**Verification convention for this section.** Claims marked **[tree-verified 2026-07-28]** were
+checked against the working tree at `99bfffe6`. External literature cited here was **not**
+live-checked in this session and so carries **no `[verified]` marker** — it is design-authority
+recall, and any load-bearing use must re-verify first.
+
+**Why this is not merely another semantic port — the sim-to-real inversion.** §4 rules the importer
+slot a semantic port and treats history, market intelligence, and advertising as interchangeable
+plugs. Network governance is **not** interchangeable with those; it is strictly stronger, for a
+reason that bears directly on §1 and §2.
+
+§2's central strategic finding is that AMI Labs cannot build the metrology instrument *by thesis*,
+because reality has no ground-truth state vector. **That objection dissolves in this domain.** A
+production network emits near-complete state telemetry — interface counters, queue occupancy,
+protocol adjacency state — *in the same vocabulary as the simulator's columns*. There is no
+rendering gap and no perception layer: **observation space is state space.** Three consequences:
+
+- sim-to-real transfer is easier here than in any robotics, video, or physical-sensory
+  instantiation of the same architecture — precisely the domain the §2 incumbents are betting on;
+- the §1 anchor works in **both** directions: ground-truth columns anchor scaling measurement *and*
+  a sim-trained probe evaluates against real traces on those same columns, with no decoder learned
+  per deployment;
+- the second-anchor deficit §4 concedes for ClauseThing (external validity of the dynamics class,
+  deferred with cliodynamics) is **cheaply recoverable here** — live telemetry is a dense,
+  uncontested calibration series, orders of magnitude denser than century-coded polities and
+  unencumbered by Seshat-class dispute.
+
+The causal-label argument lands harder too. §2's EVE adjudication — the server logs the kill, never
+the con — names the same defect production incident data has: postmortems are narrative, sparse,
+and causally unlabeled. A deterministic generator with do-operator counterfactual pairs manufactures
+causally-labeled incident corpora on demand, which is exactly what a surprise detector needs and
+exactly what the ML-for-networking literature has lacked.
+
+**The ontology mapping is direct, not analogical** [tree-verified 2026-07-28]:
+
+| Network object | Substrate expression |
+|---|---|
+| region / PoP / rack / host / NIC containment | the one spatial containment tree (core §2) — physical containment is what the tree already expresses |
+| client and trunk demand / capacity | ordinary `SubFieldSpec` roles; demand reduces up, capacity budget disburses down (core §5) |
+| **load balancer** | the substrate's *intermediate allocator*: dual-role, Demand-proportional by default, overlay-modifiable weight columns. WRR, least-connections, and admin drain are overlay stacks — never policy enums (RF ADR commitments 2 and 4) |
+| failover | threshold crossing on a health column → `EmitEvent` → `BoundaryRequest`; the standby's weight overlay activates at the generation barrier |
+| tenant / VRF / overlay layer | `owner_ref` and `scope_id` in the channel key (core §5.1) — multi-tenancy and multi-layer are already in the minimal key |
+| oversubscription | hierarchical fanout absorption — the RF ADR's own bounded-per-level argument |
+| congestion | Gu-Yang saturating flux: a conservative stencil with a CFL cap that **chokes at bottlenecks instead of blowing up**; the stall locus is the front (0.0.8.7 P5) |
+| IGP routing | PALMA `(min,+)`: `D = W + min(N D)` iterated to convergence **is** distributed Bellman-Ford in the tropical semiring. "`D` is a field, not a route" describes hop-by-hop forwarding exactly — next-hop is a local argmin, never a stored path object |
+
+**Wei's postulates hold better here than in grand strategy.** This is the load-bearing dynamics
+claim, and the reason STEAD is not decoration in this domain:
+
+- **P1 locality** — congestion backpressure and route withdrawal genuinely propagate hop-by-hop at
+  finite speed. Not an approximation of the mechanism; the mechanism.
+- **P2 symmetry** — one shared rule at every node *is what a protocol is*. §3's "the law is small
+  even when the world is large" is definitional here rather than argued.
+- **P3 stability** — routing convergence and congestion-control fairness are attractor dynamics,
+  and the domain's worst failure modes are all **basin** phenomena: congestion collapse, routing
+  oscillation, PFC deadlock, metastable failure. §3's "an unconverged race is a wave still
+  travelling" is, in this domain, a convergence storm.
+
+That is also the sharpest available answer to §3's first honest counterweight (the MIT result:
+random, meaning-free rules already transfer). Here the attractor structure is not decorative
+texture — it *is* the operational failure taxonomy.
+
+**The structural gap — the Triad has no adjacency for this domain** [tree-verified 2026-07-28].
+The substrate carries **two** adjacency surfaces and they do not compose:
+
+| Surface | Adjacency | Algebra | Locus |
+|---|---|---|---|
+| structural link graph (arbitrary topology, bounded fanout) | `spec.links` | **Sum only** | `simthing-driver/src/structural_link_accumulator_compile.rs` |
+| Field Triad (PALMA, Gu-Yang) | **grid N4 of `(col,row)`**, dense, bounded theater | min-plus, saturating flux | `simthing-gpu/src/shaders/min_plus_stencil.wgsl` (`width` / `height` / `dest_x` / `dest_y`) |
+
+Networks have no lattice. As the tree stands, **the entire STEAD / PALMA / Gu-Yang layer cannot run
+over a network topology at all**, and rung `11.2`'s exemplar — which asks the Triad to run natively
+across an N-node topology — is not buildable as written. Three specifics: `SimThingScenarioLink` is
+`{from_system_id, to_system_id}` (undirected, unweighted — no capacity, no latency, no direction);
+the INPUT_LIST gather **ignores `unit_cost`**, so edge weights cannot ride the existing path; and
+rung `5.4 SEMIRING-FIELD-TAGS-0` parameterizes the sweep by *semiring* while leaving adjacency as
+the grid stencil, so it does not close this.
+
+**Adjudication.** The amendment implied is *adjacency × semiring × conservation-class* as an
+admitted cross product — lifting the Triad from lattice-N4 to any admitted bounded-fanout
+adjacency. It is constitutionally defensible: P1/P2/P3 are statements about locality, shared rule,
+and dissipation, all of which hold on a bounded-degree graph, and the lattice is an instance rather
+than the essence. It is also *cheaper* than the grid case, since the bounded-theater/atlas
+machinery exists because dense grids cost `edge²` —
+[`stead_spatial_contract.md`](stead_spatial_contract.md) §10's own table already marks the
+link-coupling surface as needing no atlas. It remains a **Tier-2 change** to core §7 and the STEAD
+contract, and §10 explicitly warns that the two adjacencies must not be *conflated*, so it lands as
+parameterization under an admission gate or not at all. **Surfaced, not authorized:** this section
+records the finding for DA/Owner ruling and grants nothing.
+
+**Honest counterweights** (stated before a hostile reviewer does, per this file's standing register):
+
+1. **Policy routing is not a semiring.** Min-plus covers IGP-class metrics exactly. Inter-domain
+   policy routing is lexicographic over policy attributes, non-monotonic, and not guaranteed to
+   converge — a P3 violation by construction. The elegant reading is that the routing-algebra
+   convergence conditions (monotonicity plus isotonicity) are the *same admission test* as the
+   engine's bounded-feedback contract, making a policy semiring the correct extension point and
+   correctly refusing to admit oscillation-capable policy. The blunt reading is that until that work
+   exists, the substrate cannot model the routing layer where many real incidents originate.
+2. **Aggregate, never packets.** Microbursts, incast, ECMP hash polarization, and jitter are
+   sub-field-scale. §4's "aggregates, not pixels" boundary binds **doubly** here — and exactly as §4
+   warns of the market skin, packet-level performance claims are commercially irresistible and
+   epistemically fatal.
+3. **f32 dynamic range.** Capacity spans roughly eight orders (Kbps flows into 400G trunks) against
+   about seven significant decimal digits, and allocator conservation is O(ε × n)
+   approximate-deterministic. Adequate for capacity dynamics under per-arena unit scaling; unusable
+   for byte-exact accounting, which must route through discrete `SubtractFromSource` — the same
+   ruling core §5 already makes for hard currency.
+4. **The perceived/true arrow inverts.** In the game the sim is ground truth and perception derives
+   from it, under a hard no-writeback rule. In a network twin the *network* is ground truth and the
+   sim is the estimator; telemetry assimilation runs that arrow backwards. Not a blocker —
+   boundary-time state injection is the natural form — but it inverts a load-bearing invariant's
+   direction and the corpus has no doctrine for it. **Corpus consequence:** an assimilated twin is
+   no longer a clean generator, and mixing assimilated runs into a training corpus silently forfeits
+   the determinism §1's metrology depends on. Generator runs and twin runs must not share a corpus
+   without an explicit provenance split.
+5. **The incumbents are real and unbeaten.** Capacity-and-failure planners, formal
+   config-verification tooling, and packet-level simulators each dominate a slice of this domain.
+   The defensible claim is occupancy, not superiority: none of them offers deterministic,
+   replayable, GPU-parallel counterfactual *field* dynamics with a native learned-observer path.
+   The failure classes that dominate real outages — configuration error, software defect, silent
+   corruption — sit largely **outside the flow physics** and are not addressed by this substrate at
+   all.
+
+**Consequence for §5.** The domain supplies an evaluation axis the hypothesis currently lacks: **a
+real-telemetry hold-out on the same columns.** Where §5 grades both paradigms by decoding into
+ground-truth field space, this domain permits the same decode against *measured* state — converting
+the "toy world" objection from a scoping concession into an empirical test. The `LEWM-PROBE-0`-class
+harness is unchanged; only the evaluation set grows. §5's honest limits survive intact: exponents
+remain measured over a bounded range, and a learned estimator over this corpus is
+**`ApproximateDiagnostic` forever**, never able to mint a commitment or feed authoritative state
+(core §8 sealed decision ingress). For operational network automation that constitutional ceiling is
+the correct safety posture rather than a limitation — the model proposes; deterministic threshold
+crossings decide.
+
+**Disposition.** Case-file record only. No consumer is named, no rung is opened, no sequencing
+changes. The one actionable item — rung `11.2`'s exemplar being unbuildable against the current
+Triad adjacency — is surfaced for DA/Owner ruling, and is cheap now and expensive at Phase 11.
+
 ---
 
 ## 5. The testable hypothesis — can the latent-predictive paradigm overcome AR primacy?
@@ -330,3 +484,26 @@ each survivable.
   [verified].
 - Bakhtin et al. — CICERO (*Science*, 2022) — the LLM-as-human-interface boundary marker for
   diplomacy (charter §1.5).
+
+### §4.1 additions (2026-07-28)
+
+Repo loci, **[tree-verified 2026-07-28]** at `99bfffe6`:
+
+- [`design_0_0_8_7_rf_arena_modernization.md`](design_0_0_8_7_rf_arena_modernization.md) — Phase 11
+  (Vendor Door; names network saturation / load-balancing) and rung `11.2` (the network-saturation
+  Triad exemplar); rung `5.4 SEMIRING-FIELD-TAGS-0`; the P5 Field Triad and Triad Doors law.
+- [`stead_spatial_contract.md`](stead_spatial_contract.md) §10 — the adjacency table separating
+  link-graph coupling (no atlas) from the grid-N4 Triad stencils (bounded theater).
+- `crates/simthing-driver/src/structural_link_accumulator_compile.rs` — the link-graph gather
+  (Sum-over-INPUT_LIST, undirected, deduped).
+- `crates/simthing-spec/src/spec/scenario.rs` — `SimThingScenarioLink { from_system_id,
+  to_system_id }`: no direction, weight, capacity, or latency.
+- `crates/simthing-kernel/src/shaders/accumulator_op.wgsl` — `COMBINE_SUM` over
+  `SOURCE_INPUT_LIST` ignores `unit_cost`, so edge weights cannot ride the existing gather.
+- `crates/simthing-gpu/src/shaders/min_plus_stencil.wgsl` — PALMA min-plus bound to a dense
+  `width × height` grid with a single destination.
+
+External literature underlying §4.1 counterweight 1 — routing algebras, the monotonicity and
+isotonicity conditions for convergence, and the non-convergence of policy routing — is
+**design-authority recall and was NOT live-checked in this session**; it carries no `[verified]`
+marker and must be re-verified before any load-bearing use.
