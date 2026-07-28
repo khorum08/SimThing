@@ -60,17 +60,20 @@ pub enum SpecializationRequirement {
     /// The tree parent carries this typed kind identity.
     ParentKind(KindIdentity),
     /// The actual GameSession-root posture: the node is the absolute tree
-    /// root, or the SOLE `GameSession` child of a `Scenario` tree root.
+    /// root, or the SOLE DIRECT child of a `Scenario` tree root (child count
+    /// exactly one, and that child is the built-in `GameSession`).
     SoleSessionRootPosture,
     /// The node has an authoritative structural grid placement (coordinate
     /// posture + membership of the spatial field lattice; §7: unoccupied
     /// cells carrying ambient field are still spatial, so placement — not
     /// arena enrollment — is the spatial-field participation fact).
     StructurallyPlaced,
-    /// The node hosts at least one populated resource-bearing property
-    /// (a sub-field carrying an accumulator spec — the P0(a) hosting sense;
-    /// the owner stockpile/weight seat contract at 3.1 grain).
-    HostsPopulatedResourceProperty,
+    /// The node hosts the ADMITTED policy/weight locus. The concrete artifact
+    /// is caller-observed: for the canonical corpus it is the owner-silo
+    /// metadata locus (`simthing_spec::owner_has_silo_metadata`, the same fact
+    /// the owner-silo flow admission consumes). A random production/stockpile
+    /// accumulator on an Owner does NOT make it a seat.
+    HostsAdmittedPolicyWeightLocus,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -94,14 +97,14 @@ pub fn seed_profiles() -> Vec<SpecializationProfile> {
         SpecializationProfile {
             id: PROFILE_OWNER_SEAT.to_string(),
             description:
-                "Owner contract: session-root child hosting populated resource properties (the stockpile/weight seat)"
+                "Owner contract: session-root child hosting the admitted policy/weight (owner-silo) locus"
                     .to_string(),
             requirements: vec![
                 SpecializationRequirement::Kind(KindIdentity::BuiltIn(SimThingKindTag::Owner)),
                 SpecializationRequirement::ParentKind(KindIdentity::BuiltIn(
                     SimThingKindTag::GameSession,
                 )),
-                SpecializationRequirement::HostsPopulatedResourceProperty,
+                SpecializationRequirement::HostsAdmittedPolicyWeightLocus,
             ],
         },
         SpecializationProfile {
@@ -126,7 +129,9 @@ pub fn seed_profiles() -> Vec<SpecializationProfile> {
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct SpecializationObservations {
     pub structurally_placed: BTreeSet<u32>,
-    pub resource_property_hosts: BTreeSet<u32>,
+    /// SimThings hosting the admitted policy/weight locus (canonical corpus:
+    /// owner-silo metadata; see the requirement doc).
+    pub policy_weight_hosts: BTreeSet<u32>,
 }
 
 /// One explicitly declared profile with its authored source token (clause
@@ -208,8 +213,8 @@ fn requirement_met(
         SpecializationRequirement::StructurallyPlaced => {
             obs.structurally_placed.contains(&node.id.raw())
         }
-        SpecializationRequirement::HostsPopulatedResourceProperty => {
-            obs.resource_property_hosts.contains(&node.id.raw())
+        SpecializationRequirement::HostsAdmittedPolicyWeightLocus => {
+            obs.policy_weight_hosts.contains(&node.id.raw())
         }
     }
 }
@@ -285,23 +290,17 @@ fn walk(
             .collect(),
     });
 
-    let scenario_root_is_tree_root = matches!(tree_root.kind, SimThingKind::Scenario);
-    let session_children_of_root = if scenario_root_is_tree_root {
-        tree_root
-            .children
-            .iter()
-            .filter(|c| c.kind == SimThingKind::GameSession)
-            .count()
-    } else {
-        0
-    };
+    // Strict sole/direct-child invariant: the Scenario tree root must have
+    // EXACTLY ONE direct child, and that child must be the built-in
+    // GameSession, for that child to carry session-root posture.
+    let root_is_scenario = matches!(tree_root.kind, SimThingKind::Scenario);
+    let sole_direct_session_child = root_is_scenario
+        && tree_root.children.len() == 1
+        && tree_root.children[0].kind == SimThingKind::GameSession;
     for child in &node.children {
         let child_ctx = NodeContext {
             parent_kind: Some(&node.kind),
-            sole_session_root: std::ptr::eq(node, tree_root)
-                && scenario_root_is_tree_root
-                && child.kind == SimThingKind::GameSession
-                && session_children_of_root == 1,
+            sole_session_root: std::ptr::eq(node, tree_root) && sole_direct_session_child,
         };
         walk(child, &child_ctx, tree_root, profiles, obs, report)?;
     }

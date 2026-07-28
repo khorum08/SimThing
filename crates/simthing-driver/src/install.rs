@@ -159,6 +159,21 @@ pub fn compile_and_install(
     root: &mut SimThing,
     allocator: &mut SlotAllocator,
 ) -> Result<SpecSessionState, InstallError> {
+    compile_and_install_with_observations(game_mode, scenario, registry, root, allocator, &[])
+}
+
+/// SPECIALIZATION-PROTOCOL-0: the admitted scenario-observation entry — the
+/// ordinary install parameterized by the authoritative structural placement
+/// ids the front end owns (clause hydration / studio bridge). The plain
+/// [`compile_and_install`] passes an empty artifact set.
+pub fn compile_and_install_with_observations(
+    game_mode: &GameModeSpec,
+    scenario: &Scenario,
+    registry: &mut DimensionRegistry,
+    root: &mut SimThing,
+    allocator: &mut SlotAllocator,
+    structurally_placed: &[u32],
+) -> Result<SpecSessionState, InstallError> {
     let mut state = SpecSessionState::new();
 
     // ── 0. Order-weight class table (ORDER-WEIGHT-CLASS-0).
@@ -282,7 +297,10 @@ pub fn compile_and_install(
     //      install path; placement-gated profiles honestly do not derive here
     //      (artifact-complete callers assemble full observations themselves).
     let mut spec_observations = simthing_core::SpecializationObservations::default();
-    collect_resource_property_hosts(root, registry, &mut spec_observations);
+    spec_observations
+        .structurally_placed
+        .extend(structurally_placed.iter().copied());
+    collect_policy_weight_hosts(root, &mut spec_observations);
     state.specialization = simthing_core::derive_specializations(
         root,
         &simthing_core::seed_profiles(),
@@ -1325,23 +1343,19 @@ pub struct InstallPreview {
 /// Memory: peaks at roughly 2× the registry + root + allocator size for the
 /// duration of the call. All three are small in practice.
 
-/// SPECIALIZATION-PROTOCOL-0: collect SimThings hosting at least one populated
-/// resource-bearing property (any sub-field carrying an accumulator spec).
-fn collect_resource_property_hosts(
+/// SPECIALIZATION-PROTOCOL-0: collect SimThings hosting the ADMITTED
+/// policy/weight locus — the owner-silo metadata artifact, the same fact the
+/// owner-silo flow admission (`evaluate_owner_silo_flow`) consumes. A random
+/// production/stockpile accumulator does not qualify (remand `5098401165`).
+fn collect_policy_weight_hosts(
     node: &simthing_core::SimThing,
-    registry: &DimensionRegistry,
     observations: &mut simthing_core::SpecializationObservations,
 ) {
-    let hosts = node.properties.keys().any(|pid| {
-        registry
-            .try_property(*pid)
-            .is_some_and(|prop| prop.layout.sub_fields.iter().any(|sf| sf.accumulator_spec.is_some()))
-    });
-    if hosts {
-        observations.resource_property_hosts.insert(node.id.raw());
+    if simthing_spec::owner_has_silo_metadata(node) {
+        observations.policy_weight_hosts.insert(node.id.raw());
     }
     for child in &node.children {
-        collect_resource_property_hosts(child, registry, observations);
+        collect_policy_weight_hosts(child, observations);
     }
 }
 
@@ -1352,15 +1366,29 @@ pub fn preview_install(
     root: &SimThing,
     allocator: &SlotAllocator,
 ) -> Result<InstallPreview, InstallError> {
+    preview_install_with_observations(game_mode, scenario, registry, root, allocator, &[])
+}
+
+/// SPECIALIZATION-PROTOCOL-0: preview through the ordinary install with the
+/// authoritative structural placement artifact supplied by the front end.
+pub fn preview_install_with_observations(
+    game_mode: &GameModeSpec,
+    scenario: &Scenario,
+    registry: &DimensionRegistry,
+    root: &SimThing,
+    allocator: &SlotAllocator,
+    structurally_placed: &[u32],
+) -> Result<InstallPreview, InstallError> {
     let mut scratch_registry = registry.clone();
     let mut scratch_root = root.clone();
     let mut scratch_allocator = allocator.clone();
-    let state = compile_and_install(
+    let state = compile_and_install_with_observations(
         game_mode,
         scenario,
         &mut scratch_registry,
         &mut scratch_root,
         &mut scratch_allocator,
+        structurally_placed,
     )?;
     Ok(InstallPreview {
         registry: scratch_registry,
