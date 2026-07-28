@@ -1,5 +1,6 @@
-# profile	count	basis  # FIRST-CITIZEN-SPECIALISTS-0; generator source for board/orientation
+# profile	count	basis  # FIRST-CITIZEN-SPECIALISTS-0; GENERATED — do not hand-edit
 # Counts = SpecSessionState.specialization.citizen_counts() over the canonical TP authority install.
+# Regenerate: bash scripts/ci/gen_specialization_citizen_counts.sh
 spatial	1500	canonical TP authority install — structurally placed Locations
 owner-seat	2	canonical TP authority install — Terran + Pirate policy/weight authorities
 session-root	1	canonical TP authority install — sole GameSession root

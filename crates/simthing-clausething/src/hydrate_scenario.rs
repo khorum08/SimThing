@@ -594,6 +594,12 @@ pub fn hydrate_scenario_with_source_base(
         root.add_child(simthing_from_node(child));
     }
     install_targets.insert(root_node.id.clone(), vec![root_node.simthing_id]);
+    // FIRST-CITIZEN-SPECIALISTS-0: system_target enrollment is the authoritative
+    // placement artifact for authored Locations. Stamp structural col/row onto
+    // those SimThings during hydration so ordinary preview/install observes
+    // StructurallyPlaced without test-side property minting. Auto row-major
+    // placements (no system_target) stay unstamped.
+    apply_system_target_structural_placements(&mut root, &root_node.children, &grid_metadata);
 
     let mut game_mode = GameModeSpec {
         id: scenario_id.clone(),
@@ -3064,6 +3070,48 @@ fn simthing_from_node(node: &HydratedScenarioNode) -> SimThing {
         simthing.add_child(simthing_from_node(child));
     }
     simthing
+}
+
+fn apply_system_target_structural_placements(
+    root: &mut SimThing,
+    locations: &[HydratedScenarioNode],
+    grid_metadata: &HydratedScenarioGridMetadata,
+) {
+    for location in locations {
+        if location.system_target.is_none() {
+            continue;
+        }
+        let Some(placement) = grid_metadata
+            .placements
+            .iter()
+            .find(|placement| placement.location_id == location.id)
+        else {
+            continue;
+        };
+        let Some(node) = find_simthing_mut(root, location.simthing_id.raw()) else {
+            continue;
+        };
+        node.add_property(
+            SCENARIO_STRUCTURAL_COL_PROPERTY_ID,
+            structural_property_value_u32(placement.col),
+        );
+        node.add_property(
+            SCENARIO_STRUCTURAL_ROW_PROPERTY_ID,
+            structural_property_value_u32(placement.row),
+        );
+    }
+}
+
+fn find_simthing_mut(root: &mut SimThing, id: u32) -> Option<&mut SimThing> {
+    if root.id.raw() == id {
+        return Some(root);
+    }
+    for child in &mut root.children {
+        if let Some(found) = find_simthing_mut(child, id) {
+            return Some(found);
+        }
+    }
+    None
 }
 
 fn parse_kind(property: &RawProperty) -> Result<SimThingKind, HydrateError> {

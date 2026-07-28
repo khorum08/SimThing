@@ -51,7 +51,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | execution_status_taxonomy.tsv | 377af7d8b4a403a63b04c32283f9669ae363dcfced008f7d0fcec11944f59feb |
 | execution_status_mixed_posture.tsv | 76b7246da5e2cb9680194bc30a79acc4126aaa89beb52447a0fc509e1495b1e8 |
 | execution_status_non_execution.tsv | 214c1b557dfd3fc465f0171051e20281ff1dcf6c53128dbb29cba01524f9be02 |
-| specialization_citizen_counts.tsv | 31d4aa5e40f15a5d13f90c569ffb2bf95273f909d008e17d4b7c8311b0add0da |
+| specialization_citizen_counts.tsv | 852aec43448149670396eec832b99da725b87a4e64d476da80f0b265cbaaa8e8 |
 
 ## Execution-status taxonomy (driver/kernel)
 

@@ -1,0 +1,8 @@
+# FIRST-CITIZEN-SPECIALISTS-0 known_bad: ClauseScript direct mint of OWNER_POLICY_WEIGHT_AUTHORITY.
+scenario = oob_stamp_mint_clause {
+    metadata = {
+        display_name = "OOB Authority Mint"
+        # direct authored mint of property id 8_300_318
+        authority_property_id = 8_300_318
+    }
+}

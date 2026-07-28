@@ -268,23 +268,38 @@ EOF
 }
 
 setup_heuristic_owner_policy_weight_authority_mint() {
-  # FIRST-CITIZEN-SPECIALISTS-0: authored scenario source minting 8_300_318.
+  # FIRST-CITIZEN-SPECIALISTS-0: authored scenario-JSON minting 8_300_318.
   prepare_trap_baseline "$ROOT_SANDBOX"
   mkdir -p "${ROOT_SANDBOX}/scenarios/corpus"
   cp "${FIXTURES}/known_bad/owner_policy_weight_authority_mint.simthing-scenario.json" \
     "${ROOT_SANDBOX}/scenarios/corpus/oob_stamp_mint.simthing-scenario.json"
 }
 
-setup_quiet_owner_policy_weight_authority_mint() {
-  # Clean authored tree: no 8_300_318 mint in scenario sources.
+setup_heuristic_owner_policy_weight_authority_mint_clause() {
+  # FIRST-CITIZEN-SPECIALISTS-0: ClauseScript direct mint fires the same scan.
   prepare_trap_baseline "$ROOT_SANDBOX"
   mkdir -p "${ROOT_SANDBOX}/scenarios/corpus"
+  cp "${FIXTURES}/known_bad/owner_policy_weight_authority_mint.clause" \
+    "${ROOT_SANDBOX}/scenarios/corpus/oob_stamp_mint.clause"
+}
+
+setup_quiet_owner_policy_weight_authority_mint() {
+  # Quiet boundary: clean authored JSON + legitimate hydration-derived stamp
+  # (excluded path) must not INSPECT.
+  prepare_trap_baseline "$ROOT_SANDBOX"
+  mkdir -p "${ROOT_SANDBOX}/scenarios/corpus"
+  mkdir -p "${ROOT_SANDBOX}/scripts/ci/fixtures/hydration_derived"
   cat >"${ROOT_SANDBOX}/scenarios/corpus/clean_no_authority_mint.simthing-scenario.json" <<'EOF'
 {
   "scenario_id": "clean_no_authority_mint",
   "properties": []
 }
 EOF
+  cp "${FIXTURES}/hydration_derived/owner_policy_weight_authority_derived.simthing-scenario.json" \
+    "${ROOT_SANDBOX}/scripts/ci/fixtures/hydration_derived/owner_policy_weight_authority_derived.simthing-scenario.json"
+  # Also land a from-clause dump under scenarios (excluded by name).
+  cp "${FIXTURES}/hydration_derived/owner_policy_weight_authority_derived.simthing-scenario.json" \
+    "${ROOT_SANDBOX}/scenarios/corpus/demo.from-clause.simthing-scenario.json"
 }
 
 expect_constitution_reach_log_append() {
@@ -1317,6 +1332,8 @@ run_all_cases() {
     setup_trap_mapeditor traps/mapeditor_polyline_projection_cache.rs
   expect_heuristic_inspect "owner_policy_weight_authority_mint" "OWNER-POLICY-WEIGHT-AUTHORITY-MINT" \
     setup_heuristic_owner_policy_weight_authority_mint
+  expect_heuristic_inspect "owner_policy_weight_authority_mint_clause" "OWNER-POLICY-WEIGHT-AUTHORITY-MINT" \
+    setup_heuristic_owner_policy_weight_authority_mint_clause
   expect_heuristic_quiet "owner_policy_weight_authority_mint_clean" "OWNER-POLICY-WEIGHT-AUTHORITY-MINT" \
     setup_quiet_owner_policy_weight_authority_mint
   expect_constitution_reach_log_append

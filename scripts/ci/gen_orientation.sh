@@ -205,6 +205,7 @@ run_gen_sandbox() {
     handoffs="$(cygpath -w "$handoffs")"
     output="$(cygpath -w "$output")"
   fi
+  ORIENTATION_SKIP_CITIZEN_COUNTS_CHECK=1 \
   ORIENTATION_REPO_ROOT="$root" \
   ORIENTATION_CLASSES_TSV="$classes" \
   ORIENTATION_BINDING_TSV="$binding" \
@@ -1906,6 +1907,20 @@ main() {
   export ORIENTATION_ANCHORS_TSV="${ORIENTATION_ANCHORS_TSV:-${SCRIPT_DIR}/doctrine_anchors.tsv}"
   export ORIENTATION_EXECUTION_STATUS_TSV="${ORIENTATION_EXECUTION_STATUS_TSV:-${SCRIPT_DIR}/execution_status_taxonomy.tsv}"
   export ORIENTATION_SPECIALIZATION_CITIZEN_COUNTS_TSV="${ORIENTATION_SPECIALIZATION_CITIZEN_COUNTS_TSV:-${SCRIPT_DIR}/specialization_citizen_counts.tsv}"
+  # FIRST-CITIZEN-SPECIALISTS-0: citizen counts are executable-sourced (never
+  # hand-edited). Generate refreshes the TSV; --check enforces freshness.
+  if [[ "${ORIENTATION_SKIP_CITIZEN_COUNTS_CHECK:-0}" != "1" ]]; then
+    case "$MODE" in
+      generate)
+        bash "${SCRIPT_DIR}/gen_specialization_citizen_counts.sh" \
+          --output "${ORIENTATION_SPECIALIZATION_CITIZEN_COUNTS_TSV}"
+        ;;
+      check)
+        bash "${SCRIPT_DIR}/gen_specialization_citizen_counts.sh" --check \
+          --output "${ORIENTATION_SPECIALIZATION_CITIZEN_COUNTS_TSV}"
+        ;;
+    esac
+  fi
   export ORIENTATION_OUTPUT="${ORIENTATION_OUTPUT:-${OUTPUT_PATH}}"
   export ORIENTATION_MODE="$MODE"
   export ORIENTATION_OPEN_TARGET="$OPEN_TARGET"
