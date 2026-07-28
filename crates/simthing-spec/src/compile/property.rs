@@ -2,8 +2,8 @@ use crate::diagnostics::{SpecDiagnostics, SpecResult};
 use crate::error::SpecError;
 use crate::spec::property::PropertySpec;
 use simthing_core::{
-    expand_arena_internal_columns, DimensionRegistry, PropertyLayout, SimProperty, SimPropertyId,
-    SubFieldRole,
+    expand_arena_internal_columns, DimensionRegistry, PropertyAdmissionDisposition,
+    PropertyLayout, SimProperty, SimPropertyId, SubFieldRole,
 };
 
 /// Compile a `PropertySpec` into a live `SimProperty` and register it with the
@@ -43,6 +43,7 @@ pub fn compile_property(
     let layout = expand_arena_internal_columns(layout);
 
     validate_governed_by(spec, &layout)?;
+    validate_admission_disposition(spec)?;
 
     let prop = SimProperty {
         namespace: spec.namespace.clone(),
@@ -55,10 +56,27 @@ pub fn compile_property(
         on_expire: None,
         description: spec.description.clone(),
         intensity_labels: vec![],
+        admission_disposition: spec.admission_disposition.clone(),
     };
 
     let id = registry.register(prop);
     Ok((id, SpecDiagnostics::default()))
+}
+
+fn validate_admission_disposition(spec: &PropertySpec) -> Result<(), SpecError> {
+    if let PropertyAdmissionDisposition::Unobserved {
+        reason,
+        source_span_token,
+    } = &spec.admission_disposition
+    {
+        if reason.trim().is_empty() {
+            return Err(SpecError::BlankUnobservedPropertyReason {
+                property: format!("{}::{}", spec.namespace, spec.name),
+                source_span_token: *source_span_token,
+            });
+        }
+    }
+    Ok(())
 }
 
 fn validate_governed_by(spec: &PropertySpec, layout: &PropertyLayout) -> Result<(), SpecError> {

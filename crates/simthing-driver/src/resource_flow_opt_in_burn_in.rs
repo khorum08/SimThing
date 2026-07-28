@@ -138,6 +138,7 @@ fn flow_subfield(name: &str, role: AccumulatorRole) -> SubFieldSpec {
 
 pub fn register_food_flow(reg: &mut DimensionRegistry) {
     let spec = PropertySpec {
+        admission_disposition: Default::default(),
         id: "food_flow".into(),
         namespace: "core".into(),
         name: "food_flow".into(),
@@ -164,6 +165,7 @@ pub fn register_food_flow(reg: &mut DimensionRegistry) {
 
 fn register_research_flow(reg: &mut DimensionRegistry) {
     let spec = PropertySpec {
+        admission_disposition: Default::default(),
         id: "research_flow".into(),
         namespace: "core".into(),
         name: "research_flow".into(),

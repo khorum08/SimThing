@@ -1646,6 +1646,7 @@ fn resource_property(namespace: &str, resource: &str, suffix: &str) -> PropertyS
         name: format!("{resource}_{suffix}"),
         display_name: format!("{resource} {suffix}"),
         description: "field economy resource surface".into(),
+        admission_disposition: Default::default(),
         // Keep the standard 3-lane width so authored weight_profile column indices
         // stay stable, but leave Amount Unbounded and ungoverned so production /
         // disruption can accrete above 1.0 under ordinary ticks.
@@ -1678,6 +1679,7 @@ fn presence_property(namespace: &str, location: &str, resource: &str, id: &str) 
         name: format!("{location}_{resource}_presence"),
         display_name: format!("{location} {resource} presence"),
         description: format!("field economy disruption presence authored by `{id}`"),
+        admission_disposition: Default::default(),
         sub_fields: field_economy_resource_subfields(),
     }
 }

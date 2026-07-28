@@ -651,6 +651,27 @@ impl IntensityRange {
 
 // ── SimProperty ───────────────────────────────────────────────────────────────
 
+/// Admission-time observation disposition for one property dimension.
+///
+/// This is deliberately total and closed: a property is born anchored unless
+/// authoring explicitly opts out with a durable reason and source location.
+/// Runtime consumer presence is not a state in this type.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum PropertyAdmissionDisposition {
+    #[default]
+    Anchored,
+    Unobserved {
+        reason: String,
+        source_span_token: usize,
+    },
+}
+
+impl PropertyAdmissionDisposition {
+    pub fn is_anchored(&self) -> bool {
+        matches!(self, Self::Anchored)
+    }
+}
+
 /// The schema for a property dimension. Equality and hashing are defined on
 /// `namespace + name` only — metadata fields do not participate.
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -672,6 +693,14 @@ pub struct SimProperty {
     // metadata
     pub description: String,
     pub intensity_labels: Vec<IntensityRange>,
+
+    /// P0(e): total admission disposition. Anchored is omitted from serialized
+    /// payloads so default admission leaves existing wire/replay bytes stable.
+    #[serde(
+        default,
+        skip_serializing_if = "PropertyAdmissionDisposition::is_anchored"
+    )]
+    pub admission_disposition: PropertyAdmissionDisposition,
 }
 
 impl SimProperty {
@@ -688,7 +717,15 @@ impl SimProperty {
             on_expire: None,
             description: String::new(),
             intensity_labels: vec![],
+            admission_disposition: PropertyAdmissionDisposition::Anchored,
         }
+    }
+
+    /// Resource-bearing is the existence of a homogeneous property value
+    /// layout, never a SimThing-kind gate. Accumulator metadata identifies RF
+    /// roles, but ordinary amount/velocity/intensity stores are resources too.
+    pub fn is_resource_bearing(&self) -> bool {
+        self.layout.stride() > 0
     }
 
     pub fn default_value(&self) -> PropertyValue {

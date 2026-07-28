@@ -112,6 +112,7 @@ impl CapabilityTreeBuilder {
                 on_expire: None,
                 description: cat.display_name.clone(),
                 intensity_labels: vec![],
+                admission_disposition: Default::default(),
             };
             let prop_id = registry.register(prop);
             categories.insert(

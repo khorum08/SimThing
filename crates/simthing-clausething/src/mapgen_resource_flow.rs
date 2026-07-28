@@ -704,6 +704,7 @@ fn build_flow_property_spec(
         name: name.into(),
         display_name: name.into(),
         description: format!("MapGen PR4 RF flow property for arena `{arena_name}`"),
+        admission_disposition: Default::default(),
         sub_fields: vec![
             flow_subfield("flow", AccumulatorRole::IntrinsicFlow),
             flow_subfield(

@@ -74,6 +74,7 @@ fn food_flow_property() -> PropertySpec {
         name: "food_flow".into(),
         display_name: "Food Flow".into(),
         description: String::new(),
+        admission_disposition: Default::default(),
         sub_fields: vec![
             flow_subfield("flow", AccumulatorRole::IntrinsicFlow, 0.0),
             flow_subfield(

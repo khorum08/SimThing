@@ -35,6 +35,7 @@ fn transfer_registry_with_columns(cols: u32) -> DimensionRegistry {
     reg.register(SimProperty {
         namespace: "transfer".into(),
         name: "resources".into(),
+        admission_disposition: Default::default(),
         layout: PropertyLayout { sub_fields },
         decay: None,
         intensity_behavior: None,

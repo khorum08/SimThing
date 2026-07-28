@@ -11,8 +11,8 @@ use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 use simthing_core::{
-    OverlayKind, OverlayLifecycle, OverlaySource, PropertyValue, SimPropertyId, SimThing,
-    SimThingId, SimThingKind, SubFieldRole, TransformOp,
+    OverlayKind, OverlayLifecycle, OverlaySource, PropertyAdmissionDisposition, PropertyValue,
+    SimPropertyId, SimThing, SimThingId, SimThingKind, SubFieldRole, TransformOp,
 };
 use simthing_spec::spec::game_mode::GameModeSpec;
 use simthing_spec::spec::install_target::InstallTargetSpec;
@@ -1647,6 +1647,7 @@ fn fleet_ship_game_mode_properties() -> Vec<PropertySpec> {
         name: name.into(),
         display_name: display_name.into(),
         description: String::new(),
+        admission_disposition: Default::default(),
         sub_fields: vec![],
     })
     .collect()
@@ -2634,6 +2635,7 @@ fn parse_property_spec(property: &RawProperty) -> Result<PropertySpec, HydrateEr
     let mut name = None;
     let mut display_name = String::new();
     let mut description = String::new();
+    let mut admission_disposition = PropertyAdmissionDisposition::Anchored;
 
     for field in &block.properties {
         reject_forbidden_node_field(field)?;
@@ -2643,6 +2645,7 @@ fn parse_property_spec(property: &RawProperty) -> Result<PropertySpec, HydrateEr
             "name" => name = Some(read_scalar_text(field, "name")?),
             "display_name" => display_name = read_scalar_text(field, "display_name")?,
             "description" => description = read_scalar_text(field, "description")?,
+            "disposition" => admission_disposition = parse_property_disposition(field)?,
             other => {
                 return Err(HydrateError::new_spanned(
                     format!("unsupported property field `{other}`"),
@@ -2659,7 +2662,74 @@ fn parse_property_spec(property: &RawProperty) -> Result<PropertySpec, HydrateEr
         display_name,
         description,
         sub_fields: Vec::new(),
+        admission_disposition,
     })
+}
+
+pub(crate) fn parse_property_disposition(
+    property: &RawProperty,
+) -> Result<PropertyAdmissionDisposition, HydrateError> {
+    match &property.value {
+        RawValue::Scalar(scalar) if scalar.text == "Anchored" => {
+            Ok(PropertyAdmissionDisposition::Anchored)
+        }
+        RawValue::Header(RawHeaderValue { header, payload }) if header.text == "Unobserved" => {
+            let RawValue::Block(block) = payload.as_ref() else {
+                return Err(HydrateError::new_spanned(
+                    "`Unobserved` disposition payload must be a block",
+                    Some(header.span.clone()),
+                ));
+            };
+            let mut reason = None;
+            let mut source_span_token = None;
+            for field in &block.properties {
+                if field.key.text != "reason" {
+                    return Err(HydrateError::new_spanned(
+                        format!(
+                            "unsupported Unobserved disposition field `{}`",
+                            field.key.text
+                        ),
+                        Some(field.key.span.clone()),
+                    ));
+                }
+                if reason.is_some() {
+                    return Err(HydrateError::new_spanned(
+                        "duplicate Unobserved disposition `reason`",
+                        Some(field.key.span.clone()),
+                    ));
+                }
+                let RawValue::Scalar(scalar) = &field.value else {
+                    return Err(HydrateError::new_spanned(
+                        "`Unobserved.reason` must be a scalar",
+                        Some(field.key.span.clone()),
+                    ));
+                };
+                if scalar.text.trim().is_empty() {
+                    return Err(HydrateError::new_spanned(
+                        "`Unobserved.reason` must be non-empty",
+                        Some(scalar.span.clone()),
+                    ));
+                }
+                reason = Some(scalar.text.clone());
+                source_span_token = Some(scalar.span.token_index);
+            }
+            let reason = reason.ok_or_else(|| {
+                HydrateError::new_spanned(
+                    "`Unobserved` disposition requires `reason`",
+                    Some(header.span.clone()),
+                )
+            })?;
+            Ok(PropertyAdmissionDisposition::Unobserved {
+                reason,
+                source_span_token: source_span_token
+                    .expect("reason hydration captures its scalar source span"),
+            })
+        }
+        _ => Err(HydrateError::new_spanned(
+            "property `disposition` must be `Anchored` or `Unobserved { reason = \"...\" }`",
+            Some(property.key.span.clone()),
+        )),
+    }
 }
 
 fn parse_overlays_block(

@@ -60,6 +60,7 @@ fn game_mode_with_pack(pack: DomainPackSpec) -> GameModeSpec {
         overlays: Vec::new(),
         capability_trees: Vec::new(),
         events: Vec::new(),
+        order_weight_classes: Vec::new(),
         resource_flow: None,
         resource_economy: None,
         resource_flow_execution_profile: Default::default(),

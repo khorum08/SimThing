@@ -93,6 +93,9 @@ pub struct SpecSessionState {
     pub arena_registry: ArenaRegistry,
     /// Inspectable admission provenance for property/topology-derived arenas.
     pub resource_flow_derivation: crate::resource_flow_derivation::ResourceFlowDerivationReport,
+    /// P0(e) report projected from the canonical live DimensionRegistry.
+    /// This is inspectable install evidence, never a second property authority.
+    pub property_admission: simthing_core::PropertyAdmissionReport,
     /// SPECIALIZATION-PROTOCOL-0: inspectable per-SimThing profile conformance (3.1).
     pub specialization: simthing_core::SpecializationReport,
     /// CT-RF-EML-RATE-0: install-resolved gated rate terms consumed by the

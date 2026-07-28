@@ -1526,6 +1526,7 @@ fn rf_balance_subfield() -> SubFieldSpec {
 
 fn studio_recursive_rf_property() -> PropertySpec {
     PropertySpec {
+        admission_disposition: Default::default(),
         id: STUDIO_RF_PROPERTY.into(),
         namespace: STUDIO_RF_NAMESPACE.into(),
         name: STUDIO_RF_PROPERTY.into(),

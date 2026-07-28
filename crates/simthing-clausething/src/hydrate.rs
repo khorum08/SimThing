@@ -156,6 +156,7 @@ fn parse_property_block(property: &RawProperty) -> Result<(PropertySpec, f32), H
             name: require_field(name, "name", property)?,
             display_name,
             description,
+            admission_disposition: Default::default(),
             sub_fields: Vec::new(),
         },
         seed_amount.ok_or_else(|| {

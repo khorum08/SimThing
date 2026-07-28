@@ -45,21 +45,24 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 211b860c2a424d0386a01a2dc93d5c563abfd1411c1f58ec55c7b69d97426cb8 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | 26eab30ec86c97ac8dfd6beef7ae8c5b4d3f18c38fdaa431ec40ccce855396d3 |
-| design_0_0_8_7_rf_arena_modernization.md | 2c12d52a2e867ffb0672c16c2c301c4dd562d937a8c0740ad96302bec342eda9 |
+| design_0_0_8_7_rf_arena_modernization.md | 6235ca08ab4652eb4a403bbfd6d15ba5b11c6b6458823137ee95335bc5d87311 |
 | relay_lint.sh | 4163f715cdc3b549dbf57c1744aff61ea96b9f9f0a2237376665fbdb24e986c8 |
 | doctrine_anchors.tsv | 08a34b6dac78478d2154fcd2735cf4a3f87a670d925805814cca0a8079448a84 |
 | execution_status_taxonomy.tsv | 0e3e2c81a6005f09852ce0a0832277fd8c27a5fbb06da6b17df0b9e2e2ef7a0d |
 | execution_status_mixed_posture.tsv | 1adf05f3ec5fd7b537efe29259d20649a2c6d3a0839590063e5308ff154e8f25 |
 | execution_status_non_execution.tsv | 214c1b557dfd3fc465f0171051e20281ff1dcf6c53128dbb29cba01524f9be02 |
 | specialization_citizen_counts.tsv | 852aec43448149670396eec832b99da725b87a4e64d476da80f0b265cbaaa8e8 |
+| property_admission_inventory.tsv | 85195fb36a214ca6af5b39fdabaf3b1c33d2d57ad8d02b3630236fa0496deeb1 |
 
 ## Execution-status taxonomy (driver/kernel)
 
 executed=57 oracle=6 rehearsal=14 compile-plan=47 mixed_ruled=0 (primary-inclusive taxonomy; DA dual-posture residual; census `execution_status_census.py`).
 
-## Specialization citizens (canonical TP authority install)
+## Canonical TP live inventories
 
-spatial=1500 owner-seat=2 session-root=1 (SpecSessionState.specialization.citizen_counts; source `specialization_citizen_counts.tsv`).
+Specialization citizens: spatial=1500 owner-seat=2 session-root=1 (SpecSessionState.specialization.citizen_counts; source `specialization_citizen_counts.tsv`).
+Property admission: anchored=25 unobserved=0 total=25 (SpecSessionState.property_admission; source `property_admission_inventory.tsv`).
+Dark properties: none.
 
 ## Active Track / Rung Summary (`design_0_0_8_7_rf_arena_modernization.md`)
 
@@ -68,7 +71,7 @@ Track state: `open`
 | # | rung | deliverable | exit proof |
 | --- | --- | --- | --- |
 | 4.2 | PLAN-STRUCT-TYPING-0 | Phase 4: exclusion-audit Family B — `ColumnIndex` end-to-end in plan structs; ra | **DA-GRADUATED / merged #1480 @ 6e7fa2b3** — Family B plan/compile intermediates typed end-to-end; production `from_g... |
-| 5.1 | ANCHOR-DISPOSITION-ADMISSION-0 | Phase 5: P0(e) fulcrum 1 — default-Anchored disposition; authored `Unobserved{re | Property lands anchored with zero wiring; dark-cell set renders; 12.3-replay fixture impossible. |
+| 5.1 | ANCHOR-DISPOSITION-ADMISSION-0 | Phase 5: P0(e) fulcrum 1 — default-Anchored disposition; authored `Unobserved{re | **PROBATION** — ordinary hydrate/compile/install assigns exactly one typed disposition to every resource property; ca... |
 | 5.2 | WRITE-DOOR-BAND-DELTA-0 | Phase 5: fulcrum 2 — in-pass band-crossing derivation; structural ops refuse to  | Band deltas correct vs oracle in the fused pass; remap-less reallocation op spans; replay green. |
 | 5.3 | ANCHOR-TABLE-SURFACE-0 | Phase 5: fulcrum 3 — derived GPU anchor table as the SOLE observation surface; c | Studio/telemetry read only the table; no second observation path (grep-proven); corpus green. |
 | 5.4 | FIELD-SWEEP-IR-PROBE-0 | Phase 5: workshop-leaf disposable probe — minimal target/neighbor-ctx EML map/fo | Parity absolute; N4 generic median ≤1.25× bespoke, supported-adapter worst ≤1.5× at matched measured occupancy with s... |
@@ -93,7 +96,7 @@ Track state: `open`
 
 ## Next Rung Pointer
 
-Active pointer: `ANCHOR-DISPOSITION-ADMISSION-0`
+Active pointer: `WRITE-DOOR-BAND-DELTA-0`
 
 
 ## Cold-Start Spine (constitutional pointers)

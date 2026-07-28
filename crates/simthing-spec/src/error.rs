@@ -34,6 +34,14 @@ pub enum SpecError {
     #[error("duplicate property registration `{namespace}::{name}`")]
     DuplicateProperty { namespace: String, name: String },
 
+    #[error(
+        "property `{property}` declares Unobserved with a blank reason (source_span_token={source_span_token})"
+    )]
+    BlankUnobservedPropertyReason {
+        property: String,
+        source_span_token: usize,
+    },
+
     #[error("sub-field `{sub_field}` on property `{property}` declares governed_by `{governed_by}` which is not present in the same layout")]
     InvalidGovernedByRole {
         property: String,
