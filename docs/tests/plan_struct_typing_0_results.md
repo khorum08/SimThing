@@ -11,10 +11,10 @@
 - Remand: Board comment `5108706100` (exact prior head `c659c0c27a9b52959446b184e51f8be03328c416`)
 - Prior remand: `5108383145` / landing `5108597299`
 - base_sha: `0342a28cce8ca891bc283e8ad88d1264d7eee2ba`
-- tested_code_sha: `d6a9284891dbc2357f40912fe056228aef0e221d`
-- implementation_code_sha: `d6a9284891dbc2357f40912fe056228aef0e221d`
-- final_head_sha: `d6a9284891dbc2357f40912fe056228aef0e221d`
-- clearance_pr_head: `d6a9284891dbc2357f40912fe056228aef0e221d`
+- tested_code_sha: `ce8a9f0ce65b1887385f15d7d229b5881614854d`
+- implementation_code_sha: `ce8a9f0ce65b1887385f15d7d229b5881614854d`
+- final_head_sha: `ce8a9f0ce65b1887385f15d7d229b5881614854d`
+- clearance_pr_head: `ce8a9f0ce65b1887385f15d7d229b5881614854d`
 - coverage_basis: focused plan_struct_typing_0 + region-field admit referees + seven-arm census + workspace/core + adapter-pinned kernel/sim/full driver
 - ci_green: local batteries green (region-field admit 2/0; plan_struct kernel 3/0 driver 4/0; census 7-arm PASS; doc-budget PASS; execution census mixed_ruled=0; agent_scan INSPECT justified; adapter-pinned driver 123/0/13/64); hosted Doctrine Scan/Exec re-bound after push
 - expected_route: `DA-RESERVE(gate-wiring)`
