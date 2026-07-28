@@ -90,9 +90,9 @@ impl ColumnIndex {
     /// GPU-ROUND-TRIP door: re-materializes a column from a `gpu.*_col`
     /// adapter/plan field after a GPU representation round trip.
     ///
-    /// Promotion blocker: rung 4.2 carries [`ColumnIndex`] through plan structs
-    /// end-to-end and confines raw `u32` columns to the single WGSL
-    /// encode/decode boundary.
+    /// Production callers must enter through `simthing_kernel::wgsl_encode::column_from_wire`
+    /// (the sole WGSL/authored-wire rematerialize helper). Direct use outside that
+    /// helper is a census failure.
     pub fn from_gpu_round_trip(raw: u32) -> Self {
         Self(raw as usize)
     }
@@ -107,6 +107,33 @@ impl ColumnIndex {
         Self(raw)
     }
 
+    /// STRUCTURAL-PLAN door: seal a plan-local structural grid channel into a
+    /// [`ColumnIndex`] for AccumulatorOp plans that own their own `n_dims` grid.
+    ///
+    /// Only [`crate::StructuralScalarChannel::into_plan_column`] may call this.
+    pub(crate) fn from_structural_plan_channel(raw: u32) -> Self {
+        Self(raw as usize)
+    }
+
+    /// AUTHORED-ADMIT door: convert an authored-wire column into a typed plan
+    /// column after proving `raw < bound` (typically `n_dims`).
+    ///
+    /// This is **not** a bare `u32 → ColumnIndex` constructor — admission must
+    /// supply the bound that makes the mint lawful. Authored/serde surfaces stay
+    /// `u32`; compiled/intermediate plan records carry [`ColumnIndex`].
+    pub fn try_from_admitted_authored(
+        raw: u32,
+        bound: u32,
+    ) -> Result<Self, AuthoredColumnAdmitError> {
+        if bound == 0 || raw >= bound {
+            return Err(AuthoredColumnAdmitError {
+                raw,
+                bound,
+            });
+        }
+        Ok(Self(raw as usize))
+    }
+
     pub fn raw(self) -> usize {
         self.0
     }
@@ -115,6 +142,25 @@ impl ColumnIndex {
         self.0 as u32
     }
 }
+
+/// Failure from [`ColumnIndex::try_from_admitted_authored`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct AuthoredColumnAdmitError {
+    pub raw: u32,
+    pub bound: u32,
+}
+
+impl std::fmt::Display for AuthoredColumnAdmitError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "authored column {} out of range for bound {}",
+            self.raw, self.bound
+        )
+    }
+}
+
+impl std::error::Error for AuthoredColumnAdmitError {}
 
 impl From<ColumnIndex> for usize {
     fn from(col: ColumnIndex) -> Self {
@@ -132,6 +178,16 @@ mod tests {
     #[test]
     fn gpu_round_trip_door_preserves_column_bits() {
         assert_eq!(ColumnIndex::from_gpu_round_trip(17).raw(), 17);
+    }
+
+    #[test]
+    fn authored_admit_door_rejects_out_of_range_and_preserves_in_range() {
+        assert_eq!(
+            ColumnIndex::try_from_admitted_authored(3, 4).unwrap().raw(),
+            3
+        );
+        assert!(ColumnIndex::try_from_admitted_authored(4, 4).is_err());
+        assert!(ColumnIndex::try_from_admitted_authored(0, 0).is_err());
     }
 
     #[test]

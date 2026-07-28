@@ -3,17 +3,18 @@
 #![allow(dead_code)]
 
 use simthing_core::{
-    AccumulatorRole, AccumulatorSpec, BalanceSpec, ClampBehavior, DimensionRegistry,
+    AccumulatorRole, AccumulatorSpec, BalanceSpec, ClampBehavior, ColumnIndex, DimensionRegistry,
     EmlExpressionRegistry, LogTier, PropertyValue, SimThing, SimThingId, SimThingKind,
     SubFieldRole, SubFieldSpec,
 };
 use simthing_driver::{
-    build_execution_plan, compile_and_materialize_resource_flow, install_atomic,
-    max_disbursement_band,
-    nested_hierarchy_materialization_report, plan_arena_allocation, register_child_share_formula,
-    resolve_node_columns, run_arena_allocation_oracle, validate_resource_flow_preflight,
-    ArenaRegistry, ArenaTreeLayout, HierarchyNode, NodeColumnRefs, SimSession,
+    build_execution_plan, build_execution_plan_from_authoring, compile_and_materialize_resource_flow,
+    install_atomic, max_disbursement_band, nested_hierarchy_materialization_report,
+    plan_arena_allocation, register_child_share_formula, resolve_node_columns_for_property,
+    run_arena_allocation_oracle, validate_resource_flow_preflight, ArenaRegistry,
+    ArenaTreeLayout, HierarchyNode, NodeColumnRefs, SimSession,
 };
+use simthing_driver::arena_registry::SlotId;
 use simthing_gpu::{GpuContext, SlotAllocator, WorldGpuState};
 use simthing_spec::{
     compile_property, ArenaSpec, ExplicitParticipantSpec, FissionPolicySpec, GameModeSpec,
@@ -157,7 +158,7 @@ pub fn materialize_nested(
 ) -> MaterializedNestedFixture {
     let mut reg = DimensionRegistry::new();
     let flow_id = register_food_flow(&mut reg);
-    let cols = resolve_node_columns(&reg.property(flow_id).layout, "food").unwrap();
+    let cols = resolve_node_columns_for_property(&reg, flow_id, "food").unwrap();
     let (mut root, hosted) = hosted_cohorts(hosted_count);
     fn seed(node: &mut SimThing, flow_id: simthing_core::SimPropertyId, value: &PropertyValue) {
         if matches!(node.kind, SimThingKind::Cohort) {
@@ -209,8 +210,8 @@ pub fn leaves(layout: &ArenaTreeLayout) -> Vec<&HierarchyNode> {
         .collect()
 }
 
-fn idx(n_dims: u32, slot: u32, col: u32) -> usize {
-    (slot * n_dims + col) as usize
+fn idx(n_dims: u32, slot: SlotId, col: ColumnIndex) -> usize {
+    (slot.raw() * n_dims + col.raw_u32()) as usize
 }
 
 pub struct ParityResult {
@@ -380,7 +381,7 @@ pub fn open_nested_session(
         .registry
         .id_of("core", "food_flow")
         .expect("food_flow");
-    let cols = resolve_node_columns(&session.proto.registry.property(flow_id).layout, "food")
+    let cols = resolve_node_columns_for_property(&session.proto.registry, flow_id, "food")
         .expect("cols");
     let layout = build_execution_plan_from_authoring(
         &session.proto.registry,

@@ -2,10 +2,12 @@
 
 use std::collections::HashMap;
 
+use simthing_core::ColumnIndex;
 use simthing_driver::{
-    run_flat_star_burn_in, sync_resource_flow_accumulator, ArenaTreeLayout, NodeColumnRefs,
-    ResourceFlowScenarioBurnInReport,
+    build_execution_plan_from_authoring, run_flat_star_burn_in, sync_resource_flow_accumulator,
+    ArenaTreeLayout, NodeColumnRefs, ResourceFlowScenarioBurnInReport,
 };
+use simthing_driver::arena_registry::SlotId;
 
 use super::e11_flat_star::{
     flat_star_cell_inputs, leaf_slots, open_flat_star_session, root_slot, FlatStarSession,
@@ -85,7 +87,7 @@ pub fn scenario_cell_inputs(
     fixture: &BurnInScenarioFixture,
     layout: &ArenaTreeLayout,
     cols: NodeColumnRefs,
-) -> HashMap<(u32, u32), f32> {
+) -> HashMap<(SlotId, ColumnIndex), f32> {
     flat_star_cell_inputs(
         root_slot(layout),
         &leaf_slots(layout),
@@ -182,7 +184,7 @@ pub fn assert_no_nan_in_leaf_allocated(
     cols: NodeColumnRefs,
     n_dims: u32,
 ) {
-    let idx = |slot: u32, col: u32| (slot * n_dims + col) as usize;
+    let idx = |slot: u32, col: ColumnIndex| (slot * n_dims + col.raw_u32()) as usize;
     let gpu_out = state.read_values();
     for leaf in leaf_slots(layout) {
         let v = gpu_out[idx(leaf, cols.allocated_flow_col)];

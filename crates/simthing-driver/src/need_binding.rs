@@ -16,12 +16,12 @@ use simthing_spec::{
     EmlGadgetInstanceSpec, NeedBindingSpec, ResourceFlowSpec, SemanticPropertyLocusSpec, SpecError,
 };
 
-use crate::arena_hierarchy::resolve_node_columns;
+use crate::arena_hierarchy::resolve_node_columns_for_property;
 use crate::arena_registry::ArenaRegistry;
 use crate::install::{find_simthing_mut, InstallError};
 use crate::resource_economy_compile::ResourceEconomyRegistry;
 use crate::scenario::Scenario;
-use simthing_gpu::SlotAllocator;
+use simthing_gpu::{encode_column, SlotAllocator};
 
 const NEED_BINDING_TREE_BASE: u32 = 7_300_000;
 
@@ -261,7 +261,7 @@ fn resolve_one(
         ));
     }
     let flow_layout = &registry.property(flow_property_id).layout;
-    let _ = resolve_node_columns(flow_layout, &arena.name).map_err(|_| {
+    let _ = resolve_node_columns_for_property(registry, flow_property_id, &arena.name).map_err(|_| {
         InstallError::Spec(SpecError::UnknownResourceFlowProperty {
             property: format!("{} flow columns", arena.name),
         })
@@ -481,7 +481,7 @@ fn build_weighted_need_nodes(
         nodes.push(EmlNodeGpu {
             opcode: eml_nodes::opcode::SLOT_VALUE,
             flags: 0,
-            a: in_col.raw_u32(),
+            a: encode_column(*in_col),
             b: 0,
             c: 0,
             d: 0,
@@ -489,7 +489,7 @@ fn build_weighted_need_nodes(
         nodes.push(EmlNodeGpu {
             opcode: eml_nodes::opcode::SLOT_VALUE,
             flags: 0,
-            a: w_col.raw_u32(),
+            a: encode_column(*w_col),
             b: 0,
             c: 0,
             d: 0,
@@ -715,7 +715,7 @@ pub fn register_post_rf_need_threshold_rescan(
         .iter()
         .map(|b| ThresholdRegistration {
             slot: b.participant_slot,
-            col: b.need_col.raw_u32(),
+            col: encode_column(b.need_col),
             threshold: b.threshold,
             direction: DIR_UPWARD,
             event_kind: b.event_kind,

@@ -147,12 +147,12 @@ pub use region_field_admission::{
     validate_region_field_frame_gradient_sinks, CompiledFieldCadence,
     CompiledFirstSliceCommitmentDirection, CompiledFirstSliceCommitmentThreshold,
     CompiledGradientAxis, CompiledRegionFieldBoundaryMode, CompiledRegionFieldMaskMode,
-    CompiledRegionFieldOperator, CompiledRegionFieldPreview, CompiledRegionFieldSourcePolicy,
-    CompiledRegionFieldStencilSpec, CompiledRegionFieldSummaryPolicy,
-    ADMITTED_REGION_FIELD_FORMULA_CLASSES, FIRST_SLICE_FIELD_URGENCY_COL,
-    REGION_FIELD_DEFAULT_HORIZON_CAP, REGION_FIELD_EXTENDED_HORIZON_CAP,
-    REGION_FIELD_EXTENDED_MAX_GRID, REGION_FIELD_MAX_CELL_COUNT, REGION_FIELD_STANDARD_MAX_GRID,
-    SATURATING_FLUX_CHI_CFL_MAX,
+    CompiledRegionFieldOperator, CompiledRegionFieldPreview, CompiledRegionFieldReduction,
+    CompiledRegionFieldSourcePolicy, CompiledRegionFieldStencilSpec,
+    CompiledRegionFieldSummaryPolicy, ADMITTED_REGION_FIELD_FORMULA_CLASSES,
+    FIRST_SLICE_FIELD_URGENCY_COL, REGION_FIELD_DEFAULT_HORIZON_CAP,
+    REGION_FIELD_EXTENDED_HORIZON_CAP, REGION_FIELD_EXTENDED_MAX_GRID,
+    REGION_FIELD_MAX_CELL_COUNT, REGION_FIELD_STANDARD_MAX_GRID, SATURATING_FLUX_CHI_CFL_MAX,
 };
 pub use region_field_budget::{
     estimate_region_field_budget, region_field_isolation_multiplier, RegionFieldBudgetError,

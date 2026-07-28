@@ -1,7 +1,8 @@
 //! C-8c transfer substrate parity and conservation tests.
 
 use simthing_core::{
-    ClampBehavior, DimensionRegistry, PropertyLayout, SimProperty, SubFieldRole, SubFieldSpec,
+    ClampBehavior, ColumnIndex, DimensionRegistry, PropertyLayout, SimProperty, SubFieldRole,
+    SubFieldSpec,
 };
 use simthing_gpu::{
     build_governed_pairs, execute_ops_cpu, plan_transfer_ops, plan_velocity_integration,
@@ -106,11 +107,11 @@ fn c8c_single_source_transfer_conserves_exactly() {
     let regs = vec![TransferRegistration {
         inputs: vec![TransferInputRef {
             slot: 0,
-            col: 0,
+            col: ColumnIndex::from_raw_for_oracle_or_rehearsal(0),
             unit_cost: 1.0,
         }],
         target_slot: 0,
-        target_col: 1,
+        target_col: ColumnIndex::from_raw_for_oracle_or_rehearsal(1),
         output_scale: 1.0,
         max_transfer: Some(3.0),
         tree_id: None,
@@ -137,22 +138,22 @@ fn c8c_conjunctive_transfer_min_across_inputs() {
         inputs: vec![
             TransferInputRef {
                 slot: 0,
-                col: 0,
+                col: ColumnIndex::from_raw_for_oracle_or_rehearsal(0),
                 unit_cost: 5.0,
             },
             TransferInputRef {
                 slot: 0,
-                col: 1,
+                col: ColumnIndex::from_raw_for_oracle_or_rehearsal(1),
                 unit_cost: 3.0,
             },
             TransferInputRef {
                 slot: 0,
-                col: 2,
+                col: ColumnIndex::from_raw_for_oracle_or_rehearsal(2),
                 unit_cost: 10.0,
             },
         ],
         target_slot: 0,
-        target_col: 3,
+        target_col: ColumnIndex::from_raw_for_oracle_or_rehearsal(3),
         output_scale: 1.0,
         max_transfer: None,
         tree_id: None,
@@ -178,11 +179,11 @@ fn c8c_transfer_path_no_cpu_mediated_evaluation() {
     let regs = vec![TransferRegistration {
         inputs: vec![TransferInputRef {
             slot: 0,
-            col: 0,
+            col: ColumnIndex::from_raw_for_oracle_or_rehearsal(0),
             unit_cost: 1.0,
         }],
         target_slot: 0,
-        target_col: 1,
+        target_col: ColumnIndex::from_raw_for_oracle_or_rehearsal(1),
         output_scale: 1.0,
         max_transfer: Some(1.0),
         tree_id: None,

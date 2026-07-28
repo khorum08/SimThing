@@ -108,13 +108,13 @@ fn compile_recursive_rf_aggregate_proof_plans(
         let row_count = matching.len().max(1) as u32;
         let surplus_plan = compile_participant_channel_sum_plan(
             row_count,
-            StructuralScalarChannel(0),
-            StructuralScalarChannel(1),
+            StructuralScalarChannel::INPUT,
+            StructuralScalarChannel::OUTPUT,
         );
         let demand_plan = compile_participant_channel_sum_plan(
             row_count,
-            StructuralScalarChannel(0),
-            StructuralScalarChannel(1),
+            StructuralScalarChannel::INPUT,
+            StructuralScalarChannel::OUTPUT,
         );
         let _ = (surplus_total, demand_total);
         plans.push(RecursiveLocalRfAggregateProofPlan {

@@ -53,7 +53,7 @@ pub fn expected_emission_emit_count(
     n_dims: u32,
     emission: &EmissionRegistration,
 ) -> Result<u32, ResourceEconomyOracleError> {
-    let idx = cell_index(emission.source_slot, emission.source_col, n_dims);
+    let idx = cell_index(emission.source_slot, emission.source_col.raw_u32(), n_dims);
     let source = flat[idx];
     Ok(match &emission.formula {
         EmissionFormula::IdentityFloor => source.floor().max(0.0) as u32,

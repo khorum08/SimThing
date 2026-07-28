@@ -18,7 +18,7 @@ use simthing_core::{
 use simthing_driver::{
     allocator_from_disbursements, build_execution_plan, check_allocator_step, check_conservation,
     check_recipe_exact, flat_star_observations, plan_arena_allocation,
-    register_child_share_formula, resolve_node_columns, run_arena_allocation_oracle,
+    register_child_share_formula, resolve_node_columns_for_property, run_arena_allocation_oracle,
     AllocatorConservationViolation, ArenaStructuralEvidence, RecipeInvocationObservation, Scenario,
     SimSession,
 };
@@ -199,11 +199,11 @@ fn gpu_gate_fail_closed() -> std::sync::MutexGuard<'static, ()> {
     guard
 }
 
-fn idx(slot: SlotIndex, col: u32, n_dims: u32) -> usize {
-    (slot.raw() * n_dims + col) as usize
+fn idx(slot: SlotIndex, col: ColumnIndex, n_dims: u32) -> usize {
+    (slot.raw() * n_dims + col.raw_u32()) as usize
 }
 
-fn cell(values: &[f32], slot: SlotIndex, col: u32, n_dims: u32) -> f32 {
+fn cell(values: &[f32], slot: SlotIndex, col: ColumnIndex, n_dims: u32) -> f32 {
     values[idx(slot, col, n_dims)]
 }
 
@@ -239,20 +239,16 @@ fn execute_live_flat_star(connect_root_balance: bool) -> LiveFlatStarObservation
         .registry
         .id_of("simthing", "food_flow")
         .expect("food_flow registered");
-    let cols = resolve_node_columns(
-        &session.proto.registry.property(flow_id).layout,
+    let cols = resolve_node_columns_for_property(
+        &session.proto.registry,
+        flow_id,
         "ct2a_food",
     )
     .expect("column refs");
     let balance_col = cols.balance_col.expect("fixture must expose Balance");
-    let balance_rate_col = session
-        .proto
-        .registry
-        .property(flow_id)
-        .layout
-        .offset_of(&SubFieldRole::Named("balance_rate".into()))
-        .expect("balance_rate column")
-        .lane() as u32;
+    let balance_rate_col = cols
+        .balance_governing_col
+        .expect("fixture must expose balance_rate governing column");
     assert!(
         game_mode.resource_flow.as_ref().unwrap().arenas[0]
             .balance_property
@@ -314,8 +310,8 @@ fn execute_live_flat_star(connect_root_balance: bool) -> LiveFlatStarObservation
         session.state.n_slots,
     )
     .expect("flat allocation plan");
-    let root_balance_target = (root, ColumnIndex::new(balance_col as usize));
-    let root_balance_rate_target = (root, ColumnIndex::new(balance_rate_col as usize));
+    let root_balance_target = (root, balance_col);
+    let root_balance_rate_target = (root, balance_rate_col);
     let mut root_governed_op = None;
     for op in &plan.cpu_ops {
         if matches!(&op.combine, CombineFn::IntegrateWithClamp { .. })
@@ -343,13 +339,13 @@ fn execute_live_flat_star(connect_root_balance: bool) -> LiveFlatStarObservation
         plan.cpu_ops.push(AccumulatorOp {
             source: SourceSpec::SlotValue {
                 slot: leaf,
-                col: ColumnIndex::new(cols.allocated_flow_col as usize),
+                col: cols.allocated_flow_col,
             },
             combine: CombineFn::Identity,
             gate: GateSpec::OrderBand(residual_band_start + offset as u32),
             scale: ScaleSpec::Constant(-1.0),
             consume: ConsumeMode::AddToTarget,
-            targets: vec![(root, ColumnIndex::new(balance_rate_col as usize))],
+            targets: vec![(root, balance_rate_col)],
         });
     }
     let n_bands = plan.n_bands.max(residual_band_start + leaves.len() as u32);

@@ -1,5 +1,7 @@
 //! Phase B-0 — deterministic boundary transfer schedule report (driver-only).
 
+use simthing_gpu::encode_column;
+
 use crate::resource_economy_compile::ResourceEconomyRegistry;
 
 /// Kind rank: transfer before recipe before emission/threshold upload phase.
@@ -50,9 +52,9 @@ impl ResourceEconomyBoundaryScheduleReport {
                     authoring_id,
                 },
                 source_slot: transfer.source_slot.raw(),
-                source_col: transfer.source_col.raw_u32(),
+                source_col: encode_column(transfer.source_col),
                 target_slot: transfer.target_slot.raw(),
-                target_col: transfer.target_col.raw_u32(),
+                target_col: encode_column(transfer.target_col),
                 amount: transfer.amount,
             });
         }
@@ -74,9 +76,13 @@ impl ResourceEconomyBoundaryScheduleReport {
                     authoring_id,
                 },
                 source_slot: recipe.inputs.first().map(|i| i.slot.raw()).unwrap_or(0),
-                source_col: recipe.inputs.first().map(|i| i.col.raw_u32()).unwrap_or(0),
+                source_col: recipe
+                    .inputs
+                    .first()
+                    .map(|i| encode_column(i.col))
+                    .unwrap_or(0),
                 target_slot: recipe.target_slot.raw(),
-                target_col: recipe.target_col.raw_u32(),
+                target_col: encode_column(recipe.target_col),
                 amount: *report
                     .recipe_output_coefficients
                     .get(idx)

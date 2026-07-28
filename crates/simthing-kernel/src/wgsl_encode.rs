@@ -10,8 +10,27 @@
 
 use bytemuck::{Pod, Zeroable};
 use simthing_core::{
-    ClampBehavior, DimensionRegistry, PropertyColumnRange, PropertyLayout, SimPropertyId,
+    ClampBehavior, ColumnIndex, DimensionRegistry, PropertyColumnRange, PropertyLayout,
+    SimPropertyId,
 };
+
+/// Drop a typed plan column onto the WGSL/`repr(C)` wire.
+///
+/// **Door family:** `WGSL-RAW-BOUNDARY`. Production plan/compile paths must not
+/// call [`ColumnIndex::raw_u32`] directly — route through this helper.
+#[inline]
+pub fn encode_column(col: ColumnIndex) -> u32 {
+    col.raw_u32()
+}
+
+/// Re-materialize a typed plan column from a WGSL/`repr(C)` wire field.
+///
+/// **Door family:** `WGSL-RAW-BOUNDARY`. Production GPU round-trip remints must
+/// not call [`ColumnIndex::from_gpu_round_trip`] outside this module.
+#[inline]
+pub fn column_from_wire(raw: u32) -> ColumnIndex {
+    ColumnIndex::from_gpu_round_trip(raw)
+}
 
 pub const CLAMP_BOUNDED: u32 = 0;
 pub const CLAMP_FLOORED: u32 = 1;
@@ -57,8 +76,8 @@ pub fn governed_pairs_for_property(
         };
         let (clamp_kind, clamp_min, clamp_max) = GovernedPair::encode_clamp(&sf.clamp);
         pairs.push(GovernedPair {
-            governed_col: governed_col.raw_u32(),
-            governing_col: governing_col.raw_u32(),
+            governed_col: encode_column(governed_col),
+            governing_col: encode_column(governing_col),
             clamp_min,
             clamp_max,
             vel_max: sf.velocity_max.unwrap_or(f32::INFINITY),

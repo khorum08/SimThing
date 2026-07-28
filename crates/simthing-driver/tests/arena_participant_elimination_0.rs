@@ -4,12 +4,12 @@ use std::collections::HashMap;
 use std::sync::Mutex;
 
 use simthing_core::{
-    AccumulatorRole, AccumulatorSpec, ClampBehavior, DimensionRegistry, LogTier, SimThing,
-    SimThingKind, SubFieldRole, SubFieldSpec,
+    AccumulatorRole, AccumulatorSpec, ClampBehavior, ColumnIndex, DimensionRegistry, LogTier,
+    SimThing, SimThingKind, SubFieldRole, SubFieldSpec,
 };
 use simthing_driver::{
     build_execution_plan, check_conservation, clone_for_replay, fixture_dynamic_single_fission,
-    flat_star_observations, open_fixture_session, resolve_node_columns,
+    flat_star_observations, open_fixture_session, resolve_node_columns_for_property,
     run_arena_allocation_oracle, run_dynamic_enrollment_resync_cycles, run_opt_in_burn_in,
     Scenario, SimSession,
 };
@@ -158,8 +158,9 @@ fn sparse_owned_rows_execute_single_writer_rf1_and_replay_exact_on_gpu() {
         .registry
         .id_of("remand", "food_flow")
         .expect("flow property");
-    let cols = resolve_node_columns(
-        &session.proto.registry.property(flow_id).layout,
+    let cols = resolve_node_columns_for_property(
+        &session.proto.registry,
+        flow_id,
         "sparse_food",
     )
     .expect("flow columns");
@@ -186,7 +187,7 @@ fn sparse_owned_rows_execute_single_writer_rf1_and_replay_exact_on_gpu() {
     );
 
     let n_dims = session.state.n_dims;
-    let cell_index = |slot: u32, col: u32| (slot * n_dims + col) as usize;
+    let cell_index = |slot: u32, col: ColumnIndex| (slot * n_dims + col.raw_u32()) as usize;
     let inputs = HashMap::from([
         ((root, cols.intrinsic_flow_col), 12.0_f32),
         ((leaves[0], cols.intrinsic_flow_col), 3.0_f32),

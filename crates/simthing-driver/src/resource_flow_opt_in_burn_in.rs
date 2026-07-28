@@ -6,8 +6,8 @@
 use std::collections::HashMap;
 
 use simthing_core::{
-    AccumulatorRole, AccumulatorSpec, ClampBehavior, DimensionRegistry, LogTier, SimThing,
-    SimThingKind, SubFieldRole, SubFieldSpec,
+    AccumulatorRole, AccumulatorSpec, ClampBehavior, ColumnIndex, DimensionRegistry, LogTier,
+    SimThing, SimThingKind, SubFieldRole, SubFieldSpec,
 };
 use simthing_gpu::SlotAllocator;
 use simthing_sim::{BoundaryOutcome, FissionOutcome};
@@ -18,7 +18,7 @@ use simthing_spec::{
 };
 
 use crate::arena_hierarchy::{
-    build_execution_plan, resolve_node_columns, ArenaTreeLayout, NodeColumnRefs,
+    build_execution_plan, resolve_node_columns_for_property, ArenaTreeLayout, NodeColumnRefs,
 };
 use crate::resource_flow_burn_in::{ResourceFlowBurnInReport, ResourceFlowSoakSummaryReport};
 use crate::resource_flow_dynamic_enrollment_soak::{
@@ -28,7 +28,7 @@ use crate::resource_flow_dynamic_enrollment_soak::{
 use crate::scenario::Scenario;
 use crate::session::{SessionError, SimSession};
 
-type CellKey = (crate::arena_registry::SlotId, u32);
+type CellKey = (crate::arena_registry::SlotId, ColumnIndex);
 
 pub const RF_T2_STATIC_FLAT_STAR_10: &str = "rf_t2_static_flat_star_10_participants";
 pub const RF_T2_STATIC_FLAT_STAR_64: &str = "rf_t2_static_flat_star_64_participants";
@@ -956,7 +956,7 @@ fn execution_layout(session: &SimSession) -> (ArenaTreeLayout, NodeColumnRefs) {
         .registry
         .id_of("core", "food_flow")
         .expect("food_flow");
-    let cols = resolve_node_columns(&session.proto.registry.property(flow_id).layout, "food")
+    let cols = resolve_node_columns_for_property(&session.proto.registry, flow_id, "food")
         .expect("cols");
     let layout = build_execution_plan(&session.proto.registry, &session.spec_state.arena_registry)
         .expect("plan")

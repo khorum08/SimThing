@@ -1,10 +1,31 @@
 //! Driver-compiled AccumulatorOp execution plans (semantic-free).
 
-use crate::AccumulatorOp;
+use crate::{AccumulatorOp, ColumnIndex};
 
-/// Column index for a structural scalar channel in the AccumulatorOp value grid.
+/// Plan-local structural grid channel id (input/output lanes in a plan-owned
+/// `n_dims` buffer). Distinct from registry [`ColumnIndex`] — never a role-pathway
+/// global column by itself.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct StructuralScalarChannel(pub u32);
+pub struct StructuralScalarChannel(u32);
+
+impl StructuralScalarChannel {
+    pub const INPUT: Self = Self(0);
+    pub const OUTPUT: Self = Self(1);
+
+    pub const fn new(raw: u32) -> Self {
+        Self(raw)
+    }
+
+    pub const fn raw(self) -> u32 {
+        self.0
+    }
+
+    /// Seal this plan-local channel into a [`ColumnIndex`] for AccumulatorOp
+    /// plans that own their own `n_dims` grid (not property-role pathway columns).
+    pub fn into_plan_column(self) -> ColumnIndex {
+        ColumnIndex::from_structural_plan_channel(self.0)
+    }
+}
 
 /// AccumulatorOp plan assembled by `simthing-driver` and executed under `simthing-sim` tick ownership.
 #[derive(Debug, Clone, PartialEq)]

@@ -5,25 +5,27 @@
 //! Not wired into the default production pass graph.
 
 use simthing_core::{
-    column_aware_reduction_op, eml_opcode, AccumulatorOp, ColumnIndex, CombineFn, ConsumeMode,
-    EmlConsumerMask, EmlExecutionClass, EmlExpressionRegistry, EmlFormulaMeta, EmlNodeGpu,
-    EmlTreeId, GateSpec, ScaleSpec, SlotIndex, SourceSpec,
+    column_aware_reduction_op, eml_opcode, AccumulatorOp, ColumnAwareReductionCombine,
+    ColumnAwareReductionSpec, CombineFn, ConsumeMode, EmlConsumerMask, EmlExecutionClass,
+    EmlExpressionRegistry, EmlFormulaMeta, EmlNodeGpu, EmlTreeId, GateSpec, ScaleSpec, SlotIndex,
+    SourceSpec, StructuralScalarChannel,
 };
 use simthing_gpu::{
-    accumulator_op::set_debug_readback_allowed, AccumulatorOpSession, EmlGpuProgramTable,
-    GpuContext, PackedAccumulatorUpload, PackedThresholdUpload, StructuredFieldExecutionOptions,
-    StructuredFieldExecutionReport, StructuredFieldStencilBoundaryMode,
-    StructuredFieldStencilConfig, StructuredFieldStencilMaskMode, StructuredFieldStencilOp,
-    StructuredFieldStencilOperator, StructuredFieldStencilSourcePolicy, ThresholdEvent,
-    ThresholdRegistration, DIR_UPWARD, THRESH_BUF_VALUES,
+    accumulator_op::set_debug_readback_allowed, encode_column, AccumulatorOpSession,
+    EmlGpuProgramTable, GpuContext, PackedAccumulatorUpload, PackedThresholdUpload,
+    StructuredFieldExecutionOptions, StructuredFieldExecutionReport,
+    StructuredFieldStencilBoundaryMode, StructuredFieldStencilConfig,
+    StructuredFieldStencilMaskMode, StructuredFieldStencilOp, StructuredFieldStencilOperator,
+    StructuredFieldStencilSourcePolicy, ThresholdEvent, ThresholdRegistration, DIR_UPWARD,
+    THRESH_BUF_VALUES,
 };
 use simthing_spec::{
     compile_region_field_preview, estimate_region_field_budget, CompiledFieldCadence,
     CompiledFirstSliceCommitmentThreshold, CompiledFirstSliceScenarioPreview,
-    CompiledRegionFieldOperator, CompiledRegionFieldPreview, CompiledRegionFieldStencilSpec,
-    CompiledRegionFieldSummaryPolicy, MappingExecutionProfile, RegionFieldBudgetError,
-    RegionFieldBudgetEstimate, RegionFieldBudgetSpec, RegionFieldIsolationPolicyEstimate,
-    RegionFieldSpec, SpecError,
+    CompiledRegionFieldOperator, CompiledRegionFieldPreview, CompiledRegionFieldReduction,
+    CompiledRegionFieldStencilSpec, CompiledRegionFieldSummaryPolicy, MappingExecutionProfile,
+    RegionFieldBudgetError, RegionFieldBudgetEstimate, RegionFieldBudgetSpec,
+    RegionFieldIsolationPolicyEstimate, RegionFieldSpec, SpecError,
 };
 use thiserror::Error;
 
@@ -41,8 +43,8 @@ pub fn compiled_stencil_to_gpu_config(
         width: compiled.width,
         height: compiled.height,
         n_dims: compiled.n_dims,
-        source_col: compiled.source_col,
-        target_col: compiled.target_col,
+        source_col: encode_column(compiled.source_col),
+        target_col: encode_column(compiled.target_col),
         horizon: compiled.horizon,
         alpha_self: compiled.alpha_self,
         gamma_neighbor: compiled.gamma_neighbor,
@@ -67,13 +69,27 @@ pub fn compiled_stencil_to_gpu_config(
             } => StructuredFieldStencilOperator::SaturatingFlux {
                 u_sat,
                 chi,
-                choke_output_col,
+                choke_output_col: choke_output_col.map(encode_column),
             },
         },
         source_policy: StructuredFieldStencilSourcePolicy::CallerManagedOneShotSeedThenZero,
         boundary_mode: StructuredFieldStencilBoundaryMode::Zero,
         mask_mode: StructuredFieldStencilMaskMode::All,
         allow_extended_horizon: compiled.allow_extended_horizon,
+    }
+}
+
+fn typed_region_field_reduction(
+    reduction: &CompiledRegionFieldReduction,
+) -> ColumnAwareReductionSpec {
+    ColumnAwareReductionSpec {
+        child_slot_start: SlotIndex::new(reduction.child_slot_start),
+        child_slot_count: reduction.child_slot_count,
+        child_col: reduction.child_col,
+        parent_slot: SlotIndex::new(reduction.parent_slot),
+        parent_col: reduction.parent_col,
+        combine: ColumnAwareReductionCombine::Sum,
+        order_band: reduction.order_band,
     }
 }
 
@@ -519,7 +535,7 @@ impl FirstSliceMappingSession {
 
         let tree_id = tree_id_override.unwrap_or(1);
         let n_dims = preview.stencil.n_dims;
-        let parent_slot = reduction.parent_slot;
+        let parent_slot = SlotIndex::new(reduction.parent_slot);
         let n_slots = parent_slot.raw() + 1;
         let eml_resource_col = 1;
         let eml_weight_a_col = 2;
@@ -537,7 +553,7 @@ impl FirstSliceMappingSession {
             enabled,
             width: preview.grid_size,
             n_dims,
-            source_col: preview.stencil.source_col,
+            source_col: encode_column(preview.stencil.source_col),
             preview,
             scheduler,
             stencil,
@@ -918,8 +934,8 @@ impl FirstSliceMappingSession {
             .write_slot_col_values(
                 ctx,
                 &[
-                    (parent_slot.raw(), self.eml_weight_a_col, weight_a),
-                    (parent_slot.raw(), self.eml_weight_b_col, weight_b),
+                    (parent_slot, self.eml_weight_a_col, weight_a),
+                    (parent_slot, self.eml_weight_b_col, weight_b),
                 ],
             )
             .map_err(|e| FirstSliceMappingError::Accumulator(format!("{e}")))?;
@@ -947,30 +963,30 @@ impl FirstSliceMappingSession {
         weight_b: f32,
     ) -> Result<(Option<f32>, Option<f32>), FirstSliceMappingError> {
         let reduction = self.preview.reduction.as_ref().expect("validated at open");
-        let reduction_op = column_aware_reduction_op(reduction.clone())
+        let reduction_op = column_aware_reduction_op(typed_region_field_reduction(reduction))
             .map_err(|e| FirstSliceMappingError::Accumulator(format!("{e}")))?;
 
-        let parent_slot = reduction.parent_slot;
+        let parent_slot = SlotIndex::new(reduction.parent_slot);
         let parent_col = reduction.parent_col;
         let cell_count = self.preview.cell_count;
 
         self.reduction_stencil_readbacks_this_tick = 0;
         let _bridge = self.bridge_stencil_field_to_accumulator(ctx, weight_a, weight_b)?;
 
+        let resource_col = StructuralScalarChannel::new(self.eml_resource_col).into_plan_column();
+        let output_col = StructuralScalarChannel::new(self.eml_output_col).into_plan_column();
+
         let sum_resource_op = AccumulatorOp {
             source: SourceSpec::SlotRange {
                 start: SlotIndex::new(0),
                 count: cell_count,
-                col: ColumnIndex::new(self.eml_resource_col as usize),
+                col: resource_col,
             },
             combine: CombineFn::Sum,
             gate: GateSpec::OrderBand(0),
             scale: ScaleSpec::Identity,
             consume: ConsumeMode::ResetTarget,
-            targets: vec![(
-                parent_slot,
-                ColumnIndex::new(self.eml_resource_col as usize),
-            )],
+            targets: vec![(parent_slot, resource_col)],
         };
 
         let eml_op = AccumulatorOp {
@@ -984,7 +1000,7 @@ impl FirstSliceMappingSession {
             gate: GateSpec::OrderBand(1),
             scale: ScaleSpec::Identity,
             consume: ConsumeMode::ResetTarget,
-            targets: vec![(parent_slot, ColumnIndex::new(self.eml_output_col as usize))],
+            targets: vec![(parent_slot, output_col)],
         };
 
         if readback_report {
@@ -1014,7 +1030,7 @@ impl FirstSliceMappingSession {
             .acc_session
             .readback_full(ctx)
             .map_err(|e| FirstSliceMappingError::Accumulator(format!("{e}")))?;
-        let threat = out[self.slot_idx(parent_slot.raw(), parent_col.raw_u32())];
+        let threat = out[self.slot_idx(parent_slot.raw(), encode_column(parent_col))];
         let urgency = out[self.slot_idx(parent_slot.raw(), self.eml_output_col)];
         Ok((Some(threat), Some(urgency)))
     }
@@ -1041,7 +1057,7 @@ impl FirstSliceMappingSession {
         self.acc_session.ensure_threshold_emission_capacity(ctx, 1);
         let threshold_upload =
             PackedThresholdUpload::from_registrations(&[ThresholdRegistration {
-                slot: parent_slot.raw(),
+                slot: parent_slot,
                 col: self.eml_output_col,
                 threshold,
                 direction: DIR_UPWARD,
@@ -1108,7 +1124,7 @@ impl FirstSliceMappingSession {
         self.acc_session.ensure_threshold_emission_capacity(ctx, 1);
         let threshold_upload =
             PackedThresholdUpload::from_registrations(&[ThresholdRegistration {
-                slot: parent_slot.raw(),
+                slot: parent_slot,
                 col: self.eml_output_col,
                 threshold,
                 direction: DIR_UPWARD,

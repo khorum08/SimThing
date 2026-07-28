@@ -1,8 +1,8 @@
 //! E-11 — arena participant hierarchy and band layout (driver-only).
 
 use simthing_core::{
-    expand_arena_internal_columns, AccumulatorRole, DimensionRegistry, PropertyLayout,
-    SimPropertyId, SimThingId, SubFieldRole,
+    expand_arena_internal_columns, AccumulatorRole, ColumnIndex, DimensionRegistry, PropertyLayout,
+    PropertyColumnRange, SimPropertyId, SimThingId, SubFieldRole,
 };
 use std::collections::HashMap;
 use thiserror::Error;
@@ -57,17 +57,17 @@ impl HierarchyNode {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct NodeColumnRefs {
-    pub intrinsic_flow_col: u32,
-    pub intrinsic_flow_sum_col: u32,
-    pub allocated_flow_col: u32,
-    pub balance_col: Option<u32>,
-    pub balance_governing_col: Option<u32>,
-    pub weight_col: u32,
-    pub weight_sum_col: u32,
-    pub propagated_intrinsic_flow_col: u32,
-    pub propagated_allocated_flow_col: u32,
-    pub propagated_weight_sum_col: u32,
-    pub hosted_simthing_id_col: u32,
+    pub intrinsic_flow_col: ColumnIndex,
+    pub intrinsic_flow_sum_col: ColumnIndex,
+    pub allocated_flow_col: ColumnIndex,
+    pub balance_col: Option<ColumnIndex>,
+    pub balance_governing_col: Option<ColumnIndex>,
+    pub weight_col: ColumnIndex,
+    pub weight_sum_col: ColumnIndex,
+    pub propagated_intrinsic_flow_col: ColumnIndex,
+    pub propagated_allocated_flow_col: ColumnIndex,
+    pub propagated_weight_sum_col: ColumnIndex,
+    pub hosted_simthing_id_col: ColumnIndex,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -192,19 +192,27 @@ impl HierarchyNode {
 }
 
 pub fn resolve_node_columns(
+    range: &PropertyColumnRange,
     layout: &PropertyLayout,
     arena_name: &str,
 ) -> Result<NodeColumnRefs, HierarchyError> {
     let expanded = expand_arena_internal_columns(layout.clone());
+    // Authoritative registry start — never fabricate a zero-start range as a
+    // substitute for registry.column_range(...).
+    let range = PropertyColumnRange {
+        start: range.start,
+        stride: expanded.stride(),
+    };
     let arena = arena_name.to_string();
 
     let intrinsic_flow_col =
-        find_role_col(&expanded, |r| matches!(r, AccumulatorRole::IntrinsicFlow)).ok_or_else(
+        find_role_col(&range, &expanded, |r| matches!(r, AccumulatorRole::IntrinsicFlow)).ok_or_else(
             || HierarchyError::MissingIntrinsicFlow {
                 arena: arena.clone(),
             },
         )?;
     let allocated_flow_col = find_role_col(
+        &range,
         &expanded,
         |r| matches!(r, AccumulatorRole::AllocatedFlow { arena: a } if a == arena_name),
     )
@@ -212,6 +220,7 @@ pub fn resolve_node_columns(
         arena: arena.clone(),
     })?;
     let weight_col = find_role_col(
+        &range,
         &expanded,
         |r| matches!(r, AccumulatorRole::AllocatorWeight { arena: a } if a == arena_name),
     )
@@ -225,41 +234,54 @@ pub fn resolve_node_columns(
             .is_some_and(|spec| matches!(&spec.role, AccumulatorRole::Balance(_)))
     });
     let balance_col = balance_subfield
-        .and_then(|subfield| expanded.offset_of(&subfield.role))
-        .map(|offset| offset.lane() as u32);
+        .and_then(|subfield| range.col_for_role(&subfield.role, &expanded));
     let balance_governing_col = balance_subfield
         .and_then(|subfield| subfield.governed_by.as_ref())
-        .and_then(|role| expanded.offset_of(role))
-        .map(|offset| offset.lane() as u32);
+        .and_then(|role| range.col_for_role(role, &expanded));
 
     let named = |s: &str| {
-        expanded
-            .offset_of(&SubFieldRole::Named(s.into()))
-            .map(|o| o.lane() as u32)
+        range
+            .col_for_role(&SubFieldRole::Named(s.into()), &expanded)
+            .expect("E-8R column")
     };
     Ok(NodeColumnRefs {
         intrinsic_flow_col,
-        intrinsic_flow_sum_col: named("intrinsic_flow_sum").expect("E-8R column") as u32,
+        intrinsic_flow_sum_col: named("intrinsic_flow_sum"),
         allocated_flow_col,
         balance_col,
         balance_governing_col,
         weight_col,
-        weight_sum_col: named("weight_sum").expect("E-8R column") as u32,
-        propagated_intrinsic_flow_col: named("propagated_intrinsic_flow").expect("E-8R column")
-            as u32,
-        propagated_allocated_flow_col: named("propagated_allocated_flow").expect("E-8R column")
-            as u32,
-        propagated_weight_sum_col: named("propagated_weight_sum").expect("E-8R column") as u32,
-        hosted_simthing_id_col: named("hosted_simthing_id").expect("E-8R column") as u32,
+        weight_sum_col: named("weight_sum"),
+        propagated_intrinsic_flow_col: named("propagated_intrinsic_flow"),
+        propagated_allocated_flow_col: named("propagated_allocated_flow"),
+        propagated_weight_sum_col: named("propagated_weight_sum"),
+        hosted_simthing_id_col: named("hosted_simthing_id"),
     })
 }
 
-fn find_role_col(layout: &PropertyLayout, pred: impl Fn(&AccumulatorRole) -> bool) -> Option<u32> {
-    layout.sub_fields.iter().enumerate().find_map(|(i, sf)| {
+/// Resolve arena node columns from the registry-owned property range + layout.
+pub fn resolve_node_columns_for_property(
+    registry: &DimensionRegistry,
+    flow_property_id: SimPropertyId,
+    arena_name: &str,
+) -> Result<NodeColumnRefs, HierarchyError> {
+    resolve_node_columns(
+        registry.column_range(flow_property_id),
+        &registry.property(flow_property_id).layout,
+        arena_name,
+    )
+}
+
+fn find_role_col(
+    range: &PropertyColumnRange,
+    layout: &PropertyLayout,
+    pred: impl Fn(&AccumulatorRole) -> bool,
+) -> Option<ColumnIndex> {
+    layout.sub_fields.iter().find_map(|sf| {
         sf.accumulator_spec
             .as_ref()
             .filter(|s| pred(&s.role))
-            .map(|_| i as u32)
+            .and_then(|_| range.col_for_role(&sf.role, layout))
     })
 }
 
@@ -443,11 +465,11 @@ pub fn build_execution_plan(
             .filter(|member| member.arena_idx == arena_idx)
             .cloned()
             .collect();
-        let layout = registry
-            .property(arena_desc.flow_property_id)
-            .layout
-            .clone();
-        let cols = resolve_node_columns(&layout, &arena_desc.name)?;
+        let cols = resolve_node_columns_for_property(
+            registry,
+            arena_desc.flow_property_id,
+            &arena_desc.name,
+        )?;
         let tree = if members.iter().any(|member| member.parent.is_some()) {
             build_nested_layout(arena_idx, arena_desc, cols, &members)?
         } else {

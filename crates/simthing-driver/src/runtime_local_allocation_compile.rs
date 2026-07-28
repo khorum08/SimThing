@@ -75,8 +75,8 @@ fn compile_allocation_aggregate_proof_plans(
         let participant_count = source_allocation_indices.len() as u32;
         let allocation_plan = compile_participant_channel_sum_plan(
             participant_count,
-            StructuralScalarChannel(0),
-            StructuralScalarChannel(1),
+            StructuralScalarChannel::INPUT,
+            StructuralScalarChannel::OUTPUT,
         );
         plans.push(RuntimeLocalAllocationAggregateProofPlan {
             owner_ref,

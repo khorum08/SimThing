@@ -7,12 +7,13 @@ use simthing_core::{
     SlotIndex, SourceSpec,
 };
 
+use crate::wgsl_encode::encode_column;
 use crate::{AccumulatorInputGpu, AccumulatorOpGpu, EncodeError, InputListRange};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct TransferInputRef {
     pub slot: u32,
-    pub col: u32,
+    pub col: ColumnIndex,
     pub unit_cost: f32,
 }
 
@@ -20,7 +21,7 @@ pub struct TransferInputRef {
 pub struct TransferRegistration {
     pub inputs: Vec<TransferInputRef>,
     pub target_slot: u32,
-    pub target_col: u32,
+    pub target_col: ColumnIndex,
     pub output_scale: f32,
     /// Single-source fixed transfer cap (Identity + SubtractFromSource path).
     pub max_transfer: Option<f32>,
@@ -41,9 +42,13 @@ pub enum TransferPlanError {
     #[error("transfer registration has no inputs")]
     EmptyInputs,
     #[error("non-positive or non-finite unit cost at slot {slot} col {col}: {unit_cost}")]
-    NonPositiveUnitCost { slot: u32, col: u32, unit_cost: f32 },
+    NonPositiveUnitCost {
+        slot: u32,
+        col: ColumnIndex,
+        unit_cost: f32,
+    },
     #[error("consumed input cell ({slot}, {col}) appears in more than one same-band transfer op")]
-    ContendedConsumedInput { slot: u32, col: u32 },
+    ContendedConsumedInput { slot: u32, col: ColumnIndex },
     #[error("single-source fixed transfer requires output_scale == 1.0 (got {output_scale})")]
     UnsupportedSingleSourceOutputScale { output_scale: f32 },
     #[error("non-finite or negative max_transfer")]
@@ -87,14 +92,14 @@ fn validate_registration(reg: &TransferRegistration) -> Result<(), TransferPlanE
     Ok(())
 }
 
-fn consumed_cells(reg: &TransferRegistration) -> Vec<(u32, u32)> {
+fn consumed_cells(reg: &TransferRegistration) -> Vec<(u32, ColumnIndex)> {
     reg.inputs.iter().map(|i| (i.slot, i.col)).collect()
 }
 
 fn input_to_gpu(input: &TransferInputRef) -> AccumulatorInputGpu {
     AccumulatorInputGpu {
         slot: input.slot,
-        col: input.col,
+        col: encode_column(input.col),
         unit_cost_bits: input.unit_cost.to_bits(),
         flags: 0,
     }
@@ -121,7 +126,7 @@ pub fn plan_transfer_ops(
 ) -> Result<TransferPlan, TransferPlanError> {
     let mut ops = Vec::with_capacity(registrations.len());
     let mut input_lists = Vec::with_capacity(registrations.len());
-    let mut seen_consumed: HashSet<(u32, u32, u32)> = HashSet::new();
+    let mut seen_consumed: HashSet<(u32, u32, ColumnIndex)> = HashSet::new();
     let mut n_bands = 0u32;
 
     for reg in registrations {
@@ -140,16 +145,13 @@ pub fn plan_transfer_ops(
             ops.push(AccumulatorOp {
                 source: SourceSpec::SlotValue {
                     slot: SlotIndex::new(inp.slot),
-                    col: ColumnIndex::new(inp.col as usize),
+                    col: inp.col,
                 },
                 combine: CombineFn::Identity,
                 gate: GateSpec::OrderBand(reg.order_band),
                 scale: ScaleSpec::Constant(reg.max_transfer.unwrap()),
                 consume: ConsumeMode::SubtractFromSource,
-                targets: vec![(
-                    SlotIndex::new(reg.target_slot),
-                    ColumnIndex::new(reg.target_col as usize),
-                )],
+                targets: vec![(SlotIndex::new(reg.target_slot), reg.target_col)],
             });
             input_lists.push(Vec::new());
         } else {
@@ -158,7 +160,7 @@ pub fn plan_transfer_ops(
                 .iter()
                 .map(|i| InputSpec {
                     slot: SlotIndex::new(i.slot),
-                    col: ColumnIndex::new(i.col as usize),
+                    col: i.col,
                     unit_cost: i.unit_cost,
                 })
                 .collect();
@@ -172,10 +174,7 @@ pub fn plan_transfer_ops(
                     ScaleSpec::Constant(reg.output_scale)
                 },
                 consume: ConsumeMode::SubtractFromAllInputs,
-                targets: vec![(
-                    SlotIndex::new(reg.target_slot),
-                    ColumnIndex::new(reg.target_col as usize),
-                )],
+                targets: vec![(SlotIndex::new(reg.target_slot), reg.target_col)],
             });
             input_lists.push(reg.inputs.iter().map(input_to_gpu).collect());
         }
@@ -222,12 +221,12 @@ pub fn conjunctive_recipe_registration_to_transfer(
             .iter()
             .map(|i| TransferInputRef {
                 slot: i.slot.raw(),
-                col: i.col.raw_u32(),
+                col: i.col,
                 unit_cost: i.unit_cost,
             })
             .collect(),
         target_slot: reg.target_slot.raw(),
-        target_col: reg.target_col.raw_u32(),
+        target_col: reg.target_col,
         output_scale: 1.0,
         max_transfer: None,
         tree_id: None,
@@ -253,11 +252,11 @@ pub fn discrete_transfer_registration_to_transfer(
     TransferRegistration {
         inputs: vec![TransferInputRef {
             slot: reg.source_slot.raw(),
-            col: reg.source_col.raw_u32(),
+            col: reg.source_col,
             unit_cost: 1.0,
         }],
         target_slot: reg.target_slot.raw(),
-        target_col: reg.target_col.raw_u32(),
+        target_col: reg.target_col,
         output_scale: 1.0,
         max_transfer: Some(reg.amount),
         tree_id: None,

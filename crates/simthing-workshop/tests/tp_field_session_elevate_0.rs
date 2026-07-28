@@ -11,7 +11,7 @@ use simthing_clausething::{
 };
 use simthing_core::SubFieldRole;
 use simthing_driver::{
-    allocator_eps_bound, allocator_from_disbursements, check_allocator_step, resolve_node_columns,
+    allocator_eps_bound, allocator_from_disbursements, check_allocator_step, resolve_node_columns_for_property,
     AllocatorConservationViolation,
 };
 use simthing_mapeditor::{
@@ -281,7 +281,7 @@ fn execute_canonical_recursive_rf(
             .id_of(&rf.property_namespace, &rf.property_name)
             .expect("RF property id");
         let cols =
-            resolve_node_columns(&sim.proto.registry.property(property_id).layout, &rf.arena)
+            resolve_node_columns_for_property(&sim.proto.registry, property_id, &rf.arena)
                 .expect("RF columns");
         let balance_col = cols.balance_col.expect("Balance column");
         let owner_slot = sim
@@ -291,7 +291,7 @@ fn execute_canonical_recursive_rf(
             .expect("ancestor admitted")
             .raw();
         let values = sim.state.read_values();
-        values[(owner_slot * sim.state.n_dims + balance_col) as usize]
+        values[(owner_slot * sim.state.n_dims + balance_col.raw_u32()) as usize]
     };
 
     bridge
@@ -304,7 +304,7 @@ fn execute_canonical_recursive_rf(
         .registry
         .id_of(&rf.property_namespace, &rf.property_name)
         .expect("RF property id");
-    let cols = resolve_node_columns(&sim.proto.registry.property(property_id).layout, &rf.arena)
+    let cols = resolve_node_columns_for_property(&sim.proto.registry, property_id, &rf.arena)
         .expect("RF columns");
     let balance_col = cols.balance_col.expect("Balance column");
     let participant_slot = |hosted_id| {
@@ -327,7 +327,9 @@ fn execute_canonical_recursive_rf(
         .collect();
     assert_eq!(leaf_ids.len(), 3, "real Owner must have three RF siblings");
     let values = sim.state.read_values();
-    let cell = |slot: u32, col: u32| values[(slot * sim.state.n_dims + col) as usize];
+    let cell = |slot: u32, col: simthing_core::ColumnIndex| {
+        values[(slot * sim.state.n_dims + col.raw_u32()) as usize]
+    };
     let leaf_allocations = leaf_ids
         .iter()
         .map(|id| {
@@ -958,7 +960,7 @@ fn amount(sim: &simthing_driver::SimSession, namespace: &str, name: &str) -> f32
     let values = sim.state.read_values();
     if let Some(economy) = sim.spec_state.resource_economy_registry.as_ref() {
         for emission in &economy.registrations.emissions {
-            if emission.source_col as usize == col {
+            if emission.source_col.raw_u32() as usize == col {
                 let idx = emission.source_slot as usize * n_dims + col;
                 if let Some(v) = values.get(idx) {
                     return *v;

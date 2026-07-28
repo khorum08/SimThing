@@ -1,13 +1,14 @@
 //! Flat-star D=2 Resource Flow fixture (session-path).
 
 use simthing_core::{
-    AccumulatorRole, AccumulatorSpec, ClampBehavior, DimensionRegistry, LogTier, SubFieldRole,
-    SubFieldSpec,
+    AccumulatorRole, AccumulatorSpec, ClampBehavior, ColumnIndex, DimensionRegistry, LogTier,
+    SubFieldRole, SubFieldSpec,
 };
 use simthing_driver::{
-    build_execution_plan, install_atomic, resolve_node_columns, ArenaTreeLayout, NodeColumnRefs,
-    Scenario, SimSession,
+    build_execution_plan, build_execution_plan_from_authoring, install_atomic, resolve_node_columns_for_property,
+    ArenaTreeLayout, NodeColumnRefs, Scenario, SimSession,
 };
+use simthing_driver::arena_registry::SlotId;
 use simthing_gpu::GpuContext;
 use simthing_spec::{
     compile_property, ArenaSpec, ExplicitParticipantSpec, FissionPolicySpec, GameModeSpec,
@@ -167,7 +168,7 @@ pub fn open_flat_star_session(hosted_count: usize, flag_enabled: bool) -> FlatSt
         .registry
         .id_of("core", "food_flow")
         .expect("food_flow registered");
-    let cols = resolve_node_columns(&session.proto.registry.property(flow_id).layout, "food")
+    let cols = resolve_node_columns_for_property(&session.proto.registry, flow_id, "food")
         .expect("column refs");
     let layout = build_execution_plan_from_authoring(
         &session.proto.registry,
@@ -204,13 +205,13 @@ pub fn flat_star_cell_inputs(
     cols: NodeColumnRefs,
     root_intrinsic_flow: f32,
     leaf_weights: &[f32],
-) -> std::collections::HashMap<(u32, u32), f32> {
+) -> std::collections::HashMap<(SlotId, ColumnIndex), f32> {
     let mut inputs = std::collections::HashMap::from([(
-        (root_slot, cols.intrinsic_flow_col),
+        (SlotId::new(root_slot), cols.intrinsic_flow_col),
         root_intrinsic_flow,
     )]);
     for (slot, &weight) in leaf_slots.iter().zip(leaf_weights.iter()) {
-        inputs.insert((*slot, cols.weight_col), weight);
+        inputs.insert((SlotId::new(*slot), cols.weight_col), weight);
     }
     inputs
 }
@@ -219,6 +220,6 @@ pub fn standard_flat_star_inputs(
     root_slot: u32,
     leaf_slots: &[u32],
     cols: NodeColumnRefs,
-) -> std::collections::HashMap<(u32, u32), f32> {
+) -> std::collections::HashMap<(SlotId, ColumnIndex), f32> {
     flat_star_cell_inputs(root_slot, leaf_slots, cols, 10.0, &[1.0, 3.0])
 }

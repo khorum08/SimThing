@@ -186,7 +186,7 @@ fn amount_for_property(sim: &simthing_driver::SimSession, namespace: &str, name:
     let values = sim.state.read_values();
     if let Some(economy) = sim.spec_state.resource_economy_registry.as_ref() {
         for emission in &economy.registrations.emissions {
-            if emission.source_col as usize == col {
+            if emission.source_col.raw_u32() as usize == col {
                 let idx = emission.source_slot as usize * n_dims + col;
                 if let Some(v) = values.get(idx) {
                     return *v;

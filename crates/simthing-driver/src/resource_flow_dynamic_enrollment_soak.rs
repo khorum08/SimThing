@@ -9,8 +9,9 @@ use crate::arena_hierarchy::{ArenaTreeLayout, NodeColumnRefs};
 use crate::arena_registry::SlotId;
 use crate::resource_flow_burn_in::{run_flat_star_burn_in, ResourceFlowBurnInReport};
 use crate::session::SimSession;
+use simthing_core::ColumnIndex;
 
-type CellKey = (SlotId, u32);
+type CellKey = (SlotId, ColumnIndex);
 
 /// Boundary-time enrollment metrics collected during soak setup (driver/test-reporting only).
 #[derive(Clone, Debug, Default, PartialEq, Eq)]

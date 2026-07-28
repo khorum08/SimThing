@@ -13,6 +13,7 @@ use simthing_core::property::TransformOp;
 use simthing_core::{DimensionRegistry, SimThing};
 
 use crate::slot::SlotAllocator;
+use crate::wgsl_encode::encode_column;
 use crate::world_state::{OverlayDelta, SlotDeltaRange, OP_ADD, OP_MULTIPLY, OP_SET};
 
 /// Build the per-tick overlay delta batch for upload to `WorldGpuState`.
@@ -84,7 +85,7 @@ fn build_node(
                     TransformOp::Set(v) => (OP_SET, *v),
                 };
                 deltas.push(OverlayDelta {
-                    col: col.raw_u32(),
+                    col: encode_column(col),
                     op_kind,
                     value,
                     _pad: 0,

@@ -3,7 +3,7 @@
 use std::collections::BTreeMap;
 
 use simthing_core::{
-    AccumulatorOp, ColumnIndex, CombineFn, CompiledAccumulatorOpPlan, ConsumeMode, GateSpec,
+    AccumulatorOp, CombineFn, CompiledAccumulatorOpPlan, ConsumeMode, GateSpec,
     InputSpec, ScaleSpec, SlotIndex, SourceSpec, StructuralScalarChannel,
 };
 use simthing_spec::{
@@ -120,9 +120,9 @@ pub fn compile_structural_link_neighbor_sum_plan(
     }
 
     let projection = build_dense_projection(scenario)?;
-    let input_col = input_channel.0;
-    let output_col = output_channel.0;
-    let n_dims = input_col.max(output_col) + 1;
+    let input_col = input_channel.into_plan_column();
+    let output_col = output_channel.into_plan_column();
+    let n_dims = input_channel.raw().max(output_channel.raw()) + 1;
 
     let mut ops = Vec::new();
     for (target_slot, neighbors) in projection.adjacency.iter().enumerate() {
@@ -133,7 +133,7 @@ pub fn compile_structural_link_neighbor_sum_plan(
             .iter()
             .map(|&neighbor_slot| InputSpec {
                 slot: SlotIndex::new(neighbor_slot),
-                col: ColumnIndex::new(input_col as usize),
+                col: input_col,
                 unit_cost: 1.0,
             })
             .collect();
@@ -145,7 +145,7 @@ pub fn compile_structural_link_neighbor_sum_plan(
             consume: ConsumeMode::AddToTarget,
             targets: vec![(
                 SlotIndex::new(target_slot as u32),
-                ColumnIndex::new(output_col as usize),
+                output_col,
             )],
         });
     }

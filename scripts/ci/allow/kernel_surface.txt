@@ -30,6 +30,7 @@ CLAMP_BOUNDED | surface-inert | Inert public kernel constant | retire when kerne
 CLAMP_FLOORED | surface-inert | Inert public kernel constant | retire when kernel export set is closed by type-boundary admission
 CLAMP_UNBOUNDED | surface-inert | Inert public kernel constant | retire when kernel export set is closed by type-boundary admission
 classify_ao_wgsl0_plan | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
+column_from_wire | authority-export | PLAN-STRUCT-TYPING-0 WGSL-RAW-BOUNDARY rematerialize helper; sole production from_gpu_round_trip call site | RF-COLUMN-MINT-MIGRATE-0 retires residual raw doors
 ColumnRuleDescriptor | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
 combine_in_closed_vocabulary | authority-export | OC-K-EML-OPCODE-GATE-0 closed combine vocabulary predicate | retire when kernel export set is closed by type-boundary admission
 CombineRegistrationRequest | sealed-export | OC-K-EML-OPCODE-GATE-0 combine registration request class | retire when kernel export set is closed by type-boundary admission
@@ -82,6 +83,7 @@ eml_opcode_gate | authority-export | OC-K-EML-OPCODE-GATE-0 module surface; clos
 EmlGpuProgramTable | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
 EmlTreeRangeGpu | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
 EmlUploadError | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
+encode_column | authority-export | PLAN-STRUCT-TYPING-0 WGSL-RAW-BOUNDARY drop helper; sole production ColumnIndex::raw_u32 encode path for plan columns | RF-COLUMN-MINT-MIGRATE-0 retires residual raw doors
 encode_column_rules | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
 encode_emission_plan | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
 encode_rule | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
@@ -128,6 +130,7 @@ mint_exact_magnitude_proof_candidate_f_cpu | authority-export | OC-K-EXACT-GATE-
 NO_CONSTANT | surface-inert | Inert public kernel constant | retire when kernel export set is closed by type-boundary admission
 NO_MAX_EMIT | surface-inert | Inert public kernel constant | retire when kernel export set is closed by type-boundary admission
 NO_TREE_ID | surface-inert | Inert public kernel constant | retire when kernel export set is closed by type-boundary admission
+ObjectResidency | sealed-export | ROW-SLOT-OBJECT-SEMANTICS-0 kernel-minted object-to-row residency token with private fields | retire when object-derived residency is enforced by closed kernel type admission
 OP_ADD | surface-inert | Inert public kernel constant | retire when kernel export set is closed by type-boundary admission
 OP_MULTIPLY | surface-inert | Inert public kernel constant | retire when kernel export set is closed by type-boundary admission
 OP_SET | surface-inert | Inert public kernel constant | retire when kernel export set is closed by type-boundary admission
@@ -142,7 +145,6 @@ overlay_prep | authority-export | Exported kernel module surface; authority-bear
 OverlayCompileCache | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
 OverlayDelta | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
 OverlayOrderBandPlan | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
-ObjectResidency | sealed-export | ROW-SLOT-OBJECT-SEMANTICS-0 kernel-minted object-to-row residency token with private fields | retire when object-derived residency is enforced by closed kernel type admission
 PackedAccumulatorUpload | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
 PackedIntentUpload | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
 PackedThresholdUpload | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
@@ -222,8 +224,8 @@ validate_scatter_entries | authority-export | Exported kernel runtime/planning/o
 velocity_accumulator | authority-export | Exported kernel module surface; authority-bearing namespace | retire when kernel export set is closed by type-boundary admission
 VelocityAccumulatorPlan | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
 WEIGHT_COL_NONE | surface-inert | Inert public kernel constant | retire when kernel export set is closed by type-boundary admission
-WORKGROUP_SIZE | surface-inert | Inert public kernel constant | retire when kernel export set is closed by type-boundary admission
 wgsl_encode | authority-export | ROW-SLOT-OBJECT-SEMANTICS-0 single fenced raw WGSL encode boundary; no shader or opcode semantics | PLAN-STRUCT-TYPING-0 collapses round-trip mints into this boundary
+WORKGROUP_SIZE | surface-inert | Inert public kernel constant | retire when kernel export set is closed by type-boundary admission
 world_state | authority-export | Exported kernel module surface; authority-bearing namespace | retire when kernel export set is closed by type-boundary admission
 WorldAccumulatorRuntime | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
 WorldGpuState | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission

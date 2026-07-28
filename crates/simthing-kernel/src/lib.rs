@@ -134,9 +134,9 @@ pub use velocity_accumulator::{
     GovernedIntegrationPlan, PlannerError, VelocityAccumulatorPlan,
 };
 pub use wgsl_encode::{
-    build_governed_pairs, encode_rule, governed_pairs_for_property, GovernedPair, CLAMP_BOUNDED,
-    CLAMP_FLOORED, CLAMP_UNBOUNDED, RULE_FIRST, RULE_MAX, RULE_MEAN, RULE_MIN, RULE_SUM,
-    RULE_WEIGHTED_MEAN, WEIGHT_COL_NONE,
+    build_governed_pairs, column_from_wire, encode_column, encode_rule, governed_pairs_for_property,
+    GovernedPair, CLAMP_BOUNDED, CLAMP_FLOORED, CLAMP_UNBOUNDED, RULE_FIRST, RULE_MAX, RULE_MEAN,
+    RULE_MIN, RULE_SUM, RULE_WEIGHTED_MEAN, WEIGHT_COL_NONE,
 };
 pub use world_state::{
     IntentDelta, OverlayDelta, SlotDeltaRange, WorldGpuState, OP_ADD, OP_MULTIPLY, OP_SET,
