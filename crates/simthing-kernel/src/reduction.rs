@@ -19,11 +19,11 @@
 //! intermediate `output_vectors` rows are produced in the same sequence.
 
 use simthing_core::{
-    DimensionRegistry, ReductionRule, SimPropertyId, SimThing, SlotIndex, SubFieldRole,
+    DimensionRegistry, ObjectResidencyRequest, ReductionRule, SimPropertyId, SimThing, SubFieldRole,
 };
 
-use crate::slot::SlotAllocator;
-use crate::world_state::{encode_rule, WEIGHT_COL_NONE};
+use crate::slot::{ObjectResidency, SlotAllocator};
+use crate::wgsl_encode::{encode_rule, WEIGHT_COL_NONE};
 
 // ── Column rule table ─────────────────────────────────────────────────────────
 
@@ -172,6 +172,7 @@ impl TopologyState {
         let mut state = Self::empty(n_slots);
         walk(
             root,
+            root.root_residency_request(),
             0,
             allocator,
             &mut state.per_slot_children,
@@ -206,7 +207,14 @@ impl TopologyState {
     /// the (currently impossible) case where slot reuse breaks that.
     ///
     /// Caller must ensure `ensure_capacity` covers both slots first.
-    pub fn add_child(&mut self, parent_slot: SlotIndex, child_slot: SlotIndex) {
+    pub fn add_child(&mut self, parent: ObjectResidency, child: ObjectResidency) {
+        assert_eq!(
+            child.relation(),
+            simthing_core::ObjectResidencyRelation::ChildOf(parent.object()),
+            "TopologyState::add_child requires a current object-issued parent relation",
+        );
+        let parent_slot = parent.slot();
+        let child_slot = child.slot();
         let parent_idx = parent_slot.as_usize();
         let kids = &mut self.per_slot_children[parent_idx];
         if let Some(&last) = kids.last() {
@@ -257,167 +265,36 @@ impl TopologyState {
 
 fn walk(
     node: &SimThing,
+    request: ObjectResidencyRequest,
     depth: u32,
     allocator: &SlotAllocator,
     per_slot_children: &mut [Vec<u32>],
     depths: &mut [Option<u32>],
 ) {
-    let Some(slot) = allocator.slot_of(node.id) else {
+    let Some(residency) = allocator.residency_for(&request) else {
         return;
     };
+    let slot = residency.slot();
     depths[slot.as_usize()] = Some(depth);
     for child in &node.children {
-        if let Some(child_slot) = allocator.slot_of(child.id) {
-            per_slot_children[slot.as_usize()].push(child_slot.raw());
+        let child_request = node
+            .attached_child_residency_request(child)
+            .expect("tree traversal holds the attached direct child");
+        if let Some(child_residency) = allocator.residency_for(&child_request) {
+            per_slot_children[slot.as_usize()].push(child_residency.slot().raw());
         }
-        walk(child, depth + 1, allocator, per_slot_children, depths);
+        walk(
+            child,
+            child_request,
+            depth + 1,
+            allocator,
+            per_slot_children,
+            depths,
+        );
     }
 }
 
 // ── CPU oracle ────────────────────────────────────────────────────────────────
-
-use std::sync::atomic::{AtomicU32, Ordering};
-
-static CPU_REDUCE_ORACLE_CALLS: AtomicU32 = AtomicU32::new(0);
-
-/// Test-only probe: count `cpu_reduce_oracle` invocations.
-pub fn cpu_reduce_oracle_call_count() -> u32 {
-    CPU_REDUCE_ORACLE_CALLS.load(Ordering::Relaxed)
-}
-
-/// Reset the test-only `cpu_reduce_oracle` call counter.
-pub fn reset_cpu_reduce_oracle_call_count() {
-    CPU_REDUCE_ORACLE_CALLS.store(0, Ordering::Relaxed);
-}
-
-/// Reduce a SimThing tree on the CPU, matching the GPU reduction shader
-/// bit-exactly. Operates on flat `values` (post-Pass-3) and writes to a flat
-/// `output` of the same shape.
-///
-/// Both buffers are `n_slots × n_dims` row-major. Slots not present in any
-/// depth bucket are left untouched in `output`.
-pub fn cpu_reduce_oracle(
-    topology: &Topology,
-    descriptors: &[ColumnRuleDescriptor],
-    n_dims: usize,
-    values: &[f32],
-    output: &mut [f32],
-) {
-    CPU_REDUCE_ORACLE_CALLS.fetch_add(1, Ordering::Relaxed);
-    assert_eq!(descriptors.len(), n_dims);
-    assert_eq!(values.len(), output.len());
-
-    // Process depths from deepest to shallowest. Leaves first.
-    for depth_idx in (0..topology.depth_buckets.len()).rev() {
-        for &slot in &topology.depth_buckets[depth_idx] {
-            reduce_one_slot(slot, topology, descriptors, n_dims, values, output);
-        }
-    }
-}
-
-fn reduce_one_slot(
-    slot: u32,
-    topology: &Topology,
-    descriptors: &[ColumnRuleDescriptor],
-    n_dims: usize,
-    values: &[f32],
-    output: &mut [f32],
-) {
-    let base = slot as usize * n_dims;
-    let start = topology.child_starts[slot as usize] as usize;
-    let end = topology.child_starts[slot as usize + 1] as usize;
-    let n_children = end - start;
-
-    if n_children == 0 {
-        // Leaf: copy values → output.
-        output[base..base + n_dims].copy_from_slice(&values[base..base + n_dims]);
-        return;
-    }
-
-    // Inner: reduce each column independently.
-    for col in 0..n_dims {
-        let desc = descriptors[col];
-        let v = reduce_column(
-            desc,
-            col,
-            n_dims,
-            &topology.child_indices[start..end],
-            output,
-        );
-        output[base + col] = v;
-    }
-}
-
-fn reduce_column(
-    desc: ColumnRuleDescriptor,
-    col: usize,
-    n_dims: usize,
-    child_slots: &[u32],
-    output: &[f32],
-) -> f32 {
-    if child_slots.is_empty() {
-        return 0.0;
-    }
-    // Iterate in the order recorded in child_indices — canonical order.
-    // For floating-point determinism we accumulate left-to-right with no
-    // tree reduction.
-    let read = |s: u32, c: usize| output[s as usize * n_dims + c];
-
-    match desc.rule {
-        ReductionRule::Sum => {
-            let mut acc = 0.0_f32;
-            for &s in child_slots {
-                acc += read(s, col);
-            }
-            acc
-        }
-        ReductionRule::Mean => {
-            let mut acc = 0.0_f32;
-            for &s in child_slots {
-                acc += read(s, col);
-            }
-            acc / child_slots.len() as f32
-        }
-        ReductionRule::Max => {
-            let mut acc = read(child_slots[0], col);
-            for &s in &child_slots[1..] {
-                let v = read(s, col);
-                if v > acc {
-                    acc = v;
-                }
-            }
-            acc
-        }
-        ReductionRule::Min => {
-            let mut acc = read(child_slots[0], col);
-            for &s in &child_slots[1..] {
-                let v = read(s, col);
-                if v < acc {
-                    acc = v;
-                }
-            }
-            acc
-        }
-        ReductionRule::First => read(child_slots[0], col),
-        ReductionRule::WeightedMean { .. } => {
-            let wcol = desc.weight_col as usize;
-            let mut weighted_sum = 0.0_f32;
-            let mut weight_total = 0.0_f32;
-            for &s in child_slots {
-                let w = read(s, wcol);
-                let v = read(s, col);
-                let scaled = v * w;
-                weighted_sum += scaled;
-                weight_total += w;
-            }
-            if weight_total == 0.0 {
-                0.0
-            } else {
-                weighted_sum / weight_total
-            }
-        }
-    }
-}
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
@@ -479,5 +356,4 @@ mod tests {
     fn population_property() -> SimProperty {
         SimProperty::simple("demo", "population", 0)
     }
-
 }

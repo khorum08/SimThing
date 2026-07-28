@@ -63,8 +63,8 @@
 use crate::sim_runtime_tree::SimRuntimeTree;
 use crate::tree_index::{detach_at_path, node_at_path, node_at_path_mut};
 use simthing_core::{
-    prepare_fission_clone_sources_subtree, DimensionRegistry, OverlayId, OverlayLifecycle,
-    SimThing, SimThingId,
+    prepare_fission_clone_sources_subtree, DimensionRegistry, ObjectResidencyRequest, OverlayId,
+    OverlayLifecycle, SimThing, SimThingId,
 };
 use simthing_feeder::{BoundaryRequest, MaintainerOutcome};
 use simthing_gpu::SlotAllocator;
@@ -116,7 +116,7 @@ pub fn apply_structural_mutations(
                 );
             }
             BoundaryRequest::Reparent { child, new_parent } => {
-                apply_reparent(root, child, new_parent, node_paths, &mut out);
+                apply_reparent(root, allocator, child, new_parent, node_paths, &mut out);
             }
             BoundaryRequest::AttachOverlay { target, overlay } => {
                 let oid = overlay.id;
@@ -195,12 +195,27 @@ fn apply_add_child(
     // get a stable order (root before children); the SimThing we just
     // pushed is at the end of parent's children list.
     let attached = parent.children.last().expect("just pushed");
-    populate_from_subtree(allocator, attached);
+    if allocator.populate_subtree(parent, attached).is_err() {
+        parent.children.pop();
+        out.rejected_unknown_target += 1;
+        return;
+    }
+    let attached_request = parent
+        .attached_child_residency_request(attached)
+        .expect("just-pushed subtree is an attached direct child");
 
     // Project the attached subtree's semantic properties into the shadow.
     // Rows are zeroed first so absent properties do not inherit stale slot data.
     if let Some(attached) = find_node(root, new_ids[0]) {
-        project_subtree_to_shadow(attached, allocator, registry, values_shadow, n_dims, out);
+        project_subtree_to_shadow(
+            attached,
+            attached_request,
+            allocator,
+            registry,
+            values_shadow,
+            n_dims,
+            out,
+        );
     }
     out.adds += 1;
 }
@@ -212,22 +227,17 @@ fn collect_subtree_ids(node: &SimThing, out: &mut Vec<SimThingId>) {
     }
 }
 
-fn populate_from_subtree(allocator: &mut SlotAllocator, node: &SimThing) {
-    allocator.alloc(node.id);
-    for c in &node.children {
-        populate_from_subtree(allocator, c);
-    }
-}
-
 fn project_subtree_to_shadow(
     node: &SimThing,
+    request: ObjectResidencyRequest,
     allocator: &SlotAllocator,
     registry: &DimensionRegistry,
     values_shadow: &mut [f32],
     n_dims: usize,
     out: &mut MaintainerOutcome,
 ) {
-    if let Some(slot) = allocator.slot_of(node.id) {
+    if let Some(residency) = allocator.residency_for(&request) {
+        let slot = residency.slot();
         let base = slot.as_usize() * n_dims;
         let end = base + n_dims;
         if end <= values_shadow.len() {
@@ -250,7 +260,18 @@ fn project_subtree_to_shadow(
     }
 
     for child in &node.children {
-        project_subtree_to_shadow(child, allocator, registry, values_shadow, n_dims, out);
+        let request = node
+            .attached_child_residency_request(child)
+            .expect("tree traversal holds the attached direct child");
+        project_subtree_to_shadow(
+            child,
+            request,
+            allocator,
+            registry,
+            values_shadow,
+            n_dims,
+            out,
+        );
     }
 }
 
@@ -284,17 +305,12 @@ fn apply_remove(
         return;
     };
 
-    let mut subtree_ids = Vec::new();
-    collect_subtree_ids(&subtree, &mut subtree_ids);
-
-    for sid in subtree_ids {
-        if let Some(slot) = allocator.slot_of(sid) {
-            zero_shadow_row(values_shadow, n_dims, slot.raw());
-        }
-        if allocator.tombstone(sid).is_some() {
-            out.tombstoned.push(sid);
-        }
+    let mut removed_ids = Vec::new();
+    collect_subtree_ids(&subtree, &mut removed_ids);
+    for slot in allocator.release_subtree(&subtree) {
+        zero_shadow_row(values_shadow, n_dims, slot.raw());
     }
+    out.tombstoned.extend(removed_ids);
     out.removes += 1;
 }
 
@@ -324,6 +340,7 @@ fn detach_subtree(node: &mut SimThing, target: SimThingId) -> Option<SimThing> {
 
 fn apply_reparent(
     root: &mut SimThing,
+    allocator: &mut SlotAllocator,
     child: SimThingId,
     new_parent: SimThingId,
     node_paths: Option<&HashMap<SimThingId, Vec<usize>>>,
@@ -334,6 +351,12 @@ fn apply_reparent(
         out.rejected_unknown_target += 1;
         return;
     }
+    let Some(simthing_core::ObjectResidencyRelation::ChildOf(old_parent)) =
+        allocator.relation_of(child)
+    else {
+        out.rejected_unknown_target += 1;
+        return;
+    };
 
     // Verify the new parent exists *before* detaching. Otherwise a missing
     // new parent would leave us with an orphaned subtree to dispose of.
@@ -364,15 +387,28 @@ fn apply_reparent(
         out.rejected_unknown_target += 1;
         return;
     };
-    let Some(parent) = lookup_node_mut(root, new_parent, node_paths) else {
-        // Race window: someone removed new_parent between check and detach.
-        // We checked first to make this practically impossible in single-
-        // threaded code; defensive log + reattach to root as fallback.
+    let Some(parent) = lookup_node_mut(root, new_parent, None) else {
+        // Restore the exact old attachment if the preflighted destination
+        // disappeared or its cached path was invalidated by detachment.
         out.rejected_unknown_target += 1;
-        root.add_child(subtree);
+        find_node_mut(root, old_parent)
+            .expect("resident child's old parent remains in the tree")
+            .add_child(subtree);
         return;
     };
     parent.add_child(subtree);
+    let attached = parent.children.last().expect("reparented child attached");
+    let request = parent
+        .attached_child_residency_request(attached)
+        .expect("reparented subtree is attached before residency rebind");
+    if allocator.reparent_residency(request).is_err() {
+        let subtree = detach_subtree(root, child).expect("failed reparent remains attached");
+        find_node_mut(root, old_parent)
+            .expect("failed reparent restores the old attachment")
+            .add_child(subtree);
+        out.rejected_unknown_target += 1;
+        return;
+    }
     out.reparents += 1;
     out.reparented.push((child, new_parent));
 }
@@ -537,12 +573,84 @@ mod tests {
         let mut reg = DimensionRegistry::new();
         reg.register(SimProperty::simple("core", "loyalty", 0));
         let mut root = SimThing::new(SimThingKind::World, 0);
-        let mut alloc = SlotAllocator::new();
-        alloc.alloc(root.id);
         let loc = SimThing::new(SimThingKind::Location, 0);
-        alloc.alloc(loc.id);
         root.add_child(loc);
+        let mut alloc = SlotAllocator::new();
+        alloc.populate_from_tree(&root);
         (reg, alloc, SimRuntimeTree::admit(root))
     }
 
+    #[test]
+    fn row_slot_object_semantics_structural_routes_preserve_one_authority() {
+        let mut registry = DimensionRegistry::new();
+        registry.register(SimProperty::simple("core", "loyalty", 0));
+
+        let mut root = SimThing::new(SimThingKind::World, 0);
+        let parent_a = SimThing::new(SimThingKind::Location, 0);
+        let parent_a_id = parent_a.id;
+        let parent_b = SimThing::new(SimThingKind::Location, 0);
+        let parent_b_id = parent_b.id;
+        root.add_child(parent_a);
+        root.add_child(parent_b);
+
+        let mut allocator = SlotAllocator::new();
+        allocator.populate_from_tree(&root);
+        let mut runtime = SimRuntimeTree::admit(root);
+        let n_dims = registry.total_columns;
+        let mut shadow = vec![0.0; 16 * n_dims];
+
+        let child = SimThing::new(SimThingKind::Cohort, 1);
+        let child_id = child.id;
+        let added = apply_structural_mutations(
+            vec![BoundaryRequest::AddChild {
+                parent: parent_a_id,
+                child,
+            }],
+            &mut runtime,
+            &mut allocator,
+            &mut registry,
+            &mut shadow,
+            n_dims,
+            None,
+        );
+        assert_eq!(added.allocated, vec![child_id]);
+        let stable_slot = allocator.slot_of(child_id).unwrap();
+        assert_eq!(
+            allocator.relation_of(child_id),
+            Some(simthing_core::ObjectResidencyRelation::ChildOf(parent_a_id))
+        );
+
+        let reparented = apply_structural_mutations(
+            vec![BoundaryRequest::Reparent {
+                child: child_id,
+                new_parent: parent_b_id,
+            }],
+            &mut runtime,
+            &mut allocator,
+            &mut registry,
+            &mut shadow,
+            n_dims,
+            None,
+        );
+        assert_eq!(reparented.reparented, vec![(child_id, parent_b_id)]);
+        assert_eq!(allocator.slot_of(child_id), Some(stable_slot));
+        assert_eq!(
+            allocator.relation_of(child_id),
+            Some(simthing_core::ObjectResidencyRelation::ChildOf(parent_b_id))
+        );
+
+        let removed = apply_structural_mutations(
+            vec![BoundaryRequest::Remove { target: child_id }],
+            &mut runtime,
+            &mut allocator,
+            &mut registry,
+            &mut shadow,
+            n_dims,
+            None,
+        );
+        assert_eq!(removed.tombstoned, vec![child_id]);
+        assert!(allocator.slot_of(child_id).is_none());
+        assert!(allocator.relation_of(child_id).is_none());
+        assert!(!allocator.is_live(stable_slot));
+    }
 }

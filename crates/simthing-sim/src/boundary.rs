@@ -838,8 +838,8 @@ impl BoundaryProtocol {
             // ascending-slot invariant without re-sorting.
             for &(parent_id, child_id) in &out.fission.fission_pairs {
                 if let (Some(p), Some(c)) = (
-                    self.allocator.slot_of(parent_id),
-                    self.allocator.slot_of(child_id),
+                    self.allocator.residency_of(parent_id),
+                    self.allocator.residency_of(child_id),
                 ) {
                     self.cached_topology_state.add_child(p, c);
                     topology_regs_appended += 1;
@@ -1522,5 +1522,4 @@ mod tests {
         node.property(FISSION_CLONE_SOURCE_PROPERTY_ID)
             .map(|value| value.raw_lanes_for_serialization().to_vec())
     }
-
 }

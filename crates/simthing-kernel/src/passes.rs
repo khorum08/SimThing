@@ -1125,9 +1125,10 @@ mod tests {
     /// canonical child iteration order on multiple parents at the same depth.
     #[test]
     fn reduction_matches_cpu_oracle() {
+        use crate::cpu_oracle::cpu_reduce_oracle;
         use crate::projection::project_tree_to_values;
         use crate::reduction::{
-            build_column_rule_descriptors, build_topology, cpu_reduce_oracle, encode_column_rules,
+            build_column_rule_descriptors, build_topology, encode_column_rules,
         };
         use crate::slot::SlotAllocator;
 
@@ -1221,9 +1222,10 @@ mod tests {
     /// WeightedMean parity: location loyalty = population-weighted cohort mean.
     #[test]
     fn weighted_mean_reduction_matches_cpu_oracle() {
+        use crate::cpu_oracle::cpu_reduce_oracle;
         use crate::projection::project_tree_to_values;
         use crate::reduction::{
-            build_column_rule_descriptors, build_topology, cpu_reduce_oracle, encode_column_rules,
+            build_column_rule_descriptors, build_topology, encode_column_rules,
         };
         use crate::slot::SlotAllocator;
         use simthing_core::ReductionRule;
@@ -1297,5 +1299,4 @@ mod tests {
         let gpu_output = state.read_output_vectors();
         assert_bits_eq("weighted mean reduction", &cpu_output, &gpu_output);
     }
-
 }

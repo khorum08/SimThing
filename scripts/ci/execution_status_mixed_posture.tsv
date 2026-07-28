@@ -1,4 +1,2 @@
 # path	primary_class	secondary_postures	basis  # DA-ruled dual-posture evidence (not a fifth class); mixed_ruled count
 # PRIMARY class is also recorded in execution_status_taxonomy.tsv (primary-inclusive totals).
-crates/simthing-kernel/src/reduction.rs	compile-plan	oracle	DA RULED 2026-07-26 (relay 5085410594): PRIMARY=compile-plan (reduction plan builders are the tenant); secondary=oracle (cpu_reduce_oracle co-located judge). Structural split rides 4.2 PLAN-STRUCT-TYPING-0
-crates/simthing-kernel/src/world_state.rs	executed	compile-plan	DA RULED 2026-07-26 (relay 5085410594): PRIMARY=executed (live WorldGpuState residency is the tenant); secondary=compile-plan (encode_rule/build_governed_pairs co-located assembly). Structural split rides 4.2 PLAN-STRUCT-TYPING-0

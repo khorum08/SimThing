@@ -32,6 +32,7 @@ pub mod sealed;
 pub mod slot;
 pub mod transfer_accumulator;
 pub mod velocity_accumulator;
+pub mod wgsl_encode;
 pub mod world_state;
 
 pub use accumulator_op::{
@@ -71,7 +72,10 @@ pub use exact_magnitude_gate::{
     CommitmentRegistration, ExactMagnitudeProof,
 };
 pub use context::{GpuContext, GpuInitError};
-pub use cpu_oracle::{execute_ops_cpu_with_emissions, CpuOracleError};
+pub use cpu_oracle::{
+    cpu_reduce_oracle, cpu_reduce_oracle_call_count, execute_ops_cpu_with_emissions,
+    reset_cpu_reduce_oracle_call_count, CpuOracleError,
+};
 pub use emission_accumulator::{
     cpu_oracle_emission_records, emission_plan_signature_fields, encode_emission_plan,
     plan_emission_ops, EmissionFormula, EmissionPlan, EmissionPlanError, EmissionRegistration,
@@ -101,8 +105,7 @@ pub use participation::{
 pub use passes::{AccumulatorPipelineSessions, Pipelines};
 pub use projection::project_tree_to_values;
 pub use reduction::{
-    build_column_rule_descriptors, build_column_rules, build_topology, cpu_reduce_oracle,
-    cpu_reduce_oracle_call_count, encode_column_rules, reset_cpu_reduce_oracle_call_count,
+    build_column_rule_descriptors, build_column_rules, build_topology, encode_column_rules,
     ColumnRuleDescriptor, Topology, TopologyState,
 };
 pub use reduction_orderband::{
@@ -119,7 +122,7 @@ pub use sealed::{
     ThresholdEmission, ThresholdEmissionGpu, ThresholdEvent, ThresholdEventGpu,
     DEFAULT_EMISSION_CAPACITY,
 };
-pub use slot::{SlotAllocError, SlotAllocator};
+pub use slot::{ObjectResidency, SlotAllocError, SlotAllocator};
 pub use transfer_accumulator::{
     conjunctive_recipe_registration_to_transfer, conjunctive_recipe_registrations_to_transfer,
     discrete_transfer_registration_to_transfer, discrete_transfer_registrations_to_transfer,
@@ -130,11 +133,13 @@ pub use velocity_accumulator::{
     plan_governed_integration, plan_governed_integration_at_band, plan_velocity_integration,
     GovernedIntegrationPlan, PlannerError, VelocityAccumulatorPlan,
 };
-pub use world_state::{
-    build_governed_pairs, encode_rule, governed_pairs_for_property, GovernedPair, IntentDelta,
-    OverlayDelta, SlotDeltaRange, WorldGpuState, CLAMP_BOUNDED, CLAMP_FLOORED, CLAMP_UNBOUNDED,
-    OP_ADD, OP_MULTIPLY, OP_SET, RULE_FIRST, RULE_MAX, RULE_MEAN, RULE_MIN, RULE_SUM,
+pub use wgsl_encode::{
+    build_governed_pairs, encode_rule, governed_pairs_for_property, GovernedPair, CLAMP_BOUNDED,
+    CLAMP_FLOORED, CLAMP_UNBOUNDED, RULE_FIRST, RULE_MAX, RULE_MEAN, RULE_MIN, RULE_SUM,
     RULE_WEIGHTED_MEAN, WEIGHT_COL_NONE,
+};
+pub use world_state::{
+    IntentDelta, OverlayDelta, SlotDeltaRange, WorldGpuState, OP_ADD, OP_MULTIPLY, OP_SET,
 };
 
 #[cfg(test)]

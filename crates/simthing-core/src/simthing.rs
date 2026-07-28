@@ -5,6 +5,7 @@ use crate::ids::{
 };
 use crate::overlay::Overlay;
 use crate::property::PropertyValue;
+use crate::residency::{ObjectResidencyRelease, ObjectResidencyRequest};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use std::collections::HashMap;
@@ -148,6 +149,34 @@ impl SimThing {
 
     pub fn add_child(&mut self, child: SimThing) {
         self.children.push(child);
+    }
+
+    /// Emit the root-side request for this object to enter kernel residency.
+    ///
+    /// The request contains object identity and relation only. The kernel
+    /// assigns the ephemeral [`crate::SlotIndex`].
+    pub fn root_residency_request(&self) -> ObjectResidencyRequest {
+        ObjectResidencyRequest::root(self.id)
+    }
+
+    /// Emit a child-row request only for the exact direct child reference
+    /// attached beneath this parent.
+    ///
+    /// An arbitrary `SimThing` reference beside the tree cannot mint this
+    /// request, even when it carries an otherwise valid object id.
+    pub fn attached_child_residency_request(
+        &self,
+        child: &SimThing,
+    ) -> Option<ObjectResidencyRequest> {
+        self.children
+            .iter()
+            .find(|attached| std::ptr::eq(*attached, child))
+            .map(|attached| ObjectResidencyRequest::attached_child(attached.id, self.id))
+    }
+
+    /// Emit the object-side request to retire this object's ephemeral row.
+    pub fn residency_release_request(&self) -> ObjectResidencyRelease {
+        ObjectResidencyRelease::new(self.id)
     }
 
     /// Total number of SimThings in this subtree (including self).

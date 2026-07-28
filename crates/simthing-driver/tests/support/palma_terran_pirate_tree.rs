@@ -72,14 +72,11 @@ impl PalmaAdmittedTree {
         let n_dims = reg.total_columns;
 
         let mut root = SimThing::new(SimThingKind::World, 0);
-        let mut alloc = SlotAllocator::new();
-        alloc.alloc(root.id);
 
         let location = with_id(
             SimThing::new(SimThingKind::Location, 0),
             location_simthing_id(),
         );
-        alloc.alloc(location.id);
         root.add_child(location);
 
         let location_idx = root.children.len() - 1;
@@ -89,19 +86,19 @@ impl PalmaAdmittedTree {
                     SimThing::new(gridcell_kind(), 0),
                     gridcell_simthing_id(x, y),
                 );
-                alloc.alloc(cell.id);
                 root.children[location_idx].add_child(cell);
             }
         }
 
         let convoy_parent_gridcell_id = gridcell_simthing_id(CONVOY_START.0, CONVOY_START.1);
         let convoy = with_id(SimThing::new(SimThingKind::Fleet, 0), convoy_simthing_id());
-        alloc.alloc(convoy.id);
 
         let cell = find_node_mut(&mut root, convoy_parent_gridcell_id)
             .expect("convoy start gridcell must exist in admitted tree");
         cell.add_child(convoy);
 
+        let mut alloc = SlotAllocator::new();
+        alloc.populate_from_tree(&root);
         let shadow = vec![0.0f32; alloc.capacity() * n_dims.max(1)];
 
         Self {

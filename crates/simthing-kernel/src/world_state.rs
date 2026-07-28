@@ -14,10 +14,9 @@
 use crate::gpu_readback::ThresholdEventCandidatesReadback;
 use crate::resolved::ResolvedGpuBuffers;
 use crate::sealed::ResolvedWriteAuthority;
+use crate::wgsl_encode::{build_governed_pairs, GovernedPair};
 use bytemuck::{Pod, Zeroable};
-use simthing_core::{
-    ClampBehavior, DimensionRegistry, PropertyColumnRange, PropertyLayout, SimPropertyId,
-};
+use simthing_core::DimensionRegistry;
 use wgpu::{Buffer, BufferDescriptor, BufferUsages, CommandEncoderDescriptor, Maintain, MapMode};
 
 use crate::accumulator_op::DEFAULT_THRESHOLD_EMISSION_CAPACITY;
@@ -25,83 +24,14 @@ use crate::context::GpuContext;
 
 // ── GovernedPair — GPU-friendly encoding of a (governed, governing) sub-field pair ──
 
-pub const CLAMP_BOUNDED: u32 = 0;
-pub const CLAMP_FLOORED: u32 = 1;
-pub const CLAMP_UNBOUNDED: u32 = 2;
-
-#[repr(C)]
-#[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
-pub struct GovernedPair {
-    pub governed_col: u32,
-    pub governing_col: u32,
-    pub clamp_min: f32,
-    pub clamp_max: f32,
-    pub vel_max: f32,
-    pub clamp_kind: u32,
-}
-
-impl GovernedPair {
-    fn encode_clamp(c: &ClampBehavior) -> (u32, f32, f32) {
-        match c {
-            ClampBehavior::Bounded { min, max } => (CLAMP_BOUNDED, *min, *max),
-            ClampBehavior::Floored { min } => (CLAMP_FLOORED, *min, f32::INFINITY),
-            ClampBehavior::Unbounded => (CLAMP_UNBOUNDED, f32::NEG_INFINITY, f32::INFINITY),
-        }
-    }
-}
-
 /// Emit one [`GovernedPair`] per sub-field with `governed_by: Some(_)` in `layout`.
 ///
 /// E-7: role-agnostic discovery — supports `(Amount, Velocity)`, `(Named("balance"),
 /// Named("flow"))`, and any other declared pair. Skips entries whose governing role
 /// is absent from the layout (matches CPU `PropertyValue::integrate`). Invalid
 /// `governed_by` links are hard errors at the `simthing-spec` compile layer.
-pub fn governed_pairs_for_property(
-    range: &PropertyColumnRange,
-    layout: &PropertyLayout,
-) -> Vec<GovernedPair> {
-    let mut pairs = Vec::new();
-    for sf in &layout.sub_fields {
-        let Some(gov_role) = &sf.governed_by else {
-            continue;
-        };
-        let Some(governed_col) = range.col_for_role(&sf.role, layout) else {
-            continue;
-        };
-        let Some(governing_col) = range.col_for_role(gov_role, layout) else {
-            continue;
-        };
-        let (clamp_kind, clamp_min, clamp_max) = GovernedPair::encode_clamp(&sf.clamp);
-        let vel_max = sf.velocity_max.unwrap_or(f32::INFINITY);
-        pairs.push(GovernedPair {
-            governed_col: governed_col.raw_u32(),
-            governing_col: governing_col.raw_u32(),
-            clamp_min,
-            clamp_max,
-            vel_max,
-            clamp_kind,
-        });
-    }
-    pairs
-}
-
 /// Walk every active property in the registry and emit one [`GovernedPair`] per
 /// governed sub-field. Matches the CPU oracle in `PropertyValue::integrate`.
-pub fn build_governed_pairs(registry: &DimensionRegistry) -> Vec<GovernedPair> {
-    let mut pairs = Vec::new();
-    for (idx, prop) in registry.properties.iter().enumerate() {
-        let id = SimPropertyId(idx as u32);
-        if !registry.is_active(id) {
-            continue;
-        }
-        pairs.extend(governed_pairs_for_property(
-            &registry.column_range(id),
-            &prop.layout,
-        ));
-    }
-    pairs
-}
-
 // ── OverlayDelta — one applied op, in evaluation order ──────────────────────
 
 pub const OP_MULTIPLY: u32 = 0;
@@ -153,28 +83,6 @@ pub use crate::registration::{
 pub use crate::sealed::{cpu_oracle_threshold_events, ThresholdEvent, ThresholdEventGpu};
 
 // ── Reduction (Passes 4–6) ────────────────────────────────────────────────────
-pub const RULE_MEAN: u32 = 0;
-pub const RULE_SUM: u32 = 1;
-pub const RULE_MAX: u32 = 2;
-pub const RULE_MIN: u32 = 3;
-pub const RULE_FIRST: u32 = 4;
-pub const RULE_WEIGHTED_MEAN: u32 = 5;
-
-/// Sentinel in the per-column weight slot when the rule is not `WeightedMean`.
-pub const WEIGHT_COL_NONE: u32 = u32::MAX;
-
-pub fn encode_rule(rule: simthing_core::ReductionRule) -> u32 {
-    use simthing_core::ReductionRule::*;
-    match rule {
-        Mean => RULE_MEAN,
-        Sum => RULE_SUM,
-        Max => RULE_MAX,
-        Min => RULE_MIN,
-        First => RULE_FIRST,
-        WeightedMean { .. } => RULE_WEIGHTED_MEAN,
-    }
-}
-
 // ── WorldGpuState ─────────────────────────────────────────────────────────────
 
 pub struct WorldGpuState {
@@ -1124,10 +1032,8 @@ impl WorldGpuState {
         self.n_thresholds = regs.len() as u32;
         self.post_rf_full_threshold_regs = regs.to_vec();
         if !self.post_rf_need_threshold_regs.is_empty() {
-            let keys: std::collections::HashSet<(u32, u32, u32)> = regs
-                .iter()
-                .map(|r| (r.slot, r.col, r.event_kind))
-                .collect();
+            let keys: std::collections::HashSet<(u32, u32, u32)> =
+                regs.iter().map(|r| (r.slot, r.col, r.event_kind)).collect();
             self.post_rf_need_threshold_regs
                 .retain(|r| keys.contains(&(r.slot, r.col, r.event_kind)));
         }
@@ -1145,18 +1051,14 @@ impl WorldGpuState {
     /// Need-only append rescan after RF (no prepare wipe of pre-RF events).
     ///
     /// Failures propagate — callers must not treat a silent skip as success.
-    pub fn rescan_accumulator_thresholds_after_resource_flow(
-        &mut self,
-    ) -> Result<(), String> {
+    pub fn rescan_accumulator_thresholds_after_resource_flow(&mut self) -> Result<(), String> {
         if self.post_rf_need_threshold_regs.is_empty() {
             return Ok(());
         }
         let need = self.post_rf_need_threshold_regs.clone();
         let full = self.post_rf_full_threshold_regs.clone();
         let Some(runtime) = self.accumulator_runtime.as_mut() else {
-            return Err(
-                "post-RF need threshold rescan requires accumulator_runtime".into(),
-            );
+            return Err("post-RF need threshold rescan requires accumulator_runtime".into());
         };
         let Some(mut session) = runtime.take_threshold_session() else {
             runtime.restore_threshold_session(None);
@@ -1200,7 +1102,9 @@ impl WorldGpuState {
             Ok(full_upload) => {
                 if let Err(e) = session.upload_packed_threshold_ops(&self.ctx, &full_upload) {
                     runtime.restore_threshold_session(Some(session));
-                    return Err(format!("restore full threshold regs after need rescan: {e}"));
+                    return Err(format!(
+                        "restore full threshold regs after need rescan: {e}"
+                    ));
                 }
             }
             Err(e) => {
@@ -1894,5 +1798,4 @@ mod tests {
         p.intensity_behavior = Some(IntensityBehavior::default());
         p
     }
-
 }

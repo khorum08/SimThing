@@ -328,15 +328,26 @@ impl ReplayDriver {
         let inner = self.root.inner_mut();
         match entry {
             BoundaryDeltaEntry::SimThingAdded { parent, node } => {
-                self.allocator.populate_from_tree(node.inner());
+                let node = node.into_admitted();
                 if let Some(p) = find_node_mut(inner, parent) {
-                    p.children.push(node.into_admitted());
+                    p.children.push(node);
+                    let attached = p.children.last().expect("replay child just attached");
+                    if self.allocator.populate_subtree(p, attached).is_err() {
+                        p.children.pop();
+                    }
                 }
             }
             BoundaryDeltaEntry::FissionOccurred { parent, node } => {
-                self.allocator.populate_from_tree(node.inner());
+                let node = node.into_admitted();
                 if let Some(p) = find_node_mut(inner, parent) {
-                    p.children.push(node.into_admitted());
+                    p.children.push(node);
+                    let attached = p
+                        .children
+                        .last()
+                        .expect("replay fission child just attached");
+                    if self.allocator.populate_subtree(p, attached).is_err() {
+                        p.children.pop();
+                    }
                 }
             }
             BoundaryDeltaEntry::FissionLineageAdded { record } => {
@@ -378,10 +389,36 @@ impl ReplayDriver {
                 }
             }
             BoundaryDeltaEntry::SimThingReparented { child, new_parent } => {
-                if let Some(subtree) = detach_subtree(inner, child) {
-                    if let Some(parent) = find_node_mut(inner, new_parent) {
-                        parent.children.push(subtree);
-                    }
+                let Some(simthing_core::ObjectResidencyRelation::ChildOf(old_parent)) =
+                    self.allocator.relation_of(child)
+                else {
+                    return;
+                };
+                let Some(subtree) = detach_subtree(inner, child) else {
+                    return;
+                };
+                let Some(parent) = find_node_mut(inner, new_parent) else {
+                    find_node_mut(inner, old_parent)
+                        .expect("replay old parent remains after failed destination lookup")
+                        .children
+                        .push(subtree);
+                    return;
+                };
+                parent.children.push(subtree);
+                let attached = parent
+                    .children
+                    .last()
+                    .expect("replay reparent child just attached");
+                let request = parent
+                    .attached_child_residency_request(attached)
+                    .expect("replay relation is emitted by the attachment");
+                if self.allocator.reparent_residency(request).is_err() {
+                    let subtree = detach_subtree(inner, child)
+                        .expect("failed replay reparent remains attached");
+                    find_node_mut(inner, old_parent)
+                        .expect("failed replay reparent restores the old attachment")
+                        .children
+                        .push(subtree);
                 }
             }
             BoundaryDeltaEntry::PropertyExpired {
@@ -399,12 +436,12 @@ impl ReplayDriver {
             }
             BoundaryDeltaEntry::SimThingRemoved { id } => {
                 if let Some(detached) = detach_subtree(inner, id) {
-                    tombstone_subtree(&detached, &mut self.allocator);
+                    self.allocator.release_subtree(&detached);
                 }
             }
             BoundaryDeltaEntry::FusionOccurred { parent: _, child } => {
                 if let Some(detached) = detach_subtree(inner, child) {
-                    tombstone_subtree(&detached, &mut self.allocator);
+                    self.allocator.release_subtree(&detached);
                 }
             }
             BoundaryDeltaEntry::VelocityAlert { .. } => { /* observation only */ }
@@ -442,13 +479,6 @@ fn detach_subtree(root: &mut SimThing, id: SimThingId) -> Option<SimThing> {
     None
 }
 
-fn tombstone_subtree(node: &SimThing, allocator: &mut SlotAllocator) {
-    allocator.tombstone(node.id);
-    for c in &node.children {
-        tombstone_subtree(c, allocator);
-    }
-}
-
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 #[cfg(test)]
@@ -474,5 +504,4 @@ mod tests {
     fn cohort_id(snap: &ReplaySnapshot) -> SimThingId {
         snap.root.direct_child_id(0).expect("cohort")
     }
-
 }

@@ -10,7 +10,7 @@
 use crate::accumulator_op::{
     combine_kind, consume_kind, gate_kind, scale_kind, source_kind, AccumulatorOpGpu,
 };
-use crate::world_state::GovernedPair;
+use crate::wgsl_encode::GovernedPair;
 use thiserror::Error;
 
 #[derive(Clone, Debug, PartialEq, Eq, Error)]
@@ -142,6 +142,5 @@ fn compact_pair_to_gpu_op(pair: &GovernedPair, n_slots: u32) -> AccumulatorOpGpu
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::world_state::{CLAMP_BOUNDED, CLAMP_FLOORED};
-
+    use crate::wgsl_encode::{CLAMP_BOUNDED, CLAMP_FLOORED};
 }
