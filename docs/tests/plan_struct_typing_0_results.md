@@ -11,12 +11,12 @@
 - Remand: Board comment `5108706100` (exact prior head `c659c0c27a9b52959446b184e51f8be03328c416`)
 - Prior remand: `5108383145` / landing `5108597299`
 - base_sha: `0342a28cce8ca891bc283e8ad88d1264d7eee2ba`
-- tested_code_sha: `27cdc6809b5ad1c1b3e14f5fef716ed5b93093a8`
-- implementation_code_sha: `27cdc6809b5ad1c1b3e14f5fef716ed5b93093a8`
-- final_head_sha: `27cdc6809b5ad1c1b3e14f5fef716ed5b93093a8`
-- clearance_pr_head: `27cdc6809b5ad1c1b3e14f5fef716ed5b93093a8`
+- tested_code_sha: `5b798c588ce80ebbbdecc84ab037b4b82c86e26f`
+- implementation_code_sha: `5b798c588ce80ebbbdecc84ab037b4b82c86e26f`
+- final_head_sha: `5b798c588ce80ebbbdecc84ab037b4b82c86e26f`
+- clearance_pr_head: `5b798c588ce80ebbbdecc84ab037b4b82c86e26f`
 - coverage_basis: focused plan_struct_typing_0 + region-field admit referees + seven-arm census + workspace/core + adapter-pinned kernel/sim/full driver
-- ci_green: local batteries green; hosted Doctrine Scan/Exec re-bound after push
+- ci_green: local batteries green (region-field admit 2/0; plan_struct kernel 3/0 driver 4/0; census 7-arm PASS; doc-budget PASS; execution census mixed_ruled=0; agent_scan INSPECT justified; adapter-pinned driver 123/0/13/64); hosted Doctrine Scan/Exec re-bound after push
 - expected_route: `DA-RESERVE(gate-wiring)`
 - CLEARANCE-VERDICT: `DA-RESERVE(gate-wiring)`
 
