@@ -351,8 +351,7 @@ pub use hosted_property_observation::{
     LiveDisruptionAuthorityReadback,
 };
 pub use install::{
-    compile_and_install, compile_and_install_with_observations, install_atomic, preview_install,
-    preview_install_with_observations, InstallError, InstallPreview,
+    compile_and_install, install_atomic, preview_install, InstallError, InstallPreview,
 };
 pub use loaded_scenario_recursive_rf_runtime_compile::{
     compile_loaded_scenario_recursive_rf_runtime_plan_from_json_str,

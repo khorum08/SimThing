@@ -28,11 +28,12 @@ use simthing_core::{
     SimThingKindTag, SpecializationError, SpecializationObservations, SpecializationRequirement,
     SubFieldRole, SubFieldSpec, PROFILE_OWNER_SEAT, PROFILE_SESSION_ROOT, PROFILE_SPATIAL,
 };
-use simthing_driver::{
-    preview_install, preview_install_with_observations, InstallError, Scenario,
-};
+use simthing_driver::{preview_install, InstallError, Scenario};
 use simthing_gpu::SlotAllocator;
-use simthing_spec::{compile_property, owner_has_silo_metadata, GameModeSpec, PropertySpec};
+use simthing_spec::{
+    apply_owner_policy_weight_authority, apply_owner_silo_metadata, compile_property,
+    make_owner_entity, owner_hosts_policy_weight_authority, GameModeSpec, PropertySpec,
+};
 
 fn repo_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")
@@ -67,15 +68,25 @@ fn authority_placed_set(pack: &HydratedScenarioPack, authority: &SimThing) -> BT
             placed.insert(n.id.raw());
         }
     });
-    let artifact_count: usize = pack
+    let mut artifact_pairs: Vec<(u32, u32)> = pack
         .embedded_static_galaxy_scenarios
         .iter()
-        .map(|e| e.namespaced_placements.len())
-        .sum();
+        .flat_map(|e| e.namespaced_placements.iter().map(|p| (p.col, p.row)))
+        .collect();
+    artifact_pairs.sort_unstable();
+    let mut stamped_pairs: Vec<(u32, u32)> = Vec::new();
+    walk(authority, &mut |n| {
+        if let (Some(col), Some(row)) = (
+            simthing_spec::gridcell_structural_col(n),
+            simthing_spec::gridcell_structural_row(n),
+        ) {
+            stamped_pairs.push((col, row));
+        }
+    });
+    stamped_pairs.sort_unstable();
     assert_eq!(
-        placed.len(),
-        artifact_count,
-        "structural stamps must correspond 1:1 with the embedded grid placements"
+        stamped_pairs, artifact_pairs,
+        "structural stamps must match the embedded grid placement (col,row) artifact exactly"
     );
     placed
 }
@@ -132,13 +143,28 @@ fn one_installed_canonical_report_derives_all_three_seed_populations() {
         if n.kind == SimThingKind::Location && placed.contains(&n.id.raw()) {
             oracle_spatial.insert(n.id.raw());
         }
-        if n.kind == SimThingKind::Owner && owner_has_silo_metadata(n) {
-            oracle_seats.insert(n.id.raw());
-        }
+        // (owner-seat oracle computed below from the field-economy artifact,
+        //  never from tree stamps or kind counts)
         if n.kind == SimThingKind::GameSession {
             oracle_sessions.insert(n.id.raw());
         }
     });
+    // Owner-seat oracle: the ADMITTED field-economy policy/weight authorities
+    // (policy-overlay owners + flow-coupling weight owners), mapped to ids via
+    // the hydrated owner list — independent of tree stamps and kind counts.
+    let economy = pack.field_economy.as_ref().expect("canonical field economy");
+    let mut authority_keys: BTreeSet<&str> = BTreeSet::new();
+    for overlay in &economy.owner_policy_overlays {
+        authority_keys.insert(overlay.owner.as_str());
+    }
+    for coupling in &economy.flow_couplings {
+        authority_keys.insert(coupling.weight_owner.as_str());
+    }
+    for owner in &pack.owners {
+        if authority_keys.contains(owner.owner_key.as_str()) {
+            oracle_seats.insert(owner.simthing_id.raw());
+        }
+    }
     assert!(!oracle_spatial.is_empty());
     assert!(oracle_seats.len() >= 2, "Terran + Pirate seats");
     assert_eq!(oracle_sessions.len(), 1);
@@ -152,14 +178,12 @@ fn one_installed_canonical_report_derives_all_three_seed_populations() {
     let scenario = minimal_scenario(authority.clone());
     let mut allocator = SlotAllocator::new();
     allocator.populate_from_tree(&scenario.root);
-    let placed_vec: Vec<u32> = placed.iter().copied().collect();
-    let preview = preview_install_with_observations(
+    let preview = preview_install(
         &GameModeSpec::default(),
         &scenario,
         &scenario.registry,
         &scenario.root,
         &allocator,
-        &placed_vec,
     )
     .expect("canonical authority tree admits");
     let report = &preview.state.specialization;
@@ -202,9 +226,10 @@ fn one_installed_canonical_report_derives_all_three_seed_populations() {
 }
 
 #[test]
-fn owner_seat_requires_the_admitted_silo_locus_not_any_accumulator() {
-    // An Owner hosting an UNRELATED accumulator-bearing property (a production
-    // flow) is NOT the seat; a real silo-locus Owner is.
+fn owner_seat_requires_the_admitted_policy_weight_authority() {
+    // Remand 5098731168: only the typed policy/weight AUTHORITY stamp (applied
+    // by hydration to field-economy-referenced Owners) makes a seat. The inert
+    // default silo metadata and unrelated accumulator hosts never qualify.
     let mut registry = DimensionRegistry::new();
     let property = PropertySpec {
         id: "unrelated_flow".into(),
@@ -237,12 +262,18 @@ fn owner_seat_requires_the_admitted_silo_locus_not_any_accumulator() {
     accumulator_owner.add_property(pid, default_value);
     let accumulator_owner_id = accumulator_owner.id.raw();
 
-    let mut silo_owner = simthing_spec::make_owner_entity("seat", "Seat", "settler");
+    let mut silo_owner = simthing_spec::make_owner_entity("silo_only", "Silo Only", "settler");
     simthing_spec::apply_owner_silo_metadata(&mut silo_owner, 3, Some(10));
     let silo_owner_id = silo_owner.id.raw();
+    assert!(!simthing_spec::owner_hosts_policy_weight_authority(&silo_owner));
+
+    let mut authority_owner = simthing_spec::make_owner_entity("seat", "Seat", "settler");
+    simthing_spec::apply_owner_policy_weight_authority(&mut authority_owner);
+    let authority_owner_id = authority_owner.id.raw();
 
     root.add_child(accumulator_owner);
     root.add_child(silo_owner);
+    root.add_child(authority_owner);
 
     let mut scenario = minimal_scenario(root);
     scenario.registry = registry;
@@ -264,7 +295,50 @@ fn owner_seat_requires_the_admitted_silo_locus_not_any_accumulator() {
             .contains(&PROFILE_OWNER_SEAT),
         "an unrelated accumulator host must NOT derive owner-seat"
     );
-    assert!(report.derived_ids(silo_owner_id).contains(&PROFILE_OWNER_SEAT));
+    assert!(
+        !report.derived_ids(silo_owner_id).contains(&PROFILE_OWNER_SEAT),
+        "inert default silo metadata must NOT derive owner-seat"
+    );
+    assert!(report
+        .derived_ids(authority_owner_id)
+        .contains(&PROFILE_OWNER_SEAT));
+}
+
+#[test]
+fn callers_cannot_fabricate_spatial_placement() {
+    // The raw-ID observation door is deleted: ordinary install derives
+    // placement ONLY from the tree's structural col+row hydration stamps. An
+    // unplaced Location and a half-stamped Location (col without row) never
+    // derive spatial, and no public admission API accepts a placement list.
+    let mut root = SimThing::new(SimThingKind::GameSession, 0);
+    let unplaced = SimThing::new(SimThingKind::Location, 0);
+    let unplaced_id = unplaced.id.raw();
+    let mut half_stamped = SimThing::new(SimThingKind::Location, 0);
+    half_stamped.add_property(
+        simthing_spec::SCENARIO_STRUCTURAL_COL_PROPERTY_ID,
+        simthing_spec::scenario_metadata_u32_value(3),
+    );
+    let half_id = half_stamped.id.raw();
+    root.add_child(unplaced);
+    root.add_child(half_stamped);
+
+    let scenario = minimal_scenario(root);
+    let mut allocator = SlotAllocator::new();
+    allocator.populate_from_tree(&scenario.root);
+    let preview = preview_install(
+        &GameModeSpec::default(),
+        &scenario,
+        &scenario.registry,
+        &scenario.root,
+        &allocator,
+    )
+    .expect("placement probe tree admits");
+    let report = &preview.state.specialization;
+    assert!(!report.derived_ids(unplaced_id).contains(&PROFILE_SPATIAL));
+    assert!(
+        !report.derived_ids(half_id).contains(&PROFILE_SPATIAL),
+        "a half-stamped Location (col without row) must not derive spatial"
+    );
 }
 
 #[test]

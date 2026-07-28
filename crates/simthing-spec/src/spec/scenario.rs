@@ -71,6 +71,12 @@ pub const OWNER_FACTION_ALLIANCE_PROPERTY_ID: SimPropertyId = SimPropertyId(8_30
 pub const OWNER_FACTION_IDENTITY_RESERVED_0_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_316);
 /// Reserved forward faction-identity slot (string; unused by 11.2 consumers).
 pub const OWNER_FACTION_IDENTITY_RESERVED_1_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_317);
+/// SPECIALIZATION-PROTOCOL-0: typed policy/weight AUTHORITY stamp. Hydration
+/// applies this ONLY to Owners the admitted field economy references as
+/// policy-overlay owners or weight-locus owners (`owner_policy_overlays`,
+/// flow-coupling `weight_owner`). The inert default silo marker every Owner
+/// receives does NOT imply this authority (remand `5098731168`).
+pub const OWNER_POLICY_WEIGHT_AUTHORITY_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_318);
 
 /// Canonical alliance placeholder when no alliance is authored.
 pub const OWNER_FACTION_ALLIANCE_NONE: &str = "none";
@@ -946,6 +952,27 @@ pub fn owner_faction_display_name(thing: &SimThing) -> Option<String> {
 /// Read owner faction alliance placeholder from authority.
 pub fn owner_faction_alliance(thing: &SimThing) -> Option<String> {
     scenario_metadata_string(thing, OWNER_FACTION_ALLIANCE_PROPERTY_ID)
+}
+
+/// SPECIALIZATION-PROTOCOL-0: read the typed policy/weight authority stamp.
+pub fn owner_policy_weight_authority(thing: &SimThing) -> Option<u32> {
+    scenario_metadata_u32(thing, OWNER_POLICY_WEIGHT_AUTHORITY_PROPERTY_ID)
+}
+
+/// SPECIALIZATION-PROTOCOL-0: true iff hydration admitted this Owner as a
+/// policy/weight authority (field-economy policy overlay or weight locus).
+pub fn owner_hosts_policy_weight_authority(thing: &SimThing) -> bool {
+    owner_policy_weight_authority(thing).is_some_and(|v| v > 0)
+}
+
+/// SPECIALIZATION-PROTOCOL-0: stamp an Owner as an admitted policy/weight
+/// authority (idempotent; called by hydration only for referenced Owners).
+pub fn apply_owner_policy_weight_authority(owner: &mut SimThing) {
+    debug_assert!(is_owner_entity_kind(&owner.kind));
+    owner.add_property(
+        OWNER_POLICY_WEIGHT_AUTHORITY_PROPERTY_ID,
+        scenario_metadata_u32_value(1),
+    );
 }
 
 pub fn owner_silo_marker(thing: &SimThing) -> Option<u32> {

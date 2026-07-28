@@ -781,6 +781,34 @@ pub fn hydrate_scenario_with_source_base(
             !embedded_static_galaxy_scenarios.is_empty(),
         )?;
     }
+    // SPECIALIZATION-PROTOCOL-0 (remand 5098731168): stamp the typed
+    // policy/weight AUTHORITY onto exactly the Owners the admitted field
+    // economy references — policy-overlay owners and flow-coupling weight
+    // owners. The inert default silo marker never implies this authority.
+    if let (Some(economy), Some(root)) = (field_economy.as_ref(), authority_root.as_mut()) {
+        let mut authority_keys: BTreeSet<&str> = BTreeSet::new();
+        for overlay in &economy.owner_policy_overlays {
+            authority_keys.insert(overlay.owner.as_str());
+        }
+        for coupling in &economy.flow_couplings {
+            authority_keys.insert(coupling.weight_owner.as_str());
+        }
+        if !authority_keys.is_empty() {
+            fn stamp(node: &mut SimThing, keys: &BTreeSet<&str>) {
+                if simthing_spec::is_owner_entity_kind(&node.kind) {
+                    if let Some(owner_id) = simthing_spec::owner_entity_id(node) {
+                        if keys.contains(owner_id.as_str()) {
+                            simthing_spec::apply_owner_policy_weight_authority(node);
+                        }
+                    }
+                }
+                for child in &mut node.children {
+                    stamp(child, keys);
+                }
+            }
+            stamp(root, &authority_keys);
+        }
+    }
     dedupe_property_specs_by_name(&mut game_mode.properties);
     Ok(HydratedScenarioPack {
         scenario_id,

@@ -159,21 +159,6 @@ pub fn compile_and_install(
     root: &mut SimThing,
     allocator: &mut SlotAllocator,
 ) -> Result<SpecSessionState, InstallError> {
-    compile_and_install_with_observations(game_mode, scenario, registry, root, allocator, &[])
-}
-
-/// SPECIALIZATION-PROTOCOL-0: the admitted scenario-observation entry — the
-/// ordinary install parameterized by the authoritative structural placement
-/// ids the front end owns (clause hydration / studio bridge). The plain
-/// [`compile_and_install`] passes an empty artifact set.
-pub fn compile_and_install_with_observations(
-    game_mode: &GameModeSpec,
-    scenario: &Scenario,
-    registry: &mut DimensionRegistry,
-    root: &mut SimThing,
-    allocator: &mut SlotAllocator,
-    structurally_placed: &[u32],
-) -> Result<SpecSessionState, InstallError> {
     let mut state = SpecSessionState::new();
 
     // ── 0. Order-weight class table (ORDER-WEIGHT-CLASS-0).
@@ -296,11 +281,13 @@ pub fn compile_and_install_with_observations(
     //      Structural placements are spec-side artifacts not visible to this
     //      install path; placement-gated profiles honestly do not derive here
     //      (artifact-complete callers assemble full observations themselves).
+    // Observations derive from the INSTALLED TREE's authoritative hydration
+    // stamps (remand 5098731168): structural col/row coordinate properties for
+    // placement, and the typed policy/weight authority stamp for owner seats.
+    // There is no caller-supplied observation input — conformance facts cannot
+    // be fabricated by callers.
     let mut spec_observations = simthing_core::SpecializationObservations::default();
-    spec_observations
-        .structurally_placed
-        .extend(structurally_placed.iter().copied());
-    collect_policy_weight_hosts(root, &mut spec_observations);
+    collect_tree_observations(root, &mut spec_observations);
     state.specialization = simthing_core::derive_specializations(
         root,
         &simthing_core::seed_profiles(),
@@ -1343,19 +1330,26 @@ pub struct InstallPreview {
 /// Memory: peaks at roughly 2× the registry + root + allocator size for the
 /// duration of the call. All three are small in practice.
 
-/// SPECIALIZATION-PROTOCOL-0: collect SimThings hosting the ADMITTED
-/// policy/weight locus — the owner-silo metadata artifact, the same fact the
-/// owner-silo flow admission (`evaluate_owner_silo_flow`) consumes. A random
-/// production/stockpile accumulator does not qualify (remand `5098401165`).
-fn collect_policy_weight_hosts(
+/// SPECIALIZATION-PROTOCOL-0 (remand 5098731168): derive specialization
+/// observations from the installed tree's authoritative hydration stamps.
+/// Placement = the structural col AND row coordinate properties the grid
+/// hydration writes; policy/weight seat = the typed authority stamp applied
+/// ONLY to field-economy-referenced Owners (`owner_hosts_policy_weight_authority`
+/// — the inert default silo marker never qualifies).
+fn collect_tree_observations(
     node: &simthing_core::SimThing,
     observations: &mut simthing_core::SpecializationObservations,
 ) {
-    if simthing_spec::owner_has_silo_metadata(node) {
+    if simthing_spec::gridcell_structural_col(node).is_some()
+        && simthing_spec::gridcell_structural_row(node).is_some()
+    {
+        observations.structurally_placed.insert(node.id.raw());
+    }
+    if simthing_spec::owner_hosts_policy_weight_authority(node) {
         observations.policy_weight_hosts.insert(node.id.raw());
     }
     for child in &node.children {
-        collect_policy_weight_hosts(child, observations);
+        collect_tree_observations(child, observations);
     }
 }
 
@@ -1366,29 +1360,15 @@ pub fn preview_install(
     root: &SimThing,
     allocator: &SlotAllocator,
 ) -> Result<InstallPreview, InstallError> {
-    preview_install_with_observations(game_mode, scenario, registry, root, allocator, &[])
-}
-
-/// SPECIALIZATION-PROTOCOL-0: preview through the ordinary install with the
-/// authoritative structural placement artifact supplied by the front end.
-pub fn preview_install_with_observations(
-    game_mode: &GameModeSpec,
-    scenario: &Scenario,
-    registry: &DimensionRegistry,
-    root: &SimThing,
-    allocator: &SlotAllocator,
-    structurally_placed: &[u32],
-) -> Result<InstallPreview, InstallError> {
     let mut scratch_registry = registry.clone();
     let mut scratch_root = root.clone();
     let mut scratch_allocator = allocator.clone();
-    let state = compile_and_install_with_observations(
+    let state = compile_and_install(
         game_mode,
         scenario,
         &mut scratch_registry,
         &mut scratch_root,
         &mut scratch_allocator,
-        structurally_placed,
     )?;
     Ok(InstallPreview {
         registry: scratch_registry,
