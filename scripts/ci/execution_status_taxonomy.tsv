@@ -117,6 +117,7 @@ crates/simthing-kernel/src/reduction.rs	compile-plan	Reduction topology and per-
 crates/simthing-kernel/src/reduction_orderband.rs	compile-plan	plan_reduction_orderband — OrderBand plan for reduction depths
 crates/simthing-kernel/src/registration.rs	executed	Threshold registration substrate consumed by executed threshold/emission paths
 crates/simthing-kernel/src/resolved.rs	executed	Resolved GPU buffer residency for live kernel dispatch
+crates/simthing-kernel/src/sealed/band_crossing_delta.rs	executed	Sealed write-impact BandCrossingDelta mint from fused threshold emissions
 crates/simthing-kernel/src/sealed/emission.rs	executed	Sealed emission record types used on the executed emission path
 crates/simthing-kernel/src/sealed/threshold_event.rs	executed	Live driver/kernel execution or residency path in the recursive RF / arena stack
 crates/simthing-kernel/src/sealed/write_authority.rs	executed	ResolvedWriteAuthority seal token for live resolved GPU column writes
