@@ -1,8 +1,11 @@
 # symbol | door-class | rationale | promotion-blocker
+cpu_oracle_band_crossing_deltas | cpu_oracle | WRITE-DOOR-BAND-DELTA-0 CPU-oracle twin for sealed BandCrossingDelta; parity-only path | retire when CPU oracle is type-quarantined to in-crate parity harness
 cpu_oracle_threshold_events | cpu_oracle | CPU-oracle twin for threshold events; parity-only path | retire when CPU oracle is type-quarantined to in-crate parity harness
 cpu_oracle_emission_records | cpu_oracle | CPU-oracle twin for emission records; parity-only path | retire when CPU oracle is type-quarantined to in-crate parity harness
 execute_ops_cpu_with_emissions | cpu_oracle | CPU-oracle batch path returning emission records; parity-only | retire when CPU oracle batch path is in-crate only
 execute_threshold_ops_cpu | cpu_oracle | CPU-oracle batch path returning threshold emissions; parity-only | retire when CPU oracle batch path is in-crate only
+apply_band_crossing_deltas_from_fused_emissions | apply | WRITE-DOOR-BAND-DELTA-0 sealed join mint from fused emissions + canonical Anchored registry | retire when band-crossing mint is an in-crate type boundary only
+apply_band_crossing_deltas_from_threshold_events | apply | WRITE-DOOR-BAND-DELTA-0 sealed join mint from threshold events + canonical Anchored registry | retire when band-crossing mint is an in-crate type boundary only
 apply_candidate_f_exact_magnitude | apply | Sanctioned exact-magnitude write door for Candidate F | retire when exact write is an in-crate AccumulatorOp type boundary only
 read_event_candidates | read | Read sealed ThresholdEvent candidates from WorldGpuState | retire when threshold events are observed only via typed read view
 read_records | read | Read sealed EmissionRecord values via EmissionRecordReadback | retire when emission readback is in-crate only

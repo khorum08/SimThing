@@ -45,10 +45,10 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 211b860c2a424d0386a01a2dc93d5c563abfd1411c1f58ec55c7b69d97426cb8 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | 26eab30ec86c97ac8dfd6beef7ae8c5b4d3f18c38fdaa431ec40ccce855396d3 |
-| design_0_0_8_7_rf_arena_modernization.md | 0b11b08d89f08af27924802c4e7935254ddb7c8100254b7d6203eb172e4f2270 |
+| design_0_0_8_7_rf_arena_modernization.md | c8cce3527eba850acaffc8906840185a29a42036193b40d875e1f7e4d68905ab |
 | relay_lint.sh | 4163f715cdc3b549dbf57c1744aff61ea96b9f9f0a2237376665fbdb24e986c8 |
 | doctrine_anchors.tsv | 08a34b6dac78478d2154fcd2735cf4a3f87a670d925805814cca0a8079448a84 |
-| execution_status_taxonomy.tsv | 0e3e2c81a6005f09852ce0a0832277fd8c27a5fbb06da6b17df0b9e2e2ef7a0d |
+| execution_status_taxonomy.tsv | 7d8c90f40afc633e41827542d2e0120a3e57f392ee6fbd0030738ae2cf762e81 |
 | execution_status_mixed_posture.tsv | 1adf05f3ec5fd7b537efe29259d20649a2c6d3a0839590063e5308ff154e8f25 |
 | execution_status_non_execution.tsv | 214c1b557dfd3fc465f0171051e20281ff1dcf6c53128dbb29cba01524f9be02 |
 | specialization_citizen_counts.tsv | 852aec43448149670396eec832b99da725b87a4e64d476da80f0b265cbaaa8e8 |
@@ -56,7 +56,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 
 ## Execution-status taxonomy (driver/kernel)
 
-executed=57 oracle=6 rehearsal=14 compile-plan=47 mixed_ruled=0 (primary-inclusive taxonomy; DA dual-posture residual; census `execution_status_census.py`).
+executed=58 oracle=6 rehearsal=14 compile-plan=47 mixed_ruled=0 (primary-inclusive taxonomy; DA dual-posture residual; census `execution_status_census.py`).
 
 ## Canonical TP live inventories
 
@@ -71,7 +71,7 @@ Track state: `open`
 | # | rung | deliverable | exit proof |
 | --- | --- | --- | --- |
 | 5.1 | ANCHOR-DISPOSITION-ADMISSION-0 | Phase 5: P0(e) fulcrum 1 — default-Anchored disposition; authored `Unobserved{re | **DA-GRADUATED / merged #1485 @ 06103edf** — ordinary hydrate/compile/install assigns exactly one typed disposition t... |
-| 5.2 | WRITE-DOOR-BAND-DELTA-0 | Phase 5: fulcrum 2 — in-pass band-crossing derivation; structural ops refuse to  | Band deltas correct vs oracle in the fused pass; remap-less reallocation op spans; replay green. |
+| 5.2 | WRITE-DOOR-BAND-DELTA-0 | Phase 5: fulcrum 2 — in-pass band-crossing derivation; structural ops refuse to  | **PROBATION / proof-present / DA-review-pending** — sealed `BandCrossingDelta` minted from fused threshold emissions ... |
 | 5.3 | ANCHOR-TABLE-SURFACE-0 | Phase 5: fulcrum 3 — derived GPU anchor table as the SOLE observation surface; c | Studio/telemetry read only the table; no second observation path (grep-proven); corpus green. |
 | 5.4 | FIELD-SWEEP-IR-PROBE-0 | Phase 5: workshop-leaf disposable probe — minimal target/neighbor-ctx EML map/fo | Parity absolute; N4 generic median ≤1.25× bespoke, supported-adapter worst ≤1.5× at matched measured occupancy with s... |
 | 5.5 | FIELD-SWEEP-N4-PARITY-0 | Phase 5: engine landing — EML edge context {target_slot, neighbor_slot, accumula | PALMA + Gu-Yang reproduced bit-exact on N4 as authored instances ALONGSIDE the bespoke stencils; referees unedited; n... |
@@ -95,7 +95,7 @@ Track state: `open`
 
 ## Next Rung Pointer
 
-Active pointer: `WRITE-DOOR-BAND-DELTA-0`
+Active pointer: `ANCHOR-TABLE-SURFACE-0`
 
 
 ## Cold-Start Spine (constitutional pointers)

@@ -15,6 +15,10 @@ AoWgsl0FallbackReason | authority-export | Exported kernel runtime/planning/orac
 AoWgsl0PlanShape | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
 ApproximateDecisionDiagnostic | authority-export | OC-K-DECISION-INGRESS-0 approximate decision diagnostic only | retire when kernel export set is closed by type-boundary admission
 ApproximateDiagnostic | authority-export | OC-K-EXACT-GATE-0 diagnostic-only magnitude; cannot mint ExactMagnitudeProof | retire when kernel export set is closed by type-boundary admission
+apply_band_crossing_deltas_from_fused_emissions | authority-export | WRITE-DOOR-BAND-DELTA-0 sealed join mint from fused emissions + canonical Anchored registry; xref sealed path | retire when kernel export set is closed by type-boundary admission
+apply_band_crossing_deltas_from_threshold_events | authority-export | WRITE-DOOR-BAND-DELTA-0 sealed join mint from threshold events + canonical Anchored registry; xref sealed path | retire when kernel export set is closed by type-boundary admission
+BandCrossingDelta | sealed-export | WRITE-DOOR-BAND-DELTA-0 sealed write-impact delta; minted only from fused threshold emissions | retire when kernel export set is closed by type-boundary admission
+BandCrossingDirection | sealed-export | WRITE-DOOR-BAND-DELTA-0 sealed rising/falling direction for write-impact deltas | retire when kernel export set is closed by type-boundary admission
 BoundaryEmissionToken | sealed-export | OC-K-DECISION-INGRESS-0 boundary token for commitment mint | retire when kernel export set is closed by type-boundary admission
 build_column_rule_descriptors | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
 build_column_rules | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
@@ -39,6 +43,7 @@ conjunctive_recipe_registration_to_transfer | authority-export | Exported kernel
 conjunctive_recipe_registrations_to_transfer | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
 context | authority-export | Exported kernel module surface; authority-bearing namespace | retire when kernel export set is closed by type-boundary admission
 cpu_oracle | authority-export | Exported kernel module surface; authority-bearing namespace | retire when kernel export set is closed by type-boundary admission
+cpu_oracle_band_crossing_deltas | authority-export | WRITE-DOOR-BAND-DELTA-0 CPU-oracle twin for sealed BandCrossingDelta mint; xref sealed path | retire when kernel export set is closed by type-boundary admission
 cpu_oracle_emission_records | authority-export | CPU-oracle authority surface; xref sealed_producers:cpu_oracle_emission_records | retire when kernel export set is closed by type-boundary admission
 cpu_oracle_threshold_events | authority-export | CPU-oracle authority surface; xref sealed_producers:cpu_oracle_threshold_events | retire when kernel export set is closed by type-boundary admission
 cpu_reduce_oracle | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission

@@ -1177,6 +1177,15 @@ impl WorldAccumulatorRuntime {
         }
     }
 
+    /// Threshold registration sidecar for sealed band-delta mint (no public
+    /// band-delta readback door).
+    pub fn threshold_registrations(&self) -> &[crate::ThresholdRegistration] {
+        self.threshold_session
+            .as_ref()
+            .map(|session| session.threshold_registrations())
+            .unwrap_or(&[])
+    }
+
     pub fn ensure_summary(&mut self, ctx: &GpuContext, n_slots: u32, n_dims: u32) {
         let needs_rebuild = self
             .summary

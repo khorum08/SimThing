@@ -4,15 +4,16 @@
 # name list loaded by scan_allowlists.py. Migrated from a hard-coded tuple at
 # CI-A-CLOSEOUT-0 so no invariant lives in the engine (doctrine-as-data, §0).
 # Adding/removing a sealed type is a one-line, diff-auditable data edit here.
-ThresholdEvent
-ThresholdEventGpu
-ThresholdEventCandidatesReadback
+BandCrossingDelta
+CandidateFMagnitudeReport
 EmissionRecord
 EmissionRecordGpu
 EmissionRecordReadback
+PlacedParticipant
+ResolvedWriteAuthority
 ThresholdEmission
 ThresholdEmissionGpu
 ThresholdEmissionReadback
-PlacedParticipant
-ResolvedWriteAuthority
-CandidateFMagnitudeReport
+ThresholdEvent
+ThresholdEventCandidatesReadback
+ThresholdEventGpu

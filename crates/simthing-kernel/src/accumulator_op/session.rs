@@ -14,6 +14,7 @@ use wgpu::{
 
 use crate::context::GpuContext;
 use crate::gpu_readback::{EmissionRecordReadback, KernelReadbackError, ThresholdEmissionReadback};
+use crate::registration::ThresholdRegistration;
 use crate::sealed::ThresholdEvent;
 
 use super::encode::EncodeError;
@@ -174,6 +175,8 @@ pub struct AccumulatorOpSession {
 
     /// Per-registration sidecar populated by `upload_threshold_ops`.
     threshold_event_kinds: Vec<u32>,
+    /// Full threshold registration sidecar for sealed BandCrossingDelta mint.
+    threshold_registrations: Vec<ThresholdRegistration>,
 }
 
 impl AccumulatorOpSession {
@@ -479,6 +482,7 @@ impl AccumulatorOpSession {
             timestamp_readback_buffer,
             last_pass_time_us: None,
             threshold_event_kinds: Vec::new(),
+            threshold_registrations: Vec::new(),
         };
 
         session.reset_emission_count(ctx);
@@ -789,6 +793,7 @@ impl AccumulatorOpSession {
         upload: &PackedAccumulatorUpload,
     ) -> Result<(), AccumulatorOpSessionError> {
         self.threshold_event_kinds.clear();
+        self.threshold_registrations.clear();
         self.write_input_list_buffer(ctx, upload.input_list())?;
         self.write_op_bytes(ctx, upload.ops())?;
         self.n_ops = upload.ops().len() as u32;
@@ -879,6 +884,7 @@ impl AccumulatorOpSession {
         self.write_op_bytes(ctx, upload.ops())?;
         self.n_ops = upload.ops().len() as u32;
         self.threshold_event_kinds = upload.threshold_event_kinds().to_vec();
+        self.threshold_registrations = upload.registrations().to_vec();
         Ok(())
     }
 
@@ -929,6 +935,8 @@ impl AccumulatorOpSession {
         self.n_ops = new_count as u32;
         self.threshold_event_kinds
             .extend_from_slice(upload.threshold_event_kinds());
+        self.threshold_registrations
+            .extend_from_slice(upload.registrations());
         Ok(())
     }
 
@@ -944,6 +952,7 @@ impl AccumulatorOpSession {
         upload: &PackedIntentUpload,
     ) -> Result<(), AccumulatorOpSessionError> {
         self.threshold_event_kinds.clear();
+        self.threshold_registrations.clear();
         if upload.ops().is_empty() {
             self.n_ops = 0;
             return Ok(());
@@ -966,6 +975,11 @@ impl AccumulatorOpSession {
     /// Restore threshold event kinds after a non-threshold op upload.
     pub fn restore_threshold_event_kinds(&mut self, kinds: &[u32]) {
         self.threshold_event_kinds = kinds.to_vec();
+    }
+
+    /// Restore threshold registration sidecar after a non-threshold op upload.
+    pub fn restore_threshold_registrations(&mut self, regs: &[ThresholdRegistration]) {
+        self.threshold_registrations = regs.to_vec();
     }
 
     /// Dispatch Pass B for one OrderBand, then refresh per-slot summaries.
@@ -2043,6 +2057,11 @@ impl AccumulatorOpSession {
             .map_err(AccumulatorOpSessionError::from)
     }
 
+    /// Threshold registration sidecar retained for sealed band-delta mint.
+    pub fn threshold_registrations(&self) -> &[ThresholdRegistration] {
+        &self.threshold_registrations
+    }
+
     /// Total emission record attempts this tick (may exceed capacity on overflow).
     pub fn read_emission_count(&self, ctx: &GpuContext) -> Result<u32, AccumulatorOpSessionError> {
         Ok(self.emission_readback.read_count(&ctx.device, &ctx.queue))
@@ -2512,6 +2531,37 @@ mod tests {
         assert_eq!(events.len(), 2);
         assert_eq!(events[0].event_kind(), kinds[0]);
         assert_eq!(events[1].event_kind(), kinds[1]);
+
+        // WRITE-DOOR-BAND-DELTA-0: GPU fused mint must bit-agree with CPU oracle.
+        use simthing_core::{SimProperty, SimThing, SimThingKind};
+        let mut registry = simthing_core::DimensionRegistry::new();
+        let _ = registry.register(SimProperty::simple("ao", "thresh", 1));
+        let mut root = SimThing::new(SimThingKind::GameSession, 0);
+        root.add_child(SimThing::new(SimThingKind::Location, 0));
+        root.add_child(SimThing::new(SimThingKind::Location, 0));
+        let mut allocator = crate::SlotAllocator::new();
+        allocator.populate_from_tree(&root);
+
+        let mut gpu_deltas = crate::apply_band_crossing_deltas_from_fused_emissions(
+            &gpu,
+            session.threshold_registrations(),
+            &registry,
+            &allocator,
+        );
+        gpu_deltas.sort_by_key(|d| (d.slot(), d.col(), d.reg_idx()));
+        let mut cpu_deltas = crate::cpu_oracle_band_crossing_deltas(
+            &previous,
+            &current,
+            &[],
+            &[],
+            n_dims,
+            &regs,
+            &registry,
+            &allocator,
+        );
+        cpu_deltas.sort_by_key(|d| (d.slot(), d.col(), d.reg_idx()));
+        assert_eq!(gpu_deltas, cpu_deltas);
+        assert_eq!(gpu_deltas.len(), 2);
     }
 
     #[test]

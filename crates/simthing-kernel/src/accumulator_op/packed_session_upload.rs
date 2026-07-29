@@ -101,6 +101,8 @@ pub struct PackedAccumulatorUpload {
 pub struct PackedThresholdUpload {
     ops: Vec<AccumulatorOpGpu>,
     threshold_event_kinds: Vec<u32>,
+    /// Sidecar retained for sealed BandCrossingDelta mint at fused readback.
+    registrations: Vec<ThresholdRegistration>,
 }
 
 /// Byte-ready folded intent upload packet.
@@ -196,6 +198,7 @@ impl PackedThresholdUpload {
         Ok(Self {
             ops: gpu_ops,
             threshold_event_kinds: event_kinds,
+            registrations: regs.to_vec(),
         })
     }
 
@@ -205,6 +208,10 @@ impl PackedThresholdUpload {
 
     pub fn threshold_event_kinds(&self) -> &[u32] {
         &self.threshold_event_kinds
+    }
+
+    pub fn registrations(&self) -> &[ThresholdRegistration] {
+        &self.registrations
     }
 }
 
