@@ -1,7 +1,7 @@
 # WRITE-DOOR-BAND-DELTA-0 results
 
 - Track: 0.0.8.7 RF arena modernization (rung 5.2)
-- Status: **PROBATION / proof-present / DA-review-pending** (remand-4 discharged locally; rides PR #1488 draft)
+- Status: **COMPLETE — DA-GRADUATED / merged #1488 @ d41a079b** (DA verified census+selftest true-exit 0; referee 10/0; driver 133/0/13 across 65 harnesses on RTX 4080/Vulkan)
 - HD-RECEIPT: `bfd7fd9c217b`
 - ORIENT-RECEIPT: `16b366e49528`
 - orientation_rule_stamp: `76fd13d17f16f2f7`
