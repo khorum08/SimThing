@@ -1,7 +1,7 @@
 # ANCHOR-TABLE-SURFACE-0 results
 
 - Track: 0.0.8.7 RF arena modernization (rung 5.3)
-- Status: **PROBATION / proof-present / DA-review-pending** (coder lane; orch owns `/clearance`)
+- Status: **COMPLETE — DA-GRADUATED / merged #1491 @ d9544c52** (DA verified censuses true-exit 0, referee 13/0, studio 10/0, driver 146/0/13 across 66 harnesses on RTX 4080/Vulkan)
 - HD-RECEIPT: `a41ced4721f0`
 - ORIENT-RECEIPT: `16b366e49528`
 - orientation_rule_stamp: `76fd13d17f16f2f7`
