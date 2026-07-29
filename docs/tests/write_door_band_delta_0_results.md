@@ -13,7 +13,7 @@
 - Remand-2: comment `5117474928`
 - Remand-3: comment `5117961061` (DA ruling `5117893595`)
 - base_sha: `77ea7f12a933b5f0362afdaa4edf6970b4339ffc` (handoff)
-- tested_code_sha / implementation_code_sha: bound after remedial commit (see PR Exact-head fields; this file does not self-hash tip)
+- tested_code_sha / implementation_code_sha: `006ee5625d19069d6aec8972ab22d70d1683cf0a`
 - final_head_sha / clearance_pr_head: PR-body-bound only (this file does not self-hash)
 - coverage_basis: plan_struct oracle-door arm cfg(test)-aware (filename exclusion class retired); plan_struct_typing_census exit 0; write-door census + focused 5.2 referees green; prior remands 1–2 retained
 - expected_route: `DA-RESERVE(gate-wiring)`
