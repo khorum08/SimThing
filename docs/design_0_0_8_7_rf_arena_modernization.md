@@ -291,7 +291,7 @@ discretion); `Std — Grok CLI` (`grok-4.5` pinned); `Fable` = DA-implemented ha
 
 | Item | State |
 |---|---|
-| Active open rung | `CANONICAL-ANCHOR-MATERIALIZATION-0` |
+| Active open rung | `ANCHOR-TABLE-SURFACE-0` |
 
 ## 4. Binding laws (carry from day one)
 
