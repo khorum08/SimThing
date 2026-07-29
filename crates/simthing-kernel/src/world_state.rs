@@ -24,8 +24,8 @@ use simthing_core::{AnchorRemapSection, AnchorTable, DimensionRegistry};
 use wgpu::{
     BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor, BindGroupLayoutEntry,
     BindingType, Buffer, BufferBindingType, BufferDescriptor, BufferUsages,
-    CommandEncoderDescriptor, ComputePipelineDescriptor, Maintain, MapMode, PipelineLayoutDescriptor,
-    ShaderModuleDescriptor, ShaderSource, ShaderStages,
+    CommandEncoderDescriptor, ComputePassDescriptor, ComputePipelineDescriptor, Maintain, MapMode,
+    PipelineLayoutDescriptor, ShaderModuleDescriptor, ShaderSource, ShaderStages,
 };
 
 use crate::accumulator_op::DEFAULT_THRESHOLD_EMISSION_CAPACITY;
@@ -188,6 +188,11 @@ pub struct WorldGpuState {
     anchor_remap_pipeline: wgpu::ComputePipeline,
     anchor_remap_layout: wgpu::BindGroupLayout,
     anchor_remap_uniform: Buffer,
+    /// Values-only magnitude refresh when no threshold session is present
+    /// (orch remand `5121185090`).
+    anchor_magnitude_values_pipeline: wgpu::ComputePipeline,
+    anchor_magnitude_values_layout: wgpu::BindGroupLayout,
+    anchor_magnitude_values_uniform: Buffer,
 }
 
 impl WorldGpuState {
@@ -220,32 +225,94 @@ impl WorldGpuState {
     }
 
     /// Magnitude-only fused companion (post-remap / no-crossing refresh).
+    ///
+    /// Must run only after structural GPU value sync has installed canonical
+    /// values at the rows' current slot/col (orch remand `5121185090`). When a
+    /// threshold session is present, urgency is derived from threshold ops;
+    /// otherwise observed_value is refreshed from the values plane with urgency 0.
     pub fn run_anchor_table_magnitude_maintain(&mut self) {
         if self.n_anchor_rows == 0 {
             return;
         }
-        let Some(runtime) = self.accumulator_runtime.as_mut() else {
-            return;
-        };
-        let Some(session) = runtime.take_threshold_session() else {
-            return;
-        };
-        let mut encoder = self.ctx.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("anchor_table_magnitude_maintain"),
-        });
-        session.encode_anchor_table_maintain_into(
-            &self.ctx,
-            &mut encoder,
-            &self.resolved.values(),
-            &self.anchor_table,
-            self.n_anchor_rows,
-            self.anchor_table_generation,
-            false,
-        );
-        self.ctx.queue.submit(Some(encoder.finish()));
         if let Some(runtime) = self.accumulator_runtime.as_mut() {
-            runtime.restore_threshold_session(Some(session));
+            if let Some(session) = runtime.take_threshold_session() {
+                let mut encoder =
+                    self.ctx
+                        .device
+                        .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                            label: Some("anchor_table_magnitude_maintain"),
+                        });
+                session.encode_anchor_table_maintain_into(
+                    &self.ctx,
+                    &mut encoder,
+                    &self.resolved.values(),
+                    &self.anchor_table,
+                    self.n_anchor_rows,
+                    self.anchor_table_generation,
+                    false,
+                );
+                self.ctx.queue.submit(Some(encoder.finish()));
+                if let Some(runtime) = self.accumulator_runtime.as_mut() {
+                    runtime.restore_threshold_session(Some(session));
+                }
+                return;
+            }
         }
+        self.dispatch_anchor_magnitude_values_only();
+    }
+
+    fn dispatch_anchor_magnitude_values_only(&mut self) {
+        #[repr(C)]
+        #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+        struct MagnitudeValuesParams {
+            n_dims: u32,
+            n_anchor_rows: u32,
+            _pad0: u32,
+            _pad1: u32,
+        }
+        let params = MagnitudeValuesParams {
+            n_dims: self.n_dims,
+            n_anchor_rows: self.n_anchor_rows,
+            _pad0: 0,
+            _pad1: 0,
+        };
+        self.ctx.queue.write_buffer(
+            &self.anchor_magnitude_values_uniform,
+            0,
+            bytemuck::bytes_of(&params),
+        );
+        let bind_group = self.ctx.device.create_bind_group(&BindGroupDescriptor {
+            label: Some("anchor_magnitude_values_bg"),
+            layout: &self.anchor_magnitude_values_layout,
+            entries: &[
+                BindGroupEntry {
+                    binding: 0,
+                    resource: self.resolved.values().as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 1,
+                    resource: self.anchor_table.as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 2,
+                    resource: self.anchor_magnitude_values_uniform.as_entire_binding(),
+                },
+            ],
+        });
+        let mut encoder = self.ctx.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("anchor_table_magnitude_values"),
+        });
+        {
+            let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
+                label: Some("anchor_magnitude_values_pass"),
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&self.anchor_magnitude_values_pipeline);
+            pass.set_bind_group(0, &bind_group, &[]);
+            let groups = self.n_anchor_rows.div_ceil(64);
+            pass.dispatch_workgroups(groups, 1, 1);
+        }
+        self.ctx.queue.submit(Some(encoder.finish()));
     }
 
     pub fn set_anchor_table_generation(&mut self, generation: u32) {
@@ -317,8 +384,9 @@ impl WorldGpuState {
         if ops.is_empty() && births.is_empty() {
             return;
         }
+        // Structural remap only — magnitude refresh must wait until Step 9
+        // value sync installs canonical cells at the new coordinates.
         self.dispatch_anchor_remap_gpu(&ops, &births);
-        self.run_anchor_table_magnitude_maintain();
     }
 
     fn dispatch_anchor_remap_gpu(&mut self, ops: &[AnchorRemapOpGpu], births: &[AnchorTableRowGpu]) {
@@ -608,6 +676,53 @@ impl WorldGpuState {
             mapped_at_creation: false,
         });
 
+        let magnitude_values_shader = ctx.device.create_shader_module(ShaderModuleDescriptor {
+            label: Some("anchor_table_magnitude_values"),
+            source: ShaderSource::Wgsl(
+                include_str!("shaders/anchor_table_magnitude_values.wgsl").into(),
+            ),
+        });
+        let anchor_magnitude_values_layout =
+            ctx.device
+                .create_bind_group_layout(&BindGroupLayoutDescriptor {
+                    label: Some("anchor_magnitude_values_layout"),
+                    entries: &[
+                        storage(0, true),
+                        storage(1, false),
+                        BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: ShaderStages::COMPUTE,
+                            ty: BindingType::Buffer {
+                                ty: BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
+        let magnitude_values_pl = ctx.device.create_pipeline_layout(&PipelineLayoutDescriptor {
+            label: Some("anchor_magnitude_values_pl"),
+            bind_group_layouts: &[&anchor_magnitude_values_layout],
+            push_constant_ranges: &[],
+        });
+        let anchor_magnitude_values_pipeline =
+            ctx.device
+                .create_compute_pipeline(&ComputePipelineDescriptor {
+                    label: Some("anchor_magnitude_values_pipeline"),
+                    layout: Some(&magnitude_values_pl),
+                    module: &magnitude_values_shader,
+                    entry_point: "maintain_anchor_magnitudes_values_only",
+                    compilation_options: Default::default(),
+                    cache: None,
+                });
+        let anchor_magnitude_values_uniform = ctx.device.create_buffer(&BufferDescriptor {
+            label: Some("anchor_magnitude_values_uniform"),
+            size: 16,
+            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
         // Reduction buffers — placeholder allocations, filled by upload_reduction_topology.
         let child_starts = mk("child_starts", ((n_slots as u64) + 1) * 4);
         let child_indices = mk("child_indices", 4); // placeholder 1 u32
@@ -663,6 +778,9 @@ impl WorldGpuState {
             anchor_remap_pipeline,
             anchor_remap_layout,
             anchor_remap_uniform,
+            anchor_magnitude_values_pipeline,
+            anchor_magnitude_values_layout,
+            anchor_magnitude_values_uniform,
         }
     }
 

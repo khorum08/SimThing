@@ -166,6 +166,34 @@ fi
 if ! rg -q 'apply_anchor_remap_section' crates/simthing-sim/src/boundary.rs; then
   fail "boundary must apply structural remaps via GPU-resident apply_anchor_remap_section"
 fi
+# Remand-4: magnitude refresh must not run inside remap before Step 9 sync.
+if rg -n 'run_anchor_table_magnitude_maintain' crates/simthing-kernel/src/world_state.rs \
+  | normalize \
+  | grep -q .; then
+  python - <<'PY'
+from pathlib import Path
+text = Path("crates/simthing-kernel/src/world_state.rs").read_text(encoding="utf-8")
+# Find apply_anchor_remap_section body and forbid maintain inside it.
+start = text.find("pub fn apply_anchor_remap_section")
+if start < 0:
+    raise SystemExit("FAIL: apply_anchor_remap_section missing")
+# Next pub fn after start bounds the method roughly.
+rest = text[start:]
+end_rel = rest.find("\n    pub fn ", 1)
+body = rest if end_rel < 0 else rest[:end_rel]
+if "run_anchor_table_magnitude_maintain" in body:
+    raise SystemExit(
+        "FAIL: apply_anchor_remap_section must not call magnitude maintain before Step 9 sync"
+    )
+print("PASS: remap apply defers magnitude maintain")
+PY
+fi
+if ! rg -q 'run_anchor_table_magnitude_maintain' crates/simthing-sim/src/boundary.rs; then
+  fail "boundary must refresh magnitudes after structural remaps (post Step 9)"
+fi
+if ! rg -q 'anchor_table_magnitude_values' crates/simthing-kernel/src/world_state.rs; then
+  fail "no-session magnitude path (anchor_table_magnitude_values) missing"
+fi
 if ! rg -q 'upload_typed_anchor_table' crates/simthing-sim/src/boundary.rs; then
   fail "admission mint must upload via typed WorldGpuState door"
 fi

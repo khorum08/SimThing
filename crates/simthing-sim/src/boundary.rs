@@ -945,7 +945,10 @@ impl BoundaryProtocol {
         )
         .unwrap_or_else(|err| panic!("anchor remap encode refused before GPU sync: {err}"));
         // Structural remaps: GPU-resident apply (orch remand 5120847431).
-        if !remap_section.remaps.is_empty() {
+        // Magnitude refresh is deferred until after Step 9 value sync
+        // (orch remand 5121185090) so moved/born rows sample canonical cells.
+        let remaps_applied = !remap_section.remaps.is_empty();
+        if remaps_applied {
             state.apply_anchor_remap_section(&remap_section, &self.registry);
         }
         out.anchor_remap = remap_section;
@@ -1007,6 +1010,9 @@ impl BoundaryProtocol {
             self.sync_accumulator_intensity_session(state);
         } else {
             self.sync_accumulator_eml_session(state);
+        }
+        if remaps_applied {
+            state.run_anchor_table_magnitude_maintain();
         }
         self.sync_accumulator_transfer_session(state);
         self.sync_accumulator_emission_session(state);
