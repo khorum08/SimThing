@@ -14,15 +14,15 @@ required_checks: ["cargo build --workspace; core and sim batteries", "adapter-pi
 stop_conditions: ["stale-orient-receipt or scope-widening", "canonical hosts require new authoring or scenario mutation", "a missing Anchored property has zero or conflicting lawful candidates", "derivation requires kind/name/root fallback or a 5.3 semantic change"]
 ---
 ## BUILD
-- FIRST (before implementing): emit a read-only candidate-evidence census —
-  property -> candidate host(s) -> evidence class — and land it in the
-  results doc as the provenance table. Zero or multiple candidates anywhere
-  = STOP before implementation; never invent a precedence order (DA rules).
+- Census RULED (#1495). RESIDENCY = value-PLACING relations ONLY (economy
+  emission/transfer/recipe host_entity, need_binding locus, threshold host,
+  hosted_observation location, RF edge); governance instruments (owner-policy
+  overlays, policy-weight authority) corroborate but NEVER elect. Re-run it.
 - Add one typed install-time pass after existing admitted structures resolve and before final admission reporting / initial GPU sync. Existing loci remain authoritative; only Anchored properties with zero live loci enter derivation.
 - Derive candidates on canonical property identity from EXISTING admitted RF parent edges, owner policy-weight authority, and install-resolved threshold, need/economy, overlay, or hosted-observation registrations. Never consult kind, names, display metadata, or a default root.
 - Materialize `PropertyValue::from_layout` only when evidence converges on exactly one existing SimThing. Zero, conflicting, or out-of-tree candidates hard-error with identity and provenance. Preserve all existing values and loci exactly.
 - Attach to ordinary `compile_and_install`, so preview, atomic install, open-from-spec, and Studio share the same tree. The existing `snapshot_anchored_loci` → typed GPU-table door consumes the result without special upload or enrollment.
-- Replace the canonical-zero tripwire with the unmodified full TP install: no manufactured hosts; prove `25 Anchored / 0 Unobserved`, 25 live loci covering 25 properties, and 25 GPU rows. Keep 5.3 hosted/Studio proofs unedited; add only missing/conflicting-evidence, value-preservation, and Unobserved negatives.
+- The 7 zero-candidate properties (`tp::hull`, `tp::weapon_damage`, `tp::upkeep`, 4x `tp::combat_*`) become AUTHORED `Unobserved{reason}` in `scenarios/terran_pirate_galaxy.clause` (the 5.1 door: declare the absence of a host, never fabricate one; reasons name the uninstantiated entity class and Phase 8 as successor) — DA-authorized, and the ONLY authoring permitted. Then replace the canonical-zero tripwire with the unmodified-topology full TP install: prove `18 Anchored / 7 Unobserved`, 18 live loci over 18 properties, 18 GPU rows, 7 dark cells; regenerate `property_admission_inventory.tsv` (25/0 -> 18/7); keep 5.3 hosted/Studio proofs unedited; add only missing/conflicting-evidence, value-preservation, and Unobserved negatives.
 - Land one results doc and stamp 5.3b PROBATION while keeping the active pointer on 5.3b. DA alone advances to `FIELD-SWEEP-IR-PROBE-0` at graduation.
 ## FENCES
 - Derivation-by-admission only; existing admitted structures are the complete vocabulary.
