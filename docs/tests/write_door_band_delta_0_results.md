@@ -12,7 +12,7 @@
 - Remand-1: comment `5112136052` (landing `5112304200`)
 - Remand-2: comment `5117474928`
 - base_sha: `77ea7f12a933b5f0362afdaa4edf6970b4339ffc` (handoff)
-- tested_code_sha / implementation_code_sha: bound after code-bearing commit (see PR Exact-head fields; this file does not self-hash tip)
+- tested_code_sha / implementation_code_sha: `5dd354a5e72491219ae7c97d5056738e584cd9b1`
 - final_head_sha / clearance_pr_head: PR-body-bound only (this file does not self-hash)
 - coverage_basis: independent pre/post remap completeness; omitted-retire/move negatives; real multi-edge GPU mint → BoundaryDeltaEntry → replay; inventory drift closed; census independent-required-keys fence; adapter-pinned batteries
 - expected_route: `DA-RESERVE(gate-wiring)`
