@@ -11,8 +11,8 @@
 - Board dispatch: comment `5111853299`
 - Remand: comment `5112136052`
 - base_sha: `77ea7f12a933b5f0362afdaa4edf6970b4339ffc` (handoff); branch cut from current master including dispatch tip
-- tested_code_sha: *(set to tip after commit — code tip)*
-- implementation_code_sha: *(set to tip after commit — code tip)*
+- tested_code_sha: `b71f6f3c06fff0d7eea41824c7fcc7b8822c60b8`
+- implementation_code_sha: `b71f6f3c06fff0d7eea41824c7fcc7b8822c60b8`
 - final_head_sha: PR-body-bound (see draft PR `final_head_sha` after push; this file does not self-hash)
 - clearance_pr_head: PR-body-bound (see draft PR `clearance_pr_head` after push; this file does not self-hash)
 - coverage_basis: exact pre/post remaps; typed registry-filtered BandCrossingDelta; boundary/delta-log/replay transport; strengthened referees + census; fused GPU mint vs CPU oracle; adapter-pinned batteries
