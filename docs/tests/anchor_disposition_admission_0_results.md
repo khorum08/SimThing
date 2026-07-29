@@ -1,6 +1,6 @@
 # ANCHOR-DISPOSITION-ADMISSION-0 — total property admission disposition
 
-> **Lifecycle: PROBATION** — Typed admission disposition, canonical install reporting,
+> **Lifecycle: COMPLETE — DA-GRADUATED / merged #1485 @ 06103edf** — Typed admission disposition, canonical install reporting,
 > and deterministic dark-inventory evidence landed. Pending DA review; no merge or
 > promotion claimed.
 
@@ -76,4 +76,4 @@ without improving the horizon target. No WGSL/EvalEML reach entry is warranted.
 
 ## DA status
 
-**PROBATION** — await DA review and the next-rung pointer at design section 5.2.
+**COMPLETE** — DA-GRADUATED / merged #1485 @ 06103edf; DA reproduced full corpus green on live GPU.
