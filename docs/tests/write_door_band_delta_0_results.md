@@ -11,7 +11,7 @@
 - Board dispatch: comment `5111853299`
 - Remand-1: `5112136052` · Remand-2: `5117474928` · Remand-3: `5117961061` · Remand-4: `5118362104` (DA `5117893595`)
 - base_sha: `77ea7f12a933b5f0362afdaa4edf6970b4339ffc` (handoff)
-- tested_code_sha / implementation_code_sha: bound after remedial commit (see PR Exact-head fields; this file does not self-hash tip)
+- tested_code_sha / implementation_code_sha: `f0962be98dcf027a3596448ebacf4225e22f7aa6`
 - final_head_sha / clearance_pr_head: PR-body-bound only (this file does not self-hash)
 - coverage_basis: brace-balanced `#[cfg(test)] mod tests` oracle-door filter + `--selftest` negative (in-module excluded, post-brace visible); plan_struct census exit 0; write-door census + focused 5.2 referees green
 - expected_route: `DA-RESERVE(gate-wiring)`
