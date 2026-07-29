@@ -46,6 +46,73 @@ scenario = terran_pirate_galaxy {
     location = terran_shipyard {
         display_name = "Terran Shipyard"
         system_target = "row199_col80"
+        # 5.3b DA-authorized dark cells (ruling 5124095512): declare absence of a
+        # value-placing host — never fabricate one. Phase 8 (8.1–8.2) is successor.
+        properties = {
+            property = {
+                id = "tp_hull"
+                namespace = "tp"
+                name = "hull"
+                display_name = "Hull"
+                disposition = Unobserved {
+                    reason = "uninstantiated ship-class hull host; Phase 8 (8.1-8.2) successor"
+                }
+            }
+            property = {
+                id = "tp_weapon_damage"
+                namespace = "tp"
+                name = "weapon_damage"
+                display_name = "Weapon Damage"
+                disposition = Unobserved {
+                    reason = "uninstantiated ship-class weapon host; Phase 8 (8.1-8.2) successor"
+                }
+            }
+            property = {
+                id = "tp_upkeep"
+                namespace = "tp"
+                name = "upkeep"
+                display_name = "Upkeep"
+                disposition = Unobserved {
+                    reason = "uninstantiated ship-class upkeep host; Phase 8 (8.1-8.2) successor"
+                }
+            }
+            property = {
+                id = "tp_combat_terran_ship_0_hull"
+                namespace = "tp"
+                name = "combat_terran_ship_0_hull"
+                display_name = "combat_terran_ship_0_hull"
+                disposition = Unobserved {
+                    reason = "uninstantiated combat-enrollment hull host; Phase 8 (8.1-8.2) successor"
+                }
+            }
+            property = {
+                id = "tp_combat_terran_ship_0_weapon"
+                namespace = "tp"
+                name = "combat_terran_ship_0_weapon"
+                display_name = "combat_terran_ship_0_weapon"
+                disposition = Unobserved {
+                    reason = "uninstantiated combat-enrollment weapon host; Phase 8 (8.1-8.2) successor"
+                }
+            }
+            property = {
+                id = "tp_combat_pirate_ship_0_hull"
+                namespace = "tp"
+                name = "combat_pirate_ship_0_hull"
+                display_name = "combat_pirate_ship_0_hull"
+                disposition = Unobserved {
+                    reason = "uninstantiated combat-enrollment hull host; Phase 8 (8.1-8.2) successor"
+                }
+            }
+            property = {
+                id = "tp_combat_pirate_ship_0_weapon"
+                namespace = "tp"
+                name = "combat_pirate_ship_0_weapon"
+                display_name = "combat_pirate_ship_0_weapon"
+                disposition = Unobserved {
+                    reason = "uninstantiated combat-enrollment weapon host; Phase 8 (8.1-8.2) successor"
+                }
+            }
+        }
     }
     location = pirate_outpost {
         display_name = "Pirate Outpost"

@@ -24,7 +24,7 @@ use simthing_gpu::SlotAllocator;
 
 const MICRO_ECONOMY: &str = include_str!("fixtures/ct2a_micro_economy.clause");
 const CANONICAL_COUNT_CASES: &[(&str, u64)] =
-    &[("anchored", 25), ("unobserved", 0), ("total", 25)];
+    &[("anchored", 18), ("unobserved", 7), ("total", 25)];
 
 fn repo_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")
@@ -285,7 +285,7 @@ fn blank_unobserved_reason_hard_errors_at_scalar_span() {
 }
 
 #[test]
-fn canonical_tp_install_has_total_default_anchored_disposition() {
+fn canonical_tp_install_has_total_disposition_with_da_unobserved_dark_cells() {
     let preview = canonical_preview();
     let report = &preview.state.property_admission;
     assert!(
@@ -297,10 +297,11 @@ fn canonical_tp_install_has_total_default_anchored_disposition() {
         report.anchored_count() + report.unobserved_count(),
         "closed type yields exactly one disposition per resource property"
     );
+    assert_eq!(report.anchored_count(), 18, "5.3b: 18 Anchored");
     assert_eq!(
         report.unobserved_count(),
-        0,
-        "unchanged canonical authoring defaults every resource property Anchored"
+        7,
+        "5.3b DA-authorized Unobserved dark cells"
     );
     assert_eq!(
         report.resource_properties,
@@ -406,10 +407,13 @@ fn board_and_orientation_render_property_admission_inventory() {
         serde_json::from_slice(&board.stdout).expect("parse Board JSON");
     assert_eq!(
         board["active_pointer"],
-        serde_json::json!("WRITE-DOOR-BAND-DELTA-0")
+        serde_json::json!("CANONICAL-ANCHOR-MATERIALIZATION-0")
     );
     for (field, expected) in CANONICAL_COUNT_CASES {
         assert_eq!(board["property_admission"][field], *expected);
     }
-    assert_eq!(board["property_admission"]["dark"], serde_json::json!([]));
+    let dark = board["property_admission"]["dark"]
+        .as_array()
+        .expect("property_admission.dark array");
+    assert_eq!(dark.len(), 7, "Board dark inventory must list 7 Unobserved cells");
 }

@@ -1163,12 +1163,9 @@ fn boundary_protocol_structural_remap_value_authority() {
 }
 
 #[test]
-fn canonical_tp_gpu_table_matches_25_anchored_0_unobserved() {
-    use std::collections::HashMap;
-
+fn canonical_tp_gpu_table_matches_18_anchored_7_unobserved() {
     use simthing_clausething::{hydrate_scenario_with_source_base, parse_raw_document};
-    use simthing_driver::{preview_install, Scenario};
-    use simthing_spec::GameModeSpec;
+    use simthing_driver::preview_install;
 
     let Some(_ctx) = GpuContext::new_blocking().ok() else {
         eprintln!("skipping tp cardinality: no GPU");
@@ -1189,28 +1186,20 @@ fn canonical_tp_gpu_table_matches_25_anchored_0_unobserved() {
     let pack = hydrate_scenario_with_source_base(&document, Some(clause_path.parent().unwrap()))
         .expect("hydrate TP");
 
-    // Ordinary disposition install path (same door as 5.1): properties corpus
-    // only. Do not mutate the install root to manufacture Anchored hosts.
-    let game_mode = GameModeSpec {
-        id: pack.game_mode.id.clone(),
-        display_name: pack.game_mode.display_name.clone(),
-        properties: pack.game_mode.properties.clone(),
-        ..Default::default()
+    // Full unmodified-topology TP install via the production field-bearing door
+    // (same compile_and_install path Studio uses for observation hosts).
+    use simthing_mapeditor::{
+        authored_live_profile_from_pack, driver_scenario_field_bearing_from_profile,
+        field_bearing_game_mode,
     };
-    let root = pack.root.clone();
-    let n_slots = (root.subtree_size() as u32).saturating_add(2048);
-    let scenario = Scenario {
-        name: pack.scenario_id.clone(),
-        ticks_per_day: 1,
-        max_days: 1,
-        dt: 1.0,
-        n_slots,
-        registry: DimensionRegistry::new(),
-        root,
-        shadow_seeds: Vec::new(),
-        tick_patches: Vec::new(),
-        install_targets: HashMap::new(),
-    };
+    let profile = authored_live_profile_from_pack(&pack);
+    let scenario = driver_scenario_field_bearing_from_profile(&profile)
+        .expect("field-bearing scenario");
+    let mut game_mode = field_bearing_game_mode(&profile.game_mode);
+    game_mode
+        .domain_packs
+        .retain(|pack| pack.id != "field_bearing_overlays");
+    game_mode.overlays.clear();
     let mut preview_allocator = SlotAllocator::new();
     preview_allocator.populate_from_tree(&scenario.root);
     let preview = preview_install(
@@ -1220,40 +1209,33 @@ fn canonical_tp_gpu_table_matches_25_anchored_0_unobserved() {
         &scenario.root,
         &preview_allocator,
     )
-    .expect("canonical TP preview_install");
+    .unwrap_or_else(|err| panic!("canonical TP field-bearing preview_install: {err:?}"));
     let report = preview.registry.property_admission_report();
-    // Binding assertion (Route-3 / Remand-5): registry inventory is exactly
-    // 25 Anchored / 0 Unobserved. Live (SimThingId, SimPropertyId) Anchored
-    // loci/table rows on the unmodified canonical install are exactly 0.
-    // Rung `CANONICAL-ANCHOR-MATERIALIZATION-0` (5.3b) is the work that
-    // changes this live baseline from 0 to 25 — not this 5.3 substrate PR.
-    assert_eq!(report.anchored_count(), 25, "5.1 inventory: 25 Anchored");
-    assert_eq!(report.unobserved_count(), 0, "5.1 inventory: 0 Unobserved");
+    assert_eq!(report.unobserved_count(), 7, "5.3b inventory: 7 Unobserved");
+    let tp_anchored: HashSet<_> = report
+        .resource_properties
+        .iter()
+        .filter(|row| row.disposition.is_anchored() && row.namespace == "tp_economy")
+        .map(|row| row.property_id)
+        .collect();
+    assert_eq!(tp_anchored.len(), 18, "5.3b: 18 Anchored tp_economy identities");
 
     let loci = snapshot_anchored_loci(&preview.root, &preview.registry, &preview.allocator);
-    let live_locus_count = loci.len();
+    let tp_loci: Vec<_> = loci
+        .iter()
+        .filter(|((_, pid), _)| tp_anchored.contains(pid))
+        .collect();
     let live_prop_count = {
         let mut props = HashSet::new();
-        for ((_, pid), _) in &loci {
+        for ((_, pid), _) in &tp_loci {
             props.insert(pid.0);
         }
         props.len()
     };
-    assert_eq!(
-        live_locus_count, 0,
-        "canonical TP install must currently materialize exactly 0 live \
-         Anchored loci (got {live_locus_count}); 5.3b CANONICAL-ANCHOR-MATERIALIZATION-0 \
-         is the rung that flips this baseline to 25 — do not manufacture hosts here"
-    );
-    assert_eq!(
-        live_prop_count, 0,
-        "canonical TP install must currently materialize exactly 0 live \
-         Anchored property identities (got {live_prop_count}); see 5.3b \
-         CANONICAL-ANCHOR-MATERIALIZATION-0"
-    );
+    assert_eq!(tp_loci.len(), 18, "18 live Anchored loci over tp_economy");
+    assert_eq!(live_prop_count, 18, "18 distinct Anchored tp_economy identities");
     eprintln!(
-        "CANONICAL BASELINE: inventory anchored=25 / unobserved=0; live \
-         Anchored loci=0 / table rows=0. 5.3b CANONICAL-ANCHOR-MATERIALIZATION-0 \
-         changes live baseline 0→25. No 25-row canonical proof claimed in 5.3."
+        "CANONICAL 5.3b: inventory unobserved=7; live tp_economy \
+         Anchored loci=18 / dark cells=7."
     );
 }
