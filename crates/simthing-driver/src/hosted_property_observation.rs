@@ -12,10 +12,10 @@
 use std::collections::BTreeMap;
 
 use simthing_core::{
-    AnchorIdentity, AnchorTable, AnchorTableRow, BandIndex, ColumnIndex, DimensionRegistry,
-    SimPropertyId, SimThingId, SlotIndex, SubFieldRole,
+    AnchorIdentity, AnchorTable, AnchorTableRow, ColumnIndex, DimensionRegistry, SimThingId,
+    SlotIndex, SubFieldRole,
 };
-use simthing_gpu::{AnchorTableRowGpu, SlotAllocator, ANCHOR_BAND_NONE_POD};
+use simthing_gpu::SlotAllocator;
 use simthing_spec::{DisruptionAuthorityReadback, DisruptionAuthorityReadbackError, PropertyKey};
 use thiserror::Error;
 
@@ -30,9 +30,10 @@ pub struct AnchorTableSnapshot {
 impl AnchorTableSnapshot {
     /// Sole production observation door: decode the GPU-resident compact table.
     pub fn from_session(sim: &SimSession) -> Self {
-        let pods = sim.state.read_anchor_table();
         Self {
-            table: decode_anchor_table_from_gpu_pods(&pods, &sim.scenario.registry),
+            table: sim
+                .state
+                .read_typed_anchor_table(&sim.proto.registry),
         }
     }
 
@@ -68,68 +69,6 @@ impl AnchorTableSnapshot {
             )
             .map(|r| r.observed_value)
     }
-}
-
-/// Decode GPU POD rows into the typed observation table (driver-local; no new kernel export).
-fn decode_anchor_table_from_gpu_pods(
-    pods: &[AnchorTableRowGpu],
-    registry: &DimensionRegistry,
-) -> AnchorTable {
-    let mut table = AnchorTable::new();
-    let rows: Vec<AnchorTableRow> = pods
-        .iter()
-        .map(|pod| decode_anchor_table_row_gpu(pod, registry))
-        .collect();
-    table.replace_rows(rows);
-    table
-}
-
-fn decode_anchor_table_row_gpu(
-    pod: &AnchorTableRowGpu,
-    registry: &DimensionRegistry,
-) -> AnchorTableRow {
-    let property_id = SimPropertyId(pod.property_id);
-    let col = ColumnIndex::from_gpu_round_trip(pod.col);
-    let role = role_for_property_col(registry, property_id, col);
-    let band = if pod.band_idx == ANCHOR_BAND_NONE_POD {
-        None
-    } else {
-        Some(BandIndex::new(pod.band_idx as u32))
-    };
-    let last_crossing_generation = if pod.last_crossing_generation == 0 {
-        None
-    } else {
-        Some(pod.last_crossing_generation)
-    };
-    AnchorTableRow {
-        identity: AnchorIdentity::new(SimThingId::from_session_raw(pod.sim_thing_id), property_id),
-        slot: SlotIndex::new(pod.slot),
-        col,
-        role,
-        band,
-        last_crossing_generation,
-        urgency: pod.urgency,
-        observed_value: pod.observed_value,
-    }
-}
-
-fn role_for_property_col(
-    registry: &DimensionRegistry,
-    property_id: SimPropertyId,
-    col: ColumnIndex,
-) -> SubFieldRole {
-    let Some(prop) = registry.try_property(property_id) else {
-        return SubFieldRole::Amount;
-    };
-    let Some(range) = registry.try_column_range(property_id) else {
-        return SubFieldRole::Amount;
-    };
-    for sf in &prop.layout.sub_fields {
-        if range.col_for_role(&sf.role, &prop.layout) == Some(col) {
-            return sf.role.clone();
-        }
-    }
-    SubFieldRole::Amount
 }
 
 /// Legacy name retained as a type alias during migration; production consumers

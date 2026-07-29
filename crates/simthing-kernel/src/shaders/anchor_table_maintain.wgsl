@@ -11,7 +11,7 @@ struct AnchorTableRowGpu {
     slot: u32,
     col: u32,
     band_idx: i32,
-    last_crossing_generation: u32,
+    last_crossing_generation: i32,
     urgency: f32,
     observed_value: f32,
 }
@@ -108,7 +108,7 @@ fn apply_emission_to_rows(e: ThresholdEmissionGpu) {
             continue;
         }
         row.band_idx = i32(e.reg_idx);
-        row.last_crossing_generation = params.generation;
+        row.last_crossing_generation = i32(params.generation);
         row.observed_value = e.value;
         row.urgency = urgency_for(e.value, e.slot, e.col);
         anchor_table[r] = row;

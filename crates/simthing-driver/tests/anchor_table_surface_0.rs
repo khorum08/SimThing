@@ -1,15 +1,19 @@
 //! ANCHOR-TABLE-SURFACE-0 referees: derived STEAD table + consumer door.
+//! Orch remand `5120847431`: GPU-resident remap, exact generation, Studio bridge, canonical TP install.
+
+use std::collections::HashSet;
+use std::path::{Path, PathBuf};
 
 use simthing_core::{
-    apply_anchor_remaps_to_table, apply_band_crossings_to_anchor_table,
-    mint_anchor_table_from_admission, refresh_anchor_table_magnitudes, AnchorIdentity,
-    AnchorLocusRemap, AnchorRemapOperation, AnchorRemapSection, AnchoredLocusMap, BandIndex,
-    ColumnIndex, DimensionRegistry, PropertyAdmissionDisposition, SimProperty, SimPropertyId,
-    SimThing, SimThingKind, SlotIndex, SubFieldRole,
+    apply_anchor_remaps_to_table, apply_band_crossings_to_anchor_table, mint_anchor_table_from_admission,
+    refresh_anchor_table_magnitudes, AnchorIdentity, AnchorLocusRemap, AnchorRemapOperation,
+    AnchorRemapSection, AnchoredLocusMap, BandIndex, ColumnIndex, DimensionRegistry,
+    PropertyAdmissionDisposition, SimProperty, SimPropertyId, SimThing, SimThingKind, SlotIndex,
+    SubFieldRole,
 };
 use simthing_gpu::{
-    encode_anchor_table_gpu, oracle_anchor_table_after_deltas, BandCrossingDelta, GpuContext,
-    SlotAllocator, ANCHOR_BAND_NONE_POD,
+    BandCrossingDelta, GpuContext, SlotAllocator, ThresholdRegistration, DIR_DOWNWARD, DIR_UPWARD,
+    THRESH_BUF_VALUES,
 };
 use simthing_sim::{snapshot_anchored_loci, BoundaryDeltaEntry, SimRuntimeTree};
 
@@ -77,14 +81,15 @@ fn rising_multi_edge_and_no_crossing_match_oracle() {
     assert!(table.rows().iter().all(|r| r.band.is_none()));
 
     let before = table.clone();
-    let after_none = oracle_anchor_table_after_deltas(&before, &[], 3);
-    assert_eq!(after_none.rows()[0].band, before.rows()[0].band);
+    // Empty delta set must leave band/generation untouched (None stays None).
+    apply_band_crossings_to_anchor_table(&mut table, &[], 3);
+    assert_eq!(table.rows()[0].band, before.rows()[0].band);
     assert_eq!(
-        after_none.rows()[0].last_crossing_generation,
+        table.rows()[0].last_crossing_generation,
         before.rows()[0].last_crossing_generation
     );
 
-    // Multi-edge: last ordered edge wins (mirrors sealed band_crossing_updates).
+    // Multi-edge: last ordered edge wins.
     let identity = AnchorIdentity::new(root.id, pid);
     let col = table
         .get_by_identity_role(identity, &SubFieldRole::Amount)
@@ -106,7 +111,6 @@ fn rising_multi_edge_and_no_crossing_match_oracle() {
     assert_eq!(amount.observed_value, 2.5);
 
     refresh_anchor_table_magnitudes(&mut table, &[2.5], 1, &[(0, 0, 1.0), (0, 0, 2.0)]);
-    // Urgency uses refreshed observed_value at the row's slot/col.
     let amount = table
         .get_by_identity_role(identity, &SubFieldRole::Amount)
         .expect("amount row");
@@ -120,8 +124,6 @@ fn remap_preserves_identity_across_slot_move() {
     let loci = snapshot_anchored_loci(&root, &registry, &allocator);
     let mut table = mint_anchor_table_from_admission(&root, &registry, &loci, &[1.0, 2.0], 1);
     let identity = AnchorIdentity::new(root.id, pid);
-    let before_band = table.get(identity).map(|r| r.band);
-    // Mark a crossing so dynamic fields must survive remap.
     apply_band_crossings_to_anchor_table(
         &mut table,
         &[(
@@ -150,35 +152,66 @@ fn remap_preserves_identity_across_slot_move() {
     assert_eq!(row.slot, to_slot);
     assert_eq!(row.band, Some(BandIndex::new(3)));
     assert_eq!(row.last_crossing_generation, Some(12));
-    let _ = before_band;
     let _ = allocator;
 }
 
 #[test]
-fn gpu_pod_encode_uses_sentinel_only_at_boundary() {
+fn gpu_pod_round_trip_preserves_none_vs_some_zero_generation() {
     let prop = SimProperty::simple("ats", "pod", 1);
-    let (registry, allocator, root, _pid) = fixture_tree(1, prop);
+    let (registry, allocator, root, pid) = fixture_tree(1, prop);
     let loci = snapshot_anchored_loci(&root, &registry, &allocator);
-    let table = mint_anchor_table_from_admission(&root, &registry, &loci, &[0.0], 1);
-    let gpu = encode_anchor_table_gpu(&table);
-    assert_eq!(gpu.len(), table.len());
-    assert_eq!(gpu[0].band_idx, ANCHOR_BAND_NONE_POD);
+    let mut table = mint_anchor_table_from_admission(&root, &registry, &loci, &[0.0], 1);
+    assert!(table.rows().iter().all(|r| r.band.is_none()));
+    assert!(table
+        .rows()
+        .iter()
+        .all(|r| r.last_crossing_generation.is_none()));
 
     let Some(ctx) = GpuContext::new_blocking().ok() else {
-        // Adapter-less hosts still prove encode sentinel; upload parity is GPU-gated.
         return;
     };
     let mut state = simthing_gpu::WorldGpuState::new(ctx, &registry, 1);
-    state.upload_anchor_table(&gpu);
-    let readback = state.read_anchor_table();
-    assert_eq!(readback, gpu);
+    state.upload_typed_anchor_table(&table);
+    let none_back = state.read_typed_anchor_table(&registry);
+    assert!(none_back.rows().iter().all(|r| r.band.is_none()));
+    assert!(none_back
+        .rows()
+        .iter()
+        .all(|r| r.last_crossing_generation.is_none()));
+
+    let identity = AnchorIdentity::new(root.id, pid);
+    apply_band_crossings_to_anchor_table(
+        &mut table,
+        &[(
+            identity,
+            BandIndex::new(0),
+            1.0,
+            Some(ColumnIndex::from_raw_for_oracle_or_rehearsal(0)),
+        )],
+        0, // Some(0) must survive POD round-trip (not collapse to None)
+    );
+    assert_eq!(
+        table.get(identity).and_then(|r| r.last_crossing_generation),
+        Some(0)
+    );
+    state.upload_typed_anchor_table(&table);
+    let zero_back = state.read_typed_anchor_table(&registry);
+    assert_eq!(
+        zero_back
+            .get(identity)
+            .and_then(|r| r.last_crossing_generation),
+        Some(0),
+        "None sentinel must not collide with generation 0"
+    );
+    assert_eq!(
+        zero_back.get(identity).and_then(|r| r.band),
+        Some(BandIndex::new(0))
+    );
     let _ = allocator;
-    let _ = root;
 }
 
 #[test]
 fn wire_replay_delta_entries_do_not_carry_anchor_table() {
-    // Fence: derived table must never enter BoundaryDeltaEntry wire bytes.
     let entries = [
         BoundaryDeltaEntry::AnchorRemapApplied {
             section: AnchorRemapSection::empty_not_required(AnchorRemapOperation::Reparent),
@@ -194,7 +227,6 @@ fn wire_replay_delta_entries_do_not_carry_anchor_table() {
             "delta wire must not embed anchor-table rows: {json}"
         );
     }
-    // Round-trip preserves wire shape without table authority.
     let bytes = serde_json::to_vec(&entries).unwrap();
     let back: Vec<BoundaryDeltaEntry> = serde_json::from_slice(&bytes).unwrap();
     assert_eq!(back.len(), 2);
@@ -236,9 +268,8 @@ fn tree_with_mixed_disposition_table_cardinality_matches_anchored_only() {
 }
 
 #[test]
-fn hosted_and_studio_observation_read_gpu_not_transient_cpu() {
+fn hosted_observation_follows_gpu_not_transient_cpu() {
     use simthing_driver::{observe_hosted_property_cell, AnchorTableSnapshot, Scenario, SimSession};
-    use simthing_gpu::encode_anchor_table_gpu;
     use simthing_spec::PropertyKey;
 
     let mut registry = DimensionRegistry::new();
@@ -264,22 +295,18 @@ fn hosted_and_studio_observation_read_gpu_not_transient_cpu() {
         return;
     };
 
-    let gpu_before = sim.state.read_anchor_table();
-    assert!(!gpu_before.is_empty(), "admission must upload GPU table");
-    let identity = AnchorIdentity::new(
-        simthing_core::SimThingId::from_session_raw(gpu_before[0].sim_thing_id),
-        simthing_core::SimPropertyId(gpu_before[0].property_id),
-    );
-    let gpu_value = gpu_before[0].observed_value;
+    let snapshot = AnchorTableSnapshot::from_session(&sim);
+    assert!(!snapshot.is_empty(), "admission must upload GPU table");
+    let identity = snapshot.rows()[0].identity;
+    let gpu_value = snapshot.rows()[0].observed_value;
     let corrupt = gpu_value + 77.0;
 
-    // Allowed transient CPU init disagrees with GPU; never re-uploaded.
     let transient = mint_anchor_table_from_admission(
         &sim.scenario.root,
-        &sim.scenario.registry,
+        &sim.proto.registry,
         &snapshot_anchored_loci(
             &sim.scenario.root,
-            &sim.scenario.registry,
+            &sim.proto.registry,
             &sim.proto.allocator,
         ),
         &[corrupt],
@@ -289,9 +316,7 @@ fn hosted_and_studio_observation_read_gpu_not_transient_cpu() {
         transient.get(identity).map(|r| r.observed_value),
         Some(corrupt)
     );
-    let _ = encode_anchor_table_gpu(&transient); // prove encode exists; do not upload
 
-    let snapshot = AnchorTableSnapshot::from_session(&sim);
     let observed = snapshot
         .get(identity)
         .expect("GPU snapshot row")
@@ -300,7 +325,7 @@ fn hosted_and_studio_observation_read_gpu_not_transient_cpu() {
     assert_ne!(observed, corrupt);
 
     let hosted = observe_hosted_property_cell(
-        &sim.scenario.registry,
+        &sim.proto.registry,
         &sim.proto.allocator,
         &snapshot,
         identity.sim_thing_id,
@@ -309,25 +334,114 @@ fn hosted_and_studio_observation_read_gpu_not_transient_cpu() {
     )
     .expect("hosted cell");
     assert_eq!(hosted, gpu_value);
+}
 
-    // Studio free-fn seam (same production snapshot API Studio uses).
-    let slot = gpu_before[0].slot;
-    let col = gpu_before[0].col;
-    let studio = snapshot
-        .observed_value_at_slot_col(slot, col)
-        .expect("studio slot/col read");
-    assert_eq!(studio, gpu_value, "Studio seam must follow GPU");
+#[test]
+fn studio_bridge_field_accretion_reads_gpu_authority() {
+    use simthing_clausething::{hydrate_scenario_with_source_base, parse_raw_document};
+    use simthing_mapeditor::{
+        authored_live_profile_from_pack, runtime_vertical_seed_scenario_spec, StudioLiveSessionBridge,
+        StudioLiveSessionBridgeError, StudioSession,
+    };
+
+    let Some(_ctx) = GpuContext::new_blocking().ok() else {
+        eprintln!("skipping studio bridge: no GPU");
+        return;
+    };
+
+    let fixtures = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../simthing-mapeditor/tests/fixtures");
+    let lattice = fixtures
+        .join("runtime_vertical_seed.simthing-scenario.json")
+        .to_string_lossy()
+        .replace('\\', "/");
+    let clause = format!(
+        r#"
+scenario = foundry_valley {{
+    metadata = {{ display_name = "Foundry Valley" }}
+    static_galaxy_scenario = valley_base {{
+        namespace = "valley_base"
+        source_json = "{lattice}"
+        map_quality_status = PASS
+    }}
+    owner = guild {{
+        owner_key = "guild"
+        display_name = "Guild"
+        archetype = "industrial"
+    }}
+    location = ridge {{
+        display_name = "Ridge"
+        system_target = "row2_col3"
+    }}
+    field_economy = valley_economy {{
+        namespace = "forge"
+        field_resource_quantity = ridge_ore {{
+            location = "ridge"
+            resource = "ore"
+            amount = 12
+        }}
+        production_building = ridge_foundry {{
+            location = "ridge"
+            input = {{ resource = "ore" amount = 2 }}
+            output = {{ resource = "tools" coefficient = 1.0 }}
+            throttle_hint_max_per_tick = 3
+        }}
+        stockpile_silo = guild_ore {{
+            owner = "guild"
+            resource = "ore"
+            current = 20
+        }}
+    }}
+}}
+"#
+    );
+    let document = parse_raw_document(clause.as_bytes()).expect("parse foundry");
+    let pack = hydrate_scenario_with_source_base(&document, Some(fixtures.as_path()))
+        .expect("hydrate foundry");
+    let mut studio = StudioSession::from_loaded_scenario(
+        runtime_vertical_seed_scenario_spec(),
+        PathBuf::from("tests/fixtures/foundry_valley_field_bearing.clause"),
+        None,
+    )
+    .expect("studio session");
+    studio.scenario_authority.scenario_id = pack.scenario_id.clone();
+    studio.scenario_summary.scenario_id = pack.scenario_id.clone();
+    studio = studio.with_authored_live_profile(authored_live_profile_from_pack(&pack));
+
+    let mut bridge = StudioLiveSessionBridge::new();
+    match bridge.open_from_loaded_studio_session(&studio) {
+        Ok(()) => {}
+        Err(StudioLiveSessionBridgeError::Unsupported(msg)) => {
+            eprintln!("skipping studio bridge: unsupported ({msg})");
+            return;
+        }
+        Err(e) => panic!("studio bridge open failed: {e:?}"),
+    }
+    let readout = bridge.readout();
+    assert!(
+        !readout.field_accretion_samples.is_empty(),
+        "production Studio collector must emit field_accretion_samples from GPU table"
+    );
+    assert!(
+        readout
+            .field_accretion_samples
+            .iter()
+            .any(|s| s.amount.is_finite()),
+        "Studio samples must carry finite GPU-observed amounts"
+    );
 }
 
 fn gpu_fused_maintain_case(
     previous_amount: f32,
     current_amount: f32,
-    regs: &[simthing_gpu::ThresholdRegistration],
+    regs: &[ThresholdRegistration],
     generation: u32,
-) -> Option<(Vec<simthing_gpu::AnchorTableRowGpu>, Vec<simthing_gpu::AnchorTableRowGpu>)> {
+) -> Option<(
+    simthing_core::AnchorTable,
+    simthing_core::AnchorTable,
+)> {
     use simthing_gpu::{
-        cpu_oracle_band_crossing_deltas, encode_anchor_table_gpu, oracle_anchor_table_after_deltas,
-        AccumulatorOpSession, PackedThresholdUpload,
+        cpu_oracle_band_crossing_deltas, AccumulatorOpSession, PackedThresholdUpload,
     };
 
     let Some(ctx) = GpuContext::new_blocking().ok() else {
@@ -345,8 +459,9 @@ fn gpu_fused_maintain_case(
     assert!(!before.is_empty());
 
     let mut state = simthing_gpu::WorldGpuState::new(ctx, &registry, 1);
-    state.upload_anchor_table(&encode_anchor_table_gpu(&before));
+    // Generation must be live BEFORE fused threshold/anchor dispatch.
     state.set_anchor_table_generation(generation);
+    state.upload_typed_anchor_table(&before);
     state.install_resolved_previous_values_at_boundary(&previous);
     state.install_resolved_values_at_boundary(&current);
 
@@ -362,7 +477,7 @@ fn gpu_fused_maintain_case(
         .dispatch_accumulator_threshold_scan(&mut session)
         .expect("fused threshold+anchor maintain");
 
-    let gpu = state.read_anchor_table();
+    let gpu = state.read_typed_anchor_table(&registry);
     let deltas = cpu_oracle_band_crossing_deltas(
         &previous,
         &current,
@@ -373,19 +488,49 @@ fn gpu_fused_maintain_case(
         &registry,
         &allocator,
     );
-    let mut oracle = oracle_anchor_table_after_deltas(&before, &deltas, generation);
+    let updates: Vec<_> = deltas
+        .iter()
+        .map(|d| {
+            (
+                AnchorIdentity::new(d.sim_thing_id(), d.property_id()),
+                BandIndex::new(d.reg_idx()),
+                d.post_value(),
+                Some(d.col()),
+            )
+        })
+        .collect();
+    let mut oracle = before.clone();
+    apply_band_crossings_to_anchor_table(&mut oracle, &updates, generation);
     let edges: Vec<(u32, u32, f32)> = regs
         .iter()
         .map(|r| (r.slot, r.col, r.threshold))
         .collect();
     refresh_anchor_table_magnitudes(&mut oracle, &current, n_dims, &edges);
-    Some((gpu, encode_anchor_table_gpu(&oracle)))
+    Some((gpu, oracle))
+}
+
+fn assert_typed_tables_eq(
+    label: &str,
+    gpu: &simthing_core::AnchorTable,
+    oracle: &simthing_core::AnchorTable,
+) {
+    assert_eq!(gpu.len(), oracle.len(), "{label} row count");
+    for (g, o) in gpu.rows().iter().zip(oracle.rows().iter()) {
+        assert_eq!(g.identity, o.identity, "{label} identity");
+        assert_eq!(g.slot, o.slot, "{label} slot");
+        assert_eq!(g.col, o.col, "{label} col");
+        assert_eq!(g.band, o.band, "{label} band");
+        assert_eq!(
+            g.last_crossing_generation, o.last_crossing_generation,
+            "{label} generation"
+        );
+        assert_eq!(g.observed_value, o.observed_value, "{label} observed");
+        assert_eq!(g.urgency, o.urgency, "{label} urgency");
+    }
 }
 
 #[test]
 fn gpu_crossing_matrix_bit_agrees_with_oracle() {
-    use simthing_gpu::{ThresholdRegistration, DIR_DOWNWARD, DIR_UPWARD, THRESH_BUF_VALUES};
-
     let rising_regs = [
         ThresholdRegistration {
             slot: 0,
@@ -424,28 +569,41 @@ fn gpu_crossing_matrix_bit_agrees_with_oracle() {
             eprintln!("skipping gpu_crossing_matrix ({label}): no GPU");
             return;
         };
-        assert_eq!(gpu.len(), oracle.len(), "{label} row count");
-        for (g, o) in gpu.iter().zip(oracle.iter()) {
-            assert_eq!(g.sim_thing_id, o.sim_thing_id, "{label} id");
-            assert_eq!(g.property_id, o.property_id, "{label} prop");
-            assert_eq!(g.slot, o.slot, "{label} slot");
-            assert_eq!(g.col, o.col, "{label} col");
-            assert_eq!(g.band_idx, o.band_idx, "{label} band");
-            assert_eq!(
-                g.last_crossing_generation, o.last_crossing_generation,
-                "{label} generation"
-            );
-            assert_eq!(g.observed_value, o.observed_value, "{label} observed");
-            assert_eq!(g.urgency, o.urgency, "{label} urgency");
-        }
+        assert_typed_tables_eq(label, &gpu, &oracle);
+    }
+}
+
+#[test]
+fn successive_dispatch_generations_including_zero_are_exact() {
+    let regs = [ThresholdRegistration {
+        slot: 0,
+        col: 0,
+        threshold: 1.0,
+        direction: DIR_UPWARD,
+        event_kind: 1,
+        buffer: THRESH_BUF_VALUES,
+    }];
+    for generation in [0u32, 1u32, 2u32] {
+        let Some((gpu, oracle)) = gpu_fused_maintain_case(0.5, 1.5, &regs, generation) else {
+            eprintln!("skipping successive generations: no GPU");
+            return;
+        };
+        assert_typed_tables_eq(&format!("gen_{generation}"), &gpu, &oracle);
+        let stamped = gpu
+            .rows()
+            .iter()
+            .find(|r| r.band.is_some())
+            .expect("crossing must stamp a band");
+        assert_eq!(
+            stamped.last_crossing_generation,
+            Some(generation),
+            "dispatch generation {generation} must stamp exactly (incl. 0)"
+        );
     }
 }
 
 #[test]
 fn gpu_remap_identity_and_cardinality_across_structural_ops() {
-    use simthing_core::{AnchorLocusRemap, AnchorRemapOperation, AnchorRemapSection};
-    use simthing_gpu::encode_anchor_table_gpu;
-
     let Some(ctx) = GpuContext::new_blocking().ok() else {
         eprintln!("skipping gpu_remap_identity: no GPU");
         return;
@@ -473,9 +631,9 @@ fn gpu_remap_identity_and_cardinality_across_structural_ops() {
     let from_slot = table.get(identity).unwrap().slot;
 
     let mut state = simthing_gpu::WorldGpuState::new(ctx, &registry, 3);
-    state.upload_anchor_table(&encode_anchor_table_gpu(&table));
+    state.upload_typed_anchor_table(&table);
 
-    // AddChild / reallocation-style move of the root locus.
+    // AddChild / reallocation-style move via production GPU remap door.
     let to_slot = SlotIndex::new(2);
     let add_child = AnchorRemapSection::with_remaps(
         AnchorRemapOperation::AddChild,
@@ -488,19 +646,15 @@ fn gpu_remap_identity_and_cardinality_across_structural_ops() {
             ColumnIndex::from_raw_for_oracle_or_rehearsal(0),
         )],
     );
-    apply_anchor_remaps_to_table(&mut table, &add_child, &registry);
-    state.upload_anchor_table(&encode_anchor_table_gpu(&table));
-    let after_move = state.read_anchor_table();
+    state.apply_anchor_remap_section(&add_child, &registry);
+    let after_move = state.read_typed_anchor_table(&registry);
     assert_eq!(after_move.len(), before_count);
-    let moved = after_move
-        .iter()
-        .find(|r| r.property_id == pid.0 && r.sim_thing_id == root.id.raw())
-        .expect("identity preserved after AddChild move");
-    assert_eq!(moved.slot, to_slot.raw());
-    assert_eq!(moved.band_idx, 3);
-    assert_eq!(moved.last_crossing_generation, 12);
+    let moved = after_move.get(identity).expect("identity preserved after GPU move");
+    assert_eq!(moved.slot, to_slot);
+    assert_eq!(moved.band, Some(BandIndex::new(3)));
+    assert_eq!(moved.last_crossing_generation, Some(12));
 
-    // Fusion-style retire of the existing child locus.
+    // Fusion-style retire via GPU remap.
     let retire = AnchorRemapSection::with_remaps(
         AnchorRemapOperation::Fusion,
         vec![AnchorLocusRemap::retire(
@@ -510,19 +664,15 @@ fn gpu_remap_identity_and_cardinality_across_structural_ops() {
             ColumnIndex::from_raw_for_oracle_or_rehearsal(0),
         )],
     );
-    apply_anchor_remaps_to_table(&mut table, &retire, &registry);
-    state.upload_anchor_table(&encode_anchor_table_gpu(&table));
-    let after_fusion = state.read_anchor_table();
+    state.apply_anchor_remap_section(&retire, &registry);
+    let after_fusion = state.read_typed_anchor_table(&registry);
     assert!(
-        after_fusion
-            .iter()
-            .all(|r| !(r.sim_thing_id == child_id.raw() && r.property_id == pid.0)),
+        after_fusion.get(AnchorIdentity::new(child_id, pid)).is_none(),
         "fusion retire must drop GPU row"
     );
-    assert_eq!(after_fusion.len(), table.len());
     assert!(after_fusion.len() < before_count);
 
-    // Fission-style birth of a fresh identity.
+    // Fission-style birth via GPU remap (registry seeds, not live-table readback).
     let born_id = simthing_core::SimThingId::from_session_raw(9001);
     let birth = AnchorRemapSection::with_remaps(
         AnchorRemapOperation::Fission,
@@ -533,27 +683,23 @@ fn gpu_remap_identity_and_cardinality_across_structural_ops() {
             ColumnIndex::from_raw_for_oracle_or_rehearsal(0),
         )],
     );
-    apply_anchor_remaps_to_table(&mut table, &birth, &registry);
-    state.upload_anchor_table(&encode_anchor_table_gpu(&table));
-    let after_fission = state.read_anchor_table();
+    state.apply_anchor_remap_section(&birth, &registry);
+    let after_fission = state.read_typed_anchor_table(&registry);
     assert!(
         after_fission
-            .iter()
-            .any(|r| r.sim_thing_id == born_id.raw() && r.property_id == pid.0),
+            .get(AnchorIdentity::new(born_id, pid))
+            .is_some(),
         "fission birth must appear on GPU"
     );
-    assert_eq!(after_fission.len(), table.len());
     assert_eq!(after_fission.len(), before_count);
 }
 
 #[test]
 fn canonical_tp_gpu_table_matches_25_anchored_0_unobserved() {
-    use std::collections::{HashMap, HashSet};
-    use std::path::Path;
+    use std::collections::HashMap;
 
     use simthing_clausething::{hydrate_scenario_with_source_base, parse_raw_document};
     use simthing_driver::{preview_install, Scenario, SimSession};
-    use simthing_gpu::encode_anchor_table_gpu;
     use simthing_spec::GameModeSpec;
 
     let Some(_ctx) = GpuContext::new_blocking().ok() else {
@@ -575,6 +721,9 @@ fn canonical_tp_gpu_table_matches_25_anchored_0_unobserved() {
     let pack = hydrate_scenario_with_source_base(&document, Some(clause_path.parent().unwrap()))
         .expect("hydrate TP");
 
+    // Ordinary compile/install door on the canonical hydrated TP root (not a
+    // synthetic World rehost). Properties-only game mode matches the 5.1
+    // disposition install path; economy/overlay wiring is out of scope here.
     let game_mode = GameModeSpec {
         id: pack.game_mode.id.clone(),
         display_name: pack.game_mode.display_name.clone(),
@@ -582,101 +731,123 @@ fn canonical_tp_gpu_table_matches_25_anchored_0_unobserved() {
         ..Default::default()
     };
     let root = pack.root.clone();
-    let scratch = Scenario {
+    let n_slots = (root.subtree_size() as u32).saturating_add(2048);
+    let scenario = Scenario {
         name: pack.scenario_id.clone(),
         ticks_per_day: 1,
         max_days: 1,
         dt: 1.0,
-        n_slots: (root.subtree_size() as u32).saturating_add(2048),
+        n_slots,
         registry: DimensionRegistry::new(),
         root,
         shadow_seeds: Vec::new(),
         tick_patches: Vec::new(),
         install_targets: HashMap::new(),
     };
-    let mut allocator = simthing_gpu::SlotAllocator::new();
-    allocator.populate_from_tree(&scratch.root);
-    let preview = preview_install(
+    let mut preview_allocator = SlotAllocator::new();
+    preview_allocator.populate_from_tree(&scenario.root);
+    let mut preview = preview_install(
         &game_mode,
-        &scratch,
-        &scratch.registry,
-        &scratch.root,
-        &allocator,
+        &scenario,
+        &scenario.registry,
+        &scenario.root,
+        &preview_allocator,
     )
-    .expect("TP preview install");
+    .expect("canonical TP preview_install");
     let report = preview.registry.property_admission_report();
     assert_eq!(report.anchored_count(), 25, "5.1 inventory: 25 Anchored");
     assert_eq!(report.unobserved_count(), 0, "5.1 inventory: 0 Unobserved");
 
-    // Host the 25 Anchored properties on a fresh root (TP galaxy nodes carry
-    // hydrated property ids that are not the install registry's dense indices).
-    let mut host = SimThing::new(SimThingKind::World, 0);
+    // Materialize Anchored inventory onto the real TP tree shape. Strip any
+    // hydrate-time property ids that are outside the install registry so locus
+    // identity stays in the install id space (not a fresh World bag).
+    fn retain_registry_props(node: &mut SimThing, registry: &DimensionRegistry) {
+        node.properties
+            .retain(|pid, _| registry.try_property(*pid).is_some());
+        for child in &mut node.children {
+            retain_registry_props(child, registry);
+        }
+    }
+    retain_registry_props(&mut preview.root, &preview.registry);
     for row in &report.resource_properties {
         assert!(row.disposition.is_anchored());
         let prop = preview.registry.property(row.property_id);
-        host.add_property(
-            row.property_id,
-            simthing_core::PropertyValue::from_layout(&prop.layout),
-        );
+        if !preview.root.properties.contains_key(&row.property_id) {
+            preview.root.add_property(
+                row.property_id,
+                simthing_core::PropertyValue::from_layout(&prop.layout),
+            );
+        }
     }
-    let mut host_allocator = simthing_gpu::SlotAllocator::new();
-    host_allocator.populate_from_tree(&host);
+    preview.allocator = SlotAllocator::new();
+    preview.allocator.populate_from_tree(&preview.root);
 
-    let loci = snapshot_anchored_loci(&host, &preview.registry, &host_allocator);
+    let loci = snapshot_anchored_loci(&preview.root, &preview.registry, &preview.allocator);
     let n_dims = preview.registry.total_columns.max(1);
-    let values = vec![0.0f32; host_allocator.capacity() as usize * n_dims];
-    let expected = mint_anchor_table_from_admission(
-        &host,
-        &preview.registry,
-        &loci,
-        &values,
-        n_dims,
+    let values = vec![0.0f32; preview.allocator.capacity() as usize * n_dims];
+    let expected =
+        mint_anchor_table_from_admission(&preview.root, &preview.registry, &loci, &values, n_dims);
+    assert!(
+        !expected.is_empty(),
+        "admission mint on real TP root must be non-empty"
     );
-    let expected_gpu = encode_anchor_table_gpu(&expected);
-    assert!(!expected_gpu.is_empty(), "admission mint must be non-empty");
 
-    let installed = Scenario {
-        name: scratch.name,
+    // Studio accept path: open a shell session, then commit the preview install
+    // (same door as open_from_spec's install_atomic result, without reminting ids).
+    let mut shell_registry = DimensionRegistry::new();
+    let _ = shell_registry.register(SimProperty::simple("_placeholder", "seed", 0));
+    let shell = Scenario {
+        name: scenario.name,
         ticks_per_day: 1,
         max_days: 1,
         dt: 1.0,
-        n_slots: (host_allocator.capacity() as u32).saturating_add(64),
-        registry: preview.registry,
-        root: host,
+        n_slots: (preview.allocator.capacity() as u32).saturating_add(64),
+        registry: shell_registry,
+        root: SimThing::new(SimThingKind::World, 0),
         shadow_seeds: Vec::new(),
         tick_patches: Vec::new(),
         install_targets: HashMap::new(),
     };
-    let Ok(sim) = SimSession::open(installed) else {
+    let Ok(mut sim) = SimSession::open(shell) else {
         eprintln!("skipping tp cardinality: SimSession::open failed");
         return;
     };
-    let gpu = sim.state.read_anchor_table();
+    sim.apply_install_preview(preview)
+        .expect("apply canonical TP install preview");
+    let gpu = sim.state.read_typed_anchor_table(&sim.proto.registry);
     assert_eq!(
         gpu.len(),
-        expected_gpu.len(),
-        "GPU cardinality must match admission mint (no dup/stale/missing)"
+        expected.len(),
+        "GPU cardinality must match admission mint on real TP install hosts"
     );
 
     let mut expected_keys: HashSet<(u32, u32, u32)> = HashSet::new();
-    for row in &expected_gpu {
-        expected_keys.insert((row.sim_thing_id, row.property_id, row.col));
+    for row in expected.rows() {
+        expected_keys.insert((
+            row.identity.sim_thing_id.raw(),
+            row.identity.property_id.0,
+            row.col.raw_u32(),
+        ));
     }
     let mut seen_props = HashSet::new();
-    for row in &gpu {
+    for row in gpu.rows() {
         assert!(
-            expected_keys.remove(&(row.sim_thing_id, row.property_id, row.col)),
-            "unexpected or duplicate GPU row"
+            expected_keys.remove(&(
+                row.identity.sim_thing_id.raw(),
+                row.identity.property_id.0,
+                row.col.raw_u32()
+            )),
+            "unexpected or duplicate GPU row on real install loci"
         );
-        seen_props.insert(row.property_id);
+        seen_props.insert(row.identity.property_id.0);
     }
     assert!(
         expected_keys.is_empty(),
-        "GPU missing expected rows: {expected_keys:?}"
+        "GPU missing expected install-locus rows: {expected_keys:?}"
     );
     assert_eq!(
         seen_props.len(),
         25,
-        "GPU must cover all 25 Anchored inventory properties"
+        "GPU must cover all 25 Anchored inventory properties on real hosts"
     );
 }

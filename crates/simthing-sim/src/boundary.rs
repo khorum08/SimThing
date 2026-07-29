@@ -40,10 +40,9 @@
 //! rebuilds during GPU sync.
 
 use simthing_core::{
-    apply_anchor_remaps_to_table, mint_anchor_table_from_admission,
-    prepare_fission_clone_sources_for_registry, refresh_anchor_table_magnitudes, AnchorIdentity,
-    AnchorTable, AnchorTableRow, BandIndex, ColumnIndex, DecayBehavior, DimensionRegistry,
-    OverlayLifecycle, SimPropertyId, SimThing, SimThingId, SlotIndex, SubFieldRole,
+    mint_anchor_table_from_admission, prepare_fission_clone_sources_for_registry, ColumnIndex,
+    DecayBehavior, DimensionRegistry, OverlayLifecycle, SimPropertyId, SimThing, SimThingId,
+    SlotIndex, SubFieldRole,
 };
 use simthing_feeder::{
     BoundaryRequest, CapabilityUnlockRegistration, DispatchCoordinator, MaintainerOutcome,
@@ -65,8 +64,7 @@ use crate::anchor_remap_encode::{
 use crate::gpu_sync::{sync_gpu_buffers, GpuSyncOutcome};
 use simthing_core::AnchorRemapSection;
 use simthing_gpu::{
-    apply_band_crossing_deltas_from_threshold_events, encode_anchor_table_gpu, BandCrossingDelta,
-    AnchorTableRowGpu, ANCHOR_BAND_NONE_POD,
+    apply_band_crossing_deltas_from_threshold_events, BandCrossingDelta,
 };
 use crate::observability::{observe, ObservabilityReport, ObserveFidelity};
 use crate::overlay_lifecycle::{resolve_overlay_lifecycle, LifecycleOutcome};
@@ -498,7 +496,8 @@ impl BoundaryProtocol {
         );
         // Dynamic band/value/urgency/generation live on the GPU table (fused
         // threshold companion). BandCrossingDelta remains wire/replay evidence only.
-        state.set_anchor_table_generation(day as u32);
+        // Generation for *this* day's crossings was supplied before the fused
+        // threshold dispatch (session hot-cycle). Do not stamp it here after the fact.
         if state.n_anchor_rows == 0 {
             self.upload_admission_anchor_table(state, &coord.shadow, n_dims, &pre_anchored_loci);
         }
@@ -945,38 +944,9 @@ impl BoundaryProtocol {
             include_stable_identity,
         )
         .unwrap_or_else(|err| panic!("anchor remap encode refused before GPU sync: {err}"));
-        // Structural remaps: transient GPU readback → apply → upload (no persistent CPU table).
+        // Structural remaps: GPU-resident apply (orch remand 5120847431).
         if !remap_section.remaps.is_empty() {
-            let mut table = decode_anchor_table_from_gpu_pods(
-                &state.read_anchor_table(),
-                &self.registry,
-            );
-            apply_anchor_remaps_to_table(&mut table, &remap_section, &self.registry);
-            state.upload_anchor_table(&encode_anchor_table_gpu(&table));
-            state.run_anchor_table_magnitude_maintain();
-            if state.n_anchor_rows > 0
-                && state
-                    .accumulator_runtime
-                    .as_ref()
-                    .map(|r| !r.threshold_active())
-                    .unwrap_or(true)
-            {
-                let edge_thresholds: Vec<(u32, u32, f32)> = threshold_regs
-                    .iter()
-                    .map(|r| (r.slot, r.col, r.threshold))
-                    .collect();
-                let mut table = decode_anchor_table_from_gpu_pods(
-                    &state.read_anchor_table(),
-                    &self.registry,
-                );
-                refresh_anchor_table_magnitudes(
-                    &mut table,
-                    &coord.shadow,
-                    n_dims,
-                    &edge_thresholds,
-                );
-                state.upload_anchor_table(&encode_anchor_table_gpu(&table));
-            }
+            state.apply_anchor_remap_section(&remap_section, &self.registry);
         }
         out.anchor_remap = remap_section;
         out.anchor_table_row_count = state.n_anchor_rows;
@@ -1295,21 +1265,10 @@ impl BoundaryProtocol {
         n_dims: usize,
         loci: &simthing_core::AnchoredLocusMap,
     ) {
-        let mut table =
+        let table =
             mint_anchor_table_from_admission(self.root.inner(), &self.registry, loci, values, n_dims);
-        let edge_thresholds: Vec<(u32, u32, f32)> = state
-            .accumulator_runtime
-            .as_ref()
-            .map(|runtime| {
-                runtime
-                    .threshold_registrations()
-                    .iter()
-                    .map(|r| (r.slot, r.col, r.threshold))
-                    .collect()
-            })
-            .unwrap_or_default();
-        refresh_anchor_table_magnitudes(&mut table, values, n_dims, &edge_thresholds);
-        state.upload_anchor_table(&encode_anchor_table_gpu(&table));
+        state.upload_typed_anchor_table(&table);
+        state.run_anchor_table_magnitude_maintain();
     }
 
     /// Read-only access to the persistent fission lineage. Useful for tests
@@ -1658,64 +1617,4 @@ mod tests {
         node.property(FISSION_CLONE_SOURCE_PROPERTY_ID)
             .map(|value| value.raw_lanes_for_serialization().to_vec())
     }
-}
-
-/// Transient POD→typed decode for structural remap apply (no persistent CPU table).
-fn decode_anchor_table_from_gpu_pods(
-    pods: &[AnchorTableRowGpu],
-    registry: &DimensionRegistry,
-) -> AnchorTable {
-    let mut table = AnchorTable::new();
-    let rows: Vec<AnchorTableRow> = pods
-        .iter()
-        .map(|pod| {
-            let property_id = SimPropertyId(pod.property_id);
-            let col = ColumnIndex::from_gpu_round_trip(pod.col);
-            let role = role_for_property_col(registry, property_id, col);
-            let band = if pod.band_idx == ANCHOR_BAND_NONE_POD {
-                None
-            } else {
-                Some(BandIndex::new(pod.band_idx as u32))
-            };
-            let last_crossing_generation = if pod.last_crossing_generation == 0 {
-                None
-            } else {
-                Some(pod.last_crossing_generation)
-            };
-            AnchorTableRow {
-                identity: AnchorIdentity::new(
-                    SimThingId::from_session_raw(pod.sim_thing_id),
-                    property_id,
-                ),
-                slot: SlotIndex::new(pod.slot),
-                col,
-                role,
-                band,
-                last_crossing_generation,
-                urgency: pod.urgency,
-                observed_value: pod.observed_value,
-            }
-        })
-        .collect();
-    table.replace_rows(rows);
-    table
-}
-
-fn role_for_property_col(
-    registry: &DimensionRegistry,
-    property_id: SimPropertyId,
-    col: ColumnIndex,
-) -> SubFieldRole {
-    let Some(prop) = registry.try_property(property_id) else {
-        return SubFieldRole::Amount;
-    };
-    let Some(range) = registry.try_column_range(property_id) else {
-        return SubFieldRole::Amount;
-    };
-    for sf in &prop.layout.sub_fields {
-        if range.col_for_role(&sf.role, &prop.layout) == Some(col) {
-            return sf.role.clone();
-        }
-    }
-    SubFieldRole::Amount
 }
