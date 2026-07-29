@@ -45,7 +45,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 211b860c2a424d0386a01a2dc93d5c563abfd1411c1f58ec55c7b69d97426cb8 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | 26eab30ec86c97ac8dfd6beef7ae8c5b4d3f18c38fdaa431ec40ccce855396d3 |
-| design_0_0_8_7_rf_arena_modernization.md | 09d954cfc9a9d69aa4bbb8e4613d500e138193e7a2f75b340cf21278ccd4e583 |
+| design_0_0_8_7_rf_arena_modernization.md | 60970e3baa9eedda2c9901dd71b08595e9919dda35d71cc37fa567c3e436832d |
 | relay_lint.sh | 4163f715cdc3b549dbf57c1744aff61ea96b9f9f0a2237376665fbdb24e986c8 |
 | doctrine_anchors.tsv | 08a34b6dac78478d2154fcd2735cf4a3f87a670d925805814cca0a8079448a84 |
 | execution_status_taxonomy.tsv | 7d8c90f40afc633e41827542d2e0120a3e57f392ee6fbd0030738ae2cf762e81 |
@@ -71,7 +71,8 @@ Track state: `open`
 | # | rung | deliverable | exit proof |
 | --- | --- | --- | --- |
 | 5.2 | WRITE-DOOR-BAND-DELTA-0 | Phase 5: fulcrum 2 — in-pass band-crossing derivation; structural ops refuse to  | **DA-GRADUATED / merged #1488 @ d41a079b** — typed BandCrossingDelta from the fused pass; refuse-to-encode law exact ... |
-| 5.3 | ANCHOR-TABLE-SURFACE-0 | Phase 5: fulcrum 3 — derived GPU anchor table as the SOLE observation surface; c | Studio/telemetry read only the table; no second observation path (grep-proven); corpus green. |
+| 5.3 | ANCHOR-TABLE-SURFACE-0 | Phase 5: fulcrum 3 — derived GPU anchor table as the SOLE observation surface; c | Studio/telemetry read only the table; no second observation path (grep-proven); populated-fixture + production-sequen... |
+| 5.3b | CANONICAL-ANCHOR-MATERIALIZATION-0 | Phase 5: canonical host-materialization: derive live Anchored loci for every adm | canonical TP install yields 25 live Anchored loci / 25 table rows / 0 dark; 5.3 consumer referees re-run against the ... |
 | 5.4 | FIELD-SWEEP-IR-PROBE-0 | Phase 5: workshop-leaf disposable probe — minimal target/neighbor-ctx EML map/fo | Parity absolute; N4 generic median ≤1.25× bespoke, supported-adapter worst ≤1.5× at matched measured occupancy with s... |
 | 5.5 | FIELD-SWEEP-N4-PARITY-0 | Phase 5: engine landing — EML edge context {target_slot, neighbor_slot, accumula | PALMA + Gu-Yang reproduced bit-exact on N4 as authored instances ALONGSIDE the bespoke stencils; referees unedited; n... |
 | 5.6 | FIELD-ADJACENCY-GENERATORS-0 | Phase 5: adjacency as a registration axis — weighted `GridOffsets [(dx,dy,w)]` w | Emergence falsifier: the same authored map/fold on GridN4 vs GridN8 vs LinkGraph yields qualitatively distinct unscri... |
@@ -94,7 +95,7 @@ Track state: `open`
 
 ## Next Rung Pointer
 
-Active pointer: `FIELD-SWEEP-IR-PROBE-0`
+Active pointer: `ANCHOR-TABLE-SURFACE-0`
 
 
 ## Cold-Start Spine (constitutional pointers)

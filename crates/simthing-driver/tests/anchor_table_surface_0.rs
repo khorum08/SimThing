@@ -13,7 +13,8 @@ use simthing_core::{
     SubFieldRole,
 };
 use simthing_gpu::{
-    GpuContext, SlotAllocator, ThresholdRegistration, DIR_DOWNWARD, DIR_UPWARD, THRESH_BUF_VALUES,
+    BandCrossingDelta, GpuContext, SlotAllocator, ThresholdRegistration, DIR_DOWNWARD, DIR_UPWARD,
+    THRESH_BUF_VALUES,
 };
 use simthing_sim::{snapshot_anchored_loci, BoundaryDeltaEntry, SimRuntimeTree};
 
@@ -1166,7 +1167,7 @@ fn canonical_tp_gpu_table_matches_25_anchored_0_unobserved() {
     use std::collections::HashMap;
 
     use simthing_clausething::{hydrate_scenario_with_source_base, parse_raw_document};
-    use simthing_driver::{preview_install, Scenario, SimSession};
+    use simthing_driver::{preview_install, Scenario};
     use simthing_spec::GameModeSpec;
 
     let Some(_ctx) = GpuContext::new_blocking().ok() else {
@@ -1221,10 +1222,16 @@ fn canonical_tp_gpu_table_matches_25_anchored_0_unobserved() {
     )
     .expect("canonical TP preview_install");
     let report = preview.registry.property_admission_report();
+    // Binding assertion (Route-3 / Remand-5): registry inventory is exactly
+    // 25 Anchored / 0 Unobserved. Live (SimThingId, SimPropertyId) Anchored
+    // loci/table rows on the unmodified canonical install are exactly 0.
+    // Rung `CANONICAL-ANCHOR-MATERIALIZATION-0` (5.3b) is the work that
+    // changes this live baseline from 0 to 25 — not this 5.3 substrate PR.
     assert_eq!(report.anchored_count(), 25, "5.1 inventory: 25 Anchored");
     assert_eq!(report.unobserved_count(), 0, "5.1 inventory: 0 Unobserved");
 
     let loci = snapshot_anchored_loci(&preview.root, &preview.registry, &preview.allocator);
+    let live_locus_count = loci.len();
     let live_prop_count = {
         let mut props = HashSet::new();
         for ((_, pid), _) in &loci {
@@ -1232,61 +1239,21 @@ fn canonical_tp_gpu_table_matches_25_anchored_0_unobserved() {
         }
         props.len()
     };
-    // Remand 5121185090 item 5: unmodified install hosts are empty today.
-    // Report the gap; do not manufacture properties onto the tree.
+    assert_eq!(
+        live_locus_count, 0,
+        "canonical TP install must currently materialize exactly 0 live \
+         Anchored loci (got {live_locus_count}); 5.3b CANONICAL-ANCHOR-MATERIALIZATION-0 \
+         is the rung that flips this baseline to 25 — do not manufacture hosts here"
+    );
     assert_eq!(
         live_prop_count, 0,
-        "INSTALLATION GAP changed unexpectedly: live Anchored property loci \
-         were {live_prop_count} (inventory anchored=25). If this is now 25, \
-         continue into the GPU cardinality arm below."
+        "canonical TP install must currently materialize exactly 0 live \
+         Anchored property identities (got {live_prop_count}); see 5.3b \
+         CANONICAL-ANCHOR-MATERIALIZATION-0"
     );
     eprintln!(
-        "INSTALLATION GAP REPORT: unmodified canonical TP install has \
-         registry anchored=25 / unobserved=0 but 0 live Anchored property \
-         loci on the real tree. GPU 25-host cardinality deferred; hosts \
-         were not manufactured in this referee."
-    );
-    if live_prop_count != 25 {
-        return;
-    }
-
-    let mut shell_registry = DimensionRegistry::new();
-    let _ = shell_registry.register(SimProperty::simple("_placeholder", "seed", 0));
-    let shell = Scenario {
-        name: scenario.name,
-        ticks_per_day: 1,
-        max_days: 1,
-        dt: 1.0,
-        n_slots: (preview.allocator.capacity() as u32).saturating_add(64),
-        registry: shell_registry,
-        root: SimThing::new(SimThingKind::World, 0),
-        shadow_seeds: Vec::new(),
-        tick_patches: Vec::new(),
-        install_targets: HashMap::new(),
-    };
-    let Ok(mut sim) = SimSession::open(shell) else {
-        eprintln!("skipping tp cardinality: SimSession::open failed");
-        return;
-    };
-    sim.apply_install_preview(preview)
-        .expect("apply unmodified canonical TP install preview");
-    let gpu = sim.state.read_typed_anchor_table(&sim.proto.registry);
-    let mut seen_props = HashSet::new();
-    for row in gpu.rows() {
-        seen_props.insert(row.identity.property_id.0);
-        assert!(
-            loci.contains_key(&(row.identity.sim_thing_id, row.identity.property_id)),
-            "GPU row must correspond to an unmodified install locus"
-        );
-    }
-    assert_eq!(
-        seen_props.len(),
-        25,
-        "GPU must cover all 25 Anchored inventory properties on unmodified install hosts"
-    );
-    assert_eq!(
-        gpu.len(),
-        loci.len(),
-        "GPU cardinality must match unmodified live Anchored loci"
+        "CANONICAL BASELINE: inventory anchored=25 / unobserved=0; live \
+         Anchored loci=0 / table rows=0. 5.3b CANONICAL-ANCHOR-MATERIALIZATION-0 \
+         changes live baseline 0→25. No 25-row canonical proof claimed in 5.3."
     );
 }

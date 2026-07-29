@@ -243,8 +243,9 @@ fn apply_one_remap(
                 };
                 for row in rows.iter_mut() {
                     row.slot = to_slot;
-                    let new_col = (row.col.raw() as i64 + primary_delta).max(0) as usize;
-                    row.col = ColumnIndex::from_raw_for_oracle_or_rehearsal(new_col);
+                    // Prefer role→column resolution from the live registry. Fall
+                    // back to the typed remap endpoint when this row was the
+                    // primary locus (no oracle/rehearsal ColumnIndex mint).
                     if let Some(resolved) =
                         registry
                             .try_column_range(remap.property_id)
@@ -255,8 +256,13 @@ fn apply_one_remap(
                             })
                     {
                         row.col = resolved;
+                    } else if from_col == Some(row.col) {
+                        row.col = to_col;
+                    } else if primary_delta != 0 {
+                        // Non-primary role without registry resolution: leave
+                        // the prior typed column (do not mint via raw doors).
+                        let _ = primary_delta;
                     }
-                    let _ = to_col;
                 }
             } else {
                 // Birth: seed all role rows for the property.

@@ -61,7 +61,7 @@ impl AnchorTableRowGpu {
     /// Decode a POD row into the typed observation row (governed boundary only).
     pub fn decode(&self, registry: &DimensionRegistry) -> AnchorTableRow {
         let property_id = simthing_core::SimPropertyId(self.property_id);
-        let col = ColumnIndex::from_gpu_round_trip(self.col);
+        let col = crate::wgsl_encode::column_from_wire(self.col);
         let role = role_for_property_col(registry, property_id, col);
         let band = if self.band_idx == ANCHOR_BAND_NONE_POD {
             None

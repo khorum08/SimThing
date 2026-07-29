@@ -12,7 +12,7 @@
 use std::collections::BTreeMap;
 
 use simthing_core::{
-    AnchorIdentity, AnchorTable, AnchorTableRow, ColumnIndex, DimensionRegistry, SimThingId,
+    AnchorIdentity, AnchorTable, AnchorTableRow, DimensionRegistry, SimThingId,
     SlotIndex, SubFieldRole,
 };
 use simthing_gpu::SlotAllocator;
@@ -65,7 +65,7 @@ impl AnchorTableSnapshot {
         self.table
             .get_by_slot_col(
                 SlotIndex::new(slot_raw),
-                ColumnIndex::from_gpu_round_trip(col_raw),
+                simthing_gpu::column_from_wire(col_raw),
             )
             .map(|r| r.observed_value)
     }
