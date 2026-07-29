@@ -21,3 +21,4 @@ workshop-candidate-homing	docs/ci_screening_surface.md	heading:## 12. Workshop i
 simthing-0087-pillars	docs/design_0_0_8_7_rf_arena_modernization.md	heading:## 2. Pillars (Owner requirements, binding at commitment)	core-0087	42b6ba6442aa8f909c3a1f5be645c39bdc9dfe57478e1d8c57daba4cc3c8b790
 simthing-0087-binding-laws	docs/design_0_0_8_7_rf_arena_modernization.md	heading:## 4. Binding laws (carry from day one)	core-0087	91270dd77e9628a9309443c388091d4aa9d2462a2779a8756ef14a46e7ff2374
 rf-arena-substrate	docs/adr/resource_flow_substrate.md	heading:# ADR: Resource Flow Substrate	core-0087	17b5f1e5c2ba64a72b189996d04e6b97dd4504d518e4ea623019bec56273937a
+field-sweep-preservation	docs/eml_n4_expansion_digest.md	heading:## 5. Preservation invariants	field-sweep-preservation	acc521a5a36121ef8b53fae1d2b2e1f4f1e57cf4ca717ffc4fe6d42204973201

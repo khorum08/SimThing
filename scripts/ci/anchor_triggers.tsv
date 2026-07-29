@@ -1,7 +1,7 @@
 glob	trigger_domains
-crates/simthing-kernel/**	kernel,seal,unsafe-adjacent,kernel-columns,kernel-eml,kernel-magnitude,scenario-candidate-home,core-0087
-crates/simthing-gpu/**	gpu,wgsl,seal,structural-execution,scenario-candidate-home,core-0087
-crates/simthing-sim/**	sim,field-policy,scenario-candidate-home,core-0087
+crates/simthing-kernel/**	kernel,seal,unsafe-adjacent,kernel-columns,kernel-eml,kernel-magnitude,scenario-candidate-home,core-0087,field-sweep-preservation
+crates/simthing-gpu/**	gpu,wgsl,seal,structural-execution,scenario-candidate-home,core-0087,field-sweep-preservation
+crates/simthing-sim/**	sim,field-policy,scenario-candidate-home,core-0087,field-sweep-preservation
 **/*.wgsl	wgsl,field-policy,sim
 crates/simthing-driver/**	driver,field-policy,overlay,structural-execution,scenario-candidate-home,founding-ontology,stead,core-0087
 crates/simthing-mapeditor/**	studio,mapeditor-gpu,mapeditor-session,map-domain,scenario-candidate-home,field-policy,founding-ontology,stead,core-0087

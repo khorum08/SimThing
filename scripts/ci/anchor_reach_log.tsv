@@ -200,3 +200,4 @@ date	role	query	anchors_served	hit
 2026-07-29T13:19:00Z	coding	--domain core-0087	rf-arena-substrate,simthing-0087-binding-laws,simthing-0087-pillars	hit
 2026-07-29T15:27:33Z	coding	--domain core-0087	rf-arena-substrate,simthing-0087-binding-laws,simthing-0087-pillars	hit
 2026-07-29T16:04:01Z	coding	governance-reach:DECLINED ALLOW-KERNEL-SURFACE/triage TSV edit; GPU POD decode kept driver-local (orch remand 5120259758; Owner: no CI harness TSV)	rf-arena-substrate,simthing-0087-pillars,admission-ladder-necessity-test	hit
+2026-07-29T22:24:56Z	coding	--paths crates/simthing-kernel/src/shaders/accumulator_op.wgsl	admission-ladder-necessity-test,eml-extension-ladder,exact-numeric-candidate-f,field-policy-time-decisions,field-sweep-preservation,property-value-rf-overlays,rf-arena-substrate,seal-residue-cross-crate,simthing-0087-binding-laws,simthing-0087-pillars,workshop-candidate-homing	hit
