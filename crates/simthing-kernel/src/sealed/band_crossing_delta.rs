@@ -119,7 +119,7 @@ impl BandCrossingDelta {
 ///
 /// When `anchored_columns` is `Some`, only emissions whose column is listed are
 /// retained (Unobserved / non-anchored stores skip write-impact evidence).
-pub fn band_crossing_deltas_from_fused_emissions(
+pub(crate) fn band_crossing_deltas_from_fused_emissions(
     emissions: &[ThresholdEmission],
     regs: &[ThresholdRegistration],
     anchored_columns: Option<&[u32]>,

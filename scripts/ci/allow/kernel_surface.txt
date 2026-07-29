@@ -17,7 +17,6 @@ ApproximateDecisionDiagnostic | authority-export | OC-K-DECISION-INGRESS-0 appro
 ApproximateDiagnostic | authority-export | OC-K-EXACT-GATE-0 diagnostic-only magnitude; cannot mint ExactMagnitudeProof | retire when kernel export set is closed by type-boundary admission
 BandCrossingDelta | sealed-export | WRITE-DOOR-BAND-DELTA-0 sealed write-impact delta; minted only from fused threshold emissions | retire when kernel export set is closed by type-boundary admission
 BandCrossingDirection | sealed-export | WRITE-DOOR-BAND-DELTA-0 sealed rising/falling direction for write-impact deltas | retire when kernel export set is closed by type-boundary admission
-band_crossing_deltas_from_fused_emissions | sealed-export | WRITE-DOOR-BAND-DELTA-0 join mint from fused ThresholdEmission + registration sidecar | retire when kernel export set is closed by type-boundary admission
 BoundaryEmissionToken | sealed-export | OC-K-DECISION-INGRESS-0 boundary token for commitment mint | retire when kernel export set is closed by type-boundary admission
 build_column_rule_descriptors | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
 build_column_rules | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
