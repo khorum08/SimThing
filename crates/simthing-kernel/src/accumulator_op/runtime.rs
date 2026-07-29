@@ -1177,17 +1177,13 @@ impl WorldAccumulatorRuntime {
         }
     }
 
-    /// Mint sealed write-impact band-crossing deltas from the fused threshold pass.
-    pub fn readback_band_crossing_deltas(
-        &mut self,
-        ctx: &GpuContext,
-        anchored_columns: Option<&[u32]>,
-    ) -> Result<Vec<crate::BandCrossingDelta>, AccumulatorOpSessionError> {
-        if let Some(session) = self.threshold_session.as_mut() {
-            session.readback_band_crossing_deltas(ctx, anchored_columns)
-        } else {
-            Ok(Vec::new())
-        }
+    /// Threshold registration sidecar for sealed band-delta mint (no public
+    /// band-delta readback door).
+    pub fn threshold_registrations(&self) -> &[crate::ThresholdRegistration] {
+        self.threshold_session
+            .as_ref()
+            .map(|session| session.threshold_registrations())
+            .unwrap_or(&[])
     }
 
     pub fn ensure_summary(&mut self, ctx: &GpuContext, n_slots: u32, n_dims: u32) {

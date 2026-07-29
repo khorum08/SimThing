@@ -4,7 +4,9 @@ pub mod threshold_event;
 pub mod write_authority;
 
 pub use band_crossing_delta::{
-    cpu_oracle_band_crossing_deltas, BandCrossingDelta, BandCrossingDirection,
+    apply_band_crossing_deltas_from_fused_emissions,
+    apply_band_crossing_deltas_from_threshold_events, cpu_oracle_band_crossing_deltas,
+    BandCrossingDelta, BandCrossingDirection,
 };
 pub use emission::{
     EmissionRecord, EmissionRecordGpu, ThresholdEmission, ThresholdEmissionGpu,

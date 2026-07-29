@@ -15,8 +15,7 @@ use wgpu::{
 use crate::context::GpuContext;
 use crate::gpu_readback::{EmissionRecordReadback, KernelReadbackError, ThresholdEmissionReadback};
 use crate::registration::ThresholdRegistration;
-use crate::sealed::band_crossing_delta::band_crossing_deltas_from_fused_emissions;
-use crate::sealed::{BandCrossingDelta, ThresholdEvent};
+use crate::sealed::ThresholdEvent;
 
 use super::encode::EncodeError;
 use super::packed_session_upload::{
@@ -2058,21 +2057,9 @@ impl AccumulatorOpSession {
             .map_err(AccumulatorOpSessionError::from)
     }
 
-    /// Mint sealed write-impact `BandCrossingDelta`s from fused-pass emissions.
-    ///
-    /// When `anchored_columns` is `Some`, only Anchored columns contribute
-    /// write-impact evidence (Unobserved / non-anchored skips).
-    pub fn readback_band_crossing_deltas(
-        &self,
-        ctx: &GpuContext,
-        anchored_columns: Option<&[u32]>,
-    ) -> Result<Vec<BandCrossingDelta>, AccumulatorOpSessionError> {
-        let emissions = self.readback_threshold_emissions(ctx)?;
-        Ok(band_crossing_deltas_from_fused_emissions(
-            &emissions,
-            &self.threshold_registrations,
-            anchored_columns,
-        ))
+    /// Threshold registration sidecar retained for sealed band-delta mint.
+    pub fn threshold_registrations(&self) -> &[ThresholdRegistration] {
+        &self.threshold_registrations
     }
 
     /// Total emission record attempts this tick (may exceed capacity on overflow).
@@ -2546,9 +2533,21 @@ mod tests {
         assert_eq!(events[1].event_kind(), kinds[1]);
 
         // WRITE-DOOR-BAND-DELTA-0: GPU fused mint must bit-agree with CPU oracle.
-        let mut gpu_deltas = session
-            .readback_band_crossing_deltas(&ctx, Some(&[0]))
-            .unwrap();
+        use simthing_core::{SimProperty, SimThing, SimThingKind};
+        let mut registry = simthing_core::DimensionRegistry::new();
+        let _ = registry.register(SimProperty::simple("ao", "thresh", 1));
+        let mut root = SimThing::new(SimThingKind::GameSession, 0);
+        root.add_child(SimThing::new(SimThingKind::Location, 0));
+        root.add_child(SimThing::new(SimThingKind::Location, 0));
+        let mut allocator = crate::SlotAllocator::new();
+        allocator.populate_from_tree(&root);
+
+        let mut gpu_deltas = crate::apply_band_crossing_deltas_from_fused_emissions(
+            &gpu,
+            session.threshold_registrations(),
+            &registry,
+            &allocator,
+        );
         gpu_deltas.sort_by_key(|d| (d.slot(), d.col(), d.reg_idx()));
         let mut cpu_deltas = crate::cpu_oracle_band_crossing_deltas(
             &previous,
@@ -2557,10 +2556,12 @@ mod tests {
             &[],
             n_dims,
             &regs,
-            Some(&[0]),
+            &registry,
+            &allocator,
         );
         cpu_deltas.sort_by_key(|d| (d.slot(), d.col(), d.reg_idx()));
         assert_eq!(gpu_deltas, cpu_deltas);
+        assert_eq!(gpu_deltas.len(), 2);
     }
 
     #[test]

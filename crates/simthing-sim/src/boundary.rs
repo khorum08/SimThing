@@ -58,11 +58,14 @@ use crate::delta_log::{entries_from_outcome, BoundaryDeltaEntry};
 use crate::fission::{resolve_fission_fusion, FissionLineageRecord, FissionOutcome};
 use crate::fission_clone_source_view::fission_clone_source_children;
 use crate::anchor_remap_encode::{
-    build_anchor_remap_section_for_boundary, gate_structural_gpu_encode,
-    required_anchored_loci_for_boundary,
+    build_exact_anchor_remap_section, gate_structural_gpu_encode_exact,
+    required_anchored_loci_for_boundary, snapshot_anchored_loci,
 };
 use crate::gpu_sync::{sync_gpu_buffers, GpuSyncOutcome};
 use simthing_core::AnchorRemapSection;
+use simthing_gpu::{
+    apply_band_crossing_deltas_from_threshold_events, BandCrossingDelta,
+};
 use crate::observability::{observe, ObservabilityReport, ObserveFidelity};
 use crate::overlay_lifecycle::{resolve_overlay_lifecycle, LifecycleOutcome};
 use crate::property_expiry::{resolve_property_expiry, ExpiryOutcome};
@@ -107,6 +110,8 @@ pub struct BoundaryOutcome {
     pub gpu_sync: GpuSyncOutcome,
     /// Typed Anchored-locus remap witness for this boundary's structural encode.
     pub anchor_remap: AnchorRemapSection,
+    /// Sealed write-impact band-crossing deltas minted from the fused threshold pass.
+    pub band_crossing_deltas: Vec<BandCrossingDelta>,
     pub boundary_requests: u32,
     pub player_intents_attached: u32,
     pub ai_intents_attached: u32,
@@ -451,6 +456,7 @@ impl BoundaryProtocol {
         let mut dirty_value_slots = Vec::new();
         let mut force_full_value_upload = false;
         let mut topology_dirty = false;
+        let mut slot_capacity_grew = false;
         let mut threshold_dirty =
             self.threshold_config_revision != self.synced_threshold_config_revision;
 
@@ -468,6 +474,24 @@ impl BoundaryProtocol {
             coord.shadow.resize(needed, 0.0);
         }
         out.timing.value_readback_ms = value_readback_started.elapsed().as_secs_f64() * 1000.0;
+
+        // Pre-mutation Anchored loci (authoritative from-endpoints for remaps).
+        let pre_anchored_loci =
+            snapshot_anchored_loci(self.root.inner(), &self.registry, &self.allocator);
+
+        // Write-impact band deltas: mint from fused-pass events + regs under the
+        // canonical Anchored registry filter (no public band-delta readback API).
+        let threshold_regs = state
+            .accumulator_runtime
+            .as_ref()
+            .map(|runtime| runtime.threshold_registrations().to_vec())
+            .unwrap_or_default();
+        out.band_crossing_deltas = apply_band_crossing_deltas_from_threshold_events(
+            &events,
+            &threshold_regs,
+            &self.registry,
+            &self.allocator,
+        );
 
         let alert_collect_started = Instant::now();
         out.velocity_alerts = collect_velocity_alerts(&events, &self.cpu_threshold_registry);
@@ -552,6 +576,7 @@ impl BoundaryProtocol {
             coord,
             state,
         );
+        slot_capacity_grew |= grew_for_fission;
         topology_dirty |= grew_for_fission;
         if grew_for_fission {
             self.bump_overlay_compile_revision();
@@ -648,6 +673,7 @@ impl BoundaryProtocol {
             coord,
             state,
         );
+        slot_capacity_grew |= grew_for_add_child;
         topology_dirty |= grew_for_add_child;
         if grew_for_add_child {
             self.bump_overlay_compile_revision();
@@ -739,6 +765,7 @@ impl BoundaryProtocol {
         let final_capacity_started = Instant::now();
         let grew_final_capacity =
             self.ensure_slot_capacity(self.allocator.capacity(), patcher, coord, state);
+        slot_capacity_grew |= grew_final_capacity;
         topology_dirty |= grew_final_capacity;
         if grew_final_capacity {
             self.bump_overlay_compile_revision();
@@ -886,18 +913,30 @@ impl BoundaryProtocol {
             topology_dirty = false;
         }
 
-        // WRITE-DOOR-BAND-DELTA-0: refuse GPU encode when Anchored loci churn
-        // without a complete typed remap section (reparent = empty witness).
-        let remap_section = build_anchor_remap_section_for_boundary(
+        // WRITE-DOOR-BAND-DELTA-0: exact pre→post remaps; refuse GPU encode on
+        // missing/incorrect/duplicate endpoints (reparent = empty witness).
+        let post_anchored_loci =
+            snapshot_anchored_loci(self.root.inner(), &self.registry, &self.allocator);
+        let remap_section = build_exact_anchor_remap_section(
+            &pre_anchored_loci,
+            &post_anchored_loci,
+            &out,
+            slot_capacity_grew,
+        )
+        .unwrap_or_else(|err| panic!("anchor remap derive refused before GPU sync: {err}"));
+        let required_loci = required_anchored_loci_for_boundary(
+            &remap_section,
             &out,
             &self.root,
             &self.registry,
-            &self.allocator,
         );
-        let required_loci =
-            required_anchored_loci_for_boundary(&out, &self.root, &self.registry);
-        gate_structural_gpu_encode(&remap_section, &required_loci)
-            .unwrap_or_else(|err| panic!("anchor remap encode refused before GPU sync: {err}"));
+        gate_structural_gpu_encode_exact(
+            &remap_section,
+            &required_loci,
+            &pre_anchored_loci,
+            &post_anchored_loci,
+        )
+        .unwrap_or_else(|err| panic!("anchor remap encode refused before GPU sync: {err}"));
         out.anchor_remap = remap_section;
 
         // Step 9: Rebuild GPU buffers from current tree + upload shadow.

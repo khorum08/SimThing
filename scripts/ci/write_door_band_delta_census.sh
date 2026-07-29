@@ -31,8 +31,6 @@ fi
 echo "PASS: BandCrossingDelta literals confined to sealed door module"
 
 # ── 2. No production CPU post-hoc invent of threshold crossings (hot path) ───
-# Forbid inventing crossings from bare value compares outside oracle/rehearsal/
-# sealed twins. Known residues (era-0080 schedules) must stay named here if present.
 hits="$(
   rg -n --glob 'crates/**/src/**/*.rs' 'patrol_threshold_crossed|cpu_invent_band_crossing|infer_threshold_crossing_from_values' \
     | normalize \
@@ -45,21 +43,23 @@ fi
 echo "PASS: no unexplained production CPU post-hoc crossing invent symbols"
 
 # ── 3. Structural encode gate symbol must exist ──────────────────────────────
-if ! rg -q 'validate_anchor_remap_for_encode' crates/simthing-sim/src crates/simthing-core/src; then
-  fail "missing validate_anchor_remap_for_encode encode gate"
+if ! rg -q 'validate_anchor_remap_for_encode|validate_exact_anchor_remap_endpoints' \
+  crates/simthing-sim/src crates/simthing-core/src; then
+  fail "missing exact/key remap encode gate"
 fi
-echo "PASS: validate_anchor_remap_for_encode present"
+echo "PASS: remap encode gates present"
 
 # ── 4. Boundary flush must consult the remap encode gate ─────────────────────
-# Production call site uses gate_structural_gpu_encode (wraps validate_*).
-if ! rg -q 'gate_structural_gpu_encode|validate_anchor_remap_for_encode' \
+if ! rg -q 'gate_structural_gpu_encode_exact|validate_exact_anchor_remap_endpoints' \
   crates/simthing-sim/src/boundary.rs; then
-  fail "boundary.rs does not call remap encode gate before GPU sync"
+  fail "boundary.rs does not call exact remap encode gate before GPU sync"
 fi
-echo "PASS: boundary.rs gates structural GPU sync on anchor remap"
+if ! rg -q 'snapshot_anchored_loci' crates/simthing-sim/src/boundary.rs; then
+  fail "boundary.rs does not snapshot pre/post Anchored loci"
+fi
+echo "PASS: boundary.rs gates structural GPU sync on exact anchor remap"
 
 # ── 5. Remap-free relocation doors must not bypass the gate ──────────────────
-# Direct sync_gpu_buffers from tree_mutation/fission (skipping boundary gate) is forbidden.
 hits="$(
   rg -n --glob 'crates/simthing-sim/src/{fission,tree_mutation}.rs' 'sync_gpu_buffers\(' \
     | normalize \
@@ -70,18 +70,54 @@ if [[ -n "${hits}" ]]; then
 fi
 echo "PASS: fission/tree_mutation do not call sync_gpu_buffers directly"
 
-# ── 6. Fused mint door must exist on AccumulatorOpSession readback ───────────
-if ! rg -q 'fn readback_band_crossing_deltas' \
-  crates/simthing-kernel/src/accumulator_op/session.rs; then
-  fail "missing AccumulatorOpSession::readback_band_crossing_deltas fused mint door"
+# ── 6. Zero public production band-delta readback doors; sealed apply mint ───
+hits="$(
+  rg -n --glob 'crates/**/*.rs' 'fn readback_band_crossing_deltas' \
+    | normalize \
+    || true
+)"
+if [[ -n "${hits}" ]]; then
+  fail "public production band-delta readback door still present:" "${hits}"
 fi
-if ! rg -q 'band_crossing_deltas_from_fused_emissions' \
-  crates/simthing-kernel/src/accumulator_op/session.rs; then
-  fail "readback mint door does not join fused emissions"
+if ! rg -q 'fn apply_band_crossing_deltas_from_fused_emissions' \
+  crates/simthing-kernel/src/sealed/band_crossing_delta.rs; then
+  fail "missing apply_band_crossing_deltas_from_fused_emissions sealed mint door"
 fi
-echo "PASS: fused BandCrossingDelta mint door on AccumulatorOpSession"
+if ! rg -q 'fn apply_band_crossing_deltas_from_threshold_events' \
+  crates/simthing-kernel/src/sealed/band_crossing_delta.rs; then
+  fail "missing apply_band_crossing_deltas_from_threshold_events sealed mint door"
+fi
+echo "PASS: no public band-delta readback; sealed apply mint doors present"
 
-# ── 7. Structural encode inventory (load-bearing map; must remain named) ─────
+# ── 7. Zero fabricated/default remap endpoints ───────────────────────────────
+hits="$(
+  rg -n --glob 'crates/simthing-sim/src/anchor_remap_encode.rs' \
+    'unwrap_or\(SlotIndex::new\(0\)\)|unwrap_or\(ColumnIndex::' \
+    | normalize \
+    || true
+)"
+if [[ -n "${hits}" ]]; then
+  fail "fabricated/default remap endpoints in encode helpers:" "${hits}"
+fi
+# Post-hoc-only retire helper must not exist (pre/post derive only).
+if rg -q 'fn push_retire_remaps' crates/simthing-sim/src/anchor_remap_encode.rs; then
+  fail "push_retire_remaps still present — remaps must derive from pre/post snapshots"
+fi
+echo "PASS: no fabricated remap endpoints / post-hoc retire helper"
+
+# ── 8. Boundary/replay transport for band deltas + remaps ────────────────────
+if ! rg -q 'BandCrossingDeltasApplied' crates/simthing-sim/src/delta_log.rs; then
+  fail "delta_log missing BandCrossingDeltasApplied transport"
+fi
+if ! rg -q 'last_band_crossing_deltas' crates/simthing-sim/src/replay.rs; then
+  fail "replay missing bit-exact band-delta retention"
+fi
+if ! rg -q 'last_anchor_remap' crates/simthing-sim/src/replay.rs; then
+  fail "replay missing bit-exact remap retention"
+fi
+echo "PASS: boundary/replay transport retains remaps + band deltas"
+
+# ── 9. Structural encode inventory (load-bearing map; must remain named) ─────
 for path in \
   crates/simthing-sim/src/fission.rs \
   crates/simthing-sim/src/tree_mutation.rs \

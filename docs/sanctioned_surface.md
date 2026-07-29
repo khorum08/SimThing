@@ -9,9 +9,9 @@ This digest is a derived context artifact for low-context agents. If it disagree
 
 | source | data rows | sha256 |
 | --- | --- | --- |
-| scripts/ci/allow/sealed_producers.txt | 17 | 478c0894a60ac33e78cdc3158acf559316272831f534c7ae4e40b7bd8d05397a |
+| scripts/ci/allow/sealed_producers.txt | 18 | 4ce09d5c2dd6f8c270fe776a38732e397128aa791394a3e76309245412c6dbbf |
 | scripts/ci/allow/inert_buffer_handles.txt | 2 | 9e2069fa5730f17cacde1c671ebc17beb59f50738d2dcb914bceae13f9b8b3a4 |
-| scripts/ci/allow/kernel_surface.txt | 234 | feecf006f227f6b335c6d07b47df9d9f8f76b29d20aab8c9e4875f8315ff9a82 |
+| scripts/ci/allow/kernel_surface.txt | 236 | 3be848a26e323175515af256327719397acc509e05163596d64b26a486f5950b |
 | scripts/ci/allow/sealed_types.txt | 13 | 3f1f343a956fbc4fdf7cfce2e3805bd44f253c847eae88894621f1d0d4e6c525 |
 | scripts/ci/scans.tsv | 22 | e485dff731f83a0055e7daf3f0db935a68d55731b1dcd0837bf2925b5019c47a |
 
@@ -24,6 +24,8 @@ This digest is a derived context artifact for low-context agents. If it disagree
 | cpu_oracle_emission_records | cpu_oracle | CPU-oracle twin for emission records; parity-only path | retire when CPU oracle is type-quarantined to in-crate parity harness | sealed_producers.txt |
 | execute_ops_cpu_with_emissions | cpu_oracle | CPU-oracle batch path returning emission records; parity-only | retire when CPU oracle batch path is in-crate only | sealed_producers.txt |
 | execute_threshold_ops_cpu | cpu_oracle | CPU-oracle batch path returning threshold emissions; parity-only | retire when CPU oracle batch path is in-crate only | sealed_producers.txt |
+| apply_band_crossing_deltas_from_fused_emissions | apply | WRITE-DOOR-BAND-DELTA-0 sealed join mint from fused emissions + canonical Anchored registry | retire when band-crossing mint is an in-crate type boundary only | sealed_producers.txt |
+| apply_band_crossing_deltas_from_threshold_events | apply | WRITE-DOOR-BAND-DELTA-0 sealed join mint from threshold events + canonical Anchored registry | retire when band-crossing mint is an in-crate type boundary only | sealed_producers.txt |
 | apply_candidate_f_exact_magnitude | apply | Sanctioned exact-magnitude write door for Candidate F | retire when exact write is an in-crate AccumulatorOp type boundary only | sealed_producers.txt |
 | read_event_candidates | read | Read sealed ThresholdEvent candidates from WorldGpuState | retire when threshold events are observed only via typed read view | sealed_producers.txt |
 | read_records | read | Read sealed EmissionRecord values via EmissionRecordReadback | retire when emission readback is in-crate only | sealed_producers.txt |
@@ -31,7 +33,6 @@ This digest is a derived context artifact for low-context agents. If it disagree
 | read_threshold_emissions | read | Read sealed ThresholdEmission via ThresholdEmissionReadback | retire when threshold emission readback is in-crate only | sealed_producers.txt |
 | read_threshold_events | read | Read sealed ThresholdEvent via ThresholdEmissionReadback | retire when threshold event readback is in-crate only | sealed_producers.txt |
 | read_events | read | Read threshold event candidates via ThresholdEventCandidatesReadback | retire when candidate readback is in-crate only | sealed_producers.txt |
-| readback_band_crossing_deltas | read | Session/runtime readback door minting sealed BandCrossingDelta from fused emissions | retire when band-crossing readback is in-crate only | sealed_producers.txt |
 | readback_threshold_emissions | read | Session readback door for sealed ThresholdEmission records | retire when threshold emission readback is in-crate only | sealed_producers.txt |
 | readback_threshold_events | read | Session readback door for sealed ThresholdEvent records | retire when threshold event readback is in-crate only | sealed_producers.txt |
 | readback_emissions | read | Session readback door for sealed EmissionRecord slice | retire when emission readback is in-crate only | sealed_producers.txt |
@@ -64,6 +65,8 @@ This digest is a derived context artifact for low-context agents. If it disagree
 | AoWgsl0PlanShape | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |
 | ApproximateDecisionDiagnostic | authority-export | OC-K-DECISION-INGRESS-0 approximate decision diagnostic only | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |
 | ApproximateDiagnostic | authority-export | OC-K-EXACT-GATE-0 diagnostic-only magnitude; cannot mint ExactMagnitudeProof | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |
+| apply_band_crossing_deltas_from_fused_emissions | authority-export | WRITE-DOOR-BAND-DELTA-0 sealed join mint from fused emissions + canonical Anchored registry; xref sealed path | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |
+| apply_band_crossing_deltas_from_threshold_events | authority-export | WRITE-DOOR-BAND-DELTA-0 sealed join mint from threshold events + canonical Anchored registry; xref sealed path | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |
 | BandCrossingDelta | sealed-export | WRITE-DOOR-BAND-DELTA-0 sealed write-impact delta; minted only from fused threshold emissions | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |
 | BandCrossingDirection | sealed-export | WRITE-DOOR-BAND-DELTA-0 sealed rising/falling direction for write-impact deltas | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |
 | BoundaryEmissionToken | sealed-export | OC-K-DECISION-INGRESS-0 boundary token for commitment mint | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |

@@ -42,8 +42,9 @@ pub use accumulator_spec::{
     AccumulatorRole, AccumulatorSpec, ArenaName, BalanceSpec, LogTier, NumCountSource,
 };
 pub use anchor_remap::{
-    validate_anchor_remap_for_encode, AnchorLocusRemap, AnchorRemapEncodeError,
-    AnchorRemapOperation, AnchorRemapSection,
+    derive_exact_anchor_remaps, validate_anchor_remap_for_encode,
+    validate_exact_anchor_remap_endpoints, AnchorLocusRemap, AnchorRemapEncodeError,
+    AnchorRemapOperation, AnchorRemapSection, AnchoredLocusMap,
 };
 pub use arena_layout::{
     arena_internal_columns_present, expand_arena_internal_columns, need_stage_role_names,

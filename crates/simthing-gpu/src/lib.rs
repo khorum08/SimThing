@@ -56,6 +56,8 @@ pub use simthing_kernel::{
     ao_wgsl0_fast_path_compatible, build_column_rule_descriptors, build_column_rules,
     build_governed_pairs, build_intensity_eml_entries, build_overlay_deltas, build_topology,
     classify_ao_wgsl0_plan, column_from_wire, conjunctive_recipe_registration_to_transfer,
+    apply_band_crossing_deltas_from_fused_emissions,
+    apply_band_crossing_deltas_from_threshold_events,
     conjunctive_recipe_registrations_to_transfer, cpu_oracle_band_crossing_deltas,
     cpu_oracle_emission_records, cpu_oracle_threshold_events,
     cpu_reduce_oracle, cpu_reduce_oracle_call_count,

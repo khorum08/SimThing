@@ -78,8 +78,8 @@ pub use accumulator_plan_tick::{
     SimGpuAccumulatorTickState, SimGpuReadbackPolicy, SimTickError,
 };
 pub use anchor_remap_encode::{
-    build_anchor_remap_section_for_boundary, gate_structural_gpu_encode,
-    required_anchored_loci_for_boundary,
+    build_exact_anchor_remap_section, gate_structural_gpu_encode, gate_structural_gpu_encode_exact,
+    required_anchored_loci_for_boundary, snapshot_anchored_loci,
 };
 pub use boundary::{
     BoundaryHookContext, BoundaryOutcome, BoundaryProtocol, BoundaryTiming, PipelineFlags,

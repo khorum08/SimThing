@@ -53,8 +53,10 @@
 use std::io::{BufRead, Write};
 
 use serde::{Deserialize, Serialize};
-use simthing_core::{DimensionRegistry, OverlayLifecycle, SimThing, SimThingId};
-use simthing_gpu::SlotAllocator;
+use simthing_core::{
+    AnchorRemapSection, DimensionRegistry, OverlayLifecycle, SimThing, SimThingId,
+};
+use simthing_gpu::{BandCrossingDelta, SlotAllocator};
 
 use crate::delta_log::BoundaryDeltaEntry;
 use crate::fission::FissionLineageRecord;
@@ -280,6 +282,10 @@ pub struct ReplayDriver {
     pub fission_lineage: Vec<FissionLineageRecord>,
     /// Latest post-boundary shadow checkpoint from a replay frame, if any.
     pub shadow_values: Option<Vec<f32>>,
+    /// Last applied exact remap section (bit-exact replay evidence).
+    pub last_anchor_remap: Option<AnchorRemapSection>,
+    /// Last applied sealed band-crossing deltas (bit-exact replay evidence).
+    pub last_band_crossing_deltas: Vec<BandCrossingDelta>,
 }
 
 impl ReplayDriver {
@@ -295,6 +301,8 @@ impl ReplayDriver {
             fission_lineage: snapshot.fission_lineage,
             shadow_values: None,
             allocator,
+            last_anchor_remap: None,
+            last_band_crossing_deltas: Vec::new(),
         }
     }
 
@@ -446,8 +454,12 @@ impl ReplayDriver {
             }
             BoundaryDeltaEntry::VelocityAlert { .. } => { /* observation only */ }
             BoundaryDeltaEntry::AggregateAlert { .. } => { /* observation only */ }
-            BoundaryDeltaEntry::AnchorRemapApplied { .. } => {
-                /* write-impact / encode witness — structural apply already replayed */
+            BoundaryDeltaEntry::AnchorRemapApplied { section } => {
+                // Bit-exact transport: retain the recorded section for referee compare.
+                self.last_anchor_remap = Some(section);
+            }
+            BoundaryDeltaEntry::BandCrossingDeltasApplied { deltas } => {
+                self.last_band_crossing_deltas = deltas;
             }
         }
     }

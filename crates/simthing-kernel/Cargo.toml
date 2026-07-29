@@ -8,5 +8,6 @@ authors.workspace = true
 simthing-core = { path = "../simthing-core" }
 bytemuck      = { workspace = true }
 pollster      = { workspace = true }
+serde         = { workspace = true }
 thiserror     = { workspace = true }
 wgpu          = { workspace = true }

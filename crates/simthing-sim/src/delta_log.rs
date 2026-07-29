@@ -33,6 +33,7 @@ use serde::{Deserialize, Serialize};
 use simthing_core::{
     AnchorRemapSection, Overlay, OverlayId, SimPropertyId, SimThing, SimThingId, SubFieldRole,
 };
+use simthing_gpu::BandCrossingDelta;
 use std::collections::HashMap;
 
 use crate::boundary::BoundaryOutcome;
@@ -120,6 +121,9 @@ pub enum BoundaryDeltaEntry {
 
     /// Typed Anchored-locus remap witness for structural encode (WRITE-DOOR-BAND-DELTA-0).
     AnchorRemapApplied { section: AnchorRemapSection },
+
+    /// Sealed write-impact band-crossing deltas for this boundary (WRITE-DOOR-BAND-DELTA-0).
+    BandCrossingDeltasApplied { deltas: Vec<BandCrossingDelta> },
 
     /// A velocity alert threshold fired on the given SimThing's property
     /// sub-field.
@@ -244,9 +248,12 @@ pub(crate) fn entries_from_outcome(
         entries.push(BoundaryDeltaEntry::DimensionAdded { property_id: pid });
     }
 
-    // WRITE-DOOR-BAND-DELTA-0: persist remap witness for bit-exact replay of encode gates.
+    // WRITE-DOOR-BAND-DELTA-0: persist remap + band deltas for bit-exact replay.
     entries.push(BoundaryDeltaEntry::AnchorRemapApplied {
         section: outcome.anchor_remap.clone(),
+    });
+    entries.push(BoundaryDeltaEntry::BandCrossingDeltasApplied {
+        deltas: outcome.band_crossing_deltas.clone(),
     });
 
     // Velocity and aggregate alerts.
@@ -290,6 +297,7 @@ fn estimated_entry_count(outcome: &BoundaryOutcome) -> usize {
         + outcome.maintainer.dimensions_added.len()
         + outcome.velocity_alerts.len()
         + outcome.aggregate_alerts.len()
+        + 2 // AnchorRemapApplied + BandCrossingDeltasApplied
 }
 
 /// One boundary-local index for payload lookups while building replay deltas.
