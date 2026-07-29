@@ -9,6 +9,8 @@ AccumulatorPipelineSessions | authority-export | Exported kernel runtime/plannin
 AdmittedEvalEmlCombine | sealed-export | OC-K-EML-OPCODE-GATE-0 admitted combine token | retire when kernel export set is closed by type-boundary admission
 AdmittedEvalEmlOpcode | sealed-export | OC-K-EML-OPCODE-GATE-0 admitted opcode token | retire when kernel export set is closed by type-boundary admission
 AO_WGSL0_ENTRY_POINT | surface-inert | Inert public kernel constant | retire when kernel export set is closed by type-boundary admission
+ANCHOR_BAND_NONE_POD | surface-inert | ANCHOR-TABLE-SURFACE-0 POD sentinel for Option<BandIndex> at encode boundary only | retire when kernel export set is closed by type-boundary admission
+AnchorTableRowGpu | sealed-export | ANCHOR-TABLE-SURFACE-0 GPU POD twin of typed AnchorTableRow; minted only at governed encode | retire when kernel export set is closed by type-boundary admission
 ao_wgsl0_fast_path_compatible | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
 AoWgsl0Compatibility | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
 AoWgsl0FallbackReason | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
@@ -17,8 +19,10 @@ ApproximateDecisionDiagnostic | authority-export | OC-K-DECISION-INGRESS-0 appro
 ApproximateDiagnostic | authority-export | OC-K-EXACT-GATE-0 diagnostic-only magnitude; cannot mint ExactMagnitudeProof | retire when kernel export set is closed by type-boundary admission
 apply_band_crossing_deltas_from_fused_emissions | authority-export | WRITE-DOOR-BAND-DELTA-0 sealed join mint from fused emissions + canonical Anchored registry; xref sealed path | retire when kernel export set is closed by type-boundary admission
 apply_band_crossing_deltas_from_threshold_events | authority-export | WRITE-DOOR-BAND-DELTA-0 sealed join mint from threshold events + canonical Anchored registry; xref sealed path | retire when kernel export set is closed by type-boundary admission
+apply_sealed_band_crossings_to_anchor_table | authority-export | ANCHOR-TABLE-SURFACE-0 sealed fused-delta apply onto derived AnchorTable; xref sealed path | retire when kernel export set is closed by type-boundary admission
 BandCrossingDelta | sealed-export | WRITE-DOOR-BAND-DELTA-0 sealed write-impact delta; minted only from fused threshold emissions | retire when kernel export set is closed by type-boundary admission
 BandCrossingDirection | sealed-export | WRITE-DOOR-BAND-DELTA-0 sealed rising/falling direction for write-impact deltas | retire when kernel export set is closed by type-boundary admission
+band_crossing_updates_from_deltas | sealed-export | ANCHOR-TABLE-SURFACE-0 ordered BandCrossingDelta → table update triples; multi-edge last-wins | retire when kernel export set is closed by type-boundary admission
 BoundaryEmissionToken | sealed-export | OC-K-DECISION-INGRESS-0 boundary token for commitment mint | retire when kernel export set is closed by type-boundary admission
 build_column_rule_descriptors | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
 build_column_rules | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
@@ -88,6 +92,7 @@ eml_opcode_gate | authority-export | OC-K-EML-OPCODE-GATE-0 module surface; clos
 EmlGpuProgramTable | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
 EmlTreeRangeGpu | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
 EmlUploadError | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
+encode_anchor_table_gpu | authority-export | ANCHOR-TABLE-SURFACE-0 governed POD encode of typed AnchorTable for GPU upload | retire when kernel export set is closed by type-boundary admission
 encode_column | authority-export | PLAN-STRUCT-TYPING-0 WGSL-RAW-BOUNDARY drop helper; sole production ColumnIndex::raw_u32 encode path for plan columns | RF-COLUMN-MINT-MIGRATE-0 retires residual raw doors
 encode_column_rules | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
 encode_emission_plan | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
@@ -145,6 +150,7 @@ OpcodeRegistrationGate | sealed-export | OC-K-EML-OPCODE-GATE-0 EvalEML opcode/c
 OpcodeRegistrationRequest | sealed-export | OC-K-EML-OPCODE-GATE-0 opcode registration request class | retire when kernel export set is closed by type-boundary admission
 OperationFamily | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
 OpSetHandle | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
+oracle_anchor_table_after_deltas | authority-export | ANCHOR-TABLE-SURFACE-0 independent CPU oracle twin for sealed band-crossing table updates | retire when kernel export set is closed by type-boundary admission
 overlay_orderband | authority-export | Exported kernel module surface; authority-bearing namespace | retire when kernel export set is closed by type-boundary admission
 overlay_prep | authority-export | Exported kernel module surface; authority-bearing namespace | retire when kernel export set is closed by type-boundary admission
 OverlayCompileCache | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission

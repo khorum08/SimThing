@@ -2,7 +2,7 @@
 
 - Track: 0.0.8.7 RF arena modernization (rung 5.3)
 - Status: **PROBATION** (coder lane; orch owns `/clearance`)
-- HD-RECEIPT: bound by handoff file
+- HD-RECEIPT: `a41ced4721f0`
 - ORIENT-RECEIPT: `16b366e49528`
 - orientation_rule_stamp: `76fd13d17f16f2f7`
 - DA plan-review: comment [`5120052669`](https://github.com/khorum08/SimThing/issues/1332#issuecomment-5120052669) (Fable) — five binding sharpenings applied in-diff
@@ -34,6 +34,7 @@ Watch-item: O(rows)-per-boundary refresh cost-model comment landed on `refresh_a
 | `cargo test -p simthing-core --lib anchor_table` | PASS — 2 passed |
 | `bash scripts/ci/observation_bypass_census.sh` | PASS — unpiped EXIT:True (`PASS(observation-bypass-census): all arms green`) |
 | `bash scripts/ci/plan_struct_typing_census.sh --selftest` | PASS — shared brace-balanced filter EXIT:True |
+| `bash scripts/ci/agent_scan.sh` | INSPECT delta_inspect=3 (COLUMN-INDEX-MINT×2, TEST-BUDGET×1); ALLOW-KERNEL-SURFACE PASS; triage rows present |
 | Orientation regen | PASS — Active pointer `FIELD-SWEEP-IR-PROBE-0` |
 
 Final head / tested_code_sha: PR-body-bound only (this file does not self-hash).
