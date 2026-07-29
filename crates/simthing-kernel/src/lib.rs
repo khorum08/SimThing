@@ -118,9 +118,10 @@ pub use registration::{
 };
 pub use resolved::ResolvedGpuBuffers;
 pub use sealed::{
-    cpu_oracle_threshold_events, EmissionRecord, EmissionRecordGpu, ResolvedWriteAuthority,
-    ThresholdEmission, ThresholdEmissionGpu, ThresholdEvent, ThresholdEventGpu,
-    DEFAULT_EMISSION_CAPACITY,
+    band_crossing_deltas_from_fused_emissions, cpu_oracle_band_crossing_deltas,
+    cpu_oracle_threshold_events, BandCrossingDelta, BandCrossingDirection, EmissionRecord,
+    EmissionRecordGpu, ResolvedWriteAuthority, ThresholdEmission, ThresholdEmissionGpu,
+    ThresholdEvent, ThresholdEventGpu, DEFAULT_EMISSION_CAPACITY,
 };
 pub use slot::{ObjectResidency, SlotAllocError, SlotAllocator};
 pub use transfer_accumulator::{

@@ -30,7 +30,9 @@
 //! ```
 
 use serde::{Deserialize, Serialize};
-use simthing_core::{Overlay, OverlayId, SimPropertyId, SimThing, SimThingId, SubFieldRole};
+use simthing_core::{
+    AnchorRemapSection, Overlay, OverlayId, SimPropertyId, SimThing, SimThingId, SubFieldRole,
+};
 use std::collections::HashMap;
 
 use crate::boundary::BoundaryOutcome;
@@ -115,6 +117,9 @@ pub enum BoundaryDeltaEntry {
         child: SimThingId,
         new_parent: SimThingId,
     },
+
+    /// Typed Anchored-locus remap witness for structural encode (WRITE-DOOR-BAND-DELTA-0).
+    AnchorRemapApplied { section: AnchorRemapSection },
 
     /// A velocity alert threshold fired on the given SimThing's property
     /// sub-field.
@@ -238,6 +243,11 @@ pub(crate) fn entries_from_outcome(
     for &pid in &outcome.maintainer.dimensions_added {
         entries.push(BoundaryDeltaEntry::DimensionAdded { property_id: pid });
     }
+
+    // WRITE-DOOR-BAND-DELTA-0: persist remap witness for bit-exact replay of encode gates.
+    entries.push(BoundaryDeltaEntry::AnchorRemapApplied {
+        section: outcome.anchor_remap.clone(),
+    });
 
     // Velocity and aggregate alerts.
     for alert in &outcome.velocity_alerts {

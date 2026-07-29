@@ -57,7 +57,12 @@ use simthing_gpu::{
 use crate::delta_log::{entries_from_outcome, BoundaryDeltaEntry};
 use crate::fission::{resolve_fission_fusion, FissionLineageRecord, FissionOutcome};
 use crate::fission_clone_source_view::fission_clone_source_children;
+use crate::anchor_remap_encode::{
+    build_anchor_remap_section_for_boundary, gate_structural_gpu_encode,
+    required_anchored_loci_for_boundary,
+};
 use crate::gpu_sync::{sync_gpu_buffers, GpuSyncOutcome};
+use simthing_core::AnchorRemapSection;
 use crate::observability::{observe, ObservabilityReport, ObserveFidelity};
 use crate::overlay_lifecycle::{resolve_overlay_lifecycle, LifecycleOutcome};
 use crate::property_expiry::{resolve_property_expiry, ExpiryOutcome};
@@ -100,6 +105,8 @@ pub struct BoundaryOutcome {
     pub fission: FissionOutcome,
     pub maintainer: MaintainerOutcome,
     pub gpu_sync: GpuSyncOutcome,
+    /// Typed Anchored-locus remap witness for this boundary's structural encode.
+    pub anchor_remap: AnchorRemapSection,
     pub boundary_requests: u32,
     pub player_intents_attached: u32,
     pub ai_intents_attached: u32,
@@ -878,6 +885,20 @@ impl BoundaryProtocol {
             );
             topology_dirty = false;
         }
+
+        // WRITE-DOOR-BAND-DELTA-0: refuse GPU encode when Anchored loci churn
+        // without a complete typed remap section (reparent = empty witness).
+        let remap_section = build_anchor_remap_section_for_boundary(
+            &out,
+            &self.root,
+            &self.registry,
+            &self.allocator,
+        );
+        let required_loci =
+            required_anchored_loci_for_boundary(&out, &self.root, &self.registry);
+        gate_structural_gpu_encode(&remap_section, &required_loci)
+            .unwrap_or_else(|err| panic!("anchor remap encode refused before GPU sync: {err}"));
+        out.anchor_remap = remap_section;
 
         // Step 9: Rebuild GPU buffers from current tree + upload shadow.
         let gpu_sync_started = Instant::now();

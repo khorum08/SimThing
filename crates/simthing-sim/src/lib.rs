@@ -52,6 +52,7 @@
 #![forbid(unsafe_code)]
 
 pub mod accumulator_plan_tick;
+pub mod anchor_remap_encode;
 pub mod boundary;
 pub mod delta_log;
 pub mod fission;
@@ -75,6 +76,10 @@ pub use accumulator_plan_tick::{
     execute_accumulator_plan_tick_with_backend, gpu_context_blocking,
     readback_resident_accumulator_values_for_proof, AccumulatorTickBackend,
     SimGpuAccumulatorTickState, SimGpuReadbackPolicy, SimTickError,
+};
+pub use anchor_remap_encode::{
+    build_anchor_remap_section_for_boundary, gate_structural_gpu_encode,
+    required_anchored_loci_for_boundary,
 };
 pub use boundary::{
     BoundaryHookContext, BoundaryOutcome, BoundaryProtocol, BoundaryTiming, PipelineFlags,

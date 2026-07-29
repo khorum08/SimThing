@@ -417,5 +417,6 @@ fn entry_kind(entry: &BoundaryDeltaEntry) -> &'static str {
         BoundaryDeltaEntry::AggregateAlert { .. } => "AggregateAlert",
         BoundaryDeltaEntry::FissionLineageAdded { .. } => "FissionLineageAdded",
         BoundaryDeltaEntry::FissionLineageRemoved { .. } => "FissionLineageRemoved",
+        BoundaryDeltaEntry::AnchorRemapApplied { .. } => "AnchorRemapApplied",
     }
 }

@@ -446,6 +446,9 @@ impl ReplayDriver {
             }
             BoundaryDeltaEntry::VelocityAlert { .. } => { /* observation only */ }
             BoundaryDeltaEntry::AggregateAlert { .. } => { /* observation only */ }
+            BoundaryDeltaEntry::AnchorRemapApplied { .. } => {
+                /* write-impact / encode witness — structural apply already replayed */
+            }
         }
     }
 }
