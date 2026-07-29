@@ -23,9 +23,9 @@ use super::packed_session_upload::{
 };
 use super::types::{AccumulatorInputGpu, AccumulatorOpGpu};
 use super::types::{
-    AccumulatorSummaryParams, AccumulatorTickParams, EmissionRecord, EmlNodeGpu, EmlTreeRangeGpu,
-    SlotSummary, SlotSummaryGpu, ThresholdEmission, DEFAULT_EMISSION_CAPACITY,
-    DEFAULT_THRESHOLD_EMISSION_CAPACITY,
+    AccumulatorSummaryParams, AccumulatorTickParams, AnchorMaintainParams, EmissionRecord,
+    EmlNodeGpu, EmlTreeRangeGpu, SlotSummary, SlotSummaryGpu, ThresholdEmission,
+    DEFAULT_EMISSION_CAPACITY, DEFAULT_THRESHOLD_EMISSION_CAPACITY,
 };
 
 pub const WORKGROUP_SIZE: u32 = 64;
@@ -166,6 +166,12 @@ pub struct AccumulatorOpSession {
     fill_uniform: Buffer,
     fill_layout: BindGroupLayout,
     fill_pipeline: ComputePipeline,
+
+    /// ANCHOR-TABLE-SURFACE-0 fused writer companion (crossings + magnitudes).
+    anchor_maintain_uniform: Buffer,
+    anchor_maintain_layout: BindGroupLayout,
+    anchor_crossing_pipeline: ComputePipeline,
+    anchor_magnitude_pipeline: ComputePipeline,
 
     timestamp_supported: bool,
     timestamp_query_set: Option<QuerySet>,
@@ -426,6 +432,49 @@ impl AccumulatorOpSession {
             cache: None,
         });
 
+        let anchor_maintain_shader = device.create_shader_module(ShaderModuleDescriptor {
+            label: Some("anchor_table_maintain"),
+            source: ShaderSource::Wgsl(include_str!("../shaders/anchor_table_maintain.wgsl").into()),
+        });
+        let anchor_maintain_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+            label: Some("anchor_table_maintain_layout"),
+            entries: &[
+                storage_entry(0, true),  // ops
+                storage_entry(1, true),  // values (read-only; matches WGSL `read`)
+                storage_entry(2, true),  // threshold_emissions
+                storage_entry(3, false), // threshold_emission_count
+                storage_entry(4, false), // anchor_table
+                uniform_entry(5),
+            ],
+        });
+        let anchor_maintain_pl = device.create_pipeline_layout(&PipelineLayoutDescriptor {
+            label: Some("anchor_table_maintain_pl"),
+            bind_group_layouts: &[&anchor_maintain_layout],
+            push_constant_ranges: &[],
+        });
+        let anchor_crossing_pipeline = device.create_compute_pipeline(&ComputePipelineDescriptor {
+            label: Some("anchor_table_crossing_pipeline"),
+            layout: Some(&anchor_maintain_pl),
+            module: &anchor_maintain_shader,
+            entry_point: "maintain_anchor_crossings",
+            compilation_options: Default::default(),
+            cache: None,
+        });
+        let anchor_magnitude_pipeline = device.create_compute_pipeline(&ComputePipelineDescriptor {
+            label: Some("anchor_table_magnitude_pipeline"),
+            layout: Some(&anchor_maintain_pl),
+            module: &anchor_maintain_shader,
+            entry_point: "maintain_anchor_magnitudes",
+            compilation_options: Default::default(),
+            cache: None,
+        });
+        let anchor_maintain_uniform = device.create_buffer(&BufferDescriptor {
+            label: Some("anchor_table_maintain_uniform"),
+            size: std::mem::size_of::<AnchorMaintainParams>() as u64,
+            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
         let (timestamp_query_set, timestamp_resolve_buffer, timestamp_readback_buffer) =
             if ctx.timestamp_supported() {
                 let query_set = device.create_query_set(&QuerySetDescriptor {
@@ -476,6 +525,10 @@ impl AccumulatorOpSession {
             fill_uniform,
             fill_layout,
             fill_pipeline,
+            anchor_maintain_uniform,
+            anchor_maintain_layout,
+            anchor_crossing_pipeline,
+            anchor_magnitude_pipeline,
             timestamp_supported: ctx.timestamp_supported(),
             timestamp_query_set,
             timestamp_resolve_buffer,
@@ -1127,49 +1180,163 @@ impl AccumulatorOpSession {
         output_values: &Buffer,
         previous_output_values: &Buffer,
     ) {
-        if self.n_ops == 0 {
-            return;
-        }
-        self.last_pass_time_us = None;
-
-        let execute_bind_group = self.create_execute_bind_group_with_threshold_buffers(
+        self.encode_threshold_scan_with_anchor_maintain_into(
             ctx,
+            encoder,
             values,
             previous_values,
-            &self.tick_uniform,
-            None,
-            None,
-            previous_output_values,
             output_values,
+            previous_output_values,
+            None,
         );
+    }
 
-        let timestamp_writes =
-            self.timestamp_query_set
-                .as_ref()
-                .map(|query_set| wgpu::ComputePassTimestampWrites {
-                    query_set,
-                    beginning_of_pass_write_index: Some(0),
-                    end_of_pass_write_index: Some(1),
+    /// Threshold scan plus fused ANCHOR-TABLE-SURFACE-0 GPU writer companion.
+    pub fn encode_threshold_scan_with_anchor_maintain_into(
+        &mut self,
+        ctx: &GpuContext,
+        encoder: &mut wgpu::CommandEncoder,
+        values: &Buffer,
+        previous_values: &Buffer,
+        output_values: &Buffer,
+        previous_output_values: &Buffer,
+        anchor: Option<(&Buffer, u32, u32)>,
+    ) {
+        if self.n_ops > 0 {
+            self.last_pass_time_us = None;
+
+            let execute_bind_group = self.create_execute_bind_group_with_threshold_buffers(
+                ctx,
+                values,
+                previous_values,
+                &self.tick_uniform,
+                None,
+                None,
+                previous_output_values,
+                output_values,
+            );
+
+            let timestamp_writes =
+                self.timestamp_query_set
+                    .as_ref()
+                    .map(|query_set| wgpu::ComputePassTimestampWrites {
+                        query_set,
+                        beginning_of_pass_write_index: Some(0),
+                        end_of_pass_write_index: Some(1),
+                    });
+
+            {
+                let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
+                    label: Some("accumulator_threshold_scan_pass"),
+                    timestamp_writes,
                 });
+                pass.set_pipeline(&self.execute_pipeline);
+                pass.set_bind_group(0, &execute_bind_group, &[]);
+                let groups = self.n_ops.div_ceil(WORKGROUP_SIZE);
+                pass.dispatch_workgroups(groups, 1, 1);
+            }
 
-        {
-            let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
-                label: Some("accumulator_threshold_scan_pass"),
-                timestamp_writes,
-            });
-            pass.set_pipeline(&self.execute_pipeline);
-            pass.set_bind_group(0, &execute_bind_group, &[]);
-            let groups = self.n_ops.div_ceil(WORKGROUP_SIZE);
-            pass.dispatch_workgroups(groups, 1, 1);
+            if let (Some(query_set), Some(resolve), Some(readback)) = (
+                self.timestamp_query_set.as_ref(),
+                self.timestamp_resolve_buffer.as_ref(),
+                self.timestamp_readback_buffer.as_ref(),
+            ) {
+                encoder.resolve_query_set(query_set, 0..2, resolve, 0);
+                encoder.copy_buffer_to_buffer(resolve, 0, readback, 0, 16);
+            }
         }
 
-        if let (Some(query_set), Some(resolve), Some(readback)) = (
-            self.timestamp_query_set.as_ref(),
-            self.timestamp_resolve_buffer.as_ref(),
-            self.timestamp_readback_buffer.as_ref(),
-        ) {
-            encoder.resolve_query_set(query_set, 0..2, resolve, 0);
-            encoder.copy_buffer_to_buffer(resolve, 0, readback, 0, 16);
+        if let Some((anchor_table, n_rows, generation)) = anchor {
+            if n_rows > 0 {
+                self.encode_anchor_table_maintain_into(
+                    ctx,
+                    encoder,
+                    values,
+                    anchor_table,
+                    n_rows,
+                    generation,
+                    self.n_ops > 0,
+                );
+            }
+        }
+    }
+
+    /// Fused GPU writer: optional ordered crossing apply + parallel magnitude refresh.
+    pub fn encode_anchor_table_maintain_into(
+        &self,
+        ctx: &GpuContext,
+        encoder: &mut wgpu::CommandEncoder,
+        values: &Buffer,
+        anchor_table: &Buffer,
+        n_anchor_rows: u32,
+        generation: u32,
+        apply_crossings: bool,
+    ) {
+        if n_anchor_rows == 0 {
+            return;
+        }
+        let params = AnchorMaintainParams {
+            n_dims: self.n_dims,
+            n_ops: self.n_ops,
+            n_anchor_rows,
+            generation,
+        };
+        ctx.queue
+            .write_buffer(&self.anchor_maintain_uniform, 0, bytemuck::bytes_of(&params));
+        let bind_group = ctx.device.create_bind_group(&BindGroupDescriptor {
+            label: Some("anchor_table_maintain_bg"),
+            layout: &self.anchor_maintain_layout,
+            entries: &[
+                BindGroupEntry {
+                    binding: 0,
+                    resource: self.op_buffer.as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 1,
+                    resource: values.as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 2,
+                    resource: self
+                        .threshold_emission_readback
+                        .records_binding()
+                        .as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 3,
+                    resource: self
+                        .threshold_emission_readback
+                        .count_binding()
+                        .as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 4,
+                    resource: anchor_table.as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 5,
+                    resource: self.anchor_maintain_uniform.as_entire_binding(),
+                },
+            ],
+        });
+        if apply_crossings {
+            let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
+                label: Some("anchor_table_crossing_pass"),
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&self.anchor_crossing_pipeline);
+            pass.set_bind_group(0, &bind_group, &[]);
+            pass.dispatch_workgroups(1, 1, 1);
+        }
+        {
+            let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
+                label: Some("anchor_table_magnitude_pass"),
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&self.anchor_magnitude_pipeline);
+            pass.set_bind_group(0, &bind_group, &[]);
+            let groups = n_anchor_rows.div_ceil(WORKGROUP_SIZE);
+            pass.dispatch_workgroups(groups, 1, 1);
         }
     }
 

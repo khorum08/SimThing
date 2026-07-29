@@ -497,13 +497,18 @@ impl Pipelines {
         // tick eliminates the second driver fence the standalone
         // `dispatch_threshold_scan` would otherwise introduce.
         if let Some(session) = sessions.threshold.as_mut() {
-            session.encode_threshold_scan_with_outputs_into(
+            session.encode_threshold_scan_with_anchor_maintain_into(
                 ctx,
                 &mut encoder,
                 &state.resolved.values(),
                 &state.resolved.previous_values(),
                 &state.resolved.output_vectors(),
                 &state.resolved.previous_output_vectors(),
+                Some((
+                    &state.anchor_table,
+                    state.n_anchor_rows,
+                    state.anchor_table_generation,
+                )),
             );
         }
 

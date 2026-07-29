@@ -127,6 +127,8 @@ pub struct WorldGpuState {
     pub(crate) anchor_table: Buffer,
     /// Valid row count currently uploaded into `anchor_table`.
     pub n_anchor_rows: u32,
+    /// Dispatch generation stamped onto fused GPU crossing updates.
+    pub anchor_table_generation: u32,
 
     // ── Reduction (Passes 4–6) ───────────────────────────────────────────────
     /// CSR child topology: `child_starts[i]..child_starts[i+1]` indexes
@@ -181,11 +183,65 @@ impl WorldGpuState {
         &self,
         session: &mut crate::AccumulatorOpSession,
     ) -> Result<(), crate::AccumulatorOpSessionError> {
-        session.dispatch_threshold_scan(
+        let mut encoder = self
+            .ctx
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("accumulator_threshold_scan"),
+            });
+        session.encode_threshold_scan_with_anchor_maintain_into(
             &self.ctx,
+            &mut encoder,
             &self.resolved.values(),
             &self.resolved.previous_values(),
-        )
+            &self.resolved.output_vectors(),
+            &self.resolved.previous_output_vectors(),
+            Some((
+                &self.anchor_table,
+                self.n_anchor_rows,
+                self.anchor_table_generation,
+            )),
+        );
+        self.ctx.queue.submit(Some(encoder.finish()));
+        Ok(())
+    }
+
+    /// Storage buffer for the derived STEAD GPU anchor table.
+    pub fn anchor_table_buffer(&self) -> &Buffer {
+        &self.anchor_table
+    }
+
+    /// Magnitude-only fused companion (post-remap / no-crossing refresh).
+    pub fn run_anchor_table_magnitude_maintain(&mut self) {
+        if self.n_anchor_rows == 0 {
+            return;
+        }
+        let Some(runtime) = self.accumulator_runtime.as_mut() else {
+            return;
+        };
+        let Some(session) = runtime.take_threshold_session() else {
+            return;
+        };
+        let mut encoder = self.ctx.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("anchor_table_magnitude_maintain"),
+        });
+        session.encode_anchor_table_maintain_into(
+            &self.ctx,
+            &mut encoder,
+            &self.resolved.values(),
+            &self.anchor_table,
+            self.n_anchor_rows,
+            self.anchor_table_generation,
+            false,
+        );
+        self.ctx.queue.submit(Some(encoder.finish()));
+        if let Some(runtime) = self.accumulator_runtime.as_mut() {
+            runtime.restore_threshold_session(Some(session));
+        }
+    }
+
+    pub fn set_anchor_table_generation(&mut self, generation: u32) {
+        self.anchor_table_generation = generation;
     }
 
     /// Indexed scatter from resolved `values` into `dest` (mapping hot path).
@@ -323,6 +379,7 @@ impl WorldGpuState {
             n_thresholds: 0,
             anchor_table,
             n_anchor_rows: 0,
+            anchor_table_generation: 0,
             child_starts,
             child_indices,
             column_rules,
@@ -1103,13 +1160,18 @@ impl WorldGpuState {
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("post_rf_need_threshold_rescan"),
             });
-        session.encode_threshold_scan_with_outputs_into(
+        session.encode_threshold_scan_with_anchor_maintain_into(
             &self.ctx,
             &mut encoder,
             &self.resolved.values(),
             &self.resolved.previous_values(),
             &self.resolved.output_vectors(),
             &self.resolved.previous_output_vectors(),
+            Some((
+                &self.anchor_table,
+                self.n_anchor_rows,
+                self.anchor_table_generation,
+            )),
         );
         self.ctx.queue.submit(Some(encoder.finish()));
         session.finish_threshold_scan(&self.ctx);

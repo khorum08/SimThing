@@ -88,6 +88,16 @@ pub struct AccumulatorTickParams {
     pub _pad1: u32,
 }
 
+/// Uniforms for the ANCHOR-TABLE-SURFACE-0 fused GPU writer companion pass.
+#[repr(C)]
+#[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
+pub struct AnchorMaintainParams {
+    pub n_dims: u32,
+    pub n_ops: u32,
+    pub n_anchor_rows: u32,
+    pub generation: u32,
+}
+
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
 pub struct AccumulatorSummaryParams {

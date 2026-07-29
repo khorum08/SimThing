@@ -41,8 +41,9 @@
 
 use simthing_core::{
     apply_anchor_remaps_to_table, mint_anchor_table_from_admission,
-    prepare_fission_clone_sources_for_registry, refresh_anchor_table_magnitudes, AnchorTable,
-    DecayBehavior, DimensionRegistry, OverlayLifecycle, SimPropertyId, SimThing, SimThingId,
+    prepare_fission_clone_sources_for_registry, refresh_anchor_table_magnitudes, AnchorIdentity,
+    AnchorTable, AnchorTableRow, BandIndex, ColumnIndex, DecayBehavior, DimensionRegistry,
+    OverlayLifecycle, SimPropertyId, SimThing, SimThingId, SlotIndex, SubFieldRole,
 };
 use simthing_feeder::{
     BoundaryRequest, CapabilityUnlockRegistration, DispatchCoordinator, MaintainerOutcome,
@@ -64,8 +65,8 @@ use crate::anchor_remap_encode::{
 use crate::gpu_sync::{sync_gpu_buffers, GpuSyncOutcome};
 use simthing_core::AnchorRemapSection;
 use simthing_gpu::{
-    apply_band_crossing_deltas_from_threshold_events, apply_sealed_band_crossings_to_anchor_table,
-    encode_anchor_table_gpu, BandCrossingDelta,
+    apply_band_crossing_deltas_from_threshold_events, encode_anchor_table_gpu, BandCrossingDelta,
+    AnchorTableRowGpu, ANCHOR_BAND_NONE_POD,
 };
 use crate::observability::{observe, ObservabilityReport, ObserveFidelity};
 use crate::overlay_lifecycle::{resolve_overlay_lifecycle, LifecycleOutcome};
@@ -263,12 +264,6 @@ pub struct BoundaryProtocol {
     /// lockstep with the `child_starts` / `child_indices` / `depth_slots`
     /// buffers on `WorldGpuState`.
     cached_topology_state: TopologyState,
-    /// Writer-side staging for the derived STEAD anchor table.
-    ///
-    /// Not production observation authority (orch remand `5120259758`): consumers
-    /// read the GPU-resident POD twin via governed readback. Staging remains the
-    /// admission / fused-delta / remap write surface before upload.
-    anchor_table: AnchorTable,
 }
 
 impl BoundaryProtocol {
@@ -294,7 +289,6 @@ impl BoundaryProtocol {
             delta_log: Vec::new(),
             fission_lineage: Vec::new(),
             cached_topology_state: TopologyState::default(),
-            anchor_table: AnchorTable::new(),
         }
     }
 
@@ -502,22 +496,12 @@ impl BoundaryProtocol {
             &self.registry,
             &self.allocator,
         );
-
-        // Admission/write-door table: mint once if empty, then apply fused crossings.
-        if self.anchor_table.is_empty() {
-            self.anchor_table = mint_anchor_table_from_admission(
-                self.root.inner(),
-                &self.registry,
-                &pre_anchored_loci,
-                &coord.shadow,
-                n_dims,
-            );
+        // Dynamic band/value/urgency/generation live on the GPU table (fused
+        // threshold companion). BandCrossingDelta remains wire/replay evidence only.
+        state.set_anchor_table_generation(day as u32);
+        if state.n_anchor_rows == 0 {
+            self.upload_admission_anchor_table(state, &coord.shadow, n_dims, &pre_anchored_loci);
         }
-        apply_sealed_band_crossings_to_anchor_table(
-            &mut self.anchor_table,
-            &out.band_crossing_deltas,
-            day as u32,
-        );
 
         let alert_collect_started = Instant::now();
         out.velocity_alerts = collect_velocity_alerts(&events, &self.cpu_threshold_registry);
@@ -961,20 +945,41 @@ impl BoundaryProtocol {
             include_stable_identity,
         )
         .unwrap_or_else(|err| panic!("anchor remap encode refused before GPU sync: {err}"));
-        apply_anchor_remaps_to_table(&mut self.anchor_table, &remap_section, &self.registry);
-        let edge_thresholds: Vec<(u32, u32, f32)> = threshold_regs
-            .iter()
-            .map(|r| (r.slot, r.col, r.threshold))
-            .collect();
-        refresh_anchor_table_magnitudes(
-            &mut self.anchor_table,
-            &coord.shadow,
-            n_dims,
-            &edge_thresholds,
-        );
+        // Structural remaps: transient GPU readback → apply → upload (no persistent CPU table).
+        if !remap_section.remaps.is_empty() {
+            let mut table = decode_anchor_table_from_gpu_pods(
+                &state.read_anchor_table(),
+                &self.registry,
+            );
+            apply_anchor_remaps_to_table(&mut table, &remap_section, &self.registry);
+            state.upload_anchor_table(&encode_anchor_table_gpu(&table));
+            state.run_anchor_table_magnitude_maintain();
+            if state.n_anchor_rows > 0
+                && state
+                    .accumulator_runtime
+                    .as_ref()
+                    .map(|r| !r.threshold_active())
+                    .unwrap_or(true)
+            {
+                let edge_thresholds: Vec<(u32, u32, f32)> = threshold_regs
+                    .iter()
+                    .map(|r| (r.slot, r.col, r.threshold))
+                    .collect();
+                let mut table = decode_anchor_table_from_gpu_pods(
+                    &state.read_anchor_table(),
+                    &self.registry,
+                );
+                refresh_anchor_table_magnitudes(
+                    &mut table,
+                    &coord.shadow,
+                    n_dims,
+                    &edge_thresholds,
+                );
+                state.upload_anchor_table(&encode_anchor_table_gpu(&table));
+            }
+        }
         out.anchor_remap = remap_section;
-        out.anchor_table_row_count = self.anchor_table.len() as u32;
-        state.upload_anchor_table(&encode_anchor_table_gpu(&self.anchor_table));
+        out.anchor_table_row_count = state.n_anchor_rows;
 
         // Step 9: Rebuild GPU buffers from current tree + upload shadow.
         let gpu_sync_started = Instant::now();
@@ -1272,7 +1277,7 @@ impl BoundaryProtocol {
         self.sync_accumulator_transfer_session(state);
         self.sync_accumulator_emission_session(state);
 
-        // Mint + upload the STEAD observation table at session open.
+        // Mint + upload the STEAD observation table at session open (transient only).
         let loci = snapshot_anchored_loci(self.root.inner(), &self.registry, &self.allocator);
         let n_dims = state.n_dims as usize;
         let values = if coord.shadow.len() >= loci.len().saturating_mul(n_dims.max(1)) {
@@ -1280,13 +1285,18 @@ impl BoundaryProtocol {
         } else {
             state.read_values()
         };
-        self.anchor_table = mint_anchor_table_from_admission(
-            self.root.inner(),
-            &self.registry,
-            &loci,
-            &values,
-            n_dims,
-        );
+        self.upload_admission_anchor_table(state, &values, n_dims, &loci);
+    }
+
+    fn upload_admission_anchor_table(
+        &self,
+        state: &mut WorldGpuState,
+        values: &[f32],
+        n_dims: usize,
+        loci: &simthing_core::AnchoredLocusMap,
+    ) {
+        let mut table =
+            mint_anchor_table_from_admission(self.root.inner(), &self.registry, loci, values, n_dims);
         let edge_thresholds: Vec<(u32, u32, f32)> = state
             .accumulator_runtime
             .as_ref()
@@ -1298,22 +1308,8 @@ impl BoundaryProtocol {
                     .collect()
             })
             .unwrap_or_default();
-        refresh_anchor_table_magnitudes(&mut self.anchor_table, &values, n_dims, &edge_thresholds);
-        state.upload_anchor_table(&encode_anchor_table_gpu(&self.anchor_table));
-    }
-
-    /// Writer-side staging only — not a production observation door.
-    ///
-    /// Production consumers must use GPU readback (`AnchorTableSnapshot::from_session`).
-    #[doc(hidden)]
-    pub fn writer_staging_anchor_table_for_oracle_or_test(&self) -> &AnchorTable {
-        &self.anchor_table
-    }
-
-    /// Mutable writer staging for oracle / disagree referees only.
-    #[doc(hidden)]
-    pub fn writer_staging_anchor_table_mut_for_oracle_or_test(&mut self) -> &mut AnchorTable {
-        &mut self.anchor_table
+        refresh_anchor_table_magnitudes(&mut table, values, n_dims, &edge_thresholds);
+        state.upload_anchor_table(&encode_anchor_table_gpu(&table));
     }
 
     /// Read-only access to the persistent fission lineage. Useful for tests
@@ -1662,4 +1658,64 @@ mod tests {
         node.property(FISSION_CLONE_SOURCE_PROPERTY_ID)
             .map(|value| value.raw_lanes_for_serialization().to_vec())
     }
+}
+
+/// Transient POD→typed decode for structural remap apply (no persistent CPU table).
+fn decode_anchor_table_from_gpu_pods(
+    pods: &[AnchorTableRowGpu],
+    registry: &DimensionRegistry,
+) -> AnchorTable {
+    let mut table = AnchorTable::new();
+    let rows: Vec<AnchorTableRow> = pods
+        .iter()
+        .map(|pod| {
+            let property_id = SimPropertyId(pod.property_id);
+            let col = ColumnIndex::from_gpu_round_trip(pod.col);
+            let role = role_for_property_col(registry, property_id, col);
+            let band = if pod.band_idx == ANCHOR_BAND_NONE_POD {
+                None
+            } else {
+                Some(BandIndex::new(pod.band_idx as u32))
+            };
+            let last_crossing_generation = if pod.last_crossing_generation == 0 {
+                None
+            } else {
+                Some(pod.last_crossing_generation)
+            };
+            AnchorTableRow {
+                identity: AnchorIdentity::new(
+                    SimThingId::from_session_raw(pod.sim_thing_id),
+                    property_id,
+                ),
+                slot: SlotIndex::new(pod.slot),
+                col,
+                role,
+                band,
+                last_crossing_generation,
+                urgency: pod.urgency,
+                observed_value: pod.observed_value,
+            }
+        })
+        .collect();
+    table.replace_rows(rows);
+    table
+}
+
+fn role_for_property_col(
+    registry: &DimensionRegistry,
+    property_id: SimPropertyId,
+    col: ColumnIndex,
+) -> SubFieldRole {
+    let Some(prop) = registry.try_property(property_id) else {
+        return SubFieldRole::Amount;
+    };
+    let Some(range) = registry.try_column_range(property_id) else {
+        return SubFieldRole::Amount;
+    };
+    for sf in &prop.layout.sub_fields {
+        if range.col_for_role(&sf.role, &prop.layout) == Some(col) {
+            return sf.role.clone();
+        }
+    }
+    SubFieldRole::Amount
 }
