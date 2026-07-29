@@ -13,7 +13,7 @@
 
 use crate::gpu_readback::ThresholdEventCandidatesReadback;
 use crate::resolved::ResolvedGpuBuffers;
-use crate::sealed::ResolvedWriteAuthority;
+use crate::sealed::{AnchorTableRowGpu, ResolvedWriteAuthority};
 use crate::wgsl_encode::{build_governed_pairs, encode_column, GovernedPair};
 use bytemuck::{Pod, Zeroable};
 use simthing_core::DimensionRegistry;
@@ -119,6 +119,13 @@ pub struct WorldGpuState {
     /// Number of currently-registered thresholds (i.e. valid entries in
     /// `threshold_registry`). Pass 7 dispatches one thread per registration.
     pub n_thresholds: u32,
+
+    /// Derived STEAD anchor table (ANCHOR-TABLE-SURFACE-0). Grows via
+    /// `upload_anchor_table`. Observation authority for consumers is the typed
+    /// CPU table + this GPU POD twin — not the values matrix.
+    pub(crate) anchor_table: Buffer,
+    /// Valid row count currently uploaded into `anchor_table`.
+    pub n_anchor_rows: u32,
 
     // ── Reduction (Passes 4–6) ───────────────────────────────────────────────
     /// CSR child topology: `child_starts[i]..child_starts[i+1]` indexes
@@ -282,6 +289,11 @@ impl WorldGpuState {
             std::mem::size_of::<ThresholdEventGpu>() as u64,
         );
 
+        let anchor_table = mk(
+            "anchor_table",
+            std::mem::size_of::<AnchorTableRowGpu>() as u64,
+        );
+
         // Reduction buffers — placeholder allocations, filled by upload_reduction_topology.
         let child_starts = mk("child_starts", ((n_slots as u64) + 1) * 4);
         let child_indices = mk("child_indices", 4); // placeholder 1 u32
@@ -308,6 +320,8 @@ impl WorldGpuState {
             threshold_registry,
             threshold_events,
             n_thresholds: 0,
+            anchor_table,
+            n_anchor_rows: 0,
             child_starts,
             child_indices,
             column_rules,
@@ -1207,6 +1221,12 @@ impl WorldGpuState {
         );
         self.n_thresholds = 0;
 
+        self.anchor_table = self.mk_storage_buffer(
+            "anchor_table",
+            std::mem::size_of::<AnchorTableRowGpu>() as u64,
+        );
+        self.n_anchor_rows = 0;
+
         // Reduction: column_rules grows with n_dims; child_starts grows with n_slots.
         self.column_rules = self.mk_storage_buffer("column_rules", (self.n_dims as u64) * 8);
         self.child_starts = self.mk_storage_buffer("child_starts", ((self.n_slots as u64) + 1) * 4);
@@ -1328,6 +1348,7 @@ impl WorldGpuState {
         self.n_overlay_deltas = 0;
         self.n_intent_deltas = 0;
         self.n_thresholds = 0;
+        self.n_anchor_rows = 0;
         self.depth_bucket_ranges.clear();
     }
 
@@ -1439,6 +1460,38 @@ impl WorldGpuState {
                 .queue
                 .write_buffer(&self.threshold_registry, 0, bytemuck::cast_slice(regs));
         }
+    }
+
+    /// Upload the derived STEAD anchor table POD twin. Reallocates when larger
+    /// than current capacity. Empty input clears the live row count.
+    pub fn upload_anchor_table(&mut self, rows: &[AnchorTableRowGpu]) {
+        let needed_count = rows.len().max(1);
+        let bytes = (needed_count * std::mem::size_of::<AnchorTableRowGpu>()) as u64;
+        if bytes > self.anchor_table.size() {
+            self.anchor_table = self.ctx.device.create_buffer(&BufferDescriptor {
+                label: Some("anchor_table"),
+                size: bytes,
+                usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC | BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            });
+        }
+        self.n_anchor_rows = rows.len() as u32;
+        if !rows.is_empty() {
+            self.ctx
+                .queue
+                .write_buffer(&self.anchor_table, 0, bytemuck::cast_slice(rows));
+        }
+    }
+
+    /// Read back uploaded anchor-table POD rows (GPU/oracle parity).
+    pub fn read_anchor_table(&self) -> Vec<AnchorTableRowGpu> {
+        if self.n_anchor_rows == 0 {
+            return Vec::new();
+        }
+        let row_size = std::mem::size_of::<AnchorTableRowGpu>();
+        let used = row_size * self.n_anchor_rows as usize;
+        let bytes = self.read_buffer_bytes(&self.anchor_table);
+        bytemuck::cast_slice(&bytes[..used]).to_vec()
     }
 
     /// Append new registrations at offset `n_thresholds * sizeof(...)` without
@@ -1622,6 +1675,7 @@ impl WorldGpuState {
             + self.intent_deltas.size()
             + self.threshold_registry.size()
             + self.threshold_events.total_buffer_bytes()
+            + self.anchor_table.size()
             + self.child_starts.size()
             + self.child_indices.size()
             + self.column_rules.size()

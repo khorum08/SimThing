@@ -40,8 +40,9 @@
 //! rebuilds during GPU sync.
 
 use simthing_core::{
-    prepare_fission_clone_sources_for_registry, DecayBehavior, DimensionRegistry, OverlayLifecycle,
-    SimPropertyId, SimThing, SimThingId,
+    apply_anchor_remaps_to_table, mint_anchor_table_from_admission,
+    prepare_fission_clone_sources_for_registry, refresh_anchor_table_magnitudes, AnchorTable,
+    DecayBehavior, DimensionRegistry, OverlayLifecycle, SimPropertyId, SimThing, SimThingId,
 };
 use simthing_feeder::{
     BoundaryRequest, CapabilityUnlockRegistration, DispatchCoordinator, MaintainerOutcome,
@@ -63,7 +64,8 @@ use crate::anchor_remap_encode::{
 use crate::gpu_sync::{sync_gpu_buffers, GpuSyncOutcome};
 use simthing_core::AnchorRemapSection;
 use simthing_gpu::{
-    apply_band_crossing_deltas_from_threshold_events, BandCrossingDelta,
+    apply_band_crossing_deltas_from_threshold_events, apply_sealed_band_crossings_to_anchor_table,
+    encode_anchor_table_gpu, BandCrossingDelta,
 };
 use crate::observability::{observe, ObservabilityReport, ObserveFidelity};
 use crate::overlay_lifecycle::{resolve_overlay_lifecycle, LifecycleOutcome};
@@ -111,6 +113,8 @@ pub struct BoundaryOutcome {
     pub anchor_remap: AnchorRemapSection,
     /// Sealed write-impact band-crossing deltas minted from the fused threshold pass.
     pub band_crossing_deltas: Vec<BandCrossingDelta>,
+    /// Live STEAD observation table after this boundary's writers ran.
+    pub anchor_table_row_count: u32,
     pub boundary_requests: u32,
     pub player_intents_attached: u32,
     pub ai_intents_attached: u32,
@@ -259,6 +263,9 @@ pub struct BoundaryProtocol {
     /// lockstep with the `child_starts` / `child_indices` / `depth_slots`
     /// buffers on `WorldGpuState`.
     cached_topology_state: TopologyState,
+    /// Derived STEAD anchor table — sole production observation surface.
+    /// Written only by admission mint, fused band deltas, and typed remaps.
+    anchor_table: AnchorTable,
 }
 
 impl BoundaryProtocol {
@@ -284,6 +291,7 @@ impl BoundaryProtocol {
             delta_log: Vec::new(),
             fission_lineage: Vec::new(),
             cached_topology_state: TopologyState::default(),
+            anchor_table: AnchorTable::new(),
         }
     }
 
@@ -490,6 +498,22 @@ impl BoundaryProtocol {
             &threshold_regs,
             &self.registry,
             &self.allocator,
+        );
+
+        // Admission/write-door table: mint once if empty, then apply fused crossings.
+        if self.anchor_table.is_empty() {
+            self.anchor_table = mint_anchor_table_from_admission(
+                self.root.inner(),
+                &self.registry,
+                &pre_anchored_loci,
+                &coord.shadow,
+                n_dims,
+            );
+        }
+        apply_sealed_band_crossings_to_anchor_table(
+            &mut self.anchor_table,
+            &out.band_crossing_deltas,
+            day as u32,
         );
 
         let alert_collect_started = Instant::now();
@@ -934,7 +958,20 @@ impl BoundaryProtocol {
             include_stable_identity,
         )
         .unwrap_or_else(|err| panic!("anchor remap encode refused before GPU sync: {err}"));
+        apply_anchor_remaps_to_table(&mut self.anchor_table, &remap_section, &self.registry);
+        let edge_thresholds: Vec<(u32, u32, f32)> = threshold_regs
+            .iter()
+            .map(|r| (r.slot, r.col, r.threshold))
+            .collect();
+        refresh_anchor_table_magnitudes(
+            &mut self.anchor_table,
+            &coord.shadow,
+            n_dims,
+            &edge_thresholds,
+        );
         out.anchor_remap = remap_section;
+        out.anchor_table_row_count = self.anchor_table.len() as u32;
+        state.upload_anchor_table(&encode_anchor_table_gpu(&self.anchor_table));
 
         // Step 9: Rebuild GPU buffers from current tree + upload shadow.
         let gpu_sync_started = Instant::now();
@@ -1231,6 +1268,40 @@ impl BoundaryProtocol {
         }
         self.sync_accumulator_transfer_session(state);
         self.sync_accumulator_emission_session(state);
+
+        // Mint + upload the STEAD observation table at session open.
+        let loci = snapshot_anchored_loci(self.root.inner(), &self.registry, &self.allocator);
+        let n_dims = state.n_dims as usize;
+        let values = if coord.shadow.len() >= loci.len().saturating_mul(n_dims.max(1)) {
+            coord.shadow.clone()
+        } else {
+            state.read_values()
+        };
+        self.anchor_table = mint_anchor_table_from_admission(
+            self.root.inner(),
+            &self.registry,
+            &loci,
+            &values,
+            n_dims,
+        );
+        let edge_thresholds: Vec<(u32, u32, f32)> = state
+            .accumulator_runtime
+            .as_ref()
+            .map(|runtime| {
+                runtime
+                    .threshold_registrations()
+                    .iter()
+                    .map(|r| (r.slot, r.col, r.threshold))
+                    .collect()
+            })
+            .unwrap_or_default();
+        refresh_anchor_table_magnitudes(&mut self.anchor_table, &values, n_dims, &edge_thresholds);
+        state.upload_anchor_table(&encode_anchor_table_gpu(&self.anchor_table));
+    }
+
+    /// Read-only STEAD observation table (sole production consumer surface).
+    pub fn anchor_table(&self) -> &AnchorTable {
+        &self.anchor_table
     }
 
     /// Read-only access to the persistent fission lineage. Useful for tests

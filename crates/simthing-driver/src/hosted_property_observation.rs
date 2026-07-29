@@ -1,39 +1,95 @@
 //! Canonical CPU-side observation / telemetry / metrics read seam.
 //!
 //! Consumers resolve a hosted cell by [`SimThingId`] + typed [`PropertyKey`] +
-//! [`SubFieldRole`] through the property layout/registry. Raw [`ColumnIndex`]
-//! values are never minted or exposed on this door. Future Studio / metrics
-//! reads must reuse or extend this module rather than adding feature-specific
-//! GPU indexing paths.
+//! [`SubFieldRole`] through the property layout/registry and the derived STEAD
+//! [`AnchorTableSnapshot`]. Raw [`ColumnIndex`] values are never minted or
+//! exposed on this door. Future Studio / metrics reads must reuse or extend
+//! this module rather than adding feature-specific GPU indexing paths.
+//!
+//! Internal boundary mutation / RF / replay may still call `WorldGpuState::read_values`;
+//! that path is not a production observation authority (see observation-bypass census).
 
 use std::collections::BTreeMap;
 
-use simthing_core::{DimensionRegistry, SimThingId, SubFieldRole};
+use simthing_core::{
+    AnchorIdentity, AnchorTable, AnchorTableRow, DimensionRegistry, SimThingId, SubFieldRole,
+};
 use simthing_gpu::SlotAllocator;
 use simthing_spec::{DisruptionAuthorityReadback, DisruptionAuthorityReadbackError, PropertyKey};
 use thiserror::Error;
 
 use crate::session::SimSession;
 
-/// One coherent GPU values snapshot (single `read_values` capture).
+/// Typed compact readback of the derived STEAD anchor table (sole consumer door).
 #[derive(Debug, Clone)]
+pub struct AnchorTableSnapshot {
+    table: AnchorTable,
+}
+
+impl AnchorTableSnapshot {
+    pub fn from_session(sim: &SimSession) -> Self {
+        Self {
+            table: sim.proto.anchor_table().clone(),
+        }
+    }
+
+    pub fn from_table(table: AnchorTable) -> Self {
+        Self { table }
+    }
+
+    pub fn table(&self) -> &AnchorTable {
+        &self.table
+    }
+
+    pub fn rows(&self) -> &[AnchorTableRow] {
+        self.table.rows()
+    }
+
+    pub fn len(&self) -> usize {
+        self.table.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.table.is_empty()
+    }
+
+    pub fn get(&self, identity: AnchorIdentity) -> Option<&AnchorTableRow> {
+        self.table.get(identity)
+    }
+
+    pub fn observed_value_at_slot_col(&self, slot_raw: u32, col_raw: u32) -> Option<f32> {
+        use simthing_core::{ColumnIndex, SlotIndex};
+        self.table
+            .get_by_slot_col(
+                SlotIndex::new(slot_raw),
+                ColumnIndex::from_raw_for_oracle_or_rehearsal(col_raw as usize),
+            )
+            .map(|r| r.observed_value)
+    }
+}
+
+/// Legacy name retained as a type alias during migration; production consumers
+/// must use [`AnchorTableSnapshot`]. Creating this via raw values is test-only.
+#[derive(Debug, Clone)]
+#[doc(hidden)]
 pub struct GpuValuesSnapshot {
     values: Vec<f32>,
     n_dims: usize,
 }
 
 impl GpuValuesSnapshot {
-    pub fn from_session(sim: &SimSession) -> Self {
-        Self {
-            values: sim.state.read_values(),
-            n_dims: sim.state.n_dims as usize,
-        }
+    /// Internal/test helper only — not a production observation authority.
+    #[doc(hidden)]
+    pub fn from_values_for_test(values: Vec<f32>, n_dims: usize) -> Self {
+        Self { values, n_dims }
     }
 
+    #[doc(hidden)]
     pub fn values(&self) -> &[f32] {
         &self.values
     }
 
+    #[doc(hidden)]
     pub fn n_dims(&self) -> usize {
         self.n_dims
     }
@@ -70,13 +126,19 @@ pub enum HostedPropertyObservationError {
         namespace: String,
         name: String,
     },
+    #[error("no anchor-table row for host {host:?} property {namespace}::{name}")]
+    MissingAnchorRow {
+        host: SimThingId,
+        namespace: String,
+        name: String,
+    },
 }
 
-/// Canonical read of one hosted property cell from a coherent GPU snapshot.
+/// Canonical read of one hosted property cell from the STEAD anchor table.
 pub fn observe_hosted_property_cell(
     registry: &DimensionRegistry,
     allocator: &SlotAllocator,
-    snapshot: &GpuValuesSnapshot,
+    snapshot: &AnchorTableSnapshot,
     host: SimThingId,
     property: &PropertyKey,
     role: &SubFieldRole,
@@ -96,27 +158,31 @@ pub fn observe_hosted_property_cell(
             name: property.name.clone(),
             role: role.clone(),
         })?;
+    let identity = AnchorIdentity::new(host, property_id);
+    if let Some(row) = snapshot.table().get_by_identity_role(identity, role) {
+        return Ok(row.observed_value);
+    }
     let slot = allocator
         .slot_of(host)
         .ok_or(HostedPropertyObservationError::HostHasNoSlot { host })?;
-    let idx = usize::from(slot) * snapshot.n_dims + col.raw();
     snapshot
-        .values
-        .get(idx)
-        .copied()
-        .ok_or(HostedPropertyObservationError::CellOutOfBounds {
+        .table()
+        .get_by_slot_col(slot, col)
+        .filter(|r| r.identity == identity)
+        .map(|r| r.observed_value)
+        .ok_or(HostedPropertyObservationError::MissingAnchorRow {
             host,
             namespace: property.namespace.clone(),
             name: property.name.clone(),
         })
 }
 
-/// Live disruption authority readback over one GPU snapshot + typed loci.
+/// Live disruption authority readback over one anchor-table snapshot + typed loci.
 ///
 /// `system_id_by_host_raw` must be pre-resolved through authored structural
 /// authority (no ownership / substring / positional inference here).
 pub struct LiveDisruptionAuthorityReadback<'a> {
-    pub snapshot: &'a GpuValuesSnapshot,
+    pub snapshot: &'a AnchorTableSnapshot,
     pub registry: &'a DimensionRegistry,
     pub allocator: &'a SlotAllocator,
     pub loci: &'a [HostedPropertyLocus],
@@ -213,11 +279,30 @@ pub fn system_id_by_host_raw_from_structural_authority(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use simthing_core::{ClampBehavior, SimThing, SimThingKind, SubFieldSpec};
+    use simthing_core::{
+        AnchorIdentity, AnchorTable, AnchorTableRow, ClampBehavior, ColumnIndex, SimPropertyId,
+        SimThing, SimThingKind, SlotIndex, SubFieldSpec,
+    };
     use simthing_spec::{compile_property, PropertySpec};
 
-    fn snapshot_from_values(values: Vec<f32>, n_dims: usize) -> GpuValuesSnapshot {
-        GpuValuesSnapshot { values, n_dims }
+    fn snapshot_from_row(
+        host: SimThingId,
+        property_id: SimPropertyId,
+        value: f32,
+        col: usize,
+    ) -> AnchorTableSnapshot {
+        let mut table = AnchorTable::new();
+        table.replace_rows(vec![AnchorTableRow {
+            identity: AnchorIdentity::new(host, property_id),
+            slot: SlotIndex::new(0),
+            col: ColumnIndex::from_raw_for_oracle_or_rehearsal(col),
+            role: SubFieldRole::Amount,
+            band: None,
+            last_crossing_generation: None,
+            urgency: 0.0,
+            observed_value: value,
+        }]);
+        AnchorTableSnapshot::from_table(table)
     }
 
     #[test]
@@ -245,7 +330,6 @@ mod tests {
             }],
         };
         compile_property(&property, &mut registry).expect("compile");
-        let n_dims = registry.total_columns;
         let host_a = SimThingId::from_session_raw(10);
         let host_b = SimThingId::from_session_raw(11);
         let mut allocator = SlotAllocator::new();
@@ -255,18 +339,31 @@ mod tests {
         child.id = host_b;
         root.add_child(child);
         allocator.populate_from_tree(&root);
-        let slot_a = allocator.slot_of(host_a).expect("root slot");
-        let slot_b = allocator.slot_of(host_b).expect("child slot");
-        let mut values = vec![0.0f32; allocator.capacity() * n_dims];
         let pid = registry.id_of("ns", "p").expect("pid");
-        let col = registry
-            .column_range(pid)
-            .col_for_role(&SubFieldRole::Amount, &registry.property(pid).layout)
-            .expect("col")
-            .raw();
-        values[usize::from(slot_a) * n_dims + col] = 3.0;
-        values[usize::from(slot_b) * n_dims + col] = 8.0;
-        let snapshot = snapshot_from_values(values, n_dims);
+        let mut table = AnchorTable::new();
+        table.replace_rows(vec![
+            AnchorTableRow {
+                identity: AnchorIdentity::new(host_a, pid),
+                slot: allocator.slot_of(host_a).expect("a"),
+                col: ColumnIndex::from_raw_for_oracle_or_rehearsal(0),
+                role: SubFieldRole::Amount,
+                band: None,
+                last_crossing_generation: None,
+                urgency: 0.0,
+                observed_value: 3.0,
+            },
+            AnchorTableRow {
+                identity: AnchorIdentity::new(host_b, pid),
+                slot: allocator.slot_of(host_b).expect("b"),
+                col: ColumnIndex::from_raw_for_oracle_or_rehearsal(0),
+                role: SubFieldRole::Amount,
+                band: None,
+                last_crossing_generation: None,
+                urgency: 0.0,
+                observed_value: 8.0,
+            },
+        ]);
+        let snapshot = AnchorTableSnapshot::from_table(table);
         let loci = [
             HostedPropertyLocus {
                 host_id: host_a,
@@ -294,5 +391,6 @@ mod tests {
             .expect("ok")
             .expect("Some");
         assert_eq!(by_system.get(&7), Some(&8.0));
+        let _ = snapshot_from_row(host_a, pid, 1.0, 0);
     }
 }

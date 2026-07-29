@@ -119,10 +119,12 @@ pub use registration::{
 pub use resolved::ResolvedGpuBuffers;
 pub use sealed::{
     apply_band_crossing_deltas_from_fused_emissions,
-    apply_band_crossing_deltas_from_threshold_events, cpu_oracle_band_crossing_deltas,
-    cpu_oracle_threshold_events, BandCrossingDelta, BandCrossingDirection, EmissionRecord,
+    apply_band_crossing_deltas_from_threshold_events, apply_sealed_band_crossings_to_anchor_table,
+    band_crossing_updates_from_deltas, cpu_oracle_band_crossing_deltas,
+    cpu_oracle_threshold_events, encode_anchor_table_gpu, oracle_anchor_table_after_deltas,
+    AnchorTableRowGpu, BandCrossingDelta, BandCrossingDirection, EmissionRecord,
     EmissionRecordGpu, ResolvedWriteAuthority, ThresholdEmission, ThresholdEmissionGpu,
-    ThresholdEvent, ThresholdEventGpu, DEFAULT_EMISSION_CAPACITY,
+    ThresholdEvent, ThresholdEventGpu, ANCHOR_BAND_NONE_POD, DEFAULT_EMISSION_CAPACITY,
 };
 pub use slot::{ObjectResidency, SlotAllocError, SlotAllocator};
 pub use transfer_accumulator::{
