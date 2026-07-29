@@ -236,23 +236,81 @@ pub fn validate_anchor_remap_for_encode(
     validate_no_duplicate_remap_keys(section)
 }
 
-/// Validate remaps bit-exact against pre-/post-mutation locus snapshots.
+/// Derive the authoritative Anchored remap key set from pre-/post-mutation
+/// snapshots. Independent of any proposed section — used so encode cannot
+/// self-certify by omitting rows.
+pub fn expected_anchored_remap_keys(
+    pre: &AnchoredLocusMap,
+    post: &AnchoredLocusMap,
+    include_stable_identity: bool,
+) -> Vec<(SimThingId, SimPropertyId)> {
+    let mut keys = Vec::new();
+    let mut all: Vec<_> = pre.keys().copied().chain(post.keys().copied()).collect();
+    all.sort();
+    all.dedup();
+    for key in all {
+        match (pre.get(&key), post.get(&key)) {
+            (None, Some(_)) | (Some(_), None) => keys.push(key),
+            (Some(&(from_slot, from_col)), Some(&(to_slot, to_col))) => {
+                if from_slot != to_slot || from_col != to_col || include_stable_identity {
+                    keys.push(key);
+                }
+            }
+            (None, None) => {}
+        }
+    }
+    keys
+}
+
+/// Validate remaps bit-exact against pre-/post-mutation locus snapshots and
+/// independently fail-closed on omitted, extra, or duplicate keys.
 pub fn validate_exact_anchor_remap_endpoints(
     section: &AnchorRemapSection,
     pre: &AnchoredLocusMap,
     post: &AnchoredLocusMap,
+    include_stable_identity: bool,
 ) -> Result<(), AnchorRemapEncodeError> {
+    let expected = expected_anchored_remap_keys(pre, post, include_stable_identity);
     if section.remap_not_required {
-        if pre == post {
+        if expected.is_empty() {
             return Ok(());
         }
         return Err(AnchorRemapEncodeError {
             operation: section.operation,
-            missing: Vec::new(),
-            detail: "remap_not_required but pre/post Anchored loci differ",
+            missing: expected,
+            detail: "remap_not_required but Anchored loci require remap coverage",
         });
     }
     validate_no_duplicate_remap_keys(section)?;
+
+    let mut missing = Vec::new();
+    for &key in &expected {
+        if !section.remaps.iter().any(|r| r.key() == key) {
+            missing.push(key);
+        }
+    }
+    if !missing.is_empty() {
+        return Err(AnchorRemapEncodeError {
+            operation: section.operation,
+            missing,
+            detail: "incomplete Anchored remap before GPU encode (omitted pre/post keys)",
+        });
+    }
+
+    let mut extras = Vec::new();
+    for remap in &section.remaps {
+        if !expected.contains(&remap.key()) {
+            extras.push(remap.key());
+        }
+    }
+    if !extras.is_empty() {
+        return Err(AnchorRemapEncodeError {
+            operation: section.operation,
+            missing: extras,
+            detail: "unexpected Anchored remap keys not demanded by pre/post snapshots",
+        });
+    }
+
     for remap in &section.remaps {
         let key = remap.key();
         match (
@@ -378,7 +436,7 @@ mod tests {
             derive_exact_anchor_remaps(&pre, &post, AnchorRemapOperation::Fusion, false).unwrap();
         assert_eq!(section.remaps.len(), 1);
         assert_eq!(section.remaps[0].from_slot, Some(SlotIndex::new(3)));
-        assert!(validate_exact_anchor_remap_endpoints(&section, &pre, &post).is_ok());
+        assert!(validate_exact_anchor_remap_endpoints(&section, &pre, &post, false).is_ok());
     }
 
     #[test]
@@ -411,7 +469,7 @@ mod tests {
             section.remaps[0].to_col,
             Some(ColumnIndex::from_raw_for_oracle_or_rehearsal(5))
         );
-        assert!(validate_exact_anchor_remap_endpoints(&section, &pre, &post).is_ok());
+        assert!(validate_exact_anchor_remap_endpoints(&section, &pre, &post, true).is_ok());
     }
 
     #[test]
@@ -445,7 +503,7 @@ mod tests {
                 ColumnIndex::from_raw_for_oracle_or_rehearsal(0),
             )],
         );
-        assert!(validate_exact_anchor_remap_endpoints(&wrong, &pre, &post).is_err());
+        assert!(validate_exact_anchor_remap_endpoints(&wrong, &pre, &post, false).is_err());
 
         let dup = AnchorRemapSection::with_remaps(
             AnchorRemapOperation::Fission,
@@ -469,5 +527,50 @@ mod tests {
             ],
         );
         assert!(validate_anchor_remap_for_encode(&dup, &[(id, prop)]).is_err());
+    }
+
+    #[test]
+    fn omitted_retire_row_is_rejected_by_exact_gate() {
+        let id = SimThingId::from_session_raw(12);
+        let prop = SimPropertyId(6);
+        let mut pre = AnchoredLocusMap::new();
+        pre.insert(
+            (id, prop),
+            (
+                SlotIndex::new(4),
+                ColumnIndex::from_raw_for_oracle_or_rehearsal(1),
+            ),
+        );
+        let post = AnchoredLocusMap::new();
+        // Empty section self-certifies under the old required-from-section logic.
+        let omitted = AnchorRemapSection::with_remaps(AnchorRemapOperation::Fusion, vec![]);
+        let err = validate_exact_anchor_remap_endpoints(&omitted, &pre, &post, false).unwrap_err();
+        assert_eq!(err.missing, vec![(id, prop)]);
+        assert!(err.detail.contains("omitted"));
+    }
+
+    #[test]
+    fn omitted_move_row_is_rejected_by_exact_gate() {
+        let id = SimThingId::from_session_raw(13);
+        let prop = SimPropertyId(7);
+        let mut pre = AnchoredLocusMap::new();
+        let mut post = AnchoredLocusMap::new();
+        pre.insert(
+            (id, prop),
+            (
+                SlotIndex::new(1),
+                ColumnIndex::from_raw_for_oracle_or_rehearsal(0),
+            ),
+        );
+        post.insert(
+            (id, prop),
+            (
+                SlotIndex::new(2),
+                ColumnIndex::from_raw_for_oracle_or_rehearsal(0),
+            ),
+        );
+        let omitted = AnchorRemapSection::with_remaps(AnchorRemapOperation::Fission, vec![]);
+        let err = validate_exact_anchor_remap_endpoints(&omitted, &pre, &post, false).unwrap_err();
+        assert_eq!(err.missing, vec![(id, prop)]);
     }
 }

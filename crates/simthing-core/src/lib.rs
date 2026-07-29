@@ -42,7 +42,7 @@ pub use accumulator_spec::{
     AccumulatorRole, AccumulatorSpec, ArenaName, BalanceSpec, LogTier, NumCountSource,
 };
 pub use anchor_remap::{
-    derive_exact_anchor_remaps, validate_anchor_remap_for_encode,
+    derive_exact_anchor_remaps, expected_anchored_remap_keys, validate_anchor_remap_for_encode,
     validate_exact_anchor_remap_endpoints, AnchorLocusRemap, AnchorRemapEncodeError,
     AnchorRemapOperation, AnchorRemapSection, AnchoredLocusMap,
 };

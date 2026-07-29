@@ -47,7 +47,29 @@ if ! rg -q 'validate_anchor_remap_for_encode|validate_exact_anchor_remap_endpoin
   crates/simthing-sim/src crates/simthing-core/src; then
   fail "missing exact/key remap encode gate"
 fi
-echo "PASS: remap encode gates present"
+if ! rg -q 'fn expected_anchored_remap_keys' crates/simthing-core/src/anchor_remap.rs; then
+  fail "missing expected_anchored_remap_keys (independent pre/post completeness)"
+fi
+# Required keys must not be seeded from a proposed section (self-certify fence).
+hits="$(
+  rg -n --glob 'crates/simthing-sim/src/anchor_remap_encode.rs' \
+    'required_anchored_loci_for_boundary|expected_anchored_remap_keys' \
+    | normalize \
+    || true
+)"
+if [[ -z "${hits}" ]]; then
+  fail "anchor_remap_encode.rs missing independent pre/post required-key derivation"
+fi
+hits="$(
+  rg -n --glob 'crates/simthing-sim/src/anchor_remap_encode.rs' \
+    'section\.remaps\.iter\(\).*key|for .* in &?section\.remaps' \
+    | normalize \
+    || true
+)"
+if [[ -n "${hits}" ]]; then
+  fail "required remap keys appear seeded from section.remaps (self-certify risk):" "${hits}"
+fi
+echo "PASS: remap encode gates present (independent pre/post required keys)"
 
 # ── 4. Boundary flush must consult the remap encode gate ─────────────────────
 if ! rg -q 'gate_structural_gpu_encode_exact|validate_exact_anchor_remap_endpoints' \

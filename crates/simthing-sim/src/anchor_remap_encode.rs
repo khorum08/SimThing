@@ -4,7 +4,7 @@
 //! refuses GPU encode when coverage/endpoints are incomplete or fabricated.
 
 use simthing_core::{
-    derive_exact_anchor_remaps, validate_anchor_remap_for_encode,
+    derive_exact_anchor_remaps, expected_anchored_remap_keys, validate_anchor_remap_for_encode,
     validate_exact_anchor_remap_endpoints, AnchorRemapEncodeError, AnchorRemapOperation,
     AnchorRemapSection, AnchoredLocusMap, ColumnIndex, DimensionRegistry, SimPropertyId, SimThing,
     SimThingId, SubFieldRole,
@@ -12,7 +12,6 @@ use simthing_core::{
 use simthing_gpu::SlotAllocator;
 
 use crate::boundary::BoundaryOutcome;
-use crate::sim_runtime_tree::SimRuntimeTree;
 
 /// Snapshot every live Anchored `(SimThingId, SimPropertyId)` locus.
 pub fn snapshot_anchored_loci(
@@ -34,47 +33,17 @@ pub fn snapshot_anchored_loci(
     map
 }
 
-/// Required Anchored keys for encode coverage = keys present in the derived section
-/// plus any still-live Anchored keys demanded by structural churn witnesses.
+/// Required Anchored keys derived from authoritative pre/post snapshots — never
+/// from the proposed section (which could omit rows and self-certify).
 pub fn required_anchored_loci_for_boundary(
-    section: &AnchorRemapSection,
+    pre: &AnchoredLocusMap,
+    post: &AnchoredLocusMap,
     outcome: &BoundaryOutcome,
-    root: &SimRuntimeTree,
-    registry: &DimensionRegistry,
+    slot_capacity_grew: bool,
 ) -> Vec<(SimThingId, SimPropertyId)> {
-    if section.remap_not_required {
-        return Vec::new();
-    }
-    let mut required: Vec<_> = section.remaps.iter().map(|r| r.key()).collect();
-    // Retire paths for fused/tombstoned nodes that no longer sit in the tree must
-    // still be covered (they appear in section remaps). Also require live births.
-    for &(_, child) in &outcome.fission.fission_pairs {
-        push_live_anchored(&mut required, child, root, registry);
-    }
-    for &id in &outcome.maintainer.allocated {
-        push_live_anchored(&mut required, id, root, registry);
-    }
-    required.sort();
-    required.dedup();
-    required
-}
-
-fn push_live_anchored(
-    required: &mut Vec<(SimThingId, SimPropertyId)>,
-    id: SimThingId,
-    root: &SimRuntimeTree,
-    registry: &DimensionRegistry,
-) {
-    if let Some(node) = find_node(root.inner(), id) {
-        for prop_id in node.properties.keys().copied() {
-            if property_is_anchored(registry, prop_id) {
-                let key = (id, prop_id);
-                if !required.contains(&key) {
-                    required.push(key);
-                }
-            }
-        }
-    }
+    let include_stable_identity =
+        !outcome.maintainer.dimensions_added.is_empty() || slot_capacity_grew;
+    expected_anchored_remap_keys(pre, post, include_stable_identity)
 }
 
 /// Build exact remaps from pre-/post-mutation snapshots (production boundary path).
@@ -117,14 +86,14 @@ pub fn build_exact_anchor_remap_section(
         !outcome.maintainer.dimensions_added.is_empty() || slot_capacity_grew;
     let operation = classify_operation(outcome, slot_capacity_grew);
     let section = derive_exact_anchor_remaps(pre, post, operation, include_stable_identity)?;
-    validate_exact_anchor_remap_endpoints(&section, pre, post)?;
+    validate_exact_anchor_remap_endpoints(&section, pre, post, include_stable_identity)?;
     Ok(section)
 }
 
 fn classify_operation(outcome: &BoundaryOutcome, slot_capacity_grew: bool) -> AnchorRemapOperation {
     let fission = !outcome.fission.fission_pairs.is_empty();
-    let fusion = !outcome.fission.fusion_pairs.is_empty()
-        || !outcome.maintainer.tombstoned.is_empty();
+    let fusion =
+        !outcome.fission.fusion_pairs.is_empty() || !outcome.maintainer.tombstoned.is_empty();
     let add_child = !outcome.maintainer.allocated.is_empty();
     let add_dim = !outcome.maintainer.dimensions_added.is_empty();
     let kinds = [fission, fusion, add_child, add_dim, slot_capacity_grew]
@@ -160,22 +129,16 @@ pub fn gate_structural_gpu_encode(
     validate_anchor_remap_for_encode(section, required)
 }
 
-/// Gate with exact pre/post endpoint verification (production boundary).
+/// Gate with exact pre/post completeness + endpoint verification (production).
 pub fn gate_structural_gpu_encode_exact(
     section: &AnchorRemapSection,
-    required: &[(SimThingId, SimPropertyId)],
     pre: &AnchoredLocusMap,
     post: &AnchoredLocusMap,
+    include_stable_identity: bool,
 ) -> Result<(), AnchorRemapEncodeError> {
-    validate_anchor_remap_for_encode(section, required)?;
-    validate_exact_anchor_remap_endpoints(section, pre, post)
-}
-
-fn property_is_anchored(registry: &DimensionRegistry, prop_id: SimPropertyId) -> bool {
-    registry
-        .try_property(prop_id)
-        .map(|p| p.admission_disposition.is_anchored())
-        .unwrap_or(false)
+    let required = expected_anchored_remap_keys(pre, post, include_stable_identity);
+    validate_anchor_remap_for_encode(section, &required)?;
+    validate_exact_anchor_remap_endpoints(section, pre, post, include_stable_identity)
 }
 
 fn primary_anchored_col(
@@ -190,18 +153,6 @@ fn primary_anchored_col(
     range
         .col_for_role(&SubFieldRole::Amount, &prop.layout)
         .or_else(|| range.col_for_role(&SubFieldRole::Velocity, &prop.layout))
-}
-
-fn find_node(root: &SimThing, id: SimThingId) -> Option<&SimThing> {
-    if root.id == id {
-        return Some(root);
-    }
-    for child in &root.children {
-        if let Some(found) = find_node(child, id) {
-            return Some(found);
-        }
-    }
-    None
 }
 
 fn walk_nodes(root: &SimThing, f: &mut dyn FnMut(&SimThing)) {
@@ -252,5 +203,36 @@ mod tests {
         let section = build_exact_anchor_remap_section(&pre, &post, &outcome, false).unwrap();
         assert_eq!(section.remaps[0].from_slot, Some(SlotIndex::new(4)));
         assert_ne!(section.remaps[0].from_slot, Some(SlotIndex::new(0)));
+    }
+
+    #[test]
+    fn omitted_retire_and_move_fail_production_exact_gate() {
+        let id = SimThingId::from_session_raw(20);
+        let prop = SimPropertyId(2);
+        let mut pre = AnchoredLocusMap::new();
+        let mut post = AnchoredLocusMap::new();
+        pre.insert(
+            (id, prop),
+            (
+                SlotIndex::new(3),
+                ColumnIndex::from_raw_for_oracle_or_rehearsal(1),
+            ),
+        );
+        // Retire omitted.
+        let omitted_retire = AnchorRemapSection::with_remaps(AnchorRemapOperation::Fusion, vec![]);
+        assert!(
+            gate_structural_gpu_encode_exact(&omitted_retire, &pre, &AnchoredLocusMap::new(), false)
+                .is_err()
+        );
+        // Move omitted.
+        post.insert(
+            (id, prop),
+            (
+                SlotIndex::new(5),
+                ColumnIndex::from_raw_for_oracle_or_rehearsal(1),
+            ),
+        );
+        let omitted_move = AnchorRemapSection::with_remaps(AnchorRemapOperation::Fission, vec![]);
+        assert!(gate_structural_gpu_encode_exact(&omitted_move, &pre, &post, false).is_err());
     }
 }

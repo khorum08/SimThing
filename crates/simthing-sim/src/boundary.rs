@@ -58,8 +58,7 @@ use crate::delta_log::{entries_from_outcome, BoundaryDeltaEntry};
 use crate::fission::{resolve_fission_fusion, FissionLineageRecord, FissionOutcome};
 use crate::fission_clone_source_view::fission_clone_source_children;
 use crate::anchor_remap_encode::{
-    build_exact_anchor_remap_section, gate_structural_gpu_encode_exact,
-    required_anchored_loci_for_boundary, snapshot_anchored_loci,
+    build_exact_anchor_remap_section, gate_structural_gpu_encode_exact, snapshot_anchored_loci,
 };
 use crate::gpu_sync::{sync_gpu_buffers, GpuSyncOutcome};
 use simthing_core::AnchorRemapSection;
@@ -915,6 +914,8 @@ impl BoundaryProtocol {
 
         // WRITE-DOOR-BAND-DELTA-0: exact pre→post remaps; refuse GPU encode on
         // missing/incorrect/duplicate endpoints (reparent = empty witness).
+        // Required keys come from pre/post snapshots inside the exact gate —
+        // never from the proposed section (omitted-row self-certify fence).
         let post_anchored_loci =
             snapshot_anchored_loci(self.root.inner(), &self.registry, &self.allocator);
         let remap_section = build_exact_anchor_remap_section(
@@ -924,17 +925,13 @@ impl BoundaryProtocol {
             slot_capacity_grew,
         )
         .unwrap_or_else(|err| panic!("anchor remap derive refused before GPU sync: {err}"));
-        let required_loci = required_anchored_loci_for_boundary(
-            &remap_section,
-            &out,
-            &self.root,
-            &self.registry,
-        );
+        let include_stable_identity =
+            !out.maintainer.dimensions_added.is_empty() || slot_capacity_grew;
         gate_structural_gpu_encode_exact(
             &remap_section,
-            &required_loci,
             &pre_anchored_loci,
             &post_anchored_loci,
+            include_stable_identity,
         )
         .unwrap_or_else(|err| panic!("anchor remap encode refused before GPU sync: {err}"));
         out.anchor_remap = remap_section;
