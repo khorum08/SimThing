@@ -234,3 +234,78 @@ fn tree_with_mixed_disposition_table_cardinality_matches_anchored_only() {
     let _ = SimRuntimeTree::admit(root);
     let _ = SubFieldRole::Amount;
 }
+
+#[test]
+fn hosted_observation_reads_gpu_when_cpu_staging_disagrees() {
+    use simthing_driver::{observe_hosted_property_cell, AnchorTableSnapshot, Scenario, SimSession};
+    use simthing_spec::PropertyKey;
+
+    let mut registry = DimensionRegistry::new();
+    let pid = registry.register(SimProperty::simple("ats", "cell", 1));
+    let mut root = SimThing::new(SimThingKind::GameSession, 0);
+    root.properties.insert(
+        pid,
+        simthing_core::PropertyValue::from_raw_lanes(vec![1.25]),
+    );
+    let scenario = Scenario {
+        name: "ats_gpu_authority".into(),
+        ticks_per_day: 1,
+        max_days: 1,
+        dt: 1.0,
+        n_slots: 1,
+        registry,
+        root,
+        shadow_seeds: Vec::new(),
+        tick_patches: Vec::new(),
+        install_targets: Default::default(),
+    };
+    let Ok(mut sim) = SimSession::open(scenario) else {
+        // Adapter-less hosts still keep encode/wire referees; this arm needs GPU.
+        return;
+    };
+
+    let staging = sim.proto.writer_staging_anchor_table_for_oracle_or_test();
+    assert!(
+        !staging.is_empty(),
+        "writer staging must be minted at initial_gpu_sync"
+    );
+    let identity = staging.rows()[0].identity;
+    let gpu_value = staging.rows()[0].observed_value;
+    let corrupt = gpu_value + 77.0;
+    {
+        let staging_mut = sim
+            .proto
+            .writer_staging_anchor_table_mut_for_oracle_or_test();
+        let row = staging_mut.get_mut(identity).expect("staging row");
+        row.observed_value = corrupt;
+    }
+    assert_eq!(
+        sim.proto
+            .writer_staging_anchor_table_for_oracle_or_test()
+            .get(identity)
+            .map(|r| r.observed_value),
+        Some(corrupt)
+    );
+
+    let snapshot = AnchorTableSnapshot::from_session(&sim);
+    let observed = snapshot
+        .get(identity)
+        .expect("GPU snapshot row")
+        .observed_value;
+    assert_eq!(
+        observed, gpu_value,
+        "hosted observation must read GPU table, not corrupted CPU staging"
+    );
+    assert_ne!(observed, corrupt);
+
+    let hosted = observe_hosted_property_cell(
+        &sim.scenario.registry,
+        &sim.proto.allocator,
+        &snapshot,
+        identity.sim_thing_id,
+        &PropertyKey::new("ats", "cell"),
+        &SubFieldRole::Amount,
+    )
+    .expect("hosted cell");
+    assert_eq!(hosted, gpu_value);
+}

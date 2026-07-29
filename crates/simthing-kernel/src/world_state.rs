@@ -121,8 +121,9 @@ pub struct WorldGpuState {
     pub n_thresholds: u32,
 
     /// Derived STEAD anchor table (ANCHOR-TABLE-SURFACE-0). Grows via
-    /// `upload_anchor_table`. Observation authority for consumers is the typed
-    /// CPU table + this GPU POD twin — not the values matrix.
+    /// `upload_anchor_table`. This GPU POD buffer is the sole production
+    /// observation authority (orch remand `5120259758`); CPU staging on the
+    /// boundary is writer-side only — not the values matrix.
     pub(crate) anchor_table: Buffer,
     /// Valid row count currently uploaded into `anchor_table`.
     pub n_anchor_rows: u32,

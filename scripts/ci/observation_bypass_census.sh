@@ -100,4 +100,38 @@ if ! rg -q 'simthing-mapeditor' handoffs/ANCHOR-TABLE-SURFACE-0.hd.md; then
 fi
 echo "PASS: handoff lists mapeditor surfaces"
 
+# ── 7. Orch remand 5120259758: no production CPU staging observation door ────
+# Consumers must not clone BoundaryProtocol writer staging via .anchor_table().
+if ! rg -q 'read_anchor_table' crates/simthing-driver/src/hosted_property_observation.rs; then
+  fail "AnchorTableSnapshot::from_session must read GPU via WorldGpuState::read_anchor_table"
+fi
+hits="$(
+  rg -n --glob 'crates/**/*.rs' \
+    'proto\.anchor_table\(\)|\.anchor_table\(\)\.clone|BoundaryProtocol::anchor_table' \
+    | normalize \
+    || true
+)"
+hits="$(filter_cfg_test_mod_hits "${hits}")"
+if [[ -n "${hits}" ]]; then
+  fail "production CPU staging observation bypass (proto.anchor_table / clone):" "${hits}"
+fi
+# Writer-staging mut/accessor is oracle/test-only; production src must not call it.
+hits="$(
+  rg -n --glob 'crates/**/src/**/*.rs' \
+    'writer_staging_anchor_table_for_oracle_or_test|writer_staging_anchor_table_mut_for_oracle_or_test' \
+    | normalize \
+    || true
+)"
+hits="$(filter_cfg_test_mod_hits "${hits}")"
+# Allow the definition sites in boundary.rs only.
+hits="$(
+  printf '%s\n' "${hits}" \
+    | grep -v 'crates/simthing-sim/src/boundary.rs' \
+    || true
+)"
+if [[ -n "${hits}" ]]; then
+  fail "production consumer reached writer-staging CPU table:" "${hits}"
+fi
+echo "PASS: observation door is GPU readback; CPU staging fenced"
+
 echo "PASS(observation-bypass-census): all arms green"

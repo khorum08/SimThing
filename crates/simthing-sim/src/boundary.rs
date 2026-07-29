@@ -263,8 +263,11 @@ pub struct BoundaryProtocol {
     /// lockstep with the `child_starts` / `child_indices` / `depth_slots`
     /// buffers on `WorldGpuState`.
     cached_topology_state: TopologyState,
-    /// Derived STEAD anchor table — sole production observation surface.
-    /// Written only by admission mint, fused band deltas, and typed remaps.
+    /// Writer-side staging for the derived STEAD anchor table.
+    ///
+    /// Not production observation authority (orch remand `5120259758`): consumers
+    /// read the GPU-resident POD twin via governed readback. Staging remains the
+    /// admission / fused-delta / remap write surface before upload.
     anchor_table: AnchorTable,
 }
 
@@ -1299,9 +1302,18 @@ impl BoundaryProtocol {
         state.upload_anchor_table(&encode_anchor_table_gpu(&self.anchor_table));
     }
 
-    /// Read-only STEAD observation table (sole production consumer surface).
-    pub fn anchor_table(&self) -> &AnchorTable {
+    /// Writer-side staging only — not a production observation door.
+    ///
+    /// Production consumers must use GPU readback (`AnchorTableSnapshot::from_session`).
+    #[doc(hidden)]
+    pub fn writer_staging_anchor_table_for_oracle_or_test(&self) -> &AnchorTable {
         &self.anchor_table
+    }
+
+    /// Mutable writer staging for oracle / disagree referees only.
+    #[doc(hidden)]
+    pub fn writer_staging_anchor_table_mut_for_oracle_or_test(&mut self) -> &mut AnchorTable {
+        &mut self.anchor_table
     }
 
     /// Read-only access to the persistent fission lineage. Useful for tests
