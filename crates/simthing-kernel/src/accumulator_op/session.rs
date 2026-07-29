@@ -15,9 +15,8 @@ use wgpu::{
 use crate::context::GpuContext;
 use crate::gpu_readback::{EmissionRecordReadback, KernelReadbackError, ThresholdEmissionReadback};
 use crate::registration::ThresholdRegistration;
-use crate::sealed::{
-    band_crossing_deltas_from_fused_emissions, BandCrossingDelta, ThresholdEvent,
-};
+use crate::sealed::band_crossing_delta::band_crossing_deltas_from_fused_emissions;
+use crate::sealed::{BandCrossingDelta, ThresholdEvent};
 
 use super::encode::EncodeError;
 use super::packed_session_upload::{
