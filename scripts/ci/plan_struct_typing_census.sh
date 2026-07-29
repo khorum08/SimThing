@@ -17,8 +17,83 @@ normalize() {
   tr '\\' '/'
 }
 
-# True when path:line sits inside a trailing `#[cfg(test)] mod tests` region.
-# Structural exclusion — retires filename allowlists for unit-test fixture ctors.
+# Net `{`/`}` delta for one source line (// comments stripped; string-agnostic heuristic).
+line_brace_delta() {
+  local s="$1"
+  if [[ "$s" == *"//"* ]]; then
+    s="${s%%//*}"
+  fi
+  local i ch
+  local delta=0
+  for ((i = 0; i < ${#s}; i++)); do
+    ch="${s:i:1}"
+    if [[ "$ch" == "{" ]]; then
+      delta=$((delta + 1))
+    elif [[ "$ch" == "}" ]]; then
+      delta=$((delta - 1))
+    fi
+  done
+  printf '%s' "$delta"
+}
+
+# Emit "open_line close_line" pairs for every brace-balanced `#[cfg(test)] mod tests`.
+cfg_test_mod_spans() {
+  local file="$1"
+  [[ -f "$file" ]] || return 0
+  local -a lines=()
+  mapfile -t lines < "$file"
+  local n=${#lines[@]}
+  local i=0
+  while ((i < n)); do
+    local l="${lines[i]}"
+    if [[ ! "$l" =~ ^[[:space:]]*#\[[Cc]fg\(test\)\] ]]; then
+      i=$((i + 1))
+      continue
+    fi
+    local j
+    local mod_idx=-1
+    for ((j = i; j < n && j <= i + 4; j++)); do
+      if [[ "${lines[j]}" =~ mod[[:space:]]+tests ]]; then
+        mod_idx=$j
+        break
+      fi
+    done
+    if ((mod_idx < 0)); then
+      i=$((i + 1))
+      continue
+    fi
+    local k
+    local open_idx=-1
+    local depth=0
+    for ((k = mod_idx; k < n; k++)); do
+      local delta
+      delta="$(line_brace_delta "${lines[k]}")"
+      if ((open_idx < 0)); then
+        if [[ "${lines[k]}" == *"{"* ]]; then
+          open_idx=$k
+          depth=$delta
+          if ((depth <= 0)); then
+            printf '%s %s\n' "$((open_idx + 1))" "$((open_idx + 1))"
+            break
+          fi
+        fi
+        continue
+      fi
+      depth=$((depth + delta))
+      if ((depth <= 0)); then
+        printf '%s %s\n' "$((open_idx + 1))" "$((k + 1))"
+        break
+      fi
+    done
+    if ((open_idx >= 0 && depth > 0)); then
+      printf '%s %s\n' "$((open_idx + 1))" "$n"
+    fi
+    i=$((i + 1))
+  done
+}
+
+# True when path:line sits inside a brace-balanced `#[cfg(test)] mod tests { ... }` body.
+# Hits after the module's closing brace remain visible to the census.
 in_cfg_test_mod_region() {
   local hit="$1"
   local file line_num
@@ -28,48 +103,97 @@ in_cfg_test_mod_region() {
   else
     return 1
   fi
-  [[ -f "$file" ]] || return 1
-  local cfg_line=0
-  local n=0
-  local l
-  while IFS= read -r l || [[ -n "$l" ]]; do
-    n=$((n + 1))
-    if [[ "$l" =~ ^[[:space:]]*#\[[Cc]fg\(test\)\] ]]; then
-      if [[ "$n" -lt "$line_num" && "$n" -gt "$cfg_line" ]]; then
-        cfg_line=$n
-      fi
+  local open close
+  while read -r open close; do
+    [[ -z "$open" ]] && continue
+    if ((line_num >= open && line_num <= close)); then
+      return 0
     fi
-  done < "$file"
-  [[ "$cfg_line" -eq 0 ]] && return 1
-  local has_mod=1
-  local i=0
-  while IFS= read -r l || [[ -n "$l" ]]; do
-    i=$((i + 1))
-    if [[ $i -lt $cfg_line ]]; then continue; fi
-    if [[ $i -gt $((cfg_line + 4)) ]]; then break; fi
-    if [[ "$l" =~ mod[[:space:]]+tests ]]; then
-      has_mod=0
-      break
-    fi
-  done < "$file"
-  [[ $has_mod -eq 0 ]] || return 1
-  [[ "$line_num" -gt "$cfg_line" ]]
+  done < <(cfg_test_mod_spans "$file")
+  return 1
 }
 
-# Drop hits that live inside `#[cfg(test)] mod tests` (not production).
+# Drop hits that live inside brace-balanced `#[cfg(test)] mod tests` bodies.
 filter_cfg_test_mod_hits() {
   local hits="$1"
   local kept=""
   local hit
+  declare -A span_cache=()
   while IFS= read -r hit || [[ -n "$hit" ]]; do
     [[ -z "$hit" ]] && continue
-    if in_cfg_test_mod_region "$hit"; then
+    local file line_num
+    if [[ "$hit" =~ ^(.+):([0-9]+): ]]; then
+      file="${BASH_REMATCH[1]}"
+      line_num="${BASH_REMATCH[2]}"
+    else
+      kept+="${hit}"$'\n'
+      continue
+    fi
+    if [[ -z "${span_cache[$file]+x}" ]]; then
+      span_cache[$file]="$(cfg_test_mod_spans "$file")"
+    fi
+    local in_mod=1
+    local open close
+    while read -r open close; do
+      [[ -z "$open" ]] && continue
+      if ((line_num >= open && line_num <= close)); then
+        in_mod=0
+        break
+      fi
+    done <<< "${span_cache[$file]}"
+    if [[ "$in_mod" -eq 0 ]]; then
       continue
     fi
     kept+="${hit}"$'\n'
   done <<< "$hits"
   printf '%s' "$kept" | sed '/^$/d' || true
 }
+
+run_cfg_test_filter_selftest() {
+  local tmp
+  tmp="$(mktemp -d "${TMPDIR:-/tmp}/plan-struct-cfg-test-XXXXXX")"
+  # shellcheck disable=SC2064
+  trap "rm -rf '$tmp'" RETURN
+  local fixture="$tmp/oracle_door_cfg_test_span.rs"
+  cat >"$fixture" <<'EOF'
+fn production_before() {}
+
+#[cfg(test)]
+mod tests {
+    fn inside_oracle_door() {
+        let _ = ColumnIndex::from_raw_for_oracle_or_rehearsal(0);
+    }
+}
+
+fn production_after_closed_test_module() {
+    let _ = ColumnIndex::from_raw_for_oracle_or_rehearsal(99);
+}
+EOF
+  # Line map (1-based): 6 = inside body, 11 = after closing brace.
+  local inside_hit="${fixture}:6:        let _ = ColumnIndex::from_raw_for_oracle_or_rehearsal(0);"
+  local after_hit="${fixture}:11:    let _ = ColumnIndex::from_raw_for_oracle_or_rehearsal(99);"
+  if ! in_cfg_test_mod_region "$inside_hit"; then
+    fail "selftest: in-module oracle-door hit must be excluded (cfg(test) body)"
+  fi
+  if in_cfg_test_mod_region "$after_hit"; then
+    fail "selftest: post-module oracle-door hit must remain visible after closing brace"
+  fi
+  local filtered
+  filtered="$(filter_cfg_test_mod_hits $'crates/x:1:noop\n'"${inside_hit}"$'\n'"${after_hit}")"
+  if [[ "$filtered" == *":6:"* ]]; then
+    fail "selftest: filter must drop in-module hit:" "$filtered"
+  fi
+  if [[ "$filtered" != *":11:"* ]]; then
+    fail "selftest: filter must retain post-module hit:" "$filtered"
+  fi
+  echo "PASS: cfg(test) mod tests filter is brace-balanced (in-module excluded; post-brace visible)"
+}
+
+if [[ "${1:-}" == "--selftest" ]]; then
+  run_cfg_test_filter_selftest
+  echo "PASS(plan-struct-typing-census): --selftest green"
+  exit 0
+fi
 
 # ── 1. from_gpu_round_trip only in door definition + wgsl_encode ─────────────
 hits="$(
@@ -85,7 +209,7 @@ echo "PASS: zero production from_gpu_round_trip outside wgsl_encode (+ column_in
 
 # ── 2. from_raw_for_oracle_or_rehearsal only on oracle/rehearsal/test surfaces ─
 # Production src allowlist: door definition + oracle/rehearsal modules.
-# `#[cfg(test)] mod tests` regions are excluded structurally (not by filename).
+# Brace-balanced `#[cfg(test)] mod tests { ... }` bodies are excluded structurally.
 hits="$(
   rg -n --glob 'crates/**/src/**/*.rs' 'ColumnIndex::from_raw_for_oracle_or_rehearsal\(' \
     | normalize \
