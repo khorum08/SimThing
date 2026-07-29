@@ -17,6 +17,60 @@ normalize() {
   tr '\\' '/'
 }
 
+# True when path:line sits inside a trailing `#[cfg(test)] mod tests` region.
+# Structural exclusion — retires filename allowlists for unit-test fixture ctors.
+in_cfg_test_mod_region() {
+  local hit="$1"
+  local file line_num
+  if [[ "$hit" =~ ^(.+):([0-9]+): ]]; then
+    file="${BASH_REMATCH[1]}"
+    line_num="${BASH_REMATCH[2]}"
+  else
+    return 1
+  fi
+  [[ -f "$file" ]] || return 1
+  local cfg_line=0
+  local n=0
+  local l
+  while IFS= read -r l || [[ -n "$l" ]]; do
+    n=$((n + 1))
+    if [[ "$l" =~ ^[[:space:]]*#\[[Cc]fg\(test\)\] ]]; then
+      if [[ "$n" -lt "$line_num" && "$n" -gt "$cfg_line" ]]; then
+        cfg_line=$n
+      fi
+    fi
+  done < "$file"
+  [[ "$cfg_line" -eq 0 ]] && return 1
+  local has_mod=1
+  local i=0
+  while IFS= read -r l || [[ -n "$l" ]]; do
+    i=$((i + 1))
+    if [[ $i -lt $cfg_line ]]; then continue; fi
+    if [[ $i -gt $((cfg_line + 4)) ]]; then break; fi
+    if [[ "$l" =~ mod[[:space:]]+tests ]]; then
+      has_mod=0
+      break
+    fi
+  done < "$file"
+  [[ $has_mod -eq 0 ]] || return 1
+  [[ "$line_num" -gt "$cfg_line" ]]
+}
+
+# Drop hits that live inside `#[cfg(test)] mod tests` (not production).
+filter_cfg_test_mod_hits() {
+  local hits="$1"
+  local kept=""
+  local hit
+  while IFS= read -r hit || [[ -n "$hit" ]]; do
+    [[ -z "$hit" ]] && continue
+    if in_cfg_test_mod_region "$hit"; then
+      continue
+    fi
+    kept+="${hit}"$'\n'
+  done <<< "$hits"
+  printf '%s' "$kept" | sed '/^$/d' || true
+}
+
 # ── 1. from_gpu_round_trip only in door definition + wgsl_encode ─────────────
 hits="$(
   rg -n --glob 'crates/**/src/**/*.rs' 'ColumnIndex::from_gpu_round_trip\(' \
@@ -30,16 +84,16 @@ fi
 echo "PASS: zero production from_gpu_round_trip outside wgsl_encode (+ column_index door definition)"
 
 # ── 2. from_raw_for_oracle_or_rehearsal only on oracle/rehearsal/test surfaces ─
-# Production src allowlist: door definition; oracle/rehearsal modules; unit-test
-# fixture constructors in arena_allocation_plan / child_share_eml.
+# Production src allowlist: door definition + oracle/rehearsal modules.
+# `#[cfg(test)] mod tests` regions are excluded structurally (not by filename).
 hits="$(
   rg -n --glob 'crates/**/src/**/*.rs' 'ColumnIndex::from_raw_for_oracle_or_rehearsal\(' \
     | normalize \
     | grep -Ev 'crates/simthing-core/src/column_index\.rs' \
     | grep -Ev 'dress_rehearsal|_oracle\.rs|arena_allocation_oracle\.rs' \
-    | grep -Ev 'arena_allocation_plan\.rs|child_share_eml\.rs|emission_accumulator\.rs' \
     || true
 )"
+hits="$(filter_cfg_test_mod_hits "$hits")"
 if [[ -n "${hits}" ]]; then
   fail "production from_raw_for_oracle_or_rehearsal outside oracle/rehearsal/test:" "${hits}"
 fi

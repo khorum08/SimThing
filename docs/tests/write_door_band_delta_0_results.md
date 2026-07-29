@@ -1,7 +1,7 @@
 # WRITE-DOOR-BAND-DELTA-0 results
 
 - Track: 0.0.8.7 RF arena modernization (rung 5.2)
-- Status: **PROBATION / proof-present / DA-review-pending** (remand-2 discharged locally; rides PR #1488 draft)
+- Status: **PROBATION / proof-present / DA-review-pending** (remand-3 discharged locally; rides PR #1488 draft)
 - HD-RECEIPT: `bfd7fd9c217b`
 - ORIENT-RECEIPT: `16b366e49528`
 - orientation_rule_stamp: `76fd13d17f16f2f7`
@@ -11,29 +11,33 @@
 - Board dispatch: comment `5111853299`
 - Remand-1: comment `5112136052` (landing `5112304200`)
 - Remand-2: comment `5117474928`
+- Remand-3: comment `5117961061` (DA ruling `5117893595`)
 - base_sha: `77ea7f12a933b5f0362afdaa4edf6970b4339ffc` (handoff)
-- tested_code_sha / implementation_code_sha: `5dd354a5e72491219ae7c97d5056738e584cd9b1`
+- tested_code_sha / implementation_code_sha: bound after remedial commit (see PR Exact-head fields; this file does not self-hash tip)
 - final_head_sha / clearance_pr_head: PR-body-bound only (this file does not self-hash)
-- coverage_basis: independent pre/post remap completeness; omitted-retire/move negatives; real multi-edge GPU mint → BoundaryDeltaEntry → replay; inventory drift closed; census independent-required-keys fence; adapter-pinned batteries
+- coverage_basis: plan_struct oracle-door arm cfg(test)-aware (filename exclusion class retired); plan_struct_typing_census exit 0; write-door census + focused 5.2 referees green; prior remands 1–2 retained
 - expected_route: `DA-RESERVE(gate-wiring)`
 - CLEARANCE-VERDICT: orch owns `/clearance` on exact tip
 
-## Remand-2 discharge (`5117474928`)
+## Remand-3 discharge (`5117961061`)
 
-1. **TEST-INVENTORY-DRIFT** — ledgered `compile_fail_line_29` / `compile_fail_line_48` for `sealed/band_crossing_delta.rs`; drift check PASS (unledgered=0, stale=0).
-2. **Independent fail-closed remap completeness** — `expected_anchored_remap_keys(pre, post, include_stable_identity)` seeds required keys; `validate_exact_anchor_remap_endpoints` rejects missing/extra/duplicate vs that set; production `gate_structural_gpu_encode_exact` uses the same; omitted-retire + omitted-move negatives in core + sim.
-3. **Real multi-edge GPU transport** — `gpu_multi_edge_band_delta_boundary_replay_transport`: one Anchored cell, two ordered rising edges in one GPU threshold pass; sealed mint from GPU emissions; BoundaryDeltaEntry JSON → ReplayDriver bit-exact retention (count, reg_idx order, typed identities).
-4. **PR body** — plain Markdown rebound on tip (no escaped-control corruption).
+**Defect:** `scripts/ci/plan_struct_typing_census.sh` oracle-door arm false-positive on lawful `from_raw_for_oracle_or_rehearsal` inside `#[cfg(test)] mod tests` in `anchor_remap.rs` / `anchor_remap_encode.rs`.
 
-## Remand-1 (accepted; retained)
+**Fix (preferred option 1):** structural `cfg(test) mod tests` exclusion for the oracle-door arm; retired filename exclusions for `arena_allocation_plan.rs` / `child_share_eml.rs` / `emission_accumulator.rs` (those hits were test-module-only). Door definition + oracle/rehearsal module allowlist retained.
 
-Exact pre/post remaps (no `SlotIndex(0)` fallback); typed registry-filtered `BandCrossingDelta`; public `readback_band_crossing_deltas` removed; sealed `apply_band_crossing_deltas_from_*`; boundary/replay transport; strengthened referees/census.
+**Proof:**
+- `bash scripts/ci/plan_struct_typing_census.sh` → process exit **0**
+- `bash scripts/ci/write_door_band_delta_census.sh` PASS
+- `cargo test -p simthing-core anchor_remap` 8/0
+- `cargo test -p simthing-sim anchor_remap_encode` 4/0
+- `cargo test -p simthing-driver --test write_door_band_delta_0` 10/0
 
-## Fences held
+Accepted 5.2 production code and fences intact. No Phase 10.1 scan-wiring addendum. No merge / no `ANCHOR-TABLE-SURFACE-0` / no `/clearance` from coder lane.
 
-- No `ANCHOR-TABLE-SURFACE-0` table / consumer migration
-- No FIELD-SWEEP 5.4–5.8
-- No CPU decision branching on observed values; no second threshold authority
-- No band edges in accumulation/falloff/conservation
-- No new raw identity doors outside `wgsl_encode` / GPU round-trip rematerialize
-- Draft PR only; no merge; no 5.3 dispatch; no `/clearance` from coder lane
+## Remand-2 (`5117474928`) — retained
+
+Independent pre/post remap completeness; inventory compile_fail drift; real multi-edge GPU → BoundaryDeltaEntry → replay.
+
+## Remand-1 (`5112136052`) — retained
+
+Exact pre/post remaps; typed registry-filtered `BandCrossingDelta`; sealed apply mint; boundary/replay transport.
