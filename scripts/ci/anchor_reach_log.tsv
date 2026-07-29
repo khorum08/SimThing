@@ -198,3 +198,5 @@ date	role	query	anchors_served	hit
 2026-07-29T01:53:38Z	coding	--domain core-0087	rf-arena-substrate,simthing-0087-binding-laws,simthing-0087-pillars	hit
 2026-07-29T12:09:30Z	coding	--domain core-0087	rf-arena-substrate,simthing-0087-binding-laws,simthing-0087-pillars	hit
 2026-07-29T13:19:00Z	coding	--domain core-0087	rf-arena-substrate,simthing-0087-binding-laws,simthing-0087-pillars	hit
+2026-07-29T15:27:33Z	coding	--domain core-0087	rf-arena-substrate,simthing-0087-binding-laws,simthing-0087-pillars	hit
+2026-07-29T16:04:01Z	coding	governance-reach:DECLINED ALLOW-KERNEL-SURFACE/triage TSV edit; GPU POD decode kept driver-local (orch remand 5120259758; Owner: no CI harness TSV)	rf-arena-substrate,simthing-0087-pillars,admission-ladder-necessity-test	hit

@@ -284,6 +284,9 @@ fn journal_mapping_commitments(
 impl SimSession {
     /// Hot-path cycle — pre-tick enqueue + ordinary tick + RF bands + mapping dispatch.
     fn run_hot_cycle(&mut self) -> Result<FabricHotCycleOutcome, SessionError> {
+        // Generation must be live before fused threshold/anchor dispatch stamps crossings.
+        self.state
+            .set_anchor_table_generation(self.coord.day_index() as u32);
         let resource_flow_pipeline_enabled = self.proto.flags.use_accumulator_resource_flow;
         let mapping_hot = self.mapping.as_mut().map(|m| &mut m.hot);
         let tick_patches = &self.scenario.tick_patches;
@@ -907,6 +910,8 @@ impl SimSession {
         {
             summary.boundaries_skipped += 1;
             summary.boundaries_run += 1;
+            self.state
+                .set_anchor_table_generation((day as u32).saturating_add(1));
             return Ok(true);
         }
         summary.boundary_readback_bytes += self.state.values_len() as u64 * 4;
@@ -940,6 +945,9 @@ impl SimSession {
         self.react_to_fission_clones(&outcome);
         self.react_to_fission_resource_flow_enrollment(&outcome)?;
         self.sync_resource_economy_if_enabled()?;
+        // Next day's fused scans stamp the upcoming day index.
+        self.state
+            .set_anchor_table_generation((day as u32).saturating_add(1));
         Ok(true)
     }
 

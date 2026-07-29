@@ -40,8 +40,9 @@
 //! rebuilds during GPU sync.
 
 use simthing_core::{
-    prepare_fission_clone_sources_for_registry, DecayBehavior, DimensionRegistry, OverlayLifecycle,
-    SimPropertyId, SimThing, SimThingId,
+    mint_anchor_table_from_admission, prepare_fission_clone_sources_for_registry, ColumnIndex,
+    DecayBehavior, DimensionRegistry, OverlayLifecycle, SimPropertyId, SimThing, SimThingId,
+    SlotIndex, SubFieldRole,
 };
 use simthing_feeder::{
     BoundaryRequest, CapabilityUnlockRegistration, DispatchCoordinator, MaintainerOutcome,
@@ -111,6 +112,8 @@ pub struct BoundaryOutcome {
     pub anchor_remap: AnchorRemapSection,
     /// Sealed write-impact band-crossing deltas minted from the fused threshold pass.
     pub band_crossing_deltas: Vec<BandCrossingDelta>,
+    /// Live STEAD observation table after this boundary's writers ran.
+    pub anchor_table_row_count: u32,
     pub boundary_requests: u32,
     pub player_intents_attached: u32,
     pub ai_intents_attached: u32,
@@ -491,6 +494,13 @@ impl BoundaryProtocol {
             &self.registry,
             &self.allocator,
         );
+        // Dynamic band/value/urgency/generation live on the GPU table (fused
+        // threshold companion). BandCrossingDelta remains wire/replay evidence only.
+        // Generation for *this* day's crossings was supplied before the fused
+        // threshold dispatch (session hot-cycle). Do not stamp it here after the fact.
+        if state.n_anchor_rows == 0 {
+            self.upload_admission_anchor_table(state, &coord.shadow, n_dims, &pre_anchored_loci);
+        }
 
         let alert_collect_started = Instant::now();
         out.velocity_alerts = collect_velocity_alerts(&events, &self.cpu_threshold_registry);
@@ -934,7 +944,15 @@ impl BoundaryProtocol {
             include_stable_identity,
         )
         .unwrap_or_else(|err| panic!("anchor remap encode refused before GPU sync: {err}"));
+        // Structural remaps: GPU-resident apply (orch remand 5120847431).
+        // Magnitude refresh is deferred until after Step 9 value sync
+        // (orch remand 5121185090) so moved/born rows sample canonical cells.
+        let remaps_applied = !remap_section.remaps.is_empty();
+        if remaps_applied {
+            state.apply_anchor_remap_section(&remap_section, &self.registry);
+        }
         out.anchor_remap = remap_section;
+        out.anchor_table_row_count = state.n_anchor_rows;
 
         // Step 9: Rebuild GPU buffers from current tree + upload shadow.
         let gpu_sync_started = Instant::now();
@@ -992,6 +1010,9 @@ impl BoundaryProtocol {
             self.sync_accumulator_intensity_session(state);
         } else {
             self.sync_accumulator_eml_session(state);
+        }
+        if remaps_applied {
+            state.run_anchor_table_magnitude_maintain();
         }
         self.sync_accumulator_transfer_session(state);
         self.sync_accumulator_emission_session(state);
@@ -1231,6 +1252,29 @@ impl BoundaryProtocol {
         }
         self.sync_accumulator_transfer_session(state);
         self.sync_accumulator_emission_session(state);
+
+        // Mint + upload the STEAD observation table at session open (transient only).
+        let loci = snapshot_anchored_loci(self.root.inner(), &self.registry, &self.allocator);
+        let n_dims = state.n_dims as usize;
+        let values = if coord.shadow.len() >= loci.len().saturating_mul(n_dims.max(1)) {
+            coord.shadow.clone()
+        } else {
+            state.read_values()
+        };
+        self.upload_admission_anchor_table(state, &values, n_dims, &loci);
+    }
+
+    fn upload_admission_anchor_table(
+        &self,
+        state: &mut WorldGpuState,
+        values: &[f32],
+        n_dims: usize,
+        loci: &simthing_core::AnchoredLocusMap,
+    ) {
+        let table =
+            mint_anchor_table_from_admission(self.root.inner(), &self.registry, loci, values, n_dims);
+        state.upload_typed_anchor_table(&table);
+        state.run_anchor_table_magnitude_maintain();
     }
 
     /// Read-only access to the persistent fission lineage. Useful for tests

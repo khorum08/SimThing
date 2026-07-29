@@ -18,9 +18,9 @@ use simthing_core::{
     OverlayKind, SimProperty, SimThing, SimThingId, SubFieldRole, SubFieldSpec,
 };
 use simthing_driver::{
-    resolve_node_columns_for_property, system_id_by_host_raw_from_structural_authority, GpuValuesSnapshot,
-    HostedPropertyLocus, LiveDisruptionAuthorityReadback, Scenario, SessionError, SimSession,
-    StepOnceOutcome,
+    resolve_node_columns_for_property, system_id_by_host_raw_from_structural_authority,
+    AnchorTableSnapshot, HostedPropertyLocus, LiveDisruptionAuthorityReadback, Scenario,
+    SessionError, SimSession, StepOnceOutcome,
 };
 use simthing_gpu::encode_column;
 use simthing_spec::{
@@ -546,7 +546,7 @@ impl StudioLiveSessionBridge {
                         // Bind telemetry to admitted emission source_slot/source_col. Values
                         // become live only through ordinary production GPU execution.
                         self.sample_loci = emission_sample_loci_from_session(&sim);
-                        let snapshot = GpuValuesSnapshot::from_session(&sim);
+                        let snapshot = AnchorTableSnapshot::from_session(&sim);
                         // Tick-0 sample: open-time field state before the first step_once so
                         // the OVL table can show open→live deltas (not only post-tick plateaus).
                         self.field_accretion_samples = collect_field_accretion_sample_from_snapshot(
@@ -679,7 +679,7 @@ impl StudioLiveSessionBridge {
                     if field_bearing {
                         let snapshot = {
                             let sim = self.sim.as_ref().expect("sim present");
-                            GpuValuesSnapshot::from_session(sim)
+                            AnchorTableSnapshot::from_session(sim)
                         };
                         let mut sample = collect_field_accretion_sample_from_snapshot(
                             &snapshot,
@@ -817,13 +817,13 @@ impl StudioLiveSessionBridge {
         let Some(sim) = self.sim.as_ref() else {
             return Ok(());
         };
-        let snapshot = GpuValuesSnapshot::from_session(sim);
+        let snapshot = AnchorTableSnapshot::from_session(sim);
         self.refresh_live_disruption_readout_from_snapshot(&snapshot)
     }
 
     fn refresh_live_disruption_readout_from_snapshot(
         &mut self,
-        snapshot: &GpuValuesSnapshot,
+        snapshot: &AnchorTableSnapshot,
     ) -> Result<(), StudioLiveSessionBridgeError> {
         let Some(authority) = self.readout_authority.as_ref() else {
             return Ok(());
@@ -1160,21 +1160,20 @@ fn collect_field_accretion_sample(
     sample_loci: &[FieldAccretionSampleLocus],
     tick_index: u64,
 ) -> Vec<StudioFieldAccretionSample> {
-    let snapshot = GpuValuesSnapshot::from_session(sim);
+    let snapshot = AnchorTableSnapshot::from_session(sim);
     collect_field_accretion_sample_from_snapshot(&snapshot, sample_loci, tick_index)
 }
 
 fn collect_field_accretion_sample_from_snapshot(
-    snapshot: &GpuValuesSnapshot,
+    snapshot: &AnchorTableSnapshot,
     sample_loci: &[FieldAccretionSampleLocus],
     tick_index: u64,
 ) -> Vec<StudioFieldAccretionSample> {
-    let values = snapshot.values();
-    let n_dims = snapshot.n_dims();
     let mut samples = Vec::new();
     for locus in sample_loci {
-        let idx = locus.source_slot as usize * n_dims + locus.source_col as usize;
-        let Some(&amount) = values.get(idx) else {
+        let Some(amount) =
+            snapshot.observed_value_at_slot_col(locus.source_slot, locus.source_col)
+        else {
             continue;
         };
         samples.push(StudioFieldAccretionSample {
@@ -1228,14 +1227,10 @@ fn recursive_rf_locus_from_session(
         root_slot,
         balance_col,
     };
-    let values = sim.state.read_values();
-    let n_dims = sim.state.n_dims;
-    let aggregate_before = values
-        .get((ancestor_slot * n_dims + locus.aggregate_col) as usize)
-        .copied();
-    let balance_before = values
-        .get((root_slot * n_dims + balance_col) as usize)
-        .copied();
+    let snapshot = AnchorTableSnapshot::from_session(sim);
+    let aggregate_before =
+        snapshot.observed_value_at_slot_col(ancestor_slot, locus.aggregate_col);
+    let balance_before = snapshot.observed_value_at_slot_col(root_slot, balance_col);
     let mut readout = StudioRecursiveRfReadout {
         active: sim.state.accumulator_resource_flow_active,
         execution_profile: "RecursiveArenaResourceFlow",
@@ -1259,15 +1254,12 @@ fn update_recursive_rf_readout(
     locus: &RecursiveRfSampleLocus,
     threshold_event_kinds: &[u32],
 ) {
-    let values = sim.state.read_values();
-    let n_dims = sim.state.n_dims;
+    let snapshot = AnchorTableSnapshot::from_session(sim);
     readout.active = sim.state.accumulator_resource_flow_active;
-    readout.ancestor_aggregate_after = values
-        .get((locus.ancestor_slot * n_dims + locus.aggregate_col) as usize)
-        .copied();
-    readout.root_balance_after = values
-        .get((locus.root_slot * n_dims + locus.balance_col) as usize)
-        .copied();
+    readout.ancestor_aggregate_after =
+        snapshot.observed_value_at_slot_col(locus.ancestor_slot, locus.aggregate_col);
+    readout.root_balance_after =
+        snapshot.observed_value_at_slot_col(locus.root_slot, locus.balance_col);
     fill_need_binding_readout(readout, sim, Some(threshold_event_kinds));
 }
 
@@ -1286,10 +1278,8 @@ fn fill_need_binding_readout(
         readout.need_threshold_event_count = 0;
         return;
     };
-    let values = sim.state.read_values();
-    let n_dims = sim.state.n_dims as usize;
-    let idx = binding.participant_slot as usize * n_dims + binding.need_col.raw();
-    let live = values.get(idx).copied();
+    let snapshot = AnchorTableSnapshot::from_session(sim);
+    let live = snapshot.observed_value_at_slot_col(binding.participant_slot, binding.need_col.raw_u32());
     readout.need_profile_id = Some(binding.id.clone());
     readout.need_profile_kind = Some(binding.profile.clone());
     readout.need_weight_values = Some(
@@ -1297,8 +1287,9 @@ fn fill_need_binding_readout(
             .weights
             .iter()
             .map(|weight| {
-                let idx = weight.slot as usize * n_dims + weight.col.raw();
-                let value = values.get(idx).copied().unwrap_or(f32::NAN);
+                let value = snapshot
+                    .observed_value_at_slot_col(weight.slot, weight.col.raw_u32())
+                    .unwrap_or(f32::NAN);
                 format!("{}={value:.6}", weight.entity)
             })
             .collect::<Vec<_>>()

@@ -348,7 +348,7 @@ pub use gradient_follow_0080_2::{
 };
 pub use hosted_property_observation::{
     observe_hosted_property_cell, system_id_by_host_raw_from_structural_authority,
-    GpuValuesSnapshot, HostedPropertyLocus, HostedPropertyObservationError,
+    AnchorTableSnapshot, GpuValuesSnapshot, HostedPropertyLocus, HostedPropertyObservationError,
     LiveDisruptionAuthorityReadback,
 };
 pub use install::{

@@ -12,8 +12,8 @@ use simthing_clausething::{
 };
 use simthing_core::{SimThingId, SubFieldRole, TransformOp};
 use simthing_driver::{
-    observe_hosted_property_cell, system_id_by_host_raw_from_structural_authority, GpuValuesSnapshot,
-    HostedPropertyLocus, HostedPropertyObservationError,
+    observe_hosted_property_cell, system_id_by_host_raw_from_structural_authority,
+    AnchorTableSnapshot, HostedPropertyLocus, HostedPropertyObservationError,
 };
 use simthing_mapeditor::{
     authored_live_profile_from_pack, disruption_select_screen_from_raw,
@@ -588,7 +588,7 @@ fn observation_door_unknown_property_role_and_host_fail_loud() {
         .get("pirate_outpost")
         .and_then(|ids| ids.first().copied())
         .expect("pirate_outpost host");
-    let snapshot = GpuValuesSnapshot::from_session(sim);
+    let snapshot = AnchorTableSnapshot::from_session(sim);
 
     let unknown_property = observe_hosted_property_cell(
         &sim.proto.registry,

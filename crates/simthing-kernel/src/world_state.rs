@@ -13,11 +13,20 @@
 
 use crate::gpu_readback::ThresholdEventCandidatesReadback;
 use crate::resolved::ResolvedGpuBuffers;
-use crate::sealed::ResolvedWriteAuthority;
+use crate::sealed::{
+    birth_anchor_rows_gpu, decode_anchor_table_gpu, encode_anchor_table_gpu, AnchorRemapOpGpu,
+    AnchorRemapParams, AnchorTableRowGpu, ResolvedWriteAuthority, ANCHOR_REMAP_KIND_MOVE,
+    ANCHOR_REMAP_KIND_RETIRE,
+};
 use crate::wgsl_encode::{build_governed_pairs, encode_column, GovernedPair};
 use bytemuck::{Pod, Zeroable};
-use simthing_core::DimensionRegistry;
-use wgpu::{Buffer, BufferDescriptor, BufferUsages, CommandEncoderDescriptor, Maintain, MapMode};
+use simthing_core::{AnchorRemapSection, AnchorTable, DimensionRegistry};
+use wgpu::{
+    BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor, BindGroupLayoutEntry,
+    BindingType, Buffer, BufferBindingType, BufferDescriptor, BufferUsages,
+    CommandEncoderDescriptor, ComputePassDescriptor, ComputePipelineDescriptor, Maintain, MapMode,
+    PipelineLayoutDescriptor, ShaderModuleDescriptor, ShaderSource, ShaderStages,
+};
 
 use crate::accumulator_op::DEFAULT_THRESHOLD_EMISSION_CAPACITY;
 use crate::context::GpuContext;
@@ -120,6 +129,16 @@ pub struct WorldGpuState {
     /// `threshold_registry`). Pass 7 dispatches one thread per registration.
     pub n_thresholds: u32,
 
+    /// Derived STEAD anchor table (ANCHOR-TABLE-SURFACE-0). Grows via
+    /// `upload_anchor_table`. This GPU POD buffer is the sole production
+    /// observation authority (orch remand `5120259758`); CPU staging on the
+    /// boundary is writer-side only — not the values matrix.
+    pub(crate) anchor_table: Buffer,
+    /// Valid row count currently uploaded into `anchor_table`.
+    pub n_anchor_rows: u32,
+    /// Dispatch generation stamped onto fused GPU crossing updates.
+    pub anchor_table_generation: u32,
+
     // ── Reduction (Passes 4–6) ───────────────────────────────────────────────
     /// CSR child topology: `child_starts[i]..child_starts[i+1]` indexes
     /// children of parent slot `i`. Length `n_slots + 1` u32s.
@@ -165,6 +184,15 @@ pub struct WorldGpuState {
     post_rf_full_threshold_regs: Vec<ThresholdRegistration>,
     /// Need-cell thresholds only for post-RF append-only rescan.
     post_rf_need_threshold_regs: Vec<ThresholdRegistration>,
+    /// GPU-resident structural remap pipeline (orch remand `5120847431`).
+    anchor_remap_pipeline: wgpu::ComputePipeline,
+    anchor_remap_layout: wgpu::BindGroupLayout,
+    anchor_remap_uniform: Buffer,
+    /// Values-only magnitude refresh when no threshold session is present
+    /// (orch remand `5121185090`).
+    anchor_magnitude_values_pipeline: wgpu::ComputePipeline,
+    anchor_magnitude_values_layout: wgpu::BindGroupLayout,
+    anchor_magnitude_values_uniform: Buffer,
 }
 
 impl WorldGpuState {
@@ -173,11 +201,318 @@ impl WorldGpuState {
         &self,
         session: &mut crate::AccumulatorOpSession,
     ) -> Result<(), crate::AccumulatorOpSessionError> {
-        session.dispatch_threshold_scan(
+        let mut encoder = self
+            .ctx
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("accumulator_threshold_scan"),
+            });
+        session.encode_threshold_scan_with_anchor_maintain_into(
             &self.ctx,
+            &mut encoder,
             &self.resolved.values(),
             &self.resolved.previous_values(),
-        )
+            &self.resolved.output_vectors(),
+            &self.resolved.previous_output_vectors(),
+            Some((
+                &self.anchor_table,
+                self.n_anchor_rows,
+                self.anchor_table_generation,
+            )),
+        );
+        self.ctx.queue.submit(Some(encoder.finish()));
+        Ok(())
+    }
+
+    /// Magnitude-only fused companion (post-remap / no-crossing refresh).
+    ///
+    /// Must run only after structural GPU value sync has installed canonical
+    /// values at the rows' current slot/col (orch remand `5121185090`). When a
+    /// threshold session is present, urgency is derived from threshold ops;
+    /// otherwise observed_value is refreshed from the values plane with urgency 0.
+    pub fn run_anchor_table_magnitude_maintain(&mut self) {
+        if self.n_anchor_rows == 0 {
+            return;
+        }
+        if let Some(runtime) = self.accumulator_runtime.as_mut() {
+            if let Some(session) = runtime.take_threshold_session() {
+                let mut encoder =
+                    self.ctx
+                        .device
+                        .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                            label: Some("anchor_table_magnitude_maintain"),
+                        });
+                session.encode_anchor_table_maintain_into(
+                    &self.ctx,
+                    &mut encoder,
+                    &self.resolved.values(),
+                    &self.anchor_table,
+                    self.n_anchor_rows,
+                    self.anchor_table_generation,
+                    false,
+                );
+                self.ctx.queue.submit(Some(encoder.finish()));
+                if let Some(runtime) = self.accumulator_runtime.as_mut() {
+                    runtime.restore_threshold_session(Some(session));
+                }
+                return;
+            }
+        }
+        self.dispatch_anchor_magnitude_values_only();
+    }
+
+    fn dispatch_anchor_magnitude_values_only(&mut self) {
+        #[repr(C)]
+        #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+        struct MagnitudeValuesParams {
+            n_dims: u32,
+            n_anchor_rows: u32,
+            _pad0: u32,
+            _pad1: u32,
+        }
+        let params = MagnitudeValuesParams {
+            n_dims: self.n_dims,
+            n_anchor_rows: self.n_anchor_rows,
+            _pad0: 0,
+            _pad1: 0,
+        };
+        self.ctx.queue.write_buffer(
+            &self.anchor_magnitude_values_uniform,
+            0,
+            bytemuck::bytes_of(&params),
+        );
+        let bind_group = self.ctx.device.create_bind_group(&BindGroupDescriptor {
+            label: Some("anchor_magnitude_values_bg"),
+            layout: &self.anchor_magnitude_values_layout,
+            entries: &[
+                BindGroupEntry {
+                    binding: 0,
+                    resource: self.resolved.values().as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 1,
+                    resource: self.anchor_table.as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 2,
+                    resource: self.anchor_magnitude_values_uniform.as_entire_binding(),
+                },
+            ],
+        });
+        let mut encoder = self.ctx.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("anchor_table_magnitude_values"),
+        });
+        {
+            let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
+                label: Some("anchor_magnitude_values_pass"),
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&self.anchor_magnitude_values_pipeline);
+            pass.set_bind_group(0, &bind_group, &[]);
+            let groups = self.n_anchor_rows.div_ceil(64);
+            pass.dispatch_workgroups(groups, 1, 1);
+        }
+        self.ctx.queue.submit(Some(encoder.finish()));
+    }
+
+    pub fn set_anchor_table_generation(&mut self, generation: u32) {
+        self.anchor_table_generation = generation;
+    }
+
+    /// Admission / test upload of a typed STEAD table (encodes POD at this boundary).
+    pub fn upload_typed_anchor_table(&mut self, table: &AnchorTable) {
+        self.upload_anchor_table(&encode_anchor_table_gpu(table));
+    }
+
+    /// Consumer / oracle readback as the typed STEAD table.
+    pub fn read_typed_anchor_table(&self, registry: &DimensionRegistry) -> AnchorTable {
+        decode_anchor_table_gpu(&self.read_anchor_table(), registry)
+    }
+
+    /// GPU-resident structural remap (orch remand `5120847431`).
+    ///
+    /// Applies move/retire on the live GPU buffer and appends birth seeds minted
+    /// from the registry — never reads the live table to CPU for mutation.
+    pub fn apply_anchor_remap_section(
+        &mut self,
+        section: &AnchorRemapSection,
+        registry: &DimensionRegistry,
+    ) {
+        if section.remap_not_required || section.remaps.is_empty() {
+            return;
+        }
+        let mut ops = Vec::new();
+        let mut births = Vec::new();
+        for remap in &section.remaps {
+            match (remap.to_slot, remap.to_col, remap.from_slot, remap.from_col) {
+                (None, None, Some(from_slot), Some(from_col)) => {
+                    ops.push(AnchorRemapOpGpu {
+                        sim_thing_id: remap.sim_thing_id.raw(),
+                        property_id: remap.property_id.0,
+                        kind: ANCHOR_REMAP_KIND_RETIRE,
+                        from_slot: from_slot.raw(),
+                        from_col: from_col.raw_u32(),
+                        to_slot: 0,
+                        to_col: 0,
+                        _pad: 0,
+                    });
+                }
+                (Some(to_slot), Some(to_col), Some(from_slot), Some(from_col)) => {
+                    ops.push(AnchorRemapOpGpu {
+                        sim_thing_id: remap.sim_thing_id.raw(),
+                        property_id: remap.property_id.0,
+                        kind: ANCHOR_REMAP_KIND_MOVE,
+                        from_slot: from_slot.raw(),
+                        from_col: from_col.raw_u32(),
+                        to_slot: to_slot.raw(),
+                        to_col: to_col.raw_u32(),
+                        _pad: 0,
+                    });
+                }
+                (Some(to_slot), Some(to_col), None, None) => {
+                    births.extend(birth_anchor_rows_gpu(
+                        remap.sim_thing_id,
+                        remap.property_id,
+                        to_slot,
+                        to_col,
+                        registry,
+                    ));
+                }
+                _ => {}
+            }
+        }
+        if ops.is_empty() && births.is_empty() {
+            return;
+        }
+        // Structural remap only — magnitude refresh must wait until Step 9
+        // value sync installs canonical cells at the new coordinates.
+        self.dispatch_anchor_remap_gpu(&ops, &births);
+    }
+
+    fn dispatch_anchor_remap_gpu(&mut self, ops: &[AnchorRemapOpGpu], births: &[AnchorTableRowGpu]) {
+        let n_src = self.n_anchor_rows;
+        let capacity = (n_src as usize)
+            .saturating_add(births.len())
+            .saturating_add(ops.len())
+            .max(1);
+        let row_bytes = std::mem::size_of::<AnchorTableRowGpu>() as u64;
+        let dest = self.ctx.device.create_buffer(&BufferDescriptor {
+            label: Some("anchor_table_remap_dest"),
+            size: row_bytes * capacity as u64,
+            usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC | BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        let ops_buf = self.ctx.device.create_buffer(&BufferDescriptor {
+            label: Some("anchor_remap_ops"),
+            size: (std::mem::size_of::<AnchorRemapOpGpu>() * ops.len().max(1)) as u64,
+            usage: BufferUsages::STORAGE | BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        if !ops.is_empty() {
+            self.ctx
+                .queue
+                .write_buffer(&ops_buf, 0, bytemuck::cast_slice(ops));
+        }
+        let births_buf = self.ctx.device.create_buffer(&BufferDescriptor {
+            label: Some("anchor_remap_births"),
+            size: (std::mem::size_of::<AnchorTableRowGpu>() * births.len().max(1)) as u64,
+            usage: BufferUsages::STORAGE | BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        if !births.is_empty() {
+            self.ctx
+                .queue
+                .write_buffer(&births_buf, 0, bytemuck::cast_slice(births));
+        }
+        let count_buf = self.ctx.device.create_buffer(&BufferDescriptor {
+            label: Some("anchor_remap_out_count"),
+            size: 4,
+            usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC | BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        self.ctx.queue.write_buffer(&count_buf, 0, &0u32.to_le_bytes());
+        let params = AnchorRemapParams {
+            n_src_rows: n_src,
+            n_ops: ops.len() as u32,
+            n_births: births.len() as u32,
+            _pad: 0,
+        };
+        self.ctx.queue.write_buffer(
+            &self.anchor_remap_uniform,
+            0,
+            bytemuck::bytes_of(&params),
+        );
+        let bind_group = self.ctx.device.create_bind_group(&BindGroupDescriptor {
+            label: Some("anchor_table_remap_bg"),
+            layout: &self.anchor_remap_layout,
+            entries: &[
+                BindGroupEntry {
+                    binding: 0,
+                    resource: self.anchor_table.as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 1,
+                    resource: ops_buf.as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 2,
+                    resource: births_buf.as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 3,
+                    resource: dest.as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 4,
+                    resource: count_buf.as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 5,
+                    resource: self.anchor_remap_uniform.as_entire_binding(),
+                },
+            ],
+        });
+        let mut encoder = self.ctx.device.create_command_encoder(&CommandEncoderDescriptor {
+            label: Some("anchor_table_remap_encoder"),
+        });
+        {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("anchor_table_remap_pass"),
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&self.anchor_remap_pipeline);
+            pass.set_bind_group(0, &bind_group, &[]);
+            pass.dispatch_workgroups(1, 1, 1);
+        }
+        let count_readback = self.ctx.device.create_buffer(&BufferDescriptor {
+            label: Some("anchor_remap_count_readback"),
+            size: 4,
+            usage: BufferUsages::MAP_READ | BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        encoder.copy_buffer_to_buffer(&count_buf, 0, &count_readback, 0, 4);
+        // Grow live table if needed, then copy dest → live.
+        let needed_bytes = row_bytes * capacity as u64;
+        if needed_bytes > self.anchor_table.size() {
+            self.anchor_table = self.ctx.device.create_buffer(&BufferDescriptor {
+                label: Some("anchor_table"),
+                size: needed_bytes,
+                usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC | BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            });
+        }
+        encoder.copy_buffer_to_buffer(&dest, 0, &self.anchor_table, 0, needed_bytes);
+        self.ctx.queue.submit(Some(encoder.finish()));
+        self.ctx.device.poll(Maintain::Wait);
+        let slice = count_readback.slice(..);
+        slice.map_async(MapMode::Read, |_| {});
+        self.ctx.device.poll(Maintain::Wait);
+        let data = slice.get_mapped_range();
+        let mut bytes = [0u8; 4];
+        bytes.copy_from_slice(&data[..4]);
+        drop(data);
+        count_readback.unmap();
+        self.n_anchor_rows = u32::from_le_bytes(bytes);
     }
 
     /// Indexed scatter from resolved `values` into `dest` (mapping hot path).
@@ -282,6 +617,112 @@ impl WorldGpuState {
             std::mem::size_of::<ThresholdEventGpu>() as u64,
         );
 
+        let anchor_table = mk(
+            "anchor_table",
+            std::mem::size_of::<AnchorTableRowGpu>() as u64,
+        );
+
+        let remap_shader = ctx.device.create_shader_module(ShaderModuleDescriptor {
+            label: Some("anchor_table_remap"),
+            source: ShaderSource::Wgsl(include_str!("shaders/anchor_table_remap.wgsl").into()),
+        });
+        let storage = |binding: u32, read_only: bool| BindGroupLayoutEntry {
+            binding,
+            visibility: ShaderStages::COMPUTE,
+            ty: BindingType::Buffer {
+                ty: BufferBindingType::Storage { read_only },
+                has_dynamic_offset: false,
+                min_binding_size: None,
+            },
+            count: None,
+        };
+        let anchor_remap_layout = ctx.device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+            label: Some("anchor_table_remap_layout"),
+            entries: &[
+                storage(0, true),
+                storage(1, true),
+                storage(2, true),
+                storage(3, false),
+                storage(4, false),
+                BindGroupLayoutEntry {
+                    binding: 5,
+                    visibility: ShaderStages::COMPUTE,
+                    ty: BindingType::Buffer {
+                        ty: BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+            ],
+        });
+        let remap_pl = ctx.device.create_pipeline_layout(&PipelineLayoutDescriptor {
+            label: Some("anchor_table_remap_pl"),
+            bind_group_layouts: &[&anchor_remap_layout],
+            push_constant_ranges: &[],
+        });
+        let anchor_remap_pipeline = ctx.device.create_compute_pipeline(&ComputePipelineDescriptor {
+            label: Some("anchor_table_remap_pipeline"),
+            layout: Some(&remap_pl),
+            module: &remap_shader,
+            entry_point: "apply_anchor_remaps",
+            compilation_options: Default::default(),
+            cache: None,
+        });
+        let anchor_remap_uniform = ctx.device.create_buffer(&BufferDescriptor {
+            label: Some("anchor_table_remap_uniform"),
+            size: std::mem::size_of::<AnchorRemapParams>() as u64,
+            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
+        let magnitude_values_shader = ctx.device.create_shader_module(ShaderModuleDescriptor {
+            label: Some("anchor_table_magnitude_values"),
+            source: ShaderSource::Wgsl(
+                include_str!("shaders/anchor_table_magnitude_values.wgsl").into(),
+            ),
+        });
+        let anchor_magnitude_values_layout =
+            ctx.device
+                .create_bind_group_layout(&BindGroupLayoutDescriptor {
+                    label: Some("anchor_magnitude_values_layout"),
+                    entries: &[
+                        storage(0, true),
+                        storage(1, false),
+                        BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: ShaderStages::COMPUTE,
+                            ty: BindingType::Buffer {
+                                ty: BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
+        let magnitude_values_pl = ctx.device.create_pipeline_layout(&PipelineLayoutDescriptor {
+            label: Some("anchor_magnitude_values_pl"),
+            bind_group_layouts: &[&anchor_magnitude_values_layout],
+            push_constant_ranges: &[],
+        });
+        let anchor_magnitude_values_pipeline =
+            ctx.device
+                .create_compute_pipeline(&ComputePipelineDescriptor {
+                    label: Some("anchor_magnitude_values_pipeline"),
+                    layout: Some(&magnitude_values_pl),
+                    module: &magnitude_values_shader,
+                    entry_point: "maintain_anchor_magnitudes_values_only",
+                    compilation_options: Default::default(),
+                    cache: None,
+                });
+        let anchor_magnitude_values_uniform = ctx.device.create_buffer(&BufferDescriptor {
+            label: Some("anchor_magnitude_values_uniform"),
+            size: 16,
+            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
         // Reduction buffers — placeholder allocations, filled by upload_reduction_topology.
         let child_starts = mk("child_starts", ((n_slots as u64) + 1) * 4);
         let child_indices = mk("child_indices", 4); // placeholder 1 u32
@@ -308,6 +749,9 @@ impl WorldGpuState {
             threshold_registry,
             threshold_events,
             n_thresholds: 0,
+            anchor_table,
+            n_anchor_rows: 0,
+            anchor_table_generation: 0,
             child_starts,
             child_indices,
             column_rules,
@@ -331,6 +775,12 @@ impl WorldGpuState {
             accumulator_resource_flow_bands: 0,
             post_rf_full_threshold_regs: Vec::new(),
             post_rf_need_threshold_regs: Vec::new(),
+            anchor_remap_pipeline,
+            anchor_remap_layout,
+            anchor_remap_uniform,
+            anchor_magnitude_values_pipeline,
+            anchor_magnitude_values_layout,
+            anchor_magnitude_values_uniform,
         }
     }
 
@@ -1088,13 +1538,18 @@ impl WorldGpuState {
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("post_rf_need_threshold_rescan"),
             });
-        session.encode_threshold_scan_with_outputs_into(
+        session.encode_threshold_scan_with_anchor_maintain_into(
             &self.ctx,
             &mut encoder,
             &self.resolved.values(),
             &self.resolved.previous_values(),
             &self.resolved.output_vectors(),
             &self.resolved.previous_output_vectors(),
+            Some((
+                &self.anchor_table,
+                self.n_anchor_rows,
+                self.anchor_table_generation,
+            )),
         );
         self.ctx.queue.submit(Some(encoder.finish()));
         session.finish_threshold_scan(&self.ctx);
@@ -1206,6 +1661,12 @@ impl WorldGpuState {
             std::mem::size_of::<ThresholdEventGpu>() as u64,
         );
         self.n_thresholds = 0;
+
+        self.anchor_table = self.mk_storage_buffer(
+            "anchor_table",
+            std::mem::size_of::<AnchorTableRowGpu>() as u64,
+        );
+        self.n_anchor_rows = 0;
 
         // Reduction: column_rules grows with n_dims; child_starts grows with n_slots.
         self.column_rules = self.mk_storage_buffer("column_rules", (self.n_dims as u64) * 8);
@@ -1328,6 +1789,7 @@ impl WorldGpuState {
         self.n_overlay_deltas = 0;
         self.n_intent_deltas = 0;
         self.n_thresholds = 0;
+        self.n_anchor_rows = 0;
         self.depth_bucket_ranges.clear();
     }
 
@@ -1439,6 +1901,40 @@ impl WorldGpuState {
                 .queue
                 .write_buffer(&self.threshold_registry, 0, bytemuck::cast_slice(regs));
         }
+    }
+
+    /// Upload the derived STEAD anchor table POD twin. Reallocates when larger
+    /// than current capacity. Empty input clears the live row count.
+    /// Crate-internal: POD type is not a public kernel-surface export.
+    pub(crate) fn upload_anchor_table(&mut self, rows: &[AnchorTableRowGpu]) {
+        let needed_count = rows.len().max(1);
+        let bytes = (needed_count * std::mem::size_of::<AnchorTableRowGpu>()) as u64;
+        if bytes > self.anchor_table.size() {
+            self.anchor_table = self.ctx.device.create_buffer(&BufferDescriptor {
+                label: Some("anchor_table"),
+                size: bytes,
+                usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC | BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            });
+        }
+        self.n_anchor_rows = rows.len() as u32;
+        if !rows.is_empty() {
+            self.ctx
+                .queue
+                .write_buffer(&self.anchor_table, 0, bytemuck::cast_slice(rows));
+        }
+    }
+
+    /// Read back uploaded anchor-table POD rows (GPU/oracle parity).
+    /// Crate-internal: POD type is not a public kernel-surface export.
+    pub(crate) fn read_anchor_table(&self) -> Vec<AnchorTableRowGpu> {
+        if self.n_anchor_rows == 0 {
+            return Vec::new();
+        }
+        let row_size = std::mem::size_of::<AnchorTableRowGpu>();
+        let used = row_size * self.n_anchor_rows as usize;
+        let bytes = self.read_buffer_bytes(&self.anchor_table);
+        bytemuck::cast_slice(&bytes[..used]).to_vec()
     }
 
     /// Append new registrations at offset `n_thresholds * sizeof(...)` without
@@ -1622,6 +2118,7 @@ impl WorldGpuState {
             + self.intent_deltas.size()
             + self.threshold_registry.size()
             + self.threshold_events.total_buffer_bytes()
+            + self.anchor_table.size()
             + self.child_starts.size()
             + self.child_indices.size()
             + self.column_rules.size()
