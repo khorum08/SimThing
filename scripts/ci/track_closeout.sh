@@ -2702,6 +2702,32 @@ def cmd_rungclose() -> int:
             "(Two-Source Pointer Rule: the pointer moves at the DA stamp)"
         )
 
+    # Piggyback 1: an open binding condition on this rung blocks graduation.
+    # Previously prose-only; a rung could graduate with its own promotion
+    # blocker still open.
+    bc = ROOT / "scripts/ci/binding_conditions.tsv"
+    if bc.exists():
+        with bc.open(encoding="utf-8", newline="") as fh:
+            for brow in csv.DictReader(fh, delimiter="	"):
+                if (brow.get("rung") or "").strip() == rung and (
+                    brow.get("status") or ""
+                ).strip().lower() not in {"", "closed", "discharged", "resolved"}:
+                    failures.append(
+                        f"binding condition open on this rung: {brow.get('condition')} "
+                        f"(status={brow.get('status')}, blocker={brow.get('promotion_blocker')})"
+                    )
+
+    # Piggyback 2: the results doc must be COMPLETE. This was a hand step in
+    # the ritual and is the easiest to forget after a long review.
+    slug = rung.lower().replace("-", "_")
+    if slug.endswith("_0"):
+        slug = slug[:-2] + "_0"
+    doc = ROOT / "docs" / "tests" / f"{slug}_results.md"
+    if doc.exists():
+        head = doc.read_text(encoding="utf-8", errors="replace")[:4000]
+        if "PROBATION" in head and "COMPLETE" not in head:
+            failures.append(f"results doc still PROBATION: docs/tests/{doc.name}")
+
     orient = subprocess.run([BASH, str(SCRIPT_DIR / "gen_orientation.sh"), "--check"],
                             cwd=str(ROOT), capture_output=True, text=True)
     if orient.returncode != 0 or "PASS" not in orient.stdout:
