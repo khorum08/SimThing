@@ -282,8 +282,9 @@ fn blank_unobserved_reason_hard_errors_at_scalar_span() {
     assert!(err.message.contains("must be non-empty"));
 }
 
-#[test]
-fn canonical_tp_install_has_total_disposition_with_da_unobserved_dark_cells() {
+/// Corrected totality semantics (admission-governs-existence): closed Anchored/Unobserved
+/// partition with derived counts published; no fixed 18/7 target.
+fn assert_canonical_tp_disposition_admission_totality() {
     let preview = canonical_preview();
     let report = &preview.state.property_admission;
     assert!(
@@ -317,6 +318,12 @@ fn canonical_tp_install_has_total_disposition_with_da_unobserved_dark_cells() {
         assert_eq!(row.property_id.index(), index);
         assert!(!row.roles.is_empty(), "resource property has no role pathway");
     }
+}
+
+/// Protected inventory identity (birth track 0.0.8.7); wrapper over corrected totality helper.
+#[test]
+fn canonical_tp_install_has_total_default_anchored_disposition() {
+    assert_canonical_tp_disposition_admission_totality();
 }
 
 /// Invoked only by scripts/ci/gen_property_admission_inventory.sh.

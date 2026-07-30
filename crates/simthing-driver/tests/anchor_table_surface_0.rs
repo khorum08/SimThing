@@ -1162,8 +1162,9 @@ fn boundary_protocol_structural_remap_value_authority() {
     assert_ne!(born.observed_value, PRE_DEST);
 }
 
-#[test]
-fn canonical_tp_gpu_table_matches_admission_totality() {
+/// Corrected totality semantics: ordinary field-bearing TP install covers every
+/// Anchored tp_economy identity; derived counts published (no fixed 25/0 target).
+fn assert_canonical_tp_gpu_table_matches_admission_totality() {
     use simthing_clausething::{hydrate_scenario_with_source_base, parse_raw_document};
     use simthing_driver::preview_install;
 
@@ -1254,4 +1255,10 @@ fn canonical_tp_gpu_table_matches_admission_totality() {
             .count(),
         report.unobserved_count()
     );
+}
+
+/// Protected inventory identity (birth track 0.0.8.7); wrapper over corrected totality helper.
+#[test]
+fn canonical_tp_gpu_table_matches_25_anchored_0_unobserved() {
+    assert_canonical_tp_gpu_table_matches_admission_totality();
 }

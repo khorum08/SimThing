@@ -6,6 +6,7 @@
 - ORIENT-RECEIPT: `8555a6c8ed5c`
 - orientation_rule_stamp: `428229b9129d598e`
 - Remand 2: orch `5124965247` · DA HOLD lift `5124943291` · corrected master #1503 @ `ed7e6264`
+- Remand 3: orch `5125114823` — protected test identities restored as wrappers (no production delta)
 
 ## Binding law (admission governs existence)
 
@@ -65,8 +66,8 @@ Canonical TP authored `Unobserved{reason}` rows (enumerated evidence, not a glob
 |---|---|---|
 | `property_admission_inventory.tsv` | regenerated; counts published | admission law / corpus |
 | `docs/orchestrator_orientation.md` | regenerated | inventory + design stamp |
-| `test_inventory.tsv` | ledger rename/add; drop 3 stale | TEST-INVENTORY-DRIFT |
-| 5.3b referees | drop fixed 18/7 asserts; rename count-encoded tests | no fixed-count targets |
+| `test_inventory.tsv` | restore 3 protected identities; ledger 3 additional materialization tests | TRACK-CLOSEOUT deletion-guard + TEST-INVENTORY-DRIFT |
+| 5.3b referees | drop fixed 18/7 asserts; protected `#[test]` names wrap corrected helpers | no fixed-count targets; identities preserved |
 
 ## Reproduce
 

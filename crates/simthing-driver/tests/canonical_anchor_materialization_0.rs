@@ -317,12 +317,9 @@ fn count_tree_property_loci(node: &SimThing, counts: &mut HashMap<SimPropertyId,
     }
 }
 
-/// Derivation-set census: Anchored properties with zero live PropertyValue
-/// stores after the ordinary install's admitted structures resolve.
-/// Materialization may have filled gaps; the residual set must be empty
-/// (zero=0 / conflict=0 — no unresolved derivation debt).
-#[test]
-fn derivation_set_census_zero_conflict_free() {
+/// Corrected post-ruling census: after ordinary install, residual derivation set
+/// (Anchored with zero live loci) must be empty — zero=0 / conflict=0.
+fn assert_derivation_set_census_zero_conflict_free() {
     let (exact_all, zero_all, conflict_all, hydrate_md) = census_markdown();
     eprintln!("\n=== HYDRATE VALUE-PLACING TABLE (diagnostic) ===\n{hydrate_md}");
     assert_eq!(zero_all, 0, "hydrate Anchored must not have zero-candidate rows");
@@ -364,6 +361,12 @@ fn derivation_set_census_zero_conflict_free() {
         derivation_set.is_empty(),
         "derivation set must be empty after ordinary install (totality); residual={derivation_set:?}"
     );
+}
+
+/// Protected inventory identity (birth track 0.0.8.7); wrapper over corrected census helper.
+#[test]
+fn candidate_evidence_census_before_implementation() {
+    assert_derivation_set_census_zero_conflict_free();
 }
 
 fn properties_only_inventory_preview() -> simthing_driver::InstallPreview {
