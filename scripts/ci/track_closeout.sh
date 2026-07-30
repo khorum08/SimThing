@@ -363,6 +363,88 @@ def inv_key(row: dict):
     return (row["crate"], row["file"], row["test_name"], row["kind"])
 
 
+AUTHORIZED_RENAMES = SCRIPT_DIR / "authorized_renames.tsv"
+AUTHORIZED_RENAMES_HEADER = [
+    "old_identity", "new_identity", "file", "authorizing_ruling", "rung",
+]
+
+
+def git_show_text(ref: str, rel: str):
+    try:
+        out = subprocess.run(
+            ["git", "-C", str(ROOT), "show", f"{ref}:{rel}"],
+            capture_output=True,
+            check=True,
+        )
+    except subprocess.CalledProcessError:
+        return None
+    return norm_bytes(out.stdout)
+
+
+def load_authorized_renames(ref: str) -> list:
+    """Load rename ledger at git ref (absent => empty; never note-authorized)."""
+    text = git_show_text(ref, "scripts/ci/authorized_renames.tsv")
+    if text is None:
+        return []
+    reader = csv.DictReader(io.StringIO(text), delimiter="\t")
+    return list(reader)
+
+
+def new_identity_present_in_diff(base: str, head: str, file: str, new_identity: str) -> bool:
+    """True when fn <new_identity> is added (or newly present) in file between base..head."""
+    head_src = git_show_text(head, file) or ""
+    if f"fn {new_identity}" not in head_src:
+        return False
+    base_src = git_show_text(base, file) or ""
+    if f"fn {new_identity}" not in base_src:
+        return True
+    try:
+        diff = subprocess.run(
+            ["git", "-C", str(ROOT), "diff", "-U0", base, head, "--", file],
+            capture_output=True,
+            check=True,
+        )
+    except subprocess.CalledProcessError:
+        return False
+    for line in norm_bytes(diff.stdout).splitlines():
+        if line.startswith("+") and not line.startswith("+++") and f"fn {new_identity}" in line:
+            return True
+    return False
+
+
+def is_authorized_inventory_rename(
+    removed_row: dict,
+    head_rows: list,
+    base: str,
+    head: str,
+    ledger_rows: list,
+) -> bool:
+    """Non-deletion only via authorized_renames.tsv + head inventory + code presence."""
+    old_name = (removed_row.get("test_name") or "").strip()
+    file = (removed_row.get("file") or "").strip().replace("\\", "/")
+    if not old_name or not file:
+        return False
+    matches = [
+        r for r in ledger_rows
+        if (r.get("old_identity") or "").strip() == old_name
+        and (r.get("file") or "").strip().replace("\\", "/") == file
+    ]
+    if len(matches) != 1:
+        return False
+    new_name = (matches[0].get("new_identity") or "").strip()
+    if not new_name:
+        return False
+    if not any(
+        (h.get("test_name") or "").strip() == new_name
+        and (h.get("file") or "").strip().replace("\\", "/") == file
+        for h in head_rows
+    ):
+        return False
+    if not new_identity_present_in_diff(base, head, file, new_name):
+        return False
+    return True
+
+
 def clean_repo_relpath(path: str) -> str:
     rel = (path or "").replace("\\", "/").strip()
     if not rel or rel.startswith("/") or ":" in rel:
@@ -1686,11 +1768,16 @@ def cmd_deletion_guard():
     except subprocess.CalledProcessError:
         changed_files = set()
 
+    ledger_rows = load_authorized_renames(head)
     violations = []
+    authorized_renames = 0
     for r in removed:
         bt = r.get("birth_track", "").strip()
         if is_cfg_marker_deletion_candidate(r):
             continue  # ledger-only residue has its own sanctioned sweep route
+        if is_authorized_inventory_rename(r, head_rows, base, head, ledger_rows):
+            authorized_renames += 1
+            continue  # scripts/ci/authorized_renames.tsv + inventory + code presence
         if base_status.get(bt) == "closed":
             continue
         if (head_status.get(bt) == "closed"
@@ -1701,6 +1788,7 @@ def cmd_deletion_guard():
 
     print("TRACK-CLOSEOUT DELETION-GUARD")
     print(f"  removed inventory rows: {len(removed)}")
+    print(f"  authorized renames: {authorized_renames}")
     print(f"  unauthorized (birth_track not closed by closeout): {len(violations)}")
     for key, bt in violations[:10]:
         print(f"  - {key} birth_track={bt!r} (open — run track_closeout --apply to close it first)")
@@ -2400,6 +2488,115 @@ def cmd_prove():
                                   capture_output=True, text=True, cwd=str(gr), env={**os.environ})
         check("deletion-guard-allows-closeout-pr-with-manifest",
               "DELETION-GUARD-VERDICT: PASS" in r_lawful.stdout)
+
+        # Authorized rename via scripts/ci/authorized_renames.tsv (note bypass REJECTED).
+        rename_header = ["old_identity", "new_identity", "file", "authorizing_ruling", "rung"]
+        (gr / "crates" / "c" / "tests").mkdir(parents=True, exist_ok=True)
+        write_tsv(gr / "scripts/ci/test_inventory.tsv", INVENTORY_HEADER, inv0)
+        for t in trk:
+            if t["track_id"] == "open-track":
+                t["status"] = "open"; t["closed_at"] = "-"
+        write_tsv(gr / "scripts/ci/test_lifecycle_tracks.tsv", TRACKS_HEADER, trk)
+        (gr / "crates/c/tests/open.rs").write_text("#[test]\nfn open_t() {}\n", encoding="utf-8")
+        write_tsv(gr / "scripts/ci/authorized_renames.tsv", rename_header, [])
+        grun("add", "-A"); grun("commit", "-q", "-m", "base-rename")
+        base_rename = grun("rev-parse", "HEAD").stdout.strip()
+
+        renamed_inv = [
+            {"crate": "c", "file": "crates/c/tests/open.rs", "test_name": "open_t_renamed", "kind": "integration",
+             "class": "behavior-regression", "superseding_boundary": "B", "verdict": "KEEP",
+             "note": "n",
+             "promotion_target": "permanent-residue:behavior-regression", "birth_track": "open-track", "dsu_survivals": "0"},
+            inv0[1],
+        ]
+        rename_row = [{
+            "old_identity": "open_t", "new_identity": "open_t_renamed",
+            "file": "crates/c/tests/open.rs", "authorizing_ruling": "test-ruling", "rung": "prove",
+        }]
+
+        # Lawful: ledger + inventory successor + fn present in code diff → PASS.
+        write_tsv(gr / "scripts/ci/test_inventory.tsv", INVENTORY_HEADER, renamed_inv)
+        write_tsv(gr / "scripts/ci/authorized_renames.tsv", rename_header, rename_row)
+        (gr / "crates/c/tests/open.rs").write_text("#[test]\nfn open_t_renamed() {}\n", encoding="utf-8")
+        grun("add", "-A"); grun("commit", "-q", "-m", "authorized-rename-lawful")
+        head_rename = grun("rev-parse", "HEAD").stdout.strip()
+        r_rename = subprocess.run(
+            [BASH, "scripts/ci/track_closeout.sh", "--deletion-guard", base_rename, head_rename],
+            capture_output=True, text=True, cwd=str(gr), env={**os.environ})
+        check("deletion-guard-allows-authorized-rename-ledger",
+              "DELETION-GUARD-VERDICT: PASS" in r_rename.stdout
+              and "authorized renames: 1" in r_rename.stdout)
+
+        # Missing ledger row → FAIL.
+        write_tsv(gr / "scripts/ci/test_inventory.tsv", INVENTORY_HEADER, inv0)
+        write_tsv(gr / "scripts/ci/authorized_renames.tsv", rename_header, [])
+        (gr / "crates/c/tests/open.rs").write_text("#[test]\nfn open_t() {}\n", encoding="utf-8")
+        grun("add", "-A"); grun("commit", "-q", "-m", "reset-rename-base")
+        base_miss = grun("rev-parse", "HEAD").stdout.strip()
+        write_tsv(gr / "scripts/ci/test_inventory.tsv", INVENTORY_HEADER, renamed_inv)
+        (gr / "crates/c/tests/open.rs").write_text("#[test]\nfn open_t_renamed() {}\n", encoding="utf-8")
+        grun("add", "-A"); grun("commit", "-q", "-m", "rename-no-ledger")
+        head_miss = grun("rev-parse", "HEAD").stdout.strip()
+        r_miss = subprocess.run(
+            [BASH, "scripts/ci/track_closeout.sh", "--deletion-guard", base_miss, head_miss],
+            capture_output=True, text=True, cwd=str(gr), env={**os.environ})
+        check("deletion-guard-rename-missing-ledger-fails",
+              "DELETION-GUARD-VERDICT: FAIL unauthorized=1" in r_miss.stdout)
+
+        # Unmatched file in ledger → FAIL.
+        write_tsv(gr / "scripts/ci/test_inventory.tsv", INVENTORY_HEADER, inv0)
+        write_tsv(gr / "scripts/ci/authorized_renames.tsv", rename_header, [])
+        (gr / "crates/c/tests/open.rs").write_text("#[test]\nfn open_t() {}\n", encoding="utf-8")
+        grun("add", "-A"); grun("commit", "-q", "-m", "reset-rename-file")
+        base_file = grun("rev-parse", "HEAD").stdout.strip()
+        bad_file_row = [{
+            "old_identity": "open_t", "new_identity": "open_t_renamed",
+            "file": "crates/c/tests/other.rs", "authorizing_ruling": "test-ruling", "rung": "prove",
+        }]
+        write_tsv(gr / "scripts/ci/test_inventory.tsv", INVENTORY_HEADER, renamed_inv)
+        write_tsv(gr / "scripts/ci/authorized_renames.tsv", rename_header, bad_file_row)
+        (gr / "crates/c/tests/open.rs").write_text("#[test]\nfn open_t_renamed() {}\n", encoding="utf-8")
+        grun("add", "-A"); grun("commit", "-q", "-m", "rename-wrong-file")
+        head_file = grun("rev-parse", "HEAD").stdout.strip()
+        r_file = subprocess.run(
+            [BASH, "scripts/ci/track_closeout.sh", "--deletion-guard", base_file, head_file],
+            capture_output=True, text=True, cwd=str(gr), env={**os.environ})
+        check("deletion-guard-rename-unmatched-file-fails",
+              "DELETION-GUARD-VERDICT: FAIL unauthorized=1" in r_file.stdout)
+
+        # Absent new test in code → FAIL.
+        write_tsv(gr / "scripts/ci/test_inventory.tsv", INVENTORY_HEADER, inv0)
+        write_tsv(gr / "scripts/ci/authorized_renames.tsv", rename_header, [])
+        (gr / "crates/c/tests/open.rs").write_text("#[test]\nfn open_t() {}\n", encoding="utf-8")
+        grun("add", "-A"); grun("commit", "-q", "-m", "reset-rename-code")
+        base_code = grun("rev-parse", "HEAD").stdout.strip()
+        write_tsv(gr / "scripts/ci/test_inventory.tsv", INVENTORY_HEADER, renamed_inv)
+        write_tsv(gr / "scripts/ci/authorized_renames.tsv", rename_header, rename_row)
+        (gr / "crates/c/tests/open.rs").write_text("#[test]\nfn still_old_name() {}\n", encoding="utf-8")
+        grun("add", "-A"); grun("commit", "-q", "-m", "rename-no-code")
+        head_code = grun("rev-parse", "HEAD").stdout.strip()
+        r_code = subprocess.run(
+            [BASH, "scripts/ci/track_closeout.sh", "--deletion-guard", base_code, head_code],
+            capture_output=True, text=True, cwd=str(gr), env={**os.environ})
+        check("deletion-guard-rename-absent-new-test-fails",
+              "DELETION-GUARD-VERDICT: FAIL unauthorized=1" in r_code.stdout)
+
+        # Absent replacement inventory row → FAIL.
+        write_tsv(gr / "scripts/ci/test_inventory.tsv", INVENTORY_HEADER, inv0)
+        write_tsv(gr / "scripts/ci/authorized_renames.tsv", rename_header, [])
+        (gr / "crates/c/tests/open.rs").write_text("#[test]\nfn open_t() {}\n", encoding="utf-8")
+        grun("add", "-A"); grun("commit", "-q", "-m", "reset-rename-inv")
+        base_inv = grun("rev-parse", "HEAD").stdout.strip()
+        write_tsv(gr / "scripts/ci/test_inventory.tsv", INVENTORY_HEADER, [inv0[1]])
+        write_tsv(gr / "scripts/ci/authorized_renames.tsv", rename_header, rename_row)
+        (gr / "crates/c/tests/open.rs").write_text("#[test]\nfn open_t_renamed() {}\n", encoding="utf-8")
+        grun("add", "-A"); grun("commit", "-q", "-m", "rename-no-inventory")
+        head_inv = grun("rev-parse", "HEAD").stdout.strip()
+        r_inv = subprocess.run(
+            [BASH, "scripts/ci/track_closeout.sh", "--deletion-guard", base_inv, head_inv],
+            capture_output=True, text=True, cwd=str(gr), env={**os.environ})
+        check("deletion-guard-rename-absent-inventory-row-fails",
+              "DELETION-GUARD-VERDICT: FAIL unauthorized=1" in r_inv.stdout)
 
     # decommission reaper: deletes only unambiguously-safe expired assets; refuses the rest.
     with tempfile.TemporaryDirectory() as rtmp:

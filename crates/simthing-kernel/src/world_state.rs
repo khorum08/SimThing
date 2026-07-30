@@ -201,6 +201,9 @@ impl WorldGpuState {
         &self,
         session: &mut crate::AccumulatorOpSession,
     ) -> Result<(), crate::AccumulatorOpSessionError> {
+        // Direct-drive must prepare tick uniform / emission count before encode
+        // (same contract as AccumulatorOpSession::dispatch_threshold_scan).
+        session.prepare_threshold_scan(&self.ctx);
         let mut encoder = self
             .ctx
             .device
@@ -221,6 +224,7 @@ impl WorldGpuState {
             )),
         );
         self.ctx.queue.submit(Some(encoder.finish()));
+        session.finish_threshold_scan(&self.ctx);
         Ok(())
     }
 
