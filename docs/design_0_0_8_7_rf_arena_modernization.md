@@ -304,12 +304,16 @@ transpiles to a canonical `ScenarioSpec` **without engine changes**, and that mu
 however radically the substrate is rebuilt. This is the deliberate complement to the Detachability
 Law, not a contradiction of it: **the engine must never DEPEND on the corpus; the authoring layer
 must ALWAYS be able to READ it.** Accordingly the Invariant Set governs the SUBSTRATE, and the
-authoring layer carries exactly one invariant of its own — **native-ingestion** — whose witness may
-never be reaped for failing to name a substrate invariant. Standing hazard, recorded because it was
-live when this law was written: after `TP-PURGE-0` the engine no longer touches the corpus, so the
-ingestion path has exactly ONE witness (`tp_full_transpile_0`), born in a track closed 2026-07-09
-and therefore reapable but for this law. A purge that removes the last reader of the corpus has
-gone one step too far.
+authoring layer carries exactly one invariant of its own — **native-ingestion** — witnessed by the
+~40 MINIMAL authored fixtures in `crates/simthing-clausething/tests/fixtures/*.clause` (31B–3.4KB,
+grammar-level), **never by the game corpus**. Proving the language on an 11.5KB galaxy proves that
+one scenario transpiles, not that the language works. **`.clause` files are EXTERNAL ASSETS** —
+like an image or a mesh. An asset may sit in the tree unread and unversioned by any proof; it
+influences the corpus **only when a proof reads it**, and at that moment it becomes corpus
+coupling subject to every rule above. So: **delete the proofs that read the game corpus; keep the
+asset.** The engine's independence is proven by the corpus-absent run; the language's health is
+proven by minimal fixtures; and the artefact itself persists as authored Clausewitz source that
+must remain ingestible however the substrate is rebuilt.
 
 **The Invariant Set (Owner mandate, 2026-07-30) — the COMPLETE proof surface of the substrate.**
 Engine correctness is these laws and nothing else. Each holds for **any** input, so each is
