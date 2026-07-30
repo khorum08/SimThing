@@ -1257,8 +1257,10 @@ fn assert_canonical_tp_gpu_table_matches_admission_totality() {
     );
 }
 
-/// Protected inventory identity (birth track 0.0.8.7); wrapper over corrected totality helper.
+/// Protected inventory identity (birth track 0.0.8.7); truthful rename of the
+/// retracted fixed-25/0 name (authority: `scripts/ci/authorized_renames.tsv`).
+/// Transition-only 5.3c artifact — mandatory TP-purge successor paired reap/replace.
 #[test]
-fn canonical_tp_gpu_table_matches_25_anchored_0_unobserved() {
+fn canonical_tp_gpu_table_matches_admission_totality() {
     assert_canonical_tp_gpu_table_matches_admission_totality();
 }
