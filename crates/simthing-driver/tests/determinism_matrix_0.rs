@@ -1,4 +1,4 @@
-//! TP-PURGE-0 Remand 5 — `determinism_matrix` (DA `5135942768` / Remand `5137044659`).
+//! TP-PURGE-0 Remand 6 — `determinism_matrix` (DA `5135942768` / Remand `5137229638`).
 //!
 //! Five approved cases. Inline input. Green and red postures receive the **same
 //! semantic input**; red uses a test-local mutant mechanism path.
@@ -7,9 +7,10 @@
 //! owner-silo disburse-down equal-claim tie-break (absorbed; not an eleventh case).
 
 use simthing_core::{
-    DimensionRegistry, Overlay, OverlayId, OverlayKind, OverlayLifecycle, OverlaySource,
-    PropertyTransformDelta, SimProperty, SimPropertyId, SimThing, SimThingKind, SubFieldRole,
-    TransformOp,
+    eml_nodes::{self, EmlNode},
+    DimensionRegistry, EmlExecutionClass, Overlay, OverlayId, OverlayKind, OverlayLifecycle,
+    OverlaySource, PropertyTransformDelta, SimProperty, SimPropertyId, SimThing, SimThingKind,
+    SubFieldRole, TransformOp,
 };
 use simthing_gpu::{plan_overlay_orderband, OverlayDelta, OverlayOrderBandPlan, SlotDeltaRange};
 use simthing_sim::{
@@ -23,7 +24,8 @@ use simthing_spec::designer_admission::{
 use simthing_spec::{
     apply_owner_silo_runtime_disburse_down_cpu, compile_eml_gadget,
     deserialize_mobility_scenario0_packet_ron, serialize_mobility_scenario0_packet_ron,
-    CompiledEmlGadget, EmlGadgetCompileOptions, EmlGadgetInstanceSpec, MobilityAllocationBounds,
+    CompiledEmlGadget, EmlGadgetCompileOptions, EmlGadgetInstanceSpec, EmlGadgetKind,
+    MobilityAllocationBounds,
     MobilityBlockadeSemantics, MobilityIdentityBoundary, MobilityIdentityChannelBudget,
     MobilityOwnerColumn, MobilityOwnerRelationDiscipline, MobilityOwnerRelationKind,
     MobilityQuantityClasses, MobilityRoutingMode, MobilityRoutingPolicy, MobilityScenario0GuardrailRequests,
@@ -478,24 +480,105 @@ fn case_mobility_dispatch(plant_defect: bool) -> bool {
     live == other
 }
 
-/// Mutant SoftStep compiler/encoder: seal nodes in reverse emission order.
-fn mutant_compile_eml_gadget_reverse_encode(
+fn mutant_node_literal(v: f32) -> EmlNode {
+    EmlNode {
+        opcode: eml_nodes::opcode::LITERAL_F32,
+        flags: 0,
+        a: v.to_bits(),
+        b: 0,
+        c: 0,
+        d: 0,
+    }
+}
+
+fn mutant_node_slot(col: u32) -> EmlNode {
+    EmlNode {
+        opcode: eml_nodes::opcode::SLOT_VALUE,
+        flags: 0,
+        a: col,
+        b: 0,
+        c: 0,
+        d: 0,
+    }
+}
+
+fn mutant_node_binop(opcode: u32) -> EmlNode {
+    EmlNode {
+        opcode,
+        flags: 0,
+        a: 0,
+        b: 0,
+        c: 0,
+        d: 0,
+    }
+}
+
+fn mutant_node_div_safe() -> EmlNode {
+    EmlNode {
+        opcode: eml_nodes::opcode::DIV,
+        flags: 1,
+        a: 0,
+        b: 0,
+        c: 0,
+        d: 0,
+    }
+}
+
+fn mutant_compute_u_nodes(input_col: u32, center: f32, steepness: f32) -> Vec<EmlNode> {
+    vec![
+        mutant_node_slot(input_col),
+        mutant_node_literal(center),
+        mutant_node_binop(eml_nodes::opcode::SUB),
+        mutant_node_literal(steepness),
+        mutant_node_binop(eml_nodes::opcode::MUL),
+    ]
+}
+
+/// Test-local SoftStep compiler/encoder: mirrors production `compile_soft_step_nodes`
+/// emission, but constructs the `1 + abs(u)` segment with ABS and LITERAL(1)
+/// swapped — a construction-time node-order defect (does not call live compile).
+fn mutant_compile_soft_step_wrong_abs_literal_order(
     instance: &EmlGadgetInstanceSpec,
-    opts: EmlGadgetCompileOptions,
+    _opts: EmlGadgetCompileOptions,
 ) -> CompiledEmlGadget {
-    let live = compile_eml_gadget(instance, opts).expect("live compile inside mutant");
+    let EmlGadgetInstanceSpec::SoftStep {
+        id,
+        input_col,
+        output_col,
+        center,
+        steepness,
+    } = instance
+    else {
+        panic!("mutant SoftStep compiler only admits SoftStep instances");
+    };
+
+    let mut nodes = Vec::new();
+    // u = steepness * (x - center); keep first u on stack for the final division.
+    nodes.extend(mutant_compute_u_nodes(*input_col, *center, *steepness));
+    // Defect: emit LITERAL(1) before ABS (production emits ABS then LITERAL(1)).
+    nodes.extend(mutant_compute_u_nodes(*input_col, *center, *steepness));
+    nodes.push(mutant_node_literal(1.0));
+    nodes.push(mutant_node_binop(eml_nodes::opcode::ABS));
+    nodes.push(mutant_node_binop(eml_nodes::opcode::ADD));
+    nodes.push(mutant_node_div_safe());
+    nodes.push(mutant_node_literal(0.5));
+    nodes.push(mutant_node_binop(eml_nodes::opcode::MUL));
+    nodes.push(mutant_node_literal(0.5));
+    nodes.push(mutant_node_binop(eml_nodes::opcode::ADD));
+    nodes.push(mutant_node_binop(eml_nodes::opcode::RETURN_TOP));
+
     CompiledEmlGadget {
-        id: live.id,
-        kind: live.kind,
-        nodes: live.nodes.into_iter().rev().collect(),
-        execution_class: live.execution_class,
-        output_col: live.output_col,
+        id: id.clone(),
+        kind: EmlGadgetKind::SoftStep,
+        nodes,
+        execution_class: EmlExecutionClass::ExactDeterministic,
+        output_col: *output_col,
     }
 }
 
 /// JIT-artifact: same SoftStep instance+opts to both postures.
 /// Green: live `compile_eml_gadget` twice.
-/// Red: live vs mutant reverse-encode compiler path.
+/// Red: live vs construction-time mutant SoftStep compiler (wrong ABS/LITERAL order).
 fn case_jit_artifact(plant_defect: bool) -> bool {
     let instance = EmlGadgetInstanceSpec::SoftStep {
         id: "inline_soft_step".into(),
@@ -507,7 +590,7 @@ fn case_jit_artifact(plant_defect: bool) -> bool {
     let opts = EmlGadgetCompileOptions { max_col: 8 };
     let a = compile_eml_gadget(&instance, opts).expect("compile a");
     let b = if plant_defect {
-        mutant_compile_eml_gadget_reverse_encode(&instance, opts)
+        mutant_compile_soft_step_wrong_abs_literal_order(&instance, opts)
     } else {
         compile_eml_gadget(&instance, opts).expect("compile b")
     };
