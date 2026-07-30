@@ -1910,7 +1910,15 @@ main() {
   export ORIENTATION_PROPERTY_ADMISSION_INVENTORY_TSV="${ORIENTATION_PROPERTY_ADMISSION_INVENTORY_TSV:-${SCRIPT_DIR}/property_admission_inventory.tsv}"
   # FIRST-CITIZEN-SPECIALISTS-0: citizen counts are executable-sourced (never
   # hand-edited). Generate refreshes the TSV; --check enforces freshness.
-  if [[ "${ORIENTATION_SKIP_CITIZEN_COUNTS_CHECK:-0}" != "1" ]]; then
+  # FRESHNESS-NO-CARGO-0: executable-sourced TSVs are refreshed only on
+  # explicit request. Previously EVERY gen_orientation run -- generate AND
+  # check, local AND hosted -- shelled out to `cargo test -p
+  # simthing-clausething`, so a documentation freshness check compiled Rust.
+  # That made the hosted "Orientation digest freshness" step a compile step
+  # (a corpus-green law violation: GHA never runs cargo) and made every local
+  # --check pay a build. Opt in with ORIENTATION_VERIFY_EXECUTABLE_SOURCES=1
+  # when the owning surfaces change.
+  if [[ "${ORIENTATION_VERIFY_EXECUTABLE_SOURCES:-0}" == "1" && "${ORIENTATION_SKIP_CITIZEN_COUNTS_CHECK:-0}" != "1" ]]; then
     case "$MODE" in
       generate)
         bash "${SCRIPT_DIR}/gen_specialization_citizen_counts.sh" \
@@ -1924,7 +1932,7 @@ main() {
   fi
   # ANCHOR-DISPOSITION-ADMISSION-0: the Board/orientation dark-cell surface is
   # executable-sourced from canonical TP property admission.
-  if [[ "${ORIENTATION_SKIP_PROPERTY_ADMISSION_CHECK:-0}" != "1" ]]; then
+  if [[ "${ORIENTATION_VERIFY_EXECUTABLE_SOURCES:-0}" == "1" && "${ORIENTATION_SKIP_PROPERTY_ADMISSION_CHECK:-0}" != "1" ]]; then
     case "$MODE" in
       generate)
         bash "${SCRIPT_DIR}/gen_property_admission_inventory.sh" \
