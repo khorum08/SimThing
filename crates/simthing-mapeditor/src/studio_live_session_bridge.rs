@@ -15,7 +15,8 @@ use std::path::PathBuf;
 
 use simthing_core::{
     AccumulatorRole, AccumulatorSpec, BalanceSpec, ClampBehavior, DimensionRegistry, LogTier,
-    OverlayKind, SimProperty, SimThing, SimThingId, SubFieldRole, SubFieldSpec,
+    OverlayKind, PropertyAdmissionDisposition, SimProperty, SimThing, SimThingId, SubFieldRole,
+    SubFieldSpec,
 };
 use simthing_driver::{
     resolve_node_columns_for_property, system_id_by_host_raw_from_structural_authority,
@@ -906,10 +907,22 @@ fn status_label(s: StudioLiveSessionBridgeStatus) -> &'static str {
 /// registry indices. For structural live ticks we clone the tree and **strip property maps**
 /// so GPU projection does not index sparse product IDs into a dense registry. Structure
 /// (kind / id / children) is preserved; Spec authority remains on StudioSession unchanged.
+/// GPU column-shape placeholder when no authored RF/resource property is pre-registered.
+/// Declared Unobserved at synthesis — admission governs existence; never Anchored hostless.
+fn register_bridge_column_shape_placeholder(registry: &mut DimensionRegistry) {
+    let mut seed = SimProperty::simple("_studio_live_bridge", "seed", 0);
+    seed.admission_disposition = PropertyAdmissionDisposition::Unobserved {
+        reason: "GPU column-shape placeholder; no authored structure admits a host"
+            .into(),
+        source_span_token: 0,
+    };
+    let _ = registry.register(seed);
+}
+
 pub fn driver_scenario_from_authority(spec: &SimThingScenarioSpec) -> Result<Scenario, String> {
     let mut registry = DimensionRegistry::new();
     // Seed column so total_columns >= 1 for GPU buffer shape (structural shell).
-    let _ = registry.register(SimProperty::simple("_studio_live_bridge", "seed", 0));
+    register_bridge_column_shape_placeholder(&mut registry);
 
     let mut root = spec.root.clone();
     strip_all_property_maps(&mut root);
@@ -1069,7 +1082,7 @@ pub fn driver_scenario_field_bearing_from_profile(
         }
     }
     if !registered_rf_property {
-        let _ = registry.register(SimProperty::simple("_studio_live_bridge", "seed", 0));
+        register_bridge_column_shape_placeholder(&mut registry);
     }
 
     let mut root = profile.session_root.clone();

@@ -2856,13 +2856,11 @@ def render_orientation(active_info: dict) -> tuple:
     f"(SpecSessionState.property_admission; source `property_admission_inventory.tsv`).",
 ])
     if property_admission["dark"]:
-        lines.append("Dark properties:")
-        lines.append("")
-        for dark in property_admission["dark"]:
-            lines.append(
-                f"- `{dark['property']}` — {dark['reason']} "
-                f"(source_span_token={dark['source_span_token']})"
-            )
+        dark_ids = ", ".join(f"`{d['property']}`" for d in property_admission["dark"])
+        lines.append(
+            f"Dark properties ({len(property_admission['dark'])}): {dark_ids} "
+            f"(reasons/spans in `property_admission_inventory.tsv`)."
+        )
         lines.append("")
     else:
         lines.extend(["Dark properties: none.", ""])

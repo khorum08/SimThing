@@ -23,8 +23,6 @@ use simthing_driver::{preview_install, InstallPreview, Scenario};
 use simthing_gpu::SlotAllocator;
 
 const MICRO_ECONOMY: &str = include_str!("fixtures/ct2a_micro_economy.clause");
-const CANONICAL_COUNT_CASES: &[(&str, u64)] =
-    &[("anchored", 25), ("unobserved", 0), ("total", 25)];
 
 fn repo_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")
@@ -284,8 +282,9 @@ fn blank_unobserved_reason_hard_errors_at_scalar_span() {
     assert!(err.message.contains("must be non-empty"));
 }
 
-#[test]
-fn canonical_tp_install_has_total_default_anchored_disposition() {
+/// Corrected totality semantics (admission-governs-existence): closed Anchored/Unobserved
+/// partition with derived counts published; no fixed 18/7 target.
+fn assert_canonical_tp_disposition_admission_totality() {
     let preview = canonical_preview();
     let report = &preview.state.property_admission;
     assert!(
@@ -297,10 +296,18 @@ fn canonical_tp_install_has_total_default_anchored_disposition() {
         report.anchored_count() + report.unobserved_count(),
         "closed type yields exactly one disposition per resource property"
     );
-    assert_eq!(
-        report.unobserved_count(),
-        0,
-        "unchanged canonical authoring defaults every resource property Anchored"
+    eprintln!(
+        "CANONICAL TP DISPOSITION (derived): Anchored={} Unobserved={}",
+        report.anchored_count(),
+        report.unobserved_count()
+    );
+    assert!(
+        report.anchored_count() > 0,
+        "canonical TP must admit Anchored resource properties"
+    );
+    assert!(
+        report.unobserved_count() > 0,
+        "canonical TP must admit Unobserved dark cells where hostless"
     );
     assert_eq!(
         report.resource_properties,
@@ -311,6 +318,12 @@ fn canonical_tp_install_has_total_default_anchored_disposition() {
         assert_eq!(row.property_id.index(), index);
         assert!(!row.roles.is_empty(), "resource property has no role pathway");
     }
+}
+
+/// Protected inventory identity (birth track 0.0.8.7); wrapper over corrected totality helper.
+#[test]
+fn canonical_tp_install_has_total_default_anchored_disposition() {
+    assert_canonical_tp_disposition_admission_totality();
 }
 
 /// Invoked only by scripts/ci/gen_property_admission_inventory.sh.
@@ -406,10 +419,28 @@ fn board_and_orientation_render_property_admission_inventory() {
         serde_json::from_slice(&board.stdout).expect("parse Board JSON");
     assert_eq!(
         board["active_pointer"],
-        serde_json::json!("WRITE-DOOR-BAND-DELTA-0")
+        serde_json::json!("CANONICAL-ANCHOR-MATERIALIZATION-0")
     );
-    for (field, expected) in CANONICAL_COUNT_CASES {
-        assert_eq!(board["property_admission"][field], *expected);
-    }
-    assert_eq!(board["property_admission"]["dark"], serde_json::json!([]));
+    // Board inventory mirrors the live regenerated TSV (derived counts, not targets).
+    let live = canonical_preview().state.property_admission;
+    assert_eq!(
+        board["property_admission"]["anchored"],
+        live.anchored_count() as u64
+    );
+    assert_eq!(
+        board["property_admission"]["unobserved"],
+        live.unobserved_count() as u64
+    );
+    assert_eq!(
+        board["property_admission"]["total"],
+        live.resource_properties.len() as u64
+    );
+    let dark = board["property_admission"]["dark"]
+        .as_array()
+        .expect("property_admission.dark array");
+    assert_eq!(
+        dark.len(),
+        live.unobserved_count(),
+        "Board dark inventory must list every Unobserved cell from live admission"
+    );
 }

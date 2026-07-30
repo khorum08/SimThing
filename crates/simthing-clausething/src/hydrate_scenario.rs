@@ -666,15 +666,21 @@ pub fn hydrate_scenario_with_source_base(
     let planet_surface_payloads = finalize_planet_surface_payloads(planet_surface_payload_drafts)?;
     let fleet_ship_payloads =
         finalize_fleet_ship_payloads(fleet_ship_payload_drafts, &ownership_volumes, &owners)?;
-    for property in fleet_ship_game_mode_properties() {
-        if game_mode
-            .properties
-            .iter()
-            .any(|existing| existing.id == property.id)
-        {
-            continue;
+    // Fleet/ship hull·weapon·upkeep identities are only authored debt when a
+    // fleet_ship_payload is present. Injecting them into every hydrate made
+    // field-economy-only Studio opens (e.g. foundry valley) fail closed under
+    // 5.3b observation-host materialization with zero value-placing candidates.
+    if !fleet_ship_payloads.is_empty() {
+        for property in fleet_ship_game_mode_properties() {
+            if game_mode
+                .properties
+                .iter()
+                .any(|existing| existing.id == property.id)
+            {
+                continue;
+            }
+            game_mode.properties.push(property);
         }
-        game_mode.properties.push(property);
     }
     for payload in &planet_surface_payloads {
         for overlay in payload_economy_overlays(payload, &scenario_id) {

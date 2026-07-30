@@ -9,8 +9,8 @@
 
 use simthing_core::DimensionRegistry;
 use simthing_core::{
-    kind_matches, AccumulatorRole, Overlay, OverlayId, PropertyValue, RoleOffset, SimPropertyId,
-    SimThing, SimThingId, SimThingKind,
+    kind_matches, AccumulatorRole, Overlay, OverlayId, PropertyAdmissionDisposition, PropertyValue,
+    RoleOffset, SimPropertyId, SimThing, SimThingId, SimThingKind,
 };
 use simthing_gpu::SlotAllocator;
 use simthing_spec::{
@@ -21,7 +21,7 @@ use simthing_spec::{
     GameModeSpec, InstallTargetSpec, OverlaySpec, PropertyKey, ResourceEconomySpec,
     ResourceFlowSpec, SpecError,
 };
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use thiserror::Error;
 
 use crate::arena_registry::ArenaRegistry;
@@ -133,6 +133,16 @@ pub enum InstallError {
 
     #[error("gated rate `{gated}` references unresolvable trigger property `{property}`")]
     GatedRateUnknownTriggerProperty { gated: String, property: String },
+
+    /// 5.3b observation-host materialization: missing/ambiguous/out-of-tree candidates.
+    #[error(
+        "observation-host materialization for `{property}` failed: {reason} (provenance={provenance})"
+    )]
+    ObservationHostMaterialization {
+        property: String,
+        reason: String,
+        provenance: String,
+    },
 }
 
 /// Compile a `GameModeSpec` against the supplied scenario state and return a
@@ -411,6 +421,10 @@ pub fn compile_and_install(
         }
     }
 
+    // 5.3b: observation-host materialization for Anchored properties that still
+    // lack live loci after economy/need/event resolution. Existing loci win.
+    materialize_observation_hosts(game_mode, registry, root, scenario)?;
+
     state.property_admission = registry.property_admission_report();
     Ok(state)
 }
@@ -603,6 +617,296 @@ fn resolve_unique_install_host(
         });
     }
     Ok(hosts[0])
+}
+
+/// Place layout-default observation hosts for Anchored resource properties that
+/// still have zero live loci, elected only from value-placing relations.
+///
+/// Vocabulary (DA residency law): economy emission/transfer/recipe hosts,
+/// threshold hosts, need_binding loci, RF parent-edge child hosts. Governance
+/// instruments (owner-policy overlays, policy-weight authority) never elect.
+fn materialize_observation_hosts(
+    game_mode: &GameModeSpec,
+    registry: &DimensionRegistry,
+    root: &mut SimThing,
+    scenario: &Scenario,
+) -> Result<(), InstallError> {
+    // Disposition-only / micro installs have no value-placing vocabulary; the
+    // materialization door stays inert so Anchored inventory can still report.
+    if !game_mode_has_value_placing_vocabulary(game_mode, root) {
+        return Ok(());
+    }
+
+    let mut live_counts: HashMap<SimPropertyId, usize> = HashMap::new();
+    count_live_property_loci(root, &mut live_counts);
+
+    let mut candidates: BTreeMap<SimPropertyId, BTreeMap<String, BTreeSet<String>>> =
+        BTreeMap::new();
+    let push = |out: &mut BTreeMap<SimPropertyId, BTreeMap<String, BTreeSet<String>>>,
+                key: &PropertyKey,
+                host: Option<&str>,
+                provenance: String| {
+        let Some(host) = host.filter(|h| !h.is_empty()) else {
+            return;
+        };
+        let Some(property_id) = registry.id_of(&key.namespace, &key.name) else {
+            return;
+        };
+        let prop = registry.property(property_id);
+        if !prop.is_resource_bearing()
+            || !matches!(
+                prop.admission_disposition,
+                PropertyAdmissionDisposition::Anchored
+            )
+        {
+            return;
+        }
+        out.entry(property_id)
+            .or_default()
+            .entry(host.to_string())
+            .or_default()
+            .insert(provenance);
+    };
+
+    if let Some(economy) = &game_mode.resource_economy {
+        for emission in &economy.emissions {
+            // Hosted-observation locations reach production only as the lowered
+            // presence-emission's typed host_entity (no id/name substring classing).
+            push(
+                &mut candidates,
+                &emission.source,
+                emission.host_entity.as_deref(),
+                format!("economy.emission.host_entity id={}", emission.id),
+            );
+        }
+        for thresh in &economy.emit_on_threshold {
+            push(
+                &mut candidates,
+                &thresh.source,
+                thresh.host_entity.as_deref(),
+                format!("economy.emit_on_threshold.host_entity id={}", thresh.id),
+            );
+        }
+        for transfer in &economy.transfers {
+            push(
+                &mut candidates,
+                &transfer.source,
+                transfer.source_host_entity.as_deref(),
+                format!("economy.transfer.source_host_entity id={}", transfer.id),
+            );
+            push(
+                &mut candidates,
+                &transfer.target,
+                transfer.target_host_entity.as_deref(),
+                format!("economy.transfer.target_host_entity id={}", transfer.id),
+            );
+        }
+        for recipe in &economy.recipes {
+            push(
+                &mut candidates,
+                &recipe.target,
+                recipe.target_host_entity.as_deref(),
+                format!("economy.recipe.target_host_entity id={}", recipe.id),
+            );
+            for (idx, input) in recipe.inputs.iter().enumerate() {
+                push(
+                    &mut candidates,
+                    &input.property,
+                    input.host_entity.as_deref(),
+                    format!(
+                        "economy.recipe.input.host_entity id={} input[{idx}]",
+                        recipe.id
+                    ),
+                );
+            }
+        }
+    }
+    if let Some(rf) = &game_mode.resource_flow {
+        for binding in &rf.need_bindings {
+            for locus in binding.inputs.iter().chain(binding.weights.iter()) {
+                push(
+                    &mut candidates,
+                    &locus.property,
+                    Some(locus.entity.as_str()),
+                    format!(
+                        "need_binding.locus.entity id={} role={:?}",
+                        binding.id, locus.role
+                    ),
+                );
+            }
+        }
+    }
+    collect_rf_edge_observation_candidates(root, registry, &mut candidates);
+
+    // Admission governs existence: every active admitted Anchored resource
+    // property with zero live loci is derivation debt (no registry carve-outs).
+    let mut anchored_ids: Vec<SimPropertyId> = registry
+        .properties
+        .iter()
+        .enumerate()
+        .filter(|(idx, prop)| {
+            let property_id = SimPropertyId(*idx as u32);
+            registry.is_active(property_id)
+                && prop.is_resource_bearing()
+                && matches!(
+                    prop.admission_disposition,
+                    PropertyAdmissionDisposition::Anchored
+                )
+        })
+        .map(|(idx, _)| SimPropertyId(idx as u32))
+        .collect();
+    anchored_ids.sort_by_key(|id| id.0);
+
+    for property_id in anchored_ids {
+        if live_counts.get(&property_id).copied().unwrap_or(0) > 0 {
+            continue;
+        }
+        let prop = registry.property(property_id);
+        let identity = format!("{}::{}", prop.namespace, prop.name);
+        let host_map = candidates.get(&property_id).cloned().unwrap_or_default();
+        let hosts: BTreeSet<String> = host_map.keys().cloned().collect();
+        let provenance = host_map
+            .values()
+            .flat_map(|set| set.iter().cloned())
+            .collect::<Vec<_>>()
+            .join("; ");
+        let host_entity = match hosts.len() {
+            0 => {
+                return Err(InstallError::ObservationHostMaterialization {
+                    property: identity,
+                    reason: "zero value-placing candidates".into(),
+                    provenance: if provenance.is_empty() {
+                        "—".into()
+                    } else {
+                        provenance
+                    },
+                });
+            }
+            1 => hosts.into_iter().next().unwrap(),
+            _ => {
+                return Err(InstallError::ObservationHostMaterialization {
+                    property: identity,
+                    reason: format!("conflicting value-placing hosts {hosts:?}"),
+                    provenance,
+                });
+            }
+        };
+        let host_id = resolve_observation_host_id(scenario, &host_entity, &identity, &provenance)?;
+        let host = find_simthing_mut(root, host_id).ok_or_else(|| {
+            InstallError::ObservationHostMaterialization {
+                property: identity.clone(),
+                reason: format!("elected host {host_entity} is out of tree"),
+                provenance: provenance.clone(),
+            }
+        })?;
+        if !host.properties.contains_key(&property_id) {
+            let layout = registry.property(property_id).layout.clone();
+            host.add_property(property_id, PropertyValue::from_layout(&layout));
+        }
+    }
+    Ok(())
+}
+
+fn game_mode_has_value_placing_vocabulary(game_mode: &GameModeSpec, root: &SimThing) -> bool {
+    if let Some(economy) = &game_mode.resource_economy {
+        if !economy.emissions.is_empty()
+            || !economy.emit_on_threshold.is_empty()
+            || !economy.transfers.is_empty()
+            || !economy.recipes.is_empty()
+        {
+            return true;
+        }
+    }
+    if let Some(rf) = &game_mode.resource_flow {
+        if rf.need_bindings.iter().any(|b| !b.inputs.is_empty() || !b.weights.is_empty())
+        {
+            return true;
+        }
+    }
+    tree_has_rf_parent_edges(root)
+}
+
+fn tree_has_rf_parent_edges(node: &SimThing) -> bool {
+    if !node.resource_parent_edges.is_empty() {
+        return true;
+    }
+    node.children.iter().any(tree_has_rf_parent_edges)
+}
+
+fn resolve_observation_host_id(
+    scenario: &Scenario,
+    host_entity: &str,
+    property: &str,
+    provenance: &str,
+) -> Result<SimThingId, InstallError> {
+    if let Some(raw) = host_entity.strip_prefix("simthing:") {
+        let id = raw.parse::<u32>().map_err(|_| {
+            InstallError::ObservationHostMaterialization {
+                property: property.into(),
+                reason: format!("malformed RF host key `{host_entity}`"),
+                provenance: provenance.into(),
+            }
+        })?;
+        return Ok(SimThingId::from_session_raw(id));
+    }
+    let Some(hosts) = scenario.install_targets.get(host_entity) else {
+        return Err(InstallError::ObservationHostMaterialization {
+            property: property.into(),
+            reason: format!("elected host `{host_entity}` is not in install_targets"),
+            provenance: provenance.into(),
+        });
+    };
+    if hosts.len() != 1 {
+        return Err(InstallError::ObservationHostMaterialization {
+            property: property.into(),
+            reason: format!(
+                "elected host `{host_entity}` is ambiguous ({} install_targets)",
+                hosts.len()
+            ),
+            provenance: provenance.into(),
+        });
+    }
+    Ok(hosts[0])
+}
+
+fn count_live_property_loci(node: &SimThing, counts: &mut HashMap<SimPropertyId, usize>) {
+    for &pid in node.properties.keys() {
+        *counts.entry(pid).or_default() += 1;
+    }
+    for child in &node.children {
+        count_live_property_loci(child, counts);
+    }
+}
+
+fn collect_rf_edge_observation_candidates(
+    node: &SimThing,
+    registry: &DimensionRegistry,
+    out: &mut BTreeMap<SimPropertyId, BTreeMap<String, BTreeSet<String>>>,
+) {
+    for edge in &node.resource_parent_edges {
+        if let Some(property_id) = registry.id_of(&edge.property_namespace, &edge.property_name) {
+            let prop = registry.property(property_id);
+            if prop.is_resource_bearing()
+                && matches!(
+                    prop.admission_disposition,
+                    PropertyAdmissionDisposition::Anchored
+                )
+            {
+                out.entry(property_id)
+                    .or_default()
+                    .entry(format!("simthing:{}", node.id.raw()))
+                    .or_default()
+                    .insert(format!(
+                        "rf_parent_edge.child_host parent={} span={:?}",
+                        edge.parent.raw(),
+                        edge.source_span_token
+                    ));
+            }
+        }
+    }
+    for child in &node.children {
+        collect_rf_edge_observation_candidates(child, registry, out);
+    }
 }
 
 struct EconomyPropertyPlacement {

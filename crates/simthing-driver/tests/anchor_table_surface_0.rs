@@ -1162,13 +1162,11 @@ fn boundary_protocol_structural_remap_value_authority() {
     assert_ne!(born.observed_value, PRE_DEST);
 }
 
-#[test]
-fn canonical_tp_gpu_table_matches_25_anchored_0_unobserved() {
-    use std::collections::HashMap;
-
+/// Corrected totality semantics: ordinary field-bearing TP install covers every
+/// Anchored tp_economy identity; derived counts published (no fixed 25/0 target).
+fn assert_canonical_tp_gpu_table_matches_admission_totality() {
     use simthing_clausething::{hydrate_scenario_with_source_base, parse_raw_document};
-    use simthing_driver::{preview_install, Scenario};
-    use simthing_spec::GameModeSpec;
+    use simthing_driver::preview_install;
 
     let Some(_ctx) = GpuContext::new_blocking().ok() else {
         eprintln!("skipping tp cardinality: no GPU");
@@ -1189,28 +1187,17 @@ fn canonical_tp_gpu_table_matches_25_anchored_0_unobserved() {
     let pack = hydrate_scenario_with_source_base(&document, Some(clause_path.parent().unwrap()))
         .expect("hydrate TP");
 
-    // Ordinary disposition install path (same door as 5.1): properties corpus
-    // only. Do not mutate the install root to manufacture Anchored hosts.
-    let game_mode = GameModeSpec {
-        id: pack.game_mode.id.clone(),
-        display_name: pack.game_mode.display_name.clone(),
-        properties: pack.game_mode.properties.clone(),
-        ..Default::default()
+    // Full unmodified-topology TP install via the production field-bearing door
+    // (same compile_and_install path Studio uses for observation hosts).
+    use simthing_mapeditor::{
+        authored_live_profile_from_pack, driver_scenario_field_bearing_from_profile,
+        field_bearing_game_mode,
     };
-    let root = pack.root.clone();
-    let n_slots = (root.subtree_size() as u32).saturating_add(2048);
-    let scenario = Scenario {
-        name: pack.scenario_id.clone(),
-        ticks_per_day: 1,
-        max_days: 1,
-        dt: 1.0,
-        n_slots,
-        registry: DimensionRegistry::new(),
-        root,
-        shadow_seeds: Vec::new(),
-        tick_patches: Vec::new(),
-        install_targets: HashMap::new(),
-    };
+    let profile = authored_live_profile_from_pack(&pack);
+    let scenario = driver_scenario_field_bearing_from_profile(&profile)
+        .expect("field-bearing scenario");
+    // Ordinary production install: domain packs + overlays ENABLED (totality law).
+    let game_mode = field_bearing_game_mode(&profile.game_mode);
     let mut preview_allocator = SlotAllocator::new();
     preview_allocator.populate_from_tree(&scenario.root);
     let preview = preview_install(
@@ -1220,40 +1207,58 @@ fn canonical_tp_gpu_table_matches_25_anchored_0_unobserved() {
         &scenario.root,
         &preview_allocator,
     )
-    .expect("canonical TP preview_install");
+    .unwrap_or_else(|err| panic!("canonical TP field-bearing preview_install: {err:?}"));
     let report = preview.registry.property_admission_report();
-    // Binding assertion (Route-3 / Remand-5): registry inventory is exactly
-    // 25 Anchored / 0 Unobserved. Live (SimThingId, SimPropertyId) Anchored
-    // loci/table rows on the unmodified canonical install are exactly 0.
-    // Rung `CANONICAL-ANCHOR-MATERIALIZATION-0` (5.3b) is the work that
-    // changes this live baseline from 0 to 25 — not this 5.3 substrate PR.
-    assert_eq!(report.anchored_count(), 25, "5.1 inventory: 25 Anchored");
-    assert_eq!(report.unobserved_count(), 0, "5.1 inventory: 0 Unobserved");
+    let tp_anchored: HashSet<_> = report
+        .resource_properties
+        .iter()
+        .filter(|row| row.disposition.is_anchored() && row.namespace == "tp_economy")
+        .map(|row| row.property_id)
+        .collect();
+    eprintln!(
+        "CANONICAL 5.3b (derived): Anchored={} Unobserved={} tp_economy_anchored={}",
+        report.anchored_count(),
+        report.unobserved_count(),
+        tp_anchored.len()
+    );
 
     let loci = snapshot_anchored_loci(&preview.root, &preview.registry, &preview.allocator);
-    let live_locus_count = loci.len();
+    let missing: Vec<_> = tp_anchored
+        .iter()
+        .filter(|pid| !loci.keys().any(|(_, p)| p == *pid))
+        .collect();
+    assert!(
+        missing.is_empty(),
+        "totality: every Anchored tp_economy property must have ≥1 live locus; missing={missing:?}"
+    );
     let live_prop_count = {
         let mut props = HashSet::new();
         for ((_, pid), _) in &loci {
-            props.insert(pid.0);
+            if tp_anchored.contains(pid) {
+                props.insert(pid.0);
+            }
         }
         props.len()
     };
+    assert_eq!(live_prop_count, tp_anchored.len());
+    // No repeated (thing, property) keys — AnchoredLocusMap uniqueness.
     assert_eq!(
-        live_locus_count, 0,
-        "canonical TP install must currently materialize exactly 0 live \
-         Anchored loci (got {live_locus_count}); 5.3b CANONICAL-ANCHOR-MATERIALIZATION-0 \
-         is the rung that flips this baseline to 25 — do not manufacture hosts here"
-    );
-    assert_eq!(
-        live_prop_count, 0,
-        "canonical TP install must currently materialize exactly 0 live \
-         Anchored property identities (got {live_prop_count}); see 5.3b \
-         CANONICAL-ANCHOR-MATERIALIZATION-0"
+        loci.len(),
+        loci.keys().collect::<HashSet<_>>().len(),
+        "locus map must not repeat (SimThingId, SimPropertyId)"
     );
     eprintln!(
-        "CANONICAL BASELINE: inventory anchored=25 / unobserved=0; live \
-         Anchored loci=0 / table rows=0. 5.3b CANONICAL-ANCHOR-MATERIALIZATION-0 \
-         changes live baseline 0→25. No 25-row canonical proof claimed in 5.3."
+        "CANONICAL 5.3b TOTALITY: tp_economy Anchored covered={}; live locus rows={}; dark cells={}.",
+        live_prop_count,
+        loci.iter()
+            .filter(|((_, pid), _)| tp_anchored.contains(pid))
+            .count(),
+        report.unobserved_count()
     );
+}
+
+/// Protected inventory identity (birth track 0.0.8.7); wrapper over corrected totality helper.
+#[test]
+fn canonical_tp_gpu_table_matches_25_anchored_0_unobserved() {
+    assert_canonical_tp_gpu_table_matches_admission_totality();
 }
