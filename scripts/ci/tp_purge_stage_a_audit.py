@@ -18,11 +18,32 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 PROPOSAL = ROOT / "docs/tests/lifecycle_invariant_split_proposal_2026_08_11.tsv"
 REPORT = ROOT / "docs/tests/tp_purge_0_stage_a_reap_report.tsv"
+STAGE_B_MAP = ROOT / "docs/tests/tp_purge_0_stage_b_replacement_map.tsv"
+STAGE_B_RESTORED = ROOT / "docs/tests/tp_purge_0_stage_b_restored_survivors.tsv"
 
 
 def stage_a_rows() -> list[dict[str, str]]:
     rows = list(csv.DictReader(PROPOSAL.open(encoding="utf-8"), delimiter="\t"))
     return [r for r in rows if r["disposition"] == "PAIR-REAP" or r["invariant"] == "NONE"]
+
+
+def stage_b_restored_identities() -> set[tuple[str, str, str, str]]:
+    """Identities Stage B restored as surviving inline proofs (same name may remain at head)."""
+    out: set[tuple[str, str, str, str]] = set()
+    if STAGE_B_MAP.is_file():
+        for r in csv.DictReader(STAGE_B_MAP.open(encoding="utf-8"), delimiter="\t"):
+            out.add(
+                (
+                    r["survivor_crate"],
+                    r["survivor_file"],
+                    r["survivor_test_name"],
+                    r["survivor_kind"],
+                )
+            )
+    if STAGE_B_RESTORED.is_file():
+        for r in csv.DictReader(STAGE_B_RESTORED.open(encoding="utf-8"), delimiter="\t"):
+            out.add((r["crate"], r["file"], r["test_name"], r["kind"]))
+    return out
 
 
 def git_show(ref: str, rel: str) -> str | None:
@@ -56,6 +77,7 @@ def has_test_fn(src: str, name: str) -> bool:
 
 def audit_pairs(base: str, head: str) -> int:
     targets = stage_a_rows()
+    restored = stage_b_restored_identities()
     base_text = git_show(base, "scripts/ci/test_inventory.tsv")
     head_text = git_show(head, "scripts/ci/test_inventory.tsv")
     if not base_text or not head_text:
@@ -83,6 +105,17 @@ def audit_pairs(base: str, head: str) -> int:
             failures += 1
             continue
         if key in head_inv:
+            if key in restored:
+                report.append(
+                    {
+                        "file": file,
+                        "test_name": name,
+                        "action": "STAGE-B-RESTORED-SURVIVOR",
+                        "ok": "1",
+                        "class": "stage-b-restored",
+                    }
+                )
+                continue
             report.append(
                 {
                     "file": file,
@@ -161,9 +194,10 @@ def audit_pairs(base: str, head: str) -> int:
     ok_rows = sum(1 for r in report if r["ok"] == "1")
     fail_rows = sum(1 for r in report if r["ok"] == "0")
     ledger_only = sum(1 for r in report if r["class"] == "ledger-only")
+    restored_n = sum(1 for r in report if r["class"] == "stage-b-restored")
     print(f"targets={len(targets)}")
     print(f"report_rows={len(report)}")
-    print(f"ok={ok_rows} fail={fail_rows} ledger_only={ledger_only}")
+    print(f"ok={ok_rows} fail={fail_rows} ledger_only={ledger_only} stage_b_restored={restored_n}")
     print(f"report={REPORT}")
     if len(report) != len(targets):
         print("FAIL: report row count != Stage A union count")

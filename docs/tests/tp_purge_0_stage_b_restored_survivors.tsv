@@ -1,0 +1,4 @@
+crate	file	test_name	kind	reason
+simthing-driver	crates/simthing-driver/src/rf_conservation_oracle.rs	allocator_broken_disburse_exceeding_eps_bound_fails	unit	Stage B restored conservation unit bite (was Stage A PAIR-REAP wrong-form)
+simthing-driver	crates/simthing-driver/src/rf_conservation_oracle.rs	composite_bite_nonconservative_fails_conservative_passes	unit	Stage B restored conservation unit bite (was Stage A PAIR-REAP wrong-form)
+simthing-driver	crates/simthing-driver/src/rf_conservation_oracle.rs	structural_orphan_or_mass_imbalance_fails	unit	Stage B restored conservation unit bite (was Stage A PAIR-REAP wrong-form)

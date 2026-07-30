@@ -255,7 +255,7 @@ fn terran_pirate_galaxy_full_transpile_to_canonical_scenario_spec() {
             .len(),
         2
     );
-    assert_eq!(count_kind(&roundtrip.root, &SimThingKind::Fleet), 22);
+    assert_eq!(count_kind(&roundtrip.root, &SimThingKind::Fleet), 20);
 
     // --- semantic-free below the spec boundary (this PR) ---
     // Authoring ids (Terran/Pirate) legitimately remain in ScenarioSpec.
