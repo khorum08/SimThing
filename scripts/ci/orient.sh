@@ -203,6 +203,11 @@ ROLE_EXTRAS = {
         "",
         "- Audit/review routing: gate-wiring → deep audit; load-bearing escalations → `da_treeverify.sh`.",
         "- After DA pass: exit-proof stamp + orientation regen + merge (not orchestrator residual).",
+        "- BEFORE graduating a rung: `bash scripts/ci/track_closeout.sh --rungclose <RUNG-ID>` must PASS "
+        "(stamps + pointer + fresh orientation + CLEAR REAP CLOCK). No rung graduates over unreaped proofs.",
+        "- Proof lifecycle: NO proof is permanent. Unrenewed tests expire 5 wall-clock days after their "
+        "birth track closes; renew with a `downstream-utility: <consumer>` note + `dsu_survivals` bump; "
+        "a 4th renewal demands promotion evaluation (promote the invariant or remediate the caller).",
         "",
     ],
 }
