@@ -297,6 +297,35 @@ discretion); `Std — Grok CLI` (`grok-4.5` pinned); `Fable` = DA-implemented ha
 
 ## 4. Binding laws (carry from day one)
 
+**The Invariant Set (Owner mandate, 2026-07-30) — the COMPLETE proof surface of the substrate.**
+Engine correctness is these laws and nothing else. Each holds for **any** input, so each is
+provable over inline-constructed input: **a corpus, fixture, or generator is never a
+prerequisite for proof.** (1) **Conservation** — flow in equals flow out, modulo authored
+injection. (2) **Determinism** — identical input twice yields byte-identical output; fold and
+neighbour order are authored data, never an accident of layout. (3) **CPU/GPU parity** — the
+reference implementation and the kernel agree. (4) **Boundedness** — no NaN/inf escapes; clamps
+hold. (5) **Admission totality** — every admitted Anchored property has a host or admission fails
+closed. (6) **Residency/typing** — illegal states are unrepresentable at the type boundary, which
+*deletes* tests rather than adding them. **A per-rung referee is INADMISSIBLE unless it names a
+NEW invariant.** A rung is done when the invariant set still holds and the new capability is
+exercised *by that set*; a rung that needs a bespoke referee has revealed a capability the
+invariant language cannot express, which is a design signal, not a testing gap. Corollary:
+**emergence checks are DEMONSTRATIONS, not gates** — they are what you look at to see the
+mechanism is alive, and gating on them invites making-the-referee-pass pressure. Corollary:
+generated input buys *coverage* (a fuzzer) and *measurement* (performance curves); it never
+buys validity. This law is the standing answer to per-rung proof accretion: 13 rungs produced
+123 lifecycle rows because rungs, not invariants, were the unit of proof.
+
+**The Detachability Law (Owner mandate, 2026-07-30).** **SimThing exists without ClauseThing.**
+The engine (`-core`, `-spec`, `-kernel`, `-sim`, `-gpu`, `-feeder`, `-driver`) may never depend on
+the authoring/app layer (`-clausething`, `-mapeditor`, `-workshop`); the arrow points one way only.
+Scenario vocabulary, where it must exist at all, lives in `-clausething` and is data the engine
+reads back, never a literal the engine names. Mechanized by `scripts/ci/detachability_check.sh`:
+production coupling is a hard FAIL (verified 0 at ruling time — the gate locks in a property the
+repo already had), and proof coupling via dev-dependencies is metered against a ceiling that
+**may only decrease**, each reduction being a rung that moved an engine proof onto the Invariant
+Set instead of a hydrated scenario.
+
 **The Corpus Boundary Law (Owner mandate, 2026-07-30).** **No scenario's vocabulary may be
 hardcoded in engine crates.** No faction, owner, entity, or scenario name may appear in
 production `src` of `simthing-core`, `-spec`, `-kernel`, `-sim`, `-gpu`, `-clausething`, or

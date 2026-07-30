@@ -101,6 +101,12 @@ jobs:
           set -o pipefail
           bash scripts/ci/doc_budget_check.sh --check 2>&1 | tee doctrine-doc-budget-report.txt
 
+      - name: Detachability gate
+        run: |
+          set -o pipefail
+          python3 scripts/ci/detachability_check.sh 2>&1 | tee doctrine-detachability-report.txt
+          python3 scripts/ci/detachability_check.sh --selftest 2>&1 | tee -a doctrine-detachability-report.txt
+
       - name: DOC-BUDGET selftest
         if: steps.gate.outputs.run_selftests == 'true'
         run: |
