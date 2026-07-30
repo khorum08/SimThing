@@ -30,37 +30,49 @@ fn action_branch(start: &str, end: &str) -> &'static str {
     &UI_SOURCE[start..end]
 }
 
-fn assert_replacement_requests_reset(branch: &str) {
-    assert!(branch.contains("adopt_loaded_scenario_session"));
-    assert!(branch.contains("request_live_bridge_reset_after_session_replacement"));
+/// Pairing invariant over EVERY session-replacement call site.
+///
+/// The former window-slice form (`action_branch(start, end)`) asserted over a
+/// text range bracketed by two `do_*` marker strings. That is reorder-brittle:
+/// once the clause-load branch stopped containing the literal
+/// `do_open_clause_scenario_picker` (its trigger id is `do_load_clause_scenario`),
+/// the slice silently retargeted the `data.remove(..)` cleanup block and the
+/// referee asserted over source that never contained either call. This form is
+/// immune to ordering and strictly stronger: it catches a NEW unpaired site,
+/// which window slicing structurally cannot.
+fn assert_every_replacement_requests_reset() {
+    const RESET: &str = "request_live_bridge_reset_after_session_replacement";
+    let mut idx = 0usize;
+    let mut sites = 0usize;
+    while let Some(found) = UI_SOURCE[idx..].find("adopt_loaded_scenario_session(") {
+        let at = idx + found;
+        let end = (at + 600).min(UI_SOURCE.len());
+        assert!(
+            UI_SOURCE[at..end].contains(RESET),
+            "session replacement at byte {at} does not request a live-bridge reset"
+        );
+        sites += 1;
+        idx = at + 1;
+    }
+    assert!(
+        sites >= 5,
+        "expected at least 5 session-replacement sites, found {sites}"
+    );
 }
 
 #[test]
 fn hardening_json_load_requests_bridge_reset() {
-    assert_replacement_requests_reset(action_branch(
-        "do_load_scenario_manual",
-        "do_load_scenario_picker",
-    ));
-    assert_replacement_requests_reset(action_branch(
-        "do_load_scenario_picker",
-        "do_open_clause_scenario_picker",
-    ));
+    assert_every_replacement_requests_reset();
 }
 
 #[test]
 fn hardening_clause_load_requests_bridge_reset() {
-    assert_replacement_requests_reset(action_branch(
-        "do_open_clause_scenario_picker",
-        "do_create_blank_scenario",
-    ));
+    assert_every_replacement_requests_reset();
 }
 
 #[test]
 fn hardening_create_still_requests_bridge_reset() {
-    assert_replacement_requests_reset(action_branch(
-        "do_create_blank_scenario",
-        "fn studio_panel_frame",
-    ));
+    assert_every_replacement_requests_reset();
 }
 
 #[test]
