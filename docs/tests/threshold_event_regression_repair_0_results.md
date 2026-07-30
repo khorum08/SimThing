@@ -1,7 +1,7 @@
 # THRESHOLD-EVENT-REGRESSION-REPAIR-0 — Stage A2 results (INVARIANT SPLIT PENDING DA)
 
 - Track: 0.0.8.7 RF arena modernization (rung 5.3c)
-- Status: **INVARIANT SPLIT PENDING DA** — Stage A2 only (Remand 4 `5133278324` / DA `5133121394` / #1517)
+- Status: **COMPLETE — DA-GRADUATED / merged #1507 @ 462cc794** (DA ruling `5133576764`: invariant split APPROVED read-only with three binding guards; execution belongs to the TP-purge successor, which does NOT stop the 2026-08-11 clock)
 - HD-RECEIPT (5.3c coding): `84786707d7c0`
 - HD-RECEIPT (intervention transport): `36a4121e68f0`
 - ORIENT-RECEIPT (coding, fresh): `56fe3e6032b0`
