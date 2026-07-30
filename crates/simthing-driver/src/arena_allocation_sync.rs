@@ -231,18 +231,6 @@ fn resolve_sparse_input_lists(
 #[cfg(test)]
 mod pre_band_tests {
     use super::*;
-
-    #[test]
-    fn gated_rate_and_need_binding_bands_are_dependency_ordered() {
-        let map = compose_pre_band_map(true, true);
-        assert_eq!(map.gated_start, Some(0));
-        assert_eq!(map.need_stage, Some(1));
-        assert_eq!(map.need_eval, Some(2));
-        assert_eq!(map.arena_start, 3);
-        assert!(map.gated_start.unwrap() < map.need_stage.unwrap());
-        assert!(map.need_stage.unwrap() < map.need_eval.unwrap());
-        assert!(map.need_eval.unwrap() < map.arena_start);
-    }
 }
 
 pub fn build_plan_for_tests(

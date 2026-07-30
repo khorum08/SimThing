@@ -41,7 +41,7 @@ AUTHORING = ["simthing-clausething", "simthing-mapeditor", "simthing-workshop"]
 
 # Proof-coupling ceiling. MAY ONLY DECREASE. Each reduction is a rung that
 # moved an engine proof onto the invariant set instead of a hydrated scenario.
-DEV_COUPLING_CEILING = 2
+DEV_COUPLING_CEILING = 0
 
 
 def sections(manifest: str) -> dict[str, str]:

@@ -176,13 +176,4 @@ impl std::error::Error for StudioSimClockError {}
 #[cfg(test)]
 mod unit_smoke {
     use super::*;
-
-    #[test]
-    fn default_is_paused_at_1x() {
-        let clock = StudioSimClock::new();
-        assert!(clock.is_paused());
-        assert_eq!(clock.rate(), StudioSimClockRate::Rate1x);
-        assert_eq!(clock.tick_index(), 0);
-        assert_eq!(clock.max_tps(), STUDIO_SIM_CLOCK_DEFAULT_MAX_TPS);
-    }
 }

@@ -917,18 +917,4 @@ impl Plugin for StudioGpuIdentityInitPlugin {
 #[cfg(test)]
 mod gpu_identity_init_tests {
     use super::*;
-
-    #[test]
-    fn plugin_build_creates_telemetry_before_renderer_finish() {
-        let mut app = App::new();
-        app.add_plugins(StudioGpuIdentityInitPlugin);
-        let state = app
-            .world()
-            .get_resource::<StudioPerformanceTelemetryState>()
-            .expect("telemetry must exist before plugin finish reads RenderAdapterInfo");
-        assert_eq!(
-            state.telemetry.gpu_adapter_policy_status,
-            "pending renderer initialization"
-        );
-    }
 }

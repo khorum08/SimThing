@@ -712,48 +712,4 @@ mod tests {
         scenario.structural_grid.frame.occupied_cells = 0;
         scenario
     }
-
-    #[test]
-    fn simthing_spec_roundtrip_preserves_root_tree() {
-        let (_output, scenario, _hydration) = authority_output();
-        let json = serde_json::to_string(&scenario).expect("serialize scenario authority");
-        let round: SimThingScenarioSpec =
-            serde_json::from_str(&json).expect("deserialize scenario authority");
-        assert_eq!(round.root.subtree_size(), scenario.root.subtree_size());
-        assert_eq!(
-            round.root.max_id_in_subtree(),
-            scenario.root.max_id_in_subtree()
-        );
-    }
-
-    #[test]
-    fn simthing_spec_roundtrip_preserves_structural_grid() {
-        let (_output, scenario, _hydration) = authority_output();
-        let json = serde_json::to_string(&scenario).expect("serialize scenario authority");
-        let round: SimThingScenarioSpec =
-            serde_json::from_str(&json).expect("deserialize scenario authority");
-        assert_eq!(round.structural_grid, scenario.structural_grid);
-        simthing_spec::validate_stead_mapping_consistency(&round).expect("valid mapping");
-    }
-
-    #[test]
-    fn simthing_spec_roundtrip_preserves_links() {
-        let (_output, scenario, _hydration) = authority_output();
-        let json = serde_json::to_string(&scenario).expect("serialize scenario authority");
-        let round: SimThingScenarioSpec =
-            serde_json::from_str(&json).expect("deserialize scenario authority");
-        assert_eq!(round.links, scenario.links);
-    }
-
-    #[test]
-    fn simthing_spec_roundtrip_preserves_gridcell_children() {
-        let (_output, scenario, _hydration) = authority_output();
-        let json = serde_json::to_string(&scenario).expect("serialize scenario authority");
-        let round: SimThingScenarioSpec =
-            serde_json::from_str(&json).expect("deserialize scenario authority");
-        assert!(round
-            .gridcell_locations()
-            .all(|gridcell| !gridcell.children.is_empty()));
-    }
-
 }

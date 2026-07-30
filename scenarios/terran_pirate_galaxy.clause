@@ -185,6 +185,8 @@ scenario = terran_pirate_galaxy {
         owner = "pirate"
         ownership_volume = "pirate_border"
         enemy_ownership_volume = "terran_core"
+        border_posture = "raid"
+        interior_posture = "garrison"
         fleet_count = 10
         ships_per_fleet = 40
         border_fleet_count = 8
@@ -309,15 +311,6 @@ scenario = terran_pirate_galaxy {
             input = { input_col = 3 weight_col = 15 }
             output_col = 16
         }
-    }
-
-    combat_arena_payload = contact_arena {
-        system_target = "row199_col80"
-        hull_capacity = 100
-        hp_recovery_per_tick = 0
-        ships_per_side = 1
-        terran_weapon_damage = 25
-        pirate_weapon_damage = 30
     }
 
     # Movement-Front L1 feedstock (SaturatingFlux) â€” bounded theater grid for STEAD

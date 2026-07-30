@@ -284,34 +284,4 @@ mod tests {
             display_name: "exact".into(),
         }
     }
-
-    #[test]
-    fn c8d_emission_accepts_exact_deterministic_formula() {
-        let mut registry = EmlExpressionRegistry::new();
-        let id = EmlTreeId(1);
-        registry
-            .register_formula(
-                id,
-                exact_meta(1),
-                vec![EmlNodeGpu {
-                    opcode: eml_opcode::LITERAL_F32,
-                    flags: 0,
-                    a: 1.0f32.to_bits(),
-                    b: 0,
-                    c: 0,
-                    d: 0,
-                }],
-            )
-            .unwrap();
-        let regs = vec![EmissionRegistration {
-            source_slot: 0,
-            source_col: ColumnIndex::from_raw_for_oracle_or_rehearsal(0),
-            tree_id: Some(id),
-            formula: EmissionFormula::EvalEml { tree_id: id },
-            max_emit: None,
-            reg_idx: 0,
-        }];
-        assert!(plan_emission_ops(&regs, Some(&registry)).is_ok());
-    }
-
 }

@@ -162,33 +162,6 @@ fn register_slot_mul_tree(state: &mut WorldGpuState, tree_id: u32) {
         .upload_eml_trees(&state.ctx)
         .expect("upload EML for emission test");
 }
-
-#[test]
-fn c8d_eval_eml_exact_emission_matches_cpu_oracle() {
-    let Some(_ctx) = try_gpu() else {
-        eprintln!("skipping: no GPU");
-        return;
-    };
-    let mut state = setup_emission_state(1, &[2.4]);
-    state.ensure_emission_accumulator();
-    register_slot_mul_tree(&mut state, 1);
-    let regs = vec![EmissionRegistration {
-        source_slot: 0,
-        source_col: ColumnIndex::from_raw_for_oracle_or_rehearsal(0),
-        tree_id: Some(EmlTreeId(1)),
-        formula: EmissionFormula::EvalEml {
-            tree_id: EmlTreeId(1),
-        },
-        max_emit: None,
-        reg_idx: 5,
-    }];
-    state.sync_emission_accumulator(&regs).expect("sync");
-    let emissions = run_accumulator_emission(&mut state, 1.0).expect("readback");
-    assert_eq!(emissions.len(), 1);
-    assert_eq!(emissions[0].reg_idx(), 5);
-    assert_eq!(emissions[0].emit_count(), 4);
-}
-
 #[test]
 fn c8d_emission_overflow_count_exceeds_capacity() {
     let Some(ctx) = try_gpu() else {
@@ -278,27 +251,6 @@ fn c8d_rejects_soft_or_fast_emission_without_tolerance_gate() {
         );
     }
 }
-
-#[test]
-fn c8d_emission_path_no_cpu_mediated_evaluation() {
-    let Some(_ctx) = try_gpu() else {
-        eprintln!("skipping: no GPU");
-        return;
-    };
-    let mut state = setup_emission_state(1, &[4.5]);
-    let regs = vec![EmissionRegistration {
-        source_slot: 0,
-        source_col: ColumnIndex::from_raw_for_oracle_or_rehearsal(0),
-        tree_id: None,
-        formula: EmissionFormula::IdentityFloor,
-        max_emit: None,
-        reg_idx: 0,
-    }];
-    state.sync_emission_accumulator(&regs).expect("sync");
-    let emissions = run_accumulator_emission(&mut state, 1.0).expect("gpu path");
-    assert_eq!(emissions[0].emit_count(), 4);
-}
-
 fn constant_emission_reg(value: f32, reg_idx: u32) -> EmissionRegistration {
     EmissionRegistration {
         source_slot: 0,

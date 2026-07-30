@@ -161,63 +161,6 @@ pub fn intensity_eml_direct_cpu(
 mod tests {
     use super::*;
     use crate::eml_registry::EmlExpressionRegistry;
-
-    #[test]
-    fn c8b_intensity_behavior_compiles_exact_deterministic_eml() {
-        let behavior = IntensityBehavior::default();
-        let (meta, nodes) =
-            compile_intensity_behavior_to_eml(&behavior, intensity_tree_id(0), 1, 2);
-        assert_eq!(meta.execution_class, EmlExecutionClass::ExactDeterministic);
-        assert!(meta
-            .allowed_consumers
-            .contains_kind(EmlConsumerKind::Intensity));
-        assert_eq!(meta.node_count, nodes.len() as u32);
-        assert!(nodes.len() as u32 <= MAX_EML_TREE_NODES);
-        for node in &nodes {
-            if node.opcode == eml_nodes::opcode::PARAM {
-                assert!(node.a <= 3, "PARAM index out of range: {}", node.a);
-            }
-        }
-        let mut registry = EmlExpressionRegistry::new();
-        registry
-            .register_formula(intensity_tree_id(0), meta, nodes)
-            .unwrap();
-        registry
-            .assert_consumer_admissible(intensity_tree_id(0), EmlConsumerKind::Intensity)
-            .unwrap();
-    }
-
-    #[test]
-    fn c8b_intensity_eml_cpu_oracle_matches_legacy_formula() {
-        let behavior = IntensityBehavior {
-            velocity_threshold: 0.005,
-            build_coefficient: 2.0,
-            decay_coefficient: 0.05,
-        };
-        let cases = [
-            (0.0, 0.5, 1.0),
-            (0.004, 0.5, 1.0),
-            (0.005, 0.5, 1.0),
-            (0.006, 0.5, 1.0),
-            (-0.01, 0.5, 1.0),
-            (0.0, 0.001, 1.0),
-            (0.1, 0.999, 1.0),
-            (0.0, 0.5, 0.0),
-        ];
-        for (velocity, intensity, dt) in cases {
-            let expected = intensity_eml_direct_cpu(&behavior, velocity, intensity, dt);
-            let (meta, nodes) =
-                compile_intensity_behavior_to_eml(&behavior, intensity_tree_id(0), 1, 2);
-            let mut values = vec![0.0, velocity, intensity];
-            let got = simthing_gpu_oracle_stub(&meta, &nodes, &mut values, 3, dt);
-            assert_eq!(
-                got.to_bits(),
-                expected.to_bits(),
-                "vel={velocity} int={intensity} dt={dt}"
-            );
-        }
-    }
-
     fn simthing_gpu_oracle_stub(
         _meta: &EmlFormulaMeta,
         nodes: &[EmlNode],

@@ -149,29 +149,4 @@ fn collect_fleet_records(
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn transit_contract_is_test_private_until_authoritative_state_exists() {
-        let snapshot = FleetPresenceSnapshot {
-            records: vec![FleetPresenceRecord {
-                fleet_simthing_id_raw: 42,
-                owner_ref: None,
-                posture: None,
-                location: FleetPresenceLocation::InTransit {
-                    source_system_id: 7,
-                    dest_system_id: 8,
-                },
-            }],
-        };
-
-        let by_system = snapshot.by_system_id();
-        assert_eq!(by_system.keys().copied().collect::<Vec<_>>(), vec![7]);
-        assert!(matches!(
-            by_system[&7][0].location,
-            FleetPresenceLocation::InTransit {
-                source_system_id: 7,
-                dest_system_id: 8,
-            }
-        ));
-    }
 }

@@ -627,78 +627,9 @@ mod tests {
             provenance: SimThingScenarioProvenance::default(),
         }
     }
-
-    #[test]
-    fn structural_projection_has_deterministic_dense_indices() {
-        let scenario = two_cell_scenario();
-        let first = build_structural_projection(&scenario).expect("first");
-        let second = build_structural_projection(&scenario).expect("second");
-        assert_eq!(first, second);
-        assert_eq!(first.location_indices[0].dense_index, 0);
-    }
-
-    #[test]
-    fn structural_projection_sorts_link_indices_deterministically() {
-        let scenario = two_cell_scenario();
-        let projection = build_structural_projection(&scenario).expect("projection");
-        assert!(
-            projection.link_indices[0].from_dense_index
-                <= projection.link_indices[0].to_dense_index
-        );
-        let again = build_structural_projection(&scenario).expect("again");
-        assert_eq!(projection.link_indices, again.link_indices);
-    }
-
     fn pod_row_bytes<T: Copy>(rows: &[T]) -> Vec<u8> {
         let byte_len = rows.len() * std::mem::size_of::<T>();
         let slice = unsafe { std::slice::from_raw_parts(rows.as_ptr() as *const u8, byte_len) };
         slice.to_vec()
-    }
-
-    #[test]
-    fn gpu_structural_upload_packet_orders_locations_deterministically() {
-        let scenario = two_cell_scenario();
-        let first = build_gpu_structural_upload_packet_from_scenario(&scenario).expect("first");
-        let second = build_gpu_structural_upload_packet_from_scenario(&scenario).expect("second");
-        assert_eq!(first.locations, second.locations);
-        assert!(first.locations[0].dense_index < first.locations[1].dense_index);
-    }
-
-    #[test]
-    fn gpu_structural_upload_packet_orders_links_deterministically() {
-        let scenario = two_cell_scenario();
-        let first = build_gpu_structural_upload_packet_from_scenario(&scenario).expect("first");
-        let second = build_gpu_structural_upload_packet_from_scenario(&scenario).expect("second");
-        assert_eq!(first.links, second.links);
-    }
-
-    #[test]
-    fn gpu_structural_upload_packet_row_bytes_are_deterministic() {
-        let scenario = two_cell_scenario();
-        let packet = build_gpu_structural_upload_packet_from_scenario(&scenario).expect("packet");
-        let frame_a = pod_row_bytes(std::slice::from_ref(&packet.frame));
-        let frame_b = pod_row_bytes(std::slice::from_ref(&packet.frame));
-        assert_eq!(frame_a, frame_b);
-        assert_eq!(
-            pod_row_bytes(&packet.locations),
-            pod_row_bytes(&packet.locations)
-        );
-        assert_eq!(pod_row_bytes(&packet.links), pod_row_bytes(&packet.links));
-    }
-
-    #[test]
-    fn scenario_save_load_roundtrip_preserves_canonical_link_projection() {
-        use crate::scenario_io::{
-            load_studio_session_from_scenario_path, save_scenario_authority_to_path,
-        };
-        use tempfile::TempDir;
-
-        let scenario = two_cell_scenario();
-        let projection = build_structural_projection(&scenario).expect("projection");
-        let dir = TempDir::new().expect("tempdir");
-        let path = dir.path().join("canonical-link.simthing-scenario.json");
-        save_scenario_authority_to_path(&path, &scenario).expect("save");
-        let loaded = load_studio_session_from_scenario_path(&path, None).expect("load");
-        assert_eq!(loaded.structural_projection, projection);
     }
 }

@@ -121,15 +121,6 @@ scenario = terran_pirate_galaxy {
         }
     }
 
-    combat_arena_payload = contact_arena {
-        system_target = "row199_col80"
-        hull_capacity = 100
-        hp_recovery_per_tick = 0
-        ships_per_side = 1
-        terran_weapon_damage = 25
-        pirate_weapon_damage = 30
-    }
-
     # Movement-Front L1 feedstock (SaturatingFlux) — bounded theater grid for STEAD
     # authoring; full-galaxy dense MF remains atlas Deviation for TP-LIVE-RUN-0.
     field_operator = contested_border_flux {

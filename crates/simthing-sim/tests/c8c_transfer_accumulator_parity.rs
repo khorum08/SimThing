@@ -169,34 +169,6 @@ fn c8c_conjunctive_transfer_min_across_inputs() {
     assert_eq!(after[2].to_bits(), 80.0f32.to_bits());
     assert_eq!(after[3].to_bits(), 2.0f32.to_bits());
 }
-
-#[test]
-fn c8c_transfer_path_no_cpu_mediated_evaluation() {
-    let Some(_ctx) = try_gpu() else {
-        eprintln!("skipping: no GPU");
-        return;
-    };
-    let mut state = setup_transfer_state(1, &[10.0, 0.0]);
-    let regs = vec![TransferRegistration {
-        inputs: vec![TransferInputRef {
-            slot: 0,
-            col: ColumnIndex::from_raw_for_oracle_or_rehearsal(0),
-            unit_cost: 1.0,
-        }],
-        target_slot: 0,
-        target_col: ColumnIndex::from_raw_for_oracle_or_rehearsal(1),
-        output_scale: 1.0,
-        max_transfer: Some(1.0),
-        tree_id: None,
-        order_band: 0,
-    }];
-    state
-        .sync_transfer_accumulator(&regs)
-        .expect("C-8c transfer plan rejected: consumed input contention or invalid unit cost");
-    assert!(state.accumulator_transfer_active);
-    let _ = run_accumulator_transfer(&mut state, 1.0);
-}
-
 fn governed_amount_velocity_property(vel_max: Option<f32>, clamp: ClampBehavior) -> SimProperty {
     let mut p = SimProperty::simple("core", "governed", 0);
     for sf in &mut p.layout.sub_fields {

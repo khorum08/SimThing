@@ -138,9 +138,6 @@ pub struct HydratedScenarioPack {
     /// TP-FLEETS-SHIPS-0 fleet/ship authoring over owned star-system surfaces.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub fleet_ship_payloads: Vec<HydratedFleetShipPayload>,
-    /// TP-COMBAT-ARENA-0 co-located hostile ship HP/Damage arena authoring.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub combat_arena_payload: Option<crate::hydrate_combat_arena::HydratedCombatArenaPayload>,
     /// Scenario-agnostic field-economy authoring lowered onto existing OverlaySpec,
     /// ResourceEconomySpec, and EML gadget weight-profile surfaces.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -381,7 +378,6 @@ pub fn hydrate_scenario_with_source_base(
     let mut seen_planet_surface_payload_ids = BTreeSet::new();
     let mut fleet_ship_payload_drafts = Vec::new();
     let mut seen_fleet_ship_payload_ids = BTreeSet::new();
-    let mut combat_arena_payload_draft = None;
     let mut field_economy_count = 0_usize;
     let mut field_economy_draft = None;
     let mut embedded_static_galaxy_scenarios = Vec::new();
@@ -467,17 +463,6 @@ pub fn hydrate_scenario_with_source_base(
                     ));
                 }
                 fleet_ship_payload_drafts.push(payload);
-            }
-            "combat_arena_payload" => {
-                if combat_arena_payload_draft.is_some() {
-                    return Err(HydrateError::new_spanned(
-                        "duplicate scenario combat_arena_payload block",
-                        Some(field.key.span.clone()),
-                    ));
-                }
-                combat_arena_payload_draft = Some(
-                    crate::hydrate_combat_arena::parse_combat_arena_payload(field)?,
-                );
             }
             "field_economy" => {
                 field_economy_count += 1;
@@ -710,39 +695,6 @@ pub fn hydrate_scenario_with_source_base(
         }
         Some(root)
     };
-    let mut combat_arena_payload = None;
-    if let (Some(draft), Some(root)) = (combat_arena_payload_draft, authority_root.as_mut()) {
-        let mut payload = crate::hydrate_combat_arena::finalize_combat_arena_payload(
-            draft,
-            &owners,
-            &fleet_ship_payloads,
-        )?;
-        payload = crate::hydrate_combat_arena::complete_combat_arena_payload(
-            payload,
-            root,
-            &fleet_ship_payloads,
-        )?;
-        crate::hydrate_combat_arena::apply_combat_arena_to_game_mode(
-            &mut game_mode,
-            &payload,
-            &scenario_id,
-            &mut install_targets,
-        )?;
-        {
-            let mut seed_registry = simthing_core::DimensionRegistry::new();
-            for prop in &game_mode.properties {
-                simthing_spec::compile_property(prop, &mut seed_registry).map_err(|err| {
-                    HydrateError::new(format!("combat seed registry compile failed: {err}"))
-                })?;
-            }
-            crate::hydrate_combat_arena::seed_combat_property_columns_on_tree(
-                root,
-                &seed_registry,
-                &payload.enrollments,
-            )?;
-        }
-        combat_arena_payload = Some(payload);
-    }
     let mut field_economy = None;
     if let Some(draft) = field_economy_draft.as_ref() {
         let lowering = hydrate_field_economy_property(
@@ -845,7 +797,6 @@ pub fn hydrate_scenario_with_source_base(
         ownership_volumes,
         planet_surface_payloads,
         fleet_ship_payloads,
-        combat_arena_payload,
         field_economy,
     })
 }
@@ -1516,6 +1467,8 @@ struct ParsedFleetShipPayload {
     fleet_count: Option<u32>,
     ships_per_fleet: Option<u32>,
     border_fleet_count: Option<u32>,
+    border_posture: Option<String>,
+    interior_posture: Option<String>,
     ship_class: Option<String>,
     hull_seed: Option<f32>,
     weapon_damage_seed: Option<f32>,
@@ -1535,6 +1488,8 @@ fn parse_fleet_ship_payload(
     let mut fleet_count = None;
     let mut ships_per_fleet = None;
     let mut border_fleet_count = None;
+    let mut border_posture = None;
+    let mut interior_posture = None;
     let mut ship_class = None;
     let mut hull_seed = None;
     let mut weapon_damage_seed = None;
@@ -1564,6 +1519,12 @@ fn parse_fleet_ship_payload(
             "ships_per_fleet" => ships_per_fleet = Some(read_scalar_u32(field, "ships_per_fleet")?),
             "border_fleet_count" => {
                 border_fleet_count = Some(read_scalar_u32(field, "border_fleet_count")?);
+            }
+            "border_posture" => {
+                border_posture = Some(read_scalar_text(field, "border_posture")?);
+            }
+            "interior_posture" => {
+                interior_posture = Some(read_scalar_text(field, "interior_posture")?);
             }
             "ship_class" => ship_class = Some(read_scalar_text(field, "ship_class")?),
             "hull_seed" => hull_seed = Some(read_scalar_f32(field, "hull_seed")?),
@@ -1599,6 +1560,8 @@ fn parse_fleet_ship_payload(
         fleet_count,
         ships_per_fleet,
         border_fleet_count,
+        border_posture,
+        interior_posture,
         ship_class,
         hull_seed,
         weapon_damage_seed,
@@ -1770,12 +1733,12 @@ fn finalize_fleet_ship_payloads(
             &enemy_volume.assigned_systems,
         );
         let interior_fleet_count = fleet_count - border_fleet_count;
-        let border_posture = if owner == "pirate" { "raid" } else { "border" };
-        let interior_posture = if owner == "pirate" {
-            "garrison"
-        } else {
-            "interior"
-        };
+        let border_posture = draft
+            .border_posture
+            .unwrap_or_else(|| "border".to_string());
+        let interior_posture = draft
+            .interior_posture
+            .unwrap_or_else(|| "interior".to_string());
 
         let border_homes = pick_fleet_home_systems(&border_systems, border_fleet_count);
         let interior_homes = pick_fleet_home_systems(&interior_systems, interior_fleet_count);
@@ -1785,7 +1748,7 @@ fn finalize_fleet_ship_payloads(
                 payload_id: draft.id.clone(),
                 owner: owner.clone(),
                 fleet_index: fleet_index as u32,
-                posture: border_posture.into(),
+                posture: border_posture.clone(),
                 target_id: system.target_id.clone(),
                 row: system.row,
                 col: system.col,
@@ -1799,7 +1762,7 @@ fn finalize_fleet_ship_payloads(
                 payload_id: draft.id.clone(),
                 owner: owner.clone(),
                 fleet_index: border_offset + fleet_index as u32,
-                posture: interior_posture.into(),
+                posture: interior_posture.clone(),
                 target_id: system.target_id.clone(),
                 row: system.row,
                 col: system.col,

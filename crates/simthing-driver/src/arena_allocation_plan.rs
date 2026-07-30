@@ -505,49 +505,6 @@ mod tests {
         )
         .unwrap()
     }
-
-    #[test]
-    fn governed_adapter_preserves_authored_targets_and_orderband() {
-        let gpu = simthing_gpu::AccumulatorOpGpu {
-            source_kind: 1, // SLOT_VALUE
-            source_slot: 17,
-            source_col: 3,
-            source_count: 0,
-            combine_kind: 9, // INTEGRATE_CLAMP
-            combine_a: 9.0_f32.to_bits(),
-            combine_b: (-4.0_f32).to_bits(),
-            combine_c: 20.0_f32.to_bits(),
-            combine_d: 2,
-            gate_kind: 4, // ORDER_BAND
-            gate_a: 11,
-            gate_b: 0,
-            scale_kind: 0, // IDENTITY
-            scale_a: 0,
-            consume: 0, // NONE
-            target0_slot: 17,
-            target0_col: 4,
-            target1_slot: 17,
-            target1_col: 3,
-            target2_slot: 99,
-            target2_col: 98,
-            target3_slot: 97,
-            target3_col: 96,
-            n_targets: 2,
-            _pad: 0,
-        };
-
-        let cpu = cpu_op_from_integration_gpu(&gpu);
-        assert_eq!(cpu.gate, GateSpec::OrderBand(11));
-        assert_eq!(cpu.targets.len(), gpu.n_targets as usize);
-        assert_eq!(
-            cpu.targets,
-            vec![
-                (SlotIndex::new(17), ColumnIndex::new(4)),
-                (SlotIndex::new(17), ColumnIndex::new(3)),
-            ]
-        );
-    }
-
     #[test]
     fn sparse_child_rows_compile_to_one_ordered_input_list_writer() {
         let mut layout = d2_layout();

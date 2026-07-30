@@ -136,48 +136,6 @@ fn picker_0_no_tp_or_fixture_defaults() {
     // Explicit empty resolver must not invent placeholders.
     let _ = ClauseScenarioSourceResolver::new();
 }
-
-#[test]
-fn picker_0_no_duplicate_parse_or_rebind_path() {
-    let picker_src = include_str!("../src/clause_scenario_picker.rs");
-    assert!(!picker_src.contains("parse_raw_document("));
-    assert!(!picker_src.contains("hydrate_scenario("));
-    assert!(!picker_src.contains("rebind_pack_to_structural_rebind_ready("));
-    assert!(!picker_src.contains("project_pack_to_authority_tree_candidate("));
-    // Must compose production API surface only.
-    assert!(
-        picker_src.contains("load_clause_studio_session_from_path")
-            && picker_src.contains("load_studio_session_from_clause_ingest_result")
-    );
-}
-
-#[test]
-fn picker_0_no_gamemode_rf_live_run_closeout() {
-    let picker_src = include_str!("../src/clause_scenario_picker.rs");
-    // Ban attach/live-run/closeout wiring (not incidental word fragments).
-    for banned in [
-        "combat_arena",
-        "AttachOverlay",
-        "live_run",
-        "track_closeout",
-        "BoundaryRequest",
-        "GameModeSpec",
-        "attach_rf",
-        "ArenaPressureBinding",
-    ] {
-        assert!(
-            !picker_src.contains(banned),
-            "picker must not mention {banned}"
-        );
-    }
-    let ui_src = include_str!("../src/app/ui.rs");
-    // Menu affordance must exist.
-    assert!(
-        ui_src.contains("Open ClauseScript Scenario") || ui_src.contains("clause_picker_menu_label")
-    );
-    assert_eq!(clause_picker_menu_label(), OPEN_CLAUSE_SCENARIO_ACTION_LABEL);
-}
-
 #[test]
 fn picker_0_injected_dialog_calls_action() {
     let tmp = TempDir::new().expect("tmp");

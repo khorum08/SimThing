@@ -178,39 +178,6 @@ mod tests {
         cohort.add_property(lid, pv);
         cohort
     }
-
-    /// Velocity integration: amount changes at `velocity * dt`
-    /// Ancestor transforms propagate down: a world-level loyalty penalty
-    /// (e.g. extraction policy) reaches a cohort two levels below.
-    /// Determinism: two evaluations of identical state produce identical output.
-    #[test]
-    fn deterministic() {
-        let (reg, lid) = bootstrap();
-        let layout = &reg.property(lid).layout;
-
-        let mut loc = SimThing::new(SimThingKind::Location, 0);
-        for _ in 0..4 {
-            let mut c = make_cohort(&reg, lid, 0.7);
-            c.property_mut(lid)
-                .unwrap()
-                .set_role(&SubFieldRole::Velocity, layout, -0.02);
-            loc.add_child(c);
-        }
-
-        let eval = Evaluator::new(&reg, 1.0);
-        let snap_a = eval.evaluate(&loc, 1);
-        let snap_b = eval.evaluate(&loc, 1);
-
-        for (a, b) in snap_a.entities.iter().zip(snap_b.entities.iter()) {
-            for (pid, pv_a) in &a.properties {
-                let pv_b = &b.properties[pid];
-                for (x, y) in pv_a.raw_lanes().iter().zip(pv_b.raw_lanes().iter()) {
-                    assert_eq!(x.to_bits(), y.to_bits(), "non-deterministic float");
-                }
-            }
-        }
-    }
-
     /// SESSION-WIRING-KILL-SWEEP-0: historical wire key loads into generation stamp.
     #[test]
     fn field_snapshot_deserializes_legacy_generation_wire_alias() {

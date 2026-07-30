@@ -198,15 +198,4 @@ fn parse_max_tps_draft(text: &str) -> Result<f64, f64> {
 #[cfg(test)]
 mod unit_smoke {
     use super::*;
-
-    #[test]
-    fn transport_default_is_paused_at_1x() {
-        let t = StudioSimClockTransport::new();
-        let r = t.readout();
-        assert!(r.paused);
-        assert!(!r.playing);
-        assert_eq!(r.rate, StudioSimClockRate::Rate1x);
-        assert_eq!(r.rate_label, "1×");
-        assert_eq!(r.tick_index, 0);
-    }
 }

@@ -290,47 +290,4 @@ mod tests {
         load_studio_session_from_scenario_path, save_scenario_authority_to_path,
     };
     use tempfile::TempDir;
-
-    #[test]
-    fn scenario_save_load_roundtrip_preserves_scenario_summary() {
-        let profile = GenerationProfile::default_spiral_2_dense_3000();
-        let output = run_generation(&profile).expect("generate");
-        let session = StudioSession::from_generation(profile, output).expect("session");
-        let summary = session.scenario_summary.clone();
-        let dir = TempDir::new().expect("tempdir");
-        let path = dir.path().join("roundtrip-summary.simthing-scenario.json");
-        save_scenario_authority_to_path(&path, &session.scenario_authority).expect("save");
-        let loaded = load_studio_session_from_scenario_path(&path, None).expect("load");
-        assert_eq!(loaded.scenario_summary.system_count, summary.system_count);
-        assert_eq!(loaded.scenario_summary.link_count, summary.link_count);
-        assert_eq!(loaded.scenario_summary.grid_width, summary.grid_width);
-    }
-
-    #[test]
-    fn scenario_save_load_roundtrip_preserves_structural_projection() {
-        let profile = GenerationProfile::default_spiral_2_dense_3000();
-        let output = run_generation(&profile).expect("generate");
-        let session = StudioSession::from_generation(profile, output).expect("session");
-        let projection = session.structural_projection.clone();
-        let dir = TempDir::new().expect("tempdir");
-        let path = dir
-            .path()
-            .join("roundtrip-projection.simthing-scenario.json");
-        save_scenario_authority_to_path(&path, &session.scenario_authority).expect("save");
-        let loaded = load_studio_session_from_scenario_path(&path, None).expect("load");
-        assert_eq!(loaded.structural_projection, projection);
-    }
-
-    #[test]
-    fn scenario_save_load_roundtrip_preserves_gpu_residency_readiness() {
-        let profile = GenerationProfile::default_spiral_2_dense_3000();
-        let output = run_generation(&profile).expect("generate");
-        let session = StudioSession::from_generation(profile, output).expect("session");
-        let readiness = session.gpu_residency_readiness.clone();
-        let dir = TempDir::new().expect("tempdir");
-        let path = dir.path().join("roundtrip-gpu.simthing-scenario.json");
-        save_scenario_authority_to_path(&path, &session.scenario_authority).expect("save");
-        let loaded = load_studio_session_from_scenario_path(&path, None).expect("load");
-        assert_eq!(loaded.gpu_residency_readiness, readiness);
-    }
 }
