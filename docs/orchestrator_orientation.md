@@ -45,7 +45,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 211b860c2a424d0386a01a2dc93d5c563abfd1411c1f58ec55c7b69d97426cb8 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | 26eab30ec86c97ac8dfd6beef7ae8c5b4d3f18c38fdaa431ec40ccce855396d3 |
-| design_0_0_8_7_rf_arena_modernization.md | 14ab1b285f20fd0dfce2f98c4ba696e9be3284893f90f7d49821099db89d0f28 |
+| design_0_0_8_7_rf_arena_modernization.md | f2b6a0f4185bdc53733baae9b91b96f47b430a25c9306dac65c9357b1e9fd396 |
 | relay_lint.sh | 4163f715cdc3b549dbf57c1744aff61ea96b9f9f0a2237376665fbdb24e986c8 |
 | doctrine_anchors.tsv | 7ab4cbdc8dc22be5c5cc328ac0aa0bf123847bdb9ce3824ae4bc5d302df3eaa9 |
 | execution_status_taxonomy.tsv | 7d8c90f40afc633e41827542d2e0120a3e57f392ee6fbd0030738ae2cf762e81 |
@@ -73,7 +73,7 @@ Track state: `open`
 | 5.2 | WRITE-DOOR-BAND-DELTA-0 | Phase 5: fulcrum 2 — in-pass band-crossing derivation; structural ops refuse to  | **DA-GRADUATED / merged #1488 @ d41a079b** — typed BandCrossingDelta from the fused pass; refuse-to-encode law exact ... |
 | 5.3 | ANCHOR-TABLE-SURFACE-0 | Phase 5: fulcrum 3 — derived GPU anchor table as the SOLE observation surface; c | Studio/telemetry read only the table; no second observation path (grep-proven); populated-fixture + production-sequen... |
 | 5.3b | CANONICAL-ANCHOR-MATERIALIZATION-0 | Phase 5: admission governs existence — host-materialization from value-placing r | **DA-GRADUATED / merged #1500 @ 1294cc87** — admission governs existence; totality proven on the ORDINARY unmutated i... |
-| 5.3c | THRESHOLD-EVENT-REGRESSION-REPAIR-0 | Phase 5: repair the GPU threshold-event regression introduced by 5.3 (DA bisect: | `s6_threshold_sunset` green with the golden unedited; 5.2 band-crossing + 5.3 table referees still green; root cause ... |
+| 5.3c | THRESHOLD-EVENT-REGRESSION-REPAIR-0 | Phase 5: repair the GPU threshold-event regression introduced by 5.3 (DA bisect: | **DA-GRADUATED / merged #1507 @ 462cc794** — root cause was the 5.3 convenience-dispatch dropping the `prepare_thresh... |
 | 5.4 | FIELD-SWEEP-IR-PROBE-0 | Phase 5: workshop-leaf disposable probe — minimal target/neighbor-ctx EML map/fo | Parity absolute; N4 generic median ≤1.25× bespoke, supported-adapter worst ≤1.5× at matched measured occupancy with s... |
 | 5.5 | FIELD-SWEEP-N4-PARITY-0 | Phase 5: engine landing — EML edge context {target_slot, neighbor_slot, accumula | PALMA + Gu-Yang reproduced bit-exact on N4 as authored instances ALONGSIDE the bespoke stencils; referees unedited; n... |
 | 5.6 | FIELD-ADJACENCY-GENERATORS-0 | Phase 5: adjacency as a registration axis — weighted `GridOffsets [(dx,dy,w)]` w | Emergence falsifier: the same authored map/fold on GridN4 vs GridN8 vs LinkGraph yields qualitatively distinct unscri... |
@@ -97,7 +97,7 @@ Track state: `open`
 
 ## Next Rung Pointer
 
-Active pointer: `THRESHOLD-EVENT-REGRESSION-REPAIR-0`
+Active pointer: `TP-PURGE-0`
 
 
 ## Cold-Start Spine (constitutional pointers)
