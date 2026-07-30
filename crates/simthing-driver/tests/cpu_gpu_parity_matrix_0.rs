@@ -1,28 +1,31 @@
-//! TP-PURGE-0 Remand 3 — `cpu_gpu_parity_matrix` (DA `5135942768` / Remand `5136003644`,
-//! continuation `5136490881`).
+//! TP-PURGE-0 Remand 4 — `cpu_gpu_parity_matrix` (DA `5135942768` / Remand `5136696481`).
 //!
 //! Five approved cases. Inline input. Each case: live kernel + CPU reference + GPU path
 //! + planted defect. With `SIMTHING_GPU_REQUIRE_ADAPTER_MATCH=1`, every case must execute.
 //!
-//! `rf-need-binding` exercises the live `need_binding` Identity-stage + EvalEML path
-//! even with zero antecedent mapped rows among the 218 (DA substrate coverage).
+//! `accumulator` is a subpath table over absorbed families (transfer, emission, intent,
+//! velocity, weighted-mean, owner-silo Sum, bh2 W-compose). `rf-need-binding` remains the
+//! zero-antecedent live `need_binding` path.
 
 use bytemuck::cast_slice;
 use simthing_core::{
     eml_nodes, eml_opcode, AccumulatorOp, ColumnIndex, CombineFn, ConsumeMode, EmlExecutionClass,
-    EmlExpressionRegistry, EmlFormulaMeta, EmlNodeGpu, EmlTreeId, GateSpec, ScaleSpec, SimThingId,
-    SlotIndex, SourceSpec, SubFieldRole,
+    EmlExpressionRegistry, EmlFormulaMeta, EmlNodeGpu, EmlTreeId, GateSpec, InputSpec, ScaleSpec,
+    SimThingId, SlotIndex, SourceSpec, StructuralScalarChannel, SubFieldRole,
 };
 use simthing_driver::need_binding::{
     build_need_binding_ops, ResolvedFullCell, ResolvedNeedBinding,
 };
 use simthing_gpu::{
-    cpu_horizon, cpu_scatter_indexed, cpu_w_impedance_compose_oracle, encode_column, eval_eml_cpu,
-    execute_ops_cpu, params_from_config, set_debug_readback_allowed, AccumulatorOpSession,
-    EmlGpuProgramTable, GpuContext, IndexedScatterOp, PackedAccumulatorUpload, ScatterEntry,
-    StructuredFieldStencilBoundaryMode, StructuredFieldStencilConfig, StructuredFieldStencilMaskMode,
-    StructuredFieldStencilOp, StructuredFieldStencilOperator, StructuredFieldStencilSourcePolicy,
-    WImpedanceComposeConfig, WImpedanceComposeOp, WImpedanceComposeProfile,
+    cpu_horizon, cpu_scatter_indexed, cpu_w_impedance_compose_oracle, encode_column,
+    encode_emission_plan, encode_transfer_plan, eval_eml_cpu, execute_ops_cpu, params_from_config,
+    plan_emission_ops, plan_transfer_ops, plan_velocity_integration, set_debug_readback_allowed,
+    AccumulatorOpSession, EmissionFormula, EmissionRegistration, EmlGpuProgramTable, GovernedPair,
+    GpuContext, IndexedScatterOp, IntentDelta, PackedAccumulatorUpload, PackedIntentUpload,
+    ScatterEntry, StructuredFieldStencilBoundaryMode, StructuredFieldStencilConfig,
+    StructuredFieldStencilMaskMode, StructuredFieldStencilOp, StructuredFieldStencilOperator,
+    StructuredFieldStencilSourcePolicy, TransferInputRef, TransferRegistration, WImpedanceComposeConfig,
+    WImpedanceComposeOp, WImpedanceComposeProfile, CLAMP_UNBOUNDED,
 };
 use wgpu::util::DeviceExt;
 
@@ -239,7 +242,269 @@ fn case_eml_eval(ctx: &GpuContext, plant_defect: bool) -> bool {
     cpu.to_bits() == gpu_vals[0].to_bits()
 }
 
-fn case_accumulator(ctx: &GpuContext, plant_defect: bool) -> bool {
+/// Transfer subpath: live `plan_transfer_ops` + `encode_transfer_plan` + AO tick.
+/// Defect: corrupt GPU `scale_a` (max_transfer) after encode.
+fn accumulator_transfer(ctx: &GpuContext, plant_defect: bool) -> bool {
+    set_debug_readback_allowed(true);
+    let n_cols = 2u32;
+    let values = vec![10.0f32, 2.0];
+    let regs = [TransferRegistration {
+        inputs: vec![TransferInputRef {
+            slot: 0,
+            col: col(0),
+            unit_cost: 1.0,
+        }],
+        target_slot: 0,
+        target_col: col(1),
+        output_scale: 1.0,
+        max_transfer: Some(3.0),
+        tree_id: None,
+        order_band: 0,
+    }];
+    let plan = plan_transfer_ops(&regs).expect("transfer plan");
+    let mut cpu = values.clone();
+    execute_ops_cpu(&mut cpu, &plan.ops, 0, n_cols).expect("cpu transfer");
+    let mut gpu_ops = encode_transfer_plan(&plan, &[]).expect("encode transfer");
+    if plant_defect {
+        gpu_ops[0].scale_a = 9.0f32.to_bits();
+    }
+    let mut session = AccumulatorOpSession::new_attached(ctx, 1, n_cols, 1);
+    session.upload_values(ctx, &values);
+    session.copy_values_to_previous(ctx);
+    session
+        .upload_packed_ops(
+            ctx,
+            &PackedAccumulatorUpload::from_gpu_ops(gpu_ops).expect("pack"),
+        )
+        .expect("upload");
+    session.tick(ctx, 0).expect("tick");
+    bits_eq(&cpu, &session.readback_full(ctx).expect("rb"))
+}
+
+/// Emission subpath: live `plan_emission_ops` + `encode_emission_plan` + emission readback.
+/// Defect: rewrite GPU constant source bits after encode.
+fn accumulator_emission(ctx: &GpuContext, plant_defect: bool) -> bool {
+    set_debug_readback_allowed(true);
+    let values = vec![1.0f32];
+    let regs = [EmissionRegistration {
+        source_slot: 0,
+        source_col: col(0),
+        tree_id: None,
+        formula: EmissionFormula::Constant { value: 3.0 },
+        max_emit: None,
+        reg_idx: 7,
+    }];
+    let plan = plan_emission_ops(&regs, None).expect("emission plan");
+    // CPU EmitEvent twin: floor(max(write_value,0)) with Constant source = 3.
+    let cpu_emit = 3u32;
+    let mut gpu_ops = encode_emission_plan(&plan, None).expect("encode emission");
+    if plant_defect {
+        // Constant source encodes value bits into source_slot; corrupt after encode.
+        gpu_ops[0].source_slot = 9.0f32.to_bits();
+    }
+    let mut session = AccumulatorOpSession::with_emission_capacity(ctx, 1, 1, 4);
+    session.upload_values(ctx, &values);
+    session.copy_values_to_previous(ctx);
+    session
+        .upload_packed_ops(
+            ctx,
+            &PackedAccumulatorUpload::from_gpu_ops(gpu_ops).expect("pack"),
+        )
+        .expect("upload");
+    session.tick(ctx, 0).expect("tick");
+    let records = session.readback_emissions(ctx).expect("emissions");
+    records.len() == 1
+        && records[0].reg_idx() == 7
+        && records[0].emit_count() == cpu_emit
+}
+
+/// Intent subpath: live `PackedIntentUpload` + `upload_packed_intent_ops` + tick.
+/// Defect: encode a corrupted add term on the GPU intent packet only.
+fn accumulator_intent(ctx: &GpuContext, plant_defect: bool) -> bool {
+    set_debug_readback_allowed(true);
+    let n_dims = 1u32;
+    let values = vec![4.0f32];
+    let deltas = [IntentDelta {
+        slot: 0,
+        col: 0,
+        mul: 2.0,
+        add: 1.0,
+    }];
+    let mut cpu = values.clone();
+    // Live CPU intent oracle: v = v*mul + add.
+    cpu[0] = cpu[0] * deltas[0].mul + deltas[0].add;
+    let gpu_deltas = if plant_defect {
+        [IntentDelta {
+            slot: 0,
+            col: 0,
+            mul: 2.0,
+            add: 99.0,
+        }]
+    } else {
+        deltas
+    };
+    let upload = PackedIntentUpload::from_deltas(&gpu_deltas).expect("intent pack");
+    let mut session = AccumulatorOpSession::new_attached(ctx, 1, n_dims, 1);
+    session.upload_values(ctx, &values);
+    session.copy_values_to_previous(ctx);
+    session
+        .upload_packed_intent_ops(ctx, &upload)
+        .expect("intent upload");
+    session.tick(ctx, 0).expect("intent tick");
+    bits_eq(&cpu, &session.readback_full(ctx).expect("rb"))
+}
+
+/// Velocity subpath: live `plan_velocity_integration` + `encode_velocity_into`.
+/// Defect: dispatch with wrong dt while CPU uses sealed dt.
+fn accumulator_velocity(ctx: &GpuContext, plant_defect: bool) -> bool {
+    set_debug_readback_allowed(true);
+    let n_dims = 2u32;
+    let values = vec![0.0f32, 2.0]; // amount, velocity
+    let dt = 1.0f32;
+    let pair = GovernedPair {
+        governed_col: encode_column(col(0)),
+        governing_col: encode_column(col(1)),
+        clamp_min: f32::NEG_INFINITY,
+        clamp_max: f32::INFINITY,
+        vel_max: f32::INFINITY,
+        clamp_kind: CLAMP_UNBOUNDED,
+    };
+    let plan = plan_velocity_integration(std::slice::from_ref(&pair), 1);
+    let mut cpu = values.clone();
+    let effective_vel = cpu[1].clamp(-pair.vel_max, pair.vel_max);
+    cpu[0] = cpu[0] + effective_vel * dt;
+    let gpu_dt = if plant_defect { 3.0f32 } else { dt };
+    let mut session = AccumulatorOpSession::new_attached(ctx, 1, n_dims, plan.ops.len() as u32);
+    session
+        .upload_packed_ops(
+            ctx,
+            &PackedAccumulatorUpload::from_gpu_ops(plan.ops.clone()).expect("pack"),
+        )
+        .expect("vel ops");
+    let values_buf = ctx.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("vel_values"),
+        contents: cast_slice(&values),
+        usage: wgpu::BufferUsages::STORAGE
+            | wgpu::BufferUsages::COPY_DST
+            | wgpu::BufferUsages::COPY_SRC,
+    });
+    let prev_buf = ctx.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("vel_prev"),
+        contents: cast_slice(&values),
+        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+    });
+    let mut encoder = ctx
+        .device
+        .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("vel_enc"),
+        });
+    session.encode_velocity_into(ctx, &mut encoder, &values_buf, &prev_buf, gpu_dt);
+    ctx.queue.submit(Some(encoder.finish()));
+    bits_eq(&cpu, &readback_buffer(ctx, &values_buf, values.len()))
+}
+
+/// Weighted-mean subpath: live WeightedMean SlotRange AO path.
+/// Defect: corrupt GPU weight column after encode.
+fn accumulator_weighted_mean(ctx: &GpuContext, plant_defect: bool) -> bool {
+    set_debug_readback_allowed(true);
+    let n_slots = 3u32;
+    let n_cols = 2u32;
+    // slots 0..1 contribute; slot 2 is aggregate target.
+    let mut values = vec![0.0f32; (n_slots * n_cols) as usize];
+    values[0] = 2.0; // s0 value
+    values[1] = 1.0; // s0 weight
+    values[2] = 4.0; // s1 value
+    values[3] = 1.0; // s1 weight
+    let mut sum_vw = 0.0f32;
+    let mut sum_w = 0.0f32;
+    for s in 0..2u32 {
+        let base = (s * n_cols) as usize;
+        sum_vw += values[base] * values[base + 1];
+        sum_w += values[base + 1];
+    }
+    let mut cpu = values.clone();
+    cpu[(2 * n_cols) as usize] = sum_vw / sum_w;
+    let op = AccumulatorOp {
+        source: SourceSpec::SlotRange {
+            start: SlotIndex::new(0),
+            count: 2,
+            col: col(0),
+        },
+        combine: CombineFn::WeightedMean {
+            weight_col: col(1),
+        },
+        gate: GateSpec::Always,
+        scale: ScaleSpec::Identity,
+        consume: ConsumeMode::ResetTarget,
+        targets: vec![(SlotIndex::new(2), col(0))],
+    };
+    let mut upload = PackedAccumulatorUpload::from_ops(std::slice::from_ref(&op)).expect("wm pack");
+    if plant_defect {
+        let mut ops = upload.ops().to_vec();
+        ops[0].combine_a = encode_column(col(0)); // wrong weight col
+        upload = PackedAccumulatorUpload::from_gpu_ops(ops).expect("wm defect");
+    }
+    let mut session = AccumulatorOpSession::new_attached(ctx, n_slots, n_cols, 1);
+    session.upload_values(ctx, &values);
+    session.copy_values_to_previous(ctx);
+    session.upload_packed_ops(ctx, &upload).expect("upload");
+    session.tick(ctx, 0).expect("tick");
+    bits_eq(&cpu, &session.readback_full(ctx).expect("rb"))
+}
+
+/// Owner-silo GPU subpath: live ConjunctiveCrossing Sum shape used by
+/// `compile_owner_silo_gpu_tick_plan` (participant → aggregate).
+/// Defect: drop a participant input from the GPU conjunctive sum.
+fn accumulator_owner_silo(ctx: &GpuContext, plant_defect: bool) -> bool {
+    set_debug_readback_allowed(true);
+    let input_col = StructuralScalarChannel::INPUT.into_plan_column();
+    let output_col = StructuralScalarChannel::OUTPUT.into_plan_column();
+    let n_dims = input_col.raw_u32().max(output_col.raw_u32()) + 1;
+    let participant_count = 2u32;
+    let aggregate_slot = participant_count;
+    let inputs: Vec<InputSpec> = (0..participant_count)
+        .map(|slot| InputSpec {
+            slot: SlotIndex::new(slot),
+            col: input_col,
+            unit_cost: 1.0,
+        })
+        .collect();
+    let cpu_op = AccumulatorOp {
+        source: SourceSpec::ConjunctiveCrossing {
+            inputs: inputs.clone(),
+        },
+        combine: CombineFn::Sum,
+        gate: GateSpec::Always,
+        scale: ScaleSpec::Identity,
+        consume: ConsumeMode::AddToTarget,
+        targets: vec![(SlotIndex::new(aggregate_slot), output_col)],
+    };
+    let mut gpu_op = cpu_op.clone();
+    if plant_defect {
+        gpu_op.source = SourceSpec::ConjunctiveCrossing {
+            inputs: vec![inputs[0].clone()],
+        };
+    }
+    let slot_count = participant_count + 1;
+    let mut values = vec![0.0f32; (slot_count * n_dims) as usize];
+    values[input_col.raw_u32() as usize] = 3.0;
+    values[(n_dims + input_col.raw_u32()) as usize] = 5.0;
+    let mut cpu = values.clone();
+    execute_ops_cpu(&mut cpu, std::slice::from_ref(&cpu_op), 0, n_dims).expect("cpu silo");
+    let upload =
+        PackedAccumulatorUpload::from_ops_resolving_input_lists(std::slice::from_ref(&gpu_op))
+            .expect("silo pack");
+    let mut session = AccumulatorOpSession::new_attached(ctx, slot_count, n_dims, 1);
+    session.upload_values(ctx, &values);
+    session.copy_values_to_previous(ctx);
+    session.upload_packed_ops(ctx, &upload).expect("upload");
+    session.tick(ctx, 0).expect("tick");
+    bits_eq(&cpu, &session.readback_full(ctx).expect("rb"))
+}
+
+/// BH2 / W-impedance composition subpath.
+/// Defect: corrupt GPU profile weight_a.
+fn accumulator_bh2_w(ctx: &GpuContext, plant_defect: bool) -> bool {
     let config = WImpedanceComposeConfig {
         width: 2,
         height: 2,
@@ -276,6 +541,16 @@ fn case_accumulator(ctx: &GpuContext, plant_defect: bool) -> bool {
     op.compose_resident_field(ctx, &buf, &gpu_config)
         .expect("compose");
     bits_eq(&cpu, &readback_buffer(ctx, &buf, values.len()))
+}
+
+fn case_accumulator(ctx: &GpuContext, plant_defect: bool) -> bool {
+    accumulator_transfer(ctx, plant_defect)
+        && accumulator_emission(ctx, plant_defect)
+        && accumulator_intent(ctx, plant_defect)
+        && accumulator_velocity(ctx, plant_defect)
+        && accumulator_weighted_mean(ctx, plant_defect)
+        && accumulator_owner_silo(ctx, plant_defect)
+        && accumulator_bh2_w(ctx, plant_defect)
 }
 
 fn inline_need_binding(plant_defect: bool) -> (ResolvedNeedBinding, Vec<f32>, usize, usize) {
@@ -505,4 +780,12 @@ fn cpu_gpu_parity_matrix_planted_defects_fail() {
             "parity case {case:?} must FAIL under planted defect"
         );
     }
+    // Named accumulator subpath defects (Remand 4): each absorbed family must bite.
+    assert!(!accumulator_transfer(&ctx, true), "transfer defect");
+    assert!(!accumulator_emission(&ctx, true), "emission defect");
+    assert!(!accumulator_intent(&ctx, true), "intent defect");
+    assert!(!accumulator_velocity(&ctx, true), "velocity defect");
+    assert!(!accumulator_weighted_mean(&ctx, true), "weighted-mean defect");
+    assert!(!accumulator_owner_silo(&ctx, true), "owner-silo defect");
+    assert!(!accumulator_bh2_w(&ctx, true), "bh2-w defect");
 }
