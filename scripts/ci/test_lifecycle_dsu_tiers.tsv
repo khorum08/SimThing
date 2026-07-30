@@ -1,4 +1,4 @@
 min_survivals	max_survivals	tier	verdict	note
 1	2	advisory-audit	PASS	visible DA audit; renewal burden begins
-3	4	rejustify	INSPECT	must re-justify with a fresh verified named consumer
-5		presumed-stale	INSPECT	mandatory delete-or-promote candidate unless DA affirmatively renews
+3	3	rejustify	INSPECT	must re-justify with a fresh verified named consumer
+4		promotion-evaluation-required	FAIL	OWNER MANDATE 2026-07-30: renewed more than 3 times means the invariant is load-bearing and the test is the wrong home for it. Promote it to a type boundary or admission hard-error and retire the test, or remediate whatever keeps calling for it. Further renewal is not admissible without a recorded promotion evaluation.

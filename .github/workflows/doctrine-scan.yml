@@ -116,6 +116,7 @@ jobs:
         if: github.event_name == 'pull_request'
         run: |
           set -o pipefail
+          bash scripts/ci/test_lifecycle_expiry_check.sh --scheduled 2>&1 | tee doctrine-lifecycle-expiry-report.txt
           bash scripts/ci/lifecycle_schema_pr_gate.sh \
             "${{ github.event.pull_request.base.sha }}" \
             "${{ github.sha }}" 2>&1 | tee doctrine-lifecycle-schema-gate-report.txt
