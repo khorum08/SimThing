@@ -1,7 +1,7 @@
 # CANONICAL-ANCHOR-MATERIALIZATION-0 — implementation results (PROBATION)
 
 - Track: 0.0.8.7 RF arena modernization (rung 5.3b)
-- Status: **PROBATION** — exit proofs green locally; DA alone graduates / advances pointer
+- Status: **COMPLETE — DA-GRADUATED / merged #1500 @ 1294cc87** (DA deep-tree: totality proven on the ordinary unmutated install; full corpus reproduced on RTX 4080/Vulkan; one pre-existing sim failure carved out to rung 5.3c)
 - HD-RECEIPT: `2fdb701f35e1` (supersedes `dfacf5e8bb04`, `a9b5482b9e2e`, …)
 - ORIENT-RECEIPT: `8555a6c8ed5c`
 - orientation_rule_stamp: `428229b9129d598e`
