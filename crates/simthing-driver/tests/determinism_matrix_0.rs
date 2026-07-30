@@ -1,7 +1,7 @@
-//! TP-PURGE-0 Remand 4 — `determinism_matrix` (DA `5135942768` / Remand `5136696481`).
+//! TP-PURGE-0 Remand 5 — `determinism_matrix` (DA `5135942768` / Remand `5137044659`).
 //!
-//! Five approved cases. Inline input. Each case runs the live mechanism twice (or
-//! sealed replay) and demonstrates a planted-defect failure inside that mechanism.
+//! Five approved cases. Inline input. Green and red postures receive the **same
+//! semantic input**; red uses a test-local mutant mechanism path.
 //!
 //! The `ordering` case table carries two paths: overlay OrderBand planning, and
 //! owner-silo disburse-down equal-claim tie-break (absorbed; not an eleventh case).
@@ -11,7 +11,7 @@ use simthing_core::{
     PropertyTransformDelta, SimProperty, SimPropertyId, SimThing, SimThingKind, SubFieldRole,
     TransformOp,
 };
-use simthing_gpu::{plan_overlay_orderband, OverlayDelta, SlotDeltaRange};
+use simthing_gpu::{plan_overlay_orderband, OverlayDelta, OverlayOrderBandPlan, SlotDeltaRange};
 use simthing_sim::{
     BoundaryDeltaEntry, ReplayDriver, ReplayFrame, ReplaySnapshot, SimRuntimeTree,
 };
@@ -23,7 +23,7 @@ use simthing_spec::designer_admission::{
 use simthing_spec::{
     apply_owner_silo_runtime_disburse_down_cpu, compile_eml_gadget,
     deserialize_mobility_scenario0_packet_ron, serialize_mobility_scenario0_packet_ron,
-    EmlGadgetCompileOptions, EmlGadgetInstanceSpec, MobilityAllocationBounds,
+    CompiledEmlGadget, EmlGadgetCompileOptions, EmlGadgetInstanceSpec, MobilityAllocationBounds,
     MobilityBlockadeSemantics, MobilityIdentityBoundary, MobilityIdentityChannelBudget,
     MobilityOwnerColumn, MobilityOwnerRelationDiscipline, MobilityOwnerRelationKind,
     MobilityQuantityClasses, MobilityRoutingMode, MobilityRoutingPolicy, MobilityScenario0GuardrailRequests,
@@ -151,38 +151,76 @@ fn replay_fingerprint(driver: &ReplayDriver, target: simthing_core::SimThingId, 
     )
 }
 
-/// Replay: live `ReplayDriver::apply_frame` twice over the same inline log/state.
-/// Planted defect: reverse entry application order (same entry multiset).
+/// Live replay executor: apply sealed frame in recorded entry order.
+fn live_replay_apply(snapshot: ReplaySnapshot, frame: ReplayFrame) -> ReplayDriver {
+    let mut driver = ReplayDriver::from_snapshot(snapshot);
+    driver.apply_frame(frame);
+    driver
+}
+
+/// Mutant replay executor: same snapshot+frame identity, but misapplies entries
+/// in reverse order inside the executor (non-canonical application).
+fn mutant_replay_apply_reversed_entries(
+    snapshot: ReplaySnapshot,
+    frame: ReplayFrame,
+) -> ReplayDriver {
+    let mut driver = ReplayDriver::from_snapshot(snapshot);
+    let mut misapplied = frame;
+    misapplied.entries.reverse();
+    driver.apply_frame(misapplied);
+    driver
+}
+
+/// Replay: same inline snapshot+frame to both postures.
+/// Green: live apply twice. Red: live vs mutant reversed-application executor.
 fn case_replay(plant_defect: bool) -> bool {
     let (snap, frame, overlay_id) = inline_replay_bundle();
     let target = snap.root.direct_child_id(0).expect("target");
-    let apply = |snapshot: ReplaySnapshot, mut frame: ReplayFrame, reverse: bool| {
-        if reverse {
-            frame.entries.reverse();
-        }
-        let mut driver = ReplayDriver::from_snapshot(snapshot);
-        driver.apply_frame(frame);
-        replay_fingerprint(&driver, target, overlay_id)
+    let a = live_replay_apply(snap.clone(), frame.clone());
+    let b = if plant_defect {
+        mutant_replay_apply_reversed_entries(snap, frame)
+    } else {
+        live_replay_apply(snap, frame)
     };
-    let a = apply(snap.clone(), frame.clone(), false);
-    let b = apply(snap, frame, plant_defect);
-    a == b
+    replay_fingerprint(&a, target, overlay_id) == replay_fingerprint(&b, target, overlay_id)
 }
 
-/// Ordering path 1: overlay OrderBand plan ops byte-identical twice.
-/// Planted defect: reorder deltas so band assignment changes.
+/// Mutant overlay OrderBand planner: ignore sealed presentation order; sort by
+/// value before banding. Contract: presentation order is semantically meaningful
+/// for successive same-cell overlays (band assignment).
+fn mutant_plan_overlay_sort_by_value(
+    deltas: &[OverlayDelta],
+    ranges: &[SlotDeltaRange],
+    n_slots: u32,
+) -> OverlayOrderBandPlan {
+    let mut reordered = deltas.to_vec();
+    for range in ranges.iter().take(n_slots as usize) {
+        let start = range.offset as usize;
+        let end = (range.offset + range.length) as usize;
+        if end <= reordered.len() {
+            reordered[start..end]
+                .sort_by(|a, b| a.value.partial_cmp(&b.value).unwrap_or(std::cmp::Ordering::Equal));
+        }
+    }
+    plan_overlay_orderband(&reordered, ranges, n_slots)
+}
+
+/// Ordering path 1: overlay OrderBand — sealed presentation order is meaningful.
+/// Green: same delta vector twice → identical plan.
+/// Red: same deltas to live vs value-sort mutant planner.
 fn ordering_overlay_path(plant_defect: bool) -> bool {
-    let mut deltas = [
+    // Present higher value first so value-sort differs from presentation order.
+    let deltas = [
         OverlayDelta {
             col: 0,
             op_kind: 0,
-            value: 1.0,
+            value: 2.0,
             _pad: 0,
         },
         OverlayDelta {
             col: 0,
             op_kind: 0,
-            value: 2.0,
+            value: 1.0,
             _pad: 0,
         },
     ];
@@ -190,12 +228,13 @@ fn ordering_overlay_path(plant_defect: bool) -> bool {
         offset: 0,
         length: 2,
     }];
-    let plan_a = plan_overlay_orderband(&deltas, &ranges, 1);
-    if plant_defect {
-        deltas.swap(0, 1);
-    }
-    let plan_b = plan_overlay_orderband(&deltas, &ranges, 1);
-    plan_a.ops == plan_b.ops && plan_a.n_bands == plan_b.n_bands
+    let live = plan_overlay_orderband(&deltas, &ranges, 1);
+    let other = if plant_defect {
+        mutant_plan_overlay_sort_by_value(&deltas, &ranges, 1)
+    } else {
+        plan_overlay_orderband(&deltas, &ranges, 1)
+    };
+    live.ops == other.ops && live.n_bands == other.n_bands
 }
 
 fn equal_claim_demands() -> (
@@ -375,17 +414,22 @@ fn inline_mobility_scenario0_packet() -> MobilityScenario0Packet {
     }
 }
 
-/// Canonical serialization: inline packet → live ser → de → reser digest stable.
-/// Planted defect: reverse owner_columns before serialize (non-canonical form).
+/// Mutant serializer: emit compact RON for the same packet (non-canonical form).
+/// Live path uses pretty-config canonical encoding.
+fn mutant_serialize_mobility_scenario0_compact(packet: &MobilityScenario0Packet) -> String {
+    ron::ser::to_string(packet).expect("mutant compact ser")
+}
+
+/// Canonical serialization: same inline packet to both postures.
+/// Green: live pretty ser twice + ser→de→reser stable.
+/// Red: live pretty vs mutant compact encoding of the unchanged packet.
 fn case_canonical_serialization(plant_defect: bool) -> bool {
     let packet = inline_mobility_scenario0_packet();
     let a = serialize_mobility_scenario0_packet_ron(&packet).expect("ser a");
     let round = deserialize_mobility_scenario0_packet_ron(&a).expect("de");
     let round_a2 = serialize_mobility_scenario0_packet_ron(&round).expect("re-ser");
     let b = if plant_defect {
-        let mut broken = packet.clone();
-        broken.owner_columns.reverse();
-        serialize_mobility_scenario0_packet_ron(&broken).expect("ser defective")
+        mutant_serialize_mobility_scenario0_compact(&packet)
     } else {
         serialize_mobility_scenario0_packet_ron(&packet).expect("ser b")
     };
@@ -434,8 +478,24 @@ fn case_mobility_dispatch(plant_defect: bool) -> bool {
     live == other
 }
 
-/// JIT-artifact: live `compile_eml_gadget` twice from the same SoftStep instance.
-/// Planted defect: reverse compiled node order (encoding/order defect).
+/// Mutant SoftStep compiler/encoder: seal nodes in reverse emission order.
+fn mutant_compile_eml_gadget_reverse_encode(
+    instance: &EmlGadgetInstanceSpec,
+    opts: EmlGadgetCompileOptions,
+) -> CompiledEmlGadget {
+    let live = compile_eml_gadget(instance, opts).expect("live compile inside mutant");
+    CompiledEmlGadget {
+        id: live.id,
+        kind: live.kind,
+        nodes: live.nodes.into_iter().rev().collect(),
+        execution_class: live.execution_class,
+        output_col: live.output_col,
+    }
+}
+
+/// JIT-artifact: same SoftStep instance+opts to both postures.
+/// Green: live `compile_eml_gadget` twice.
+/// Red: live vs mutant reverse-encode compiler path.
 fn case_jit_artifact(plant_defect: bool) -> bool {
     let instance = EmlGadgetInstanceSpec::SoftStep {
         id: "inline_soft_step".into(),
@@ -446,10 +506,11 @@ fn case_jit_artifact(plant_defect: bool) -> bool {
     };
     let opts = EmlGadgetCompileOptions { max_col: 8 };
     let a = compile_eml_gadget(&instance, opts).expect("compile a");
-    let mut b = compile_eml_gadget(&instance, opts).expect("compile b");
-    if plant_defect {
-        b.nodes.reverse();
-    }
+    let b = if plant_defect {
+        mutant_compile_eml_gadget_reverse_encode(&instance, opts)
+    } else {
+        compile_eml_gadget(&instance, opts).expect("compile b")
+    };
     a.nodes == b.nodes && a.kind == b.kind
 }
 
