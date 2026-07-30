@@ -48,6 +48,7 @@ usage:
   bash scripts/ci/track_closeout.sh --decommission [--dry-run] [--all]
   bash scripts/ci/track_closeout.sh --deletion-guard <base> <head>
   bash scripts/ci/track_closeout.sh --prove
+  bash scripts/ci/track_closeout.sh --rungclose <RUNG-ID> [--workplan <path>]
 EOF
   exit 2
 }
@@ -57,7 +58,7 @@ EOF
 MODE="$1"; shift || true
 
 case "$MODE" in
-  --discover|--build-manifest|--check-eval|--apply|--artifact-expiry|--decommission|--deletion-guard|--prove) ;;
+  --discover|--build-manifest|--check-eval|--apply|--artifact-expiry|--decommission|--deletion-guard|--prove|--rungclose) ;;
   -h|--help) usage ;;
   *) echo "track_closeout.sh: unknown mode: $MODE" >&2; usage ;;
 esac
@@ -2647,6 +2648,91 @@ def cmd_prove():
     return 0
 
 
+def cmd_rungclose() -> int:
+    """DA-facing rung graduation gate (Owner mandate 2026-07-30).
+
+    Mechanizes the graduation checklist that was previously prose in
+    agent_onboarding.md and performed by hand -- the source of the stamp/
+    pointer coherence defects repaired in #1455 and #1452. It also makes the
+    reap clock BITE at the one place the responsible party acts: a DA may not
+    graduate a rung while expired proofs are outstanding. The forcing function
+    lands on the desk that can renew or reap, instead of reddening every PR.
+    """
+    args = list(sys.argv[1:])
+    if not args:
+        print("RUNGCLOSE-VERDICT: FAIL missing <RUNG-ID>")
+        return 1
+    rung = args[0].strip()
+    workplan = None
+    if "--workplan" in args:
+        workplan = pathlib.Path(args[args.index("--workplan") + 1])
+    if workplan is None:
+        pointers = sorted((ROOT / "docs").glob("design_0_0_*.md"))
+        workplan = max(pointers, key=lambda q: q.stat().st_mtime) if pointers else None
+    failures: list[str] = []
+
+    if workplan is None or not workplan.exists():
+        print("RUNGCLOSE-VERDICT: FAIL no workplan resolved")
+        return 1
+    text = workplan.read_text(encoding="utf-8", errors="replace")
+
+    row = None
+    for line in text.splitlines():
+        if line.startswith("|") and f"`{rung}`" in line:
+            row = line
+            break
+    if row is None:
+        failures.append(f"rung row not found in {workplan.name}")
+    else:
+        cells = [c.strip() for c in row.split("|")]
+        stamped = [c for c in cells if "DA-GRADUATED" in c]
+        if len(stamped) < 2:
+            failures.append(
+                "exit-proof and status cells must BOTH read DA-GRADUATED "
+                f"(found {len(stamped)}); stamp-at-merge is machine truth"
+            )
+        if not re.search(r"merged #\d+ @ [0-9a-f]{7,}", row):
+            failures.append("graduation stamp lacks 'merged #<PR> @ <sha>'")
+        if "PROBATION" in row:
+            failures.append("rung row still carries PROBATION")
+
+    if re.search(r"\|\s*Active open rung\s*\|\s*`" + re.escape(rung) + r"`\s*\|", text):
+        failures.append(
+            f"pointer still names {rung}; advance it to the successor "
+            "(Two-Source Pointer Rule: the pointer moves at the DA stamp)"
+        )
+
+    orient = subprocess.run([BASH, str(SCRIPT_DIR / "gen_orientation.sh"), "--check"],
+                            cwd=str(ROOT), capture_output=True, text=True)
+    if orient.returncode != 0 or "PASS" not in orient.stdout:
+        failures.append("orientation is stale; regenerate before graduating")
+
+    # THE REAP CLOCK -- hard, immediate, no advisory tier (Owner mandate).
+    sweep = subprocess.run([BASH, str(SCRIPT_DIR / "test_lifecycle_expiry_check.sh"), "--scheduled"],
+                           cwd=str(ROOT), capture_output=True, text=True)
+    m = re.search(r"LIFECYCLE-EXPIRY-VERDICT: (\S+) expired=(\d+)", sweep.stdout)
+    if not m:
+        failures.append("reap clock did not report a verdict")
+    else:
+        expired = int(m.group(2))
+        if expired:
+            failures.append(
+                f"REAP DUE: {expired} expired proof(s) outstanding. No rung graduates "
+                "over an unreaped backlog. Delete each as a PAIR (test fn + inventory "
+                "row -- the drift gate is bidirectional), or renew a genuinely "
+                "load-bearing one with a 'downstream-utility: <consumer>' note and a "
+                "dsu_survivals bump. A 4th renewal demands a promotion evaluation."
+            )
+
+    if failures:
+        for f in failures:
+            print(f"  - {f}")
+        print(f"RUNGCLOSE-VERDICT: FAIL ({len(failures)}) rung={rung}")
+        return 1
+    print(f"RUNGCLOSE-VERDICT: PASS rung={rung} stamped+pointer-advanced+orientation-fresh+reap-clear")
+    return 0
+
+
 DISPATCH = {
     "--discover": cmd_discover,
     "--build-manifest": cmd_build_manifest,
@@ -2656,6 +2742,7 @@ DISPATCH = {
     "--decommission": cmd_decommission,
     "--deletion-guard": cmd_deletion_guard,
     "--prove": cmd_prove,
+    "--rungclose": cmd_rungclose,
 }
 sys.exit(DISPATCH[MODE]())
 PY
