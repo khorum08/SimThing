@@ -45,7 +45,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 211b860c2a424d0386a01a2dc93d5c563abfd1411c1f58ec55c7b69d97426cb8 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | 26eab30ec86c97ac8dfd6beef7ae8c5b4d3f18c38fdaa431ec40ccce855396d3 |
-| design_0_0_8_7_rf_arena_modernization.md | 30c71152320f3a2a100810b7fb8bed20282cde6359b22cc44608f13ee1a0e111 |
+| design_0_0_8_7_rf_arena_modernization.md | 80707d872ec02c1cdf6b1f41c4dbde81525f257a0b495d635eb361a05c14ce68 |
 | relay_lint.sh | 4163f715cdc3b549dbf57c1744aff61ea96b9f9f0a2237376665fbdb24e986c8 |
 | doctrine_anchors.tsv | 17a997163d7be2064d0fca71005cfcc59226188f42facb8f08ea7bf337f085e9 |
 | execution_status_taxonomy.tsv | 7d8c90f40afc633e41827542d2e0120a3e57f392ee6fbd0030738ae2cf762e81 |
@@ -79,6 +79,7 @@ Track state: `open`
 | 5.6 | FIELD-ADJACENCY-GENERATORS-0 | Phase 5: adjacency as a registration axis — weighted `GridOffsets [(dx,dy,w)]` w | Emergence falsifier: the same authored map/fold on GridN4 vs GridN8 vs LinkGraph yields qualitatively distinct unscri... |
 | 5.7 | EML-RESOURCE-CLASS-ADMISSION-0 | Phase 5: specialized interpreter resource classes (pipeline-constant stack sizes | Resource classes measurably control occupancy; cap-to-budget re-expression reproduces the currently admitted set exac... |
 | 5.8 | GUYANG-COMPARATIVE-PROJECTIONS-0 | Phase 5: dominance/margin/contest/border-band/chokepoint projections; default-de | TP scenario surfaces fronts + a chokepoint event with zero scenario wiring; `stead_spatial_contract_guards` green. |
+| 5.9 | TP-PURGE-0 | **Phase 5 hygiene — INTENT NOTED, sequencing Owner-scheduled and MAY preempt 5.4 | Zero scenario-vocabulary matches in engine `src` (hard-fail clean); admission proofs green against the synthetic corp... |
 | 6.1 | EVENT-GENERATION-STAMP-0 | Phase 6: generation stamps on emission/threshold events; stamped ring egress wit | Events carry stamps; forced observer lag honors declared backpressure without perturbing the sim. |
 | 6.2 | ASYNC-COMMAND-QUEUE-0 | Phase 6: async CPU action queue landing at generation barriers; injection genera | Replay bit-exact from the injection log; shadow-tree reads torn-free (double-buffer proof). |
 | 6.3 | CONTINUOUS-POSTURE-SOAK-0 | Phase 6: continuous posture (batched generations) + N-generation soak under forc | Soak exit-proof per the phase row; paced posture unchanged (TP regression green). |
