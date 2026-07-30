@@ -41,7 +41,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 
 | source | sha256 |
 | --- | --- |
-| precedented_classes.tsv | 3324880cad9f966309c59a516378c84d404d3e8f03519ef88a1dc2053a5f755d |
+| precedented_classes.tsv | 67da5c3bb6b1f5995d5d86e3dfcce397f3bd69e500156caf1fa2de455bfd83b9 |
 | binding_conditions.tsv | 211b860c2a424d0386a01a2dc93d5c563abfd1411c1f58ec55c7b69d97426cb8 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | 26eab30ec86c97ac8dfd6beef7ae8c5b4d3f18c38fdaa431ec40ccce855396d3 |
@@ -149,6 +149,7 @@ Without `novelty_basis`, clearance fails. Empty-class diffs with a valid admitte
 | docs-ladder-pointer-correction | docs/design_*.md\|docs/orchestrator_orientation.md\|docs/tests/*_readiness_0_results.md\|docs/tests/studio_*_results.md\|docs/tests/current_evidence_index.md | track-governance | tested_code_sha\|coverage_basis\|ci_green | active |
 | studio-sim-clock-substrate | crates/simthing-mapeditor/src/studio_sim_clock.rs\|crates/simthing-mapeditor/src/lib.rs\|crates/simthing-mapeditor/tests/studio_sim_clock_*.rs\|docs/tests/studio_sim_clock_*_results.md\|docs/tests/studio_live_ops_readiness_0_results.md\|docs/design_0_0_8_6_studio_live_ops.md\|docs/orchestrator_orientation.md\|scripts/ci/test_inventory.tsv\|scripts/ci/triage_log.tsv | 0.0.8.6-studio-live-ops | tested_code_sha\|coverage_basis\|ci_green | active |
 | studio-live-ops-ui-clock | crates/simthing-mapeditor/src/app/ui.rs\|crates/simthing-mapeditor/src/app/mod.rs\|crates/simthing-mapeditor/src/lib.rs\|crates/simthing-mapeditor/src/studio_sim_clock.rs\|crates/simthing-mapeditor/src/studio_sim_clock_ui.rs\|crates/simthing-mapeditor/src/studio_live_observe.rs\|crates/simthing-mapeditor/src/studio_live_session_bridge.rs\|crates/simthing-mapeditor/src/studio_scenario_library_ui.rs\|crates/simthing-mapeditor/tests/studio_sim_clock_*.rs\|crates/simthing-mapeditor/tests/studio_live_observe_0.rs\|crates/simthing-mapeditor/tests/studio_live_session_bridge_0.rs\|crates/simthing-mapeditor/tests/studio_scenario_library_*_0.rs\|docs/tests/studio_*_results.md\|docs/design_0_0_8_6_studio_live_ops.md\|docs/orchestrator_orientation.md\|scripts/ci/test_inventory.tsv\|scripts/ci/triage_log.tsv\|crates/simthing-mapeditor/src/clause_scenario_ingest.rs\|crates/simthing-mapeditor/src/clause_scenario_picker.rs\|crates/simthing-mapeditor/src/app/scenario_io.rs\|crates/simthing-mapeditor/src/star_render.rs\|crates/simthing-mapeditor/src/app/galaxy_render.rs\|crates/simthing-mapeditor/tests/studio_*_0.rs\|crates/simthing-mapeditor/src/studio_*.rs\|docs/tests/current_evidence_index.md\|scripts/ci/inspect_justifications.tsv | 0.0.8.6-studio-live-ops | tested_code_sha\|coverage_basis\|ci_green | active |
+| orchestrator-handoff-object | handoffs/*.hd.md | track-governance | no_engine_src\|ci_green | active |
 
 ## Binding Conditions
 
