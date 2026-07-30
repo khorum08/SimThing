@@ -1,15 +1,25 @@
 //! TP-PURGE-0 Stage B — low-single-digit Invariant Set proofs over inline-constructed input.
 //!
 //! Corpus/fixture/generator coupling forbidden. Conservation bites also live in
-//! `rf_conservation_oracle` unit tests (restored). Primary CPU/GPU parity remains
-//! `s6_threshold_events_match_cpu_golden`.
+//! `rf_conservation_oracle` unit tests. Primary CPU/GPU parity remains
+//! `s6_threshold_events_match_cpu_golden` (adapter-pinned live GPU).
+//! Admission-totality / residency-typing map to ColumnIndex door units in
+//! `simthing-core::column_index` (see `tp_purge_0_stage_b_replacement_map.tsv`).
 
+use bytemuck::cast_slice;
 use simthing_driver::{
     check_allocator_step, AllocatorConservationViolation, AllocatorStepObservation,
 };
 use simthing_gpu::{
     PackedThresholdUpload, ThresholdRegistration, DIR_UPWARD, THRESH_BUF_VALUES,
 };
+
+fn packed_upload_bytes(upload: &PackedThresholdUpload) -> Vec<u8> {
+    let mut out = Vec::new();
+    out.extend_from_slice(cast_slice(upload.ops()));
+    out.extend_from_slice(cast_slice(upload.threshold_event_kinds()));
+    out
+}
 
 #[test]
 fn determinism_packed_threshold_upload_byte_identical_twice() {
@@ -24,9 +34,9 @@ fn determinism_packed_threshold_upload_byte_identical_twice() {
     let a = PackedThresholdUpload::from_registrations(&regs).expect("pack a");
     let b = PackedThresholdUpload::from_registrations(&regs).expect("pack b");
     assert_eq!(
-        format!("{a:?}"),
-        format!("{b:?}"),
-        "identical inline threshold registrations must pack deterministically"
+        packed_upload_bytes(&a),
+        packed_upload_bytes(&b),
+        "identical inline threshold registrations must pack to identical POD bytes"
     );
 }
 
@@ -53,10 +63,10 @@ fn boundedness_allocator_residual_beyond_eps_bound_fails() {
 }
 
 #[test]
-fn cpu_gpu_parity_inline_pack_matches_registration_count() {
-    // Mechanism sibling to s6: inline pack shape agrees with registration count (CPU-side
-    // precondition the GPU path consumes). Planted defect: dropping a registration must
-    // change pack cardinality.
+fn pack_cardinality_distinguishes_registration_count() {
+    // Mechanism: packed threshold upload cardinality tracks registration count
+    // (CPU-side pack precondition the GPU path consumes). Not a CPU/GPU parity claim —
+    // live parity is s6_threshold_events_match_cpu_golden.
     let one = [ThresholdRegistration {
         slot: 0,
         col: 0,
@@ -79,8 +89,10 @@ fn cpu_gpu_parity_inline_pack_matches_registration_count() {
     let p1 = PackedThresholdUpload::from_registrations(&one).expect("pack1");
     let p2 = PackedThresholdUpload::from_registrations(&two).expect("pack2");
     assert_ne!(
-        format!("{p1:?}"),
-        format!("{p2:?}"),
-        "pack must distinguish registration cardinality (parity precondition)"
+        packed_upload_bytes(&p1),
+        packed_upload_bytes(&p2),
+        "pack POD bytes must distinguish registration cardinality"
     );
+    assert_eq!(p1.ops().len(), 1);
+    assert_eq!(p2.ops().len(), 2);
 }

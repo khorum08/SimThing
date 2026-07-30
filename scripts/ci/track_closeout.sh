@@ -367,6 +367,10 @@ AUTHORIZED_RENAMES = SCRIPT_DIR / "authorized_renames.tsv"
 AUTHORIZED_RENAMES_HEADER = [
     "old_identity", "new_identity", "file", "authorizing_ruling", "rung",
 ]
+AUTHORIZED_DELETIONS = SCRIPT_DIR / "authorized_deletions.tsv"
+AUTHORIZED_DELETIONS_HEADER = [
+    "crate", "file", "test_name", "kind", "authorizing_ruling", "rung", "hd_receipt",
+]
 
 
 def git_show_text(ref: str, rel: str):
@@ -441,6 +445,56 @@ def is_authorized_inventory_rename(
     ):
         return False
     if not new_identity_present_in_diff(base, head, file, new_name):
+        return False
+    return True
+
+
+def load_authorized_deletions(ref: str) -> list:
+    """Load exact-identity deletion ledger at git ref (absent => empty; never note-authorized)."""
+    text = git_show_text(ref, "scripts/ci/authorized_deletions.tsv")
+    if text is None:
+        return []
+    reader = csv.DictReader(io.StringIO(text), delimiter="\t")
+    return list(reader)
+
+
+def test_fn_absent_at_head(head: str, file: str, test_name: str) -> bool:
+    """True when file is deleted at head OR `fn <test_name>` is absent from head source."""
+    head_src = git_show_text(head, file)
+    if head_src is None:
+        return True  # dedicated file deleted
+    return f"fn {test_name}" not in head_src
+
+
+def is_authorized_inventory_deletion(
+    removed_row: dict,
+    head: str,
+    ledger_rows: list,
+) -> bool:
+    """Paired deletion only via authorized_deletions.tsv exact identity + source absence."""
+    crate = (removed_row.get("crate") or "").strip()
+    file = (removed_row.get("file") or "").strip().replace("\\", "/")
+    test_name = (removed_row.get("test_name") or "").strip()
+    kind = (removed_row.get("kind") or "").strip()
+    if not crate or not file or not test_name or not kind:
+        return False
+    matches = [
+        r for r in ledger_rows
+        if (r.get("crate") or "").strip() == crate
+        and (r.get("file") or "").strip().replace("\\", "/") == file
+        and (r.get("test_name") or "").strip() == test_name
+        and (r.get("kind") or "").strip() == kind
+    ]
+    if len(matches) != 1:
+        return False
+    row = matches[0]
+    ruling = (row.get("authorizing_ruling") or "").strip()
+    rung = (row.get("rung") or "").strip()
+    hd = (row.get("hd_receipt") or "").strip()
+    if not ruling or not rung or not hd:
+        return False
+    # Inventory absence is implied by removed_row membership; still require source pair.
+    if not test_fn_absent_at_head(head, file, test_name):
         return False
     return True
 
@@ -1769,8 +1823,10 @@ def cmd_deletion_guard():
         changed_files = set()
 
     ledger_rows = load_authorized_renames(head)
+    deletion_ledger_rows = load_authorized_deletions(head)
     violations = []
     authorized_renames = 0
+    authorized_deletions = 0
     for r in removed:
         bt = r.get("birth_track", "").strip()
         if is_cfg_marker_deletion_candidate(r):
@@ -1778,6 +1834,9 @@ def cmd_deletion_guard():
         if is_authorized_inventory_rename(r, head_rows, base, head, ledger_rows):
             authorized_renames += 1
             continue  # scripts/ci/authorized_renames.tsv + inventory + code presence
+        if is_authorized_inventory_deletion(r, head, deletion_ledger_rows):
+            authorized_deletions += 1
+            continue  # scripts/ci/authorized_deletions.tsv exact identity + source absence
         if base_status.get(bt) == "closed":
             continue
         if (head_status.get(bt) == "closed"
@@ -1789,6 +1848,7 @@ def cmd_deletion_guard():
     print("TRACK-CLOSEOUT DELETION-GUARD")
     print(f"  removed inventory rows: {len(removed)}")
     print(f"  authorized renames: {authorized_renames}")
+    print(f"  authorized deletions: {authorized_deletions}")
     print(f"  unauthorized (birth_track not closed by closeout): {len(violations)}")
     for key, bt in violations[:10]:
         print(f"  - {key} birth_track={bt!r} (open — run track_closeout --apply to close it first)")
@@ -2597,6 +2657,139 @@ def cmd_prove():
             capture_output=True, text=True, cwd=str(gr), env={**os.environ})
         check("deletion-guard-rename-absent-inventory-row-fails",
               "DELETION-GUARD-VERDICT: FAIL unauthorized=1" in r_inv.stdout)
+
+        # Authorized deletion via scripts/ci/authorized_deletions.tsv (exact identity; no wildcards).
+        deletion_header = [
+            "crate", "file", "test_name", "kind", "authorizing_ruling", "rung", "hd_receipt",
+        ]
+        write_tsv(gr / "scripts/ci/test_inventory.tsv", INVENTORY_HEADER, inv0)
+        for t in trk:
+            if t["track_id"] == "open-track":
+                t["status"] = "open"; t["closed_at"] = "-"
+        write_tsv(gr / "scripts/ci/test_lifecycle_tracks.tsv", TRACKS_HEADER, trk)
+        (gr / "crates/c/tests/open.rs").write_text("#[test]\nfn open_t() {}\n", encoding="utf-8")
+        write_tsv(gr / "scripts/ci/authorized_renames.tsv", rename_header, [])
+        write_tsv(gr / "scripts/ci/authorized_deletions.tsv", deletion_header, [])
+        grun("add", "-A"); grun("commit", "-q", "-m", "base-deletion")
+        base_del = grun("rev-parse", "HEAD").stdout.strip()
+
+        del_row = [{
+            "crate": "c", "file": "crates/c/tests/open.rs", "test_name": "open_t",
+            "kind": "integration", "authorizing_ruling": "5133877275-DA",
+            "rung": "TP-PURGE-0", "hd_receipt": "3555f6da869e",
+        }]
+
+        # Lawful: exact ledger + inventory absent + source fn absent → PASS.
+        write_tsv(gr / "scripts/ci/test_inventory.tsv", INVENTORY_HEADER, [inv0[1]])
+        write_tsv(gr / "scripts/ci/authorized_deletions.tsv", deletion_header, del_row)
+        (gr / "crates/c/tests/open.rs").unlink()
+        grun("add", "-A"); grun("commit", "-q", "-m", "authorized-deletion-lawful")
+        head_del = grun("rev-parse", "HEAD").stdout.strip()
+        r_del = subprocess.run(
+            [BASH, "scripts/ci/track_closeout.sh", "--deletion-guard", base_del, head_del],
+            capture_output=True, text=True, cwd=str(gr), env={**os.environ})
+        check("deletion-guard-allows-authorized-deletion-ledger",
+              "DELETION-GUARD-VERDICT: PASS" in r_del.stdout
+              and "authorized deletions: 1" in r_del.stdout)
+
+        # Missing ledger → FAIL.
+        write_tsv(gr / "scripts/ci/test_inventory.tsv", INVENTORY_HEADER, inv0)
+        write_tsv(gr / "scripts/ci/authorized_deletions.tsv", deletion_header, [])
+        (gr / "crates/c/tests/open.rs").write_text("#[test]\nfn open_t() {}\n", encoding="utf-8")
+        grun("add", "-A"); grun("commit", "-q", "-m", "reset-del-miss")
+        base_del_miss = grun("rev-parse", "HEAD").stdout.strip()
+        write_tsv(gr / "scripts/ci/test_inventory.tsv", INVENTORY_HEADER, [inv0[1]])
+        (gr / "crates/c/tests/open.rs").unlink()
+        grun("add", "-A"); grun("commit", "-q", "-m", "delete-no-ledger")
+        head_del_miss = grun("rev-parse", "HEAD").stdout.strip()
+        r_del_miss = subprocess.run(
+            [BASH, "scripts/ci/track_closeout.sh", "--deletion-guard", base_del_miss, head_del_miss],
+            capture_output=True, text=True, cwd=str(gr), env={**os.environ})
+        check("deletion-guard-deletion-missing-ledger-fails",
+              "DELETION-GUARD-VERDICT: FAIL unauthorized=1" in r_del_miss.stdout)
+
+        # Wrong identity (file) → FAIL.
+        write_tsv(gr / "scripts/ci/test_inventory.tsv", INVENTORY_HEADER, inv0)
+        write_tsv(gr / "scripts/ci/authorized_deletions.tsv", deletion_header, [])
+        (gr / "crates/c/tests/open.rs").write_text("#[test]\nfn open_t() {}\n", encoding="utf-8")
+        grun("add", "-A"); grun("commit", "-q", "-m", "reset-del-file")
+        base_del_file = grun("rev-parse", "HEAD").stdout.strip()
+        bad_del = [{
+            "crate": "c", "file": "crates/c/tests/other.rs", "test_name": "open_t",
+            "kind": "integration", "authorizing_ruling": "5133877275-DA",
+            "rung": "TP-PURGE-0", "hd_receipt": "3555f6da869e",
+        }]
+        write_tsv(gr / "scripts/ci/test_inventory.tsv", INVENTORY_HEADER, [inv0[1]])
+        write_tsv(gr / "scripts/ci/authorized_deletions.tsv", deletion_header, bad_del)
+        (gr / "crates/c/tests/open.rs").unlink()
+        grun("add", "-A"); grun("commit", "-q", "-m", "delete-wrong-file")
+        head_del_file = grun("rev-parse", "HEAD").stdout.strip()
+        r_del_file = subprocess.run(
+            [BASH, "scripts/ci/track_closeout.sh", "--deletion-guard", base_del_file, head_del_file],
+            capture_output=True, text=True, cwd=str(gr), env={**os.environ})
+        check("deletion-guard-deletion-wrong-identity-fails",
+              "DELETION-GUARD-VERDICT: FAIL unauthorized=1" in r_del_file.stdout)
+
+        # Blank ruling (missing provenance) → FAIL.
+        write_tsv(gr / "scripts/ci/test_inventory.tsv", INVENTORY_HEADER, inv0)
+        write_tsv(gr / "scripts/ci/authorized_deletions.tsv", deletion_header, [])
+        (gr / "crates/c/tests/open.rs").write_text("#[test]\nfn open_t() {}\n", encoding="utf-8")
+        grun("add", "-A"); grun("commit", "-q", "-m", "reset-del-ruling")
+        base_del_ruling = grun("rev-parse", "HEAD").stdout.strip()
+        blank_ruling = [{
+            "crate": "c", "file": "crates/c/tests/open.rs", "test_name": "open_t",
+            "kind": "integration", "authorizing_ruling": "",
+            "rung": "TP-PURGE-0", "hd_receipt": "3555f6da869e",
+        }]
+        write_tsv(gr / "scripts/ci/test_inventory.tsv", INVENTORY_HEADER, [inv0[1]])
+        write_tsv(gr / "scripts/ci/authorized_deletions.tsv", deletion_header, blank_ruling)
+        (gr / "crates/c/tests/open.rs").unlink()
+        grun("add", "-A"); grun("commit", "-q", "-m", "delete-blank-ruling")
+        head_del_ruling = grun("rev-parse", "HEAD").stdout.strip()
+        r_del_ruling = subprocess.run(
+            [BASH, "scripts/ci/track_closeout.sh", "--deletion-guard", base_del_ruling, head_del_ruling],
+            capture_output=True, text=True, cwd=str(gr), env={**os.environ})
+        check("deletion-guard-deletion-blank-ruling-fails",
+              "DELETION-GUARD-VERDICT: FAIL unauthorized=1" in r_del_ruling.stdout)
+
+        # Inventory deleted but source fn still present → FAIL.
+        write_tsv(gr / "scripts/ci/test_inventory.tsv", INVENTORY_HEADER, inv0)
+        write_tsv(gr / "scripts/ci/authorized_deletions.tsv", deletion_header, [])
+        (gr / "crates/c/tests/open.rs").write_text("#[test]\nfn open_t() {}\n", encoding="utf-8")
+        grun("add", "-A"); grun("commit", "-q", "-m", "reset-del-src")
+        base_del_src = grun("rev-parse", "HEAD").stdout.strip()
+        write_tsv(gr / "scripts/ci/test_inventory.tsv", INVENTORY_HEADER, [inv0[1]])
+        write_tsv(gr / "scripts/ci/authorized_deletions.tsv", deletion_header, del_row)
+        # keep source fn present
+        grun("add", "-A"); grun("commit", "-q", "-m", "delete-inv-only")
+        head_del_src = grun("rev-parse", "HEAD").stdout.strip()
+        r_del_src = subprocess.run(
+            [BASH, "scripts/ci/track_closeout.sh", "--deletion-guard", base_del_src, head_del_src],
+            capture_output=True, text=True, cwd=str(gr), env={**os.environ})
+        check("deletion-guard-deletion-source-still-present-fails",
+              "DELETION-GUARD-VERDICT: FAIL unauthorized=1" in r_del_src.stdout)
+
+        # Unlisted open-track deletion still FAIL (ledger for a different identity).
+        write_tsv(gr / "scripts/ci/test_inventory.tsv", INVENTORY_HEADER, inv0)
+        write_tsv(gr / "scripts/ci/authorized_deletions.tsv", deletion_header, [])
+        (gr / "crates/c/tests/open.rs").write_text("#[test]\nfn open_t() {}\n", encoding="utf-8")
+        grun("add", "-A"); grun("commit", "-q", "-m", "reset-del-unlist")
+        base_del_unlist = grun("rev-parse", "HEAD").stdout.strip()
+        other_del = [{
+            "crate": "c", "file": "crates/c/tests/open.rs", "test_name": "other_t",
+            "kind": "integration", "authorizing_ruling": "5133877275-DA",
+            "rung": "TP-PURGE-0", "hd_receipt": "3555f6da869e",
+        }]
+        write_tsv(gr / "scripts/ci/test_inventory.tsv", INVENTORY_HEADER, [inv0[1]])
+        write_tsv(gr / "scripts/ci/authorized_deletions.tsv", deletion_header, other_del)
+        (gr / "crates/c/tests/open.rs").unlink()
+        grun("add", "-A"); grun("commit", "-q", "-m", "delete-unlisted")
+        head_del_unlist = grun("rev-parse", "HEAD").stdout.strip()
+        r_del_unlist = subprocess.run(
+            [BASH, "scripts/ci/track_closeout.sh", "--deletion-guard", base_del_unlist, head_del_unlist],
+            capture_output=True, text=True, cwd=str(gr), env={**os.environ})
+        check("deletion-guard-unlisted-open-track-deletion-fails",
+              "DELETION-GUARD-VERDICT: FAIL unauthorized=1" in r_del_unlist.stdout)
 
     # decommission reaper: deletes only unambiguously-safe expired assets; refuses the rest.
     with tempfile.TemporaryDirectory() as rtmp:
