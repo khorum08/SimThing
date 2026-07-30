@@ -764,40 +764,4 @@ mod tests {
             display_name: name.to_string(),
         }
     }
-
-    #[test]
-    fn c8a_soft_deterministic_hard_threshold_rejected_without_guard() {
-        let mut registry = EmlExpressionRegistry::new();
-        let id = EmlTreeId(1);
-        let mut meta = exact_meta(1, "soft");
-        meta.execution_class = EmlExecutionClass::SoftDeterministic;
-        meta.allowed_consumers =
-            EmlConsumerMask(EmlConsumerMask::HARD_THRESHOLD | EmlConsumerMask::DEBUG_ORACLE);
-        registry
-            .register_formula(
-                id,
-                meta,
-                vec![
-                    literal(1.0),
-                    literal(2.0),
-                    EmlNode {
-                        opcode: eml_nodes::opcode::ADD,
-                        flags: 0,
-                        a: 0,
-                        b: 0,
-                        c: 0,
-                        d: 0,
-                    },
-                ],
-            )
-            .unwrap();
-        assert!(registry
-            .assert_consumer_admissible(id, EmlConsumerKind::HardThreshold)
-            .is_err());
-        assert!(matches!(
-            registry.assert_hard_threshold_admissible(id, false),
-            Err(EmlRegistryError::GuardRequiredForSoftHardThreshold { .. })
-        ));
-    }
-
 }

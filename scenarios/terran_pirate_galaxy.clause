@@ -76,42 +76,6 @@ scenario = terran_pirate_galaxy {
                     reason = "uninstantiated ship-class upkeep host; Phase 8 (8.1-8.2) successor"
                 }
             }
-            property = {
-                id = "tp_combat_terran_ship_0_hull"
-                namespace = "tp"
-                name = "combat_terran_ship_0_hull"
-                display_name = "combat_terran_ship_0_hull"
-                disposition = Unobserved {
-                    reason = "uninstantiated combat-enrollment hull host; Phase 8 (8.1-8.2) successor"
-                }
-            }
-            property = {
-                id = "tp_combat_terran_ship_0_weapon"
-                namespace = "tp"
-                name = "combat_terran_ship_0_weapon"
-                display_name = "combat_terran_ship_0_weapon"
-                disposition = Unobserved {
-                    reason = "uninstantiated combat-enrollment weapon host; Phase 8 (8.1-8.2) successor"
-                }
-            }
-            property = {
-                id = "tp_combat_pirate_ship_0_hull"
-                namespace = "tp"
-                name = "combat_pirate_ship_0_hull"
-                display_name = "combat_pirate_ship_0_hull"
-                disposition = Unobserved {
-                    reason = "uninstantiated combat-enrollment hull host; Phase 8 (8.1-8.2) successor"
-                }
-            }
-            property = {
-                id = "tp_combat_pirate_ship_0_weapon"
-                namespace = "tp"
-                name = "combat_pirate_ship_0_weapon"
-                display_name = "combat_pirate_ship_0_weapon"
-                disposition = Unobserved {
-                    reason = "uninstantiated combat-enrollment weapon host; Phase 8 (8.1-8.2) successor"
-                }
-            }
         }
     }
     location = pirate_outpost {
@@ -185,6 +149,8 @@ scenario = terran_pirate_galaxy {
         owner = "pirate"
         ownership_volume = "pirate_border"
         enemy_ownership_volume = "terran_core"
+        border_posture = "raid"
+        interior_posture = "garrison"
         fleet_count = 10
         ships_per_fleet = 40
         border_fleet_count = 8
@@ -309,15 +275,6 @@ scenario = terran_pirate_galaxy {
             input = { input_col = 3 weight_col = 15 }
             output_col = 16
         }
-    }
-
-    combat_arena_payload = contact_arena {
-        system_target = "row199_col80"
-        hull_capacity = 100
-        hp_recovery_per_tick = 0
-        ships_per_side = 1
-        terran_weapon_damage = 25
-        pirate_weapon_damage = 30
     }
 
     # Movement-Front L1 feedstock (SaturatingFlux) â€” bounded theater grid for STEAD

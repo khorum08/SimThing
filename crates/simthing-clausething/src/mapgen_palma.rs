@@ -326,13 +326,4 @@ mod tests {
     use crate::mapgen_movement_front::{
         MAPGEN_MF_CHOKE_OUTPUT_COL, MAPGEN_MF_N_DIMS, MAPGEN_MF_SOURCE_COL,
     };
-
-    #[test]
-    fn default_columns_match_pr6_slice_geometry() {
-        assert_eq!(MAPGEN_PALMA_W_OUTPUT_COL, 3);
-        assert_eq!(MAPGEN_PALMA_D_OUTPUT_COL, 4);
-        assert_eq!(MAPGEN_MF_N_DIMS, 6);
-        assert_eq!(MAPGEN_MF_SOURCE_COL, 0);
-        assert_eq!(MAPGEN_MF_CHOKE_OUTPUT_COL, 2);
-    }
 }

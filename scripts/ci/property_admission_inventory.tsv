@@ -2,12 +2,8 @@
 # Counts = SpecSessionState.property_admission over the canonical TP install.
 # Regenerate: bash scripts/ci/gen_property_admission_inventory.sh
 summary	anchored	18
-summary	unobserved	7
-summary	total	25
-dark	tp::combat_pirate_ship_0_hull	uninstantiated combat-enrollment hull host; Phase 8 (8.1-8.2) successor	176
-dark	tp::combat_pirate_ship_0_weapon	uninstantiated combat-enrollment weapon host; Phase 8 (8.1-8.2) successor	193
-dark	tp::combat_terran_ship_0_hull	uninstantiated combat-enrollment hull host; Phase 8 (8.1-8.2) successor	142
-dark	tp::combat_terran_ship_0_weapon	uninstantiated combat-enrollment weapon host; Phase 8 (8.1-8.2) successor	159
+summary	unobserved	3
+summary	total	21
 dark	tp::hull	uninstantiated ship-class hull host; Phase 8 (8.1-8.2) successor	91
 dark	tp::upkeep	uninstantiated ship-class upkeep host; Phase 8 (8.1-8.2) successor	125
 dark	tp::weapon_damage	uninstantiated ship-class weapon host; Phase 8 (8.1-8.2) successor	108

@@ -93,10 +93,6 @@ fn terran_pirate_galaxy_full_transpile_to_canonical_scenario_spec() {
     assert_eq!(pack.planet_surface_payloads.len(), 2);
     assert_eq!(pack.fleet_ship_payloads.len(), 2);
     assert!(
-        pack.combat_arena_payload.is_some(),
-        "combat arena payload must hydrate"
-    );
-    assert!(
         pack.palma_feedstock.is_some(),
         "PALMA reach/impedance feedstock must hydrate"
     );
@@ -198,12 +194,9 @@ fn terran_pirate_galaxy_full_transpile_to_canonical_scenario_spec() {
     assert_eq!(embedded.provenance.generator_seed, 770421);
 
     let root = &spec.root;
-    // 10 Terran + 10 Pirate authored fleets, plus combat_arena contact fleets (ships_per_side=1 → +2).
+    // 10 Terran + 10 Pirate authored fleets (combat_arena contact fleets retired by TP-PURGE-0).
     let fleets = count_kind(root, &SimThingKind::Fleet);
-    assert_eq!(
-        fleets, 22,
-        "20 authored fleets + 2 combat-contact fleets"
-    );
+    assert_eq!(fleets, 20, "20 authored fleets");
     // Ships are cohort-style children under fleets (ordinary SimThings).
     let mut ship_count = 0usize;
     fn count_ships(node: &SimThing, n: &mut usize) {
@@ -222,12 +215,6 @@ fn terran_pirate_galaxy_full_transpile_to_canonical_scenario_spec() {
     assert!(
         ship_count >= 600,
         "at least 200 Terran + 400 Pirate ships; got {ship_count}"
-    );
-    let combat = pack.combat_arena_payload.as_ref().expect("combat");
-    assert_eq!(
-        combat.enrollments.len(),
-        2,
-        "combat arena enrolls one ship per side"
     );
 
     let session = game_session_child(&spec).expect("session");
@@ -268,7 +255,7 @@ fn terran_pirate_galaxy_full_transpile_to_canonical_scenario_spec() {
             .len(),
         2
     );
-    assert_eq!(count_kind(&roundtrip.root, &SimThingKind::Fleet), 22);
+    assert_eq!(count_kind(&roundtrip.root, &SimThingKind::Fleet), 20);
 
     // --- semantic-free below the spec boundary (this PR) ---
     // Authoring ids (Terran/Pirate) legitimately remain in ScenarioSpec.

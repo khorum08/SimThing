@@ -30,7 +30,6 @@ pub mod scope;
 mod emit;
 mod hydrate;
 mod hydrate_category_economy;
-mod hydrate_combat_arena;
 mod hydrate_field_economy;
 mod hydrate_field_operator;
 mod hydrate_palma_feedstock;
@@ -62,7 +61,6 @@ pub use hydrate_category_economy::{
     HydratedCategoryEconomyPack, decode_economic_modifier_key, hydrate_category_economy_pack,
     hydrate_daily_economy_game_mode,
 };
-pub use hydrate_combat_arena::{HydratedCombatArenaPayload, HydratedCombatShipEnrollment};
 pub use hydrate_field_economy::{
     HydratedDisruptionPresence, HydratedFieldEconomy, HydratedFieldEconomyWeightProfile,
     HydratedFieldResourceQuantity, HydratedOwnerPolicyOverlay, HydratedOwnerPolicyTransform,

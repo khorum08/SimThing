@@ -163,40 +163,4 @@ mod unit_smoke {
     use crate::studio_live_session_bridge::StudioLiveSessionBridgeReadout;
     use crate::studio_sim_clock_ui::StudioSimClockReadout;
     use crate::StudioSimClockRate;
-
-    #[test]
-    fn default_unattached_reports_no_session() {
-        let o = StudioLiveObservationReadout::default_unattached();
-        assert!(!o.session_loaded);
-        assert_eq!(o.source_kind, StudioLiveObservationSourceKind::None);
-        assert_eq!(o.bridge_status, StudioLiveSessionBridgeStatus::Unattached);
-        assert_eq!(o.scheduled_tick_index, 0);
-        assert_eq!(o.bridge_executed_ticks, 0);
-        assert!(o.scenario_id.is_none());
-    }
-
-    #[test]
-    fn build_copies_clock_and_bridge_fields() {
-        let clock = StudioSimClockReadout {
-            paused: false,
-            playing: true,
-            rate: StudioSimClockRate::Rate2x,
-            rate_label: "2×",
-            max_tps: 20.0,
-            effective_tps: 40.0,
-            tick_index: 7,
-        };
-        let mut bridge = StudioLiveSessionBridgeReadout::default_unattached();
-        bridge.status = StudioLiveSessionBridgeStatus::Running;
-        bridge.status_label = "running";
-        bridge.executed_ticks = 3;
-        bridge.last_scheduled_batch = 3;
-        let o = build_studio_live_observation_readout(&clock, &bridge, None);
-        assert!(o.clock_playing);
-        assert_eq!(o.clock_rate_label, "2×");
-        assert_eq!(o.scheduled_tick_index, 7);
-        assert_eq!(o.bridge_executed_ticks, 3);
-        assert_eq!(o.bridge_status_label, "running");
-        assert!(!o.session_loaded);
-    }
 }

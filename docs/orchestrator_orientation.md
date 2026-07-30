@@ -45,14 +45,14 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 211b860c2a424d0386a01a2dc93d5c563abfd1411c1f58ec55c7b69d97426cb8 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | 26eab30ec86c97ac8dfd6beef7ae8c5b4d3f18c38fdaa431ec40ccce855396d3 |
-| design_0_0_8_7_rf_arena_modernization.md | f2b6a0f4185bdc53733baae9b91b96f47b430a25c9306dac65c9357b1e9fd396 |
+| design_0_0_8_7_rf_arena_modernization.md | f51b74727490d84234196afce4084e5e30ef30c2fb9fe6db4747770d3cf73366 |
 | relay_lint.sh | 4163f715cdc3b549dbf57c1744aff61ea96b9f9f0a2237376665fbdb24e986c8 |
 | doctrine_anchors.tsv | 7ab4cbdc8dc22be5c5cc328ac0aa0bf123847bdb9ce3824ae4bc5d302df3eaa9 |
 | execution_status_taxonomy.tsv | 7d8c90f40afc633e41827542d2e0120a3e57f392ee6fbd0030738ae2cf762e81 |
 | execution_status_mixed_posture.tsv | 1adf05f3ec5fd7b537efe29259d20649a2c6d3a0839590063e5308ff154e8f25 |
 | execution_status_non_execution.tsv | 214c1b557dfd3fc465f0171051e20281ff1dcf6c53128dbb29cba01524f9be02 |
 | specialization_citizen_counts.tsv | 852aec43448149670396eec832b99da725b87a4e64d476da80f0b265cbaaa8e8 |
-| property_admission_inventory.tsv | 3ca852e2ba2d2b2fdf941a0eff1cb04b0089414b1748192f0f45e33fe20ba1b9 |
+| property_admission_inventory.tsv | 0ef442ddf7d89187ccd3ed4f19eb42959ec396a15f862513d46c7cde6964eae2 |
 
 ## Execution-status taxonomy (driver/kernel)
 
@@ -61,8 +61,8 @@ executed=58 oracle=6 rehearsal=14 compile-plan=47 mixed_ruled=0 (primary-inclusi
 ## Canonical TP live inventories
 
 Specialization citizens: spatial=1500 owner-seat=2 session-root=1 (SpecSessionState.specialization.citizen_counts; source `specialization_citizen_counts.tsv`).
-Property admission: anchored=18 unobserved=7 total=25 (SpecSessionState.property_admission; source `property_admission_inventory.tsv`).
-Dark properties (7): `tp::combat_pirate_ship_0_hull`, `tp::combat_pirate_ship_0_weapon`, `tp::combat_terran_ship_0_hull`, `tp::combat_terran_ship_0_weapon`, `tp::hull`, `tp::upkeep`, `tp::weapon_damage` (reasons/spans in `property_admission_inventory.tsv`).
+Property admission: anchored=18 unobserved=3 total=21 (SpecSessionState.property_admission; source `property_admission_inventory.tsv`).
+Dark properties (3): `tp::hull`, `tp::upkeep`, `tp::weapon_damage` (reasons/spans in `property_admission_inventory.tsv`).
 
 ## Active Track / Rung Summary (`design_0_0_8_7_rf_arena_modernization.md`)
 

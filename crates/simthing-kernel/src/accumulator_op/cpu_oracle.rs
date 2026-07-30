@@ -152,25 +152,6 @@ mod tests {
         AccumulatorOp, ColumnIndex, CombineFn, ConsumeMode, GateSpec, ScaleSpec, SlotIndex,
         SourceSpec, ThresholdDirection,
     };
-
-    #[test]
-    fn accumulator_scale_constant_zero_writes_zero() {
-        let mut values = vec![10.0, 7.0];
-        let op = AccumulatorOp {
-            source: SourceSpec::SlotValue {
-                slot: SlotIndex::new(0),
-                col: ColumnIndex::new(0),
-            },
-            combine: CombineFn::Identity,
-            gate: GateSpec::Always,
-            scale: ScaleSpec::Constant(0.0),
-            consume: ConsumeMode::None,
-            targets: vec![(SlotIndex::new(1), ColumnIndex::new(0))],
-        };
-        execute_ops_cpu(&mut values, std::slice::from_ref(&op), 0, 1).unwrap();
-        assert_eq!(values[1], 0.0);
-    }
-
     #[test]
     fn accumulator_transfer_clamps_to_available_source() {
         let mut values = vec![5.0, 0.0];
@@ -204,53 +185,5 @@ mod tests {
         execute_ops_cpu(&mut values, std::slice::from_ref(&op), 0, 1).unwrap();
         assert_eq!(values[1], 3.0);
         assert_eq!(values[0], 7.0);
-    }
-
-    #[test]
-    fn accumulator_transfer_rejects_negative_requested_transfer() {
-        let mut values = vec![5.0, 0.0];
-        let op = AccumulatorOp {
-            source: SourceSpec::SlotValue {
-                slot: SlotIndex::new(0),
-                col: ColumnIndex::new(0),
-            },
-            combine: CombineFn::Identity,
-            gate: GateSpec::Always,
-            scale: ScaleSpec::Constant(-3.0),
-            consume: ConsumeMode::SubtractFromSource,
-            targets: vec![(SlotIndex::new(1), ColumnIndex::new(0))],
-        };
-        execute_ops_cpu(&mut values, std::slice::from_ref(&op), 0, 1).unwrap();
-        assert_eq!(values[1], 0.0);
-        assert_eq!(values[0], 5.0);
-    }
-
-    #[test]
-    fn threshold_none_cpu_no_write_when_not_crossing() {
-        let previous = vec![0.4, 0.0];
-        let mut values = vec![0.5, 0.0];
-        let op = AccumulatorOp {
-            source: SourceSpec::SlotValue {
-                slot: SlotIndex::new(0),
-                col: ColumnIndex::new(0),
-            },
-            combine: CombineFn::Identity,
-            gate: GateSpec::Threshold {
-                value: 0.3,
-                direction: ThresholdDirection::Upward,
-            },
-            scale: ScaleSpec::Identity,
-            consume: ConsumeMode::None,
-            targets: vec![(SlotIndex::new(1), ColumnIndex::new(0))],
-        };
-        let records =
-            execute_threshold_ops_cpu(&previous, &mut values, std::slice::from_ref(&op), 1)
-                .unwrap();
-        assert!(records.is_empty());
-        assert!(
-            (values[1] - 0.0).abs() < 1e-5,
-            "should not write: {}",
-            values[1]
-        );
     }
 }

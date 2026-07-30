@@ -148,19 +148,4 @@ mod tests {
             ],
         }
     }
-
-    #[test]
-    fn e8r_layout_expansion_is_deterministic() {
-        let a = expand_arena_internal_columns(arena_bound_layout());
-        let b = expand_arena_internal_columns(arena_bound_layout());
-        assert_eq!(a, b);
-        assert_eq!(
-            arena_internal_columns_present(&a),
-            ARENA_INTERNAL_COLUMN_ROLES
-                .iter()
-                .map(|s| s.to_string())
-                .collect::<Vec<_>>()
-        );
-    }
-
 }

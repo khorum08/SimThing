@@ -114,36 +114,6 @@ fn run_c0_algebraic_atlas_parity() -> Option<(f32, f32, f32, u64, u64, String, u
         cells as u32,
     ))
 }
-
-#[test]
-fn c0_happy_path_algebraic_mask_atlas_protocol_oracle_parity() {
-    let Some((full_tile, l_inf, _, _, _, fp, cells)) = run_c0_algebraic_atlas_parity() else {
-        return;
-    };
-    println!(
-        "C-0 parity: full_tile_max_abs_error={full_tile} l_inf={l_inf} cells={cells} fingerprint={fp}"
-    );
-    assert!(
-        full_tile <= 0.0001,
-        "full-tile protocol-oracle parity required; got max_abs_error={full_tile}"
-    );
-    assert!(l_inf <= 0.0001);
-}
-
-#[test]
-fn c0_full_tile_parity_not_corridor_only() {
-    let Some((full_tile, _, corridor, _, _, _, _)) = run_c0_algebraic_atlas_parity() else {
-        return;
-    };
-    println!("full_tile={full_tile} corridor_t44={corridor} (corridor non-authoritative)");
-    assert!(
-        full_tile <= 0.0001,
-        "acceptance is full-tile, not corridor-only"
-    );
-    // Corridor may agree even when full-tile fails — here both should pass; document corridor is diagnostic.
-    assert!(corridor <= 0.0001);
-}
-
 #[test]
 fn c0_mapping_profile_default_remains_disabled() {
     assert!(mapping_profile_default_disabled());

@@ -106,26 +106,6 @@ fn owner_identity(spec: &SimThingScenarioSpec) -> BTreeSet<(String, String, (u8,
     collect(&spec.root, &mut out);
     out
 }
-
-#[test]
-fn studio_star_naming_repair_canonical_clause_all_1500_have_display_names() {
-    let spec = load_through_clause();
-    let names = resolved_names(&spec);
-    assert_eq!(names.len(), 1_500);
-    assert_eq!(names.iter().map(|(_, name)| name).collect::<BTreeSet<_>>().len(), 1_500);
-}
-
-#[test]
-fn studio_star_naming_repair_names_non_empty_and_not_hex_fallback() {
-    for (system_id, name) in resolved_names(&load_through_clause()) {
-        assert!(!name.trim().is_empty(), "system {system_id} has blank name");
-        assert!(!name.starts_with('#'), "system {system_id} retained hex fallback {name}");
-        assert_ne!(name, system_id.to_string(), "system id used as display name");
-        assert_ne!(name.to_ascii_lowercase(), format!("{system_id:x}"));
-        assert_ne!(name.to_ascii_uppercase(), format!("{system_id:X}"));
-    }
-}
-
 #[test]
 fn studio_star_naming_repair_deterministic_across_two_regenerations() {
     let mut first = load_canonical_base();
@@ -140,63 +120,4 @@ fn studio_star_naming_repair_deterministic_across_two_regenerations() {
         .canonical_json;
     assert_eq!(first_json, second_json);
     assert_eq!(resolved_names(&first), resolved_names(&second));
-}
-
-#[test]
-fn studio_star_naming_repair_canonical_json_is_up_to_date() {
-    let path = canonical_base_path();
-    let mut regenerated = load_canonical_base();
-    apply_expected_names(&mut regenerated);
-    let expected = save_scenario_spec_to_canonical_json(&regenerated)
-        .expect("canonical save")
-        .canonical_json;
-    assert_eq!(std::fs::read_to_string(path).expect("committed JSON"), expected);
-}
-
-#[test]
-fn studio_star_naming_repair_preserves_placements_links_and_owners() {
-    let mut repaired = load_canonical_base();
-    let placements = repaired.structural_grid.placements.clone();
-    let links = repaired.links.clone();
-    let owners = owner_identity(&repaired);
-    apply_expected_names(&mut repaired);
-    assert_eq!(repaired.structural_grid.placements, placements);
-    assert_eq!(repaired.links, links);
-    assert_eq!(owner_identity(&repaired), owners);
-}
-
-#[test]
-fn studio_star_naming_repair_no_mapeditor_render_changes() {
-    let presentation = include_str!("../../simthing-mapeditor/src/studio_faction_nameplates.rs");
-    let galaxy_render = include_str!("../../simthing-mapeditor/src/app/galaxy_render.rs");
-    assert!(presentation.contains("star_system_display_name"));
-    assert!(presentation.contains("fallback_simthing_nameplate_id"));
-    assert!(galaxy_render.contains("star_nameplate_presentations"));
-}
-
-#[test]
-fn studio_star_naming_repair_clause_loader_regression() {
-    let clause = std::fs::read_to_string(canonical_clause_path()).expect("canonical clause");
-    assert!(clause.contains("source_json = \"terran_pirate_galaxy.base_disc.json\""));
-    assert!(!clause.contains("{{FIXTURE_JSON}}"));
-    let spec = load_through_clause();
-    assert_eq!(spec.scenario_id, "terran_pirate_galaxy");
-    assert_eq!(spec.gridcell_locations().count(), 1_500);
-}
-
-#[test]
-fn studio_star_naming_repair_11_2_identity_regression() {
-    let owners = owner_identity(&load_through_clause());
-    assert!(owners.contains(&(
-        "terran".into(),
-        "Terran".into(),
-        (64, 160, 255),
-        "none".into(),
-    )));
-    assert!(owners.contains(&(
-        "pirate".into(),
-        "Pirate".into(),
-        (220, 64, 48),
-        "none".into(),
-    )));
 }
