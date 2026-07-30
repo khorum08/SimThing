@@ -76,42 +76,6 @@ scenario = terran_pirate_galaxy {
                     reason = "uninstantiated ship-class upkeep host; Phase 8 (8.1-8.2) successor"
                 }
             }
-            property = {
-                id = "tp_combat_terran_ship_0_hull"
-                namespace = "tp"
-                name = "combat_terran_ship_0_hull"
-                display_name = "combat_terran_ship_0_hull"
-                disposition = Unobserved {
-                    reason = "uninstantiated combat-enrollment hull host; Phase 8 (8.1-8.2) successor"
-                }
-            }
-            property = {
-                id = "tp_combat_terran_ship_0_weapon"
-                namespace = "tp"
-                name = "combat_terran_ship_0_weapon"
-                display_name = "combat_terran_ship_0_weapon"
-                disposition = Unobserved {
-                    reason = "uninstantiated combat-enrollment weapon host; Phase 8 (8.1-8.2) successor"
-                }
-            }
-            property = {
-                id = "tp_combat_pirate_ship_0_hull"
-                namespace = "tp"
-                name = "combat_pirate_ship_0_hull"
-                display_name = "combat_pirate_ship_0_hull"
-                disposition = Unobserved {
-                    reason = "uninstantiated combat-enrollment hull host; Phase 8 (8.1-8.2) successor"
-                }
-            }
-            property = {
-                id = "tp_combat_pirate_ship_0_weapon"
-                namespace = "tp"
-                name = "combat_pirate_ship_0_weapon"
-                display_name = "combat_pirate_ship_0_weapon"
-                disposition = Unobserved {
-                    reason = "uninstantiated combat-enrollment weapon host; Phase 8 (8.1-8.2) successor"
-                }
-            }
         }
     }
     location = pirate_outpost {

@@ -5,8 +5,8 @@
 - HD-RECEIPT: `3555f6da869e`
 - ORIENT-RECEIPT: `56fe3e6032b0`
 - orientation_rule_stamp: `1497628db25456ff`
-- Exact master / operational base: `0c1168be074cd145233f4ed2b55a9daaa8b5e613`
-- Board dispatch: `5133929991`
+- Exact master / operational base: `df08db5ebb2d4f8af874cfe151c1aa157100af36`
+- Board dispatch: `5133929991` · Remand 2: `5135691949`
 
 ## Stage C contract executed
 
@@ -31,6 +31,10 @@
 ### DELETE
 - Deleted `crates/simthing-clausething/src/hydrate_combat_arena.rs` and stripped
   combat plumbing / corpus combat block (main scenario + fixture).
+- Remand 2: removed the four leftover combat `Unobserved` property declarations
+  from `scenarios/terran_pirate_galaxy.clause`; regenerated
+  `property_admission_inventory.tsv` via `ORIENTATION_VERIFY_EXECUTABLE_SOURCES=1`
+  → **anchored=18 unobserved=3 total=21** (`tp::hull`, `tp::upkeep`, `tp::weapon_damage`).
 - Reaped workshop `tp_rf_reduce_up_golden` (+ test) and closeout/handoff objects
   `TP-CLAUSE-ECONOMY-AUTHOR-0`, `TP-EMERGENT-TENSION-PROOF-0` leased under closed
   0.0.8.6.

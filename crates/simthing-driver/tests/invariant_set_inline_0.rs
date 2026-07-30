@@ -1,10 +1,10 @@
-//! TP-PURGE-0 Stage B — low-single-digit Invariant Set proofs over inline-constructed input.
+//! TP-PURGE-0 Stage B — mechanism-scoped Invariant Set proofs over inline-constructed input.
 //!
-//! Corpus/fixture/generator coupling forbidden. Conservation bites also live in
-//! `rf_conservation_oracle` unit tests. Primary CPU/GPU parity remains
-//! `s6_threshold_events_match_cpu_golden` (adapter-pinned live GPU).
-//! Admission-totality / residency-typing map to ColumnIndex door units in
-//! `simthing-core::column_index` (see `tp_purge_0_stage_b_replacement_map.tsv`).
+//! Corpus/fixture/generator coupling forbidden. These referees bite only their named
+//! substrate mechanisms (threshold-upload packing; allocator residual bound). They must
+//! not be cited as survivors for mobility, EML, Studio observation, replay, map-gen,
+//! or typeface rows — see Remand 2 `5135691949` and
+//! `docs/tests/tp_purge_0_stage_b_replacement_map.tsv`.
 
 use bytemuck::cast_slice;
 use simthing_driver::{
