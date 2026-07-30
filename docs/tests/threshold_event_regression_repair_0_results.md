@@ -8,6 +8,7 @@
 - orientation_rule_stamp: `1497628db25456ff`
 - Exact master / reconcile base: `f64b27464e86630c1e89677e6887ade55f00f128`
 - Prior Stage-A tip (superseded; not mechanical rebase): `6c52ae47b02b1f5043d422da26772ee9ad80d303`
+- Stage-A2 tip / tested_code_sha: `3b889d8083c5da95fcc3056cc17487642445c5cf`
 - Adapter pin: `WGPU_BACKEND=vulkan`, `SIMTHING_GPU_ADAPTER_CONTAINS=4080`, `SIMTHING_GPU_REQUIRE_ADAPTER_MATCH=1`
 
 ## Why Stage A was revised
