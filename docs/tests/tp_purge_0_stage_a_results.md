@@ -50,4 +50,4 @@ Report: `docs/tests/tp_purge_0_stage_a_reap_report.tsv`.
 ## Next
 
 - **Stage B:** collapse 222 `REPLACE-INLINE-INVARIANT` rows to low-single-digit inline proofs per (invariant × mechanism), then paired-reap the old forms
-- **Stage C:** detach (ceiling 2→0), de-name, delete `hydrate_combat_arena.rs` + workshop/handoff residue; stamp 5.9 PROBATION
+- **Stage C:** detach (ceiling 2→0), de-name, delete `hydrate_combat_arena.rs` + workshop/handoff residue; stamp 5.9 COMPLETE — DA-GRADUATED / merged #1520 @ 153ba40c (DA reproduced corpus-absent engine 181/0/1)

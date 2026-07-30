@@ -1,7 +1,7 @@
 # TP-PURGE-0 results — Remand 6 construction-time JIT mutant
 
 - Track: 0.0.8.7 RF arena modernization (rung 5.9 / `TP-PURGE-0`)
-- Status: **PROBATION / proof-present / DA-review-pending** — Remand 6 `5137229638` discharged locally; Stage B arithmetic preserved `145+73=218`
+- Status: **COMPLETE — DA-GRADUATED / merged #1520 @ 153ba40c (DA reproduced corpus-absent engine 181/0/1)
 - HD-RECEIPT: `3555f6da869e`
 - ORIENT-RECEIPT: `56fe3e6032b0`
 - orientation_rule_stamp: `1497628db25456ff`
