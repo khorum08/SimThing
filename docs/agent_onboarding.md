@@ -90,11 +90,13 @@ The executive design authority. Reviews escalations, graduates or remands, autho
   require `expires_on` and **must be deleted/retired after expiry** (lifecycle gate in doctrine-scan).
   Expeditionary escape needs `expeditionary: YES` + charter + `expeditionary_until` and cannot RELAX
   production/engine/long-lifecycle surfaces.
+- **Rung graduation gate (binding, mechanized):** `track_closeout.sh --rungclose <RUNG-ID>` must PASS first —
+  both cells `DA-GRADUATED / merged #<PR> @ <sha>`, no `PROBATION`, pointer advanced, orientation fresh, and the
+  **reap clock clear** (no rung graduates over an unreaped proof backlog).
 - **Exit-proof stamp (binding after a passed verdict):** a DA pass is incomplete until the DA updates the
   active workplan/design-ladder **Exit proof** cell (`DA-GRADUATED / merged #<PR> @ <merge-sha>`, or
   equivalent DONE wording for formal admission/denial), marks the results doc COMPLETE where applicable,
-  regenerates orientation (`bash scripts/ci/gen_orientation.sh`), and **lands and merges** that docs-only
-  stamp PR. Do not leave the stamp as orchestrator residual after a DA pass — the stamp is part of the
+  regenerates orientation, and **lands and merges** that docs-only stamp PR. Do not leave the stamp as orchestrator residual after a DA pass — the stamp is part of the
   graduation conclusion, not a follow-up chore.
 - **Authority:** merges gate-wiring and DA-reserve work after review; also merges the post-verdict
   exit-proof stamp PR. Above the DA sits the **Owner**, whose authorization is required for gate-wiring
