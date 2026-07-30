@@ -1,17 +1,19 @@
-//! CANONICAL-ANCHOR-MATERIALIZATION-0 — value-placing residency census + exit proofs.
+//! CANONICAL-ANCHOR-MATERIALIZATION-0 — totality exit proofs + derivation-set census.
 //!
-//! DA HOLD lift `5124095512` / dispatch `5124117080` / HD `63f01c28e4df`:
-//! RESIDENCY = value-placing relations ONLY. Governance (owner-policy overlays,
-//! policy-weight authority) may corroborate but never elects. After the seven
-//! DA-authorized Unobserved{reason} conversions, Anchored census must lock
-//! `exact=18 / zero=0 / conflict=0`.
+//! Remand `5124550917` / DA `5124532506` / HD `dfacf5e8bb04`:
+//! RESIDENCY = value-placing relations ONLY (incl. hosted_observation location).
+//! Governance may corroborate but never elects. Prove TOTALITY on the ordinary
+//! unmutated install (overlays/domain packs ENABLED), not 1:1 cardinality.
+//! Census locks `zero=0 / conflict=0` over the derivation set only
+//! (Anchored properties with zero live loci after admitted structures resolve).
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
 use simthing_clausething::{hydrate_scenario_with_source_base, parse_raw_document};
 use simthing_core::{
-    DimensionRegistry, PropertyAdmissionDisposition, SimPropertyId, SimThing, SubFieldRole,
+    mint_anchor_table_from_admission, DimensionRegistry, PropertyAdmissionDisposition,
+    SimPropertyId, SimThing, SubFieldRole,
 };
 use simthing_driver::{preview_install, Scenario};
 use simthing_gpu::SlotAllocator;
@@ -296,19 +298,11 @@ fn full_tp_preview() -> simthing_driver::InstallPreview {
     let document = parse_raw_document(source.as_bytes()).expect("parse");
     let pack = hydrate_scenario_with_source_base(&document, Some(clause.parent().unwrap()))
         .expect("hydrate TP");
-    // Production field-bearing door: strips hydrate-local property ids, keeps
-    // authority topology + install_targets, reinstalls via compile_and_install.
+    // Ordinary production field-bearing door: domain packs + overlays ENABLED.
     let profile = authored_live_profile_from_pack(&pack);
     let scenario = driver_scenario_field_bearing_from_profile(&profile)
         .expect("field-bearing scenario from canonical TP pack");
-    // Governance overlays corroborate but must not elect/place observation hosts
-    // (DA residency law). Drop the field-bearing overlay pack so locus cardinality
-    // reflects value-placing relations only.
-    let mut game_mode = field_bearing_game_mode(&profile.game_mode);
-    game_mode
-        .domain_packs
-        .retain(|pack| pack.id != "field_bearing_overlays");
-    game_mode.overlays.clear();
+    let game_mode = field_bearing_game_mode(&profile.game_mode);
     let mut allocator = SlotAllocator::new();
     allocator.populate_from_tree(&scenario.root);
     preview_install(
@@ -318,16 +312,68 @@ fn full_tp_preview() -> simthing_driver::InstallPreview {
         &scenario.root,
         &allocator,
     )
-    .unwrap_or_else(|err| panic!("canonical TP field-bearing preview_install: {err:?}"))
+    .unwrap_or_else(|err| panic!("canonical TP ordinary preview_install: {err:?}"))
 }
 
+/// Count live PropertyValue stores per SimPropertyId (tree presence).
+/// Distinct from `snapshot_anchored_loci`, which only admits Amount/Velocity
+/// primary columns into the 5.3 observation table.
+fn count_tree_property_loci(node: &SimThing, counts: &mut HashMap<SimPropertyId, usize>) {
+    for &pid in node.properties.keys() {
+        *counts.entry(pid).or_default() += 1;
+    }
+    for child in &node.children {
+        count_tree_property_loci(child, counts);
+    }
+}
+
+/// Derivation-set census: Anchored properties with zero live PropertyValue
+/// stores after the ordinary install's admitted structures resolve.
+/// Materialization may have filled gaps; the residual set must be empty
+/// (zero=0 / conflict=0 — no unresolved derivation debt).
 #[test]
-fn candidate_evidence_census_value_placing_residency() {
-    let (exact, zero, conflict, md) = census_markdown();
-    eprintln!("\n=== CANONICAL-ANCHOR-MATERIALIZATION-0 CENSUS ===\n{md}");
-    assert_eq!(exact, 18, "exactly-one Anchored rows drifted");
-    assert_eq!(zero, 0, "zero-candidate Anchored rows remain");
-    assert_eq!(conflict, 0, "conflict Anchored rows remain");
+fn derivation_set_census_zero_conflict_free() {
+    let (exact_all, zero_all, conflict_all, hydrate_md) = census_markdown();
+    eprintln!("\n=== HYDRATE VALUE-PLACING TABLE (diagnostic) ===\n{hydrate_md}");
+    assert_eq!(zero_all, 0, "hydrate Anchored must not have zero-candidate rows");
+    assert_eq!(
+        conflict_all, 0,
+        "hydrate Anchored must not conflict under value-placing residency \
+         (governance overlays are not electors); exact_all={exact_all}"
+    );
+
+    let preview = full_tp_preview();
+    let report = preview.registry.property_admission_report();
+    let mut live_counts = HashMap::new();
+    count_tree_property_loci(&preview.root, &mut live_counts);
+    let mut derivation_set = Vec::new();
+    for row in &report.resource_properties {
+        if !row.disposition.is_anchored() {
+            continue;
+        }
+        if live_counts.get(&row.property_id).copied().unwrap_or(0) == 0 {
+            derivation_set.push(row.canonical_identity());
+        }
+    }
+    eprintln!(
+        "=== DERIVATION SET (|{}|) ===\n{}\n**Summary:** exact=0 / zero=0 / conflict=0 / |set|={}\n",
+        derivation_set.len(),
+        if derivation_set.is_empty() {
+            "(empty — all Anchored already have ≥1 live PropertyValue after admitted structures)"
+                .to_string()
+        } else {
+            derivation_set
+                .iter()
+                .map(|s| format!("- `{s}`"))
+                .collect::<Vec<_>>()
+                .join("\n")
+        },
+        derivation_set.len()
+    );
+    assert!(
+        derivation_set.is_empty(),
+        "derivation set must be empty after ordinary install (totality); residual={derivation_set:?}"
+    );
 }
 
 fn properties_only_inventory_preview() -> simthing_driver::InstallPreview {
@@ -368,7 +414,7 @@ fn properties_only_inventory_preview() -> simthing_driver::InstallPreview {
 }
 
 #[test]
-fn canonical_tp_materializes_18_anchored_7_unobserved() {
+fn ordinary_install_proves_totality_18_anchored_7_unobserved() {
     // Binding inventory door (same as property_admission_inventory.tsv): 18/7.
     let inventory = properties_only_inventory_preview()
         .registry
@@ -376,7 +422,7 @@ fn canonical_tp_materializes_18_anchored_7_unobserved() {
     assert_eq!(inventory.anchored_count(), 18, "inventory Anchored");
     assert_eq!(inventory.unobserved_count(), 7, "inventory Unobserved");
 
-    // Live materialization door (Studio field-bearing / compile_and_install).
+    // Ordinary unmutated production install (overlays + domain packs enabled).
     let preview = full_tp_preview();
     let report = preview.registry.property_admission_report();
     let tp_anchored: HashSet<SimPropertyId> = report
@@ -385,58 +431,90 @@ fn canonical_tp_materializes_18_anchored_7_unobserved() {
         .filter(|row| row.disposition.is_anchored() && row.namespace == "tp_economy")
         .map(|row| row.property_id)
         .collect();
-    assert_eq!(
-        tp_anchored.len(),
-        18,
-        "canonical TP economy corpus must expose 18 Anchored identities"
-    );
-    assert_eq!(
-        report.dark_properties().count(),
-        7,
-        "7 Unobserved dark cells retained under field-bearing install"
-    );
+    assert_eq!(tp_anchored.len(), 18, "18 Anchored tp_economy identities");
+    assert_eq!(report.dark_properties().count(), 7, "7 Unobserved dark cells");
 
-    let loci = snapshot_anchored_loci(&preview.root, &preview.registry, &preview.allocator);
-    let tp_loci: Vec<_> = loci
+    // TOTALITY: every Anchored property has ≥1 live PropertyValue on the tree.
+    // (RF Named-role properties such as studio_live_rf::owner_flow are live stores
+    // but intentionally absent from the Amount/Velocity observation snapshot.)
+    let mut live_counts = HashMap::new();
+    count_tree_property_loci(&preview.root, &mut live_counts);
+    let uncovered: Vec<_> = report
+        .resource_properties
         .iter()
-        .filter(|((_, pid), _)| tp_anchored.contains(pid))
-        .collect();
-    let live_prop_count = {
-        let mut props = HashSet::new();
-        for ((_, pid), _) in &tp_loci {
-            props.insert(pid.0);
-        }
-        props.len()
-    };
-    assert_eq!(
-        live_prop_count, 18,
-        "18 distinct Anchored TP economy identities with live loci (locus rows={})",
-        tp_loci.len()
-    );
-    let mut by_prop: BTreeMap<String, Vec<u32>> = BTreeMap::new();
-    for ((sid, pid), _) in &tp_loci {
-        let p = preview.registry.property(*pid);
-        by_prop
-            .entry(format!("{}::{}", p.namespace, p.name))
-            .or_default()
-            .push(sid.raw());
-    }
-    let dupes: Vec<_> = by_prop
-        .iter()
-        .filter(|(_, hosts)| hosts.len() != 1)
-        .map(|(name, hosts)| format!("{name} hosts={hosts:?}"))
+        .filter(|row| row.disposition.is_anchored())
+        .filter(|row| live_counts.get(&row.property_id).copied().unwrap_or(0) == 0)
+        .map(|row| row.canonical_identity())
         .collect();
     assert!(
-        dupes.is_empty(),
-        "each Anchored TP economy property must have exactly one live locus; dupes: {}",
-        dupes.join("; ")
+        uncovered.is_empty(),
+        "totality requires every Anchored property to have ≥1 live PropertyValue; uncovered={uncovered:?}"
     );
-    assert_eq!(tp_loci.len(), 18, "18 live Anchored loci over TP economy props");
+
+    // Observation-table locus map (Amount/Velocity primary): covers the 18
+    // tp_economy Anchored identities; multi-host residency is lawful.
+    let loci = snapshot_anchored_loci(&preview.root, &preview.registry, &preview.allocator);
+    let key_count = loci.len();
+    let unique_keys = loci.keys().collect::<HashSet<_>>().len();
+    assert_eq!(key_count, unique_keys, "no repeated (SimThingId, SimPropertyId)");
+
+    let mut hosts_per_prop: BTreeMap<String, BTreeSet<u32>> = BTreeMap::new();
+    for ((sid, pid), _) in &loci {
+        if !tp_anchored.contains(pid) {
+            continue;
+        }
+        let p = preview.registry.property(*pid);
+        hosts_per_prop
+            .entry(format!("{}::{}", p.namespace, p.name))
+            .or_default()
+            .insert(sid.raw());
+    }
+    let multi = hosts_per_prop
+        .iter()
+        .filter(|(_, h)| h.len() > 1)
+        .count();
+    eprintln!(
+        "TOTALITY: tree_anchored_live={} observation_locus_rows={} \
+         tp_economy_props={} multi_host_props={} (lawful)",
+        report
+            .resource_properties
+            .iter()
+            .filter(|row| row.disposition.is_anchored())
+            .filter(|row| live_counts.get(&row.property_id).copied().unwrap_or(0) > 0)
+            .count(),
+        loci.iter()
+            .filter(|((_, pid), _)| tp_anchored.contains(pid))
+            .count(),
+        hosts_per_prop.len(),
+        multi
+    );
+    assert_eq!(hosts_per_prop.len(), 18, "all 18 tp_economy Anchored in observation map");
+
+    // One GPU table identity coverage per observation-table live locus.
+    let n_dims = preview.registry.total_columns.max(1);
+    let zeros = vec![0.0_f32; n_dims * preview.allocator.capacity().max(1)];
+    let table = mint_anchor_table_from_admission(
+        &preview.root,
+        &preview.registry,
+        &loci,
+        &zeros,
+        n_dims,
+    );
+    let mut covered = HashSet::new();
+    for row in table.rows() {
+        covered.insert((row.identity.sim_thing_id, row.identity.property_id));
+    }
+    for key in loci.keys() {
+        assert!(
+            covered.contains(key),
+            "GPU table must cover live locus {key:?}"
+        );
+    }
 
     for row in report.dark_properties() {
         assert!(
             !loci.keys().any(|(_, p)| *p == row.property_id),
-            "Unobserved {} must remain a dark cell (no anchored locus)",
+            "Unobserved {} must remain a dark cell (absent from observation locus map)",
             row.canonical_identity()
         );
     }

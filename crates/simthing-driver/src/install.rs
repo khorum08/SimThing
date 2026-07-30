@@ -676,6 +676,19 @@ fn materialize_observation_hosts(
                 emission.host_entity.as_deref(),
                 format!("economy.emission.host_entity id={}", emission.id),
             );
+            // Hosted-observation locations are lowered as presence emissions; the
+            // emission host_entity is the observation locus (not governance).
+            if emission.id.contains("presence_emission") {
+                push(
+                    &mut candidates,
+                    &emission.source,
+                    emission.host_entity.as_deref(),
+                    format!(
+                        "hosted_observation.disruption_presence.location id={}",
+                        emission.id
+                    ),
+                );
+            }
         }
         for thresh in &economy.emit_on_threshold {
             push(
@@ -736,18 +749,60 @@ fn materialize_observation_hosts(
     }
     collect_rf_edge_observation_candidates(root, registry, &mut candidates);
 
+    // Derivation applies to authored game-mode / domain-pack Anchored identities
+    // and to any property that already collected a value-placing candidate.
+    // Registry-only placeholders (e.g. `_studio_live_bridge::seed`) are not
+    // derivation debt — they have no value-placing vocabulary of their own.
+    let mut authored_anchored: HashSet<SimPropertyId> = HashSet::new();
+    let note_authored = |key: &PropertyKey, out: &mut HashSet<SimPropertyId>| {
+        if let Some(property_id) = registry.id_of(&key.namespace, &key.name) {
+            let prop = registry.property(property_id);
+            if prop.is_resource_bearing()
+                && matches!(
+                    prop.admission_disposition,
+                    PropertyAdmissionDisposition::Anchored
+                )
+            {
+                out.insert(property_id);
+            }
+        }
+    };
+    for prop_spec in &game_mode.properties {
+        note_authored(
+            &PropertyKey {
+                namespace: prop_spec.namespace.clone(),
+                name: prop_spec.name.clone(),
+            },
+            &mut authored_anchored,
+        );
+    }
+    for pack in &game_mode.domain_packs {
+        for prop_spec in &pack.properties {
+            note_authored(
+                &PropertyKey {
+                    namespace: prop_spec.namespace.clone(),
+                    name: prop_spec.name.clone(),
+                },
+                &mut authored_anchored,
+            );
+        }
+    }
+
     // Deterministic: Anchored resource properties in SimPropertyId order.
     let mut anchored_ids: Vec<SimPropertyId> = registry
         .properties
         .iter()
         .enumerate()
         .filter(|(idx, prop)| {
-            registry.is_active(SimPropertyId(*idx as u32))
+            let property_id = SimPropertyId(*idx as u32);
+            registry.is_active(property_id)
                 && prop.is_resource_bearing()
                 && matches!(
                     prop.admission_disposition,
                     PropertyAdmissionDisposition::Anchored
                 )
+                && (authored_anchored.contains(&property_id)
+                    || candidates.contains_key(&property_id))
         })
         .map(|(idx, _)| SimPropertyId(idx as u32))
         .collect();

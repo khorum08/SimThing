@@ -1195,11 +1195,8 @@ fn canonical_tp_gpu_table_matches_18_anchored_7_unobserved() {
     let profile = authored_live_profile_from_pack(&pack);
     let scenario = driver_scenario_field_bearing_from_profile(&profile)
         .expect("field-bearing scenario");
-    let mut game_mode = field_bearing_game_mode(&profile.game_mode);
-    game_mode
-        .domain_packs
-        .retain(|pack| pack.id != "field_bearing_overlays");
-    game_mode.overlays.clear();
+    // Ordinary production install: domain packs + overlays ENABLED (totality law).
+    let game_mode = field_bearing_game_mode(&profile.game_mode);
     let mut preview_allocator = SlotAllocator::new();
     preview_allocator.populate_from_tree(&scenario.root);
     let preview = preview_install(
@@ -1221,21 +1218,35 @@ fn canonical_tp_gpu_table_matches_18_anchored_7_unobserved() {
     assert_eq!(tp_anchored.len(), 18, "5.3b: 18 Anchored tp_economy identities");
 
     let loci = snapshot_anchored_loci(&preview.root, &preview.registry, &preview.allocator);
-    let tp_loci: Vec<_> = loci
+    let missing: Vec<_> = tp_anchored
         .iter()
-        .filter(|((_, pid), _)| tp_anchored.contains(pid))
+        .filter(|pid| !loci.keys().any(|(_, p)| p == *pid))
         .collect();
+    assert!(
+        missing.is_empty(),
+        "totality: every Anchored tp_economy property must have ≥1 live locus; missing={missing:?}"
+    );
     let live_prop_count = {
         let mut props = HashSet::new();
-        for ((_, pid), _) in &tp_loci {
-            props.insert(pid.0);
+        for ((_, pid), _) in &loci {
+            if tp_anchored.contains(pid) {
+                props.insert(pid.0);
+            }
         }
         props.len()
     };
-    assert_eq!(tp_loci.len(), 18, "18 live Anchored loci over tp_economy");
-    assert_eq!(live_prop_count, 18, "18 distinct Anchored tp_economy identities");
+    assert_eq!(live_prop_count, 18);
+    // No repeated (thing, property) keys — AnchoredLocusMap uniqueness.
+    assert_eq!(
+        loci.len(),
+        loci.keys().collect::<HashSet<_>>().len(),
+        "locus map must not repeat (SimThingId, SimPropertyId)"
+    );
     eprintln!(
-        "CANONICAL 5.3b: inventory unobserved=7; live tp_economy \
-         Anchored loci=18 / dark cells=7."
+        "CANONICAL 5.3b TOTALITY: inventory unobserved=7; tp_economy \
+         Anchored covered=18; live locus rows={}; dark cells=7.",
+        loci.iter()
+            .filter(|((_, pid), _)| tp_anchored.contains(pid))
+            .count()
     );
 }
