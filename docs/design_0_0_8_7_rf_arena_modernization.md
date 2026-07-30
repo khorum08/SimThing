@@ -297,6 +297,20 @@ discretion); `Std — Grok CLI` (`grok-4.5` pinned); `Fable` = DA-implemented ha
 
 ## 4. Binding laws (carry from day one)
 
+**The Native Ingestion Law (Owner mandate, 2026-07-30).** **An authored Clausewitz script must
+always be natively ingestible through ClauseThing.** `scenarios/terran_pirate_galaxy.clause` is a
+ClauseScript source written in the Clausewitz scripting language; it parses (jomini), hydrates, and
+transpiles to a canonical `ScenarioSpec` **without engine changes**, and that must remain true
+however radically the substrate is rebuilt. This is the deliberate complement to the Detachability
+Law, not a contradiction of it: **the engine must never DEPEND on the corpus; the authoring layer
+must ALWAYS be able to READ it.** Accordingly the Invariant Set governs the SUBSTRATE, and the
+authoring layer carries exactly one invariant of its own — **native-ingestion** — whose witness may
+never be reaped for failing to name a substrate invariant. Standing hazard, recorded because it was
+live when this law was written: after `TP-PURGE-0` the engine no longer touches the corpus, so the
+ingestion path has exactly ONE witness (`tp_full_transpile_0`), born in a track closed 2026-07-09
+and therefore reapable but for this law. A purge that removes the last reader of the corpus has
+gone one step too far.
+
 **The Invariant Set (Owner mandate, 2026-07-30) — the COMPLETE proof surface of the substrate.**
 Engine correctness is these laws and nothing else. Each holds for **any** input, so each is
 provable over inline-constructed input: **a corpus, fixture, or generator is never a
