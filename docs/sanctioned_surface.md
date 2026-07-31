@@ -9,10 +9,10 @@ This digest is a derived context artifact for low-context agents. If it disagree
 
 | source | data rows | sha256 |
 | --- | --- | --- |
-| scripts/ci/allow/sealed_producers.txt | 23 | 268c163dd0ecc76fd1ccd36a84184bdbf3253484586652dc5824bc8ca0ab26ba |
+| scripts/ci/allow/sealed_producers.txt | 24 | 33532747f3fac0c1d976e04187d77a60da7b651a47974fce8bf03ffe2733cc89 |
 | scripts/ci/allow/inert_buffer_handles.txt | 2 | 9e2069fa5730f17cacde1c671ebc17beb59f50738d2dcb914bceae13f9b8b3a4 |
-| scripts/ci/allow/kernel_surface.txt | 259 | 63f6d5b6fe284f54a59221628ff8b0314cda2d0ee031a9a4335b1ffea8aebf2a |
-| scripts/ci/allow/sealed_types.txt | 17 | 37b71774d6e44daadbd65118d027e559aa76a26850d8bea3573c11da8361666d |
+| scripts/ci/allow/kernel_surface.txt | 266 | 93dd8958fc476b7cbfb3ef3d47cfcdeaf4d62ac242bf84971414b38a5cd40ade |
+| scripts/ci/allow/sealed_types.txt | 18 | e9ad17a6f03fcf4c6a113eda500625bb1527ce3b6eae3530b8e9fe0aeee0e3c7 |
 | scripts/ci/scans.tsv | 24 | 7df555336e00c509bdd5d5ac61bb5d985d02971adca545dea9fd67604179e9f6 |
 
 ## Sanctioned Sealed Producers
@@ -21,9 +21,10 @@ This digest is a derived context artifact for low-context agents. If it disagree
 | --- | --- | --- | --- | --- |
 | apply_field_sweep_registration | apply | FIELD-SWEEP-N4-PARITY-0 sole admission door minting proof-present FieldSweepRegistration | retire when registration admission is an in-crate type boundary only | sealed_producers.txt |
 | apply_canonical_order_proof | apply | FIELD-SWEEP-N4-PARITY-0 adjacency-bound canonical linear neighbor-order proof | retire when canonical order is intrinsic in the admitted adjacency type | sealed_producers.txt |
+| apply_conductance_certificate | apply | FIELD-ADJACENCY-GENERATORS-0 adjacency-bound per-node chi times weighted-degree admission proof | retire when conductance stability is intrinsic in the admitted field-law type | sealed_producers.txt |
 | apply_conservative | apply | FIELD-SWEEP-N4-PARITY-0 conservative FieldLawProof requires an undirected-symmetry certificate | retire when conservation law is intrinsic in the admitted program type | sealed_producers.txt |
 | apply_non_conservative | apply | FIELD-SWEEP-N4-PARITY-0 explicit non-conservative FieldLawProof for ordinary authored folds | retire when field-law classification is intrinsic in the admitted program type | sealed_producers.txt |
-| apply_undirected_symmetry_certificate | apply | FIELD-SWEEP-N4-PARITY-0 adjacency-bound proof that every admitted N4 edge has its reverse | retire when undirected symmetry is intrinsic in the admitted adjacency type | sealed_producers.txt |
+| apply_undirected_symmetry_certificate | apply | FIELD-ADJACENCY-GENERATORS-0 adjacency-bound proof that every admitted weighted grid or LinkGraph edge has its reverse | retire when undirected symmetry is intrinsic in the admitted adjacency type | sealed_producers.txt |
 | cpu_oracle_band_crossing_deltas | cpu_oracle | WRITE-DOOR-BAND-DELTA-0 CPU-oracle twin for sealed BandCrossingDelta; parity-only path | retire when CPU oracle is type-quarantined to in-crate parity harness | sealed_producers.txt |
 | cpu_oracle_threshold_events | cpu_oracle | CPU-oracle twin for threshold events; parity-only path | retire when CPU oracle is type-quarantined to in-crate parity harness | sealed_producers.txt |
 | cpu_oracle_emission_records | cpu_oracle | CPU-oracle twin for emission records; parity-only path | retire when CPU oracle is type-quarantined to in-crate parity harness | sealed_producers.txt |
@@ -58,7 +59,9 @@ This digest is a derived context artifact for low-context agents. If it disagree
 | FIELD_SWEEP_LEGACY_PROGRAM_NODES | authority-export | FIELD-SWEEP-N4-PARITY-0 fixed legacy resource-class program-node ceiling | retire when EML-RESOURCE-CLASS-ADMISSION-0 replaces the single class | kernel_surface.txt |
 | FIELD_SWEEP_LEGACY_STACK_SLOTS | authority-export | FIELD-SWEEP-N4-PARITY-0 fixed legacy resource-class stack ceiling | retire when EML-RESOURCE-CLASS-ADMISSION-0 replaces the single class | kernel_surface.txt |
 | FIELD_SWEEP_WORKGROUP_SIZE | authority-export | FIELD-SWEEP-N4-PARITY-0 canonical generic sweep dispatch width | retire when dispatch geometry is admitted wholly inside the kernel | kernel_surface.txt |
-| FieldAdjacency | authority-export | FIELD-SWEEP-N4-PARITY-0 exact GridN4 adjacency plus existing input-list gather | retire when field authoring lowers through a narrower spec door | kernel_surface.txt |
+| FieldAdjacency | authority-export | FIELD-ADJACENCY-GENERATORS-0 weighted grid or canonical LinkGraph adjacency over the existing input-list gather | retire when field authoring lowers through a narrower spec door | kernel_surface.txt |
+| FieldConductanceCertificate | sealed-export | FIELD-ADJACENCY-GENERATORS-0 sealed per-node weighted-degree chi bound proof | retire when conductance stability is intrinsic in the admitted field-law type | kernel_surface.txt |
+| FieldDegreeBucket | authority-export | FIELD-ADJACENCY-GENERATORS-0 read-only degree-homogeneous scheduling metadata | retire when scheduling is wholly kernel-private | kernel_surface.txt |
 | FieldLawProof | authority-export | FIELD-SWEEP-N4-PARITY-0 sealed conservative or explicit non-conservative law proof | retire when field law is intrinsic in the admitted program type | kernel_surface.txt |
 | FieldSweepAdmissionError | authority-export | FIELD-SWEEP-N4-PARITY-0 typed admission rejection surface | retire when field authoring lowers through a narrower spec door | kernel_surface.txt |
 | FieldSweepExecutionError | authority-export | FIELD-SWEEP-N4-PARITY-0 typed CPU/GPU execution and parity-oracle error surface | retire when parity oracle and session are in-crate only | kernel_surface.txt |
@@ -70,12 +73,17 @@ This digest is a derived context artifact for low-context agents. If it disagree
 | GRID_N4_NSEW | authority-export | FIELD-SWEEP-N4-PARITY-0 Gu-Yang authored canonical N4 order | retire when order lowers from sealed authored adjacency specs | kernel_surface.txt |
 | GRID_N4_WENS | authority-export | FIELD-SWEEP-N4-PARITY-0 PALMA authored canonical N4 order | retire when order lowers from sealed authored adjacency specs | kernel_surface.txt |
 | GridN4Offset | authority-export | FIELD-SWEEP-N4-PARITY-0 exact unit cardinal offset value | retire when order lowers from sealed authored adjacency specs | kernel_surface.txt |
+| GridOffset | authority-export | FIELD-ADJACENCY-GENERATORS-0 authored weighted grid-offset value | retire when adjacency authoring lowers through a narrower spec door | kernel_surface.txt |
+| LinkGraphNeighbor | authority-export | FIELD-ADJACENCY-GENERATORS-0 authored canonical weighted LinkGraph row value | retire when link lowering is driver-private | kernel_surface.txt |
 | UndirectedSymmetryCertificate | authority-export | FIELD-SWEEP-N4-PARITY-0 sealed conservative-fold adjacency symmetry witness | retire when undirected symmetry is intrinsic in the admitted adjacency type | kernel_surface.txt |
 | apply_field_sweep_registration | authority-export | FIELD-SWEEP-N4-PARITY-0 sole admission door for proof-present field registrations | retire when field registration consumers are in-crate only | kernel_surface.txt |
 | execute_field_sweep_cpu | authority-export | FIELD-SWEEP-N4-PARITY-0 independent CPU oracle for one generic sweep | retire only if another independent bit-exact parity judge replaces it | kernel_surface.txt |
 | execute_field_sweep_cpu_iterations | authority-export | FIELD-SWEEP-N4-PARITY-0 independent CPU oracle for iterative PALMA parity | retire only if another independent bit-exact parity judge replaces it | kernel_surface.txt |
 | field_param | authority-export | FIELD-SWEEP-N4-PARITY-0 fixed edge-context parameter vocabulary | retire when field authoring lowers through a sealed builder with no raw EML indices | kernel_surface.txt |
 | field_sweep | authority-export | FIELD-SWEEP-N4-PARITY-0 authoritative generic field-sweep namespace | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |
+| grid_n4_offsets | authority-export | FIELD-ADJACENCY-GENERATORS-0 canonical authored-weight N4 preset | retire when grid adjacency authoring is driver-private | kernel_surface.txt |
+| grid_n8_offsets | authority-export | FIELD-ADJACENCY-GENERATORS-0 N8 preset requiring an authored diagonal weight | retire when grid adjacency authoring is driver-private | kernel_surface.txt |
+| grid_radius_offsets | authority-export | FIELD-ADJACENCY-GENERATORS-0 radius-r preset requiring authored shell weights | retire when grid adjacency authoring is driver-private | kernel_surface.txt |
 | opcode_in_accumulator_vocabulary | authority-export | FIELD-SWEEP-N4-PARITY-0 separates field-only target/neighbor reads from ordinary EvalEML admission | retire when opcode context is encoded in distinct admitted opcode types | kernel_surface.txt |
 | accumulator_op | authority-export | Exported kernel module surface; authority-bearing namespace | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |
 | AccumulatorInputGpu | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |
@@ -325,6 +333,7 @@ This digest is a derived context artifact for low-context agents. If it disagree
 | EmissionRecordGpu | sealed_types.txt |
 | EmissionRecordReadback | sealed_types.txt |
 | FieldLawProof | sealed_types.txt |
+| FieldConductanceCertificate | sealed_types.txt |
 | FieldSweepRegistration | sealed_types.txt |
 | PlacedParticipant | sealed_types.txt |
 | ResolvedWriteAuthority | sealed_types.txt |

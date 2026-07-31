@@ -16,8 +16,23 @@ use simthing_driver::{
     PalmaN4FieldSweepSpec,
 };
 use simthing_gpu::{
-    FIELD_SWEEP_LEGACY_PROGRAM_NODES, FIELD_SWEEP_LEGACY_STACK_SLOTS, GRID_N4_NSEW, GRID_N4_WENS,
+    FieldAdjacency, GridN4Offset, FIELD_SWEEP_LEGACY_PROGRAM_NODES, FIELD_SWEEP_LEGACY_STACK_SLOTS,
+    GRID_N4_NSEW, GRID_N4_WENS,
 };
+
+fn assert_unit_n4(adjacency: &FieldAdjacency, expected: &[GridN4Offset; 4]) {
+    let offsets = adjacency
+        .grid_offsets_data()
+        .expect("N4 must retain weighted-grid metadata");
+    assert_eq!(offsets.len(), expected.len());
+    for (actual, expected) in offsets.iter().zip(expected) {
+        assert_eq!(
+            (actual.dx(), actual.dy()),
+            (i32::from(expected.dx), i32::from(expected.dy))
+        );
+        assert_eq!(actual.weight(), 1.0);
+    }
+}
 
 /// A small dense layout (edge ≤ 10) that admits a single bounded execution theater for PALMA/Gu-Yang.
 const SMALL_DENSE_DOC: &str = r#"
@@ -179,7 +194,7 @@ fn palma_and_gu_yang_n4_must_compile_through_generic_field_sweep() {
         inf_sentinel: 1.0e20,
     })
     .expect("PALMA N4 must admit through the generic field-sweep registration");
-    assert_eq!(palma.adjacency().offsets(), &GRID_N4_WENS);
+    assert_unit_n4(palma.adjacency(), &GRID_N4_WENS);
     assert_eq!(
         palma.resource_class().stack_slots(),
         FIELD_SWEEP_LEGACY_STACK_SLOTS
@@ -201,12 +216,12 @@ fn palma_and_gu_yang_n4_must_compile_through_generic_field_sweep() {
         conductance_col: ColumnIndex::try_from_admitted_authored(1, 2)
             .expect("Gu-Yang conductance column"),
         saturation: 4.0,
-        chi: 0.75,
+        chi: 0.24,
         dt: 0.125,
     })
     .expect("Gu-Yang N4 must admit through generic proof-present registrations");
-    assert_eq!(conductance.adjacency().offsets(), &GRID_N4_NSEW);
-    assert_eq!(flux.adjacency().offsets(), &GRID_N4_NSEW);
+    assert_unit_n4(conductance.adjacency(), &GRID_N4_NSEW);
+    assert_unit_n4(flux.adjacency(), &GRID_N4_NSEW);
     assert_eq!(
         flux.resource_class().stack_slots(),
         FIELD_SWEEP_LEGACY_STACK_SLOTS

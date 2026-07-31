@@ -70,13 +70,13 @@ pub use eml_opcode_gate::{
 };
 pub use field_sweep::{
     apply_field_sweep_registration, execute_field_sweep_cpu, execute_field_sweep_cpu_iterations,
-    field_param, CanonicalOrderProof, FieldAdjacency, FieldLawProof, FieldSweepAdmissionError,
-    FieldSweepExecutionError,
-    FieldSweepRegistration, FieldSweepRegistrationRequest, FieldSweepResourceClass,
-    FieldSweepResourceClassRequest, FieldSweepSession, GridN4Offset,
+    field_param, grid_n4_offsets, grid_n8_offsets, grid_radius_offsets, CanonicalOrderProof,
+    FieldAdjacency, FieldConductanceCertificate, FieldDegreeBucket, FieldLawProof,
+    FieldSweepAdmissionError, FieldSweepExecutionError, FieldSweepRegistration,
+    FieldSweepRegistrationRequest, FieldSweepResourceClass, FieldSweepResourceClassRequest,
+    FieldSweepSession, GridN4Offset, GridOffset, LinkGraphNeighbor,
     UndirectedSymmetryCertificate, FIELD_SWEEP_LEGACY_PROGRAM_NODES,
-    FIELD_SWEEP_LEGACY_STACK_SLOTS, FIELD_SWEEP_WORKGROUP_SIZE, GRID_N4_NSEW,
-    GRID_N4_WENS,
+    FIELD_SWEEP_LEGACY_STACK_SLOTS, FIELD_SWEEP_WORKGROUP_SIZE, GRID_N4_NSEW, GRID_N4_WENS,
 };
 pub use exact_magnitude_gate::{
     exact_mag2_bits_q16, mint_exact_magnitude_proof_candidate_f,

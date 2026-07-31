@@ -11,13 +11,13 @@ use simthing_core::{
     SourceSpec, StructuralScalarChannel,
 };
 use simthing_gpu::{
-    accumulator_op::set_debug_readback_allowed, encode_column, AccumulatorOpSession,
-    EmlGpuProgramTable, GpuContext, PackedAccumulatorUpload, PackedThresholdUpload,
-    StructuredFieldExecutionOptions, StructuredFieldExecutionReport,
+    accumulator_op::set_debug_readback_allowed, compile_structured_field_sweeps, encode_column,
+    AccumulatorOpSession, EmlGpuProgramTable, FieldSweepRegistration, FieldSweepSession,
+    GpuContext, PackedAccumulatorUpload, PackedThresholdUpload, StructuredFieldExecutionReport,
     StructuredFieldStencilBoundaryMode, StructuredFieldStencilConfig,
-    StructuredFieldStencilMaskMode, StructuredFieldStencilOp, StructuredFieldStencilOperator,
-    StructuredFieldStencilSourcePolicy, ThresholdEvent, ThresholdRegistration, DIR_UPWARD,
-    THRESH_BUF_VALUES,
+    StructuredFieldStencilDebugReport, StructuredFieldStencilMaskMode,
+    StructuredFieldStencilOperator, StructuredFieldStencilSourcePolicy, ThresholdEvent,
+    ThresholdRegistration, DIR_UPWARD, THRESH_BUF_VALUES,
 };
 use simthing_spec::{
     compile_region_field_preview, estimate_region_field_budget, CompiledFieldCadence,
@@ -100,6 +100,67 @@ pub fn compiled_cadence_to_field_cadence(compiled: CompiledFieldCadence) -> Fiel
         CompiledFieldCadence::EveryN { n } => FieldCadence::EveryN { n },
         CompiledFieldCadence::OnEvent => FieldCadence::OnEvent,
     }
+}
+
+fn write_field_cells(
+    ctx: &GpuContext,
+    buffer: &simthing_gpu::wgpu::Buffer,
+    n_dims: u32,
+    writes: &[(u32, u32, f32)],
+) {
+    for &(slot, column, value) in writes {
+        let byte_offset = u64::from(slot * n_dims + column) * std::mem::size_of::<f32>() as u64;
+        ctx.queue
+            .write_buffer(buffer, byte_offset, &value.to_ne_bytes());
+    }
+}
+
+fn zero_field_cells(
+    ctx: &GpuContext,
+    buffer: &simthing_gpu::wgpu::Buffer,
+    n_dims: u32,
+    cells: &[(u32, u32)],
+) {
+    for &(slot, column) in cells {
+        let byte_offset = u64::from(slot * n_dims + column) * std::mem::size_of::<f32>() as u64;
+        ctx.queue
+            .write_buffer(buffer, byte_offset, &0.0f32.to_ne_bytes());
+    }
+}
+
+fn readback_field_buffer(
+    ctx: &GpuContext,
+    source: &simthing_gpu::wgpu::Buffer,
+    values_len: usize,
+) -> Vec<f32> {
+    let byte_len = (values_len * std::mem::size_of::<f32>()) as u64;
+    let staging = ctx
+        .device
+        .create_buffer(&simthing_gpu::wgpu::BufferDescriptor {
+            label: Some("first_slice_generic_field_readback"),
+            size: byte_len,
+            usage: simthing_gpu::wgpu::BufferUsages::COPY_DST
+                | simthing_gpu::wgpu::BufferUsages::MAP_READ,
+            mapped_at_creation: false,
+        });
+    let mut encoder =
+        ctx.device
+            .create_command_encoder(&simthing_gpu::wgpu::CommandEncoderDescriptor {
+                label: Some("first_slice_generic_field_readback_encoder"),
+            });
+    encoder.copy_buffer_to_buffer(source, 0, &staging, 0, byte_len);
+    ctx.queue.submit(Some(encoder.finish()));
+    let slice = staging.slice(..);
+    slice.map_async(simthing_gpu::wgpu::MapMode::Read, |_| {});
+    ctx.device.poll(simthing_gpu::wgpu::Maintain::Wait);
+    let mapped = slice.get_mapped_range();
+    let values = mapped
+        .chunks_exact(std::mem::size_of::<f32>())
+        .map(|bytes| f32::from_ne_bytes(bytes.try_into().expect("f32 byte width")))
+        .collect();
+    drop(mapped);
+    staging.unmap();
+    values
 }
 
 /// One-shot seed cell for caller-managed source protocol.
@@ -362,6 +423,8 @@ pub enum FirstSliceMappingError {
     MissingFieldUrgency,
     #[error(transparent)]
     Stencil(#[from] simthing_gpu::StructuredFieldStencilError),
+    #[error("generic field sweep failed: {0}")]
+    FieldSweep(String),
     #[error(transparent)]
     Scheduler(#[from] crate::field_scheduler::FieldSchedulerError),
     #[error("EML setup failed: {0}")]
@@ -386,7 +449,10 @@ pub struct FirstSliceMappingSession {
     enabled: bool,
     preview: CompiledRegionFieldPreview,
     scheduler: FieldScheduler,
-    stencil: StructuredFieldStencilOp,
+    stencil_config: StructuredFieldStencilConfig,
+    field_registrations: Vec<FieldSweepRegistration>,
+    field_sessions: Vec<FieldSweepSession>,
+    field_buffer: simthing_gpu::wgpu::Buffer,
     values: Vec<f32>,
     tick: u32,
     field_id: FieldId,
@@ -516,8 +582,29 @@ impl FirstSliceMappingSession {
             return Err(FirstSliceMappingError::MissingFieldUrgency);
         }
 
-        let stencil = StructuredFieldStencilOp::new(ctx, gpu_config)?;
-        let values = vec![0.0f32; stencil.config().values_len()];
+        let field_registrations = compile_structured_field_sweeps(&gpu_config)
+            .map_err(|error| FirstSliceMappingError::FieldSweep(error.to_string()))?;
+        let field_sessions = field_registrations
+            .iter()
+            .map(|registration| FieldSweepSession::new(ctx, registration))
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|error| FirstSliceMappingError::FieldSweep(error.to_string()))?;
+        let values = vec![0.0f32; gpu_config.values_len()];
+        let field_buffer = ctx
+            .device
+            .create_buffer(&simthing_gpu::wgpu::BufferDescriptor {
+                label: Some("first_slice_generic_field"),
+                size: (values.len() * std::mem::size_of::<f32>()) as u64,
+                usage: simthing_gpu::wgpu::BufferUsages::STORAGE
+                    | simthing_gpu::wgpu::BufferUsages::COPY_SRC
+                    | simthing_gpu::wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            });
+        let initial_bytes: Vec<u8> = values
+            .iter()
+            .flat_map(|value| value.to_ne_bytes())
+            .collect();
+        ctx.queue.write_buffer(&field_buffer, 0, &initial_bytes);
 
         let mut scheduler = FieldScheduler::new();
         let field_id = FieldId(0);
@@ -546,8 +633,6 @@ impl FirstSliceMappingSession {
 
         let acc_session = AccumulatorOpSession::new(ctx, n_slots, n_dims);
 
-        stencil.upload_values(ctx, &values)?;
-
         let summary_policy = preview.summary_policy;
         Ok(Self {
             enabled,
@@ -556,7 +641,10 @@ impl FirstSliceMappingSession {
             source_col: encode_column(preview.stencil.source_col),
             preview,
             scheduler,
-            stencil,
+            stencil_config: gpu_config,
+            field_registrations,
+            field_sessions,
+            field_buffer,
             values,
             tick: 0,
             field_id,
@@ -744,7 +832,7 @@ impl FirstSliceMappingSession {
 
     /// Diagnostic readback of canonical GPU field state (input buffer).
     pub fn readback_canonical_field(&self, ctx: &GpuContext) -> Vec<f32> {
-        self.stencil.readback_input_buffer(ctx)
+        readback_field_buffer(ctx, &self.field_buffer, self.values.len())
     }
 
     /// Diagnostic readback of Layer 2/3 results from current GPU field without re-running stencil.
@@ -797,7 +885,7 @@ impl FirstSliceMappingSession {
 
     /// Stencil input buffer — the destination of on-device pressure scatter.
     pub fn stencil_input_buffer(&self) -> &simthing_gpu::wgpu::Buffer {
-        &self.stencil.input_buffer
+        &self.field_buffer
     }
 
     fn mark_dirty_source(&mut self) {
@@ -848,7 +936,7 @@ impl FirstSliceMappingSession {
         ctx: &GpuContext,
         options: FirstSliceTickOptions,
     ) -> Result<StencilTickResult, FirstSliceMappingError> {
-        let horizon = self.stencil.config().horizon;
+        let horizon = self.stencil_config.horizon;
         let mut source_setup_dispatches = 0u32;
 
         if self.seeds_applied_this_tick {
@@ -863,40 +951,68 @@ impl FirstSliceMappingSession {
                     .map(|(row, col)| (row * width + col, source_col)),
             );
             if !writes.is_empty() {
-                self.stencil
-                    .write_cell_values(ctx, &self.stencil.input_buffer, &writes)?;
+                write_field_cells(ctx, &self.field_buffer, self.n_dims, &writes);
             }
-            source_setup_dispatches += self.stencil.dispatch_once(
-                ctx,
-                &self.stencil.input_buffer,
-                &self.stencil.output_buffer,
-            );
-            self.stencil
-                .zero_cell_values(ctx, &self.stencil.output_buffer, &zeros)?;
-            self.stencil.copy_output_to_input(ctx);
+            source_setup_dispatches += self.dispatch_logical_field_step(ctx)?;
+            zero_field_cells(ctx, &self.field_buffer, self.n_dims, &zeros);
             self.pending_seeds.clear();
             self.pending_gpu_seed_cells.clear();
             self.seeds_applied_this_tick = false;
         }
 
-        let report = self.stencil.execute_configured(
-            ctx,
-            StructuredFieldExecutionOptions {
-                readback_values: options.readback_values,
-                collect_field_stats: options.collect_field_stats,
-                steps: None,
-            },
-        )?;
-        let propagation_dispatches = report.debug.dispatch_count;
-        self.stencil
-            .canonicalize_input_after_ping_pong(ctx, horizon);
+        let mut propagation_dispatches = 0;
+        for _ in 0..horizon {
+            propagation_dispatches += self.dispatch_logical_field_step(ctx)?;
+        }
+        let report_values = if options.readback_values || options.collect_field_stats {
+            Some(readback_field_buffer(
+                ctx,
+                &self.field_buffer,
+                self.values.len(),
+            ))
+        } else {
+            None
+        };
+        let mut debug = StructuredFieldStencilDebugReport {
+            dispatch_count: propagation_dispatches,
+            configured_horizon: horizon,
+            executed_horizon: horizon,
+            operator: self.stencil_config.operator,
+            source_policy: self.stencil_config.source_policy,
+            boundary_mode: self.stencil_config.boundary_mode,
+            mask_mode: self.stencil_config.mask_mode,
+            cell_count: self.stencil_config.cells(),
+            values_len: self.stencil_config.values_len(),
+            field_max: None,
+            field_l1_norm: None,
+            active_mask_ratio: None,
+        };
+        if options.collect_field_stats {
+            let values = report_values.as_ref().expect("stats readback");
+            let mut field_max = 0.0f32;
+            let mut field_l1_norm = 0.0f32;
+            for slot in 0..self.stencil_config.cells() {
+                let value = values[(slot * self.n_dims + self.stencil_config.target_col) as usize];
+                if value.is_finite() {
+                    field_max = field_max.max(value);
+                    field_l1_norm += value.abs();
+                }
+            }
+            debug.field_max = Some(field_max);
+            debug.field_l1_norm = Some(field_l1_norm);
+            debug.active_mask_ratio = Some(1.0);
+        }
+        let report = StructuredFieldExecutionReport {
+            values: report_values,
+            debug,
+        };
         self.gpu_state_canonical = true;
 
         if options.readback_values {
             if let Some(ref vals) = report.values {
                 self.values.clone_from(vals);
             } else {
-                self.values = self.stencil.readback_input_buffer(ctx);
+                self.values = readback_field_buffer(ctx, &self.field_buffer, self.values.len());
             }
             self.host_values_valid = true;
         } else {
@@ -908,6 +1024,24 @@ impl FirstSliceMappingSession {
             source_setup_dispatches,
             propagation_dispatches,
         })
+    }
+
+    fn dispatch_logical_field_step(
+        &mut self,
+        ctx: &GpuContext,
+    ) -> Result<u32, FirstSliceMappingError> {
+        for (registration, session) in self
+            .field_registrations
+            .iter()
+            .zip(&mut self.field_sessions)
+        {
+            session.upload_values_from_buffer(ctx, &self.field_buffer);
+            session
+                .dispatch(ctx, registration, 1)
+                .map_err(|error| FirstSliceMappingError::FieldSweep(error.to_string()))?;
+            session.copy_values_to_buffer(ctx, &self.field_buffer);
+        }
+        Ok(self.field_registrations.len() as u32)
     }
 
     fn bridge_stencil_field_to_accumulator(
@@ -923,7 +1057,7 @@ impl FirstSliceMappingSession {
 
         self.acc_session.zero_values_buffer(ctx);
         self.acc_session
-            .copy_values_prefix_from_buffer(ctx, &self.stencil.input_buffer, 0, 0, prefix_bytes)
+            .copy_values_prefix_from_buffer(ctx, &self.field_buffer, 0, 0, prefix_bytes)
             .map_err(|e| FirstSliceMappingError::Accumulator(format!("{e}")))?;
 
         let parent_scalar_writes = 2u32;

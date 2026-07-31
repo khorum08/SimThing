@@ -34,7 +34,10 @@ struct FieldSweepParams {
     post_count: u32,
     identity_bits: u32,
     dt_bits: u32,
+    schedule_offset: u32,
+    schedule_count: u32,
     pad0: u32,
+    pad1: u32,
 }
 
 struct FieldEmlContext {
@@ -53,7 +56,8 @@ struct FieldEmlContext {
 @group(0) @binding(2) var<storage, read> ranges: array<FieldRange>;
 @group(0) @binding(3) var<storage, read> inputs: array<AccumulatorInput>;
 @group(0) @binding(4) var<storage, read> nodes: array<EmlNode>;
-@group(0) @binding(5) var<uniform> params: FieldSweepParams;
+@group(0) @binding(5) var<storage, read> schedule: array<u32>;
+@group(0) @binding(6) var<uniform> params: FieldSweepParams;
 
 const OP_LITERAL_F32: u32 = 0u;
 const OP_PARAM: u32 = 2u;
@@ -159,10 +163,10 @@ fn eval_program(offset: u32, count: u32, context: FieldEmlContext) -> f32 {
 
 @compute @workgroup_size(64)
 fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
-    let target_slot = gid.x;
-    if target_slot >= params.n_slots {
+    if gid.x >= params.schedule_count {
         return;
     }
+    let target_slot = schedule[params.schedule_offset + gid.x];
 
     let target_base = target_slot * params.n_dims;
     for (var col = 0u; col < params.n_dims; col = col + 1u) {

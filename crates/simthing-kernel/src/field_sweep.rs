@@ -25,7 +25,7 @@
 //! }
 //! ```
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::mpsc;
 
 use bytemuck::{Pod, Zeroable};
@@ -63,8 +63,8 @@ pub mod field_param {
     pub const MAX: u32 = FOLDED;
 }
 
-/// One authored cardinal offset. Rung 5.5 admits unit-weight N4 only; weighted
-/// adjacency remains owned by rung 5.6.
+/// One authored cardinal offset retained for the graduated N4 compatibility
+/// door. Rung 5.6 lowers it into [`GridOffset`] data.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct GridN4Offset {
     pub dx: i8,
@@ -91,28 +91,161 @@ pub const GRID_N4_NSEW: [GridN4Offset; 4] = [
     GridN4Offset::new(-1, 0),
 ];
 
-/// N4 adjacency plus the existing input-list gather rows. Fields are private so
-/// authored order cannot be changed after proof minting.
+/// One authored weighted grid offset. The weight is carried to field EML as
+/// `EDGE_SCALAR`; diagonal and radius weights are therefore explicit data.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct GridOffset {
+    dx: i32,
+    dy: i32,
+    weight: f32,
+}
+
+impl GridOffset {
+    pub const fn new(dx: i32, dy: i32, weight: f32) -> Self {
+        Self { dx, dy, weight }
+    }
+
+    pub fn dx(self) -> i32 {
+        self.dx
+    }
+
+    pub fn dy(self) -> i32 {
+        self.dy
+    }
+
+    pub fn weight(self) -> f32 {
+        self.weight
+    }
+}
+
+/// Canonical N4 preset with an explicitly authored cardinal weight and order.
+pub fn grid_n4_offsets(
+    order: [GridN4Offset; 4],
+    cardinal_weight: f32,
+) -> Result<Vec<GridOffset>, FieldSweepAdmissionError> {
+    validate_edge_weight(cardinal_weight)?;
+    Ok(order
+        .into_iter()
+        .map(|offset| GridOffset::new(i32::from(offset.dx), i32::from(offset.dy), cardinal_weight))
+        .collect())
+}
+
+/// Canonical N8 preset. Diagonal weight is a required authored argument; the
+/// generator never silently chooses a Chebyshev or Euclidean metric.
+pub fn grid_n8_offsets(
+    cardinal_weight: f32,
+    diagonal_weight: f32,
+) -> Result<Vec<GridOffset>, FieldSweepAdmissionError> {
+    validate_edge_weight(cardinal_weight)?;
+    validate_edge_weight(diagonal_weight)?;
+    Ok(vec![
+        GridOffset::new(0, -1, cardinal_weight),
+        GridOffset::new(0, 1, cardinal_weight),
+        GridOffset::new(1, 0, cardinal_weight),
+        GridOffset::new(-1, 0, cardinal_weight),
+        GridOffset::new(-1, -1, diagonal_weight),
+        GridOffset::new(1, -1, diagonal_weight),
+        GridOffset::new(1, 1, diagonal_weight),
+        GridOffset::new(-1, 1, diagonal_weight),
+    ])
+}
+
+/// Canonical Chebyshev radius-r preset. One authored weight is required for
+/// each shell `1..=radius`; iteration order is stable row-major within shells.
+pub fn grid_radius_offsets(
+    radius: u32,
+    shell_weights: &[f32],
+) -> Result<Vec<GridOffset>, FieldSweepAdmissionError> {
+    if radius == 0 {
+        return Err(FieldSweepAdmissionError::InvalidGridRadius(radius));
+    }
+    if shell_weights.len() != radius as usize {
+        return Err(FieldSweepAdmissionError::RadiusWeightCount {
+            radius,
+            actual: shell_weights.len(),
+        });
+    }
+    for &weight in shell_weights {
+        validate_edge_weight(weight)?;
+    }
+    let radius_i32: i32 =
+        i32::try_from(radius).map_err(|_| FieldSweepAdmissionError::InvalidGridRadius(radius))?;
+    let mut offsets = Vec::new();
+    for shell in 1..=radius_i32 {
+        let weight = shell_weights[(shell - 1) as usize];
+        for dy in -shell..=shell {
+            for dx in -shell..=shell {
+                if dx == 0 && dy == 0 {
+                    continue;
+                }
+                if dx.abs().max(dy.abs()) == shell {
+                    offsets.push(GridOffset::new(dx, dy, weight));
+                }
+            }
+        }
+    }
+    Ok(offsets)
+}
+
+/// One canonical LinkGraph neighbor. Rows must be sorted by slot, deduplicated,
+/// and exactly undirected; the driver link compiler already produces that basis.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct LinkGraphNeighbor {
+    pub slot: SlotIndex,
+    pub weight: f32,
+}
+
+/// Public scheduling metadata. Buckets group target slots by degree only; each
+/// target's authored neighbor order stays private in [`FieldAdjacency`].
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct FieldDegreeBucket {
+    degree: u32,
+    slots: Vec<SlotIndex>,
+}
+
+impl FieldDegreeBucket {
+    pub fn degree(&self) -> u32 {
+        self.degree
+    }
+
+    pub fn slots(&self) -> &[SlotIndex] {
+        &self.slots
+    }
+}
+
+/// One proof-bound adjacency axis over the existing input-list gather. Grid
+/// generators and LinkGraph lowering converge here before CPU/GPU execution.
 #[derive(Clone, Debug, PartialEq)]
 pub struct FieldAdjacency {
-    width: u32,
-    height: u32,
-    offsets: [GridN4Offset; 4],
+    grid_shape: Option<(u32, u32)>,
+    grid_offsets: Option<Vec<GridOffset>>,
     lists: Vec<Vec<InputSpec>>,
+    degree_buckets: Vec<FieldDegreeBucket>,
+    schedule: Vec<SlotIndex>,
     order_fingerprint: u64,
-    symmetry_fingerprint: u64,
+    symmetry_fingerprint: Option<u64>,
 }
 
 impl FieldAdjacency {
+    /// Canonical no-edge adjacency for pointwise field programs. Post programs
+    /// still execute once per slot; no synthetic self-edge is introduced.
+    pub fn independent_slots(
+        slot_count: u32,
+        gather_col: ColumnIndex,
+    ) -> Result<Self, FieldSweepAdmissionError> {
+        Self::link_graph(
+            slot_count,
+            vec![Vec::new(); slot_count as usize],
+            gather_col,
+        )
+    }
+
     pub fn grid_n4(
         width: u32,
         height: u32,
         offsets: [GridN4Offset; 4],
         gather_col: ColumnIndex,
     ) -> Result<Self, FieldSweepAdmissionError> {
-        if width == 0 || height == 0 {
-            return Err(FieldSweepAdmissionError::InvalidDimensions { width, height });
-        }
         let required = BTreeSet::from([(-1, 0), (1, 0), (0, -1), (0, 1)]);
         let actual: BTreeSet<_> = offsets
             .iter()
@@ -121,51 +254,227 @@ impl FieldAdjacency {
         if actual != required || actual.len() != offsets.len() {
             return Err(FieldSweepAdmissionError::NotGridN4);
         }
+        Self::grid_offsets(width, height, grid_n4_offsets(offsets, 1.0)?, gather_col)
+    }
 
-        let mut lists = Vec::with_capacity((width * height) as usize);
+    pub fn grid_n8(
+        width: u32,
+        height: u32,
+        cardinal_weight: f32,
+        diagonal_weight: f32,
+        gather_col: ColumnIndex,
+    ) -> Result<Self, FieldSweepAdmissionError> {
+        Self::grid_offsets(
+            width,
+            height,
+            grid_n8_offsets(cardinal_weight, diagonal_weight)?,
+            gather_col,
+        )
+    }
+
+    pub fn grid_radius(
+        width: u32,
+        height: u32,
+        radius: u32,
+        shell_weights: &[f32],
+        gather_col: ColumnIndex,
+    ) -> Result<Self, FieldSweepAdmissionError> {
+        Self::grid_offsets(
+            width,
+            height,
+            grid_radius_offsets(radius, shell_weights)?,
+            gather_col,
+        )
+    }
+
+    pub fn grid_offsets(
+        width: u32,
+        height: u32,
+        offsets: Vec<GridOffset>,
+        gather_col: ColumnIndex,
+    ) -> Result<Self, FieldSweepAdmissionError> {
+        if width == 0 || height == 0 {
+            return Err(FieldSweepAdmissionError::InvalidDimensions { width, height });
+        }
+        validate_grid_offsets(&offsets)?;
+
+        let slots = width
+            .checked_mul(height)
+            .ok_or(FieldSweepAdmissionError::GridSlotCountOverflow { width, height })?;
+        let mut lists = Vec::with_capacity(slots as usize);
         for y in 0..height {
             for x in 0..width {
-                let mut row = Vec::with_capacity(4);
-                for offset in offsets {
+                let mut row = Vec::with_capacity(offsets.len());
+                for offset in &offsets {
                     let nx = i64::from(x) + i64::from(offset.dx);
                     let ny = i64::from(y) + i64::from(offset.dy);
                     if nx >= 0 && ny >= 0 && nx < i64::from(width) && ny < i64::from(height) {
                         row.push(InputSpec {
                             slot: SlotIndex::new(ny as u32 * width + nx as u32),
                             col: gather_col,
-                            unit_cost: 1.0,
+                            unit_cost: offset.weight,
                         });
                     }
                 }
                 lists.push(row);
             }
         }
-        let order_fingerprint = fingerprint_order(width, height, &offsets);
-        let symmetry_fingerprint = fingerprint_symmetry(width, height, &actual);
+        Self::from_admitted_lists(Some((width, height)), Some(offsets), lists)
+    }
+
+    pub fn link_graph(
+        slot_count: u32,
+        neighbors: Vec<Vec<LinkGraphNeighbor>>,
+        gather_col: ColumnIndex,
+    ) -> Result<Self, FieldSweepAdmissionError> {
+        if slot_count == 0 {
+            return Err(FieldSweepAdmissionError::InvalidLinkGraphSlotCount(
+                slot_count,
+            ));
+        }
+        if neighbors.len() != slot_count as usize {
+            return Err(FieldSweepAdmissionError::LinkGraphRowCount {
+                slot_count,
+                rows: neighbors.len(),
+            });
+        }
+        for (target, row) in neighbors.iter().enumerate() {
+            let mut previous = None;
+            for neighbor in row {
+                validate_edge_weight(neighbor.weight)?;
+                let slot = neighbor.slot.raw();
+                if slot >= slot_count {
+                    return Err(FieldSweepAdmissionError::InvalidGatherSlot {
+                        slot: neighbor.slot,
+                        slots: slot_count,
+                    });
+                }
+                if slot == target as u32 {
+                    return Err(FieldSweepAdmissionError::LinkGraphSelfEdge {
+                        slot: neighbor.slot,
+                    });
+                }
+                if previous.is_some_and(|prior| slot <= prior) {
+                    return Err(FieldSweepAdmissionError::LinkGraphNonCanonicalOrder {
+                        target: SlotIndex::new(target as u32),
+                    });
+                }
+                previous = Some(slot);
+            }
+        }
+        for (target, row) in neighbors.iter().enumerate() {
+            for neighbor in row {
+                let reverse_row = &neighbors[neighbor.slot.as_usize()];
+                let reverse = reverse_row
+                    .binary_search_by_key(&(target as u32), |candidate| candidate.slot.raw())
+                    .ok()
+                    .map(|index| reverse_row[index]);
+                let Some(reverse) = reverse else {
+                    return Err(FieldSweepAdmissionError::LinkGraphMissingReverse {
+                        from: SlotIndex::new(target as u32),
+                        to: neighbor.slot,
+                    });
+                };
+                if reverse.weight.to_bits() != neighbor.weight.to_bits() {
+                    return Err(FieldSweepAdmissionError::LinkGraphWeightMismatch {
+                        from: SlotIndex::new(target as u32),
+                        to: neighbor.slot,
+                    });
+                }
+            }
+        }
+        let lists = neighbors
+            .into_iter()
+            .map(|row| {
+                row.into_iter()
+                    .map(|neighbor| InputSpec {
+                        slot: neighbor.slot,
+                        col: gather_col,
+                        unit_cost: neighbor.weight,
+                    })
+                    .collect()
+            })
+            .collect();
+        Self::from_admitted_lists(None, None, lists)
+    }
+
+    fn from_admitted_lists(
+        grid_shape: Option<(u32, u32)>,
+        grid_offsets: Option<Vec<GridOffset>>,
+        lists: Vec<Vec<InputSpec>>,
+    ) -> Result<Self, FieldSweepAdmissionError> {
+        let order_fingerprint = fingerprint_order(&lists);
+        let symmetry_fingerprint = fingerprint_symmetry(&lists);
+        let (degree_buckets, schedule) = build_degree_schedule(&lists);
         Ok(Self {
-            width,
-            height,
-            offsets,
+            grid_shape,
+            grid_offsets,
             lists,
+            degree_buckets,
+            schedule,
             order_fingerprint,
             symmetry_fingerprint,
         })
     }
 
-    pub fn width(&self) -> u32 {
-        self.width
+    pub fn grid_shape(&self) -> Option<(u32, u32)> {
+        self.grid_shape
     }
 
-    pub fn height(&self) -> u32 {
-        self.height
+    pub fn grid_offsets_data(&self) -> Option<&[GridOffset]> {
+        self.grid_offsets.as_deref()
     }
 
     pub fn slots(&self) -> u32 {
-        self.width * self.height
+        self.lists.len() as u32
     }
 
-    pub fn offsets(&self) -> &[GridN4Offset; 4] {
-        &self.offsets
+    pub fn degree_buckets(&self) -> &[FieldDegreeBucket] {
+        &self.degree_buckets
+    }
+
+    /// Mint a sealed per-node conductance certificate. Admission reads the
+    /// adjacency rows directly; scheduling buckets are deliberately absent
+    /// from this calculation and cannot set the physical bound.
+    pub fn apply_conductance_certificate(
+        &self,
+        per_node_chi: Vec<f32>,
+        admitted_bound: f32,
+    ) -> Result<FieldConductanceCertificate, FieldSweepAdmissionError> {
+        if per_node_chi.len() != self.lists.len() {
+            return Err(FieldSweepAdmissionError::ConductanceChiCount {
+                slots: self.slots(),
+                actual: per_node_chi.len(),
+            });
+        }
+        if !admitted_bound.is_finite() || admitted_bound < 0.0 {
+            return Err(FieldSweepAdmissionError::InvalidConductanceBound(
+                admitted_bound,
+            ));
+        }
+        for (slot, (&chi, row)) in per_node_chi.iter().zip(&self.lists).enumerate() {
+            if !chi.is_finite() || chi < 0.0 {
+                return Err(FieldSweepAdmissionError::InvalidNodeChi {
+                    slot: SlotIndex::new(slot as u32),
+                    chi,
+                });
+            }
+            let weighted_degree: f32 = row.iter().map(|input| input.unit_cost.abs()).sum();
+            let product = chi * weighted_degree;
+            if !product.is_finite() || product > admitted_bound {
+                return Err(FieldSweepAdmissionError::ConductanceBoundExceeded {
+                    slot: SlotIndex::new(slot as u32),
+                    chi,
+                    weighted_degree,
+                    admitted_bound,
+                });
+            }
+        }
+        Ok(FieldConductanceCertificate {
+            adjacency_order_fingerprint: self.order_fingerprint,
+            per_node_chi,
+            admitted_bound,
+        })
     }
 
     pub fn apply_canonical_order_proof(&self) -> CanonicalOrderProof {
@@ -174,33 +483,113 @@ impl FieldAdjacency {
         }
     }
 
-    pub fn apply_undirected_symmetry_certificate(&self) -> UndirectedSymmetryCertificate {
-        UndirectedSymmetryCertificate {
-            fingerprint: self.symmetry_fingerprint,
+    pub fn apply_undirected_symmetry_certificate(
+        &self,
+    ) -> Result<UndirectedSymmetryCertificate, FieldSweepAdmissionError> {
+        self.symmetry_fingerprint
+            .map(|fingerprint| UndirectedSymmetryCertificate { fingerprint })
+            .ok_or(FieldSweepAdmissionError::AdjacencyNotUndirected)
+    }
+}
+
+fn validate_edge_weight(weight: f32) -> Result<(), FieldSweepAdmissionError> {
+    if !weight.is_finite() || weight == 0.0 {
+        return Err(FieldSweepAdmissionError::InvalidEdgeWeight(weight));
+    }
+    Ok(())
+}
+
+fn validate_grid_offsets(offsets: &[GridOffset]) -> Result<(), FieldSweepAdmissionError> {
+    if offsets.is_empty() {
+        return Err(FieldSweepAdmissionError::EmptyGridOffsets);
+    }
+    let mut authored = BTreeMap::new();
+    for offset in offsets {
+        validate_edge_weight(offset.weight)?;
+        if offset.dx == 0 && offset.dy == 0 {
+            return Err(FieldSweepAdmissionError::GridSelfOffset);
+        }
+        if authored
+            .insert((offset.dx, offset.dy), offset.weight.to_bits())
+            .is_some()
+        {
+            return Err(FieldSweepAdmissionError::DuplicateGridOffset {
+                dx: offset.dx,
+                dy: offset.dy,
+            });
         }
     }
+    Ok(())
 }
 
-fn fingerprint_order(width: u32, height: u32, offsets: &[GridN4Offset; 4]) -> u64 {
+fn fingerprint_order(lists: &[Vec<InputSpec>]) -> u64 {
     let mut hash = 0xcbf29ce484222325u64;
-    for byte in width
-        .to_le_bytes()
-        .into_iter()
-        .chain(height.to_le_bytes())
-        .chain(offsets.iter().flat_map(|o| [o.dx as u8, o.dy as u8]))
-    {
-        hash ^= u64::from(byte);
-        hash = hash.wrapping_mul(0x100000001b3);
+    for (target, row) in lists.iter().enumerate() {
+        for word in [target as u32, row.len() as u32] {
+            for byte in word.to_le_bytes() {
+                hash ^= u64::from(byte);
+                hash = hash.wrapping_mul(0x100000001b3);
+            }
+        }
+        for input in row {
+            for word in [
+                input.slot.raw(),
+                input.col.raw_u32(),
+                input.unit_cost.to_bits(),
+            ] {
+                for byte in word.to_le_bytes() {
+                    hash ^= u64::from(byte);
+                    hash = hash.wrapping_mul(0x100000001b3);
+                }
+            }
+        }
     }
     hash
 }
 
-fn fingerprint_symmetry(width: u32, height: u32, offsets: &BTreeSet<(i32, i32)>) -> u64 {
-    let mut hash = u64::from(width) << 32 | u64::from(height);
-    for &(dx, dy) in offsets {
-        hash = hash.rotate_left(9) ^ ((dx as i64 as u64) << 32) ^ (dy as i64 as u64);
+fn fingerprint_symmetry(lists: &[Vec<InputSpec>]) -> Option<u64> {
+    let mut hash = lists.len() as u64;
+    for (from, row) in lists.iter().enumerate() {
+        for input in row {
+            let to = input.slot.as_usize();
+            let reverse = lists.get(to).and_then(|reverse_row| {
+                reverse_row.iter().find(|candidate| {
+                    candidate.slot.as_usize() == from && candidate.col == input.col
+                })
+            });
+            let Some(reverse) = reverse else {
+                return None;
+            };
+            if reverse.unit_cost.to_bits() != input.unit_cost.to_bits() {
+                return None;
+            }
+            if from < to {
+                for word in [from as u32, to as u32, input.unit_cost.to_bits()] {
+                    hash = hash.rotate_left(9) ^ u64::from(word);
+                }
+            }
+        }
     }
-    hash
+    Some(hash)
+}
+
+fn build_degree_schedule(lists: &[Vec<InputSpec>]) -> (Vec<FieldDegreeBucket>, Vec<SlotIndex>) {
+    let mut by_degree: BTreeMap<u32, Vec<SlotIndex>> = BTreeMap::new();
+    for (slot, row) in lists.iter().enumerate() {
+        by_degree
+            .entry(row.len() as u32)
+            .or_default()
+            .push(SlotIndex::new(slot as u32));
+    }
+    let degree_buckets: Vec<_> = by_degree
+        .into_iter()
+        .map(|(degree, slots)| FieldDegreeBucket { degree, slots })
+        .collect();
+    let schedule = degree_buckets
+        .iter()
+        .flat_map(|bucket| bucket.slots.iter().copied())
+        .collect();
+    (degree_buckets, schedule)
 }
 
 /// Sealed proof that an authored adjacency has a fixed, registration-bound
@@ -216,23 +605,48 @@ pub struct UndirectedSymmetryCertificate {
     fingerprint: u64,
 }
 
+/// Sealed proof of `chi_i * sum_j(abs(c_ij)) <= admitted_bound` for every
+/// node. The retained values make the certificate auditable after admission.
+#[derive(Clone, Debug, PartialEq)]
+pub struct FieldConductanceCertificate {
+    adjacency_order_fingerprint: u64,
+    per_node_chi: Vec<f32>,
+    admitted_bound: f32,
+}
+
+impl FieldConductanceCertificate {
+    pub fn per_node_chi(&self) -> &[f32] {
+        &self.per_node_chi
+    }
+
+    pub fn admitted_bound(&self) -> f32 {
+        self.admitted_bound
+    }
+}
+
 /// Sealed law proof. Execution does not inspect this value; admission consumes
 /// it before a registration can exist.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct FieldLawProof {
     required_symmetry_fingerprint: Option<u64>,
+    conductance_certificate: Option<FieldConductanceCertificate>,
 }
 
 impl FieldLawProof {
     pub fn apply_non_conservative() -> Self {
         Self {
             required_symmetry_fingerprint: None,
+            conductance_certificate: None,
         }
     }
 
-    pub fn apply_conservative(certificate: UndirectedSymmetryCertificate) -> Self {
+    pub fn apply_conservative(
+        symmetry: UndirectedSymmetryCertificate,
+        conductance: FieldConductanceCertificate,
+    ) -> Self {
         Self {
-            required_symmetry_fingerprint: Some(certificate.fingerprint),
+            required_symmetry_fingerprint: Some(symmetry.fingerprint),
+            conductance_certificate: Some(conductance),
         }
     }
 }
@@ -380,8 +794,15 @@ pub fn apply_field_sweep_registration(
         return Err(FieldSweepAdmissionError::CanonicalOrderProofMismatch);
     }
     if let Some(required) = field_law_proof.required_symmetry_fingerprint {
-        if required != request.adjacency.symmetry_fingerprint {
+        if Some(required) != request.adjacency.symmetry_fingerprint {
             return Err(FieldSweepAdmissionError::UndirectedSymmetryCertificateMismatch);
+        }
+        let conductance = field_law_proof
+            .conductance_certificate
+            .as_ref()
+            .ok_or(FieldSweepAdmissionError::MissingConductanceCertificate)?;
+        if conductance.adjacency_order_fingerprint != request.adjacency.order_fingerprint {
+            return Err(FieldSweepAdmissionError::ConductanceCertificateMismatch);
         }
     }
     if request.resource_class != FieldSweepResourceClassRequest::default() {
@@ -740,8 +1161,8 @@ pub fn execute_field_sweep_cpu(
         });
     }
     let mut output = values.to_vec();
-    for (target_slot, list) in registration.adjacency.lists.iter().enumerate() {
-        let target_slot = SlotIndex::new(target_slot as u32);
+    for &target_slot in &registration.adjacency.schedule {
+        let list = &registration.adjacency.lists[target_slot.as_usize()];
         let mut accumulator = f32::from_bits(registration.identity_bits);
         for input in list {
             let base_context = FieldEmlContext {
@@ -826,7 +1247,10 @@ struct FieldSweepParamsGpu {
     post_count: u32,
     identity_bits: u32,
     dt_bits: u32,
+    schedule_offset: u32,
+    schedule_count: u32,
     _pad0: u32,
+    _pad1: u32,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -862,6 +1286,7 @@ pub struct FieldSweepSession {
     ranges: Buffer,
     inputs: Buffer,
     nodes: Buffer,
+    schedule: Buffer,
     params: Buffer,
     binding: FieldSweepSessionBinding,
     values_len: usize,
@@ -887,7 +1312,8 @@ impl FieldSweepSession {
                     storage_entry(2, true),
                     storage_entry(3, true),
                     storage_entry(4, true),
-                    uniform_entry(5),
+                    storage_entry(5, true),
+                    uniform_entry(6),
                 ],
             });
         let pipeline_layout = ctx
@@ -921,19 +1347,32 @@ impl FieldSweepSession {
                 contents: bytemuck::cast_slice(&range_rows),
                 usage: BufferUsages::STORAGE,
             });
-        let inputs = ctx
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("field_sweep_inputs"),
-                contents: bytemuck::cast_slice(&flat_inputs),
-                usage: BufferUsages::STORAGE,
-            });
+        let input_bytes = (flat_inputs.len() * std::mem::size_of::<AccumulatorInputGpu>())
+            .max(std::mem::size_of::<AccumulatorInputGpu>()) as u64;
+        let inputs = storage_buffer(&ctx.device, "field_sweep_inputs", input_bytes, false);
+        if !flat_inputs.is_empty() {
+            ctx.queue
+                .write_buffer(&inputs, 0, bytemuck::cast_slice(&flat_inputs));
+        }
         let (flat_nodes, gpu_params) = pack_programs(registration);
         let node_capacity =
             3 * FIELD_SWEEP_LEGACY_PROGRAM_NODES as u64 * std::mem::size_of::<EmlNodeGpu>() as u64;
         let nodes = storage_buffer(&ctx.device, "field_sweep_nodes", node_capacity, false);
         ctx.queue
             .write_buffer(&nodes, 0, bytemuck::cast_slice(&flat_nodes));
+        let schedule_slots: Vec<u32> = registration
+            .adjacency
+            .schedule
+            .iter()
+            .map(|slot| slot.raw())
+            .collect();
+        let schedule = ctx
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("field_sweep_degree_schedule"),
+                contents: bytemuck::cast_slice(&schedule_slots),
+                usage: BufferUsages::STORAGE,
+            });
         let params = ctx
             .device
             .create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -950,6 +1389,7 @@ impl FieldSweepSession {
             ranges,
             inputs,
             nodes,
+            schedule,
             params,
             binding: FieldSweepSessionBinding::from_registration(registration),
             values_len,
@@ -974,6 +1414,39 @@ impl FieldSweepSession {
         Ok(())
     }
 
+    /// Import the exact field prefix from another resident GPU buffer without
+    /// a host readback. The source must have `COPY_SRC` usage.
+    pub fn upload_values_from_buffer(&mut self, ctx: &GpuContext, source: &Buffer) {
+        let byte_len = (self.values_len * std::mem::size_of::<f32>()) as u64;
+        let mut encoder = ctx
+            .device
+            .create_command_encoder(&CommandEncoderDescriptor {
+                label: Some("field_sweep_resident_import"),
+            });
+        encoder.copy_buffer_to_buffer(source, 0, &self.values_a, 0, byte_len);
+        ctx.queue.submit(Some(encoder.finish()));
+        self.read_a = true;
+    }
+
+    /// Copy the current ping-pong result into another resident GPU buffer
+    /// without exposing the kernel-owned buffer handle. The target must have
+    /// `COPY_DST` usage.
+    pub fn copy_values_to_buffer(&self, ctx: &GpuContext, target: &Buffer) {
+        let source = if self.read_a {
+            &self.values_a
+        } else {
+            &self.values_b
+        };
+        let byte_len = (self.values_len * std::mem::size_of::<f32>()) as u64;
+        let mut encoder = ctx
+            .device
+            .create_command_encoder(&CommandEncoderDescriptor {
+                label: Some("field_sweep_resident_export"),
+            });
+        encoder.copy_buffer_to_buffer(source, 0, target, 0, byte_len);
+        ctx.queue.submit(Some(encoder.finish()));
+    }
+
     pub fn dispatch(
         &mut self,
         ctx: &GpuContext,
@@ -986,11 +1459,9 @@ impl FieldSweepSession {
         if !self.binding.accepts(registration) {
             return Err(FieldSweepExecutionError::RegistrationBindingChanged);
         }
-        let (flat_nodes, gpu_params) = pack_programs(registration);
+        let (flat_nodes, base_params) = pack_programs(registration);
         ctx.queue
             .write_buffer(&self.nodes, 0, bytemuck::cast_slice(&flat_nodes));
-        ctx.queue
-            .write_buffer(&self.params, 0, bytemuck::bytes_of(&gpu_params));
 
         for _ in 0..iterations {
             let (source, target) = if self.read_a {
@@ -998,26 +1469,37 @@ impl FieldSweepSession {
             } else {
                 (&self.values_b, &self.values_a)
             };
-            let bind_group = self.bind_group(&ctx.device, source, target);
-            let mut encoder = ctx
-                .device
-                .create_command_encoder(&CommandEncoderDescriptor {
-                    label: Some("field_sweep_dispatch"),
-                });
-            {
-                let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
-                    label: Some("field_sweep_pass"),
-                    timestamp_writes: None,
-                });
-                pass.set_pipeline(&self.pipeline);
-                pass.set_bind_group(0, &bind_group, &[]);
-                pass.dispatch_workgroups(
-                    registration.slots().div_ceil(FIELD_SWEEP_WORKGROUP_SIZE),
-                    1,
-                    1,
-                );
+            let mut schedule_offset = 0u32;
+            for bucket in &registration.adjacency.degree_buckets {
+                let mut gpu_params = base_params;
+                gpu_params.schedule_offset = schedule_offset;
+                gpu_params.schedule_count = bucket.slots.len() as u32;
+                ctx.queue
+                    .write_buffer(&self.params, 0, bytemuck::bytes_of(&gpu_params));
+                let bind_group = self.bind_group(&ctx.device, source, target);
+                let mut encoder = ctx
+                    .device
+                    .create_command_encoder(&CommandEncoderDescriptor {
+                        label: Some("field_sweep_degree_bucket_dispatch"),
+                    });
+                {
+                    let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
+                        label: Some("field_sweep_degree_bucket_pass"),
+                        timestamp_writes: None,
+                    });
+                    pass.set_pipeline(&self.pipeline);
+                    pass.set_bind_group(0, &bind_group, &[]);
+                    pass.dispatch_workgroups(
+                        gpu_params
+                            .schedule_count
+                            .div_ceil(FIELD_SWEEP_WORKGROUP_SIZE),
+                        1,
+                        1,
+                    );
+                }
+                ctx.queue.submit(Some(encoder.finish()));
+                schedule_offset += gpu_params.schedule_count;
             }
-            ctx.queue.submit(Some(encoder.finish()));
             self.read_a = !self.read_a;
         }
         ctx.device.poll(wgpu::Maintain::Wait);
@@ -1088,6 +1570,10 @@ impl FieldSweepSession {
                 },
                 BindGroupEntry {
                     binding: 5,
+                    resource: self.schedule.as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 6,
                     resource: self.params.as_entire_binding(),
                 },
             ],
@@ -1143,7 +1629,10 @@ fn pack_programs(registration: &FieldSweepRegistration) -> (Vec<EmlNodeGpu>, Fie
             post_count: registration.post_program.len() as u32,
             identity_bits: registration.identity_bits,
             dt_bits: registration.dt.to_bits(),
+            schedule_offset: 0,
+            schedule_count: registration.slots(),
             _pad0: 0,
+            _pad1: 0,
         },
     )
 }
@@ -1193,6 +1682,34 @@ pub enum FieldSweepAdmissionError {
     InvalidDimensions { width: u32, height: u32 },
     #[error("rung 5.5 admits exactly the four cardinal GridN4 offsets")]
     NotGridN4,
+    #[error("grid radius must be in 1..=i32::MAX (got {0})")]
+    InvalidGridRadius(u32),
+    #[error("grid radius {radius} requires one authored weight per shell (got {actual})")]
+    RadiusWeightCount { radius: u32, actual: usize },
+    #[error("field adjacency edge weight must be finite and non-zero (got {0})")]
+    InvalidEdgeWeight(f32),
+    #[error("weighted GridOffsets must not be empty")]
+    EmptyGridOffsets,
+    #[error("weighted GridOffsets must not contain the self offset (0, 0)")]
+    GridSelfOffset,
+    #[error("weighted GridOffsets contains duplicate offset ({dx}, {dy})")]
+    DuplicateGridOffset { dx: i32, dy: i32 },
+    #[error("grid dimensions {width}x{height} overflow the admitted slot index")]
+    GridSlotCountOverflow { width: u32, height: u32 },
+    #[error("LinkGraph slot count must be > 0 (got {0})")]
+    InvalidLinkGraphSlotCount(u32),
+    #[error("LinkGraph slot count {slot_count} does not match {rows} neighbor rows")]
+    LinkGraphRowCount { slot_count: u32, rows: usize },
+    #[error("LinkGraph row contains self edge at slot {slot}")]
+    LinkGraphSelfEdge { slot: SlotIndex },
+    #[error("LinkGraph row {target} is not strictly sorted and deduplicated")]
+    LinkGraphNonCanonicalOrder { target: SlotIndex },
+    #[error("LinkGraph edge {from}->{to} is missing its reverse")]
+    LinkGraphMissingReverse { from: SlotIndex, to: SlotIndex },
+    #[error("LinkGraph edge {from}<->{to} has unequal authored weights")]
+    LinkGraphWeightMismatch { from: SlotIndex, to: SlotIndex },
+    #[error("field adjacency is not exactly weighted-undirected")]
+    AdjacencyNotUndirected,
     #[error("field sweep n_dims must be > 0 (got {0})")]
     InvalidDims(u32),
     #[error("field sweep output column {output_col} is outside n_dims {n_dims}")]
@@ -1214,6 +1731,25 @@ pub enum FieldSweepAdmissionError {
     CanonicalOrderProofMismatch,
     #[error("conservative FieldLawProof does not bind this undirected adjacency")]
     UndirectedSymmetryCertificateMismatch,
+    #[error("conservative FieldLawProof is missing its per-node conductance certificate")]
+    MissingConductanceCertificate,
+    #[error("conductance certificate does not bind this authored adjacency")]
+    ConductanceCertificateMismatch,
+    #[error("conductance certificate requires {slots} chi values (got {actual})")]
+    ConductanceChiCount { slots: u32, actual: usize },
+    #[error("conductance admitted bound must be finite and non-negative (got {0})")]
+    InvalidConductanceBound(f32),
+    #[error("conductance chi at slot {slot} must be finite and non-negative (got {chi})")]
+    InvalidNodeChi { slot: SlotIndex, chi: f32 },
+    #[error(
+        "conductance bound exceeded at slot {slot}: chi={chi} weighted_degree={weighted_degree} bound={admitted_bound}"
+    )]
+    ConductanceBoundExceeded {
+        slot: SlotIndex,
+        chi: f32,
+        weighted_degree: f32,
+        admitted_bound: f32,
+    },
     #[error(
         "resource class stack={stack_slots} nodes={max_program_nodes} is not the admitted legacy fixed-32 class"
     )]

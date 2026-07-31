@@ -142,7 +142,9 @@ pub fn compile_gu_yang_n4_field_sweeps(
         binary(eml_opcode::ADD),
         ret(),
     ];
-    let symmetry = adjacency.apply_undirected_symmetry_certificate();
+    let symmetry = adjacency.apply_undirected_symmetry_certificate()?;
+    let conductance_certificate =
+        adjacency.apply_conductance_certificate(vec![spec.chi; adjacency.slots() as usize], 1.0)?;
     let flux = apply_field_sweep_registration(FieldSweepRegistrationRequest {
         adjacency,
         n_dims: spec.n_dims,
@@ -151,7 +153,10 @@ pub fn compile_gu_yang_n4_field_sweeps(
         fold_program: flux_fold,
         identity_bits: 0.0f32.to_bits(),
         post_program: flux_post,
-        field_law_proof: Some(FieldLawProof::apply_conservative(symmetry)),
+        field_law_proof: Some(FieldLawProof::apply_conservative(
+            symmetry,
+            conductance_certificate,
+        )),
         canonical_order_proof: Some(canonical_order_proof),
         resource_class: FieldSweepResourceClassRequest::default(),
         dt: spec.dt,

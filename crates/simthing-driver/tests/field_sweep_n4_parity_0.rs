@@ -1,10 +1,8 @@
 use simthing_core::{eml_opcode, ColumnIndex, EmlNodeGpu, SlotIndex};
-use simthing_driver::{
-    compile_gu_yang_n4_field_sweeps, compile_palma_n4_field_sweep, GuYangN4FieldSweepSpec,
-    PalmaN4FieldSweepSpec,
-};
+use simthing_driver::{compile_palma_n4_field_sweep, PalmaN4FieldSweepSpec};
 use simthing_gpu::{
-    apply_field_sweep_registration, cpu_horizon, cpu_min_plus_d_from_w, execute_field_sweep_cpu,
+    apply_field_sweep_registration, compile_min_plus_field_sweep, compile_structured_field_sweeps,
+    cpu_horizon, cpu_min_plus_d_from_w, execute_field_sweep_cpu,
     execute_field_sweep_cpu_iterations, pack_w_and_initial_d, params_from_config, FieldAdjacency,
     FieldLawProof, FieldSweepAdmissionError, FieldSweepRegistrationRequest,
     FieldSweepResourceClassRequest, FieldSweepSession, GpuContext, MinPlusStencilConfig,
@@ -62,7 +60,6 @@ fn field_sweep_n4_parity_0_palma_and_gu_yang_are_bit_exact_cpu_and_gpu() {
     let width = 16;
     let height = 16;
     let iterations = 8;
-    let destination_slot = 2 * width + 2;
     let w = synthetic_w(width, height);
     let palma_config = MinPlusStencilConfig {
         width,
@@ -75,16 +72,8 @@ fn field_sweep_n4_parity_0_palma_and_gu_yang_are_bit_exact_cpu_and_gpu() {
         inf_sentinel: MIN_PLUS_INF,
     };
     let palma_values = pack_w_and_initial_d(&w, &palma_config).expect("pack PALMA values");
-    let palma_registration = compile_palma_n4_field_sweep(PalmaN4FieldSweepSpec {
-        width,
-        height,
-        n_dims: 2,
-        d_col: admitted_col(0, 2),
-        w_col: admitted_col(1, 2),
-        destination_slot: SlotIndex::new(destination_slot),
-        inf_sentinel: MIN_PLUS_INF,
-    })
-    .expect("admit PALMA registration");
+    let palma_registration =
+        compile_min_plus_field_sweep(&palma_config).expect("admit PALMA registration");
     let legacy_palma_cpu =
         cpu_min_plus_d_from_w(&w, &palma_config, iterations).expect("PALMA CPU oracle");
     let generic_palma_cpu =
@@ -123,17 +112,10 @@ fn field_sweep_n4_parity_0_palma_and_gu_yang_are_bit_exact_cpu_and_gpu() {
     let gu_yang_values = synthetic_flux_values(width, height);
     let legacy_gu_yang_cpu = cpu_horizon(&gu_yang_values, &params_from_config(&gu_yang_config), 1);
     let [conductance_registration, flux_registration] =
-        compile_gu_yang_n4_field_sweeps(GuYangN4FieldSweepSpec {
-            width,
-            height,
-            n_dims: 2,
-            value_col: admitted_col(0, 2),
-            conductance_col: admitted_col(1, 2),
-            saturation: 1.0,
-            chi: SATURATING_FLUX_CHI_CFL_MAX,
-            dt: 1.0,
-        })
-        .expect("admit Gu-Yang registrations");
+        compile_structured_field_sweeps(&gu_yang_config)
+            .expect("admit Gu-Yang registrations")
+            .try_into()
+            .expect("BH-0 lowers to conductance plus flux");
     let after_conductance = execute_field_sweep_cpu(&gu_yang_values, &conductance_registration)
         .expect("generic conductance CPU");
     let generic_gu_yang_cpu =
@@ -276,8 +258,14 @@ fn field_sweep_n4_parity_0_typed_pre_dispatch_negatives_bite() {
 
     let mut wrong_symmetry = valid_request();
     let other = FieldAdjacency::grid_n4(5, 4, GRID_N4_NSEW, admitted_col(0, 2)).expect("other N4");
+    let other_conductance = other
+        .apply_conductance_certificate(vec![0.1; other.slots() as usize], 1.0)
+        .expect("other conductance certificate");
     wrong_symmetry.field_law_proof = Some(FieldLawProof::apply_conservative(
-        other.apply_undirected_symmetry_certificate(),
+        other
+            .apply_undirected_symmetry_certificate()
+            .expect("other symmetry"),
+        other_conductance,
     ));
     assert!(matches!(
         apply_field_sweep_registration(wrong_symmetry),

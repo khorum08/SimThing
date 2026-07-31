@@ -11,6 +11,7 @@ EmissionRecord
 EmissionRecordGpu
 EmissionRecordReadback
 FieldLawProof
+FieldConductanceCertificate
 FieldSweepRegistration
 PlacedParticipant
 ResolvedWriteAuthority

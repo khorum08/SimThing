@@ -3,10 +3,7 @@
 //! Semantic-free driver capability for adopted mapping optimizations. Not wired
 //! into the production pass graph; callers opt in explicitly.
 
-use simthing_gpu::{
-    GpuContext, StructuredFieldExecutionOptions, StructuredFieldExecutionReport,
-    StructuredFieldStencilError, StructuredFieldStencilOp,
-};
+use simthing_gpu::StructuredFieldExecutionReport;
 use thiserror::Error;
 
 /// Opaque registered field identifier.
@@ -127,14 +124,6 @@ pub enum FieldSchedulerError {
     InvalidEveryNZero,
     #[error("unknown field id {0:?} for region {1:?}")]
     UnknownField(FieldId, FieldRegionId),
-}
-
-#[derive(Clone, Debug, Error, PartialEq)]
-pub enum ScheduledStencilExecutionError {
-    #[error("multiple scheduled regions ({count}) cannot share one StructuredFieldStencilOp")]
-    MultipleScheduledRegionsForSingleOp { count: u32 },
-    #[error(transparent)]
-    Stencil(#[from] StructuredFieldStencilError),
 }
 
 /// Generic cadence + dirty-region scheduler.
@@ -381,39 +370,6 @@ where
     Ok(ScheduledRegionsExecutionSummary { executed, results })
 }
 
-/// Execute at most one scheduled region against a single `StructuredFieldStencilOp`.
-///
-/// Returns `None` when no region is scheduled. Errors when more than one scheduled
-/// region would advance the same op/buffer pair.
-pub fn execute_single_scheduled_stencil_region(
-    ctx: &GpuContext,
-    op: &StructuredFieldStencilOp,
-    decisions: &[FieldDispatchDecision],
-    options: StructuredFieldExecutionOptions,
-) -> Result<Option<ScheduledSingleStencilExecution>, ScheduledStencilExecutionError> {
-    let scheduled: Vec<_> = decisions
-        .iter()
-        .filter(|d| matches!(d.schedule, FieldDispatchSchedule::Dispatch))
-        .collect();
-    if scheduled.is_empty() {
-        return Ok(None);
-    }
-    if scheduled.len() > 1 {
-        return Err(
-            ScheduledStencilExecutionError::MultipleScheduledRegionsForSingleOp {
-                count: scheduled.len() as u32,
-            },
-        );
-    }
-    let decision = scheduled[0];
-    let report = op.execute_configured(ctx, options)?;
-    Ok(Some(ScheduledSingleStencilExecution {
-        field_id: decision.field_id,
-        region_id: decision.region_id,
-        report,
-    }))
-}
-
 #[derive(Clone, Debug, PartialEq)]
 pub struct ScheduledRegionsExecutionSummary<T> {
     pub executed: Vec<(FieldId, FieldRegionId)>,
@@ -430,5 +386,4 @@ pub struct ScheduledSingleStencilExecution {
 #[cfg(test)]
 mod unit_tests {
     use super::*;
-
 }
