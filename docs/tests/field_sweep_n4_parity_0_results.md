@@ -1,7 +1,7 @@
 # FIELD-SWEEP-N4-PARITY-0 results
 
 - Track: 0.0.8.7 RF arena modernization (rung 5.5)
-- Status: **PROBATION / proof-present / DA-review-pending**
+- Status: **COMPLETE — DA-GRADUATED / merged #1529 @ 4ab19613**. DA reproduced on RTX 4080/Vulkan: parity 3/0 (incl. `palma_and_gu_yang_are_bit_exact_cpu_and_gpu`), STEAD guards 3/0, driver 48/0/1, gates 0/0/0. FIELD-SWEEP-SINGLE-PATH falsification-proven: a planted eighth bespoke field shader flips the SHADERS arm PASS->FAIL.
 - HD-RECEIPT: `2539bdaf8933`
 - ORIENT-RECEIPT: `01a351001f4c`
 - Remand: Board comment `5139419605`
