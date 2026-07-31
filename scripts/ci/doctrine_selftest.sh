@@ -520,6 +520,22 @@ EOF
   echo '// spec stub' >"${ROOT_SANDBOX}/crates/simthing-spec/src/lib.rs"
 }
 
+setup_field_sweep_algebra_tag() {
+  copy_ci_bundle "$ROOT_SANDBOX"
+  ensure_minimal_crates "$ROOT_SANDBOX"
+  mkdir -p "${ROOT_SANDBOX}/crates/simthing-driver/src"
+  cp "${FIXTURES}/known_bad/field_sweep_algebra_tag.rs" \
+    "${ROOT_SANDBOX}/crates/simthing-driver/src/field_sweep_planted.rs"
+}
+
+setup_eighth_bespoke_field_shader() {
+  copy_ci_bundle "$ROOT_SANDBOX"
+  ensure_minimal_crates "$ROOT_SANDBOX"
+  mkdir -p "${ROOT_SANDBOX}/crates/simthing-gpu/src/shaders"
+  cp "${FIXTURES}/known_bad/eighth_bespoke_field_shader.wgsl" \
+    "${ROOT_SANDBOX}/crates/simthing-gpu/src/shaders/eighth_bespoke_field_shader.wgsl"
+}
+
 setup_malformed_allowlist() {
   local fixture="$1"
   copy_ci_bundle "$ROOT_SANDBOX"
@@ -1306,6 +1322,10 @@ run_all_cases() {
     setup_kernel_src allow_buffer_handle.rs
   expect_reliable_fail "allow_kernel_surface_lib" "ALLOW-KERNEL-SURFACE" \
     setup_kernel_lib_surface
+  expect_reliable_fail "field_sweep_algebra_tag" "FIELD-SWEEP-SINGLE-PATH-ALGEBRA" \
+    setup_field_sweep_algebra_tag
+  expect_reliable_fail "eighth_bespoke_field_shader" "FIELD-SWEEP-SINGLE-PATH-SHADERS" \
+    setup_eighth_bespoke_field_shader
 
   expect_scanner_error "malformed_wrong_door" \
     setup_malformed_allowlist malformed_allowlist_wrong_door.txt

@@ -281,6 +281,8 @@ const CLOSED_OPCODES: &[u32] = &[
     eml_nodes::opcode::LITERAL_F32,
     eml_nodes::opcode::SLOT_VALUE,
     eml_nodes::opcode::PARAM,
+    eml_nodes::opcode::TARGET_VALUE,
+    eml_nodes::opcode::NEIGHBOR_VALUE,
     eml_nodes::opcode::ADD,
     eml_nodes::opcode::SUB,
     eml_nodes::opcode::MUL,
@@ -320,6 +322,16 @@ const CLOSED_COMBINE_KINDS: &[u32] = &[
 
 pub fn opcode_in_closed_vocabulary(op: u32) -> bool {
     CLOSED_OPCODES.contains(&op)
+}
+
+/// Slot-local AccumulatorOp EvalEML excludes the two field-context reads.
+/// Those opcodes are closed and admitted only by `FieldSweepRegistration`.
+pub fn opcode_in_accumulator_vocabulary(op: u32) -> bool {
+    opcode_in_closed_vocabulary(op)
+        && !matches!(
+            op,
+            eml_nodes::opcode::TARGET_VALUE | eml_nodes::opcode::NEIGHBOR_VALUE
+        )
 }
 
 pub fn combine_in_closed_vocabulary(kind: u32) -> bool {

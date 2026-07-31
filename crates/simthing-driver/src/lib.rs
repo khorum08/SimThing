@@ -25,6 +25,7 @@ pub mod dress_rehearsal_r6b_ship_cohort_reinforcement;
 pub mod dress_rehearsal_r6c_integrated_run;
 pub mod econ_scale_0080_0;
 pub mod field_scheduler;
+pub mod field_sweep_compile;
 pub mod first_slice_mapping_runtime;
 pub mod gameplay_0080_0;
 pub mod gameplay_0080_1;
@@ -136,6 +137,10 @@ pub use atlas_0080_0::{
 };
 pub use bench_limits::{check as check_bench_ceiling, ms_per_sim_day, CEILINGS};
 pub use child_share_eml::{child_share_cpu, register_child_share_formula};
+pub use field_sweep_compile::{
+    compile_gu_yang_n4_field_sweeps, compile_palma_n4_field_sweep,
+    GuYangN4FieldSweepSpec, PalmaN4FieldSweepSpec,
+};
 pub use compound_field_0080_2::{
     replay_compound_field_0080_2, run_compound_field_0080_2, CompoundField0082ForbiddenRequests,
     CompoundField0082Gate, CompoundField0082Input, CompoundField0082NodePos,

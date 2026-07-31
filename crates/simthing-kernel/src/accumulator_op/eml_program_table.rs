@@ -8,7 +8,7 @@ use simthing_core::{
 use wgpu::{Buffer, BufferDescriptor, BufferUsages, CommandEncoderDescriptor};
 
 use crate::context::GpuContext;
-use crate::eml_opcode_gate::{opcode_in_closed_vocabulary, OpcodeGateError};
+use crate::eml_opcode_gate::{opcode_in_accumulator_vocabulary, OpcodeGateError};
 
 use super::types::EmlTreeRangeGpu;
 
@@ -204,7 +204,7 @@ impl EmlGpuProgramTable {
             }
             // OC-K-EML-OPCODE-GATE-0: hard-gate closed vocabulary at GPU registration.
             for node in nodes.iter() {
-                if !opcode_in_closed_vocabulary(node.opcode) {
+                if !opcode_in_accumulator_vocabulary(node.opcode) {
                     return Err(EmlUploadError::OpcodeGate(
                         OpcodeGateError::UnwhitelistedOpcode {
                             opcode: node.opcode,

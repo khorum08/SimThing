@@ -74,10 +74,14 @@ pub use simthing_kernel::{
     summaries_from_values, threshold_registrations_to_ops,
     validate_and_mint_placed_participants_by_location_id,
     validate_location_ids_have_structural_placements, validate_scatter_entries,
+    apply_field_sweep_registration, execute_field_sweep_cpu, execute_field_sweep_cpu_iterations,
     AccumulatorInputGpu, AccumulatorInputListTable, AccumulatorOpGpu, AccumulatorOpSession,
     AccumulatorOpSessionError, AccumulatorPipelineSessions, AoWgsl0Compatibility,
     AoWgsl0FallbackReason, AoWgsl0PlanShape, BandCrossingDelta, BandCrossingDirection,
-    ColumnRuleDescriptor, DebugReadbackGuard,
+    CanonicalOrderProof, ColumnRuleDescriptor, DebugReadbackGuard, FieldAdjacency, FieldLawProof,
+    FieldSweepAdmissionError, FieldSweepExecutionError,
+    FieldSweepRegistration, FieldSweepRegistrationRequest, FieldSweepResourceClass,
+    FieldSweepResourceClassRequest, FieldSweepSession, GridN4Offset,
     EmissionFormula, EmissionOpPlanSignature, EmissionPlan, EmissionPlanError, EmissionRecord,
     EmissionRecordGpu, EmissionRegistration, EmissionSyncError, EmlGpuProgramTable,
     EmlTreeRangeGpu, EmlUploadError, EncodeError, ExactnessClass, GovernedIntegrationPlan,
@@ -97,8 +101,11 @@ pub use simthing_kernel::{
     DIR_DOWNWARD, DIR_EITHER, DIR_UPWARD, FORMULA_KIND_CONSTANT, FORMULA_KIND_EVAL_EML,
     FORMULA_KIND_IDENTITY_FLOOR, NO_CONSTANT, NO_MAX_EMIT, NO_TREE_ID, OP_ADD, OP_MULTIPLY, OP_SET,
     RULE_FIRST, RULE_MAX, RULE_MEAN, RULE_MIN, RULE_SUM, RULE_WEIGHTED_MEAN, THRESH_BUF_OUTPUT,
-    THRESH_BUF_VALUES, WEIGHT_COL_NONE,
+    THRESH_BUF_VALUES, UndirectedSymmetryCertificate, WEIGHT_COL_NONE,
+    FIELD_SWEEP_LEGACY_PROGRAM_NODES, FIELD_SWEEP_LEGACY_STACK_SLOTS,
+    FIELD_SWEEP_WORKGROUP_SIZE, GRID_N4_NSEW, GRID_N4_WENS,
 };
+pub use simthing_kernel::field_param;
 pub use stress_compose::{
     cpu_stress_compose_oracle, StressComposeConfig, StressComposeError, StressComposeOp,
     StressComposeProfile, STRESS_COMPOSE_MAX_INPUT_FIELDS, STRESS_COMPOSE_MAX_PROFILES,

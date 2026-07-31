@@ -11,6 +11,8 @@ ROOT = Path(__file__).resolve().parents[2]
 KERNEL_SRC = ROOT / "crates/simthing-kernel/src"
 LIB_RS = KERNEL_SRC / "lib.rs"
 SEALED_TYPES_FILE = ROOT / "scripts/ci/allow/sealed_types.txt"
+FIELD_SWEEP_LEGACY_FILE = ROOT / "scripts/ci/allow/field_sweep_legacy_shaders.txt"
+GPU_SHADER_DIR = ROOT / "crates/simthing-gpu/src/shaders"
 
 
 def load_sealed_types() -> tuple[str, ...]:
@@ -240,11 +242,38 @@ def scan_kernel_surface(allow_path: Path) -> list[str]:
     return violations
 
 
+def scan_field_sweep_shaders(allow_path: Path) -> list[str]:
+    """Reject an eighth bespoke field shader beside the generic kernel path."""
+    allowed = read_allowlist_symbols(allow_path)
+    non_field = {
+        "accumulator_op_generic.wgsl",
+        "candidate_f_magnitude.wgsl",
+        "structural_validation.wgsl",
+    }
+    violations: list[str] = []
+    if not GPU_SHADER_DIR.exists():
+        return violations
+    for path in sorted(GPU_SHADER_DIR.glob("*.wgsl")):
+        if path.name in non_field:
+            continue
+        rel = path.relative_to(ROOT).as_posix()
+        if rel not in allowed:
+            violations.append(
+                f"{rel}: bespoke field shader is outside the retiring seven-file catalogue"
+            )
+    return violations
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "mode",
-        choices=("sealed-producers", "buffer-handles", "kernel-surface"),
+        choices=(
+            "sealed-producers",
+            "buffer-handles",
+            "kernel-surface",
+            "field-sweep-shaders",
+        ),
     )
     args = parser.parse_args()
     allow_dir = ROOT / "scripts/ci/allow"
@@ -252,8 +281,10 @@ def main() -> int:
         violations = scan_sealed_producers(allow_dir / "sealed_producers.txt")
     elif args.mode == "buffer-handles":
         violations = scan_buffer_handles(allow_dir / "inert_buffer_handles.txt")
-    else:
+    elif args.mode == "kernel-surface":
         violations = scan_kernel_surface(allow_dir / "kernel_surface.txt")
+    else:
+        violations = scan_field_sweep_shaders(FIELD_SWEEP_LEGACY_FILE)
     for v in violations:
         print(v)
     return 1 if violations else 0

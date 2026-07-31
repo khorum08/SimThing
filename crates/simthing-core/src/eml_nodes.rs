@@ -8,6 +8,14 @@ pub mod opcode {
     pub const LITERAL_F32: u32 = 0;
     pub const SLOT_VALUE: u32 = 1;
     pub const PARAM: u32 = 2;
+    /// FIELD-SWEEP-N4-PARITY-0: read a column from the current sweep target.
+    ///
+    /// Field-context-only: ordinary slot-local EvalEML admission rejects this opcode.
+    pub const TARGET_VALUE: u32 = 3;
+    /// FIELD-SWEEP-N4-PARITY-0: read a column from the current ordered neighbor.
+    ///
+    /// Field-context-only: ordinary slot-local EvalEML admission rejects this opcode.
+    pub const NEIGHBOR_VALUE: u32 = 4;
 
     pub const ADD: u32 = 10;
     pub const SUB: u32 = 11;

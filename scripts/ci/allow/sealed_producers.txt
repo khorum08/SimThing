@@ -1,4 +1,9 @@
 # symbol | door-class | rationale | promotion-blocker
+apply_field_sweep_registration | apply | FIELD-SWEEP-N4-PARITY-0 sole admission door minting proof-present FieldSweepRegistration | retire when registration admission is an in-crate type boundary only
+apply_canonical_order_proof | apply | FIELD-SWEEP-N4-PARITY-0 adjacency-bound canonical linear neighbor-order proof | retire when canonical order is intrinsic in the admitted adjacency type
+apply_conservative | apply | FIELD-SWEEP-N4-PARITY-0 conservative FieldLawProof requires an undirected-symmetry certificate | retire when conservation law is intrinsic in the admitted program type
+apply_non_conservative | apply | FIELD-SWEEP-N4-PARITY-0 explicit non-conservative FieldLawProof for ordinary authored folds | retire when field-law classification is intrinsic in the admitted program type
+apply_undirected_symmetry_certificate | apply | FIELD-SWEEP-N4-PARITY-0 adjacency-bound proof that every admitted N4 edge has its reverse | retire when undirected symmetry is intrinsic in the admitted adjacency type
 cpu_oracle_band_crossing_deltas | cpu_oracle | WRITE-DOOR-BAND-DELTA-0 CPU-oracle twin for sealed BandCrossingDelta; parity-only path | retire when CPU oracle is type-quarantined to in-crate parity harness
 cpu_oracle_threshold_events | cpu_oracle | CPU-oracle twin for threshold events; parity-only path | retire when CPU oracle is type-quarantined to in-crate parity harness
 cpu_oracle_emission_records | cpu_oracle | CPU-oracle twin for emission records; parity-only path | retire when CPU oracle is type-quarantined to in-crate parity harness
