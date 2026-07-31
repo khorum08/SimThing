@@ -177,6 +177,45 @@ kernels surviving indefinitely has not refuted the remodel — it has cancelled 
 - **Directed / asymmetric graph flux is out of scope.** Conservation rests on undirected symmetry (§5.5).
 - **Rung `11.2`'s network exemplar** remains the original consumer and becomes buildable at 5.6.
 
+## 8. What the invariants are preserving FOR
+
+SS5 lists what must not be lost; this records why anyone should care, so a future DA can reconstruct
+the value rather than the rules alone.
+
+**The nominal game — a semantic mismatch, not merely a capability gap.** The Triad propagated over
+spatial proximity while the game moves over hyperlanes. Fronts were shaped by *layout* rather than
+*connectivity*: lattice-adjacent stars with no lane exchanged pressure; lane-joined distant stars
+exchanged almost none. After 5.6 that is an authoring choice. Chokepoints stop being authored and
+start emerging, because on a lattice every cell has degree 4 and there is nothing to emerge — a
+low-degree cut vertex saturates under flux *because of its degree*. The core-design claim that
+chokepoints "emerge from the flow" becomes true for the first time. Supply reach follows lanes;
+borders form at cuts; "the front is the route" becomes literal, since a gradient over the lane graph
+is a legal movement path and a grid gradient is not.
+
+**Scale.** A dense theater is bounded at 1024 cells because dense cost is `O(cells x neighbours)`.
+A sparse graph has no such cost: ~1500 stars at a few lanes each is ~5000 edges — one sweep, no
+tiling. Galaxy-scale fronts move from atlas-tiled multi-dispatch to a single dispatch. This is a
+cost and complexity difference, **not** possible-versus-impossible: atlas tiling always worked. The
+10/32 bound is not a fossil like the removed `65_535` edge ceiling — it is P1 doing real work, since
+dense global diffusion measured ~15x over budget.
+
+**The algebra family is the larger multiplier.** Each fold is a domain class: `(min,+)` shortest
+path and logistics; `(max,+)` critical path and makespan; `(max,min)` bottleneck capacity;
+`(OR,AND)` reachability and blast radius; `(min,max)` minimax risk; and `(+,x)` sum-product, which is
+**loopy belief propagation** — probabilistic inference running natively on the substrate that
+generates the corpus, a bridge to the LeWM mission rather than a parallel stack. Honest boundary:
+`(max,+)` and `(max,min)` are idempotent or order-based and carry **no conservation guarantee**.
+Kernel-path parity collapses to `O(1)`; **the mathematics does not**. Every new algebra still needs
+its own `FieldLawProof`.
+
+**Corpus yield.** Topology becomes an independent variable dialled while the law is held fixed —
+N4, weighted N8, radius-r, LinkGraph, and beyond. That is a controlled experiment no natural corpus
+offers, widening SS1's data-complexity axis, which is the LeWM instrument's differentiator.
+
+**And the hazard.** The cap-inheritance risk in SS5's eleventh position is not hypothetical: 5.6 was
+the first rung where dense and sparse admission converged on one surface, and the nearest available
+constant was the wrong one. It is now mechanically fenced. Future convergences will not be.
+
 ## References
 
 - [`design_0_0_8_7_rf_arena_modernization.md`](design_0_0_8_7_rf_arena_modernization.md) §3b rows

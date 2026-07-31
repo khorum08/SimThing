@@ -355,6 +355,23 @@ repo already had), and proof coupling via dev-dependencies is metered against a 
 **may only decrease**, each reduction being a rung that moved an engine proof onto the Invariant
 Set instead of a hydrated scenario.
 
+**The Per-Generator Admission Law (Owner mandate, 2026-07-31).** **A dense-execution budget may
+never bind a sparse adjacency.** Adjacency admission is per-generator: `GridOffsets` carries the
+dense-theater caps (`REGION_FIELD_STANDARD_MAX_GRID` 10, `REGION_FIELD_EXTENDED_MAX_GRID` 32,
+`REGION_FIELD_MAX_CELL_COUNT` 1024 = 32x32), and `LinkGraph` carries **none of them** — its cost is
+`O(E)` on bounded fanout, not `O(cells x neighbours)`, so a dense per-dispatch window is meaningless
+there. The graph path never routes through `validate_grid` or `structural_n4_atlas_partition`.
+**Scenario scale is never constrained by an execution window**: structural layout admission is
+already unbounded by construction (`MapgenStructuralGridBudget` is four `Option` fields, `None` =
+unbounded, `max_cells` checked in `u128`), and exceeding a dense window yields
+`AtlasDeferralRequired` — tile it, never refuse it. A star count is an authoring number and appears
+nowhere in the engine. **Absence of a cap is the requirement being met, not a gap**: no `LinkGraph`
+budget type may be added without a live caller, since a budget with no consumer is speculative
+capacity. Mechanized by the permanent `FIELD-SWEEP-DENSE-CAP-CROSSING` scan arm, whose planted
+`REGION_FIELD_MAX_CELL_COUNT` fixture flips it red — the hazard this law exists to prevent is a
+ceiling arriving **by inheritance rather than by decision**, when a future rung reaches for the
+nearest available constant.
+
 **The Corpus Boundary Law (Owner mandate, 2026-07-30).** **No scenario's vocabulary may be
 hardcoded in engine crates.** No faction, owner, entity, or scenario name may appear in
 production `src` of `simthing-core`, `-spec`, `-kernel`, `-sim`, `-gpu`, `-clausething`, or
