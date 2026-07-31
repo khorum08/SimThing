@@ -4,12 +4,34 @@
 //! Algebra stays in authored `map_program` / `fold_program` / `post_program` data.
 //! The executor has one fixed linear fold and never branches on a field kind,
 //! algebra identity, or operator identity.
+//!
+//! Raw semantic identities cannot enter a field-sweep registration:
+//!
+//! ```compile_fail
+//! use simthing_gpu::FieldSweepRegistrationRequest;
+//!
+//! fn field_sweep_registration_rejects_raw_column(
+//!     mut request: FieldSweepRegistrationRequest,
+//! ) {
+//!     request.output_col = 0u32;
+//! }
+//! ```
+//!
+//! ```compile_fail
+//! use simthing_gpu::FieldEmlContext;
+//!
+//! fn field_sweep_context_rejects_raw_slot(mut context: FieldEmlContext) {
+//!     context.target_slot = 0u32;
+//! }
+//! ```
 
 use std::collections::BTreeSet;
 use std::sync::mpsc;
 
 use bytemuck::{Pod, Zeroable};
-use simthing_core::{eml_opcode, EmlNodeGpu, EML_STACK_MAX, MAX_EML_TREE_NODES};
+use simthing_core::{
+    eml_opcode, ColumnIndex, EmlNodeGpu, InputSpec, SlotIndex, EML_STACK_MAX, MAX_EML_TREE_NODES,
+};
 use thiserror::Error;
 use wgpu::util::DeviceExt;
 use wgpu::{
@@ -22,6 +44,7 @@ use wgpu::{
 use crate::accumulator_op::{AccumulatorInputGpu, InputListRange};
 use crate::context::GpuContext;
 use crate::eml_opcode_gate::{opcode_in_closed_vocabulary, OpcodeGateError};
+use crate::wgsl_encode::{column_from_wire, encode_column};
 
 pub const FIELD_SWEEP_WORKGROUP_SIZE: u32 = 64;
 pub const FIELD_SWEEP_LEGACY_STACK_SLOTS: u32 = 32;
@@ -70,12 +93,12 @@ pub const GRID_N4_NSEW: [GridN4Offset; 4] = [
 
 /// N4 adjacency plus the existing input-list gather rows. Fields are private so
 /// authored order cannot be changed after proof minting.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct FieldAdjacency {
     width: u32,
     height: u32,
     offsets: [GridN4Offset; 4],
-    lists: Vec<Vec<AccumulatorInputGpu>>,
+    lists: Vec<Vec<InputSpec>>,
     order_fingerprint: u64,
     symmetry_fingerprint: u64,
 }
@@ -85,6 +108,7 @@ impl FieldAdjacency {
         width: u32,
         height: u32,
         offsets: [GridN4Offset; 4],
+        gather_col: ColumnIndex,
     ) -> Result<Self, FieldSweepAdmissionError> {
         if width == 0 || height == 0 {
             return Err(FieldSweepAdmissionError::InvalidDimensions { width, height });
@@ -106,11 +130,10 @@ impl FieldAdjacency {
                     let nx = i64::from(x) + i64::from(offset.dx);
                     let ny = i64::from(y) + i64::from(offset.dy);
                     if nx >= 0 && ny >= 0 && nx < i64::from(width) && ny < i64::from(height) {
-                        row.push(AccumulatorInputGpu {
-                            slot: ny as u32 * width + nx as u32,
-                            col: 0,
-                            unit_cost_bits: 1.0f32.to_bits(),
-                            flags: 0,
+                        row.push(InputSpec {
+                            slot: SlotIndex::new(ny as u32 * width + nx as u32),
+                            col: gather_col,
+                            unit_cost: 1.0,
                         });
                     }
                 }
@@ -251,7 +274,7 @@ impl FieldSweepResourceClass {
 pub struct FieldSweepRegistrationRequest {
     pub adjacency: FieldAdjacency,
     pub n_dims: u32,
-    pub output_col: u32,
+    pub output_col: ColumnIndex,
     pub map_program: Vec<EmlNodeGpu>,
     pub fold_program: Vec<EmlNodeGpu>,
     pub identity_bits: u32,
@@ -268,7 +291,7 @@ pub struct FieldSweepRegistrationRequest {
 pub struct FieldSweepRegistration {
     adjacency: FieldAdjacency,
     n_dims: u32,
-    output_col: u32,
+    output_col: ColumnIndex,
     map_program: Vec<EmlNodeGpu>,
     fold_program: Vec<EmlNodeGpu>,
     identity_bits: u32,
@@ -288,7 +311,7 @@ impl FieldSweepRegistration {
         self.n_dims
     }
 
-    pub fn output_col(&self) -> u32 {
+    pub fn output_col(&self) -> ColumnIndex {
         self.output_col
     }
 
@@ -327,11 +350,25 @@ pub fn apply_field_sweep_registration(
     if request.n_dims == 0 {
         return Err(FieldSweepAdmissionError::InvalidDims(request.n_dims));
     }
-    if request.output_col >= request.n_dims {
+    if request.output_col.raw_u32() >= request.n_dims {
         return Err(FieldSweepAdmissionError::InvalidOutputColumn {
             output_col: request.output_col,
             n_dims: request.n_dims,
         });
+    }
+    for input in request.adjacency.lists.iter().flatten() {
+        if input.slot.raw() >= request.adjacency.slots() {
+            return Err(FieldSweepAdmissionError::InvalidGatherSlot {
+                slot: input.slot,
+                slots: request.adjacency.slots(),
+            });
+        }
+        if input.col.raw_u32() >= request.n_dims {
+            return Err(FieldSweepAdmissionError::InvalidGatherColumn {
+                col: input.col,
+                n_dims: request.n_dims,
+            });
+        }
     }
     let field_law_proof = request
         .field_law_proof
@@ -526,8 +563,8 @@ fn validate_field_program(
 
 #[derive(Clone, Copy, Debug)]
 pub struct FieldEmlContext {
-    pub target_slot: u32,
-    pub neighbor_slot: Option<u32>,
+    pub target_slot: SlotIndex,
+    pub neighbor_slot: Option<SlotIndex>,
     pub accumulator: f32,
     pub edge_scalar: f32,
     pub dt: f32,
@@ -547,22 +584,27 @@ pub fn eval_field_eml_cpu(
         match node.opcode {
             eml_opcode::LITERAL_F32 => push(&mut stack, &mut sp, f32::from_bits(node.a))?,
             eml_opcode::TARGET_VALUE => {
-                let value = read_cell(values, context.target_slot, node.a, n_dims)?;
+                let value = read_cell(
+                    values,
+                    context.target_slot,
+                    column_from_wire(node.a),
+                    n_dims,
+                )?;
                 push(&mut stack, &mut sp, value)?;
             }
             eml_opcode::NEIGHBOR_VALUE => {
                 let neighbor_slot = context
                     .neighbor_slot
                     .ok_or(FieldSweepExecutionError::MissingNeighborContext)?;
-                let value = read_cell(values, neighbor_slot, node.a, n_dims)?;
+                let value = read_cell(values, neighbor_slot, column_from_wire(node.a), n_dims)?;
                 push(&mut stack, &mut sp, value)?;
             }
             eml_opcode::PARAM => {
                 let value = match node.a {
-                    field_param::TARGET_SLOT => context.target_slot as f32,
+                    field_param::TARGET_SLOT => context.target_slot.raw() as f32,
                     field_param::NEIGHBOR_SLOT => context
                         .neighbor_slot
-                        .map(|slot| slot as f32)
+                        .map(|slot| slot.raw() as f32)
                         .unwrap_or(f32::NAN),
                     field_param::ACCUMULATOR => context.accumulator,
                     field_param::EDGE_SCALAR => context.edge_scalar,
@@ -662,25 +704,25 @@ fn push(
 
 fn read_cell(
     values: &[f32],
-    slot: u32,
-    col: u32,
+    slot: SlotIndex,
+    col: ColumnIndex,
     n_dims: u32,
 ) -> Result<f32, FieldSweepExecutionError> {
-    if col >= n_dims {
+    if col.raw_u32() >= n_dims {
         return Err(FieldSweepExecutionError::MalformedEdgeContext {
-            slot,
-            col,
+            slot: slot.raw(),
+            col: col.raw_u32(),
             n_dims,
             values_len: values.len(),
         });
     }
-    let index = slot as usize * n_dims as usize + col as usize;
+    let index = slot.as_usize() * n_dims as usize + col.raw();
     values
         .get(index)
         .copied()
         .ok_or(FieldSweepExecutionError::MalformedEdgeContext {
-            slot,
-            col,
+            slot: slot.raw(),
+            col: col.raw_u32(),
             n_dims,
             values_len: values.len(),
         })
@@ -699,14 +741,14 @@ pub fn execute_field_sweep_cpu(
     }
     let mut output = values.to_vec();
     for (target_slot, list) in registration.adjacency.lists.iter().enumerate() {
-        let target_slot = target_slot as u32;
+        let target_slot = SlotIndex::new(target_slot as u32);
         let mut accumulator = f32::from_bits(registration.identity_bits);
         for input in list {
             let base_context = FieldEmlContext {
                 target_slot,
                 neighbor_slot: Some(input.slot),
                 accumulator,
-                edge_scalar: f32::from_bits(input.unit_cost_bits),
+                edge_scalar: input.unit_cost,
                 dt: registration.dt,
                 mapped: 0.0,
                 folded: 0.0,
@@ -742,7 +784,7 @@ pub fn execute_field_sweep_cpu(
             registration.n_dims,
         )?;
         let output_index =
-            target_slot as usize * registration.n_dims as usize + registration.output_col as usize;
+            target_slot.as_usize() * registration.n_dims as usize + registration.output_col.raw();
         output[output_index] = written;
     }
     Ok(output)
@@ -787,6 +829,29 @@ struct FieldSweepParamsGpu {
     _pad0: u32,
 }
 
+#[derive(Clone, Debug, PartialEq)]
+struct FieldSweepSessionBinding {
+    adjacency: FieldAdjacency,
+    n_slots: u32,
+    n_dims: u32,
+}
+
+impl FieldSweepSessionBinding {
+    fn from_registration(registration: &FieldSweepRegistration) -> Self {
+        Self {
+            adjacency: registration.adjacency.clone(),
+            n_slots: registration.slots(),
+            n_dims: registration.n_dims,
+        }
+    }
+
+    fn accepts(&self, registration: &FieldSweepRegistration) -> bool {
+        self.n_slots == registration.slots()
+            && self.n_dims == registration.n_dims
+            && self.adjacency == registration.adjacency
+    }
+}
+
 /// Kernel-owned generic field executor. It owns the resolved ping-pong buffers;
 /// callers can upload values and receive copied readback, never raw handles.
 pub struct FieldSweepSession {
@@ -798,6 +863,7 @@ pub struct FieldSweepSession {
     inputs: Buffer,
     nodes: Buffer,
     params: Buffer,
+    binding: FieldSweepSessionBinding,
     values_len: usize,
     read_a: bool,
 }
@@ -885,6 +951,7 @@ impl FieldSweepSession {
             inputs,
             nodes,
             params,
+            binding: FieldSweepSessionBinding::from_registration(registration),
             values_len,
             read_a: true,
         })
@@ -916,8 +983,8 @@ impl FieldSweepSession {
         if iterations == 0 {
             return Err(FieldSweepExecutionError::InvalidIterations(iterations));
         }
-        if self.values_len != registration.slots() as usize * registration.n_dims as usize {
-            return Err(FieldSweepExecutionError::RegistrationShapeChanged);
+        if !self.binding.accepts(registration) {
+            return Err(FieldSweepExecutionError::RegistrationBindingChanged);
         }
         let (flat_nodes, gpu_params) = pack_programs(registration);
         ctx.queue
@@ -1040,7 +1107,12 @@ fn flatten_gather(adjacency: &FieldAdjacency) -> (Vec<FieldRangeGpu>, Vec<Accumu
             offset: range.offset,
             count: range.count,
         });
-        flat.extend_from_slice(list);
+        flat.extend(list.iter().map(|input| AccumulatorInputGpu {
+            slot: input.slot.raw(),
+            col: encode_column(input.col),
+            unit_cost_bits: input.unit_cost.to_bits(),
+            flags: 0,
+        }));
     }
     (ranges, flat)
 }
@@ -1062,7 +1134,7 @@ fn pack_programs(registration: &FieldSweepRegistration) -> (Vec<EmlNodeGpu>, Fie
         FieldSweepParamsGpu {
             n_slots: registration.slots(),
             n_dims: registration.n_dims,
-            output_col: registration.output_col,
+            output_col: encode_column(registration.output_col),
             map_offset,
             map_count: registration.map_program.len() as u32,
             fold_offset,
@@ -1124,7 +1196,16 @@ pub enum FieldSweepAdmissionError {
     #[error("field sweep n_dims must be > 0 (got {0})")]
     InvalidDims(u32),
     #[error("field sweep output column {output_col} is outside n_dims {n_dims}")]
-    InvalidOutputColumn { output_col: u32, n_dims: u32 },
+    InvalidOutputColumn {
+        output_col: ColumnIndex,
+        n_dims: u32,
+    },
+    #[error("field sweep gather slot {slot} is outside slot count {slots}")]
+    InvalidGatherSlot { slot: SlotIndex, slots: u32 },
+    #[error("field sweep gather column {col} is outside n_dims {n_dims}")]
+    InvalidGatherColumn { col: ColumnIndex, n_dims: u32 },
+    #[error("field sweep destination slot {slot} is outside slot count {slots}")]
+    InvalidDestinationSlot { slot: SlotIndex, slots: u32 },
     #[error("field sweep registration is missing FieldLawProof")]
     MissingFieldLawProof,
     #[error("field sweep registration is missing CanonicalOrderProof")]
@@ -1201,8 +1282,8 @@ pub enum FieldSweepExecutionError {
     StackOverflow,
     #[error("field EML program did not return")]
     ProgramDidNotReturn,
-    #[error("field sweep session cannot accept a registration with a different shape")]
-    RegistrationShapeChanged,
+    #[error("field sweep session cannot accept a registration with a different immutable binding")]
+    RegistrationBindingChanged,
     #[error("field sweep readback channel closed")]
     ReadbackChannel,
     #[error("field sweep readback map failed: {0}")]

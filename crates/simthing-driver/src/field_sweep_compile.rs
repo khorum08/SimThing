@@ -1,9 +1,9 @@
 //! FIELD-SWEEP-N4-PARITY-0 — authored PALMA and Gu-Yang registrations for
 //! the one generic field-sweep door.
 
-use simthing_core::{eml_opcode, EmlNodeGpu};
+use simthing_core::{eml_opcode, ColumnIndex, EmlNodeGpu, SlotIndex};
 use simthing_gpu::{
-    apply_field_sweep_registration, field_param, FieldAdjacency, FieldLawProof,
+    apply_field_sweep_registration, encode_column, field_param, FieldAdjacency, FieldLawProof,
     FieldSweepAdmissionError, FieldSweepRegistration, FieldSweepRegistrationRequest,
     FieldSweepResourceClassRequest, GRID_N4_NSEW, GRID_N4_WENS,
 };
@@ -13,16 +13,22 @@ pub struct PalmaN4FieldSweepSpec {
     pub width: u32,
     pub height: u32,
     pub n_dims: u32,
-    pub d_col: u32,
-    pub w_col: u32,
-    pub destination_slot: u32,
+    pub d_col: ColumnIndex,
+    pub w_col: ColumnIndex,
+    pub destination_slot: SlotIndex,
     pub inf_sentinel: f32,
 }
 
 pub fn compile_palma_n4_field_sweep(
     spec: PalmaN4FieldSweepSpec,
 ) -> Result<FieldSweepRegistration, FieldSweepAdmissionError> {
-    let adjacency = FieldAdjacency::grid_n4(spec.width, spec.height, GRID_N4_WENS)?;
+    let adjacency = FieldAdjacency::grid_n4(spec.width, spec.height, GRID_N4_WENS, spec.d_col)?;
+    if spec.destination_slot.raw() >= adjacency.slots() {
+        return Err(FieldSweepAdmissionError::InvalidDestinationSlot {
+            slot: spec.destination_slot,
+            slots: adjacency.slots(),
+        });
+    }
     let canonical_order_proof = adjacency.apply_canonical_order_proof();
     let map_program = vec![neighbor(spec.d_col), ret()];
     let fold_program = vec![
@@ -35,7 +41,7 @@ pub fn compile_palma_n4_field_sweep(
     // edge context; it is data, not a kernel branch.
     let post_program = vec![
         param(field_param::TARGET_SLOT),
-        literal(spec.destination_slot as f32),
+        literal(spec.destination_slot.raw() as f32),
         binary(eml_opcode::CMP_EQ),
         literal(0.0),
         target(spec.w_col),
@@ -64,8 +70,8 @@ pub struct GuYangN4FieldSweepSpec {
     pub width: u32,
     pub height: u32,
     pub n_dims: u32,
-    pub value_col: u32,
-    pub conductance_col: u32,
+    pub value_col: ColumnIndex,
+    pub conductance_col: ColumnIndex,
     pub saturation: f32,
     pub chi: f32,
     pub dt: f32,
@@ -78,7 +84,7 @@ pub struct GuYangN4FieldSweepSpec {
 pub fn compile_gu_yang_n4_field_sweeps(
     spec: GuYangN4FieldSweepSpec,
 ) -> Result<[FieldSweepRegistration; 2], FieldSweepAdmissionError> {
-    let adjacency = FieldAdjacency::grid_n4(spec.width, spec.height, GRID_N4_NSEW)?;
+    let adjacency = FieldAdjacency::grid_n4(spec.width, spec.height, GRID_N4_NSEW, spec.value_col)?;
     let canonical_order_proof = adjacency.apply_canonical_order_proof();
 
     let conductance_map = vec![
@@ -168,12 +174,12 @@ fn literal(value: f32) -> EmlNodeGpu {
     node(eml_opcode::LITERAL_F32, 0, value.to_bits(), 0)
 }
 
-fn target(col: u32) -> EmlNodeGpu {
-    node(eml_opcode::TARGET_VALUE, 0, col, 0)
+fn target(col: ColumnIndex) -> EmlNodeGpu {
+    node(eml_opcode::TARGET_VALUE, 0, encode_column(col), 0)
 }
 
-fn neighbor(col: u32) -> EmlNodeGpu {
-    node(eml_opcode::NEIGHBOR_VALUE, 0, col, 0)
+fn neighbor(col: ColumnIndex) -> EmlNodeGpu {
+    node(eml_opcode::NEIGHBOR_VALUE, 0, encode_column(col), 0)
 }
 
 fn param(index: u32) -> EmlNodeGpu {

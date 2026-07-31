@@ -10,7 +10,7 @@ use simthing_clausething::{
     parse_mapgen_neutral_document, MapGenLatticeOptions, MapGenMovementFrontErrorKind,
     MapgenStructuralGridBudget, StructuralGridFrame,
 };
-use simthing_core::eml_opcode;
+use simthing_core::{eml_opcode, ColumnIndex, SlotIndex};
 use simthing_driver::{
     compile_gu_yang_n4_field_sweeps, compile_palma_n4_field_sweep, GuYangN4FieldSweepSpec,
     PalmaN4FieldSweepSpec,
@@ -173,9 +173,9 @@ fn palma_and_gu_yang_n4_must_compile_through_generic_field_sweep() {
         width: 4,
         height: 4,
         n_dims: 2,
-        d_col: 0,
-        w_col: 1,
-        destination_slot: 15,
+        d_col: ColumnIndex::try_from_admitted_authored(0, 2).expect("PALMA d column"),
+        w_col: ColumnIndex::try_from_admitted_authored(1, 2).expect("PALMA W column"),
+        destination_slot: SlotIndex::new(15),
         inf_sentinel: 1.0e20,
     })
     .expect("PALMA N4 must admit through the generic field-sweep registration");
@@ -197,8 +197,9 @@ fn palma_and_gu_yang_n4_must_compile_through_generic_field_sweep() {
         width: 4,
         height: 4,
         n_dims: 2,
-        value_col: 0,
-        conductance_col: 1,
+        value_col: ColumnIndex::try_from_admitted_authored(0, 2).expect("Gu-Yang value column"),
+        conductance_col: ColumnIndex::try_from_admitted_authored(1, 2)
+            .expect("Gu-Yang conductance column"),
         saturation: 4.0,
         chi: 0.75,
         dt: 0.125,

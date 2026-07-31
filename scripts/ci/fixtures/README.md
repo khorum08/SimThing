@@ -38,7 +38,7 @@ Do **not** point `doctrine_scan.sh` at this directory as production input.
 | `known_bad/malformed_allowlist_missing_rationale.txt` | allowlist validation | scanner error — missing rationale field |
 
 | `known_bad/field_sweep_algebra_tag.rs` | `FIELD-SWEEP-SINGLE-PATH-ALGEBRA` | FAIL — runtime field-algebra identity enum |
-| `known_bad/eighth_bespoke_field_shader.wgsl` | `FIELD-SWEEP-SINGLE-PATH-SHADERS` | FAIL — field shader outside the retiring seven-file catalogue |
+| `known_bad/eighth_bespoke_field_shader.wgsl` | `FIELD-SWEEP-SINGLE-PATH-SHADERS` | FAIL — field shader outside the retiring seven-file catalogue when planted in either GPU or kernel shader home |
 
 ## Trap fixtures
 

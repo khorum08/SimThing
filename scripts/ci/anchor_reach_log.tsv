@@ -250,3 +250,6 @@ date	role	query	anchors_served	hit
 2026-07-31T04:17:31Z	coding	--grep stead-spatial-contract-core	stead-spatial-contract-core	hit
 2026-07-31T04:17:31Z	coding	--grep structural-execution-convergence	structural-execution-convergence	hit
 2026-07-31T04:17:31Z	coding	--grep workshop-candidate-homing	workshop-candidate-homing	hit
+2026-07-31T12:08:11Z	coding	--grep FIELD-SWEEP	field-sweep-preservation	hit
+2026-07-31T12:08:11Z	coding	--grep COLUMN-INDEX	admission-ladder-necessity-test,exact-numeric-candidate-f,spec-fidelity-anti-ceremony	hit
+2026-07-31T12:08:11Z	coding	--grep session	admission-ladder-necessity-test,exact-numeric-candidate-f,founding-ontology-invariants,movement-front,one-tree-owners-never-spatial,orientation-harness-core,peripheral-scope-adrs,property-value-rf-overlays,session-lifecycle-adr-family,simthing-0087-binding-laws,simthing-0087-pillars,spec-fidelity-anti-ceremony	hit

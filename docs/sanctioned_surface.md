@@ -13,7 +13,7 @@ This digest is a derived context artifact for low-context agents. If it disagree
 | scripts/ci/allow/inert_buffer_handles.txt | 2 | 9e2069fa5730f17cacde1c671ebc17beb59f50738d2dcb914bceae13f9b8b3a4 |
 | scripts/ci/allow/kernel_surface.txt | 259 | 63f6d5b6fe284f54a59221628ff8b0314cda2d0ee031a9a4335b1ffea8aebf2a |
 | scripts/ci/allow/sealed_types.txt | 17 | 37b71774d6e44daadbd65118d027e559aa76a26850d8bea3573c11da8361666d |
-| scripts/ci/scans.tsv | 24 | b7c5da1531f6a44250ba7d723b03b4e0d79a9d6911409860a2d4fb3ae0e7c346 |
+| scripts/ci/scans.tsv | 24 | 7df555336e00c509bdd5d5ac61bb5d985d02971adca545dea9fd67604179e9f6 |
 
 ## Sanctioned Sealed Producers
 
@@ -341,7 +341,7 @@ This digest is a derived context artifact for low-context agents. If it disagree
 | scan-id | reliability | why | target | pattern/source | exclude | promotion-blocker | source |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | FIELD-SWEEP-SINGLE-PATH-ALGEBRA | RELIABLE | design 0.0.8.7 Phase 5 FIELD-SWEEP-SINGLE-PATH; algebra is authored EML data and never an enum/tag/operator match in the sweep path | crates/simthing-{kernel,gpu,driver}/src/** | enum\\s+(?:FieldAlgebra\|FieldKind\|SemiringKind\|SweepOperator)\\b\|match\\s+[^;\\n]*(?:field_kind\|semiring\|algebra\|operator_identity)\\b | compile_fail;^\\s*//!;^\\s*///;^\\s*// | retire only when algebra identity is unrepresentable outside sealed EML program data | scans.tsv |
-| FIELD-SWEEP-SINGLE-PATH-SHADERS | RELIABLE | design 0.0.8.7 Phase 5 FIELD-SWEEP-SINGLE-PATH; no eighth bespoke field shader beside the canonical generic interpreter | crates/simthing-gpu/src/shaders/*.wgsl | @ALLOWLIST:field-sweep-shaders | (none) | retire at DOCTRINE-CI-RECONCILE-0 when the seven-file migration-oracle catalogue is empty and absence is type/admission enforced | scans.tsv |
+| FIELD-SWEEP-SINGLE-PATH-SHADERS | RELIABLE | design 0.0.8.7 Phase 5 FIELD-SWEEP-SINGLE-PATH; no eighth bespoke field shader in either production shader home beside the exact canonical generic interpreter | crates/simthing-{gpu,kernel}/src/shaders/**/*.wgsl | @ALLOWLIST:field-sweep-shaders | (none) | retire at DOCTRINE-CI-RECONCILE-0 when the seven-file migration-oracle catalogue is empty and absence is type/admission enforced | scans.tsv |
 | B3-BUFFER-ESCAPE | RELIABLE | design §5 B3 buffer escape | crates/simthing-kernel/src/** | pub fn [a-z_]+\\(&self\\) *-> *&(wgpu::)?Buffer\|^\\s*pub [a-z_]+ *: *Buffer\|-> *BindingResource | pub\\(crate\\);compile_fail;^\\s*//!;^\\s*///;^\\s*// | retire when buffer accessors are crate-private type boundary only | scans.tsv |
 | FORGE-MINTERS | RELIABLE | design §5 forge minters | crates/simthing-kernel/src/** | pub fn (from_boundary_delivery\|for_kernel_readback\|for_boundary_install)\\b | compile_fail;^\\s*//!;^\\s*///;^\\s*// | retire when sealed-producer allowlist scan (CI-A-ALLOWLIST-SCANS-0) subsumes explicit forge names | scans.tsv |
 | UNSAFE-FN | RELIABLE | design §5 unsafe fn | crates/simthing-{kernel,sim}/src/** | \\bunsafe fn\\b | compile_fail;^\\s*//!;^\\s*///;^\\s*// | retire when unsafe is unrepresentable at kernel/sim type boundary | scans.tsv |

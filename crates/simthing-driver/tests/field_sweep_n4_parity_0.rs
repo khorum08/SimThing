@@ -1,4 +1,4 @@
-use simthing_core::{eml_opcode, EmlNodeGpu};
+use simthing_core::{eml_opcode, ColumnIndex, EmlNodeGpu, SlotIndex};
 use simthing_driver::{
     compile_gu_yang_n4_field_sweeps, compile_palma_n4_field_sweep, GuYangN4FieldSweepSpec,
     PalmaN4FieldSweepSpec,
@@ -24,6 +24,10 @@ fn bits_equal(left: &[f32], right: &[f32]) -> bool {
 
 fn column(values: &[f32], n_dims: usize, col: usize) -> Vec<f32> {
     values.chunks_exact(n_dims).map(|row| row[col]).collect()
+}
+
+fn admitted_col(raw: u32, n_dims: u32) -> ColumnIndex {
+    ColumnIndex::try_from_admitted_authored(raw, n_dims).expect("bounded authored column")
 }
 
 fn synthetic_w(width: u32, height: u32) -> Vec<f32> {
@@ -75,9 +79,9 @@ fn field_sweep_n4_parity_0_palma_and_gu_yang_are_bit_exact_cpu_and_gpu() {
         width,
         height,
         n_dims: 2,
-        d_col: 0,
-        w_col: 1,
-        destination_slot,
+        d_col: admitted_col(0, 2),
+        w_col: admitted_col(1, 2),
+        destination_slot: SlotIndex::new(destination_slot),
         inf_sentinel: MIN_PLUS_INF,
     })
     .expect("admit PALMA registration");
@@ -123,8 +127,8 @@ fn field_sweep_n4_parity_0_palma_and_gu_yang_are_bit_exact_cpu_and_gpu() {
             width,
             height,
             n_dims: 2,
-            value_col: 0,
-            conductance_col: 1,
+            value_col: admitted_col(0, 2),
+            conductance_col: admitted_col(1, 2),
             saturation: 1.0,
             chi: SATURATING_FLUX_CHI_CFL_MAX,
             dt: 1.0,
@@ -226,12 +230,12 @@ fn node(opcode: u32, flags: u32, a: u32) -> EmlNodeGpu {
 }
 
 fn valid_request() -> FieldSweepRegistrationRequest {
-    let adjacency = FieldAdjacency::grid_n4(4, 4, GRID_N4_WENS).expect("N4");
+    let adjacency = FieldAdjacency::grid_n4(4, 4, GRID_N4_WENS, admitted_col(0, 2)).expect("N4");
     let order = adjacency.apply_canonical_order_proof();
     FieldSweepRegistrationRequest {
         adjacency,
         n_dims: 2,
-        output_col: 0,
+        output_col: admitted_col(0, 2),
         map_program: vec![
             node(eml_opcode::NEIGHBOR_VALUE, 0, 0),
             node(eml_opcode::RETURN_TOP, 0, 0),
@@ -271,7 +275,7 @@ fn field_sweep_n4_parity_0_typed_pre_dispatch_negatives_bite() {
     ));
 
     let mut wrong_symmetry = valid_request();
-    let other = FieldAdjacency::grid_n4(5, 4, GRID_N4_NSEW).expect("other N4");
+    let other = FieldAdjacency::grid_n4(5, 4, GRID_N4_NSEW, admitted_col(0, 2)).expect("other N4");
     wrong_symmetry.field_law_proof = Some(FieldLawProof::apply_conservative(
         other.apply_undirected_symmetry_certificate(),
     ));
@@ -312,5 +316,71 @@ fn field_sweep_n4_parity_0_typed_pre_dispatch_negatives_bite() {
     assert!(matches!(
         apply_field_sweep_registration(missing_neighbor_slot),
         Err(FieldSweepAdmissionError::MalformedEdgeContext { .. })
+    ));
+
+    let mut invalid_output = valid_request();
+    invalid_output.output_col = ColumnIndex::from_raw_for_oracle_or_rehearsal(2);
+    assert!(matches!(
+        apply_field_sweep_registration(invalid_output),
+        Err(FieldSweepAdmissionError::InvalidOutputColumn { .. })
+    ));
+
+    let mut invalid_gather = valid_request();
+    invalid_gather.adjacency = FieldAdjacency::grid_n4(
+        4,
+        4,
+        GRID_N4_WENS,
+        ColumnIndex::from_raw_for_oracle_or_rehearsal(2),
+    )
+    .expect("structurally valid N4 with forged test column");
+    invalid_gather.canonical_order_proof =
+        Some(invalid_gather.adjacency.apply_canonical_order_proof());
+    assert!(matches!(
+        apply_field_sweep_registration(invalid_gather),
+        Err(FieldSweepAdmissionError::InvalidGatherColumn { .. })
+    ));
+
+    assert!(matches!(
+        compile_palma_n4_field_sweep(PalmaN4FieldSweepSpec {
+            width: 4,
+            height: 4,
+            n_dims: 2,
+            d_col: admitted_col(0, 2),
+            w_col: admitted_col(1, 2),
+            destination_slot: SlotIndex::new(16),
+            inf_sentinel: MIN_PLUS_INF,
+        }),
+        Err(FieldSweepAdmissionError::InvalidDestinationSlot { .. })
+    ));
+}
+
+#[test]
+fn field_sweep_n4_parity_0_session_binding_mismatch_rejects_before_dispatch() {
+    let registration_a =
+        apply_field_sweep_registration(valid_request()).expect("admit session registration A");
+    let mut request_b = valid_request();
+    request_b.adjacency =
+        FieldAdjacency::grid_n4(4, 4, GRID_N4_NSEW, admitted_col(0, 2)).expect("N4 B");
+    request_b.canonical_order_proof = Some(request_b.adjacency.apply_canonical_order_proof());
+    let registration_b =
+        apply_field_sweep_registration(request_b).expect("admit equal-sized registration B");
+    assert_eq!(
+        registration_a.slots() * registration_a.n_dims(),
+        registration_b.slots() * registration_b.n_dims(),
+        "negative control must preserve total scalar length"
+    );
+
+    let Some(context) = gpu_context() else {
+        eprintln!("field_sweep_n4_parity_0 session-binding leg skipped (no adapter)");
+        return;
+    };
+    let mut session =
+        FieldSweepSession::new(&context, &registration_a).expect("create session for A");
+    session
+        .upload_values(&context, &vec![0.0; 4 * 4 * 2])
+        .expect("upload A-shaped values");
+    assert!(matches!(
+        session.dispatch(&context, &registration_b, 1),
+        Err(simthing_gpu::FieldSweepExecutionError::RegistrationBindingChanged)
     ));
 }
