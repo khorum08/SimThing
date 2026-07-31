@@ -16,8 +16,11 @@ use simthing_driver::{
     PalmaN4FieldSweepSpec,
 };
 use simthing_gpu::{
-    FieldAdjacency, GridN4Offset, FIELD_SWEEP_LEGACY_PROGRAM_NODES, FIELD_SWEEP_LEGACY_STACK_SLOTS,
-    GRID_N4_NSEW, GRID_N4_WENS,
+    compile_structured_field_sweeps, FieldAdjacency, FieldSweepOutput, GridN4Offset,
+    StructuredFieldStencilBoundaryMode, StructuredFieldStencilConfig,
+    StructuredFieldStencilMaskMode, StructuredFieldStencilOperator,
+    StructuredFieldStencilSourcePolicy, FIELD_SWEEP_LEGACY_PROGRAM_NODES,
+    FIELD_SWEEP_LEGACY_STACK_SLOTS, GRID_N4_NSEW, GRID_N4_WENS,
 };
 
 fn assert_unit_n4(adjacency: &FieldAdjacency, expected: &[GridN4Offset; 4]) {
@@ -225,5 +228,39 @@ fn palma_and_gu_yang_n4_must_compile_through_generic_field_sweep() {
     assert_eq!(
         flux.resource_class().stack_slots(),
         FIELD_SWEEP_LEGACY_STACK_SLOTS
+    );
+
+    let (north, south, east, west) = StructuredFieldStencilConfig::zero_directional_weights();
+    let production = compile_structured_field_sweeps(&StructuredFieldStencilConfig {
+        width: 4,
+        height: 4,
+        n_dims: 3,
+        source_col: 0,
+        target_col: 0,
+        horizon: 1,
+        alpha_self: 0.0,
+        gamma_neighbor: 0.0,
+        weight_north: north,
+        weight_south: south,
+        weight_east: east,
+        weight_west: west,
+        source_cap: None,
+        operator: StructuredFieldStencilOperator::SaturatingFlux {
+            u_sat: 4.0,
+            chi: 0.24,
+            choke_output_col: None,
+        },
+        source_policy: StructuredFieldStencilSourcePolicy::CallerManagedOneShotSeedThenZero,
+        boundary_mode: StructuredFieldStencilBoundaryMode::Clamp,
+        mask_mode: StructuredFieldStencilMaskMode::All,
+        allow_extended_horizon: false,
+    })
+    .expect("production Gu-Yang lowering");
+    assert_eq!(production[0].output(), FieldSweepOutput::Transient);
+    assert_eq!(
+        production[1].output(),
+        FieldSweepOutput::Matrix(
+            ColumnIndex::try_from_admitted_authored(0, 3).expect("production value column")
+        )
     );
 }

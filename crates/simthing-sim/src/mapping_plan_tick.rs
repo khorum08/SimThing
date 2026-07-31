@@ -144,11 +144,20 @@ impl SimGpuMappingTickState {
                     };
                     let registrations =
                         compile_structured_field_sweeps(config).map_err(map_field_instance_err)?;
-                    let sessions = registrations
-                        .iter()
-                        .map(|registration| FieldSweepSession::new(ctx, registration))
-                        .collect::<Result<Vec<_>, _>>()
-                        .map_err(map_field_sweep_err)?;
+                    let shared_binding = registrations.iter().skip(1).all(|registration| {
+                        registration.n_dims() == registrations[0].n_dims()
+                            && registration.adjacency() == registrations[0].adjacency()
+                    });
+                    let sessions = if shared_binding {
+                        vec![FieldSweepSession::new(ctx, &registrations[0])
+                            .map_err(map_field_sweep_err)?]
+                    } else {
+                        registrations
+                            .iter()
+                            .map(|registration| FieldSweepSession::new(ctx, registration))
+                            .collect::<Result<Vec<_>, _>>()
+                            .map_err(map_field_sweep_err)?
+                    };
                     let bridge =
                         field_bridge_buffer(ctx, config.values_len(), "sim_mapping_field_bridge");
                     steps.push(ResidentMappingStep::StructuredField {
@@ -253,18 +262,34 @@ impl SimGpuMappingTickState {
                     let values = &inputs.structured_field_values[structured_field_index];
                     structured_field_index += 1;
                     for hop in 0..*hops {
-                        for index in 0..registrations.len() {
-                            if index == 0 && hop == 0 {
-                                sessions[index]
+                        if sessions.len() == 1 {
+                            if hop == 0 {
+                                sessions[0]
                                     .upload_values(ctx, values)
                                     .map_err(map_field_sweep_err)?;
                             } else {
-                                sessions[index].upload_values_from_buffer(ctx, bridge);
+                                sessions[0].upload_values_from_buffer(ctx, bridge);
                             }
-                            sessions[index]
-                                .dispatch(ctx, &registrations[index], 1)
-                                .map_err(map_field_sweep_err)?;
-                            sessions[index].copy_values_to_buffer(ctx, bridge);
+                            for registration in registrations.iter() {
+                                sessions[0]
+                                    .dispatch(ctx, registration, 1)
+                                    .map_err(map_field_sweep_err)?;
+                            }
+                            sessions[0].copy_values_to_buffer(ctx, bridge);
+                        } else {
+                            for index in 0..registrations.len() {
+                                if index == 0 && hop == 0 {
+                                    sessions[index]
+                                        .upload_values(ctx, values)
+                                        .map_err(map_field_sweep_err)?;
+                                } else {
+                                    sessions[index].upload_values_from_buffer(ctx, bridge);
+                                }
+                                sessions[index]
+                                    .dispatch(ctx, &registrations[index], 1)
+                                    .map_err(map_field_sweep_err)?;
+                                sessions[index].copy_values_to_buffer(ctx, bridge);
+                            }
                         }
                     }
 

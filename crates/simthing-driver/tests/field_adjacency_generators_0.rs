@@ -8,14 +8,36 @@ use simthing_driver::compile_structural_link_field_adjacency;
 use simthing_gpu::{
     apply_field_sweep_registration, compile_w_impedance_field_sweeps,
     cpu_w_impedance_compose_oracle, execute_field_sweep_cpu, execute_field_sweep_cpu_iterations,
-    field_param, FieldAdjacency, FieldLawProof, FieldSweepAdmissionError, FieldSweepRegistration,
-    FieldSweepRegistrationRequest, FieldSweepResourceClassRequest, GridOffset, LinkGraphNeighbor,
-    WImpedanceComposeConfig, WImpedanceComposeProfile, GRID_N4_NSEW,
+    execute_field_sweep_cpu_natural_order, field_param, FieldAdjacency, FieldLawProof,
+    FieldSweepAdmissionError, FieldSweepOutput, FieldSweepRegistration,
+    FieldSweepRegistrationRequest, FieldSweepResourceClassRequest, FieldSweepSession, GpuContext,
+    GridOffset, LinkGraphNeighbor, WImpedanceComposeConfig, WImpedanceComposeProfile, GRID_N4_NSEW,
 };
 use simthing_spec::deserialize_scenario_authority;
 
-const TERRAN_PIRATE_SKELETON_SCENARIO_JSON: &str =
-    include_str!("../../../scenarios/horizon/terran_pirate_skeleton.simthing-scenario.json");
+const INLINE_LINK_COMPILER_SCENARIO_JSON: &str = r#"{
+  "scenario_id":"field_adjacency_inline_link_basis",
+  "root":{"id":1,"kind":"World","properties":[],"overlays":[],"children":[
+    {"id":2,"kind":"Location","properties":[],"overlays":[],"children":[
+      {"id":3,"kind":"Location","properties":[[8300000,{"data":[1.0]}],[8300001,{"data":[0.0]}],[8300002,{"data":[0.0]}]],"overlays":[],"children":[{"id":4,"kind":"Cohort","properties":[[8300000,{"data":[1.0]}]],"overlays":[],"children":[],"spawned_day":0}],"spawned_day":0},
+      {"id":5,"kind":"Location","properties":[[8300000,{"data":[2.0]}],[8300001,{"data":[1.0]}],[8300002,{"data":[0.0]}]],"overlays":[],"children":[{"id":6,"kind":"Cohort","properties":[[8300000,{"data":[2.0]}]],"overlays":[],"children":[],"spawned_day":0}],"spawned_day":0},
+      {"id":7,"kind":"Location","properties":[[8300000,{"data":[4.0]}],[8300001,{"data":[2.0]}],[8300002,{"data":[0.0]}]],"overlays":[],"children":[{"id":8,"kind":"Cohort","properties":[[8300000,{"data":[4.0]}]],"overlays":[],"children":[],"spawned_day":0}],"spawned_day":0},
+      {"id":9,"kind":"Location","properties":[[8300000,{"data":[3.0]}],[8300001,{"data":[1.0]}],[8300002,{"data":[1.0]}]],"overlays":[],"children":[{"id":10,"kind":"Cohort","properties":[[8300000,{"data":[3.0]}]],"overlays":[],"children":[],"spawned_day":0}],"spawned_day":0}
+    ],"spawned_day":0}
+  ],"spawned_day":0},
+  "structural_grid":{"frame":{"width":3,"height":2,"occupied_cells":4},"map_container_id":"2","placements":[
+    {"location_id":"a","target_id":"a","system_id":1,"row":0,"col":0,"simthing_id_raw":3},
+    {"location_id":"b","target_id":"b","system_id":2,"row":0,"col":1,"simthing_id_raw":5},
+    {"location_id":"d","target_id":"d","system_id":4,"row":0,"col":2,"simthing_id_raw":7},
+    {"location_id":"c","target_id":"c","system_id":3,"row":1,"col":1,"simthing_id_raw":9}
+  ]},
+  "links":[
+    {"from_system_id":"1","to_system_id":"2"},
+    {"from_system_id":"2","to_system_id":"3"},
+    {"from_system_id":"2","to_system_id":"4"}
+  ],
+  "provenance":{"source":"FIELD-ADJACENCY-GENERATORS-0","generator_seed":0,"generator_shape":"inline_link_basis"}
+}"#;
 
 fn col() -> ColumnIndex {
     ColumnIndex::try_from_admitted_authored(0, 1).expect("test column")
@@ -33,11 +55,15 @@ fn node(opcode: u32, a: u32) -> EmlNodeGpu {
 }
 
 fn front_registration(adjacency: FieldAdjacency) -> FieldSweepRegistration {
+    front_registration_with_dims(adjacency, 1)
+}
+
+fn front_registration_with_dims(adjacency: FieldAdjacency, n_dims: u32) -> FieldSweepRegistration {
     let order = adjacency.apply_canonical_order_proof();
     apply_field_sweep_registration(FieldSweepRegistrationRequest {
         adjacency,
-        n_dims: 1,
-        output_col: col(),
+        n_dims,
+        output: FieldSweepOutput::Matrix(col()),
         map_program: vec![
             node(eml_opcode::NEIGHBOR_VALUE, 0),
             node(eml_opcode::PARAM, field_param::EDGE_SCALAR),
@@ -58,11 +84,30 @@ fn front_registration(adjacency: FieldAdjacency) -> FieldSweepRegistration {
             node(eml_opcode::RETURN_TOP, 0),
         ],
         field_law_proof: Some(FieldLawProof::apply_non_conservative()),
+        transient_read_proof: None,
         canonical_order_proof: Some(order),
         resource_class: FieldSweepResourceClassRequest::default(),
         dt: 1.0,
     })
     .expect("front registration")
+}
+
+fn bits_equal(left: &[f32], right: &[f32]) -> bool {
+    left.len() == right.len()
+        && left
+            .iter()
+            .zip(right)
+            .all(|(left, right)| left.to_bits() == right.to_bits())
+}
+
+fn gpu_context() -> Option<GpuContext> {
+    match GpuContext::new_blocking() {
+        Ok(context) => Some(context),
+        Err(_) if std::env::var_os("SIMTHING_GPU_REQUIRE_ADAPTER_MATCH").is_some() => {
+            panic!("SIMTHING_GPU_REQUIRE_ADAPTER_MATCH set but no GPU adapter is available")
+        }
+        Err(_) => None,
+    }
 }
 
 fn undirected_rows(slot_count: usize, edges: &[(u32, u32, f32)]) -> Vec<Vec<LinkGraphNeighbor>> {
@@ -175,8 +220,8 @@ fn link_graph_admission_and_conductance_ignore_degree_schedule_as_physics() {
 
 #[test]
 fn existing_link_compiler_is_the_link_graph_canonical_order_basis() {
-    let scenario = deserialize_scenario_authority(TERRAN_PIRATE_SKELETON_SCENARIO_JSON)
-        .expect("canonical skeleton");
+    let scenario = deserialize_scenario_authority(INLINE_LINK_COMPILER_SCENARIO_JSON)
+        .expect("inline synthetic link authority");
     let adjacency = compile_structural_link_field_adjacency(&scenario, col(), 0.75)
         .expect("canonical link projection lowers to field adjacency");
     assert_eq!(adjacency.slots(), 4);
@@ -192,6 +237,100 @@ fn existing_link_compiler_is_the_link_graph_canonical_order_basis() {
     adjacency
         .apply_conductance_certificate(vec![0.5; 4], 1.0)
         .expect_err("hub weighted degree 2.25 must reject chi 0.5 at bound 1");
+}
+
+#[test]
+fn all_adjacencies_are_full_buffer_bit_exact_across_natural_bucketed_and_gpu_execution() {
+    let n_dims = 3u32;
+    let grid_slots = 9 * 9;
+    let link_slots = 1_025u32;
+    let link_edges = (0..link_slots - 1)
+        .map(|slot| (slot, slot + 1, 1.0))
+        .collect::<Vec<_>>();
+    let cases = vec![
+        (
+            "n4",
+            front_registration_with_dims(
+                FieldAdjacency::grid_n4(9, 9, GRID_N4_NSEW, col()).expect("N4"),
+                n_dims,
+            ),
+        ),
+        (
+            "n8",
+            front_registration_with_dims(
+                FieldAdjacency::grid_n8(9, 9, 1.0, 0.5, col()).expect("N8"),
+                n_dims,
+            ),
+        ),
+        (
+            "radius-r",
+            front_registration_with_dims(
+                FieldAdjacency::grid_radius(9, 9, 2, &[1.0, 0.25], col()).expect("radius-r"),
+                n_dims,
+            ),
+        ),
+        (
+            "linkgraph-1025",
+            front_registration_with_dims(
+                FieldAdjacency::link_graph(
+                    link_slots,
+                    undirected_rows(link_slots as usize, &link_edges),
+                    col(),
+                )
+                .expect("LinkGraph >1024"),
+                n_dims,
+            ),
+        ),
+    ];
+
+    let Some(context) = gpu_context() else {
+        eprintln!("FIELD-ADJACENCY-GENERATORS-0: GPU leg skipped (no adapter)");
+        return;
+    };
+    let adapter = context.adapter.get_info();
+    for (name, registration) in cases {
+        let slots = registration.slots();
+        assert!(name != "linkgraph-1025" || slots > 1_024);
+        assert!(name == "linkgraph-1025" || slots == grid_slots);
+        let mut values = vec![0.0; slots as usize * n_dims as usize];
+        for slot in 0..slots as usize {
+            values[slot * n_dims as usize + 1] = slot as f32 * 0.125 + 3.0;
+            values[slot * n_dims as usize + 2] = -(slot as f32) * 0.0625 - 5.0;
+        }
+        values[(slots as usize / 2) * n_dims as usize] = 1.0;
+
+        for iterations in [1, 2] {
+            let bucketed = execute_field_sweep_cpu_iterations(&values, &registration, iterations)
+                .expect("bucketed CPU execution");
+            let mut natural = values.clone();
+            for _ in 0..iterations {
+                natural = execute_field_sweep_cpu_natural_order(&natural, &registration)
+                    .expect("natural-order CPU execution");
+            }
+            assert!(
+                bits_equal(&bucketed, &natural),
+                "degree buckets changed authored row folding for {name} at {iterations} iterations"
+            );
+
+            let mut session =
+                FieldSweepSession::new(&context, &registration).expect("generic GPU session");
+            session
+                .upload_values(&context, &values)
+                .expect("upload parity values");
+            session
+                .dispatch(&context, &registration, iterations)
+                .expect("dispatch parity values");
+            let gpu = session.readback(&context).expect("readback parity values");
+            assert!(
+                bits_equal(&bucketed, &gpu),
+                "full-buffer CPU/GPU mismatch for {name} at {iterations} iterations"
+            );
+        }
+    }
+    eprintln!(
+        "FIELD-ADJACENCY-GENERATORS-PARITY adapter={} backend={:?} N4/N8/radius-r/LinkGraph-1025=bit-exact",
+        adapter.name, adapter.backend
+    );
 }
 
 #[test]
@@ -219,7 +358,7 @@ fn valid_minimal_request(adjacency: FieldAdjacency) -> FieldSweepRegistrationReq
     FieldSweepRegistrationRequest {
         adjacency,
         n_dims: 1,
-        output_col: col(),
+        output: FieldSweepOutput::Matrix(col()),
         map_program: vec![
             node(eml_opcode::NEIGHBOR_VALUE, 0),
             node(eml_opcode::RETURN_TOP, 0),
@@ -234,6 +373,7 @@ fn valid_minimal_request(adjacency: FieldAdjacency) -> FieldSweepRegistrationReq
             node(eml_opcode::RETURN_TOP, 0),
         ],
         field_law_proof: Some(FieldLawProof::apply_non_conservative()),
+        transient_read_proof: None,
         canonical_order_proof: Some(order),
         resource_class: FieldSweepResourceClassRequest::default(),
         dt: 1.0,
@@ -285,8 +425,14 @@ fn same_authored_field_law_emerges_as_diamond_octagon_and_link_topology() {
     assert!(!n8_active.contains(&(7 + 7 * 9)));
     // LinkGraph follows authored remote topology, not embedding distance.
     assert_eq!(link_active, BTreeSet::from([0, 8, 40, 80]));
-    assert_ne!(n4_active, n8_active);
-    assert_ne!(n8_active, link_active);
+    let emergence_verdict = |n4: &BTreeSet<usize>, n8: &BTreeSet<usize>, link: &BTreeSet<usize>| {
+        n4 != n8 && n8 != link && n4 != link
+    };
+    assert!(emergence_verdict(&n4_active, &n8_active, &link_active));
+    assert!(
+        !emergence_verdict(&n4_active, &n4_active, &link_active),
+        "planted N8->N4 adjacency alias must flip the emergence verdict red"
+    );
 }
 
 #[test]

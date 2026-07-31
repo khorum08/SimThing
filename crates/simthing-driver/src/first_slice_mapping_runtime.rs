@@ -584,11 +584,20 @@ impl FirstSliceMappingSession {
 
         let field_registrations = compile_structured_field_sweeps(&gpu_config)
             .map_err(|error| FirstSliceMappingError::FieldSweep(error.to_string()))?;
-        let field_sessions = field_registrations
-            .iter()
-            .map(|registration| FieldSweepSession::new(ctx, registration))
-            .collect::<Result<Vec<_>, _>>()
-            .map_err(|error| FirstSliceMappingError::FieldSweep(error.to_string()))?;
+        let shared_binding = field_registrations.iter().skip(1).all(|registration| {
+            registration.n_dims() == field_registrations[0].n_dims()
+                && registration.adjacency() == field_registrations[0].adjacency()
+        });
+        let field_sessions = if shared_binding {
+            vec![FieldSweepSession::new(ctx, &field_registrations[0])
+                .map_err(|error| FirstSliceMappingError::FieldSweep(error.to_string()))?]
+        } else {
+            field_registrations
+                .iter()
+                .map(|registration| FieldSweepSession::new(ctx, registration))
+                .collect::<Result<Vec<_>, _>>()
+                .map_err(|error| FirstSliceMappingError::FieldSweep(error.to_string()))?
+        };
         let values = vec![0.0f32; gpu_config.values_len()];
         let field_buffer = ctx
             .device
@@ -1030,16 +1039,27 @@ impl FirstSliceMappingSession {
         &mut self,
         ctx: &GpuContext,
     ) -> Result<u32, FirstSliceMappingError> {
-        for (registration, session) in self
-            .field_registrations
-            .iter()
-            .zip(&mut self.field_sessions)
-        {
+        if self.field_sessions.len() == 1 {
+            let session = &mut self.field_sessions[0];
             session.upload_values_from_buffer(ctx, &self.field_buffer);
-            session
-                .dispatch(ctx, registration, 1)
-                .map_err(|error| FirstSliceMappingError::FieldSweep(error.to_string()))?;
+            for registration in &self.field_registrations {
+                session
+                    .dispatch(ctx, registration, 1)
+                    .map_err(|error| FirstSliceMappingError::FieldSweep(error.to_string()))?;
+            }
             session.copy_values_to_buffer(ctx, &self.field_buffer);
+        } else {
+            for (registration, session) in self
+                .field_registrations
+                .iter()
+                .zip(&mut self.field_sessions)
+            {
+                session.upload_values_from_buffer(ctx, &self.field_buffer);
+                session
+                    .dispatch(ctx, registration, 1)
+                    .map_err(|error| FirstSliceMappingError::FieldSweep(error.to_string()))?;
+                session.copy_values_to_buffer(ctx, &self.field_buffer);
+            }
         }
         Ok(self.field_registrations.len() as u32)
     }

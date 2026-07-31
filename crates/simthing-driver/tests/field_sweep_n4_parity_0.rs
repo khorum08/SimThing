@@ -2,9 +2,9 @@ use simthing_core::{eml_opcode, ColumnIndex, EmlNodeGpu, SlotIndex};
 use simthing_driver::{compile_palma_n4_field_sweep, PalmaN4FieldSweepSpec};
 use simthing_gpu::{
     apply_field_sweep_registration, compile_min_plus_field_sweep, compile_structured_field_sweeps,
-    cpu_horizon, cpu_min_plus_d_from_w, execute_field_sweep_cpu,
+    cpu_horizon, cpu_min_plus_d_from_w, execute_field_sweep_cpu, execute_field_sweep_cpu_chain,
     execute_field_sweep_cpu_iterations, pack_w_and_initial_d, params_from_config, FieldAdjacency,
-    FieldLawProof, FieldSweepAdmissionError, FieldSweepRegistrationRequest,
+    FieldLawProof, FieldSweepAdmissionError, FieldSweepOutput, FieldSweepRegistrationRequest,
     FieldSweepResourceClassRequest, FieldSweepSession, GpuContext, MinPlusStencilConfig,
     MinPlusStencilOp, StructuredFieldStencilBoundaryMode, StructuredFieldStencilConfig,
     StructuredFieldStencilMaskMode, StructuredFieldStencilOp, StructuredFieldStencilOperator,
@@ -38,10 +38,15 @@ fn synthetic_w(width: u32, height: u32) -> Vec<f32> {
     values
 }
 
-fn synthetic_flux_values(width: u32, height: u32) -> Vec<f32> {
-    let mut values = vec![0.0; (width * height * 2) as usize];
+fn synthetic_flux_values(width: u32, height: u32, n_dims: u32) -> Vec<f32> {
+    let mut values = vec![0.0; (width * height * n_dims) as usize];
+    for slot in 0..(width * height) as usize {
+        for col in 1..n_dims as usize {
+            values[slot * n_dims as usize + col] = (slot as f32 * 0.03125) + (col as f32 * 7.0);
+        }
+    }
     let center = (height / 2 * width + width / 2) as usize;
-    values[center * 2] = 0.8;
+    values[center * n_dims as usize] = 0.8;
     values
 }
 
@@ -88,7 +93,7 @@ fn field_sweep_n4_parity_0_palma_and_gu_yang_are_bit_exact_cpu_and_gpu() {
     let gu_yang_config = StructuredFieldStencilConfig {
         width,
         height,
-        n_dims: 2,
+        n_dims: 4,
         source_col: 0,
         target_col: 0,
         horizon: 1,
@@ -109,23 +114,21 @@ fn field_sweep_n4_parity_0_palma_and_gu_yang_are_bit_exact_cpu_and_gpu() {
         mask_mode: StructuredFieldStencilMaskMode::All,
         allow_extended_horizon: false,
     };
-    let gu_yang_values = synthetic_flux_values(width, height);
+    let gu_yang_values = synthetic_flux_values(width, height, gu_yang_config.n_dims);
     let legacy_gu_yang_cpu = cpu_horizon(&gu_yang_values, &params_from_config(&gu_yang_config), 1);
     let [conductance_registration, flux_registration] =
         compile_structured_field_sweeps(&gu_yang_config)
             .expect("admit Gu-Yang registrations")
             .try_into()
             .expect("BH-0 lowers to conductance plus flux");
-    let after_conductance = execute_field_sweep_cpu(&gu_yang_values, &conductance_registration)
-        .expect("generic conductance CPU");
-    let generic_gu_yang_cpu =
-        execute_field_sweep_cpu(&after_conductance, &flux_registration).expect("generic flux CPU");
+    let generic_gu_yang_cpu = execute_field_sweep_cpu_chain(
+        &gu_yang_values,
+        &[conductance_registration.clone(), flux_registration.clone()],
+    )
+    .expect("generic transient-conductance plus flux CPU");
     assert!(
-        bits_equal(
-            &column(&legacy_gu_yang_cpu, 2, 0),
-            &column(&generic_gu_yang_cpu, 2, 0)
-        ),
-        "authored Gu-Yang registration must match the unedited CPU referee bit-for-bit"
+        bits_equal(&legacy_gu_yang_cpu, &generic_gu_yang_cpu),
+        "authored Gu-Yang registration must preserve the full matrix against the unedited CPU referee"
     );
 
     let Some(context) = gpu_context() else {
@@ -185,14 +188,8 @@ fn field_sweep_n4_parity_0_palma_and_gu_yang_are_bit_exact_cpu_and_gpu() {
     let generic_gu_yang_gpu = generic_gu_yang_gpu_session
         .readback(&context)
         .expect("read generic Gu-Yang");
-    assert!(bits_equal(
-        &column(&legacy_gu_yang_gpu, 2, 0),
-        &column(&generic_gu_yang_gpu, 2, 0)
-    ));
-    assert!(bits_equal(
-        &column(&generic_gu_yang_cpu, 2, 0),
-        &column(&generic_gu_yang_gpu, 2, 0)
-    ));
+    assert!(bits_equal(&legacy_gu_yang_gpu, &generic_gu_yang_gpu));
+    assert!(bits_equal(&generic_gu_yang_cpu, &generic_gu_yang_gpu));
 
     eprintln!(
         "FIELD-SWEEP-N4-PARITY adapter={} backend={:?} PALMA=bit-exact Gu-Yang=bit-exact",
@@ -217,7 +214,7 @@ fn valid_request() -> FieldSweepRegistrationRequest {
     FieldSweepRegistrationRequest {
         adjacency,
         n_dims: 2,
-        output_col: admitted_col(0, 2),
+        output: FieldSweepOutput::Matrix(admitted_col(0, 2)),
         map_program: vec![
             node(eml_opcode::NEIGHBOR_VALUE, 0, 0),
             node(eml_opcode::RETURN_TOP, 0, 0),
@@ -234,6 +231,7 @@ fn valid_request() -> FieldSweepRegistrationRequest {
             node(eml_opcode::RETURN_TOP, 0, 0),
         ],
         field_law_proof: Some(FieldLawProof::apply_non_conservative()),
+        transient_read_proof: None,
         canonical_order_proof: Some(order),
         resource_class: FieldSweepResourceClassRequest::default(),
         dt: 1.0,
@@ -307,10 +305,57 @@ fn field_sweep_n4_parity_0_typed_pre_dispatch_negatives_bite() {
     ));
 
     let mut invalid_output = valid_request();
-    invalid_output.output_col = ColumnIndex::from_raw_for_oracle_or_rehearsal(2);
+    invalid_output.output =
+        FieldSweepOutput::Matrix(ColumnIndex::from_raw_for_oracle_or_rehearsal(2));
     assert!(matches!(
         apply_field_sweep_registration(invalid_output),
         Err(FieldSweepAdmissionError::InvalidOutputColumn { .. })
+    ));
+
+    let mut producer_request = valid_request();
+    producer_request.output = FieldSweepOutput::Transient;
+    let producer =
+        apply_field_sweep_registration(producer_request).expect("admit transient producer");
+    let transient = producer
+        .apply_transient_certificate()
+        .expect("mint transient witness");
+    let mut consumer_request = valid_request();
+    consumer_request.post_program = vec![
+        node(
+            eml_opcode::PARAM,
+            0,
+            simthing_gpu::field_param::TARGET_TRANSIENT,
+        ),
+        node(eml_opcode::RETURN_TOP, 0, 0),
+    ];
+    assert!(matches!(
+        apply_field_sweep_registration(consumer_request.clone()),
+        Err(FieldSweepAdmissionError::MissingTransientReadProof)
+    ));
+    let mut other_producer_request = valid_request();
+    other_producer_request.adjacency =
+        FieldAdjacency::grid_n4(5, 4, GRID_N4_WENS, admitted_col(0, 2)).expect("other N4");
+    other_producer_request.canonical_order_proof = Some(
+        other_producer_request
+            .adjacency
+            .apply_canonical_order_proof(),
+    );
+    other_producer_request.output = FieldSweepOutput::Transient;
+    let wrong_transient = apply_field_sweep_registration(other_producer_request)
+        .expect("other transient producer")
+        .apply_transient_certificate()
+        .expect("other transient witness");
+    consumer_request.transient_read_proof = Some(wrong_transient);
+    assert!(matches!(
+        apply_field_sweep_registration(consumer_request.clone()),
+        Err(FieldSweepAdmissionError::TransientReadProofMismatch)
+    ));
+    consumer_request.transient_read_proof = Some(transient);
+    let consumer =
+        apply_field_sweep_registration(consumer_request).expect("admit transient consumer");
+    assert!(matches!(
+        execute_field_sweep_cpu(&vec![0.0; 4 * 4 * 2], &consumer),
+        Err(simthing_gpu::FieldSweepExecutionError::TransientNotInitialized)
     ));
 
     let mut invalid_gather = valid_request();

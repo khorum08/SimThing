@@ -9,11 +9,13 @@ FieldDegreeBucket | authority-export | FIELD-ADJACENCY-GENERATORS-0 read-only de
 FieldLawProof | authority-export | FIELD-SWEEP-N4-PARITY-0 sealed conservative or explicit non-conservative law proof | retire when field law is intrinsic in the admitted program type
 FieldSweepAdmissionError | authority-export | FIELD-SWEEP-N4-PARITY-0 typed admission rejection surface | retire when field authoring lowers through a narrower spec door
 FieldSweepExecutionError | authority-export | FIELD-SWEEP-N4-PARITY-0 typed CPU/GPU execution and parity-oracle error surface | retire when parity oracle and session are in-crate only
+FieldSweepOutput | authority-export | FIELD-ADJACENCY-GENERATORS-0 typed matrix-or-kernel-private-transient destination | retire when field composition lowers through a narrower admitted chain door
 FieldSweepRegistration | authority-export | FIELD-SWEEP-N4-PARITY-0 immutable proof-present production field registration | retire when field registration consumers are in-crate only
 FieldSweepRegistrationRequest | authority-export | FIELD-SWEEP-N4-PARITY-0 untrusted authored field admission request | retire when field authoring lowers through a narrower spec door
 FieldSweepResourceClass | authority-export | FIELD-SWEEP-N4-PARITY-0 admitted fixed resource-class witness | retire when EML-RESOURCE-CLASS-ADMISSION-0 owns typed classes
 FieldSweepResourceClassRequest | authority-export | FIELD-SWEEP-N4-PARITY-0 untrusted resource request accepting only fixed 32/32 | retire when EML-RESOURCE-CLASS-ADMISSION-0 owns typed classes
 FieldSweepSession | authority-export | FIELD-SWEEP-N4-PARITY-0 kernel-owned generic sweep residency/dispatch/readback session | retire when session construction is only reachable from the standard sim lifecycle
+FieldTransientCertificate | sealed-export | FIELD-ADJACENCY-GENERATORS-0 sealed witness for compatible kernel-private transient reads | retire when transient composition is intrinsic in the admitted registration chain
 GRID_N4_NSEW | authority-export | FIELD-SWEEP-N4-PARITY-0 Gu-Yang authored canonical N4 order | retire when order lowers from sealed authored adjacency specs
 GRID_N4_WENS | authority-export | FIELD-SWEEP-N4-PARITY-0 PALMA authored canonical N4 order | retire when order lowers from sealed authored adjacency specs
 GridN4Offset | authority-export | FIELD-SWEEP-N4-PARITY-0 exact unit cardinal offset value | retire when order lowers from sealed authored adjacency specs
@@ -22,7 +24,9 @@ LinkGraphNeighbor | authority-export | FIELD-ADJACENCY-GENERATORS-0 authored can
 UndirectedSymmetryCertificate | authority-export | FIELD-SWEEP-N4-PARITY-0 sealed conservative-fold adjacency symmetry witness | retire when undirected symmetry is intrinsic in the admitted adjacency type
 apply_field_sweep_registration | authority-export | FIELD-SWEEP-N4-PARITY-0 sole admission door for proof-present field registrations | retire when field registration consumers are in-crate only
 execute_field_sweep_cpu | authority-export | FIELD-SWEEP-N4-PARITY-0 independent CPU oracle for one generic sweep | retire only if another independent bit-exact parity judge replaces it
+execute_field_sweep_cpu_chain | authority-export | FIELD-ADJACENCY-GENERATORS-0 CPU referee retaining kernel-private transient state across an admitted registration chain | retire only if another full-buffer chain oracle replaces it
 execute_field_sweep_cpu_iterations | authority-export | FIELD-SWEEP-N4-PARITY-0 independent CPU oracle for iterative PALMA parity | retire only if another independent bit-exact parity judge replaces it
+execute_field_sweep_cpu_natural_order | authority-export | FIELD-ADJACENCY-GENERATORS-0 independent unbucketed target-order parity judge | retire when scheduling equivalence is enforced by construction
 field_param | authority-export | FIELD-SWEEP-N4-PARITY-0 fixed edge-context parameter vocabulary | retire when field authoring lowers through a sealed builder with no raw EML indices
 field_sweep | authority-export | FIELD-SWEEP-N4-PARITY-0 authoritative generic field-sweep namespace | retire when kernel export set is closed by type-boundary admission
 grid_n4_offsets | authority-export | FIELD-ADJACENCY-GENERATORS-0 canonical authored-weight N4 preset | retire when grid adjacency authoring is driver-private

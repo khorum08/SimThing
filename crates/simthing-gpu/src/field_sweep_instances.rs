@@ -5,8 +5,9 @@
 use simthing_core::{eml_opcode, ColumnIndex, EmlNodeGpu, SlotIndex};
 use simthing_kernel::{
     apply_field_sweep_registration, encode_column, field_param, FieldAdjacency, FieldLawProof,
-    FieldSweepAdmissionError, FieldSweepRegistration, FieldSweepRegistrationRequest,
-    FieldSweepResourceClassRequest, GridOffset, GRID_N4_NSEW, GRID_N4_WENS,
+    FieldSweepAdmissionError, FieldSweepOutput, FieldSweepRegistration,
+    FieldSweepRegistrationRequest, FieldSweepResourceClassRequest, GridOffset, GRID_N4_NSEW,
+    GRID_N4_WENS,
 };
 use thiserror::Error;
 
@@ -31,8 +32,6 @@ pub enum FieldSweepInstanceError {
     UnsupportedMaskMode,
     #[error("clamped boundary sampling is not admitted for this field law")]
     UnsupportedClampBoundary,
-    #[error("saturating flux requires one non-authoritative scratch column")]
-    MissingConductanceScratchColumn,
     #[error("field instance column {raw} is outside n_dims {n_dims}")]
     InvalidColumn { raw: u32, n_dims: u32 },
 }
@@ -50,7 +49,7 @@ pub fn compile_min_plus_field_sweep(
         FieldSweepRegistrationRequest {
             adjacency,
             n_dims: config.n_dims,
-            output_col: d_col,
+            output: FieldSweepOutput::Matrix(d_col),
             map_program: vec![neighbor(d_col), ret()],
             fold_program: vec![
                 param(field_param::ACCUMULATOR),
@@ -71,6 +70,7 @@ pub fn compile_min_plus_field_sweep(
                 ret(),
             ],
             field_law_proof: Some(FieldLawProof::apply_non_conservative()),
+            transient_read_proof: None,
             canonical_order_proof: Some(order),
             resource_class: FieldSweepResourceClassRequest::default(),
             dt: 1.0,
@@ -94,7 +94,7 @@ pub fn compile_w_impedance_field_sweeps(
             FieldSweepRegistrationRequest {
                 adjacency: adjacency.clone(),
                 n_dims: config.n_dims,
-                output_col,
+                output: FieldSweepOutput::Matrix(output_col),
                 map_program: vec![literal(0.0), ret()],
                 fold_program: vec![param(field_param::MAPPED), ret()],
                 identity_bits: 0,
@@ -111,6 +111,7 @@ pub fn compile_w_impedance_field_sweeps(
                     ret(),
                 ],
                 field_law_proof: Some(FieldLawProof::apply_non_conservative()),
+                transient_read_proof: None,
                 canonical_order_proof: Some(order),
                 resource_class: FieldSweepResourceClassRequest::default(),
                 dt: 1.0,
@@ -214,7 +215,7 @@ fn compile_weighted_linear(
         FieldSweepRegistrationRequest {
             adjacency,
             n_dims: config.n_dims,
-            output_col,
+            output: FieldSweepOutput::Matrix(output_col),
             map_program: vec![
                 neighbor(source_col),
                 param(field_param::EDGE_SCALAR),
@@ -230,6 +231,7 @@ fn compile_weighted_linear(
             identity_bits: 0.0f32.to_bits(),
             post_program,
             field_law_proof: Some(FieldLawProof::apply_non_conservative()),
+            transient_read_proof: None,
             canonical_order_proof: Some(order),
             resource_class: FieldSweepResourceClassRequest::default(),
             dt: 1.0,
@@ -244,16 +246,12 @@ fn compile_saturating_flux(
     choke_output_col: Option<u32>,
 ) -> Result<Vec<FieldSweepRegistration>, FieldSweepInstanceError> {
     let value_col = admitted_col(config.source_col, config.n_dims)?;
-    let scratch_raw = choke_output_col
-        .or_else(|| (0..config.n_dims).find(|&column| column != config.source_col))
-        .ok_or(FieldSweepInstanceError::MissingConductanceScratchColumn)?;
-    let conductance_col = admitted_col(scratch_raw, config.n_dims)?;
     let adjacency = FieldAdjacency::grid_n4(config.width, config.height, GRID_N4_NSEW, value_col)?;
     let order = adjacency.apply_canonical_order_proof();
     let conductance = apply_field_sweep_registration(FieldSweepRegistrationRequest {
         adjacency: adjacency.clone(),
         n_dims: config.n_dims,
-        output_col: conductance_col,
+        output: FieldSweepOutput::Transient,
         map_program: vec![
             neighbor(value_col),
             literal(u_sat),
@@ -278,21 +276,23 @@ fn compile_saturating_flux(
         identity_bits: chi.to_bits(),
         post_program: vec![param(field_param::FOLDED), ret()],
         field_law_proof: Some(FieldLawProof::apply_non_conservative()),
+        transient_read_proof: None,
         canonical_order_proof: Some(order),
         resource_class: FieldSweepResourceClassRequest::default(),
         dt: 1.0,
     })?;
+    let transient = conductance.apply_transient_certificate()?;
 
     let symmetry = adjacency.apply_undirected_symmetry_certificate()?;
     let certificate =
         adjacency.apply_conductance_certificate(vec![chi; adjacency.slots() as usize], 1.0)?;
     let flux = apply_field_sweep_registration(FieldSweepRegistrationRequest {
-        adjacency,
+        adjacency: adjacency.clone(),
         n_dims: config.n_dims,
-        output_col: value_col,
+        output: FieldSweepOutput::Matrix(value_col),
         map_program: vec![
-            target(conductance_col),
-            neighbor(conductance_col),
+            param(field_param::TARGET_TRANSIENT),
+            param(field_param::NEIGHBOR_TRANSIENT),
             binary(eml_opcode::ADD),
             literal(0.5),
             binary(eml_opcode::MUL),
@@ -316,6 +316,7 @@ fn compile_saturating_flux(
             ret(),
         ],
         field_law_proof: Some(FieldLawProof::apply_conservative(symmetry, certificate)),
+        transient_read_proof: Some(transient),
         canonical_order_proof: Some(order),
         resource_class: FieldSweepResourceClassRequest::default(),
         dt: 1.0,
@@ -323,18 +324,17 @@ fn compile_saturating_flux(
     let mut registrations = vec![conductance, flux];
     if let Some(choke_raw) = choke_output_col {
         let choke_col = admitted_col(choke_raw, config.n_dims)?;
-        let pointwise = FieldAdjacency::independent_slots(config.cells(), value_col)?;
-        let pointwise_order = pointwise.apply_canonical_order_proof();
+        let choke_order = adjacency.apply_canonical_order_proof();
         registrations.push(apply_field_sweep_registration(
             FieldSweepRegistrationRequest {
-                adjacency: pointwise,
+                adjacency,
                 n_dims: config.n_dims,
-                output_col: choke_col,
+                output: FieldSweepOutput::Matrix(choke_col),
                 map_program: vec![literal(0.0), ret()],
                 fold_program: vec![param(field_param::MAPPED), ret()],
                 identity_bits: 0,
                 post_program: vec![
-                    target(conductance_col),
+                    param(field_param::TARGET_TRANSIENT),
                     literal(chi),
                     safe_binary(eml_opcode::DIV),
                     unary(eml_opcode::NEG),
@@ -349,7 +349,8 @@ fn compile_saturating_flux(
                     ret(),
                 ],
                 field_law_proof: Some(FieldLawProof::apply_non_conservative()),
-                canonical_order_proof: Some(pointwise_order),
+                transient_read_proof: Some(transient),
+                canonical_order_proof: Some(choke_order),
                 resource_class: FieldSweepResourceClassRequest::default(),
                 dt: 1.0,
             },

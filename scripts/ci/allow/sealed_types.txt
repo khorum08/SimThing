@@ -13,6 +13,7 @@ EmissionRecordReadback
 FieldLawProof
 FieldConductanceCertificate
 FieldSweepRegistration
+FieldTransientCertificate
 PlacedParticipant
 ResolvedWriteAuthority
 ThresholdEmission

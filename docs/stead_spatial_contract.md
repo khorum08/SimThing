@@ -78,7 +78,9 @@ Conservative registrations additionally carry a per-node certificate proving
 `chi_i * sum_j(abs(c_ij)) <= admitted_bound`; degree-homogeneous execution buckets may reuse row-degree
 metadata but cannot determine that bound or reorder any node's authored neighbor list. Target/neighbor
 reads exist only in the field EML context, and algebra identity is authored program data rather than an
-enum, tag, or operator dispatch.
+enum, tag, or operator dispatch. Multi-pass field laws may use only a sealed kernel-private transient
+lane or an explicitly authored non-authoritative output; transient conductance must never borrow an
+unrelated authored matrix column.
 
 The link gather (coupling accumulation over the hyperlane graph) is **not** the same semantic field law
 as a heatmap sweep. They share an admitted adjacency representation without conflating their authored

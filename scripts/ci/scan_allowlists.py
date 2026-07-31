@@ -17,6 +17,39 @@ FIELD_SWEEP_SHADER_DIRS = (
     ROOT / "crates/simthing-kernel/src/shaders",
 )
 FIELD_SWEEP_CANONICAL_INTERPRETER = "crates/simthing-kernel/src/shaders/field_sweep.wgsl"
+FIELD_SWEEP_LEGACY_OPERATOR_NAMES = (
+    "AtlasMaskGpuOp",
+    "MinPlusStencilOp",
+    "MinPlusTraversalDProbeOp",
+    "SaturatingFluxChokeThresholdOp",
+    "StressComposeOp",
+    "StructuredFieldStencilOp",
+    "WImpedanceComposeOp",
+)
+FIELD_SWEEP_LEGACY_OPERATOR_RE = re.compile(
+    r"\b(?:" + "|".join(FIELD_SWEEP_LEGACY_OPERATOR_NAMES) + r")\b"
+)
+FIELD_SWEEP_LEGACY_ORACLE_FILES = frozenset(
+    {
+        "crates/simthing-gpu/src/atlas_mask.rs",
+        "crates/simthing-gpu/src/min_plus_stencil.rs",
+        "crates/simthing-gpu/src/min_plus_traversal_d_probe.rs",
+        "crates/simthing-gpu/src/saturating_flux_choke_threshold.rs",
+        "crates/simthing-gpu/src/stress_compose.rs",
+        "crates/simthing-gpu/src/structured_field_stencil.rs",
+        "crates/simthing-gpu/src/w_impedance_compose.rs",
+        # Retained source is deliberately absent from the crate module graph.
+        "crates/simthing-gpu/src/scheduled_w_palma_batch.rs",
+        "crates/simthing-driver/src/dress_rehearsal_atlas_batch_0_pack_gpu.rs",
+    }
+)
+FIELD_SWEEP_DENSE_CAP_RE = re.compile(
+    r"\b(?:REGION_FIELD_STANDARD_MAX_GRID|REGION_FIELD_EXTENDED_MAX_GRID|REGION_FIELD_MAX_CELL_COUNT)\b"
+)
+FIELD_SWEEP_DENSE_CAP_PATHS = (
+    "crates/simthing-kernel/src/field_sweep.rs",
+    "crates/simthing-driver/src/structural_link_accumulator_compile.rs",
+)
 FIELD_SWEEP_EXPLICIT_NON_FIELD_SHADERS = frozenset(
     {
         "crates/simthing-gpu/src/shaders/accumulator_op_generic.wgsl",
@@ -280,6 +313,46 @@ def scan_field_sweep_shaders(allow_path: Path) -> list[str]:
     return violations
 
 
+def strip_rust_reexports(text: str) -> str:
+    """Remove public re-export declarations; they expose referees but do not call them."""
+    return re.sub(r"^\s*pub\s+use\b.*?;\s*$", "", text, flags=re.M | re.S)
+
+
+def scan_field_sweep_legacy_callers() -> list[str]:
+    """Reject every legacy operator type reach from compiled production source."""
+    violations: list[str] = []
+    crates = ROOT / "crates"
+    for path in sorted(crates.glob("*/src/**/*.rs")):
+        rel = path.relative_to(ROOT).as_posix()
+        if rel in FIELD_SWEEP_LEGACY_ORACLE_FILES:
+            continue
+        text = strip_rust_reexports(strip_comments(path.read_text(encoding="utf-8")))
+        for match in FIELD_SWEEP_LEGACY_OPERATOR_RE.finditer(text):
+            line = text[: match.start()].count("\n") + 1
+            violations.append(
+                f"{rel}:{line}: production reach to retiring field operator `{match.group(0)}`"
+            )
+    return violations
+
+
+def scan_field_sweep_dense_caps() -> list[str]:
+    """Keep dense REGION_FIELD caps out of sparse/generic adjacency admission."""
+    violations: list[str] = []
+    for rel in FIELD_SWEEP_DENSE_CAP_PATHS:
+        path = ROOT / rel
+        if not path.exists():
+            # Doctrine selftests intentionally materialize minimal crate trees;
+            # scan every authoritative path that exists in that sandbox.
+            continue
+        text = strip_comments(path.read_text(encoding="utf-8"))
+        for match in FIELD_SWEEP_DENSE_CAP_RE.finditer(text):
+            line = text[: match.start()].count("\n") + 1
+            violations.append(
+                f"{rel}:{line}: dense REGION_FIELD cap reached field adjacency path `{match.group(0)}`"
+            )
+    return violations
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -289,6 +362,8 @@ def main() -> int:
             "buffer-handles",
             "kernel-surface",
             "field-sweep-shaders",
+            "field-sweep-legacy-callers",
+            "field-sweep-dense-caps",
         ),
     )
     args = parser.parse_args()
@@ -299,8 +374,12 @@ def main() -> int:
         violations = scan_buffer_handles(allow_dir / "inert_buffer_handles.txt")
     elif args.mode == "kernel-surface":
         violations = scan_kernel_surface(allow_dir / "kernel_surface.txt")
-    else:
+    elif args.mode == "field-sweep-shaders":
         violations = scan_field_sweep_shaders(FIELD_SWEEP_LEGACY_FILE)
+    elif args.mode == "field-sweep-legacy-callers":
+        violations = scan_field_sweep_legacy_callers()
+    else:
+        violations = scan_field_sweep_dense_caps()
     for v in violations:
         print(v)
     return 1 if violations else 0

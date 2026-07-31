@@ -13,7 +13,7 @@
 //! fn field_sweep_registration_rejects_raw_column(
 //!     mut request: FieldSweepRegistrationRequest,
 //! ) {
-//!     request.output_col = 0u32;
+//!     request.output = 0u32;
 //! }
 //! ```
 //!
@@ -60,7 +60,12 @@ pub mod field_param {
     pub const DT: u32 = 4;
     pub const MAPPED: u32 = 5;
     pub const FOLDED: u32 = 6;
-    pub const MAX: u32 = FOLDED;
+    /// Kernel-private per-slot transient written by an earlier registration in
+    /// the same admitted session chain.
+    pub const TARGET_TRANSIENT: u32 = 7;
+    /// Kernel-private transient for the current authored neighbor.
+    pub const NEIGHBOR_TRANSIENT: u32 = 8;
+    pub const MAX: u32 = NEIGHBOR_TRANSIENT;
 }
 
 /// One authored cardinal offset retained for the graduated N4 compatibility
@@ -651,6 +656,23 @@ impl FieldLawProof {
     }
 }
 
+/// Admitted destination for one sweep result. `Transient` is a kernel-private
+/// per-slot lane: it is never part of the authored matrix and cannot corrupt
+/// an unrelated property column.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FieldSweepOutput {
+    Matrix(ColumnIndex),
+    Transient,
+}
+
+/// Sealed witness that a compatible earlier registration produces the
+/// kernel-private transient lane used by a later registration.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct FieldTransientCertificate {
+    adjacency_order_fingerprint: u64,
+    n_dims: u32,
+}
+
 /// Untrusted request surface. Only the one legacy fixed-32 class is admitted
 /// until rung 5.7.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -688,12 +710,13 @@ impl FieldSweepResourceClass {
 pub struct FieldSweepRegistrationRequest {
     pub adjacency: FieldAdjacency,
     pub n_dims: u32,
-    pub output_col: ColumnIndex,
+    pub output: FieldSweepOutput,
     pub map_program: Vec<EmlNodeGpu>,
     pub fold_program: Vec<EmlNodeGpu>,
     pub identity_bits: u32,
     pub post_program: Vec<EmlNodeGpu>,
     pub field_law_proof: Option<FieldLawProof>,
+    pub transient_read_proof: Option<FieldTransientCertificate>,
     pub canonical_order_proof: Option<CanonicalOrderProof>,
     pub resource_class: FieldSweepResourceClassRequest,
     pub dt: f32,
@@ -705,12 +728,13 @@ pub struct FieldSweepRegistrationRequest {
 pub struct FieldSweepRegistration {
     adjacency: FieldAdjacency,
     n_dims: u32,
-    output_col: ColumnIndex,
+    output: FieldSweepOutput,
     map_program: Vec<EmlNodeGpu>,
     fold_program: Vec<EmlNodeGpu>,
     identity_bits: u32,
     post_program: Vec<EmlNodeGpu>,
     field_law_proof: FieldLawProof,
+    transient_read_proof: Option<FieldTransientCertificate>,
     canonical_order_proof: CanonicalOrderProof,
     resource_class: FieldSweepResourceClass,
     dt: f32,
@@ -725,8 +749,20 @@ impl FieldSweepRegistration {
         self.n_dims
     }
 
-    pub fn output_col(&self) -> ColumnIndex {
-        self.output_col
+    pub fn output(&self) -> FieldSweepOutput {
+        self.output
+    }
+
+    pub fn apply_transient_certificate(
+        &self,
+    ) -> Result<FieldTransientCertificate, FieldSweepAdmissionError> {
+        if self.output != FieldSweepOutput::Transient {
+            return Err(FieldSweepAdmissionError::TransientCertificateFromMatrixOutput);
+        }
+        Ok(FieldTransientCertificate {
+            adjacency_order_fingerprint: self.adjacency.order_fingerprint,
+            n_dims: self.n_dims,
+        })
     }
 
     pub fn adjacency(&self) -> &FieldAdjacency {
@@ -764,11 +800,13 @@ pub fn apply_field_sweep_registration(
     if request.n_dims == 0 {
         return Err(FieldSweepAdmissionError::InvalidDims(request.n_dims));
     }
-    if request.output_col.raw_u32() >= request.n_dims {
-        return Err(FieldSweepAdmissionError::InvalidOutputColumn {
-            output_col: request.output_col,
-            n_dims: request.n_dims,
-        });
+    if let FieldSweepOutput::Matrix(output_col) = request.output {
+        if output_col.raw_u32() >= request.n_dims {
+            return Err(FieldSweepAdmissionError::InvalidOutputColumn {
+                output_col,
+                n_dims: request.n_dims,
+            });
+        }
     }
     for input in request.adjacency.lists.iter().flatten() {
         if input.slot.raw() >= request.adjacency.slots() {
@@ -834,15 +872,46 @@ pub fn apply_field_sweep_registration(
         FieldProgramContext::TargetOnly,
     )?;
 
+    let reads_transient = [
+        &request.map_program,
+        &request.fold_program,
+        &request.post_program,
+    ]
+    .into_iter()
+    .flatten()
+    .any(|node| {
+        node.opcode == eml_opcode::PARAM
+            && matches!(
+                node.a,
+                field_param::TARGET_TRANSIENT | field_param::NEIGHBOR_TRANSIENT
+            )
+    });
+    if reads_transient {
+        let proof = request
+            .transient_read_proof
+            .ok_or(FieldSweepAdmissionError::MissingTransientReadProof)?;
+        if proof.adjacency_order_fingerprint != request.adjacency.order_fingerprint
+            || proof.n_dims != request.n_dims
+        {
+            return Err(FieldSweepAdmissionError::TransientReadProofMismatch);
+        }
+    } else if request.transient_read_proof.is_some() {
+        return Err(FieldSweepAdmissionError::UnusedTransientReadProof);
+    }
+    if reads_transient && request.output == FieldSweepOutput::Transient {
+        return Err(FieldSweepAdmissionError::TransientReadWriteAliasing);
+    }
+
     Ok(FieldSweepRegistration {
         adjacency: request.adjacency,
         n_dims: request.n_dims,
-        output_col: request.output_col,
+        output: request.output,
         map_program: request.map_program,
         fold_program: request.fold_program,
         identity_bits: request.identity_bits,
         post_program: request.post_program,
         field_law_proof,
+        transient_read_proof: request.transient_read_proof,
         canonical_order_proof,
         resource_class: FieldSweepResourceClass {
             stack_slots: FIELD_SWEEP_LEGACY_STACK_SLOTS,
@@ -897,7 +966,10 @@ fn validate_field_program(
             }
             eml_opcode::PARAM => {
                 if matches!(context, FieldProgramContext::TargetOnly)
-                    && node.a == field_param::NEIGHBOR_SLOT
+                    && matches!(
+                        node.a,
+                        field_param::NEIGHBOR_SLOT | field_param::NEIGHBOR_TRANSIENT
+                    )
                 {
                     return Err(FieldSweepAdmissionError::MalformedEdgeContext {
                         name,
@@ -991,6 +1063,8 @@ pub struct FieldEmlContext {
     pub dt: f32,
     pub mapped: f32,
     pub folded: f32,
+    pub target_transient: f32,
+    pub neighbor_transient: Option<f32>,
 }
 
 pub fn eval_field_eml_cpu(
@@ -1032,6 +1106,10 @@ pub fn eval_field_eml_cpu(
                     field_param::DT => context.dt,
                     field_param::MAPPED => context.mapped,
                     field_param::FOLDED => context.folded,
+                    field_param::TARGET_TRANSIENT => context.target_transient,
+                    field_param::NEIGHBOR_TRANSIENT => context
+                        .neighbor_transient
+                        .ok_or(FieldSweepExecutionError::MissingNeighborContext)?,
                     _ => return Err(FieldSweepExecutionError::InvalidFieldParam(node.a)),
                 };
                 push(&mut stack, &mut sp, value)?;
@@ -1153,6 +1231,69 @@ pub fn execute_field_sweep_cpu(
     values: &[f32],
     registration: &FieldSweepRegistration,
 ) -> Result<Vec<f32>, FieldSweepExecutionError> {
+    let mut transient = vec![0.0; registration.slots() as usize];
+    let mut transient_initialized = false;
+    execute_field_sweep_cpu_with_state(
+        values,
+        registration,
+        &mut transient,
+        &mut transient_initialized,
+        &registration.adjacency.schedule,
+    )
+}
+
+/// Execute a sequence while retaining the kernel-private transient lane
+/// between compatible registrations.
+pub fn execute_field_sweep_cpu_chain(
+    values: &[f32],
+    registrations: &[FieldSweepRegistration],
+) -> Result<Vec<f32>, FieldSweepExecutionError> {
+    let Some(first) = registrations.first() else {
+        return Ok(values.to_vec());
+    };
+    let mut current = values.to_vec();
+    let mut transient = vec![0.0; first.slots() as usize];
+    let mut transient_initialized = false;
+    for registration in registrations {
+        if registration.slots() != first.slots() || registration.n_dims != first.n_dims {
+            return Err(FieldSweepExecutionError::RegistrationBindingChanged);
+        }
+        current = execute_field_sweep_cpu_with_state(
+            &current,
+            registration,
+            &mut transient,
+            &mut transient_initialized,
+            &registration.adjacency.schedule,
+        )?;
+    }
+    Ok(current)
+}
+
+/// Independent reference execution in natural target-slot order. This is a
+/// parity judge for the degree-bucket schedule, never a production scheduler.
+pub fn execute_field_sweep_cpu_natural_order(
+    values: &[f32],
+    registration: &FieldSweepRegistration,
+) -> Result<Vec<f32>, FieldSweepExecutionError> {
+    let natural_order: Vec<_> = (0..registration.slots()).map(SlotIndex::new).collect();
+    let mut transient = vec![0.0; registration.slots() as usize];
+    let mut transient_initialized = false;
+    execute_field_sweep_cpu_with_state(
+        values,
+        registration,
+        &mut transient,
+        &mut transient_initialized,
+        &natural_order,
+    )
+}
+
+fn execute_field_sweep_cpu_with_state(
+    values: &[f32],
+    registration: &FieldSweepRegistration,
+    transient: &mut [f32],
+    transient_initialized: &mut bool,
+    target_order: &[SlotIndex],
+) -> Result<Vec<f32>, FieldSweepExecutionError> {
     let required = registration.slots() as usize * registration.n_dims as usize;
     if values.len() != required {
         return Err(FieldSweepExecutionError::ValuesLength {
@@ -1160,8 +1301,17 @@ pub fn execute_field_sweep_cpu(
             required,
         });
     }
+    if transient.len() != registration.slots() as usize {
+        return Err(FieldSweepExecutionError::TransientLength {
+            actual: transient.len(),
+            required: registration.slots() as usize,
+        });
+    }
+    if registration.transient_read_proof.is_some() && !*transient_initialized {
+        return Err(FieldSweepExecutionError::TransientNotInitialized);
+    }
     let mut output = values.to_vec();
-    for &target_slot in &registration.adjacency.schedule {
+    for &target_slot in target_order {
         let list = &registration.adjacency.lists[target_slot.as_usize()];
         let mut accumulator = f32::from_bits(registration.identity_bits);
         for input in list {
@@ -1173,6 +1323,8 @@ pub fn execute_field_sweep_cpu(
                 dt: registration.dt,
                 mapped: 0.0,
                 folded: 0.0,
+                target_transient: transient[target_slot.as_usize()],
+                neighbor_transient: Some(transient[input.slot.as_usize()]),
             };
             let mapped = eval_field_eml_cpu(
                 &registration.map_program,
@@ -1200,13 +1352,23 @@ pub fn execute_field_sweep_cpu(
                 dt: registration.dt,
                 mapped: 0.0,
                 folded: accumulator,
+                target_transient: transient[target_slot.as_usize()],
+                neighbor_transient: None,
             },
             values,
             registration.n_dims,
         )?;
-        let output_index =
-            target_slot.as_usize() * registration.n_dims as usize + registration.output_col.raw();
-        output[output_index] = written;
+        match registration.output {
+            FieldSweepOutput::Matrix(output_col) => {
+                let output_index =
+                    target_slot.as_usize() * registration.n_dims as usize + output_col.raw();
+                output[output_index] = written;
+            }
+            FieldSweepOutput::Transient => transient[target_slot.as_usize()] = written,
+        }
+    }
+    if registration.output == FieldSweepOutput::Transient {
+        *transient_initialized = true;
     }
     Ok(output)
 }
@@ -1220,8 +1382,16 @@ pub fn execute_field_sweep_cpu_iterations(
         return Err(FieldSweepExecutionError::InvalidIterations(iterations));
     }
     let mut current = values.to_vec();
+    let mut transient = vec![0.0; registration.slots() as usize];
+    let mut transient_initialized = false;
     for _ in 0..iterations {
-        current = execute_field_sweep_cpu(&current, registration)?;
+        current = execute_field_sweep_cpu_with_state(
+            &current,
+            registration,
+            &mut transient,
+            &mut transient_initialized,
+            &registration.adjacency.schedule,
+        )?;
     }
     Ok(current)
 }
@@ -1249,7 +1419,7 @@ struct FieldSweepParamsGpu {
     dt_bits: u32,
     schedule_offset: u32,
     schedule_count: u32,
-    _pad0: u32,
+    output_mode: u32,
     _pad1: u32,
 }
 
@@ -1287,10 +1457,12 @@ pub struct FieldSweepSession {
     inputs: Buffer,
     nodes: Buffer,
     schedule: Buffer,
+    transient: Buffer,
     params: Buffer,
     binding: FieldSweepSessionBinding,
     values_len: usize,
     read_a: bool,
+    transient_initialized: bool,
 }
 
 impl FieldSweepSession {
@@ -1314,6 +1486,7 @@ impl FieldSweepSession {
                     storage_entry(4, true),
                     storage_entry(5, true),
                     uniform_entry(6),
+                    storage_entry(7, false),
                 ],
             });
         let pipeline_layout = ctx
@@ -1338,6 +1511,12 @@ impl FieldSweepSession {
         let value_bytes = (values_len * std::mem::size_of::<f32>()) as u64;
         let values_a = storage_buffer(&ctx.device, "field_sweep_values_a", value_bytes, true);
         let values_b = storage_buffer(&ctx.device, "field_sweep_values_b", value_bytes, true);
+        let transient = storage_buffer(
+            &ctx.device,
+            "field_sweep_transient",
+            registration.slots() as u64 * std::mem::size_of::<f32>() as u64,
+            false,
+        );
 
         let (range_rows, flat_inputs) = flatten_gather(&registration.adjacency);
         let ranges = ctx
@@ -1390,10 +1569,12 @@ impl FieldSweepSession {
             inputs,
             nodes,
             schedule,
+            transient,
             params,
             binding: FieldSweepSessionBinding::from_registration(registration),
             values_len,
             read_a: true,
+            transient_initialized: false,
         })
     }
 
@@ -1411,6 +1592,7 @@ impl FieldSweepSession {
         ctx.queue
             .write_buffer(&self.values_a, 0, bytemuck::cast_slice(values));
         self.read_a = true;
+        self.transient_initialized = false;
         Ok(())
     }
 
@@ -1426,6 +1608,7 @@ impl FieldSweepSession {
         encoder.copy_buffer_to_buffer(source, 0, &self.values_a, 0, byte_len);
         ctx.queue.submit(Some(encoder.finish()));
         self.read_a = true;
+        self.transient_initialized = false;
     }
 
     /// Copy the current ping-pong result into another resident GPU buffer
@@ -1459,6 +1642,9 @@ impl FieldSweepSession {
         if !self.binding.accepts(registration) {
             return Err(FieldSweepExecutionError::RegistrationBindingChanged);
         }
+        if registration.transient_read_proof.is_some() && !self.transient_initialized {
+            return Err(FieldSweepExecutionError::TransientNotInitialized);
+        }
         let (flat_nodes, base_params) = pack_programs(registration);
         ctx.queue
             .write_buffer(&self.nodes, 0, bytemuck::cast_slice(&flat_nodes));
@@ -1469,6 +1655,16 @@ impl FieldSweepSession {
             } else {
                 (&self.values_b, &self.values_a)
             };
+            if registration.output != FieldSweepOutput::Transient {
+                let byte_len = (self.values_len * std::mem::size_of::<f32>()) as u64;
+                let mut encoder = ctx
+                    .device
+                    .create_command_encoder(&CommandEncoderDescriptor {
+                        label: Some("field_sweep_preserve_unrelated_columns"),
+                    });
+                encoder.copy_buffer_to_buffer(source, 0, target, 0, byte_len);
+                ctx.queue.submit(Some(encoder.finish()));
+            }
             let mut schedule_offset = 0u32;
             for bucket in &registration.adjacency.degree_buckets {
                 let mut gpu_params = base_params;
@@ -1500,7 +1696,12 @@ impl FieldSweepSession {
                 ctx.queue.submit(Some(encoder.finish()));
                 schedule_offset += gpu_params.schedule_count;
             }
-            self.read_a = !self.read_a;
+            if registration.output != FieldSweepOutput::Transient {
+                self.read_a = !self.read_a;
+            }
+        }
+        if registration.output == FieldSweepOutput::Transient {
+            self.transient_initialized = true;
         }
         ctx.device.poll(wgpu::Maintain::Wait);
         Ok(())
@@ -1576,6 +1777,10 @@ impl FieldSweepSession {
                     binding: 6,
                     resource: self.params.as_entire_binding(),
                 },
+                BindGroupEntry {
+                    binding: 7,
+                    resource: self.transient.as_entire_binding(),
+                },
             ],
         })
     }
@@ -1620,7 +1825,10 @@ fn pack_programs(registration: &FieldSweepRegistration) -> (Vec<EmlNodeGpu>, Fie
         FieldSweepParamsGpu {
             n_slots: registration.slots(),
             n_dims: registration.n_dims,
-            output_col: encode_column(registration.output_col),
+            output_col: match registration.output {
+                FieldSweepOutput::Matrix(col) => encode_column(col),
+                FieldSweepOutput::Transient => 0,
+            },
             map_offset,
             map_count: registration.map_program.len() as u32,
             fold_offset,
@@ -1631,7 +1839,10 @@ fn pack_programs(registration: &FieldSweepRegistration) -> (Vec<EmlNodeGpu>, Fie
             dt_bits: registration.dt.to_bits(),
             schedule_offset: 0,
             schedule_count: registration.slots(),
-            _pad0: 0,
+            output_mode: match registration.output {
+                FieldSweepOutput::Matrix(_) => 0,
+                FieldSweepOutput::Transient => 1,
+            },
             _pad1: 0,
         },
     )
@@ -1735,6 +1946,16 @@ pub enum FieldSweepAdmissionError {
     MissingConductanceCertificate,
     #[error("conductance certificate does not bind this authored adjacency")]
     ConductanceCertificateMismatch,
+    #[error("a transient certificate can only be minted by a transient-output registration")]
+    TransientCertificateFromMatrixOutput,
+    #[error("field EML reads the transient lane without a producer certificate")]
+    MissingTransientReadProof,
+    #[error("transient read proof does not bind this adjacency and matrix layout")]
+    TransientReadProofMismatch,
+    #[error("transient read proof supplied to a registration that does not read transient state")]
+    UnusedTransientReadProof,
+    #[error("one registration cannot read and overwrite the transient lane in the same pass")]
+    TransientReadWriteAliasing,
     #[error("conductance certificate requires {slots} chi values (got {actual})")]
     ConductanceChiCount { slots: u32, actual: usize },
     #[error("conductance admitted bound must be finite and non-negative (got {0})")]
@@ -1799,6 +2020,10 @@ pub enum FieldSweepAdmissionError {
 pub enum FieldSweepExecutionError {
     #[error("values length {actual} does not match required {required}")]
     ValuesLength { actual: usize, required: usize },
+    #[error("transient length {actual} does not match required {required}")]
+    TransientLength { actual: usize, required: usize },
+    #[error("field sweep transient input has not been produced in this session chain")]
+    TransientNotInitialized,
     #[error("field sweep iterations must be > 0 (got {0})")]
     InvalidIterations(u32),
     #[error("field EML execution requires neighbor context")]

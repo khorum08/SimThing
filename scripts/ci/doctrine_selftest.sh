@@ -544,6 +544,22 @@ setup_eighth_bespoke_field_shader_kernel() {
     "${ROOT_SANDBOX}/crates/simthing-kernel/src/shaders/eighth_bespoke_field_shader.wgsl"
 }
 
+setup_legacy_field_operator_production_caller() {
+  copy_ci_bundle "$ROOT_SANDBOX"
+  ensure_minimal_crates "$ROOT_SANDBOX"
+  mkdir -p "${ROOT_SANDBOX}/crates/simthing-driver/src"
+  cp "${FIXTURES}/known_bad/legacy_field_operator_production_caller.rs" \
+    "${ROOT_SANDBOX}/crates/simthing-driver/src/planted_legacy_field_caller.rs"
+}
+
+setup_field_sweep_dense_cap_crossing() {
+  copy_ci_bundle "$ROOT_SANDBOX"
+  ensure_minimal_crates "$ROOT_SANDBOX"
+  mkdir -p "${ROOT_SANDBOX}/crates/simthing-kernel/src"
+  cp "${FIXTURES}/known_bad/field_sweep_dense_cap_crossing.rs" \
+    "${ROOT_SANDBOX}/crates/simthing-kernel/src/field_sweep.rs"
+}
+
 setup_malformed_allowlist() {
   local fixture="$1"
   copy_ci_bundle "$ROOT_SANDBOX"
@@ -1336,6 +1352,10 @@ run_all_cases() {
     setup_eighth_bespoke_field_shader_gpu
   expect_reliable_fail "eighth_bespoke_field_shader_kernel" "FIELD-SWEEP-SINGLE-PATH-SHADERS" \
     setup_eighth_bespoke_field_shader_kernel
+  expect_reliable_fail "legacy_field_operator_production_caller" "FIELD-SWEEP-LEGACY-CALLERS" \
+    setup_legacy_field_operator_production_caller
+  expect_reliable_fail "field_sweep_dense_cap_crossing" "FIELD-SWEEP-DENSE-CAP-CROSSING" \
+    setup_field_sweep_dense_cap_crossing
 
   expect_scanner_error "malformed_wrong_door" \
     setup_malformed_allowlist malformed_allowlist_wrong_door.txt

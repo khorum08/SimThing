@@ -36,7 +36,7 @@ struct FieldSweepParams {
     dt_bits: u32,
     schedule_offset: u32,
     schedule_count: u32,
-    pad0: u32,
+    output_mode: u32,
     pad1: u32,
 }
 
@@ -49,6 +49,8 @@ struct FieldEmlContext {
     dt: f32,
     mapped: f32,
     folded: f32,
+    target_transient: f32,
+    neighbor_transient: f32,
 }
 
 @group(0) @binding(0) var<storage, read> values_in: array<f32>;
@@ -58,6 +60,7 @@ struct FieldEmlContext {
 @group(0) @binding(4) var<storage, read> nodes: array<EmlNode>;
 @group(0) @binding(5) var<storage, read> schedule: array<u32>;
 @group(0) @binding(6) var<uniform> params: FieldSweepParams;
+@group(0) @binding(7) var<storage, read_write> transient_values: array<f32>;
 
 const OP_LITERAL_F32: u32 = 0u;
 const OP_PARAM: u32 = 2u;
@@ -89,7 +92,9 @@ fn field_param(index: u32, context: FieldEmlContext) -> f32 {
     if index == 3u { return context.edge_scalar; }
     if index == 4u { return context.dt; }
     if index == 5u { return context.mapped; }
-    return context.folded;
+    if index == 6u { return context.folded; }
+    if index == 7u { return context.target_transient; }
+    return context.neighbor_transient;
 }
 
 fn eval_program(offset: u32, count: u32, context: FieldEmlContext) -> f32 {
@@ -186,6 +191,8 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
             bitcast<f32>(params.dt_bits),
             0.0,
             0.0,
+            transient_values[target_slot],
+            transient_values[input.slot],
         );
         let mapped = eval_program(params.map_offset, params.map_count, context);
         context.mapped = mapped;
@@ -200,7 +207,13 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         bitcast<f32>(params.dt_bits),
         0.0,
         accumulator,
+        transient_values[target_slot],
+        0.0,
     );
-    values_out[target_base + params.output_col] =
-        eval_program(params.post_offset, params.post_count, post_context);
+    let written = eval_program(params.post_offset, params.post_count, post_context);
+    if params.output_mode == 0u {
+        values_out[target_base + params.output_col] = written;
+    } else {
+        transient_values[target_slot] = written;
+    }
 }
