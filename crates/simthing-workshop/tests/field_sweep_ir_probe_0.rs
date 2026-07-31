@@ -175,21 +175,6 @@ fn row_from(
 }
 
 #[test]
-fn field_sweep_ir_probe_0_stack_peak_not_node_count_proxy() {
-    let (prog, node_count, peak) = planted_left_fold_stack_probe();
-    assert!(
-        node_count > peak,
-        "planted left-fold must have node_count ({node_count}) > peak stack ({peak})"
-    );
-    assert_eq!(peak, 2, "left-fold ((((a+b)+c)+d)+e) peak operand stack is 2");
-    let m = program_metrics(&prog);
-    assert_eq!(m.actual_peak_operand_stack, peak);
-    assert_ne!(m.actual_peak_operand_stack, m.total_nodes);
-    assert_eq!(m.runtime_eval_model, "scratch_indexed_dag");
-    assert_eq!(m.configured_scratch_capacity, 32);
-}
-
-#[test]
 fn field_sweep_ir_probe_0_n4_parity_absolute_before_timing() {
     let width = 16u32;
     let height = 16u32;
@@ -287,6 +272,19 @@ fn field_sweep_ir_probe_0_n4_parity_absolute_before_timing() {
 
 #[test]
 fn field_sweep_ir_probe_0_n8_throwaway_gather_cliff_and_caps() {
+    // Planted left-fold: node count ≠ peak operand stack (postfix), and scratch ≠ stack.
+    let (planted, node_count, peak) = planted_left_fold_stack_probe();
+    assert!(
+        node_count > peak,
+        "planted left-fold must have node_count ({node_count}) > peak stack ({peak})"
+    );
+    assert_eq!(peak, 2, "left-fold ((((a+b)+c)+d)+e) peak operand stack is 2");
+    let planted_m = program_metrics(&planted);
+    assert_eq!(planted_m.actual_peak_operand_stack, peak);
+    assert_ne!(planted_m.actual_peak_operand_stack, planted_m.total_nodes);
+    assert_eq!(planted_m.runtime_eval_model, "scratch_indexed_dag");
+    assert_eq!(planted_m.configured_scratch_capacity, 32);
+
     let width = 12u32;
     let height = 12u32;
     let gather_n4 = build_gather(width, height, &N4_OFFSETS_NSEW, "GridN4_NSEW");

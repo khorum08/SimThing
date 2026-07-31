@@ -54,18 +54,18 @@ Threshold adjudication: `DIAGNOSTIC_ONLY(occupancy_UNMEASURED;no_threshold_verdi
 
 | case | path | adjacency | nodes (m/f/p) | peak stack | scratch cap | col reads/edge | disp_n | disp med µs | disp worst µs | e2e med µs | edges/s (disp med) | occupancy | stall/memory | counter status |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| min_x_input_list_n4_bespoke | bespoke_palma | GridN4_WENS | 1/3/3 | 2 | 32 | 1 | 4 | 94.9 | — | 157.1 | — | UNMEASURED | UNAVAILABLE | STOP(...) |
-| min_x_input_list_n4_generic | generic_ir | GridN4_WENS | 1/3/3 | 2 | 32 | 1 | 4 | 168.1 | — | 171.4 | — | UNMEASURED | UNAVAILABLE | STOP(...) |
-| product_banded_flux_n4_bespoke | bespoke_guyang | GridN4_NSEW | 9/3/1 | 3 | 32 | 4 | 1 | 18.4 | — | 20.7 | — | UNMEASURED | UNAVAILABLE | STOP(...) |
-| product_banded_flux_n4_generic | generic_ir | GridN4_NSEW | 9/3/1 | 3 | 32 | 4 | 2 | 257.5 | — | 260.7 | — | UNMEASURED | UNAVAILABLE | STOP(...) |
-| product_banded_flux_n8_generic_cliff | generic_ir_n8_throwaway | WorkshopThrowawayN8 | 9/3/1 | 3 | 32 | 4 | 1 | 110.3 | — | 113.1 | — | UNMEASURED | UNAVAILABLE | STOP(...) |
+| min_x_input_list_n4_bespoke | bespoke_palma | GridN4_WENS | 1/3/3 | 2 | 32 | 1 | 4 | 114.7 | — | 140.9 | — | UNMEASURED | UNAVAILABLE | STOP(...) |
+| min_x_input_list_n4_generic | generic_ir | GridN4_WENS | 1/3/3 | 2 | 32 | 1 | 4 | 186.0 | — | 189.0 | — | UNMEASURED | UNAVAILABLE | STOP(...) |
+| product_banded_flux_n4_bespoke | bespoke_guyang | GridN4_NSEW | 9/3/1 | 3 | 32 | 4 | 1 | 21.2 | — | 23.3 | — | UNMEASURED | UNAVAILABLE | STOP(...) |
+| product_banded_flux_n4_generic | generic_ir | GridN4_NSEW | 9/3/1 | 3 | 32 | 4 | 2 | 262.4 | — | 265.3 | — | UNMEASURED | UNAVAILABLE | STOP(...) |
+| product_banded_flux_n8_generic_cliff | generic_ir_n8_throwaway | WorkshopThrowawayN8 | 9/3/1 | 3 | 32 | 4 | 1 | 134.1 | — | 137.0 | — | UNMEASURED | UNAVAILABLE | STOP(...) |
 
 ### Diagnostic ratios (NOT threshold verdict)
 
 | case | dispatch median ratio (generic/bespoke) |
 |---|---|
-| MIN × INPUT_LIST (PALMA-shaped) | ≈1.771× |
-| PRODUCT × INPUT_LIST + banded flux (Gu-Yang-shaped) | ≈13.992× (generic=2 dispatches; bespoke=1; counts published) |
+| MIN × INPUT_LIST (PALMA-shaped) | ≈1.622× |
+| PRODUCT × INPUT_LIST + banded flux (Gu-Yang-shaped) | ≈12.407× (generic=2 dispatches; bespoke=1; counts published) |
 
 ## N8 cliff
 
