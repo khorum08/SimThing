@@ -4,8 +4,8 @@
 use simthing_core::{eml_opcode, ColumnIndex, EmlNodeGpu, SlotIndex};
 use simthing_gpu::{
     apply_field_sweep_registration, encode_column, field_param, FieldAdjacency, FieldLawProof,
-    FieldSweepAdmissionError, FieldSweepRegistration, FieldSweepRegistrationRequest,
-    FieldSweepResourceClassRequest, GRID_N4_NSEW, GRID_N4_WENS,
+    FieldSweepAdmissionError, FieldSweepOutput, FieldSweepRegistration,
+    FieldSweepRegistrationRequest, FieldSweepResourceClassRequest, GRID_N4_NSEW, GRID_N4_WENS,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -53,12 +53,13 @@ pub fn compile_palma_n4_field_sweep(
     apply_field_sweep_registration(FieldSweepRegistrationRequest {
         adjacency,
         n_dims: spec.n_dims,
-        output_col: spec.d_col,
+        output: FieldSweepOutput::Matrix(spec.d_col),
         map_program,
         fold_program,
         identity_bits: spec.inf_sentinel.to_bits(),
         post_program,
         field_law_proof: Some(FieldLawProof::apply_non_conservative()),
+        transient_read_proof: None,
         canonical_order_proof: Some(canonical_order_proof),
         resource_class: FieldSweepResourceClassRequest::default(),
         dt: 1.0,
@@ -107,12 +108,13 @@ pub fn compile_gu_yang_n4_field_sweeps(
     let conductance = apply_field_sweep_registration(FieldSweepRegistrationRequest {
         adjacency: adjacency.clone(),
         n_dims: spec.n_dims,
-        output_col: spec.conductance_col,
+        output: FieldSweepOutput::Matrix(spec.conductance_col),
         map_program: conductance_map,
         fold_program: conductance_fold,
         identity_bits: spec.chi.to_bits(),
         post_program: conductance_post,
         field_law_proof: Some(FieldLawProof::apply_non_conservative()),
+        transient_read_proof: None,
         canonical_order_proof: Some(canonical_order_proof),
         resource_class: FieldSweepResourceClassRequest::default(),
         dt: spec.dt,
@@ -142,16 +144,22 @@ pub fn compile_gu_yang_n4_field_sweeps(
         binary(eml_opcode::ADD),
         ret(),
     ];
-    let symmetry = adjacency.apply_undirected_symmetry_certificate();
+    let symmetry = adjacency.apply_undirected_symmetry_certificate()?;
+    let conductance_certificate =
+        adjacency.apply_conductance_certificate(vec![spec.chi; adjacency.slots() as usize], 1.0)?;
     let flux = apply_field_sweep_registration(FieldSweepRegistrationRequest {
         adjacency,
         n_dims: spec.n_dims,
-        output_col: spec.value_col,
+        output: FieldSweepOutput::Matrix(spec.value_col),
         map_program: flux_map,
         fold_program: flux_fold,
         identity_bits: 0.0f32.to_bits(),
         post_program: flux_post,
-        field_law_proof: Some(FieldLawProof::apply_conservative(symmetry)),
+        field_law_proof: Some(FieldLawProof::apply_conservative(
+            symmetry,
+            conductance_certificate,
+        )),
+        transient_read_proof: None,
         canonical_order_proof: Some(canonical_order_proof),
         resource_class: FieldSweepResourceClassRequest::default(),
         dt: spec.dt,

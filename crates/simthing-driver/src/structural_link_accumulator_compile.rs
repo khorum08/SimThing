@@ -3,9 +3,10 @@
 use std::collections::BTreeMap;
 
 use simthing_core::{
-    AccumulatorOp, CombineFn, CompiledAccumulatorOpPlan, ConsumeMode, GateSpec,
+    AccumulatorOp, ColumnIndex, CombineFn, CompiledAccumulatorOpPlan, ConsumeMode, GateSpec,
     InputSpec, ScaleSpec, SlotIndex, SourceSpec, StructuralScalarChannel,
 };
+use simthing_gpu::{FieldAdjacency, FieldSweepAdmissionError, LinkGraphNeighbor};
 use simthing_spec::{
     validate_scenario_links, validate_stead_mapping_consistency, ScenarioLinkError,
     SimThingScenarioSpec, SteadMappingError,
@@ -29,14 +30,16 @@ pub enum DriverCompileError {
     IdenticalChannels,
     #[error("no structural locations to compile")]
     EmptyLocationSet,
+    #[error(transparent)]
+    FieldSweep(#[from] FieldSweepAdmissionError),
 }
 
-struct DenseProjection {
+pub(crate) struct DenseProjection {
     location_count: u32,
     adjacency: Vec<Vec<u32>>,
 }
 
-fn build_dense_projection(
+pub(crate) fn build_dense_projection(
     spec: &SimThingScenarioSpec,
 ) -> Result<DenseProjection, DriverCompileError> {
     validate_stead_mapping_consistency(spec)?;
@@ -109,6 +112,34 @@ fn build_dense_projection(
     })
 }
 
+/// Lower the scenario's existing canonical sorted+deduped undirected link
+/// projection into the generic field INPUT_LIST axis. The scalar is authored
+/// by the caller and is never inferred from degree or scheduling buckets.
+pub fn compile_structural_link_field_adjacency(
+    scenario: &SimThingScenarioSpec,
+    gather_col: ColumnIndex,
+    edge_weight: f32,
+) -> Result<FieldAdjacency, DriverCompileError> {
+    let projection = build_dense_projection(scenario)?;
+    let rows = projection
+        .adjacency
+        .into_iter()
+        .map(|row| {
+            row.into_iter()
+                .map(|slot| LinkGraphNeighbor {
+                    slot: SlotIndex::new(slot),
+                    weight: edge_weight,
+                })
+                .collect()
+        })
+        .collect();
+    Ok(FieldAdjacency::link_graph(
+        projection.location_count,
+        rows,
+        gather_col,
+    )?)
+}
+
 /// Compile canonical structural link neighbor-sum into AccumulatorOp Sum-over-INPUT_LIST ops.
 pub fn compile_structural_link_neighbor_sum_plan(
     scenario: &SimThingScenarioSpec,
@@ -143,10 +174,7 @@ pub fn compile_structural_link_neighbor_sum_plan(
             gate: GateSpec::Always,
             scale: ScaleSpec::Identity,
             consume: ConsumeMode::AddToTarget,
-            targets: vec![(
-                SlotIndex::new(target_slot as u32),
-                output_col,
-            )],
+            targets: vec![(SlotIndex::new(target_slot as u32), output_col)],
         });
     }
 

@@ -7,10 +7,10 @@ pub use wgpu;
 pub mod accumulator_op;
 pub mod atlas_mask;
 pub mod candidate_f_magnitude;
+pub mod field_sweep_instances;
 pub mod min_plus_stencil;
 pub mod min_plus_traversal_d_probe;
 pub mod saturating_flux_choke_threshold;
-pub mod scheduled_w_palma_batch;
 pub mod stress_compose;
 pub mod structural_upload;
 pub mod structural_validation;
@@ -29,6 +29,10 @@ pub use candidate_f_magnitude::{
     max_candidate_f_magnitude_bits, CandidateFMagnitudeError, CandidateFMagnitudeReport,
     CandidateFMagnitudeRequest, GradientPairGpu,
 };
+pub use field_sweep_instances::{
+    compile_min_plus_field_sweep, compile_structured_field_sweeps,
+    compile_w_impedance_field_sweeps, FieldSweepInstanceError,
+};
 pub use min_plus_stencil::{
     cell_index, cpu_min_plus_d_from_w, cpu_min_plus_relaxation, cpu_min_plus_step, extract_d_flat,
     max_d_field_error, pack_w_and_initial_d, MinPlusPingPongSide, MinPlusStencilConfig,
@@ -46,10 +50,6 @@ pub use saturating_flux_choke_threshold::{
     SaturatingFluxChokeThresholdError, SaturatingFluxChokeThresholdOp,
     SaturatingFluxChokeThresholdResult, CHOKE_THRESHOLD_COMPACT_FLOATS,
     CHOKE_THRESHOLD_PARTIAL_FLOATS, CHOKE_THRESHOLD_REDUCE_WORKGROUP_SIZE,
-};
-pub use scheduled_w_palma_batch::{
-    dispatch_scheduled_w_palma_chain, dispatch_serial_w_palma_chain, ScheduledWPalmaChainError,
-    ScheduledWPalmaChainEvidence,
 };
 pub use simthing_core::SlotIndex;
 pub use simthing_kernel::{
@@ -74,14 +74,16 @@ pub use simthing_kernel::{
     summaries_from_values, threshold_registrations_to_ops,
     validate_and_mint_placed_participants_by_location_id,
     validate_location_ids_have_structural_placements, validate_scatter_entries,
-    apply_field_sweep_registration, execute_field_sweep_cpu, execute_field_sweep_cpu_iterations,
+    apply_field_sweep_registration, execute_field_sweep_cpu, execute_field_sweep_cpu_chain,
+    execute_field_sweep_cpu_iterations, execute_field_sweep_cpu_natural_order,
     AccumulatorInputGpu, AccumulatorInputListTable, AccumulatorOpGpu, AccumulatorOpSession,
     AccumulatorOpSessionError, AccumulatorPipelineSessions, AoWgsl0Compatibility,
     AoWgsl0FallbackReason, AoWgsl0PlanShape, BandCrossingDelta, BandCrossingDirection,
-    CanonicalOrderProof, ColumnRuleDescriptor, DebugReadbackGuard, FieldAdjacency, FieldLawProof,
-    FieldSweepAdmissionError, FieldSweepExecutionError,
-    FieldSweepRegistration, FieldSweepRegistrationRequest, FieldSweepResourceClass,
-    FieldSweepResourceClassRequest, FieldSweepSession, GridN4Offset,
+    CanonicalOrderProof, ColumnRuleDescriptor, DebugReadbackGuard, FieldAdjacency,
+    FieldConductanceCertificate, FieldDegreeBucket, FieldLawProof, FieldSweepAdmissionError,
+    FieldSweepExecutionError, FieldSweepOutput, FieldSweepRegistration,
+    FieldSweepRegistrationRequest, FieldSweepResourceClass, FieldSweepResourceClassRequest,
+    FieldSweepSession, FieldTransientCertificate, GridN4Offset, GridOffset, LinkGraphNeighbor,
     EmissionFormula, EmissionOpPlanSignature, EmissionPlan, EmissionPlanError, EmissionRecord,
     EmissionRecordGpu, EmissionRegistration, EmissionSyncError, EmlGpuProgramTable,
     EmlTreeRangeGpu, EmlUploadError, EncodeError, ExactnessClass, GovernedIntegrationPlan,
@@ -103,7 +105,8 @@ pub use simthing_kernel::{
     RULE_FIRST, RULE_MAX, RULE_MEAN, RULE_MIN, RULE_SUM, RULE_WEIGHTED_MEAN, THRESH_BUF_OUTPUT,
     THRESH_BUF_VALUES, UndirectedSymmetryCertificate, WEIGHT_COL_NONE,
     FIELD_SWEEP_LEGACY_PROGRAM_NODES, FIELD_SWEEP_LEGACY_STACK_SLOTS,
-    FIELD_SWEEP_WORKGROUP_SIZE, GRID_N4_NSEW, GRID_N4_WENS,
+    FIELD_SWEEP_WORKGROUP_SIZE, GRID_N4_NSEW, GRID_N4_WENS, grid_n4_offsets,
+    grid_n8_offsets, grid_radius_offsets,
 };
 pub use simthing_kernel::field_param;
 pub use stress_compose::{

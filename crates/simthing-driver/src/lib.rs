@@ -314,11 +314,10 @@ pub use econ_scale_0080_0::{
 };
 pub use field_scheduler::{
     count_cadence_due_ticks, execute_scheduled_regions_with,
-    execute_single_scheduled_stencil_region, visit_scheduled_regions, DirtyRegionState,
-    FieldCadence, FieldDispatchDecision, FieldDispatchReason, FieldDispatchSchedule,
-    FieldGridDescriptor, FieldId, FieldRegionId, FieldRegionRegistration, FieldScheduleState,
-    FieldScheduler, FieldSchedulerError, FieldSchedulerReport, ScheduledRegionsExecutionSummary,
-    ScheduledSingleStencilExecution, ScheduledStencilExecutionError,
+    visit_scheduled_regions, DirtyRegionState, FieldCadence, FieldDispatchDecision,
+    FieldDispatchReason, FieldDispatchSchedule, FieldGridDescriptor, FieldId, FieldRegionId,
+    FieldRegionRegistration, FieldScheduleState, FieldScheduler, FieldSchedulerError,
+    FieldSchedulerReport, ScheduledRegionsExecutionSummary, ScheduledSingleStencilExecution,
 };
 pub use first_slice_mapping_runtime::{
     compiled_cadence_to_field_cadence, compiled_stencil_to_gpu_config, estimate_first_slice_budget,
@@ -656,7 +655,8 @@ pub use spec_session::{
 };
 pub use stress_compose_bridge::compiled_stress_compose_to_gpu_config;
 pub use structural_link_accumulator_compile::{
-    compile_structural_link_neighbor_sum_plan, DriverCompileError,
+    compile_structural_link_field_adjacency, compile_structural_link_neighbor_sum_plan,
+    DriverCompileError,
 };
 pub use structural_n4_atlas_partition::{
     compile_structural_n4_atlas, CompiledStructuralN4Atlas, CrossPartitionHaloCoverage,

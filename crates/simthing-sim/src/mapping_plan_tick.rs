@@ -5,11 +5,10 @@
 
 use simthing_gpu::wgpu::Buffer;
 use simthing_gpu::{
-    cpu_min_plus_d_from_w, cpu_stencil_step, extract_d_flat, params_from_config,
-    scoped_debug_readback_allowed, IndexedScatterOp, MinPlusStencilConfig, MinPlusStencilOp,
-    MinPlusTraversalExecutionMode, MinPlusTraversalExecutionOptions, MinPlusTraversalInput,
-    ScatterEntry, StructuredFieldStencilConfig, StructuredFieldStencilOp, WImpedanceComposeConfig,
-    WImpedanceComposeOp,
+    compile_min_plus_field_sweep, compile_structured_field_sweeps,
+    compile_w_impedance_field_sweeps, cpu_min_plus_d_from_w, cpu_stencil_step, extract_d_flat,
+    params_from_config, FieldSweepRegistration, FieldSweepSession, IndexedScatterOp,
+    MinPlusStencilConfig, ScatterEntry, StructuredFieldStencilConfig, WImpedanceComposeConfig,
 };
 
 use crate::accumulator_plan_tick::SimTickError;
@@ -88,15 +87,19 @@ pub struct SimGpuMappingTickOutput {
 
 enum ResidentMappingStep {
     StructuredField {
-        op: StructuredFieldStencilOp,
+        registrations: Vec<FieldSweepRegistration>,
+        sessions: Vec<FieldSweepSession>,
+        bridge: Buffer,
         hops: u32,
         scatter_entries: Vec<ScatterEntry>,
     },
     WImpedanceCompose {
-        config: WImpedanceComposeConfig,
+        registrations: Vec<FieldSweepRegistration>,
+        sessions: Vec<FieldSweepSession>,
     },
     MinPlus {
-        op: MinPlusStencilOp,
+        registration: FieldSweepRegistration,
+        session: FieldSweepSession,
         iterations: u32,
     },
 }
@@ -105,7 +108,6 @@ enum ResidentMappingStep {
 pub struct SimGpuMappingTickState {
     plan: CompiledMappingPlan,
     steps: Vec<ResidentMappingStep>,
-    w_compose_op: WImpedanceComposeOp,
     scatter_op: IndexedScatterOp,
     interleaved_buffer: Option<Buffer>,
     tick_count: u32,
@@ -140,26 +142,55 @@ impl SimGpuMappingTickState {
                             interleaved_column_writes,
                         )
                     };
-                    let op = StructuredFieldStencilOp::new(ctx, config.clone())
-                        .map_err(map_structured_field_err)?;
+                    let registrations =
+                        compile_structured_field_sweeps(config).map_err(map_field_instance_err)?;
+                    let shared_binding = registrations.iter().skip(1).all(|registration| {
+                        registration.n_dims() == registrations[0].n_dims()
+                            && registration.adjacency() == registrations[0].adjacency()
+                    });
+                    let sessions = if shared_binding {
+                        vec![FieldSweepSession::new(ctx, &registrations[0])
+                            .map_err(map_field_sweep_err)?]
+                    } else {
+                        registrations
+                            .iter()
+                            .map(|registration| FieldSweepSession::new(ctx, registration))
+                            .collect::<Result<Vec<_>, _>>()
+                            .map_err(map_field_sweep_err)?
+                    };
+                    let bridge =
+                        field_bridge_buffer(ctx, config.values_len(), "sim_mapping_field_bridge");
                     steps.push(ResidentMappingStep::StructuredField {
-                        op,
+                        registrations,
+                        sessions,
+                        bridge,
                         hops: *hops,
                         scatter_entries,
                     });
                 }
                 CompiledMappingStep::WImpedanceCompose { config } => {
                     config.validate().map_err(map_w_compose_err)?;
+                    let registrations =
+                        compile_w_impedance_field_sweeps(config).map_err(map_field_instance_err)?;
+                    let sessions = registrations
+                        .iter()
+                        .map(|registration| FieldSweepSession::new(ctx, registration))
+                        .collect::<Result<Vec<_>, _>>()
+                        .map_err(map_field_sweep_err)?;
                     steps.push(ResidentMappingStep::WImpedanceCompose {
-                        config: config.clone(),
+                        registrations,
+                        sessions,
                     });
                 }
                 CompiledMappingStep::MinPlusStencil { config, iterations } => {
                     config.validate().map_err(map_min_plus_err)?;
-                    let op =
-                        MinPlusStencilOp::new(ctx, config.clone()).map_err(map_min_plus_err)?;
+                    let registration =
+                        compile_min_plus_field_sweep(config).map_err(map_field_instance_err)?;
+                    let session =
+                        FieldSweepSession::new(ctx, &registration).map_err(map_field_sweep_err)?;
                     steps.push(ResidentMappingStep::MinPlus {
-                        op,
+                        registration,
+                        session,
                         iterations: *iterations,
                     });
                 }
@@ -174,6 +205,7 @@ impl SimGpuMappingTickState {
                         label: Some("sim_mapping_plan_interleaved"),
                         size: bytes,
                         usage: simthing_gpu::wgpu::BufferUsages::STORAGE
+                            | simthing_gpu::wgpu::BufferUsages::COPY_SRC
                             | simthing_gpu::wgpu::BufferUsages::COPY_DST,
                         mapped_at_creation: false,
                     }),
@@ -185,7 +217,6 @@ impl SimGpuMappingTickState {
         Ok(Self {
             plan,
             steps,
-            w_compose_op: WImpedanceComposeOp::new(ctx),
             scatter_op: IndexedScatterOp::new(ctx),
             interleaved_buffer,
             tick_count: 0,
@@ -222,65 +253,95 @@ impl SimGpuMappingTickState {
         for step in &mut self.steps {
             match step {
                 ResidentMappingStep::StructuredField {
-                    op,
+                    registrations,
+                    sessions,
+                    bridge,
                     hops,
                     scatter_entries,
                 } => {
                     let values = &inputs.structured_field_values[structured_field_index];
                     structured_field_index += 1;
-                    op.upload_values(ctx, values)
-                        .map_err(map_structured_field_err)?;
-                    op.dispatch_ping_pong(ctx, *hops)
-                        .map_err(map_structured_field_err)?;
+                    for hop in 0..*hops {
+                        if sessions.len() == 1 {
+                            if hop == 0 {
+                                sessions[0]
+                                    .upload_values(ctx, values)
+                                    .map_err(map_field_sweep_err)?;
+                            } else {
+                                sessions[0].upload_values_from_buffer(ctx, bridge);
+                            }
+                            for registration in registrations.iter() {
+                                sessions[0]
+                                    .dispatch(ctx, registration, 1)
+                                    .map_err(map_field_sweep_err)?;
+                            }
+                            sessions[0].copy_values_to_buffer(ctx, bridge);
+                        } else {
+                            for index in 0..registrations.len() {
+                                if index == 0 && hop == 0 {
+                                    sessions[index]
+                                        .upload_values(ctx, values)
+                                        .map_err(map_field_sweep_err)?;
+                                } else {
+                                    sessions[index].upload_values_from_buffer(ctx, bridge);
+                                }
+                                sessions[index]
+                                    .dispatch(ctx, &registrations[index], 1)
+                                    .map_err(map_field_sweep_err)?;
+                                sessions[index].copy_values_to_buffer(ctx, bridge);
+                            }
+                        }
+                    }
 
                     if let (Some(interleaved), false) =
                         (&self.interleaved_buffer, scatter_entries.is_empty())
                     {
-                        let src = structured_field_values_buffer(op, *hops);
                         self.scatter_op
-                            .dispatch(ctx, src, interleaved, scatter_entries)
+                            .dispatch(ctx, bridge, interleaved, scatter_entries)
                             .map_err(map_scatter_err)?;
                     }
 
                     if readback == SimGpuMappingReadbackPolicy::ProofReadback {
-                        last_structured_values = Some(run_with_proof_readback_enabled(|| {
-                            Ok(op.readback_after_ping_pong(ctx, *hops))
-                        })?);
+                        last_structured_values = Some(
+                            sessions
+                                .last()
+                                .expect("field registration")
+                                .readback(ctx)
+                                .map_err(map_field_sweep_err)?,
+                        );
                     }
                 }
-                ResidentMappingStep::WImpedanceCompose { config } => {
+                ResidentMappingStep::WImpedanceCompose {
+                    registrations,
+                    sessions,
+                } => {
                     let interleaved = self.interleaved_buffer.as_ref().ok_or_else(|| {
                         SimTickError::Readback("missing interleaved buffer".into())
                     })?;
-                    self.w_compose_op
-                        .compose_resident_field(ctx, interleaved, config)
-                        .map_err(map_w_compose_err)?;
+                    for (registration, session) in registrations.iter().zip(sessions) {
+                        session.upload_values_from_buffer(ctx, interleaved);
+                        session
+                            .dispatch(ctx, registration, 1)
+                            .map_err(map_field_sweep_err)?;
+                        session.copy_values_to_buffer(ctx, interleaved);
+                    }
                 }
-                ResidentMappingStep::MinPlus { op, iterations } => {
+                ResidentMappingStep::MinPlus {
+                    registration,
+                    session,
+                    iterations,
+                } => {
                     let interleaved = self.interleaved_buffer.as_ref().ok_or_else(|| {
                         SimTickError::Readback("missing interleaved buffer".into())
                     })?;
-                    let mode = match readback {
-                        SimGpuMappingReadbackPolicy::None => {
-                            MinPlusTraversalExecutionMode::GpuResident
-                        }
-                        SimGpuMappingReadbackPolicy::ProofReadback => {
-                            MinPlusTraversalExecutionMode::DiagnosticReadback
-                        }
-                    };
-                    let report = op
-                        .dispatch_traversal_from_input(
-                            ctx,
-                            MinPlusTraversalInput::GpuInterleavedW(interleaved),
-                            None,
-                            MinPlusTraversalExecutionOptions {
-                                mode,
-                                iterations: *iterations,
-                            },
-                        )
-                        .map_err(map_min_plus_err)?;
+                    session.upload_values_from_buffer(ctx, interleaved);
+                    session
+                        .dispatch(ctx, registration, *iterations)
+                        .map_err(map_field_sweep_err)?;
+                    session.copy_values_to_buffer(ctx, interleaved);
                     if readback == SimGpuMappingReadbackPolicy::ProofReadback {
-                        last_structured_values = report.values;
+                        last_structured_values =
+                            Some(session.readback(ctx).map_err(map_field_sweep_err)?);
                     }
                     last_min_plus_iterations = Some(*iterations);
                 }
@@ -315,12 +376,16 @@ impl SimGpuMappingTickState {
     }
 }
 
-fn structured_field_values_buffer<'a>(op: &'a StructuredFieldStencilOp, hops: u32) -> &'a Buffer {
-    if hops % 2 == 1 {
-        &op.output_buffer
-    } else {
-        &op.input_buffer
-    }
+fn field_bridge_buffer(ctx: &simthing_gpu::GpuContext, values_len: usize, label: &str) -> Buffer {
+    ctx.device
+        .create_buffer(&simthing_gpu::wgpu::BufferDescriptor {
+            label: Some(label),
+            size: (values_len * std::mem::size_of::<f32>()) as u64,
+            usage: simthing_gpu::wgpu::BufferUsages::STORAGE
+                | simthing_gpu::wgpu::BufferUsages::COPY_SRC
+                | simthing_gpu::wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        })
 }
 
 fn build_column_scatter_entries(
@@ -385,18 +450,19 @@ fn validate_mapping_tick_inputs(
     Ok(())
 }
 
-fn run_with_proof_readback_enabled<T>(
-    f: impl FnOnce() -> Result<T, SimTickError>,
-) -> Result<T, SimTickError> {
-    let _guard = scoped_debug_readback_allowed(true);
-    f()
-}
-
 fn map_structured_field_err(err: simthing_gpu::StructuredFieldStencilError) -> SimTickError {
     SimTickError::GpuAccumulator(err.to_string())
 }
 
 fn map_w_compose_err(err: simthing_gpu::WImpedanceComposeError) -> SimTickError {
+    SimTickError::GpuAccumulator(err.to_string())
+}
+
+fn map_field_instance_err(err: simthing_gpu::FieldSweepInstanceError) -> SimTickError {
+    SimTickError::GpuAccumulator(err.to_string())
+}
+
+fn map_field_sweep_err(err: simthing_gpu::FieldSweepExecutionError) -> SimTickError {
     SimTickError::GpuAccumulator(err.to_string())
 }
 
