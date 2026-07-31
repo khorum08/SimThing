@@ -294,10 +294,13 @@ fn field_sweep_ir_probe_0_n8_throwaway_gather_cliff_and_caps() {
 
     let prog = program_banded_flux(0, 1);
     let m = program_metrics(&prog);
-    let caps = live_eml_cap_facts(m.total_nodes, m.actual_peak_operand_stack);
+    let per_tree = m.map_nodes.max(m.fold_nodes).max(m.post_nodes);
+    let caps = live_eml_cap_facts(per_tree, m.total_nodes, m.actual_peak_operand_stack);
     assert_eq!(caps.configured_max_tree_nodes, 32);
     assert_eq!(caps.configured_stack_max, 32);
-    assert!(caps.observed_max_nodes <= caps.configured_max_tree_nodes);
+    assert_eq!(caps.observed_max_tree_nodes, 9, "Gu-Yang-shaped map tree is 9 nodes");
+    assert_eq!(caps.observed_total_program_nodes, 13, "map+fold+post composition only");
+    assert!(caps.observed_max_tree_nodes <= caps.configured_max_tree_nodes);
     assert!(caps.observed_peak_operand_stack <= caps.configured_stack_max);
     assert_ne!(m.actual_peak_operand_stack, m.total_nodes);
 
@@ -541,23 +544,29 @@ fn field_sweep_ir_probe_0_adapter_pinned_measurement() {
         "DIAGNOSTIC_ONLY(occupancy_UNMEASURED;no_threshold_verdict)"
     );
 
+    let per_tree_min = m_min.map_nodes.max(m_min.fold_nodes).max(m_min.post_nodes);
+    let per_tree_flux = m_flux.map_nodes.max(m_flux.fold_nodes).max(m_flux.post_nodes);
     let caps = live_eml_cap_facts(
+        per_tree_min.max(per_tree_flux),
         m_min.total_nodes.max(m_flux.total_nodes),
         m_min
             .actual_peak_operand_stack
             .max(m_flux.actual_peak_operand_stack),
     );
+    assert_eq!(caps.observed_max_tree_nodes, 9);
+    assert_eq!(caps.observed_total_program_nodes, 13);
 
-    eprintln!("FIELD-SWEEP-IR-PROBE-0 Remand-1 measurement summary");
+    eprintln!("FIELD-SWEEP-IR-PROBE-0 Remand-2 complete measurement rows");
     eprintln!(
         "adapter={} backend={}",
         session.adapter_name, session.backend
     );
     eprintln!(
-        "caps configured nodes={} stack={} observed nodes={} peak_operand_stack={} scratch_cap={} class={}",
+        "caps configured_max_tree_nodes={} configured_stack_max={} observed_max_tree_nodes={} observed_total_program_nodes={} peak_operand_stack={} scratch_cap={} class={}",
         caps.configured_max_tree_nodes,
         caps.configured_stack_max,
-        caps.observed_max_nodes,
+        caps.observed_max_tree_nodes,
+        caps.observed_total_program_nodes,
         caps.observed_peak_operand_stack,
         caps.probe_scratch_capacity,
         caps.resource_class_label
@@ -573,20 +582,6 @@ fn field_sweep_ir_probe_0_adapter_pinned_measurement() {
         gather_flux.edge_count, gather_n8.edge_count
     );
     for r in &rows {
-        eprintln!(
-            "row case={} path={} occ={} disp_n={} disp_med_us={:.3} e2e_med_us={:.3} peak_stack={} nodes={}/{}/{} status={}",
-            r.case_name,
-            r.path_kind,
-            r.matched_occupancy,
-            r.dispatch_count_per_sample,
-            r.dispatch_time_us_median,
-            r.e2e_time_us_median,
-            r.actual_peak_operand_stack,
-            r.map_nodes,
-            r.fold_nodes,
-            r.post_nodes,
-            r.counter_surface_status
-        );
+        eprintln!("{}", r.to_tsv_line());
     }
-    let _ = rows;
 }

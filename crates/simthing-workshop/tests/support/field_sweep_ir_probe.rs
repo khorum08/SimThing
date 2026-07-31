@@ -122,7 +122,10 @@ pub struct EmlCapFacts {
     pub configured_stack_max: u32,
     pub probe_node_cap: u32,
     pub probe_scratch_capacity: u32,
-    pub observed_max_nodes: u32,
+    /// max(map, fold, post) — compared to `MAX_EML_TREE_NODES` (per expression tree).
+    pub observed_max_tree_nodes: u32,
+    /// map+fold+post sum — descriptive composition only; never compared to the per-tree cap.
+    pub observed_total_program_nodes: u32,
     pub observed_peak_operand_stack: u32,
     pub resource_class_label: &'static str,
 }
@@ -283,15 +286,55 @@ pub fn program_metrics(program: &IrProgram) -> ProgramMetrics {
     }
 }
 
-pub fn live_eml_cap_facts(observed_nodes: u32, observed_peak_stack: u32) -> EmlCapFacts {
+pub fn live_eml_cap_facts(
+    observed_max_tree_nodes: u32,
+    observed_total_program_nodes: u32,
+    observed_peak_stack: u32,
+) -> EmlCapFacts {
     EmlCapFacts {
         configured_max_tree_nodes: MAX_EML_TREE_NODES,
         configured_stack_max: EML_STACK_MAX,
         probe_node_cap: PROBE_NODE_CAP,
         probe_scratch_capacity: PROBE_SCRATCH_CAPACITY,
-        observed_max_nodes: observed_nodes,
+        observed_max_tree_nodes,
+        observed_total_program_nodes,
         observed_peak_operand_stack: observed_peak_stack,
         resource_class_label: RESOURCE_CLASS_LABEL,
+    }
+}
+
+impl MeasurementRow {
+    /// One complete machine-readable row for evidence transcription.
+    pub fn to_tsv_line(&self) -> String {
+        format!(
+            "FSIR_ROW\tcase={}\tpath={}\tadapter_backend={}\tadjacency={}\ttheater={}\tdegree_distribution={}\tmap_nodes={}\tfold_nodes={}\tpost_nodes={}\tpeak_operand_stack={}\tscratch_capacity={}\tcolumn_reads_per_edge={}\tresource_class={}\toccupancy={}\tmatched_work_basis={}\tdispatch_count={}\twarmup={}\tsamples={}\tdispatch_med_us={:.3}\tdispatch_worst_us={:.3}\te2e_med_us={:.3}\te2e_worst_us={:.3}\tedges_per_s_dispatch_med={:.6e}\tstall_memory={}\tcounter_status={}\ttiming_note={}",
+            self.case_name,
+            self.path_kind,
+            self.adapter_backend,
+            self.adjacency_kind,
+            self.theater_size,
+            self.degree_distribution,
+            self.map_nodes,
+            self.fold_nodes,
+            self.post_nodes,
+            self.actual_peak_operand_stack,
+            self.configured_scratch_capacity,
+            self.column_reads_per_edge,
+            self.resource_class,
+            self.matched_occupancy,
+            self.matched_work_basis,
+            self.dispatch_count_per_sample,
+            self.warmup_count,
+            self.sample_count,
+            self.dispatch_time_us_median,
+            self.dispatch_time_us_worst,
+            self.e2e_time_us_median,
+            self.e2e_time_us_worst,
+            self.edges_per_s_dispatch_median,
+            self.stall_memory_counters,
+            self.counter_surface_status,
+            self.timing_note,
+        )
     }
 }
 
