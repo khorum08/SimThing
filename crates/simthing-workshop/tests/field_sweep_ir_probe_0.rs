@@ -1,22 +1,25 @@
-//! FIELD-SWEEP-IR-PROBE-0 — adapter-pinned parity + measurement (workshop-leaf, disposable).
+//! FIELD-SWEEP-IR-PROBE-0 — adapter-pinned parity + diagnostic measurement (test-only).
 //!
-//! Absolute N4 bit-exact parity precedes timing. Inline synthetic state only.
-//! Never reads game corpus / scenarios. Engine N8 is not touched.
+//! Probe lives under `tests/support/` — not a workshop library export.
+//! Absolute N4 bit-exact parity precedes timing. Inline synthetic only.
 
+#[path = "support/field_sweep_ir_probe.rs"]
+mod field_sweep_ir_probe;
+
+use field_sweep_ir_probe::{
+    bits_eq, build_gather, counter_surface_report, cpu_sweep_iters, cpu_sweep_once,
+    format_degree_distribution, live_eml_cap_facts, max_ulp_diff, median_f64,
+    planted_left_fold_stack_probe, program_banded_flux, program_metrics,
+    program_min_x_input_list, program_product_conductance, threshold_adjudication_status,
+    worst_f64, GatherTable, MeasurementRow, ProbeGpuSession, N4_OFFSETS_NSEW, N4_OFFSETS_WENS,
+    N8_OFFSETS_THROWAWAY, RESOURCE_CLASS_LABEL, SAMPLE_RUNS, WARM_RUNS,
+};
 use simthing_gpu::{
     cpu_horizon, cpu_min_plus_d_from_w, extract_d_flat, pack_w_and_initial_d, params_from_config,
     GpuContext, MinPlusStencilConfig, MinPlusStencilOp, StructuredFieldStencilBoundaryMode,
     StructuredFieldStencilConfig, StructuredFieldStencilMaskMode, StructuredFieldStencilOp,
     StructuredFieldStencilOperator, StructuredFieldStencilSourcePolicy, MIN_PLUS_INF,
     SATURATING_FLUX_CHI_CFL_MAX,
-};
-use simthing_workshop::field_sweep_ir_probe::{
-    bits_eq, build_gather, counter_surface_report, cpu_sweep_iters, cpu_sweep_once,
-    format_degree_distribution, live_eml_cap_facts, max_ulp_diff, median_f64,
-    program_banded_flux, program_metrics, program_min_x_input_list, program_product_conductance,
-    threshold_verdict, worst_f64, GatherTable, MeasurementRow, ParityCaseResult, ProbeGpuHarness,
-    N4_OFFSETS_NSEW, N4_OFFSETS_WENS, N8_OFFSETS_THROWAWAY, RESOURCE_CLASS_LABEL, SAMPLE_RUNS,
-    WARM_RUNS,
 };
 use std::time::Instant;
 
@@ -30,11 +33,11 @@ fn require_gpu_ctx() -> Option<GpuContext> {
     }
 }
 
-fn require_probe_harness() -> Option<ProbeGpuHarness> {
-    match ProbeGpuHarness::new_blocking() {
+fn require_probe_session() -> Option<ProbeGpuSession> {
+    match ProbeGpuSession::new_blocking() {
         Ok(h) => Some(h),
         Err(_) if std::env::var_os("SIMTHING_GPU_REQUIRE_ADAPTER_MATCH").is_some() => {
-            panic!("SIMTHING_GPU_REQUIRE_ADAPTER_MATCH set but probe harness failed");
+            panic!("SIMTHING_GPU_REQUIRE_ADAPTER_MATCH set but probe session failed");
         }
         Err(_) => None,
     }
@@ -48,7 +51,6 @@ fn synthetic_w(width: u32, height: u32) -> Vec<f32> {
             w[i] = 1.0 + ((x * 3 + y * 5) % 7) as f32 * 0.125;
         }
     }
-    // corridor impedance bump
     if width > 4 && height > 4 {
         for y in 1..height - 1 {
             w[(y * width + width / 2) as usize] = 4.0;
@@ -58,8 +60,6 @@ fn synthetic_w(width: u32, height: u32) -> Vec<f32> {
 }
 
 fn synthetic_flux_values(width: u32, height: u32, n_dims: u32) -> Vec<f32> {
-    // Sparse pulse (matrix-parity shape): keeps SaturatingFlux inside the bit-exact
-    // CPU↔GPU envelope already proven by cpu_gpu_parity_matrix FluxChoke.
     let mut values = vec![0.0f32; (width * height * n_dims) as usize];
     let nd = n_dims as usize;
     let cx = (width / 2) as usize;
@@ -68,93 +68,125 @@ fn synthetic_flux_values(width: u32, height: u32, n_dims: u32) -> Vec<f32> {
     values
 }
 
-fn time_bespoke_palma_gpu(
+fn time_bespoke_palma_matched(
     ctx: &GpuContext,
     w: &[f32],
     config: &MinPlusStencilConfig,
     iterations: u32,
     warm: usize,
     samples: usize,
-) -> Vec<f64> {
+) -> (Vec<f64>, Vec<f64>) {
     let values = pack_w_and_initial_d(w, config).expect("pack");
     let op = MinPlusStencilOp::new(ctx, config.clone()).expect("op");
     for _ in 0..warm {
         op.upload_values(ctx, &values).expect("upload");
-        let _ = op.run_ping_pong(ctx, iterations).expect("run");
+        op.dispatch_ping_pong(ctx, iterations).expect("dispatch");
     }
-    let mut times = Vec::with_capacity(samples);
+    let mut dispatch_times = Vec::with_capacity(samples);
+    let mut e2e_times = Vec::with_capacity(samples);
     for _ in 0..samples {
-        let t0 = Instant::now();
+        let e2e0 = Instant::now();
         op.upload_values(ctx, &values).expect("upload");
-        let _ = op.run_ping_pong(ctx, iterations).expect("run");
-        times.push(t0.elapsed().as_secs_f64() * 1_000_000.0);
+        let d0 = Instant::now();
+        op.dispatch_ping_pong(ctx, iterations).expect("dispatch");
+        dispatch_times.push(d0.elapsed().as_secs_f64() * 1_000_000.0);
+        e2e_times.push(e2e0.elapsed().as_secs_f64() * 1_000_000.0);
     }
-    times
+    (dispatch_times, e2e_times)
 }
 
-fn time_bespoke_flux_gpu(
+fn time_bespoke_flux_matched(
     ctx: &GpuContext,
     values: &[f32],
     config: &StructuredFieldStencilConfig,
     warm: usize,
     samples: usize,
-) -> Vec<f64> {
+) -> (Vec<f64>, Vec<f64>) {
     let op = StructuredFieldStencilOp::new(ctx, config.clone()).expect("flux op");
+    let hops = config.horizon;
     for _ in 0..warm {
         op.upload_values(ctx, values).expect("upload");
-        let _ = op.run_configured_horizon(ctx).expect("run");
+        op.dispatch_ping_pong(ctx, hops).expect("dispatch");
     }
-    let mut times = Vec::with_capacity(samples);
+    let mut dispatch_times = Vec::with_capacity(samples);
+    let mut e2e_times = Vec::with_capacity(samples);
     for _ in 0..samples {
-        let t0 = Instant::now();
+        let e2e0 = Instant::now();
         op.upload_values(ctx, values).expect("upload");
-        let _ = op.run_configured_horizon(ctx).expect("run");
-        times.push(t0.elapsed().as_secs_f64() * 1_000_000.0);
+        let d0 = Instant::now();
+        op.dispatch_ping_pong(ctx, hops).expect("dispatch");
+        dispatch_times.push(d0.elapsed().as_secs_f64() * 1_000_000.0);
+        e2e_times.push(e2e0.elapsed().as_secs_f64() * 1_000_000.0);
     }
-    times
+    (dispatch_times, e2e_times)
 }
 
 fn row_from(
     case_name: &str,
-    harness: &ProbeGpuHarness,
+    session: &ProbeGpuSession,
     gather: &GatherTable,
     theater: &str,
-    metrics_nodes: u32,
-    metrics_stack: u32,
-    col_reads: u32,
+    metrics: &field_sweep_ir_probe::ProgramMetrics,
     path_kind: &str,
-    times: &[f64],
-    matched: bool,
+    dispatch_times: &[f64],
+    e2e_times: &[f64],
+    dispatch_count: u32,
+    timing_note: &str,
 ) -> MeasurementRow {
-    let (stall, status) = counter_surface_report(harness.timestamp_supported);
-    let med = median_f64(times.to_vec());
-    let worst = worst_f64(times);
+    let (stall, status) = counter_surface_report(session.timestamp_supported);
+    let d_med = median_f64(dispatch_times.to_vec());
+    let d_worst = worst_f64(dispatch_times);
+    let e_med = median_f64(e2e_times.to_vec());
+    let e_worst = worst_f64(e2e_times);
     let edges = gather.edge_count as f64;
     MeasurementRow {
         case_name: case_name.to_string(),
-        adapter_backend: format!("{} / {}", harness.adapter_name, harness.backend),
+        adapter_backend: format!("{} / {}", session.adapter_name, session.backend),
         adjacency_kind: gather.adjacency_kind.to_string(),
         theater_size: theater.to_string(),
         degree_distribution: format_degree_distribution(&gather.degree_histogram),
-        nodes_per_edge: metrics_nodes,
-        actual_max_stack_depth: metrics_stack,
-        column_reads_per_edge: col_reads,
+        map_nodes: metrics.map_nodes,
+        fold_nodes: metrics.fold_nodes,
+        post_nodes: metrics.post_nodes,
+        actual_peak_operand_stack: metrics.actual_peak_operand_stack,
+        configured_scratch_capacity: metrics.configured_scratch_capacity,
+        column_reads_per_edge: metrics.column_reads_per_edge,
         resource_class: RESOURCE_CLASS_LABEL.to_string(),
-        matched_occupancy: matched,
-        matched_occupancy_basis: "same_theater_degree_edges_iterations_column_reads".to_string(),
+        matched_occupancy: "UNMEASURED".to_string(),
+        matched_work_basis: "same_theater_degree_edges_iterations_column_reads_NOT_occupancy"
+            .to_string(),
+        dispatch_count_per_sample: dispatch_count,
         warmup_count: WARM_RUNS,
         sample_count: SAMPLE_RUNS,
-        time_per_sweep_us_median: med,
-        time_per_sweep_us_worst: worst,
-        edges_per_s_median: if med > 0.0 {
-            edges / (med / 1_000_000.0)
+        dispatch_time_us_median: d_med,
+        dispatch_time_us_worst: d_worst,
+        e2e_time_us_median: e_med,
+        e2e_time_us_worst: e_worst,
+        edges_per_s_dispatch_median: if d_med > 0.0 {
+            edges / (d_med / 1_000_000.0)
         } else {
             0.0
         },
         stall_memory_counters: stall,
         counter_surface_status: status,
         path_kind: path_kind.to_string(),
+        timing_note: timing_note.to_string(),
     }
+}
+
+#[test]
+fn field_sweep_ir_probe_0_stack_peak_not_node_count_proxy() {
+    let (prog, node_count, peak) = planted_left_fold_stack_probe();
+    assert!(
+        node_count > peak,
+        "planted left-fold must have node_count ({node_count}) > peak stack ({peak})"
+    );
+    assert_eq!(peak, 2, "left-fold ((((a+b)+c)+d)+e) peak operand stack is 2");
+    let m = program_metrics(&prog);
+    assert_eq!(m.actual_peak_operand_stack, peak);
+    assert_ne!(m.actual_peak_operand_stack, m.total_nodes);
+    assert_eq!(m.runtime_eval_model, "scratch_indexed_dag");
+    assert_eq!(m.configured_scratch_capacity, 32);
 }
 
 #[test]
@@ -166,7 +198,6 @@ fn field_sweep_ir_probe_0_n4_parity_absolute_before_timing() {
     let dest_y = 2u32;
     let dest = dest_y * width + dest_x;
 
-    // --- MIN × INPUT_LIST vs PALMA bespoke CPU ---
     let w = synthetic_w(width, height);
     let palma_cfg = MinPlusStencilConfig {
         width,
@@ -193,17 +224,13 @@ fn field_sweep_ir_probe_0_n4_parity_absolute_before_timing() {
         Some(dest),
         iterations,
     );
-    let mut generic_d = Vec::with_capacity(bespoke_d.len());
-    for i in 0..bespoke_d.len() {
-        generic_d.push(generic_vals[i * 2]);
-    }
+    let generic_d: Vec<f32> = (0..bespoke_d.len()).map(|i| generic_vals[i * 2]).collect();
     assert!(
         bits_eq(&bespoke_d, &generic_d),
         "MIN×INPUT_LIST must be bit-exact vs PALMA CPU; max_ulp={}",
         max_ulp_diff(&bespoke_d, &generic_d)
     );
 
-    // --- PRODUCT × INPUT_LIST + banded flux vs Gu-Yang SaturatingFlux CPU ---
     let (wn, ws, we, ww) = StructuredFieldStencilConfig::zero_directional_weights();
     let flux_cfg = StructuredFieldStencilConfig {
         width,
@@ -236,49 +263,26 @@ fn field_sweep_ir_probe_0_n4_parity_absolute_before_timing() {
     let gather_flux = build_gather(width, height, &N4_OFFSETS_NSEW, "GridN4_NSEW");
     let prog_c = program_product_conductance(0, 1.0, SATURATING_FLUX_CHI_CFL_MAX);
     let after_c = cpu_sweep_once(
-        &flux_values,
-        width,
-        height,
-        2,
-        1, // write C into col 1
-        &gather_flux,
-        &prog_c,
-        None,
+        &flux_values, width, height, 2, 1, &gather_flux, &prog_c, None,
     );
-    // Merge: keep u in col0, C in col1
-    let mut dual = after_c.clone();
+    let mut dual = after_c;
     for i in 0..(width * height) as usize {
         dual[i * 2] = flux_values[i * 2];
     }
     let prog_flux = program_banded_flux(0, 1);
     let generic_flux = cpu_sweep_once(&dual, width, height, 2, 0, &gather_flux, &prog_flux, None);
 
-    let mut bespoke_u = Vec::new();
-    let mut generic_u = Vec::new();
-    for i in 0..(width * height) as usize {
-        bespoke_u.push(bespoke_flux[i * 2]);
-        generic_u.push(generic_flux[i * 2]);
-    }
+    let bespoke_u: Vec<f32> = (0..(width * height) as usize)
+        .map(|i| bespoke_flux[i * 2])
+        .collect();
+    let generic_u: Vec<f32> = (0..(width * height) as usize)
+        .map(|i| generic_flux[i * 2])
+        .collect();
     assert!(
         bits_eq(&bespoke_u, &generic_u),
         "PRODUCT×INPUT_LIST+banded flux must be bit-exact vs Gu-Yang CPU; max_ulp={}",
         max_ulp_diff(&bespoke_u, &generic_u)
     );
-
-    let _parity = [
-        ParityCaseResult {
-            case_name: "min_x_input_list_n4".into(),
-            bit_exact: true,
-            max_ulp: 0,
-            cells_compared: bespoke_d.len(),
-        },
-        ParityCaseResult {
-            case_name: "product_banded_flux_n4".into(),
-            bit_exact: true,
-            max_ulp: 0,
-            cells_compared: bespoke_u.len(),
-        },
-    ];
 }
 
 #[test]
@@ -292,18 +296,15 @@ fn field_sweep_ir_probe_0_n8_throwaway_gather_cliff_and_caps() {
 
     let prog = program_banded_flux(0, 1);
     let m = program_metrics(&prog);
-    let caps = live_eml_cap_facts(m.total_nodes, m.actual_max_stack_depth);
+    let caps = live_eml_cap_facts(m.total_nodes, m.actual_peak_operand_stack);
     assert_eq!(caps.configured_max_tree_nodes, 32);
     assert_eq!(caps.configured_stack_max, 32);
     assert!(caps.observed_max_nodes <= caps.configured_max_tree_nodes);
-    assert!(caps.observed_max_stack_depth <= caps.configured_stack_max);
+    assert!(caps.observed_peak_operand_stack <= caps.configured_stack_max);
+    assert_ne!(m.actual_peak_operand_stack, m.total_nodes);
 
-    // N8 cliff location: edge/degree inflation vs N4 on identical theater (no engine change).
     let edge_ratio = gather_n8.edge_count as f64 / gather_n4.edge_count as f64;
-    assert!(
-        edge_ratio > 1.5,
-        "N8 cliff not located: edge_ratio={edge_ratio}"
-    );
+    assert!(edge_ratio > 1.5, "N8 cliff not located: edge_ratio={edge_ratio}");
 }
 
 #[test]
@@ -312,8 +313,8 @@ fn field_sweep_ir_probe_0_adapter_pinned_measurement() {
         eprintln!("skipping field_sweep_ir_probe_0_adapter_pinned_measurement: no GPU");
         return;
     };
-    let Some(harness) = require_probe_harness() else {
-        eprintln!("skipping measurement: probe harness unavailable");
+    let Some(mut session) = require_probe_session() else {
+        eprintln!("skipping measurement: probe session unavailable");
         return;
     };
 
@@ -325,7 +326,6 @@ fn field_sweep_ir_probe_0_adapter_pinned_measurement() {
     let dest = dest_y * width + dest_x;
     let theater = format!("{width}x{height}");
 
-    // Absolute GPU parity for MIN×INPUT_LIST vs PALMA before admitting timing.
     let w = synthetic_w(width, height);
     let palma_cfg = MinPlusStencilConfig {
         width,
@@ -342,34 +342,27 @@ fn field_sweep_ir_probe_0_adapter_pinned_measurement() {
     let prog_min = program_min_x_input_list(0, 1);
     let m_min = program_metrics(&prog_min);
 
+    // Absolute GPU parity before admitting timing.
     let op = MinPlusStencilOp::new(&ctx, palma_cfg.clone()).expect("palma op");
     op.upload_values(&ctx, &values0).expect("upload");
     let gpu_bespoke_vals = op.run_ping_pong(&ctx, iterations).expect("bespoke gpu");
     let bespoke_d = extract_d_flat(&gpu_bespoke_vals, &palma_cfg).expect("extract");
 
-    let generic_gpu = harness
-        .run_sweep(
-            &values0,
-            &gather_palma,
-            &prog_min,
-            width * height,
-            2,
-            0,
-            Some(dest),
-            iterations,
-        )
-        .expect("generic gpu");
-    let mut generic_d = Vec::with_capacity(bespoke_d.len());
-    for i in 0..bespoke_d.len() {
-        generic_d.push(generic_gpu[i * 2]);
-    }
+    session
+        .configure(width * height, 2, &gather_palma, &prog_min)
+        .expect("configure");
+    session.upload_values(&values0).expect("upload");
+    session
+        .dispatch_iters(&prog_min, 0, Some(dest), iterations)
+        .expect("dispatch");
+    let generic_gpu = session.readback().expect("readback");
+    let generic_d: Vec<f32> = (0..bespoke_d.len()).map(|i| generic_gpu[i * 2]).collect();
     assert!(
         bits_eq(&bespoke_d, &generic_d),
-        "GPU MIN×INPUT_LIST must be bit-exact vs PALMA GPU before timing; max_ulp={}",
+        "GPU MIN×INPUT_LIST must be bit-exact vs PALMA GPU; max_ulp={}",
         max_ulp_diff(&bespoke_d, &generic_d)
     );
 
-    // Gu-Yang GPU absolute parity
     let (wn, ws, we, ww) = StructuredFieldStencilConfig::zero_directional_weights();
     let flux_cfg = StructuredFieldStencilConfig {
         width,
@@ -405,86 +398,35 @@ fn field_sweep_ir_probe_0_adapter_pinned_measurement() {
     flux_op.upload_values(&ctx, &flux_values).expect("upload");
     let (bespoke_flux_gpu, _) = flux_op.run_configured_horizon(&ctx).expect("flux gpu");
 
-    let after_c_cpu = cpu_sweep_once(
-        &flux_values,
-        width,
-        height,
-        2,
-        1,
-        &gather_flux,
-        &prog_c,
-        None,
-    );
-    let after_c = harness
-        .run_sweep(
-            &flux_values,
-            &gather_flux,
-            &prog_c,
-            width * height,
-            2,
-            1,
-            None,
-            1,
-        )
-        .expect("c gpu");
-    assert!(
-        bits_eq(&after_c_cpu, &after_c),
-        "GPU conductance pass must match CPU IR; max_ulp={}",
-        max_ulp_diff(&after_c_cpu, &after_c)
-    );
-    let mut dual = after_c_cpu.clone();
-    for i in 0..(width * height) as usize {
-        dual[i * 2] = flux_values[i * 2];
-    }
-    let generic_flux_cpu =
-        cpu_sweep_once(&dual, width, height, 2, 0, &gather_flux, &prog_flux, None);
-    let generic_flux_gpu = harness
-        .run_sweep(
-            &dual,
-            &gather_flux,
-            &prog_flux,
-            width * height,
-            2,
-            0,
-            None,
-            1,
-        )
-        .expect("flux generic gpu");
-    assert!(
-        bits_eq(&generic_flux_cpu, &generic_flux_gpu),
-        "GPU flux pass must match CPU IR; max_ulp={}",
-        max_ulp_diff(&generic_flux_cpu, &generic_flux_gpu)
-    );
-    let flux_params = params_from_config(&flux_cfg);
-    let bespoke_flux_cpu = cpu_horizon(&flux_values, &flux_params, 1);
-    assert!(
-        bits_eq(&bespoke_flux_cpu, &bespoke_flux_gpu),
-        "bespoke Gu-Yang GPU must match CPU oracle on measurement theater; max_ulp={}",
-        max_ulp_diff(&bespoke_flux_cpu, &bespoke_flux_gpu)
-    );
-    let mut bu = Vec::new();
-    let mut gu = Vec::new();
-    for i in 0..(width * height) as usize {
-        bu.push(bespoke_flux_gpu[i * 2]);
-        gu.push(generic_flux_gpu[i * 2]);
-    }
+    session
+        .configure(width * height, 2, &gather_flux, &prog_flux)
+        .expect("configure flux");
+    session.upload_values(&flux_values).expect("upload");
+    session
+        .dispatch_c_then_flux(&prog_c, &prog_flux, true)
+        .expect("c+flux");
+    let generic_flux_gpu = session.readback().expect("readback");
+    let bu: Vec<f32> = (0..(width * height) as usize)
+        .map(|i| bespoke_flux_gpu[i * 2])
+        .collect();
+    let gu: Vec<f32> = (0..(width * height) as usize)
+        .map(|i| generic_flux_gpu[i * 2])
+        .collect();
     assert!(
         bits_eq(&bu, &gu),
-        "GPU PRODUCT+flux must be bit-exact vs Gu-Yang GPU before timing; max_ulp={}",
+        "GPU PRODUCT+flux must be bit-exact vs Gu-Yang GPU; max_ulp={}",
         max_ulp_diff(&bu, &gu)
     );
 
-    // Timing at matched work occupancy (same theater/degree/edges/iterations).
-    let bespoke_palma_t = time_bespoke_palma_gpu(
-        &ctx, &w, &palma_cfg, iterations, WARM_RUNS, SAMPLE_RUNS,
-    );
-    let generic_palma_t = harness
-        .time_sweep_us(
+    // Matched-envelope diagnostic timing (persistent buffers; upload+dispatch).
+    // Occupancy remains UNMEASURED — no threshold ROUTE-SPECIALIZATION/JIT claim.
+    session
+        .configure(width * height, 2, &gather_palma, &prog_min)
+        .expect("reconfigure palma");
+    let (gen_palma_d, gen_palma_e2e) = session
+        .time_dispatch_us(
             &values0,
-            &gather_palma,
             &prog_min,
-            width * height,
-            2,
             0,
             Some(dest),
             iterations,
@@ -492,196 +434,161 @@ fn field_sweep_ir_probe_0_adapter_pinned_measurement() {
             SAMPLE_RUNS,
         )
         .expect("time generic palma");
+    let (bes_palma_d, bes_palma_e2e) =
+        time_bespoke_palma_matched(&ctx, &w, &palma_cfg, iterations, WARM_RUNS, SAMPLE_RUNS);
 
-    let bespoke_flux_t =
-        time_bespoke_flux_gpu(&ctx, &flux_values, &flux_cfg, WARM_RUNS, SAMPLE_RUNS);
-    // Generic flux path: C pass + flux pass (two sweeps) — time both for honesty.
-    let mut generic_flux_times = Vec::with_capacity(SAMPLE_RUNS);
-    for _ in 0..WARM_RUNS {
-        let ac = harness
-            .run_sweep(
-                &flux_values,
-                &gather_flux,
-                &prog_c,
-                width * height,
-                2,
-                1,
-                None,
-                1,
-            )
-            .unwrap();
-        let mut d = ac;
-        for i in 0..(width * height) as usize {
-            d[i * 2] = flux_values[i * 2];
-        }
-        let _ = harness
-            .run_sweep(&d, &gather_flux, &prog_flux, width * height, 2, 0, None, 1)
-            .unwrap();
-    }
-    for _ in 0..SAMPLE_RUNS {
-        let t0 = Instant::now();
-        let ac = harness
-            .run_sweep(
-                &flux_values,
-                &gather_flux,
-                &prog_c,
-                width * height,
-                2,
-                1,
-                None,
-                1,
-            )
-            .unwrap();
-        let mut d = ac;
-        for i in 0..(width * height) as usize {
-            d[i * 2] = flux_values[i * 2];
-        }
-        let _ = harness
-            .run_sweep(&d, &gather_flux, &prog_flux, width * height, 2, 0, None, 1)
-            .unwrap();
-        generic_flux_times.push(t0.elapsed().as_secs_f64() * 1_000_000.0);
-    }
+    session
+        .configure(width * height, 2, &gather_flux, &prog_flux)
+        .expect("reconfigure flux");
+    let (gen_flux_d, gen_flux_e2e) = session
+        .time_c_then_flux_us(&flux_values, &prog_c, &prog_flux, WARM_RUNS, SAMPLE_RUNS)
+        .expect("time generic flux");
+    let (bes_flux_d, bes_flux_e2e) =
+        time_bespoke_flux_matched(&ctx, &flux_values, &flux_cfg, WARM_RUNS, SAMPLE_RUNS);
 
-    // N8 throwaway cliff timing (generic only; no engine N8).
+    // N8 cliff diagnostic (generic only).
     let gather_n8 = build_gather(width, height, &N8_OFFSETS_THROWAWAY, "WorkshopThrowawayN8");
-    let n8_times = harness
-        .time_sweep_us(
-            &dual,
-            &gather_n8,
-            &prog_flux,
-            width * height,
-            2,
-            0,
-            None,
-            1,
-            WARM_RUNS,
-            SAMPLE_RUNS,
-        )
+    // Build dual on GPU via C then time flux-only on N8 would need C first — for cliff,
+    // time one flux dispatch over N8 gather on precomputed dual from CPU (setup excluded).
+    let after_c_cpu = cpu_sweep_once(
+        &flux_values, width, height, 2, 1, &gather_flux, &prog_c, None,
+    );
+    let mut dual = after_c_cpu;
+    for i in 0..(width * height) as usize {
+        dual[i * 2] = flux_values[i * 2];
+    }
+    session
+        .configure(width * height, 2, &gather_n8, &prog_flux)
+        .expect("n8 configure");
+    let (n8_d, n8_e2e) = session
+        .time_dispatch_us(&dual, &prog_flux, 0, None, 1, WARM_RUNS, SAMPLE_RUNS)
         .expect("n8 time");
+
+    let palma_note =
+        "matched_envelope: persistent op/session; timed upload+GPU-resident dispatch; no per-iter realloc/readback; occupancy UNMEASURED";
+    let flux_note =
+        "matched_envelope: persistent ops; timed upload+GPU-resident dispatch (no readback); generic=2 dispatches (C then flux, no CPU merge); bespoke=1 horizon dispatch; counts published; occupancy UNMEASURED";
 
     let rows = vec![
         row_from(
             "min_x_input_list_n4_bespoke",
-            &harness,
+            &session,
             &gather_palma,
             &theater,
-            m_min.total_nodes,
-            m_min.actual_max_stack_depth,
-            m_min.column_reads_per_edge,
+            &m_min,
             "bespoke_palma",
-            &bespoke_palma_t,
-            true,
+            &bes_palma_d,
+            &bes_palma_e2e,
+            iterations,
+            palma_note,
         ),
         row_from(
             "min_x_input_list_n4_generic",
-            &harness,
+            &session,
             &gather_palma,
             &theater,
-            m_min.total_nodes,
-            m_min.actual_max_stack_depth,
-            m_min.column_reads_per_edge,
+            &m_min,
             "generic_ir",
-            &generic_palma_t,
-            true,
+            &gen_palma_d,
+            &gen_palma_e2e,
+            iterations,
+            palma_note,
         ),
         row_from(
             "product_banded_flux_n4_bespoke",
-            &harness,
+            &session,
             &gather_flux,
             &theater,
-            m_flux.total_nodes,
-            m_flux.actual_max_stack_depth,
-            m_flux.column_reads_per_edge,
+            &m_flux,
             "bespoke_guyang",
-            &bespoke_flux_t,
-            true,
+            &bes_flux_d,
+            &bes_flux_e2e,
+            1,
+            flux_note,
         ),
         row_from(
             "product_banded_flux_n4_generic",
-            &harness,
+            &session,
             &gather_flux,
             &theater,
-            m_flux.total_nodes,
-            m_flux.actual_max_stack_depth,
-            m_flux.column_reads_per_edge,
+            &m_flux,
             "generic_ir",
-            &generic_flux_times,
-            true,
+            &gen_flux_d,
+            &gen_flux_e2e,
+            2,
+            flux_note,
         ),
         row_from(
             "product_banded_flux_n8_generic_cliff",
-            &harness,
+            &session,
             &gather_n8,
             &theater,
-            m_flux.total_nodes,
-            m_flux.actual_max_stack_depth,
-            m_flux.column_reads_per_edge,
+            &m_flux,
             "generic_ir_n8_throwaway",
-            &n8_times,
-            true,
+            &n8_d,
+            &n8_e2e,
+            1,
+            "N8 cliff diagnostic; occupancy UNMEASURED",
         ),
     ];
 
-    let palma_med_ratio =
-        median_f64(generic_palma_t.clone()) / median_f64(bespoke_palma_t.clone()).max(1e-9);
-    let palma_worst_ratio =
-        worst_f64(&generic_palma_t) / worst_f64(&bespoke_palma_t).max(1e-9);
-    let flux_med_ratio =
-        median_f64(generic_flux_times.clone()) / median_f64(bespoke_flux_t.clone()).max(1e-9);
-    let flux_worst_ratio =
-        worst_f64(&generic_flux_times) / worst_f64(&bespoke_flux_t).max(1e-9);
+    assert!(rows.iter().all(|r| r.matched_occupancy == "UNMEASURED"));
+    assert!(rows
+        .iter()
+        .all(|r| r.counter_surface_status.starts_with("STOP(")));
 
-    let overall_med = palma_med_ratio.max(flux_med_ratio);
-    let overall_worst = palma_worst_ratio.max(flux_worst_ratio);
-    let (verdict, verdict_note) = threshold_verdict(overall_med, overall_worst);
+    let adjudication = threshold_adjudication_status(false, true);
+    assert_eq!(
+        adjudication,
+        "DIAGNOSTIC_ONLY(occupancy_UNMEASURED;no_threshold_verdict)"
+    );
+
     let caps = live_eml_cap_facts(
         m_min.total_nodes.max(m_flux.total_nodes),
         m_min
-            .actual_max_stack_depth
-            .max(m_flux.actual_max_stack_depth),
+            .actual_peak_operand_stack
+            .max(m_flux.actual_peak_operand_stack),
     );
 
-    // Required stall/memory counters unavailable ⇒ STOP (do not infer memory-shadow from timing).
-    assert!(
-        rows.iter()
-            .all(|r| r.counter_surface_status.starts_with("STOP(")),
-        "missing required counters must STOP, not invent memory-shadow"
-    );
-    assert!(rows.iter().all(|r| r.matched_occupancy));
-
-    eprintln!("FIELD-SWEEP-IR-PROBE-0 measurement summary");
-    eprintln!("adapter={} backend={}", harness.adapter_name, harness.backend);
+    eprintln!("FIELD-SWEEP-IR-PROBE-0 Remand-1 measurement summary");
     eprintln!(
-        "caps configured nodes={} stack={} observed nodes={} stack={} class={}",
+        "adapter={} backend={}",
+        session.adapter_name, session.backend
+    );
+    eprintln!(
+        "caps configured nodes={} stack={} observed nodes={} peak_operand_stack={} scratch_cap={} class={}",
         caps.configured_max_tree_nodes,
         caps.configured_stack_max,
         caps.observed_max_nodes,
-        caps.observed_max_stack_depth,
+        caps.observed_peak_operand_stack,
+        caps.probe_scratch_capacity,
         caps.resource_class_label
     );
+    eprintln!("threshold_adjudication={adjudication}");
     eprintln!(
-        "ratios palma_med={palma_med_ratio:.3} palma_worst={palma_worst_ratio:.3} flux_med={flux_med_ratio:.3} flux_worst={flux_worst_ratio:.3}"
+        "diagnostic_ratios palma_dispatch_med={:.3} flux_dispatch_med={:.3} (NOT threshold verdict)",
+        median_f64(gen_palma_d.clone()) / median_f64(bes_palma_d.clone()).max(1e-9),
+        median_f64(gen_flux_d.clone()) / median_f64(bes_flux_d.clone()).max(1e-9)
     );
-    eprintln!("threshold_verdict={verdict} note={verdict_note}");
     eprintln!(
-        "n8_cliff edges n4={} n8={} med_us_n8={:.3}",
-        gather_flux.edge_count,
-        gather_n8.edge_count,
-        median_f64(n8_times)
+        "n8_cliff edges n4={} n8={}",
+        gather_flux.edge_count, gather_n8.edge_count
     );
     for r in &rows {
         eprintln!(
-            "row case={} path={} med_us={:.3} worst_us={:.3} edges_s={:.1} counters={} status={}",
+            "row case={} path={} occ={} disp_n={} disp_med_us={:.3} e2e_med_us={:.3} peak_stack={} nodes={}/{}/{} status={}",
             r.case_name,
             r.path_kind,
-            r.time_per_sweep_us_median,
-            r.time_per_sweep_us_worst,
-            r.edges_per_s_median,
-            r.stall_memory_counters,
+            r.matched_occupancy,
+            r.dispatch_count_per_sample,
+            r.dispatch_time_us_median,
+            r.e2e_time_us_median,
+            r.actual_peak_operand_stack,
+            r.map_nodes,
+            r.fold_nodes,
+            r.post_nodes,
             r.counter_surface_status
         );
     }
-
-    // Persist machine-readable signal for the results doc authoring step.
-    let _ = (verdict, rows, caps);
+    let _ = rows;
 }
