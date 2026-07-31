@@ -1,0 +1,9 @@
+# FIELD-SWEEP-SINGLE-PATH — retiring seven-file bespoke field-shader catalogue.
+# Format: repo-relative path | rationale | promotion-blocker
+crates/simthing-gpu/src/shaders/min_plus_stencil.wgsl | PALMA migration oracle retained alongside generic field_sweep | delete at DOCTRINE-CI-RECONCILE-0 after migration proof closes
+crates/simthing-gpu/src/shaders/min_plus_traversal_d_probe.wgsl | PALMA compact observation oracle retained during migration | delete at DOCTRINE-CI-RECONCILE-0 after movement readback promotion
+crates/simthing-gpu/src/shaders/saturating_flux_choke_threshold.wgsl | Gu-Yang threshold oracle retained during migration | delete at DOCTRINE-CI-RECONCILE-0 after comparative projection promotion
+crates/simthing-gpu/src/shaders/stress_compose.wgsl | legacy field composition oracle retained during migration | delete at DOCTRINE-CI-RECONCILE-0 after EML projection migration
+crates/simthing-gpu/src/shaders/structured_field_stencil.wgsl | Gu-Yang migration oracle retained unmodified | delete at DOCTRINE-CI-RECONCILE-0 after Phase 9 migration
+crates/simthing-gpu/src/shaders/structured_field_stencil_atlas_mask.wgsl | legacy atlas field oracle retained during migration | delete at DOCTRINE-CI-RECONCILE-0 after atlas migration
+crates/simthing-gpu/src/shaders/w_impedance_compose.wgsl | PALMA W projection oracle retained during migration | delete at DOCTRINE-CI-RECONCILE-0 after EML projection migration

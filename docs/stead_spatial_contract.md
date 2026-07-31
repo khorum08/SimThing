@@ -68,6 +68,13 @@ The three horizon surfaces, their adjacency, and their convergence targets:
 | Gu-Yang falloff borders | **grid N4** of `(col,row)` | `saturating_flux_choke_threshold` + `structured_field_stencil` | **yes** (§7 P1; dense-global is rejected) |
 | PALMA reach field | **grid N4** of `(col,row)` | `min_plus_stencil` + `w_impedance_compose` | **yes** |
 
+As of rung 5.5, PALMA and Gu-Yang N4 authoring compile to the one generic, proof-admitted
+`FieldSweepRegistration`: authored EML map / fixed-linear-fold / post programs over the existing
+input-list gather, with canonical neighbor order and conservative symmetry admitted before execution.
+The named legacy operators above remain unmodified migration oracles during parity-alongside; they are
+not a second production route. Target/neighbor reads exist only in the field EML context, and algebra
+identity is authored program data rather than an enum, tag, or operator dispatch.
+
 The link gather (coupling accumulation over the hyperlane graph) is **not** the heatmap stencil; Gu-Yang/PALMA are grid stencils over N4 lattice neighbors within a bounded `ExecutionTheater`. These adjacencies must not be conflated. Borders **emerge as field expressions** (SaturatingFlux falloff fronts + PALMA min-plus reach); Gu-Yang/SaturatingFlux produces falloff fronts, never a frontline semantic service, and PALMA `D` is a field, not a route (no predecessors/paths) — see §9. A bespoke per-surface kernel in the Studio is a STEAD/convergence violation; if an existing operator structurally cannot host a needed step, STOP and escalate to design authority rather than forking a kernel.
 
 They may appear ONLY inside an explicitly-named *Withdrawn doctrine* / *Correction* section (like this one) that negates them.

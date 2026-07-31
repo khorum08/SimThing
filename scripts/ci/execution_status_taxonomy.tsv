@@ -1,6 +1,7 @@
 # path	class	basis  # EXECUTION-STATUS-TAXONOMY-0; classes: executed|oracle|rehearsal|compile-plan
 # Census: every driver/kernel pub mod is taxonomy, mixed residual (secondary evidence), or non_execution.
 # DA-ruled dual-posture files hold PRIMARY class here; secondary evidence in execution_status_mixed_posture.tsv (mixed_ruled).
+crates/simthing-driver/src/field_sweep_compile.rs	compile-plan	Authored PALMA and Gu-Yang specs lower to proof-admitted generic field-sweep registrations
 crates/simthing-driver/src/arena_allocation_oracle.rs	oracle	CPU/judge independence surface for conservation or plan parity
 crates/simthing-driver/src/arena_allocation_plan.rs	compile-plan	Plan/compile builder producing GPU/session plans (not the live tick itself)
 crates/simthing-driver/src/arena_allocation_sync.rs	executed	Live driver/kernel execution or residency path in the recursive RF / arena stack
@@ -107,6 +108,7 @@ crates/simthing-kernel/src/exact_magnitude_gate.rs	executed	Exact-magnitude proo
 crates/simthing-kernel/src/gpu_readback.rs	executed	Kernel GPU readback of emission/threshold records after executed dispatches
 crates/simthing-kernel/src/indexed_scatter.rs	executed	Indexed scatter op path (CPU scatter + validation) for kernel residency updates
 crates/simthing-kernel/src/intensity_accumulator.rs	executed	Live driver/kernel execution or residency path in the recursive RF / arena stack
+crates/simthing-kernel/src/field_sweep.rs	executed	Authoritative generic EML field-sweep admission, residency, dispatch, and readback path
 crates/simthing-kernel/src/overlay_orderband.rs	compile-plan	plan_overlay_orderband — OrderBand plan for overlay application
 crates/simthing-kernel/src/overlay_prep.rs	compile-plan	build_overlay_deltas — overlay plan prep feeding AccumulatorOp dispatch
 crates/simthing-kernel/src/participation.rs	executed	Placed-participant validation/mint for spatial participation on executed trees

@@ -1,4 +1,27 @@
 # symbol | door-class | rationale | promotion-blocker
+CanonicalOrderProof | authority-export | FIELD-SWEEP-N4-PARITY-0 sealed authored-order proof consumed by field registration admission | retire when proof mint and admission are in-crate only
+FIELD_SWEEP_LEGACY_PROGRAM_NODES | authority-export | FIELD-SWEEP-N4-PARITY-0 fixed legacy resource-class program-node ceiling | retire when EML-RESOURCE-CLASS-ADMISSION-0 replaces the single class
+FIELD_SWEEP_LEGACY_STACK_SLOTS | authority-export | FIELD-SWEEP-N4-PARITY-0 fixed legacy resource-class stack ceiling | retire when EML-RESOURCE-CLASS-ADMISSION-0 replaces the single class
+FIELD_SWEEP_WORKGROUP_SIZE | authority-export | FIELD-SWEEP-N4-PARITY-0 canonical generic sweep dispatch width | retire when dispatch geometry is admitted wholly inside the kernel
+FieldAdjacency | authority-export | FIELD-SWEEP-N4-PARITY-0 exact GridN4 adjacency plus existing input-list gather | retire when field authoring lowers through a narrower spec door
+FieldLawProof | authority-export | FIELD-SWEEP-N4-PARITY-0 sealed conservative or explicit non-conservative law proof | retire when field law is intrinsic in the admitted program type
+FieldSweepAdmissionError | authority-export | FIELD-SWEEP-N4-PARITY-0 typed admission rejection surface | retire when field authoring lowers through a narrower spec door
+FieldSweepExecutionError | authority-export | FIELD-SWEEP-N4-PARITY-0 typed CPU/GPU execution and parity-oracle error surface | retire when parity oracle and session are in-crate only
+FieldSweepRegistration | authority-export | FIELD-SWEEP-N4-PARITY-0 immutable proof-present production field registration | retire when field registration consumers are in-crate only
+FieldSweepRegistrationRequest | authority-export | FIELD-SWEEP-N4-PARITY-0 untrusted authored field admission request | retire when field authoring lowers through a narrower spec door
+FieldSweepResourceClass | authority-export | FIELD-SWEEP-N4-PARITY-0 admitted fixed resource-class witness | retire when EML-RESOURCE-CLASS-ADMISSION-0 owns typed classes
+FieldSweepResourceClassRequest | authority-export | FIELD-SWEEP-N4-PARITY-0 untrusted resource request accepting only fixed 32/32 | retire when EML-RESOURCE-CLASS-ADMISSION-0 owns typed classes
+FieldSweepSession | authority-export | FIELD-SWEEP-N4-PARITY-0 kernel-owned generic sweep residency/dispatch/readback session | retire when session construction is only reachable from the standard sim lifecycle
+GRID_N4_NSEW | authority-export | FIELD-SWEEP-N4-PARITY-0 Gu-Yang authored canonical N4 order | retire when order lowers from sealed authored adjacency specs
+GRID_N4_WENS | authority-export | FIELD-SWEEP-N4-PARITY-0 PALMA authored canonical N4 order | retire when order lowers from sealed authored adjacency specs
+GridN4Offset | authority-export | FIELD-SWEEP-N4-PARITY-0 exact unit cardinal offset value | retire when order lowers from sealed authored adjacency specs
+UndirectedSymmetryCertificate | authority-export | FIELD-SWEEP-N4-PARITY-0 sealed conservative-fold adjacency symmetry witness | retire when undirected symmetry is intrinsic in the admitted adjacency type
+apply_field_sweep_registration | authority-export | FIELD-SWEEP-N4-PARITY-0 sole admission door for proof-present field registrations | retire when field registration consumers are in-crate only
+execute_field_sweep_cpu | authority-export | FIELD-SWEEP-N4-PARITY-0 independent CPU oracle for one generic sweep | retire only if another independent bit-exact parity judge replaces it
+execute_field_sweep_cpu_iterations | authority-export | FIELD-SWEEP-N4-PARITY-0 independent CPU oracle for iterative PALMA parity | retire only if another independent bit-exact parity judge replaces it
+field_param | authority-export | FIELD-SWEEP-N4-PARITY-0 fixed edge-context parameter vocabulary | retire when field authoring lowers through a sealed builder with no raw EML indices
+field_sweep | authority-export | FIELD-SWEEP-N4-PARITY-0 authoritative generic field-sweep namespace | retire when kernel export set is closed by type-boundary admission
+opcode_in_accumulator_vocabulary | authority-export | FIELD-SWEEP-N4-PARITY-0 separates field-only target/neighbor reads from ordinary EvalEML admission | retire when opcode context is encoded in distinct admitted opcode types
 accumulator_op | authority-export | Exported kernel module surface; authority-bearing namespace | retire when kernel export set is closed by type-boundary admission
 AccumulatorInputGpu | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
 AccumulatorInputListTable | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission

@@ -5,10 +5,13 @@
 # CI-A-CLOSEOUT-0 so no invariant lives in the engine (doctrine-as-data, §0).
 # Adding/removing a sealed type is a one-line, diff-auditable data edit here.
 BandCrossingDelta
+CanonicalOrderProof
 CandidateFMagnitudeReport
 EmissionRecord
 EmissionRecordGpu
 EmissionRecordReadback
+FieldLawProof
+FieldSweepRegistration
 PlacedParticipant
 ResolvedWriteAuthority
 ThresholdEmission
@@ -17,3 +20,4 @@ ThresholdEmissionReadback
 ThresholdEvent
 ThresholdEventCandidatesReadback
 ThresholdEventGpu
+UndirectedSymmetryCertificate

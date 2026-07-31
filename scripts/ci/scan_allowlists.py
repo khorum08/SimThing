@@ -11,6 +11,26 @@ ROOT = Path(__file__).resolve().parents[2]
 KERNEL_SRC = ROOT / "crates/simthing-kernel/src"
 LIB_RS = KERNEL_SRC / "lib.rs"
 SEALED_TYPES_FILE = ROOT / "scripts/ci/allow/sealed_types.txt"
+FIELD_SWEEP_LEGACY_FILE = ROOT / "scripts/ci/allow/field_sweep_legacy_shaders.txt"
+FIELD_SWEEP_SHADER_DIRS = (
+    ROOT / "crates/simthing-gpu/src/shaders",
+    ROOT / "crates/simthing-kernel/src/shaders",
+)
+FIELD_SWEEP_CANONICAL_INTERPRETER = "crates/simthing-kernel/src/shaders/field_sweep.wgsl"
+FIELD_SWEEP_EXPLICIT_NON_FIELD_SHADERS = frozenset(
+    {
+        "crates/simthing-gpu/src/shaders/accumulator_op_generic.wgsl",
+        "crates/simthing-gpu/src/shaders/candidate_f_magnitude.wgsl",
+        "crates/simthing-gpu/src/shaders/structural_validation.wgsl",
+        "crates/simthing-kernel/src/shaders/accumulator_op.wgsl",
+        "crates/simthing-kernel/src/shaders/anchor_table_magnitude_values.wgsl",
+        "crates/simthing-kernel/src/shaders/anchor_table_maintain.wgsl",
+        "crates/simthing-kernel/src/shaders/anchor_table_remap.wgsl",
+        "crates/simthing-kernel/src/shaders/candidate_f_magnitude.wgsl",
+        "crates/simthing-kernel/src/shaders/snapshot.wgsl",
+        "crates/simthing-kernel/src/shaders/values_fill.wgsl",
+    }
+)
 
 
 def load_sealed_types() -> tuple[str, ...]:
@@ -240,11 +260,36 @@ def scan_kernel_surface(allow_path: Path) -> list[str]:
     return violations
 
 
+def scan_field_sweep_shaders(allow_path: Path) -> list[str]:
+    """Reject bespoke field shaders in either production shader tree."""
+    allowed = read_allowlist_symbols(allow_path)
+    violations: list[str] = []
+    for shader_dir in FIELD_SWEEP_SHADER_DIRS:
+        if not shader_dir.exists():
+            continue
+        for path in sorted(shader_dir.rglob("*.wgsl")):
+            rel = path.relative_to(ROOT).as_posix()
+            if rel == FIELD_SWEEP_CANONICAL_INTERPRETER:
+                continue
+            if rel in FIELD_SWEEP_EXPLICIT_NON_FIELD_SHADERS:
+                continue
+            if rel not in allowed:
+                violations.append(
+                    f"{rel}: bespoke field shader is outside the retiring seven-file catalogue"
+                )
+    return violations
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "mode",
-        choices=("sealed-producers", "buffer-handles", "kernel-surface"),
+        choices=(
+            "sealed-producers",
+            "buffer-handles",
+            "kernel-surface",
+            "field-sweep-shaders",
+        ),
     )
     args = parser.parse_args()
     allow_dir = ROOT / "scripts/ci/allow"
@@ -252,8 +297,10 @@ def main() -> int:
         violations = scan_sealed_producers(allow_dir / "sealed_producers.txt")
     elif args.mode == "buffer-handles":
         violations = scan_buffer_handles(allow_dir / "inert_buffer_handles.txt")
-    else:
+    elif args.mode == "kernel-surface":
         violations = scan_kernel_surface(allow_dir / "kernel_surface.txt")
+    else:
+        violations = scan_field_sweep_shaders(FIELD_SWEEP_LEGACY_FILE)
     for v in violations:
         print(v)
     return 1 if violations else 0

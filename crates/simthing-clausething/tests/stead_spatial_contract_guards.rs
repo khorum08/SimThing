@@ -5,10 +5,18 @@
 //! `docs/stead_spatial_contract.md`.
 
 use simthing_clausething::{
-    MapGenLatticeOptions, MapGenMovementFrontErrorKind, MapgenStructuralGridBudget,
-    StructuralGridFrame, admit_structural_grid, generate_default_mapgen_movement_front_authoring,
+    admit_structural_grid, generate_default_mapgen_movement_front_authoring,
     generate_default_mapgen_palma_feedstock, generate_mapgen_lattice_hierarchy,
-    parse_mapgen_neutral_document,
+    parse_mapgen_neutral_document, MapGenLatticeOptions, MapGenMovementFrontErrorKind,
+    MapgenStructuralGridBudget, StructuralGridFrame,
+};
+use simthing_core::{eml_opcode, ColumnIndex, SlotIndex};
+use simthing_driver::{
+    compile_gu_yang_n4_field_sweeps, compile_palma_n4_field_sweep, GuYangN4FieldSweepSpec,
+    PalmaN4FieldSweepSpec,
+};
+use simthing_gpu::{
+    FIELD_SWEEP_LEGACY_PROGRAM_NODES, FIELD_SWEEP_LEGACY_STACK_SLOTS, GRID_N4_NSEW, GRID_N4_WENS,
 };
 
 /// A small dense layout (edge ≤ 10) that admits a single bounded execution theater for PALMA/Gu-Yang.
@@ -156,5 +164,51 @@ big = {
     assert_eq!(
         err.kind,
         MapGenMovementFrontErrorKind::AtlasDeferralRequired
+    );
+}
+
+#[test]
+fn palma_and_gu_yang_n4_must_compile_through_generic_field_sweep() {
+    let palma = compile_palma_n4_field_sweep(PalmaN4FieldSweepSpec {
+        width: 4,
+        height: 4,
+        n_dims: 2,
+        d_col: ColumnIndex::try_from_admitted_authored(0, 2).expect("PALMA d column"),
+        w_col: ColumnIndex::try_from_admitted_authored(1, 2).expect("PALMA W column"),
+        destination_slot: SlotIndex::new(15),
+        inf_sentinel: 1.0e20,
+    })
+    .expect("PALMA N4 must admit through the generic field-sweep registration");
+    assert_eq!(palma.adjacency().offsets(), &GRID_N4_WENS);
+    assert_eq!(
+        palma.resource_class().stack_slots(),
+        FIELD_SWEEP_LEGACY_STACK_SLOTS
+    );
+    assert_eq!(
+        palma.resource_class().max_program_nodes(),
+        FIELD_SWEEP_LEGACY_PROGRAM_NODES
+    );
+    assert!(palma
+        .map_program()
+        .iter()
+        .any(|node| node.opcode == eml_opcode::NEIGHBOR_VALUE));
+
+    let [conductance, flux] = compile_gu_yang_n4_field_sweeps(GuYangN4FieldSweepSpec {
+        width: 4,
+        height: 4,
+        n_dims: 2,
+        value_col: ColumnIndex::try_from_admitted_authored(0, 2).expect("Gu-Yang value column"),
+        conductance_col: ColumnIndex::try_from_admitted_authored(1, 2)
+            .expect("Gu-Yang conductance column"),
+        saturation: 4.0,
+        chi: 0.75,
+        dt: 0.125,
+    })
+    .expect("Gu-Yang N4 must admit through generic proof-present registrations");
+    assert_eq!(conductance.adjacency().offsets(), &GRID_N4_NSEW);
+    assert_eq!(flux.adjacency().offsets(), &GRID_N4_NSEW);
+    assert_eq!(
+        flux.resource_class().stack_slots(),
+        FIELD_SWEEP_LEGACY_STACK_SLOTS
     );
 }
