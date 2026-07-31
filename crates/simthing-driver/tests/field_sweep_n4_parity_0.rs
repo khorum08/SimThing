@@ -358,6 +358,41 @@ fn field_sweep_n4_parity_0_typed_pre_dispatch_negatives_bite() {
         Err(simthing_gpu::FieldSweepExecutionError::TransientNotInitialized)
     ));
 
+    let mut producer_b_request = valid_request();
+    producer_b_request.adjacency =
+        FieldAdjacency::grid_n4(4, 4, GRID_N4_NSEW, admitted_col(0, 2)).expect("producer B N4");
+    producer_b_request.canonical_order_proof =
+        Some(producer_b_request.adjacency.apply_canonical_order_proof());
+    producer_b_request.output = FieldSweepOutput::Transient;
+    let producer_b =
+        apply_field_sweep_registration(producer_b_request).expect("admit transient producer B");
+    let mut consumer_b_request = valid_request();
+    consumer_b_request.adjacency = producer_b.adjacency().clone();
+    consumer_b_request.canonical_order_proof =
+        Some(consumer_b_request.adjacency.apply_canonical_order_proof());
+    consumer_b_request.post_program = vec![
+        node(
+            eml_opcode::PARAM,
+            0,
+            simthing_gpu::field_param::TARGET_TRANSIENT,
+        ),
+        node(eml_opcode::RETURN_TOP, 0, 0),
+    ];
+    consumer_b_request.transient_read_proof = Some(
+        producer_b
+            .apply_transient_certificate()
+            .expect("mint producer B witness"),
+    );
+    let consumer_b =
+        apply_field_sweep_registration(consumer_b_request).expect("admit transient consumer B");
+    assert_ne!(producer.adjacency(), consumer_b.adjacency());
+    assert_eq!(producer.slots(), consumer_b.slots());
+    assert_eq!(producer.n_dims(), consumer_b.n_dims());
+    assert!(matches!(
+        execute_field_sweep_cpu_chain(&vec![0.0; 4 * 4 * 2], &[producer.clone(), consumer_b]),
+        Err(simthing_gpu::FieldSweepExecutionError::TransientProducerBindingMismatch)
+    ));
+
     let mut invalid_gather = valid_request();
     invalid_gather.adjacency = FieldAdjacency::grid_n4(
         4,

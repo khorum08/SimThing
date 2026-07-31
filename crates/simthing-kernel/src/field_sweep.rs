@@ -756,10 +756,12 @@ impl FieldSweepRegistration {
     pub fn apply_transient_certificate(
         &self,
     ) -> Result<FieldTransientCertificate, FieldSweepAdmissionError> {
-        if self.output != FieldSweepOutput::Transient {
-            return Err(FieldSweepAdmissionError::TransientCertificateFromMatrixOutput);
-        }
-        Ok(FieldTransientCertificate {
+        self.transient_certificate()
+            .ok_or(FieldSweepAdmissionError::TransientCertificateFromMatrixOutput)
+    }
+
+    fn transient_certificate(&self) -> Option<FieldTransientCertificate> {
+        (self.output == FieldSweepOutput::Transient).then_some(FieldTransientCertificate {
             adjacency_order_fingerprint: self.adjacency.order_fingerprint,
             n_dims: self.n_dims,
         })
@@ -1232,12 +1234,12 @@ pub fn execute_field_sweep_cpu(
     registration: &FieldSweepRegistration,
 ) -> Result<Vec<f32>, FieldSweepExecutionError> {
     let mut transient = vec![0.0; registration.slots() as usize];
-    let mut transient_initialized = false;
+    let mut transient_producer = None;
     execute_field_sweep_cpu_with_state(
         values,
         registration,
         &mut transient,
-        &mut transient_initialized,
+        &mut transient_producer,
         &registration.adjacency.schedule,
     )
 }
@@ -1253,7 +1255,7 @@ pub fn execute_field_sweep_cpu_chain(
     };
     let mut current = values.to_vec();
     let mut transient = vec![0.0; first.slots() as usize];
-    let mut transient_initialized = false;
+    let mut transient_producer = None;
     for registration in registrations {
         if registration.slots() != first.slots() || registration.n_dims != first.n_dims {
             return Err(FieldSweepExecutionError::RegistrationBindingChanged);
@@ -1262,7 +1264,7 @@ pub fn execute_field_sweep_cpu_chain(
             &current,
             registration,
             &mut transient,
-            &mut transient_initialized,
+            &mut transient_producer,
             &registration.adjacency.schedule,
         )?;
     }
@@ -1277,12 +1279,12 @@ pub fn execute_field_sweep_cpu_natural_order(
 ) -> Result<Vec<f32>, FieldSweepExecutionError> {
     let natural_order: Vec<_> = (0..registration.slots()).map(SlotIndex::new).collect();
     let mut transient = vec![0.0; registration.slots() as usize];
-    let mut transient_initialized = false;
+    let mut transient_producer = None;
     execute_field_sweep_cpu_with_state(
         values,
         registration,
         &mut transient,
-        &mut transient_initialized,
+        &mut transient_producer,
         &natural_order,
     )
 }
@@ -1291,7 +1293,7 @@ fn execute_field_sweep_cpu_with_state(
     values: &[f32],
     registration: &FieldSweepRegistration,
     transient: &mut [f32],
-    transient_initialized: &mut bool,
+    transient_producer: &mut Option<FieldTransientCertificate>,
     target_order: &[SlotIndex],
 ) -> Result<Vec<f32>, FieldSweepExecutionError> {
     let required = registration.slots() as usize * registration.n_dims as usize;
@@ -1307,8 +1309,14 @@ fn execute_field_sweep_cpu_with_state(
             required: registration.slots() as usize,
         });
     }
-    if registration.transient_read_proof.is_some() && !*transient_initialized {
-        return Err(FieldSweepExecutionError::TransientNotInitialized);
+    if let Some(required_producer) = registration.transient_read_proof {
+        match *transient_producer {
+            None => return Err(FieldSweepExecutionError::TransientNotInitialized),
+            Some(actual_producer) if actual_producer != required_producer => {
+                return Err(FieldSweepExecutionError::TransientProducerBindingMismatch)
+            }
+            Some(_) => {}
+        }
     }
     let mut output = values.to_vec();
     for &target_slot in target_order {
@@ -1368,7 +1376,7 @@ fn execute_field_sweep_cpu_with_state(
         }
     }
     if registration.output == FieldSweepOutput::Transient {
-        *transient_initialized = true;
+        *transient_producer = registration.transient_certificate();
     }
     Ok(output)
 }
@@ -1383,13 +1391,13 @@ pub fn execute_field_sweep_cpu_iterations(
     }
     let mut current = values.to_vec();
     let mut transient = vec![0.0; registration.slots() as usize];
-    let mut transient_initialized = false;
+    let mut transient_producer = None;
     for _ in 0..iterations {
         current = execute_field_sweep_cpu_with_state(
             &current,
             registration,
             &mut transient,
-            &mut transient_initialized,
+            &mut transient_producer,
             &registration.adjacency.schedule,
         )?;
     }
@@ -2024,6 +2032,10 @@ pub enum FieldSweepExecutionError {
     TransientLength { actual: usize, required: usize },
     #[error("field sweep transient input has not been produced in this session chain")]
     TransientNotInitialized,
+    #[error(
+        "field sweep transient input was produced under a different adjacency or layout binding"
+    )]
+    TransientProducerBindingMismatch,
     #[error("field sweep iterations must be > 0 (got {0})")]
     InvalidIterations(u32),
     #[error("field EML execution requires neighbor context")]
