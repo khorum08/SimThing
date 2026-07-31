@@ -1,7 +1,7 @@
 # FIELD-SWEEP-IR-PROBE-0 results
 
 - Track: 0.0.8.7 RF arena modernization (rung 5.4)
-- Status: **PROBATION** — Remand `5138380302` (evidence rows + ingress) discharged; workshop-leaf disposable probe (test-only); STOP for orchestration/DA
+- Status: **COMPLETE — DA-GRADUATED / merged #1526 @ a895c989** as an HONEST INDETERMINATE probe. Parity absolute and met (N4 bit-exact vs PALMA and Gu-Yang). Threshold NOT adjudicated: occupancy/stall counters are unreachable through admitted public doors, so the tiered gate as authored was unsatisfiable — a DA gate-design defect, not a coder failure. The counter-surface STOP and the refusal to infer memory-shadow from timing were correct and are upheld. Threshold adjudication + counter requirement reassigned to 5.7.
 - HD-RECEIPT: `e52f583c42e0`
 - Remand 1: Board comment [`5137964630`](https://github.com/khorum08/SimThing/issues/1332#issuecomment-5137964630) (accepted/frozen)
 - Remand 2: Board comment [`5138380302`](https://github.com/khorum08/SimThing/issues/1332#issuecomment-5138380302)
