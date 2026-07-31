@@ -1,7 +1,7 @@
 # FIELD-ADJACENCY-GENERATORS-0 results
 
 - Track: 0.0.8.7 RF arena modernization (rung 5.6)
-- Status: **PROBATION / proof-present / DA-review-pending**
+- Status: **COMPLETE — DA-GRADUATED / merged #1532 @ f95eb261**. DA reproduced on RTX 4080/Vulkan: adjacency 7/0, parity 3/0, STEAD guards 3/0, driver 55/0/1, gates 0/0/0. DA falsified the dispatched dense-cap arm directly: planting REGION_FIELD_MAX_CELL_COUNT on the field-sweep path flips FIELD-SWEEP-DENSE-CAP-CROSSING PASS->FAIL naming file, line and constant.
 - ORIENT-RECEIPT: `de6ca1a521b4` (fresh after anchor resync)
 - HD-RECEIPT: `cdb153dca91e`
 - Canonical handoff: `handoffs/FIELD-ADJACENCY-GENERATORS-0.hd.md`
