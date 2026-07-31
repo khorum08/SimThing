@@ -1,4 +1,5 @@
 pub mod eml_phase5;
+pub mod field_sweep_ir_probe;
 pub mod multitarget_replay;
 mod multitarget_replay_report;
 pub mod overlay_order;
