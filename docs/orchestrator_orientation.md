@@ -45,7 +45,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 211b860c2a424d0386a01a2dc93d5c563abfd1411c1f58ec55c7b69d97426cb8 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | 26eab30ec86c97ac8dfd6beef7ae8c5b4d3f18c38fdaa431ec40ccce855396d3 |
-| design_0_0_8_7_rf_arena_modernization.md | f724218525e53ee7ea05a7835dc5dc434e86e68feb5c3a0a0ecfe2198d34e540 |
+| design_0_0_8_7_rf_arena_modernization.md | d82f67e6b552dbb1857842787a7b86f3443bc64c7fb60d66abd6eeca70018d92 |
 | relay_lint.sh | 4163f715cdc3b549dbf57c1744aff61ea96b9f9f0a2237376665fbdb24e986c8 |
 | doctrine_anchors.tsv | 7bf1fd21264aee4fb1f0febe17a4c84c8d0057ad01390c3dea2f737a58cf1e45 |
 | execution_status_taxonomy.tsv | 405caebabe9972b335464a43ad66169a9e8bb13b8fb868cf179bde9789922f87 |
@@ -76,7 +76,7 @@ Track state: `open`
 | 5.3c | THRESHOLD-EVENT-REGRESSION-REPAIR-0 | Phase 5: repair the GPU threshold-event regression introduced by 5.3 (DA bisect: | **DA-GRADUATED / merged #1507 @ 462cc794** — root cause was the 5.3 convenience-dispatch dropping the `prepare_thresh... |
 | 5.4 | FIELD-SWEEP-IR-PROBE-0 | Phase 5: workshop-leaf disposable probe — minimal target/neighbor-ctx EML map/fo | **DA-GRADUATED / merged #1526 @ a895c989** — HONEST INDETERMINATE PROBE. Parity ABSOLUTE and met: N4 CPU+GPU bit-exac... |
 | 5.5 | FIELD-SWEEP-N4-PARITY-0 | Phase 5: engine landing — EML edge context {target_slot, neighbor_slot, accumula | **DA-GRADUATED / merged #1529 @ 4ab19613** — THE REMODEL'S CENTREPIECE LANDS. PALMA and two-stage Gu-Yang run through... |
-| 5.6 | FIELD-ADJACENCY-GENERATORS-0 | Phase 5: adjacency as a registration axis — weighted `GridOffsets [(dx,dy,w)]` w | Emergence falsifier: the same authored map/fold on GridN4 vs GridN8 vs LinkGraph yields qualitatively distinct unscri... |
+| 5.6 | FIELD-ADJACENCY-GENERATORS-0 | Phase 5: adjacency as a registration axis — weighted `GridOffsets [(dx,dy,w)]` w | **DA-GRADUATED / merged #1532 @ f95eb261** — THE ADJACENCY GAP IS CLOSED. One authored map/fold/post EML program now ... |
 | 5.7 | EML-RESOURCE-CLASS-ADMISSION-0 | Phase 5: specialized interpreter resource classes (pipeline-constant stack sizes | Resource classes measurably control occupancy; cap-to-budget re-expression reproduces the currently admitted set exac... |
 | 5.8 | GUYANG-COMPARATIVE-PROJECTIONS-0 | Phase 5: dominance/margin/contest/border-band/chokepoint projections; default-de | TP scenario surfaces fronts + a chokepoint event with zero scenario wiring; `stead_spatial_contract_guards` green. |
 | 5.9 | TP-PURGE-0 | **Phase 5 hygiene — INTENT NOTED, sequencing Owner-scheduled and MAY preempt 5.4 | **DA-GRADUATED / merged #1520 @ 153ba40c** — DA independently reproduced at exact head `9ccd800c`: **THE FALSIFIABLE ... |
@@ -97,7 +97,7 @@ Track state: `open`
 
 ## Next Rung Pointer
 
-Active pointer: `FIELD-ADJACENCY-GENERATORS-0`
+Active pointer: `EML-RESOURCE-CLASS-ADMISSION-0`
 
 
 ## Cold-Start Spine (constitutional pointers)
