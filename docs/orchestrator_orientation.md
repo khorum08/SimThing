@@ -45,9 +45,9 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 211b860c2a424d0386a01a2dc93d5c563abfd1411c1f58ec55c7b69d97426cb8 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | 26eab30ec86c97ac8dfd6beef7ae8c5b4d3f18c38fdaa431ec40ccce855396d3 |
-| design_0_0_8_7_rf_arena_modernization.md | 514be2420c04a6d7a2979145accb11f2c1031c00fd5b3e2e2387abf5ac37aa0d |
+| design_0_0_8_7_rf_arena_modernization.md | 063196ee33d2d637f44732e6435eb3ba433a090c52159c32e759a7711dd94a72 |
 | relay_lint.sh | 4163f715cdc3b549dbf57c1744aff61ea96b9f9f0a2237376665fbdb24e986c8 |
-| doctrine_anchors.tsv | 67ea4fd6b027c389cfd686c788518f336ba5d7a1ccc0b7d59535c4773a718f90 |
+| doctrine_anchors.tsv | e7829be9382cb900180d32f4170afd36f6d7ae25d4754718c4e5ac10dc06b7e7 |
 | execution_status_taxonomy.tsv | 405caebabe9972b335464a43ad66169a9e8bb13b8fb868cf179bde9789922f87 |
 | execution_status_mixed_posture.tsv | 1adf05f3ec5fd7b537efe29259d20649a2c6d3a0839590063e5308ff154e8f25 |
 | execution_status_non_execution.tsv | 214c1b557dfd3fc465f0171051e20281ff1dcf6c53128dbb29cba01524f9be02 |
@@ -78,7 +78,7 @@ Track state: `open`
 | 5.5 | FIELD-SWEEP-N4-PARITY-0 | Phase 5: engine landing — EML edge context {target_slot, neighbor_slot, accumula | **DA-GRADUATED / merged #1529 @ 4ab19613** — THE REMODEL'S CENTREPIECE LANDS. PALMA and two-stage Gu-Yang run through... |
 | 5.6 | FIELD-ADJACENCY-GENERATORS-0 | Phase 5: adjacency as a registration axis — weighted `GridOffsets [(dx,dy,w)]` w | **DA-GRADUATED / merged #1532 @ f95eb261** — THE ADJACENCY GAP IS CLOSED. One authored map/fold/post EML program now ... |
 | 5.7 | EML-RESOURCE-CLASS-ADMISSION-0 | Phase 5: specialized interpreter resource classes (pipeline-constant stack sizes | **DA-GRADUATED / merged #1537 @ a7c05715 — substrate accepted; Gu-Yang recorded as MEASURED PERFORMANCE DEBT with a n... |
-| 5.8 | GUYANG-COMPARATIVE-PROJECTIONS-0 | Phase 5: dominance/margin/contest/border-band/chokepoint projections; default-de | **STOP / DA-residue (Remand 1+1A)** — driver-only consumer over generic field-sweep (kernel/GPU/allowlist reverted). ... |
+| 5.8 | GUYANG-COMPARATIVE-PROJECTIONS-0 | Phase 5: dominance/margin/contest/border-band/chokepoint projections; default-de | **PROBATION / proof-present / DA-review-pending** — DA-amended border = winner-identity change; stall = gross minus a... |
 | 5.9 | TP-PURGE-0 | **Phase 5 hygiene — INTENT NOTED, sequencing Owner-scheduled and MAY preempt 5.4 | **DA-GRADUATED / merged #1520 @ 153ba40c** — DA independently reproduced at exact head `9ccd800c`: **THE FALSIFIABLE ... |
 | 6.1 | EVENT-GENERATION-STAMP-0 | Phase 6: generation stamps on emission/threshold events; stamped ring egress wit | Events carry stamps; forced observer lag honors declared backpressure without perturbing the sim. |
 | 6.2 | ASYNC-COMMAND-QUEUE-0 | Phase 6: async CPU action queue landing at generation barriers; injection genera | Replay bit-exact from the injection log; shadow-tree reads torn-free (double-buffer proof). |

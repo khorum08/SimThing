@@ -140,9 +140,11 @@ pub use bench_limits::{check as check_bench_ceiling, ms_per_sim_day, CEILINGS};
 pub use child_share_eml::{child_share_cpu, register_child_share_formula};
 pub use comparative_projection::{
     admit_comparative_projections, comparative_event_kind, comparative_projection_cpu_oracle,
-    ComparativeEmitterClass, ComparativeProjectionBands, ComparativeProjectionBundle,
-    ComparativeProjectionDisposition, ComparativeProjectionError, ComparativeProjectionOutputs,
-    ComparativeProjectionRequest, COMPARATIVE_DERIVED_COLUMN_COUNT,
+    derive_comparative_projections_at_admission, public_neighbors, ComparativeDerivedPropertyIds,
+    ComparativeEmitterClass, ComparativeProjectionAdmission, ComparativeProjectionBands,
+    ComparativeProjectionBundle, ComparativeProjectionDisposition, ComparativeProjectionError,
+    ComparativeProjectionOutputs, ComparativeProjectionRequest, GuYangStallOutputs,
+    COMPARATIVE_DERIVED_COLUMN_COUNT, GUYANG_STALL_DERIVED_COLUMN_COUNT,
 };
 pub use field_sweep_compile::{
     compile_gu_yang_n4_field_sweeps, compile_palma_n4_field_sweep, GuYangN4FieldSweepSpec,
