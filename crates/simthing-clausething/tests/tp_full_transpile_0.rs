@@ -15,7 +15,7 @@ use simthing_spec::{
 
 fn fixture_json_path() -> String {
     Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../simthing-mapeditor/tests/fixtures/tp_base_disc_1500.simthing-scenario.json")
+        .join("tests/fixtures/tp_base_disc_1500.simthing-scenario.json")
         .to_string_lossy()
         .replace('\\', "/")
 }

@@ -6,7 +6,6 @@ use simthing_mapeditor::{
     build_studio_scenario_document, load_canonical_studio_document_from_path,
     load_studio_session_from_scenario_path, save_studio_scenario_with_document_roundtrip,
     studio_galaxy_map_gridcells_from_spec, StudioGridcellRole, StudioScenarioAuthorityKind,
-    TERRAN_PIRATE_SKELETON_SCENARIO_ID,
 };
 use simthing_spec::{
     deserialize_scenario_authority, serialize_scenario_authority, set_galaxy_map_display_name,
@@ -29,17 +28,24 @@ fn galaxymap_fixture_path() -> PathBuf {
         .join("../../scenarios/corpus/minimal_scenario_galaxymap.simthing-scenario.json")
 }
 
-fn terran_pirate_fixture_path() -> PathBuf {
+/// Synthetic legacy **World**-root scenario, homed in this crate.
+///
+/// Previously a shipped scenario under `scenarios/horizon/`. A scenario is an
+/// ASSET; a Studio proof that loads one makes the asset a structural
+/// requirement of the editor's test suite. The law -- a legacy World-root file
+/// loads as a LegacyWorldRoot authority document with no session, no owners,
+/// and a non-canonical galaxy map -- holds for ANY such file.
+fn legacy_world_root_fixture_path() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../../scenarios/horizon/terran_pirate_skeleton.simthing-scenario.json")
+        .join("tests/fixtures/legacy_world_root_minimal.simthing-scenario.json")
 }
 
 #[test]
-fn studio_legacy_terran_pirate_still_loads_as_legacy_fixture() {
-    let path = terran_pirate_fixture_path();
-    assert!(path.is_file(), "terran pirate fixture missing");
+fn studio_legacy_world_root_still_loads_as_legacy_fixture() {
+    let path = legacy_world_root_fixture_path();
+    assert!(path.is_file(), "legacy world root fixture missing");
     let (spec, document) = load_canonical_studio_document_from_path(&path).expect("load");
-    assert_eq!(spec.scenario_id, TERRAN_PIRATE_SKELETON_SCENARIO_ID);
+    assert_eq!(spec.scenario_id, "legacy_world_root_minimal");
     assert_eq!(
         document.authority_kind,
         StudioScenarioAuthorityKind::LegacyWorldRoot

@@ -23,7 +23,7 @@ const TP_SHIP_UPKEEP_PROPERTY_ID: SimPropertyId = SimPropertyId(8_301_505);
 
 fn fixture_path() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../simthing-mapeditor/tests/fixtures/tp_base_disc_1500.simthing-scenario.json")
+        .join("tests/fixtures/tp_base_disc_1500.simthing-scenario.json")
 }
 
 fn fixture_path_text() -> String {

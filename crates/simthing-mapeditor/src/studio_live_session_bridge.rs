@@ -1595,7 +1595,7 @@ fn compose_recursive_rf_profile(
     StudioRecursiveRfProfile,
 )> {
     let mut scenario = simthing_clausething::project_pack_to_authority_tree_candidate(pack).ok()?;
-    // Authored Location hosts (terran_shipyard / pirate_outpost) live on the hydrate
+    // Authored Location hosts declared by the loaded scenario live on the hydrate
     // World tree (`pack.root`), not the GalaxyMap authority tree. Graft them under
     // GameSession so local-flow couplings keep distinct source/pressure/sink identity
     // without collapsing onto the session root.
