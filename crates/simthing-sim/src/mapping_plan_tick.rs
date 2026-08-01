@@ -270,11 +270,9 @@ impl SimGpuMappingTickState {
                             } else {
                                 sessions[0].upload_values_from_buffer(ctx, bridge);
                             }
-                            for registration in registrations.iter() {
-                                sessions[0]
-                                    .dispatch(ctx, registration, 1)
-                                    .map_err(map_field_sweep_err)?;
-                            }
+                            sessions[0]
+                                .dispatch_chain(ctx, registrations, 1)
+                                .map_err(map_field_sweep_err)?;
                             sessions[0].copy_values_to_buffer(ctx, bridge);
                         } else {
                             for index in 0..registrations.len() {

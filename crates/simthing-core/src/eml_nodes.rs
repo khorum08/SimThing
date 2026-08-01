@@ -1,8 +1,68 @@
 //! EML stack-machine node layout shared by CPU registry validation and GPU upload.
 
 use bytemuck::{Pod, Zeroable};
+use serde::{Deserialize, Serialize};
 
-pub const EML_STACK_MAX: u32 = 32;
+/// Closed execution-resource vocabulary shared by ordinary and field EML.
+///
+/// Selection is derived from validated program facts; callers never author raw
+/// stack or node-buffer sizes.
+#[derive(
+    Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize,
+)]
+pub enum EmlResourceClass {
+    /// Smallest class covering the measured common formula census.
+    #[default]
+    CompactStack4,
+    /// Compatibility class preserving the former fixed-32 admission envelope.
+    LegacyFixed32,
+}
+
+impl EmlResourceClass {
+    pub const ALL: [Self; 2] = [Self::CompactStack4, Self::LegacyFixed32];
+
+    pub const fn stack_slots(self) -> u32 {
+        match self {
+            Self::CompactStack4 => 4,
+            Self::LegacyFixed32 => 32,
+        }
+    }
+
+    pub const fn max_tree_nodes(self) -> u32 {
+        match self {
+            Self::CompactStack4 => 16,
+            Self::LegacyFixed32 => 32,
+        }
+    }
+
+    pub const fn fits(self, node_count: u32, peak_stack: u32) -> bool {
+        node_count > 0
+            && node_count <= self.max_tree_nodes()
+            && peak_stack > 0
+            && peak_stack <= self.stack_slots()
+    }
+
+    /// Deterministically returns the smallest closed class covering both facts.
+    pub fn smallest_fitting(node_count: u32, peak_stack: u32) -> Option<Self> {
+        Self::ALL
+            .into_iter()
+            .find(|class| class.fits(node_count, peak_stack))
+    }
+
+    /// Returns the larger class needed to execute programs from both inputs.
+    pub const fn join(self, other: Self) -> Self {
+        if self.stack_slots() >= other.stack_slots()
+            && self.max_tree_nodes() >= other.max_tree_nodes()
+        {
+            self
+        } else {
+            other
+        }
+    }
+}
+
+/// Legacy compatibility ceiling. Admission must use [`EmlResourceClass`].
+pub const EML_STACK_MAX: u32 = EmlResourceClass::LegacyFixed32.stack_slots();
 
 pub mod opcode {
     pub const LITERAL_F32: u32 = 0;

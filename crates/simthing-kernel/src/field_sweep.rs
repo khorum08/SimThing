@@ -29,9 +29,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::sync::mpsc;
 
 use bytemuck::{Pod, Zeroable};
-use simthing_core::{
-    eml_opcode, ColumnIndex, EmlNodeGpu, InputSpec, SlotIndex, EML_STACK_MAX, MAX_EML_TREE_NODES,
-};
+use simthing_core::{eml_opcode, ColumnIndex, EmlNodeGpu, EmlResourceClass, InputSpec, SlotIndex};
 use thiserror::Error;
 use wgpu::util::DeviceExt;
 use wgpu::{
@@ -47,8 +45,8 @@ use crate::eml_opcode_gate::{opcode_in_closed_vocabulary, OpcodeGateError};
 use crate::wgsl_encode::{column_from_wire, encode_column};
 
 pub const FIELD_SWEEP_WORKGROUP_SIZE: u32 = 64;
-pub const FIELD_SWEEP_LEGACY_STACK_SLOTS: u32 = 32;
-pub const FIELD_SWEEP_LEGACY_PROGRAM_NODES: u32 = 32;
+pub const FIELD_SWEEP_LEGACY_STACK_SLOTS: u32 = EmlResourceClass::LegacyFixed32.stack_slots();
+pub const FIELD_SWEEP_LEGACY_PROGRAM_NODES: u32 = EmlResourceClass::LegacyFixed32.max_tree_nodes();
 
 /// Field-only `PARAM` indices. The five edge-context members are stable; mapped
 /// and folded are stage results carried without introducing semantic opcodes.
@@ -673,36 +671,34 @@ pub struct FieldTransientCertificate {
     n_dims: u32,
 }
 
-/// Untrusted request surface. Only the one legacy fixed-32 class is admitted
-/// until rung 5.7.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct FieldSweepResourceClassRequest {
-    pub stack_slots: u32,
-    pub max_program_nodes: u32,
+pub type FieldSweepResourceClass = EmlResourceClass;
+
+/// Stable report identity for the exact admitted map/fold/post postfix IR.
+/// Pipeline caching additionally retains the full canonical word sequence, so
+/// a digest collision cannot alias two programs.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct FieldSweepProgramIdentity {
+    digest: u64,
+    word_count: u32,
 }
 
-impl Default for FieldSweepResourceClassRequest {
-    fn default() -> Self {
-        Self {
-            stack_slots: FIELD_SWEEP_LEGACY_STACK_SLOTS,
-            max_program_nodes: FIELD_SWEEP_LEGACY_PROGRAM_NODES,
-        }
+impl FieldSweepProgramIdentity {
+    pub fn digest(self) -> u64 {
+        self.digest
+    }
+
+    pub fn word_count(self) -> u32 {
+        self.word_count
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct FieldSweepResourceClass {
-    stack_slots: u32,
-    max_program_nodes: u32,
-}
+/// Stable report identity for a generated pipeline cache entry.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct FieldSweepJitCacheIdentity(u64);
 
-impl FieldSweepResourceClass {
-    pub fn stack_slots(self) -> u32 {
-        self.stack_slots
-    }
-
-    pub fn max_program_nodes(self) -> u32 {
-        self.max_program_nodes
+impl FieldSweepJitCacheIdentity {
+    pub fn digest(self) -> u64 {
+        self.0
     }
 }
 
@@ -718,7 +714,6 @@ pub struct FieldSweepRegistrationRequest {
     pub field_law_proof: Option<FieldLawProof>,
     pub transient_read_proof: Option<FieldTransientCertificate>,
     pub canonical_order_proof: Option<CanonicalOrderProof>,
-    pub resource_class: FieldSweepResourceClassRequest,
     pub dt: f32,
 }
 
@@ -791,6 +786,132 @@ impl FieldSweepRegistration {
         self.resource_class
     }
 
+    pub fn program_identity(&self) -> FieldSweepProgramIdentity {
+        let identity = self.canonical_program_identity();
+        FieldSweepProgramIdentity {
+            digest: identity.digest(),
+            word_count: identity.word_count(),
+        }
+    }
+
+    pub fn jit_cache_identity(&self) -> FieldSweepJitCacheIdentity {
+        let identity = self.canonical_program_identity();
+        FieldSweepJitCacheIdentity(crate::eml_resource_class::pipeline_cache_digest(
+            self.resource_class,
+            &identity,
+        ))
+    }
+
+    #[cfg(feature = "eml-resource-profiling")]
+    pub fn jit_cache_identity_for_profiling_class(
+        &self,
+        resource_class: EmlResourceClass,
+    ) -> Result<FieldSweepJitCacheIdentity, FieldSweepExecutionError> {
+        if resource_class < self.resource_class {
+            return Err(FieldSweepExecutionError::ProfilingClassTooSmall {
+                admitted: self.resource_class,
+                requested: resource_class,
+            });
+        }
+        let identity = self.canonical_program_identity();
+        Ok(FieldSweepJitCacheIdentity(
+            crate::eml_resource_class::pipeline_cache_digest(resource_class, &identity),
+        ))
+    }
+
+    #[cfg(feature = "eml-resource-profiling")]
+    pub fn fused_jit_identity_for_profiling(
+        producer: &Self,
+        consumer: &Self,
+        resource_class: EmlResourceClass,
+    ) -> Result<(FieldSweepProgramIdentity, FieldSweepJitCacheIdentity), FieldSweepExecutionError>
+    {
+        if !can_fuse_transient_pair(producer, consumer) {
+            return Err(FieldSweepExecutionError::UnprovenTransientFusion);
+        }
+        let required_class = producer.resource_class.join(consumer.resource_class);
+        if resource_class < required_class {
+            return Err(FieldSweepExecutionError::ProfilingClassTooSmall {
+                admitted: required_class,
+                requested: resource_class,
+            });
+        }
+        let identity = crate::eml_resource_class::CanonicalFieldProgramIdentity::fused_pair(
+            &producer.canonical_program_identity(),
+            &consumer.canonical_program_identity(),
+        );
+        Ok((
+            FieldSweepProgramIdentity {
+                digest: identity.digest(),
+                word_count: identity.word_count(),
+            },
+            FieldSweepJitCacheIdentity(crate::eml_resource_class::pipeline_cache_digest(
+                resource_class,
+                &identity,
+            )),
+        ))
+    }
+
+    fn canonical_program_identity(
+        &self,
+    ) -> crate::eml_resource_class::CanonicalFieldProgramIdentity {
+        crate::eml_resource_class::CanonicalFieldProgramIdentity::new(
+            &self.map_program,
+            &self.fold_program,
+            &self.post_program,
+        )
+    }
+
+    #[cfg(feature = "eml-resource-profiling")]
+    pub fn generated_jit_wgsl_for_profiling(
+        &self,
+        resource_class: EmlResourceClass,
+    ) -> Result<String, FieldSweepExecutionError> {
+        if resource_class < self.resource_class {
+            return Err(FieldSweepExecutionError::ProfilingClassTooSmall {
+                admitted: self.resource_class,
+                requested: resource_class,
+            });
+        }
+        Ok(crate::eml_resource_class::generate_field_sweep_jit(
+            include_str!("shaders/field_sweep.wgsl"),
+            resource_class,
+            &self.map_program,
+            &self.fold_program,
+            &self.post_program,
+        ))
+    }
+
+    #[cfg(feature = "eml-resource-profiling")]
+    pub fn generated_fused_jit_wgsl_for_profiling(
+        producer: &Self,
+        consumer: &Self,
+        resource_class: EmlResourceClass,
+    ) -> Result<String, FieldSweepExecutionError> {
+        if !can_fuse_transient_pair(producer, consumer) {
+            return Err(FieldSweepExecutionError::UnprovenTransientFusion);
+        }
+        let required_class = producer.resource_class.join(consumer.resource_class);
+        if resource_class < required_class {
+            return Err(FieldSweepExecutionError::ProfilingClassTooSmall {
+                admitted: required_class,
+                requested: resource_class,
+            });
+        }
+        Ok(
+            crate::eml_resource_class::generate_fused_transient_field_sweep_jit(
+                include_str!("shaders/field_sweep.wgsl"),
+                resource_class,
+                &producer.map_program,
+                &producer.fold_program,
+                &producer.post_program,
+                &consumer.map_program,
+                &consumer.fold_program,
+                &consumer.post_program,
+            ),
+        )
+    }
+
     pub fn dt(&self) -> f32 {
         self.dt
     }
@@ -845,34 +966,42 @@ pub fn apply_field_sweep_registration(
             return Err(FieldSweepAdmissionError::ConductanceCertificateMismatch);
         }
     }
-    if request.resource_class != FieldSweepResourceClassRequest::default() {
-        return Err(FieldSweepAdmissionError::UnsupportedResourceClass {
-            stack_slots: request.resource_class.stack_slots,
-            max_program_nodes: request.resource_class.max_program_nodes,
-        });
-    }
     if !request.dt.is_finite() || request.dt < 0.0 {
         return Err(FieldSweepAdmissionError::InvalidDt(request.dt));
     }
 
-    validate_field_program(
+    let map_facts = validate_field_program(
         "map",
         &request.map_program,
         request.n_dims,
         FieldProgramContext::Edge,
     )?;
-    validate_field_program(
+    let fold_facts = validate_field_program(
         "fold",
         &request.fold_program,
         request.n_dims,
         FieldProgramContext::Edge,
     )?;
-    validate_field_program(
+    let post_facts = validate_field_program(
         "post",
         &request.post_program,
         request.n_dims,
         FieldProgramContext::TargetOnly,
     )?;
+    let requested_nodes = map_facts
+        .node_count
+        .max(fold_facts.node_count)
+        .max(post_facts.node_count);
+    let requested_stack = map_facts
+        .peak_stack
+        .max(fold_facts.peak_stack)
+        .max(post_facts.peak_stack);
+    let resource_class = EmlResourceClass::smallest_fitting(requested_nodes, requested_stack)
+        .ok_or(FieldSweepAdmissionError::UnsupportedResourceClass {
+            requested_nodes,
+            requested_stack,
+            attempted: EmlResourceClass::LegacyFixed32,
+        })?;
 
     let reads_transient = [
         &request.map_program,
@@ -915,10 +1044,7 @@ pub fn apply_field_sweep_registration(
         field_law_proof,
         transient_read_proof: request.transient_read_proof,
         canonical_order_proof,
-        resource_class: FieldSweepResourceClass {
-            stack_slots: FIELD_SWEEP_LEGACY_STACK_SLOTS,
-            max_program_nodes: FIELD_SWEEP_LEGACY_PROGRAM_NODES,
-        },
+        resource_class,
         dt: request.dt,
     })
 }
@@ -929,23 +1055,23 @@ enum FieldProgramContext {
     TargetOnly,
 }
 
+#[derive(Clone, Copy)]
+struct FieldProgramFacts {
+    node_count: u32,
+    peak_stack: u32,
+}
+
 fn validate_field_program(
     name: &'static str,
     nodes: &[EmlNodeGpu],
     n_dims: u32,
     context: FieldProgramContext,
-) -> Result<(), FieldSweepAdmissionError> {
+) -> Result<FieldProgramFacts, FieldSweepAdmissionError> {
     if nodes.is_empty() {
         return Err(FieldSweepAdmissionError::EmptyProgram { name });
     }
-    if nodes.len() as u32 > MAX_EML_TREE_NODES {
-        return Err(FieldSweepAdmissionError::ProgramTooLarge {
-            name,
-            nodes: nodes.len() as u32,
-            max: MAX_EML_TREE_NODES,
-        });
-    }
     let mut depth = 0u32;
+    let mut peak_stack = 0u32;
     let mut saw_return = false;
     for (index, node) in nodes.iter().enumerate() {
         if !opcode_in_closed_vocabulary(node.opcode) {
@@ -1042,18 +1168,15 @@ fn validate_field_program(
                 n_dims,
             });
         }
-        if depth > EML_STACK_MAX {
-            return Err(FieldSweepAdmissionError::StackDepthExceeded {
-                name,
-                depth,
-                max: EML_STACK_MAX,
-            });
-        }
+        peak_stack = peak_stack.max(depth);
     }
     if !saw_return || depth != 1 {
         return Err(FieldSweepAdmissionError::MalformedReturn { name });
     }
-    Ok(())
+    Ok(FieldProgramFacts {
+        node_count: nodes.len() as u32,
+        peak_stack,
+    })
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -1075,7 +1198,23 @@ pub fn eval_field_eml_cpu(
     values: &[f32],
     n_dims: u32,
 ) -> Result<f32, FieldSweepExecutionError> {
-    let mut stack = [0.0f32; FIELD_SWEEP_LEGACY_STACK_SLOTS as usize];
+    let facts = field_program_facts_for_execution(nodes);
+    let resource_class = EmlResourceClass::smallest_fitting(facts.node_count, facts.peak_stack)
+        .ok_or(FieldSweepExecutionError::UnsupportedResourceClass {
+            requested_nodes: facts.node_count,
+            requested_stack: facts.peak_stack,
+        })?;
+    eval_field_eml_cpu_in_class(nodes, context, values, n_dims, resource_class)
+}
+
+fn eval_field_eml_cpu_in_class(
+    nodes: &[EmlNodeGpu],
+    context: FieldEmlContext,
+    values: &[f32],
+    n_dims: u32,
+    resource_class: EmlResourceClass,
+) -> Result<f32, FieldSweepExecutionError> {
+    let mut stack = vec![0.0f32; resource_class.stack_slots() as usize];
     let mut sp = 0usize;
     for node in nodes {
         match node.opcode {
@@ -1190,17 +1329,44 @@ fn apply_binary(opcode: u32, lhs: f32, rhs: f32) -> f32 {
     }
 }
 
-fn push(
-    stack: &mut [f32; FIELD_SWEEP_LEGACY_STACK_SLOTS as usize],
-    sp: &mut usize,
-    value: f32,
-) -> Result<(), FieldSweepExecutionError> {
+fn push(stack: &mut [f32], sp: &mut usize, value: f32) -> Result<(), FieldSweepExecutionError> {
     if *sp >= stack.len() {
         return Err(FieldSweepExecutionError::StackOverflow);
     }
     stack[*sp] = value;
     *sp += 1;
     Ok(())
+}
+
+fn field_program_facts_for_execution(nodes: &[EmlNodeGpu]) -> FieldProgramFacts {
+    let mut depth = 0u32;
+    let mut peak_stack = 0u32;
+    for node in nodes {
+        match node.opcode {
+            eml_opcode::LITERAL_F32
+            | eml_opcode::TARGET_VALUE
+            | eml_opcode::NEIGHBOR_VALUE
+            | eml_opcode::PARAM => depth = depth.saturating_add(1),
+            eml_opcode::ADD
+            | eml_opcode::SUB
+            | eml_opcode::MUL
+            | eml_opcode::DIV
+            | eml_opcode::MIN
+            | eml_opcode::MAX
+            | eml_opcode::CMP_LT
+            | eml_opcode::CMP_LE
+            | eml_opcode::CMP_GT
+            | eml_opcode::CMP_GE
+            | eml_opcode::CMP_EQ => depth = depth.saturating_sub(1),
+            eml_opcode::SELECT => depth = depth.saturating_sub(2),
+            _ => {}
+        }
+        peak_stack = peak_stack.max(depth);
+    }
+    FieldProgramFacts {
+        node_count: nodes.len() as u32,
+        peak_stack,
+    }
 }
 
 fn read_cell(
@@ -1429,6 +1595,10 @@ struct FieldSweepParamsGpu {
     schedule_count: u32,
     output_mode: u32,
     _pad1: u32,
+    fused_identity_bits: u32,
+    fused_dt_bits: u32,
+    _pad2: u32,
+    _pad3: u32,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -1454,10 +1624,36 @@ impl FieldSweepSessionBinding {
     }
 }
 
+fn can_fuse_transient_pair(
+    producer: &FieldSweepRegistration,
+    consumer: &FieldSweepRegistration,
+) -> bool {
+    producer.output == FieldSweepOutput::Transient
+        && consumer.output != FieldSweepOutput::Transient
+        && consumer.transient_read_proof == producer.transient_certificate()
+        && producer.n_dims == consumer.n_dims
+        && producer.adjacency == consumer.adjacency
+}
+
 /// Kernel-owned generic field executor. It owns the resolved ping-pong buffers;
 /// callers can upload values and receive copied readback, never raw handles.
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+struct FieldSweepPipelineKey {
+    resource_class: EmlResourceClass,
+    program: crate::eml_resource_class::CanonicalFieldProgramIdentity,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum FieldSweepExecutionMode {
+    GeneratedJit,
+    #[cfg(feature = "eml-resource-profiling")]
+    Interpreted,
+}
+
 pub struct FieldSweepSession {
-    pipeline: ComputePipeline,
+    pipelines: BTreeMap<FieldSweepPipelineKey, ComputePipeline>,
+    mode: FieldSweepExecutionMode,
+    resource_class: EmlResourceClass,
     layout: BindGroupLayout,
     values_a: Buffer,
     values_b: Buffer,
@@ -1466,7 +1662,6 @@ pub struct FieldSweepSession {
     nodes: Buffer,
     schedule: Buffer,
     transient: Buffer,
-    params: Buffer,
     binding: FieldSweepSessionBinding,
     values_len: usize,
     read_a: bool,
@@ -1478,10 +1673,63 @@ impl FieldSweepSession {
         ctx: &GpuContext,
         registration: &FieldSweepRegistration,
     ) -> Result<Self, FieldSweepExecutionError> {
-        let shader = ctx.device.create_shader_module(ShaderModuleDescriptor {
-            label: Some("field_sweep"),
-            source: ShaderSource::Wgsl(include_str!("shaders/field_sweep.wgsl").into()),
-        });
+        Self::new_with_resource_class(
+            ctx,
+            registration,
+            registration.resource_class,
+            FieldSweepExecutionMode::GeneratedJit,
+        )
+    }
+
+    /// Test/profiling-only adapter for matched canonical-interpreter class runs.
+    /// Admission remains registration-owned; the override may only widen it.
+    #[cfg(feature = "eml-resource-profiling")]
+    pub fn new_with_profiling_resource_class(
+        ctx: &GpuContext,
+        registration: &FieldSweepRegistration,
+        resource_class: EmlResourceClass,
+    ) -> Result<Self, FieldSweepExecutionError> {
+        if resource_class < registration.resource_class {
+            return Err(FieldSweepExecutionError::ProfilingClassTooSmall {
+                admitted: registration.resource_class,
+                requested: resource_class,
+            });
+        }
+        Self::new_with_resource_class(
+            ctx,
+            registration,
+            resource_class,
+            FieldSweepExecutionMode::GeneratedJit,
+        )
+    }
+
+    /// Profiling-only preservation of the canonical storage-backed interpreter.
+    #[cfg(feature = "eml-resource-profiling")]
+    pub fn new_interpreted_for_profiling(
+        ctx: &GpuContext,
+        registration: &FieldSweepRegistration,
+        resource_class: EmlResourceClass,
+    ) -> Result<Self, FieldSweepExecutionError> {
+        if resource_class < registration.resource_class {
+            return Err(FieldSweepExecutionError::ProfilingClassTooSmall {
+                admitted: registration.resource_class,
+                requested: resource_class,
+            });
+        }
+        Self::new_with_resource_class(
+            ctx,
+            registration,
+            resource_class,
+            FieldSweepExecutionMode::Interpreted,
+        )
+    }
+
+    fn new_with_resource_class(
+        ctx: &GpuContext,
+        registration: &FieldSweepRegistration,
+        resource_class: EmlResourceClass,
+        mode: FieldSweepExecutionMode,
+    ) -> Result<Self, FieldSweepExecutionError> {
         let layout = ctx
             .device
             .create_bind_group_layout(&BindGroupLayoutDescriptor {
@@ -1497,23 +1745,14 @@ impl FieldSweepSession {
                     storage_entry(7, false),
                 ],
             });
-        let pipeline_layout = ctx
-            .device
-            .create_pipeline_layout(&PipelineLayoutDescriptor {
-                label: Some("field_sweep_pipeline_layout"),
-                bind_group_layouts: &[&layout],
-                push_constant_ranges: &[],
-            });
-        let pipeline = ctx
-            .device
-            .create_compute_pipeline(&ComputePipelineDescriptor {
-                label: Some("field_sweep_pipeline"),
-                layout: Some(&pipeline_layout),
-                module: &shader,
-                entry_point: "main",
-                compilation_options: Default::default(),
-                cache: None,
-            });
+        let initial_key = FieldSweepPipelineKey {
+            resource_class,
+            program: registration.canonical_program_identity(),
+        };
+        let initial_pipeline =
+            create_field_sweep_pipeline(ctx, &layout, registration, resource_class, mode);
+        let mut pipelines = BTreeMap::new();
+        pipelines.insert(initial_key, initial_pipeline);
 
         let values_len = registration.slots() as usize * registration.n_dims as usize;
         let value_bytes = (values_len * std::mem::size_of::<f32>()) as u64;
@@ -1542,8 +1781,9 @@ impl FieldSweepSession {
                 .write_buffer(&inputs, 0, bytemuck::cast_slice(&flat_inputs));
         }
         let (flat_nodes, gpu_params) = pack_programs(registration);
-        let node_capacity =
-            3 * FIELD_SWEEP_LEGACY_PROGRAM_NODES as u64 * std::mem::size_of::<EmlNodeGpu>() as u64;
+        let node_capacity = 3
+            * u64::from(resource_class.max_tree_nodes())
+            * std::mem::size_of::<EmlNodeGpu>() as u64;
         let nodes = storage_buffer(&ctx.device, "field_sweep_nodes", node_capacity, false);
         ctx.queue
             .write_buffer(&nodes, 0, bytemuck::cast_slice(&flat_nodes));
@@ -1560,16 +1800,12 @@ impl FieldSweepSession {
                 contents: bytemuck::cast_slice(&schedule_slots),
                 usage: BufferUsages::STORAGE,
             });
-        let params = ctx
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("field_sweep_params"),
-                contents: bytemuck::bytes_of(&gpu_params),
-                usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
-            });
+        let _ = gpu_params;
 
         Ok(Self {
-            pipeline,
+            pipelines,
+            mode,
+            resource_class,
             layout,
             values_a,
             values_b,
@@ -1578,7 +1814,6 @@ impl FieldSweepSession {
             nodes,
             schedule,
             transient,
-            params,
             binding: FieldSweepSessionBinding::from_registration(registration),
             values_len,
             read_a: true,
@@ -1644,54 +1879,223 @@ impl FieldSweepSession {
         registration: &FieldSweepRegistration,
         iterations: u32,
     ) -> Result<(), FieldSweepExecutionError> {
+        self.dispatch_chain(ctx, std::slice::from_ref(registration), iterations)
+    }
+
+    /// Execute mechanically adjacent admitted stages in one ordered command
+    /// submission. Each stage retains its own generated program pipeline;
+    /// ping-pong copies and transient producer/consumer ordering are unchanged.
+    pub fn dispatch_chain(
+        &mut self,
+        ctx: &GpuContext,
+        registrations: &[FieldSweepRegistration],
+        iterations: u32,
+    ) -> Result<(), FieldSweepExecutionError> {
         if iterations == 0 {
             return Err(FieldSweepExecutionError::InvalidIterations(iterations));
         }
-        if !self.binding.accepts(registration) {
-            return Err(FieldSweepExecutionError::RegistrationBindingChanged);
+        if registrations.is_empty() {
+            return Err(FieldSweepExecutionError::EmptyRegistrationChain);
         }
-        if registration.transient_read_proof.is_some() && !self.transient_initialized {
-            return Err(FieldSweepExecutionError::TransientNotInitialized);
-        }
-        let (flat_nodes, base_params) = pack_programs(registration);
-        ctx.queue
-            .write_buffer(&self.nodes, 0, bytemuck::cast_slice(&flat_nodes));
 
-        for _ in 0..iterations {
-            let (source, target) = if self.read_a {
-                (&self.values_a, &self.values_b)
-            } else {
-                (&self.values_b, &self.values_a)
-            };
-            if registration.output != FieldSweepOutput::Transient {
-                let byte_len = (self.values_len * std::mem::size_of::<f32>()) as u64;
-                let mut encoder = ctx
-                    .device
-                    .create_command_encoder(&CommandEncoderDescriptor {
-                        label: Some("field_sweep_preserve_unrelated_columns"),
-                    });
-                encoder.copy_buffer_to_buffer(source, 0, target, 0, byte_len);
-                ctx.queue.submit(Some(encoder.finish()));
+        #[cfg(feature = "eml-resource-profiling")]
+        if self.mode == FieldSweepExecutionMode::Interpreted && registrations.len() > 1 {
+            for registration in registrations {
+                self.dispatch_batch(ctx, std::slice::from_ref(registration), iterations)?;
             }
-            let mut schedule_offset = 0u32;
-            for bucket in &registration.adjacency.degree_buckets {
-                let mut gpu_params = base_params;
-                gpu_params.schedule_offset = schedule_offset;
-                gpu_params.schedule_count = bucket.slots.len() as u32;
-                ctx.queue
-                    .write_buffer(&self.params, 0, bytemuck::bytes_of(&gpu_params));
-                let bind_group = self.bind_group(&ctx.device, source, target);
-                let mut encoder = ctx
-                    .device
-                    .create_command_encoder(&CommandEncoderDescriptor {
-                        label: Some("field_sweep_degree_bucket_dispatch"),
-                    });
+            return Ok(());
+        }
+
+        if self.mode == FieldSweepExecutionMode::GeneratedJit
+            && iterations == 1
+            && registrations.len() == 2
+            && can_fuse_transient_pair(&registrations[0], &registrations[1])
+        {
+            return self.dispatch_fused_transient_pair(ctx, &registrations[0], &registrations[1]);
+        }
+
+        self.dispatch_batch(ctx, registrations, iterations)
+    }
+
+    fn dispatch_fused_transient_pair(
+        &mut self,
+        ctx: &GpuContext,
+        producer: &FieldSweepRegistration,
+        consumer: &FieldSweepRegistration,
+    ) -> Result<(), FieldSweepExecutionError> {
+        for registration in [producer, consumer] {
+            if !self.binding.accepts(registration) {
+                return Err(FieldSweepExecutionError::RegistrationBindingChanged);
+            }
+            if registration.resource_class > self.resource_class {
+                return Err(FieldSweepExecutionError::SessionResourceClassTooSmall {
+                    session: self.resource_class,
+                    registration: registration.resource_class,
+                });
+            }
+        }
+        let program = crate::eml_resource_class::CanonicalFieldProgramIdentity::fused_pair(
+            &producer.canonical_program_identity(),
+            &consumer.canonical_program_identity(),
+        );
+        let key = FieldSweepPipelineKey {
+            resource_class: self.resource_class,
+            program,
+        };
+        if !self.pipelines.contains_key(&key) {
+            let source = crate::eml_resource_class::generate_fused_transient_field_sweep_jit(
+                include_str!("shaders/field_sweep.wgsl"),
+                self.resource_class,
+                &producer.map_program,
+                &producer.fold_program,
+                &producer.post_program,
+                &consumer.map_program,
+                &consumer.fold_program,
+                &consumer.post_program,
+            );
+            let pipeline = create_field_sweep_pipeline_from_source(ctx, &self.layout, source);
+            self.pipelines.insert(key.clone(), pipeline);
+        }
+
+        let (_, mut gpu_params) = pack_programs(consumer);
+        gpu_params.fused_identity_bits = producer.identity_bits;
+        gpu_params.fused_dt_bits = producer.dt.to_bits();
+        let params = ctx
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("field_sweep_fused_jit_params"),
+                contents: bytemuck::bytes_of(&gpu_params),
+                usage: BufferUsages::UNIFORM,
+            });
+        let (source, target) = if self.read_a {
+            (&self.values_a, &self.values_b)
+        } else {
+            (&self.values_b, &self.values_a)
+        };
+        let bind_group = self.bind_group(&ctx.device, source, target, &params);
+        let mut encoder = ctx
+            .device
+            .create_command_encoder(&CommandEncoderDescriptor {
+                label: Some("field_sweep_fused_transient_jit"),
+            });
+        let byte_len = (self.values_len * std::mem::size_of::<f32>()) as u64;
+        encoder.copy_buffer_to_buffer(source, 0, target, 0, byte_len);
+        {
+            let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
+                label: Some("field_sweep_fused_transient_jit_pass"),
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(
+                self.pipelines
+                    .get(&key)
+                    .expect("fused field JIT pipeline was populated before encoding"),
+            );
+            pass.set_bind_group(0, &bind_group, &[]);
+            pass.dispatch_workgroups(
+                gpu_params
+                    .schedule_count
+                    .div_ceil(FIELD_SWEEP_WORKGROUP_SIZE),
+                1,
+                1,
+            );
+        }
+        ctx.queue.submit(Some(encoder.finish()));
+        self.read_a = !self.read_a;
+        self.transient_initialized = true;
+        ctx.device.poll(wgpu::Maintain::Wait);
+        Ok(())
+    }
+
+    fn dispatch_batch(
+        &mut self,
+        ctx: &GpuContext,
+        registrations: &[FieldSweepRegistration],
+        iterations: u32,
+    ) -> Result<(), FieldSweepExecutionError> {
+        let mut transient_available = self.transient_initialized;
+        for registration in registrations {
+            if !self.binding.accepts(registration) {
+                return Err(FieldSweepExecutionError::RegistrationBindingChanged);
+            }
+            if registration.resource_class > self.resource_class {
+                return Err(FieldSweepExecutionError::SessionResourceClassTooSmall {
+                    session: self.resource_class,
+                    registration: registration.resource_class,
+                });
+            }
+            if registration.transient_read_proof.is_some() && !transient_available {
+                return Err(FieldSweepExecutionError::TransientNotInitialized);
+            }
+            if registration.output == FieldSweepOutput::Transient {
+                transient_available = true;
+            }
+        }
+
+        for registration in registrations {
+            let key = FieldSweepPipelineKey {
+                resource_class: self.resource_class,
+                program: registration.canonical_program_identity(),
+            };
+            if !self.pipelines.contains_key(&key) {
+                let pipeline = create_field_sweep_pipeline(
+                    ctx,
+                    &self.layout,
+                    registration,
+                    self.resource_class,
+                    self.mode,
+                );
+                self.pipelines.insert(key, pipeline);
+            }
+        }
+
+        #[cfg(feature = "eml-resource-profiling")]
+        if self.mode == FieldSweepExecutionMode::Interpreted {
+            let (flat_nodes, _) = pack_programs(&registrations[0]);
+            ctx.queue
+                .write_buffer(&self.nodes, 0, bytemuck::cast_slice(&flat_nodes));
+        }
+
+        let mut encoder = ctx
+            .device
+            .create_command_encoder(&CommandEncoderDescriptor {
+                label: Some("field_sweep_jit_chain"),
+            });
+        let byte_len = (self.values_len * std::mem::size_of::<f32>()) as u64;
+        let mut read_a = self.read_a;
+        for registration in registrations {
+            let key = FieldSweepPipelineKey {
+                resource_class: self.resource_class,
+                program: registration.canonical_program_identity(),
+            };
+            let pipeline = self
+                .pipelines
+                .get(&key)
+                .expect("field JIT pipeline was populated before encoding");
+            let (_, gpu_params) = pack_programs(registration);
+            let params = ctx
+                .device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("field_sweep_jit_params"),
+                    contents: bytemuck::bytes_of(&gpu_params),
+                    usage: BufferUsages::UNIFORM,
+                });
+
+            for _ in 0..iterations {
+                let (source, target) = if read_a {
+                    (&self.values_a, &self.values_b)
+                } else {
+                    (&self.values_b, &self.values_a)
+                };
+                if registration.output != FieldSweepOutput::Transient {
+                    encoder.copy_buffer_to_buffer(source, 0, target, 0, byte_len);
+                }
+                let bind_group = self.bind_group(&ctx.device, source, target, &params);
                 {
                     let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
-                        label: Some("field_sweep_degree_bucket_pass"),
+                        label: Some("field_sweep_jit_pass"),
                         timestamp_writes: None,
                     });
-                    pass.set_pipeline(&self.pipeline);
+                    pass.set_pipeline(pipeline);
                     pass.set_bind_group(0, &bind_group, &[]);
                     pass.dispatch_workgroups(
                         gpu_params
@@ -1701,16 +2105,14 @@ impl FieldSweepSession {
                         1,
                     );
                 }
-                ctx.queue.submit(Some(encoder.finish()));
-                schedule_offset += gpu_params.schedule_count;
-            }
-            if registration.output != FieldSweepOutput::Transient {
-                self.read_a = !self.read_a;
+                if registration.output != FieldSweepOutput::Transient {
+                    read_a = !read_a;
+                }
             }
         }
-        if registration.output == FieldSweepOutput::Transient {
-            self.transient_initialized = true;
-        }
+        ctx.queue.submit(Some(encoder.finish()));
+        self.read_a = read_a;
+        self.transient_initialized = transient_available;
         ctx.device.poll(wgpu::Maintain::Wait);
         Ok(())
     }
@@ -1752,7 +2154,13 @@ impl FieldSweepSession {
         Ok(output)
     }
 
-    fn bind_group(&self, device: &wgpu::Device, source: &Buffer, target: &Buffer) -> BindGroup {
+    fn bind_group(
+        &self,
+        device: &wgpu::Device,
+        source: &Buffer,
+        target: &Buffer,
+        params: &Buffer,
+    ) -> BindGroup {
         device.create_bind_group(&BindGroupDescriptor {
             label: Some("field_sweep_bind_group"),
             layout: &self.layout,
@@ -1783,7 +2191,7 @@ impl FieldSweepSession {
                 },
                 BindGroupEntry {
                     binding: 6,
-                    resource: self.params.as_entire_binding(),
+                    resource: params.as_entire_binding(),
                 },
                 BindGroupEntry {
                     binding: 7,
@@ -1792,6 +2200,61 @@ impl FieldSweepSession {
             ],
         })
     }
+}
+
+fn create_field_sweep_pipeline(
+    ctx: &GpuContext,
+    layout: &BindGroupLayout,
+    registration: &FieldSweepRegistration,
+    resource_class: EmlResourceClass,
+    mode: FieldSweepExecutionMode,
+) -> ComputePipeline {
+    let source = match mode {
+        FieldSweepExecutionMode::GeneratedJit => {
+            crate::eml_resource_class::generate_field_sweep_jit(
+                include_str!("shaders/field_sweep.wgsl"),
+                resource_class,
+                &registration.map_program,
+                &registration.fold_program,
+                &registration.post_program,
+            )
+        }
+        #[cfg(feature = "eml-resource-profiling")]
+        FieldSweepExecutionMode::Interpreted => {
+            crate::eml_resource_class::specialize_eml_stack_limit(
+                include_str!("shaders/field_sweep.wgsl"),
+                resource_class,
+            )
+        }
+    };
+    create_field_sweep_pipeline_from_source(ctx, layout, source)
+}
+
+fn create_field_sweep_pipeline_from_source(
+    ctx: &GpuContext,
+    layout: &BindGroupLayout,
+    source: String,
+) -> ComputePipeline {
+    let shader = ctx.device.create_shader_module(ShaderModuleDescriptor {
+        label: Some("field_sweep_generated_jit"),
+        source: ShaderSource::Wgsl(source.into()),
+    });
+    let pipeline_layout = ctx
+        .device
+        .create_pipeline_layout(&PipelineLayoutDescriptor {
+            label: Some("field_sweep_generated_jit_layout"),
+            bind_group_layouts: &[layout],
+            push_constant_ranges: &[],
+        });
+    ctx.device
+        .create_compute_pipeline(&ComputePipelineDescriptor {
+            label: Some("field_sweep_generated_jit_pipeline"),
+            layout: Some(&pipeline_layout),
+            module: &shader,
+            entry_point: "main",
+            compilation_options: Default::default(),
+            cache: None,
+        })
 }
 
 fn flatten_gather(adjacency: &FieldAdjacency) -> (Vec<FieldRangeGpu>, Vec<AccumulatorInputGpu>) {
@@ -1852,6 +2315,10 @@ fn pack_programs(registration: &FieldSweepRegistration) -> (Vec<EmlNodeGpu>, Fie
                 FieldSweepOutput::Transient => 1,
             },
             _pad1: 0,
+            fused_identity_bits: 0,
+            fused_dt_bits: 0,
+            _pad2: 0,
+            _pad3: 0,
         },
     )
 }
@@ -1980,11 +2447,12 @@ pub enum FieldSweepAdmissionError {
         admitted_bound: f32,
     },
     #[error(
-        "resource class stack={stack_slots} nodes={max_program_nodes} is not the admitted legacy fixed-32 class"
+        "field EML facts (nodes {requested_nodes}, peak stack {requested_stack}) do not fit closed class {attempted:?}"
     )]
     UnsupportedResourceClass {
-        stack_slots: u32,
-        max_program_nodes: u32,
+        requested_nodes: u32,
+        requested_stack: u32,
+        attempted: EmlResourceClass,
     },
     #[error("field sweep dt must be finite and non-negative (got {0})")]
     InvalidDt(f32),
@@ -2026,6 +2494,24 @@ pub enum FieldSweepAdmissionError {
 
 #[derive(Debug, Error)]
 pub enum FieldSweepExecutionError {
+    #[error("field session class {session:?} cannot execute registration class {registration:?}")]
+    SessionResourceClassTooSmall {
+        session: EmlResourceClass,
+        registration: EmlResourceClass,
+    },
+    #[cfg(feature = "eml-resource-profiling")]
+    #[error("profiling class {requested:?} is smaller than admitted class {admitted:?}")]
+    ProfilingClassTooSmall {
+        admitted: EmlResourceClass,
+        requested: EmlResourceClass,
+    },
+    #[error(
+        "field EML facts (nodes {requested_nodes}, peak stack {requested_stack}) do not fit a closed resource class"
+    )]
+    UnsupportedResourceClass {
+        requested_nodes: u32,
+        requested_stack: u32,
+    },
     #[error("values length {actual} does not match required {required}")]
     ValuesLength { actual: usize, required: usize },
     #[error("transient length {actual} does not match required {required}")]
@@ -2038,6 +2524,11 @@ pub enum FieldSweepExecutionError {
     TransientProducerBindingMismatch,
     #[error("field sweep iterations must be > 0 (got {0})")]
     InvalidIterations(u32),
+    #[error("field sweep registration chain must not be empty")]
+    EmptyRegistrationChain,
+    #[cfg(feature = "eml-resource-profiling")]
+    #[error("field sweep transient fusion lacks the exact producer/consumer certificate")]
+    UnprovenTransientFusion,
     #[error("field EML execution requires neighbor context")]
     MissingNeighborContext,
     #[error("field EML PARAM index {0} is invalid")]

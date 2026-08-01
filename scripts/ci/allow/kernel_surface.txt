@@ -9,11 +9,12 @@ FieldDegreeBucket | authority-export | FIELD-ADJACENCY-GENERATORS-0 read-only de
 FieldLawProof | authority-export | FIELD-SWEEP-N4-PARITY-0 sealed conservative or explicit non-conservative law proof | retire when field law is intrinsic in the admitted program type
 FieldSweepAdmissionError | authority-export | FIELD-SWEEP-N4-PARITY-0 typed admission rejection surface | retire when field authoring lowers through a narrower spec door
 FieldSweepExecutionError | authority-export | FIELD-SWEEP-N4-PARITY-0 typed CPU/GPU execution and parity-oracle error surface | retire when parity oracle and session are in-crate only
+FieldSweepJitCacheIdentity | authority-export | EML-RESOURCE-CLASS-ADMISSION-0 exact resource-class plus canonical-program cache identity evidence | retire when JIT profiling and evidence consumers are in-crate only
 FieldSweepOutput | authority-export | FIELD-ADJACENCY-GENERATORS-0 typed matrix-or-kernel-private-transient destination | retire when field composition lowers through a narrower admitted chain door
+FieldSweepProgramIdentity | authority-export | EML-RESOURCE-CLASS-ADMISSION-0 canonical admitted-program identity evidence | retire when JIT profiling and evidence consumers are in-crate only
 FieldSweepRegistration | authority-export | FIELD-SWEEP-N4-PARITY-0 immutable proof-present production field registration | retire when field registration consumers are in-crate only
 FieldSweepRegistrationRequest | authority-export | FIELD-SWEEP-N4-PARITY-0 untrusted authored field admission request | retire when field authoring lowers through a narrower spec door
 FieldSweepResourceClass | authority-export | FIELD-SWEEP-N4-PARITY-0 admitted fixed resource-class witness | retire when EML-RESOURCE-CLASS-ADMISSION-0 owns typed classes
-FieldSweepResourceClassRequest | authority-export | FIELD-SWEEP-N4-PARITY-0 untrusted resource request accepting only fixed 32/32 | retire when EML-RESOURCE-CLASS-ADMISSION-0 owns typed classes
 FieldSweepSession | authority-export | FIELD-SWEEP-N4-PARITY-0 kernel-owned generic sweep residency/dispatch/readback session | retire when session construction is only reachable from the standard sim lifecycle
 FieldTransientCertificate | sealed-export | FIELD-ADJACENCY-GENERATORS-0 sealed witness for compatible kernel-private transient reads | retire when transient composition is intrinsic in the admitted registration chain
 GRID_N4_NSEW | authority-export | FIELD-SWEEP-N4-PARITY-0 Gu-Yang authored canonical N4 order | retire when order lowers from sealed authored adjacency specs
@@ -42,6 +43,19 @@ AccumulatorOpSessionError | authority-export | Exported kernel runtime/planning/
 AccumulatorPipelineSessions | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
 AdmittedEvalEmlCombine | sealed-export | OC-K-EML-OPCODE-GATE-0 admitted combine token | retire when kernel export set is closed by type-boundary admission
 AdmittedEvalEmlOpcode | sealed-export | OC-K-EML-OPCODE-GATE-0 admitted opcode token | retire when kernel export set is closed by type-boundary admission
+ExactPrimitiveAdmission | sealed-export | EML-RESOURCE-CLASS-ADMISSION-0 proof token conjunctively binding determinism cost class and concrete consumer without opening opcode vocabulary | retire if exact primitive admission becomes wholly kernel-internal
+ExactPrimitiveAdmissionDoor | authority-export | EML-RESOURCE-CLASS-ADMISSION-0 stateful zero-or-one exact primitive admission gate | retire if exact primitive vocabulary expansion is permanently forbidden
+ExactPrimitiveAdmissionRequest | authority-export | EML-RESOURCE-CLASS-ADMISSION-0 untrusted conjunctive request requiring all three sealed keys | retire when no external generic primitive proposer remains
+ExactPrimitiveBitSemantics | authority-export | EML-RESOURCE-CLASS-ADMISSION-0 closed exact bit-semantics vocabulary | retire when determinism evidence is fixed to one non-authored policy
+ExactPrimitiveConsumer | authority-export | EML-RESOURCE-CLASS-ADMISSION-0 closed concrete consumer vocabulary excluding scenario labels | retire when consumer necessity is proven wholly inside the kernel
+ExactPrimitiveConsumerEvidence | authority-export | EML-RESOURCE-CLASS-ADMISSION-0 measured threshold-excess evidence for a concrete consumer | retire when no external measurement harness mints consumer keys
+ExactPrimitiveConsumerKey | sealed-export | EML-RESOURCE-CLASS-ADMISSION-0 sealed concrete-consumer necessity key | retire if exact primitive admission becomes wholly kernel-internal
+ExactPrimitiveCostEvidence | authority-export | EML-RESOURCE-CLASS-ADMISSION-0 driver-originated compiled resource comparison bound to an EML class | retire when cost evidence is collected wholly inside the kernel
+ExactPrimitiveCostKey | sealed-export | EML-RESOURCE-CLASS-ADMISSION-0 sealed non-regressing strict resource-improvement key | retire if exact primitive admission becomes wholly kernel-internal
+ExactPrimitiveDeterminismEvidence | authority-export | EML-RESOURCE-CLASS-ADMISSION-0 bit domain reference and supported-backend replay evidence | retire when determinism evidence is collected wholly inside the kernel
+ExactPrimitiveDeterminismKey | sealed-export | EML-RESOURCE-CLASS-ADMISSION-0 sealed exhaustive reference and backend replay identity key | retire if exact primitive admission becomes wholly kernel-internal
+ExactPrimitiveDomainPolicy | authority-export | EML-RESOURCE-CLASS-ADMISSION-0 closed domain and special-value policy vocabulary | retire when determinism policy is fixed to one non-authored domain
+ExactPrimitiveResourceEffect | authority-export | EML-RESOURCE-CLASS-ADMISSION-0 typed compiled registers binary and local-memory counter row | retire when cost evidence is collected wholly inside the kernel
 AO_WGSL0_ENTRY_POINT | surface-inert | Inert public kernel constant | retire when kernel export set is closed by type-boundary admission
 ao_wgsl0_fast_path_compatible | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
 AoWgsl0Compatibility | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission

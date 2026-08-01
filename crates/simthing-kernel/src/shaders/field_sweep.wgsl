@@ -1,5 +1,7 @@
 // FIELD-SWEEP-N4-PARITY-0: one generic EML map/fixed-linear-fold/post sweep.
 
+const EML_STACK_MAX: u32 = 32u;
+
 struct EmlNode {
     opcode: u32,
     flags: u32,
@@ -38,6 +40,10 @@ struct FieldSweepParams {
     schedule_count: u32,
     output_mode: u32,
     pad1: u32,
+    fused_identity_bits: u32,
+    fused_dt_bits: u32,
+    pad2: u32,
+    pad3: u32,
 }
 
 struct FieldEmlContext {
@@ -62,6 +68,7 @@ struct FieldEmlContext {
 @group(0) @binding(6) var<uniform> params: FieldSweepParams;
 @group(0) @binding(7) var<storage, read_write> transient_values: array<f32>;
 
+// EML-JIT-EVALUATOR-BEGIN
 const OP_LITERAL_F32: u32 = 0u;
 const OP_PARAM: u32 = 2u;
 const OP_TARGET_VALUE: u32 = 3u;
@@ -98,7 +105,7 @@ fn field_param(index: u32, context: FieldEmlContext) -> f32 {
 }
 
 fn eval_program(offset: u32, count: u32, context: FieldEmlContext) -> f32 {
-    var stack: array<f32, 32>;
+    var stack: array<f32, EML_STACK_MAX>;
     var sp = 0u;
     for (var local = 0u; local < count; local = local + 1u) {
         let node = nodes[offset + local];
@@ -165,6 +172,7 @@ fn eval_program(offset: u32, count: u32, context: FieldEmlContext) -> f32 {
     }
     return stack[sp - 1u];
 }
+// EML-JIT-EVALUATOR-END
 
 @compute @workgroup_size(64)
 fn main(@builtin(global_invocation_id) gid: vec3<u32>) {

@@ -10,6 +10,7 @@
 
 use simthing_core::eml_nodes::{self, EmlNode};
 use simthing_core::CombineFn;
+use simthing_core::EmlResourceClass;
 
 use crate::accumulator_op::combine_kind;
 
@@ -93,7 +94,10 @@ pub struct CpuOracleParityProof {
 
 impl CpuOracleParityProof {
     /// Mint from a bit-exact CPU reference sample (Tier-2 evidence).
-    pub fn from_bit_exact_sample(cpu_bits: u32, gpu_or_twin_bits: u32) -> Result<Self, OpcodeGateError> {
+    pub fn from_bit_exact_sample(
+        cpu_bits: u32,
+        gpu_or_twin_bits: u32,
+    ) -> Result<Self, OpcodeGateError> {
         if cpu_bits != gpu_or_twin_bits {
             return Err(OpcodeGateError::ParityMismatch {
                 cpu_bits,
@@ -140,8 +144,13 @@ pub enum OpcodeRegistrationRequest {
 pub enum CombineRegistrationRequest {
     ExistingClosed(EvalEmlCombine),
     /// Free raw combine_kind claim (unvalidated).
-    RawUnvalidated { combine_kind: u32 },
-    SemanticNamed { name: String, combine_kind: u32 },
+    RawUnvalidated {
+        combine_kind: u32,
+    },
+    SemanticNamed {
+        name: String,
+        combine_kind: u32,
+    },
 }
 
 /// Admitted opcode token (only via [`OpcodeRegistrationGate`]).
@@ -178,9 +187,9 @@ impl OpcodeRegistrationGate {
         request: OpcodeRegistrationRequest,
     ) -> Result<AdmittedEvalEmlOpcode, OpcodeGateError> {
         match request {
-            OpcodeRegistrationRequest::ExistingClosed(op) => Ok(AdmittedEvalEmlOpcode {
-                opcode: op.raw(),
-            }),
+            OpcodeRegistrationRequest::ExistingClosed(op) => {
+                Ok(AdmittedEvalEmlOpcode { opcode: op.raw() })
+            }
             OpcodeRegistrationRequest::GenericPrimitive(reg) => {
                 // Tier-2: parity proof is required to construct GenericPrimitiveRegistration.
                 // Vocabulary remains closed until a future DA-scoped expansion lands the
@@ -193,16 +202,20 @@ impl OpcodeRegistrationGate {
                         opcode: reg.proposed_opcode,
                     });
                 }
-                Err(OpcodeGateError::GenericPrimitiveRequiresVocabularyExpansion {
+                Err(
+                    OpcodeGateError::GenericPrimitiveRequiresVocabularyExpansion {
+                        name: reg.name,
+                        proposed_opcode: reg.proposed_opcode,
+                    },
+                )
+            }
+            OpcodeRegistrationRequest::Semantic(reg) => {
+                Err(OpcodeGateError::SemanticOpcodeNeverAdmissible {
                     name: reg.name,
                     proposed_opcode: reg.proposed_opcode,
+                    scenario_or_policy_tag: reg.scenario_or_policy_tag,
                 })
             }
-            OpcodeRegistrationRequest::Semantic(reg) => Err(OpcodeGateError::SemanticOpcodeNeverAdmissible {
-                name: reg.name,
-                proposed_opcode: reg.proposed_opcode,
-                scenario_or_policy_tag: reg.scenario_or_policy_tag,
-            }),
         }
     }
 
@@ -211,13 +224,12 @@ impl OpcodeRegistrationGate {
         request: CombineRegistrationRequest,
     ) -> Result<AdmittedEvalEmlCombine, OpcodeGateError> {
         match request {
-            CombineRegistrationRequest::ExistingClosed(c) => Ok(AdmittedEvalEmlCombine {
-                kind: c.raw(),
-            }),
+            CombineRegistrationRequest::ExistingClosed(c) => {
+                Ok(AdmittedEvalEmlCombine { kind: c.raw() })
+            }
             CombineRegistrationRequest::RawUnvalidated { combine_kind } => {
-                EvalEmlCombine::from_closed_kind(combine_kind).map(|c| AdmittedEvalEmlCombine {
-                    kind: c.raw(),
-                })
+                EvalEmlCombine::from_closed_kind(combine_kind)
+                    .map(|c| AdmittedEvalEmlCombine { kind: c.raw() })
             }
             CombineRegistrationRequest::SemanticNamed { name, combine_kind } => {
                 Err(OpcodeGateError::SemanticCombineNeverAdmissible { name, combine_kind })
@@ -239,8 +251,193 @@ impl OpcodeRegistrationGate {
 
     /// Validate a GPU combine_kind against the closed combine vocabulary.
     pub fn admit_combine_kind(kind: u32) -> Result<AdmittedEvalEmlCombine, OpcodeGateError> {
-        Self::admit_combine(CombineRegistrationRequest::RawUnvalidated {
-            combine_kind: kind,
+        Self::admit_combine(CombineRegistrationRequest::RawUnvalidated { combine_kind: kind })
+    }
+}
+
+/// Closed bit semantics for an exact primitive candidate.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum ExactPrimitiveBitSemantics {
+    Ieee754Binary32Bits,
+}
+
+/// Closed special-value policy; ambiguity here cannot mint determinism evidence.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum ExactPrimitiveDomainPolicy {
+    FiniteOnlyRejectNanAndInfinity,
+    PreserveIeeeNanInfinityAndSignedZero,
+}
+
+/// Evidence used by the sealed door to mint a determinism key.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct ExactPrimitiveDeterminismEvidence {
+    pub bit_semantics: ExactPrimitiveBitSemantics,
+    pub domain_policy: ExactPrimitiveDomainPolicy,
+    pub exhaustive_reference_digest: u64,
+    pub supported_backend_replay_digest: u64,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct ExactPrimitiveDeterminismKey {
+    evidence_digest: u64,
+}
+
+/// Driver-originated compiled resource effects for one canonical-interpreter class.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct ExactPrimitiveResourceEffect {
+    pub register_count: u64,
+    pub binary_size_bytes: u64,
+    pub local_memory_bytes: u64,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct ExactPrimitiveCostEvidence {
+    pub resource_class: EmlResourceClass,
+    pub canonical_interpreter: ExactPrimitiveResourceEffect,
+    pub primitive_candidate: ExactPrimitiveResourceEffect,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct ExactPrimitiveCostKey {
+    resource_class: EmlResourceClass,
+}
+
+/// Concrete production consumers; free-form scenario labels are not admissible.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum ExactPrimitiveConsumer {
+    OrdinaryAccumulatorEvalEml,
+    FieldSweepEvalEml,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct ExactPrimitiveConsumerEvidence {
+    pub consumer: ExactPrimitiveConsumer,
+    /// Measured excess over the governing threshold, in basis points.
+    pub measured_threshold_excess_bps: u32,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct ExactPrimitiveConsumerKey {
+    consumer: ExactPrimitiveConsumer,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ExactPrimitiveAdmissionRequest {
+    pub name: String,
+    pub determinism: Option<ExactPrimitiveDeterminismKey>,
+    pub cost: Option<ExactPrimitiveCostKey>,
+    pub consumer: Option<ExactPrimitiveConsumerKey>,
+}
+
+/// Sealed proof token. It does not expand `CLOSED_OPCODES`; vocabulary expansion
+/// remains a separate DA-scoped change.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ExactPrimitiveAdmission {
+    name: String,
+    resource_class: EmlResourceClass,
+    consumer: ExactPrimitiveConsumer,
+}
+
+impl ExactPrimitiveAdmission {
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn resource_class(&self) -> EmlResourceClass {
+        self.resource_class
+    }
+
+    pub fn consumer(&self) -> ExactPrimitiveConsumer {
+        self.consumer
+    }
+}
+
+/// Stateful sealed door: zero admissions is valid and no instance can admit
+/// more than one primitive.
+#[derive(Debug, Default)]
+pub struct ExactPrimitiveAdmissionDoor {
+    admitted: bool,
+}
+
+impl ExactPrimitiveAdmissionDoor {
+    pub fn admitted_count(&self) -> u32 {
+        u32::from(self.admitted)
+    }
+
+    pub fn verify_determinism(
+        evidence: ExactPrimitiveDeterminismEvidence,
+    ) -> Result<ExactPrimitiveDeterminismKey, OpcodeGateError> {
+        if evidence.exhaustive_reference_digest == 0
+            || evidence.supported_backend_replay_digest == 0
+        {
+            return Err(OpcodeGateError::IncompleteExactDeterminismEvidence);
+        }
+        if evidence.exhaustive_reference_digest != evidence.supported_backend_replay_digest {
+            return Err(OpcodeGateError::ExactDeterminismReplayMismatch {
+                reference_digest: evidence.exhaustive_reference_digest,
+                replay_digest: evidence.supported_backend_replay_digest,
+            });
+        }
+        Ok(ExactPrimitiveDeterminismKey {
+            evidence_digest: evidence.exhaustive_reference_digest,
+        })
+    }
+
+    pub fn verify_cost(
+        evidence: ExactPrimitiveCostEvidence,
+    ) -> Result<ExactPrimitiveCostKey, OpcodeGateError> {
+        let before = evidence.canonical_interpreter;
+        let after = evidence.primitive_candidate;
+        let no_regression = after.register_count <= before.register_count
+            && after.binary_size_bytes <= before.binary_size_bytes
+            && after.local_memory_bytes <= before.local_memory_bytes;
+        let strict_improvement = after.register_count < before.register_count
+            || after.binary_size_bytes < before.binary_size_bytes
+            || after.local_memory_bytes < before.local_memory_bytes;
+        if !no_regression || !strict_improvement {
+            return Err(OpcodeGateError::ExactPrimitiveCostNotImproved);
+        }
+        Ok(ExactPrimitiveCostKey {
+            resource_class: evidence.resource_class,
+        })
+    }
+
+    pub fn verify_consumer(
+        evidence: ExactPrimitiveConsumerEvidence,
+    ) -> Result<ExactPrimitiveConsumerKey, OpcodeGateError> {
+        if evidence.measured_threshold_excess_bps == 0 {
+            return Err(OpcodeGateError::ExactPrimitiveConsumerNotNecessary);
+        }
+        Ok(ExactPrimitiveConsumerKey {
+            consumer: evidence.consumer,
+        })
+    }
+
+    pub fn admit(
+        &mut self,
+        request: ExactPrimitiveAdmissionRequest,
+    ) -> Result<ExactPrimitiveAdmission, OpcodeGateError> {
+        if self.admitted {
+            return Err(OpcodeGateError::ExactPrimitiveLimitReached);
+        }
+        if request.name.trim().is_empty() {
+            return Err(OpcodeGateError::ExactPrimitiveNameEmpty);
+        }
+        let determinism = request
+            .determinism
+            .ok_or(OpcodeGateError::MissingExactPrimitiveDeterminismKey)?;
+        let cost = request
+            .cost
+            .ok_or(OpcodeGateError::MissingExactPrimitiveCostKey)?;
+        let consumer = request
+            .consumer
+            .ok_or(OpcodeGateError::MissingExactPrimitiveConsumerKey)?;
+        let _evidence_digest = determinism.evidence_digest;
+        self.admitted = true;
+        Ok(ExactPrimitiveAdmission {
+            name: request.name,
+            resource_class: cost.resource_class,
+            consumer: consumer.consumer,
         })
     }
 }
@@ -250,7 +447,9 @@ impl OpcodeRegistrationGate {
 pub enum OpcodeGateError {
     #[error("unwhitelisted EvalEML opcode {opcode:#x} is not in the closed vocabulary")]
     UnwhitelistedOpcode { opcode: u32 },
-    #[error("unwhitelisted combine_kind {combine_kind} is not in the closed EvalEML/AO vocabulary")]
+    #[error(
+        "unwhitelisted combine_kind {combine_kind} is not in the closed EvalEML/AO vocabulary"
+    )]
     UnwhitelistedCombine { combine_kind: u32 },
     #[error(
         "semantic/scenario opcode `{name}` (opcode {proposed_opcode:#x}, tag `{scenario_or_policy_tag}`) is never admissible"
@@ -267,12 +466,34 @@ pub enum OpcodeGateError {
     #[error(
         "generic primitive `{name}` (opcode {proposed_opcode:#x}) requires Tier-2 vocabulary expansion with DA scope; parity alone does not open the closed set"
     )]
-    GenericPrimitiveRequiresVocabularyExpansion {
-        name: String,
-        proposed_opcode: u32,
-    },
+    GenericPrimitiveRequiresVocabularyExpansion { name: String, proposed_opcode: u32 },
     #[error("generic primitive registration missing CPU-oracle parity proof")]
     MissingTier2Parity,
+    #[error("exact primitive determinism evidence is incomplete")]
+    IncompleteExactDeterminismEvidence,
+    #[error(
+        "exact primitive backend replay digest {replay_digest:#x} differs from exhaustive reference {reference_digest:#x}"
+    )]
+    ExactDeterminismReplayMismatch {
+        reference_digest: u64,
+        replay_digest: u64,
+    },
+    #[error(
+        "exact primitive candidate has no strict non-regressing compiled-resource improvement"
+    )]
+    ExactPrimitiveCostNotImproved,
+    #[error("exact primitive has no measured threshold excess for its concrete consumer")]
+    ExactPrimitiveConsumerNotNecessary,
+    #[error("exact primitive admission requires a determinism key")]
+    MissingExactPrimitiveDeterminismKey,
+    #[error("exact primitive admission requires a measured cost key")]
+    MissingExactPrimitiveCostKey,
+    #[error("exact primitive admission requires a concrete consumer key")]
+    MissingExactPrimitiveConsumerKey,
+    #[error("exact primitive admission permits at most one primitive")]
+    ExactPrimitiveLimitReached,
+    #[error("exact primitive name must not be empty")]
+    ExactPrimitiveNameEmpty,
 }
 
 // ── Closed vocabularies ───────────────────────────────────────────────────────
@@ -501,5 +722,123 @@ mod tests {
             c: 0,
             d: 0,
         }
+    }
+
+    fn determinism_key() -> ExactPrimitiveDeterminismKey {
+        ExactPrimitiveAdmissionDoor::verify_determinism(ExactPrimitiveDeterminismEvidence {
+            bit_semantics: ExactPrimitiveBitSemantics::Ieee754Binary32Bits,
+            domain_policy: ExactPrimitiveDomainPolicy::PreserveIeeeNanInfinityAndSignedZero,
+            exhaustive_reference_digest: 0x5eed,
+            supported_backend_replay_digest: 0x5eed,
+        })
+        .expect("matching exhaustive replay")
+    }
+
+    fn cost_key() -> ExactPrimitiveCostKey {
+        ExactPrimitiveAdmissionDoor::verify_cost(ExactPrimitiveCostEvidence {
+            resource_class: EmlResourceClass::CompactStack4,
+            canonical_interpreter: ExactPrimitiveResourceEffect {
+                register_count: 31,
+                binary_size_bytes: 21_504,
+                local_memory_bytes: 64,
+            },
+            primitive_candidate: ExactPrimitiveResourceEffect {
+                register_count: 30,
+                binary_size_bytes: 21_504,
+                local_memory_bytes: 64,
+            },
+        })
+        .expect("strict non-regressing measured cost")
+    }
+
+    fn consumer_key() -> ExactPrimitiveConsumerKey {
+        ExactPrimitiveAdmissionDoor::verify_consumer(ExactPrimitiveConsumerEvidence {
+            consumer: ExactPrimitiveConsumer::FieldSweepEvalEml,
+            measured_threshold_excess_bps: 1,
+        })
+        .expect("concrete measured consumer")
+    }
+
+    #[test]
+    fn exact_primitive_admission_requires_every_independent_key_and_zero_is_valid() {
+        let mut door = ExactPrimitiveAdmissionDoor::default();
+        assert_eq!(door.admitted_count(), 0);
+        assert_eq!(
+            door.admit(ExactPrimitiveAdmissionRequest {
+                name: "candidate".to_owned(),
+                determinism: None,
+                cost: Some(cost_key()),
+                consumer: Some(consumer_key()),
+            }),
+            Err(OpcodeGateError::MissingExactPrimitiveDeterminismKey)
+        );
+        assert_eq!(
+            door.admit(ExactPrimitiveAdmissionRequest {
+                name: "candidate".to_owned(),
+                determinism: Some(determinism_key()),
+                cost: None,
+                consumer: Some(consumer_key()),
+            }),
+            Err(OpcodeGateError::MissingExactPrimitiveCostKey)
+        );
+        assert_eq!(
+            door.admit(ExactPrimitiveAdmissionRequest {
+                name: "candidate".to_owned(),
+                determinism: Some(determinism_key()),
+                cost: Some(cost_key()),
+                consumer: None,
+            }),
+            Err(OpcodeGateError::MissingExactPrimitiveConsumerKey)
+        );
+        assert_eq!(
+            door.admitted_count(),
+            0,
+            "no primitive is promised or admitted"
+        );
+    }
+
+    #[test]
+    fn exact_primitive_evidence_rejects_backend_domain_and_cost_substitutes() {
+        assert_eq!(
+            ExactPrimitiveAdmissionDoor::verify_determinism(ExactPrimitiveDeterminismEvidence {
+                bit_semantics: ExactPrimitiveBitSemantics::Ieee754Binary32Bits,
+                domain_policy: ExactPrimitiveDomainPolicy::FiniteOnlyRejectNanAndInfinity,
+                exhaustive_reference_digest: 0,
+                supported_backend_replay_digest: 0,
+            }),
+            Err(OpcodeGateError::IncompleteExactDeterminismEvidence)
+        );
+        assert!(matches!(
+            ExactPrimitiveAdmissionDoor::verify_determinism(ExactPrimitiveDeterminismEvidence {
+                bit_semantics: ExactPrimitiveBitSemantics::Ieee754Binary32Bits,
+                domain_policy: ExactPrimitiveDomainPolicy::FiniteOnlyRejectNanAndInfinity,
+                exhaustive_reference_digest: 1,
+                supported_backend_replay_digest: 2,
+            }),
+            Err(OpcodeGateError::ExactDeterminismReplayMismatch { .. })
+        ));
+        assert_eq!(
+            ExactPrimitiveAdmissionDoor::verify_cost(ExactPrimitiveCostEvidence {
+                resource_class: EmlResourceClass::CompactStack4,
+                canonical_interpreter: ExactPrimitiveResourceEffect {
+                    register_count: 31,
+                    binary_size_bytes: 21_504,
+                    local_memory_bytes: 64,
+                },
+                primitive_candidate: ExactPrimitiveResourceEffect {
+                    register_count: 31,
+                    binary_size_bytes: 21_504,
+                    local_memory_bytes: 64,
+                },
+            }),
+            Err(OpcodeGateError::ExactPrimitiveCostNotImproved)
+        );
+        assert_eq!(
+            ExactPrimitiveAdmissionDoor::verify_consumer(ExactPrimitiveConsumerEvidence {
+                consumer: ExactPrimitiveConsumer::FieldSweepEvalEml,
+                measured_threshold_excess_bps: 0,
+            }),
+            Err(OpcodeGateError::ExactPrimitiveConsumerNotNecessary)
+        );
     }
 }

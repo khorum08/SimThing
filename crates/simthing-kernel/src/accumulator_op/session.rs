@@ -3,6 +3,7 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use bytemuck;
+use simthing_core::EmlResourceClass;
 use wgpu::util::DeviceExt;
 use wgpu::{
     BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor,
@@ -151,9 +152,11 @@ pub struct AccumulatorOpSession {
     input_list_buffer: Buffer,
 
     execute_layout: BindGroupLayout,
-    execute_pipeline: ComputePipeline,
+    execute_pipeline_compact: ComputePipeline,
+    execute_pipeline_legacy32: ComputePipeline,
     /// AO-WGSL-0: fused multi-band OrderBand fast path (`execute_orderband_bands`).
-    orderband_fast_pipeline: ComputePipeline,
+    orderband_fast_pipeline_compact: ComputePipeline,
+    orderband_fast_pipeline_legacy32: ComputePipeline,
     /// AO-WGSL-0: dynamic-offset bind layout for the fast path (binding 4 dynamic).
     orderband_fast_layout: BindGroupLayout,
     /// AO-WGSL-0: growable band-params uniform; one buffer/bind-group per encode,
@@ -304,9 +307,22 @@ impl AccumulatorOpSession {
         let (eml_node_buffer, eml_range_buffer) = mk_dummy_eml_buffers(device);
         let input_list_buffer = mk_dummy_input_list_buffer(device);
 
-        let shader = device.create_shader_module(ShaderModuleDescriptor {
-            label: Some("accumulator_op"),
-            source: ShaderSource::Wgsl(include_str!("../shaders/accumulator_op.wgsl").into()),
+        let canonical_accumulator_shader = include_str!("../shaders/accumulator_op.wgsl");
+        let compact_shader_source = crate::eml_resource_class::specialize_eml_stack_limit(
+            canonical_accumulator_shader,
+            EmlResourceClass::CompactStack4,
+        );
+        let legacy32_shader_source = crate::eml_resource_class::specialize_eml_stack_limit(
+            canonical_accumulator_shader,
+            EmlResourceClass::LegacyFixed32,
+        );
+        let compact_shader = device.create_shader_module(ShaderModuleDescriptor {
+            label: Some("accumulator_op_stack4"),
+            source: ShaderSource::Wgsl(compact_shader_source.into()),
+        });
+        let legacy32_shader = device.create_shader_module(ShaderModuleDescriptor {
+            label: Some("accumulator_op_stack32"),
+            source: ShaderSource::Wgsl(legacy32_shader_source.into()),
         });
 
         let execute_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
@@ -328,18 +344,28 @@ impl AccumulatorOpSession {
             ],
         });
 
-        let execute_pipeline = device.create_compute_pipeline(&ComputePipelineDescriptor {
-            label: Some("accumulator_execute_pipeline"),
-            layout: Some(&device.create_pipeline_layout(&PipelineLayoutDescriptor {
-                label: Some("accumulator_execute_pl"),
-                bind_group_layouts: &[&execute_layout],
-                push_constant_ranges: &[],
-            })),
-            module: &shader,
+        let execute_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
+            label: Some("accumulator_execute_pl"),
+            bind_group_layouts: &[&execute_layout],
+            push_constant_ranges: &[],
+        });
+        let execute_pipeline_compact = device.create_compute_pipeline(&ComputePipelineDescriptor {
+            label: Some("accumulator_execute_pipeline_stack4"),
+            layout: Some(&execute_pipeline_layout),
+            module: &compact_shader,
             entry_point: "execute_ops",
             compilation_options: Default::default(),
             cache: None,
         });
+        let execute_pipeline_legacy32 =
+            device.create_compute_pipeline(&ComputePipelineDescriptor {
+                label: Some("accumulator_execute_pipeline_stack32"),
+                layout: Some(&execute_pipeline_layout),
+                module: &legacy32_shader,
+                entry_point: "execute_ops",
+                compilation_options: Default::default(),
+                cache: None,
+            });
 
         let orderband_fast_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             label: Some("accumulator_ao_wgsl0_fast_layout"),
@@ -360,18 +386,30 @@ impl AccumulatorOpSession {
             ],
         });
 
-        let orderband_fast_pipeline = device.create_compute_pipeline(&ComputePipelineDescriptor {
-            label: Some("accumulator_ao_wgsl0_fast_pipeline"),
-            layout: Some(&device.create_pipeline_layout(&PipelineLayoutDescriptor {
+        let orderband_fast_pipeline_layout =
+            device.create_pipeline_layout(&PipelineLayoutDescriptor {
                 label: Some("accumulator_ao_wgsl0_fast_pl"),
                 bind_group_layouts: &[&orderband_fast_layout],
                 push_constant_ranges: &[],
-            })),
-            module: &shader,
-            entry_point: super::wgsl_path::AO_WGSL0_ENTRY_POINT,
-            compilation_options: Default::default(),
-            cache: None,
-        });
+            });
+        let orderband_fast_pipeline_compact =
+            device.create_compute_pipeline(&ComputePipelineDescriptor {
+                label: Some("accumulator_ao_wgsl0_fast_pipeline_stack4"),
+                layout: Some(&orderband_fast_pipeline_layout),
+                module: &compact_shader,
+                entry_point: super::wgsl_path::AO_WGSL0_ENTRY_POINT,
+                compilation_options: Default::default(),
+                cache: None,
+            });
+        let orderband_fast_pipeline_legacy32 =
+            device.create_compute_pipeline(&ComputePipelineDescriptor {
+                label: Some("accumulator_ao_wgsl0_fast_pipeline_stack32"),
+                layout: Some(&orderband_fast_pipeline_layout),
+                module: &legacy32_shader,
+                entry_point: super::wgsl_path::AO_WGSL0_ENTRY_POINT,
+                compilation_options: Default::default(),
+                cache: None,
+            });
 
         let orderband_fast_uniform = device.create_buffer(&BufferDescriptor {
             label: Some("accumulator_ao_wgsl0_fast_uniform"),
@@ -396,7 +434,7 @@ impl AccumulatorOpSession {
                 bind_group_layouts: &[&summary_layout],
                 push_constant_ranges: &[],
             })),
-            module: &shader,
+            module: &compact_shader,
             entry_point: "write_summaries",
             compilation_options: Default::default(),
             cache: None,
@@ -434,7 +472,9 @@ impl AccumulatorOpSession {
 
         let anchor_maintain_shader = device.create_shader_module(ShaderModuleDescriptor {
             label: Some("anchor_table_maintain"),
-            source: ShaderSource::Wgsl(include_str!("../shaders/anchor_table_maintain.wgsl").into()),
+            source: ShaderSource::Wgsl(
+                include_str!("../shaders/anchor_table_maintain.wgsl").into(),
+            ),
         });
         let anchor_maintain_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             label: Some("anchor_table_maintain_layout"),
@@ -460,14 +500,15 @@ impl AccumulatorOpSession {
             compilation_options: Default::default(),
             cache: None,
         });
-        let anchor_magnitude_pipeline = device.create_compute_pipeline(&ComputePipelineDescriptor {
-            label: Some("anchor_table_magnitude_pipeline"),
-            layout: Some(&anchor_maintain_pl),
-            module: &anchor_maintain_shader,
-            entry_point: "maintain_anchor_magnitudes",
-            compilation_options: Default::default(),
-            cache: None,
-        });
+        let anchor_magnitude_pipeline =
+            device.create_compute_pipeline(&ComputePipelineDescriptor {
+                label: Some("anchor_table_magnitude_pipeline"),
+                layout: Some(&anchor_maintain_pl),
+                module: &anchor_maintain_shader,
+                entry_point: "maintain_anchor_magnitudes",
+                compilation_options: Default::default(),
+                cache: None,
+            });
         let anchor_maintain_uniform = device.create_buffer(&BufferDescriptor {
             label: Some("anchor_table_maintain_uniform"),
             size: std::mem::size_of::<AnchorMaintainParams>() as u64,
@@ -515,8 +556,10 @@ impl AccumulatorOpSession {
             eml_range_buffer,
             input_list_buffer,
             execute_layout,
-            execute_pipeline,
-            orderband_fast_pipeline,
+            execute_pipeline_compact,
+            execute_pipeline_legacy32,
+            orderband_fast_pipeline_compact,
+            orderband_fast_pipeline_legacy32,
             orderband_fast_layout,
             orderband_fast_uniform,
             orderband_fast_uniform_bands: 1,
@@ -839,6 +882,20 @@ impl AccumulatorOpSession {
         eml.unwrap_or((&self.eml_node_buffer, &self.eml_range_buffer))
     }
 
+    fn execute_pipeline_for(&self, resource_class: EmlResourceClass) -> &ComputePipeline {
+        match resource_class {
+            EmlResourceClass::CompactStack4 => &self.execute_pipeline_compact,
+            EmlResourceClass::LegacyFixed32 => &self.execute_pipeline_legacy32,
+        }
+    }
+
+    fn orderband_fast_pipeline_for(&self, resource_class: EmlResourceClass) -> &ComputePipeline {
+        match resource_class {
+            EmlResourceClass::CompactStack4 => &self.orderband_fast_pipeline_compact,
+            EmlResourceClass::LegacyFixed32 => &self.orderband_fast_pipeline_legacy32,
+        }
+    }
+
     /// Upload a packed bootstrap / pre-encoded accumulator op packet.
     pub fn upload_packed_ops(
         &mut self,
@@ -1048,7 +1105,10 @@ impl AccumulatorOpSession {
         eml: Option<&super::eml_program_table::EmlGpuProgramTable>,
     ) -> Result<(), AccumulatorOpSessionError> {
         let eml_bufs = eml.map(super::eml_program_table::EmlGpuProgramTable::bind_buffers);
-        self.tick_with_eml_buffers(ctx, band, eml_bufs)
+        let resource_class = eml
+            .map(super::eml_program_table::EmlGpuProgramTable::resource_class)
+            .unwrap_or_default();
+        self.tick_with_eml_buffers(ctx, band, eml_bufs, resource_class)
     }
 
     fn tick_with_eml_buffers(
@@ -1056,6 +1116,7 @@ impl AccumulatorOpSession {
         ctx: &GpuContext,
         band: u32,
         eml: Option<(&Buffer, &Buffer)>,
+        resource_class: EmlResourceClass,
     ) -> Result<(), AccumulatorOpSessionError> {
         if self.n_ops == 0 {
             return Err(AccumulatorOpSessionError::NoOps);
@@ -1093,7 +1154,7 @@ impl AccumulatorOpSession {
                 label: Some("accumulator_execute_pass"),
                 timestamp_writes,
             });
-            pass.set_pipeline(&self.execute_pipeline);
+            pass.set_pipeline(self.execute_pipeline_for(resource_class));
             pass.set_bind_group(0, &execute_bind_group, &[]);
             let groups = self.n_ops.div_ceil(WORKGROUP_SIZE);
             pass.dispatch_workgroups(groups, 1, 1);
@@ -1216,21 +1277,20 @@ impl AccumulatorOpSession {
                 output_values,
             );
 
-            let timestamp_writes =
-                self.timestamp_query_set
-                    .as_ref()
-                    .map(|query_set| wgpu::ComputePassTimestampWrites {
-                        query_set,
-                        beginning_of_pass_write_index: Some(0),
-                        end_of_pass_write_index: Some(1),
-                    });
+            let timestamp_writes = self.timestamp_query_set.as_ref().map(|query_set| {
+                wgpu::ComputePassTimestampWrites {
+                    query_set,
+                    beginning_of_pass_write_index: Some(0),
+                    end_of_pass_write_index: Some(1),
+                }
+            });
 
             {
                 let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
                     label: Some("accumulator_threshold_scan_pass"),
                     timestamp_writes,
                 });
-                pass.set_pipeline(&self.execute_pipeline);
+                pass.set_pipeline(&self.execute_pipeline_compact);
                 pass.set_bind_group(0, &execute_bind_group, &[]);
                 let groups = self.n_ops.div_ceil(WORKGROUP_SIZE);
                 pass.dispatch_workgroups(groups, 1, 1);
@@ -1281,8 +1341,11 @@ impl AccumulatorOpSession {
             n_anchor_rows,
             generation,
         };
-        ctx.queue
-            .write_buffer(&self.anchor_maintain_uniform, 0, bytemuck::bytes_of(&params));
+        ctx.queue.write_buffer(
+            &self.anchor_maintain_uniform,
+            0,
+            bytemuck::bytes_of(&params),
+        );
         let bind_group = ctx.device.create_bind_group(&BindGroupDescriptor {
             label: Some("anchor_table_maintain_bg"),
             layout: &self.anchor_maintain_layout,
@@ -1379,7 +1442,7 @@ impl AccumulatorOpSession {
                 label: Some("accumulator_intent_pass"),
                 timestamp_writes,
             });
-            pass.set_pipeline(&self.execute_pipeline);
+            pass.set_pipeline(&self.execute_pipeline_compact);
             pass.set_bind_group(0, &execute_bind_group, &[]);
             let groups = self.n_ops.div_ceil(WORKGROUP_SIZE);
             pass.dispatch_workgroups(groups, 1, 1);
@@ -1485,7 +1548,7 @@ impl AccumulatorOpSession {
                 label: Some("accumulator_overlay_orderband_pass"),
                 timestamp_writes: None,
             });
-            pass.set_pipeline(&self.execute_pipeline);
+            pass.set_pipeline(&self.execute_pipeline_compact);
             pass.set_bind_group(0, &execute_bind_group, &[]);
             pass.dispatch_workgroups(groups, 1, 1);
         }
@@ -1505,6 +1568,9 @@ impl AccumulatorOpSession {
         eml: Option<&super::eml_program_table::EmlGpuProgramTable>,
     ) {
         let eml_bufs = eml.map(super::eml_program_table::EmlGpuProgramTable::bind_buffers);
+        let resource_class = eml
+            .map(super::eml_program_table::EmlGpuProgramTable::resource_class)
+            .unwrap_or_default();
         self.encode_orderband_with_eml_buffers_into(
             ctx,
             encoder,
@@ -1513,6 +1579,7 @@ impl AccumulatorOpSession {
             n_bands,
             dt,
             eml_bufs,
+            resource_class,
         );
     }
 
@@ -1525,6 +1592,7 @@ impl AccumulatorOpSession {
         n_bands: u32,
         dt: f32,
         eml: Option<(&Buffer, &Buffer)>,
+        resource_class: EmlResourceClass,
     ) {
         if self.n_ops == 0 || n_bands == 0 {
             return;
@@ -1566,7 +1634,7 @@ impl AccumulatorOpSession {
                 label: Some("accumulator_orderband_eml_pass"),
                 timestamp_writes: None,
             });
-            pass.set_pipeline(&self.execute_pipeline);
+            pass.set_pipeline(self.execute_pipeline_for(resource_class));
             pass.set_bind_group(0, &execute_bind_group, &[]);
             pass.dispatch_workgroups(groups, 1, 1);
         }
@@ -1594,6 +1662,9 @@ impl AccumulatorOpSession {
         eml: Option<&super::eml_program_table::EmlGpuProgramTable>,
     ) {
         let eml_bufs = eml.map(super::eml_program_table::EmlGpuProgramTable::bind_buffers);
+        let resource_class = eml
+            .map(super::eml_program_table::EmlGpuProgramTable::resource_class)
+            .unwrap_or_default();
         self.encode_orderband_fast_buffers_into(
             ctx,
             encoder,
@@ -1602,6 +1673,7 @@ impl AccumulatorOpSession {
             n_bands,
             dt,
             eml_bufs,
+            resource_class,
         );
     }
 
@@ -1614,6 +1686,7 @@ impl AccumulatorOpSession {
         n_bands: u32,
         dt: f32,
         eml: Option<(&Buffer, &Buffer)>,
+        resource_class: EmlResourceClass,
     ) {
         if self.n_ops == 0 || n_bands == 0 {
             return;
@@ -1649,7 +1722,7 @@ impl AccumulatorOpSession {
             label: Some("accumulator_ao_wgsl0_fast_pass"),
             timestamp_writes: None,
         });
-        pass.set_pipeline(&self.orderband_fast_pipeline);
+        pass.set_pipeline(self.orderband_fast_pipeline_for(resource_class));
         for band in 0..n_bands {
             let dyn_offset = (band as u64 * stride) as u32;
             pass.set_bind_group(0, &bind_group, &[dyn_offset]);
@@ -1818,7 +1891,7 @@ impl AccumulatorOpSession {
             label: Some("accumulator_reduction_soft_pass"),
             timestamp_writes: None,
         });
-        pass.set_pipeline(&self.execute_pipeline);
+        pass.set_pipeline(&self.execute_pipeline_compact);
         pass.set_bind_group(0, &execute_bind_group, &[]);
         pass.dispatch_workgroups(groups, 1, 1);
     }
@@ -1880,7 +1953,7 @@ impl AccumulatorOpSession {
                 label: Some("accumulator_velocity_pass"),
                 timestamp_writes: None,
             });
-            pass.set_pipeline(&self.execute_pipeline);
+            pass.set_pipeline(&self.execute_pipeline_compact);
             pass.set_bind_group(0, &execute_bind_group, &[]);
             pass.dispatch_workgroups(groups, 1, 1);
             base += chunk_invocations;
@@ -1896,12 +1969,16 @@ impl AccumulatorOpSession {
         values: &Buffer,
         previous_values: &Buffer,
         dt: f32,
-        eml: Option<(&Buffer, &Buffer)>,
+        eml: Option<&super::eml_program_table::EmlGpuProgramTable>,
     ) {
         if self.n_ops == 0 {
             return;
         }
         self.last_pass_time_us = None;
+        let resource_class = eml
+            .map(super::eml_program_table::EmlGpuProgramTable::resource_class)
+            .unwrap_or_default();
+        let eml = eml.map(super::eml_program_table::EmlGpuProgramTable::bind_buffers);
 
         let tick_params = AccumulatorTickParams {
             n_ops: self.n_ops,
@@ -1933,7 +2010,7 @@ impl AccumulatorOpSession {
             label: Some("accumulator_intensity_eml_pass"),
             timestamp_writes: None,
         });
-        pass.set_pipeline(&self.execute_pipeline);
+        pass.set_pipeline(self.execute_pipeline_for(resource_class));
         pass.set_bind_group(0, &execute_bind_group, &[]);
         let groups = self.n_ops.div_ceil(WORKGROUP_SIZE);
         pass.dispatch_workgroups(groups, 1, 1);
@@ -1948,13 +2025,17 @@ impl AccumulatorOpSession {
         values: &Buffer,
         previous_values: &Buffer,
         n_bands: u32,
-        eml: Option<(&Buffer, &Buffer)>,
+        eml: Option<&super::eml_program_table::EmlGpuProgramTable>,
         input_list: Option<&Buffer>,
     ) {
         if self.n_ops == 0 || n_bands == 0 {
             return;
         }
         self.last_pass_time_us = None;
+        let resource_class = eml
+            .map(super::eml_program_table::EmlGpuProgramTable::resource_class)
+            .unwrap_or_default();
+        let eml = eml.map(super::eml_program_table::EmlGpuProgramTable::bind_buffers);
 
         let groups = self.n_ops.div_ceil(WORKGROUP_SIZE);
         let mut band_uniforms = Vec::with_capacity(n_bands as usize);
@@ -1991,7 +2072,7 @@ impl AccumulatorOpSession {
                 label: Some("accumulator_transfer_pass"),
                 timestamp_writes: None,
             });
-            pass.set_pipeline(&self.execute_pipeline);
+            pass.set_pipeline(self.execute_pipeline_for(resource_class));
             pass.set_bind_group(0, &execute_bind_group, &[]);
             pass.dispatch_workgroups(groups, 1, 1);
         }
@@ -2007,12 +2088,16 @@ impl AccumulatorOpSession {
         values: &Buffer,
         previous_values: &Buffer,
         dt: f32,
-        eml: Option<(&Buffer, &Buffer)>,
+        eml: Option<&super::eml_program_table::EmlGpuProgramTable>,
     ) {
         if self.n_ops == 0 {
             return;
         }
         self.last_pass_time_us = None;
+        let resource_class = eml
+            .map(super::eml_program_table::EmlGpuProgramTable::resource_class)
+            .unwrap_or_default();
+        let eml = eml.map(super::eml_program_table::EmlGpuProgramTable::bind_buffers);
         self.reset_emission_count(ctx);
 
         let tick_params = AccumulatorTickParams {
@@ -2045,7 +2130,7 @@ impl AccumulatorOpSession {
             label: Some("accumulator_emission_pass"),
             timestamp_writes: None,
         });
-        pass.set_pipeline(&self.execute_pipeline);
+        pass.set_pipeline(self.execute_pipeline_for(resource_class));
         pass.set_bind_group(0, &execute_bind_group, &[]);
         let groups = self.n_ops.div_ceil(WORKGROUP_SIZE);
         pass.dispatch_workgroups(groups, 1, 1);

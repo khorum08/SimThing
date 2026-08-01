@@ -10,8 +10,8 @@ use simthing_gpu::{
     cpu_w_impedance_compose_oracle, execute_field_sweep_cpu, execute_field_sweep_cpu_iterations,
     execute_field_sweep_cpu_natural_order, field_param, FieldAdjacency, FieldLawProof,
     FieldSweepAdmissionError, FieldSweepOutput, FieldSweepRegistration,
-    FieldSweepRegistrationRequest, FieldSweepResourceClassRequest, FieldSweepSession, GpuContext,
-    GridOffset, LinkGraphNeighbor, WImpedanceComposeConfig, WImpedanceComposeProfile, GRID_N4_NSEW,
+    FieldSweepRegistrationRequest, FieldSweepSession, GpuContext, GridOffset, LinkGraphNeighbor,
+    WImpedanceComposeConfig, WImpedanceComposeProfile, GRID_N4_NSEW,
 };
 use simthing_spec::deserialize_scenario_authority;
 
@@ -86,7 +86,6 @@ fn front_registration_with_dims(adjacency: FieldAdjacency, n_dims: u32) -> Field
         field_law_proof: Some(FieldLawProof::apply_non_conservative()),
         transient_read_proof: None,
         canonical_order_proof: Some(order),
-        resource_class: FieldSweepResourceClassRequest::default(),
         dt: 1.0,
     })
     .expect("front registration")
@@ -375,7 +374,6 @@ fn valid_minimal_request(adjacency: FieldAdjacency) -> FieldSweepRegistrationReq
         field_law_proof: Some(FieldLawProof::apply_non_conservative()),
         transient_read_proof: None,
         canonical_order_proof: Some(order),
-        resource_class: FieldSweepResourceClassRequest::default(),
         dt: 1.0,
     }
 }
