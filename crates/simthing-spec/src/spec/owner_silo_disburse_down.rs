@@ -12,9 +12,7 @@ use super::planet_child_location::{
     is_admitted_planet_non_grid_child, planet_id, planet_non_grid_child_kind_label,
     planet_non_grid_child_owner_ref, planet_owner_ref, star_system_gridcells,
 };
-use super::planet_child_rf::{
-    planet_child_rf_default_resource_key, PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY,
-};
+use super::planet_child_rf::planet_child_rf_default_resource_key;
 use super::scenario::{
     game_session_galaxy_map, game_session_owners, owner_entity_id, owner_flow_owner_ref,
     property_u32, SimThingScenarioSpec, OWNER_FLOW_DEFAULT_PRIORITY, OWNER_FLOW_DEMAND_PROPERTY_ID,
@@ -46,8 +44,6 @@ pub struct RuntimeOwnerSiloDemandBucket {
     pub owner_ref: OwnerRef,
     pub resource_key: ResourceKey,
     pub scope_id: ScopeId,
-    pub planet_id: Option<String>,
-    pub star_system_gridcell_id_raw: Option<u32>,
     pub requested: u32,
     pub priority: u32,
     pub source_simthing_id_raw: Option<u32>,
@@ -66,8 +62,6 @@ pub struct RuntimeOwnerSiloDisburseDownAllocation {
     pub owner_ref: OwnerRef,
     pub resource_key: ResourceKey,
     pub scope_id: ScopeId,
-    pub planet_id: Option<String>,
-    pub star_system_gridcell_id_raw: Option<u32>,
     pub requested: u32,
     pub allocated: u32,
     pub unmet: u32,
@@ -129,9 +123,7 @@ pub fn owner_silo_demand_buckets_from_planet_child_rf(
             let planet_path = format!("{star_path}/planet/{planet_scope}");
             collect_demand_from_node(
                 planet,
-                &planet_scope,
-                Some(planet_scope.clone()),
-                Some(star_raw),
+                &ScopeId::from_boundary(planet.id),
                 &planet_path,
                 &owner_refs,
                 true,
@@ -145,7 +137,7 @@ pub fn owner_silo_demand_buckets_from_planet_child_rf(
                             kind: RuntimeOwnerSiloDisburseDownErrorKind::InvalidDemandAmount,
                             owner_ref: owner_flow_owner_ref(child).map(OwnerRef::new),
                             resource_key: Some(planet_child_rf_default_resource_key()),
-                            scope_id: Some(ScopeId::new(&planet_scope)),
+                            scope_id: Some(ScopeId::from_boundary(planet.id)),
                             message: format!(
                                 "unsupported non-grid child kind {:?} cannot express disburse-down demand",
                                 child.kind
@@ -162,9 +154,7 @@ pub fn owner_silo_demand_buckets_from_planet_child_rf(
                 );
                 collect_demand_from_node(
                     child,
-                    &planet_scope,
-                    Some(planet_scope.clone()),
-                    Some(star_raw),
+                    &ScopeId::from_boundary(planet.id),
                     &child_path,
                     &owner_refs,
                     false,
@@ -180,9 +170,7 @@ pub fn owner_silo_demand_buckets_from_planet_child_rf(
 
 fn collect_demand_from_node(
     node: &SimThing,
-    scope_id: &str,
-    planet_id: Option<String>,
-    star_system_gridcell_id_raw: Option<u32>,
+    scope_id: &ScopeId,
     path: &str,
     owner_refs: &std::collections::BTreeSet<OwnerRef>,
     is_planet_gridcell: bool,
@@ -199,7 +187,7 @@ fn collect_demand_from_node(
             kind: RuntimeOwnerSiloDisburseDownErrorKind::MissingOwnerChannelForActiveDemand,
             owner_ref: None,
             resource_key: Some(planet_child_rf_default_resource_key()),
-            scope_id: Some(ScopeId::new(scope_id)),
+            scope_id: Some(scope_id.clone()),
             message: format!("active demand at {path} requires owner/channel reference"),
         });
     };
@@ -208,7 +196,7 @@ fn collect_demand_from_node(
             kind: RuntimeOwnerSiloDisburseDownErrorKind::MissingOwnerChannelForActiveDemand,
             owner_ref: None,
             resource_key: Some(planet_child_rf_default_resource_key()),
-            scope_id: Some(ScopeId::new(scope_id)),
+            scope_id: Some(scope_id.clone()),
             message: format!("active demand at {path} has empty owner/channel reference"),
         });
     }
@@ -218,7 +206,7 @@ fn collect_demand_from_node(
             kind: RuntimeOwnerSiloDisburseDownErrorKind::UnknownOwnerReference,
             owner_ref: Some(owner_ref),
             resource_key: Some(planet_child_rf_default_resource_key()),
-            scope_id: Some(ScopeId::new(scope_id)),
+            scope_id: Some(scope_id.clone()),
             message: format!("unknown owner/channel reference at {path}"),
         });
     }
@@ -228,9 +216,7 @@ fn collect_demand_from_node(
     buckets.push(RuntimeOwnerSiloDemandBucket {
         owner_ref,
         resource_key: planet_child_rf_default_resource_key(),
-        scope_id: ScopeId::new(scope_id),
-        planet_id,
-        star_system_gridcell_id_raw,
+        scope_id: scope_id.clone(),
         requested,
         priority,
         source_simthing_id_raw: Some(node.id.raw()),
@@ -392,8 +378,6 @@ pub fn apply_owner_silo_runtime_disburse_down_cpu(
                 owner_ref: demand.owner_ref,
                 resource_key: demand.resource_key,
                 scope_id: demand.scope_id.clone(),
-                planet_id: demand.planet_id,
-                star_system_gridcell_id_raw: demand.star_system_gridcell_id_raw,
                 requested: demand.requested,
                 allocated,
                 unmet,

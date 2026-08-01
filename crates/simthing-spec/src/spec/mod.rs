@@ -19,6 +19,7 @@ pub mod local_participant_effects;
 pub mod need_binding;
 pub mod order_weight;
 pub mod overlay;
+pub mod owner_channel_rf;
 pub mod owner_silo_disburse_down;
 pub mod owner_silo_recursive_rf_source;
 pub mod owner_silo_runtime_writeback;
@@ -60,7 +61,7 @@ pub use capability::{
     ActivationMode, CapabilityCategorySpec, CapabilityEffectSpec, CapabilityPrereqSpec,
     CapabilitySpec, CapabilityTreeSpec, MaxActivePolicy,
 };
-pub use channel_key::{OwnerRef, ResourceKey, ScopeId};
+pub use channel_key::{OwnerChannelScopeKey, OwnerRef, ResourceKey, ScopeId};
 pub use disruption_readout::{
     disruption_readout_snapshot, disruption_readout_snapshot_with_readback,
     AbsentDisruptionAuthorityReadback, DisruptionAuthorityReadback,
@@ -149,6 +150,12 @@ pub use owner_silo_runtime_writeback::{
     read_owner_silo_current_from_owner, runtime_owner_silo_states_from_scenario,
     RuntimeOwnerSiloState, RuntimeOwnerSiloWritebackError, RuntimeOwnerSiloWritebackErrorKind,
     RuntimeOwnerSiloWritebackInput, RuntimeOwnerSiloWritebackResult,
+};
+pub use owner_channel_rf::{
+    reconstruct_owner_channel_rf_map, reduce_owner_channel_rf, OwnerChannelRfBucket,
+    OwnerChannelRfCrossingFlow, OwnerChannelRfCrossingResourceFlow, OwnerChannelRfError,
+    OwnerChannelRfErrorKind, OwnerChannelRfOwnAggregate, OwnerChannelRfReduceUpReport,
+    OwnerChannelRfSteadSurface,
 };
 pub use planet_child_location::{
     all_planet_child_locations, apply_planet_child_location_command, apply_planet_child_metadata,

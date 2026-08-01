@@ -372,7 +372,9 @@ pub use spec::capability::{
     ActivationMode, CapabilityCategorySpec, CapabilityEffectSpec, CapabilityPrereqSpec,
     CapabilitySpec, CapabilityTreeSpec, EffectTarget, MaxActivePolicy, ReplacementPolicy,
 };
-pub use spec::channel_key::{OwnerRef, ParentLocationId, ResourceKey, ScopeId};
+pub use spec::channel_key::{
+    OwnerChannelScopeKey, OwnerRef, ParentLocationId, ResourceKey, ScopeId,
+};
 pub use spec::disruption_readout::{
     disruption_readout_snapshot, disruption_readout_snapshot_with_readback,
     AbsentDisruptionAuthorityReadback, DisruptionAuthorityReadback,
@@ -460,6 +462,12 @@ pub use spec::owner_silo_runtime_writeback::{
     read_owner_silo_current_from_owner, runtime_owner_silo_states_from_scenario,
     RuntimeOwnerSiloState, RuntimeOwnerSiloWritebackError, RuntimeOwnerSiloWritebackErrorKind,
     RuntimeOwnerSiloWritebackInput, RuntimeOwnerSiloWritebackResult,
+};
+pub use spec::owner_channel_rf::{
+    reconstruct_owner_channel_rf_map, reduce_owner_channel_rf, OwnerChannelRfBucket,
+    OwnerChannelRfCrossingFlow, OwnerChannelRfCrossingResourceFlow, OwnerChannelRfError,
+    OwnerChannelRfErrorKind, OwnerChannelRfOwnAggregate, OwnerChannelRfReduceUpReport,
+    OwnerChannelRfSteadSurface,
 };
 pub use spec::planet_child_location::{
     all_planet_child_locations, all_planet_gridcells, apply_local_gridcell_metadata,

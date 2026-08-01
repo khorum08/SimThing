@@ -6,6 +6,8 @@
 
 use std::collections::BTreeSet;
 
+use simthing_core::SimThingId;
+
 use super::channel_key::{OwnerRef, ScopeId};
 use super::owner_silo_disburse_down::{
     apply_owner_silo_runtime_disburse_down_cpu, demand_bucket_sort_key,
@@ -19,7 +21,7 @@ use super::owner_silo_runtime_writeback::{
 };
 use super::planet_child_rf::{
     evaluate_planet_child_rf_reduce_up, planet_child_rf_default_resource_key,
-    PlanetChildRfAdmissionClassification, PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY,
+    PlanetChildRfAdmissionClassification,
 };
 use super::recursive_local_rf::{
     evaluate_recursive_local_rf, recursive_local_rf_aggregate_source_rows,
@@ -142,13 +144,12 @@ pub fn owner_silo_demand_buckets_from_recursive_local_rf(
         // Owner-silo disburse-down writeback channels use planet-child reduce-up scope keys ("generic").
         let resource_key = planet_child_rf_default_resource_key();
 
-        let scope_id = ScopeId::new(format!("location/{}", row.arena_location_id_raw));
+        let scope_id =
+            ScopeId::from_boundary(SimThingId::from_session_raw(row.arena_location_id_raw));
         buckets.push(RuntimeOwnerSiloDemandBucket {
             owner_ref: row.owner_ref.clone(),
             resource_key,
             scope_id,
-            planet_id: None,
-            star_system_gridcell_id_raw: Some(row.arena_location_id_raw),
             requested: row.demand,
             priority: OWNER_FLOW_DEFAULT_PRIORITY,
             source_simthing_id_raw: Some(row.source_simthing_or_location_id_raw),
@@ -171,13 +172,11 @@ pub fn owner_silo_demand_buckets_from_recursive_local_rf(
             }
             let resource_key = planet_child_rf_default_resource_key();
             let scope_id =
-                ScopeId::new(format!("location/{}/parent_deficit", arena.location_id_raw));
+                ScopeId::from_boundary(SimThingId::from_session_raw(arena.location_id_raw));
             buckets.push(RuntimeOwnerSiloDemandBucket {
                 owner_ref: settlement.owner_ref.clone(),
                 resource_key,
                 scope_id,
-                planet_id: None,
-                star_system_gridcell_id_raw: Some(arena.location_id_raw),
                 requested: settlement.net_deficit_to_parent,
                 priority: OWNER_FLOW_DEFAULT_PRIORITY,
                 source_simthing_id_raw: Some(arena.location_id_raw),
@@ -199,16 +198,12 @@ pub fn owner_silo_demand_buckets_from_recursive_local_rf(
             });
         }
         let resource_key = planet_child_rf_default_resource_key();
-        let scope_id = ScopeId::new(format!(
-            "location/{}/root_deficit",
-            output.parent_location_id.raw()
-        ));
+        let scope_id =
+            ScopeId::from_boundary(SimThingId::from_session_raw(output.child_location_id_raw));
         buckets.push(RuntimeOwnerSiloDemandBucket {
             owner_ref: output.owner_ref.clone(),
             resource_key,
             scope_id,
-            planet_id: None,
-            star_system_gridcell_id_raw: Some(output.parent_location_id.raw()),
             requested: output.net_deficit,
             priority: OWNER_FLOW_DEFAULT_PRIORITY,
             source_simthing_id_raw: Some(output.child_location_id_raw),

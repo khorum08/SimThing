@@ -7,6 +7,8 @@
 
 use std::collections::BTreeMap;
 
+use simthing_core::SimThingId;
+
 use super::channel_key::{OwnerRef, ParentLocationId, ResourceKey, ScopeId};
 use super::planet_child_rf::{
     planet_child_rf_participant_inputs, scope_key_from_participant,
@@ -23,7 +25,7 @@ use super::scenario::SimThingScenarioSpec;
 pub struct PlanetChildRfProjectionRow {
     pub source_simthing_id_raw: u32,
     pub planet_gridcell_id_raw: u32,
-    pub star_system_gridcell_id_raw: u32,
+    pub scope_id: ScopeId,
     pub owner_ref: OwnerRef,
     pub resource_key: ResourceKey,
     pub surplus: u32,
@@ -49,8 +51,7 @@ pub struct RecursiveRfProjectionRow {
 pub struct RecursiveRfReconciliationBucket {
     pub owner_ref: OwnerRef,
     pub resource_key: ResourceKey,
-    pub planet_gridcell_id_raw: Option<u32>,
-    pub star_system_gridcell_id_raw: Option<u32>,
+    pub scope_id: ScopeId,
     pub legacy_surplus_total: u32,
     pub legacy_demand_total: u32,
     pub recursive_surplus_total: u32,
@@ -149,7 +150,7 @@ pub fn project_planet_child_rf_ladder_rows(
         rows.push(PlanetChildRfProjectionRow {
             source_simthing_id_raw: participant.simthing_id_raw,
             planet_gridcell_id_raw: participant.planet_gridcell_id_raw,
-            star_system_gridcell_id_raw: scope.star_system_gridcell_id_raw.unwrap_or(0),
+            scope_id: scope.scope_id,
             owner_ref: participant.owner_ref.clone(),
             resource_key: super::planet_child_rf::planet_child_rf_default_resource_key(),
             surplus: participant.surplus,
@@ -323,12 +324,7 @@ pub fn reconcile_planet_child_rf_with_recursive_local_rf(
         let key = BucketKey {
             owner_ref: legacy.owner_ref.clone(),
             resource_key: legacy.resource_key.clone(),
-            planet_gridcell_id_raw: Some(legacy.planet_gridcell_id_raw),
-            star_system_gridcell_id_raw: if legacy.star_system_gridcell_id_raw > 0 {
-                Some(legacy.star_system_gridcell_id_raw)
-            } else {
-                None
-            },
+            scope_id: legacy.scope_id.clone(),
         };
         let entry = bucket_map.entry(key).or_default();
         entry.legacy_surplus_total = entry
@@ -342,15 +338,12 @@ pub fn reconcile_planet_child_rf_with_recursive_local_rf(
     }
 
     for recursive in &direct_recursive {
-        let star_system_gridcell_id_raw = recursive
-            .parent_location_id
-            .map(ParentLocationId::raw)
-            .filter(|id| *id > 0);
         let key = BucketKey {
             owner_ref: recursive.owner_ref.clone(),
             resource_key: recursive.resource_key.clone(),
-            planet_gridcell_id_raw: Some(recursive.arena_location_id_raw),
-            star_system_gridcell_id_raw,
+            scope_id: ScopeId::from_boundary(SimThingId::from_session_raw(
+                recursive.arena_location_id_raw,
+            )),
         };
         let entry = bucket_map.entry(key).or_default();
         entry.recursive_surplus_total = entry
@@ -383,8 +376,7 @@ pub fn reconcile_planet_child_rf_with_recursive_local_rf(
         buckets.push(RecursiveRfReconciliationBucket {
             owner_ref: key.owner_ref,
             resource_key: key.resource_key,
-            planet_gridcell_id_raw: key.planet_gridcell_id_raw,
-            star_system_gridcell_id_raw: key.star_system_gridcell_id_raw,
+            scope_id: key.scope_id,
             legacy_surplus_total: acc.legacy_surplus_total,
             legacy_demand_total: acc.legacy_demand_total,
             recursive_surplus_total: acc.recursive_surplus_total,
@@ -396,18 +388,11 @@ pub fn reconcile_planet_child_rf_with_recursive_local_rf(
     }
 
     buckets.sort_by(|a, b| {
-        (
-            &a.owner_ref,
-            &a.resource_key,
-            a.planet_gridcell_id_raw,
-            a.star_system_gridcell_id_raw,
-        )
-            .cmp(&(
-                &b.owner_ref,
-                &b.resource_key,
-                b.planet_gridcell_id_raw,
-                b.star_system_gridcell_id_raw,
-            ))
+        (&a.owner_ref, &a.resource_key, &a.scope_id).cmp(&(
+            &b.owner_ref,
+            &b.resource_key,
+            &b.scope_id,
+        ))
     });
 
     let settlement_rows: Vec<_> = recursive_rows
@@ -500,8 +485,7 @@ pub fn prove_recursive_rf_reconciliation_preserves_authority(
 struct BucketKey {
     owner_ref: OwnerRef,
     resource_key: ResourceKey,
-    planet_gridcell_id_raw: Option<u32>,
-    star_system_gridcell_id_raw: Option<u32>,
+    scope_id: ScopeId,
 }
 
 #[derive(Debug, Default)]

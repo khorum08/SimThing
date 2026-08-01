@@ -36,6 +36,7 @@ crates/simthing-driver/src/local_participant_effects_compile.rs	compile-plan	Pla
 crates/simthing-driver/src/mapping_plan_compile.rs	compile-plan	Plan/compile builder producing GPU/session plans (not the live tick itself)
 crates/simthing-driver/src/min_plus_traversal_field.rs	executed	Live driver/kernel execution or residency path in the recursive RF / arena stack
 crates/simthing-driver/src/order_directive.rs	executed	Class-bound order directive admission and live player-intent ingress gate
+crates/simthing-driver/src/owner_channel_rf_compile.rs	compile-plan	Generalized owner/resource/ScopeId buckets lower to existing AccumulatorOp sum plans; GPU execution is proof-only parity evidence
 crates/simthing-driver/src/owner_silo_accumulator_compile.rs	compile-plan	Plan/compile builder producing GPU/session plans (not the live tick itself)
 crates/simthing-driver/src/owner_silo_disburse_down_compile.rs	compile-plan	Plan/compile builder producing GPU/session plans (not the live tick itself)
 crates/simthing-driver/src/owner_silo_recursive_source_compile.rs	compile-plan	Plan/compile builder producing GPU/session plans (not the live tick itself)

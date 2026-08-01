@@ -1,7 +1,7 @@
 scenario = specialist_citizens_minimal {
     metadata = {
         display_name = "Specialist Citizens Minimal"
-        description = "FIRST-CITIZEN-SPECIALISTS-0 witness. Smallest install making the citizen-profile partition non-vacuous: two policy/weight owner authorities, two structurally placed Locations, one session root."
+        description = "Synthetic citizen and owner-channel witness: two policy/weight owner authorities share one ordinary field container across two resources and two placed scopes; one session root."
     }
 
     static_galaxy_scenario = base_disc {
@@ -51,6 +51,11 @@ scenario = specialist_citizens_minimal {
             resource = "minerals"
             amount = 100
         }
+        field_resource_quantity = placed_b_stock {
+            location = "placed_b"
+            resource = "energy"
+            amount = 40
+        }
         owner_policy_overlay = alpha_policy {
             owner = "alpha"
             targets_property = "citizens_economy::placed_a_minerals_quantity"
@@ -60,6 +65,16 @@ scenario = specialist_citizens_minimal {
             owner = "beta"
             targets_property = "citizens_economy::placed_a_minerals_quantity"
             amount_add = 0.25
+        }
+        owner_policy_overlay = alpha_energy_policy {
+            owner = "alpha"
+            targets_property = "citizens_economy::placed_b_energy_quantity"
+            amount_add = 0.5
+        }
+        owner_policy_overlay = beta_energy_policy {
+            owner = "beta"
+            targets_property = "citizens_economy::placed_b_energy_quantity"
+            amount_mult = 0.9
         }
     }
 }

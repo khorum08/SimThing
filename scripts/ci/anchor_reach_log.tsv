@@ -294,3 +294,15 @@ date	role	query	anchors_served	hit
 2026-08-01T10:39:41Z	coding	--grep Per-Generator Admission	simthing-0087-binding-laws	hit
 2026-08-01T10:39:41Z	coding	--domain founding-ontology	founding-ontology-invariants	hit
 2026-08-01T10:39:53Z	coding	--grep emitter class\|comparative projection\|Gu-Yang\|triad	none	none
+2026-08-01T18:44:59Z	coding	--paths crates/simthing-core/src/owner_channel.rs crates/simthing-spec/src/spec/planet_child_rf.rs crates/simthing-spec/src/spec/recursive_rf_reconciliation.rs crates/simthing-spec/src/spec/runtime_local_allocation.rs crates/simthing-core/src/anchor_table.rs crates/simthing-driver/src/planet_child_rf_reduce_up_compile.rs	field-policy-time-decisions,founding-ontology-invariants,one-tree-owners-never-spatial,property-value-rf-overlays,rf-arena-substrate,simthing-0087-binding-laws,simthing-0087-pillars,stead-spatial-contract-core,structural-execution-convergence,workshop-candidate-homing	hit
+2026-08-01T18:45:08Z	coding	--grep vendor-containment	none	none
+2026-08-01T18:45:11Z	coding	--grep Vendor Containment	simthing-0087-binding-laws	hit
+2026-08-01T18:46:36Z	coding	--grep OWNER-CHANNEL-INTRINSIC-0	none	none
+2026-08-01T18:47:15Z	coding	--grep crossing flow	none	none
+2026-08-01T18:47:15Z	coding	--grep ScopeId	none	none
+2026-08-01T18:47:16Z	coding	--grep own aggregate	none	none
+2026-08-01T18:47:16Z	coding	--grep N-owner container	none	none
+2026-08-01T18:47:16Z	coding	--grep owner boundary	none	none
+2026-08-01T18:47:26Z	coding	--grep STEAD	admission-ladder-necessity-test,clausething-closed-vertical,drift-detectors-six-line,exact-numeric-candidate-f,movement-front,peripheral-scope-adrs,simthing-0087-binding-laws,simthing-0087-pillars,spec-fidelity-anti-ceremony,stead-spatial-contract-core,structural-execution-convergence	hit
+2026-08-01T18:58:01Z	coding	--grep 6.0	simthing-0087-binding-laws	hit
+2026-08-01T19:10:08Z	coding	--grep EXECUTION-STATUS-TAXONOMY-0	none	none

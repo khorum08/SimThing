@@ -25,6 +25,7 @@ pub mod mapping_plan_compile;
 pub mod min_plus_traversal_field;
 pub mod need_binding;
 pub mod order_directive;
+pub mod owner_channel_rf_compile;
 pub mod owner_silo_accumulator_compile;
 pub mod owner_silo_disburse_down_compile;
 pub mod owner_silo_recursive_source_compile;
@@ -202,6 +203,12 @@ pub use owner_silo_accumulator_compile::{
     compile_owner_silo_gpu_tick_plan, owner_silo_aggregate_slot, owner_silo_deficit_tick_inputs,
     owner_silo_participant_deficit_total, owner_silo_participant_surplus_total,
     owner_silo_surplus_tick_inputs, OwnerSiloGpuTickPlan,
+};
+pub use owner_channel_rf_compile::{
+    compile_owner_channel_rf_gpu_proof_plan, owner_channel_rf_bucket_aggregate_slot,
+    owner_channel_rf_bucket_deficit_tick_inputs, owner_channel_rf_bucket_surplus_tick_inputs,
+    prove_owner_channel_rf_cpu_gpu_parity, OwnerChannelRfBucketAccumulatorPlan,
+    OwnerChannelRfGpuParityReport, OwnerChannelRfGpuProofError, OwnerChannelRfGpuProofPlan,
 };
 pub use owner_silo_disburse_down_compile::{
     compile_owner_silo_disburse_down_plan, owner_silo_disburse_down_cpu_demand_aggregate_total,

@@ -82,6 +82,7 @@
 /// that OWNER-CHANNEL-INTRINSIC-0 exists to collapse. Consumers importing it from
 /// `simthing_spec` are unaffected.
 pub use simthing_core::owner_channel::OwnerRef;
+use simthing_core::SimThingId;
 
 /// Resource key within an owner RF channel after admission resolution.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -123,12 +124,32 @@ impl ScopeId {
     pub fn into_inner(self) -> String {
         self.0
     }
+
+    /// Canonical execution-scope identity for a boundary node.
+    ///
+    /// The opaque prefix deliberately carries no domain shape.  Ownership crossings,
+    /// reduce-up buckets, and execution plans all use this same identity.
+    pub fn from_boundary(boundary: SimThingId) -> Self {
+        Self(format!("stead/{}", boundary.raw()))
+    }
 }
 
 impl AsRef<str> for ScopeId {
     fn as_ref(&self) -> &str {
         self.as_str()
     }
+}
+
+/// Canonical RF bucket identity.
+///
+/// Same-owner and different-owner aggregation is structural: ordered-map insertion by
+/// this key decides it without an owner-equality control-flow branch.  `ScopeId` is the
+/// ownership/execution boundary; domain-shaped coordinates do not belong in this type.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct OwnerChannelScopeKey {
+    pub owner_ref: OwnerRef,
+    pub resource_key: ResourceKey,
+    pub scope_id: ScopeId,
 }
 
 /// Parent location id for RF channel grouping (raw gridcell/location id axis).
@@ -187,5 +208,4 @@ mod production_adoption {
             .iter()
             .any(|(allowed_file, pattern)| file == *allowed_file && line.contains(pattern))
     }
-
 }

@@ -5,9 +5,9 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use simthing_core::SimThing;
+use simthing_core::{SimThing, SimThingId};
 
-use super::channel_key::{OwnerRef, ResourceKey, ScopeId};
+use super::channel_key::{OwnerChannelScopeKey, OwnerRef, ResourceKey, ScopeId};
 use super::planet_child_location::{
     evaluate_planet_child_locations, is_admitted_planet_non_grid_child, planet_id,
     planet_non_grid_child_kind_label, planet_non_grid_child_owner_ref, planet_owner_ref,
@@ -81,15 +81,11 @@ pub fn planet_child_rf_default_resource_key() -> ResourceKey {
     ResourceKey::new(PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY)
 }
 
-/// Scoped owner/resource/planet RF channel key. Owner ref is metadata, not spatial parentage.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct PlanetChildRfScopeKey {
-    pub owner_ref: OwnerRef,
-    pub resource_key: ResourceKey,
-    pub local_scope_id: Option<ScopeId>,
-    pub planet_id: Option<String>,
-    pub star_system_gridcell_id_raw: Option<u32>,
-}
+/// Compatibility name for the generalized owner/resource/execution-scope key.
+///
+/// The key intentionally has no domain-shaped scope fields. New generic code should name
+/// [`OwnerChannelScopeKey`] directly.
+pub type PlanetChildRfScopeKey = OwnerChannelScopeKey;
 
 /// Per-scope reduce-up bucket after grouping admitted participants.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -107,8 +103,7 @@ pub struct PlanetChildRfReduceUpBucket {
 pub struct PlanetChildRfReduceUpReport {
     pub participant_count: u32,
     pub bucket_count: u32,
-    pub planet_scope_count: u32,
-    pub star_system_scope_count: u32,
+    pub scope_count: u32,
     pub surplus_total: u32,
     pub deficit_total: u32,
     pub buckets: Vec<PlanetChildRfReduceUpBucket>,
@@ -365,21 +360,15 @@ pub fn evaluate_planet_child_rf_reduce_up(
         bucket.net_deficit = (deficit - surplus).max(0);
     }
 
-    let planet_scope_count = buckets
+    let scope_count = buckets
         .iter()
-        .filter_map(|b| b.scope.planet_id.as_ref())
-        .collect::<BTreeSet<_>>()
-        .len() as u32;
-    let star_system_scope_count = buckets
-        .iter()
-        .filter_map(|b| b.scope.star_system_gridcell_id_raw)
+        .map(|b| &b.scope.scope_id)
         .collect::<BTreeSet<_>>()
         .len() as u32;
 
     report.participant_count = participant_count;
     report.bucket_count = buckets.len() as u32;
-    report.planet_scope_count = planet_scope_count;
-    report.star_system_scope_count = star_system_scope_count;
+    report.scope_count = scope_count;
     report.surplus_total = surplus_total;
     report.deficit_total = deficit_total;
     report.buckets = buckets;
@@ -408,18 +397,10 @@ pub fn scope_key_from_participant(
     PlanetChildRfScopeKey {
         owner_ref: participant.owner_ref.clone(),
         resource_key: planet_child_rf_default_resource_key(),
-        local_scope_id: Some(ScopeId::new(participant.planet_id.clone())),
-        planet_id: Some(participant.planet_id.clone()),
-        star_system_gridcell_id_raw: star_system_gridcell_id_from_path(
-            &participant.spatial_parent_path,
-        ),
+        scope_id: ScopeId::from_boundary(SimThingId::from_session_raw(
+            participant.planet_gridcell_id_raw,
+        )),
     }
-}
-
-fn star_system_gridcell_id_from_path(path: &str) -> Option<u32> {
-    path.strip_prefix("galaxymap/star_system/")
-        .and_then(|rest| rest.split('/').next())
-        .and_then(|raw| raw.parse().ok())
 }
 
 fn push_reduce_up_overflow_error(report: &mut PlanetChildRfReduceUpReport) {
@@ -694,8 +675,7 @@ impl Default for PlanetChildRfReduceUpReport {
         Self {
             participant_count: 0,
             bucket_count: 0,
-            planet_scope_count: 0,
-            star_system_scope_count: 0,
+            scope_count: 0,
             surplus_total: 0,
             deficit_total: 0,
             buckets: Vec::new(),
@@ -727,5 +707,4 @@ impl Default for PlanetChildRfAdmissionReport {
 mod tests {
     use super::*;
     use simthing_core::SimThingKind;
-
 }

@@ -260,9 +260,7 @@ fn equal_claim_demands() -> (
         RuntimeOwnerSiloDemandBucket {
             owner_ref: owner.clone(),
             resource_key: resource.clone(),
-            scope_id: ScopeId::new("planet_a"),
-            planet_id: Some("planet_a".into()),
-            star_system_gridcell_id_raw: None,
+            scope_id: ScopeId::new("scope_a"),
             requested: 20,
             priority: 1,
             source_simthing_id_raw: Some(2),
@@ -270,9 +268,7 @@ fn equal_claim_demands() -> (
         RuntimeOwnerSiloDemandBucket {
             owner_ref: owner,
             resource_key: resource,
-            scope_id: ScopeId::new("planet_a"),
-            planet_id: Some("planet_a".into()),
-            star_system_gridcell_id_raw: None,
+            scope_id: ScopeId::new("scope_a"),
             requested: 20,
             priority: 1,
             source_simthing_id_raw: Some(1),
