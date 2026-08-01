@@ -1,0 +1,31 @@
+---
+rung: GUYANG-COMPARATIVE-PROJECTIONS-0
+kind: rung
+track: 0.0.8.7
+base_sha: 3f5664f4e79b7076f72bf12e1dcadb55c01380e1
+audience: coding
+model_tier: std
+owner_approved: true
+expected_route: DA-RESERVE(gate-wiring)
+owner_notes: "Owner Field-Triad ruling #1442; DA 5.7 graduation ruling 5148861049. Consume the committed generic sweep outputs. This rung is comparative projection semantics, not throughput: Gu-Yang tiled-gather debt and the unchanged <=1.25x/<=1.5x gate belong to successor FIELD-SWEEP-TILED-GATHER-0. 2026-08-11 remains sovereign."
+surfaces: ["crates/simthing-core/src", "crates/simthing-spec/src", "crates/simthing-sim/src", "crates/simthing-driver/src", "crates/simthing-driver/tests", "scripts/ci/test_inventory.tsv", "scripts/ci/triage_log.tsv", "docs/stead_spatial_contract.md", "docs/tests", "docs/design_0_0_8_7_rf_arena_modernization.md", "docs/orchestrator_orientation.md"]
+forbidden: ["border/contour/frontline service, tracer, polyline engine, border object, or production pathfinder", "TP/Terran/Pirate/faction-name production branch or scenario/corpus edit", "new field kernel, hand-written semantic WGSL, algebra/operator/owner-count dispatch, or second field interpreter", "CPU full-field readback/rescan used to decide dominance, border, contest, or chokepoint events", "Gu-Yang tiling/performance-gate work, threshold weakening, bespoke permanence, seven-oracle deletion, 5.9 or Phase 6+"]
+required_checks: ["default-derived projection admission for 1, 2, 3, and many emitter classes", "CPU/GPU bit parity for argmax, margin, flux-stall contest, border sign-flip, and chokepoint conjunction", "deterministic authored tie-break and registration-order reversal falsifier", "unmodified TP scenario front plus chokepoint-event witness with zero scenario wiring", "FIELD-SWEEP-SINGLE-PATH, legacy-caller, dense-cap, border-service/pathfinder, STEAD, inventory/lifecycle/detachability, agent/doctrine/doc-budget, exact-head clearance"]
+stop_conditions: ["stale-orient-receipt or scope widening", "projection requires scenario-authored wiring, per-owner output columns, or TP-specific semantics", "deterministic tie-break cannot be derived from admitted authored emitter identity/order", "chokepoint requires a border/frontline service or CPU full-field decision path", "generic field outputs or existing anchored band/event machinery cannot carry the contract"]
+---
+## BUILD
+- Land one sealed, scenario-neutral comparative-projection authority over co-located outputs of the admitted generic field sweep. When at least two competing emitter classes are admitted, projections are born automatically; one class produces no fabricated comparison. The only opt-out is the existing authored admission/disposition path with a visible reason—add no new scenario switch or grammar.
+- Derive dominance as canonical argmax plus exact `top1 - top2` margin. Output shape is bounded (2–3 comparative columns regardless of emitter count), never one derived column or pipeline per owner. Exact ties resolve only by admitted authored emitter identity/order; hash/map/registration iteration order is forbidden.
+- Derive border as the canonical-adjacency margin sign-flip band and contest/border-pressure as the Gu-Yang flux-stall magnitude (both-strong at small margin). These remain ordinary Anchored property columns and use the existing anchor table as the sole observation surface.
+- Derive chokepoint only as the sealed band conjunction `contested-border AND PALMA-low-D-corridor`. Emit front-formed, front-hardened, and chokepoint-emerged through the existing anchored band-crossing/threshold event path; no CPU post-hoc scan, new listener framework, or instant-query service.
+- Keep the compiler/executor generic across canonical `GridOffsets` and `LinkGraph`; adjacency supplies neighbor order but never field identity. Add no algebra, owner-count, scenario, or topology semantic dispatch, and do not modify the field-sweep IR/JIT except ordinary composition needed to consume its outputs.
+- Prove with inline synthetic fixtures (including 2, 3, and many emitters, exact ties, sign flips, both-strong/small-margin pressure, and each chokepoint conjunction control) plus one unmodified TP integration witness that surfaces a front and a chokepoint event with zero scenario wiring. Land one results doc/inventory row and 5.8 PROBATION only.
+## FENCES
+- Gu-Yang remains conserved saturating flux, never a border semantic service. Borders/fronts are derived observables; presentation may cache/extract polylines, production may not create border objects or tracing/pathfinding authority.
+- Quantize the reading, never the field: comparison/band edges do not enter flux, conductance, PALMA cost/relaxation, RF conservation, or canonical fold order. Determinism remains sovereign and replay stays bit-exact.
+- Preserve Per-Generator Admission Law, sparse uncapped LinkGraph, homogeneous lanes, Native Ingestion, Corpus Boundary, the anchor-table sole-observation law, the seven retiring oracles, and the measured Gu-Yang performance debt unchanged.
+## EXIT-PROOF
+- At least two admitted competing emitter classes automatically produce the bounded comparative columns; one-class and authored-opt-out cases are explicit and visible. A census proves derived column/pipeline count is independent of owner count.
+- CPU oracle and supported GPU path agree bit-for-bit on dominance, margin, contest pressure, border band, and chokepoint conjunction; reversing registration/hash iteration does not change the authored tie-break result, while planting a wrong tie-break or sign-flip rule turns the referee red.
+- The unmodified TP scenario surfaces a Gu-Yang front and exactly the expected chokepoint-emerged event through the ordinary anchored band path, with paired controls suppressing the event when either contested-border or PALMA-low-D is absent; zero TP-specific production tokens or scenario edits.
+- Core/spec/sim/driver and field suites, STEAD/border/pathfinder/single-path/caller/cap gates, replay, lifecycle/inventory/detachability, anchors/orientation/evidence and settled-body exact-head clearance are green. Return PROBATION; no pointer move, 5.9 dispatch, tiled-gather work, or oracle retirement.
