@@ -1,20 +1,20 @@
 GameModeSpec(
-    id: "terran_campaign",
-    display_name: "Terran Campaign",
+    id: "sample_campaign",
+    display_name: "Sample Campaign",
     description: "Minimal PR 1 game mode fixture.",
     spec_version: (major: 1, minor: 0, patch: 0),
     metadata: (
-        description: "Terran baseline content.",
-        icon: Some("assets/ui/terran.png"),
-        tags: ["terran", "campaign"],
+        description: "Sample baseline content.",
+        icon: Some("assets/ui/sample.png"),
+        tags: ["sample", "campaign"],
     ),
     domain_packs: [
         DomainPackSpec(
-            id: "terran_core",
-            display_name: "Terran Core",
+            id: "sample_core",
+            display_name: "Sample Core",
             metadata: (
-                description: "Core terran properties and trees.",
-                tags: ["terran"],
+                description: "Core sample properties and trees.",
+                tags: ["sample"],
             ),
             properties: [
                 PropertySpec(
@@ -27,7 +27,7 @@ GameModeSpec(
             overlays: [],
             capability_trees: [
                 CapabilityTreeSpec(
-                    tree_id: "terran_tech",
+                    tree_id: "sample_tech",
                     tree_kind: "tech_tree",
                     owner_kind: "Faction",
                     categories: [

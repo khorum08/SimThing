@@ -1,7 +1,11 @@
 //! GENERAL-SCENARIO-INGESTION-ADMISSION-0 — arbitrary Scenario ingestion admission tests.
-
-use std::fs;
-use std::path::PathBuf;
+//!
+//! Input is constructed INLINE. The admission law under test — a legacy
+//! **World**-root document is admitted as legacy-compatibility and never as
+//! canonical — holds for ANY legacy World-root document, so the minimal one
+//! below is a complete witness. Reading a shipped scenario here would state
+//! engine law in terms of one corpus's contents (Corpus Boundary Law) and
+//! would couple `simthing-spec` proofs to an asset outside the crate.
 
 use simthing_spec::{
     ingest_scenario_from_str, ScenarioDeferralKind, ScenarioIngestionClassification,
@@ -13,44 +17,45 @@ const CANONICAL_PROFILE: ScenarioIngestionProfile = ScenarioIngestionProfile {
     admit_legacy_world_root: true,
 };
 
-fn corpus_path(name: &str) -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../../scenarios/corpus")
-        .join(name)
-}
-
-fn repo_path(name: &str) -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..").join(name)
-}
-
-fn resolve_corpus_path_reference(reference: &str) -> PathBuf {
-    let trimmed = reference.trim();
-    let literal = PathBuf::from(trimmed);
-    if literal.exists() {
-        return literal;
-    }
-
-    let normalized = trimmed.replace('\\', "/");
-    if let Some(index) = normalized.find("scenarios/") {
-        let candidate = repo_path(&normalized[index..]);
-        if candidate.exists() {
-            return candidate;
-        }
-    }
-
-    literal
-}
-
-fn load_corpus(name: &str) -> String {
-    fs::read_to_string(corpus_path(name)).unwrap_or_else(|_| panic!("missing corpus {name}"))
-}
+/// Minimal legacy **World**-root document: a `World` root, the transitional
+/// `scenario_id` sidecar (`validate_legacy_world_root_compatibility`), and a
+/// single `Location` child named by `structural_grid.map_container_id`
+/// (`resolve_map_container`). That is the entire admission surface — one cell
+/// is as much a witness as ten thousand, because the classification is a
+/// property of the ROOT SHAPE, not of the tree's size or contents.
+const MINIMAL_LEGACY_WORLD_ROOT: &str = r#"{
+  "scenario_id": "legacy_world_root_minimal",
+  "root": {
+    "id": 1,
+    "kind": "World",
+    "properties": [],
+    "overlays": [],
+    "children": [
+      {
+        "id": 2,
+        "kind": "Location",
+        "properties": [],
+        "overlays": [],
+        "children": [],
+        "spawned_day": 0
+      }
+    ],
+    "spawned_day": 0
+  },
+  "structural_grid": {
+    "frame": { "width": 1, "height": 1, "occupied_cells": 0 },
+    "map_container_id": "2",
+    "placements": []
+  }
+}"#;
 
 #[test]
-fn classifies_legacy_terran_pirate_as_legacy_compatibility_not_canonical() {
-    let reference = load_corpus("legacy_world_root_terran_pirate_reference.txt");
-    let path = resolve_corpus_path_reference(&reference);
-    let json = fs::read_to_string(&path).expect("terran pirate path");
-    let (result, _) = ingest_scenario_from_str("terran_pirate", &json, CANONICAL_PROFILE);
+fn classifies_legacy_world_root_as_legacy_compatibility_not_canonical() {
+    let (result, _) = ingest_scenario_from_str(
+        "legacy_world_root_minimal",
+        MINIMAL_LEGACY_WORLD_ROOT,
+        CANONICAL_PROFILE,
+    );
     assert_ne!(
         result.classification,
         ScenarioIngestionClassification::Rejected
