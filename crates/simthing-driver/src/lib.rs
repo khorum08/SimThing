@@ -7,7 +7,6 @@ pub mod arena_registry;
 pub mod atlas_0080_0;
 pub mod bench_limits;
 pub mod child_share_eml;
-pub mod comparative_default_birth;
 pub mod comparative_projection;
 pub mod field_scheduler;
 pub mod field_sweep_compile;
@@ -119,12 +118,6 @@ pub use atlas_0080_0::{
 };
 pub use bench_limits::{check as check_bench_ceiling, ms_per_sim_day, CEILINGS};
 pub use child_share_eml::{child_share_cpu, register_child_share_formula};
-pub use comparative_default_birth::{
-    admit_field_plan_binding, admit_field_plan_binding_with_neighbors,
-    default_comparative_birth_from_field_plan, derive_comparative_inputs_from_field_plan,
-    AdmittedFieldPlanBinding, DefaultComparativeBirthError, DerivedComparativeInputs,
-    FieldPlanBindingError,
-};
 pub use comparative_projection::{
     admit_comparative_projections, comparative_event_kind, comparative_projection_cpu_oracle,
     compile_comparative_bundle, neighbor_slots_from_grid, neighbor_slots_from_link_rows,
@@ -162,8 +155,7 @@ pub use hosted_property_observation::{
     LiveDisruptionAuthorityReadback,
 };
 pub use install::{
-    compile_and_install, compile_and_install_with_field_plan, install_atomic, preview_install,
-    InstallError, InstallPreview,
+    compile_and_install, install_atomic, preview_install, InstallError, InstallPreview,
 };
 pub use loaded_scenario_recursive_rf_runtime_compile::{
     compile_loaded_scenario_recursive_rf_runtime_plan_from_json_str,

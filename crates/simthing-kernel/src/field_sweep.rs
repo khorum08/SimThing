@@ -432,11 +432,6 @@ impl FieldAdjacency {
         self.lists.len() as u32
     }
 
-    /// Stable identity of the authored neighbor order (for binding equality).
-    pub fn order_fingerprint(&self) -> u64 {
-        self.order_fingerprint
-    }
-
     pub fn degree_buckets(&self) -> &[FieldDegreeBucket] {
         &self.degree_buckets
     }
@@ -657,12 +652,6 @@ impl FieldLawProof {
             conductance_certificate: Some(conductance),
         }
     }
-
-    /// Whether this sealed proof requires undirected symmetry (conservative law).
-    /// Consumers may read the proof's existing binding; they must not invent roles.
-    pub fn is_conservative(&self) -> bool {
-        self.required_symmetry_fingerprint.is_some()
-    }
 }
 
 /// Admitted destination for one sweep result. `Transient` is a kernel-private
@@ -795,11 +784,6 @@ impl FieldSweepRegistration {
 
     pub fn resource_class(&self) -> FieldSweepResourceClass {
         self.resource_class
-    }
-
-    /// Sealed field-law proof bound at admission (structural facts only).
-    pub fn field_law_proof(&self) -> &FieldLawProof {
-        &self.field_law_proof
     }
 
     pub fn program_identity(&self) -> FieldSweepProgramIdentity {
