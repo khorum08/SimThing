@@ -1,14 +1,11 @@
 //! GUYANG-COMPARATIVE-PROJECTIONS-0 — comparative **consumer** over co-located
 //! generic field-sweep outputs (driver-only; no kernel/GPU/allowlist doors).
 //!
-//! Remand 3A / orchestrator correction prompted by Owner concern (`5150987561`):
-//! **no TP proof, fixture, or coupling.**
-//!
-//! Remand 4 (`5151053486`): default birth must not invent topology or string
-//! grammar. This module is the **explicit consumer**: caller supplies admitted
-//! `FieldAdjacency`, sealed neighbor rows, and explicit emitter/triad columns.
-//! Production automatic birth is **STOPPED** until DA provides typed emitter/
-//! triad roles and install carries admitted field-plan topology.
+//! **5.8 production posture (DA `5151136145`):** birth is **explicit and
+//! fail-closed**. Caller supplies admitted `FieldAdjacency`, sealed neighbor
+//! rows, and explicit emitter/triad columns via
+//! [`admit_comparative_projections`]. Default-derived birth is **5.8b**, not
+//! this module. TP witness is void; proofs are scenario-neutral.
 //!
 //! DA law (`5150877754`):
 //! - margin = exact `top1 − top2` (non-negative)
@@ -16,9 +13,9 @@
 //! - stall = gross − |net| from authored second Gu-Yang registration
 //! - contest consumes stall under both-strong/small-margin
 //!
-//! Handoff column shape: **2–3 comparative columns** (dominance, margin, contest).
-//! Border and chokepoint are **band/readout** properties for thresholds, not
-//! comparative census columns.
+//! Column census: **3 comparative** (dominance, margin, contest). Border and
+//! chokepoint are **band/readout** properties for thresholds, not comparative
+//! census columns.
 
 use std::collections::BTreeSet;
 
@@ -42,9 +39,7 @@ pub const BAND_READOUT_COLUMN_COUNT: u32 = 2;
 /// Gu-Yang stall-path columns (net, gross, stall).
 pub const GUYANG_STALL_DERIVED_COLUMN_COUNT: u32 = 3;
 
-// NOTE (Remand 4): do **not** reintroduce production string grammar such as
-// `comparative_emitter::*` or `triad::*` as semantic authority for default birth.
-// Tests may use ordinary property names as inline feedstock only; discovery is not law.
+// 5.8 does not discover emitters by namespace. 5.8b owns default birth.
 
 pub mod comparative_event_kind {
     pub const FRONT_FORMED: u32 = 0x4759_0001;
@@ -334,16 +329,12 @@ fn write(values: &mut [f32], base: usize, col: ColumnIndex, value: f32) {
 
 // ── Explicit admission (no string discovery; no topology invent) ────────────
 
-/// Admit comparative projections from **explicit** emitter classes + triad
-/// columns + **already-admitted** `FieldAdjacency`.
+/// 5.8 production birth door: **explicit** emitter classes + triad columns +
+/// **already-admitted** `FieldAdjacency`. Fail-closed (`Result`).
 ///
-/// Remand 4: this is **not** automatic default birth. It does not scan
-/// namespaces, invent Grid-N4 from slot counts, or swallow errors into
-/// `None`. Missing topology/role seams for automatic install birth are a
-/// DA STOP — see results doc.
-///
-/// Fail-closed: validation/compile errors return `Err`. One-emitter and
-/// authored opt-out remain explicit dispositions (`Ok` with disposition).
+/// Does not scan namespaces, invent topology from slot counts, or erase
+/// errors into `None`. Default-derived install birth is **5.8b**, not here.
+/// One-emitter and authored opt-out remain explicit dispositions.
 pub fn admit_comparative_projections(
     registry: &mut DimensionRegistry,
     adjacency: FieldAdjacency,

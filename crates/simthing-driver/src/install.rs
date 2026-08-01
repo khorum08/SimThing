@@ -427,13 +427,10 @@ pub fn compile_and_install(
 
     state.property_admission = registry.property_admission_report();
 
-    // GUYANG-COMPARATIVE-PROJECTIONS-0 Remand 4 (`5151053486`): install does
-    // **not** invent topology from n_slots, and does **not** discover emitters
-    // via reserved string namespaces. Comparative birth waits on:
-    //   (1) admitted FieldAdjacency / field-plan topology on the install surface
-    //   (2) typed role/metadata for competing emitters + triad inputs
-    // Until DA lands those seams, `comparative_projection` stays unset here.
-    // Do not reintroduce sqrt(n_slots) Grid-N4 or `comparative_emitter::*` discovery.
+    // GUYANG-COMPARATIVE-PROJECTIONS-0 (5.8): default-derived birth is 5.8b.
+    // Install does not invent topology from n_slots or discover emitters by
+    // string namespace. Explicit consumers call admit_comparative_projections
+    // with already-admitted FieldAdjacency + columns. Leave unset here.
 
     Ok(state)
 }

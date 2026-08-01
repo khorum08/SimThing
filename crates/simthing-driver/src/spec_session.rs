@@ -122,10 +122,9 @@ pub struct SpecSessionState {
     /// Admitted order-weight class table (ORDER-WEIGHT-CLASS-0). Used by the
     /// typed directive submission surface and runtime Player magnitude gate.
     pub order_weight_classes: Vec<crate::order_directive::AdmittedOrderWeightClass>,
-    /// GUYANG-COMPARATIVE-PROJECTIONS-0: comparative projection admission when
-    /// a lawful birth seam exists. Remand 4: install does **not** invent
-    /// topology or string-namespace discovery; remains `None` until DA-typed
-    /// emitter/triad roles + admitted field-plan topology are available.
+    /// GUYANG-COMPARATIVE-PROJECTIONS-0: optional comparative admission when a
+    /// caller installs an explicit 5.8 chain. Default-derived birth is 5.8b;
+    /// ordinary `compile_and_install` leaves this `None`.
     pub comparative_projection:
         Option<crate::comparative_projection::ComparativeProjectionAdmission>,
 }

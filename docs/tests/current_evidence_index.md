@@ -30,7 +30,7 @@
 
 | Evidence | PR | Merge SHA | Status |
 |---|---|---|---|
-| **GUYANG-COMPARATIVE-PROJECTIONS-0** — explicit consumer (margin/winner-border/stall/contest); Grid+Link CPU/GPU; authored_order; threshold-plan compatible; **STOP** auto-birth (no invent topology / no string grammar); no TP (`5150987561` orch correction) | branch evidence | branch evidence | **PROBATION / Remand-4 STOP** — `docs/tests/guyang_comparative_projections_0_results.md`; pointer unchanged |
+| **GUYANG-COMPARATIVE-PROJECTIONS-0** — explicit fail-closed birth; margin/winner-border/stall/contest; Grid+Link CPU/GPU; authored_order; threshold-plan compatible; scenario-neutral; TP void; default birth = 5.8b | branch evidence | branch evidence | **PROBATION / graduation-ready** — `docs/tests/guyang_comparative_projections_0_results.md`; pointer unchanged |
 | **EML-RESOURCE-CLASS-ADMISSION-0** — closed stack-4/legacy-32 classes, canonical IR-to-WGSL JIT/cache, sealed exact-primitive door, and exact RTX 4080/Vulkan adjudication | branch evidence | branch evidence | **FINAL CODER STOP — PALMA passes; Gu-Yang fused JIT is 4.7593x median / 5.4648x worst versus bespoke** — `docs/tests/eml_resource_class_admission_0_results.md`; full CPU/interpreted/JIT census bit-exact; zero primitives; pointer unchanged |
 | **Candidate F exact sqrt** (artifact hash `59ab4b2892e3c690`, LF-canonical re-pin `SQRT-REPIN-0` 2026-06-11) | — | constitution §0.7 lineage | CURRENT — the only exact-magnitude authority for decision gates |
 | **PR10** — generated admit/install + real-adapter GPU compact evidence | #690 | `75505ee2` | CURRENT_EVIDENCE + LIVE GPU GUARDRAIL |

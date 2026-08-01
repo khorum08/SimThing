@@ -1,9 +1,7 @@
-//! GUYANG-COMPARATIVE-PROJECTIONS-0 — Remand 4 (`5151053486`).
+//! GUYANG-COMPARATIVE-PROJECTIONS-0 — scenario-neutral 5.8 proofs.
 //!
-//! Explicit consumer proofs only. No TP. No inventing topology from n_slots.
-//! No string-namespace discovery as production authority.
-//! Automatic install birth is **STOPPED** pending DA-typed emitter/triad roles
-//! and install-carried admitted FieldAdjacency (see results doc).
+//! Explicit, fail-closed birth is the 5.8 production posture (DA `5151136145`).
+//! Default-derived install birth is 5.8b (out of scope). TP witness is void.
 
 use simthing_core::{
     emit_on_threshold_registration_to_op, ColumnIndex, DimensionRegistry, EmitOnThresholdRegistration,
@@ -122,13 +120,12 @@ fn admit_grid(
     .expect("admit_comparative (explicit columns + admitted adjacency)")
 }
 
-/// Remand 4 item 1: install must NOT invent Grid-N4 from perfect-square n_slots.
+/// 5.8: ordinary install does not invent comparative birth (5.8b owns that).
 #[test]
 fn install_does_not_invent_topology_or_string_default_birth() {
-    let n_slots = 16u32; // perfect square — former kabuki would invent Grid-N4
+    let n_slots = 16u32; // perfect square is not topology authority
     let mut registry = DimensionRegistry::new();
     let _ = registry.register(SimProperty::simple("_seed", "pad", 0));
-    // Even with feedstock properties present, install has no admitted FieldAdjacency.
     for (ns, name) in [
         ("feed", "e0"),
         ("feed", "e1"),
@@ -177,7 +174,7 @@ fn install_does_not_invent_topology_or_string_default_birth() {
         .expect("install");
     assert!(
         state.comparative_projection.is_none(),
-        "install must not invent comparative birth without admitted topology + typed roles"
+        "5.8 install leaves comparative birth unset; default birth is 5.8b"
     );
 }
 
@@ -578,8 +575,7 @@ fn grid_and_link_graph_cpu_oracle_and_gpu_parity() {
 }
 
 /// Threshold-band compatibility of the plan (ordinary EmitOnThreshold).
-/// Remand 4 item 4: this is **not** production install of the plan — that is
-/// STOPPED with items 1–2. Proves plan columns are ordinary threshold-capable.
+/// Session-wide threshold install wiring is 5.8b/session surface work, not 5.8.
 #[test]
 fn front_formed_hardened_and_chokepoint_threshold_plan_compatible() {
     let mut reg = DimensionRegistry::new();
