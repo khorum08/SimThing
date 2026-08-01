@@ -45,7 +45,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 211b860c2a424d0386a01a2dc93d5c563abfd1411c1f58ec55c7b69d97426cb8 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | 26eab30ec86c97ac8dfd6beef7ae8c5b4d3f18c38fdaa431ec40ccce855396d3 |
-| design_0_0_8_7_rf_arena_modernization.md | 66122c4f3ba87c4be3304465faac4adf9aaf37271831208f7a0f6f0c69e6c19e |
+| design_0_0_8_7_rf_arena_modernization.md | a702370d81c715ca8988217dbebcabf533bd82f1573a26502e460709ab86ca8b |
 | relay_lint.sh | 4163f715cdc3b549dbf57c1744aff61ea96b9f9f0a2237376665fbdb24e986c8 |
 | doctrine_anchors.tsv | fdfb1dda41a02d2611a01d4f82ba9a10414eac6ec34edb931fded2ba9b6be178 |
 | execution_status_taxonomy.tsv | 405caebabe9972b335464a43ad66169a9e8bb13b8fb868cf179bde9789922f87 |
@@ -77,7 +77,7 @@ Track state: `open`
 | 5.4 | FIELD-SWEEP-IR-PROBE-0 | Phase 5: workshop-leaf disposable probe — minimal target/neighbor-ctx EML map/fo | **DA-GRADUATED / merged #1526 @ a895c989** — HONEST INDETERMINATE PROBE. Parity ABSOLUTE and met: N4 CPU+GPU bit-exac... |
 | 5.5 | FIELD-SWEEP-N4-PARITY-0 | Phase 5: engine landing — EML edge context {target_slot, neighbor_slot, accumula | **DA-GRADUATED / merged #1529 @ 4ab19613** — THE REMODEL'S CENTREPIECE LANDS. PALMA and two-stage Gu-Yang run through... |
 | 5.6 | FIELD-ADJACENCY-GENERATORS-0 | Phase 5: adjacency as a registration axis — weighted `GridOffsets [(dx,dy,w)]` w | **DA-GRADUATED / merged #1532 @ f95eb261** — THE ADJACENCY GAP IS CLOSED. One authored map/fold/post EML program now ... |
-| 5.7 | EML-RESOURCE-CLASS-ADMISSION-0 | Phase 5: specialized interpreter resource classes (pipeline-constant stack sizes | Resource classes measurably control occupancy; cap-to-budget re-expression reproduces the currently admitted set exac... |
+| 5.7 | EML-RESOURCE-CLASS-ADMISSION-0 | Phase 5: specialized interpreter resource classes (pipeline-constant stack sizes | **DA-GRADUATED / merged #1537 @ a7c05715 — substrate accepted; Gu-Yang recorded as MEASURED PERFORMANCE DEBT with a n... |
 | 5.8 | GUYANG-COMPARATIVE-PROJECTIONS-0 | Phase 5: dominance/margin/contest/border-band/chokepoint projections; default-de | TP scenario surfaces fronts + a chokepoint event with zero scenario wiring; `stead_spatial_contract_guards` green. |
 | 5.9 | TP-PURGE-0 | **Phase 5 hygiene — INTENT NOTED, sequencing Owner-scheduled and MAY preempt 5.4 | **DA-GRADUATED / merged #1520 @ 153ba40c** — DA independently reproduced at exact head `9ccd800c`: **THE FALSIFIABLE ... |
 | 6.1 | EVENT-GENERATION-STAMP-0 | Phase 6: generation stamps on emission/threshold events; stamped ring egress wit | Events carry stamps; forced observer lag honors declared backpressure without perturbing the sim. |
@@ -97,7 +97,7 @@ Track state: `open`
 
 ## Next Rung Pointer
 
-Active pointer: `EML-RESOURCE-CLASS-ADMISSION-0`
+Active pointer: `GUYANG-COMPARATIVE-PROJECTIONS-0`
 
 
 ## Cold-Start Spine (constitutional pointers)
