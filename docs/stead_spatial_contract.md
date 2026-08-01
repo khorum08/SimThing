@@ -90,4 +90,15 @@ PALMA `D` is a field, not a route (no predecessors/paths) — see §9. A bespoke
 Studio is a STEAD/convergence violation; if the generic registration structurally cannot host a needed
 step, STOP and escalate to design authority rather than forking a kernel.
 
+As of rung 5.8, **comparative projections** (dominance / margin / contest / border band / chokepoint)
+are sealed field-EML registration chains over co-located generic field-sweep outputs (driver consumer;
+no new kernel door). They are default-derived when ≥2 competing emitter classes are admitted
+(authored opt-out with a visible reason only), emit a fixed comparative column count independent of
+owner count, and resolve exact ties by authored emitter order. **Margin** is exact `top1−top2`
+(non-negative magnitude). **Border** is winner-identity change across canonical adjacency
+(`argmax(target) ≠ argmax(neighbor)`), not a sign flip of margin. **Contest** consumes Gu-Yang
+stall magnitude (`gross_flux − |net_flux|` from an authored second field-sweep registration) under
+both-strong/small-margin. Chokepoint is only `contested-border ∧ PALMA-low-D`. Events arrive as
+ordinary anchored threshold bands; no border service or CPU full-field decision path is admitted.
+
 They may appear ONLY inside an explicitly-named *Withdrawn doctrine* / *Correction* section (like this one) that negates them.

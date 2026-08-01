@@ -426,6 +426,12 @@ pub fn compile_and_install(
     materialize_observation_hosts(game_mode, registry, root, scenario)?;
 
     state.property_admission = registry.property_admission_report();
+
+    // GUYANG-COMPARATIVE-PROJECTIONS-0 (5.8): default-derived birth is 5.8b.
+    // Install does not invent topology from n_slots or discover emitters by
+    // string namespace. Explicit consumers call admit_comparative_projections
+    // with already-admitted FieldAdjacency + columns. Leave unset here.
+
     Ok(state)
 }
 

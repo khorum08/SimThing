@@ -268,3 +268,29 @@ date	role	query	anchors_served	hit
 2026-07-31T23:41:55Z	coding	--paths crates/simthing-core/src/eml_nodes.rs crates/simthing-core/src/eml_registry.rs crates/simthing-kernel/src/field_sweep.rs crates/simthing-kernel/src/shaders/field_sweep.wgsl crates/simthing-kernel/src/shaders/accumulator_op.wgsl crates/simthing-kernel/src/accumulator_op/session.rs crates/simthing-kernel/src/eml_opcode_gate.rs crates/simthing-kernel/src/exact_magnitude_gate.rs crates/simthing-workshop/tests/eml_resource_class_capability_census_0.rs scripts/ci/test_inventory.tsv docs/tests/current_evidence_index.md	admission-ladder-necessity-test,eml-extension-ladder,exact-numeric-candidate-f,field-policy-time-decisions,field-sweep-preservation,orientation-harness-core,property-value-rf-overlays,rf-arena-substrate,scanner-selftest-delta-gate,seal-residue-cross-crate,simthing-0087-binding-laws,simthing-0087-pillars,workshop-candidate-homing	hit
 2026-07-31T23:41:55Z	coding	--grep eml-extension-ladder	eml-extension-ladder	hit
 2026-08-01T00:19:19Z	coding	--grep FIELD-SWEEP-SINGLE-PATH|single path|JIT|resource class|Per-Generator	none	none
+2026-08-01T01:50:54Z	coding	--domain field-sweep-preservation	field-sweep-preservation	hit
+2026-08-01T01:50:54Z	coding	--grep comparative	simthing-0087-binding-laws,simthing-0087-pillars	hit
+2026-08-01T01:50:54Z	coding	--domain rf-arena-substrate	none	none
+2026-08-01T01:50:54Z	coding	--domain stead-spatial-contract-core	none	none
+2026-08-01T01:51:01Z	coding	--grep comparative\|dominance\|chokepoint\|border-band\|Gu-Yang door\|default-derived	none	none
+2026-08-01T01:51:01Z	coding	--domain stead-spatial-contract-core	none	none
+2026-08-01T01:51:01Z	coding	--domain simthing-0087-pillars	none	none
+2026-08-01T01:51:08Z	coding	--paths docs/design_0_0_8_7_rf_arena_modernization.md	none	none
+2026-08-01T01:51:08Z	coding	--grep default-derived\|comparative projection\|Gu-Yang door\|border-band	none	none
+2026-08-01T01:51:40Z	coding	--paths docs/stead_spatial_contract.md	stead-spatial-contract-core,structural-execution-convergence	hit
+2026-08-01T08:25:09Z	coding	--grep sign-flip\|signed margin\|flux-stall\|border-pressure\|comparative	none	none
+2026-08-01T08:25:09Z	coding	--domain field-sweep-preservation	field-sweep-preservation	hit
+2026-08-01T08:25:10Z	coding	--grep margin\|sign-flip\|flux-stall\|contest\|border	none	none
+2026-08-01T08:28:18Z	coding	--grep sign-flip|top1|flux-stall|margin|comparative projection|default-derived	none	none
+2026-08-01T08:28:18Z	coding	--grep border \(sign-flip|flux-stall|top1	none	none
+2026-08-01T08:28:45Z	coding	--domain rf-arena-substrate	none	none
+2026-08-01T10:08:12Z	coding	--grep competing emitter|default-derived|emitter class|specialization	none	none
+2026-08-01T10:11:07Z	coding	--grep Corpus Boundary|TP-PURGE|terran_pirate|Native Ingestion	none	none
+2026-08-01T10:39:10Z	coding	--grep comparative\|field-plan\|FieldAdjacency\|default-derived\|admission disposition	none	none
+2026-08-01T10:39:10Z	coding	--paths crates/simthing-driver/src/install.rs crates/simthing-driver/src/comparative_projection.rs	field-policy-time-decisions,founding-ontology-invariants,property-value-rf-overlays,rf-arena-substrate,simthing-0087-binding-laws,simthing-0087-pillars,stead-spatial-contract-core,structural-execution-convergence,workshop-candidate-homing	hit
+2026-08-01T10:39:18Z	coding	--grep no new grammar\|scenario switch\|admission disposition\|anchor table\|field sweep	none	none
+2026-08-01T10:39:18Z	coding	--domain driver	field-policy-time-decisions,property-value-rf-overlays,structural-execution-convergence	hit
+2026-08-01T10:39:41Z	coding	--grep no new grammar	none	none
+2026-08-01T10:39:41Z	coding	--grep Per-Generator Admission	simthing-0087-binding-laws	hit
+2026-08-01T10:39:41Z	coding	--domain founding-ontology	founding-ontology-invariants	hit
+2026-08-01T10:39:53Z	coding	--grep emitter class\|comparative projection\|Gu-Yang\|triad	none	none

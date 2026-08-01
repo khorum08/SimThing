@@ -24,6 +24,7 @@ pub mod dress_rehearsal_r6_combat_hp_damage;
 pub mod dress_rehearsal_r6b_ship_cohort_reinforcement;
 pub mod dress_rehearsal_r6c_integrated_run;
 pub mod econ_scale_0080_0;
+pub mod comparative_projection;
 pub mod field_scheduler;
 pub mod field_sweep_compile;
 pub mod first_slice_mapping_runtime;
@@ -137,9 +138,18 @@ pub use atlas_0080_0::{
 };
 pub use bench_limits::{check as check_bench_ceiling, ms_per_sim_day, CEILINGS};
 pub use child_share_eml::{child_share_cpu, register_child_share_formula};
+pub use comparative_projection::{
+    admit_comparative_projections, comparative_event_kind, comparative_projection_cpu_oracle,
+    compile_comparative_bundle, neighbor_slots_from_grid, neighbor_slots_from_link_rows,
+    ComparativeBandReadouts, ComparativeDerivedPropertyIds, ComparativeEmitterClass,
+    ComparativeProjectionAdmission, ComparativeProjectionBands, ComparativeProjectionBundle,
+    ComparativeProjectionDisposition, ComparativeProjectionError, ComparativeProjectionOutputs,
+    ComparativeProjectionRequest, ComparativeThresholdPlan, GuYangStallOutputs,
+    BAND_READOUT_COLUMN_COUNT, COMPARATIVE_DERIVED_COLUMN_COUNT, GUYANG_STALL_DERIVED_COLUMN_COUNT,
+};
 pub use field_sweep_compile::{
-    compile_gu_yang_n4_field_sweeps, compile_palma_n4_field_sweep,
-    GuYangN4FieldSweepSpec, PalmaN4FieldSweepSpec,
+    compile_gu_yang_n4_field_sweeps, compile_palma_n4_field_sweep, GuYangN4FieldSweepSpec,
+    PalmaN4FieldSweepSpec,
 };
 pub use compound_field_0080_2::{
     replay_compound_field_0080_2, run_compound_field_0080_2, CompoundField0082ForbiddenRequests,
