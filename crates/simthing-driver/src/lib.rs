@@ -7,31 +7,11 @@ pub mod arena_registry;
 pub mod atlas_0080_0;
 pub mod bench_limits;
 pub mod child_share_eml;
-pub mod compound_field_0080_2;
-pub mod control_0080_0;
-pub mod control_0080_1;
-pub mod default_schedule_0080_0;
-pub mod default_schedule_0080_1;
-pub mod demo_0080_0;
-pub mod demo_0080_1;
-pub mod disruption_decay_0080_2;
-pub mod dress_rehearsal_r1_disruption_heatmap;
-pub mod dress_rehearsal_r2_recursive_allocation;
-pub mod dress_rehearsal_r3_capability_mask_down;
-pub mod dress_rehearsal_r4_field_policy_consumption;
-pub mod dress_rehearsal_r5_movement_reenroll;
-pub mod dress_rehearsal_r6_combat_hp_damage;
-pub mod dress_rehearsal_r6b_ship_cohort_reinforcement;
-pub mod dress_rehearsal_r6c_integrated_run;
-pub mod econ_scale_0080_0;
 pub mod comparative_projection;
 pub mod field_scheduler;
 pub mod field_sweep_compile;
 pub mod first_slice_mapping_runtime;
-pub mod gameplay_0080_0;
-pub mod gameplay_0080_1;
 pub mod gated_rates;
-pub mod gradient_follow_0080_2;
 pub mod hosted_property_observation;
 pub mod install;
 pub mod loaded_scenario_recursive_rf_runtime_compile;
@@ -52,7 +32,6 @@ pub mod owner_silo_runtime_writeback_compile;
 pub mod planet_child_rf_accumulator_compile;
 pub mod planet_child_rf_reduce_up_compile;
 pub mod production_path_0080_0;
-pub mod production_path_0080_1;
 pub mod recursive_local_rf_compile;
 pub mod recursive_rf_reconciliation_compile;
 pub mod resource_economy_boundary_schedule;
@@ -151,177 +130,6 @@ pub use field_sweep_compile::{
     compile_gu_yang_n4_field_sweeps, compile_palma_n4_field_sweep, GuYangN4FieldSweepSpec,
     PalmaN4FieldSweepSpec,
 };
-pub use compound_field_0080_2::{
-    replay_compound_field_0080_2, run_compound_field_0080_2, CompoundField0082ForbiddenRequests,
-    CompoundField0082Gate, CompoundField0082Input, CompoundField0082NodePos,
-    CompoundField0082Report, CompoundField0082Surface, CompoundField0082TickSnapshot,
-    CompoundField0082Weights, BASE_DESIRABILITY, COMPOUND_FIELD_0080_2_ID,
-    COMPOUND_FIELD_0080_2_SCENARIO, COMPOUND_FIELD_0080_2_STATUS_PASS, DESIRABILITY_MAX,
-};
-pub use control_0080_0::{
-    admit_control_0080_0, replay_admit_control_0080_0, Control0080AdmissionInput,
-    Control0080AdmissionReport, Control0080Command, Control0080CommandBatch,
-    Control0080ForbiddenRequests, Control0080Gate, Control0080RejectedCommand, Control0080Surface,
-    CONTROL_0080_0_ID, CONTROL_0080_0_SCENARIO, CONTROL_0080_0_STATUS_PASS,
-};
-pub use control_0080_1::{
-    admit_control_0080_1, replay_admit_control_0080_1, Control0081AdmissionInput,
-    Control0081AdmissionReport, Control0081BoundedConfig, Control0081Command,
-    Control0081CommandBatch, Control0081CommandTranscriptRow, Control0081ForbiddenRequests,
-    Control0081Gate, Control0081RejectedCommand, Control0081Surface, CONTROL_0080_1_ID,
-    CONTROL_0080_1_SCENARIO, CONTROL_0080_1_STATUS_PASS,
-};
-pub use default_schedule_0080_0::{
-    replay_default_schedule_0080_0, run_default_schedule_0080_0,
-    DefaultSchedule0080ForbiddenRequests, DefaultSchedule0080Gate, DefaultSchedule0080Input,
-    DefaultSchedule0080Location, DefaultSchedule0080PirateState,
-    DefaultSchedule0080PirateStepReport, DefaultSchedule0080RunReport, DefaultSchedule0080Step,
-    DefaultSchedule0080StepReport, DefaultSchedule0080Surface, DEFAULT_SCHEDULE_0080_0_ID,
-    DEFAULT_SCHEDULE_0080_0_SCENARIO, DEFAULT_SCHEDULE_0080_0_STATUS_1A_PASS,
-    DEFAULT_SCHEDULE_0080_0_STATUS_1B_PASS,
-};
-pub use default_schedule_0080_1::{
-    replay_default_schedule_0080_1, run_default_schedule_0080_1,
-    DefaultSchedule0081BoundaryDecision, DefaultSchedule0081ForbiddenRequests,
-    DefaultSchedule0081Gate, DefaultSchedule0081Input, DefaultSchedule0081MovementOutcome,
-    DefaultSchedule0081RunReport, DefaultSchedule0081ShipFaction, DefaultSchedule0081Step,
-    DefaultSchedule0081StepReport, DefaultSchedule0081Surface, DEFAULT_SCHEDULE_0080_1_ID,
-    DEFAULT_SCHEDULE_0080_1_SCENARIO, DEFAULT_SCHEDULE_0080_1_STATUS_PASS,
-};
-pub use demo_0080_0::{
-    canonical_control_input, replay_demo_0080_0, run_demo_0080_0, Demo0080ForbiddenRequests,
-    Demo0080Gate, Demo0080Input, Demo0080MovementDay, Demo0080MovementRecord, Demo0080Report,
-    Demo0080Surface, DEMO_0080_0_ID, DEMO_0080_0_SCENARIO, DEMO_0080_0_STATUS_PASS,
-};
-pub use demo_0080_1::{
-    canonical_control_input_0080_1, replay_demo_0080_1, run_demo_0080_1, Demo0081CommandRow,
-    Demo0081ForbiddenRequests, Demo0081Gate, Demo0081Input, Demo0081MovementRow, Demo0081Report,
-    Demo0081Surface, DEMO_0080_1_ID, DEMO_0080_1_SCENARIO, DEMO_0080_1_STATUS_PASS,
-};
-pub use disruption_decay_0080_2::{
-    replay_disruption_decay_0080_2, run_disruption_decay_0080_2, DisruptionDecay0082DecayWeights,
-    DisruptionDecay0082ForbiddenRequests, DisruptionDecay0082Gate, DisruptionDecay0082Input,
-    DisruptionDecay0082Presence, DisruptionDecay0082Report, DisruptionDecay0082RetentionFactor,
-    DisruptionDecay0082Row, DisruptionDecay0082Surface, DISRUPTION_DECAY_0080_2_ID,
-    DISRUPTION_DECAY_0080_2_SCENARIO, DISRUPTION_DECAY_0080_2_STATUS_PASS, DISRUPTION_MAX,
-    DISRUPTION_SCALE,
-};
-pub use dress_rehearsal_r1_disruption_heatmap::{
-    bounded_feedback_next, cell_index as dress_rehearsal_r1_cell_index,
-    cpu_oracle_dress_rehearsal_r1_disruption_heatmap, render_dress_rehearsal_r1_artifact,
-    replay_dress_rehearsal_r1_disruption_heatmap, run_dress_rehearsal_r1_disruption_heatmap,
-    DressRehearsalR1Artifact, DressRehearsalR1ArtifactRow, DressRehearsalR1CellInput,
-    DressRehearsalR1CellInputEntry, DressRehearsalR1Channel, DressRehearsalR1DiffusionRow,
-    DressRehearsalR1ForbiddenRequests, DressRehearsalR1Gate, DressRehearsalR1GridCell,
-    DressRehearsalR1Hotspot, DressRehearsalR1Input, DressRehearsalR1OccupantContribution,
-    DressRehearsalR1OccupantKind, DressRehearsalR1Oracle, DressRehearsalR1Owner,
-    DressRehearsalR1RecurrenceRow, DressRehearsalR1Report, DressRehearsalR1Scenario,
-    DressRehearsalR1Summary, DressRehearsalR1Surface, CEILING, DECAY, DISRUPTION_COL,
-    DRESS_REHEARSAL_R1_DISRUPTION_HEATMAP_ID, DRESS_REHEARSAL_R1_DISRUPTION_HEATMAP_STATUS_PASS,
-    DRESS_REHEARSAL_R1_SCENARIO, FLOOR, GAIN, GALAXY_CELL_COUNT, GALAXY_SIDE, HOTSPOT_COUNT,
-    H_WEIGHT, LOCATION_STATUS_COL, PATROL_SUPPRESS, PIRATE_EMIT, SYSTEM_COUNT,
-};
-pub use dress_rehearsal_r2_recursive_allocation::{
-    cpu_oracle_dress_rehearsal_r2_recursive_allocation, factory_recipe_production,
-    render_dress_rehearsal_r2_artifact, replay_dress_rehearsal_r2_recursive_allocation,
-    run_dress_rehearsal_r2_recursive_allocation, DressRehearsalR2AffectedSystemRow,
-    DressRehearsalR2Artifact, DressRehearsalR2DeficitDisbursementRow,
-    DressRehearsalR2DivertedProductionRow, DressRehearsalR2FactoryRecipe, DressRehearsalR2Input,
-    DressRehearsalR2OccupantPosition, DressRehearsalR2Oracle, DressRehearsalR2Owner,
-    DressRehearsalR2Report, DressRehearsalR2StockpileLedgerRow, DressRehearsalR2StockpileSeed,
-    DressRehearsalR2Summary, DressRehearsalR2SystemProductionRow, BLOCKADE_THRESHOLD,
-    DRESS_REHEARSAL_R2_RECURSIVE_ALLOCATION_ID,
-    DRESS_REHEARSAL_R2_RECURSIVE_ALLOCATION_STATUS_PASS, DRESS_REHEARSAL_R2_SCENARIO,
-    FACTORY_UNIT_COST_LABOR, POP_LABOR_PER_TICK, PRODUCTION_PER_RECIPE, STARPORT_PRODUCTION_NEED,
-    TOP_AFFECTED_COUNT,
-};
-pub use dress_rehearsal_r3_capability_mask_down::{
-    apply_modifier_bps, cpu_oracle_dress_rehearsal_r3_capability_mask_down,
-    render_dress_rehearsal_r3_artifact, replay_dress_rehearsal_r3_capability_mask_down,
-    run_dress_rehearsal_r3_capability_mask_down, DressRehearsalR3Artifact,
-    DressRehearsalR3CapabilityRow, DressRehearsalR3Input, DressRehearsalR3ModifiedEconomySignalRow,
-    DressRehearsalR3ModifiedR1SignalRow, DressRehearsalR3ModifierOverlayRow,
-    DressRehearsalR3Oracle, DressRehearsalR3Owner, DressRehearsalR3OwnerMaskApplicationRow,
-    DressRehearsalR3Report, DressRehearsalR3Summary, BLOCKADE_DIVERT_MODIFIER, BPS_ONE,
-    COMBAT_BONUS_PLACEHOLDER_MODIFIER, DEFENSIVE_LOGISTICS_MODIFIER, DISRUPTION_DECAY_MODIFIER,
-    DRESS_REHEARSAL_R3_CAPABILITY_MASK_DOWN_ID,
-    DRESS_REHEARSAL_R3_CAPABILITY_MASK_DOWN_STATUS_PASS, DRESS_REHEARSAL_R3_SCENARIO,
-    MAX_MODIFIER_BPS, MIN_MODIFIER_BPS, PATROL_SUPPRESSION_MODIFIER, PIRATE_EMISSION_MODIFIER,
-    RAIDING_LOGISTICS_MODIFIER,
-};
-pub use dress_rehearsal_r4_field_policy_consumption::{
-    cpu_mag2_sum, cpu_oracle_dress_rehearsal_r4_field_policy_consumption,
-    exact_mag2_bits_from_fixed, f32_to_q16, mag2_u64_q16_to_f32_bits,
-    render_dress_rehearsal_r4_artifact, replay_dress_rehearsal_r4_field_policy_consumption,
-    run_dress_rehearsal_r4_field_policy_consumption, sqrt_cr_f_bits, DressRehearsalR4Artifact,
-    DressRehearsalR4CompositeComponentRow, DressRehearsalR4Decision,
-    DressRehearsalR4ExactMagnitudeRow, DressRehearsalR4Input, DressRehearsalR4MoverDecisionRow,
-    DressRehearsalR4Oracle, DressRehearsalR4Owner, DressRehearsalR4Report, DressRehearsalR4Summary,
-    DRESS_REHEARSAL_R4_FIELD_POLICY_CONSUMPTION_ID,
-    DRESS_REHEARSAL_R4_FIELD_POLICY_CONSUMPTION_STATUS_PASS, DRESS_REHEARSAL_R4_SCENARIO,
-    MOVEMENT_THRESHOLD_MAG_BITS,
-};
-pub use dress_rehearsal_r5_movement_reenroll::{
-    cpu_oracle_dress_rehearsal_r5_movement_reenroll, render_dress_rehearsal_r5_artifact,
-    replay_dress_rehearsal_r5_movement_reenroll, run_dress_rehearsal_r5_movement_reenroll,
-    DressRehearsalR5Artifact, DressRehearsalR5BoundaryRequestRow, DressRehearsalR5FissionRow,
-    DressRehearsalR5Input, DressRehearsalR5MovementRow, DressRehearsalR5Oracle,
-    DressRehearsalR5Owner, DressRehearsalR5Report, DressRehearsalR5SitStillRow,
-    DressRehearsalR5Summary, DRESS_REHEARSAL_R5_MOVEMENT_REENROLL_ID,
-    DRESS_REHEARSAL_R5_MOVEMENT_REENROLL_STATUS_PASS, DRESS_REHEARSAL_R5_SCENARIO,
-    GALACTIC_STRUCTURAL_PARENT,
-};
-pub use dress_rehearsal_r6_combat_hp_damage::{
-    cpu_oracle_dress_rehearsal_r6_combat_hp_damage, damage_output_for_cohort,
-    emission_band_ship_attrition, hp_to_retire_for_cohort, render_dress_rehearsal_r6_artifact,
-    replay_dress_rehearsal_r6_combat_hp_damage, run_dress_rehearsal_r6_combat_hp_damage,
-    DressRehearsalR6Artifact, DressRehearsalR6CombatArenaRow, DressRehearsalR6DefeatedRow,
-    DressRehearsalR6DisburseDownRow, DressRehearsalR6FleetCohortOverride, DressRehearsalR6Input,
-    DressRehearsalR6Oracle, DressRehearsalR6Owner, DressRehearsalR6ReduceUpRow,
-    DressRehearsalR6Report, DressRehearsalR6Summary, DressRehearsalR6SurvivorRow,
-    DRESS_REHEARSAL_R6_COMBAT_HP_DAMAGE_ID, DRESS_REHEARSAL_R6_COMBAT_HP_DAMAGE_STATUS_PASS,
-    DRESS_REHEARSAL_R6_SCENARIO, FLEET_COHORT_NUM_SHIPS, FLEET_DAMAGE_PER_SHIP_PER_TICK,
-    FLEET_HP_PER_SHIP,
-};
-pub use dress_rehearsal_r6b_ship_cohort_reinforcement::{
-    construction_threshold_emission, cpu_oracle_dress_rehearsal_r6b_ship_cohort_reinforcement,
-    fleet_cohort_overrides_from_report, replay_dress_rehearsal_r6b_ship_cohort_reinforcement,
-    run_dress_rehearsal_r6b_ship_cohort_reinforcement, run_r6_combat_with_r6b_cohorts,
-    DressRehearsalR6bBirthRow, DressRehearsalR6bCohortRow, DressRehearsalR6bConstructionRow,
-    DressRehearsalR6bFusionRow, DressRehearsalR6bInput, DressRehearsalR6bOracle,
-    DressRehearsalR6bOwner, DressRehearsalR6bReinforcementRow, DressRehearsalR6bReport,
-    DressRehearsalR6bSummary, DRESS_REHEARSAL_R6B_SCENARIO,
-    DRESS_REHEARSAL_R6B_SHIP_COHORT_REINFORCEMENT_ID,
-    DRESS_REHEARSAL_R6B_SHIP_COHORT_REINFORCEMENT_STATUS_PASS, R6B_FUSION_FIXTURE_CELL,
-    R6B_FUSION_LEFT_ID, R6B_FUSION_RIGHT_ID, SHIP_COST,
-};
-pub use dress_rehearsal_r6c_integrated_run::{
-    cpu_oracle_dress_rehearsal_r6c_integrated_run, render_dress_rehearsal_r6c_artifact,
-    replay_dress_rehearsal_r6c_integrated_run, run_dress_rehearsal_r6c_integrated_run,
-    DressRehearsalR6cBirthRow, DressRehearsalR6cBoundaryRequestRow,
-    DressRehearsalR6cCapabilityOverlayRow, DressRehearsalR6cCombatDisburseRow,
-    DressRehearsalR6cCombatReduceRow, DressRehearsalR6cCombatRow, DressRehearsalR6cConservationRow,
-    DressRehearsalR6cConstructionRow, DressRehearsalR6cDetectorRow,
-    DressRehearsalR6cDetectorStatus, DressRehearsalR6cEconomyRow, DressRehearsalR6cFieldReadRow,
-    DressRehearsalR6cFleetCohortState, DressRehearsalR6cFusionRow, DressRehearsalR6cInput,
-    DressRehearsalR6cMovementRow, DressRehearsalR6cOracle, DressRehearsalR6cOwner,
-    DressRehearsalR6cRaceCurveRow, DressRehearsalR6cReinforcementRow, DressRehearsalR6cReport,
-    DressRehearsalR6cStockpileLedgerRow, DressRehearsalR6cSummary, DressRehearsalR6cSystemState,
-    DressRehearsalR6cTraceExcerpt, DressRehearsalR6cWorld, DressRehearsalR6cWorldSeedSummary,
-    DRESS_REHEARSAL_R6C_INTEGRATED_RUN_ID, DRESS_REHEARSAL_R6C_INTEGRATED_RUN_STATUS_PASS,
-    DRESS_REHEARSAL_R6C_SCENARIO, R6C_CANONICAL_TICK_COUNT, R6C_GPU_POSTURE,
-    R6C_TIE_BREAKER_POLICY,
-};
-pub use econ_scale_0080_0::{
-    replay_econ_scale_0080_0, run_econ_scale_0080_0, EconScale0080ClearingInput,
-    EconScale0080ClearingReport, EconScale0080Faction, EconScale0080FactionIndex,
-    EconScale0080ForbiddenRequests, EconScale0080Gate, EconScale0080Input,
-    EconScale0080Participant, EconScale0080RunReport, EconScale0080Scenario,
-    EconScale0080StarsystemEconomy, EconScale0080Surface, ECON_SCALE_0080_0_DEFAULT_SEED,
-    ECON_SCALE_0080_0_FACTION_COUNT, ECON_SCALE_0080_0_ID,
-    ECON_SCALE_0080_0_MAX_PARTICIPANTS_PER_STARSYSTEM, ECON_SCALE_0080_0_SCENARIO,
-    ECON_SCALE_0080_0_STATUS_PASS,
-};
 pub use field_scheduler::{
     count_cadence_due_ticks, execute_scheduled_regions_with,
     visit_scheduled_regions, DirtyRegionState, FieldCadence, FieldDispatchDecision,
@@ -336,29 +144,9 @@ pub use first_slice_mapping_runtime::{
     FirstSliceResidencyStatus, FirstSliceSeed, FirstSliceSummaryReport, FirstSliceSummaryStatus,
     FirstSliceTickOptions,
 };
-pub use gameplay_0080_0::{
-    export_gameplay_0080_text, observe_gameplay_0080_0, replay_observe_gameplay_0080_0,
-    Gameplay0080ForbiddenRequests, Gameplay0080LocationSummary, Gameplay0080ObservationGate,
-    Gameplay0080ObservationInput, Gameplay0080ObservationReport, Gameplay0080ObservationSurface,
-    Gameplay0080StepTranscript, Gameplay0080Transcript, GAMEPLAY_0080_0_ID,
-    GAMEPLAY_0080_0_SCENARIO, GAMEPLAY_0080_0_STATUS_PASS,
-};
-pub use gameplay_0080_1::{
-    export_gameplay_0080_1_text, observe_gameplay_0080_1, replay_observe_gameplay_0080_1,
-    Gameplay0081AtlasSummary, Gameplay0081FactionEconSummary, Gameplay0081ForbiddenRequests,
-    Gameplay0081Gate, Gameplay0081Input, Gameplay0081MovementRow, Gameplay0081ObservationReport,
-    Gameplay0081StarmapShape, Gameplay0081Summary, Gameplay0081Surface, Gameplay0081Transcript,
-    GAMEPLAY_0080_1_ID, GAMEPLAY_0080_1_SCENARIO, GAMEPLAY_0080_1_STATUS_PASS,
-};
 pub use gated_rates::{
     build_gated_rate_ops, resolve_gated_rates, seed_gated_rate_base_columns, ResolvedGatedRate,
     RATE_BASE_SUB_FIELD,
-};
-pub use gradient_follow_0080_2::{
-    replay_gradient_follow_0080_2, run_gradient_follow_0080_2, GradientFollow0082ForbiddenRequests,
-    GradientFollow0082Gate, GradientFollow0082Input, GradientFollow0082MoveRow,
-    GradientFollow0082Report, GradientFollow0082Surface, GRADIENT_FOLLOW_0080_2_ID,
-    GRADIENT_FOLLOW_0080_2_SCENARIO, GRADIENT_FOLLOW_0080_2_STATUS_PASS,
 };
 pub use hosted_property_observation::{
     observe_hosted_property_cell, system_id_by_host_raw_from_structural_authority,
@@ -450,14 +238,6 @@ pub use production_path_0080_0::{
     ProductionPath0080Input, ProductionPath0080Report, ProductionPath0080Surface,
     PRODUCTION_PATH_0080_0_ALLOWED_ECONOMY_VALUES, PRODUCTION_PATH_0080_0_ID,
     PRODUCTION_PATH_0080_0_SCENARIO, PRODUCTION_PATH_0080_0_STATUS_PASS, SCENARIO_0080_0_GATE_ID,
-};
-pub use production_path_0080_1::{
-    replay_production_path_0080_1, run_production_path_0080_1,
-    ProductionPath0081FieldPolicyCompositeGapTerms, ProductionPath0081ForbiddenRequests,
-    ProductionPath0081Gate, ProductionPath0081Input, ProductionPath0081OwnerOverlaySummary,
-    ProductionPath0081OwnershipAggregationSummary, ProductionPath0081Report,
-    ProductionPath0081Scenario, ProductionPath0081Surface, PRODUCTION_PATH_0080_1_ID,
-    PRODUCTION_PATH_0080_1_SCENARIO, PRODUCTION_PATH_0080_1_STATUS_PASS, SCENARIO_0080_1_GATE_ID,
 };
 pub use recursive_local_rf_compile::{
     compile_recursive_local_rf_plan, recursive_local_rf_cpu_demand_total,

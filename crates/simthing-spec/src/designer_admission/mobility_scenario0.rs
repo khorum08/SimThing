@@ -220,7 +220,7 @@ pub fn mobility_scenario0_packet() -> MobilityScenario0Packet {
             routing_eml_node_budget: 16,
             first_slice_expected_peak_factions_per_cell: 3,
             sufficiency_note:
-                "First slice covers two-faction battles plus one transient third-party/neutral cell occupant; cap 4 matches the local Hybrid Strata channel count."
+                "First slice covers two contending claimants plus one transient third-party/neutral cell occupant; cap 4 matches the local Hybrid Strata channel count."
                     .into(),
         },
         allocation: MobilityAllocationBounds {

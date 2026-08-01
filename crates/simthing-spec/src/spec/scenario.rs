@@ -5,7 +5,7 @@
 //! provenance, and source metadata live on the Scenario root as properties —
 //! sidecar `scenario_id` / `provenance` fields are transitional serde mirrors only.
 //!
-//! Legacy **World**-root fixtures (e.g. Terran Pirate golden fixture) deserialize
+//! Legacy **World**-root fixtures deserialize
 //! through an explicit compatibility path; World root is not the future ontology.
 
 use std::collections::{BTreeMap, BTreeSet};
@@ -65,7 +65,7 @@ pub const OWNER_FLOW_RESOURCE_KEY_PROPERTY_ID: SimPropertyId = SimPropertyId(8_3
 pub const OWNER_COLOR_RGB_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_313);
 /// Human-readable faction name (string metadata). Distinct from operator `display_name` chrome.
 pub const OWNER_FACTION_NAME_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_314);
-/// Alliance grouping placeholder only — no diplomacy/gameplay semantics in 11.2.
+/// Grouping placeholder only — carries no domain or gameplay semantics in 11.2.
 pub const OWNER_FACTION_ALLIANCE_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_315);
 /// Reserved forward faction-identity slot (string; unused by 11.2 consumers).
 pub const OWNER_FACTION_IDENTITY_RESERVED_0_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_316);
