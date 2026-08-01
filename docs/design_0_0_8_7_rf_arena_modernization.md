@@ -435,6 +435,31 @@ A referee that asserts `scenarios/` holds "exactly one canonical clause" — as
 `ANCHOR-DISPOSITION-ADMISSION-0` did — has made a game asset a **structural requirement of the
 build**, which is this Law inverted.
 
+**The Transient Fixture Law (Owner mandate, 2026-08-01).** **A scenario or rehearsal must NEVER
+export its transient proofing fixtures beyond its own crate** — not by `pub` export, not by
+`dev-dependency`, and not by filesystem path. A fixture that leaves its crate stops being
+transient: downstream code binds to it and it can no longer be deleted when its rehearsal ends.
+Terran-Pirate escaped by all three routes at once — `simthing-mapeditor/src/tp_base_disc.rs` was
+`pub mod`-exported and consumed only across crate lines, and seven ClauseThing tests reached
+through the filesystem into `../simthing-mapeditor/tests/fixtures/`.
+
+*Corollary — every core capability must have a SYNTHETIC witness.* A capability whose only
+witness is a shipped scenario keeps that scenario structurally alive forever, and no purge can
+dislodge it, because deleting the asset reds a legitimate law. **This, not code coupling, is
+what actually kept TP alive:** `owner-seat` requires `HostsAdmittedPolicyWeightLocus`, and
+`terran_pirate_galaxy.clause` was the only file in the repository that built one. Freeing an
+asset is done by authoring a synthetic witness, never by deletion.
+
+*Assets are not code.* `terran_pirate_galaxy.clause` and its siblings are `.png`-equivalents:
+never deleted for hygiene, and ClauseThing must always ingest them natively. **Legacy and future
+authored assets will declare unorthodox owner SimThings with recursive parentage, and actioning
+them with code is constitutionally forbidden — that is building the engine to satisfy a stale
+savefile.** The engine may only ADMIT or REJECT by existing law. Where an asset cannot be
+expressed, the answer is to BROADEN `simthing-spec` so authors can express it as data — a
+narrower spec does not prevent contamination, it causes it, by forcing authors to reach into
+engine crates for what they cannot author. Full inventory, coverage gaps, and the next-rehearsal
+checklist: `docs/scenario_containment_handover.md`.
+
 **The Corpus Boundary Law (Owner mandate, 2026-07-30).** **No scenario's vocabulary may be
 hardcoded in engine crates.** No faction, owner, entity, or scenario name may appear in
 production `src` of `simthing-core`, `-spec`, `-kernel`, `-sim`, `-gpu`, `-clausething`, or
