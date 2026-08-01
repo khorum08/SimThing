@@ -122,6 +122,12 @@ pub struct SpecSessionState {
     /// Admitted order-weight class table (ORDER-WEIGHT-CLASS-0). Used by the
     /// typed directive submission surface and runtime Player magnitude gate.
     pub order_weight_classes: Vec<crate::order_directive::AdmittedOrderWeightClass>,
+    /// GUYANG-COMPARATIVE-PROJECTIONS-0: default-derived comparative projection
+    /// admission (Born / InsufficientEmitters / AuthoredOptOut). Filled by the
+    /// production door `admit_default_comparative_projections` when ≥2 Anchored
+    /// `comparative_emitter::*` properties are admitted.
+    pub comparative_projection:
+        Option<crate::comparative_projection::ComparativeProjectionAdmission>,
 }
 
 impl SpecSessionState {

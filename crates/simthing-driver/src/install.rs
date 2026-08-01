@@ -426,7 +426,58 @@ pub fn compile_and_install(
     materialize_observation_hosts(game_mode, registry, root, scenario)?;
 
     state.property_admission = registry.property_admission_report();
+
+    // GUYANG-COMPARATIVE-PROJECTIONS-0: when ≥2 Anchored comparative_emitter
+    // properties are already admitted (plus triad palma/guyang fields), birth
+    // comparative projections through the sole production door. Spatial
+    // adjacency is required for border; when scenario.n_slots is a perfect
+    // square we admit a Grid-N4 theater over that frame (scenario-neutral).
+    // No TP / game-corpus path.
+    if let Some(admission) = try_install_default_comparative(registry, scenario.n_slots as u32) {
+        state.comparative_projection = Some(admission);
+    }
+
     Ok(state)
+}
+
+/// Production install hook: automatic comparative birth when the admitted
+/// registry already carries ≥2 `comparative_emitter::*` properties.
+fn try_install_default_comparative(
+    registry: &mut DimensionRegistry,
+    n_slots: u32,
+) -> Option<crate::comparative_projection::ComparativeProjectionAdmission> {
+    use crate::comparative_projection::{
+        admit_default_comparative_projections, neighbor_slots_from_grid, COMPARATIVE_EMITTER_NAMESPACE,
+    };
+    use simthing_core::ColumnIndex;
+    use simthing_gpu::{FieldAdjacency, GRID_N4_NSEW};
+
+    let emitter_count = registry
+        .properties
+        .iter()
+        .filter(|p| {
+            p.namespace == COMPARATIVE_EMITTER_NAMESPACE
+                && p.is_resource_bearing()
+                && p.admission_disposition.is_anchored()
+        })
+        .count();
+    if emitter_count < 2 {
+        return None;
+    }
+    let side = (n_slots as f64).sqrt() as u32;
+    if side * side != n_slots || side < 2 {
+        return None;
+    }
+    let gather = ColumnIndex::from_gpu_round_trip(0);
+    let adjacency = FieldAdjacency::grid_n4(side, side, GRID_N4_NSEW, gather).ok()?;
+    let neighbors = neighbor_slots_from_grid(&adjacency)?;
+    admit_default_comparative_projections(
+        registry,
+        adjacency,
+        neighbors,
+        Default::default(),
+    )
+    .ok()
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

@@ -284,3 +284,5 @@ date	role	query	anchors_served	hit
 2026-08-01T08:28:18Z	coding	--grep sign-flip|top1|flux-stall|margin|comparative projection|default-derived	none	none
 2026-08-01T08:28:18Z	coding	--grep border \(sign-flip|flux-stall|top1	none	none
 2026-08-01T08:28:45Z	coding	--domain rf-arena-substrate	none	none
+2026-08-01T10:08:12Z	coding	--grep competing emitter|default-derived|emitter class|specialization	none	none
+2026-08-01T10:11:07Z	coding	--grep Corpus Boundary|TP-PURGE|terran_pirate|Native Ingestion	none	none
