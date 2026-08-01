@@ -6,7 +6,7 @@
 - ORIENT-RECEIPT: `4992234cbe01` (orientation_rule_stamp `ff44072551872eb1`)
 - DA seam ruling: Board `5153818317`
 - Prior DA-amendment head (withdrawn): `5b7a606438a338d3111cb87846f0df1658ace41f`
-- STOP head / tested_code_sha: `5d7fa09ad9c77de25b182a8460e67cf821fddc8b`
+- STOP head / tested_code_sha: `7b5e484258e62aaae6072380f092ecf6fc97c680` (implementation tree; tip may be docs-only stamp)
 - Orchestrator remand: Board `5153911298`
 - Prior remand / landing: `5153845512` / `5153898093`
 
