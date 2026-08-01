@@ -1,6 +1,6 @@
 # profile	count	basis  # FIRST-CITIZEN-SPECIALISTS-0; GENERATED — do not hand-edit
-# Counts = SpecSessionState.specialization.citizen_counts() over the canonical TP authority install.
+# Counts = SpecSessionState.specialization.citizen_counts() over a MINIMAL FIXTURE authority install.
 # Regenerate: bash scripts/ci/gen_specialization_citizen_counts.sh
-spatial	1500	canonical TP authority install — structurally placed Locations
-owner-seat	2	canonical TP authority install — Terran + Pirate policy/weight authorities
-session-root	1	canonical TP authority install — sole GameSession root
+spatial	2	fixture authority install — structurally placed Locations
+owner-seat	2	fixture authority install — two policy/weight owner authorities
+session-root	1	fixture authority install — sole GameSession root

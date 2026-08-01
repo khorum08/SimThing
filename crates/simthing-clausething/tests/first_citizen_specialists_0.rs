@@ -27,22 +27,43 @@ use simthing_driver::{preview_install, InstallError, InstallPreview, Scenario};
 use simthing_gpu::SlotAllocator;
 use simthing_spec::GameModeSpec;
 
+const SPECIALIST_CITIZENS: &str = include_str!("fixtures/specialist_citizens_minimal.clause");
+
 fn repo_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")
 }
 
+/// Synthetic base disc, homed INSIDE this crate.
+///
+/// Previously reached across into
+/// `../simthing-mapeditor/tests/fixtures/tp_base_disc_1500.simthing-scenario.json`
+/// -- a scenario fixture, in another crate, named after a disposable rehearsal.
+/// A vendored authoring crate keeps its own witnesses.
 fn base_disc_fixture_path() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../simthing-mapeditor/tests/fixtures/tp_base_disc_1500.simthing-scenario.json")
+        .join("tests/fixtures/citizens_base_disc.simthing-scenario.json")
 }
 
+/// Install used by the citizen-profile referee.
+///
+/// A MINIMAL FIXTURE, not a shipped scenario. `owner-seat` is DERIVED, never
+/// authored: `seed_profiles()` requires Kind(Owner) + ParentKind(GameSession) +
+/// HostsAdmittedPolicyWeightLocus, and the third is stamped by hydration only
+/// for owners REFERENCED by a field economy's `owner_policy_overlay` /
+/// `flow_coupling`. This fixture therefore carries two such owners.
+///
+/// It previously read `scenarios/terran_pirate_galaxy.clause` -- the only file
+/// in the repo that built a policy/weight locus -- which is why a disposable
+/// rehearsal survived as a referee and pumped "Terran + Pirate policy/weight
+/// authorities" into the orientation digest. A shipped scenario is an ASSET,
+/// like a .png; a core capability whose only witness is an asset keeps that
+/// asset alive forever. The witness must be synthetic.
 fn hydrate_canonical() -> HydratedScenarioPack {
-    let clause_path = repo_root().join("scenarios/terran_pirate_galaxy.clause");
-    let text = std::fs::read_to_string(&clause_path).expect("read canonical clause");
-    let document = parse_raw_document(text.as_bytes()).expect("parse canonical clause");
-    let base = clause_path.parent().expect("clause parent").to_path_buf();
+    let document =
+        parse_raw_document(SPECIALIST_CITIZENS.as_bytes()).expect("parse citizens fixture");
+    let base = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures");
     simthing_clausething::hydrate_scenario_with_source_base(&document, Some(&base))
-        .expect("hydrate canonical clause")
+        .expect("hydrate citizens fixture")
 }
 
 fn minimal_scenario(root: SimThing) -> Scenario {
@@ -138,7 +159,7 @@ scenario = location_spatial_placed_proof {{
     }}
     location = placed_cell {{
         display_name = "Placed Cell"
-        system_target = "row199_col80"
+        system_target = "row0_col0"
         specialization = spatial
     }}
 }}
@@ -319,11 +340,11 @@ fn render_citizen_counts_tsv(spatial: usize, owner_seat: usize, session_root: us
     format!(
         "\
 # profile\tcount\tbasis  # FIRST-CITIZEN-SPECIALISTS-0; GENERATED — do not hand-edit
-# Counts = SpecSessionState.specialization.citizen_counts() over the canonical TP authority install.
+# Counts = SpecSessionState.specialization.citizen_counts() over a MINIMAL FIXTURE authority install.
 # Regenerate: bash scripts/ci/gen_specialization_citizen_counts.sh
-spatial\t{spatial}\tcanonical TP authority install — structurally placed Locations
-owner-seat\t{owner_seat}\tcanonical TP authority install — Terran + Pirate policy/weight authorities
-session-root\t{session_root}\tcanonical TP authority install — sole GameSession root
+spatial\t{spatial}\tfixture authority install — structurally placed Locations
+owner-seat\t{owner_seat}\tfixture authority install — two policy/weight owner authorities
+session-root\t{session_root}\tfixture authority install — sole GameSession root
 "
     )
 }
@@ -446,8 +467,8 @@ fn board_and_orientation_render_citizen_counts() {
         "orientation must render citizen counts from generator TSV; missing `{render_line}`"
     );
     assert!(
-        orientation.contains("## Specialization citizens"),
-        "orientation must carry the Specialization citizens section"
+        orientation.contains("## Live install inventories"),
+        "orientation must carry the live install inventories section"
     );
 
     // Board markdown shape matches handoff_dispatch's generator-TSV summary line.

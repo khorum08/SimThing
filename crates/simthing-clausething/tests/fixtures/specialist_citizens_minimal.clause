@@ -1,0 +1,65 @@
+scenario = specialist_citizens_minimal {
+    metadata = {
+        display_name = "Specialist Citizens Minimal"
+        description = "FIRST-CITIZEN-SPECIALISTS-0 witness. Smallest install making the citizen-profile partition non-vacuous: two policy/weight owner authorities, two structurally placed Locations, one session root."
+    }
+
+    static_galaxy_scenario = base_disc {
+        namespace = "fcs"
+        source_json = "citizens_base_disc.simthing-scenario.json"
+        map_quality_status = PASS
+    }
+
+    owner = alpha_authority {
+        owner_key = "alpha"
+        display_name = "Alpha Authority"
+        faction_name = "Alpha"
+        color_rgb = "64,160,255"
+        faction_alliance = "none"
+        archetype = "settler_policy"
+        personality_profile = "alpha_baseline"
+        capability_profile = "alpha_baseline"
+    }
+
+    owner = beta_authority {
+        owner_key = "beta"
+        display_name = "Beta Authority"
+        faction_name = "Beta"
+        color_rgb = "220,64,48"
+        faction_alliance = "none"
+        archetype = "settler_policy"
+        personality_profile = "beta_baseline"
+        capability_profile = "beta_baseline"
+    }
+
+    location = placed_a {
+        display_name = "Placed A"
+        system_target = "row0_col0"
+        specialization = spatial
+    }
+
+    location = placed_b {
+        display_name = "Placed B"
+        system_target = "row0_col1"
+        specialization = spatial
+    }
+
+    field_economy = citizens_economy {
+        namespace = "citizens_economy"
+        field_resource_quantity = placed_a_stock {
+            location = "placed_a"
+            resource = "minerals"
+            amount = 100
+        }
+        owner_policy_overlay = alpha_policy {
+            owner = "alpha"
+            targets_property = "citizens_economy::placed_a_minerals_quantity"
+            amount_mult = 1.15
+        }
+        owner_policy_overlay = beta_policy {
+            owner = "beta"
+            targets_property = "citizens_economy::placed_a_minerals_quantity"
+            amount_add = 0.25
+        }
+    }
+}
