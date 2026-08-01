@@ -16,6 +16,7 @@ GATE_WIRING_PATHS=(
   "scripts/ci/track_closeout.sh"
   "scripts/ci/scenario_residue_check.sh"
   "scripts/ci/detachability_check.sh"
+  "scripts/ci/allow/contention_mechanisms.txt"
   "scripts/ci/allow/kernel_surface.txt"
   "scripts/ci/allow/sealed_types.txt"
   "scripts/ci/allow/sealed_producers.txt"

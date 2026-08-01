@@ -11,6 +11,7 @@ pub mod eml_registry;
 pub mod evaluate;
 pub mod fission_child_spawn;
 pub mod fission_clone_source;
+pub mod owner_channel;
 pub mod ids;
 pub mod intensity_eml;
 pub mod overlay;

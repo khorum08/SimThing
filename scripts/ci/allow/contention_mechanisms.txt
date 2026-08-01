@@ -1,0 +1,20 @@
+# need | mechanism | ready-surface | promotion-blocker
+#
+# SANCTIONED-MECHANISM REGISTRY — OWNER-CHANNEL-INTRINSIC-0 (rung 6.0), deliverable (g).
+#
+# CI is the stick; this file is the carrot. The other allow/*.txt files permit EXPORTS.
+# This one answers a NEED, so an agent reaching for a clever bespoke conflict resolver
+# meets the sanctioned mechanism first instead of inventing a second one.
+#
+# Rows land in the rung that MINTS the mechanism, never ahead of it. A registry naming
+# symbols that do not exist yet is a forward-declaration that goes stale -- which is
+# exactly how `tp::hull` came to carry a "Phase 8 successor" obligation for a scenario
+# that had already been purged.
+#
+# A mechanism that stops being the ready answer is RETIRED via its promotion-blocker,
+# never left to accumulate.
+resolve-ownership | owner resolution | simthing_core::owner_channel::resolve_owner -- total, pure, never materialized; absence means inherit and an unbound tree resolves to the neutral owner | retire when ownership is intrinsic to an admitted type and cannot be asked for separately
+rebind-ownership | ownership fission | simthing_core::owner_channel::bind_owner at a subtree root -- ONE write re-parents the whole subtree; unbind_owner reverses it | retire when subtree ownership is expressed structurally rather than by property binding
+flip-ownership | ownership rebind | bind_owner from the neutral owner to a named one -- a flip is an ordinary rebind, never a None-to-Some transition with its own code path | retire when movement authority owns the flip end to end
+segregate-flows-by-owner | owner-keyed bucket | the owner_ref component of the reduce-up scope key -- same-owner and different-owner behaviour is EMERGENT from the key; an owner-equality branch is inadmissible | retire when bucketing is intrinsic to the admitted channel type
+detect-ownership-crossing | crossing predicate | simthing_core::owner_channel::is_ownership_crossing -- the only flows needing per-node STEAD recording; identity flows are reconstructible | retire when crossing detection is intrinsic to reduce-up emission
