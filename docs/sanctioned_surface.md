@@ -13,6 +13,7 @@ This digest is a derived context artifact for low-context agents. If it disagree
 | scripts/ci/allow/inert_buffer_handles.txt | 2 | 9e2069fa5730f17cacde1c671ebc17beb59f50738d2dcb914bceae13f9b8b3a4 |
 | scripts/ci/allow/kernel_surface.txt | 284 | 30d540aa675f04f7f84e1c88b9754eb5d8d087191fd15fd0d5209f2374c3bf36 |
 | scripts/ci/allow/sealed_types.txt | 19 | 9d427e3b41a586b06f24ca02cc45f78934237d2229b0c38d46e2a8a6ef5016be |
+| scripts/ci/allow/contention_mechanisms.txt | 5 | 4120fccebe49986f6bd2c1d3b73d5bee7e59596a906b9efcfeb6c2be83ef7790 |
 | scripts/ci/scans.tsv | 26 | 18d6f4886524f593e231931b952fbdcf2e0520fb4660f72fb7191298221e7d64 |
 
 ## Sanctioned Sealed Producers

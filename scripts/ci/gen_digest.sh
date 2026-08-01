@@ -66,9 +66,11 @@ GLOBAL_SOURCES = [
     "scripts/ci/allow/inert_buffer_handles.txt",
     "scripts/ci/allow/kernel_surface.txt",
     "scripts/ci/allow/sealed_types.txt",
+    "scripts/ci/allow/contention_mechanisms.txt",
     "scripts/ci/scans.tsv",
 ]
 TRACK_ALLOW_FILES = [
+    "contention_mechanisms.txt",
     "sealed_producers.txt",
     "inert_buffer_handles.txt",
     "kernel_surface.txt",
