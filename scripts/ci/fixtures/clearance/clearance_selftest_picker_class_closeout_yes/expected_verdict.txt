@@ -1,1 +1,1 @@
-CLEARANCE-VERDICT: DA-RESERVE(unclassified-scope)
+CLEARANCE-VERDICT: DA-RESERVE(gate-wiring)
