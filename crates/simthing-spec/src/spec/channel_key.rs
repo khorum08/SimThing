@@ -75,28 +75,13 @@
 //! ```
 
 /// Metadata owner/channel reference after admission resolution.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct OwnerRef(String);
-
-impl OwnerRef {
-    pub fn new(value: impl Into<String>) -> Self {
-        Self(value.into())
-    }
-
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
-
-    pub fn into_inner(self) -> String {
-        self.0
-    }
-}
-
-impl AsRef<str> for OwnerRef {
-    fn as_ref(&self) -> &str {
-        self.as_str()
-    }
-}
+///
+/// **Re-exported from `simthing-core`** (rung 6.0). Ownership is intrinsic to the stem
+/// cell, so the type is homed alongside `resolve_owner` rather than in the spec layer;
+/// keeping a second spec-local definition would reintroduce exactly the two-notion split
+/// that OWNER-CHANNEL-INTRINSIC-0 exists to collapse. Consumers importing it from
+/// `simthing_spec` are unaffected.
+pub use simthing_core::owner_channel::OwnerRef;
 
 /// Resource key within an owner RF channel after admission resolution.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
