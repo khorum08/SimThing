@@ -1,7 +1,7 @@
 # EML-RESOURCE-CLASS-ADMISSION-0 results
 
 - Track: 0.0.8.7 RF arena modernization (rung 5.7)
-- Status: **FINAL CODER STOP — authorized IR-generated JIT still fails Gu-Yang median/worst gates**
+- Status: **COMPLETE — DA-GRADUATED / merged #1537 @ a7c05715.** Substrate accepted. The coder STOP was CORRECT: it exhausted authorized branches, weakened no threshold, and averaged no failing case away. PALMA passes (1.0891x median, 0.7996x worst — faster than bespoke at worst case). Gu-Yang 4.7593x/5.4648x is recorded as MEASURED PERFORMANCE DEBT, not a failed branch: DA verified the generated WGSL does naive per-edge GLOBAL gathers with zero `var<workgroup>`/`workgroupBarrier` in the JIT, while a bespoke 4-neighbour stencil tiles and reuses each cell ~4x — almost exactly the gap. The JIT knows the offset table at compile time and can emit the same tiling; tiling changes WHERE values load, never the ORDER they fold, so bit-exactness survives. Threshold UNWEAKENED and carried as the exit of successor `FIELD-SWEEP-TILED-GATHER-0`. Production already runs the generic path (FIELD-SWEEP-LEGACY-CALLERS green), so acceptance un-ships nothing.
 - ORIENT-RECEIPT: `e563c4399d73`; rule stamp: `5319c193d38da6ce`
 - HD-RECEIPT: `85bfbf0e0e33`
 - Remand authorities: Board comments `5148327947` and `5148515094`
