@@ -112,6 +112,17 @@ jobs:
           set -o pipefail
           python3 scripts/ci/detachability_check.sh --selftest 2>&1 | tee doctrine-detachability-selftest-report.txt
 
+      - name: Scenario residue gate
+        run: |
+          set -o pipefail
+          python3 scripts/ci/scenario_residue_check.sh 2>&1 | tee doctrine-scenario-residue-report.txt
+
+      - name: Scenario residue selftest
+        if: steps.gate.outputs.run_selftests == 'true'
+        run: |
+          set -o pipefail
+          python3 scripts/ci/scenario_residue_check.sh --selftest 2>&1 | tee doctrine-scenario-residue-selftest-report.txt
+
       - name: DOC-BUDGET selftest
         if: steps.gate.outputs.run_selftests == 'true'
         run: |
