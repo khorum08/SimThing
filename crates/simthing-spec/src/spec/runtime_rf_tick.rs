@@ -2,8 +2,9 @@
 //!
 //! Composes participant admission → reduce-up → writeback → disburse-down → local allocation.
 
+use super::owner_channel_admission::{admit_intrinsic_owner_channels, IntrinsicOwnerChannelView};
 use super::owner_silo_disburse_down::{
-    apply_owner_silo_runtime_disburse_down_cpu, owner_silo_demand_buckets_from_planet_child_rf,
+    apply_owner_silo_runtime_disburse_down_cpu, owner_silo_demand_buckets_from_owner_view,
     RuntimeOwnerSiloDisburseDownResult,
 };
 use super::owner_silo_runtime_writeback::{
@@ -12,9 +13,9 @@ use super::owner_silo_runtime_writeback::{
     runtime_owner_silo_states_from_scenario, RuntimeOwnerSiloWritebackResult,
 };
 use super::planet_child_rf::{
-    evaluate_planet_child_rf_admission, evaluate_planet_child_rf_reduce_up,
-    PlanetChildRfAdmissionClassification, PlanetChildRfAdmissionReport,
-    PlanetChildRfReduceUpReport,
+    evaluate_planet_child_rf_admission_from_owner_view,
+    evaluate_planet_child_rf_reduce_up_from_owner_view, PlanetChildRfAdmissionClassification,
+    PlanetChildRfAdmissionReport, PlanetChildRfReduceUpReport,
 };
 use super::runtime_local_allocation::{
     apply_runtime_local_allocations_from_disburse_down, RuntimeLocalAllocationApplicationReport,
@@ -90,10 +91,22 @@ pub struct RuntimeRfTickReport {
 pub fn evaluate_runtime_rf_tick(
     scenario: &SimThingScenarioSpec,
 ) -> Result<RuntimeRfTickReport, RuntimeRfTickError> {
+    let owner_view =
+        admit_intrinsic_owner_channels(scenario).map_err(|error| RuntimeRfTickError {
+            kind: RuntimeRfTickErrorKind::ParticipantAdmissionRejected,
+            message: error.to_string(),
+        })?;
+    evaluate_runtime_rf_tick_from_owner_view(&owner_view)
+}
+
+pub fn evaluate_runtime_rf_tick_from_owner_view(
+    owner_view: &IntrinsicOwnerChannelView,
+) -> Result<RuntimeRfTickReport, RuntimeRfTickError> {
+    let scenario = owner_view.scenario();
     let deferrals = default_deferrals();
     let errors = Vec::new();
 
-    let participant_report = evaluate_planet_child_rf_admission(scenario);
+    let participant_report = evaluate_planet_child_rf_admission_from_owner_view(owner_view);
     if participant_report.classification == PlanetChildRfAdmissionClassification::Rejected {
         return Err(RuntimeRfTickError {
             kind: RuntimeRfTickErrorKind::ParticipantAdmissionRejected,
@@ -104,7 +117,7 @@ pub fn evaluate_runtime_rf_tick(
         != PlanetChildRfAdmissionClassification::Unsupported
         && participant_report.total_participant_count > 0;
 
-    let reduce_up_report = evaluate_planet_child_rf_reduce_up(scenario);
+    let reduce_up_report = evaluate_planet_child_rf_reduce_up_from_owner_view(owner_view);
     if reduce_up_report.classification == PlanetChildRfAdmissionClassification::Rejected
         || !reduce_up_report.errors.is_empty()
     {
@@ -144,12 +157,11 @@ pub fn evaluate_runtime_rf_tick(
         )?;
     let owner_silo_writeback_ready = !writeback_results.is_empty();
 
-    let demand_buckets = owner_silo_demand_buckets_from_planet_child_rf(scenario).map_err(|e| {
-        RuntimeRfTickError {
+    let demand_buckets =
+        owner_silo_demand_buckets_from_owner_view(owner_view).map_err(|e| RuntimeRfTickError {
             kind: RuntimeRfTickErrorKind::DisburseDownRejected,
             message: e.message,
-        }
-    })?;
+        })?;
 
     let disburse_down_results = if demand_buckets.is_empty() {
         Vec::new()

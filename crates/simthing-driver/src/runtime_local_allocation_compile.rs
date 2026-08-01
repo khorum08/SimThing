@@ -2,13 +2,13 @@
 
 use simthing_core::{CompiledAccumulatorOpPlan, StructuralScalarChannel};
 use simthing_spec::{
-    apply_runtime_local_allocations_from_disburse_down, runtime_local_allocation_aggregate_totals,
-    OwnerRef, ResourceKey, RuntimeLocalAllocationApplicationReport, SimThingScenarioSpec,
-    SpecError,
+    admit_intrinsic_owner_channels, apply_runtime_local_allocations_from_disburse_down,
+    runtime_local_allocation_aggregate_totals, IntrinsicOwnerChannelView, OwnerRef, ResourceKey,
+    RuntimeLocalAllocationApplicationReport, SimThingScenarioSpec, SpecError,
 };
 
 use crate::owner_silo_accumulator_compile::compile_participant_channel_sum_plan;
-use crate::owner_silo_disburse_down_compile::compile_owner_silo_disburse_down_plan;
+use crate::owner_silo_disburse_down_compile::compile_owner_silo_disburse_down_plan_from_owner_view;
 
 /// GPU aggregate proof plan for total allocated amount per owner/resource channel.
 #[derive(Debug, Clone, PartialEq)]
@@ -33,7 +33,15 @@ pub struct RuntimeLocalAllocationApplicationPlan {
 pub fn compile_runtime_local_allocation_application_plan(
     scenario: &SimThingScenarioSpec,
 ) -> Result<RuntimeLocalAllocationApplicationPlan, SpecError> {
-    let disburse_down_plan = compile_owner_silo_disburse_down_plan(scenario)?;
+    let owner_view =
+        admit_intrinsic_owner_channels(scenario).map_err(|_| SpecError::ValidationFailed)?;
+    compile_runtime_local_allocation_application_plan_from_owner_view(&owner_view)
+}
+
+pub fn compile_runtime_local_allocation_application_plan_from_owner_view(
+    owner_view: &IntrinsicOwnerChannelView,
+) -> Result<RuntimeLocalAllocationApplicationPlan, SpecError> {
+    let disburse_down_plan = compile_owner_silo_disburse_down_plan_from_owner_view(owner_view)?;
 
     let application_report =
         apply_runtime_local_allocations_from_disburse_down(&disburse_down_plan.cpu_results)

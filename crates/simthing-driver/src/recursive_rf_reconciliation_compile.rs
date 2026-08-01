@@ -2,11 +2,12 @@
 //! between legacy planet-child RF ladder and recursive Location RF evaluator.
 
 use simthing_spec::{
-    reconcile_planet_child_rf_with_recursive_local_rf, RecursiveRfReconciliationReport,
-    SimThingScenarioSpec, SpecError,
+    admit_intrinsic_owner_channels,
+    reconcile_planet_child_rf_with_recursive_local_rf_from_owner_view,
+    RecursiveRfReconciliationReport, SimThingScenarioSpec, SpecError,
 };
 
-use crate::recursive_local_rf_compile::compile_recursive_local_rf_plan;
+use crate::recursive_local_rf_compile::compile_recursive_local_rf_plan_from_owner_view;
 use crate::recursive_local_rf_compile::RecursiveLocalRfPlan;
 
 /// Driver compile plan composing recursive local RF plan and reconciliation report.
@@ -25,9 +26,12 @@ pub struct RecursiveRfReconciliationPlan {
 pub fn compile_recursive_rf_reconciliation_plan(
     scenario: &SimThingScenarioSpec,
 ) -> Result<RecursiveRfReconciliationPlan, SpecError> {
-    let recursive_local_rf_plan = compile_recursive_local_rf_plan(scenario)?;
-    let reconciliation_report = reconcile_planet_child_rf_with_recursive_local_rf(scenario)
-        .map_err(|_| SpecError::ValidationFailed)?;
+    let owner_view =
+        admit_intrinsic_owner_channels(scenario).map_err(|_| SpecError::ValidationFailed)?;
+    let recursive_local_rf_plan = compile_recursive_local_rf_plan_from_owner_view(&owner_view)?;
+    let reconciliation_report =
+        reconcile_planet_child_rf_with_recursive_local_rf_from_owner_view(&owner_view)
+            .map_err(|_| SpecError::ValidationFailed)?;
 
     if !reconciliation_report.recursive_evaluator_preserved {
         return Err(SpecError::ValidationFailed);

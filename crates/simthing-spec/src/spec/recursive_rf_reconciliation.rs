@@ -10,12 +10,13 @@ use std::collections::BTreeMap;
 use simthing_core::SimThingId;
 
 use super::channel_key::{OwnerRef, ParentLocationId, ResourceKey, ScopeId};
+use super::owner_channel_admission::{admit_intrinsic_owner_channels, IntrinsicOwnerChannelView};
 use super::planet_child_rf::{
-    planet_child_rf_participant_inputs, scope_key_from_participant,
+    planet_child_rf_participant_inputs_from_owner_view, scope_key_from_participant,
     PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY,
 };
 use super::recursive_local_rf::{
-    evaluate_recursive_local_rf, recursive_local_rf_aggregate_source_rows,
+    evaluate_recursive_local_rf_from_owner_view, recursive_local_rf_aggregate_source_rows,
     RecursiveLocalRfAggregateSourceKind,
 };
 use super::runtime_tick_history::scenario_authority_digest;
@@ -89,6 +90,7 @@ pub enum RecursiveRfReconciliationErrorKind {
     RecursiveProjectionRejected,
     ArithmeticOverflow,
     ScenarioAuthorityRejected,
+    InvalidOwnerAuthority,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -137,12 +139,20 @@ pub struct RecursiveRfReconciliationReport {
 pub fn project_planet_child_rf_ladder_rows(
     scenario: &SimThingScenarioSpec,
 ) -> Result<Vec<PlanetChildRfProjectionRow>, RecursiveRfReconciliationError> {
-    let participants = planet_child_rf_participant_inputs(scenario).map_err(|report| {
-        RecursiveRfReconciliationError {
-            kind: RecursiveRfReconciliationErrorKind::LegacyProjectionRejected,
-            message: format!("planet-child RF admission {:?}", report.classification),
-        }
-    })?;
+    let owner_view = admit_intrinsic_owner_channels(scenario).map_err(owner_authority_error)?;
+    project_planet_child_rf_ladder_rows_from_owner_view(&owner_view)
+}
+
+pub fn project_planet_child_rf_ladder_rows_from_owner_view(
+    owner_view: &IntrinsicOwnerChannelView,
+) -> Result<Vec<PlanetChildRfProjectionRow>, RecursiveRfReconciliationError> {
+    let participants =
+        planet_child_rf_participant_inputs_from_owner_view(owner_view).map_err(|report| {
+            RecursiveRfReconciliationError {
+                kind: RecursiveRfReconciliationErrorKind::LegacyProjectionRejected,
+                message: format!("planet-child RF admission {:?}", report.classification),
+            }
+        })?;
 
     let mut rows = Vec::with_capacity(participants.len());
     for participant in participants {
@@ -180,11 +190,19 @@ pub fn project_planet_child_rf_ladder_rows(
 pub fn project_recursive_local_rf_rows(
     scenario: &SimThingScenarioSpec,
 ) -> Result<Vec<RecursiveRfProjectionRow>, RecursiveRfReconciliationError> {
-    let report =
-        evaluate_recursive_local_rf(scenario).map_err(|e| RecursiveRfReconciliationError {
+    let owner_view = admit_intrinsic_owner_channels(scenario).map_err(owner_authority_error)?;
+    project_recursive_local_rf_rows_from_owner_view(&owner_view)
+}
+
+pub fn project_recursive_local_rf_rows_from_owner_view(
+    owner_view: &IntrinsicOwnerChannelView,
+) -> Result<Vec<RecursiveRfProjectionRow>, RecursiveRfReconciliationError> {
+    let report = evaluate_recursive_local_rf_from_owner_view(owner_view).map_err(|e| {
+        RecursiveRfReconciliationError {
             kind: RecursiveRfReconciliationErrorKind::RecursiveProjectionRejected,
             message: e.message,
-        })?;
+        }
+    })?;
 
     let aggregate_rows = recursive_local_rf_aggregate_source_rows(&report);
     let mut rows = Vec::new();
@@ -259,8 +277,15 @@ pub fn project_recursive_local_rf_rows(
 pub fn reconcile_planet_child_rf_with_recursive_local_rf(
     scenario: &SimThingScenarioSpec,
 ) -> Result<RecursiveRfReconciliationReport, RecursiveRfReconciliationError> {
-    let legacy_rows = project_planet_child_rf_ladder_rows(scenario)?;
-    let recursive_rows = project_recursive_local_rf_rows(scenario)?;
+    let owner_view = admit_intrinsic_owner_channels(scenario).map_err(owner_authority_error)?;
+    reconcile_planet_child_rf_with_recursive_local_rf_from_owner_view(&owner_view)
+}
+
+pub fn reconcile_planet_child_rf_with_recursive_local_rf_from_owner_view(
+    owner_view: &IntrinsicOwnerChannelView,
+) -> Result<RecursiveRfReconciliationReport, RecursiveRfReconciliationError> {
+    let legacy_rows = project_planet_child_rf_ladder_rows_from_owner_view(owner_view)?;
+    let recursive_rows = project_recursive_local_rf_rows_from_owner_view(owner_view)?;
 
     let direct_recursive: Vec<_> = recursive_rows
         .iter()
@@ -500,6 +525,13 @@ fn overflow_error(field: &str) -> RecursiveRfReconciliationError {
     RecursiveRfReconciliationError {
         kind: RecursiveRfReconciliationErrorKind::ArithmeticOverflow,
         message: format!("{field} overflow"),
+    }
+}
+
+fn owner_authority_error(error: impl std::fmt::Display) -> RecursiveRfReconciliationError {
+    RecursiveRfReconciliationError {
+        kind: RecursiveRfReconciliationErrorKind::InvalidOwnerAuthority,
+        message: error.to_string(),
     }
 }
 

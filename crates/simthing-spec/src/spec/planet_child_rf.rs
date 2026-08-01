@@ -8,15 +8,14 @@ use std::collections::{BTreeMap, BTreeSet};
 use simthing_core::{SimThing, SimThingId};
 
 use super::channel_key::{OwnerChannelScopeKey, OwnerRef, ResourceKey, ScopeId};
+use super::owner_channel_admission::{admit_intrinsic_owner_channels, IntrinsicOwnerChannelView};
 use super::planet_child_location::{
     evaluate_planet_child_locations, is_admitted_planet_non_grid_child, planet_id,
-    planet_non_grid_child_kind_label, planet_non_grid_child_owner_ref, planet_owner_ref,
-    PlanetChildLocationAdmissionClassification,
+    planet_non_grid_child_kind_label, PlanetChildLocationAdmissionClassification,
 };
 use super::scenario::{
-    game_session_owners, owner_entity_id, owner_flow_deficit, owner_flow_owner_ref,
-    owner_flow_surplus, property_u32, SimThingScenarioSpec, OWNER_FLOW_DEFICIT_PROPERTY_ID,
-    OWNER_FLOW_SURPLUS_PROPERTY_ID,
+    owner_flow_deficit, owner_flow_surplus, property_u32, SimThingScenarioSpec,
+    OWNER_FLOW_DEFICIT_PROPERTY_ID, OWNER_FLOW_SURPLUS_PROPERTY_ID,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -34,6 +33,7 @@ pub enum PlanetChildRfAdmissionErrorKind {
     MissingOwnerChannelForActiveRfParticipant,
     MissingPlanetGridcellAdmission,
     UnsupportedPlanetChildRfKind,
+    InvalidOwnerAuthority,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -139,6 +139,30 @@ pub fn planet_child_rf_admission_classification_label(
 pub fn evaluate_planet_child_rf_admission(
     spec: &SimThingScenarioSpec,
 ) -> PlanetChildRfAdmissionReport {
+    let owner_view = match admit_intrinsic_owner_channels(spec) {
+        Ok(view) => view,
+        Err(error) => {
+            let mut report = PlanetChildRfAdmissionReport {
+                classification: PlanetChildRfAdmissionClassification::Rejected,
+                ..Default::default()
+            };
+            push_error(
+                &mut report,
+                PlanetChildRfAdmissionErrorKind::InvalidOwnerAuthority,
+                None,
+                None,
+                error.to_string(),
+            );
+            return report;
+        }
+    };
+    evaluate_planet_child_rf_admission_from_owner_view(&owner_view)
+}
+
+pub fn evaluate_planet_child_rf_admission_from_owner_view(
+    owner_view: &IntrinsicOwnerChannelView,
+) -> PlanetChildRfAdmissionReport {
+    let spec = owner_view.scenario();
     let mut report = PlanetChildRfAdmissionReport {
         classification: PlanetChildRfAdmissionClassification::Admitted,
         ..Default::default()
@@ -164,18 +188,7 @@ pub fn evaluate_planet_child_rf_admission(
         return report;
     }
 
-    let owner_refs: BTreeSet<OwnerRef> = game_session_owners(spec)
-        .ok()
-        .map(|owners| {
-            owners
-                .into_iter()
-                .filter_map(owner_entity_id)
-                .map(OwnerRef::new)
-                .collect::<BTreeSet<_>>()
-        })
-        .unwrap_or_default();
-
-    let participants = match collect_planet_child_rf_participants(spec, &owner_refs, &mut report) {
+    let participants = match collect_planet_child_rf_participants(owner_view, &mut report) {
         Ok(participants) => participants,
         Err(()) => {
             report.classification = PlanetChildRfAdmissionClassification::Rejected;
@@ -230,22 +243,20 @@ pub fn evaluate_planet_child_rf_admission(
 pub fn planet_child_rf_participant_inputs(
     spec: &SimThingScenarioSpec,
 ) -> Result<Vec<PlanetChildRfParticipantInput>, PlanetChildRfAdmissionReport> {
-    let report = evaluate_planet_child_rf_admission(spec);
+    let owner_view = admit_intrinsic_owner_channels(spec)
+        .map_err(|error| rejected_owner_authority_report(error.to_string()))?;
+    planet_child_rf_participant_inputs_from_owner_view(&owner_view)
+}
+
+pub fn planet_child_rf_participant_inputs_from_owner_view(
+    owner_view: &IntrinsicOwnerChannelView,
+) -> Result<Vec<PlanetChildRfParticipantInput>, PlanetChildRfAdmissionReport> {
+    let report = evaluate_planet_child_rf_admission_from_owner_view(owner_view);
     if report.classification == PlanetChildRfAdmissionClassification::Rejected {
         return Err(report);
     }
-    let owner_refs: BTreeSet<OwnerRef> = game_session_owners(spec)
-        .ok()
-        .map(|owners| {
-            owners
-                .into_iter()
-                .filter_map(owner_entity_id)
-                .map(OwnerRef::new)
-                .collect::<BTreeSet<_>>()
-        })
-        .unwrap_or_default();
     let mut scratch = PlanetChildRfAdmissionReport::default();
-    let participants = collect_planet_child_rf_participants(spec, &owner_refs, &mut scratch)
+    let participants = collect_planet_child_rf_participants(owner_view, &mut scratch)
         .map_err(|_| report.clone())?;
     if participants.is_empty() {
         return Err(report);
@@ -257,7 +268,25 @@ pub fn planet_child_rf_participant_inputs(
 pub fn evaluate_planet_child_rf_reduce_up(
     spec: &SimThingScenarioSpec,
 ) -> PlanetChildRfReduceUpReport {
-    let admission = evaluate_planet_child_rf_admission(spec);
+    let owner_view = match admit_intrinsic_owner_channels(spec) {
+        Ok(view) => view,
+        Err(error) => {
+            let admission = rejected_owner_authority_report(error.to_string());
+            return PlanetChildRfReduceUpReport {
+                classification: admission.classification,
+                deferrals: admission.deferrals,
+                errors: admission.errors,
+                ..Default::default()
+            };
+        }
+    };
+    evaluate_planet_child_rf_reduce_up_from_owner_view(&owner_view)
+}
+
+pub fn evaluate_planet_child_rf_reduce_up_from_owner_view(
+    owner_view: &IntrinsicOwnerChannelView,
+) -> PlanetChildRfReduceUpReport {
+    let admission = evaluate_planet_child_rf_admission_from_owner_view(owner_view);
     let mut report = PlanetChildRfReduceUpReport {
         classification: admission.classification,
         deferrals: admission.deferrals.clone(),
@@ -272,7 +301,7 @@ pub fn evaluate_planet_child_rf_reduce_up(
         return report;
     }
 
-    let participants = match planet_child_rf_participant_inputs(spec) {
+    let participants = match planet_child_rf_participant_inputs_from_owner_view(owner_view) {
         Ok(participants) => participants,
         Err(no_participants) => {
             report.classification = no_participants.classification;
@@ -428,13 +457,13 @@ fn push_deferral_reduce_up(
 }
 
 fn collect_planet_child_rf_participants(
-    spec: &SimThingScenarioSpec,
-    owner_refs: &BTreeSet<OwnerRef>,
+    owner_view: &IntrinsicOwnerChannelView,
     report: &mut PlanetChildRfAdmissionReport,
 ) -> Result<Vec<PlanetChildRfParticipantInput>, ()> {
     use super::planet_child_location::star_system_gridcells;
     use super::scenario::game_session_galaxy_map;
 
+    let spec = owner_view.scenario();
     let _galaxy_map = game_session_galaxy_map(spec).map_err(|_| ())?;
     let mut participants = Vec::new();
     let mut seen_ids = BTreeSet::new();
@@ -453,7 +482,7 @@ fn collect_planet_child_rf_participants(
                 planet_id(planet).unwrap_or_default(),
                 "planet_gridcell",
                 &planet_path,
-                owner_refs,
+                owner_view,
                 &mut seen_ids,
                 &mut participants,
                 report,
@@ -489,7 +518,7 @@ fn collect_planet_child_rf_participants(
                     planet_id(planet).unwrap_or_default(),
                     &planet_non_grid_child_kind_label(&child.kind),
                     &child_path,
-                    owner_refs,
+                    owner_view,
                     &mut seen_ids,
                     &mut participants,
                     report,
@@ -508,11 +537,11 @@ fn collect_rf_participant_from_node(
     planet_id: String,
     kind_label: &str,
     path: &str,
-    owner_refs: &BTreeSet<OwnerRef>,
+    owner_view: &IntrinsicOwnerChannelView,
     seen_ids: &mut BTreeSet<u32>,
     participants: &mut Vec<PlanetChildRfParticipantInput>,
     report: &mut PlanetChildRfAdmissionReport,
-    is_planet_gridcell: bool,
+    _is_planet_gridcell: bool,
 ) -> Result<(), ()> {
     let surplus = read_rf_amount(
         node,
@@ -533,38 +562,15 @@ fn collect_rf_participant_from_node(
         return Ok(());
     }
 
-    let owner_ref_str = resolve_participant_owner_ref(node, is_planet_gridcell);
-    let Some(owner_ref_str) = owner_ref_str else {
+    let owner_ref = owner_view.owner_for(node.id).map_err(|error| {
         push_error(
             report,
-            PlanetChildRfAdmissionErrorKind::MissingOwnerChannelForActiveRfParticipant,
+            PlanetChildRfAdmissionErrorKind::InvalidOwnerAuthority,
             Some(path.to_string()),
             Some(node.id.raw()),
-            "active surplus/deficit metadata requires owner/channel reference",
+            error.to_string(),
         );
-        return Err(());
-    };
-    if owner_ref_str.trim().is_empty() {
-        push_error(
-            report,
-            PlanetChildRfAdmissionErrorKind::MissingOwnerChannelForActiveRfParticipant,
-            Some(path.to_string()),
-            Some(node.id.raw()),
-            "owner/channel reference is empty",
-        );
-        return Err(());
-    }
-    let owner_ref = OwnerRef::new(&owner_ref_str);
-    if !owner_refs.contains(&owner_ref) {
-        push_error(
-            report,
-            PlanetChildRfAdmissionErrorKind::MissingOwnerChannelForActiveRfParticipant,
-            Some(path.to_string()),
-            Some(node.id.raw()),
-            format!("unknown owner/channel reference `{owner_ref_str}`"),
-        );
-        return Err(());
-    }
+    })?;
     if !seen_ids.insert(node.id.raw()) {
         push_error(
             report,
@@ -580,21 +586,13 @@ fn collect_rf_participant_from_node(
         simthing_id_raw: node.id.raw(),
         planet_gridcell_id_raw,
         planet_id,
-        owner_ref,
+        owner_ref: owner_ref.clone(),
         surplus,
         deficit,
         participant_kind_label: kind_label.to_string(),
         spatial_parent_path: path.to_string(),
     });
     Ok(())
-}
-
-fn resolve_participant_owner_ref(node: &SimThing, is_planet_gridcell: bool) -> Option<String> {
-    if is_planet_gridcell {
-        planet_owner_ref(node).or_else(|| owner_flow_owner_ref(node))
-    } else {
-        planet_non_grid_child_owner_ref(node)
-    }
 }
 
 fn has_active_rf_metadata(node: &SimThing) -> bool {
@@ -654,6 +652,21 @@ fn push_error(
         simthing_id_raw,
         message: message.into(),
     });
+}
+
+fn rejected_owner_authority_report(message: String) -> PlanetChildRfAdmissionReport {
+    let mut report = PlanetChildRfAdmissionReport {
+        classification: PlanetChildRfAdmissionClassification::Rejected,
+        ..Default::default()
+    };
+    push_error(
+        &mut report,
+        PlanetChildRfAdmissionErrorKind::InvalidOwnerAuthority,
+        None,
+        None,
+        message,
+    );
+    report
 }
 
 fn finalize_planet_child_rf_classification(report: &mut PlanetChildRfAdmissionReport) {

@@ -1,14 +1,15 @@
 //! RUNTIME-RF-TICK-INTEGRATION-0 — compose RF stage plans into one runtime tick boundary.
 
 use simthing_spec::{
-    evaluate_runtime_rf_tick, RuntimeRfTickReport, SimThingScenarioSpec, SpecError,
+    admit_intrinsic_owner_channels, evaluate_runtime_rf_tick_from_owner_view, RuntimeRfTickReport,
+    SimThingScenarioSpec, SpecError,
 };
 
-use crate::owner_silo_disburse_down_compile::compile_owner_silo_disburse_down_plan;
-use crate::owner_silo_runtime_writeback_compile::compile_owner_silo_runtime_writeback_plan;
-use crate::planet_child_rf_accumulator_compile::compile_planet_child_rf_gpu_tick_plan;
-use crate::planet_child_rf_reduce_up_compile::compile_planet_child_rf_reduce_up_gpu_proof_plan;
-use crate::runtime_local_allocation_compile::compile_runtime_local_allocation_application_plan;
+use crate::owner_silo_disburse_down_compile::compile_owner_silo_disburse_down_plan_from_owner_view;
+use crate::owner_silo_runtime_writeback_compile::compile_owner_silo_runtime_writeback_plan_from_owner_view;
+use crate::planet_child_rf_accumulator_compile::compile_planet_child_rf_gpu_tick_plan_from_owner_view;
+use crate::planet_child_rf_reduce_up_compile::compile_planet_child_rf_reduce_up_gpu_proof_plan_from_owner_view;
+use crate::runtime_local_allocation_compile::compile_runtime_local_allocation_application_plan_from_owner_view;
 
 /// Summary of stage-local GPU proof plans constructed for the tick boundary.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -43,15 +44,20 @@ pub struct RuntimeRfTickPlan {
 pub fn compile_runtime_rf_tick_plan(
     scenario: &SimThingScenarioSpec,
 ) -> Result<RuntimeRfTickPlan, SpecError> {
-    let participant_plan = compile_planet_child_rf_gpu_tick_plan(scenario)?;
-    let reduce_up_plan = compile_planet_child_rf_reduce_up_gpu_proof_plan(scenario)?;
-    let owner_silo_writeback_plan = compile_owner_silo_runtime_writeback_plan(scenario)?;
-    let owner_silo_disburse_down_plan = compile_owner_silo_disburse_down_plan(scenario)?;
+    let owner_view =
+        admit_intrinsic_owner_channels(scenario).map_err(|_| SpecError::ValidationFailed)?;
+    let participant_plan = compile_planet_child_rf_gpu_tick_plan_from_owner_view(&owner_view)?;
+    let reduce_up_plan =
+        compile_planet_child_rf_reduce_up_gpu_proof_plan_from_owner_view(&owner_view)?;
+    let owner_silo_writeback_plan =
+        compile_owner_silo_runtime_writeback_plan_from_owner_view(&owner_view)?;
+    let owner_silo_disburse_down_plan =
+        compile_owner_silo_disburse_down_plan_from_owner_view(&owner_view)?;
     let runtime_local_allocation_plan =
-        compile_runtime_local_allocation_application_plan(scenario)?;
+        compile_runtime_local_allocation_application_plan_from_owner_view(&owner_view)?;
 
-    let tick_report =
-        evaluate_runtime_rf_tick(scenario).map_err(|_| SpecError::ValidationFailed)?;
+    let tick_report = evaluate_runtime_rf_tick_from_owner_view(&owner_view)
+        .map_err(|_| SpecError::ValidationFailed)?;
 
     let gpu_proof_summary = RuntimeRfTickGpuProofSummary {
         participant_surplus_plan_ready: !participant_plan.surplus_plan.ops.is_empty(),

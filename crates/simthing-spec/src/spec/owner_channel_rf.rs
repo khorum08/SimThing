@@ -7,9 +7,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use simthing_core::owner_channel::{
-    is_ownership_crossing, resolve_owner, resolve_owners_in_order, OwnerRef,
-};
+use simthing_core::owner_channel::{resolve_owner, resolve_owners_in_order, OwnerRef};
 use simthing_core::{SimThing, SimThingId};
 
 use super::channel_key::{OwnerChannelScopeKey, ResourceKey, ScopeId};
@@ -84,6 +82,7 @@ pub struct OwnerChannelRfReduceUpReport {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OwnerChannelRfErrorKind {
+    InvalidOwnerAuthority,
     DuplicateOwnAggregate,
     UnknownSimThing,
     ArithmeticOverflow,
@@ -119,13 +118,22 @@ pub fn reduce_owner_channel_rf(
 ) -> Result<OwnerChannelRfReduceUpReport, OwnerChannelRfError> {
     let own_aggregates = canonical_own_aggregates(own_aggregates)?;
     let rows_by_node = rows_by_node(&own_aggregates);
-    let resolved: BTreeMap<SimThingId, OwnerRef> =
-        resolve_owners_in_order(root).into_iter().collect();
+    let resolved: BTreeMap<SimThingId, OwnerRef> = resolve_owners_in_order(root)
+        .map_err(owner_authority_error)?
+        .into_iter()
+        .collect();
 
     let mut visited_rows = BTreeSet::new();
     let mut bucket_map = BTreeMap::<OwnerChannelScopeKey, BucketAccumulator>::new();
     let mut crossing_flows = Vec::new();
-    let root_owner = resolve_owner(root, root.id);
+    let root_owner = resolved.get(&root.id).cloned().ok_or_else(|| {
+        error(
+            OwnerChannelRfErrorKind::InvalidOwnerAuthority,
+            Some(root.id),
+            None,
+            "owner resolution omitted the authority-tree root",
+        )
+    })?;
     let root_scope = ScopeId::from_boundary(root.id);
 
     reduce_tree(
@@ -223,7 +231,7 @@ pub fn reconstruct_owner_channel_rf_map(
     let mut visited_rows = BTreeSet::new();
     let mut visited_crossings = BTreeSet::new();
     let mut bucket_map = BTreeMap::<OwnerChannelScopeKey, BucketAccumulator>::new();
-    let root_owner = resolve_owner(root, root.id);
+    let root_owner = resolve_owner(root, root.id).map_err(owner_authority_error)?;
     let root_scope = ScopeId::from_boundary(root.id);
 
     reconstruct_tree(
@@ -288,7 +296,7 @@ fn reduce_tree(
             "owner resolution omitted a tree node",
         )
     })?;
-    let crossing = !is_root && is_ownership_crossing(node, parent_owner);
+    let crossing = !is_root && owner != parent_owner;
     let scope = if crossing {
         ScopeId::from_boundary(node.id)
     } else {
@@ -660,5 +668,27 @@ fn error(
         simthing_id,
         resource_key,
         message: message.into(),
+    }
+}
+
+fn owner_authority_error(
+    error: simthing_core::owner_channel::OwnerResolutionError,
+) -> OwnerChannelRfError {
+    OwnerChannelRfError {
+        kind: OwnerChannelRfErrorKind::InvalidOwnerAuthority,
+        simthing_id: match &error {
+            simthing_core::owner_channel::OwnerResolutionError::TargetNotInTree { target } => {
+                Some(*target)
+            }
+            simthing_core::owner_channel::OwnerResolutionError::MalformedBinding {
+                simthing_id,
+                ..
+            }
+            | simthing_core::owner_channel::OwnerResolutionError::BlankBinding { simthing_id } => {
+                Some(*simthing_id)
+            }
+        },
+        resource_key: None,
+        message: error.to_string(),
     }
 }

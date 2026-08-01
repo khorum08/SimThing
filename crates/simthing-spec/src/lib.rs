@@ -444,7 +444,8 @@ pub use spec::order_weight::OrderWeightClassSpec;
 pub use spec::overlay::OverlaySpec;
 pub use spec::owner_silo_disburse_down::{
     apply_owner_silo_runtime_disburse_down_cpu, owner_silo_demand_aggregate_totals,
-    owner_silo_demand_buckets_from_planet_child_rf, RuntimeOwnerSiloDemandBucket,
+    owner_silo_demand_buckets_from_owner_view, owner_silo_demand_buckets_from_planet_child_rf,
+    RuntimeOwnerSiloDemandBucket,
     RuntimeOwnerSiloDisburseDownAllocation, RuntimeOwnerSiloDisburseDownError,
     RuntimeOwnerSiloDisburseDownErrorKind, RuntimeOwnerSiloDisburseDownInput,
     RuntimeOwnerSiloDisburseDownResult,
@@ -469,6 +470,10 @@ pub use spec::owner_channel_rf::{
     OwnerChannelRfErrorKind, OwnerChannelRfOwnAggregate, OwnerChannelRfReduceUpReport,
     OwnerChannelRfSteadSurface,
 };
+pub use spec::owner_channel_admission::{
+    admit_intrinsic_owner_channels, IntrinsicOwnerChannelAdmissionStats,
+    IntrinsicOwnerChannelView, OwnerChannelAdmissionError,
+};
 pub use spec::planet_child_location::{
     all_planet_child_locations, all_planet_gridcells, apply_local_gridcell_metadata,
     apply_planet_child_location_command, apply_planet_child_metadata,
@@ -491,19 +496,25 @@ pub use spec::planet_child_location::{
     PlanetNonGridChildEntry,
 };
 pub use spec::planet_child_rf::{
-    evaluate_planet_child_rf_admission, evaluate_planet_child_rf_reduce_up,
+    evaluate_planet_child_rf_admission, evaluate_planet_child_rf_admission_from_owner_view,
+    evaluate_planet_child_rf_reduce_up, evaluate_planet_child_rf_reduce_up_from_owner_view,
     planet_child_rf_admission_classification_label, planet_child_rf_participant_inputs,
-    scope_key_from_participant, PlanetChildRfAdmissionClassification, PlanetChildRfAdmissionError,
+    planet_child_rf_participant_inputs_from_owner_view, scope_key_from_participant,
+    PlanetChildRfAdmissionClassification, PlanetChildRfAdmissionError,
     PlanetChildRfAdmissionErrorKind, PlanetChildRfAdmissionReport, PlanetChildRfDeferral,
     PlanetChildRfDeferralKind, PlanetChildRfParticipantInput, PlanetChildRfReduceUpBucket,
     PlanetChildRfReduceUpReport, PlanetChildRfScopeKey, PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY,
 };
 pub use spec::property::PropertySpec;
 pub use spec::recursive_local_rf::{
-    evaluate_recursive_local_rf, prove_recursive_local_rf_preserves_authority,
+    evaluate_recursive_local_rf, evaluate_recursive_local_rf_from_owner_view,
+    prove_recursive_local_rf_preserves_authority,
+    prove_recursive_local_rf_preserves_authority_from_owner_view,
     recursive_local_rf_aggregate_source_rows, recursive_local_rf_arena_aggregate_totals,
     recursive_local_rf_participant_rows_from_planet_child_inputs,
-    recursive_local_rf_report_matches_planet_child_compatibility_slice, LocalRfArenaKey,
+    recursive_local_rf_report_matches_planet_child_compatibility_slice,
+    recursive_local_rf_report_matches_planet_child_compatibility_slice_from_owner_view,
+    LocalRfArenaKey,
     LocalRfArenaSettlement, LocalRfChildOutputRow, LocalRfParticipantRow, LocationRfArenaReport,
     RecursiveLocalRfAggregateSourceKind, RecursiveLocalRfAggregateSourceRow,
     RecursiveLocalRfAuthorityProof, RecursiveLocalRfCompatibilityReport, RecursiveLocalRfDeferral,
@@ -511,9 +522,11 @@ pub use spec::recursive_local_rf::{
     RecursiveLocalRfEvaluationReport,
 };
 pub use spec::recursive_rf_reconciliation::{
-    project_planet_child_rf_ladder_rows, project_recursive_local_rf_rows,
+    project_planet_child_rf_ladder_rows, project_planet_child_rf_ladder_rows_from_owner_view,
+    project_recursive_local_rf_rows, project_recursive_local_rf_rows_from_owner_view,
     prove_recursive_rf_reconciliation_preserves_authority,
-    reconcile_planet_child_rf_with_recursive_local_rf, PlanetChildRfProjectionRow,
+    reconcile_planet_child_rf_with_recursive_local_rf,
+    reconcile_planet_child_rf_with_recursive_local_rf_from_owner_view, PlanetChildRfProjectionRow,
     RecursiveRfProjectionRow, RecursiveRfReconciliationBucket, RecursiveRfReconciliationDeferral,
     RecursiveRfReconciliationDeferralKind, RecursiveRfReconciliationError,
     RecursiveRfReconciliationErrorKind, RecursiveRfReconciliationMismatch,
@@ -570,8 +583,8 @@ pub use spec::runtime_participant_state_mutation::{
     MIN_RUNTIME_PARTICIPANT_STATE_REPLAY_COUNT,
 };
 pub use spec::runtime_rf_tick::{
-    evaluate_runtime_rf_tick, RuntimeRfTickDeferral, RuntimeRfTickDeferralKind, RuntimeRfTickError,
-    RuntimeRfTickErrorKind, RuntimeRfTickReport,
+    evaluate_runtime_rf_tick, evaluate_runtime_rf_tick_from_owner_view, RuntimeRfTickDeferral,
+    RuntimeRfTickDeferralKind, RuntimeRfTickError, RuntimeRfTickErrorKind, RuntimeRfTickReport,
 };
 pub use spec::runtime_rf_tick_source::{
     evaluate_runtime_rf_tick_source_comparison, evaluate_runtime_rf_tick_source_preview,
@@ -736,8 +749,10 @@ pub use spec::semantic_participant_delta_preview::{
     RUNTIME_PREVIEW_SATISFIED_PROPERTY_ID, RUNTIME_PREVIEW_SHORTFALL_PROPERTY_ID,
 };
 pub use spec::session_resource_flow::{
-    evaluate_owner_silo_flow, owner_silo_admission_classification_label,
-    owner_silo_flow_participant_inputs, owner_silo_flow_participant_roots,
+    evaluate_owner_silo_flow, evaluate_owner_silo_flow_from_owner_view,
+    owner_silo_admission_classification_label, owner_silo_flow_participant_inputs,
+    owner_silo_flow_participant_inputs_from_owner_view, owner_silo_flow_participant_roots,
+    owner_silo_flow_participant_roots_from_owner_view,
     owner_silo_flow_suppresses_ingestion_deferral, OwnerSiloAdmissionClassification,
     OwnerSiloAdmissionError, OwnerSiloAdmissionErrorKind, OwnerSiloAdmissionReport,
     OwnerSiloDeferral, OwnerSiloDeferralKind, OwnerSiloFlowParticipantInput,
