@@ -13,6 +13,7 @@ pub mod decision_ingress;
 pub mod eml_opcode_gate;
 mod eml_resource_class;
 pub mod exact_magnitude_gate;
+pub mod comparative_projection;
 pub mod field_sweep;
 pub mod cpu_oracle;
 pub mod emission_accumulator;
@@ -72,6 +73,12 @@ pub use eml_opcode_gate::{
     ExactPrimitiveDomainPolicy, ExactPrimitiveResourceEffect, GenericPrimitiveRegistration,
     OpcodeGateError, OpcodeRegistrationGate, OpcodeRegistrationRequest,
     SemanticOpcodeRegistration, SoftStepPolicyConditional,
+};
+pub use comparative_projection::{
+    admit_comparative_projections, comparative_event_kind, comparative_projection_cpu_oracle,
+    ComparativeEmitterClass, ComparativeProjectionBands, ComparativeProjectionBundle,
+    ComparativeProjectionDisposition, ComparativeProjectionError, ComparativeProjectionOutputs,
+    ComparativeProjectionRequest, COMPARATIVE_DERIVED_COLUMN_COUNT,
 };
 pub use field_sweep::{
     apply_field_sweep_registration, execute_field_sweep_cpu, execute_field_sweep_cpu_chain,

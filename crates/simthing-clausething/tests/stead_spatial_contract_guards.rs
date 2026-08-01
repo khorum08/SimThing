@@ -198,13 +198,13 @@ fn palma_and_gu_yang_n4_must_compile_through_generic_field_sweep() {
     })
     .expect("PALMA N4 must admit through the generic field-sweep registration");
     assert_unit_n4(palma.adjacency(), &GRID_N4_WENS);
-    assert_eq!(
-        palma.resource_class().stack_slots(),
-        FIELD_SWEEP_LEGACY_STACK_SLOTS
-    );
-    assert_eq!(
-        palma.resource_class().max_program_nodes(),
-        FIELD_SWEEP_LEGACY_PROGRAM_NODES
+    // EML-RESOURCE-CLASS-ADMISSION-0: admission derives the smallest fitting closed
+    // class (CompactStack4 or LegacyFixed32). The STEAD surface must not demand the
+    // legacy ceiling after measured programs fit stack-4.
+    assert!(
+        palma.resource_class().stack_slots() <= FIELD_SWEEP_LEGACY_STACK_SLOTS
+            && palma.resource_class().max_tree_nodes() <= FIELD_SWEEP_LEGACY_PROGRAM_NODES
+            && palma.resource_class().stack_slots() >= 4
     );
     assert!(palma
         .map_program()
@@ -225,9 +225,9 @@ fn palma_and_gu_yang_n4_must_compile_through_generic_field_sweep() {
     .expect("Gu-Yang N4 must admit through generic proof-present registrations");
     assert_unit_n4(conductance.adjacency(), &GRID_N4_NSEW);
     assert_unit_n4(flux.adjacency(), &GRID_N4_NSEW);
-    assert_eq!(
-        flux.resource_class().stack_slots(),
-        FIELD_SWEEP_LEGACY_STACK_SLOTS
+    assert!(
+        flux.resource_class().stack_slots() <= FIELD_SWEEP_LEGACY_STACK_SLOTS
+            && flux.resource_class().stack_slots() >= 4
     );
 
     let (north, south, east, west) = StructuredFieldStencilConfig::zero_directional_weights();

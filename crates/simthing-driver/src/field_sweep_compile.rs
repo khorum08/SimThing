@@ -1,11 +1,21 @@
 //! FIELD-SWEEP-N4-PARITY-0 — authored PALMA and Gu-Yang registrations for
 //! the one generic field-sweep door.
+//!
+//! GUYANG-COMPARATIVE-PROJECTIONS-0 re-exports the sealed comparative
+//! projection authority that consumes generic field-sweep outputs.
 
 use simthing_core::{eml_opcode, ColumnIndex, EmlNodeGpu, SlotIndex};
 use simthing_gpu::{
     apply_field_sweep_registration, encode_column, field_param, FieldAdjacency, FieldLawProof,
     FieldSweepAdmissionError, FieldSweepOutput, FieldSweepRegistration,
     FieldSweepRegistrationRequest, GRID_N4_NSEW, GRID_N4_WENS,
+};
+
+pub use simthing_gpu::{
+    admit_comparative_projections, comparative_event_kind, comparative_projection_cpu_oracle,
+    ComparativeEmitterClass, ComparativeProjectionBands, ComparativeProjectionBundle,
+    ComparativeProjectionDisposition, ComparativeProjectionError, ComparativeProjectionOutputs,
+    ComparativeProjectionRequest, COMPARATIVE_DERIVED_COLUMN_COUNT,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq)]

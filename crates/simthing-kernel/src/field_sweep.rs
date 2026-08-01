@@ -432,6 +432,13 @@ impl FieldAdjacency {
         self.lists.len() as u32
     }
 
+    /// Authored gather row for one target slot. Comparative border projections
+    /// and oracles read neighbor order from this sealed row; they never invent
+    /// topology.
+    pub fn neighbor_inputs(&self, slot: SlotIndex) -> &[InputSpec] {
+        &self.lists[slot.as_usize()]
+    }
+
     pub fn degree_buckets(&self) -> &[FieldDegreeBucket] {
         &self.degree_buckets
     }

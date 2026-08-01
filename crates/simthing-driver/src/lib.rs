@@ -138,7 +138,11 @@ pub use atlas_0080_0::{
 pub use bench_limits::{check as check_bench_ceiling, ms_per_sim_day, CEILINGS};
 pub use child_share_eml::{child_share_cpu, register_child_share_formula};
 pub use field_sweep_compile::{
-    compile_gu_yang_n4_field_sweeps, compile_palma_n4_field_sweep,
+    admit_comparative_projections, comparative_event_kind, comparative_projection_cpu_oracle,
+    compile_gu_yang_n4_field_sweeps, compile_palma_n4_field_sweep, ComparativeEmitterClass,
+    ComparativeProjectionBands, ComparativeProjectionBundle, ComparativeProjectionDisposition,
+    ComparativeProjectionError, ComparativeProjectionOutputs, ComparativeProjectionRequest,
+    COMPARATIVE_DERIVED_COLUMN_COUNT,
     GuYangN4FieldSweepSpec, PalmaN4FieldSweepSpec,
 };
 pub use compound_field_0080_2::{

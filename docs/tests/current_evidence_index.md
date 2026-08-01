@@ -30,6 +30,7 @@
 
 | Evidence | PR | Merge SHA | Status |
 |---|---|---|---|
+| **GUYANG-COMPARATIVE-PROJECTIONS-0** — sealed dominance/margin/contest/border/chokepoint projections over generic field-sweep outputs; fixed derived columns; authored tie-break; RTX 4080/Vulkan CPU/GPU parity | branch evidence | branch evidence | **PROBATION** — `docs/tests/guyang_comparative_projections_0_results.md`; pointer unchanged |
 | **EML-RESOURCE-CLASS-ADMISSION-0** — closed stack-4/legacy-32 classes, canonical IR-to-WGSL JIT/cache, sealed exact-primitive door, and exact RTX 4080/Vulkan adjudication | branch evidence | branch evidence | **FINAL CODER STOP — PALMA passes; Gu-Yang fused JIT is 4.7593x median / 5.4648x worst versus bespoke** — `docs/tests/eml_resource_class_admission_0_results.md`; full CPU/interpreted/JIT census bit-exact; zero primitives; pointer unchanged |
 | **Candidate F exact sqrt** (artifact hash `59ab4b2892e3c690`, LF-canonical re-pin `SQRT-REPIN-0` 2026-06-11) | — | constitution §0.7 lineage | CURRENT — the only exact-magnitude authority for decision gates |
 | **PR10** — generated admit/install + real-adapter GPU compact evidence | #690 | `75505ee2` | CURRENT_EVIDENCE + LIVE GPU GUARDRAIL |
