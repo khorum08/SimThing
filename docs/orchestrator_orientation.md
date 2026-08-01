@@ -52,17 +52,17 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | execution_status_mixed_posture.tsv | 1adf05f3ec5fd7b537efe29259d20649a2c6d3a0839590063e5308ff154e8f25 |
 | execution_status_non_execution.tsv | 214c1b557dfd3fc465f0171051e20281ff1dcf6c53128dbb29cba01524f9be02 |
 | specialization_citizen_counts.tsv | 852aec43448149670396eec832b99da725b87a4e64d476da80f0b265cbaaa8e8 |
-| property_admission_inventory.tsv | 0ef442ddf7d89187ccd3ed4f19eb42959ec396a15f862513d46c7cde6964eae2 |
+| property_admission_inventory.tsv | 203a42fdce1f25e8391a63f9c42240eb57edd9a73e3af0f39a259fe5a95a70f1 |
 
 ## Execution-status taxonomy (driver/kernel)
 
 executed=59 oracle=6 rehearsal=14 compile-plan=48 mixed_ruled=0 (primary-inclusive taxonomy; DA dual-posture residual; census `execution_status_census.py`).
 
-## Canonical TP live inventories
+## Live install inventories
 
 Specialization citizens: spatial=1500 owner-seat=2 session-root=1 (SpecSessionState.specialization.citizen_counts; source `specialization_citizen_counts.tsv`).
-Property admission: anchored=18 unobserved=3 total=21 (SpecSessionState.property_admission; source `property_admission_inventory.tsv`).
-Dark properties (3): `tp::hull`, `tp::upkeep`, `tp::weapon_damage` (reasons/spans in `property_admission_inventory.tsv`).
+Property admission: anchored=1 unobserved=1 total=2 (SpecSessionState.property_admission; source `property_admission_inventory.tsv`).
+Dark properties (1): `fixture::dark_reading` (reasons/spans in `property_admission_inventory.tsv`).
 
 ## Active Track / Rung Summary (`design_0_0_8_7_rf_arena_modernization.md`)
 

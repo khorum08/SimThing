@@ -5,7 +5,7 @@
 //! - omission is Anchored through hydrate -> compile -> install report;
 //! - authored Unobserved retains a non-empty reason and scalar source span;
 //! - blank reasons fail at hydration with that source span;
-//! - the canonical TP install has one total disposition per resource property;
+//! - a minimal fixture install has one total disposition per resource property;
 //! - Board/orientation inventory is generated from that live installed report.
 
 use std::collections::HashMap;
@@ -23,6 +23,7 @@ use simthing_driver::{preview_install, InstallPreview, Scenario};
 use simthing_gpu::SlotAllocator;
 
 const MICRO_ECONOMY: &str = include_str!("fixtures/ct2a_micro_economy.clause");
+const FIXTURE_SCENARIO: &str = include_str!("fixtures/disposition_admission_minimal.clause");
 
 fn repo_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")
@@ -111,7 +112,7 @@ fn render_dark_inventory(report: &PropertyAdmissionReport) -> String {
     dark.sort_by_key(|row| row.canonical_identity());
     let mut rendered = format!(
         "# ANCHOR-DISPOSITION-ADMISSION-0; GENERATED - do not hand-edit\n\
-         # Counts = SpecSessionState.property_admission over the canonical TP install.\n\
+         # Counts = SpecSessionState.property_admission over a MINIMAL FIXTURE install.\n\
          # Regenerate: bash scripts/ci/gen_property_admission_inventory.sh\n\
          summary\tanchored\t{}\n\
          summary\tunobserved\t{}\n\
@@ -138,29 +139,32 @@ fn render_dark_inventory(report: &PropertyAdmissionReport) -> String {
     rendered
 }
 
+/// Install used by the disposition referee.
+///
+/// This is deliberately a MINIMAL FIXTURE, not a shipped scenario. The law
+/// under test is a DISPOSITION law — every property an install produces is
+/// either anchored or explicitly declared dark, and none is silently dropped —
+/// and that holds for ANY install, so the smallest one is a complete witness.
+///
+/// It previously read `scenarios/` and asserted the directory held exactly one
+/// canonical clause. That made a shipped game scenario a STRUCTURAL REQUIREMENT
+/// OF THE BUILD, which is backwards: scenarios are external assets, and the
+/// engine must stand without any of them. Worse, it pumped that scenario's
+/// property vocabulary into `property_admission_inventory.tsv`, which feeds the
+/// orientation digest and `handoff_dispatch.sh` — so a disposable rehearsal's
+/// names reached every agent as ambient fact, annotated with forward
+/// obligations on future rungs. That is how a purged scenario returns: as a
+/// fixture, then a proof, then code.
 fn canonical_pack() -> HydratedScenarioPack {
-    let scenarios = repo_root().join("scenarios");
-    let mut root_clauses = std::fs::read_dir(&scenarios)
-        .expect("read canonical scenario directory")
-        .filter_map(|entry| entry.ok().map(|entry| entry.path()))
-        .filter(|path| path.extension().is_some_and(|extension| extension == "clause"))
-        .collect::<Vec<_>>();
-    assert_eq!(
-        root_clauses.len(),
-        1,
-        "the scenarios root must contain exactly one canonical clause"
-    );
-    let clause_path = root_clauses.pop().expect("one canonical clause");
-    let source = std::fs::read_to_string(&clause_path).expect("read canonical TP clause");
-    let document = parse_raw_document(source.as_bytes()).expect("parse canonical TP clause");
-    let base = clause_path.parent().expect("canonical clause parent");
-    simthing_clausething::hydrate_scenario_with_source_base(&document, Some(base))
-        .expect("hydrate canonical TP clause")
+    let document = parse_raw_document(FIXTURE_SCENARIO.as_bytes()).expect("parse fixture clause");
+    let base = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures");
+    simthing_clausething::hydrate_scenario_with_source_base(&document, Some(&base))
+        .expect("hydrate fixture clause")
 }
 
 fn canonical_preview() -> InstallPreview {
     let pack = canonical_pack();
-    // Install the canonical hydrated TP property corpus through the ordinary
+    // Install the hydrated fixture property set through the ordinary
     // compile/install door. Unrelated economy/overlay execution is excluded so
     // this signal-only referee judges disposition rather than host wiring.
     let game_mode = simthing_spec::GameModeSpec {
@@ -192,7 +196,7 @@ fn canonical_preview() -> InstallPreview {
         &scenario.root,
         &allocator,
     )
-    .expect("canonical TP ordinary preview install")
+    .expect("fixture ordinary preview install")
 }
 
 fn live_canonical_inventory() -> String {
@@ -289,7 +293,7 @@ fn assert_canonical_tp_disposition_admission_totality() {
     let report = &preview.state.property_admission;
     assert!(
         !report.resource_properties.is_empty(),
-        "canonical TP must admit resource-bearing properties"
+        "fixture install must admit resource-bearing properties"
     );
     assert_eq!(
         report.resource_properties.len(),
@@ -297,17 +301,17 @@ fn assert_canonical_tp_disposition_admission_totality() {
         "closed type yields exactly one disposition per resource property"
     );
     eprintln!(
-        "CANONICAL TP DISPOSITION (derived): Anchored={} Unobserved={}",
+        "FIXTURE DISPOSITION (derived): Anchored={} Unobserved={}",
         report.anchored_count(),
         report.unobserved_count()
     );
     assert!(
         report.anchored_count() > 0,
-        "canonical TP must admit Anchored resource properties"
+        "fixture install must admit Anchored resource properties"
     );
     assert!(
         report.unobserved_count() > 0,
-        "canonical TP must admit Unobserved dark cells where hostless"
+        "fixture install must admit Unobserved dark cells where hostless"
     );
     assert_eq!(
         report.resource_properties,
@@ -387,7 +391,7 @@ fn board_and_orientation_render_property_admission_inventory() {
     );
     let orientation = std::fs::read_to_string(repo_root().join("docs/orchestrator_orientation.md"))
         .expect("orientation digest present");
-    assert!(orientation.contains("## Canonical TP live inventories"));
+    assert!(orientation.contains("## Live install inventories"));
     assert!(
         orientation.contains(&format!("Property admission: {render_line}")),
         "orientation must render generated admission counts: `{render_line}`"
@@ -417,9 +421,26 @@ fn board_and_orientation_render_property_admission_inventory() {
     );
     let board: serde_json::Value =
         serde_json::from_slice(&board.stdout).expect("parse Board JSON");
+    // The Board must report the pointer the design doc CURRENTLY names. This
+    // previously hard-coded a literal rung id, which made the referee go red at
+    // every graduation -- a false-red generator, and it was already red on
+    // master (expected CANONICAL-ANCHOR-MATERIALIZATION-0, actual
+    // COMPARATIVE-DEFAULT-BIRTH-0). Compare against the doc so the assertion
+    // tracks the Two-Source Pointer Rule instead of drifting away from it.
+    let design = std::fs::read_to_string(
+        repo_root().join("docs/design_0_0_8_7_rf_arena_modernization.md"),
+    )
+    .expect("read active design doc");
+    let expected_pointer = design
+        .lines()
+        .find(|line| line.starts_with("| Active open rung |"))
+        .and_then(|line| line.split('`').nth(1))
+        .expect("design doc names an active open rung")
+        .to_string();
     assert_eq!(
         board["active_pointer"],
-        serde_json::json!("CANONICAL-ANCHOR-MATERIALIZATION-0")
+        serde_json::json!(expected_pointer),
+        "Board pointer must equal the design doc's active open rung"
     );
     // Board inventory mirrors the live regenerated TSV (derived counts, not targets).
     let live = canonical_preview().state.property_admission;
