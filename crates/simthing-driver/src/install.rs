@@ -42,6 +42,12 @@ pub enum InstallError {
     #[error("spec error: {0}")]
     Spec(#[from] SpecError),
 
+    #[error("field-plan binding: {0}")]
+    FieldPlan(#[from] crate::comparative_default_birth::FieldPlanBindingError),
+
+    #[error("default comparative birth: {0}")]
+    DefaultComparativeBirth(#[from] crate::comparative_default_birth::DefaultComparativeBirthError),
+
     #[error("capability tree `{tree_id}` resolved to zero owners for target `{target:?}`")]
     NoMatchingOwners {
         tree_id: String,
@@ -168,6 +174,22 @@ pub fn compile_and_install(
     registry: &mut DimensionRegistry,
     root: &mut SimThing,
     allocator: &mut SlotAllocator,
+) -> Result<SpecSessionState, InstallError> {
+    compile_and_install_with_field_plan(game_mode, scenario, registry, root, allocator, None)
+}
+
+/// Install with an optional already-admitted field-plan binding (5.8b).
+///
+/// When `field_plan` is `Some`, the exact `FieldAdjacency` + sealed field-sweep
+/// registrations are carried into `SpecSessionState` and default comparative
+/// birth is attempted (fail-closed on ambiguous roles). No topology inference.
+pub fn compile_and_install_with_field_plan(
+    game_mode: &GameModeSpec,
+    scenario: &Scenario,
+    registry: &mut DimensionRegistry,
+    root: &mut SimThing,
+    allocator: &mut SlotAllocator,
+    field_plan: Option<crate::comparative_default_birth::AdmittedFieldPlanBinding>,
 ) -> Result<SpecSessionState, InstallError> {
     let mut state = SpecSessionState::new();
 
@@ -427,10 +449,19 @@ pub fn compile_and_install(
 
     state.property_admission = registry.property_admission_report();
 
-    // GUYANG-COMPARATIVE-PROJECTIONS-0 (5.8): default-derived birth is 5.8b.
-    // Install does not invent topology from n_slots or discover emitters by
-    // string namespace. Explicit consumers call admit_comparative_projections
-    // with already-admitted FieldAdjacency + columns. Leave unset here.
+    // 5.8b: carry already-admitted field plan (seam A) and default-birth
+    // comparative projections when the registration set yields roles (seam B).
+    // Absent field plan → no comparative birth (not inventing topology).
+    if let Some(plan) = field_plan {
+        let admission = crate::comparative_default_birth::default_comparative_birth_from_field_plan(
+            registry,
+            &plan,
+            crate::comparative_projection::ComparativeProjectionBands::default(),
+            None,
+        )?;
+        state.admitted_field_plan = Some(plan);
+        state.comparative_projection = Some(admission);
+    }
 
     Ok(state)
 }

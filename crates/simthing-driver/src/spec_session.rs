@@ -122,11 +122,14 @@ pub struct SpecSessionState {
     /// Admitted order-weight class table (ORDER-WEIGHT-CLASS-0). Used by the
     /// typed directive submission surface and runtime Player magnitude gate.
     pub order_weight_classes: Vec<crate::order_directive::AdmittedOrderWeightClass>,
-    /// GUYANG-COMPARATIVE-PROJECTIONS-0: optional comparative admission when a
-    /// caller installs an explicit 5.8 chain. Default-derived birth is 5.8b;
-    /// ordinary `compile_and_install` leaves this `None`.
+    /// GUYANG-COMPARATIVE-PROJECTIONS-0 / 5.8b: comparative admission (explicit
+    /// or default-derived). Ordinary install without an admitted field plan
+    /// leaves this `None`.
     pub comparative_projection:
         Option<crate::comparative_projection::ComparativeProjectionAdmission>,
+    /// 5.8b seam A: already-admitted FieldAdjacency / field-plan registration
+    /// binding carried from install. Not a second topology authority.
+    pub admitted_field_plan: Option<crate::comparative_default_birth::AdmittedFieldPlanBinding>,
 }
 
 impl SpecSessionState {

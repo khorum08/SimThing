@@ -320,3 +320,6 @@ date	role	query	anchors_served	hit
 2026-08-01T19:24:43Z	coding	--grep structural-execution-convergence	structural-execution-convergence	hit
 2026-08-01T19:24:43Z	coding	--grep workshop-candidate-homing	workshop-candidate-homing	hit
 2026-08-01T19:24:47Z	coding	--grep property-value-rf-overlays	property-value-rf-overlays	hit
+2026-08-01T21:46:40Z	coding	--grep COMPARATIVE-DEFAULT-BIRTH\|default-derived\|FieldAdjacency\|comparative birth	none	none
+2026-08-01T21:46:51Z	coding	--paths crates/simthing-driver/src/install.rs crates/simthing-driver/src/comparative_projection.rs crates/simthing-driver/src/spec_session.rs	field-policy-time-decisions,founding-ontology-invariants,property-value-rf-overlays,rf-arena-substrate,simthing-0087-binding-laws,simthing-0087-pillars,stead-spatial-contract-core,structural-execution-convergence,workshop-candidate-homing	hit
+2026-08-01T21:46:51Z	coding	--domain driver	field-policy-time-decisions,property-value-rf-overlays,structural-execution-convergence	hit
