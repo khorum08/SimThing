@@ -309,7 +309,7 @@ discretion); `Std — Grok CLI` (`grok-4.5` pinned); `Fable` = DA-implemented ha
 
 | Item | State |
 |---|---|
-| Active open rung | `COMPARATIVE-DEFAULT-BIRTH-0` |
+| Active open rung | `OWNER-CHANNEL-INTRINSIC-0` |
 
 ## 4. Binding laws (carry from day one)
 
