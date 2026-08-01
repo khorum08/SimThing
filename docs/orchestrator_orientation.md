@@ -45,7 +45,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 211b860c2a424d0386a01a2dc93d5c563abfd1411c1f58ec55c7b69d97426cb8 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | 26eab30ec86c97ac8dfd6beef7ae8c5b4d3f18c38fdaa431ec40ccce855396d3 |
-| design_0_0_8_7_rf_arena_modernization.md | 6313aa0109538a50819963257505108cfd397f5a8a8cfa49d08d6e37de1d7083 |
+| design_0_0_8_7_rf_arena_modernization.md | 5364acaed0d0e7e4c51de0018199ff55cc4a1a62e94293886c8317e878044092 |
 | relay_lint.sh | 4163f715cdc3b549dbf57c1744aff61ea96b9f9f0a2237376665fbdb24e986c8 |
 | doctrine_anchors.tsv | 66c69e24e8f2d829c4702630d4ba52e70c3ca77790ffd2e79c8821a429d7f70e |
 | execution_status_taxonomy.tsv | 405caebabe9972b335464a43ad66169a9e8bb13b8fb868cf179bde9789922f87 |
@@ -82,6 +82,7 @@ Track state: `open`
 | 5.8b | COMPARATIVE-DEFAULT-BIRTH-0 | Phase 5: the two canonical seams 5.8 correctly refused to invent. (A) carry the  | Default-derived comparative birth at admission for >=2 emitter classes with zero explicit wiring; absent seams still ... |
 | 5.9 | TP-PURGE-0 | **Phase 5 hygiene — INTENT NOTED, sequencing Owner-scheduled and MAY preempt 5.4 | **DA-GRADUATED / merged #1520 @ 153ba40c** — DA independently reproduced at exact head `9ccd800c`: **THE FALSIFIABLE ... |
 | 5.9b | SCENARIO-RESIDUE-PURGE-0 | **Phase 5 hygiene — Owner-directed 2026-08-01, DA-implemented, preempts 5.8b.**  | **DA-GRADUATED / merged #1544 @ 682e9d0e — engine at ABSOLUTE ZERO TP across `src` AND `tests` for all seven crates, ... |
+| 5.9c | ARTIFACT-PROVENANCE-CONTAINMENT-0 | **Phase 5 hygiene — Owner-directed 2026-08-01.** Enforces the Vendor Containment | `specialization_citizen_counts.tsv` carries no scenario vocabulary and no shipped-scenario provenance; the provenance... |
 | 6.1 | EVENT-GENERATION-STAMP-0 | Phase 6: generation stamps on emission/threshold events; stamped ring egress wit | Events carry stamps; forced observer lag honors declared backpressure without perturbing the sim. |
 | 6.2 | ASYNC-COMMAND-QUEUE-0 | Phase 6: async CPU action queue landing at generation barriers; injection genera | Replay bit-exact from the injection log; shadow-tree reads torn-free (double-buffer proof). |
 | 6.3 | CONTINUOUS-POSTURE-SOAK-0 | Phase 6: continuous posture (batched generations) + N-generation soak under forc | Soak exit-proof per the phase row; paced posture unchanged (scenario-neutral posture regression green). |
