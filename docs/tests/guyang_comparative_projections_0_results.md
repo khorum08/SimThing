@@ -1,7 +1,7 @@
 # GUYANG-COMPARATIVE-PROJECTIONS-0 results
 
 - Track: 0.0.8.7 RF arena modernization (rung 5.8)
-- Status: **PROBATION / graduation-ready / DA-review-pending**
+- Status: **COMPLETE / DA-GRADUATED — merged #1540 @ 70119766**
 - HD-RECEIPT: `b8f9a2e4ef61`
 - DA semantic ruling: Board `5150877754`
 - DA seam amendment + TP void + 5.8b deferral: Board `5151136145`
@@ -69,4 +69,4 @@ GUYANG-COMPARATIVE-PROJECTIONS link adapter=NVIDIA GeForce RTX 4080 Laptop GPU b
 
 ## Posture
 
-Return **PROBATION / graduation-ready**. No pointer move, no 5.8b implementation, no 5.9, no tiled-gather, no TP resurrection. Coding does not invoke `/clearance` — orchestration settles exact-head clearance and relays to DA.
+**DA-GRADUATED** at exact head `863d3fcd`, merged #1540 @ `70119766`. Deep-tree pass independently confirmed the fences: 0 TP tokens in `.rs`, 0 domain-activity words, 0 allowlist widening, 0 `.clause` reads, 0 engine→authoring dependencies; all 9 new inventory rows born to `0.0.8.7` under the expiry clock. Pointer advances to `SCENARIO-RESIDUE-PURGE-0` (Owner-directed, preempts 5.8b). No 5.8b implementation and no tiled-gather from this graduation.
