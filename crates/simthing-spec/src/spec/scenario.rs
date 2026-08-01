@@ -5,7 +5,7 @@
 //! provenance, and source metadata live on the Scenario root as properties —
 //! sidecar `scenario_id` / `provenance` fields are transitional serde mirrors only.
 //!
-//! Legacy **World**-root fixtures (e.g. Terran Pirate golden fixture) deserialize
+//! Legacy **World**-root fixtures deserialize
 //! through an explicit compatibility path; World root is not the future ontology.
 
 use std::collections::{BTreeMap, BTreeSet};
