@@ -1,7 +1,14 @@
 //! GUYANG-COMPARATIVE-PROJECTIONS-0 — comparative **consumer** over co-located
 //! generic field-sweep outputs (driver-only; no kernel/GPU/allowlist doors).
 //!
-//! Owner correction 3A (`5150987561`): **no TP proof, fixture, or coupling.**
+//! Remand 3A / orchestrator correction prompted by Owner concern (`5150987561`):
+//! **no TP proof, fixture, or coupling.**
+//!
+//! Remand 4 (`5151053486`): default birth must not invent topology or string
+//! grammar. This module is the **explicit consumer**: caller supplies admitted
+//! `FieldAdjacency`, sealed neighbor rows, and explicit emitter/triad columns.
+//! Production automatic birth is **STOPPED** until DA provides typed emitter/
+//! triad roles and install carries admitted field-plan topology.
 //!
 //! DA law (`5150877754`):
 //! - margin = exact `top1 − top2` (non-negative)
@@ -35,14 +42,9 @@ pub const BAND_READOUT_COLUMN_COUNT: u32 = 2;
 /// Gu-Yang stall-path columns (net, gross, stall).
 pub const GUYANG_STALL_DERIVED_COLUMN_COUNT: u32 = 3;
 
-/// Reserved property namespace for competing emitter classes (admission data, not scenario grammar).
-pub const COMPARATIVE_EMITTER_NAMESPACE: &str = "comparative_emitter";
-
-/// Reserved triad property names for automatic birth.
-pub const TRIAD_PALMA_D: &str = "palma_d";
-pub const TRIAD_GUYANG_U: &str = "guyang_u";
-pub const TRIAD_GUYANG_C: &str = "guyang_c";
-pub const TRIAD_NAMESPACE: &str = "triad";
+// NOTE (Remand 4): do **not** reintroduce production string grammar such as
+// `comparative_emitter::*` or `triad::*` as semantic authority for default birth.
+// Tests may use ordinary property names as inline feedstock only; discovery is not law.
 
 pub mod comparative_event_kind {
     pub const FRONT_FORMED: u32 = 0x4759_0001;
@@ -57,8 +59,9 @@ pub mod comparative_event_kind {
 /// winner must stay the same when authored_order is unchanged.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ComparativeEmitterClass {
+    /// Durable tie-break key (lower wins exact ties). Independent of vec/registration order.
     pub authored_order: u32,
-    /// Identity written into the dominance column (typically derived from authored name).
+    /// Identity written into the dominance column.
     pub class_id: f32,
     pub value_col: ColumnIndex,
 }
@@ -196,8 +199,6 @@ pub enum ComparativeProjectionError {
     InvalidBands,
     #[error("neighbor_slots length {actual} != adjacency slots {expected}")]
     NeighborSlotsMismatch { actual: usize, expected: u32 },
-    #[error("missing triad property {namespace}::{name}")]
-    MissingTriadProperty { namespace: String, name: String },
     #[error(transparent)]
     FieldSweep(#[from] FieldSweepAdmissionError),
 }
@@ -331,20 +332,28 @@ fn write(values: &mut [f32], base: usize, col: ColumnIndex, value: f32) {
     values[base + col.raw()] = value;
 }
 
-// ── Production admission door ───────────────────────────────────────────────
+// ── Explicit admission (no string discovery; no topology invent) ────────────
 
-/// **Sole production birth door.** Discovers Anchored `comparative_emitter::*`
-/// properties (name order = authored_order), mints comparative/band/stall
-/// properties, and compiles the field-sweep chain.
+/// Admit comparative projections from **explicit** emitter classes + triad
+/// columns + **already-admitted** `FieldAdjacency`.
 ///
-/// Call sites: install completion and field-plan binding. Tests must use this
-/// door (or install that invokes it), not assemble raw requests by hand for
-/// "default-derived" claims.
-pub fn admit_default_comparative_projections(
+/// Remand 4: this is **not** automatic default birth. It does not scan
+/// namespaces, invent Grid-N4 from slot counts, or swallow errors into
+/// `None`. Missing topology/role seams for automatic install birth are a
+/// DA STOP — see results doc.
+///
+/// Fail-closed: validation/compile errors return `Err`. One-emitter and
+/// authored opt-out remain explicit dispositions (`Ok` with disposition).
+pub fn admit_comparative_projections(
     registry: &mut DimensionRegistry,
     adjacency: FieldAdjacency,
     neighbor_slots: Vec<Vec<SlotIndex>>,
+    emitters: Vec<ComparativeEmitterClass>,
+    palma_d_col: ColumnIndex,
+    guyang_value_col: ColumnIndex,
+    guyang_conductance_col: ColumnIndex,
     bands: ComparativeProjectionBands,
+    authored_opt_out_reason: Option<&'static str>,
 ) -> Result<ComparativeProjectionAdmission, ComparativeProjectionError> {
     if neighbor_slots.len() as u32 != adjacency.slots() {
         return Err(ComparativeProjectionError::NeighborSlotsMismatch {
@@ -353,67 +362,12 @@ pub fn admit_default_comparative_projections(
         });
     }
 
-    // Discover emitters: namespace comparative_emitter, Anchored, sorted by name.
-    let mut emitter_props: Vec<(String, SimPropertyId)> = registry
-        .properties
-        .iter()
-        .enumerate()
-        .filter(|(_, p)| {
-            p.namespace == COMPARATIVE_EMITTER_NAMESPACE
-                && p.is_resource_bearing()
-                && p.admission_disposition.is_anchored()
-        })
-        .map(|(i, p)| (p.name.clone(), SimPropertyId(i as u32)))
-        .collect();
-    emitter_props.sort_by(|a, b| a.0.cmp(&b.0));
-
-    // Opt-out: any comparative_emitter property that is Unobserved.
-    for (i, p) in registry.properties.iter().enumerate() {
-        if p.namespace == COMPARATIVE_EMITTER_NAMESPACE {
-            if let PropertyAdmissionDisposition::Unobserved { reason, .. } =
-                &p.admission_disposition
-            {
-                return Ok(opt_out_admission(reason.clone(), emitter_props.len() as u32));
-            }
-            let _ = i;
-        }
+    if let Some(reason) = authored_opt_out_reason {
+        return Ok(opt_out_admission(reason.into(), emitters.len() as u32));
     }
-
-    if emitter_props.len() < 2 {
-        return Ok(insufficient_admission(emitter_props.len() as u32));
+    if emitters.len() < 2 {
+        return Ok(insufficient_admission(emitters.len() as u32));
     }
-
-    let emitters: Vec<ComparativeEmitterClass> = emitter_props
-        .iter()
-        .enumerate()
-        .map(|(order, (name, pid))| {
-            let start = registry.column_range(*pid).start as u32;
-            ComparativeEmitterClass {
-                authored_order: order as u32,
-                class_id: durable_class_id(name),
-                value_col: ColumnIndex::from_gpu_round_trip(start),
-            }
-        })
-        .collect();
-
-    let palma_id = registry
-        .id_of(TRIAD_NAMESPACE, TRIAD_PALMA_D)
-        .ok_or_else(|| ComparativeProjectionError::MissingTriadProperty {
-            namespace: TRIAD_NAMESPACE.into(),
-            name: TRIAD_PALMA_D.into(),
-        })?;
-    let guyang_u = registry
-        .id_of(TRIAD_NAMESPACE, TRIAD_GUYANG_U)
-        .ok_or_else(|| ComparativeProjectionError::MissingTriadProperty {
-            namespace: TRIAD_NAMESPACE.into(),
-            name: TRIAD_GUYANG_U.into(),
-        })?;
-    let guyang_c = registry
-        .id_of(TRIAD_NAMESPACE, TRIAD_GUYANG_C)
-        .ok_or_else(|| ComparativeProjectionError::MissingTriadProperty {
-            namespace: TRIAD_NAMESPACE.into(),
-            name: TRIAD_GUYANG_C.into(),
-        })?;
 
     let derived_ids = mint_derived_properties(registry);
     let outputs = ComparativeProjectionOutputs {
@@ -438,14 +392,15 @@ pub fn admit_default_comparative_projections(
         emitters,
         outputs,
         band_readouts,
-        palma_d_col: col_of(registry, palma_id),
-        guyang_value_col: col_of(registry, guyang_u),
-        guyang_conductance_col: col_of(registry, guyang_c),
+        palma_d_col,
+        guyang_value_col,
+        guyang_conductance_col,
         stall_outputs,
         bands,
         authored_opt_out_reason: None,
     };
 
+    // Fail closed: compile errors propagate (no `.ok()` erasure).
     let bundle = compile_comparative_bundle(request)?;
     let threshold_plan = ComparativeThresholdPlan {
         front_formed: (
@@ -467,7 +422,7 @@ pub fn admit_default_comparative_projections(
 
     Ok(ComparativeProjectionAdmission {
         disposition: bundle.disposition.clone(),
-        emitter_property_ids: emitter_props.iter().map(|(_, id)| *id).collect(),
+        emitter_property_ids: Vec::new(),
         derived_property_ids: derived_ids,
         outputs,
         band_readouts,
@@ -475,17 +430,6 @@ pub fn admit_default_comparative_projections(
         bundle,
         threshold_plan,
     })
-}
-
-fn durable_class_id(name: &str) -> f32 {
-    // Stable non-zero f32 from name bytes (not registration index).
-    let mut h: u32 = 2166136261;
-    for b in name.as_bytes() {
-        h ^= u32::from(*b);
-        h = h.wrapping_mul(16777619);
-    }
-    // Map to a positive finite identity in a quiet float range.
-    (h % 1_000_000) as f32 + 1.0
 }
 
 fn col_of(registry: &DimensionRegistry, id: SimPropertyId) -> ColumnIndex {

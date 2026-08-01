@@ -1,62 +1,86 @@
 # GUYANG-COMPARATIVE-PROJECTIONS-0 results
 
 - Track: 0.0.8.7 RF arena modernization (rung 5.8)
-- Status: **PROBATION / proof-present / Remand-3A discharge pending orchestrator settle**
+- Status: **PROBATION / Remand-4 STOP on automatic default birth** (honest wiring gap; no kabuki)
 - HD-RECEIPT: `b8f9a2e4ef61`
-- DA ruling: Board `5150877754`
-- Remand 3: Board `5150948055`
-- Remand 3A (Owner absolute / TP purge): Board `5150987561` — **TP witness withdrawn; no canonical proof or fixture may depend on TP**
+- DA semantic ruling: Board `5150877754`
+- Remand 3: `5150948055`
+- Orchestrator TP-clause correction (prompted by Owner concern — **not** Owner absolute): `5150987561`
+- Remand 4: Board `5151053486`
 - Adapter: `NVIDIA GeForce RTX 4080 Laptop GPU` / `Vulkan`
 - ORIENT-RECEIPT: `cc946db5bef7` (role=coding, orientation_rule_stamp=`7012c041ac7e2fb2`)
 
-Exact tested head is bound on the PR/board relay as bare `tested_code_sha:` (this file cannot self-hash).
+Exact tested head is bound on the PR as bare `tested_code_sha:` (this file cannot self-hash).
 
-## Owner / DA law (implemented)
+## What is proven (no cosplay)
 
-| Law | Implementation |
+| Surface | Result |
 |---|---|
-| Margin | exact `top1 − top2` (non-negative magnitude) |
-| Border | **winner-identity change** across sealed adjacency (GridOffsets or LinkGraph) |
-| Stall | authored second field-sweep: map avg-c · (u_j−u_i), fold `(+,0)` → net; abs map → gross; stall = gross − \|net\| |
-| Contest | stall under both-strong @ small-margin |
-| Scope | **driver-only consumer**; no kernel/GPU public doors; no allowlist widening |
-| TP | **purged forever for this proof surface** — no TP fixture, corpus load, or production branch |
+| DA law (margin, winner-identity border, gross/net/stall, contest) | PASS via explicit `compile_comparative_bundle` / `admit_comparative_projections` |
+| Authored-order tie-break | PASS — vector reverse invariant; planted authored_order flip red |
+| Comparative census = 3 | PASS — dominance/margin/contest; band border/chokepoint separate (2) |
+| Grid + **LinkGraph** CPU/oracle **and GPU** bit parity | PASS on RTX 4080/Vulkan (both adjacencies) |
+| Threshold plan band compatibility | PASS — ordinary `EmitOnThreshold` fires front-formed/hardened/chokepoint on plan columns; controls suppress |
+| Install invents topology / string default birth | **FAIL closed by design** — `install_does_not_invent_*` proves install leaves `comparative_projection = None` |
+| TP | **Withdrawn** (`5150987561`); no TP fixture |
 
-## Column census (handoff-faithful)
+## STOP — missing admitted seams (Remand 4 items 1–2, blocking 3–4 production claims)
 
-| Category | Count | Columns |
-|---|---|---|
-| Comparative | **3** (`COMPARATIVE_DERIVED_COLUMN_COUNT`) | dominance, margin, contest — owner-count independent |
-| Band / readout | **2** (`BAND_READOUT_COLUMN_COUNT`) | border, chokepoint — threshold surface, not comparative census |
-| Gu-Yang stall path | **3** | net_flux, gross_flux, stall |
+Remand 4 requires STOP rather than inventing conventions. Exact gaps:
 
-## Contract discharge (Remand 3 non-TP only)
+### 1. Admitted topology on install (item 1)
 
-| Requirement | Result |
+- `compile_and_install` / `SpecSessionState` do **not** carry an admitted `FieldAdjacency` (or field-plan registration) that owns co-located emitter outputs.
+- Mapping/region-field compile paths produce topology **elsewhere** (`compile_region_field_preview`, `compile_structural_link_field_adjacency`) but are not a typed install seam for comparative birth.
+- **Removed:** prior kabuki `try_install_default_comparative` that invented `Grid-N4` from `sqrt(scenario.n_slots)` and swallowed errors with `.ok()?`.
+
+### 2. Typed role/metadata for emitters + triad (item 2)
+
+- Core/spec have **no** typed role for “competing emitter class”, “PALMA-D”, “Gu-Yang U”, or “Gu-Yang C”.
+- `PropertyAdmissionDisposition` is only Anchored/Unobserved — not field role.
+- Specialization protocol does not define comparative emitter profiles.
+- **Removed:** production discovery via invented namespaces `comparative_emitter::*` / `triad::*` as semantic authority.
+
+### Blocked until DA lands the seams
+
+| Item | Status |
 |---|---|
-| Default-derived birth via **canonical install** | PASS — `compile_and_install` with ≥2 `comparative_emitter::*` + triad auto-births via production door; no caller-assembled request |
-| Production door dispositions | PASS — Insufficient at 1 emitter; Born at 2/3 with fixed comparative column count = 3 |
-| Authored-order tie-break | PASS — reverse registration/vector iteration leaves exact-tie winner unchanged; planted swapped `authored_order` flips winner (referee red) |
-| front-formed / **front-hardened** / chokepoint | PASS — ordinary `EmitOnThreshold` Upward on scenario-neutral dual-emitter front; contest genuinely > `front_harden_contest` (opposing Gu-Yang flux); no-D and single-winner controls suppress |
-| Grid + LinkGraph oracle parity | PASS — sealed neighbor rows for both topologies; dominance/margin/contest/border/chokepoint/stall bit-parity; GPU chain on Vulkan when adapter present |
-| Unmodified TP witness | **WITHDRAWN** — Owner/orchestration correction `5150987561`; not implemented; must never be reintroduced without Owner |
-| Scope envelope | PASS — no `allow/*.txt`, kernel, or GPU production surface edits for comparative |
+| 3 Fail-closed automatic eligible birth | **Blocked** — no lawful eligible-default path on install; explicit admit returns `Result` (fail-closed) |
+| 4 Production threshold install of front events | **Blocked** — requires birth + install-bound plan → existing economy/threshold surface; plan is threshold-compatible only |
+| 5 LinkGraph GPU | **Discharged** |
+| 6 Governance labels | **Discharged** — orchestrator correction, not Owner absolute |
+| 7 Metadata | Bound at this landing head; no false PASS for automatic birth / TP |
+
+## Explicit consumer API (lawful today)
+
+```text
+admit_comparative_projections(
+  registry,           // mints derived Anchored outputs
+  adjacency,          // caller-supplied admitted FieldAdjacency
+  neighbor_slots,     // sealed from grid offsets or link rows
+  emitters,           // explicit ComparativeEmitterClass {authored_order, class_id, value_col}
+  palma_d_col, guyang_value_col, guyang_conductance_col,
+  bands,
+  authored_opt_out_reason,
+) -> Result<ComparativeProjectionAdmission, ComparativeProjectionError>
+```
+
+No namespace scan. No topology invent. Compile errors propagate.
 
 ## Focused proof
 
 ```text
 guyang_comparative_projections_0: 5 passed; 0 failed
-GUYANG-COMPARATIVE-PROJECTIONS adapter=NVIDIA GeForce RTX 4080 Laptop GPU backend=Vulkan
+GUYANG-COMPARATIVE-PROJECTIONS grid adapter=NVIDIA GeForce RTX 4080 Laptop GPU backend=Vulkan
+GUYANG-COMPARATIVE-PROJECTIONS link adapter=NVIDIA GeForce RTX 4080 Laptop GPU backend=Vulkan
 ```
 
-Named tests:
-
-1. `default_derived_birth_via_canonical_install_path`
-2. `default_derived_birth_via_production_door_not_manual_request`
+1. `install_does_not_invent_topology_or_string_default_birth`
+2. `explicit_admit_dispositions_and_fixed_comparative_column_count`
 3. `authored_order_tie_break_invariant_under_registration_vector_reversal`
 4. `grid_and_link_graph_cpu_oracle_and_gpu_parity`
-5. `front_formed_hardened_and_chokepoint_via_ordinary_thresholds`
+5. `front_formed_hardened_and_chokepoint_threshold_plan_compatible`
 
 ## Posture
 
-Return **PROBATION**. No pointer move, no 5.9, no tiled-gather, no oracle retirement, **no TP resurrection**. Orchestrator owns workplan/handoff reconciliation for the stale TP exit clause and settled-body exact-head `/clearance` (coding does not invoke `/clearance`).
+Return **PROBATION + STOP**. No pointer move, no 5.9, no tiled-gather, no TP resurrection, no invented grammar/topology. Orchestration owns DA escalation for typed roles + install topology seam and `/clearance` settle.

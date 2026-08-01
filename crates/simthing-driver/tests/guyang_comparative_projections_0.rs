@@ -1,23 +1,28 @@
-//! GUYANG-COMPARATIVE-PROJECTIONS-0 — Remand 3A (Owner absolute: TP purged forever).
-//! Scenario-neutral fixtures only. No TP asset, fixture, corpus, or coupling.
-//! Board correction `5150987561`: TP witness is not a coder obligation.
+//! GUYANG-COMPARATIVE-PROJECTIONS-0 — Remand 4 (`5151053486`).
+//!
+//! Explicit consumer proofs only. No TP. No inventing topology from n_slots.
+//! No string-namespace discovery as production authority.
+//! Automatic install birth is **STOPPED** pending DA-typed emitter/triad roles
+//! and install-carried admitted FieldAdjacency (see results doc).
 
 use simthing_core::{
     emit_on_threshold_registration_to_op, ColumnIndex, DimensionRegistry, EmitOnThresholdRegistration,
-    PropertyAdmissionDisposition, SimProperty, SimThing, SimThingKind, SlotIndex, ThresholdDirection,
+    PropertyAdmissionDisposition, SimProperty, SimPropertyId, SimThing, SimThingKind, SlotIndex,
+    ThresholdDirection,
 };
 use simthing_driver::{
-    admit_default_comparative_projections, comparative_event_kind, comparative_projection_cpu_oracle,
-    compile_and_install, neighbor_slots_from_grid, neighbor_slots_from_link_rows,
-    ComparativeProjectionBands, ComparativeProjectionDisposition, Scenario, BAND_READOUT_COLUMN_COUNT,
-    COMPARATIVE_DERIVED_COLUMN_COUNT, COMPARATIVE_EMITTER_NAMESPACE, TRIAD_GUYANG_C, TRIAD_GUYANG_U,
-    TRIAD_NAMESPACE, TRIAD_PALMA_D,
+    admit_comparative_projections, comparative_event_kind, comparative_projection_cpu_oracle,
+    compile_and_install, compile_comparative_bundle, neighbor_slots_from_grid,
+    neighbor_slots_from_link_rows, ComparativeBandReadouts, ComparativeEmitterClass,
+    ComparativeProjectionBands, ComparativeProjectionDisposition, ComparativeProjectionOutputs,
+    ComparativeProjectionRequest, GuYangStallOutputs, Scenario, BAND_READOUT_COLUMN_COUNT,
+    COMPARATIVE_DERIVED_COLUMN_COUNT,
 };
 use simthing_gpu::{
     execute_field_sweep_cpu_chain, execute_threshold_ops_cpu, FieldAdjacency, FieldSweepSession,
     GpuContext, LinkGraphNeighbor, SlotAllocator, GRID_N4_NSEW,
 };
-use simthing_spec::{GameModeSpec, PropertySpec, SpecVersion};
+use simthing_spec::{GameModeSpec, SpecVersion};
 use std::collections::HashMap;
 
 fn bits_equal(a: &[f32], b: &[f32]) -> bool {
@@ -38,24 +43,58 @@ fn gpu_context() -> Option<GpuContext> {
     }
 }
 
-/// Register ≥2 comparative emitters + triad fields; name order = authored_order.
-fn registry_with_emitters(names: &[&str]) -> DimensionRegistry {
-    let mut reg = DimensionRegistry::new();
-    for name in names {
-        let mut p = SimProperty::simple(COMPARATIVE_EMITTER_NAMESPACE, name, 1);
-        p.admission_disposition = PropertyAdmissionDisposition::Anchored;
-        reg.register(p);
-    }
-    for (ns, name) in [
-        (TRIAD_NAMESPACE, TRIAD_PALMA_D),
-        (TRIAD_NAMESPACE, TRIAD_GUYANG_U),
-        (TRIAD_NAMESPACE, TRIAD_GUYANG_C),
-    ] {
+fn col(c: u32, n_dims: u32) -> ColumnIndex {
+    ColumnIndex::try_from_admitted_authored(c, n_dims).unwrap()
+}
+
+/// Inline feedstock properties (any names). Identity for comparative is
+/// `ComparativeEmitterClass` columns + authored_order — not namespace law.
+fn register_feedstock(reg: &mut DimensionRegistry) -> [SimPropertyId; 5] {
+    let mut ids = [SimPropertyId(0); 5];
+    for (i, (ns, name)) in [
+        ("feed", "e0"),
+        ("feed", "e1"),
+        ("feed", "d"),
+        ("feed", "u"),
+        ("feed", "c"),
+    ]
+    .iter()
+    .enumerate()
+    {
         let mut p = SimProperty::simple(ns, name, 1);
         p.admission_disposition = PropertyAdmissionDisposition::Anchored;
-        reg.register(p);
+        ids[i] = reg.register(p);
     }
-    reg
+    ids
+}
+
+fn emitters_from_ids(
+    reg: &DimensionRegistry,
+    ids: &[SimPropertyId; 5],
+) -> Vec<ComparativeEmitterClass> {
+    vec![
+        ComparativeEmitterClass {
+            authored_order: 0,
+            class_id: 10.0,
+            value_col: ColumnIndex::from_gpu_round_trip(reg.column_range(ids[0]).start as u32),
+        },
+        ComparativeEmitterClass {
+            authored_order: 1,
+            class_id: 20.0,
+            value_col: ColumnIndex::from_gpu_round_trip(reg.column_range(ids[1]).start as u32),
+        },
+    ]
+}
+
+fn triad_cols(
+    reg: &DimensionRegistry,
+    ids: &[SimPropertyId; 5],
+) -> (ColumnIndex, ColumnIndex, ColumnIndex) {
+    (
+        ColumnIndex::from_gpu_round_trip(reg.column_range(ids[2]).start as u32),
+        ColumnIndex::from_gpu_round_trip(reg.column_range(ids[3]).start as u32),
+        ColumnIndex::from_gpu_round_trip(reg.column_range(ids[4]).start as u32),
+    )
 }
 
 fn admit_grid(
@@ -63,41 +102,49 @@ fn admit_grid(
     width: u32,
     height: u32,
 ) -> simthing_driver::ComparativeProjectionAdmission {
+    let ids = register_feedstock(reg);
     let gather = ColumnIndex::from_gpu_round_trip(0);
     let adj = FieldAdjacency::grid_n4(width, height, GRID_N4_NSEW, gather).expect("grid");
     let neighbors = neighbor_slots_from_grid(&adj).expect("neighbors");
-    admit_default_comparative_projections(
+    let (d, u, c) = triad_cols(reg, &ids);
+    let emitters = emitters_from_ids(reg, &ids);
+    admit_comparative_projections(
         reg,
         adj,
         neighbors,
+        emitters,
+        d,
+        u,
+        c,
         ComparativeProjectionBands::default(),
+        None,
     )
-    .expect("admit_default")
+    .expect("admit_comparative (explicit columns + admitted adjacency)")
 }
 
-fn prop(ns: &str, name: &str) -> PropertySpec {
-    PropertySpec {
-        id: format!("{ns}_{name}"),
-        namespace: ns.into(),
-        name: name.into(),
-        display_name: name.into(),
-        description: String::new(),
-        sub_fields: Vec::new(),
-        admission_disposition: PropertyAdmissionDisposition::Anchored,
-    }
-}
-
-/// Canonical install path: GameMode properties → compile_and_install → automatic birth.
+/// Remand 4 item 1: install must NOT invent Grid-N4 from perfect-square n_slots.
 #[test]
-fn default_derived_birth_via_canonical_install_path() {
-    let n_slots = 16u32; // perfect square → Grid-N4 theater in install hook
+fn install_does_not_invent_topology_or_string_default_birth() {
+    let n_slots = 16u32; // perfect square — former kabuki would invent Grid-N4
     let mut registry = DimensionRegistry::new();
     let _ = registry.register(SimProperty::simple("_seed", "pad", 0));
+    // Even with feedstock properties present, install has no admitted FieldAdjacency.
+    for (ns, name) in [
+        ("feed", "e0"),
+        ("feed", "e1"),
+        ("feed", "d"),
+        ("feed", "u"),
+        ("feed", "c"),
+    ] {
+        let mut p = SimProperty::simple(ns, name, 1);
+        p.admission_disposition = PropertyAdmissionDisposition::Anchored;
+        registry.register(p);
+    }
     let mut root = SimThing::new(SimThingKind::World, 0);
     let mut allocator = SlotAllocator::new();
     allocator.populate_from_tree(&root);
     let scenario = Scenario {
-        name: "comparative_install_neutral".into(),
+        name: "no_invent".into(),
         ticks_per_day: 1,
         max_days: 1,
         dt: 0.0,
@@ -109,19 +156,13 @@ fn default_derived_birth_via_canonical_install_path() {
         install_targets: HashMap::new(),
     };
     let game_mode = GameModeSpec {
-        id: "comparative_install".into(),
-        display_name: "comparative install".into(),
+        id: "no_invent".into(),
+        display_name: "no invent".into(),
         description: String::new(),
         spec_version: SpecVersion::default(),
         metadata: Default::default(),
         domain_packs: Vec::new(),
-        properties: vec![
-            prop(COMPARATIVE_EMITTER_NAMESPACE, "alpha"),
-            prop(COMPARATIVE_EMITTER_NAMESPACE, "beta"),
-            prop(TRIAD_NAMESPACE, TRIAD_PALMA_D),
-            prop(TRIAD_NAMESPACE, TRIAD_GUYANG_U),
-            prop(TRIAD_NAMESPACE, TRIAD_GUYANG_C),
-        ],
+        properties: Vec::new(),
         overlays: Vec::new(),
         order_weight_classes: Vec::new(),
         capability_trees: Vec::new(),
@@ -134,92 +175,73 @@ fn default_derived_birth_via_canonical_install_path() {
     };
     let state = compile_and_install(&game_mode, &scenario, &mut registry, &mut root, &mut allocator)
         .expect("install");
-    let admission = state
-        .comparative_projection
-        .expect("install must birth comparative projection when ≥2 emitters + triad present");
-    assert_eq!(
-        admission.disposition,
-        ComparativeProjectionDisposition::Born {
-            emitter_count: 2,
-            comparative_column_count: COMPARATIVE_DERIVED_COLUMN_COUNT,
-        }
+    assert!(
+        state.comparative_projection.is_none(),
+        "install must not invent comparative birth without admitted topology + typed roles"
     );
-    assert_eq!(
-        admission.bundle.comparative_column_count,
-        COMPARATIVE_DERIVED_COLUMN_COUNT
-    );
-    assert!(!admission.bundle.registrations.is_empty());
 }
 
 #[test]
-fn default_derived_birth_via_production_door_not_manual_request() {
-    // Sole production door discovers emitters from the admitted registry.
-    let mut reg = registry_with_emitters(&["alpha", "beta"]);
-    let admission = admit_grid(&mut reg, 4, 4);
+fn explicit_admit_dispositions_and_fixed_comparative_column_count() {
+    let mut reg = DimensionRegistry::new();
+    let ids = register_feedstock(&mut reg);
+    let gather = ColumnIndex::from_gpu_round_trip(0);
+    let adj = FieldAdjacency::grid_n4(4, 4, GRID_N4_NSEW, gather).unwrap();
+    let neighbors = neighbor_slots_from_grid(&adj).unwrap();
+    let (d, u, c) = triad_cols(&reg, &ids);
+
+    let emitters_all = emitters_from_ids(&reg, &ids);
+    let one = admit_comparative_projections(
+        &mut reg,
+        adj.clone(),
+        neighbors.clone(),
+        emitters_all.iter().copied().take(1).collect(),
+        d,
+        u,
+        c,
+        ComparativeProjectionBands::default(),
+        None,
+    )
+    .expect("one");
+    assert!(matches!(
+        one.disposition,
+        ComparativeProjectionDisposition::InsufficientEmitters { emitter_count: 1 }
+    ));
+
+    let two = admit_comparative_projections(
+        &mut reg,
+        adj,
+        neighbors,
+        emitters_all,
+        d,
+        u,
+        c,
+        ComparativeProjectionBands::default(),
+        None,
+    )
+    .expect("two");
     assert_eq!(
-        admission.disposition,
+        two.disposition,
         ComparativeProjectionDisposition::Born {
             emitter_count: 2,
             comparative_column_count: COMPARATIVE_DERIVED_COLUMN_COUNT,
         }
     );
-    assert_eq!(
-        admission.bundle.comparative_column_count,
-        COMPARATIVE_DERIVED_COLUMN_COUNT
-    );
+    assert_eq!(two.bundle.comparative_column_count, COMPARATIVE_DERIVED_COLUMN_COUNT);
     assert_eq!(COMPARATIVE_DERIVED_COLUMN_COUNT, 3);
     assert_eq!(BAND_READOUT_COLUMN_COUNT, 2);
-    assert!(!admission.bundle.registrations.is_empty());
-
-    // One emitter → insufficient (no fabricated comparison).
-    let mut one = registry_with_emitters(&["solo"]);
-    // Still need triad for the door to run past discovery — actually with 1 emitter
-    // admit_default returns Insufficient before triad check... discovery happens first.
-    let gather = ColumnIndex::from_gpu_round_trip(0);
-    let adj = FieldAdjacency::grid_n4(2, 2, GRID_N4_NSEW, gather).expect("g");
-    let n = neighbor_slots_from_grid(&adj).expect("n");
-    let one_adm = admit_default_comparative_projections(
-        &mut one,
-        adj,
-        n,
-        ComparativeProjectionBands::default(),
-    )
-    .expect("one");
-    assert!(matches!(
-        one_adm.disposition,
-        ComparativeProjectionDisposition::InsufficientEmitters { emitter_count: 1 }
-    ));
-
-    // 3 emitters still 3 comparative columns.
-    let mut three = registry_with_emitters(&["a", "b", "c"]);
-    let adm3 = admit_grid(&mut three, 4, 4);
-    assert_eq!(
-        adm3.bundle.comparative_column_count,
-        COMPARATIVE_DERIVED_COLUMN_COUNT
-    );
+    assert!(!two.bundle.registrations.is_empty());
 }
 
 #[test]
 fn authored_order_tie_break_invariant_under_registration_vector_reversal() {
-    // Same durable names/order; reverse *registration vector* of discovered
-    // emitters is impossible at production door (name sort). Prove by admitting
-    // with names that sort alpha,beta then beta,alpha as *different* name sets
-    // would change authored order — instead: same two names always sort the same.
-    //
-    // Explicit unit: build two emitter vecs with swapped *vec* order but same
-    // authored_order keys → compile_comparative_bundle must agree.
-    use simthing_driver::{compile_comparative_bundle, ComparativeEmitterClass,
-        ComparativeProjectionOutputs, ComparativeBandReadouts, GuYangStallOutputs,
-        ComparativeProjectionRequest};
-
     let width = 2u32;
     let height = 1u32;
     let n_dims = 20u32;
-    let gather = ColumnIndex::try_from_admitted_authored(0, n_dims).unwrap();
+    let gather = col(0, n_dims);
     let adj = FieldAdjacency::grid_n4(width, height, GRID_N4_NSEW, gather).unwrap();
     let neighbors = neighbor_slots_from_grid(&adj).unwrap();
 
-    let col = |r: u32| ColumnIndex::try_from_admitted_authored(r, n_dims).unwrap();
     let mk = |emitters: Vec<ComparativeEmitterClass>| {
         compile_comparative_bundle(ComparativeProjectionRequest {
             adjacency: adj.clone(),
@@ -227,21 +249,21 @@ fn authored_order_tie_break_invariant_under_registration_vector_reversal() {
             n_dims,
             emitters,
             outputs: ComparativeProjectionOutputs {
-                dominance_col: col(10),
-                margin_col: col(11),
-                contest_col: col(12),
+                dominance_col: col(10, n_dims),
+                margin_col: col(11, n_dims),
+                contest_col: col(12, n_dims),
             },
             band_readouts: ComparativeBandReadouts {
-                border_col: col(13),
-                chokepoint_col: col(14),
+                border_col: col(13, n_dims),
+                chokepoint_col: col(14, n_dims),
             },
-            palma_d_col: col(2),
-            guyang_value_col: col(3),
-            guyang_conductance_col: col(4),
+            palma_d_col: col(2, n_dims),
+            guyang_value_col: col(3, n_dims),
+            guyang_conductance_col: col(4, n_dims),
             stall_outputs: GuYangStallOutputs {
-                net_flux_col: col(5),
-                gross_flux_col: col(6),
-                stall_col: col(7),
+                net_flux_col: col(5, n_dims),
+                gross_flux_col: col(6, n_dims),
+                stall_col: col(7, n_dims),
             },
             bands: ComparativeProjectionBands::default(),
             authored_opt_out_reason: None,
@@ -249,29 +271,26 @@ fn authored_order_tie_break_invariant_under_registration_vector_reversal() {
         .expect("bundle")
     };
 
-    // Same authored_order keys, reversed vector iteration.
     let e_ab = vec![
         ComparativeEmitterClass {
             authored_order: 0,
             class_id: 10.0,
-            value_col: col(0),
+            value_col: col(0, n_dims),
         },
         ComparativeEmitterClass {
             authored_order: 1,
             class_id: 20.0,
-            value_col: col(1),
+            value_col: col(1, n_dims),
         },
     ];
-    let e_ba = vec![e_ab[1], e_ab[0]]; // reversed vec, same authored_order
+    let e_ba = vec![e_ab[1], e_ab[0]];
 
     let mut values = vec![0.0f32; (width * height * n_dims) as usize];
-    // Exact tie on slot 0
     values[0] = 1.0;
     values[1] = 1.0;
     values[2] = 9.0;
     values[3] = 0.5;
     values[4] = 0.5;
-    // slot1: clear winner on col1
     values[n_dims as usize] = 0.1;
     values[n_dims as usize + 1] = 0.9;
     values[n_dims as usize + 2] = 9.0;
@@ -286,30 +305,26 @@ fn authored_order_tie_break_invariant_under_registration_vector_reversal() {
     );
     assert_eq!(out_ab[10], 10.0, "authored_order 0 wins exact tie");
 
-    // Planted wrong: swap authored_order keys while keeping class_id/value_col → must change winner
     let e_wrong = vec![
         ComparativeEmitterClass {
             authored_order: 1,
             class_id: 10.0,
-            value_col: col(0),
+            value_col: col(0, n_dims),
         },
         ComparativeEmitterClass {
             authored_order: 0,
             class_id: 20.0,
-            value_col: col(1),
+            value_col: col(1, n_dims),
         },
     ];
     let out_wrong = execute_field_sweep_cpu_chain(&values, &mk(e_wrong).registrations).unwrap();
-    assert_eq!(
-        out_wrong[10], 20.0,
-        "planted incidental-order (swapped authored_order) must flip the referee"
-    );
+    assert_eq!(out_wrong[10], 20.0, "planted wrong authored_order flips winner");
     assert_ne!(out_ab[10], out_wrong[10]);
 }
 
 #[test]
 fn grid_and_link_graph_cpu_oracle_and_gpu_parity() {
-    let mut reg = registry_with_emitters(&["left", "right"]);
+    let mut reg = DimensionRegistry::new();
     let width = 6u32;
     let height = 4u32;
     let admission = admit_grid(&mut reg, width, height);
@@ -320,23 +335,15 @@ fn grid_and_link_graph_cpu_oracle_and_gpu_parity() {
     let stall = admission.stall_outputs.stall_col;
     let bands = ComparativeProjectionBands::default();
 
-    // Scenario-neutral dual-emitter front (no TP).
+    // Recover feedstock columns by fixed registration order in admit_grid.
+    // Feedstock was registered first in admit_grid (ids 0..4).
+    let e0 = reg.column_range(SimPropertyId(0)).start;
+    let e1 = reg.column_range(SimPropertyId(1)).start;
+    let d = reg.column_range(SimPropertyId(2)).start;
+    let u = reg.column_range(SimPropertyId(3)).start;
+    let c = reg.column_range(SimPropertyId(4)).start;
+
     let mut values = vec![0.0f32; (slots * n_dims) as usize];
-    let e0 = reg
-        .column_range(admission.emitter_property_ids[0])
-        .start;
-    let e1 = reg
-        .column_range(admission.emitter_property_ids[1])
-        .start;
-    let d = reg
-        .column_range(reg.id_of(TRIAD_NAMESPACE, TRIAD_PALMA_D).unwrap())
-        .start;
-    let u = reg
-        .column_range(reg.id_of(TRIAD_NAMESPACE, TRIAD_GUYANG_U).unwrap())
-        .start;
-    let c = reg
-        .column_range(reg.id_of(TRIAD_NAMESPACE, TRIAD_GUYANG_C).unwrap())
-        .start;
     let mid = width / 2;
     let mid_y = height / 2;
     for y in 0..height {
@@ -376,27 +383,18 @@ fn grid_and_link_graph_cpu_oracle_and_gpu_parity() {
         .unwrap(),
     )
     .unwrap();
-    // Re-derive class_ids from names the same way production does (durable name hash).
-    let names = ["left", "right"];
-    let emitters: Vec<_> = names
-        .iter()
-        .enumerate()
-        .map(|(i, name)| {
-            let mut h: u32 = 2166136261;
-            for b in name.as_bytes() {
-                h ^= u32::from(*b);
-                h = h.wrapping_mul(16777619);
-            }
-            simthing_driver::ComparativeEmitterClass {
-                authored_order: i as u32,
-                class_id: (h % 1_000_000) as f32 + 1.0,
-                value_col: ColumnIndex::from_gpu_round_trip(
-                    reg.column_range(admission.emitter_property_ids[i]).start as u32,
-                ),
-            }
-        })
-        .collect();
-
+    let emitters = vec![
+        ComparativeEmitterClass {
+            authored_order: 0,
+            class_id: 10.0,
+            value_col: ColumnIndex::from_gpu_round_trip(e0 as u32),
+        },
+        ComparativeEmitterClass {
+            authored_order: 1,
+            class_id: 20.0,
+            value_col: ColumnIndex::from_gpu_round_trip(e1 as u32),
+        },
+    ];
     let oracle = comparative_projection_cpu_oracle(
         &chain,
         slots,
@@ -409,7 +407,7 @@ fn grid_and_link_graph_cpu_oracle_and_gpu_parity() {
         bands,
         &neighbors,
     );
-    for c in [
+    for col_i in [
         outs.dominance_col.raw(),
         outs.margin_col.raw(),
         outs.contest_col.raw(),
@@ -419,17 +417,37 @@ fn grid_and_link_graph_cpu_oracle_and_gpu_parity() {
     ] {
         assert!(
             bits_equal(
-                &column(&oracle, n_dims as usize, c),
-                &column(&chain, n_dims as usize, c)
+                &column(&oracle, n_dims as usize, col_i),
+                &column(&chain, n_dims as usize, col_i)
             ),
-            "grid oracle parity col {c}"
+            "grid oracle parity col {col_i}"
         );
     }
     assert!(column(&chain, n_dims as usize, bands_r.border_col.raw())
         .iter()
         .any(|&b| b >= 0.5));
 
-    // LinkGraph parity
+    // Grid GPU
+    if let Some(ctx) = gpu_context() {
+        let mut session =
+            FieldSweepSession::new(&ctx, &admission.bundle.registrations[0]).unwrap();
+        session.upload_values(&ctx, &values).unwrap();
+        session
+            .dispatch_chain(&ctx, &admission.bundle.registrations, 1)
+            .unwrap();
+        let gpu = session.readback(&ctx).unwrap();
+        assert!(bits_equal(
+            &column(&chain, n_dims as usize, outs.dominance_col.raw()),
+            &column(&gpu, n_dims as usize, outs.dominance_col.raw())
+        ));
+        let info = ctx.adapter.get_info();
+        eprintln!(
+            "GUYANG-COMPARATIVE-PROJECTIONS grid adapter={} backend={:?}",
+            info.name, info.backend
+        );
+    }
+
+    // LinkGraph CPU oracle + GPU (Remand 4 item 5)
     let link_rows = {
         let mut rows = vec![Vec::new(); 4];
         for (a, b) in [(0u32, 1), (1, 2), (2, 3)] {
@@ -447,31 +465,33 @@ fn grid_and_link_graph_cpu_oracle_and_gpu_parity() {
         }
         rows
     };
-    let mut reg_l = registry_with_emitters(&["left", "right"]);
+    let mut reg_l = DimensionRegistry::new();
+    let ids_l = register_feedstock(&mut reg_l);
     let link_adj =
         FieldAdjacency::link_graph(4, link_rows.clone(), ColumnIndex::from_gpu_round_trip(0))
             .unwrap();
     let link_neighbors = neighbor_slots_from_link_rows(&link_rows);
-    let adm_l = admit_default_comparative_projections(
+    let (dl, ul, cl) = triad_cols(&reg_l, &ids_l);
+    let emitters_l = emitters_from_ids(&reg_l, &ids_l);
+    let e0l = reg_l.column_range(ids_l[0]).start;
+    let e1l = reg_l.column_range(ids_l[1]).start;
+    let d_slot = reg_l.column_range(ids_l[2]).start;
+    let u_slot = reg_l.column_range(ids_l[3]).start;
+    let c_slot = reg_l.column_range(ids_l[4]).start;
+    let adm_l = admit_comparative_projections(
         &mut reg_l,
         link_adj,
         link_neighbors.clone(),
+        emitters_l.clone(),
+        dl,
+        ul,
+        cl,
         ComparativeProjectionBands::default(),
+        None,
     )
     .expect("link admit");
     let n_dims_l = reg_l.total_columns as u32;
     let mut vals_l = vec![0.0f32; (4 * n_dims_l) as usize];
-    let e0l = reg_l.column_range(adm_l.emitter_property_ids[0]).start;
-    let e1l = reg_l.column_range(adm_l.emitter_property_ids[1]).start;
-    let dl = reg_l
-        .column_range(reg_l.id_of(TRIAD_NAMESPACE, TRIAD_PALMA_D).unwrap())
-        .start;
-    let ul = reg_l
-        .column_range(reg_l.id_of(TRIAD_NAMESPACE, TRIAD_GUYANG_U).unwrap())
-        .start;
-    let cl = reg_l
-        .column_range(reg_l.id_of(TRIAD_NAMESPACE, TRIAD_GUYANG_C).unwrap())
-        .start;
     for s in 0..4usize {
         let b = s * n_dims_l as usize;
         if s < 2 {
@@ -481,30 +501,12 @@ fn grid_and_link_graph_cpu_oracle_and_gpu_parity() {
             vals_l[b + e0l] = 0.2;
             vals_l[b + e1l] = 0.9;
         }
-        vals_l[b + dl] = 12.0;
-        vals_l[b + ul] = 0.5;
-        vals_l[b + cl] = 0.5;
+        vals_l[b + d_slot] = 12.0;
+        vals_l[b + u_slot] = if s < 2 { 1.0 } else { 0.0 };
+        vals_l[b + c_slot] = 0.5;
     }
     let chain_l =
         execute_field_sweep_cpu_chain(&vals_l, &adm_l.bundle.registrations).expect("link chain");
-    let emitters_l: Vec<_> = ["left", "right"]
-        .iter()
-        .enumerate()
-        .map(|(i, name)| {
-            let mut h: u32 = 2166136261;
-            for b in name.as_bytes() {
-                h ^= u32::from(*b);
-                h = h.wrapping_mul(16777619);
-            }
-            simthing_driver::ComparativeEmitterClass {
-                authored_order: i as u32,
-                class_id: (h % 1_000_000) as f32 + 1.0,
-                value_col: ColumnIndex::from_gpu_round_trip(
-                    reg_l.column_range(adm_l.emitter_property_ids[i]).start as u32,
-                ),
-            }
-        })
-        .collect();
     let oracle_l = comparative_projection_cpu_oracle(
         &chain_l,
         4,
@@ -512,77 +514,88 @@ fn grid_and_link_graph_cpu_oracle_and_gpu_parity() {
         &emitters_l,
         adm_l.outputs,
         adm_l.band_readouts,
-        ColumnIndex::from_gpu_round_trip(dl as u32),
+        dl,
         adm_l.stall_outputs.stall_col,
         ComparativeProjectionBands::default(),
         &link_neighbors,
     );
-    for c in [
+    for col_i in [
         adm_l.outputs.dominance_col.raw(),
         adm_l.outputs.margin_col.raw(),
+        adm_l.outputs.contest_col.raw(),
         adm_l.band_readouts.border_col.raw(),
+        adm_l.band_readouts.chokepoint_col.raw(),
+        adm_l.stall_outputs.stall_col.raw(),
     ] {
         assert!(
             bits_equal(
-                &column(&oracle_l, n_dims_l as usize, c),
-                &column(&chain_l, n_dims_l as usize, c)
+                &column(&oracle_l, n_dims_l as usize, col_i),
+                &column(&chain_l, n_dims_l as usize, col_i)
             ),
-            "link oracle parity col {c}"
+            "link oracle parity col {col_i}"
         );
     }
     assert!(
-        column(&chain_l, n_dims_l as usize, adm_l.band_readouts.border_col.raw())
-            .iter()
-            .any(|&b| b >= 0.5)
+        column(
+            &chain_l,
+            n_dims_l as usize,
+            adm_l.band_readouts.border_col.raw()
+        )
+        .iter()
+        .any(|&b| b >= 0.5)
     );
 
     if let Some(ctx) = gpu_context() {
         let mut session =
-            FieldSweepSession::new(&ctx, &admission.bundle.registrations[0]).unwrap();
-        session.upload_values(&ctx, &values).unwrap();
+            FieldSweepSession::new(&ctx, &adm_l.bundle.registrations[0]).unwrap();
+        session.upload_values(&ctx, &vals_l).unwrap();
         session
-            .dispatch_chain(&ctx, &admission.bundle.registrations, 1)
+            .dispatch_chain(&ctx, &adm_l.bundle.registrations, 1)
             .unwrap();
         let gpu = session.readback(&ctx).unwrap();
-        assert!(bits_equal(
-            &column(&chain, n_dims as usize, outs.dominance_col.raw()),
-            &column(&gpu, n_dims as usize, outs.dominance_col.raw())
-        ));
+        for col_i in [
+            adm_l.outputs.dominance_col.raw(),
+            adm_l.outputs.margin_col.raw(),
+            adm_l.outputs.contest_col.raw(),
+            adm_l.band_readouts.border_col.raw(),
+            adm_l.band_readouts.chokepoint_col.raw(),
+            adm_l.stall_outputs.stall_col.raw(),
+        ] {
+            assert!(
+                bits_equal(
+                    &column(&chain_l, n_dims_l as usize, col_i),
+                    &column(&gpu, n_dims_l as usize, col_i)
+                ),
+                "link GPU parity col {col_i}"
+            );
+        }
         let info = ctx.adapter.get_info();
         eprintln!(
-            "GUYANG-COMPARATIVE-PROJECTIONS adapter={} backend={:?}",
+            "GUYANG-COMPARATIVE-PROJECTIONS link adapter={} backend={:?}",
             info.name, info.backend
         );
     }
 }
 
+/// Threshold-band compatibility of the plan (ordinary EmitOnThreshold).
+/// Remand 4 item 4: this is **not** production install of the plan — that is
+/// STOPPED with items 1–2. Proves plan columns are ordinary threshold-capable.
 #[test]
-fn front_formed_hardened_and_chokepoint_via_ordinary_thresholds() {
-    let mut reg = registry_with_emitters(&["alpha", "beta"]);
+fn front_formed_hardened_and_chokepoint_threshold_plan_compatible() {
+    let mut reg = DimensionRegistry::new();
     let width = 6u32;
     let height = 4u32;
-    // Default harden band: contest must genuinely exceed front_harden_contest (no 0.0 kabuki).
     let admission = admit_grid(&mut reg, width, height);
     let n_dims = reg.total_columns as u32;
     let slots = width * height;
-    let mut values = vec![0.0f32; (slots * n_dims) as usize];
-    let e0 = reg.column_range(admission.emitter_property_ids[0]).start;
-    let e1 = reg.column_range(admission.emitter_property_ids[1]).start;
-    let d = reg
-        .column_range(reg.id_of(TRIAD_NAMESPACE, TRIAD_PALMA_D).unwrap())
-        .start;
-    let u = reg
-        .column_range(reg.id_of(TRIAD_NAMESPACE, TRIAD_GUYANG_U).unwrap())
-        .start;
-    let c = reg
-        .column_range(reg.id_of(TRIAD_NAMESPACE, TRIAD_GUYANG_C).unwrap())
-        .start;
+    let e0 = reg.column_range(SimPropertyId(0)).start;
+    let e1 = reg.column_range(SimPropertyId(1)).start;
+    let d = reg.column_range(SimPropertyId(2)).start;
+    let u = reg.column_range(SimPropertyId(3)).start;
+    let c = reg.column_range(SimPropertyId(4)).start;
     let mid = width / 2;
     let mid_y = height / 2;
-    // Scenario-neutral dual-emitter front:
-    // - mid column: both-strong + small margin so contest consumes stall
-    // - mid u=0.5 with left u=1 / right u=0 → opposing flux → stall > 0
-    // - mid+mid_y: low Palma D + border → chokepoint band
+    let mut values = vec![0.0f32; (slots * n_dims) as usize];
     for y in 0..height {
         for x in 0..width {
             let b = (y * width + x) as usize * n_dims as usize;
@@ -609,16 +622,12 @@ fn front_formed_hardened_and_chokepoint_via_ordinary_thresholds() {
     }
     let projected =
         execute_field_sweep_cpu_chain(&values, &admission.bundle.registrations).expect("proj");
-
-    // Contest must be genuinely positive under opposing Gu-Yang flux + both-strong
-    // mid-column emitters (not a threshold-kabuki at 0.0).
-    let contest_col = admission.outputs.contest_col.raw();
-    let contest_vals = column(&projected, n_dims as usize, contest_col);
+    let contest_vals = column(&projected, n_dims as usize, admission.outputs.contest_col.raw());
     assert!(
         contest_vals
             .iter()
-            .any(|&c| c > ComparativeProjectionBands::default().front_harden_contest),
-        "expected contest > front_harden_contest somewhere on the front"
+            .any(|&v| v > ComparativeProjectionBands::default().front_harden_contest),
+        "contest must exceed harden band under opposing Gu-Yang flux"
     );
 
     let plan = &admission.threshold_plan;
@@ -650,7 +659,6 @@ fn front_formed_hardened_and_chokepoint_via_ordinary_thresholds() {
         event_kind: plan.chokepoint_emerged.2,
         buffer: Default::default(),
     });
-
     let ops: Vec<_> = regs
         .iter()
         .map(emit_on_threshold_registration_to_op)
@@ -658,7 +666,6 @@ fn front_formed_hardened_and_chokepoint_via_ordinary_thresholds() {
     let kinds: Vec<_> = regs.iter().map(|r| r.event_kind).collect();
     let mut cur = projected.clone();
     let emissions = execute_threshold_ops_cpu(&values, &mut cur, &ops, n_dims).expect("thresh");
-
     let formed = emissions
         .iter()
         .filter(|e| kinds[e.reg_idx() as usize] == comparative_event_kind::FRONT_FORMED)
@@ -672,10 +679,9 @@ fn front_formed_hardened_and_chokepoint_via_ordinary_thresholds() {
         .filter(|e| kinds[e.reg_idx() as usize] == comparative_event_kind::CHOKEPOINT_EMERGED)
         .count();
     assert!(formed > 0, "front-formed");
-    assert!(hardened > 0, "front-hardened from contest band");
+    assert!(hardened > 0, "front-hardened");
     assert_eq!(choke, 1, "chokepoint-emerged");
 
-    // Controls: no low-D
     let mut no_d = values.clone();
     for s in 0..slots as usize {
         no_d[s * n_dims as usize + d] = 20.0;
@@ -689,7 +695,6 @@ fn front_formed_hardened_and_chokepoint_via_ordinary_thresholds() {
     .iter()
     .all(|&x| x < 0.5));
 
-    // Controls: single winner → no border
     let mut flat = values.clone();
     for s in 0..slots as usize {
         let b = s * n_dims as usize;

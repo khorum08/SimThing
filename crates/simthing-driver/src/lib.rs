@@ -139,15 +139,13 @@ pub use atlas_0080_0::{
 pub use bench_limits::{check as check_bench_ceiling, ms_per_sim_day, CEILINGS};
 pub use child_share_eml::{child_share_cpu, register_child_share_formula};
 pub use comparative_projection::{
-    admit_default_comparative_projections, comparative_event_kind, comparative_projection_cpu_oracle,
+    admit_comparative_projections, comparative_event_kind, comparative_projection_cpu_oracle,
     compile_comparative_bundle, neighbor_slots_from_grid, neighbor_slots_from_link_rows,
     ComparativeBandReadouts, ComparativeDerivedPropertyIds, ComparativeEmitterClass,
     ComparativeProjectionAdmission, ComparativeProjectionBands, ComparativeProjectionBundle,
     ComparativeProjectionDisposition, ComparativeProjectionError, ComparativeProjectionOutputs,
     ComparativeProjectionRequest, ComparativeThresholdPlan, GuYangStallOutputs,
-    BAND_READOUT_COLUMN_COUNT, COMPARATIVE_DERIVED_COLUMN_COUNT, COMPARATIVE_EMITTER_NAMESPACE,
-    GUYANG_STALL_DERIVED_COLUMN_COUNT, TRIAD_GUYANG_C, TRIAD_GUYANG_U, TRIAD_NAMESPACE,
-    TRIAD_PALMA_D,
+    BAND_READOUT_COLUMN_COUNT, COMPARATIVE_DERIVED_COLUMN_COUNT, GUYANG_STALL_DERIVED_COLUMN_COUNT,
 };
 pub use field_sweep_compile::{
     compile_gu_yang_n4_field_sweeps, compile_palma_n4_field_sweep, GuYangN4FieldSweepSpec,
