@@ -85,6 +85,7 @@ pub fn flat_star_scenario(hosted_count: usize, n_slots: u32) -> Scenario {
         shadow_seeds: Vec::new(),
         tick_patches: Vec::new(),
         install_targets: Default::default(),
+    field_plan_admission: None,
     }
 }
 

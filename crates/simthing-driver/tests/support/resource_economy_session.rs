@@ -208,6 +208,7 @@ pub fn recipe_scenario() -> Scenario {
         shadow_seeds: vec![],
         tick_patches: vec![],
         install_targets: Default::default(),
+    field_plan_admission: None,
     }
 }
 
@@ -283,6 +284,7 @@ pub fn live_slot_scenario() -> Scenario {
         shadow_seeds: vec![],
         tick_patches: vec![],
         install_targets: Default::default(),
+    field_plan_admission: None,
     }
 }
 

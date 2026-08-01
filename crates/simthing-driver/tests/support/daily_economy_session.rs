@@ -50,6 +50,7 @@ pub fn daily_economy_scenario(ticks_per_day: u32, max_days: u32) -> Scenario {
         shadow_seeds: vec![],
         tick_patches: vec![],
         install_targets: Default::default(),
+    field_plan_admission: None,
     }
 }
 

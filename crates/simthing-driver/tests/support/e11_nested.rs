@@ -357,6 +357,7 @@ pub fn open_nested_session(
         shadow_seeds: vec![],
         tick_patches: vec![],
         install_targets: Default::default(),
+    field_plan_admission: None,
     };
 
     let mut session = SimSession::open(scenario).expect("open");

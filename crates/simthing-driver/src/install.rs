@@ -42,6 +42,9 @@ pub enum InstallError {
     #[error("spec error: {0}")]
     Spec(#[from] SpecError),
 
+    #[error("field-plan admission: {0}")]
+    FieldPlan(#[from] crate::comparative_default_birth::FieldPlanAdmissionError),
+
     #[error("capability tree `{tree_id}` resolved to zero owners for target `{target:?}`")]
     NoMatchingOwners {
         tree_id: String,
@@ -427,10 +430,18 @@ pub fn compile_and_install(
 
     state.property_admission = registry.property_admission_report();
 
-    // GUYANG-COMPARATIVE-PROJECTIONS-0 (5.8): default-derived birth is 5.8b.
-    // Install does not invent topology from n_slots or discover emitters by
-    // string namespace. Explicit consumers call admit_comparative_projections
-    // with already-admitted FieldAdjacency + columns. Leave unset here.
+    // 5.8b S3: deliver already-admitted field-plan product (if any) and
+    // default-birth comparative projections through the existing 5.8 door.
+    // No parallel install API; product rides ordinary scenario → install.
+    if let Some(report) = scenario.field_plan_admission.clone() {
+        let admission = crate::comparative_default_birth::default_comparative_birth(
+            registry,
+            &report,
+            crate::comparative_projection::ComparativeProjectionBands::default(),
+        )?;
+        state.field_plan_admission = Some(report);
+        state.comparative_projection = Some(admission);
+    }
 
     Ok(state)
 }
@@ -1736,6 +1747,7 @@ mod tests {
             shadow_seeds: Vec::new(),
             tick_patches: Vec::new(),
             install_targets: HashMap::new(),
+        field_plan_admission: None,
         }
     }
 
