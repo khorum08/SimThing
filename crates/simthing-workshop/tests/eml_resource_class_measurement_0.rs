@@ -1,4 +1,4 @@
-//! Test/profiling-only matched measurement over the canonical field interpreter.
+//! Test/profiling-only matched measurement over the canonical IR-generated field JIT.
 
 use std::time::Instant;
 
@@ -55,11 +55,9 @@ fn time_field_session(
     .expect("profiling session");
     let run = |session: &mut FieldSweepSession| {
         session.upload_values(ctx, values).expect("upload");
-        for registration in registrations {
-            session
-                .dispatch(ctx, registration, iterations)
-                .expect("canonical dispatch");
-        }
+        session
+            .dispatch_chain(ctx, registrations, iterations)
+            .expect("canonical generated-JIT chain");
     };
     for _ in 0..WARMUPS {
         run(&mut session);
@@ -72,6 +70,78 @@ fn time_field_session(
     }
     let output = session.readback(ctx).expect("readback");
     (samples, output)
+}
+
+fn program_provenance(
+    registrations: &[FieldSweepRegistration],
+    resource_class: EmlResourceClass,
+) -> String {
+    if registrations.len() == 2 {
+        if let Ok((program, cache)) = FieldSweepRegistration::fused_jit_identity_for_profiling(
+            &registrations[0],
+            &registrations[1],
+            resource_class,
+        ) {
+            return format!(
+                "fused_program={:016x}/{}w,fused_cache={:016x}",
+                program.digest(),
+                program.word_count(),
+                cache.digest(),
+            );
+        }
+    }
+    registrations
+        .iter()
+        .map(|registration| {
+            let program = registration.program_identity();
+            let cache = registration
+                .jit_cache_identity_for_profiling_class(resource_class)
+                .expect("profiling class covers registration");
+            format!(
+                "program={:016x}/{}w,cache={:016x}",
+                program.digest(),
+                program.word_count(),
+                cache.digest(),
+            )
+        })
+        .collect::<Vec<_>>()
+        .join(";")
+}
+
+fn generated_dispatches(registrations: &[FieldSweepRegistration], iterations: u32) -> u32 {
+    if iterations == 1
+        && registrations.len() == 2
+        && FieldSweepRegistration::fused_jit_identity_for_profiling(
+            &registrations[0],
+            &registrations[1],
+            registrations[0]
+                .resource_class()
+                .join(registrations[1].resource_class()),
+        )
+        .is_ok()
+    {
+        1
+    } else {
+        registrations.len() as u32 * iterations
+    }
+}
+
+fn fused_adjacency_metadata_reads(registration: &FieldSweepRegistration) -> (u64, u64) {
+    let slots = u64::from(registration.slots());
+    let (directed_edges, degree_squares) = registration.adjacency().degree_buckets().iter().fold(
+        (0u64, 0u64),
+        |(edges, squares), bucket| {
+            let count = bucket.slots().len() as u64;
+            let degree = u64::from(bucket.degree());
+            (edges + count * degree, squares + count * degree * degree)
+        },
+    );
+    let producer_evaluations = slots + directed_edges;
+    let producer_input_rows = directed_edges + degree_squares;
+    (
+        slots + producer_evaluations,
+        directed_edges + producer_input_rows,
+    )
 }
 
 #[test]
@@ -223,50 +293,52 @@ fn eml_resource_class_measurement_0_matched_palma_gu_yang() {
 
     let palma_bespoke_median = median(palma_bespoke_samples.clone());
     let gu_yang_bespoke_median = median(gu_yang_bespoke_samples.clone());
+    let (gu_yang_range_reads, gu_yang_input_reads) =
+        fused_adjacency_metadata_reads(&gu_yang_registrations[0]);
     eprintln!(
-        "EML_RC_MATCHED adapter={} backend={:?} case=PALMA class=stack4 median_us={:.3} worst_us={:.3} dispatches={} bespoke_median_us={:.3} median_ratio={:.4} worst_ratio={:.4}",
+        "EML_RC_JIT_MATCHED adapter={} backend={:?} case=PALMA class=stack4 identity=[{}] median_us={:.3} worst_us={:.3} dispatches={} submissions=1 bespoke_median_us={:.3} median_ratio={:.4} worst_ratio={:.4} provenance=Instant(upload+generated_chain+submit+wait,no_readback)",
         adapter.name,
         adapter.backend,
+        program_provenance(std::slice::from_ref(&palma_registration), EmlResourceClass::CompactStack4),
         median(palma_stack4.clone()),
         palma_stack4.iter().copied().fold(0.0, f64::max),
-        palma_registration.adjacency().degree_buckets().len() as u32 * palma_iterations,
+        palma_iterations,
         palma_bespoke_median,
         median(palma_stack4.clone()) / palma_bespoke_median,
         palma_stack4.iter().copied().fold(0.0, f64::max)
             / palma_bespoke_samples.iter().copied().fold(0.0, f64::max),
     );
     eprintln!(
-        "EML_RC_MATCHED adapter={} backend={:?} case=PALMA class=stack32 median_us={:.3} worst_us={:.3} dispatches={} parity=bit-exact",
+        "EML_RC_JIT_MATCHED adapter={} backend={:?} case=PALMA class=stack32 identity=[{}] median_us={:.3} worst_us={:.3} dispatches={} submissions=1 parity=bit-exact",
         adapter.name,
         adapter.backend,
+        program_provenance(std::slice::from_ref(&palma_registration), EmlResourceClass::LegacyFixed32),
         median(palma_stack32.clone()),
         palma_stack32.iter().copied().fold(0.0, f64::max),
-        palma_registration.adjacency().degree_buckets().len() as u32 * palma_iterations,
+        palma_iterations,
     );
     eprintln!(
-        "EML_RC_MATCHED adapter={} backend={:?} case=Gu-Yang class=stack4 median_us={:.3} worst_us={:.3} dispatches={} bespoke_median_us={:.3} median_ratio={:.4} worst_ratio={:.4}",
+        "EML_RC_JIT_MATCHED adapter={} backend={:?} case=Gu-Yang class=stack4 identity=[{}] median_us={:.3} worst_us={:.3} dispatches={} submissions=1 logical_adjacency_range_reads={} logical_adjacency_input_reads={} bespoke_metadata_reads=0 bespoke_median_us={:.3} median_ratio={:.4} worst_ratio={:.4} provenance=Instant(upload+generated_chain+submit+wait,no_readback)",
         adapter.name,
         adapter.backend,
+        program_provenance(&gu_yang_registrations, EmlResourceClass::CompactStack4),
         median(gu_yang_stack4.clone()),
         gu_yang_stack4.iter().copied().fold(0.0, f64::max),
-        gu_yang_registrations
-            .iter()
-            .map(|registration| registration.adjacency().degree_buckets().len() as u32)
-            .sum::<u32>(),
+        generated_dispatches(&gu_yang_registrations, 1),
+        gu_yang_range_reads,
+        gu_yang_input_reads,
         gu_yang_bespoke_median,
         median(gu_yang_stack4.clone()) / gu_yang_bespoke_median,
         gu_yang_stack4.iter().copied().fold(0.0, f64::max)
             / gu_yang_bespoke_samples.iter().copied().fold(0.0, f64::max),
     );
     eprintln!(
-        "EML_RC_MATCHED adapter={} backend={:?} case=Gu-Yang class=stack32 median_us={:.3} worst_us={:.3} dispatches={} parity=bit-exact",
+        "EML_RC_JIT_MATCHED adapter={} backend={:?} case=Gu-Yang class=stack32 identity=[{}] median_us={:.3} worst_us={:.3} dispatches={} submissions=1 parity=bit-exact",
         adapter.name,
         adapter.backend,
+        program_provenance(&gu_yang_registrations, EmlResourceClass::LegacyFixed32),
         median(gu_yang_stack32.clone()),
         gu_yang_stack32.iter().copied().fold(0.0, f64::max),
-        gu_yang_registrations
-            .iter()
-            .map(|registration| registration.adjacency().degree_buckets().len() as u32)
-            .sum::<u32>(),
+        generated_dispatches(&gu_yang_registrations, 1),
     );
 }

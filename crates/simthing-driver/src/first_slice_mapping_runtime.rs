@@ -1042,11 +1042,9 @@ impl FirstSliceMappingSession {
         if self.field_sessions.len() == 1 {
             let session = &mut self.field_sessions[0];
             session.upload_values_from_buffer(ctx, &self.field_buffer);
-            for registration in &self.field_registrations {
-                session
-                    .dispatch(ctx, registration, 1)
-                    .map_err(|error| FirstSliceMappingError::FieldSweep(error.to_string()))?;
-            }
+            session
+                .dispatch_chain(ctx, &self.field_registrations, 1)
+                .map_err(|error| FirstSliceMappingError::FieldSweep(error.to_string()))?;
             session.copy_values_to_buffer(ctx, &self.field_buffer);
         } else {
             for (registration, session) in self

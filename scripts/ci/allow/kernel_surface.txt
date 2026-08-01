@@ -9,7 +9,9 @@ FieldDegreeBucket | authority-export | FIELD-ADJACENCY-GENERATORS-0 read-only de
 FieldLawProof | authority-export | FIELD-SWEEP-N4-PARITY-0 sealed conservative or explicit non-conservative law proof | retire when field law is intrinsic in the admitted program type
 FieldSweepAdmissionError | authority-export | FIELD-SWEEP-N4-PARITY-0 typed admission rejection surface | retire when field authoring lowers through a narrower spec door
 FieldSweepExecutionError | authority-export | FIELD-SWEEP-N4-PARITY-0 typed CPU/GPU execution and parity-oracle error surface | retire when parity oracle and session are in-crate only
+FieldSweepJitCacheIdentity | authority-export | EML-RESOURCE-CLASS-ADMISSION-0 exact resource-class plus canonical-program cache identity evidence | retire when JIT profiling and evidence consumers are in-crate only
 FieldSweepOutput | authority-export | FIELD-ADJACENCY-GENERATORS-0 typed matrix-or-kernel-private-transient destination | retire when field composition lowers through a narrower admitted chain door
+FieldSweepProgramIdentity | authority-export | EML-RESOURCE-CLASS-ADMISSION-0 canonical admitted-program identity evidence | retire when JIT profiling and evidence consumers are in-crate only
 FieldSweepRegistration | authority-export | FIELD-SWEEP-N4-PARITY-0 immutable proof-present production field registration | retire when field registration consumers are in-crate only
 FieldSweepRegistrationRequest | authority-export | FIELD-SWEEP-N4-PARITY-0 untrusted authored field admission request | retire when field authoring lowers through a narrower spec door
 FieldSweepResourceClass | authority-export | FIELD-SWEEP-N4-PARITY-0 admitted fixed resource-class witness | retire when EML-RESOURCE-CLASS-ADMISSION-0 owns typed classes
