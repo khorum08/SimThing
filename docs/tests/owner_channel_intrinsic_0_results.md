@@ -1,7 +1,7 @@
 # OWNER-CHANNEL-INTRINSIC-0 results
 
 - Track: 0.0.8.7 RF arena modernization (rung 6.0)
-- Status: **PROBATION / proof-present / DA-review-pending**
+- Status: **COMPLETE / DA-GRADUATED — merged #1561 @ 8cbd7e3d**
 - ORIENT-RECEIPT: `4992234cbe01`
 - HD-RECEIPT: `f64645d8c3c1`
 - Authoritative interventions: Board `5151931092`, `5152409271`, `5153010897`, and `5153236229`
