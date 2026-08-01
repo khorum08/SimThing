@@ -11,7 +11,7 @@ This digest is a derived context artifact for low-context agents. If it disagree
 | --- | --- | --- |
 | scripts/ci/allow/sealed_producers.txt | 25 | 6923796f3bacd3b27b29f778d5276c3f82a3a67c3f010c30f10b78de8a1866f6 |
 | scripts/ci/allow/inert_buffer_handles.txt | 2 | 9e2069fa5730f17cacde1c671ebc17beb59f50738d2dcb914bceae13f9b8b3a4 |
-| scripts/ci/allow/kernel_surface.txt | 296 | dfb049650a79b2202f17916627adad0b995d3d022e426eded6be389896f3464f |
+| scripts/ci/allow/kernel_surface.txt | 284 | 30d540aa675f04f7f84e1c88b9754eb5d8d087191fd15fd0d5209f2374c3bf36 |
 | scripts/ci/allow/sealed_types.txt | 19 | 9d427e3b41a586b06f24ca02cc45f78934237d2229b0c38d46e2a8a6ef5016be |
 | scripts/ci/scans.tsv | 26 | 18d6f4886524f593e231931b952fbdcf2e0520fb4660f72fb7191298221e7d64 |
 
@@ -57,14 +57,6 @@ This digest is a derived context artifact for low-context agents. If it disagree
 | symbol/signature | door-class | rationale | promotion-blocker | source |
 | --- | --- | --- | --- | --- |
 | CanonicalOrderProof | authority-export | FIELD-SWEEP-N4-PARITY-0 sealed authored-order proof consumed by field registration admission | retire when proof mint and admission are in-crate only | kernel_surface.txt |
-| COMPARATIVE_DERIVED_COLUMN_COUNT | authority-export | GUYANG-COMPARATIVE-PROJECTIONS-0 fixed derived column census independent of emitter count | retire when comparative column layout is intrinsic in the admitted property registry | kernel_surface.txt |
-| ComparativeEmitterClass | authority-export | GUYANG-COMPARATIVE-PROJECTIONS-0 authored competing emitter identity and co-located value column | retire when emitter classes lower only through a sealed specialization door | kernel_surface.txt |
-| ComparativeProjectionBands | authority-export | GUYANG-COMPARATIVE-PROJECTIONS-0 reading-only band thresholds for contest/border/chokepoint | retire when band quantization is intrinsic in STEAD emission-band admission | kernel_surface.txt |
-| ComparativeProjectionBundle | authority-export | GUYANG-COMPARATIVE-PROJECTIONS-0 sealed disposition plus field-sweep registration chain | retire when comparative consumers are in-crate only | kernel_surface.txt |
-| ComparativeProjectionDisposition | authority-export | GUYANG-COMPARATIVE-PROJECTIONS-0 born / insufficient-emitters / authored-opt-out disposition | retire when disposition is intrinsic in property admission | kernel_surface.txt |
-| ComparativeProjectionError | authority-export | GUYANG-COMPARATIVE-PROJECTIONS-0 typed admission rejection surface | retire when comparative authoring lowers through a narrower spec door | kernel_surface.txt |
-| ComparativeProjectionOutputs | authority-export | GUYANG-COMPARATIVE-PROJECTIONS-0 fixed dominance/margin/contest/border/chokepoint column bundle | retire when comparative columns are registry-native roles | kernel_surface.txt |
-| ComparativeProjectionRequest | authority-export | GUYANG-COMPARATIVE-PROJECTIONS-0 untrusted comparative admission request | retire when comparative authoring lowers through a narrower spec door | kernel_surface.txt |
 | FIELD_SWEEP_LEGACY_PROGRAM_NODES | authority-export | FIELD-SWEEP-N4-PARITY-0 fixed legacy resource-class program-node ceiling | retire when EML-RESOURCE-CLASS-ADMISSION-0 replaces the single class | kernel_surface.txt |
 | FIELD_SWEEP_LEGACY_STACK_SLOTS | authority-export | FIELD-SWEEP-N4-PARITY-0 fixed legacy resource-class stack ceiling | retire when EML-RESOURCE-CLASS-ADMISSION-0 replaces the single class | kernel_surface.txt |
 | FIELD_SWEEP_WORKGROUP_SIZE | authority-export | FIELD-SWEEP-N4-PARITY-0 canonical generic sweep dispatch width | retire when dispatch geometry is admitted wholly inside the kernel | kernel_surface.txt |
@@ -88,11 +80,7 @@ This digest is a derived context artifact for low-context agents. If it disagree
 | GridOffset | authority-export | FIELD-ADJACENCY-GENERATORS-0 authored weighted grid-offset value | retire when adjacency authoring lowers through a narrower spec door | kernel_surface.txt |
 | LinkGraphNeighbor | authority-export | FIELD-ADJACENCY-GENERATORS-0 authored canonical weighted LinkGraph row value | retire when link lowering is driver-private | kernel_surface.txt |
 | UndirectedSymmetryCertificate | authority-export | FIELD-SWEEP-N4-PARITY-0 sealed conservative-fold adjacency symmetry witness | retire when undirected symmetry is intrinsic in the admitted adjacency type | kernel_surface.txt |
-| admit_comparative_projections | authority-export | GUYANG-COMPARATIVE-PROJECTIONS-0 sole admission door for sealed comparative projection chains | retire when comparative consumers are in-crate only | kernel_surface.txt |
 | apply_field_sweep_registration | authority-export | FIELD-SWEEP-N4-PARITY-0 sole admission door for proof-present field registrations | retire when field registration consumers are in-crate only | kernel_surface.txt |
-| comparative_event_kind | authority-export | GUYANG-COMPARATIVE-PROJECTIONS-0 authored threshold event-kind tokens for front/chokepoint bands | retire when triad band kinds are registry-native | kernel_surface.txt |
-| comparative_projection | authority-export | GUYANG-COMPARATIVE-PROJECTIONS-0 sealed comparative projection module namespace | retire when comparative authority is wholly in-crate | kernel_surface.txt |
-| comparative_projection_cpu_oracle | authority-export | GUYANG-COMPARATIVE-PROJECTIONS-0 independent CPU oracle for comparative law parity | retire only if another independent bit-exact parity judge replaces it | kernel_surface.txt |
 | execute_field_sweep_cpu | authority-export | FIELD-SWEEP-N4-PARITY-0 independent CPU oracle for one generic sweep | retire only if another independent bit-exact parity judge replaces it | kernel_surface.txt |
 | execute_field_sweep_cpu_chain | authority-export | FIELD-ADJACENCY-GENERATORS-0 CPU referee retaining kernel-private transient state across an admitted registration chain | retire only if another full-buffer chain oracle replaces it | kernel_surface.txt |
 | execute_field_sweep_cpu_iterations | authority-export | FIELD-SWEEP-N4-PARITY-0 independent CPU oracle for iterative PALMA parity | retire only if another independent bit-exact parity judge replaces it | kernel_surface.txt |

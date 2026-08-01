@@ -1,22 +1,23 @@
-//! GUYANG-COMPARATIVE-PROJECTIONS-0 — sealed comparative projections over
-//! co-located generic field-sweep outputs.
+//! GUYANG-COMPARATIVE-PROJECTIONS-0 — comparative **consumer** over co-located
+//! generic field-sweep outputs.
 //!
-//! Borders/fronts/chokepoints are derived observables, never services. Algebra
-//! and owner-count stay out of the executor: admission unrolls the exact
+//! Scope envelope (Remand 1A / handoff surfaces): lives in `simthing-driver` only.
+//! Uses already-landed field-sweep admission/execution doors. Does **not** add
+//! kernel/GPU public doors or sanctioned-surface allowlist rows.
+//!
+//! Algebra and owner-count stay out of the executor: admission unrolls the exact
 //! emitter set into ordinary field-EML map/fold/post data over one generic
-//! adjacency axis (`GridOffsets` or `LinkGraph`).
+//! adjacency axis.
 
 use std::collections::BTreeSet;
 
 use simthing_core::{eml_opcode, ColumnIndex, EmlNodeGpu, SlotIndex};
-use thiserror::Error;
-
-use crate::field_sweep::{
-    apply_field_sweep_registration, field_param, CanonicalOrderProof, FieldAdjacency, FieldLawProof,
+use simthing_gpu::{
+    apply_field_sweep_registration, encode_column, field_param, FieldAdjacency, FieldLawProof,
     FieldSweepAdmissionError, FieldSweepOutput, FieldSweepRegistration,
     FieldSweepRegistrationRequest, FieldTransientCertificate,
 };
-use crate::wgsl_encode::encode_column;
+use thiserror::Error;
 
 /// Fixed comparative + border/chokepoint derived column count. Independent of
 /// the admitted emitter-class count (never one pipeline per owner).
@@ -52,13 +53,9 @@ pub struct ComparativeProjectionOutputs {
 /// Band thresholds that quantize the *reading* only — never the field math.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ComparativeProjectionBands {
-    /// Both-strong floor on the runner-up value.
     pub both_strong_floor: f32,
-    /// Small-margin ceiling that elevates contest pressure.
     pub small_margin: f32,
-    /// PALMA low-`D` corridor threshold for chokepoint conjunction.
     pub palma_low_d: f32,
-    /// Border magnitude above which a cell counts as contested-border.
     pub contested_border_floor: f32,
 }
 
@@ -73,27 +70,25 @@ impl Default for ComparativeProjectionBands {
     }
 }
 
-/// Scenario-neutral comparative projection admission request.
+/// Scenario-neutral comparative projection request over already-admitted columns.
 #[derive(Clone, Debug)]
 pub struct ComparativeProjectionRequest {
     pub adjacency: FieldAdjacency,
     pub n_dims: u32,
     pub emitters: Vec<ComparativeEmitterClass>,
     pub outputs: ComparativeProjectionOutputs,
-    /// PALMA potential column consumed only by the chokepoint conjunction.
     pub palma_d_col: ColumnIndex,
+    /// Gu-Yang flux-stall magnitude column (`1−C/χ` or equivalent admitted stall
+    /// readout). Required for truthful contest; not a runner-up proxy.
+    pub guyang_stall_col: ColumnIndex,
     pub bands: ComparativeProjectionBands,
-    /// Authored disposition opt-out reason. When set, no projections are born.
     pub authored_opt_out_reason: Option<&'static str>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ComparativeProjectionDisposition {
-    /// Fewer than two competing emitter classes — no fabricated comparison.
     InsufficientEmitters { emitter_count: u32 },
-    /// Explicit authored opt-out with a visible reason (dark-cell posture).
     AuthoredOptOut { reason: &'static str },
-    /// Projections born: fixed derived columns + registrations.
     Born {
         emitter_count: u32,
         derived_column_count: u32,
@@ -123,7 +118,9 @@ pub enum ComparativeProjectionError {
     OutputColumnOutOfRange { col: u32, n_dims: u32 },
     #[error("palma_d column {col} out of range for n_dims {n_dims}")]
     PalmaColumnOutOfRange { col: u32, n_dims: u32 },
-    #[error("output columns must be unique and disjoint from emitter/palma inputs")]
+    #[error("guyang_stall column {col} out of range for n_dims {n_dims}")]
+    StallColumnOutOfRange { col: u32, n_dims: u32 },
+    #[error("output columns must be unique and disjoint from emitter/palma/stall inputs")]
     OutputColumnCollision,
     #[error("band thresholds must be finite and non-negative")]
     InvalidBands,
@@ -131,8 +128,9 @@ pub enum ComparativeProjectionError {
     FieldSweep(#[from] FieldSweepAdmissionError),
 }
 
-/// Independent CPU oracle for the sealed comparative law. Used as a parity
-/// judge against the field-EML registration chain — never a production service.
+/// Independent CPU oracle for comparative law. Uses only public adjacency
+/// metadata (`grid_shape` + `grid_offsets_data`) for neighbor expansion — no
+/// kernel-private gather-list door.
 pub fn comparative_projection_cpu_oracle(
     values: &[f32],
     slots: u32,
@@ -140,6 +138,7 @@ pub fn comparative_projection_cpu_oracle(
     emitters: &[ComparativeEmitterClass],
     outputs: ComparativeProjectionOutputs,
     palma_d_col: ColumnIndex,
+    guyang_stall_col: ColumnIndex,
     bands: ComparativeProjectionBands,
     adjacency: &FieldAdjacency,
 ) -> Vec<f32> {
@@ -165,28 +164,30 @@ pub fn comparative_projection_cpu_oracle(
         if !second.is_finite() {
             second = best_val;
         }
+        // Exact top1−top2 (always ≥ 0). Sign-flip of this field is unreachable;
+        // that is design residue (Remand 1 item 4), not silently redefined here.
         let margin = best_val - second;
         let dominance = emitters[best_idx].class_id;
         let both_strong = second >= bands.both_strong_floor;
         let small = margin <= bands.small_margin;
-        let contest = if both_strong && small { second } else { 0.0 };
+        // Contest = admitted Gu-Yang stall magnitude under both-strong/small-margin.
+        let stall = read(values, base, guyang_stall_col);
+        let contest = if both_strong && small { stall } else { 0.0 };
         write(&mut out, base, outputs.dominance_col, dominance);
         write(&mut out, base, outputs.margin_col, margin);
         write(&mut out, base, outputs.contest_col, contest);
     }
+    // Border: sign-flip only (no near-zero proxy). With non-negative margin this
+    // arm is expected empty until DA rules a signed comparative coordinate.
     for slot in 0..slots {
         let base = slot as usize * n_dims as usize;
         let target_margin = read(&out, base, outputs.margin_col);
-        let mut border: f32 = if target_margin.abs() <= bands.small_margin {
-            1.0
-        } else {
-            0.0
-        };
-        for input in adjacency.neighbor_inputs(SlotIndex::new(slot)) {
-            let n_base = input.slot.as_usize() * n_dims as usize;
+        let mut border = 0.0f32;
+        for neighbor in public_neighbors(adjacency, SlotIndex::new(slot)) {
+            let n_base = neighbor.as_usize() * n_dims as usize;
             let neighbor_margin = read(&out, n_base, outputs.margin_col);
             if target_margin * neighbor_margin < 0.0 {
-                border = border.max(1.0);
+                border = 1.0;
             }
         }
         write(&mut out, base, outputs.border_col, border);
@@ -203,6 +204,29 @@ pub fn comparative_projection_cpu_oracle(
     out
 }
 
+/// Expand neighbors using public grid metadata only (handoff-admitted consumer).
+fn public_neighbors(adjacency: &FieldAdjacency, slot: SlotIndex) -> Vec<SlotIndex> {
+    let Some((width, height)) = adjacency.grid_shape() else {
+        return Vec::new();
+    };
+    let Some(offsets) = adjacency.grid_offsets_data() else {
+        return Vec::new();
+    };
+    let x = slot.raw() % width;
+    let y = slot.raw() / width;
+    let mut out = Vec::new();
+    for offset in offsets {
+        let nx = x as i64 + i64::from(offset.dx());
+        let ny = y as i64 + i64::from(offset.dy());
+        if nx < 0 || ny < 0 || nx >= i64::from(width) || ny >= i64::from(height) {
+            continue;
+        }
+        out.push(SlotIndex::new((ny as u32) * width + (nx as u32)));
+    }
+    let _ = height;
+    out
+}
+
 fn read(values: &[f32], base: usize, col: ColumnIndex) -> f32 {
     values[base + col.raw()]
 }
@@ -211,12 +235,8 @@ fn write(values: &mut [f32], base: usize, col: ColumnIndex, value: f32) {
     values[base + col.raw()] = value;
 }
 
-/// Admit the sealed comparative-projection authority.
-///
-/// - 0 emitters → error
-/// - 1 emitter → `InsufficientEmitters` (no fabricated comparison)
-/// - authored opt-out → `AuthoredOptOut` with visible reason
-/// - ≥2 emitters → fixed derived columns + field-sweep registration chain
+/// Compile comparative projections as ordinary field-sweep registrations over
+/// already-admitted co-located columns. No new kernel authority.
 pub fn admit_comparative_projections(
     request: ComparativeProjectionRequest,
 ) -> Result<ComparativeProjectionBundle, ComparativeProjectionError> {
@@ -277,6 +297,12 @@ fn validate_request(
             n_dims: request.n_dims,
         });
     }
+    if request.guyang_stall_col.raw_u32() >= request.n_dims {
+        return Err(ComparativeProjectionError::StallColumnOutOfRange {
+            col: request.guyang_stall_col.raw_u32(),
+            n_dims: request.n_dims,
+        });
+    }
     let outs = [
         request.outputs.dominance_col,
         request.outputs.margin_col,
@@ -314,11 +340,15 @@ fn validate_request(
         }
         if seen.contains(&emitter.value_col.raw_u32())
             || emitter.value_col.raw_u32() == request.palma_d_col.raw_u32()
+            || emitter.value_col.raw_u32() == request.guyang_stall_col.raw_u32()
         {
             return Err(ComparativeProjectionError::OutputColumnCollision);
         }
     }
-    if seen.contains(&request.palma_d_col.raw_u32()) {
+    if seen.contains(&request.palma_d_col.raw_u32())
+        || seen.contains(&request.guyang_stall_col.raw_u32())
+        || request.palma_d_col.raw_u32() == request.guyang_stall_col.raw_u32()
+    {
         return Err(ComparativeProjectionError::OutputColumnCollision);
     }
     Ok(())
@@ -330,11 +360,9 @@ fn compile_projection_chain(
     let order = request.adjacency.apply_canonical_order_proof();
     let mut regs = Vec::new();
 
-    // 1) top1 → Transient (unrolled MAX over emitter TARGET_VALUE columns).
     let top1 = admit(
         request,
         order,
-        FieldLawProof::apply_non_conservative(),
         FieldSweepOutput::Transient,
         0.0f32.to_bits(),
         unrolled_max_post(&request.emitters),
@@ -343,14 +371,10 @@ fn compile_projection_chain(
     let top1_cert = top1.apply_transient_certificate()?;
     regs.push(top1);
 
-    // 2) dominance class id — multi-pass reverse walk so node counts stay inside
-    // the resource-class envelope for large emitter sets. Authored order wins
-    // exact ties via first-equal-to-top1 (earliest overwrite on reverse walk).
     let last = request.emitters.len() - 1;
     regs.push(admit(
         request,
         order,
-        FieldLawProof::apply_non_conservative(),
         FieldSweepOutput::Matrix(request.outputs.dominance_col),
         0.0f32.to_bits(),
         vec![literal(request.emitters[last].class_id), ret()],
@@ -360,7 +384,6 @@ fn compile_projection_chain(
         regs.push(admit(
             request,
             order,
-            FieldLawProof::apply_non_conservative(),
             FieldSweepOutput::Matrix(request.outputs.dominance_col),
             0.0f32.to_bits(),
             dominance_step_post(*emitter, request.outputs.dominance_col),
@@ -368,13 +391,10 @@ fn compile_projection_chain(
         )?);
     }
 
-    // 3) second value workspace in margin_col (vals strictly below top1).
-    // Multi-pass keeps each program inside the resource-class node envelope.
     let second_init = f32::from_bits(0xff7fffff);
     regs.push(admit(
         request,
         order,
-        FieldLawProof::apply_non_conservative(),
         FieldSweepOutput::Matrix(request.outputs.margin_col),
         second_init.to_bits(),
         vec![literal(second_init), ret()],
@@ -384,7 +404,6 @@ fn compile_projection_chain(
         regs.push(admit(
             request,
             order,
-            FieldLawProof::apply_non_conservative(),
             FieldSweepOutput::Matrix(request.outputs.margin_col),
             second_init.to_bits(),
             second_max_step_post(*emitter, request.outputs.margin_col, second_init),
@@ -392,43 +411,40 @@ fn compile_projection_chain(
         )?);
     }
 
-    // 4) margin = top1 - second (all-equal → 0).
     regs.push(admit(
         request,
         order,
-        FieldLawProof::apply_non_conservative(),
         FieldSweepOutput::Matrix(request.outputs.margin_col),
         0.0f32.to_bits(),
         margin_from_second_post(request.outputs.margin_col, second_init),
         Some(top1_cert),
     )?);
 
-    // 5) contest: both-strong at small margin → runner-up (= top1 - margin).
+    // Contest from admitted stall column under both-strong/small-margin.
     regs.push(admit(
         request,
         order,
-        FieldLawProof::apply_non_conservative(),
         FieldSweepOutput::Matrix(request.outputs.contest_col),
         0.0f32.to_bits(),
-        contest_post(request.outputs.margin_col, &request.bands),
+        contest_from_stall_post(
+            request.outputs.margin_col,
+            request.guyang_stall_col,
+            &request.bands,
+        ),
         Some(top1_cert),
     )?);
 
-    // 6) border: adjacency sign-flip of margin OR near-zero margin band.
-    regs.push(admit_border(
+    // Border: sign-flip of margin only (no near-zero stand-in).
+    regs.push(admit_border_sign_flip(
         request,
         order,
-        FieldLawProof::apply_non_conservative(),
         request.outputs.margin_col,
         request.outputs.border_col,
-        request.bands.small_margin,
     )?);
 
-    // 7) chokepoint: contested-border ∧ PALMA-low-D.
     regs.push(admit(
         request,
         order,
-        FieldLawProof::apply_non_conservative(),
         FieldSweepOutput::Matrix(request.outputs.chokepoint_col),
         0.0f32.to_bits(),
         chokepoint_post(
@@ -444,8 +460,7 @@ fn compile_projection_chain(
 
 fn admit(
     request: &ComparativeProjectionRequest,
-    order: CanonicalOrderProof,
-    law: FieldLawProof,
+    order: simthing_gpu::CanonicalOrderProof,
     output: FieldSweepOutput,
     identity_bits: u32,
     post_program: Vec<EmlNodeGpu>,
@@ -459,20 +474,18 @@ fn admit(
         fold_program: keep_accumulator_fold(),
         identity_bits,
         post_program,
-        field_law_proof: Some(law),
+        field_law_proof: Some(FieldLawProof::apply_non_conservative()),
         transient_read_proof,
         canonical_order_proof: Some(order),
         dt: 1.0,
     })?)
 }
 
-fn admit_border(
+fn admit_border_sign_flip(
     request: &ComparativeProjectionRequest,
-    order: CanonicalOrderProof,
-    law: FieldLawProof,
+    order: simthing_gpu::CanonicalOrderProof,
     margin_col: ColumnIndex,
     border_col: ColumnIndex,
-    small_margin: f32,
 ) -> Result<FieldSweepRegistration, ComparativeProjectionError> {
     let map_program = vec![
         target(margin_col),
@@ -488,18 +501,8 @@ fn admit_border(
         binary(eml_opcode::MAX),
         ret(),
     ];
-    let post_program = vec![
-        target(margin_col),
-        unary(eml_opcode::ABS),
-        literal(small_margin),
-        binary(eml_opcode::CMP_LE),
-        literal(1.0),
-        literal(0.0),
-        select(),
-        param(field_param::FOLDED),
-        binary(eml_opcode::MAX),
-        ret(),
-    ];
+    // Sign-flip fold only — no near-zero margin proxy.
+    let post_program = vec![param(field_param::FOLDED), ret()];
     Ok(apply_field_sweep_registration(FieldSweepRegistrationRequest {
         adjacency: request.adjacency.clone(),
         n_dims: request.n_dims,
@@ -508,14 +511,12 @@ fn admit_border(
         fold_program,
         identity_bits: 0.0f32.to_bits(),
         post_program,
-        field_law_proof: Some(law),
+        field_law_proof: Some(FieldLawProof::apply_non_conservative()),
         transient_read_proof: None,
         canonical_order_proof: Some(order),
         dt: 1.0,
     })?)
 }
-
-// ── EML program builders (data only; no owner-count dispatch in the executor) ─
 
 fn ignore_edge_map() -> Vec<EmlNodeGpu> {
     vec![literal(0.0), ret()]
@@ -535,7 +536,6 @@ fn unrolled_max_post(emitters: &[ComparativeEmitterClass]) -> Vec<EmlNodeGpu> {
     nodes
 }
 
-/// One reverse-walk step: `select(ci == top1, ei.id, current_dominance)`.
 fn dominance_step_post(
     emitter: ComparativeEmitterClass,
     dominance_col: ColumnIndex,
@@ -551,7 +551,6 @@ fn dominance_step_post(
     ]
 }
 
-/// One second-max step: `max(running, select(ci < top1, ci, init))`.
 fn second_max_step_post(
     emitter: ComparativeEmitterClass,
     second_col: ColumnIndex,
@@ -571,7 +570,6 @@ fn second_max_step_post(
 }
 
 fn margin_from_second_post(second_col: ColumnIndex, second_init: f32) -> Vec<EmlNodeGpu> {
-    // select(second == init, 0, top1 - second)
     vec![
         target(second_col),
         literal(second_init),
@@ -585,8 +583,12 @@ fn margin_from_second_post(second_col: ColumnIndex, second_init: f32) -> Vec<Eml
     ]
 }
 
-fn contest_post(margin_col: ColumnIndex, bands: &ComparativeProjectionBands) -> Vec<EmlNodeGpu> {
-    // contest = select((margin <= small) * (top1 - margin >= floor), top2, 0)
+fn contest_from_stall_post(
+    margin_col: ColumnIndex,
+    stall_col: ColumnIndex,
+    bands: &ComparativeProjectionBands,
+) -> Vec<EmlNodeGpu> {
+    // select((margin <= small) * (top1 - margin >= floor), stall, 0)
     vec![
         target(margin_col),
         literal(bands.small_margin),
@@ -597,9 +599,7 @@ fn contest_post(margin_col: ColumnIndex, bands: &ComparativeProjectionBands) -> 
         literal(bands.both_strong_floor),
         binary(eml_opcode::CMP_GE),
         binary(eml_opcode::MUL),
-        param(field_param::TARGET_TRANSIENT),
-        target(margin_col),
-        binary(eml_opcode::SUB),
+        target(stall_col),
         literal(0.0),
         select(),
         ret(),
@@ -626,8 +626,6 @@ fn chokepoint_post(
     ]
 }
 
-// ── node helpers ────────────────────────────────────────────────────────────
-
 fn node(opcode: u32, a: u32, b: u32) -> EmlNodeGpu {
     EmlNodeGpu {
         opcode,
@@ -653,10 +651,6 @@ fn neighbor(col: ColumnIndex) -> EmlNodeGpu {
 
 fn param(index: u32) -> EmlNodeGpu {
     node(eml_opcode::PARAM, index, 0)
-}
-
-fn unary(opcode: u32) -> EmlNodeGpu {
-    node(opcode, 0, 0)
 }
 
 fn binary(opcode: u32) -> EmlNodeGpu {

@@ -1,38 +1,55 @@
 # GUYANG-COMPARATIVE-PROJECTIONS-0 results
 
 - Track: 0.0.8.7 RF arena modernization (rung 5.8)
-- Status: **PROBATION / proof-present / DA-review-pending** — no pointer move, graduation, tiled-gather work, or oracle retirement claimed.
+- Status: **STOP / DA-residue-present** after Remand 1 (`5150592918`) + Remand 1A (`5150615398`) — not exit-proof complete.
 - HD-RECEIPT: `b8f9a2e4ef61`
-- ORIENT-RECEIPT: `e563c4399d73` (rule stamp `5319c193d38da6ce`)
-- Dispatch: Board comment `5148926910`
-- Expected route: `DA-RESERVE(gate-wiring)`
-- Adapter (GPU parity): `NVIDIA GeForce RTX 4080 Laptop GPU` / `Vulkan`
+- ORIENT-RECEIPT: `7579edb5dd6b`
+- Remands: Board `5150592918`, scope-envelope `5150615398`
+- Expected route: `DA-RESERVE(gate-wiring)` / DA design residue on margin↔sign-flip
 
-The exact tested head is bound in the PR/board relay because this file cannot self-hash.
+## Scope envelope (Remand 1A)
 
-## Contract discharge
+| Path | Status |
+|---|---|
+| `scripts/ci/allow/kernel_surface.txt` | **REVERTED** — not a writable coding surface |
+| `crates/simthing-kernel/src/**` production | **REVERTED** — no new public kernel doors |
+| `crates/simthing-gpu/src/**` production | **REVERTED** — no new GPU re-exports |
+| Comparative consumer | **`crates/simthing-driver/src/comparative_projection.rs`** only — uses already-landed field-sweep doors |
+| Derived digest | Regenerated from restored sanctioned surface |
+
+## What is load-bearing (driver consumer)
 
 | Requirement | Result |
 |---|---|
-| Sealed scenario-neutral authority | PASS — `admit_comparative_projections` over co-located field-sweep outputs; no scenario grammar/switch |
-| Default-derived ≥2 emitters | PASS — 1 class → `InsufficientEmitters`; ≥2 → `Born` with fixed `COMPARATIVE_DERIVED_COLUMN_COUNT=5`; authored opt-out reason visible |
-| Bounded columns independent of N | PASS — census for 2/3/5/8/12 emitters always yields the same derived column count |
-| Dominance + margin | PASS — argmax with exact `top1-top2`; authored-order tie-break; reversal falsifier bites |
-| Contest / border / chokepoint | PASS — both-strong@small-margin contest; near-zero / adjacency margin border band; chokepoint = contested-border ∧ PALMA-low-D with paired suppressions |
-| Field-EML only (no new field kernel) | PASS — ordinary `FieldSweepRegistration` chain; kernel-private top1 transient; no hand-written semantic WGSL |
-| CPU oracle ↔ field-EML parity | PASS — full derived columns bit-exact vs independent oracle |
-| CPU ↔ GPU parity | PASS — `dispatch_chain` bit-exact on RTX 4080/Vulkan |
-| TP zero wiring + event witness | PASS — `terran_pirate_galaxy.clause` has zero projection wiring tokens; front-formed + exactly one chokepoint-emerged via ordinary threshold path |
-| STEAD co-evolution | PASS — §10 comparative-projection binding note landed with the rung |
-| Fences held | PASS — no border service, no TP production branch, no tiling/performance work, no Phase 6+, seven oracles untouched |
+| Consumer over generic field-sweep (no new kernel authority) | PASS — driver-local compile of ordinary `FieldSweepRegistration` chains |
+| Fixed derived column count independent of N | PASS |
+| 1-class / opt-out / ≥2 Born | PASS (explicit helper; **not** install-path default-derived birth) |
+| Dominance + exact top1−top2 + authored tie-break | PASS |
+| Contest = stall magnitude under both-strong/small-margin | PASS when a stall **column is supplied**; generic Gu-Yang field-sweep does not yet emit that column end-to-end |
+| Border = sign-flip only (no near-zero proxy) | **Residual proven**: with exact top1−top2, all margins ≥0 ⇒ sign-flip unreachable ⇒ no border band |
+| Default-derived Anchored install birth | **NOT discharged** (no kabuki helper presented as install birth) |
+| Unmodified TP integration witness | **NOT discharged** |
+| CPU/GPU parity on compiled chain | PASS when GPU adapter present |
+
+## Design residual (STOP for DA)
+
+Exact contradiction remains:
+
+- margin = top1 − top2 ⇒ always ≥ 0  
+- border = sign-flip of margin ⇒ requires opposite signs  
+- product of non-negative margins never &lt; 0  
+
+No sanctioned signed comparative coordinate exists. Coding will not invent one.
+
+Generic field-sweep Gu-Yang still lacks a co-located stall/`1−C/χ` output on the production chain; contest can only consume a stall column when that column is already present.
 
 ## Focused proof
 
 ```text
-guyang_comparative_projections_0: 7 passed; 0 failed
-GUYANG-COMPARATIVE-PROJECTIONS adapter=NVIDIA GeForce RTX 4080 Laptop GPU backend=Vulkan
+guyang_comparative_projections_0: driver-local consumer tests (see inventory)
+gen_digest.sh --check: PASS (restored surface)
 ```
 
-## Review posture
+## Posture
 
-Return **PROBATION**. Coding does not move the active pointer, open 5.9, retire oracles, or touch Gu-Yang tiled-gather debt (`FIELD-SWEEP-TILED-GATHER-0`).
+Keep PR #1540 draft. No merge, pointer move, 5.9, or tiled-gather. Awaiting DA on margin/sign-flip and generic stall observable before claiming PROBATION exit-proof.

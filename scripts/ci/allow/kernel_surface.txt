@@ -1,13 +1,5 @@
 # symbol | door-class | rationale | promotion-blocker
 CanonicalOrderProof | authority-export | FIELD-SWEEP-N4-PARITY-0 sealed authored-order proof consumed by field registration admission | retire when proof mint and admission are in-crate only
-COMPARATIVE_DERIVED_COLUMN_COUNT | authority-export | GUYANG-COMPARATIVE-PROJECTIONS-0 fixed derived column census independent of emitter count | retire when comparative column layout is intrinsic in the admitted property registry
-ComparativeEmitterClass | authority-export | GUYANG-COMPARATIVE-PROJECTIONS-0 authored competing emitter identity and co-located value column | retire when emitter classes lower only through a sealed specialization door
-ComparativeProjectionBands | authority-export | GUYANG-COMPARATIVE-PROJECTIONS-0 reading-only band thresholds for contest/border/chokepoint | retire when band quantization is intrinsic in STEAD emission-band admission
-ComparativeProjectionBundle | authority-export | GUYANG-COMPARATIVE-PROJECTIONS-0 sealed disposition plus field-sweep registration chain | retire when comparative consumers are in-crate only
-ComparativeProjectionDisposition | authority-export | GUYANG-COMPARATIVE-PROJECTIONS-0 born / insufficient-emitters / authored-opt-out disposition | retire when disposition is intrinsic in property admission
-ComparativeProjectionError | authority-export | GUYANG-COMPARATIVE-PROJECTIONS-0 typed admission rejection surface | retire when comparative authoring lowers through a narrower spec door
-ComparativeProjectionOutputs | authority-export | GUYANG-COMPARATIVE-PROJECTIONS-0 fixed dominance/margin/contest/border/chokepoint column bundle | retire when comparative columns are registry-native roles
-ComparativeProjectionRequest | authority-export | GUYANG-COMPARATIVE-PROJECTIONS-0 untrusted comparative admission request | retire when comparative authoring lowers through a narrower spec door
 FIELD_SWEEP_LEGACY_PROGRAM_NODES | authority-export | FIELD-SWEEP-N4-PARITY-0 fixed legacy resource-class program-node ceiling | retire when EML-RESOURCE-CLASS-ADMISSION-0 replaces the single class
 FIELD_SWEEP_LEGACY_STACK_SLOTS | authority-export | FIELD-SWEEP-N4-PARITY-0 fixed legacy resource-class stack ceiling | retire when EML-RESOURCE-CLASS-ADMISSION-0 replaces the single class
 FIELD_SWEEP_WORKGROUP_SIZE | authority-export | FIELD-SWEEP-N4-PARITY-0 canonical generic sweep dispatch width | retire when dispatch geometry is admitted wholly inside the kernel
@@ -31,11 +23,7 @@ GridN4Offset | authority-export | FIELD-SWEEP-N4-PARITY-0 exact unit cardinal of
 GridOffset | authority-export | FIELD-ADJACENCY-GENERATORS-0 authored weighted grid-offset value | retire when adjacency authoring lowers through a narrower spec door
 LinkGraphNeighbor | authority-export | FIELD-ADJACENCY-GENERATORS-0 authored canonical weighted LinkGraph row value | retire when link lowering is driver-private
 UndirectedSymmetryCertificate | authority-export | FIELD-SWEEP-N4-PARITY-0 sealed conservative-fold adjacency symmetry witness | retire when undirected symmetry is intrinsic in the admitted adjacency type
-admit_comparative_projections | authority-export | GUYANG-COMPARATIVE-PROJECTIONS-0 sole admission door for sealed comparative projection chains | retire when comparative consumers are in-crate only
 apply_field_sweep_registration | authority-export | FIELD-SWEEP-N4-PARITY-0 sole admission door for proof-present field registrations | retire when field registration consumers are in-crate only
-comparative_event_kind | authority-export | GUYANG-COMPARATIVE-PROJECTIONS-0 authored threshold event-kind tokens for front/chokepoint bands | retire when triad band kinds are registry-native
-comparative_projection | authority-export | GUYANG-COMPARATIVE-PROJECTIONS-0 sealed comparative projection module namespace | retire when comparative authority is wholly in-crate
-comparative_projection_cpu_oracle | authority-export | GUYANG-COMPARATIVE-PROJECTIONS-0 independent CPU oracle for comparative law parity | retire only if another independent bit-exact parity judge replaces it
 execute_field_sweep_cpu | authority-export | FIELD-SWEEP-N4-PARITY-0 independent CPU oracle for one generic sweep | retire only if another independent bit-exact parity judge replaces it
 execute_field_sweep_cpu_chain | authority-export | FIELD-ADJACENCY-GENERATORS-0 CPU referee retaining kernel-private transient state across an admitted registration chain | retire only if another full-buffer chain oracle replaces it
 execute_field_sweep_cpu_iterations | authority-export | FIELD-SWEEP-N4-PARITY-0 independent CPU oracle for iterative PALMA parity | retire only if another independent bit-exact parity judge replaces it
