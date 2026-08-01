@@ -45,9 +45,9 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 211b860c2a424d0386a01a2dc93d5c563abfd1411c1f58ec55c7b69d97426cb8 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | 26eab30ec86c97ac8dfd6beef7ae8c5b4d3f18c38fdaa431ec40ccce855396d3 |
-| design_0_0_8_7_rf_arena_modernization.md | 063196ee33d2d637f44732e6435eb3ba433a090c52159c32e759a7711dd94a72 |
+| design_0_0_8_7_rf_arena_modernization.md | 0751fc66d470ef53c5dabd666b67dc3666906f6585954a0d95fb54367a530693 |
 | relay_lint.sh | 4163f715cdc3b549dbf57c1744aff61ea96b9f9f0a2237376665fbdb24e986c8 |
-| doctrine_anchors.tsv | e7829be9382cb900180d32f4170afd36f6d7ae25d4754718c4e5ac10dc06b7e7 |
+| doctrine_anchors.tsv | 53ffea5b614e7f195479ea08246d0f2196217c7a646cdf4f4050002bfd377f55 |
 | execution_status_taxonomy.tsv | 405caebabe9972b335464a43ad66169a9e8bb13b8fb868cf179bde9789922f87 |
 | execution_status_mixed_posture.tsv | 1adf05f3ec5fd7b537efe29259d20649a2c6d3a0839590063e5308ff154e8f25 |
 | execution_status_non_execution.tsv | 214c1b557dfd3fc465f0171051e20281ff1dcf6c53128dbb29cba01524f9be02 |
@@ -78,21 +78,22 @@ Track state: `open`
 | 5.5 | FIELD-SWEEP-N4-PARITY-0 | Phase 5: engine landing — EML edge context {target_slot, neighbor_slot, accumula | **DA-GRADUATED / merged #1529 @ 4ab19613** — THE REMODEL'S CENTREPIECE LANDS. PALMA and two-stage Gu-Yang run through... |
 | 5.6 | FIELD-ADJACENCY-GENERATORS-0 | Phase 5: adjacency as a registration axis — weighted `GridOffsets [(dx,dy,w)]` w | **DA-GRADUATED / merged #1532 @ f95eb261** — THE ADJACENCY GAP IS CLOSED. One authored map/fold/post EML program now ... |
 | 5.7 | EML-RESOURCE-CLASS-ADMISSION-0 | Phase 5: specialized interpreter resource classes (pipeline-constant stack sizes | **DA-GRADUATED / merged #1537 @ a7c05715 — substrate accepted; Gu-Yang recorded as MEASURED PERFORMANCE DEBT with a n... |
-| 5.8 | GUYANG-COMPARATIVE-PROJECTIONS-0 | Phase 5: dominance/margin/contest/border-band/chokepoint projections; default-de | **PROBATION / proof-present / DA-review-pending** — DA-amended border = winner-identity change; stall = gross minus a... |
+| 5.8 | GUYANG-COMPARATIVE-PROJECTIONS-0 | Phase 5: dominance/margin/contest/border-band/chokepoint projections over generi | Scenario-neutral fixtures only: 3-column comparative census (dominance/margin/contest) with border/chokepoint as ordi... |
+| 5.8b | COMPARATIVE-DEFAULT-BIRTH-0 | Phase 5: the two canonical seams 5.8 correctly refused to invent. (A) carry the  | Default-derived comparative birth at admission for >=2 emitter classes with zero explicit wiring; absent seams still ... |
 | 5.9 | TP-PURGE-0 | **Phase 5 hygiene — INTENT NOTED, sequencing Owner-scheduled and MAY preempt 5.4 | **DA-GRADUATED / merged #1520 @ 153ba40c** — DA independently reproduced at exact head `9ccd800c`: **THE FALSIFIABLE ... |
 | 6.1 | EVENT-GENERATION-STAMP-0 | Phase 6: generation stamps on emission/threshold events; stamped ring egress wit | Events carry stamps; forced observer lag honors declared backpressure without perturbing the sim. |
 | 6.2 | ASYNC-COMMAND-QUEUE-0 | Phase 6: async CPU action queue landing at generation barriers; injection genera | Replay bit-exact from the injection log; shadow-tree reads torn-free (double-buffer proof). |
-| 6.3 | CONTINUOUS-POSTURE-SOAK-0 | Phase 6: continuous posture (batched generations) + N-generation soak under forc | Soak exit-proof per the phase row; paced posture unchanged (TP regression green). |
+| 6.3 | CONTINUOUS-POSTURE-SOAK-0 | Phase 6: continuous posture (batched generations) + N-generation soak under forc | Soak exit-proof per the phase row; paced posture unchanged (scenario-neutral posture regression green). |
 | 7.1 | MOVEMENT-DECISION-INGRESS-0 | Phase 7: movement authority — decisions as sealed Triad band crossings (need + p | Fleets move under the ordinary generation from band crossings only (no CPU branching on field reads); §7 automaton co... |
 | 7.2 | MOVEMENT-AUTHORITY-READBACK-0 | Phase 7: authoritative movement readback; 12.5 icon descriptors express real tra | Studio shows authoritative transit with ZERO icon-layer change; test-private seam retired. |
-| 8.1 | COMBAT-CONSERVATION-JUDGE-0 | Phase 8: RF-1-style conservation judge over combat flows (oracle-first). | Judge red/green proven on seeded violations against R6 rehearsal runs. |
-| 8.2 | COMBAT-ARENA-EXECUTED-0 | Phase 8: promote combat to executed RF arena (HP/damage as flows); rehearsals re | Executed path judged green; rehearsals retained as oracles; emergence falsifier (weight change → different battle out... |
+| 8.1 | CONTENTION-CONSERVATION-JUDGE-0 | Phase 8: RF-1-style conservation judge over CONTESTED FLOWS (oracle-first), **in | Judge red/green proven on seeded violations against SCENARIO-NEUTRAL synthetic contention fixtures. **The R6 dress re... |
+| 8.2 | CONTENTION-ARENA-EXECUTED-0 | Phase 8: promote contention resolution to the EXECUTED RF arena — claims reduce  | Executed path judged green; **emergence falsifier: changing ONLY the authored resolution rule changes the outcome wit... |
 | 9.1 | GATED-RATES-EML-REWIRE-0 | Phase 9: exclusion-audit Family C — `gated_rates` gate evaluation → authored EML | Gate behavior parity via oracle; hardcoded cols gone; corpus green. |
 | 9.2 | RF-COLUMN-MINT-MIGRATE-0 | Phase 9: the sweep — remaining sites onto doors; DELETE the exclusion list; reti | Exclusion list empty; tripwire retired per its promotion-blocker; full build + RF batteries green. |
 | 10.1 | DOCTRINE-CI-RECONCILE-0 | Phase 10: retire impossible-state detectors; mechanize new gates (EML-addition D | Phase-row falsifier: zero impossible-state scans; zero unwatched new surfaces; selftests green. |
 | 11.1 | EMBEDDER-INTERFACE-0 | Phase 11: the five-verb Vendor Door API (formalization of existing mechanisms) + | Five verbs stand up a tree end-to-end in a test; posture choice on Run; no new subsystem (diff-proven). |
 | 11.2 | EMBEDDER-GUIDE-EXEMPLARS-0 | Phase 11: DOC-BUDGET-capped Embedder's Guide + two non-game exemplars (finance t | Cold-reader exit-proof per phase row; exemplars green in CI. |
-| 12.1 | PORTABILITY-PROOF-0 | Phase 12: non-TP domain through the Vendor Door end-to-end, zero engine edits. | Exemplar-seeded domain simulates + STEAD-observes + serializes untouched. |
+| 12.1 | PORTABILITY-PROOF-0 | Phase 12: a domain unrelated to any shipped scenario through the Vendor Door end | Exemplar-seeded domain simulates + STEAD-observes + serializes untouched. |
 | 12.2 | CORE-CANONIZATION-0 | Phase 12: object model (P0 Root Contract + cycle + EML-ISA + Triad Doors + overl | Canonized sections land; net-prose discipline; SimThing complete and distinct; CLOSEOUT protocol run (Owner-gated). |
 
 ## Next Rung Pointer
