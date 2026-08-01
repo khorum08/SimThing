@@ -106,7 +106,6 @@ fn sparse_owned_row_fixture() -> (Scenario, GameModeSpec) {
         shadow_seeds: Vec::new(),
         tick_patches: Vec::new(),
         install_targets: HashMap::new(),
-    field_plan_admission: None,
     };
     let game_mode = GameModeSpec {
         id: "arena_elimination_sparse_owned_rows".into(),

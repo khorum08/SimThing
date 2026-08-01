@@ -54,11 +54,6 @@ pub struct Scenario {
     /// scenarios; populated by RON-loaded scenarios that pin capability
     /// trees or scripted events to specific owners.
     pub install_targets: HashMap<String, Vec<SimThingId>>,
-    /// 5.8b: already-admitted field-plan product for ordinary install delivery
-    /// (S3). Runtime theater binding only — not scenario-file grammar. When
-    /// present, `compile_and_install` lands it on `SpecSessionState` and may
-    /// default-birth comparative projections.
-    pub field_plan_admission: Option<crate::comparative_default_birth::FieldPlanAdmissionReport>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -184,7 +179,6 @@ impl Scenario {
             }],
             tick_patches: Vec::new(),
             install_targets: HashMap::new(),
-        field_plan_admission: None,
         }
     }
 
@@ -228,7 +222,6 @@ impl Scenario {
             shadow_seeds: Vec::new(),
             tick_patches: Vec::new(),
             install_targets: HashMap::new(),
-        field_plan_admission: None,
         }
     }
 
@@ -294,7 +287,6 @@ impl Scenario {
             shadow_seeds: Vec::new(),
             tick_patches: Vec::new(),
             install_targets: HashMap::new(),
-        field_plan_admission: None,
         }
     }
 
@@ -377,7 +369,6 @@ impl Scenario {
             shadow_seeds: Vec::new(),
             tick_patches: Vec::new(),
             install_targets: HashMap::new(),
-        field_plan_admission: None,
         }
     }
 

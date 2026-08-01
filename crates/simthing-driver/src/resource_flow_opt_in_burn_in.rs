@@ -213,7 +213,6 @@ fn build_hosted_flat_scenario(participant_count: u32, registry: DimensionRegistr
         shadow_seeds: vec![],
         tick_patches: vec![],
         install_targets: Default::default(),
-    field_plan_admission: None,
     }
 }
 
@@ -238,7 +237,6 @@ fn build_skewed_scenario(registry: DimensionRegistry) -> Scenario {
         shadow_seeds: vec![],
         tick_patches: vec![],
         install_targets: Default::default(),
-    field_plan_admission: None,
     }
 }
 
@@ -278,7 +276,6 @@ fn build_dynamic_scenario(
         shadow_seeds: vec![],
         tick_patches: vec![],
         install_targets: Default::default(),
-    field_plan_admission: None,
     };
     (scenario, fission)
 }
@@ -298,7 +295,6 @@ fn build_two_arena_scenario(registry: DimensionRegistry) -> Scenario {
         shadow_seeds: vec![],
         tick_patches: vec![],
         install_targets: Default::default(),
-    field_plan_admission: None,
     }
 }
 

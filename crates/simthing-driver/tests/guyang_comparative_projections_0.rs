@@ -151,7 +151,6 @@ fn install_does_not_invent_topology_or_string_default_birth() {
         shadow_seeds: Vec::new(),
         tick_patches: Vec::new(),
         install_targets: HashMap::new(),
-    field_plan_admission: None,
     };
     let game_mode = GameModeSpec {
         id: "no_invent".into(),
