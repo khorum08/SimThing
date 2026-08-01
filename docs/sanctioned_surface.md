@@ -11,7 +11,7 @@ This digest is a derived context artifact for low-context agents. If it disagree
 | --- | --- | --- |
 | scripts/ci/allow/sealed_producers.txt | 25 | 6923796f3bacd3b27b29f778d5276c3f82a3a67c3f010c30f10b78de8a1866f6 |
 | scripts/ci/allow/inert_buffer_handles.txt | 2 | 9e2069fa5730f17cacde1c671ebc17beb59f50738d2dcb914bceae13f9b8b3a4 |
-| scripts/ci/allow/kernel_surface.txt | 270 | 0b38c36fc8f67d900df81499ec12c16c386c420169c60426d77c1b79a09c5df6 |
+| scripts/ci/allow/kernel_surface.txt | 284 | 30d540aa675f04f7f84e1c88b9754eb5d8d087191fd15fd0d5209f2374c3bf36 |
 | scripts/ci/allow/sealed_types.txt | 19 | 9d427e3b41a586b06f24ca02cc45f78934237d2229b0c38d46e2a8a6ef5016be |
 | scripts/ci/scans.tsv | 26 | 18d6f4886524f593e231931b952fbdcf2e0520fb4660f72fb7191298221e7d64 |
 
@@ -66,11 +66,12 @@ This digest is a derived context artifact for low-context agents. If it disagree
 | FieldLawProof | authority-export | FIELD-SWEEP-N4-PARITY-0 sealed conservative or explicit non-conservative law proof | retire when field law is intrinsic in the admitted program type | kernel_surface.txt |
 | FieldSweepAdmissionError | authority-export | FIELD-SWEEP-N4-PARITY-0 typed admission rejection surface | retire when field authoring lowers through a narrower spec door | kernel_surface.txt |
 | FieldSweepExecutionError | authority-export | FIELD-SWEEP-N4-PARITY-0 typed CPU/GPU execution and parity-oracle error surface | retire when parity oracle and session are in-crate only | kernel_surface.txt |
+| FieldSweepJitCacheIdentity | authority-export | EML-RESOURCE-CLASS-ADMISSION-0 exact resource-class plus canonical-program cache identity evidence | retire when JIT profiling and evidence consumers are in-crate only | kernel_surface.txt |
 | FieldSweepOutput | authority-export | FIELD-ADJACENCY-GENERATORS-0 typed matrix-or-kernel-private-transient destination | retire when field composition lowers through a narrower admitted chain door | kernel_surface.txt |
+| FieldSweepProgramIdentity | authority-export | EML-RESOURCE-CLASS-ADMISSION-0 canonical admitted-program identity evidence | retire when JIT profiling and evidence consumers are in-crate only | kernel_surface.txt |
 | FieldSweepRegistration | authority-export | FIELD-SWEEP-N4-PARITY-0 immutable proof-present production field registration | retire when field registration consumers are in-crate only | kernel_surface.txt |
 | FieldSweepRegistrationRequest | authority-export | FIELD-SWEEP-N4-PARITY-0 untrusted authored field admission request | retire when field authoring lowers through a narrower spec door | kernel_surface.txt |
 | FieldSweepResourceClass | authority-export | FIELD-SWEEP-N4-PARITY-0 admitted fixed resource-class witness | retire when EML-RESOURCE-CLASS-ADMISSION-0 owns typed classes | kernel_surface.txt |
-| FieldSweepResourceClassRequest | authority-export | FIELD-SWEEP-N4-PARITY-0 untrusted resource request accepting only fixed 32/32 | retire when EML-RESOURCE-CLASS-ADMISSION-0 owns typed classes | kernel_surface.txt |
 | FieldSweepSession | authority-export | FIELD-SWEEP-N4-PARITY-0 kernel-owned generic sweep residency/dispatch/readback session | retire when session construction is only reachable from the standard sim lifecycle | kernel_surface.txt |
 | FieldTransientCertificate | sealed-export | FIELD-ADJACENCY-GENERATORS-0 sealed witness for compatible kernel-private transient reads | retire when transient composition is intrinsic in the admitted registration chain | kernel_surface.txt |
 | GRID_N4_NSEW | authority-export | FIELD-SWEEP-N4-PARITY-0 Gu-Yang authored canonical N4 order | retire when order lowers from sealed authored adjacency specs | kernel_surface.txt |
@@ -99,6 +100,19 @@ This digest is a derived context artifact for low-context agents. If it disagree
 | AccumulatorPipelineSessions | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |
 | AdmittedEvalEmlCombine | sealed-export | OC-K-EML-OPCODE-GATE-0 admitted combine token | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |
 | AdmittedEvalEmlOpcode | sealed-export | OC-K-EML-OPCODE-GATE-0 admitted opcode token | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |
+| ExactPrimitiveAdmission | sealed-export | EML-RESOURCE-CLASS-ADMISSION-0 proof token conjunctively binding determinism cost class and concrete consumer without opening opcode vocabulary | retire if exact primitive admission becomes wholly kernel-internal | kernel_surface.txt |
+| ExactPrimitiveAdmissionDoor | authority-export | EML-RESOURCE-CLASS-ADMISSION-0 stateful zero-or-one exact primitive admission gate | retire if exact primitive vocabulary expansion is permanently forbidden | kernel_surface.txt |
+| ExactPrimitiveAdmissionRequest | authority-export | EML-RESOURCE-CLASS-ADMISSION-0 untrusted conjunctive request requiring all three sealed keys | retire when no external generic primitive proposer remains | kernel_surface.txt |
+| ExactPrimitiveBitSemantics | authority-export | EML-RESOURCE-CLASS-ADMISSION-0 closed exact bit-semantics vocabulary | retire when determinism evidence is fixed to one non-authored policy | kernel_surface.txt |
+| ExactPrimitiveConsumer | authority-export | EML-RESOURCE-CLASS-ADMISSION-0 closed concrete consumer vocabulary excluding scenario labels | retire when consumer necessity is proven wholly inside the kernel | kernel_surface.txt |
+| ExactPrimitiveConsumerEvidence | authority-export | EML-RESOURCE-CLASS-ADMISSION-0 measured threshold-excess evidence for a concrete consumer | retire when no external measurement harness mints consumer keys | kernel_surface.txt |
+| ExactPrimitiveConsumerKey | sealed-export | EML-RESOURCE-CLASS-ADMISSION-0 sealed concrete-consumer necessity key | retire if exact primitive admission becomes wholly kernel-internal | kernel_surface.txt |
+| ExactPrimitiveCostEvidence | authority-export | EML-RESOURCE-CLASS-ADMISSION-0 driver-originated compiled resource comparison bound to an EML class | retire when cost evidence is collected wholly inside the kernel | kernel_surface.txt |
+| ExactPrimitiveCostKey | sealed-export | EML-RESOURCE-CLASS-ADMISSION-0 sealed non-regressing strict resource-improvement key | retire if exact primitive admission becomes wholly kernel-internal | kernel_surface.txt |
+| ExactPrimitiveDeterminismEvidence | authority-export | EML-RESOURCE-CLASS-ADMISSION-0 bit domain reference and supported-backend replay evidence | retire when determinism evidence is collected wholly inside the kernel | kernel_surface.txt |
+| ExactPrimitiveDeterminismKey | sealed-export | EML-RESOURCE-CLASS-ADMISSION-0 sealed exhaustive reference and backend replay identity key | retire if exact primitive admission becomes wholly kernel-internal | kernel_surface.txt |
+| ExactPrimitiveDomainPolicy | authority-export | EML-RESOURCE-CLASS-ADMISSION-0 closed domain and special-value policy vocabulary | retire when determinism policy is fixed to one non-authored domain | kernel_surface.txt |
+| ExactPrimitiveResourceEffect | authority-export | EML-RESOURCE-CLASS-ADMISSION-0 typed compiled registers binary and local-memory counter row | retire when cost evidence is collected wholly inside the kernel | kernel_surface.txt |
 | AO_WGSL0_ENTRY_POINT | surface-inert | Inert public kernel constant | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |
 | ao_wgsl0_fast_path_compatible | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |
 | AoWgsl0Compatibility | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |
