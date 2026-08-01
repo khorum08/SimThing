@@ -2337,50 +2337,40 @@ fn draw_studio_ops_telemetry(ctx: &egui::Context, state: &mut StudioAppState) {
                     ui.end_row();
                 });
 
-            // [OVL] TP-EMERGENT-TENSION-PROOF-0 — read-only per-owner macro gauges
-            // projected from exact admitted property keys (no substring / Studio mutation).
+            // Read-only per-owner macro gauges, projected from exact admitted
+            // property keys (no substring matching, no Studio mutation).
+            //
+            // These are DEV TELEMETRY and are driven entirely by what the loaded
+            // scenario admits. They previously named three literal property keys
+            // belonging to one shipped scenario, so the panel only worked for that
+            // scenario and carried a disposable rehearsal's vocabulary into the
+            // editor's production `src`. A scenario is an ASSET; the Studio reads
+            // whatever it admits and names none of it.
             ui.separator();
             ui.heading("Per-owner macro gauges");
-            let latest_exact = |property_key: &str| {
-                bridge
-                    .field_accretion_samples
-                    .iter()
-                    .rev()
-                    .find(|sample| sample.property_key == property_key)
-                    .map(|sample| (sample.tick_index, sample.amount))
-            };
-            let terran_production =
-                latest_exact("tp_economy::terran_shipyard_hulls_quantity");
-            let terran_suppression =
-                latest_exact("tp_economy::terran_shipyard_disrupted_hulls_quantity");
-            let pirate_disruption =
-                latest_exact("tp_economy::pirate_outpost_disruption_presence");
+            let mut latest_by_key: std::collections::BTreeMap<&str, (u64, f32)> =
+                std::collections::BTreeMap::new();
+            for sample in &bridge.field_accretion_samples {
+                latest_by_key.insert(
+                    sample.property_key.as_str(),
+                    (sample.tick_index, sample.amount),
+                );
+            }
             let construction = &bridge.recursive_rf;
             egui::Grid::new("studio_ops_owner_macro_gauges")
                 .num_columns(2)
                 .striped(true)
                 .show(ui, |ui| {
-                    ui.label("terran production (hulls)");
-                    ui.label(
-                        terran_production
-                            .map(|(tick, amount)| format!("tick {tick}: {amount:.3}"))
-                            .unwrap_or_else(|| "--".into()),
-                    );
-                    ui.end_row();
-                    ui.label("terran suppression (disrupted_hulls)");
-                    ui.label(
-                        terran_suppression
-                            .map(|(tick, amount)| format!("tick {tick}: {amount:.3}"))
-                            .unwrap_or_else(|| "--".into()),
-                    );
-                    ui.end_row();
-                    ui.label("pirate disruption (presence)");
-                    ui.label(
-                        pirate_disruption
-                            .map(|(tick, amount)| format!("tick {tick}: {amount:.3}"))
-                            .unwrap_or_else(|| "--".into()),
-                    );
-                    ui.end_row();
+                    if latest_by_key.is_empty() {
+                        ui.label("admitted property gauges");
+                        ui.label("--");
+                        ui.end_row();
+                    }
+                    for (property_key, (tick, amount)) in &latest_by_key {
+                        ui.label(*property_key);
+                        ui.label(format!("tick {tick}: {amount:.3}"));
+                        ui.end_row();
+                    }
                     ui.label("construction need profile");
                     ui.label(format!(
                         "id={} kind={}",

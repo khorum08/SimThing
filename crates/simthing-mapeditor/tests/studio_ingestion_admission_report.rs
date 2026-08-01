@@ -1,36 +1,53 @@
 //! STUDIO-INGESTION-ADMISSION-REPORT-DISPLAY-0 — Studio admission report presentation proofs.
+//!
+//! Input is constructed INLINE. The law under test — a legacy **World**-root
+//! document is reported by the Studio as legacy-compatibility and never as
+//! canonical — holds for ANY legacy World-root document, so the minimal one
+//! below is a complete witness.
+//!
+//! This previously followed a pointer file into a shipped scenario. A scenario
+//! is an ASSET; a Studio proof that reads one makes the asset a structural
+//! requirement of the editor's test suite, which is how a disposable rehearsal
+//! outlives the rehearsal. The Studio is DEV TELEMETRY over whatever is loaded
+//! and must name no scenario at all.
 
-use std::fs;
-use std::path::PathBuf;
+use simthing_mapeditor::{studio_ingest_scenario_text_for_report, StudioScenarioAuthorityKind};
+use simthing_spec::deserialize_scenario_authority;
 
-use simthing_mapeditor::{
-    build_studio_admission_summary_from_spec, load_studio_session_from_scenario_path,
-    studio_ingest_scenario_text_for_report, studio_scenario_authority_snapshot,
-    StudioScenarioAuthorityKind,
-};
-use simthing_spec::{
-    deserialize_scenario_authority, ingest_scenario_from_str, studio_canonical_ingestion_profile,
-    ScenarioIngestionClassification,
-};
+/// Minimal legacy **World**-root document: a `World` root, the transitional
+/// `scenario_id` sidecar, and one `Location` child named by
+/// `structural_grid.map_container_id`. That is the whole admission surface —
+/// the classification is a property of the ROOT SHAPE, not of the tree's size.
+const MINIMAL_LEGACY_WORLD_ROOT: &str = r#"{
+  "scenario_id": "legacy_world_root_minimal",
+  "root": {
+    "id": 1,
+    "kind": "World",
+    "properties": [],
+    "overlays": [],
+    "children": [
+      {
+        "id": 2,
+        "kind": "Location",
+        "properties": [],
+        "overlays": [],
+        "children": [],
+        "spawned_day": 0
+      }
+    ],
+    "spawned_day": 0
+  },
+  "structural_grid": {
+    "frame": { "width": 1, "height": 1, "occupied_cells": 0 },
+    "map_container_id": "2",
+    "placements": []
+  }
+}"#;
 
-fn corpus_path(name: &str) -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../../scenarios/corpus")
-        .join(name)
-}
-
-fn load_corpus_json(name: &str) -> String {
-    fs::read_to_string(corpus_path(name)).expect("corpus")
-}
-
-fn terran_pirate_json() -> String {
-    let reference = load_corpus_json("legacy_world_root_terran_pirate_reference.txt");
-    fs::read_to_string(reference.trim()).expect("terran pirate")
-}
 #[test]
-fn studio_legacy_terran_pirate_report_is_legacy_compatibility() {
-    let json = terran_pirate_json();
-    let report = studio_ingest_scenario_text_for_report("terran_pirate", &json);
+fn studio_legacy_world_root_report_is_legacy_compatibility() {
+    let report =
+        studio_ingest_scenario_text_for_report("legacy_world_root_minimal", MINIMAL_LEGACY_WORLD_ROOT);
     assert_ne!(report.classification, "Rejected");
     assert!(report.legacy_world_root);
     assert_eq!(
@@ -42,7 +59,8 @@ fn studio_legacy_terran_pirate_report_is_legacy_compatibility() {
         .iter()
         .any(|d| d.kind == "LegacyWorldRootCompatibility"));
 
-    let spec = deserialize_scenario_authority(&json).expect("parse terran pirate");
+    let spec =
+        deserialize_scenario_authority(MINIMAL_LEGACY_WORLD_ROOT).expect("parse legacy world root");
     let document = simthing_mapeditor::build_studio_scenario_document(&spec).expect("legacy doc");
     assert_eq!(
         document.authority_kind,

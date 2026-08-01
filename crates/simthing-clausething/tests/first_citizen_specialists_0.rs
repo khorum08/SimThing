@@ -36,7 +36,7 @@ fn repo_root() -> PathBuf {
 /// Synthetic base disc, homed INSIDE this crate.
 ///
 /// Previously reached across into
-/// `../simthing-mapeditor/tests/fixtures/tp_base_disc_1500.simthing-scenario.json`
+/// mapeditor's test fixtures (now homed in this crate)
 /// -- a scenario fixture, in another crate, named after a disposable rehearsal.
 /// A vendored authoring crate keeps its own witnesses.
 fn base_disc_fixture_path() -> PathBuf {
