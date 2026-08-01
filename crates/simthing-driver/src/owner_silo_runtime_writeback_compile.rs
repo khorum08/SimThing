@@ -2,12 +2,13 @@
 
 use simthing_core::{CompiledAccumulatorOpPlan, StructuralScalarChannel};
 use simthing_spec::{
-    apply_owner_silo_runtime_writeback_cpu, evaluate_planet_child_rf_reduce_up,
+    admit_intrinsic_owner_channels, apply_owner_silo_runtime_writeback_cpu,
+    evaluate_planet_child_rf_reduce_up_from_owner_view,
     owner_silo_writeback_inputs_from_planet_child_reduce_up,
-    runtime_owner_silo_states_from_scenario, OwnerRef, PlanetChildRfAdmissionClassification,
-    PlanetChildRfReduceUpReport, ResourceKey, RuntimeOwnerSiloState,
-    RuntimeOwnerSiloWritebackInput, RuntimeOwnerSiloWritebackResult, SimThingScenarioSpec,
-    SpecError,
+    runtime_owner_silo_states_from_scenario, IntrinsicOwnerChannelView, OwnerRef,
+    PlanetChildRfAdmissionClassification, PlanetChildRfReduceUpReport, ResourceKey,
+    RuntimeOwnerSiloState, RuntimeOwnerSiloWritebackInput, RuntimeOwnerSiloWritebackResult,
+    SimThingScenarioSpec, SpecError,
 };
 
 use crate::owner_silo_accumulator_compile::compile_participant_channel_sum_plan;
@@ -40,7 +41,15 @@ pub struct OwnerSiloRuntimeWritebackPlan {
 pub fn compile_owner_silo_runtime_writeback_plan(
     scenario: &SimThingScenarioSpec,
 ) -> Result<OwnerSiloRuntimeWritebackPlan, SpecError> {
-    let reduce_up_report = evaluate_planet_child_rf_reduce_up(scenario);
+    let owner_view =
+        admit_intrinsic_owner_channels(scenario).map_err(|_| SpecError::ValidationFailed)?;
+    compile_owner_silo_runtime_writeback_plan_from_owner_view(&owner_view)
+}
+
+pub fn compile_owner_silo_runtime_writeback_plan_from_owner_view(
+    owner_view: &IntrinsicOwnerChannelView,
+) -> Result<OwnerSiloRuntimeWritebackPlan, SpecError> {
+    let reduce_up_report = evaluate_planet_child_rf_reduce_up_from_owner_view(owner_view);
     if reduce_up_report.classification == PlanetChildRfAdmissionClassification::Rejected {
         return Err(SpecError::ValidationFailed);
     }
@@ -48,7 +57,7 @@ pub fn compile_owner_silo_runtime_writeback_plan(
         return Err(SpecError::ValidationFailed);
     }
 
-    let initial_owner_silos = runtime_owner_silo_states_from_scenario(scenario)
+    let initial_owner_silos = runtime_owner_silo_states_from_scenario(owner_view.scenario())
         .map_err(|_| SpecError::ValidationFailed)?;
     if initial_owner_silos.is_empty() {
         return Err(SpecError::ValidationFailed);

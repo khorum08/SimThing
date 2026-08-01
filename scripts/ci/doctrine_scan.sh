@@ -151,6 +151,8 @@ validate_allow_record() {
           ;;
       esac
       ;;
+    contention_mechanisms.txt)
+      ;;
     *)
       die_scanner "${relpath}:${line_num}: unknown allowlist file"
       ;;
@@ -243,7 +245,7 @@ parse_allow_fields() {
 
 load_and_validate_allowlists() {
   local f
-  for f in "${ALLOW_DIR}/sealed_producers.txt" "${ALLOW_DIR}/inert_buffer_handles.txt" "${ALLOW_DIR}/kernel_surface.txt"; do
+  for f in "${ALLOW_DIR}/sealed_producers.txt" "${ALLOW_DIR}/inert_buffer_handles.txt" "${ALLOW_DIR}/kernel_surface.txt" "${ALLOW_DIR}/contention_mechanisms.txt"; do
     if [[ ! -f "$f" ]]; then
       die_scanner "missing allowlist file: ${f#"${SCRIPT_DIR}/"}"
       continue
@@ -269,7 +271,7 @@ load_global_keys() {
   done <"$SCANS_TSV"
 
   local f rel base allow_fields=()
-  for f in "${ALLOW_DIR}/sealed_producers.txt" "${ALLOW_DIR}/inert_buffer_handles.txt" "${ALLOW_DIR}/kernel_surface.txt"; do
+  for f in "${ALLOW_DIR}/sealed_producers.txt" "${ALLOW_DIR}/inert_buffer_handles.txt" "${ALLOW_DIR}/kernel_surface.txt" "${ALLOW_DIR}/contention_mechanisms.txt"; do
     [[ -f "$f" ]] || continue
     rel="${f#"${SCRIPT_DIR}/"}"
     base="${rel##*/}"
@@ -344,7 +346,7 @@ validate_track_allow_addendum() {
     base="${f##*/}"
     rel="$(repo_relpath "$f")"
     case "$base" in
-      sealed_producers.txt|inert_buffer_handles.txt|kernel_surface.txt|sealed_types.txt) ;;
+      contention_mechanisms.txt|sealed_producers.txt|inert_buffer_handles.txt|kernel_surface.txt|sealed_types.txt) ;;
       *)
         die_scanner "${rel}: unknown track addendum allow file"
         continue
@@ -1244,8 +1246,10 @@ run_addendum_proof() {
   printf 'fn proof() { let _x = "TRACK_LOCAL_BAD_TOKEN"; }\n' >"${tmp_abs}/active/bad.rs"
   printf 'TRACK-LOCAL-BAD | RELIABLE | %s/active/** | TRACK_LOCAL_BAD_TOKEN |  | addendum proof local reliable | proof fixture promotion blocker\n' "$tmp_rel" >"${tmp_abs}/active_track.md.ci.tsv"
   printf 'ACTIVE_TRACK_ONLY_TYPE\n' >"${tmp_abs}/active_track.md.ci.allow/sealed_types.txt"
+  printf 'active-track-need | active track mechanism | active::ready_surface | proof fixture promotion blocker\n' >"${tmp_abs}/active_track.md.ci.allow/contention_mechanisms.txt"
   printf 'INACTIVE-BAD | RELIABLE | %s/active/** | TRACK_LOCAL_BAD_TOKEN |  | inactive addendum proof | proof fixture promotion blocker\n' "$tmp_rel" >"${tmp_abs}/inactive_track.md.ci.tsv"
   printf 'INACTIVE_TRACK_ONLY_TYPE\n' >"${tmp_abs}/inactive_track.md.ci.allow/sealed_types.txt"
+  printf 'inactive-track-need | inactive track mechanism | inactive::ready_surface | proof fixture promotion blocker\n' >"${tmp_abs}/inactive_track.md.ci.allow/contention_mechanisms.txt"
 
   local global_id=""
   local line fields=()
@@ -1268,7 +1272,7 @@ run_addendum_proof() {
   _errexit_was_on=0
   errexit_is_on && _errexit_was_on=1
   set +e
-  out="$(bash "${SCRIPT_DIR}/doctrine_scan.sh" --track-doc "${tmp_rel}/active_track.md" 2>&1)"
+  out="$(DOCTRINE_SCAN_SKIP_DRIFT=1 bash "${SCRIPT_DIR}/doctrine_scan.sh" --track-doc "${tmp_rel}/active_track.md" 2>&1)"
   status=$?
   restore_errexit "$_errexit_was_on"
   if [[ "$status" -eq 0 ]]; then
@@ -1276,12 +1280,15 @@ run_addendum_proof() {
     echo "$out" >&2
     return 1
   fi
-  assert_contains "$out" "TRACK-LOCAL-BAD  FAIL  1" "active addendum" || return 1
+  if ! assert_contains "$out" "TRACK-LOCAL-BAD  FAIL  1" "active addendum"; then
+    echo "$out" >&2
+    return 1
+  fi
 
   _errexit_was_on=0
   errexit_is_on && _errexit_was_on=1
   set +e
-  out="$(bash "${SCRIPT_DIR}/doctrine_scan.sh" 2>&1)"
+  out="$(DOCTRINE_SCAN_SKIP_DRIFT=1 bash "${SCRIPT_DIR}/doctrine_scan.sh" 2>&1)"
   status=$?
   restore_errexit "$_errexit_was_on"
   if [[ "$status" -ne 0 ]]; then
@@ -1294,7 +1301,7 @@ run_addendum_proof() {
   _errexit_was_on=0
   errexit_is_on && _errexit_was_on=1
   set +e
-  out="$(bash "${SCRIPT_DIR}/doctrine_scan.sh" --track-doc "${tmp_rel}/clean_track.md" 2>&1)"
+  out="$(DOCTRINE_SCAN_SKIP_DRIFT=1 bash "${SCRIPT_DIR}/doctrine_scan.sh" --track-doc "${tmp_rel}/clean_track.md" 2>&1)"
   status=$?
   restore_errexit "$_errexit_was_on"
   if [[ "$status" -ne 0 ]]; then
@@ -1307,7 +1314,7 @@ run_addendum_proof() {
   _errexit_was_on=0
   errexit_is_on && _errexit_was_on=1
   set +e
-  out="$(bash "${SCRIPT_DIR}/doctrine_scan.sh" --track-doc "${tmp_rel}/redefine_track.md" 2>&1)"
+  out="$(DOCTRINE_SCAN_SKIP_DRIFT=1 bash "${SCRIPT_DIR}/doctrine_scan.sh" --track-doc "${tmp_rel}/redefine_track.md" 2>&1)"
   status=$?
   restore_errexit "$_errexit_was_on"
   if [[ "$status" -eq 0 ]]; then
@@ -1329,8 +1336,11 @@ run_addendum_proof() {
   local digest_text
   digest_text="$(<"${REPO_ROOT}/${digest_path}")"
   assert_contains "$digest_text" "ACTIVE_TRACK_ONLY_TYPE" "track digest active allow" || return 1
+  assert_contains "$digest_text" "active-track-need" "track digest active contention registry" || return 1
+  assert_contains "$digest_text" "## Contention Mechanisms" "track digest contention heading" || return 1
   assert_contains "$digest_text" "TRACK-LOCAL-BAD" "track digest active scan" || return 1
   assert_not_contains "$digest_text" "INACTIVE_TRACK_ONLY_TYPE" "track digest inactive allow" || return 1
+  assert_not_contains "$digest_text" "inactive-track-need" "track digest inactive contention registry" || return 1
   assert_not_contains "$digest_text" "INACTIVE-BAD" "track digest inactive scan" || return 1
 
   echo "doctrine_scan --prove-addendum: PASS"

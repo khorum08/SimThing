@@ -2,10 +2,10 @@
 
 use simthing_core::{CompiledAccumulatorOpPlan, StructuralScalarChannel};
 use simthing_spec::{
-    evaluate_planet_child_rf_reduce_up, planet_child_rf_participant_inputs,
-    scope_key_from_participant, PlanetChildRfAdmissionClassification,
-    PlanetChildRfParticipantInput, PlanetChildRfReduceUpReport, PlanetChildRfScopeKey,
-    SimThingScenarioSpec, SpecError,
+    admit_intrinsic_owner_channels, evaluate_planet_child_rf_reduce_up_from_owner_view,
+    planet_child_rf_participant_inputs_from_owner_view, scope_key_from_participant,
+    IntrinsicOwnerChannelView, PlanetChildRfAdmissionClassification, PlanetChildRfParticipantInput,
+    PlanetChildRfReduceUpReport, PlanetChildRfScopeKey, SimThingScenarioSpec, SpecError,
 };
 
 use crate::owner_silo_accumulator_compile::compile_participant_channel_sum_plan;
@@ -33,7 +33,15 @@ pub struct PlanetChildRfReduceUpGpuProofPlan {
 pub fn compile_planet_child_rf_reduce_up_gpu_proof_plan(
     scenario: &SimThingScenarioSpec,
 ) -> Result<PlanetChildRfReduceUpGpuProofPlan, SpecError> {
-    let reduce_up_report = evaluate_planet_child_rf_reduce_up(scenario);
+    let owner_view =
+        admit_intrinsic_owner_channels(scenario).map_err(|_| SpecError::ValidationFailed)?;
+    compile_planet_child_rf_reduce_up_gpu_proof_plan_from_owner_view(&owner_view)
+}
+
+pub fn compile_planet_child_rf_reduce_up_gpu_proof_plan_from_owner_view(
+    owner_view: &IntrinsicOwnerChannelView,
+) -> Result<PlanetChildRfReduceUpGpuProofPlan, SpecError> {
+    let reduce_up_report = evaluate_planet_child_rf_reduce_up_from_owner_view(owner_view);
     if reduce_up_report.classification == PlanetChildRfAdmissionClassification::Rejected {
         return Err(SpecError::ValidationFailed);
     }
@@ -41,8 +49,8 @@ pub fn compile_planet_child_rf_reduce_up_gpu_proof_plan(
         return Err(SpecError::ValidationFailed);
     }
 
-    let participants =
-        planet_child_rf_participant_inputs(scenario).map_err(|_| SpecError::ValidationFailed)?;
+    let participants = planet_child_rf_participant_inputs_from_owner_view(owner_view)
+        .map_err(|_| SpecError::ValidationFailed)?;
     if participants.is_empty() || reduce_up_report.buckets.is_empty() {
         return Err(SpecError::ValidationFailed);
     }

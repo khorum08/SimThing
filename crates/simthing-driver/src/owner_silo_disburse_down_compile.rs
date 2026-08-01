@@ -2,14 +2,14 @@
 
 use simthing_core::{CompiledAccumulatorOpPlan, StructuralScalarChannel};
 use simthing_spec::{
-    apply_owner_silo_runtime_disburse_down_cpu, owner_silo_demand_aggregate_totals,
-    owner_silo_demand_buckets_from_planet_child_rf, OwnerRef, ResourceKey,
-    RuntimeOwnerSiloDemandBucket, RuntimeOwnerSiloDisburseDownResult, SimThingScenarioSpec,
-    SpecError,
+    admit_intrinsic_owner_channels, apply_owner_silo_runtime_disburse_down_cpu,
+    owner_silo_demand_aggregate_totals, owner_silo_demand_buckets_from_owner_view,
+    IntrinsicOwnerChannelView, OwnerRef, ResourceKey, RuntimeOwnerSiloDemandBucket,
+    RuntimeOwnerSiloDisburseDownResult, SimThingScenarioSpec, SpecError,
 };
 
 use crate::owner_silo_accumulator_compile::compile_participant_channel_sum_plan;
-use crate::owner_silo_runtime_writeback_compile::compile_owner_silo_runtime_writeback_plan;
+use crate::owner_silo_runtime_writeback_compile::compile_owner_silo_runtime_writeback_plan_from_owner_view;
 
 /// GPU aggregate proof plan for total requested demand per owner/resource channel.
 #[derive(Debug, Clone, PartialEq)]
@@ -37,9 +37,17 @@ pub struct OwnerSiloDisburseDownPlan {
 pub fn compile_owner_silo_disburse_down_plan(
     scenario: &SimThingScenarioSpec,
 ) -> Result<OwnerSiloDisburseDownPlan, SpecError> {
-    let writeback_plan = compile_owner_silo_runtime_writeback_plan(scenario)?;
+    let owner_view =
+        admit_intrinsic_owner_channels(scenario).map_err(|_| SpecError::ValidationFailed)?;
+    compile_owner_silo_disburse_down_plan_from_owner_view(&owner_view)
+}
 
-    let demand_buckets = owner_silo_demand_buckets_from_planet_child_rf(scenario)
+pub fn compile_owner_silo_disburse_down_plan_from_owner_view(
+    owner_view: &IntrinsicOwnerChannelView,
+) -> Result<OwnerSiloDisburseDownPlan, SpecError> {
+    let writeback_plan = compile_owner_silo_runtime_writeback_plan_from_owner_view(owner_view)?;
+
+    let demand_buckets = owner_silo_demand_buckets_from_owner_view(owner_view)
         .map_err(|_| SpecError::ValidationFailed)?;
 
     let cpu_results = if demand_buckets.is_empty() {

@@ -7,13 +7,16 @@
 
 use std::collections::BTreeMap;
 
+use simthing_core::SimThingId;
+
 use super::channel_key::{OwnerRef, ParentLocationId, ResourceKey, ScopeId};
+use super::owner_channel_admission::{admit_intrinsic_owner_channels, IntrinsicOwnerChannelView};
 use super::planet_child_rf::{
-    planet_child_rf_participant_inputs, scope_key_from_participant,
+    planet_child_rf_participant_inputs_from_owner_view, scope_key_from_participant,
     PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY,
 };
 use super::recursive_local_rf::{
-    evaluate_recursive_local_rf, recursive_local_rf_aggregate_source_rows,
+    evaluate_recursive_local_rf_from_owner_view, recursive_local_rf_aggregate_source_rows,
     RecursiveLocalRfAggregateSourceKind,
 };
 use super::runtime_tick_history::scenario_authority_digest;
@@ -23,7 +26,7 @@ use super::scenario::SimThingScenarioSpec;
 pub struct PlanetChildRfProjectionRow {
     pub source_simthing_id_raw: u32,
     pub planet_gridcell_id_raw: u32,
-    pub star_system_gridcell_id_raw: u32,
+    pub scope_id: ScopeId,
     pub owner_ref: OwnerRef,
     pub resource_key: ResourceKey,
     pub surplus: u32,
@@ -49,8 +52,7 @@ pub struct RecursiveRfProjectionRow {
 pub struct RecursiveRfReconciliationBucket {
     pub owner_ref: OwnerRef,
     pub resource_key: ResourceKey,
-    pub planet_gridcell_id_raw: Option<u32>,
-    pub star_system_gridcell_id_raw: Option<u32>,
+    pub scope_id: ScopeId,
     pub legacy_surplus_total: u32,
     pub legacy_demand_total: u32,
     pub recursive_surplus_total: u32,
@@ -88,6 +90,7 @@ pub enum RecursiveRfReconciliationErrorKind {
     RecursiveProjectionRejected,
     ArithmeticOverflow,
     ScenarioAuthorityRejected,
+    InvalidOwnerAuthority,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -136,12 +139,20 @@ pub struct RecursiveRfReconciliationReport {
 pub fn project_planet_child_rf_ladder_rows(
     scenario: &SimThingScenarioSpec,
 ) -> Result<Vec<PlanetChildRfProjectionRow>, RecursiveRfReconciliationError> {
-    let participants = planet_child_rf_participant_inputs(scenario).map_err(|report| {
-        RecursiveRfReconciliationError {
-            kind: RecursiveRfReconciliationErrorKind::LegacyProjectionRejected,
-            message: format!("planet-child RF admission {:?}", report.classification),
-        }
-    })?;
+    let owner_view = admit_intrinsic_owner_channels(scenario).map_err(owner_authority_error)?;
+    project_planet_child_rf_ladder_rows_from_owner_view(&owner_view)
+}
+
+pub fn project_planet_child_rf_ladder_rows_from_owner_view(
+    owner_view: &IntrinsicOwnerChannelView,
+) -> Result<Vec<PlanetChildRfProjectionRow>, RecursiveRfReconciliationError> {
+    let participants =
+        planet_child_rf_participant_inputs_from_owner_view(owner_view).map_err(|report| {
+            RecursiveRfReconciliationError {
+                kind: RecursiveRfReconciliationErrorKind::LegacyProjectionRejected,
+                message: format!("planet-child RF admission {:?}", report.classification),
+            }
+        })?;
 
     let mut rows = Vec::with_capacity(participants.len());
     for participant in participants {
@@ -149,7 +160,7 @@ pub fn project_planet_child_rf_ladder_rows(
         rows.push(PlanetChildRfProjectionRow {
             source_simthing_id_raw: participant.simthing_id_raw,
             planet_gridcell_id_raw: participant.planet_gridcell_id_raw,
-            star_system_gridcell_id_raw: scope.star_system_gridcell_id_raw.unwrap_or(0),
+            scope_id: scope.scope_id,
             owner_ref: participant.owner_ref.clone(),
             resource_key: super::planet_child_rf::planet_child_rf_default_resource_key(),
             surplus: participant.surplus,
@@ -179,11 +190,19 @@ pub fn project_planet_child_rf_ladder_rows(
 pub fn project_recursive_local_rf_rows(
     scenario: &SimThingScenarioSpec,
 ) -> Result<Vec<RecursiveRfProjectionRow>, RecursiveRfReconciliationError> {
-    let report =
-        evaluate_recursive_local_rf(scenario).map_err(|e| RecursiveRfReconciliationError {
+    let owner_view = admit_intrinsic_owner_channels(scenario).map_err(owner_authority_error)?;
+    project_recursive_local_rf_rows_from_owner_view(&owner_view)
+}
+
+pub fn project_recursive_local_rf_rows_from_owner_view(
+    owner_view: &IntrinsicOwnerChannelView,
+) -> Result<Vec<RecursiveRfProjectionRow>, RecursiveRfReconciliationError> {
+    let report = evaluate_recursive_local_rf_from_owner_view(owner_view).map_err(|e| {
+        RecursiveRfReconciliationError {
             kind: RecursiveRfReconciliationErrorKind::RecursiveProjectionRejected,
             message: e.message,
-        })?;
+        }
+    })?;
 
     let aggregate_rows = recursive_local_rf_aggregate_source_rows(&report);
     let mut rows = Vec::new();
@@ -258,8 +277,15 @@ pub fn project_recursive_local_rf_rows(
 pub fn reconcile_planet_child_rf_with_recursive_local_rf(
     scenario: &SimThingScenarioSpec,
 ) -> Result<RecursiveRfReconciliationReport, RecursiveRfReconciliationError> {
-    let legacy_rows = project_planet_child_rf_ladder_rows(scenario)?;
-    let recursive_rows = project_recursive_local_rf_rows(scenario)?;
+    let owner_view = admit_intrinsic_owner_channels(scenario).map_err(owner_authority_error)?;
+    reconcile_planet_child_rf_with_recursive_local_rf_from_owner_view(&owner_view)
+}
+
+pub fn reconcile_planet_child_rf_with_recursive_local_rf_from_owner_view(
+    owner_view: &IntrinsicOwnerChannelView,
+) -> Result<RecursiveRfReconciliationReport, RecursiveRfReconciliationError> {
+    let legacy_rows = project_planet_child_rf_ladder_rows_from_owner_view(owner_view)?;
+    let recursive_rows = project_recursive_local_rf_rows_from_owner_view(owner_view)?;
 
     let direct_recursive: Vec<_> = recursive_rows
         .iter()
@@ -323,12 +349,7 @@ pub fn reconcile_planet_child_rf_with_recursive_local_rf(
         let key = BucketKey {
             owner_ref: legacy.owner_ref.clone(),
             resource_key: legacy.resource_key.clone(),
-            planet_gridcell_id_raw: Some(legacy.planet_gridcell_id_raw),
-            star_system_gridcell_id_raw: if legacy.star_system_gridcell_id_raw > 0 {
-                Some(legacy.star_system_gridcell_id_raw)
-            } else {
-                None
-            },
+            scope_id: legacy.scope_id.clone(),
         };
         let entry = bucket_map.entry(key).or_default();
         entry.legacy_surplus_total = entry
@@ -342,15 +363,12 @@ pub fn reconcile_planet_child_rf_with_recursive_local_rf(
     }
 
     for recursive in &direct_recursive {
-        let star_system_gridcell_id_raw = recursive
-            .parent_location_id
-            .map(ParentLocationId::raw)
-            .filter(|id| *id > 0);
         let key = BucketKey {
             owner_ref: recursive.owner_ref.clone(),
             resource_key: recursive.resource_key.clone(),
-            planet_gridcell_id_raw: Some(recursive.arena_location_id_raw),
-            star_system_gridcell_id_raw,
+            scope_id: ScopeId::from_boundary(SimThingId::from_session_raw(
+                recursive.arena_location_id_raw,
+            )),
         };
         let entry = bucket_map.entry(key).or_default();
         entry.recursive_surplus_total = entry
@@ -383,8 +401,7 @@ pub fn reconcile_planet_child_rf_with_recursive_local_rf(
         buckets.push(RecursiveRfReconciliationBucket {
             owner_ref: key.owner_ref,
             resource_key: key.resource_key,
-            planet_gridcell_id_raw: key.planet_gridcell_id_raw,
-            star_system_gridcell_id_raw: key.star_system_gridcell_id_raw,
+            scope_id: key.scope_id,
             legacy_surplus_total: acc.legacy_surplus_total,
             legacy_demand_total: acc.legacy_demand_total,
             recursive_surplus_total: acc.recursive_surplus_total,
@@ -396,18 +413,11 @@ pub fn reconcile_planet_child_rf_with_recursive_local_rf(
     }
 
     buckets.sort_by(|a, b| {
-        (
-            &a.owner_ref,
-            &a.resource_key,
-            a.planet_gridcell_id_raw,
-            a.star_system_gridcell_id_raw,
-        )
-            .cmp(&(
-                &b.owner_ref,
-                &b.resource_key,
-                b.planet_gridcell_id_raw,
-                b.star_system_gridcell_id_raw,
-            ))
+        (&a.owner_ref, &a.resource_key, &a.scope_id).cmp(&(
+            &b.owner_ref,
+            &b.resource_key,
+            &b.scope_id,
+        ))
     });
 
     let settlement_rows: Vec<_> = recursive_rows
@@ -500,8 +510,7 @@ pub fn prove_recursive_rf_reconciliation_preserves_authority(
 struct BucketKey {
     owner_ref: OwnerRef,
     resource_key: ResourceKey,
-    planet_gridcell_id_raw: Option<u32>,
-    star_system_gridcell_id_raw: Option<u32>,
+    scope_id: ScopeId,
 }
 
 #[derive(Debug, Default)]
@@ -516,6 +525,13 @@ fn overflow_error(field: &str) -> RecursiveRfReconciliationError {
     RecursiveRfReconciliationError {
         kind: RecursiveRfReconciliationErrorKind::ArithmeticOverflow,
         message: format!("{field} overflow"),
+    }
+}
+
+fn owner_authority_error(error: impl std::fmt::Display) -> RecursiveRfReconciliationError {
+    RecursiveRfReconciliationError {
+        kind: RecursiveRfReconciliationErrorKind::InvalidOwnerAuthority,
+        message: error.to_string(),
     }
 }
 

@@ -2,7 +2,8 @@
 
 use simthing_core::{CompiledAccumulatorOpPlan, StructuralScalarChannel};
 use simthing_spec::{
-    evaluate_planet_child_rf_admission, planet_child_rf_participant_inputs,
+    admit_intrinsic_owner_channels, evaluate_planet_child_rf_admission_from_owner_view,
+    planet_child_rf_participant_inputs_from_owner_view, IntrinsicOwnerChannelView,
     PlanetChildRfAdmissionClassification, PlanetChildRfAdmissionReport,
     PlanetChildRfParticipantInput, SimThingScenarioSpec, SpecError,
 };
@@ -24,12 +25,20 @@ pub struct PlanetChildRfGpuTickPlan {
 pub fn compile_planet_child_rf_gpu_tick_plan(
     scenario: &SimThingScenarioSpec,
 ) -> Result<PlanetChildRfGpuTickPlan, SpecError> {
-    let admission = evaluate_planet_child_rf_admission(scenario);
+    let owner_view =
+        admit_intrinsic_owner_channels(scenario).map_err(|_| SpecError::ValidationFailed)?;
+    compile_planet_child_rf_gpu_tick_plan_from_owner_view(&owner_view)
+}
+
+pub fn compile_planet_child_rf_gpu_tick_plan_from_owner_view(
+    owner_view: &IntrinsicOwnerChannelView,
+) -> Result<PlanetChildRfGpuTickPlan, SpecError> {
+    let admission = evaluate_planet_child_rf_admission_from_owner_view(owner_view);
     if admission.classification == PlanetChildRfAdmissionClassification::Rejected {
         return Err(SpecError::ValidationFailed);
     }
-    let participants =
-        planet_child_rf_participant_inputs(scenario).map_err(|_| SpecError::ValidationFailed)?;
+    let participants = planet_child_rf_participant_inputs_from_owner_view(owner_view)
+        .map_err(|_| SpecError::ValidationFailed)?;
     if participants.is_empty() {
         return Err(SpecError::ValidationFailed);
     }

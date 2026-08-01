@@ -203,6 +203,8 @@ pub enum ScenarioRootError {
     OwnerMissingId,
     #[error("duplicate owner_id `{owner_id}` among GameSession Owner children")]
     DuplicateOwnerId { owner_id: String },
+    #[error("Owner SimThing id `{owner_id}` collides with the reserved neutral owner identity")]
+    ReservedNeutralOwnerId { owner_id: String },
     #[error("Owner SimThing is not a direct GameSession child")]
     OwnerNotDirectGameSessionChild,
     #[error("legacy World-root scenario has no Owner child requirement")]
@@ -750,6 +752,15 @@ pub fn validate_session_owner_entities(
         let Some(owner_id) = owner_entity_id(owner) else {
             return Err(ScenarioRootError::OwnerMissingId);
         };
+        match simthing_core::owner_channel::OwnerRef::try_new_authored(owner_id.clone()) {
+            Ok(_) => {}
+            Err(simthing_core::owner_channel::AuthoredOwnerRefError::Blank) => {
+                return Err(ScenarioRootError::OwnerMissingId);
+            }
+            Err(simthing_core::owner_channel::AuthoredOwnerRefError::ReservedNeutralIdentity) => {
+                return Err(ScenarioRootError::ReservedNeutralOwnerId { owner_id });
+            }
+        }
         if !seen.insert(owner_id.clone()) {
             return Err(ScenarioRootError::DuplicateOwnerId { owner_id });
         }

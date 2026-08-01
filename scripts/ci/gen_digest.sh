@@ -213,11 +213,12 @@ def build_model():
         "sealed_producers": [(row, "scripts/ci/allow/sealed_producers.txt") for row in parse_allow("scripts/ci/allow/sealed_producers.txt")],
         "inert_handles": [(row, "scripts/ci/allow/inert_buffer_handles.txt") for row in parse_allow("scripts/ci/allow/inert_buffer_handles.txt")],
         "kernel_surface": [(row, "scripts/ci/allow/kernel_surface.txt") for row in parse_allow("scripts/ci/allow/kernel_surface.txt")],
+        "contention_mechanisms": [(row, "scripts/ci/allow/contention_mechanisms.txt") for row in parse_allow("scripts/ci/allow/contention_mechanisms.txt")],
         "sealed_types": [(row, "scripts/ci/allow/sealed_types.txt") for row in parse_sealed_types("scripts/ci/allow/sealed_types.txt")],
         "scans": [(row, "scripts/ci/scans.tsv") for row in parse_scans("scripts/ci/scans.tsv")],
         "sources": list(GLOBAL_SOURCES),
     }
-    for section in ("sealed_producers", "inert_handles", "kernel_surface", "sealed_types", "scans"):
+    for section in ("sealed_producers", "inert_handles", "kernel_surface", "contention_mechanisms", "sealed_types", "scans"):
         ensure_unique([row for row, _ in model[section]], section)
 
     if TRACK_DOC_REL:
@@ -264,6 +265,7 @@ def add_track_addendum(model):
         if child.name not in known:
             fail(f"{allow_dir_rel}/{child.name}: unknown track addendum allow file")
     addendum_sources = {
+        "contention_mechanisms": (f"{allow_dir_rel}/contention_mechanisms.txt", parse_allow),
         "sealed_producers": (f"{allow_dir_rel}/sealed_producers.txt", parse_allow),
         "inert_handles": (f"{allow_dir_rel}/inert_buffer_handles.txt", parse_allow),
         "kernel_surface": (f"{allow_dir_rel}/kernel_surface.txt", parse_allow),
@@ -324,6 +326,12 @@ def generate_markdown(model):
     lines.extend(table(
         ["sealed type", "source"],
         [(row[0], source_name(rel_path)) for row, rel_path in model["sealed_types"]],
+    ))
+
+    lines.extend(["", "## Contention Mechanisms", ""])
+    lines.extend(table(
+        ["need", "mechanism", "ready-surface", "promotion-blocker", "source"],
+        with_source(model["contention_mechanisms"]),
     ))
 
     scan_rows = []
@@ -397,6 +405,7 @@ def verify_generated_exactness(text, model):
         "Sanctioned Sealed Producers": with_source(model["sealed_producers"]),
         "Inert Buffer Handles": with_source(model["inert_handles"]),
         "Kernel Surface": with_source(model["kernel_surface"]),
+        "Contention Mechanisms": with_source(model["contention_mechanisms"]),
         "Sealed Types": [(row[0], source_name(rel_path)) for row, rel_path in model["sealed_types"]],
     }
     for heading, rows in expected.items():

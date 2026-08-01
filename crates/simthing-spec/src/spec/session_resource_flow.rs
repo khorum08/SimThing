@@ -7,11 +7,12 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use simthing_core::{SimThing, SimThingKind};
 
+use super::owner_channel_admission::{admit_intrinsic_owner_channels, IntrinsicOwnerChannelView};
 use super::scenario::{
     game_session_galaxy_map, game_session_owners, is_galaxy_map_entity, owner_entity_id,
-    owner_flow_owner_ref, owner_has_silo_metadata, property_u32, SimThingScenarioSpec,
-    OWNER_FLOW_DEFICIT_PROPERTY_ID, OWNER_FLOW_SURPLUS_PROPERTY_ID,
-    OWNER_SILO_CAPACITY_PROPERTY_ID, OWNER_SILO_CURRENT_PROPERTY_ID,
+    owner_has_silo_metadata, property_u32, SimThingScenarioSpec, OWNER_FLOW_DEFICIT_PROPERTY_ID,
+    OWNER_FLOW_SURPLUS_PROPERTY_ID, OWNER_SILO_CAPACITY_PROPERTY_ID,
+    OWNER_SILO_CURRENT_PROPERTY_ID,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -38,6 +39,7 @@ pub enum OwnerSiloAdmissionErrorKind {
     InvalidSurplusAmount,
     InvalidDeficitAmount,
     DuplicateParticipantId,
+    InvalidOwnerAuthority,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -91,6 +93,17 @@ struct FlowParticipant {
 }
 
 pub fn evaluate_owner_silo_flow(spec: &SimThingScenarioSpec) -> OwnerSiloAdmissionReport {
+    let owner_view = match admit_intrinsic_owner_channels(spec) {
+        Ok(view) => view,
+        Err(error) => return rejected_owner_authority_report(error.to_string()),
+    };
+    evaluate_owner_silo_flow_from_owner_view(&owner_view)
+}
+
+pub fn evaluate_owner_silo_flow_from_owner_view(
+    owner_view: &IntrinsicOwnerChannelView,
+) -> OwnerSiloAdmissionReport {
+    let spec = owner_view.scenario();
     let mut report = OwnerSiloAdmissionReport {
         classification: OwnerSiloAdmissionClassification::Admitted,
         ..Default::default()
@@ -132,7 +145,7 @@ pub fn evaluate_owner_silo_flow(spec: &SimThingScenarioSpec) -> OwnerSiloAdmissi
         return report;
     }
 
-    let participants = match collect_flow_participants(spec, &mut report) {
+    let participants = match collect_flow_participants(owner_view, &mut report) {
         Ok(participants) => participants,
         Err(()) => {
             report.classification = OwnerSiloAdmissionClassification::Rejected;
@@ -248,9 +261,10 @@ impl Default for OwnerSiloAdmissionReport {
 }
 
 fn collect_flow_participants(
-    spec: &SimThingScenarioSpec,
+    owner_view: &IntrinsicOwnerChannelView,
     report: &mut OwnerSiloAdmissionReport,
 ) -> Result<Vec<FlowParticipant>, ()> {
+    let spec = owner_view.scenario();
     let galaxy_map = match game_session_galaxy_map(spec) {
         Ok(map) => map,
         Err(_) => return Ok(Vec::new()),
@@ -258,16 +272,6 @@ fn collect_flow_participants(
 
     let mut participants = Vec::new();
     let mut seen_ids = BTreeSet::new();
-    let owner_ids: BTreeSet<String> = game_session_owners(spec)
-        .ok()
-        .map(|owners| {
-            owners
-                .into_iter()
-                .filter_map(owner_entity_id)
-                .collect::<BTreeSet<_>>()
-        })
-        .unwrap_or_default();
-
     for gridcell in galaxy_map
         .children
         .iter()
@@ -276,7 +280,7 @@ fn collect_flow_participants(
         collect_participant_from_node(
             gridcell,
             &format!("galaxymap/gridcell/{}", gridcell.id.raw()),
-            &owner_ids,
+            owner_view,
             &mut seen_ids,
             &mut participants,
             report,
@@ -285,7 +289,7 @@ fn collect_flow_participants(
             collect_participant_from_node(
                 child,
                 &format!("galaxymap/gridcell/{}/child_{idx}", gridcell.id.raw()),
-                &owner_ids,
+                owner_view,
                 &mut seen_ids,
                 &mut participants,
                 report,
@@ -299,34 +303,33 @@ fn collect_flow_participants(
 fn collect_participant_from_node(
     node: &SimThing,
     path: &str,
-    owner_ids: &BTreeSet<String>,
+    owner_view: &IntrinsicOwnerChannelView,
     seen_ids: &mut BTreeSet<u32>,
     participants: &mut Vec<FlowParticipant>,
     report: &mut OwnerSiloAdmissionReport,
 ) -> Result<(), ()> {
-    let Some(owner_id) = owner_flow_owner_ref(node) else {
+    if !node
+        .properties
+        .contains_key(&OWNER_FLOW_SURPLUS_PROPERTY_ID)
+        && !node
+            .properties
+            .contains_key(&OWNER_FLOW_DEFICIT_PROPERTY_ID)
+    {
         return Ok(());
+    }
+    let owner_id = match owner_view.owner_for(node.id) {
+        Ok(owner) => owner.as_str().to_string(),
+        Err(error) => {
+            push_error(
+                report,
+                OwnerSiloAdmissionErrorKind::InvalidOwnerAuthority,
+                Some(path.to_string()),
+                Some(node.id.raw()),
+                error.to_string(),
+            );
+            return Err(());
+        }
     };
-    if owner_id.trim().is_empty() {
-        push_error(
-            report,
-            OwnerSiloAdmissionErrorKind::MissingOwnerReference,
-            Some(path.to_string()),
-            Some(node.id.raw()),
-            "participant flow owner reference is empty",
-        );
-        return Err(());
-    }
-    if !owner_ids.contains(&owner_id) {
-        push_error(
-            report,
-            OwnerSiloAdmissionErrorKind::UnknownOwnerReference,
-            Some(path.to_string()),
-            Some(node.id.raw()),
-            format!("unknown owner reference `{owner_id}`"),
-        );
-        return Err(());
-    }
     if !seen_ids.insert(node.id.raw()) {
         push_error(
             report,
@@ -567,12 +570,20 @@ fn finalize_owner_silo_classification(report: &mut OwnerSiloAdmissionReport) {
 pub fn owner_silo_flow_participant_inputs(
     spec: &SimThingScenarioSpec,
 ) -> Result<Vec<OwnerSiloFlowParticipantInput>, OwnerSiloAdmissionReport> {
-    let report = evaluate_owner_silo_flow(spec);
+    let owner_view = admit_intrinsic_owner_channels(spec)
+        .map_err(|error| rejected_owner_authority_report(error.to_string()))?;
+    owner_silo_flow_participant_inputs_from_owner_view(&owner_view)
+}
+
+pub fn owner_silo_flow_participant_inputs_from_owner_view(
+    owner_view: &IntrinsicOwnerChannelView,
+) -> Result<Vec<OwnerSiloFlowParticipantInput>, OwnerSiloAdmissionReport> {
+    let report = evaluate_owner_silo_flow_from_owner_view(owner_view);
     if report.classification == OwnerSiloAdmissionClassification::Rejected {
         return Err(report);
     }
     let mut scratch = OwnerSiloAdmissionReport::default();
-    let participants = collect_flow_participants(spec, &mut scratch).map_err(|_| report)?;
+    let participants = collect_flow_participants(owner_view, &mut scratch).map_err(|_| report)?;
     Ok(participants
         .into_iter()
         .map(|participant| OwnerSiloFlowParticipantInput {
@@ -586,8 +597,17 @@ pub fn owner_silo_flow_participant_inputs(
 
 /// Session-local SimThing raw ids for admitted owner-silo flow participants.
 pub fn owner_silo_flow_participant_roots(spec: &SimThingScenarioSpec) -> Vec<u32> {
+    let Ok(owner_view) = admit_intrinsic_owner_channels(spec) else {
+        return Vec::new();
+    };
+    owner_silo_flow_participant_roots_from_owner_view(&owner_view)
+}
+
+pub fn owner_silo_flow_participant_roots_from_owner_view(
+    owner_view: &IntrinsicOwnerChannelView,
+) -> Vec<u32> {
     let mut report = OwnerSiloAdmissionReport::default();
-    collect_flow_participants(spec, &mut report)
+    collect_flow_participants(owner_view, &mut report)
         .ok()
         .map(|participants| {
             participants
@@ -596,6 +616,21 @@ pub fn owner_silo_flow_participant_roots(spec: &SimThingScenarioSpec) -> Vec<u32
                 .collect::<Vec<_>>()
         })
         .unwrap_or_default()
+}
+
+fn rejected_owner_authority_report(message: String) -> OwnerSiloAdmissionReport {
+    let mut report = OwnerSiloAdmissionReport {
+        classification: OwnerSiloAdmissionClassification::Rejected,
+        ..Default::default()
+    };
+    push_error(
+        &mut report,
+        OwnerSiloAdmissionErrorKind::InvalidOwnerAuthority,
+        None,
+        None,
+        message,
+    );
+    report
 }
 
 /// Stable display label for owner-silo admission classification (presentation only).

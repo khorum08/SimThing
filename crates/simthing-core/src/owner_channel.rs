@@ -21,11 +21,10 @@
 //!
 //! # Resolution is total, pure, and never materialized
 //!
-//! [`resolve_owner`] always returns exactly one owner. There is no `Option`: an unbound
-//! tree resolves to [`unowned`], a real neutral owner that participates in contention as
-//! an ordinary party. That deletes a partial function from the RF path instead of adding
-//! one, and makes an ownership flip an ordinary rebind rather than a nothing-to-something
-//! transition.
+//! [`resolve_owner`] returns exactly one owner for every valid admitted member. There is no
+//! `Option` effective owner: an unbound member resolves to [`unowned`], a real neutral owner
+//! that participates in contention as an ordinary party. Foreign ids and malformed explicit
+//! bindings are invariant failures, not aliases for neutral ownership or inheritance.
 //!
 //! The resolved value is **never stamped back onto nodes**. Materializing it would recreate
 //! the exact flat-stamping defect this module exists to delete — a 1500-node tree would
@@ -44,6 +43,7 @@
 use crate::ids::{SimPropertyId, SimThingId};
 use crate::property::PropertyValue;
 use crate::simthing::SimThing;
+use thiserror::Error;
 
 /// Well-known structural property: this node's explicit owner binding.
 ///
@@ -81,6 +81,20 @@ impl OwnerRef {
     pub fn is_unowned(&self) -> bool {
         self.0 == UNOWNED_OWNER_REF
     }
+
+    /// Admit an authored Owner identity.
+    ///
+    /// The neutral identity is substrate-owned and cannot also name an authored Owner SimThing.
+    pub fn try_new_authored(value: impl Into<String>) -> Result<Self, AuthoredOwnerRefError> {
+        let value = value.into();
+        if value.trim().is_empty() {
+            return Err(AuthoredOwnerRefError::Blank);
+        }
+        if value.trim() == UNOWNED_OWNER_REF {
+            return Err(AuthoredOwnerRefError::ReservedNeutralIdentity);
+        }
+        Ok(Self(value))
+    }
 }
 
 impl AsRef<str> for OwnerRef {
@@ -94,13 +108,37 @@ pub fn unowned() -> OwnerRef {
     OwnerRef::new(UNOWNED_OWNER_REF)
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Error)]
+pub enum AuthoredOwnerRefError {
+    #[error("authored Owner identity is blank")]
+    Blank,
+    #[error("authored Owner identity collides with reserved neutral identity `unowned`")]
+    ReservedNeutralIdentity,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Error)]
+pub enum OwnerResolutionError {
+    #[error("target SimThing {target:?} is not a member of the supplied authority tree")]
+    TargetNotInTree { target: SimThingId },
+    #[error("SimThing {simthing_id:?} has malformed owner binding: {reason}")]
+    MalformedBinding {
+        simthing_id: SimThingId,
+        reason: &'static str,
+    },
+    #[error("SimThing {simthing_id:?} has a present but blank owner binding")]
+    BlankBinding { simthing_id: SimThingId },
+}
+
 /// Bind `owner` onto `node` as its explicit owner.
 ///
 /// This is the ONLY write in this module, and it is a *binding*, not a stamp of a resolved
 /// value: it declares intent at one node. Ownership fission is exactly one call to this at
 /// a subtree root.
 pub fn bind_owner(node: &mut SimThing, owner: &OwnerRef) {
-    node.add_property(OWNER_CHANNEL_PROPERTY_ID, encode_owner_property(owner.as_str()));
+    node.add_property(
+        OWNER_CHANNEL_PROPERTY_ID,
+        encode_owner_property(owner.as_str()),
+    );
 }
 
 /// Remove an explicit binding, returning the node to inherited ownership.
@@ -113,53 +151,73 @@ pub fn unbind_owner(node: &mut SimThing) {
 /// `None` means "inherits" — it does not mean "unowned". Callers wanting the effective
 /// answer must use [`resolve_owner`]; this accessor exists for admission and authoring,
 /// not for RF consumers.
-pub fn declared_owner(node: &SimThing) -> Option<OwnerRef> {
-    let text = decode_owner_property(node.property(OWNER_CHANNEL_PROPERTY_ID)?)?;
+pub fn declared_owner(node: &SimThing) -> Result<Option<OwnerRef>, OwnerResolutionError> {
+    let Some(value) = node.property(OWNER_CHANNEL_PROPERTY_ID) else {
+        return Ok(None);
+    };
+    let text =
+        decode_owner_property(value).map_err(|reason| OwnerResolutionError::MalformedBinding {
+            simthing_id: node.id,
+            reason,
+        })?;
     if text.trim().is_empty() {
-        return None;
+        return Err(OwnerResolutionError::BlankBinding {
+            simthing_id: node.id,
+        });
     }
-    Some(OwnerRef::new(text))
+    Ok(Some(OwnerRef::new(text)))
 }
 
-/// Resolve the effective owner of `target` within `root`. **Total**: always exactly one.
+/// Resolve the effective owner of `target` within `root`.
 ///
 /// Walks the explicit binding, then the nearest bound ancestor, and bottoms out at
-/// [`unowned`]. Never materializes the answer.
-///
-/// Returns [`unowned`] when `target` is not present in `root` — a node outside the tree has
-/// no ancestry to inherit from, and reporting neutral keeps the function total rather than
-/// introducing an error path that every RF caller would have to handle.
-pub fn resolve_owner(root: &SimThing, target: SimThingId) -> OwnerRef {
-    fn walk(node: &SimThing, target: SimThingId, inherited: &OwnerRef) -> Option<OwnerRef> {
-        let effective = declared_owner(node).unwrap_or_else(|| inherited.clone());
+/// [`unowned`]. Valid admitted members are total and never return `Option`; a foreign target
+/// or invalid present binding fails closed. Never materializes the answer.
+pub fn resolve_owner(
+    root: &SimThing,
+    target: SimThingId,
+) -> Result<OwnerRef, OwnerResolutionError> {
+    fn walk(
+        node: &SimThing,
+        target: SimThingId,
+        inherited: &OwnerRef,
+    ) -> Result<Option<OwnerRef>, OwnerResolutionError> {
+        let effective = declared_owner(node)?.unwrap_or_else(|| inherited.clone());
         if node.id == target {
-            return Some(effective);
+            return Ok(Some(effective));
         }
         for child in &node.children {
-            if let Some(found) = walk(child, target, &effective) {
-                return Some(found);
+            if let Some(found) = walk(child, target, &effective)? {
+                return Ok(Some(found));
             }
         }
-        None
+        Ok(None)
     }
-    walk(root, target, &unowned()).unwrap_or_else(unowned)
+    walk(root, target, &unowned())?.ok_or(OwnerResolutionError::TargetNotInTree { target })
 }
 
 /// Resolve the effective owner of every node in `root`, parent-first.
 ///
 /// One traversal instead of one per node. Emits `(id, owner)` pairs in deterministic
 /// pre-order so downstream bucketing has a canonical order without sorting.
-pub fn resolve_owners_in_order(root: &SimThing) -> Vec<(SimThingId, OwnerRef)> {
-    fn walk(node: &SimThing, inherited: &OwnerRef, out: &mut Vec<(SimThingId, OwnerRef)>) {
-        let effective = declared_owner(node).unwrap_or_else(|| inherited.clone());
+pub fn resolve_owners_in_order(
+    root: &SimThing,
+) -> Result<Vec<(SimThingId, OwnerRef)>, OwnerResolutionError> {
+    fn walk(
+        node: &SimThing,
+        inherited: &OwnerRef,
+        out: &mut Vec<(SimThingId, OwnerRef)>,
+    ) -> Result<(), OwnerResolutionError> {
+        let effective = declared_owner(node)?.unwrap_or_else(|| inherited.clone());
         out.push((node.id, effective.clone()));
         for child in &node.children {
-            walk(child, &effective, out);
+            walk(child, &effective, out)?;
         }
+        Ok(())
     }
     let mut out = Vec::new();
-    walk(root, &unowned(), &mut out);
-    out
+    walk(root, &unowned(), &mut out)?;
+    Ok(out)
 }
 
 /// True when `node`'s effective owner differs from `parent_owner` — i.e. the edge from its
@@ -168,10 +226,12 @@ pub fn resolve_owners_in_order(root: &SimThing) -> Vec<(SimThingId, OwnerRef)> {
 /// Crossings are the only flows that need per-node recording: identity flows are
 /// reconstructible from the node's own aggregate, so recording them at every level would
 /// make retained state O(nodes x owners x resources) instead of O(crossings).
-pub fn is_ownership_crossing(node: &SimThing, parent_owner: &OwnerRef) -> bool {
-    declared_owner(node).is_some_and(|own| &own != parent_owner)
+pub fn is_ownership_crossing(
+    node: &SimThing,
+    parent_owner: &OwnerRef,
+) -> Result<bool, OwnerResolutionError> {
+    Ok(declared_owner(node)?.is_some_and(|own| &own != parent_owner))
 }
-
 
 /// Length-prefixed lane packing, matching the established core convention for opaque
 /// string-valued structural properties (see `fission_clone_source`).
@@ -185,16 +245,33 @@ fn encode_owner_property(owner: &str) -> PropertyValue {
     PropertyValue::from_raw_lanes(lanes)
 }
 
-fn decode_owner_property(value: &PropertyValue) -> Option<String> {
+fn decode_owner_property(value: &PropertyValue) -> Result<String, &'static str> {
     let lanes = value.raw_lanes_for_serialization();
     if lanes.is_empty() {
-        return None;
+        return Err("missing length lane");
     }
-    let len = lanes[0] as usize;
+    let encoded_len = lanes[0];
+    if !encoded_len.is_finite()
+        || encoded_len < 0.0
+        || encoded_len.fract() != 0.0
+        || encoded_len > 16_777_216.0
+    {
+        return Err("length lane is not an exact non-negative integer");
+    }
+    let len = encoded_len as usize;
+    let expected_lane_count = 1usize
+        .checked_add(len.saturating_add(3) / 4)
+        .ok_or("encoded length overflows lane count")?;
+    if lanes.len() != expected_lane_count {
+        return Err("encoded length does not match payload lane count");
+    }
     let mut bytes = Vec::with_capacity(len);
     for lane in lanes.iter().skip(1) {
         bytes.extend_from_slice(&lane.to_bits().to_le_bytes());
     }
+    if bytes.iter().skip(len).any(|byte| *byte != 0) {
+        return Err("payload padding is non-zero");
+    }
     bytes.truncate(len);
-    String::from_utf8(bytes).ok()
+    String::from_utf8(bytes).map_err(|_| "payload is not valid UTF-8")
 }

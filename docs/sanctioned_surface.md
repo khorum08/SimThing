@@ -13,7 +13,7 @@ This digest is a derived context artifact for low-context agents. If it disagree
 | scripts/ci/allow/inert_buffer_handles.txt | 2 | 9e2069fa5730f17cacde1c671ebc17beb59f50738d2dcb914bceae13f9b8b3a4 |
 | scripts/ci/allow/kernel_surface.txt | 284 | 30d540aa675f04f7f84e1c88b9754eb5d8d087191fd15fd0d5209f2374c3bf36 |
 | scripts/ci/allow/sealed_types.txt | 19 | 9d427e3b41a586b06f24ca02cc45f78934237d2229b0c38d46e2a8a6ef5016be |
-| scripts/ci/allow/contention_mechanisms.txt | 5 | 4120fccebe49986f6bd2c1d3b73d5bee7e59596a906b9efcfeb6c2be83ef7790 |
+| scripts/ci/allow/contention_mechanisms.txt | 7 | 9e4d82f6c60cbb30a8fc408afc626679e977ff23717fe93d8fb08dc2bd5501f4 |
 | scripts/ci/scans.tsv | 26 | 18d6f4886524f593e231931b952fbdcf2e0520fb4660f72fb7191298221e7d64 |
 
 ## Sanctioned Sealed Producers
@@ -365,6 +365,18 @@ This digest is a derived context artifact for low-context agents. If it disagree
 | ThresholdEventCandidatesReadback | sealed_types.txt |
 | ThresholdEventGpu | sealed_types.txt |
 | UndirectedSymmetryCertificate | sealed_types.txt |
+
+## Contention Mechanisms
+
+| need | mechanism | ready-surface | promotion-blocker | source |
+| --- | --- | --- | --- | --- |
+| resolve-ownership | owner resolution | simthing_core::owner_channel::resolve_owner -- total for valid in-tree members, pure, never materialized; absence means inherit, unbound resolves neutral, and foreign/malformed authority fails closed | retire when ownership is intrinsic to an admitted type and cannot be asked for separately | contention_mechanisms.txt |
+| rebind-ownership | ownership fission | simthing_core::owner_channel::bind_owner at a subtree root -- ONE write re-parents the whole subtree; unbind_owner reverses it | retire when subtree ownership is expressed structurally rather than by property binding | contention_mechanisms.txt |
+| flip-ownership | ownership rebind | bind_owner from the neutral owner to a named one -- a flip is an ordinary rebind, never a None-to-Some transition with its own code path | retire when movement authority owns the flip end to end | contention_mechanisms.txt |
+| segregate-flows-by-owner | owner-keyed bucket | simthing_spec::OwnerChannelScopeKey -- canonical {OwnerRef, ResourceKey, ScopeId} ordering makes same-owner and different-owner behaviour emergent without an owner-equality branch | retire when bucketing is intrinsic to the admitted channel type | contention_mechanisms.txt |
+| detect-ownership-crossing | crossing predicate | simthing_core::owner_channel::is_ownership_crossing -- only crossing flow deltas are retained in addition to ordinary own aggregates; identity-edge flows are reconstructible | retire when crossing detection is intrinsic to reduce-up emission | contention_mechanisms.txt |
+| reduce-owner-channel | generalized reduce-up | simthing_spec::reduce_owner_channel_rf -- canonical {OwnerRef, ResourceKey, ScopeId} buckets admit N owners and prove conservation without an owner-equality branch | retire when this reduction is intrinsic to the resident RF execution type | contention_mechanisms.txt |
+| reconstruct-owner-channel | bounded STEAD reconstruction | simthing_spec::reconstruct_owner_channel_rf_map -- ordinary active node/resource aggregates plus exactly one retained flow record per ownership crossing reconstruct the RF map | retire when resident STEAD execution consumes the crossing rows directly | contention_mechanisms.txt |
 
 ## Forbidden / Screened Patterns
 

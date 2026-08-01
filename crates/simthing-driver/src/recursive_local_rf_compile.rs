@@ -7,12 +7,13 @@
 
 use simthing_core::{CompiledAccumulatorOpPlan, StructuralScalarChannel};
 use simthing_spec::{
-    evaluate_recursive_local_rf, prove_recursive_local_rf_preserves_authority,
+    admit_intrinsic_owner_channels, evaluate_recursive_local_rf_from_owner_view,
+    prove_recursive_local_rf_preserves_authority_from_owner_view,
     recursive_local_rf_aggregate_source_rows, recursive_local_rf_arena_aggregate_totals,
-    recursive_local_rf_report_matches_planet_child_compatibility_slice, OwnerRef,
-    RecursiveLocalRfAggregateSourceRow, RecursiveLocalRfAuthorityProof,
-    RecursiveLocalRfCompatibilityReport, RecursiveLocalRfEvaluationReport, ResourceKey,
-    SimThingScenarioSpec, SpecError,
+    recursive_local_rf_report_matches_planet_child_compatibility_slice_from_owner_view,
+    IntrinsicOwnerChannelView, OwnerRef, RecursiveLocalRfAggregateSourceRow,
+    RecursiveLocalRfAuthorityProof, RecursiveLocalRfCompatibilityReport,
+    RecursiveLocalRfEvaluationReport, ResourceKey, SimThingScenarioSpec, SpecError,
 };
 
 use crate::owner_silo_accumulator_compile::compile_participant_channel_sum_plan;
@@ -48,10 +49,18 @@ pub struct RecursiveLocalRfPlan {
 pub fn compile_recursive_local_rf_plan(
     scenario: &SimThingScenarioSpec,
 ) -> Result<RecursiveLocalRfPlan, SpecError> {
-    let evaluation_report =
-        evaluate_recursive_local_rf(scenario).map_err(|_| SpecError::ValidationFailed)?;
+    let owner_view =
+        admit_intrinsic_owner_channels(scenario).map_err(|_| SpecError::ValidationFailed)?;
+    compile_recursive_local_rf_plan_from_owner_view(&owner_view)
+}
 
-    let authority_proof = prove_recursive_local_rf_preserves_authority(scenario)
+pub fn compile_recursive_local_rf_plan_from_owner_view(
+    owner_view: &IntrinsicOwnerChannelView,
+) -> Result<RecursiveLocalRfPlan, SpecError> {
+    let evaluation_report = evaluate_recursive_local_rf_from_owner_view(owner_view)
+        .map_err(|_| SpecError::ValidationFailed)?;
+
+    let authority_proof = prove_recursive_local_rf_preserves_authority_from_owner_view(owner_view)
         .map_err(|_| SpecError::ValidationFailed)?;
 
     if !authority_proof.scenario_authority_unchanged {
@@ -59,8 +68,10 @@ pub fn compile_recursive_local_rf_plan(
     }
 
     let compatibility_report =
-        recursive_local_rf_report_matches_planet_child_compatibility_slice(scenario)
-            .map_err(|_| SpecError::ValidationFailed)?;
+        recursive_local_rf_report_matches_planet_child_compatibility_slice_from_owner_view(
+            owner_view,
+        )
+        .map_err(|_| SpecError::ValidationFailed)?;
 
     let aggregate_source_rows = recursive_local_rf_aggregate_source_rows(&evaluation_report);
     let gpu_arena_aggregate_proof_plans =

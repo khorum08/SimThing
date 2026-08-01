@@ -9,7 +9,7 @@ use simthing_core::SimThing;
 use super::channel_key::{OwnerRef, ResourceKey};
 use super::planet_child_rf::{
     planet_child_rf_default_resource_key, PlanetChildRfAdmissionClassification,
-    PlanetChildRfReduceUpReport, PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY,
+    PlanetChildRfReduceUpReport,
 };
 use super::scenario::{
     game_session_owners, owner_entity_id, owner_has_silo_metadata, owner_silo_capacity,

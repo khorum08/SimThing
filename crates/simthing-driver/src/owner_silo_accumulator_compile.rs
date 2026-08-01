@@ -1,12 +1,14 @@
 //! SIM-GPU-OWNER-SILO-RESOURCE-FLOW-TICK-0 — lower admitted owner-silo participants to AccumulatorOp plans.
 
 use simthing_core::{
-    AccumulatorOp, CombineFn, CompiledAccumulatorOpPlan, ConsumeMode, GateSpec,
-    InputSpec, ScaleSpec, SlotIndex, SourceSpec, StructuralScalarChannel,
+    AccumulatorOp, CombineFn, CompiledAccumulatorOpPlan, ConsumeMode, GateSpec, InputSpec,
+    ScaleSpec, SlotIndex, SourceSpec, StructuralScalarChannel,
 };
 use simthing_spec::{
-    evaluate_owner_silo_flow, owner_silo_flow_participant_inputs, OwnerSiloAdmissionClassification,
-    OwnerSiloAdmissionReport, OwnerSiloFlowParticipantInput, SimThingScenarioSpec, SpecError,
+    admit_intrinsic_owner_channels, evaluate_owner_silo_flow_from_owner_view,
+    owner_silo_flow_participant_inputs_from_owner_view, IntrinsicOwnerChannelView,
+    OwnerSiloAdmissionClassification, OwnerSiloAdmissionReport, OwnerSiloFlowParticipantInput,
+    SimThingScenarioSpec, SpecError,
 };
 
 /// Driver-compiled owner-silo GPU tick plan over existing AccumulatorOp surfaces.
@@ -27,12 +29,20 @@ pub struct OwnerSiloGpuTickPlan {
 pub fn compile_owner_silo_gpu_tick_plan(
     scenario: &SimThingScenarioSpec,
 ) -> Result<OwnerSiloGpuTickPlan, SpecError> {
-    let admission = evaluate_owner_silo_flow(scenario);
+    let owner_view =
+        admit_intrinsic_owner_channels(scenario).map_err(|_| SpecError::ValidationFailed)?;
+    compile_owner_silo_gpu_tick_plan_from_owner_view(&owner_view)
+}
+
+pub fn compile_owner_silo_gpu_tick_plan_from_owner_view(
+    owner_view: &IntrinsicOwnerChannelView,
+) -> Result<OwnerSiloGpuTickPlan, SpecError> {
+    let admission = evaluate_owner_silo_flow_from_owner_view(owner_view);
     if admission.classification == OwnerSiloAdmissionClassification::Rejected {
         return Err(SpecError::ValidationFailed);
     }
-    let participants =
-        owner_silo_flow_participant_inputs(scenario).map_err(|_| SpecError::ValidationFailed)?;
+    let participants = owner_silo_flow_participant_inputs_from_owner_view(owner_view)
+        .map_err(|_| SpecError::ValidationFailed)?;
     if participants.is_empty() {
         return Err(SpecError::ValidationFailed);
     }

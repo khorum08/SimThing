@@ -9,16 +9,16 @@ use std::collections::{BTreeMap, BTreeSet};
 use simthing_core::{SimThing, SimThingKind};
 
 use super::channel_key::{OwnerRef, ParentLocationId, ResourceKey};
+use super::owner_channel_admission::{admit_intrinsic_owner_channels, IntrinsicOwnerChannelView};
 use super::planet_child_rf::{
-    evaluate_planet_child_rf_admission, planet_child_rf_default_resource_key,
-    planet_child_rf_participant_inputs, PlanetChildRfAdmissionClassification,
+    evaluate_planet_child_rf_admission_from_owner_view, planet_child_rf_default_resource_key,
+    planet_child_rf_participant_inputs_from_owner_view, PlanetChildRfAdmissionClassification,
     PlanetChildRfParticipantInput,
 };
 use super::runtime_tick_history::scenario_authority_digest;
 use super::scenario::{
-    game_session_galaxy_map, game_session_owners, owner_entity_id, owner_flow_deficit,
-    owner_flow_owner_ref, owner_flow_resource_key, owner_flow_surplus, SimThingScenarioSpec,
-    OWNER_FLOW_DEFAULT_RESOURCE_KEY,
+    game_session_galaxy_map, owner_flow_deficit, owner_flow_resource_key, owner_flow_surplus,
+    SimThingScenarioSpec, OWNER_FLOW_DEFAULT_RESOURCE_KEY,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -105,6 +105,7 @@ pub enum RecursiveLocalRfErrorKind {
     DuplicateParticipant,
     ArithmeticOverflow,
     ScenarioAuthorityRejected,
+    InvalidOwnerAuthority,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -167,24 +168,22 @@ pub struct RecursiveLocalRfCompatibilityReport {
 pub fn evaluate_recursive_local_rf(
     scenario: &SimThingScenarioSpec,
 ) -> Result<RecursiveLocalRfEvaluationReport, RecursiveLocalRfError> {
+    let owner_view = admit_intrinsic_owner_channels(scenario).map_err(owner_authority_error)?;
+    evaluate_recursive_local_rf_from_owner_view(&owner_view)
+}
+
+pub fn evaluate_recursive_local_rf_from_owner_view(
+    owner_view: &IntrinsicOwnerChannelView,
+) -> Result<RecursiveLocalRfEvaluationReport, RecursiveLocalRfError> {
+    let scenario = owner_view.scenario();
     let galaxy_map = game_session_galaxy_map(scenario).map_err(|e| RecursiveLocalRfError {
         kind: RecursiveLocalRfErrorKind::MissingSpatialRoot,
         message: format!("{:?}", e),
     })?;
 
-    let owner_refs: BTreeSet<OwnerRef> = game_session_owners(scenario)
-        .map_err(|e| RecursiveLocalRfError {
-            kind: RecursiveLocalRfErrorKind::MissingSpatialRoot,
-            message: format!("{:?}", e),
-        })?
-        .into_iter()
-        .filter_map(owner_entity_id)
-        .map(OwnerRef::new)
-        .collect();
-
     let mut arena_reports = Vec::new();
     let root_outputs =
-        evaluate_location_arena(galaxy_map, None, 0, &owner_refs, &mut arena_reports)?;
+        evaluate_location_arena(galaxy_map, None, 0, owner_view, &mut arena_reports)?;
 
     let participant_count = arena_reports
         .iter()
@@ -230,7 +229,7 @@ pub fn evaluate_recursive_local_rf(
         deferrals: default_deferrals(),
     };
 
-    let compatibility = compatibility_from_report(scenario, &report)?;
+    let compatibility = compatibility_from_owner_view(owner_view, &report)?;
     Ok(RecursiveLocalRfEvaluationReport {
         previous_rf_ladder_compatibility_preserved: compatibility.previous_rf_ladder_preserved,
         ..report
@@ -267,6 +266,35 @@ pub fn prove_recursive_local_rf_preserves_authority(
     })
 }
 
+pub fn prove_recursive_local_rf_preserves_authority_from_owner_view(
+    owner_view: &IntrinsicOwnerChannelView,
+) -> Result<RecursiveLocalRfAuthorityProof, RecursiveLocalRfError> {
+    let scenario = owner_view.scenario();
+    let scenario_authority_digest_before =
+        scenario_authority_digest(scenario).map_err(|e| RecursiveLocalRfError {
+            kind: RecursiveLocalRfErrorKind::ScenarioAuthorityRejected,
+            message: e.message,
+        })?;
+
+    let _report = evaluate_recursive_local_rf_from_owner_view(owner_view)?;
+
+    let scenario_authority_digest_after =
+        scenario_authority_digest(scenario).map_err(|e| RecursiveLocalRfError {
+            kind: RecursiveLocalRfErrorKind::ScenarioAuthorityRejected,
+            message: e.message,
+        })?;
+    let scenario_authority_unchanged =
+        scenario_authority_digest_before == scenario_authority_digest_after;
+
+    Ok(RecursiveLocalRfAuthorityProof {
+        scenario_authority_digest_before,
+        scenario_authority_digest_after,
+        scenario_authority_unchanged,
+        participant_property_mutation_deferred: true,
+        semantic_execution_deferred: true,
+    })
+}
+
 /// Convert planet-child RF participant inputs into recursive participant rows.
 pub fn recursive_local_rf_participant_rows_from_planet_child_inputs(
     inputs: &[PlanetChildRfParticipantInput],
@@ -289,19 +317,26 @@ pub fn recursive_local_rf_participant_rows_from_planet_child_inputs(
 pub fn recursive_local_rf_report_matches_planet_child_compatibility_slice(
     scenario: &SimThingScenarioSpec,
 ) -> Result<RecursiveLocalRfCompatibilityReport, RecursiveLocalRfError> {
-    let report = evaluate_recursive_local_rf(scenario)?;
-    compatibility_from_report(scenario, &report)
+    let owner_view = admit_intrinsic_owner_channels(scenario).map_err(owner_authority_error)?;
+    recursive_local_rf_report_matches_planet_child_compatibility_slice_from_owner_view(&owner_view)
 }
 
-fn compatibility_from_report(
-    scenario: &SimThingScenarioSpec,
+pub fn recursive_local_rf_report_matches_planet_child_compatibility_slice_from_owner_view(
+    owner_view: &IntrinsicOwnerChannelView,
+) -> Result<RecursiveLocalRfCompatibilityReport, RecursiveLocalRfError> {
+    let report = evaluate_recursive_local_rf_from_owner_view(owner_view)?;
+    compatibility_from_owner_view(owner_view, &report)
+}
+
+fn compatibility_from_owner_view(
+    owner_view: &IntrinsicOwnerChannelView,
     report: &RecursiveLocalRfEvaluationReport,
 ) -> Result<RecursiveLocalRfCompatibilityReport, RecursiveLocalRfError> {
-    let admission = evaluate_planet_child_rf_admission(scenario);
+    let admission = evaluate_planet_child_rf_admission_from_owner_view(owner_view);
     let ladder_preserved =
         admission.classification != PlanetChildRfAdmissionClassification::Rejected;
 
-    let planet_inputs = match planet_child_rf_participant_inputs(scenario) {
+    let planet_inputs = match planet_child_rf_participant_inputs_from_owner_view(owner_view) {
         Ok(inputs) => inputs,
         Err(_) => {
             return Ok(RecursiveLocalRfCompatibilityReport {
@@ -422,7 +457,7 @@ fn evaluate_location_arena(
     location: &SimThing,
     parent_location_id: Option<ParentLocationId>,
     depth: u32,
-    owner_refs: &BTreeSet<OwnerRef>,
+    owner_view: &IntrinsicOwnerChannelView,
     arena_reports: &mut Vec<LocationRfArenaReport>,
 ) -> Result<Vec<LocalRfChildOutputRow>, RecursiveLocalRfError> {
     let location_id = location.id.raw();
@@ -445,7 +480,7 @@ fn evaluate_location_arena(
                     kind: RecursiveLocalRfErrorKind::ArithmeticOverflow,
                     message: "depth overflow".to_string(),
                 })?,
-                owner_refs,
+                owner_view,
                 arena_reports,
             )?;
             incoming_child_outputs.extend(child_outputs);
@@ -459,7 +494,7 @@ fn evaluate_location_arena(
         location,
         ParentLocationId::new(location_id),
         location_participant_kind_label(location),
-        owner_refs,
+        owner_view,
         &mut seen_participants,
         &mut participant_rows,
     )?;
@@ -472,7 +507,7 @@ fn evaluate_location_arena(
             child,
             ParentLocationId::new(location_id),
             non_location_participant_kind_label(child),
-            owner_refs,
+            owner_view,
             &mut seen_participants,
             &mut participant_rows,
         )?;
@@ -634,7 +669,7 @@ fn collect_participant_row(
     node: &SimThing,
     parent_location_id: ParentLocationId,
     kind_label: String,
-    owner_refs: &BTreeSet<OwnerRef>,
+    owner_view: &IntrinsicOwnerChannelView,
     seen_participants: &mut BTreeSet<u32>,
     participant_rows: &mut Vec<LocalRfParticipantRow>,
 ) -> Result<(), RecursiveLocalRfError> {
@@ -645,35 +680,10 @@ fn collect_participant_row(
         return Ok(());
     }
 
-    let Some(owner_ref) = owner_flow_owner_ref(node) else {
-        return Err(RecursiveLocalRfError {
-            kind: RecursiveLocalRfErrorKind::MissingOwnerChannelForActiveParticipant,
-            message: format!(
-                "active RF participant {} requires owner/channel reference",
-                node.id.raw()
-            ),
-        });
-    };
-    if owner_ref.trim().is_empty() {
-        return Err(RecursiveLocalRfError {
-            kind: RecursiveLocalRfErrorKind::MissingOwnerChannelForActiveParticipant,
-            message: format!(
-                "active RF participant {} has empty owner_ref",
-                node.id.raw()
-            ),
-        });
-    }
-    let owner_ref = OwnerRef::new(&owner_ref);
-    if !owner_refs.contains(&owner_ref) {
-        return Err(RecursiveLocalRfError {
-            kind: RecursiveLocalRfErrorKind::MissingOwnerChannelForActiveParticipant,
-            message: format!(
-                "active RF participant {} references unknown owner `{}`",
-                node.id.raw(),
-                owner_ref.as_str()
-            ),
-        });
-    }
+    let owner_ref = owner_view
+        .owner_for(node.id)
+        .map_err(owner_authority_error)?
+        .clone();
     if !seen_participants.insert(node.id.raw()) {
         return Err(RecursiveLocalRfError {
             kind: RecursiveLocalRfErrorKind::DuplicateParticipant,
@@ -691,6 +701,13 @@ fn collect_participant_row(
         participant_kind_label: kind_label,
     });
     Ok(())
+}
+
+fn owner_authority_error(error: impl std::fmt::Display) -> RecursiveLocalRfError {
+    RecursiveLocalRfError {
+        kind: RecursiveLocalRfErrorKind::InvalidOwnerAuthority,
+        message: error.to_string(),
+    }
 }
 
 fn location_participant_kind_label(location: &SimThing) -> String {

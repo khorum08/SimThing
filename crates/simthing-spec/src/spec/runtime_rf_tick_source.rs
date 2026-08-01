@@ -460,10 +460,6 @@ fn deltas_from_reconciliation(
     for bucket in &reconciliation.buckets {
         let delta_kind = if bucket.compatible {
             RuntimeRfTickSourceDeltaKind::CompatibleParticipantProjection
-        } else if bucket.planet_gridcell_id_raw.is_none()
-            && bucket.star_system_gridcell_id_raw.is_some()
-        {
-            RuntimeRfTickSourceDeltaKind::ScopeProjectionDelta
         } else {
             RuntimeRfTickSourceDeltaKind::RecursiveRedistributionDelta
         };
