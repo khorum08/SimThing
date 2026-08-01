@@ -51,7 +51,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | execution_status_taxonomy.tsv | 405caebabe9972b335464a43ad66169a9e8bb13b8fb868cf179bde9789922f87 |
 | execution_status_mixed_posture.tsv | 1adf05f3ec5fd7b537efe29259d20649a2c6d3a0839590063e5308ff154e8f25 |
 | execution_status_non_execution.tsv | 214c1b557dfd3fc465f0171051e20281ff1dcf6c53128dbb29cba01524f9be02 |
-| specialization_citizen_counts.tsv | 852aec43448149670396eec832b99da725b87a4e64d476da80f0b265cbaaa8e8 |
+| specialization_citizen_counts.tsv | ed465628f7daeeb3d6a5a47e8a31efe35edf56883356f83b973eead2119fa7d2 |
 | property_admission_inventory.tsv | 203a42fdce1f25e8391a63f9c42240eb57edd9a73e3af0f39a259fe5a95a70f1 |
 
 ## Execution-status taxonomy (driver/kernel)
@@ -60,7 +60,7 @@ executed=59 oracle=6 rehearsal=14 compile-plan=48 mixed_ruled=0 (primary-inclusi
 
 ## Live install inventories
 
-Specialization citizens: spatial=1500 owner-seat=2 session-root=1 (SpecSessionState.specialization.citizen_counts; source `specialization_citizen_counts.tsv`).
+Specialization citizens: spatial=2 owner-seat=2 session-root=1 (SpecSessionState.specialization.citizen_counts; source `specialization_citizen_counts.tsv`).
 Property admission: anchored=1 unobserved=1 total=2 (SpecSessionState.property_admission; source `property_admission_inventory.tsv`).
 Dark properties (1): `fixture::dark_reading` (reasons/spans in `property_admission_inventory.tsv`).
 
