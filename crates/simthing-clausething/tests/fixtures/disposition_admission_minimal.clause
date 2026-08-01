@@ -1,0 +1,38 @@
+scenario = disposition_admission_minimal {
+    metadata = {
+        display_name = "Disposition Admission Minimal"
+        description = "ANCHOR-DISPOSITION-ADMISSION-0 witness. Smallest install that makes the closed Anchored/Unobserved partition non-vacuous: one property that defaults to Anchored, one that explicitly declares absence of a value-placing host. The law is a DISPOSITION law and holds for any install, so no shipped scenario is required."
+    }
+
+    location = alpha {
+        name = "Alpha Basin"
+        properties = {
+            property = {
+                id = "fixture_anchored"
+                namespace = "fixture"
+                name = "anchored_reading"
+                display_name = "Anchored Reading"
+                description = "Omits disposition; must default to Anchored through hydrate -> compile -> install."
+            }
+            property = {
+                id = "fixture_dark"
+                namespace = "fixture"
+                name = "dark_reading"
+                display_name = "Dark Reading"
+                description = "Declares absence of a value-placing host rather than fabricating one."
+                disposition = Unobserved {
+                    reason = "no value-placing host in this fixture; declares absence rather than fabricating one"
+                }
+            }
+        }
+    }
+
+    location = beta {
+        name = "Beta Shelf"
+    }
+
+    link = {
+        from = alpha
+        to = beta
+    }
+}

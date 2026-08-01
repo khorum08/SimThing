@@ -2853,7 +2853,7 @@ def render_orientation(active_info: dict) -> tuple:
     f"mixed_ruled={mixed_count} "
     f"(primary-inclusive taxonomy; DA dual-posture residual; census `execution_status_census.py`).",
     "",
-    "## Canonical TP live inventories",
+    "## Live install inventories",
     "",
     f"Specialization citizens: spatial={citizen_counts['spatial']} owner-seat={citizen_counts['owner-seat']} "
     f"session-root={citizen_counts['session-root']} "
