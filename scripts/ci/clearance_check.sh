@@ -14,6 +14,9 @@ fi
 GATE_WIRING_PATHS=(
   "scripts/ci/clearance_check.sh"
   "scripts/ci/track_closeout.sh"
+  "scripts/ci/allow/kernel_surface.txt"
+  "scripts/ci/allow/sealed_types.txt"
+  "scripts/ci/allow/sealed_producers.txt"
   "scripts/ci/librarian.sh"
   "scripts/ci/precedented_classes.tsv"
   "scripts/ci/class_predicates.tsv"
