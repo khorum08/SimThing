@@ -82,7 +82,7 @@ pub use simthing_kernel::{
     CanonicalOrderProof, ColumnRuleDescriptor, DebugReadbackGuard, FieldAdjacency,
     FieldConductanceCertificate, FieldDegreeBucket, FieldLawProof, FieldSweepAdmissionError,
     FieldSweepExecutionError, FieldSweepOutput, FieldSweepRegistration,
-    FieldSweepRegistrationRequest, FieldSweepResourceClass, FieldSweepResourceClassRequest,
+    FieldSweepRegistrationRequest, FieldSweepResourceClass,
     FieldSweepSession, FieldTransientCertificate, GridN4Offset, GridOffset, LinkGraphNeighbor,
     EmissionFormula, EmissionOpPlanSignature, EmissionPlan, EmissionPlanError, EmissionRecord,
     EmissionRecordGpu, EmissionRegistration, EmissionSyncError, EmlGpuProgramTable,

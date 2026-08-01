@@ -30,6 +30,7 @@
 
 | Evidence | PR | Merge SHA | Status |
 |---|---|---|---|
+| **EML-RESOURCE-CLASS-ADMISSION-0** — closed stack-4/legacy-32 classes, canonical-interpreter JIT, sealed exact-primitive door, and exact RTX 4080/Vulkan adjudication | branch evidence | branch evidence | **CODER STOP — PALMA/Gu-Yang performance gate failed** — `docs/tests/eml_resource_class_admission_0_results.md`; zero primitives; pointer unchanged |
 | **Candidate F exact sqrt** (artifact hash `59ab4b2892e3c690`, LF-canonical re-pin `SQRT-REPIN-0` 2026-06-11) | — | constitution §0.7 lineage | CURRENT — the only exact-magnitude authority for decision gates |
 | **PR10** — generated admit/install + real-adapter GPU compact evidence | #690 | `75505ee2` | CURRENT_EVIDENCE + LIVE GPU GUARDRAIL |
 | **PR11** — 1000-star producer scale envelope (parse/lattice; heap-bounded enumeration) | #692 | `31f0ee3e` | CURRENT_EVIDENCE |

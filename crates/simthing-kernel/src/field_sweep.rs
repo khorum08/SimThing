@@ -29,9 +29,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::sync::mpsc;
 
 use bytemuck::{Pod, Zeroable};
-use simthing_core::{
-    eml_opcode, ColumnIndex, EmlNodeGpu, InputSpec, SlotIndex, EML_STACK_MAX, MAX_EML_TREE_NODES,
-};
+use simthing_core::{eml_opcode, ColumnIndex, EmlNodeGpu, EmlResourceClass, InputSpec, SlotIndex};
 use thiserror::Error;
 use wgpu::util::DeviceExt;
 use wgpu::{
@@ -47,8 +45,8 @@ use crate::eml_opcode_gate::{opcode_in_closed_vocabulary, OpcodeGateError};
 use crate::wgsl_encode::{column_from_wire, encode_column};
 
 pub const FIELD_SWEEP_WORKGROUP_SIZE: u32 = 64;
-pub const FIELD_SWEEP_LEGACY_STACK_SLOTS: u32 = 32;
-pub const FIELD_SWEEP_LEGACY_PROGRAM_NODES: u32 = 32;
+pub const FIELD_SWEEP_LEGACY_STACK_SLOTS: u32 = EmlResourceClass::LegacyFixed32.stack_slots();
+pub const FIELD_SWEEP_LEGACY_PROGRAM_NODES: u32 = EmlResourceClass::LegacyFixed32.max_tree_nodes();
 
 /// Field-only `PARAM` indices. The five edge-context members are stable; mapped
 /// and folded are stage results carried without introducing semantic opcodes.
@@ -673,38 +671,7 @@ pub struct FieldTransientCertificate {
     n_dims: u32,
 }
 
-/// Untrusted request surface. Only the one legacy fixed-32 class is admitted
-/// until rung 5.7.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct FieldSweepResourceClassRequest {
-    pub stack_slots: u32,
-    pub max_program_nodes: u32,
-}
-
-impl Default for FieldSweepResourceClassRequest {
-    fn default() -> Self {
-        Self {
-            stack_slots: FIELD_SWEEP_LEGACY_STACK_SLOTS,
-            max_program_nodes: FIELD_SWEEP_LEGACY_PROGRAM_NODES,
-        }
-    }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct FieldSweepResourceClass {
-    stack_slots: u32,
-    max_program_nodes: u32,
-}
-
-impl FieldSweepResourceClass {
-    pub fn stack_slots(self) -> u32 {
-        self.stack_slots
-    }
-
-    pub fn max_program_nodes(self) -> u32 {
-        self.max_program_nodes
-    }
-}
+pub type FieldSweepResourceClass = EmlResourceClass;
 
 #[derive(Clone, Debug)]
 pub struct FieldSweepRegistrationRequest {
@@ -718,7 +685,6 @@ pub struct FieldSweepRegistrationRequest {
     pub field_law_proof: Option<FieldLawProof>,
     pub transient_read_proof: Option<FieldTransientCertificate>,
     pub canonical_order_proof: Option<CanonicalOrderProof>,
-    pub resource_class: FieldSweepResourceClassRequest,
     pub dt: f32,
 }
 
@@ -845,34 +811,42 @@ pub fn apply_field_sweep_registration(
             return Err(FieldSweepAdmissionError::ConductanceCertificateMismatch);
         }
     }
-    if request.resource_class != FieldSweepResourceClassRequest::default() {
-        return Err(FieldSweepAdmissionError::UnsupportedResourceClass {
-            stack_slots: request.resource_class.stack_slots,
-            max_program_nodes: request.resource_class.max_program_nodes,
-        });
-    }
     if !request.dt.is_finite() || request.dt < 0.0 {
         return Err(FieldSweepAdmissionError::InvalidDt(request.dt));
     }
 
-    validate_field_program(
+    let map_facts = validate_field_program(
         "map",
         &request.map_program,
         request.n_dims,
         FieldProgramContext::Edge,
     )?;
-    validate_field_program(
+    let fold_facts = validate_field_program(
         "fold",
         &request.fold_program,
         request.n_dims,
         FieldProgramContext::Edge,
     )?;
-    validate_field_program(
+    let post_facts = validate_field_program(
         "post",
         &request.post_program,
         request.n_dims,
         FieldProgramContext::TargetOnly,
     )?;
+    let requested_nodes = map_facts
+        .node_count
+        .max(fold_facts.node_count)
+        .max(post_facts.node_count);
+    let requested_stack = map_facts
+        .peak_stack
+        .max(fold_facts.peak_stack)
+        .max(post_facts.peak_stack);
+    let resource_class = EmlResourceClass::smallest_fitting(requested_nodes, requested_stack)
+        .ok_or(FieldSweepAdmissionError::UnsupportedResourceClass {
+            requested_nodes,
+            requested_stack,
+            attempted: EmlResourceClass::LegacyFixed32,
+        })?;
 
     let reads_transient = [
         &request.map_program,
@@ -915,10 +889,7 @@ pub fn apply_field_sweep_registration(
         field_law_proof,
         transient_read_proof: request.transient_read_proof,
         canonical_order_proof,
-        resource_class: FieldSweepResourceClass {
-            stack_slots: FIELD_SWEEP_LEGACY_STACK_SLOTS,
-            max_program_nodes: FIELD_SWEEP_LEGACY_PROGRAM_NODES,
-        },
+        resource_class,
         dt: request.dt,
     })
 }
@@ -929,23 +900,23 @@ enum FieldProgramContext {
     TargetOnly,
 }
 
+#[derive(Clone, Copy)]
+struct FieldProgramFacts {
+    node_count: u32,
+    peak_stack: u32,
+}
+
 fn validate_field_program(
     name: &'static str,
     nodes: &[EmlNodeGpu],
     n_dims: u32,
     context: FieldProgramContext,
-) -> Result<(), FieldSweepAdmissionError> {
+) -> Result<FieldProgramFacts, FieldSweepAdmissionError> {
     if nodes.is_empty() {
         return Err(FieldSweepAdmissionError::EmptyProgram { name });
     }
-    if nodes.len() as u32 > MAX_EML_TREE_NODES {
-        return Err(FieldSweepAdmissionError::ProgramTooLarge {
-            name,
-            nodes: nodes.len() as u32,
-            max: MAX_EML_TREE_NODES,
-        });
-    }
     let mut depth = 0u32;
+    let mut peak_stack = 0u32;
     let mut saw_return = false;
     for (index, node) in nodes.iter().enumerate() {
         if !opcode_in_closed_vocabulary(node.opcode) {
@@ -1042,18 +1013,15 @@ fn validate_field_program(
                 n_dims,
             });
         }
-        if depth > EML_STACK_MAX {
-            return Err(FieldSweepAdmissionError::StackDepthExceeded {
-                name,
-                depth,
-                max: EML_STACK_MAX,
-            });
-        }
+        peak_stack = peak_stack.max(depth);
     }
     if !saw_return || depth != 1 {
         return Err(FieldSweepAdmissionError::MalformedReturn { name });
     }
-    Ok(())
+    Ok(FieldProgramFacts {
+        node_count: nodes.len() as u32,
+        peak_stack,
+    })
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -1075,7 +1043,23 @@ pub fn eval_field_eml_cpu(
     values: &[f32],
     n_dims: u32,
 ) -> Result<f32, FieldSweepExecutionError> {
-    let mut stack = [0.0f32; FIELD_SWEEP_LEGACY_STACK_SLOTS as usize];
+    let facts = field_program_facts_for_execution(nodes);
+    let resource_class = EmlResourceClass::smallest_fitting(facts.node_count, facts.peak_stack)
+        .ok_or(FieldSweepExecutionError::UnsupportedResourceClass {
+            requested_nodes: facts.node_count,
+            requested_stack: facts.peak_stack,
+        })?;
+    eval_field_eml_cpu_in_class(nodes, context, values, n_dims, resource_class)
+}
+
+fn eval_field_eml_cpu_in_class(
+    nodes: &[EmlNodeGpu],
+    context: FieldEmlContext,
+    values: &[f32],
+    n_dims: u32,
+    resource_class: EmlResourceClass,
+) -> Result<f32, FieldSweepExecutionError> {
+    let mut stack = vec![0.0f32; resource_class.stack_slots() as usize];
     let mut sp = 0usize;
     for node in nodes {
         match node.opcode {
@@ -1190,17 +1174,44 @@ fn apply_binary(opcode: u32, lhs: f32, rhs: f32) -> f32 {
     }
 }
 
-fn push(
-    stack: &mut [f32; FIELD_SWEEP_LEGACY_STACK_SLOTS as usize],
-    sp: &mut usize,
-    value: f32,
-) -> Result<(), FieldSweepExecutionError> {
+fn push(stack: &mut [f32], sp: &mut usize, value: f32) -> Result<(), FieldSweepExecutionError> {
     if *sp >= stack.len() {
         return Err(FieldSweepExecutionError::StackOverflow);
     }
     stack[*sp] = value;
     *sp += 1;
     Ok(())
+}
+
+fn field_program_facts_for_execution(nodes: &[EmlNodeGpu]) -> FieldProgramFacts {
+    let mut depth = 0u32;
+    let mut peak_stack = 0u32;
+    for node in nodes {
+        match node.opcode {
+            eml_opcode::LITERAL_F32
+            | eml_opcode::TARGET_VALUE
+            | eml_opcode::NEIGHBOR_VALUE
+            | eml_opcode::PARAM => depth = depth.saturating_add(1),
+            eml_opcode::ADD
+            | eml_opcode::SUB
+            | eml_opcode::MUL
+            | eml_opcode::DIV
+            | eml_opcode::MIN
+            | eml_opcode::MAX
+            | eml_opcode::CMP_LT
+            | eml_opcode::CMP_LE
+            | eml_opcode::CMP_GT
+            | eml_opcode::CMP_GE
+            | eml_opcode::CMP_EQ => depth = depth.saturating_sub(1),
+            eml_opcode::SELECT => depth = depth.saturating_sub(2),
+            _ => {}
+        }
+        peak_stack = peak_stack.max(depth);
+    }
+    FieldProgramFacts {
+        node_count: nodes.len() as u32,
+        peak_stack,
+    }
 }
 
 fn read_cell(
@@ -1458,6 +1469,7 @@ impl FieldSweepSessionBinding {
 /// callers can upload values and receive copied readback, never raw handles.
 pub struct FieldSweepSession {
     pipeline: ComputePipeline,
+    resource_class: EmlResourceClass,
     layout: BindGroupLayout,
     values_a: Buffer,
     values_b: Buffer,
@@ -1478,9 +1490,38 @@ impl FieldSweepSession {
         ctx: &GpuContext,
         registration: &FieldSweepRegistration,
     ) -> Result<Self, FieldSweepExecutionError> {
+        Self::new_with_resource_class(ctx, registration, registration.resource_class)
+    }
+
+    /// Test/profiling-only adapter for matched canonical-interpreter class runs.
+    /// Admission remains registration-owned; the override may only widen it.
+    #[cfg(feature = "eml-resource-profiling")]
+    pub fn new_with_profiling_resource_class(
+        ctx: &GpuContext,
+        registration: &FieldSweepRegistration,
+        resource_class: EmlResourceClass,
+    ) -> Result<Self, FieldSweepExecutionError> {
+        if resource_class < registration.resource_class {
+            return Err(FieldSweepExecutionError::ProfilingClassTooSmall {
+                admitted: registration.resource_class,
+                requested: resource_class,
+            });
+        }
+        Self::new_with_resource_class(ctx, registration, resource_class)
+    }
+
+    fn new_with_resource_class(
+        ctx: &GpuContext,
+        registration: &FieldSweepRegistration,
+        resource_class: EmlResourceClass,
+    ) -> Result<Self, FieldSweepExecutionError> {
+        let specialized_shader = crate::eml_resource_class::specialize_eml_stack_limit(
+            include_str!("shaders/field_sweep.wgsl"),
+            resource_class,
+        );
         let shader = ctx.device.create_shader_module(ShaderModuleDescriptor {
             label: Some("field_sweep"),
-            source: ShaderSource::Wgsl(include_str!("shaders/field_sweep.wgsl").into()),
+            source: ShaderSource::Wgsl(specialized_shader.into()),
         });
         let layout = ctx
             .device
@@ -1542,8 +1583,9 @@ impl FieldSweepSession {
                 .write_buffer(&inputs, 0, bytemuck::cast_slice(&flat_inputs));
         }
         let (flat_nodes, gpu_params) = pack_programs(registration);
-        let node_capacity =
-            3 * FIELD_SWEEP_LEGACY_PROGRAM_NODES as u64 * std::mem::size_of::<EmlNodeGpu>() as u64;
+        let node_capacity = 3
+            * u64::from(resource_class.max_tree_nodes())
+            * std::mem::size_of::<EmlNodeGpu>() as u64;
         let nodes = storage_buffer(&ctx.device, "field_sweep_nodes", node_capacity, false);
         ctx.queue
             .write_buffer(&nodes, 0, bytemuck::cast_slice(&flat_nodes));
@@ -1570,6 +1612,7 @@ impl FieldSweepSession {
 
         Ok(Self {
             pipeline,
+            resource_class,
             layout,
             values_a,
             values_b,
@@ -1649,6 +1692,12 @@ impl FieldSweepSession {
         }
         if !self.binding.accepts(registration) {
             return Err(FieldSweepExecutionError::RegistrationBindingChanged);
+        }
+        if registration.resource_class > self.resource_class {
+            return Err(FieldSweepExecutionError::SessionResourceClassTooSmall {
+                session: self.resource_class,
+                registration: registration.resource_class,
+            });
         }
         if registration.transient_read_proof.is_some() && !self.transient_initialized {
             return Err(FieldSweepExecutionError::TransientNotInitialized);
@@ -1980,11 +2029,12 @@ pub enum FieldSweepAdmissionError {
         admitted_bound: f32,
     },
     #[error(
-        "resource class stack={stack_slots} nodes={max_program_nodes} is not the admitted legacy fixed-32 class"
+        "field EML facts (nodes {requested_nodes}, peak stack {requested_stack}) do not fit closed class {attempted:?}"
     )]
     UnsupportedResourceClass {
-        stack_slots: u32,
-        max_program_nodes: u32,
+        requested_nodes: u32,
+        requested_stack: u32,
+        attempted: EmlResourceClass,
     },
     #[error("field sweep dt must be finite and non-negative (got {0})")]
     InvalidDt(f32),
@@ -2026,6 +2076,26 @@ pub enum FieldSweepAdmissionError {
 
 #[derive(Debug, Error)]
 pub enum FieldSweepExecutionError {
+    #[error(
+        "field session class {session:?} cannot execute registration class {registration:?}"
+    )]
+    SessionResourceClassTooSmall {
+        session: EmlResourceClass,
+        registration: EmlResourceClass,
+    },
+    #[cfg(feature = "eml-resource-profiling")]
+    #[error("profiling class {requested:?} is smaller than admitted class {admitted:?}")]
+    ProfilingClassTooSmall {
+        admitted: EmlResourceClass,
+        requested: EmlResourceClass,
+    },
+    #[error(
+        "field EML facts (nodes {requested_nodes}, peak stack {requested_stack}) do not fit a closed resource class"
+    )]
+    UnsupportedResourceClass {
+        requested_nodes: u32,
+        requested_stack: u32,
+    },
     #[error("values length {actual} does not match required {required}")]
     ValuesLength { actual: usize, required: usize },
     #[error("transient length {actual} does not match required {required}")]

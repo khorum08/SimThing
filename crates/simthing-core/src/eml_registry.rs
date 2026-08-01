@@ -6,12 +6,12 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
-use crate::eml_nodes::{self, EmlNode, EML_STACK_MAX};
+use crate::eml_nodes::{self, EmlNode, EmlResourceClass};
 
 pub use crate::eml_nodes::{opcode as eml_opcode, EmlNode as EmlNodeGpu};
 
 /// Maximum expression-tree node count for GPU `ExactDeterministic` baseline.
-pub const MAX_EML_TREE_NODES: u32 = 32;
+pub const MAX_EML_TREE_NODES: u32 = EmlResourceClass::LegacyFixed32.max_tree_nodes();
 
 /// Formula classes admitted under the C-8 `ExactDeterministic` baseline policy.
 pub const WHITELISTED_FORMULA_CLASSES: &[&str] = &[
@@ -129,8 +129,8 @@ impl EmlTreeMeta {
         if self.node_count == 0 {
             return Err(EmlRegistryError::EmptyTree);
         }
-        if self.node_count > MAX_EML_TREE_NODES {
-            return Err(EmlRegistryError::TooManyNodes(self.node_count));
+        if EmlResourceClass::smallest_fitting(self.node_count, 1).is_none() {
+            return Err(resource_class_error(self.node_count, 1));
         }
         if !WHITELISTED_FORMULA_CLASSES.contains(&self.formula_class.as_str()) {
             return Err(EmlRegistryError::UnknownFormulaClass(
@@ -193,6 +193,7 @@ fn default_mask_for_class(class: EmlExecutionClass) -> EmlConsumerMask {
 struct RegisteredFormula {
     meta: EmlFormulaMeta,
     nodes: Vec<EmlNode>,
+    resource_class: EmlResourceClass,
     range_index: Option<u32>,
     upload_generation: Option<u64>,
 }
@@ -251,11 +252,9 @@ impl EmlExpressionRegistry {
         if nodes.is_empty() {
             return Err(EmlRegistryError::EmptyTree);
         }
-        if nodes.len() as u32 > MAX_EML_TREE_NODES {
-            return Err(EmlRegistryError::TooManyNodes(nodes.len() as u32));
-        }
         meta.node_count = nodes.len() as u32;
         meta.max_stack_depth = validate_stack_depth(&nodes)?;
+        let resource_class = select_resource_class(meta.node_count, meta.max_stack_depth)?;
         validate_nodes_for_class(meta.execution_class, &nodes)?;
         if meta.execution_class == EmlExecutionClass::CpuOracleOnly {
             return Err(EmlRegistryError::CannotUploadCpuOracleOnly { tree_id });
@@ -274,6 +273,7 @@ impl EmlExpressionRegistry {
             RegisteredFormula {
                 meta,
                 nodes,
+                resource_class,
                 range_index: None,
                 upload_generation: None,
             },
@@ -299,11 +299,9 @@ impl EmlExpressionRegistry {
         if nodes.is_empty() {
             return Err(EmlRegistryError::EmptyTree);
         }
-        if nodes.len() as u32 > MAX_EML_TREE_NODES {
-            return Err(EmlRegistryError::TooManyNodes(nodes.len() as u32));
-        }
         meta.node_count = nodes.len() as u32;
         meta.max_stack_depth = validate_stack_depth(&nodes)?;
+        let resource_class = select_resource_class(meta.node_count, meta.max_stack_depth)?;
         validate_nodes_for_class(meta.execution_class, &nodes)?;
         meta.allowed_consumers = EmlConsumerMask(EmlConsumerMask::DEBUG_ORACLE);
         meta.deterministic_gpu = false;
@@ -313,6 +311,7 @@ impl EmlExpressionRegistry {
             RegisteredFormula {
                 meta,
                 nodes,
+                resource_class,
                 range_index: None,
                 upload_generation: None,
             },
@@ -336,16 +335,14 @@ impl EmlExpressionRegistry {
         tree_id: EmlTreeId,
         mut meta: EmlFormulaMeta,
         nodes: Vec<EmlNode>,
-    ) -> Result<(EmlFormulaMeta, Vec<EmlNode>), EmlRegistryError> {
+    ) -> Result<(EmlFormulaMeta, Vec<EmlNode>, EmlResourceClass), EmlRegistryError> {
         meta.tree_id = tree_id;
         if nodes.is_empty() {
             return Err(EmlRegistryError::EmptyTree);
         }
-        if nodes.len() as u32 > MAX_EML_TREE_NODES {
-            return Err(EmlRegistryError::TooManyNodes(nodes.len() as u32));
-        }
         meta.node_count = nodes.len() as u32;
         meta.max_stack_depth = validate_stack_depth(&nodes)?;
+        let resource_class = select_resource_class(meta.node_count, meta.max_stack_depth)?;
         validate_nodes_for_class(meta.execution_class, &nodes)?;
         if meta.execution_class == EmlExecutionClass::CpuOracleOnly {
             return Err(EmlRegistryError::CannotUploadCpuOracleOnly { tree_id });
@@ -359,7 +356,7 @@ impl EmlExpressionRegistry {
         );
         meta.requires_guard_for_hard_threshold =
             meta.execution_class == EmlExecutionClass::SoftDeterministic;
-        Ok((meta, nodes))
+        Ok((meta, nodes, resource_class))
     }
 
     /// Replace a formula only when meta/nodes differ from the registered tree.
@@ -370,7 +367,7 @@ impl EmlExpressionRegistry {
         meta: EmlFormulaMeta,
         nodes: Vec<EmlNode>,
     ) -> Result<bool, EmlRegistryError> {
-        let (meta, nodes) = Self::prepare_formula(tree_id, meta, nodes)?;
+        let (meta, nodes, resource_class) = Self::prepare_formula(tree_id, meta, nodes)?;
         if let Some(existing) = self.formulas.get(&tree_id) {
             if existing.meta == meta && existing.nodes == nodes {
                 return Ok(false);
@@ -381,6 +378,7 @@ impl EmlExpressionRegistry {
             RegisteredFormula {
                 meta,
                 nodes,
+                resource_class,
                 range_index: None,
                 upload_generation: None,
             },
@@ -404,6 +402,13 @@ impl EmlExpressionRegistry {
             .get(&tree_id)
             .ok_or(EmlRegistryError::NotRegistered(tree_id))?;
         Ok(())
+    }
+
+    pub fn resource_class(&self, tree_id: EmlTreeId) -> Result<EmlResourceClass, EmlRegistryError> {
+        self.formulas
+            .get(&tree_id)
+            .map(|formula| formula.resource_class)
+            .ok_or(EmlRegistryError::NotRegistered(tree_id))
     }
 
     pub fn assert_consumer_admissible(
@@ -595,17 +600,30 @@ fn validate_stack_depth(nodes: &[EmlNode]) -> Result<u32, EmlRegistryError> {
             }
         }
         max_sp = max_sp.max(sp);
-        if max_sp > EML_STACK_MAX {
-            return Err(EmlRegistryError::StackDepthExceeded {
-                depth: max_sp,
-                max: EML_STACK_MAX,
-            });
-        }
     }
     if sp == 0 {
         return Err(EmlRegistryError::StackUnderflow);
     }
     Ok(max_sp)
+}
+
+fn select_resource_class(
+    node_count: u32,
+    peak_stack: u32,
+) -> Result<EmlResourceClass, EmlRegistryError> {
+    EmlResourceClass::smallest_fitting(node_count, peak_stack)
+        .ok_or_else(|| resource_class_error(node_count, peak_stack))
+}
+
+fn resource_class_error(node_count: u32, peak_stack: u32) -> EmlRegistryError {
+    let attempted = EmlResourceClass::LegacyFixed32;
+    EmlRegistryError::UnsupportedResourceClass {
+        requested_nodes: node_count,
+        requested_stack: peak_stack,
+        attempted,
+        max_nodes: attempted.max_tree_nodes(),
+        max_stack: attempted.stack_slots(),
+    }
 }
 
 fn validate_nodes_for_class(
@@ -676,7 +694,7 @@ fn is_whitelisted_formula_class(class: &str) -> bool {
 pub fn classify_legacy_tree_meta(meta: &EmlTreeMeta) -> EmlExecutionClass {
     if meta.has_transcendental {
         EmlExecutionClass::FastApproximate
-    } else if meta.node_count == 0 || meta.node_count > MAX_EML_TREE_NODES {
+    } else if EmlResourceClass::smallest_fitting(meta.node_count, 1).is_none() {
         EmlExecutionClass::CpuOracleOnly
     } else if is_whitelisted_formula_class(&meta.formula_class) {
         EmlExecutionClass::ExactDeterministic
@@ -698,6 +716,16 @@ pub enum EmlRegistryError {
     EmptyTree,
     #[error("EML tree has {0} nodes; maximum is {MAX_EML_TREE_NODES}")]
     TooManyNodes(u32),
+    #[error(
+        "EML facts (nodes {requested_nodes}, peak stack {requested_stack}) do not fit closed class {attempted:?} (max nodes {max_nodes}, max stack {max_stack})"
+    )]
+    UnsupportedResourceClass {
+        requested_nodes: u32,
+        requested_stack: u32,
+        attempted: EmlResourceClass,
+        max_nodes: u32,
+        max_stack: u32,
+    },
     #[error("formula class {0:?} is not whitelisted for GPU EvalEML")]
     UnknownFormulaClass(String),
     #[error("EML opcode {opcode:#x} not allowed in execution class {class:?}")]

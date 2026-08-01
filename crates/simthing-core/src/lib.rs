@@ -61,7 +61,7 @@ pub use compiled_accumulator_plan::{
     is_exact_integer_f32, CompiledAccumulatorOpPlan, StructuralScalarChannel,
     EXACT_INTEGER_F32_BOUND,
 };
-pub use eml_nodes::{opcode as eml_opcode, EML_STACK_MAX};
+pub use eml_nodes::{opcode as eml_opcode, EmlResourceClass, EML_STACK_MAX};
 pub use eml_registry::{
     classify_legacy_tree_meta, EmlConsumerKind, EmlConsumerMask, EmlExecutionClass,
     EmlExpressionRegistry, EmlFormulaMeta, EmlNodeGpu, EmlRegistryError, EmlTreeId, EmlTreeMeta,

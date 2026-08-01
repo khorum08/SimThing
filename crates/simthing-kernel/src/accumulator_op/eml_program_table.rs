@@ -3,7 +3,8 @@
 use std::collections::HashMap;
 
 use simthing_core::{
-    eml_nodes::execution_class_to_u32, EmlExecutionClass, EmlFormulaMeta, EmlNodeGpu, EmlTreeId,
+    eml_nodes::execution_class_to_u32, EmlExecutionClass, EmlFormulaMeta, EmlNodeGpu,
+    EmlResourceClass, EmlTreeId,
 };
 use wgpu::{Buffer, BufferDescriptor, BufferUsages, CommandEncoderDescriptor};
 
@@ -29,6 +30,14 @@ pub enum EmlUploadError {
         meta_count: u32,
         actual_count: u32,
     },
+    #[error(
+        "EML formula {tree_id:?} facts (nodes {requested_nodes}, peak stack {requested_stack}) do not fit a closed resource class"
+    )]
+    UnsupportedResourceClass {
+        tree_id: EmlTreeId,
+        requested_nodes: u32,
+        requested_stack: u32,
+    },
     /// OC-K-EML-OPCODE-GATE-0: closed vocabulary check on GPU tree upload.
     #[error("EML tree upload rejected by opcode gate: {0}")]
     OpcodeGate(#[from] OpcodeGateError),
@@ -48,6 +57,7 @@ pub struct EmlGpuProgramTable {
     pub range_upload_count: u64,
     /// Registry generation last reflected in this GPU table (boundary-sync skip gate).
     pub uploaded_registry_generation: Option<u64>,
+    resource_class: EmlResourceClass,
 }
 
 impl EmlGpuProgramTable {
@@ -76,11 +86,16 @@ impl EmlGpuProgramTable {
             node_upload_count: 0,
             range_upload_count: 0,
             uploaded_registry_generation: None,
+            resource_class: EmlResourceClass::CompactStack4,
         }
     }
 
     pub(crate) fn bind_buffers(&self) -> (&Buffer, &Buffer) {
         (&self.node_buffer, &self.range_buffer)
+    }
+
+    pub fn resource_class(&self) -> EmlResourceClass {
+        self.resource_class
     }
 
     /// Total GPU upload operations performed on this table (node buffer writes).
@@ -179,6 +194,7 @@ impl EmlGpuProgramTable {
             self.ranges.clear();
             self.node_used = 0;
             self.range_used = 0;
+            self.resource_class = EmlResourceClass::CompactStack4;
             return Ok(HashMap::new());
         }
 
@@ -191,6 +207,7 @@ impl EmlGpuProgramTable {
         let mut mapping = HashMap::new();
 
         let mut node_offset = 0u32;
+        let mut table_resource_class = EmlResourceClass::CompactStack4;
         for (range_index, (tree_id, meta, nodes)) in trees.iter().enumerate() {
             if meta.execution_class == EmlExecutionClass::CpuOracleOnly {
                 return Err(EmlUploadError::CpuOracleOnly { tree_id: *tree_id });
@@ -202,6 +219,15 @@ impl EmlGpuProgramTable {
                     actual_count: nodes.len() as u32,
                 });
             }
+            let tree_resource_class =
+                EmlResourceClass::smallest_fitting(meta.node_count, meta.max_stack_depth).ok_or(
+                    EmlUploadError::UnsupportedResourceClass {
+                        tree_id: *tree_id,
+                        requested_nodes: meta.node_count,
+                        requested_stack: meta.max_stack_depth,
+                    },
+                )?;
+            table_resource_class = table_resource_class.join(tree_resource_class);
             // OC-K-EML-OPCODE-GATE-0: hard-gate closed vocabulary at GPU registration.
             for node in nodes.iter() {
                 if !opcode_in_accumulator_vocabulary(node.opcode) {
@@ -234,6 +260,7 @@ impl EmlGpuProgramTable {
         self.node_used = flat_nodes.len() as u32;
         self.range_used = total_ranges;
         self.ranges = ranges;
+        self.resource_class = table_resource_class;
         self.generation = self.generation.wrapping_add(1);
         Ok(mapping)
     }
@@ -279,5 +306,4 @@ mod tests {
             display_name: "test".into(),
         }
     }
-
 }

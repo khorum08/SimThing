@@ -1,6 +1,6 @@
 //! CPU reference executor for Pass B ops (B-2 parity tests).
 
-use simthing_core::{eml_opcode, EmlNodeGpu};
+use simthing_core::{eml_opcode, EmlNodeGpu, EmlResourceClass};
 
 pub use crate::cpu_oracle::{
     execute_ops_cpu, execute_ops_cpu_with_emissions, execute_threshold_ops_cpu, CpuOracleError,
@@ -16,7 +16,30 @@ pub fn eval_eml_cpu(
     n_dims: u32,
     params: [f32; 4],
 ) -> f32 {
-    let mut stack = [0.0f32; 32];
+    let mut depth = 0u32;
+    let mut peak_stack = 0u32;
+    for node in nodes {
+        match node.opcode {
+            eml_opcode::LITERAL_F32 | eml_opcode::SLOT_VALUE | eml_opcode::PARAM => depth += 1,
+            eml_opcode::ADD
+            | eml_opcode::SUB
+            | eml_opcode::MUL
+            | eml_opcode::DIV
+            | eml_opcode::MIN
+            | eml_opcode::MAX
+            | eml_opcode::CMP_LT
+            | eml_opcode::CMP_LE
+            | eml_opcode::CMP_GT
+            | eml_opcode::CMP_GE
+            | eml_opcode::CMP_EQ => depth = depth.saturating_sub(1),
+            eml_opcode::SELECT => depth = depth.saturating_sub(2),
+            _ => {}
+        }
+        peak_stack = peak_stack.max(depth);
+    }
+    let resource_class = EmlResourceClass::smallest_fitting(nodes.len() as u32, peak_stack)
+        .expect("CPU oracle requires registry-admitted EML");
+    let mut stack = vec![0.0f32; resource_class.stack_slots() as usize];
     let mut sp: usize = 0;
 
     for node in nodes {

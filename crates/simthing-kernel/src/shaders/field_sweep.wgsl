@@ -1,5 +1,7 @@
 // FIELD-SWEEP-N4-PARITY-0: one generic EML map/fixed-linear-fold/post sweep.
 
+const EML_STACK_MAX: u32 = 32u;
+
 struct EmlNode {
     opcode: u32,
     flags: u32,
@@ -98,7 +100,7 @@ fn field_param(index: u32, context: FieldEmlContext) -> f32 {
 }
 
 fn eval_program(offset: u32, count: u32, context: FieldEmlContext) -> f32 {
-    var stack: array<f32, 32>;
+    var stack: array<f32, EML_STACK_MAX>;
     var sp = 0u;
     for (var local = 0u; local < count; local = local + 1u) {
         let node = nodes[offset + local];

@@ -4,6 +4,9 @@ version.workspace = true
 edition.workspace = true
 authors.workspace = true
 
+[features]
+eml-resource-profiling = ["simthing-kernel/eml-resource-profiling"]
+
 [dependencies]
 simthing-core  = { path = "../simthing-core" }
 simthing-kernel = { path = "../simthing-kernel" }

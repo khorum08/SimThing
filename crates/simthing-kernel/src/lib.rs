@@ -11,6 +11,7 @@ pub mod candidate_f_magnitude;
 pub mod context;
 pub mod decision_ingress;
 pub mod eml_opcode_gate;
+mod eml_resource_class;
 pub mod exact_magnitude_gate;
 pub mod field_sweep;
 pub mod cpu_oracle;
@@ -64,9 +65,13 @@ pub use eml_opcode_gate::{
     combine_in_closed_vocabulary, opcode_in_accumulator_vocabulary,
     opcode_in_closed_vocabulary, AdmittedEvalEmlCombine,
     AdmittedEvalEmlOpcode, CombineRegistrationRequest, CpuOracleParityProof, EvalEmlCombine,
-    EvalEmlOpcode, EvalEmlVocabulary, GenericPrimitiveRegistration, OpcodeGateError,
-    OpcodeRegistrationGate, OpcodeRegistrationRequest, SemanticOpcodeRegistration,
-    SoftStepPolicyConditional,
+    EvalEmlOpcode, EvalEmlVocabulary, ExactPrimitiveAdmission, ExactPrimitiveAdmissionDoor,
+    ExactPrimitiveAdmissionRequest, ExactPrimitiveBitSemantics, ExactPrimitiveConsumer,
+    ExactPrimitiveConsumerEvidence, ExactPrimitiveConsumerKey, ExactPrimitiveCostEvidence,
+    ExactPrimitiveCostKey, ExactPrimitiveDeterminismEvidence, ExactPrimitiveDeterminismKey,
+    ExactPrimitiveDomainPolicy, ExactPrimitiveResourceEffect, GenericPrimitiveRegistration,
+    OpcodeGateError, OpcodeRegistrationGate, OpcodeRegistrationRequest,
+    SemanticOpcodeRegistration, SoftStepPolicyConditional,
 };
 pub use field_sweep::{
     apply_field_sweep_registration, execute_field_sweep_cpu, execute_field_sweep_cpu_chain,
@@ -74,7 +79,7 @@ pub use field_sweep::{
     grid_n4_offsets, grid_n8_offsets, grid_radius_offsets, CanonicalOrderProof, FieldAdjacency,
     FieldConductanceCertificate, FieldDegreeBucket, FieldLawProof, FieldSweepAdmissionError,
     FieldSweepExecutionError, FieldSweepOutput, FieldSweepRegistration,
-    FieldSweepRegistrationRequest, FieldSweepResourceClass, FieldSweepResourceClassRequest,
+    FieldSweepRegistrationRequest, FieldSweepResourceClass,
     FieldSweepSession, FieldTransientCertificate, GridN4Offset, GridOffset, LinkGraphNeighbor,
     UndirectedSymmetryCertificate, FIELD_SWEEP_LEGACY_PROGRAM_NODES,
     FIELD_SWEEP_LEGACY_STACK_SLOTS, FIELD_SWEEP_WORKGROUP_SIZE, GRID_N4_NSEW, GRID_N4_WENS,

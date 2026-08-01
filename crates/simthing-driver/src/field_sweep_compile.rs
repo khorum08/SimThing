@@ -5,7 +5,7 @@ use simthing_core::{eml_opcode, ColumnIndex, EmlNodeGpu, SlotIndex};
 use simthing_gpu::{
     apply_field_sweep_registration, encode_column, field_param, FieldAdjacency, FieldLawProof,
     FieldSweepAdmissionError, FieldSweepOutput, FieldSweepRegistration,
-    FieldSweepRegistrationRequest, FieldSweepResourceClassRequest, GRID_N4_NSEW, GRID_N4_WENS,
+    FieldSweepRegistrationRequest, GRID_N4_NSEW, GRID_N4_WENS,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -61,7 +61,6 @@ pub fn compile_palma_n4_field_sweep(
         field_law_proof: Some(FieldLawProof::apply_non_conservative()),
         transient_read_proof: None,
         canonical_order_proof: Some(canonical_order_proof),
-        resource_class: FieldSweepResourceClassRequest::default(),
         dt: 1.0,
     })
 }
@@ -116,7 +115,6 @@ pub fn compile_gu_yang_n4_field_sweeps(
         field_law_proof: Some(FieldLawProof::apply_non_conservative()),
         transient_read_proof: None,
         canonical_order_proof: Some(canonical_order_proof),
-        resource_class: FieldSweepResourceClassRequest::default(),
         dt: spec.dt,
     })?;
 
@@ -161,7 +159,6 @@ pub fn compile_gu_yang_n4_field_sweeps(
         )),
         transient_read_proof: None,
         canonical_order_proof: Some(canonical_order_proof),
-        resource_class: FieldSweepResourceClassRequest::default(),
         dt: spec.dt,
     })?;
     Ok([conductance, flux])

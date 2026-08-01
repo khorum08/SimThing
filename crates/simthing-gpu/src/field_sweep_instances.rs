@@ -6,8 +6,7 @@ use simthing_core::{eml_opcode, ColumnIndex, EmlNodeGpu, SlotIndex};
 use simthing_kernel::{
     apply_field_sweep_registration, encode_column, field_param, FieldAdjacency, FieldLawProof,
     FieldSweepAdmissionError, FieldSweepOutput, FieldSweepRegistration,
-    FieldSweepRegistrationRequest, FieldSweepResourceClassRequest, GridOffset, GRID_N4_NSEW,
-    GRID_N4_WENS,
+    FieldSweepRegistrationRequest, GridOffset, GRID_N4_NSEW, GRID_N4_WENS,
 };
 use thiserror::Error;
 
@@ -72,7 +71,6 @@ pub fn compile_min_plus_field_sweep(
             field_law_proof: Some(FieldLawProof::apply_non_conservative()),
             transient_read_proof: None,
             canonical_order_proof: Some(order),
-            resource_class: FieldSweepResourceClassRequest::default(),
             dt: 1.0,
         },
     )?)
@@ -113,7 +111,6 @@ pub fn compile_w_impedance_field_sweeps(
                 field_law_proof: Some(FieldLawProof::apply_non_conservative()),
                 transient_read_proof: None,
                 canonical_order_proof: Some(order),
-                resource_class: FieldSweepResourceClassRequest::default(),
                 dt: 1.0,
             },
         )?);
@@ -233,7 +230,6 @@ fn compile_weighted_linear(
             field_law_proof: Some(FieldLawProof::apply_non_conservative()),
             transient_read_proof: None,
             canonical_order_proof: Some(order),
-            resource_class: FieldSweepResourceClassRequest::default(),
             dt: 1.0,
         },
     )?)
@@ -278,7 +274,6 @@ fn compile_saturating_flux(
         field_law_proof: Some(FieldLawProof::apply_non_conservative()),
         transient_read_proof: None,
         canonical_order_proof: Some(order),
-        resource_class: FieldSweepResourceClassRequest::default(),
         dt: 1.0,
     })?;
     let transient = conductance.apply_transient_certificate()?;
@@ -318,7 +313,6 @@ fn compile_saturating_flux(
         field_law_proof: Some(FieldLawProof::apply_conservative(symmetry, certificate)),
         transient_read_proof: Some(transient),
         canonical_order_proof: Some(order),
-        resource_class: FieldSweepResourceClassRequest::default(),
         dt: 1.0,
     })?;
     let mut registrations = vec![conductance, flux];
@@ -351,7 +345,6 @@ fn compile_saturating_flux(
                 field_law_proof: Some(FieldLawProof::apply_non_conservative()),
                 transient_read_proof: Some(transient),
                 canonical_order_proof: Some(choke_order),
-                resource_class: FieldSweepResourceClassRequest::default(),
                 dt: 1.0,
             },
         )?);

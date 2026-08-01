@@ -5455,7 +5455,9 @@ name = "simthing-workshop"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "ash",
  "bytemuck",
+ "naga 22.1.0",
  "pollster 0.3.0",
  "serde",
  "serde_json",

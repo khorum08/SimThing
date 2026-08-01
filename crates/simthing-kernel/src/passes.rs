@@ -184,7 +184,7 @@ impl Pipelines {
         if let Some(runtime) = state.accumulator_runtime.as_mut() {
             let mut session = runtime.take_intensity_eml_session();
             if let Some(session) = session.as_mut() {
-                let eml = runtime.eml_bind_buffers();
+                let eml = runtime.eml_program_table();
                 session.encode_intensity_eml_into(ctx, &mut encoder, values, previous, dt, eml);
             }
             runtime.restore_intensity_eml_session(session);
@@ -411,7 +411,7 @@ impl Pipelines {
                 let eml = state
                     .accumulator_runtime
                     .as_ref()
-                    .and_then(|r| r.eml_bind_buffers());
+                    .and_then(|r| r.eml_program_table());
                 session.encode_intensity_eml_into(
                     ctx,
                     &mut encoder,
@@ -428,7 +428,7 @@ impl Pipelines {
                 let eml = state
                     .accumulator_runtime
                     .as_ref()
-                    .and_then(|r| r.eml_bind_buffers());
+                    .and_then(|r| r.eml_program_table());
                 let input_list = state
                     .accumulator_runtime
                     .as_ref()
@@ -450,7 +450,7 @@ impl Pipelines {
                 let eml = state
                     .accumulator_runtime
                     .as_ref()
-                    .and_then(|r| r.eml_bind_buffers());
+                    .and_then(|r| r.eml_program_table());
                 session.encode_emission_into(
                     ctx,
                     &mut encoder,

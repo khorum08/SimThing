@@ -5,8 +5,8 @@ use simthing_gpu::{
     cpu_horizon, cpu_min_plus_d_from_w, execute_field_sweep_cpu, execute_field_sweep_cpu_chain,
     execute_field_sweep_cpu_iterations, pack_w_and_initial_d, params_from_config, FieldAdjacency,
     FieldLawProof, FieldSweepAdmissionError, FieldSweepOutput, FieldSweepRegistrationRequest,
-    FieldSweepResourceClassRequest, FieldSweepSession, GpuContext, MinPlusStencilConfig,
-    MinPlusStencilOp, StructuredFieldStencilBoundaryMode, StructuredFieldStencilConfig,
+    FieldSweepSession, GpuContext, MinPlusStencilConfig, MinPlusStencilOp,
+    StructuredFieldStencilBoundaryMode, StructuredFieldStencilConfig,
     StructuredFieldStencilMaskMode, StructuredFieldStencilOp, StructuredFieldStencilOperator,
     StructuredFieldStencilSourcePolicy, GRID_N4_NSEW, GRID_N4_WENS, MIN_PLUS_INF,
     SATURATING_FLUX_CHI_CFL_MAX,
@@ -233,7 +233,6 @@ fn valid_request() -> FieldSweepRegistrationRequest {
         field_law_proof: Some(FieldLawProof::apply_non_conservative()),
         transient_read_proof: None,
         canonical_order_proof: Some(order),
-        resource_class: FieldSweepResourceClassRequest::default(),
         dt: 1.0,
     }
 }
@@ -268,16 +267,6 @@ fn field_sweep_n4_parity_0_typed_pre_dispatch_negatives_bite() {
     assert!(matches!(
         apply_field_sweep_registration(wrong_symmetry),
         Err(FieldSweepAdmissionError::UndirectedSymmetryCertificateMismatch)
-    ));
-
-    let mut non_default_resource = valid_request();
-    non_default_resource.resource_class = FieldSweepResourceClassRequest {
-        stack_slots: 64,
-        max_program_nodes: 32,
-    };
-    assert!(matches!(
-        apply_field_sweep_registration(non_default_resource),
-        Err(FieldSweepAdmissionError::UnsupportedResourceClass { .. })
     ));
 
     let mut malformed_edge = valid_request();
