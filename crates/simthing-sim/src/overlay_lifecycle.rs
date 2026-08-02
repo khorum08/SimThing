@@ -180,7 +180,7 @@ fn evaluate_condition(
     base: Option<usize>,
 ) -> bool {
     match cond {
-        DissolveCondition::Never => false,
+        DissolveCondition::AtSessionEnd => false,
         DissolveCondition::OverrideReceived => false, // handled by attach step
         DissolveCondition::AfterTicks { remaining } => *remaining == 0,
         DissolveCondition::PropertyReaches {

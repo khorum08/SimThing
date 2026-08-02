@@ -1600,7 +1600,7 @@ fn lower_field_economy(
                         }
                     },
                 )],
-                lifecycle: OverlayLifecycle::Permanent,
+                lifecycle: OverlayLifecycle::UntilDissolved,
                 kind: OverlayKind::Policy,
                 source: OverlaySource::Player,
                 install: InstallTargetSpec::ScenarioListed {
@@ -1770,7 +1770,7 @@ fn location_overlay(
         display_name: id.to_string(),
         targets_property: targets_property.to_string(),
         sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Add(amount))],
-        lifecycle: OverlayLifecycle::Permanent,
+        lifecycle: OverlayLifecycle::UntilDissolved,
         kind: overlay_kind,
         source: OverlaySource::System,
         install: InstallTargetSpec::ScenarioListed {

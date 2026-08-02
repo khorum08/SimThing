@@ -784,7 +784,7 @@ impl SimSession {
                 property_id: effect.property_id,
                 sub_field_deltas: effect.deltas.clone(),
             },
-            lifecycle: simthing_core::OverlayLifecycle::Permanent,
+            lifecycle: simthing_core::OverlayLifecycle::UntilDissolved,
         };
         self.tx
             .submit_boundary(simthing_feeder::BoundaryRequest::AttachOverlay {

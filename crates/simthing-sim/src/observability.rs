@@ -201,7 +201,7 @@ mod tests {
                 property_id: pid,
                 sub_field_deltas: vec![(role, op)],
             },
-            lifecycle: OverlayLifecycle::Permanent,
+            lifecycle: OverlayLifecycle::UntilDissolved,
         }
     }
 

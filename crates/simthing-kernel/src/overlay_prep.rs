@@ -140,7 +140,7 @@ mod tests {
                 property_id: prop_id,
                 sub_field_deltas: deltas,
             },
-            lifecycle: OverlayLifecycle::Permanent,
+            lifecycle: OverlayLifecycle::UntilDissolved,
         }
     }
 

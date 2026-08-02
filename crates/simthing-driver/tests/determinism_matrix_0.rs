@@ -102,7 +102,7 @@ fn make_overlay() -> Overlay {
             property_id: SimPropertyId(0),
             sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Set(0.5))],
         },
-        lifecycle: OverlayLifecycle::Permanent,
+        lifecycle: OverlayLifecycle::UntilDissolved,
     }
 }
 
