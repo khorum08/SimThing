@@ -20,11 +20,12 @@ INVISIBLE. Things with clocks get cleaned; things without them grow.
 
   DEAD-EXPORT -> INSPECT. An engine module exported from its crate root with
   ZERO references anywhere outside its own crate's `src`, above a line
-  threshold. This is the GENERAL gate and the more important of the two: it
-  catches the SHAPE of the residue (23 exported modules nothing called, in a
-  closed chain feeding only each other) rather than the word "pirate". The
-  next accretion will not be called Terran-Pirate, and this is what will find
-  it.
+  threshold; a Rust integration-test target declaring zero test functions; or
+  a `tests/support/` module unreachable from every consumer outside support.
+  This is the GENERAL gate and the more important of the two: it catches the
+  SHAPE of residue rather than its vocabulary. Internal support dependencies
+  are followed from live outside roots, and crate-root symbol re-exports keep
+  their existing reachability protection.
 
 Usage:
   python3 scripts/ci/scenario_residue_check.sh
@@ -63,6 +64,14 @@ DOMAIN_WORDS = ["combat", "diplomac", "siege", "battle"]
 DEAD_EXPORT_MIN_LINES = 200
 
 SUFFIXES = (".rs", ".ron", ".wgsl")
+TEST_ATTRIBUTE_RE = re.compile(
+    r"#\s*\[\s*(?:test|[A-Za-z_][A-Za-z0-9_]*::test|rstest)\b"
+)
+
+
+def strip_rust_comments(text: str) -> str:
+    text = re.sub(r"/\*.*?\*/", "", text, flags=re.S)
+    return re.sub(r"//.*$", "", text, flags=re.M)
 
 
 def scan_vocabulary(root: pathlib.Path, words: list[str]) -> list[str]:
@@ -143,10 +152,107 @@ def scan_dead_exports(root: pathlib.Path, min_lines: int) -> list[str]:
     return dead
 
 
+def scan_zero_test_targets(root: pathlib.Path) -> list[str]:
+    """Rust files directly under ``tests/`` are Cargo integration targets.
+
+    A target with no test function still compiles and reports ``0 passed``, so
+    it looks healthy while proving nothing.  Keep this advisory, like the
+    existing orphan-export detector, but make the shape visible.
+    """
+    dead: list[str] = []
+    for crate in ENGINE:
+        tests = root / "crates" / crate / "tests"
+        if not tests.is_dir():
+            continue
+        for path in sorted(tests.glob("*.rs")):
+            text = path.read_text(encoding="utf-8", errors="replace")
+            if not TEST_ATTRIBUTE_RE.search(strip_rust_comments(text)):
+                rel = path.relative_to(root).as_posix()
+                lines = len(text.splitlines())
+                dead.append(f"{rel} ({lines} lines, integration target has zero test functions)")
+    return dead
+
+
+def scan_dead_test_support(root: pathlib.Path) -> list[str]:
+    """Find support modules unreachable from any Rust source outside support/.
+
+    Internal support-to-support edges are followed from externally referenced
+    roots, so a live fixture chain remains live.  A module mentioned only by
+    another unreachable support module is residue, not a consumer.
+    """
+    dead: list[str] = []
+    for crate in ENGINE:
+        tests = root / "crates" / crate / "tests"
+        support = tests / "support"
+        if not support.is_dir():
+            continue
+        modules = {
+            path.stem: path
+            for path in sorted(support.rglob("*.rs"))
+            if path.name != "mod.rs"
+        }
+        if not modules:
+            continue
+
+        outside: list[str] = []
+        for path in sorted(tests.rglob("*.rs")):
+            if support in path.parents:
+                continue
+            outside.append(path.read_text(encoding="utf-8", errors="replace"))
+        outside_text = "\n".join(outside)
+
+        roots: set[str] = set()
+        for name in modules:
+            if re.search(rf"\b{re.escape(name)}\b", outside_text):
+                roots.add(name)
+
+        # Preserve the same symbol-reach protection as crate-root exports for
+        # support/mod.rs re-exports (``use support::TheFixture``).
+        support_mod = support / "mod.rs"
+        mod_text = (
+            support_mod.read_text(encoding="utf-8", errors="replace")
+            if support_mod.is_file()
+            else ""
+        )
+        for name in modules:
+            symbols = reexported_symbols(mod_text, name)
+            if symbols and any(
+                re.search(rf"\b{re.escape(symbol)}\b", outside_text)
+                for symbol in symbols
+            ):
+                roots.add(name)
+
+        graph: dict[str, set[str]] = {name: set() for name in modules}
+        for name, path in modules.items():
+            text = path.read_text(encoding="utf-8", errors="replace")
+            for candidate in modules:
+                if candidate != name and re.search(rf"\b{re.escape(candidate)}\b", text):
+                    graph[name].add(candidate)
+
+        live = set(roots)
+        pending = list(roots)
+        while pending:
+            name = pending.pop()
+            for dependency in graph[name]:
+                if dependency not in live:
+                    live.add(dependency)
+                    pending.append(dependency)
+
+        for name, path in modules.items():
+            if name not in live:
+                rel = path.relative_to(root).as_posix()
+                lines = len(path.read_text(encoding="utf-8", errors="replace").splitlines())
+                dead.append(f"{rel} ({lines} lines, no consumer outside tests/support/)")
+    return dead
+
+
 def run(root: pathlib.Path, min_lines: int = DEAD_EXPORT_MIN_LINES) -> int:
     scenario = scan_vocabulary(root, SCENARIO_WORDS)
     domain = scan_vocabulary(root, DOMAIN_WORDS)
-    dead = scan_dead_exports(root, min_lines)
+    dead_modules = scan_dead_exports(root, min_lines)
+    dead_test_targets = scan_zero_test_targets(root)
+    dead_support = scan_dead_test_support(root)
+    dead = dead_modules + dead_test_targets + dead_support
 
     for row in scenario:
         print(f"  - SCENARIO-RESIDUE: {row}")
@@ -170,9 +276,9 @@ def run(root: pathlib.Path, min_lines: int = DEAD_EXPORT_MIN_LINES) -> int:
         )
     if dead:
         print(
-            "  note: DEAD-EXPORT is advisory. An exported module nothing "
-            "references is either a missing consumer or unreaped residue; say "
-            "which, in the PR."
+            "  note: DEAD-EXPORT is advisory. An exported module, empty test "
+            "target, or unreachable support fixture is either a missing "
+            "consumer or unreaped residue; say which, in the PR."
         )
 
     verdict = "FAIL" if failed else ("INSPECT" if dead else "PASS")
@@ -235,12 +341,48 @@ def selftest() -> int:
         if out:
             failures.append(f"symbol-reached module must not be dead, got {out}")
 
+        tests = tmp / "crates" / "simthing-core" / "tests"
+        support = tests / "support"
+        support.mkdir(parents=True)
+
+        # PLANTED DEFECT 3: a Cargo integration target with no test function is
+        # advisory residue even when it contains helper-looking code.
+        empty_target = tests / "empty_target.rs"
+        empty_target.write_text("pub fn helper_only() {}\n", encoding="utf-8")
+        zero_targets = scan_zero_test_targets(tmp)
+        if not any("empty_target.rs" in row for row in zero_targets):
+            failures.append("zero-test integration target should be detected")
+        empty_target.write_text(
+            "#[test]\nfn executable_proof() { assert!(true); }\n", encoding="utf-8"
+        )
+        if any("empty_target.rs" in row for row in scan_zero_test_targets(tmp)):
+            failures.append("integration target with a test function must stay live")
+
+        # PLANTED DEFECT 4: an unconsumed support module is dead, while a
+        # sibling named by a source outside support/ is a live root.
+        (support / "orphan_fixture.rs").write_text(
+            "pub fn orphan_fixture() {}\n", encoding="utf-8"
+        )
+        (support / "live_fixture.rs").write_text(
+            "pub fn live_fixture() {}\n", encoding="utf-8"
+        )
+        (tests / "live_consumer.rs").write_text(
+            '#[path = "support/live_fixture.rs"]\nmod live_fixture;\n'
+            "#[test]\nfn consumes_fixture() { live_fixture::live_fixture(); }\n",
+            encoding="utf-8",
+        )
+        support_dead = scan_dead_test_support(tmp)
+        if not any("orphan_fixture.rs" in row for row in support_dead):
+            failures.append("support module without an outside consumer should be detected")
+        if any("live_fixture.rs" in row for row in support_dead):
+            failures.append("externally consumed support module must stay live")
+
     if failures:
         for f in failures:
             print(f"  - {f}")
         print(f"SCENARIO-RESIDUE-SELFTEST: FAIL ({len(failures)})")
         return 1
-    print("SCENARIO-RESIDUE-SELFTEST: PASS (6 fixtures, 2 planted defects)")
+    print("SCENARIO-RESIDUE-SELFTEST: PASS (10 checks, 4 planted defects)")
     return 0
 
 

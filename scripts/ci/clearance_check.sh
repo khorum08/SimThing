@@ -14,6 +14,7 @@ fi
 GATE_WIRING_PATHS=(
   "scripts/ci/clearance_check.sh"
   "scripts/ci/track_closeout.sh"
+  "scripts/ci/artifact_provenance_check.py"
   "scripts/ci/scenario_residue_check.sh"
   "scripts/ci/detachability_check.sh"
   "scripts/ci/allow/contention_mechanisms.txt"
