@@ -67,12 +67,28 @@ pub enum DissolveCondition {
         remaining: u32,
     },
     OverrideReceived,
-    Never,
+    /// The session's own end. This is the FLOOR of the ladder, not an escape from it.
+    ///
+    /// There is deliberately no `Never`. An overlay bounded only by session closure is
+    /// **effectively permanent within a run and still bounded**, which is honest; a `Never`
+    /// is a claim about the future that reads as permission to skip cleanup.
+    AtSessionEnd,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+/// # Dissolution is ordinary
+///
+/// [`DissolveCondition`] answers **"when does this dissolve BY ITSELF"** — never
+/// **"can this be dissolved"**. Explicit removal is always available and always ordinary.
+/// An unreachable or session-bounded condition means no *automatic* trigger; it never
+/// means permanence, and no consumer may treat it as licence to skip cleanup.
+///
+/// There is deliberately no `Permanent` variant. `permanent-residue` in the test inventory
+/// is the cautionary precedent: a name that makes immortality feel normal produces
+/// immortality by omission.
 pub enum OverlayLifecycle {
-    Permanent,
+    /// Lives until dissolved — by an authored condition, or by explicit removal.
+    UntilDissolved,
     Transient {
         dissolution_conditions: Vec<DissolveCondition>,
     },
@@ -93,14 +109,10 @@ pub struct Overlay {
 }
 
 impl Overlay {
-    pub fn is_permanent(&self) -> bool {
-        matches!(self.lifecycle, OverlayLifecycle::Permanent)
-    }
-
     pub fn is_active(&self) -> bool {
         matches!(
             self.lifecycle,
-            OverlayLifecycle::Permanent | OverlayLifecycle::Transient { .. }
+            OverlayLifecycle::UntilDissolved | OverlayLifecycle::Transient { .. }
         )
     }
 }

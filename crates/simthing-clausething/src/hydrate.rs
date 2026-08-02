@@ -222,7 +222,7 @@ fn parse_modifier_block(property: &RawProperty) -> Result<OverlaySpec, HydrateEr
         display_name,
         targets_property: require_field(targets_property, "targets_property", property)?,
         sub_field_deltas: vec![(SubFieldRole::Amount, transform)],
-        lifecycle: OverlayLifecycle::Permanent,
+        lifecycle: OverlayLifecycle::UntilDissolved,
         kind: OverlayKind::Policy,
         source: OverlaySource::Player,
         install: InstallTargetSpec::SessionRoot,
@@ -269,7 +269,7 @@ fn parse_triggered_modifier_block(
     let (potential_property, threshold) = require_field(potential, "potential", property)?;
     let mut overlay = require_field(modifier, "modifier", property)?;
     overlay.lifecycle = OverlayLifecycle::Suspended {
-        when_activated: Box::new(OverlayLifecycle::Permanent),
+        when_activated: Box::new(OverlayLifecycle::UntilDissolved),
     };
 
     let event = EventSpec {
@@ -554,7 +554,7 @@ fn parse_tradition_effect_block(
     Ok(CapabilityEffectSpec {
         targets_property: require_field(targets_property, "targets_property", property)?,
         sub_field_deltas: vec![(SubFieldRole::Amount, transform)],
-        when_activated: OverlayLifecycle::Permanent,
+        when_activated: OverlayLifecycle::UntilDissolved,
         effect_target: EffectTarget::Owner,
         source_span_token: targets_property_span,
     })

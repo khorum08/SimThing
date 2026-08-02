@@ -187,7 +187,7 @@ fn clone_capability_children() {
             sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Add(0.2))],
         },
         lifecycle: OverlayLifecycle::Suspended {
-            when_activated: Box::new(OverlayLifecycle::Permanent),
+            when_activated: Box::new(OverlayLifecycle::UntilDissolved),
         },
     });
     faction.add_child(capability_tree);

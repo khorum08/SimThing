@@ -109,7 +109,7 @@ impl<'r> Evaluator<'r> {
             .iter()
             .fold(ancestors.clone(), |stack, overlay| {
                 match &overlay.lifecycle {
-                    OverlayLifecycle::Permanent => stack.push(&overlay.transform),
+                    OverlayLifecycle::UntilDissolved => stack.push(&overlay.transform),
                     OverlayLifecycle::Transient { .. } => stack.push(&overlay.transform),
                     OverlayLifecycle::Suspended { .. } => stack,
                 }

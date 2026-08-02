@@ -1445,7 +1445,7 @@ fn payload_economy_overlays(
                 display_name: format!("{} payload modifier {index}", payload.id),
                 targets_property: property,
                 sub_field_deltas: vec![(SubFieldRole::Amount, transform)],
-                lifecycle: OverlayLifecycle::Permanent,
+                lifecycle: OverlayLifecycle::UntilDissolved,
                 kind: OverlayKind::Policy,
                 source: OverlaySource::Player,
                 install: InstallTargetSpec::ScenarioListed {
@@ -2780,7 +2780,7 @@ fn parse_modifier_spec(
         display_name,
         targets_property: require_field(targets_property, "targets_property", property)?,
         sub_field_deltas: vec![(SubFieldRole::Amount, transform)],
-        lifecycle: OverlayLifecycle::Permanent,
+        lifecycle: OverlayLifecycle::UntilDissolved,
         kind: OverlayKind::Policy,
         source: OverlaySource::Player,
         install: InstallTargetSpec::ScenarioListed {

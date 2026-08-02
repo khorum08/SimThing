@@ -358,7 +358,7 @@ mod tests {
                     let classes = vec![class("destination_order", 20.0)];
                     let mut o =
                         overlay("go", OverlaySource::Player, Some("destination_order"), 20.0);
-                    o.lifecycle = OverlayLifecycle::Permanent;
+                    o.lifecycle = OverlayLifecycle::UntilDissolved;
                     validate_order_weight_overlay(&o, &classes)
                 }
                 "ambient_player_ok" => validate_order_weight_overlay(

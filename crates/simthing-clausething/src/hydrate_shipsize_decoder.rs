@@ -538,7 +538,7 @@ fn build_overlay(
         display_name: String::new(),
         targets_property: format!("{}::{}", property_key.namespace, property_key.name),
         sub_field_deltas: vec![(SubFieldRole::Amount, transform)],
-        lifecycle: OverlayLifecycle::Permanent,
+        lifecycle: OverlayLifecycle::UntilDissolved,
         kind: OverlayKind::Policy,
         source: OverlaySource::Player,
         install: overlay_install_for_key(decoded, custom_kinds),
@@ -676,7 +676,7 @@ fn parse_triggered_modifier_block(
 
     let mut overlay = build_overlay(&id, &decoded, amount, properties, custom_kinds)?;
     overlay.lifecycle = OverlayLifecycle::Suspended {
-        when_activated: Box::new(OverlayLifecycle::Permanent),
+        when_activated: Box::new(OverlayLifecycle::UntilDissolved),
     };
     let overlay_id = overlay.id.clone();
     overlays.push(overlay);

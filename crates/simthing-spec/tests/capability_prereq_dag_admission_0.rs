@@ -127,7 +127,7 @@ fn builder_rejects_prereq_cycle_at_admission() {
     let effect = CapabilityEffectSpec {
         targets_property: "military::fleet_speed".into(),
         sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Multiply(1.1))],
-        when_activated: OverlayLifecycle::Permanent,
+        when_activated: OverlayLifecycle::UntilDissolved,
         effect_target: EffectTarget::CapabilityTree,
         source_span_token: None,
     };
