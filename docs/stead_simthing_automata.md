@@ -238,3 +238,9 @@ restate and drift from them.
 - **Micro-subtree GPU contexts.** Per-tree cost is small (`SpecSessionState` is 14 fields of mostly
   empty collections; `SlotAllocator` needs no device), so thousands are feasible — *provided* they are
   CPU-only or share a context. Per-tree GPU contexts would disqualify the pattern.
+- **Does predicate composition preserve the asymmetric gate?** Routing (leg (c)) reuses the
+  `TransformStack` chain `evaluate_node` already composes ancestors-first — but that stack applies
+  `PropertyTransformDelta`s SEQUENTIALLY per matching property, so a later delta can overwrite an
+  earlier one (`Set` after `Multiply`). Value composition is last-wins-capable. A policy chain needs
+  CONJUNCTIVE composition: a descendant must never loosen an ancestor's restriction. The two are not
+  the same algebra, and 6.0b must state the predicate rule rather than inherit it from `TransformOp`.
