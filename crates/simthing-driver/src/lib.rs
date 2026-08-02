@@ -120,8 +120,9 @@ pub use atlas_0080_0::{
 pub use bench_limits::{check as check_bench_ceiling, ms_per_sim_day, CEILINGS};
 pub use child_share_eml::{child_share_cpu, register_child_share_formula};
 pub use comparative_default_birth::{
-    admit_comparative_from_field_plan, admit_field_plan_from_region_fields, FieldPlanAdmissionError,
-    FieldPlanAdmissionReport, SealedFieldTopology,
+    admit_comparative_from_emitters_and_topology, admit_comparative_from_field_plan,
+    admit_field_plan_from_region_fields, FieldPlanAdmissionError, FieldPlanAdmissionReport,
+    SealedFieldTopology,
 };
 pub use comparative_projection::{
     admit_comparative_projections, comparative_event_kind, comparative_projection_cpu_oracle,

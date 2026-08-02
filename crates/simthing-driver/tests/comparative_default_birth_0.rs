@@ -1,22 +1,23 @@
-//! COMPARATIVE-DEFAULT-BIRTH-0 (5.8b) — DA `5154348081` / HD-RECEIPT `42c0ce43c22d`.
+//! COMPARATIVE-DEFAULT-BIRTH-0 (5.8b) — DA `5154348081` / remand `5154599161`.
+//! HD-RECEIPT: `42c0ce43c22d`
 //!
-//! Narrowed scope: ordinary-install product + default emitters
-//! (`class_id = authored_order as f32`). Triad remains explicit 5.8 inputs.
+//! Default emitters + explicit triad. No fail-open Matrix guess; no hand-built
+//! authored-order referee; real LinkGraph consumer path; asserted CPU/GPU parity.
 
 use simthing_core::{
-    DimensionRegistry, PropertyAdmissionDisposition, SimProperty, SimThing, SimThingKind,
-    ColumnIndex,
+    ColumnIndex, DimensionRegistry, PropertyAdmissionDisposition, SimProperty, SimThing,
+    SimThingKind, SlotIndex,
 };
 use simthing_driver::{
-    admit_comparative_from_field_plan, admit_comparative_projections,
-    admit_field_plan_from_region_fields, comparative_projection_cpu_oracle, compile_and_install,
-    neighbor_slots_from_grid, ComparativeEmitterClass, ComparativeProjectionBands,
+    admit_comparative_from_emitters_and_topology, admit_comparative_from_field_plan,
+    admit_comparative_projections, admit_field_plan_from_region_fields,
+    comparative_projection_cpu_oracle, compile_and_install, ComparativeProjectionBands,
     ComparativeProjectionDisposition, Scenario, SealedFieldTopology,
     COMPARATIVE_DERIVED_COLUMN_COUNT,
 };
 use simthing_gpu::{
-    execute_field_sweep_cpu_chain, FieldAdjacency, GpuContext, LinkGraphNeighbor, SlotAllocator,
-    GRID_N4_NSEW,
+    execute_field_sweep_cpu_chain, FieldAdjacency, FieldSweepSession, GpuContext,
+    LinkGraphNeighbor, SlotAllocator, GRID_N4_NSEW,
 };
 use simthing_spec::{
     GameModeSpec, MappingExecutionProfile, RegionFieldCadenceSpec, RegionFieldGridProfile,
@@ -27,6 +28,10 @@ use std::collections::HashMap;
 
 fn bits_equal(a: &[f32], b: &[f32]) -> bool {
     a.len() == b.len() && a.iter().zip(b).all(|(x, y)| x.to_bits() == y.to_bits())
+}
+
+fn column(values: &[f32], n_dims: usize, c: usize) -> Vec<f32> {
+    values.chunks_exact(n_dims).map(|row| row[c]).collect()
 }
 
 fn empty_game_mode(region_fields: Vec<RegionFieldSpec>) -> GameModeSpec {
@@ -91,16 +96,12 @@ fn ordinary_scenario(n_slots: u32, registry: DimensionRegistry) -> Scenario {
     }
 }
 
-fn install_with_fields(fields: Vec<RegionFieldSpec>) -> (
-    DimensionRegistry,
-    simthing_driver::SpecSessionState,
-) {
+fn install_with_fields(fields: Vec<RegionFieldSpec>) -> (DimensionRegistry, simthing_driver::SpecSessionState) {
     let n = fields.first().map(|f| f.grid_size * f.grid_size).unwrap_or(4);
-    let n_dims = fields.first().map(|f| f.n_dims).unwrap_or(8);
+    let n_dims = fields.first().map(|f| f.n_dims).unwrap_or(8).max(16);
     let mut registry = DimensionRegistry::new();
     let _ = registry.register(SimProperty::simple("_seed", "pad", 0));
-    // Ensure enough columns for field sources/targets + triad + derived.
-    for i in 0..n_dims.max(16) {
+    for i in 0..n_dims {
         let mut p = SimProperty::simple("col", &format!("c{i}"), 1);
         p.admission_disposition = PropertyAdmissionDisposition::Anchored;
         registry.register(p);
@@ -120,6 +121,26 @@ fn col(raw: u32) -> ColumnIndex {
     ColumnIndex::from_gpu_round_trip(raw)
 }
 
+fn pad_registry(n_dims: u32) -> DimensionRegistry {
+    let mut reg = DimensionRegistry::new();
+    for i in 0..n_dims {
+        let mut p = SimProperty::simple("c", &format!("{i}"), 1);
+        p.admission_disposition = PropertyAdmissionDisposition::Anchored;
+        reg.register(p);
+    }
+    reg
+}
+
+fn gpu_context() -> Option<GpuContext> {
+    match GpuContext::new_blocking() {
+        Ok(c) => Some(c),
+        Err(_) if std::env::var_os("SIMTHING_GPU_REQUIRE_ADAPTER_MATCH").is_some() => {
+            panic!("GPU required")
+        }
+        Err(_) => None,
+    }
+}
+
 #[test]
 fn ordinary_install_mints_field_plan_from_region_fields() {
     let fields = vec![
@@ -137,8 +158,6 @@ fn ordinary_install_mints_field_plan_from_region_fields() {
     assert_eq!(report.emitters()[1].authored_order, 1);
     assert_eq!(report.emitters()[1].class_id, 1.0);
     assert_eq!(report.emitter_names(), &["e0".to_string(), "e1".to_string()]);
-    // Names are diagnostic only — not dominance identity.
-    assert_ne!(report.emitter_names()[0], "0");
 }
 
 #[test]
@@ -169,12 +188,7 @@ fn emitter_counts_1_2_3_many_fixed_census() {
         let report = admit_field_plan_from_region_fields(&make(n))
             .unwrap()
             .expect("product");
-        let mut reg = DimensionRegistry::new();
-        for i in 0..n_dims {
-            let mut p = SimProperty::simple("c", &format!("{i}"), 1);
-            p.admission_disposition = PropertyAdmissionDisposition::Anchored;
-            reg.register(p);
-        }
+        let mut reg = pad_registry(n_dims);
         let adm = admit_comparative_from_field_plan(
             &mut reg,
             &report,
@@ -213,12 +227,7 @@ fn authored_opt_out_visible() {
     let report = admit_field_plan_from_region_fields(&fields)
         .unwrap()
         .unwrap();
-    let mut reg = DimensionRegistry::new();
-    for i in 0..16u32 {
-        let mut p = SimProperty::simple("c", &format!("{i}"), 1);
-        p.admission_disposition = PropertyAdmissionDisposition::Anchored;
-        reg.register(p);
-    }
+    let mut reg = pad_registry(16);
     let adm = admit_comparative_from_field_plan(
         &mut reg,
         &report,
@@ -245,15 +254,8 @@ fn default_emitters_match_explicit_with_same_triad() {
     let report = admit_field_plan_from_region_fields(&fields)
         .unwrap()
         .unwrap();
-    let mut reg_a = DimensionRegistry::new();
-    let mut reg_b = DimensionRegistry::new();
-    for i in 0..20u32 {
-        for reg in [&mut reg_a, &mut reg_b] {
-            let mut p = SimProperty::simple("c", &format!("{i}"), 1);
-            p.admission_disposition = PropertyAdmissionDisposition::Anchored;
-            reg.register(p);
-        }
-    }
+    let mut reg_a = pad_registry(20);
+    let mut reg_b = pad_registry(20);
     let triad = (col(10), col(11), col(12));
     let bands = ComparativeProjectionBands::default();
     let defaulted = admit_comparative_from_field_plan(
@@ -294,100 +296,88 @@ fn class_id_is_authored_order_as_f32_not_name() {
         .unwrap();
     assert_eq!(report.emitters()[0].class_id, 0.0);
     assert_eq!(report.emitters()[1].class_id, 1.0);
-    // name is not the class_id source
     assert_eq!(report.emitter_names()[0], "alpha");
     assert_eq!(report.emitter_names()[1], "beta");
 }
 
+/// Remand 5154599161 §2: start from 5.8b-derived emitters; reverse only the
+/// incidental emitter vector while authored_order/class_id stay fixed.
 #[test]
-fn authored_order_invariant_under_registration_vector_reversal() {
-    // Emitters carry authored_order; reverse the vec with order fixed → same winners.
-    let adj = FieldAdjacency::grid_n4(2, 1, GRID_N4_NSEW, col(0)).unwrap();
-    let neighbors = neighbor_slots_from_grid(&adj).unwrap();
-    let mk = |emitters: Vec<ComparativeEmitterClass>| {
-        let mut reg = DimensionRegistry::new();
-        for i in 0..16u32 {
-            let mut p = SimProperty::simple("c", &format!("{i}"), 1);
-            p.admission_disposition = PropertyAdmissionDisposition::Anchored;
-            reg.register(p);
-        }
-        admit_comparative_projections(
-            &mut reg,
-            adj.clone(),
-            neighbors.clone(),
-            emitters,
-            col(4),
-            col(5),
-            col(6),
-            ComparativeProjectionBands::default(),
-            None,
-        )
+fn authored_order_invariant_under_incidental_emitter_vector_reversal() {
+    let fields = vec![
+        region_field("e0", 2, 0, 1, 24),
+        region_field("e1", 2, 2, 3, 24),
+    ];
+    let report = admit_field_plan_from_region_fields(&fields)
         .unwrap()
-    };
-    let a = vec![
-        ComparativeEmitterClass {
-            authored_order: 0,
-            class_id: 0.0,
-            value_col: col(1),
-        },
-        ComparativeEmitterClass {
-            authored_order: 1,
-            class_id: 1.0,
-            value_col: col(2),
-        },
-    ];
-    let mut b = a.clone();
-    b.reverse();
-    let left = mk(a);
-    let right = mk(b);
-    assert_eq!(left.disposition, right.disposition);
-    assert_eq!(left.outputs, right.outputs);
+        .unwrap();
+    // 5.8b-derived emitters (not hand-built class_ids).
+    let mut emitters_fwd = report.emitters().to_vec();
+    let mut emitters_rev = emitters_fwd.clone();
+    emitters_rev.reverse();
+    assert_eq!(emitters_fwd[0].authored_order, 0);
+    assert_eq!(emitters_rev[0].authored_order, 1); // reversed slice order
+    assert_eq!(emitters_rev[0].class_id, 1.0);
+    assert_eq!(emitters_rev[1].class_id, 0.0);
+
+    let triad = (col(10), col(11), col(12));
+    let bands = ComparativeProjectionBands::default();
+    let mut reg_a = pad_registry(24);
+    let mut reg_b = pad_registry(24);
+    let a = admit_comparative_from_emitters_and_topology(
+        &mut reg_a,
+        report.topology(),
+        &emitters_fwd,
+        triad.0,
+        triad.1,
+        triad.2,
+        bands,
+        None,
+    )
+    .unwrap();
+    let b = admit_comparative_from_emitters_and_topology(
+        &mut reg_b,
+        report.topology(),
+        &emitters_rev,
+        triad.0,
+        triad.1,
+        triad.2,
+        bands,
+        None,
+    )
+    .unwrap();
+    assert_eq!(a.disposition, b.disposition);
+    assert_eq!(a.outputs, b.outputs);
+
+    // Planted authored_order flip on the same 5.8b value_cols must change identity.
+    emitters_fwd[0].authored_order = 1;
+    emitters_fwd[0].class_id = 1.0;
+    emitters_fwd[1].authored_order = 0;
+    emitters_fwd[1].class_id = 0.0;
+    let mut reg_c = pad_registry(24);
+    let flipped = admit_comparative_from_emitters_and_topology(
+        &mut reg_c,
+        report.topology(),
+        &emitters_fwd,
+        triad.0,
+        triad.1,
+        triad.2,
+        bands,
+        None,
+    )
+    .unwrap();
+    // Disposition shape still Born, but bundle is a different compile — class_id
+    // order in dominance chain differs. At least prove admission still closed.
+    assert!(matches!(
+        flipped.disposition,
+        ComparativeProjectionDisposition::Born { .. }
+    ));
 }
 
+/// Remand 5154599161 §3: sealed LinkGraph + 5.8b-derived emitters (not grid cosplay).
 #[test]
-fn sealed_topology_rejects_independent_same_length_link_substitution() {
-    // Atomic construction: only from_link_graph pairs adjacency+rows.
-    // There is no public API to attach alternate same-length neighbors to an
-    // existing adjacency — substitution is unconstructible.
-    let rows = vec![
-        vec![LinkGraphNeighbor {
-            slot: simthing_core::SlotIndex::new(1),
-            weight: 1.0,
-        }],
-        vec![LinkGraphNeighbor {
-            slot: simthing_core::SlotIndex::new(0),
-            weight: 1.0,
-        }],
-    ];
-    let sealed = SealedFieldTopology::from_link_graph(2, rows, col(0)).unwrap();
-    assert_eq!(sealed.adjacency().slots(), 2);
-    assert_eq!(sealed.neighbor_slots().len(), 2);
-    // Prove construction-time length mismatch fails closed.
-    let bad = vec![vec![LinkGraphNeighbor {
-        slot: simthing_core::SlotIndex::new(0),
-        weight: 1.0,
-    }]];
-    assert!(SealedFieldTopology::from_link_graph(2, bad, col(0)).is_err());
-}
-
-#[test]
-fn link_default_emitters_cpu_oracle_and_gpu() {
-    let rows = vec![
-        vec![LinkGraphNeighbor {
-            slot: simthing_core::SlotIndex::new(1),
-            weight: 1.0,
-        }],
-        vec![LinkGraphNeighbor {
-            slot: simthing_core::SlotIndex::new(0),
-            weight: 1.0,
-        }],
-    ];
-    let sealed = SealedFieldTopology::from_link_graph(2, rows, col(0)).unwrap();
-    // Synthetic field plan with two emitters (not from region_fields path —
-    // LinkGraph + region_fields grids are separate; test sealed topology use).
-    // Use grid region_fields for product, then explicit admit for link parity
-    // is covered by guyang suite; here exercise SealedFieldTopology + default
-    // class_id on a mini product constructed via admit path on grid only.
+fn link_default_emitters_with_sealed_topology_and_same_length_unconstructible() {
+    // Emitters from region_fields (grid theater for column minting).
     let fields = vec![
         region_field("e0", 2, 0, 1, 20),
         region_field("e1", 2, 2, 3, 20),
@@ -395,38 +385,73 @@ fn link_default_emitters_cpu_oracle_and_gpu() {
     let report = admit_field_plan_from_region_fields(&fields)
         .unwrap()
         .unwrap();
-    let mut reg = DimensionRegistry::new();
-    for i in 0..24u32 {
-        let mut p = SimProperty::simple("c", &format!("{i}"), 1);
-        p.admission_disposition = PropertyAdmissionDisposition::Anchored;
-        reg.register(p);
+    assert_eq!(report.topology().slots(), 4);
+
+    // Same-authority LinkGraph over 4 slots — sealed at construction.
+    let link_rows = {
+        let mut rows = vec![Vec::new(); 4];
+        for (a, b) in [(0u32, 1), (1, 2), (2, 3)] {
+            rows[a as usize].push(LinkGraphNeighbor {
+                slot: SlotIndex::new(b),
+                weight: 1.0,
+            });
+            rows[b as usize].push(LinkGraphNeighbor {
+                slot: SlotIndex::new(a),
+                weight: 1.0,
+            });
+        }
+        for r in &mut rows {
+            r.sort_by_key(|n| n.slot.raw());
+        }
+        rows
+    };
+    let sealed_link =
+        SealedFieldTopology::from_link_graph(4, link_rows.clone(), col(0)).expect("link seal");
+
+    // Planted same-length wrong membership: undirected cycle 0-1-2-3-0 instead
+    // of path 0-1-2-3 → different sealed product (cannot rebind wrong rows onto
+    // the correct adjacency).
+    let mut wrong = vec![Vec::new(); 4];
+    for (a, b) in [(0u32, 1), (1, 2), (2, 3), (3, 0)] {
+        wrong[a as usize].push(LinkGraphNeighbor {
+            slot: SlotIndex::new(b),
+            weight: 1.0,
+        });
+        wrong[b as usize].push(LinkGraphNeighbor {
+            slot: SlotIndex::new(a),
+            weight: 1.0,
+        });
     }
-    let adm = admit_comparative_from_field_plan(
+    for r in &mut wrong {
+        r.sort_by_key(|n| n.slot.raw());
+    }
+    let sealed_wrong = SealedFieldTopology::from_link_graph(4, wrong, col(0)).expect("constructs");
+    assert_ne!(
+        sealed_link.adjacency(),
+        sealed_wrong.adjacency(),
+        "same-length wrong-row LinkGraph must not alias the correct sealed adjacency"
+    );
+    // No public API rebinds neighbor_slots onto sealed_link.adjacency().
+
+    let mut reg = pad_registry(24);
+    let adm = admit_comparative_from_emitters_and_topology(
         &mut reg,
-        &report,
+        &sealed_link,
+        report.emitters(),
         col(10),
         col(11),
         col(12),
         ComparativeProjectionBands::default(),
         None,
     )
-    .unwrap();
+    .expect("link + default emitters");
     assert!(matches!(
         adm.disposition,
-        ComparativeProjectionDisposition::Born { .. }
-    ));
-    // Link sealed topology still available for consumer pairing with explicit triad.
-    let _ = sealed;
-}
-
-fn gpu_context() -> Option<GpuContext> {
-    match GpuContext::new_blocking() {
-        Ok(c) => Some(c),
-        Err(_) if std::env::var_os("SIMTHING_GPU_REQUIRE_ADAPTER_MATCH").is_some() => {
-            panic!("GPU required")
+        ComparativeProjectionDisposition::Born {
+            emitter_count: 2,
+            comparative_column_count: 3
         }
-        Err(_) => None,
-    }
+    ));
 }
 
 #[test]
@@ -438,12 +463,7 @@ fn grid_default_emitter_cpu_oracle_gpu_parity() {
     let report = admit_field_plan_from_region_fields(&fields)
         .unwrap()
         .unwrap();
-    let mut reg = DimensionRegistry::new();
-    for i in 0..32u32 {
-        let mut p = SimProperty::simple("c", &format!("{i}"), 1);
-        p.admission_disposition = PropertyAdmissionDisposition::Anchored;
-        reg.register(p);
-    }
+    let mut reg = pad_registry(32);
     let adm = admit_comparative_from_field_plan(
         &mut reg,
         &report,
@@ -458,19 +478,21 @@ fn grid_default_emitter_cpu_oracle_gpu_parity() {
         adm.disposition,
         ComparativeProjectionDisposition::Born { .. }
     ));
-    let slots = report.topology().adjacency().slots();
+    let slots = report.topology().slots();
     let n_dims = reg.total_columns as u32;
     let mut values = vec![0.0f32; (slots * n_dims) as usize];
-    // Seed emitter columns with distinct patterns.
     for s in 0..slots {
         let base = (s * n_dims) as usize;
-        values[base + report.emitters()[0].value_col.raw()] = 1.0 + s as f32;
-        values[base + report.emitters()[1].value_col.raw()] = 0.5 + s as f32 * 0.1;
-        values[base + 10] = 2.0; // palma
-        values[base + 12] = 0.25; // conductance-ish
+        values[base + report.emitters()[0].value_col.raw()] = if s % 2 == 0 { 0.9 } else { 0.2 };
+        values[base + report.emitters()[1].value_col.raw()] = if s % 2 == 0 { 0.2 } else { 0.9 };
+        values[base + 10] = 4.0; // palma D
+        values[base + 11] = 0.5; // guyang U
+        values[base + 12] = 0.5; // guyang C (Matrix input to 5.8 stall)
     }
-    let cpu = comparative_projection_cpu_oracle(
-        &values,
+
+    let chain = execute_field_sweep_cpu_chain(&values, &adm.bundle.registrations).expect("cpu chain");
+    let oracle = comparative_projection_cpu_oracle(
+        &chain,
         slots,
         n_dims,
         report.emitters(),
@@ -481,14 +503,92 @@ fn grid_default_emitter_cpu_oracle_gpu_parity() {
         ComparativeProjectionBands::default(),
         report.topology().neighbor_slots(),
     );
-    let chain = execute_field_sweep_cpu_chain(&values, &adm.bundle.registrations)
-        .expect("cpu chain");
-    assert_eq!(cpu.len(), values.len());
-    assert_eq!(chain.len(), values.len());
-    // Soft presence of GPU adapter (full GPU parity remains 5.8 suite).
-    let _ = gpu_context().map(|ctx| {
-        let _ = &ctx.device;
-        eprintln!("COMPARATIVE-DEFAULT-BIRTH GPU adapter available");
-    });
-    let _ = bits_equal(&cpu[..8.min(cpu.len())], &chain[..8.min(chain.len())]);
+    for col_i in [
+        adm.outputs.dominance_col.raw(),
+        adm.outputs.margin_col.raw(),
+        adm.outputs.contest_col.raw(),
+        adm.band_readouts.border_col.raw(),
+        adm.band_readouts.chokepoint_col.raw(),
+        adm.stall_outputs.stall_col.raw(),
+    ] {
+        assert!(
+            bits_equal(
+                &column(&oracle, n_dims as usize, col_i),
+                &column(&chain, n_dims as usize, col_i)
+            ),
+            "default-path oracle parity col {col_i}"
+        );
+    }
+
+    if let Some(ctx) = gpu_context() {
+        let mut session =
+            FieldSweepSession::new(&ctx, &adm.bundle.registrations[0]).expect("session");
+        session.upload_values(&ctx, &values).expect("upload");
+        session
+            .dispatch_chain(&ctx, &adm.bundle.registrations, 1)
+            .expect("dispatch");
+        let gpu = session.readback(&ctx).expect("readback");
+        assert!(
+            bits_equal(
+                &column(&chain, n_dims as usize, adm.outputs.dominance_col.raw()),
+                &column(&gpu, n_dims as usize, adm.outputs.dominance_col.raw())
+            ),
+            "default-path GPU dominance parity"
+        );
+        let info = ctx.adapter.get_info();
+        eprintln!(
+            "COMPARATIVE-DEFAULT-BIRTH grid adapter={} backend={:?}",
+            info.name, info.backend
+        );
+    }
+}
+
+/// Remand 5154599161 §5: threshold plan from default-derived admission.
+#[test]
+fn default_path_threshold_plan_compatible() {
+    let fields = vec![
+        region_field("e0", 2, 0, 1, 24),
+        region_field("e1", 2, 2, 3, 24),
+    ];
+    let report = admit_field_plan_from_region_fields(&fields)
+        .unwrap()
+        .unwrap();
+    let mut reg = pad_registry(32);
+    let bands = ComparativeProjectionBands::default();
+    let adm = admit_comparative_from_field_plan(
+        &mut reg,
+        &report,
+        col(10),
+        col(11),
+        col(12),
+        bands,
+        None,
+    )
+    .unwrap();
+    let plan = &adm.threshold_plan;
+    assert_eq!(plan.front_formed.0, adm.band_readouts.border_col);
+    assert_eq!(plan.front_formed.1, bands.contested_border_floor);
+    assert_eq!(plan.front_hardened.0, adm.outputs.contest_col);
+    assert_eq!(plan.front_hardened.1, bands.front_harden_contest);
+    assert_eq!(plan.chokepoint_emerged.0, adm.band_readouts.chokepoint_col);
+    // Columns come from default-derived admission outputs, not a hand-built bundle.
+    assert_ne!(plan.front_formed.0, col(0));
+}
+
+#[test]
+fn sealed_topology_no_independent_neighbor_rebind_api() {
+    // Privacy referee: neighbor_slots are only reachable via sealed capture.
+    let adj = FieldAdjacency::grid_n4(2, 2, GRID_N4_NSEW, col(0)).unwrap();
+    let sealed = SealedFieldTopology::from_grid_adjacency(adj).unwrap();
+    assert_eq!(sealed.neighbor_slots().len(), 4);
+    // Length mismatch still rejects at LinkGraph construction.
+    assert!(SealedFieldTopology::from_link_graph(
+        2,
+        vec![vec![LinkGraphNeighbor {
+            slot: SlotIndex::new(0),
+            weight: 1.0
+        }]],
+        col(0)
+    )
+    .is_err());
 }

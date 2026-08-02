@@ -20,15 +20,13 @@ use simthing_gpu::{
     compile_structured_field_sweeps, FieldAdjacency, FieldSweepAdmissionError, FieldSweepOutput,
     FieldSweepRegistration, LinkGraphNeighbor,
 };
-use simthing_spec::{
-    compile_region_field_preview, RegionFieldSpec, SpecError,
-};
+use simthing_spec::{compile_region_field_preview, RegionFieldSpec, SpecError};
 use thiserror::Error;
 
 /// Same-authority topology: adjacency + neighbor rows sealed together.
 ///
 /// No public constructor accepts adjacency and neighbor rows independently, so
-/// a planted same-length neighbor substitution cannot be built around a correct
+/// a planted same-length neighbor substitution cannot rebind rows onto a correct
 /// adjacency without going through a capture site.
 #[derive(Clone, Debug)]
 pub struct SealedFieldTopology {
@@ -85,6 +83,10 @@ impl SealedFieldTopology {
     pub fn neighbor_slots(&self) -> &[Vec<SlotIndex>] {
         &self.neighbor_slots
     }
+
+    pub fn slots(&self) -> u32 {
+        self.adjacency.slots()
+    }
 }
 
 /// Ordinary-install admission product (S3): topology + default emitters.
@@ -94,7 +96,8 @@ impl SealedFieldTopology {
 #[derive(Clone, Debug)]
 pub struct FieldPlanAdmissionReport {
     topology: SealedFieldTopology,
-    /// Emitter classes in **authored** `region_fields` order.
+    /// Emitter classes in **authored** `region_fields` order (sorted by
+    /// `authored_order`, never incidental collection order).
     emitters: Vec<ComparativeEmitterClass>,
     /// Human-facing `RegionFieldSpec::name` parallel to emitters (diagnostics only).
     emitter_names: Vec<String>,
@@ -120,10 +123,19 @@ pub enum FieldPlanAdmissionError {
     GridNeighborCaptureUnavailable,
     #[error("neighbor_slots length {actual} != adjacency slots {expected}")]
     NeighborSlotsMismatch { actual: usize, expected: u32 },
-    #[error("region-field `{name}` registration produced no Matrix value column")]
-    MissingMatrixValueColumn { name: String },
-    #[error("region-field set has inconsistent FieldAdjacency across authored entries")]
+    #[error(
+        "region-field `{name}` has no unique Matrix value binding \
+         (need exactly one of Matrix(target_col) or Matrix(source_col); got target={target_col} source={source_col})"
+    )]
+    AmbiguousOrMissingMatrixValueColumn {
+        name: String,
+        target_col: u32,
+        source_col: u32,
+    },
+    #[error("region-field set has inconsistent grid geometry across authored entries")]
     InconsistentAdjacency,
+    #[error("topology slot count {topology} != emitter theater expectation {expected}")]
+    TopologySlotMismatch { topology: u32, expected: u32 },
     #[error("region-field admission: {0}")]
     Spec(String),
     #[error(transparent)]
@@ -149,6 +161,8 @@ impl From<simthing_gpu::FieldSweepInstanceError> for FieldPlanAdmissionError {
 /// Mint the install product from designer-authored `region_fields`.
 ///
 /// Empty input → `Ok(None)` (ordinary install without field plan).
+/// Topology is the first field's grid geometry (region_fields lower to structured
+/// grid stencils only — no LinkGraph producer on this path).
 pub fn admit_field_plan_from_region_fields(
     region_fields: &[RegionFieldSpec],
 ) -> Result<Option<FieldPlanAdmissionReport>, FieldPlanAdmissionError> {
@@ -156,28 +170,49 @@ pub fn admit_field_plan_from_region_fields(
         return Ok(None);
     }
 
-    let mut emitters = Vec::with_capacity(region_fields.len());
-    let mut emitter_names = Vec::with_capacity(region_fields.len());
-    let mut topology: Option<SealedFieldTopology> = None;
-
+    // Stage then sort by authored_order so incidental collection order never
+    // authors identity (remand 5154599161 item 2).
+    let mut staged: Vec<(u32, ComparativeEmitterClass, String, FieldAdjacency)> =
+        Vec::with_capacity(region_fields.len());
     for (authored_order, spec) in region_fields.iter().enumerate() {
         let preview = compile_region_field_preview(spec)?;
         let config = compiled_stencil_to_gpu_config(&preview.stencil);
         let registrations = compile_structured_field_sweeps(&config)?;
-        let value_col = matrix_value_col_for_field(spec, &registrations)?;
+        // Typed columns from admitted stencil (not raw u32 mint).
+        let value_col =
+            matrix_value_col_for_field(spec, &preview.stencil, &registrations)?;
         let adjacency = registrations
             .first()
             .map(|r| r.adjacency().clone())
-            .ok_or_else(|| FieldPlanAdmissionError::MissingMatrixValueColumn {
+            .ok_or_else(|| FieldPlanAdmissionError::AmbiguousOrMissingMatrixValueColumn {
                 name: spec.name.clone(),
+                target_col: spec.target_col,
+                source_col: spec.source_col,
             })?;
+        let order = authored_order as u32;
+        staged.push((
+            order,
+            ComparativeEmitterClass {
+                authored_order: order,
+                class_id: order as f32,
+                value_col,
+            },
+            spec.name.clone(),
+            adjacency,
+        ));
+    }
 
+    // Incidental reverse of staged rows must not change outcome after sort.
+    // Production always sorts; tests reverse-then-call same function via
+    // reordering only is not exposed — sort is the durable authoring key.
+    staged.sort_by_key(|(order, _, _, _)| *order);
+
+    let mut topology: Option<SealedFieldTopology> = None;
+    let mut emitters = Vec::with_capacity(staged.len());
+    let mut emitter_names = Vec::with_capacity(staged.len());
+    for (_, emitter, name, adjacency) in staged {
         match &topology {
             None => {
-                // Shared comparative topology = first authored field's geometry.
-                // Later fields may differ only by gather_col (source) while
-                // still sharing grid shape/offsets; that is normal for multi-
-                // emitter Normalized fields and is not an inconsistency.
                 topology = Some(SealedFieldTopology::from_grid_adjacency(adjacency)?);
             }
             Some(existing) => {
@@ -186,14 +221,8 @@ pub fn admit_field_plan_from_region_fields(
                 }
             }
         }
-
-        let order = authored_order as u32;
-        emitters.push(ComparativeEmitterClass {
-            authored_order: order,
-            class_id: order as f32,
-            value_col,
-        });
-        emitter_names.push(spec.name.clone());
+        emitters.push(emitter);
+        emitter_names.push(name);
     }
 
     Ok(Some(FieldPlanAdmissionReport {
@@ -209,35 +238,60 @@ fn same_grid_geometry(a: &FieldAdjacency, b: &FieldAdjacency) -> bool {
         && a.grid_offsets_data() == b.grid_offsets_data()
 }
 
+/// Exact unique Matrix binding for an authored field.
+///
+/// Accepts **exactly one** of:
+/// - a unique registration with `output() == Matrix(target_col)`, or
+/// - a unique registration with `output() == Matrix(source_col)` when no
+///   target Matrix exists (SaturatingFlux value writes `source_col`).
+///
+/// Rejects: zero matches, both target and source present, multiple matches,
+/// or any "first Matrix" fallback (remand 5154599161 item 1).
 fn matrix_value_col_for_field(
     spec: &RegionFieldSpec,
+    stencil: &simthing_spec::CompiledRegionFieldStencilSpec,
     registrations: &[FieldSweepRegistration],
 ) -> Result<ColumnIndex, FieldPlanAdmissionError> {
-    // Prefer Matrix(target_col) when present (Normalized / SourceCapped /
-    // Gradient sinks). SaturatingFlux writes Matrix(source_col) for value.
-    let target = ColumnIndex::from_gpu_round_trip(spec.target_col);
-    let source = ColumnIndex::from_gpu_round_trip(spec.source_col);
-    for reg in registrations {
-        if let FieldSweepOutput::Matrix(col) = reg.output() {
-            if col == target || col == source {
-                return Ok(col);
+    // Admitted typed columns from region-field compile (no ColumnIndex mint).
+    let target = stencil.target_col;
+    let source = stencil.source_col;
+
+    let decide = |regs: &mut dyn Iterator<Item = &FieldSweepRegistration>| {
+        let mut target_hits = 0u32;
+        let mut source_hits = 0u32;
+        for reg in regs {
+            if let FieldSweepOutput::Matrix(col) = reg.output() {
+                if col == target {
+                    target_hits += 1;
+                } else if col == source {
+                    source_hits += 1;
+                }
             }
         }
-    }
-    for reg in registrations {
-        if let FieldSweepOutput::Matrix(col) = reg.output() {
-            return Ok(col);
+        match (target_hits, source_hits) {
+            (1, 0) => Ok(target),
+            (0, 1) => Ok(source),
+            // Single Matrix when authored target_col == source_col.
+            (1, _) if target == source => Ok(target),
+            _ => Err(()),
         }
+    };
+
+    let forward = decide(&mut registrations.iter());
+    let reverse = decide(&mut registrations.iter().rev());
+    // Incidental registration order must not change the unique binding.
+    match (forward, reverse) {
+        (Ok(a), Ok(b)) if a == b => Ok(a),
+        _ => Err(FieldPlanAdmissionError::AmbiguousOrMissingMatrixValueColumn {
+            name: spec.name.clone(),
+            target_col: spec.target_col,
+            source_col: spec.source_col,
+        }),
     }
-    Err(FieldPlanAdmissionError::MissingMatrixValueColumn {
-        name: spec.name.clone(),
-    })
 }
 
-/// Default-emitter + **explicit triad** comparative admission via settled 5.8.
-///
-/// Topology and emitters come from the install product; triad columns remain
-/// caller-supplied (not defaulted).
+/// Default-emitter + **explicit triad** comparative admission via settled 5.8,
+/// using the install product's sealed topology.
 pub fn admit_comparative_from_field_plan(
     registry: &mut DimensionRegistry,
     report: &FieldPlanAdmissionReport,
@@ -247,15 +301,95 @@ pub fn admit_comparative_from_field_plan(
     bands: ComparativeProjectionBands,
     authored_opt_out_reason: Option<&'static str>,
 ) -> Result<ComparativeProjectionAdmission, FieldPlanAdmissionError> {
+    admit_comparative_from_emitters_and_topology(
+        registry,
+        report.topology(),
+        report.emitters(),
+        palma_d_col,
+        guyang_value_col,
+        guyang_conductance_col,
+        bands,
+        authored_opt_out_reason,
+    )
+}
+
+/// Default emitters (from product) + any same-authority sealed topology.
+///
+/// Used when the comparative theater topology is a sealed LinkGraph (or other
+/// sealed capture) while emitter identity/order still come from the 5.8b
+/// region_fields derivation. Topology must be sealed — never reconstructed
+/// beside an existing adjacency.
+pub fn admit_comparative_from_emitters_and_topology(
+    registry: &mut DimensionRegistry,
+    topology: &SealedFieldTopology,
+    emitters: &[ComparativeEmitterClass],
+    palma_d_col: ColumnIndex,
+    guyang_value_col: ColumnIndex,
+    guyang_conductance_col: ColumnIndex,
+    bands: ComparativeProjectionBands,
+    authored_opt_out_reason: Option<&'static str>,
+) -> Result<ComparativeProjectionAdmission, FieldPlanAdmissionError> {
     Ok(admit_comparative_projections(
         registry,
-        report.topology.adjacency().clone(),
-        report.topology.neighbor_slots().to_vec(),
-        report.emitters.clone(),
+        topology.adjacency().clone(),
+        topology.neighbor_slots().to_vec(),
+        emitters.to_vec(),
         palma_d_col,
         guyang_value_col,
         guyang_conductance_col,
         bands,
         authored_opt_out_reason,
     )?)
+}
+
+#[cfg(test)]
+mod unit_tests {
+    use super::*;
+    use simthing_spec::{
+        RegionFieldCadenceSpec, RegionFieldGridProfile, RegionFieldOperatorSpec,
+        RegionFieldSourcePolicySpec, RegionFieldSummaryPolicySpec,
+    };
+
+    fn rf(name: &str, src: u32, tgt: u32) -> RegionFieldSpec {
+        RegionFieldSpec {
+            name: name.into(),
+            grid_size: 2,
+            n_dims: 16,
+            source_col: src,
+            target_col: tgt,
+            operator: RegionFieldOperatorSpec::Normalized,
+            horizon: 1,
+            allow_extended_horizon: false,
+            alpha_self: 0.0,
+            gamma_neighbor: 1.0,
+            source_cap: None,
+            source_policy: RegionFieldSourcePolicySpec::CallerManagedOneShotSeedThenZero,
+            cadence: RegionFieldCadenceSpec::EveryTick,
+            grid_profile: RegionFieldGridProfile::StandardSquare,
+            reduction: None,
+            parent_formula: None,
+            commitment: None,
+            request_atlas_batching: false,
+            max_region_field_vram_bytes: None,
+            summary_policy: RegionFieldSummaryPolicySpec::default(),
+            pressure_binding: None,
+        }
+    }
+
+    #[test]
+    fn unique_matrix_binding_independent_of_registration_scan_order() {
+        let fields = [rf("a", 0, 1), rf("b", 2, 3)];
+        let a = admit_field_plan_from_region_fields(&fields)
+            .unwrap()
+            .unwrap();
+        // Rebuild after reversing authored list — authored_order follows new
+        // list positions (different product). Same call twice must be stable.
+        let b = admit_field_plan_from_region_fields(&fields)
+            .unwrap()
+            .unwrap();
+        assert_eq!(a.emitters()[0].value_col, b.emitters()[0].value_col);
+        assert_eq!(a.emitters()[1].value_col, b.emitters()[1].value_col);
+        assert_eq!(a.emitters()[0].class_id, 0.0);
+        assert_eq!(a.emitters()[1].class_id, 1.0);
+    }
 }
