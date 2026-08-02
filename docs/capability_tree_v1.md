@@ -17,7 +17,7 @@ It is not a tree of SimThings. It is one SimThing that contains:
 - **Overlays** — one suspended overlay per capability entry carrying the
   effect payload. The overlay is invisible to the GPU pipeline until the
   entry is unlocked, at which point `ActivateOverlay` transitions it from
-  `Suspended` to `Permanent` and Pass 3 begins applying it every tick.
+  `Suspended` to `UntilDissolved` and Pass 3 begins applying it every tick.
 
 The tree structure, prereq dependencies, research costs, display names,
 and asset references are **metadata** that lives in the spec layer (`simthing-spec`)
@@ -31,10 +31,10 @@ Faction (SimThing)
           tech::industry    → PropertyValue
           tech::biology     → PropertyValue
         overlays:
-          ion_drive_effect          → Suspended { when_activated: Permanent }
-          warp_drive_effect         → Suspended { when_activated: Permanent }
-          iron_smelting_effect      → Suspended { when_activated: Permanent }
-          steel_production_effect   → Suspended { when_activated: Permanent }
+          ion_drive_effect          → Suspended { when_activated: UntilDissolved }
+          warp_drive_effect         → Suspended { when_activated: UntilDissolved }
+          iron_smelting_effect      → Suspended { when_activated: UntilDissolved }
+          steel_production_effect   → Suspended { when_activated: UntilDissolved }
           ...
 ```
 
@@ -55,7 +55,7 @@ Named("entry_id_rate")  — research rate, governed_by drives integration
 ```
 
 **Overlays** are attached to the capability tree node at session init
-with `OverlayLifecycle::Suspended { when_activated: Box::new(Permanent) }`.
+with `OverlayLifecycle::Suspended { when_activated: Box::new(UntilDissolved) }`.
 
 > **Effect-host admission (0.0.8.7 rung 2.1):** After `open_from_spec`, each
 > owner gets one cloned capability-tree `SimThing`. Every suspended effect is
@@ -214,7 +214,7 @@ effect: PropertyTransformDelta(
 ### 3h. Transient Effect on Unlock
 
 A capability that applies a one-time burst effect rather than a permanent
-bonus. Uses `when_activated: Transient` instead of `Permanent`.
+bonus. Uses `when_activated: Transient` instead of `UntilDissolved`.
 
 ```ron
 // Crisis response tech: +0.3 loyalty pulse that decays over 10 boundaries
@@ -307,7 +307,7 @@ CapabilitySpec(
             sub_field_deltas: [
                 (Amount, Multiply(3.0)),
             ],
-            when_activated: Permanent,
+            when_activated: UntilDissolved,
         ),
         CapabilityEffectSpec(
             targets_property: "construction::unlocked_ship_components",
@@ -315,7 +315,7 @@ CapabilitySpec(
                 (Named("warp_engine_mk1"),      Set(1.0)),
                 (Named("jump_drive_housing"),   Set(1.0)),
             ],
-            when_activated: Permanent,
+            when_activated: UntilDissolved,
         ),
     ],
 )
@@ -355,12 +355,12 @@ CapabilityTreeSpec(
                         CapabilityEffectSpec(
                             targets_property: "military::fleet_speed",
                             sub_field_deltas: [(Amount, Multiply(1.10))],
-                            when_activated: Permanent,
+                            when_activated: UntilDissolved,
                         ),
                         CapabilityEffectSpec(
                             targets_property: "construction::unlocked_ship_components",
                             sub_field_deltas: [(Named("chemical_thruster"), Set(1.0))],
-                            when_activated: Permanent,
+                            when_activated: UntilDissolved,
                         ),
                     ],
                 ),
@@ -383,7 +383,7 @@ CapabilityTreeSpec(
                         CapabilityEffectSpec(
                             targets_property: "military::fleet_speed",
                             sub_field_deltas: [(Amount, Multiply(1.30))],
-                            when_activated: Permanent,
+                            when_activated: UntilDissolved,
                         ),
                         CapabilityEffectSpec(
                             targets_property: "construction::unlocked_ship_components",
@@ -391,12 +391,12 @@ CapabilityTreeSpec(
                                 (Named("ion_thruster"),   Set(1.0)),
                                 (Named("ion_afterburner"), Set(1.0)),
                             ],
-                            when_activated: Permanent,
+                            when_activated: UntilDissolved,
                         ),
                         CapabilityEffectSpec(
                             targets_property: "construction::unlocked_buildings",
                             sub_field_deltas: [(Named("ion_drive_foundry"), Set(1.0))],
-                            when_activated: Permanent,
+                            when_activated: UntilDissolved,
                         ),
                     ],
                 ),
@@ -419,12 +419,12 @@ CapabilityTreeSpec(
                         CapabilityEffectSpec(
                             targets_property: "military::fleet_speed",
                             sub_field_deltas: [(Amount, Multiply(2.0))],
-                            when_activated: Permanent,
+                            when_activated: UntilDissolved,
                         ),
                         CapabilityEffectSpec(
                             targets_property: "economy::industrial_output",
                             sub_field_deltas: [(Named("output"), Multiply(1.05))],
-                            when_activated: Permanent,
+                            when_activated: UntilDissolved,
                         ),
                         CapabilityEffectSpec(
                             targets_property: "construction::unlocked_ship_components",
@@ -432,12 +432,12 @@ CapabilityTreeSpec(
                                 (Named("plasma_thruster"),   Set(1.0)),
                                 (Named("plasma_afterburner"), Set(1.0)),
                             ],
-                            when_activated: Permanent,
+                            when_activated: UntilDissolved,
                         ),
                         CapabilityEffectSpec(
                             targets_property: "construction::unlocked_buildings",
                             sub_field_deltas: [(Named("plasma_refinery"), Set(1.0))],
-                            when_activated: Permanent,
+                            when_activated: UntilDissolved,
                         ),
                     ],
                 ),
@@ -470,7 +470,7 @@ CapabilityTreeSpec(
                         CapabilityEffectSpec(
                             targets_property: "military::fleet_speed",
                             sub_field_deltas: [(Amount, Multiply(5.0))],
-                            when_activated: Permanent,
+                            when_activated: UntilDissolved,
                         ),
                         CapabilityEffectSpec(
                             targets_property: "construction::unlocked_ship_components",
@@ -479,7 +479,7 @@ CapabilityTreeSpec(
                                 (Named("jump_drive_housing"), Set(1.0)),
                                 (Named("warp_stabilizer"),   Set(1.0)),
                             ],
-                            when_activated: Permanent,
+                            when_activated: UntilDissolved,
                         ),
                     ],
                 ),
@@ -505,7 +505,7 @@ CapabilityTreeSpec(
                         CapabilityEffectSpec(
                             targets_property: "economy::industrial_output",
                             sub_field_deltas: [(Named("output"), Multiply(1.15))],
-                            when_activated: Permanent,
+                            when_activated: UntilDissolved,
                         ),
                         CapabilityEffectSpec(
                             targets_property: "construction::unlocked_buildings",
@@ -513,7 +513,7 @@ CapabilityTreeSpec(
                                 (Named("iron_forge"),    Set(1.0)),
                                 (Named("basic_factory"), Set(1.0)),
                             ],
-                            when_activated: Permanent,
+                            when_activated: UntilDissolved,
                         ),
                     ],
                 ),
@@ -536,12 +536,12 @@ CapabilityTreeSpec(
                         CapabilityEffectSpec(
                             targets_property: "economy::industrial_output",
                             sub_field_deltas: [(Named("output"), Multiply(1.25))],
-                            when_activated: Permanent,
+                            when_activated: UntilDissolved,
                         ),
                         CapabilityEffectSpec(
                             targets_property: "military::unit_defense",
                             sub_field_deltas: [(Amount, Multiply(1.10))],
-                            when_activated: Permanent,
+                            when_activated: UntilDissolved,
                         ),
                         CapabilityEffectSpec(
                             targets_property: "construction::unlocked_buildings",
@@ -549,7 +549,7 @@ CapabilityTreeSpec(
                                 (Named("steel_foundry"),          Set(1.0)),
                                 (Named("heavy_industry_complex"), Set(1.0)),
                             ],
-                            when_activated: Permanent,
+                            when_activated: UntilDissolved,
                         ),
                         CapabilityEffectSpec(
                             targets_property: "construction::unlocked_ship_components",
@@ -557,7 +557,7 @@ CapabilityTreeSpec(
                                 (Named("reinforced_hull"), Set(1.0)),
                                 (Named("steel_plating"),   Set(1.0)),
                             ],
-                            when_activated: Permanent,
+                            when_activated: UntilDissolved,
                         ),
                     ],
                 ),
@@ -611,17 +611,17 @@ CapabilityTreeSpec(
                         CapabilityEffectSpec(
                             targets_property: "military::fleet_capacity",
                             sub_field_deltas: [(Amount, Multiply(1.20))],
-                            when_activated: Permanent,
+                            when_activated: UntilDissolved,
                         ),
                         CapabilityEffectSpec(
                             targets_property: "economy::colonization_speed",
                             sub_field_deltas: [(Named("speed"), Multiply(1.30))],
-                            when_activated: Permanent,
+                            when_activated: UntilDissolved,
                         ),
                         CapabilityEffectSpec(
                             targets_property: "politics::stability",
                             sub_field_deltas: [(Amount, Add(-0.05))],
-                            when_activated: Permanent,
+                            when_activated: UntilDissolved,
                         ),
                     ],
                 ),
@@ -639,12 +639,12 @@ CapabilityTreeSpec(
                         CapabilityEffectSpec(
                             targets_property: "economy::industrial_output",
                             sub_field_deltas: [(Named("output"), Multiply(1.25))],
-                            when_activated: Permanent,
+                            when_activated: UntilDissolved,
                         ),
                         CapabilityEffectSpec(
                             targets_property: "economy::research_output",
                             sub_field_deltas: [(Named("output"), Multiply(1.10))],
-                            when_activated: Permanent,
+                            when_activated: UntilDissolved,
                         ),
                     ],
                 ),
@@ -662,17 +662,17 @@ CapabilityTreeSpec(
                         CapabilityEffectSpec(
                             targets_property: "politics::influence",
                             sub_field_deltas: [(Amount, Multiply(1.30))],
-                            when_activated: Permanent,
+                            when_activated: UntilDissolved,
                         ),
                         CapabilityEffectSpec(
                             targets_property: "economy::trade",
                             sub_field_deltas: [(Named("trade_value"), Multiply(1.20))],
-                            when_activated: Permanent,
+                            when_activated: UntilDissolved,
                         ),
                         CapabilityEffectSpec(
                             targets_property: "politics::stability",
                             sub_field_deltas: [(Amount, Add(0.10))],
-                            when_activated: Permanent,
+                            when_activated: UntilDissolved,
                         ),
                     ],
                 ),
@@ -701,12 +701,12 @@ CapabilityTreeSpec(
                         CapabilityEffectSpec(
                             targets_property: "military::fleet_combat",
                             sub_field_deltas: [(Amount, Multiply(1.25))],
-                            when_activated: Permanent,
+                            when_activated: UntilDissolved,
                         ),
                         CapabilityEffectSpec(
                             targets_property: "military::fleet_capacity",
                             sub_field_deltas: [(Amount, Add(5.0))],
-                            when_activated: Permanent,
+                            when_activated: UntilDissolved,
                         ),
                     ],
                 ),
@@ -723,12 +723,12 @@ CapabilityTreeSpec(
                         CapabilityEffectSpec(
                             targets_property: "military::unit_attrition",
                             sub_field_deltas: [(Amount, Multiply(0.70))],
-                            when_activated: Permanent,
+                            when_activated: UntilDissolved,
                         ),
                         CapabilityEffectSpec(
                             targets_property: "military::unit_speed",
                             sub_field_deltas: [(Amount, Multiply(1.20))],
-                            when_activated: Permanent,
+                            when_activated: UntilDissolved,
                         ),
                     ],
                 ),
@@ -774,7 +774,7 @@ CapabilityTreeSpec(
                         CapabilityEffectSpec(
                             targets_property: "economy::upkeep_cost",
                             sub_field_deltas: [(Amount, Multiply(0.90))],
-                            when_activated: Permanent,
+                            when_activated: UntilDissolved,
                         ),
                     ],
                 ),
@@ -796,12 +796,12 @@ CapabilityTreeSpec(
                         CapabilityEffectSpec(
                             targets_property: "economy::upkeep_cost",
                             sub_field_deltas: [(Amount, Multiply(0.85))],
-                            when_activated: Permanent,
+                            when_activated: UntilDissolved,
                         ),
                         CapabilityEffectSpec(
                             targets_property: "politics::stability",
                             sub_field_deltas: [(Amount, Add(0.15))],
-                            when_activated: Permanent,
+                            when_activated: UntilDissolved,
                         ),
                         CapabilityEffectSpec(
                             targets_property: "construction::unlocked_buildings",
@@ -809,7 +809,7 @@ CapabilityTreeSpec(
                                 (Named("administrative_center"), Set(1.0)),
                                 (Named("census_bureau"),         Set(1.0)),
                             ],
-                            when_activated: Permanent,
+                            when_activated: UntilDissolved,
                         ),
                     ],
                 ),
@@ -835,7 +835,7 @@ CapabilityTreeSpec(
                         CapabilityEffectSpec(
                             targets_property: "military::unit_combat",
                             sub_field_deltas: [(Amount, Multiply(1.10))],
-                            when_activated: Permanent,
+                            when_activated: UntilDissolved,
                         ),
                     ],
                 ),
@@ -858,12 +858,12 @@ CapabilityTreeSpec(
                         CapabilityEffectSpec(
                             targets_property: "military::unit_combat",
                             sub_field_deltas: [(Amount, Multiply(1.25))],
-                            when_activated: Permanent,
+                            when_activated: UntilDissolved,
                         ),
                         CapabilityEffectSpec(
                             targets_property: "military::unit_morale",
                             sub_field_deltas: [(Amount, Add(0.20))],
-                            when_activated: Permanent,
+                            when_activated: UntilDissolved,
                         ),
                         CapabilityEffectSpec(
                             targets_property: "construction::unlocked_units",
@@ -871,7 +871,7 @@ CapabilityTreeSpec(
                                 (Named("elite_guard_regiment"), Set(1.0)),
                                 (Named("honor_fleet"),          Set(1.0)),
                             ],
-                            when_activated: Permanent,
+                            when_activated: UntilDissolved,
                         ),
                     ],
                 ),
@@ -938,7 +938,7 @@ have no knowledge of them:
 
 The simulation sees: floats accumulating in property columns, thresholds
 firing when they cross values, overlays transitioning from Suspended to
-Permanent, and effects propagating to spatial children. Nothing else.
+UntilDissolved, and effects propagating to spatial children. Nothing else.
 
 ---
 
@@ -1166,7 +1166,7 @@ selector with three variants and **`Owner` as the default**:
 CapabilityEffectSpec(
     targets_property: "military::fleet_speed",
     sub_field_deltas: [(Amount, Multiply(3.0))],
-    when_activated: Permanent,
+    when_activated: UntilDissolved,
     // effect_target: Owner    ← implicit when omitted
 )
 ```

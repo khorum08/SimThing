@@ -496,5 +496,5 @@ mechanics remain binding and are incorporated here by reference** until folded:
 the cited source for the above (moving it would break the cross-link web; it carries a superseded banner).
 
 ## C. Pointers
-- Permanent paradigm: [`simthing_core_design.md`](simthing_core_design.md). Structural invariants / gates: [`invariants.md`](invariants.md). State authority: [`state-authority.md`](state-authority.md). Agent router: [`agents.md`](agents.md).
+- Paradigm reference: [`simthing_core_design.md`](simthing_core_design.md). Structural invariants / gates: [`invariants.md`](invariants.md). State authority: [`state-authority.md`](state-authority.md). Agent router: [`agents.md`](agents.md).
 - The ClauseThing vertical: [`adr/ClauseThingADR.md`](adr/ClauseThingADR.md) + [`clausething/ClauseThingDoc.md`](clausething/ClauseThingDoc.md).

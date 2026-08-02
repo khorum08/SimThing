@@ -199,7 +199,7 @@ MapGeneratorCLI 0.0.8.6 (2026-06-15, PR1–PR12 incl. the `#680` child-id amendm
 
 ## 7. References (archived ladders + live docs)
 - Live clearinghouse (concepts/practices/APIs): [`../clausething/ClauseThingDoc.md`](../clausething/ClauseThingDoc.md).
-- Constitution (carry-forward §0 + addendum): [`../design_0_0_8_3.md`](../design_0_0_8_3.md). Permanent paradigm: [`../simthing_core_design.md`](../simthing_core_design.md). Invariants: [`../invariants.md`](../invariants.md).
+- Constitution (carry-forward §0 + addendum): [`../design_0_0_8_3.md`](../design_0_0_8_3.md). Paradigm reference: [`../simthing_core_design.md`](../simthing_core_design.md). Invariants: [`../invariants.md`](../invariants.md).
 - Governing ADRs: [`mapping_sparse_regioncell.md`](mapping_sparse_regioncell.md), [`resource_flow_substrate.md`](resource_flow_substrate.md).
 - **Archived production tracks** (`../archive/closed_production/`): `design_0_0_8_1_clausething_production_track.md`, `design_0_0_8_2_clausething_closeout_ladder.md`, `design_0_0_8_2_5_mapgen_ladder.md`, `design_0_0_8_6_mapgenerator_cli_ladder.md`, `design_0_0_8_1_border_hack_track.md`, `design_0_0_8_1_palma_pathfinding_integration_guide.md`.
 - Layer reference docs (kept live): [`../clausething/ClauseThing_Spec.md`](../clausething/ClauseThing_Spec.md), [`../clausething/ClauseThing.md`](../clausething/ClauseThing.md) (ClauseScript textbook), [`../clausething/MapGenThing.md`](../clausething/MapGenThing.md), [`../clausething/MapGeneratorCLI.md`](../clausething/MapGeneratorCLI.md), [`../clausething/mapgen_corpus_manifest.md`](../clausething/mapgen_corpus_manifest.md).

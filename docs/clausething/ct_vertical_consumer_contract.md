@@ -39,7 +39,7 @@ test (rise/hold/hold = 1/0/0 crossings; decay below; re-cross fires once more).
 | `SimSession::run` / `record_to_path` | Dispatch RF bands and the mapping chain per tick when opted in; journal `SimSession::mapping_commitments`; counters on `RunSummary` (`resource_flow_band_dispatches`, `mapping_ticks`, `mapping_commitment_events`, `mapping_commitment_effects_applied`). |
 | `FirstSliceMappingSession::tick_with_commitment_spec` | **The production commitment tick.** Edge-detected: previous threshold state persists GPU-side (`AccumulatorOpSession::copy_values_to_previous` after every scan; zeroed once at first scan only). |
 | `compile_arena_pressure_scatter` + `simthing_gpu::IndexedScatterOp` | On-device arena→cell projection (the runtime path). `PressureSourceSpec::Named { sub_field }` is the gadget composition hook: any flow-property column a session EML/gadget op writes is projectable heatmap feedstock. |
-| `CommitmentEffectSpec` (v1, closed) | `{ target_id, targets_property, sub_field_deltas, lifecycle (Permanent), once (default true) }` — do not widen without a named consumer and design authority. |
+| `CommitmentEffectSpec` (v1, closed) | `{ target_id, targets_property, sub_field_deltas, lifecycle (UntilDissolved), once (default true) }` — do not widen without a named consumer and design authority. |
 | `ResourceFlowSpec.gated_rates` / `script_value` / `value:` refs | The CT-RF-EML-RATE-0 band: `intrinsic = (base + Σadd×gate)×(1 + Σmult×gate)` recomputed per tick from the immutable `rate_base` column; flat formulas only. |
 
 ## Fixture / diagnostic APIs (never call from production code)

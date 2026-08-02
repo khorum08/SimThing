@@ -53,7 +53,7 @@ let cloned_overlay = Overlay {
 
 The `affects` field on an `Overlay` is the list of `SimThingId`s whose
 property slots the GPU Pass-3 evaluator applies `transform` to when the
-overlay is `Permanent`. In v0 this list contains exactly the cloned
+overlay is `UntilDissolved`. In v0 this list contains exactly the cloned
 capability-tree `SimThing` — **not** the owning faction, the session root,
 or any modder-authored target.
 
@@ -65,7 +65,7 @@ exposes `targets_property` and `sub_field_deltas` but no scope selector:
 CapabilityEffectSpec(
     targets_property: "military::fleet_speed",
     sub_field_deltas: [(Amount, Multiply(3.0))],
-    when_activated: Permanent,
+    when_activated: UntilDissolved,
 )
 ```
 
@@ -289,20 +289,20 @@ CapabilitySpec(
         CapabilityEffectSpec(
             targets_property: "military::fleet_speed",
             sub_field_deltas: [(Amount, Multiply(3.0))],
-            when_activated: Permanent,
+            when_activated: UntilDissolved,
         ),
         // Internal counter on the tree node itself
         CapabilityEffectSpec(
             targets_property: "tree_local::research_milestones",
             sub_field_deltas: [(Named("warp_unlocked"), Set(1.0))],
-            when_activated: Permanent,
+            when_activated: UntilDissolved,
             effect_target:   CapabilityTree,
         ),
         // Global era flag readable by every other faction's AI
         CapabilityEffectSpec(
             targets_property: "world::era_flags",
             sub_field_deltas: [(Named("warp_age_reached"), Set(1.0))],
-            when_activated: Permanent,
+            when_activated: UntilDissolved,
             effect_target:   SessionRoot,
         ),
     ],
