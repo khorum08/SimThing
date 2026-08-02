@@ -1,13 +1,13 @@
 anchor_id	doc	section	trigger_domains	content_hash
-field-policy-time-decisions	docs/simthing_core_design.md	heading:## 8. Time, decisions, and the CPU's only job	sim,driver,wgsl,sim-clock,field-policy	ae2d4c2c0c7d9d29a93eb4041aa31d5dd107a9da8da68e66344aaf5f1c2c7d8b
+field-policy-time-decisions	docs/simthing_core_design.md	heading:## 8. Time, decisions, and the CPU's only job	sim,driver,wgsl,sim-clock,field-policy	993c7d0560e849889d65e26512bf5112fa8d86341d92fec91cdc870304c8c7ff
 admission-ladder-necessity-test	docs/design_0_0_8_3.md	heading:### 0.9 Doctrine-as-Type, the kernel authority, and residue-as-tripwire (carry-forward)	none-ci-owned,seal	4bedf826f6f77b675a6080dc3289c17849fb825026d449472d44df324e2062dd
 seal-residue-cross-crate	docs/simthing_core_design.md	heading:### 1.2.1 The kernel crate, the cross-crate seal law, and residue-as-tripwire	kernel,gpu,unsafe-adjacent,seal	49ee7c4ba6f40dd4c5254e895ba0c9b1ff12d44ab148f18ea82a7e9d83345f1c
 stead-spatial-contract-core	docs/stead_spatial_contract.md	lines:23-59	map,spatial,mapgenerator,clausething-spatial,stead	b4a112cd02e8ad453df1f2414a59a035aadff7c9ae1e965a3ba10b4d1f2b52f9
-one-tree-owners-never-spatial	docs/simthing_core_design.md	heading:## 2. The one tree: Scenario wrapper, GameSession root, owners, and spatial containment	spec,hydration,one-tree	c88002b728986a33cd8fbb2537c40658df9268798e50f6aa605bb592d130ead2
+one-tree-owners-never-spatial	docs/simthing_core_design.md	heading:## 2. The one tree: Scenario wrapper, GameSession root, owners, and spatial containment	spec,hydration,one-tree	a8689d4344f9185421aa1dc81f55c7871ee91a529b467276047d54b45bc7562b
 core-property-value-model	docs/simthing_core_design.md	heading:## 3. SimProperty	property-value,kernel-columns	04338b307bf8e035b7e34a8813d9d29704ca47b7ad0aa617df36dbaadc2419e1
 core-gpu-residency	docs/simthing_core_design.md	heading:## 4. GPU residency	kernel-columns,gpu,driver	b2f1be11daf5cf0c34b655a8025d0d388eb65ca61ad84c59c365c89e8e9b1f88
-core-rf-arenas	docs/simthing_core_design.md	heading:## 5. Resource flow arenas	rf,driver	9101a26b7086e2b34d357c401646d5620953ab9fcfd0ddb8e06808f5e20c72f5
-core-overlays	docs/simthing_core_design.md	heading:## 6. Overlays	overlay	36668c98bfa5b2ffdd075bed5b00929b3d1cbd30910d19c3820dd0af98a1e8a9
+core-rf-arenas	docs/simthing_core_design.md	heading:## 5. Resource flow arenas	rf,driver	d171614211e9e6aa7e7af0f43f1ee536d9091d74547e0bd8fa05196569e8ee47
+core-overlays	docs/simthing_core_design.md	heading:## 6. Overlays	overlay	54df7604a49d32a027a49e4addd245f61af2f73506bd7ead7786740d8b22d4ea
 eml-extension-ladder	docs/eml_gadget_library.md	heading:## 2. Constitutional placement / guardrails	kernel-eml,wgsl	7755bc72ffbe73411916f1d8aca76156ad45dcfd9570d345b1aec3adc26765a9
 spec-fidelity-anti-ceremony	docs/design_0_0_8_3.md	heading:### 0.6 Specification Fidelity — no silent flattening (the anti-drift law)	closure-surfaces,spec-fidelity	add4dbbc267ac54c2ecc317b8a792321f2bbb51ca64f9c58ccd69e10ef175745
 exact-numeric-candidate-f	docs/design_0_0_8_3.md	heading:### 0.7 Exact numeric authority for decision gates	kernel-magnitude,threshold-paths,exact-numeric	6938a2efadb5f939b8e655700a02f6789e5806ac8792efeee06f6ca4d1e6506e
@@ -22,6 +22,9 @@ scanner-selftest-delta-gate	docs/ci_screening_surface.md	heading:### Scanner sel
 movement-front	docs/simthing_core_design.md	heading:## 7. Mapping — the Movement-Front automaton over gridcell SimThings	movement-front,map-domain	a0592b2f37caf3c3e13a5012c91fdcb981e15db634bcac593cbfd7f42f068b37
 workshop-candidate-homing	docs/ci_screening_surface.md	heading:## 12. Workshop is the scenario candidate-code sandbox (owner ruling, 2026-07-04)	scenario-candidate-home	3e584f0ad1754a23a0a7fa841cc5f56ec8ffd4ed8fbc4bc7e0e2e2faf671e848
 simthing-0087-pillars	docs/design_0_0_8_7_rf_arena_modernization.md	heading:## 2. Pillars (Owner requirements, binding at commitment)	core-0087	61487cba1f9e6e3c2f2c8d2e5cdc6ee630fc0ec38bf25df678bb84068097f14e
-simthing-0087-binding-laws	docs/design_0_0_8_7_rf_arena_modernization.md	heading:## 4. Binding laws (carry from day one)	core-0087	877ff3b0d65b816fad360fd876de1bd9f5e8eda2c02aa317ec264e5ac183b054
+simthing-0087-binding-laws	docs/design_0_0_8_7_rf_arena_modernization.md	heading:## 4. Binding laws (carry from day one)	core-0087	c519e37f97d6e71719207525b786cfaa5b3bcf614b1ba2c8135df9e513bdf90f
 rf-arena-substrate	docs/adr/resource_flow_substrate.md	heading:# ADR: Resource Flow Substrate	core-0087	17b5f1e5c2ba64a72b189996d04e6b97dd4504d518e4ea623019bec56273937a
 field-sweep-preservation	docs/eml_n4_expansion_digest.md	heading:## 5. Preservation invariants	field-sweep-preservation	acc521a5a36121ef8b53fae1d2b2e1f4f1e57cf4ca717ffc4fe6d42204973201
+stead-events-are-rf	docs/stead_simthing_automata.md	heading:## 3. Events are RF	rf,overlay,stead,threshold-paths	525388344ef236928b5fe0a81d9a768582fd40765683d364faade5a62d8d067e
+stead-shared-surface-ledger	docs/stead_simthing_automata.md	heading:## 5. The shared-surface ledger	stead,overlay,rf,core-0087	87eaa1e7bb9c9defe62358a2aa03a0e95af62feb7eee283ac878cc6f02f9c32b
+stead-rejected-shapes	docs/stead_simthing_automata.md	heading:## 7. Corrections and rejected shapes	stead,overlay,rf,core-0087	3752549ff106670f0c8f5dc6d93a82cb9b3b75eab0d470fee7340a9c1a83e405
