@@ -300,8 +300,8 @@ fn class_id_is_authored_order_as_f32_not_name() {
     assert_eq!(report.emitter_names()[1], "beta");
 }
 
-/// Remand 5154599161 §2: start from 5.8b-derived emitters; reverse only the
-/// incidental emitter vector while authored_order/class_id stay fixed.
+/// Remand 5156686392 §1: execute exact-tie field; assert dominance/border
+/// bit-identical under incidental reverse; flip authored_order flips winner.
 #[test]
 fn authored_order_invariant_under_incidental_emitter_vector_reversal() {
     let fields = vec![
@@ -315,10 +315,6 @@ fn authored_order_invariant_under_incidental_emitter_vector_reversal() {
     let mut emitters_fwd = report.emitters().to_vec();
     let mut emitters_rev = emitters_fwd.clone();
     emitters_rev.reverse();
-    assert_eq!(emitters_fwd[0].authored_order, 0);
-    assert_eq!(emitters_rev[0].authored_order, 1); // reversed slice order
-    assert_eq!(emitters_rev[0].class_id, 1.0);
-    assert_eq!(emitters_rev[1].class_id, 0.0);
 
     let triad = (col(10), col(11), col(12));
     let bands = ComparativeProjectionBands::default();
@@ -346,19 +342,61 @@ fn authored_order_invariant_under_incidental_emitter_vector_reversal() {
         None,
     )
     .unwrap();
-    assert_eq!(a.disposition, b.disposition);
-    assert_eq!(a.outputs, b.outputs);
 
-    // Planted authored_order flip on the same 5.8b value_cols must change identity.
-    emitters_fwd[0].authored_order = 1;
-    emitters_fwd[0].class_id = 1.0;
-    emitters_fwd[1].authored_order = 0;
-    emitters_fwd[1].class_id = 0.0;
+    let slots = report.topology().slots();
+    let n_dims = reg_a.total_columns as u32;
+    // Exact-tie on every slot: equal emitter values; winner is authored_order.
+    let mut values = vec![0.0f32; (slots * n_dims) as usize];
+    for s in 0..slots {
+        let base = (s * n_dims) as usize;
+        values[base + emitters_fwd[0].value_col.raw()] = 1.0;
+        values[base + emitters_fwd[1].value_col.raw()] = 1.0;
+        values[base + 10] = 4.0;
+        values[base + 11] = 0.5;
+        values[base + 12] = 0.5;
+    }
+
+    let out_fwd =
+        execute_field_sweep_cpu_chain(&values, &a.bundle.registrations).expect("fwd chain");
+    let out_rev =
+        execute_field_sweep_cpu_chain(&values, &b.bundle.registrations).expect("rev chain");
+    let dom = a.outputs.dominance_col.raw();
+    let border = a.band_readouts.border_col.raw();
+    assert!(
+        bits_equal(
+            &column(&out_fwd, n_dims as usize, dom),
+            &column(&out_rev, n_dims as usize, dom)
+        ),
+        "incidental reverse must leave dominance bit-identical under exact tie"
+    );
+    assert!(
+        bits_equal(
+            &column(&out_fwd, n_dims as usize, border),
+            &column(&out_rev, n_dims as usize, border)
+        ),
+        "incidental reverse must leave border bit-identical under exact tie"
+    );
+    // Authored_order 0 wins exact ties → class_id 0.0 written to dominance.
+    assert!(
+        column(&out_fwd, n_dims as usize, dom)
+            .iter()
+            .all(|&v| v == 0.0),
+        "authored_order 0 / class_id 0.0 wins exact tie"
+    );
+
+    // Mutate authored_order/class_id on the same 5.8b value_cols → flip winner.
+    // Keep value_cols from 5.8b derivation; swap only order keys so the order-0
+    // winner writes a different class_id into dominance.
+    let mut emitters_flip = report.emitters().to_vec();
+    emitters_flip[0].authored_order = 1;
+    emitters_flip[0].class_id = 99.0; // e0 value_col, no longer order-0
+    emitters_flip[1].authored_order = 0;
+    emitters_flip[1].class_id = 42.0; // e1 value_col, now order-0 → wins tie
     let mut reg_c = pad_registry(24);
     let flipped = admit_comparative_from_emitters_and_topology(
         &mut reg_c,
         report.topology(),
-        &emitters_fwd,
+        &emitters_flip,
         triad.0,
         triad.1,
         triad.2,
@@ -366,15 +404,23 @@ fn authored_order_invariant_under_incidental_emitter_vector_reversal() {
         None,
     )
     .unwrap();
-    // Disposition shape still Born, but bundle is a different compile — class_id
-    // order in dominance chain differs. At least prove admission still closed.
-    assert!(matches!(
-        flipped.disposition,
-        ComparativeProjectionDisposition::Born { .. }
-    ));
+    let out_flip =
+        execute_field_sweep_cpu_chain(&values, &flipped.bundle.registrations).expect("flip chain");
+    let dom_f = flipped.outputs.dominance_col.raw();
+    assert!(
+        column(&out_flip, n_dims as usize, dom_f)
+            .iter()
+            .all(|&v| v == 42.0),
+        "mutating authored_order on same value_cols must flip exact-tie winner class_id"
+    );
+    assert_ne!(
+        column(&out_fwd, n_dims as usize, dom)[0],
+        column(&out_flip, n_dims as usize, dom_f)[0]
+    );
 }
 
-/// Remand 5154599161 §3: sealed LinkGraph + 5.8b-derived emitters (not grid cosplay).
+/// Remand 5156686392 §2–§3: sealed LinkGraph + 5.8b emitters with CPU/oracle/GPU
+/// parity; same-length wrong graph is a distinct seal (no rebind API).
 #[test]
 fn link_default_emitters_with_sealed_topology_and_same_length_unconstructible() {
     // Emitters from region_fields (grid theater for column minting).
@@ -408,9 +454,7 @@ fn link_default_emitters_with_sealed_topology_and_same_length_unconstructible() 
     let sealed_link =
         SealedFieldTopology::from_link_graph(4, link_rows.clone(), col(0)).expect("link seal");
 
-    // Planted same-length wrong membership: undirected cycle 0-1-2-3-0 instead
-    // of path 0-1-2-3 → different sealed product (cannot rebind wrong rows onto
-    // the correct adjacency).
+    // Same-length wrong membership (cycle vs path) → distinct sealed adjacency.
     let mut wrong = vec![Vec::new(); 4];
     for (a, b) in [(0u32, 1), (1, 2), (2, 3), (3, 0)] {
         wrong[a as usize].push(LinkGraphNeighbor {
@@ -431,7 +475,6 @@ fn link_default_emitters_with_sealed_topology_and_same_length_unconstructible() 
         sealed_wrong.adjacency(),
         "same-length wrong-row LinkGraph must not alias the correct sealed adjacency"
     );
-    // No public API rebinds neighbor_slots onto sealed_link.adjacency().
 
     let mut reg = pad_registry(24);
     let adm = admit_comparative_from_emitters_and_topology(
@@ -452,6 +495,78 @@ fn link_default_emitters_with_sealed_topology_and_same_length_unconstructible() 
             comparative_column_count: 3
         }
     ));
+
+    // Execute default-path LinkGraph comparative: CPU chain ↔ oracle ↔ GPU.
+    let slots = 4u32;
+    let n_dims = reg.total_columns as u32;
+    let mut values = vec![0.0f32; (slots * n_dims) as usize];
+    for s in 0..slots {
+        let base = (s * n_dims) as usize;
+        if s < 2 {
+            values[base + report.emitters()[0].value_col.raw()] = 0.9;
+            values[base + report.emitters()[1].value_col.raw()] = 0.2;
+        } else {
+            values[base + report.emitters()[0].value_col.raw()] = 0.2;
+            values[base + report.emitters()[1].value_col.raw()] = 0.9;
+        }
+        values[base + 10] = 12.0;
+        values[base + 11] = if s < 2 { 1.0 } else { 0.0 };
+        values[base + 12] = 0.5;
+    }
+    let chain =
+        execute_field_sweep_cpu_chain(&values, &adm.bundle.registrations).expect("link chain");
+    let oracle = comparative_projection_cpu_oracle(
+        &chain,
+        slots,
+        n_dims,
+        report.emitters(),
+        adm.outputs,
+        adm.band_readouts,
+        col(10),
+        adm.stall_outputs.stall_col,
+        ComparativeProjectionBands::default(),
+        sealed_link.neighbor_slots(),
+    );
+    let load_bearing = [
+        adm.outputs.dominance_col.raw(),
+        adm.outputs.margin_col.raw(),
+        adm.outputs.contest_col.raw(),
+        adm.band_readouts.border_col.raw(),
+        adm.band_readouts.chokepoint_col.raw(),
+        adm.stall_outputs.stall_col.raw(),
+    ];
+    for col_i in load_bearing {
+        assert!(
+            bits_equal(
+                &column(&oracle, n_dims as usize, col_i),
+                &column(&chain, n_dims as usize, col_i)
+            ),
+            "link default-path oracle parity col {col_i}"
+        );
+    }
+    if let Some(ctx) = gpu_context() {
+        let mut session =
+            FieldSweepSession::new(&ctx, &adm.bundle.registrations[0]).expect("session");
+        session.upload_values(&ctx, &values).expect("upload");
+        session
+            .dispatch_chain(&ctx, &adm.bundle.registrations, 1)
+            .expect("dispatch");
+        let gpu = session.readback(&ctx).expect("readback");
+        for col_i in load_bearing {
+            assert!(
+                bits_equal(
+                    &column(&chain, n_dims as usize, col_i),
+                    &column(&gpu, n_dims as usize, col_i)
+                ),
+                "link default-path GPU parity col {col_i}"
+            );
+        }
+        let info = ctx.adapter.get_info();
+        eprintln!(
+            "COMPARATIVE-DEFAULT-BIRTH link adapter={} backend={:?}",
+            info.name, info.backend
+        );
+    }
 }
 
 #[test]
@@ -528,13 +643,23 @@ fn grid_default_emitter_cpu_oracle_gpu_parity() {
             .dispatch_chain(&ctx, &adm.bundle.registrations, 1)
             .expect("dispatch");
         let gpu = session.readback(&ctx).expect("readback");
-        assert!(
-            bits_equal(
-                &column(&chain, n_dims as usize, adm.outputs.dominance_col.raw()),
-                &column(&gpu, n_dims as usize, adm.outputs.dominance_col.raw())
-            ),
-            "default-path GPU dominance parity"
-        );
+        // Remand 5156686392 §3: full load-bearing set, not dominance alone.
+        for col_i in [
+            adm.outputs.dominance_col.raw(),
+            adm.outputs.margin_col.raw(),
+            adm.outputs.contest_col.raw(),
+            adm.band_readouts.border_col.raw(),
+            adm.band_readouts.chokepoint_col.raw(),
+            adm.stall_outputs.stall_col.raw(),
+        ] {
+            assert!(
+                bits_equal(
+                    &column(&chain, n_dims as usize, col_i),
+                    &column(&gpu, n_dims as usize, col_i)
+                ),
+                "default-path GPU parity col {col_i}"
+            );
+        }
         let info = ctx.adapter.get_info();
         eprintln!(
             "COMPARATIVE-DEFAULT-BIRTH grid adapter={} backend={:?}",
@@ -575,13 +700,16 @@ fn default_path_threshold_plan_compatible() {
     assert_ne!(plan.front_formed.0, col(0));
 }
 
+/// Remand 5156686392 §4: executable privacy surface + length-guard.
+/// Compile-fail rebind lives on `comparative_default_birth` module docs.
 #[test]
 fn sealed_topology_no_independent_neighbor_rebind_api() {
-    // Privacy referee: neighbor_slots are only reachable via sealed capture.
     let adj = FieldAdjacency::grid_n4(2, 2, GRID_N4_NSEW, col(0)).unwrap();
-    let sealed = SealedFieldTopology::from_grid_adjacency(adj).unwrap();
+    let sealed = SealedFieldTopology::from_grid_adjacency(adj.clone()).unwrap();
     assert_eq!(sealed.neighbor_slots().len(), 4);
-    // Length mismatch still rejects at LinkGraph construction.
+    // Public surface is capture-only: from_grid_adjacency / from_link_graph.
+    // Fields are private — no SealedFieldTopology { adjacency, neighbor_slots }.
+    // Length mismatch rejects at LinkGraph construction (not a rebind path).
     assert!(SealedFieldTopology::from_link_graph(
         2,
         vec![vec![LinkGraphNeighbor {
@@ -591,4 +719,48 @@ fn sealed_topology_no_independent_neighbor_rebind_api() {
         col(0)
     )
     .is_err());
+    // Same-length wrong LinkGraph is a *different* seal, not a rebind of `sealed`.
+    let path = {
+        let mut rows = vec![Vec::new(); 4];
+        for (a, b) in [(0u32, 1), (1, 2), (2, 3)] {
+            rows[a as usize].push(LinkGraphNeighbor {
+                slot: SlotIndex::new(b),
+                weight: 1.0,
+            });
+            rows[b as usize].push(LinkGraphNeighbor {
+                slot: SlotIndex::new(a),
+                weight: 1.0,
+            });
+        }
+        for r in &mut rows {
+            r.sort_by_key(|n| n.slot.raw());
+        }
+        rows
+    };
+    let cycle = {
+        let mut rows = vec![Vec::new(); 4];
+        for (a, b) in [(0u32, 1), (1, 2), (2, 3), (3, 0)] {
+            rows[a as usize].push(LinkGraphNeighbor {
+                slot: SlotIndex::new(b),
+                weight: 1.0,
+            });
+            rows[b as usize].push(LinkGraphNeighbor {
+                slot: SlotIndex::new(a),
+                weight: 1.0,
+            });
+        }
+        for r in &mut rows {
+            r.sort_by_key(|n| n.slot.raw());
+        }
+        rows
+    };
+    let a = SealedFieldTopology::from_link_graph(4, path, col(0)).unwrap();
+    let b = SealedFieldTopology::from_link_graph(4, cycle, col(0)).unwrap();
+    assert_ne!(a.adjacency(), b.adjacency());
+    assert_ne!(a.neighbor_slots(), b.neighbor_slots());
+    // No method attaches b.neighbor_slots() to a.adjacency() — API census:
+    let _ = a.adjacency();
+    let _ = a.neighbor_slots();
+    let _ = a.slots();
+    // (constructors + three accessors only; rebind would be a fourth public API)
 }

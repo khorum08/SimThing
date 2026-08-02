@@ -8,6 +8,25 @@
 //!
 //! **OUT:** triad columns stay explicit 5.8 consumer inputs. No producer
 //! discriminant, operator→role map, or triad default.
+//!
+//! Same-length neighbor substitution onto a sealed adjacency is unconstructible
+//! (fields private; no rebind constructor). Remand `5156686392` privacy referee:
+//!
+//! ```compile_fail,E0423,E0560
+//! use simthing_driver::SealedFieldTopology;
+//! use simthing_gpu::FieldAdjacency;
+//! use simthing_core::{ColumnIndex, SlotIndex};
+//! fn rebind_same_length_wrong_rows(
+//!     adj: FieldAdjacency,
+//!     wrong_rows: Vec<Vec<SlotIndex>>,
+//! ) -> SealedFieldTopology {
+//!     // No public constructor takes (adjacency, neighbor_slots) independently.
+//!     SealedFieldTopology {
+//!         adjacency: adj,
+//!         neighbor_slots: wrong_rows,
+//!     }
+//! }
+//! ```
 
 use crate::comparative_projection::{
     admit_comparative_projections, neighbor_slots_from_grid, neighbor_slots_from_link_rows,
