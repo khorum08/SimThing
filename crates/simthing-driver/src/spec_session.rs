@@ -122,11 +122,14 @@ pub struct SpecSessionState {
     /// Admitted order-weight class table (ORDER-WEIGHT-CLASS-0). Used by the
     /// typed directive submission surface and runtime Player magnitude gate.
     pub order_weight_classes: Vec<crate::order_directive::AdmittedOrderWeightClass>,
-    /// GUYANG-COMPARATIVE-PROJECTIONS-0: optional comparative admission when a
-    /// caller installs an explicit 5.8 chain. Default-derived birth is 5.8b;
-    /// ordinary `compile_and_install` leaves this `None`.
+    /// GUYANG-COMPARATIVE-PROJECTIONS-0: comparative admission when produced
+    /// (explicit 5.8 door, or 5.8b default-emitter + explicit triad).
     pub comparative_projection:
         Option<crate::comparative_projection::ComparativeProjectionAdmission>,
+    /// 5.8b: ordinary-install field-plan product (topology + default emitters).
+    /// Precedented by `property_admission`. Triad columns are NOT stored here —
+    /// they remain explicit 5.8 consumer inputs (DA `5154348081`).
+    pub field_plan_admission: Option<crate::comparative_default_birth::FieldPlanAdmissionReport>,
 }
 
 impl SpecSessionState {

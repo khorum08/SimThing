@@ -42,6 +42,9 @@ pub enum InstallError {
     #[error("spec error: {0}")]
     Spec(#[from] SpecError),
 
+    #[error("field-plan admission: {0}")]
+    FieldPlan(#[from] crate::comparative_default_birth::FieldPlanAdmissionError),
+
     #[error("capability tree `{tree_id}` resolved to zero owners for target `{target:?}`")]
     NoMatchingOwners {
         tree_id: String,
@@ -427,10 +430,14 @@ pub fn compile_and_install(
 
     state.property_admission = registry.property_admission_report();
 
-    // GUYANG-COMPARATIVE-PROJECTIONS-0 (5.8): default-derived birth is 5.8b.
-    // Install does not invent topology from n_slots or discover emitters by
-    // string namespace. Explicit consumers call admit_comparative_projections
-    // with already-admitted FieldAdjacency + columns. Leave unset here.
+    // 5.8b (DA 5154348081): ordinary install mints the field-plan product from
+    // authored GameModeSpec.region_fields (S3 + default emitters). Triad columns
+    // remain explicit 5.8 consumer inputs — not defaulted here.
+    if let Some(report) =
+        crate::comparative_default_birth::admit_field_plan_from_region_fields(&game_mode.region_fields)?
+    {
+        state.field_plan_admission = Some(report);
+    }
 
     Ok(state)
 }

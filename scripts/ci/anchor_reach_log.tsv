@@ -320,3 +320,30 @@ date	role	query	anchors_served	hit
 2026-08-01T19:24:43Z	coding	--grep structural-execution-convergence	structural-execution-convergence	hit
 2026-08-01T19:24:43Z	coding	--grep workshop-candidate-homing	workshop-candidate-homing	hit
 2026-08-01T19:24:47Z	coding	--grep property-value-rf-overlays	property-value-rf-overlays	hit
+2026-08-01T21:46:40Z	coding	--grep COMPARATIVE-DEFAULT-BIRTH\|default-derived\|FieldAdjacency\|comparative birth	none	none
+2026-08-01T21:46:51Z	coding	--paths crates/simthing-driver/src/install.rs crates/simthing-driver/src/comparative_projection.rs crates/simthing-driver/src/spec_session.rs	field-policy-time-decisions,founding-ontology-invariants,property-value-rf-overlays,rf-arena-substrate,simthing-0087-binding-laws,simthing-0087-pillars,stead-spatial-contract-core,structural-execution-convergence,workshop-candidate-homing	hit
+2026-08-01T21:46:51Z	coding	--domain driver	field-policy-time-decisions,property-value-rf-overlays,structural-execution-convergence	hit
+2026-08-01T23:27:36Z	coding	--domain orientation-harness	none	none
+2026-08-01T23:27:43Z	coding	--domain field-policy	field-policy-time-decisions	hit
+2026-08-01T23:27:43Z	coding	--grep simthing-0087	simthing-0087-binding-laws,simthing-0087-pillars	hit
+2026-08-01T23:27:43Z	coding	--domain rf-arena	none	none
+2026-08-01T23:27:43Z	coding	--domain workshop	none	none
+2026-08-01T23:27:54Z	coding	--paths founding-ontology-invariants one-tree-owners-never-spatial orientation-harness-core property-value-rf-overlays rf-arena-substrate scanner-selftest-delta-gate stead-spatial-contract-core structural-execution-convergence workshop-candidate-homing	none	none
+2026-08-01T23:28:01Z	coding	--paths founding-ontology-invariants	none	none
+2026-08-01T23:28:02Z	coding	--domain founding-ontology	founding-ontology-invariants	hit
+2026-08-01T23:28:02Z	coding	--domain rf-arena-substrate	none	none
+2026-08-01T23:28:02Z	coding	--domain workshop-candidate	none	none
+2026-08-01T23:28:02Z	coding	--domain structural-execution	structural-execution-convergence	hit
+2026-08-01T23:28:02Z	coding	--domain scanner-selftest	none	none
+2026-08-01T23:28:02Z	coding	--domain orientation-harness	none	none
+2026-08-01T23:28:02Z	coding	--domain property-value	property-value-rf-overlays	hit
+2026-08-01T23:28:02Z	coding	--domain one-tree	one-tree-owners-never-spatial	hit
+2026-08-01T23:28:03Z	coding	--domain stead-spatial	none	none
+2026-08-01T23:28:06Z	coding	--grep rf-arena\|workshop-candidate\|scanner-selftest\|orientation-harness\|stead-spatial-contract	none	none
+2026-08-01T23:28:12Z	coding	--domain core-0087	rf-arena-substrate,simthing-0087-binding-laws,simthing-0087-pillars	hit
+2026-08-01T23:28:12Z	coding	--domain map	stead-spatial-contract-core	hit
+2026-08-01T23:28:12Z	coding	--domain orientation	orientation-harness-core	hit
+2026-08-01T23:28:12Z	coding	--domain scanner-selftest-gate	scanner-selftest-delta-gate	hit
+2026-08-01T23:28:12Z	coding	--domain scenario-candidate-home	workshop-candidate-homing	hit
+2026-08-01T23:41:26Z	coding	--domain orientation	orientation-harness-core	hit
+2026-08-01T23:41:33Z	coding	--grep does not merge|coding agent|push	none	none
