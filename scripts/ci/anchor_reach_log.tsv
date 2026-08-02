@@ -347,3 +347,4 @@ date	role	query	anchors_served	hit
 2026-08-01T23:28:12Z	coding	--domain scenario-candidate-home	workshop-candidate-homing	hit
 2026-08-01T23:41:26Z	coding	--domain orientation	orientation-harness-core	hit
 2026-08-01T23:41:33Z	coding	--grep does not merge|coding agent|push	none	none
+2026-08-02T10:47:48Z	coding	--paths scripts/ci/gen_orientation.sh scripts/ci/handoff_dispatch.sh scripts/ci/scenario_residue_check.sh crates/simthing-spec/tests/planet_child_location_admission.rs crates/simthing-driver/tests/support/resource_economy_session.rs	field-policy-time-decisions,founding-ontology-invariants,one-tree-owners-never-spatial,orientation-harness-core,property-value-rf-overlays,rf-arena-substrate,scanner-selftest-delta-gate,simthing-0087-binding-laws,simthing-0087-pillars,stead-spatial-contract-core,structural-execution-convergence,workshop-candidate-homing	hit

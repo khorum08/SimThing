@@ -123,6 +123,17 @@ jobs:
           set -o pipefail
           python3 scripts/ci/scenario_residue_check.sh --selftest 2>&1 | tee doctrine-scenario-residue-selftest-report.txt
 
+      - name: Artifact provenance gate
+        run: |
+          set -o pipefail
+          python3 scripts/ci/artifact_provenance_check.py 2>&1 | tee doctrine-artifact-provenance-report.txt
+
+      - name: Artifact provenance selftest
+        if: steps.gate.outputs.run_selftests == 'true'
+        run: |
+          set -o pipefail
+          python3 scripts/ci/artifact_provenance_check.py --selftest 2>&1 | tee doctrine-artifact-provenance-selftest-report.txt
+
       - name: DOC-BUDGET selftest
         if: steps.gate.outputs.run_selftests == 'true'
         run: |
