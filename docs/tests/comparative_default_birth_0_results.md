@@ -1,7 +1,7 @@
 # COMPARATIVE-DEFAULT-BIRTH-0 results
 
 - Track: 0.0.8.7 RF arena modernization (rung 5.8b)
-- Status: **PROBATION / proof-present / DA-review-pending**
+- Status: **COMPLETE / DA-GRADUATED — merged #1567 @ 6dfc5aa1**
 - HD-RECEIPT: `42c0ce43c22d`
 - ORIENT-RECEIPT: `4992234cbe01` (orientation_rule_stamp `ff44072551872eb1`)
 - DA scope: **`5154348081`** (narrowed: emitters default; triad explicit)
