@@ -1,12 +1,18 @@
-# The SimThing Core Design — Permanent Paradigm Reference
+# The SimThing Core Design — Paradigm Reference
 
-> **Status: PERMANENT. This document is the paradigm itself, not a version of it.** It sits *beneath*
-> the versioned constitution (`design_0_0_8_1.md` and successors): the constitution governs process,
-> gating, and the current production track; **this document cements the immutable architecture every
-> version, every PR, and every agent must build toward.** It is deliberately self-contained — no link
-> needs to be followed to apply it. If any handoff, PR ladder, status row, or ancillary-service design
-> conflicts with this document, this document wins, and the conflict is escalated to design authority.
-> Changes to this file are Tier-2, design-authority-only, by addition — never silent weakening.
+> **Status: STANDING — effectively permanent, deliberately amendable.** This document is the paradigm
+> itself, not a version of it. It sits *beneath* the versioned constitution (`design_0_0_8_1.md` and
+> successors): the constitution governs process, gating, and the current production track; **this
+> document states the architecture every version, every PR, and every agent must build toward.** It is
+> deliberately self-contained — no link needs to be followed to apply it. If any handoff, PR ladder,
+> status row, or ancillary-service design conflicts with this document, this document wins, and the
+> conflict is escalated to design authority.
+>
+> **Horizon (the Definable Horizon Law, 0.0.8.7 §4): this document claims no permanence.** It is
+> amended when a graduated rung establishes law that contradicts it, and the amendment lands *with
+> that rung* — never as a later cleanup, because an unamended paradigm doc outranks the rung that
+> superseded it and silently re-imposes the retired shape. Amendments are Tier-2,
+> design-authority-only, and by addition or correction — never silent weakening.
 >
 > **If you are a low-context agent: hold this file in context for the entire task.** Everything else
 > is detail; this is the spine.
@@ -69,7 +75,17 @@ non-negotiable: it is not a style preference, it is the **precondition** for the
 being one GPU automaton instead of a federation of bespoke subsystems.
 
 When a design seems to need special-case logic, the correct move is almost always **more SimThing**:
-more properties, more overlays, more `AccumulatorOp` registrations — never a new subsystem.
+more properties, more overlays, more `AccumulatorOp` registrations, more CostBands (§5.4) — never a
+new subsystem.
+
+**What the substrate must prove is a closed set — the Invariant Set (0.0.8.7 §4).** Conservation,
+determinism, CPU/GPU parity, boundedness, admission totality, and residency/typing are the *complete*
+proof surface: a mechanism is admitted when it upholds them, and no mechanism earns admission by
+passing a bespoke test invented alongside it. The set is closed so that "prove it works" has a fixed
+meaning rather than one negotiated per feature. Expanding it is an Owner privilege, not a design
+convenience — and a mechanism that seems to need a new invariant is usually a mechanism modelled at
+the wrong tier. Emergence checks are **demonstrations, not gates**: they are what you look at to see
+the substrate behaving, never what a change must satisfy to land.
 
 **The substrate, not the game, is the product.** This genericity is foundational, not retrofitted:
 from the earliest design (v4: *"semantic labels are read by the CPU semantic layer for display
@@ -178,7 +194,7 @@ Tests are ladder residue, like scans. A KEEP-class test is admitted only when it
 
 A test is rung-3/4 ladder residue like a scan. Test admission requires naming the regression nothing higher on the ladder owns. Promotion retires redundant tests in the same PR.
 
-**The Necessity Test (permanent; supersedes the retired "one representative per boundary" premise).** A test
+**The Necessity Test (standing; supersedes the retired "one representative per boundary" premise).** A test
 is admissible **only if it catches a regression that none of the following already catch:** (1) the compiler
 (a type boundary), (2) a production admission hard-error on a live path, (3) an existing integration or
 canonical path that already exercises the invariant. Restated as the deletion rule: **if deleting a test
@@ -195,7 +211,7 @@ cannot absorb (e.g. a parser rejecting a non-finite string), CPU-oracle/GPU pari
 byte-exactness, doc-named invariant proofs, escaped-bug regressions, and the CI scanner's own known-bad
 fixtures — each of which catches a regression nothing higher on the ladder would.
 
-**The Rustified test lifecycle (permanent; adopted at Track D closeout 2026-07-04, owner mandate).** A test is
+**The Rustified test lifecycle (standing; adopted at Track D closeout 2026-07-04, owner mandate).** A test is
 a **scoped borrow, not a permanent asset**: it is born owned by the PR ladder / track that creates it and is
 **assumed DELETED at that track's closure**. Deletion is free and requires no action — closure performs it.
 Keeping a test past its birth ladder requires a positive, recorded justification and is possible in exactly
@@ -408,6 +424,16 @@ Because allocation weights and threshold parameters are themselves reachable thr
 **the rules of the simulation are a contested object inside the simulation** — reflexivity is
 endogenous to the substrate, not a bolted-on system.
 
+**Ownership is intrinsic to the node, not a container (rung 6.0).** A SimThing names its owner
+through an ordinary property (`OWNER_CHANNEL_PROPERTY_ID`, `simthing_core::owner_channel`) rather
+than by being *inside* an owner. This is what lets owners never be spatial: the relation is a value
+the node carries, so an Owner SimThing stays a GameSession sibling and the spatial tree is never
+reshaped to express politics. Resolution is total and pure — **absence means inherit**, so an unbound
+node stores nothing and inherits its parent's owner; an explicitly unbound node resolves neutral; a
+foreign or malformed authority fails closed. Because it is one property, `bind_owner` at a subtree
+root re-parents the entire subtree in a single write, and a capture is an ordinary rebind rather than
+a special-cased transition.
+
 ---
 
 ## 3. SimProperty → Value: the load-bearing data model
@@ -549,6 +575,17 @@ events only after fields resolve.
 accumulate → reduce up the tree → local channel settlement → mask/disburse down → threshold events
 ```
 
+**Both directions carry meaning — events are not RF's exhaust (DIRECTED; the reception half is
+delivered by rung 6.0b).** Reduce-up carries **perception**: what a parent knows about its subtree
+*is* the reduction of that subtree. Disburse-down carries **directive**: an order is partitioned
+downward on the same sweep that partitions budget, because an order nobody can afford is not an
+order. The pipeline above is accurate about ordering — thresholds fire only after fields resolve —
+but it reads as though events were a terminal output stage, and they are not: they are the emission
+face of a channel that already runs in both directions. **A directive that transfers a quantity is a
+resource and conserves; a directive that installs a predicate is a program and has nothing to
+conserve.** Reading a value is not moving it, so a broadcast predicate makes no conservation claim
+and the Invariant Set is unchanged.
+
 A **resource-flow arena** is the parent `Location` / SimThing context in which participants are
 settled. An arena is spatial when its parent is a Location gridcell, but it is not a bespoke
 combat/economy/trade subsystem. It is one recursive accumulator mechanism with different authored
@@ -631,28 +668,71 @@ wavefront settling toward an attractor. Trade, diplomacy, raiding, suppression �
 scale is never solved by prohibiting scale: participant caps are on *concurrent* participants, slots
 recycle through the re-enrollment free-list, and pool growth happens only at boundaries.
 
+### 5.4 CostBand — the sink definition
+
+*(DIRECTED — canonical definition; the mechanic is delivered by rung 6.1b `BAND-QUANTIZED-DRAW-0`.)*
+
+**Observation is the base case; action is observation plus a CostBand.** Every resolved value is
+observable — that falls out of the unified flow and costs nothing extra. A **CostBand** is what makes
+an observed value *act*: the quantized draw that converts accumulated value into completed units.
+Given accumulated value `V` and band cost `C`:
+
+```
+N = floor(V / C)     units completed this step
+R = V − N·C          residue carried forward
+V = N·C + R          exact, by construction
+```
+
+`N` is what the band produces; `R` integrates into `Balance` through the ordinary carryforward, so
+the draw is **exactly conserving rather than approximately** — quantization is where a continuous
+allocation becomes a discrete outcome without leaking.
+
+- **Every sink IS a CostBand — it is the default, not an opt-in mode.** There is no second sink
+  mechanism to choose between.
+- **A boolean property is a CostBand of depth 1** — a build queue with one item. It is not a
+  different mechanism with its own code path; it is the degenerate case of this one.
+- **Direction is carried by the band, never by the sign of the value.** A sink and a source are not
+  distinguished by negating a quantity.
+- CostBand is the **event-steering surface**: thresholds define *when* a band completes, and band
+  completion is what an event reports.
+
 ---
 
 ## 6. Overlays — the universal modifier
 
 **Every modifier in the system is an overlay on a SimThing.** An overlay is
-`{ kind, source, affects, transform, lifecycle }` whose transform is a `PropertyTransformDelta`:
+`{ id, kind, source, affects, transform, lifecycle }` whose transform is a `PropertyTransformDelta`:
 a list of `(SubFieldRole, Add|Multiply|Set)` pairs against a property, applied on overlay OrderBands
 in the same unified kernel as everything else. There is no other modification mechanism. Concretely:
 
 | What it looks like in a game | What it actually is |
 |---|---|
-| **Ownership / identity (permanent)** | Owner-columns (`faction_id` and friends) on the owned SimThing, plus **permanent identity overlays** stamping the owner-relation. The political map is overlays on the spatial tree, never nodes in it. Capture = column flip + refresh of the *faction* overlay layer; per-relation layers are independent (the species layer persists through capture). Modifier overlays are latched and blockade-immune (knowledge ≠ goods); flow is blockable. |
+| **Ownership / identity (standing)** | Owner-columns (`faction_id` and friends) on the owned SimThing, plus the **intrinsic owner-ref property** (`OWNER_CHANNEL_PROPERTY_ID`, rung 6.0) binding a node to its owner. **Identity is a property, not an overlay** — a standing relation that is *read*, never re-applied per tick. Absence means inherit, so an unbound node stores nothing; `bind_owner` is ONE write at a subtree root that re-parents the whole subtree. The political map is overlays on the spatial tree, never nodes in it. Capture = column flip + refresh of the *faction* overlay layer; per-relation layers are independent (the species layer persists through capture). Modifier overlays are latched and blockade-immune (knowledge ≠ goods); flow is blockable. |
 | **Policy / governance** | Overlays writing **weight columns** read by the allocation sweep, and Add/Multiply deltas on production/consumption sub-fields. A policy *is* its numeric pressure on the flow. |
 | **AI personality** | Authored personality sub-fields (aggression, risk tolerance…) on the faction SimThing, applied as **EML weighting overlays** over reduced Movement-Front pressure fields. The AI has no other existence. |
 | **User intervention / player controls** | `OverlaySource::Player` overlays — same transform machinery, same bands, same lifecycle. A player edict and an AI policy are structurally identical. |
 | **Capability / tech trees** | Abstract trees that **resolve to modifier overlays + instantiation gates**; unlocking instantiates via gated fission. Capabilities never become runtime branches. |
 | **Crises, events, scripted effects** | Transient overlays with declarative `DissolveCondition`s (property thresholds, tick timers, override), with any complex scripted logic encoded as an EML gadget tree (§4.1) — never bespoke event code. |
 
-Lifecycle is declarative (`Permanent` / `Transient{conditions}` / `Suspended`); activation and
-dissolution are boundary-protocol work, never mid-tick mutation. If a feature proposal cannot be
-expressed as *properties + overlays + accumulator registrations + EML gadget trees*, the proposal is
-wrong — escalate, don't special-case.
+Lifecycle is declarative — `UntilDissolved` / `Transient{dissolution_conditions}` /
+`Suspended{when_activated}` / `AtSessionEnd` — and **no variant claims permanence** (the Definable
+Horizon Law). `UntilDissolved` names an overlay whose dissolution condition is defined but not yet
+met; `AtSessionEnd` names a definable horizon. The retired `Permanent` variant was renamed for
+exactly that reason: permanence is a claim no lifecycle may make, and a variant named `Permanent`
+invites authors to stop asking when a thing ends. Activation and dissolution are boundary-protocol
+work, never mid-tick mutation.
+
+If a feature proposal cannot be expressed as *properties + overlays + accumulator registrations +
+EML gadget trees*, the proposal is wrong — escalate, don't special-case.
+
+**Overlays are the reception surface (DIRECTED — delivered by rung 6.0b, not yet built).** A
+SimThing's `overlays: Vec<Overlay>` is already its inbox: `evaluate_node` folds a node's own overlays
+onto a `TransformStack` inherited from its ancestors, so the composition chain a routed directive
+needs already runs on every evaluation. What is missing is *arrival* — overlays reach a node by
+direct `affects` targeting, which bypasses every intermediate policy layer. 6.0b adds a required
+`Overlay.origin: SimThingId` and routes directives up to the common ancestor and down, so the stack
+filters along the path. Until it graduates, the tuple above is the built shape. See
+[`stead_simthing_automata.md`](stead_simthing_automata.md).
 
 ---
 
@@ -897,6 +977,18 @@ Full adjudication lives in `workshop/field_world_model_horizon.md` §1.4 — lin
   re-derive economy/threat/urgency and must not scan dense grids by default.
 - Structural change is boundary work: fission/fusion from property thresholds, slot scrubbing on
   add/remove, tombstoning whole-tree-scoped. The evaluator never mutates the tree.
+
+**This section states the GENERAL model, and the general model is the DEFAULT (the Vendorized Build
+Principle, 0.0.8.7 §4).** The closed loop above — decisions resolved GPU-resident, the CPU consuming
+and never recomputing — is what SimThing *is* when nothing is specialised. A build that moves
+resolution to the CPU is therefore **not a violation of this section; it is an INSTANCE derived from
+it** by relocating the resolution site, and it is admitted only on those terms. The prohibitions
+above ("no CPU planner… ever") forbid a *parallel* CPU system that re-derives what the substrate
+already resolved — a second mechanism competing with the first. They do not forbid a named,
+derived build whose resolution site is declared. **The test is derivation, not location:** if the
+CPU-authoritative path shares the substrate's registrations, invariants, and admission, it is an
+instance; if it reimplements them, it is the bespoke parallel system this document has always
+rejected. See rung 6.2b `RESOLUTION-SITE-SPLIT-0`.
 
 **SANCTIONED minting walkthrough (OC-K-DECISION-INGRESS-0) — how you DO mint a decision.**
 
