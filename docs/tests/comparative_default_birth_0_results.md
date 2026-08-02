@@ -6,9 +6,11 @@
 - ORIENT-RECEIPT: `4992234cbe01` (orientation_rule_stamp `ff44072551872eb1`)
 - DA seam rulings: `5153818317` (prior) · **`5154066190` (canonical source)**
 - Orchestrator remands: `5153911298` · `5154032743` (publication) · **`5154078214` (resume)**
-- Board STOP (prior publication): `5154016887` · publication landing `5154053278`
-- STOP head (class_id residue): `f1df7f8b50e3a85f38ac76cfdba5f1b7f3cf793e`
-- Final published tip (incl. wall-clock closeout reape): `9df79be5823979cd2b42414aaf43a0e85fd47f8f`
+- Board STOP (prior publication): `5154016887` · publication landing `5154053278` · resume STOP `5154107244`
+- Publication remands: `5154032743` · `5154214683`
+- **tested_code_sha / implementation STOP tree:** `f1df7f8b50e3a85f38ac76cfdba5f1b7f3cf793e`
+  (class_id + triad residue documentation; semantic STOP unchanged thereafter)
+- **final_head_sha / clearance_pr_head:** PR-body-bound only (this file does not self-hash)
 - PR: #1567 draft
 
 ## Disposition
@@ -116,9 +118,11 @@ guyang_comparative_projections_0: 5 passed  (5.8 explicit substrate untouched)
 
 ## Posture
 
-**STOP.** Draft #1567. No `/clearance` rebind until a lawful head lands. No
-pointer move, no 6.1+, no kernel/allowlist widen, no string→f32 convention, no
-settled-5.8 class_id rewrite, no operator→role heuristic.
+**STOP.** Draft #1567. Exact-head clearance may run and stay fresh
+(`DA-RESERVE(gate-wiring)`) so orchestration can relay the architectural
+residue to DA — that is routing, not graduation. **No merge. No pointer move.**
+No 6.1+, no kernel/allowlist widen, no string→f32 convention, no settled-5.8
+class_id rewrite, no operator→role heuristic.
 
 ### Escalation to DA (exact)
 

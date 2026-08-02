@@ -123,8 +123,10 @@ pub struct SpecSessionState {
     /// typed directive submission surface and runtime Player magnitude gate.
     pub order_weight_classes: Vec<crate::order_directive::AdmittedOrderWeightClass>,
     /// GUYANG-COMPARATIVE-PROJECTIONS-0: comparative admission when produced.
-    /// 5.8 is explicit; 5.8b default birth is STOP until DA supplies the
-    /// ordinary-install field-plan producer (remand 5153911298).
+    /// 5.8 is explicit. 5.8b default birth is STOP after DA `5154066190`: the
+    /// ordinary-install producer/call-site (`region_fields` → structured field
+    /// sweeps) is accepted; birth remains blocked on class_id representation
+    /// (name:String vs settled f32) and triad Matrix provenance on that path.
     pub comparative_projection:
         Option<crate::comparative_projection::ComparativeProjectionAdmission>,
 }
