@@ -42,6 +42,9 @@ pub enum InstallError {
     #[error("spec error: {0}")]
     Spec(#[from] SpecError),
 
+    #[error("field-plan admission: {0}")]
+    FieldPlan(#[from] crate::comparative_default_birth::FieldPlanAdmissionError),
+
     #[error("capability tree `{tree_id}` resolved to zero owners for target `{target:?}`")]
     NoMatchingOwners {
         tree_id: String,
@@ -427,12 +430,14 @@ pub fn compile_and_install(
 
     state.property_admission = registry.property_admission_report();
 
-    // 5.8b STOP (DA 5154066190 / resume 5154078214): the region_fields →
-    // compile_structured_field_sweeps producer exists as a call-site move, but
-    // default birth still cannot lawfully mint ComparativeEmitterClass without
-    // a String→f32 class_id convention or settled-5.8 rewrite, and triad Matrix
-    // roles are not uniquely present on structured region-field outputs.
-    // Do not invent comparative birth here. See comparative_default_birth_0_results.md.
+    // 5.8b (DA 5154348081): ordinary install mints the field-plan product from
+    // authored GameModeSpec.region_fields (S3 + default emitters). Triad columns
+    // remain explicit 5.8 consumer inputs — not defaulted here.
+    if let Some(report) =
+        crate::comparative_default_birth::admit_field_plan_from_region_fields(&game_mode.region_fields)?
+    {
+        state.field_plan_admission = Some(report);
+    }
 
     Ok(state)
 }
