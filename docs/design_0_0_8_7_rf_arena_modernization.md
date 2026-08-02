@@ -312,7 +312,7 @@ discretion); `Std — Grok CLI` (`grok-4.5` pinned); `Fable` = DA-implemented ha
 
 | Item | State |
 |---|---|
-| Active open rung | `EVENT-GENERATION-STAMP-0` |
+| Active open rung | `SIMTHING-AUTOMATON-INTRINSIC-0` |
 
 ## 4. Binding laws (carry from day one)
 
