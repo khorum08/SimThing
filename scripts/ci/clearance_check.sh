@@ -1425,12 +1425,36 @@ check_ci_status() {
     return 0
   fi
   local failing
-  failing="$(gh pr checks "$PR_NUMBER" 2>/dev/null | awk '$2 != "pass" && $2 != "skipping" && NF {print}' || true)"
+  failing="$(gh pr checks "$PR_NUMBER" 2>/dev/null | filter_foreign_check_rows || true)"
   if [[ -n "$failing" ]]; then
     emit_verdict fail "ci-not-green: rerun/fix failing checks before clearance"
     return 1
   fi
   return 0
+}
+
+# Name of this router's OWN check row in `gh pr checks` output.
+SELF_CHECK_NAME="clearance"
+
+# Keep only rows that can legitimately gate clearance.
+#
+# The router's own row is excluded because it is CIRCULAR, not because pending
+# work is tolerable: while Clearance executes, its own row reads `pending`, so
+# counting it made the router fail itself and marked legitimately-green PRs
+# `ci-not-green`. That mechanically removed a whole class of governance-only
+# handoffs from ORCHESTRATOR-CLEARABLE — the router cannot be an input to the
+# verdict it produces.
+#
+# This is NOT a loosening. Every other check still gates, and `pending` on any
+# FOREIGN check still fails: clearance must not pass before real CI finishes.
+# Excluding all pending rows WOULD weaken the gate and is deliberately not done.
+filter_foreign_check_rows() {
+  # FS is an explicit TAB: `gh pr checks` is tab-separated, and awk's default
+  # whitespace splitting shifts every field for any check name containing a
+  # space (`Doctrine Scan` yields $2="Scan", which reads as a failure). Real
+  # names are hyphenated today, so this is latent rather than live -- fixed
+  # here because a gate that mis-parses its own input is not a gate.
+  awk -F'	' -v self="$SELF_CHECK_NAME" '$1 != self && $2 != "pass" && $2 != "skipping" && NF {print}'
 }
 
 append_ledger() {
@@ -1678,6 +1702,58 @@ run_fixture() {
   return 0
 }
 
+# Self-row exclusion must remove the CIRCULAR row and NOTHING else. Each case
+# below is a planted defect for one way this fix could go wrong: swallowing a
+# foreign failure, swallowing a foreign pending, or failing to exclude self.
+clearance_selftest_ci_self_row_exclusion() {
+  local name="clearance_selftest_ci_self_row_exclusion"
+  local got want
+
+  # 1. Self pending + everything else green -> nothing gates. THE FIX.
+  got="$(printf 'clearance	pending	0s
+Doctrine Scan	pass	2m
+' | filter_foreign_check_rows)"
+  if [[ -n "$got" ]]; then
+    echo "FAIL ${name}"
+    echo "  self row must not gate its own verdict; got: ${got}"
+    return 1
+  fi
+
+  # 2. A FOREIGN failing check still gates. Gate not weakened.
+  got="$(printf 'clearance	pending	0s
+Doctrine Scan	fail	2m
+' | filter_foreign_check_rows)"
+  if [[ -z "$got" ]]; then
+    echo "FAIL ${name}"
+    echo "  a foreign failing check must still gate"
+    return 1
+  fi
+
+  # 3. A FOREIGN pending check still gates -- clearance must not pass before
+  #    real CI finishes. This is the case that excluding all pending would break.
+  got="$(printf 'clearance	pending	0s
+Doctrine Scan	pending	0s
+' | filter_foreign_check_rows)"
+  if [[ -z "$got" ]]; then
+    echo "FAIL ${name}"
+    echo "  a foreign pending check must still gate"
+    return 1
+  fi
+
+  # 4. All green -> nothing gates.
+  got="$(printf 'clearance	pass	1s
+Doctrine Scan	pass	2m
+' | filter_foreign_check_rows)"
+  if [[ -n "$got" ]]; then
+    echo "FAIL ${name}"
+    echo "  fully green table must not gate; got: ${got}"
+    return 1
+  fi
+
+  echo "PASS ${name}"
+  return 0
+}
+
 run_selftest() {
   local fixtures=(
     clearance_selftest_clearable_1150_shape
@@ -1785,6 +1861,10 @@ run_selftest() {
     clearance_selftest_body_sha_stale_code_delta
   )
   local name
+  # Unit check: exercises a pure filter, so it has no fixture directory.
+  if ! clearance_selftest_ci_self_row_exclusion; then
+    SELFTEST_FAILURES=$((SELFTEST_FAILURES + 1))
+  fi
   for name in "${fixtures[@]}"; do
     if ! run_fixture "$name"; then
       SELFTEST_FAILURES=$((SELFTEST_FAILURES + 1))
@@ -1792,7 +1872,7 @@ run_selftest() {
   done
   if [[ "$SELFTEST_FAILURES" -eq 0 ]]; then
     emit_verdict clearable
-    echo "CLEARANCE-SELFTEST: PASS (${#fixtures[@]} fixtures)"
+    echo "CLEARANCE-SELFTEST: PASS ($(( ${#fixtures[@]} + 1 )) fixtures)"
     return 0
   fi
   emit_verdict reserve "harness-error"
