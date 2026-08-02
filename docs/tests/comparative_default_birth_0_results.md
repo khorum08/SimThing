@@ -7,7 +7,8 @@
 - DA seam rulings: `5153818317` (prior) · **`5154066190` (canonical source)**
 - Orchestrator remands: `5153911298` · `5154032743` (publication) · **`5154078214` (resume)**
 - Board STOP (prior publication): `5154016887` · publication landing `5154053278`
-- Published tip at resume: `91470b125f051f25e4717928962a0a1c810dd688`
+- STOP head (class_id residue): `f1df7f8b50e3a85f38ac76cfdba5f1b7f3cf793e`
+- Final published tip (incl. wall-clock closeout reape): `9df79be5823979cd2b42414aaf43a0e85fd47f8f`
 - PR: #1567 draft
 
 ## Disposition
