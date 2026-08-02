@@ -870,7 +870,7 @@ Suspended overlay:
 
 &#x20; transform: military::fleet\_speed Amount Multiply(1.30)
 
-&#x20; lifecycle: Suspended { when\_activated: Permanent }
+&#x20; lifecycle: Suspended { when\_activated: UntilDissolved }
 
 
 

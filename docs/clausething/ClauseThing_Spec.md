@@ -566,7 +566,7 @@ tr_adaptability_recycling = {
 → on the owner's `Custom("tradition_tree")` SimThing: a progress sub-field gated by a
 threshold compiled from `has_tradition = tr_adaptability_adopt`; a `Suspended` overlay
 carrying `Multiply(-0.15)` on the `volatile_motes::upkeep` column, flipped to
-`Permanent` by `ActivateOverlay` when the prereq threshold fires; a second overlay
+`UntilDissolved` by `ActivateOverlay` when the prereq threshold fires; a second overlay
 that is `Suspended` until the `is_wilderness_empire == no` threshold holds and
 `Transient`/dissolved when it fails; `ai_weight` → an `EvalEML` term feeding the
 adoption-pressure column. (`capability_tree_v1.md` is the exact existing pattern.)

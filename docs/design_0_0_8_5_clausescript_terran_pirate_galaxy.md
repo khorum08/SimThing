@@ -597,7 +597,7 @@ Any unknown/ambiguous form is a **spanned hard error with a suggested path** —
 
 ## 7. References
 
-- Permanent paradigm: [`simthing_core_design.md`](simthing_core_design.md) (§2 the one tree, §5 RF arenas, §6 overlays, §7 Movement-Front automaton, §8 decisions, §9 drift detectors).
+- Paradigm reference: [`simthing_core_design.md`](simthing_core_design.md) (§2 the one tree, §5 RF arenas, §6 overlays, §7 Movement-Front automaton, §8 decisions, §9 drift detectors).
 - Active constitution: [`design_0_0_8_3.md`](design_0_0_8_3.md) §0 (anti-flattening §0.6, exact-magnitude §0.7, STEAD §0.8), §A (closed-lowering gates + the named RF capacity amendment).
 - ClauseScript↔SimThing isomorphism: [`clausething/ClauseThing_Spec.md`](clausething/ClauseThing_Spec.md) §4, §5 (tier ladder), §7 (guardrails), §8 (hard problems); decoder + movables: [`clausething/ct_2c_economic_category_memo.md`](clausething/ct_2c_economic_category_memo.md).
 - MapGen producer + grammar: [`clausething/MapGeneratorCLI.md`](clausething/MapGeneratorCLI.md), [`clausething/MapGenThing.md`](clausething/MapGenThing.md); STEAD contract: [`stead_spatial_contract.md`](stead_spatial_contract.md).

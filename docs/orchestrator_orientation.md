@@ -45,9 +45,9 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 211b860c2a424d0386a01a2dc93d5c563abfd1411c1f58ec55c7b69d97426cb8 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | 26eab30ec86c97ac8dfd6beef7ae8c5b4d3f18c38fdaa431ec40ccce855396d3 |
-| design_0_0_8_7_rf_arena_modernization.md | 1d9a5e5ba51b0a211d767779ff2efce830e76084def65652b3f5a7bb8e0160ec |
+| design_0_0_8_7_rf_arena_modernization.md | c77d540d02380ba6ce7ebac4653b440899809910ea83361f9ecacd624dc9d875 |
 | relay_lint.sh | 4163f715cdc3b549dbf57c1744aff61ea96b9f9f0a2237376665fbdb24e986c8 |
-| doctrine_anchors.tsv | a27301e33d013d6a870ef0bda89aca9a9131f29219cfd5d9675f5a60a10500fb |
+| doctrine_anchors.tsv | 9592653d9b091ddc0bfaee919f1a033413aa614fe362f417a34798e11e0b3bef |
 | execution_status_taxonomy.tsv | c33df8d86dbc939e1f6b9a847b3d54e255ae602481cd459c96fba4b13cd2f145 |
 | execution_status_mixed_posture.tsv | 1adf05f3ec5fd7b537efe29259d20649a2c6d3a0839590063e5308ff154e8f25 |
 | execution_status_non_execution.tsv | 214c1b557dfd3fc465f0171051e20281ff1dcf6c53128dbb29cba01524f9be02 |
@@ -101,7 +101,7 @@ Track state: `open`
 | 11.1 | EMBEDDER-INTERFACE-0 | Phase 11: the five-verb Vendor Door API (formalization of existing mechanisms) + | Five verbs stand up a tree end-to-end in a test; posture choice on Run; no new subsystem (diff-proven). |
 | 11.2 | EMBEDDER-GUIDE-EXEMPLARS-0 | Phase 11: DOC-BUDGET-capped Embedder's Guide + two non-game exemplars (finance t | Cold-reader exit-proof per phase row; exemplars green in CI. |
 | 12.1 | PORTABILITY-PROOF-0 | Phase 12: a domain unrelated to any shipped scenario through the Vendor Door end | Exemplar-seeded domain simulates + STEAD-observes + serializes untouched. |
-| 12.2 | CORE-CANONIZATION-0 | Phase 12: object model (P0 Root Contract + cycle + EML-ISA + Triad Doors + overl | Canonized sections land; net-prose discipline; SimThing complete and distinct; CLOSEOUT protocol run (Owner-gated). |
+| 12.2 | CORE-CANONIZATION-0 | Phase 12: object model (P0 Root Contract + cycle + EML-ISA + Triad Doors + overl | Canonized sections land; net-prose discipline; SimThing complete and distinct; the three early-discharged canonizatio... |
 
 ## Next Rung Pointer
 

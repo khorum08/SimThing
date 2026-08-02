@@ -395,7 +395,7 @@ product-authorized.
 ---
 
 ## 6. Pointers
-- Permanent paradigm reference: [`simthing_core_design.md`](simthing_core_design.md)
+- Paradigm reference reference: [`simthing_core_design.md`](simthing_core_design.md)
 - Binding structural rules: [`invariants.md`](invariants.md)
 - Gating mechanics + anti-loop + proven-capability stop rule: [`workshop/phase_m_gating_and_doc_policy.md`](workshop/phase_m_gating_and_doc_policy.md)
 - Live production status ledger: [`design_0_0_8_0_consumer_pulled_production_track.md`](design_0_0_8_0_consumer_pulled_production_track.md)
