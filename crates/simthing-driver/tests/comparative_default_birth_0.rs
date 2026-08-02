@@ -1,8 +1,13 @@
-//! COMPARATIVE-DEFAULT-BIRTH-0 (5.8b) — STOP after orchestrator remand `5153911298`.
+//! COMPARATIVE-DEFAULT-BIRTH-0 (5.8b) — STOP after DA `5154066190` +
+//! orchestrator resume `5154078214`.
 //!
-//! Withdraws the Scenario.field_plan_admission side-door and role-named
-//! FieldPlanAdmissionReport taxonomy. Proves ordinary install still does not
-//! invent comparative birth without an already-admitted field-plan producer.
+//! DA named the lawful producer call-site (`region_fields` → structured field
+//! sweeps). Coding STOPs on the exact representation / triad-role residue:
+//! `RegionFieldSpec::name: String` cannot become settled 5.8 `class_id: f32`
+//! without invention, and region-field lowering does not uniquely expose
+//! PALMA-D / Gu-Yang-U / Gu-Yang-C Matrix columns for `output()` match.
+//!
+//! Witnesses: ordinary install does not invent birth; no Scenario side-door.
 
 use simthing_core::{
     DimensionRegistry, PropertyAdmissionDisposition, SimProperty, SimThing, SimThingKind,

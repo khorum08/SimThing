@@ -427,9 +427,12 @@ pub fn compile_and_install(
 
     state.property_admission = registry.property_admission_report();
 
-    // 5.8b STOP (remand 5153911298): ordinary compile_and_install has no
-    // already-admitted field-plan producer. Scenario.field_plan_admission was
-    // withdrawn as a re-homed side-door. Do not invent comparative birth here.
+    // 5.8b STOP (DA 5154066190 / resume 5154078214): the region_fields →
+    // compile_structured_field_sweeps producer exists as a call-site move, but
+    // default birth still cannot lawfully mint ComparativeEmitterClass without
+    // a String→f32 class_id convention or settled-5.8 rewrite, and triad Matrix
+    // roles are not uniquely present on structured region-field outputs.
+    // Do not invent comparative birth here. See comparative_default_birth_0_results.md.
 
     Ok(state)
 }

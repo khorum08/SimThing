@@ -1,129 +1,129 @@
 # COMPARATIVE-DEFAULT-BIRTH-0 results
 
 - Track: 0.0.8.7 RF arena modernization (rung 5.8b)
-- Status: **STOP — exact missing admitted facts (orchestrator remand `5153911298`)**
+- Status: **STOP — exact representation / role-identity residue after DA `5154066190` + orchestrator resume `5154078214`**
 - HD-RECEIPT: `b17e36045daf`
 - ORIENT-RECEIPT: `4992234cbe01` (orientation_rule_stamp `ff44072551872eb1`)
-- DA seam ruling: Board `5153818317`
-- Prior DA-amendment head (withdrawn): `5b7a606438a338d3111cb87846f0df1658ace41f`
-- STOP head / tested_code_sha: `7b5e484258e62aaae6072380f092ecf6fc97c680` (implementation tree; tip may be docs-only stamp)
-- Orchestrator remand: Board `5153911298`
-- Prior remand / landing: `5153845512` / `5153898093`
+- DA seam rulings: `5153818317` (prior) · **`5154066190` (canonical source)**
+- Orchestrator remands: `5153911298` · `5154032743` (publication) · **`5154078214` (resume)**
+- Board STOP (prior publication): `5154016887` · publication landing `5154053278`
+- Published tip at resume: `91470b125f051f25e4717928962a0a1c810dd688`
+- PR: #1567 draft
 
 ## Disposition
 
-Coding **withdraws** the post-DA amendment that failed the orchestrator deep
-check. Hosted Doctrine Scan / Exec / Clearance were green; the DA amendment was
-not yet embodied. Useful 5.8 reuse is preserved. Only the remanding defects are
-addressed — by refusal to invent, not by a new surface.
+DA `5154066190` correctly names the **producer call-site** gap and the authored
+surface `GameModeSpec.region_fields`. Coding **accepts** that chain as real:
 
-| Withdrawn surface | Remand defect |
+```text
+GameModeSpec.region_fields
+  → compile_region_field_preview / CompiledRegionFieldStencilSpec
+  → compiled_stencil_to_gpu_config → StructuredFieldStencilConfig
+  → compile_structured_field_sweeps → Vec<FieldSweepRegistration>
+```
+
+That path already runs at tick/mapping (`first_slice_mapping_runtime`,
+`mapping_plan_tick`). Moving the **same** call earlier into ordinary
+`compile_and_install` is lawful work **once** the comparative inputs can be
+instantiated without inventing identity or role grammar.
+
+Orchestrator `5154078214` binds a hard fence on emitter identity:
+
+> DA states emitter `class_id = RegionFieldSpec::name`. … current
+> `ComparativeEmitterClass::class_id` is `f32` and dominance writes that
+> numeric value. **Do not invent a string→float hash/index/parse convention
+> and do not silently change settled 5.8 explicit semantics.** If no
+> already-admitted numeric identity corresponding exactly to the authored
+> `name` exists, … **STOP** with that exact representation mismatch.
+
+Coding **STOPs** on that exact fact (and two related role-surface facts that
+block completing S2 even if class_id were fixed).
+
+No reimplementation of Scenario side-door / role-named report / col+1 synthesis.
+
+## STOP — exact missing / mismatched facts
+
+### 1. Emitter `class_id` representation mismatch (binding; orchestrator-named)
+
+| Surface | Type / meaning |
 |---|---|
-| `Scenario.field_plan_admission` + fixture churn + install clone-from-scenario | **1** — S3 re-homed as explicit side-door / caller enrollment |
-| Role-named `FieldPlanAdmissionReport` fields (`emitter_registrations`, `palma_d`, `guyang_conductance`, `guyang_value`) and `admit_field_plan_report(...)` pre-sort API | **2** — typed role taxonomy by struct/API shape |
-| `class_id = value_col.raw_u32() as f32 + 1.0` | **3** — synthesized emitter identity convention |
-| Independent `admit_field_plan_report(adjacency, neighbor_slots, ...)` with length-only neighbor validation | **4** — non-atomic S1; same-length neighbor substitution still constructible |
-| Authored-order proof that bypasses default derivation (`ComparativeEmitterClass { authored_order }` hand-built) | **5** — not the HD default-path referee |
+| `RegionFieldSpec::name` (DA identity) | `String` — designer text (`"fabric_hot_mapping"`, `"frontier_v1_theater"`, …) |
+| `ComparativeEmitterClass::class_id` (settled 5.8) | `f32` — written into the **dominance** column as an EML `LITERAL_F32` (`comparative_projection.rs` dominance step / CPU oracle) |
 
-No kernel/allowlist widen. No parallel `compile_and_install_with_field_plan`. No role enum/tag/string/property grammar. Settled 5.8 explicit substrate untouched.
+**Fact unavailable:** an already-admitted **numeric** identity that *is* the
+authored `name` (or is definitionally equal to it) without conversion.
 
-## STOP — exact missing already-admitted facts
+Forbidden by remand if used to “satisfy” DA literally:
+- string→float hash / index / parse convention
+- silent change of settled 5.8 `class_id: f32` meaning or dominance payload type
 
-Remand instruction: *If defects 1/2/3 cannot be closed using an already-admitted
-producer/identity, return one narrow STOP with the exact missing fact rather
-than inventing another surface.*
+`source_col` / `target_col` are admitted `u32`s, but DA names **`name`**, not
+those columns, as emitter identity — and using column indices as class_id is
+exactly the withdrawn col-identity synthesis.
 
-### S3 producer (defect 1) — blocks ordinary zero-wiring birth
+### 2. Triad role uniqueness from authored region-fields (S2; blocks lawful default birth)
 
-**Missing fact:** an already-admitted field-plan / lowering **producer reachable
-from ordinary `compile_and_install`** that yields the typed product DA granted
-(`FieldAdjacency` + same-authority neighbor rows + registrations in authored
-order) as an **install output**.
+DA requires matching registrations by `output() == Matrix(target_col)` for
+PALMA-D / Gu-Yang-U / Gu-Yang-C, with remaining Matrix registrations as emitters
+in **authored `region_fields` list order**.
 
-Measured at remand head:
+Measured on the live chain:
 
-- `compile_and_install` admits properties, overlays, capability trees, RF,
-  resource economy, and `PropertyAdmissionReport` — **not** a sealed
-  `FieldSweepRegistration` set for triad+emitters, and not a comparative
-  field-plan binding.
-- `GameModeSpec.region_fields` is a different substrate (RegionFieldSpec /
-  mapping), not the FieldSweepRegistration comparative input surface.
-- Putting the product on `Scenario` (or any other caller input envelope) is
-  enrollment / explicit comparative wiring by another name — remand forbids
-  re-homing the input door.
-- A parallel install API is also forbidden (DA + HD).
+| Required comparative input | What region-field lowering actually admits |
+|---|---|
+| **PALMA-D** Matrix column | `RegionFieldOperatorSpec` has **no PALMA / min-plus operator**. Operators are `Normalized`, `SourceCappedNormalized`, `Gradient`, `SaturatingFlux` only. PALMA lives on the separate `compile_min_plus_field_sweep` / min-plus config path, not on `compile_structured_field_sweeps` for region fields. |
+| **Gu-Yang-U** Matrix column | `SaturatingFlux` flux registration writes `Matrix(source_col)` (value), **not** `Matrix(target_col)`. |
+| **Gu-Yang-C** Matrix column | `SaturatingFlux` conductance is **`FieldSweepOutput::Transient`**, not a Matrix target column. 5.8 comparative stall reads a **Matrix** `guyang_conductance_col`. |
 
-Until ordinary install **owns or invokes** a real field-plan lowering that mints
-the product, default birth cannot lawfully attach to the normal path.
+So even with admitted `target_col` on the compiled stencil, the produced
+registrations **do not expose** a unique `output() == Matrix(palma_d_col)` /
+`Matrix(guyang_value_col)` / `Matrix(guyang_conductance_col)` triple that can be
+matched without inventing an operator→role map or a second column convention.
 
-### S2 triad target-column identities (defect 2) — blocks role derivation without taxonomy
+Remand S2: if existing authored/compiled region-field facts do not uniquely
+identify the three triad entries without forbidden heuristics → **STOP**.
 
-**Missing fact:** already-admitted triad **target-column identities**
-(`palma_d_col`, `guyang_value_col`, `guyang_conductance_col`) at the real
-field-plan lowering/admission site.
+### 3. Authored-order provenance is clear; birth still blocked on (1)+(2)
 
-DA `5153818317` correctly dissolves opcode/heuristic classification and
-sanctions: *PALMA-D is the registration whose `output() == Matrix(palma_d_col)`*
-(etc.), with remaining Matrix registrations as emitters in authored order.
+DA/orchestrator correctly bind **authored order** as index in
+`GameModeSpec.region_fields` (designer list), not incidental registration-vector
+order. That provenance rule is accepted and does not require a STOP by itself.
+It cannot be exercised for default birth until (1) and (2) close.
 
-That derivation **requires the triad columns as admitted facts**. They are not
-present on:
+### 4. S1 atomic capture — still blocked on a lawful product
 
-- `FieldSweepRegistration` public API (only `output()`, programs, adjacency, …)
-- ordinary install / `SpecSessionState` without a field-plan producer
-- the DA product shape as stated (adjacency + neighbors + registrations in
-  authored order only)
+Same-authority adjacency+neighbor artifact at the lowering site remains the
+correct S1 shape (adopted). It is not implementable as a default-birth product
+until install can mint a product that comparative birth can lawfully consume.
 
-Without those column identities, callers must pre-sort registrations into
-role-named slots (the withdrawn taxonomy) or invent a grammar. Coding stops.
+## What is *not* missing (accepted from DA)
 
-### Emitter `class_id` identity (defect 3)
+- The **producer function** exists: `compile_structured_field_sweeps`.
+- The **authored list** exists: `GameModeSpec.region_fields`.
+- The **call-site move** (mapping/tick → ordinary install) is the right shape of
+  work once identity/role facts are expressible.
+- Scenario side-door / parallel install API remain forbidden (unchanged).
 
-**Missing fact:** an already-admitted authored emitter identity value suitable
-for `ComparativeEmitterClass::class_id`.
-
-- 5.8 explicit path consumes caller-authored `class_id` (tests use `10.0` /
-  `20.0`) plus durable `authored_order` — independent of column index.
-- `FieldSweepRegistration::output() == Matrix(col)` supplies **value_col**, not
-  an emitter identity.
-- `class_id = col.raw_u32() + 1` is a new identity convention; remand
-  `5153845512` already ordered STOP rather than invent one.
-
-Authored order alone (enumerate over a registration vec) is also insufficient
-for the HD default-path referee (defect 5): incidental vector reversal must not
-change derived `authored_order` when the admitted identity/order is fixed.
-
-### S1 atomic capture (defect 4) — implementable only once S3 producer exists
-
-DA dissolved the "need a LinkGraph accessor" STOP. Capture-at-construction
-alongside `link_graph()` remains the sanctioned 5.8 seam.
-
-What is still required (and blocked on S3): the product must make
-**adjacency + neighbor rows one same-authority admission artifact** so a caller
-cannot keep the correct adjacency and substitute same-length neighbor membership.
-That falsifier is named; it is not constructible without inventing a sealed
-pair while the product has no producer.
-
-## Focused proof (STOP witnesses)
+## Focused proof (STOP witnesses; no kabuki birth)
 
 ```text
 comparative_default_birth_0: 2 passed; 0 failed
+  ordinary_install_does_not_invent_comparative_birth
+  scenario_has_no_field_plan_admission_side_door
+guyang_comparative_projections_0: 5 passed  (5.8 explicit substrate untouched)
 ```
-
-1. `ordinary_install_does_not_invent_comparative_birth`
-2. `scenario_has_no_field_plan_admission_side_door`
-
-## 5.8 substrate
-
-Settled 5.8 explicit fail-closed comparative admission remains valid and
-untouched (`guyang_comparative_projections_0`). This STOP is 5.8b-only.
 
 ## Posture
 
-**STOP.** Draft #1567. No `/clearance`, no pointer move, no 6.1+, no allowlist
-widen, no Gu-Yang throughput work, no owner-channel rename residual.
+**STOP.** Draft #1567. No `/clearance` rebind until a lawful head lands. No
+pointer move, no 6.1+, no kernel/allowlist widen, no string→f32 convention, no
+settled-5.8 class_id rewrite, no operator→role heuristic.
 
-Escalation to DA: name the ordinary-install field-plan **producer**, the admitted
-triad **target-column** bindings, and the admitted emitter **class_id** /
-durable **authored_order** facts — or amend the rung if those facts are not
-meant to exist yet.
+### Escalation to DA (exact)
+
+1. **Representation:** how should authored `RegionFieldSpec::name: String` become
+   the numeric identity written into dominance under settled 5.8 `class_id: f32`
+   — or should 5.8 class_id/dominance be amended by DA design?
+2. **Triad provenance:** which admitted region-field (or other authored) facts
+   uniquely name PALMA-D / Gu-Yang-U / Gu-Yang-C Matrix columns when structured
+   field sweeps do not emit PALMA and emit Gu-Yang conductance as Transient?
