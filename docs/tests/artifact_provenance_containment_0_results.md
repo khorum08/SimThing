@@ -1,7 +1,7 @@
 # ARTIFACT-PROVENANCE-CONTAINMENT-0 results
 
 - Track: 0.0.8.7 RF arena modernization (rung 5.9c)
-- Status: **PROBATION / proof-present / DA-review-pending**
+- Status: **COMPLETE / DA-GRADUATED — merged #1574 @ 2e3afacb**
 - HD-RECEIPT: `97261e940e6b`
 - ORIENT-RECEIPT: `4992234cbe01` (orientation_rule_stamp `ff44072551872eb1`)
 - Dispatch: Board comment `5157163643`

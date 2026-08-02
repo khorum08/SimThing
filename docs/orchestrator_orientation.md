@@ -45,7 +45,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 211b860c2a424d0386a01a2dc93d5c563abfd1411c1f58ec55c7b69d97426cb8 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | 26eab30ec86c97ac8dfd6beef7ae8c5b4d3f18c38fdaa431ec40ccce855396d3 |
-| design_0_0_8_7_rf_arena_modernization.md | d2549816c89c6a165115a170ecae8bd58af89ffd2f555014cb5545b4aa1afec3 |
+| design_0_0_8_7_rf_arena_modernization.md | 0df43f63f9f88d5dbf568211d27c4c9e1b9bec7964331dcb0d9ba47d0d3582d5 |
 | relay_lint.sh | 4163f715cdc3b549dbf57c1744aff61ea96b9f9f0a2237376665fbdb24e986c8 |
 | doctrine_anchors.tsv | d7b1609af38b0ab413721b6e2587543193f83d21e0df8d3990a055f33be2dc28 |
 | execution_status_taxonomy.tsv | c33df8d86dbc939e1f6b9a847b3d54e255ae602481cd459c96fba4b13cd2f145 |
@@ -82,7 +82,7 @@ Track state: `open`
 | 5.8b | COMPARATIVE-DEFAULT-BIRTH-0 | Phase 5: the two canonical seams 5.8 correctly refused to invent. (A) carry the  | **DA-GRADUATED / merged #1567 @ 6dfc5aa1 — default emitter birth landed on the DA-narrowed scope.** Ordinary `compile... |
 | 5.9 | TP-PURGE-0 | **Phase 5 hygiene — INTENT NOTED, sequencing Owner-scheduled and MAY preempt 5.4 | **DA-GRADUATED / merged #1520 @ 153ba40c** — DA independently reproduced at exact head `9ccd800c`: **THE FALSIFIABLE ... |
 | 5.9b | SCENARIO-RESIDUE-PURGE-0 | **Phase 5 hygiene — Owner-directed 2026-08-01, DA-implemented, preempts 5.8b.**  | **DA-GRADUATED / merged #1544 @ 682e9d0e — engine at ABSOLUTE ZERO TP across `src` AND `tests` for all seven crates, ... |
-| 5.9c | ARTIFACT-PROVENANCE-CONTAINMENT-0 | **Phase 5 hygiene — Owner-directed 2026-08-01.** Enforces the Vendor Containment | `specialization_citizen_counts.tsv` carries no scenario vocabulary and no shipped-scenario provenance; the provenance... |
+| 5.9c | ARTIFACT-PROVENANCE-CONTAINMENT-0 | **Phase 5 hygiene — Owner-directed 2026-08-01.** Enforces the Vendor Containment | **DA-GRADUATED / merged #1574 @ 2e3afacb — PHASE 5 COMPLETE.** (b) `artifact_provenance_check.py` follows consumer ->... |
 | 5.9d | TP-EXPORT-ERADICATION-0 | **Phase 5 hygiene — Owner-directed 2026-08-01, DA-implemented.** Eliminates TP's | ZERO files matching scenario vocabulary anywhere outside `simthing-clausething`; mapeditor `src` and `tests` build an... |
 | 6.0 | OWNER-CHANNEL-INTRINSIC-0 | **Phase 6 foundation — Owner-directed 2026-08-01. Makes ownership ATOMIC AND INT | **DA-GRADUATED / merged #1561 @ 8cbd7e3d — ownership is now INTRINSIC to the stem cell.** Owner is a sparse property ... |
 | 6.1 | EVENT-GENERATION-STAMP-0 | Phase 6: generation stamps on emission/threshold events; stamped ring egress wit | Events carry stamps; forced observer lag honors declared backpressure without perturbing the sim. |
@@ -102,7 +102,7 @@ Track state: `open`
 
 ## Next Rung Pointer
 
-Active pointer: `ARTIFACT-PROVENANCE-CONTAINMENT-0`
+Active pointer: `EVENT-GENERATION-STAMP-0`
 
 
 ## Cold-Start Spine (constitutional pointers)
