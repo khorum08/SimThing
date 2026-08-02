@@ -47,7 +47,7 @@ else is trigger-served. **Trigger domains bind to diff paths (rung OC-2), not pr
 | 3 | Seal / residue-as-tripwire / cross-crate seal law | constitution §0.9 | kernel, gpu, unsafe-adjacent | — | ongoing | `seal-residue-cross-crate` |
 | 4 | STEAD contract §1–§4, §8, §9 (layout vs execution admission; ambient/sparse; required tests; withdrawn phrases) | stead_spatial_contract | map, spatial, mapgenerator, clausething-spatial | — | narrow (done) | `stead-spatial-contract-core` |
 | 5 | Tree / owners-never-spatial / one-tree | core §2 | spec, hydration | — | — | `one-tree-owners-never-spatial` |
-| 6 | Property→Value model; RF arenas/channels; Balance; **overlays/orderband**; sparse RegionCell + RF substrate ADRs | core §3, §5, §6 + 2 ADRs | kernel-columns, rf, overlay, driver | — | OC-K2 | `property-value-rf-overlays` |
+| 6 | Property→Value model; RF arenas/channels; Balance; **overlays/orderband**; sparse RegionCell + RF substrate ADRs | core §3–§6 + 2 ADRs | kernel-columns, rf, overlay, driver | — | OC-K2 | `core-property-value-model`, `core-gpu-residency`, `core-rf-arenas`, `core-overlays` |
 | 7 | EML extension ladder (gadget tree before opcode) | core §5/EML docs | kernel-eml, wgsl | — | OC-K4 | `eml-extension-ladder` |
 | 8 | Spec fidelity / anti-ceremony / Deviation Record | constitution §0.6 | (closure surfaces) | YES (one line) | — | `spec-fidelity-anti-ceremony` |
 | 9 | Exact numeric authority / Candidate F | constitution §0.7 | kernel-magnitude, threshold paths | — | OC-K3 | `exact-numeric-candidate-f` |

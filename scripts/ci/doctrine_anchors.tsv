@@ -4,7 +4,10 @@ admission-ladder-necessity-test	docs/design_0_0_8_3.md	heading:### 0.9 Doctrine-
 seal-residue-cross-crate	docs/simthing_core_design.md	heading:### 1.2.1 The kernel crate, the cross-crate seal law, and residue-as-tripwire	kernel,gpu,unsafe-adjacent,seal	49ee7c4ba6f40dd4c5254e895ba0c9b1ff12d44ab148f18ea82a7e9d83345f1c
 stead-spatial-contract-core	docs/stead_spatial_contract.md	lines:23-59	map,spatial,mapgenerator,clausething-spatial,stead	b4a112cd02e8ad453df1f2414a59a035aadff7c9ae1e965a3ba10b4d1f2b52f9
 one-tree-owners-never-spatial	docs/simthing_core_design.md	heading:## 2. The one tree: Scenario wrapper, GameSession root, owners, and spatial containment	spec,hydration,one-tree	c88002b728986a33cd8fbb2537c40658df9268798e50f6aa605bb592d130ead2
-property-value-rf-overlays	docs/simthing_core_design.md	lines:411-644	kernel-columns,rf,overlay,driver,property-value	084ee935326b75b2272c9dd9289f9f074b3cde7cb108bc14a4746c9d78915688
+core-property-value-model	docs/simthing_core_design.md	heading:## 3. SimProperty	property-value,kernel-columns	04338b307bf8e035b7e34a8813d9d29704ca47b7ad0aa617df36dbaadc2419e1
+core-gpu-residency	docs/simthing_core_design.md	heading:## 4. GPU residency	kernel-columns,gpu,driver	b2f1be11daf5cf0c34b655a8025d0d388eb65ca61ad84c59c365c89e8e9b1f88
+core-rf-arenas	docs/simthing_core_design.md	heading:## 5. Resource flow arenas	rf,driver	9101a26b7086e2b34d357c401646d5620953ab9fcfd0ddb8e06808f5e20c72f5
+core-overlays	docs/simthing_core_design.md	heading:## 6. Overlays	overlay	36668c98bfa5b2ffdd075bed5b00929b3d1cbd30910d19c3820dd0af98a1e8a9
 eml-extension-ladder	docs/eml_gadget_library.md	heading:## 2. Constitutional placement / guardrails	kernel-eml,wgsl	7755bc72ffbe73411916f1d8aca76156ad45dcfd9570d345b1aec3adc26765a9
 spec-fidelity-anti-ceremony	docs/design_0_0_8_3.md	heading:### 0.6 Specification Fidelity — no silent flattening (the anti-drift law)	closure-surfaces,spec-fidelity	add4dbbc267ac54c2ecc317b8a792321f2bbb51ca64f9c58ccd69e10ef175745
 exact-numeric-candidate-f	docs/design_0_0_8_3.md	heading:### 0.7 Exact numeric authority for decision gates	kernel-magnitude,threshold-paths,exact-numeric	6938a2efadb5f939b8e655700a02f6789e5806ac8792efeee06f6ca4d1e6506e
