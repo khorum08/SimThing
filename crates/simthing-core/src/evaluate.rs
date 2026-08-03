@@ -32,6 +32,12 @@ struct StackedTransform {
 }
 
 impl TransformStack {
+    pub(crate) fn from_ordered_overlays(overlays: &[&Overlay]) -> Self {
+        overlays
+            .iter()
+            .fold(Self::default(), |stack, overlay| stack.push_overlay(overlay))
+    }
+
     pub fn push(&self, transform: &PropertyTransformDelta) -> Self {
         let mut next = self.clone();
         next.deltas.push(StackedTransform {
@@ -235,19 +241,15 @@ impl<'r> Evaluator<'r> {
 
         // 5. Derive a routed order at most once for this node, then apply the
         // full ancestor + local transform stack to each property.
-        let routed_overlays =
-            live_routes.and_then(|routes| routes.ordered_active_overlays(node.id));
+        let routed_stack = live_routes
+            .and_then(|routes| routes.ordered_active_overlays(node.id))
+            .map(|overlays| TransformStack::from_ordered_overlays(&overlays));
         for (id, pv) in &mut resolved {
             let layout = &self.registry.property(*id).layout;
-            if let Some(overlays) = routed_overlays.as_ref() {
-                for overlay in overlays {
-                    if overlay.transform.property_id == *id {
-                        overlay.transform.apply_to_data(pv.raw_lanes_mut(), layout);
-                    }
-                }
-            } else {
-                local_stack.apply_to(*id, pv, layout);
-            }
+            routed_stack
+                .as_ref()
+                .unwrap_or(local_stack)
+                .apply_to(*id, pv, layout);
         }
 
         out.push(EntitySnapshot {
