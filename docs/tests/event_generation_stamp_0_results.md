@@ -8,7 +8,11 @@
 - Dispatch: Board comment `5165742228` (DA authorization `5165693534`)
 - base_sha (handoff): `49bc1d4a`
 - dispatch master at open: `bbd593cde693`
-- implementation_code_sha / tested_code_sha: `2334e0c12226dec3227b334c4d406194a08f9115`
+- implementation_code_sha: `2334e0c12226dec3227b334c4d406194a08f9115`
+- tested_code_sha: `2334e0c12226dec3227b334c4d406194a08f9115`
+- tip (docs bind): `fbc8c6341e6e134cb8e6ef85f5a9fc59d43c96fa`
+- coverage_basis: PASS - tip after tested head is docs-only results binding; no Rust source/test/registry change
+- draft PR: #1596
 - expected_route: `DA-RESERVE(gate-wiring)`
 - Scope: **6.1 ONLY** (no 6.1b / 6.2 / 6.2b / 6.3)
 
