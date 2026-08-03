@@ -253,6 +253,7 @@ fn is_transient_with_dissolve(lifecycle: &OverlayLifecycle) -> bool {
 fn op_magnitude(op: &TransformOp) -> f32 {
     match op {
         TransformOp::Add(v) | TransformOp::Multiply(v) | TransformOp::Set(v) => *v,
+        TransformOp::Eml(_) => 0.0,
     }
 }
 

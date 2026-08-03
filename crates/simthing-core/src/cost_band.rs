@@ -34,6 +34,51 @@ impl CostBandDraw {
         let r_expected = self.v - (self.n as f32) * self.c;
         self.r.to_bits() == r_expected.to_bits()
     }
+
+    /// `N` must match the floor/throttle oracle (independent of recomputed R).
+    pub fn n_matches_oracle(
+        self,
+        is_sink: bool,
+        throttle_hint_max_per_tick: Option<u32>,
+    ) -> bool {
+        match cost_band_expected_n(self.v, self.c, is_sink, throttle_hint_max_per_tick) {
+            Ok(expected) => self.n == expected,
+            Err(_) => false,
+        }
+    }
+}
+
+/// Exact floor/throttle oracle for `N` (does not consult a stored draw's R).
+pub fn cost_band_expected_n(
+    v: f32,
+    c: f32,
+    is_sink: bool,
+    throttle_hint_max_per_tick: Option<u32>,
+) -> Result<u32, CostBandAdmissionError> {
+    if !v.is_finite() || v < 0.0 {
+        return Err(CostBandAdmissionError::InvalidAvailableValue);
+    }
+    if !is_sink {
+        return Ok(0);
+    }
+    if !c.is_finite() || c <= 0.0 {
+        return Err(CostBandAdmissionError::InvalidUnitCost);
+    }
+    if let Some(0) = throttle_hint_max_per_tick {
+        return Err(CostBandAdmissionError::InvalidThrottle);
+    }
+    let raw = (v / c).floor();
+    let raw_n = if raw <= 0.0 {
+        0u32
+    } else if raw >= u32::MAX as f32 {
+        u32::MAX
+    } else {
+        raw as u32
+    };
+    Ok(match throttle_hint_max_per_tick {
+        Some(t) => raw_n.min(t),
+        None => raw_n,
+    })
 }
 
 /// Authored CostBand / sink marker for one registration (`event_kind` key).
@@ -197,13 +242,25 @@ mod tests {
     #[test]
     fn planted_off_by_one_n_reds() {
         let d = cost_band_quantize(10.0, 3.0, true, None).unwrap();
+        // Mutant that only bumps N but recomputes R consistently still "conserves"
+        // definitionally — the referee must catch wrong N via the oracle.
+        let wrong_n = d.n.saturating_add(1);
+        let recomputed_r = d.v - (wrong_n as f32) * d.c;
         let off = CostBandDraw {
             v: d.v,
             c: d.c,
-            n: d.n.saturating_add(1),
-            r: d.r,
+            n: wrong_n,
+            r: recomputed_r,
         };
-        assert!(!off.conserves_exactly(), "off-by-one N must fail conservation");
+        assert!(
+            off.conserves_exactly(),
+            "precondition: recomputed-R mutant still definitionally conserves"
+        );
+        assert!(
+            !off.n_matches_oracle(true, None),
+            "off-by-one N must fail the floor/throttle oracle even when R is recomputed"
+        );
+        assert!(d.n_matches_oracle(true, None));
     }
 
     #[test]

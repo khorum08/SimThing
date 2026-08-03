@@ -258,6 +258,7 @@ pub fn gate_raw_player_overlay(
         .iter()
         .map(|(_, op)| match op {
             TransformOp::Add(v) | TransformOp::Multiply(v) | TransformOp::Set(v) => *v,
+            TransformOp::Eml(_) => 0.0,
         })
         .collect();
     let specs: Vec<_> = classes.iter().map(|class| class.spec.clone()).collect();

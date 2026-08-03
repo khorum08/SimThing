@@ -360,3 +360,16 @@ date	role	query	anchors_served	hit
 2026-08-03T00:43:04Z	coding	--grep predicate-broadcast	none	none
 2026-08-03T00:45:48Z	coding	--grep test admission budget	none	none
 2026-08-03T00:45:48Z	coding	--grep TEST-BUDGET	none	none
+2026-08-03T16:51:12Z	coding	--grep stead-rejected-shapes	stead-rejected-shapes	hit
+2026-08-03T16:51:12Z	coding	--domain core-overlays	none	none
+2026-08-03T16:51:12Z	coding	--domain kernel-eml	eml-extension-ladder	hit
+2026-08-03T16:51:12Z	coding	--grep CostBand	core-rf-arenas,simthing-0087-binding-laws,stead-rejected-shapes,stead-shared-surface-ledger	hit
+2026-08-03T17:22:18Z	coding	--paths handoffs/BAND-QUANTIZED-DRAW-0.hd.md	none	none
+2026-08-03T17:22:23Z	coding	--grep stead-rejected-shapes	stead-rejected-shapes	hit
+2026-08-03T17:22:53Z	coding	--domain founding-ontology-invariants	none	none
+2026-08-03T17:23:22Z	coding	--grep simthing-0087-binding-laws	simthing-0087-binding-laws	hit
+2026-08-03T17:27:11Z	coding	--grep eml-extension-ladder	eml-extension-ladder	hit
+2026-08-03T17:27:14Z	coding	--grep stead-rejected-shapes	stead-rejected-shapes	hit
+2026-08-03T17:27:15Z	coding	--grep stead-events-are-rf	stead-events-are-rf	hit
+2026-08-03T17:27:15Z	coding	--grep core-rf-arenas	core-rf-arenas	hit
+2026-08-03T17:27:15Z	coding	--grep core-overlays	core-overlays	hit

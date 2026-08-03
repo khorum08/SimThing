@@ -128,6 +128,8 @@ fn emit_transform(
             TransformOp::Multiply(v) => (OP_MULTIPLY, *v),
             TransformOp::Add(v) => (OP_ADD, *v),
             TransformOp::Set(v) => (OP_SET, *v),
+            // Multi-node EML programs are CPU/EML-path only (zero WGSL widen).
+            TransformOp::Eml(_) => continue,
         };
         deltas.push(OverlayDelta {
             col: encode_column(col),

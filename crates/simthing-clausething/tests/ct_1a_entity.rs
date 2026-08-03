@@ -146,6 +146,7 @@ fn format_op(op: &TransformOp) -> String {
         TransformOp::Add(v) => format!("Add({v})"),
         TransformOp::Multiply(v) => format!("Multiply({v})"),
         TransformOp::Set(v) => format!("Set({v})"),
+        TransformOp::Eml(prog) => format!("Eml({} nodes)", prog.len()),
     }
 }
 

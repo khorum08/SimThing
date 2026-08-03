@@ -66,8 +66,8 @@ pub use arena_layout::{
     property_needs_arena_internal_columns, ARENA_INTERNAL_COLUMN_ROLES, NEED_STAGE_MAX_PAIRS,
 };
 pub use cost_band::{
-    admit_cost_band_marker, cost_band_depth_one, cost_band_quantize, CostBandAdmissionError,
-    CostBandDraw, CostBandRegistrationMarker, CostBandResourceMarker,
+    admit_cost_band_marker, cost_band_depth_one, cost_band_expected_n, cost_band_quantize,
+    CostBandAdmissionError, CostBandDraw, CostBandRegistrationMarker, CostBandResourceMarker,
 };
 pub use column_index::{AuthoredColumnAdmitError, ColumnIndex};
 pub use compiled_accumulator_plan::{
@@ -113,8 +113,10 @@ pub use placed_participant::{
     PlacedParticipantValidationError, StructuralGridPlacement,
 };
 pub use property::{
-    admit_overlay_eml_program, eval_overlay_eml, magnitude_band_eml_nodes, ClampBehavior,
-    DecayBehavior, Direction, EmlPerProgramCap, EmlPerProgramCapError, ExpireEffect, ExpireHandler,
+    admit_overlay_eml_program, eval_overlay_eml, magnitude_band_eml_nodes,
+    overlay_eml_eval_invocations, reset_overlay_eml_eval_invocations, AdmittedEmlProgram,
+    ClampBehavior, DecayBehavior, Direction, EmlPerProgramCap, EmlPerProgramCapError, ExpireEffect,
+    ExpireHandler,
     FissionTemplate, FissionThreshold, FusionThreshold, IntensityBehavior, IntensityRange,
     PropertyLayout, PropertyAdmissionDisposition, PropertyValue, RoleOffset, SecondaryCondition,
     SimProperty, SimThingKindTag, SubFieldRole, SubFieldSpec, TransformOp,

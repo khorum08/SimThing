@@ -370,7 +370,9 @@ impl TransformPatcher {
             }
             values[addr] = match op {
                 TransformOp::Set(k) => *k,
-                TransformOp::Add(_) | TransformOp::Multiply(_) => op.apply(values[addr]),
+                TransformOp::Add(_) | TransformOp::Multiply(_) | TransformOp::Eml(_) => {
+                    op.apply(values[addr])
+                }
             };
             stats.applied_writes += 1;
             wrote_to_row = true;
@@ -509,6 +511,12 @@ fn fold_patch_as_intents(
             TransformOp::Multiply(m) => {
                 entry.0 *= *m;
                 entry.1 *= *m;
+            }
+            // Multi-node EML: fold as absolute result from zero base (same as apply).
+            TransformOp::Eml(_) => {
+                let v = op.apply(entry.1);
+                entry.0 = 0.0;
+                entry.1 = v;
             }
         }
         stats.applied_writes += 1;

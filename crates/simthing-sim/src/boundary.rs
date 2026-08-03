@@ -112,6 +112,9 @@ pub struct BoundaryOutcome {
     pub anchor_remap: AnchorRemapSection,
     /// Sealed write-impact band-crossing deltas minted from the fused threshold pass.
     pub band_crossing_deltas: Vec<BandCrossingDelta>,
+    /// Production CostBand draws resolved from admitted `event_kind` semantics
+    /// (parallel to `band_crossing_deltas`). Observation registrations yield N=0.
+    pub cost_band_draws: Vec<(u32, simthing_core::CostBandDraw)>,
     /// Live STEAD observation table after this boundary's writers ran.
     pub anchor_table_row_count: u32,
     pub boundary_requests: u32,
@@ -498,6 +501,12 @@ impl BoundaryProtocol {
             &self.registry,
             &self.allocator,
         );
+        // BAND-QUANTIZED-DRAW-0: ordinary production CostBand path — every sealed
+        // crossing resolves through the event_kind semantic table (observation
+        // default N=0; admitted sinks quantize with authored throttle).
+        out.cost_band_draws = self
+            .cpu_threshold_registry
+            .resolve_cost_band_draws_for_deltas(&out.band_crossing_deltas);
         // Dynamic band/value/urgency/generation live on the GPU table (fused
         // threshold companion). BandCrossingDelta remains wire/replay evidence only.
         // Generation for *this* day's crossings was supplied before the fused
