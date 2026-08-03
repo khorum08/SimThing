@@ -2867,65 +2867,269 @@ mod tests {
         );
     }
 
-    /// Negative bypass census (Remand 5): observer-egress call sites must equal
-    /// the sanctioned set. A new unsanctioned production call site turns RED.
-    /// Presence-only tautologies are not sufficient — DA showed `if false` still
-    /// passes those; live admit proof is the feeder tick referee.
-    #[test]
-    fn observer_egress_negative_bypass_census() {
-        // Call / definition forms only — pure doc mentions (e.g. world_state) excluded.
-        const CALL: &str = ".push_emissions_into_production_egress(";
-        const DEF: &str = "fn push_emissions_into_production_egress(";
-        // Sanctioned production call sites (path relative to crates/).
-        // session.rs is the definition + unit referees only — not a second transport.
-        const SANCTIONED: &[&str] = &[
-            "simthing-feeder/src/dispatcher.rs",
-            "simthing-driver/src/resource_economy_burn_in.rs",
-            "simthing-kernel/src/accumulator_op/session.rs",
-        ];
+    /// Emission observer/parity door APIs constrained by the negative census.
+    /// Longer names first so `readback_emissions` does not prefix-match `_capped`.
+    const EMISSION_DOOR_APIS: &[&str] = &[
+        "push_emissions_into_production_egress",
+        "readback_emissions_capped",
+        "readback_emissions",
+    ];
 
-        let crates_root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..");
-        let mut found: Vec<String> = Vec::new();
-        for entry in walkdir_rs_files(&crates_root) {
+    /// One production call site of an emission door API.
+    /// Identity is `(path, api, line)` — not whole-file allowance — so a second
+    /// call in a sanctioned file is a distinct site and turns the census RED.
+    #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+    struct EmissionDoorCallSite {
+        path: String,
+        api: String,
+        /// Trimmed source line containing `.<api>(` (pin / occurrence identity).
+        line: String,
+    }
+
+    /// Sanctioned production CALL sites: exact `(path, api, line_substring)`.
+    /// Definitions are inventoried separately. Direct readback is parity/oracle
+    /// only (burn-in after ring admit; internal seal path inside push).
+    const SANCTIONED_EMISSION_DOOR_CALLS: &[(&str, &str, &str)] = &[
+        (
+            "simthing-feeder/src/dispatcher.rs",
+            "push_emissions_into_production_egress",
+            "if let Err(err) = session.push_emissions_into_production_egress(",
+        ),
+        (
+            "simthing-driver/src/resource_economy_burn_in.rs",
+            "push_emissions_into_production_egress",
+            "session.push_emissions_into_production_egress(&state.ctx, &mut state.production_event_egress)?;",
+        ),
+        (
+            "simthing-driver/src/resource_economy_burn_in.rs",
+            "readback_emissions",
+            "let gpu_records = session.readback_emissions(&state.ctx)?;",
+        ),
+        (
+            "simthing-kernel/src/accumulator_op/session.rs",
+            "readback_emissions",
+            "let records = self.readback_emissions(ctx)?;",
+        ),
+    ];
+
+    /// Definitions must live only on the session production surface.
+    const SANCTIONED_EMISSION_DOOR_DEFS: &[(&str, &str)] = &[
+        (
+            "simthing-kernel/src/accumulator_op/session.rs",
+            "push_emissions_into_production_egress",
+        ),
+        (
+            "simthing-kernel/src/accumulator_op/session.rs",
+            "readback_emissions",
+        ),
+        (
+            "simthing-kernel/src/accumulator_op/session.rs",
+            "readback_emissions_capped",
+        ),
+    ];
+
+    /// Strip `#[cfg(test)]` items so unit-test referees are not production call sites.
+    fn strip_cfg_test_items(src: &str) -> String {
+        let lines: Vec<&str> = src.lines().collect();
+        let mut out = String::new();
+        let mut i = 0usize;
+        while i < lines.len() {
+            let trimmed = lines[i].trim_start();
+            if trimmed.starts_with("#[cfg(test)]") {
+                i += 1;
+                while i < lines.len() && lines[i].trim_start().starts_with("#[") {
+                    i += 1;
+                }
+                if i >= lines.len() {
+                    break;
+                }
+                let mut depth = 0i32;
+                let mut started = false;
+                while i < lines.len() {
+                    for c in lines[i].chars() {
+                        if c == '{' {
+                            depth += 1;
+                            started = true;
+                        } else if c == '}' {
+                            depth -= 1;
+                        }
+                    }
+                    i += 1;
+                    if started && depth <= 0 {
+                        break;
+                    }
+                    // Attribute-only / single-line item without braces.
+                    if !started && !lines[i.saturating_sub(1)].contains('{') {
+                        break;
+                    }
+                }
+                continue;
+            }
+            out.push_str(lines[i]);
+            out.push('\n');
+            i += 1;
+        }
+        out
+    }
+
+    fn line_is_code(line: &str) -> bool {
+        let t = line.trim_start();
+        !t.is_empty() && !t.starts_with("//")
+    }
+
+    fn line_has_api_call(line: &str, api: &str) -> bool {
+        if !line_is_code(line) {
+            return false;
+        }
+        line.contains(&format!(".{api}("))
+    }
+
+    fn line_has_api_def(line: &str, api: &str) -> bool {
+        if !line_is_code(line) {
+            return false;
+        }
+        // `fn readback_emissions(` does not match `fn readback_emissions_capped(`.
+        line.contains(&format!("fn {api}("))
+    }
+
+    /// Discover production emission-door call sites under `crates_root`.
+    fn collect_emission_door_call_sites(crates_root: &std::path::Path) -> Vec<EmissionDoorCallSite> {
+        let mut sites = Vec::new();
+        for entry in walkdir_rs_files(crates_root) {
             let Ok(text) = std::fs::read_to_string(&entry) else {
                 continue;
             };
-            if !(text.contains(CALL) || text.contains(DEF)) {
-                continue;
-            }
-            // Normalize to crates-relative path with forward slashes.
             let rel = entry
-                .strip_prefix(&crates_root)
+                .strip_prefix(crates_root)
                 .unwrap_or(&entry)
                 .to_string_lossy()
                 .replace('\\', "/");
-            // Integration/unit test files under tests/ may invoke the API in
-            // referees; production authority is crates/*/src only.
+            // Production authority: crates/*/src only (not integration tests/).
             if rel.contains("/tests/") {
                 continue;
             }
-            found.push(rel);
+            let prod = strip_cfg_test_items(&text);
+            for line in prod.lines() {
+                if !line_is_code(line) {
+                    continue;
+                }
+                for api in EMISSION_DOOR_APIS {
+                    if line_has_api_call(line, api) {
+                        sites.push(EmissionDoorCallSite {
+                            path: rel.clone(),
+                            api: (*api).to_string(),
+                            line: line.trim().to_string(),
+                        });
+                        break; // longest-first APIs: one match per line
+                    }
+                }
+            }
         }
-        found.sort();
-        found.dedup();
+        sites.sort();
+        sites.dedup();
+        sites
+    }
 
-        let unsanctioned: Vec<&str> = found
-            .iter()
-            .map(String::as_str)
-            .filter(|p| !SANCTIONED.iter().any(|s| s == p))
-            .collect();
-        assert!(
-            unsanctioned.is_empty(),
-            "unsanctioned observer-egress call site(s): {unsanctioned:?}\n\
-             sanctioned set: {SANCTIONED:?}\n\
-             full found set: {found:?}"
-        );
-        for s in SANCTIONED {
-            assert!(
-                found.iter().any(|f| f == s),
-                "sanctioned call site missing from tree walk: {s}"
-            );
+    fn collect_emission_door_defs(
+        crates_root: &std::path::Path,
+    ) -> Vec<(String, String)> {
+        let mut defs = Vec::new();
+        for entry in walkdir_rs_files(crates_root) {
+            let Ok(text) = std::fs::read_to_string(&entry) else {
+                continue;
+            };
+            let rel = entry
+                .strip_prefix(crates_root)
+                .unwrap_or(&entry)
+                .to_string_lossy()
+                .replace('\\', "/");
+            if rel.contains("/tests/") {
+                continue;
+            }
+            let prod = strip_cfg_test_items(&text);
+            for line in prod.lines() {
+                for api in EMISSION_DOOR_APIS {
+                    if line_has_api_def(line, api) {
+                        defs.push((rel.clone(), (*api).to_string()));
+                        break;
+                    }
+                }
+            }
         }
+        defs.sort();
+        defs.dedup();
+        defs
+    }
+
+    /// Exact-set equality: found `(path, api, line)` must match sanctioned pins.
+    fn verify_emission_door_census(
+        calls: &[EmissionDoorCallSite],
+        defs: &[(String, String)],
+    ) -> Result<(), String> {
+        // Map each found call to a sanctioned pin via path+api+line contains pin.
+        let mut unmatched_found: Vec<String> = Vec::new();
+        let mut matched_sanctioned = vec![false; SANCTIONED_EMISSION_DOOR_CALLS.len()];
+        for site in calls {
+            let mut hit = None;
+            for (i, (path, api, pin)) in SANCTIONED_EMISSION_DOOR_CALLS.iter().enumerate() {
+                if site.path == *path && site.api == *api && site.line.contains(pin) {
+                    hit = Some(i);
+                    break;
+                }
+            }
+            match hit {
+                Some(i) => {
+                    if matched_sanctioned[i] {
+                        return Err(format!(
+                            "duplicate match for sanctioned pin #{i} at {}::{} line={}",
+                            site.path, site.api, site.line
+                        ));
+                    }
+                    matched_sanctioned[i] = true;
+                }
+                None => unmatched_found.push(format!(
+                    "{}::{} :: {}",
+                    site.path, site.api, site.line
+                )),
+            }
+        }
+        if !unmatched_found.is_empty() {
+            return Err(format!(
+                "unsanctioned emission-door call site(s): {unmatched_found:?}\n\
+                 sanctioned pins: {SANCTIONED_EMISSION_DOOR_CALLS:?}"
+            ));
+        }
+        for (i, ok) in matched_sanctioned.iter().enumerate() {
+            if !ok {
+                let (p, a, pin) = SANCTIONED_EMISSION_DOOR_CALLS[i];
+                return Err(format!(
+                    "missing sanctioned emission-door call site: {p}::{a} pin={pin:?}"
+                ));
+            }
+        }
+
+        let expected_defs: Vec<(String, String)> = SANCTIONED_EMISSION_DOOR_DEFS
+            .iter()
+            .map(|(p, a)| ((*p).to_string(), (*a).to_string()))
+            .collect();
+        if defs != &expected_defs[..] {
+            return Err(format!(
+                "emission-door definition set mismatch\n found={defs:?}\n expected={expected_defs:?}"
+            ));
+        }
+        Ok(())
+    }
+
+    /// Negative bypass census (Remand 5+6): production call sites of
+    /// `push_emissions_into_production_egress`, `readback_emissions`, and
+    /// `readback_emissions_capped` must equal the sanctioned pin set.
+    /// A new direct-readback observer bypass turns RED.
+    #[test]
+    fn observer_egress_negative_bypass_census() {
+        let crates_root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..");
+        let calls = collect_emission_door_call_sites(&crates_root);
+        let defs = collect_emission_door_defs(&crates_root);
+        verify_emission_door_census(&calls, &defs).unwrap_or_else(|e| panic!("{e}"));
 
         // Feeder production site: Result must not be swallowed; must target the
         // admitted world ring and surface ProductionEmissionEgress.
@@ -2950,20 +3154,94 @@ mod tests {
             "feeder must admit into WorldGpuState::production_event_egress"
         );
 
-        // Burn-in: Result propagated (not discarded); ring admission before parity
-        // direct readback. Direct readback remains parity/oracle only.
+        // Burn-in: Result propagated; ring admit then parity direct readback only.
         let burn_in = include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/../simthing-driver/src/resource_economy_burn_in.rs"
         ));
         assert!(
-            burn_in.contains(CALL) && burn_in.contains("?"),
+            burn_in.contains(".push_emissions_into_production_egress(") && burn_in.contains("?"),
             "burn-in must propagate production egress Result"
         );
         assert!(
             !burn_in.contains("let _ = session.push_emissions_into_production_egress"),
             "burn-in must not swallow production egress Result"
         );
+        // Order discipline: ring admit line appears before parity readback line.
+        let push_at = burn_in
+            .find("session.push_emissions_into_production_egress")
+            .expect("burn-in push");
+        let read_at = burn_in
+            .find("session.readback_emissions")
+            .expect("burn-in parity readback");
+        assert!(
+            push_at < read_at,
+            "burn-in must admit through production egress before parity readback_emissions"
+        );
+    }
+
+    /// Remand 6 planted defect: an unsanctioned production direct-readback call
+    /// must turn the census RED (not a mere presence/count tautology).
+    #[test]
+    fn observer_egress_census_reds_on_unsanctioned_direct_readback_call() {
+        let crates_root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..");
+        let mut calls = collect_emission_door_call_sites(&crates_root);
+        let defs = collect_emission_door_defs(&crates_root);
+        // Baseline must be green so the RED is attributable to the plant.
+        verify_emission_door_census(&calls, &defs).expect("baseline census green");
+
+        // Plant: production-shaped direct readback that bypasses StampedEventRing.
+        calls.push(EmissionDoorCallSite {
+            path: "simthing-feeder/src/dispatcher.rs".into(),
+            api: "readback_emissions".into(),
+            line: "let _bypass = session.readback_emissions(&state.ctx);".into(),
+        });
+        let err = verify_emission_door_census(&calls, &defs)
+            .expect_err("unsanctioned direct readback must RED the census");
+        assert!(
+            err.contains("unsanctioned") && err.contains("readback_emissions"),
+            "RED message must name the unsanctioned direct-readback site, got: {err}"
+        );
+
+        // Plant via filesystem walk: new production file with capped readback.
+        let tmp = std::env::temp_dir().join(format!(
+            "egs_r6_census_{}_{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_nanos())
+                .unwrap_or(0)
+        ));
+        let evil_dir = tmp.join("simthing-kernel").join("src").join("planted");
+        std::fs::create_dir_all(&evil_dir).expect("temp plant dir");
+        let evil_file = evil_dir.join("observer_bypass.rs");
+        std::fs::write(
+            &evil_file,
+            "// planted defect for Remand 6 census selftest\n\
+             fn evil(session: &S, ctx: &C) {\n\
+                 let _ = session.readback_emissions_capped(ctx);\n\
+             }\n",
+        )
+        .expect("write plant");
+        let planted_sites = collect_emission_door_call_sites(&tmp);
+        assert!(
+            planted_sites.iter().any(|s| {
+                s.api == "readback_emissions_capped"
+                    && s.path.contains("observer_bypass")
+            }),
+            "walk must discover planted readback_emissions_capped call: {planted_sites:?}"
+        );
+        // Merge plant into real tree sites → RED.
+        let mut merged = collect_emission_door_call_sites(&crates_root);
+        merged.extend(planted_sites);
+        let walk_err = verify_emission_door_census(&merged, &defs)
+            .expect_err("filesystem-planted direct readback must RED");
+        assert!(
+            walk_err.contains("unsanctioned")
+                && walk_err.contains("readback_emissions_capped"),
+            "walk RED must name capped readback plant, got: {walk_err}"
+        );
+        let _ = std::fs::remove_dir_all(&tmp);
     }
 
     /// Walk `root` for `.rs` files under crate trees (no walkdir dep).
@@ -2991,5 +3269,6 @@ mod tests {
         out
     }
 }
+
 
 
