@@ -45,7 +45,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 211b860c2a424d0386a01a2dc93d5c563abfd1411c1f58ec55c7b69d97426cb8 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | 26eab30ec86c97ac8dfd6beef7ae8c5b4d3f18c38fdaa431ec40ccce855396d3 |
-| design_0_0_8_7_rf_arena_modernization.md | 1b5d3071c19d72c19fe4f96052cdab6ae03412680f26aedaca292c78717d5987 |
+| design_0_0_8_7_rf_arena_modernization.md | 435c56015e6ff08f2fb7e029cfad18d5a2670527fe6dc62580ebbed2eb5a40ca |
 | relay_lint.sh | 4163f715cdc3b549dbf57c1744aff61ea96b9f9f0a2237376665fbdb24e986c8 |
 | doctrine_anchors.tsv | 7c40adfd3959ba9a821004004581dc2bd96b6fb6c468347c7d6385cc78594534 |
 | execution_status_taxonomy.tsv | c33df8d86dbc939e1f6b9a847b3d54e255ae602481cd459c96fba4b13cd2f145 |
@@ -88,17 +88,17 @@ Track state: `open`
 | 6.0b | SIMTHING-AUTOMATON-INTRINSIC-0 | **Phase 6: Owner-directed 2026-08-02 — the minimum viable Wei automaton, intrins | **DA-GRADUATED / merged #1591 @ af886019 — the stem cell can now LISTEN.** Reception is intrinsic: no new field, the ... |
 | 6.1 | EVENT-GENERATION-STAMP-0 | Phase 6: generation stamps on emission/threshold events; stamped ring egress wit | **DA-GRADUATED / merged #1596 @ df117bcc — generation identity is now a real async seam primitive.** Events carry sta... |
 | 6.1b | BAND-QUANTIZED-DRAW-0 | **Phase 7 foundation — Owner-directed 2026-08-02. RESTORES the original band-cro | Every existing registration without the marker produces BIT-IDENTICAL crossings, demonstrated by a planted defect; `V... |
-| 6.2 | ASYNC-COMMAND-QUEUE-0 | Phase 6: async CPU action queue landing at generation barriers; injection genera | Replay bit-exact from the injection log; shadow-tree reads torn-free (double-buffer proof). |
-| 6.2b | RESOLUTION-SITE-SPLIT-0 | **Phase 6: Owner-approved 2026-08-02 — the closed loop becomes the DEFAULT SimTh | Both modes produce BIT-IDENTICAL `BoundaryRequest` streams from identical crossings, demonstrated per converted seman... |
-| 6.3 | CONTINUOUS-POSTURE-SOAK-0 | Phase 6: continuous posture (batched generations) + N-generation soak under forc | Soak exit-proof per the phase row; paced posture unchanged (scenario-neutral posture regression green). |
+| 6.2 | ASYNC-COMMAND-QUEUE-0 | Phase 6: async CPU action queue landing at generation barriers; injection genera | Replay bit-exact from the injection log; shadow-tree reads torn-free (double-buffer proof). **SCOPE COVERAGE (DA revi... |
+| 6.2b | RESOLUTION-SITE-SPLIT-0 | **Phase 6: Owner-approved 2026-08-02 — the closed loop becomes the DEFAULT SimTh | Both modes produce BIT-IDENTICAL `BoundaryRequest` streams from identical crossings **ORIGIN IN SLOT SPACE (DA review... |
+| 6.3 | CONTINUOUS-POSTURE-SOAK-0 | Phase 6: continuous posture (batched generations) + N-generation soak under forc | Soak exit-proof per the phase row; paced posture unchanged (scenario-neutral posture regression green). **SCOPE COVER... |
 | 7.1 | MOVEMENT-DECISION-INGRESS-0 | Phase 7: movement authority — decisions as sealed Triad band crossings (need + p | Fleets move under the ordinary generation from band crossings only (no CPU branching on field reads); §7 automaton co... |
-| 7.2 | MOVEMENT-AUTHORITY-READBACK-0 | Phase 7: authoritative movement readback; 12.5 icon descriptors express real tra | Studio shows authoritative transit with ZERO icon-layer change; test-private seam retired. |
+| 7.2 | MOVEMENT-AUTHORITY-READBACK-0 | Phase 7: authoritative movement readback; 12.5 icon descriptors express real tra | Studio shows authoritative transit with ZERO icon-layer change; test-private seam retired. **SCOPE COVERAGE (DA revie... |
 | 8.1 | CONTENTION-CONSERVATION-JUDGE-0 | Phase 8: RF-1-style conservation judge over CONTESTED FLOWS (oracle-first), **in | Judge red/green proven on seeded violations against SCENARIO-NEUTRAL synthetic contention fixtures. **The R6 dress re... |
 | 8.2 | CONTENTION-ARENA-EXECUTED-0 | Phase 8: promote contention resolution to the EXECUTED RF arena — claims reduce  | Executed path judged green; **emergence falsifier: changing ONLY the authored resolution rule changes the outcome wit... |
-| 9.1 | GATED-RATES-EML-REWIRE-0 | Phase 9: exclusion-audit Family C — `gated_rates` gate evaluation → authored EML | Gate behavior parity via oracle; hardcoded cols gone; corpus green. |
-| 9.2 | RF-COLUMN-MINT-MIGRATE-0 | Phase 9: the sweep — remaining sites onto doors; DELETE the exclusion list; reti | Exclusion list empty; tripwire retired per its promotion-blocker; full build + RF batteries green. |
-| 10.1 | DOCTRINE-CI-RECONCILE-0 | Phase 10: retire impossible-state detectors; mechanize new gates (EML-addition D | Phase-row falsifier: zero impossible-state scans; zero unwatched new surfaces; selftests green. |
-| 11.1 | EMBEDDER-INTERFACE-0 | Phase 11: the five-verb Vendor Door API (formalization of existing mechanisms) + | Five verbs stand up a tree end-to-end in a test; posture choice on Run; no new subsystem (diff-proven). |
+| 9.1 | GATED-RATES-EML-REWIRE-0 | Phase 9: exclusion-audit Family C — `gated_rates` gate evaluation → authored EML | Gate behavior parity via oracle; hardcoded cols gone; corpus green. **SCOPE COVERAGE (DA review 2026-08-03, Owner-dir... |
+| 9.2 | RF-COLUMN-MINT-MIGRATE-0 | Phase 9: the sweep — remaining sites onto doors; DELETE the exclusion list; reti | Exclusion list empty; tripwire retired per its promotion-blocker; full build + RF batteries green. **SCOPE COVERAGE (... |
+| 10.1 | DOCTRINE-CI-RECONCILE-0 | Phase 10: retire impossible-state detectors; mechanize new gates (EML-addition D | Phase-row falsifier: zero impossible-state scans; zero unwatched new surfaces; selftests green. **SCOPE COVERAGE (DA ... |
+| 11.1 | EMBEDDER-INTERFACE-0 | Phase 11: the five-verb Vendor Door API (formalization of existing mechanisms) + | Five verbs stand up a tree end-to-end in a test; posture choice on Run; no new subsystem (diff-proven). **SCOPE COVER... |
 | 11.2 | EMBEDDER-GUIDE-EXEMPLARS-0 | Phase 11: DOC-BUDGET-capped Embedder's Guide + two non-game exemplars (finance t | Cold-reader exit-proof per phase row; exemplars green in CI. |
 | 12.1 | PORTABILITY-PROOF-0 | Phase 12: a domain unrelated to any shipped scenario through the Vendor Door end | Exemplar-seeded domain simulates + STEAD-observes + serializes untouched. |
 | 12.2 | CORE-CANONIZATION-0 | Phase 12: object model (P0 Root Contract + cycle + EML-ISA + Triad Doors + overl | Canonized sections land; net-prose discipline; SimThing complete and distinct; the three early-discharged canonizatio... |
