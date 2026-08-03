@@ -112,6 +112,17 @@ jobs:
           set -o pipefail
           python3 scripts/ci/detachability_check.sh --selftest 2>&1 | tee doctrine-detachability-selftest-report.txt
 
+      - name: Exit-proof coverage gate
+        run: |
+          set -o pipefail
+          python3 scripts/ci/exit_proof_coverage_check.sh 2>&1 | tee doctrine-exit-proof-coverage-report.txt
+
+      - name: Exit-proof coverage selftest
+        if: steps.gate.outputs.run_selftests == 'true'
+        run: |
+          set -o pipefail
+          python3 scripts/ci/exit_proof_coverage_check.sh --selftest 2>&1 | tee doctrine-exit-proof-coverage-selftest-report.txt
+
       - name: Scenario residue gate
         run: |
           set -o pipefail
