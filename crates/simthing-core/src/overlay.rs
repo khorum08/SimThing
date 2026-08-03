@@ -88,7 +88,17 @@ pub enum DissolveCondition {
 /// immortality by omission.
 pub enum OverlayLifecycle {
     /// Lives until dissolved — by an authored condition, or by explicit removal.
+    ///
+    /// Authored non-dispatch overlays may use this unit form. **Dispatch-minted**
+    /// overlays must use [`UntilDissolvedWith`] so an authored dissolve condition is
+    /// un-omittable (Definable Horizon / EVENT-GENERATION-STAMP-0).
     UntilDissolved,
+    /// UntilDissolved carrying at least one authored automatic dissolve condition.
+    /// Required for dispatch-minted overlays; `AtSessionEnd` is a definable horizon,
+    /// never "never". There is no permanence variant.
+    UntilDissolvedWith {
+        dissolution_conditions: Vec<DissolveCondition>,
+    },
     Transient {
         dissolution_conditions: Vec<DissolveCondition>,
     },
@@ -135,7 +145,9 @@ impl Overlay {
     pub fn is_active(&self) -> bool {
         matches!(
             self.lifecycle,
-            OverlayLifecycle::UntilDissolved | OverlayLifecycle::Transient { .. }
+            OverlayLifecycle::UntilDissolved
+                | OverlayLifecycle::UntilDissolvedWith { .. }
+                | OverlayLifecycle::Transient { .. }
         )
     }
 }

@@ -465,10 +465,11 @@ pub use spec::owner_silo_runtime_writeback::{
     RuntimeOwnerSiloWritebackInput, RuntimeOwnerSiloWritebackResult,
 };
 pub use spec::owner_channel_rf::{
-    reconstruct_owner_channel_rf_map, reduce_owner_channel_rf, OwnerChannelRfBucket,
+    integrate_stamped_reduce_up, reconstruct_owner_channel_rf_map, reduce_owner_channel_rf,
+    reduce_up_product_key, stamp_reduce_up_product, OwnerChannelRfBucket,
     OwnerChannelRfCrossingFlow, OwnerChannelRfCrossingResourceFlow, OwnerChannelRfError,
     OwnerChannelRfErrorKind, OwnerChannelRfOwnAggregate, OwnerChannelRfReduceUpReport,
-    OwnerChannelRfSteadSurface,
+    OwnerChannelRfSteadSurface, StampedReduceUpProduct,
 };
 pub use spec::owner_channel_admission::{
     admit_intrinsic_owner_channels, IntrinsicOwnerChannelAdmissionStats,

@@ -32,6 +32,8 @@ pub struct ThresholdEvent {
     col: u32,
     value: f32,
     event_kind: u32,
+    /// Producing tree generation. Stamped at seal/readback — not a GPU POD field.
+    generation: u32,
 }
 
 /// GPU byte-layout mirror for Pass 7 `event_candidates` (transport only).
@@ -61,6 +63,17 @@ impl ThresholdEvent {
         self.event_kind
     }
 
+    pub fn generation(&self) -> u32 {
+        self.generation
+    }
+
+    /// Apply the producing tree's generation stamp at the seal/readback boundary.
+    /// Crate-private: not a cross-crate sealed producer (ALLOW-SEALED-PRODUCERS).
+    pub(crate) fn with_generation(mut self, generation: u32) -> Self {
+        self.generation = generation;
+        self
+    }
+
     pub(crate) fn from_kernel_pass7_readback(
         slot: u32,
         col: u32,
@@ -72,6 +85,7 @@ impl ThresholdEvent {
             col,
             value,
             event_kind,
+            generation: 0,
         }
     }
 

@@ -1,4 +1,8 @@
 //! Sealed emission records (KERNEL-EMISSION-SEAL-0 authority surface).
+//!
+//! EVENT-GENERATION-STAMP-0: sealed CPU-side records carry a generation stamp.
+//! GPU POD layouts are **not** widened (hot-loop fence); generation is applied at
+//! the seal/readback boundary from the producing tree's generation authority.
 
 use bytemuck::{Pod, Zeroable};
 
@@ -33,6 +37,8 @@ pub struct ThresholdEmission {
     slot: u32,
     col: u32,
     value: f32,
+    /// Producing tree generation. Stamped at seal/readback — not a GPU POD field.
+    generation: u32,
 }
 
 impl ThresholdEmission {
@@ -52,6 +58,17 @@ impl ThresholdEmission {
         self.value
     }
 
+    pub fn generation(&self) -> u32 {
+        self.generation
+    }
+
+    /// Apply the producing tree's generation stamp at the seal/readback boundary.
+    /// Crate-private: not a cross-crate sealed producer (ALLOW-SEALED-PRODUCERS).
+    pub(crate) fn with_generation(mut self, generation: u32) -> Self {
+        self.generation = generation;
+        self
+    }
+
     pub(crate) fn from_kernel_threshold_crossing(
         reg_idx: u32,
         slot: u32,
@@ -63,6 +80,7 @@ impl ThresholdEmission {
             slot,
             col,
             value,
+            generation: 0,
         }
     }
 
@@ -108,6 +126,8 @@ pub struct ThresholdEmissionGpu {
 pub struct EmissionRecord {
     reg_idx: u32,
     emit_count: u32,
+    /// Producing tree generation. Stamped at seal/readback — not a GPU POD field.
+    generation: u32,
 }
 
 impl EmissionRecord {
@@ -119,10 +139,22 @@ impl EmissionRecord {
         self.emit_count
     }
 
+    pub fn generation(&self) -> u32 {
+        self.generation
+    }
+
+    /// Apply the producing tree's generation stamp at the seal/readback boundary.
+    /// Crate-private: not a cross-crate sealed producer (ALLOW-SEALED-PRODUCERS).
+    pub(crate) fn with_generation(mut self, generation: u32) -> Self {
+        self.generation = generation;
+        self
+    }
+
     pub(crate) fn from_kernel_emit_event(reg_idx: u32, emit_count: u32) -> Self {
         Self {
             reg_idx,
             emit_count,
+            generation: 0,
         }
     }
 
@@ -140,4 +172,28 @@ impl EmissionRecord {
 pub struct EmissionRecordGpu {
     pub reg_idx: u32,
     pub emit_count: u32,
+}
+
+#[cfg(test)]
+mod generation_stamp_tests {
+    use super::*;
+
+    #[test]
+    fn emission_and_threshold_records_carry_generation_without_widening_gpu_pod() {
+        assert_eq!(std::mem::size_of::<EmissionRecordGpu>(), 8);
+        assert_eq!(std::mem::size_of::<ThresholdEmissionGpu>(), 16);
+
+        let emission = EmissionRecord::from_cpu_oracle(3, 2).with_generation(11);
+        assert_eq!(emission.reg_idx(), 3);
+        assert_eq!(emission.emit_count(), 2);
+        assert_eq!(emission.generation(), 11);
+
+        let threshold = ThresholdEmission::from_cpu_oracle(1, 4, 0, 1.5).with_generation(11);
+        assert_eq!(threshold.generation(), 11);
+
+        // Unstamped mint defaults to 0; stamp is applied at the seal boundary.
+        let bare = EmissionRecord::from_cpu_oracle(0, 1);
+        assert_eq!(bare.generation(), 0);
+        assert_eq!(bare.with_generation(7).generation(), 7);
+    }
 }

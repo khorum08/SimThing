@@ -775,6 +775,9 @@ impl SimSession {
             return Ok(false);
         }
         effect.fired = true;
+        // EVENT-GENERATION-STAMP-0: dispatch-minted overlays carry UntilDissolved
+        // with an authored dissolve condition (Definable Horizon). AtSessionEnd is
+        // a definable horizon, never "never".
         let overlay = simthing_core::Overlay {
             id: simthing_core::OverlayId::new(),
             kind: simthing_core::OverlayKind::Custom("mapping_commitment".into()),
@@ -785,8 +788,13 @@ impl SimSession {
                 property_id: effect.property_id,
                 sub_field_deltas: effect.deltas.clone(),
             },
-            lifecycle: simthing_core::OverlayLifecycle::UntilDissolved,
+            lifecycle: simthing_core::dispatch_until_dissolved(vec![
+                simthing_core::DissolveCondition::AtSessionEnd,
+            ])
+            .expect("AtSessionEnd is a non-empty authored condition"),
         };
+        simthing_core::admit_dispatch_minted_overlay(&overlay)
+            .expect("dispatch-minted overlay admits under Definable Horizon");
         self.tx
             .submit_boundary(simthing_feeder::BoundaryRequest::AttachOverlay {
                 target: effect.target,

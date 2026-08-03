@@ -4,11 +4,18 @@
 //! state.  Every active node/resource pair contributes one ordinary STEAD own-aggregate row.  Effective
 //! ownership is retained only at ownership crossings, so retained owner-boundary state is
 //! O(crossings), never O(nodes × owners × resources).
+//!
+//! EVENT-GENERATION-STAMP-0: reduce-up products are a **second stamp carrier**. Integrating an
+//! unstamped product is a hard error. Stamp at the producing tree's generation; parents integrate
+//! stamped products without waiting (async is ordinary).
 
 use std::collections::{BTreeMap, BTreeSet};
 
 use simthing_core::owner_channel::{resolve_owner, resolve_owners_in_order, OwnerRef};
-use simthing_core::{SimThing, SimThingId};
+use simthing_core::{
+    integrate_stamped_product, GenerationStamp, GenerationStamped, IntegrationReceipt,
+    IntegrationSchedule, SimThing, SimThingId,
+};
 
 use super::channel_key::{OwnerChannelScopeKey, ResourceKey, ScopeId};
 
@@ -69,6 +76,9 @@ pub struct OwnerChannelRfBucket {
 }
 
 /// Conserved reduce-up report. `buckets` is in `OwnerChannelScopeKey` order.
+///
+/// This is the **unstamped** product shape. Crossing a tree seam requires
+/// [`stamp_reduce_up_product`]; integration accepts only the stamped form.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OwnerChannelRfReduceUpReport {
     pub participant_count: u32,
@@ -78,6 +88,48 @@ pub struct OwnerChannelRfReduceUpReport {
     pub deficit_total: u32,
     pub buckets: Vec<OwnerChannelRfBucket>,
     pub stead: OwnerChannelRfSteadSurface,
+}
+
+/// Reduce-up product stamped with the producing tree's generation.
+pub type StampedReduceUpProduct = GenerationStamped<OwnerChannelRfReduceUpReport>;
+
+/// Stamp a reduce-up report with the producing tree's generation.
+///
+/// The stamp rides the existing reduce-up product — no second carrier, clock, or
+/// widened hot-loop record.
+pub fn stamp_reduce_up_product(
+    generation: GenerationStamp,
+    report: OwnerChannelRfReduceUpReport,
+) -> StampedReduceUpProduct {
+    GenerationStamped::stamp(generation, report)
+}
+
+/// Stable product key derived from conserved totals (identity for the schedule log).
+pub fn reduce_up_product_key(report: &OwnerChannelRfReduceUpReport) -> u64 {
+    let mut h = 0u64;
+    h ^= report.participant_count as u64;
+    h = h.wrapping_mul(0x9E37_79B9_7F4A_7C15);
+    h ^= report.owner_count as u64;
+    h = h.wrapping_mul(0x9E37_79B9_7F4A_7C15);
+    h ^= report.bucket_count as u64;
+    h = h.wrapping_mul(0x9E37_79B9_7F4A_7C15);
+    h ^= report.surplus_total as u64;
+    h = h.wrapping_mul(0x9E37_79B9_7F4A_7C15);
+    h ^= report.deficit_total as u64;
+    h
+}
+
+/// Integrate a stamped reduce-up product at the parent generation.
+///
+/// Async is ordinary: parent at N+3 integrating child gen-N completes with no wait.
+/// Records the integration schedule for bit-exact replay. Staleness is visible.
+pub fn integrate_stamped_reduce_up(
+    parent_generation: GenerationStamp,
+    product: &StampedReduceUpProduct,
+    schedule: &mut IntegrationSchedule,
+) -> IntegrationReceipt {
+    let key = reduce_up_product_key(product.product());
+    integrate_stamped_product(parent_generation, product, key, schedule)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
