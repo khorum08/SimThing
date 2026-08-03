@@ -317,6 +317,75 @@ The deferral held the door shut until the substrate could prove what walks throu
 substrate now can. Completing EML is one landing per primitive — and at the end of it, the
 interpreter named for `eml(x, y)` computes it.
 
+## 10. Integration plan — ladder placement (Owner-directed 2026-08-03)
+
+### 10.1 Reopen review — no landed rung reopens, and the reason is the track's own achievement
+
+Every landed rung that *would* have needed reopening in the pre-5.x architecture was reviewed.
+None does, because the 5.x remodel converted exactly the surfaces `EXP`/`LN` touch into
+**authored data**: new opcodes flow through them without a diff.
+
+| Rung reviewed | Interaction | Reopen? |
+|---|---|---|
+| 5.5/5.6 field-sweep IR + adjacency | map/fold programs gain vocabulary; exponential falloff laws become authorable | **No** — programs are data; the IR is untouched |
+| 5.7 JIT + resource classes | two new opcode lowering arms (straight-line blocks) | **No** — extension within 5.7's designed surfaces, landed as part of the primitive rungs |
+| Gu-Yang piecewise `σ(u)` | a smooth logistic saturation becomes authorable | **No** — a **new authored field law beside the old one**, with its own `FieldLawProof`; the landed law and its bit-exact referees are untouched. Replacing the landed law would be a physics change requiring its own ruling — explicitly not proposed |
+| 6.1b CostBand steering | `SELECT` staircases upgrade to curves | **No** — authored-data upgrade on the landed surface; the consumer, not a reopen |
+| 5.8 comparative projections | none | **No** |
+
+The one rung whose *pending work changes* is **9.1 `GATED-RATES-EML-REWIRE-0`** — a positive
+dependency, not a reopen: 9.1 rewrites gate evaluation into the authored EML library stack and
+already binds "one library, one cap" (6.1b). If `EXP`/`LN` land **before** 9.1, the gate rewire
+authors smooth laws once; if after, staircase forms get authored and then re-authored. **The
+primitives must precede 9.1.**
+
+### 10.2 Placement — Phase 5 completion rungs, not a StemThing component
+
+Minted as **`5.10` / `5.11` / `5.12`** (Phase 5's tail is `5.9d`; the EML/field-sweep phase
+gains its completion rungs, which is where they belong taxonomically — this is vocabulary work,
+not event work, movement work, or memory work):
+
+| Rung | ID | Deliverable | Lane |
+|---|---|---|---|
+| 5.10 | `EML-PRIMITIVE-DOMAIN-0` | The generic door machinery (§4): sealed `PrimitiveDomain` type; the two admission shapes (range-certified / guarded-semantics) with the semantic distinction enforced; spanned admission errors for unguarded call sites. No primitive admitted by this rung | DA-reserve · Frontier |
+| 5.11 | `EML-EXP-PRIMITIVE-0` | Full-domain `EXP` through the door: pinned algorithm + CPU twin, exhaustive 2³² digest per certified toolchain, cost-gate win vs. the gadget baseline, `CLOSED_OPCODES` widening, JIT lowering arm, interpreter arm, scan/allowlist co-evolution. Consumers: CostBand steering curve, STEAD falloff law | Frontier |
+| 5.12 | `EML-LN-PRIMITIVE-0` | `LN` by the 5.11 template: same artifacts, same gates. Consumers: `LogAccumulate`, `PowerLaw` (with `EXP`), entropy diagnostics | Std — Grok (template established by 5.11) |
+
+**Not part of StemThing, deliberately.** The doc already rules this work independent of the
+HARD HOLD; folding it into StemThing-A would chain two independent capabilities behind the §3.1
+Tier-2 ruling for no benefit. The dependency runs the other way and later: StemThing-B's
+derivation-pricing curves are a *horizon consumer* of these primitives.
+
+### 10.3 Dispatch window and certification posture
+
+- **Dispatch after 6.3's graduation stamp** — not for design reasons but for merge hygiene:
+  6.2b's resolution-site work executes EML in-shader, and landing opcode-vocabulary diffs under
+  it risks collisions on the interpreter surfaces. Post-Phase-6, the EML surfaces are quiet.
+- **The window is therefore the same Phase 6 → 7 gap as StemThing-A, running in parallel:**
+  StemThing-A is DA analysis and docs (census, Tier-2 amendment); 5.10–5.12 are kernel engine
+  work. Disjoint files, disjoint lanes, no shared gate. If the Tier-2 ruling drags, the
+  primitives proceed regardless; if the primitives drag, they may trail into the Phase 7 period
+  (movement touches driver/sim surfaces, not the EML kernel) — the only hard ordering constraint
+  is **before 9.1**.
+- **Certification is a phase-boundary local act, not CI.** CI runs no cargo tests by standing
+  Owner ruling; the exhaustive digest and per-toolchain replay artifacts are produced locally at
+  landing, pinned in-repo (the Candidate-F artifact pattern), and the doctrine scans verify
+  artifact presence and freshness — never re-execution.
+
+### 10.4 Summary ordering
+
+```
+[ Phase 6 completes: 6.2 → 6.2b → 6.3 ]
+        │ (6.3 stamp = shared trigger)
+        ├── StemThing-A: census → §3.1 Tier-2 ruling → A-rows minted   (DA lane)
+        └── 5.10 → 5.11 (EXP) → 5.12 (LN)                              (engine lanes, parallel)
+        │
+[ Phase 7 movement (under §7.1 clause) ] → [ 8.1/8.2 ] → [ StemThing-B ]
+        │
+[ 9.1 gated-rates rewire — CONSUMES the completed vocabulary, authors smooth laws once ]
+        → 9.2 → 10.1 (scan reconcile absorbs any residue) → 11.x → 12.x
+```
+
 ## References
 
 - Odrzywołek, *All elementary functions from a single operator* (arXiv:2603.21852v2) — the
