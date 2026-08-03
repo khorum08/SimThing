@@ -20,6 +20,13 @@
 > (slot-identity stability vs. compaction, §3.1 — **blocking before any row is minted**), and
 > resolved an internal contradiction (tier vocabulary, §5). The refactor phase, the StemThing
 > thesis, and the deletion deliverable stand unchanged.
+>
+> **Amended 2026-08-03 (second — DA disposition DESIGN-ADMITTED, remand closed; Owner rulings
+> recorded).** Sol's REMAND is lifted; ladderization remains on **HARD HOLD pending §3.1**. Three
+> Owner rulings recorded in place: census timing (§3.1 — post-Phase-6, single pass), phase
+> placement and the movement interaction (§7.1, §10 — split insertion; StemThing-A precedes the
+> Phase 7 movement rungs), and the mid-session tier door (§5 — chartered as future owner-gated
+> design; the freeze is law until it exists). §0 wording normalized per DA editorial.
 
 ---
 
@@ -31,9 +38,10 @@ rootness) concludes the phase is **justified**. Four benefit classes, each groun
 in-flight mechanism:
 
 1. **Architecture.** The last un-unified mechanism dissolves. The corpus has no combat engine, no
-   pathfinding engine, no border service; after this phase it has no allocator, no registrar, and
-   no derivation framework. Every one of these is the same deliverable the track has landed five
-   times: a deletion, with a lane left where a subsystem stood.
+   pathfinding engine, no border service; after this phase it has no allocator **service**, no
+   registrar **policy/service**, and no derivation framework (the registry *substrate* remains as
+   sealed admitted metadata — §8). Every one of these is the same deliverable the track has landed
+   five times: a deletion, with a lane left where a subsystem stood.
 2. **Capability.** Admission-by-conservation (§4), shape-anticipating pre-allocation (§6),
    ontogeny as ground-truth corpus columns (§6), and the learned-policy-as-data loop extended to
    the engine's own resource management.
@@ -233,6 +241,14 @@ class). The tier does not *cause* those properties; they are its *components*.
   statically solvable; underneath, the engine vocabulary (residency classes, lane semantics) is
   small, generic, and closed, and authored tiers only *compose* it. This resolves open-vs-closed
   without contradiction: open to the designer, fixed for the session, closed in the engine.
+  **Owner ruling (2026-08-03): a mid-session tier door is chartered as a future, separately
+  designed, owner-gated capability** — dynamic ontogeny (runtime minting of genuinely new tier
+  definitions) is worth pursuing for the oblique capability and corpus richness it may expose,
+  provided new definitions pass **session-admission-grade validation at an epoch boundary** (the
+  injection-corruption guard is the same admission substrate, applied later). Until that door is
+  designed, the freeze is law, census width is session-fixed, and "schema evolution" in the corpus
+  sense means **usage evolution over the admitted vocabulary, not vocabulary invention** (Sol's
+  sharpening, adopted).
 - The shape ladder underneath is small and closed at design time. The canonical worked example: a
   galaxy worldmap (150×150 gridcell children), a star system (10×10), a planet (10×10), and a
   planet surface (10×10) are **one tier — spatial container — drawn four times at different N**
@@ -290,6 +306,27 @@ What the census endows:
 ---
 
 ## 7. Rootness as the granting tier — and where layout lands
+
+### 7.1 Movement never moves memory — the binding clause on the Phase 7 rungs
+
+Core law already states that movement is the **only** spatial reparenting and that it executes as
+**column updates and arena re-enrollment** — a parent-pointer flip plus membership changes, zero
+row relocation. The residency design preserves this by construction, through the tier's churn
+class:
+
+- **Static-class SimThings** (gridcells, spatial containers) never move; their
+  subtree-contiguous blocks and coalesced reductions never degrade.
+- **Mobile SimThings** (the churn class) are allocated from **churn arenas — never embedded
+  inside a spatial container's block** — and are gathered by arena membership (`INPUT_LIST`),
+  which is exactly how the RF column structure already sustains them today. Reparenting flips
+  columns and memberships and **cannot fragment a spatial block**, because the mover's rows were
+  never inside one.
+
+**Binding forward clause (Owner ruling 2026-08-03, motivating the split insertion in §10):** the
+Phase 7 movement rungs must make **zero physical-placement assumptions**, must express
+reparenting entirely as column/membership updates against the tier vocabulary, and must never
+implement movement as row relocation. Movement settling *before* this vocabulary exists is the
+hazard the split insertion removes.
 
 **Rootness is a capability tier, not a type — and granting root ≠ session root.** Per-Tree
 Instantiation already states it in CPU-struct form ("a subtree IS a root SimThing tree and gets
@@ -423,7 +460,19 @@ own placement belongs to its granter's barrier, which for the session root is se
 - **Blocking pre-decision:** the §3.1 slot-identity ruling (Tier-2 core-design amendment with the
   slot-bearing-artifact enumeration) must land **before any row of this phase is minted**. It is
   the one place this anchor currently conflicts with standing law, and the conflict resolves by
-  amendment, never by reinterpretation.
+  amendment, never by reinterpretation. **Owner ruling on census timing (2026-08-03): the census
+  runs as a single pass after Phase 6 closes** — surfaces stop moving first; the Tier-2 ruling
+  window is therefore the Phase 6 → 7 gap. Per Sol: the enumeration must be a **tree-derived
+  exhaustive census**, not the illustrative §3.1 list. Two artifacts are pre-flagged as the likely
+  hard cases: canonical fold order (must be provably pinned to *logical* identity, or rebinding
+  breaks bit-exactness) and replay records (any physical-row keying forces the remap into the
+  canonical history surface).
+- **Split insertion (Owner ruling 2026-08-03, placement inside 0.0.8.7):**
+  **StemThing-A** lands in the **Phase 6 → 7 gap** — the census, the §3.1 Tier-2 ruling, the
+  residency/tier vocabulary, and the §7.1 movement clause — so allocation/tiling awareness exists
+  **before the movement regime settles**. **StemThing-B** — the granting arena, authored-priority
+  retirement of LIFO, allocator-service deletion, placement oracle — lands **after 8.2**, keeping
+  its true dependencies. The must-precede-11.1 constraint is unchanged and satisfied by B.
 - **Consumes (must be landed):** 6.0 owner channels; 6.1 stamps; 6.1b CostBand; 6.2 coalescing
   queue; 8.1 conservation judge; 8.2 contention arena (slot contention resolves there — the
   arena's authored-rule law is what retires LIFO). The placement oracle (extent disjointness) is
