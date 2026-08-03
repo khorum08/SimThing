@@ -391,6 +391,29 @@ Corpus Boundary Law to CODE and to PROOFS but never to **the workplan**, which i
 generates all future code and proofs and was the one surface left unguarded. A purge that cleans the
 tree while leaving the plan contaminated guarantees regrowth.
 
+**EXTENSION — CONSTITUTIONAL-CHANGE CLASS (Owner-directed, 2026-08-03).** The same enumeration duty
+binds a **constitutional-change-class** rung: any rung that renames a serde-visible variant, requires
+a new field on an admitted type, retires an anchor id, or otherwise invalidates existing references.
+A purge invalidates by REMOVING; a constitutional change invalidates by REDEFINING. The failure mode
+is identical and so is the remedy. **The blast radius of such a change is STATICALLY COMPUTABLE and
+MUST be enumerated in the same PR** — every serialized surface (`.ron`, `.clause`, `.json`, fixtures),
+every doc example, every construction site, every anchor id. Recorded because it happened: the
+`Permanent` -> `UntilDissolved` rename left **nine authored RON assets** naming a variant that no
+longer existed, `existing_authored_ron_capability_trees_admit_unchanged` went RED, and it survived
+several rungs before a DA review found it by accident.
+
+**RECONCILIATION IS ENUMERATION, NOT TEST EXECUTION.** All nine assets were findable by grep with
+zero test runs; the suite did not catch the defect, it merely reported it late. Running the workspace
+suite is NOT the discharge of this duty and MUST NOT be proposed as one — CI runs no `cargo test` by
+standing Owner ruling, and that ruling is not in tension with this law because the duty is static.
+A sweep restricted to one file type is not an enumeration: the miss above happened because the sweep
+used `--include=*.md` and never saw `.ron`.
+
+**The duty lands with the rung that makes the change, never deferred to a reconciliation rung at the
+end of the workplan.** Deferred reconciliation decays attribution — establishing whether a red
+pre-dates a rung costs a base checkout per question, and that archaeology exceeds the fix cost long
+before a phase closes.
+
 **The Mechanisms-Not-Domains Law (Owner mandate, 2026-08-01).** **The engine names MECHANISMS; it
 never names DOMAIN ACTIVITIES.** "Combat", "trade", "diplomacy", "siege" are domain words and are
 inadmissible as mechanism, rung, type, or module names. The mechanism behind all of them is
