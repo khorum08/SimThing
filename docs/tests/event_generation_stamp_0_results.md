@@ -1,7 +1,7 @@
 # EVENT-GENERATION-STAMP-0 results
 
 - Track: 0.0.8.7 RF arena modernization (rung 6.1)
-- Status: **PROBATION / proof-present / DA-review-pending** (Remand 2 + DA addendum)
+- Status: **COMPLETE / DA-GRADUATED — merged #1596 @ df117bcc** (blocker 4 closed at Remand 6; DA audit record: `event_generation_stamp_0_da_audit.md`)
 - ORIENT-RECEIPT: `8bcf881f793a`
 - orientation_rule_stamp: `2e9a349eddfe2d31`
 - HD-RECEIPT: `9df0629526ec` (re-issued; supersedes `22c8f88826dd`)
@@ -37,4 +37,4 @@ inventory drift PASS
 
 ## Posture
 
-**PROBATION / proof-present / DA-review-pending**. No `/clearance`. No merge.
+**COMPLETE / DA-GRADUATED — merged #1596 @ df117bcc.** Blocker 4 closed at Remand 6 after the DA independently planted the dead-egress defect and confirmed it REDs.
