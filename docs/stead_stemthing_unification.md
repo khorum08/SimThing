@@ -467,6 +467,14 @@ own placement belongs to its granter's barrier, which for the session root is se
   hard cases: canonical fold order (must be provably pinned to *logical* identity, or rebinding
   breaks bit-exactness) and replay records (any physical-row keying forces the remap into the
   canonical history surface).
+- **Shared window with the EML completion rungs (Owner-approved 2026-08-03):** rungs
+  `5.10`–`5.12` (`PrimitiveDomain` door machinery, full-domain `EXP`, `LN` — see
+  [`full_eml_unification.md`](full_eml_unification.md) §10) dispatch in the **same Phase 6 → 7
+  gap, in parallel with StemThing-A**: disjoint files (kernel EML surfaces vs. census/Tier-2
+  docs), disjoint lanes, no shared gate — neither stream waits on the other. The primitives are
+  deliberately **not** StemThing components; the dependency runs the other way and later:
+  **StemThing-B's derivation-pricing and potency-depletion curves are horizon consumers of
+  `EXP`/`LN`/`POW`**, authorable as ordinary gadgets when B's rungs land.
 - **Integration sequencing (Owner ruling 2026-08-03 — Phase 6 lands as stated; the trigger chain
   is tree-state, never calendar):**
   1. Phase 6 completes under its existing rows (6.2, 6.2b, 6.3 + any unstamped ladder cells) —
