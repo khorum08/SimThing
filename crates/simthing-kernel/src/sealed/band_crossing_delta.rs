@@ -113,6 +113,22 @@ impl BandCrossingDelta {
         self.event_kind
     }
 
+    /// CostBand draw from sealed operands (`post_value` = V, `threshold` = C).
+    /// Observation (non-sink) yields N=0; sinks use the shared quantize path.
+    /// Zero kernel widening — pure algebra over already-sealed fields.
+    pub fn cost_band_draw(
+        &self,
+        is_sink: bool,
+        throttle_hint_max_per_tick: Option<u32>,
+    ) -> Result<simthing_core::CostBandDraw, simthing_core::CostBandAdmissionError> {
+        simthing_core::cost_band_quantize(
+            self.post_value(),
+            self.threshold(),
+            is_sink,
+            throttle_hint_max_per_tick,
+        )
+    }
+
     pub(crate) fn from_fused_threshold_emission(
         emission: &ThresholdEmission,
         reg: &ThresholdRegistration,
