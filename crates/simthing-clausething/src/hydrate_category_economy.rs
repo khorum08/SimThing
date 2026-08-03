@@ -478,8 +478,8 @@ pub(crate) fn parse_commitment_effect_block(
         }
     }
     let transform = match (amount_mult, amount_add) {
-        (Some(mult), None) => TransformOp::Multiply(mult),
-        (None, Some(add)) => TransformOp::Add(add),
+        (Some(mult), None) => TransformOp::multiply(mult),
+        (None, Some(add)) => TransformOp::add(add),
         _ => {
             return Err(HydrateError::new_spanned(
                 "effect requires exactly one of amount_mult / amount_add",

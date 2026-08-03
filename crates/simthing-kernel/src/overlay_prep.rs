@@ -9,7 +9,6 @@
 //! trivially preserved: no composition step, no rounding-order divergence.
 
 use simthing_core::overlay::PropertyTransformDelta;
-use simthing_core::property::TransformOp;
 use simthing_core::{DimensionRegistry, LiveOverlayRoutes, SimThing};
 
 use crate::slot::SlotAllocator;
@@ -124,10 +123,16 @@ fn emit_transform(
         let Some(col) = range.col_for_role(role, layout) else {
             continue;
         };
-        let (op_kind, value) = match op {
-            TransformOp::Multiply(v) => (OP_MULTIPLY, *v),
-            TransformOp::Add(v) => (OP_ADD, *v),
-            TransformOp::Set(v) => (OP_SET, *v),
+        // Degenerate Add/Mul/Set program shapes lower to GPU OrderBands.
+        // Multi-node EML stays CPU/EML-path only (zero WGSL widen).
+        let (op_kind, value) = if let Some(v) = op.as_multiply_literal() {
+            (OP_MULTIPLY, v)
+        } else if let Some(v) = op.as_add_literal() {
+            (OP_ADD, v)
+        } else if let Some(v) = op.as_set_literal() {
+            (OP_SET, v)
+        } else {
+            continue;
         };
         deltas.push(OverlayDelta {
             col: encode_column(col),

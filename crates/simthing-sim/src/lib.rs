@@ -112,8 +112,8 @@ pub use replay::{
 pub use sim_runtime_tree::SimRuntimeTree;
 pub use threshold_registry::{
     assert_no_hard_trigger_on_soft_aggregate, AggregateAlertEvent, AggregateAlertRegistration,
-    SoftAggregateViolation, ThresholdBuilder, ThresholdRegistry, ThresholdSemantic,
-    VelocityAlertEvent, VelocityAlertRegistration,
+    CostBandSemantic, SoftAggregateViolation, ThresholdBuilder, ThresholdRegistry,
+    ThresholdSemantic, VelocityAlertEvent, VelocityAlertRegistration,
 };
 pub use tree_mutation::apply_structural_mutations;
 

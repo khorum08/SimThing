@@ -48,8 +48,9 @@
 
 use serde::{Deserialize, Serialize};
 use simthing_core::{
-    DecayBehavior, DimensionRegistry, Direction, ReductionRule, SimPropertyId, SimThing,
-    SimThingId, SoftAggregateGuard, SubFieldRole,
+    cost_band_quantize, CostBandAdmissionError, CostBandDraw, CostBandRegistrationMarker,
+    CostBandResourceMarker, DecayBehavior, DimensionRegistry, Direction, ReductionRule,
+    SimPropertyId, SimThing, SimThingId, SoftAggregateGuard, SubFieldRole, admit_cost_band_marker,
 };
 use simthing_feeder::{
     CapabilityUnlockEvent, CapabilityUnlockRegistration, ScriptedEventTriggerEvent,
@@ -155,6 +156,10 @@ impl ThresholdSemantic {
 }
 
 /// AI-facing threshold registration for a rate/trajectory column on `values`.
+///
+/// CostBand admission rides this existing registration channel (keyed by the
+/// assigned `event_kind`) — observation by default; sinks carry authored
+/// throttle from the stored-hydrated `throttle_hint_max_per_tick` source.
 #[derive(Clone, Debug)]
 pub struct VelocityAlertRegistration {
     pub sim_thing_id: SimThingId,
@@ -162,6 +167,8 @@ pub struct VelocityAlertRegistration {
     pub sub_field: SubFieldRole,
     pub threshold: f32,
     pub direction: Direction,
+    /// Authored CostBand / sink semantics for this registration.
+    pub cost_band: CostBandSemantic,
 }
 
 /// AI-facing threshold on post-reduction `output_vectors` (parent aggregates).
@@ -172,6 +179,8 @@ pub struct AggregateAlertRegistration {
     pub sub_field: SubFieldRole,
     pub threshold: f32,
     pub direction: Direction,
+    /// Authored CostBand / sink semantics for this registration.
+    pub cost_band: CostBandSemantic,
 }
 
 /// Fired aggregate alert surfaced by the boundary protocol.
@@ -192,14 +201,58 @@ pub struct VelocityAlertEvent {
     pub value: f32,
 }
 
+// ── CostBand admission (event_kind-parallel; never GPU POD) ───────────────────
+
+/// Authored CostBand / sink semantics for one `event_kind` registration.
+/// Observation is the default (`is_sink = false`). Sinks carry optional
+/// `throttle_hint_max_per_tick` enforced at draw resolution.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CostBandSemantic {
+    pub is_sink: bool,
+    pub throttle_hint_max_per_tick: Option<u32>,
+}
+
+impl CostBandSemantic {
+    pub const fn observation() -> Self {
+        Self {
+            is_sink: false,
+            throttle_hint_max_per_tick: None,
+        }
+    }
+
+    /// Admit a sink registration. Optional per-resource marker: per-registration
+    /// wins; ambiguity hard-errors.
+    pub fn admit_sink(
+        throttle_hint_max_per_tick: Option<u32>,
+        resource: Option<CostBandResourceMarker>,
+    ) -> Result<Self, CostBandAdmissionError> {
+        if let Some(0) = throttle_hint_max_per_tick {
+            return Err(CostBandAdmissionError::InvalidThrottle);
+        }
+        let is_sink = admit_cost_band_marker(
+            Some(CostBandRegistrationMarker { is_sink: true }),
+            resource,
+        )?;
+        Ok(Self {
+            is_sink,
+            throttle_hint_max_per_tick,
+        })
+    }
+}
+
 // ── Registry ──────────────────────────────────────────────────────────────────
 
 /// Parallel-indexed companion to the GPU threshold_registry buffer.
 /// `registry[event_kind]` → `ThresholdSemantic`.
+/// CostBand admission is parallel by the same `event_kind` index (CPU semantic
+/// table — never a second transport or GPU POD field).
 /// Rebuilt from scratch at each boundary by `ThresholdBuilder`.
 #[derive(Clone, Debug, Default)]
 pub struct ThresholdRegistry {
     entries: Vec<ThresholdSemantic>,
+    cost_bands: Vec<CostBandSemantic>,
+    /// Production resolve invocations (live-wiring referee; not sim authority).
+    pub cost_band_resolve_invocations: u64,
 }
 
 impl ThresholdRegistry {
@@ -212,11 +265,75 @@ impl ThresholdRegistry {
         self.entries.get(event_kind as usize)
     }
 
-    /// Push a new entry and return the event_kind assigned to it.
+    /// CostBand admission for `event_kind` (observation default if missing).
+    pub fn cost_band(&self, event_kind: u32) -> CostBandSemantic {
+        self.cost_bands
+            .get(event_kind as usize)
+            .copied()
+            .unwrap_or_else(CostBandSemantic::observation)
+    }
+
+    /// Push a new observation-default entry and return the event_kind assigned.
     pub fn push(&mut self, sem: ThresholdSemantic) -> u32 {
+        self.push_with_cost_band(sem, CostBandSemantic::observation())
+    }
+
+    /// Push with explicit CostBand admission (production sink path).
+    pub fn push_with_cost_band(&mut self, sem: ThresholdSemantic, cost_band: CostBandSemantic) -> u32 {
+        debug_assert_eq!(self.entries.len(), self.cost_bands.len());
         let idx = self.entries.len() as u32;
         self.entries.push(sem);
+        self.cost_bands.push(cost_band);
         idx
+    }
+
+    /// Production CostBand door: resolve draw from sealed delta operands +
+    /// admitted `event_kind` semantics. Callers cannot opt out a sink via
+    /// ad-hoc `is_sink=false` or substitute throttle.
+    pub fn resolve_cost_band_draw(
+        &mut self,
+        event_kind: u32,
+        available_v: f32,
+        unit_cost_c: f32,
+    ) -> Result<CostBandDraw, CostBandAdmissionError> {
+        self.cost_band_resolve_invocations =
+            self.cost_band_resolve_invocations.saturating_add(1);
+        let cb = self.cost_band(event_kind);
+        cost_band_quantize(
+            available_v,
+            unit_cost_c,
+            cb.is_sink,
+            cb.throttle_hint_max_per_tick,
+        )
+    }
+
+    /// Resolve from a sealed band-crossing delta (V=post_value, C=threshold).
+    pub fn resolve_cost_band_draw_from_delta(
+        &mut self,
+        delta: &simthing_gpu::BandCrossingDelta,
+    ) -> Result<CostBandDraw, CostBandAdmissionError> {
+        let (v, c) = (delta.post_value(), delta.threshold());
+        self.resolve_cost_band_draw(delta.event_kind(), v, c)
+    }
+
+    /// Ordinary production crossing path: resolve CostBand draws for sealed
+    /// deltas through the `event_kind` semantic table. Boundary calls this;
+    /// dead-coding / bypassing it must RED the live-wiring referee.
+    pub fn resolve_cost_band_draws_for_deltas(
+        &mut self,
+        deltas: &[simthing_gpu::BandCrossingDelta],
+    ) -> Vec<(u32, CostBandDraw)> {
+        let mut out = Vec::with_capacity(deltas.len());
+        for delta in deltas {
+            match self.resolve_cost_band_draw_from_delta(delta) {
+                Ok(draw) => out.push((delta.event_kind(), draw)),
+                Err(_) => {
+                    // Invalid V/C on a sealed delta is a non-authoritative skip;
+                    // the resolve attempt still advances the live-wiring counter.
+                }
+            }
+        }
+        out
     }
 
     pub fn len(&self) -> usize {
@@ -1002,11 +1119,14 @@ impl ThresholdBuilder {
                 continue;
             };
 
-            let event_kind = cpu_reg.push(ThresholdSemantic::VelocityAlert {
-                sim_thing_id: alert.sim_thing_id,
-                property_id: alert.property_id,
-                sub_field: alert.sub_field.clone(),
-            });
+            let event_kind = cpu_reg.push_with_cost_band(
+                ThresholdSemantic::VelocityAlert {
+                    sim_thing_id: alert.sim_thing_id,
+                    property_id: alert.property_id,
+                    sub_field: alert.sub_field.clone(),
+                },
+                alert.cost_band,
+            );
             gpu_regs.push(ThresholdRegistration {
                 slot: slot.raw(),
                 col: col.raw_u32(),
@@ -1038,11 +1158,14 @@ impl ThresholdBuilder {
                 continue;
             };
 
-            let event_kind = cpu_reg.push(ThresholdSemantic::AggregateAlert {
-                sim_thing_id: alert.sim_thing_id,
-                property_id: alert.property_id,
-                sub_field: alert.sub_field.clone(),
-            });
+            let event_kind = cpu_reg.push_with_cost_band(
+                ThresholdSemantic::AggregateAlert {
+                    sim_thing_id: alert.sim_thing_id,
+                    property_id: alert.property_id,
+                    sub_field: alert.sub_field.clone(),
+                },
+                alert.cost_band,
+            );
             gpu_regs.push(ThresholdRegistration {
                 slot: slot.raw(),
                 col: col.raw_u32(),

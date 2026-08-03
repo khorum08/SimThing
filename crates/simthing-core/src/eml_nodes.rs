@@ -102,7 +102,7 @@ pub mod opcode {
 
 /// Postfix EML program node (24 B, WGSL-aligned).
 #[repr(C)]
-#[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
+#[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable, Serialize, Deserialize)]
 pub struct EmlNode {
     pub opcode: u32,
     pub flags: u32,

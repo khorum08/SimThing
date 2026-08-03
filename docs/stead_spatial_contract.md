@@ -35,6 +35,25 @@ Unoccupied cells are **ambient field**, not absent ontology. Lattices are **spar
 ## 5. RF / Accumulator relationship to STEAD
 RF/Accumulator stays **generic**. **But when an arena's participants are gridcell `Location`s, it is spatially indexed through STEAD**: each participant **must** have a `StructuralGridPlacement` in `grid_metadata` (never render metadata), and the arena records its `StructuralGridFrame` (`SpatialArenaBindingReport`). Code: `validate_spatial_binding` rejects a Location participant without a structural placement; `SpatiallyNeutral` arenas need no grid. Resource-flow code touching Location participants **must confront** this.
 
+### 5.1 CostBand — THE resource-sink definition (BAND-QUANTIZED-DRAW-0)
+
+**CostBand** (one word, camel-humped) is **the** definition of a resource sink — never an opt-in mode and never a rival sink beside observation.
+
+- **Observation is the base case.** A threshold crossing that costs nothing and consumes nothing already *is* observation.
+- **Action is observation with a CostBand attached.** The authored question is *"is this a sink?"*, never *"is this a CostBand?"* — every sink **is** a CostBand.
+- **Algebra (exact by construction):** given available value `V` and unit cost `C`,
+  `N = floor(V/C)` (optionally capped by authored `throttle_hint_max_per_tick`),
+  `R = V − N·C`, and **`V = N·C + R` exactly**. Both operands ride sealed
+  `BandCrossingDelta` fields (`threshold()` = C, `post_value()` = V); zero WGSL
+  and zero `ThresholdRegistration` layout change.
+- **Booleans are depth 1** through the same quantize path as depth N — no separate
+  did-it-fire branch. Command deficits (`requested: 1`) are the depth-1 degenerate.
+- **Marker is authored** per registration (and may also be per resource);
+  per-registration wins; ambiguity hard-errors at admission. Marker lives on the
+  CPU-side semantic table keyed by `event_kind`, never the GPU POD.
+- Conservation of the draw is **per-resource-channel** (`N·C` consumed exactly);
+  output minting is a separate channel (Stage 2 recipe re-expression is out of scope).
+
 ## 6. PALMA relationship to STEAD
 PALMA W/D feedstock is a **field over the structural lattice** (`grid_size` from `grid_metadata`), not render coordinates. PALMA `D` is a **field, not a route** — no predecessors, no `came_from`, no path objects, no pathfinding.
 

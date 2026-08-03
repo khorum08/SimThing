@@ -375,7 +375,7 @@ mod tests {
             affects: Vec::new(),
             transform: PropertyTransformDelta {
                 property_id: SimPropertyId(0),
-                sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Set(0.5))],
+                sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::set(0.5))],
             },
             lifecycle: OverlayLifecycle::UntilDissolved,
         }

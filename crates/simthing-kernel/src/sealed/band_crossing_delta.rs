@@ -113,6 +113,14 @@ impl BandCrossingDelta {
         self.event_kind
     }
 
+    /// Sealed operands for CostBand quantize: `post_value` = V, `threshold` = C.
+    /// Production authority for sink/throttle is the CPU `event_kind` semantic
+    /// table (`ThresholdRegistry::resolve_cost_band_draw_from_delta`) — not a
+    /// caller-supplied `is_sink` flag on this method.
+    pub fn cost_band_operands(&self) -> (f32, f32) {
+        (self.post_value(), self.threshold())
+    }
+
     pub(crate) fn from_fused_threshold_emission(
         emission: &ThresholdEmission,
         reg: &ThresholdRegistration,

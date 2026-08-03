@@ -40,9 +40,8 @@
 //! rebuilds during GPU sync.
 
 use simthing_core::{
-    mint_anchor_table_from_admission, prepare_fission_clone_sources_for_registry, ColumnIndex,
-    DecayBehavior, DimensionRegistry, OverlayLifecycle, SimPropertyId, SimThing, SimThingId,
-    SlotIndex, SubFieldRole,
+    mint_anchor_table_from_admission, prepare_fission_clone_sources_for_registry, DecayBehavior,
+    DimensionRegistry, OverlayLifecycle, SimPropertyId, SimThing, SimThingId,
 };
 use simthing_feeder::{
     BoundaryRequest, CapabilityUnlockRegistration, DispatchCoordinator, MaintainerOutcome,
@@ -112,6 +111,9 @@ pub struct BoundaryOutcome {
     pub anchor_remap: AnchorRemapSection,
     /// Sealed write-impact band-crossing deltas minted from the fused threshold pass.
     pub band_crossing_deltas: Vec<BandCrossingDelta>,
+    /// Production CostBand draws resolved from admitted `event_kind` semantics
+    /// (parallel to `band_crossing_deltas`). Observation registrations yield N=0.
+    pub cost_band_draws: Vec<(u32, simthing_core::CostBandDraw)>,
     /// Live STEAD observation table after this boundary's writers ran.
     pub anchor_table_row_count: u32,
     pub boundary_requests: u32,
@@ -498,6 +500,11 @@ impl BoundaryProtocol {
             &self.registry,
             &self.allocator,
         );
+        // BAND-QUANTIZED-DRAW-0: ordinary production CostBand path — every sealed
+        // crossing resolves through the event_kind semantic table (observation
+        // default N=0; admitted sinks quantize with authored throttle).
+        out.cost_band_draws =
+            self.resolve_production_cost_band_draws(&out.band_crossing_deltas);
         // Dynamic band/value/urgency/generation live on the GPU table (fused
         // threshold companion). BandCrossingDelta remains wire/replay evidence only.
         // Generation for *this* day's crossings was supplied before the fused
@@ -1076,6 +1083,34 @@ impl BoundaryProtocol {
     /// Read-only access to the current threshold registry (for diagnostics).
     pub fn threshold_registry(&self) -> &ThresholdRegistry {
         &self.cpu_threshold_registry
+    }
+
+    /// Production CostBand resolve door — same call site as `execute`.
+    /// Dead-coding this method (or execute's call through it) REDs the
+    /// live-wiring referee.
+    pub fn resolve_production_cost_band_draws(
+        &mut self,
+        deltas: &[BandCrossingDelta],
+    ) -> Vec<(u32, simthing_core::CostBandDraw)> {
+        self.cpu_threshold_registry
+            .resolve_cost_band_draws_for_deltas(deltas)
+    }
+
+    /// Rebuild the CPU threshold registry via the ordinary `ThresholdBuilder`
+    /// production path (tree walk + session velocity/aggregate alerts + fission
+    /// lineage). Same builder door used when GPU sync marks thresholds dirty.
+    pub fn rebuild_threshold_registry_from_builder(&mut self) {
+        let (_gpu_regs, new_reg) = ThresholdBuilder::build_with_lineage(
+            &self.root,
+            &self.registry,
+            &self.allocator,
+            &self.velocity_alerts,
+            &self.aggregate_alerts,
+            &self.fission_lineage,
+        );
+        let _ = _gpu_regs;
+        self.cpu_threshold_registry = new_reg;
+        self.synced_threshold_config_revision = self.threshold_config_revision;
     }
 
     pub fn register_velocity_alert(&mut self, alert: VelocityAlertRegistration) {

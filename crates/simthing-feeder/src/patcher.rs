@@ -46,7 +46,7 @@ use crate::work::{
     AiIntentOverlay, AiReceiver, BoundaryRequest, FeederReceiver, FeederWork, PatchTransform,
     PlayerIntentOverlay,
 };
-use simthing_core::{DimensionRegistry, PropertyTransformDelta, TransformOp};
+use simthing_core::{DimensionRegistry, PropertyTransformDelta};
 use simthing_gpu::{IntentDelta, SlotAllocator};
 use std::collections::{HashMap, HashSet};
 
@@ -362,15 +362,14 @@ impl TransformPatcher {
                 stats.unresolved_roles += 1;
                 continue;
             }
-            if matches!(op, TransformOp::Add(_) | TransformOp::Multiply(_))
-                && !matches!(freshness, ShadowFreshness::GpuSynced)
-            {
+            if op.is_rmw() && !matches!(freshness, ShadowFreshness::GpuSynced) {
                 stats.unsafe_rmw_skipped += 1;
                 continue;
             }
-            values[addr] = match op {
-                TransformOp::Set(k) => *k,
-                TransformOp::Add(_) | TransformOp::Multiply(_) => op.apply(values[addr]),
+            values[addr] = if let Some(k) = op.as_set_literal() {
+                k
+            } else {
+                op.apply(values[addr])
             };
             stats.applied_writes += 1;
             wrote_to_row = true;
@@ -447,10 +446,7 @@ impl TransformPatcher {
 }
 
 fn delta_has_rmw(delta: &PropertyTransformDelta) -> bool {
-    delta
-        .sub_field_deltas
-        .iter()
-        .any(|(_, op)| matches!(op, TransformOp::Add(_) | TransformOp::Multiply(_)))
+    delta.sub_field_deltas.iter().any(|(_, op)| op.is_rmw())
 }
 
 fn collect_rmw_slot(
@@ -498,18 +494,19 @@ fn fold_patch_as_intents(
             order.push(key);
             (1.0, 0.0)
         });
-        match op {
-            TransformOp::Set(k) => {
-                entry.0 = 0.0;
-                entry.1 = *k;
-            }
-            TransformOp::Add(a) => {
-                entry.1 += *a;
-            }
-            TransformOp::Multiply(m) => {
-                entry.0 *= *m;
-                entry.1 *= *m;
-            }
+        if let Some(k) = op.as_set_literal() {
+            entry.0 = 0.0;
+            entry.1 = k;
+        } else if let Some(a) = op.as_add_literal() {
+            entry.1 += a;
+        } else if let Some(m) = op.as_multiply_literal() {
+            entry.0 *= m;
+            entry.1 *= m;
+        } else {
+            // Multi-node EML: fold as absolute result from zero base.
+            let v = op.apply(entry.1);
+            entry.0 = 0.0;
+            entry.1 = v;
         }
         stats.applied_writes += 1;
     }

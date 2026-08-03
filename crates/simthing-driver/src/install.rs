@@ -1863,7 +1863,7 @@ mod tests {
             .effects
             .push(CapabilityEffectSpec {
                 targets_property: "effect_host::pressure".into(),
-                sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Multiply(3.0))],
+                sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::multiply(3.0))],
                 when_activated: OverlayLifecycle::UntilDissolved,
                 effect_target: EffectTarget::Owner,
                 source_span_token: Some(source_span_token),

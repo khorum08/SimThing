@@ -1437,8 +1437,8 @@ fn payload_economy_overlays(
                 }
             );
             let transform = match decoded.op {
-                crate::hydrate_category_economy::EconomicOp::Add => TransformOp::Add(*amount),
-                crate::hydrate_category_economy::EconomicOp::Mult => TransformOp::Multiply(*amount),
+                crate::hydrate_category_economy::EconomicOp::Add => TransformOp::add(*amount),
+                crate::hydrate_category_economy::EconomicOp::Mult => TransformOp::multiply(*amount),
             };
             OverlaySpec {
                 id: format!("{}::{}::payload_modifier_{index}", scenario_id, payload.id),
@@ -2759,8 +2759,8 @@ fn parse_modifier_spec(
     }
 
     let transform = match (amount_mult, amount_add) {
-        (Some(mult), None) => TransformOp::Multiply(mult),
-        (None, Some(add)) => TransformOp::Add(add),
+        (Some(mult), None) => TransformOp::multiply(mult),
+        (None, Some(add)) => TransformOp::add(add),
         (Some(_), Some(_)) => {
             return Err(HydrateError::new_spanned(
                 "modifier cannot specify both amount_mult and amount_add",

@@ -15,6 +15,7 @@ use crate::simthing::{walk_inherited_until, SimThing};
 use crate::{inherit_active_overlays, LiveOverlayRoutes};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::sync::Arc;
 
 // ── Transform stack ───────────────────────────────────────────────────────────
 
@@ -22,11 +23,12 @@ use std::collections::HashMap;
 /// Accumulates deltas from root to current node; the leaf applies them all in order.
 #[derive(Clone, Debug, Default)]
 pub struct TransformStack {
-    deltas: Vec<StackedTransform>,
+    tail: Option<Arc<StackedTransform>>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 struct StackedTransform {
+    previous: Option<Arc<StackedTransform>>,
     delta: PropertyTransformDelta,
     predicate_restriction: bool,
 }
@@ -39,27 +41,40 @@ impl TransformStack {
     }
 
     pub fn push(&self, transform: &PropertyTransformDelta) -> Self {
-        let mut next = self.clone();
-        next.deltas.push(StackedTransform {
-            delta: transform.clone(),
-            predicate_restriction: false,
-        });
-        next
+        self.push_delta(transform, false)
     }
 
     /// Push one overlay while retaining whether it is a policy restriction.
     /// Numeric value composition remains sequential and last-wins-capable; the
     /// marker is consulted only by routed predicate evaluation.
     pub fn push_overlay(&self, overlay: &Overlay) -> Self {
-        let mut next = self.clone();
-        next.deltas.push(StackedTransform {
-            delta: overlay.transform.clone(),
-            predicate_restriction: matches!(
-                overlay.kind,
-                OverlayKind::Policy | OverlayKind::Governance
-            ),
-        });
-        next
+        self.push_delta(
+            &overlay.transform,
+            matches!(overlay.kind, OverlayKind::Policy | OverlayKind::Governance),
+        )
+    }
+
+    fn push_delta(&self, transform: &PropertyTransformDelta, predicate_restriction: bool) -> Self {
+        Self {
+            tail: Some(Arc::new(StackedTransform {
+                previous: self.tail.clone(),
+                delta: transform.clone(),
+                predicate_restriction,
+            })),
+        }
+    }
+
+    fn for_each_root_first(&self, visit: &mut impl FnMut(&StackedTransform)) {
+        fn visit_chain(node: &Arc<StackedTransform>, visit: &mut impl FnMut(&StackedTransform)) {
+            if let Some(previous) = &node.previous {
+                visit_chain(previous, visit);
+            }
+            visit(node);
+        }
+
+        if let Some(tail) = &self.tail {
+            visit_chain(tail, visit);
+        }
     }
 
     /// Apply all accumulated transforms to a mutable property value.
@@ -70,11 +85,11 @@ impl TransformStack {
         value: &mut PropertyValue,
         layout: &PropertyLayout,
     ) {
-        for stacked in &self.deltas {
+        self.for_each_root_first(&mut |stacked| {
             if stacked.delta.property_id == prop_id {
                 stacked.delta.apply_to_data(value.raw_lanes_mut(), layout);
             }
-        }
+        });
     }
 
     /// Test a routed predicate under the explicit policy-chain rule.
@@ -101,9 +116,9 @@ impl TransformStack {
             return false;
         };
         let mut allowed = predicate.comparison.matches(candidate, predicate.threshold);
-        for stacked in &self.deltas {
+        self.for_each_root_first(&mut |stacked| {
             if stacked.delta.property_id != predicate.property_id {
-                continue;
+                return;
             }
             for (role, op) in &stacked.delta.sub_field_deltas {
                 if role != &predicate.sub_field {
@@ -114,7 +129,7 @@ impl TransformStack {
                     allowed &= predicate.comparison.matches(candidate, predicate.threshold);
                 }
             }
-        }
+        });
         allowed && predicate.comparison.matches(candidate, predicate.threshold)
     }
 }
@@ -293,5 +308,46 @@ mod tests {
         let snap: FieldSnapshot =
             serde_json::from_str(json).expect("legacy generation wire alias load");
         assert_eq!(snap.generation, 7);
+    }
+
+    #[test]
+    fn transform_stack_push_shares_history_and_preserves_order() {
+        let (reg, lid) = bootstrap();
+        let root_delta = PropertyTransformDelta {
+            property_id: lid,
+            sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::set(2.0))],
+        };
+        let leaf_delta = PropertyTransformDelta {
+            property_id: lid,
+            sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::add(3.0))],
+        };
+
+        let root_stack = TransformStack::default().push(&root_delta);
+        let cloned_stack = root_stack.clone();
+        assert!(Arc::ptr_eq(
+            root_stack.tail.as_ref().expect("root tail"),
+            cloned_stack.tail.as_ref().expect("cloned root tail")
+        ));
+
+        let leaf_stack = root_stack.push(&leaf_delta);
+        let shared_previous = leaf_stack
+            .tail
+            .as_ref()
+            .and_then(|tail| tail.previous.as_ref())
+            .expect("leaf tail retains root history");
+        assert!(Arc::ptr_eq(
+            root_stack.tail.as_ref().expect("root tail"),
+            shared_previous
+        ));
+
+        let property = reg.property(lid);
+        let mut value = property.default_value();
+        leaf_stack.apply_to(lid, &mut value, &property.layout);
+        assert_eq!(
+            value
+                .get_role(&SubFieldRole::Amount, &property.layout)
+                .to_bits(),
+            5.0f32.to_bits()
+        );
     }
 }

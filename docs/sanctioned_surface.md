@@ -13,7 +13,7 @@ This digest is a derived context artifact for low-context agents. If it disagree
 | scripts/ci/allow/inert_buffer_handles.txt | 2 | 9e2069fa5730f17cacde1c671ebc17beb59f50738d2dcb914bceae13f9b8b3a4 |
 | scripts/ci/allow/kernel_surface.txt | 284 | 30d540aa675f04f7f84e1c88b9754eb5d8d087191fd15fd0d5209f2374c3bf36 |
 | scripts/ci/allow/sealed_types.txt | 19 | 9d427e3b41a586b06f24ca02cc45f78934237d2229b0c38d46e2a8a6ef5016be |
-| scripts/ci/allow/contention_mechanisms.txt | 7 | 9e4d82f6c60cbb30a8fc408afc626679e977ff23717fe93d8fb08dc2bd5501f4 |
+| scripts/ci/allow/contention_mechanisms.txt | 8 | eb22cbb7755c364804f1c5ac6b10c2346735f8a53d0a57426f3065a879a6cb14 |
 | scripts/ci/scans.tsv | 26 | 18d6f4886524f593e231931b952fbdcf2e0520fb4660f72fb7191298221e7d64 |
 
 ## Sanctioned Sealed Producers
@@ -377,6 +377,7 @@ This digest is a derived context artifact for low-context agents. If it disagree
 | detect-ownership-crossing | crossing predicate | simthing_core::owner_channel::is_ownership_crossing -- only crossing flow deltas are retained in addition to ordinary own aggregates; identity-edge flows are reconstructible | retire when crossing detection is intrinsic to reduce-up emission | contention_mechanisms.txt |
 | reduce-owner-channel | generalized reduce-up | simthing_spec::reduce_owner_channel_rf -- canonical {OwnerRef, ResourceKey, ScopeId} buckets admit N owners and prove conservation without an owner-equality branch | retire when this reduction is intrinsic to the resident RF execution type | contention_mechanisms.txt |
 | reconstruct-owner-channel | bounded STEAD reconstruction | simthing_spec::reconstruct_owner_channel_rf_map -- ordinary active node/resource aggregates plus exactly one retained flow record per ownership crossing reconstruct the RF map | retire when resident STEAD execution consumes the crossing rows directly | contention_mechanisms.txt |
+| compute-overlay-value-from-runtime-state | EML overlay program (singular TransformOp value path) | simthing_core::TransformOp::to_eml_nodes + eval_overlay_eml / admit_overlay_eml_program(EmlPerProgramCap) -- PARAM(0)=current PARAM(1)=N(CostBand depth); LITERAL_F32/SELECT/CMP_GE/arithmetic only; no Static/Computed discriminant | retire when overlay value is unconstructible except as an admitted EML program at the type tier | contention_mechanisms.txt |
 
 ## Forbidden / Screened Patterns
 

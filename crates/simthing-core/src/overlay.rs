@@ -18,11 +18,17 @@ impl PropertyTransformDelta {
     /// Used by the CPU reference evaluator only — GPU uses resolved column indices.
     /// Roles not present in the layout are silently skipped.
     pub fn apply_to_data(&self, data: &mut [f32], layout: &PropertyLayout) {
+        self.apply_to_data_with_n(data, layout, 0.0);
+    }
+
+    /// Apply with CostBand depth / magnitude `n` as EML `PARAM(1)`.
+    /// Runtime depth mutation changes output without re-hydration.
+    pub fn apply_to_data_with_n(&self, data: &mut [f32], layout: &PropertyLayout, n: f32) {
         for (role, op) in &self.sub_field_deltas {
             if let Some(idx) = layout.offset_of(role) {
                 let lane = idx.lane();
                 if lane < data.len() {
-                    data[lane] = op.apply(data[lane]);
+                    data[lane] = op.apply_with_params(data[lane], n);
                 }
             }
         }

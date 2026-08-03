@@ -306,8 +306,8 @@ impl Scenario {
                 delta: PropertyTransformDelta {
                     property_id: pid,
                     sub_field_deltas: vec![
-                        (SubFieldRole::Amount, TransformOp::Add(0.0001)),
-                        (SubFieldRole::Velocity, TransformOp::Multiply(0.999)),
+                        (SubFieldRole::Amount, TransformOp::add(0.0001)),
+                        (SubFieldRole::Velocity, TransformOp::multiply(0.999)),
                     ],
                 },
             });

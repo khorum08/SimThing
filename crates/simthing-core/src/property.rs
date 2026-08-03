@@ -89,22 +89,467 @@ pub enum SubFieldRole {
 
 // ── TransformOp ───────────────────────────────────────────────────────────────
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub enum TransformOp {
+/// Singular overlay value form: an admitted EML program (BAND-QUANTIZED-DRAW-0).
+///
+/// There is **one representable form** at the type tier — not an enum of
+/// static/computed/program kinds. `set` / `add` / `multiply` are constructors
+/// that mint degenerate EML programs. A second value-form discriminant is a
+/// compile error.
+///
+/// ```compile_fail,E0599
+/// use simthing_core::TransformOp;
+/// // No Static form — EML is the only eligible value path.
+/// let _ = TransformOp::Static(1.0);
+/// ```
+///
+/// ```compile_fail,E0599
+/// use simthing_core::TransformOp;
+/// // No Computed form — EML is the only eligible value path.
+/// let _ = TransformOp::Computed(vec![]);
+/// ```
+///
+/// ```compile_fail,E0599
+/// use simthing_core::TransformOp;
+/// // Not an enum — callers cannot branch on legacy/static vs program variants.
+/// let _ = match TransformOp::set(1.0) {
+///     TransformOp::Set(_) => {}
+///     TransformOp::Add(_) => {}
+///     TransformOp::Multiply(_) => {}
+///     TransformOp::Eml(_) => {}
+/// };
+/// ```
+///
+/// Cap-bypass forge via private nodes is a type error:
+///
+/// ```compile_fail
+/// use simthing_core::TransformOp;
+/// let _ = TransformOp { nodes: vec![] };
+/// ```
+#[derive(Clone, Debug, PartialEq)]
+pub struct TransformOp {
+    nodes: smallvec::SmallVec<[crate::eml_nodes::EmlNode; 3]>,
+}
+
+/// Wire shape for RON/JSON fixtures that historically used `Add(v)` / `Set(v)`.
+/// Deserializes into the singular [`TransformOp`] program representation.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+enum TransformOpWire {
     Add(f32),
     Multiply(f32),
     Set(f32),
+    /// Multi-node admitted program (nodes already cap-checked on deserialize).
+    Eml(Vec<crate::eml_nodes::EmlNode>),
 }
 
-impl TransformOp {
-    pub fn apply(&self, current: f32) -> f32 {
-        match self {
-            Self::Add(v) => current + v,
-            Self::Multiply(v) => current * v,
-            Self::Set(v) => *v,
+impl Serialize for TransformOp {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let wire = if let Some(v) = self.as_set_literal() {
+            TransformOpWire::Set(v)
+        } else if let Some(v) = self.as_add_literal() {
+            TransformOpWire::Add(v)
+        } else if let Some(v) = self.as_multiply_literal() {
+            TransformOpWire::Multiply(v)
+        } else {
+            TransformOpWire::Eml(self.nodes.to_vec())
+        };
+        wire.serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for TransformOp {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let wire = TransformOpWire::deserialize(deserializer)?;
+        match wire {
+            TransformOpWire::Add(v) => Ok(Self::add(v)),
+            TransformOpWire::Multiply(v) => Ok(Self::multiply(v)),
+            TransformOpWire::Set(v) => Ok(Self::set(v)),
+            TransformOpWire::Eml(nodes) => {
+                Self::admit_eml(nodes, EmlPerProgramCap::DEFAULT).map_err(serde::de::Error::custom)
+            }
         }
     }
 }
+
+/// Admitted per-program EML node cap (data). Not a second table budget beside
+/// `DEFAULT_EML_NODE_CAPACITY` / `DEFAULT_EML_TREE_CAPACITY`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct EmlPerProgramCap {
+    pub max_nodes: u32,
+}
+
+impl EmlPerProgramCap {
+    /// Default per-program bound for overlay value programs (hot-path safe).
+    pub const DEFAULT: Self = Self { max_nodes: 32 };
+
+    pub const fn new(max_nodes: u32) -> Self {
+        Self { max_nodes }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
+pub enum EmlPerProgramCapError {
+    #[error("EML per-program node count {node_count} exceeds admitted cap {max_nodes}")]
+    ExceedsCap { node_count: u32, max_nodes: u32 },
+    #[error("EML per-program cap max_nodes must be > 0")]
+    InvalidCap,
+}
+
+fn validate_overlay_eml_program(
+    node_count: usize,
+    cap: EmlPerProgramCap,
+) -> Result<(), EmlPerProgramCapError> {
+    if cap.max_nodes == 0 {
+        return Err(EmlPerProgramCapError::InvalidCap);
+    }
+    let node_count = node_count as u32;
+    if node_count > cap.max_nodes {
+        return Err(EmlPerProgramCapError::ExceedsCap {
+            node_count,
+            max_nodes: cap.max_nodes,
+        });
+    }
+    Ok(())
+}
+
+/// Admit an overlay EML program under a per-program node cap.
+pub fn admit_overlay_eml_program(
+    nodes: Vec<crate::eml_nodes::EmlNode>,
+    cap: EmlPerProgramCap,
+) -> Result<Vec<crate::eml_nodes::EmlNode>, EmlPerProgramCapError> {
+    validate_overlay_eml_program(nodes.len(), cap)?;
+    Ok(nodes)
+}
+
+impl TransformOp {
+    /// Construct the **one-node** degenerate program `LITERAL_F32(v)` (Set).
+    pub fn set(v: f32) -> Self {
+        Self::admit_nodes(Self::set_nodes(v), EmlPerProgramCap::DEFAULT)
+            .expect("one-node LITERAL_F32 always admits under default cap")
+    }
+
+    pub fn add(v: f32) -> Self {
+        Self::admit_nodes(Self::add_nodes(v), EmlPerProgramCap::DEFAULT)
+            .expect("degenerate Add program admits under default cap")
+    }
+
+    pub fn multiply(v: f32) -> Self {
+        Self::admit_nodes(Self::mul_nodes(v), EmlPerProgramCap::DEFAULT)
+            .expect("degenerate Multiply program admits under default cap")
+    }
+
+    /// Admit a multi-node EML program under the per-program cap (construction
+    /// boundary — not a hot-loop tax). Cap-bypass mutants cannot construct.
+    pub fn admit_eml(
+        nodes: Vec<crate::eml_nodes::EmlNode>,
+        cap: EmlPerProgramCap,
+    ) -> Result<Self, EmlPerProgramCapError> {
+        Self::admit_nodes(nodes.into_iter().collect(), cap)
+    }
+
+    fn admit_nodes(
+        nodes: smallvec::SmallVec<[crate::eml_nodes::EmlNode; 3]>,
+        cap: EmlPerProgramCap,
+    ) -> Result<Self, EmlPerProgramCapError> {
+        validate_overlay_eml_program(nodes.len(), cap)?;
+        Ok(Self { nodes })
+    }
+
+    fn set_nodes(v: f32) -> smallvec::SmallVec<[crate::eml_nodes::EmlNode; 3]> {
+        use crate::eml_nodes::{opcode, EmlNode};
+        smallvec::smallvec![EmlNode {
+            opcode: opcode::LITERAL_F32,
+            flags: 0,
+            a: v.to_bits(),
+            b: 0,
+            c: 0,
+            d: 0,
+        }]
+    }
+
+    fn add_nodes(v: f32) -> smallvec::SmallVec<[crate::eml_nodes::EmlNode; 3]> {
+        use crate::eml_nodes::{opcode, EmlNode};
+        smallvec::smallvec![
+            EmlNode {
+                opcode: opcode::PARAM,
+                flags: 0,
+                a: 0,
+                b: 0,
+                c: 0,
+                d: 0,
+            },
+            EmlNode {
+                opcode: opcode::LITERAL_F32,
+                flags: 0,
+                a: v.to_bits(),
+                b: 0,
+                c: 0,
+                d: 0,
+            },
+            EmlNode {
+                opcode: opcode::ADD,
+                flags: 0,
+                a: 0,
+                b: 0,
+                c: 0,
+                d: 0,
+            },
+        ]
+    }
+
+    fn mul_nodes(v: f32) -> smallvec::SmallVec<[crate::eml_nodes::EmlNode; 3]> {
+        use crate::eml_nodes::{opcode, EmlNode};
+        smallvec::smallvec![
+            EmlNode {
+                opcode: opcode::PARAM,
+                flags: 0,
+                a: 0,
+                b: 0,
+                c: 0,
+                d: 0,
+            },
+            EmlNode {
+                opcode: opcode::LITERAL_F32,
+                flags: 0,
+                a: v.to_bits(),
+                b: 0,
+                c: 0,
+                d: 0,
+            },
+            EmlNode {
+                opcode: opcode::MUL,
+                flags: 0,
+                a: 0,
+                b: 0,
+                c: 0,
+                d: 0,
+            },
+        ]
+    }
+
+    /// Admitted EML nodes (singular value representation).
+    pub fn nodes(&self) -> &[crate::eml_nodes::EmlNode] {
+        self.nodes.as_slice()
+    }
+
+    /// Lower this transform to postfix EML nodes (clone of admitted program).
+    pub fn to_eml_nodes(&self) -> Vec<crate::eml_nodes::EmlNode> {
+        self.nodes.to_vec()
+    }
+
+    /// Apply through the singular EML entry point. Degenerate admitted programs
+    /// may specialize underneath this one caller-visible door.
+    pub fn apply(&self, current: f32) -> f32 {
+        self.apply_with_params(current, 0.0)
+    }
+
+    pub fn apply_with_params(&self, current: f32, n: f32) -> f32 {
+        // Derived execution specialization only: the stored/admitted/wire form
+        // remains the one opaque EML node vector. Callers cannot select this
+        // path or author a second representation.
+        if let Some(value) = self.as_set_literal() {
+            return value;
+        }
+        if let Some(value) = self.as_add_literal() {
+            return current + value;
+        }
+        if let Some(value) = self.as_multiply_literal() {
+            return current * value;
+        }
+        eval_overlay_eml(self.nodes.as_slice(), current, n)
+    }
+
+    /// Recognize one-node `LITERAL_F32(v)` (Set constructor shape).
+    pub fn as_set_literal(&self) -> Option<f32> {
+        use crate::eml_nodes::opcode;
+        match self.nodes.as_slice() {
+            [n] if n.opcode == opcode::LITERAL_F32 => Some(f32::from_bits(n.a)),
+            _ => None,
+        }
+    }
+
+    /// Recognize `PARAM(0); LITERAL_F32(v); ADD`.
+    pub fn as_add_literal(&self) -> Option<f32> {
+        use crate::eml_nodes::opcode;
+        match self.nodes.as_slice() {
+            [p, lit, add]
+                if p.opcode == opcode::PARAM
+                    && p.a == 0
+                    && lit.opcode == opcode::LITERAL_F32
+                    && add.opcode == opcode::ADD =>
+            {
+                Some(f32::from_bits(lit.a))
+            }
+            _ => None,
+        }
+    }
+
+    /// Recognize `PARAM(0); LITERAL_F32(v); MUL`.
+    pub fn as_multiply_literal(&self) -> Option<f32> {
+        use crate::eml_nodes::opcode;
+        match self.nodes.as_slice() {
+            [p, lit, mul]
+                if p.opcode == opcode::PARAM
+                    && p.a == 0
+                    && lit.opcode == opcode::LITERAL_F32
+                    && mul.opcode == opcode::MUL =>
+            {
+                Some(f32::from_bits(lit.a))
+            }
+            _ => None,
+        }
+    }
+
+    /// Whether this program is an Add/Multiply RMW shape (needs GPU-fresh shadow).
+    pub fn is_rmw(&self) -> bool {
+        self.as_add_literal().is_some() || self.as_multiply_literal().is_some()
+    }
+
+    /// Operand literal for GPU lower / magnitude extraction (degenerate forms).
+    pub fn literal_operand(&self) -> f32 {
+        self.as_set_literal()
+            .or_else(|| self.as_add_literal())
+            .or_else(|| self.as_multiply_literal())
+            .unwrap_or(0.0)
+    }
+
+}
+
+#[cfg(test)]
+mod transform_op_storage_tests {
+    use super::*;
+
+    #[test]
+    fn degenerate_programs_stay_inline_and_larger_programs_spill() {
+        for op in [
+            TransformOp::set(1.0),
+            TransformOp::add(2.0),
+            TransformOp::multiply(3.0),
+        ] {
+            assert!(!op.nodes.spilled());
+            assert!(!op.clone().nodes.spilled());
+        }
+
+        let node = TransformOp::set(1.0).nodes[0];
+        let larger = TransformOp::admit_eml(vec![node; 4], EmlPerProgramCap::DEFAULT)
+            .expect("four-node program remains below the admitted cap");
+        assert!(larger.nodes.spilled());
+    }
+}
+
+/// Shared overlay EML eval: PARAM(0)=current, PARAM(1)=N (CostBand depth).
+pub fn eval_overlay_eml(nodes: &[crate::eml_nodes::EmlNode], current: f32, n: f32) -> f32 {
+    use crate::eml_nodes::opcode;
+    let params = [current, n, 0.0, 0.0];
+    let mut stack = [0.0f32; 32];
+    let mut sp: usize = 0;
+    for node in nodes {
+        match node.opcode {
+            opcode::LITERAL_F32 => {
+                stack[sp] = f32::from_bits(node.a);
+                sp += 1;
+            }
+            opcode::PARAM => {
+                let idx = node.a as usize;
+                stack[sp] = if idx < params.len() { params[idx] } else { 0.0 };
+                sp += 1;
+            }
+            opcode::ADD => {
+                let rhs = stack[sp - 1];
+                let lhs = stack[sp - 2];
+                stack[sp - 2] = lhs + rhs;
+                sp -= 1;
+            }
+            opcode::SUB => {
+                let rhs = stack[sp - 1];
+                let lhs = stack[sp - 2];
+                stack[sp - 2] = lhs - rhs;
+                sp -= 1;
+            }
+            opcode::MUL => {
+                let rhs = stack[sp - 1];
+                let lhs = stack[sp - 2];
+                stack[sp - 2] = lhs * rhs;
+                sp -= 1;
+            }
+            opcode::CMP_GE => {
+                let rhs = stack[sp - 1];
+                let lhs = stack[sp - 2];
+                stack[sp - 2] = if lhs >= rhs { 1.0 } else { 0.0 };
+                sp -= 1;
+            }
+            opcode::CMP_GT => {
+                let rhs = stack[sp - 1];
+                let lhs = stack[sp - 2];
+                stack[sp - 2] = if lhs > rhs { 1.0 } else { 0.0 };
+                sp -= 1;
+            }
+            opcode::SELECT => {
+                let f_val = stack[sp - 1];
+                let t_val = stack[sp - 2];
+                let cond = stack[sp - 3] != 0.0;
+                stack[sp - 3] = if cond { t_val } else { f_val };
+                sp -= 2;
+            }
+            opcode::RETURN_TOP => return stack[sp - 1],
+            _ => {}
+        }
+    }
+    if sp > 0 {
+        stack[sp - 1]
+    } else {
+        0.0
+    }
+}
+
+/// Build magnitude-band EML: `SELECT(CMP_GE(N,t2), hi, SELECT(CMP_GE(N,t1), mid, lo))`.
+/// Uses only existing opcodes; `N` is `PARAM(1)`.
+pub fn magnitude_band_eml_nodes(lo: f32, mid: f32, hi: f32, t1: f32, t2: f32) -> Vec<crate::eml_nodes::EmlNode> {
+    use crate::eml_nodes::{opcode, EmlNode};
+    let lit = |v: f32| EmlNode {
+        opcode: opcode::LITERAL_F32,
+        flags: 0,
+        a: v.to_bits(),
+        b: 0,
+        c: 0,
+        d: 0,
+    };
+    let param_n = EmlNode {
+        opcode: opcode::PARAM,
+        flags: 0,
+        a: 1, // N
+        b: 0,
+        c: 0,
+        d: 0,
+    };
+    let op = |opcode: u32| EmlNode {
+        opcode,
+        flags: 0,
+        a: 0,
+        b: 0,
+        c: 0,
+        d: 0,
+    };
+    // Stack program (postfix): N t1 CMP_GE mid lo SELECT  → inner
+    // then N t2 CMP_GE hi <inner> SELECT RETURN
+    // Build inner first onto stack then wrap — linear postfix:
+    // PARAM(N), LIT(t2), CMP_GE, LIT(hi), PARAM(N), LIT(t1), CMP_GE, LIT(mid), LIT(lo), SELECT, SELECT, RETURN
+    vec![
+        param_n,
+        lit(t2),
+        op(opcode::CMP_GE),
+        lit(hi),
+        param_n,
+        lit(t1),
+        op(opcode::CMP_GE),
+        lit(mid),
+        lit(lo),
+        op(opcode::SELECT),
+        op(opcode::SELECT),
+        op(opcode::RETURN_TOP),
+    ]
+}
+
 
 // ── SubFieldSpec ──────────────────────────────────────────────────────────────
 
