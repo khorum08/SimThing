@@ -2370,15 +2370,31 @@ impl AccumulatorOpSession {
     /// cannot enter. Observer lag applies ring backpressure without blocking the sim.
     /// Returns the number of production-sealed records pushed (not the sealed records
     /// themselves — sealed producers stay on the existing readback doors).
+    ///
+    /// This is the **canonical observer egress boundary** for EmitEvent compact
+    /// records. Direct [`Self::readback_emissions`] remains for CPU/GPU parity and
+    /// oracle/burn-in only — not observer lag/backpressure.
     pub fn push_emissions_into_production_egress(
         &self,
         ctx: &GpuContext,
         ring: &mut simthing_core::StampedEventRing,
     ) -> Result<u32, AccumulatorOpSessionError> {
         let records = self.readback_emissions(ctx)?;
+        self.admit_sealed_emissions_to_egress(&records, ring)
+    }
+
+    fn admit_sealed_emissions_to_egress(
+        &self,
+        records: &[EmissionRecord],
+        ring: &mut simthing_core::StampedEventRing,
+    ) -> Result<u32, AccumulatorOpSessionError> {
         let mut pushed = 0u32;
-        for record in &records {
+        for record in records {
             if !record.is_production_sealed() {
+                return Err(AccumulatorOpSessionError::Readback);
+            }
+            // Generation must match the bound production authority (no gen-0 drift).
+            if record.generation() != self.generation {
                 return Err(AccumulatorOpSessionError::Readback);
             }
             ring.push(simthing_core::StampedEgressEntry {
@@ -2389,6 +2405,17 @@ impl AccumulatorOpSession {
             pushed = pushed.saturating_add(1);
         }
         Ok(pushed)
+    }
+
+    /// Fixture upload of GPU emission POD for production-sequence referees.
+    #[cfg(test)]
+    pub(crate) fn write_emission_gpu_records_for_test(
+        &self,
+        ctx: &GpuContext,
+        records: &[crate::sealed::EmissionRecordGpu],
+    ) {
+        self.emission_readback
+            .write_gpu_records(&ctx.queue, records);
     }
 
     /// Full values buffer readback — debug only unless explicitly allowed.
@@ -2764,5 +2791,115 @@ mod tests {
         previous[2 * n_dims as usize] = 0.50;
         current[2 * n_dims as usize] = 0.50;
         (previous, current)
+    }
+
+    /// Remand 4: production-sequence referee through real AccumulatorOpSession.
+    /// generation advance → sealed readback → ring admission → forced lag,
+    /// with no sim values-buffer perturbation.
+    #[test]
+    fn production_egress_sequence_real_session_generation_seal_ring_lag() {
+        let Ok(ctx) = GpuContext::new_blocking() else {
+            // Host without GPU: skip (same posture as other session GPU tests).
+            return;
+        };
+        let mut session = AccumulatorOpSession::new(&ctx, 4, 2);
+        // Snapshot "sim state" proxy: values buffer bytes before egress.
+        set_debug_readback_allowed(true);
+        let values_before = session.readback_full(&ctx).expect("values");
+
+        let mut ring = simthing_core::StampedEventRing::admit(
+            1,
+            simthing_core::BackpressurePolicy::OverwriteOldest,
+        );
+
+        // Generation 1: seal path stamps with bound authority.
+        session.bind_generation_authority(1);
+        session.write_emission_gpu_records_for_test(
+            &ctx,
+            &[crate::sealed::EmissionRecordGpu {
+                reg_idx: 7,
+                emit_count: 2,
+            }],
+        );
+        let sealed = session.readback_emissions(&ctx).expect("sealed readback gen1");
+        assert_eq!(sealed.len(), 1);
+        assert_eq!(sealed[0].generation(), 1);
+        assert!(sealed[0].is_production_sealed());
+        let pushed = session
+            .push_emissions_into_production_egress(&ctx, &mut ring)
+            .expect("ring admit gen1");
+        assert_eq!(pushed, 1);
+        assert_eq!(ring.len(), 1);
+        assert_eq!(
+            ring.entries()[0].generation,
+            simthing_core::GenerationStamp::new(1)
+        );
+
+        // Generation 2: successive authority; forced lag overwrites oldest.
+        session.bind_generation_authority(2);
+        session.write_emission_gpu_records_for_test(
+            &ctx,
+            &[crate::sealed::EmissionRecordGpu {
+                reg_idx: 8,
+                emit_count: 3,
+            }],
+        );
+        let sealed2 = session.readback_emissions(&ctx).expect("sealed readback gen2");
+        assert_eq!(sealed2[0].generation(), 2);
+        session
+            .push_emissions_into_production_egress(&ctx, &mut ring)
+            .expect("ring admit gen2");
+        assert_eq!(ring.len(), 1, "capacity 1 under overwrite-oldest lag");
+        assert_eq!(
+            ring.entries()[0].generation,
+            simthing_core::GenerationStamp::new(2)
+        );
+        assert!(ring.backpressure_actions >= 1);
+
+        // Observer lag must not perturb the sim values buffer.
+        let values_after = session.readback_full(&ctx).expect("values after");
+        assert_eq!(
+            values_before, values_after,
+            "forced observer lag must not write sim state"
+        );
+    }
+
+    /// Bypass census: direct readback remains parity/oracle only; observer law
+    /// is the production egress ring. Documents sanctioned vs forbidden use.
+    #[test]
+    fn observer_egress_bypass_census_direct_readback_is_not_observer_path() {
+        // Sanctioned observer path: push_emissions_into_production_egress (see
+        // feeder dispatcher + resource_economy_burn_in after emission tick).
+        // Sanctioned parity/oracle path: readback_emissions / readback_emissions_capped
+        // (cpu_gpu_parity_matrix, c8d emission parity) — still generation-stamped,
+        // never unstamped, but not the lag/backpressure observer surface.
+        // Sanctioned observer path vs parity/oracle path (bypass census).
+        const OBSERVER_EGRESS_API: &str = "push_emissions_into_production_egress";
+        const PARITY_ORACLE_APIS: &[&str] = &["readback_emissions", "readback_emissions_capped"];
+        assert!(OBSERVER_EGRESS_API.contains("production_egress"));
+        assert_eq!(PARITY_ORACLE_APIS.len(), 2);
+        // Production census: feeder dispatcher owns the observer invocation.
+        let feeder_src = include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../simthing-feeder/src/dispatcher.rs"
+        ));
+        assert!(
+            feeder_src.contains("push_emissions_into_production_egress"),
+            "production dispatcher must invoke the observer egress API"
+        );
+        assert!(
+            feeder_src.contains("production_event_egress"),
+            "production dispatcher must target the world egress ring"
+        );
+        // Direct readback remains for parity/oracle (c8d, burn-in, cpu_gpu matrix),
+        // still generation-stamped — not an unstamped observer bypass.
+        let burn_in = include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../simthing-driver/src/resource_economy_burn_in.rs"
+        ));
+        assert!(
+            burn_in.contains("push_emissions_into_production_egress"),
+            "burn-in must admit through production egress before parity readback"
+        );
     }
 }

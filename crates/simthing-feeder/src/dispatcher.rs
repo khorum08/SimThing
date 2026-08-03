@@ -289,6 +289,15 @@ impl DispatchCoordinator {
                     encode_world_summary: encode_summary,
                 },
             );
+            // EVENT-GENERATION-STAMP-0: observer egress for sealed emissions rides the
+            // admitted production ring (not a direct readback bypass). Lag/backpressure
+            // cannot write sim state — only the ring is mutated.
+            if let Some(session) = emission_session.as_ref() {
+                let _ = session.push_emissions_into_production_egress(
+                    &state.ctx,
+                    &mut state.production_event_egress,
+                );
+            }
             if let Some(runtime) = state.accumulator_runtime.as_mut() {
                 runtime.restore_intent_session(intent_session);
                 runtime.restore_overlay_session(overlay_session);

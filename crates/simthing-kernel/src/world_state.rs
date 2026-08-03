@@ -139,6 +139,11 @@ pub struct WorldGpuState {
     /// Dispatch generation stamped onto fused GPU crossing updates.
     pub anchor_table_generation: u32,
 
+    /// EVENT-GENERATION-STAMP-0: admitted observer egress ring for sealed emissions.
+    /// Production emission tick pushes through `push_emissions_into_production_egress`.
+    /// Forced observer lag applies ring backpressure without writing sim state.
+    pub production_event_egress: simthing_core::StampedEventRing,
+
     // ── Reduction (Passes 4–6) ───────────────────────────────────────────────
     /// CSR child topology: `child_starts[i]..child_starts[i+1]` indexes
     /// children of parent slot `i`. Length `n_slots + 1` u32s.
@@ -770,6 +775,10 @@ impl WorldGpuState {
             anchor_table,
             n_anchor_rows: 0,
             anchor_table_generation: 0,
+            production_event_egress: simthing_core::StampedEventRing::admit(
+                256,
+                simthing_core::BackpressurePolicy::OverwriteOldest,
+            ),
             child_starts,
             child_indices,
             column_rules,

@@ -119,6 +119,18 @@ impl EmissionRecordReadback {
         queue.write_buffer(&self.count, 0, &0u32.to_le_bytes());
     }
 
+    /// Fixture upload of compact GPU emission POD rows for production-sequence referees.
+    pub(crate) fn write_gpu_records(&self, queue: &Queue, records: &[EmissionRecordGpu]) {
+        assert!(
+            records.len() as u32 <= self.capacity,
+            "emission write exceeds capacity"
+        );
+        queue.write_buffer(&self.count, 0, &(records.len() as u32).to_le_bytes());
+        if !records.is_empty() {
+            queue.write_buffer(&self.records, 0, bytemuck::cast_slice(records));
+        }
+    }
+
     pub fn read_count(&self, device: &Device, queue: &Queue) -> u32 {
         read_u32_counter(device, queue, &self.count)
     }
