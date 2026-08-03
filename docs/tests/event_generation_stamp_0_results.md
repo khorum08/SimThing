@@ -8,7 +8,7 @@
 - Dispatch: Board comment `5165742228`
 - Remand: Board comment `5165983417`
 - base_sha (handoff): `49bc1d4a`
-- draft PR: #1596
+- tested_code_sha: \59f6d3ad8ddba524a8c3a45043dffcb63c0fd7ab\n- tip: \59f6d3ad8ddba524a8c3a45043dffcb63c0fd7ab\n- draft PR: #1596
 - expected_route: `DA-RESERVE(gate-wiring)`
 - Scope: **6.1 ONLY** (no 6.1b / 6.2 / 6.2b / 6.3)
 
