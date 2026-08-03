@@ -256,6 +256,9 @@ pub struct StampedEventRing {
     pub backpressure_actions: u64,
     /// Count of successful pushes that landed in the ring.
     pub accepted: u64,
+    /// Times the production egress door was entered (even when zero records).
+    /// Proves the live path ran; a dead-code wrap (`if false`) leaves this at 0.
+    pub admit_invocations: u64,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -275,7 +278,13 @@ impl StampedEventRing {
             entries: Vec::with_capacity(capacity),
             backpressure_actions: 0,
             accepted: 0,
+            admit_invocations: 0,
         }
+    }
+
+    /// Record that the production egress door was entered (observer path live).
+    pub fn note_admit_invocation(&mut self) {
+        self.admit_invocations = self.admit_invocations.saturating_add(1);
     }
 
     pub fn policy(&self) -> BackpressurePolicy {

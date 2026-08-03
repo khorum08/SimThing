@@ -2379,6 +2379,9 @@ impl AccumulatorOpSession {
         ctx: &GpuContext,
         ring: &mut simthing_core::StampedEventRing,
     ) -> Result<u32, AccumulatorOpSessionError> {
+        // Always count door entry first — proves the live path executed even
+        // when the batch is empty (Remand 5: if-false / removal turns this RED).
+        ring.note_admit_invocation();
         let records = self.readback_emissions(ctx)?;
         self.admit_sealed_emissions_to_egress(&records, ring)
     }
@@ -2864,42 +2867,129 @@ mod tests {
         );
     }
 
-    /// Bypass census: direct readback remains parity/oracle only; observer law
-    /// is the production egress ring. Documents sanctioned vs forbidden use.
+    /// Negative bypass census (Remand 5): observer-egress call sites must equal
+    /// the sanctioned set. A new unsanctioned production call site turns RED.
+    /// Presence-only tautologies are not sufficient — DA showed `if false` still
+    /// passes those; live admit proof is the feeder tick referee.
     #[test]
-    fn observer_egress_bypass_census_direct_readback_is_not_observer_path() {
-        // Sanctioned observer path: push_emissions_into_production_egress (see
-        // feeder dispatcher + resource_economy_burn_in after emission tick).
-        // Sanctioned parity/oracle path: readback_emissions / readback_emissions_capped
-        // (cpu_gpu_parity_matrix, c8d emission parity) — still generation-stamped,
-        // never unstamped, but not the lag/backpressure observer surface.
-        // Sanctioned observer path vs parity/oracle path (bypass census).
-        const OBSERVER_EGRESS_API: &str = "push_emissions_into_production_egress";
-        const PARITY_ORACLE_APIS: &[&str] = &["readback_emissions", "readback_emissions_capped"];
-        assert!(OBSERVER_EGRESS_API.contains("production_egress"));
-        assert_eq!(PARITY_ORACLE_APIS.len(), 2);
-        // Production census: feeder dispatcher owns the observer invocation.
+    fn observer_egress_negative_bypass_census() {
+        // Call / definition forms only — pure doc mentions (e.g. world_state) excluded.
+        const CALL: &str = ".push_emissions_into_production_egress(";
+        const DEF: &str = "fn push_emissions_into_production_egress(";
+        // Sanctioned production call sites (path relative to crates/).
+        // session.rs is the definition + unit referees only — not a second transport.
+        const SANCTIONED: &[&str] = &[
+            "simthing-feeder/src/dispatcher.rs",
+            "simthing-driver/src/resource_economy_burn_in.rs",
+            "simthing-kernel/src/accumulator_op/session.rs",
+        ];
+
+        let crates_root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..");
+        let mut found: Vec<String> = Vec::new();
+        for entry in walkdir_rs_files(&crates_root) {
+            let Ok(text) = std::fs::read_to_string(&entry) else {
+                continue;
+            };
+            if !(text.contains(CALL) || text.contains(DEF)) {
+                continue;
+            }
+            // Normalize to crates-relative path with forward slashes.
+            let rel = entry
+                .strip_prefix(&crates_root)
+                .unwrap_or(&entry)
+                .to_string_lossy()
+                .replace('\\', "/");
+            // Integration/unit test files under tests/ may invoke the API in
+            // referees; production authority is crates/*/src only.
+            if rel.contains("/tests/") {
+                continue;
+            }
+            found.push(rel);
+        }
+        found.sort();
+        found.dedup();
+
+        let unsanctioned: Vec<&str> = found
+            .iter()
+            .map(String::as_str)
+            .filter(|p| !SANCTIONED.iter().any(|s| s == p))
+            .collect();
+        assert!(
+            unsanctioned.is_empty(),
+            "unsanctioned observer-egress call site(s): {unsanctioned:?}\n\
+             sanctioned set: {SANCTIONED:?}\n\
+             full found set: {found:?}"
+        );
+        for s in SANCTIONED {
+            assert!(
+                found.iter().any(|f| f == s),
+                "sanctioned call site missing from tree walk: {s}"
+            );
+        }
+
+        // Feeder production site: Result must not be swallowed; must target the
+        // admitted world ring and surface ProductionEmissionEgress.
         let feeder_src = include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/../simthing-feeder/src/dispatcher.rs"
         ));
         assert!(
-            feeder_src.contains("push_emissions_into_production_egress"),
-            "production dispatcher must invoke the observer egress API"
+            !feeder_src.contains("let _ = session.push_emissions_into_production_egress"),
+            "feeder must not swallow production egress Result with let _ ="
         );
         assert!(
-            feeder_src.contains("production_event_egress"),
-            "production dispatcher must target the world egress ring"
+            feeder_src.contains("if let Err(err) = session.push_emissions_into_production_egress"),
+            "feeder must handle production egress Result (Err → ProductionEmissionEgress)"
         );
-        // Direct readback remains for parity/oracle (c8d, burn-in, cpu_gpu matrix),
-        // still generation-stamped — not an unstamped observer bypass.
+        assert!(
+            feeder_src.contains("ProductionEmissionEgress"),
+            "feeder must surface egress failures on TickGpuError::ProductionEmissionEgress"
+        );
+        assert!(
+            feeder_src.contains("&mut state.production_event_egress"),
+            "feeder must admit into WorldGpuState::production_event_egress"
+        );
+
+        // Burn-in: Result propagated (not discarded); ring admission before parity
+        // direct readback. Direct readback remains parity/oracle only.
         let burn_in = include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/../simthing-driver/src/resource_economy_burn_in.rs"
         ));
         assert!(
-            burn_in.contains("push_emissions_into_production_egress"),
-            "burn-in must admit through production egress before parity readback"
+            burn_in.contains(CALL) && burn_in.contains("?"),
+            "burn-in must propagate production egress Result"
+        );
+        assert!(
+            !burn_in.contains("let _ = session.push_emissions_into_production_egress"),
+            "burn-in must not swallow production egress Result"
         );
     }
+
+    /// Walk `root` for `.rs` files under crate trees (no walkdir dep).
+    fn walkdir_rs_files(root: &std::path::Path) -> Vec<std::path::PathBuf> {
+        let mut out = Vec::new();
+        let mut stack = vec![root.to_path_buf()];
+        while let Some(dir) = stack.pop() {
+            let Ok(rd) = std::fs::read_dir(&dir) else {
+                continue;
+            };
+            for ent in rd.flatten() {
+                let path = ent.path();
+                if path.is_dir() {
+                    let name = path.file_name().and_then(|s| s.to_str()).unwrap_or("");
+                    // Stay inside crate source; skip target/ and hidden.
+                    if name == "target" || name.starts_with('.') {
+                        continue;
+                    }
+                    stack.push(path);
+                } else if path.extension().and_then(|s| s.to_str()) == Some("rs") {
+                    out.push(path);
+                }
+            }
+        }
+        out
+    }
 }
+
+

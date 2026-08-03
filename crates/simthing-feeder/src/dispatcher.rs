@@ -58,6 +58,10 @@ use std::time::Instant;
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum TickGpuError {
     AccumulatorThresholdReadback(String),
+    /// EVENT-GENERATION-STAMP-0: sealed production emission egress failed
+    /// (unsealed record or generation mismatch). Non-fatal to sim semantics —
+    /// values are not written by egress — but must not be swallowed.
+    ProductionEmissionEgress(String),
 }
 
 /// One tick's worth of observable result. Stats are diagnostic;
@@ -238,6 +242,7 @@ impl DispatchCoordinator {
         let intensity_eml_active = state.accumulator_intensity_eml_active;
         let transfer_active = state.accumulator_transfer_active;
         let emission_active = state.accumulator_emission_active;
+        let mut gpu_error = None;
         if use_accumulator_intent
             || use_accumulator_threshold
             || overlay_active
@@ -291,12 +296,15 @@ impl DispatchCoordinator {
             );
             // EVENT-GENERATION-STAMP-0: observer egress for sealed emissions rides the
             // admitted production ring (not a direct readback bypass). Lag/backpressure
-            // cannot write sim state — only the ring is mutated.
+            // cannot write sim state — only the ring is mutated. Errors surface on
+            // TickOutcome.gpu_error (never swallowed with `let _ =`).
             if let Some(session) = emission_session.as_ref() {
-                let _ = session.push_emissions_into_production_egress(
+                if let Err(err) = session.push_emissions_into_production_egress(
                     &state.ctx,
                     &mut state.production_event_egress,
-                );
+                ) {
+                    gpu_error = Some(TickGpuError::ProductionEmissionEgress(err.to_string()));
+                }
             }
             if let Some(runtime) = state.accumulator_runtime.as_mut() {
                 runtime.restore_intent_session(intent_session);
@@ -315,14 +323,16 @@ impl DispatchCoordinator {
 
         // 4. Event readback. Cheap even at endgame scale (~3 KB).
         let event_readback_started = Instant::now();
-        let mut gpu_error = None;
         let events = if use_accumulator_threshold {
             match state.accumulator_runtime.as_mut() {
                 Some(runtime) => match runtime.readback_threshold_events(&state.ctx) {
                     Ok(events) => events,
                     Err(err) => {
-                        gpu_error =
-                            Some(TickGpuError::AccumulatorThresholdReadback(err.to_string()));
+                        // Prefer egress error if both fire; otherwise surface threshold.
+                        if gpu_error.is_none() {
+                            gpu_error =
+                                Some(TickGpuError::AccumulatorThresholdReadback(err.to_string()));
+                        }
                         Vec::new()
                     }
                 },
