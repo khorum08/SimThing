@@ -467,6 +467,17 @@ own placement belongs to its granter's barrier, which for the session root is se
   hard cases: canonical fold order (must be provably pinned to *logical* identity, or rebinding
   breaks bit-exactness) and replay records (any physical-row keying forces the remap into the
   canonical history surface).
+- **Integration sequencing (Owner ruling 2026-08-03 — Phase 6 lands as stated; the trigger chain
+  is tree-state, never calendar):**
+  1. Phase 6 completes under its existing rows (6.2, 6.2b, 6.3 + any unstamped ladder cells) —
+     coder-lane work, no StemThing act occurs during it.
+  2. **6.3's graduation stamp is the trigger.** The DA then runs the census (single pass, per the
+     ruling above) and authors the §3.1 Tier-2 slot-identity amendment; the constitutional
+     pointer-flip is an **Owner act**, as is the shape-(a)/(b) decision if the census forces it.
+  3. The amendment's merge lifts the HARD HOLD; the DA mints the StemThing-A rows into §3b in the
+     same window, before any Phase 7 row is dispatched.
+  4. StemThing-A implements; Phase 7 movement lands **under the §7.1 clause**; 8.1/8.2 land;
+     StemThing-B rows are minted and implemented; Phase 11's door follows.
 - **Split insertion (Owner ruling 2026-08-03, placement inside 0.0.8.7):**
   **StemThing-A** lands in the **Phase 6 → 7 gap** — the census, the §3.1 Tier-2 ruling, the
   residency/tier vocabulary, and the §7.1 movement clause — so allocation/tiling awareness exists
