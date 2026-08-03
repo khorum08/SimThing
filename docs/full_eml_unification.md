@@ -12,6 +12,22 @@
 >
 > **This work is independent of the StemThing HARD HOLD and of Phase 6 completion.** It is
 > 5.7-door consumer work touching neither the slot-identity ruling nor the movement rungs.
+>
+> **Amended 2026-08-03 (decorrelated DA review — Codex Sol Max: ADMIT WITH TARGETED REMAND; all
+> five repairs adopted).** The ruling formally ends the transcendental prohibition — *"`EXP` and
+> `LN` now have standing permission to seek admission; the determinism objection was the right
+> objection then; it is now a gate to pass, not a reason never to attempt the capability."*
+> Repairs: (1) primitive input domains become a **sealed admission type** (they were claimed of a
+> two-variant enum that cannot express them); (2) the cost claim is reconciled with the real gate
+> (`EmlResourceClass` prices node count + stack only; the strict-improvement cost law is used
+> as-is against the **gadget-encoding baseline**, and is not weakened); (3) **full-domain `EXP`
+> is the canonical first landing** and the bounded variant is dropped — with the Softmax/Logistic
+> forms corrected to their stabilized constructions; (4) the parallelism claim is rewritten —
+> log-domain accumulation is a **new authored numerical law**, never a semantics-preserving
+> Product optimization; (5) the anti-reassociation contract is strengthened to bit-observable
+> fencing plus certified-toolchain requalification. Each repair's **performance-preserving form**
+> was chosen deliberately (§4, §6): clamp-guard admission over an interval analyzer, the existing
+> cost gate over new pricing machinery, bitcast fences over memory barriers.
 
 ---
 
@@ -92,38 +108,74 @@ ever pursued after (i) lands, it lands as a **new named primitive** (`EXP_CR`), 
 of `EXP` — a semantics change is a replay epoch and a corpus fork, and the registry discipline
 already forbids it.
 
-**Domain policy per primitive** (the door's `ExactPrimitiveDomainPolicy` already expresses
-these):
+**Domain contract — a generic admission addition this plan owes first (remand repair 1).** The
+door's `ExactPrimitiveDomainPolicy` today has exactly two variants
+(`FiniteOnlyRejectNanAndInfinity`, `PreserveIeeeNanInfinityAndSignedZero`) — it **cannot express
+an interval**, and the registry carries no static interval proof per call site. Before the first
+primitive lands, the door gains a sealed domain type, conceptually:
 
-- `EXP` — first landing **bounded-domain**: input `[−87.33, 0.0]`, output `(0, 1]` —
-  covers every decay, sigmoid, softmax-numerator, and falloff consumer; makes the exhaustive
-  proof and the polynomial's range reduction trivial (no overflow arm). Full-domain
-  `[−87.33, +88.72]` as a follow-on landing if a consumer names it. `FiniteOnlyRejectNanAndInfinity`.
-- `LN` — positive normals `[2⁻¹²⁶, +∞)` (spanned admission error below), output finite.
-  `FiniteOnlyRejectNanAndInfinity`; the paper's extended-real conventions (`ln(0) = −∞`) are
-  **rejected, not emulated** — the engine has no ∞-propagation discipline and must not grow one.
+```
+PrimitiveDomain { min_bits: u32, max_bits: u32, special_value_policy }
+```
+
+with the call-site obligation implemented as **clamp-guard admission, not an interval analyzer**:
+a primitive's argument must have *syntactic in-domain provenance* — a literal in range, a
+`CLAMP_BOUNDED` to the domain, or a composition of provably in-domain terms. One extra node per
+unguarded call site, riding in the ALU shadow; trivially checkable at admission; no
+abstract-interpretation machinery (EML inputs are runtime columns whose ranges are unknowable
+statically — a full interval prover would be heavy, conservative, and unnecessary). This is
+generic door machinery, not an `EXP` exception.
+
+**Domain per primitive:**
+
+- `EXP` — **full domain `[−87.33, +88.72]` is the canonical first landing** (remand repair 3,
+  option A adopted). Rationale: the primitive's internals are raw WGSL — unconstrained by the
+  EML vocabulary — where full range reduction is standard exponent-field bit assembly; the
+  exhaustive sweep is 2³² either way; and opcodes are append-only forever, so permanently
+  carrying a nearly-duplicate `EXP_NEG` is the worse trade. Output spans positive finite f32;
+  out-of-domain rejects at admission via the clamp guard.
+- `LN` — **positive finite normals `[2⁻¹²⁶, f32::MAX]`** (notation corrected: infinity is
+  rejected, so the domain is closed at `f32::MAX`), output finite. The paper's extended-real
+  conventions (`ln(0) = −∞`) are **rejected, not emulated** — the engine has no ∞-propagation
+  discipline and must not grow one.
+
+**Cost key — reconciled with the real gate (remand repair 2).** `EmlResourceClass` prices node
+count and peak stack **only**; no transcendental weight exists in the classification, and this
+plan **mints none**. The existing exact-primitive cost law — no regression plus at least one
+strict improvement in compiled resource effects — is used **unweakened**, with the natural
+baseline it implies: a pinned polynomial `exp` approximation is *expressible today* as an
+ordinary `ADD`/`MUL`/`FLOOR` tree (~20 nodes, `ExactDeterministic`-legal, authored data). **The
+primitive must beat its own gadget encoding.** A straight-line JIT block against a ~20-node
+interpreted tree either wins that comparison or does not deserve admission — and if the cost law
+itself is ever thought wrong, that is a separate DA argument, not a rider on this landing.
 
 **Sequencing through the door** (one proven primitive per landing, per 5.7's own rule):
 
-1. **`EXP` (bounded)** — consumers: CostBand smooth steering curve (6.1b, landed), exact
+1. **`EXP` (full domain)** — consumers: CostBand smooth steering curve (6.1b, landed), exact
    exponential STEAD falloff (§7).
 2. **`LN`** — consumers: log-domain accumulation (§7), and jointly with `EXP` the **power-law
-   gadget** `POW(x, a) = EXP(a · LN(x))` — the entire power-law family with **no third opcode**.
+   gadget** `POW(x, a) = EXP(a · LN(x))` — the entire power-law family with **no third opcode**
+   (and requiring full-domain `EXP`, since `a·LN(x)` is signed — the bounded variant could not
+   have delivered this, which is repair 3's point).
 
 ## 5. Gadget-library integration
 
 New library entries, each an authored tree over the widened vocabulary — **no new kernels, no new
 opcodes beyond the two primitives**, each carrying the standard bounded-feedback contract:
 
+All forms below are the **stabilized constructions** (remand repair 3) — arguments to `EXP` are
+kept in the numerically safe region *by construction*, which is both the clamp-guard-friendly
+form and the numerically correct one:
+
 | Gadget | Tree | Contract note |
 |---|---|---|
-| `Logistic(x; k, x₀)` | `1 / (1 + EXP(−k·(x−x₀)))` via `DIV`-free reciprocal form | output bounded (0,1) by construction — P3-friendly smooth gate; upgrades 6.1b banded steering from `SELECT` staircases to curves |
-| `ContinuousDecay(x; λ, dt)` | `x · EXP(−λ·dt)` | exact decay under variable dt; bounded for λ,dt ≥ 0 |
-| `PowerLaw(x; a)` | `EXP(a · LN(x))` | domain guard at admission (x > 0); the falloff/scaling family |
-| `LogAccumulate` | `LN` map before the existing Sum reduction | converts product chains to sums — see §7 for why this is a parallelism unlock |
-| `SoftmaxWeight(xᵢ; β)` | `EXP(β·xᵢ)` map + existing Sum reduce + normalize band | temperature-controlled choice; β is an ordinary personality column |
-| `Entropy(p)` | `−Σ p·LN(p)` via map + Sum | corpus observable; diagnostic lane |
-| **`eml(x, y)`** | `SUB(EXP(x), LN(y))` | **three nodes.** The operator the interpreter is named for becomes expressible; Anchor B's universality claim becomes literal. Documented as a library entry for exactly that reason |
+| `Logistic(x; k, x₀)` | sign-stable form over `EXP(−ABS(k·(x−x₀)))` with a `SELECT` on the sign | exponential argument ≤ 0 always; output bounded (0,1) — P3-friendly smooth gate; upgrades 6.1b banded steering from `SELECT` staircases to curves |
+| `ContinuousDecay(x; λ, dt)` | `x · EXP(−λ·dt)` | exact decay under variable dt; argument ≤ 0 and output bounded for λ,dt ≥ 0 |
+| `PowerLaw(x; a)` | `EXP(a · LN(x))` | requires **full-domain `EXP`** (`a·LN(x)` is signed); `LN` clamp guard at the call site (x in positive normals) |
+| `LogAccumulate` | `LN` map before the existing Sum reduction | a **new authored numerical law**, not a Product optimization — see §7 |
+| `SoftmaxWeight(zᵢ; β)` | `EXP(β·(zᵢ − max z))` — max via the existing `MAX` reduction band, then map + Sum reduce + normalize | **the stabilized softmax**: every exponential argument ≤ 0 by construction; the naive `EXP(βzᵢ)` form is rejected as numerically unsound regardless of domain policy. β is an ordinary personality column |
+| `Entropy(p)` | `−Σ p·LN(p)` via map + Sum | corpus observable; diagnostic lane; `LN` guard at p > 0 (the p = 0 term is authored away via `SELECT`, matching the measure-theoretic convention) |
+| **`eml(x, y)`** | `SUB(EXP(x), LN(y))` | **three nodes**, requiring **full-domain `EXP`** (`eml(1, y)` needs `EXP(1)`). With option A landed, the operator the interpreter is named for becomes expressible and Anchor B's universality claim becomes literal — a claim the bounded variant could not have made |
 
 **What completing must never mean:** the paper's minimalism is a trap. Pure-EML encoding is a
 15–35× expression blowup (`x·y` is K=17 leaves; trig "too large to print"), with catastrophic
@@ -141,12 +193,26 @@ license — behavior as data over one interpreter — not the operator's economy
   block** — no loop, no branch beyond the domain guard, register-resident intermediates. This is
   the disciplined version of "bespoke EML shader blocks": the blocks exist, but they are
   JIT-emitted from the one IR under `FIELD-SWEEP-SINGLE-PATH`, never hand-written shaders.
-- **Determinism hazards, named:** backend compilers may contract (`fma`) or reassociate. The
-  determinism key's source-level proof must pin the WGSL to forms naga/backends translate
-  1:1 (documented per supported adapter), and the **exhaustive check is the tripwire that
-  catches any violation** — a fused multiply changes bits and the 2³² sweep reds. `div` is
-  excluded from primitive internals (2.5-ULP latitude); reciprocal forms use pinned
-  Newton–Raphson steps from `mul`/`sub` where needed.
+- **Determinism hazards — the strengthened contract (remand repair 5).** WGSL's `+`/`−`/`×` are
+  individually correctly rounded, but the spec **explicitly permits reassociation and fusion**
+  when the transform is at least as accurate — so "we wrote the polynomial as a fixed sequence"
+  is *not by itself* a portable bit-semantics specification. The landing therefore requires
+  **both** halves:
+  1. **Bit-observable fencing** at every reassociation-sensitive boundary: `f32 → u32 → f32`
+     bitcast round-trips, which make the intermediate's bit pattern observable and thereby
+     forbid any bit-changing transform across the fence — at the cost of a register
+     reinterpretation, i.e. **nothing**. Naga/backend survival of the fences is part of the
+     determinism proof, per supported adapter. (The performance-hostile alternative — routing
+     intermediates through storage/workgroup memory as observation barriers — is **explicitly
+     rejected**: it would destroy the ALU-in-memory-shadow economics that make the primitive
+     nearly free.)
+  2. **Certified-toolchain discipline**: the exhaustive 2³² digest certifies a pinned
+     (compiler, backend, driver) combination — the toolchain is part of the certified substrate
+     — with **automatic invalidation and requalification whenever that trust chain changes**.
+     This formalizes what the per-backend replay artifact already implied.
+  The exhaustive sweep remains the tripwire that catches any violation of either half — a fused
+  multiply changes bits and the digest reds. `div` is excluded from primitive internals
+  (2.5-ULP latitude); reciprocal forms use pinned Newton–Raphson steps from `mul`/`sub`.
 - **Cost key:** each primitive lands with a measured resource-class entry (transcendental
   weight); admission rejects a stack whose class cannot afford it — the 5.7 machinery, unchanged.
 
@@ -166,15 +232,26 @@ license — behavior as data over one interpreter — not the operator's economy
   (attenuation, reliability, compounding penalty) into additive `W` — reliability-weighted reach
   becomes *exactly* expressible in the existing sweep with a log-domain compose band.
 
-**The parallelism unlock (the load-bearing performance claim):** long **product chains are
-sequential or fixed-order today** (banded multiplies; the fold's canonical linear order). In log
-domain they become **sums — and sums own the entire existing reduction infrastructure**:
-OrderBand hierarchical reduction, `SlotRange` coalescing, and (post-StemThing) contiguous range
-folds. `LN`-map → Sum-reduce → `EXP`-post converts an O(n)-deep dependent chain into the
-tree-parallel reduction the substrate has optimized since C-5/C-6. Softmax is the same shape:
-`EXP` map + Sum reduce + normalize — two banded sweeps, no new machinery. This is not a new
-parallel mechanism; it is **admission of a change of variables that lets multiplicative dynamics
-ride the parallel machinery that already exists.**
+**Log-domain accumulation — a new authored numerical law, stated lawfully (remand repair 4).**
+The mathematical identity `∏xᵢ = exp(Σ ln xᵢ)` does **not** transfer bit semantics:
+`EXP(Σ LN(x))` is *not* bit-equivalent to the sequential f32 product, f32 addition is
+non-associative, and taking logarithms **does not legalize tree-splitting a fold** — the
+field-sweep law (canonical order sealed; no tree reduction without an associativity proof)
+applies to the log-sum exactly as to any Sum. What the change of variables *lawfully* buys:
+
+- **`LogAccumulate` is a different authored law a designer may choose** — with its own numerics,
+  documented — never a substitution for exact Product on a conservation path.
+- Once chosen, the log-sum **rides the Sum lane's existing discipline unchanged**: canonical
+  per-fold order within each parent, **parallelism *across* the hierarchy** (the C-5/C-6
+  OrderBand shape — many parents reducing concurrently), `SlotRange` coalescing, and
+  (post-StemThing) contiguous range folds. That is where the real, already-optimized parallelism
+  lives, and multiplicative dynamics currently cannot ride it at all.
+- Any *intra-fold* tree split of one long chain would require its own explicitly admitted
+  reduction/error contract — a separate proof about the reduction algorithm, not a rider on
+  exact `LN`/`EXP` primitives. Nothing in this plan requests it.
+
+Softmax is the same lawful shape: stabilized `EXP` map + `MAX` and Sum reduction bands +
+normalize — banded sweeps over existing machinery, no new mechanism and no reordering anywhere.
 
 **Horizon (consumers this unlocks, gated as ever by consumer-pull):**
 
@@ -209,9 +286,10 @@ a new primitive name).
 
 ## 9. Disposition
 
-Two admission plans through the landed 5.7 door, in order: **`EXP` (bounded) with the CostBand
-steering + STEAD falloff consumers**, then **`LN` with the log-domain accumulation + `POW`
-consumers**. Each landing carries: the pinned sequence and its CPU-oracle twin, the exhaustive
+Two admission plans through the landed 5.7 door, in order — preceded by the one generic door
+addition (the sealed `PrimitiveDomain` type + clamp-guard admission, §4): **`EXP` (full domain)
+with the CostBand steering + STEAD falloff consumers**, then **`LN` with the log-domain
+accumulation + `POW` consumers**. Each landing carries: the pinned sequence and its CPU-oracle twin, the exhaustive
 2³² reference artifact, per-backend replay artifacts, the resource-class cost entry, the
 `CLOSED_OPCODES` DA-scoped vocabulary change, the gadget-library entries it enables, and the
 scan/allowlist co-evolution the doctrine-CI contract requires. No rung is opened by this
