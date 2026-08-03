@@ -395,8 +395,29 @@ def load_authorized_renames(ref: str) -> list:
 
 
 def new_identity_present_in_diff(base: str, head: str, file: str, new_identity: str) -> bool:
-    """True when fn <new_identity> is added (or newly present) in file between base..head."""
+    """True when fn <new_identity> is added (or newly present) in file between base..head.
+
+    compile_fail_line_N identities are line-locator seals (not fn names): present when
+    head source has a compile_fail fence at line N (authorized renames.tsv maps line shifts).
+    """
     head_src = git_show_text(head, file) or ""
+    # Durable compile_fail line-locator identity (inventory discovery name).
+    if new_identity.startswith("compile_fail_line_"):
+        try:
+            line_no = int(new_identity.rsplit("_", 1)[-1])
+        except ValueError:
+            return False
+        lines = head_src.splitlines()
+        if not (1 <= line_no <= len(lines)):
+            return False
+        if "compile_fail" not in lines[line_no - 1]:
+            return False
+        # Require the locator to be new vs base (line shift) or newly added fence.
+        base_src = git_show_text(base, file) or ""
+        base_lines = base_src.splitlines()
+        if len(base_lines) < line_no or "compile_fail" not in base_lines[line_no - 1]:
+            return True
+        return False
     if f"fn {new_identity}" not in head_src:
         return False
     base_src = git_show_text(base, file) or ""
