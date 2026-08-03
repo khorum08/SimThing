@@ -3,11 +3,17 @@
 Rung: `BAND-QUANTIZED-DRAW-0` (6.1b)
 Handoff: Board comment `5170209783`
 DA amended ruling: Board comment `5170146070`
+Orientation-freshness remand: Board comment `5171604399`
 HD-RECEIPT: `d7cf7f107500`
-ORIENT-RECEIPT: `8bcf881f793a`
+ORIENT-RECEIPT: `6af1884543b0`
+orientation_rule_stamp: `5554b2613f8907ff`
 Branch: `grok/band-quantized-draw-0`
 Code head measured: `348d6efaaf649a7e780d1f3a907c28fea1692671`
 Status: **PROBATION / proof-present / DA-review-pending — amended generation-level STOP fired**
+
+The accepted bounded code and measurement delta was re-reviewed under the
+current branch orientation. No semantic change is required; this remand changes
+governance identity only and preserves the exact generation-level STOP evidence.
 
 ## Bounded remand disposition
 
