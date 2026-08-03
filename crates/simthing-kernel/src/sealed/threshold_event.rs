@@ -1,4 +1,6 @@
 //! Sealed threshold decision events (KERNEL-EMISSION-SEAL-0 authority surface).
+//!
+//! EVENT-GENERATION-STAMP-0: generation is required at every mint. GPU POD is not widened.
 
 use bytemuck::{Pod, Zeroable};
 
@@ -32,6 +34,9 @@ pub struct ThresholdEvent {
     col: u32,
     value: f32,
     event_kind: u32,
+    /// Producing tree generation. Stamped at mint — not a GPU POD field.
+    generation: u32,
+    production_sealed: bool,
 }
 
 /// GPU byte-layout mirror for Pass 7 `event_candidates` (transport only).
@@ -61,29 +66,41 @@ impl ThresholdEvent {
         self.event_kind
     }
 
+    pub fn generation(&self) -> u32 {
+        self.generation
+    }
+
+    pub fn is_production_sealed(&self) -> bool {
+        self.production_sealed
+    }
+
     pub(crate) fn from_kernel_pass7_readback(
         slot: u32,
         col: u32,
         value: f32,
         event_kind: u32,
+        generation: u32,
     ) -> Self {
         Self {
             slot,
             col,
             value,
             event_kind,
+            generation,
+            production_sealed: true,
         }
     }
 
-    pub(crate) fn from_gpu_readback(gpu: &ThresholdEventGpu) -> Self {
-        Self::from_kernel_pass7_readback(gpu.slot, gpu.col, gpu.value, gpu.event_kind)
+    pub(crate) fn from_gpu_readback(gpu: &ThresholdEventGpu, generation: u32) -> Self {
+        Self::from_kernel_pass7_readback(gpu.slot, gpu.col, gpu.value, gpu.event_kind, generation)
     }
 }
 
 /// CPU-oracle twin of Pass 7 threshold scan for parity and test fixtures.
 ///
 /// Events are produced only when buffer state crosses a registered threshold — not from
-/// caller-picked `(slot, col, value, event_kind)` tuples.
+/// caller-picked `(slot, col, value, event_kind)` tuples. `generation` is the producing
+/// tree's generation and is stamped on every event by construction.
 pub fn cpu_oracle_threshold_events(
     previous_values: &[f32],
     values: &[f32],
@@ -91,6 +108,7 @@ pub fn cpu_oracle_threshold_events(
     output: &[f32],
     n_dims: u32,
     regs: &[ThresholdRegistration],
+    generation: u32,
 ) -> Vec<ThresholdEvent> {
     let mut events = Vec::new();
     for r in regs {
@@ -113,6 +131,7 @@ pub fn cpu_oracle_threshold_events(
                 r.col,
                 curr,
                 r.event_kind,
+                generation,
             ));
         }
     }

@@ -36,6 +36,19 @@ pub enum OverlayDeliveryError {
         argument: SimThingId,
         overlay: SimThingId,
     },
+    #[error("runtime dispatch-minted overlay fails dissolve discipline: {detail}")]
+    DispatchDissolveRequired { detail: String },
+}
+
+fn is_runtime_dispatch_mint(overlay: &Overlay) -> bool {
+    use crate::overlay::{OverlayKind, OverlaySource};
+    matches!(
+        overlay.source,
+        OverlaySource::Event | OverlaySource::System
+    ) && matches!(
+        overlay.kind,
+        OverlayKind::Instruction | OverlayKind::Custom(_)
+    )
 }
 
 /// Deliver a consumed/deficit-driven directive through the existing tree path.
@@ -60,6 +73,17 @@ pub fn deliver_routed_overlay(
     target: SimThingId,
     mut overlay: Overlay,
 ) -> Result<DirectiveDeliveryReceipt, OverlayDeliveryError> {
+    // EVENT-GENERATION-STAMP-0 / Definable Horizon: runtime dispatch-minted
+    // overlays (Event/System instruction-class) must carry UntilDissolvedWith
+    // and an authored dissolve condition. Authored Policy/Governance unit
+    // UntilDissolved remains admissible.
+    if is_runtime_dispatch_mint(&overlay) {
+        crate::generation_stamp::admit_dispatch_minted_overlay(&overlay).map_err(|e| {
+            OverlayDeliveryError::DispatchDissolveRequired {
+                detail: e.to_string(),
+            }
+        })?;
+    }
     let origin_path =
         find_path(root, overlay.origin).ok_or(OverlayDeliveryError::OriginNotInTree {
             origin: overlay.origin,

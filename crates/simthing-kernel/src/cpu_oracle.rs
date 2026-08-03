@@ -163,15 +163,20 @@ pub fn execute_ops_cpu(
     band: u32,
     n_dims: u32,
 ) -> Result<(), CpuOracleError> {
-    execute_ops_cpu_with_emissions(values, ops, band, n_dims).map(|_| ())
+    // Diagnostic path with generation 0 is not a production/parity witness.
+    execute_ops_cpu_with_emissions(values, ops, band, n_dims, 0).map(|_| ())
 }
 
 /// Execute one band and collect compact emission records (B-2 EmitEvent parity).
+///
+/// EVENT-GENERATION-STAMP-0: `generation` is the producing-tree authority and is
+/// stamped on every sealed emission by construction (parity is not generation-blind).
 pub fn execute_ops_cpu_with_emissions(
     values: &mut [f32],
     ops: &[AccumulatorOp],
     band: u32,
     n_dims: u32,
+    generation: u32,
 ) -> Result<Vec<EmissionRecord>, CpuOracleError> {
     let mut records = Vec::new();
     for (op_idx, op) in ops.iter().enumerate() {
@@ -193,17 +198,20 @@ pub fn execute_ops_cpu_with_emissions(
         };
         apply_targets(values, op, target_value, n_dims)?;
         apply_consume(values, op, write_value, n_dims)?;
-        maybe_emit_event(op_idx, op, write_value, &mut records);
+        maybe_emit_event(op_idx, op, write_value, generation, &mut records);
     }
     Ok(records)
 }
 
 /// Execute threshold-gated ops against previous/current value buffers.
+///
+/// EVENT-GENERATION-STAMP-0: `generation` stamps every sealed threshold emission.
 pub fn execute_threshold_ops_cpu(
     previous_values: &[f32],
     values: &mut [f32],
     ops: &[AccumulatorOp],
     n_dims: u32,
+    generation: u32,
 ) -> Result<Vec<ThresholdEmission>, CpuOracleError> {
     let mut records = Vec::new();
 
@@ -231,6 +239,7 @@ pub fn execute_threshold_ops_cpu(
                         slot.raw(),
                         col.raw_u32(),
                         curr,
+                        generation,
                     ));
                 }
             }
@@ -475,6 +484,7 @@ fn maybe_emit_event(
     op_idx: usize,
     op: &AccumulatorOp,
     write_value: f32,
+    generation: u32,
     records: &mut Vec<EmissionRecord>,
 ) {
     if op.consume != ConsumeMode::EmitEvent {
@@ -482,7 +492,11 @@ fn maybe_emit_event(
     }
     let emit_count = write_value.max(0.0).floor() as u32;
     if emit_count > 0 {
-        records.push(EmissionRecord::from_cpu_oracle(op_idx as u32, emit_count));
+        records.push(EmissionRecord::from_cpu_oracle(
+            op_idx as u32,
+            emit_count,
+            generation,
+        ));
     }
 }
 

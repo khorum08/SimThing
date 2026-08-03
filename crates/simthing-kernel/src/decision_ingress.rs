@@ -329,6 +329,7 @@ mod tests {
             &values,
             n_dims,
             &[reg],
+            0,
         );
         assert_eq!(events.len(), 1);
         let threshold_tok = ThresholdCrossingToken::from_sealed_threshold_event(&events[0]);
@@ -338,7 +339,7 @@ mod tests {
 
     fn sealed_emission_only(slot: u32, col: u32, value: f32) -> EmissionToken {
         // In-crate mint of sealed ThresholdEmission for tests.
-        let emission = ThresholdEmission::from_kernel_threshold_crossing(0, slot, col, value);
+        let emission = ThresholdEmission::from_kernel_threshold_crossing(0, slot, col, value, 0);
         EmissionToken::from_sealed_threshold_emission(&emission)
     }
 }

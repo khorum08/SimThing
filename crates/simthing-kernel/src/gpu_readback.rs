@@ -119,14 +119,28 @@ impl EmissionRecordReadback {
         queue.write_buffer(&self.count, 0, &0u32.to_le_bytes());
     }
 
+    /// Fixture upload of compact GPU emission POD rows for production-sequence referees.
+    pub(crate) fn write_gpu_records(&self, queue: &Queue, records: &[EmissionRecordGpu]) {
+        assert!(
+            records.len() as u32 <= self.capacity,
+            "emission write exceeds capacity"
+        );
+        queue.write_buffer(&self.count, 0, &(records.len() as u32).to_le_bytes());
+        if !records.is_empty() {
+            queue.write_buffer(&self.records, 0, bytemuck::cast_slice(records));
+        }
+    }
+
     pub fn read_count(&self, device: &Device, queue: &Queue) -> u32 {
         read_u32_counter(device, queue, &self.count)
     }
 
+    /// Production seal/readback: every record is stamped with `generation` by construction.
     pub fn read_records(
         &self,
         device: &Device,
         queue: &Queue,
+        generation: u32,
     ) -> Result<Vec<EmissionRecord>, KernelReadbackError> {
         let count = self.read_count(device, queue);
         if count == 0 {
@@ -144,14 +158,16 @@ impl EmissionRecordReadback {
             &self.records,
             count,
             std::mem::size_of::<EmissionRecordGpu>() as u64,
-            EmissionRecord::from_gpu_readback,
+            |gpu| EmissionRecord::from_gpu_readback(gpu, generation),
         ))
     }
 
+    /// Production seal/readback: every record is stamped with `generation` by construction.
     pub fn read_records_capped(
         &self,
         device: &Device,
         queue: &Queue,
+        generation: u32,
     ) -> Result<(u32, Vec<EmissionRecord>), KernelReadbackError> {
         let count = self.read_count(device, queue);
         if count == 0 {
@@ -164,7 +180,7 @@ impl EmissionRecordReadback {
             &self.records,
             read_count,
             std::mem::size_of::<EmissionRecordGpu>() as u64,
-            EmissionRecord::from_gpu_readback,
+            |gpu| EmissionRecord::from_gpu_readback(gpu, generation),
         );
         Ok((count, records))
     }
@@ -239,10 +255,12 @@ impl ThresholdEmissionReadback {
         read_u32_counter(device, queue, &self.count)
     }
 
+    /// Production seal/readback: every emission is stamped with `generation` by construction.
     pub fn read_threshold_emissions(
         &self,
         device: &Device,
         queue: &Queue,
+        generation: u32,
     ) -> Result<Vec<ThresholdEmission>, KernelReadbackError> {
         let count = self.read_count(device, queue);
         if count == 0 {
@@ -260,18 +278,20 @@ impl ThresholdEmissionReadback {
             &self.records,
             count,
             std::mem::size_of::<ThresholdEmissionGpu>() as u64,
-            ThresholdEmission::from_gpu_readback,
+            |gpu| ThresholdEmission::from_gpu_readback(gpu, generation),
         ))
     }
 
     /// Reconstruct Pass 7 `ThresholdEvent`s from compact threshold emissions.
+    /// Production seal: every event carries `generation` by construction.
     pub fn read_threshold_events(
         &self,
         device: &Device,
         queue: &Queue,
         event_kinds: &[u32],
+        generation: u32,
     ) -> Result<Vec<ThresholdEvent>, KernelReadbackError> {
-        let emissions = self.read_threshold_emissions(device, queue)?;
+        let emissions = self.read_threshold_emissions(device, queue, generation)?;
         Ok(emissions
             .into_iter()
             .map(|e| {
@@ -280,6 +300,7 @@ impl ThresholdEmissionReadback {
                     e.col(),
                     e.value(),
                     event_kinds[e.reg_idx() as usize],
+                    generation,
                 )
             })
             .collect())
@@ -348,12 +369,14 @@ impl ThresholdEventCandidatesReadback {
     }
 
     /// Read back exactly `n` threshold events (caller caps at registration count).
+    /// Production seal: every event carries `generation` by construction.
     pub fn read_events(
         &self,
         device: &Device,
         queue: &Queue,
         n_thresholds: u32,
         n: u32,
+        generation: u32,
     ) -> Vec<ThresholdEvent> {
         let n = n.min(n_thresholds);
         if n == 0 {
@@ -365,7 +388,7 @@ impl ThresholdEventCandidatesReadback {
             &self.candidates,
             n,
             std::mem::size_of::<ThresholdEventGpu>() as u64,
-            ThresholdEvent::from_gpu_readback,
+            |gpu| ThresholdEvent::from_gpu_readback(gpu, generation),
         )
     }
 }

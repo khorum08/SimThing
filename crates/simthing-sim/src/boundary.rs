@@ -462,6 +462,10 @@ impl BoundaryProtocol {
         let mut threshold_dirty =
             self.threshold_config_revision != self.synced_threshold_config_revision;
 
+        // EVENT-GENERATION-STAMP-0: bind the tree generation authority (`day`) into
+        // sealed production mint/readback at the ordinary boundary step. Not optional.
+        state.bind_production_generation(day as u32);
+
         // The CPU shadow reflects only CPU-side patches; integration output
         // from Pass 1/2 lives only on the GPU. Before mutating the shadow
         // at the boundary, pull the canonical GPU values back so our

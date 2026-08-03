@@ -4,11 +4,21 @@
 //! state.  Every active node/resource pair contributes one ordinary STEAD own-aggregate row.  Effective
 //! ownership is retained only at ownership crossings, so retained owner-boundary state is
 //! O(crossings), never O(nodes × owners × resources).
+//!
+//! EVENT-GENERATION-STAMP-0: reduce-up products are a **second stamp carrier**. Integrating an
+//! unstamped product is a hard error. Stamp at the producing tree's generation; parents integrate
+//! stamped products without waiting (async is ordinary).
 
 use std::collections::{BTreeMap, BTreeSet};
 
 use simthing_core::owner_channel::{resolve_owner, resolve_owners_in_order, OwnerRef};
-use simthing_core::{SimThing, SimThingId};
+use simthing_core::{
+    integrate_stamped_product, GenerationStamp, GenerationStamped, IntegrateError,
+    IntegrationReceipt, IntegrationSchedule, SimThing, SimThingId,
+};
+
+#[cfg(test)]
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use super::channel_key::{OwnerChannelScopeKey, ResourceKey, ScopeId};
 
@@ -69,6 +79,9 @@ pub struct OwnerChannelRfBucket {
 }
 
 /// Conserved reduce-up report. `buckets` is in `OwnerChannelScopeKey` order.
+///
+/// Internal aggregation shape. The **production seam egress** is
+/// [`reduce_owner_channel_rf`], which returns a [`StampedReduceUpProduct`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OwnerChannelRfReduceUpReport {
     pub participant_count: u32,
@@ -78,6 +91,143 @@ pub struct OwnerChannelRfReduceUpReport {
     pub deficit_total: u32,
     pub buckets: Vec<OwnerChannelRfBucket>,
     pub stead: OwnerChannelRfSteadSurface,
+}
+
+/// Reduce-up product stamped with the producing tree's generation.
+/// This is the only shape that may cross a parent integration seam.
+pub type StampedReduceUpProduct = GenerationStamped<OwnerChannelRfReduceUpReport>;
+
+/// Stable product key derived from conserved totals (identity for the schedule log).
+pub fn reduce_up_product_key(report: &OwnerChannelRfReduceUpReport) -> u64 {
+    let mut h = 0u64;
+    h ^= report.participant_count as u64;
+    h = h.wrapping_mul(0x9E37_79B9_7F4A_7C15);
+    h ^= report.owner_count as u64;
+    h = h.wrapping_mul(0x9E37_79B9_7F4A_7C15);
+    h ^= report.bucket_count as u64;
+    h = h.wrapping_mul(0x9E37_79B9_7F4A_7C15);
+    h ^= report.surplus_total as u64;
+    h = h.wrapping_mul(0x9E37_79B9_7F4A_7C15);
+    h ^= report.deficit_total as u64;
+    h
+}
+
+/// Parent-side RF state after integrating stamped child products.
+///
+/// This is the integrated output the schedule must be able to replay bit-exactly.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct ParentRfIntegrationState {
+    pub surplus_total: u32,
+    pub deficit_total: u32,
+    pub product_count: u32,
+    /// Fold of product keys in schedule order (bit-exact replay witness).
+    pub schedule_fold: u64,
+}
+
+/// Integrate a stamped reduce-up product into parent RF state at the parent generation.
+///
+/// Async is ordinary: parent at N+3 integrating child gen-N completes with **no wait**.
+/// There is no production freshness gate, toggle, or lagging-child reject path.
+/// Records a **per-product** schedule row (full generation set; never per-bucket-latest).
+pub fn integrate_stamped_reduce_up(
+    parent_generation: GenerationStamp,
+    product: &StampedReduceUpProduct,
+    parent_state: &mut ParentRfIntegrationState,
+    schedule: &mut IntegrationSchedule,
+) -> Result<IntegrationReceipt, IntegrateError> {
+    let report = product.product();
+    let key = reduce_up_product_key(report);
+    let receipt = integrate_stamped_product(parent_generation, product, key, schedule);
+    // Apply RF product into parent state (production integration semantics).
+    // Values sum; stamps remain per-product in the schedule (DA fence / 6.2 coalesce note).
+    parent_state.surplus_total = parent_state
+        .surplus_total
+        .saturating_add(report.surplus_total);
+    parent_state.deficit_total = parent_state
+        .deficit_total
+        .saturating_add(report.deficit_total);
+    parent_state.product_count = parent_state.product_count.saturating_add(1);
+    parent_state.schedule_fold = parent_state
+        .schedule_fold
+        .wrapping_mul(0x9E37_79B9_7F4A_7C15)
+        .wrapping_add(key)
+        .wrapping_add(product.generation().get() as u64)
+        .wrapping_add(parent_generation.get() as u64);
+    Ok(receipt)
+}
+
+/// Test-only make-the-parent-wait mutant. **Not linked into production builds.**
+///
+/// Planted defect for Remand 2: when enabled, lagged N+3 <- N REDs. Production
+/// `integrate_stamped_reduce_up` never contains this branch.
+#[cfg(test)]
+static WAIT_FOR_FRESH_CHILD_MUTANT: AtomicBool = AtomicBool::new(false);
+
+/// Enable/disable the make-the-parent-wait mutant (test-only; `cfg(test)`).
+#[cfg(test)]
+pub fn plant_wait_for_fresh_child_mutant(enabled: bool) {
+    WAIT_FOR_FRESH_CHILD_MUTANT.store(enabled, Ordering::SeqCst);
+}
+
+/// Test-only integrate path that can plant the wait mutant. Production never calls this.
+#[cfg(test)]
+pub fn integrate_stamped_reduce_up_for_wait_mutant_proof(
+    parent_generation: GenerationStamp,
+    product: &StampedReduceUpProduct,
+    parent_state: &mut ParentRfIntegrationState,
+    schedule: &mut IntegrationSchedule,
+) -> Result<IntegrationReceipt, IntegrateError> {
+    if WAIT_FOR_FRESH_CHILD_MUTANT.load(Ordering::SeqCst)
+        && product.generation() != parent_generation
+    {
+        return Err(IntegrateError::WouldWaitForLaggingChild {
+            parent: parent_generation.get(),
+            child: product.generation().get(),
+        });
+    }
+    integrate_stamped_reduce_up(parent_generation, product, parent_state, schedule)
+}
+
+/// Replay a recorded schedule into parent RF state bit-exactly.
+///
+/// Products are selected by `(child_generation, product_key)` — never ambient order.
+pub fn replay_reduce_up_schedule(
+    schedule: &IntegrationSchedule,
+    products: &[StampedReduceUpProduct],
+) -> Result<ParentRfIntegrationState, IntegrateError> {
+    if schedule.entries().is_empty() && !products.is_empty() {
+        return Err(IntegrateError::MissingSchedule);
+    }
+    let mut state = ParentRfIntegrationState::default();
+    let mut scratch = IntegrationSchedule::new();
+    for entry in schedule.entries() {
+        let found = products.iter().find(|p| {
+            p.generation() == entry.child_generation
+                && reduce_up_product_key(p.product()) == entry.product_key
+        });
+        let Some(product) = found else {
+            continue;
+        };
+        integrate_stamped_reduce_up(
+            entry.parent_generation,
+            product,
+            &mut state,
+            &mut scratch,
+        )?;
+    }
+    Ok(state)
+}
+
+/// Reject unstamped products at the production integration door.
+///
+/// The production door only accepts [`StampedReduceUpProduct`]. This helper exists
+/// so a planted attempt to feed a raw report is expressible and REDs.
+pub fn integrate_raw_reduce_up_report_forbidden(
+    _report: &OwnerChannelRfReduceUpReport,
+    _parent_state: &mut ParentRfIntegrationState,
+    _schedule: &mut IntegrationSchedule,
+) -> Result<IntegrationReceipt, IntegrateError> {
+    Err(IntegrateError::UnstampedProduct)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -108,11 +258,26 @@ struct BucketAccumulator {
     deficit_total: u32,
 }
 
-/// Reduce arbitrary tree-local RF aggregates at intrinsic ownership boundaries.
+/// Reduce arbitrary tree-local RF aggregates at intrinsic ownership boundaries
+/// and **return a production-stamped product** for the producing tree's generation.
 ///
 /// The ordered key performs all segregation.  There is no one-owner-per-container admission
 /// rule and no owner-equality control-flow branch in aggregation.
+///
+/// EVENT-GENERATION-STAMP-0: the stamp rides this existing reduce-up product. Products
+/// that leave this door for parent integration are always [`StampedReduceUpProduct`].
 pub fn reduce_owner_channel_rf(
+    root: &SimThing,
+    own_aggregates: &[OwnerChannelRfOwnAggregate],
+    generation: GenerationStamp,
+) -> Result<StampedReduceUpProduct, OwnerChannelRfError> {
+    let report = reduce_owner_channel_rf_unstamped(root, own_aggregates)?;
+    Ok(GenerationStamped::stamp(generation, report))
+}
+
+/// Internal unstamped aggregation. Prefer [`reduce_owner_channel_rf`] for any product
+/// that will cross a parent seam.
+pub fn reduce_owner_channel_rf_unstamped(
     root: &SimThing,
     own_aggregates: &[OwnerChannelRfOwnAggregate],
 ) -> Result<OwnerChannelRfReduceUpReport, OwnerChannelRfError> {
@@ -690,5 +855,68 @@ fn owner_authority_error(
         },
         resource_key: None,
         message: error.to_string(),
+    }
+}
+
+#[cfg(test)]
+mod wait_mutant_proof {
+    use super::*;
+    use simthing_core::owner_channel::{bind_owner, OwnerRef};
+    use simthing_core::{SimThing, SimThingKind};
+
+    fn node() -> SimThing {
+        SimThing::new(SimThingKind::Custom("synthetic".into()), 0)
+    }
+
+    #[test]
+    fn make_the_parent_wait_mutant_reds_then_restores_green() {
+        let mut root = node();
+        bind_owner(&mut root, &OwnerRef::new("alpha"));
+        let leaf = node();
+        let leaf_id = leaf.id;
+        root.add_child(leaf);
+        let rows = vec![OwnerChannelRfOwnAggregate {
+            simthing_id: leaf_id,
+            resource_key: ResourceKey::new("ore"),
+            surplus: 2,
+            deficit: 0,
+        }];
+        let stamped =
+            reduce_owner_channel_rf(&root, &rows, GenerationStamp::new(1)).expect("stamped");
+
+        // Production path never waits.
+        let mut schedule = IntegrationSchedule::new();
+        let mut parent = ParentRfIntegrationState::default();
+        integrate_stamped_reduce_up(
+            GenerationStamp::new(4),
+            &stamped,
+            &mut parent,
+            &mut schedule,
+        )
+        .expect("production integrate has no wait branch");
+
+        // Test-only mutant REDs lagged integrate.
+        plant_wait_for_fresh_child_mutant(true);
+        let mut schedule2 = IntegrationSchedule::new();
+        let mut parent2 = ParentRfIntegrationState::default();
+        let err = integrate_stamped_reduce_up_for_wait_mutant_proof(
+            GenerationStamp::new(4),
+            &stamped,
+            &mut parent2,
+            &mut schedule2,
+        )
+        .expect_err("wait mutant must RED");
+        assert!(matches!(
+            err,
+            IntegrateError::WouldWaitForLaggingChild { parent: 4, child: 1 }
+        ));
+        plant_wait_for_fresh_child_mutant(false);
+        integrate_stamped_reduce_up_for_wait_mutant_proof(
+            GenerationStamp::new(4),
+            &stamped,
+            &mut parent2,
+            &mut schedule2,
+        )
+        .expect("restored green");
     }
 }

@@ -247,17 +247,19 @@ fn to_oracle_registration(reg: &EmissionRegistration) -> crate::EmissionOracleRe
 }
 
 /// CPU-oracle twin of kernel EmitEvent readback for driver parity burn-in.
+///
+/// EVENT-GENERATION-STAMP-0: pass the producing-tree generation for sealed stamps.
 pub fn cpu_oracle_emission_records(
     flat: &[f32],
     n_dims: u32,
     emissions: &[EmissionRegistration],
+    generation: u32,
 ) -> Result<Vec<crate::EmissionRecord>, EmissionPlanError> {
     let oracle_regs: Vec<_> = emissions.iter().map(to_oracle_registration).collect();
-    crate::emission_oracle::cpu_oracle_emission_records(flat, n_dims, &oracle_regs).map_err(|e| {
-        match e {
+    crate::emission_oracle::cpu_oracle_emission_records(flat, n_dims, &oracle_regs, generation)
+        .map_err(|e| match e {
             crate::EmissionOracleError::MissingEmlRegistry => EmissionPlanError::MissingEmlRegistry,
-        }
-    })
+        })
 }
 
 #[cfg(test)]

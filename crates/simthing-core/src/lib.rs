@@ -12,6 +12,7 @@ pub mod eml_registry;
 pub mod evaluate;
 pub mod fission_child_spawn;
 pub mod fission_clone_source;
+pub mod generation_stamp;
 pub mod owner_channel;
 pub mod ids;
 pub mod intensity_eml;
@@ -88,6 +89,13 @@ pub use ids::{
 pub use intensity_eml::{
     compile_intensity_behavior_to_eml, intensity_eml_direct_cpu, intensity_tree_id,
     INTENSITY_EML_TREE_ID_BASE,
+};
+pub use generation_stamp::{
+    admit_dispatch_minted_overlay, dispatch_until_dissolved, integrate_stamped_product,
+    integrate_unstamped_product_forbidden, replay_integration_schedule, BackpressurePolicy,
+    DispatchOverlayError, GenerationStamp, GenerationStamped, IntegrateError, IntegrationReceipt,
+    IntegrationSchedule, IntegrationScheduleEntry, RingPushOutcome, StampedEgressEntry,
+    StampedEventRing,
 };
 pub use overlay::{
     DissolveCondition, Overlay, OverlayKind, OverlayLifecycle, OverlaySource,

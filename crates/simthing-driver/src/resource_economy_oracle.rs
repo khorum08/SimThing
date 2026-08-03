@@ -65,12 +65,15 @@ pub fn expected_emission_emit_count(
 }
 
 /// Run emission oracle for all registrations and return per-reg_idx emit counts.
+///
+/// EVENT-GENERATION-STAMP-0: `generation` stamps sealed records for parity.
 pub fn run_emission_cpu_oracle(
     flat: &[f32],
     n_dims: u32,
     emissions: &[EmissionRegistration],
+    generation: u32,
 ) -> Result<Vec<EmissionRecord>, ResourceEconomyOracleError> {
-    simthing_gpu::cpu_oracle_emission_records(flat, n_dims, emissions)
+    simthing_gpu::cpu_oracle_emission_records(flat, n_dims, emissions, generation)
         .map_err(ResourceEconomyOracleError::EmissionPlan)
 }
 

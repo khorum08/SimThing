@@ -183,7 +183,8 @@ fn intrinsic_rf_compile_scenario() -> SimThingScenarioSpec {
 #[test]
 fn n_owner_container_conserves_and_reconstructs_in_canonical_bucket_order() {
     let (root, rows) = three_owner_tree();
-    let report = reduce_owner_channel_rf(&root, &rows).expect("generalized reduce-up");
+    let stamped = reduce_owner_channel_rf(&root, &rows, simthing_core::GenerationStamp::new(0)).expect("generalized reduce-up");
+    let report = stamped.product();
 
     assert_eq!(report.owner_count, 3, "one container must admit all owners");
     assert_eq!(report.participant_count, 5);
@@ -252,7 +253,8 @@ fn retained_owner_state_is_bounded_by_crossings_not_nodes_owners_or_resources() 
         .iter()
         .flat_map(|&id| [own(id, "r0", 1, 0), own(id, "r1", 0, 1)])
         .collect::<Vec<_>>();
-    let report = reduce_owner_channel_rf(&root, &rows).expect("bounded reduction");
+    let stamped = reduce_owner_channel_rf(&root, &rows, simthing_core::GenerationStamp::new(0)).expect("bounded reduction");
+    let report = stamped.product();
 
     assert_eq!(report.stead.own_aggregates.len(), 128 * 2);
     assert_eq!(report.stead.crossing_flows.len(), 2);

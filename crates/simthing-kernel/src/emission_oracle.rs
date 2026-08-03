@@ -30,10 +30,14 @@ fn emission_cell_index(slot: u32, col: u32, n_dims: u32) -> usize {
 }
 
 /// CPU-oracle twin of kernel EmitEvent readback for driver parity burn-in.
+///
+/// EVENT-GENERATION-STAMP-0: `generation` is the producing-tree authority stamped on
+/// every sealed record. Parity is not generation-blind.
 pub fn cpu_oracle_emission_records(
     flat: &[f32],
     n_dims: u32,
     emissions: &[EmissionOracleRegistration],
+    generation: u32,
 ) -> Result<Vec<EmissionRecord>, EmissionOracleError> {
     emissions
         .iter()
@@ -50,6 +54,7 @@ pub fn cpu_oracle_emission_records(
             Ok(EmissionRecord::from_cpu_oracle(
                 emission.reg_idx,
                 emit_count,
+                generation,
             ))
         })
         .collect()

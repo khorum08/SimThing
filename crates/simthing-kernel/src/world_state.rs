@@ -139,6 +139,11 @@ pub struct WorldGpuState {
     /// Dispatch generation stamped onto fused GPU crossing updates.
     pub anchor_table_generation: u32,
 
+    /// EVENT-GENERATION-STAMP-0: admitted observer egress ring for sealed emissions.
+    /// Production emission tick pushes through `push_emissions_into_production_egress`.
+    /// Forced observer lag applies ring backpressure without writing sim state.
+    pub production_event_egress: simthing_core::StampedEventRing,
+
     // ── Reduction (Passes 4–6) ───────────────────────────────────────────────
     /// CSR child topology: `child_starts[i]..child_starts[i+1]` indexes
     /// children of parent slot `i`. Length `n_slots + 1` u32s.
@@ -321,6 +326,20 @@ impl WorldGpuState {
 
     pub fn set_anchor_table_generation(&mut self, generation: u32) {
         self.anchor_table_generation = generation;
+    }
+
+    /// EVENT-GENERATION-STAMP-0: bind the tree's generation authority for production
+    /// seal/readback. Called at the ordinary generation step boundary (same day
+    /// counter that advances `anchor_table_generation`). Every session that
+    /// mints sealed events/emissions inherits this stamp source — callers do
+    /// not need a separate optional setter.
+    pub fn bind_production_generation(&mut self, generation: u32) {
+        self.anchor_table_generation = generation;
+        if let Some(runtime) = self.accumulator_runtime.as_mut() {
+            for session in runtime.all_sessions_mut() {
+                session.bind_generation_authority(generation);
+            }
+        }
     }
 
     /// Admission / test upload of a typed STEAD table (encodes POD at this boundary).
@@ -756,6 +775,10 @@ impl WorldGpuState {
             anchor_table,
             n_anchor_rows: 0,
             anchor_table_generation: 0,
+            production_event_egress: simthing_core::StampedEventRing::admit(
+                256,
+                simthing_core::BackpressurePolicy::OverwriteOldest,
+            ),
             child_starts,
             child_indices,
             column_rules,
@@ -2098,9 +2121,17 @@ impl WorldGpuState {
     /// Read back exactly `n` `ThresholdEvent`s produced by the most recent
     /// Pass 7 dispatch. Caller is responsible for passing the count read via
     /// `read_event_count()` first (or capping at `n_thresholds`).
+    /// Production seal: every event carries the world generation by construction.
+    /// Uses `anchor_table_generation` as the tree's generation authority for this
+    /// state (same cadence as STEAD table maintenance at the boundary).
     pub fn read_event_candidates(&self, n: u32) -> Vec<ThresholdEvent> {
-        self.threshold_events
-            .read_events(&self.ctx.device, &self.ctx.queue, self.n_thresholds, n)
+        self.threshold_events.read_events(
+            &self.ctx.device,
+            &self.ctx.queue,
+            self.n_thresholds,
+            n,
+            self.anchor_table_generation,
+        )
     }
 
     pub fn values_len(&self) -> usize {

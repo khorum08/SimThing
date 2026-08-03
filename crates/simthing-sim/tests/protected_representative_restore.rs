@@ -228,7 +228,7 @@ fn clone_capability_children() {
         buffer: THRESH_BUF_VALUES,
     }];
     let events =
-        cpu_oracle_threshold_events(&previous, &values, &previous, &values, n_dims as u32, &regs);
+        cpu_oracle_threshold_events(&previous, &values, &previous, &values, n_dims as u32, &regs, 0);
     assert_eq!(events.len(), 1, "fission threshold must fire once");
 
     let paths = HashMap::from([(faction_id, vec![0])]);

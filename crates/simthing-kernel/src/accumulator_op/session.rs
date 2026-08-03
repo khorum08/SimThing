@@ -186,6 +186,9 @@ pub struct AccumulatorOpSession {
     threshold_event_kinds: Vec<u32>,
     /// Full threshold registration sidecar for sealed BandCrossingDelta mint.
     threshold_registrations: Vec<ThresholdRegistration>,
+    /// Producing-tree generation for EVENT-GENERATION-STAMP-0 production seal/readback.
+    /// Advanced by the host each generation; every sealed egress record carries this value.
+    generation: u32,
 }
 
 impl AccumulatorOpSession {
@@ -579,6 +582,7 @@ impl AccumulatorOpSession {
             last_pass_time_us: None,
             threshold_event_kinds: Vec::new(),
             threshold_registrations: Vec::new(),
+            generation: 0,
         };
 
         session.reset_emission_count(ctx);
@@ -2290,22 +2294,29 @@ impl AccumulatorOpSession {
     }
 
     /// Read compact threshold crossing records written this tick (C-1).
+    /// Production seal: stamps with [`Self::generation`].
     pub fn readback_threshold_emissions(
         &self,
         ctx: &GpuContext,
     ) -> Result<Vec<ThresholdEmission>, AccumulatorOpSessionError> {
         self.threshold_emission_readback
-            .read_threshold_emissions(&ctx.device, &ctx.queue)
+            .read_threshold_emissions(&ctx.device, &ctx.queue, self.generation)
             .map_err(AccumulatorOpSessionError::from)
     }
 
     /// Reconstruct Pass 7 `ThresholdEvent`s from compact threshold emissions.
+    /// Production seal: stamps with [`Self::generation`].
     pub fn readback_threshold_events(
         &self,
         ctx: &GpuContext,
     ) -> Result<Vec<ThresholdEvent>, AccumulatorOpSessionError> {
         self.threshold_emission_readback
-            .read_threshold_events(&ctx.device, &ctx.queue, &self.threshold_event_kinds)
+            .read_threshold_events(
+                &ctx.device,
+                &ctx.queue,
+                &self.threshold_event_kinds,
+                self.generation,
+            )
             .map_err(AccumulatorOpSessionError::from)
     }
 
@@ -2320,23 +2331,94 @@ impl AccumulatorOpSession {
     }
 
     /// Read up to `emission_capacity` records plus the total attempt count.
+    /// Production seal: stamps with [`Self::generation`].
     pub fn readback_emissions_capped(
         &self,
         ctx: &GpuContext,
     ) -> Result<(u32, Vec<EmissionRecord>), AccumulatorOpSessionError> {
         self.emission_readback
-            .read_records_capped(&ctx.device, &ctx.queue)
+            .read_records_capped(&ctx.device, &ctx.queue, self.generation)
             .map_err(AccumulatorOpSessionError::from)
     }
 
     /// Read compact emission records written by EmitEvent ops this tick.
+    /// Production seal: every record is stamped with the session generation by construction.
     pub fn readback_emissions(
         &self,
         ctx: &GpuContext,
     ) -> Result<Vec<EmissionRecord>, AccumulatorOpSessionError> {
         self.emission_readback
-            .read_records(&ctx.device, &ctx.queue)
+            .read_records(&ctx.device, &ctx.queue, self.generation)
             .map_err(AccumulatorOpSessionError::from)
+    }
+
+    /// Bind the producing-tree generation authority used by production seal/readback.
+    ///
+    /// Production step boundaries call this via [`WorldGpuState::bind_production_generation`]
+    /// so the stamp source tracks the tree's generation counter. External optional
+    /// setters are not the production path.
+    pub fn bind_generation_authority(&mut self, generation: u32) {
+        self.generation = generation;
+    }
+
+    pub fn generation(&self) -> u32 {
+        self.generation
+    }
+
+    /// Production event egress: seal/readback emissions at the session generation
+    /// and push them into the admitted [`StampedEventRing`]. Unsealed records
+    /// cannot enter. Observer lag applies ring backpressure without blocking the sim.
+    /// Returns the number of production-sealed records pushed (not the sealed records
+    /// themselves — sealed producers stay on the existing readback doors).
+    ///
+    /// This is the **canonical observer egress boundary** for EmitEvent compact
+    /// records. Direct [`Self::readback_emissions`] remains for CPU/GPU parity and
+    /// oracle/burn-in only — not observer lag/backpressure.
+    pub fn push_emissions_into_production_egress(
+        &self,
+        ctx: &GpuContext,
+        ring: &mut simthing_core::StampedEventRing,
+    ) -> Result<u32, AccumulatorOpSessionError> {
+        // Always count door entry first — proves the live path executed even
+        // when the batch is empty (Remand 5: if-false / removal turns this RED).
+        ring.note_admit_invocation();
+        let records = self.readback_emissions(ctx)?;
+        self.admit_sealed_emissions_to_egress(&records, ring)
+    }
+
+    fn admit_sealed_emissions_to_egress(
+        &self,
+        records: &[EmissionRecord],
+        ring: &mut simthing_core::StampedEventRing,
+    ) -> Result<u32, AccumulatorOpSessionError> {
+        let mut pushed = 0u32;
+        for record in records {
+            if !record.is_production_sealed() {
+                return Err(AccumulatorOpSessionError::Readback);
+            }
+            // Generation must match the bound production authority (no gen-0 drift).
+            if record.generation() != self.generation {
+                return Err(AccumulatorOpSessionError::Readback);
+            }
+            ring.push(simthing_core::StampedEgressEntry {
+                generation: simthing_core::GenerationStamp::new(record.generation()),
+                key: record.reg_idx() as u64,
+                payload_bits: record.emit_count() as u64,
+            });
+            pushed = pushed.saturating_add(1);
+        }
+        Ok(pushed)
+    }
+
+    /// Fixture upload of GPU emission POD for production-sequence referees.
+    #[cfg(test)]
+    pub(crate) fn write_emission_gpu_records_for_test(
+        &self,
+        ctx: &GpuContext,
+        records: &[crate::sealed::EmissionRecordGpu],
+    ) {
+        self.emission_readback
+            .write_gpu_records(&ctx.queue, records);
     }
 
     /// Full values buffer readback — debug only unless explicitly allowed.
@@ -2713,4 +2795,480 @@ mod tests {
         current[2 * n_dims as usize] = 0.50;
         (previous, current)
     }
+
+    /// Remand 4: production-sequence referee through real AccumulatorOpSession.
+    /// generation advance → sealed readback → ring admission → forced lag,
+    /// with no sim values-buffer perturbation.
+    #[test]
+    fn production_egress_sequence_real_session_generation_seal_ring_lag() {
+        let Ok(ctx) = GpuContext::new_blocking() else {
+            // Host without GPU: skip (same posture as other session GPU tests).
+            return;
+        };
+        let mut session = AccumulatorOpSession::new(&ctx, 4, 2);
+        // Snapshot "sim state" proxy: values buffer bytes before egress.
+        set_debug_readback_allowed(true);
+        let values_before = session.readback_full(&ctx).expect("values");
+
+        let mut ring = simthing_core::StampedEventRing::admit(
+            1,
+            simthing_core::BackpressurePolicy::OverwriteOldest,
+        );
+
+        // Generation 1: seal path stamps with bound authority.
+        session.bind_generation_authority(1);
+        session.write_emission_gpu_records_for_test(
+            &ctx,
+            &[crate::sealed::EmissionRecordGpu {
+                reg_idx: 7,
+                emit_count: 2,
+            }],
+        );
+        let sealed = session.readback_emissions(&ctx).expect("sealed readback gen1");
+        assert_eq!(sealed.len(), 1);
+        assert_eq!(sealed[0].generation(), 1);
+        assert!(sealed[0].is_production_sealed());
+        let pushed = session
+            .push_emissions_into_production_egress(&ctx, &mut ring)
+            .expect("ring admit gen1");
+        assert_eq!(pushed, 1);
+        assert_eq!(ring.len(), 1);
+        assert_eq!(
+            ring.entries()[0].generation,
+            simthing_core::GenerationStamp::new(1)
+        );
+
+        // Generation 2: successive authority; forced lag overwrites oldest.
+        session.bind_generation_authority(2);
+        session.write_emission_gpu_records_for_test(
+            &ctx,
+            &[crate::sealed::EmissionRecordGpu {
+                reg_idx: 8,
+                emit_count: 3,
+            }],
+        );
+        let sealed2 = session.readback_emissions(&ctx).expect("sealed readback gen2");
+        assert_eq!(sealed2[0].generation(), 2);
+        session
+            .push_emissions_into_production_egress(&ctx, &mut ring)
+            .expect("ring admit gen2");
+        assert_eq!(ring.len(), 1, "capacity 1 under overwrite-oldest lag");
+        assert_eq!(
+            ring.entries()[0].generation,
+            simthing_core::GenerationStamp::new(2)
+        );
+        assert!(ring.backpressure_actions >= 1);
+
+        // Observer lag must not perturb the sim values buffer.
+        let values_after = session.readback_full(&ctx).expect("values after");
+        assert_eq!(
+            values_before, values_after,
+            "forced observer lag must not write sim state"
+        );
+    }
+
+    /// Emission observer/parity door APIs constrained by the negative census.
+    /// Longer names first so `readback_emissions` does not prefix-match `_capped`.
+    const EMISSION_DOOR_APIS: &[&str] = &[
+        "push_emissions_into_production_egress",
+        "readback_emissions_capped",
+        "readback_emissions",
+    ];
+
+    /// One production call site of an emission door API.
+    /// Identity is `(path, api, line)` — not whole-file allowance — so a second
+    /// call in a sanctioned file is a distinct site and turns the census RED.
+    #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+    struct EmissionDoorCallSite {
+        path: String,
+        api: String,
+        /// Trimmed source line containing `.<api>(` (pin / occurrence identity).
+        line: String,
+    }
+
+    /// Sanctioned production CALL sites: exact `(path, api, line_substring)`.
+    /// Definitions are inventoried separately. Direct readback is parity/oracle
+    /// only (burn-in after ring admit; internal seal path inside push).
+    const SANCTIONED_EMISSION_DOOR_CALLS: &[(&str, &str, &str)] = &[
+        (
+            "simthing-feeder/src/dispatcher.rs",
+            "push_emissions_into_production_egress",
+            "if let Err(err) = session.push_emissions_into_production_egress(",
+        ),
+        (
+            "simthing-driver/src/resource_economy_burn_in.rs",
+            "push_emissions_into_production_egress",
+            "session.push_emissions_into_production_egress(&state.ctx, &mut state.production_event_egress)?;",
+        ),
+        (
+            "simthing-driver/src/resource_economy_burn_in.rs",
+            "readback_emissions",
+            "let gpu_records = session.readback_emissions(&state.ctx)?;",
+        ),
+        (
+            "simthing-kernel/src/accumulator_op/session.rs",
+            "readback_emissions",
+            "let records = self.readback_emissions(ctx)?;",
+        ),
+    ];
+
+    /// Definitions must live only on the session production surface.
+    const SANCTIONED_EMISSION_DOOR_DEFS: &[(&str, &str)] = &[
+        (
+            "simthing-kernel/src/accumulator_op/session.rs",
+            "push_emissions_into_production_egress",
+        ),
+        (
+            "simthing-kernel/src/accumulator_op/session.rs",
+            "readback_emissions",
+        ),
+        (
+            "simthing-kernel/src/accumulator_op/session.rs",
+            "readback_emissions_capped",
+        ),
+    ];
+
+    /// Strip `#[cfg(test)]` items so unit-test referees are not production call sites.
+    fn strip_cfg_test_items(src: &str) -> String {
+        let lines: Vec<&str> = src.lines().collect();
+        let mut out = String::new();
+        let mut i = 0usize;
+        while i < lines.len() {
+            let trimmed = lines[i].trim_start();
+            if trimmed.starts_with("#[cfg(test)]") {
+                i += 1;
+                while i < lines.len() && lines[i].trim_start().starts_with("#[") {
+                    i += 1;
+                }
+                if i >= lines.len() {
+                    break;
+                }
+                let mut depth = 0i32;
+                let mut started = false;
+                while i < lines.len() {
+                    for c in lines[i].chars() {
+                        if c == '{' {
+                            depth += 1;
+                            started = true;
+                        } else if c == '}' {
+                            depth -= 1;
+                        }
+                    }
+                    i += 1;
+                    if started && depth <= 0 {
+                        break;
+                    }
+                    // Attribute-only / single-line item without braces.
+                    if !started && !lines[i.saturating_sub(1)].contains('{') {
+                        break;
+                    }
+                }
+                continue;
+            }
+            out.push_str(lines[i]);
+            out.push('\n');
+            i += 1;
+        }
+        out
+    }
+
+    fn line_is_code(line: &str) -> bool {
+        let t = line.trim_start();
+        !t.is_empty() && !t.starts_with("//")
+    }
+
+    fn line_has_api_call(line: &str, api: &str) -> bool {
+        if !line_is_code(line) {
+            return false;
+        }
+        line.contains(&format!(".{api}("))
+    }
+
+    fn line_has_api_def(line: &str, api: &str) -> bool {
+        if !line_is_code(line) {
+            return false;
+        }
+        // `fn readback_emissions(` does not match `fn readback_emissions_capped(`.
+        line.contains(&format!("fn {api}("))
+    }
+
+    /// Discover production emission-door call sites under `crates_root`.
+    fn collect_emission_door_call_sites(crates_root: &std::path::Path) -> Vec<EmissionDoorCallSite> {
+        let mut sites = Vec::new();
+        for entry in walkdir_rs_files(crates_root) {
+            let Ok(text) = std::fs::read_to_string(&entry) else {
+                continue;
+            };
+            let rel = entry
+                .strip_prefix(crates_root)
+                .unwrap_or(&entry)
+                .to_string_lossy()
+                .replace('\\', "/");
+            // Production authority: crates/*/src only (not integration tests/).
+            if rel.contains("/tests/") {
+                continue;
+            }
+            let prod = strip_cfg_test_items(&text);
+            for line in prod.lines() {
+                if !line_is_code(line) {
+                    continue;
+                }
+                for api in EMISSION_DOOR_APIS {
+                    if line_has_api_call(line, api) {
+                        sites.push(EmissionDoorCallSite {
+                            path: rel.clone(),
+                            api: (*api).to_string(),
+                            line: line.trim().to_string(),
+                        });
+                        break; // longest-first APIs: one match per line
+                    }
+                }
+            }
+        }
+        sites.sort();
+        sites.dedup();
+        sites
+    }
+
+    fn collect_emission_door_defs(
+        crates_root: &std::path::Path,
+    ) -> Vec<(String, String)> {
+        let mut defs = Vec::new();
+        for entry in walkdir_rs_files(crates_root) {
+            let Ok(text) = std::fs::read_to_string(&entry) else {
+                continue;
+            };
+            let rel = entry
+                .strip_prefix(crates_root)
+                .unwrap_or(&entry)
+                .to_string_lossy()
+                .replace('\\', "/");
+            if rel.contains("/tests/") {
+                continue;
+            }
+            let prod = strip_cfg_test_items(&text);
+            for line in prod.lines() {
+                for api in EMISSION_DOOR_APIS {
+                    if line_has_api_def(line, api) {
+                        defs.push((rel.clone(), (*api).to_string()));
+                        break;
+                    }
+                }
+            }
+        }
+        defs.sort();
+        defs.dedup();
+        defs
+    }
+
+    /// Exact-set equality: found `(path, api, line)` must match sanctioned pins.
+    fn verify_emission_door_census(
+        calls: &[EmissionDoorCallSite],
+        defs: &[(String, String)],
+    ) -> Result<(), String> {
+        // Map each found call to a sanctioned pin via path+api+line contains pin.
+        let mut unmatched_found: Vec<String> = Vec::new();
+        let mut matched_sanctioned = vec![false; SANCTIONED_EMISSION_DOOR_CALLS.len()];
+        for site in calls {
+            let mut hit = None;
+            for (i, (path, api, pin)) in SANCTIONED_EMISSION_DOOR_CALLS.iter().enumerate() {
+                if site.path == *path && site.api == *api && site.line.contains(pin) {
+                    hit = Some(i);
+                    break;
+                }
+            }
+            match hit {
+                Some(i) => {
+                    if matched_sanctioned[i] {
+                        return Err(format!(
+                            "duplicate match for sanctioned pin #{i} at {}::{} line={}",
+                            site.path, site.api, site.line
+                        ));
+                    }
+                    matched_sanctioned[i] = true;
+                }
+                None => unmatched_found.push(format!(
+                    "{}::{} :: {}",
+                    site.path, site.api, site.line
+                )),
+            }
+        }
+        if !unmatched_found.is_empty() {
+            return Err(format!(
+                "unsanctioned emission-door call site(s): {unmatched_found:?}\n\
+                 sanctioned pins: {SANCTIONED_EMISSION_DOOR_CALLS:?}"
+            ));
+        }
+        for (i, ok) in matched_sanctioned.iter().enumerate() {
+            if !ok {
+                let (p, a, pin) = SANCTIONED_EMISSION_DOOR_CALLS[i];
+                return Err(format!(
+                    "missing sanctioned emission-door call site: {p}::{a} pin={pin:?}"
+                ));
+            }
+        }
+
+        let expected_defs: Vec<(String, String)> = SANCTIONED_EMISSION_DOOR_DEFS
+            .iter()
+            .map(|(p, a)| ((*p).to_string(), (*a).to_string()))
+            .collect();
+        if defs != &expected_defs[..] {
+            return Err(format!(
+                "emission-door definition set mismatch\n found={defs:?}\n expected={expected_defs:?}"
+            ));
+        }
+        Ok(())
+    }
+
+    /// Negative bypass census (Remand 5+6): production call sites of
+    /// `push_emissions_into_production_egress`, `readback_emissions`, and
+    /// `readback_emissions_capped` must equal the sanctioned pin set.
+    /// A new direct-readback observer bypass turns RED.
+    #[test]
+    fn observer_egress_negative_bypass_census() {
+        let crates_root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..");
+        let calls = collect_emission_door_call_sites(&crates_root);
+        let defs = collect_emission_door_defs(&crates_root);
+        verify_emission_door_census(&calls, &defs).unwrap_or_else(|e| panic!("{e}"));
+
+        // Feeder production site: Result must not be swallowed; must target the
+        // admitted world ring and surface ProductionEmissionEgress.
+        let feeder_src = include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../simthing-feeder/src/dispatcher.rs"
+        ));
+        assert!(
+            !feeder_src.contains("let _ = session.push_emissions_into_production_egress"),
+            "feeder must not swallow production egress Result with let _ ="
+        );
+        assert!(
+            feeder_src.contains("if let Err(err) = session.push_emissions_into_production_egress"),
+            "feeder must handle production egress Result (Err → ProductionEmissionEgress)"
+        );
+        assert!(
+            feeder_src.contains("ProductionEmissionEgress"),
+            "feeder must surface egress failures on TickGpuError::ProductionEmissionEgress"
+        );
+        assert!(
+            feeder_src.contains("&mut state.production_event_egress"),
+            "feeder must admit into WorldGpuState::production_event_egress"
+        );
+
+        // Burn-in: Result propagated; ring admit then parity direct readback only.
+        let burn_in = include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../simthing-driver/src/resource_economy_burn_in.rs"
+        ));
+        assert!(
+            burn_in.contains(".push_emissions_into_production_egress(") && burn_in.contains("?"),
+            "burn-in must propagate production egress Result"
+        );
+        assert!(
+            !burn_in.contains("let _ = session.push_emissions_into_production_egress"),
+            "burn-in must not swallow production egress Result"
+        );
+        // Order discipline: ring admit line appears before parity readback line.
+        let push_at = burn_in
+            .find("session.push_emissions_into_production_egress")
+            .expect("burn-in push");
+        let read_at = burn_in
+            .find("session.readback_emissions")
+            .expect("burn-in parity readback");
+        assert!(
+            push_at < read_at,
+            "burn-in must admit through production egress before parity readback_emissions"
+        );
+    }
+
+    /// Remand 6 planted defect: an unsanctioned production direct-readback call
+    /// must turn the census RED (not a mere presence/count tautology).
+    #[test]
+    fn observer_egress_census_reds_on_unsanctioned_direct_readback_call() {
+        let crates_root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..");
+        let mut calls = collect_emission_door_call_sites(&crates_root);
+        let defs = collect_emission_door_defs(&crates_root);
+        // Baseline must be green so the RED is attributable to the plant.
+        verify_emission_door_census(&calls, &defs).expect("baseline census green");
+
+        // Plant: production-shaped direct readback that bypasses StampedEventRing.
+        calls.push(EmissionDoorCallSite {
+            path: "simthing-feeder/src/dispatcher.rs".into(),
+            api: "readback_emissions".into(),
+            line: "let _bypass = session.readback_emissions(&state.ctx);".into(),
+        });
+        let err = verify_emission_door_census(&calls, &defs)
+            .expect_err("unsanctioned direct readback must RED the census");
+        assert!(
+            err.contains("unsanctioned") && err.contains("readback_emissions"),
+            "RED message must name the unsanctioned direct-readback site, got: {err}"
+        );
+
+        // Plant via filesystem walk: new production file with capped readback.
+        let tmp = std::env::temp_dir().join(format!(
+            "egs_r6_census_{}_{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_nanos())
+                .unwrap_or(0)
+        ));
+        let evil_dir = tmp.join("simthing-kernel").join("src").join("planted");
+        std::fs::create_dir_all(&evil_dir).expect("temp plant dir");
+        let evil_file = evil_dir.join("observer_bypass.rs");
+        std::fs::write(
+            &evil_file,
+            "// planted defect for Remand 6 census selftest\n\
+             fn evil(session: &S, ctx: &C) {\n\
+                 let _ = session.readback_emissions_capped(ctx);\n\
+             }\n",
+        )
+        .expect("write plant");
+        let planted_sites = collect_emission_door_call_sites(&tmp);
+        assert!(
+            planted_sites.iter().any(|s| {
+                s.api == "readback_emissions_capped"
+                    && s.path.contains("observer_bypass")
+            }),
+            "walk must discover planted readback_emissions_capped call: {planted_sites:?}"
+        );
+        // Merge plant into real tree sites → RED.
+        let mut merged = collect_emission_door_call_sites(&crates_root);
+        merged.extend(planted_sites);
+        let walk_err = verify_emission_door_census(&merged, &defs)
+            .expect_err("filesystem-planted direct readback must RED");
+        assert!(
+            walk_err.contains("unsanctioned")
+                && walk_err.contains("readback_emissions_capped"),
+            "walk RED must name capped readback plant, got: {walk_err}"
+        );
+        let _ = std::fs::remove_dir_all(&tmp);
+    }
+
+    /// Walk `root` for `.rs` files under crate trees (no walkdir dep).
+    fn walkdir_rs_files(root: &std::path::Path) -> Vec<std::path::PathBuf> {
+        let mut out = Vec::new();
+        let mut stack = vec![root.to_path_buf()];
+        while let Some(dir) = stack.pop() {
+            let Ok(rd) = std::fs::read_dir(&dir) else {
+                continue;
+            };
+            for ent in rd.flatten() {
+                let path = ent.path();
+                if path.is_dir() {
+                    let name = path.file_name().and_then(|s| s.to_str()).unwrap_or("");
+                    // Stay inside crate source; skip target/ and hidden.
+                    if name == "target" || name.starts_with('.') {
+                        continue;
+                    }
+                    stack.push(path);
+                } else if path.extension().and_then(|s| s.to_str()) == Some("rs") {
+                    out.push(path);
+                }
+            }
+        }
+        out
+    }
 }
+
+
+

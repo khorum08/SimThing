@@ -3,8 +3,10 @@
 //! ## Step 4: dissolve + writeback
 //!
 //! Each `Overlay` carries an `OverlayLifecycle`. At the boundary:
-//! - `UntilDissolved` overlays are removed only by an authored condition or explicit removal.
-//! - `Transient { dissolution_conditions }` overlays are removed when *all*
+//! - `UntilDissolved` overlays are removed only by explicit removal (no automatic
+//!   condition on the unit form).
+//! - `UntilDissolvedWith { dissolution_conditions }` and
+//!   `Transient { dissolution_conditions }` overlays are removed when *all*
 //!   conditions are met. Conditions are AND-ed (all must be satisfied).
 //!
 //! `DissolveCondition` variants:
@@ -116,26 +118,31 @@ fn process_node(
         let should_dissolve: Vec<bool> = node
             .overlays
             .iter()
-            .map(|overlay| {
-                if let OverlayLifecycle::Transient {
+            .map(|overlay| match &overlay.lifecycle {
+                OverlayLifecycle::Transient {
                     dissolution_conditions,
-                } = &overlay.lifecycle
-                {
-                    dissolution_conditions
-                        .iter()
-                        .all(|cond| evaluate_condition(cond, node, registry, values_shadow, base))
-                } else {
-                    false
                 }
+                | OverlayLifecycle::UntilDissolvedWith {
+                    dissolution_conditions,
+                } => dissolution_conditions
+                    .iter()
+                    .all(|cond| evaluate_condition(cond, node, registry, values_shadow, base)),
+                _ => false,
             })
             .collect();
 
         // Second sub-pass (mutable): decrement AfterTicks on surviving overlays.
         for (i, overlay) in node.overlays.iter_mut().enumerate() {
-            if let OverlayLifecycle::Transient {
-                dissolution_conditions,
-            } = &mut overlay.lifecycle
-            {
+            let conditions = match &mut overlay.lifecycle {
+                OverlayLifecycle::Transient {
+                    dissolution_conditions,
+                }
+                | OverlayLifecycle::UntilDissolvedWith {
+                    dissolution_conditions,
+                } => Some(dissolution_conditions),
+                _ => None,
+            };
+            if let Some(dissolution_conditions) = conditions {
                 for cond in dissolution_conditions.iter_mut() {
                     if let DissolveCondition::AfterTicks { remaining } = cond {
                         if *remaining > 0 {
