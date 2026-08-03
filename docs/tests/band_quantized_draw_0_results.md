@@ -9,7 +9,7 @@ ORIENT-RECEIPT: `6af1884543b0`
 orientation_rule_stamp: `5554b2613f8907ff`
 Branch: `grok/band-quantized-draw-0`
 Implementation SHA measured: `78a4ad8e6a65aaf47597daaf2608ccadd05179c0`
-Status: **PROBATION / proof-present / DA-review-pending**
+Status: **COMPLETE / DA-GRADUATED — merged #1602 @ 63c8ed51**
 
 ## Bounded remand disposition
 
