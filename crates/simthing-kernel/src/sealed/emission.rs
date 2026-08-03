@@ -1,8 +1,9 @@
 //! Sealed emission records (KERNEL-EMISSION-SEAL-0 authority surface).
 //!
-//! EVENT-GENERATION-STAMP-0: sealed CPU-side records carry a generation stamp.
-//! GPU POD layouts are **not** widened (hot-loop fence); generation is applied at
-//! the seal/readback boundary from the producing tree's generation authority.
+//! EVENT-GENERATION-STAMP-0: sealed CPU-side records carry a generation stamp **by
+//! construction** at every mint. GPU POD layouts are **not** widened (hot-loop fence);
+//! generation is applied at the seal/readback boundary from the producing tree's
+//! generation authority. There is no optional post-hoc stamp step on the production path.
 
 use bytemuck::{Pod, Zeroable};
 
@@ -28,7 +29,7 @@ pub const DEFAULT_THRESHOLD_EMISSION_CAPACITY: u32 = 4096;
 ///
 /// ```compile_fail
 /// fn external_threshold_emission_named_forge() {
-///     let _ = simthing_kernel::ThresholdEmission::from_kernel_threshold_crossing(0, 0, 0, 0.0);
+///     let _ = simthing_kernel::ThresholdEmission::from_kernel_threshold_crossing(0, 0, 0, 0.0, 0);
 /// }
 /// ```
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -37,8 +38,10 @@ pub struct ThresholdEmission {
     slot: u32,
     col: u32,
     value: f32,
-    /// Producing tree generation. Stamped at seal/readback — not a GPU POD field.
+    /// Producing tree generation. Stamped at mint — not a GPU POD field.
     generation: u32,
+    /// True only when minted through a production seal door (oracle/readback with generation).
+    production_sealed: bool,
 }
 
 impl ThresholdEmission {
@@ -62,34 +65,53 @@ impl ThresholdEmission {
         self.generation
     }
 
-    /// Apply the producing tree's generation stamp at the seal/readback boundary.
-    /// Crate-private: not a cross-crate sealed producer (ALLOW-SEALED-PRODUCERS).
-    pub(crate) fn with_generation(mut self, generation: u32) -> Self {
-        self.generation = generation;
-        self
+    pub fn is_production_sealed(&self) -> bool {
+        self.production_sealed
     }
 
+    /// Production seal: generation is mandatory and recorded by construction.
     pub(crate) fn from_kernel_threshold_crossing(
         reg_idx: u32,
         slot: u32,
         col: u32,
         value: f32,
+        generation: u32,
     ) -> Self {
         Self {
             reg_idx,
             slot,
             col,
             value,
-            generation: 0,
+            generation,
+            production_sealed: true,
         }
     }
 
-    pub(crate) fn from_cpu_oracle(reg_idx: u32, slot: u32, col: u32, value: f32) -> Self {
-        Self::from_kernel_threshold_crossing(reg_idx, slot, col, value)
+    pub(crate) fn from_cpu_oracle(
+        reg_idx: u32,
+        slot: u32,
+        col: u32,
+        value: f32,
+        generation: u32,
+    ) -> Self {
+        Self::from_kernel_threshold_crossing(reg_idx, slot, col, value, generation)
     }
 
-    pub(crate) fn from_gpu_readback(gpu: &ThresholdEmissionGpu) -> Self {
-        Self::from_kernel_threshold_crossing(gpu.reg_idx, gpu.slot, gpu.col, gpu.value)
+    pub(crate) fn from_gpu_readback(gpu: &ThresholdEmissionGpu, generation: u32) -> Self {
+        Self::from_kernel_threshold_crossing(
+            gpu.reg_idx,
+            gpu.slot,
+            gpu.col,
+            gpu.value,
+            generation,
+        )
+    }
+
+    /// Planted-defect helper: strip the production seal so egress must reject it.
+    #[cfg(test)]
+    pub(crate) fn strip_production_seal_for_planted_defect(mut self) -> Self {
+        self.production_sealed = false;
+        self
     }
 }
 
@@ -119,15 +141,17 @@ pub struct ThresholdEmissionGpu {
 ///
 /// ```compile_fail
 /// fn external_emission_record_named_forge() {
-///     let _ = simthing_kernel::EmissionRecord::from_kernel_emit_event(0, 1);
+///     let _ = simthing_kernel::EmissionRecord::from_kernel_emit_event(0, 1, 0);
 /// }
 /// ```
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct EmissionRecord {
     reg_idx: u32,
     emit_count: u32,
-    /// Producing tree generation. Stamped at seal/readback — not a GPU POD field.
+    /// Producing tree generation. Stamped at mint — not a GPU POD field.
     generation: u32,
+    /// True only when minted through a production seal door.
+    production_sealed: bool,
 }
 
 impl EmissionRecord {
@@ -143,27 +167,33 @@ impl EmissionRecord {
         self.generation
     }
 
-    /// Apply the producing tree's generation stamp at the seal/readback boundary.
-    /// Crate-private: not a cross-crate sealed producer (ALLOW-SEALED-PRODUCERS).
-    pub(crate) fn with_generation(mut self, generation: u32) -> Self {
-        self.generation = generation;
-        self
+    pub fn is_production_sealed(&self) -> bool {
+        self.production_sealed
     }
 
-    pub(crate) fn from_kernel_emit_event(reg_idx: u32, emit_count: u32) -> Self {
+    /// Production seal: generation is mandatory and recorded by construction.
+    pub(crate) fn from_kernel_emit_event(reg_idx: u32, emit_count: u32, generation: u32) -> Self {
         Self {
             reg_idx,
             emit_count,
-            generation: 0,
+            generation,
+            production_sealed: true,
         }
     }
 
-    pub(crate) fn from_cpu_oracle(reg_idx: u32, emit_count: u32) -> Self {
-        Self::from_kernel_emit_event(reg_idx, emit_count)
+    pub(crate) fn from_cpu_oracle(reg_idx: u32, emit_count: u32, generation: u32) -> Self {
+        Self::from_kernel_emit_event(reg_idx, emit_count, generation)
     }
 
-    pub(crate) fn from_gpu_readback(gpu: &EmissionRecordGpu) -> Self {
-        Self::from_kernel_emit_event(gpu.reg_idx, gpu.emit_count)
+    pub(crate) fn from_gpu_readback(gpu: &EmissionRecordGpu, generation: u32) -> Self {
+        Self::from_kernel_emit_event(gpu.reg_idx, gpu.emit_count, generation)
+    }
+
+    /// Planted-defect helper: strip the production seal so egress must reject it.
+    #[cfg(test)]
+    pub(crate) fn strip_production_seal_for_planted_defect(mut self) -> Self {
+        self.production_sealed = false;
+        self
     }
 }
 
@@ -177,23 +207,54 @@ pub struct EmissionRecordGpu {
 #[cfg(test)]
 mod generation_stamp_tests {
     use super::*;
+    use simthing_core::{BackpressurePolicy, GenerationStamp, StampedEgressEntry, StampedEventRing};
 
     #[test]
-    fn emission_and_threshold_records_carry_generation_without_widening_gpu_pod() {
+    fn production_mint_stamps_generation_without_widening_gpu_pod() {
         assert_eq!(std::mem::size_of::<EmissionRecordGpu>(), 8);
         assert_eq!(std::mem::size_of::<ThresholdEmissionGpu>(), 16);
 
-        let emission = EmissionRecord::from_cpu_oracle(3, 2).with_generation(11);
+        let emission = EmissionRecord::from_cpu_oracle(3, 2, 11);
         assert_eq!(emission.reg_idx(), 3);
         assert_eq!(emission.emit_count(), 2);
         assert_eq!(emission.generation(), 11);
+        assert!(emission.is_production_sealed());
 
-        let threshold = ThresholdEmission::from_cpu_oracle(1, 4, 0, 1.5).with_generation(11);
+        let threshold = ThresholdEmission::from_cpu_oracle(1, 4, 0, 1.5, 11);
         assert_eq!(threshold.generation(), 11);
+        assert!(threshold.is_production_sealed());
+    }
 
-        // Unstamped mint defaults to 0; stamp is applied at the seal boundary.
-        let bare = EmissionRecord::from_cpu_oracle(0, 1);
-        assert_eq!(bare.generation(), 0);
-        assert_eq!(bare.with_generation(7).generation(), 7);
+    #[test]
+    fn omitting_production_seal_is_rejected_by_stamped_event_egress() {
+        let sealed = EmissionRecord::from_cpu_oracle(0, 1, 7);
+        let stripped = sealed.strip_production_seal_for_planted_defect();
+        assert!(!stripped.is_production_sealed());
+
+        let mut ring = StampedEventRing::admit(4, BackpressurePolicy::OverwriteOldest);
+        // Production egress path: only production-sealed records may enter.
+        assert!(
+            push_emission_to_production_egress(&mut ring, &sealed).is_ok(),
+            "sealed production record must enter egress"
+        );
+        assert!(
+            push_emission_to_production_egress(&mut ring, &stripped).is_err(),
+            "planted unsealed bypass must RED at production egress"
+        );
+    }
+
+    fn push_emission_to_production_egress(
+        ring: &mut StampedEventRing,
+        record: &EmissionRecord,
+    ) -> Result<(), &'static str> {
+        if !record.is_production_sealed() {
+            return Err("unstamped/unsealed emission cannot enter production egress");
+        }
+        ring.push(StampedEgressEntry {
+            generation: GenerationStamp::new(record.generation()),
+            key: record.reg_idx() as u64,
+            payload_bits: record.emit_count() as u64,
+        });
+        Ok(())
     }
 }

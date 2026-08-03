@@ -50,6 +50,7 @@ pub fn cpu_oracle_emission_records(
             Ok(EmissionRecord::from_cpu_oracle(
                 emission.reg_idx,
                 emit_count,
+                0,
             ))
         })
         .collect()

@@ -752,6 +752,7 @@ mod tests {
             output,
             n_dims,
             regs,
+            0,
         )
     }
 

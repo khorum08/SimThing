@@ -186,6 +186,9 @@ pub struct AccumulatorOpSession {
     threshold_event_kinds: Vec<u32>,
     /// Full threshold registration sidecar for sealed BandCrossingDelta mint.
     threshold_registrations: Vec<ThresholdRegistration>,
+    /// Producing-tree generation for EVENT-GENERATION-STAMP-0 production seal/readback.
+    /// Advanced by the host each generation; every sealed egress record carries this value.
+    generation: u32,
 }
 
 impl AccumulatorOpSession {
@@ -579,6 +582,7 @@ impl AccumulatorOpSession {
             last_pass_time_us: None,
             threshold_event_kinds: Vec::new(),
             threshold_registrations: Vec::new(),
+            generation: 0,
         };
 
         session.reset_emission_count(ctx);
@@ -2290,22 +2294,29 @@ impl AccumulatorOpSession {
     }
 
     /// Read compact threshold crossing records written this tick (C-1).
+    /// Production seal: stamps with [`Self::generation`].
     pub fn readback_threshold_emissions(
         &self,
         ctx: &GpuContext,
     ) -> Result<Vec<ThresholdEmission>, AccumulatorOpSessionError> {
         self.threshold_emission_readback
-            .read_threshold_emissions(&ctx.device, &ctx.queue)
+            .read_threshold_emissions(&ctx.device, &ctx.queue, self.generation)
             .map_err(AccumulatorOpSessionError::from)
     }
 
     /// Reconstruct Pass 7 `ThresholdEvent`s from compact threshold emissions.
+    /// Production seal: stamps with [`Self::generation`].
     pub fn readback_threshold_events(
         &self,
         ctx: &GpuContext,
     ) -> Result<Vec<ThresholdEvent>, AccumulatorOpSessionError> {
         self.threshold_emission_readback
-            .read_threshold_events(&ctx.device, &ctx.queue, &self.threshold_event_kinds)
+            .read_threshold_events(
+                &ctx.device,
+                &ctx.queue,
+                &self.threshold_event_kinds,
+                self.generation,
+            )
             .map_err(AccumulatorOpSessionError::from)
     }
 
@@ -2320,23 +2331,60 @@ impl AccumulatorOpSession {
     }
 
     /// Read up to `emission_capacity` records plus the total attempt count.
+    /// Production seal: stamps with [`Self::generation`].
     pub fn readback_emissions_capped(
         &self,
         ctx: &GpuContext,
     ) -> Result<(u32, Vec<EmissionRecord>), AccumulatorOpSessionError> {
         self.emission_readback
-            .read_records_capped(&ctx.device, &ctx.queue)
+            .read_records_capped(&ctx.device, &ctx.queue, self.generation)
             .map_err(AccumulatorOpSessionError::from)
     }
 
     /// Read compact emission records written by EmitEvent ops this tick.
+    /// Production seal: every record is stamped with the session generation by construction.
     pub fn readback_emissions(
         &self,
         ctx: &GpuContext,
     ) -> Result<Vec<EmissionRecord>, AccumulatorOpSessionError> {
         self.emission_readback
-            .read_records(&ctx.device, &ctx.queue)
+            .read_records(&ctx.device, &ctx.queue, self.generation)
             .map_err(AccumulatorOpSessionError::from)
+    }
+
+    /// Set the producing-tree generation used by production seal/readback.
+    pub fn set_generation(&mut self, generation: u32) {
+        self.generation = generation;
+    }
+
+    pub fn generation(&self) -> u32 {
+        self.generation
+    }
+
+    /// Production event egress: seal/readback emissions at the session generation
+    /// and push them into the admitted [`StampedEventRing`]. Unsealed records
+    /// cannot enter. Observer lag applies ring backpressure without blocking the sim.
+    /// Returns the number of production-sealed records pushed (not the sealed records
+    /// themselves — sealed producers stay on the existing readback doors).
+    pub fn push_emissions_into_production_egress(
+        &self,
+        ctx: &GpuContext,
+        ring: &mut simthing_core::StampedEventRing,
+    ) -> Result<u32, AccumulatorOpSessionError> {
+        let records = self.readback_emissions(ctx)?;
+        let mut pushed = 0u32;
+        for record in &records {
+            if !record.is_production_sealed() {
+                return Err(AccumulatorOpSessionError::Readback);
+            }
+            ring.push(simthing_core::StampedEgressEntry {
+                generation: simthing_core::GenerationStamp::new(record.generation()),
+                key: record.reg_idx() as u64,
+                payload_bits: record.emit_count() as u64,
+            });
+            pushed = pushed.saturating_add(1);
+        }
+        Ok(pushed)
     }
 
     /// Full values buffer readback — debug only unless explicitly allowed.

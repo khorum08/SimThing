@@ -56,7 +56,12 @@ pub fn compile_owner_channel_rf_gpu_proof_plan(
     root: &SimThing,
     own_aggregates: &[OwnerChannelRfOwnAggregate],
 ) -> Result<OwnerChannelRfGpuProofPlan, OwnerChannelRfGpuProofError> {
-    let reduce_up_report = reduce_owner_channel_rf(root, own_aggregates)?;
+    let stamped = reduce_owner_channel_rf(
+        root,
+        own_aggregates,
+        simthing_core::GenerationStamp::new(0),
+    )?;
+    let reduce_up_report = stamped.into_product();
     let bucket_plans = reduce_up_report
         .buckets
         .iter()

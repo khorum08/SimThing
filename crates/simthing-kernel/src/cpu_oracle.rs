@@ -231,6 +231,7 @@ pub fn execute_threshold_ops_cpu(
                         slot.raw(),
                         col.raw_u32(),
                         curr,
+                        0,
                     ));
                 }
             }
@@ -482,7 +483,7 @@ fn maybe_emit_event(
     }
     let emit_count = write_value.max(0.0).floor() as u32;
     if emit_count > 0 {
-        records.push(EmissionRecord::from_cpu_oracle(op_idx as u32, emit_count));
+        records.push(EmissionRecord::from_cpu_oracle(op_idx as u32, emit_count, 0));
     }
 }
 

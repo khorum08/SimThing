@@ -2098,9 +2098,17 @@ impl WorldGpuState {
     /// Read back exactly `n` `ThresholdEvent`s produced by the most recent
     /// Pass 7 dispatch. Caller is responsible for passing the count read via
     /// `read_event_count()` first (or capping at `n_thresholds`).
+    /// Production seal: every event carries the world generation by construction.
+    /// Uses `anchor_table_generation` as the tree's generation authority for this
+    /// state (same cadence as STEAD table maintenance at the boundary).
     pub fn read_event_candidates(&self, n: u32) -> Vec<ThresholdEvent> {
-        self.threshold_events
-            .read_events(&self.ctx.device, &self.ctx.queue, self.n_thresholds, n)
+        self.threshold_events.read_events(
+            &self.ctx.device,
+            &self.ctx.queue,
+            self.n_thresholds,
+            n,
+            self.anchor_table_generation,
+        )
     }
 
     pub fn values_len(&self) -> usize {

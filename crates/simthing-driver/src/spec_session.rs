@@ -700,7 +700,7 @@ mod tests {
             event_kind,
             buffer: THRESH_BUF_VALUES,
         };
-        cpu_oracle_threshold_events(&prev, &curr, &[], &[], n_dims, &[reg])
+        cpu_oracle_threshold_events(&prev, &curr, &[], &[], n_dims, &[reg], 0)
             .into_iter()
             .next()
             .expect("crossing event")

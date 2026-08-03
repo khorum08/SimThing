@@ -60,7 +60,7 @@ pub(crate) mod fixtures {
                 buffer: THRESH_BUF_VALUES,
             });
         }
-        cpu_oracle_threshold_events(&prev, &curr, &[], &[], n_dims, &regs)
+        cpu_oracle_threshold_events(&prev, &curr, &[], &[], n_dims, &regs, 0)
     }
 
     pub fn duplicate_upward_crossing(
@@ -86,6 +86,6 @@ pub(crate) mod fixtures {
             event_kind,
             buffer: THRESH_BUF_VALUES,
         };
-        cpu_oracle_threshold_events(&prev, &curr, &[], &[], n_dims, &[reg, reg])
+        cpu_oracle_threshold_events(&prev, &curr, &[], &[], n_dims, &[reg, reg], 0)
     }
 }

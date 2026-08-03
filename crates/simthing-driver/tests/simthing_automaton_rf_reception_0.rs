@@ -40,6 +40,12 @@ fn overlay(
     property_id: SimPropertyId,
     op: TransformOp,
 ) -> Overlay {
+    let lifecycle = match kind {
+        OverlayKind::Instruction | OverlayKind::Custom(_) => OverlayLifecycle::UntilDissolvedWith {
+            dissolution_conditions: vec![simthing_core::DissolveCondition::AtSessionEnd],
+        },
+        _ => OverlayLifecycle::UntilDissolved,
+    };
     Overlay {
         id: OverlayId::new(),
         kind,
@@ -50,7 +56,7 @@ fn overlay(
             property_id,
             sub_field_deltas: vec![(SubFieldRole::Amount, op)],
         },
-        lifecycle: OverlayLifecycle::UntilDissolved,
+        lifecycle,
     }
 }
 

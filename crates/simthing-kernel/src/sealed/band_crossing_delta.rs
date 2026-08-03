@@ -251,6 +251,7 @@ pub fn apply_band_crossing_deltas_from_threshold_events(
             event.slot(),
             event.col(),
             event.value(),
+            event.generation(),
         ));
     }
     apply_band_crossing_deltas_from_fused_emissions(&emissions, regs, registry, allocator)
@@ -298,6 +299,7 @@ pub fn cpu_oracle_band_crossing_deltas(
                 r.slot,
                 r.col,
                 curr,
+                0,
             ));
         }
     }
@@ -336,7 +338,7 @@ mod tests {
             event_kind: 7,
             buffer: THRESH_BUF_VALUES,
         };
-        let emission = ThresholdEmission::from_cpu_oracle(0, 1, 0, 10.5);
+        let emission = ThresholdEmission::from_cpu_oracle(0, 1, 0, 10.5, 0);
         let deltas = apply_band_crossing_deltas_from_fused_emissions(
             &[emission],
             &[reg],

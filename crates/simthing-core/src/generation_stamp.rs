@@ -113,6 +113,12 @@ pub enum IntegrateError {
     UnstampedProduct,
     #[error("integration schedule is required for deterministic async integration")]
     MissingSchedule,
+    /// Planted wait mutant: parent would wait for a lagging child's generation to catch up.
+    /// The ordinary path never emits this — async N+3 <- N is admitted without wait.
+    #[error(
+        "would wait for lagging child: parent generation {parent} requires child generation {child} (wait mutant)"
+    )]
+    WouldWaitForLaggingChild { parent: u32, child: u32 },
 }
 
 /// Result of integrating one stamped product. Never waits. Staleness is observable.
