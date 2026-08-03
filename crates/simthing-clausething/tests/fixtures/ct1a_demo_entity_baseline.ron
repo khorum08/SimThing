@@ -17,7 +17,7 @@ DomainPackSpec(
             sub_field_deltas: [
                 (Amount, Multiply(1.25)),
             ],
-            lifecycle: Permanent,
+            lifecycle: UntilDissolved,
             kind: Policy,
             source: Player,
         ),

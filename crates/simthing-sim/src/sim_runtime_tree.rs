@@ -162,7 +162,7 @@ impl SimRuntimeTree {
     }
 
     /// Observation-only: whether the installed overlay is lifecycle-active
-    /// (`Permanent` / `Transient`). `None` if the host or overlay id is missing.
+    /// (`UntilDissolved` / `Transient`). `None` if the host or overlay id is missing.
     /// Used by capability atomicity referees that must prove Suspend/Activate on
     /// the authoritative runtime tree, not only on spec-state books.
     pub fn overlay_is_active(&self, host: SimThingId, overlay_id: OverlayId) -> Option<bool> {

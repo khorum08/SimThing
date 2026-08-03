@@ -48,8 +48,11 @@
 //! Either unknown → `rejected_unknown_target` increment; tree unchanged.
 //!
 //! ### `AttachOverlay { target, overlay }`
-//! - Walks the tree to find `target` and pushes the overlay into its
-//!   `overlays` Vec. Records the overlay id in `overlays_attached`.
+//! - Resolves the overlay's required origin and target, walks origin -> common
+//!   ancestor -> target, and terminates in the target's existing `overlays` Vec.
+//! - Intermediate policy/governance overlays filter an instruction along that
+//!   route; no second inbox, transport, or scheduler is introduced.
+//! - Records the overlay id in `overlays_attached`.
 //!
 //! Note: this overlaps with `overlay_lifecycle::attach_overlay` from step 7.
 //! The boundary protocol routes AttachOverlay through THIS function for
@@ -120,11 +123,12 @@ pub fn apply_structural_mutations(
             }
             BoundaryRequest::AttachOverlay { target, overlay } => {
                 let oid = overlay.id;
-                if attach_overlay_to_node(root, target, overlay, node_paths) {
-                    out.overlays += 1;
-                    out.overlays_attached.push((target, oid));
-                } else {
-                    out.rejected_unknown_target += 1;
+                match simthing_core::deliver_routed_overlay(root, target, overlay) {
+                    Ok(_) => {
+                        out.overlays += 1;
+                        out.overlays_attached.push((target, oid));
+                    }
+                    Err(_) => out.rejected_unknown_target += 1,
                 }
             }
             BoundaryRequest::ActivateOverlay { target, overlay_id } => {
@@ -418,35 +422,6 @@ fn subtree_contains(node: &SimThing, target: SimThingId) -> bool {
         return true;
     }
     node.children.iter().any(|c| subtree_contains(c, target))
-}
-
-// ── AttachOverlay ─────────────────────────────────────────────────────────────
-
-fn attach_overlay_to_node(
-    root: &mut SimThing,
-    target: SimThingId,
-    overlay: simthing_core::Overlay,
-    node_paths: Option<&HashMap<SimThingId, Vec<usize>>>,
-) -> bool {
-    if let Some(paths) = node_paths {
-        if let Some(path) = paths.get(&target) {
-            if let Some(node) = node_at_path_mut(root, path) {
-                node.add_overlay(overlay);
-                return true;
-            }
-            return false;
-        }
-    }
-    if root.id == target {
-        root.add_overlay(overlay);
-        return true;
-    }
-    for c in &mut root.children {
-        if attach_overlay_to_node(c, target, overlay.clone(), None) {
-            return true;
-        }
-    }
-    false
 }
 
 // ── Tree helpers ──────────────────────────────────────────────────────────────

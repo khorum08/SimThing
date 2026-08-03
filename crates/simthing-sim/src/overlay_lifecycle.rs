@@ -3,7 +3,7 @@
 //! ## Step 4: dissolve + writeback
 //!
 //! Each `Overlay` carries an `OverlayLifecycle`. At the boundary:
-//! - `Permanent` overlays are never removed.
+//! - `UntilDissolved` overlays are removed only by an authored condition or explicit removal.
 //! - `Transient { dissolution_conditions }` overlays are removed when *all*
 //!   conditions are met. Conditions are AND-ed (all must be satisfied).
 //!
@@ -274,23 +274,14 @@ fn apply_expire_effects(
     }
 }
 
-/// Attach a new overlay to a target SimThing anywhere in the tree.
-/// Returns `true` if the target was found.
+/// Route a new overlay from its required origin to a target SimThing.
+/// Returns `true` only when both endpoints belong to the supplied tree.
 pub fn attach_overlay(
     root: &mut SimThing,
     target: SimThingId,
     overlay: simthing_core::Overlay,
 ) -> bool {
-    if root.id == target {
-        root.add_overlay(overlay);
-        return true;
-    }
-    for child in &mut root.children {
-        if attach_overlay(child, target, overlay.clone()) {
-            return true;
-        }
-    }
-    false
+    simthing_core::deliver_routed_overlay(root, target, overlay).is_ok()
 }
 
 #[cfg(test)]
@@ -308,6 +299,7 @@ mod tests {
             id: OverlayId::new(),
             kind: OverlayKind::Transient,
             source: OverlaySource::System,
+            origin: SimThingId::new(),
             affects: vec![],
             transform: PropertyTransformDelta {
                 property_id: pid,

@@ -9,8 +9,8 @@
 use simthing_core::{
     eml_nodes::{self, EmlNode},
     DimensionRegistry, EmlExecutionClass, Overlay, OverlayId, OverlayKind, OverlayLifecycle,
-    OverlaySource, PropertyTransformDelta, SimProperty, SimPropertyId, SimThing, SimThingKind,
-    SubFieldRole, TransformOp,
+    OverlaySource, PropertyTransformDelta, SimProperty, SimPropertyId, SimThing, SimThingId,
+    SimThingKind, SubFieldRole, TransformOp,
 };
 use simthing_gpu::{plan_overlay_orderband, OverlayDelta, OverlayOrderBandPlan, SlotDeltaRange};
 use simthing_sim::{
@@ -97,6 +97,7 @@ fn make_overlay() -> Overlay {
         id: OverlayId::new(),
         kind: OverlayKind::Policy,
         source: OverlaySource::System,
+        origin: SimThingId::new(),
         affects: Vec::new(),
         transform: PropertyTransformDelta {
             property_id: SimPropertyId(0),

@@ -47,7 +47,7 @@ GameModeSpec(
                                             sub_field_deltas: [
                                                 (Amount, Multiply(1.10)),
                                             ],
-                                            when_activated: Permanent,
+                                            when_activated: UntilDissolved,
                                         ),
                                     ],
                                 ),

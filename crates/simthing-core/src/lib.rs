@@ -1,6 +1,7 @@
 pub mod accumulator_op;
 pub mod accumulator_op_builder;
 pub mod accumulator_spec;
+pub mod automaton;
 pub mod anchor_remap;
 pub mod anchor_table;
 pub mod arena_layout;
@@ -42,6 +43,11 @@ pub use accumulator_op_builder::{
 };
 pub use accumulator_spec::{
     AccumulatorRole, AccumulatorSpec, ArenaName, BalanceSpec, LogTier, NumCountSource,
+};
+pub use automaton::{
+    deliver_deficit_directive, deliver_predicate_broadcast, deliver_routed_overlay,
+    deliver_standing_directive, inherit_active_overlays, overlay_origin_structural_coord,
+    DirectiveDeliveryReceipt, LiveOverlayRoutes, OverlayDeliveryError,
 };
 pub use anchor_remap::{
     derive_exact_anchor_remaps, expected_anchored_remap_keys, validate_anchor_remap_for_encode,
@@ -87,6 +93,7 @@ pub use overlay::{
     DissolveCondition, Overlay, OverlayKind, OverlayLifecycle, OverlaySource,
     PropertyTransformDelta,
 };
+pub use evaluate::{RoutedPredicate, RoutedPredicateComparison, TransformStack};
 pub use placed_participant::{
     validate_and_mint_placed_participants_by_location_id,
     validate_location_ids_have_structural_placements, PlacedParticipant,

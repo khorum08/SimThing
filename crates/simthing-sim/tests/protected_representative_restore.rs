@@ -181,6 +181,7 @@ fn clone_capability_children() {
         id: source_overlay_id,
         kind: OverlayKind::Policy,
         source: OverlaySource::System,
+        origin: source_tree_id,
         affects: vec![faction_id],
         transform: PropertyTransformDelta {
             property_id,
@@ -262,6 +263,7 @@ fn clone_capability_children() {
     assert_ne!(cloned_tree.id, source_tree_id);
     assert_eq!(cloned_tree.overlays.len(), 1);
     assert_ne!(cloned_tree.overlays[0].id, source_overlay_id);
+    assert_eq!(cloned_tree.overlays[0].origin, cloned_tree.id);
     assert_eq!(cloned_tree.overlays[0].affects, vec![spawned.id]);
 
     let clone_record = &outcome.cloned_capability_roots[0];

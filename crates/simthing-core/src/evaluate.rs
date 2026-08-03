@@ -8,10 +8,11 @@
 //!   - Returns a `FieldSnapshot` so callers can diff against GPU output.
 
 use crate::ids::SimPropertyId;
-use crate::overlay::{OverlayLifecycle, PropertyTransformDelta};
+use crate::overlay::{Overlay, OverlayKind, PropertyTransformDelta};
 use crate::property::{PropertyLayout, PropertyValue};
 use crate::registry::DimensionRegistry;
-use crate::simthing::SimThing;
+use crate::simthing::{walk_inherited_until, SimThing};
+use crate::{inherit_active_overlays, LiveOverlayRoutes};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -21,13 +22,43 @@ use std::collections::HashMap;
 /// Accumulates deltas from root to current node; the leaf applies them all in order.
 #[derive(Clone, Debug, Default)]
 pub struct TransformStack {
-    deltas: Vec<PropertyTransformDelta>,
+    deltas: Vec<StackedTransform>,
+}
+
+#[derive(Clone, Debug)]
+struct StackedTransform {
+    delta: PropertyTransformDelta,
+    predicate_restriction: bool,
 }
 
 impl TransformStack {
+    pub(crate) fn from_ordered_overlays(overlays: &[&Overlay]) -> Self {
+        overlays
+            .iter()
+            .fold(Self::default(), |stack, overlay| stack.push_overlay(overlay))
+    }
+
     pub fn push(&self, transform: &PropertyTransformDelta) -> Self {
         let mut next = self.clone();
-        next.deltas.push(transform.clone());
+        next.deltas.push(StackedTransform {
+            delta: transform.clone(),
+            predicate_restriction: false,
+        });
+        next
+    }
+
+    /// Push one overlay while retaining whether it is a policy restriction.
+    /// Numeric value composition remains sequential and last-wins-capable; the
+    /// marker is consulted only by routed predicate evaluation.
+    pub fn push_overlay(&self, overlay: &Overlay) -> Self {
+        let mut next = self.clone();
+        next.deltas.push(StackedTransform {
+            delta: overlay.transform.clone(),
+            predicate_restriction: matches!(
+                overlay.kind,
+                OverlayKind::Policy | OverlayKind::Governance
+            ),
+        });
         next
     }
 
@@ -39,12 +70,80 @@ impl TransformStack {
         value: &mut PropertyValue,
         layout: &PropertyLayout,
     ) {
-        for delta in &self.deltas {
-            if delta.property_id == prop_id {
-                delta.apply_to_data(value.raw_lanes_mut(), layout);
+        for stacked in &self.deltas {
+            if stacked.delta.property_id == prop_id {
+                stacked.delta.apply_to_data(value.raw_lanes_mut(), layout);
             }
         }
     }
+
+    /// Test a routed predicate under the explicit policy-chain rule.
+    ///
+    /// The selector must hold for the unmodified candidate and after every
+    /// matching policy/governance restriction. Results are conjoined, so once
+    /// an ancestor rejects a candidate no descendant transform can restore it.
+    /// This is intentionally distinct from ordinary value composition, where
+    /// a later `Set` may overwrite an earlier operation.
+    pub fn allows_routed_predicate(
+        &self,
+        predicate: &RoutedPredicate,
+        value: &PropertyValue,
+        layout: &PropertyLayout,
+    ) -> bool {
+        let Some(offset) = layout.offset_of(&predicate.sub_field) else {
+            return false;
+        };
+        let Some(mut candidate) = value
+            .raw_lanes_for_serialization()
+            .get(offset.lane())
+            .copied()
+        else {
+            return false;
+        };
+        let mut allowed = predicate.comparison.matches(candidate, predicate.threshold);
+        for stacked in &self.deltas {
+            if stacked.delta.property_id != predicate.property_id {
+                continue;
+            }
+            for (role, op) in &stacked.delta.sub_field_deltas {
+                if role != &predicate.sub_field {
+                    continue;
+                }
+                candidate = op.apply(candidate);
+                if stacked.predicate_restriction {
+                    allowed &= predicate.comparison.matches(candidate, predicate.threshold);
+                }
+            }
+        }
+        allowed && predicate.comparison.matches(candidate, predicate.threshold)
+    }
+}
+
+/// Numeric comparison used by the paid, one-walk predicate-broadcast mode.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RoutedPredicateComparison {
+    AtLeast,
+    AtMost,
+    EqualBits,
+}
+
+impl RoutedPredicateComparison {
+    fn matches(self, value: f32, threshold: f32) -> bool {
+        match self {
+            Self::AtLeast => value >= threshold,
+            Self::AtMost => value <= threshold,
+            Self::EqualBits => value.to_bits() == threshold.to_bits(),
+        }
+    }
+}
+
+/// Generic property selector for predicate-broadcast reception.
+#[derive(Clone, Debug, PartialEq)]
+pub struct RoutedPredicate {
+    pub property_id: SimPropertyId,
+    pub sub_field: crate::property::SubFieldRole,
+    pub comparison: RoutedPredicateComparison,
+    pub threshold: f32,
 }
 
 // ── FieldSnapshot ─────────────────────────────────────────────────────────────
@@ -90,7 +189,21 @@ impl<'r> Evaluator<'r> {
 
     pub fn evaluate(&self, root: &SimThing, generation: u32) -> FieldSnapshot {
         let mut entities = Vec::new();
-        self.evaluate_node(root, &TransformStack::default(), &mut entities);
+        let live_routes = LiveOverlayRoutes::for_tree(root);
+        let seed = TransformStack::default();
+        let walked: Result<Option<()>, std::convert::Infallible> = walk_inherited_until(
+            root,
+            &seed,
+            &mut |node, ancestors| Ok(inherit_active_overlays(node, ancestors)),
+            &mut |node, effective| {
+                self.evaluate_node(node, effective, live_routes.as_ref(), &mut entities);
+                Ok(None)
+            },
+        );
+        match walked {
+            Ok(_) => {}
+            Err(never) => match never {},
+        }
         FieldSnapshot {
             generation,
             entities,
@@ -100,21 +213,11 @@ impl<'r> Evaluator<'r> {
     fn evaluate_node(
         &self,
         node: &SimThing,
-        ancestors: &TransformStack,
+        local_stack: &TransformStack,
+        live_routes: Option<&LiveOverlayRoutes<'_>>,
         out: &mut Vec<EntitySnapshot>,
     ) {
         // 1. Compose this node's overlay transforms into the stack.
-        let local_stack = node
-            .overlays
-            .iter()
-            .fold(ancestors.clone(), |stack, overlay| {
-                match &overlay.lifecycle {
-                    OverlayLifecycle::UntilDissolved => stack.push(&overlay.transform),
-                    OverlayLifecycle::Transient { .. } => stack.push(&overlay.transform),
-                    OverlayLifecycle::Suspended { .. } => stack,
-                }
-            });
-
         // 2. Clone this node's properties.
         let mut resolved: HashMap<SimPropertyId, PropertyValue> = node
             .properties
@@ -136,10 +239,17 @@ impl<'r> Evaluator<'r> {
             }
         }
 
-        // 5. Apply the full ancestor + local transform stack to each property.
+        // 5. Derive a routed order at most once for this node, then apply the
+        // full ancestor + local transform stack to each property.
+        let routed_stack = live_routes
+            .and_then(|routes| routes.ordered_active_overlays(node.id))
+            .map(|overlays| TransformStack::from_ordered_overlays(&overlays));
         for (id, pv) in &mut resolved {
             let layout = &self.registry.property(*id).layout;
-            local_stack.apply_to(*id, pv, layout);
+            routed_stack
+                .as_ref()
+                .unwrap_or(local_stack)
+                .apply_to(*id, pv, layout);
         }
 
         out.push(EntitySnapshot {
@@ -148,9 +258,6 @@ impl<'r> Evaluator<'r> {
         });
 
         // 6. Recurse children — they inherit the composed local_stack.
-        for child in &node.children {
-            self.evaluate_node(child, &local_stack, out);
-        }
     }
 }
 

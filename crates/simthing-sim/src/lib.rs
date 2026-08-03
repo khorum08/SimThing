@@ -16,7 +16,7 @@
 //!   (PropertyReaches, PropertyBelow, AfterTicks, OverrideReceived) against
 //!   current GPU values + day counter; culls dissolved overlays and decrements
 //!   AfterTicks counters. Applies `on_expire` `ExpireEffect`s to the CPU
-//!   shadow. Attaches new instruction overlays from `BoundaryRequest::AttachOverlay`.
+//!   shadow. Routes new instruction overlays from `BoundaryRequest::AttachOverlay`.
 //!
 //! - `property_expiry` — step 5. Consumes `ThresholdEvent`s whose `event_kind`
 //!   maps to `ThresholdSemantic::PropertyExpiry`. Removes the property from the
@@ -32,7 +32,7 @@
 //! - `tree_mutation` — steps 7 + 8. Executes every `BoundaryRequest` variant:
 //!   `AddChild` (alloc slot, attach), `Remove` (tombstone subtree, detach),
 //!   `Reparent` (move subtree, slots preserved — the whole point of slot
-//!   stability), `AttachOverlay` (append to target's overlay vec),
+//!   stability), `AttachOverlay` (origin-to-target route into the overlay vec),
 //!   `AddDimension` (boundary-time registry activation + GPU layout rebuild).
 //!
 //! - `gpu_sync` — step 9. After all structural mutations are done, rebuilds the

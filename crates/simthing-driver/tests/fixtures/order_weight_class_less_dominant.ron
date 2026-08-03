@@ -22,7 +22,7 @@ GameModeSpec(
             sub_field_deltas: [
                 (Named("weight"), Add(20.0)),
             ],
-            lifecycle: Permanent,
+            lifecycle: UntilDissolved,
             kind: Instruction,
             source: Player,
             install: SessionRoot,
