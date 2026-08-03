@@ -45,7 +45,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 211b860c2a424d0386a01a2dc93d5c563abfd1411c1f58ec55c7b69d97426cb8 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | 26eab30ec86c97ac8dfd6beef7ae8c5b4d3f18c38fdaa431ec40ccce855396d3 |
-| design_0_0_8_7_rf_arena_modernization.md | 435c56015e6ff08f2fb7e029cfad18d5a2670527fe6dc62580ebbed2eb5a40ca |
+| design_0_0_8_7_rf_arena_modernization.md | 36cb6009c47312e9cc76a344bc3555b4567d63e4a040a727e078aca0f2ede00a |
 | relay_lint.sh | 4163f715cdc3b549dbf57c1744aff61ea96b9f9f0a2237376665fbdb24e986c8 |
 | doctrine_anchors.tsv | 94e2a996f60476919d67c317d851ad7e60763440f8dde2c099e7794bccce5a9c |
 | execution_status_taxonomy.tsv | c33df8d86dbc939e1f6b9a847b3d54e255ae602481cd459c96fba4b13cd2f145 |
@@ -87,7 +87,7 @@ Track state: `open`
 | 6.0 | OWNER-CHANNEL-INTRINSIC-0 | **Phase 6 foundation — Owner-directed 2026-08-01. Makes ownership ATOMIC AND INT | **DA-GRADUATED / merged #1561 @ 8cbd7e3d — ownership is now INTRINSIC to the stem cell.** Owner is a sparse property ... |
 | 6.0b | SIMTHING-AUTOMATON-INTRINSIC-0 | **Phase 6: Owner-directed 2026-08-02 — the minimum viable Wei automaton, intrins | **DA-GRADUATED / merged #1591 @ af886019 — the stem cell can now LISTEN.** Reception is intrinsic: no new field, the ... |
 | 6.1 | EVENT-GENERATION-STAMP-0 | Phase 6: generation stamps on emission/threshold events; stamped ring egress wit | **DA-GRADUATED / merged #1596 @ df117bcc — generation identity is now a real async seam primitive.** Events carry sta... |
-| 6.1b | BAND-QUANTIZED-DRAW-0 | **Phase 7 foundation — Owner-directed 2026-08-02. RESTORES the original band-cro | Every existing registration without the marker produces BIT-IDENTICAL crossings, demonstrated by a planted defect; `V... |
+| 6.1b | BAND-QUANTIZED-DRAW-0 | **Phase 7 foundation — Owner-directed 2026-08-02. RESTORES the original band-cro | **DA-GRADUATED / merged #1602 @ 63c8ed51 — CostBand restored and EML is the singular overlay value path.** Every exis... |
 | 6.2 | ASYNC-COMMAND-QUEUE-0 | Phase 6: async CPU action queue landing at generation barriers; injection genera | Replay bit-exact from the injection log; shadow-tree reads torn-free (double-buffer proof). **SCOPE COVERAGE (DA revi... |
 | 6.2b | RESOLUTION-SITE-SPLIT-0 | **Phase 6: Owner-approved 2026-08-02 — the closed loop becomes the DEFAULT SimTh | Both modes produce BIT-IDENTICAL `BoundaryRequest` streams from identical crossings **ORIGIN IN SLOT SPACE (DA review... |
 | 6.3 | CONTINUOUS-POSTURE-SOAK-0 | Phase 6: continuous posture (batched generations) + N-generation soak under forc | Soak exit-proof per the phase row; paced posture unchanged (scenario-neutral posture regression green). **SCOPE COVER... |
@@ -105,7 +105,7 @@ Track state: `open`
 
 ## Next Rung Pointer
 
-Active pointer: `BAND-QUANTIZED-DRAW-0`
+Active pointer: `ASYNC-COMMAND-QUEUE-0`
 
 
 ## Cold-Start Spine (constitutional pointers)
