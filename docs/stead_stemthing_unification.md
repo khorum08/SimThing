@@ -13,6 +13,13 @@
 > [`stead_simthing_automata.md`](stead_simthing_automata.md) (the four legs; normative for Phase 6),
 > [`eml_n4_expansion_digest.md`](eml_n4_expansion_digest.md) (field-sweep provenance),
 > [`stead_spatial_contract.md`](stead_spatial_contract.md) (spatial law; CostBand definition §5).
+>
+> **Amended 2026-08-03 (decorrelated DA review — Codex 5.6 Sol: REMAND FOR TARGETED DESIGN
+> AMENDMENT; all eight amendments adopted, both ladder obligations bound).** The remand corrected a
+> category error (quantity/geometry/identity conflation, §1), surfaced a constitutional blocker
+> (slot-identity stability vs. compaction, §3.1 — **blocking before any row is minted**), and
+> resolved an internal contradiction (tier vocabulary, §5). The refactor phase, the StemThing
+> thesis, and the deletion deliverable stand unchanged.
 
 ---
 
@@ -63,12 +70,18 @@ The test every piece of this phase must pass:
 > act, originate, receive) are complete; residency and derivation are *lanes flowing through
 > them*, not new anatomy.
 
-The identity that makes the phase coherent — the malloc finding and the tiling finding are one
-finding viewed from two sides:
+The relation that makes the phase coherent — stated precisely, because its first form was a
+category error (header amendment). A scalar free-count is not a contiguous range: two arenas with
+identical free capacity can differ radically in allocatability. Quantity, geometry, and identity
+are three things, and the unification is the weaker, architecturally stronger statement:
 
-> **A granted slot budget IS a contiguous block IS a tile.** The RF quantity, the memory geometry,
-> and the reconciliation unit are the same object. Disbursing residency capacity down the tree and
-> laying the tree out as nested contiguous ranges are one act.
+> **Capacity is the conserved RF quantity. A contiguous extent is the sealed placement result the
+> granter's kernel-owned placement boundary mints when an exact draw succeeds. The extent is
+> execution geometry, not the conserved quantity itself.** Allocation *policy* dissolves into RF;
+> placement remains kernel physics (§8). What survives of the original identity is the part that
+> mattered: disbursing capacity down the tree **authorizes** nested extent-minting at each
+> granter's boundary, so the domain hierarchy and the memory hierarchy remain expressions of one
+> act — quantity flowing as RF, geometry minted where placement truth lives.
 
 ---
 
@@ -97,11 +110,13 @@ as a first-class mechanism until the CostBand was canonized.
   measured growth rates, never heuristics — stops being a special CPU obligation: the velocity
   column drives the demand column, the deficit surfaces ahead of the fission burst, the budget
   arrives before the crossing.
-- **Defragmentation becomes a threshold registration.** The CostBand remainder `R` *is* the
-  fragmentation: granted block = used rows + slack, exactly `V = N·C + R` in memory form. Slack is
-  a column; an authored threshold on it fires epoch compaction at a boundary; the Definable
-  Horizon Law forbids slack accreting forever. The allocator's GC heuristic becomes an ordinary
-  authored crossing.
+- **Defragmentation becomes a threshold registration — on geometry, not remainder.** The CostBand
+  remainder `R` is unallocated *quantity*; `R = 0` can coexist with a heap fragmented into
+  unusable singletons. The compaction trigger therefore fires on **placement telemetry the kernel
+  reports as ordinary columns** (largest free extent, extent count) — kernel-derived geometric
+  observables, RF-thresholded. The Definable Horizon Law binds both: neither slack quantity nor
+  fragmentation geometry may accrete without an authored horizon. The allocator's GC heuristic
+  still becomes an ordinary authored crossing; its operand is geometry.
 - **Allocation storms are already absorbed.** Slot claims for the same `{owner, residency, scope}`
   bucket coalesce by addition (integers, lossless) under the 6.2 queue — a subtree fissioning at
   100× queues one coalesced claim. Backpressure is cardinality-bounded by authoring, exactly as
@@ -111,13 +126,21 @@ as a first-class mechanism until the CostBand was canonized.
 
 ## 3. Grant determinism and placement stratification
 
-- **Slots are hard currency.** Residency transfers use discrete-exact semantics
-  (`SubtractFromSource` class) only; the continuous approximate allocator path is forbidden for
-  slots. `free + occupied = capacity` holds **exactly**, every boundary, judged by the
-  8.1-class conservation oracle. A slot leak is a conservation violation, not a bookkeeping bug.
-- **Determinism by recording, not by waiting.** The grant schedule — which claims were granted
-  which ranges at which generation — is recorded data, exactly as 6.1 records the integration
-  schedule. Replay the schedule, reproduce bit-exactly.
+- **Slots are hard currency, and the partition names the seam.** Residency transfers use
+  discrete-exact semantics (`SubtractFromSource` class) only; the continuous approximate allocator
+  path is forbidden for slots. The exact invariant is
+  **`free + in_flight + occupied = capacity`** — the in-flight term is the seam holding account
+  for grants issued but not yet delivered, the same lesson 6.2 canonized (the holding account
+  belongs in the universe being judged). Judged by the 8.1-class conservation oracle every
+  boundary. A slot leak is a conservation violation, not a bookkeeping bug.
+- **Extent disjointness is its own judge.** Quantity conservation cannot prove two children were
+  not granted overlapping ranges. Minted extents must be provably **disjoint and bounded by the
+  granter's own extent** — a placement oracle standing beside the conservation judge, with its
+  own planted-defect red.
+- **Determinism by recording, not by waiting — one history surface.** The grant schedule — which
+  claims were granted which extents at which generation — and every compaction remap **extend the
+  canonical 6.1 recorded-schedule surface**. A second history mechanism is forbidden. Replay the
+  one record, reproduce bit-exactly.
 - **Priority is authored, never iteration order.** The legacy LIFO free-list order is a hardcoded
   rule the corpus's own law (8.2: "which claimant is served first is an AUTHORED rule, never
   vector iteration order") already condemns. It retires into an authored resolution rule over the
@@ -128,6 +151,30 @@ as a first-class mechanism until the CostBand was canonized.
   relocates its own block. Relocation (epoch compaction) is boundary structural work of the
   granter, with a **recorded remap** so replay and the shadow survive. Memory settles at barriers
   the way flow settles in arenas: allocation is always recursive; settling depth is emergent.
+
+### 3.1 The slot-identity decision — constitutional blocker, ruled before any row is minted
+
+Core design registry discipline states: slots recycle through tombstone free-lists, are **never
+compacted mid-session**, and slot/column indices stay stable for the GPU. Epoch compaction with
+physical relocation contradicts this under the current meaning of `SlotIndex` — and per this
+document's own precedence clause, the core design wins until amended. **Silent reinterpretation is
+inadmissible.** Two lawful shapes:
+
+- **(a) Logical/physical split (recommended).** `SlotIndex` becomes stable **logical identity**
+  for the lifetime of the SimThing; physical row binding happens at boundary upload, exactly where
+  boundary sync already rebuilds and re-uploads slot-bearing artifacts. Compaction re-derives
+  bindings at an epoch boundary with a recorded remap; **between epochs there is zero per-access
+  indirection** — bindings are baked into the uploaded artifacts. Every authoritative handle
+  remains valid across relocation, which is the only shape under which compaction is expressible
+  at all.
+- **(b) Stability retained.** No mid-session compaction; reclamation only through tombstone
+  recycling as today; elastic geometric reclamation deferred to session boundaries.
+
+Shape (a) requires a **Tier-2 core-design amendment** restating the stability law as *stable
+within an epoch; rebindable only at a recorded boundary remap*, together with an **enumeration of
+every slot-bearing artifact and its rebind path** (accumulator registrations, INPUT_LIST tables,
+adjacency tables, arena descriptors, shadow addressing, emission records). Until that ruling
+lands, compaction language elsewhere in this document is design intent, not authorization.
 
 ---
 
@@ -140,14 +187,18 @@ state is not merely unrepresentable; it is **unreachable by arithmetic**. No val
 exists to maintain, bypass, or drift past.
 
 This is the admission ladder's own directive ("encode every invariant at the highest rung that
-can express it") taken above the type boundary: quantitative admission migrates from the spec
-compiler into conservation law. The split it induces is principled and permanent:
+can express it") taken above the type boundary — **narrowed to its true scope**:
 
-- **Quantitative admission** (caps, budgets, fanout, expansion) → in-family, enforced by
-  conservation.
-- **Structural and type admission** (schema validity, sealed constructors, spanned content
-  rejection) → stays at the boundary. The gate that judges what may become family must stand
-  outside the family.
+> **Fungible scarcity is admitted by conservation; structural shape and execution safety remain
+> boundary admission.**
+
+- **In scope** (fungible, conserved, budget-shaped): capacity, expansion allowance, reservations,
+  fanout budgets.
+- **Out of scope, permanently** (numbers appear, but the constraint is structural): EML stack
+  bounds, alignment, address width, adjacency symmetry and conductance certificates, layout
+  geometry, schema validity, sealed constructors, spanned content rejection. These stay at the
+  boundary — the gate that judges what may become family must stand outside the family, and a
+  numeric appearance in a constraint does not make it a budget.
 
 ---
 
@@ -175,6 +226,13 @@ class). The tier does not *cause* those properties; they are its *components*.
 
 - Vendors enumerate their entities **by name, in their own crate** — that vocabulary never reaches
   the engine (semantic-free core; vocabulary compiles away).
+- **Tier vocabulary is open across authoring, frozen at session admission, closed engine
+  vocabulary beneath.** Authoring may mint tier bundles freely (an open set — no taxonomy
+  pressure and no engine branching); **session admission freezes the session's tier set** —
+  finite, admission-checked, and the exact moment the ladder's budget arithmetic becomes
+  statically solvable; underneath, the engine vocabulary (residency classes, lane semantics) is
+  small, generic, and closed, and authored tiers only *compose* it. This resolves open-vs-closed
+  without contradiction: open to the designer, fixed for the session, closed in the engine.
 - The shape ladder underneath is small and closed at design time. The canonical worked example: a
   galaxy worldmap (150×150 gridcell children), a star system (10×10), a planet (10×10), and a
   planet surface (10×10) are **one tier — spatial container — drawn four times at different N**
@@ -204,9 +262,11 @@ no per-level whitelist — conservation does the narrowing.
 
 ## 6. Descendant census — awareness as perception
 
-Because the tier set is closed at design time, the subtree census is a **fixed-width column
-vector**: counts, churn, and growth velocity per tier, Sum-reduced up like any other columns,
-generation-stamped (6.1), staleness derived and visible (6.3). This is the only lawful form of
+Because the session's tier set is frozen at admission (§5), the subtree census is a
+**fixed-width-per-session column vector**: counts, churn, and growth velocity per tier,
+Sum-reduced up like any other columns, generation-stamped (6.1), staleness derived and visible
+(6.3). Census lanes exist **only on nodes with granting active** — sparse, inert-by-default
+economics; the cost is never `O(nodes × authored tiers)`. This is the only lawful form of
 descendant awareness:
 
 > **Census is perception, never a directory.** A node knows its subtree's aggregate composition,
@@ -231,23 +291,31 @@ What the census endows:
 
 ## 7. Rootness as the granting tier — and where layout lands
 
-**Rootness is a capability tier, not a type.** Per-Tree Instantiation already states it in
-CPU-struct form ("a subtree IS a root SimThing tree and gets its own allocator, session state,
-shadow, and generation counter by instantiation"); `GameSession` already documents itself as
-"authority marker only; NOT a runtime engine singleton." This phase makes it intrinsic: every
-StemThing carries, inert, the capacity to hold an arena, run a census, and grant budgets. Activate
-it and any SimThing is a subtree root. **A child root's arena IS its granted block** — nested
+**Rootness is a capability tier, not a type — and granting root ≠ session root.** Per-Tree
+Instantiation already states it in CPU-struct form ("a subtree IS a root SimThing tree and gets
+its own allocator, session state, shadow, and generation counter by instantiation");
+`GameSession` already documents itself as "authority marker only; NOT a runtime engine
+singleton." This phase makes it intrinsic: every StemThing carries, inert, the capacity to hold
+an arena, run a census, and grant budgets. Activate it and any SimThing is a **relative
+granting/execution root for its subtree** — and nothing more: it acquires **no
+Scenario/GameSession authority**. The ontological session topology (core design §2) is untouched
+by this phase, and an active granting node is never a GameSession-equivalent. A future coder who
+reinterprets every granting node as a session authority has left the design. **A child root's arena IS its granted block** — nested
 arenas are nested contiguous ranges; sandbox subtrees, vendored builds, and high-churn experiments
 purged wholesale at horizon are all "a SimThing with its rootness lanes active." Micro-subtrees
 share the device context (per-tree GPU contexts are disqualifying, per the automata doc §10);
 the arena hierarchy is ranges within one physical arena.
 
-**Layout enters as `residency_class` — the sibling of `resource_class`.** A closed, authored,
-admission-checked set (compact row; spatial block; granting arena), selected smallest-fit,
-executed as **JIT layout variants of the one field-sweep IR**. `FIELD-SWEEP-SINGLE-PATH` must
-never fire: tiles are a *where*, not a *what*, and the 5.7 safety template governs every layout
-move — *it changes WHERE values load from, never the ORDER they fold*, so `CanonicalOrderProof`
-and bit-exactness survive relocation, tiling, and packing alike.
+**Layout enters as `residency_class` — the sibling of `resource_class` — and the lawful claim is
+narrower than "layout is a residency class of the IR."** The field-sweep IR's proven universality
+is **compute**: `adjacency × map × fold × post` executing over whatever layout the residency class
+prescribes. So: **one admitted compute IR executes over class-specific layouts, and no layout may
+acquire a bespoke semantic compute kernel** — `FIELD-SWEEP-SINGLE-PATH` must never fire, and the
+5.7 safety template governs every layout move (*changes WHERE values load from, never the ORDER
+they fold*, so `CanonicalOrderProof` and bit-exactness survive relocation, tiling, and packing).
+**Placement mechanics — allocation, relocation, compaction, range partitioning — are not field
+sweeps.** They are policy-free kernel physics behind the placement boundary (§1, §8). The IR
+governs computation over geometry; the placement boundary governs the geometry itself.
 
 Current distance (measured this session, recorded so the phase scopes honestly):
 
@@ -261,10 +329,14 @@ Current distance (measured this session, recorded so the phase scopes honestly):
 | Tree seams | range seams, never halos — trees are not lattices |
 | MMA / f16 / tensor hardware | refused: unreachable via wgpu and barred by the determinism law; the hand-rolled canonical-order contraction over contiguous ranges captures the memory-traffic win deterministically |
 
-**The map is a derivation pattern.** A galaxy is the root drawing a spatial-tier subtree whose
-residency class is a 2D block: the lattice materializes as the grant, and the STEAD field sweeps
-what derivation placed. MapGen becomes a derivation program; the Movement-Front automaton runs
-over memory the derivation surface shaped. This is Wei's postulates applied to memory itself:
+**The grant materializes storage, never structure.** Structural coordinates and topology are
+authored/admitted truth (spatial contract §3): a derivation draw authorizes **storage for** an
+authored lattice — it does not author the lattice, and insufficient residency **defers or tiles
+execution, never shrinks or reinterprets the authored layout**. (The earlier phrasing "the
+lattice materializes as the grant" is withdrawn as drift-adjacent to the layout-vs-execution
+law.) With that held, MapGen remains a derivation program in the storage sense: the root draws a
+spatial-tier subtree, the grant materializes its block, and the STEAD field sweeps what admission
+placed. This is Wei's postulates applied to memory itself:
 locality (claims resolve against locally pre-granted budgets; the global pool is touched only at
 barriers), symmetry (one authored grant rule at every arena, never per-site allocation logic), and
 stability (exact conservation plus bounded budgets — growth is a threshold crossing, never a
@@ -276,11 +348,12 @@ surprise).
 
 | Stratum | Disposition |
 |---|---|
-| Allocation/derivation/registration **policy** | in-family: lanes, CostBands, authored rules, budgets |
-| The allocator, the registrar, the derivation framework **as services** | **dissolved** — no such subsystem exists after this phase |
+| Allocation/derivation/registration/enrollment **policy** | in-family: lanes, CostBands, authored rules, budgets |
+| The allocator and the derivation framework **as services** | **dissolved** — no such subsystem exists after this phase |
+| The registry **substrate** (property layouts, column ranges, threshold registrations, admitted EML programs) | **remains** as sealed admitted structural metadata at the boundary. The honest claim is that registration *policy* dissolves — no service, no policy authority — **not** that every registrar substrate disappears; the broader claim would require a mechanism this document does not yet design |
 | The **executor** (buffers, dispatch, placement mechanics) | remains outside as physics: the kernel interprets, owns memory per the cross-crate seal law, and holds zero policy |
 | Structural/type **admission** | remains at the boundary: the immune system stands outside the body it screens |
-| The **base case** | remains the embedder handshake: physical VRAM capacity is a fact about the host, granted to the root at instantiation (the Vendor Door's Populate declares it as data); the recursion bottoms exactly one handshake outside the family, which is what makes the self-reference well-founded rather than circular |
+| The **base case** | remains the embedder handshake: physical VRAM capacity is a fact about the host, granted to the root at instantiation as **exact byte/page budgets per residency class** (the Vendor Door's Populate declares them as data; row counts derive only after the admitted layout is known); the recursion bottoms exactly one handshake outside the family, which is what makes the self-reference well-founded rather than circular |
 
 External **code** persists; external **authority** does not. The kernel becomes to the family what
 silicon is to a program. And the self-reference discipline is the same stratification as §3: the
@@ -295,21 +368,32 @@ own placement belongs to its granter's barrier, which for the session root is se
 
 1. **Lane, not leg.** No fifth capability on the base object; residency and derivation flow
    through the existing four.
-2. **Slots are hard currency.** Discrete-exact transfers only; `free + occupied = capacity`
-   exactly, judged at every boundary.
-3. **Admission by conservation.** A cap is a budget; no validation code owns what arithmetic
-   already forbids.
+2. **Slots are hard currency.** Discrete-exact transfers only;
+   `free + in_flight + occupied = capacity` exactly, judged at every boundary; minted extents
+   provably disjoint and bounded by the granter's extent (the placement oracle).
+3. **Fungible scarcity by conservation; structural shape at the boundary.** A cap is a budget and
+   no validation code owns what arithmetic already forbids — but a numeric appearance in a
+   structural constraint does not make it a budget.
 4. **Placement stratification.** Self-description always; self-relocation never; placement changes
    only at the granter's barrier, with a recorded remap.
 5. **Grant determinism by recording.** Recorded grant schedule + authored priority; no
    iteration-order allocation anywhere.
-6. **A tier is a price vector.** Open set of authored bundles, domain-free, smallest-fit; the
-   engine never branches on tier.
-7. **Rootness is a tier, not a type.** No service nodes.
-8. **Census is perception.** Banded, stamped, aggregate, stale-visible; never a directory.
-9. **Layout is a residency class of the one IR.** No bespoke kernels; WHERE never ORDER.
-10. **The base case is one handshake wide.** The embedder grants the root arena as data; nothing
-    else external holds authority.
+6. **A tier is a price vector.** Domain-free, smallest-fit; open across authoring, **frozen at
+   session admission**, closed engine vocabulary beneath; the engine never branches on tier.
+7. **Rootness is a tier, not a type — and never session authority.** No service nodes; a granting
+   root is relative to its subtree and is not a GameSession-equivalent.
+8. **Census is perception.** Banded, stamped, aggregate, stale-visible; lanes only where granting
+   is active; never a directory.
+9. **One compute IR over class layouts; placement is physics.** No layout acquires a bespoke
+   semantic compute kernel (WHERE never ORDER); allocation, relocation, compaction, and
+   partitioning are not field sweeps.
+10. **The base case is one handshake wide — denominated in bytes.** The embedder grants the root
+    arena as exact byte/page budgets per residency class; row counts are derived only after the
+    admitted layout is known. Nothing else external holds authority.
+11. **One history surface.** Grant schedules and compaction remaps extend the canonical recorded
+    schedule; a second history mechanism is forbidden.
+12. **Quantity is not geometry.** Conserved capacity and minted extents are distinct objects with
+    distinct judges; conflating them is the category error this document was remanded to remove.
 
 **Drift detectors (stop and escalate on any "yes"):**
 
@@ -322,15 +406,28 @@ own placement belongs to its granter's barrier, which for the session root is se
 7. Am I hand-assigning a residency class where smallest-fit should compute it?
 8. Am I writing a new layout kernel instead of a JIT residency-class variant of the one IR?
 9. Am I building an access-control layer where budget narrowing already governs?
-10. Am I validating a quantity a conservation law could make unreachable?
+10. Am I validating a *fungible* quantity a conservation law could make unreachable — or,
+    conversely, converting a structural constraint into a "budget" because it contains a number?
+11. Am I treating the CostBand remainder as fragmentation, or conserved quantity as geometry?
+12. Am I minting an extent anywhere but the granter's kernel-owned placement boundary?
+13. Am I recording grants or remaps anywhere but the canonical schedule surface?
+14. Am I reinterpreting `SlotIndex` without the §3.1 Tier-2 ruling — or treating a granting node
+    as a session authority?
+15. Am I shrinking or reinterpreting an authored lattice because residency was insufficient,
+    instead of deferring or tiling execution?
 
 ---
 
 ## 10. Phase disposition and sequencing constraints
 
+- **Blocking pre-decision:** the §3.1 slot-identity ruling (Tier-2 core-design amendment with the
+  slot-bearing-artifact enumeration) must land **before any row of this phase is minted**. It is
+  the one place this anchor currently conflicts with standing law, and the conflict resolves by
+  amendment, never by reinterpretation.
 - **Consumes (must be landed):** 6.0 owner channels; 6.1 stamps; 6.1b CostBand; 6.2 coalescing
   queue; 8.1 conservation judge; 8.2 contention arena (slot contention resolves there — the
-  arena's authored-rule law is what retires LIFO).
+  arena's authored-rule law is what retires LIFO). The placement oracle (extent disjointness) is
+  new referee work this phase owes alongside the 8.1 judge.
 - **Must precede:** 11.1 `EMBEDDER-INTERFACE-0`. The five verbs must express this phase as data —
   **Populate** declares the root arena and slot budgets; **Derive** declares tier rows and draws.
   A door frozen before this phase ships unable to express the capability, and retrofitting it
