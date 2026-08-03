@@ -141,7 +141,7 @@ fn deficit_directive_routes_origin_to_lca_to_target_and_policy_filters_it() {
         policy_host_id,
         OverlayKind::Policy,
         property_id,
-        TransformOp::Multiply(0.5),
+        TransformOp::multiply(0.5),
     ));
     let root_id = root.id;
     root.add_child(policy_host);
@@ -151,7 +151,7 @@ fn deficit_directive_routes_origin_to_lca_to_target_and_policy_filters_it() {
         origin_id,
         OverlayKind::Instruction,
         property_id,
-        TransformOp::Add(0.4),
+        TransformOp::add(0.4),
     );
     let directive_id = directive.id;
     let mut direct_targeting_mutant = root.clone();
@@ -185,7 +185,7 @@ fn deficit_directive_routes_origin_to_lca_to_target_and_policy_filters_it() {
     find_mut(&mut root, policy_host_id).overlays[0]
         .transform
         .sub_field_deltas[0]
-        .1 = TransformOp::Multiply(0.25);
+        .1 = TransformOp::multiply(0.25);
     assert_eq!(find(&root, target_id).overlays[0].id, directive_id);
     assert_eq!(
         amount(&registry, property_id, &root, target_id).to_bits(),
@@ -228,7 +228,7 @@ fn standing_directive_is_inherited_without_descendant_copies_or_conservation_sta
             root_id,
             OverlayKind::Governance,
             property_id,
-            TransformOp::Add(0.25),
+            TransformOp::add(0.25),
         ),
     )
     .expect("subtree root is admitted");
@@ -268,7 +268,7 @@ fn predicate_broadcast_is_one_subtree_walk_and_policy_rules_are_conjunctive() {
         restrictive_parent.id,
         OverlayKind::Policy,
         property_id,
-        TransformOp::Set(0.0),
+        TransformOp::set(0.0),
     ));
     let mut cannot_reopen = with_amount(&registry, property_id, 0.75);
     let cannot_reopen_id = cannot_reopen.id;
@@ -276,7 +276,7 @@ fn predicate_broadcast_is_one_subtree_walk_and_policy_rules_are_conjunctive() {
         cannot_reopen_id,
         OverlayKind::Policy,
         property_id,
-        TransformOp::Set(1.0),
+        TransformOp::set(1.0),
     ));
     restrictive_parent.add_child(cannot_reopen);
 
@@ -292,7 +292,7 @@ fn predicate_broadcast_is_one_subtree_walk_and_policy_rules_are_conjunctive() {
         origin_id,
         OverlayKind::Instruction,
         property_id,
-        TransformOp::Add(0.1),
+        TransformOp::add(0.1),
     );
     let predicate = RoutedPredicate {
         property_id,
@@ -335,7 +335,7 @@ fn origin_is_required_on_the_wire_without_default_or_migration_path() {
         origin,
         OverlayKind::Instruction,
         property_id,
-        TransformOp::Add(0.1),
+        TransformOp::add(0.1),
     ))
     .expect("overlay serializes");
     encoded
@@ -364,7 +364,7 @@ fn event_coordinate_is_derived_from_origin_placement_not_stamped_on_overlay() {
         origin,
         OverlayKind::Instruction,
         property_id,
-        TransformOp::Add(0.1),
+        TransformOp::add(0.1),
     );
 
     assert_eq!(

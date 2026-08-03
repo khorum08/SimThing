@@ -310,7 +310,7 @@ mod tests {
             affects: vec![],
             transform: PropertyTransformDelta {
                 property_id: pid,
-                sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Add(0.1))],
+                sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::add(0.1))],
             },
             lifecycle,
         }

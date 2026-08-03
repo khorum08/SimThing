@@ -145,7 +145,7 @@ fn command_deficit_rides_disbursement_and_arrives_with_live_route_policy() {
         policy_host_id,
         OverlayKind::Policy,
         property_id,
-        TransformOp::Multiply(0.5),
+        TransformOp::multiply(0.5),
     ));
     policy_host.add_child(origin);
     let receiver = with_amount(&registry, property_id, 0.2);
@@ -172,7 +172,7 @@ fn command_deficit_rides_disbursement_and_arrives_with_live_route_policy() {
         origin_id,
         OverlayKind::Instruction,
         property_id,
-        TransformOp::Add(0.4),
+        TransformOp::add(0.4),
     );
     let directive_id = directive.id;
     let deficit = CommandDeficit {
@@ -246,7 +246,7 @@ fn command_deficit_rides_disbursement_and_arrives_with_live_route_policy() {
     find_mut(&mut root, policy_host_id).overlays[0]
         .transform
         .sub_field_deltas[0]
-        .1 = TransformOp::Multiply(0.25);
+        .1 = TransformOp::multiply(0.25);
     assert_eq!(find(&root, receiver_id).overlays[0].id, directive_id);
     assert_eq!(
         amount(&registry, property_id, &root, receiver_id).to_bits(),
@@ -301,7 +301,7 @@ fn standing_directive_uses_shared_inheritance_walk_without_descendant_state() {
             root_id,
             OverlayKind::Governance,
             property_id,
-            TransformOp::Add(0.25),
+            TransformOp::add(0.25),
         ),
     )
     .expect("standing directive installs at the resolution root");

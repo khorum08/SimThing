@@ -46,10 +46,10 @@ fn overlay_add_install(
         .iter()
         .find(|entry| entry.id == id)
         .unwrap_or_else(|| panic!("missing overlay {id}"));
-    let amount = match &overlay.sub_field_deltas[0].1 {
-        TransformOp::Add(value) => *value,
-        other => panic!("expected add overlay {id}, got {other:?}"),
-    };
+    let amount = overlay.sub_field_deltas[0]
+        .1
+        .as_add_literal()
+        .unwrap_or_else(|| panic!("expected add overlay {id}, got {:?}", overlay.sub_field_deltas[0].1));
     let target_id = match &overlay.install {
         InstallTargetSpec::ScenarioListed { target_id } => target_id.clone(),
         other => panic!("expected ScenarioListed install for {id}, got {other:?}"),

@@ -155,19 +155,18 @@ pub fn validate_order_weight_overlay(
             });
         }
         let (role, op) = &overlay.sub_field_deltas[0];
-        match op {
-            TransformOp::Add(v)
-                if v.is_finite() && (*v - class.magnitude).abs() <= f32::EPSILON => {}
-            other => {
-                return Err(SpecError::OrderWeightDirectiveInvalid {
-                    overlay_id: overlay.id.clone(),
-                    reason: format!(
-                        "directive transform must be Add({}) for class `{}` (got {:?} on role {:?}, locus `{}`)",
-                        class.magnitude, class.id, other, role, overlay.targets_property
-                    ),
-                    source_span_token: overlay.source_span_token,
-                });
-            }
+        let ok = op
+            .as_add_literal()
+            .is_some_and(|v| v.is_finite() && (v - class.magnitude).abs() <= f32::EPSILON);
+        if !ok {
+            return Err(SpecError::OrderWeightDirectiveInvalid {
+                overlay_id: overlay.id.clone(),
+                reason: format!(
+                    "directive transform must be Add({}) for class `{}` (got {:?} on role {:?}, locus `{}`)",
+                    class.magnitude, class.id, op, role, overlay.targets_property
+                ),
+                source_span_token: overlay.source_span_token,
+            });
         }
         return Ok(());
     }
@@ -251,10 +250,7 @@ fn is_transient_with_dissolve(lifecycle: &OverlayLifecycle) -> bool {
 }
 
 fn op_magnitude(op: &TransformOp) -> f32 {
-    match op {
-        TransformOp::Add(v) | TransformOp::Multiply(v) | TransformOp::Set(v) => *v,
-        TransformOp::Eml(_) => 0.0,
-    }
+    op.literal_operand()
 }
 
 #[cfg(test)]
@@ -287,7 +283,7 @@ mod tests {
             targets_property: "order::food_flow".into(),
             sub_field_deltas: vec![(
                 SubFieldRole::Named("weight".into()),
-                TransformOp::Add(magnitude),
+                TransformOp::add(magnitude),
             )],
             lifecycle: OverlayLifecycle::Transient {
                 dissolution_conditions: vec![DissolveCondition::AfterTicks { remaining: 1 }],
@@ -352,7 +348,7 @@ mod tests {
                     let mut o =
                         overlay("go", OverlaySource::Player, Some("destination_order"), 20.0);
                     o.sub_field_deltas
-                        .push((SubFieldRole::Amount, TransformOp::Add(1.0)));
+                        .push((SubFieldRole::Amount, TransformOp::add(1.0)));
                     validate_order_weight_overlay(&o, &classes)
                 }
                 "permanent_lifecycle" => {

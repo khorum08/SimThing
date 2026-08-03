@@ -236,7 +236,7 @@ pub fn build_order_directive_overlay(
             property_id: req.property_id,
             sub_field_deltas: vec![(
                 req.sub_field.clone(),
-                TransformOp::Add(class.spec.magnitude),
+                TransformOp::add(class.spec.magnitude),
             )],
         },
         lifecycle: OverlayLifecycle::Transient {
@@ -256,10 +256,7 @@ pub fn gate_raw_player_overlay(
         .transform
         .sub_field_deltas
         .iter()
-        .map(|(_, op)| match op {
-            TransformOp::Add(v) | TransformOp::Multiply(v) | TransformOp::Set(v) => *v,
-            TransformOp::Eml(_) => 0.0,
-        })
+        .map(|(_, op)| op.literal_operand())
         .collect();
     let specs: Vec<_> = classes.iter().map(|class| class.spec.clone()).collect();
     validate_runtime_player_overlay_magnitude(overlay.source.clone(), &mags, &specs)?;
@@ -288,14 +285,19 @@ pub fn gate_ingested_player_intent(
             {
                 continue;
             }
-            let [(role, TransformOp::Add(value))] = overlay.transform.sub_field_deltas.as_slice()
-            else {
+            let [(role, op)] = overlay.transform.sub_field_deltas.as_slice() else {
                 return Err(OrderDirectiveError::Binding(format!(
                     "raw Player transforms on class-bound arena `{}` weight locus must be one finite Add",
                     class.spec.arena
                 )));
             };
-            if role != &class.spec.sub_field || !value.is_finite() {
+            let Some(value) = op.as_add_literal().filter(|v| v.is_finite()) else {
+                return Err(OrderDirectiveError::Binding(format!(
+                    "raw Player transforms on class-bound arena `{}` weight locus must be one finite Add",
+                    class.spec.arena
+                )));
+            };
+            if role != &class.spec.sub_field {
                 return Err(OrderDirectiveError::Binding(format!(
                     "raw Player transform does not match arena `{}` weight role",
                     class.spec.arena
@@ -328,7 +330,7 @@ pub fn gate_ingested_player_intent(
         || overlay.transform.sub_field_deltas.as_slice()
             != [(
                 class.spec.sub_field.clone(),
-                TransformOp::Add(class.spec.magnitude),
+                TransformOp::add(class.spec.magnitude),
             )]
         || !matches!(
             &overlay.lifecycle,

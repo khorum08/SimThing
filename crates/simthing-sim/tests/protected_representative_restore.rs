@@ -126,6 +126,7 @@ fn assert_no_hard_trigger_on_soft_aggregate() {
         sub_field: SubFieldRole::Amount,
         threshold: 0.75,
         direction: Direction::Rising,
+        cost_band: simthing_sim::CostBandSemantic::observation(),
     };
     let (gpu_regs, cpu_reg) = ThresholdBuilder::build_with_alerts(
         &runtime,
@@ -185,7 +186,7 @@ fn clone_capability_children() {
         affects: vec![faction_id],
         transform: PropertyTransformDelta {
             property_id,
-            sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Add(0.2))],
+            sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::add(0.2))],
         },
         lifecycle: OverlayLifecycle::Suspended {
             when_activated: Box::new(OverlayLifecycle::UntilDissolved),

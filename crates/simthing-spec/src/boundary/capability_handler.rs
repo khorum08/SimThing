@@ -383,7 +383,7 @@ mod atomicity_tests {
             effect_keys: vec![],
             effect_transforms: vec![PropertyTransformDelta {
                 property_id: SimPropertyId(0),
-                sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Add(1.0))],
+                sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::add(1.0))],
             }],
             effect_targets: vec![EffectTarget::Owner],
             prereqs: vec![],

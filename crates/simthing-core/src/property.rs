@@ -89,12 +89,12 @@ pub enum SubFieldRole {
 
 // ── TransformOp ───────────────────────────────────────────────────────────────
 
-/// Overlay value form joined to the EML ISA (BAND-QUANTIZED-DRAW-0).
+/// Singular overlay value form: an admitted EML program (BAND-QUANTIZED-DRAW-0).
 ///
-/// There is **no Static/Computed discriminant**. `Add` / `Multiply` / `Set` are
-/// constructors that mint the same EML program shape family; evaluation always
-/// runs through the EML interpreter (`apply`). A second form such as
-/// `Static`/`Computed` is a compile error (see doctests below).
+/// There is **one representable form** at the type tier — not an enum of
+/// static/computed/program kinds. `set` / `add` / `multiply` are constructors
+/// that mint degenerate EML programs; evaluation always runs through the
+/// interpreter. A second value-form discriminant is a compile error.
 ///
 /// ```compile_fail,E0599
 /// use simthing_core::TransformOp;
@@ -108,42 +108,66 @@ pub enum SubFieldRole {
 /// let _ = TransformOp::Computed(vec![]);
 /// ```
 ///
-/// Cap-bypass forge of an admitted EML program is a type error (private field):
+/// ```compile_fail,E0599
+/// use simthing_core::TransformOp;
+/// // Not an enum — callers cannot branch on legacy/static vs program variants.
+/// let _ = match TransformOp::set(1.0) {
+///     TransformOp::Set(_) => {}
+///     TransformOp::Add(_) => {}
+///     TransformOp::Multiply(_) => {}
+///     TransformOp::Eml(_) => {}
+/// };
+/// ```
+///
+/// Cap-bypass forge via private nodes is a type error:
 ///
 /// ```compile_fail
-/// use simthing_core::{AdmittedEmlProgram, TransformOp};
-/// let _ = TransformOp::Eml(AdmittedEmlProgram { nodes: vec![] });
+/// use simthing_core::TransformOp;
+/// let _ = TransformOp { nodes: vec![] };
 /// ```
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub enum TransformOp {
-    Add(f32),
-    Multiply(f32),
-    Set(f32),
-    /// Admitted multi-node EML program (magnitude bands, etc.).
-    /// **Same singular EML value path** as the constructors — not a
-    /// Static/Computed discriminant. Only constructible via
-    /// [`TransformOp::admit_eml`] (cap-enforced at admission).
-    Eml(AdmittedEmlProgram),
-}
-
-/// Cap-admitted overlay EML program. Field is private so oversized programs
-/// cannot be forged past [`admit_overlay_eml_program`] / [`TransformOp::admit_eml`].
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct AdmittedEmlProgram {
+#[derive(Clone, Debug, PartialEq)]
+pub struct TransformOp {
     nodes: Vec<crate::eml_nodes::EmlNode>,
 }
 
-impl AdmittedEmlProgram {
-    pub fn nodes(&self) -> &[crate::eml_nodes::EmlNode] {
-        &self.nodes
-    }
+/// Wire shape for RON/JSON fixtures that historically used `Add(v)` / `Set(v)`.
+/// Deserializes into the singular [`TransformOp`] program representation.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+enum TransformOpWire {
+    Add(f32),
+    Multiply(f32),
+    Set(f32),
+    /// Multi-node admitted program (nodes already cap-checked on deserialize).
+    Eml(Vec<crate::eml_nodes::EmlNode>),
+}
 
-    pub fn len(&self) -> usize {
-        self.nodes.len()
+impl Serialize for TransformOp {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let wire = if let Some(v) = self.as_set_literal() {
+            TransformOpWire::Set(v)
+        } else if let Some(v) = self.as_add_literal() {
+            TransformOpWire::Add(v)
+        } else if let Some(v) = self.as_multiply_literal() {
+            TransformOpWire::Multiply(v)
+        } else {
+            TransformOpWire::Eml(self.nodes.clone())
+        };
+        wire.serialize(serializer)
     }
+}
 
-    pub fn is_empty(&self) -> bool {
-        self.nodes.is_empty()
+impl<'de> Deserialize<'de> for TransformOp {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let wire = TransformOpWire::deserialize(deserializer)?;
+        match wire {
+            TransformOpWire::Add(v) => Ok(Self::add(v)),
+            TransformOpWire::Multiply(v) => Ok(Self::multiply(v)),
+            TransformOpWire::Set(v) => Ok(Self::set(v)),
+            TransformOpWire::Eml(nodes) => {
+                Self::admit_eml(nodes, EmlPerProgramCap::DEFAULT).map_err(serde::de::Error::custom)
+            }
+        }
     }
 }
 
@@ -204,26 +228,22 @@ pub fn reset_overlay_eml_eval_invocations() {
 
 impl TransformOp {
     /// Construct the **one-node** degenerate program `LITERAL_F32(v)` (Set).
-    /// Cap is enforced at construction (always fits default per-program cap).
     pub fn set(v: f32) -> Self {
-        let nodes = Self::set_nodes(v);
-        let _ = admit_overlay_eml_program(nodes, EmlPerProgramCap::DEFAULT)
+        let nodes = admit_overlay_eml_program(Self::set_nodes(v), EmlPerProgramCap::DEFAULT)
             .expect("one-node LITERAL_F32 always admits under default cap");
-        Self::Set(v)
+        Self { nodes }
     }
 
     pub fn add(v: f32) -> Self {
-        let nodes = Self::add_nodes(v);
-        let _ = admit_overlay_eml_program(nodes, EmlPerProgramCap::DEFAULT)
+        let nodes = admit_overlay_eml_program(Self::add_nodes(v), EmlPerProgramCap::DEFAULT)
             .expect("degenerate Add program admits under default cap");
-        Self::Add(v)
+        Self { nodes }
     }
 
     pub fn multiply(v: f32) -> Self {
-        let nodes = Self::mul_nodes(v);
-        let _ = admit_overlay_eml_program(nodes, EmlPerProgramCap::DEFAULT)
+        let nodes = admit_overlay_eml_program(Self::mul_nodes(v), EmlPerProgramCap::DEFAULT)
             .expect("degenerate Multiply program admits under default cap");
-        Self::Multiply(v)
+        Self { nodes }
     }
 
     /// Admit a multi-node EML program under the per-program cap (construction
@@ -233,7 +253,7 @@ impl TransformOp {
         cap: EmlPerProgramCap,
     ) -> Result<Self, EmlPerProgramCapError> {
         let nodes = admit_overlay_eml_program(nodes, cap)?;
-        Ok(Self::Eml(AdmittedEmlProgram { nodes }))
+        Ok(Self { nodes })
     }
 
     fn set_nodes(v: f32) -> Vec<crate::eml_nodes::EmlNode> {
@@ -308,122 +328,79 @@ impl TransformOp {
         ]
     }
 
-    /// Lower this transform to postfix EML nodes (existing opcodes only).
-    ///
-    /// - `Set(v)` → **one-node** `LITERAL_F32(v)` (stack-top is the result)
-    /// - `Add(v)` → `PARAM(0); LITERAL_F32(v); ADD`
-    /// - `Multiply(v)` → `PARAM(0); LITERAL_F32(v); MUL`
-    /// - `Eml(nodes)` → admitted program as-is
-    ///
-    /// `N` (CostBand depth) arrives as `PARAM(1)`.
-    pub fn to_eml_nodes(&self) -> Vec<crate::eml_nodes::EmlNode> {
-        match self {
-            Self::Set(v) => Self::set_nodes(*v),
-            Self::Add(v) => Self::add_nodes(*v),
-            Self::Multiply(v) => Self::mul_nodes(*v),
-            Self::Eml(prog) => prog.nodes.clone(),
-        }
+    /// Admitted EML nodes (singular value representation).
+    pub fn nodes(&self) -> &[crate::eml_nodes::EmlNode] {
+        &self.nodes
     }
 
-    /// Apply via the singular EML interpreter path (no static/computed branch).
-    /// `current` is `PARAM(0)`; optional `n` is `PARAM(1)` (CostBand depth).
-    ///
-    /// Degenerate constructors evaluate through stack-local node buffers so
-    /// apply does not re-allocate / re-lower on every hot-path call. Cap
-    /// admission remains a construction-time check (`set`/`add`/`multiply`/
-    /// `admit_eml`), not a per-apply tax.
+    /// Lower this transform to postfix EML nodes (clone of admitted program).
+    pub fn to_eml_nodes(&self) -> Vec<crate::eml_nodes::EmlNode> {
+        self.nodes.clone()
+    }
+
+    /// Apply via the singular EML interpreter path.
     pub fn apply(&self, current: f32) -> f32 {
         self.apply_with_params(current, 0.0)
     }
 
     pub fn apply_with_params(&self, current: f32, n: f32) -> f32 {
-        use crate::eml_nodes::{opcode, EmlNode};
-        match self {
-            Self::Set(v) => {
-                let node = EmlNode {
-                    opcode: opcode::LITERAL_F32,
-                    flags: 0,
-                    a: v.to_bits(),
-                    b: 0,
-                    c: 0,
-                    d: 0,
-                };
-                eval_overlay_eml(std::slice::from_ref(&node), current, n)
-            }
-            Self::Add(v) => {
-                let nodes = [
-                    EmlNode {
-                        opcode: opcode::PARAM,
-                        flags: 0,
-                        a: 0,
-                        b: 0,
-                        c: 0,
-                        d: 0,
-                    },
-                    EmlNode {
-                        opcode: opcode::LITERAL_F32,
-                        flags: 0,
-                        a: v.to_bits(),
-                        b: 0,
-                        c: 0,
-                        d: 0,
-                    },
-                    EmlNode {
-                        opcode: opcode::ADD,
-                        flags: 0,
-                        a: 0,
-                        b: 0,
-                        c: 0,
-                        d: 0,
-                    },
-                ];
-                eval_overlay_eml(&nodes, current, n)
-            }
-            Self::Multiply(v) => {
-                let nodes = [
-                    EmlNode {
-                        opcode: opcode::PARAM,
-                        flags: 0,
-                        a: 0,
-                        b: 0,
-                        c: 0,
-                        d: 0,
-                    },
-                    EmlNode {
-                        opcode: opcode::LITERAL_F32,
-                        flags: 0,
-                        a: v.to_bits(),
-                        b: 0,
-                        c: 0,
-                        d: 0,
-                    },
-                    EmlNode {
-                        opcode: opcode::MUL,
-                        flags: 0,
-                        a: 0,
-                        b: 0,
-                        c: 0,
-                        d: 0,
-                    },
-                ];
-                eval_overlay_eml(&nodes, current, n)
-            }
-            Self::Eml(prog) => eval_overlay_eml(prog.nodes(), current, n),
+        eval_overlay_eml(&self.nodes, current, n)
+    }
+
+    /// Recognize one-node `LITERAL_F32(v)` (Set constructor shape).
+    pub fn as_set_literal(&self) -> Option<f32> {
+        use crate::eml_nodes::opcode;
+        match self.nodes.as_slice() {
+            [n] if n.opcode == opcode::LITERAL_F32 => Some(f32::from_bits(n.a)),
+            _ => None,
         }
+    }
+
+    /// Recognize `PARAM(0); LITERAL_F32(v); ADD`.
+    pub fn as_add_literal(&self) -> Option<f32> {
+        use crate::eml_nodes::opcode;
+        match self.nodes.as_slice() {
+            [p, lit, add]
+                if p.opcode == opcode::PARAM
+                    && p.a == 0
+                    && lit.opcode == opcode::LITERAL_F32
+                    && add.opcode == opcode::ADD =>
+            {
+                Some(f32::from_bits(lit.a))
+            }
+            _ => None,
+        }
+    }
+
+    /// Recognize `PARAM(0); LITERAL_F32(v); MUL`.
+    pub fn as_multiply_literal(&self) -> Option<f32> {
+        use crate::eml_nodes::opcode;
+        match self.nodes.as_slice() {
+            [p, lit, mul]
+                if p.opcode == opcode::PARAM
+                    && p.a == 0
+                    && lit.opcode == opcode::LITERAL_F32
+                    && mul.opcode == opcode::MUL =>
+            {
+                Some(f32::from_bits(lit.a))
+            }
+            _ => None,
+        }
+    }
+
+    /// Whether this program is an Add/Multiply RMW shape (needs GPU-fresh shadow).
+    pub fn is_rmw(&self) -> bool {
+        self.as_add_literal().is_some() || self.as_multiply_literal().is_some()
     }
 
     /// Operand literal for GPU lower / magnitude extraction (degenerate forms).
     pub fn literal_operand(&self) -> f32 {
-        match self {
-            Self::Add(v) | Self::Multiply(v) | Self::Set(v) => *v,
-            Self::Eml(_) => 0.0,
-        }
+        self.as_set_literal()
+            .or_else(|| self.as_add_literal())
+            .or_else(|| self.as_multiply_literal())
+            .unwrap_or(0.0)
     }
 
-    /// Whether this is a multi-node admitted EML program (not a degenerate constructor).
-    pub fn is_eml_program(&self) -> bool {
-        matches!(self, Self::Eml(_))
-    }
 }
 
 /// Shared overlay EML eval: PARAM(0)=current, PARAM(1)=N (CostBand depth).

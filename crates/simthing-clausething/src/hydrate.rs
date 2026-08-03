@@ -201,8 +201,8 @@ fn parse_modifier_block(property: &RawProperty) -> Result<OverlaySpec, HydrateEr
     }
 
     let transform = match (amount_mult, amount_add) {
-        (Some(mult), None) => TransformOp::Multiply(mult),
-        (None, Some(add)) => TransformOp::Add(add),
+        (Some(mult), None) => TransformOp::multiply(mult),
+        (None, Some(add)) => TransformOp::add(add),
         (Some(_), Some(_)) => {
             return Err(HydrateError::new_spanned(
                 "modifier cannot specify both amount_mult and amount_add",
@@ -535,8 +535,8 @@ fn parse_tradition_effect_block(
     }
 
     let transform = match (amount_mult, amount_add) {
-        (Some(mult), None) => TransformOp::Multiply(mult),
-        (None, Some(add)) => TransformOp::Add(add),
+        (Some(mult), None) => TransformOp::multiply(mult),
+        (None, Some(add)) => TransformOp::add(add),
         (Some(_), Some(_)) => {
             return Err(HydrateError::new_spanned(
                 "tradition modifier cannot specify both amount_mult and amount_add",

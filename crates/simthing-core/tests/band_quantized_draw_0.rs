@@ -2,7 +2,7 @@
 
 use simthing_core::{
     admit_cost_band_marker, admit_overlay_eml_program, cost_band_depth_one, cost_band_expected_n,
-    cost_band_quantize, eval_overlay_eml, magnitude_band_eml_nodes, overlay_eml_eval_invocations,
+    cost_band_quantize, magnitude_band_eml_nodes, overlay_eml_eval_invocations,
     reset_overlay_eml_eval_invocations, CostBandRegistrationMarker, CostBandResourceMarker,
     EmlPerProgramCap, EmlPerProgramCapError, PropertyLayout, PropertyTransformDelta, SimPropertyId,
     SubFieldRole, TransformOp,
@@ -53,14 +53,9 @@ fn production_apply_always_enters_eml_eval_door() {
 fn planted_static_bypass_skips_eml_door_reds() {
     reset_overlay_eml_eval_invocations();
     let before = overlay_eml_eval_invocations();
-    // Planted defect: direct match without EML interpreter.
-    fn defective_static_bypass(op: &TransformOp, current: f32) -> f32 {
-        match op {
-            TransformOp::Set(v) => *v,
-            TransformOp::Add(v) => current + *v,
-            TransformOp::Multiply(v) => current * *v,
-            TransformOp::Eml(prog) => eval_overlay_eml(prog.nodes(), current, 0.0),
-        }
+    // Planted defect: shape-peek without EML interpreter (forbidden static path).
+    fn defective_static_bypass(op: &TransformOp, _current: f32) -> f32 {
+        op.as_set_literal().unwrap_or(0.0)
     }
     let op = TransformOp::set(1.5);
     let _ = defective_static_bypass(&op, 0.0);
@@ -78,7 +73,8 @@ fn planted_static_bypass_skips_eml_door_reds() {
 fn ordinary_overlay_n_dependent_eml_same_path() {
     let nodes = magnitude_band_eml_nodes(1.0, 2.0, 3.0, 2.0, 4.0);
     let op = TransformOp::admit_eml(nodes, EmlPerProgramCap::DEFAULT).expect("admit");
-    assert!(op.is_eml_program());
+    assert!(op.as_set_literal().is_none());
+    assert!(op.nodes().len() > 1);
     let layout = PropertyLayout::standard(0);
     let mut data = vec![0.0f32];
     let delta = PropertyTransformDelta {
@@ -110,7 +106,7 @@ fn per_program_cap_at_admission_not_optional_helper() {
             ..
         }
     ));
-    // Cap-bypass forge is a compile_fail on AdmittedEmlProgram { nodes: ... }
+    // Cap-bypass forge is a compile_fail on TransformOp { nodes: ... }
     // (private field). Public API only admits via admit_eml.
 }
 

@@ -114,9 +114,8 @@ pub use placed_participant::{
 };
 pub use property::{
     admit_overlay_eml_program, eval_overlay_eml, magnitude_band_eml_nodes,
-    overlay_eml_eval_invocations, reset_overlay_eml_eval_invocations, AdmittedEmlProgram,
-    ClampBehavior, DecayBehavior, Direction, EmlPerProgramCap, EmlPerProgramCapError, ExpireEffect,
-    ExpireHandler,
+    overlay_eml_eval_invocations, reset_overlay_eml_eval_invocations, ClampBehavior, DecayBehavior,
+    Direction, EmlPerProgramCap, EmlPerProgramCapError, ExpireEffect, ExpireHandler,
     FissionTemplate, FissionThreshold, FusionThreshold, IntensityBehavior, IntensityRange,
     PropertyLayout, PropertyAdmissionDisposition, PropertyValue, RoleOffset, SecondaryCondition,
     SimProperty, SimThingKindTag, SubFieldRole, SubFieldSpec, TransformOp,

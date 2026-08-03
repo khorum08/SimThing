@@ -187,7 +187,7 @@ fn apply_max_active_limited(game_mode: &mut GameModeSpec) {
         // authoritative installed overlays + host active-overlay census == 1.
         let set_to = if entry.id == "idea_a" { 4.0 } else { 6.0 };
         for effect in &mut entry.effects {
-            effect.sub_field_deltas = vec![(SubFieldRole::Amount, TransformOp::Set(set_to))];
+            effect.sub_field_deltas = vec![(SubFieldRole::Amount, TransformOp::set(set_to))];
             effect.when_activated = OverlayLifecycle::UntilDissolved;
         }
     }

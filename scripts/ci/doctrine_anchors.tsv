@@ -2,7 +2,7 @@ anchor_id	doc	section	trigger_domains	content_hash
 field-policy-time-decisions	docs/simthing_core_design.md	heading:## 8. Time, decisions, and the CPU's only job	sim,driver,wgsl,sim-clock,field-policy	993c7d0560e849889d65e26512bf5112fa8d86341d92fec91cdc870304c8c7ff
 admission-ladder-necessity-test	docs/design_0_0_8_3.md	heading:### 0.9 Doctrine-as-Type, the kernel authority, and residue-as-tripwire (carry-forward)	none-ci-owned,seal	4bedf826f6f77b675a6080dc3289c17849fb825026d449472d44df324e2062dd
 seal-residue-cross-crate	docs/simthing_core_design.md	heading:### 1.2.1 The kernel crate, the cross-crate seal law, and residue-as-tripwire	kernel,gpu,unsafe-adjacent,seal	49ee7c4ba6f40dd4c5254e895ba0c9b1ff12d44ab148f18ea82a7e9d83345f1c
-stead-spatial-contract-core	docs/stead_spatial_contract.md	lines:23-59	map,spatial,mapgenerator,clausething-spatial,stead	b4a112cd02e8ad453df1f2414a59a035aadff7c9ae1e965a3ba10b4d1f2b52f9
+stead-spatial-contract-core	docs/stead_spatial_contract.md	lines:23-59	map,spatial,mapgenerator,clausething-spatial,stead	8585db4ac631f2fb390a6735409a6bc7d61760390a371ea5d6292328cf4accf3
 one-tree-owners-never-spatial	docs/simthing_core_design.md	heading:## 2. The one tree: Scenario wrapper, GameSession root, owners, and spatial containment	spec,hydration,one-tree	a8689d4344f9185421aa1dc81f55c7871ee91a529b467276047d54b45bc7562b
 core-property-value-model	docs/simthing_core_design.md	heading:## 3. SimProperty	property-value,kernel-columns	04338b307bf8e035b7e34a8813d9d29704ca47b7ad0aa617df36dbaadc2419e1
 core-gpu-residency	docs/simthing_core_design.md	heading:## 4. GPU residency	kernel-columns,gpu,driver	b2f1be11daf5cf0c34b655a8025d0d388eb65ca61ad84c59c365c89e8e9b1f88

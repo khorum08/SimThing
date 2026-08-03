@@ -1594,9 +1594,9 @@ fn lower_field_economy(
                 sub_field_deltas: vec![(
                     SubFieldRole::Amount,
                     match overlay.transform {
-                        HydratedOwnerPolicyTransform::Add(amount) => TransformOp::Add(amount),
+                        HydratedOwnerPolicyTransform::Add(amount) => TransformOp::add(amount),
                         HydratedOwnerPolicyTransform::Multiply(amount) => {
-                            TransformOp::Multiply(amount)
+                            TransformOp::multiply(amount)
                         }
                     },
                 )],
@@ -1769,7 +1769,7 @@ fn location_overlay(
         id: format!("{economy_id}_{kind}_location_{id}"),
         display_name: id.to_string(),
         targets_property: targets_property.to_string(),
-        sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Add(amount))],
+        sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::add(amount))],
         lifecycle: OverlayLifecycle::UntilDissolved,
         kind: overlay_kind,
         source: OverlaySource::System,

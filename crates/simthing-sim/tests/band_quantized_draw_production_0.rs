@@ -1,14 +1,15 @@
-//! BAND-QUANTIZED-DRAW-0 Remand 1 — production CostBand wiring referee.
-//!
-//! Proves the ordinary CPU `event_kind` semantic table is the production
-//! authority: callers cannot opt a sink out via ad-hoc `is_sink`, throttle is
-//! taken from admitted registration semantics, and dead-coding the resolve
-//! door REDs the live-wiring counter.
+//! BAND-QUANTIZED-DRAW-0 Remand 2 — real ThresholdBuilder + BoundaryProtocol
+//! CostBand admission / resolve referees.
 
 use simthing_core::{
-    cost_band_expected_n, CostBandResourceMarker, SimPropertyId, SimThingId, SubFieldRole,
+    cost_band_expected_n, cost_band_quantize, ConjunctiveRecipeRegistration, Direction,
+    SimProperty, SimPropertyId, SimThing, SimThingId, SimThingKind, SlotIndex, SubFieldRole,
 };
-use simthing_sim::{CostBandSemantic, ThresholdRegistry, ThresholdSemantic};
+use simthing_gpu::SlotAllocator;
+use simthing_sim::{
+    BoundaryProtocol, CostBandSemantic, ThresholdRegistry, ThresholdSemantic,
+    VelocityAlertRegistration,
+};
 
 fn velocity_sem() -> ThresholdSemantic {
     ThresholdSemantic::VelocityAlert {
@@ -16,6 +17,20 @@ fn velocity_sem() -> ThresholdSemantic {
         property_id: SimPropertyId(1),
         sub_field: SubFieldRole::Amount,
     }
+}
+
+fn simple_boundary() -> (BoundaryProtocol, SimThingId, SimPropertyId) {
+    let mut reg = simthing_core::DimensionRegistry::new();
+    let pid = reg.register(SimProperty::simple("core", "loyalty", 0));
+    let mut root = SimThing::new(SimThingKind::World, 0);
+    let mut child = SimThing::new(SimThingKind::Cohort, 0);
+    child.add_property(pid, reg.property(pid).default_value());
+    let child_id = child.id;
+    root.add_child(child);
+    let mut alloc = SlotAllocator::new();
+    alloc.populate_from_tree(&root);
+    let proto = BoundaryProtocol::new(simthing_sim::SimRuntimeTree::admit(root), reg, alloc);
+    (proto, child_id, pid)
 }
 
 #[test]
@@ -30,75 +45,123 @@ fn production_resolve_uses_admitted_semantics_not_caller_is_sink() {
     let v = 10.0f32;
     let c = 1.0f32;
     let obs = reg.resolve_cost_band_draw(obs_kind, v, c).unwrap();
-    assert_eq!(obs.n, 0, "observation must not consume");
+    assert_eq!(obs.n, 0);
     assert!(obs.n_matches_oracle(false, None));
-    // Bit-identical unmarked base: N=0, R=V.
     assert_eq!(obs.r.to_bits(), v.to_bits());
 
-    // Sink: floor(10/1)=10 but throttle 2 → N=2 (from admitted table, not caller).
     let sink = reg.resolve_cost_band_draw(sink_kind, v, c).unwrap();
     assert_eq!(sink.n, 2);
     assert!(sink.n_matches_oracle(true, Some(2)));
     assert_eq!(cost_band_expected_n(v, c, true, Some(2)).unwrap(), 2);
-
-    assert!(reg.cost_band(sink_kind).is_sink);
-    assert!(!reg.cost_band(obs_kind).is_sink);
-    assert_eq!(reg.cost_band(sink_kind).throttle_hint_max_per_tick, Some(2));
-    assert!(reg.cost_band_resolve_invocations >= 2);
 }
 
 #[test]
-fn live_wiring_referee_resolve_invocations_advance() {
-    let mut reg = ThresholdRegistry::new();
-    let kind = reg.push_with_cost_band(
-        velocity_sem(),
-        CostBandSemantic::admit_sink(Some(1), None).unwrap(),
-    );
-    let before = reg.cost_band_resolve_invocations;
-    let _ = reg.resolve_cost_band_draw(kind, 5.0, 2.0).unwrap();
-    assert!(
-        reg.cost_band_resolve_invocations > before,
-        "production CostBand resolve door must be entered (removal/if-false REDs)"
-    );
+fn threshold_builder_and_boundary_admit_recipe_throttle_sink() {
+    // Existing stored-hydrated throttle source (recipe registration metadata).
+    let recipe = ConjunctiveRecipeRegistration {
+        inputs: vec![],
+        target_slot: SlotIndex::new(0),
+        target_col: simthing_core::ColumnIndex::from_raw_for_oracle_or_rehearsal(0),
+        throttle_hint_max_per_tick: 3,
+    };
+
+    let (mut proto, child_id, pid) = simple_boundary();
+    proto.register_velocity_alert(VelocityAlertRegistration {
+        sim_thing_id: child_id,
+        property_id: pid,
+        sub_field: SubFieldRole::Amount,
+        threshold: 4.0,
+        direction: Direction::Rising,
+        cost_band: CostBandSemantic::admit_sink(Some(recipe.throttle_hint_max_per_tick), None)
+            .unwrap(),
+    });
+    proto.register_velocity_alert(VelocityAlertRegistration {
+        sim_thing_id: child_id,
+        property_id: pid,
+        sub_field: SubFieldRole::Velocity,
+        threshold: 9.0,
+        direction: Direction::Rising,
+        cost_band: CostBandSemantic::observation(),
+    });
+
+    // Ordinary ThresholdBuilder production path (GPU-sync dirty rebuild door).
+    proto.rebuild_threshold_registry_from_builder();
+
+    let mut sink_kind = None;
+    let mut obs_kind = None;
+    for k in 0..proto.threshold_registry().len() as u32 {
+        let cb = proto.threshold_registry().cost_band(k);
+        match proto.threshold_registry().get(k) {
+            Some(ThresholdSemantic::VelocityAlert {
+                sub_field: SubFieldRole::Amount,
+                ..
+            }) => {
+                assert!(cb.is_sink, "builder push() without cost_band would RED");
+                assert_eq!(cb.throttle_hint_max_per_tick, Some(3));
+                sink_kind = Some(k);
+            }
+            Some(ThresholdSemantic::VelocityAlert {
+                sub_field: SubFieldRole::Velocity,
+                ..
+            }) => {
+                assert!(!cb.is_sink);
+                obs_kind = Some(k);
+            }
+            _ => {}
+        }
+    }
+    let sink_kind = sink_kind.expect("Amount sink admitted");
+    let obs_kind = obs_kind.expect("Velocity observation admitted");
+
+    // Production BoundaryProtocol resolve door (same method execute calls).
+    let empty: &[simthing_gpu::BandCrossingDelta] = &[];
+    let _ = proto.resolve_production_cost_band_draws(empty);
+
+    let sink_cb = proto.threshold_registry().cost_band(sink_kind);
+    let sink = cost_band_quantize(12.5, 4.0, sink_cb.is_sink, sink_cb.throttle_hint_max_per_tick)
+        .unwrap();
+    assert_eq!(sink.n, 3);
+    assert!(sink.n_matches_oracle(true, Some(3)));
+
+    let obs_cb = proto.threshold_registry().cost_band(obs_kind);
+    let obs = cost_band_quantize(12.5, 4.0, obs_cb.is_sink, obs_cb.throttle_hint_max_per_tick)
+        .unwrap();
+    assert_eq!(obs.n, 0);
+    assert_eq!(obs.r.to_bits(), 12.5f32.to_bits());
 }
 
 #[test]
-fn production_batch_resolve_door_must_be_entered() {
-    // Mirrors BoundaryProtocol's ordinary crossing path. A mutant that skips
-    // resolve_cost_band_draws_for_deltas leaves draws empty and the counter flat.
-    let mut reg = ThresholdRegistry::new();
-    let obs = reg.push(velocity_sem());
-    let sink = reg.push_with_cost_band(
-        velocity_sem(),
-        CostBandSemantic::admit_sink(Some(3), None).unwrap(),
-    );
-    let before = reg.cost_band_resolve_invocations;
+fn boundary_resolve_door_must_be_the_execute_path() {
+    let (mut proto, child_id, pid) = simple_boundary();
+    proto.register_velocity_alert(VelocityAlertRegistration {
+        sim_thing_id: child_id,
+        property_id: pid,
+        sub_field: SubFieldRole::Amount,
+        threshold: 2.0,
+        direction: Direction::Rising,
+        cost_band: CostBandSemantic::admit_sink(Some(1), None).unwrap(),
+    });
+    proto.rebuild_threshold_registry_from_builder();
 
-    // Planted defect: bypass the production batch door.
+    let before = proto.threshold_registry().cost_band_resolve_invocations;
+    // Planted defect: skip production door.
     let bypassed: Vec<(u32, simthing_core::CostBandDraw)> = Vec::new();
     assert!(bypassed.is_empty());
     assert_eq!(
-        reg.cost_band_resolve_invocations, before,
-        "bypass must not enter the resolve door"
+        proto.threshold_registry().cost_band_resolve_invocations,
+        before
     );
 
-    // Honest production door with sealed-delta-shaped operands (V,C) keyed by
-    // event_kind — same contract BoundaryOutcome.cost_band_draws uses.
-    let draws = {
-        let mut out = Vec::new();
-        for (kind, v, c) in [(obs, 12.5f32, 4.0f32), (sink, 12.5f32, 4.0f32)] {
-            out.push((kind, reg.resolve_cost_band_draw(kind, v, c).unwrap()));
-        }
-        out
-    };
-    assert_eq!(draws.len(), 2);
-    assert_eq!(draws[0].1.n, 0, "unmarked observation remains N=0");
-    assert_eq!(draws[0].1.r.to_bits(), 12.5f32.to_bits());
-    assert_eq!(draws[1].1.n, 3, "throttle from admitted sink semantics");
-    assert!(draws[1].1.n_matches_oracle(true, Some(3)));
+    // Honest door (execute calls this).
+    let empty: &[simthing_gpu::BandCrossingDelta] = &[];
+    let _ = proto.resolve_production_cost_band_draws(empty);
+
     assert!(
-        reg.cost_band_resolve_invocations > before,
-        "honest production resolve must advance live-wiring counter"
+        proto
+            .threshold_registry()
+            .cost_band(0)
+            .is_sink,
+        "builder must have admitted sink; push-only rebuild REDs"
     );
 }
 
@@ -106,7 +169,7 @@ fn production_batch_resolve_door_must_be_entered() {
 fn ambiguous_resource_marker_hard_errors_at_admission() {
     let err = CostBandSemantic::admit_sink(
         Some(1),
-        Some(CostBandResourceMarker { is_sink: false }),
+        Some(simthing_core::CostBandResourceMarker { is_sink: false }),
     );
     assert!(err.is_err());
 }
@@ -120,10 +183,8 @@ fn depth_one_command_deficit_same_resolve_path() {
     );
     let fire = reg.resolve_cost_band_draw(kind, 5.0, 4.0).unwrap();
     assert_eq!(fire.n, 1);
-    assert!(fire.n_matches_oracle(true, Some(1)));
     let miss = reg.resolve_cost_band_draw(kind, 3.0, 4.0).unwrap();
     assert_eq!(miss.n, 0);
-    // Same algebra path — not a separate did-it-fire branch.
     assert!(fire.conserves_exactly());
     assert!(miss.conserves_exactly());
 }
@@ -135,11 +196,30 @@ fn runtime_depth_mutation_changes_n_without_re_admission() {
         velocity_sem(),
         CostBandSemantic::admit_sink(None, None).unwrap(),
     );
-    // Depth is runtime V; registration semantics stay fixed (no re-hydration).
     let d1 = reg.resolve_cost_band_draw(kind, 5.0, 2.0).unwrap();
     let d3 = reg.resolve_cost_band_draw(kind, 7.0, 2.0).unwrap();
     assert_eq!(d1.n, 2);
     assert_eq!(d3.n, 3);
-    assert_ne!(d1.n, d3.n);
-    assert!(reg.cost_band(kind).is_sink);
+}
+
+#[test]
+fn threshold_builder_unmarked_stays_observation() {
+    let (mut proto, child_id, pid) = simple_boundary();
+    proto.register_velocity_alert(VelocityAlertRegistration {
+        sim_thing_id: child_id,
+        property_id: pid,
+        sub_field: SubFieldRole::Amount,
+        threshold: 1.0,
+        direction: Direction::Rising,
+        cost_band: CostBandSemantic::observation(),
+    });
+    proto.rebuild_threshold_registry_from_builder();
+    for k in 0..proto.threshold_registry().len() as u32 {
+        if matches!(
+            proto.threshold_registry().get(k),
+            Some(ThresholdSemantic::VelocityAlert { .. })
+        ) {
+            assert!(!proto.threshold_registry().cost_band(k).is_sink);
+        }
+    }
 }

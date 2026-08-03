@@ -156,6 +156,10 @@ impl ThresholdSemantic {
 }
 
 /// AI-facing threshold registration for a rate/trajectory column on `values`.
+///
+/// CostBand admission rides this existing registration channel (keyed by the
+/// assigned `event_kind`) — observation by default; sinks carry authored
+/// throttle from the stored-hydrated `throttle_hint_max_per_tick` source.
 #[derive(Clone, Debug)]
 pub struct VelocityAlertRegistration {
     pub sim_thing_id: SimThingId,
@@ -163,6 +167,8 @@ pub struct VelocityAlertRegistration {
     pub sub_field: SubFieldRole,
     pub threshold: f32,
     pub direction: Direction,
+    /// Authored CostBand / sink semantics for this registration.
+    pub cost_band: CostBandSemantic,
 }
 
 /// AI-facing threshold on post-reduction `output_vectors` (parent aggregates).
@@ -173,6 +179,8 @@ pub struct AggregateAlertRegistration {
     pub sub_field: SubFieldRole,
     pub threshold: f32,
     pub direction: Direction,
+    /// Authored CostBand / sink semantics for this registration.
+    pub cost_band: CostBandSemantic,
 }
 
 /// Fired aggregate alert surfaced by the boundary protocol.
@@ -1111,11 +1119,14 @@ impl ThresholdBuilder {
                 continue;
             };
 
-            let event_kind = cpu_reg.push(ThresholdSemantic::VelocityAlert {
-                sim_thing_id: alert.sim_thing_id,
-                property_id: alert.property_id,
-                sub_field: alert.sub_field.clone(),
-            });
+            let event_kind = cpu_reg.push_with_cost_band(
+                ThresholdSemantic::VelocityAlert {
+                    sim_thing_id: alert.sim_thing_id,
+                    property_id: alert.property_id,
+                    sub_field: alert.sub_field.clone(),
+                },
+                alert.cost_band,
+            );
             gpu_regs.push(ThresholdRegistration {
                 slot: slot.raw(),
                 col: col.raw_u32(),
@@ -1147,11 +1158,14 @@ impl ThresholdBuilder {
                 continue;
             };
 
-            let event_kind = cpu_reg.push(ThresholdSemantic::AggregateAlert {
-                sim_thing_id: alert.sim_thing_id,
-                property_id: alert.property_id,
-                sub_field: alert.sub_field.clone(),
-            });
+            let event_kind = cpu_reg.push_with_cost_band(
+                ThresholdSemantic::AggregateAlert {
+                    sim_thing_id: alert.sim_thing_id,
+                    property_id: alert.property_id,
+                    sub_field: alert.sub_field.clone(),
+                },
+                alert.cost_band,
+            );
             gpu_regs.push(ThresholdRegistration {
                 slot: slot.raw(),
                 col: col.raw_u32(),

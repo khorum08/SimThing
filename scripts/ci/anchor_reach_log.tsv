@@ -373,3 +373,7 @@ date	role	query	anchors_served	hit
 2026-08-03T17:27:15Z	coding	--grep stead-events-are-rf	stead-events-are-rf	hit
 2026-08-03T17:27:15Z	coding	--grep core-rf-arenas	core-rf-arenas	hit
 2026-08-03T17:27:15Z	coding	--grep core-overlays	core-overlays	hit
+2026-08-03T17:44:18Z	coding	--grep eml-extension-ladder	eml-extension-ladder	hit
+2026-08-03T17:45:29Z	coding	--grep core-overlays	core-overlays	hit
+2026-08-03T17:45:29Z	coding	--grep stead-spatial-contract-core	stead-spatial-contract-core	hit
+2026-08-03T17:45:29Z	coding	--grep stead-rejected-shapes	stead-rejected-shapes	hit

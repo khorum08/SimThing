@@ -102,7 +102,7 @@ fn dispatch_instruction(origin: SimThingId, lifecycle: OverlayLifecycle) -> Over
         affects: Vec::new(),
         transform: PropertyTransformDelta {
             property_id: SimPropertyId(0),
-            sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Add(1.0))],
+            sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::add(1.0))],
         },
         lifecycle,
     }
@@ -141,7 +141,7 @@ fn admit_dispatch_helpers_match_production_door() {
         affects: Vec::new(),
         transform: PropertyTransformDelta {
             property_id: SimPropertyId(0),
-            sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Add(1.0))],
+            sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::add(1.0))],
         },
         lifecycle: dispatch_until_dissolved(vec![DissolveCondition::AtSessionEnd]).unwrap(),
     };
@@ -155,7 +155,7 @@ fn admit_dispatch_helpers_match_production_door() {
         affects: Vec::new(),
         transform: PropertyTransformDelta {
             property_id: SimPropertyId(0),
-            sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Add(1.0))],
+            sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::add(1.0))],
         },
         lifecycle: OverlayLifecycle::UntilDissolved,
     };

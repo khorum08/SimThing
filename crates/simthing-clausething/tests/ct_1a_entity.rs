@@ -142,11 +142,14 @@ fn format_role(role: &SubFieldRole) -> String {
 }
 
 fn format_op(op: &TransformOp) -> String {
-    match op {
-        TransformOp::Add(v) => format!("Add({v})"),
-        TransformOp::Multiply(v) => format!("Multiply({v})"),
-        TransformOp::Set(v) => format!("Set({v})"),
-        TransformOp::Eml(prog) => format!("Eml({} nodes)", prog.len()),
+    if let Some(v) = op.as_add_literal() {
+        format!("Add({v})")
+    } else if let Some(v) = op.as_multiply_literal() {
+        format!("Multiply({v})")
+    } else if let Some(v) = op.as_set_literal() {
+        format!("Set({v})")
+    } else {
+        format!("Eml({} nodes)", op.nodes().len())
     }
 }
 

@@ -530,8 +530,8 @@ fn build_overlay(
 ) -> Result<OverlaySpec, HydrateError> {
     let property_key = property_key_for_attribute(&decoded.attribute, properties)?;
     let transform = match decoded.op {
-        ShipModifierOp::Add => TransformOp::Add(amount),
-        ShipModifierOp::Mult => TransformOp::Multiply(1.0 + amount),
+        ShipModifierOp::Add => TransformOp::add(amount),
+        ShipModifierOp::Mult => TransformOp::multiply(1.0 + amount),
     };
     Ok(OverlaySpec {
         id: id.into(),
