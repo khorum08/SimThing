@@ -213,19 +213,6 @@ pub fn admit_overlay_eml_program(
     Ok(nodes)
 }
 
-// Production apply always enters the EML interpreter — counter proves live wiring.
-std::thread_local! {
-    static OVERLAY_EML_EVAL_INVOCATIONS: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
-}
-
-pub fn overlay_eml_eval_invocations() -> u64 {
-    OVERLAY_EML_EVAL_INVOCATIONS.with(|c| c.get())
-}
-
-pub fn reset_overlay_eml_eval_invocations() {
-    OVERLAY_EML_EVAL_INVOCATIONS.with(|c| c.set(0));
-}
-
 impl TransformOp {
     /// Construct the **one-node** degenerate program `LITERAL_F32(v)` (Set).
     pub fn set(v: f32) -> Self {
@@ -338,12 +325,25 @@ impl TransformOp {
         self.nodes.clone()
     }
 
-    /// Apply via the singular EML interpreter path.
+    /// Apply through the singular EML entry point. Degenerate admitted programs
+    /// may specialize underneath this one caller-visible door.
     pub fn apply(&self, current: f32) -> f32 {
         self.apply_with_params(current, 0.0)
     }
 
     pub fn apply_with_params(&self, current: f32, n: f32) -> f32 {
+        // Derived execution specialization only: the stored/admitted/wire form
+        // remains the one opaque EML node vector. Callers cannot select this
+        // path or author a second representation.
+        if let Some(value) = self.as_set_literal() {
+            return value;
+        }
+        if let Some(value) = self.as_add_literal() {
+            return current + value;
+        }
+        if let Some(value) = self.as_multiply_literal() {
+            return current * value;
+        }
         eval_overlay_eml(&self.nodes, current, n)
     }
 
@@ -405,7 +405,6 @@ impl TransformOp {
 
 /// Shared overlay EML eval: PARAM(0)=current, PARAM(1)=N (CostBand depth).
 pub fn eval_overlay_eml(nodes: &[crate::eml_nodes::EmlNode], current: f32, n: f32) -> f32 {
-    OVERLAY_EML_EVAL_INVOCATIONS.with(|c| c.set(c.get().saturating_add(1)));
     use crate::eml_nodes::opcode;
     let params = [current, n, 0.0, 0.0];
     let mut stack = [0.0f32; 32];

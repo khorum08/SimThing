@@ -377,3 +377,10 @@ date	role	query	anchors_served	hit
 2026-08-03T17:45:29Z	coding	--grep core-overlays	core-overlays	hit
 2026-08-03T17:45:29Z	coding	--grep stead-spatial-contract-core	stead-spatial-contract-core	hit
 2026-08-03T17:45:29Z	coding	--grep stead-rejected-shapes	stead-rejected-shapes	hit
+2026-08-03T18:28:52Z	coding	--paths crates/simthing-core/src/property.rs crates/simthing-core/src/eml_nodes.rs crates/simthing-core/tests/band_quantized_draw_0.rs crates/simthing-sim/tests/band_quantized_draw_production_0.rs docs/tests/band_quantized_draw_0_results.md	core-overlays,core-property-value-model,core-rf-arenas,exact-numeric-candidate-f,field-policy-time-decisions,field-sweep-preservation,rf-arena-substrate,simthing-0087-binding-laws,simthing-0087-pillars,stead-events-are-rf,stead-rejected-shapes,stead-shared-surface-ledger,stead-spatial-contract-core,workshop-candidate-homing	hit
+2026-08-03T18:29:01Z	coding	--grep eml-extension-ladder	eml-extension-ladder	hit
+2026-08-03T18:29:01Z	coding	--grep core-property-value-model	core-property-value-model	hit
+2026-08-03T18:29:01Z	coding	--grep core-overlays	core-overlays	hit
+2026-08-03T18:29:01Z	coding	--grep exact-numeric-candidate-f	exact-numeric-candidate-f	hit
+2026-08-03T18:29:02Z	coding	--grep stead-rejected-shapes	stead-rejected-shapes	hit
+2026-08-03T18:29:02Z	coding	--grep stead-events-are-rf	stead-events-are-rf	hit
