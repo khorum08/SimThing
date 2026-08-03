@@ -93,8 +93,8 @@ pub enum SubFieldRole {
 ///
 /// There is **one representable form** at the type tier — not an enum of
 /// static/computed/program kinds. `set` / `add` / `multiply` are constructors
-/// that mint degenerate EML programs; evaluation always runs through the
-/// interpreter. A second value-form discriminant is a compile error.
+/// that mint degenerate EML programs. A second value-form discriminant is a
+/// compile error.
 ///
 /// ```compile_fail,E0599
 /// use simthing_core::TransformOp;
@@ -127,7 +127,7 @@ pub enum SubFieldRole {
 /// ```
 #[derive(Clone, Debug, PartialEq)]
 pub struct TransformOp {
-    nodes: Vec<crate::eml_nodes::EmlNode>,
+    nodes: smallvec::SmallVec<[crate::eml_nodes::EmlNode; 3]>,
 }
 
 /// Wire shape for RON/JSON fixtures that historically used `Add(v)` / `Set(v)`.
@@ -151,7 +151,7 @@ impl Serialize for TransformOp {
         } else if let Some(v) = self.as_multiply_literal() {
             TransformOpWire::Multiply(v)
         } else {
-            TransformOpWire::Eml(self.nodes.clone())
+            TransformOpWire::Eml(self.nodes.to_vec())
         };
         wire.serialize(serializer)
     }
@@ -195,42 +195,47 @@ pub enum EmlPerProgramCapError {
     InvalidCap,
 }
 
-/// Admit an overlay EML program under a per-program node cap.
-pub fn admit_overlay_eml_program(
-    nodes: Vec<crate::eml_nodes::EmlNode>,
+fn validate_overlay_eml_program(
+    node_count: usize,
     cap: EmlPerProgramCap,
-) -> Result<Vec<crate::eml_nodes::EmlNode>, EmlPerProgramCapError> {
+) -> Result<(), EmlPerProgramCapError> {
     if cap.max_nodes == 0 {
         return Err(EmlPerProgramCapError::InvalidCap);
     }
-    let node_count = nodes.len() as u32;
+    let node_count = node_count as u32;
     if node_count > cap.max_nodes {
         return Err(EmlPerProgramCapError::ExceedsCap {
             node_count,
             max_nodes: cap.max_nodes,
         });
     }
+    Ok(())
+}
+
+/// Admit an overlay EML program under a per-program node cap.
+pub fn admit_overlay_eml_program(
+    nodes: Vec<crate::eml_nodes::EmlNode>,
+    cap: EmlPerProgramCap,
+) -> Result<Vec<crate::eml_nodes::EmlNode>, EmlPerProgramCapError> {
+    validate_overlay_eml_program(nodes.len(), cap)?;
     Ok(nodes)
 }
 
 impl TransformOp {
     /// Construct the **one-node** degenerate program `LITERAL_F32(v)` (Set).
     pub fn set(v: f32) -> Self {
-        let nodes = admit_overlay_eml_program(Self::set_nodes(v), EmlPerProgramCap::DEFAULT)
-            .expect("one-node LITERAL_F32 always admits under default cap");
-        Self { nodes }
+        Self::admit_nodes(Self::set_nodes(v), EmlPerProgramCap::DEFAULT)
+            .expect("one-node LITERAL_F32 always admits under default cap")
     }
 
     pub fn add(v: f32) -> Self {
-        let nodes = admit_overlay_eml_program(Self::add_nodes(v), EmlPerProgramCap::DEFAULT)
-            .expect("degenerate Add program admits under default cap");
-        Self { nodes }
+        Self::admit_nodes(Self::add_nodes(v), EmlPerProgramCap::DEFAULT)
+            .expect("degenerate Add program admits under default cap")
     }
 
     pub fn multiply(v: f32) -> Self {
-        let nodes = admit_overlay_eml_program(Self::mul_nodes(v), EmlPerProgramCap::DEFAULT)
-            .expect("degenerate Multiply program admits under default cap");
-        Self { nodes }
+        Self::admit_nodes(Self::mul_nodes(v), EmlPerProgramCap::DEFAULT)
+            .expect("degenerate Multiply program admits under default cap")
     }
 
     /// Admit a multi-node EML program under the per-program cap (construction
@@ -239,13 +244,20 @@ impl TransformOp {
         nodes: Vec<crate::eml_nodes::EmlNode>,
         cap: EmlPerProgramCap,
     ) -> Result<Self, EmlPerProgramCapError> {
-        let nodes = admit_overlay_eml_program(nodes, cap)?;
+        Self::admit_nodes(nodes.into_iter().collect(), cap)
+    }
+
+    fn admit_nodes(
+        nodes: smallvec::SmallVec<[crate::eml_nodes::EmlNode; 3]>,
+        cap: EmlPerProgramCap,
+    ) -> Result<Self, EmlPerProgramCapError> {
+        validate_overlay_eml_program(nodes.len(), cap)?;
         Ok(Self { nodes })
     }
 
-    fn set_nodes(v: f32) -> Vec<crate::eml_nodes::EmlNode> {
+    fn set_nodes(v: f32) -> smallvec::SmallVec<[crate::eml_nodes::EmlNode; 3]> {
         use crate::eml_nodes::{opcode, EmlNode};
-        vec![EmlNode {
+        smallvec::smallvec![EmlNode {
             opcode: opcode::LITERAL_F32,
             flags: 0,
             a: v.to_bits(),
@@ -255,9 +267,9 @@ impl TransformOp {
         }]
     }
 
-    fn add_nodes(v: f32) -> Vec<crate::eml_nodes::EmlNode> {
+    fn add_nodes(v: f32) -> smallvec::SmallVec<[crate::eml_nodes::EmlNode; 3]> {
         use crate::eml_nodes::{opcode, EmlNode};
-        vec![
+        smallvec::smallvec![
             EmlNode {
                 opcode: opcode::PARAM,
                 flags: 0,
@@ -285,9 +297,9 @@ impl TransformOp {
         ]
     }
 
-    fn mul_nodes(v: f32) -> Vec<crate::eml_nodes::EmlNode> {
+    fn mul_nodes(v: f32) -> smallvec::SmallVec<[crate::eml_nodes::EmlNode; 3]> {
         use crate::eml_nodes::{opcode, EmlNode};
-        vec![
+        smallvec::smallvec![
             EmlNode {
                 opcode: opcode::PARAM,
                 flags: 0,
@@ -317,12 +329,12 @@ impl TransformOp {
 
     /// Admitted EML nodes (singular value representation).
     pub fn nodes(&self) -> &[crate::eml_nodes::EmlNode] {
-        &self.nodes
+        self.nodes.as_slice()
     }
 
     /// Lower this transform to postfix EML nodes (clone of admitted program).
     pub fn to_eml_nodes(&self) -> Vec<crate::eml_nodes::EmlNode> {
-        self.nodes.clone()
+        self.nodes.to_vec()
     }
 
     /// Apply through the singular EML entry point. Degenerate admitted programs
@@ -344,7 +356,7 @@ impl TransformOp {
         if let Some(value) = self.as_multiply_literal() {
             return current * value;
         }
-        eval_overlay_eml(&self.nodes, current, n)
+        eval_overlay_eml(self.nodes.as_slice(), current, n)
     }
 
     /// Recognize one-node `LITERAL_F32(v)` (Set constructor shape).
@@ -401,6 +413,28 @@ impl TransformOp {
             .unwrap_or(0.0)
     }
 
+}
+
+#[cfg(test)]
+mod transform_op_storage_tests {
+    use super::*;
+
+    #[test]
+    fn degenerate_programs_stay_inline_and_larger_programs_spill() {
+        for op in [
+            TransformOp::set(1.0),
+            TransformOp::add(2.0),
+            TransformOp::multiply(3.0),
+        ] {
+            assert!(!op.nodes.spilled());
+            assert!(!op.clone().nodes.spilled());
+        }
+
+        let node = TransformOp::set(1.0).nodes[0];
+        let larger = TransformOp::admit_eml(vec![node; 4], EmlPerProgramCap::DEFAULT)
+            .expect("four-node program remains below the admitted cap");
+        assert!(larger.nodes.spilled());
+    }
 }
 
 /// Shared overlay EML eval: PARAM(0)=current, PARAM(1)=N (CostBand depth).
