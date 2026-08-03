@@ -49,6 +49,8 @@ IDs; resolve on demand with `anchor_query.sh`, and after editing an anchored doc
   oracles/guards; never re-derive one the repo already runs.
 - **Evidence: one doc, one line, one row.** `docs/tests/<rung>_results.md` (signal-only sections) +
   one `current_evidence_index.md` line + one status-row edit. No ceremony triple-update.
+- **Who authors (Owner-delegated 2026-08-03).** Orchestration MAY author and self-clear a handoff for any rung `exit_proof_coverage_check.sh` does not flag; DA reviews pre-dispatch for scope/proof alignment and fences, never authorship.
+  A FLAGGED rung is DA-authored — a proof narrower than its scope produced two defensible-but-useless dispatches, so the GATE decides the lane, not judgment. Delegation widens as the ladder's proofs get honest.
 - **Escalate, don't sidecar.** A seal that genuinely blocks the rung escalates to the DA (or requests
   the owner-gated amendment valve only when the handoff allows it); never self-grant or build around it.
 
