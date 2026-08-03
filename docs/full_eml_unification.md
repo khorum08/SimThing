@@ -24,10 +24,17 @@
 > is the canonical first landing** and the bounded variant is dropped — with the Softmax/Logistic
 > forms corrected to their stabilized constructions; (4) the parallelism claim is rewritten —
 > log-domain accumulation is a **new authored numerical law**, never a semantics-preserving
-> Product optimization; (5) the anti-reassociation contract is strengthened to bit-observable
-> fencing plus certified-toolchain requalification. Each repair's **performance-preserving form**
-> was chosen deliberately (§4, §6): clamp-guard admission over an interval analyzer, the existing
-> cost gate over new pricing machinery, bitcast fences over memory barriers.
+> Product optimization; (5) the determinism contract specifies the **observable invariant**
+> (exhaustive artifact parity on a certified toolchain), never a compiler-control device.
+>
+> **Final ruling 2026-08-03 (Sol Max): DESIGN-ADMITTED.** *"`EXP`: proceed to
+> primitive-admission implementation planning. `LN`: proceed immediately behind."* Three
+> surgical corrections folded in place: range-certified input vs. explicitly-guarded semantics
+> distinguished (§4 — a clamp is *chosen semantics*, never a validity proof); bitcast fencing
+> demoted from law to optional implementation aid (§6 — *"if a backend passes exhaustive parity
+> with naked straight-line arithmetic, ship the faster naked arithmetic"*); the stale
+> transcendental-weight sentence deleted (§6). The retained rigor is the cheap kind: the 2³²
+> exhaustive qualification costs nothing in the hot path and exhausts the input universe.
 
 ---
 
@@ -118,13 +125,22 @@ primitive lands, the door gains a sealed domain type, conceptually:
 PrimitiveDomain { min_bits: u32, max_bits: u32, special_value_policy }
 ```
 
-with the call-site obligation implemented as **clamp-guard admission, not an interval analyzer**:
-a primitive's argument must have *syntactic in-domain provenance* — a literal in range, a
-`CLAMP_BOUNDED` to the domain, or a composition of provably in-domain terms. One extra node per
-unguarded call site, riding in the ALU shadow; trivially checkable at admission; no
-abstract-interpretation machinery (EML inputs are runtime columns whose ranges are unknowable
-statically — a full interval prover would be heavy, conservative, and unnecessary). This is
-generic door machinery, not an `EXP` exception.
+with the call-site obligation discharged by **exactly one of two cheap admission shapes — and
+the distinction between them is semantic, not cosmetic** (final Sol correction 1):
+
+1. **Range-certified input** — an existing sealed property/sub-field range guarantee (clamp
+   behavior, bounded-output gadget, literal in range) already proves the input satisfies the
+   primitive domain. **Zero runtime cost**; admission verifies the certificate.
+2. **Explicitly guarded semantics** — the author deliberately wraps the argument
+   (`CLAMP_BOUNDED`, `MAX`, `SELECT`, …), and **that guard is part of the formula's authored
+   semantics, not a proof about the source value**. `EXP(CLAMP(x, lo, hi))` *means* saturated
+   exponential — a legitimate authored law. But a clamp does not certify that `x` was in domain;
+   for `LN`, silently converting `x ≤ 0` into `LN(min_normal)` can mask an authoring error, so
+   the gate records shape 2 as *chosen semantics*, never as validity of the unguarded input.
+
+Either shape is trivially checkable at admission; neither is an interval analyzer (EML inputs
+are runtime columns whose ranges are unknowable statically — a full interval prover would be
+heavy, conservative, and unnecessary). This is generic door machinery, not an `EXP` exception.
 
 **Domain per primitive:**
 
@@ -133,7 +149,7 @@ generic door machinery, not an `EXP` exception.
   EML vocabulary — where full range reduction is standard exponent-field bit assembly; the
   exhaustive sweep is 2³² either way; and opcodes are append-only forever, so permanently
   carrying a nearly-duplicate `EXP_NEG` is the worse trade. Output spans positive finite f32;
-  out-of-domain rejects at admission via the clamp guard.
+  an unguarded, uncertified call site is a spanned admission error (shape 1 or 2 above, always).
 - `LN` — **positive finite normals `[2⁻¹²⁶, f32::MAX]`** (notation corrected: infinity is
   rejected, so the domain is closed at `f32::MAX`), output finite. The paper's extended-real
   conventions (`ln(0) = −∞`) are **rejected, not emulated** — the engine has no ∞-propagation
@@ -193,28 +209,29 @@ license — behavior as data over one interpreter — not the operator's economy
   block** — no loop, no branch beyond the domain guard, register-resident intermediates. This is
   the disciplined version of "bespoke EML shader blocks": the blocks exist, but they are
   JIT-emitted from the one IR under `FIELD-SWEEP-SINGLE-PATH`, never hand-written shaders.
-- **Determinism hazards — the strengthened contract (remand repair 5).** WGSL's `+`/`−`/`×` are
-  individually correctly rounded, but the spec **explicitly permits reassociation and fusion**
-  when the transform is at least as accurate — so "we wrote the polynomial as a fixed sequence"
-  is *not by itself* a portable bit-semantics specification. The landing therefore requires
-  **both** halves:
-  1. **Bit-observable fencing** at every reassociation-sensitive boundary: `f32 → u32 → f32`
-     bitcast round-trips, which make the intermediate's bit pattern observable and thereby
-     forbid any bit-changing transform across the fence — at the cost of a register
-     reinterpretation, i.e. **nothing**. Naga/backend survival of the fences is part of the
-     determinism proof, per supported adapter. (The performance-hostile alternative — routing
-     intermediates through storage/workgroup memory as observation barriers — is **explicitly
-     rejected**: it would destroy the ALU-in-memory-shadow economics that make the primitive
-     nearly free.)
-  2. **Certified-toolchain discipline**: the exhaustive 2³² digest certifies a pinned
-     (compiler, backend, driver) combination — the toolchain is part of the certified substrate
-     — with **automatic invalidation and requalification whenever that trust chain changes**.
-     This formalizes what the per-backend replay artifact already implied.
-  The exhaustive sweep remains the tripwire that catches any violation of either half — a fused
-  multiply changes bits and the digest reds. `div` is excluded from primitive internals
-  (2.5-ULP latitude); reciprocal forms use pinned Newton–Raphson steps from `mul`/`sub`.
-- **Cost key:** each primitive lands with a measured resource-class entry (transcendental
-  weight); admission rejects a stack whose class cannot afford it — the 5.7 machinery, unchanged.
+- **Determinism — the observable invariant is the law (final Sol correction 2).** WGSL's
+  `+`/`−`/`×` are individually correctly rounded, but the spec **explicitly permits
+  reassociation and fusion** when the transform is at least as accurate — so "we wrote the
+  polynomial as a fixed sequence" is *not by itself* a portable bit-semantics specification. The
+  binding rule, stated as the invariant rather than a compiler-control device:
+
+  > **The pinned algorithm is the reference semantics. The generated artifact must exhaustively
+  > match its CPU twin over the admitted f32 domain on each supported certified toolchain** —
+  > the (compiler, backend, driver) combination is part of the certified substrate, with
+  > automatic invalidation and requalification whenever that trust chain changes.
+
+  Source-level anti-reassociation devices — `f32 → u32 → f32` bitcast fences and their kin —
+  are **implementation aids only, not law**: the WGSL spec does not guarantee that a reversed
+  bitcast round-trip constitutes a reassociation barrier, so the architecture must not depend on
+  that inference. Retain a fence **only where measurement shows it is necessary and free**; if a
+  backend passes exhaustive parity with naked straight-line arithmetic, **ship the faster naked
+  arithmetic**. (Memory round-trip fences remain rejected outright — performance-hostile.) The
+  2³² digest is the sole tripwire either way: any transform that changes bits reds the sweep.
+  `div` is excluded from primitive internals (2.5-ULP latitude); reciprocal forms use pinned
+  Newton–Raphson steps from `mul`/`sub`.
+- **Cost key:** compiled primitive cost is judged against the gadget/interpreter baseline
+  through the **existing exact-primitive cost key** (§4) — no per-primitive resource-class
+  entries, no transcendental weight, nothing minted (final Sol correction 3).
 
 ## 7. STEAD / RF Triad integration — immediate and horizon
 
