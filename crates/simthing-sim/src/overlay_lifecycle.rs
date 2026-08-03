@@ -3,7 +3,7 @@
 //! ## Step 4: dissolve + writeback
 //!
 //! Each `Overlay` carries an `OverlayLifecycle`. At the boundary:
-//! - `Permanent` overlays are never removed.
+//! - `UntilDissolved` overlays are removed only by an authored condition or explicit removal.
 //! - `Transient { dissolution_conditions }` overlays are removed when *all*
 //!   conditions are met. Conditions are AND-ed (all must be satisfied).
 //!

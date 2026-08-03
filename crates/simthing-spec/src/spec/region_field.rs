@@ -199,12 +199,15 @@ pub struct CommitmentEffectSpec {
 }
 
 /// Closed authored lifecycle set for commitment-effect overlays (v1:
-/// `Permanent` only; richer lifecycles open when a consumer names them).
+/// `UntilDissolved` only; richer lifecycles open when a consumer names them).
+///
+/// No variant may claim permanence (Definable Horizon Law): `UntilDissolved`
+/// names an open-ended retention whose dissolution point stays authorable.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub enum CommitmentEffectLifecycleSpec {
     #[default]
-    Permanent,
+    UntilDissolved,
 }
 
 fn default_commitment_once() -> bool {

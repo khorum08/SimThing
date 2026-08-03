@@ -235,7 +235,7 @@ fn parse_modifier_block(property: &RawProperty) -> Result<OverlaySpec, HydrateEr
 }
 
 /// CT-1b: `triggered_modifier { id potential { property at_least } modifier { … } }`
-/// → one `Suspended` overlay (activated lifecycle `Permanent`) plus one
+/// → one `Suspended` overlay (activated lifecycle `UntilDissolved`) plus one
 /// same-scope threshold event whose effect activates it by authored id.
 fn parse_triggered_modifier_block(
     property: &RawProperty,
@@ -297,7 +297,7 @@ fn parse_triggered_modifier_block(
 /// CT-1c: `tradition_tree { id kind owner category { … tradition { … } } }`
 /// → [`CapabilityTreeSpec`] on the `capability_tree_v1` pattern. Prereqs come
 /// from `possible { has_tradition = X }` (same-category, source order);
-/// payload `modifier` blocks become Owner-targeted `Permanent` effects.
+/// payload `modifier` blocks become Owner-targeted `UntilDissolved` effects.
 fn parse_tradition_tree_block(property: &RawProperty) -> Result<CapabilityTreeSpec, HydrateError> {
     let RawValue::Block(block) = &property.value else {
         return Err(HydrateError::new_spanned(

@@ -31,7 +31,7 @@ DomainPackSpec(
                                     sub_field_deltas: [
                                         (Amount, Add(5.0)),
                                     ],
-                                    when_activated: Permanent,
+                                    when_activated: UntilDissolved,
                                 ),
                             ],
                         ),
@@ -51,7 +51,7 @@ DomainPackSpec(
                                     sub_field_deltas: [
                                         (Amount, Add(7.0)),
                                     ],
-                                    when_activated: Permanent,
+                                    when_activated: UntilDissolved,
                                 ),
                             ],
                         ),
@@ -71,7 +71,7 @@ DomainPackSpec(
                                     sub_field_deltas: [
                                         (Amount, Add(9.0)),
                                     ],
-                                    when_activated: Permanent,
+                                    when_activated: UntilDissolved,
                                 ),
                             ],
                         ),
