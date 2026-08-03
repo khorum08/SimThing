@@ -123,7 +123,7 @@ pub fn apply_structural_mutations(
             }
             BoundaryRequest::AttachOverlay { target, overlay } => {
                 let oid = overlay.id;
-                match simthing_core::deliver_deficit_directive(root, target, overlay) {
+                match simthing_core::deliver_routed_overlay(root, target, overlay) {
                     Ok(_) => {
                         out.overlays += 1;
                         out.overlays_attached.push((target, oid));

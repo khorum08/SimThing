@@ -45,8 +45,9 @@ pub use accumulator_spec::{
     AccumulatorRole, AccumulatorSpec, ArenaName, BalanceSpec, LogTier, NumCountSource,
 };
 pub use automaton::{
-    deliver_deficit_directive, deliver_predicate_broadcast, deliver_standing_directive,
-    overlay_origin_structural_coord, DirectiveDeliveryReceipt, OverlayDeliveryError,
+    deliver_deficit_directive, deliver_predicate_broadcast, deliver_routed_overlay,
+    deliver_standing_directive, inherit_active_overlays, overlay_origin_structural_coord,
+    DirectiveDeliveryReceipt, LiveOverlayRoutes, OverlayDeliveryError,
 };
 pub use anchor_remap::{
     derive_exact_anchor_remaps, expected_anchored_remap_keys, validate_anchor_remap_for_encode,

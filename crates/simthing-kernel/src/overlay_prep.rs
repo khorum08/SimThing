@@ -10,7 +10,7 @@
 
 use simthing_core::overlay::PropertyTransformDelta;
 use simthing_core::property::TransformOp;
-use simthing_core::{DimensionRegistry, SimThing};
+use simthing_core::{DimensionRegistry, LiveOverlayRoutes, SimThing};
 
 use crate::slot::SlotAllocator;
 use crate::wgsl_encode::encode_column;
@@ -36,7 +36,16 @@ pub fn build_overlay_deltas(
     let mut deltas: Vec<OverlayDelta> = Vec::new();
     let mut ranges: Vec<SlotDeltaRange> = vec![SlotDeltaRange::default(); n_slots];
 
-    build_node(root, &[], registry, allocator, &mut deltas, &mut ranges);
+    let live_routes = LiveOverlayRoutes::for_tree(root);
+    build_node(
+        root,
+        &[],
+        live_routes.as_ref(),
+        registry,
+        allocator,
+        &mut deltas,
+        &mut ranges,
+    );
 
     (deltas, ranges)
 }
@@ -47,6 +56,7 @@ pub fn build_overlay_deltas(
 fn build_node(
     node: &SimThing,
     ancestor_transforms: &[PropertyTransformDelta],
+    live_routes: Option<&LiveOverlayRoutes<'_>>,
     registry: &DimensionRegistry,
     allocator: &SlotAllocator,
     deltas: &mut Vec<OverlayDelta>,
@@ -68,28 +78,15 @@ fn build_node(
 
         // Mirrors evaluator step 5: apply local_stack to each property the node HAS.
         // Only emit a delta if node.properties contains the transform's target property.
-        for transform in &local_transforms {
-            if !node.properties.contains_key(&transform.property_id) {
-                continue;
+        if let Some(overlays) =
+            live_routes.and_then(|routes| routes.ordered_active_overlays(node.id))
+        {
+            for overlay in overlays {
+                emit_transform(node, &overlay.transform, registry, deltas);
             }
-            let range = registry.column_range(transform.property_id);
-            let layout = &registry.property(transform.property_id).layout;
-            for (role, op) in &transform.sub_field_deltas {
-                // I1: resolve role → global column via col_for_role only.
-                let Some(col) = range.col_for_role(role, layout) else {
-                    continue;
-                };
-                let (op_kind, value) = match op {
-                    TransformOp::Multiply(v) => (OP_MULTIPLY, *v),
-                    TransformOp::Add(v) => (OP_ADD, *v),
-                    TransformOp::Set(v) => (OP_SET, *v),
-                };
-                deltas.push(OverlayDelta {
-                    col: encode_column(col),
-                    op_kind,
-                    value,
-                    _pad: 0,
-                });
+        } else {
+            for transform in &local_transforms {
+                emit_transform(node, transform, registry, deltas);
             }
         }
 
@@ -103,11 +100,41 @@ fn build_node(
         build_node(
             child,
             &local_transforms,
+            live_routes,
             registry,
             allocator,
             deltas,
             ranges,
         );
+    }
+}
+
+fn emit_transform(
+    node: &SimThing,
+    transform: &PropertyTransformDelta,
+    registry: &DimensionRegistry,
+    deltas: &mut Vec<OverlayDelta>,
+) {
+    if !node.properties.contains_key(&transform.property_id) {
+        return;
+    }
+    let range = registry.column_range(transform.property_id);
+    let layout = &registry.property(transform.property_id).layout;
+    for (role, op) in &transform.sub_field_deltas {
+        let Some(col) = range.col_for_role(role, layout) else {
+            continue;
+        };
+        let (op_kind, value) = match op {
+            TransformOp::Multiply(v) => (OP_MULTIPLY, *v),
+            TransformOp::Add(v) => (OP_ADD, *v),
+            TransformOp::Set(v) => (OP_SET, *v),
+        };
+        deltas.push(OverlayDelta {
+            col: encode_column(col),
+            op_kind,
+            value,
+            _pad: 0,
+        });
     }
 }
 

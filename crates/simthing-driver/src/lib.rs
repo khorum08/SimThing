@@ -5,6 +5,7 @@ pub mod arena_hierarchy;
 pub mod arena_pressure;
 pub mod arena_registry;
 pub mod atlas_0080_0;
+pub mod automaton_reception;
 pub mod bench_limits;
 pub mod child_share_eml;
 pub mod comparative_default_birth;
@@ -116,6 +117,10 @@ pub use atlas_0080_0::{
     ATLAS_0080_0_ID, ATLAS_0080_0_LOGICAL_LOCATION_COUNT, ATLAS_0080_0_PLANET_SIDE,
     ATLAS_0080_0_SCENARIO, ATLAS_0080_0_STARMAP_SIDE, ATLAS_0080_0_STARSYSTEM_COUNT,
     ATLAS_0080_0_STARSYSTEM_SIDE, ATLAS_0080_0_STATUS_PASS,
+};
+pub use automaton_reception::{
+    receive_command_deficits_from_disbursement, CommandDeficit, CommandDeficitReceptionError,
+    CommandDeficitReceptionReport,
 };
 pub use bench_limits::{check as check_bench_ceiling, ms_per_sim_day, CEILINGS};
 pub use child_share_eml::{child_share_cpu, register_child_share_formula};

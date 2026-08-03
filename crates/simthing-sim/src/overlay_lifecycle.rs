@@ -281,7 +281,7 @@ pub fn attach_overlay(
     target: SimThingId,
     overlay: simthing_core::Overlay,
 ) -> bool {
-    simthing_core::deliver_deficit_directive(root, target, overlay).is_ok()
+    simthing_core::deliver_routed_overlay(root, target, overlay).is_ok()
 }
 
 #[cfg(test)]

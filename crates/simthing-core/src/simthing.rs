@@ -196,6 +196,27 @@ impl SimThing {
     }
 }
 
+/// Canonical absence-means-inherit tree walk shared by intrinsic owner
+/// resolution and standing overlay evaluation. Derived state is ephemeral and
+/// passed downward; it is never stamped onto descendants.
+pub(crate) fn walk_inherited_until<T, E, R>(
+    root: &SimThing,
+    seed: &T,
+    derive: &mut impl FnMut(&SimThing, &T) -> Result<T, E>,
+    visit: &mut impl FnMut(&SimThing, &T) -> Result<Option<R>, E>,
+) -> Result<Option<R>, E> {
+    let effective = derive(root, seed)?;
+    if let Some(result) = visit(root, &effective)? {
+        return Ok(Some(result));
+    }
+    for child in &root.children {
+        if let Some(result) = walk_inherited_until(child, &effective, derive, visit)? {
+            return Ok(Some(result));
+        }
+    }
+    Ok(None)
+}
+
 pub fn reserve_simthing_ids_from_tree(root: &SimThing) -> Result<(), SimThingIdReservationError> {
     let mut seen = BTreeSet::new();
     reserve_visit_simthings(root, &mut seen)?;

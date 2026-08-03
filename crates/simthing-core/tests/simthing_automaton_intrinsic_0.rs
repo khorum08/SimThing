@@ -122,9 +122,10 @@ fn find_mut_optional(root: &mut SimThing, target: SimThingId) -> Option<&mut Sim
 fn deficit_directive_routes_origin_to_lca_to_target_and_policy_filters_it() {
     let (registry, property_id) = registry();
     let mut root = node(SimThingKind::World);
+    let mut policy_host = node(SimThingKind::Location);
     let origin = node(SimThingKind::Cohort);
     let origin_id = origin.id;
-    let mut policy_host = node(SimThingKind::Location);
+    policy_host.add_child(origin);
     let target = with_amount(&registry, property_id, 0.2);
     let target_id = target.id;
     let policy_host_id = policy_host.id;
@@ -134,10 +135,9 @@ fn deficit_directive_routes_origin_to_lca_to_target_and_policy_filters_it() {
         property_id,
         TransformOp::Multiply(0.5),
     ));
-    policy_host.add_child(target);
     let root_id = root.id;
-    root.add_child(origin);
     root.add_child(policy_host);
+    root.add_child(target);
 
     let directive = overlay(
         origin_id,
@@ -145,14 +145,16 @@ fn deficit_directive_routes_origin_to_lca_to_target_and_policy_filters_it() {
         property_id,
         TransformOp::Add(0.4),
     );
+    let directive_id = directive.id;
     let mut direct_targeting_mutant = root.clone();
     let mut bypassed = directive.clone();
+    bypassed.origin = target_id;
     bypassed.affects.push(target_id);
     find_mut(&mut direct_targeting_mutant, target_id).add_overlay(bypassed);
     assert_eq!(
         amount(&registry, property_id, &direct_targeting_mutant, target_id).to_bits(),
-        0.5_f32.to_bits(),
-        "planted pre-fix direct-target mutant must expose the policy bypass"
+        0.6_f32.to_bits(),
+        "planted flattened-route mutant must expose direct-target policy bypass"
     );
 
     let receipt = deliver_deficit_directive(&mut root, target_id, directive)
@@ -160,14 +162,43 @@ fn deficit_directive_routes_origin_to_lca_to_target_and_policy_filters_it() {
 
     assert_eq!(
         receipt.route,
-        vec![origin_id, root_id, policy_host_id, target_id],
+        vec![origin_id, policy_host_id, root_id, target_id],
         "mutation witness: bypassing the LCA route loses this exact path"
     );
     assert_eq!(find(&root, target_id).overlays.len(), 1);
     assert_eq!(
         amount(&registry, property_id, &root, target_id).to_bits(),
         0.3_f32.to_bits(),
-        "mutation witness: direct target append yields 0.5, not policy-filtered 0.3"
+        "mutation witness: direct target append yields 0.6, not policy-filtered 0.3"
+    );
+
+    // The policy stays live after delivery. A snapshotting implementation
+    // would remain at 0.3 after this mutation.
+    find_mut(&mut root, policy_host_id).overlays[0]
+        .transform
+        .sub_field_deltas[0]
+        .1 = TransformOp::Multiply(0.25);
+    assert_eq!(find(&root, target_id).overlays[0].id, directive_id);
+    assert_eq!(
+        amount(&registry, property_id, &root, target_id).to_bits(),
+        0.15_f32.to_bits(),
+        "planted delivery-time snapshot must RED when live policy changes"
+    );
+
+    find_mut(&mut root, policy_host_id).overlays[0].lifecycle = OverlayLifecycle::Suspended {
+        when_activated: Box::new(OverlayLifecycle::UntilDissolved),
+    };
+    assert_eq!(
+        amount(&registry, property_id, &root, target_id).to_bits(),
+        0.6_f32.to_bits(),
+        "suspending policy must affect the delivered directive without re-delivery"
+    );
+    find_mut(&mut root, policy_host_id).overlays.clear();
+    assert_eq!(find(&root, target_id).overlays.len(), 1);
+    assert_eq!(
+        amount(&registry, property_id, &root, target_id).to_bits(),
+        0.6_f32.to_bits(),
+        "dissolving policy must leave the original directive live and unfiltered"
     );
 }
 

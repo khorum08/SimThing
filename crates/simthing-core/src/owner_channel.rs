@@ -42,7 +42,7 @@
 
 use crate::ids::{SimPropertyId, SimThingId};
 use crate::property::PropertyValue;
-use crate::simthing::SimThing;
+use crate::simthing::{walk_inherited_until, SimThing};
 use thiserror::Error;
 
 /// Well-known structural property: this node's explicit owner binding.
@@ -177,23 +177,14 @@ pub fn resolve_owner(
     root: &SimThing,
     target: SimThingId,
 ) -> Result<OwnerRef, OwnerResolutionError> {
-    fn walk(
-        node: &SimThing,
-        target: SimThingId,
-        inherited: &OwnerRef,
-    ) -> Result<Option<OwnerRef>, OwnerResolutionError> {
-        let effective = declared_owner(node)?.unwrap_or_else(|| inherited.clone());
-        if node.id == target {
-            return Ok(Some(effective));
-        }
-        for child in &node.children {
-            if let Some(found) = walk(child, target, &effective)? {
-                return Ok(Some(found));
-            }
-        }
-        Ok(None)
-    }
-    walk(root, target, &unowned())?.ok_or(OwnerResolutionError::TargetNotInTree { target })
+    let seed = unowned();
+    walk_inherited_until(
+        root,
+        &seed,
+        &mut |node, inherited| Ok(declared_owner(node)?.unwrap_or_else(|| inherited.clone())),
+        &mut |node, effective| Ok((node.id == target).then(|| effective.clone())),
+    )?
+    .ok_or(OwnerResolutionError::TargetNotInTree { target })
 }
 
 /// Resolve the effective owner of every node in `root`, parent-first.
@@ -203,20 +194,17 @@ pub fn resolve_owner(
 pub fn resolve_owners_in_order(
     root: &SimThing,
 ) -> Result<Vec<(SimThingId, OwnerRef)>, OwnerResolutionError> {
-    fn walk(
-        node: &SimThing,
-        inherited: &OwnerRef,
-        out: &mut Vec<(SimThingId, OwnerRef)>,
-    ) -> Result<(), OwnerResolutionError> {
-        let effective = declared_owner(node)?.unwrap_or_else(|| inherited.clone());
-        out.push((node.id, effective.clone()));
-        for child in &node.children {
-            walk(child, &effective, out)?;
-        }
-        Ok(())
-    }
     let mut out = Vec::new();
-    walk(root, &unowned(), &mut out)?;
+    let seed = unowned();
+    let _: Option<()> = walk_inherited_until(
+        root,
+        &seed,
+        &mut |node, inherited| Ok(declared_owner(node)?.unwrap_or_else(|| inherited.clone())),
+        &mut |node, effective| {
+            out.push((node.id, effective.clone()));
+            Ok(None)
+        },
+    )?;
     Ok(out)
 }
 

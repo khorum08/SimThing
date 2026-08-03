@@ -8,10 +8,11 @@
 //!   - Returns a `FieldSnapshot` so callers can diff against GPU output.
 
 use crate::ids::SimPropertyId;
-use crate::overlay::{Overlay, OverlayKind, OverlayLifecycle, PropertyTransformDelta};
+use crate::overlay::{Overlay, OverlayKind, PropertyTransformDelta};
 use crate::property::{PropertyLayout, PropertyValue};
 use crate::registry::DimensionRegistry;
-use crate::simthing::SimThing;
+use crate::simthing::{walk_inherited_until, SimThing};
+use crate::{inherit_active_overlays, LiveOverlayRoutes};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -110,12 +111,6 @@ impl TransformStack {
         }
         allowed && predicate.comparison.matches(candidate, predicate.threshold)
     }
-
-    pub(crate) fn entries(&self) -> impl Iterator<Item = (&PropertyTransformDelta, bool)> {
-        self.deltas
-            .iter()
-            .map(|stacked| (&stacked.delta, stacked.predicate_restriction))
-    }
 }
 
 /// Numeric comparison used by the paid, one-walk predicate-broadcast mode.
@@ -188,7 +183,21 @@ impl<'r> Evaluator<'r> {
 
     pub fn evaluate(&self, root: &SimThing, generation: u32) -> FieldSnapshot {
         let mut entities = Vec::new();
-        self.evaluate_node(root, &TransformStack::default(), &mut entities);
+        let live_routes = LiveOverlayRoutes::for_tree(root);
+        let seed = TransformStack::default();
+        let walked: Result<Option<()>, std::convert::Infallible> = walk_inherited_until(
+            root,
+            &seed,
+            &mut |node, ancestors| Ok(inherit_active_overlays(node, ancestors)),
+            &mut |node, effective| {
+                self.evaluate_node(node, effective, live_routes.as_ref(), &mut entities);
+                Ok(None)
+            },
+        );
+        match walked {
+            Ok(_) => {}
+            Err(never) => match never {},
+        }
         FieldSnapshot {
             generation,
             entities,
@@ -198,21 +207,11 @@ impl<'r> Evaluator<'r> {
     fn evaluate_node(
         &self,
         node: &SimThing,
-        ancestors: &TransformStack,
+        local_stack: &TransformStack,
+        live_routes: Option<&LiveOverlayRoutes<'_>>,
         out: &mut Vec<EntitySnapshot>,
     ) {
         // 1. Compose this node's overlay transforms into the stack.
-        let local_stack = node
-            .overlays
-            .iter()
-            .fold(ancestors.clone(), |stack, overlay| {
-                match &overlay.lifecycle {
-                    OverlayLifecycle::UntilDissolved => stack.push_overlay(overlay),
-                    OverlayLifecycle::Transient { .. } => stack.push_overlay(overlay),
-                    OverlayLifecycle::Suspended { .. } => stack,
-                }
-            });
-
         // 2. Clone this node's properties.
         let mut resolved: HashMap<SimPropertyId, PropertyValue> = node
             .properties
@@ -234,10 +233,21 @@ impl<'r> Evaluator<'r> {
             }
         }
 
-        // 5. Apply the full ancestor + local transform stack to each property.
+        // 5. Derive a routed order at most once for this node, then apply the
+        // full ancestor + local transform stack to each property.
+        let routed_overlays =
+            live_routes.and_then(|routes| routes.ordered_active_overlays(node.id));
         for (id, pv) in &mut resolved {
             let layout = &self.registry.property(*id).layout;
-            local_stack.apply_to(*id, pv, layout);
+            if let Some(overlays) = routed_overlays.as_ref() {
+                for overlay in overlays {
+                    if overlay.transform.property_id == *id {
+                        overlay.transform.apply_to_data(pv.raw_lanes_mut(), layout);
+                    }
+                }
+            } else {
+                local_stack.apply_to(*id, pv, layout);
+            }
         }
 
         out.push(EntitySnapshot {
@@ -246,9 +256,6 @@ impl<'r> Evaluator<'r> {
         });
 
         // 6. Recurse children — they inherit the composed local_stack.
-        for child in &node.children {
-            self.evaluate_node(child, &local_stack, out);
-        }
     }
 }
 
