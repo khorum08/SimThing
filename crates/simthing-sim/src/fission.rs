@@ -444,13 +444,15 @@ fn clone_subtree_with_fresh_ids(
 ) {
     let mut pairs = Vec::new();
     let mut overlay_pairs = Vec::new();
-    let cloned = clone_subtree_with_fresh_ids_inner(
+    let mut cloned = clone_subtree_with_fresh_ids_inner(
         source,
         old_owner_id,
         new_owner_id,
         &mut pairs,
         &mut overlay_pairs,
     );
+    let origin_id_map: HashMap<_, _> = pairs.iter().copied().collect();
+    remap_overlay_origins(&mut cloned, old_owner_id, new_owner_id, &origin_id_map);
     (cloned, pairs, overlay_pairs)
 }
 
@@ -488,6 +490,24 @@ fn clone_subtree_with_fresh_ids_inner(
         })
         .collect();
     cloned
+}
+
+fn remap_overlay_origins(
+    node: &mut SimThing,
+    old_owner_id: SimThingId,
+    new_owner_id: SimThingId,
+    id_map: &HashMap<SimThingId, SimThingId>,
+) {
+    for overlay in &mut node.overlays {
+        if overlay.origin == old_owner_id {
+            overlay.origin = new_owner_id;
+        } else if let Some(cloned_origin) = id_map.get(&overlay.origin) {
+            overlay.origin = *cloned_origin;
+        }
+    }
+    for child in &mut node.children {
+        remap_overlay_origins(child, old_owner_id, new_owner_id, id_map);
+    }
 }
 
 fn remap_overlay_affects(node: &mut SimThing, old_id: SimThingId, new_id: SimThingId) {

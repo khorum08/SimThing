@@ -371,6 +371,7 @@ mod tests {
             id: OverlayId::new(),
             kind: OverlayKind::Policy,
             source: OverlaySource::System,
+            origin: SimThingId::new(),
             affects: Vec::new(),
             transform: PropertyTransformDelta {
                 property_id: SimPropertyId(0),

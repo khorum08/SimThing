@@ -135,6 +135,7 @@ mod tests {
             id: OverlayId::new(),
             kind: OverlayKind::Policy,
             source: OverlaySource::Player,
+            origin: simthing_core::SimThingId::new(),
             affects: vec![],
             transform: PropertyTransformDelta {
                 property_id: prop_id,

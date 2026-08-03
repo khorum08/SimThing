@@ -502,7 +502,8 @@ fn install_standalone_overlay(
 ) -> Result<Vec<OverlayId>, InstallError> {
     simthing_spec::validate_order_weight_overlay(overlay_spec, order_weight_classes)
         .map_err(InstallError::Spec)?;
-    let (template, diag) = compile_overlay(overlay_spec, registry).map_err(InstallError::Spec)?;
+    let (template, diag) =
+        compile_overlay(overlay_spec, registry, scenario.root.id).map_err(InstallError::Spec)?;
     if !diag.diagnostics.is_empty() {
         return Err(InstallError::Spec(SpecError::ValidationFailed));
     }
@@ -526,6 +527,7 @@ fn install_standalone_overlay(
             id: OverlayId::new(),
             kind: template.kind.clone(),
             source: template.source.clone(),
+            origin: template.origin,
             affects: vec![owner_id],
             transform: template.transform.clone(),
             lifecycle: template.lifecycle.clone(),
@@ -1308,6 +1310,7 @@ fn install_tree_for_owner(
             id: new_id,
             kind: template_overlay.kind.clone(),
             source: template_overlay.source.clone(),
+            origin: cloned_tree_id,
             affects,
             transform: template_overlay.transform.clone(),
             lifecycle: template_overlay.lifecycle.clone(),

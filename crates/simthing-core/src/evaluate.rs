@@ -8,7 +8,7 @@
 //!   - Returns a `FieldSnapshot` so callers can diff against GPU output.
 
 use crate::ids::SimPropertyId;
-use crate::overlay::{OverlayLifecycle, PropertyTransformDelta};
+use crate::overlay::{Overlay, OverlayKind, OverlayLifecycle, PropertyTransformDelta};
 use crate::property::{PropertyLayout, PropertyValue};
 use crate::registry::DimensionRegistry;
 use crate::simthing::SimThing;
@@ -21,13 +21,37 @@ use std::collections::HashMap;
 /// Accumulates deltas from root to current node; the leaf applies them all in order.
 #[derive(Clone, Debug, Default)]
 pub struct TransformStack {
-    deltas: Vec<PropertyTransformDelta>,
+    deltas: Vec<StackedTransform>,
+}
+
+#[derive(Clone, Debug)]
+struct StackedTransform {
+    delta: PropertyTransformDelta,
+    predicate_restriction: bool,
 }
 
 impl TransformStack {
     pub fn push(&self, transform: &PropertyTransformDelta) -> Self {
         let mut next = self.clone();
-        next.deltas.push(transform.clone());
+        next.deltas.push(StackedTransform {
+            delta: transform.clone(),
+            predicate_restriction: false,
+        });
+        next
+    }
+
+    /// Push one overlay while retaining whether it is a policy restriction.
+    /// Numeric value composition remains sequential and last-wins-capable; the
+    /// marker is consulted only by routed predicate evaluation.
+    pub fn push_overlay(&self, overlay: &Overlay) -> Self {
+        let mut next = self.clone();
+        next.deltas.push(StackedTransform {
+            delta: overlay.transform.clone(),
+            predicate_restriction: matches!(
+                overlay.kind,
+                OverlayKind::Policy | OverlayKind::Governance
+            ),
+        });
         next
     }
 
@@ -39,12 +63,86 @@ impl TransformStack {
         value: &mut PropertyValue,
         layout: &PropertyLayout,
     ) {
-        for delta in &self.deltas {
-            if delta.property_id == prop_id {
-                delta.apply_to_data(value.raw_lanes_mut(), layout);
+        for stacked in &self.deltas {
+            if stacked.delta.property_id == prop_id {
+                stacked.delta.apply_to_data(value.raw_lanes_mut(), layout);
             }
         }
     }
+
+    /// Test a routed predicate under the explicit policy-chain rule.
+    ///
+    /// The selector must hold for the unmodified candidate and after every
+    /// matching policy/governance restriction. Results are conjoined, so once
+    /// an ancestor rejects a candidate no descendant transform can restore it.
+    /// This is intentionally distinct from ordinary value composition, where
+    /// a later `Set` may overwrite an earlier operation.
+    pub fn allows_routed_predicate(
+        &self,
+        predicate: &RoutedPredicate,
+        value: &PropertyValue,
+        layout: &PropertyLayout,
+    ) -> bool {
+        let Some(offset) = layout.offset_of(&predicate.sub_field) else {
+            return false;
+        };
+        let Some(mut candidate) = value
+            .raw_lanes_for_serialization()
+            .get(offset.lane())
+            .copied()
+        else {
+            return false;
+        };
+        let mut allowed = predicate.comparison.matches(candidate, predicate.threshold);
+        for stacked in &self.deltas {
+            if stacked.delta.property_id != predicate.property_id {
+                continue;
+            }
+            for (role, op) in &stacked.delta.sub_field_deltas {
+                if role != &predicate.sub_field {
+                    continue;
+                }
+                candidate = op.apply(candidate);
+                if stacked.predicate_restriction {
+                    allowed &= predicate.comparison.matches(candidate, predicate.threshold);
+                }
+            }
+        }
+        allowed && predicate.comparison.matches(candidate, predicate.threshold)
+    }
+
+    pub(crate) fn entries(&self) -> impl Iterator<Item = (&PropertyTransformDelta, bool)> {
+        self.deltas
+            .iter()
+            .map(|stacked| (&stacked.delta, stacked.predicate_restriction))
+    }
+}
+
+/// Numeric comparison used by the paid, one-walk predicate-broadcast mode.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RoutedPredicateComparison {
+    AtLeast,
+    AtMost,
+    EqualBits,
+}
+
+impl RoutedPredicateComparison {
+    fn matches(self, value: f32, threshold: f32) -> bool {
+        match self {
+            Self::AtLeast => value >= threshold,
+            Self::AtMost => value <= threshold,
+            Self::EqualBits => value.to_bits() == threshold.to_bits(),
+        }
+    }
+}
+
+/// Generic property selector for predicate-broadcast reception.
+#[derive(Clone, Debug, PartialEq)]
+pub struct RoutedPredicate {
+    pub property_id: SimPropertyId,
+    pub sub_field: crate::property::SubFieldRole,
+    pub comparison: RoutedPredicateComparison,
+    pub threshold: f32,
 }
 
 // ── FieldSnapshot ─────────────────────────────────────────────────────────────
@@ -109,8 +207,8 @@ impl<'r> Evaluator<'r> {
             .iter()
             .fold(ancestors.clone(), |stack, overlay| {
                 match &overlay.lifecycle {
-                    OverlayLifecycle::UntilDissolved => stack.push(&overlay.transform),
-                    OverlayLifecycle::Transient { .. } => stack.push(&overlay.transform),
+                    OverlayLifecycle::UntilDissolved => stack.push_overlay(overlay),
+                    OverlayLifecycle::Transient { .. } => stack.push_overlay(overlay),
                     OverlayLifecycle::Suspended { .. } => stack,
                 }
             });

@@ -98,10 +98,33 @@ pub enum OverlayLifecycle {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+/// A live overlay is always attributable to the SimThing that originated it.
+///
+/// Omitting `origin` is a type error; there is deliberately no default or optional
+/// compatibility path:
+///
+/// ```compile_fail,E0063
+/// use simthing_core::{Overlay, OverlayId, OverlayKind, OverlayLifecycle, OverlaySource,
+///     PropertyTransformDelta, SimPropertyId};
+/// let _ = Overlay {
+///     id: OverlayId::new(),
+///     kind: OverlayKind::Instruction,
+///     source: OverlaySource::System,
+///     affects: Vec::new(),
+///     transform: PropertyTransformDelta {
+///         property_id: SimPropertyId(0),
+///         sub_field_deltas: Vec::new(),
+///     },
+///     lifecycle: OverlayLifecycle::UntilDissolved,
+/// };
+/// ```
 pub struct Overlay {
     pub id: OverlayId,
     pub kind: OverlayKind,
     pub source: OverlaySource,
+    /// The SimThing that emitted this overlay. `source` remains complementary:
+    /// origin identifies *which node*, source identifies *what kind of will*.
+    pub origin: SimThingId,
     /// Which SimThings this overlay affects (resolved at application time).
     pub affects: Vec<SimThingId>,
     pub transform: PropertyTransformDelta,

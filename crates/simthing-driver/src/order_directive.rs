@@ -19,6 +19,9 @@ use thiserror::Error;
 pub struct OrderDirectiveRequest {
     /// Authored class id from the admitted order-weight class table.
     pub class_id: String,
+    /// SimThing issuing the directive. Usually an Owner SimThing whose
+    /// Player/Ai will is aimed at one of its admitted participants.
+    pub origin: SimThingId,
     /// Host that receives the Player overlay (e.g. ordered destination leaf).
     pub target: SimThingId,
     /// Weight/need property locus (must already exist on the target host).
@@ -227,6 +230,7 @@ pub fn build_order_directive_overlay(
         id: OverlayId::new(),
         kind: OverlayKind::Instruction,
         source: OverlaySource::Player,
+        origin: req.origin,
         affects: vec![req.target],
         transform: PropertyTransformDelta {
             property_id: req.property_id,

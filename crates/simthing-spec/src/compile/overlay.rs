@@ -1,7 +1,9 @@
 use crate::diagnostics::{SpecDiagnostics, SpecResult};
 use crate::error::SpecError;
 use crate::spec::overlay::OverlaySpec;
-use simthing_core::{DimensionRegistry, Overlay, OverlayId, PropertyTransformDelta, SubFieldRole};
+use simthing_core::{
+    DimensionRegistry, Overlay, OverlayId, PropertyTransformDelta, SimThingId, SubFieldRole,
+};
 
 /// Compile an `OverlaySpec` into a live `Overlay` instance.
 ///
@@ -16,7 +18,13 @@ use simthing_core::{DimensionRegistry, Overlay, OverlayId, PropertyTransformDelt
 ///
 /// `affects` is left empty — overlays are attached to specific SimThings at
 /// runtime by the caller (e.g. the capability builder or session coordinator).
-pub fn compile_overlay(spec: &OverlaySpec, registry: &DimensionRegistry) -> SpecResult<Overlay> {
+/// `origin` is supplied by that caller because it owns the authority-tree
+/// context; authored overlays use the ScenarioThing id.
+pub fn compile_overlay(
+    spec: &OverlaySpec,
+    registry: &DimensionRegistry,
+    origin: SimThingId,
+) -> SpecResult<Overlay> {
     let (ns, name) = parse_property_ref(&spec.id, &spec.targets_property)?;
 
     let property_id = registry
@@ -42,6 +50,7 @@ pub fn compile_overlay(spec: &OverlaySpec, registry: &DimensionRegistry) -> Spec
         id: OverlayId::new(),
         kind: spec.kind.clone(),
         source: spec.source.clone(),
+        origin,
         affects: vec![],
         transform: PropertyTransformDelta {
             property_id,

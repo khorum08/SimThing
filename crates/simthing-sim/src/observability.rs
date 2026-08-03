@@ -49,6 +49,7 @@ pub struct SubFieldObservation {
 #[derive(Clone, Debug)]
 pub struct OverlayContribution {
     pub overlay_id: OverlayId,
+    pub origin: SimThingId,
     pub source: OverlaySource,
     /// True when this overlay currently participates in GPU overlay prep.
     pub active: bool,
@@ -127,6 +128,7 @@ pub fn observe(
                 }
                 contributions.push(OverlayContribution {
                     overlay_id: overlay.id,
+                    origin: overlay.origin,
                     source: overlay.source.clone(),
                     active: overlay.is_active(),
                     deltas: overlay.transform.sub_field_deltas.clone(),
@@ -196,6 +198,7 @@ mod tests {
             id: OverlayId::new(),
             kind: OverlayKind::Policy,
             source,
+            origin: SimThingId::new(),
             affects: vec![],
             transform: PropertyTransformDelta {
                 property_id: pid,

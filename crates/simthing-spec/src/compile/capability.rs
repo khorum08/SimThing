@@ -211,6 +211,7 @@ impl CapabilityTreeBuilder {
                         id: overlay_id,
                         kind: OverlayKind::Custom("capability".into()),
                         source: OverlaySource::System,
+                        origin: tree_id,
                         // affects is filled in by the session coordinator at
                         // activation time — per CapabilityTreeBoundaryHandler.
                         affects: vec![],

@@ -348,3 +348,15 @@ date	role	query	anchors_served	hit
 2026-08-01T23:41:26Z	coding	--domain orientation	orientation-harness-core	hit
 2026-08-01T23:41:33Z	coding	--grep does not merge|coding agent|push	none	none
 2026-08-02T10:47:48Z	coding	--paths scripts/ci/gen_orientation.sh scripts/ci/handoff_dispatch.sh scripts/ci/scenario_residue_check.sh crates/simthing-spec/tests/planet_child_location_admission.rs crates/simthing-driver/tests/support/resource_economy_session.rs	field-policy-time-decisions,founding-ontology-invariants,one-tree-owners-never-spatial,orientation-harness-core,property-value-rf-overlays,rf-arena-substrate,scanner-selftest-delta-gate,simthing-0087-binding-laws,simthing-0087-pillars,stead-spatial-contract-core,structural-execution-convergence,workshop-candidate-homing	hit
+2026-08-02T23:53:15Z	coding	--paths crates/simthing-core/src crates/simthing-core/tests crates/simthing-sim/src crates/simthing-driver/src crates/simthing-driver/tests scripts/ci/test_inventory.tsv docs/tests docs/design_0_0_8_7_rf_arena_modernization.md docs/stead_simthing_automata.md docs/orchestrator_orientation.md handoffs/SIMTHING-AUTOMATON-INTRINSIC-0.hd.md	core-gpu-residency,core-overlays,core-property-value-model,core-rf-arenas,exact-numeric-candidate-f,field-policy-time-decisions,field-sweep-preservation,founding-ontology-invariants,orientation-harness-core,rf-arena-substrate,scanner-selftest-delta-gate,simthing-0087-binding-laws,simthing-0087-pillars,stead-events-are-rf,stead-rejected-shapes,stead-shared-surface-ledger,stead-spatial-contract-core,structural-execution-convergence,workshop-candidate-homing	hit
+2026-08-02T23:53:24Z	coding	--grep SIMTHING-AUTOMATON-INTRINSIC-0	none	none
+2026-08-02T23:53:24Z	coding	--paths crates/simthing-core/src crates/simthing-core/tests crates/simthing-sim/src crates/simthing-driver/src crates/simthing-driver/tests scripts/ci/test_inventory.tsv docs/tests docs/design_0_0_8_7_rf_arena_modernization.md docs/stead_simthing_automata.md docs/orchestrator_orientation.md handoffs/SIMTHING-AUTOMATON-INTRINSIC-0.hd.md	core-gpu-residency,core-overlays,core-property-value-model,core-rf-arenas,exact-numeric-candidate-f,field-policy-time-decisions,field-sweep-preservation,founding-ontology-invariants,orientation-harness-core,rf-arena-substrate,scanner-selftest-delta-gate,simthing-0087-binding-laws,simthing-0087-pillars,stead-events-are-rf,stead-rejected-shapes,stead-shared-surface-ledger,stead-spatial-contract-core,structural-execution-convergence,workshop-candidate-homing	hit
+2026-08-02T23:53:32Z	coding	--grep 6.0b	core-overlays,core-rf-arenas	hit
+2026-08-03T00:20:12Z	coding	--grep predicate broadcast	stead-events-are-rf	hit
+2026-08-03T00:20:13Z	coding	--grep own subtree	none	none
+2026-08-03T00:43:04Z	coding	--grep three delivery modes	stead-events-are-rf	hit
+2026-08-03T00:43:04Z	coding	--grep own subtree	none	none
+2026-08-03T00:43:04Z	coding	--grep deficit-driven	stead-events-are-rf	hit
+2026-08-03T00:43:04Z	coding	--grep predicate-broadcast	none	none
+2026-08-03T00:45:48Z	coding	--grep test admission budget	none	none
+2026-08-03T00:45:48Z	coding	--grep TEST-BUDGET	none	none

@@ -779,6 +779,7 @@ impl SimSession {
             id: simthing_core::OverlayId::new(),
             kind: simthing_core::OverlayKind::Custom("mapping_commitment".into()),
             source: simthing_core::OverlaySource::System,
+            origin: self.scenario.root.id,
             affects: vec![effect.target],
             transform: simthing_core::PropertyTransformDelta {
                 property_id: effect.property_id,
