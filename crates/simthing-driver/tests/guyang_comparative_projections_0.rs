@@ -661,7 +661,8 @@ fn front_formed_hardened_and_chokepoint_threshold_plan_compatible() {
         .collect();
     let kinds: Vec<_> = regs.iter().map(|r| r.event_kind).collect();
     let mut cur = projected.clone();
-    let emissions = execute_threshold_ops_cpu(&values, &mut cur, &ops, n_dims).expect("thresh");
+    let emissions =
+        execute_threshold_ops_cpu(&values, &mut cur, &ops, n_dims, 0).expect("thresh");
     let formed = emissions
         .iter()
         .filter(|e| kinds[e.reg_idx() as usize] == comparative_event_kind::FRONT_FORMED)

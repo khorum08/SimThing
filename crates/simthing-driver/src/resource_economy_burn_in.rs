@@ -181,7 +181,8 @@ pub fn run_emission_burn_in(
         let flat = initial_flat.to_vec();
         state.install_resolved_values_at_boundary(&flat);
 
-        let cpu_records = run_emission_cpu_oracle(&flat, n_dims, emissions)?;
+        let generation = state.anchor_table_generation;
+        let cpu_records = run_emission_cpu_oracle(&flat, n_dims, emissions, generation)?;
         let gpu_records = run_accumulator_emission(state, dt)
             .map_err(|e| ResourceEconomyOracleError::Cpu(e.to_string()))?;
 
@@ -190,6 +191,15 @@ pub fn run_emission_burn_in(
         let err = (cpu_total as f32 - gpu_total as f32).abs();
         if err > report.max_abs_conservation_error {
             report.max_abs_conservation_error = err;
+        }
+        // EVENT-GENERATION-STAMP-0: parity includes generation stamps, not payloads alone.
+        for (cpu, gpu) in cpu_records.iter().zip(gpu_records.iter()) {
+            assert_eq!(
+                cpu.generation(),
+                gpu.generation(),
+                "CPU/GPU emission generation stamps must match"
+            );
+            assert_eq!(cpu.generation(), generation);
         }
         report.ticks_checked += 1;
     }

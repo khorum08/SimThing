@@ -2352,8 +2352,12 @@ impl AccumulatorOpSession {
             .map_err(AccumulatorOpSessionError::from)
     }
 
-    /// Set the producing-tree generation used by production seal/readback.
-    pub fn set_generation(&mut self, generation: u32) {
+    /// Bind the producing-tree generation authority used by production seal/readback.
+    ///
+    /// Production step boundaries call this via [`WorldGpuState::bind_production_generation`]
+    /// so the stamp source tracks the tree's generation counter. External optional
+    /// setters are not the production path.
+    pub fn bind_generation_authority(&mut self, generation: u32) {
         self.generation = generation;
     }
 

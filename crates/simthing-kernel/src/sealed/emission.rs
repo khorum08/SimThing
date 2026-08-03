@@ -232,7 +232,6 @@ mod generation_stamp_tests {
         assert!(!stripped.is_production_sealed());
 
         let mut ring = StampedEventRing::admit(4, BackpressurePolicy::OverwriteOldest);
-        // Production egress path: only production-sealed records may enter.
         assert!(
             push_emission_to_production_egress(&mut ring, &sealed).is_ok(),
             "sealed production record must enter egress"
@@ -241,6 +240,29 @@ mod generation_stamp_tests {
             push_emission_to_production_egress(&mut ring, &stripped).is_err(),
             "planted unsealed bypass must RED at production egress"
         );
+    }
+
+    #[test]
+    fn successive_generations_stamp_distinctly_and_ring_honors_forced_lag() {
+        // Production-sequence referee: generation authority advances 1 → 2,
+        // sealed records carry each generation, ring applies backpressure under lag.
+        let mut ring = StampedEventRing::admit(1, BackpressurePolicy::OverwriteOldest);
+
+        for gen in [1u32, 2u32] {
+            let sealed = EmissionRecord::from_cpu_oracle(0, gen, gen);
+            assert_eq!(sealed.generation(), gen);
+            assert!(sealed.is_production_sealed());
+            push_emission_to_production_egress(&mut ring, &sealed).unwrap();
+        }
+        // Capacity 1 + overwrite: only gen 2 remains after forced lag.
+        assert_eq!(ring.len(), 1);
+        assert_eq!(ring.entries()[0].generation, GenerationStamp::new(2));
+        assert_eq!(ring.backpressure_actions, 1);
+
+        // CPU oracle parity path stamps the same generation (not literal 0).
+        let parity = EmissionRecord::from_cpu_oracle(9, 3, 7);
+        assert_eq!(parity.generation(), 7);
+        assert_ne!(parity.generation(), 0);
     }
 
     fn push_emission_to_production_egress(

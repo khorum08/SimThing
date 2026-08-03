@@ -66,8 +66,11 @@ impl<T> GenerationStamped<T> {
 
 /// One recorded integration of a stamped child product at a parent generation.
 ///
-/// This is authored/recorded data, not ambient timing. Replay of the schedule
-/// reproduces the run bit-exactly; ambient arrival order is never authority.
+/// **Per-product row, full generation set** (Definable schedule fence / HD-RECEIPT
+/// `9df0629526ec`): never collapse to per-bucket-latest. Values may sum under later
+/// coalescing, but stamps do not — a schedule that records only the newest stamp loses
+/// which generations merged and cannot replay bit-exactly. This is THE single replay
+/// recorder; 6.2 extends it with a row kind, never a second log.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct IntegrationScheduleEntry {
     pub parent_generation: GenerationStamp,
@@ -77,6 +80,9 @@ pub struct IntegrationScheduleEntry {
 }
 
 /// Recorded integration schedule for one tree. Determinism is relative to this log.
+///
+/// Rows are append-only and per-product. Identical `product_key` values at different
+/// child generations produce distinct rows so the full generation set is preserved.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct IntegrationSchedule {
     pub entries: Vec<IntegrationScheduleEntry>,
@@ -87,6 +93,7 @@ impl IntegrationSchedule {
         Self::default()
     }
 
+    /// Append one per-product row. Never overwrites an earlier row for the same key.
     pub fn record(
         &mut self,
         parent_generation: GenerationStamp,
@@ -102,6 +109,15 @@ impl IntegrationSchedule {
 
     pub fn entries(&self) -> &[IntegrationScheduleEntry] {
         &self.entries
+    }
+
+    /// Distinct child generations recorded for `product_key` (full set, not latest-only).
+    pub fn child_generations_for_key(&self, product_key: u64) -> Vec<GenerationStamp> {
+        self.entries
+            .iter()
+            .filter(|e| e.product_key == product_key)
+            .map(|e| e.child_generation)
+            .collect()
     }
 }
 

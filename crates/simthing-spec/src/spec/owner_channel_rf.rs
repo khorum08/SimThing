@@ -13,9 +13,11 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use simthing_core::owner_channel::{resolve_owner, resolve_owners_in_order, OwnerRef};
 use simthing_core::{
-    integrate_stamped_product, IntegrateError, GenerationStamp, GenerationStamped,
+    integrate_stamped_product, GenerationStamp, GenerationStamped, IntegrateError,
     IntegrationReceipt, IntegrationSchedule, SimThing, SimThingId,
 };
+
+#[cfg(test)]
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use super::channel_key::{OwnerChannelScopeKey, ResourceKey, ScopeId};
@@ -122,39 +124,22 @@ pub struct ParentRfIntegrationState {
     pub schedule_fold: u64,
 }
 
-/// Planted wait mutant: when true, integration rejects any child generation that
-/// differs from the parent (synchronous freshness gate). The ordinary path never
-/// sets this; tests enable it to prove N+3 <- N turns RED.
-static WAIT_FOR_FRESH_CHILD_MUTANT: AtomicBool = AtomicBool::new(false);
-
-/// Enable/disable the make-the-parent-wait mutant (test-only plant).
-pub fn plant_wait_for_fresh_child_mutant(enabled: bool) {
-    WAIT_FOR_FRESH_CHILD_MUTANT.store(enabled, Ordering::SeqCst);
-}
-
 /// Integrate a stamped reduce-up product into parent RF state at the parent generation.
 ///
-/// Async is ordinary: parent at N+3 integrating child gen-N completes with no wait
-/// (unless the planted wait mutant is enabled). Records the schedule for bit-exact
-/// replay of integrated state. Staleness is visible.
+/// Async is ordinary: parent at N+3 integrating child gen-N completes with **no wait**.
+/// There is no production freshness gate, toggle, or lagging-child reject path.
+/// Records a **per-product** schedule row (full generation set; never per-bucket-latest).
 pub fn integrate_stamped_reduce_up(
     parent_generation: GenerationStamp,
     product: &StampedReduceUpProduct,
     parent_state: &mut ParentRfIntegrationState,
     schedule: &mut IntegrationSchedule,
 ) -> Result<IntegrationReceipt, IntegrateError> {
-    if WAIT_FOR_FRESH_CHILD_MUTANT.load(Ordering::SeqCst)
-        && product.generation() != parent_generation
-    {
-        return Err(IntegrateError::WouldWaitForLaggingChild {
-            parent: parent_generation.get(),
-            child: product.generation().get(),
-        });
-    }
     let report = product.product();
     let key = reduce_up_product_key(report);
     let receipt = integrate_stamped_product(parent_generation, product, key, schedule);
     // Apply RF product into parent state (production integration semantics).
+    // Values sum; stamps remain per-product in the schedule (DA fence / 6.2 coalesce note).
     parent_state.surplus_total = parent_state
         .surplus_total
         .saturating_add(report.surplus_total);
@@ -169,6 +154,38 @@ pub fn integrate_stamped_reduce_up(
         .wrapping_add(product.generation().get() as u64)
         .wrapping_add(parent_generation.get() as u64);
     Ok(receipt)
+}
+
+/// Test-only make-the-parent-wait mutant. **Not linked into production builds.**
+///
+/// Planted defect for Remand 2: when enabled, lagged N+3 <- N REDs. Production
+/// `integrate_stamped_reduce_up` never contains this branch.
+#[cfg(test)]
+static WAIT_FOR_FRESH_CHILD_MUTANT: AtomicBool = AtomicBool::new(false);
+
+/// Enable/disable the make-the-parent-wait mutant (test-only; `cfg(test)`).
+#[cfg(test)]
+pub fn plant_wait_for_fresh_child_mutant(enabled: bool) {
+    WAIT_FOR_FRESH_CHILD_MUTANT.store(enabled, Ordering::SeqCst);
+}
+
+/// Test-only integrate path that can plant the wait mutant. Production never calls this.
+#[cfg(test)]
+pub fn integrate_stamped_reduce_up_for_wait_mutant_proof(
+    parent_generation: GenerationStamp,
+    product: &StampedReduceUpProduct,
+    parent_state: &mut ParentRfIntegrationState,
+    schedule: &mut IntegrationSchedule,
+) -> Result<IntegrationReceipt, IntegrateError> {
+    if WAIT_FOR_FRESH_CHILD_MUTANT.load(Ordering::SeqCst)
+        && product.generation() != parent_generation
+    {
+        return Err(IntegrateError::WouldWaitForLaggingChild {
+            parent: parent_generation.get(),
+            child: product.generation().get(),
+        });
+    }
+    integrate_stamped_reduce_up(parent_generation, product, parent_state, schedule)
 }
 
 /// Replay a recorded schedule into parent RF state bit-exactly.
@@ -838,5 +855,68 @@ fn owner_authority_error(
         },
         resource_key: None,
         message: error.to_string(),
+    }
+}
+
+#[cfg(test)]
+mod wait_mutant_proof {
+    use super::*;
+    use simthing_core::owner_channel::{bind_owner, OwnerRef};
+    use simthing_core::{SimThing, SimThingKind};
+
+    fn node() -> SimThing {
+        SimThing::new(SimThingKind::Custom("synthetic".into()), 0)
+    }
+
+    #[test]
+    fn make_the_parent_wait_mutant_reds_then_restores_green() {
+        let mut root = node();
+        bind_owner(&mut root, &OwnerRef::new("alpha"));
+        let leaf = node();
+        let leaf_id = leaf.id;
+        root.add_child(leaf);
+        let rows = vec![OwnerChannelRfOwnAggregate {
+            simthing_id: leaf_id,
+            resource_key: ResourceKey::new("ore"),
+            surplus: 2,
+            deficit: 0,
+        }];
+        let stamped =
+            reduce_owner_channel_rf(&root, &rows, GenerationStamp::new(1)).expect("stamped");
+
+        // Production path never waits.
+        let mut schedule = IntegrationSchedule::new();
+        let mut parent = ParentRfIntegrationState::default();
+        integrate_stamped_reduce_up(
+            GenerationStamp::new(4),
+            &stamped,
+            &mut parent,
+            &mut schedule,
+        )
+        .expect("production integrate has no wait branch");
+
+        // Test-only mutant REDs lagged integrate.
+        plant_wait_for_fresh_child_mutant(true);
+        let mut schedule2 = IntegrationSchedule::new();
+        let mut parent2 = ParentRfIntegrationState::default();
+        let err = integrate_stamped_reduce_up_for_wait_mutant_proof(
+            GenerationStamp::new(4),
+            &stamped,
+            &mut parent2,
+            &mut schedule2,
+        )
+        .expect_err("wait mutant must RED");
+        assert!(matches!(
+            err,
+            IntegrateError::WouldWaitForLaggingChild { parent: 4, child: 1 }
+        ));
+        plant_wait_for_fresh_child_mutant(false);
+        integrate_stamped_reduce_up_for_wait_mutant_proof(
+            GenerationStamp::new(4),
+            &stamped,
+            &mut parent2,
+            &mut schedule2,
+        )
+        .expect("restored green");
     }
 }

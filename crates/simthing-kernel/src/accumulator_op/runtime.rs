@@ -388,6 +388,23 @@ impl WorldAccumulatorRuntime {
         self.threshold_session.as_mut()
     }
 
+    /// All live AccumulatorOp sessions that mint sealed records (generation stamp authority).
+    pub fn all_sessions_mut(&mut self) -> impl Iterator<Item = &mut AccumulatorOpSession> {
+        [
+            self.intent_session.as_mut(),
+            self.threshold_session.as_mut(),
+            self.overlay_session.as_mut(),
+            self.reduction_soft_session.as_mut(),
+            self.velocity_session.as_mut(),
+            self.intensity_eml_session.as_mut(),
+            self.transfer_session.as_mut(),
+            self.emission_session.as_mut(),
+            self.resource_flow_session.as_mut(),
+        ]
+        .into_iter()
+        .flatten()
+    }
+
     pub fn overlay_session(&mut self) -> Option<&mut AccumulatorOpSession> {
         self.overlay_session.as_mut()
     }

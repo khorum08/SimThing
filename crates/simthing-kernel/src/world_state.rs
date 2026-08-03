@@ -323,6 +323,20 @@ impl WorldGpuState {
         self.anchor_table_generation = generation;
     }
 
+    /// EVENT-GENERATION-STAMP-0: bind the tree's generation authority for production
+    /// seal/readback. Called at the ordinary generation step boundary (same day
+    /// counter that advances `anchor_table_generation`). Every session that
+    /// mints sealed events/emissions inherits this stamp source — callers do
+    /// not need a separate optional setter.
+    pub fn bind_production_generation(&mut self, generation: u32) {
+        self.anchor_table_generation = generation;
+        if let Some(runtime) = self.accumulator_runtime.as_mut() {
+            for session in runtime.all_sessions_mut() {
+                session.bind_generation_authority(generation);
+            }
+        }
+    }
+
     /// Admission / test upload of a typed STEAD table (encodes POD at this boundary).
     pub fn upload_typed_anchor_table(&mut self, table: &AnchorTable) {
         self.upload_anchor_table(&encode_anchor_table_gpu(table));
