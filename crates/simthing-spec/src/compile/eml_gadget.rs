@@ -788,6 +788,9 @@ pub fn eval_eml_postfix(nodes: &[EmlNode], eval_slot: u32, values: &[f32], n_dim
                 let v = stack[sp - 1];
                 stack[sp - 1] = v.clamp(f32::from_bits(node.a), f32::from_bits(node.b));
             }
+            eml_nodes::opcode::EXP => {
+                stack[sp - 1] = simthing_core::eml_exp_pinned_f32(stack[sp - 1]);
+            }
             eml_nodes::opcode::CMP_GE => {
                 let rhs = stack[sp - 1];
                 let lhs = stack[sp - 2];

@@ -568,7 +568,8 @@ fn validate_stack_depth(nodes: &[EmlNode]) -> Result<u32, EmlRegistryError> {
             | eml_nodes::opcode::CLAMP_BOUNDED
             | eml_nodes::opcode::CLAMP_FLOORED
             | eml_nodes::opcode::ABS
-            | eml_nodes::opcode::FLOOR => {}
+            | eml_nodes::opcode::FLOOR
+            | eml_nodes::opcode::EXP => {}
             eml_nodes::opcode::ADD
             | eml_nodes::opcode::SUB
             | eml_nodes::opcode::MUL
@@ -649,7 +650,48 @@ fn validate_nodes_for_class(
             validate_div_node(node)?;
         }
     }
+    validate_exp_call_sites(nodes)?;
     Ok(())
+}
+
+/// EML-EXP-PRIMITIVE-0 registry mirror of the 5.10 call-site law (the kernel
+/// door mints the sealed tokens; this core-side check keeps the registry gate
+/// closed without a reverse dependency, exactly as `validate_div_node` mirrors
+/// the kernel's `UnsafeDivision`). An `EXP` node admits only when its operand
+/// is authored by the immediately preceding node as either:
+///  - shape 2 (guarded semantics): `CLAMP_BOUNDED` whose authored output range
+///    lies inside the EXP primitive domain, or
+///  - shape 1 (range-certified): `LITERAL_F32` whose value lies inside it.
+fn validate_exp_call_sites(nodes: &[EmlNode]) -> Result<(), EmlRegistryError> {
+    for (index, node) in nodes.iter().enumerate() {
+        if node.opcode != eml_nodes::opcode::EXP {
+            continue;
+        }
+        let discharged = index
+            .checked_sub(1)
+            .map(|prev_index| &nodes[prev_index])
+            .is_some_and(|prev| match prev.opcode {
+                eml_nodes::opcode::CLAMP_BOUNDED => {
+                    exp_domain_contains(prev.a) && exp_domain_contains(prev.b)
+                }
+                eml_nodes::opcode::LITERAL_F32 => exp_domain_contains(prev.a),
+                _ => false,
+            });
+        if !discharged {
+            return Err(EmlRegistryError::UnguardedExactPrimitiveCallSite {
+                opcode: node.opcode,
+                index: index as u32,
+            });
+        }
+    }
+    Ok(())
+}
+
+fn exp_domain_contains(bits: u32) -> bool {
+    let value = f32::from_bits(bits);
+    value.is_finite()
+        && value >= f32::from_bits(crate::eml_exp::EML_EXP_DOMAIN_MIN_BITS)
+        && value <= f32::from_bits(crate::eml_exp::EML_EXP_DOMAIN_MAX_BITS)
 }
 
 fn opcode_allowed_in_exact(op: u32) -> bool {
@@ -669,6 +711,7 @@ fn opcode_allowed_in_exact(op: u32) -> bool {
             | eml_nodes::opcode::CLAMP_FLOORED
             | eml_nodes::opcode::ABS
             | eml_nodes::opcode::FLOOR
+            | eml_nodes::opcode::EXP
             | eml_nodes::opcode::CMP_LT
             | eml_nodes::opcode::CMP_LE
             | eml_nodes::opcode::CMP_GT
@@ -760,6 +803,10 @@ pub enum EmlRegistryError {
     GuardRequiredForSoftHardThreshold { tree_id: EmlTreeId },
     #[error("guarded soft hard-threshold admission for {tree_id:?} is deferred past C-8a")]
     GuardedSoftHardThresholdDeferred { tree_id: EmlTreeId },
+    #[error(
+        "exact primitive opcode {opcode:#x} at node {index} is unguarded and uncertified; discharge a 5.10 admission shape (in-domain CLAMP_BOUNDED guard or in-domain literal)"
+    )]
+    UnguardedExactPrimitiveCallSite { opcode: u32, index: u32 },
 }
 
 #[cfg(test)]
@@ -791,5 +838,87 @@ mod tests {
             has_recursion: false,
             display_name: name.to_string(),
         }
+    }
+
+    fn op(opcode: u32) -> EmlNode {
+        EmlNode {
+            opcode,
+            flags: 0,
+            a: 0,
+            b: 0,
+            c: 0,
+            d: 0,
+        }
+    }
+
+    /// EML-EXP-PRIMITIVE-0: the registry mirror of the 5.10 call-site law.
+    #[test]
+    fn eml_exp_primitive_0_registry_admits_guarded_exp_and_spans_naive_calls() {
+        let clamp_guard = EmlNode {
+            opcode: eml_nodes::opcode::CLAMP_BOUNDED,
+            flags: 0,
+            a: crate::eml_exp::EML_EXP_DOMAIN_MIN_BITS,
+            b: crate::eml_exp::EML_EXP_SATURATION_CEILING_BITS,
+            c: 0,
+            d: 0,
+        };
+        let mut registry = EmlExpressionRegistry::default();
+        registry
+            .register_formula(
+                EmlTreeId(9101),
+                exact_meta(9101, "guarded-exp"),
+                vec![
+                    literal(-2.0),
+                    clamp_guard,
+                    op(eml_nodes::opcode::EXP),
+                    op(eml_nodes::opcode::RETURN_TOP),
+                ],
+            )
+            .expect("clamp-guarded EXP registers (shape 2)");
+        registry
+            .register_formula(
+                EmlTreeId(9102),
+                exact_meta(9102, "literal-exp"),
+                vec![
+                    literal(-2.0),
+                    op(eml_nodes::opcode::EXP),
+                    op(eml_nodes::opcode::RETURN_TOP),
+                ],
+            )
+            .expect("in-domain literal EXP registers (shape 1)");
+        assert_eq!(
+            registry.register_formula(
+                EmlTreeId(9103),
+                exact_meta(9103, "naive-exp"),
+                vec![
+                    literal(1.0),
+                    literal(2.0),
+                    op(eml_nodes::opcode::MUL),
+                    op(eml_nodes::opcode::EXP),
+                    op(eml_nodes::opcode::RETURN_TOP),
+                ],
+            ),
+            Err(EmlRegistryError::UnguardedExactPrimitiveCallSite {
+                opcode: eml_nodes::opcode::EXP,
+                index: 3,
+            }),
+            "naive unguarded EXP is a spanned registry admission error"
+        );
+        assert_eq!(
+            registry.register_formula(
+                EmlTreeId(9104),
+                exact_meta(9104, "out-of-domain-literal-exp"),
+                vec![
+                    literal(90.0),
+                    op(eml_nodes::opcode::EXP),
+                    op(eml_nodes::opcode::RETURN_TOP),
+                ],
+            ),
+            Err(EmlRegistryError::UnguardedExactPrimitiveCallSite {
+                opcode: eml_nodes::opcode::EXP,
+                index: 1,
+            }),
+            "an out-of-domain literal is no certificate"
+        );
     }
 }

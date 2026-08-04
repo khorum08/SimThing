@@ -246,6 +246,9 @@ mod tests {
                     let v = stack[sp - 1];
                     stack[sp - 1] = v.clamp(f32::from_bits(node.a), f32::from_bits(node.b));
                 }
+                eml_nodes::opcode::EXP => {
+                    stack[sp - 1] = crate::eml_exp::eml_exp_pinned_f32(stack[sp - 1]);
+                }
                 eml_nodes::opcode::RETURN_TOP => return stack[sp - 1],
                 _ => {}
             }

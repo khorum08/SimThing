@@ -388,6 +388,9 @@ impl ExactPrimitiveGuardedInput {
 pub enum ExactPrimitiveRangeEvidence<'a> {
     PropertySubField(&'a SubFieldSpec),
     GuardedFormula(&'a ExactPrimitiveGuardedInput),
+    /// EML-EXP-PRIMITIVE-0: an authored in-domain literal is its own shape-1
+    /// certificate (full_eml_unification §4 names "literal in range").
+    LiteralInRange { bits: u32 },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -580,6 +583,7 @@ impl ExactPrimitiveAdmissionDoor {
                     span_end: span.end,
                 });
             }
+            ExactPrimitiveRangeEvidence::LiteralInRange { bits } => (bits, bits),
         };
         if !domain.contains_range(min_bits, max_bits) {
             return Err(OpcodeGateError::ExactPrimitiveRangeOutsideDomain {
@@ -866,6 +870,9 @@ const CLOSED_OPCODES: &[u32] = &[
     eml_nodes::opcode::CLAMP_FLOORED,
     eml_nodes::opcode::ABS,
     eml_nodes::opcode::FLOOR,
+    // EML-EXP-PRIMITIVE-0: the sole 5.11 vocabulary widening — the first
+    // admitted exact primitive (full-domain EXP through the 5.10 door).
+    eml_nodes::opcode::EXP,
     eml_nodes::opcode::CMP_LT,
     eml_nodes::opcode::CMP_LE,
     eml_nodes::opcode::CMP_GT,
@@ -894,6 +901,69 @@ const CLOSED_COMBINE_KINDS: &[u32] = &[
 
 pub fn opcode_in_closed_vocabulary(op: u32) -> bool {
     CLOSED_OPCODES.contains(&op)
+}
+
+// ── EML-EXP-PRIMITIVE-0: the admitted EXP primitive ──────────────────────────
+
+/// The one admitted exact primitive's registry name (append-only semantics; a
+/// different bit law is a future NEW name, never a mutation).
+pub const EXP_PRIMITIVE_NAME: &str = "EXP";
+
+/// Canonical full-domain EXP interval `[-87.33, +88.72]` (finite-only policy).
+/// Every output over this domain is a positive normal finite f32.
+pub fn exp_primitive_domain() -> PrimitiveDomain {
+    PrimitiveDomain::from_bits(
+        simthing_core::EML_EXP_DOMAIN_MIN_BITS,
+        simthing_core::EML_EXP_DOMAIN_MAX_BITS,
+        ExactPrimitiveDomainPolicy::FiniteOnlyRejectNanAndInfinity,
+    )
+    .expect("pinned EXP endpoint bits form an ordered finite binary32 interval")
+}
+
+/// Tree-scan call-site admission for `EXP` nodes (the production wiring of the
+/// 5.10 shapes). Each `EXP` node must be immediately preceded in postfix by:
+///  - `CLAMP_BOUNDED` whose authored bounds lie inside the EXP domain —
+///    shape 2, the guard IS the authored (saturated) semantics; or
+///  - `LITERAL_F32` whose value lies inside the EXP domain — shape 1, the
+///    literal is its own range certificate.
+/// Anything else is the spanned unguarded/uncertified admission error. Spans
+/// are node indices (`exp_index..exp_index+1`). Richer shape-1 certificates
+/// (bounded sub-field ranges) remain available through
+/// [`ExactPrimitiveAdmissionDoor::admit_range_certified_sub_field`] where a
+/// `SubFieldSpec` is in scope; the tree scan admits only what it can verify
+/// mechanically from node data.
+pub fn admit_exp_call_sites(nodes: &[EmlNode]) -> Result<(), OpcodeGateError> {
+    let domain = exp_primitive_domain();
+    for (index, node) in nodes.iter().enumerate() {
+        if node.opcode != eml_nodes::opcode::EXP {
+            continue;
+        }
+        let span = ExactPrimitiveSourceSpan::new(index as u32, index as u32 + 1);
+        let shape = match index.checked_sub(1).map(|prev_index| &nodes[prev_index]) {
+            Some(prev) if prev.opcode == eml_nodes::opcode::CLAMP_BOUNDED => {
+                let guard_opcode = EvalEmlOpcode::from_closed(eml_nodes::opcode::CLAMP_BOUNDED)?;
+                let guarded = ExactPrimitiveAdmissionDoor::verify_guarded_semantics(
+                    domain,
+                    guard_opcode,
+                    prev.a,
+                    prev.b,
+                    span,
+                )?;
+                Some(ExactPrimitiveCallSiteShape::GuardedSemantics(guarded))
+            }
+            Some(prev) if prev.opcode == eml_nodes::opcode::LITERAL_F32 => {
+                let certificate = ExactPrimitiveAdmissionDoor::verify_range_certificate(
+                    domain,
+                    ExactPrimitiveRangeEvidence::LiteralInRange { bits: prev.a },
+                    span,
+                )?;
+                Some(ExactPrimitiveCallSiteShape::RangeCertified(certificate))
+            }
+            _ => None,
+        };
+        ExactPrimitiveAdmissionDoor::admit_call_site(domain, shape, span)?;
+    }
+    Ok(())
 }
 
 /// Slot-local AccumulatorOp EvalEML excludes the two field-context reads.
@@ -1006,6 +1076,66 @@ fn softstep_nodes(input_col: u32, center: f32, steepness: f32) -> Vec<EmlNode> {
     nodes.push(bin(eml_nodes::opcode::ADD));
     // stack: [softstep]
     nodes
+}
+
+/// EML-EXP-PRIMITIVE-0 consumer form: the **stabilized** softmax weight
+/// `EXP(β·(zᵢ − max z))` as authored data over existing machinery — `max z`
+/// arrives from the existing `MAX` reduction band in `max_col`, the weight map
+/// rides ordinary EvalEML, and normalization rides the existing `Sum` band.
+///
+/// Every exponential argument is `≤ 0` by construction and explicitly
+/// `CLAMP_BOUNDED`-guarded (5.10 shape 2 — saturated tail below the domain
+/// floor, where the true weight is `< 1.2e-38` and semantically zero). The
+/// naive unstabilized `EXP(β·zᵢ)` form is NOT the canonical softmax: it is
+/// numerically unsound regardless of domain policy, and its unguarded call
+/// site cannot pass [`admit_exp_call_sites`].
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct SoftmaxWeightGadget {
+    pub z_col: u32,
+    pub max_col: u32,
+    pub beta: f32,
+}
+
+impl SoftmaxWeightGadget {
+    /// Compile to closed-vocabulary nodes:
+    /// `EXP(CLAMP(MUL(beta, SUB(z, max)), domain_min, 0))`, `RETURN_TOP`.
+    /// 7 nodes, peak stack 2 — `CompactStack4`.
+    pub fn compile_nodes(&self) -> Result<Vec<EmlNode>, OpcodeGateError> {
+        let nodes = vec![
+            slot(self.z_col),
+            slot(self.max_col),
+            bin(eml_nodes::opcode::SUB),
+            lit(self.beta),
+            bin(eml_nodes::opcode::MUL),
+            saturation_clamp_guard(),
+            bin(eml_nodes::opcode::EXP),
+            bin(eml_nodes::opcode::RETURN_TOP),
+        ];
+        OpcodeRegistrationGate::admit_tree_nodes(&nodes)?;
+        admit_exp_call_sites(&nodes)?;
+        Ok(nodes)
+    }
+
+    /// CPU twin (bit-exact with the compiled node program).
+    pub fn oracle(&self, z: f32, max_z: f32) -> f32 {
+        let arg = ((z - max_z) * self.beta).clamp(
+            f32::from_bits(simthing_core::EML_EXP_DOMAIN_MIN_BITS),
+            f32::from_bits(simthing_core::EML_EXP_SATURATION_CEILING_BITS),
+        );
+        simthing_core::eml_exp_pinned_f32(arg)
+    }
+}
+
+/// The canonical saturated-tail guard node: `CLAMP_BOUNDED(x, domain_min, 0)`.
+fn saturation_clamp_guard() -> EmlNode {
+    EmlNode {
+        opcode: eml_nodes::opcode::CLAMP_BOUNDED,
+        flags: 0,
+        a: simthing_core::EML_EXP_DOMAIN_MIN_BITS,
+        b: simthing_core::EML_EXP_SATURATION_CEILING_BITS,
+        c: 0,
+        d: 0,
+    }
 }
 
 fn lit(v: f32) -> EmlNode {
@@ -1345,5 +1475,145 @@ mod tests {
             "planted guard-as-certificate defect must be RED"
         );
         assert_eq!(ExactPrimitiveAdmissionDoor::default().admitted_count(), 0);
+    }
+
+    // ── EML-EXP-PRIMITIVE-0 ──────────────────────────────────────────────────
+
+    fn exp_node() -> EmlNode {
+        EmlNode {
+            opcode: eml_nodes::opcode::EXP,
+            flags: 0,
+            a: 0,
+            b: 0,
+            c: 0,
+            d: 0,
+        }
+    }
+
+    fn returning(mut nodes: Vec<EmlNode>) -> Vec<EmlNode> {
+        nodes.push(bin(eml_nodes::opcode::RETURN_TOP));
+        nodes
+    }
+
+    #[test]
+    fn eml_exp_primitive_0_vocabulary_widens_by_exactly_exp() {
+        let closed = EvalEmlVocabulary::closed_opcodes();
+        assert_eq!(
+            closed
+                .iter()
+                .filter(|op| **op == eml_nodes::opcode::EXP)
+                .count(),
+            1,
+            "EXP appears exactly once in the closed vocabulary"
+        );
+        assert_eq!(closed.len(), 24, "5.11 widens the 23-opcode roster by one");
+        assert!(opcode_in_accumulator_vocabulary(eml_nodes::opcode::EXP));
+        let domain = exp_primitive_domain();
+        assert_eq!(domain.min_bits(), simthing_core::EML_EXP_DOMAIN_MIN_BITS);
+        assert_eq!(domain.max_bits(), simthing_core::EML_EXP_DOMAIN_MAX_BITS);
+        assert_eq!(
+            domain.special_value_policy(),
+            ExactPrimitiveDomainPolicy::FiniteOnlyRejectNanAndInfinity
+        );
+    }
+
+    #[test]
+    fn eml_exp_primitive_0_call_sites_admit_only_the_two_shapes_and_span_the_rest() {
+        // Shape 2: saturation clamp guard immediately precedes EXP.
+        let guarded = returning(vec![
+            slot(0),
+            saturation_clamp_guard(),
+            exp_node(),
+        ]);
+        admit_exp_call_sites(&guarded).expect("clamp-guarded EXP admits (shape 2)");
+
+        // Shape 1: in-domain literal immediately precedes EXP.
+        let certified = returning(vec![lit(-1.5), exp_node()]);
+        admit_exp_call_sites(&certified).expect("in-domain literal EXP admits (shape 1)");
+
+        // The naive unstabilized softmax shape — EXP over a raw product — is
+        // the spanned unguarded admission error, not authored data.
+        let naive = returning(vec![
+            slot(0),
+            lit(2.0),
+            bin(eml_nodes::opcode::MUL),
+            exp_node(),
+        ]);
+        assert_eq!(
+            admit_exp_call_sites(&naive),
+            Err(OpcodeGateError::UnguardedExactPrimitiveCallSite {
+                span_start: 3,
+                span_end: 4,
+            })
+        );
+
+        // EXP with no operand author at all (first node) is unguarded.
+        assert_eq!(
+            admit_exp_call_sites(&returning(vec![exp_node()])),
+            Err(OpcodeGateError::UnguardedExactPrimitiveCallSite {
+                span_start: 0,
+                span_end: 1,
+            })
+        );
+
+        // A clamp whose authored bounds leave the primitive domain is not a
+        // lawful guard.
+        let wide_clamp = EmlNode {
+            opcode: eml_nodes::opcode::CLAMP_BOUNDED,
+            flags: 0,
+            a: (-100000.0f32).to_bits(),
+            b: 0.0f32.to_bits(),
+            c: 0,
+            d: 0,
+        };
+        assert!(matches!(
+            admit_exp_call_sites(&returning(vec![slot(0), wide_clamp, exp_node()])),
+            Err(OpcodeGateError::ExactPrimitiveRangeOutsideDomain { .. })
+        ));
+
+        // An out-of-domain literal is not a certificate.
+        assert!(matches!(
+            admit_exp_call_sites(&returning(vec![lit(90.0), exp_node()])),
+            Err(OpcodeGateError::ExactPrimitiveRangeOutsideDomain { .. })
+        ));
+
+        // Planted gate-bypass mutant must be RED: an unguarded site admitted
+        // as if certified is never what the gate returns.
+        let bypass: Result<(), OpcodeGateError> = Ok(());
+        assert_ne!(
+            admit_exp_call_sites(&naive),
+            bypass,
+            "planted unguarded-bypass defect must be RED"
+        );
+    }
+
+    #[test]
+    fn eml_exp_primitive_0_softmax_weight_gadget_is_stabilized_authored_data() {
+        let gadget = SoftmaxWeightGadget {
+            z_col: 0,
+            max_col: 1,
+            beta: 2.5,
+        };
+        let nodes = gadget.compile_nodes().expect("stabilized softmax admits");
+        assert_eq!(nodes.len(), 8);
+        // CPU oracle parity against the shared accumulator-op stack machine.
+        let values = [
+            [0.0f32, 3.0],
+            [1.25, 3.0],
+            [3.0, 3.0],
+            [-250.0, 3.0], // saturated tail: clamped at the domain floor
+        ];
+        for row in values {
+            let via_interpreter =
+                crate::accumulator_op::eval_eml_cpu(&nodes, 0, &row, 2, [0.0; 4]);
+            assert_eq!(
+                via_interpreter.to_bits(),
+                gadget.oracle(row[0], row[1]).to_bits(),
+                "softmax weight oracle parity at z={} max={}",
+                row[0],
+                row[1]
+            );
+            assert!(via_interpreter > 0.0 && via_interpreter <= 1.0);
+        }
     }
 }

@@ -68,6 +68,45 @@ struct FieldEmlContext {
 @group(0) @binding(6) var<uniform> params: FieldSweepParams;
 @group(0) @binding(7) var<storage, read_write> transient_values: array<f32>;
 
+// EML-EXP-PRIMITIVE-0: pinned algorithm-as-spec for the EXP exact primitive.
+// The step order IS the bit law; the CPU twin
+// (simthing_core::eml_exp::eml_exp_pinned_f32) executes the identical
+// sequence, and the exhaustive 2^32 digest is the parity referee. Constants
+// are bitcast-pinned to exact binary32 bits. Any edit here is a NEW primitive
+// name, never a mutation of EXP. Placed OUTSIDE the JIT evaluator markers so
+// the interpreted arm and every JIT-generated straight-line block call this
+// one definition.
+//
+// The specified operations are one product, one round-ties-even, eight
+// EXPLICIT fused multiply-adds (`fma` builtin — single-rounding IEEE, the
+// CPU twin uses `f32::mul_add`), one add, and exact integer/bit scale steps.
+// The fused/intrinsic shape is deliberate: the certified toolchain's shader
+// compiler eliminates magic-shifter rounding and freely contracts separate
+// mul+add chains (even across bitcast fences — measured), so the sequence
+// pins the semantics the hardware executes instead of fencing against them.
+fn eml_exp_pinned(x: f32) -> f32 {
+    let a = x * bitcast<f32>(0x3FB8AA3Bu);              // x * log2(e)
+    let kf = round(a);                                  // RNE intrinsic
+    let hi = fma(kf, bitcast<f32>(0xBF318000u), x);     // x - kf*ln2_hi
+    let r = fma(kf, bitcast<f32>(0x395E8083u), hi);     // hi + kf*2.1219444e-4
+    let z = r * r;
+    var p = bitcast<f32>(0x39506967u);                  // P5
+    p = fma(p, r, bitcast<f32>(0x3AB743CEu));           // P4
+    p = fma(p, r, bitcast<f32>(0x3C088908u));           // P3
+    p = fma(p, r, bitcast<f32>(0x3D2AA9C1u));           // P2
+    p = fma(p, r, bitcast<f32>(0x3E2AAAAAu));           // P1
+    p = fma(p, r, bitcast<f32>(0x3F000000u));           // P0
+    let q = fma(z, p, r);
+    let y = 1.0 + q;
+    let k = i32(kf);
+    let k1 = k >> 1u;
+    let k2 = k - k1;
+    let s1 = bitcast<f32>(u32(k1 + 127) << 23u);
+    let s2 = bitcast<f32>(u32(k2 + 127) << 23u);
+    let y1 = y * s1;
+    return y1 * s2;
+}
+
 // EML-JIT-EVALUATOR-BEGIN
 const OP_LITERAL_F32: u32 = 0u;
 const OP_PARAM: u32 = 2u;
@@ -84,6 +123,7 @@ const OP_CLAMP_BOUNDED: u32 = 22u;
 const OP_CLAMP_FLOORED: u32 = 23u;
 const OP_ABS: u32 = 24u;
 const OP_FLOOR: u32 = 25u;
+const OP_EXP: u32 = 26u;
 const OP_CMP_LT: u32 = 30u;
 const OP_CMP_LE: u32 = 31u;
 const OP_CMP_GT: u32 = 32u;
@@ -139,6 +179,7 @@ fn eval_program(offset: u32, count: u32, context: FieldEmlContext) -> f32 {
             }
             case OP_ABS: { stack[sp - 1u] = abs(stack[sp - 1u]); }
             case OP_FLOOR: { stack[sp - 1u] = floor(stack[sp - 1u]); }
+            case OP_EXP: { stack[sp - 1u] = eml_exp_pinned(stack[sp - 1u]); }
             case OP_SELECT: {
                 let false_value = stack[sp - 1u];
                 let true_value = stack[sp - 2u];

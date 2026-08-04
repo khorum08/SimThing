@@ -164,6 +164,85 @@ pub fn compile_gu_yang_n4_field_sweeps(
     Ok([conductance, flux])
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct SteadExponentialFalloffSpec {
+    pub width: u32,
+    pub height: u32,
+    pub n_dims: u32,
+    /// Source intensity column (`u_j` read from each neighbor).
+    pub value_col: ColumnIndex,
+    /// Output column receiving the falloff-weighted accumulation.
+    pub output_col: ColumnIndex,
+    /// Decay rate `λ ≥ 0`; distance `d` arrives per edge as `EDGE_SCALAR`.
+    pub lambda: f32,
+    pub dt: f32,
+}
+
+/// EML-EXP-PRIMITIVE-0 consumer: STEAD falloff as an authored LAW —
+/// `Σ_j u_j · EXP(−λ·d_j)` — replacing per-hop-band weight tables
+/// (full_eml_unification §7 "exact exponential falloff"). Distance rides the
+/// existing `EDGE_SCALAR` seam; the exponential argument is `≤ 0` for
+/// admitted `λ, d ≥ 0` and is explicitly `CLAMP_BOUNDED`-guarded (5.10
+/// shape 2 — saturated tail beyond the domain floor, where the true weight is
+/// below 1.2e-38 and semantically zero). One ordinary registration through
+/// the one generic door; no new mechanism.
+pub fn compile_stead_exponential_falloff_field_sweep(
+    spec: SteadExponentialFalloffSpec,
+) -> Result<FieldSweepRegistration, FieldSweepAdmissionError> {
+    let adjacency = FieldAdjacency::grid_n4(spec.width, spec.height, GRID_N4_NSEW, spec.value_col)?;
+    let canonical_order_proof = adjacency.apply_canonical_order_proof();
+    let map_program = vec![
+        neighbor(spec.value_col),
+        param(field_param::EDGE_SCALAR),
+        literal(spec.lambda),
+        binary(eml_opcode::MUL),
+        unary(eml_opcode::NEG),
+        exp_saturation_guard(),
+        unary(eml_opcode::EXP),
+        binary(eml_opcode::MUL),
+        ret(),
+    ];
+    let fold_program = vec![
+        param(field_param::ACCUMULATOR),
+        param(field_param::MAPPED),
+        binary(eml_opcode::ADD),
+        ret(),
+    ];
+    let post_program = vec![param(field_param::FOLDED), ret()];
+    apply_field_sweep_registration(FieldSweepRegistrationRequest {
+        adjacency,
+        n_dims: spec.n_dims,
+        output: FieldSweepOutput::Matrix(spec.output_col),
+        map_program,
+        fold_program,
+        identity_bits: 0.0f32.to_bits(),
+        post_program,
+        field_law_proof: Some(FieldLawProof::apply_non_conservative()),
+        transient_read_proof: None,
+        canonical_order_proof: Some(canonical_order_proof),
+        dt: spec.dt,
+    })
+}
+
+/// CPU twin of the falloff weight for one edge (bit-exact with the map program).
+pub fn stead_exponential_falloff_weight_oracle(lambda: f32, distance: f32) -> f32 {
+    let arg = (-(distance * lambda)).clamp(
+        f32::from_bits(simthing_core::EML_EXP_DOMAIN_MIN_BITS),
+        f32::from_bits(simthing_core::EML_EXP_SATURATION_CEILING_BITS),
+    );
+    simthing_core::eml_exp_pinned_f32(arg)
+}
+
+/// The canonical saturated-tail guard: `CLAMP_BOUNDED(x, exp_domain_min, 0)`.
+fn exp_saturation_guard() -> EmlNodeGpu {
+    node(
+        eml_opcode::CLAMP_BOUNDED,
+        0,
+        simthing_core::EML_EXP_DOMAIN_MIN_BITS,
+        simthing_core::EML_EXP_SATURATION_CEILING_BITS,
+    )
+}
+
 fn node(opcode: u32, flags: u32, a: u32, b: u32) -> EmlNodeGpu {
     EmlNodeGpu {
         opcode,

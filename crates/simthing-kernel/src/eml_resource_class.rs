@@ -228,7 +228,8 @@ fn emit_program(name: &str, nodes: &[EmlNodeGpu]) -> String {
             | eml_opcode::CLAMP_BOUNDED
             | eml_opcode::CLAMP_FLOORED
             | eml_opcode::ABS
-            | eml_opcode::FLOOR => {
+            | eml_opcode::FLOOR
+            | eml_opcode::EXP => {
                 let operand = stack.pop().expect("admitted unary postfix operand");
                 Some(match node.opcode {
                     eml_opcode::NEG => format!("-{operand}"),
@@ -241,6 +242,11 @@ fn emit_program(name: &str, nodes: &[EmlNodeGpu]) -> String {
                     }
                     eml_opcode::ABS => format!("abs({operand})"),
                     eml_opcode::FLOOR => format!("floor({operand})"),
+                    // EML-EXP-PRIMITIVE-0: the JIT block calls the ONE pinned
+                    // helper defined in the canonical shader outside the
+                    // excised evaluator region — same definition as the
+                    // interpreted arm, bit-identical by construction.
+                    eml_opcode::EXP => format!("eml_exp_pinned({operand})"),
                     _ => unreachable!(),
                 })
             }
@@ -303,5 +309,118 @@ fn binary_expression(opcode: u32, lhs: &str, rhs: &str) -> String {
         eml_opcode::CMP_GE => format!("select(0.0, 1.0, {lhs} >= {rhs})"),
         eml_opcode::CMP_EQ => format!("select(0.0, 1.0, {lhs} == {rhs})"),
         _ => unreachable!("field program admission seals binary opcodes"),
+    }
+}
+
+#[cfg(test)]
+mod eml_exp_lowering_tests {
+    use super::*;
+    use simthing_core::EmlResourceClass;
+
+    fn node(opcode: u32, a: u32, b: u32) -> EmlNodeGpu {
+        EmlNodeGpu {
+            opcode,
+            flags: 0,
+            a,
+            b,
+            c: 0,
+            d: 0,
+        }
+    }
+
+    fn exp_post_program() -> Vec<EmlNodeGpu> {
+        vec![
+            node(eml_opcode::TARGET_VALUE, 0, 0),
+            node(
+                eml_opcode::CLAMP_BOUNDED,
+                simthing_core::EML_EXP_DOMAIN_MIN_BITS,
+                simthing_core::EML_EXP_DOMAIN_MAX_BITS,
+            ),
+            node(eml_opcode::EXP, 0, 0),
+            node(eml_opcode::RETURN_TOP, 0, 0),
+        ]
+    }
+
+    /// EML-EXP-PRIMITIVE-0: the JIT lowers EXP as a call to the ONE pinned
+    /// helper, and that helper survives evaluator excision because it lives
+    /// outside the markers — no second definition, no bespoke shader.
+    #[test]
+    fn eml_exp_primitive_0_jit_lowering_calls_the_single_pinned_helper() {
+        let canonical = include_str!("shaders/field_sweep.wgsl");
+        let trivial = vec![
+            node(eml_opcode::LITERAL_F32, 0.0f32.to_bits(), 0),
+            node(eml_opcode::RETURN_TOP, 0, 0),
+        ];
+        let generated = generate_field_sweep_jit(
+            canonical,
+            EmlResourceClass::CompactStack4,
+            &trivial,
+            &trivial,
+            &exp_post_program(),
+        );
+        assert_eq!(
+            generated.matches("fn eml_exp_pinned(").count(),
+            1,
+            "exactly one pinned helper definition survives excision"
+        );
+        assert!(
+            generated.contains("eml_exp_pinned(v"),
+            "the generated straight-line block calls the pinned helper"
+        );
+        assert!(
+            !generated.contains("fn eval_program"),
+            "interpreted evaluator is excised from the JIT source"
+        );
+    }
+
+    /// The two hand-written shader homes carry a byte-identical pinned helper,
+    /// and its bitcast constants are exactly the CPU twin's pinned bits — the
+    /// referee that keeps the three sequence copies from drifting apart.
+    #[test]
+    fn eml_exp_primitive_0_wgsl_helper_copies_and_pinned_constants_agree() {
+        fn helper_block(source: &str) -> &str {
+            let start = source
+                .find("fn eml_exp_pinned(")
+                .expect("pinned helper present");
+            let end = start
+                + source[start..]
+                    .find("\n}")
+                    .expect("pinned helper closes")
+                + 2;
+            &source[start..end]
+        }
+        let field = helper_block(include_str!("shaders/field_sweep.wgsl"));
+        let accumulator = helper_block(include_str!("shaders/accumulator_op.wgsl"));
+        assert_eq!(
+            field, accumulator,
+            "one pinned sequence, two shader homes, zero drift"
+        );
+        for bits in [
+            simthing_core::eml_exp::EML_EXP_LOG2E.to_bits(),
+            simthing_core::eml_exp::EML_EXP_NEG_LN2_HI.to_bits(),
+            simthing_core::eml_exp::EML_EXP_NEG_LN2_LO.to_bits(),
+            simthing_core::eml_exp::EML_EXP_P5.to_bits(),
+            simthing_core::eml_exp::EML_EXP_P4.to_bits(),
+            simthing_core::eml_exp::EML_EXP_P3.to_bits(),
+            simthing_core::eml_exp::EML_EXP_P2.to_bits(),
+            simthing_core::eml_exp::EML_EXP_P1.to_bits(),
+            simthing_core::eml_exp::EML_EXP_P0.to_bits(),
+        ] {
+            let token = format!("bitcast<f32>(0x{bits:08X}u)");
+            assert!(
+                field.contains(&token),
+                "WGSL helper carries pinned constant {token}"
+            );
+        }
+        assert_eq!(
+            field.matches("fma(").count(),
+            8,
+            "exactly eight fused multiply-adds in the pinned sequence"
+        );
+        assert_eq!(
+            field.matches("round(").count(),
+            1,
+            "exactly one round-ties-even in the pinned sequence"
+        );
     }
 }

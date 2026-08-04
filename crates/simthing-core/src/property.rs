@@ -484,6 +484,12 @@ pub fn eval_overlay_eml(nodes: &[crate::eml_nodes::EmlNode], current: f32, n: f3
                 stack[sp - 2] = if lhs > rhs { 1.0 } else { 0.0 };
                 sp -= 1;
             }
+            opcode::NEG => stack[sp - 1] = -stack[sp - 1],
+            opcode::ABS => stack[sp - 1] = stack[sp - 1].abs(),
+            opcode::CLAMP_BOUNDED => {
+                stack[sp - 1] = stack[sp - 1].clamp(f32::from_bits(node.a), f32::from_bits(node.b));
+            }
+            opcode::EXP => stack[sp - 1] = crate::eml_exp::eml_exp_pinned_f32(stack[sp - 1]),
             opcode::SELECT => {
                 let f_val = stack[sp - 1];
                 let t_val = stack[sp - 2];
@@ -548,6 +554,113 @@ pub fn magnitude_band_eml_nodes(lo: f32, mid: f32, hi: f32, t1: f32, t2: f32) ->
         op(opcode::SELECT),
         op(opcode::RETURN_TOP),
     ]
+}
+
+/// EML-EXP-PRIMITIVE-0 consumer: sign-stable logistic steering curve replacing
+/// the `SELECT` staircase — the smooth CostBand response `full_eml_unification`
+/// §5 names. `N` is `PARAM(1)`; requires `k > 0` (authoring contract; for a
+/// falling response swap `lo`/`hi`).
+///
+/// Authored law (stabilized: the exponential argument is `≤ 0` by construction
+/// and explicitly `CLAMP_BOUNDED`-guarded — 5.10 shape 2, saturated tail):
+/// `out = SELECT(N >= x0, hi - h*e, lo + h*e)` with `h = 0.5*(hi-lo)` and
+/// `e = EXP(CLAMP(-ABS(k*N - k*x0), -87.33, 0))`. This is the C1 exponential
+/// sigmoid `lo + (hi-lo)*s`, `s = 1 - 0.5*e^{-|u|}` for `u >= 0`, `0.5*e^{-|u|}`
+/// otherwise. 31 nodes — `LegacyFixed32`.
+pub fn logistic_steering_eml_nodes(
+    lo: f32,
+    hi: f32,
+    k: f32,
+    x0: f32,
+) -> Vec<crate::eml_nodes::EmlNode> {
+    use crate::eml_exp::{EML_EXP_DOMAIN_MIN_BITS, EML_EXP_SATURATION_CEILING_BITS};
+    use crate::eml_nodes::{opcode, EmlNode};
+    debug_assert!(k > 0.0, "logistic steering authors a rising curve; k > 0");
+    let lit = |v: f32| EmlNode {
+        opcode: opcode::LITERAL_F32,
+        flags: 0,
+        a: v.to_bits(),
+        b: 0,
+        c: 0,
+        d: 0,
+    };
+    let param_n = EmlNode {
+        opcode: opcode::PARAM,
+        flags: 0,
+        a: 1, // N
+        b: 0,
+        c: 0,
+        d: 0,
+    };
+    let op = |opcode: u32| EmlNode {
+        opcode,
+        flags: 0,
+        a: 0,
+        b: 0,
+        c: 0,
+        d: 0,
+    };
+    let clamp_guard = EmlNode {
+        opcode: opcode::CLAMP_BOUNDED,
+        flags: 0,
+        a: EML_EXP_DOMAIN_MIN_BITS,
+        b: EML_EXP_SATURATION_CEILING_BITS,
+        c: 0,
+        d: 0,
+    };
+    let half_span = 0.5 * (hi - lo);
+    let kx0 = k * x0;
+    // e = EXP(CLAMP(NEG(ABS(k*N - k*x0)), domain_min, 0)) — 9 nodes, guard
+    // immediately preceding EXP (the tree-admission shape-2 pattern).
+    let e_chain = |nodes: &mut Vec<EmlNode>| {
+        nodes.push(param_n);
+        nodes.push(lit(k));
+        nodes.push(op(opcode::MUL));
+        nodes.push(lit(kx0));
+        nodes.push(op(opcode::SUB));
+        nodes.push(op(opcode::ABS));
+        nodes.push(op(opcode::NEG));
+        nodes.push(clamp_guard);
+        nodes.push(op(opcode::EXP));
+    };
+    let mut nodes = Vec::with_capacity(31);
+    // cond: N >= x0
+    nodes.push(param_n);
+    nodes.push(lit(x0));
+    nodes.push(op(opcode::CMP_GE));
+    // true branch: hi - half_span*e
+    nodes.push(lit(hi));
+    nodes.push(lit(half_span));
+    e_chain(&mut nodes);
+    nodes.push(op(opcode::MUL));
+    nodes.push(op(opcode::SUB));
+    // false branch: lo + half_span*e
+    nodes.push(lit(lo));
+    nodes.push(lit(half_span));
+    e_chain(&mut nodes);
+    nodes.push(op(opcode::MUL));
+    nodes.push(op(opcode::ADD));
+    nodes.push(op(opcode::SELECT));
+    nodes.push(op(opcode::RETURN_TOP));
+    nodes
+}
+
+/// CPU twin of [`logistic_steering_eml_nodes`] (bit-exact with
+/// [`eval_overlay_eml`] over the same literals).
+pub fn logistic_steering_oracle(lo: f32, hi: f32, k: f32, x0: f32, n: f32) -> f32 {
+    let half_span = 0.5 * (hi - lo);
+    let kx0 = k * x0;
+    let u = n * k - kx0;
+    let arg = (-u.abs()).clamp(
+        f32::from_bits(crate::eml_exp::EML_EXP_DOMAIN_MIN_BITS),
+        f32::from_bits(crate::eml_exp::EML_EXP_SATURATION_CEILING_BITS),
+    );
+    let e = crate::eml_exp::eml_exp_pinned_f32(arg);
+    if n >= x0 {
+        hi - half_span * e
+    } else {
+        lo + half_span * e
+    }
 }
 
 
