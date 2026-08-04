@@ -66,7 +66,10 @@ fn production_reduce_up_returns_stamped_product_and_integrates_into_parent_state
         integrate_stamped_reduce_up(parent_gen, &stamped, &mut parent, &mut schedule).unwrap();
     assert_eq!(receipt.staleness, 3);
     assert_eq!(parent.product_count, 1);
-    assert_eq!(parent.surplus_total, stamped.product().surplus_total);
+    assert_eq!(
+        parent.surplus_total,
+        u64::from(stamped.product().surplus_total)
+    );
 }
 
 #[test]
@@ -125,7 +128,10 @@ fn schedule_is_per_product_full_generation_set_and_replays_bit_exactly() {
     assert_eq!(schedule.entries().len(), 2);
 
     // Values sum under integration; stamps remain distinct in the schedule.
-    assert_eq!(live.surplus_total, p1.product().surplus_total * 2);
+    assert_eq!(
+        live.surplus_total,
+        u64::from(p1.product().surplus_total) * 2
+    );
 
     let products = vec![p2.clone(), p1.clone()]; // ambient order reversed
     let replayed = replay_reduce_up_schedule(&schedule, &products).unwrap();

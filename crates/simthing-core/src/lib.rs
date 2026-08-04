@@ -47,7 +47,7 @@ pub use accumulator_spec::{
     AccumulatorRole, AccumulatorSpec, ArenaName, BalanceSpec, LogTier, NumCountSource,
 };
 pub use automaton::{
-    deliver_deficit_directive, deliver_predicate_broadcast, deliver_routed_overlay,
+    capture_ancestor_standing_policy, deliver_deficit_directive, deliver_predicate_broadcast, deliver_routed_overlay,
     deliver_standing_directive, inherit_active_overlays, overlay_origin_structural_coord,
     DirectiveDeliveryReceipt, LiveOverlayRoutes, OverlayDeliveryError,
 };
@@ -97,10 +97,11 @@ pub use intensity_eml::{
 };
 pub use generation_stamp::{
     admit_dispatch_minted_overlay, dispatch_until_dissolved, integrate_stamped_product,
-    integrate_unstamped_product_forbidden, replay_integration_schedule, BackpressurePolicy,
+    integrate_unstamped_product_forbidden, replay_integration_schedule, replay_standing_views,
+    AncestorStandingPolicyView, AuthoredSeamStaleness, BackpressurePolicy,
     DispatchOverlayError, GenerationStamp, GenerationStamped, IntegrateError, IntegrationReceipt,
-    IntegrationSchedule, IntegrationScheduleEntry, RingPushOutcome, StampedEgressEntry,
-    StampedEventRing,
+    IntegrationSchedule, IntegrationScheduleEntry, IntegrationScheduleRowKind, RingPushOutcome,
+    StampedEgressEntry, StampedEventRing, StandingViewDoubleBuffer,
 };
 pub use overlay::{
     DissolveCondition, Overlay, OverlayKind, OverlayLifecycle, OverlaySource,

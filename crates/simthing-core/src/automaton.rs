@@ -260,6 +260,26 @@ pub fn inherit_active_overlays(node: &SimThing, ancestors: &TransformStack) -> T
         })
 }
 
+/// Capture the active standing policy inherited at `target`, in root-first order.
+///
+/// This is a site-local capture door. Independently executing descendants must receive the
+/// returned value through a generation-stamped seam snapshot; they must not retain references
+/// into this live tree or re-read it between generation barriers.
+pub fn capture_ancestor_standing_policy(
+    root: &SimThing,
+    target: SimThingId,
+) -> Result<Vec<Overlay>, OverlayDeliveryError> {
+    let path = find_path(root, target).ok_or(OverlayDeliveryError::TargetNotInTree { target })?;
+    Ok(path
+        .iter()
+        .take(path.len().saturating_sub(1))
+        .flat_map(|indices| node_at_path(root, indices).into_iter())
+        .flat_map(|node| node.overlays.iter())
+        .filter(|overlay| overlay.is_active() && is_policy(overlay))
+        .cloned()
+        .collect())
+}
+
 /// Derive an event's structural location from its required origin and already
 /// validated placement proofs. No coordinate is copied onto the overlay.
 pub fn overlay_origin_structural_coord(

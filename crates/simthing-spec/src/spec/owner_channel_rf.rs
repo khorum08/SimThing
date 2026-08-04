@@ -13,8 +13,9 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use simthing_core::owner_channel::{resolve_owner, resolve_owners_in_order, OwnerRef};
 use simthing_core::{
-    integrate_stamped_product, GenerationStamp, GenerationStamped, IntegrateError,
-    IntegrationReceipt, IntegrationSchedule, SimThing, SimThingId,
+    integrate_stamped_product, AncestorStandingPolicyView, AuthoredSeamStaleness,
+    GenerationStamp, GenerationStamped, IntegrateError, IntegrationReceipt, IntegrationSchedule,
+    IntegrationScheduleRowKind, SimThing, SimThingId, StandingViewDoubleBuffer,
 };
 
 #[cfg(test)]
@@ -117,9 +118,11 @@ pub fn reduce_up_product_key(report: &OwnerChannelRfReduceUpReport) -> u64 {
 /// This is the integrated output the schedule must be able to replay bit-exactly.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ParentRfIntegrationState {
-    pub surplus_total: u32,
-    pub deficit_total: u32,
-    pub product_count: u32,
+    pub surplus_total: u64,
+    pub deficit_total: u64,
+    pub product_count: u64,
+    /// Exact per-scope values after direct or queued integration.
+    pub buckets: BTreeMap<OwnerChannelScopeKey, OwnerChannelRfConservedValue>,
     /// Fold of product keys in schedule order (bit-exact replay witness).
     pub schedule_fold: u64,
 }
@@ -137,22 +140,20 @@ pub fn integrate_stamped_reduce_up(
 ) -> Result<IntegrationReceipt, IntegrateError> {
     let report = product.product();
     let key = reduce_up_product_key(report);
+    let mut next = parent_state.clone();
+    apply_report_exact(&mut next, report)?;
+    next.product_count = next
+        .product_count
+        .checked_add(1)
+        .ok_or(IntegrateError::ArithmeticOverflow)?;
     let receipt = integrate_stamped_product(parent_generation, product, key, schedule);
-    // Apply RF product into parent state (production integration semantics).
-    // Values sum; stamps remain per-product in the schedule (DA fence / 6.2 coalesce note).
-    parent_state.surplus_total = parent_state
-        .surplus_total
-        .saturating_add(report.surplus_total);
-    parent_state.deficit_total = parent_state
-        .deficit_total
-        .saturating_add(report.deficit_total);
-    parent_state.product_count = parent_state.product_count.saturating_add(1);
-    parent_state.schedule_fold = parent_state
+    next.schedule_fold = next
         .schedule_fold
         .wrapping_mul(0x9E37_79B9_7F4A_7C15)
         .wrapping_add(key)
         .wrapping_add(product.generation().get() as u64)
         .wrapping_add(parent_generation.get() as u64);
+    *parent_state = next;
     Ok(receipt)
 }
 
@@ -200,7 +201,9 @@ pub fn replay_reduce_up_schedule(
     }
     let mut state = ParentRfIntegrationState::default();
     let mut scratch = IntegrationSchedule::new();
-    for entry in schedule.entries() {
+    for entry in schedule
+        .entries_of_kind(IntegrationScheduleRowKind::DirectReduceUp)
+    {
         let found = products.iter().find(|p| {
             p.generation() == entry.child_generation
                 && reduce_up_product_key(p.product()) == entry.product_key
@@ -228,6 +231,648 @@ pub fn integrate_raw_reduce_up_report_forbidden(
     _schedule: &mut IntegrationSchedule,
 ) -> Result<IntegrationReceipt, IntegrateError> {
     Err(IntegrateError::UnstampedProduct)
+}
+
+/// Exact conserved numeric surface of one canonical RF bucket after crossing a seam.
+/// Values widen to `u64` because a burst may contain many individually admitted `u32` products;
+/// coalescing must sum rather than saturate, overwrite, or throttle any field.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct OwnerChannelRfConservedValue {
+    pub participant_count: u64,
+    pub surplus_total: u64,
+    pub deficit_total: u64,
+    pub net_surplus: u64,
+    pub net_deficit: u64,
+}
+
+impl OwnerChannelRfConservedValue {
+    fn from_bucket(bucket: &OwnerChannelRfBucket) -> Self {
+        Self {
+            participant_count: u64::from(bucket.participant_count),
+            surplus_total: u64::from(bucket.surplus_total),
+            deficit_total: u64::from(bucket.deficit_total),
+            net_surplus: u64::from(bucket.net_surplus),
+            net_deficit: u64::from(bucket.net_deficit),
+        }
+    }
+
+    fn checked_add(self, other: Self) -> Option<Self> {
+        Some(Self {
+            participant_count: self.participant_count.checked_add(other.participant_count)?,
+            surplus_total: self.surplus_total.checked_add(other.surplus_total)?,
+            deficit_total: self.deficit_total.checked_add(other.deficit_total)?,
+            net_surplus: self.net_surplus.checked_add(other.net_surplus)?,
+            net_deficit: self.net_deficit.checked_add(other.net_deficit)?,
+        })
+    }
+
+    fn checked_sub(self, other: Self) -> Option<Self> {
+        Some(Self {
+            participant_count: self.participant_count.checked_sub(other.participant_count)?,
+            surplus_total: self.surplus_total.checked_sub(other.surplus_total)?,
+            deficit_total: self.deficit_total.checked_sub(other.deficit_total)?,
+            net_surplus: self.net_surplus.checked_sub(other.net_surplus)?,
+            net_deficit: self.net_deficit.checked_sub(other.net_deficit)?,
+        })
+    }
+}
+
+/// Observable accounting for one `{owner, resource, scope}` bucket.
+/// `admitted` is the immutable emitted-product total against which the three live locations
+/// are checked. It is an oracle total, not a fourth place in which product can reside.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct OwnerChannelRfSeamBalance {
+    child: OwnerChannelRfConservedValue,
+    seam: OwnerChannelRfConservedValue,
+    parent: OwnerChannelRfConservedValue,
+    admitted: OwnerChannelRfConservedValue,
+}
+
+impl OwnerChannelRfSeamBalance {
+    pub fn child(self) -> OwnerChannelRfConservedValue {
+        self.child
+    }
+
+    pub fn seam(self) -> OwnerChannelRfConservedValue {
+        self.seam
+    }
+
+    pub fn parent(self) -> OwnerChannelRfConservedValue {
+        self.parent
+    }
+
+    pub fn admitted(self) -> OwnerChannelRfConservedValue {
+        self.admitted
+    }
+
+    pub fn is_exact(self) -> bool {
+        self.child
+            .checked_add(self.seam)
+            .and_then(|value| value.checked_add(self.parent))
+            == Some(self.admitted)
+    }
+}
+
+/// One losslessly coalesced pending carrier. There is at most one carrier for each scope key.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct QueuedOwnerChannelRfBucket {
+    pub scope: OwnerChannelScopeKey,
+    pub value: OwnerChannelRfConservedValue,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct PendingContribution {
+    generation: GenerationStamp,
+    product_key: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct PendingBucket {
+    value: OwnerChannelRfConservedValue,
+    newest_generation: GenerationStamp,
+}
+
+/// Result of one parent generation-barrier application.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AsyncQueueBarrierReceipt {
+    pub distinct_bucket_count: usize,
+    pub contributing_product_count: usize,
+}
+
+/// The single bidirectional CPU seam for one independently executing child tree.
+///
+/// Upward conserved products share one exact, scope-keyed holding queue. Downward standing state
+/// shares the same authored tolerance and the same external [`IntegrationSchedule`], but is
+/// published through a torn-free double buffer because it is read-only state rather than a
+/// conserved value. No operation waits for the other tree.
+#[derive(Debug, Clone)]
+pub struct AsyncOwnerChannelRfSeam {
+    tolerance: AuthoredSeamStaleness,
+    pending: BTreeMap<OwnerChannelScopeKey, PendingBucket>,
+    /// In-flight membership needed to append one row per source product at the barrier.
+    /// Replay authority remains exclusively in the external `IntegrationSchedule`.
+    pending_products: Vec<PendingContribution>,
+    admitted_product_count: u64,
+    applied_product_count: u64,
+    balances: BTreeMap<OwnerChannelScopeKey, OwnerChannelRfSeamBalance>,
+    standing: StandingViewDoubleBuffer,
+}
+
+impl AsyncOwnerChannelRfSeam {
+    /// Admit one seam with an explicitly authored tolerance. There is no inferred/default value.
+    pub fn admit(tolerance: AuthoredSeamStaleness) -> Self {
+        Self {
+            tolerance,
+            pending: BTreeMap::new(),
+            pending_products: Vec::new(),
+            admitted_product_count: 0,
+            applied_product_count: 0,
+            balances: BTreeMap::new(),
+            standing: StandingViewDoubleBuffer::new(),
+        }
+    }
+
+    pub fn tolerance(&self) -> AuthoredSeamStaleness {
+        self.tolerance
+    }
+
+    /// Queue one child product without blocking. Every bucket is transferred child -> seam
+    /// inside this call, and a same-scope pending value is increased by exact sums.
+    pub fn enqueue_reduce_up(
+        &mut self,
+        product: &StampedReduceUpProduct,
+    ) -> Result<(), IntegrateError> {
+        self.admitted_product_count
+            .checked_add(1)
+            .ok_or(IntegrateError::ArithmeticOverflow)?;
+        let mut incoming = BTreeMap::<
+            OwnerChannelScopeKey,
+            (OwnerChannelRfConservedValue, GenerationStamp),
+        >::new();
+        for bucket in &product.product().buckets {
+            let value = OwnerChannelRfConservedValue::from_bucket(bucket);
+            match incoming.entry(bucket.scope.clone()) {
+                std::collections::btree_map::Entry::Vacant(entry) => {
+                    entry.insert((value, product.generation()));
+                }
+                std::collections::btree_map::Entry::Occupied(mut entry) => {
+                    let current = entry.get().0;
+                    let current_generation = entry.get().1;
+                    entry.get_mut().0 = current
+                        .checked_add(value)
+                        .ok_or(IntegrateError::ArithmeticOverflow)?;
+                    entry.get_mut().1 = current_generation.max(product.generation());
+                }
+            }
+        }
+
+        // Full preflight: no scope mutates unless every exact addition and transfer is valid.
+        for (scope, (value, _)) in &incoming {
+            if let Some(pending) = self.pending.get(scope) {
+                pending
+                    .value
+                    .checked_add(*value)
+                    .ok_or(IntegrateError::ArithmeticOverflow)?;
+            }
+            let balance = self.balances.get(scope).copied().unwrap_or_default();
+            balance
+                .admitted
+                .checked_add(*value)
+                .ok_or(IntegrateError::ArithmeticOverflow)?;
+            balance
+                .child
+                .checked_add(*value)
+                .ok_or(IntegrateError::ArithmeticOverflow)?;
+            balance
+                .seam
+                .checked_add(*value)
+                .ok_or(IntegrateError::ArithmeticOverflow)?;
+        }
+
+        for (scope, (value, newest_incoming)) in incoming {
+            let balance = self.balances.entry(scope.clone()).or_default();
+            balance.admitted = balance.admitted.checked_add(value).expect("preflight");
+            balance.child = balance.child.checked_add(value).expect("preflight");
+            debug_assert!(balance.is_exact(), "child receipt must conserve immediately");
+            balance.child = balance.child.checked_sub(value).expect("just credited");
+            balance.seam = balance.seam.checked_add(value).expect("preflight");
+            debug_assert!(balance.is_exact(), "seam holding transfer must conserve");
+
+            match self.pending.entry(scope) {
+                std::collections::btree_map::Entry::Vacant(entry) => {
+                    entry.insert(PendingBucket {
+                        value,
+                        newest_generation: newest_incoming,
+                    });
+                }
+                std::collections::btree_map::Entry::Occupied(mut entry) => {
+                    let pending = entry.get_mut();
+                    pending.value = pending.value.checked_add(value).expect("preflight");
+                    pending.newest_generation = pending.newest_generation.max(newest_incoming);
+                }
+            }
+        }
+        self.pending_products.push(PendingContribution {
+            generation: product.generation(),
+            product_key: queued_reduce_up_product_key(product.product()),
+        });
+        self.admitted_product_count += 1;
+        self.check_conservation()
+    }
+
+    /// Number of pending carriers, exactly the number of distinct scope keys.
+    pub fn pending_len(&self) -> usize {
+        self.pending.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.pending.is_empty() && self.pending_products.is_empty()
+    }
+
+    /// Read coalesced carriers in canonical scope order. Each carrier stamp is the newest/max
+    /// contributing generation; the complete contributing set remains in the schedule rows.
+    pub fn pending_carriers(
+        &self,
+    ) -> Vec<GenerationStamped<QueuedOwnerChannelRfBucket>> {
+        self.pending
+            .iter()
+            .map(|(scope, pending)| {
+                GenerationStamped::stamp(
+                    pending.newest_generation,
+                    QueuedOwnerChannelRfBucket {
+                        scope: scope.clone(),
+                        value: pending.value,
+                    },
+                )
+            })
+            .collect()
+    }
+
+    pub fn balance(
+        &self,
+        scope: &OwnerChannelScopeKey,
+    ) -> Option<OwnerChannelRfSeamBalance> {
+        self.balances.get(scope).copied()
+    }
+
+    pub fn check_conservation(&self) -> Result<(), IntegrateError> {
+        if !self.balances.values().all(|balance| balance.is_exact()) {
+            return Err(IntegrateError::ConservationViolation);
+        }
+        for (scope, balance) in &self.balances {
+            let pending = self
+                .pending
+                .get(scope)
+                .map(|bucket| bucket.value)
+                .unwrap_or_default();
+            if pending != balance.seam {
+                return Err(IntegrateError::ConservationViolation);
+            }
+        }
+        if self
+            .pending
+            .keys()
+            .any(|scope| !self.balances.contains_key(scope))
+        {
+            return Err(IntegrateError::ConservationViolation);
+        }
+        let pending_count = u64::try_from(self.pending_products.len())
+            .map_err(|_| IntegrateError::ConservationViolation)?;
+        if self
+            .applied_product_count
+            .checked_add(pending_count)
+            != Some(self.admitted_product_count)
+        {
+            return Err(IntegrateError::ConservationViolation);
+        }
+        Ok(())
+    }
+
+    /// Drain every pending bucket into the parent only at its generation barrier. Staleness is
+    /// checked against each coalesced carrier's newest/max source stamp before any value or
+    /// schedule row mutates; historical source stamps remain replay evidence and never become
+    /// admission blockers. Lag never waits.
+    pub fn apply_parent_generation_barrier(
+        &mut self,
+        parent_generation: GenerationStamp,
+        parent_state: &mut ParentRfIntegrationState,
+        schedule: &mut IntegrationSchedule,
+    ) -> Result<AsyncQueueBarrierReceipt, IntegrateError> {
+        for pending in self.pending.values() {
+            self.tolerance
+                .check(parent_generation, pending.newest_generation)?;
+        }
+
+        let contributing_product_count = self.pending_products.len();
+        let contributing_product_count_u64 = u64::try_from(contributing_product_count)
+            .map_err(|_| IntegrateError::ArithmeticOverflow)?;
+        self.applied_product_count
+            .checked_add(contributing_product_count_u64)
+            .ok_or(IntegrateError::ArithmeticOverflow)?;
+        parent_state
+            .product_count
+            .checked_add(contributing_product_count_u64)
+            .ok_or(IntegrateError::ArithmeticOverflow)?;
+        self.pending.values().try_fold(
+            (parent_state.surplus_total, parent_state.deficit_total),
+            |(surplus, deficit), pending| {
+                Some((
+                    surplus.checked_add(pending.value.surplus_total)?,
+                    deficit.checked_add(pending.value.deficit_total)?,
+                ))
+            },
+        )
+        .ok_or(IntegrateError::ArithmeticOverflow)?;
+        for (scope, pending) in &self.pending {
+            parent_state
+                .buckets
+                .get(scope)
+                .copied()
+                .unwrap_or_default()
+                .checked_add(pending.value)
+                .ok_or(IntegrateError::ArithmeticOverflow)?;
+            let balance = self.balances.get(scope).copied().unwrap_or_default();
+            balance
+                .seam
+                .checked_sub(pending.value)
+                .ok_or(IntegrateError::ConservationViolation)?;
+            balance
+                .parent
+                .checked_add(pending.value)
+                .ok_or(IntegrateError::ArithmeticOverflow)?;
+        }
+
+        let distinct_bucket_count = self.pending.len();
+        for (scope, pending) in &self.pending {
+            add_queue_value_exact(parent_state, scope, pending.value)?;
+            let balance = self
+                .balances
+                .get_mut(scope)
+                .expect("queued scope has accounting");
+            balance.seam = balance
+                .seam
+                .checked_sub(pending.value)
+                .expect("preflight");
+            balance.parent = balance
+                .parent
+                .checked_add(pending.value)
+                .expect("preflight");
+            debug_assert!(balance.is_exact(), "seam -> parent transfer must conserve");
+        }
+        for contribution in &self.pending_products {
+            schedule.record_kind(
+                IntegrationScheduleRowKind::QueueInjection,
+                parent_generation,
+                contribution.generation,
+                contribution.product_key,
+            );
+            fold_queue_schedule_row(
+                parent_state,
+                parent_generation,
+                contribution.generation,
+                contribution.product_key,
+            );
+        }
+        parent_state.product_count += contributing_product_count_u64;
+        self.applied_product_count += contributing_product_count_u64;
+        self.pending.clear();
+        self.pending_products.clear();
+        self.check_conservation()?;
+        Ok(AsyncQueueBarrierReceipt {
+            distinct_bucket_count,
+            contributing_product_count,
+        })
+    }
+
+    /// Test-only planted defect: reintroduce historical-contributor staleness blocking.
+    ///
+    /// Production admission deliberately does not call this path. It exists so the combined
+    /// coalescing/staleness proof can demonstrate that checking the oldest/every source product
+    /// rejects a carrier whose canonical newest/max stamp is admissible.
+    #[cfg(test)]
+    fn check_historical_contributors_for_staleness_mutant(
+        &self,
+        parent_generation: GenerationStamp,
+    ) -> Result<(), IntegrateError> {
+        for contribution in &self.pending_products {
+            self.tolerance
+                .check(parent_generation, contribution.generation)?;
+        }
+        Ok(())
+    }
+
+    /// Test-only planted defect: make carrier freshness follow arrival order instead of max.
+    ///
+    /// The assignment below is the exact last-wins mutation the out-of-order referee exists to
+    /// reject. Production ingress continues to use `pending.newest_generation.max(...)` only.
+    #[cfg(test)]
+    fn enqueue_reduce_up_last_wins_mutant(
+        &mut self,
+        product: &StampedReduceUpProduct,
+    ) -> Result<(), IntegrateError> {
+        let newest_incoming = product.generation();
+        let scopes = product
+            .product()
+            .buckets
+            .iter()
+            .map(|bucket| bucket.scope.clone())
+            .collect::<BTreeSet<_>>();
+        self.enqueue_reduce_up(product)?;
+        for scope in scopes {
+            self.pending
+                .get_mut(&scope)
+                .expect("incoming scope was queued")
+                .newest_generation = newest_incoming;
+        }
+        Ok(())
+    }
+
+    /// Stage a complete downward ancestor standing/policy view in the inactive buffer.
+    pub fn stage_ancestor_standing_view(
+        &mut self,
+        view: GenerationStamped<AncestorStandingPolicyView>,
+    ) {
+        self.standing.stage(view);
+    }
+
+    /// Publish staged downward state at the child barrier through the same schedule recorder.
+    pub fn apply_child_generation_barrier(
+        &mut self,
+        child_generation: GenerationStamp,
+        schedule: &mut IntegrationSchedule,
+    ) -> Result<Option<IntegrationReceipt>, IntegrateError> {
+        self.standing.publish_at_generation_barrier(
+            child_generation,
+            self.tolerance,
+            schedule,
+        )
+    }
+
+    pub fn standing_view(
+        &self,
+        child_generation: GenerationStamp,
+    ) -> Result<&GenerationStamped<AncestorStandingPolicyView>, IntegrateError> {
+        self.standing.read(child_generation, self.tolerance)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct AsyncOwnerChannelRfReplay {
+    pub parent_state: ParentRfIntegrationState,
+    pub standing_reads: Vec<GenerationStamped<AncestorStandingPolicyView>>,
+}
+
+/// Replay both directions from the one typed schedule. Missing rows hard-error; replay never
+/// guesses from ambient arrival order or consults a second injection log.
+pub fn replay_async_owner_channel_rf_seam(
+    schedule: &IntegrationSchedule,
+    reduce_up_products: &[StampedReduceUpProduct],
+    standing_views: &[GenerationStamped<AncestorStandingPolicyView>],
+) -> Result<AsyncOwnerChannelRfReplay, IntegrateError> {
+    if schedule.entries().is_empty()
+        && (!reduce_up_products.is_empty() || !standing_views.is_empty())
+    {
+        return Err(IntegrateError::MissingSchedule);
+    }
+    let mut parent_state = ParentRfIntegrationState::default();
+    let mut standing_reads = Vec::new();
+    for entry in schedule.entries() {
+        match entry.row_kind() {
+            IntegrationScheduleRowKind::DirectReduceUp => {
+                let product = reduce_up_products.iter().find(|product| {
+                    product.generation() == entry.child_generation
+                        && reduce_up_product_key(product.product()) == entry.product_key
+                });
+                let Some(product) = product else {
+                    return Err(IntegrateError::MissingRecordedProduct {
+                        kind: entry.row_kind(),
+                        source_generation: entry.child_generation.get(),
+                        product_key: entry.product_key,
+                    });
+                };
+                let mut scratch = IntegrationSchedule::new();
+                integrate_stamped_reduce_up(
+                    entry.parent_generation,
+                    product,
+                    &mut parent_state,
+                    &mut scratch,
+                )?;
+            }
+            IntegrationScheduleRowKind::QueueInjection => {
+                let found = reduce_up_products.iter().find(|product| {
+                    product.generation() == entry.child_generation
+                        && queued_reduce_up_product_key(product.product()) == entry.product_key
+                });
+                let Some(product) = found else {
+                    return Err(IntegrateError::MissingRecordedProduct {
+                        kind: entry.row_kind(),
+                        source_generation: entry.child_generation.get(),
+                        product_key: entry.product_key,
+                    });
+                };
+                apply_report_exact(&mut parent_state, product.product())?;
+                parent_state.product_count = parent_state
+                    .product_count
+                    .checked_add(1)
+                    .ok_or(IntegrateError::ArithmeticOverflow)?;
+                fold_queue_schedule_row(
+                    &mut parent_state,
+                    entry.parent_generation,
+                    entry.child_generation,
+                    entry.product_key,
+                );
+            }
+            IntegrationScheduleRowKind::StandingView => {
+                let found = standing_views.iter().find(|view| {
+                    view.generation() == entry.child_generation
+                        && view.product().product_key().ok() == Some(entry.product_key)
+                });
+                let Some(view) = found else {
+                    return Err(IntegrateError::MissingRecordedProduct {
+                        kind: entry.row_kind(),
+                        source_generation: entry.child_generation.get(),
+                        product_key: entry.product_key,
+                    });
+                };
+                standing_reads.push(view.clone());
+            }
+        }
+    }
+    Ok(AsyncOwnerChannelRfReplay {
+        parent_state,
+        standing_reads,
+    })
+}
+
+fn apply_report_exact(
+    state: &mut ParentRfIntegrationState,
+    report: &OwnerChannelRfReduceUpReport,
+) -> Result<(), IntegrateError> {
+    state.surplus_total = state
+        .surplus_total
+        .checked_add(u64::from(report.surplus_total))
+        .ok_or(IntegrateError::ArithmeticOverflow)?;
+    state.deficit_total = state
+        .deficit_total
+        .checked_add(u64::from(report.deficit_total))
+        .ok_or(IntegrateError::ArithmeticOverflow)?;
+    for bucket in &report.buckets {
+        let value = OwnerChannelRfConservedValue::from_bucket(bucket);
+        let entry = state.buckets.entry(bucket.scope.clone()).or_default();
+        *entry = entry
+            .checked_add(value)
+            .ok_or(IntegrateError::ArithmeticOverflow)?;
+    }
+    Ok(())
+}
+
+fn add_queue_value_exact(
+    state: &mut ParentRfIntegrationState,
+    scope: &OwnerChannelScopeKey,
+    value: OwnerChannelRfConservedValue,
+) -> Result<(), IntegrateError> {
+    state.surplus_total = state
+        .surplus_total
+        .checked_add(value.surplus_total)
+        .ok_or(IntegrateError::ArithmeticOverflow)?;
+    state.deficit_total = state
+        .deficit_total
+        .checked_add(value.deficit_total)
+        .ok_or(IntegrateError::ArithmeticOverflow)?;
+    let entry = state.buckets.entry(scope.clone()).or_default();
+    *entry = entry
+        .checked_add(value)
+        .ok_or(IntegrateError::ArithmeticOverflow)?;
+    Ok(())
+}
+
+fn fold_queue_schedule_row(
+    state: &mut ParentRfIntegrationState,
+    parent_generation: GenerationStamp,
+    child_generation: GenerationStamp,
+    product_key: u64,
+) {
+    state.schedule_fold = state
+        .schedule_fold
+        .wrapping_mul(0x9E37_79B9_7F4A_7C15)
+        .wrapping_add(0x5155_4555_4549_4E4A)
+        .wrapping_add(product_key)
+        .wrapping_add(child_generation.get() as u64)
+        .wrapping_add(parent_generation.get() as u64);
+}
+
+fn queued_reduce_up_product_key(report: &OwnerChannelRfReduceUpReport) -> u64 {
+    let mut hash = 0xcbf2_9ce4_8422_2325u64;
+    for bucket in &report.buckets {
+        for bytes in [
+            bucket.scope.owner_ref.as_str().as_bytes(),
+            bucket.scope.resource_key.as_str().as_bytes(),
+            bucket.scope.scope_id.as_str().as_bytes(),
+        ] {
+            hash_u64(&mut hash, bytes.len() as u64);
+            for byte in bytes {
+                hash ^= u64::from(*byte);
+                hash = hash.wrapping_mul(0x0000_0100_0000_01b3);
+            }
+        }
+        for value in [
+            bucket.participant_count,
+            bucket.surplus_total,
+            bucket.deficit_total,
+            bucket.net_surplus,
+            bucket.net_deficit,
+        ] {
+            hash_u64(&mut hash, u64::from(value));
+        }
+    }
+    hash
+}
+
+fn hash_u64(hash: &mut u64, value: u64) {
+    for byte in value.to_le_bytes() {
+        *hash ^= u64::from(byte);
+        *hash = hash.wrapping_mul(0x0000_0100_0000_01b3);
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -918,5 +1563,195 @@ mod wait_mutant_proof {
             &mut schedule2,
         )
         .expect("restored green");
+    }
+}
+
+#[cfg(test)]
+mod async_queue_accounting_mutant_proof {
+    use super::*;
+
+    fn same_key_product_at(generation: u32) -> StampedReduceUpProduct {
+        GenerationStamped::stamp(
+            GenerationStamp::new(generation),
+            OwnerChannelRfReduceUpReport {
+                participant_count: 1,
+                owner_count: 1,
+                bucket_count: 1,
+                surplus_total: 2,
+                deficit_total: 3,
+                buckets: vec![OwnerChannelRfBucket {
+                    scope: OwnerChannelScopeKey {
+                        owner_ref: OwnerRef::new("synthetic-owner"),
+                        resource_key: ResourceKey::new("synthetic-resource"),
+                        scope_id: ScopeId::new("synthetic-scope"),
+                    },
+                    source_row_indices: vec![0],
+                    participant_count: 1,
+                    surplus_total: 2,
+                    deficit_total: 3,
+                    net_surplus: 0,
+                    net_deficit: 1,
+                }],
+                stead: OwnerChannelRfSteadSurface {
+                    own_aggregates: Vec::new(),
+                    crossing_flows: Vec::new(),
+                },
+            },
+        )
+    }
+
+    fn seeded_seam() -> (AsyncOwnerChannelRfSeam, OwnerChannelScopeKey) {
+        let scope = OwnerChannelScopeKey {
+            owner_ref: OwnerRef::new("synthetic-owner"),
+            resource_key: ResourceKey::new("synthetic-resource"),
+            scope_id: ScopeId::new("synthetic-scope"),
+        };
+        let value = OwnerChannelRfConservedValue {
+            participant_count: 1,
+            surplus_total: 2,
+            deficit_total: 3,
+            net_surplus: 0,
+            net_deficit: 1,
+        };
+        let mut seam = AsyncOwnerChannelRfSeam::admit(AuthoredSeamStaleness::new(1));
+        seam.pending.insert(
+            scope.clone(),
+            PendingBucket {
+                value,
+                newest_generation: GenerationStamp::new(1),
+            },
+        );
+        seam.balances.insert(
+            scope.clone(),
+            OwnerChannelRfSeamBalance {
+                child: OwnerChannelRfConservedValue::default(),
+                seam: value,
+                parent: OwnerChannelRfConservedValue::default(),
+                admitted: value,
+            },
+        );
+        seam.pending_products.push(PendingContribution {
+            generation: GenerationStamp::new(1),
+            product_key: 1,
+        });
+        seam.admitted_product_count = 1;
+        (seam, scope)
+    }
+
+    #[test]
+    fn dropped_pending_product_mutant_reds() {
+        let (mut seam, _) = seeded_seam();
+        seam.check_conservation().expect("seed is exact");
+        seam.pending_products.clear();
+        assert!(matches!(
+            seam.check_conservation().unwrap_err(),
+            IntegrateError::ConservationViolation
+        ));
+    }
+
+    #[test]
+    fn in_flight_escape_from_all_three_accounts_mutant_reds() {
+        let (mut seam, scope) = seeded_seam();
+        seam.balances.get_mut(&scope).unwrap().seam = OwnerChannelRfConservedValue::default();
+        assert!(matches!(
+            seam.check_conservation().unwrap_err(),
+            IntegrateError::ConservationViolation
+        ));
+    }
+
+    #[test]
+    fn coalesced_staleness_mutants_red_against_newest_carrier_law() {
+        let (mut seam, scope) = seeded_seam();
+        seam.tolerance = AuthoredSeamStaleness::new(3);
+        seam.pending.get_mut(&scope).unwrap().value = OwnerChannelRfConservedValue {
+            participant_count: 5,
+            surplus_total: 10,
+            deficit_total: 15,
+            net_surplus: 0,
+            net_deficit: 5,
+        };
+        seam.pending.get_mut(&scope).unwrap().newest_generation = GenerationStamp::new(5);
+        seam.pending_products = (1..=5)
+            .map(|generation| PendingContribution {
+                generation: GenerationStamp::new(generation),
+                product_key: u64::from(generation),
+            })
+            .collect();
+        seam.admitted_product_count = 5;
+        seam.balances.get_mut(&scope).unwrap().seam = seam.pending[&scope].value;
+        seam.balances.get_mut(&scope).unwrap().admitted = seam.pending[&scope].value;
+        seam.check_conservation().expect("coalesced seed is exact");
+
+        assert!(matches!(
+            seam.check_historical_contributors_for_staleness_mutant(GenerationStamp::new(8))
+                .unwrap_err(),
+            IntegrateError::StalenessToleranceExceeded {
+                integration: 8,
+                source_generation: 1,
+                observed: 7,
+                allowed: 3,
+            }
+        ));
+
+        let mut parent = ParentRfIntegrationState::default();
+        let mut schedule = IntegrationSchedule::new();
+        seam.apply_parent_generation_barrier(
+            GenerationStamp::new(8),
+            &mut parent,
+            &mut schedule,
+        )
+        .expect("canonical newest/max carrier stamp 5 is within authored tolerance 3");
+        assert_eq!(
+            schedule
+                .entries_of_kind(IntegrationScheduleRowKind::QueueInjection)
+                .map(|entry| entry.child_generation.get())
+                .collect::<Vec<_>>(),
+            vec![1, 2, 3, 4, 5]
+        );
+
+        let newer = same_key_product_at(5);
+        let older = same_key_product_at(3);
+        let mut canonical = AsyncOwnerChannelRfSeam::admit(AuthoredSeamStaleness::new(3));
+        canonical.enqueue_reduce_up(&newer).unwrap();
+        canonical.enqueue_reduce_up(&older).unwrap();
+        assert_eq!(
+            canonical.pending_carriers()[0].generation(),
+            GenerationStamp::new(5)
+        );
+        canonical
+            .apply_parent_generation_barrier(
+                GenerationStamp::new(8),
+                &mut ParentRfIntegrationState::default(),
+                &mut IntegrationSchedule::new(),
+            )
+            .expect("max-stamp production path admits 8 <- 5 at tolerance 3");
+
+        let mut last_wins = AsyncOwnerChannelRfSeam::admit(AuthoredSeamStaleness::new(3));
+        last_wins
+            .enqueue_reduce_up_last_wins_mutant(&newer)
+            .unwrap();
+        last_wins
+            .enqueue_reduce_up_last_wins_mutant(&older)
+            .unwrap();
+        assert_eq!(
+            last_wins.pending_carriers()[0].generation(),
+            GenerationStamp::new(3),
+            "planted last-wins carrier must differ from canonical max"
+        );
+        assert!(matches!(
+            last_wins
+                .apply_parent_generation_barrier(
+                    GenerationStamp::new(8),
+                    &mut ParentRfIntegrationState::default(),
+                    &mut IntegrationSchedule::new(),
+                )
+                .unwrap_err(),
+            IntegrateError::StalenessToleranceExceeded {
+                integration: 8,
+                source_generation: 3,
+                observed: 5,
+                allowed: 3,
+            }
+        ));
     }
 }

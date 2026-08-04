@@ -43,6 +43,7 @@
 use crate::ids::{SimPropertyId, SimThingId};
 use crate::property::PropertyValue;
 use crate::simthing::{walk_inherited_until, SimThing};
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 /// Well-known structural property: this node's explicit owner binding.
@@ -61,7 +62,7 @@ pub const UNOWNED_OWNER_REF: &str = "unowned";
 ///
 /// Homed in core because ownership is intrinsic to the stem cell. `simthing-spec`
 /// re-exports this type, so the typed channel vocabulary is unchanged for consumers.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct OwnerRef(String);
 
 impl OwnerRef {
