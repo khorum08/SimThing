@@ -10,6 +10,9 @@
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+use crate::owner_channel::OwnerRef;
+use crate::overlay::Overlay;
+
 /// Per-tree generation counter value. One authority per tree (per-tree instantiation);
 /// not a global barrier or cross-tree sequence.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -71,12 +74,36 @@ impl<T> GenerationStamped<T> {
 /// coalescing, but stamps do not — a schedule that records only the newest stamp loses
 /// which generations merged and cannot replay bit-exactly. This is THE single replay
 /// recorder; 6.2 extends it with a row kind, never a second log.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum IntegrationScheduleRowKind {
+    /// Direct 6.1 reduce-up integration (the pre-queue path).
+    #[default]
+    DirectReduceUp,
+    /// One contributing product admitted through the 6.2 coalescing queue.
+    QueueInjection,
+    /// One downward standing/policy snapshot published at a child barrier.
+    StandingView,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct IntegrationScheduleEntry {
+    /// Semantic use of this row. Older serialized 6.1 schedules default to direct reduce-up.
+    #[serde(default)]
+    pub kind: IntegrationScheduleRowKind,
+    /// Generation of the integrating side's barrier. For a downward standing read this is the
+    /// child consumer generation; the 6.1 field name is retained for wire compatibility.
     pub parent_generation: GenerationStamp,
+    /// Generation of the side that produced the stamped value. For a downward standing read
+    /// this is the ancestor/parent source generation.
     pub child_generation: GenerationStamp,
     /// Stable identity of the product (e.g. reduce-up fingerprint). Not a clock.
     pub product_key: u64,
+}
+
+impl IntegrationScheduleEntry {
+    pub const fn row_kind(&self) -> IntegrationScheduleRowKind {
+        self.kind
+    }
 }
 
 /// Recorded integration schedule for one tree. Determinism is relative to this log.
@@ -100,7 +127,25 @@ impl IntegrationSchedule {
         child_generation: GenerationStamp,
         product_key: u64,
     ) {
+        self.record_kind(
+            IntegrationScheduleRowKind::DirectReduceUp,
+            parent_generation,
+            child_generation,
+            product_key,
+        );
+    }
+
+    /// Append one row to the single integration recorder. Queue and standing rows are
+    /// discriminated here rather than sent to a second log or sequence authority.
+    pub fn record_kind(
+        &mut self,
+        kind: IntegrationScheduleRowKind,
+        parent_generation: GenerationStamp,
+        child_generation: GenerationStamp,
+        product_key: u64,
+    ) {
         self.entries.push(IntegrationScheduleEntry {
+            kind,
             parent_generation,
             child_generation,
             product_key,
@@ -119,6 +164,13 @@ impl IntegrationSchedule {
             .map(|e| e.child_generation)
             .collect()
     }
+
+    pub fn entries_of_kind(
+        &self,
+        kind: IntegrationScheduleRowKind,
+    ) -> impl Iterator<Item = &IntegrationScheduleEntry> {
+        self.entries.iter().filter(move |entry| entry.kind == kind)
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Error)]
@@ -135,6 +187,209 @@ pub enum IntegrateError {
         "would wait for lagging child: parent generation {parent} requires child generation {child} (wait mutant)"
     )]
     WouldWaitForLaggingChild { parent: u32, child: u32 },
+    #[error(
+        "seam staleness tolerance exceeded: integration generation {integration}, source generation {source_generation}, observed {observed}, authored maximum {allowed}"
+    )]
+    StalenessToleranceExceeded {
+        integration: u32,
+        source_generation: u32,
+        observed: u32,
+        allowed: u32,
+    },
+    #[error("integration arithmetic overflow while exactly conserving queued values")]
+    ArithmeticOverflow,
+    #[error("queued child + seam + parent balance escaped the admitted conserved total")]
+    ConservationViolation,
+    #[error("no generation-consistent standing snapshot has been published")]
+    MissingPublishedStandingView,
+    #[error("standing/policy view could not be encoded for stable replay identity: {0}")]
+    StandingViewEncoding(String),
+    #[error(
+        "recorded {kind:?} product is unavailable at source generation {source_generation} with key {product_key}"
+    )]
+    MissingRecordedProduct {
+        kind: IntegrationScheduleRowKind,
+        source_generation: u32,
+        product_key: u64,
+    },
+}
+
+/// Per-seam authored staleness admission. There is deliberately no `Default`: every seam
+/// author must state how old a cross-site value may be before integration hard-errors.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AuthoredSeamStaleness {
+    max_generations: u32,
+}
+
+impl AuthoredSeamStaleness {
+    pub const fn new(max_generations: u32) -> Self {
+        Self { max_generations }
+    }
+
+    pub const fn max_generations(self) -> u32 {
+        self.max_generations
+    }
+
+    pub fn check(
+        self,
+        integration_generation: GenerationStamp,
+        source_generation: GenerationStamp,
+    ) -> Result<u32, IntegrateError> {
+        let observed = integration_generation.staleness_from_child(source_generation);
+        if observed > self.max_generations {
+            return Err(IntegrateError::StalenessToleranceExceeded {
+                integration: integration_generation.get(),
+                source_generation: source_generation.get(),
+                observed,
+                allowed: self.max_generations,
+            });
+        }
+        Ok(observed)
+    }
+}
+
+/// Downward state crossing one independent-execution seam. `OwnerRef` is the canonical
+/// intrinsic owner identity; no session-local interned owner id has a representable slot.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct AncestorStandingPolicyView {
+    pub owner_ref: OwnerRef,
+    pub overlays: Vec<Overlay>,
+}
+
+impl AncestorStandingPolicyView {
+    pub fn new(owner_ref: OwnerRef, overlays: Vec<Overlay>) -> Self {
+        Self {
+            owner_ref,
+            overlays,
+        }
+    }
+
+    pub fn product_key(&self) -> Result<u64, IntegrateError> {
+        let bytes = serde_json::to_vec(self)
+            .map_err(|error| IntegrateError::StandingViewEncoding(error.to_string()))?;
+        Ok(stable_bytes_key(&bytes))
+    }
+}
+
+/// Two-slot publication surface for downward standing/policy state.
+///
+/// Writers replace the inactive slot and readers observe only the atomically selected complete
+/// `(generation, value)` pair. Publication is available only through the generation-barrier
+/// method, preventing mixed-generation shadow reads.
+#[derive(Clone, Debug)]
+pub struct StandingViewDoubleBuffer {
+    slots: [Option<GenerationStamped<AncestorStandingPolicyView>>; 2],
+    published: usize,
+    staged: bool,
+}
+
+impl StandingViewDoubleBuffer {
+    pub fn new() -> Self {
+        Self {
+            slots: [None, None],
+            published: 0,
+            staged: false,
+        }
+    }
+
+    /// Stage a complete parent-produced view in the inactive slot. Standing state is read-only,
+    /// not a conserved product; a newer pre-barrier view may replace an older unobserved view.
+    pub fn stage(&mut self, view: GenerationStamped<AncestorStandingPolicyView>) {
+        let staging = 1 - self.published;
+        self.slots[staging] = Some(view);
+        self.staged = true;
+    }
+
+    /// Publish the inactive complete view at a child generation barrier and record that read in
+    /// the same [`IntegrationSchedule`] used by upward products.
+    pub fn publish_at_generation_barrier(
+        &mut self,
+        child_generation: GenerationStamp,
+        tolerance: AuthoredSeamStaleness,
+        schedule: &mut IntegrationSchedule,
+    ) -> Result<Option<IntegrationReceipt>, IntegrateError> {
+        if !self.staged {
+            if let Some(published) = self.slots[self.published].as_ref() {
+                tolerance.check(child_generation, published.generation())?;
+            }
+            return Ok(None);
+        }
+        let staging = 1 - self.published;
+        let staged = self.slots[staging]
+            .as_ref()
+            .expect("staged flag always names a complete inactive slot");
+        let staleness = tolerance.check(child_generation, staged.generation())?;
+        let product_key = staged.product().product_key()?;
+        let source_generation = staged.generation();
+        self.published = staging;
+        self.staged = false;
+        schedule.record_kind(
+            IntegrationScheduleRowKind::StandingView,
+            child_generation,
+            source_generation,
+            product_key,
+        );
+        Ok(Some(IntegrationReceipt {
+            parent_generation: child_generation,
+            child_generation: source_generation,
+            product_key,
+            staleness,
+        }))
+    }
+
+    /// Read one coherent published pair. The staleness check is repeated at the consuming
+    /// generation so retaining an old published view cannot silently outlive its authored bound.
+    pub fn read(
+        &self,
+        child_generation: GenerationStamp,
+        tolerance: AuthoredSeamStaleness,
+    ) -> Result<&GenerationStamped<AncestorStandingPolicyView>, IntegrateError> {
+        let published = self.slots[self.published]
+            .as_ref()
+            .ok_or(IntegrateError::MissingPublishedStandingView)?;
+        tolerance.check(child_generation, published.generation())?;
+        Ok(published)
+    }
+}
+
+impl Default for StandingViewDoubleBuffer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// Replay downward standing reads from the one integration schedule. Ambient arrival order is
+/// ignored; every row must name an available bit-identical stamped view.
+pub fn replay_standing_views(
+    schedule: &IntegrationSchedule,
+    available: &[GenerationStamped<AncestorStandingPolicyView>],
+) -> Result<Vec<GenerationStamped<AncestorStandingPolicyView>>, IntegrateError> {
+    let mut replayed = Vec::new();
+    for entry in schedule.entries_of_kind(IntegrationScheduleRowKind::StandingView) {
+        let found = available.iter().find(|view| {
+            view.generation() == entry.child_generation
+                && view.product().product_key().ok() == Some(entry.product_key)
+        });
+        let Some(view) = found else {
+            return Err(IntegrateError::MissingRecordedProduct {
+                kind: entry.kind,
+                source_generation: entry.child_generation.get(),
+                product_key: entry.product_key,
+            });
+        };
+        replayed.push(view.clone());
+    }
+    Ok(replayed)
+}
+
+fn stable_bytes_key(bytes: &[u8]) -> u64 {
+    // FNV-1a is deliberately specified here instead of using process-seeded `Hash` state.
+    let mut hash = 0xcbf2_9ce4_8422_2325u64;
+    for byte in bytes {
+        hash ^= u64::from(*byte);
+        hash = hash.wrapping_mul(0x0000_0100_0000_01b3);
+    }
+    hash
 }
 
 /// Result of integrating one stamped product. Never waits. Staleness is observable.
@@ -352,7 +607,7 @@ impl StampedEventRing {
 
 // ── Dispatch dissolve discipline (Definable Horizon) ─────────────────────────
 
-use crate::overlay::{DissolveCondition, Overlay, OverlayLifecycle};
+use crate::overlay::{DissolveCondition, OverlayLifecycle};
 
 #[derive(Clone, Debug, PartialEq, Eq, Error)]
 pub enum DispatchOverlayError {

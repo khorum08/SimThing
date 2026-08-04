@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 /// Semantic intent: what this overlay does to a property, expressed in sub-field
 /// roles (not column indices). The CPU preparation pass resolves roles → columns.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct PropertyTransformDelta {
     pub property_id: SimPropertyId,
     /// List of (sub-field role, operation) pairs.
@@ -57,7 +57,7 @@ pub enum OverlaySource {
     Event,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum DissolveCondition {
     PropertyReaches {
         property: SimPropertyId,
@@ -81,7 +81,7 @@ pub enum DissolveCondition {
     AtSessionEnd,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 /// # Dissolution is ordinary
 ///
 /// [`DissolveCondition`] answers **"when does this dissolve BY ITSELF"** — never
@@ -113,7 +113,7 @@ pub enum OverlayLifecycle {
     },
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 /// A live overlay is always attributable to the SimThing that originated it.
 ///
 /// Omitting `origin` is a type error; there is deliberately no default or optional
