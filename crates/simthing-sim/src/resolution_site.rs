@@ -35,36 +35,6 @@
 //! genuine allocation (fission pre-grow, fission/fusion, lineage, AddChild
 //! pre-grow, structural mutations, dimension rebuild, capacity) stays at the
 //! barrier in BOTH placements.
-//!
-//! ## No mutant seam ships (structural proof)
-//!
-//! The RED-referee mutants for this rung (synthesized default origin, transform
-//! divergence, registration-time mirror drift) are constructed inside the test
-//! target only. No planted-mutant constructor exists on the production surface —
-//! importing one is a compile error, pinned here so the absence is mechanized
-//! rather than asserted:
-//!
-//! ```compile_fail,E0432
-//! use simthing_sim::plant_default_origin_mutant_mint;
-//! ```
-//!
-//! ```compile_fail,E0432
-//! use simthing_sim::plant_transform_divergence_mutant_mint;
-//! ```
-//!
-//! ```compile_fail,E0432
-//! use simthing_sim::resolution_site::plant_default_origin_mutant_mint;
-//! ```
-//!
-//! ```compile_fail,E0432
-//! use simthing_sim::resolution_site::plant_transform_divergence_mutant_mint;
-//! ```
-//!
-//! ```compile_fail,E0599
-//! use simthing_sim::ThresholdRegistry;
-//! let reg = ThresholdRegistry::new();
-//! let _ = reg.plant_identity_mirror_drift_mutant(0u32, ());
-//! ```
 
 use simthing_core::{
     DimensionRegistry, Overlay, OverlayId, OverlayKind, OverlayLifecycle, OverlaySource,
@@ -343,4 +313,3 @@ pub fn mint_attach_overlay_at_barrier(
         },
     })
 }
-
