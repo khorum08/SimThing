@@ -22,6 +22,7 @@ if [[ "$MODE" == "--harvest" ]]; then
   if [[ -n "$(git status --porcelain crates/simthing-core/src/slot_index.rs)" ]]; then
     echo "CENSUS-HARVEST-VERDICT: FAIL(dirty-slot-index)"; exit 1
   fi
+  trap 'git checkout -q crates/simthing-core/src/slot_index.rs' EXIT
   python - <<'PY'
 p = 'crates/simthing-core/src/slot_index.rs'
 s = open(p, encoding='utf-8').read()
@@ -31,11 +32,10 @@ open(p, 'w', encoding='utf-8').write(s)
 PY
   touch crates/simthing-core/src/lib.rs
   cargo check --workspace --message-format=short 2>&1 \
-    | grep -E "warning: use of deprecated.*SlotIndex.*CENSUS" \
+    | { grep -E "warning: use of deprecated.*SlotIndex.*CENSUS" || true; } \
     | grep -oE "crates[\\\\/][a-z-]+[\\\\/](src|tests)[\\\\/][a-zA-Z_0-9/\\\\]+\.rs" \
     | sort -u \
     | sed 's|crates[\\/]simthing-||; s|[\\/]src[\\/]|:|' | tr '\134' '/' > /tmp/census_universe_fresh.txt
-  git checkout -q crates/simthing-core/src/slot_index.rs
   if diff -u scripts/ci/stemthing_slot_census_universe.txt /tmp/census_universe_fresh.txt; then
     echo "CENSUS-HARVEST-VERDICT: PASS (universe unchanged, $(wc -l < /tmp/census_universe_fresh.txt) files)"
   else
