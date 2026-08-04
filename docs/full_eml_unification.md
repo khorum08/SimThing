@@ -281,7 +281,7 @@ normalize — banded sweeps over existing machinery, no new mechanism and no reo
   classes no lattice-arithmetic corpus can produce (multiplicative noise, preferential
   attachment, scale-free LinkGraph weights for 5.6 adjacency).
 - **StemThing derivation pricing (phase-gated).** Tier price curves with diminishing returns
-  (log pricing) and potency-depletion curves — authored as gadgets when the phase lands.
+  (log pricing) and capacity-depletion curves — authored as gadgets when the phase lands.
 - **Domain exemplars (11.2-class).** The canonical volume-delay function in traffic assignment
   is a power law; exceedance/return-period curves in hazard are log; utility, backoff, and
   congestion pricing in the network-governance plug are exp/log-shaped; growth phases in
