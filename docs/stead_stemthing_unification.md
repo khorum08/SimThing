@@ -22,7 +22,21 @@
 > thesis, and the deletion deliverable stand unchanged.
 >
 > **Amended 2026-08-03 (second — DA disposition DESIGN-ADMITTED, remand closed; Owner rulings
-> recorded).** Sol's REMAND is lifted; ladderization remains on **HARD HOLD pending §3.1**. Three
+> recorded).**
+>
+> **Amended 2026-08-04 (STEMTHING-CENSUS-TIER2-SESSION @ `a3183b17`): the §3.1 HARD HOLD is
+> DISCHARGED.** The census ran (single pass, post-Phase-6, per the Owner timing ruling):
+> `scripts/ci/stemthing_slot_census.tsv` — 25 artifact rows, 61/61 type-walk consumers reconciled
+> (compiler-harvested), grep residue fully dispositioned, **zero `BLOCKER`, zero `ORDER-PIN`** —
+> and **shape (a) is RULED from that evidence**: stable logical `SlotIndex`, per-epoch physical
+> binding, rebind only via the existing `AnchorLocusRemap` door (5.2). The Tier-2 amendment is
+> landed in core design §3 (slot-identity law) and §4. StemThing-A rows are minted: **6.4
+> `SLOT-LOGICAL-IDENTITY-0`**, **6.5 `RESIDENCY-TIER-VOCABULARY-0`**; the §7.1 movement clause is
+> bound onto the 7.1 row. Workplan integration only — implementation flows through the normal
+> DA→orchestrator→coder regime. The pointer stays `none`; **the flip to 6.4 is the Owner's act.**
+>
+> Sol's REMAND is lifted; ladderization ~~remains on **HARD HOLD pending §3.1**~~ (discharged, see
+> above). Three
 > Owner rulings recorded in place: census timing (§3.1 — post-Phase-6, single pass), phase
 > placement and the movement interaction (§7.1, §10 — split insertion; StemThing-A precedes the
 > Phase 7 movement rungs), and the mid-session tier door (§5 — chartered as future owner-gated

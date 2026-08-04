@@ -483,3 +483,5 @@ date	role	query	anchors_served	hit
 2026-08-04T14:57:30Z	coding	--domain core-0087	rf-arena-substrate,simthing-0087-binding-laws,simthing-0087-pillars,stead-rejected-shapes,stead-shared-surface-ledger	hit
 2026-08-04T14:57:39Z	coding	--grep workshop-candidate-homing	workshop-candidate-homing	hit
 2026-08-04T14:57:47Z	coding	--domain rf	core-rf-arenas,stead-events-are-rf,stead-rejected-shapes,stead-shared-surface-ledger	hit
+2026-08-04T17:08:59Z	coding	--grep stemthing	core-property-value-model,eml-integration-plan,eml-triad-integration,stemthing-binding-laws,stemthing-lane-not-leg,stemthing-slot-identity-ruling	hit
+2026-08-04T17:08:59Z	coding	--grep eml-admission	eml-admission-shapes	hit

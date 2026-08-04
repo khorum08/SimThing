@@ -20,3 +20,5 @@ crates/simthing-core/**	scenario-candidate-home,core-0087,overlay,rf,property-va
 crates/simthing-tools/**	scenario-candidate-home
 scripts/ci/**	gate-wiring,orientation
 .github/workflows/**	gate-wiring
+docs/stead_stemthing_unification.md	stead,rf,core-0087,kernel-columns
+docs/full_eml_unification.md	kernel-eml,kernel,core-0087,field-sweep-preservation
