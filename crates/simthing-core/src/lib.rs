@@ -8,6 +8,7 @@ pub mod arena_layout;
 pub mod column_index;
 pub mod compiled_accumulator_plan;
 pub mod cost_band;
+pub mod eml_exp;
 pub mod eml_nodes;
 pub mod eml_registry;
 pub mod evaluate;
@@ -75,6 +76,11 @@ pub use compiled_accumulator_plan::{
     is_exact_integer_f32, CompiledAccumulatorOpPlan, StructuralScalarChannel,
     EXACT_INTEGER_F32_BOUND,
 };
+pub use eml_exp::{
+    eml_exp_pinned_f32, EML_EXP_ALGORITHM_IDENTITY, EML_EXP_DOMAIN_MAX, EML_EXP_DOMAIN_MAX_BITS,
+    EML_EXP_DOMAIN_MIN, EML_EXP_DOMAIN_MIN_BITS, EML_EXP_SATURATION_CEILING_BITS,
+    EML_EXP_SEQUENCE_VERSION,
+};
 pub use eml_nodes::{opcode as eml_opcode, EmlResourceClass, EML_STACK_MAX};
 pub use eml_registry::{
     classify_legacy_tree_meta, EmlConsumerKind, EmlConsumerMask, EmlExecutionClass,
@@ -116,7 +122,8 @@ pub use placed_participant::{
     PlacedParticipantValidationError, StructuralGridPlacement,
 };
 pub use property::{
-    admit_overlay_eml_program, eval_overlay_eml, magnitude_band_eml_nodes, ClampBehavior,
+    admit_overlay_eml_program, eval_overlay_eml, logistic_steering_eml_nodes,
+    logistic_steering_oracle, magnitude_band_eml_nodes, ClampBehavior,
     DecayBehavior, Direction, EmlPerProgramCap, EmlPerProgramCapError, ExpireEffect, ExpireHandler,
     FissionTemplate, FissionThreshold, FusionThreshold, IntensityBehavior, IntensityRange,
     PropertyLayout, PropertyAdmissionDisposition, PropertyValue, RoleOffset, SecondaryCondition,

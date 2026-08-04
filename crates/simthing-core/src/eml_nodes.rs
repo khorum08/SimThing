@@ -89,6 +89,15 @@ pub mod opcode {
     pub const CLAMP_FLOORED: u32 = 23;
     pub const ABS: u32 = 24;
     pub const FLOOR: u32 = 25;
+    /// EML-EXP-PRIMITIVE-0: full-domain exact exponential (unary).
+    ///
+    /// The FIRST admitted exact primitive through the 5.10
+    /// `ExactPrimitiveAdmissionDoor`. Semantics are the pinned
+    /// algorithm-as-spec in [`crate::eml_exp`] — append-only; any change is a
+    /// new primitive name. Call sites must discharge a 5.10 admission shape
+    /// (range-certified literal or explicit `CLAMP_BOUNDED` guard); unguarded
+    /// calls are spanned admission errors.
+    pub const EXP: u32 = 26;
 
     pub const CMP_LT: u32 = 30;
     pub const CMP_LE: u32 = 31;

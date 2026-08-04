@@ -23,6 +23,7 @@ naga = { version = "22.1", features = ["spv-out", "wgsl-in"] }
 tempfile = "3"
 simthing-driver = { path = "../simthing-driver", features = ["rf-test-harness"] }
 simthing-feeder = { path = "../simthing-feeder" }
+simthing-kernel = { path = "../simthing-kernel" }
 simthing-gpu = { path = "../simthing-gpu", features = ["eml-resource-profiling"] }
 simthing-mapeditor = { path = "../simthing-mapeditor" }
 simthing-sim = { path = "../simthing-sim" }

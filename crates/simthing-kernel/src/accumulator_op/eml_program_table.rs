@@ -238,6 +238,11 @@ impl EmlGpuProgramTable {
                     ));
                 }
             }
+            // EML-EXP-PRIMITIVE-0: EXP call sites discharge a 5.10 admission
+            // shape at the upload boundary too (registry admission already
+            // enforced it; a raw upload path must not bypass the door).
+            crate::eml_opcode_gate::admit_exp_call_sites(nodes)
+                .map_err(EmlUploadError::OpcodeGate)?;
             let range = EmlTreeRangeGpu {
                 node_offset,
                 node_count: nodes.len() as u32,
