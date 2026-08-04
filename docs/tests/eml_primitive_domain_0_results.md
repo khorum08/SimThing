@@ -1,7 +1,7 @@
 # EML-PRIMITIVE-DOMAIN-0 results
 
 - Track: 0.0.8.7 RF arena modernization (rung 5.10)
-- Status: **PROBATION / proof-present / DA-review-pending**
+- Status: **COMPLETE / DA-GRADUATED — merged #1618 @ 35dcf43a** (DA independently planted both the unguarded-admission and guard-as-certificate defects; each RED)
 - Dispatch base: `0770af0a559d603aac9e716f937435666790b92d`
 - Branch: `codex/eml-primitive-domain-0`
 - ORIENT-RECEIPT: `6af1884543b0`
