@@ -11,6 +11,7 @@ pub mod cost_band;
 pub mod eml_nodes;
 pub mod eml_registry;
 pub mod evaluate;
+pub mod execution_posture;
 pub mod fission_child_spawn;
 pub mod fission_clone_source;
 pub mod generation_stamp;
@@ -108,6 +109,7 @@ pub use overlay::{
     PropertyTransformDelta,
 };
 pub use evaluate::{RoutedPredicate, RoutedPredicateComparison, TransformStack};
+pub use execution_posture::{ExecutionPosture, ExecutionPostureError};
 pub use placed_participant::{
     validate_and_mint_placed_participants_by_location_id,
     validate_location_ids_have_structural_placements, PlacedParticipant,

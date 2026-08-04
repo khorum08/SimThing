@@ -19,6 +19,7 @@ pub mod local_participant_effects;
 pub mod need_binding;
 pub mod order_weight;
 pub mod overlay;
+pub mod async_staleness;
 pub mod owner_channel_admission;
 pub mod owner_channel_rf;
 pub mod owner_silo_disburse_down;

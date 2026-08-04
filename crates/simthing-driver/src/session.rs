@@ -49,6 +49,8 @@ pub enum SessionError {
     ThresholdInstall(String),
     #[error("player-intent admission: {0}")]
     PlayerIntentAdmission(String),
+    #[error("execution posture: {0}")]
+    ExecutionPosture(String),
 }
 
 /// Outcome of a single [`SimSession::step_once`] production hot-cycle.
@@ -207,6 +209,10 @@ pub struct SimSession {
     /// session loop, in tick order. Consumed at boundaries; diagnostic
     /// readback never feeds runtime decisions.
     pub mapping_commitments: Vec<MappingCommitmentRecord>,
+    /// CONTINUOUS-POSTURE-SOAK-0: scheduling policy over the same kernel.
+    /// Default [`ExecutionPosture::Paced`]; continuous batches call the identical
+    /// hot-cycle + boundary path — never a second kernel or semantic fork.
+    execution_posture: simthing_core::ExecutionPosture,
     resolved_order_directives: Mutex<crate::order_directive::OrderDirectiveGateState>,
     order_directive_injection_log:
         Mutex<Vec<crate::order_directive::OrderDirectiveInjection>>,
@@ -383,10 +389,31 @@ impl SimSession {
             resource_flow_execution_profile: ResourceFlowExecutionProfile::DefaultDisabled,
             mapping: None,
             mapping_commitments: Vec::new(),
+            execution_posture: simthing_core::ExecutionPosture::Paced,
             resolved_order_directives:
                 Mutex::new(crate::order_directive::OrderDirectiveGateState::default()),
             order_directive_injection_log: Mutex::new(Vec::new()),
         })
+    }
+
+    /// Scheduling posture over this session's single kernel (default paced).
+    pub fn execution_posture(&self) -> simthing_core::ExecutionPosture {
+        self.execution_posture
+    }
+
+    /// Select paced or continuous batching. Does not change kernel semantics.
+    ///
+    /// Continuous `batch_generations == 0` fails closed — never stored, never a
+    /// silent no-op success on a later [`Self::run`].
+    pub fn set_execution_posture(
+        &mut self,
+        posture: simthing_core::ExecutionPosture,
+    ) -> Result<(), SessionError> {
+        posture
+            .ensure_admitted()
+            .map_err(|e| SessionError::ExecutionPosture(e.to_string()))?;
+        self.execution_posture = posture;
+        Ok(())
     }
 
     /// Test harness only: set Resource Flow flag directly (distinct from spec opt-in).
@@ -884,12 +911,36 @@ impl SimSession {
     }
 
     /// Run until `max_days` boundaries complete (or scenario max if smaller).
+    ///
+    /// Under [`simthing_core::ExecutionPosture::Continuous`], generations still
+    /// advance through the identical hot-cycle + boundary path; the posture only
+    /// batches how many barriers one scheduling call intends to pump. Cap remains
+    /// authoritative. Continuous `batch_generations == 0` fails closed — never a
+    /// silent `Ok` with zero generations executed.
     pub fn run(&mut self, max_days: u32) -> Result<RunSummary, SessionError> {
+        self.execution_posture
+            .ensure_admitted()
+            .map_err(|e| SessionError::ExecutionPosture(e.to_string()))?;
         let cap = max_days.min(self.scenario.max_days);
         let mut summary = RunSummary::new();
 
-        while summary.boundaries_run < cap as u64 {
-            let _ = self.step_once_into_summary(&mut summary)?;
+        match self.execution_posture {
+            simthing_core::ExecutionPosture::Paced => {
+                while summary.boundaries_run < cap as u64 {
+                    let _ = self.step_once_into_summary(&mut summary)?;
+                }
+            }
+            simthing_core::ExecutionPosture::Continuous { batch_generations } => {
+                // Continuous is a submission pump over the SAME step path.
+                // Zero was rejected by ensure_admitted above.
+                while summary.boundaries_run < cap as u64 {
+                    let batch_cap = (cap as u64).saturating_sub(summary.boundaries_run);
+                    let batch = u64::from(batch_generations).min(batch_cap);
+                    for _ in 0..batch {
+                        let _ = self.step_once_into_summary(&mut summary)?;
+                    }
+                }
+            }
         }
 
         Ok(summary)
@@ -1349,4 +1400,74 @@ fn validate_resource_flow_flat_star_opt_in(
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod continuous_posture_session_proofs {
+    use std::sync::Mutex;
+
+    use super::*;
+    use crate::scenario::Scenario;
+
+    static GPU_MUTEX: Mutex<()> = Mutex::new(());
+
+    fn tiny_session(max_days: u32) -> SimSession {
+        let scenario = Scenario::map_light(
+            "continuous_posture_session_proof".into(),
+            1,
+            max_days,
+            1.0,
+            4,
+        );
+        SimSession::open(scenario).expect("session open requires a supported live GPU")
+    }
+
+    #[test]
+    fn continuous_zero_batch_fails_closed_on_session_set_and_run() {
+        let _guard = GPU_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+        let mut session = tiny_session(3);
+
+        assert!(
+            simthing_core::ExecutionPosture::continuous(0).is_err(),
+            "admit door rejects zero"
+        );
+        let zero = simthing_core::ExecutionPosture::Continuous {
+            batch_generations: 0,
+        };
+        let set_err = session
+            .set_execution_posture(zero)
+            .expect_err("set must reject zero continuous batch");
+        assert!(matches!(set_err, SessionError::ExecutionPosture(_)));
+        assert!(
+            session.execution_posture().is_paced(),
+            "rejected set must leave default paced stored"
+        );
+
+        // Reach the real run path with an invalid continuous zero that bypassed set:
+        // must fail closed — never Ok with zero generations (prior silent success).
+        session.execution_posture = zero;
+        match session.run(2) {
+            Err(SessionError::ExecutionPosture(_)) => {}
+            Ok(summary) => panic!(
+                "continuous zero must not silently succeed; boundaries_run={}",
+                summary.boundaries_run
+            ),
+            Err(other) => panic!("expected ExecutionPosture error, got {other}"),
+        }
+    }
+
+    #[test]
+    fn paced_default_run_retains_boundary_count_behavior() {
+        let _guard = GPU_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+        let mut session = tiny_session(5);
+        assert_eq!(
+            session.execution_posture(),
+            simthing_core::ExecutionPosture::Paced
+        );
+        let summary = session.run(3).expect("default paced run");
+        assert_eq!(
+            summary.boundaries_run, 3,
+            "paced/default run must advance exactly the requested boundary count"
+        );
+    }
 }

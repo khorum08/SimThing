@@ -464,6 +464,9 @@ pub use spec::owner_silo_runtime_writeback::{
     RuntimeOwnerSiloState, RuntimeOwnerSiloWritebackError, RuntimeOwnerSiloWritebackErrorKind,
     RuntimeOwnerSiloWritebackInput, RuntimeOwnerSiloWritebackResult,
 };
+pub use spec::async_staleness::{
+    derive_staleness_f32, AsyncStalenessColumn, AsyncStalenessError, AuthoredStalenessHorizon,
+};
 pub use spec::owner_channel_rf::{
     replay_async_owner_channel_rf_seam, AsyncOwnerChannelRfReplay, AsyncOwnerChannelRfSeam,
     AsyncQueueBarrierReceipt,
