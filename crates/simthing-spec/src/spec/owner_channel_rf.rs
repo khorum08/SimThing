@@ -641,6 +641,32 @@ impl AsyncOwnerChannelRfSeam {
         Ok(())
     }
 
+    /// Test-only planted defect: make carrier freshness follow arrival order instead of max.
+    ///
+    /// The assignment below is the exact last-wins mutation the out-of-order referee exists to
+    /// reject. Production ingress continues to use `pending.newest_generation.max(...)` only.
+    #[cfg(test)]
+    fn enqueue_reduce_up_last_wins_mutant(
+        &mut self,
+        product: &StampedReduceUpProduct,
+    ) -> Result<(), IntegrateError> {
+        let newest_incoming = product.generation();
+        let scopes = product
+            .product()
+            .buckets
+            .iter()
+            .map(|bucket| bucket.scope.clone())
+            .collect::<BTreeSet<_>>();
+        self.enqueue_reduce_up(product)?;
+        for scope in scopes {
+            self.pending
+                .get_mut(&scope)
+                .expect("incoming scope was queued")
+                .newest_generation = newest_incoming;
+        }
+        Ok(())
+    }
+
     /// Stage a complete downward ancestor standing/policy view in the inactive buffer.
     pub fn stage_ancestor_standing_view(
         &mut self,
@@ -1544,6 +1570,36 @@ mod wait_mutant_proof {
 mod async_queue_accounting_mutant_proof {
     use super::*;
 
+    fn same_key_product_at(generation: u32) -> StampedReduceUpProduct {
+        GenerationStamped::stamp(
+            GenerationStamp::new(generation),
+            OwnerChannelRfReduceUpReport {
+                participant_count: 1,
+                owner_count: 1,
+                bucket_count: 1,
+                surplus_total: 2,
+                deficit_total: 3,
+                buckets: vec![OwnerChannelRfBucket {
+                    scope: OwnerChannelScopeKey {
+                        owner_ref: OwnerRef::new("synthetic-owner"),
+                        resource_key: ResourceKey::new("synthetic-resource"),
+                        scope_id: ScopeId::new("synthetic-scope"),
+                    },
+                    source_row_indices: vec![0],
+                    participant_count: 1,
+                    surplus_total: 2,
+                    deficit_total: 3,
+                    net_surplus: 0,
+                    net_deficit: 1,
+                }],
+                stead: OwnerChannelRfSteadSurface {
+                    own_aggregates: Vec::new(),
+                    crossing_flows: Vec::new(),
+                },
+            },
+        )
+    }
+
     fn seeded_seam() -> (AsyncOwnerChannelRfSeam, OwnerChannelScopeKey) {
         let scope = OwnerChannelScopeKey {
             owner_ref: OwnerRef::new("synthetic-owner"),
@@ -1604,7 +1660,7 @@ mod async_queue_accounting_mutant_proof {
     }
 
     #[test]
-    fn historical_contributor_staleness_mutant_reds_against_newest_carrier_law() {
+    fn coalesced_staleness_mutants_red_against_newest_carrier_law() {
         let (mut seam, scope) = seeded_seam();
         seam.tolerance = AuthoredSeamStaleness::new(3);
         seam.pending.get_mut(&scope).unwrap().value = OwnerChannelRfConservedValue {
@@ -1652,5 +1708,50 @@ mod async_queue_accounting_mutant_proof {
                 .collect::<Vec<_>>(),
             vec![1, 2, 3, 4, 5]
         );
+
+        let newer = same_key_product_at(5);
+        let older = same_key_product_at(3);
+        let mut canonical = AsyncOwnerChannelRfSeam::admit(AuthoredSeamStaleness::new(3));
+        canonical.enqueue_reduce_up(&newer).unwrap();
+        canonical.enqueue_reduce_up(&older).unwrap();
+        assert_eq!(
+            canonical.pending_carriers()[0].generation(),
+            GenerationStamp::new(5)
+        );
+        canonical
+            .apply_parent_generation_barrier(
+                GenerationStamp::new(8),
+                &mut ParentRfIntegrationState::default(),
+                &mut IntegrationSchedule::new(),
+            )
+            .expect("max-stamp production path admits 8 <- 5 at tolerance 3");
+
+        let mut last_wins = AsyncOwnerChannelRfSeam::admit(AuthoredSeamStaleness::new(3));
+        last_wins
+            .enqueue_reduce_up_last_wins_mutant(&newer)
+            .unwrap();
+        last_wins
+            .enqueue_reduce_up_last_wins_mutant(&older)
+            .unwrap();
+        assert_eq!(
+            last_wins.pending_carriers()[0].generation(),
+            GenerationStamp::new(3),
+            "planted last-wins carrier must differ from canonical max"
+        );
+        assert!(matches!(
+            last_wins
+                .apply_parent_generation_barrier(
+                    GenerationStamp::new(8),
+                    &mut ParentRfIntegrationState::default(),
+                    &mut IntegrationSchedule::new(),
+                )
+                .unwrap_err(),
+            IntegrateError::StalenessToleranceExceeded {
+                integration: 8,
+                source_generation: 3,
+                observed: 5,
+                allowed: 3,
+            }
+        ));
     }
 }

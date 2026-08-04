@@ -27,6 +27,7 @@
 | Holding account | exact before and after the barrier; dropped-pending and all-three-account escape mutants RED |
 | Full generation membership | five `QueueInjection` rows preserve generations 1..5; latest-only/drop replay differs from live |
 | Coalesced lag and tolerance | Same-key generations 1..5 at parent 8 admit from carrier stamp 5 when authored max=3 while retaining all five schedule generations; max=2 hard-errors with queue/parent/log unchanged; historical-contributor staleness mutant RED |
+| Out-of-order max-stamp referee | Same-key arrival 5 then 3 retains carrier stamp 5, admits at parent 8/authored max 3, and preserves schedule order [5,3]; exact last-wins assignment mutant exposes stamp 3 and REDs on staleness |
 | One recorder | reversed ambient products replay bit-exact; empty second-recorder mutant hard-errors |
 | Bidirectional snapshot | two standing-policy publications share the upward log, replay bit-exact, and staging cannot tear or republish an old slot |
 | Directive path preservation | existing `simthing_automaton_rf_reception_0` battery remains green with live route policy and standing inheritance |

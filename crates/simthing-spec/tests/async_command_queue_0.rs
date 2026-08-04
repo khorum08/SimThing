@@ -183,6 +183,37 @@ fn same_key_burst_coalesces_exactly_conserves_and_replay_mutants_red() {
     assert_eq!(rejected_parent, ParentRfIntegrationState::default());
     assert!(rejected_schedule.entries().is_empty());
 
+    let out_of_order = products_at([5, 3]);
+    let mut out_of_order_seam =
+        AsyncOwnerChannelRfSeam::admit(AuthoredSeamStaleness::new(3));
+    out_of_order_seam
+        .enqueue_reduce_up(&out_of_order[0])
+        .unwrap();
+    out_of_order_seam
+        .enqueue_reduce_up(&out_of_order[1])
+        .unwrap();
+    assert!(out_of_order_seam
+        .pending_carriers()
+        .iter()
+        .all(|carrier| carrier.generation() == GenerationStamp::new(5)));
+    let mut out_of_order_parent = ParentRfIntegrationState::default();
+    let mut out_of_order_schedule = IntegrationSchedule::new();
+    out_of_order_seam
+        .apply_parent_generation_barrier(
+            GenerationStamp::new(8),
+            &mut out_of_order_parent,
+            &mut out_of_order_schedule,
+        )
+        .expect("out-of-order 5 then 3 keeps max stamp 5 and admits at tolerance 3");
+    assert_eq!(
+        out_of_order_schedule
+            .entries_of_kind(IntegrationScheduleRowKind::QueueInjection)
+            .map(|entry| entry.child_generation.get())
+            .collect::<Vec<_>>(),
+        vec![5, 3],
+        "arrival order stays replay evidence while carrier freshness remains max"
+    );
+
     let mut ambient_reversed = products.clone();
     ambient_reversed.reverse();
     let replay = replay_async_owner_channel_rf_seam(&schedule, &ambient_reversed, &[])
