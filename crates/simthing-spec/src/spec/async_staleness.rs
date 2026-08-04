@@ -51,10 +51,13 @@ pub enum AsyncStalenessError {
     NotAllocated,
     #[error("seed boundary_simthing_id {0:?} has no admitted slot")]
     UnadmittedSeed(SimThingId),
+    #[error(
+        "registered seed {0:?} has no latest_integrated_child_stamp; \
+         fabricating zero freshness is forbidden — fail closed"
+    )]
+    MissingLatestIntegratedChildStamp(SimThingId),
     #[error("slot {0} is outside the admitted staleness column")]
     SlotOutOfRange(u32),
-    #[error("planted whole-lattice registration mutant is forbidden")]
-    WholeLatticeRegistrationForbidden,
     #[error("staleness column admission rejected: n_slots must be > 0")]
     EmptyColumn,
 }
@@ -212,10 +215,9 @@ impl AsyncStalenessColumn {
         let mut visited_this_dispatch = 0u64;
 
         for seed in self.seeds.clone() {
-            let child_stamp = latest_by_seed
-                .get(&seed)
-                .copied()
-                .unwrap_or(parent_generation);
+            let Some(child_stamp) = latest_by_seed.get(&seed).copied() else {
+                return Err(AsyncStalenessError::MissingLatestIntegratedChildStamp(seed));
+            };
             let Some(&seed_slot) = slot_of.get(&seed) else {
                 return Err(AsyncStalenessError::UnadmittedSeed(seed));
             };
@@ -248,16 +250,6 @@ impl AsyncStalenessColumn {
         }
         Ok(visited_this_dispatch)
     }
-
-    /// Planted whole-lattice mutant — must RED against seeded/horizon law.
-    pub fn plant_whole_lattice_registration_mutant(
-        &mut self,
-        _all_slots: impl IntoIterator<Item = SlotIndex>,
-        _parent_generation: GenerationStamp,
-        _child_stamp: GenerationStamp,
-    ) -> Result<(), AsyncStalenessError> {
-        Err(AsyncStalenessError::WholeLatticeRegistrationForbidden)
-    }
 }
 
 impl Default for AsyncStalenessColumn {
@@ -281,7 +273,7 @@ fn tree_undirected_adjacency(root: &SimThing) -> BTreeMap<SimThingId, Vec<SimThi
 }
 
 #[cfg(test)]
-mod inert_proof {
+mod column_proofs {
     use super::*;
 
     #[test]
@@ -294,5 +286,59 @@ mod inert_proof {
         assert_eq!(col.visit_count, 0);
         assert_eq!(col.seed_count, 0);
         assert!(col.seeds().is_empty());
+    }
+
+    /// Test-only planted whole-lattice registration — production API has no door.
+    fn plant_whole_lattice_registration_mutant(
+        _column: &mut AsyncStalenessColumn,
+        _all_slots: impl IntoIterator<Item = SlotIndex>,
+        _parent_generation: GenerationStamp,
+        _child_stamp: GenerationStamp,
+    ) -> Result<(), &'static str> {
+        Err("whole-lattice registration is forbidden (seeded/horizon law)")
+    }
+
+    #[test]
+    fn whole_lattice_registration_mutant_reds_in_test_only_scope() {
+        let mut col = AsyncStalenessColumn::admit(
+            4,
+            [SimThingId::from_session_raw(1)],
+            AuthoredStalenessHorizon::new(1),
+        )
+        .expect("admit");
+        let err = plant_whole_lattice_registration_mutant(
+            &mut col,
+            (0..4u32).map(SlotIndex::new),
+            GenerationStamp::new(1),
+            GenerationStamp::new(0),
+        )
+        .expect_err("whole-lattice must RED");
+        assert!(err.contains("forbidden"));
+    }
+
+    #[test]
+    fn missing_latest_child_stamp_fails_closed_without_fabricating_zero_freshness() {
+        let root = SimThing::new(simthing_core::SimThingKind::Custom("seed".into()), 0);
+        let seed = root.id;
+        let mut slots = BTreeMap::new();
+        slots.insert(seed, SlotIndex::new(0));
+        let mut col = AsyncStalenessColumn::admit(
+            1,
+            [seed],
+            AuthoredStalenessHorizon::new(0),
+        )
+        .expect("admit registered seed");
+        let parent = GenerationStamp::new(10);
+        let empty_latest = BTreeMap::new();
+        let err = col
+            .sweep_seeded(&root, &slots, parent, &empty_latest)
+            .expect_err("missing stamp must fail closed");
+        assert!(matches!(
+            err,
+            AsyncStalenessError::MissingLatestIntegratedChildStamp(id) if id == seed
+        ));
+        // No fabricated freshness: lane stays at admit-zero, not a silent Ok write of 0.0.
+        assert_eq!(col.value_at(SlotIndex::new(0)).expect("lane").to_bits(), 0.0f32.to_bits());
+        assert_eq!(col.visit_count, 0);
     }
 }

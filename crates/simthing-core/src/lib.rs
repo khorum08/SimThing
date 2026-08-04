@@ -109,7 +109,7 @@ pub use overlay::{
     PropertyTransformDelta,
 };
 pub use evaluate::{RoutedPredicate, RoutedPredicateComparison, TransformStack};
-pub use execution_posture::ExecutionPosture;
+pub use execution_posture::{ExecutionPosture, ExecutionPostureError};
 pub use placed_participant::{
     validate_and_mint_placed_participants_by_location_id,
     validate_location_ids_have_structural_placements, PlacedParticipant,

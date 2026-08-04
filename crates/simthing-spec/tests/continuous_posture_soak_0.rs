@@ -107,11 +107,15 @@ fn execution_posture_continuous_batches_same_kernel_paced_default() {
     assert_eq!(ExecutionPosture::default(), ExecutionPosture::Paced);
     assert!(ExecutionPosture::Paced.is_paced());
     assert_eq!(ExecutionPosture::Paced.generations_per_schedule(), 1);
-    let continuous = ExecutionPosture::continuous(8);
+    let continuous = ExecutionPosture::continuous(8).expect("nonzero continuous admits");
     assert!(continuous.is_continuous());
     assert_eq!(continuous.generations_per_schedule(), 8);
     // Posture is scheduling only — both name the same generation unit.
     assert_ne!(continuous, ExecutionPosture::Paced);
+    assert!(
+        ExecutionPosture::continuous(0).is_err(),
+        "zero continuous batch must fail closed at admit"
+    );
 }
 
 #[test]
@@ -249,19 +253,29 @@ fn staleness_is_one_derived_stead_lane_seeded_horizon_inert_zero_and_whole_latti
     );
     assert_eq!(observed.to_bits(), 3.0f32.to_bits());
 
-    // Whole-lattice mutant REDs.
-    let all_slots: Vec<SlotIndex> = (0..n_slots as u32).map(SlotIndex::new).collect();
-    let err = column
-        .plant_whole_lattice_registration_mutant(
-            all_slots,
-            parent,
-            GenerationStamp::new(0),
-        )
-        .expect_err("whole-lattice must RED");
+    // Whole-lattice registration has no production door: crossing seeds are a
+    // strict subset of lattice slots (test-only mutant lives under cfg(test)).
+    let all_ids: Vec<SimThingId> = slots.keys().copied().collect();
+    assert!(
+        seeds.len() < all_ids.len(),
+        "seeds_from_crossings must not register the whole lattice"
+    );
+
+    // Missing latest_integrated_child_stamp fails closed — never fabricates freshness.
+    let mut missing = AsyncStalenessColumn::admit(
+        n_slots,
+        seeds.clone(),
+        AuthoredStalenessHorizon::new(1),
+    )
+    .expect("admit");
+    let err = missing
+        .sweep_seeded(&root, &slots, parent, &BTreeMap::new())
+        .expect_err("missing stamp must RED");
     assert!(matches!(
         err,
-        simthing_spec::AsyncStalenessError::WholeLatticeRegistrationForbidden
+        simthing_spec::AsyncStalenessError::MissingLatestIntegratedChildStamp(_)
     ));
+    assert_eq!(missing.visit_count, 0);
 
     // No per-node property / history / mirror: the column is the only representation.
     // Prove inert world pays zero.
@@ -360,7 +374,7 @@ fn continuous_posture_forced_lag_growth_and_staleness_soak_n_generations() {
     const N: u32 = 32;
     let (root, rows, crossings) = scaling_tree(80, 10, &["r0", "r1"]);
     let slots = slot_map(&root);
-    let posture = ExecutionPosture::continuous(N);
+    let posture = ExecutionPosture::continuous(N).expect("nonzero continuous admits");
     assert_eq!(posture.generations_per_schedule(), N);
 
     let mut seam = AsyncOwnerChannelRfSeam::admit(AuthoredSeamStaleness::new(12));
@@ -398,7 +412,8 @@ fn continuous_posture_forced_lag_growth_and_staleness_soak_n_generations() {
         for &seed in col.seeds() {
             latest.insert(seed, GenerationStamp::new(gen));
         }
-        let _ = col.sweep_seeded(&root, &slots, parent_gen, &latest);
+        col.sweep_seeded(&root, &slots, parent_gen, &latest)
+            .expect("seeded sweep with stamps present");
     }
 
     assert!(retained_crossings.iter().all(|&c| c == crossings));
