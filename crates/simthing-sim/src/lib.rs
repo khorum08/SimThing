@@ -66,6 +66,7 @@ pub mod overlay_lifecycle;
 pub mod property_expiry;
 pub mod reduced_field;
 pub mod replay;
+pub mod resolution_site;
 pub mod sim_runtime_tree;
 pub mod threshold_registry;
 pub(crate) mod tree_index;
@@ -105,6 +106,13 @@ pub use observability::{
     SubFieldObservation,
 };
 pub use reduced_field::ReducedField;
+pub use resolution_site::{
+    collect_aggregate_alerts_vendorized, collect_velocity_alerts_vendorized,
+    mint_attach_overlay_at_barrier, plant_default_origin_mutant_mint,
+    plant_transform_divergence_mutant_mint, reattach_aggregate_alerts_at_barrier,
+    reattach_velocity_alerts_at_barrier, ResolutionSite, SlotIdentityReattachError,
+    SlotSpaceOverlayDraft,
+};
 pub use replay::{
     ReplayDriver, ReplayError, ReplayFrame, ReplayReader, ReplayRecord, ReplaySnapshot,
     ReplayWriter,

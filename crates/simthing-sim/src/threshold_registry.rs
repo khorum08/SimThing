@@ -287,6 +287,29 @@ impl ThresholdRegistry {
         idx
     }
 
+    /// PLANTED MUTANT (RESOLUTION-SITE-SPLIT-0 referee support — never a
+    /// production door). Returns a clone whose `event_kind` velocity/aggregate
+    /// entry carries a drifted `sim_thing_id`: registration-time mirror drift,
+    /// the semantic divergence the dual-placement parity referees must RED on.
+    /// Non-identity arms are returned unchanged.
+    pub fn plant_identity_mirror_drift_mutant(
+        &self,
+        event_kind: u32,
+        drifted: SimThingId,
+    ) -> Self {
+        let mut mutant = self.clone();
+        if let Some(entry) = mutant.entries.get_mut(event_kind as usize) {
+            match entry {
+                ThresholdSemantic::VelocityAlert { sim_thing_id, .. }
+                | ThresholdSemantic::AggregateAlert { sim_thing_id, .. } => {
+                    *sim_thing_id = drifted;
+                }
+                _ => {}
+            }
+        }
+        mutant
+    }
+
     /// Production CostBand door: resolve draw from sealed delta operands +
     /// admitted `event_kind` semantics. Callers cannot opt out a sink via
     /// ad-hoc `is_sink=false` or substitute throttle.
