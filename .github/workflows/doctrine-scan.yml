@@ -86,6 +86,11 @@ jobs:
           # ONLY — the admitted-domain sweep is a local phase-boundary act and is never
           # re-executed in CI (EML-EXP-PRIMITIVE-0).
           bash scripts/ci/eml_exp_qualification_check.sh --check 2>&1 | tee eml-exp-qualification-report.txt
+
+      - name: EML EXP qualification freshness selftest
+        if: steps.gate.outputs.run_selftests == 'true'
+        run: |
+          set -o pipefail
           bash scripts/ci/eml_exp_qualification_check.sh --selftest 2>&1 | tee -a eml-exp-qualification-report.txt
 
       - name: Doctrine anchor integrity
