@@ -441,3 +441,10 @@ date	role	query	anchors_served	hit
 2026-08-04T01:11:17Z	coding	--grep stead-spatial-contract-core	stead-spatial-contract-core	hit
 2026-08-04T01:11:17Z	coding	--grep structural-execution-convergence	structural-execution-convergence	hit
 2026-08-04T01:11:18Z	coding	--grep workshop-candidate-homing	workshop-candidate-homing	hit
+2026-08-04T01:44:56Z	coding	--paths docs/design_0_0_8_7_rf_arena_modernization.md docs/full_eml_unification.md crates/simthing-kernel/src/eml_opcode_gate.rs	admission-ladder-necessity-test,core-gpu-residency,core-property-value-model,eml-extension-ladder,exact-numeric-candidate-f,field-sweep-preservation,rf-arena-substrate,seal-residue-cross-crate,simthing-0087-binding-laws,simthing-0087-pillars,stead-rejected-shapes,stead-shared-surface-ledger,workshop-candidate-homing	hit
+2026-08-04T01:45:03Z	coding	--grep EML-PRIMITIVE-DOMAIN-0	none	none
+2026-08-04T01:45:03Z	coding	--grep the door	simthing-0087-binding-laws	hit
+2026-08-04T01:45:04Z	coding	--grep full_eml_unification	none	none
+2026-08-04T01:45:04Z	coding	--grep PrimitiveDomain	none	none
+2026-08-04T01:45:04Z	coding	--grep ExactPrimitiveDomainPolicy	none	none
+2026-08-04T01:57:15Z	coding	--paths crates/simthing-kernel/src/eml_opcode_gate.rs crates/simthing-kernel/src/lib.rs crates/simthing-kernel/src/overlay_prep.rs docs/tests/eml_primitive_domain_0_results.md docs/tests/current_evidence_index.md scripts/ci/test_inventory.tsv scripts/ci/anchor_reach_log.tsv	admission-ladder-necessity-test,core-gpu-residency,core-property-value-model,eml-extension-ladder,exact-numeric-candidate-f,field-sweep-preservation,orientation-harness-core,rf-arena-substrate,scanner-selftest-delta-gate,seal-residue-cross-crate,simthing-0087-binding-laws,simthing-0087-pillars,stead-rejected-shapes,stead-shared-surface-ledger,workshop-candidate-homing	hit
