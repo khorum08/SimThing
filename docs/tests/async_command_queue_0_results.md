@@ -1,7 +1,7 @@
 # ASYNC-COMMAND-QUEUE-0 results
 
 - Track: 0.0.8.7 RF arena modernization (rung 6.2)
-- Status: **PROBATION / proof-present / DA-review-pending**
+- Status: **COMPLETE / DA-GRADUATED — merged #1616 @ af4f9dbb** (Remand 2 closed: out-of-order carrier-stamp referee; DA independently planted the production last-wins mutation and confirmed RED)
 - Implementation base: `cf2d1a88db3198ba811ffce89871a1dd9876eba6`
 - ORIENT-RECEIPT: `6af1884543b0`
 - orientation_rule_stamp: `5554b2613f8907ff`
@@ -43,4 +43,4 @@ cargo test -p simthing-driver --test simthing_automaton_rf_reception_0: 2/0
 
 ## Posture
 
-**PROBATION / proof-present / DA-review-pending.** No clearance, merge, pointer movement, or successor-rung work is claimed.
+**COMPLETE / DA-GRADUATED — merged #1616 @ af4f9dbb.** No clearance, merge, pointer movement, or successor-rung work is claimed.
