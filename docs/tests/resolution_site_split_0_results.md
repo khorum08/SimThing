@@ -1,7 +1,7 @@
 # RESOLUTION-SITE-SPLIT-0 results
 
 - Track: 0.0.8.7 RF arena modernization (rung 6.2b)
-- Status: **IN PROGRESS — prerequisite telemetry landed BEFORE resolution-site code (this commit contains no implementation)**
+- Status: **PROBATION / proof-present / DA-review-pending**
 - Implementation base: `981ec1ebb5c04976798400c40f76e59bc6d3f0a6`
 - ORIENT-RECEIPT: `6af1884543b0`
 - orientation_rule_stamp: `5554b2613f8907ff`
@@ -97,3 +97,105 @@ healthy at small registration counts; the blowup tracks threshold/reduction regi
 This pre-exists rung 6.2b (reproduced at the untouched implementation base), is invisible to CI
 (no cargo test runs by standing Owner ruling; benches are manual), and belongs to the 6.3 soak
 lane, not this rung. Recorded here so it is triaged rather than rediscovered.
+
+## Landed surface (one model, two resolution sites)
+
+- `simthing_sim::resolution_site` holds BOTH placements' identity doors side by side.
+  `ResolutionSite::ClosedLoop` (the `Default`) re-attaches identity for converted crossings at the
+  barrier through the admitted slot map (`SlotAllocator::owner_of` + registered column owners —
+  the live authority), TOTAL over converted crossings and FAIL-CLOSED
+  (`SlotIdentityReattachError`; never a default identity). `ResolutionSite::CpuAuthoritative` is
+  the vendorized pre-split arm, relocated verbatim from `boundary.rs`
+  (`collect_*_alerts_vendorized`): identity from the semantic table's registration-time entries —
+  the mirror, demoted from authority to mirror by the parity referees.
+- Converted semantics (incremental, no flag day): `VelocityAlert` and `AggregateAlert` — the two
+  pure identity-re-attachment observation arms the ladder row names as the arms that EVAPORATE.
+  Crossing selection is one vocabulary (the one `ThresholdRegistry` semantic table) at both
+  placements; only the identity source differs. Unconverted arms (`FissionTrigger`,
+  `FusionTrigger`, `PropertyExpiry`, `CapabilityUnlock`, `ScriptedEventTrigger`) run identical
+  code in both placements; no fission/expiry/structural API gained a placement parameter, so
+  allocation is placement-blind at the type level.
+- `BoundaryProtocol` carries `resolution_site` (default `ClosedLoop` — the closed loop IS the
+  default placement now) with `set_resolution_site` keeping the vendorized build selectable.
+  The stage-1 alert collect dispatches on placement inside the existing stage; stage order,
+  count, timing fields, and all seven allocation stages are untouched.
+- Closed-loop overlay origination: `SlotSpaceOverlayDraft` carries `origin_slot`/`target_slot`
+  in SLOT SPACE (the 6.0b required-`origin` type boundary holds at the CPU representation — a
+  draft becomes an `Overlay` only through `mint_attach_overlay_at_barrier`). The barrier door
+  re-attaches both ids through the admitted slot map, fails closed on an unadmitted slot, and
+  mints `BoundaryRequest::AttachOverlay` with `affects` empty — routed delivery
+  (`deliver_routed_overlay`, 6.0b) sets it, so direct-`affects` bypass is structurally
+  impossible from this door.
+- Planted-mutant referee support (marked, never production doors):
+  `ThresholdRegistry::plant_identity_mirror_drift_mutant` (registration-time mirror drift),
+  `plant_transform_divergence_mutant_mint` (origination semantic divergence),
+  `plant_default_origin_mutant_mint` (the forbidden synthesized-origin shape).
+
+## Biting proofs
+
+| Proof | Result |
+|---|---|
+| Velocity-alert parity | identical oracle-minted crossings produce equal + `{:?}`-bit-identical + per-field `to_bits`-identical product streams at both placements; planted mirror-drift mutant REDs parity |
+| Aggregate-alert parity | same referee shape over `THRESH_BUF_OUTPUT` crossings; planted mirror-drift mutant REDs parity |
+| Slot-space origination | closed-loop draft->barrier mint and vendorized direct construction yield BIT-IDENTICAL `AttachOverlay` `BoundaryRequest` streams (incl. a planted `-0.0` payload); planted transform-divergence mutant REDs stream parity |
+| Fail-closed slot->id | unadmitted origin slot, unadmitted target slot, and unadmitted crossing slot each return the named `SlotIdentityReattachError`; the planted default-origin mutant fabricates exactly the forbidden attributable overlay the real door proves impossible |
+| Reception at both sites | both placements' requests arrive through the SAME `deliver_routed_overlay` with equal `DirectiveDeliveryReceipt`s and `{:?}`-identical trees |
+| Incremental / no flag day | unconverted semantics produce identically empty converted-door output at both placements; `ResolutionSite::default()` and `BoundaryProtocol` default are `ClosedLoop`; vendorized stays selectable |
+| Slot-space wire vocabulary | `size_of::<ThresholdEventGpu>() == 16` — the GPU wire event is exactly `{slot, col, value, event_kind}`; no identity lane exists |
+
+## No in-shader SimThingId path (grep + type evidence)
+
+The RESOLUTION vocabulary is identity-free end to end: `accumulator_op.wgsl` (the one fused
+Pass B kernel — crossings, EML, transfers, sweeps, threshold emission) contains no
+`sim_thing_id`/identity symbol (its only `IDENTITY` hits are the algebraic fold-identity
+constants `COMBINE_IDENTITY`/`SCALE_IDENTITY`); the wire types `ThresholdEventGpu` /
+`ThresholdEmissionGpu` carry `{slot, col, value/reg_idx, event_kind}` only. Recorded honestly:
+the STEAD anchor-table maintenance shaders (`anchor_table_maintain/remap/magnitude_values.wgsl`)
+carry an admission-minted opaque `sim_thing_id: u32` ROW LABEL used solely for remap row
+matching — that is P0(e) "anchor identity minted at admission, stable across slot moves",
+pre-existing, structural (not resolution), and untouched by this rung. No resolution or
+decision path in shader space requires a `SimThingId`; identity attaches only at the CPU
+barrier doors.
+
+## Pipeline unmodified / allocation barrier-only
+
+The diff over `boundary.rs` touches exactly: the `resolution_site` field + accessors, the
+stage-1 placement dispatch, and the relocation of the two collector fns to
+`resolution_site.rs`. The 13-stage sequence (module header list), the seven allocation stages,
+`projected_fission_slots`, `resolve_fission_fusion`, `apply_structural_mutations`, and every
+timing field are byte-untouched — verifiable by `git diff 981ec1eb..HEAD -- crates/simthing-sim/src/boundary.rs`.
+`FissionTrigger` pre-grow sizing and all structural work remain barrier-only in BOTH placements
+(no placement parameter exists on any allocation surface).
+
+## Live evidence (closed-loop default running end to end)
+
+At HEAD (ClosedLoop default), the 30-day threshold_stress soak (500 slots, incl. the mass-fission
+boundary day) and the authored rebellion_demo complete with structurally IDENTICAL bench output
+to the pre-change base runs (fission_events 499, n_slots 500->1000, boundary cadence, all byte
+and upload counters — diff-verified field-for-field).
+
+```text
+cargo test -p simthing-sim --test resolution_site_split_0: 7/0
+cargo test -p simthing-sim (full crate battery): 9 suites, 0 failures
+cargo test -p simthing-driver --test determinism_matrix_0 --test cpu_gpu_parity_matrix_0
+    --test simthing_automaton_rf_reception_0 --test write_door_band_delta_0: 16/0 (GPU legs live)
+bash scripts/ci/agent_scan.sh: AGENT-SCAN-VERDICT: PASS delta_inspect=0
+```
+
+## Fence / STOP status
+
+- No STOP condition was hit: slot-space identity sufficed for every converted semantic; slot->id
+  re-attachment is total/fail-closed with no synthesized identity and no second identity
+  authority; bit-identical parity required relocating identity re-attachment only, never a
+  semantic change.
+- Fences held: one semantic vocabulary (the existing `ThresholdSemantic` table at both sites);
+  no in-shader `SimThingId` (see above); no synthesized/default `Overlay.origin`; no slot->id
+  fallback; no shader-side allocation and zero WGSL diff; 13-stage pipeline unmodified; no
+  direct-`affects` bypass; no second transport/queue/recorder; no scenario/domain witness
+  (synthetic inline input only); no gate/invariant weakening; no 6.3/movement/contention work.
+
+## Posture
+
+**PROBATION / proof-present / DA-review-pending.** No clearance, merge, pointer movement, or
+successor-rung work is claimed. The pre-existing device-lost finding at authored stress scales
+(see telemetry section) is reported for triage, not fixed here.

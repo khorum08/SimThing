@@ -448,3 +448,25 @@ date	role	query	anchors_served	hit
 2026-08-04T01:45:04Z	coding	--grep PrimitiveDomain	none	none
 2026-08-04T01:45:04Z	coding	--grep ExactPrimitiveDomainPolicy	none	none
 2026-08-04T01:57:15Z	coding	--paths crates/simthing-kernel/src/eml_opcode_gate.rs crates/simthing-kernel/src/lib.rs crates/simthing-kernel/src/overlay_prep.rs docs/tests/eml_primitive_domain_0_results.md docs/tests/current_evidence_index.md scripts/ci/test_inventory.tsv scripts/ci/anchor_reach_log.tsv	admission-ladder-necessity-test,core-gpu-residency,core-property-value-model,eml-extension-ladder,exact-numeric-candidate-f,field-sweep-preservation,orientation-harness-core,rf-arena-substrate,scanner-selftest-delta-gate,seal-residue-cross-crate,simthing-0087-binding-laws,simthing-0087-pillars,stead-rejected-shapes,stead-shared-surface-ledger,workshop-candidate-homing	hit
+2026-08-04T12:40:42Z	coding	--grep core-overlays	core-overlays	hit
+2026-08-04T12:40:55Z	coding	--grep stead-events-are-rf	stead-events-are-rf	hit
+2026-08-04T12:40:55Z	coding	--grep stead-rejected-shapes	stead-rejected-shapes	hit
+2026-08-04T12:41:00Z	coding	--grep field-policy-time-decisions	field-policy-time-decisions	hit
+2026-08-04T12:41:00Z	coding	--grep core-gpu-residency	core-gpu-residency	hit
+2026-08-04T12:41:11Z	coding	--grep simthing-0087-binding-laws	simthing-0087-binding-laws	hit
+2026-08-04T12:41:11Z	coding	--grep simthing-0087-pillars	simthing-0087-pillars	hit
+2026-08-04T12:41:30Z	coding	--grep stead-shared-surface-ledger	stead-shared-surface-ledger	hit
+2026-08-04T12:41:30Z	coding	--grep core-rf-arenas	core-rf-arenas	hit
+2026-08-04T12:41:41Z	coding	--grep exact-numeric-candidate-f	exact-numeric-candidate-f	hit
+2026-08-04T12:41:41Z	coding	--grep field-sweep-preservation	field-sweep-preservation	hit
+2026-08-04T12:41:41Z	coding	--grep eml-extension-ladder	eml-extension-ladder	hit
+2026-08-04T12:41:41Z	coding	--grep core-property-value-model	core-property-value-model	hit
+2026-08-04T12:41:48Z	coding	--grep founding-ontology-invariants	founding-ontology-invariants	hit
+2026-08-04T12:41:49Z	coding	--grep structural-execution-convergence	structural-execution-convergence	hit
+2026-08-04T12:41:49Z	coding	--grep seal-residue-cross-crate	seal-residue-cross-crate	hit
+2026-08-04T12:41:49Z	coding	--grep workshop-candidate-homing	workshop-candidate-homing	hit
+2026-08-04T12:41:57Z	coding	--grep rf-arena-substrate	rf-arena-substrate	hit
+2026-08-04T12:41:57Z	coding	--grep orientation-harness-core	orientation-harness-core	hit
+2026-08-04T12:41:57Z	coding	--grep scanner-selftest-delta-gate	scanner-selftest-delta-gate	hit
+2026-08-04T12:41:58Z	coding	--grep stead-spatial-contract-core	stead-spatial-contract-core	hit
+2026-08-04T12:41:58Z	coding	--grep admission-ladder-necessity-test	admission-ladder-necessity-test	hit
