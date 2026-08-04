@@ -160,9 +160,13 @@ impl AsyncStalenessColumn {
             intensity_labels: vec![],
         };
         let property_id = registry.register(prop);
+        let layout = registry.property(property_id).layout.clone();
         let range = registry.column_range(property_id);
         debug_assert_eq!(range.stride, 1, "async staleness admits one STEAD column");
-        let col = ColumnIndex::from_gpu_round_trip(range.start as u32);
+        let role = SubFieldRole::Named("staleness".into());
+        let col = range
+            .col_for_role(&role, &layout)
+            .expect("single Named staleness role is layout-admitted");
         let n_dims = registry.total_columns as usize;
         let seeds: Vec<SimThingId> = seeds.into_iter().collect();
         let seed_count = seeds.len() as u64;
