@@ -490,7 +490,15 @@ The binding rules that make this safe at GPU scale:
   binding is per-epoch**, bound at boundary upload, and rebindable **only at a generation boundary
   through a recorded remap** — the existing `AnchorLocusRemap` / `AnchorRemapOperation` door
   (landed 5.2; `SlotCapacityGrow` already records slot movement; epoch compaction extends that
-  vocabulary, never a second mechanism). Between epochs there is zero indirection: bindings are
+  vocabulary, never a second mechanism; **granularity proof owed at 6.4**: the door must represent
+  every object-row rebind **exactly once** — including SimThings with zero anchored property loci
+  — inside the one canonical history, or 6.4 STOPS and escalates rather than minting a second log).
+  **An *epoch* is the interval between successive recorded remap events of a tree's physical
+  binding** — opened at session install or at a remap, closed by the next remap. Every remap
+  occurs at a generation boundary; **almost no generation boundary is a remap** (remaps fire only
+  from authored thresholds — capacity growth, compaction — so an epoch typically spans many
+  generations, and "zero indirection between epochs" is a real property, not a per-generation
+  re-upload). Between epochs there is zero indirection: bindings are
   baked into uploaded artifacts exactly as boundary sync re-uploads registrations today.
   Two index spaces are distinct and must never conflate: **matrix-row space** (physical, epoch-bound,
   remappable) and **dense cell space** (`y*width+x` over authored structural coordinates — logical

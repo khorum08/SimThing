@@ -26,8 +26,10 @@
 >
 > **Amended 2026-08-04 (STEMTHING-CENSUS-TIER2-SESSION @ `a3183b17`): the §3.1 HARD HOLD is
 > DISCHARGED.** The census ran (single pass, post-Phase-6, per the Owner timing ruling):
-> `scripts/ci/stemthing_slot_census.tsv` — 25 artifact rows, 61/61 type-walk consumers reconciled
-> (compiler-harvested), grep residue fully dispositioned, **zero `BLOCKER`, zero `ORDER-PIN`** —
+> `scripts/ci/stemthing_slot_census.tsv` — 25 artifact rows; accessor-consumer universe **51/51** assigned (compiler-harvested under the
+> strict CENSUS-note filter; two earlier counts of 61/62 were contaminated by unrelated bevy/mapgen
+> deprecation warnings — corrected 2026-08-04), analysis-added carriers named, grep residue fully
+> dispositioned, **zero `BLOCKER`, zero `ORDER-PIN`** —
 > and **shape (a) is RULED from that evidence**: stable logical `SlotIndex`, per-epoch physical
 > binding, rebind only via the existing `AnchorLocusRemap` door (5.2). The Tier-2 amendment is
 > landed in core design §3 (slot-identity law) and §4. StemThing-A rows are minted: **6.4
@@ -483,11 +485,13 @@ own placement belongs to its granter's barrier, which for the session root is se
   canonical history surface).
 - **Shared window with the EML completion rungs (Owner-approved 2026-08-03):** rungs
   `5.10`–`5.12` (`PrimitiveDomain` door machinery, full-domain `EXP`, `LN` — see
-  [`full_eml_unification.md`](full_eml_unification.md) §10) dispatch in the **same Phase 6 → 7
-  gap, in parallel with StemThing-A**: disjoint files (kernel EML surfaces vs. census/Tier-2
-  docs), disjoint lanes, no shared gate — neither stream waits on the other. The primitives are
+  [`full_eml_unification.md`](full_eml_unification.md) §10) dispatch in the same Phase 6 → 7 gap. **SUPERSEDED (Owner sequencing ruling, 2026-08-04, stamped in
+  board comment 5182422593): the streams are SERIAL, not parallel — 5.11 → 5.12 graduate FIRST; the
+  Owner's pointer flip to 6.4 (StemThing-A dispatch) follows 5.12's graduation.** The earlier
+  parallel-window language is withdrawn; the census/Tier-2 DA work completed inside the gap as
+  planned, but StemThing-A *implementation* queues behind the EML completion rungs. The primitives are
   deliberately **not** StemThing components; the dependency runs the other way and later:
-  **StemThing-B's derivation-pricing and potency-depletion curves are horizon consumers of
+  **StemThing-B's derivation-pricing and capacity-depletion curves are horizon consumers of
   `EXP`/`LN`/`POW`**, authorable as ordinary gadgets when B's rungs land.
 - **Integration sequencing (Owner ruling 2026-08-03 — Phase 6 lands as stated; the trigger chain
   is tree-state, never calendar):**
