@@ -126,10 +126,15 @@ lane, not this rung. Recorded here so it is triaged rather than rediscovered.
   mints `BoundaryRequest::AttachOverlay` with `affects` empty — routed delivery
   (`deliver_routed_overlay`, 6.0b) sets it, so direct-`affects` bypass is structurally
   impossible from this door.
-- Planted-mutant referee support (marked, never production doors):
-  `ThresholdRegistry::plant_identity_mirror_drift_mutant` (registration-time mirror drift),
-  `plant_transform_divergence_mutant_mint` (origination semantic divergence),
-  `plant_default_origin_mutant_mint` (the forbidden synthesized-origin shape).
+- Planted-mutant referees are TEST-LOCAL ONLY (Remand 1, orchestrator `5179675096`): the
+  mirror-drift registries are built inside the test through the ordinary `push` door with
+  deliberately wrong registration-time identity; the transform-divergence draft is mutated in
+  the test and run through the REAL mint door; the synthesized-origin comparator is constructed
+  in the test as the request a defaulting door WOULD have minted, while the real door returns
+  `Err` on the same input. **No mutant constructor ships**: five pinned `compile_fail` doctests
+  (4x `E0432` import, 1x `E0599` method) on the `resolution_site` module mechanize the absence
+  of `plant_default_origin_mutant_mint`, `plant_transform_divergence_mutant_mint`, and
+  `ThresholdRegistry::plant_identity_mirror_drift_mutant` from the production surface.
 
 ## Biting proofs
 
@@ -142,6 +147,7 @@ lane, not this rung. Recorded here so it is triaged rather than rediscovered.
 | Reception at both sites | both placements' requests arrive through the SAME `deliver_routed_overlay` with equal `DirectiveDeliveryReceipt`s and `{:?}`-identical trees |
 | Incremental / no flag day | unconverted semantics produce identically empty converted-door output at both placements; `ResolutionSite::default()` and `BoundaryProtocol` default are `ClosedLoop`; vendorized stays selectable |
 | Slot-space wire vocabulary | `size_of::<ThresholdEventGpu>() == 16` — the GPU wire event is exactly `{slot, col, value, event_kind}`; no identity lane exists |
+| No mutant seam ships | five pinned `compile_fail` doctests prove the planted-mutant constructors are absent from the production surface (import/method resolution is a compile error); mutants exist only inside the test target |
 
 ## No in-shader SimThingId path (grep + type evidence)
 

@@ -108,8 +108,7 @@ pub use observability::{
 pub use reduced_field::ReducedField;
 pub use resolution_site::{
     collect_aggregate_alerts_vendorized, collect_velocity_alerts_vendorized,
-    mint_attach_overlay_at_barrier, plant_default_origin_mutant_mint,
-    plant_transform_divergence_mutant_mint, reattach_aggregate_alerts_at_barrier,
+    mint_attach_overlay_at_barrier, reattach_aggregate_alerts_at_barrier,
     reattach_velocity_alerts_at_barrier, ResolutionSite, SlotIdentityReattachError,
     SlotSpaceOverlayDraft,
 };

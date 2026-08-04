@@ -35,6 +35,36 @@
 //! genuine allocation (fission pre-grow, fission/fusion, lineage, AddChild
 //! pre-grow, structural mutations, dimension rebuild, capacity) stays at the
 //! barrier in BOTH placements.
+//!
+//! ## No mutant seam ships (structural proof)
+//!
+//! The RED-referee mutants for this rung (synthesized default origin, transform
+//! divergence, registration-time mirror drift) are constructed inside the test
+//! target only. No planted-mutant constructor exists on the production surface —
+//! importing one is a compile error, pinned here so the absence is mechanized
+//! rather than asserted:
+//!
+//! ```compile_fail,E0432
+//! use simthing_sim::plant_default_origin_mutant_mint;
+//! ```
+//!
+//! ```compile_fail,E0432
+//! use simthing_sim::plant_transform_divergence_mutant_mint;
+//! ```
+//!
+//! ```compile_fail,E0432
+//! use simthing_sim::resolution_site::plant_default_origin_mutant_mint;
+//! ```
+//!
+//! ```compile_fail,E0432
+//! use simthing_sim::resolution_site::plant_transform_divergence_mutant_mint;
+//! ```
+//!
+//! ```compile_fail,E0599
+//! use simthing_sim::ThresholdRegistry;
+//! let reg = ThresholdRegistry::new();
+//! let _ = reg.plant_identity_mirror_drift_mutant(0u32, ());
+//! ```
 
 use simthing_core::{
     DimensionRegistry, Overlay, OverlayId, OverlayKind, OverlayLifecycle, OverlaySource,
@@ -314,45 +344,3 @@ pub fn mint_attach_overlay_at_barrier(
     })
 }
 
-/// PLANTED MUTANT (referee support — never a production door). The forbidden
-/// shape this rung's fail-closed law exists to prevent: on an unadmitted origin
-/// slot, substitute a synthesized fallback origin instead of failing closed.
-/// Referees prove the real door ([`mint_attach_overlay_at_barrier`]) errors on
-/// exactly the input where this mutant fabricates an attributable overlay.
-pub fn plant_default_origin_mutant_mint(
-    draft: &SlotSpaceOverlayDraft,
-    allocator: &SlotAllocator,
-    fallback_origin: SimThingId,
-) -> BoundaryRequest {
-    let origin = allocator
-        .owner_of(draft.origin_slot)
-        .unwrap_or(fallback_origin);
-    let target = allocator
-        .owner_of(draft.target_slot)
-        .unwrap_or(fallback_origin);
-    BoundaryRequest::AttachOverlay {
-        target,
-        overlay: Overlay {
-            id: draft.id,
-            kind: draft.kind.clone(),
-            source: draft.source.clone(),
-            origin,
-            affects: Vec::new(),
-            transform: draft.transform.clone(),
-            lifecycle: draft.lifecycle.clone(),
-        },
-    }
-}
-
-/// PLANTED MUTANT (referee support — never a production door). Semantic
-/// divergence in the origination path: the minted overlay's transform is
-/// perturbed relative to the draft, so the two placements stop producing
-/// bit-identical `BoundaryRequest` streams. Parity referees must RED on this.
-pub fn plant_transform_divergence_mutant_mint(
-    draft: &SlotSpaceOverlayDraft,
-    allocator: &SlotAllocator,
-) -> Result<BoundaryRequest, SlotIdentityReattachError> {
-    let mut diverged = draft.clone();
-    diverged.transform.sub_field_deltas.pop();
-    mint_attach_overlay_at_barrier(&diverged, allocator)
-}

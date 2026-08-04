@@ -24,8 +24,7 @@ use simthing_gpu::{
 };
 use simthing_sim::{
     collect_aggregate_alerts_vendorized, collect_velocity_alerts_vendorized,
-    mint_attach_overlay_at_barrier, plant_default_origin_mutant_mint,
-    plant_transform_divergence_mutant_mint, reattach_aggregate_alerts_at_barrier,
+    mint_attach_overlay_at_barrier, reattach_aggregate_alerts_at_barrier,
     reattach_velocity_alerts_at_barrier, BoundaryProtocol, ResolutionSite, SimRuntimeTree,
     SlotIdentityReattachError, SlotSpaceOverlayDraft, ThresholdRegistry, ThresholdSemantic,
 };
@@ -148,9 +147,23 @@ fn velocity_alert_parity_bit_identical_and_mirror_drift_mutant_reds() {
         assert_eq!(cl.value.to_bits(), ven.value.to_bits());
     }
 
-    // Planted semantic divergence: registration-time mirror drift. The parity
+    // Planted semantic divergence (TEST-LOCAL: no mutant constructor ships —
+    // see the resolution_site module compile_fail proofs): a deliberately
+    // drifted mirror registry built through the ordinary push door, same
+    // shape and kinds, wrong registration-time identity at kind_a. The parity
     // referee must RED — the closed loop (authority) exposes the stale mirror.
-    let drifted = sem.plant_identity_mirror_drift_mutant(kind_a, SimThingId::new());
+    let mut drifted = ThresholdRegistry::new();
+    let drifted_kind_a = drifted.push(ThresholdSemantic::VelocityAlert {
+        sim_thing_id: SimThingId::new(),
+        property_id: arena.pid,
+        sub_field: role.clone(),
+    });
+    let drifted_kind_b = drifted.push(ThresholdSemantic::VelocityAlert {
+        sim_thing_id: arena.b_id,
+        property_id: arena.pid,
+        sub_field: role.clone(),
+    });
+    assert_eq!((drifted_kind_a, drifted_kind_b), (kind_a, kind_b));
     let mutant_vendorized = collect_velocity_alerts_vendorized(&events, &drifted);
     assert_ne!(
         closed_loop, mutant_vendorized,
@@ -186,7 +199,15 @@ fn aggregate_alert_parity_bit_identical_and_mirror_drift_mutant_reds() {
         assert_eq!(cl.value.to_bits(), ven.value.to_bits());
     }
 
-    let drifted = sem.plant_identity_mirror_drift_mutant(kind, SimThingId::new());
+    // TEST-LOCAL mirror-drift mutant (no mutant constructor ships): same
+    // shape, wrong registration-time identity, via the ordinary push door.
+    let mut drifted = ThresholdRegistry::new();
+    let drifted_kind = drifted.push(ThresholdSemantic::AggregateAlert {
+        sim_thing_id: SimThingId::new(),
+        property_id: arena.pid,
+        sub_field: role.clone(),
+    });
+    assert_eq!(drifted_kind, kind);
     let mutant_vendorized = collect_aggregate_alerts_vendorized(&events, &drifted);
     assert_ne!(
         closed_loop, mutant_vendorized,
@@ -256,8 +277,12 @@ fn slot_space_origination_attach_stream_bit_identical_and_divergence_mutant_reds
         "affects is set by routed delivery, never by the mint door (no direct-affects bypass)"
     );
 
-    // Planted semantic divergence in the origination path: parity REDs.
-    let mutant = plant_transform_divergence_mutant_mint(&d, &arena.allocator)
+    // Planted semantic divergence in the origination path (TEST-LOCAL: the
+    // divergent draft is mutated here, then run through the REAL mint door —
+    // no divergence seam exists in production): parity REDs.
+    let mut diverged = d.clone();
+    diverged.transform.sub_field_deltas.pop();
+    let mutant = mint_attach_overlay_at_barrier(&diverged, &arena.allocator)
         .expect("mutant still re-attaches; it diverges semantically");
     assert_ne!(
         format!("{closed_loop:?}"),
@@ -283,16 +308,37 @@ fn unadmitted_slot_reattachment_fails_closed_never_default_origin() {
         }
     );
 
-    // ...while the planted mutant fabricates exactly the forbidden thing: an
-    // attributable overlay with a synthesized origin.
+    // ...while the forbidden comparator is constructed TEST-LOCALLY (no
+    // synthesized-origin seam exists in production — see the module
+    // compile_fail proofs): the request a defaulting door WOULD have minted,
+    // an attributable overlay whose origin no admitted slot vouches for. The
+    // real door's `Err` above is what makes this state unreachable in
+    // production.
     let fallback = arena.tree.id;
-    let forged = plant_default_origin_mutant_mint(&orphan, &arena.allocator, fallback);
+    let forged = BoundaryRequest::AttachOverlay {
+        target: arena.b_id,
+        overlay: Overlay {
+            id: orphan.id,
+            kind: orphan.kind.clone(),
+            source: orphan.source.clone(),
+            origin: fallback,
+            affects: Vec::new(),
+            transform: orphan.transform.clone(),
+            lifecycle: orphan.lifecycle.clone(),
+        },
+    };
     let BoundaryRequest::AttachOverlay { overlay, .. } = &forged else {
-        panic!("mutant mints AttachOverlay");
+        panic!("forbidden comparator is AttachOverlay");
     };
     assert_eq!(
         overlay.origin, fallback,
-        "the mutant synthesizes a default origin — the door above proves this cannot happen"
+        "the comparator synthesizes a default origin — the door's Err above proves the \
+         production path cannot reach this state"
+    );
+    assert_ne!(
+        arena.allocator.owner_of(orphan.origin_slot),
+        Some(overlay.origin),
+        "no admitted slot vouches for the synthesized origin"
     );
 
     // Unadmitted target slot also fails closed.
