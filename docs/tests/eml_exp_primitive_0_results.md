@@ -6,7 +6,7 @@
 - Branch: `fable/eml-exp-primitive-0`
 - ORIENT-RECEIPT: `d950cd858719` (orientation_rule_stamp `2d131557973b6050`)
 - HD-RECEIPT: `eba8e17a4526`
-- Dispatch: Board comment `5183411832`
+- Dispatch: Board comment `5183411832`; remand: Board comment `5185578598` (DA ruling `5185563460`)
 - Expected route: `DA-RESERVE(gate-wiring)`
 - Scope: **5.11 only** — no LN/POW/eml()/LogAccumulate, no StemThing-A, no movement/contention, no 5.12 work
 
@@ -51,7 +51,7 @@ step-by-step: `kf` collapsed to `a`, k off by one at the domain floor, probe ref
 semantics the hardware actually executes — `round()` (RNE intrinsic) and explicit `fma()` —
 which are fully-IEEE-specified single-rounding operations available identically on CPU
 (`round_ties_even`/`mul_add`). Zero fences retained (measured unnecessary under v2; the doc's
-"ship the faster naked arithmetic" ruling). The 2^32 digest referees the whole question.
+"ship the faster naked arithmetic" ruling). The admitted-domain digest referees the whole question.
 
 ### Execution arms (one definition per surface, no bespoke shader)
 
@@ -76,7 +76,7 @@ the §4 "literal in range" certificate). Anything else is the spanned
 `UnguardedExactPrimitiveCallSite` error (span = node indices). The naive unstabilized
 softmax form `EXP(β·zᵢ)` is mechanically rejected by this gate.
 
-## Exhaustive 2^32 qualification (LOCAL phase-boundary act — never CI)
+## Exhaustive admitted-domain qualification (LOCAL phase-boundary act — never CI)
 
 Exact command:
 
@@ -116,11 +116,20 @@ roster row.
   the CPU-twin sequence region and the WGSL helper block (copies must also be byte-equal),
   digest/domain presence in the qualification module and this doc, recorded wgpu version vs
   `Cargo.lock`. `--selftest` plants a one-ULP constant drift in the twin and in one WGSL home;
-  both must FAIL. **The 2^32 sweep is never re-executed by CI.**
-- Residual (named, per stop-condition honesty): the *driver* link of the chain cannot be
-  statically watched from CI (no GPU); it is pinned in the roster and re-verified by every
-  local GPU referee/qualification run. This is the certified-substrate law working as designed,
-  not a silent gap.
+  both must FAIL. **The admitted-domain sweep is never re-executed by CI.**
+- **Live-tuple enforcement (DA remand `5185563460` repair):** every GPU
+  qualification/referee path in the qualification battery acquires its context through
+  `certified_context()`, which reads the live `(adapter, backend, driver)` tuple
+  (`EmlExpLiveToolchainIdentity::from_context`) and HARD-ERRORS via
+  `require_certified_toolchain` when the tuple is absent from
+  `EML_EXP_CERTIFIED_TOOLCHAINS` — exact string equality on all three fields, so a driver
+  update IS an uncertified tuple until requalification appends a roster row. Referee
+  `eml_exp_primitive_0_uncertified_live_tuple_is_hard_red` plants driver-drift,
+  backend-swap, and foreign-adapter tuples (all RED) plus a comparator-bypass mutant
+  (RED). Live detection on this host:
+  `EML_EXP_TOOLCHAIN live tuple CERTIFIED adapter="NVIDIA GeForce RTX 4080 Laptop GPU"
+  backend="Vulkan" driver="NVIDIA 595.79"`. Local-only by design — standing CI has no GPU
+  and never claims this leg; the static watcher above covers the compiler/source links.
 
 ## Independent numerical characterization (approximation quality, NOT a rounding claim)
 
@@ -192,7 +201,7 @@ dimension, no baseline substitution.
   `NEIGHBOR·0.33333334` map + Sum fold). The landed three-way census never sees it because its
   authored values are dyadic (every product exact). The falloff consumer's JIT arm is bounded
   ≤1 ULP in-test with commentary; the primitive itself carries zero drift on the same arm
-  (2^32 proof). Routed to triage as a generic-lowering finding with candidate remedies (fold
+  (admitted-domain proof). Routed to triage as a generic-lowering finding with candidate remedies (fold
   seam specified as fused in twin+JIT, matching this rung's philosophy; or NoContraction
   emission). Not a 5.11 surface: fixing it moves the generic fold semantics for every program.
 - 5.12 `EML-LN-PRIMITIVE-0` inherits the v2 template: intrinsic/fused pinned ops, exhaustive
@@ -210,7 +219,7 @@ cargo test -p simthing-kernel --lib eml_exp: 7 passed (vocabulary census, call-s
   tripwire, one-EXP admission ritual)
 cargo test -p simthing-workshop --test eml_exp_primitive_0_qualification: 4 passed
   (three-way probe parity, STEAD falloff three-way, 2 digest mutants); +5 ignored local acts
-  all run and PASS (2^32 CPU/interpreted/JIT with pinned-digest asserts, characterization,
+  all run and PASS (admitted-domain CPU/interpreted/JIT with pinned-digest asserts, characterization,
   seam witness)
 cargo test -p simthing-workshop --test eml_exp_primitive_0_cost_evidence -- --ignored: 1 passed
 cargo test -p simthing-workshop --test eml_resource_class_jit_parity_0: 1 passed (inherited census)
@@ -219,6 +228,29 @@ bash scripts/ci/eml_exp_qualification_check.sh --selftest: PASS (both planted dr
 bash scripts/ci/agent_scan.sh: see relay
 bash scripts/ci/test_inventory_drift_check.sh: see relay
 ```
+
+### Remand closure (Board `5185578598`, DA ruling `5185563460`)
+
+```text
+cargo test -p simthing-kernel --lib eml_exp: 8 passed (adds
+  eml_exp_primitive_0_uncertified_live_tuple_is_hard_red - driver-drift / backend-swap /
+  foreign-adapter tuples all RED + comparator-bypass mutant RED)
+cargo test -p simthing-workshop --test eml_exp_primitive_0_qualification: 4 passed via
+  certified_context() gateway; live detection PASS:
+  EML_EXP_TOOLCHAIN live tuple CERTIFIED adapter="NVIDIA GeForce RTX 4080 Laptop GPU"
+  backend="Vulkan" driver="NVIDIA 595.79" qualified_on=2026-08-04
+bash scripts/ci/eml_exp_qualification_check.sh --check: PASS (pins re-anchored to the
+  comment-insensitive semantic region after the admitted-domain wording sweep)
+bash scripts/ci/eml_exp_qualification_check.sh --selftest: PASS (both planted drifts bite)
+bash scripts/ci/agent_scan.sh --base 7ebf8884: 0 hard failures; 1 HEURISTIC INSPECT
+  (TEST-BUDGET, 9 named certification referees) justified + triaged
+bash scripts/ci/test_inventory_drift_check.sh: PASS
+```
+
+Wording corrected per DA ruling: qualification is **exhaustive over the admitted domain**
+(2,237,667,740 binary32 patterns), not over all 2^32 bit patterns — phrasing updated across
+5.11 code comments, script, workflow, and evidence surfaces with the proof and algorithm
+unchanged.
 
 ## Posture
 

@@ -1,5 +1,5 @@
 //! EML-EXP-PRIMITIVE-0 — parity probes, mutation referees, and the LOCAL
-//! exhaustive 2^32 qualification for the admitted `EXP` exact primitive.
+//! exhaustive admitted-domain qualification for the admitted `EXP` exact primitive.
 //!
 //! The exhaustive tests are `#[ignore]`: they are a **phase-boundary local
 //! certification act** (Owner ruling; full_eml_unification §10.3), never
@@ -22,6 +22,24 @@ use simthing_gpu::{
 
 const FNV_OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
 const FNV_PRIME: u64 = 0x0000_0100_0000_01b3;
+
+/// Live-tuple freshness gateway (DA remand `5185563460`): every GPU
+/// qualification/referee path in this file acquires its context HERE, which
+/// reads the running `(adapter, backend, driver)` tuple and HARD-ERRORS when
+/// it is absent from the certified roster. Returns `None` only when no GPU
+/// context can be created at all (headless host — nothing to referee).
+fn certified_context() -> Option<GpuContext> {
+    let ctx = GpuContext::new_blocking().ok()?;
+    let live =
+        simthing_kernel::eml_exp_qualification::EmlExpLiveToolchainIdentity::from_context(&ctx);
+    let certified = simthing_kernel::eml_exp_qualification::require_certified_toolchain(&live)
+        .expect("live GPU tuple must be in the certified EXP toolchain roster");
+    eprintln!(
+        "EML_EXP_TOOLCHAIN live tuple CERTIFIED adapter={:?} backend={:?} driver={:?} qualified_on={}",
+        live.adapter, live.backend, live.driver, certified.qualified_on
+    );
+    Some(ctx)
+}
 
 /// Slots per GPU dispatch chunk (32768 workgroups of 64 — inside every
 /// backend's per-dimension dispatch limit).
@@ -179,7 +197,8 @@ fn gpu_exp_outputs(
 }
 
 fn run_gpu_arm(interpreted: bool, arm: &str) -> (u64, u64) {
-    let ctx = GpuContext::new_blocking().expect("exhaustive qualification requires the local GPU");
+    let ctx =
+        certified_context().expect("exhaustive qualification requires the local certified GPU");
     let registration = exp_elementwise_registration(CHUNK_SLOTS as u32);
     let class = registration.resource_class();
     let mut session = if interpreted {
@@ -263,10 +282,10 @@ fn cpu_reference_digest() -> (u64, u64) {
 
 /// Three-way probe parity: CPU twin, interpreted GPU arm, and SSA-JIT arm are
 /// bit-identical over the deterministic probe corpus. This is the fast
-/// pre-exhaustive net; the 2^32 sweep below is the binding certification.
+/// pre-exhaustive net; the admitted-domain sweep below is the binding certification.
 #[test]
 fn eml_exp_primitive_0_probe_corpus_is_three_way_bit_exact() {
-    let Ok(ctx) = GpuContext::new_blocking() else {
+    let Some(ctx) = certified_context() else {
         return;
     };
     let corpus = probe_corpus();
@@ -307,7 +326,7 @@ fn eml_exp_primitive_0_stead_falloff_law_is_three_way_bit_exact() {
         compile_stead_exponential_falloff_field_sweep, stead_exponential_falloff_weight_oracle,
         SteadExponentialFalloffSpec,
     };
-    let Ok(ctx) = GpuContext::new_blocking() else {
+    let Some(ctx) = certified_context() else {
         return;
     };
     let spec = SteadExponentialFalloffSpec {
@@ -352,7 +371,7 @@ fn eml_exp_primitive_0_stead_falloff_law_is_three_way_bit_exact() {
     // toolchain contracts `accumulator + (u * e)` into a fused multiply-add.
     // This is a PRE-EXISTING property of the generic JIT fold lowering — the
     // elementwise EXP post program is bit-exact on the same arm over the full
-    // 2^32 domain, and the seam probe below reproduces the drift with no EXP
+    // admitted domain, and the seam probe below reproduces the drift with no EXP
     // in the program at all (the landed census never sees it because its
     // authored values are dyadic, making every product exact). Bounded here
     // at <= 1 ULP and routed to triage as a generic-lowering finding; the
@@ -402,7 +421,7 @@ fn eml_exp_primitive_0_stead_falloff_law_is_three_way_bit_exact() {
 #[test]
 #[ignore = "diagnostic witness for the generic JIT fold-contraction seam (triage evidence)"]
 fn eml_exp_primitive_0_jit_fold_seam_witness_is_exp_free() {
-    let Ok(ctx) = GpuContext::new_blocking() else {
+    let Some(ctx) = certified_context() else {
         return;
     };
     let col = ColumnIndex::try_from_admitted_authored(0, 2).expect("value column");
@@ -699,7 +718,7 @@ fn eml_exp_primitive_0_numerical_characterization() {
 }
 
 #[test]
-#[ignore = "local phase-boundary certification: exhaustive 2^32 CPU reference"]
+#[ignore = "local phase-boundary certification: exhaustive admitted-domain CPU reference"]
 fn eml_exp_primitive_0_exhaustive_cpu_reference() {
     let (digest, tested) = cpu_reference_digest();
     assert_eq!(tested, domain_size());

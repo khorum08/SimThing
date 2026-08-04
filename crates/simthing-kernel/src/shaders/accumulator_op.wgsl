@@ -186,7 +186,7 @@ const EML_STACK_MAX: u32 = 32u;
 // EML-EXP-PRIMITIVE-0: pinned algorithm-as-spec for the EXP exact primitive.
 // The step order IS the bit law; the CPU twin
 // (simthing_core::eml_exp::eml_exp_pinned_f32) executes the identical
-// sequence, and the exhaustive 2^32 digest is the parity referee. Constants
+// sequence, and the exhaustive admitted-domain digest is the parity referee. Constants
 // are bitcast-pinned to exact binary32 bits. Any edit here is a NEW primitive
 // name, never a mutation of EXP. Byte-identical to the field_sweep.wgsl copy;
 // a kernel referee holds the two copies and the Rust twin's constants aligned.

@@ -6,8 +6,8 @@
 //! multiply-add** (single rounding; `f32::mul_add` / WGSL `fma`),
 //! round-ties-even, and exact integer/bit steps — no `div`, no f64, no vendor
 //! transcendental. Every execution arm (this CPU twin, the interpreted WGSL arm,
-//! the SSA-JIT lowering) executes this exact operation order; exhaustive 2^32
-//! enumeration over the admitted domain is the parity referee.
+//! the SSA-JIT lowering) executes this exact operation order; exhaustive
+//! admitted-domain enumeration is the parity referee.
 //!
 //! Admitted semantics are append-only: any change to a constant or to the
 //! operation order is a NEW primitive name and a replay epoch, never a mutation
@@ -102,7 +102,7 @@ const fn eml_exp_algorithm_identity() -> u64 {
 /// eliminates magic-shifter rounding and freely contracts separate mul+add
 /// chains — even across bitcast fences — so the sequence pins the semantics
 /// the hardware actually executes (FFMA + RoundEven) instead of fencing
-/// against them. The exhaustive 2^32 digest referees every arm.
+/// against them. The exhaustive admitted-domain digest referees every arm.
 #[inline]
 pub fn eml_exp_pinned_f32(x: f32) -> f32 {
     // k = round-to-nearest-even(x * log2(e)).

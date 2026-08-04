@@ -3,7 +3,7 @@
 //!
 //! **Certification is a phase-boundary LOCAL act, never CI re-execution**
 //! (standing Owner ruling; full_eml_unification §10.3). The values below were
-//! produced by the local exhaustive 2^32 sweep
+//! produced by the local exhaustive admitted-domain sweep
 //! (`crates/simthing-workshop/tests/eml_exp_primitive_0_qualification.rs`,
 //! run `-- --ignored`) over every admitted-domain bit pattern, on every
 //! certified toolchain tuple. Standing checks verify PRESENCE and FRESHNESS
@@ -80,6 +80,64 @@ pub fn exp_qualified_determinism_evidence(
     }
 }
 
+/// Live `(adapter, backend, driver)` identity of a running GPU context —
+/// the observed half of the trust chain the roster pins.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct EmlExpLiveToolchainIdentity {
+    pub adapter: String,
+    pub backend: String,
+    pub driver: String,
+}
+
+impl EmlExpLiveToolchainIdentity {
+    /// Read the live tuple from the running context (wgpu adapter info;
+    /// driver identity composed exactly as the roster records it).
+    pub fn from_context(ctx: &crate::context::GpuContext) -> Self {
+        let info = ctx.adapter.get_info();
+        Self {
+            adapter: info.name,
+            backend: format!("{:?}", info.backend),
+            driver: format!("{} {}", info.driver, info.driver_info),
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
+pub enum EmlExpToolchainError {
+    #[error(
+        "live GPU tuple (adapter `{adapter}`, backend `{backend}`, driver `{driver}`) is NOT in the certified EXP toolchain roster; the exhaustive admitted-domain qualification does not cover it — requalify locally and append a roster row (never shrink or loosen the roster to pass)"
+    )]
+    UncertifiedToolchain {
+        adapter: String,
+        backend: String,
+        driver: String,
+    },
+}
+
+/// Live-tuple freshness enforcement (DA remand `5185563460` repair): every
+/// local GPU qualification/referee path must call this and HARD-ERROR when
+/// the running `(adapter, backend, driver)` tuple is absent from
+/// [`EML_EXP_CERTIFIED_TOOLCHAINS`]. Matching is exact string equality on all
+/// three fields — a driver update IS an uncertified tuple until the
+/// admitted-domain sweep is re-run and the roster row appended. Local-only by
+/// design: standing CI has no GPU and never claims this leg.
+pub fn require_certified_toolchain(
+    live: &EmlExpLiveToolchainIdentity,
+) -> Result<&'static EmlExpCertifiedToolchain, EmlExpToolchainError> {
+    EML_EXP_CERTIFIED_TOOLCHAINS
+        .iter()
+        .find(|certified| {
+            certified.adapter == live.adapter
+                && certified.backend == live.backend
+                && certified.driver == live.driver
+        })
+        .ok_or_else(|| EmlExpToolchainError::UncertifiedToolchain {
+            adapter: live.adapter.clone(),
+            backend: live.backend.clone(),
+            driver: live.driver.clone(),
+        })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -116,6 +174,57 @@ mod tests {
                 "{}: JIT arm replay must match the CPU reference",
                 toolchain.adapter
             );
+        }
+    }
+
+    /// DA remand `5185563460` referee: the live-tuple comparator admits
+    /// exactly the certified roster and HARD-ERRORS on anything else —
+    /// planted uncertified tuples (driver drift, backend swap, foreign
+    /// adapter) must all be RED, and a planted bypass must not be what the
+    /// comparator returns.
+    #[test]
+    fn eml_exp_primitive_0_uncertified_live_tuple_is_hard_red() {
+        let certified = &EML_EXP_CERTIFIED_TOOLCHAINS[0];
+        let live_certified = EmlExpLiveToolchainIdentity {
+            adapter: certified.adapter.to_owned(),
+            backend: certified.backend.to_owned(),
+            driver: certified.driver.to_owned(),
+        };
+        assert_eq!(
+            require_certified_toolchain(&live_certified).expect("roster tuple admits"),
+            certified
+        );
+
+        let planted = [
+            // Driver drift: the exact post-update shape the freshness law exists for.
+            EmlExpLiveToolchainIdentity {
+                driver: "NVIDIA 999.99".to_owned(),
+                ..live_certified.clone()
+            },
+            // Backend swap on the same adapter.
+            EmlExpLiveToolchainIdentity {
+                backend: "Dx12".to_owned(),
+                ..live_certified.clone()
+            },
+            // Foreign adapter (e.g. the host's uncertified iGPU).
+            EmlExpLiveToolchainIdentity {
+                adapter: "Intel(R) UHD Graphics".to_owned(),
+                ..live_certified.clone()
+            },
+        ];
+        for live in planted {
+            let verdict = require_certified_toolchain(&live);
+            assert_eq!(
+                verdict,
+                Err(EmlExpToolchainError::UncertifiedToolchain {
+                    adapter: live.adapter.clone(),
+                    backend: live.backend.clone(),
+                    driver: live.driver.clone(),
+                }),
+                "planted uncertified tuple must be RED"
+            );
+            let bypass: Result<&EmlExpCertifiedToolchain, EmlExpToolchainError> = Ok(certified);
+            assert_ne!(verdict, bypass, "planted comparator bypass must be RED");
         }
     }
 

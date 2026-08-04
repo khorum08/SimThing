@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # EML-EXP-PRIMITIVE-0 -- pinned exhaustive-qualification artifact presence +
-# freshness. NEVER re-executes the 2^32 sweep (standing Owner ruling: CI runs
+# freshness. NEVER re-executes the admitted-domain sweep (standing Owner ruling: CI runs
 # no cargo tests; certification is a phase-boundary LOCAL act).
 #
 # Freshness links checked statically:
@@ -20,8 +20,8 @@ readonly REPO_ROOT="${EML_EXP_QUAL_ROOT:-$(cd "${SCRIPT_DIR}/../.." && pwd)}"
 
 # Pinned at qualification (2026-08-04). Re-pin ONLY together with a local
 # exhaustive requalification and a new digest in eml_exp_qualification.rs.
-readonly QUALIFIED_TWIN_SHA256="14bda91814f6a7f99d5e5a2870486b0e7fb1de6d7257f0c6f56e692b35f7a228"
-readonly QUALIFIED_WGSL_HELPER_SHA256="06520ab298020d9b159ce9bb13325fda0d3c75d6a044031fd77d9787b0c6b1c6"
+readonly QUALIFIED_TWIN_SHA256="311ca8882a132f0c59ec49fbef4598a8a60461277695d1fb1a06f865c605865d"
+readonly QUALIFIED_WGSL_HELPER_SHA256="f9cc6a9aec1935b31f7915398dcaf172e13b1ad08cae5a5900902911832a52c6"
 readonly QUALIFIED_REFERENCE_DIGEST="0x7875a45ba919d588"
 readonly QUALIFIED_DOMAIN_SIZE="2237667740"
 readonly QUALIFIED_WGPU_VERSION="22.1.0"
@@ -34,16 +34,24 @@ fail() {
 twin_region() {
   # The pinned sequence region: first pinned const through the closing brace
   # of eml_exp_pinned_f32 (the first column-0 brace after the fn opens).
+  # Comment-only and blank lines are stripped before hashing: the pin covers
+  # the SEMANTIC sequence (code + constants); prose edits never invalidate,
+  # any code/constant edit still bites.
   awk '
     /^pub const EML_EXP_SEQUENCE_VERSION/ { printing = 1 }
     /^pub fn eml_exp_pinned_f32/ { in_fn = 1 }
     printing { print }
     in_fn && /^}$/ { exit }
-  ' "$1"
+  ' "$1" | strip_prose
 }
 
 wgsl_helper_region() {
-  awk '/^fn eml_exp_pinned\(/{p=1} p{print} p&&/^}$/{exit}' "$1"
+  awk '/^fn eml_exp_pinned\(/{p=1} p{print} p&&/^}$/{exit}' "$1" | strip_prose
+}
+
+strip_prose() {
+  # Drop pure-comment and blank lines; strip trailing end-of-line comments.
+  sed -e 's|[[:space:]]*//.*$||' -e '/^[[:space:]]*$/d'
 }
 
 sha_of() {

@@ -83,7 +83,7 @@ jobs:
         run: |
           set -o pipefail
           # Presence/freshness of the pinned exhaustive-qualification artifacts
-          # ONLY — the 2^32 sweep is a local phase-boundary act and is never
+          # ONLY — the admitted-domain sweep is a local phase-boundary act and is never
           # re-executed in CI (EML-EXP-PRIMITIVE-0).
           bash scripts/ci/eml_exp_qualification_check.sh --check 2>&1 | tee eml-exp-qualification-report.txt
           bash scripts/ci/eml_exp_qualification_check.sh --selftest 2>&1 | tee -a eml-exp-qualification-report.txt
