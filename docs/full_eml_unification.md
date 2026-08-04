@@ -361,12 +361,11 @@ derivation-pricing curves are a *horizon consumer* of these primitives.
 - **Dispatch after 6.3's graduation stamp** — not for design reasons but for merge hygiene:
   6.2b's resolution-site work executes EML in-shader, and landing opcode-vocabulary diffs under
   it risks collisions on the interpreter surfaces. Post-Phase-6, the EML surfaces are quiet.
-- **The window is therefore the same Phase 6 → 7 gap as StemThing-A, running in parallel:**
-  StemThing-A is DA analysis and docs (census, Tier-2 amendment); 5.10–5.12 are kernel engine
-  work. Disjoint files, disjoint lanes, no shared gate. If the Tier-2 ruling drags, the
-  primitives proceed regardless; if the primitives drag, they may trail into the Phase 7 period
-  (movement touches driver/sim surfaces, not the EML kernel) — the only hard ordering constraint
-  is **before 9.1**.
+- **The window is the Phase 6 → 7 gap — SERIAL with StemThing-A implementation (Owner sequencing
+  ruling, 2026-08-04, stamped in board comment 5182422593; supersedes the earlier parallel
+  default):** the StemThing census/Tier-2 DA work completed inside the gap, but the dispatch
+  queue is **5.11 → 5.12 → Owner pointer flip to 6.4**. The EML primitives graduate before
+  StemThing-A implementation begins; the hard ordering constraint **before 9.1** stands.
 - **Certification is a phase-boundary local act, not CI.** CI runs no cargo tests by standing
   Owner ruling; the exhaustive digest and per-toolchain replay artifacts are produced locally at
   landing, pinned in-repo (the Candidate-F artifact pattern), and the doctrine scans verify
@@ -378,7 +377,7 @@ derivation-pricing curves are a *horizon consumer* of these primitives.
 [ Phase 6 completes: 6.2 → 6.2b → 6.3 ]
         │ (6.3 stamp = shared trigger)
         ├── StemThing-A: census → §3.1 Tier-2 ruling → A-rows minted   (DA lane)
-        └── 5.10 → 5.11 (EXP) → 5.12 (LN)                              (engine lanes, parallel)
+        └── 5.10 → 5.11 (EXP) → 5.12 (LN) → [Owner flip] → 6.4        (serial; Owner ruling 2026-08-04)
         │
 [ Phase 7 movement (under §7.1 clause) ] → [ 8.1/8.2 ] → [ StemThing-B ]
         │
