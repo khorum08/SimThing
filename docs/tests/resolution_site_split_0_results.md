@@ -1,7 +1,7 @@
 # RESOLUTION-SITE-SPLIT-0 results
 
 - Track: 0.0.8.7 RF arena modernization (rung 6.2b)
-- Status: **PROBATION / proof-present / DA-review-pending**
+- Status: **COMPLETE / DA-GRADUATED — merged #1621 @ 1a520eee** (DA independently planted synthesized-origin and dual-placement-divergence defects; each RED)
 - Implementation base: `981ec1ebb5c04976798400c40f76e59bc6d3f0a6`
 - ORIENT-RECEIPT: `6af1884543b0`
 - orientation_rule_stamp: `5554b2613f8907ff`
@@ -198,6 +198,6 @@ bash scripts/ci/agent_scan.sh: AGENT-SCAN-VERDICT: PASS delta_inspect=0
 
 ## Posture
 
-**PROBATION / proof-present / DA-review-pending.** No clearance, merge, pointer movement, or
+**COMPLETE / DA-GRADUATED — merged #1621 @ 1a520eee.** No clearance, merge, pointer movement, or
 successor-rung work is claimed. The pre-existing device-lost finding at authored stress scales
 (see telemetry section) is reported for triage, not fixed here.
