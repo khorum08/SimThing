@@ -131,10 +131,7 @@ lane, not this rung. Recorded here so it is triaged rather than rediscovered.
   deliberately wrong registration-time identity; the transform-divergence draft is mutated in
   the test and run through the REAL mint door; the synthesized-origin comparator is constructed
   in the test as the request a defaulting door WOULD have minted, while the real door returns
-  `Err` on the same input. **No mutant constructor ships**: five pinned `compile_fail` doctests
-  (4x `E0432` import, 1x `E0599` method) on the `resolution_site` module mechanize the absence
-  of `plant_default_origin_mutant_mint`, `plant_transform_divergence_mutant_mint`, and
-  `ThresholdRegistry::plant_identity_mirror_drift_mutant` from the production surface.
+  `Err` on the same input. No mutant constructor ships in the production module or crate exports.
 
 ## Biting proofs
 
@@ -143,11 +140,10 @@ lane, not this rung. Recorded here so it is triaged rather than rediscovered.
 | Velocity-alert parity | identical oracle-minted crossings produce equal + `{:?}`-bit-identical + per-field `to_bits`-identical product streams at both placements; planted mirror-drift mutant REDs parity |
 | Aggregate-alert parity | same referee shape over `THRESH_BUF_OUTPUT` crossings; planted mirror-drift mutant REDs parity |
 | Slot-space origination | closed-loop draft->barrier mint and vendorized direct construction yield BIT-IDENTICAL `AttachOverlay` `BoundaryRequest` streams (incl. a planted `-0.0` payload); planted transform-divergence mutant REDs stream parity |
-| Fail-closed slot->id | unadmitted origin slot, unadmitted target slot, and unadmitted crossing slot each return the named `SlotIdentityReattachError`; the planted default-origin mutant fabricates exactly the forbidden attributable overlay the real door proves impossible |
+| Fail-closed slot->id | unadmitted origin slot, unadmitted target slot, and unadmitted crossing slot each return the named `SlotIdentityReattachError`; the test-local default-origin comparator constructs exactly the forbidden attributable overlay the real door rejects |
 | Reception at both sites | both placements' requests arrive through the SAME `deliver_routed_overlay` with equal `DirectiveDeliveryReceipt`s and `{:?}`-identical trees |
 | Incremental / no flag day | unconverted semantics produce identically empty converted-door output at both placements; `ResolutionSite::default()` and `BoundaryProtocol` default are `ClosedLoop`; vendorized stays selectable |
 | Slot-space wire vocabulary | `size_of::<ThresholdEventGpu>() == 16` — the GPU wire event is exactly `{slot, col, value, event_kind}`; no identity lane exists |
-| No mutant seam ships | five pinned `compile_fail` doctests prove the planted-mutant constructors are absent from the production surface (import/method resolution is a compile error); mutants exist only inside the test target |
 
 ## No in-shader SimThingId path (grep + type evidence)
 
