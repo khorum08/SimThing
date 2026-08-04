@@ -470,3 +470,16 @@ date	role	query	anchors_served	hit
 2026-08-04T12:41:57Z	coding	--grep scanner-selftest-delta-gate	scanner-selftest-delta-gate	hit
 2026-08-04T12:41:58Z	coding	--grep stead-spatial-contract-core	stead-spatial-contract-core	hit
 2026-08-04T12:41:58Z	coding	--grep admission-ladder-necessity-test	admission-ladder-necessity-test	hit
+2026-08-04T14:56:38Z	coding	--domain rf-arena-substrate	none	none
+2026-08-04T14:56:44Z	coding	--grep admission-ladder-necessity-test	admission-ladder-necessity-test	hit
+2026-08-04T14:56:49Z	coding	--grep core-gpu-residency|core-overlays|core-property-value-model|core-rf-arenas|eml-extension-ladder|exact-numeric-candidate-f|field-policy-time-decisions|field-sweep-preservation|founding-ontology-invariants|one-tree-owners-never-spatial|orientation-harness-core|rf-arena-substrate|scanner-selftest-delta-gate|seal-residue-cross-crate|simthing-0087-binding-laws|simthing-0087-pillars|stead-events-are-rf|stead-rejected-shapes|stead-shared-surface-ledger|stead-spatial-contract-core|structural-execution-convergence|workshop-candidate-homing	none	none
+2026-08-04T14:57:01Z	coding	--domain core-0087	rf-arena-substrate,simthing-0087-binding-laws,simthing-0087-pillars,stead-rejected-shapes,stead-shared-surface-ledger	hit
+2026-08-04T14:57:01Z	coding	--domain stead	stead-events-are-rf,stead-rejected-shapes,stead-shared-surface-ledger,stead-spatial-contract-core	hit
+2026-08-04T14:57:01Z	coding	--domain field-policy	field-policy-time-decisions	hit
+2026-08-04T14:57:07Z	coding	--domain orientation	orientation-harness-core	hit
+2026-08-04T14:57:07Z	coding	--grep founding-ontology-invariants	founding-ontology-invariants	hit
+2026-08-04T14:57:16Z	coding	--domain seal	admission-ladder-necessity-test,seal-residue-cross-crate	hit
+2026-08-04T14:57:16Z	coding	--domain scanner-selftest-gate	scanner-selftest-delta-gate	hit
+2026-08-04T14:57:30Z	coding	--domain core-0087	rf-arena-substrate,simthing-0087-binding-laws,simthing-0087-pillars,stead-rejected-shapes,stead-shared-surface-ledger	hit
+2026-08-04T14:57:39Z	coding	--grep workshop-candidate-homing	workshop-candidate-homing	hit
+2026-08-04T14:57:47Z	coding	--domain rf	core-rf-arenas,stead-events-are-rf,stead-rejected-shapes,stead-shared-surface-ledger	hit

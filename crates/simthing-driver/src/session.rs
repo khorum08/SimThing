@@ -207,6 +207,10 @@ pub struct SimSession {
     /// session loop, in tick order. Consumed at boundaries; diagnostic
     /// readback never feeds runtime decisions.
     pub mapping_commitments: Vec<MappingCommitmentRecord>,
+    /// CONTINUOUS-POSTURE-SOAK-0: scheduling policy over the same kernel.
+    /// Default [`ExecutionPosture::Paced`]; continuous batches call the identical
+    /// hot-cycle + boundary path — never a second kernel or semantic fork.
+    execution_posture: simthing_core::ExecutionPosture,
     resolved_order_directives: Mutex<crate::order_directive::OrderDirectiveGateState>,
     order_directive_injection_log:
         Mutex<Vec<crate::order_directive::OrderDirectiveInjection>>,
@@ -383,10 +387,21 @@ impl SimSession {
             resource_flow_execution_profile: ResourceFlowExecutionProfile::DefaultDisabled,
             mapping: None,
             mapping_commitments: Vec::new(),
+            execution_posture: simthing_core::ExecutionPosture::Paced,
             resolved_order_directives:
                 Mutex::new(crate::order_directive::OrderDirectiveGateState::default()),
             order_directive_injection_log: Mutex::new(Vec::new()),
         })
+    }
+
+    /// Scheduling posture over this session's single kernel (default paced).
+    pub fn execution_posture(&self) -> simthing_core::ExecutionPosture {
+        self.execution_posture
+    }
+
+    /// Select paced or continuous batching. Does not change kernel semantics.
+    pub fn set_execution_posture(&mut self, posture: simthing_core::ExecutionPosture) {
+        self.execution_posture = posture;
     }
 
     /// Test harness only: set Resource Flow flag directly (distinct from spec opt-in).
@@ -884,12 +899,34 @@ impl SimSession {
     }
 
     /// Run until `max_days` boundaries complete (or scenario max if smaller).
+    ///
+    /// Under [`ExecutionPosture::Continuous`], generations still advance through
+    /// the identical hot-cycle + boundary path; the posture only batches how
+    /// many barriers one scheduling call intends to pump. Cap remains authoritative.
     pub fn run(&mut self, max_days: u32) -> Result<RunSummary, SessionError> {
         let cap = max_days.min(self.scenario.max_days);
         let mut summary = RunSummary::new();
 
-        while summary.boundaries_run < cap as u64 {
-            let _ = self.step_once_into_summary(&mut summary)?;
+        match self.execution_posture {
+            simthing_core::ExecutionPosture::Paced => {
+                while summary.boundaries_run < cap as u64 {
+                    let _ = self.step_once_into_summary(&mut summary)?;
+                }
+            }
+            simthing_core::ExecutionPosture::Continuous { batch_generations } => {
+                // Continuous is a submission pump over the SAME step path.
+                // batch_generations=0 is admission-invalid; treat as no-op pump.
+                if batch_generations == 0 {
+                    return Ok(summary);
+                }
+                while summary.boundaries_run < cap as u64 {
+                    let batch_cap = (cap as u64).saturating_sub(summary.boundaries_run);
+                    let batch = u64::from(batch_generations).min(batch_cap);
+                    for _ in 0..batch {
+                        let _ = self.step_once_into_summary(&mut summary)?;
+                    }
+                }
+            }
         }
 
         Ok(summary)
