@@ -483,7 +483,20 @@ The binding rules that make this safe at GPU scale:
   governing rate to zero (no hidden velocity debt). The `Balance` carryforward pattern (below) is
   built on this same machinery.
 - **Registry discipline.** Properties register once per session; columns are append-only; removal is
-  tombstoning (`active=false`), never compaction — slot/column indices stay stable for the GPU.
+  tombstoning (`active=false`), never mid-generation compaction. **Slot-identity law (Tier-2
+  amendment, 2026-08-04, StemThing §3.1 — shape (a), ruled from the census at
+  `scripts/ci/stemthing_slot_census.tsv`, 61/61 consumers enumerated, zero `BLOCKER`):** a
+  `SlotIndex` is **stable *logical* identity** for the lifetime of its SimThing; **physical row
+  binding is per-epoch**, bound at boundary upload, and rebindable **only at a generation boundary
+  through a recorded remap** — the existing `AnchorLocusRemap` / `AnchorRemapOperation` door
+  (landed 5.2; `SlotCapacityGrow` already records slot movement; epoch compaction extends that
+  vocabulary, never a second mechanism). Between epochs there is zero indirection: bindings are
+  baked into uploaded artifacts exactly as boundary sync re-uploads registrations today.
+  Two index spaces are distinct and must never conflate: **matrix-row space** (physical, epoch-bound,
+  remappable) and **dense cell space** (`y*width+x` over authored structural coordinates — logical
+  by construction, never remapped). No ordering, fold, or replay key may derive from physical row;
+  order derives from authored/logical keys only (the link compiler's `(row, col, system_id)` sort
+  is the reference shape). Mid-generation relocation remains forbidden absolutely.
 - **Reduction is per-role.** Each sub-field resolves a `ReductionRule` (Sum for resources, Mean /
   WeightedMean for soft aggregates, etc.). Reduction aggregates **children's column values into the
   parent's columns** — this is the upward half of resource flow. Exact/conservation paths never use
@@ -504,7 +517,8 @@ no special cell type.
 ## 4. GPU residency — the tree as dense matrices
 
 The recursive tree flattens to **slots × columns**: one slot per SimThing (allocated by the
-`SlotAllocator`, recycled through tombstone free-lists, never compacted mid-session), one column per
+`SlotAllocator`, recycled through tombstone free-lists, never compacted mid-generation; physical
+rows are epoch-rebindable only at a recorded boundary remap per the §3 slot-identity law), one column per
 registered sub-field. A persistent `AccumulatorOpSession` owns the buffers for the whole session —
 **no per-tick device or buffer creation, ever.** The tick is:
 
