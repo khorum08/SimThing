@@ -151,7 +151,7 @@ mod tests {
     use simthing_core::ids::OverlayId;
     use simthing_core::overlay::{Overlay, OverlayKind, OverlayLifecycle, OverlaySource};
     use simthing_core::property::{SimProperty, SubFieldRole};
-    use simthing_core::{DimensionRegistry, SimThing, SimThingKind};
+    use simthing_core::{DimensionRegistry, SimThing, SimThingKind, TransformOp};
 
     fn reg_with_loyalty() -> (DimensionRegistry, simthing_core::SimPropertyId) {
         let mut reg = DimensionRegistry::new();

@@ -9,8 +9,8 @@
 //! `eml-extension-ladder`.
 
 use simthing_core::eml_nodes::{self, EmlNode};
-use simthing_core::CombineFn;
 use simthing_core::EmlResourceClass;
+use simthing_core::{ClampBehavior, CombineFn, SubFieldSpec};
 
 use crate::accumulator_op::combine_kind;
 
@@ -261,18 +261,167 @@ pub enum ExactPrimitiveBitSemantics {
     Ieee754Binary32Bits,
 }
 
-/// Closed special-value policy; ambiguity here cannot mint determinism evidence.
+/// Closed special-value policy for an exact primitive domain.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum ExactPrimitiveDomainPolicy {
     FiniteOnlyRejectNanAndInfinity,
     PreserveIeeeNanInfinityAndSignedZero,
 }
 
+/// Validated binary32 input domain for an exact primitive.
+///
+/// ```compile_fail
+/// use simthing_kernel::{ExactPrimitiveDomainPolicy, PrimitiveDomain};
+/// let _ = PrimitiveDomain {
+///     min_bits: 0,
+///     max_bits: 1,
+///     special_value_policy: ExactPrimitiveDomainPolicy::FiniteOnlyRejectNanAndInfinity,
+/// };
+/// ```
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct PrimitiveDomain {
+    min_bits: u32,
+    max_bits: u32,
+    special_value_policy: ExactPrimitiveDomainPolicy,
+}
+
+impl PrimitiveDomain {
+    pub fn from_bits(
+        min_bits: u32,
+        max_bits: u32,
+        special_value_policy: ExactPrimitiveDomainPolicy,
+    ) -> Result<Self, OpcodeGateError> {
+        if binary32_total_order_key(min_bits) > binary32_total_order_key(max_bits) {
+            return Err(OpcodeGateError::ExactPrimitiveDomainBoundsReversed { min_bits, max_bits });
+        }
+        if special_value_policy == ExactPrimitiveDomainPolicy::FiniteOnlyRejectNanAndInfinity
+            && (!f32::from_bits(min_bits).is_finite() || !f32::from_bits(max_bits).is_finite())
+        {
+            return Err(OpcodeGateError::ExactPrimitiveDomainSpecialEndpoint {
+                min_bits,
+                max_bits,
+            });
+        }
+        Ok(Self {
+            min_bits,
+            max_bits,
+            special_value_policy,
+        })
+    }
+
+    pub fn min_bits(self) -> u32 {
+        self.min_bits
+    }
+
+    pub fn max_bits(self) -> u32 {
+        self.max_bits
+    }
+
+    pub fn special_value_policy(self) -> ExactPrimitiveDomainPolicy {
+        self.special_value_policy
+    }
+
+    pub fn contains_bits(self, bits: u32) -> bool {
+        if self.special_value_policy == ExactPrimitiveDomainPolicy::FiniteOnlyRejectNanAndInfinity
+            && !f32::from_bits(bits).is_finite()
+        {
+            return false;
+        }
+        let key = binary32_total_order_key(bits);
+        binary32_total_order_key(self.min_bits) <= key
+            && key <= binary32_total_order_key(self.max_bits)
+    }
+
+    fn contains_range(self, min_bits: u32, max_bits: u32) -> bool {
+        binary32_total_order_key(min_bits) <= binary32_total_order_key(max_bits)
+            && self.contains_bits(min_bits)
+            && self.contains_bits(max_bits)
+    }
+}
+
+fn binary32_total_order_key(bits: u32) -> u32 {
+    const SIGN_MASK: u32 = 0x8000_0000;
+    if bits & SIGN_MASK != 0 {
+        !bits
+    } else {
+        bits | SIGN_MASK
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct ExactPrimitiveSourceSpan {
+    start: u32,
+    end: u32,
+}
+
+impl ExactPrimitiveSourceSpan {
+    pub const fn new(start: u32, end: u32) -> Self {
+        Self { start, end }
+    }
+
+    pub const fn start(self) -> u32 {
+        self.start
+    }
+
+    pub const fn end(self) -> u32 {
+        self.end
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct ExactPrimitiveRangeCertificate {
+    domain: PrimitiveDomain,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct ExactPrimitiveGuardedInput {
+    domain: PrimitiveDomain,
+    guard_opcode: EvalEmlOpcode,
+}
+
+impl ExactPrimitiveGuardedInput {
+    pub fn guard_opcode(self) -> EvalEmlOpcode {
+        self.guard_opcode
+    }
+}
+
+pub enum ExactPrimitiveRangeEvidence<'a> {
+    PropertySubField(&'a SubFieldSpec),
+    GuardedFormula(&'a ExactPrimitiveGuardedInput),
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum ExactPrimitiveCallSiteShape {
+    RangeCertified(ExactPrimitiveRangeCertificate),
+    GuardedSemantics(ExactPrimitiveGuardedInput),
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum ExactPrimitiveCallSiteKind {
+    RangeCertified,
+    GuardedSemantics,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct ExactPrimitiveCallSiteAdmission {
+    kind: ExactPrimitiveCallSiteKind,
+}
+
+impl ExactPrimitiveCallSiteAdmission {
+    pub fn kind(self) -> ExactPrimitiveCallSiteKind {
+        self.kind
+    }
+
+    pub const fn added_runtime_nodes(self) -> u32 {
+        0
+    }
+}
+
 /// Evidence used by the sealed door to mint a determinism key.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct ExactPrimitiveDeterminismEvidence {
     pub bit_semantics: ExactPrimitiveBitSemantics,
-    pub domain_policy: ExactPrimitiveDomainPolicy,
+    pub domain: PrimitiveDomain,
     pub exhaustive_reference_digest: u64,
     pub supported_backend_replay_digest: u64,
 }
@@ -280,6 +429,7 @@ pub struct ExactPrimitiveDeterminismEvidence {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct ExactPrimitiveDeterminismKey {
     evidence_digest: u64,
+    domain: PrimitiveDomain,
 }
 
 /// Driver-originated compiled resource effects for one canonical-interpreter class.
@@ -336,6 +486,7 @@ pub struct ExactPrimitiveAdmission {
     name: String,
     resource_class: EmlResourceClass,
     consumer: ExactPrimitiveConsumer,
+    domain: PrimitiveDomain,
 }
 
 impl ExactPrimitiveAdmission {
@@ -350,6 +501,10 @@ impl ExactPrimitiveAdmission {
     pub fn consumer(&self) -> ExactPrimitiveConsumer {
         self.consumer
     }
+
+    pub fn domain(&self) -> PrimitiveDomain {
+        self.domain
+    }
 }
 
 /// Stateful sealed door: zero admissions is valid and no instance can admit
@@ -362,6 +517,25 @@ pub struct ExactPrimitiveAdmissionDoor {
 impl ExactPrimitiveAdmissionDoor {
     pub fn admitted_count(&self) -> u32 {
         u32::from(self.admitted)
+    }
+
+    pub fn finite_domain(min_bits: u32, max_bits: u32) -> Result<PrimitiveDomain, OpcodeGateError> {
+        PrimitiveDomain::from_bits(
+            min_bits,
+            max_bits,
+            ExactPrimitiveDomainPolicy::FiniteOnlyRejectNanAndInfinity,
+        )
+    }
+
+    pub fn special_value_preserving_domain(
+        min_bits: u32,
+        max_bits: u32,
+    ) -> Result<PrimitiveDomain, OpcodeGateError> {
+        PrimitiveDomain::from_bits(
+            min_bits,
+            max_bits,
+            ExactPrimitiveDomainPolicy::PreserveIeeeNanInfinityAndSignedZero,
+        )
     }
 
     pub fn verify_determinism(
@@ -380,7 +554,150 @@ impl ExactPrimitiveAdmissionDoor {
         }
         Ok(ExactPrimitiveDeterminismKey {
             evidence_digest: evidence.exhaustive_reference_digest,
+            domain: evidence.domain,
         })
+    }
+
+    pub fn verify_range_certificate(
+        domain: PrimitiveDomain,
+        evidence: ExactPrimitiveRangeEvidence<'_>,
+        span: ExactPrimitiveSourceSpan,
+    ) -> Result<ExactPrimitiveRangeCertificate, OpcodeGateError> {
+        let (min_bits, max_bits) = match evidence {
+            ExactPrimitiveRangeEvidence::PropertySubField(sub_field) => match sub_field.clamp {
+                ClampBehavior::Bounded { min, max } => (min.to_bits(), max.to_bits()),
+                ClampBehavior::Floored { .. } | ClampBehavior::Unbounded => {
+                    return Err(OpcodeGateError::ExactPrimitiveRangeCertificateRequired {
+                        span_start: span.start,
+                        span_end: span.end,
+                    });
+                }
+            },
+            ExactPrimitiveRangeEvidence::GuardedFormula(guard) => {
+                return Err(OpcodeGateError::ExactPrimitiveGuardIsNotRangeCertificate {
+                    guard_opcode: guard.guard_opcode.raw(),
+                    span_start: span.start,
+                    span_end: span.end,
+                });
+            }
+        };
+        if !domain.contains_range(min_bits, max_bits) {
+            return Err(OpcodeGateError::ExactPrimitiveRangeOutsideDomain {
+                range_min_bits: min_bits,
+                range_max_bits: max_bits,
+                domain_min_bits: domain.min_bits,
+                domain_max_bits: domain.max_bits,
+                span_start: span.start,
+                span_end: span.end,
+            });
+        }
+        Ok(ExactPrimitiveRangeCertificate { domain })
+    }
+
+    pub fn admit_range_certified_sub_field(
+        domain: PrimitiveDomain,
+        sub_field: &SubFieldSpec,
+        span_start: u32,
+        span_end: u32,
+    ) -> Result<(), OpcodeGateError> {
+        let span = ExactPrimitiveSourceSpan::new(span_start, span_end);
+        let certificate = Self::verify_range_certificate(
+            domain,
+            ExactPrimitiveRangeEvidence::PropertySubField(sub_field),
+            span,
+        )?;
+        Self::admit_call_site(
+            domain,
+            Some(ExactPrimitiveCallSiteShape::RangeCertified(certificate)),
+            span,
+        )?;
+        Ok(())
+    }
+
+    pub fn verify_guarded_semantics(
+        domain: PrimitiveDomain,
+        guard_opcode: EvalEmlOpcode,
+        output_min_bits: u32,
+        output_max_bits: u32,
+        span: ExactPrimitiveSourceSpan,
+    ) -> Result<ExactPrimitiveGuardedInput, OpcodeGateError> {
+        if !matches!(
+            guard_opcode.raw(),
+            eml_nodes::opcode::CLAMP_BOUNDED | eml_nodes::opcode::MAX | eml_nodes::opcode::SELECT
+        ) {
+            return Err(OpcodeGateError::UnsupportedExactPrimitiveGuard {
+                guard_opcode: guard_opcode.raw(),
+                span_start: span.start,
+                span_end: span.end,
+            });
+        }
+        if !domain.contains_range(output_min_bits, output_max_bits) {
+            return Err(OpcodeGateError::ExactPrimitiveRangeOutsideDomain {
+                range_min_bits: output_min_bits,
+                range_max_bits: output_max_bits,
+                domain_min_bits: domain.min_bits,
+                domain_max_bits: domain.max_bits,
+                span_start: span.start,
+                span_end: span.end,
+            });
+        }
+        Ok(ExactPrimitiveGuardedInput {
+            domain,
+            guard_opcode,
+        })
+    }
+
+    pub fn admit_explicitly_guarded_call_site(
+        domain: PrimitiveDomain,
+        guard_opcode: EvalEmlOpcode,
+        output_min_bits: u32,
+        output_max_bits: u32,
+        span_start: u32,
+        span_end: u32,
+    ) -> Result<(), OpcodeGateError> {
+        let span = ExactPrimitiveSourceSpan::new(span_start, span_end);
+        let guarded = Self::verify_guarded_semantics(
+            domain,
+            guard_opcode,
+            output_min_bits,
+            output_max_bits,
+            span,
+        )?;
+        Self::admit_call_site(
+            domain,
+            Some(ExactPrimitiveCallSiteShape::GuardedSemantics(guarded)),
+            span,
+        )?;
+        Ok(())
+    }
+
+    pub fn admit_call_site(
+        domain: PrimitiveDomain,
+        shape: Option<ExactPrimitiveCallSiteShape>,
+        span: ExactPrimitiveSourceSpan,
+    ) -> Result<ExactPrimitiveCallSiteAdmission, OpcodeGateError> {
+        let (kind, evidence_domain) = match shape {
+            Some(ExactPrimitiveCallSiteShape::RangeCertified(certificate)) => (
+                ExactPrimitiveCallSiteKind::RangeCertified,
+                certificate.domain,
+            ),
+            Some(ExactPrimitiveCallSiteShape::GuardedSemantics(guarded)) => {
+                (ExactPrimitiveCallSiteKind::GuardedSemantics, guarded.domain)
+            }
+            None => {
+                return Err(OpcodeGateError::UnguardedExactPrimitiveCallSite {
+                    span_start: span.start,
+                    span_end: span.end,
+                });
+            }
+        };
+        if evidence_domain != domain {
+            return Err(OpcodeGateError::ExactPrimitiveCallSiteDomainMismatch {
+                span_start: span.start,
+                span_end: span.end,
+            });
+        }
+        Ok(ExactPrimitiveCallSiteAdmission { kind })
     }
 
     pub fn verify_cost(
@@ -438,6 +755,7 @@ impl ExactPrimitiveAdmissionDoor {
             name: request.name,
             resource_class: cost.resource_class,
             consumer: consumer.consumer,
+            domain: determinism.domain,
         })
     }
 }
@@ -494,6 +812,39 @@ pub enum OpcodeGateError {
     ExactPrimitiveLimitReached,
     #[error("exact primitive name must not be empty")]
     ExactPrimitiveNameEmpty,
+    #[error("exact primitive domain bounds are reversed: min_bits={min_bits:#010x} max_bits={max_bits:#010x}")]
+    ExactPrimitiveDomainBoundsReversed { min_bits: u32, max_bits: u32 },
+    #[error("finite-only exact primitive domain has a non-finite endpoint: min_bits={min_bits:#010x} max_bits={max_bits:#010x}")]
+    ExactPrimitiveDomainSpecialEndpoint { min_bits: u32, max_bits: u32 },
+    #[error("exact primitive input at {span_start}..{span_end} lacks a bounded property/sub-field range certificate")]
+    ExactPrimitiveRangeCertificateRequired { span_start: u32, span_end: u32 },
+    #[error("guard opcode {guard_opcode:#x} at {span_start}..{span_end} is formula semantics, not a range certificate")]
+    ExactPrimitiveGuardIsNotRangeCertificate {
+        guard_opcode: u32,
+        span_start: u32,
+        span_end: u32,
+    },
+    #[error("range [{range_min_bits:#010x}, {range_max_bits:#010x}] at {span_start}..{span_end} is outside exact primitive domain [{domain_min_bits:#010x}, {domain_max_bits:#010x}]")]
+    ExactPrimitiveRangeOutsideDomain {
+        range_min_bits: u32,
+        range_max_bits: u32,
+        domain_min_bits: u32,
+        domain_max_bits: u32,
+        span_start: u32,
+        span_end: u32,
+    },
+    #[error(
+        "opcode {guard_opcode:#x} at {span_start}..{span_end} is not an exact primitive guard"
+    )]
+    UnsupportedExactPrimitiveGuard {
+        guard_opcode: u32,
+        span_start: u32,
+        span_end: u32,
+    },
+    #[error("exact primitive call at {span_start}..{span_end} is unguarded and uncertified")]
+    UnguardedExactPrimitiveCallSite { span_start: u32, span_end: u32 },
+    #[error("exact primitive call evidence at {span_start}..{span_end} was minted for a different domain")]
+    ExactPrimitiveCallSiteDomainMismatch { span_start: u32, span_end: u32 },
 }
 
 // ── Closed vocabularies ───────────────────────────────────────────────────────
@@ -727,7 +1078,12 @@ mod tests {
     fn determinism_key() -> ExactPrimitiveDeterminismKey {
         ExactPrimitiveAdmissionDoor::verify_determinism(ExactPrimitiveDeterminismEvidence {
             bit_semantics: ExactPrimitiveBitSemantics::Ieee754Binary32Bits,
-            domain_policy: ExactPrimitiveDomainPolicy::PreserveIeeeNanInfinityAndSignedZero,
+            domain: PrimitiveDomain::from_bits(
+                f32::NEG_INFINITY.to_bits(),
+                f32::INFINITY.to_bits(),
+                ExactPrimitiveDomainPolicy::PreserveIeeeNanInfinityAndSignedZero,
+            )
+            .expect("ordered binary32 domain"),
             exhaustive_reference_digest: 0x5eed,
             supported_backend_replay_digest: 0x5eed,
         })
@@ -802,7 +1158,12 @@ mod tests {
         assert_eq!(
             ExactPrimitiveAdmissionDoor::verify_determinism(ExactPrimitiveDeterminismEvidence {
                 bit_semantics: ExactPrimitiveBitSemantics::Ieee754Binary32Bits,
-                domain_policy: ExactPrimitiveDomainPolicy::FiniteOnlyRejectNanAndInfinity,
+                domain: PrimitiveDomain::from_bits(
+                    (-1.0f32).to_bits(),
+                    1.0f32.to_bits(),
+                    ExactPrimitiveDomainPolicy::FiniteOnlyRejectNanAndInfinity,
+                )
+                .expect("finite domain"),
                 exhaustive_reference_digest: 0,
                 supported_backend_replay_digest: 0,
             }),
@@ -811,7 +1172,12 @@ mod tests {
         assert!(matches!(
             ExactPrimitiveAdmissionDoor::verify_determinism(ExactPrimitiveDeterminismEvidence {
                 bit_semantics: ExactPrimitiveBitSemantics::Ieee754Binary32Bits,
-                domain_policy: ExactPrimitiveDomainPolicy::FiniteOnlyRejectNanAndInfinity,
+                domain: PrimitiveDomain::from_bits(
+                    (-1.0f32).to_bits(),
+                    1.0f32.to_bits(),
+                    ExactPrimitiveDomainPolicy::FiniteOnlyRejectNanAndInfinity,
+                )
+                .expect("finite domain"),
                 exhaustive_reference_digest: 1,
                 supported_backend_replay_digest: 2,
             }),
@@ -840,5 +1206,144 @@ mod tests {
             }),
             Err(OpcodeGateError::ExactPrimitiveConsumerNotNecessary)
         );
+    }
+
+    #[test]
+    fn exact_primitive_domain_call_sites_are_sealed_spanned_and_mutant_sensitive() {
+        fn unguarded_contract(
+            admit: impl FnOnce() -> Result<ExactPrimitiveCallSiteAdmission, OpcodeGateError>,
+        ) -> bool {
+            matches!(
+                admit(),
+                Err(OpcodeGateError::UnguardedExactPrimitiveCallSite {
+                    span_start: 41,
+                    span_end: 57
+                })
+            )
+        }
+
+        let domain = PrimitiveDomain::from_bits(
+            (-1.0f32).to_bits(),
+            1.0f32.to_bits(),
+            ExactPrimitiveDomainPolicy::FiniteOnlyRejectNanAndInfinity,
+        )
+        .expect("cross-sign finite domain");
+        assert!(domain.contains_bits((-0.0f32).to_bits()));
+        assert!(domain.contains_bits(0.0f32.to_bits()));
+        assert!(!domain.contains_bits(f32::INFINITY.to_bits()));
+        assert_eq!(
+            PrimitiveDomain::from_bits(
+                f32::NEG_INFINITY.to_bits(),
+                f32::INFINITY.to_bits(),
+                ExactPrimitiveDomainPolicy::FiniteOnlyRejectNanAndInfinity,
+            ),
+            Err(OpcodeGateError::ExactPrimitiveDomainSpecialEndpoint {
+                min_bits: f32::NEG_INFINITY.to_bits(),
+                max_bits: f32::INFINITY.to_bits(),
+            })
+        );
+        assert_eq!(
+            PrimitiveDomain::from_bits(
+                1.0f32.to_bits(),
+                (-1.0f32).to_bits(),
+                ExactPrimitiveDomainPolicy::FiniteOnlyRejectNanAndInfinity,
+            ),
+            Err(OpcodeGateError::ExactPrimitiveDomainBoundsReversed {
+                min_bits: 1.0f32.to_bits(),
+                max_bits: (-1.0f32).to_bits(),
+            })
+        );
+
+        let span = ExactPrimitiveSourceSpan::new(41, 57);
+        assert!(unguarded_contract(|| {
+            ExactPrimitiveAdmissionDoor::admit_call_site(domain, None, span)
+        }));
+        assert!(
+            !unguarded_contract(|| Ok(ExactPrimitiveCallSiteAdmission {
+                kind: ExactPrimitiveCallSiteKind::RangeCertified,
+            })),
+            "planted unguarded-admission defect must be RED"
+        );
+
+        let sub_field = SubFieldSpec {
+            role: simthing_core::SubFieldRole::Amount,
+            width: 1,
+            clamp: ClampBehavior::Bounded { min: 0.0, max: 1.0 },
+            velocity_max: None,
+            default: 0.0,
+            display_name: "amount".into(),
+            display_range: None,
+            governed_by: None,
+            reduction_override: None,
+            soft_aggregate_guard: None,
+            accumulator_spec: None,
+        };
+        let certificate = ExactPrimitiveAdmissionDoor::verify_range_certificate(
+            domain,
+            ExactPrimitiveRangeEvidence::PropertySubField(&sub_field),
+            span,
+        )
+        .expect("bounded sub-field range is inside primitive domain");
+        let certified = ExactPrimitiveAdmissionDoor::admit_call_site(
+            domain,
+            Some(ExactPrimitiveCallSiteShape::RangeCertified(certificate)),
+            span,
+        )
+        .expect("sealed property range admits shape one");
+        assert_eq!(certified.kind(), ExactPrimitiveCallSiteKind::RangeCertified);
+        assert_eq!(certified.added_runtime_nodes(), 0);
+        ExactPrimitiveAdmissionDoor::admit_range_certified_sub_field(domain, &sub_field, 41, 57)
+            .expect("public shape-one facade preserves the sealed proof path");
+
+        let clamp = EvalEmlOpcode::from_closed(eml_nodes::opcode::CLAMP_BOUNDED)
+            .expect("closed clamp opcode");
+        let guarded = ExactPrimitiveAdmissionDoor::verify_guarded_semantics(
+            domain,
+            clamp,
+            0.0f32.to_bits(),
+            1.0f32.to_bits(),
+            span,
+        )
+        .expect("authored clamp output is inside primitive domain");
+        let guarded_call = ExactPrimitiveAdmissionDoor::admit_call_site(
+            domain,
+            Some(ExactPrimitiveCallSiteShape::GuardedSemantics(guarded)),
+            span,
+        )
+        .expect("explicit formula guard admits shape two");
+        assert_eq!(
+            guarded_call.kind(),
+            ExactPrimitiveCallSiteKind::GuardedSemantics
+        );
+        ExactPrimitiveAdmissionDoor::admit_explicitly_guarded_call_site(
+            domain,
+            clamp,
+            0.0f32.to_bits(),
+            1.0f32.to_bits(),
+            41,
+            57,
+        )
+        .expect("public shape-two facade preserves guarded semantics");
+
+        let guard_as_certificate = ExactPrimitiveAdmissionDoor::verify_range_certificate(
+            domain,
+            ExactPrimitiveRangeEvidence::GuardedFormula(&guarded),
+            span,
+        );
+        assert_eq!(
+            guard_as_certificate,
+            Err(OpcodeGateError::ExactPrimitiveGuardIsNotRangeCertificate {
+                guard_opcode: eml_nodes::opcode::CLAMP_BOUNDED,
+                span_start: 41,
+                span_end: 57,
+            })
+        );
+        let planted_guard_as_certificate =
+            Ok::<_, OpcodeGateError>(ExactPrimitiveRangeCertificate { domain });
+        assert_ne!(
+            guard_as_certificate, planted_guard_as_certificate,
+            "planted guard-as-certificate defect must be RED"
+        );
+        assert_eq!(ExactPrimitiveAdmissionDoor::default().admitted_count(), 0);
     }
 }
