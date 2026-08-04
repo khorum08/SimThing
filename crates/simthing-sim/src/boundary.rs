@@ -69,6 +69,10 @@ use crate::observability::{observe, ObservabilityReport, ObserveFidelity};
 use crate::overlay_lifecycle::{resolve_overlay_lifecycle, LifecycleOutcome};
 use crate::property_expiry::{resolve_property_expiry, ExpiryOutcome};
 use crate::reduced_field::ReducedField;
+use crate::resolution_site::{
+    collect_aggregate_alerts_vendorized, collect_velocity_alerts_vendorized,
+    reattach_aggregate_alerts_at_barrier, reattach_velocity_alerts_at_barrier, ResolutionSite,
+};
 use crate::sim_runtime_tree::SimRuntimeTree;
 use crate::threshold_registry::{
     AggregateAlertEvent, AggregateAlertRegistration, ThresholdBuilder, ThresholdRegistry,
@@ -264,6 +268,11 @@ pub struct BoundaryProtocol {
     /// lockstep with the `child_starts` / `child_indices` / `depth_slots`
     /// buffers on `WorldGpuState`.
     cached_topology_state: TopologyState,
+    /// RESOLUTION-SITE-SPLIT-0: placement of identity re-attachment for
+    /// converted semantics. `ClosedLoop` (default) re-attaches at the barrier
+    /// through the admitted slot map; `CpuAuthoritative` is the vendorized
+    /// mirror placement. Placement only — same semantics either way.
+    resolution_site: ResolutionSite,
 }
 
 impl BoundaryProtocol {
@@ -289,7 +298,20 @@ impl BoundaryProtocol {
             delta_log: Vec::new(),
             fission_lineage: Vec::new(),
             cached_topology_state: TopologyState::default(),
+            resolution_site: ResolutionSite::default(),
         }
+    }
+
+    /// Current resolution-site placement (closed loop by default).
+    pub fn resolution_site(&self) -> ResolutionSite {
+        self.resolution_site
+    }
+
+    /// Select the resolution-site placement. Placement changes WHERE identity
+    /// attaches to converted resolution products; it never changes semantics,
+    /// crossing selection, or barrier allocation.
+    pub fn set_resolution_site(&mut self, site: ResolutionSite) {
+        self.resolution_site = site;
     }
 
     fn sync_accumulator_intent_session(&self, state: &mut WorldGpuState) {
@@ -513,9 +535,42 @@ impl BoundaryProtocol {
             self.upload_admission_anchor_table(state, &coord.shadow, n_dims, &pre_anchored_loci);
         }
 
+        // RESOLUTION-SITE-SPLIT-0: converted semantics (velocity + aggregate
+        // alerts) resolve identity per the selected placement. Closed loop
+        // (default) re-attaches through the admitted slot map — the live
+        // authority — and FAILS CLOSED on an unadmitted slot (admission-
+        // integrity violation; never a default identity). The vendorized
+        // placement is the pre-split mirror arm. Both are proven bit-identical
+        // by the 6.2b parity referees; stage order and timing are unchanged.
         let alert_collect_started = Instant::now();
-        out.velocity_alerts = collect_velocity_alerts(&events, &self.cpu_threshold_registry);
-        out.aggregate_alerts = collect_aggregate_alerts(&events, &self.cpu_threshold_registry);
+        match self.resolution_site {
+            ResolutionSite::ClosedLoop => {
+                out.velocity_alerts = reattach_velocity_alerts_at_barrier(
+                    &events,
+                    &self.cpu_threshold_registry,
+                    &self.registry,
+                    &self.allocator,
+                )
+                .unwrap_or_else(|e| {
+                    panic!("closed-loop barrier identity re-attachment failed closed: {e}")
+                });
+                out.aggregate_alerts = reattach_aggregate_alerts_at_barrier(
+                    &events,
+                    &self.cpu_threshold_registry,
+                    &self.registry,
+                    &self.allocator,
+                )
+                .unwrap_or_else(|e| {
+                    panic!("closed-loop barrier identity re-attachment failed closed: {e}")
+                });
+            }
+            ResolutionSite::CpuAuthoritative => {
+                out.velocity_alerts =
+                    collect_velocity_alerts_vendorized(&events, &self.cpu_threshold_registry);
+                out.aggregate_alerts =
+                    collect_aggregate_alerts_vendorized(&events, &self.cpu_threshold_registry);
+            }
+        }
         out.timing.alert_collect_ms = alert_collect_started.elapsed().as_secs_f64() * 1000.0;
 
         {
@@ -1477,56 +1532,6 @@ fn tree_has_boundary_lifecycle_work(node: &SimThing, registry: &DimensionRegistr
 
 fn subtree_size(node: &SimThing) -> usize {
     1 + node.children.iter().map(subtree_size).sum::<usize>()
-}
-
-fn collect_velocity_alerts(
-    events: &[ThresholdEvent],
-    registry: &ThresholdRegistry,
-) -> Vec<VelocityAlertEvent> {
-    events
-        .iter()
-        .filter_map(|event| {
-            let ThresholdSemantic::VelocityAlert {
-                sim_thing_id,
-                property_id,
-                sub_field,
-            } = registry.get(event.event_kind())?
-            else {
-                return None;
-            };
-            Some(VelocityAlertEvent {
-                sim_thing_id: *sim_thing_id,
-                property_id: *property_id,
-                sub_field: sub_field.clone(),
-                value: event.value(),
-            })
-        })
-        .collect()
-}
-
-fn collect_aggregate_alerts(
-    events: &[ThresholdEvent],
-    registry: &ThresholdRegistry,
-) -> Vec<AggregateAlertEvent> {
-    events
-        .iter()
-        .filter_map(|event| {
-            let ThresholdSemantic::AggregateAlert {
-                sim_thing_id,
-                property_id,
-                sub_field,
-            } = registry.get(event.event_kind())?
-            else {
-                return None;
-            };
-            Some(AggregateAlertEvent {
-                sim_thing_id: *sim_thing_id,
-                property_id: *property_id,
-                sub_field: sub_field.clone(),
-                value: event.value(),
-            })
-        })
-        .collect()
 }
 
 fn seed_dimension_values(

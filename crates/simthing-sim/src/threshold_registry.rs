@@ -287,6 +287,7 @@ impl ThresholdRegistry {
         idx
     }
 
+
     /// Production CostBand door: resolve draw from sealed delta operands +
     /// admitted `event_kind` semantics. Callers cannot opt out a sink via
     /// ad-hoc `is_sink=false` or substitute throttle.
