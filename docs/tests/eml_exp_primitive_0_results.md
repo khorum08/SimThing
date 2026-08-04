@@ -1,7 +1,7 @@
 # EML-EXP-PRIMITIVE-0 results
 
 - Track: 0.0.8.7 RF arena modernization (rung 5.11)
-- Status: **PROBATION / proof-present / DA-review-pending**
+- Status: **COMPLETE / DA-GRADUATED — merged #1632 @ d664a866** (Point 2 closed: live-tuple comparator; DA independently planted a driver-leg bypass in production and confirmed RED)
 - Dispatch base: `7ebf8884679840b3c2670ad0a4e7a55304bb3e28` (handoff merge #1631)
 - Branch: `fable/eml-exp-primitive-0`
 - ORIENT-RECEIPT: `d950cd858719` (orientation_rule_stamp `2d131557973b6050`)
