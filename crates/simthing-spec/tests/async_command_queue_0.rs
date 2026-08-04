@@ -81,7 +81,7 @@ fn policy(origin: SimThingId, amount: f32) -> Overlay {
 fn same_key_burst_coalesces_exactly_conserves_and_replay_mutants_red() {
     let products = products_at(1..=5);
     let first = products[0].product();
-    let mut seam = AsyncOwnerChannelRfSeam::admit(AuthoredSeamStaleness::new(10));
+    let mut seam = AsyncOwnerChannelRfSeam::admit(AuthoredSeamStaleness::new(3));
     for product in &products {
         seam.enqueue_reduce_up(product)
             .expect("nonblocking enqueue");
@@ -155,6 +155,33 @@ fn same_key_burst_coalesces_exactly_conserves_and_replay_mutants_red() {
         .map(|entry| entry.child_generation.get())
         .collect();
     assert_eq!(generations, vec![1, 2, 3, 4, 5]);
+
+    let mut rejected = AsyncOwnerChannelRfSeam::admit(AuthoredSeamStaleness::new(2));
+    for product in &products {
+        rejected.enqueue_reduce_up(product).unwrap();
+    }
+    let rejected_pending_before = rejected.pending_carriers();
+    let mut rejected_parent = ParentRfIntegrationState::default();
+    let mut rejected_schedule = IntegrationSchedule::new();
+    let error = rejected
+        .apply_parent_generation_barrier(
+            GenerationStamp::new(8),
+            &mut rejected_parent,
+            &mut rejected_schedule,
+        )
+        .expect_err("newest carrier stamp outside authored tolerance must hard-error");
+    assert!(matches!(
+        error,
+        IntegrateError::StalenessToleranceExceeded {
+            integration: 8,
+            source_generation: 5,
+            observed: 3,
+            allowed: 2,
+        }
+    ));
+    assert_eq!(rejected.pending_carriers(), rejected_pending_before);
+    assert_eq!(rejected_parent, ParentRfIntegrationState::default());
+    assert!(rejected_schedule.entries().is_empty());
 
     let mut ambient_reversed = products.clone();
     ambient_reversed.reverse();

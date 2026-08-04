@@ -411,3 +411,9 @@ date	role	query	anchors_served	hit
 2026-08-03T23:58:08Z	coding	--grep stead-spatial-contract-core	stead-spatial-contract-core	hit
 2026-08-03T23:58:14Z	coding	--grep structural-execution-convergence	structural-execution-convergence	hit
 2026-08-03T23:58:14Z	coding	--grep workshop-candidate-homing	workshop-candidate-homing	hit
+2026-08-04T00:33:35Z	coding	--paths crates/simthing-core/src/generation_stamp.rs crates/simthing-core/src/automaton.rs crates/simthing-core/tests crates/simthing-spec/src/spec/owner_channel_rf.rs crates/simthing-spec/src/spec/channel_key.rs crates/simthing-spec/tests crates/simthing-driver/tests scripts/ci/test_inventory.tsv docs/tests docs/design_0_0_8_7_rf_arena_modernization.md docs/orchestrator_orientation.md	core-gpu-residency,core-overlays,core-property-value-model,core-rf-arenas,exact-numeric-candidate-f,field-policy-time-decisions,founding-ontology-invariants,one-tree-owners-never-spatial,orientation-harness-core,rf-arena-substrate,scanner-selftest-delta-gate,simthing-0087-binding-laws,simthing-0087-pillars,stead-events-are-rf,stead-rejected-shapes,stead-shared-surface-ledger,stead-spatial-contract-core,structural-execution-convergence,workshop-candidate-homing	hit
+2026-08-04T00:33:39Z	coding	--grep admission-ladder-necessity-test	admission-ladder-necessity-test	hit
+2026-08-04T00:33:39Z	coding	--grep eml-extension-ladder	eml-extension-ladder	hit
+2026-08-04T00:33:39Z	coding	--grep field-sweep-preservation	field-sweep-preservation	hit
+2026-08-04T00:33:40Z	coding	--grep peripheral-scope-adrs	peripheral-scope-adrs	hit
+2026-08-04T00:33:40Z	coding	--grep seal-residue-cross-crate	seal-residue-cross-crate	hit

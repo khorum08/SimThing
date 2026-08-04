@@ -15,7 +15,7 @@
 - One admitted `AsyncOwnerChannelRfSeam` owns a canonical-scope `BTreeMap` holding queue. A burst retains at most one pending value per `{OwnerRef, ResourceKey, ScopeId}` while every numeric bucket field sums exactly in widened `u64` state.
 - Queue ingress moves conserved value child -> seam and generation-barrier application moves seam -> parent. The accounting oracle checks both `child + seam + parent == admitted` and pending-carrier value equals the seam holding account.
 - `IntegrationScheduleRowKind::{QueueInjection, StandingView}` extends the existing 6.1 append-only recorder. Queue rows remain one per source product; values coalesce but generation membership does not. Coalesced carrier stamps are the maximum source stamp.
-- `AuthoredSeamStaleness` has no default. Every barrier preflights every source stamp and hard-errors atomically on breach; an admitted lag never waits.
+- `AuthoredSeamStaleness` has no default. Every barrier preflights each coalesced carrier's newest/max stamp and hard-errors atomically on breach; historical source stamps remain full replay evidence and never become admission blockers.
 - Downward ancestor policy is captured site-locally, crosses only as `GenerationStamped<AncestorStandingPolicyView>` with canonical `OwnerRef`, and publishes through a two-slot generation/value buffer. Both directions replay from the same schedule.
 - Existing `CommandDeficit` delivery remains on `owner_silo_disburse_down` -> `runtime_local_allocation_from_disbursement`; the rung adds no directive transport, route-distance inference, or disbursement-band authority.
 
@@ -26,7 +26,7 @@
 | Five-product same-scope burst | exact sum of all five `OwnerChannelRfBucket` numeric fields; pending cardinality equals distinct buckets; carrier stamp=max |
 | Holding account | exact before and after the barrier; dropped-pending and all-three-account escape mutants RED |
 | Full generation membership | five `QueueInjection` rows preserve generations 1..5; latest-only/drop replay differs from live |
-| Lag and tolerance | N+3 <- N completes without wait when authored max=3; max=2 hard-errors with queue/parent/log unchanged |
+| Coalesced lag and tolerance | Same-key generations 1..5 at parent 8 admit from carrier stamp 5 when authored max=3 while retaining all five schedule generations; max=2 hard-errors with queue/parent/log unchanged; historical-contributor staleness mutant RED |
 | One recorder | reversed ambient products replay bit-exact; empty second-recorder mutant hard-errors |
 | Bidirectional snapshot | two standing-policy publications share the upward log, replay bit-exact, and staging cannot tear or republish an old slot |
 | Directive path preservation | existing `simthing_automaton_rf_reception_0` battery remains green with live route policy and standing inheritance |
@@ -35,7 +35,7 @@
 
 ```text
 cargo test -p simthing-spec --test async_command_queue_0: 3/0
-cargo test -p simthing-spec async_queue_accounting_mutant_proof --lib: 2/0
+cargo test -p simthing-spec async_queue_accounting_mutant_proof --lib: 3/0
 cargo test -p simthing-spec --test event_generation_stamp_reduce_up_0: 4/0
 cargo test -p simthing-driver --test simthing_automaton_rf_reception_0: 2/0
 ```

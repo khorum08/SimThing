@@ -528,17 +528,19 @@ impl AsyncOwnerChannelRfSeam {
         Ok(())
     }
 
-    /// Drain every pending bucket into the parent only at its generation barrier. All source
-    /// stamps are tolerance-checked before any value or schedule row mutates; lag never waits.
+    /// Drain every pending bucket into the parent only at its generation barrier. Staleness is
+    /// checked against each coalesced carrier's newest/max source stamp before any value or
+    /// schedule row mutates; historical source stamps remain replay evidence and never become
+    /// admission blockers. Lag never waits.
     pub fn apply_parent_generation_barrier(
         &mut self,
         parent_generation: GenerationStamp,
         parent_state: &mut ParentRfIntegrationState,
         schedule: &mut IntegrationSchedule,
     ) -> Result<AsyncQueueBarrierReceipt, IntegrateError> {
-        for contribution in &self.pending_products {
+        for pending in self.pending.values() {
             self.tolerance
-                .check(parent_generation, contribution.generation)?;
+                .check(parent_generation, pending.newest_generation)?;
         }
 
         let contributing_product_count = self.pending_products.len();
@@ -620,6 +622,23 @@ impl AsyncOwnerChannelRfSeam {
             distinct_bucket_count,
             contributing_product_count,
         })
+    }
+
+    /// Test-only planted defect: reintroduce historical-contributor staleness blocking.
+    ///
+    /// Production admission deliberately does not call this path. It exists so the combined
+    /// coalescing/staleness proof can demonstrate that checking the oldest/every source product
+    /// rejects a carrier whose canonical newest/max stamp is admissible.
+    #[cfg(test)]
+    fn check_historical_contributors_for_staleness_mutant(
+        &self,
+        parent_generation: GenerationStamp,
+    ) -> Result<(), IntegrateError> {
+        for contribution in &self.pending_products {
+            self.tolerance
+                .check(parent_generation, contribution.generation)?;
+        }
+        Ok(())
     }
 
     /// Stage a complete downward ancestor standing/policy view in the inactive buffer.
@@ -1582,5 +1601,56 @@ mod async_queue_accounting_mutant_proof {
             seam.check_conservation().unwrap_err(),
             IntegrateError::ConservationViolation
         ));
+    }
+
+    #[test]
+    fn historical_contributor_staleness_mutant_reds_against_newest_carrier_law() {
+        let (mut seam, scope) = seeded_seam();
+        seam.tolerance = AuthoredSeamStaleness::new(3);
+        seam.pending.get_mut(&scope).unwrap().value = OwnerChannelRfConservedValue {
+            participant_count: 5,
+            surplus_total: 10,
+            deficit_total: 15,
+            net_surplus: 0,
+            net_deficit: 5,
+        };
+        seam.pending.get_mut(&scope).unwrap().newest_generation = GenerationStamp::new(5);
+        seam.pending_products = (1..=5)
+            .map(|generation| PendingContribution {
+                generation: GenerationStamp::new(generation),
+                product_key: u64::from(generation),
+            })
+            .collect();
+        seam.admitted_product_count = 5;
+        seam.balances.get_mut(&scope).unwrap().seam = seam.pending[&scope].value;
+        seam.balances.get_mut(&scope).unwrap().admitted = seam.pending[&scope].value;
+        seam.check_conservation().expect("coalesced seed is exact");
+
+        assert!(matches!(
+            seam.check_historical_contributors_for_staleness_mutant(GenerationStamp::new(8))
+                .unwrap_err(),
+            IntegrateError::StalenessToleranceExceeded {
+                integration: 8,
+                source_generation: 1,
+                observed: 7,
+                allowed: 3,
+            }
+        ));
+
+        let mut parent = ParentRfIntegrationState::default();
+        let mut schedule = IntegrationSchedule::new();
+        seam.apply_parent_generation_barrier(
+            GenerationStamp::new(8),
+            &mut parent,
+            &mut schedule,
+        )
+        .expect("canonical newest/max carrier stamp 5 is within authored tolerance 3");
+        assert_eq!(
+            schedule
+                .entries_of_kind(IntegrationScheduleRowKind::QueueInjection)
+                .map(|entry| entry.child_generation.get())
+                .collect::<Vec<_>>(),
+            vec![1, 2, 3, 4, 5]
+        );
     }
 }
