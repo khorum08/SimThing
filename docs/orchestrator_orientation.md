@@ -45,7 +45,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 211b860c2a424d0386a01a2dc93d5c563abfd1411c1f58ec55c7b69d97426cb8 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | 26eab30ec86c97ac8dfd6beef7ae8c5b4d3f18c38fdaa431ec40ccce855396d3 |
-| design_0_0_8_7_rf_arena_modernization.md | 4102a6f3da03c957d871c9fed740b55510e557772ef7974bfda8e4e4a284db5a |
+| design_0_0_8_7_rf_arena_modernization.md | 89c84bfaa8b4e2a7af086ca7895a027680b7fc127bf1cc148615f000b25b3768 |
 | relay_lint.sh | 4163f715cdc3b549dbf57c1744aff61ea96b9f9f0a2237376665fbdb24e986c8 |
 | doctrine_anchors.tsv | 94e2a996f60476919d67c317d851ad7e60763440f8dde2c099e7794bccce5a9c |
 | execution_status_taxonomy.tsv | c33df8d86dbc939e1f6b9a847b3d54e255ae602481cd459c96fba4b13cd2f145 |
@@ -68,38 +68,10 @@ Dark properties (1): `fixture::dark_reading` (reasons/spans in `property_admissi
 
 Track state: `open`
 
+> Compact view: showing last 5 of 49 rungs (track `open`); full ladder in the design doc.
+
 | # | rung | deliverable | exit proof |
 | --- | --- | --- | --- |
-| 5.2 | WRITE-DOOR-BAND-DELTA-0 | Phase 5: fulcrum 2 — in-pass band-crossing derivation; structural ops refuse to  | **DA-GRADUATED / merged #1488 @ d41a079b** — typed BandCrossingDelta from the fused pass; refuse-to-encode law exact ... |
-| 5.3 | ANCHOR-TABLE-SURFACE-0 | Phase 5: fulcrum 3 — derived GPU anchor table as the SOLE observation surface; c | Studio/telemetry read only the table; no second observation path (grep-proven); populated-fixture + production-sequen... |
-| 5.3b | CANONICAL-ANCHOR-MATERIALIZATION-0 | Phase 5: admission governs existence — host-materialization from value-placing r | **DA-GRADUATED / merged #1500 @ 1294cc87** — admission governs existence; totality proven on the ORDINARY unmutated i... |
-| 5.3c | THRESHOLD-EVENT-REGRESSION-REPAIR-0 | Phase 5: repair the GPU threshold-event regression introduced by 5.3 (DA bisect: | **DA-GRADUATED / merged #1507 @ 462cc794** — root cause was the 5.3 convenience-dispatch dropping the `prepare_thresh... |
-| 5.4 | FIELD-SWEEP-IR-PROBE-0 | Phase 5: workshop-leaf disposable probe — minimal target/neighbor-ctx EML map/fo | **DA-GRADUATED / merged #1526 @ a895c989** — HONEST INDETERMINATE PROBE. Parity ABSOLUTE and met: N4 CPU+GPU bit-exac... |
-| 5.5 | FIELD-SWEEP-N4-PARITY-0 | Phase 5: engine landing — EML edge context {target_slot, neighbor_slot, accumula | **DA-GRADUATED / merged #1529 @ 4ab19613** — THE REMODEL'S CENTREPIECE LANDS. PALMA and two-stage Gu-Yang run through... |
-| 5.6 | FIELD-ADJACENCY-GENERATORS-0 | Phase 5: adjacency as a registration axis — weighted `GridOffsets [(dx,dy,w)]` w | **DA-GRADUATED / merged #1532 @ f95eb261** — THE ADJACENCY GAP IS CLOSED. One authored map/fold/post EML program now ... |
-| 5.7 | EML-RESOURCE-CLASS-ADMISSION-0 | Phase 5: specialized interpreter resource classes (pipeline-constant stack sizes | **DA-GRADUATED / merged #1537 @ a7c05715 — substrate accepted; Gu-Yang recorded as MEASURED PERFORMANCE DEBT with a n... |
-| 5.8 | GUYANG-COMPARATIVE-PROJECTIONS-0 | Phase 5: dominance/margin/contest/border-band/chokepoint projections over generi | **DA-GRADUATED / merged #1540 @ 70119766 — comparative substrate accepted on scenario-neutral fixtures; focused suite... |
-| 5.8b | COMPARATIVE-DEFAULT-BIRTH-0 | Phase 5: the two canonical seams 5.8 correctly refused to invent. (A) carry the  | **DA-GRADUATED / merged #1567 @ 6dfc5aa1 — default emitter birth landed on the DA-narrowed scope.** Ordinary `compile... |
-| 5.9 | TP-PURGE-0 | **Phase 5 hygiene — INTENT NOTED, sequencing Owner-scheduled and MAY preempt 5.4 | **DA-GRADUATED / merged #1520 @ 153ba40c** — DA independently reproduced at exact head `9ccd800c`: **THE FALSIFIABLE ... |
-| 5.9b | SCENARIO-RESIDUE-PURGE-0 | **Phase 5 hygiene — Owner-directed 2026-08-01, DA-implemented, preempts 5.8b.**  | **DA-GRADUATED / merged #1544 @ 682e9d0e — engine at ABSOLUTE ZERO TP across `src` AND `tests` for all seven crates, ... |
-| 5.9c | ARTIFACT-PROVENANCE-CONTAINMENT-0 | **Phase 5 hygiene — Owner-directed 2026-08-01.** Enforces the Vendor Containment | **DA-GRADUATED / merged #1574 @ 2e3afacb — PHASE 5 COMPLETE.** (b) `artifact_provenance_check.py` follows consumer ->... |
-| 5.9d | TP-EXPORT-ERADICATION-0 | **Phase 5 hygiene — Owner-directed 2026-08-01, DA-implemented.** Eliminates TP's | ZERO files matching scenario vocabulary anywhere outside `simthing-clausething`; mapeditor `src` and `tests` build an... |
-| 5.10 | EML-PRIMITIVE-DOMAIN-0 | **Phase 5 completion — Owner-approved 2026-08-03, anchored by `docs/full_eml_uni | **DA-GRADUATED / merged #1618 @ 35dcf43a — the exact-primitive door lands admitting ZERO primitives.** Sealed type la... |
-| 5.11 | EML-EXP-PRIMITIVE-0 | Phase 5 completion: **full-domain `EXP` `[−87.33, +88.72]`** through the 5.10 do | **Cost gate unweakened: the primitive must beat its own ~20-node `ADD`/`MUL`/`FLOOR` gadget encoding under the existi... |
-| 5.12 | EML-LN-PRIMITIVE-0 | Phase 5 completion: `LN` over **positive finite normals `[2⁻¹²⁶, f32::MAX]`** by | Digest + parity + cost gate per the 5.11 template; `POW` and `eml()` library entries admitted with domain guards; `Lo... |
-| 6.0 | OWNER-CHANNEL-INTRINSIC-0 | **Phase 6 foundation — Owner-directed 2026-08-01. Makes ownership ATOMIC AND INT | **DA-GRADUATED / merged #1561 @ 8cbd7e3d — ownership is now INTRINSIC to the stem cell.** Owner is a sparse property ... |
-| 6.0b | SIMTHING-AUTOMATON-INTRINSIC-0 | **Phase 6: Owner-directed 2026-08-02 — the minimum viable Wei automaton, intrins | **DA-GRADUATED / merged #1591 @ af886019 — the stem cell can now LISTEN.** Reception is intrinsic: no new field, the ... |
-| 6.1 | EVENT-GENERATION-STAMP-0 | Phase 6: generation stamps on emission/threshold events; stamped ring egress wit | **DA-GRADUATED / merged #1596 @ df117bcc — generation identity is now a real async seam primitive.** Events carry sta... |
-| 6.1b | BAND-QUANTIZED-DRAW-0 | **Phase 7 foundation — Owner-directed 2026-08-02. RESTORES the original band-cro | **DA-GRADUATED / merged #1602 @ 63c8ed51 — CostBand restored and EML is the singular overlay value path.** Every exis... |
-| 6.2 | ASYNC-COMMAND-QUEUE-0 | Phase 6: async CPU action queue landing at generation barriers; injection genera | **DA-GRADUATED / merged #1616 @ af4f9dbb — the async seam is a holding account, not a transport.** Replay bit-exact f... |
-| 6.2b | RESOLUTION-SITE-SPLIT-0 | **Phase 6: Owner-approved 2026-08-02 — the closed loop becomes the DEFAULT SimTh | **DA-GRADUATED / merged #1621 @ 1a520eee — the closed loop is the default; CPU-authoritative is a vendorized placemen... |
-| 6.3 | CONTINUOUS-POSTURE-SOAK-0 | Phase 6: continuous posture (batched generations) + N-generation soak under forc | Soak exit-proof per the phase row; paced posture unchanged (scenario-neutral posture regression green). **SCOPE COVER... |
-| 7.1 | MOVEMENT-DECISION-INGRESS-0 | Phase 7: movement authority — decisions as sealed Triad band crossings (need + p | Fleets move under the ordinary generation from band crossings only (no CPU branching on field reads); §7 automaton co... |
-| 7.2 | MOVEMENT-AUTHORITY-READBACK-0 | Phase 7: authoritative movement readback; 12.5 icon descriptors express real tra | Studio shows authoritative transit with ZERO icon-layer change; test-private seam retired. **SCOPE COVERAGE (DA revie... |
-| 8.1 | CONTENTION-CONSERVATION-JUDGE-0 | Phase 8: RF-1-style conservation judge over CONTESTED FLOWS (oracle-first), **in | Judge red/green proven on seeded violations against SCENARIO-NEUTRAL synthetic contention fixtures. **The R6 dress re... |
-| 8.2 | CONTENTION-ARENA-EXECUTED-0 | Phase 8: promote contention resolution to the EXECUTED RF arena — claims reduce  | Executed path judged green; **emergence falsifier: changing ONLY the authored resolution rule changes the outcome wit... |
-| 9.1 | GATED-RATES-EML-REWIRE-0 | Phase 9: exclusion-audit Family C — `gated_rates` gate evaluation → authored EML | Gate behavior parity via oracle; hardcoded cols gone; corpus green. **SCOPE COVERAGE (DA review 2026-08-03, Owner-dir... |
-| 9.2 | RF-COLUMN-MINT-MIGRATE-0 | Phase 9: the sweep — remaining sites onto doors; DELETE the exclusion list; reti | Exclusion list empty; tripwire retired per its promotion-blocker; full build + RF batteries green. **SCOPE COVERAGE (... |
 | 10.1 | DOCTRINE-CI-RECONCILE-0 | Phase 10: retire impossible-state detectors; mechanize new gates (EML-addition D | Phase-row falsifier: zero impossible-state scans; zero unwatched new surfaces; selftests green. **SCOPE COVERAGE (DA ... |
 | 11.1 | EMBEDDER-INTERFACE-0 | Phase 11: the five-verb Vendor Door API (formalization of existing mechanisms) + | Five verbs stand up a tree end-to-end in a test; posture choice on Run; no new subsystem (diff-proven). **SCOPE COVER... |
 | 11.2 | EMBEDDER-GUIDE-EXEMPLARS-0 | Phase 11: DOC-BUDGET-capped Embedder's Guide + two non-game exemplars (finance t | Cold-reader exit-proof per phase row; exemplars green in CI. |
@@ -108,7 +80,7 @@ Track state: `open`
 
 ## Next Rung Pointer
 
-Active pointer: `CONTINUOUS-POSTURE-SOAK-0`
+Active pointer: `none`
 
 
 ## Cold-Start Spine (constitutional pointers)
