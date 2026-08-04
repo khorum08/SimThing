@@ -17,7 +17,7 @@
 ## Landed surface
 
 - `simthing_core::ExecutionPosture::{Paced, Continuous{batch_generations}}` — scheduling policy over ONE kernel. Default paced. Continuous batches pump the same `SimSession` hot-cycle + boundary path (`run` match arm); no second kernel, model, or resolution meaning. Continuous `batch_generations == 0` fails closed at admit/`set_execution_posture`/`run` — never a silent `Ok` with zero generations.
-- `simthing_spec::AsyncStalenessColumn` — derived STEAD scalar `parent_generation - latest_integrated_child_stamp` in ONE f32 lane per admitted slot. Seeded only from retained `OwnerChannelRfCrossingFlow.boundary_simthing_id`s; horizon-bounded tree-neighbourhood sweep; inert world (`AsyncStalenessColumn::inert`) allocates zero bytes, zero registrations, zero dispatches. Missing latest child stamp fails closed (no fabricated zero freshness). Whole-lattice registration mutant is test-only (`cfg(test)`), not a production API.
+- `simthing_spec::AsyncStalenessColumn` — registration metadata for ONE derived f32 STEAD lane (`parent_generation - latest_integrated_child_stamp`). Admits via `DimensionRegistry` growth; writes/reads the singular values plane (`slot * n_dims + col` / `WorldGpuState.resolved.values`). No production owned `Vec<f32>` mirror. Seeded only from retained crossing `boundary_simthing_id`s; horizon-bounded; inert = zero attributable column/registration/dispatch. Missing latest child stamp fails closed. Whole-lattice mutant is test-only.
 - N-generation forced-lag soak over landed 6.0/6.1/6.2 surfaces: `reduce_owner_channel_rf` + `reconstruct_owner_channel_rf_map` growth measurement, `AsyncOwnerChannelRfSeam` + sole `IntegrationSchedule` replay, closed causal cycle receive → CostBand → EML → originate → route → receive once per generation.
 - Dual `ResolutionSite` soak: ClosedLoop and CpuAuthoritative produce bit-identical velocity-alert and AttachOverlay `BoundaryRequest` streams over N generations from identical seeds; planted mode-divergence mutant REDs.
 
@@ -43,7 +43,8 @@ Crossing rows stayed crossing-bounded across all generations. Planted product-fo
 | Paced session run | default `SimSession::run(N)` retains prior boundary-count behavior |
 | Forced-lag dual-site | N=16 generations: ClosedLoop ≡ CpuAuthoritative velocity + AttachOverlay streams; mode-divergence mutant RED |
 | STEAD growth | scaling matrix measured; product-form mutant RED |
-| Staleness representation | one derived f32 STEAD lane; seed+horizon sweep; missing stamp RED; whole-lattice mutant test-only RED |
+| Staleness representation | one derived f32 STEAD lane on registry values plane; seed+horizon sweep; missing stamp RED; whole-lattice mutant test-only RED |
+| STEAD substrate door | `WorldGpuState.install_resolved_values_at_boundary` + `read_values_row` observes magnitude; parallel column Vec cannot satisfy |
 | Inert world | zero column bytes, registrations, dispatches, side state |
 | Causal cycle | once-per-generation receive→CostBand→EML→originate→route→receive under load; no authored cascade bound |
 | Replay | forced-lag run replays bit-exactly from the existing integration schedule; empty/ambient second recorder RED |
@@ -68,9 +69,10 @@ Profile matches the inherited finding: fused threshold/reduction scale at ≥100
 ```text
 cargo test -p simthing-spec --test continuous_posture_soak_0: 5/0
 cargo test -p simthing-sim --test continuous_posture_dual_site_0: 1/0
-cargo test -p simthing-spec async_staleness --lib: 3/0
+cargo test -p simthing-spec async_staleness --lib: 4/0
 cargo test -p simthing-core continuous_zero_batch --lib: 1/0
 cargo test -p simthing-driver continuous_posture_session_proofs --lib: 2/0
+cargo test -p simthing-driver --test continuous_posture_stead_lane_0: 1/0
 ```
 
 ## Posture

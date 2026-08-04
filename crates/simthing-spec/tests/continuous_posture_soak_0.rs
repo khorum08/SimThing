@@ -7,9 +7,9 @@ use std::collections::BTreeMap;
 use simthing_core::owner_channel::{bind_owner, OwnerRef};
 use simthing_core::{
     cost_band_quantize, deliver_routed_overlay, eval_overlay_eml, AuthoredSeamStaleness,
-    ExecutionPosture, GenerationStamp, Overlay, OverlayId, OverlayKind, OverlayLifecycle,
-    OverlaySource, PropertyTransformDelta, SimPropertyId, SimThing, SimThingId, SimThingKind,
-    SlotIndex, SubFieldRole, TransformOp,
+    DimensionRegistry, ExecutionPosture, GenerationStamp, Overlay, OverlayId, OverlayKind,
+    OverlayLifecycle, OverlaySource, PropertyTransformDelta, SimPropertyId, SimThing, SimThingId,
+    SimThingKind, SlotIndex, SubFieldRole, TransformOp,
 };
 use simthing_spec::{
     derive_staleness_f32, reconstruct_owner_channel_rf_map, reduce_owner_channel_rf,
@@ -211,15 +211,18 @@ fn staleness_is_one_derived_stead_lane_seeded_horizon_inert_zero_and_whole_latti
 
     let slots = slot_map(&root);
     let n_slots = slots.len();
+    let mut registry = DimensionRegistry::new();
     let mut column = AsyncStalenessColumn::admit(
+        &mut registry,
         n_slots,
         seeds.clone(),
         AuthoredStalenessHorizon::new(2),
     )
     .expect("admit");
     assert!(column.is_allocated());
-    assert_eq!(column.n_dims(), 1);
+    assert_eq!(registry.total_columns as usize, column.n_dims());
     assert_eq!(column.registration_count(), seeds.len());
+    let mut stead = vec![0.0; n_slots * column.n_dims()];
 
     let parent = GenerationStamp::new(10);
     let mut latest = BTreeMap::new();
@@ -227,7 +230,7 @@ fn staleness_is_one_derived_stead_lane_seeded_horizon_inert_zero_and_whole_latti
         latest.insert(seed, GenerationStamp::new(7));
     }
     let visits = column
-        .sweep_seeded(&root, &slots, parent, &latest)
+        .sweep_seeded(&mut stead, &root, &slots, parent, &latest)
         .expect("seeded sweep");
     assert_eq!(column.dispatch_count, 1);
     assert!(visits > 0);
@@ -246,12 +249,15 @@ fn staleness_is_one_derived_stead_lane_seeded_horizon_inert_zero_and_whole_latti
     );
 
     let seed_slot = *slots.get(&seeds[0]).expect("seed slotted");
-    let observed = column.value_at(seed_slot).expect("lane");
+    let observed = column.value_at(&stead, seed_slot).expect("lane");
     assert_eq!(
         observed.to_bits(),
         derive_staleness_f32(parent, GenerationStamp::new(7)).to_bits()
     );
     assert_eq!(observed.to_bits(), 3.0f32.to_bits());
+    // Magnitude is on the STEAD plane index law, not a parallel column store.
+    let plane_idx = usize::from(seed_slot) * column.n_dims() + column.col().raw();
+    assert_eq!(stead[plane_idx].to_bits(), observed.to_bits());
 
     // Whole-lattice registration has no production door: crossing seeds are a
     // strict subset of lattice slots (test-only mutant lives under cfg(test)).
@@ -262,14 +268,23 @@ fn staleness_is_one_derived_stead_lane_seeded_horizon_inert_zero_and_whole_latti
     );
 
     // Missing latest_integrated_child_stamp fails closed — never fabricates freshness.
+    let mut missing_reg = DimensionRegistry::new();
     let mut missing = AsyncStalenessColumn::admit(
+        &mut missing_reg,
         n_slots,
         seeds.clone(),
         AuthoredStalenessHorizon::new(1),
     )
     .expect("admit");
+    let mut missing_plane = vec![0.0; n_slots * missing.n_dims()];
     let err = missing
-        .sweep_seeded(&root, &slots, parent, &BTreeMap::new())
+        .sweep_seeded(
+            &mut missing_plane,
+            &root,
+            &slots,
+            parent,
+            &BTreeMap::new(),
+        )
         .expect_err("missing stamp must RED");
     assert!(matches!(
         err,
@@ -380,7 +395,9 @@ fn continuous_posture_forced_lag_growth_and_staleness_soak_n_generations() {
     let mut seam = AsyncOwnerChannelRfSeam::admit(AuthoredSeamStaleness::new(12));
     let mut schedule = simthing_core::IntegrationSchedule::new();
     let mut parent_state = ParentRfIntegrationState::default();
+    let mut registry = DimensionRegistry::new();
     let mut column: Option<AsyncStalenessColumn> = None;
+    let mut stead: Vec<f32> = Vec::new();
     let mut retained_crossings = Vec::new();
 
     for gen in 1..=N {
@@ -400,19 +417,22 @@ fn continuous_posture_forced_lag_growth_and_staleness_soak_n_generations() {
         if column.is_none() {
             column = Some(
                 AsyncStalenessColumn::admit(
+                    &mut registry,
                     slots.len(),
                     seeds.clone(),
                     AuthoredStalenessHorizon::new(1),
                 )
                 .expect("admit once"),
             );
+            let col = column.as_ref().expect("just admitted");
+            stead = vec![0.0; slots.len() * col.n_dims()];
         }
         let col = column.as_mut().expect("allocated after first seam product");
         let mut latest = BTreeMap::new();
         for &seed in col.seeds() {
             latest.insert(seed, GenerationStamp::new(gen));
         }
-        col.sweep_seeded(&root, &slots, parent_gen, &latest)
+        col.sweep_seeded(&mut stead, &root, &slots, parent_gen, &latest)
             .expect("seeded sweep with stamps present");
     }
 
@@ -421,5 +441,6 @@ fn continuous_posture_forced_lag_growth_and_staleness_soak_n_generations() {
     assert_eq!(col.dispatch_count, u64::from(N));
     assert!(col.visit_count > 0);
     assert!(col.column_bytes() > 0);
+    assert_eq!(stead.len(), slots.len() * col.n_dims());
     assert!(!schedule.entries().is_empty());
 }

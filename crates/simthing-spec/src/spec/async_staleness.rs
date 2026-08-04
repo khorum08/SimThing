@@ -2,17 +2,23 @@
 //!
 //! Staleness is `parent_generation - latest_integrated_child_stamp` (pure
 //! arithmetic over operands that already exist). Its only runtime home is ONE
-//! f32 STEAD lane per admitted slot (`slot * n_dims + col`).
+//! f32 STEAD lane per admitted slot (`slot * n_dims + col`) on the existing
+//! values plane (`WorldGpuState.resolved.values` / its CPU shadow of identical
+//! layout). This type never owns a parallel `Vec<f32>` values mirror.
 //!
 //! - Never a per-node property, history log, CPU mirror, or health-monitor service.
 //! - Seeded only at retained ownership-crossing `boundary_simthing_id`s.
 //! - Horizon-bounded: work/visit counts scale with `crossings × horizon-neighbourhood`.
-//! - Inert by default: no async seam ⇒ zero registration, zero column bytes,
-//!   zero dispatches, no retained side state.
+//! - Inert by default: no async seam ⇒ no registry column growth, zero registration,
+//!   zero dispatches, no retained side state attributable to this feature.
 
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
-use simthing_core::{ColumnIndex, GenerationStamp, SimThing, SimThingId, SlotIndex};
+use simthing_core::{
+    ClampBehavior, ColumnIndex, DimensionRegistry, GenerationStamp, PropertyAdmissionDisposition,
+    PropertyLayout, SimProperty, SimPropertyId, SimThing, SimThingId, SlotIndex, SubFieldRole,
+    SubFieldSpec,
+};
 use thiserror::Error;
 
 use super::owner_channel_rf::OwnerChannelRfCrossingFlow;
@@ -60,18 +66,25 @@ pub enum AsyncStalenessError {
     SlotOutOfRange(u32),
     #[error("staleness column admission rejected: n_slots must be > 0")]
     EmptyColumn,
+    #[error(
+        "STEAD values plane length {actual} != n_slots ({n_slots}) × n_dims ({n_dims})"
+    )]
+    ValuesPlaneLengthMismatch {
+        actual: usize,
+        n_slots: usize,
+        n_dims: usize,
+    },
 }
 
-/// One f32 STEAD lane column for derived async staleness.
+/// Registration metadata for one derived async-staleness STEAD lane.
 ///
-/// Allocated only when an async seam registers. Absent allocation means the
-/// world pays zero — no Vec, no side counters, no sweep work.
+/// Allocated only when an async seam registers. Absent admission means the
+/// world pays zero attributable column growth / registration / sweep work.
+/// Magnitude truth lives only on the caller-owned STEAD values plane.
 #[derive(Clone, Debug, PartialEq)]
 pub struct AsyncStalenessColumn {
-    /// Dense STEAD lanes: `values[slot * n_dims + col]`. `None` = inert.
-    values: Option<Vec<f32>>,
-    n_dims: usize,
-    col: ColumnIndex,
+    /// `None` = inert (no registry lane).
+    admitted: Option<AdmittedStalenessLane>,
     /// Seed registrations (crossing boundary ids). Empty when inert.
     seeds: Vec<SimThingId>,
     horizon: Option<AuthoredStalenessHorizon>,
@@ -81,14 +94,19 @@ pub struct AsyncStalenessColumn {
     pub seed_count: u64,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct AdmittedStalenessLane {
+    property_id: SimPropertyId,
+    col: ColumnIndex,
+    n_dims: usize,
+    n_slots: usize,
+}
+
 impl AsyncStalenessColumn {
-    /// Inert world: no async seam ⇒ zero allocation, zero registration, zero work.
+    /// Inert world: no async seam ⇒ zero registry growth, zero registration, zero work.
     pub fn inert() -> Self {
         Self {
-            values: None,
-            n_dims: 0,
-            // Placeholder only; inert column never indexes through this.
-            col: ColumnIndex::default(),
+            admitted: None,
             seeds: Vec::new(),
             horizon: None,
             visit_count: 0,
@@ -97,11 +115,13 @@ impl AsyncStalenessColumn {
         }
     }
 
-    /// Allocate the single f32 lane column for an admitted async-seam world.
+    /// Admit one derived f32 STEAD lane onto the existing registry values plane.
     ///
-    /// `n_slots` is the admitted slot count; the column uses `n_dims = 1` and
-    /// admitted `col = 0` so each slot owns exactly one f32 lane.
+    /// Registers a 1-wide derived property so `n_dims` grows by exactly one.
+    /// Does **not** allocate a parallel values vector — callers write/read the
+    /// singular STEAD plane (`slot * n_dims + col`).
     pub fn admit(
+        registry: &mut DimensionRegistry,
         n_slots: usize,
         seeds: impl IntoIterator<Item = SimThingId>,
         horizon: AuthoredStalenessHorizon,
@@ -109,13 +129,50 @@ impl AsyncStalenessColumn {
         if n_slots == 0 {
             return Err(AsyncStalenessError::EmptyColumn);
         }
-        let col = ColumnIndex::try_from_admitted_authored(0, 1).expect("n_dims=1 admits col 0");
+        // Exactly ONE f32 STEAD lane — not PropertyLayout::standard (amount/vel/…).
+        let prop = SimProperty {
+            namespace: "async_staleness".into(),
+            name: "derived".into(),
+            admission_disposition: PropertyAdmissionDisposition::Anchored,
+            layout: PropertyLayout {
+                sub_fields: vec![SubFieldSpec {
+                    role: SubFieldRole::Named("staleness".into()),
+                    width: 1,
+                    clamp: ClampBehavior::Unbounded,
+                    velocity_max: None,
+                    default: 0.0,
+                    display_name: "staleness".into(),
+                    display_range: None,
+                    governed_by: None,
+                    reduction_override: None,
+                    soft_aggregate_guard: None,
+                    accumulator_spec: None,
+                }],
+            },
+            decay: None,
+            intensity_behavior: None,
+            fission_templates: vec![],
+            fusion_templates: vec![],
+            on_expire: None,
+            description:
+                "CONTINUOUS-POSTURE-SOAK-0 derived STEAD staleness lane (singular values plane)"
+                    .into(),
+            intensity_labels: vec![],
+        };
+        let property_id = registry.register(prop);
+        let range = registry.column_range(property_id);
+        debug_assert_eq!(range.stride, 1, "async staleness admits one STEAD column");
+        let col = ColumnIndex::from_gpu_round_trip(range.start as u32);
+        let n_dims = registry.total_columns as usize;
         let seeds: Vec<SimThingId> = seeds.into_iter().collect();
         let seed_count = seeds.len() as u64;
         Ok(Self {
-            values: Some(vec![0.0; n_slots]),
-            n_dims: 1,
-            col,
+            admitted: Some(AdmittedStalenessLane {
+                property_id,
+                col,
+                n_dims,
+                n_slots,
+            }),
             seeds,
             horizon: Some(horizon),
             visit_count: 0,
@@ -125,13 +182,15 @@ impl AsyncStalenessColumn {
     }
 
     pub fn is_allocated(&self) -> bool {
-        self.values.is_some()
+        self.admitted.is_some()
     }
 
+    /// Attributable STEAD lane bytes when admitted (`n_slots × f32`); zero when inert.
+    ///
+    /// This is the lane's share of the singular values plane — not a second store.
     pub fn column_bytes(&self) -> usize {
-        self.values
-            .as_ref()
-            .map(|v| v.len() * std::mem::size_of::<f32>())
+        self.admitted
+            .map(|a| a.n_slots * std::mem::size_of::<f32>())
             .unwrap_or(0)
     }
 
@@ -140,24 +199,37 @@ impl AsyncStalenessColumn {
     }
 
     pub fn n_dims(&self) -> usize {
-        self.n_dims
+        self.admitted.map(|a| a.n_dims).unwrap_or(0)
+    }
+
+    pub fn n_slots(&self) -> usize {
+        self.admitted.map(|a| a.n_slots).unwrap_or(0)
     }
 
     pub fn col(&self) -> ColumnIndex {
-        self.col
+        self.admitted
+            .map(|a| a.col)
+            .unwrap_or_else(ColumnIndex::default)
+    }
+
+    pub fn property_id(&self) -> Option<SimPropertyId> {
+        self.admitted.map(|a| a.property_id)
     }
 
     pub fn seeds(&self) -> &[SimThingId] {
         &self.seeds
     }
 
-    pub fn value_at(&self, slot: SlotIndex) -> Result<f32, AsyncStalenessError> {
-        let values = self
-            .values
-            .as_ref()
-            .ok_or(AsyncStalenessError::NotAllocated)?;
-        let idx = usize::from(slot) * self.n_dims + self.col.raw();
-        values
+    /// Read derived staleness from the singular STEAD values plane.
+    pub fn value_at(
+        &self,
+        stead_values: &[f32],
+        slot: SlotIndex,
+    ) -> Result<f32, AsyncStalenessError> {
+        let admitted = self.admitted.ok_or(AsyncStalenessError::NotAllocated)?;
+        self.ensure_plane_len(stead_values, admitted)?;
+        let idx = usize::from(slot) * admitted.n_dims + admitted.col.raw();
+        stead_values
             .get(idx)
             .copied()
             .ok_or(AsyncStalenessError::SlotOutOfRange(slot.raw()))
@@ -168,43 +240,42 @@ impl AsyncStalenessColumn {
         crossings.iter().map(|c| c.boundary_simthing_id).collect()
     }
 
-    /// Write derived staleness into the STEAD lane for one slot.
+    /// Write derived staleness into the singular STEAD lane for one slot.
     pub fn write_derived(
-        &mut self,
+        &self,
+        stead_values: &mut [f32],
         slot: SlotIndex,
         parent_generation: GenerationStamp,
         latest_integrated_child_stamp: GenerationStamp,
     ) -> Result<(), AsyncStalenessError> {
-        let values = self
-            .values
-            .as_mut()
-            .ok_or(AsyncStalenessError::NotAllocated)?;
-        let idx = usize::from(slot) * self.n_dims + self.col.raw();
-        let lane = values
+        let admitted = self.admitted.ok_or(AsyncStalenessError::NotAllocated)?;
+        self.ensure_plane_len(stead_values, admitted)?;
+        let idx = usize::from(slot) * admitted.n_dims + admitted.col.raw();
+        let lane = stead_values
             .get_mut(idx)
             .ok_or(AsyncStalenessError::SlotOutOfRange(slot.raw()))?;
         *lane = derive_staleness_f32(parent_generation, latest_integrated_child_stamp);
         Ok(())
     }
 
-    /// Horizon-bounded seeded sweep over the tree neighbourhood.
+    /// Horizon-bounded seeded sweep writing into the singular STEAD values plane.
     ///
     /// Visits only nodes within `horizon` hops of each crossing seed. Cost is
     /// deterministic and scales with `crossings × horizon-neighbourhood`, never
     /// lattice size. Returns the number of distinct visits this dispatch.
     ///
-    /// `slot_of` is the admitted slot map (same authority closed-loop re-attachment
-    /// uses); this module does not mint slots.
+    /// `stead_values` must be the existing STEAD matrix (`n_slots × n_dims`).
+    /// `slot_of` is the admitted slot map; this module does not mint slots.
     pub fn sweep_seeded(
         &mut self,
+        stead_values: &mut [f32],
         root: &SimThing,
         slot_of: &BTreeMap<SimThingId, SlotIndex>,
         parent_generation: GenerationStamp,
         latest_by_seed: &BTreeMap<SimThingId, GenerationStamp>,
     ) -> Result<u64, AsyncStalenessError> {
-        if self.values.is_none() {
-            return Err(AsyncStalenessError::NotAllocated);
-        }
+        let admitted = self.admitted.ok_or(AsyncStalenessError::NotAllocated)?;
+        self.ensure_plane_len(stead_values, admitted)?;
         let horizon = self
             .horizon
             .expect("allocated column always carries an authored horizon")
@@ -221,7 +292,7 @@ impl AsyncStalenessColumn {
             let Some(&seed_slot) = slot_of.get(&seed) else {
                 return Err(AsyncStalenessError::UnadmittedSeed(seed));
             };
-            self.write_derived(seed_slot, parent_generation, child_stamp)?;
+            self.write_derived(stead_values, seed_slot, parent_generation, child_stamp)?;
             self.visit_count = self.visit_count.saturating_add(1);
             visited_this_dispatch = visited_this_dispatch.saturating_add(1);
 
@@ -241,7 +312,7 @@ impl AsyncStalenessColumn {
                     let Some(&slot) = slot_of.get(&nbr) else {
                         continue;
                     };
-                    self.write_derived(slot, parent_generation, child_stamp)?;
+                    self.write_derived(stead_values, slot, parent_generation, child_stamp)?;
                     self.visit_count = self.visit_count.saturating_add(1);
                     visited_this_dispatch = visited_this_dispatch.saturating_add(1);
                     queue.push_back((nbr, depth + 1));
@@ -249,6 +320,22 @@ impl AsyncStalenessColumn {
             }
         }
         Ok(visited_this_dispatch)
+    }
+
+    fn ensure_plane_len(
+        &self,
+        stead_values: &[f32],
+        admitted: AdmittedStalenessLane,
+    ) -> Result<(), AsyncStalenessError> {
+        let expected = admitted.n_slots.saturating_mul(admitted.n_dims);
+        if stead_values.len() != expected {
+            return Err(AsyncStalenessError::ValuesPlaneLengthMismatch {
+                actual: stead_values.len(),
+                n_slots: admitted.n_slots,
+                n_dims: admitted.n_dims,
+            });
+        }
+        Ok(())
     }
 }
 
@@ -276,6 +363,14 @@ fn tree_undirected_adjacency(root: &SimThing) -> BTreeMap<SimThingId, Vec<SimThi
 mod column_proofs {
     use super::*;
 
+    fn empty_registry() -> DimensionRegistry {
+        DimensionRegistry::new()
+    }
+
+    fn stead_plane(column: &AsyncStalenessColumn) -> Vec<f32> {
+        vec![0.0; column.n_slots() * column.n_dims()]
+    }
+
     #[test]
     fn inert_column_pays_zero() {
         let col = AsyncStalenessColumn::inert();
@@ -286,6 +381,7 @@ mod column_proofs {
         assert_eq!(col.visit_count, 0);
         assert_eq!(col.seed_count, 0);
         assert!(col.seeds().is_empty());
+        assert!(col.property_id().is_none());
     }
 
     /// Test-only planted whole-lattice registration — production API has no door.
@@ -300,7 +396,9 @@ mod column_proofs {
 
     #[test]
     fn whole_lattice_registration_mutant_reds_in_test_only_scope() {
+        let mut registry = empty_registry();
         let mut col = AsyncStalenessColumn::admit(
+            &mut registry,
             4,
             [SimThingId::from_session_raw(1)],
             AuthoredStalenessHorizon::new(1),
@@ -322,23 +420,53 @@ mod column_proofs {
         let seed = root.id;
         let mut slots = BTreeMap::new();
         slots.insert(seed, SlotIndex::new(0));
+        let mut registry = empty_registry();
         let mut col = AsyncStalenessColumn::admit(
+            &mut registry,
             1,
             [seed],
             AuthoredStalenessHorizon::new(0),
         )
         .expect("admit registered seed");
+        let mut plane = stead_plane(&col);
         let parent = GenerationStamp::new(10);
         let empty_latest = BTreeMap::new();
         let err = col
-            .sweep_seeded(&root, &slots, parent, &empty_latest)
+            .sweep_seeded(&mut plane, &root, &slots, parent, &empty_latest)
             .expect_err("missing stamp must fail closed");
         assert!(matches!(
             err,
             AsyncStalenessError::MissingLatestIntegratedChildStamp(id) if id == seed
         ));
-        // No fabricated freshness: lane stays at admit-zero, not a silent Ok write of 0.0.
-        assert_eq!(col.value_at(SlotIndex::new(0)).expect("lane").to_bits(), 0.0f32.to_bits());
+        // No fabricated freshness: STEAD lane stays admit-zero.
+        assert_eq!(
+            col.value_at(&plane, SlotIndex::new(0))
+                .expect("lane")
+                .to_bits(),
+            0.0f32.to_bits()
+        );
         assert_eq!(col.visit_count, 0);
+    }
+
+    #[test]
+    fn admit_grows_registry_plane_without_owning_values_vec() {
+        let mut registry = empty_registry();
+        assert_eq!(registry.total_columns, 0);
+        let col = AsyncStalenessColumn::admit(
+            &mut registry,
+            3,
+            [SimThingId::from_session_raw(9)],
+            AuthoredStalenessHorizon::new(1),
+        )
+        .expect("admit");
+        assert_eq!(registry.total_columns, 1);
+        assert_eq!(col.n_dims(), 1);
+        assert_eq!(col.column_bytes(), 3 * std::mem::size_of::<f32>());
+        // Structural: no parallel values field — only registration metadata.
+        let debug = format!("{col:?}");
+        assert!(
+            !debug.contains("values:"),
+            "production column must not carry a values Vec mirror: {debug}"
+        );
     }
 }
