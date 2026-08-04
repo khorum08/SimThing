@@ -45,7 +45,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 211b860c2a424d0386a01a2dc93d5c563abfd1411c1f58ec55c7b69d97426cb8 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | 26eab30ec86c97ac8dfd6beef7ae8c5b4d3f18c38fdaa431ec40ccce855396d3 |
-| design_0_0_8_7_rf_arena_modernization.md | 114c3403ba0651d2698ea5b566755f1ae6cf8bdc26d2954880b6f1e3faeb2ba3 |
+| design_0_0_8_7_rf_arena_modernization.md | fecafaa6deb12b4229d531deb91c173eec50358faf09e393c7df45346e02b34f |
 | relay_lint.sh | 4163f715cdc3b549dbf57c1744aff61ea96b9f9f0a2237376665fbdb24e986c8 |
 | doctrine_anchors.tsv | 94e2a996f60476919d67c317d851ad7e60763440f8dde2c099e7794bccce5a9c |
 | execution_status_taxonomy.tsv | c33df8d86dbc939e1f6b9a847b3d54e255ae602481cd459c96fba4b13cd2f145 |
@@ -92,7 +92,7 @@ Track state: `open`
 | 6.1 | EVENT-GENERATION-STAMP-0 | Phase 6: generation stamps on emission/threshold events; stamped ring egress wit | **DA-GRADUATED / merged #1596 @ df117bcc — generation identity is now a real async seam primitive.** Events carry sta... |
 | 6.1b | BAND-QUANTIZED-DRAW-0 | **Phase 7 foundation — Owner-directed 2026-08-02. RESTORES the original band-cro | **DA-GRADUATED / merged #1602 @ 63c8ed51 — CostBand restored and EML is the singular overlay value path.** Every exis... |
 | 6.2 | ASYNC-COMMAND-QUEUE-0 | Phase 6: async CPU action queue landing at generation barriers; injection genera | **DA-GRADUATED / merged #1616 @ af4f9dbb — the async seam is a holding account, not a transport.** Replay bit-exact f... |
-| 6.2b | RESOLUTION-SITE-SPLIT-0 | **Phase 6: Owner-approved 2026-08-02 — the closed loop becomes the DEFAULT SimTh | Both modes produce BIT-IDENTICAL `BoundaryRequest` streams from identical crossings **ORIGIN IN SLOT SPACE (DA review... |
+| 6.2b | RESOLUTION-SITE-SPLIT-0 | **Phase 6: Owner-approved 2026-08-02 — the closed loop becomes the DEFAULT SimTh | **DA-GRADUATED / merged #1621 @ 1a520eee — the closed loop is the default; CPU-authoritative is a vendorized placemen... |
 | 6.3 | CONTINUOUS-POSTURE-SOAK-0 | Phase 6: continuous posture (batched generations) + N-generation soak under forc | Soak exit-proof per the phase row; paced posture unchanged (scenario-neutral posture regression green). **SCOPE COVER... |
 | 7.1 | MOVEMENT-DECISION-INGRESS-0 | Phase 7: movement authority — decisions as sealed Triad band crossings (need + p | Fleets move under the ordinary generation from band crossings only (no CPU branching on field reads); §7 automaton co... |
 | 7.2 | MOVEMENT-AUTHORITY-READBACK-0 | Phase 7: authoritative movement readback; 12.5 icon descriptors express real tra | Studio shows authoritative transit with ZERO icon-layer change; test-private seam retired. **SCOPE COVERAGE (DA revie... |
@@ -108,7 +108,7 @@ Track state: `open`
 
 ## Next Rung Pointer
 
-Active pointer: `RESOLUTION-SITE-SPLIT-0`
+Active pointer: `CONTINUOUS-POSTURE-SOAK-0`
 
 
 ## Cold-Start Spine (constitutional pointers)
