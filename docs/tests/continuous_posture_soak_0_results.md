@@ -1,7 +1,7 @@
 # CONTINUOUS-POSTURE-SOAK-0 results
 
 - Track: 0.0.8.7 RF arena modernization (rung 6.3)
-- Status: **PROBATION / proof-present / DA-review-pending**
+- Status: **COMPLETE / DA-GRADUATED — merged #1624 @ fdc11efb** (DA independently planted the always-fresh staleness derivation; RED)
 - Implementation base: `63d6fc444bef8f4bff4b3c8bead7d43780c9a69f`
 - ORIENT-RECEIPT: `6af1884543b0`
 - orientation_rule_stamp: `5554b2613f8907ff`
@@ -77,4 +77,4 @@ cargo test -p simthing-driver --test continuous_posture_stead_lane_0: 1/0
 
 ## Posture
 
-**PROBATION / proof-present / DA-review-pending.** Coder does not `/clearance`, merge, move the pointer, or begin successor work.
+**COMPLETE / DA-GRADUATED — merged #1624 @ fdc11efb.** Coder does not `/clearance`, merge, move the pointer, or begin successor work.
