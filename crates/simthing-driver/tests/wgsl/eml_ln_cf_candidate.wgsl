@@ -3,11 +3,11 @@
 //   - vendor `log` seeds only; must not decide
 //   - already-admitted `eml_exp_pinned` decides via ±1 ULP neighbor snap
 //   - never fold into EXP's artifact; this file is LN's own identity surface
-// Authoritative production twins live in:
-//   crates/simthing-kernel/src/shaders/field_sweep.wgsl
-//   crates/simthing-kernel/src/shaders/accumulator_op.wgsl
-//   crates/simthing-core/src/eml_ln.rs
-// Any edit here or there is a NEW candidate identity and invalidates qualification.
+// Authoritative Candidate-F surfaces (remand 5186492955 — no production EvalEML LN):
+//   this file (standalone frozen WGSL)
+//   crates/simthing-core/src/eml_ln.rs (CPU twin)
+// Production FieldSweep / AccumulatorOp shaders must not host LN helpers.
+// Any edit here or to the CPU twin is a NEW candidate identity and invalidates qualification.
 
 fn eml_exp_pinned(x: f32) -> f32 {
     let a = x * bitcast<f32>(0x3FB8AA3Bu);

@@ -1,13 +1,15 @@
 #!/usr/bin/env bash
-# EML-LN-PRIMITIVE-0 -- pinned exhaustive-qualification artifact presence +
+# EML-LN-PRIMITIVE-0 -- pinned Candidate-F qualification artifact presence +
 # freshness. NEVER re-executes the admitted-domain sweep (standing Owner ruling: CI runs
 # no cargo tests; certification is a phase-boundary LOCAL act).
 #
-# Freshness links checked statically:
+# Freshness links checked statically (remand 5186492955 authority strip):
 #   1. the pinned CPU-twin sequence source (constants + eml_ln_pinned_f32)
 #      hashes to the qualified pin -- any algorithm edit invalidates;
-#   2. the two WGSL shader homes carry byte-identical eml_ln_pinned helpers
-#      whose block hashes to the qualified pin;
+#   2. the standalone Candidate-F WGSL artifact
+#      (crates/simthing-driver/tests/wgsl/eml_ln_cf_candidate.wgsl) hashes to
+#      the qualified pin -- production FieldSweep / AccumulatorOp shaders must
+#      NOT carry LN helpers or opcode dispatch while proof is failed;
 #   3. the qualification module pins the reference digest placeholder slot, and
 #      the results artifact doc records the domain size;
 #   4. the recorded wgpu/naga versions still match Cargo.lock (shader-compiler
@@ -20,9 +22,10 @@ readonly REPO_ROOT="${EML_LN_QUAL_ROOT:-$(cd "${SCRIPT_DIR}/../.." && pwd)}"
 
 # Pinned at LNCF Candidate-F rewrite (2026-08-05, DA 5186354130). Re-pin ONLY
 # together with a local exhaustive requalification and a new digest in
-# eml_ln_qualification.rs.
+# eml_ln_qualification.rs. WGSL pin retargeted to standalone artifact under
+# remand 5186492955 (production helpers removed).
 readonly QUALIFIED_TWIN_SHA256="46d0937ccdac05e455a377351b0b6c0012adda303b17b0f7923d6109496b068d"
-readonly QUALIFIED_WGSL_HELPER_SHA256="bebf865e1dc9e9f8ff385735791aa27f7762b01e51658460875ce88bb0ad3170"
+readonly QUALIFIED_CANDIDATE_WGSL_SHA256="e2f1de09f154d1211a374da707f7cf27d3bba30acb7525f9994cc9d320f85164"
 readonly QUALIFIED_REFERENCE_DIGEST="0x0"
 readonly QUALIFIED_DOMAIN_SIZE="2130706432"
 readonly QUALIFIED_WGPU_VERSION="22.1.0"
@@ -41,10 +44,6 @@ twin_region() {
   ' "$1" | strip_prose
 }
 
-wgsl_helper_region() {
-  awk '/^fn eml_ln_pinned\(/{p=1} p{print} p&&/^}$/{exit}' "$1" | strip_prose
-}
-
 strip_prose() {
   sed -e 's|[[:space:]]*//.*$||' -e '/^[[:space:]]*$/d'
 }
@@ -56,6 +55,7 @@ sha_of() {
 check() {
   local core_twin="${REPO_ROOT}/crates/simthing-core/src/eml_ln.rs"
   local qual_module="${REPO_ROOT}/crates/simthing-kernel/src/eml_ln_qualification.rs"
+  local candidate_wgsl="${REPO_ROOT}/crates/simthing-driver/tests/wgsl/eml_ln_cf_candidate.wgsl"
   local field_wgsl="${REPO_ROOT}/crates/simthing-kernel/src/shaders/field_sweep.wgsl"
   local ao_wgsl="${REPO_ROOT}/crates/simthing-kernel/src/shaders/accumulator_op.wgsl"
   local results_doc="${REPO_ROOT}/docs/tests/eml_ln_primitive_0_results.md"
@@ -63,6 +63,7 @@ check() {
 
   [[ -f "$core_twin" ]] || fail "missing-cpu-twin"
   [[ -f "$qual_module" ]] || fail "missing-qualification-module"
+  [[ -f "$candidate_wgsl" ]] || fail "missing-candidate-wgsl"
   [[ -f "$field_wgsl" ]] || fail "missing-field-shader"
   [[ -f "$ao_wgsl" ]] || fail "missing-accumulator-shader"
   [[ -f "$results_doc" ]] || fail "missing-results-artifact"
@@ -71,13 +72,19 @@ check() {
   twin_sha="$(twin_region "$core_twin" | sha_of)"
   [[ "$twin_sha" == "$QUALIFIED_TWIN_SHA256" ]] || fail "cpu-twin-sequence-drift:${twin_sha}"
 
-  local field_helper ao_helper field_sha
-  field_helper="$(wgsl_helper_region "$field_wgsl")"
-  ao_helper="$(wgsl_helper_region "$ao_wgsl")"
-  [[ -n "$field_helper" ]] || fail "field-shader-helper-missing"
-  [[ "$field_helper" == "$ao_helper" ]] || fail "wgsl-helper-copies-diverged"
-  field_sha="$(printf '%s\n' "$field_helper" | sha_of)"
-  [[ "$field_sha" == "$QUALIFIED_WGSL_HELPER_SHA256" ]] || fail "wgsl-helper-drift:${field_sha}"
+  local candidate_sha
+  candidate_sha="$(strip_prose < "$candidate_wgsl" | sha_of)"
+  [[ "$candidate_sha" == "$QUALIFIED_CANDIDATE_WGSL_SHA256" ]] \
+    || fail "candidate-wgsl-drift:${candidate_sha}"
+
+  # Remand 5186492955: production EvalEML homes must not host LNCF / OP_LN.
+  for shader in "$field_wgsl" "$ao_wgsl"; do
+    if grep -q "fn eml_ln_pinned(" "$shader" \
+      || grep -qE 'OP_LN|EML_OP_LN' "$shader" \
+      || grep -q "eml_ln_snap_exp_domain" "$shader"; then
+      fail "production-shader-retains-ln:$(basename "$shader")"
+    fi
+  done
 
   grep -q "EML_LN_EXHAUSTIVE_REFERENCE_DIGEST: u64 = 0" "$qual_module" \
     || grep -q "EML_LN_EXHAUSTIVE_REFERENCE_DIGEST: u64 = 0x" "$qual_module" \
@@ -98,7 +105,9 @@ selftest() {
   SELFTEST_TMP="$(mktemp -d)"
   local tmp="$SELFTEST_TMP"
   trap 'rm -rf "${SELFTEST_TMP:-}"' EXIT
-  mkdir -p "$tmp/crates/simthing-core/src" "$tmp/crates/simthing-kernel/src/shaders" \
+  mkdir -p "$tmp/crates/simthing-core/src" \
+    "$tmp/crates/simthing-kernel/src/shaders" \
+    "$tmp/crates/simthing-driver/tests/wgsl" \
     "$tmp/docs/tests" "$tmp/scripts/ci"
   cp "${REPO_ROOT}/crates/simthing-core/src/eml_ln.rs" "$tmp/crates/simthing-core/src/"
   cp "${REPO_ROOT}/crates/simthing-kernel/src/eml_ln_qualification.rs" \
@@ -106,6 +115,8 @@ selftest() {
   cp "${REPO_ROOT}/crates/simthing-kernel/src/shaders/field_sweep.wgsl" \
     "${REPO_ROOT}/crates/simthing-kernel/src/shaders/accumulator_op.wgsl" \
     "$tmp/crates/simthing-kernel/src/shaders/"
+  cp "${REPO_ROOT}/crates/simthing-driver/tests/wgsl/eml_ln_cf_candidate.wgsl" \
+    "$tmp/crates/simthing-driver/tests/wgsl/"
   cp "${REPO_ROOT}/docs/tests/eml_ln_primitive_0_results.md" "$tmp/docs/tests/"
   cp "${REPO_ROOT}/Cargo.lock" "$tmp/"
 
@@ -123,12 +134,23 @@ selftest() {
   echo "PASS planted-twin-drift-bites"
   cp "${REPO_ROOT}/crates/simthing-core/src/eml_ln.rs" "$tmp/crates/simthing-core/src/"
 
-  sed -i 's/let y0 = log(x);/let y0 = log2(x);/' "$tmp/crates/simthing-kernel/src/shaders/field_sweep.wgsl"
+  sed -i 's/let y0 = log(x);/let y0 = log2(x);/' \
+    "$tmp/crates/simthing-driver/tests/wgsl/eml_ln_cf_candidate.wgsl"
   if EML_LN_QUAL_ROOT="$tmp" bash "${BASH_SOURCE[0]}" --check >/dev/null 2>&1; then
-    echo "FAIL planted-wgsl-drift-bites"
+    echo "FAIL planted-candidate-wgsl-drift-bites"
     exit 1
   fi
-  echo "PASS planted-wgsl-drift-bites"
+  echo "PASS planted-candidate-wgsl-drift-bites"
+  cp "${REPO_ROOT}/crates/simthing-driver/tests/wgsl/eml_ln_cf_candidate.wgsl" \
+    "$tmp/crates/simthing-driver/tests/wgsl/"
+
+  printf '\nfn eml_ln_pinned(x: f32) -> f32 { return log(x); }\n' \
+    >>"$tmp/crates/simthing-kernel/src/shaders/field_sweep.wgsl"
+  if EML_LN_QUAL_ROOT="$tmp" bash "${BASH_SOURCE[0]}" --check >/dev/null 2>&1; then
+    echo "FAIL planted-production-ln-retention-bites"
+    exit 1
+  fi
+  echo "PASS planted-production-ln-retention-bites"
 
   echo "EML-LN-QUALIFICATION-SELFTEST: PASS"
 }
