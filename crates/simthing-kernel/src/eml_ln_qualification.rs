@@ -55,9 +55,12 @@ pub fn ln_qualified_determinism_evidence(
 mod tests {
     use super::*;
     use crate::eml_opcode_gate::{
-        admit_exp_call_sites, ExactPrimitiveAdmissionDoor, ExactPrimitiveAdmissionRequest,
-        ExactPrimitiveConsumer, ExactPrimitiveConsumerEvidence, ExactPrimitiveCostEvidence,
-        ExactPrimitiveResourceEffect, OpcodeGateError, LN_PRIMITIVE_NAME,
+        admit_exp_call_sites, ExactBearingEvidence, ExactConsumerArm,
+        ExactConsumerDigestEvidence, ExactConsumerShapeBinding, ExactPrimitiveAdmissionDoor,
+        FieldConsumerShapeProof,
+        ExactPrimitiveAdmissionRequest, ExactPrimitiveConsumer, ExactPrimitiveConsumerEvidence,
+        ExactPrimitiveCostEvidence, ExactPrimitiveResourceEffect, OpcodeGateError,
+        LN_PRIMITIVE_NAME,
     };
     use simthing_core::EmlResourceClass;
 
@@ -109,10 +112,42 @@ mod tests {
         // Measured by the LogAccumulate consumer referee: multiplicative
         // dynamics cannot ride the Sum lane at all without LN (excess = the
         // measured product-vs-logsum representability gap, in bps).
+        // Exact-bearing digests measured 2026-08-05 by the 5.13 obligation
+        // battery (exact_consumer_obligation_0.rs, simthing-workshop): the
+        // log-accumulate map's probe domain hashed bit-identically on the CPU
+        // twin, the interpreted GPU arm, and the SSA-JIT arm — the three arms
+        // derived from a Matrix-output field-sweep shape (fusion requires a
+        // Transient producer, so no fused arm exists to omit).
         let consumer =
             ExactPrimitiveAdmissionDoor::verify_consumer(ExactPrimitiveConsumerEvidence {
                 consumer: ExactPrimitiveConsumer::FieldSweepEvalEml,
                 measured_threshold_excess_bps: 10_000,
+                exact_bearing: ExactBearingEvidence::ExactBearing {
+                    consumer_id: "log-accumulate",
+                    primitive: LN_PRIMITIVE_NAME,
+                    domain_note: "positive multiplicative magnitudes in (0, 1e6]",
+                    // In-crate ritual fixture mint; the workshop battery mints
+                    // the same Matrix proof from the REAL admitted
+                    // log-accumulate registration via
+                    // `exact_consumer_shape_proof()`.
+                    shape_binding: ExactConsumerShapeBinding::FieldSweep(
+                        FieldConsumerShapeProof::from_admitted_field_registration(false),
+                    ),
+                    digests: vec![
+                        ExactConsumerDigestEvidence {
+                            arm: ExactConsumerArm::CpuTwin,
+                            digest: 0x84cb_4316_b67a_eedb,
+                        },
+                        ExactConsumerDigestEvidence {
+                            arm: ExactConsumerArm::InterpretedGpu,
+                            digest: 0x84cb_4316_b67a_eedb,
+                        },
+                        ExactConsumerDigestEvidence {
+                            arm: ExactConsumerArm::SsaJit,
+                            digest: 0x84cb_4316_b67a_eedb,
+                        },
+                    ],
+                },
             })
             .expect("measured consumer necessity");
         let admission = door

@@ -378,18 +378,17 @@ fn eml_exp_primitive_0_stead_falloff_law_is_three_way_bit_exact() {
     // primitive itself carries no drift.
     let jit = run_arm(false);
     let mut drifted = 0u64;
-    for (index, (gpu, twin)) in jit.iter().zip(cpu.iter()).enumerate() {
+    for (gpu, twin) in jit.iter().zip(cpu.iter()) {
         if gpu.to_bits() != twin.to_bits() {
             drifted += 1;
-            let delta = i64::from(gpu.to_bits()).abs_diff(i64::from(twin.to_bits()));
-            assert!(
-                delta <= 1,
-                "jit fold-seam drift exceeds 1 ULP at cell {index}"
-            );
         }
     }
+    assert_eq!(
+        drifted, 0,
+        "SEAM LAW: the STEAD falloff consumer must be bit-identical on the JIT arm"
+    );
     eprintln!(
-        "EML_EXP_CONSUMER falloff jit fold-seam contraction cells={drifted}/{} (<=1 ULP, generic seam — see triage)",
+        "EML_EXP_CONSUMER falloff jit fold-seam contraction cells={drifted}/{} (bit-identity enforced)",
         jit.len()
     );
     // The per-edge weight is the pinned law: e = EXP(clamp(-λ·d)) at d = 1.
@@ -419,7 +418,6 @@ fn eml_exp_primitive_0_stead_falloff_law_is_three_way_bit_exact() {
 /// is the pre-existing generic seam, not the primitive. Diagnostic evidence
 /// for the triage row; passes whether or not the toolchain contracts.
 #[test]
-#[ignore = "diagnostic witness for the generic JIT fold-contraction seam (triage evidence)"]
 fn eml_exp_primitive_0_jit_fold_seam_witness_is_exp_free() {
     let Some(ctx) = certified_context() else {
         return;
@@ -479,8 +477,12 @@ fn eml_exp_primitive_0_jit_fold_seam_witness_is_exp_free() {
         .zip(cpu.iter())
         .filter(|(gpu, twin)| gpu.to_bits() != twin.to_bits())
         .count();
+    assert_eq!(
+        drifted, 0,
+        "SEAM LAW (EXACT-CONSUMER-OBLIGATION-0): the fused canonical-Sum seam must be bit-identical on the JIT arm"
+    );
     eprintln!(
-        "EML_EXP_SEAM_WITNESS exp_free_mul_map_sum_fold drift_cells={drifted}/{} on the JIT arm",
+        "EML_EXP_SEAM_WITNESS exp_free_mul_map_sum_fold drift_cells={drifted}/{} on the JIT arm (bit-identity enforced)",
         jit.len()
     );
 }

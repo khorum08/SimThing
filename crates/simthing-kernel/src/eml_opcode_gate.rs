@@ -462,11 +462,118 @@ pub enum ExactPrimitiveConsumer {
     FieldSweepEvalEml,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ExactPrimitiveConsumerEvidence {
     pub consumer: ExactPrimitiveConsumer,
     /// Measured excess over the governing threshold, in basis points.
     pub measured_threshold_excess_bps: u32,
+    /// EXACT-CONSUMER-OBLIGATION-0: exact-bearing status and digest evidence
+    /// — folded into THIS channel; there is no second consumer-evidence door.
+    pub exact_bearing: ExactBearingEvidence,
+}
+
+/// Exact-bearing status of a consumer in the ONE consumer-evidence channel.
+/// Exactness is a property of admitted DATA; a consumer inherits nothing
+/// from the primitive's own qualification (Exact-Value Provenance Law).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ExactBearingEvidence {
+    /// The consumer does not consume exact-primitive values.
+    NonExactBearing,
+    /// Exact-bearing: the consumer carries its OWN digest over its OWN probe
+    /// domain on EVERY execution arm derived from its concrete shape.
+    ExactBearing {
+        consumer_id: &'static str,
+        primitive: &'static str,
+        domain_note: &'static str,
+        /// Binding of the execution shape to the actual production consumer
+        /// surface — the arm obligation is DERIVED from the resolved shape by
+        /// [`derive_consumer_arms`], never authored as a list, and the shape
+        /// itself is never a free classification (remand 5190934274).
+        shape_binding: ExactConsumerShapeBinding,
+        digests: Vec<ExactConsumerDigestEvidence>,
+    },
+}
+
+/// Binding of the declared execution shape to the ACTUAL production consumer
+/// surface. `verify_consumer` rejects a binding that does not belong to the
+/// evidence's `ExactPrimitiveConsumer` variant, so an authored classification
+/// cannot shrink the derived arm obligation (remand 5190934274).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ExactConsumerShapeBinding {
+    /// Ordinary AccumulatorOp EvalEML surface — lawful only for an
+    /// `ExactPrimitiveConsumer::OrdinaryAccumulatorEvalEml` consumer.
+    OrdinaryAccumulatorEvalEml,
+    /// Field-sweep surface — lawful only for
+    /// `ExactPrimitiveConsumer::FieldSweepEvalEml`; the
+    /// Matrix-vs-TransientFusable distinction is carried by a sealed proof
+    /// mintable only from an ADMITTED `FieldSweepRegistration`.
+    FieldSweep(FieldConsumerShapeProof),
+}
+
+/// Sealed field-consumer shape proof. No free constructor exists outside the
+/// kernel: the only production mint is
+/// `FieldSweepRegistration::exact_consumer_shape_proof`, which reads the
+/// admitted registration's typed `output` and `transient_read_proof` — the
+/// same fields the lowerer's fused-pair predicate consumes — so
+/// fused-transient reachability is determined by the admitted registration,
+/// never selected by the caller.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct FieldConsumerShapeProof {
+    shape: ExactConsumerExecutionShape,
+}
+
+impl FieldConsumerShapeProof {
+    pub(crate) fn from_admitted_field_registration(transient_fusable: bool) -> Self {
+        Self {
+            shape: if transient_fusable {
+                ExactConsumerExecutionShape::FieldSweepTransientFusable
+            } else {
+                ExactConsumerExecutionShape::FieldSweepMatrix
+            },
+        }
+    }
+
+    pub fn shape(self) -> ExactConsumerExecutionShape {
+        self.shape
+    }
+}
+
+/// Concrete execution shape of an exact-bearing consumer. The complete arm
+/// obligation derives from the shape (DA 5187245896 correction: derived and
+/// justified, never asserted as a count or trusted declaration).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum ExactConsumerExecutionShape {
+    /// Field-sweep registration with `Matrix` output: CPU twin, interpreted
+    /// GPU, and SSA-JIT. The fused-transient kernel is unreachable (fusion
+    /// requires a `Transient` producer).
+    FieldSweepMatrix,
+    /// Field-sweep registration on the fusable transient path: the fused
+    /// kernel is a real additional arm.
+    FieldSweepTransientFusable,
+    /// Ordinary AccumulatorOp EvalEML program: CPU stack twin and the AO
+    /// interpreter. The field JIT never compiles AO programs.
+    OrdinaryAccumulatorEvalEml,
+}
+
+/// Derive the complete execution-arm obligation from the concrete shape.
+pub fn derive_consumer_arms(shape: ExactConsumerExecutionShape) -> &'static [ExactConsumerArm] {
+    match shape {
+        ExactConsumerExecutionShape::FieldSweepMatrix => &[
+            ExactConsumerArm::CpuTwin,
+            ExactConsumerArm::InterpretedGpu,
+            ExactConsumerArm::SsaJit,
+        ],
+        ExactConsumerExecutionShape::FieldSweepTransientFusable => &[
+            ExactConsumerArm::CpuTwin,
+            ExactConsumerArm::InterpretedGpu,
+            ExactConsumerArm::SsaJit,
+            ExactConsumerArm::FusedTransientKernel,
+        ],
+        ExactConsumerExecutionShape::OrdinaryAccumulatorEvalEml => &[
+            ExactConsumerArm::CpuTwin,
+            ExactConsumerArm::InterpretedGpu,
+        ],
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -729,6 +836,76 @@ impl ExactPrimitiveAdmissionDoor {
         if evidence.measured_threshold_excess_bps == 0 {
             return Err(OpcodeGateError::ExactPrimitiveConsumerNotNecessary);
         }
+        // EXACT-CONSUMER-OBLIGATION-0: an exact-bearing consumer must present
+        // its own nonzero digest for EVERY arm derived from its concrete
+        // shape, all bit-identical. Missing arm, zero digest, or mismatch is
+        // a production admission hard-error. No waiver, no second channel.
+        if let ExactBearingEvidence::ExactBearing {
+            consumer_id,
+            shape_binding,
+            digests,
+            ..
+        } = &evidence.exact_bearing
+        {
+            // The shape must be BOUND to the production consumer surface: an
+            // AO consumer cannot present a field shape and a field consumer
+            // cannot present the AO shape (which would silently shed its
+            // SSA-JIT obligation). Within the field family the
+            // Matrix-vs-TransientFusable distinction arrives inside a sealed
+            // proof minted from the admitted registration.
+            let shape = match (evidence.consumer, shape_binding) {
+                (
+                    ExactPrimitiveConsumer::OrdinaryAccumulatorEvalEml,
+                    ExactConsumerShapeBinding::OrdinaryAccumulatorEvalEml,
+                ) => ExactConsumerExecutionShape::OrdinaryAccumulatorEvalEml,
+                (
+                    ExactPrimitiveConsumer::FieldSweepEvalEml,
+                    ExactConsumerShapeBinding::FieldSweep(proof),
+                ) => proof.shape(),
+                (consumer, _) => {
+                    return Err(OpcodeGateError::ExactConsumerShapeNotBoundToConsumer {
+                        consumer_id,
+                        consumer,
+                    });
+                }
+            };
+            let derived = derive_consumer_arms(shape);
+            let mut agreed: Option<u64> = None;
+            for arm in derived {
+                let row = digests.iter().find(|row| row.arm == *arm).ok_or(
+                    OpcodeGateError::ExactBearingConsumerWithoutDigestEvidence {
+                        consumer_id,
+                        missing_arm: arm_name(*arm),
+                    },
+                )?;
+                if row.digest == 0 {
+                    return Err(OpcodeGateError::ExactBearingConsumerWithoutDigestEvidence {
+                        consumer_id,
+                        missing_arm: arm_name(*arm),
+                    });
+                }
+                match agreed {
+                    None => agreed = Some(row.digest),
+                    Some(digest) if digest != row.digest => {
+                        return Err(OpcodeGateError::ExactConsumerArmDigestMismatch {
+                            consumer_id,
+                            arm: arm_name(*arm),
+                            expected: digest,
+                            actual: row.digest,
+                        });
+                    }
+                    Some(_) => {}
+                }
+            }
+            for row in digests {
+                if !derived.contains(&row.arm) {
+                    return Err(OpcodeGateError::ExactConsumerArmNotDerived {
+                        consumer_id,
+                        arm: arm_name(row.arm),
+                    });
+                }
+            }
+        }
         Ok(ExactPrimitiveConsumerKey {
             consumer: evidence.consumer,
         })
@@ -849,6 +1026,36 @@ pub enum OpcodeGateError {
     UnguardedExactPrimitiveCallSite { span_start: u32, span_end: u32 },
     #[error("exact primitive call evidence at {span_start}..{span_end} was minted for a different domain")]
     ExactPrimitiveCallSiteDomainMismatch { span_start: u32, span_end: u32 },
+    #[error(
+        "exact-bearing consumer `{consumer_id}` declares arm `{missing_arm}` without digest evidence; exactness is never inherited (Exact-Value Provenance Law)"
+    )]
+    ExactBearingConsumerWithoutDigestEvidence {
+        consumer_id: &'static str,
+        missing_arm: &'static str,
+    },
+    #[error(
+        "exact-bearing consumer `{consumer_id}` arm `{arm}` digest {actual:#018x} disagrees with {expected:#018x}"
+    )]
+    ExactConsumerArmDigestMismatch {
+        consumer_id: &'static str,
+        arm: &'static str,
+        expected: u64,
+        actual: u64,
+    },
+    #[error(
+        "exact-bearing consumer `{consumer_id}` presents evidence for arm `{arm}` that its derived execution shape does not contain"
+    )]
+    ExactConsumerArmNotDerived {
+        consumer_id: &'static str,
+        arm: &'static str,
+    },
+    #[error(
+        "exact-bearing consumer `{consumer_id}` presents an execution-shape binding that does not belong to its production consumer surface {consumer:?}"
+    )]
+    ExactConsumerShapeNotBoundToConsumer {
+        consumer_id: &'static str,
+        consumer: ExactPrimitiveConsumer,
+    },
 }
 
 // ── Closed vocabularies ───────────────────────────────────────────────────────
@@ -1243,6 +1450,36 @@ fn saturation_exp_full_guard() -> EmlNode {
     }
 }
 
+
+// ── EXACT-CONSUMER-OBLIGATION-0: the receiving half of the door ──────────────
+
+/// Execution arm a consumer actually uses. The arm SET is derived from the
+/// concrete execution shape by [`derive_consumer_arms`] — never a fixed
+/// count or a trusted caller list (DA 5187245896 correction 1).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum ExactConsumerArm {
+    CpuTwin,
+    InterpretedGpu,
+    SsaJit,
+    FusedTransientKernel,
+}
+
+/// Per-arm digest evidence for one consumer over ITS OWN probe domain.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ExactConsumerDigestEvidence {
+    pub arm: ExactConsumerArm,
+    pub digest: u64,
+}
+
+fn arm_name(arm: ExactConsumerArm) -> &'static str {
+    match arm {
+        ExactConsumerArm::CpuTwin => "cpu-twin",
+        ExactConsumerArm::InterpretedGpu => "interpreted-gpu",
+        ExactConsumerArm::SsaJit => "ssa-jit",
+        ExactConsumerArm::FusedTransientKernel => "fused-transient-kernel",
+    }
+}
+
 /// The canonical saturated-tail guard node: `CLAMP_BOUNDED(x, domain_min, 0)`.
 fn saturation_clamp_guard() -> EmlNode {
     EmlNode {
@@ -1355,9 +1592,12 @@ mod tests {
     }
 
     fn consumer_key() -> ExactPrimitiveConsumerKey {
+        // 5.10-era door-shape fixture: exercises the necessity gate only, so
+        // it declares itself non-exact-bearing (no digest obligation attaches).
         ExactPrimitiveAdmissionDoor::verify_consumer(ExactPrimitiveConsumerEvidence {
             consumer: ExactPrimitiveConsumer::FieldSweepEvalEml,
             measured_threshold_excess_bps: 1,
+            exact_bearing: ExactBearingEvidence::NonExactBearing,
         })
         .expect("concrete measured consumer")
     }
@@ -1450,6 +1690,7 @@ mod tests {
             ExactPrimitiveAdmissionDoor::verify_consumer(ExactPrimitiveConsumerEvidence {
                 consumer: ExactPrimitiveConsumer::FieldSweepEvalEml,
                 measured_threshold_excess_bps: 0,
+                exact_bearing: ExactBearingEvidence::NonExactBearing,
             }),
             Err(OpcodeGateError::ExactPrimitiveConsumerNotNecessary)
         );

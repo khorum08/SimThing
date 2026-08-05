@@ -384,6 +384,58 @@ fn eval_program(offset: u32, count: u32, context: FieldEmlContext) -> f32 {
     }
     return stack[sp - 1u];
 }
+
+// SEAM LAW: evaluate the first `count` nodes and return the top two stack
+// values (the map's final-MUL operands) for the fused canonical-Sum fold.
+fn eval_program_pair(offset: u32, count: u32, context: FieldEmlContext) -> vec2<f32> {
+    var stack: array<f32, EML_STACK_MAX>;
+    var sp = 0u;
+    for (var local = 0u; local < count; local = local + 1u) {
+        let node = nodes[offset + local];
+        switch node.opcode {
+            case OP_LITERAL_F32: { stack[sp] = bitcast<f32>(node.a); sp = sp + 1u; }
+            case OP_TARGET_VALUE: { stack[sp] = values_in[context.target_slot * params.n_dims + node.a]; sp = sp + 1u; }
+            case OP_NEIGHBOR_VALUE: { stack[sp] = values_in[context.neighbor_slot * params.n_dims + node.a]; sp = sp + 1u; }
+            case OP_PARAM: { stack[sp] = field_param(node.a, context); sp = sp + 1u; }
+            case OP_NEG: { stack[sp - 1u] = -stack[sp - 1u]; }
+            case OP_CLAMP_BOUNDED: { stack[sp - 1u] = clamp(stack[sp - 1u], bitcast<f32>(node.a), bitcast<f32>(node.b)); }
+            case OP_CLAMP_FLOORED: { stack[sp - 1u] = max(stack[sp - 1u], bitcast<f32>(node.a)); }
+            case OP_ABS: { stack[sp - 1u] = abs(stack[sp - 1u]); }
+            case OP_FLOOR: { stack[sp - 1u] = floor(stack[sp - 1u]); }
+            case OP_EXP: { stack[sp - 1u] = eml_exp_pinned(stack[sp - 1u]); }
+            case OP_LN: { stack[sp - 1u] = eml_ln_pinned(stack[sp - 1u]); }
+            case OP_SELECT: {
+                let false_value = stack[sp - 1u];
+                let true_value = stack[sp - 2u];
+                let condition = stack[sp - 3u] != 0.0;
+                stack[sp - 3u] = select(false_value, true_value, condition);
+                sp = sp - 2u;
+            }
+            default: {
+                let rhs = stack[sp - 1u];
+                let lhs = stack[sp - 2u];
+                var result = 0.0;
+                switch node.opcode {
+                    case OP_ADD: { result = lhs + rhs; }
+                    case OP_SUB: { result = lhs - rhs; }
+                    case OP_MUL: { result = lhs * rhs; }
+                    case OP_DIV: { result = lhs / rhs; }
+                    case OP_MIN: { result = min(lhs, rhs); }
+                    case OP_MAX: { result = max(lhs, rhs); }
+                    case OP_CMP_LT: { result = select(0.0, 1.0, lhs < rhs); }
+                    case OP_CMP_LE: { result = select(0.0, 1.0, lhs <= rhs); }
+                    case OP_CMP_GT: { result = select(0.0, 1.0, lhs > rhs); }
+                    case OP_CMP_GE: { result = select(0.0, 1.0, lhs >= rhs); }
+                    case OP_CMP_EQ: { result = select(0.0, 1.0, lhs == rhs); }
+                    default: {}
+                }
+                stack[sp - 2u] = result;
+                sp = sp - 1u;
+            }
+        }
+    }
+    return vec2<f32>(stack[sp - 2u], stack[sp - 1u]);
+}
 // EML-JIT-EVALUATOR-END
 
 @compute @workgroup_size(64)
@@ -414,9 +466,15 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
             transient_values[target_slot],
             transient_values[input.slot],
         );
-        let mapped = eval_program(params.map_offset, params.map_count, context);
-        context.mapped = mapped;
-        accumulator = eval_program(params.fold_offset, params.fold_count, context);
+        if (params.pad1 == 1u) {
+            // SEAM LAW: fused canonical-Sum fold (uniform flag, no divergence).
+            let ab = eval_program_pair(params.map_offset, params.map_count - 2u, context);
+            accumulator = fma(ab.x, ab.y, accumulator);
+        } else {
+            let mapped = eval_program(params.map_offset, params.map_count, context);
+            context.mapped = mapped;
+            accumulator = eval_program(params.fold_offset, params.fold_count, context);
+        }
     }
     let post_context = FieldEmlContext(
         target_slot,
