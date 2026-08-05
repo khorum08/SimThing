@@ -11,7 +11,7 @@ This digest is a derived context artifact for low-context agents. If it disagree
 | --- | --- | --- |
 | scripts/ci/allow/sealed_producers.txt | 25 | 6923796f3bacd3b27b29f778d5276c3f82a3a67c3f010c30f10b78de8a1866f6 |
 | scripts/ci/allow/inert_buffer_handles.txt | 2 | 9e2069fa5730f17cacde1c671ebc17beb59f50738d2dcb914bceae13f9b8b3a4 |
-| scripts/ci/allow/kernel_surface.txt | 298 | 1294ac7310f2a8a6f0a6316d1de6a3b8817562ede50eaafbc10f809c9c71df43 |
+| scripts/ci/allow/kernel_surface.txt | 298 | 8d3a5f45566635eadd5c9b85198caf40112c311a483a1c40e4b384a50384f27d |
 | scripts/ci/allow/sealed_types.txt | 19 | 9d427e3b41a586b06f24ca02cc45f78934237d2229b0c38d46e2a8a6ef5016be |
 | scripts/ci/allow/contention_mechanisms.txt | 8 | eb22cbb7755c364804f1c5ac6b10c2346735f8a53d0a57426f3065a879a6cb14 |
 | scripts/ci/scans.tsv | 26 | 18d6f4886524f593e231931b952fbdcf2e0520fb4660f72fb7191298221e7d64 |
@@ -350,11 +350,11 @@ This digest is a derived context artifact for low-context agents. If it disagree
 | LnConsumerGadgets | authority-export | EML-LN-PRIMITIVE-0 guarded PowerLaw eml-operator entropy LogAccumulate authored-data builders | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |
 | eml_ln_qualification | authority-export | EML-LN-PRIMITIVE-0 pinned exhaustive-qualification artifacts and certified roster | retire if qualification pinning becomes wholly kernel-internal | kernel_surface.txt |
 | ln_primitive_domain | authority-export | EML-LN-PRIMITIVE-0 canonical positive-normal LN interval constructor | retire if exact primitive call-site admission becomes wholly kernel-internal | kernel_surface.txt |
-| ExactBearingConsumerDeclaration | authority-export | EXACT-CONSUMER-OBLIGATION-0 exact-bearing consumer declaration with derived justified arm set | retire if consumer admission becomes wholly kernel-internal | kernel_surface.txt |
-| ExactConsumerAdmission | sealed-export | EXACT-CONSUMER-OBLIGATION-0 sealed admitted-consumer proof token | retire if consumer admission becomes wholly kernel-internal | kernel_surface.txt |
+| ExactBearingEvidence | authority-export | EXACT-CONSUMER-OBLIGATION-0 exact-bearing status folded into the ONE consumer-evidence channel | retire if consumer admission becomes wholly kernel-internal | kernel_surface.txt |
 | ExactConsumerArm | authority-export | EXACT-CONSUMER-OBLIGATION-0 closed execution-arm vocabulary for consumer digest evidence | retire if consumer admission becomes wholly kernel-internal | kernel_surface.txt |
 | ExactConsumerDigestEvidence | authority-export | EXACT-CONSUMER-OBLIGATION-0 per-arm consumer digest evidence row | retire if consumer admission becomes wholly kernel-internal | kernel_surface.txt |
-| admit_exact_bearing_consumer | authority-export | EXACT-CONSUMER-OBLIGATION-0 production admission hard-erroring evidence-free exact-bearing declarations | retire if consumer admission becomes wholly kernel-internal | kernel_surface.txt |
+| ExactConsumerExecutionShape | authority-export | EXACT-CONSUMER-OBLIGATION-0 concrete execution shape from which the arm obligation derives | retire if consumer admission becomes wholly kernel-internal | kernel_surface.txt |
+| derive_consumer_arms | authority-export | EXACT-CONSUMER-OBLIGATION-0 shape-to-arm-set derivation replacing caller-authored arm lists | retire if consumer admission becomes wholly kernel-internal | kernel_surface.txt |
 
 ## Sealed Types
 

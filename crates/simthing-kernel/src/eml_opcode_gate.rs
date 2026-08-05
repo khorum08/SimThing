@@ -462,11 +462,72 @@ pub enum ExactPrimitiveConsumer {
     FieldSweepEvalEml,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ExactPrimitiveConsumerEvidence {
     pub consumer: ExactPrimitiveConsumer,
     /// Measured excess over the governing threshold, in basis points.
     pub measured_threshold_excess_bps: u32,
+    /// EXACT-CONSUMER-OBLIGATION-0: exact-bearing status and digest evidence
+    /// — folded into THIS channel; there is no second consumer-evidence door.
+    pub exact_bearing: ExactBearingEvidence,
+}
+
+/// Exact-bearing status of a consumer in the ONE consumer-evidence channel.
+/// Exactness is a property of admitted DATA; a consumer inherits nothing
+/// from the primitive's own qualification (Exact-Value Provenance Law).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ExactBearingEvidence {
+    /// The consumer does not consume exact-primitive values.
+    NonExactBearing,
+    /// Exact-bearing: the consumer carries its OWN digest over its OWN probe
+    /// domain on EVERY execution arm derived from its concrete shape.
+    ExactBearing {
+        consumer_id: &'static str,
+        primitive: &'static str,
+        domain_note: &'static str,
+        /// The concrete execution shape — the arm obligation is DERIVED from
+        /// this by [`derive_consumer_arms`], never authored as a list.
+        shape: ExactConsumerExecutionShape,
+        digests: Vec<ExactConsumerDigestEvidence>,
+    },
+}
+
+/// Concrete execution shape of an exact-bearing consumer. The complete arm
+/// obligation derives from the shape (DA 5187245896 correction: derived and
+/// justified, never asserted as a count or trusted declaration).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum ExactConsumerExecutionShape {
+    /// Field-sweep registration with `Matrix` output: CPU twin, interpreted
+    /// GPU, and SSA-JIT. The fused-transient kernel is unreachable (fusion
+    /// requires a `Transient` producer).
+    FieldSweepMatrix,
+    /// Field-sweep registration on the fusable transient path: the fused
+    /// kernel is a real additional arm.
+    FieldSweepTransientFusable,
+    /// Ordinary AccumulatorOp EvalEML program: CPU stack twin and the AO
+    /// interpreter. The field JIT never compiles AO programs.
+    OrdinaryAccumulatorEvalEml,
+}
+
+/// Derive the complete execution-arm obligation from the concrete shape.
+pub fn derive_consumer_arms(shape: ExactConsumerExecutionShape) -> &'static [ExactConsumerArm] {
+    match shape {
+        ExactConsumerExecutionShape::FieldSweepMatrix => &[
+            ExactConsumerArm::CpuTwin,
+            ExactConsumerArm::InterpretedGpu,
+            ExactConsumerArm::SsaJit,
+        ],
+        ExactConsumerExecutionShape::FieldSweepTransientFusable => &[
+            ExactConsumerArm::CpuTwin,
+            ExactConsumerArm::InterpretedGpu,
+            ExactConsumerArm::SsaJit,
+            ExactConsumerArm::FusedTransientKernel,
+        ],
+        ExactConsumerExecutionShape::OrdinaryAccumulatorEvalEml => &[
+            ExactConsumerArm::CpuTwin,
+            ExactConsumerArm::InterpretedGpu,
+        ],
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -729,6 +790,54 @@ impl ExactPrimitiveAdmissionDoor {
         if evidence.measured_threshold_excess_bps == 0 {
             return Err(OpcodeGateError::ExactPrimitiveConsumerNotNecessary);
         }
+        // EXACT-CONSUMER-OBLIGATION-0: an exact-bearing consumer must present
+        // its own nonzero digest for EVERY arm derived from its concrete
+        // shape, all bit-identical. Missing arm, zero digest, or mismatch is
+        // a production admission hard-error. No waiver, no second channel.
+        if let ExactBearingEvidence::ExactBearing {
+            consumer_id,
+            shape,
+            digests,
+            ..
+        } = &evidence.exact_bearing
+        {
+            let derived = derive_consumer_arms(*shape);
+            let mut agreed: Option<u64> = None;
+            for arm in derived {
+                let row = digests.iter().find(|row| row.arm == *arm).ok_or(
+                    OpcodeGateError::ExactBearingConsumerWithoutDigestEvidence {
+                        consumer_id,
+                        missing_arm: arm_name(*arm),
+                    },
+                )?;
+                if row.digest == 0 {
+                    return Err(OpcodeGateError::ExactBearingConsumerWithoutDigestEvidence {
+                        consumer_id,
+                        missing_arm: arm_name(*arm),
+                    });
+                }
+                match agreed {
+                    None => agreed = Some(row.digest),
+                    Some(digest) if digest != row.digest => {
+                        return Err(OpcodeGateError::ExactConsumerArmDigestMismatch {
+                            consumer_id,
+                            arm: arm_name(*arm),
+                            expected: digest,
+                            actual: row.digest,
+                        });
+                    }
+                    Some(_) => {}
+                }
+            }
+            for row in digests {
+                if !derived.contains(&row.arm) {
+                    return Err(OpcodeGateError::ExactConsumerArmNotDerived {
+                        consumer_id,
+                        arm: arm_name(row.arm),
+                    });
+                }
+            }
+        }
         Ok(ExactPrimitiveConsumerKey {
             consumer: evidence.consumer,
         })
@@ -864,6 +973,13 @@ pub enum OpcodeGateError {
         arm: &'static str,
         expected: u64,
         actual: u64,
+    },
+    #[error(
+        "exact-bearing consumer `{consumer_id}` presents evidence for arm `{arm}` that its derived execution shape does not contain"
+    )]
+    ExactConsumerArmNotDerived {
+        consumer_id: &'static str,
+        arm: &'static str,
     },
 }
 
@@ -1262,8 +1378,9 @@ fn saturation_exp_full_guard() -> EmlNode {
 
 // ── EXACT-CONSUMER-OBLIGATION-0: the receiving half of the door ──────────────
 
-/// Execution arm a consumer actually uses. The arm SET is derived and
-/// justified per consumer — never a fixed count (DA 5187245896 correction 1).
+/// Execution arm a consumer actually uses. The arm SET is derived from the
+/// concrete execution shape by [`derive_consumer_arms`] — never a fixed
+/// count or a trusted caller list (DA 5187245896 correction 1).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum ExactConsumerArm {
     CpuTwin,
@@ -1272,88 +1389,11 @@ pub enum ExactConsumerArm {
     FusedTransientKernel,
 }
 
-/// A consumer's declaration of exact-bearing status: which primitive values
-/// it consumes, over which admitted domain, on which arms. Exactness is a
-/// property of admitted DATA — a consumer INHERITS NOTHING from the
-/// primitive's own proof (§4 Exact-Value Provenance Law).
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ExactBearingConsumerDeclaration {
-    pub consumer_id: &'static str,
-    pub primitive: &'static str,
-    pub domain_note: &'static str,
-    pub arms: &'static [ExactConsumerArm],
-    pub arm_justification: &'static str,
-}
-
 /// Per-arm digest evidence for one consumer over ITS OWN probe domain.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ExactConsumerDigestEvidence {
     pub arm: ExactConsumerArm,
     pub digest: u64,
-}
-
-/// Sealed proof token for an admitted exact-bearing consumer.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ExactConsumerAdmission {
-    consumer_id: &'static str,
-    digest: u64,
-}
-
-impl ExactConsumerAdmission {
-    pub fn consumer_id(&self) -> &'static str {
-        self.consumer_id
-    }
-
-    pub fn digest(&self) -> u64 {
-        self.digest
-    }
-}
-
-/// Production admission for an exact-bearing consumer: every declared arm
-/// must present digest evidence, every digest must agree, and an empty arm
-/// set or missing/mismatched evidence is a HARD ERROR. No waiver, no second
-/// evidence channel, no inheritance from the primitive's qualification.
-pub fn admit_exact_bearing_consumer(
-    declaration: &ExactBearingConsumerDeclaration,
-    evidence: &[ExactConsumerDigestEvidence],
-) -> Result<ExactConsumerAdmission, OpcodeGateError> {
-    if declaration.arms.is_empty() {
-        return Err(OpcodeGateError::ExactBearingConsumerWithoutDigestEvidence {
-            consumer_id: declaration.consumer_id,
-            missing_arm: "empty-arm-set",
-        });
-    }
-    let mut agreed: Option<u64> = None;
-    for arm in declaration.arms {
-        let row = evidence.iter().find(|row| row.arm == *arm).ok_or(
-            OpcodeGateError::ExactBearingConsumerWithoutDigestEvidence {
-                consumer_id: declaration.consumer_id,
-                missing_arm: arm_name(*arm),
-            },
-        )?;
-        if row.digest == 0 {
-            return Err(OpcodeGateError::ExactBearingConsumerWithoutDigestEvidence {
-                consumer_id: declaration.consumer_id,
-                missing_arm: arm_name(*arm),
-            });
-        }
-        match agreed {
-            None => agreed = Some(row.digest),
-            Some(digest) if digest != row.digest => {
-                return Err(OpcodeGateError::ExactConsumerArmDigestMismatch {
-                    consumer_id: declaration.consumer_id,
-                    arm: arm_name(*arm),
-                    expected: digest,
-                    actual: row.digest,
-                });
-            }
-            Some(_) => {}
-        }
-    }
-    Ok(ExactConsumerAdmission {
-        consumer_id: declaration.consumer_id,
-        digest: agreed.expect("nonempty arm set agreed"),
-    })
 }
 
 fn arm_name(arm: ExactConsumerArm) -> &'static str {
@@ -1477,9 +1517,12 @@ mod tests {
     }
 
     fn consumer_key() -> ExactPrimitiveConsumerKey {
+        // 5.10-era door-shape fixture: exercises the necessity gate only, so
+        // it declares itself non-exact-bearing (no digest obligation attaches).
         ExactPrimitiveAdmissionDoor::verify_consumer(ExactPrimitiveConsumerEvidence {
             consumer: ExactPrimitiveConsumer::FieldSweepEvalEml,
             measured_threshold_excess_bps: 1,
+            exact_bearing: ExactBearingEvidence::NonExactBearing,
         })
         .expect("concrete measured consumer")
     }
@@ -1572,6 +1615,7 @@ mod tests {
             ExactPrimitiveAdmissionDoor::verify_consumer(ExactPrimitiveConsumerEvidence {
                 consumer: ExactPrimitiveConsumer::FieldSweepEvalEml,
                 measured_threshold_excess_bps: 0,
+                exact_bearing: ExactBearingEvidence::NonExactBearing,
             }),
             Err(OpcodeGateError::ExactPrimitiveConsumerNotNecessary)
         );

@@ -64,7 +64,7 @@ pub use decision_ingress::{
     DecisionIngressError, EmissionToken, StructuralCommitment, ThresholdCrossingToken,
 };
 pub use eml_opcode_gate::{
-    admit_exact_bearing_consumer, admit_exp_call_sites, combine_in_closed_vocabulary,
+    admit_exp_call_sites, combine_in_closed_vocabulary, derive_consumer_arms,
     exp_primitive_domain, ln_primitive_domain,
     opcode_in_accumulator_vocabulary,
     opcode_in_closed_vocabulary, AdmittedEvalEmlCombine,
@@ -76,8 +76,8 @@ pub use eml_opcode_gate::{
     ExactPrimitiveDomainPolicy, ExactPrimitiveResourceEffect, GenericPrimitiveRegistration,
     OpcodeGateError, OpcodeRegistrationGate, OpcodeRegistrationRequest,
     SemanticOpcodeRegistration, SoftStepPolicyConditional, SoftmaxWeightGadget,
-    ExactBearingConsumerDeclaration, ExactConsumerAdmission, ExactConsumerArm,
-    ExactConsumerDigestEvidence, LnConsumerGadgets,
+    ExactBearingEvidence, ExactConsumerArm, ExactConsumerDigestEvidence,
+    ExactConsumerExecutionShape, LnConsumerGadgets,
     EXP_PRIMITIVE_NAME, LN_PRIMITIVE_NAME,
 };
 pub use field_sweep::{

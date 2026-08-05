@@ -6,17 +6,37 @@
 - Dispatch: Board `5187606339`; authority DA `5187245896` + #1642 corrections
 - ANCHOR-ACK: all 28 projected anchors — ACK (ingested via the coding projection before edits)
 
-## The receiving half of the door
+## The receiving half of the door (ONE channel — remand 5190634963 §1–2 applied)
 
-`ExactBearingConsumerDeclaration` + `ExactConsumerDigestEvidence` +
-`admit_exact_bearing_consumer` (kernel gate): an exact-bearing consumer declares its primitive,
-its own probe domain, and its **derived, justified execution-arm set** (never a fixed count),
-and must present a digest per arm, all bit-identical. Missing arm evidence, a zero digest, an
-empty arm set, or an arm mismatch is a **production admission hard-error**
-(`ExactBearingConsumerWithoutDigestEvidence` / `ExactConsumerArmDigestMismatch`). No waiver, no
-second channel, no inheritance — §4 Exact-Value Provenance Law mechanized. Planted defects
-(missing ssa-jit evidence; zero digest; mismatched jit digest — the pre-repair seam shape;
-empty arm set) all RED in `exact_consumer_obligation_0_admission_hard_errors_without_evidence`.
+The obligation is folded into the **existing** production consumer path: `ExactPrimitiveConsumerEvidence`
+now carries `exact_bearing: ExactBearingEvidence` (`NonExactBearing` | `ExactBearing { consumer_id,
+primitive, domain_note, shape, digests }`), and `ExactPrimitiveAdmissionDoor::verify_consumer` enforces
+it. The parallel channel from the rejected head (`ExactBearingConsumerDeclaration` /
+`ExactConsumerAdmission` / `admit_exact_bearing_consumer`) is **deleted** — there is no second lawful
+door, and a production call that declares exact-bearing but omits exactness evidence hard-errors inside
+`verify_consumer` itself.
+
+The execution-arm set is **derived, never caller-authored**: the evidence names a concrete
+`ExactConsumerExecutionShape` (`FieldSweepMatrix` → cpu-twin + interpreted-gpu + ssa-jit;
+`FieldSweepTransientFusable` → + fused-transient; `OrdinaryAccumulatorEvalEml` → cpu-twin +
+interpreted-gpu) and `derive_consumer_arms(shape)` resolves the complete obligation; evidence is
+compared against that derived set in both directions. Planted defects ×5 all RED in
+`exact_consumer_obligation_0_admission_hard_errors_without_evidence`:
+
+1. **Omitted real arm** — authored evidence carries matching cpu+interpreted rows only; derivation
+   still requires ssa-jit for a `FieldSweepMatrix` shape → `ExactBearingConsumerWithoutDigestEvidence`.
+   A caller cannot shrink its own obligation (remand §2's required defect).
+2. Exact-bearing declared with **no digest evidence at all** → RED at the first derived arm.
+3. **Zero digest** → RED (no evidence).
+4. **Arm digest mismatch** (the pre-repair seam shape: jit ≠ cpu/interpreted) →
+   `ExactConsumerArmDigestMismatch`.
+5. **Non-derived arm row** (an AO consumer presenting a field-JIT digest) →
+   `ExactConsumerArmNotDerived` — the derivation is authoritative in both directions.
+
+No waiver, no grandfather, no inheritance — §4 Exact-Value Provenance Law mechanized. The EXP and LN
+qualification rituals themselves now admit through this folded evidence (their necessity consumers carry
+`ExactBearing` digests measured by this rung's battery); the 5.10-era door-shape fixtures are
+`NonExactBearing` and exercise the necessity gate only.
 
 ## SEAM LAW — the STEAD falloff map/fold repair (in this rung, as ordered)
 
@@ -37,42 +57,59 @@ Exact-by-construction semantics; no opcode, no 5.10 widening, no escape hatch.
 - EXP/LN exhaustive JIT replays re-run under the SEAM LAW: pinned digests hold (their
   qualification programs use trivial folds; see relay for the re-run lines).
 
-## Consumer digests (each over its OWN probe domain; arms derived + justified)
+## Consumer digests (each over its OWN probe domain; every arm EXECUTED here)
 
-| Consumer | Primitive | Arms (justification) | Digest |
+Every digest below was produced by executing that arm in this battery — the AO interpreted-gpu
+digests run the **real AO EvalEML GPU interpreter** per consumer (register → upload tree → one
+EvalEML op per probe row → `tick_with_eml` → readback → hash in row order) and are compared to the
+CPU twin as independently-produced numbers (remand §3). No digest is copied between arms, and no
+inherited generic parity battery is cited as substitute evidence.
+
+| Consumer | Primitive | Derived arms (from shape) | Digest |
 |---|---|---|---|
-| stead-exponential-falloff | EXP | cpu-twin, interpreted-gpu, ssa-jit (field Matrix registration; fused-transient unreachable — Matrix output) | `0x3d60d7448fca13f8` ALL-IDENTICAL |
-| log-accumulate | LN | cpu-twin, interpreted-gpu, ssa-jit (field Matrix registration; fused-transient unreachable) | `0x84cb4316b67aeedb` ALL-IDENTICAL |
-| logistic-steering | EXP | cpu-twin, interpreted-gpu (ordinary AO EvalEML; field JIT never compiles AO programs) | `0x9203d12c4ca28325` |
-| softmax-weight | EXP | cpu-twin, interpreted-gpu (AO) | `0xfb0a55b88473185f` |
-| power-law | EXP+LN | cpu-twin, interpreted-gpu (AO) | `0xaf86f64c3b5adb9d` |
-| eml-operator | EXP+LN | cpu-twin, interpreted-gpu (AO) | `0xee9ddc3c4fda1d38` |
-| entropy-term | LN | cpu-twin, interpreted-gpu (AO) | `0x237fd8a4e6e9c53a` |
+| stead-exponential-falloff | EXP | FieldSweepMatrix → cpu-twin, interpreted-gpu, ssa-jit (fused-transient does not derive: fusion requires a Transient producer) | `0x3d60d7448fca13f8` ALL-IDENTICAL |
+| log-accumulate | LN | FieldSweepMatrix → cpu-twin, interpreted-gpu, ssa-jit | `0x84cb4316b67aeedb` ALL-IDENTICAL |
+| logistic-steering | EXP | OrdinaryAccumulatorEvalEml → cpu-twin, interpreted-gpu (field JIT never compiles AO programs) | cpu `0x9203d12c4ca28325` = interpreted-gpu `0x9203d12c4ca28325` INDEPENDENT+IDENTICAL |
+| softmax-weight | EXP | OrdinaryAccumulatorEvalEml → cpu-twin, interpreted-gpu | cpu `0xfb0a55b88473185f` = interpreted-gpu `0xfb0a55b88473185f` INDEPENDENT+IDENTICAL |
+| power-law | EXP+LN | OrdinaryAccumulatorEvalEml → cpu-twin, interpreted-gpu | cpu `0xaf86f64c3b5adb9d` = interpreted-gpu `0xaf86f64c3b5adb9d` INDEPENDENT+IDENTICAL |
+| eml-operator | EXP+LN | OrdinaryAccumulatorEvalEml → cpu-twin, interpreted-gpu | cpu `0xee9ddc3c4fda1d38` = interpreted-gpu `0xee9ddc3c4fda1d38` INDEPENDENT+IDENTICAL |
+| entropy-term | LN | OrdinaryAccumulatorEvalEml → cpu-twin, interpreted-gpu | cpu `0x237fd8a4e6e9c53a` = interpreted-gpu `0x237fd8a4e6e9c53a` INDEPENDENT+IDENTICAL |
 
-AO-surface interpreted-arm equality is carried by the standing C-8 AO parity pair (the AO
-interpreter ↔ shared CPU stack machine) and each consumer's 5.11/5.12 oracle-parity battery;
-the declarations record that justification rather than hedging.
+## Reconciliation (remand §4 — census and sweep published separately)
 
-## Reconciliation — type-walk vs raw usage (the count is a result)
+**Tree-derived registration census (production types).** The production consumer identity type
+`ExactPrimitiveConsumer` has exactly **2 variants** — `OrdinaryAccumulatorEvalEml` and
+`FieldSweepEvalEml` — and the production shape type `ExactConsumerExecutionShape` has 3 variants
+(`FieldSweepMatrix`, `FieldSweepTransientFusable`, `OrdinaryAccumulatorEvalEml`) whose derived arm
+sets are enumerated in full above. That is the type tree; the 7 rows in the digest table are
+**concrete consumers admitted through the one channel** (`verify_consumer` with `ExactBearing`
+evidence), classified onto those 2 variants: 5 × `OrdinaryAccumulatorEvalEml` (logistic-steering,
+softmax-weight, power-law, eml-operator, entropy-term) + 2 × `FieldSweepEvalEml`
+(stead-exponential-falloff, log-accumulate). Test cases are not type-walk registrations; the type
+census and the concrete-consumer roll are different facts and are published separately here.
 
-Type-walk (registered rows): the 7 consumers above. Independent raw sweep
+**Independent raw usage sweep.** Grep
 (`EML_OP_EXP|EML_OP_LN|OP_EXP|OP_LN|eml_exp|eml_ln|opcode::EXP|opcode::LN|power_law|eml_operator|PowerLaw`
-over `crates/**/*.{rs,wgsl}`) returned 25 files; every hit closes as:
+over `crates/**/*.{rs,wgsl}`) returned 25 files; every hit closes through the one channel or is
+recorded provably non-consuming with reason:
 
 | Class | Files | Disposition |
 |---|---|---|
-| Registered consumers | `field_sweep_compile.rs` (falloff), `property.rs` (logistic), `eml_opcode_gate.rs` (softmax + LN gadget builders) | rows above |
+| Concrete consumers (close through `verify_consumer` + `ExactBearing`) | `field_sweep_compile.rs` (falloff), `property.rs` (logistic), `eml_opcode_gate.rs` (softmax + LN gadget builders) | the 7 digest rows above |
 | Primitive definitions | `eml_exp.rs`, `eml_ln.rs`, `eml_ln_ds_candidate.wgsl` | non-consuming: the primitives themselves |
 | Execution substrate | `eml_nodes.rs`, `eml_registry.rs`, `intensity_eml.rs`, `cpu_oracle.rs`, `eml_resource_class.rs`, `field_sweep.rs`, `field_sweep.wgsl`, `accumulator_op.wgsl`, `eml_gadget.rs`, core/kernel `lib.rs` | non-consuming: interpreter/JIT arms and exports carry values, they do not consume exactness |
-| Qualification / referees | `eml_exp_qualification.rs`, `eml_ln_qualification.rs`, workshop `eml_*_qualification.rs`, `eml_*_cost_evidence.rs`, `eml_exp_consumer_0.rs`, `exact_consumer_obligation_0.rs` | non-consuming: referees and pinned artifacts, not production consumers |
+| Qualification / referees | `eml_exp_qualification.rs`, `eml_ln_qualification.rs`, workshop `eml_*_qualification.rs`, `eml_*_cost_evidence.rs`, `eml_exp_consumer_0.rs`, `exact_consumer_obligation_0.rs` | referees and pinned artifacts; the two ritual necessity-consumers admit through the one channel with `ExactBearing` digests (see above) |
 
-No unregistered consumer found; **7 is the result, not a target**.
+No unregistered consumer found; **the counts (2 variants, 3 shapes, 7 concrete consumers) are
+results, not targets**.
 
 ## Verification
 
 ```text
-cargo test -p simthing-workshop --test exact_consumer_obligation_0: 4 passed (hard-errors ×4 planted,
-  falloff 3-arm, AO ×5, log-accumulate 3-arm)
+cargo test -p simthing-workshop --test exact_consumer_obligation_0: 4 passed (hard-errors ×5 planted,
+  falloff 3-arm, AO ×5 with independently-executed interpreted-gpu digests, log-accumulate 3-arm)
+cargo test -p simthing-kernel --lib: 28 passed (folded verify_consumer gate + EXP/LN rituals
+  admitting through the one channel with ExactBearing digests)
 cargo test -p simthing-workshop --test eml_exp_primitive_0_qualification: 5 passed (witness now
   bit-identity, 0/32; falloff 0/32)
 cargo test -p simthing-workshop --test eml_resource_class_jit_parity_0: 1 passed
