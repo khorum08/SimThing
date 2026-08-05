@@ -56,7 +56,8 @@ mod tests {
     use super::*;
     use crate::eml_opcode_gate::{
         admit_exp_call_sites, ExactBearingEvidence, ExactConsumerArm,
-        ExactConsumerDigestEvidence, ExactConsumerExecutionShape, ExactPrimitiveAdmissionDoor,
+        ExactConsumerDigestEvidence, ExactConsumerShapeBinding, ExactPrimitiveAdmissionDoor,
+        FieldConsumerShapeProof,
         ExactPrimitiveAdmissionRequest, ExactPrimitiveConsumer, ExactPrimitiveConsumerEvidence,
         ExactPrimitiveCostEvidence, ExactPrimitiveResourceEffect, OpcodeGateError,
         LN_PRIMITIVE_NAME,
@@ -125,7 +126,13 @@ mod tests {
                     consumer_id: "log-accumulate",
                     primitive: LN_PRIMITIVE_NAME,
                     domain_note: "positive multiplicative magnitudes in (0, 1e6]",
-                    shape: ExactConsumerExecutionShape::FieldSweepMatrix,
+                    // In-crate ritual fixture mint; the workshop battery mints
+                    // the same Matrix proof from the REAL admitted
+                    // log-accumulate registration via
+                    // `exact_consumer_shape_proof()`.
+                    shape_binding: ExactConsumerShapeBinding::FieldSweep(
+                        FieldConsumerShapeProof::from_admitted_field_registration(false),
+                    ),
                     digests: vec![
                         ExactConsumerDigestEvidence {
                             arm: ExactConsumerArm::CpuTwin,

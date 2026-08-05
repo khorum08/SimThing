@@ -485,11 +485,57 @@ pub enum ExactBearingEvidence {
         consumer_id: &'static str,
         primitive: &'static str,
         domain_note: &'static str,
-        /// The concrete execution shape — the arm obligation is DERIVED from
-        /// this by [`derive_consumer_arms`], never authored as a list.
-        shape: ExactConsumerExecutionShape,
+        /// Binding of the execution shape to the actual production consumer
+        /// surface — the arm obligation is DERIVED from the resolved shape by
+        /// [`derive_consumer_arms`], never authored as a list, and the shape
+        /// itself is never a free classification (remand 5190934274).
+        shape_binding: ExactConsumerShapeBinding,
         digests: Vec<ExactConsumerDigestEvidence>,
     },
+}
+
+/// Binding of the declared execution shape to the ACTUAL production consumer
+/// surface. `verify_consumer` rejects a binding that does not belong to the
+/// evidence's `ExactPrimitiveConsumer` variant, so an authored classification
+/// cannot shrink the derived arm obligation (remand 5190934274).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ExactConsumerShapeBinding {
+    /// Ordinary AccumulatorOp EvalEML surface — lawful only for an
+    /// `ExactPrimitiveConsumer::OrdinaryAccumulatorEvalEml` consumer.
+    OrdinaryAccumulatorEvalEml,
+    /// Field-sweep surface — lawful only for
+    /// `ExactPrimitiveConsumer::FieldSweepEvalEml`; the
+    /// Matrix-vs-TransientFusable distinction is carried by a sealed proof
+    /// mintable only from an ADMITTED `FieldSweepRegistration`.
+    FieldSweep(FieldConsumerShapeProof),
+}
+
+/// Sealed field-consumer shape proof. No free constructor exists outside the
+/// kernel: the only production mint is
+/// `FieldSweepRegistration::exact_consumer_shape_proof`, which reads the
+/// admitted registration's typed `output` and `transient_read_proof` — the
+/// same fields the lowerer's fused-pair predicate consumes — so
+/// fused-transient reachability is determined by the admitted registration,
+/// never selected by the caller.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct FieldConsumerShapeProof {
+    shape: ExactConsumerExecutionShape,
+}
+
+impl FieldConsumerShapeProof {
+    pub(crate) fn from_admitted_field_registration(transient_fusable: bool) -> Self {
+        Self {
+            shape: if transient_fusable {
+                ExactConsumerExecutionShape::FieldSweepTransientFusable
+            } else {
+                ExactConsumerExecutionShape::FieldSweepMatrix
+            },
+        }
+    }
+
+    pub fn shape(self) -> ExactConsumerExecutionShape {
+        self.shape
+    }
 }
 
 /// Concrete execution shape of an exact-bearing consumer. The complete arm
@@ -796,12 +842,34 @@ impl ExactPrimitiveAdmissionDoor {
         // a production admission hard-error. No waiver, no second channel.
         if let ExactBearingEvidence::ExactBearing {
             consumer_id,
-            shape,
+            shape_binding,
             digests,
             ..
         } = &evidence.exact_bearing
         {
-            let derived = derive_consumer_arms(*shape);
+            // The shape must be BOUND to the production consumer surface: an
+            // AO consumer cannot present a field shape and a field consumer
+            // cannot present the AO shape (which would silently shed its
+            // SSA-JIT obligation). Within the field family the
+            // Matrix-vs-TransientFusable distinction arrives inside a sealed
+            // proof minted from the admitted registration.
+            let shape = match (evidence.consumer, shape_binding) {
+                (
+                    ExactPrimitiveConsumer::OrdinaryAccumulatorEvalEml,
+                    ExactConsumerShapeBinding::OrdinaryAccumulatorEvalEml,
+                ) => ExactConsumerExecutionShape::OrdinaryAccumulatorEvalEml,
+                (
+                    ExactPrimitiveConsumer::FieldSweepEvalEml,
+                    ExactConsumerShapeBinding::FieldSweep(proof),
+                ) => proof.shape(),
+                (consumer, _) => {
+                    return Err(OpcodeGateError::ExactConsumerShapeNotBoundToConsumer {
+                        consumer_id,
+                        consumer,
+                    });
+                }
+            };
+            let derived = derive_consumer_arms(shape);
             let mut agreed: Option<u64> = None;
             for arm in derived {
                 let row = digests.iter().find(|row| row.arm == *arm).ok_or(
@@ -980,6 +1048,13 @@ pub enum OpcodeGateError {
     ExactConsumerArmNotDerived {
         consumer_id: &'static str,
         arm: &'static str,
+    },
+    #[error(
+        "exact-bearing consumer `{consumer_id}` presents an execution-shape binding that does not belong to its production consumer surface {consumer:?}"
+    )]
+    ExactConsumerShapeNotBoundToConsumer {
+        consumer_id: &'static str,
+        consumer: ExactPrimitiveConsumer,
     },
 }
 

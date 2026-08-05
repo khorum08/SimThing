@@ -77,7 +77,8 @@ pub use eml_opcode_gate::{
     OpcodeGateError, OpcodeRegistrationGate, OpcodeRegistrationRequest,
     SemanticOpcodeRegistration, SoftStepPolicyConditional, SoftmaxWeightGadget,
     ExactBearingEvidence, ExactConsumerArm, ExactConsumerDigestEvidence,
-    ExactConsumerExecutionShape, LnConsumerGadgets,
+    ExactConsumerExecutionShape, ExactConsumerShapeBinding, FieldConsumerShapeProof,
+    LnConsumerGadgets,
     EXP_PRIMITIVE_NAME, LN_PRIMITIVE_NAME,
 };
 pub use field_sweep::{

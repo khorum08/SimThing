@@ -145,7 +145,7 @@ mod tests {
 
     use crate::eml_opcode_gate::{
         admit_exp_call_sites, ExactBearingEvidence, ExactConsumerArm,
-        ExactConsumerDigestEvidence, ExactConsumerExecutionShape, ExactPrimitiveAdmissionDoor,
+        ExactConsumerDigestEvidence, ExactConsumerShapeBinding, ExactPrimitiveAdmissionDoor,
         ExactPrimitiveAdmissionRequest, ExactPrimitiveConsumer, ExactPrimitiveConsumerEvidence,
         ExactPrimitiveCostEvidence, ExactPrimitiveResourceEffect, OpcodeGateError,
         EXP_PRIMITIVE_NAME,
@@ -279,7 +279,7 @@ mod tests {
                     consumer_id: "logistic-steering",
                     primitive: EXP_PRIMITIVE_NAME,
                     domain_note: "cost-band steering inputs in [-16, 16]",
-                    shape: ExactConsumerExecutionShape::OrdinaryAccumulatorEvalEml,
+                    shape_binding: ExactConsumerShapeBinding::OrdinaryAccumulatorEvalEml,
                     digests: vec![
                         ExactConsumerDigestEvidence {
                             arm: ExactConsumerArm::CpuTwin,

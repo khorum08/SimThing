@@ -16,12 +16,20 @@ it. The parallel channel from the rejected head (`ExactBearingConsumerDeclaratio
 door, and a production call that declares exact-bearing but omits exactness evidence hard-errors inside
 `verify_consumer` itself.
 
-The execution-arm set is **derived, never caller-authored**: the evidence names a concrete
-`ExactConsumerExecutionShape` (`FieldSweepMatrix` → cpu-twin + interpreted-gpu + ssa-jit;
+The execution-arm set is **derived, never caller-authored**, and the shape itself is **bound to the
+production consumer surface** (remand 5190934274): evidence carries an `ExactConsumerShapeBinding` —
+`OrdinaryAccumulatorEvalEml` lawful only for the AO consumer variant, or
+`FieldSweep(FieldConsumerShapeProof)` lawful only for `FieldSweepEvalEml`, where the sealed proof is
+mintable only from an **admitted** `FieldSweepRegistration` (no free constructor exists):
+`exact_consumer_shape_proof()` reads the registration's typed `output`/`transient_read_proof` — the
+same fields `can_fuse_transient_pair` consumes — so Matrix-vs-TransientFusable (and with it
+fused-arm reachability) is determined by the admitted registration, never selected by the caller. A
+binding that does not belong to the evidence's consumer variant REDs
+(`ExactConsumerShapeNotBoundToConsumer`) before any digest row is read. `derive_consumer_arms(shape)`
+then resolves the complete obligation (`FieldSweepMatrix` → cpu-twin + interpreted-gpu + ssa-jit;
 `FieldSweepTransientFusable` → + fused-transient; `OrdinaryAccumulatorEvalEml` → cpu-twin +
-interpreted-gpu) and `derive_consumer_arms(shape)` resolves the complete obligation; evidence is
-compared against that derived set in both directions. Planted defects ×5 all RED in
-`exact_consumer_obligation_0_admission_hard_errors_without_evidence`:
+interpreted-gpu) and evidence is compared against that derived set in both directions. Planted
+defects ×7 all RED in `exact_consumer_obligation_0_admission_hard_errors_without_evidence`:
 
 1. **Omitted real arm** — authored evidence carries matching cpu+interpreted rows only; derivation
    still requires ssa-jit for a `FieldSweepMatrix` shape → `ExactBearingConsumerWithoutDigestEvidence`.
@@ -32,6 +40,10 @@ compared against that derived set in both directions. Planted defects ×5 all RE
    `ExactConsumerArmDigestMismatch`.
 5. **Non-derived arm row** (an AO consumer presenting a field-JIT digest) →
    `ExactConsumerArmNotDerived` — the derivation is authoritative in both directions.
+6. **The shape-binding bypass** (remand 5190934274's exact scenario): `FieldSweepEvalEml` + the AO
+   shape + two internally consistent matching digests → `ExactConsumerShapeNotBoundToConsumer` —
+   a field consumer cannot shed its SSA-JIT obligation via an authored classification.
+7. **The inverse binding bypass**: an AO consumer presenting a field-sweep shape proof → same RED.
 
 No waiver, no grandfather, no inheritance — §4 Exact-Value Provenance Law mechanized. The EXP and LN
 qualification rituals themselves now admit through this folded evidence (their necessity consumers carry
@@ -106,8 +118,9 @@ results, not targets**.
 ## Verification
 
 ```text
-cargo test -p simthing-workshop --test exact_consumer_obligation_0: 4 passed (hard-errors ×5 planted,
-  falloff 3-arm, AO ×5 with independently-executed interpreted-gpu digests, log-accumulate 3-arm)
+cargo test -p simthing-workshop --test exact_consumer_obligation_0: 4 passed (hard-errors ×7 planted
+  incl. both shape-binding bypasses, falloff 3-arm, AO ×5 with independently-executed
+  interpreted-gpu digests, log-accumulate 3-arm)
 cargo test -p simthing-kernel --lib: 28 passed (folded verify_consumer gate + EXP/LN rituals
   admitting through the one channel with ExactBearing digests)
 cargo test -p simthing-workshop --test eml_exp_primitive_0_qualification: 5 passed (witness now

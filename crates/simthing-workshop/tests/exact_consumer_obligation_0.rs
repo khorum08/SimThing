@@ -15,6 +15,14 @@
 //! - `OrdinaryAccumulatorEvalEml` → CpuTwin + InterpretedGpu (the AO
 //!   interpreter); the field JIT never compiles AO programs.
 //!
+//! The shape itself is BOUND to the production consumer surface (remand
+//! 5190934274): an AO consumer cannot present a field shape and vice versa
+//! (`ExactConsumerShapeNotBoundToConsumer`), and within the field family the
+//! Matrix-vs-TransientFusable distinction rides a sealed proof mintable only
+//! from an ADMITTED `FieldSweepRegistration`
+//! (`exact_consumer_shape_proof()` reads the registration's typed `output` /
+//! `transient_read_proof` — the same fields the fused-pair predicate uses).
+//!
 //! Every arm digest in this battery is measured by EXECUTING that arm here —
 //! the AO interpreted digests run the real AO EvalEML GPU path per consumer
 //! (remand §3); no digest is copied between arms and no inherited parity
@@ -32,9 +40,10 @@ use simthing_gpu::{
 };
 use simthing_kernel::{
     derive_consumer_arms, ExactBearingEvidence, ExactConsumerArm, ExactConsumerDigestEvidence,
-    ExactConsumerExecutionShape, ExactPrimitiveAdmissionDoor, ExactPrimitiveConsumer,
-    ExactPrimitiveConsumerEvidence, LnConsumerGadgets, OpcodeGateError, SoftmaxWeightGadget,
-    EXP_PRIMITIVE_NAME, LN_PRIMITIVE_NAME,
+    ExactConsumerExecutionShape, ExactConsumerShapeBinding, ExactPrimitiveAdmissionDoor,
+    ExactPrimitiveConsumer, ExactPrimitiveConsumerEvidence, FieldSweepRegistration,
+    LnConsumerGadgets, OpcodeGateError, SoftmaxWeightGadget, EXP_PRIMITIVE_NAME,
+    LN_PRIMITIVE_NAME,
 };
 
 const FNV_OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
@@ -74,9 +83,9 @@ fn probe_values(count: usize) -> Vec<f32> {
         .collect()
 }
 
-/// The STEAD falloff consumer: digest per arm over a 8x8 grid of non-dyadic
-/// intensities, three sweep iterations (accumulation stress on the seam).
-fn stead_falloff_digest(ctx: &GpuContext, arm: ExactConsumerArm) -> u64 {
+/// The ADMITTED STEAD falloff registration — the production surface the
+/// sealed shape proof is minted from (`exact_consumer_shape_proof()`).
+fn stead_falloff_registration() -> FieldSweepRegistration {
     use simthing_driver::field_sweep_compile::{
         compile_stead_exponential_falloff_field_sweep, SteadExponentialFalloffSpec,
     };
@@ -89,7 +98,13 @@ fn stead_falloff_digest(ctx: &GpuContext, arm: ExactConsumerArm) -> u64 {
         lambda: 0.73,
         dt: 1.0,
     };
-    let registration = compile_stead_exponential_falloff_field_sweep(spec).expect("falloff law");
+    compile_stead_exponential_falloff_field_sweep(spec).expect("falloff law")
+}
+
+/// The STEAD falloff consumer: digest per arm over a 8x8 grid of non-dyadic
+/// intensities, three sweep iterations (accumulation stress on the seam).
+fn stead_falloff_digest(ctx: &GpuContext, arm: ExactConsumerArm) -> u64 {
+    let registration = stead_falloff_registration();
     let raw = probe_values(8 * 8);
     let values: Vec<f32> = raw
         .iter()
@@ -241,11 +256,15 @@ fn row(arm: ExactConsumerArm, digest: u64) -> ExactConsumerDigestEvidence {
 
 #[test]
 fn exact_consumer_obligation_0_admission_hard_errors_without_evidence() {
+    // The sealed shape proof is minted from the REAL admitted falloff
+    // registration (Matrix output, no transient read → FieldSweepMatrix).
+    let falloff_proof = stead_falloff_registration().exact_consumer_shape_proof();
+    assert_eq!(falloff_proof.shape(), ExactConsumerExecutionShape::FieldSweepMatrix);
     let bearing = |digests: Vec<ExactConsumerDigestEvidence>| ExactBearingEvidence::ExactBearing {
         consumer_id: "stead-exponential-falloff",
         primitive: EXP_PRIMITIVE_NAME,
         domain_note: "guarded EXP(-lambda*d), lambda,d >= 0; saturated tail",
-        shape: ExactConsumerExecutionShape::FieldSweepMatrix,
+        shape_binding: ExactConsumerShapeBinding::FieldSweep(falloff_proof),
         digests,
     };
     // Planted defect 1 (remand §2): the authored evidence OMITS a real
@@ -317,7 +336,7 @@ fn exact_consumer_obligation_0_admission_hard_errors_without_evidence() {
                 consumer_id: "logistic-steering",
                 primitive: EXP_PRIMITIVE_NAME,
                 domain_note: "planted",
-                shape: ExactConsumerExecutionShape::OrdinaryAccumulatorEvalEml,
+                shape_binding: ExactConsumerShapeBinding::OrdinaryAccumulatorEvalEml,
                 digests: vec![
                     row(ExactConsumerArm::CpuTwin, 0x1234),
                     row(ExactConsumerArm::InterpretedGpu, 0x1234),
@@ -328,6 +347,54 @@ fn exact_consumer_obligation_0_admission_hard_errors_without_evidence() {
         Err(OpcodeGateError::ExactConsumerArmNotDerived {
             consumer_id: "logistic-steering",
             arm: "ssa-jit",
+        })
+    ));
+    // Planted defect 6 (remand 5190934274): the production bypass — a
+    // FIELD-SWEEP consumer presenting the AO shape with two internally
+    // consistent matching digests, silently shedding its SSA-JIT obligation.
+    // The shape is not bound to the consumer surface, so admission REJECTS
+    // before any digest row is read.
+    assert!(matches!(
+        verify(
+            ExactPrimitiveConsumer::FieldSweepEvalEml,
+            2_967,
+            ExactBearingEvidence::ExactBearing {
+                consumer_id: "stead-exponential-falloff",
+                primitive: EXP_PRIMITIVE_NAME,
+                domain_note: "planted bypass",
+                shape_binding: ExactConsumerShapeBinding::OrdinaryAccumulatorEvalEml,
+                digests: vec![
+                    row(ExactConsumerArm::CpuTwin, 0x1234),
+                    row(ExactConsumerArm::InterpretedGpu, 0x1234),
+                ],
+            },
+        ),
+        Err(OpcodeGateError::ExactConsumerShapeNotBoundToConsumer {
+            consumer_id: "stead-exponential-falloff",
+            consumer: ExactPrimitiveConsumer::FieldSweepEvalEml,
+        })
+    ));
+    // Planted defect 7: the inverse direction — an AO consumer presenting a
+    // field-sweep shape proof is equally unbound and rejects.
+    assert!(matches!(
+        verify(
+            ExactPrimitiveConsumer::OrdinaryAccumulatorEvalEml,
+            2_967,
+            ExactBearingEvidence::ExactBearing {
+                consumer_id: "logistic-steering",
+                primitive: EXP_PRIMITIVE_NAME,
+                domain_note: "planted bypass",
+                shape_binding: ExactConsumerShapeBinding::FieldSweep(falloff_proof),
+                digests: vec![
+                    row(ExactConsumerArm::CpuTwin, 0x1234),
+                    row(ExactConsumerArm::InterpretedGpu, 0x1234),
+                    row(ExactConsumerArm::SsaJit, 0x1234),
+                ],
+            },
+        ),
+        Err(OpcodeGateError::ExactConsumerShapeNotBoundToConsumer {
+            consumer_id: "logistic-steering",
+            consumer: ExactPrimitiveConsumer::OrdinaryAccumulatorEvalEml,
         })
     ));
     // The derivation itself is total over the production shapes and never
@@ -361,7 +428,9 @@ fn exact_consumer_obligation_0_stead_falloff_admits_with_bit_identical_arm_diges
             consumer_id: "stead-exponential-falloff",
             primitive: EXP_PRIMITIVE_NAME,
             domain_note: "guarded EXP(-lambda*d); 8x8 non-dyadic probe grid, 3 iterations",
-            shape: ExactConsumerExecutionShape::FieldSweepMatrix,
+            shape_binding: ExactConsumerShapeBinding::FieldSweep(
+                stead_falloff_registration().exact_consumer_shape_proof(),
+            ),
             digests: vec![
                 row(ExactConsumerArm::CpuTwin, cpu),
                 row(ExactConsumerArm::InterpretedGpu, interpreted),
@@ -419,7 +488,7 @@ fn exact_consumer_obligation_0_ao_consumers_admit_with_independent_arm_digests()
                 consumer_id,
                 primitive,
                 domain_note: "guarded call sites; 512-value non-dyadic probe stratum",
-                shape: ExactConsumerExecutionShape::OrdinaryAccumulatorEvalEml,
+                shape_binding: ExactConsumerShapeBinding::OrdinaryAccumulatorEvalEml,
                 digests: vec![
                     row(ExactConsumerArm::CpuTwin, cpu),
                     row(ExactConsumerArm::InterpretedGpu, interpreted),
@@ -434,11 +503,9 @@ fn exact_consumer_obligation_0_ao_consumers_admit_with_independent_arm_digests()
 }
 
 /// log-accumulate is a field map consumer: three-arm digest like the falloff.
-#[test]
-fn exact_consumer_obligation_0_log_accumulate_admits_three_arm() {
-    let Some(ctx) = certified_context() else {
-        return;
-    };
+/// The ADMITTED log-accumulate registration (Matrix output, no transient
+/// read) — the production surface its sealed shape proof is minted from.
+fn log_accumulate_registration() -> FieldSweepRegistration {
     let col = ColumnIndex::try_from_admitted_authored(0, 1).expect("column");
     let map: Vec<EmlNodeGpu> = LnConsumerGadgets::log_accumulate_map_nodes(0)
         .expect("log-accumulate map")
@@ -454,7 +521,7 @@ fn exact_consumer_obligation_0_log_accumulate_admits_three_arm() {
         .collect();
     let adjacency = FieldAdjacency::grid_n4(4, 4, simthing_gpu::GRID_N4_NSEW, col).expect("grid");
     let order = adjacency.apply_canonical_order_proof();
-    let registration = apply_field_sweep_registration(FieldSweepRegistrationRequest {
+    apply_field_sweep_registration(FieldSweepRegistrationRequest {
         adjacency,
         n_dims: 1,
         output: FieldSweepOutput::Matrix(col),
@@ -475,7 +542,15 @@ fn exact_consumer_obligation_0_log_accumulate_admits_three_arm() {
         canonical_order_proof: Some(order),
         dt: 1.0,
     })
-    .expect("log-accumulate admission");
+    .expect("log-accumulate admission")
+}
+
+#[test]
+fn exact_consumer_obligation_0_log_accumulate_admits_three_arm() {
+    let Some(ctx) = certified_context() else {
+        return;
+    };
+    let registration = log_accumulate_registration();
     let values = probe_values(16);
     let digest_for = |outputs: &[f32]| {
         outputs
@@ -510,7 +585,9 @@ fn exact_consumer_obligation_0_log_accumulate_admits_three_arm() {
             consumer_id: "log-accumulate",
             primitive: LN_PRIMITIVE_NAME,
             domain_note: "guarded LN map on the existing Sum lane; non-dyadic probe grid",
-            shape: ExactConsumerExecutionShape::FieldSweepMatrix,
+            shape_binding: ExactConsumerShapeBinding::FieldSweep(
+                registration.exact_consumer_shape_proof(),
+            ),
             digests: vec![
                 row(ExactConsumerArm::CpuTwin, cpu),
                 row(ExactConsumerArm::InterpretedGpu, interpreted),

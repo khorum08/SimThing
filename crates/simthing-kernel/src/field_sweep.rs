@@ -744,6 +744,21 @@ impl FieldSweepRegistration {
         self.n_dims
     }
 
+    /// EXACT-CONSUMER-OBLIGATION-0: derive this admitted registration's
+    /// exact-consumer execution shape as a sealed proof. The fused-transient
+    /// arm is reachable exactly when this registration can participate in a
+    /// fused pair — it PRODUCES the kernel-private transient lane, or it was
+    /// admitted with a transient-read certificate — the same typed fields
+    /// `can_fuse_transient_pair` consumes. Since `FieldSweepRegistration`
+    /// has no free constructor, the shape is never caller-selected.
+    pub fn exact_consumer_shape_proof(&self) -> crate::eml_opcode_gate::FieldConsumerShapeProof {
+        let transient_fusable = self.output == FieldSweepOutput::Transient
+            || self.transient_read_proof.is_some();
+        crate::eml_opcode_gate::FieldConsumerShapeProof::from_admitted_field_registration(
+            transient_fusable,
+        )
+    }
+
     pub fn output(&self) -> FieldSweepOutput {
         self.output
     }
