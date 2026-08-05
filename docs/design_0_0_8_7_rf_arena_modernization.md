@@ -317,7 +317,7 @@ discretion); `Std — Grok CLI` (`grok-4.5` pinned); `Fable` = DA-implemented ha
 
 | Item | State |
 |---|---|
-| Active open rung | none — Phase 6 COMPLETE at 6.3; StemThing-A census + §3.1 Tier-2 slot-identity amendment run in the DA lane; the constitutional pointer-flip is an OWNER act and 7.1 waits behind StemThing-A |
+| Active open rung | `SLOT-LOGICAL-IDENTITY-0` |
 
 ## 4. Binding laws (carry from day one)
 
