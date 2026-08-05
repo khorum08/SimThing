@@ -873,8 +873,10 @@ const CLOSED_OPCODES: &[u32] = &[
     // EML-EXP-PRIMITIVE-0: the sole 5.11 vocabulary widening — the first
     // admitted exact primitive (full-domain EXP through the 5.10 door).
     eml_nodes::opcode::EXP,
-    // EML-LN-PRIMITIVE-0: the 5.12 vocabulary widening — exact LN over positive
-    // finite normals through its own 5.10 door instance.
+    // EML-LN-PRIMITIVE-0 Candidate-F (LNCF): three-arm harness vocabulary only.
+    // Exact-class admission stays closed (`opcode_allowed_in_exact` excludes LN;
+    // door rejects unpinned digests). DA 5186354130 / remand 5186386924 — not
+    // exact-authoritative production admission until promotion landing.
     eml_nodes::opcode::LN,
     eml_nodes::opcode::CMP_LT,
     eml_nodes::opcode::CMP_LE,

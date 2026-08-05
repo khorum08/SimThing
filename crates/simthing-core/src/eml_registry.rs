@@ -747,7 +747,8 @@ fn opcode_allowed_in_exact(op: u32) -> bool {
             | eml_nodes::opcode::ABS
             | eml_nodes::opcode::FLOOR
             | eml_nodes::opcode::EXP
-            | eml_nodes::opcode::LN
+            // EML-LN-PRIMITIVE-0: LN stays out of exact-class vocabulary until
+            // DA promotion after exhaustive Candidate-F proof (remand 5186386924).
             | eml_nodes::opcode::CMP_LT
             | eml_nodes::opcode::CMP_LE
             | eml_nodes::opcode::CMP_GT
@@ -958,7 +959,8 @@ mod tests {
         );
     }
 
-    /// EML-LN-PRIMITIVE-0: the registry mirror of the 5.10 call-site law for LN.
+    /// EML-LN-PRIMITIVE-0: exact-class registry rejects LN until DA promotion
+    /// (Candidate-F may exist; exact authority does not — remand 5186386924).
     #[test]
     fn eml_ln_primitive_0_registry_admits_guarded_ln_and_spans_naive_calls() {
         let clamp_guard = EmlNode {
@@ -970,33 +972,29 @@ mod tests {
             d: 0,
         };
         let mut registry = EmlExpressionRegistry::default();
-        registry
-            .register_formula(
-                EmlTreeId(9201),
-                exact_meta(9201, "guarded-ln"),
+        for (id, name, nodes) in [
+            (
+                9201u32,
+                "guarded-ln",
                 vec![
                     literal(2.0),
                     clamp_guard,
                     op(eml_nodes::opcode::LN),
                     op(eml_nodes::opcode::RETURN_TOP),
                 ],
-            )
-            .expect("clamp-guarded LN registers (shape 2)");
-        registry
-            .register_formula(
-                EmlTreeId(9202),
-                exact_meta(9202, "literal-ln"),
+            ),
+            (
+                9202,
+                "literal-ln",
                 vec![
                     literal(2.0),
                     op(eml_nodes::opcode::LN),
                     op(eml_nodes::opcode::RETURN_TOP),
                 ],
-            )
-            .expect("in-domain literal LN registers (shape 1)");
-        assert_eq!(
-            registry.register_formula(
-                EmlTreeId(9203),
-                exact_meta(9203, "naive-ln"),
+            ),
+            (
+                9203,
+                "naive-ln",
                 vec![
                     literal(1.0),
                     literal(2.0),
@@ -1005,27 +1003,15 @@ mod tests {
                     op(eml_nodes::opcode::RETURN_TOP),
                 ],
             ),
-            Err(EmlRegistryError::UnguardedExactPrimitiveCallSite {
-                opcode: eml_nodes::opcode::LN,
-                index: 3,
-            }),
-            "naive unguarded LN is a spanned registry admission error"
-        );
-        assert_eq!(
-            registry.register_formula(
-                EmlTreeId(9204),
-                exact_meta(9204, "out-of-domain-literal-ln"),
-                vec![
-                    literal(0.0),
-                    op(eml_nodes::opcode::LN),
-                    op(eml_nodes::opcode::RETURN_TOP),
-                ],
-            ),
-            Err(EmlRegistryError::UnguardedExactPrimitiveCallSite {
-                opcode: eml_nodes::opcode::LN,
-                index: 1,
-            }),
-            "zero is outside the LN domain and is no certificate"
-        );
+        ] {
+            assert_eq!(
+                registry.register_formula(EmlTreeId(id), exact_meta(id, name), nodes),
+                Err(EmlRegistryError::OpcodeNotAllowedInClass {
+                    opcode: eml_nodes::opcode::LN,
+                    class: EmlExecutionClass::ExactDeterministic,
+                }),
+                "{name}: LN must stay out of exact-class vocabulary pre-promotion"
+            );
+        }
     }
 }

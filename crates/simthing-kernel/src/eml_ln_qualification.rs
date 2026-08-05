@@ -12,7 +12,7 @@ use crate::eml_opcode_gate::{
 /// Algorithm identity at qualification time (must equal the live
 /// [`simthing_core::eml_ln::EML_LN_ALGORITHM_IDENTITY`] or the artifacts
 /// are stale).
-pub const EML_LN_QUALIFIED_ALGORITHM_IDENTITY: u64 = 0x1084_43cf_aeea_adfe;
+pub const EML_LN_QUALIFIED_ALGORITHM_IDENTITY: u64 = 0xbc2f_8faa_558b_b920;
 
 /// Number of admitted-domain binary32 patterns the sweep enumerates
 /// (positive finite normals `0x00800000..=0x7F7FFFFF`, ascending).
@@ -121,7 +121,7 @@ mod tests {
             "pinned LN sequence drifted; exhaustive artifacts are STALE — requalify locally"
         );
         assert_eq!(simthing_core::eml_opcode::LN, 27, "LN opcode value is pinned");
-        assert_eq!(eml_ln::EML_LN_SEQUENCE_VERSION, 1);
+        assert_eq!(eml_ln::EML_LN_SEQUENCE_VERSION, 2);
         assert_eq!(
             EML_LN_EXHAUSTIVE_DOMAIN_SIZE,
             2_130_706_432,

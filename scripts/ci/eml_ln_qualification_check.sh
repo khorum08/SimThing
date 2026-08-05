@@ -18,10 +18,11 @@ set -euo pipefail
 readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly REPO_ROOT="${EML_LN_QUAL_ROOT:-$(cd "${SCRIPT_DIR}/../.." && pwd)}"
 
-# Pinned at qualification scaffold (2026-08-04). Re-pin ONLY together with a
-# local exhaustive requalification and a new digest in eml_ln_qualification.rs.
-readonly QUALIFIED_TWIN_SHA256="a8cd7156ded449b19e1073e2571612a48686c0003c707c9f1ccaf0eee0fe9750"
-readonly QUALIFIED_WGSL_HELPER_SHA256="2298c2568c8e8a7352348fca7fdf8049d8c4cf0fa7b89670ccf17bb826c1e011"
+# Pinned at LNCF Candidate-F rewrite (2026-08-05, DA 5186354130). Re-pin ONLY
+# together with a local exhaustive requalification and a new digest in
+# eml_ln_qualification.rs.
+readonly QUALIFIED_TWIN_SHA256="46d0937ccdac05e455a377351b0b6c0012adda303b17b0f7923d6109496b068d"
+readonly QUALIFIED_WGSL_HELPER_SHA256="bebf865e1dc9e9f8ff385735791aa27f7762b01e51658460875ce88bb0ad3170"
 readonly QUALIFIED_REFERENCE_DIGEST="0x0"
 readonly QUALIFIED_DOMAIN_SIZE="2130706432"
 readonly QUALIFIED_WGPU_VERSION="22.1.0"
@@ -114,7 +115,7 @@ selftest() {
   [[ "$verdict" == *PASS* ]] || { echo "FAIL clean-fixture-passes"; exit 1; }
   echo "PASS clean-fixture-passes"
 
-  sed -i 's/0x3F31_7218/0x3F31_7219/' "$tmp/crates/simthing-core/src/eml_ln.rs"
+  sed -i 's/0x4C4E_4346/0x4C4E_4347/' "$tmp/crates/simthing-core/src/eml_ln.rs"
   if EML_LN_QUAL_ROOT="$tmp" bash "${BASH_SOURCE[0]}" --check >/dev/null 2>&1; then
     echo "FAIL planted-twin-drift-bites"
     exit 1
@@ -122,7 +123,7 @@ selftest() {
   echo "PASS planted-twin-drift-bites"
   cp "${REPO_ROOT}/crates/simthing-core/src/eml_ln.rs" "$tmp/crates/simthing-core/src/"
 
-  sed -i 's/0x3F317218u/0x3F317219u/' "$tmp/crates/simthing-kernel/src/shaders/field_sweep.wgsl"
+  sed -i 's/let y0 = log(x);/let y0 = log2(x);/' "$tmp/crates/simthing-kernel/src/shaders/field_sweep.wgsl"
   if EML_LN_QUAL_ROOT="$tmp" bash "${BASH_SOURCE[0]}" --check >/dev/null 2>&1; then
     echo "FAIL planted-wgsl-drift-bites"
     exit 1

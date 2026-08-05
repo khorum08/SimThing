@@ -1,48 +1,33 @@
-//! EML-LN-PRIMITIVE-0 — pinned algorithm-as-spec for the `LN` exact primitive.
+//! EML-LN-PRIMITIVE-0 — Candidate-F-shaped algorithm-as-spec for `LN`.
 //!
-//! **The sequence below IS the bit semantics** (full_eml_unification §4 shape (i)):
-//! a fixed-order f32 routine built only from individually correctly-rounded,
-//! fully-IEEE-specified scalar operations — `mul`, `add`, `sub`, **fused
-//! multiply-add** (`f32::mul_add` / WGSL `fma`), and integer/bit steps — no
-//! `div`, no f64, no vendor transcendental. Every execution arm (this CPU twin,
-//! the interpreted WGSL arm, the SSA-JIT lowering) executes this exact
-//! operation order; exhaustive admitted-domain enumeration is the parity referee.
+//! **Authority (DA `5186354130`, `sqrt_candidates.md` §§3–4):** a vendor
+//! `log` MAY seed `y ≈ ln(x)`; it MUST NOT decide the result. Correctness is
+//! decided by comparing the already-admitted exact `EXP` evaluation of the
+//! seed (and its ±1 ULP neighbors) against the input `x` in the exponential
+//! domain, then selecting among `{y−ulp, y, y+ulp}` — loop-free, fixed op
+//! count. Exactness comes from the decision procedure, not seed reproducibility.
 //!
-//! Admitted semantics are append-only: any change to a constant or to the
-//! operation order is a NEW primitive name and a replay epoch, never a mutation
-//! of `LN`. The algorithm identity digest below mechanizes that law.
+//! **The sequence below IS the bit semantics** for this candidate: every
+//! execution arm (CPU twin, interpreted WGSL, SSA-JIT) executes this order.
+//! Exhaustive admitted-domain three-arm bit identity is the parity referee.
 //!
 //! Domain: positive finite normals `[2^-126, f32::MAX]` (endpoint bits pinned
 //! below). Extended-real conventions (`ln(0) = -∞`) are rejected at admission,
-//! not emulated. The sequence itself performs no hidden clamping — guarded
-//! semantics are authored at call sites (5.10 shape 2), never repaired here.
+//! not emulated. The sequence performs no hidden clamping — guarded semantics
+//! are authored at call sites (5.10 shape 2), never repaired here.
 //!
-//! The landed `EXP` sequence/identity is frozen and untouched by this module.
+//! The landed `EXP` sequence/identity is frozen and untouched by this module;
+//! LN only *calls* [`crate::eml_exp::eml_exp_pinned_f32`].
 //!
-//! **Measured toolchain gap (STOP evidence, 2026-08-04):** on the certified
-//! RTX 4080 Laptop / Vulkan / NVIDIA 595.79 tuple, every f32-only candidate
-//! tried (geometric recip, fused-Newton, classic-Newton; single-LN2 fma,
-//! hi/lo two-fma, separately-rounded mul+add) is either grossly inaccurate or
-//! leaves a sparse 1-ULP CPU/GPU divergence near the domain floor under full
-//! exhaustive replay. Probe strata (~6.4k including prior magnets) and
-//! characterization (≤1 ULP vs f64 on the LN1C shape) can be green while
-//! exhaustive still REDs. Do not weaken determinism or drop the toolchain.
+//! **Prior STOP evidence (LN1C, retained in `docs/tests/eml_ln_primitive_0_results.md`):**
+//! under the former `no vendor transcendental` fence, classic Newton/`Lg*`
+//! reconstruction diverged at `0x008dcb6b` (1 ULP) on the certified tuple.
+//! That history is not erased; this module replaces the executable candidate.
+
+use crate::eml_exp::eml_exp_pinned_f32;
 
 /// Sequence revision. Bumping this is minting a new primitive; see module doc.
-pub const EML_LN_SEQUENCE_VERSION: u32 = 1;
-
-/// Single pinned `ln(2)` — bits `0x3F317218`.
-pub const EML_LN_LN2: f32 = f32::from_bits(0x3F31_7218);
-/// Minimax coefficients for the `(log(1+s)-log(1-s))/s` odd polynomial
-/// (SunPro/fdlibm `Lg*` family, exact binary32 bits).
-pub const EML_LN_LG1: f32 = f32::from_bits(0x3F2A_AAAB);
-pub const EML_LN_LG2: f32 = f32::from_bits(0x3ECC_CE13);
-pub const EML_LN_LG3: f32 = f32::from_bits(0x3E91_E9EE);
-pub const EML_LN_LG4: f32 = f32::from_bits(0x3E78_9E26);
-/// `1/3` — bits `0x3EAAAAAB` (small-|f| path).
-pub const EML_LN_THIRD: f32 = f32::from_bits(0x3EAA_AAAB);
-/// Integer magic for the initial reciprocal estimate of `1/(2+f)`.
-pub const EML_LN_RECIP_MAGIC: u32 = 0x7EF3_11C7;
+pub const EML_LN_SEQUENCE_VERSION: u32 = 2;
 
 /// Canonical admitted-domain endpoints (design_0_0_8_7 row 5.12).
 pub const EML_LN_DOMAIN_MIN: f32 = f32::from_bits(0x0080_0000); // 2^-126
@@ -50,32 +35,23 @@ pub const EML_LN_DOMAIN_MAX: f32 = f32::from_bits(0x7F7F_FFFF); // f32::MAX
 /// Endpoint bits — `0x00800000` / `0x7F7FFFFF`.
 pub const EML_LN_DOMAIN_MIN_BITS: u32 = 0x0080_0000;
 pub const EML_LN_DOMAIN_MAX_BITS: u32 = 0x7F7F_FFFF;
-/// `sqrt(2)` bits — mantissa-reduction pivot (`0x3FB504F3`).
-pub const EML_LN_SQRT2_BITS: u32 = 0x3FB5_04F3;
 
-/// FNV-1a-64 identity over the pinned sequence: version, opcode-order tag, and
-/// every constant's exact bits. Qualification artifacts pin this value; a
-/// mismatch is trust-chain drift and invalidates them.
+/// FNV-1a-64 identity over the pinned Candidate-F LN sequence. Qualification
+/// artifacts pin this value; a mismatch is trust-chain drift and invalidates them.
 pub const EML_LN_ALGORITHM_IDENTITY: u64 = eml_ln_algorithm_identity();
 
 const fn eml_ln_algorithm_identity() -> u64 {
     const FNV_OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
     const FNV_PRIME: u64 = 0x0000_0100_0000_01b3;
-    const WORDS: [u32; 12] = [
+    // Operation-order tag: "LNCF" — vendor-log seed + EXP-domain ±1 ULP snap.
+    const WORDS: [u32; 6] = [
         EML_LN_SEQUENCE_VERSION,
-        // Operation-order tag: "LN1C" — frexp, classic-Newton recip, Lg* ln1p,
-        // single fma(k, LN2, ln1p) reconstruction.
-        0x4C4E_3143,
-        EML_LN_LN2.to_bits(),
-        EML_LN_LG1.to_bits(),
-        EML_LN_LG2.to_bits(),
-        EML_LN_LG3.to_bits(),
-        EML_LN_LG4.to_bits(),
-        EML_LN_THIRD.to_bits(),
-        EML_LN_RECIP_MAGIC,
-        EML_LN_SQRT2_BITS,
+        0x4C4E_4346, // LNCF
         EML_LN_DOMAIN_MIN_BITS,
         EML_LN_DOMAIN_MAX_BITS,
+        // Bind LN's trust chain to the live EXP algorithm identity (lo/hi).
+        (crate::eml_exp::EML_EXP_ALGORITHM_IDENTITY & 0xFFFF_FFFF) as u32,
+        (crate::eml_exp::EML_EXP_ALGORITHM_IDENTITY >> 32) as u32,
     ];
     let mut hash = FNV_OFFSET;
     let mut i = 0;
@@ -91,59 +67,56 @@ const fn eml_ln_algorithm_identity() -> u64 {
     hash
 }
 
-/// The pinned `LN` sequence — the CPU twin every GPU arm must match bit-for-bit.
+#[inline]
+fn abs_diff_f32(a: f32, b: f32) -> f32 {
+    (a - b).abs()
+}
+
+/// Among `{y_dn, y0, y_up}`, pick the candidate whose `EXP` image is closest to
+/// `x`. Ties prefer `y0`, then the even-mantissa (RN-even) bit pattern.
+#[inline]
+fn snap_exp_domain(x: f32, y_dn: f32, e_dn: f32, y0: f32, e0: f32, y_up: f32, e_up: f32) -> f32 {
+    let d0 = abs_diff_f32(x, e0);
+    let d_up = abs_diff_f32(x, e_up);
+    let d_dn = abs_diff_f32(x, e_dn);
+
+    let mut best_y = y0;
+    let mut best_d = d0;
+    let mut best_bits = y0.to_bits();
+
+    let consider = |y: f32, d: f32, best_y: &mut f32, best_d: &mut f32, best_bits: &mut u32| {
+        let bits = y.to_bits();
+        if d < *best_d || (d == *best_d && (bits & 1) == 0 && (*best_bits & 1) == 1) {
+            *best_y = y;
+            *best_d = d;
+            *best_bits = bits;
+        }
+    };
+    consider(y_up, d_up, &mut best_y, &mut best_d, &mut best_bits);
+    consider(y_dn, d_dn, &mut best_y, &mut best_d, &mut best_bits);
+    best_y
+}
+
+/// Candidate-F `LN` sequence — the CPU twin every GPU arm must match bit-for-bit.
 ///
-/// 1. Unpack exponent / reconstitute mantissa in `[1, 2)`; optionally half-scale
-///    about `√2`.
-/// 2. Compute `ln1p = ln(1+f)` by either the small-|f| direct polynomial or the
-///    classic-Newton `1/(2+f)` + `Lg*` general path (no `div`); `ln1p` never
-///    involves `k`.
-/// 3. Reconstruct as the single fused step `fma(k, LN2, ln1p)`.
+/// 1. Exact edge: `1.0 -> +0.0`.
+/// 2. Seed `y0 = ln(x)` from the platform `log` (vendor / libm).
+/// 3. Decide by `EXP` images of `{y0.next_down(), y0, y0.next_up()}` vs `x`.
+/// 4. Return the snapped seed (±1 ULP, loop-free).
 #[inline]
 pub fn eml_ln_pinned_f32(x: f32) -> f32 {
-    let ix = x.to_bits();
-    let mut k = ((ix >> 23) as i32) - 127;
-    let mant = ix & 0x007f_ffff;
-    let mut mx = mant | 0x3f80_0000;
-    if mx > EML_LN_SQRT2_BITS {
-        mx -= 0x0080_0000;
-        k += 1;
+    // Bit-exact edge required by DA / sqrt_candidates §6 adaptation.
+    if x.to_bits() == 0x3f80_0000 {
+        return 0.0;
     }
-    let m = f32::from_bits(mx);
-    let f = m - 1.0_f32;
-    let dk = k as f32;
 
-    let ln1p = if (0x007f_ffff & (0x8000 + mant)) < 0xc000 {
-        // Small-|f| path: ln1p = f - f²·(½ − f/3).
-        if f == 0.0 {
-            0.0
-        } else {
-            let inner = 0.5_f32 - EML_LN_THIRD * f;
-            let f2 = f * f;
-            let r = f2 * inner;
-            f - r
-        }
-    } else {
-        // General path: s = f/(2+f) via magic + two classic Newton iterations.
-        let y = 2.0_f32 + f;
-        let mut r = f32::from_bits(EML_LN_RECIP_MAGIC.wrapping_sub(y.to_bits()));
-        r = r * (2.0_f32 - y * r);
-        r = r * (2.0_f32 - y * r);
-        let s = f * r;
-        let z = s * s;
-        let w = z * z;
-        let t1 = w * w.mul_add(EML_LN_LG4, EML_LN_LG2);
-        let t2 = z * w.mul_add(EML_LN_LG3, EML_LN_LG1);
-        let poly = t2 + t1;
-        let f2 = f * f;
-        let hfsq = 0.5_f32 * f2;
-        let hp = hfsq + poly;
-        let s_term = s * hp;
-        let mid = hfsq - s_term;
-        f - mid
-    };
-
-    dk.mul_add(EML_LN_LN2, ln1p)
+    let y0 = x.ln();
+    let e0 = eml_exp_pinned_f32(y0);
+    let y_up = y0.next_up();
+    let y_dn = y0.next_down();
+    let e_up = eml_exp_pinned_f32(y_up);
+    let e_dn = eml_exp_pinned_f32(y_dn);
+    snap_exp_domain(x, y_dn, e_dn, y0, e0, y_up, e_up)
 }
 
 #[cfg(test)]
@@ -152,16 +125,9 @@ mod tests {
 
     #[test]
     fn eml_ln_primitive_0_pinned_constants_hold_their_exact_bits() {
-        assert_eq!(EML_LN_LN2.to_bits(), 0x3F31_7218);
-        assert_eq!(EML_LN_LG1.to_bits(), 0x3F2A_AAAB);
-        assert_eq!(EML_LN_LG2.to_bits(), 0x3ECC_CE13);
-        assert_eq!(EML_LN_LG3.to_bits(), 0x3E91_E9EE);
-        assert_eq!(EML_LN_LG4.to_bits(), 0x3E78_9E26);
-        assert_eq!(EML_LN_THIRD.to_bits(), 0x3EAA_AAAB);
-        assert_eq!(EML_LN_RECIP_MAGIC, 0x7EF3_11C7);
         assert_eq!(EML_LN_DOMAIN_MIN.to_bits(), EML_LN_DOMAIN_MIN_BITS);
         assert_eq!(EML_LN_DOMAIN_MAX.to_bits(), EML_LN_DOMAIN_MAX_BITS);
-        assert_eq!(EML_LN_SQRT2_BITS, 0x3FB5_04F3);
+        assert_eq!(EML_LN_SEQUENCE_VERSION, 2);
     }
 
     #[test]
@@ -199,7 +165,10 @@ mod tests {
             "EML_LN_CPU_DIGEST tested={tested} digest={hash:#018x} identity={:#018x}",
             EML_LN_ALGORITHM_IDENTITY
         );
-        assert_eq!(tested, u64::from(EML_LN_DOMAIN_MAX_BITS - EML_LN_DOMAIN_MIN_BITS) + 1);
+        assert_eq!(
+            tested,
+            u64::from(EML_LN_DOMAIN_MAX_BITS - EML_LN_DOMAIN_MIN_BITS) + 1
+        );
     }
 
     #[test]
@@ -207,19 +176,13 @@ mod tests {
         const fn perturbed_identity() -> u64 {
             const FNV_OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
             const FNV_PRIME: u64 = 0x0000_0100_0000_01b3;
-            let words: [u32; 12] = [
+            let words: [u32; 6] = [
                 EML_LN_SEQUENCE_VERSION,
-                0x4C4E_3143,
-                EML_LN_LN2.to_bits() + 1,
-                EML_LN_LG1.to_bits(),
-                EML_LN_LG2.to_bits(),
-                EML_LN_LG3.to_bits(),
-                EML_LN_LG4.to_bits(),
-                EML_LN_THIRD.to_bits(),
-                EML_LN_RECIP_MAGIC,
-                EML_LN_SQRT2_BITS,
-                EML_LN_DOMAIN_MIN_BITS,
+                0x4C4E_4346,
+                EML_LN_DOMAIN_MIN_BITS + 1,
                 EML_LN_DOMAIN_MAX_BITS,
+                (crate::eml_exp::EML_EXP_ALGORITHM_IDENTITY & 0xFFFF_FFFF) as u32,
+                (crate::eml_exp::EML_EXP_ALGORITHM_IDENTITY >> 32) as u32,
             ];
             let mut hash = FNV_OFFSET;
             let mut i = 0;
@@ -266,5 +229,12 @@ mod tests {
             let y = eml_ln_pinned_f32(f32::from_bits(bits));
             assert!(y.is_finite(), "magnet {bits:#010x}");
         }
+    }
+
+    #[test]
+    fn eml_ln_primitive_0_min_normal_and_one_are_bit_exact_edges() {
+        assert_eq!(eml_ln_pinned_f32(1.0).to_bits(), 0.0_f32.to_bits());
+        let lo = eml_ln_pinned_f32(EML_LN_DOMAIN_MIN);
+        assert!(lo.is_finite() && lo.to_bits() & 0x8000_0000 != 0);
     }
 }

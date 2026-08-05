@@ -490,10 +490,13 @@ mod eml_ln_lowering_tests {
     fn eml_ln_primitive_0_wgsl_helper_copies_and_pinned_constants_agree() {
         fn helper_block(source: &str) -> &str {
             let start = source
+                .find("fn f32_next_up(")
+                .expect("LNCF next_up helper present");
+            let pinned = source
                 .find("fn eml_ln_pinned(")
                 .expect("pinned LN helper present");
-            let end = start
-                + source[start..]
+            let end = pinned
+                + source[pinned..]
                     .find("\n}")
                     .expect("pinned LN helper closes")
                 + 2;
@@ -503,30 +506,20 @@ mod eml_ln_lowering_tests {
         let accumulator = helper_block(include_str!("shaders/accumulator_op.wgsl"));
         assert_eq!(
             field, accumulator,
-            "one pinned LN sequence, two shader homes, zero drift"
-        );
-        for bits in [
-            simthing_core::eml_ln::EML_LN_LN2.to_bits(),
-            simthing_core::eml_ln::EML_LN_LG1.to_bits(),
-            simthing_core::eml_ln::EML_LN_LG2.to_bits(),
-            simthing_core::eml_ln::EML_LN_LG3.to_bits(),
-            simthing_core::eml_ln::EML_LN_LG4.to_bits(),
-            simthing_core::eml_ln::EML_LN_THIRD.to_bits(),
-        ] {
-            let token = format!("bitcast<f32>(0x{bits:08X}u)");
-            assert!(
-                field.contains(&token),
-                "WGSL LN helper carries pinned constant {token}"
-            );
-        }
-        assert_eq!(
-            field.matches("fma(").count(),
-            3,
-            "exactly three fused multiply-adds in the pinned LN sequence"
+            "one pinned LNCF sequence, two shader homes, zero drift"
         );
         assert!(
-            field.contains("0x7EF311C7u - bitcast<u32>(y)"),
-            "Newton reciprocal uses the pinned magic constant"
+            field.contains("let y0 = log(x);"),
+            "WGSL LNCF seeds with vendor log"
+        );
+        assert_eq!(
+            field.matches("eml_exp_pinned(").count(),
+            3,
+            "exactly three EXP evaluations decide the ±1 ULP snap"
+        );
+        assert!(
+            field.contains("0x3F800000u"),
+            "WGSL LNCF pins the 1.0 -> +0.0 edge"
         );
     }
 }

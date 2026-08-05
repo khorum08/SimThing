@@ -1,7 +1,8 @@
 # EML-LN-PRIMITIVE-0 results
 
 - Track: 0.0.8.7 RF arena modernization (rung 5.12)
-- Status: **STOP** — certified toolchain cannot match pinned LN CPU semantics bit-for-bit under exhaustive admitted-domain replay (handoff `stop_conditions[0]`)
+- Status: **STOP** — Candidate-F (LNCF) probe RED: vendor-`log` seed leaves the ±1 ULP
+  correction envelope on the certified tuple (DA `5186354130` / remand `5186386924`)
 - Branch: `grok/eml-ln-primitive-0`
 - ORIENT-RECEIPT: `d950cd858719`
 - HD-RECEIPT: `a28f739a7fdb`
@@ -25,58 +26,65 @@ stead-spatial-contract-core@8585db4ac631, stemthing-binding-laws@6787a118c3ca,
 stemthing-lane-not-leg@a9e9caa27a0f, stemthing-slot-identity-ruling@02c87b9126e1,
 structural-execution-convergence@6b4cedec482b, workshop-candidate-homing@3e584f0ad175` — ACK.
 
-## STOP — exact gap
+## Frozen STOP history — LN1C (do not erase)
 
 **Certified tuple:** NVIDIA GeForce RTX 4080 Laptop GPU / Vulkan / NVIDIA 595.79 /
 `rustc 1.95.0` + `wgpu 22.1.0` / `naga 22.1.0` (Cargo.lock).
 
-**Constraint set that remains binding:** f32-only; no `div`; no f64; no vendor
-`log`; identical CPU / interpreted-WGSL / SSA-JIT sequence; full positive-normal
-domain `0x00800000..=0x7F7FFFFF` (2_130_706_432 patterns); do not drop the
-toolchain or weaken the bit-exact referee.
+Under the former handoff fence **`no vendor transcendental`**, five same-shape
+Newton/`Lg*` reconstruction families were tried. Retained failure:
 
-**Best-measured candidate retained in-tree (not qualified):** tag **LN1C**
-(`0x4C4E3143`), algorithm identity **`0x108443cfaeeaadfe`** —
-classic two-iteration Newton reciprocal + fdlibm `Lg*` `ln1p` (independent of
-`k`) + `fma(k, LN2, ln1p)` with `LN2` bits `0x3F317218`.
+| Item | Value |
+|---|---|
+| Tag | **LN1C** (`0x4C4E3143`) |
+| Algorithm identity | **`0x108443cfaeeaadfe`** |
+| Probe (~6414) | bit-exact |
+| Characterization | max_ulp=1, nonfinite=0 |
+| Exhaustive interpreted / JIT | **RED** at first divergence **`0x008dcb6b`** (1 ULP; both arms) |
+
+DA `5186354130` withdrew deferral: the fence that banned vendor `log` forced the
+unfixable reconstruction shape; Candidate F lifts the fence for the **seed only**.
+
+## Candidate-F (LNCF) — active executable candidate
+
+Authority: DA `5186354130`; process `docs/workshop/sqrt_candidates.md` §§3,4,6,7,8;
+remand `5186386924`.
+
+| Item | Value |
+|---|---|
+| Tag | **LNCF** (`0x4C4E4346`) |
+| Sequence version | `2` |
+| Algorithm identity | **`0xbc2f8faa558bb920`** (binds to live EXP identity) |
+| Method | vendor `log` seed → `EXP` images of `{y−ulp,y,y+ulp}` vs `x` → ±1 ULP snap |
+| Standalone artifact | `crates/simthing-driver/tests/wgsl/eml_ln_cf_candidate.wgsl` |
+| Exact-class admission | **closed** (`opcode_allowed_in_exact` excludes LN; door rejects unpinned digests) |
+| CLOSED_OPCODES | retained as three-arm **harness vocabulary only** — not exact-authoritative |
+| Exhaustive digests | **`0x0`** until local three-arm replay pins them |
+| Admitted-domain size | **2130706432** |
+
+### Required falsifiers
+- seed-as-authority mutant RED
+- correction-direction invert mutant RED
+- skip-neighbor-EXP decision-bypass mutant RED
+- WGSL twin drift / frozen-artifact identity invalidates qualification
+- edges: `min_normal`, `1.0 -> +0.0`, domain max — bit-identical across arms
+
+### Measurement log — STOP
 
 | Measurement | Result |
 |---|---|
-| Three-way probe (~6414 values, incl. prior magnets) | **bit-exact** (jit + interpreted) |
-| Characterization vs f64 `ln` | **max_ulp=1**, max_rel≈8.3e-8, nonfinite=0, monotone spot checks green |
-| Exhaustive CPU digest | computable (e.g. LN1C prior run produced a live digest; **not pinned** — GPU replay RED) |
-| Exhaustive interpreted / JIT | **RED** — first divergence at `0x008dcb6b` (1 ULP; `got=0xc2ae7839` vs `want=0xc2ae7838` shape; both arms) |
+| Three-way probe (6411) | **RED** — jit first divergence at **`0x00800000`** (domain min_normal): GPU `got=0xc2aeac4e` vs CPU `want=0xc2aeac50` (**2 ULP**); **1478** mismatches before abort |
+| Characterization | not reached (probe RED) |
+| Exhaustive CPU / interpreted / JIT | not reached; digests remain **`0x0`** |
 
-**Candidate shapes tried and rejected (same toolchain, same fences):**
+**Diagnosis (within DA fences):** the EXP-domain ±1 ULP snap cannot reconcile CPU
+`f32::ln` and NVIDIA Vulkan WGSL `log` seeds when they disagree by more than one
+ULP. Widening the correction loop, redefining exactness, shrinking the domain, or
+measured-ULP admission are all forbidden. Falsifiers (seed-as-authority /
+correction-direction / skip-neighbor-EXP) still RED as required.
 
-1. Geometric `1/(1+u)` nest + single `fma(k,LN2,ln1p)` — probe green; characterization ~14 ULP (unsuitable); exhaustive RED near floor (`0x0095db87`).
-2. Fused-Newton recip + hi/lo two-fma reconstruction — probe RED at large positive `k` (`0x7f33786c`).
-3. Fused-Newton + single `fma(k,LN2,ln1p)` — probe green; char ≤1 ULP; exhaustive RED near floor (`0x008fc4b9`).
-4. Classic-Newton + single `fma` (**LN1C**, retained) — probe green; char ≤1 ULP; exhaustive RED near floor (`0x008dcb6b`).
-5. Classic-Newton + separately-rounded `k*LN2+ln1p` — exhaustive RED even earlier (`0x00800009`); suggests the shader compiler does **not** simply expand outer `fma` into mul+add in a way CPU can mirror.
-
-**Ruling requested:** bit-exact exhaustive LN over the full positive-normal domain
-appears unreachable on this certified compiler/backend/driver under the current
-allowed op set. Do **not** weaken the referee, shrink the domain, admit a
-vendor `log`, or drop the roster row. Options for Owner/DA: new allowed
-primitive (e.g. correctly-rounded `div` / table form), domain policy change, or
-a measured ULP-band admission law (would be a design change, not coding
-discretion).
-
-## What did land (implementation progress, not admission)
-
-- `LN = 27` closed-opcode widening; 5.10 call-site shapes; CPU/GPU/JIT wiring to
-  `eml_ln_pinned` / `eml_ln_pinned_f32`.
-- Library gadgets: `PowerLawGadget` / POW, `EmlOperatorGadget` (`eml()`),
-  `EntropyTermGadget`, `LogAccumulateMapGadget` — ordinary EML only; no POW opcode.
-- Mutation referees, CI freshness scaffold (`scripts/ci/eml_ln_qualification_check.sh`),
-  cost-evidence harness (`#[ignore]`), results/orientation stubs.
-- EXP sequence/identity untouched.
-
-## Pinned artifacts
-
-Admitted-domain size **2130706432**. Exhaustive reference digest: **`0x0`**
-(intentionally unpinned — GPU replay does not match). Algorithm identity of the
-retained LN1C candidate: **`0x108443cfaeeaadfe`**.
-
-Coding returns **STOP / proof-present**. No clearance, merge, or pointer flip.
+## What must not happen
+- No measured-ULP admission; no domain shrink; no EXP mutation; no POW opcode
+- No `/clearance`, merge, pointer flip, or StemThing-A from coding
+- Do not re-open exact-class LN admission merely because LNCF is implemented — DA
+  adjudicates promotion after exhaustive proof return

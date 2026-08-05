@@ -222,55 +222,57 @@ fn eml_exp_pinned(x: f32) -> f32 {
     return y1 * s2;
 }
 
-// EML-LN-PRIMITIVE-0: pinned algorithm-as-spec for the LN exact primitive.
-// The step order IS the bit law; the CPU twin
-// (simthing_core::eml_ln::eml_ln_pinned_f32) executes the identical
-// sequence, and the exhaustive admitted-domain digest is the parity referee.
-// Constants are bitcast-pinned to exact binary32 bits. Any edit here is a NEW
-// primitive name, never a mutation of LN. Byte-identical to the field_sweep.wgsl
-// copy; a kernel referee holds the two copies and the Rust twin's constants
-// aligned.
+// EML-LN-PRIMITIVE-0 Candidate F (LNCF): vendor-log seed + EXP-domain ±1 ULP
+// snap. Byte-identical decision helpers to field_sweep.wgsl; kernel referee
+// holds the two copies aligned with the Rust twin.
+fn f32_next_up(y: f32) -> f32 {
+    var bits = bitcast<u32>(y);
+    if (y != y) { return y; }
+    if (bits == 0x7F800000u) { return y; }
+    if (bits == 0x00000000u) { return bitcast<f32>(0x00000001u); }
+    if (bits == 0x80000000u) { return 0.0; }
+    if ((bits & 0x80000000u) == 0u) { bits = bits + 1u; } else { bits = bits - 1u; }
+    return bitcast<f32>(bits);
+}
+fn f32_next_down(y: f32) -> f32 {
+    var bits = bitcast<u32>(y);
+    if (y != y) { return y; }
+    if (bits == 0xFF800000u) { return y; }
+    if (bits == 0x00000000u) { return bitcast<f32>(0x80000000u); }
+    if (bits == 0x80000000u) { return bitcast<f32>(0x80000001u); }
+    if ((bits & 0x80000000u) == 0u) { bits = bits - 1u; } else { bits = bits + 1u; }
+    return bitcast<f32>(bits);
+}
+fn eml_ln_snap_exp_domain(x: f32, y_dn: f32, e_dn: f32, y0: f32, e0: f32, y_up: f32, e_up: f32) -> f32 {
+    let d0 = abs(x - e0);
+    let d_up = abs(x - e_up);
+    let d_dn = abs(x - e_dn);
+    var best_y = y0;
+    var best_d = d0;
+    var best_bits = bitcast<u32>(y0);
+    let up_bits = bitcast<u32>(y_up);
+    if (d_up < best_d || (d_up == best_d && (up_bits & 1u) == 0u && (best_bits & 1u) == 1u)) {
+        best_y = y_up;
+        best_d = d_up;
+        best_bits = up_bits;
+    }
+    let dn_bits = bitcast<u32>(y_dn);
+    if (d_dn < best_d || (d_dn == best_d && (dn_bits & 1u) == 0u && (best_bits & 1u) == 1u)) {
+        best_y = y_dn;
+    }
+    return best_y;
+}
 fn eml_ln_pinned(x: f32) -> f32 {
-    let ix = bitcast<u32>(x);
-    var k = i32(ix >> 23u) - 127;
-    let mant = ix & 0x007FFFFFu;
-    var mx = mant | 0x3F800000u;
-    if (mx > 0x3FB504F3u) {
-        mx = mx - 0x00800000u;
-        k = k + 1;
+    if (bitcast<u32>(x) == 0x3F800000u) {
+        return 0.0;
     }
-    let m = bitcast<f32>(mx);
-    let f = m - 1.0;
-    let dk = f32(k);
-    var ln1p: f32;
-    if ((0x007FFFFFu & (0x8000u + mant)) < 0xC000u) {
-        if (f == 0.0) {
-            ln1p = 0.0;
-        } else {
-            let inner = 0.5 - bitcast<f32>(0x3EAAAAABu) * f;
-            let f2 = f * f;
-            let r = f2 * inner;
-            ln1p = f - r;
-        }
-    } else {
-        let y = 2.0 + f;
-        var r = bitcast<f32>(0x7EF311C7u - bitcast<u32>(y));
-        r = r * (2.0 - y * r);
-        r = r * (2.0 - y * r);
-        let s = f * r;
-        let z = s * s;
-        let w = z * z;
-        let t1 = w * fma(w, bitcast<f32>(0x3E789E26u), bitcast<f32>(0x3ECCCE13u));
-        let t2 = z * fma(w, bitcast<f32>(0x3E91E9EEu), bitcast<f32>(0x3F2AAAABu));
-        let poly = t2 + t1;
-        let f2 = f * f;
-        let hfsq = 0.5 * f2;
-        let hp = hfsq + poly;
-        let s_term = s * hp;
-        let mid = hfsq - s_term;
-        ln1p = f - mid;
-    }
-    return fma(dk, bitcast<f32>(0x3F317218u), ln1p);
+    let y0 = log(x);                                    // vendor seed — must not decide
+    let e0 = eml_exp_pinned(y0);
+    let y_up = f32_next_up(y0);
+    let y_dn = f32_next_down(y0);
+    let e_up = eml_exp_pinned(y_up);
+    let e_dn = eml_exp_pinned(y_dn);
+    return eml_ln_snap_exp_domain(x, y_dn, e_dn, y0, e0, y_up, e_up);
 }
 
 fn eml_param(ctx: EmlEvalCtx, idx: u32) -> f32 {

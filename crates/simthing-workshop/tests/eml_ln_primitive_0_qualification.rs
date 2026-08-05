@@ -334,98 +334,92 @@ fn eml_ln_primitive_0_probe_corpus_is_three_way_bit_exact() {
     }
 }
 
-/// Shared LN1M skeleton used by planted mutants — mirrors `eml_ln_pinned_f32`
-/// except for the single planted defect named by each test.
-fn ln1m_skeleton(x: f32, pivot: u32, newton_iters: usize, lg1: f32) -> f32 {
-    use simthing_core::eml_ln::{
-        EML_LN_LG2, EML_LN_LG3, EML_LN_LG4, EML_LN_LN2, EML_LN_RECIP_MAGIC, EML_LN_THIRD,
-    };
-    let ix = x.to_bits();
-    let mut k = ((ix >> 23) as i32) - 127;
-    let mant = ix & 0x007f_ffff;
-    let mut mx = mant | 0x3f80_0000;
-    if mx > pivot {
-        mx -= 0x0080_0000;
-        k += 1;
+/// Candidate-F snap skeleton with planted decision defects.
+fn lncf_snap(
+    x: f32,
+    use_seed_as_authority: bool,
+    invert_direction: bool,
+    skip_neighbor_exp: bool,
+) -> f32 {
+    use simthing_core::eml_exp_pinned_f32;
+    if x.to_bits() == 0x3f80_0000 {
+        return 0.0;
     }
-    let m = f32::from_bits(mx);
-    let f = m - 1.0_f32;
-    let dk = k as f32;
-    let ln1p = if (0x007f_ffff & (0x8000 + mant)) < 0xc000 {
-        if f == 0.0 {
-            0.0
-        } else {
-            let inner = 0.5_f32 - EML_LN_THIRD * f;
-            let f2 = f * f;
-            let r = f2 * inner;
-            f - r
-        }
+    let y0 = x.ln();
+    if use_seed_as_authority {
+        // PLANTED DEFECT: vendor seed decides the result.
+        return y0;
+    }
+    let e0 = eml_exp_pinned_f32(y0);
+    let y_up = y0.next_up();
+    let y_dn = y0.next_down();
+    let (e_up, e_dn) = if skip_neighbor_exp {
+        // PLANTED DEFECT: reuse e0 for neighbors — decision bypass.
+        (e0, e0)
     } else {
-        let y = 2.0_f32 + f;
-        let mut r = f32::from_bits(EML_LN_RECIP_MAGIC.wrapping_sub(y.to_bits()));
-        for _ in 0..newton_iters {
-            r = r * (2.0_f32 - y * r);
-        }
-        let s = f * r;
-        let z = s * s;
-        let w = z * z;
-        let t1 = w * w.mul_add(EML_LN_LG4, EML_LN_LG2);
-        let t2 = z * w.mul_add(EML_LN_LG3, lg1);
-        let poly = t2 + t1;
-        let f2 = f * f;
-        let hfsq = 0.5_f32 * f2;
-        let hp = hfsq + poly;
-        let s_term = s * hp;
-        let mid = hfsq - s_term;
-        f - mid
+        (eml_exp_pinned_f32(y_up), eml_exp_pinned_f32(y_dn))
     };
-    dk.mul_add(EML_LN_LN2, ln1p)
+    let d0 = (x - e0).abs();
+    let d_up = (x - e_up).abs();
+    let d_dn = (x - e_dn).abs();
+    let mut best_y = y0;
+    let mut best_d = d0;
+    let mut best_bits = y0.to_bits();
+    let consider = |y: f32, d: f32, best_y: &mut f32, best_d: &mut f32, best_bits: &mut u32| {
+        let bits = y.to_bits();
+        if d < *best_d || (d == *best_d && (bits & 1) == 0 && (*best_bits & 1) == 1) {
+            *best_y = y;
+            *best_d = d;
+            *best_bits = bits;
+        }
+    };
+    if invert_direction {
+        // PLANTED DEFECT: prefer the farther neighbor on ties / ordering.
+        consider(y_dn, d_up, &mut best_y, &mut best_d, &mut best_bits);
+        consider(y_up, d_dn, &mut best_y, &mut best_d, &mut best_bits);
+    } else {
+        consider(y_up, d_up, &mut best_y, &mut best_d, &mut best_bits);
+        consider(y_dn, d_dn, &mut best_y, &mut best_d, &mut best_bits);
+    }
+    best_y
 }
 
 #[test]
-fn eml_ln_primitive_0_planted_one_newton_iteration_mutant_reds_the_digest() {
-    fn mutant_one_newton(x: f32) -> f32 {
-        // PLANTED DEFECT: one Newton iteration instead of two.
-        ln1m_skeleton(
-            x,
-            simthing_core::eml_ln::EML_LN_SQRT2_BITS,
-            1,
-            simthing_core::eml_ln::EML_LN_LG1,
-        )
+fn eml_ln_primitive_0_planted_seed_as_authority_mutant_reds_the_digest() {
+    fn mutant_seed_authority(x: f32) -> f32 {
+        lncf_snap(x, true, false, false)
     }
     digest_reds_on_corpus(
         eml_ln_pinned_f32,
-        mutant_one_newton,
+        mutant_seed_authority,
         &mutant_referee_corpus(),
-        "one-Newton-iteration",
+        "seed-as-authority",
     );
 }
 
 #[test]
-fn eml_ln_primitive_0_planted_wrong_sqrt2_pivot_mutant_reds_the_digest() {
-    fn mutant_wrong_sqrt2(x: f32) -> f32 {
-        // PLANTED DEFECT: pivot at 1.0 instead of √2 — wrong half-scale reduce.
-        ln1m_skeleton(x, 0x3F80_0000, 2, simthing_core::eml_ln::EML_LN_LG1)
+fn eml_ln_primitive_0_planted_correction_direction_mutant_reds_the_digest() {
+    fn mutant_wrong_direction(x: f32) -> f32 {
+        lncf_snap(x, false, true, false)
     }
     digest_reds_on_corpus(
         eml_ln_pinned_f32,
-        mutant_wrong_sqrt2,
+        mutant_wrong_direction,
         &mutant_referee_corpus(),
-        "wrong-sqrt2-pivot",
+        "correction-direction",
     );
 }
 
 #[test]
-fn eml_ln_primitive_0_planted_wrong_poly_coeff_mutant_reds_the_digest() {
-    fn mutant_wrong_lg1(x: f32) -> f32 {
-        // PLANTED DEFECT: zero the primary odd coefficient.
-        ln1m_skeleton(x, simthing_core::eml_ln::EML_LN_SQRT2_BITS, 2, 0.0)
+fn eml_ln_primitive_0_planted_skip_neighbor_exp_mutant_reds_the_digest() {
+    fn mutant_skip_neighbor(x: f32) -> f32 {
+        lncf_snap(x, false, false, true)
     }
     digest_reds_on_corpus(
         eml_ln_pinned_f32,
-        mutant_wrong_lg1,
+        mutant_skip_neighbor,
         &mutant_referee_corpus(),
-        "wrong-LG1-coefficient",
+        "skip-neighbor-exp",
     );
 }
 
