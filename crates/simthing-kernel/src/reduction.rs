@@ -8,11 +8,12 @@
 //! ## Determinism contract
 //!
 //! Both CPU and GPU iterate children in the order recorded in
-//! `Topology::child_indices`. The CPU builder writes children in
-//! **ascending slot index** order, regardless of their position in
-//! `SimThing::children`. The GPU consumer iterates the same buffer in the
-//! same order. Float sums and means are therefore bit-exact between CPU and
-//! GPU.
+//! `Topology::child_indices`. The CPU builder writes children in canonical
+//! **authored tree order** (walk/attach order — logical identity, invariant
+//! under physical row rebinding; 6.4 SLOT-LOGICAL-IDENTITY-0). The GPU
+//! consumer iterates the same buffer in the same order. Float sums and means
+//! are therefore bit-exact between CPU and GPU, and invariant under a forced
+//! epoch rebind.
 //!
 //! `depth_buckets` exists for the GPU dispatch: one compute dispatch per
 //! depth, deepest first. The CPU oracle uses the same bucket ordering so
@@ -114,8 +115,8 @@ pub struct Topology {
     /// CSR offsets. `child_starts[i]..child_starts[i+1]` are the indices into
     /// `child_indices` that belong to parent slot `i`. Length: `n_slots + 1`.
     pub child_starts: Vec<u32>,
-    /// Flat list of child slot indices, packed in canonical (ascending) slot
-    /// order within each parent block.
+    /// Flat list of child slot indices, packed in canonical AUTHORED TREE
+    /// ORDER within each parent block (never physical slot order — 6.4).
     pub child_indices: Vec<u32>,
     /// `depth_buckets[d]` = slots at tree depth `d`. The root sits at depth 0;
     /// reduction processes buckets in reverse order so leaves are written
@@ -141,10 +142,12 @@ pub fn build_topology(root: &SimThing, allocator: &SlotAllocator) -> Topology {
 /// CSR from scratch every boundary.
 ///
 /// Invariants maintained by all mutators:
-/// - `per_slot_children[i]` holds child slot indices in strictly ascending
-///   order. The flattened CSR inherits this canonical iteration order,
+/// - `per_slot_children[i]` holds child slot indices in canonical AUTHORED
+///   TREE ORDER (walk/attach order — logical, invariant under physical row
+///   rebinding). The flattened CSR inherits this canonical iteration order,
 ///   which Pass 4–6 reduction and the CPU oracle both depend on for
-///   bit-exact `f32` parity.
+///   bit-exact `f32` parity. Physical slot order is never an iteration
+///   order (6.4 SLOT-LOGICAL-IDENTITY-0).
 /// - `depths[i] == Some(d)` iff slot `i` is reachable from the tree root
 ///   at depth `d`.
 /// - `per_slot_children.len() == depths.len()` and both are sized to a
@@ -178,12 +181,13 @@ impl TopologyState {
             &mut state.per_slot_children,
             &mut state.depths,
         );
-        // Sort each parent's children by slot index — canonical iteration
-        // order. (Walk visits children in tree order, which is not
-        // necessarily slot order.)
-        for v in &mut state.per_slot_children {
-            v.sort_unstable();
-        }
+        // Canonical iteration order is AUTHORED TREE ORDER (walk order) —
+        // a logical/authored-key order, invariant under physical row
+        // rebinding (6.4 SLOT-LOGICAL-IDENTITY-0). Physical slot order is
+        // NEVER a reduction order: sorting these blocks by slot index was
+        // exactly the physical-row-order defect the epoch-rebind witness
+        // REDs on. In an unchurned session the walk order coincides with
+        // ascending mint order, which is why pre-6.4 goldens hold.
         state
     }
 
@@ -199,12 +203,11 @@ impl TopologyState {
     }
 
     /// Incremental insertion of a single `parent_slot → child_slot` edge.
-    /// Used by B2 Approach C on pure-fission growth boundaries: the
-    /// `SlotAllocator` hands out monotonically increasing indices, so a
-    /// newly-spawned child has the highest slot in the world. Pushing onto
-    /// `per_slot_children[parent_slot]` preserves the ascending-slot
-    /// invariant without re-sorting — but the assertion guards against
-    /// the (currently impossible) case where slot reuse breaks that.
+    /// Used by B2 Approach C on pure-fission growth boundaries. Appending
+    /// preserves the canonical AUTHORED order (a newly-spawned child attaches
+    /// at the end of its parent's child list), independent of which physical
+    /// row the allocator hands out — slot reuse cannot perturb the order
+    /// (6.4 SLOT-LOGICAL-IDENTITY-0).
     ///
     /// Caller must ensure `ensure_capacity` covers both slots first.
     pub fn add_child(&mut self, parent: ObjectResidency, child: ObjectResidency) {
@@ -217,15 +220,6 @@ impl TopologyState {
         let child_slot = child.slot();
         let parent_idx = parent_slot.as_usize();
         let kids = &mut self.per_slot_children[parent_idx];
-        if let Some(&last) = kids.last() {
-            debug_assert!(
-                child_slot.raw() > last,
-                "TopologyState::add_child: child_slot {} <= existing last child {last} \
-                 (parent_slot {}); ascending-slot invariant violated",
-                child_slot.raw(),
-                parent_slot.raw(),
-            );
-        }
         kids.push(child_slot.raw());
         if let Some(Some(parent_depth)) = self.depths.get(parent_idx).copied() {
             self.depths[child_slot.as_usize()] = Some(parent_depth + 1);
@@ -234,7 +228,7 @@ impl TopologyState {
 
     /// Flatten the per-slot state into the CSR + depth-bucket form that
     /// `WorldGpuState::upload_reduction_topology` consumes. Cheap — no
-    /// sorting (state already sorted by construction).
+    /// sorting (state already in canonical authored order by construction).
     pub fn flatten(&self) -> Topology {
         let n_slots = self.per_slot_children.len();
         let mut child_starts = Vec::with_capacity(n_slots + 1);

@@ -10,7 +10,7 @@
 //! replay, or authored state. Serde derives exist only for in-process test
 //! snapshots — not for `BoundaryDeltaEntry`, replay frames, or scenario bytes.
 
-use crate::anchor_remap::{AnchorLocusRemap, AnchorRemapSection, AnchoredLocusMap};
+use crate::anchor_remap::{AnchorLocusRemap, AnchorRemapSection, AnchoredLocusMap, RemapSubject};
 use crate::column_index::ColumnIndex;
 use crate::ids::{SimPropertyId, SimThingId};
 use crate::property::{PropertyAdmissionDisposition, SubFieldRole};
@@ -230,8 +230,31 @@ fn apply_one_remap(
     remap: &AnchorLocusRemap,
     registry: &DimensionRegistry,
 ) {
-    let identity = AnchorIdentity::new(remap.sim_thing_id, remap.property_id);
-    match (remap.to_slot, remap.to_col, remap.from_col) {
+    let RemapSubject::PropertyLocus {
+        property_id,
+        from_col,
+        to_col,
+    } = remap.subject
+    else {
+        // ObjectRow epoch rebind: the whole row moves; every column binding
+        // of every locus of this object is preserved by construction.
+        let (Some(from_slot), Some(to_slot)) = (remap.from_slot, remap.to_slot) else {
+            return;
+        };
+        for (identity, rows) in by_id.iter_mut() {
+            if identity.sim_thing_id != remap.sim_thing_id {
+                continue;
+            }
+            for row in rows.iter_mut() {
+                if row.slot == from_slot {
+                    row.slot = to_slot;
+                }
+            }
+        }
+        return;
+    };
+    let identity = AnchorIdentity::new(remap.sim_thing_id, property_id);
+    match (remap.to_slot, to_col, from_col) {
         (None, None, _) => {
             by_id.remove(&identity);
         }
@@ -248,9 +271,9 @@ fn apply_one_remap(
                     // primary locus (no oracle/rehearsal ColumnIndex mint).
                     if let Some(resolved) =
                         registry
-                            .try_column_range(remap.property_id)
+                            .try_column_range(property_id)
                             .and_then(|range| {
-                                registry.try_property(remap.property_id).and_then(|prop| {
+                                registry.try_property(property_id).and_then(|prop| {
                                     range.col_for_role(&row.role, &prop.layout)
                                 })
                             })
@@ -266,10 +289,10 @@ fn apply_one_remap(
                 }
             } else {
                 // Birth: seed all role rows for the property.
-                let Some(prop) = registry.try_property(remap.property_id) else {
+                let Some(prop) = registry.try_property(property_id) else {
                     return;
                 };
-                let Some(range) = registry.try_column_range(remap.property_id) else {
+                let Some(range) = registry.try_column_range(property_id) else {
                     return;
                 };
                 let mut born = Vec::new();

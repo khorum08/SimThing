@@ -34,6 +34,9 @@ struct AnchorRemapParams {
 
 const KIND_MOVE: u32 = 0u;
 const KIND_RETIRE: u32 = 1u;
+// SLOT-LOGICAL-IDENTITY-0 ObjectRow epoch rebind: whole-row move, columns
+// untouched; matches by sim_thing_id + from_slot only (no property key).
+const KIND_ROW_MOVE: u32 = 2u;
 
 @group(0) @binding(0) var<storage, read> src_table: array<AnchorTableRowGpu>;
 @group(0) @binding(1) var<storage, read> ops: array<AnchorRemapOpGpu>;
@@ -56,7 +59,16 @@ fn apply_anchor_remaps(@builtin(global_invocation_id) gid: vec3<u32>) {
         var drop_row = false;
         for (var i = 0u; i < params.n_ops; i++) {
             let op = ops[i];
-            if (op.sim_thing_id != row.sim_thing_id || op.property_id != row.property_id) {
+            if (op.sim_thing_id != row.sim_thing_id) {
+                continue;
+            }
+            if (op.kind == KIND_ROW_MOVE) {
+                if (row.slot == op.from_slot) {
+                    row.slot = op.to_slot;
+                }
+                continue;
+            }
+            if (op.property_id != row.property_id) {
                 continue;
             }
             if (op.kind == KIND_RETIRE) {

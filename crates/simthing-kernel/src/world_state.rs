@@ -16,7 +16,7 @@ use crate::resolved::ResolvedGpuBuffers;
 use crate::sealed::{
     birth_anchor_rows_gpu, decode_anchor_table_gpu, encode_anchor_table_gpu, AnchorRemapOpGpu,
     AnchorRemapParams, AnchorTableRowGpu, ResolvedWriteAuthority, ANCHOR_REMAP_KIND_MOVE,
-    ANCHOR_REMAP_KIND_RETIRE,
+    ANCHOR_REMAP_KIND_RETIRE, ANCHOR_REMAP_KIND_ROW_MOVE,
 };
 use crate::wgsl_encode::{build_governed_pairs, encode_column, GovernedPair};
 use bytemuck::{Pod, Zeroable};
@@ -367,11 +367,29 @@ impl WorldGpuState {
         let mut ops = Vec::new();
         let mut births = Vec::new();
         for remap in &section.remaps {
-            match (remap.to_slot, remap.to_col, remap.from_slot, remap.from_col) {
+            let Some(property_id) = remap.property_id() else {
+                // ObjectRow epoch rebind: one op moves EVERY row of the object
+                // from its old physical slot; columns are untouched by
+                // construction (the subject has no column fields).
+                if let (Some(from_slot), Some(to_slot)) = (remap.from_slot, remap.to_slot) {
+                    ops.push(AnchorRemapOpGpu {
+                        sim_thing_id: remap.sim_thing_id.raw(),
+                        property_id: 0,
+                        kind: ANCHOR_REMAP_KIND_ROW_MOVE,
+                        from_slot: from_slot.raw(),
+                        from_col: 0,
+                        to_slot: to_slot.raw(),
+                        to_col: 0,
+                        _pad: 0,
+                    });
+                }
+                continue;
+            };
+            match (remap.to_slot, remap.to_col(), remap.from_slot, remap.from_col()) {
                 (None, None, Some(from_slot), Some(from_col)) => {
                     ops.push(AnchorRemapOpGpu {
                         sim_thing_id: remap.sim_thing_id.raw(),
-                        property_id: remap.property_id.0,
+                        property_id: property_id.0,
                         kind: ANCHOR_REMAP_KIND_RETIRE,
                         from_slot: from_slot.raw(),
                         from_col: from_col.raw_u32(),
@@ -383,7 +401,7 @@ impl WorldGpuState {
                 (Some(to_slot), Some(to_col), Some(from_slot), Some(from_col)) => {
                     ops.push(AnchorRemapOpGpu {
                         sim_thing_id: remap.sim_thing_id.raw(),
-                        property_id: remap.property_id.0,
+                        property_id: property_id.0,
                         kind: ANCHOR_REMAP_KIND_MOVE,
                         from_slot: from_slot.raw(),
                         from_col: from_col.raw_u32(),
@@ -395,7 +413,7 @@ impl WorldGpuState {
                 (Some(to_slot), Some(to_col), None, None) => {
                     births.extend(birth_anchor_rows_gpu(
                         remap.sim_thing_id,
-                        remap.property_id,
+                        property_id,
                         to_slot,
                         to_col,
                         registry,

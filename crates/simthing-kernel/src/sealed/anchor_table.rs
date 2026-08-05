@@ -220,6 +220,9 @@ pub(crate) fn birth_anchor_rows_gpu(
 /// Remap op kinds for the GPU-resident structural path.
 pub(crate) const ANCHOR_REMAP_KIND_MOVE: u32 = 0;
 pub(crate) const ANCHOR_REMAP_KIND_RETIRE: u32 = 1;
+/// SLOT-LOGICAL-IDENTITY-0: ObjectRow epoch rebind — matches every row of
+/// the object at `from_slot` and moves it to `to_slot`; columns untouched.
+pub(crate) const ANCHOR_REMAP_KIND_ROW_MOVE: u32 = 2;
 
 /// POD twin of one typed locus remap (move/retire). Births are separate seed rows.
 #[repr(C)]

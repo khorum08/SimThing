@@ -398,7 +398,7 @@ pub fn compile_and_install(
         .slot_of(root.id)
         .ok_or(InstallError::RootHasNoSlot)?;
     state.set_session_root_owner(root.id);
-    state.set_scripted_current_slot(root_slot.raw());
+    state.set_scripted_current_slot(root_slot);
     for event_spec in &game_mode.events {
         compile_and_install_event(
             event_spec,
@@ -1163,7 +1163,7 @@ fn compile_and_install_event(
             definition_id,
             event_id.clone(),
             owner_id,
-            slot.raw(),
+            slot,
         );
     }
     Ok(())

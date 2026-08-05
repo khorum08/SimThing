@@ -5,9 +5,15 @@
 //! SimThing dissolves, its slot is tombstoned and made available for the
 //! next alloc, mirroring the column tombstone strategy in `DimensionRegistry`.
 //!
-//! Slot indices are stable for the lifetime of a SimThing — once allocated,
-//! a SimThing's slot does not change. This is what lets transform-matrix
-//! patches be delta uploads rather than full rewrites.
+//! Slot identity law (Tier-2 amendment; StemThing §3.1 shape (a), 6.4
+//! SLOT-LOGICAL-IDENTITY-0): `SlotIndex` is the stable LOGICAL identity of a
+//! SimThing's row — stable within an epoch; rebindable only at a recorded
+//! boundary remap ([`SlotAllocator::epoch_rebind`], the one binding table,
+//! the one `AnchorLocusRemap` history). Between epochs there is zero
+//! per-access indirection: bindings are baked into uploaded artifacts, which
+//! is what lets transform-matrix patches be delta uploads rather than full
+//! rewrites. Physical row allocation/recycling is allocator-private state
+//! behind this table; no production ordering or semantics may depend on it.
 //!
 //! Public slot parameters use [`SlotIndex`] — bare `u32` slot identity is
 //! uncompilable at this boundary:
@@ -25,10 +31,53 @@
 //! ```
 
 use simthing_core::{
-    ObjectResidencyRelation, ObjectResidencyRelease, ObjectResidencyRequest, SimThing, SimThingId,
-    SlotIndex,
+    derive_epoch_rebind_section, AnchorRemapSection, AnchoredLocusMap, BindingTableSnapshot,
+    ObjectResidencyRelation, ObjectResidencyRelease, ObjectResidencyRequest, RemapSubject,
+    SimThing, SimThingId, SlotIndex,
 };
 use std::collections::{HashMap, HashSet};
+
+/// Bake one `EpochRebind` section into a slot-major values plane: every
+/// `ObjectRow` record moves its whole row from its pre-rebind physical
+/// position to its post-rebind one; columns are untouched by construction
+/// (the subject carries none). Rows vacated and not re-landed-on are zeroed,
+/// so the result is an exact permutation of live rows with no residue. This
+/// is boundary-upload baking — the reason per-access indirection between
+/// epochs stays at zero.
+pub fn apply_epoch_rebind_to_values(
+    values: &[f32],
+    n_cols: usize,
+    section: &AnchorRemapSection,
+) -> Vec<f32> {
+    let mut out = values.to_vec();
+    if n_cols == 0 {
+        return out;
+    }
+    let mut from_rows: HashSet<u32> = HashSet::new();
+    let mut to_rows: HashSet<u32> = HashSet::new();
+    for remap in &section.remaps {
+        if remap.subject != RemapSubject::ObjectRow {
+            continue;
+        }
+        let (Some(from), Some(to)) = (remap.from_slot, remap.to_slot) else {
+            continue;
+        };
+        from_rows.insert(from.raw());
+        to_rows.insert(to.raw());
+        let from = from.raw() as usize * n_cols;
+        let to = to.raw() as usize * n_cols;
+        if from + n_cols <= values.len() && to + n_cols <= out.len() {
+            out[to..to + n_cols].copy_from_slice(&values[from..from + n_cols]);
+        }
+    }
+    for vacated in from_rows.difference(&to_rows) {
+        let start = *vacated as usize * n_cols;
+        if start + n_cols <= out.len() {
+            out[start..start + n_cols].fill(0.0);
+        }
+    }
+    out
+}
 
 #[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
 pub enum SlotAllocError {
@@ -61,6 +110,20 @@ pub enum SlotAllocError {
     },
     #[error("object {object:?} has a slot but no admitted object residency relation")]
     UnboundSidecarSlot { object: SimThingId },
+    #[error("epoch rebind assignment names non-resident object {object:?}")]
+    RebindUnknownObject { object: SimThingId },
+    #[error("epoch rebind assignment omits live object {object:?}")]
+    RebindOmitsLiveObject { object: SimThingId },
+    #[error("epoch rebind assigns two objects to slot {slot:?}")]
+    RebindSlotCollision { slot: SlotIndex },
+    #[error(
+        "epoch rebind targets slot {slot:?} beyond current capacity (growth is SlotCapacityGrow business)"
+    )]
+    RebindBeyondCapacity { slot: SlotIndex },
+    #[error("epoch rebind targets exclusive-reserved gap slot {slot:?}")]
+    RebindOntoReservedGap { slot: SlotIndex },
+    #[error("epoch rebind section refused: {detail}")]
+    RebindSectionRefused { detail: &'static str },
     #[error("object {object:?} is not resident")]
     ObjectNotResident { object: SimThingId },
     #[error("reparent request for {object:?} must carry ChildOf, not Root")]
@@ -277,6 +340,81 @@ impl SlotAllocator {
         Ok(())
     }
 
+    /// Snapshot THE binding table (`id → slot`) — the demand source for
+    /// `EpochRebind` sections. Zero-anchor objects are present here even
+    /// though no anchored-locus snapshot ever names them.
+    pub fn binding_table_snapshot(&self) -> BindingTableSnapshot {
+        self.by_id
+            .iter()
+            .map(|(&id, &slot)| (id, SlotIndex::new(slot)))
+            .collect()
+    }
+
+    /// SLOT-LOGICAL-IDENTITY-0 barrier-only epoch rebind on the ONE binding
+    /// table. `assignment` names every live object's post-rebind slot; the
+    /// rebind is capacity-preserving (growth is `SlotCapacityGrow` business),
+    /// may not touch exclusive-reserved gap rows, and may not create or
+    /// destroy live rows. Returns the canonical `EpochRebind` section —
+    /// exactly one `ObjectRow` record per moved live row, derived from the
+    /// pre/post binding-table snapshots, never from anchored loci.
+    ///
+    /// Callers own the generation barrier: every uploaded slot-bearing
+    /// artifact must be rebuilt from the post-rebind table before the next
+    /// dispatch (zero per-access indirection between epochs).
+    pub fn epoch_rebind(
+        &mut self,
+        assignment: &BindingTableSnapshot,
+        pre_loci: &AnchoredLocusMap,
+        post_loci: &AnchoredLocusMap,
+    ) -> Result<AnchorRemapSection, SlotAllocError> {
+        let capacity = self.slot_owners.len() as u32;
+        let mut targets: HashSet<u32> = HashSet::with_capacity(assignment.len());
+        for (&id, &slot) in assignment {
+            if !self.by_id.contains_key(&id) {
+                return Err(SlotAllocError::RebindUnknownObject { object: id });
+            }
+            if slot.raw() >= capacity {
+                return Err(SlotAllocError::RebindBeyondCapacity { slot });
+            }
+            if self.exclusive_reserved.contains(&slot.raw()) {
+                return Err(SlotAllocError::RebindOntoReservedGap { slot });
+            }
+            if !targets.insert(slot.raw()) {
+                return Err(SlotAllocError::RebindSlotCollision { slot });
+            }
+        }
+        for &id in self.by_id.keys() {
+            if !assignment.contains_key(&id) {
+                return Err(SlotAllocError::RebindOmitsLiveObject { object: id });
+            }
+        }
+
+        let pre = self.binding_table_snapshot();
+        let mut owners: Vec<Option<SimThingId>> = vec![None; capacity as usize];
+        for (&id, &slot) in assignment {
+            owners[slot.raw() as usize] = Some(id);
+        }
+        self.slot_owners = owners;
+        self.by_id = assignment
+            .iter()
+            .map(|(&id, &slot)| (id, slot.raw()))
+            .collect();
+        // Deterministic free-list rebuild: pop() hands out the LOWEST
+        // tombstoned non-reserved row first.
+        self.free = (0..capacity)
+            .rev()
+            .filter(|raw| {
+                self.slot_owners[*raw as usize].is_none()
+                    && !self.exclusive_reserved.contains(raw)
+            })
+            .collect();
+        let post = self.binding_table_snapshot();
+        derive_epoch_rebind_section(&pre, &post, pre_loci, post_loci)
+            .map_err(|refused| SlotAllocError::RebindSectionRefused {
+                detail: refused.detail,
+            })
+    }
+
     pub fn slot_of(&self, id: SimThingId) -> Option<SlotIndex> {
         self.by_id.get(&id).copied().map(SlotIndex::new)
     }
@@ -480,6 +618,128 @@ mod tests {
         DimensionRegistry, ObjectResidencyRelation, PropertyValue, SimProperty, SimThing,
         SimThingKind, SubFieldRole,
     };
+
+
+    #[test]
+    fn epoch_rebind_moves_rows_exact_once_and_rebuilds_the_one_table() {
+        use simthing_core::AnchoredLocusMap;
+        let root = canonical_fixture();
+        let mut alloc = SlotAllocator::new();
+        alloc.populate_from_tree(&root);
+        let pre = alloc.binding_table_snapshot();
+        assert!(pre.len() >= 3, "fixture yields several live rows");
+
+        // Reverse the live rows onto the same physical capacity — a pure
+        // permutation; every row moves except any fixed point.
+        let mut slots: Vec<SlotIndex> = pre.values().copied().collect();
+        slots.sort();
+        let mut assignment = BindingTableSnapshot::new();
+        let mut ordered: Vec<_> = pre.iter().map(|(&id, &s)| (id, s)).collect();
+        ordered.sort_by_key(|&(_, s)| s);
+        for (i, &(id, _)) in ordered.iter().enumerate() {
+            assignment.insert(id, slots[slots.len() - 1 - i]);
+        }
+        let loci = AnchoredLocusMap::new();
+        let section = alloc.epoch_rebind(&assignment, &loci, &loci).unwrap();
+
+        let moved = pre
+            .iter()
+            .filter(|(id, s)| assignment[id] != **s)
+            .count();
+        assert_eq!(section.remaps.len(), moved, "exactly one record per moved row");
+        assert!(section
+            .remaps
+            .iter()
+            .all(|r| r.subject == RemapSubject::ObjectRow));
+        // The ONE binding table serves the post-rebind truth.
+        for (&id, &slot) in &assignment {
+            assert_eq!(alloc.slot_of(id), Some(slot));
+            assert_eq!(alloc.owner_of(slot), Some(id));
+        }
+    }
+
+    #[test]
+    fn epoch_rebind_rejects_collision_growth_reserved_and_row_churn() {
+        use simthing_core::AnchoredLocusMap;
+        let root = canonical_fixture();
+        let mut alloc = SlotAllocator::new();
+        alloc.populate_from_tree(&root);
+        let reserved = alloc.reserve_exclusive_gap_block(1)[0];
+        let pre = alloc.binding_table_snapshot();
+        let loci = AnchoredLocusMap::new();
+        let first = *pre.keys().next().unwrap();
+
+        // Collision: two ids onto one slot.
+        let mut collide = pre.clone();
+        let clash = *collide.values().next().unwrap();
+        for slot in collide.values_mut() {
+            *slot = clash;
+        }
+        assert!(matches!(
+            alloc.epoch_rebind(&collide, &loci, &loci),
+            Err(SlotAllocError::RebindSlotCollision { .. })
+        ));
+
+        // Growth: beyond current capacity.
+        let mut grow = pre.clone();
+        grow.insert(first, SlotIndex::new(alloc.capacity() as u32));
+        assert!(matches!(
+            alloc.epoch_rebind(&grow, &loci, &loci),
+            Err(SlotAllocError::RebindBeyondCapacity { .. })
+        ));
+
+        // Reserved gap row is untouchable.
+        let mut onto_gap = pre.clone();
+        onto_gap.insert(first, reserved);
+        assert!(matches!(
+            alloc.epoch_rebind(&onto_gap, &loci, &loci),
+            Err(SlotAllocError::RebindOntoReservedGap { .. })
+        ));
+
+        // Row churn: omitting a live object is refused.
+        let mut omit = pre.clone();
+        omit.remove(&first);
+        assert!(matches!(
+            alloc.epoch_rebind(&omit, &loci, &loci),
+            Err(SlotAllocError::RebindOmitsLiveObject { .. })
+        ));
+    }
+
+    #[test]
+    fn epoch_rebind_values_baking_is_an_exact_row_permutation() {
+        let a = SimThingId::from_session_raw(70);
+        let b = SimThingId::from_session_raw(71);
+        let section = AnchorRemapSection::with_remaps(
+            simthing_core::AnchorRemapOperation::EpochRebind,
+            vec![
+                simthing_core::AnchorLocusRemap::object_row(
+                    a,
+                    SlotIndex::new(0),
+                    SlotIndex::new(2),
+                ),
+                simthing_core::AnchorLocusRemap::object_row(
+                    b,
+                    SlotIndex::new(2),
+                    SlotIndex::new(0),
+                ),
+            ],
+        );
+        let values = vec![1.0, 2.0, 0.0, 0.0, 5.0, 6.0];
+        let baked = apply_epoch_rebind_to_values(&values, 2, &section);
+        assert_eq!(baked, vec![5.0, 6.0, 0.0, 0.0, 1.0, 2.0]);
+
+        // One-way move vacates and zeroes the source row.
+        let one_way = AnchorRemapSection::with_remaps(
+            simthing_core::AnchorRemapOperation::EpochRebind,
+            vec![simthing_core::AnchorLocusRemap::object_row(
+                a,
+                SlotIndex::new(0),
+                SlotIndex::new(1),
+            )],
+        );
+        let baked = apply_epoch_rebind_to_values(&[1.0, 2.0, 0.0, 0.0], 2, &one_way);
+        assert_eq!(baked, vec![0.0, 0.0, 1.0, 2.0]);
+    }
 
     fn collect_ids(node: &SimThing, ids: &mut Vec<SimThingId>) {
         ids.push(node.id);

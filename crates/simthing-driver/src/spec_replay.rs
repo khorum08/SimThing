@@ -31,7 +31,7 @@ use std::io::{BufRead, BufReader};
 use std::path::Path;
 
 use serde::{Deserialize, Serialize};
-use simthing_core::SimThingId;
+use simthing_core::{SimThingId, SlotIndex};
 use simthing_sim::{ReplayDriver, ReplayFrame, ReplaySnapshot};
 use simthing_spec::{
     ActivationMode, CapabilityEntryKey, CapabilityTreeNotification, CategoryKey, EventKey,
@@ -121,7 +121,11 @@ pub enum SpecDelta {
     ScriptedInstanceSlotChanged {
         owner_id: SimThingId,
         event_id: EventKey,
-        current_slot: u32,
+        /// Typed logical slot identity (6.4 SLOT-LOGICAL-IDENTITY-0). Wire
+        /// form is unchanged (`SlotIndex` serializes transparently); records
+        /// written before an epoch rebind resolve against post-rebind state
+        /// through the canonical remap chain at apply time.
+        current_slot: SlotIndex,
     },
     ScriptedInstanceRemoved {
         owner_id: SimThingId,
@@ -527,9 +531,15 @@ pub fn apply_spec_snapshot(
 
 /// Apply a single `SpecDelta` to live state. Used by frame-by-frame replay
 /// (e.g., a viewer scrubbing through history).
+///
+/// `remap_chain` is the ordered list of anchor-remap sections observed so far
+/// in the replay stream (the ONE canonical history). Slot-bearing deltas
+/// recorded before an epoch rebind resolve to post-rebind rows through it;
+/// pass `&[]` when no rebind has occurred.
 pub fn apply_spec_delta(
     state: &mut SpecSessionState,
     delta: &SpecDelta,
+    remap_chain: &[simthing_core::AnchorRemapSection],
 ) -> Result<(), ReplayOpenError> {
     match delta {
         SpecDelta::CapabilityActivationModeChanged {
@@ -610,7 +620,11 @@ pub fn apply_spec_delta(
                 event_id: event_id.clone(),
             };
             if let Some(inst) = state.scripted_event_instances.get_mut(&k) {
-                inst.current_slot = *current_slot;
+                inst.current_slot = simthing_core::resolve_slot_through_chain(
+                    remap_chain,
+                    *owner_id,
+                    *current_slot,
+                );
             }
         }
         SpecDelta::ScriptedInstanceRemoved { owner_id, event_id } => {
