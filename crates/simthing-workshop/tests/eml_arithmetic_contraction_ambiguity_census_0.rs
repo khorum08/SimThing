@@ -793,7 +793,7 @@ fn eml_arithmetic_semantics_0_contraction_ambiguity_census_stop_packet() {
     simthing_kernel::eml_exp_qualification::require_certified_toolchain(&live)
         .expect("certified toolchain");
 
-    println!("ORIENT-RECEIPT: e2fd94a4fb2a");
+    println!("ORIENT-RECEIPT: bcef56bc23ce");
     println!("HD-RECEIPT: b9070974440b");
     println!("base_sha: 98180a4a4e7334fa9476c74170d995b5028202dc");
     println!("ssa_jit_note: OrdinaryAccumulatorEvalEml derives CpuTwin+InterpretedGpu only; SSA-JIT is not-an-execution-arm for these hits");

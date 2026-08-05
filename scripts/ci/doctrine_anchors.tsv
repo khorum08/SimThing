@@ -22,7 +22,7 @@ scanner-selftest-delta-gate	docs/ci_screening_surface.md	heading:### Scanner sel
 movement-front	docs/simthing_core_design.md	heading:## 7. Mapping — the Movement-Front automaton over gridcell SimThings	movement-front,map-domain	a0592b2f37caf3c3e13a5012c91fdcb981e15db634bcac593cbfd7f42f068b37
 workshop-candidate-homing	docs/ci_screening_surface.md	heading:## 12. Workshop is the scenario candidate-code sandbox (owner ruling, 2026-07-04)	scenario-candidate-home	3e584f0ad1754a23a0a7fa841cc5f56ec8ffd4ed8fbc4bc7e0e2e2faf671e848
 simthing-0087-pillars	docs/design_0_0_8_7_rf_arena_modernization.md	heading:## 2. Pillars (Owner requirements, binding at commitment)	core-0087	61487cba1f9e6e3c2f2c8d2e5cdc6ee630fc0ec38bf25df678bb84068097f14e
-simthing-0087-binding-laws	docs/design_0_0_8_7_rf_arena_modernization.md	heading:## 4. Binding laws (carry from day one)	core-0087	e4e8d5f8ec00319b27e76d030e279cd80dedea7dadfe941abe28efecece0bc22
+simthing-0087-binding-laws	docs/design_0_0_8_7_rf_arena_modernization.md	heading:## 4. Binding laws (carry from day one)	core-0087	6dea55fe7cafc639a29271961da5d93bbcffcf2e76b255bc1e052bef6f5723d3
 rf-arena-substrate	docs/adr/resource_flow_substrate.md	heading:# ADR: Resource Flow Substrate	core-0087	17b5f1e5c2ba64a72b189996d04e6b97dd4504d518e4ea623019bec56273937a
 field-sweep-preservation	docs/eml_n4_expansion_digest.md	heading:## 5. Preservation invariants	field-sweep-preservation	acc521a5a36121ef8b53fae1d2b2e1f4f1e57cf4ca717ffc4fe6d42204973201
 stead-events-are-rf	docs/stead_simthing_automata.md	heading:## 3. Events are RF	rf,overlay,stead,threshold-paths	525388344ef236928b5fe0a81d9a768582fd40765683d364faade5a62d8d067e
@@ -31,6 +31,6 @@ stead-rejected-shapes	docs/stead_simthing_automata.md	heading:## 7. Corrections 
 stemthing-lane-not-leg	docs/stead_stemthing_unification.md	heading:## 1. The thesis — the StemThing	stead,rf,core-0087,kernel-columns	a9e9caa27a0f658575321d53a34ed19e20e894ef3955e05dbdb525d91551f33e
 stemthing-slot-identity-ruling	docs/stead_stemthing_unification.md	heading:### 3.1 The slot-identity decision — constitutional blocker, ruled before any row is minted	kernel,seal,core-0087,kernel-columns	02c87b9126e122fc30c127183ec19bce61f430228b99a1f174766480481995ff
 stemthing-binding-laws	docs/stead_stemthing_unification.md	heading:## 9. Binding laws and drift detectors	stead,rf,core-0087,kernel-columns	6787a118c3ca3396ca0e6089ea0485c42f79b3f5bd59a71685f64fa59bcac505
-eml-admission-shapes	docs/full_eml_unification.md	heading:## 4. Formalizing `EXP` and `LN` — the two admission shapes	kernel-eml,kernel,core-0087	d7d87fdda31977624120d1e00fc2234dbc5bc5c476f105d4e0cc8f01a8455294
+eml-admission-shapes	docs/full_eml_unification.md	heading:## 4. Formalizing `EXP` and `LN` — the two admission shapes	kernel-eml,kernel,core-0087	bdcc0b9512f7a3a3488940e045e88dba4c4282460100a0ddefc30dc72d55da44
 eml-triad-integration	docs/full_eml_unification.md	heading:## 7. STEAD / RF Triad integration — immediate and horizon	kernel-eml,field-sweep-preservation,core-0087	dada7d6805578fc333d8d93a2ae8e93e48abfad13680ed0c26dd0df153a360ea
 eml-integration-plan	docs/full_eml_unification.md	heading:## 10. Integration plan — ladder placement (Owner-directed 2026-08-03)	kernel-eml,core-0087	8eba54b02320a1045f2a4dd9ac0e309ee067b3a5eaf7424f1b940b1fe6982308

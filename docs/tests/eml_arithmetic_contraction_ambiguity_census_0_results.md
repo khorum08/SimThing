@@ -9,7 +9,7 @@ uniqueness extends to **`ADD` or `SUB`** (all four edges are unique → **FUSED*
 | --- | --- |
 | rung | `EML-ARITHMETIC-SEMANTICS-0` (5.14) |
 | HD-RECEIPT | `b9070974440b` |
-| ORIENT-RECEIPT | `e2fd94a4fb2a` |
+| ORIENT-RECEIPT | `bcef56bc23ce` |
 | dispatch | `5191921308` → STOP `5192130398` → DA `5192270934` → RESUME `5192307920` → REMAND `5192641222` → EXIT `5193244394` → SUB service `5193312235` |
 | base_sha | `98180a4a4e7334fa9476c74170d995b5028202dc` |
 | harness | `cargo test -p simthing-workshop --test eml_arithmetic_contraction_ambiguity_census_0 -- --nocapture` |

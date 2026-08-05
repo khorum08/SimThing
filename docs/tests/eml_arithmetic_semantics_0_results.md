@@ -3,7 +3,7 @@
 - Track: 0.0.8.7 (rung 5.14) · Status: **PROBATION / proof-present** (coding return)
 - Base: `98180a4a4e7334fa9476c74170d995b5028202dc`
 - Branch: `coding/eml-arithmetic-semantics-0`
-- HD-RECEIPT: `b9070974440b` · ORIENT-RECEIPT: `e2fd94a4fb2a`
+- HD-RECEIPT: `b9070974440b` · ORIENT-RECEIPT: `bcef56bc23ce`
 - Authority: DA `5191578752` + amendments `5191860082` + uniqueness `5192270934` · RESUME `5192307920` · REMAND `5192641222` · EXIT `5193244394` · SUB service `5193312235`
 
 ## Delivered
