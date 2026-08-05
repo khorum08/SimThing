@@ -1,6 +1,6 @@
 # EML-ARITHMETIC-SEMANTICS-0 results
 
-- Track: 0.0.8.7 (rung 5.14) · Status: **PROBATION / proof-present** (coding return)
+- Track: 0.0.8.7 (rung 5.14) · Status: **COMPLETE — DA-GRADUATED / merged #1650 @ `fc291ce0`** (DA ratification 2026-08-05; Uniqueness Rule binding over the ADD/SUB family)
 - Base: `98180a4a4e7334fa9476c74170d995b5028202dc`
 - Branch: `coding/eml-arithmetic-semantics-0`
 - HD-RECEIPT: `b9070974440b` · ORIENT-RECEIPT: `bcef56bc23ce`
@@ -37,7 +37,7 @@
 
 ## Line-count / grep
 
-- `crates/simthing-kernel/src` Rust lines decreased vs base (~22375 → lower).
+- `crates/simthing-kernel/src` measured by the DA at the merge head: **`.rs` 22,134 → 22,065 (−69)**, **`.wgsl` 2,043 → 2,222 (+179)**, total **+110**. The `.rs` fall is the deletion evidence and it happened *while* absorbing ~200 lines of new uniqueness specification; the `.wgsl` growth is the arm lowerings (`field_sweep.wgsl` +135, `accumulator_op.wgsl` +44), which are the deliverable. The row's "total line count must decrease" was a DA mis-specified proxy — see the 5.14 stamp.
 - Deleted symbols absent from kernel `src`: `ExactBearingEvidence`, `derive_consumer_arms`,
   `ExactConsumerArm`, `ExactConsumerDigestEvidence`, `ExactConsumerExecutionShape`,
   `ExactConsumerShapeBinding`, `FieldConsumerShapeProof`, `exact_consumer_shape_proof`
