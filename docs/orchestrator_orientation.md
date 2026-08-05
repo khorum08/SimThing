@@ -45,7 +45,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 211b860c2a424d0386a01a2dc93d5c563abfd1411c1f58ec55c7b69d97426cb8 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | 26eab30ec86c97ac8dfd6beef7ae8c5b4d3f18c38fdaa431ec40ccce855396d3 |
-| design_0_0_8_7_rf_arena_modernization.md | ef650ff72b445caf9bb125176b6dba537420567e1562dbe77699225695c782f8 |
+| design_0_0_8_7_rf_arena_modernization.md | 5f09c939c064433d81554ce3eb9f3da4bcd30bb0d0c22beb1034755080dab9f5 |
 | relay_lint.sh | 4163f715cdc3b549dbf57c1744aff61ea96b9f9f0a2237376665fbdb24e986c8 |
 | doctrine_anchors.tsv | ac2986a1e29dea61f549ad07240095dd1374773020ea262281025b8f8de0633e |
 | execution_status_taxonomy.tsv | c33df8d86dbc939e1f6b9a847b3d54e255ae602481cd459c96fba4b13cd2f145 |
@@ -99,6 +99,7 @@ Track state: `open`
 | 6.4 | SLOT-LOGICAL-IDENTITY-0 | **Phase 6→7 gap: StemThing-A (anchor: `docs/stead_stemthing_unification.md`; Tie | A forced epoch remap (scrambled physical rows, unchanged logical ids) reproduces a multi-generation run **bit-exactly... |
 | 6.5 | RESIDENCY-TIER-VOCABULARY-0 | **Phase 6→7 gap: StemThing-A.** The residency lane's authored vocabulary, per an | **GRADUATION OBLIGATION (recorded 2026-08-04; clauses landed early in #1628): at this rung's stamp the DA verifies th... |
 | 7.1 | MOVEMENT-DECISION-INGRESS-0 | Phase 7: movement authority — decisions as sealed Triad band crossings (need + p | Fleets move under the ordinary generation from band crossings only (no CPU branching on field reads); §7 automaton co... |
+| 7.1a | ACTIONBAND-COMPOSITION-PROBE-0 | **Phase 7 determination rung — Owner-committed adoption plan 2026-08-05; `EML_ex | **DISPOSITION RULE (two lawful outcomes):** (A) the common composition generalizes — witnesses share the literal path... |
 | 7.2 | MOVEMENT-AUTHORITY-READBACK-0 | Phase 7: authoritative movement readback; 12.5 icon descriptors express real tra | Studio shows authoritative transit with ZERO icon-layer change; test-private seam retired. **SCOPE COVERAGE (DA revie... |
 | 8.1 | CONTENTION-CONSERVATION-JUDGE-0 | **BINDS 6.5 (StemThing-A; clauses landed early in #1628, verified at 6.5 graduat | Judge red/green proven on seeded violations against SCENARIO-NEUTRAL synthetic contention fixtures. **The R6 dress re... |
 | 8.2 | CONTENTION-ARENA-EXECUTED-0 | **BINDS 6.5 (StemThing-A; clauses landed early in #1628, verified at 6.5 graduat | Executed path judged green; **emergence falsifier: changing ONLY the authored resolution rule changes the outcome wit... |

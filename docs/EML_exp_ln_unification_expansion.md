@@ -10,6 +10,52 @@
 
 ---
 
+## COMMITTED ADOPTION PLAN AND SCHEDULE (Owner ruling 2026-08-05 — BINDING)
+
+> **This plan is committed and landed in the 0.0.8.7 ladder. The ActionBand LAW itself remains under
+> determination — committing to the test is not committing to the result.** Everything below this section
+> retains workshop/review status.
+
+**Landed now (one PR, this ruling):**
+
+1. **7.1 fence** — movement is the canonical spatial witness; destination authority stays
+   field/gradient-derived (waypoints are field-deforming overlays, never a privileged `Destination`);
+   no `ActionBand` production type, planner, or path structure; 7.1 remains a movement rung.
+2. **8.2 amendment** — the executed resolution surface is generic constrained clearing without
+   contention/adversarial preclassification; attrition moves to CostBand-funded temporal persistence
+   (unless a real same-generation consumer proves otherwise); `U != R` explicit; generation pacing law
+   (no intra-generation clear→persist→re-clear; action chains propagate at generation speed).
+3. **`7.1a ACTIONBAND-COMPOSITION-PROBE-0` minted** — born-mortal workshop determination rung.
+
+**Schedule (one rung in flight; no cadence exception; no parked track):**
+
+```text
+7.1  movement — the spatial witness
+  ↓
+7.1a ACTIONBAND-COMPOSITION-PROBE-0 — three non-spatial witnesses
+     (deficit satisfaction, LinkGraph relational action, derivation/fission)
+     + structural comparison against the LANDED 7.1 implementation
+  ↓
+DA DETERMINATION — two lawful outcomes:
+  (A) composition generalizes → §22 canonization texts go to DA ruling
+  (B) rejected → workshop reaped; 7.1/8.2 keep only their
+      independently-valid amendments
+  ↓
+7.2 → 8.1 → 8.2 (implements against the amended framing)
+```
+
+**Explicitly excluded from this commitment:** Vector CostBand and its livelock/starvation falsifier
+(future `VECTOR-COSTBAND-PROBE-0`); the residency envelope; ALL performance/tile candidates (the
+locality-first staircase stands; a separate track only if residual debt earns it); the §22 canonization
+texts (await the determination).
+
+**Provenance:** decorrelated Fable/Sol reviews; Sol's sequencing correction (sequential 7.1 → 7.1a beats
+parallelism — the probe inspects the real movement implementation, not an imagined one) and redundancy
+cuts (8.1 already conservation-only with seam holding accounts; 6.5 stamp obligations already
+discharged) adopted in full.
+
+---
+
 ## 0. Executive verdict
 
 The live EML substrate has also advanced since the first draft: EXP and LN are now admitted exact primitives on their certified domains, and 5.14 has specified arm-independent EML arithmetic semantics while deleting per-consumer exactness policing. This removes the earlier risk that the architectural proposal depended on an unresolved LN implementation and gives a future tiled executor the correct status: **one more faithful lowering of the existing language, never a semantic fork.**
