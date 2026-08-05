@@ -242,6 +242,7 @@ SemanticOpcodeRegistration | sealed-export | OC-K-EML-OPCODE-GATE-0 semantic opc
 set_debug_readback_allowed | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
 slot | authority-export | Exported kernel module surface; authority-bearing namespace | retire when kernel export set is closed by type-boundary admission
 SlotAllocator | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
+apply_epoch_rebind_to_values | authority-export | SLOT-LOGICAL-IDENTITY-0 boundary-upload baking of one EpochRebind into the slot-major values plane (zero per-access indirection between epochs) | retire when kernel export set is closed by type-boundary admission
 SlotAllocError | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
 SlotDeltaRange | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
 SlotSummary | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission

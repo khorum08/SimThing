@@ -11,7 +11,7 @@ This digest is a derived context artifact for low-context agents. If it disagree
 | --- | --- | --- |
 | scripts/ci/allow/sealed_producers.txt | 25 | 6923796f3bacd3b27b29f778d5276c3f82a3a67c3f010c30f10b78de8a1866f6 |
 | scripts/ci/allow/inert_buffer_handles.txt | 2 | 9e2069fa5730f17cacde1c671ebc17beb59f50738d2dcb914bceae13f9b8b3a4 |
-| scripts/ci/allow/kernel_surface.txt | 293 | 8c7bd93d98ae38fa79d62c45f5965403922f158dd2e2fb8314918ce2c22411c9 |
+| scripts/ci/allow/kernel_surface.txt | 294 | 5b64a6b5454914e4a9ecd7b2252de09eb27b3fd67c7de31a623342a09b12e65e |
 | scripts/ci/allow/sealed_types.txt | 19 | 9d427e3b41a586b06f24ca02cc45f78934237d2229b0c38d46e2a8a6ef5016be |
 | scripts/ci/allow/contention_mechanisms.txt | 8 | eb22cbb7755c364804f1c5ac6b10c2346735f8a53d0a57426f3065a879a6cb14 |
 | scripts/ci/scans.tsv | 26 | 18d6f4886524f593e231931b952fbdcf2e0520fb4660f72fb7191298221e7d64 |
@@ -300,6 +300,7 @@ This digest is a derived context artifact for low-context agents. If it disagree
 | set_debug_readback_allowed | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |
 | slot | authority-export | Exported kernel module surface; authority-bearing namespace | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |
 | SlotAllocator | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |
+| apply_epoch_rebind_to_values | authority-export | SLOT-LOGICAL-IDENTITY-0 boundary-upload baking of one EpochRebind into the slot-major values plane (zero per-access indirection between epochs) | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |
 | SlotAllocError | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |
 | SlotDeltaRange | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |
 | SlotSummary | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |
