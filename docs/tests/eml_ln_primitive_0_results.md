@@ -1,7 +1,7 @@
 # EML-LN-PRIMITIVE-0 results
 
 - Track: 0.0.8.7 RF arena modernization (rung 5.12)
-- Status: **PROBATION / proof-present / DA-review-pending**
+- Status: **COMPLETE / DA-GRADUATED — merged #1637 @ 97b5b399** (LND4; DA independently verified the grid arithmetic and planted a 1-ULP grid violation on LN2_HI — RED)
 - Dispatch base: `4d998226d69113c537e42e9fdc97f6643d1895bc` (#1636); handoff base `7c6a5401`
 - Branch: `fable/eml-ln-primitive-0`
 - ORIENT-RECEIPT: `d950cd858719` (rule stamp `2d131557973b6050`, re-taken at base)
