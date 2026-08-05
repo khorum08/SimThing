@@ -123,26 +123,45 @@ pub(crate) fn generate_field_sweep_jit(
         "canonical field shader has ordered JIT markers"
     );
 
+    // EXACT-CONSUMER-OBLIGATION-0 SEAM LAW: when the map ends in MUL and the
+    // fold is the canonical Sum, the seam is SPECIFIED FUSED on every arm
+    // (acc = fma(a, b, acc), one rounding). The JIT emits the explicit fma;
+    // the CPU twin and interpreted arm implement identical semantics via the
+    // registration-derived shape. Measured basis: the certified toolchain
+    // contracts the unfused seam regardless of source form, so the fused form
+    // is the only arm-stable specification.
+    let fold_body = if crate::field_sweep::seam_fused_shape(map, fold) {
+        emit_seam_fused_fold(&map[..map.len() - 2])
+    } else {
+        emit_program("eval_fold", fold)
+    };
     let generated = format!(
         "// EML-JIT-EVALUATOR-BEGIN\n// Mechanically generated from admitted postfix IR.\nconst EML_JIT_RESOURCE_STACK_SLOTS: u32 = {}u;\n{}\n{}\n{}\n// EML-JIT-EVALUATOR-END",
         resource_class.stack_slots(),
         emit_program("eval_map", map),
-        emit_program("eval_fold", fold),
+        fold_body,
         emit_program("eval_post", post),
     );
     let mut source = String::with_capacity(canonical_source.len() + generated.len());
     source.push_str(&canonical_source[..begin]);
     source.push_str(&generated);
     source.push_str(&canonical_source[end..]);
+    // The JIT collapses the interpreted arm's SEAM LAW branch into direct
+    // generated calls (eval_fold is the fused form when the shape holds).
     replace_once(
         &mut source,
-        "eval_program(params.map_offset, params.map_count, context)",
-        "eval_map(context)",
-    );
-    replace_once(
-        &mut source,
-        "eval_program(params.fold_offset, params.fold_count, context)",
-        "eval_fold(context)",
+        "        if (params.pad1 == 1u) {
+            // SEAM LAW: fused canonical-Sum fold (uniform flag, no divergence).
+            let ab = eval_program_pair(params.map_offset, params.map_count - 2u, context);
+            accumulator = fma(ab.x, ab.y, accumulator);
+        } else {
+            let mapped = eval_program(params.map_offset, params.map_count, context);
+            context.mapped = mapped;
+            accumulator = eval_program(params.fold_offset, params.fold_count, context);
+        }",
+        "        let mapped = eval_map(context);
+        context.mapped = mapped;
+        accumulator = eval_fold(context);",
     );
     replace_once(
         &mut source,
@@ -206,6 +225,92 @@ fn replace_once(source: &mut String, needle: &str, replacement: &str) {
         "canonical field shader JIT call seam changed: {needle}"
     );
     *source = source.replacen(needle, replacement, 1);
+}
+
+/// Seam-fused fold body (SEAM LAW): recompute the map final-MUL operands and
+/// fuse them with the accumulator in ONE explicit fma.
+fn emit_seam_fused_fold(mul_free_map: &[EmlNodeGpu]) -> String {
+    let mut fused = String::from("fn eval_fold(context: FieldEmlContext) -> f32 {\n");
+    let mut stack: Vec<String> = Vec::new();
+    let mut next_value = 0u32;
+    let mut inner = String::new();
+    for node in mul_free_map {
+        if let Some(expression) = expression_for(node, &mut stack, &mut inner) {
+            let value = format!("v{next_value}");
+            next_value += 1;
+            inner.push_str(&format!("    let {value}: f32 = {expression};\n"));
+            stack.push(value);
+        }
+    }
+    let rhs = stack.pop().expect("seam mul rhs");
+    let lhs = stack.pop().expect("seam mul lhs");
+    fused.push_str(&inner);
+    fused.push_str(&format!(
+        "    return fma({lhs}, {rhs}, context.accumulator);\n}}\n"
+    ));
+    fused
+}
+
+/// Shared per-node expression emitter (factored from emit_program).
+fn expression_for(
+    node: &EmlNodeGpu,
+    stack: &mut Vec<String>,
+    output: &mut String,
+) -> Option<String> {
+    match node.opcode {
+        eml_opcode::LITERAL_F32 => Some(format!("bitcast<f32>(0x{:08x}u)", node.a)),
+        eml_opcode::TARGET_VALUE => Some(format!(
+            "values_in[context.target_slot * params.n_dims + {}u]",
+            node.a
+        )),
+        eml_opcode::NEIGHBOR_VALUE => Some(format!(
+            "values_in[context.neighbor_slot * params.n_dims + {}u]",
+            node.a
+        )),
+        eml_opcode::PARAM => Some(field_param_expression(node.a).to_owned()),
+        eml_opcode::NEG
+        | eml_opcode::CLAMP_BOUNDED
+        | eml_opcode::CLAMP_FLOORED
+        | eml_opcode::ABS
+        | eml_opcode::FLOOR
+        | eml_opcode::EXP
+        | eml_opcode::LN => {
+            let operand = stack.pop().expect("admitted unary postfix operand");
+            Some(match node.opcode {
+                eml_opcode::NEG => format!("-{operand}"),
+                eml_opcode::CLAMP_BOUNDED => format!(
+                    "clamp({operand}, bitcast<f32>(0x{:08x}u), bitcast<f32>(0x{:08x}u))",
+                    node.a, node.b
+                ),
+                eml_opcode::CLAMP_FLOORED => {
+                    format!("max({operand}, bitcast<f32>(0x{:08x}u))", node.a)
+                }
+                eml_opcode::ABS => format!("abs({operand})"),
+                eml_opcode::FLOOR => format!("floor({operand})"),
+                eml_opcode::EXP => format!("eml_exp_pinned({operand})"),
+                eml_opcode::LN => format!("eml_ln_pinned({operand})"),
+                _ => unreachable!(),
+            })
+        }
+        eml_opcode::SELECT => {
+            let false_value = stack.pop().expect("admitted select false operand");
+            let true_value = stack.pop().expect("admitted select true operand");
+            let condition = stack.pop().expect("admitted select condition operand");
+            Some(format!(
+                "select({false_value}, {true_value}, {condition} != 0.0)"
+            ))
+        }
+        eml_opcode::RETURN_TOP => {
+            let value = stack.last().expect("admitted return operand");
+            output.push_str(&format!("    return {value};\n"));
+            None
+        }
+        opcode => {
+            let rhs = stack.pop().expect("admitted binary rhs");
+            let lhs = stack.pop().expect("admitted binary lhs");
+            Some(binary_expression(opcode, &lhs, &rhs))
+        }
+    }
 }
 
 fn emit_program(name: &str, nodes: &[EmlNodeGpu]) -> String {

@@ -1061,6 +1061,23 @@ struct FieldProgramFacts {
     peak_stack: u32,
 }
 
+/// EXACT-CONSUMER-OBLIGATION-0 SEAM LAW shape: map ends `[.., MUL, RETURN]`
+/// and the fold is the canonical Sum `[PARAM ACC, PARAM MAPPED, ADD, RETURN]`.
+/// Such seams are SPECIFIED FUSED (one-rounding fma) on every execution arm.
+pub(crate) fn seam_fused_shape(map: &[EmlNodeGpu], fold: &[EmlNodeGpu]) -> bool {
+    let map_shape = map.len() >= 3
+        && map[map.len() - 2].opcode == eml_opcode::MUL
+        && map[map.len() - 1].opcode == eml_opcode::RETURN_TOP;
+    let fold_shape = fold.len() == 4
+        && fold[0].opcode == eml_opcode::PARAM
+        && fold[0].a == field_param::ACCUMULATOR
+        && fold[1].opcode == eml_opcode::PARAM
+        && fold[1].a == field_param::MAPPED
+        && fold[2].opcode == eml_opcode::ADD
+        && fold[3].opcode == eml_opcode::RETURN_TOP;
+    map_shape && fold_shape
+}
+
 fn validate_field_program(
     name: &'static str,
     nodes: &[EmlNodeGpu],
@@ -1214,6 +1231,31 @@ pub fn eval_field_eml_cpu(
     eval_field_eml_cpu_in_class(nodes, context, values, n_dims, resource_class)
 }
 
+/// SEAM LAW helper: evaluate the first `count` nodes of an admitted program
+/// and return the stack value `depth_from_top` positions below the top —
+/// used to recover the map's final-MUL operands for the fused seam.
+fn eval_field_eml_cpu_prefix(
+    nodes: &[EmlNodeGpu],
+    count: usize,
+    context: FieldEmlContext,
+    values: &[f32],
+    n_dims: u32,
+    depth_from_top: usize,
+) -> Result<f32, FieldSweepExecutionError> {
+    let facts = field_program_facts_for_execution(nodes);
+    let resource_class = EmlResourceClass::smallest_fitting(facts.node_count, facts.peak_stack)
+        .ok_or(FieldSweepExecutionError::UnsupportedResourceClass {
+            requested_nodes: facts.node_count,
+            requested_stack: facts.peak_stack,
+        })?;
+    let mut stack = vec![0.0f32; resource_class.stack_slots() as usize];
+    let mut sp = 0usize;
+    for node in &nodes[..count] {
+        eval_field_eml_step(node, context, values, n_dims, &mut stack, &mut sp)?;
+    }
+    Ok(stack[sp - depth_from_top])
+}
+
 fn eval_field_eml_cpu_in_class(
     nodes: &[EmlNodeGpu],
     context: FieldEmlContext,
@@ -1224,76 +1266,102 @@ fn eval_field_eml_cpu_in_class(
     let mut stack = vec![0.0f32; resource_class.stack_slots() as usize];
     let mut sp = 0usize;
     for node in nodes {
-        match node.opcode {
-            eml_opcode::LITERAL_F32 => push(&mut stack, &mut sp, f32::from_bits(node.a))?,
-            eml_opcode::TARGET_VALUE => {
-                let value = read_cell(
-                    values,
-                    context.target_slot,
-                    column_from_wire(node.a),
-                    n_dims,
-                )?;
-                push(&mut stack, &mut sp, value)?;
-            }
-            eml_opcode::NEIGHBOR_VALUE => {
-                let neighbor_slot = context
-                    .neighbor_slot
-                    .ok_or(FieldSweepExecutionError::MissingNeighborContext)?;
-                let value = read_cell(values, neighbor_slot, column_from_wire(node.a), n_dims)?;
-                push(&mut stack, &mut sp, value)?;
-            }
-            eml_opcode::PARAM => {
-                let value = match node.a {
-                    field_param::TARGET_SLOT => context.target_slot.raw() as f32,
-                    field_param::NEIGHBOR_SLOT => context
-                        .neighbor_slot
-                        .map(|slot| slot.raw() as f32)
-                        .unwrap_or(f32::NAN),
-                    field_param::ACCUMULATOR => context.accumulator,
-                    field_param::EDGE_SCALAR => context.edge_scalar,
-                    field_param::DT => context.dt,
-                    field_param::MAPPED => context.mapped,
-                    field_param::FOLDED => context.folded,
-                    field_param::TARGET_TRANSIENT => context.target_transient,
-                    field_param::NEIGHBOR_TRANSIENT => context
-                        .neighbor_transient
-                        .ok_or(FieldSweepExecutionError::MissingNeighborContext)?,
-                    _ => return Err(FieldSweepExecutionError::InvalidFieldParam(node.a)),
-                };
-                push(&mut stack, &mut sp, value)?;
-            }
-            eml_opcode::NEG => stack[sp - 1] = -stack[sp - 1],
-            eml_opcode::CLAMP_BOUNDED => {
-                stack[sp - 1] = stack[sp - 1].clamp(f32::from_bits(node.a), f32::from_bits(node.b));
-            }
-            eml_opcode::CLAMP_FLOORED => {
-                stack[sp - 1] = stack[sp - 1].max(f32::from_bits(node.a));
-            }
-            eml_opcode::ABS => stack[sp - 1] = stack[sp - 1].abs(),
-            eml_opcode::FLOOR => stack[sp - 1] = stack[sp - 1].floor(),
-            eml_opcode::EXP => {
-                stack[sp - 1] = simthing_core::eml_exp_pinned_f32(stack[sp - 1]);
-            }
-            eml_opcode::LN => {
-                stack[sp - 1] = simthing_core::eml_ln::eml_ln_pinned_f32(stack[sp - 1]);
-            }
-            eml_opcode::SELECT => {
-                let false_value = stack[sp - 1];
-                let true_value = stack[sp - 2];
-                let condition = stack[sp - 3] != 0.0;
-                stack[sp - 3] = if condition { true_value } else { false_value };
-                sp -= 2;
-            }
-            eml_opcode::RETURN_TOP => return Ok(stack[sp - 1]),
-            opcode => {
-                let rhs = stack[sp - 1];
-                let lhs = stack[sp - 2];
-                stack[sp - 2] = apply_binary(opcode, lhs, rhs);
-                sp -= 1;
-            }
+        if let Some(returned) =
+            eval_field_eml_step(node, context, values, n_dims, &mut stack, &mut sp)?
+        {
+            return Ok(returned);
         }
     }
     Err(FieldSweepExecutionError::ProgramDidNotReturn)
+}
+
+/// One interpreter step over the shared CPU stack (SEAM LAW refactor: the
+/// prefix evaluator and the full evaluator execute the identical arms).
+fn eval_field_eml_step(
+    node: &EmlNodeGpu,
+    context: FieldEmlContext,
+    values: &[f32],
+    n_dims: u32,
+    stack: &mut [f32],
+    sp: &mut usize,
+) -> Result<Option<f32>, FieldSweepExecutionError> {
+    match node.opcode {
+        eml_opcode::LITERAL_F32 => push_step(stack, sp, f32::from_bits(node.a))?,
+        eml_opcode::TARGET_VALUE => {
+            let value = read_cell(values, context.target_slot, column_from_wire(node.a), n_dims)?;
+            push_step(stack, sp, value)?;
+        }
+        eml_opcode::NEIGHBOR_VALUE => {
+            let neighbor_slot = context
+                .neighbor_slot
+                .ok_or(FieldSweepExecutionError::MissingNeighborContext)?;
+            let value = read_cell(values, neighbor_slot, column_from_wire(node.a), n_dims)?;
+            push_step(stack, sp, value)?;
+        }
+        eml_opcode::PARAM => {
+            let value = match node.a {
+                field_param::TARGET_SLOT => context.target_slot.raw() as f32,
+                field_param::NEIGHBOR_SLOT => context
+                    .neighbor_slot
+                    .map(|slot| slot.raw() as f32)
+                    .unwrap_or(f32::NAN),
+                field_param::ACCUMULATOR => context.accumulator,
+                field_param::EDGE_SCALAR => context.edge_scalar,
+                field_param::DT => context.dt,
+                field_param::MAPPED => context.mapped,
+                field_param::FOLDED => context.folded,
+                field_param::TARGET_TRANSIENT => context.target_transient,
+                field_param::NEIGHBOR_TRANSIENT => context
+                    .neighbor_transient
+                    .ok_or(FieldSweepExecutionError::MissingNeighborContext)?,
+                _ => return Err(FieldSweepExecutionError::InvalidFieldParam(node.a)),
+            };
+            push_step(stack, sp, value)?;
+        }
+        eml_opcode::NEG => stack[*sp - 1] = -stack[*sp - 1],
+        eml_opcode::CLAMP_BOUNDED => {
+            stack[*sp - 1] = stack[*sp - 1].clamp(f32::from_bits(node.a), f32::from_bits(node.b));
+        }
+        eml_opcode::CLAMP_FLOORED => {
+            stack[*sp - 1] = stack[*sp - 1].max(f32::from_bits(node.a));
+        }
+        eml_opcode::ABS => stack[*sp - 1] = stack[*sp - 1].abs(),
+        eml_opcode::FLOOR => stack[*sp - 1] = stack[*sp - 1].floor(),
+        eml_opcode::EXP => {
+            stack[*sp - 1] = simthing_core::eml_exp_pinned_f32(stack[*sp - 1]);
+        }
+        eml_opcode::LN => {
+            stack[*sp - 1] = simthing_core::eml_ln::eml_ln_pinned_f32(stack[*sp - 1]);
+        }
+        eml_opcode::SELECT => {
+            let false_value = stack[*sp - 1];
+            let true_value = stack[*sp - 2];
+            let condition = stack[*sp - 3] != 0.0;
+            stack[*sp - 3] = if condition { true_value } else { false_value };
+            *sp -= 2;
+        }
+        eml_opcode::RETURN_TOP => return Ok(Some(stack[*sp - 1])),
+        opcode => {
+            let rhs = stack[*sp - 1];
+            let lhs = stack[*sp - 2];
+            stack[*sp - 2] = apply_binary(opcode, lhs, rhs);
+            *sp -= 1;
+        }
+    }
+    Ok(None)
+}
+
+fn push_step(
+    stack: &mut [f32],
+    sp: &mut usize,
+    value: f32,
+) -> Result<(), FieldSweepExecutionError> {
+    if *sp >= stack.len() {
+        return Err(FieldSweepExecutionError::StackOverflow);
+    }
+    stack[*sp] = value;
+    *sp += 1;
+    Ok(())
 }
 
 fn apply_binary(opcode: u32, lhs: f32, rhs: f32) -> f32 {
@@ -1513,21 +1581,45 @@ fn execute_field_sweep_cpu_with_state(
                 target_transient: transient[target_slot.as_usize()],
                 neighbor_transient: Some(transient[input.slot.as_usize()]),
             };
-            let mapped = eval_field_eml_cpu(
-                &registration.map_program,
-                base_context,
-                values,
-                registration.n_dims,
-            )?;
-            accumulator = eval_field_eml_cpu(
-                &registration.fold_program,
-                FieldEmlContext {
-                    mapped,
-                    ..base_context
-                },
-                values,
-                registration.n_dims,
-            )?;
+            if seam_fused_shape(&registration.map_program, &registration.fold_program) {
+                // SEAM LAW: the map's final MUL and the canonical Sum fold are
+                // one fused rounding on every arm — evaluate the map minus its
+                // final [MUL, RETURN], then acc = fma(a, b, acc).
+                let map = &registration.map_program;
+                let rhs = eval_field_eml_cpu_prefix(
+                    map,
+                    map.len() - 2,
+                    base_context,
+                    values,
+                    registration.n_dims,
+                    1,
+                )?;
+                let lhs = eval_field_eml_cpu_prefix(
+                    map,
+                    map.len() - 2,
+                    base_context,
+                    values,
+                    registration.n_dims,
+                    2,
+                )?;
+                accumulator = lhs.mul_add(rhs, accumulator);
+            } else {
+                let mapped = eval_field_eml_cpu(
+                    &registration.map_program,
+                    base_context,
+                    values,
+                    registration.n_dims,
+                )?;
+                accumulator = eval_field_eml_cpu(
+                    &registration.fold_program,
+                    FieldEmlContext {
+                        mapped,
+                        ..base_context
+                    },
+                    values,
+                    registration.n_dims,
+                )?;
+            }
         }
         let written = eval_field_eml_cpu(
             &registration.post_program,
@@ -2327,7 +2419,12 @@ fn pack_programs(registration: &FieldSweepRegistration) -> (Vec<EmlNodeGpu>, Fie
                 FieldSweepOutput::Matrix(_) => 0,
                 FieldSweepOutput::Transient => 1,
             },
-            _pad1: 0,
+            // SEAM LAW flag: 1 routes the interpreted arm's canonical-Sum
+            // fold through the fused seam (fma), matching CPU twin and JIT.
+            _pad1: u32::from(seam_fused_shape(
+                &registration.map_program,
+                &registration.fold_program,
+            )),
             fused_identity_bits: 0,
             fused_dt_bits: 0,
             _pad2: 0,
