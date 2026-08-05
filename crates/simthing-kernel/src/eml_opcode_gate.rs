@@ -872,12 +872,9 @@ const CLOSED_OPCODES: &[u32] = &[
     eml_nodes::opcode::FLOOR,
     // EML-EXP-PRIMITIVE-0: the sole 5.11 vocabulary widening — the first
     // admitted exact primitive (full-domain EXP through the 5.10 door).
+    // Remand 5186492955: LN is absent from production EvalEML CLOSED_OPCODES
+    // (Candidate-F evidence retained; standalone WGSL / CPU twin only).
     eml_nodes::opcode::EXP,
-    // EML-LN-PRIMITIVE-0 Candidate-F (LNCF): three-arm harness vocabulary only.
-    // Exact-class admission stays closed (`opcode_allowed_in_exact` excludes LN;
-    // door rejects unpinned digests). DA 5186354130 / remand 5186386924 — not
-    // exact-authoritative production admission until promotion landing.
-    eml_nodes::opcode::LN,
     eml_nodes::opcode::CMP_LT,
     eml_nodes::opcode::CMP_LE,
     eml_nodes::opcode::CMP_GT,
@@ -986,8 +983,12 @@ pub fn ln_primitive_domain() -> PrimitiveDomain {
     .expect("pinned LN endpoint bits form an ordered finite binary32 interval")
 }
 
-/// Tree-scan call-site admission for `LN` nodes — mirrors [`admit_exp_call_sites`]
+/// Tree-scan call-site shape check for `LN` nodes — mirrors [`admit_exp_call_sites`]
 /// with the LN primitive domain from [`simthing_core::eml_ln`].
+///
+/// Remand 5186492955: this helper does **not** expand production
+/// [`CLOSED_OPCODES`]. It remains for candidate/test shape checking; closed
+/// EvalEML registration still rejects `LN` via [`opcode_in_closed_vocabulary`].
 pub fn admit_ln_call_sites(nodes: &[EmlNode]) -> Result<(), OpcodeGateError> {
     let domain = ln_primitive_domain();
     for (index, node) in nodes.iter().enumerate() {
@@ -1743,7 +1744,7 @@ mod tests {
             1,
             "EXP appears exactly once in the closed vocabulary"
         );
-        assert_eq!(closed.len(), 25, "5.12 widens the 24-opcode roster by one");
+        assert_eq!(closed.len(), 24, "EXP is the sole transcendental widen from 5.11");
         assert!(opcode_in_accumulator_vocabulary(eml_nodes::opcode::EXP));
         let domain = exp_primitive_domain();
         assert_eq!(domain.min_bits(), simthing_core::EML_EXP_DOMAIN_MIN_BITS);
@@ -1874,63 +1875,52 @@ mod tests {
 
     #[test]
     fn eml_ln_primitive_0_library_gadgets_admit_and_match_eval_eml_cpu() {
-        fn parity(
-            nodes: &[EmlNode],
-            slots: &[f32],
-            oracle: impl Fn(&[f32]) -> f32,
-            label: &str,
-        ) {
-            let via_interpreter =
-                crate::accumulator_op::eval_eml_cpu(nodes, 0, slots, slots.len() as u32, [0.0; 4]);
-            let expected = oracle(slots);
-            assert_eq!(
-                via_interpreter.to_bits(),
-                expected.to_bits(),
-                "{label}: eval_eml_cpu/oracle parity"
-            );
-        }
-
+        // Remand 5186492955: LN library gadgets remain as authored shapes, but
+        // closed EvalEML registration rejects LN — no production admission.
         let power = PowerLawGadget { x_col: 0, a: 0.5 };
-        let power_nodes = power.compile_nodes().expect("power law admits");
-        assert_eq!(power_nodes.len(), 8);
-        for x in [1.0f32, 2.0, 4.0, 16.0, 0.125] {
-            parity(&power_nodes, &[x], |_| power.oracle(x), "power_law");
-        }
+        assert_eq!(
+            power.compile_nodes(),
+            Err(OpcodeGateError::UnwhitelistedOpcode {
+                opcode: eml_nodes::opcode::LN,
+            }),
+            "power law must not admit into closed EvalEML"
+        );
 
         let eml_op = EmlOperatorGadget {
             x_col: 0,
             y_col: 1,
         };
-        let eml_nodes = eml_op.compile_nodes().expect("eml operator admits");
-        assert_eq!(eml_nodes.len(), 8);
-        for (x, y) in [(0.0f32, 1.0), (1.0, 2.0), (-1.0, 4.0)] {
-            parity(
-                &eml_nodes,
-                &[x, y],
-                |slots| eml_op.oracle(slots[0], slots[1]),
-                "eml_operator",
-            );
-        }
+        assert_eq!(
+            eml_op.compile_nodes(),
+            Err(OpcodeGateError::UnwhitelistedOpcode {
+                opcode: eml_nodes::opcode::LN,
+            }),
+            "eml operator must not admit into closed EvalEML"
+        );
 
         let entropy = EntropyTermGadget { p_col: 0 };
-        let entropy_nodes = entropy.compile_nodes().expect("entropy term admits");
-        assert_eq!(entropy_nodes.len(), 12);
-        for p in [0.0f32, 0.25, 0.5, 1.0] {
-            parity(&entropy_nodes, &[p], |slots| entropy.oracle(slots[0]), "entropy");
-        }
+        assert_eq!(
+            entropy.compile_nodes(),
+            Err(OpcodeGateError::UnwhitelistedOpcode {
+                opcode: eml_nodes::opcode::LN,
+            }),
+            "entropy term must not admit into closed EvalEML"
+        );
 
         let log_map = LogAccumulateMapGadget { x_col: 0 };
-        let log_nodes = log_map.compile_nodes().expect("log accumulate map admits");
-        assert_eq!(log_nodes.len(), 4);
-        for x in [1.0f32, 2.0, 10.0, 100.0] {
-            parity(&log_nodes, &[x], |slots| log_map.oracle(slots[0]), "log_accumulate_map");
-        }
+        assert_eq!(
+            log_map.compile_nodes(),
+            Err(OpcodeGateError::UnwhitelistedOpcode {
+                opcode: eml_nodes::opcode::LN,
+            }),
+            "log accumulate map must not admit into closed EvalEML"
+        );
     }
 
     #[test]
     fn eml_ln_primitive_0_log_accumulate_map_is_not_bit_equivalent_to_product() {
+        // Oracle-only referee — conversion does not require closed LN admission.
         let log_map = LogAccumulateMapGadget { x_col: 0 };
-        let log_nodes = log_map.compile_nodes().expect("log map admits");
         let corpus: [f32; 6] = [1.25, 2.0, 3.5, 0.5, 4.0, 8.0];
 
         let sequential_product = corpus.iter().copied().product::<f32>();
@@ -1949,9 +1939,7 @@ mod tests {
 
         let misuse_product_of_log_maps = corpus
             .iter()
-            .map(|x| {
-                crate::accumulator_op::eval_eml_cpu(&log_nodes, 0, &[*x], 1, [0.0; 4])
-            })
+            .map(|x| log_map.oracle(*x))
             .product::<f32>();
 
         assert_ne!(
@@ -1986,17 +1974,20 @@ mod tests {
 
     #[test]
     fn eml_ln_primitive_0_vocabulary_widens_by_exactly_ln() {
+        // Remand 5186492955: LN is absent from production CLOSED_OPCODES /
+        // accumulator vocabulary. Domain helpers remain for candidate use.
         let closed = EvalEmlVocabulary::closed_opcodes();
         assert_eq!(
             closed
                 .iter()
                 .filter(|op| **op == eml_nodes::opcode::LN)
                 .count(),
-            1,
-            "LN appears exactly once in the closed vocabulary"
+            0,
+            "LN must not appear in production closed vocabulary"
         );
-        assert_eq!(closed.len(), 25, "5.12 widens the 24-opcode roster by one");
-        assert!(opcode_in_accumulator_vocabulary(eml_nodes::opcode::LN));
+        assert_eq!(closed.len(), 24, "production roster stays at 24 without LN");
+        assert!(!opcode_in_closed_vocabulary(eml_nodes::opcode::LN));
+        assert!(!opcode_in_accumulator_vocabulary(eml_nodes::opcode::LN));
         let domain = ln_primitive_domain();
         assert_eq!(domain.min_bits(), simthing_core::EML_LN_DOMAIN_MIN_BITS);
         assert_eq!(domain.max_bits(), simthing_core::EML_LN_DOMAIN_MAX_BITS);

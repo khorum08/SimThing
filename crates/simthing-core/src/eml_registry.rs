@@ -569,8 +569,7 @@ fn validate_stack_depth(nodes: &[EmlNode]) -> Result<u32, EmlRegistryError> {
             | eml_nodes::opcode::CLAMP_FLOORED
             | eml_nodes::opcode::ABS
             | eml_nodes::opcode::FLOOR
-            | eml_nodes::opcode::EXP
-            | eml_nodes::opcode::LN => {}
+            | eml_nodes::opcode::EXP => {}
             eml_nodes::opcode::ADD
             | eml_nodes::opcode::SUB
             | eml_nodes::opcode::MUL
@@ -652,7 +651,6 @@ fn validate_nodes_for_class(
         }
     }
     validate_exp_call_sites(nodes)?;
-    validate_ln_call_sites(nodes)?;
     Ok(())
 }
 
@@ -694,39 +692,6 @@ fn exp_domain_contains(bits: u32) -> bool {
     value.is_finite()
         && value >= f32::from_bits(crate::eml_exp::EML_EXP_DOMAIN_MIN_BITS)
         && value <= f32::from_bits(crate::eml_exp::EML_EXP_DOMAIN_MAX_BITS)
-}
-
-/// EML-LN-PRIMITIVE-0 registry mirror of the 5.10 call-site law for `LN`.
-fn validate_ln_call_sites(nodes: &[EmlNode]) -> Result<(), EmlRegistryError> {
-    for (index, node) in nodes.iter().enumerate() {
-        if node.opcode != eml_nodes::opcode::LN {
-            continue;
-        }
-        let discharged = index
-            .checked_sub(1)
-            .map(|prev_index| &nodes[prev_index])
-            .is_some_and(|prev| match prev.opcode {
-                eml_nodes::opcode::CLAMP_BOUNDED => {
-                    ln_domain_contains(prev.a) && ln_domain_contains(prev.b)
-                }
-                eml_nodes::opcode::LITERAL_F32 => ln_domain_contains(prev.a),
-                _ => false,
-            });
-        if !discharged {
-            return Err(EmlRegistryError::UnguardedExactPrimitiveCallSite {
-                opcode: node.opcode,
-                index: index as u32,
-            });
-        }
-    }
-    Ok(())
-}
-
-fn ln_domain_contains(bits: u32) -> bool {
-    let value = f32::from_bits(bits);
-    value.is_finite()
-        && value >= f32::from_bits(crate::eml_ln::EML_LN_DOMAIN_MIN_BITS)
-        && value <= f32::from_bits(crate::eml_ln::EML_LN_DOMAIN_MAX_BITS)
 }
 
 fn opcode_allowed_in_exact(op: u32) -> bool {

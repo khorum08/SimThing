@@ -107,61 +107,6 @@ fn eml_exp_pinned(x: f32) -> f32 {
     return y1 * s2;
 }
 
-// EML-LN-PRIMITIVE-0 Candidate F (LNCF): vendor-log seed + EXP-domain ±1 ULP
-// snap. DA 5186354130 / sqrt_candidates §§3–4. Seed MAY use hardware `log`;
-// seed MUST NOT decide — `eml_exp_pinned` images of {y−ulp,y,y+ulp} vs x decide.
-// CPU twin: simthing_core::eml_ln::eml_ln_pinned_f32. Outside JIT markers so
-// interpreted + JIT share one definition. Standalone from EXP's sequence text.
-fn f32_next_up(y: f32) -> f32 {
-    var bits = bitcast<u32>(y);
-    if (y != y) { return y; }
-    if (bits == 0x7F800000u) { return y; }
-    if (bits == 0x00000000u) { return bitcast<f32>(0x00000001u); }
-    if (bits == 0x80000000u) { return 0.0; }
-    if ((bits & 0x80000000u) == 0u) { bits = bits + 1u; } else { bits = bits - 1u; }
-    return bitcast<f32>(bits);
-}
-fn f32_next_down(y: f32) -> f32 {
-    var bits = bitcast<u32>(y);
-    if (y != y) { return y; }
-    if (bits == 0xFF800000u) { return y; }
-    if (bits == 0x00000000u) { return bitcast<f32>(0x80000000u); }
-    if (bits == 0x80000000u) { return bitcast<f32>(0x80000001u); }
-    if ((bits & 0x80000000u) == 0u) { bits = bits - 1u; } else { bits = bits + 1u; }
-    return bitcast<f32>(bits);
-}
-fn eml_ln_snap_exp_domain(x: f32, y_dn: f32, e_dn: f32, y0: f32, e0: f32, y_up: f32, e_up: f32) -> f32 {
-    let d0 = abs(x - e0);
-    let d_up = abs(x - e_up);
-    let d_dn = abs(x - e_dn);
-    var best_y = y0;
-    var best_d = d0;
-    var best_bits = bitcast<u32>(y0);
-    let up_bits = bitcast<u32>(y_up);
-    if (d_up < best_d || (d_up == best_d && (up_bits & 1u) == 0u && (best_bits & 1u) == 1u)) {
-        best_y = y_up;
-        best_d = d_up;
-        best_bits = up_bits;
-    }
-    let dn_bits = bitcast<u32>(y_dn);
-    if (d_dn < best_d || (d_dn == best_d && (dn_bits & 1u) == 0u && (best_bits & 1u) == 1u)) {
-        best_y = y_dn;
-    }
-    return best_y;
-}
-fn eml_ln_pinned(x: f32) -> f32 {
-    if (bitcast<u32>(x) == 0x3F800000u) {
-        return 0.0;
-    }
-    let y0 = log(x);                                    // vendor seed — must not decide
-    let e0 = eml_exp_pinned(y0);
-    let y_up = f32_next_up(y0);
-    let y_dn = f32_next_down(y0);
-    let e_up = eml_exp_pinned(y_up);
-    let e_dn = eml_exp_pinned(y_dn);
-    return eml_ln_snap_exp_domain(x, y_dn, e_dn, y0, e0, y_up, e_up);
-}
-
 // EML-JIT-EVALUATOR-BEGIN
 const OP_LITERAL_F32: u32 = 0u;
 const OP_PARAM: u32 = 2u;
@@ -179,7 +124,6 @@ const OP_CLAMP_FLOORED: u32 = 23u;
 const OP_ABS: u32 = 24u;
 const OP_FLOOR: u32 = 25u;
 const OP_EXP: u32 = 26u;
-const OP_LN: u32 = 27u;
 const OP_CMP_LT: u32 = 30u;
 const OP_CMP_LE: u32 = 31u;
 const OP_CMP_GT: u32 = 32u;
@@ -236,7 +180,6 @@ fn eval_program(offset: u32, count: u32, context: FieldEmlContext) -> f32 {
             case OP_ABS: { stack[sp - 1u] = abs(stack[sp - 1u]); }
             case OP_FLOOR: { stack[sp - 1u] = floor(stack[sp - 1u]); }
             case OP_EXP: { stack[sp - 1u] = eml_exp_pinned(stack[sp - 1u]); }
-            case OP_LN: { stack[sp - 1u] = eml_ln_pinned(stack[sp - 1u]); }
             case OP_SELECT: {
                 let false_value = stack[sp - 1u];
                 let true_value = stack[sp - 2u];

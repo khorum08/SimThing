@@ -173,7 +173,6 @@ const EML_OP_CLAMP_FLOORED: u32 = 23u;
 const EML_OP_ABS: u32 = 24u;
 const EML_OP_FLOOR: u32 = 25u;
 const EML_OP_EXP: u32 = 26u;
-const EML_OP_LN: u32 = 27u;
 const EML_OP_CMP_LT: u32 = 30u;
 const EML_OP_CMP_LE: u32 = 31u;
 const EML_OP_CMP_GT: u32 = 32u;
@@ -220,59 +219,6 @@ fn eml_exp_pinned(x: f32) -> f32 {
     let s2 = bitcast<f32>(u32(k2 + 127) << 23u);
     let y1 = y * s1;
     return y1 * s2;
-}
-
-// EML-LN-PRIMITIVE-0 Candidate F (LNCF): vendor-log seed + EXP-domain ±1 ULP
-// snap. Byte-identical decision helpers to field_sweep.wgsl; kernel referee
-// holds the two copies aligned with the Rust twin.
-fn f32_next_up(y: f32) -> f32 {
-    var bits = bitcast<u32>(y);
-    if (y != y) { return y; }
-    if (bits == 0x7F800000u) { return y; }
-    if (bits == 0x00000000u) { return bitcast<f32>(0x00000001u); }
-    if (bits == 0x80000000u) { return 0.0; }
-    if ((bits & 0x80000000u) == 0u) { bits = bits + 1u; } else { bits = bits - 1u; }
-    return bitcast<f32>(bits);
-}
-fn f32_next_down(y: f32) -> f32 {
-    var bits = bitcast<u32>(y);
-    if (y != y) { return y; }
-    if (bits == 0xFF800000u) { return y; }
-    if (bits == 0x00000000u) { return bitcast<f32>(0x80000000u); }
-    if (bits == 0x80000000u) { return bitcast<f32>(0x80000001u); }
-    if ((bits & 0x80000000u) == 0u) { bits = bits - 1u; } else { bits = bits + 1u; }
-    return bitcast<f32>(bits);
-}
-fn eml_ln_snap_exp_domain(x: f32, y_dn: f32, e_dn: f32, y0: f32, e0: f32, y_up: f32, e_up: f32) -> f32 {
-    let d0 = abs(x - e0);
-    let d_up = abs(x - e_up);
-    let d_dn = abs(x - e_dn);
-    var best_y = y0;
-    var best_d = d0;
-    var best_bits = bitcast<u32>(y0);
-    let up_bits = bitcast<u32>(y_up);
-    if (d_up < best_d || (d_up == best_d && (up_bits & 1u) == 0u && (best_bits & 1u) == 1u)) {
-        best_y = y_up;
-        best_d = d_up;
-        best_bits = up_bits;
-    }
-    let dn_bits = bitcast<u32>(y_dn);
-    if (d_dn < best_d || (d_dn == best_d && (dn_bits & 1u) == 0u && (best_bits & 1u) == 1u)) {
-        best_y = y_dn;
-    }
-    return best_y;
-}
-fn eml_ln_pinned(x: f32) -> f32 {
-    if (bitcast<u32>(x) == 0x3F800000u) {
-        return 0.0;
-    }
-    let y0 = log(x);                                    // vendor seed — must not decide
-    let e0 = eml_exp_pinned(y0);
-    let y_up = f32_next_up(y0);
-    let y_dn = f32_next_down(y0);
-    let e_up = eml_exp_pinned(y_up);
-    let e_dn = eml_exp_pinned(y_dn);
-    return eml_ln_snap_exp_domain(x, y_dn, e_dn, y0, e0, y_up, e_up);
 }
 
 fn eml_param(ctx: EmlEvalCtx, idx: u32) -> f32 {
@@ -363,9 +309,6 @@ fn eml_eval(ctx: EmlEvalCtx) -> f32 {
             }
             case EML_OP_EXP: {
                 stack[sp - 1u] = eml_exp_pinned(stack[sp - 1u]);
-            }
-            case EML_OP_LN: {
-                stack[sp - 1u] = eml_ln_pinned(stack[sp - 1u]);
             }
             case EML_OP_CMP_LT: {
                 let rhs = stack[sp - 1u];

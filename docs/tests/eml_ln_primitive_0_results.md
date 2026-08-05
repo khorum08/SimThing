@@ -58,7 +58,7 @@ remand `5186386924`.
 | Method | vendor `log` seed → `EXP` images of `{y−ulp,y,y+ulp}` vs `x` → ±1 ULP snap |
 | Standalone artifact | `crates/simthing-driver/tests/wgsl/eml_ln_cf_candidate.wgsl` |
 | Exact-class admission | **closed** (`opcode_allowed_in_exact` excludes LN; door rejects unpinned digests) |
-| CLOSED_OPCODES | retained as three-arm **harness vocabulary only** — not exact-authoritative |
+| CLOSED_OPCODES | **LN absent** (remand 5186492955 authority strip; production roster stays 24 / EXP-only transcendental) |
 | Exhaustive digests | **`0x0`** until local three-arm replay pins them |
 | Admitted-domain size | **2130706432** |
 
@@ -88,3 +88,11 @@ correction-direction / skip-neighbor-EXP) still RED as required.
 - No `/clearance`, merge, pointer flip, or StemThing-A from coding
 - Do not re-open exact-class LN admission merely because LNCF is implemented — DA
   adjudicates promotion after exhaustive proof return
+
+## Authority strip (remand 5186492955)
+
+Production EvalEML `CLOSED_OPCODES` no longer includes LN; vendor-log helpers were
+removed from production FieldSweep / AccumulatorOp shaders. STOP numbers and prose
+above remain frozen. Candidate-F continues via
+`crates/simthing-driver/tests/wgsl/eml_ln_cf_candidate.wgsl` and the CPU twin in
+`crates/simthing-core/src/eml_ln.rs`.

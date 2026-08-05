@@ -229,8 +229,7 @@ fn emit_program(name: &str, nodes: &[EmlNodeGpu]) -> String {
             | eml_opcode::CLAMP_FLOORED
             | eml_opcode::ABS
             | eml_opcode::FLOOR
-            | eml_opcode::EXP
-            | eml_opcode::LN => {
+            | eml_opcode::EXP => {
                 let operand = stack.pop().expect("admitted unary postfix operand");
                 Some(match node.opcode {
                     eml_opcode::NEG => format!("-{operand}"),
@@ -248,8 +247,6 @@ fn emit_program(name: &str, nodes: &[EmlNodeGpu]) -> String {
                     // excised evaluator region — same definition as the
                     // interpreted arm, bit-identical by construction.
                     eml_opcode::EXP => format!("eml_exp_pinned({operand})"),
-                    // EML-LN-PRIMITIVE-0: same single-helper lowering pattern as EXP.
-                    eml_opcode::LN => format!("eml_ln_pinned({operand})"),
                     _ => unreachable!(),
                 })
             }
@@ -430,96 +427,25 @@ mod eml_exp_lowering_tests {
 
 #[cfg(test)]
 mod eml_ln_lowering_tests {
-    use super::*;
-    use simthing_core::EmlResourceClass;
-
-    fn node(opcode: u32, a: u32, b: u32) -> EmlNodeGpu {
-        EmlNodeGpu {
-            opcode,
-            flags: 0,
-            a,
-            b,
-            c: 0,
-            d: 0,
-        }
-    }
-
-    fn ln_post_program() -> Vec<EmlNodeGpu> {
-        vec![
-            node(eml_opcode::TARGET_VALUE, 0, 0),
-            node(
-                eml_opcode::CLAMP_BOUNDED,
-                simthing_core::EML_LN_DOMAIN_MIN_BITS,
-                simthing_core::EML_LN_DOMAIN_MAX_BITS,
-            ),
-            node(eml_opcode::LN, 0, 0),
-            node(eml_opcode::RETURN_TOP, 0, 0),
-        ]
-    }
-
     #[test]
-    fn eml_ln_primitive_0_jit_lowering_calls_the_single_pinned_helper() {
-        let canonical = include_str!("shaders/field_sweep.wgsl");
-        let trivial = vec![
-            node(eml_opcode::LITERAL_F32, 0.0f32.to_bits(), 0),
-            node(eml_opcode::RETURN_TOP, 0, 0),
-        ];
-        let generated = generate_field_sweep_jit(
-            canonical,
-            EmlResourceClass::CompactStack4,
-            &trivial,
-            &trivial,
-            &ln_post_program(),
-        );
-        assert_eq!(
-            generated.matches("fn eml_ln_pinned(").count(),
-            1,
-            "exactly one pinned LN helper definition survives excision"
-        );
-        assert!(
-            generated.contains("eml_ln_pinned(v"),
-            "the generated straight-line block calls the pinned LN helper"
-        );
-        assert!(
-            !generated.contains("fn eval_program"),
-            "interpreted evaluator is excised from the JIT source"
-        );
-    }
-
-    #[test]
-    fn eml_ln_primitive_0_wgsl_helper_copies_and_pinned_constants_agree() {
-        fn helper_block(source: &str) -> &str {
-            let start = source
-                .find("fn f32_next_up(")
-                .expect("LNCF next_up helper present");
-            let pinned = source
-                .find("fn eml_ln_pinned(")
-                .expect("pinned LN helper present");
-            let end = pinned
-                + source[pinned..]
-                    .find("\n}")
-                    .expect("pinned LN helper closes")
-                + 2;
-            &source[start..end]
+    fn eml_ln_primitive_0_production_shaders_have_no_ln_dispatch() {
+        // Remand 5186492955: vendor-log LN helpers must not remain in production
+        // EvalEML shaders; Candidate-F lives in standalone WGSL only.
+        let field = include_str!("shaders/field_sweep.wgsl");
+        let accumulator = include_str!("shaders/accumulator_op.wgsl");
+        for (label, source) in [("field_sweep", field), ("accumulator_op", accumulator)] {
+            assert!(
+                !source.contains("fn eml_ln_pinned("),
+                "{label}: production shader must not define eml_ln_pinned"
+            );
+            assert!(
+                !source.contains("OP_LN") && !source.contains("EML_OP_LN"),
+                "{label}: production shader must not define LN opcode constants"
+            );
+            assert!(
+                !source.contains("eml_ln_snap_exp_domain"),
+                "{label}: production shader must not retain LNCF snap helpers"
+            );
         }
-        let field = helper_block(include_str!("shaders/field_sweep.wgsl"));
-        let accumulator = helper_block(include_str!("shaders/accumulator_op.wgsl"));
-        assert_eq!(
-            field, accumulator,
-            "one pinned LNCF sequence, two shader homes, zero drift"
-        );
-        assert!(
-            field.contains("let y0 = log(x);"),
-            "WGSL LNCF seeds with vendor log"
-        );
-        assert_eq!(
-            field.matches("eml_exp_pinned(").count(),
-            3,
-            "exactly three EXP evaluations decide the ±1 ULP snap"
-        );
-        assert!(
-            field.contains("0x3F800000u"),
-            "WGSL LNCF pins the 1.0 -> +0.0 edge"
-        );
     }
 }

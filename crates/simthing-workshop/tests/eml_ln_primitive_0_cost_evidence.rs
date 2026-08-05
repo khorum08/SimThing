@@ -200,7 +200,7 @@ unsafe fn measure_pipeline(
 }
 
 #[test]
-#[ignore = "local phase-boundary measurement: exact-primitive cost gate on the certified adapter"]
+#[ignore = "remand 5186492955: production EvalEML LN authority removed; STOP frozen; candidates use standalone WGSL"]
 fn eml_ln_primitive_0_cost_gate_beats_the_pinned_gadget_baseline() {
     let baseline = registration(gadget_baseline_post_program());
     assert_eq!(

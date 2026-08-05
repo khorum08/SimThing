@@ -291,6 +291,7 @@ fn cpu_reference_digest() -> (u64, u64) {
 }
 
 #[test]
+#[ignore = "remand 5186492955: production EvalEML LN authority removed; STOP frozen; candidates use standalone WGSL"]
 fn eml_ln_primitive_0_probe_corpus_is_three_way_bit_exact() {
     let Some(ctx) = certified_context() else {
         return;
@@ -556,7 +557,7 @@ fn eml_ln_primitive_0_exhaustive_cpu_reference() {
 }
 
 #[test]
-#[ignore = "local phase-boundary certification: exhaustive interpreted-arm replay"]
+#[ignore = "remand 5186492955: production EvalEML LN authority removed; STOP frozen; candidates use standalone WGSL"]
 fn eml_ln_primitive_0_exhaustive_interpreted_replay() {
     let (digest, tested) = run_gpu_arm(true, "interpreted");
     assert_eq!(tested, domain_size());
@@ -569,7 +570,7 @@ fn eml_ln_primitive_0_exhaustive_interpreted_replay() {
 }
 
 #[test]
-#[ignore = "local phase-boundary certification: exhaustive SSA-JIT-arm replay"]
+#[ignore = "remand 5186492955: production EvalEML LN authority removed; STOP frozen; candidates use standalone WGSL"]
 fn eml_ln_primitive_0_exhaustive_jit_replay() {
     let (digest, tested) = run_gpu_arm(false, "jit");
     assert_eq!(tested, domain_size());

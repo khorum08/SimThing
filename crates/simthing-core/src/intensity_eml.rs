@@ -2,7 +2,7 @@
 
 use crate::eml_nodes::{self, EmlNode, EML_STACK_MAX};
 use crate::eml_registry::{
-    EmlConsumerKind, EmlConsumerMask, EmlExecutionClass, EmlFormulaMeta, EmlTreeId,
+    EmlConsumerMask, EmlExecutionClass, EmlFormulaMeta, EmlTreeId,
     MAX_EML_TREE_NODES,
 };
 use crate::property::IntensityBehavior;
@@ -248,9 +248,6 @@ mod tests {
                 }
                 eml_nodes::opcode::EXP => {
                     stack[sp - 1] = crate::eml_exp::eml_exp_pinned_f32(stack[sp - 1]);
-                }
-                eml_nodes::opcode::LN => {
-                    stack[sp - 1] = crate::eml_ln::eml_ln_pinned_f32(stack[sp - 1]);
                 }
                 eml_nodes::opcode::RETURN_TOP => return stack[sp - 1],
                 _ => {}
