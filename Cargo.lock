@@ -5302,6 +5302,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_with",
+ "simthing-kernel",
  "smallvec",
  "thiserror 2.0.18",
 ]

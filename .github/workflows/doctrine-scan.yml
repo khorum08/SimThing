@@ -93,6 +93,17 @@ jobs:
           set -o pipefail
           bash scripts/ci/eml_exp_qualification_check.sh --selftest 2>&1 | tee -a eml-exp-qualification-report.txt
 
+      - name: EML LN qualification artifact freshness
+        run: |
+          set -o pipefail
+          bash scripts/ci/eml_ln_qualification_check.sh --check 2>&1 | tee eml-ln-qualification-report.txt
+
+      - name: EML LN qualification freshness selftest
+        if: steps.gate.outputs.run_selftests == 'true'
+        run: |
+          set -o pipefail
+          bash scripts/ci/eml_ln_qualification_check.sh --selftest 2>&1 | tee -a eml-ln-qualification-report.txt
+
       - name: Doctrine anchor integrity
         run: |
           set -o pipefail

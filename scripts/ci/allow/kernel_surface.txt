@@ -285,6 +285,14 @@ WorldGpuState | authority-export | Exported kernel runtime/planning/oracle surfa
 WorldSummaryRuntime | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
 EXP_PRIMITIVE_NAME | surface-inert | EML-EXP-PRIMITIVE-0 admitted primitive registry name constant | retire when kernel export set is closed by type-boundary admission
 SoftmaxWeightGadget | authority-export | EML-EXP-PRIMITIVE-0 stabilized softmax weight gadget riding existing MAX and Sum bands | retire when kernel export set is closed by type-boundary admission
+PowerLawGadget | authority-export | EML-LN-PRIMITIVE-0 power-law consumer gadget over guarded LN and EXP call sites | retire when kernel export set is closed by type-boundary admission
+EmlOperatorGadget | authority-export | EML-LN-PRIMITIVE-0 elementary eml(x,y) consumer gadget | retire when kernel export set is closed by type-boundary admission
+EntropyTermGadget | authority-export | EML-LN-PRIMITIVE-0 single entropy term consumer gadget with authored p>0 handling | retire when kernel export set is closed by type-boundary admission
+LogAccumulateMapGadget | authority-export | EML-LN-PRIMITIVE-0 Sum-lane log-domain map half (not a Product substitute) | retire when kernel export set is closed by type-boundary admission
 admit_exp_call_sites | authority-export | EML-EXP-PRIMITIVE-0 tree-scan wiring of the 5.10 call-site shapes for the admitted EXP primitive | retire if exact primitive call-site admission becomes wholly kernel-internal
+admit_ln_call_sites | authority-export | EML-LN-PRIMITIVE-0 tree-scan wiring of the 5.10 call-site shapes for the admitted LN primitive | retire if exact primitive call-site admission becomes wholly kernel-internal
 eml_exp_qualification | authority-export | EML-EXP-PRIMITIVE-0 pinned exhaustive-qualification artifacts and certified toolchain roster | retire if qualification pinning becomes wholly kernel-internal
+eml_ln_qualification | authority-export | EML-LN-PRIMITIVE-0 pinned exhaustive-qualification artifacts and certified toolchain roster | retire if qualification pinning becomes wholly kernel-internal
 exp_primitive_domain | authority-export | EML-EXP-PRIMITIVE-0 canonical full-domain EXP interval constructor | retire if exact primitive call-site admission becomes wholly kernel-internal
+ln_primitive_domain | authority-export | EML-LN-PRIMITIVE-0 canonical admitted-domain LN interval constructor | retire if exact primitive call-site admission becomes wholly kernel-internal
+LN_PRIMITIVE_NAME | surface-inert | EML-LN-PRIMITIVE-0 admitted primitive registry name constant | retire when kernel export set is closed by type-boundary admission

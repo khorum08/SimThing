@@ -113,6 +113,9 @@ pub fn eval_eml_cpu(
             eml_opcode::EXP => {
                 stack[sp - 1] = simthing_core::eml_exp_pinned_f32(stack[sp - 1]);
             }
+            eml_opcode::LN => {
+                stack[sp - 1] = simthing_core::eml_ln_pinned_f32(stack[sp - 1]);
+            }
             eml_opcode::CMP_LT => {
                 let rhs = stack[sp - 1];
                 let lhs = stack[sp - 2];

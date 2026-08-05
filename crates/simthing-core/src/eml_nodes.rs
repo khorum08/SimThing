@@ -98,6 +98,18 @@ pub mod opcode {
     /// (range-certified literal or explicit `CLAMP_BOUNDED` guard); unguarded
     /// calls are spanned admission errors.
     pub const EXP: u32 = 26;
+    /// EML-LN-PRIMITIVE-0: exact natural logarithm over positive finite normals
+    /// (unary).
+    ///
+    /// The second admitted exact primitive through the 5.10
+    /// `ExactPrimitiveAdmissionDoor`, completing the generating pair with
+    /// `EXP`. Semantics are the pinned algorithm-as-spec in [`crate::eml_ln`]
+    /// — append-only; any change is a new primitive name. Domain is
+    /// `[2^-126, f32::MAX]`; call sites must discharge a 5.10 admission shape
+    /// (range-certified literal or explicit `CLAMP_BOUNDED` guard). Extended-
+    /// real conventions (`ln(0) = -∞`) are rejected, not emulated. The landed
+    /// `EXP` semantics/identity are frozen.
+    pub const LN: u32 = 27;
 
     pub const CMP_LT: u32 = 30;
     pub const CMP_LE: u32 = 31;

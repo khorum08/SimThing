@@ -229,7 +229,8 @@ fn emit_program(name: &str, nodes: &[EmlNodeGpu]) -> String {
             | eml_opcode::CLAMP_FLOORED
             | eml_opcode::ABS
             | eml_opcode::FLOOR
-            | eml_opcode::EXP => {
+            | eml_opcode::EXP
+            | eml_opcode::LN => {
                 let operand = stack.pop().expect("admitted unary postfix operand");
                 Some(match node.opcode {
                     eml_opcode::NEG => format!("-{operand}"),
@@ -247,6 +248,8 @@ fn emit_program(name: &str, nodes: &[EmlNodeGpu]) -> String {
                     // excised evaluator region — same definition as the
                     // interpreted arm, bit-identical by construction.
                     eml_opcode::EXP => format!("eml_exp_pinned({operand})"),
+                    // EML-LN-PRIMITIVE-0: same single-helper lowering pattern as EXP.
+                    eml_opcode::LN => format!("eml_ln_pinned({operand})"),
                     _ => unreachable!(),
                 })
             }
@@ -421,6 +424,109 @@ mod eml_exp_lowering_tests {
             field.matches("round(").count(),
             1,
             "exactly one round-ties-even in the pinned sequence"
+        );
+    }
+}
+
+#[cfg(test)]
+mod eml_ln_lowering_tests {
+    use super::*;
+    use simthing_core::EmlResourceClass;
+
+    fn node(opcode: u32, a: u32, b: u32) -> EmlNodeGpu {
+        EmlNodeGpu {
+            opcode,
+            flags: 0,
+            a,
+            b,
+            c: 0,
+            d: 0,
+        }
+    }
+
+    fn ln_post_program() -> Vec<EmlNodeGpu> {
+        vec![
+            node(eml_opcode::TARGET_VALUE, 0, 0),
+            node(
+                eml_opcode::CLAMP_BOUNDED,
+                simthing_core::EML_LN_DOMAIN_MIN_BITS,
+                simthing_core::EML_LN_DOMAIN_MAX_BITS,
+            ),
+            node(eml_opcode::LN, 0, 0),
+            node(eml_opcode::RETURN_TOP, 0, 0),
+        ]
+    }
+
+    #[test]
+    fn eml_ln_primitive_0_jit_lowering_calls_the_single_pinned_helper() {
+        let canonical = include_str!("shaders/field_sweep.wgsl");
+        let trivial = vec![
+            node(eml_opcode::LITERAL_F32, 0.0f32.to_bits(), 0),
+            node(eml_opcode::RETURN_TOP, 0, 0),
+        ];
+        let generated = generate_field_sweep_jit(
+            canonical,
+            EmlResourceClass::CompactStack4,
+            &trivial,
+            &trivial,
+            &ln_post_program(),
+        );
+        assert_eq!(
+            generated.matches("fn eml_ln_pinned(").count(),
+            1,
+            "exactly one pinned LN helper definition survives excision"
+        );
+        assert!(
+            generated.contains("eml_ln_pinned(v"),
+            "the generated straight-line block calls the pinned LN helper"
+        );
+        assert!(
+            !generated.contains("fn eval_program"),
+            "interpreted evaluator is excised from the JIT source"
+        );
+    }
+
+    #[test]
+    fn eml_ln_primitive_0_wgsl_helper_copies_and_pinned_constants_agree() {
+        fn helper_block(source: &str) -> &str {
+            let start = source
+                .find("fn eml_ln_pinned(")
+                .expect("pinned LN helper present");
+            let end = start
+                + source[start..]
+                    .find("\n}")
+                    .expect("pinned LN helper closes")
+                + 2;
+            &source[start..end]
+        }
+        let field = helper_block(include_str!("shaders/field_sweep.wgsl"));
+        let accumulator = helper_block(include_str!("shaders/accumulator_op.wgsl"));
+        assert_eq!(
+            field, accumulator,
+            "one pinned LN sequence, two shader homes, zero drift"
+        );
+        for bits in [
+            simthing_core::eml_ln::EML_LN_LN2.to_bits(),
+            simthing_core::eml_ln::EML_LN_LG1.to_bits(),
+            simthing_core::eml_ln::EML_LN_LG2.to_bits(),
+            simthing_core::eml_ln::EML_LN_LG3.to_bits(),
+            simthing_core::eml_ln::EML_LN_LG4.to_bits(),
+            simthing_core::eml_ln::EML_LN_THIRD.to_bits(),
+        ] {
+            let token = format!("bitcast<f32>(0x{bits:08X}u)");
+            assert!(
+                field.contains(&token),
+                "WGSL LN helper carries pinned constant {token}"
+            );
+        }
+        assert_eq!(
+            field.matches("fma(").count(),
+            3,
+            "exactly three fused multiply-adds in the pinned LN sequence"
+        );
+        assert!(
+            field.contains("0x7EF311C7u - bitcast<u32>(y)"),
+            "Newton reciprocal uses the pinned magic constant"
         );
     }
 }

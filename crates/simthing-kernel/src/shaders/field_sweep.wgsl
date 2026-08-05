@@ -107,6 +107,57 @@ fn eml_exp_pinned(x: f32) -> f32 {
     return y1 * s2;
 }
 
+// EML-LN-PRIMITIVE-0: pinned algorithm-as-spec for the LN exact primitive.
+// The step order IS the bit law; the CPU twin
+// (simthing_core::eml_ln::eml_ln_pinned_f32) executes the identical
+// sequence, and the exhaustive admitted-domain digest is the parity referee.
+// Constants are bitcast-pinned to exact binary32 bits. Any edit here is a NEW
+// primitive name, never a mutation of LN. Placed OUTSIDE the JIT evaluator
+// markers so the interpreted arm and every JIT-generated straight-line block
+// call this one definition.
+fn eml_ln_pinned(x: f32) -> f32 {
+    let ix = bitcast<u32>(x);
+    var k = i32(ix >> 23u) - 127;
+    let mant = ix & 0x007FFFFFu;
+    var mx = mant | 0x3F800000u;
+    if (mx > 0x3FB504F3u) {
+        mx = mx - 0x00800000u;
+        k = k + 1;
+    }
+    let m = bitcast<f32>(mx);
+    let f = m - 1.0;
+    let dk = f32(k);
+    var ln1p: f32;
+    if ((0x007FFFFFu & (0x8000u + mant)) < 0xC000u) {
+        if (f == 0.0) {
+            ln1p = 0.0;
+        } else {
+            let inner = 0.5 - bitcast<f32>(0x3EAAAAABu) * f;
+            let f2 = f * f;
+            let r = f2 * inner;
+            ln1p = f - r;
+        }
+    } else {
+        let y = 2.0 + f;
+        var r = bitcast<f32>(0x7EF311C7u - bitcast<u32>(y));
+        r = r * (2.0 - y * r);
+        r = r * (2.0 - y * r);
+        let s = f * r;
+        let z = s * s;
+        let w = z * z;
+        let t1 = w * fma(w, bitcast<f32>(0x3E789E26u), bitcast<f32>(0x3ECCCE13u));
+        let t2 = z * fma(w, bitcast<f32>(0x3E91E9EEu), bitcast<f32>(0x3F2AAAABu));
+        let poly = t2 + t1;
+        let f2 = f * f;
+        let hfsq = 0.5 * f2;
+        let hp = hfsq + poly;
+        let s_term = s * hp;
+        let mid = hfsq - s_term;
+        ln1p = f - mid;
+    }
+    return fma(dk, bitcast<f32>(0x3F317218u), ln1p);
+}
+
 // EML-JIT-EVALUATOR-BEGIN
 const OP_LITERAL_F32: u32 = 0u;
 const OP_PARAM: u32 = 2u;
@@ -124,6 +175,7 @@ const OP_CLAMP_FLOORED: u32 = 23u;
 const OP_ABS: u32 = 24u;
 const OP_FLOOR: u32 = 25u;
 const OP_EXP: u32 = 26u;
+const OP_LN: u32 = 27u;
 const OP_CMP_LT: u32 = 30u;
 const OP_CMP_LE: u32 = 31u;
 const OP_CMP_GT: u32 = 32u;
@@ -180,6 +232,7 @@ fn eval_program(offset: u32, count: u32, context: FieldEmlContext) -> f32 {
             case OP_ABS: { stack[sp - 1u] = abs(stack[sp - 1u]); }
             case OP_FLOOR: { stack[sp - 1u] = floor(stack[sp - 1u]); }
             case OP_EXP: { stack[sp - 1u] = eml_exp_pinned(stack[sp - 1u]); }
+            case OP_LN: { stack[sp - 1u] = eml_ln_pinned(stack[sp - 1u]); }
             case OP_SELECT: {
                 let false_value = stack[sp - 1u];
                 let true_value = stack[sp - 2u];

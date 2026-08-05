@@ -57,6 +57,15 @@ input columns → SoftStep predicate → weighted branch A/B contribution → ac
 out = B + softstep(x) * (A - B)
 ```
 
+**EML-LN-PRIMITIVE-0 library entries** (kernel `eml_opcode_gate`, beside `SoftmaxWeightGadget`):
+
+| Gadget | Effect | Notes |
+|---|---|---|
+| `PowerLawGadget` | `POW(x,a) = EXP(CLAMP(a·LN(CLAMP(x))))` | no `POW` opcode; literal exponent |
+| `EmlOperatorGadget` | `eml(x,y) = EXP(CLAMP(x)) − LN(CLAMP(y))` | three-node transcendental glue |
+| `EntropyTermGadget` | `-p·LN(p)` for `p ∈ (0,1]` | `p=0` authored away via `SELECT` |
+| `LogAccumulateMapGadget` | `LN(CLAMP(x))` map half | Sum-lane log accumulation — **not** a Product substitute |
+
 No if/else WGSL. No semantic opcode. No scenario-specific combine. Kernel proof:
 `SoftStepPolicyConditional` / `oc_k_eml_opcode_gate_0_softstep_policy_conditional_compiles_as_gadget`.
 

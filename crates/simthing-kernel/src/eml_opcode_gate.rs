@@ -873,6 +873,9 @@ const CLOSED_OPCODES: &[u32] = &[
     // EML-EXP-PRIMITIVE-0: the sole 5.11 vocabulary widening — the first
     // admitted exact primitive (full-domain EXP through the 5.10 door).
     eml_nodes::opcode::EXP,
+    // EML-LN-PRIMITIVE-0: the 5.12 vocabulary widening — exact LN over positive
+    // finite normals through its own 5.10 door instance.
+    eml_nodes::opcode::LN,
     eml_nodes::opcode::CMP_LT,
     eml_nodes::opcode::CMP_LE,
     eml_nodes::opcode::CMP_GT,
@@ -936,6 +939,57 @@ pub fn admit_exp_call_sites(nodes: &[EmlNode]) -> Result<(), OpcodeGateError> {
     let domain = exp_primitive_domain();
     for (index, node) in nodes.iter().enumerate() {
         if node.opcode != eml_nodes::opcode::EXP {
+            continue;
+        }
+        let span = ExactPrimitiveSourceSpan::new(index as u32, index as u32 + 1);
+        let shape = match index.checked_sub(1).map(|prev_index| &nodes[prev_index]) {
+            Some(prev) if prev.opcode == eml_nodes::opcode::CLAMP_BOUNDED => {
+                let guard_opcode = EvalEmlOpcode::from_closed(eml_nodes::opcode::CLAMP_BOUNDED)?;
+                let guarded = ExactPrimitiveAdmissionDoor::verify_guarded_semantics(
+                    domain,
+                    guard_opcode,
+                    prev.a,
+                    prev.b,
+                    span,
+                )?;
+                Some(ExactPrimitiveCallSiteShape::GuardedSemantics(guarded))
+            }
+            Some(prev) if prev.opcode == eml_nodes::opcode::LITERAL_F32 => {
+                let certificate = ExactPrimitiveAdmissionDoor::verify_range_certificate(
+                    domain,
+                    ExactPrimitiveRangeEvidence::LiteralInRange { bits: prev.a },
+                    span,
+                )?;
+                Some(ExactPrimitiveCallSiteShape::RangeCertified(certificate))
+            }
+            _ => None,
+        };
+        ExactPrimitiveAdmissionDoor::admit_call_site(domain, shape, span)?;
+    }
+    Ok(())
+}
+
+// ── EML-LN-PRIMITIVE-0: the admitted LN primitive ───────────────────────────
+
+/// The 5.12 admitted exact primitive's registry name (append-only semantics).
+pub const LN_PRIMITIVE_NAME: &str = "LN";
+
+/// Canonical admitted-domain LN interval `[2^-126, f32::MAX]` (finite-only policy).
+pub fn ln_primitive_domain() -> PrimitiveDomain {
+    PrimitiveDomain::from_bits(
+        simthing_core::EML_LN_DOMAIN_MIN_BITS,
+        simthing_core::EML_LN_DOMAIN_MAX_BITS,
+        ExactPrimitiveDomainPolicy::FiniteOnlyRejectNanAndInfinity,
+    )
+    .expect("pinned LN endpoint bits form an ordered finite binary32 interval")
+}
+
+/// Tree-scan call-site admission for `LN` nodes — mirrors [`admit_exp_call_sites`]
+/// with the LN primitive domain from [`simthing_core::eml_ln`].
+pub fn admit_ln_call_sites(nodes: &[EmlNode]) -> Result<(), OpcodeGateError> {
+    let domain = ln_primitive_domain();
+    for (index, node) in nodes.iter().enumerate() {
+        if node.opcode != eml_nodes::opcode::LN {
             continue;
         }
         let span = ExactPrimitiveSourceSpan::new(index as u32, index as u32 + 1);
@@ -1133,6 +1187,187 @@ fn saturation_clamp_guard() -> EmlNode {
         flags: 0,
         a: simthing_core::EML_EXP_DOMAIN_MIN_BITS,
         b: simthing_core::EML_EXP_SATURATION_CEILING_BITS,
+        c: 0,
+        d: 0,
+    }
+}
+
+/// Full-domain EXP guard: `CLAMP_BOUNDED(x, exp_domain_min, exp_domain_max)`.
+fn exp_domain_clamp_guard() -> EmlNode {
+    EmlNode {
+        opcode: eml_nodes::opcode::CLAMP_BOUNDED,
+        flags: 0,
+        a: simthing_core::EML_EXP_DOMAIN_MIN_BITS,
+        b: simthing_core::EML_EXP_DOMAIN_MAX_BITS,
+        c: 0,
+        d: 0,
+    }
+}
+
+/// EML-LN-PRIMITIVE-0 consumer form: power law `POW(x,a) = x^a` as authored
+/// data — `EXP(CLAMP(a·LN(CLAMP(x, ln_domain)), exp_domain))`. No `POW`
+/// opcode; both transcendental call sites discharge 5.10 shapes (CLAMP
+/// immediately before each). Literal exponent `a` keeps the tree at
+/// `CompactStack4`.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct PowerLawGadget {
+    pub x_col: u32,
+    pub a: f32,
+}
+
+impl PowerLawGadget {
+    /// `EXP(CLAMP(a·LN(CLAMP(x)), exp_domain))`, `RETURN_TOP` — 8 nodes.
+    pub fn compile_nodes(&self) -> Result<Vec<EmlNode>, OpcodeGateError> {
+        let nodes = vec![
+            slot(self.x_col),
+            ln_domain_clamp_guard(),
+            bin(eml_nodes::opcode::LN),
+            lit(self.a),
+            bin(eml_nodes::opcode::MUL),
+            exp_domain_clamp_guard(),
+            bin(eml_nodes::opcode::EXP),
+            bin(eml_nodes::opcode::RETURN_TOP),
+        ];
+        OpcodeRegistrationGate::admit_tree_nodes(&nodes)?;
+        admit_ln_call_sites(&nodes)?;
+        admit_exp_call_sites(&nodes)?;
+        Ok(nodes)
+    }
+
+    pub fn oracle(&self, x: f32) -> f32 {
+        let ln_arg = x.clamp(
+            f32::from_bits(simthing_core::EML_LN_DOMAIN_MIN_BITS),
+            f32::from_bits(simthing_core::EML_LN_DOMAIN_MAX_BITS),
+        );
+        let exp_arg = (self.a * simthing_core::eml_ln_pinned_f32(ln_arg)).clamp(
+            f32::from_bits(simthing_core::EML_EXP_DOMAIN_MIN_BITS),
+            f32::from_bits(simthing_core::EML_EXP_DOMAIN_MAX_BITS),
+        );
+        simthing_core::eml_exp_pinned_f32(exp_arg)
+    }
+}
+
+/// EML-LN-PRIMITIVE-0 library entry: the elementary `eml(x,y) = e^x − ln y`
+/// operator as three-node transcendental glue plus guards —
+/// `SUB(EXP(CLAMP(x)), LN(CLAMP(y)))`.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct EmlOperatorGadget {
+    pub x_col: u32,
+    pub y_col: u32,
+}
+
+impl EmlOperatorGadget {
+    /// 9 nodes, peak stack 2 — `CompactStack4`.
+    pub fn compile_nodes(&self) -> Result<Vec<EmlNode>, OpcodeGateError> {
+        let nodes = vec![
+            slot(self.x_col),
+            exp_domain_clamp_guard(),
+            bin(eml_nodes::opcode::EXP),
+            slot(self.y_col),
+            ln_domain_clamp_guard(),
+            bin(eml_nodes::opcode::LN),
+            bin(eml_nodes::opcode::SUB),
+            bin(eml_nodes::opcode::RETURN_TOP),
+        ];
+        OpcodeRegistrationGate::admit_tree_nodes(&nodes)?;
+        admit_exp_call_sites(&nodes)?;
+        admit_ln_call_sites(&nodes)?;
+        Ok(nodes)
+    }
+
+    pub fn oracle(&self, x: f32, y: f32) -> f32 {
+        let exp_arg = x.clamp(
+            f32::from_bits(simthing_core::EML_EXP_DOMAIN_MIN_BITS),
+            f32::from_bits(simthing_core::EML_EXP_DOMAIN_MAX_BITS),
+        );
+        let ln_arg = y.clamp(
+            f32::from_bits(simthing_core::EML_LN_DOMAIN_MIN_BITS),
+            f32::from_bits(simthing_core::EML_LN_DOMAIN_MAX_BITS),
+        );
+        simthing_core::eml_exp_pinned_f32(exp_arg) - simthing_core::eml_ln_pinned_f32(ln_arg)
+    }
+}
+
+/// Single entropy term `-p·LN(p)` for `p ∈ (0, 1]`. Authored `p > 0` handling
+/// via `SELECT`: at `p = 0` the term is **zero by construction** (the
+/// undefined `ln(0)` is authored away, not emulated).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct EntropyTermGadget {
+    pub p_col: u32,
+}
+
+impl EntropyTermGadget {
+    pub fn compile_nodes(&self) -> Result<Vec<EmlNode>, OpcodeGateError> {
+        let nodes = vec![
+            slot(self.p_col),
+            lit(0.0),
+            bin(eml_nodes::opcode::CMP_GT),
+            slot(self.p_col),
+            ln_domain_clamp_guard(),
+            bin(eml_nodes::opcode::LN),
+            slot(self.p_col),
+            bin(eml_nodes::opcode::MUL),
+            bin(eml_nodes::opcode::NEG),
+            lit(0.0),
+            bin(eml_nodes::opcode::SELECT),
+            bin(eml_nodes::opcode::RETURN_TOP),
+        ];
+        OpcodeRegistrationGate::admit_tree_nodes(&nodes)?;
+        admit_ln_call_sites(&nodes)?;
+        Ok(nodes)
+    }
+
+    pub fn oracle(&self, p: f32) -> f32 {
+        if p > 0.0 {
+            let clamped = p.clamp(
+                f32::from_bits(simthing_core::EML_LN_DOMAIN_MIN_BITS),
+                f32::from_bits(simthing_core::EML_LN_DOMAIN_MAX_BITS),
+            );
+            -p * simthing_core::eml_ln_pinned_f32(clamped)
+        } else {
+            0.0
+        }
+    }
+}
+
+/// Map half of log-domain Sum-lane accumulation: `LN(CLAMP(x, ln_domain))`.
+/// This is **not** a Product substitute — it transforms inputs for Sum-band
+/// log accumulation; Product/conservation paths operate on raw amounts.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct LogAccumulateMapGadget {
+    pub x_col: u32,
+}
+
+impl LogAccumulateMapGadget {
+    /// 4 nodes, peak stack 1 — `CompactStack4`.
+    pub fn compile_nodes(&self) -> Result<Vec<EmlNode>, OpcodeGateError> {
+        let nodes = vec![
+            slot(self.x_col),
+            ln_domain_clamp_guard(),
+            bin(eml_nodes::opcode::LN),
+            bin(eml_nodes::opcode::RETURN_TOP),
+        ];
+        OpcodeRegistrationGate::admit_tree_nodes(&nodes)?;
+        admit_ln_call_sites(&nodes)?;
+        Ok(nodes)
+    }
+
+    pub fn oracle(&self, x: f32) -> f32 {
+        let clamped = x.clamp(
+            f32::from_bits(simthing_core::EML_LN_DOMAIN_MIN_BITS),
+            f32::from_bits(simthing_core::EML_LN_DOMAIN_MAX_BITS),
+        );
+        simthing_core::eml_ln_pinned_f32(clamped)
+    }
+}
+
+/// LN domain guard shared by every LN consumer gadget.
+fn ln_domain_clamp_guard() -> EmlNode {
+    EmlNode {
+        opcode: eml_nodes::opcode::CLAMP_BOUNDED,
+        flags: 0,
+        a: simthing_core::EML_LN_DOMAIN_MIN_BITS,
+        b: simthing_core::EML_LN_DOMAIN_MAX_BITS,
         c: 0,
         d: 0,
     }
@@ -1506,7 +1741,7 @@ mod tests {
             1,
             "EXP appears exactly once in the closed vocabulary"
         );
-        assert_eq!(closed.len(), 24, "5.11 widens the 23-opcode roster by one");
+        assert_eq!(closed.len(), 25, "5.12 widens the 24-opcode roster by one");
         assert!(opcode_in_accumulator_vocabulary(eml_nodes::opcode::EXP));
         let domain = exp_primitive_domain();
         assert_eq!(domain.min_bits(), simthing_core::EML_EXP_DOMAIN_MIN_BITS);
@@ -1582,6 +1817,250 @@ mod tests {
         let bypass: Result<(), OpcodeGateError> = Ok(());
         assert_ne!(
             admit_exp_call_sites(&naive),
+            bypass,
+            "planted unguarded-bypass defect must be RED"
+        );
+    }
+
+    // ── EML-LN-PRIMITIVE-0 ───────────────────────────────────────────────────
+
+    fn ln_node() -> EmlNode {
+        EmlNode {
+            opcode: eml_nodes::opcode::LN,
+            flags: 0,
+            a: 0,
+            b: 0,
+            c: 0,
+            d: 0,
+        }
+    }
+
+    #[test]
+    fn eml_ln_primitive_0_clamp_guard_is_not_range_certificate_about_unguarded_source() {
+        let domain = ln_primitive_domain();
+        let span = ExactPrimitiveSourceSpan::new(41, 57);
+        let clamp = EvalEmlOpcode::from_closed(eml_nodes::opcode::CLAMP_BOUNDED)
+            .expect("closed clamp opcode");
+        let guarded = ExactPrimitiveAdmissionDoor::verify_guarded_semantics(
+            domain,
+            clamp,
+            simthing_core::EML_LN_DOMAIN_MIN_BITS,
+            simthing_core::EML_LN_DOMAIN_MAX_BITS,
+            span,
+        )
+        .expect("authored LN clamp output is inside primitive domain");
+        let guard_as_certificate = ExactPrimitiveAdmissionDoor::verify_range_certificate(
+            domain,
+            ExactPrimitiveRangeEvidence::GuardedFormula(&guarded),
+            span,
+        );
+        assert_eq!(
+            guard_as_certificate,
+            Err(OpcodeGateError::ExactPrimitiveGuardIsNotRangeCertificate {
+                guard_opcode: eml_nodes::opcode::CLAMP_BOUNDED,
+                span_start: 41,
+                span_end: 57,
+            })
+        );
+        let planted_guard_as_certificate =
+            Ok::<_, OpcodeGateError>(ExactPrimitiveRangeCertificate { domain });
+        assert_ne!(
+            guard_as_certificate, planted_guard_as_certificate,
+            "planted LN guard-as-certificate defect must be RED"
+        );
+    }
+
+    #[test]
+    fn eml_ln_primitive_0_library_gadgets_admit_and_match_eval_eml_cpu() {
+        fn parity(
+            nodes: &[EmlNode],
+            slots: &[f32],
+            oracle: impl Fn(&[f32]) -> f32,
+            label: &str,
+        ) {
+            let via_interpreter =
+                crate::accumulator_op::eval_eml_cpu(nodes, 0, slots, slots.len() as u32, [0.0; 4]);
+            let expected = oracle(slots);
+            assert_eq!(
+                via_interpreter.to_bits(),
+                expected.to_bits(),
+                "{label}: eval_eml_cpu/oracle parity"
+            );
+        }
+
+        let power = PowerLawGadget { x_col: 0, a: 0.5 };
+        let power_nodes = power.compile_nodes().expect("power law admits");
+        assert_eq!(power_nodes.len(), 8);
+        for x in [1.0f32, 2.0, 4.0, 16.0, 0.125] {
+            parity(&power_nodes, &[x], |_| power.oracle(x), "power_law");
+        }
+
+        let eml_op = EmlOperatorGadget {
+            x_col: 0,
+            y_col: 1,
+        };
+        let eml_nodes = eml_op.compile_nodes().expect("eml operator admits");
+        assert_eq!(eml_nodes.len(), 8);
+        for (x, y) in [(0.0f32, 1.0), (1.0, 2.0), (-1.0, 4.0)] {
+            parity(
+                &eml_nodes,
+                &[x, y],
+                |slots| eml_op.oracle(slots[0], slots[1]),
+                "eml_operator",
+            );
+        }
+
+        let entropy = EntropyTermGadget { p_col: 0 };
+        let entropy_nodes = entropy.compile_nodes().expect("entropy term admits");
+        assert_eq!(entropy_nodes.len(), 12);
+        for p in [0.0f32, 0.25, 0.5, 1.0] {
+            parity(&entropy_nodes, &[p], |slots| entropy.oracle(slots[0]), "entropy");
+        }
+
+        let log_map = LogAccumulateMapGadget { x_col: 0 };
+        let log_nodes = log_map.compile_nodes().expect("log accumulate map admits");
+        assert_eq!(log_nodes.len(), 4);
+        for x in [1.0f32, 2.0, 10.0, 100.0] {
+            parity(&log_nodes, &[x], |slots| log_map.oracle(slots[0]), "log_accumulate_map");
+        }
+    }
+
+    #[test]
+    fn eml_ln_primitive_0_log_accumulate_map_is_not_bit_equivalent_to_product() {
+        let log_map = LogAccumulateMapGadget { x_col: 0 };
+        let log_nodes = log_map.compile_nodes().expect("log map admits");
+        let corpus: [f32; 6] = [1.25, 2.0, 3.5, 0.5, 4.0, 8.0];
+
+        let sequential_product = corpus.iter().copied().product::<f32>();
+
+        let log_sum_exp_style = {
+            let sum_ln: f32 = corpus
+                .iter()
+                .map(|x| log_map.oracle(*x))
+                .sum();
+            let exp_arg = sum_ln.clamp(
+                f32::from_bits(simthing_core::EML_EXP_DOMAIN_MIN_BITS),
+                f32::from_bits(simthing_core::EML_EXP_DOMAIN_MAX_BITS),
+            );
+            simthing_core::eml_exp_pinned_f32(exp_arg)
+        };
+
+        let misuse_product_of_log_maps = corpus
+            .iter()
+            .map(|x| {
+                crate::accumulator_op::eval_eml_cpu(&log_nodes, 0, &[*x], 1, [0.0; 4])
+            })
+            .product::<f32>();
+
+        assert_ne!(
+            sequential_product.to_bits(),
+            misuse_product_of_log_maps.to_bits(),
+            "LogAccumulate map outputs are not Product-path amounts"
+        );
+        assert_ne!(
+            sequential_product.to_bits(),
+            log_sum_exp_style.to_bits(),
+            "log-sum-exp reconstruction and sequential Product are distinct f32 laws on this corpus"
+        );
+
+        let planted_equivalence = sequential_product.to_bits();
+        assert_ne!(
+            misuse_product_of_log_maps.to_bits(),
+            planted_equivalence,
+            "planted LogAccumulate-as-Product defect must be RED"
+        );
+    }
+
+    fn ln_domain_clamp_guard() -> EmlNode {
+        EmlNode {
+            opcode: eml_nodes::opcode::CLAMP_BOUNDED,
+            flags: 0,
+            a: simthing_core::EML_LN_DOMAIN_MIN_BITS,
+            b: simthing_core::EML_LN_DOMAIN_MAX_BITS,
+            c: 0,
+            d: 0,
+        }
+    }
+
+    #[test]
+    fn eml_ln_primitive_0_vocabulary_widens_by_exactly_ln() {
+        let closed = EvalEmlVocabulary::closed_opcodes();
+        assert_eq!(
+            closed
+                .iter()
+                .filter(|op| **op == eml_nodes::opcode::LN)
+                .count(),
+            1,
+            "LN appears exactly once in the closed vocabulary"
+        );
+        assert_eq!(closed.len(), 25, "5.12 widens the 24-opcode roster by one");
+        assert!(opcode_in_accumulator_vocabulary(eml_nodes::opcode::LN));
+        let domain = ln_primitive_domain();
+        assert_eq!(domain.min_bits(), simthing_core::EML_LN_DOMAIN_MIN_BITS);
+        assert_eq!(domain.max_bits(), simthing_core::EML_LN_DOMAIN_MAX_BITS);
+        assert_eq!(
+            domain.special_value_policy(),
+            ExactPrimitiveDomainPolicy::FiniteOnlyRejectNanAndInfinity
+        );
+    }
+
+    #[test]
+    fn eml_ln_primitive_0_call_sites_admit_only_the_two_shapes_and_span_the_rest() {
+        // Shape 2: domain clamp guard immediately precedes LN.
+        let guarded = returning(vec![slot(0), ln_domain_clamp_guard(), ln_node()]);
+        admit_ln_call_sites(&guarded).expect("clamp-guarded LN admits (shape 2)");
+
+        // Shape 1: in-domain literal immediately precedes LN.
+        let certified = returning(vec![lit(1.0), ln_node()]);
+        admit_ln_call_sites(&certified).expect("in-domain literal LN admits (shape 1)");
+
+        // Unguarded product over a raw slot is the spanned admission error.
+        let naive = returning(vec![
+            slot(0),
+            lit(2.0),
+            bin(eml_nodes::opcode::MUL),
+            ln_node(),
+        ]);
+        assert_eq!(
+            admit_ln_call_sites(&naive),
+            Err(OpcodeGateError::UnguardedExactPrimitiveCallSite {
+                span_start: 3,
+                span_end: 4,
+            })
+        );
+
+        // LN with no operand author at all (first node) is unguarded.
+        assert_eq!(
+            admit_ln_call_sites(&returning(vec![ln_node()])),
+            Err(OpcodeGateError::UnguardedExactPrimitiveCallSite {
+                span_start: 0,
+                span_end: 1,
+            })
+        );
+
+        // A clamp whose authored bounds leave the primitive domain is not lawful.
+        let wide_clamp = EmlNode {
+            opcode: eml_nodes::opcode::CLAMP_BOUNDED,
+            flags: 0,
+            a: 0.0f32.to_bits(),
+            b: (-1.0f32).to_bits(),
+            c: 0,
+            d: 0,
+        };
+        assert!(matches!(
+            admit_ln_call_sites(&returning(vec![slot(0), wide_clamp, ln_node()])),
+            Err(OpcodeGateError::ExactPrimitiveRangeOutsideDomain { .. })
+        ));
+
+        // An out-of-domain literal is not a certificate (zero is outside LN domain).
+        assert!(matches!(
+            admit_ln_call_sites(&returning(vec![lit(0.0), ln_node()])),
+            Err(OpcodeGateError::ExactPrimitiveRangeOutsideDomain { .. })
+        ));
+
+        let bypass: Result<(), OpcodeGateError> = Ok(());
+        assert_ne!(
+            admit_ln_call_sites(&naive),
             bypass,
             "planted unguarded-bypass defect must be RED"
         );

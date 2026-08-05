@@ -569,7 +569,8 @@ fn validate_stack_depth(nodes: &[EmlNode]) -> Result<u32, EmlRegistryError> {
             | eml_nodes::opcode::CLAMP_FLOORED
             | eml_nodes::opcode::ABS
             | eml_nodes::opcode::FLOOR
-            | eml_nodes::opcode::EXP => {}
+            | eml_nodes::opcode::EXP
+            | eml_nodes::opcode::LN => {}
             eml_nodes::opcode::ADD
             | eml_nodes::opcode::SUB
             | eml_nodes::opcode::MUL
@@ -651,6 +652,7 @@ fn validate_nodes_for_class(
         }
     }
     validate_exp_call_sites(nodes)?;
+    validate_ln_call_sites(nodes)?;
     Ok(())
 }
 
@@ -694,6 +696,39 @@ fn exp_domain_contains(bits: u32) -> bool {
         && value <= f32::from_bits(crate::eml_exp::EML_EXP_DOMAIN_MAX_BITS)
 }
 
+/// EML-LN-PRIMITIVE-0 registry mirror of the 5.10 call-site law for `LN`.
+fn validate_ln_call_sites(nodes: &[EmlNode]) -> Result<(), EmlRegistryError> {
+    for (index, node) in nodes.iter().enumerate() {
+        if node.opcode != eml_nodes::opcode::LN {
+            continue;
+        }
+        let discharged = index
+            .checked_sub(1)
+            .map(|prev_index| &nodes[prev_index])
+            .is_some_and(|prev| match prev.opcode {
+                eml_nodes::opcode::CLAMP_BOUNDED => {
+                    ln_domain_contains(prev.a) && ln_domain_contains(prev.b)
+                }
+                eml_nodes::opcode::LITERAL_F32 => ln_domain_contains(prev.a),
+                _ => false,
+            });
+        if !discharged {
+            return Err(EmlRegistryError::UnguardedExactPrimitiveCallSite {
+                opcode: node.opcode,
+                index: index as u32,
+            });
+        }
+    }
+    Ok(())
+}
+
+fn ln_domain_contains(bits: u32) -> bool {
+    let value = f32::from_bits(bits);
+    value.is_finite()
+        && value >= f32::from_bits(crate::eml_ln::EML_LN_DOMAIN_MIN_BITS)
+        && value <= f32::from_bits(crate::eml_ln::EML_LN_DOMAIN_MAX_BITS)
+}
+
 fn opcode_allowed_in_exact(op: u32) -> bool {
     matches!(
         op,
@@ -712,6 +747,7 @@ fn opcode_allowed_in_exact(op: u32) -> bool {
             | eml_nodes::opcode::ABS
             | eml_nodes::opcode::FLOOR
             | eml_nodes::opcode::EXP
+            | eml_nodes::opcode::LN
             | eml_nodes::opcode::CMP_LT
             | eml_nodes::opcode::CMP_LE
             | eml_nodes::opcode::CMP_GT
@@ -919,6 +955,77 @@ mod tests {
                 index: 1,
             }),
             "an out-of-domain literal is no certificate"
+        );
+    }
+
+    /// EML-LN-PRIMITIVE-0: the registry mirror of the 5.10 call-site law for LN.
+    #[test]
+    fn eml_ln_primitive_0_registry_admits_guarded_ln_and_spans_naive_calls() {
+        let clamp_guard = EmlNode {
+            opcode: eml_nodes::opcode::CLAMP_BOUNDED,
+            flags: 0,
+            a: crate::eml_ln::EML_LN_DOMAIN_MIN_BITS,
+            b: crate::eml_ln::EML_LN_DOMAIN_MAX_BITS,
+            c: 0,
+            d: 0,
+        };
+        let mut registry = EmlExpressionRegistry::default();
+        registry
+            .register_formula(
+                EmlTreeId(9201),
+                exact_meta(9201, "guarded-ln"),
+                vec![
+                    literal(2.0),
+                    clamp_guard,
+                    op(eml_nodes::opcode::LN),
+                    op(eml_nodes::opcode::RETURN_TOP),
+                ],
+            )
+            .expect("clamp-guarded LN registers (shape 2)");
+        registry
+            .register_formula(
+                EmlTreeId(9202),
+                exact_meta(9202, "literal-ln"),
+                vec![
+                    literal(2.0),
+                    op(eml_nodes::opcode::LN),
+                    op(eml_nodes::opcode::RETURN_TOP),
+                ],
+            )
+            .expect("in-domain literal LN registers (shape 1)");
+        assert_eq!(
+            registry.register_formula(
+                EmlTreeId(9203),
+                exact_meta(9203, "naive-ln"),
+                vec![
+                    literal(1.0),
+                    literal(2.0),
+                    op(eml_nodes::opcode::MUL),
+                    op(eml_nodes::opcode::LN),
+                    op(eml_nodes::opcode::RETURN_TOP),
+                ],
+            ),
+            Err(EmlRegistryError::UnguardedExactPrimitiveCallSite {
+                opcode: eml_nodes::opcode::LN,
+                index: 3,
+            }),
+            "naive unguarded LN is a spanned registry admission error"
+        );
+        assert_eq!(
+            registry.register_formula(
+                EmlTreeId(9204),
+                exact_meta(9204, "out-of-domain-literal-ln"),
+                vec![
+                    literal(0.0),
+                    op(eml_nodes::opcode::LN),
+                    op(eml_nodes::opcode::RETURN_TOP),
+                ],
+            ),
+            Err(EmlRegistryError::UnguardedExactPrimitiveCallSite {
+                opcode: eml_nodes::opcode::LN,
+                index: 1,
+            }),
+            "zero is outside the LN domain and is no certificate"
         );
     }
 }

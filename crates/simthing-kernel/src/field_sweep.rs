@@ -1120,7 +1120,8 @@ fn validate_field_program(
             | eml_opcode::CLAMP_FLOORED
             | eml_opcode::ABS
             | eml_opcode::FLOOR
-            | eml_opcode::EXP => {
+            | eml_opcode::EXP
+            | eml_opcode::LN => {
                 if depth < 1 {
                     return Err(FieldSweepAdmissionError::StackUnderflow { name });
                 }
@@ -1178,6 +1179,8 @@ fn validate_field_program(
     // shape (in-domain CLAMP_BOUNDED guard or in-domain literal certificate);
     // unguarded/uncertified sites are spanned admission errors from the door.
     crate::eml_opcode_gate::admit_exp_call_sites(nodes)
+        .map_err(FieldSweepAdmissionError::OpcodeGate)?;
+    crate::eml_opcode_gate::admit_ln_call_sites(nodes)
         .map_err(FieldSweepAdmissionError::OpcodeGate)?;
     Ok(FieldProgramFacts {
         node_count: nodes.len() as u32,
@@ -1272,6 +1275,9 @@ fn eval_field_eml_cpu_in_class(
             eml_opcode::FLOOR => stack[sp - 1] = stack[sp - 1].floor(),
             eml_opcode::EXP => {
                 stack[sp - 1] = simthing_core::eml_exp_pinned_f32(stack[sp - 1]);
+            }
+            eml_opcode::LN => {
+                stack[sp - 1] = simthing_core::eml_ln_pinned_f32(stack[sp - 1]);
             }
             eml_opcode::SELECT => {
                 let false_value = stack[sp - 1];

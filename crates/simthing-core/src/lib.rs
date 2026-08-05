@@ -9,6 +9,7 @@ pub mod column_index;
 pub mod compiled_accumulator_plan;
 pub mod cost_band;
 pub mod eml_exp;
+pub mod eml_ln;
 pub mod eml_nodes;
 pub mod eml_registry;
 pub mod evaluate;
@@ -80,6 +81,10 @@ pub use eml_exp::{
     eml_exp_pinned_f32, EML_EXP_ALGORITHM_IDENTITY, EML_EXP_DOMAIN_MAX, EML_EXP_DOMAIN_MAX_BITS,
     EML_EXP_DOMAIN_MIN, EML_EXP_DOMAIN_MIN_BITS, EML_EXP_SATURATION_CEILING_BITS,
     EML_EXP_SEQUENCE_VERSION,
+};
+pub use eml_ln::{
+    eml_ln_pinned_f32, EML_LN_ALGORITHM_IDENTITY, EML_LN_DOMAIN_MAX, EML_LN_DOMAIN_MAX_BITS,
+    EML_LN_DOMAIN_MIN, EML_LN_DOMAIN_MIN_BITS, EML_LN_SEQUENCE_VERSION,
 };
 pub use eml_nodes::{opcode as eml_opcode, EmlResourceClass, EML_STACK_MAX};
 pub use eml_registry::{
