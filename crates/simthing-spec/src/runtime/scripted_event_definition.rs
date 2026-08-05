@@ -2,7 +2,7 @@ use crate::runtime::{CompiledEffect, CompiledTrigger};
 use crate::spec::script::ScopeRef;
 use crate::spec::trigger::TriggerDirection;
 use crate::spec::{CooldownSpec, EventKey, EventPriority};
-use simthing_core::{Direction, SimThingId};
+use simthing_core::{Direction, SimThingId, SlotIndex};
 use simthing_feeder::ScriptedEventTriggerRegistration;
 use std::sync::atomic::{AtomicU32, Ordering};
 
@@ -50,8 +50,10 @@ pub struct ScriptedEventInstance {
     pub key: ScriptedEventInstanceKey,
     pub definition_id: ScriptedEventDefinitionId,
     /// Slot used to resolve `ScopeRef::Current` for this instance. Refreshed
-    /// from the allocator on slot churn (fission, removal).
-    pub current_slot: u32,
+    /// from the allocator on slot churn (fission, removal); typed logical
+    /// identity (6.4 SLOT-LOGICAL-IDENTITY-0) — epoch rebinds resolve through
+    /// the canonical remap chain, never a raw integer side-channel.
+    pub current_slot: SlotIndex,
     /// Boundaries remaining until this instance may fire again. 0 = ready.
     pub cooldown_remaining: u32,
 }

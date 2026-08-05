@@ -705,6 +705,31 @@ pub fn derive_epoch_rebind_section(
     Ok(section)
 }
 
+/// Resolve a slot reference recorded BEFORE zero or more epoch rebinds
+/// against post-rebind state, by walking the single canonical remap chain in
+/// order. `ObjectRow` records rebind the object's whole row, so a pre-remap
+/// slot reference for `object` follows its row through every section.
+pub fn resolve_slot_through_chain<'a>(
+    chain: impl IntoIterator<Item = &'a AnchorRemapSection>,
+    object: SimThingId,
+    slot: SlotIndex,
+) -> SlotIndex {
+    let mut resolved = slot;
+    for section in chain {
+        for remap in &section.remaps {
+            if remap.sim_thing_id == object
+                && remap.subject == RemapSubject::ObjectRow
+                && remap.from_slot == Some(resolved)
+            {
+                if let Some(to) = remap.to_slot {
+                    resolved = to;
+                }
+            }
+        }
+    }
+    resolved
+}
+
 fn validate_object_rows_only_under_epoch_rebind(
     section: &AnchorRemapSection,
 ) -> Result<(), AnchorRemapEncodeError> {

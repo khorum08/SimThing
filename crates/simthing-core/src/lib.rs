@@ -56,7 +56,7 @@ pub use automaton::{
 };
 pub use anchor_remap::{
     derive_epoch_rebind_section, derive_exact_anchor_remaps, expected_anchored_remap_keys,
-    expected_epoch_rebind_row_moves, validate_anchor_remap_for_encode,
+    expected_epoch_rebind_row_moves, resolve_slot_through_chain, validate_anchor_remap_for_encode,
     validate_epoch_rebind_section, validate_exact_anchor_remap_endpoints, AnchorLocusRemap,
     AnchorRemapEncodeError, AnchorRemapOperation, AnchorRemapSection, AnchoredLocusMap,
     BindingTableSnapshot, RemapKey, RemapSubject,

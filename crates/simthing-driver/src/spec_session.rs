@@ -111,8 +111,8 @@ pub struct SpecSessionState {
     /// Reverse index: capability tree `SimThingId` → installed instance key.
     capability_instance_by_tree: HashMap<SimThingId, CapabilityInstanceKey>,
     /// Slot supplied to the back-compat `add_scripted_event` shim. Default
-    /// 0; install drives via `set_scripted_current_slot`.
-    session_root_slot: u32,
+    /// slot 0; install drives via `set_scripted_current_slot`.
+    session_root_slot: SlotIndex,
     /// Owner id supplied to the back-compat `add_scripted_event` shim.
     /// Default `SimThingId::default()`; install drives via
     /// `set_session_root_owner`.
@@ -268,7 +268,7 @@ impl SpecSessionState {
         definition_id: ScriptedEventDefinitionId,
         event_id: EventKey,
         owner_id: SimThingId,
-        slot: u32,
+        slot: SlotIndex,
     ) -> ScriptedEventInstanceKey {
         let key = ScriptedEventInstanceKey { owner_id, event_id };
         self.scripted_event_instances.insert(
@@ -290,7 +290,7 @@ impl SpecSessionState {
         &mut self,
         definition: ScriptedEventDefinition,
         owner_id: SimThingId,
-        slot: u32,
+        slot: SlotIndex,
     ) -> ScriptedEventInstanceKey {
         let event_id = definition.id.clone();
         let definition_id = self.register_scripted_event_definition(definition);
@@ -311,7 +311,7 @@ impl SpecSessionState {
     /// slot used by `add_scripted_event` when it installs a default
     /// SessionRoot instance, and refreshes any existing instance owned by
     /// `session_root_owner`.
-    pub fn set_scripted_current_slot(&mut self, slot: u32) {
+    pub fn set_scripted_current_slot(&mut self, slot: SlotIndex) {
         self.session_root_slot = slot;
         for inst in self.scripted_event_instances.values_mut() {
             if inst.key.owner_id == self.session_root_owner {
@@ -337,7 +337,7 @@ impl SpecSessionState {
         let mut stale = Vec::new();
         for inst in self.scripted_event_instances.values_mut() {
             match allocator.slot_of(inst.key.owner_id) {
-                Some(slot) => inst.current_slot = slot.raw(),
+                Some(slot) => inst.current_slot = slot,
                 None => stale.push(inst.key.clone()),
             }
         }
@@ -452,7 +452,7 @@ impl SpecSessionState {
             .values()
             .filter_map(|inst| {
                 let def = self.scripted_event_definitions.get(&inst.definition_id)?;
-                def.to_trigger_registration(inst.current_slot)
+                def.to_trigger_registration(inst.current_slot.raw())
             })
             .collect()
     }
@@ -630,7 +630,7 @@ impl SpecSessionState {
             let mut event_ctx = ScriptedEventBoundaryContext {
                 n_dims: ctx.n_dims,
                 shadow: &*ctx.shadow,
-                current_slot: inst.current_slot,
+                current_slot: inst.current_slot.raw(),
                 slot_to_thing,
                 cooldowns: &mut cooldowns,
                 requests: &mut requests,
