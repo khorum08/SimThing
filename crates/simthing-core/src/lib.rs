@@ -55,9 +55,11 @@ pub use automaton::{
     DirectiveDeliveryReceipt, LiveOverlayRoutes, OverlayDeliveryError,
 };
 pub use anchor_remap::{
-    derive_exact_anchor_remaps, expected_anchored_remap_keys, validate_anchor_remap_for_encode,
-    validate_exact_anchor_remap_endpoints, AnchorLocusRemap, AnchorRemapEncodeError,
-    AnchorRemapOperation, AnchorRemapSection, AnchoredLocusMap,
+    derive_epoch_rebind_section, derive_exact_anchor_remaps, expected_anchored_remap_keys,
+    expected_epoch_rebind_row_moves, validate_anchor_remap_for_encode,
+    validate_epoch_rebind_section, validate_exact_anchor_remap_endpoints, AnchorLocusRemap,
+    AnchorRemapEncodeError, AnchorRemapOperation, AnchorRemapSection, AnchoredLocusMap,
+    BindingTableSnapshot, RemapKey, RemapSubject,
 };
 pub use anchor_table::{
     apply_anchor_remaps_to_table, apply_band_crossings_to_anchor_table,

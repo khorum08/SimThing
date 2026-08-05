@@ -4,7 +4,7 @@ use simthing_core::{
     derive_exact_anchor_remaps, validate_anchor_remap_for_encode,
     validate_exact_anchor_remap_endpoints, AnchorLocusRemap, AnchorRemapOperation,
     AnchorRemapSection, AnchoredLocusMap, ColumnIndex, DimensionRegistry, PropertyAdmissionDisposition,
-    SimProperty, SimPropertyId, SimThing, SimThingId, SimThingKind, SlotIndex,
+    RemapKey, SimProperty, SimPropertyId, SimThing, SimThingId, SimThingKind, SlotIndex,
 };
 use simthing_gpu::{
     apply_band_crossing_deltas_from_fused_emissions, cpu_oracle_band_crossing_deltas,
@@ -147,7 +147,7 @@ fn remap_less_structural_encode_is_rejected_with_operation_context() {
     let section = AnchorRemapSection::with_remaps(AnchorRemapOperation::AddChild, vec![]);
     let err = gate_structural_gpu_encode(&section, &[(id, prop)]).unwrap_err();
     assert_eq!(err.operation, AnchorRemapOperation::AddChild);
-    assert_eq!(err.missing, vec![(id, prop)]);
+    assert_eq!(err.missing, vec![RemapKey::Locus(id, prop)]);
 }
 
 #[test]
@@ -194,11 +194,11 @@ fn column_shift_records_pre_to_post_layout() {
     let section =
         derive_exact_anchor_remaps(&pre, &post, AnchorRemapOperation::AddDimension, true).unwrap();
     assert_eq!(
-        section.remaps[0].from_col,
+        section.remaps[0].from_col(),
         Some(ColumnIndex::from_raw_for_oracle_or_rehearsal(2))
     );
     assert_eq!(
-        section.remaps[0].to_col,
+        section.remaps[0].to_col(),
         Some(ColumnIndex::from_raw_for_oracle_or_rehearsal(5))
     );
 }

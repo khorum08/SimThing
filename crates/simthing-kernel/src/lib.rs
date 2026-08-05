@@ -147,7 +147,7 @@ pub use sealed::{
     EmissionRecordGpu, ResolvedWriteAuthority, ThresholdEmission, ThresholdEmissionGpu,
     ThresholdEvent, ThresholdEventGpu, DEFAULT_EMISSION_CAPACITY,
 };
-pub use slot::{ObjectResidency, SlotAllocError, SlotAllocator};
+pub use slot::{apply_epoch_rebind_to_values, ObjectResidency, SlotAllocError, SlotAllocator};
 pub use transfer_accumulator::{
     conjunctive_recipe_registration_to_transfer, conjunctive_recipe_registrations_to_transfer,
     discrete_transfer_registration_to_transfer, discrete_transfer_registrations_to_transfer,
