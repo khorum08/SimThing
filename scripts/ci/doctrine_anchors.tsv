@@ -22,7 +22,7 @@ scanner-selftest-delta-gate	docs/ci_screening_surface.md	heading:### Scanner sel
 movement-front	docs/simthing_core_design.md	heading:## 7. Mapping — the Movement-Front automaton over gridcell SimThings	movement-front,map-domain	a0592b2f37caf3c3e13a5012c91fdcb981e15db634bcac593cbfd7f42f068b37
 workshop-candidate-homing	docs/ci_screening_surface.md	heading:## 12. Workshop is the scenario candidate-code sandbox (owner ruling, 2026-07-04)	scenario-candidate-home	3e584f0ad1754a23a0a7fa841cc5f56ec8ffd4ed8fbc4bc7e0e2e2faf671e848
 simthing-0087-pillars	docs/design_0_0_8_7_rf_arena_modernization.md	heading:## 2. Pillars (Owner requirements, binding at commitment)	core-0087	61487cba1f9e6e3c2f2c8d2e5cdc6ee630fc0ec38bf25df678bb84068097f14e
-simthing-0087-binding-laws	docs/design_0_0_8_7_rf_arena_modernization.md	heading:## 4. Binding laws (carry from day one)	core-0087	a59203b794257312db5e16fe309499792284de863c67e687fb99793c73169083
+simthing-0087-binding-laws	docs/design_0_0_8_7_rf_arena_modernization.md	heading:## 4. Binding laws (carry from day one)	core-0087	a78417d9a20ab0564cf42fb723f9d0b59da9ee9e9a92d71810111cf440915107
 rf-arena-substrate	docs/adr/resource_flow_substrate.md	heading:# ADR: Resource Flow Substrate	core-0087	17b5f1e5c2ba64a72b189996d04e6b97dd4504d518e4ea623019bec56273937a
 field-sweep-preservation	docs/eml_n4_expansion_digest.md	heading:## 5. Preservation invariants	field-sweep-preservation	acc521a5a36121ef8b53fae1d2b2e1f4f1e57cf4ca717ffc4fe6d42204973201
 stead-events-are-rf	docs/stead_simthing_automata.md	heading:## 3. Events are RF	rf,overlay,stead,threshold-paths	525388344ef236928b5fe0a81d9a768582fd40765683d364faade5a62d8d067e
