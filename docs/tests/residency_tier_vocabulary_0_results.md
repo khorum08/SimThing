@@ -4,6 +4,9 @@ Rung: 6.5 `RESIDENCY-TIER-VOCABULARY-0` · dispatch `5197384131` · authority DA
 `5197291879` (production-path amendment) · HD-RECEIPT `0191ec3a74f5` · base
 `3e4f6edd`.
 
+**Status: COMPLETE — DA-GRADUATED / merged #1659 @ `8486ede9`** (DA deep-tree ratification 2026-08-05;
+8.1/8.2 `BINDS 6.5` verified at the stamp as a DA act — both hold, no alignment edit required).
+
 ## What landed
 
 **The StemThing-A residency vocabulary — authored data over a small closed
