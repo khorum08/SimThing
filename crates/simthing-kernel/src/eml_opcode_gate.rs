@@ -849,6 +849,22 @@ pub enum OpcodeGateError {
     UnguardedExactPrimitiveCallSite { span_start: u32, span_end: u32 },
     #[error("exact primitive call evidence at {span_start}..{span_end} was minted for a different domain")]
     ExactPrimitiveCallSiteDomainMismatch { span_start: u32, span_end: u32 },
+    #[error(
+        "exact-bearing consumer `{consumer_id}` declares arm `{missing_arm}` without digest evidence; exactness is never inherited (Exact-Value Provenance Law)"
+    )]
+    ExactBearingConsumerWithoutDigestEvidence {
+        consumer_id: &'static str,
+        missing_arm: &'static str,
+    },
+    #[error(
+        "exact-bearing consumer `{consumer_id}` arm `{arm}` digest {actual:#018x} disagrees with {expected:#018x}"
+    )]
+    ExactConsumerArmDigestMismatch {
+        consumer_id: &'static str,
+        arm: &'static str,
+        expected: u64,
+        actual: u64,
+    },
 }
 
 // ── Closed vocabularies ───────────────────────────────────────────────────────
@@ -1240,6 +1256,112 @@ fn saturation_exp_full_guard() -> EmlNode {
         b: simthing_core::EML_EXP_DOMAIN_MAX_BITS,
         c: 0,
         d: 0,
+    }
+}
+
+
+// ── EXACT-CONSUMER-OBLIGATION-0: the receiving half of the door ──────────────
+
+/// Execution arm a consumer actually uses. The arm SET is derived and
+/// justified per consumer — never a fixed count (DA 5187245896 correction 1).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum ExactConsumerArm {
+    CpuTwin,
+    InterpretedGpu,
+    SsaJit,
+    FusedTransientKernel,
+}
+
+/// A consumer's declaration of exact-bearing status: which primitive values
+/// it consumes, over which admitted domain, on which arms. Exactness is a
+/// property of admitted DATA — a consumer INHERITS NOTHING from the
+/// primitive's own proof (§4 Exact-Value Provenance Law).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ExactBearingConsumerDeclaration {
+    pub consumer_id: &'static str,
+    pub primitive: &'static str,
+    pub domain_note: &'static str,
+    pub arms: &'static [ExactConsumerArm],
+    pub arm_justification: &'static str,
+}
+
+/// Per-arm digest evidence for one consumer over ITS OWN probe domain.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ExactConsumerDigestEvidence {
+    pub arm: ExactConsumerArm,
+    pub digest: u64,
+}
+
+/// Sealed proof token for an admitted exact-bearing consumer.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ExactConsumerAdmission {
+    consumer_id: &'static str,
+    digest: u64,
+}
+
+impl ExactConsumerAdmission {
+    pub fn consumer_id(&self) -> &'static str {
+        self.consumer_id
+    }
+
+    pub fn digest(&self) -> u64 {
+        self.digest
+    }
+}
+
+/// Production admission for an exact-bearing consumer: every declared arm
+/// must present digest evidence, every digest must agree, and an empty arm
+/// set or missing/mismatched evidence is a HARD ERROR. No waiver, no second
+/// evidence channel, no inheritance from the primitive's qualification.
+pub fn admit_exact_bearing_consumer(
+    declaration: &ExactBearingConsumerDeclaration,
+    evidence: &[ExactConsumerDigestEvidence],
+) -> Result<ExactConsumerAdmission, OpcodeGateError> {
+    if declaration.arms.is_empty() {
+        return Err(OpcodeGateError::ExactBearingConsumerWithoutDigestEvidence {
+            consumer_id: declaration.consumer_id,
+            missing_arm: "empty-arm-set",
+        });
+    }
+    let mut agreed: Option<u64> = None;
+    for arm in declaration.arms {
+        let row = evidence.iter().find(|row| row.arm == *arm).ok_or(
+            OpcodeGateError::ExactBearingConsumerWithoutDigestEvidence {
+                consumer_id: declaration.consumer_id,
+                missing_arm: arm_name(*arm),
+            },
+        )?;
+        if row.digest == 0 {
+            return Err(OpcodeGateError::ExactBearingConsumerWithoutDigestEvidence {
+                consumer_id: declaration.consumer_id,
+                missing_arm: arm_name(*arm),
+            });
+        }
+        match agreed {
+            None => agreed = Some(row.digest),
+            Some(digest) if digest != row.digest => {
+                return Err(OpcodeGateError::ExactConsumerArmDigestMismatch {
+                    consumer_id: declaration.consumer_id,
+                    arm: arm_name(*arm),
+                    expected: digest,
+                    actual: row.digest,
+                });
+            }
+            Some(_) => {}
+        }
+    }
+    Ok(ExactConsumerAdmission {
+        consumer_id: declaration.consumer_id,
+        digest: agreed.expect("nonempty arm set agreed"),
+    })
+}
+
+fn arm_name(arm: ExactConsumerArm) -> &'static str {
+    match arm {
+        ExactConsumerArm::CpuTwin => "cpu-twin",
+        ExactConsumerArm::InterpretedGpu => "interpreted-gpu",
+        ExactConsumerArm::SsaJit => "ssa-jit",
+        ExactConsumerArm::FusedTransientKernel => "fused-transient-kernel",
     }
 }
 

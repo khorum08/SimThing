@@ -292,3 +292,8 @@ LN_PRIMITIVE_NAME | surface-inert | EML-LN-PRIMITIVE-0 admitted primitive regist
 LnConsumerGadgets | authority-export | EML-LN-PRIMITIVE-0 guarded PowerLaw eml-operator entropy LogAccumulate authored-data builders | retire when kernel export set is closed by type-boundary admission
 eml_ln_qualification | authority-export | EML-LN-PRIMITIVE-0 pinned exhaustive-qualification artifacts and certified roster | retire if qualification pinning becomes wholly kernel-internal
 ln_primitive_domain | authority-export | EML-LN-PRIMITIVE-0 canonical positive-normal LN interval constructor | retire if exact primitive call-site admission becomes wholly kernel-internal
+ExactBearingConsumerDeclaration | authority-export | EXACT-CONSUMER-OBLIGATION-0 exact-bearing consumer declaration with derived justified arm set | retire if consumer admission becomes wholly kernel-internal
+ExactConsumerAdmission | sealed-export | EXACT-CONSUMER-OBLIGATION-0 sealed admitted-consumer proof token | retire if consumer admission becomes wholly kernel-internal
+ExactConsumerArm | authority-export | EXACT-CONSUMER-OBLIGATION-0 closed execution-arm vocabulary for consumer digest evidence | retire if consumer admission becomes wholly kernel-internal
+ExactConsumerDigestEvidence | authority-export | EXACT-CONSUMER-OBLIGATION-0 per-arm consumer digest evidence row | retire if consumer admission becomes wholly kernel-internal
+admit_exact_bearing_consumer | authority-export | EXACT-CONSUMER-OBLIGATION-0 production admission hard-erroring evidence-free exact-bearing declarations | retire if consumer admission becomes wholly kernel-internal
