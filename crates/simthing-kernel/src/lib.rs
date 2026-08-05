@@ -11,6 +11,7 @@ pub mod candidate_f_magnitude;
 pub mod context;
 pub mod decision_ingress;
 pub mod eml_exp_qualification;
+pub mod eml_ln_qualification;
 pub mod eml_opcode_gate;
 mod eml_resource_class;
 pub mod exact_magnitude_gate;
@@ -63,7 +64,7 @@ pub use decision_ingress::{
     DecisionIngressError, EmissionToken, StructuralCommitment, ThresholdCrossingToken,
 };
 pub use eml_opcode_gate::{
-    admit_exp_call_sites, combine_in_closed_vocabulary, exp_primitive_domain,
+    admit_exp_call_sites, combine_in_closed_vocabulary, exp_primitive_domain, ln_primitive_domain,
     opcode_in_accumulator_vocabulary,
     opcode_in_closed_vocabulary, AdmittedEvalEmlCombine,
     AdmittedEvalEmlOpcode, CombineRegistrationRequest, CpuOracleParityProof, EvalEmlCombine,
@@ -73,8 +74,8 @@ pub use eml_opcode_gate::{
     ExactPrimitiveCostKey, ExactPrimitiveDeterminismEvidence, ExactPrimitiveDeterminismKey,
     ExactPrimitiveDomainPolicy, ExactPrimitiveResourceEffect, GenericPrimitiveRegistration,
     OpcodeGateError, OpcodeRegistrationGate, OpcodeRegistrationRequest,
-    SemanticOpcodeRegistration, SoftStepPolicyConditional, SoftmaxWeightGadget,
-    EXP_PRIMITIVE_NAME,
+    SemanticOpcodeRegistration, LnConsumerGadgets, SoftStepPolicyConditional, SoftmaxWeightGadget,
+    EXP_PRIMITIVE_NAME, LN_PRIMITIVE_NAME,
 };
 pub use field_sweep::{
     apply_field_sweep_registration, execute_field_sweep_cpu, execute_field_sweep_cpu_chain,

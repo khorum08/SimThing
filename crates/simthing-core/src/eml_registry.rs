@@ -569,7 +569,8 @@ fn validate_stack_depth(nodes: &[EmlNode]) -> Result<u32, EmlRegistryError> {
             | eml_nodes::opcode::CLAMP_FLOORED
             | eml_nodes::opcode::ABS
             | eml_nodes::opcode::FLOOR
-            | eml_nodes::opcode::EXP => {}
+            | eml_nodes::opcode::EXP
+            | eml_nodes::opcode::LN => {}
             eml_nodes::opcode::ADD
             | eml_nodes::opcode::SUB
             | eml_nodes::opcode::MUL
@@ -664,17 +665,17 @@ fn validate_nodes_for_class(
 ///  - shape 1 (range-certified): `LITERAL_F32` whose value lies inside it.
 fn validate_exp_call_sites(nodes: &[EmlNode]) -> Result<(), EmlRegistryError> {
     for (index, node) in nodes.iter().enumerate() {
-        if node.opcode != eml_nodes::opcode::EXP {
-            continue;
-        }
+        let in_domain: fn(u32) -> bool = match node.opcode {
+            eml_nodes::opcode::EXP => exp_domain_contains,
+            eml_nodes::opcode::LN => ln_domain_contains,
+            _ => continue,
+        };
         let discharged = index
             .checked_sub(1)
             .map(|prev_index| &nodes[prev_index])
             .is_some_and(|prev| match prev.opcode {
-                eml_nodes::opcode::CLAMP_BOUNDED => {
-                    exp_domain_contains(prev.a) && exp_domain_contains(prev.b)
-                }
-                eml_nodes::opcode::LITERAL_F32 => exp_domain_contains(prev.a),
+                eml_nodes::opcode::CLAMP_BOUNDED => in_domain(prev.a) && in_domain(prev.b),
+                eml_nodes::opcode::LITERAL_F32 => in_domain(prev.a),
                 _ => false,
             });
         if !discharged {
@@ -685,6 +686,10 @@ fn validate_exp_call_sites(nodes: &[EmlNode]) -> Result<(), EmlRegistryError> {
         }
     }
     Ok(())
+}
+
+fn ln_domain_contains(bits: u32) -> bool {
+    (crate::eml_ln::EML_LN_DOMAIN_MIN_BITS..=crate::eml_ln::EML_LN_DOMAIN_MAX_BITS).contains(&bits)
 }
 
 fn exp_domain_contains(bits: u32) -> bool {
@@ -712,6 +717,7 @@ fn opcode_allowed_in_exact(op: u32) -> bool {
             | eml_nodes::opcode::ABS
             | eml_nodes::opcode::FLOOR
             | eml_nodes::opcode::EXP
+            | eml_nodes::opcode::LN
             | eml_nodes::opcode::CMP_LT
             | eml_nodes::opcode::CMP_LE
             | eml_nodes::opcode::CMP_GT

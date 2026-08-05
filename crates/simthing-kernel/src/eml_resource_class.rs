@@ -229,7 +229,8 @@ fn emit_program(name: &str, nodes: &[EmlNodeGpu]) -> String {
             | eml_opcode::CLAMP_FLOORED
             | eml_opcode::ABS
             | eml_opcode::FLOOR
-            | eml_opcode::EXP => {
+            | eml_opcode::EXP
+            | eml_opcode::LN => {
                 let operand = stack.pop().expect("admitted unary postfix operand");
                 Some(match node.opcode {
                     eml_opcode::NEG => format!("-{operand}"),
@@ -247,6 +248,8 @@ fn emit_program(name: &str, nodes: &[EmlNodeGpu]) -> String {
                     // excised evaluator region — same definition as the
                     // interpreted arm, bit-identical by construction.
                     eml_opcode::EXP => format!("eml_exp_pinned({operand})"),
+                    // EML-LN-PRIMITIVE-0: same single-pinned-helper law.
+                    eml_opcode::LN => format!("eml_ln_pinned({operand})"),
                     _ => unreachable!(),
                 })
             }

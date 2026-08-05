@@ -11,7 +11,7 @@ This digest is a derived context artifact for low-context agents. If it disagree
 | --- | --- | --- |
 | scripts/ci/allow/sealed_producers.txt | 25 | 6923796f3bacd3b27b29f778d5276c3f82a3a67c3f010c30f10b78de8a1866f6 |
 | scripts/ci/allow/inert_buffer_handles.txt | 2 | 9e2069fa5730f17cacde1c671ebc17beb59f50738d2dcb914bceae13f9b8b3a4 |
-| scripts/ci/allow/kernel_surface.txt | 289 | 682c576844cb6e19d5a62e01ea141bc699b8d93d2411505aab2541b9d363798a |
+| scripts/ci/allow/kernel_surface.txt | 293 | 9182e50985389ed9cc2baaa8bd899ffdc7118cfac01e0d47c316b9100b5ab71e |
 | scripts/ci/allow/sealed_types.txt | 19 | 9d427e3b41a586b06f24ca02cc45f78934237d2229b0c38d46e2a8a6ef5016be |
 | scripts/ci/allow/contention_mechanisms.txt | 8 | eb22cbb7755c364804f1c5ac6b10c2346735f8a53d0a57426f3065a879a6cb14 |
 | scripts/ci/scans.tsv | 26 | 18d6f4886524f593e231931b952fbdcf2e0520fb4660f72fb7191298221e7d64 |
@@ -346,6 +346,10 @@ This digest is a derived context artifact for low-context agents. If it disagree
 | admit_exp_call_sites | authority-export | EML-EXP-PRIMITIVE-0 tree-scan wiring of the 5.10 call-site shapes for the admitted EXP primitive | retire if exact primitive call-site admission becomes wholly kernel-internal | kernel_surface.txt |
 | eml_exp_qualification | authority-export | EML-EXP-PRIMITIVE-0 pinned exhaustive-qualification artifacts and certified toolchain roster | retire if qualification pinning becomes wholly kernel-internal | kernel_surface.txt |
 | exp_primitive_domain | authority-export | EML-EXP-PRIMITIVE-0 canonical full-domain EXP interval constructor | retire if exact primitive call-site admission becomes wholly kernel-internal | kernel_surface.txt |
+| LN_PRIMITIVE_NAME | surface-inert | EML-LN-PRIMITIVE-0 admitted primitive registry name constant | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |
+| LnConsumerGadgets | authority-export | EML-LN-PRIMITIVE-0 guarded PowerLaw eml-operator entropy LogAccumulate authored-data builders | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |
+| eml_ln_qualification | authority-export | EML-LN-PRIMITIVE-0 pinned exhaustive-qualification artifacts and certified roster | retire if qualification pinning becomes wholly kernel-internal | kernel_surface.txt |
+| ln_primitive_domain | authority-export | EML-LN-PRIMITIVE-0 canonical positive-normal LN interval constructor | retire if exact primitive call-site admission becomes wholly kernel-internal | kernel_surface.txt |
 
 ## Sealed Types
 
