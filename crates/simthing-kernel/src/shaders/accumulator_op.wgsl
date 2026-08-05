@@ -407,6 +407,9 @@ fn eml_param(ctx: EmlEvalCtx, idx: u32) -> f32 {
 fn eml_eval(ctx: EmlEvalCtx) -> f32 {
     let range = eml_tree_ranges[ctx.range_idx];
     var stack: array<f32, 32>;
+    var mul_a: array<f32, 32>;
+    var mul_b: array<f32, 32>;
+    var is_mul: array<u32, 32>;
     var sp: u32 = 0u;
 
     for (var i: u32 = 0u; i < range.node_count; i = i + 1u) {
@@ -414,103 +417,143 @@ fn eml_eval(ctx: EmlEvalCtx) -> f32 {
         switch node.opcode {
             case EML_OP_LITERAL_F32: {
                 stack[sp] = bitcast<f32>(node.a);
+                is_mul[sp] = 0u;
                 sp = sp + 1u;
             }
             case EML_OP_SLOT_VALUE: {
                 stack[sp] = atomic_read_f32_at(linear_idx(ctx.eval_slot, node.a));
+                is_mul[sp] = 0u;
                 sp = sp + 1u;
             }
             case EML_OP_PARAM: {
                 stack[sp] = eml_param(ctx, node.a);
+                is_mul[sp] = 0u;
                 sp = sp + 1u;
             }
-            case EML_OP_ADD: {
+            case EML_OP_ADD, EML_OP_SUB: {
                 let rhs = stack[sp - 1u];
                 let lhs = stack[sp - 2u];
-                stack[sp - 2u] = lhs + rhs;
-                sp = sp - 1u;
-            }
-            case EML_OP_SUB: {
-                let rhs = stack[sp - 1u];
-                let lhs = stack[sp - 2u];
-                stack[sp - 2u] = lhs - rhs;
+                let rhs_is = is_mul[sp - 1u];
+                let lhs_is = is_mul[sp - 2u];
+                var result = 0.0;
+                if (lhs_is == 1u && rhs_is == 0u) {
+                    let a = mul_a[sp - 2u];
+                    let b = mul_b[sp - 2u];
+                    if (node.opcode == EML_OP_SUB) {
+                        result = fma(a, b, -rhs);
+                    } else {
+                        result = fma(a, b, rhs);
+                    }
+                } else if (lhs_is == 0u && rhs_is == 1u) {
+                    let a = mul_a[sp - 1u];
+                    let b = mul_b[sp - 1u];
+                    if (node.opcode == EML_OP_SUB) {
+                        result = fma(-a, b, lhs);
+                    } else {
+                        result = fma(a, b, lhs);
+                    }
+                } else if (node.opcode == EML_OP_SUB) {
+                    result = lhs - rhs;
+                } else {
+                    result = lhs + rhs;
+                }
+                stack[sp - 2u] = result;
+                is_mul[sp - 2u] = 0u;
                 sp = sp - 1u;
             }
             case EML_OP_MUL: {
                 let rhs = stack[sp - 1u];
                 let lhs = stack[sp - 2u];
                 stack[sp - 2u] = lhs * rhs;
+                mul_a[sp - 2u] = lhs;
+                mul_b[sp - 2u] = rhs;
+                is_mul[sp - 2u] = 1u;
                 sp = sp - 1u;
             }
             case EML_OP_NEG: {
                 stack[sp - 1u] = -stack[sp - 1u];
+                is_mul[sp - 1u] = 0u;
             }
             case EML_OP_DIV: {
                 let rhs = stack[sp - 1u];
                 let lhs = stack[sp - 2u];
                 stack[sp - 2u] = lhs / rhs;
+                is_mul[sp - 2u] = 0u;
                 sp = sp - 1u;
             }
             case EML_OP_MIN: {
                 let rhs = stack[sp - 1u];
                 let lhs = stack[sp - 2u];
                 stack[sp - 2u] = min(lhs, rhs);
+                is_mul[sp - 2u] = 0u;
                 sp = sp - 1u;
             }
             case EML_OP_MAX: {
                 let rhs = stack[sp - 1u];
                 let lhs = stack[sp - 2u];
                 stack[sp - 2u] = max(lhs, rhs);
+                is_mul[sp - 2u] = 0u;
                 sp = sp - 1u;
             }
             case EML_OP_CLAMP_BOUNDED: {
                 let v = stack[sp - 1u];
                 stack[sp - 1u] = clamp(v, bitcast<f32>(node.a), bitcast<f32>(node.b));
+                is_mul[sp - 1u] = 0u;
             }
             case EML_OP_CLAMP_FLOORED: {
                 let v = stack[sp - 1u];
                 stack[sp - 1u] = max(v, bitcast<f32>(node.a));
+                is_mul[sp - 1u] = 0u;
             }
             case EML_OP_ABS: {
                 stack[sp - 1u] = abs(stack[sp - 1u]);
+                is_mul[sp - 1u] = 0u;
             }
             case EML_OP_FLOOR: {
                 stack[sp - 1u] = floor(stack[sp - 1u]);
+                is_mul[sp - 1u] = 0u;
             }
             case EML_OP_EXP: {
                 stack[sp - 1u] = eml_exp_pinned(stack[sp - 1u]);
+                is_mul[sp - 1u] = 0u;
             }
             case EML_OP_LN: {
                 stack[sp - 1u] = eml_ln_pinned(stack[sp - 1u]);
+                is_mul[sp - 1u] = 0u;
             }
             case EML_OP_CMP_LT: {
                 let rhs = stack[sp - 1u];
                 let lhs = stack[sp - 2u];
                 stack[sp - 2u] = select(0.0, 1.0, lhs < rhs);
+                is_mul[sp - 2u] = 0u;
                 sp = sp - 1u;
             }
             case EML_OP_CMP_LE: {
                 let rhs = stack[sp - 1u];
                 let lhs = stack[sp - 2u];
                 stack[sp - 2u] = select(0.0, 1.0, lhs <= rhs);
+                is_mul[sp - 2u] = 0u;
                 sp = sp - 1u;
             }
             case EML_OP_CMP_GT: {
                 let rhs = stack[sp - 1u];
                 let lhs = stack[sp - 2u];
                 stack[sp - 2u] = select(0.0, 1.0, lhs > rhs);
+                is_mul[sp - 2u] = 0u;
                 sp = sp - 1u;
             }
             case EML_OP_CMP_GE: {
                 let rhs = stack[sp - 1u];
                 let lhs = stack[sp - 2u];
                 stack[sp - 2u] = select(0.0, 1.0, lhs >= rhs);
+                is_mul[sp - 2u] = 0u;
                 sp = sp - 1u;
             }
             case EML_OP_CMP_EQ: {
                 let rhs = stack[sp - 1u];
                 let lhs = stack[sp - 2u];
                 stack[sp - 2u] = select(0.0, 1.0, lhs == rhs);
+                is_mul[sp - 2u] = 0u;
                 sp = sp - 1u;
             }
             case EML_OP_SELECT: {
@@ -518,6 +561,7 @@ fn eml_eval(ctx: EmlEvalCtx) -> f32 {
                 let t_val = stack[sp - 2u];
                 let cond = stack[sp - 3u] != 0.0;
                 stack[sp - 3u] = select(f_val, t_val, cond);
+                is_mul[sp - 3u] = 0u;
                 sp = sp - 2u;
             }
             case EML_OP_RETURN_TOP: {

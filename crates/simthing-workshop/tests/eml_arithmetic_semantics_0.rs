@@ -385,6 +385,132 @@ fn ao_eval_interpreted(ctx: &GpuContext, nodes: &[eml_nodes::EmlNode]) -> f32 {
     session.readback_full(ctx).expect("rb")[0]
 }
 
+/// Unique MUL→SUB is FUSED (one-rounding fms) on AO-derived arms.
+/// SSA-JIT is not-an-execution-arm for OrdinaryAccumulatorEvalEml.
+#[test]
+fn eml_arithmetic_semantics_0_unique_mul_into_sub_matches_fms_on_derived_arms() {
+    let Some(ctx) = certified_context() else {
+        return;
+    };
+    // Shape c - (a*b): unique rhs-MUL → FUSED as (-a).mul_add(b, c).
+    // Search until host mul_add differs from separate rounding.
+    let (a, b, c, fused) = {
+        let mut state = 0x9e37_79b9_7f4a_7c15u64;
+        let mut found = None;
+        for _ in 0..2_000_000 {
+            state = state
+                .wrapping_mul(6364136223846793005)
+                .wrapping_add(1442695040888963407);
+            let unit = ((state >> 40) as f32) / (1u32 << 24) as f32;
+            let mag = match (state >> 3) % 5 {
+                0 => 1.0e-3,
+                1 => 1.0,
+                2 => 1.0e2,
+                3 => 1.0e-6,
+                _ => 1.0e3,
+            };
+            let signed = if (state & 1) == 0 { 1.0 } else { -1.0 };
+            let a = signed * (0.5 + unit) * mag;
+            state = state
+                .wrapping_mul(6364136223846793005)
+                .wrapping_add(1442695040888963407);
+            let b = {
+                let unit = ((state >> 40) as f32) / (1u32 << 24) as f32;
+                let mag = match (state >> 3) % 5 {
+                    0 => 1.0e-3,
+                    1 => 1.0,
+                    2 => 1.0e2,
+                    3 => 1.0e-6,
+                    _ => 1.0e3,
+                };
+                let signed = if (state & 1) == 0 { 1.0 } else { -1.0 };
+                signed * (0.5 + unit) * mag
+            };
+            state = state
+                .wrapping_mul(6364136223846793005)
+                .wrapping_add(1442695040888963407);
+            let c = {
+                let unit = ((state >> 40) as f32) / (1u32 << 24) as f32;
+                let mag = match (state >> 3) % 5 {
+                    0 => 1.0e-3,
+                    1 => 1.0,
+                    2 => 1.0e2,
+                    3 => 1.0e-6,
+                    _ => 1.0e3,
+                };
+                let signed = if (state & 1) == 0 { 1.0 } else { -1.0 };
+                signed * (0.5 + unit) * mag
+            };
+            let separate = c - (a * b);
+            let fused = (-a).mul_add(b, c);
+            if separate.to_bits() != fused.to_bits() && fused.is_finite() && separate.is_finite()
+            {
+                found = Some((a, b, c, fused));
+                break;
+            }
+        }
+        found.expect("host mul_add must discriminate fms for some finite triple")
+    };
+
+    // Postfix: c, a, b, MUL, SUB → lhs=c, rhs=MUL → unique MUL→SUB = FUSED.
+    let nodes = vec![
+        EmlNodeGpu {
+            opcode: eml_nodes::opcode::LITERAL_F32,
+            flags: 0,
+            a: c.to_bits(),
+            b: 0,
+            c: 0,
+            d: 0,
+        },
+        EmlNodeGpu {
+            opcode: eml_nodes::opcode::LITERAL_F32,
+            flags: 0,
+            a: a.to_bits(),
+            b: 0,
+            c: 0,
+            d: 0,
+        },
+        EmlNodeGpu {
+            opcode: eml_nodes::opcode::LITERAL_F32,
+            flags: 0,
+            a: b.to_bits(),
+            b: 0,
+            c: 0,
+            d: 0,
+        },
+        EmlNodeGpu {
+            opcode: eml_nodes::opcode::MUL,
+            flags: 0,
+            a: 0,
+            b: 0,
+            c: 0,
+            d: 0,
+        },
+        EmlNodeGpu {
+            opcode: eml_nodes::opcode::SUB,
+            flags: 0,
+            a: 0,
+            b: 0,
+            c: 0,
+            d: 0,
+        },
+        EmlNodeGpu {
+            opcode: eml_nodes::opcode::RETURN_TOP,
+            flags: 0,
+            a: 0,
+            b: 0,
+            c: 0,
+            d: 0,
+        },
+    ];
+    let expected = fused.to_bits();
+    let cpu = ao_eval_cpu(&nodes).to_bits();
+    let gpu = ao_eval_interpreted(&ctx, &nodes).to_bits();
+    assert_eq!(cpu, expected, "unique MUL→SUB CPU twin must match fms");
+    assert_eq!(gpu, expected, "unique MUL→SUB interpreted must match fms");
+    assert_eq!(cpu, gpu, "unique MUL→SUB arms must agree");
+}
+
 /// Standalone ADD/SUB/MUL/DIV: IEEE single-rounding, no reassociation.
 /// OrdinaryAccumulatorEvalEml derives CpuTwin + InterpretedGpu only (SSA-JIT
 /// is not an execution arm for these AO programs). Field fused ADD/MUL is

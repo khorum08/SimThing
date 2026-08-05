@@ -1275,10 +1275,24 @@ fn eval_field_eml_cpu_prefix(
             requested_nodes: facts.node_count,
             requested_stack: facts.peak_stack,
         })?;
-    let mut stack = vec![0.0f32; resource_class.stack_slots() as usize];
+    let slots = resource_class.stack_slots() as usize;
+    let mut stack = vec![0.0f32; slots];
+    let mut mul_a = vec![0.0f32; slots];
+    let mut mul_b = vec![0.0f32; slots];
+    let mut is_mul = vec![false; slots];
     let mut sp = 0usize;
     for node in &nodes[..count] {
-        eval_field_eml_step(node, context, values, n_dims, &mut stack, &mut sp)?;
+        eval_field_eml_step(
+            node,
+            context,
+            values,
+            n_dims,
+            &mut stack,
+            &mut mul_a,
+            &mut mul_b,
+            &mut is_mul,
+            &mut sp,
+        )?;
     }
     Ok(stack[sp - depth_from_top])
 }
@@ -1290,12 +1304,24 @@ fn eval_field_eml_cpu_in_class(
     n_dims: u32,
     resource_class: EmlResourceClass,
 ) -> Result<f32, FieldSweepExecutionError> {
-    let mut stack = vec![0.0f32; resource_class.stack_slots() as usize];
+    let slots = resource_class.stack_slots() as usize;
+    let mut stack = vec![0.0f32; slots];
+    let mut mul_a = vec![0.0f32; slots];
+    let mut mul_b = vec![0.0f32; slots];
+    let mut is_mul = vec![false; slots];
     let mut sp = 0usize;
     for node in nodes {
-        if let Some(returned) =
-            eval_field_eml_step(node, context, values, n_dims, &mut stack, &mut sp)?
-        {
+        if let Some(returned) = eval_field_eml_step(
+            node,
+            context,
+            values,
+            n_dims,
+            &mut stack,
+            &mut mul_a,
+            &mut mul_b,
+            &mut is_mul,
+            &mut sp,
+        )? {
             return Ok(returned);
         }
     }
@@ -1310,20 +1336,23 @@ fn eval_field_eml_step(
     values: &[f32],
     n_dims: u32,
     stack: &mut [f32],
+    mul_a: &mut [f32],
+    mul_b: &mut [f32],
+    is_mul: &mut [bool],
     sp: &mut usize,
 ) -> Result<Option<f32>, FieldSweepExecutionError> {
     match node.opcode {
-        eml_opcode::LITERAL_F32 => push_step(stack, sp, f32::from_bits(node.a))?,
+        eml_opcode::LITERAL_F32 => push_step(stack, mul_a, mul_b, is_mul, sp, f32::from_bits(node.a))?,
         eml_opcode::TARGET_VALUE => {
             let value = read_cell(values, context.target_slot, column_from_wire(node.a), n_dims)?;
-            push_step(stack, sp, value)?;
+            push_step(stack, mul_a, mul_b, is_mul, sp, value)?;
         }
         eml_opcode::NEIGHBOR_VALUE => {
             let neighbor_slot = context
                 .neighbor_slot
                 .ok_or(FieldSweepExecutionError::MissingNeighborContext)?;
             let value = read_cell(values, neighbor_slot, column_from_wire(node.a), n_dims)?;
-            push_step(stack, sp, value)?;
+            push_step(stack, mul_a, mul_b, is_mul, sp, value)?;
         }
         eml_opcode::PARAM => {
             let value = match node.a {
@@ -1343,35 +1372,74 @@ fn eval_field_eml_step(
                     .ok_or(FieldSweepExecutionError::MissingNeighborContext)?,
                 _ => return Err(FieldSweepExecutionError::InvalidFieldParam(node.a)),
             };
-            push_step(stack, sp, value)?;
+            push_step(stack, mul_a, mul_b, is_mul, sp, value)?;
         }
-        eml_opcode::NEG => stack[*sp - 1] = -stack[*sp - 1],
+        eml_opcode::NEG => {
+            stack[*sp - 1] = -stack[*sp - 1];
+            is_mul[*sp - 1] = false;
+        }
         eml_opcode::CLAMP_BOUNDED => {
             stack[*sp - 1] = stack[*sp - 1].clamp(f32::from_bits(node.a), f32::from_bits(node.b));
+            is_mul[*sp - 1] = false;
         }
         eml_opcode::CLAMP_FLOORED => {
             stack[*sp - 1] = stack[*sp - 1].max(f32::from_bits(node.a));
+            is_mul[*sp - 1] = false;
         }
-        eml_opcode::ABS => stack[*sp - 1] = stack[*sp - 1].abs(),
-        eml_opcode::FLOOR => stack[*sp - 1] = stack[*sp - 1].floor(),
+        eml_opcode::ABS => {
+            stack[*sp - 1] = stack[*sp - 1].abs();
+            is_mul[*sp - 1] = false;
+        }
+        eml_opcode::FLOOR => {
+            stack[*sp - 1] = stack[*sp - 1].floor();
+            is_mul[*sp - 1] = false;
+        }
         eml_opcode::EXP => {
             stack[*sp - 1] = simthing_core::eml_exp_pinned_f32(stack[*sp - 1]);
+            is_mul[*sp - 1] = false;
         }
         eml_opcode::LN => {
             stack[*sp - 1] = simthing_core::eml_ln::eml_ln_pinned_f32(stack[*sp - 1]);
+            is_mul[*sp - 1] = false;
         }
         eml_opcode::SELECT => {
             let false_value = stack[*sp - 1];
             let true_value = stack[*sp - 2];
             let condition = stack[*sp - 3] != 0.0;
             stack[*sp - 3] = if condition { true_value } else { false_value };
+            is_mul[*sp - 3] = false;
             *sp -= 2;
         }
         eml_opcode::RETURN_TOP => return Ok(Some(stack[*sp - 1])),
+        eml_opcode::ADD | eml_opcode::SUB => {
+            let rhs = stack[*sp - 1];
+            let lhs = stack[*sp - 2];
+            let rhs_mul = is_mul[*sp - 1].then_some((mul_a[*sp - 1], mul_b[*sp - 1]));
+            let lhs_mul = is_mul[*sp - 2].then_some((mul_a[*sp - 2], mul_b[*sp - 2]));
+            stack[*sp - 2] = crate::eml_uniqueness::uniqueness_add_sub(
+                node.opcode == eml_opcode::SUB,
+                lhs,
+                rhs,
+                lhs_mul,
+                rhs_mul,
+            );
+            is_mul[*sp - 2] = false;
+            *sp -= 1;
+        }
+        eml_opcode::MUL => {
+            let rhs = stack[*sp - 1];
+            let lhs = stack[*sp - 2];
+            stack[*sp - 2] = lhs * rhs;
+            mul_a[*sp - 2] = lhs;
+            mul_b[*sp - 2] = rhs;
+            is_mul[*sp - 2] = true;
+            *sp -= 1;
+        }
         opcode => {
             let rhs = stack[*sp - 1];
             let lhs = stack[*sp - 2];
             stack[*sp - 2] = apply_binary(opcode, lhs, rhs);
+            is_mul[*sp - 2] = false;
             *sp -= 1;
         }
     }
@@ -1380,6 +1448,9 @@ fn eval_field_eml_step(
 
 fn push_step(
     stack: &mut [f32],
+    _mul_a: &mut [f32],
+    _mul_b: &mut [f32],
+    is_mul: &mut [bool],
     sp: &mut usize,
     value: f32,
 ) -> Result<(), FieldSweepExecutionError> {
@@ -1387,6 +1458,7 @@ fn push_step(
         return Err(FieldSweepExecutionError::StackOverflow);
     }
     stack[*sp] = value;
+    is_mul[*sp] = false;
     *sp += 1;
     Ok(())
 }

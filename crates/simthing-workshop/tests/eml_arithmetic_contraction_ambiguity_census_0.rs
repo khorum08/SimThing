@@ -1,10 +1,12 @@
-//! EML-ARITHMETIC-SEMANTICS-0 — uniqueness census (ADD only).
+//! EML-ARITHMETIC-SEMANTICS-0 — uniqueness census (ADD hits + SUB reachability).
 //!
 //! Enumerates admitted EML programs for ADD nodes whose both immediate
 //! producers are MUL results, measures CPU-twin / interpreted-WGSL behaviour,
 //! and records SSA-JIT as not-an-arm for OrdinaryAccumulatorEvalEml.
 //! DA `5192270934`: two+ MUL → ADD is authored UNFUSED (`U`); no tie-break;
-//! non-empty set is no longer a STOP. SUB is not under uniqueness.
+//! non-empty set is no longer a STOP.
+//! DA `5193244394` / remand `5193312235`: the same walk also counts MUL→SUB
+//! dataflows (reachability of fused-multiply-subtract).
 
 use simthing_core::{
     eml_nodes, AccumulatorOp, ColumnIndex, CombineFn, ConsumeMode, EmlExecutionClass,
@@ -39,9 +41,13 @@ struct AmbiguousHit {
     params: [f32; 4],
 }
 
-fn classify_two_mul_into_add(nodes: &[EmlNode]) -> Vec<(usize, usize, usize)> {
+/// Walk results: two-MUL→ADD hits, and every MUL→SUB immediate dataflow edge.
+fn classify_contraction_walk(
+    nodes: &[EmlNode],
+) -> (Vec<(usize, usize, usize)>, Vec<(usize, usize)>) {
     let mut stack: Vec<(ProducerKind, usize)> = Vec::new();
-    let mut hits = Vec::new();
+    let mut add_hits = Vec::new();
+    let mut mul_into_sub = Vec::new();
     for (idx, node) in nodes.iter().enumerate() {
         match node.opcode {
             eml_nodes::opcode::LITERAL_F32
@@ -53,14 +59,20 @@ fn classify_two_mul_into_add(nodes: &[EmlNode]) -> Vec<(usize, usize, usize)> {
                 let rhs = stack.pop().expect("ADD rhs");
                 let lhs = stack.pop().expect("ADD lhs");
                 if lhs.0 == ProducerKind::Mul && rhs.0 == ProducerKind::Mul {
-                    hits.push((idx, lhs.1, rhs.1));
+                    add_hits.push((idx, lhs.1, rhs.1));
                 }
                 stack.push((ProducerKind::Other, idx));
             }
             eml_nodes::opcode::SUB => {
-                let _rhs = stack.pop().expect("SUB rhs");
-                let _lhs = stack.pop().expect("SUB lhs");
-                // SUB is not under the uniqueness contraction rule.
+                let rhs = stack.pop().expect("SUB rhs");
+                let lhs = stack.pop().expect("SUB lhs");
+                // DA 5193244394: record MUL→SUB reachability in this walk.
+                if lhs.0 == ProducerKind::Mul {
+                    mul_into_sub.push((idx, lhs.1));
+                }
+                if rhs.0 == ProducerKind::Mul {
+                    mul_into_sub.push((idx, rhs.1));
+                }
                 stack.push((ProducerKind::Other, idx));
             }
             eml_nodes::opcode::MUL
@@ -104,7 +116,7 @@ fn classify_two_mul_into_add(nodes: &[EmlNode]) -> Vec<(usize, usize, usize)> {
             }
         }
     }
-    hits
+    (add_hits, mul_into_sub)
 }
 
 fn to_gpu(nodes: &[EmlNode]) -> Vec<EmlNodeGpu> {
@@ -745,10 +757,12 @@ fn eml_arithmetic_semantics_0_contraction_ambiguity_census_stop_packet() {
     // OrdinaryAccumulatorEvalEml: CpuTwin + InterpretedGpu only (field JIT
     // never compiles AO programs). Recorded for the census packet.
     let mut hits: Vec<AmbiguousHit> = Vec::new();
+    let mut mul_into_sub_edges: Vec<(&'static str, usize, usize)> = Vec::new();
     let mut walked = 0usize;
     for (program, source, nodes, columns, probe_row, params) in admitted_programs() {
         walked += 1;
-        for (add_index, mul_lhs_index, mul_rhs_index) in classify_two_mul_into_add(&nodes) {
+        let (add_hits, sub_edges) = classify_contraction_walk(&nodes);
+        for (add_index, mul_lhs_index, mul_rhs_index) in add_hits {
             hits.push(AmbiguousHit {
                 program,
                 source,
@@ -761,13 +775,17 @@ fn eml_arithmetic_semantics_0_contraction_ambiguity_census_stop_packet() {
                 params,
             });
         }
+        for (sub_index, mul_index) in sub_edges {
+            mul_into_sub_edges.push((program, sub_index, mul_index));
+        }
     }
 
-    println!("=== EML-ARITHMETIC-SEMANTICS-0 UNIQUENESS CENSUS (ADD only) ===");
+    println!("=== EML-ARITHMETIC-SEMANTICS-0 UNIQUENESS CENSUS (ADD + SUB reachability) ===");
     println!("programs_walked: {walked}");
     println!("two_mul_into_add_hits: {}", hits.len());
-    // DA 5192270934: two+ MUL → ADD is authored UNFUSED (`U`). SUB is not under
-    // this rule. Proceed; do not invent a tie-break.
+    println!("mul_into_sub_dataflows: {}", mul_into_sub_edges.len());
+    // DA 5192270934: two+ MUL → ADD is authored UNFUSED (`U`). Proceed; no tie-break.
+    // DA 5193244394: MUL→SUB count decides whether SUB joins uniqueness.
 
     let ctx = GpuContext::new_blocking().expect("GPU required for interpreted-arm measurement");
     let live =
@@ -775,11 +793,19 @@ fn eml_arithmetic_semantics_0_contraction_ambiguity_census_stop_packet() {
     simthing_kernel::eml_exp_qualification::require_certified_toolchain(&live)
         .expect("certified toolchain");
 
-    println!("ORIENT-RECEIPT: fc5773df281f");
+    println!("ORIENT-RECEIPT: e2fd94a4fb2a");
     println!("HD-RECEIPT: b9070974440b");
     println!("base_sha: 98180a4a4e7334fa9476c74170d995b5028202dc");
     println!("ssa_jit_note: OrdinaryAccumulatorEvalEml derives CpuTwin+InterpretedGpu only; SSA-JIT is not-an-execution-arm for these hits");
-    println!("uniqueness_rule: one MUL→ADD = FUSED; two+ MUL→ADD = UNFUSED(U); SUB not under rule; no tie-break");
+    println!(
+        "uniqueness_rule: one MUL→ADD = FUSED; two+ MUL→ADD = UNFUSED(U); MUL→SUB dataflows={}; no tie-break",
+        mul_into_sub_edges.len()
+    );
+    for (i, (program, sub_index, mul_index)) in mul_into_sub_edges.iter().enumerate() {
+        println!("--- mul_into_sub[{i}] ---");
+        println!("program: {program}");
+        println!("nodes: SUB@{sub_index} fed by MUL@{mul_index}");
+    }
 
     for (i, hit) in hits.iter().enumerate() {
         let (a, b) = mul_operands(
@@ -922,7 +948,8 @@ fn eml_arithmetic_semantics_0_contraction_ambiguity_census_stop_packet() {
     }
 
     println!(
-        "=== END UNIQUENESS CENSUS — ADD hits={} (rule decides UNFUSED; proceed) ===",
-        hits.len()
+        "=== END UNIQUENESS CENSUS — ADD hits={} UNFUSED; MUL→SUB dataflows={} ===",
+        hits.len(),
+        mul_into_sub_edges.len()
     );
 }

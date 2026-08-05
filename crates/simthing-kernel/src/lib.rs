@@ -14,6 +14,7 @@ pub mod eml_exp_qualification;
 pub mod eml_ln_qualification;
 pub mod eml_opcode_gate;
 mod eml_resource_class;
+mod eml_uniqueness;
 pub mod exact_magnitude_gate;
 pub mod field_sweep;
 pub mod cpu_oracle;
