@@ -2,7 +2,9 @@
 
 Rung: 6.4 `SLOT-LOGICAL-IDENTITY-0` · dispatch `5194769530` (resume after accepted
 FIRST-STEP STOP `5194589941`) · authority DA `5194703997` + `5193918971` ·
-HD-RECEIPT `afee4a04800d` · base `600a40df`.
+HD-RECEIPT `afee4a04800d` · base `600a40df` ·
+**Status: COMPLETE — DA-GRADUATED / merged #1655 @ `1d0e1ab9`** (DA deep-tree ratification 2026-08-05;
+all three `5194703997` constraints and both `5193918971` amendments verified independently in production code).
 
 ## What landed
 
