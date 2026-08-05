@@ -39,111 +39,156 @@ pub fn eval_eml_cpu(
     }
     let resource_class = EmlResourceClass::smallest_fitting(nodes.len() as u32, peak_stack)
         .expect("CPU oracle requires registry-admitted EML");
-    let mut stack = vec![0.0f32; resource_class.stack_slots() as usize];
+    let slots = resource_class.stack_slots() as usize;
+    let mut stack = vec![0.0f32; slots];
+    let mut mul_a = vec![0.0f32; slots];
+    let mut mul_b = vec![0.0f32; slots];
+    let mut is_mul = vec![false; slots];
     let mut sp: usize = 0;
+
+    let push = |stack: &mut [f32],
+                _mul_a: &mut [f32],
+                _mul_b: &mut [f32],
+                is_mul: &mut [bool],
+                sp: &mut usize,
+                value: f32| {
+        stack[*sp] = value;
+        is_mul[*sp] = false;
+        *sp += 1;
+    };
+    let clear_top_mul = |is_mul: &mut [bool], sp: usize| {
+        if sp > 0 {
+            is_mul[sp - 1] = false;
+        }
+    };
 
     for node in nodes {
         match node.opcode {
             eml_opcode::LITERAL_F32 => {
-                stack[sp] = f32::from_bits(node.a);
-                sp += 1;
+                push(&mut stack, &mut mul_a, &mut mul_b, &mut is_mul, &mut sp, f32::from_bits(node.a));
             }
             eml_opcode::SLOT_VALUE => {
                 let i = idx(eval_slot, node.a, n_dims);
-                stack[sp] = values[i];
-                sp += 1;
+                push(&mut stack, &mut mul_a, &mut mul_b, &mut is_mul, &mut sp, values[i]);
             }
             eml_opcode::PARAM => {
-                stack[sp] = params[node.a as usize];
-                sp += 1;
+                push(
+                    &mut stack,
+                    &mut mul_a,
+                    &mut mul_b,
+                    &mut is_mul,
+                    &mut sp,
+                    params[node.a as usize],
+                );
             }
-            eml_opcode::ADD => {
+            eml_opcode::ADD | eml_opcode::SUB => {
                 let rhs = stack[sp - 1];
                 let lhs = stack[sp - 2];
-                stack[sp - 2] = lhs + rhs;
-                sp -= 1;
-            }
-            eml_opcode::SUB => {
-                let rhs = stack[sp - 1];
-                let lhs = stack[sp - 2];
-                stack[sp - 2] = lhs - rhs;
+                let rhs_mul = is_mul[sp - 1].then_some((mul_a[sp - 1], mul_b[sp - 1]));
+                let lhs_mul = is_mul[sp - 2].then_some((mul_a[sp - 2], mul_b[sp - 2]));
+                stack[sp - 2] = crate::eml_uniqueness::uniqueness_add_sub(
+                    node.opcode == eml_opcode::SUB,
+                    lhs,
+                    rhs,
+                    lhs_mul,
+                    rhs_mul,
+                );
+                is_mul[sp - 2] = false;
                 sp -= 1;
             }
             eml_opcode::MUL => {
                 let rhs = stack[sp - 1];
                 let lhs = stack[sp - 2];
                 stack[sp - 2] = lhs * rhs;
+                mul_a[sp - 2] = lhs;
+                mul_b[sp - 2] = rhs;
+                is_mul[sp - 2] = true;
                 sp -= 1;
             }
             eml_opcode::NEG => {
                 stack[sp - 1] = -stack[sp - 1];
+                clear_top_mul(&mut is_mul, sp);
             }
             eml_opcode::DIV => {
                 let rhs = stack[sp - 1];
                 let lhs = stack[sp - 2];
                 stack[sp - 2] = lhs / rhs;
+                is_mul[sp - 2] = false;
                 sp -= 1;
             }
             eml_opcode::MIN => {
                 let rhs = stack[sp - 1];
                 let lhs = stack[sp - 2];
                 stack[sp - 2] = lhs.min(rhs);
+                is_mul[sp - 2] = false;
                 sp -= 1;
             }
             eml_opcode::MAX => {
                 let rhs = stack[sp - 1];
                 let lhs = stack[sp - 2];
                 stack[sp - 2] = lhs.max(rhs);
+                is_mul[sp - 2] = false;
                 sp -= 1;
             }
             eml_opcode::CLAMP_BOUNDED => {
                 let v = stack[sp - 1];
                 stack[sp - 1] = v.clamp(f32::from_bits(node.a), f32::from_bits(node.b));
+                clear_top_mul(&mut is_mul, sp);
             }
             eml_opcode::CLAMP_FLOORED => {
                 let v = stack[sp - 1];
                 stack[sp - 1] = v.max(f32::from_bits(node.a));
+                clear_top_mul(&mut is_mul, sp);
             }
             eml_opcode::ABS => {
                 stack[sp - 1] = stack[sp - 1].abs();
+                clear_top_mul(&mut is_mul, sp);
             }
             eml_opcode::FLOOR => {
                 stack[sp - 1] = stack[sp - 1].floor();
+                clear_top_mul(&mut is_mul, sp);
             }
             eml_opcode::EXP => {
                 stack[sp - 1] = simthing_core::eml_exp_pinned_f32(stack[sp - 1]);
+                clear_top_mul(&mut is_mul, sp);
             }
             eml_opcode::LN => {
                 stack[sp - 1] = simthing_core::eml_ln::eml_ln_pinned_f32(stack[sp - 1]);
+                clear_top_mul(&mut is_mul, sp);
             }
             eml_opcode::CMP_LT => {
                 let rhs = stack[sp - 1];
                 let lhs = stack[sp - 2];
                 stack[sp - 2] = if lhs < rhs { 1.0 } else { 0.0 };
+                is_mul[sp - 2] = false;
                 sp -= 1;
             }
             eml_opcode::CMP_LE => {
                 let rhs = stack[sp - 1];
                 let lhs = stack[sp - 2];
                 stack[sp - 2] = if lhs <= rhs { 1.0 } else { 0.0 };
+                is_mul[sp - 2] = false;
                 sp -= 1;
             }
             eml_opcode::CMP_GT => {
                 let rhs = stack[sp - 1];
                 let lhs = stack[sp - 2];
                 stack[sp - 2] = if lhs > rhs { 1.0 } else { 0.0 };
+                is_mul[sp - 2] = false;
                 sp -= 1;
             }
             eml_opcode::CMP_GE => {
                 let rhs = stack[sp - 1];
                 let lhs = stack[sp - 2];
                 stack[sp - 2] = if lhs >= rhs { 1.0 } else { 0.0 };
+                is_mul[sp - 2] = false;
                 sp -= 1;
             }
             eml_opcode::CMP_EQ => {
                 let rhs = stack[sp - 1];
                 let lhs = stack[sp - 2];
                 stack[sp - 2] = if lhs == rhs { 1.0 } else { 0.0 };
+                is_mul[sp - 2] = false;
                 sp -= 1;
             }
             eml_opcode::SELECT => {
@@ -151,6 +196,7 @@ pub fn eval_eml_cpu(
                 let t_val = stack[sp - 2];
                 let cond = stack[sp - 3] != 0.0;
                 stack[sp - 3] = if cond { t_val } else { f_val };
+                is_mul[sp - 3] = false;
                 sp -= 2;
             }
             eml_opcode::RETURN_TOP => {

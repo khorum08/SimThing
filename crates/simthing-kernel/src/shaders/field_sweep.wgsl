@@ -316,46 +316,71 @@ fn field_param(index: u32, context: FieldEmlContext) -> f32 {
 
 fn eval_program(offset: u32, count: u32, context: FieldEmlContext) -> f32 {
     var stack: array<f32, EML_STACK_MAX>;
+    var mul_a: array<f32, EML_STACK_MAX>;
+    var mul_b: array<f32, EML_STACK_MAX>;
+    var is_mul: array<u32, EML_STACK_MAX>;
     var sp = 0u;
     for (var local = 0u; local < count; local = local + 1u) {
         let node = nodes[offset + local];
         switch node.opcode {
             case OP_LITERAL_F32: {
                 stack[sp] = bitcast<f32>(node.a);
+                is_mul[sp] = 0u;
                 sp = sp + 1u;
             }
             case OP_TARGET_VALUE: {
                 stack[sp] = values_in[context.target_slot * params.n_dims + node.a];
+                is_mul[sp] = 0u;
                 sp = sp + 1u;
             }
             case OP_NEIGHBOR_VALUE: {
                 stack[sp] = values_in[context.neighbor_slot * params.n_dims + node.a];
+                is_mul[sp] = 0u;
                 sp = sp + 1u;
             }
             case OP_PARAM: {
                 stack[sp] = field_param(node.a, context);
+                is_mul[sp] = 0u;
                 sp = sp + 1u;
             }
-            case OP_NEG: { stack[sp - 1u] = -stack[sp - 1u]; }
+            case OP_NEG: {
+                stack[sp - 1u] = -stack[sp - 1u];
+                is_mul[sp - 1u] = 0u;
+            }
             case OP_CLAMP_BOUNDED: {
                 stack[sp - 1u] = clamp(
                     stack[sp - 1u],
                     bitcast<f32>(node.a),
                     bitcast<f32>(node.b),
                 );
+                is_mul[sp - 1u] = 0u;
             }
             case OP_CLAMP_FLOORED: {
                 stack[sp - 1u] = max(stack[sp - 1u], bitcast<f32>(node.a));
+                is_mul[sp - 1u] = 0u;
             }
-            case OP_ABS: { stack[sp - 1u] = abs(stack[sp - 1u]); }
-            case OP_FLOOR: { stack[sp - 1u] = floor(stack[sp - 1u]); }
-            case OP_EXP: { stack[sp - 1u] = eml_exp_pinned(stack[sp - 1u]); }
-            case OP_LN: { stack[sp - 1u] = eml_ln_pinned(stack[sp - 1u]); }
+            case OP_ABS: {
+                stack[sp - 1u] = abs(stack[sp - 1u]);
+                is_mul[sp - 1u] = 0u;
+            }
+            case OP_FLOOR: {
+                stack[sp - 1u] = floor(stack[sp - 1u]);
+                is_mul[sp - 1u] = 0u;
+            }
+            case OP_EXP: {
+                stack[sp - 1u] = eml_exp_pinned(stack[sp - 1u]);
+                is_mul[sp - 1u] = 0u;
+            }
+            case OP_LN: {
+                stack[sp - 1u] = eml_ln_pinned(stack[sp - 1u]);
+                is_mul[sp - 1u] = 0u;
+            }
             case OP_SELECT: {
                 let false_value = stack[sp - 1u];
                 let true_value = stack[sp - 2u];
                 let condition = stack[sp - 3u] != 0.0;
                 stack[sp - 3u] = select(false_value, true_value, condition);
+                is_mul[sp - 3u] = 0u;
                 sp = sp - 2u;
             }
             case OP_RETURN_TOP: { return stack[sp - 1u]; }
@@ -363,10 +388,41 @@ fn eval_program(offset: u32, count: u32, context: FieldEmlContext) -> f32 {
                 let rhs = stack[sp - 1u];
                 let lhs = stack[sp - 2u];
                 var result = 0.0;
+                var result_is_mul = 0u;
+                var out_mul_a = 0.0;
+                var out_mul_b = 0.0;
                 switch node.opcode {
-                    case OP_ADD: { result = lhs + rhs; }
-                    case OP_SUB: { result = lhs - rhs; }
-                    case OP_MUL: { result = lhs * rhs; }
+                    case OP_ADD, OP_SUB: {
+                        let rhs_is = is_mul[sp - 1u];
+                        let lhs_is = is_mul[sp - 2u];
+                        if (lhs_is == 1u && rhs_is == 0u) {
+                            let a = mul_a[sp - 2u];
+                            let b = mul_b[sp - 2u];
+                            if (node.opcode == OP_SUB) {
+                                result = fma(a, b, -rhs);
+                            } else {
+                                result = fma(a, b, rhs);
+                            }
+                        } else if (lhs_is == 0u && rhs_is == 1u) {
+                            let a = mul_a[sp - 1u];
+                            let b = mul_b[sp - 1u];
+                            if (node.opcode == OP_SUB) {
+                                result = fma(-a, b, lhs);
+                            } else {
+                                result = fma(a, b, lhs);
+                            }
+                        } else if (node.opcode == OP_SUB) {
+                            result = lhs - rhs;
+                        } else {
+                            result = lhs + rhs;
+                        }
+                    }
+                    case OP_MUL: {
+                        result = lhs * rhs;
+                        out_mul_a = lhs;
+                        out_mul_b = rhs;
+                        result_is_mul = 1u;
+                    }
                     case OP_DIV: { result = lhs / rhs; }
                     case OP_MIN: { result = min(lhs, rhs); }
                     case OP_MAX: { result = max(lhs, rhs); }
@@ -378,6 +434,9 @@ fn eval_program(offset: u32, count: u32, context: FieldEmlContext) -> f32 {
                     default: {}
                 }
                 stack[sp - 2u] = result;
+                mul_a[sp - 2u] = out_mul_a;
+                mul_b[sp - 2u] = out_mul_b;
+                is_mul[sp - 2u] = result_is_mul;
                 sp = sp - 1u;
             }
         }
@@ -388,37 +447,110 @@ fn eval_program(offset: u32, count: u32, context: FieldEmlContext) -> f32 {
 // SEAM LAW: evaluate the first `count` nodes and return the top two stack
 // values (the map's final-MUL operands) for the fused canonical-Sum fold.
 fn eval_program_pair(offset: u32, count: u32, context: FieldEmlContext) -> vec2<f32> {
+    // Same uniqueness-aware stack machine as eval_program (prefix before final MUL).
     var stack: array<f32, EML_STACK_MAX>;
+    var mul_a: array<f32, EML_STACK_MAX>;
+    var mul_b: array<f32, EML_STACK_MAX>;
+    var is_mul: array<u32, EML_STACK_MAX>;
     var sp = 0u;
     for (var local = 0u; local < count; local = local + 1u) {
         let node = nodes[offset + local];
         switch node.opcode {
-            case OP_LITERAL_F32: { stack[sp] = bitcast<f32>(node.a); sp = sp + 1u; }
-            case OP_TARGET_VALUE: { stack[sp] = values_in[context.target_slot * params.n_dims + node.a]; sp = sp + 1u; }
-            case OP_NEIGHBOR_VALUE: { stack[sp] = values_in[context.neighbor_slot * params.n_dims + node.a]; sp = sp + 1u; }
-            case OP_PARAM: { stack[sp] = field_param(node.a, context); sp = sp + 1u; }
-            case OP_NEG: { stack[sp - 1u] = -stack[sp - 1u]; }
-            case OP_CLAMP_BOUNDED: { stack[sp - 1u] = clamp(stack[sp - 1u], bitcast<f32>(node.a), bitcast<f32>(node.b)); }
-            case OP_CLAMP_FLOORED: { stack[sp - 1u] = max(stack[sp - 1u], bitcast<f32>(node.a)); }
-            case OP_ABS: { stack[sp - 1u] = abs(stack[sp - 1u]); }
-            case OP_FLOOR: { stack[sp - 1u] = floor(stack[sp - 1u]); }
-            case OP_EXP: { stack[sp - 1u] = eml_exp_pinned(stack[sp - 1u]); }
-            case OP_LN: { stack[sp - 1u] = eml_ln_pinned(stack[sp - 1u]); }
+            case OP_LITERAL_F32: {
+                stack[sp] = bitcast<f32>(node.a);
+                is_mul[sp] = 0u;
+                sp = sp + 1u;
+            }
+            case OP_TARGET_VALUE: {
+                stack[sp] = values_in[context.target_slot * params.n_dims + node.a];
+                is_mul[sp] = 0u;
+                sp = sp + 1u;
+            }
+            case OP_NEIGHBOR_VALUE: {
+                stack[sp] = values_in[context.neighbor_slot * params.n_dims + node.a];
+                is_mul[sp] = 0u;
+                sp = sp + 1u;
+            }
+            case OP_PARAM: {
+                stack[sp] = field_param(node.a, context);
+                is_mul[sp] = 0u;
+                sp = sp + 1u;
+            }
+            case OP_NEG: {
+                stack[sp - 1u] = -stack[sp - 1u];
+                is_mul[sp - 1u] = 0u;
+            }
+            case OP_CLAMP_BOUNDED: {
+                stack[sp - 1u] = clamp(stack[sp - 1u], bitcast<f32>(node.a), bitcast<f32>(node.b));
+                is_mul[sp - 1u] = 0u;
+            }
+            case OP_CLAMP_FLOORED: {
+                stack[sp - 1u] = max(stack[sp - 1u], bitcast<f32>(node.a));
+                is_mul[sp - 1u] = 0u;
+            }
+            case OP_ABS: {
+                stack[sp - 1u] = abs(stack[sp - 1u]);
+                is_mul[sp - 1u] = 0u;
+            }
+            case OP_FLOOR: {
+                stack[sp - 1u] = floor(stack[sp - 1u]);
+                is_mul[sp - 1u] = 0u;
+            }
+            case OP_EXP: {
+                stack[sp - 1u] = eml_exp_pinned(stack[sp - 1u]);
+                is_mul[sp - 1u] = 0u;
+            }
+            case OP_LN: {
+                stack[sp - 1u] = eml_ln_pinned(stack[sp - 1u]);
+                is_mul[sp - 1u] = 0u;
+            }
             case OP_SELECT: {
                 let false_value = stack[sp - 1u];
                 let true_value = stack[sp - 2u];
                 let condition = stack[sp - 3u] != 0.0;
                 stack[sp - 3u] = select(false_value, true_value, condition);
+                is_mul[sp - 3u] = 0u;
                 sp = sp - 2u;
             }
             default: {
                 let rhs = stack[sp - 1u];
                 let lhs = stack[sp - 2u];
                 var result = 0.0;
+                var result_is_mul = 0u;
+                var out_mul_a = 0.0;
+                var out_mul_b = 0.0;
                 switch node.opcode {
-                    case OP_ADD: { result = lhs + rhs; }
-                    case OP_SUB: { result = lhs - rhs; }
-                    case OP_MUL: { result = lhs * rhs; }
+                    case OP_ADD, OP_SUB: {
+                        let rhs_is = is_mul[sp - 1u];
+                        let lhs_is = is_mul[sp - 2u];
+                        if (lhs_is == 1u && rhs_is == 0u) {
+                            let a = mul_a[sp - 2u];
+                            let b = mul_b[sp - 2u];
+                            if (node.opcode == OP_SUB) {
+                                result = fma(a, b, -rhs);
+                            } else {
+                                result = fma(a, b, rhs);
+                            }
+                        } else if (lhs_is == 0u && rhs_is == 1u) {
+                            let a = mul_a[sp - 1u];
+                            let b = mul_b[sp - 1u];
+                            if (node.opcode == OP_SUB) {
+                                result = fma(-a, b, lhs);
+                            } else {
+                                result = fma(a, b, lhs);
+                            }
+                        } else if (node.opcode == OP_SUB) {
+                            result = lhs - rhs;
+                        } else {
+                            result = lhs + rhs;
+                        }
+                    }
+                    case OP_MUL: {
+                        result = lhs * rhs;
+                        out_mul_a = lhs;
+                        out_mul_b = rhs;
+                        result_is_mul = 1u;
+                    }
                     case OP_DIV: { result = lhs / rhs; }
                     case OP_MIN: { result = min(lhs, rhs); }
                     case OP_MAX: { result = max(lhs, rhs); }
@@ -430,6 +562,9 @@ fn eval_program_pair(offset: u32, count: u32, context: FieldEmlContext) -> vec2<
                     default: {}
                 }
                 stack[sp - 2u] = result;
+                mul_a[sp - 2u] = out_mul_a;
+                mul_b[sp - 2u] = out_mul_b;
+                is_mul[sp - 2u] = result_is_mul;
                 sp = sp - 1u;
             }
         }

@@ -174,6 +174,29 @@ itself is ever thought wrong, that is a separate DA argument, not a rider on thi
    (and requiring full-domain `EXP`, since `a·LN(x)` is signed — the bounded variant could not
    have delivered this, which is repair 3's point).
 
+### 4.1 Arithmetic semantics and the uniqueness rule (5.14 / DA `5192270934`)
+
+Author-facing EvalEML arithmetic meanings — arm-independent:
+
+| Opcode / composition | Meaning |
+|---|---|
+| `ADD`, `SUB`, `MUL`, `DIV` | IEEE-754 single-rounding; **no reassociation** |
+| `MIN`, `MAX`, `CLAMP_BOUNDED`, `CLAMP_FLOORED` | Exact selections (no rounding) |
+| `EXP`, `LN` | Pinned algorithm-as-spec digests (unchanged by 5.14) |
+| **Uniqueness contraction** (DA `5192270934` / `5193244394`) | A `MUL` result is fused into its consuming **`ADD` or `SUB`** **iff that fusion is UNIQUE** |
+
+- Exactly one `MUL` feeds an `ADD` or `SUB` → **FUSED** (one rounding; intrinsic `fma` /
+  `mul_add`, including fused-multiply-subtract for `SUB`).
+- Two or more `MUL` results feed the same `ADD` or `SUB` → **UNFUSED** (`U`): each `MUL` rounds
+  to f32 before the consumer. **No tie-break exists or will exist.**
+- The historical **SEAM LAW** (map ends `[..,MUL,RETURN]` + canonical Sum fold) is an **instance**
+  of uniqueness at a map/fold boundary — not a peer law.
+- Each execution arm must **prove** it lowers to these meanings. Observing that an interpreter
+  happens to produce `U` is not the language meaning (Exact-Value Provenance Law).
+
+Per-consumer exactness digest policing (5.13) is **deleted**. Cross-arm bit identity of consumers
+is a language-level witness following from these meanings, not an admission census.
+
 ## 5. Gadget-library integration
 
 New library entries, each an authored tree over the widened vocabulary — **no new kernels, no new

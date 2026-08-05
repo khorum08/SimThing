@@ -60,3 +60,4 @@ simthing-clausething	crates/simthing-clausething/tests/tp_fleets_ships_0.rs	tp_f
 simthing-clausething	crates/simthing-clausething/tests/tp_fleets_ships_0.rs	unsupported_fleet_ship_payload_fields_hard_error_with_span	integration	5158803863-DA	LIFECYCLE-EXPIRY-REAP	n/a
 simthing-clausething	crates/simthing-clausething/tests/tp_scale_envelope.rs	tp_scale_envelope_disc_1500_admits_installs_with_budget	integration	5158803863-DA	LIFECYCLE-EXPIRY-REAP	n/a
 simthing-clausething	crates/simthing-clausething/tests/tp_full_transpile_0.rs	terran_pirate_galaxy_full_transpile_to_canonical_scenario_spec	integration	5158803863-DA	LIFECYCLE-EXPIRY-REAP	n/a
+simthing-workshop	crates/simthing-workshop/tests/exact_consumer_obligation_0.rs	exact_consumer_obligation_0_admission_hard_errors_without_evidence	integration	5191578752-DA	EML-ARITHMETIC-SEMANTICS-0	b9070974440b

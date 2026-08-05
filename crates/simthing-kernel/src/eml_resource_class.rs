@@ -1,4 +1,15 @@
+use std::sync::atomic::{AtomicBool, Ordering};
+
 use simthing_core::{eml_opcode, EmlNodeGpu, EmlResourceClass};
+
+/// Production plant: uniqueness-fused JIT emits ordinary Sum fold (separate
+/// map-MUL then fold-ADD) instead of the fused `fma` fold body.
+static PLANT_SEAM_JIT_SEPARATE_ROUNDING: AtomicBool = AtomicBool::new(false);
+
+/// Plant: SSA-JIT uniqueness-fused seam uses ordinary Sum fold (unfused).
+pub(crate) fn plant_seam_jit_separate_rounding(on: bool) {
+    PLANT_SEAM_JIT_SEPARATE_ROUNDING.store(on, Ordering::SeqCst);
+}
 
 const STACK_LIMIT_TOKEN: &str = "const EML_STACK_MAX: u32 = 32u;";
 
@@ -123,15 +134,17 @@ pub(crate) fn generate_field_sweep_jit(
         "canonical field shader has ordered JIT markers"
     );
 
-    // EXACT-CONSUMER-OBLIGATION-0 SEAM LAW: when the map ends in MUL and the
-    // fold is the canonical Sum, the seam is SPECIFIED FUSED on every arm
-    // (acc = fma(a, b, acc), one rounding). The JIT emits the explicit fma;
-    // the CPU twin and interpreted arm implement identical semantics via the
-    // registration-derived shape. Measured basis: the certified toolchain
-    // contracts the unfused seam regardless of source form, so the fused form
-    // is the only arm-stable specification.
+    // Uniqueness-rule instance (5.14): map ends in MUL + canonical Sum fold →
+    // SPECIFIED FUSED (acc = fma(a, b, acc)). JIT emits explicit fma; CPU and
+    // interpreted arms match via the registration-derived shape.
+    // Plant: emit the ordinary Sum fold so MUL (eval_map) and ADD are separate
+    // roundings — a real fusion-law defect, not a post-hoc bit corruption.
     let fold_body = if crate::field_sweep::seam_fused_shape(map, fold) {
-        emit_seam_fused_fold(&map[..map.len() - 2])
+        if PLANT_SEAM_JIT_SEPARATE_ROUNDING.load(Ordering::SeqCst) {
+            emit_program("eval_fold", fold)
+        } else {
+            emit_seam_fused_fold(&map[..map.len() - 2])
+        }
     } else {
         emit_program("eval_fold", fold)
     };
@@ -146,7 +159,7 @@ pub(crate) fn generate_field_sweep_jit(
     source.push_str(&canonical_source[..begin]);
     source.push_str(&generated);
     source.push_str(&canonical_source[end..]);
-    // The JIT collapses the interpreted arm's SEAM LAW branch into direct
+    // The JIT collapses the interpreted uniqueness-fused branch into direct
     // generated calls (eval_fold is the fused form when the shape holds).
     replace_once(
         &mut source,
@@ -227,26 +240,43 @@ fn replace_once(source: &mut String, needle: &str, replacement: &str) {
     *source = source.replacen(needle, replacement, 1);
 }
 
-/// Seam-fused fold body (SEAM LAW): recompute the map final-MUL operands and
-/// fuse them with the accumulator in ONE explicit fma.
+#[derive(Clone)]
+struct EmitEntry {
+    expr: String,
+    /// Immediate MUL factors when `expr` is a MUL result (uniqueness tracking).
+    mul: Option<(String, String)>,
+}
+
+impl EmitEntry {
+    fn plain(expr: String) -> Self {
+        Self { expr, mul: None }
+    }
+}
+
+/// Seam-fused fold body (uniqueness instance): recompute the map final-MUL
+/// operands and fuse them with the accumulator in ONE explicit fma.
 fn emit_seam_fused_fold(mul_free_map: &[EmlNodeGpu]) -> String {
     let mut fused = String::from("fn eval_fold(context: FieldEmlContext) -> f32 {\n");
-    let mut stack: Vec<String> = Vec::new();
+    let mut stack: Vec<EmitEntry> = Vec::new();
     let mut next_value = 0u32;
     let mut inner = String::new();
     for node in mul_free_map {
-        if let Some(expression) = expression_for(node, &mut stack, &mut inner) {
+        if let Some(entry) = expression_for(node, &mut stack, &mut inner) {
             let value = format!("v{next_value}");
             next_value += 1;
-            inner.push_str(&format!("    let {value}: f32 = {expression};\n"));
-            stack.push(value);
+            inner.push_str(&format!("    let {value}: f32 = {};\n", entry.expr));
+            stack.push(EmitEntry {
+                expr: value,
+                mul: entry.mul,
+            });
         }
     }
     let rhs = stack.pop().expect("seam mul rhs");
     let lhs = stack.pop().expect("seam mul lhs");
     fused.push_str(&inner);
     fused.push_str(&format!(
-        "    return fma({lhs}, {rhs}, context.accumulator);\n}}\n"
+        "    return fma({}, {}, context.accumulator);\n}}\n",
+        lhs.expr, rhs.expr
     ));
     fused
 }
@@ -254,20 +284,25 @@ fn emit_seam_fused_fold(mul_free_map: &[EmlNodeGpu]) -> String {
 /// Shared per-node expression emitter (factored from emit_program).
 fn expression_for(
     node: &EmlNodeGpu,
-    stack: &mut Vec<String>,
+    stack: &mut Vec<EmitEntry>,
     output: &mut String,
-) -> Option<String> {
+) -> Option<EmitEntry> {
     match node.opcode {
-        eml_opcode::LITERAL_F32 => Some(format!("bitcast<f32>(0x{:08x}u)", node.a)),
-        eml_opcode::TARGET_VALUE => Some(format!(
+        eml_opcode::LITERAL_F32 => Some(EmitEntry::plain(format!(
+            "bitcast<f32>(0x{:08x}u)",
+            node.a
+        ))),
+        eml_opcode::TARGET_VALUE => Some(EmitEntry::plain(format!(
             "values_in[context.target_slot * params.n_dims + {}u]",
             node.a
-        )),
-        eml_opcode::NEIGHBOR_VALUE => Some(format!(
+        ))),
+        eml_opcode::NEIGHBOR_VALUE => Some(EmitEntry::plain(format!(
             "values_in[context.neighbor_slot * params.n_dims + {}u]",
             node.a
+        ))),
+        eml_opcode::PARAM => Some(EmitEntry::plain(
+            field_param_expression(node.a).to_owned(),
         )),
-        eml_opcode::PARAM => Some(field_param_expression(node.a).to_owned()),
         eml_opcode::NEG
         | eml_opcode::CLAMP_BOUNDED
         | eml_opcode::CLAMP_FLOORED
@@ -276,112 +311,98 @@ fn expression_for(
         | eml_opcode::EXP
         | eml_opcode::LN => {
             let operand = stack.pop().expect("admitted unary postfix operand");
-            Some(match node.opcode {
-                eml_opcode::NEG => format!("-{operand}"),
+            Some(EmitEntry::plain(match node.opcode {
+                eml_opcode::NEG => format!("-{}", operand.expr),
                 eml_opcode::CLAMP_BOUNDED => format!(
-                    "clamp({operand}, bitcast<f32>(0x{:08x}u), bitcast<f32>(0x{:08x}u))",
-                    node.a, node.b
+                    "clamp({}, bitcast<f32>(0x{:08x}u), bitcast<f32>(0x{:08x}u))",
+                    operand.expr, node.a, node.b
                 ),
                 eml_opcode::CLAMP_FLOORED => {
-                    format!("max({operand}, bitcast<f32>(0x{:08x}u))", node.a)
+                    format!("max({}, bitcast<f32>(0x{:08x}u))", operand.expr, node.a)
                 }
-                eml_opcode::ABS => format!("abs({operand})"),
-                eml_opcode::FLOOR => format!("floor({operand})"),
-                eml_opcode::EXP => format!("eml_exp_pinned({operand})"),
-                eml_opcode::LN => format!("eml_ln_pinned({operand})"),
+                eml_opcode::ABS => format!("abs({})", operand.expr),
+                eml_opcode::FLOOR => format!("floor({})", operand.expr),
+                eml_opcode::EXP => format!("eml_exp_pinned({})", operand.expr),
+                eml_opcode::LN => format!("eml_ln_pinned({})", operand.expr),
                 _ => unreachable!(),
-            })
+            }))
         }
         eml_opcode::SELECT => {
             let false_value = stack.pop().expect("admitted select false operand");
             let true_value = stack.pop().expect("admitted select true operand");
             let condition = stack.pop().expect("admitted select condition operand");
-            Some(format!(
-                "select({false_value}, {true_value}, {condition} != 0.0)"
-            ))
+            Some(EmitEntry::plain(format!(
+                "select({}, {}, {} != 0.0)",
+                false_value.expr, true_value.expr, condition.expr
+            )))
         }
         eml_opcode::RETURN_TOP => {
             let value = stack.last().expect("admitted return operand");
-            output.push_str(&format!("    return {value};\n"));
+            output.push_str(&format!("    return {};\n", value.expr));
             None
+        }
+        eml_opcode::ADD | eml_opcode::SUB => {
+            let rhs = stack.pop().expect("admitted binary rhs");
+            let lhs = stack.pop().expect("admitted binary lhs");
+            let is_sub = node.opcode == eml_opcode::SUB;
+            let expr = match (&lhs.mul, &rhs.mul) {
+                (Some((a, b)), None) => {
+                    if is_sub {
+                        format!("fma({a}, {b}, -({}))", rhs.expr)
+                    } else {
+                        format!("fma({a}, {b}, {})", rhs.expr)
+                    }
+                }
+                (None, Some((a, b))) => {
+                    if is_sub {
+                        format!("fma(-({a}), {b}, {})", lhs.expr)
+                    } else {
+                        format!("fma({a}, {b}, {})", lhs.expr)
+                    }
+                }
+                _ => {
+                    if is_sub {
+                        format!("{} - {}", lhs.expr, rhs.expr)
+                    } else {
+                        format!("{} + {}", lhs.expr, rhs.expr)
+                    }
+                }
+            };
+            Some(EmitEntry::plain(expr))
+        }
+        eml_opcode::MUL => {
+            let rhs = stack.pop().expect("admitted binary rhs");
+            let lhs = stack.pop().expect("admitted binary lhs");
+            Some(EmitEntry {
+                expr: format!("{} * {}", lhs.expr, rhs.expr),
+                mul: Some((lhs.expr, rhs.expr)),
+            })
         }
         opcode => {
             let rhs = stack.pop().expect("admitted binary rhs");
             let lhs = stack.pop().expect("admitted binary lhs");
-            Some(binary_expression(opcode, &lhs, &rhs))
+            Some(EmitEntry::plain(binary_expression(
+                opcode,
+                &lhs.expr,
+                &rhs.expr,
+            )))
         }
     }
 }
 
 fn emit_program(name: &str, nodes: &[EmlNodeGpu]) -> String {
     let mut output = format!("fn {name}(context: FieldEmlContext) -> f32 {{\n");
-    let mut stack: Vec<String> = Vec::new();
+    let mut stack: Vec<EmitEntry> = Vec::new();
     let mut next_value = 0u32;
     for node in nodes {
-        let expression = match node.opcode {
-            eml_opcode::LITERAL_F32 => Some(format!("bitcast<f32>(0x{:08x}u)", node.a)),
-            eml_opcode::TARGET_VALUE => Some(format!(
-                "values_in[context.target_slot * params.n_dims + {}u]",
-                node.a
-            )),
-            eml_opcode::NEIGHBOR_VALUE => Some(format!(
-                "values_in[context.neighbor_slot * params.n_dims + {}u]",
-                node.a
-            )),
-            eml_opcode::PARAM => Some(field_param_expression(node.a).to_owned()),
-            eml_opcode::NEG
-            | eml_opcode::CLAMP_BOUNDED
-            | eml_opcode::CLAMP_FLOORED
-            | eml_opcode::ABS
-            | eml_opcode::FLOOR
-            | eml_opcode::EXP
-            | eml_opcode::LN => {
-                let operand = stack.pop().expect("admitted unary postfix operand");
-                Some(match node.opcode {
-                    eml_opcode::NEG => format!("-{operand}"),
-                    eml_opcode::CLAMP_BOUNDED => format!(
-                        "clamp({operand}, bitcast<f32>(0x{:08x}u), bitcast<f32>(0x{:08x}u))",
-                        node.a, node.b
-                    ),
-                    eml_opcode::CLAMP_FLOORED => {
-                        format!("max({operand}, bitcast<f32>(0x{:08x}u))", node.a)
-                    }
-                    eml_opcode::ABS => format!("abs({operand})"),
-                    eml_opcode::FLOOR => format!("floor({operand})"),
-                    // EML-EXP-PRIMITIVE-0: the JIT block calls the ONE pinned
-                    // helper defined in the canonical shader outside the
-                    // excised evaluator region — same definition as the
-                    // interpreted arm, bit-identical by construction.
-                    eml_opcode::EXP => format!("eml_exp_pinned({operand})"),
-                    // EML-LN-PRIMITIVE-0: same single-pinned-helper law.
-                    eml_opcode::LN => format!("eml_ln_pinned({operand})"),
-                    _ => unreachable!(),
-                })
-            }
-            eml_opcode::SELECT => {
-                let false_value = stack.pop().expect("admitted select false operand");
-                let true_value = stack.pop().expect("admitted select true operand");
-                let condition = stack.pop().expect("admitted select condition operand");
-                Some(format!(
-                    "select({false_value}, {true_value}, {condition} != 0.0)"
-                ))
-            }
-            eml_opcode::RETURN_TOP => {
-                let value = stack.last().expect("admitted return operand");
-                output.push_str(&format!("    return {value};\n"));
-                None
-            }
-            opcode => {
-                let rhs = stack.pop().expect("admitted binary rhs");
-                let lhs = stack.pop().expect("admitted binary lhs");
-                Some(binary_expression(opcode, &lhs, &rhs))
-            }
-        };
-        if let Some(expression) = expression {
+        if let Some(entry) = expression_for(node, &mut stack, &mut output) {
             let value = format!("v{next_value}");
             next_value += 1;
-            output.push_str(&format!("    let {value}: f32 = {expression};\n"));
-            stack.push(value);
+            output.push_str(&format!("    let {value}: f32 = {};\n", entry.expr));
+            stack.push(EmitEntry {
+                expr: value,
+                mul: entry.mul,
+            });
         }
     }
     output.push_str("}\n");

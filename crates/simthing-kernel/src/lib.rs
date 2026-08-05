@@ -14,6 +14,7 @@ pub mod eml_exp_qualification;
 pub mod eml_ln_qualification;
 pub mod eml_opcode_gate;
 mod eml_resource_class;
+mod eml_uniqueness;
 pub mod exact_magnitude_gate;
 pub mod field_sweep;
 pub mod cpu_oracle;
@@ -64,21 +65,16 @@ pub use decision_ingress::{
     DecisionIngressError, EmissionToken, StructuralCommitment, ThresholdCrossingToken,
 };
 pub use eml_opcode_gate::{
-    admit_exp_call_sites, combine_in_closed_vocabulary, derive_consumer_arms,
-    exp_primitive_domain, ln_primitive_domain,
-    opcode_in_accumulator_vocabulary,
-    opcode_in_closed_vocabulary, AdmittedEvalEmlCombine,
+    admit_exp_call_sites, combine_in_closed_vocabulary, exp_primitive_domain, ln_primitive_domain,
+    opcode_in_accumulator_vocabulary, opcode_in_closed_vocabulary, AdmittedEvalEmlCombine,
     AdmittedEvalEmlOpcode, CombineRegistrationRequest, CpuOracleParityProof, EvalEmlCombine,
     EvalEmlOpcode, EvalEmlVocabulary, ExactPrimitiveAdmission, ExactPrimitiveAdmissionDoor,
     ExactPrimitiveAdmissionRequest, ExactPrimitiveBitSemantics, ExactPrimitiveConsumer,
     ExactPrimitiveConsumerEvidence, ExactPrimitiveConsumerKey, ExactPrimitiveCostEvidence,
     ExactPrimitiveCostKey, ExactPrimitiveDeterminismEvidence, ExactPrimitiveDeterminismKey,
     ExactPrimitiveDomainPolicy, ExactPrimitiveResourceEffect, GenericPrimitiveRegistration,
-    OpcodeGateError, OpcodeRegistrationGate, OpcodeRegistrationRequest,
+    LnConsumerGadgets, OpcodeGateError, OpcodeRegistrationGate, OpcodeRegistrationRequest,
     SemanticOpcodeRegistration, SoftStepPolicyConditional, SoftmaxWeightGadget,
-    ExactBearingEvidence, ExactConsumerArm, ExactConsumerDigestEvidence,
-    ExactConsumerExecutionShape, ExactConsumerShapeBinding, FieldConsumerShapeProof,
-    LnConsumerGadgets,
     EXP_PRIMITIVE_NAME, LN_PRIMITIVE_NAME,
 };
 pub use field_sweep::{
