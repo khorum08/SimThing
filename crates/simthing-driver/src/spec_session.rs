@@ -105,6 +105,11 @@ pub struct SpecSessionState {
     pub resolved_need_bindings: Vec<crate::need_binding::ResolvedNeedBinding>,
     /// Checked RF capacity budget used for session slot and emission reservations.
     pub resource_flow_capacity_budget: Option<ResolvedResourceFlowCapacityBudget>,
+    /// RESIDENCY-TIER-VOCABULARY-0: the FROZEN session residency tier set.
+    /// `None` until session construction admits it; after that the only
+    /// lawful evolution is usage over the admitted vocabulary — the
+    /// Owner-gated epoch-boundary dynamic-tier door does not exist yet.
+    session_residency_tiers: Option<simthing_core::SessionTierSet>,
     /// Materialized production transfer/recipe/emission/threshold registrations (Phase T-3/T-4).
     pub resource_economy_registry: Option<crate::resource_economy_compile::ResourceEconomyRegistry>,
     player_selections: Vec<(CapabilityInstanceKey, CapabilityEntryKey)>,
@@ -325,6 +330,32 @@ impl SpecSessionState {
     /// `scenario.root.id`; tests can leave it at default.
     pub fn set_session_root_owner(&mut self, owner_id: SimThingId) {
         self.session_root_owner = owner_id;
+    }
+
+    /// RESIDENCY-TIER-VOCABULARY-0 session admission/freeze door — the ONE
+    /// production path that mints the session tier set. Admission validates
+    /// the authored rows ([`simthing_core::SessionTierSet::admit`]) and
+    /// FREEZES them; any later call through this same door is a mid-session
+    /// tier mint and refuses with a spanned admission failure — the
+    /// Owner-gated epoch-boundary dynamic-tier door is chartered but does
+    /// not exist (StemThing §5, Owner ruling 2026-08-03).
+    pub fn admit_session_residency_tiers(
+        &mut self,
+        rows: Vec<simthing_core::ResidencyTierRow>,
+    ) -> Result<&simthing_core::SessionTierSet, simthing_core::TierAdmissionError> {
+        if let Some(existing) = &self.session_residency_tiers {
+            return Err(simthing_core::TierAdmissionError::MidSessionTierMintRefused {
+                admitted: existing.len(),
+                attempted: rows.len(),
+            });
+        }
+        let set = simthing_core::SessionTierSet::admit(rows)?;
+        Ok(self.session_residency_tiers.insert(set))
+    }
+
+    /// The frozen session tier set, if admitted.
+    pub fn session_residency_tiers(&self) -> Option<&simthing_core::SessionTierSet> {
+        self.session_residency_tiers.as_ref()
     }
 
     /// Refresh every instance's `current_slot` against `allocator`. Drops
