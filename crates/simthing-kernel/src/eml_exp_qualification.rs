@@ -144,11 +144,9 @@ mod tests {
     use simthing_core::eml_exp;
 
     use crate::eml_opcode_gate::{
-        admit_exp_call_sites, ExactBearingEvidence, ExactConsumerArm,
-        ExactConsumerDigestEvidence, ExactConsumerShapeBinding, ExactPrimitiveAdmissionDoor,
-        ExactPrimitiveAdmissionRequest, ExactPrimitiveConsumer, ExactPrimitiveConsumerEvidence,
-        ExactPrimitiveCostEvidence, ExactPrimitiveResourceEffect, OpcodeGateError,
-        EXP_PRIMITIVE_NAME,
+        admit_exp_call_sites, ExactPrimitiveAdmissionDoor, ExactPrimitiveAdmissionRequest,
+        ExactPrimitiveConsumer, ExactPrimitiveConsumerEvidence, ExactPrimitiveCostEvidence,
+        ExactPrimitiveResourceEffect, OpcodeGateError, EXP_PRIMITIVE_NAME,
     };
     use simthing_core::EmlResourceClass;
 
@@ -267,30 +265,12 @@ mod tests {
         // staircase deviation from the smooth curve = 2967 bps of span.
         // Exact-bearing digests measured 2026-08-05 by the 5.13 obligation
         // battery (exact_consumer_obligation_0.rs, simthing-workshop): the
-        // logistic-steering probe domain hashed on the CPU stack twin and,
-        // INDEPENDENTLY, through the AO interpreted GPU arm on the certified
-        // tuple. Arms derive from the AO shape; the field JIT never compiles
-        // AO programs.
+        // 5.14: consumer necessity only — cross-arm bit identity is a
+        // language-level witness, not admission digest evidence.
         let consumer =
             ExactPrimitiveAdmissionDoor::verify_consumer(ExactPrimitiveConsumerEvidence {
                 consumer: ExactPrimitiveConsumer::OrdinaryAccumulatorEvalEml,
                 measured_threshold_excess_bps: 2_967,
-                exact_bearing: ExactBearingEvidence::ExactBearing {
-                    consumer_id: "logistic-steering",
-                    primitive: EXP_PRIMITIVE_NAME,
-                    domain_note: "cost-band steering inputs in [-16, 16]",
-                    shape_binding: ExactConsumerShapeBinding::OrdinaryAccumulatorEvalEml,
-                    digests: vec![
-                        ExactConsumerDigestEvidence {
-                            arm: ExactConsumerArm::CpuTwin,
-                            digest: 0x9203_d12c_4ca2_8325,
-                        },
-                        ExactConsumerDigestEvidence {
-                            arm: ExactConsumerArm::InterpretedGpu,
-                            digest: 0x9203_d12c_4ca2_8325,
-                        },
-                    ],
-                },
             })
             .expect("measured staircase excess mints the consumer key");
 

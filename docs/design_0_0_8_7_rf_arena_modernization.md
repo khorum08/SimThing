@@ -584,7 +584,7 @@ freely in posture, but **every addition — opcode or stack — is DA-approved**
 sealed (composable, never shadowed); the consuming-stack requirement is WAIVED for
 horizon-targeted additions, which must carry a dated `HORIZON-ENTRY(iso-date)` marker (undated
 horizon seams were dropped twice in 0.0.8.6 — dated markers are what the tripwires can assess).
-**EVALUATION RULES ARE THE THIRD DA-APPROVED CATEGORY (DA review 2026-08-05, from 5.13's ratification).** The growth law above named *opcode* and *stack*; a rule that changes what an EXISTING composition MEANS is neither, and 5.13's SEAM LAW went in with no ISA-level approval gate because the category did not exist. It does now: **an evaluation rule is DA-approved on the same terms as an opcode, and it is not admitted until it is DECLARED on an author-facing ISA surface.** An author cannot consent to semantics they cannot read; a rule living only in kernel comments, a results doc and a test battery is undeclared however correct its implementation. **THE SEAM LAW (ratified 2026-08-05, 5.13 @ `339e4f8f`).** When a field map ends `[.., MUL, RETURN]` **and** the fold is the canonical Sum `[PARAM ACC, PARAM MAPPED, ADD, RETURN]`, that seam is **SPECIFIED FUSED on every execution arm** — `acc = fma(a, b, acc)`, one rounding — realized as CPU `mul_add`, interpreted WGSL `fma` behind a uniform registration-derived flag, and a generated fused fold on SSA-JIT. This is a **language definition, not an optimization**: the composition means the fused value, so an author choosing that shape is choosing one-rounding semantics. It is exact-by-construction and costs no opcode, no 5.10 widening, and no escape hatch.
+**EVALUATION RULES ARE THE THIRD DA-APPROVED CATEGORY (DA review 2026-08-05, from 5.13's ratification).** The growth law above named *opcode* and *stack*; a rule that changes what an EXISTING composition MEANS is neither, and 5.13's SEAM LAW went in with no ISA-level approval gate because the category did not exist. It does now: **an evaluation rule is DA-approved on the same terms as an opcode, and it is not admitted until it is DECLARED on an author-facing ISA surface.** An author cannot consent to semantics they cannot read; a rule living only in kernel comments, a results doc and a test battery is undeclared however correct its implementation. **THE UNIQUENESS RULE (DA `5192270934`, authored on the ISA surface by 5.14):** a `MUL` result is fused into its consuming `ADD`/`SUB` **iff that fusion is UNIQUE**. Exactly one `MUL` → `ADD`/`SUB` is **FUSED** (one rounding); two or more `MUL`s → the same `ADD`/`SUB` is **UNFUSED** (`U`: each `MUL` rounds to f32 first). **No tie-break exists or will exist.** **THE SEAM LAW is only an instance** of uniqueness at a map/fold boundary (ratified 2026-08-05, 5.13 @ `339e4f8f`; re-expressed 5.14): when a field map ends `[.., MUL, RETURN]` **and** the fold is the canonical Sum `[PARAM ACC, PARAM MAPPED, ADD, RETURN]`, exactly one `MUL` feeds that fold `ADD`, so the seam is **SPECIFIED FUSED on every execution arm** — `acc = fma(a, b, acc)`, one rounding — realized as CPU `mul_add`, interpreted WGSL `fma` behind a uniform registration-derived flag, and a generated fused fold on SSA-JIT. This is a **language definition, not an optimization**: the composition means the fused value. It is exact-by-construction and costs no opcode, no 5.10 widening, and no escape hatch.
 
 **REFINEMENT to the Exact-Value Provenance Law (DA review 2026-08-05).** *"Never in an instruction sequence"* must not be read to forbid the repair that actually works. Three constructions, and only the first is dead:
 - A **FENCE** attempts to PREVENT a licensed rewrite. Measured dead three times: 5.11's bitcast round-trips, 5.12's Knuth two-sum error lanes, and 5.13's own `fma(a,b,-0.0)` probe, which the certified tuple algebraically re-simplified and re-contracted.
@@ -608,14 +608,15 @@ the VALUE exactly representable, so that every rewrite a compiler may legally pe
 same bits. 5.12 is the worked instance: the vendor route collapsed a Knuth two-sum error lane to
 zero and defeated bitcast fences, and the repair was a 2⁻¹⁶-grid constant (`EML_LN_LN2_HI`) whose
 product is exact with contraction or without it. **The enforceable corollary — a consumer of an
-exact primitive INHERITS NOTHING.** It declares whether it is exact-bearing and carries its own
-cross-arm evidence; an exact-bearing declaration without that evidence is an ADMISSION ERROR, not
-a review finding. The pre-existing witness is 5.11's STEAD falloff consumer: bit-exact on all four
-arms at the primitive, ≤1 ULP at the generic map/fold seam one call later — a proof that stopped
-at the primitive's edge while admission stayed green. **This law is prose ON PURPOSE and knows the
+exact primitive INHERITS NOTHING from instruction-sequence shape.** Exactness travels with
+**admitted arithmetic meanings** (5.14 uniqueness + pinned opcodes), not with per-consumer digest
+policing. 5.13's per-consumer exactness evidence plumbing is **deleted** by 5.14; cross-arm
+bit identity of consumers is a language-level witness following from those meanings. The
+pre-existing witness is 5.11's STEAD falloff consumer: bit-exact across arms once the uniqueness
+seam is specified. **This law is prose ON PURPOSE and knows the
 tier it sits in.** It states the DESIGN INSTRUCTION — reach for the grid, never for a stronger
-fence — which no rejection rule can teach; the OBLIGATION it implies is mechanized at admission by
-5.13, and the mechanization is what enforces.
+fence — which no rejection rule can teach; the obligation is enforced by the authored language
+meanings and faithful arm lowerings (5.14), not by a growing per-consumer census.
 
 **Bespoke parallel systems are constitutional violations, not conveniences.** Named
 transitional debts with scheduled promotions: the R6/R6B/R6C combat rehearsals (Phase 8) and

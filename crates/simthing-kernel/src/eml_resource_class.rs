@@ -1,4 +1,14 @@
+use std::sync::atomic::{AtomicBool, Ordering};
+
 use simthing_core::{eml_opcode, EmlNodeGpu, EmlResourceClass};
+
+/// Production plant: uniqueness-fused JIT fold emits separate `*`/`+` instead of `fma`.
+static PLANT_SEAM_JIT_SEPARATE_ROUNDING: AtomicBool = AtomicBool::new(false);
+
+/// Plant: SSA-JIT uniqueness-fused seam uses `(lhs * rhs) + acc` instead of `fma`.
+pub(crate) fn plant_seam_jit_separate_rounding(on: bool) {
+    PLANT_SEAM_JIT_SEPARATE_ROUNDING.store(on, Ordering::SeqCst);
+}
 
 const STACK_LIMIT_TOKEN: &str = "const EML_STACK_MAX: u32 = 32u;";
 
@@ -123,13 +133,9 @@ pub(crate) fn generate_field_sweep_jit(
         "canonical field shader has ordered JIT markers"
     );
 
-    // EXACT-CONSUMER-OBLIGATION-0 SEAM LAW: when the map ends in MUL and the
-    // fold is the canonical Sum, the seam is SPECIFIED FUSED on every arm
-    // (acc = fma(a, b, acc), one rounding). The JIT emits the explicit fma;
-    // the CPU twin and interpreted arm implement identical semantics via the
-    // registration-derived shape. Measured basis: the certified toolchain
-    // contracts the unfused seam regardless of source form, so the fused form
-    // is the only arm-stable specification.
+    // Uniqueness-rule instance (5.14): map ends in MUL + canonical Sum fold →
+    // SPECIFIED FUSED (acc = fma(a, b, acc)). JIT emits explicit fma; CPU and
+    // interpreted arms match via the registration-derived shape.
     let fold_body = if crate::field_sweep::seam_fused_shape(map, fold) {
         emit_seam_fused_fold(&map[..map.len() - 2])
     } else {
@@ -146,7 +152,7 @@ pub(crate) fn generate_field_sweep_jit(
     source.push_str(&canonical_source[..begin]);
     source.push_str(&generated);
     source.push_str(&canonical_source[end..]);
-    // The JIT collapses the interpreted arm's SEAM LAW branch into direct
+    // The JIT collapses the interpreted uniqueness-fused branch into direct
     // generated calls (eval_fold is the fused form when the shape holds).
     replace_once(
         &mut source,
@@ -227,8 +233,8 @@ fn replace_once(source: &mut String, needle: &str, replacement: &str) {
     *source = source.replacen(needle, replacement, 1);
 }
 
-/// Seam-fused fold body (SEAM LAW): recompute the map final-MUL operands and
-/// fuse them with the accumulator in ONE explicit fma.
+/// Seam-fused fold body (uniqueness instance): recompute the map final-MUL
+/// operands and fuse them with the accumulator in ONE explicit fma.
 fn emit_seam_fused_fold(mul_free_map: &[EmlNodeGpu]) -> String {
     let mut fused = String::from("fn eval_fold(context: FieldEmlContext) -> f32 {\n");
     let mut stack: Vec<String> = Vec::new();
@@ -245,9 +251,18 @@ fn emit_seam_fused_fold(mul_free_map: &[EmlNodeGpu]) -> String {
     let rhs = stack.pop().expect("seam mul rhs");
     let lhs = stack.pop().expect("seam mul lhs");
     fused.push_str(&inner);
-    fused.push_str(&format!(
-        "    return fma({lhs}, {rhs}, context.accumulator);\n}}\n"
-    ));
+    // Separate `*`/`+` is not a reliable plant on the certified toolchain: the
+    // vendor may re-contract it to `fma` and leave bits unchanged. Flip one
+    // mantissa bit after the lawful fma so the production JIT path is proven
+    // live without relying on contraction discretion.
+    let body = if PLANT_SEAM_JIT_SEPARATE_ROUNDING.load(Ordering::SeqCst) {
+        format!(
+            "    let fused = fma({lhs}, {rhs}, context.accumulator);\n    return bitcast<f32>(bitcast<u32>(fused) ^ 1u);\n}}\n"
+        )
+    } else {
+        format!("    return fma({lhs}, {rhs}, context.accumulator);\n}}\n")
+    };
+    fused.push_str(&body);
     fused
 }
 

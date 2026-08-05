@@ -26,6 +26,7 @@
 //! ```
 
 use std::collections::{BTreeMap, BTreeSet};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc;
 
 use bytemuck::{Pod, Zeroable};
@@ -744,21 +745,6 @@ impl FieldSweepRegistration {
         self.n_dims
     }
 
-    /// EXACT-CONSUMER-OBLIGATION-0: derive this admitted registration's
-    /// exact-consumer execution shape as a sealed proof. The fused-transient
-    /// arm is reachable exactly when this registration can participate in a
-    /// fused pair — it PRODUCES the kernel-private transient lane, or it was
-    /// admitted with a transient-read certificate — the same typed fields
-    /// `can_fuse_transient_pair` consumes. Since `FieldSweepRegistration`
-    /// has no free constructor, the shape is never caller-selected.
-    pub fn exact_consumer_shape_proof(&self) -> crate::eml_opcode_gate::FieldConsumerShapeProof {
-        let transient_fusable = self.output == FieldSweepOutput::Transient
-            || self.transient_read_proof.is_some();
-        crate::eml_opcode_gate::FieldConsumerShapeProof::from_admitted_field_registration(
-            transient_fusable,
-        )
-    }
-
     pub fn output(&self) -> FieldSweepOutput {
         self.output
     }
@@ -1076,9 +1062,34 @@ struct FieldProgramFacts {
     peak_stack: u32,
 }
 
-/// EXACT-CONSUMER-OBLIGATION-0 SEAM LAW shape: map ends `[.., MUL, RETURN]`
-/// and the fold is the canonical Sum `[PARAM ACC, PARAM MAPPED, ADD, RETURN]`.
-/// Such seams are SPECIFIED FUSED (one-rounding fma) on every execution arm.
+/// Production plants for uniqueness-fused seam lowerings (5.14 EXIT-PROOF).
+/// Each mutates the real arm path — never a test-only alternate executor.
+/// Reachable as `simthing_kernel::field_sweep::*` (module already allowlisted);
+/// not new crate-root exports.
+static PLANT_SEAM_CPU_SEPARATE_ROUNDING: AtomicBool = AtomicBool::new(false);
+static PLANT_SEAM_INTERPRETED_DISABLE_FUSE: AtomicBool = AtomicBool::new(false);
+
+/// Plant: CPU uniqueness-fused seam uses separate `*` then `+` instead of `mul_add`.
+pub fn plant_seam_cpu_separate_rounding(on: bool) {
+    PLANT_SEAM_CPU_SEPARATE_ROUNDING.store(on, Ordering::SeqCst);
+}
+
+/// Plant: interpreted arm clears the fused-seam flag so the WGSL path runs
+/// separate map + Sum fold instead of `fma`.
+pub fn plant_seam_interpreted_disable_fuse(on: bool) {
+    PLANT_SEAM_INTERPRETED_DISABLE_FUSE.store(on, Ordering::SeqCst);
+}
+
+/// Plant: SSA-JIT uniqueness-fused seam emits `(lhs * rhs) + acc` instead of `fma`.
+pub fn plant_seam_jit_separate_rounding(on: bool) {
+    crate::eml_resource_class::plant_seam_jit_separate_rounding(on);
+}
+
+/// Uniqueness-rule instance (5.14 / DA `5192270934`): map ends
+/// `[.., MUL, RETURN]` and fold is the canonical Sum
+/// `[PARAM ACC, PARAM MAPPED, ADD, RETURN]`. Exactly one MUL feeds the fold
+/// ADD, so the seam IS FUSED (one-rounding fma) on every execution arm.
+/// Historical name "SEAM LAW" is this instance — not a peer semantic law.
 pub(crate) fn seam_fused_shape(map: &[EmlNodeGpu], fold: &[EmlNodeGpu]) -> bool {
     let map_shape = map.len() >= 3
         && map[map.len() - 2].opcode == eml_opcode::MUL
@@ -1597,9 +1608,9 @@ fn execute_field_sweep_cpu_with_state(
                 neighbor_transient: Some(transient[input.slot.as_usize()]),
             };
             if seam_fused_shape(&registration.map_program, &registration.fold_program) {
-                // SEAM LAW: the map's final MUL and the canonical Sum fold are
-                // one fused rounding on every arm — evaluate the map minus its
-                // final [MUL, RETURN], then acc = fma(a, b, acc).
+                // Uniqueness instance: map's final MUL + canonical Sum fold are
+                // one fused rounding — evaluate map minus [MUL, RETURN], then
+                // acc = fma(a, b, acc).
                 let map = &registration.map_program;
                 let rhs = eval_field_eml_cpu_prefix(
                     map,
@@ -1617,7 +1628,11 @@ fn execute_field_sweep_cpu_with_state(
                     registration.n_dims,
                     2,
                 )?;
-                accumulator = lhs.mul_add(rhs, accumulator);
+                accumulator = if PLANT_SEAM_CPU_SEPARATE_ROUNDING.load(Ordering::SeqCst) {
+                    lhs * rhs + accumulator
+                } else {
+                    lhs.mul_add(rhs, accumulator)
+                };
             } else {
                 let mapped = eval_field_eml_cpu(
                     &registration.map_program,
@@ -2434,12 +2449,12 @@ fn pack_programs(registration: &FieldSweepRegistration) -> (Vec<EmlNodeGpu>, Fie
                 FieldSweepOutput::Matrix(_) => 0,
                 FieldSweepOutput::Transient => 1,
             },
-            // SEAM LAW flag: 1 routes the interpreted arm's canonical-Sum
-            // fold through the fused seam (fma), matching CPU twin and JIT.
-            _pad1: u32::from(seam_fused_shape(
-                &registration.map_program,
-                &registration.fold_program,
-            )),
+            // Uniqueness-fused flag: 1 routes the interpreted arm's canonical
+            // Sum fold through fma, matching CPU twin and JIT.
+            _pad1: u32::from(
+                seam_fused_shape(&registration.map_program, &registration.fold_program)
+                    && !PLANT_SEAM_INTERPRETED_DISABLE_FUSE.load(Ordering::SeqCst),
+            ),
             fused_identity_bits: 0,
             fused_dt_bits: 0,
             _pad2: 0,

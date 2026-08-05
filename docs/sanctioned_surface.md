@@ -350,14 +350,6 @@ This digest is a derived context artifact for low-context agents. If it disagree
 | LnConsumerGadgets | authority-export | EML-LN-PRIMITIVE-0 guarded PowerLaw eml-operator entropy LogAccumulate authored-data builders | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |
 | eml_ln_qualification | authority-export | EML-LN-PRIMITIVE-0 pinned exhaustive-qualification artifacts and certified roster | retire if qualification pinning becomes wholly kernel-internal | kernel_surface.txt |
 | ln_primitive_domain | authority-export | EML-LN-PRIMITIVE-0 canonical positive-normal LN interval constructor | retire if exact primitive call-site admission becomes wholly kernel-internal | kernel_surface.txt |
-| ExactBearingEvidence | authority-export | EXACT-CONSUMER-OBLIGATION-0 exact-bearing status folded into the ONE consumer-evidence channel | retire if consumer admission becomes wholly kernel-internal | kernel_surface.txt |
-| ExactConsumerArm | authority-export | EXACT-CONSUMER-OBLIGATION-0 closed execution-arm vocabulary for consumer digest evidence | retire if consumer admission becomes wholly kernel-internal | kernel_surface.txt |
-| ExactConsumerDigestEvidence | authority-export | EXACT-CONSUMER-OBLIGATION-0 per-arm consumer digest evidence row | retire if consumer admission becomes wholly kernel-internal | kernel_surface.txt |
-| ExactConsumerExecutionShape | authority-export | EXACT-CONSUMER-OBLIGATION-0 concrete execution shape from which the arm obligation derives | retire if consumer admission becomes wholly kernel-internal | kernel_surface.txt |
-| ExactConsumerShapeBinding | authority-export | EXACT-CONSUMER-OBLIGATION-0 binding of the execution shape to the actual production consumer surface | retire if consumer admission becomes wholly kernel-internal | kernel_surface.txt |
-| FieldConsumerShapeProof | sealed-export | EXACT-CONSUMER-OBLIGATION-0 sealed field shape proof mintable only from an admitted FieldSweepRegistration | retire if consumer admission becomes wholly kernel-internal | kernel_surface.txt |
-| derive_consumer_arms | authority-export | EXACT-CONSUMER-OBLIGATION-0 shape-to-arm-set derivation replacing caller-authored arm lists | retire if consumer admission becomes wholly kernel-internal | kernel_surface.txt |
-
 ## Sealed Types
 
 | sealed type | source |
