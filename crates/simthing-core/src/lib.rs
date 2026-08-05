@@ -26,6 +26,7 @@ pub mod property;
 pub mod reduction;
 pub mod registry;
 pub mod residency;
+pub mod residency_tier;
 pub mod simthing;
 pub mod slot_index;
 pub mod specialization;
@@ -140,6 +141,13 @@ pub use registry::{
 pub use residency::{ObjectResidencyRelation, ObjectResidencyRelease, ObjectResidencyRequest};
 pub use simthing::{
     kind_matches, reserve_simthing_ids_from_tree, ResourceParentEdge, SimThing, SimThingKind,
+};
+pub use residency_tier::{
+    materialize_granting_census, resolve_residency_draw, AdjacencyParticipation,
+    CapacityPartitionError, GrantingNodeCensusLanes, LaneSet, ResidencyCapacityPartition,
+    ResidencyChurnClass, ResidencyDrawShape, ResidencyShapeClass, ResidencyTierRow,
+    SessionTierSet, SparseGrantingCensus, TierAdmissionError, TierId,
+    SESSION_TIER_WIDTH_LIMIT,
 };
 pub use slot_index::{CellSpaceIndex, SlotIndex};
 pub use specialization::{
