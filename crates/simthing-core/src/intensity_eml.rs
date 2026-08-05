@@ -249,6 +249,9 @@ mod tests {
                 eml_nodes::opcode::EXP => {
                     stack[sp - 1] = crate::eml_exp::eml_exp_pinned_f32(stack[sp - 1]);
                 }
+                eml_nodes::opcode::LN => {
+                    stack[sp - 1] = crate::eml_ln::eml_ln_pinned_f32(stack[sp - 1]);
+                }
                 eml_nodes::opcode::RETURN_TOP => return stack[sp - 1],
                 _ => {}
             }

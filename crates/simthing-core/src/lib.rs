@@ -9,6 +9,7 @@ pub mod column_index;
 pub mod compiled_accumulator_plan;
 pub mod cost_band;
 pub mod eml_exp;
+pub mod eml_ln;
 pub mod eml_nodes;
 pub mod eml_registry;
 pub mod evaluate;

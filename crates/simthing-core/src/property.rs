@@ -490,6 +490,7 @@ pub fn eval_overlay_eml(nodes: &[crate::eml_nodes::EmlNode], current: f32, n: f3
                 stack[sp - 1] = stack[sp - 1].clamp(f32::from_bits(node.a), f32::from_bits(node.b));
             }
             opcode::EXP => stack[sp - 1] = crate::eml_exp::eml_exp_pinned_f32(stack[sp - 1]),
+            opcode::LN => stack[sp - 1] = crate::eml_ln::eml_ln_pinned_f32(stack[sp - 1]),
             opcode::SELECT => {
                 let f_val = stack[sp - 1];
                 let t_val = stack[sp - 2];

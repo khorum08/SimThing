@@ -98,6 +98,13 @@ pub mod opcode {
     /// (range-certified literal or explicit `CLAMP_BOUNDED` guard); unguarded
     /// calls are spanned admission errors.
     pub const EXP: u32 = 26;
+    /// EML-LN-PRIMITIVE-0: natural log over positive finite normals (unary).
+    ///
+    /// The SECOND admitted exact primitive (candidate LND4, double-single
+    /// grid-exact; see [`crate::eml_ln`]). Semantics append-only; call sites
+    /// must discharge a 5.10 admission shape; unguarded calls are spanned
+    /// admission errors.
+    pub const LN: u32 = 27;
 
     pub const CMP_LT: u32 = 30;
     pub const CMP_LE: u32 = 31;

@@ -873,6 +873,10 @@ const CLOSED_OPCODES: &[u32] = &[
     // EML-EXP-PRIMITIVE-0: the sole 5.11 vocabulary widening — the first
     // admitted exact primitive (full-domain EXP through the 5.10 door).
     eml_nodes::opcode::EXP,
+    // EML-LN-PRIMITIVE-0: the sole 5.12 widening — LN over positive finite
+    // normals (candidate LND4), promoted only after the exhaustive
+    // admitted-domain three-arm sweep went green.
+    eml_nodes::opcode::LN,
     eml_nodes::opcode::CMP_LT,
     eml_nodes::opcode::CMP_LE,
     eml_nodes::opcode::CMP_GT,
@@ -905,9 +909,20 @@ pub fn opcode_in_closed_vocabulary(op: u32) -> bool {
 
 // ── EML-EXP-PRIMITIVE-0: the admitted EXP primitive ──────────────────────────
 
-/// The one admitted exact primitive's registry name (append-only semantics; a
+/// The admitted exact primitives' registry names (append-only semantics; a
 /// different bit law is a future NEW name, never a mutation).
 pub const EXP_PRIMITIVE_NAME: &str = "EXP";
+pub const LN_PRIMITIVE_NAME: &str = "LN";
+
+/// Canonical LN domain: positive finite normals `[2^-126, f32::MAX]`.
+pub fn ln_primitive_domain() -> PrimitiveDomain {
+    PrimitiveDomain::from_bits(
+        simthing_core::eml_ln::EML_LN_DOMAIN_MIN_BITS,
+        simthing_core::eml_ln::EML_LN_DOMAIN_MAX_BITS,
+        ExactPrimitiveDomainPolicy::FiniteOnlyRejectNanAndInfinity,
+    )
+    .expect("pinned LN endpoint bits form an ordered finite binary32 interval")
+}
 
 /// Canonical full-domain EXP interval `[-87.33, +88.72]` (finite-only policy).
 /// Every output over this domain is a positive normal finite f32.
@@ -933,11 +948,12 @@ pub fn exp_primitive_domain() -> PrimitiveDomain {
 /// `SubFieldSpec` is in scope; the tree scan admits only what it can verify
 /// mechanically from node data.
 pub fn admit_exp_call_sites(nodes: &[EmlNode]) -> Result<(), OpcodeGateError> {
-    let domain = exp_primitive_domain();
     for (index, node) in nodes.iter().enumerate() {
-        if node.opcode != eml_nodes::opcode::EXP {
-            continue;
-        }
+        let domain = match node.opcode {
+            eml_nodes::opcode::EXP => exp_primitive_domain(),
+            eml_nodes::opcode::LN => ln_primitive_domain(),
+            _ => continue,
+        };
         let span = ExactPrimitiveSourceSpan::new(index as u32, index as u32 + 1);
         let shape = match index.checked_sub(1).map(|prev_index| &nodes[prev_index]) {
             Some(prev) if prev.opcode == eml_nodes::opcode::CLAMP_BOUNDED => {
@@ -1123,6 +1139,107 @@ impl SoftmaxWeightGadget {
             f32::from_bits(simthing_core::EML_EXP_SATURATION_CEILING_BITS),
         );
         simthing_core::eml_exp_pinned_f32(arg)
+    }
+}
+
+/// EML-LN-PRIMITIVE-0 consumers — authored EML data over the completed
+/// vocabulary; no new opcode, no new mechanism (full_eml_unification §5).
+pub struct LnConsumerGadgets;
+
+impl LnConsumerGadgets {
+    fn ln_guard() -> EmlNode {
+        EmlNode {
+            opcode: eml_nodes::opcode::CLAMP_BOUNDED,
+            flags: 0,
+            a: simthing_core::eml_ln::EML_LN_DOMAIN_MIN_BITS,
+            b: simthing_core::eml_ln::EML_LN_DOMAIN_MAX_BITS,
+            c: 0,
+            d: 0,
+        }
+    }
+
+    /// `PowerLaw(x; a) = EXP(a * LN(x))` — the entire power-law family with
+    /// no third opcode; both primitive calls carry 5.10 shape-2 guards.
+    pub fn power_law_nodes(x_col: u32, a: f32) -> Result<Vec<EmlNode>, OpcodeGateError> {
+        let nodes = vec![
+            slot(x_col),
+            Self::ln_guard(),
+            bin(eml_nodes::opcode::LN),
+            lit(a),
+            bin(eml_nodes::opcode::MUL),
+            saturation_exp_full_guard(),
+            bin(eml_nodes::opcode::EXP),
+            bin(eml_nodes::opcode::RETURN_TOP),
+        ];
+        OpcodeRegistrationGate::admit_tree_nodes(&nodes)?;
+        admit_exp_call_sites(&nodes)?;
+        Ok(nodes)
+    }
+
+    /// `eml(x, y) = SUB(EXP(x), LN(y))` — the operator the interpreter is
+    /// named for, as a guarded three-op library entry (Anchor B literal).
+    pub fn eml_operator_nodes(x_col: u32, y_col: u32) -> Result<Vec<EmlNode>, OpcodeGateError> {
+        let nodes = vec![
+            slot(x_col),
+            saturation_exp_full_guard(),
+            bin(eml_nodes::opcode::EXP),
+            slot(y_col),
+            Self::ln_guard(),
+            bin(eml_nodes::opcode::LN),
+            bin(eml_nodes::opcode::SUB),
+            bin(eml_nodes::opcode::RETURN_TOP),
+        ];
+        OpcodeRegistrationGate::admit_tree_nodes(&nodes)?;
+        admit_exp_call_sites(&nodes)?;
+        Ok(nodes)
+    }
+
+    /// Entropy term `-p * LN(p)` with the measure-theoretic `p = 0` case
+    /// authored away via `SELECT` (diagnostic lane).
+    pub fn entropy_term_nodes(p_col: u32) -> Result<Vec<EmlNode>, OpcodeGateError> {
+        let nodes = vec![
+            slot(p_col),
+            lit(0.0),
+            bin(eml_nodes::opcode::CMP_GT),
+            slot(p_col),
+            bin(eml_nodes::opcode::NEG),
+            slot(p_col),
+            Self::ln_guard(),
+            bin(eml_nodes::opcode::LN),
+            bin(eml_nodes::opcode::MUL),
+            lit(0.0),
+            bin(eml_nodes::opcode::SELECT),
+            bin(eml_nodes::opcode::RETURN_TOP),
+        ];
+        OpcodeRegistrationGate::admit_tree_nodes(&nodes)?;
+        admit_exp_call_sites(&nodes)?;
+        Ok(nodes)
+    }
+
+    /// `LogAccumulate` map: `LN(x)` guarded — a NEW authored numerical law
+    /// riding the existing Sum lane unchanged (never a Product substitution).
+    pub fn log_accumulate_map_nodes(x_col: u32) -> Result<Vec<EmlNode>, OpcodeGateError> {
+        let nodes = vec![
+            slot(x_col),
+            Self::ln_guard(),
+            bin(eml_nodes::opcode::LN),
+            bin(eml_nodes::opcode::RETURN_TOP),
+        ];
+        OpcodeRegistrationGate::admit_tree_nodes(&nodes)?;
+        admit_exp_call_sites(&nodes)?;
+        Ok(nodes)
+    }
+}
+
+/// EXP full-domain guard node for gadget composition.
+fn saturation_exp_full_guard() -> EmlNode {
+    EmlNode {
+        opcode: eml_nodes::opcode::CLAMP_BOUNDED,
+        flags: 0,
+        a: simthing_core::EML_EXP_DOMAIN_MIN_BITS,
+        b: simthing_core::EML_EXP_DOMAIN_MAX_BITS,
+        c: 0,
+        d: 0,
     }
 }
 
@@ -1506,7 +1623,15 @@ mod tests {
             1,
             "EXP appears exactly once in the closed vocabulary"
         );
-        assert_eq!(closed.len(), 24, "5.11 widens the 23-opcode roster by one");
+        assert_eq!(
+            closed
+                .iter()
+                .filter(|op| **op == eml_nodes::opcode::LN)
+                .count(),
+            1,
+            "LN appears exactly once (5.12 widening)"
+        );
+        assert_eq!(closed.len(), 25, "5.11+5.12 widen the 23-opcode roster by exactly two");
         assert!(opcode_in_accumulator_vocabulary(eml_nodes::opcode::EXP));
         let domain = exp_primitive_domain();
         assert_eq!(domain.min_bits(), simthing_core::EML_EXP_DOMAIN_MIN_BITS);

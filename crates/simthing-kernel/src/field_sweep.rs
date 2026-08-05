@@ -1120,7 +1120,8 @@ fn validate_field_program(
             | eml_opcode::CLAMP_FLOORED
             | eml_opcode::ABS
             | eml_opcode::FLOOR
-            | eml_opcode::EXP => {
+            | eml_opcode::EXP
+            | eml_opcode::LN => {
                 if depth < 1 {
                     return Err(FieldSweepAdmissionError::StackUnderflow { name });
                 }
@@ -1272,6 +1273,9 @@ fn eval_field_eml_cpu_in_class(
             eml_opcode::FLOOR => stack[sp - 1] = stack[sp - 1].floor(),
             eml_opcode::EXP => {
                 stack[sp - 1] = simthing_core::eml_exp_pinned_f32(stack[sp - 1]);
+            }
+            eml_opcode::LN => {
+                stack[sp - 1] = simthing_core::eml_ln::eml_ln_pinned_f32(stack[sp - 1]);
             }
             eml_opcode::SELECT => {
                 let false_value = stack[sp - 1];
