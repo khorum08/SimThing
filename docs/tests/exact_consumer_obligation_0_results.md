@@ -1,6 +1,6 @@
 # EXACT-CONSUMER-OBLIGATION-0 results
 
-- Track: 0.0.8.7 (rung 5.13, Phase 5 reopened) · Status: **PROBATION / proof-present / DA-review-pending**
+- Track: 0.0.8.7 (rung 5.13, Phase 5 reopened) · Status: **COMPLETE — DA-GRADUATED / merged #1644 @ `339e4f8f`** (DA deep-tree ratification 2026-08-05; SEAM LAW ratified and declared at §4 of the track doc)
 - Base: `f7544feb` (exact) · Branch: `fable/exact-consumer-obligation-0`
 - ORIENT-RECEIPT: `b780ce1ca97e` (rule stamp `45e629f979c3f629`) · HD-RECEIPT: `e4e6e5def6ac`
 - Dispatch: Board `5187606339`; authority DA `5187245896` + #1642 corrections

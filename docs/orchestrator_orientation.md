@@ -45,9 +45,9 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 211b860c2a424d0386a01a2dc93d5c563abfd1411c1f58ec55c7b69d97426cb8 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | 26eab30ec86c97ac8dfd6beef7ae8c5b4d3f18c38fdaa431ec40ccce855396d3 |
-| design_0_0_8_7_rf_arena_modernization.md | f30145b0ab7a2bd1a434192f0533f9c9294f635fe4d94e8cf1590f04a47e5dca |
+| design_0_0_8_7_rf_arena_modernization.md | 706b3ee8b0f0c3f219f2bf6bfc1fff1a9eb657f9a80d23a8d550dab07296671d |
 | relay_lint.sh | 4163f715cdc3b549dbf57c1744aff61ea96b9f9f0a2237376665fbdb24e986c8 |
-| doctrine_anchors.tsv | c0ff7eb96da9f43fa516248a9ed3c9f7d7f4153a73808d54357b4a1489831c38 |
+| doctrine_anchors.tsv | 016e3bf4f4b61c1bb72e786e6d89e5cd122475002d92f6dc7acde426aa3aa287 |
 | execution_status_taxonomy.tsv | c33df8d86dbc939e1f6b9a847b3d54e255ae602481cd459c96fba4b13cd2f145 |
 | execution_status_mixed_posture.tsv | 1adf05f3ec5fd7b537efe29259d20649a2c6d3a0839590063e5308ff154e8f25 |
 | execution_status_non_execution.tsv | 214c1b557dfd3fc465f0171051e20281ff1dcf6c53128dbb29cba01524f9be02 |
@@ -111,7 +111,7 @@ Track state: `open`
 
 ## Next Rung Pointer
 
-Active pointer: `EXACT-CONSUMER-OBLIGATION-0`
+Active pointer: `SLOT-LOGICAL-IDENTITY-0`
 
 
 ## Cold-Start Spine (constitutional pointers)
