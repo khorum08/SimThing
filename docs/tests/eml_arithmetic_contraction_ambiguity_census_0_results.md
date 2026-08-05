@@ -1,29 +1,29 @@
 # EML-ARITHMETIC-SEMANTICS-0 — contraction uniqueness census (DISCHARGED)
 
 **Status:** STOP discharged by DA uniqueness ruling `5192270934` / RESUME `5192307920`.
-Two-or-more-MUL→one-ADD/SUB shapes are lawfully **UNFUSED (`U`)** — no tie-break; proceed.
+Two-or-more-MUL→one-**ADD** shapes are lawfully **UNFUSED (`U`)** — no tie-break; proceed.
+`SUB` is **not** under the uniqueness rule (remand `5192641222`).
 
 | Field | Value |
 | --- | --- |
 | rung | `EML-ARITHMETIC-SEMANTICS-0` (5.14) |
 | HD-RECEIPT | `b9070974440b` |
 | ORIENT-RECEIPT | `fc5773df281f` |
-| dispatch | `5191921308` → STOP `5192130398` → DA `5192270934` → RESUME `5192307920` |
-| DA orders | `5191578752`, amendments `5191860082`, uniqueness `5192270934` |
+| dispatch | `5191921308` → STOP `5192130398` → DA `5192270934` → RESUME `5192307920` → REMAND `5192641222` |
 | base_sha | `98180a4a4e7334fa9476c74170d995b5028202dc` |
 | harness | `cargo test -p simthing-workshop --test eml_arithmetic_contraction_ambiguity_census_0 -- --nocapture` |
 
-## Uniqueness rule (binding)
+## Uniqueness rule (binding — ADD only)
 
-- Exactly one `MUL` → consuming `ADD`/`SUB` → **FUSED** (one rounding).
-- Two or more `MUL`s → same `ADD`/`SUB` → **UNFUSED (`U`)**.
+- Exactly one `MUL` → consuming `ADD` → **FUSED** (one rounding).
+- Two or more `MUL`s → same `ADD` → **UNFUSED (`U`)**.
 - No tie-break, ever. SEAM LAW is an instance at map/fold, not a peer law.
+- `SUB` carries only standalone IEEE-754 single-rounding; no fused-multiply-subtract.
 
 ## Census summary
 
 - Programs walked: **17**
 - ADD hits (two MUL → one ADD): **5** — all measured **matches-U** on CPU + interpreted WGSL
-- SUB hits (two MUL → one SUB): **0** (recorded for the ruling; uniqueness already decides)
 - SSA-JIT: not-an-execution-arm for OrdinaryAccumulatorEvalEml hits
 
 ## Hits (all lawfully U)

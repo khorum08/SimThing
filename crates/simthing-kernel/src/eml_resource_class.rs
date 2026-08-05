@@ -2,10 +2,11 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use simthing_core::{eml_opcode, EmlNodeGpu, EmlResourceClass};
 
-/// Production plant: uniqueness-fused JIT fold emits separate `*`/`+` instead of `fma`.
+/// Production plant: uniqueness-fused JIT emits ordinary Sum fold (separate
+/// map-MUL then fold-ADD) instead of the fused `fma` fold body.
 static PLANT_SEAM_JIT_SEPARATE_ROUNDING: AtomicBool = AtomicBool::new(false);
 
-/// Plant: SSA-JIT uniqueness-fused seam uses `(lhs * rhs) + acc` instead of `fma`.
+/// Plant: SSA-JIT uniqueness-fused seam uses ordinary Sum fold (unfused).
 pub(crate) fn plant_seam_jit_separate_rounding(on: bool) {
     PLANT_SEAM_JIT_SEPARATE_ROUNDING.store(on, Ordering::SeqCst);
 }
@@ -136,8 +137,14 @@ pub(crate) fn generate_field_sweep_jit(
     // Uniqueness-rule instance (5.14): map ends in MUL + canonical Sum fold →
     // SPECIFIED FUSED (acc = fma(a, b, acc)). JIT emits explicit fma; CPU and
     // interpreted arms match via the registration-derived shape.
+    // Plant: emit the ordinary Sum fold so MUL (eval_map) and ADD are separate
+    // roundings — a real fusion-law defect, not a post-hoc bit corruption.
     let fold_body = if crate::field_sweep::seam_fused_shape(map, fold) {
-        emit_seam_fused_fold(&map[..map.len() - 2])
+        if PLANT_SEAM_JIT_SEPARATE_ROUNDING.load(Ordering::SeqCst) {
+            emit_program("eval_fold", fold)
+        } else {
+            emit_seam_fused_fold(&map[..map.len() - 2])
+        }
     } else {
         emit_program("eval_fold", fold)
     };
@@ -251,18 +258,9 @@ fn emit_seam_fused_fold(mul_free_map: &[EmlNodeGpu]) -> String {
     let rhs = stack.pop().expect("seam mul rhs");
     let lhs = stack.pop().expect("seam mul lhs");
     fused.push_str(&inner);
-    // Separate `*`/`+` is not a reliable plant on the certified toolchain: the
-    // vendor may re-contract it to `fma` and leave bits unchanged. Flip one
-    // mantissa bit after the lawful fma so the production JIT path is proven
-    // live without relying on contraction discretion.
-    let body = if PLANT_SEAM_JIT_SEPARATE_ROUNDING.load(Ordering::SeqCst) {
-        format!(
-            "    let fused = fma({lhs}, {rhs}, context.accumulator);\n    return bitcast<f32>(bitcast<u32>(fused) ^ 1u);\n}}\n"
-        )
-    } else {
-        format!("    return fma({lhs}, {rhs}, context.accumulator);\n}}\n")
-    };
-    fused.push_str(&body);
+    fused.push_str(&format!(
+        "    return fma({lhs}, {rhs}, context.accumulator);\n}}\n"
+    ));
     fused
 }
 

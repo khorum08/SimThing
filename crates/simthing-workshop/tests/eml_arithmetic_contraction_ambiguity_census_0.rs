@@ -1,10 +1,10 @@
-//! EML-ARITHMETIC-SEMANTICS-0 — uniqueness census (ADD+SUB).
+//! EML-ARITHMETIC-SEMANTICS-0 — uniqueness census (ADD only).
 //!
-//! Enumerates admitted EML programs for ADD/SUB nodes whose both immediate
+//! Enumerates admitted EML programs for ADD nodes whose both immediate
 //! producers are MUL results, measures CPU-twin / interpreted-WGSL behaviour,
 //! and records SSA-JIT as not-an-arm for OrdinaryAccumulatorEvalEml.
-//! DA `5192270934`: two+ MUL → ADD/SUB is authored UNFUSED (`U`); no tie-break;
-//! non-empty set is no longer a STOP.
+//! DA `5192270934`: two+ MUL → ADD is authored UNFUSED (`U`); no tie-break;
+//! non-empty set is no longer a STOP. SUB is not under uniqueness.
 
 use simthing_core::{
     eml_nodes, AccumulatorOp, ColumnIndex, CombineFn, ConsumeMode, EmlExecutionClass,
@@ -29,7 +29,6 @@ enum ProducerKind {
 struct AmbiguousHit {
     program: &'static str,
     source: &'static str,
-    op: AmbiguousOp,
     add_index: usize,
     mul_lhs_index: usize,
     mul_rhs_index: usize,
@@ -40,13 +39,7 @@ struct AmbiguousHit {
     params: [f32; 4],
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum AmbiguousOp {
-    Add,
-    Sub,
-}
-
-fn classify_ambiguous(nodes: &[EmlNode]) -> Vec<(AmbiguousOp, usize, usize, usize)> {
+fn classify_two_mul_into_add(nodes: &[EmlNode]) -> Vec<(usize, usize, usize)> {
     let mut stack: Vec<(ProducerKind, usize)> = Vec::new();
     let mut hits = Vec::new();
     for (idx, node) in nodes.iter().enumerate() {
@@ -56,17 +49,18 @@ fn classify_ambiguous(nodes: &[EmlNode]) -> Vec<(AmbiguousOp, usize, usize, usiz
             | eml_nodes::opcode::PARAM => {
                 stack.push((ProducerKind::Other, idx));
             }
-            eml_nodes::opcode::ADD | eml_nodes::opcode::SUB => {
-                let rhs = stack.pop().expect("ADD/SUB rhs");
-                let lhs = stack.pop().expect("ADD/SUB lhs");
+            eml_nodes::opcode::ADD => {
+                let rhs = stack.pop().expect("ADD rhs");
+                let lhs = stack.pop().expect("ADD lhs");
                 if lhs.0 == ProducerKind::Mul && rhs.0 == ProducerKind::Mul {
-                    let op = if node.opcode == eml_nodes::opcode::ADD {
-                        AmbiguousOp::Add
-                    } else {
-                        AmbiguousOp::Sub
-                    };
-                    hits.push((op, idx, lhs.1, rhs.1));
+                    hits.push((idx, lhs.1, rhs.1));
                 }
+                stack.push((ProducerKind::Other, idx));
+            }
+            eml_nodes::opcode::SUB => {
+                let _rhs = stack.pop().expect("SUB rhs");
+                let _lhs = stack.pop().expect("SUB lhs");
+                // SUB is not under the uniqueness contraction rule.
                 stack.push((ProducerKind::Other, idx));
             }
             eml_nodes::opcode::MUL
@@ -754,11 +748,10 @@ fn eml_arithmetic_semantics_0_contraction_ambiguity_census_stop_packet() {
     let mut walked = 0usize;
     for (program, source, nodes, columns, probe_row, params) in admitted_programs() {
         walked += 1;
-        for (op, add_index, mul_lhs_index, mul_rhs_index) in classify_ambiguous(&nodes) {
+        for (add_index, mul_lhs_index, mul_rhs_index) in classify_two_mul_into_add(&nodes) {
             hits.push(AmbiguousHit {
                 program,
                 source,
-                op,
                 add_index,
                 mul_lhs_index,
                 mul_rhs_index,
@@ -770,20 +763,11 @@ fn eml_arithmetic_semantics_0_contraction_ambiguity_census_stop_packet() {
         }
     }
 
-    let add_hits: Vec<_> = hits.iter().filter(|h| h.op == AmbiguousOp::Add).collect();
-    let sub_hits: Vec<_> = hits.iter().filter(|h| h.op == AmbiguousOp::Sub).collect();
-    println!("=== EML-ARITHMETIC-SEMANTICS-0 UNIQUENESS CENSUS (ADD+SUB) ===");
+    println!("=== EML-ARITHMETIC-SEMANTICS-0 UNIQUENESS CENSUS (ADD only) ===");
     println!("programs_walked: {walked}");
-    println!("two_mul_into_add_hits: {}", add_hits.len());
-    println!("two_mul_into_sub_hits: {}", sub_hits.len());
-    for h in &sub_hits {
-        println!(
-            "SUB-HIT: {} {} SUB@{} ← MUL@{} MUL@{}",
-            h.program, h.source, h.add_index, h.mul_lhs_index, h.mul_rhs_index
-        );
-    }
-    // DA 5192270934: SUB census is for the record; uniqueness already decides UNFUSED.
-    // Proceed whether empty or not — do not invent a new STOP.
+    println!("two_mul_into_add_hits: {}", hits.len());
+    // DA 5192270934: two+ MUL → ADD is authored UNFUSED (`U`). SUB is not under
+    // this rule. Proceed; do not invent a tie-break.
 
     let ctx = GpuContext::new_blocking().expect("GPU required for interpreted-arm measurement");
     let live =
@@ -795,7 +779,7 @@ fn eml_arithmetic_semantics_0_contraction_ambiguity_census_stop_packet() {
     println!("HD-RECEIPT: b9070974440b");
     println!("base_sha: 98180a4a4e7334fa9476c74170d995b5028202dc");
     println!("ssa_jit_note: OrdinaryAccumulatorEvalEml derives CpuTwin+InterpretedGpu only; SSA-JIT is not-an-execution-arm for these hits");
-    println!("uniqueness_rule: one MUL→ADD/SUB = FUSED; two+ MUL→ADD/SUB = UNFUSED(U); no tie-break");
+    println!("uniqueness_rule: one MUL→ADD = FUSED; two+ MUL→ADD = UNFUSED(U); SUB not under rule; no tie-break");
 
     for (i, hit) in hits.iter().enumerate() {
         let (a, b) = mul_operands(
@@ -894,8 +878,8 @@ fn eml_arithmetic_semantics_0_contraction_ambiguity_census_stop_packet() {
         println!("program: {}", hit.program);
         println!("source: {}", hit.source);
         println!(
-            "nodes: {:?}@{} fed by MUL@{} and MUL@{}",
-            hit.op, hit.add_index, hit.mul_lhs_index, hit.mul_rhs_index
+            "nodes: ADD@{} fed by MUL@{} and MUL@{}",
+            hit.add_index, hit.mul_lhs_index, hit.mul_rhs_index
         );
         println!(
             "probe_operands: a={a}({:#010x}) b={b}({:#010x}) c={c}({:#010x}) d={d}({:#010x})",
@@ -938,8 +922,7 @@ fn eml_arithmetic_semantics_0_contraction_ambiguity_census_stop_packet() {
     }
 
     println!(
-        "=== END UNIQUENESS CENSUS — ADD hits={} SUB hits={} (rule decides UNFUSED; proceed) ===",
-        add_hits.len(),
-        sub_hits.len()
+        "=== END UNIQUENESS CENSUS — ADD hits={} (rule decides UNFUSED; proceed) ===",
+        hits.len()
     );
 }

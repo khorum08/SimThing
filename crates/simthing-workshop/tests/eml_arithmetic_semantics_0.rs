@@ -3,10 +3,14 @@
 //! Binding: DA uniqueness ruling `5192270934` / RESUME `5192307920`.
 
 use simthing_core::{
-    eml_nodes, ColumnIndex, EmlExecutionClass, EmlExpressionRegistry, EmlFormulaMeta, EmlNodeGpu,
-    EmlTreeId,
+    eml_nodes, AccumulatorOp, ColumnIndex, CombineFn, ConsumeMode, EmlExecutionClass,
+    EmlExpressionRegistry, EmlFormulaMeta, EmlNodeGpu, EmlTreeId, GateSpec, ScaleSpec, SlotIndex,
+    SourceSpec,
 };
-use simthing_gpu::{set_debug_readback_allowed, FieldSweepSession, GpuContext};
+use simthing_gpu::{
+    set_debug_readback_allowed, AccumulatorOpSession, EmlGpuProgramTable, FieldSweepSession,
+    GpuContext, PackedAccumulatorUpload,
+};
 use simthing_kernel::{OpcodeRegistrationGate, EXP_PRIMITIVE_NAME};
 
 const FNV_OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
@@ -207,8 +211,14 @@ fn eml_arithmetic_semantics_0_interpreted_seam_plant_reds_falloff() {
     );
 }
 
+/// BOUNDED STOP witness (remand `5192641222` blocker 3): on the certified
+/// toolchain, a truthful JIT plant that replaces the fused `fma` fold body
+/// with the ordinary Sum fold (MUL in `eval_map`, ADD in `eval_fold`) is
+/// re-contracted to the same bits as the fused form. A post-`fma` bit-flip
+/// plant was rejected as not falsifying fusion. No lawful separate-rounding
+/// JIT mutant remains without an optimizer fence.
 #[test]
-fn eml_arithmetic_semantics_0_jit_seam_plant_reds_falloff() {
+fn eml_arithmetic_semantics_0_jit_seam_separate_rounding_plant_is_recontracted() {
     let Some(ctx) = certified_context() else {
         return;
     };
@@ -241,11 +251,172 @@ fn eml_arithmetic_semantics_0_jit_seam_plant_reds_falloff() {
     let planted = planted_session.readback(&ctx).expect("readback");
     simthing_kernel::field_sweep::plant_seam_jit_separate_rounding(false);
 
-    assert_ne!(
+    assert_eq!(
         digest_outputs(&clean),
         digest_outputs(&planted),
-        "production JIT seam plant (fma→separate) must RED falloff"
+        "substrate fact: truthful JIT unfused-Sum plant must re-contract to fused bits on certified toolchain (BOUNDED STOP for JIT fusion falsifier)"
     );
+    // Contrast: CPU and interpreted plants DO RED on the same falloff probe
+    // (see sibling plant tests) — only the SSA-JIT generated fold is opaque.
+}
+
+fn lit(bits: u32) -> eml_nodes::EmlNode {
+    eml_nodes::EmlNode {
+        opcode: eml_nodes::opcode::LITERAL_F32,
+        flags: 0,
+        a: bits,
+        b: 0,
+        c: 0,
+        d: 0,
+    }
+}
+
+fn op(opcode: u32) -> eml_nodes::EmlNode {
+    op_flags(opcode, 0)
+}
+
+fn op_flags(opcode: u32, flags: u32) -> eml_nodes::EmlNode {
+    eml_nodes::EmlNode {
+        opcode,
+        flags,
+        a: 0,
+        b: 0,
+        c: 0,
+        d: 0,
+    }
+}
+
+fn binary_program(opcode: u32, a: f32, b: f32) -> Vec<eml_nodes::EmlNode> {
+    // DIV requires flags bit 0 (safe division) at admission.
+    let bin_flags = u32::from(opcode == eml_nodes::opcode::DIV);
+    let nodes = vec![
+        lit(a.to_bits()),
+        lit(b.to_bits()),
+        op_flags(opcode, bin_flags),
+        op(eml_nodes::opcode::RETURN_TOP),
+    ];
+    OpcodeRegistrationGate::admit_tree_nodes(&nodes).expect("closed vocab");
+    nodes
+}
+
+fn ieee_bits(opcode: u32, a: f32, b: f32) -> u32 {
+    match opcode {
+        eml_nodes::opcode::ADD => (a + b).to_bits(),
+        eml_nodes::opcode::SUB => (a - b).to_bits(),
+        eml_nodes::opcode::MUL => (a * b).to_bits(),
+        eml_nodes::opcode::DIV => (a / b).to_bits(),
+        _ => panic!("not a rounding binary opcode"),
+    }
+}
+
+fn ao_eval_cpu(nodes: &[eml_nodes::EmlNode]) -> f32 {
+    let gpu: Vec<EmlNodeGpu> = nodes
+        .iter()
+        .map(|n| EmlNodeGpu {
+            opcode: n.opcode,
+            flags: n.flags,
+            a: n.a,
+            b: n.b,
+            c: n.c,
+            d: n.d,
+        })
+        .collect();
+    simthing_kernel::eval_eml_cpu(&gpu, 0, &[], 0, [0.0; 4])
+}
+
+fn ao_eval_interpreted(ctx: &GpuContext, nodes: &[eml_nodes::EmlNode]) -> f32 {
+    set_debug_readback_allowed(true);
+    let gpu: Vec<EmlNodeGpu> = nodes
+        .iter()
+        .map(|n| EmlNodeGpu {
+            opcode: n.opcode,
+            flags: n.flags,
+            a: n.a,
+            b: n.b,
+            c: n.c,
+            d: n.d,
+        })
+        .collect();
+    let meta = EmlFormulaMeta {
+        tree_id: EmlTreeId(1),
+        execution_class: EmlExecutionClass::ExactDeterministic,
+        allowed_consumers: Default::default(),
+        max_abs_error: None,
+        deterministic_gpu: true,
+        requires_guard_for_hard_threshold: false,
+        node_count: nodes.len() as u32,
+        max_stack_depth: 0,
+        has_loops: false,
+        has_recursion: false,
+        display_name: "standalone-opcode".into(),
+    };
+    let mut reg = EmlExpressionRegistry::new();
+    reg.register_formula(EmlTreeId(1), meta, nodes.to_vec())
+        .expect("register");
+    let meta = reg.get(EmlTreeId(1)).expect("meta").clone();
+    let mut table = EmlGpuProgramTable::new(ctx, 64, 4);
+    let mapping = table
+        .upload_trees(ctx, &[(EmlTreeId(1), meta, gpu)])
+        .expect("upload");
+    for (id, idx) in mapping {
+        reg.mark_tree_uploaded(id, idx, table.generation)
+            .expect("mark");
+    }
+    let out_col = ColumnIndex::try_from_admitted_authored(0, 1).expect("col");
+    let ops = vec![AccumulatorOp {
+        source: SourceSpec::SlotValue {
+            slot: SlotIndex::new(0),
+            col: out_col,
+        },
+        combine: CombineFn::EvalEML { tree_id: 1 },
+        gate: GateSpec::Always,
+        scale: ScaleSpec::Constant(1.0),
+        consume: ConsumeMode::ResetTarget,
+        targets: vec![(SlotIndex::new(0), out_col)],
+    }];
+    let upload = PackedAccumulatorUpload::from_ops_with_eml(&ops, Some(&reg)).expect("pack");
+    let mut session = AccumulatorOpSession::new_attached(ctx, 1, 1, 1);
+    session.upload_values(ctx, &[0.0]);
+    session.copy_values_to_previous(ctx);
+    session.upload_packed_ops(ctx, &upload).expect("ops");
+    session
+        .tick_with_eml(ctx, 0, Some(&table))
+        .expect("tick");
+    session.readback_full(ctx).expect("rb")[0]
+}
+
+/// Standalone ADD/SUB/MUL/DIV: IEEE single-rounding, no reassociation.
+/// OrdinaryAccumulatorEvalEml derives CpuTwin + InterpretedGpu only (SSA-JIT
+/// is not an execution arm for these AO programs). Field fused ADD/MUL is
+/// covered by the uniqueness-seam witnesses above.
+#[test]
+fn eml_arithmetic_semantics_0_standalone_opcodes_match_ieee_on_derived_arms() {
+    let Some(ctx) = certified_context() else {
+        return;
+    };
+    // Discriminators: finite values where each op is well-defined and not a
+    // trivial identity that would hide a wrong lowering.
+    let cases: &[(u32, f32, f32, &str)] = &[
+        (eml_nodes::opcode::ADD, 1.0e20, 1.0, "ADD"),
+        (eml_nodes::opcode::SUB, 1.0e20, 1.0, "SUB"),
+        (eml_nodes::opcode::MUL, 1.0000001, 1.0000001, "MUL"),
+        (eml_nodes::opcode::DIV, 1.0, 3.0, "DIV"),
+    ];
+    for &(opcode, a, b, name) in cases {
+        let nodes = binary_program(opcode, a, b);
+        let expected = ieee_bits(opcode, a, b);
+        let cpu = ao_eval_cpu(&nodes).to_bits();
+        let gpu = ao_eval_interpreted(&ctx, &nodes).to_bits();
+        assert_eq!(cpu, expected, "{name}: CPU twin must match IEEE f32 bits");
+        assert_eq!(
+            gpu, expected,
+            "{name}: interpreted WGSL must match IEEE f32 bits"
+        );
+        assert_eq!(
+            cpu, gpu,
+            "{name}: CPU twin and interpreted WGSL must agree bit-exactly"
+        );
+    }
 }
 
 #[test]

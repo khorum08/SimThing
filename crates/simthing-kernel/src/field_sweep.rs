@@ -1080,7 +1080,8 @@ pub fn plant_seam_interpreted_disable_fuse(on: bool) {
     PLANT_SEAM_INTERPRETED_DISABLE_FUSE.store(on, Ordering::SeqCst);
 }
 
-/// Plant: SSA-JIT uniqueness-fused seam emits `(lhs * rhs) + acc` instead of `fma`.
+/// Plant: SSA-JIT uniqueness-fused seam emits the ordinary Sum fold so the
+/// map `MUL` and fold `ADD` are separate roundings (violates FUSED meaning).
 pub fn plant_seam_jit_separate_rounding(on: bool) {
     crate::eml_resource_class::plant_seam_jit_separate_rounding(on);
 }

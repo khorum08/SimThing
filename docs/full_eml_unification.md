@@ -183,11 +183,13 @@ Author-facing EvalEML arithmetic meanings — arm-independent:
 | `ADD`, `SUB`, `MUL`, `DIV` | IEEE-754 single-rounding; **no reassociation** |
 | `MIN`, `MAX`, `CLAMP_BOUNDED`, `CLAMP_FLOORED` | Exact selections (no rounding) |
 | `EXP`, `LN` | Pinned algorithm-as-spec digests (unchanged by 5.14) |
-| **Uniqueness contraction** | A `MUL` result is fused into its consuming `ADD`/`SUB` **iff that fusion is UNIQUE** |
+| **Uniqueness contraction** (DA `5192270934`) | A `MUL` result is fused into its consuming **`ADD`** **iff that fusion is UNIQUE** |
 
-- Exactly one `MUL` feeds an `ADD`/`SUB` → **FUSED** (one rounding; intrinsic `fma` / `mul_add`).
-- Two or more `MUL` results feed the same `ADD`/`SUB` → **UNFUSED** (`U`): each `MUL` rounds to
-  f32 before the `ADD`/`SUB` consumes it. **No tie-break exists or will exist.**
+- Exactly one `MUL` feeds an `ADD` → **FUSED** (one rounding; intrinsic `fma` / `mul_add`).
+- Two or more `MUL` results feed the same `ADD` → **UNFUSED** (`U`): each `MUL` rounds to
+  f32 before the `ADD` consumes it. **No tie-break exists or will exist.**
+- `SUB` is **not** under this contraction rule — only its standalone IEEE-754 single-rounding
+  meaning. No fused-multiply-subtract law is minted here.
 - The historical **SEAM LAW** (map ends `[..,MUL,RETURN]` + canonical Sum fold) is an **instance**
   of uniqueness at a map/fold boundary — not a peer law.
 - Each execution arm must **prove** it lowers to these meanings. Observing that an interpreter
