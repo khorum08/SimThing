@@ -45,9 +45,9 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 211b860c2a424d0386a01a2dc93d5c563abfd1411c1f58ec55c7b69d97426cb8 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | 26eab30ec86c97ac8dfd6beef7ae8c5b4d3f18c38fdaa431ec40ccce855396d3 |
-| design_0_0_8_7_rf_arena_modernization.md | 59a911f84cebeff7f4924f198a4ed974c7e7ccc117636ef9f788b3fe8f7c61a5 |
+| design_0_0_8_7_rf_arena_modernization.md | f407c113f096a1abd5871907daa7d152794be0fb23e2011a96896396444fd5f6 |
 | relay_lint.sh | 4163f715cdc3b549dbf57c1744aff61ea96b9f9f0a2237376665fbdb24e986c8 |
-| doctrine_anchors.tsv | c54f5c4309f2f266fbc80c66a20f6f75edd8ab26fdb58e844cac5be81c4aed68 |
+| doctrine_anchors.tsv | c0ff7eb96da9f43fa516248a9ed3c9f7d7f4153a73808d54357b4a1489831c38 |
 | execution_status_taxonomy.tsv | c33df8d86dbc939e1f6b9a847b3d54e255ae602481cd459c96fba4b13cd2f145 |
 | execution_status_mixed_posture.tsv | 1adf05f3ec5fd7b537efe29259d20649a2c6d3a0839590063e5308ff154e8f25 |
 | execution_status_non_execution.tsv | 214c1b557dfd3fc465f0171051e20281ff1dcf6c53128dbb29cba01524f9be02 |
@@ -87,6 +87,7 @@ Track state: `open`
 | 5.10 | EML-PRIMITIVE-DOMAIN-0 | **Phase 5 completion — Owner-approved 2026-08-03, anchored by `docs/full_eml_uni | **DA-GRADUATED / merged #1618 @ 35dcf43a — the exact-primitive door lands admitting ZERO primitives.** Sealed type la... |
 | 5.11 | EML-EXP-PRIMITIVE-0 | Phase 5 completion: **full-domain `EXP` `[−87.33, +88.72]`** through the 5.10 do | **DA-GRADUATED / merged #1632 @ d664a866 — the first admitted exact primitive.** **Cost gate unweakened: the primitiv... |
 | 5.12 | EML-LN-PRIMITIVE-0 | Phase 5 completion: `LN` over **positive finite normals `[2⁻¹²⁶, f32::MAX]`** by | **DA-GRADUATED / merged #1637 @ 97b5b399 — PHASE 5 COMPLETE; the second admitted exact primitive.** Digest + parity +... |
+| 5.13 | EXACT-CONSUMER-OBLIGATION-0 | **PHASE 5 REOPENED (Owner ruling 2026-08-04) — the exact-primitive door's missin | A consumer declaring exact-bearing WITHOUT a cross-arm digest **hard-errors at admission**, planted-defect proven in ... |
 | 6.0 | OWNER-CHANNEL-INTRINSIC-0 | **Phase 6 foundation — Owner-directed 2026-08-01. Makes ownership ATOMIC AND INT | **DA-GRADUATED / merged #1561 @ 8cbd7e3d — ownership is now INTRINSIC to the stem cell.** Owner is a sparse property ... |
 | 6.0b | SIMTHING-AUTOMATON-INTRINSIC-0 | **Phase 6: Owner-directed 2026-08-02 — the minimum viable Wei automaton, intrins | **DA-GRADUATED / merged #1591 @ af886019 — the stem cell can now LISTEN.** Reception is intrinsic: no new field, the ... |
 | 6.1 | EVENT-GENERATION-STAMP-0 | Phase 6: generation stamps on emission/threshold events; stamped ring egress wit | **DA-GRADUATED / merged #1596 @ df117bcc — generation identity is now a real async seam primitive.** Events carry sta... |
@@ -110,7 +111,7 @@ Track state: `open`
 
 ## Next Rung Pointer
 
-Active pointer: `SLOT-LOGICAL-IDENTITY-0`
+Active pointer: `EXACT-CONSUMER-OBLIGATION-0`
 
 
 ## Cold-Start Spine (constitutional pointers)
