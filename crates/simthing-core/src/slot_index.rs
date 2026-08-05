@@ -88,6 +88,56 @@ impl From<SlotIndex> for usize {
 /// Compile-time guard: slot identity and layout-resolved lane offsets must not mix.
 pub fn _slot_index_axis_distinct_from_role_offset(_slot: SlotIndex, _offset: RoleOffset) {}
 
+/// Dense CELL-SPACE index: the authored-coordinate identity `y*width + x` of
+/// one cell inside a field's dense grid (K3 census row; 6.4
+/// SLOT-LOGICAL-IDENTITY-0).
+///
+/// This names the OTHER index space that used to hide inside `SlotIndex`:
+/// a cell index derives from authored grid coordinates and stays meaningful
+/// under any physical row rebinding — it is never a matrix-row identity, and
+/// baking one into an EML literal bakes an authored coordinate, not a
+/// physical row. Transposition with `SlotIndex` is uncompilable:
+///
+/// ```compile_fail
+/// use simthing_core::{CellSpaceIndex, SlotIndex};
+///
+/// fn takes_slot(_: SlotIndex) {}
+///
+/// fn cell_space_rejects_slot_position_compile_fail(cell: CellSpaceIndex) {
+///     takes_slot(cell);
+/// }
+/// ```
+///
+/// ```compile_fail
+/// use simthing_core::{CellSpaceIndex, SlotIndex};
+///
+/// fn takes_cell(_: CellSpaceIndex) {}
+///
+/// fn slot_rejects_cell_space_compile_fail(slot: SlotIndex) {
+///     takes_cell(slot);
+/// }
+/// ```
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct CellSpaceIndex(u32);
+
+impl CellSpaceIndex {
+    /// Mint from authored grid coordinates — the only production door.
+    pub fn from_authored_grid(x: u32, y: u32, width: u32) -> Self {
+        Self(y * width + x)
+    }
+
+    pub fn raw(self) -> u32 {
+        self.0
+    }
+
+    /// Bake as an EML literal: an authored-coordinate identity by
+    /// construction, never a physical matrix row.
+    pub fn as_eml_literal(self) -> f32 {
+        self.0 as f32
+    }
+}
+
 #[cfg(test)]
 mod behavior {
     use super::*;

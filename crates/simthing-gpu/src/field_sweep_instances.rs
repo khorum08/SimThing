@@ -2,7 +2,7 @@
 //! field-sweep registration surface. Legacy operator modules remain parity
 //! oracles; this module does not dispatch their shaders.
 
-use simthing_core::{eml_opcode, ColumnIndex, EmlNodeGpu, SlotIndex};
+use simthing_core::{eml_opcode, CellSpaceIndex, ColumnIndex, EmlNodeGpu};
 use simthing_kernel::{
     apply_field_sweep_registration, encode_column, field_param, FieldAdjacency, FieldLawProof,
     FieldSweepAdmissionError, FieldSweepOutput, FieldSweepRegistration,
@@ -41,7 +41,10 @@ pub fn compile_min_plus_field_sweep(
     config.validate()?;
     let d_col = admitted_col(config.d_col, config.n_dims)?;
     let w_col = admitted_col(config.w_col, config.n_dims)?;
-    let destination_slot = SlotIndex::new(config.dest_y * config.width + config.dest_x);
+    // K3: the destination is a dense CELL-SPACE identity minted from
+    // authored grid coordinates — never a matrix-row SlotIndex.
+    let destination_cell =
+        CellSpaceIndex::from_authored_grid(config.dest_x, config.dest_y, config.width);
     let adjacency = FieldAdjacency::grid_n4(config.width, config.height, GRID_N4_WENS, d_col)?;
     let order = adjacency.apply_canonical_order_proof();
     Ok(apply_field_sweep_registration(
@@ -59,7 +62,7 @@ pub fn compile_min_plus_field_sweep(
             identity_bits: config.inf_sentinel.to_bits(),
             post_program: vec![
                 param(field_param::TARGET_SLOT),
-                literal(destination_slot.raw() as f32),
+                literal(destination_cell.as_eml_literal()),
                 binary(eml_opcode::CMP_EQ),
                 literal(0.0),
                 target(w_col),

@@ -141,7 +141,7 @@ pub use residency::{ObjectResidencyRelation, ObjectResidencyRelease, ObjectResid
 pub use simthing::{
     kind_matches, reserve_simthing_ids_from_tree, ResourceParentEdge, SimThing, SimThingKind,
 };
-pub use slot_index::SlotIndex;
+pub use slot_index::{CellSpaceIndex, SlotIndex};
 pub use specialization::{
     derive_specializations, kind_identity, seed_profiles, DeclaredSpecialization, KindIdentity,
     SpecializationError, SpecializationObservations, SpecializationProfile, SpecializationReport,
