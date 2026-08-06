@@ -80,6 +80,14 @@ jobs:
           # so a capability difference surfaces as a named failure rather than as
           # a scan whose output quietly changes shape.
           bash scripts/ci/rg_capability_check.sh
+
+      - name: ripgrep capability selftest
+        # Gated like every other selftest (R1-TEST-PURGE / whole-tree-is-maintainer).
+        # The ASSERTION above runs on every PR because a wrong rg silently changes
+        # scan output; the SELFTEST proves the assertion can fail, which only the
+        # maintainer path needs.
+        if: steps.gate.outputs.run_selftests == 'true'
+        run: |
           bash scripts/ci/rg_capability_check.sh --selftest
 
       - name: Scanner selftest gate guard
