@@ -57,12 +57,30 @@ jobs:
           echo "run_selftests=${run_selftests}" >>"$GITHUB_OUTPUT"
           echo "scanner selftests: ${run_selftests}"
 
-      - name: Ensure ripgrep
+      - name: Ensure ripgrep (pinned stock build)
         run: |
-          if ! command -v rg >/dev/null 2>&1; then
-            sudo apt-get update
-            sudo apt-get install -y ripgrep
+          set -euo pipefail
+          # Pin a STOCK official release. The apt package version floats with the
+          # runner image, and CI-A-SELFTEST-0R (47ec2469) abandoned `rg -n`
+          # precisely because behaviour "varied with rg build/invocation". Pinning
+          # removes the variance instead of working around it. PCRE2 is NOT
+          # required -- no CI script uses -P/--pcre2 -- so a stock build suffices.
+          RG_VERSION=14.1.1
+          if ! rg --version 2>/dev/null | head -1 | grep -q "ripgrep ${RG_VERSION}$"; then
+            tmp="$(mktemp -d)"
+            curl -fsSL -o "$tmp/rg.tar.gz"               "https://github.com/BurntSushi/ripgrep/releases/download/${RG_VERSION}/ripgrep-${RG_VERSION}-x86_64-unknown-linux-musl.tar.gz"
+            tar -xzf "$tmp/rg.tar.gz" -C "$tmp"
+            sudo install -m 0755 "$tmp"/ripgrep-*/rg /usr/local/bin/rg
+            hash -r
           fi
+
+      - name: ripgrep capability assertion
+        run: |
+          # Assert, do not assume. Same script runs on a developer's Windows box,
+          # so a capability difference surfaces as a named failure rather than as
+          # a scan whose output quietly changes shape.
+          bash scripts/ci/rg_capability_check.sh
+          bash scripts/ci/rg_capability_check.sh --selftest
 
       - name: Scanner selftest gate guard
         run: |
