@@ -81,6 +81,7 @@ copy_ci_bundle() {
     "${CI_SRC}/scans.tsv" \
     "${CI_SRC}/scan_allowlists.py" \
     "${CI_SRC}/scan_execution_status.py" \
+    "${CI_SRC}/cfg_test_regions.py" \
     "${root}/scripts/ci/"
   # Taxonomy registry for EXECUTION-STATUS-UNCLASSIFIED (optional but required when the scan row is live).
   if [[ -f "${CI_SRC}/execution_status_taxonomy.tsv" ]]; then
