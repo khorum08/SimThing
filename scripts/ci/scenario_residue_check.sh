@@ -152,25 +152,53 @@ def scan_dead_exports(root: pathlib.Path, min_lines: int) -> list[str]:
     return dead
 
 
-def scan_zero_test_targets(root: pathlib.Path) -> list[str]:
+def scan_zero_test_targets(root: pathlib.Path) -> tuple[list[str], list[str]]:
     """Rust files directly under ``tests/`` are Cargo integration targets.
 
     A target with no test function still compiles and reports ``0 passed``, so
-    it looks healthy while proving nothing.  Keep this advisory, like the
-    existing orphan-export detector, but make the shape visible.
+    it looks healthy while proving nothing.  Two DIFFERENT shapes hide there and
+    conflating them is why this stayed advisory and unactioned:
+
+    * ``mod <name>;`` from a sibling test -> a LIVE fixture that is merely
+      misplaced.  Cargo auto-discovers ``tests/*.rs`` but not ``tests/support/``,
+      so the fix is to move it, never to delete it.  Advisory.
+    * no test function AND no ``mod`` consumer -> nothing can ever reach it.
+      There is no horizon in which a test file that tests nothing and is
+      included by nothing becomes correct, so this shape is a hard FAIL and
+      carries deletion authority.
+
+    Returns ``(unreachable, misplaced)``.
     """
-    dead: list[str] = []
+    unreachable: list[str] = []
+    misplaced: list[str] = []
     for crate in ENGINE:
         tests = root / "crates" / crate / "tests"
         if not tests.is_dir():
             continue
-        for path in sorted(tests.glob("*.rs")):
-            text = path.read_text(encoding="utf-8", errors="replace")
-            if not TEST_ATTRIBUTE_RE.search(strip_rust_comments(text)):
-                rel = path.relative_to(root).as_posix()
-                lines = len(text.splitlines())
-                dead.append(f"{rel} ({lines} lines, integration target has zero test functions)")
-    return dead
+        siblings = {
+            q: q.read_text(encoding="utf-8", errors="replace")
+            for q in sorted(tests.glob("*.rs"))
+        }
+        for path, text in siblings.items():
+            if TEST_ATTRIBUTE_RE.search(strip_rust_comments(text)):
+                continue
+            rel = path.relative_to(root).as_posix()
+            lines = len(text.splitlines())
+            decl = re.compile(r"(?m)^[ 	]*mod[ 	]+" + re.escape(path.stem) + r"[ 	]*;")
+            consumed = any(
+                decl.search(body) for q, body in siblings.items() if q != path
+            )
+            if consumed:
+                misplaced.append(
+                    f"{rel} ({lines} lines, zero test functions but included via "
+                    f"`mod {path.stem};` — MOVE to tests/support/, do not delete)"
+                )
+            else:
+                unreachable.append(
+                    f"{rel} ({lines} lines, zero test functions and no `mod` "
+                    f"consumer — unreachable, reap it)"
+                )
+    return unreachable, misplaced
 
 
 def scan_dead_test_support(root: pathlib.Path) -> list[str]:
@@ -246,13 +274,42 @@ def scan_dead_test_support(root: pathlib.Path) -> list[str]:
     return dead
 
 
+UNPINNED_SEAL_BASELINE = 95
+
+
+def scan_unpinned_seals(root: pathlib.Path) -> tuple[int, int]:
+    """`compile_fail` doctests that do not pin their expected error code.
+
+    A `compile_fail` seal passes when the snippet fails to compile for ANY
+    reason -- including "the type it seals was renamed or deleted".  Such a
+    seal is VACUOUS: green, and proving nothing.  Pinning the code
+    (```compile_fail,E0599) makes the seal assert WHY it fails, which is the
+    difference between a referee and decoration.
+
+    Measured 2026-08-05 after a full-suite run: 100 seals, 5 pinned.  None was
+    vacuous at that point, so this ratchets rather than fails the backlog --
+    the count may only go DOWN.
+    """
+    total = pinned = 0
+    for path in sorted(root.glob("crates/*/src/**/*.rs")):
+        for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+            s = line.strip()
+            if s.startswith("///") or s.startswith("//!"):
+                s = s.lstrip("/!").strip()
+            if s.startswith("```compile_fail"):
+                total += 1
+                if s.startswith("```compile_fail,E"):
+                    pinned += 1
+    return total - pinned, total
+
+
 def run(root: pathlib.Path, min_lines: int = DEAD_EXPORT_MIN_LINES) -> int:
     scenario = scan_vocabulary(root, SCENARIO_WORDS)
     domain = scan_vocabulary(root, DOMAIN_WORDS)
     dead_modules = scan_dead_exports(root, min_lines)
-    dead_test_targets = scan_zero_test_targets(root)
+    unreachable_targets, misplaced_targets = scan_zero_test_targets(root)
     dead_support = scan_dead_test_support(root)
-    dead = dead_modules + dead_test_targets + dead_support
+    dead = dead_modules + misplaced_targets + dead_support
 
     for row in scenario:
         print(f"  - SCENARIO-RESIDUE: {row}")
@@ -261,7 +318,28 @@ def run(root: pathlib.Path, min_lines: int = DEAD_EXPORT_MIN_LINES) -> int:
     for row in dead:
         print(f"  - DEAD-EXPORT (inspect): {row}")
 
-    failed = bool(scenario) or bool(domain)
+    for row in unreachable_targets:
+        print(f"  - DEAD-TARGET (fail): {row}")
+    if unreachable_targets:
+        print(
+            "  note: a tests/ target with zero test functions AND no `mod` "
+            "consumer is unreachable by construction — there is no horizon in "
+            "which it becomes correct. Reap it; this shape carries deletion "
+            "authority. A zero-test target that IS consumed via `mod` is a "
+            "misplaced fixture — move it to tests/support/, never delete it."
+        )
+    unpinned, seal_total = scan_unpinned_seals(root)
+    seal_regressed = unpinned > UNPINNED_SEAL_BASELINE
+    if seal_regressed:
+        print(
+            f'  - UNPINNED-SEAL (fail): {unpinned} of {seal_total} compile_fail '
+            f'doctests do not pin an error code (baseline {UNPINNED_SEAL_BASELINE}). '
+            'A seal that passes for ANY compile error is vacuous once its type '
+            'is renamed. Pin the new one: ```compile_fail,E0599'
+        )
+    failed = (
+        bool(scenario) or bool(domain) or bool(unreachable_targets) or seal_regressed
+    )
     if scenario:
         print(
             "  remedy: a corpus may WITNESS engine law but never DEFINE it. Move "
@@ -284,7 +362,7 @@ def run(root: pathlib.Path, min_lines: int = DEAD_EXPORT_MIN_LINES) -> int:
     verdict = "FAIL" if failed else ("INSPECT" if dead else "PASS")
     print(
         f"SCENARIO-RESIDUE-VERDICT: {verdict} scenario={len(scenario)} "
-        f"domain={len(domain)} dead_exports={len(dead)}"
+        f"domain={len(domain)} dead_exports={len(dead)} unpinned_seals={unpinned}"
     )
     return 1 if failed else 0
 
@@ -345,18 +423,51 @@ def selftest() -> int:
         support = tests / "support"
         support.mkdir(parents=True)
 
-        # PLANTED DEFECT 3: a Cargo integration target with no test function is
-        # advisory residue even when it contains helper-looking code.
+        # PLANTED DEFECT 3: zero test functions AND no `mod` consumer =
+        # unreachable by construction -> hard FAIL, deletion authority.
         empty_target = tests / "empty_target.rs"
         empty_target.write_text("pub fn helper_only() {}\n", encoding="utf-8")
-        zero_targets = scan_zero_test_targets(tmp)
-        if not any("empty_target.rs" in row for row in zero_targets):
-            failures.append("zero-test integration target should be detected")
+        unreachable, misplaced = scan_zero_test_targets(tmp)
+        if not any("empty_target.rs" in r for r in unreachable):
+            failures.append("unreachable zero-test target should FAIL")
+        if any("empty_target.rs" in r for r in misplaced):
+            failures.append("unreachable target must not be filed as misplaced")
+
+        # PLANTED DEFECT 3b: the SAME shape, but consumed via `mod` from a
+        # sibling, is a LIVE fixture in the wrong directory. Deleting it would
+        # break its consumer -- this is the case that kept the detector
+        # advisory, and conflating the two is why 5 rows sat unactioned.
+        consumer = tests / "consumer_of_fixture.rs"
+        consumer.write_text(
+            "mod empty_target;\n#[test]\nfn t() { empty_target::helper_only(); }\n",
+            encoding="utf-8",
+        )
+        unreachable, misplaced = scan_zero_test_targets(tmp)
+        if any("empty_target.rs" in r for r in unreachable):
+            failures.append("mod-consumed fixture must NOT FAIL as unreachable")
+        if not any("empty_target.rs" in r for r in misplaced):
+            failures.append("mod-consumed zero-test fixture should be misplaced")
+        consumer.unlink()
+
         empty_target.write_text(
             "#[test]\nfn executable_proof() { assert!(true); }\n", encoding="utf-8"
         )
-        if any("empty_target.rs" in row for row in scan_zero_test_targets(tmp)):
+        if any("empty_target.rs" in r for r in scan_zero_test_targets(tmp)[0]):
             failures.append("integration target with a test function must stay live")
+
+        # PLANTED DEFECT 3c: an UNPINNED compile_fail seal is counted; a pinned
+        # one is not. A seal that passes for any compile error is vacuous the
+        # moment its type is renamed.
+        seal_src = tmp / "crates" / "simthing-core" / "src"
+        seal_src.mkdir(parents=True, exist_ok=True)
+        (seal_src / "seals.rs").write_text(
+            "/// ```compile_fail\n/// let _ = 1;\n/// ```\n"
+            "/// ```compile_fail,E0599\n/// let _ = 2;\n/// ```\n",
+            encoding="utf-8",
+        )
+        unp, tot = scan_unpinned_seals(tmp)
+        if (unp, tot) != (1, 2):
+            failures.append(f"seal counter should read (1, 2), got ({unp}, {tot})")
 
         # PLANTED DEFECT 4: an unconsumed support module is dead, while a
         # sibling named by a source outside support/ is a live root.
@@ -382,7 +493,7 @@ def selftest() -> int:
             print(f"  - {f}")
         print(f"SCENARIO-RESIDUE-SELFTEST: FAIL ({len(failures)})")
         return 1
-    print("SCENARIO-RESIDUE-SELFTEST: PASS (10 checks, 4 planted defects)")
+    print("SCENARIO-RESIDUE-SELFTEST: PASS (14 checks, 6 planted defects)")
     return 0
 
 

@@ -3,6 +3,7 @@
 //! The fixture is synthetic and crate-local. Legacy flat owner references exist only at ingress;
 //! every assertion after admission reads the intrinsic owner view.
 
+#[path = "support/reduce_up_fixture.rs"]
 mod reduce_up_fixture;
 
 use simthing_core::{SimPropertyId, SimThing, SimThingKind};
