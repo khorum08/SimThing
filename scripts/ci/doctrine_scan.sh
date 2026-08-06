@@ -451,8 +451,11 @@ heuristic_in_cfg_test_region() {
   local l
   while IFS= read -r l || [[ -n "$l" ]]; do
     n=$((n + 1))
+    # Nothing at or past line_num can satisfy `n < line_num`, so stop reading.
+    # Without this the file is read to EOF once PER HIT (cost = hits x filesize).
+    [[ "$n" -ge "$line_num" ]] && break
     if [[ "$l" =~ ^[[:space:]]*#\[[Cc]fg\(test\)\] ]]; then
-      if [[ "$n" -lt "$line_num" && "$n" -gt "$cfg_line" ]]; then
+      if [[ "$n" -gt "$cfg_line" ]]; then
         cfg_line=$n
       fi
     fi
@@ -532,7 +535,7 @@ pr_delta_scope_files() {
     if [[ -n "${seen[$globbed]:-}" ]]; then
       printf '%s\n' "$globbed"
     fi
-  done < <(cd "$REPO_ROOT" && rg --files -g "$target_glob" . 2>/dev/null || true)
+  done < <(cd "$REPO_ROOT" && rg --files --sort path -g "$target_glob" . 2>/dev/null || true)
 }
 
 match_line_in_pr_delta() {
@@ -890,7 +893,10 @@ run_test_budget_scan() {
 
   declare -A added_counts=()
   local key file line text
-  for key in "${!PR_DELTA_ADDED_LINE_TEXT[@]}"; do
+  # Bash associative arrays iterate in HASH order, not insertion order, so an
+  # unsorted walk makes PR-delta findings vary run-to-run on identical input.
+  for key in $(printf '%s
+' "${!PR_DELTA_ADDED_LINE_TEXT[@]}" | sort); do
     file="${key%:*}"
     text="${PR_DELTA_ADDED_LINE_TEXT[$key]}"
     [[ "$file" == *.rs ]] || continue
@@ -903,7 +909,8 @@ run_test_budget_scan() {
     fi
   done
 
-  for file in "${!added_counts[@]}"; do
+  for file in $(printf '%s
+' "${!added_counts[@]}" | sort); do
     if [[ "${added_counts[$file]}" -le 3 ]]; then
       continue
     fi
@@ -925,7 +932,7 @@ run_require_scan() {
   while IFS= read -r f; do
     [[ -z "$f" ]] && continue
     files+=("$f")
-  done < <(cd "$REPO_ROOT" && rg --files -g "$target_glob" . 2>/dev/null || true)
+  done < <(cd "$REPO_ROOT" && rg --files --sort path -g "$target_glob" . 2>/dev/null || true)
 
   if [[ "${#files[@]}" -eq 0 ]]; then
     die_scanner "require scan: no paths for glob '${target_glob}'"
