@@ -69,7 +69,7 @@ checkout → ensure rg (preinstalled + apt fallback)
   → digest/orientation freshness (gen_digest.sh --check / gen_orientation.sh --check)
   → selftest gate guard (selftest_gate_guard.sh)  # cheap anti-drift check, always run
   → scanner self-proof batteries when the diff touches scripts/ci or workflows
-  → PR-delta scan / spam check / whole-tree scan on push → publish report
+  → PR-delta scan / spam check / whole-tree scan on push+dispatch → publish report
 ```
 **Three verdicts, never two** (residue-as-tripwire applied to the scanner):
 
