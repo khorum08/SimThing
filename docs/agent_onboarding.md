@@ -59,6 +59,8 @@ Decomposes DA handoffs into rungs, verifies coding-agent work against the tree, 
 - **Closeout-substrate PRs:** before merge/DA handback, require a disposable end-to-end
   `track_closeout.sh` rehearsal (build manifest -> resolve -> check-eval -> apply) using a tiny fixture
   with previously expunged rows plus source/auto/explicit doc artifacts, and report the sample verdict.
+- **Reading CI:** verdicts come from the **`doctrine-scan-reports` artifact** (the job summary is invisible to
+  the connector); read **step conclusions** — a `skipped` step under a green run proves nothing.
 - **Authority:** merges *conforming* precedented-class work; **routes gate-wiring/reserve to the DA.** An
   unauthorized gate-wiring merge is a process incident (see `docs/tests/incident_oh_docs_sunset_unauthorized_merge.md`).
 
