@@ -21,7 +21,7 @@ Track A grep-only tripwire data lives here. **Heuristics and allowlists are data
 | `scan_allowlists.py` | Closed-set allowlist scan engine (`sealed-producers`, `buffer-handles`, `kernel-surface`) |
 | `doctrine_scan.sh` | Thin runner: reads data, runs `rg -U` and `@ALLOWLIST:` scans, emits the §1 report (default whole-tree; `--pr-delta BASE HEAD` for PR mode; `--track-doc PATH` for an opt-in sibling track addendum) |
 | `doctrine_pr_scan.sh` | PR workflow wrapper — HEURISTIC delta-scope, RELIABLE whole-tree (`--prove-delta` for local proof cases) |
-| `doctrine_selftest.sh` | Fixture self-test runner: exercises `fixtures/` corpus against sandbox copies of `doctrine_scan.sh` (CI-A-SELFTEST-0R repaired for determinism) |
+| `doctrine_selftest.sh` | Fixture self-test runner: exercises `fixtures/` corpus against sandbox copies of `doctrine_scan.sh`. Cases run concurrently (`DOCTRINE_SELFTEST_JOBS`, default min(nproc,8)); results merge in spawn order so the report matches a serial run |
 | `inspect_spam_check.sh` | Spam-bound checker for INSPECT flags (CI-A-SELFTEST-INSPECT-REPAIR-0 — real branch-history checks + leak-safe `--prove`) |
 | `triage_log.tsv` | Append-only triage log (CI-A-INSPECT-TRIAGE-0) |
 | `inspect_justifications.tsv` | Optional author-provided per-INSPECT justifications |
@@ -58,6 +58,7 @@ Normal `doctrine_scan.sh` does **not** scan `fixtures/` — production globs tar
 
 ```bash
 bash scripts/ci/doctrine_selftest.sh   # fixture corpus self-test (must PASS before trusting scans)
+DOCTRINE_SELFTEST_JOBS=1 bash scripts/ci/doctrine_selftest.sh   # serial, for bisecting a failing case
 bash scripts/ci/gen_digest.sh --check  # global sanctioned-surface freshness check (CI-enforced)
 bash scripts/ci/doctrine_scan.sh       # whole-tree production scan (master positive control)
 bash scripts/ci/doctrine_scan.sh --track-doc docs/<track>.md   # global floor + that track doc's sibling addendum, if present
@@ -72,7 +73,7 @@ bash scripts/ci/inspect_spam_check.sh --prove          # synthetic temp-repo pro
 
 GitHub Actions (`.github/workflows/doctrine-scan.yml`): **pull_request** runs global digest freshness, self-test, then `doctrine_pr_scan.sh` with base/head SHAs; **push to master** runs global digest freshness, self-test, then whole-tree `doctrine_scan.sh`.
 
-`doctrine_selftest.sh` proves each RELIABLE known-bad still trips its scan, HEURISTIC production controls yield INSPECT, traps do not hard-FAIL, and neutralizing a scan pattern is detected (rot test). **`CI-A-WORKFLOW-0`** runs the self-test in CI before the production scan on every PR and push to `master`.
+`doctrine_selftest.sh` proves each RELIABLE known-bad still trips its scan, HEURISTIC production controls yield INSPECT, traps do not hard-FAIL, and neutralizing a scan pattern is detected (rot test). **`CI-A-WORKFLOW-0`** runs the self-test in CI before the production scan, delta-gated: only when the diff touches `scripts/ci/` or `.github/workflows/`, or on `workflow_dispatch` (R1-TEST-PURGE / whole-tree-is-maintainer; `selftest_gate_guard.sh` enforces it).
 
 Authoritative execution is on GitHub (`ubuntu-latest`) via `.github/workflows/doctrine-scan.yml`. Exit non-zero only on hard `FAIL` or scanner/data-format error; `INSPECT` exits zero.
 
