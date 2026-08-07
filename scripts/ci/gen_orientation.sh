@@ -2010,6 +2010,11 @@ ACTIVE_TRACK_COMMENT = "# Active track design doc for orientation Next-Rung poin
 # Leading / status-shaped completion phrases only.
 # Do NOT use bare substrings like "closed" or "merged" — they false-positive on
 # incomplete exit proofs that say e.g. "reuse the closed save/load battery".
+# How many completed rungs the Active Track digest keeps. Recency is load-bearing
+# (a rung that BINDS an earlier one needs its stamp); the rest is archive and
+# lives in the design doc's ladder, which this digest is generated from.
+RECENT_GRADUATIONS_KEPT = 3
+
 COMPLETED_EXIT_PREFIX_RE = re.compile(
     r"^[\*\s_]*(?:"
     r"done\b|"
@@ -2911,16 +2916,34 @@ def render_orientation(active_info: dict) -> tuple:
                 )
                 lines.append("")
         else:
-            first_open = next(
-                (
-                    i
-                    for i, (_n, _r, _deliv, exit_proof) in indexed
-                    if not is_completed_exit(exit_proof)
-                ),
-                0,
-            )
-            start = max(0, first_open - 1)
-            selected = indexed[start:]
+            # Select by COMPLETION, not by position. The old rule took one
+            # completed predecessor and then everything after it, which assumes a
+            # clean frontier -- all done before, all open after. Real ladders have
+            # stragglers: 0.0.8.7 had 5.3 and 5.9d still open while 5.10-6.0 had
+            # graduated, so "everything from 5.2 on" pulled in all 22 graduated
+            # rungs. That was 785 words, 24% of every orchestrator cold start,
+            # spent re-reading merge SHAs of closed work.
+            #
+            # Keep every open rung wherever it sits, plus the most recent
+            # graduations -- recency is load-bearing (8.1/8.2 BIND 6.5, so 6.5's
+            # stamp matters while 5.2's does not). The elided record is not lost:
+            # the design doc's ladder is the machine truth this is generated FROM.
+            open_idx = {
+                i for i, (_n, _r, _deliv, exit_proof) in indexed
+                if not is_completed_exit(exit_proof)
+            }
+            completed_idx = [i for i, _row in indexed if i not in open_idx]
+            keep = open_idx | set(completed_idx[-RECENT_GRADUATIONS_KEPT:])
+            selected = [(i, row) for i, row in indexed if i in keep]
+            elided = len(indexed) - len(selected)
+            if elided:
+                lines.append(
+                    f"> Compact view: {elided} completed rungs elided; showing all "
+                    f"{len(open_idx)} open rungs plus the "
+                    f"{len(selected) - len(open_idx)} most recent completions. "
+                    f"Full ladder in the design doc."
+                )
+                lines.append("")
         for _i, (num, rung, deliverable, exit_proof) in selected:
             short = exit_proof
             if len(short) > 120:

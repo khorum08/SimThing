@@ -68,31 +68,14 @@ Dark properties (1): `fixture::dark_reading` (reasons/spans in `property_admissi
 
 Track state: `open`
 
+> Compact view: 33 completed rungs elided; showing all 18 open rungs plus the 3 most recent completions. Full ladder in the design doc.
+
 | # | rung | deliverable | exit proof |
 | --- | --- | --- | --- |
-| 5.2 | WRITE-DOOR-BAND-DELTA-0 | Phase 5: fulcrum 2 — in-pass band-crossing derivation; structural ops refuse to  | **DA-GRADUATED / merged #1488 @ d41a079b** — typed BandCrossingDelta from the fused pass; refuse-to-encode law exact ... |
 | 5.3 | ANCHOR-TABLE-SURFACE-0 | Phase 5: fulcrum 3 — derived GPU anchor table as the SOLE observation surface; c | Studio/telemetry read only the table; no second observation path (grep-proven); populated-fixture + production-sequen... |
-| 5.3b | CANONICAL-ANCHOR-MATERIALIZATION-0 | Phase 5: admission governs existence — host-materialization from value-placing r | **DA-GRADUATED / merged #1500 @ 1294cc87** — admission governs existence; totality proven on the ORDINARY unmutated i... |
-| 5.3c | THRESHOLD-EVENT-REGRESSION-REPAIR-0 | Phase 5: repair the GPU threshold-event regression introduced by 5.3 (DA bisect: | **DA-GRADUATED / merged #1507 @ 462cc794** — root cause was the 5.3 convenience-dispatch dropping the `prepare_thresh... |
-| 5.4 | FIELD-SWEEP-IR-PROBE-0 | Phase 5: workshop-leaf disposable probe — minimal target/neighbor-ctx EML map/fo | **DA-GRADUATED / merged #1526 @ a895c989** — HONEST INDETERMINATE PROBE. Parity ABSOLUTE and met: N4 CPU+GPU bit-exac... |
-| 5.5 | FIELD-SWEEP-N4-PARITY-0 | Phase 5: engine landing — EML edge context {target_slot, neighbor_slot, accumula | **DA-GRADUATED / merged #1529 @ 4ab19613** — THE REMODEL'S CENTREPIECE LANDS. PALMA and two-stage Gu-Yang run through... |
-| 5.6 | FIELD-ADJACENCY-GENERATORS-0 | Phase 5: adjacency as a registration axis — weighted `GridOffsets [(dx,dy,w)]` w | **DA-GRADUATED / merged #1532 @ f95eb261** — THE ADJACENCY GAP IS CLOSED. One authored map/fold/post EML program now ... |
-| 5.7 | EML-RESOURCE-CLASS-ADMISSION-0 | Phase 5: specialized interpreter resource classes (pipeline-constant stack sizes | **DA-GRADUATED / merged #1537 @ a7c05715 — substrate accepted; Gu-Yang recorded as MEASURED PERFORMANCE DEBT with a n... |
-| 5.8 | GUYANG-COMPARATIVE-PROJECTIONS-0 | Phase 5: dominance/margin/contest/border-band/chokepoint projections over generi | **DA-GRADUATED / merged #1540 @ 70119766 — comparative substrate accepted on scenario-neutral fixtures; focused suite... |
-| 5.8b | COMPARATIVE-DEFAULT-BIRTH-0 | Phase 5: the two canonical seams 5.8 correctly refused to invent. (A) carry the  | **DA-GRADUATED / merged #1567 @ 6dfc5aa1 — default emitter birth landed on the DA-narrowed scope.** Ordinary `compile... |
-| 5.9 | TP-PURGE-0 | **Phase 5 hygiene — INTENT NOTED, sequencing Owner-scheduled and MAY preempt 5.4 | **DA-GRADUATED / merged #1520 @ 153ba40c** — DA independently reproduced at exact head `9ccd800c`: **THE FALSIFIABLE ... |
-| 5.9b | SCENARIO-RESIDUE-PURGE-0 | **Phase 5 hygiene — Owner-directed 2026-08-01, DA-implemented, preempts 5.8b.**  | **DA-GRADUATED / merged #1544 @ 682e9d0e — engine at ABSOLUTE ZERO TP across `src` AND `tests` for all seven crates, ... |
-| 5.9c | ARTIFACT-PROVENANCE-CONTAINMENT-0 | **Phase 5 hygiene — Owner-directed 2026-08-01.** Enforces the Vendor Containment | **DA-GRADUATED / merged #1574 @ 2e3afacb — PHASE 5 COMPLETE.** (b) `artifact_provenance_check.py` follows consumer ->... |
 | 5.9d | TP-EXPORT-ERADICATION-0 | **Phase 5 hygiene — Owner-directed 2026-08-01, DA-implemented.** Eliminates TP's | ZERO files matching scenario vocabulary anywhere outside `simthing-clausething`; mapeditor `src` and `tests` build an... |
-| 5.10 | EML-PRIMITIVE-DOMAIN-0 | **Phase 5 completion — Owner-approved 2026-08-03, anchored by `docs/full_eml_uni | **DA-GRADUATED / merged #1618 @ 35dcf43a — the exact-primitive door lands admitting ZERO primitives.** Sealed type la... |
-| 5.11 | EML-EXP-PRIMITIVE-0 | Phase 5 completion: **full-domain `EXP` `[−87.33, +88.72]`** through the 5.10 do | **DA-GRADUATED / merged #1632 @ d664a866 — the first admitted exact primitive.** **Cost gate unweakened: the primitiv... |
-| 5.12 | EML-LN-PRIMITIVE-0 | Phase 5 completion: `LN` over **positive finite normals `[2⁻¹²⁶, f32::MAX]`** by | **DA-GRADUATED / merged #1637 @ 97b5b399 — PHASE 5 COMPLETE; the second admitted exact primitive.** Digest + parity +... |
 | 5.13 | EXACT-CONSUMER-OBLIGATION-0 | **PHASE 5 REOPENED (Owner ruling 2026-08-04) — the exact-primitive door's missin | A consumer declaring exact-bearing WITHOUT a cross-arm digest **hard-errors at admission**, planted-defect proven in ... |
 | 5.14 | EML-ARITHMETIC-SEMANTICS-0 | **Owner-directed 2026-08-05 — finish the language instead of policing it. THE DE | Every rounding-bearing opcode and every contraction-exposed composition has ONE specified arm-independent meaning, wi... |
-| 6.0 | OWNER-CHANNEL-INTRINSIC-0 | **Phase 6 foundation — Owner-directed 2026-08-01. Makes ownership ATOMIC AND INT | **DA-GRADUATED / merged #1561 @ 8cbd7e3d — ownership is now INTRINSIC to the stem cell.** Owner is a sparse property ... |
-| 6.0b | SIMTHING-AUTOMATON-INTRINSIC-0 | **Phase 6: Owner-directed 2026-08-02 — the minimum viable Wei automaton, intrins | **DA-GRADUATED / merged #1591 @ af886019 — the stem cell can now LISTEN.** Reception is intrinsic: no new field, the ... |
-| 6.1 | EVENT-GENERATION-STAMP-0 | Phase 6: generation stamps on emission/threshold events; stamped ring egress wit | **DA-GRADUATED / merged #1596 @ df117bcc — generation identity is now a real async seam primitive.** Events carry sta... |
-| 6.1b | BAND-QUANTIZED-DRAW-0 | **Phase 7 foundation — Owner-directed 2026-08-02. RESTORES the original band-cro | **DA-GRADUATED / merged #1602 @ 63c8ed51 — CostBand restored and EML is the singular overlay value path.** Every exis... |
 | 6.2 | ASYNC-COMMAND-QUEUE-0 | Phase 6: async CPU action queue landing at generation barriers; injection genera | **DA-GRADUATED / merged #1616 @ af4f9dbb — the async seam is a holding account, not a transport.** Replay bit-exact f... |
 | 6.2b | RESOLUTION-SITE-SPLIT-0 | **Phase 6: Owner-approved 2026-08-02 — the closed loop becomes the DEFAULT SimTh | **DA-GRADUATED / merged #1621 @ 1a520eee — the closed loop is the default; CPU-authoritative is a vendorized placemen... |
 | 6.3 | CONTINUOUS-POSTURE-SOAK-0 | Phase 6: continuous posture (batched generations) + N-generation soak under forc | **DA-GRADUATED / merged #1624 @ fdc11efb — Phase 6 COMPLETE; the StemThing census trigger fires.** Soak exit-proof pe... |
