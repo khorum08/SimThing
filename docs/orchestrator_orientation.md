@@ -266,7 +266,6 @@ Maintainer/CI only (not coding default): whole-tree `doctrine_scan.sh`, clearanc
 
 - Scribe Owner prose into `.hd.md`, echo the exact diff before push; "current handoff approved, implement" means resolve active `.hd.md`, render your projection, verify `owner_approved: true`; `/handoff approve|amend: <text>|hold` is OWNER-only, collaborator attempts route to owner-review, `/handoff status` is read-only, and `owner_notes` must render verbatim.
 
-
 ## GHA Comment Commands
 
 - `/clearance` — M1 router verdict
@@ -274,4 +273,5 @@ Maintainer/CI only (not coding default): whole-tree `doctrine_scan.sh`, clearanc
 - `/orient` — M2 orientation digest (this page)
 - `/orient role=orchestrator|coding|da` — role-filtered subset
 - `/anchor <anchor_id|trigger_domain>` — verbatim anchored doctrine text
+- Read CI from the **`doctrine-scan-reports` artifact**, not the job summary (invisible to the connector); read **step conclusions**, not the green tick — a `skipped` step under a green run proves nothing
 - DA treeverify is **local/on-demand** (`da_treeverify.sh`); not a required PR gate or merge authority
