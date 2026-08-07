@@ -28,11 +28,102 @@ cleanup() {
   if [[ -n "${SKELETON:-}" && -d "$SKELETON" ]]; then
     rm -rf "$SKELETON"
   fi
+  if [[ -n "${CASE_RESULT_DIR:-}" && -d "$CASE_RESULT_DIR" ]]; then
+    rm -rf "$CASE_RESULT_DIR"
+  fi
 }
 trap cleanup EXIT
 
 fail_selftest() {
   selftest_failures=$((selftest_failures + 1))
+}
+
+# --- concurrent case execution ----------------------------------------------
+#
+# A case is a self-contained begin_sandbox -> setup -> scan -> assert ->
+# end_sandbox unit, and its only mutable state is its own $ROOT_SANDBOX: the
+# reach-log fixtures and the --pr-delta `git init`s all write inside the sandbox,
+# never the repo. So the 59 cases are independent, and the cost of running them
+# one at a time was pure wall clock -- each pays the scanner's ~2s fixed cost on
+# a 19-file tree, 59 times over.
+#
+# Cases run concurrently; results are marshalled one file per case and merged in
+# SPAWN order, so the emitted report is identical to a serial run rather than
+# ordered by whichever case happened to finish first. Set DOCTRINE_SELFTEST_JOBS=1
+# to force serial execution when bisecting a failure.
+CASE_RESULT_DIR=""
+CASE_SEQ=0
+CASE_SLOTS=1
+
+case_slots_default() {
+  local n
+  n="$(nproc 2>/dev/null || echo 4)"
+  [[ "$n" =~ ^[0-9]+$ ]] || n=4
+  [[ "$n" -lt 1 ]] && n=1
+  [[ "$n" -gt 8 ]] && n=8
+  printf '%s' "$n"
+}
+
+case_init() {
+  CASE_SLOTS="${DOCTRINE_SELFTEST_JOBS:-$(case_slots_default)}"
+  [[ "$CASE_SLOTS" =~ ^[0-9]+$ && "$CASE_SLOTS" -ge 1 ]] || CASE_SLOTS=1
+  CASE_RESULT_DIR="$(mktemp -d "${TMPDIR:-/tmp}/selftest-results-XXXXXX")"
+  CASE_SEQ=0
+  # The skeleton is shared read-only by every case; build it once here so that
+  # concurrent cases cannot each race to create their own. An earlier serial
+  # phase may already have built it -- reuse it rather than leaking a second.
+  if [[ -z "${SKELETON:-}" || ! -d "${SKELETON}" ]]; then
+    prepare_skeleton
+  fi
+}
+
+case_run() {
+  CASE_SEQ=$((CASE_SEQ + 1))
+  local idx
+  printf -v idx '%05d' "$CASE_SEQ"
+  local out="${CASE_RESULT_DIR}/${idx}"
+  while [[ "$(jobs -rp | wc -l)" -ge "$CASE_SLOTS" ]]; do
+    wait -n 2>/dev/null || break
+  done
+  (
+    # Start from empty accumulators so the child's arrays hold only this case.
+    KB_REPORT=()
+    HE_REPORT=()
+    TRAP_REPORT=()
+    selftest_failures=0
+    ROOT_SANDBOX=""
+    "$@"
+    {
+      for _cl in "${KB_REPORT[@]}"; do printf 'KB\t%s\n' "$_cl"; done
+      for _cl in "${HE_REPORT[@]}"; do printf 'HE\t%s\n' "$_cl"; done
+      for _cl in "${TRAP_REPORT[@]}"; do printf 'TRAP\t%s\n' "$_cl"; done
+      printf 'FAILURES\t%s\n' "$selftest_failures"
+    } >"$out"
+  ) &
+}
+
+case_join() {
+  wait
+  local i idx f bucket payload
+  for ((i = 1; i <= CASE_SEQ; i++)); do
+    printf -v idx '%05d' "$i"
+    f="${CASE_RESULT_DIR}/${idx}"
+    # A case that died without writing its result must FAIL, never vanish --
+    # a self-test that silently drops a case reports false confidence (§0.6.6).
+    if [[ ! -s "$f" ]] || ! grep -q $'^FAILURES\t' "$f"; then
+      TRAP_REPORT+=("case ${idx}  FAIL (no result -- case died before reporting)")
+      fail_selftest
+      continue
+    fi
+    while IFS=$'\t' read -r bucket payload; do
+      case "$bucket" in
+        KB) KB_REPORT+=("$payload") ;;
+        HE) HE_REPORT+=("$payload") ;;
+        TRAP) TRAP_REPORT+=("$payload") ;;
+        FAILURES) selftest_failures=$((selftest_failures + payload)) ;;
+      esac
+    done <"$f"
+  done
 }
 
 trim() {
@@ -81,6 +172,7 @@ copy_ci_bundle() {
     "${CI_SRC}/scans.tsv" \
     "${CI_SRC}/scan_allowlists.py" \
     "${CI_SRC}/scan_execution_status.py" \
+    "${CI_SRC}/cfg_test_regions.py" \
     "${root}/scripts/ci/"
   # Taxonomy registry for EXECUTION-STATUS-UNCLASSIFIED (optional but required when the scan row is live).
   if [[ -f "${CI_SRC}/execution_status_taxonomy.tsv" ]]; then
@@ -1320,117 +1412,117 @@ EOF
 }
 
 run_all_cases() {
-  expect_reliable_fail "b3_buffer_escape" "B3-BUFFER-ESCAPE" \
+  case_run expect_reliable_fail "b3_buffer_escape" "B3-BUFFER-ESCAPE" \
     setup_kernel_src b3_buffer_escape.rs
-  expect_reliable_fail "forge_minter" "FORGE-MINTERS" \
+  case_run expect_reliable_fail "forge_minter" "FORGE-MINTERS" \
     setup_kernel_src forge_minter.rs
-  expect_reliable_fail "unsafe_fn" "UNSAFE-FN" \
+  case_run expect_reliable_fail "unsafe_fn" "UNSAFE-FN" \
     setup_kernel_src unsafe_fn.rs
-  expect_reliable_fail "unsafe_allow_attr" "UNSAFE-ALLOW-ATTR" \
+  case_run expect_reliable_fail "unsafe_allow_attr" "UNSAFE-ALLOW-ATTR" \
     setup_unsafe_allow_both_libs
-  expect_reliable_fail "unsafe_forbid_missing" "UNSAFE-FORBID-ATTR" \
+  case_run expect_reliable_fail "unsafe_forbid_missing" "UNSAFE-FORBID-ATTR" \
     setup_unsafe_forbid_both_libs
-  expect_reliable_fail "deny_toml_stub" "DENY-TOML-STUB" setup_deny_toml
+  case_run expect_reliable_fail "deny_toml_stub" "DENY-TOML-STUB" setup_deny_toml
 
-  expect_reliable_fail "allow_sealed_producer" "ALLOW-SEALED-PRODUCERS" \
+  case_run expect_reliable_fail "allow_sealed_producer" "ALLOW-SEALED-PRODUCERS" \
     setup_kernel_src allow_sealed_producer.rs
-  expect_reliable_fail "allow_sealed_producer_split" "ALLOW-SEALED-PRODUCERS" \
+  case_run expect_reliable_fail "allow_sealed_producer_split" "ALLOW-SEALED-PRODUCERS" \
     setup_kernel_src allow_sealed_producer_split.rs
-  expect_reliable_fail "allow_sealed_producer_self" "ALLOW-SEALED-PRODUCERS" \
+  case_run expect_reliable_fail "allow_sealed_producer_self" "ALLOW-SEALED-PRODUCERS" \
     setup_kernel_src allow_sealed_producer_self.rs
-  expect_reliable_fail "allow_sealed_constructor_new" "ALLOW-SEALED-PRODUCERS" \
+  case_run expect_reliable_fail "allow_sealed_constructor_new" "ALLOW-SEALED-PRODUCERS" \
     setup_kernel_src allow_sealed_constructor_new.rs
-  expect_reliable_fail "allow_sealed_producer_doc_hidden" "ALLOW-SEALED-PRODUCERS" \
+  case_run expect_reliable_fail "allow_sealed_producer_doc_hidden" "ALLOW-SEALED-PRODUCERS" \
     setup_kernel_src allow_sealed_producer_doc_hidden.rs
-  expect_reliable_fail "allow_buffer_handle" "ALLOW-BUFFER-HANDLES" \
+  case_run expect_reliable_fail "allow_buffer_handle" "ALLOW-BUFFER-HANDLES" \
     setup_kernel_src allow_buffer_handle.rs
-  expect_reliable_fail "allow_kernel_surface_lib" "ALLOW-KERNEL-SURFACE" \
+  case_run expect_reliable_fail "allow_kernel_surface_lib" "ALLOW-KERNEL-SURFACE" \
     setup_kernel_lib_surface
-  expect_reliable_fail "field_sweep_algebra_tag" "FIELD-SWEEP-SINGLE-PATH-ALGEBRA" \
+  case_run expect_reliable_fail "field_sweep_algebra_tag" "FIELD-SWEEP-SINGLE-PATH-ALGEBRA" \
     setup_field_sweep_algebra_tag
-  expect_reliable_fail "eighth_bespoke_field_shader_gpu" "FIELD-SWEEP-SINGLE-PATH-SHADERS" \
+  case_run expect_reliable_fail "eighth_bespoke_field_shader_gpu" "FIELD-SWEEP-SINGLE-PATH-SHADERS" \
     setup_eighth_bespoke_field_shader_gpu
-  expect_reliable_fail "eighth_bespoke_field_shader_kernel" "FIELD-SWEEP-SINGLE-PATH-SHADERS" \
+  case_run expect_reliable_fail "eighth_bespoke_field_shader_kernel" "FIELD-SWEEP-SINGLE-PATH-SHADERS" \
     setup_eighth_bespoke_field_shader_kernel
-  expect_reliable_fail "legacy_field_operator_production_caller" "FIELD-SWEEP-LEGACY-CALLERS" \
+  case_run expect_reliable_fail "legacy_field_operator_production_caller" "FIELD-SWEEP-LEGACY-CALLERS" \
     setup_legacy_field_operator_production_caller
-  expect_reliable_fail "field_sweep_dense_cap_crossing" "FIELD-SWEEP-DENSE-CAP-CROSSING" \
+  case_run expect_reliable_fail "field_sweep_dense_cap_crossing" "FIELD-SWEEP-DENSE-CAP-CROSSING" \
     setup_field_sweep_dense_cap_crossing
 
-  expect_scanner_error "malformed_wrong_door" \
+  case_run expect_scanner_error "malformed_wrong_door" \
     setup_malformed_allowlist malformed_allowlist_wrong_door.txt
-  expect_scanner_error "malformed_missing_rationale" \
+  case_run expect_scanner_error "malformed_missing_rationale" \
     setup_malformed_allowlist malformed_allowlist_missing_rationale.txt
 
-  expect_heuristic_inspect "column_index_mint" "COLUMN-INDEX-MINT" \
+  case_run expect_heuristic_inspect "column_index_mint" "COLUMN-INDEX-MINT" \
     setup_heuristic_kernel column_index_mint.rs
-  expect_heuristic_inspect "execution_status_unclassified" "EXECUTION-STATUS-UNCLASSIFIED" \
+  case_run expect_heuristic_inspect "execution_status_unclassified" "EXECUTION-STATUS-UNCLASSIFIED" \
     setup_heuristic_execution_status_unclassified
-  expect_heuristic_inspect "cell_storage_polymorphism" "CELL-STORAGE-POLYMORPHISM" \
+  case_run expect_heuristic_inspect "cell_storage_polymorphism" "CELL-STORAGE-POLYMORPHISM" \
     setup_heuristic_kernel cell_storage_polymorphism.rs
-  expect_heuristic_inspect "bespoke_pathfinder" "BESPOKE-PATHFINDER" \
+  case_run expect_heuristic_inspect "bespoke_pathfinder" "BESPOKE-PATHFINDER" \
     setup_heuristic_kernel bespoke_pathfinder.rs
-  expect_heuristic_inspect "bespoke_pathfinder_dijkstra" "BESPOKE-PATHFINDER" \
+  case_run expect_heuristic_inspect "bespoke_pathfinder_dijkstra" "BESPOKE-PATHFINDER" \
     setup_heuristic_kernel bespoke_pathfinder_dijkstra.rs
-  expect_heuristic_quiet "binary_heap_event_queue" "BESPOKE-PATHFINDER" \
+  case_run expect_heuristic_quiet "binary_heap_event_queue" "BESPOKE-PATHFINDER" \
     setup_trap traps/binary_heap_event_queue.rs
-  expect_heuristic_inspect "border_service" "BORDER-SERVICE" \
+  case_run expect_heuristic_inspect "border_service" "BORDER-SERVICE" \
     setup_heuristic_kernel border_service.rs
-  expect_heuristic_inspect "border_service_mapeditor" "BORDER-SERVICE" \
+  case_run expect_heuristic_inspect "border_service_mapeditor" "BORDER-SERVICE" \
     setup_heuristic_mapeditor border_service_mapeditor.rs
-  expect_heuristic_quiet "mapeditor_polyline_projection_cache" "BORDER-SERVICE" \
+  case_run expect_heuristic_quiet "mapeditor_polyline_projection_cache" "BORDER-SERVICE" \
     setup_trap_mapeditor traps/mapeditor_polyline_projection_cache.rs
-  expect_heuristic_inspect "owner_policy_weight_authority_mint" "OWNER-POLICY-WEIGHT-AUTHORITY-MINT" \
+  case_run expect_heuristic_inspect "owner_policy_weight_authority_mint" "OWNER-POLICY-WEIGHT-AUTHORITY-MINT" \
     setup_heuristic_owner_policy_weight_authority_mint
-  expect_heuristic_inspect "owner_policy_weight_authority_mint_clause" "OWNER-POLICY-WEIGHT-AUTHORITY-MINT" \
+  case_run expect_heuristic_inspect "owner_policy_weight_authority_mint_clause" "OWNER-POLICY-WEIGHT-AUTHORITY-MINT" \
     setup_heuristic_owner_policy_weight_authority_mint_clause
-  expect_heuristic_quiet "owner_policy_weight_authority_mint_clean" "OWNER-POLICY-WEIGHT-AUTHORITY-MINT" \
+  case_run expect_heuristic_quiet "owner_policy_weight_authority_mint_clean" "OWNER-POLICY-WEIGHT-AUTHORITY-MINT" \
     setup_quiet_owner_policy_weight_authority_mint
-  expect_constitution_reach_log_append
-  expect_owner_policy_weight_authority_mint_reach_log_append
-  expect_heuristic_inspect "sim_kind_read" "SIM-KIND-READ" \
+  case_run expect_constitution_reach_log_append
+  case_run expect_owner_policy_weight_authority_mint_reach_log_append
+  case_run expect_heuristic_inspect "sim_kind_read" "SIM-KIND-READ" \
     setup_heuristic_sim sim_kind_read.rs
-  expect_heuristic_inspect "semantic_words_production" "SEMANTIC-WORDS" \
+  case_run expect_heuristic_inspect "semantic_words_production" "SEMANTIC-WORDS" \
     setup_heuristic_kernel semantic_words_production.rs
-  expect_workshop_homing_pr_delta "sealed_crate_tests_net_new" "INSPECT" \
+  case_run expect_workshop_homing_pr_delta "sealed_crate_tests_net_new" "INSPECT" \
     setup_workshop_homing_sealed_test_delta
-  expect_workshop_homing_pr_delta "workshop_exempt_net_new" "PASS" \
+  case_run expect_workshop_homing_pr_delta "workshop_exempt_net_new" "PASS" \
     setup_workshop_homing_workshop_exempt_delta
-  expect_workshop_homing_pr_delta "neutral_synthetic_fixture" "PASS" \
+  case_run expect_workshop_homing_pr_delta "neutral_synthetic_fixture" "PASS" \
     setup_workshop_homing_neutral_delta
-  expect_workshop_homing_pr_delta "preexisting_hit_outside_delta" "PASS" \
+  case_run expect_workshop_homing_pr_delta "preexisting_hit_outside_delta" "PASS" \
     setup_workshop_homing_preexisting_suppressed_delta
-  expect_heuristic_inspect "spec_string_channel" "SPEC-STRING-CHANNEL" \
+  case_run expect_heuristic_inspect "spec_string_channel" "SPEC-STRING-CHANNEL" \
     setup_heuristic_spec spec_string_channel.rs
-  expect_heuristic_inspect "spec_fleet_cohort_kind_branch" "SPEC-LOWERER-KIND-READ" \
+  case_run expect_heuristic_inspect "spec_fleet_cohort_kind_branch" "SPEC-LOWERER-KIND-READ" \
     setup_heuristic_spec spec_fleet_cohort_kind_branch.rs
-  expect_heuristic_inspect "clausething_kind_branch" "SPEC-LOWERER-KIND-READ" \
+  case_run expect_heuristic_inspect "clausething_kind_branch" "SPEC-LOWERER-KIND-READ" \
     setup_heuristic_clausething clausething_kind_branch.rs
-  expect_heuristic_inspect "clausething_param_kind_branch" "SPEC-LOWERER-KIND-READ" \
+  case_run expect_heuristic_inspect "clausething_param_kind_branch" "SPEC-LOWERER-KIND-READ" \
     setup_heuristic_clausething clausething_param_kind_branch.rs
-  expect_heuristic_inspect "role_resolution_exclude_site_kind_param_match" "SPEC-LOWERER-KIND-READ" \
+  case_run expect_heuristic_inspect "role_resolution_exclude_site_kind_param_match" "SPEC-LOWERER-KIND-READ" \
     setup_heuristic_role_resolution_exclude_site_spec
-  expect_heuristic_inspect "guard_kabuki_source_scan" "GUARD-KABUKI-TRIPWIRE" \
+  case_run expect_heuristic_inspect "guard_kabuki_source_scan" "GUARD-KABUKI-TRIPWIRE" \
     setup_heuristic_guard_kabuki_source_scan
-  expect_heuristic_inspect "guard_kabuki_include_str_test" "GUARD-KABUKI-TRIPWIRE" \
+  case_run expect_heuristic_inspect "guard_kabuki_include_str_test" "GUARD-KABUKI-TRIPWIRE" \
     setup_heuristic_guard_kabuki_include_str_test
-  expect_heuristic_inspect "guard_kabuki_path_scan" "GUARD-KABUKI-TRIPWIRE" \
+  case_run expect_heuristic_inspect "guard_kabuki_path_scan" "GUARD-KABUKI-TRIPWIRE" \
     setup_heuristic_guard_kabuki_path_scan
 
-  expect_trap_pass "jomini_write" "traps/jomini_write.rs"
-  expect_trap_pass "studio_antialiasing" "traps/studio_antialiasing.rs"
-  expect_trap_pass "pub_crate_sealed_accessor" "traps/pub_crate_sealed_accessor.rs"
-  expect_trap_pass "comment_semantic_words" "traps/comment_semantic_words.rs"
-  expect_trap_pass "cfg_test_semantic_words" "traps/cfg_test_semantic_words.rs"
-  expect_trap_pass "cfg_test_kind_read" "traps/cfg_test_kind_read.rs"
-  expect_trap_pass "binary_heap_event_queue" "traps/binary_heap_event_queue.rs"
-  expect_trap_pass_spec "role_resolution_kind_param_match" \
+  case_run expect_trap_pass "jomini_write" "traps/jomini_write.rs"
+  case_run expect_trap_pass "studio_antialiasing" "traps/studio_antialiasing.rs"
+  case_run expect_trap_pass "pub_crate_sealed_accessor" "traps/pub_crate_sealed_accessor.rs"
+  case_run expect_trap_pass "comment_semantic_words" "traps/comment_semantic_words.rs"
+  case_run expect_trap_pass "cfg_test_semantic_words" "traps/cfg_test_semantic_words.rs"
+  case_run expect_trap_pass "cfg_test_kind_read" "traps/cfg_test_kind_read.rs"
+  case_run expect_trap_pass "binary_heap_event_queue" "traps/binary_heap_event_queue.rs"
+  case_run expect_trap_pass_spec "role_resolution_kind_param_match" \
     traps/role_resolution_kind_param_match.rs
-  expect_generated_trap_pass "guard_kabuki_ordinary_source_param" \
+  case_run expect_generated_trap_pass "guard_kabuki_ordinary_source_param" \
     setup_trap_guard_kabuki_ordinary_source_param
-  expect_generated_trap_pass "guard_kabuki_ordinary_path_param" \
+  case_run expect_generated_trap_pass "guard_kabuki_ordinary_path_param" \
     setup_trap_guard_kabuki_ordinary_path_param
-  expect_generated_trap_pass "guard_kabuki_path_read_no_scan" \
+  case_run expect_generated_trap_pass "guard_kabuki_path_read_no_scan" \
     setup_trap_guard_kabuki_path_read_no_scan
 }
 
@@ -1484,7 +1576,9 @@ main() {
   fi
 
   run_positive_control
+  case_init
   run_all_cases
+  case_join
   run_rot_test
   run_guard_kabuki_falsifier_test
   run_horizon_entry_falsifier_test

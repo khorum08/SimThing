@@ -29,6 +29,10 @@ JUSTIF_FILE="${SCRIPT_DIR}/inspect_justifications.tsv"
 declare -A JUSTIFS=()
 declare -A GLOBAL_SCAN_IDS=()
 declare -A GLOBAL_ALLOW_KEYS=()
+# relpath -> "<open_line>:<0|1> ..." ascending; memoized for the whole run.
+declare -A CFG_REGION_INDEX=()
+_CFG_REL=""
+_CFG_LINENO=0
 
 usage() {
   cat >&2 <<'EOF'
@@ -90,12 +94,14 @@ trimv() {
   _T="$s"
 }
 
+# Fork-free, for the same reason trimv exists: this runs once per allowlist
+# record, and `tail="$(symbol_tail ...)"` cost a subshell each time.
 symbol_tail() {
   local sym="$1"
   if [[ "$sym" == *"::"* ]]; then
-    printf '%s' "${sym##*::}"
+    _T="${sym##*::}"
   else
-    printf '%s' "$sym"
+    _T="$sym"
   fi
 }
 
@@ -103,7 +109,7 @@ door_class_matches_producer_grammar() {
   local symbol="$1"
   local door="$2"
   local tail
-  tail="$(symbol_tail "$symbol")"
+  symbol_tail "$symbol"; tail="$_T"
   case "$door" in
     read) [[ "$tail" =~ ^(read_|readback_) ]] ;;
     dispatch) [[ "$tail" =~ ^dispatch_ ]] || [[ "$tail" == "dispatch" ]] ;;
@@ -424,57 +430,101 @@ line_matches_any_exclude() {
   return 1
 }
 
-heuristic_in_cfg_test_region() {
+# Split an `rg` hit into the repo-relative crate path and its line number.
+# Sets _CFG_REL / _CFG_LINENO; returns 1 when the hit is not a crate-relative
+# path (the shapes the test-region filter never applied to anyway).
+cfg_hit_locus() {
   local line="$1"
-  local file line_num rel
+  _CFG_REL=""
+  _CFG_LINENO=0
+  local file
   if [[ "$line" =~ ^(.+):([0-9]+): ]]; then
     file="${BASH_REMATCH[1]}"
-    line_num="${BASH_REMATCH[2]}"
+    _CFG_LINENO="${BASH_REMATCH[2]}"
   else
     return 1
   fi
   file="${file//\\//}"
   file="${file#./}"
   if [[ "$file" == crates/* ]]; then
-    rel="$file"
+    _CFG_REL="$file"
   elif [[ "$file" == */crates/* ]]; then
-    rel="${file#*/crates/}"
-    rel="crates/${rel}"
+    file="${file#*/crates/}"
+    _CFG_REL="crates/${file}"
   else
     return 1
   fi
-  local abs="${REPO_ROOT}/${rel}"
-  [[ -f "$abs" ]] || return 1
-  # Use bash to find last #[cfg(test)] before line_num (no rg -n, robust across builds)
-  local cfg_line=0
-  local n=0
-  local l
-  while IFS= read -r l || [[ -n "$l" ]]; do
-    n=$((n + 1))
-    # Nothing at or past line_num can satisfy `n < line_num`, so stop reading.
-    # Without this the file is read to EOF once PER HIT (cost = hits x filesize).
-    [[ "$n" -ge "$line_num" ]] && break
-    if [[ "$l" =~ ^[[:space:]]*#\[[Cc]fg\(test\)\] ]]; then
-      if [[ "$n" -gt "$cfg_line" ]]; then
-        cfg_line=$n
-      fi
-    fi
-  done < "$abs"
-  [[ "$cfg_line" -eq 0 ]] && return 1
-  # check following lines contain mod tests (pure bash, no sed/rg spawn)
-  local has_mod=1
-  local i=0
-  while IFS= read -r l || [[ -n "$l" ]]; do
-    i=$((i + 1))
-    if [[ $i -lt $cfg_line ]]; then continue; fi
-    if [[ $i -gt $((cfg_line + 4)) ]]; then break; fi
-    if [[ "$l" =~ mod[[:space:]]+tests ]]; then
-      has_mod=0
-      break
-    fi
-  done < "$abs"
-  [[ $has_mod -eq 0 ]] || return 1
-  [[ "$line_num" -gt "$cfg_line" ]]
+  [[ -f "${REPO_ROOT}/${_CFG_REL}" ]]
+}
+
+# Index every file named by the given hits in ONE pass, memoized for the run.
+#
+# The predicate this feeds used to re-read the hit's whole file per hit: 701
+# calls reading 604,160 lines, 60 of the scanner's 69 seconds. Files are indexed
+# once here instead, so the per-hit cost becomes an in-memory lookup.
+cfg_region_index_ensure() {
+  local -n _hits_in="$1"
+  local need=()
+  local hit
+  for hit in "${_hits_in[@]}"; do
+    cfg_hit_locus "$hit" || continue
+    [[ -n "${CFG_REGION_INDEX[$_CFG_REL]+x}" ]] && continue
+    CFG_REGION_INDEX["$_CFG_REL"]=""
+    need+=("$_CFG_REL")
+  done
+  [[ "${#need[@]}" -eq 0 ]] && return 0
+
+  local script="${SCRIPT_DIR}/cfg_test_regions.py"
+  if [[ ! -f "$script" ]]; then
+    die_scanner "missing cfg_test_regions.py"
+    return 2
+  fi
+  local py_bin="python"
+  command -v python >/dev/null 2>&1 || py_bin="python3"
+  if ! command -v "$py_bin" >/dev/null 2>&1; then
+    die_scanner "python not found on PATH (required for HEURISTIC test-region filtering)"
+    return 2
+  fi
+  local out=""
+  local py_status=0
+  _errexit_was_on=0
+  errexit_is_on && _errexit_was_on=1
+  set +e
+  out="$(printf '%s\n' "${need[@]}" | "$py_bin" "$script" "$REPO_ROOT" 2>&1)"
+  py_status=$?
+  restore_errexit "$_errexit_was_on"
+  if [[ "$py_status" -ne 0 ]]; then
+    die_scanner "cfg_test_regions.py failed (exit ${py_status}): ${out}"
+    return 2
+  fi
+
+  local rel spec
+  while IFS=$'\t' read -r rel spec; do
+    # Windows python emits CRLF; an unstripped CR rides into the last field and
+    # turns its `-eq` comparison into an arithmetic syntax error.
+    rel="${rel//$'\r'/}"
+    spec="${spec//$'\r'/}"
+    [[ -z "$rel" ]] && continue
+    CFG_REGION_INDEX["$rel"]="$spec"
+  done <<<"$out"
+  return 0
+}
+
+# True iff the hit sits inside a `#[cfg(test)] mod tests` region. The nearest
+# preceding opener decides on its own; an earlier qualifying opener does not
+# rescue a nearer bare one. cfg_test_regions.py --selftest pins that semantics.
+heuristic_in_cfg_test_region() {
+  cfg_hit_locus "$1" || return 1
+  local spec="${CFG_REGION_INDEX[$_CFG_REL]:-}"
+  [[ -z "$spec" ]] && return 1
+  local nearest_qualifies=-1
+  local entry open_line
+  for entry in $spec; do
+    open_line="${entry%%:*}"
+    [[ "$open_line" -ge "$_CFG_LINENO" ]] && break
+    nearest_qualifies="${entry##*:}"
+  done
+  [[ "$nearest_qualifies" -eq 1 ]]
 }
 
 normalize_match_path() {
@@ -706,7 +756,11 @@ run_rg_scan() {
   local -n _matches_out="$5"
   _matches_out=()
 
-  local rg_args=(-U --multiline --no-heading --line-number --with-filename -e "$pattern")
+  # --sort path: without it rg emits matches in file-completion order, so the
+  # report's sample lines reordered between identical runs (counts were stable;
+  # the sample was not). Sorting costs rg its parallel walk, which is noise here
+  # -- all 25 scans together are ~1.4s of the run.
+  local rg_args=(-U --multiline --no-heading --line-number --with-filename --sort path -e "$pattern")
   local search_paths=()
   local use_relative_paths=0
   if [[ "$severity" == "HEURISTIC" && "$PR_DELTA_MODE" -eq 1 ]]; then
@@ -754,8 +808,18 @@ run_rg_scan() {
   fi
 
   local line
+  local raw_hits=()
   while IFS= read -r line; do
     [[ -z "$line" ]] && continue
+    raw_hits+=("$line")
+  done <<<"$rg_out"
+
+  # Index every hit file once up front rather than re-reading it per hit.
+  if [[ "$severity" == "HEURISTIC" && "${#raw_hits[@]}" -gt 0 ]]; then
+    cfg_region_index_ensure raw_hits || return 2
+  fi
+
+  for line in "${raw_hits[@]}"; do
     if line_matches_any_exclude "$line" "$excludes"; then
       continue
     fi
@@ -766,7 +830,7 @@ run_rg_scan() {
       continue
     fi
     _matches_out+=("$line")
-  done <<<"$rg_out"
+  done
   return 0
 }
 

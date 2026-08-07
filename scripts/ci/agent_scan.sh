@@ -127,9 +127,15 @@ prepare_selftest_repo() {
   cp "${SCRIPT_DIR}/doctrine_scan.sh" \
     "${SCRIPT_DIR}/scans.tsv" \
     "${SCRIPT_DIR}/scan_allowlists.py" \
+    "${SCRIPT_DIR}/scan_execution_status.py" \
+    "${SCRIPT_DIR}/cfg_test_regions.py" \
     "${SCRIPT_DIR}/agent_scan.sh" \
     "${root}/scripts/ci/"
   cp "${SCRIPT_DIR}/allow/"*.txt "${root}/scripts/ci/allow/" 2>/dev/null || true
+  # Registry for EXECUTION-STATUS-UNCLASSIFIED; the scan hard-errors without it.
+  if [[ -f "${SCRIPT_DIR}/execution_status_taxonomy.tsv" ]]; then
+    cp "${SCRIPT_DIR}/execution_status_taxonomy.tsv" "${root}/scripts/ci/"
+  fi
   # Minimal stubs for stock gates the scan may touch; drift skipped.
   if [[ -f "${REPO_ROOT}/crates/simthing-kernel/src/lib.rs" ]]; then
     cp "${REPO_ROOT}/crates/simthing-kernel/src/lib.rs" "${root}/crates/simthing-kernel/src/lib.rs"

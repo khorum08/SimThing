@@ -44,6 +44,7 @@ prepare_prove_repo() {
   cp "${SCRIPT_DIR}/doctrine_scan.sh" \
     "${SCRIPT_DIR}/scans.tsv" \
     "${SCRIPT_DIR}/scan_allowlists.py" \
+    "${SCRIPT_DIR}/cfg_test_regions.py" \
     "${root}/scripts/ci/"
   cp "${SCRIPT_DIR}/allow/"*.txt "${root}/scripts/ci/allow/"
   cp "${REPO_ROOT}/crates/simthing-kernel/src/lib.rs" \
