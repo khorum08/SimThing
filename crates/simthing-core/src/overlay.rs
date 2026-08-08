@@ -59,6 +59,12 @@ pub enum OverlaySource {
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum DissolveCondition {
+    /// Dissolve after the affected SimThing is structurally attached beneath
+    /// `destination`. Movement uses the authoritative residency relation for
+    /// arrival, never a timer or copied destination flag.
+    ArrivedAt {
+        destination: SimThingId,
+    },
     PropertyReaches {
         property: SimPropertyId,
         sub_field: SubFieldRole,

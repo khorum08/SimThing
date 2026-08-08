@@ -30,6 +30,7 @@
 
 | Evidence | PR | Merge SHA | Status |
 |---|---|---|---|
+| **MOVEMENT-DECISION-INGRESS-0** — ordinary overlay-weighted field potential → sealed field-cell crossing + emission → structural commitment → one N4 boundary reparent; stable slots/rows; one root owner bind; deciding-cell-origin arrival overlay; CostBand sink/free observation; production mutants | branch evidence | branch evidence | **PROBATION — proof present; DA review pending** — `docs/tests/movement_decision_ingress_0_results.md`; 7.1a/7.2/8.x remain TODO |
 | **GUYANG-COMPARATIVE-PROJECTIONS-0** — explicit fail-closed birth; margin/winner-border/stall/contest; Grid+Link CPU/GPU; authored_order; threshold-plan compatible; scenario-neutral; TP void | graduated | graduated | **DA-GRADUATED / #1540** — `docs/tests/guyang_comparative_projections_0_results.md` |
 | **COMPARATIVE-DEFAULT-BIRTH-0** — DA 5154348081 narrowed: install product + default emitters (`class_id=authored_order as f32`); triad remains explicit 5.8 | branch evidence | branch evidence | **PROBATION** — `docs/tests/comparative_default_birth_0_results.md`; pointer unchanged |
 | **ARTIFACT-PROVENANCE-CONTAINMENT-0** — generated orientation/handoff feeds require executable crate-local fixture provenance and reject generator reads from `scenarios/`; DEAD-EXPORT sees zero-test targets and unreachable support modules | branch evidence | branch evidence | **PROBATION** — `docs/tests/artifact_provenance_containment_0_results.md`; pointer unchanged |

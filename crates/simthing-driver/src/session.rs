@@ -239,13 +239,16 @@ struct ResolvedCommitmentEffect {
     deltas: Vec<(simthing_core::SubFieldRole, simthing_core::TransformOp)>,
     once: bool,
     fired: bool,
+    field_width: u32,
+    unit_cost: f32,
+    movement_loci: Vec<simthing_sim::MovementFieldLocus>,
 }
 
 /// One mapping commitment crossing observed by the session loop.
 #[derive(Clone, Debug, PartialEq)]
 pub struct MappingCommitmentRecord {
     pub tick: u64,
-    pub event: simthing_gpu::ThresholdEvent,
+    pub commitment: simthing_kernel::StructuralCommitment,
 }
 
 fn accumulate_tick_outcome(
@@ -279,12 +282,16 @@ fn journal_mapping_commitments(
     tick_index: u64,
     mapping: &crate::simulation_fabric::FabricMappingHotReport,
 ) {
-    mapping_commitments.extend(mapping.threshold_events.iter().cloned().map(|event| {
-        MappingCommitmentRecord {
-            tick: tick_index,
-            event,
-        }
-    }));
+    mapping_commitments.extend(
+        mapping
+            .structural_commitments
+            .iter()
+            .copied()
+            .map(|commitment| MappingCommitmentRecord {
+                tick: tick_index,
+                commitment,
+            }),
+    );
 }
 
 impl SimSession {
@@ -739,6 +746,27 @@ impl SimSession {
                     ))
                 })?;
                 let target = targets[0];
+                let mut movement_loci = Vec::with_capacity(binding.placements.len());
+                for placement in &binding.placements {
+                    let cells = self
+                        .scenario
+                        .install_targets
+                        .get(&placement.target_id)
+                        .filter(|ids| ids.len() == 1)
+                        .ok_or_else(|| {
+                            SessionError::Mapping(format!(
+                                "movement field cell `{}` must resolve to exactly one SimThing",
+                                placement.target_id
+                            ))
+                        })?;
+                    movement_loci.push(simthing_sim::MovementFieldLocus {
+                        slot: placement.row * field.grid_size + placement.col,
+                        value_col: field.target_col,
+                        grid_row: placement.row,
+                        grid_col: placement.col,
+                        cell: cells[0],
+                    });
+                }
                 // The overlay-compile path requires the host to carry the
                 // effect property; seed it now and re-sync GPU shape.
                 let mut props = std::collections::HashSet::new();
@@ -753,6 +781,9 @@ impl SimSession {
                     deltas: spec.sub_field_deltas.clone(),
                     once: spec.once,
                     fired: false,
+                    field_width: field.grid_size,
+                    unit_cost: commitment.threshold,
+                    movement_loci,
                 })
             }
         };
@@ -763,6 +794,21 @@ impl SimSession {
         )
         .map_err(|e| SessionError::Mapping(format!("{e:?}")))?;
         let scatter = simthing_gpu::IndexedScatterOp::new(&self.state.ctx);
+        let movement_decision_loci = match effect.as_ref() {
+            Some(effect) => {
+                let actor_parent =
+                    self.proto.root.parent_id_of(effect.target).ok_or_else(|| {
+                        SessionError::Mapping("movement actor has no spatial parent".into())
+                    })?;
+                effect
+                    .movement_loci
+                    .iter()
+                    .filter(|locus| locus.cell != actor_parent)
+                    .map(|locus| (locus.slot, locus.value_col))
+                    .collect()
+            }
+            None => Vec::new(),
+        };
         self.mapping = Some(SessionMappingState {
             hot: MappingHotPathState::new(
                 mapping,
@@ -771,7 +817,8 @@ impl SimSession {
                 cells,
                 (weight_pressure, weight_resource),
                 commitment,
-            ),
+            )
+            .with_movement_decision_loci(movement_decision_loci),
             boundary: MappingBoundaryState {
                 effect,
                 commitments_consumed: 0,
@@ -780,58 +827,59 @@ impl SimSession {
         Ok(())
     }
 
-    /// CT-3b+4a closure: convert journaled commitment crossings into the
-    /// authored `BoundaryRequest::AttachOverlay` consequence, submitted into
-    /// the ordinary boundary channel (drained and applied by the existing
-    /// structural machinery). Returns `true` when a request was submitted so
-    /// the caller never takes the empty-boundary fast path past it.
-    fn submit_commitment_effects(
+    /// Convert exactly one sealed field-cell commitment into boundary-only
+    /// movement ingress. Multiple simultaneous cells fail closed rather than
+    /// letting CPU order or a planner choose among them.
+    fn take_commitment_movements(
         &mut self,
         summary: &mut RunSummary,
-    ) -> Result<bool, SessionError> {
+    ) -> Result<Vec<simthing_sim::MovementCommitment>, SessionError> {
         let Some(m) = self.mapping.as_mut() else {
-            return Ok(false);
+            return Ok(Vec::new());
         };
-        let pending = self.mapping_commitments.len() > m.boundary.commitments_consumed;
+        let pending_start = m.boundary.commitments_consumed;
+        let pending_end = self.mapping_commitments.len();
         m.boundary.commitments_consumed = self.mapping_commitments.len();
-        if !pending {
-            return Ok(false);
+        if pending_start == pending_end {
+            return Ok(Vec::new());
         }
         let Some(effect) = m.boundary.effect.as_mut() else {
-            return Ok(false);
+            return Ok(Vec::new());
         };
         if effect.once && effect.fired {
-            return Ok(false);
+            return Ok(Vec::new());
         }
-        effect.fired = true;
-        // EVENT-GENERATION-STAMP-0: dispatch-minted overlays carry UntilDissolved
-        // with an authored dissolve condition (Definable Horizon). AtSessionEnd is
-        // a definable horizon, never "never".
-        let overlay = simthing_core::Overlay {
-            id: simthing_core::OverlayId::new(),
-            kind: simthing_core::OverlayKind::Custom("mapping_commitment".into()),
-            source: simthing_core::OverlaySource::System,
-            origin: self.scenario.root.id,
-            affects: vec![effect.target],
-            transform: simthing_core::PropertyTransformDelta {
-                property_id: effect.property_id,
-                sub_field_deltas: effect.deltas.clone(),
-            },
-            lifecycle: simthing_core::dispatch_until_dissolved(vec![
-                simthing_core::DissolveCondition::AtSessionEnd,
-            ])
-            .expect("AtSessionEnd is a non-empty authored condition"),
+        let pending = &self.mapping_commitments[pending_start..pending_end];
+        if pending.len() != 1 {
+            return Ok(Vec::new());
+        }
+        let actor_parent =
+            self.proto.root.parent_id_of(effect.target).ok_or_else(|| {
+                SessionError::Mapping("movement actor has no spatial parent".into())
+            })?;
+        let cost_band = if effect.deltas.is_empty() {
+            simthing_sim::CostBandSemantic::observation()
+        } else {
+            simthing_sim::CostBandSemantic::admit_sink(Some(1), None)
+                .map_err(|error| SessionError::Mapping(error.to_string()))?
         };
-        simthing_core::admit_dispatch_minted_overlay(&overlay)
-            .expect("dispatch-minted overlay admits under Definable Horizon");
-        self.tx
-            .submit_boundary(simthing_feeder::BoundaryRequest::AttachOverlay {
-                target: effect.target,
-                overlay,
-            })
-            .map_err(|e| SessionError::Mapping(format!("{e:?}")))?;
+        let movement = simthing_sim::MovementCommitment::admit(
+            pending[0].commitment,
+            effect.target,
+            actor_parent,
+            effect.field_width,
+            &effect.movement_loci,
+            simthing_sim::MovementOverlayEffect {
+                property_id: effect.property_id,
+                deltas: effect.deltas.clone(),
+            },
+            cost_band,
+            effect.unit_cost,
+        )
+        .map_err(|error| SessionError::Mapping(error.to_string()))?;
+        effect.fired = true;
         summary.mapping_commitment_effects_applied += 1;
-        Ok(true)
+        Ok(vec![movement])
     }
 
     /// Submit a class-bound operator directive (ORDER-WEIGHT-CLASS-0).
@@ -961,7 +1009,8 @@ impl SimSession {
         }
 
         let day = tick.day_index;
-        let commitment_effect_submitted = self.submit_commitment_effects(summary)?;
+        let mut commitment_movements = self.take_commitment_movements(summary)?;
+        let commitment_effect_submitted = !commitment_movements.is_empty();
         if !commitment_effect_submitted
             && !self
                 .spec_state
@@ -985,7 +1034,10 @@ impl SimSession {
             &mut self.coord,
             &mut self.state,
             day,
-            |ctx| spec_state.run_boundary_handlers(ctx),
+            |ctx| {
+                spec_state.run_boundary_handlers(ctx);
+                ctx.movements.append(&mut commitment_movements);
+            },
         );
         summary.boundary_total_ms += boundary_started.elapsed().as_secs_f64() * 1000.0;
         summary.fission_events += outcome.fission.fissions_executed;
@@ -1050,7 +1102,8 @@ impl SimSession {
             let tick = cycle.hot.tick;
             if tick.boundary_reached {
                 let day = tick.day_index;
-                let commitment_effect_submitted = self.submit_commitment_effects(&mut summary)?;
+                let mut commitment_movements = self.take_commitment_movements(&mut summary)?;
+                let commitment_effect_submitted = !commitment_movements.is_empty();
                 if !commitment_effect_submitted
                     && !self
                         .spec_state
@@ -1085,7 +1138,10 @@ impl SimSession {
                     &mut self.coord,
                     &mut self.state,
                     day,
-                    |ctx| spec_state.run_boundary_handlers(ctx),
+                    |ctx| {
+                        spec_state.run_boundary_handlers(ctx);
+                        ctx.movements.append(&mut commitment_movements);
+                    },
                 );
                 summary.boundary_total_ms += boundary_started.elapsed().as_secs_f64() * 1000.0;
                 summary.fission_events += outcome.fission.fissions_executed;
