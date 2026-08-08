@@ -10,6 +10,7 @@ Authority:
 - Orientation rule stamp: `2f75375c5ae20caf`
 - Board dispatch: comment `5228266044`
 - B2 hold release (DA): comment `5228253670`
+- Overlay-proof remand: comment `5228377005`
 - Dispatch base (orchestrator): master `9547458f6f95f1ca1820771f211d3a8a5b226e29`
 - Anchors ACK'd: `actionband-meaning`, `intrinsic-constrained-clearing`, `movement-front-adjudications`, `workshop-candidate-homing` (+ full projected set)
 
@@ -32,14 +33,16 @@ Exact symbol strings live in `crates/simthing-workshop/src/actionband_compositio
 
 ## Claim B (all four witnesses)
 
-Competing attractors; field-only redirect; overlay-only redirect; zero destination/action identity edits.
+Competing attractors; field-only redirect; **ordinary overlay weighting** redirect; zero destination/action identity edits.
 
-| Witness | Proof test |
-|---|---|
-| Deficit | `deficit_claim_b_field_and_overlay_redirect_without_identity_edits` |
-| LinkGraph | `linkgraph_claim_b_field_and_overlay_redirect_without_identity_edits` |
-| Fission | `fission_claim_b_field_and_overlay_redirect_without_identity_edits` |
-| Movement 7.1 | `movement_claim_b_field_and_overlay_redirect_without_identity_edits` (+ landed driver overlay witness green) |
+| Witness | Overlay mechanism | Proof test |
+|---|---|---|
+| Deficit | `OverlayKind::Policy` multiply on attractor → `Evaluator` → priority | `deficit_claim_b_field_and_overlay_redirect_without_identity_edits` |
+| LinkGraph | `OverlayKind::Policy` multiply on e1 host → `Evaluator` Amount → comparative plane | `linkgraph_claim_b_field_and_overlay_redirect_without_identity_edits` |
+| Fission | `OverlayKind::Policy` multiply on parent B → `Evaluator` Amount → threshold plane | `fission_claim_b_field_and_overlay_redirect_without_identity_edits` |
+| Movement 7.1 | Landed production `add_potential_overlay` in driver `movement_decision_ingress_0` (read-only); workshop sealed helper is numeric-extra only | workshop field redirect + driver 1/0 overlay witness |
+
+Remand `5228377005` closed: LinkGraph/fission no longer hand-scale scalars in the runner.
 
 ## Planted mutants (real path; RED)
 

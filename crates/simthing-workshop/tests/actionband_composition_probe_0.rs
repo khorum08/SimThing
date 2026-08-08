@@ -355,7 +355,9 @@ enum LinkClearing {
 fn linkgraph_run(
     e0: f32,
     e1: f32,
-    overlay_scale_e1: Option<f32>,
+    // When set: ordinary Policy overlay multiply on e1 host → Evaluator Amount
+    // into the comparative plane (not a hand-scaled scalar in the runner).
+    overlay_multiply_e1: Option<f32>,
     authority: LinkAuthority,
     clearing: LinkClearing,
 ) -> (f32, bool) {
@@ -373,6 +375,48 @@ fn linkgraph_run(
     {
         ids[i] = reg.register(SimProperty::simple(ns, name, 1));
     }
+    let layout_e0 = reg.property(ids[0]).layout.clone();
+    let layout_e1 = reg.property(ids[1]).layout.clone();
+
+    // Ordinary overlay composition: authored Amounts on host nodes → optional
+    // Policy multiply on e1 → Evaluator → comparative feedstock columns.
+    let mut host_e0 = SimThing::new(SimThingKind::Location, 0);
+    let mut host_e1 = SimThing::new(SimThingKind::Location, 0);
+    let mut v0 = PropertyValue::from_layout(&layout_e0);
+    v0.set_role(&SubFieldRole::Amount, &layout_e0, e0);
+    host_e0.add_property(ids[0], v0);
+    let mut v1 = PropertyValue::from_layout(&layout_e1);
+    v1.set_role(&SubFieldRole::Amount, &layout_e1, e1);
+    host_e1.add_property(ids[1], v1);
+    let host_e1_id = host_e1.id;
+    if let Some(scale) = overlay_multiply_e1 {
+        host_e1.add_overlay(Overlay {
+            id: OverlayId::new(),
+            kind: OverlayKind::Policy,
+            source: OverlaySource::System,
+            origin: host_e1_id,
+            affects: Vec::new(),
+            transform: PropertyTransformDelta {
+                property_id: ids[1],
+                sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::multiply(scale))],
+            },
+            lifecycle: OverlayLifecycle::UntilDissolved,
+        });
+    }
+    let host_e0_id = host_e0.id;
+    let mut root = SimThing::new(SimThingKind::World, 0);
+    root.add_child(host_e0);
+    root.add_child(host_e1);
+    let snap = Evaluator::new(&reg, 0.0).evaluate(&root, 0);
+    let read_amount = |id: SimThingId, pid: SimPropertyId, layout: &simthing_core::PropertyLayout| {
+        snap.get(id)
+            .and_then(|e| e.properties.get(&pid))
+            .map(|v| v.get_role(&SubFieldRole::Amount, layout))
+            .expect("emitter host amount")
+    };
+    let e0_eff = read_amount(host_e0_id, ids[0], &layout_e0);
+    let e1_eff = read_amount(host_e1_id, ids[1], &layout_e1);
+
     let link_rows = {
         let mut rows = vec![Vec::new(); 2];
         rows[0].push(LinkGraphNeighbor {
@@ -424,13 +468,9 @@ fn linkgraph_run(
     let mut vals = vec![0.0f32; 2 * n_dims];
     let e0c = reg.column_range(ids[0]).start;
     let e1c = reg.column_range(ids[1]).start;
-    let mut e1_eff = e1;
-    if let Some(scale) = overlay_scale_e1 {
-        e1_eff *= scale;
-    }
     for s in 0..2 {
         let b = s * n_dims;
-        vals[b + e0c] = e0;
+        vals[b + e0c] = e0_eff;
         vals[b + e1c] = e1_eff;
         vals[b + reg.column_range(ids[2]).start] = 12.0;
         vals[b + reg.column_range(ids[3]).start] = 1.0;
@@ -453,7 +493,7 @@ fn linkgraph_run(
     if matches!(authority, LinkAuthority::HardCodedClass0) {
         winner = emitters[0].class_id;
     }
-    let margin = (e0 - e1_eff).abs().max(0.01);
+    let margin = (e0_eff - e1_eff).abs().max(0.01);
     let draw = cost_band_depth_one(margin, 0.05, true).expect("margin CostBand");
     let progress = match clearing {
         LinkClearing::BindDominance => draw.n > 0 && winner > 0.0,
@@ -484,7 +524,7 @@ fn linkgraph_claim_b_field_and_overlay_redirect_without_identity_edits() {
     assert_eq!(
         w2.to_bits(),
         20.0f32.to_bits(),
-        "overlay-only scale on e1 redirects without editing emitter class identities"
+        "ordinary Policy overlay multiply on e1 host redirects without editing emitter class identities"
     );
 }
 
@@ -531,7 +571,9 @@ enum FissionClearing {
 fn fission_run(
     pot_a: f32,
     pot_b: f32,
-    overlay_scale_b: Option<f32>,
+    // When set: ordinary Policy overlay multiply on parent B → Evaluator Amount
+    // into the threshold plane (not a hand-scaled scalar).
+    overlay_multiply_b: Option<f32>,
     authority: FissionAuthority,
     clearing: FissionClearing,
 ) -> (usize, usize) {
@@ -557,15 +599,41 @@ fn fission_run(
     let mut parent_a = SimThing::new(SimThingKind::Owner, 0);
     let mut parent_b = SimThing::new(SimThingKind::Owner, 0);
     let mut va = PropertyValue::from_layout(&layout);
-    va.set_role(&SubFieldRole::Amount, &layout, 1.0);
-    parent_a.add_property(property_id, va.clone());
-    parent_b.add_property(property_id, va);
+    va.set_role(&SubFieldRole::Amount, &layout, pot_a);
+    parent_a.add_property(property_id, va);
+    let mut vb = PropertyValue::from_layout(&layout);
+    vb.set_role(&SubFieldRole::Amount, &layout, pot_b);
+    parent_b.add_property(property_id, vb);
     let parent_a_id = parent_a.id;
     let parent_b_id = parent_b.id;
+    if let Some(scale) = overlay_multiply_b {
+        parent_b.add_overlay(Overlay {
+            id: OverlayId::new(),
+            kind: OverlayKind::Policy,
+            source: OverlaySource::System,
+            origin: parent_b_id,
+            affects: Vec::new(),
+            transform: PropertyTransformDelta {
+                property_id,
+                sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::multiply(scale))],
+            },
+            lifecycle: OverlayLifecycle::UntilDissolved,
+        });
+    }
 
     let mut root = SimThing::new(SimThingKind::Location, 0);
     root.add_child(parent_a);
     root.add_child(parent_b);
+
+    let snap = Evaluator::new(&registry, 0.0).evaluate(&root, 0);
+    let read_pot = |id: SimThingId| {
+        snap.get(id)
+            .and_then(|e| e.properties.get(&property_id))
+            .map(|v| v.get_role(&SubFieldRole::Amount, &layout))
+            .expect("parent growth amount")
+    };
+    let pot_a_eff = read_pot(parent_a_id);
+    let pot_b_eff = read_pot(parent_b_id);
 
     let mut allocator = SlotAllocator::new();
     allocator.populate_from_tree(&root);
@@ -574,17 +642,12 @@ fn fission_run(
     let n_dims = registry.total_columns.max(1);
     let col = 0u32;
 
-    let mut pot_b_eff = pot_b;
-    if let Some(scale) = overlay_scale_b {
-        pot_b_eff *= scale;
-    }
-
     let mut previous = vec![0.0; 16 * n_dims];
     let mut values = vec![0.0; 16 * n_dims];
     // Rising cross of threshold 0.5: previous below, current above.
     previous[slot_a as usize * n_dims + col as usize] = 0.4;
     previous[slot_b as usize * n_dims + col as usize] = 0.4;
-    values[slot_a as usize * n_dims + col as usize] = pot_a;
+    values[slot_a as usize * n_dims + col as usize] = pot_a_eff;
     values[slot_b as usize * n_dims + col as usize] = pot_b_eff;
 
     let mut cpu_reg = ThresholdRegistry::new();
@@ -695,7 +758,7 @@ fn fission_claim_b_field_and_overlay_redirect_without_identity_edits() {
     );
     assert!(
         b3 >= 1,
-        "overlay-only scale enables B progress without editing parent/action identity (a={a3}, b={b3})"
+        "ordinary Policy overlay multiply enables B progress without editing parent/action identity (a={a3}, b={b3})"
     );
 }
 
@@ -868,9 +931,11 @@ fn movement_claim_b_field_and_overlay_redirect_without_identity_edits() {
     .expect("admit C");
     assert_eq!(to_c.deciding_cell(), arena.c, "field-only sealed locus redirect");
 
-    // Overlay-only: same competing attractors (slots 1 and 2); ordinary numeric
-    // weighting selects C instead of B without editing locus cell identities.
-    let overlay_to_c = MovementCommitment::admit(
+    // Ordinary-overlay Claim-B leg for movement is the landed production witness
+    // `ordinary_overlay_weighting_changes_the_sealed_field_destination_without_editing_identity`
+    // in `crates/simthing-driver/tests/movement_decision_ingress_0.rs` (`add_potential_overlay`).
+    // The helper below is extra sealed-numeric evidence only — not the overlay proof.
+    let numeric_extra = MovementCommitment::admit(
         sealed_commitment_overlay_weighted(2, 1.0, 0.75),
         arena.actor,
         arena.a,
@@ -880,8 +945,8 @@ fn movement_claim_b_field_and_overlay_redirect_without_identity_edits() {
         CostBandSemantic::admit_sink(Some(1), None).unwrap(),
         1.0,
     )
-    .expect("overlay-weighted admit C");
-    assert_eq!(overlay_to_c.deciding_cell(), arena.c);
+    .expect("sealed numeric favor of C");
+    assert_eq!(numeric_extra.deciding_cell(), arena.c);
     assert_eq!(arena.loci[1].cell, arena.b);
     assert_eq!(arena.loci[2].cell, arena.c);
 }
