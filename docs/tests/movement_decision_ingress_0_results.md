@@ -1,6 +1,6 @@
 # MOVEMENT-DECISION-INGRESS-0 results
 
-Status: **PROBATION — proof present; DA review pending**.
+Status: **COMPLETE — DA-GRADUATED / merged #1675 @ `65745802`** (ruling `5227908683`).
 
 Authority and orientation:
 
@@ -38,4 +38,10 @@ Existing owner-channel admission guards retain `legacy_owner_properties_remainin
 
 This rung adds no `ActionBand` production type, action registry, movement planner, `Destination`, path/predecessor record, physical-row relocation, allocator/grant work, placement/extents physics, contention, Vector CostBand, 7.2, or 8.x surface. The sequential 7.1a determination and every later row remain TODO.
 
-No clearance, merge, pointer advancement, or graduation is claimed here.
+## DA graduation record
+
+DEEP-TREE ruling `5227908683`: **PASS**. Both batteries re-run by the DA at the exact head (`simthing-sim` 5 passed / 0 failed; `simthing-driver` 1 passed / 0 failed), matching the claimed counts; `clearance` / `doctrine-scan` / `doctrine-exec` green at `b9fd883d`.
+
+The `TEST-BUDGET INSPECT 1` heuristic (five `#[test]` functions without table-driven form) was ruled **justified with no suppression and no allowlist edit** — the five are distinct mechanisms with no shared `(input, expected)` shape, and one of them already consolidates the mutant family.
+
+**Positional-identity carry-forward (not a defect of this rung).** Commit `b9fd883d` is a DA authorization in `scripts/ci/authorized_renames.tsv`: `compile_fail_line_122 → compile_fail_line_128` in `crates/simthing-core/src/overlay.rs`. It is a **line-shift, not a deletion** — the seal-proof is unchanged and must not be reverted. Six inserted lines (the `ArrivedAt` variant plus its doc comment) moved a test identity keyed by line number. Counted at head: **100 of 1173 inventory rows (8.5%) across 31 distinct files** carry a `_line_<N>` positional identity, so any insertion above one of them shifts it, fires the deletion guard, and requires a fresh authorization. **This will recur on every rung that edits those 31 files.** It is the same logical-versus-physical identity defect the slot-identity ruling fixed for rows, and it is worth a rung of its own rather than another hundred authorizations.
