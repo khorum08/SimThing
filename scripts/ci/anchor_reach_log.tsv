@@ -546,3 +546,7 @@ date	role	query	anchors_served	hit
 2026-08-08T18:53:16Z	coding	--grep test-admission-budget	none	none
 2026-08-08T18:53:20Z	coding	--grep test budget	none	none
 2026-08-08T18:53:20Z	coding	--grep table-driven	none	none
+2026-08-08T21:40:55Z	coding	--grep actionband-meaning	actionband-meaning	hit
+2026-08-08T21:40:56Z	coding	--grep intrinsic-constrained-clearing	intrinsic-constrained-clearing	hit
+2026-08-08T21:40:56Z	coding	--grep movement-front-adjudications	movement-front-adjudications	hit
+2026-08-08T21:40:56Z	coding	--grep workshop-candidate-homing	workshop-candidate-homing	hit
