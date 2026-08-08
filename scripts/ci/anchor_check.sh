@@ -316,6 +316,43 @@ if mode == "resolve":
     sys.exit(0)
 
 if mode == "check":
+    # COVERAGE, not integrity. Everything above verifies that rows which EXIST
+    # still point at live headings with unchanged hashes. Nothing asked whether
+    # doctrine exists that NO row points at -- and the anchor library was a
+    # one-time hand-enumerated catalogue (OC-ANCHOR-CATALOG-0), so a doc nobody
+    # listed simply never entered it. AGENTS.md routes doctrine through
+    # anchor_query.sh, which makes an unanchored doc operationally invisible
+    # while still looking authoritative in the tree.
+    #
+    # Settled doctrine is the class that goes dark: a track actively pushing new
+    # doctrine gets it anchored, while invariants that are already true have no
+    # advocate. That is how `AccumulatorRole is compile-time metadata only` fell
+    # out of reach and got re-derived from scratch two rungs running.
+    #
+    # ADVISORY ONLY. This never fails the build -- an unanchored doc may be
+    # archive, a worklog, or genuinely superseded, and a gate that forces every
+    # markdown file into the anchor table would be exactly the ceremony the
+    # anti-kabuki floor forbids. It reports; a human dispositions.
+    # Fixture sandboxes carry a miniature corpus; coverage is a statement about
+    # the REAL docs tree, so it is meaningless there and would break fixtures
+    # that assert exact stdout.
+    if fixture_dir:
+        pass_ok()
+    covered = {r["doc"].replace("\\", "/") for r in rows}
+    corpus = sorted(
+        str(p).replace("\\", "/")
+        for p in list(repo.glob("docs/*.md")) + list(repo.glob("docs/adr/*.md"))
+    )
+    prefix = str(repo).replace("\\", "/") + "/"
+    dark = [c[len(prefix):] if c.startswith(prefix) else c for c in corpus]
+    dark = [d for d in dark if d not in covered]
+    if dark:
+        print(f"ANCHOR-COVERAGE: INSPECT unanchored={len(dark)}/{len(dark) + len(covered)}")
+        for d in dark:
+            print(f"  unanchored: {d}")
+        print("  disposition: anchor it (doctrine agents must reach) or delete it (superseded).")
+    else:
+        print("ANCHOR-COVERAGE: PASS every docs/ and docs/adr/ file is anchored")
     pass_ok()
 
 print("ANCHOR-CHECK-VERDICT: FAIL(harness-error)")
