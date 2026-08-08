@@ -7,77 +7,22 @@ audience: coding
 model_tier: std
 expected_route: ORCHESTRATOR-CLEARABLE
 owner_approved: true
-owner_notes: "Owner-committed 2026-08-05 determination rung. Controlling 7.1 graduation: Board 5227984507; DEEP-TREE ruling 5227908683. Claim A is a hypothesis, Claim B is mandatory, and outcome B must remain fully reachable. Coding returns evidence only; DA owns the determination and any later canonization or reaping."
-surfaces:
-  - crates/simthing-workshop/src/actionband_composition_probe_0.rs
-  - crates/simthing-workshop/src/lib.rs
-  - crates/simthing-workshop/tests/actionband_composition_probe_0.rs
-  - docs/tests/actionband_composition_probe_0_results.md
-  - docs/tests/current_evidence_index.md
-  - docs/design_0_0_8_7_rf_arena_modernization.md
-  - docs/orchestrator_orientation.md
-  - scripts/ci/test_inventory.tsv
-  - scripts/ci/anchor_reach_log.tsv
-forbidden:
-  - crates/simthing-core/src/**
-  - crates/simthing-kernel/src/**
-  - crates/simthing-gpu/src/**
-  - crates/simthing-sim/src/**
-  - crates/simthing-driver/src/**
-  - crates/simthing-spec/src/**
-  - docs/simthing_core_design.md
-  - docs/EML_exp_ln_unification_expansion.md
-  - scripts/ci/doctrine_anchors.tsv
-  - handoffs/MOVEMENT-AUTHORITY-READBACK-0.hd.md
-required_checks:
-  - fresh coding orientation; ACK required anchors plus actionband-meaning, intrinsic-constrained-clearing, movement-front-adjudications, workshop-candidate-homing; exact HD receipt
-  - three scenario-neutral non-spatial witnesses run through existing mechanisms without a shared ActionBand helper
-  - landed 7.1 production movement witness re-run and used read-only as witness four
-  - Claim B: each witness has competing attractors; field-only change changes progress; overlay-only change changes it again; zero identity edits
-  - structural comparison names exact symbols/paths and classifies every stage literally-shared, analogous, or special-seam
-  - hard-coded destination/action-identity mutant RED on the real witness authority path, never a test-only executor or alternate fixture path
-  - bypassed-clearing mutant RED on the real witness claim-to-allocation path, never a test-only executor or alternate fixture path
-  - workshop focused suite plus landed 7.1 sim/driver focused witnesses green; no engine-src diff; ActionBand production-shape scan clean
-  - one results doc, one evidence-index line, only 7.1a PROBATION, successors TODO, orientation regenerated
-  - hosted Doctrine Scan/Exec and final relay evidence at exact head
-stop_conditions:
-  - any production engine edit is required to make the probe work
-  - any ActionBand production struct, enum, registry, opcode, planner, match arm, or generic action graph is required
-  - any witness requires authored destination/action identity or domain branching to choose progress
-  - Claim B fails for any witness or cannot be tested against competing attractors
-  - clearing must be bypassed or U and CostBand R must be conflated to make a witness pass
-  - structural mutation would occur outside the existing boundary authority
-  - evidence cannot support a definite candidate A or B conclusion
-  - Vector CostBand, livelock/starvation, 7.2, 8.1, 8.2, canonization, anchor reaping, or successor work is required
+owner_notes: "Owner-committed 2026-08-05 determination rung. Controlling 7.1 graduation: Board 5227984507; DEEP-TREE ruling 5227908683. Claim A is a hypothesis, Claim B is mandatory, and outcome B must remain fully reachable. Coding returns evidence only; DA owns determination and any later canonization or reaping."
+surfaces: ["crates/simthing-workshop/src/actionband_composition_probe_0.rs", "crates/simthing-workshop/src/lib.rs", "crates/simthing-workshop/tests/actionband_composition_probe_0.rs", "docs/tests/actionband_composition_probe_0_results.md", "docs/tests/current_evidence_index.md", "docs/design_0_0_8_7_rf_arena_modernization.md", "docs/orchestrator_orientation.md", "scripts/ci/test_inventory.tsv", "scripts/ci/anchor_reach_log.tsv"]
+forbidden: ["any engine src edit in simthing-core/kernel/gpu/sim/driver/spec", "production ActionBand struct/enum/registry/opcode/planner/match arm, generic action graph, privileged Destination/path authority", "domain-identity branching or authored destination/action identity used to choose progress", "forcing non-consuming evolution through CostBand, conflating unresolved U with CostBand R, same-generation clear-to-consequence-to-reclear convergence, or direct structural mutation outside the existing boundary", "editing EML_exp_ln_unification_expansion.md, simthing_core_design.md, doctrine_anchors.tsv, canonization text, or reaping workshop anchors/artifacts", "Vector CostBand, livelock/starvation, 7.2, 8.1/8.2, StemThing-B, or any successor work"]
+required_checks: ["fresh coding orientation; projected anchor ACKs plus actionband-meaning, intrinsic-constrained-clearing, movement-front-adjudications, workshop-candidate-homing; exact HD receipt", "three independent scenario-neutral non-spatial witnesses use already-landed mechanisms without a shared ActionBand helper; landed 7.1 is re-run/read-only as witness four", "Claim B on all four: competing attractors; field-only change redirects progress; overlay-only change redirects again; zero destination/action identity edits", "one exact-symbol/path structural table classifies potential->EML->claim->clear/disburse->CostBand->consequence as LITERAL/ANALOGOUS/SPECIAL-SEAM and returns candidate A only for literal common path with zero domain branch, otherwise B; no inconclusive outcome", "hard-coded authority mutant at the REAL witness potential-to-candidate site and clearing-bypass mutant at the REAL claim-to-allocation site each RED; never a cfg(test) twin, alternate executor, or intentionally broken fixture", "workshop focused suite plus landed 7.1 sim/driver witnesses green; no engine-src diff; production ActionBand/action-registry/planner/path scan clean", "one results doc + evidence-index line + only 7.1a PROBATION; successors TODO; orientation regenerated; hosted Doctrine Scan/Exec at exact head"]
+stop_conditions: ["the probe requires any engine source edit or new production action abstraction", "any witness requires domain branching or authored destination/action identity to choose progress", "Claim B fails for any witness or cannot be exercised with competing attractors", "a witness requires bypassing clearing, conflating U/R, or mutating structure outside existing boundary authority", "evidence cannot support a definite candidate A or B without manufacturing a common helper", "completion requires canonization/reaping, Vector CostBand, 7.2/8.x, StemThing-B, or successor work"]
 ---
-
 ## BUILD
-1. Orient fresh as coding, resolve/ACK the projected anchors plus `actionband-meaning`, `intrinsic-constrained-clearing`, `movement-front-adjudications`, and `workshop-candidate-homing`, and record the exact `HD-RECEIPT`.
-2. Build a born-mortal, scenario-neutral workshop probe only. Do NOT factor the witnesses through a new common helper/API whose shape presupposes Claim A; assemble each witness independently from already-landed mechanisms.
-3. Witness 1 — deficit/resource satisfaction: competing supply-access potentials -> resource/transport claim -> ordinary clear/disburse -> CostBand -> deficit reduction.
-4. Witness 2 — LinkGraph relational action: competing relation opportunity/threat potentials -> political-resource claim -> ordinary clear/disburse -> CostBand -> existing authored relation effect.
-5. Witness 3 — derivation/fission: competing growth/specialization potentials -> derivation/residency claim -> ordinary clear/disburse -> CostBand -> existing boundary-authorized derivation/fission consequence.
-6. Witness 4 is the LANDED 7.1 movement implementation, read-only: rerun its focused sim/driver proofs and compare against its real sealed gradient -> claim/cost -> boundary reparent path; do not create a surrogate movement witness.
-7. For every witness, provide multiple competing attractors, then alter only field/potential state and separately only ordinary overlay weighting; record the selected/weighted progress change with no destination/action identity edit.
-8. Produce one structural-comparison table over potential -> EML valuation -> claim -> clear/disburse -> CostBand -> consequence. For every cell cite exact symbol/path and classify `LITERAL`, `ANALOGOUS`, or `SPECIAL-SEAM`; do not translate analogy into sharing.
-9. Return a candidate determination: `A` only if the witnesses literally share the composition with zero domain branch and Claim B holds; otherwise `B`. No third “green but inconclusive” result is admissible.
-
+- Build only a born-mortal workshop probe: independently compose deficit/resource satisfaction, LinkGraph relational action, and derivation/fission from already-landed mechanisms; do not factor a common helper that presupposes Claim A.
+- Use landed 7.1 as the real fourth witness, read-only. For every witness supply competing attractors, then vary only field/potential state and only ordinary overlay weighting; never edit destination/action identity.
+- Compare exact code symbols for potential -> EML -> claim -> clear/disburse -> CostBand -> consequence and return candidate A only for literal sharing with zero domain branch; otherwise return B.
 ## FENCES
-1. Claim A is a hypothesis, never standing law. The probe must be capable of concluding B even when all checks are green.
-2. No production `ActionBand` type/enum/registry/opcode/planner/match arm, no destination authority, no generic action graph, and no engine-source edits.
-3. Non-consuming evolution remains outside the candidate action composition; do not force propagation, decay, projection, observation, or ordinary overlay application through CostBand.
-4. Keep unresolved claim `U` distinct from CostBand remainder `R`; clearing and CostBand are separate stages even if a witness makes one trivial.
-5. Structural consequences only authorize the existing boundary mutation path; workshop/EML code never mutates tree identity/layout directly.
-6. Action consequences pace at generation speed; no same-generation clear -> consequence -> re-clear convergence is introduced.
-7. The two planted defects mutate the REAL workshop witness execution path named above: hard-code authority at its actual potential-to-candidate selection site, and bypass clear at its actual claim-to-allocation site. Never plant a `#[cfg(test)]` twin, alternate executor, or intentionally broken fixture.
-8. Outcome B triggers NO coding-side reap. Record the exact workshop files/anchors that DA would reap (`actionband-meaning`, `intrinsic-constrained-clearing`) and STOP for determination.
-9. Livelock/starvation and Vector CostBand remain excluded; 7.2/8.x and §22 canonization remain blocked.
-
+- Claim A is hypothesis, not law; a fully green probe must still be able to conclude B. Outcome B causes no coding-side reap: report the workshop artifacts plus `actionband-meaning` / `intrinsic-constrained-clearing` for DA determination.
+- Keep non-consuming evolution outside the candidate composition, U distinct from R, generation pacing intact, and structural consequences behind the existing boundary; no production ActionBand/path/destination authority or engine edit.
+- Plant both required defects in the REAL workshop witness execution path at the actual authority-selection and claim-to-allocation sites; never in a test-only twin/alternate fixture path. Vector CostBand/livelock and all successors remain excluded.
 ## EXIT-PROOF
-1. Results show all three non-spatial witnesses plus landed 7.1 as the fourth, with exact code-path citations and the `LITERAL`/`ANALOGOUS`/`SPECIAL-SEAM` comparison.
-2. Claim B is demonstrated independently for all four witnesses: competing attractors, field-only redirection, overlay-only redirection, zero destination/action identity edits.
-3. The hard-coded-authority and bypassed-clearing mutants RED the actual witness paths and are reverted; no test-only executor/fixture carries the defect.
-4. `cargo test -p simthing-workshop -- --test-threads=1` and the landed 7.1 focused sim/driver witnesses are green at the exact head; touched checks/scans are green; engine `src` diff is empty.
-5. Grep/type scan proves no production ActionBand/action-registry/planner/path authority was minted and no forbidden successor surface changed.
-6. `docs/tests/actionband_composition_probe_0_results.md` states candidate outcome A or B with the evidence that could falsify it; workplan stamps only 7.1a `PROBATION`, leaves successors TODO, and regenerates orientation/evidence once.
-7. Return PROBATION only: exact base/head, receipt, anchors, tests, mutant reds, structural table, candidate A/B, known gaps, and graduation-routing block. Coding never merges, graduates, canonizes/reaps, or moves the pointer.
+- Results contain all four witnesses, exact path citations, LITERAL/ANALOGOUS/SPECIAL-SEAM classifications, and independent Claim-B demonstrations for each.
+- Hard-coded-authority and clearing-bypass mutants RED and are reverted; workshop tests plus landed 7.1 focused sim/driver witnesses are green; engine `src` diff is empty and production ActionBand/planner/path scans are clean.
+- Results state candidate A or B with falsifying evidence; workplan marks only 7.1a PROBATION, successors TODO, and evidence/orientation update once.
+- Return PROBATION only with exact base/head, receipt, anchors, tests, mutant reds, structural table, candidate A/B, gaps, and graduation routing. Coding never merges, graduates, canonizes/reaps, or moves the pointer.
