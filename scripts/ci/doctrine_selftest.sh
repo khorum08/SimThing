@@ -25,6 +25,19 @@ declare -a HE_REPORT=()
 declare -a TRAP_REPORT=()
 
 cleanup() {
+  # Kill in-flight case children BEFORE deleting the trees they read and write.
+  # Parallel cases are background jobs; without this an interrupted parent
+  # orphans up to CASE_SLOTS scanners that keep running against paths this trap
+  # is about to remove. Measured on a killed run: 4 live scanners and 14 leaked
+  # sandboxes three seconds after the parent exited. Pre-parallel this could not
+  # happen -- there was at most one case in flight and it died with the parent.
+  local _pids
+  _pids="$(jobs -rp 2>/dev/null)" || _pids=""
+  if [[ -n "$_pids" ]]; then
+    # shellcheck disable=SC2086
+    kill $_pids 2>/dev/null || true
+    wait 2>/dev/null || true
+  fi
   if [[ -n "${SKELETON:-}" && -d "$SKELETON" ]]; then
     rm -rf "$SKELETON"
   fi
@@ -86,6 +99,10 @@ case_run() {
     wait -n 2>/dev/null || break
   done
   (
+    # Own the sandbox's lifetime. end_sandbox at the tail only runs on the happy
+    # path; if this child is killed with the parent, this trap is what stops its
+    # mktemp tree from leaking.
+    trap 'rm -rf "${ROOT_SANDBOX:-/nonexistent}" 2>/dev/null || true' EXIT
     # Start from empty accumulators so the child's arrays hold only this case.
     KB_REPORT=()
     HE_REPORT=()
