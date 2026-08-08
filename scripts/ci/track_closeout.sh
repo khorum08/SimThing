@@ -437,46 +437,6 @@ def new_identity_present_in_diff(base: str, head: str, file: str, new_identity: 
     return False
 
 
-LINE_KEYED_RE = re.compile(r"^(?P<stem>.+)_line_(?P<line>\d+)$")
-
-
-def is_positional_line_shift(removed_row: dict, head_rows: list) -> bool:
-    """True when a removed row is the SAME test that merely moved lines.
-
-    100 of 1173 inventory rows across 31 files key test identity by line number
-    (`compile_fail_line_122`). Inserting any line above such a test rewrites its
-    key, so the deletion guard saw delete-plus-create and demanded an authorized
-    rename -- for a test that never moved crates, never changed role, and still
-    proves exactly what it proved before. Every rung touching those 31 files paid
-    another authorization for a non-event.
-
-    A positional shift is provable from the data, so it needs no ledger entry:
-    same file, same line-keyed stem, and EVERY other field identical. Only the
-    line number may differ. Anything else -- a changed kind, role, rung,
-    disposition, rationale, or birth_track -- falls through to the authorized
-    rename / deletion paths untouched, because those are real identity changes.
-    """
-    old_name = (removed_row.get("test_name") or "").strip()
-    file = (removed_row.get("file") or "").strip().replace("\\", "/")
-    m = LINE_KEYED_RE.match(old_name)
-    if not m or not file:
-        return False
-    stem = m.group("stem")
-    compare_keys = [k for k in removed_row.keys() if k not in ("test_name", "file")]
-    for h in head_rows:
-        if (h.get("file") or "").strip().replace("\\", "/") != file:
-            continue
-        hm = LINE_KEYED_RE.match((h.get("test_name") or "").strip())
-        if not hm or hm.group("stem") != stem:
-            continue
-        if hm.group("line") == m.group("line"):
-            continue  # identical identity is not a shift; it was never removed
-        if all((h.get(k) or "").strip() == (removed_row.get(k) or "").strip()
-               for k in compare_keys):
-            return True
-    return False
-
-
 def is_authorized_inventory_rename(
     removed_row: dict,
     head_rows: list,
@@ -1888,14 +1848,10 @@ def cmd_deletion_guard():
     violations = []
     authorized_renames = 0
     authorized_deletions = 0
-    line_shifts = 0
     for r in removed:
         bt = r.get("birth_track", "").strip()
         if is_cfg_marker_deletion_candidate(r):
             continue  # ledger-only residue has its own sanctioned sweep route
-        if is_positional_line_shift(r, head_rows):
-            line_shifts += 1
-            continue  # same test, moved lines; provable from the data, no ledger
         if is_authorized_inventory_rename(r, head_rows, base, head, ledger_rows):
             authorized_renames += 1
             continue  # scripts/ci/authorized_renames.tsv + inventory + code presence
@@ -1912,7 +1868,6 @@ def cmd_deletion_guard():
 
     print("TRACK-CLOSEOUT DELETION-GUARD")
     print(f"  removed inventory rows: {len(removed)}")
-    print(f"  positional line shifts: {line_shifts}")
     print(f"  authorized renames: {authorized_renames}")
     print(f"  authorized deletions: {authorized_deletions}")
     print(f"  unauthorized (birth_track not closed by closeout): {len(violations)}")
