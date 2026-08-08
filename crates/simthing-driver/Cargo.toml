@@ -18,6 +18,7 @@ path = "src/main.rs"
 simthing-core   = { path = "../simthing-core" }
 simthing-feeder = { path = "../simthing-feeder" }
 simthing-gpu    = { path = "../simthing-gpu" }
+simthing-kernel = { path = "../simthing-kernel" }
 simthing-sim    = { path = "../simthing-sim" }
 simthing-spec   = { path = "../simthing-spec" }
 serde           = { workspace = true }

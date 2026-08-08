@@ -16,8 +16,8 @@ use simthing_gpu::{
     GpuContext, PackedAccumulatorUpload, PackedThresholdUpload, StructuredFieldExecutionReport,
     StructuredFieldStencilBoundaryMode, StructuredFieldStencilConfig,
     StructuredFieldStencilDebugReport, StructuredFieldStencilMaskMode,
-    StructuredFieldStencilOperator, StructuredFieldStencilSourcePolicy, ThresholdEvent,
-    ThresholdRegistration, DIR_UPWARD, THRESH_BUF_VALUES,
+    StructuredFieldStencilOperator, StructuredFieldStencilSourcePolicy, ThresholdEmission,
+    ThresholdEvent, ThresholdRegistration, DIR_UPWARD, THRESH_BUF_VALUES,
 };
 use simthing_spec::{
     compile_region_field_preview, estimate_region_field_budget, CompiledFieldCadence,
@@ -334,6 +334,8 @@ pub struct FirstSliceCommitmentReport {
     pub threshold: f32,
     pub event_kind: u32,
     pub threshold_events: Vec<ThresholdEvent>,
+    /// Matching sealed emission stream required by structural decision ingress.
+    pub threshold_emissions: Vec<ThresholdEmission>,
 }
 
 impl FirstSliceMappingReport {
@@ -1193,29 +1195,35 @@ impl FirstSliceMappingSession {
     /// edge), so a held above-threshold urgency emits **no** repeated upward
     /// crossings, while falling below and rising again emits a fresh one.
     /// CPU reads back compact threshold events only; the decision is GPU-side.
-    fn scan_commitment_threshold_edge(
+    fn scan_commitment_threshold_edges(
         &mut self,
         ctx: &GpuContext,
         threshold: f32,
         event_kind: u32,
-    ) -> Result<Vec<ThresholdEvent>, FirstSliceMappingError> {
-        let reduction = self.preview.reduction.as_ref().expect("validated at open");
-        let parent_slot = reduction.parent_slot;
+        decision_loci: &[(u32, u32)],
+    ) -> Result<(Vec<ThresholdEvent>, Vec<ThresholdEmission>), FirstSliceMappingError> {
+        if decision_loci.is_empty() {
+            return Ok((Vec::new(), Vec::new()));
+        }
         if !self.commitment_scan_initialized {
             let previous = vec![0.0f32; self.acc_session.values_len()];
             self.acc_session.upload_previous_values(ctx, &previous);
             self.commitment_scan_initialized = true;
         }
-        self.acc_session.ensure_threshold_emission_capacity(ctx, 1);
-        let threshold_upload =
-            PackedThresholdUpload::from_registrations(&[ThresholdRegistration {
-                slot: parent_slot,
-                col: self.eml_output_col,
+        self.acc_session
+            .ensure_threshold_emission_capacity(ctx, decision_loci.len() as u32);
+        let registrations: Vec<_> = decision_loci
+            .iter()
+            .map(|&(slot, col)| ThresholdRegistration {
+                slot,
+                col,
                 threshold,
                 direction: DIR_UPWARD,
                 event_kind,
                 buffer: THRESH_BUF_VALUES,
-            }])
+            })
+            .collect();
+        let threshold_upload = PackedThresholdUpload::from_registrations(&registrations)
             .map_err(|e| FirstSliceMappingError::Accumulator(format!("{e}")))?;
         self.acc_session
             .upload_packed_threshold_ops(ctx, &threshold_upload)
@@ -1227,8 +1235,12 @@ impl FirstSliceMappingSession {
             .acc_session
             .readback_threshold_events(ctx)
             .map_err(|e| FirstSliceMappingError::Accumulator(format!("{e}")))?;
+        let emissions = self
+            .acc_session
+            .readback_threshold_emissions(ctx)
+            .map_err(|e| FirstSliceMappingError::Accumulator(format!("{e}")))?;
         self.acc_session.copy_values_to_previous(ctx);
-        Ok(events)
+        Ok((events, emissions))
     }
 
     /// Line 3R production tick: the mapping chain plus the edge-detected
@@ -1242,14 +1254,52 @@ impl FirstSliceMappingSession {
         eml_weights: (f32, f32),
         commitment: &CompiledFirstSliceCommitmentThreshold,
     ) -> Result<FirstSliceCommitmentReport, FirstSliceMappingError> {
+        let parent_slot = self
+            .preview
+            .reduction
+            .as_ref()
+            .expect("validated at open")
+            .parent_slot;
+        self.tick_with_commitment_loci(
+            ctx,
+            options,
+            eml_weights,
+            commitment,
+            &[(parent_slot, self.eml_output_col)],
+        )
+    }
+
+    /// Production movement scan over admitted field-cell loci. Magnitudes stay
+    /// on GPU; CPU receives only compact sealed crossings and emissions.
+    pub fn tick_with_movement_commitment_spec(
+        &mut self,
+        ctx: &GpuContext,
+        options: FirstSliceTickOptions,
+        eml_weights: (f32, f32),
+        commitment: &CompiledFirstSliceCommitmentThreshold,
+        decision_loci: &[(u32, u32)],
+    ) -> Result<FirstSliceCommitmentReport, FirstSliceMappingError> {
+        self.tick_with_commitment_loci(ctx, options, eml_weights, commitment, decision_loci)
+    }
+
+    fn tick_with_commitment_loci(
+        &mut self,
+        ctx: &GpuContext,
+        options: FirstSliceTickOptions,
+        eml_weights: (f32, f32),
+        commitment: &CompiledFirstSliceCommitmentThreshold,
+        decision_loci: &[(u32, u32)],
+    ) -> Result<FirstSliceCommitmentReport, FirstSliceMappingError> {
         let mapping = self.tick(ctx, options, eml_weights)?;
         let mut threshold_events = Vec::new();
+        let mut threshold_emissions = Vec::new();
         let mut summary_used_for_commitment_scan = false;
         if mapping.enabled && mapping.scheduled && mapping.eml_executed {
-            threshold_events = self.scan_commitment_threshold_edge(
+            (threshold_events, threshold_emissions) = self.scan_commitment_threshold_edges(
                 ctx,
                 commitment.threshold,
                 commitment.event_kind,
+                decision_loci,
             )?;
             summary_used_for_commitment_scan = true;
         }
@@ -1260,6 +1310,7 @@ impl FirstSliceMappingSession {
             threshold: commitment.threshold,
             event_kind: commitment.event_kind,
             threshold_events,
+            threshold_emissions,
         })
     }
 
@@ -1268,7 +1319,7 @@ impl FirstSliceMappingSession {
         ctx: &GpuContext,
         threshold: f32,
         event_kind: u32,
-    ) -> Result<Vec<ThresholdEvent>, FirstSliceMappingError> {
+    ) -> Result<(Vec<ThresholdEvent>, Vec<ThresholdEmission>), FirstSliceMappingError> {
         let reduction = self.preview.reduction.as_ref().expect("validated at open");
         let parent_slot = reduction.parent_slot;
         let previous = vec![0.0f32; self.acc_session.values_len()];
@@ -1290,9 +1341,15 @@ impl FirstSliceMappingSession {
         self.acc_session
             .tick(ctx, 0)
             .map_err(|e| FirstSliceMappingError::Accumulator(format!("{e}")))?;
-        self.acc_session
+        let events = self
+            .acc_session
             .readback_threshold_events(ctx)
-            .map_err(|e| FirstSliceMappingError::Accumulator(format!("{e}")))
+            .map_err(|e| FirstSliceMappingError::Accumulator(format!("{e}")))?;
+        let emissions = self
+            .acc_session
+            .readback_threshold_emissions(ctx)
+            .map_err(|e| FirstSliceMappingError::Accumulator(format!("{e}")))?;
+        Ok((events, emissions))
     }
 
     /// Execute the first-slice fixture and scan one GPU threshold over parent `field_urgency`.
@@ -1309,9 +1366,11 @@ impl FirstSliceMappingSession {
     ) -> Result<FirstSliceCommitmentReport, FirstSliceMappingError> {
         let mapping = self.tick(ctx, options, eml_weights)?;
         let mut threshold_events = Vec::new();
+        let mut threshold_emissions = Vec::new();
         let mut summary_used_for_commitment_scan = false;
         if mapping.enabled && mapping.scheduled && mapping.eml_executed {
-            threshold_events = self.scan_commitment_threshold(ctx, threshold, event_kind)?;
+            (threshold_events, threshold_emissions) =
+                self.scan_commitment_threshold(ctx, threshold, event_kind)?;
             summary_used_for_commitment_scan = true;
         }
         let mut mapping = mapping;
@@ -1321,6 +1380,7 @@ impl FirstSliceMappingSession {
             threshold,
             event_kind,
             threshold_events,
+            threshold_emissions,
         })
     }
 

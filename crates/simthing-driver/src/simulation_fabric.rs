@@ -41,7 +41,12 @@ use simthing_feeder::{
     DispatchCoordinator, FeederReceiver, FeederSender, FeederWork, PatchTransform, TickOutcome,
     TransformPatcher,
 };
-use simthing_gpu::{GpuContext, Pipelines, SlotAllocator, ThresholdEvent, WorldGpuState};
+#[cfg(test)]
+use simthing_gpu::GpuContext;
+use simthing_gpu::{Pipelines, SlotAllocator, ThresholdEvent, WorldGpuState};
+use simthing_kernel::{
+    BoundaryEmissionToken, EmissionToken, StructuralCommitment, ThresholdCrossingToken,
+};
 use simthing_spec::CompiledFirstSliceCommitmentThreshold;
 
 use crate::first_slice_mapping_runtime::{FirstSliceMappingSession, FirstSliceTickOptions};
@@ -53,6 +58,7 @@ pub type FabricTickOutcome = TickOutcome;
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct FabricMappingHotReport {
     pub threshold_events: Vec<ThresholdEvent>,
+    pub structural_commitments: Vec<StructuralCommitment>,
 }
 
 /// Outcome of one full hot step: ordinary tick + optional RF bands + optional mapping dispatch.
@@ -93,6 +99,9 @@ pub struct MappingHotPathState {
     cells: Vec<(u32, u32)>,
     weights: (f32, f32),
     commitment: CompiledFirstSliceCommitmentThreshold,
+    /// Empty keeps the standing parent-summary observation. Non-empty scans
+    /// these admitted field-cell loci for movement decisions.
+    decision_loci: Vec<(u32, u32)>,
 }
 
 impl MappingHotPathState {
@@ -111,7 +120,13 @@ impl MappingHotPathState {
             cells,
             weights,
             commitment,
+            decision_loci: Vec::new(),
         }
+    }
+
+    pub fn with_movement_decision_loci(mut self, decision_loci: Vec<(u32, u32)>) -> Self {
+        self.decision_loci = decision_loci;
+        self
     }
 }
 
@@ -266,18 +281,76 @@ pub fn run_mapping_hot_dispatch(
     hot.mapping
         .queue_gpu_seed_cells(&hot.cells)
         .map_err(|e| MappingHotDispatchError(format!("{e:?}")))?;
-    let report = hot
-        .mapping
-        .tick_with_commitment_spec(
+    let report = if hot.decision_loci.is_empty() {
+        hot.mapping.tick_with_commitment_spec(
             ctx,
             FirstSliceTickOptions::hot_path(),
             hot.weights,
             &hot.commitment,
         )
-        .map_err(|e| MappingHotDispatchError(format!("{e:?}")))?;
+    } else {
+        hot.mapping.tick_with_movement_commitment_spec(
+            ctx,
+            FirstSliceTickOptions::hot_path(),
+            hot.weights,
+            &hot.commitment,
+            &hot.decision_loci,
+        )
+    }
+    .map_err(|e| MappingHotDispatchError(format!("{e:?}")))?;
+    let structural_commitments =
+        mint_structural_commitments(&report.threshold_events, &report.threshold_emissions)?;
     Ok(FabricMappingHotReport {
         threshold_events: report.threshold_events,
+        structural_commitments,
     })
+}
+
+fn mint_structural_commitments(
+    events: &[simthing_gpu::ThresholdEvent],
+    emissions: &[simthing_gpu::ThresholdEmission],
+) -> Result<Vec<StructuralCommitment>, MappingHotDispatchError> {
+    if events.len() != emissions.len() {
+        return Err(MappingHotDispatchError(format!(
+            "sealed threshold/event cardinality mismatch: {} events, {} emissions",
+            events.len(),
+            emissions.len()
+        )));
+    }
+    let mut used = vec![false; emissions.len()];
+    let mut commitments = Vec::with_capacity(events.len());
+    for event in events {
+        let matches: Vec<_> = emissions
+            .iter()
+            .enumerate()
+            .filter(|(index, emission)| {
+                !used[*index]
+                    && emission.slot() == event.slot()
+                    && emission.col() == event.col()
+                    && emission.value().to_bits() == event.value().to_bits()
+                    && emission.generation() == event.generation()
+            })
+            .collect();
+        if matches.len() != 1 {
+            return Err(MappingHotDispatchError(format!(
+                "sealed commitment locus ({},{}) has {} matching emissions",
+                event.slot(),
+                event.col(),
+                matches.len()
+            )));
+        }
+        let (index, emission) = matches[0];
+        used[index] = true;
+        let threshold = ThresholdCrossingToken::from_sealed_threshold_event(event);
+        let emission = EmissionToken::from_sealed_threshold_emission(emission);
+        let boundary = BoundaryEmissionToken::bind(threshold, emission)
+            .map_err(|error| MappingHotDispatchError(error.to_string()))?;
+        commitments.push(
+            StructuralCommitment::mint_from_sealed_path(threshold, emission, boundary)
+                .map_err(|error| MappingHotDispatchError(error.to_string()))?,
+        );
+    }
+    Ok(commitments)
 }
 
 /// Full hot step: ordinary tick, then RF bands, then mapping hot dispatch.
