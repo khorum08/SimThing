@@ -1,6 +1,8 @@
 # ACTIONBAND-COMPOSITION-PROBE-0 results
 
-Status: **PROBATION — proof present; DA review pending** (coding return only; no merge / clearance / graduation / reap).
+Status: **COMPLETE — DA-GRADUATED / merged #1683 @ `b99a254b`. DETERMINATION: CANDIDATE (B) — ActionBand REJECTED as core law.**
+
+> **This document is born-mortal and reaps with the 0.0.8.7 workshop leaf. The determination does NOT live here** — the durable finding is stamped into the 7.1a row of `design_0_0_8_7_rf_arena_modernization.md`, which is permanent. Read that row, not this file, for what was decided.
 
 Authority:
 
