@@ -11,8 +11,8 @@ use simthing_gpu::{
     apply_band_crossing_deltas_from_fused_emissions, cpu_oracle_band_crossing_deltas,
     emit_on_threshold_registrations_to_gpu, eval_eml_cpu, readback_buffer_bytes_blocking,
     scoped_debug_readback_allowed, wgpu, AccumulatorOpSession, ActionBandEmissionBindingGpu,
-    ActionBandExecutionError, ActionBandGpuExecution, GpuContext, PackedThresholdUpload,
-    SlotAllocator,
+    ActionBandExecutionError, ActionBandGpuExecution, ActionBandStateGpu, GpuContext,
+    PackedThresholdUpload, SlotAllocator,
 };
 use simthing_sim::{apply_structural_mutations, SimRuntimeTree};
 use simthing_spec::{
@@ -630,6 +630,11 @@ fn sparse_gpu_state_ping_pongs_and_matches_exact_eml_oracle() {
             .expect("source-bound depth-1 lowering")
             .into_execution_plan();
     assert!(fast_plan.uses_depth1_crossing_fast_path());
+    let active_instance_rows = fast_plan.active_instance_rows();
+    let state_width_bytes = std::mem::size_of::<ActionBandStateGpu>();
+    let carry_bytes = active_instance_rows * state_width_bytes;
+    assert_eq!(active_instance_rows, 1);
+    assert_eq!(carry_bytes, 32);
     let fast_crossings = fast_plan
         .crossings_from_sealed(&[sealed_delta_from_gpu(&fixture, &ctx)])
         .expect("depth-1 fast path consumes the existing sealed crossing");
@@ -653,6 +658,9 @@ fn sparse_gpu_state_ping_pongs_and_matches_exact_eml_oracle() {
     assert_eq!(fast_readback.states[0].velocity, 0.0);
     assert_eq!(fast_readback.projection, [0.5]);
     assert!(fast_readback.evaluation_gpu_time_ns.is_none());
+    if ctx.encoder_timestamp_supported() {
+        assert!(fast_readback.carry_gpu_time_ns.is_some());
+    }
 
     let empty_generation = fast_execution
         .dispatch_and_readback(
@@ -665,6 +673,7 @@ fn sparse_gpu_state_ping_pongs_and_matches_exact_eml_oracle() {
     assert_eq!(empty_generation.states[0], fast_readback.states[0]);
     assert_eq!(empty_generation.projection, [0.5]);
     assert!(empty_generation.gpu_time_ns.is_none());
+    assert!(empty_generation.carry_gpu_time_ns.is_none());
     assert!(empty_generation.evaluation_gpu_time_ns.is_none());
     assert!(empty_generation.emission_gpu_time_ns.is_none());
 
@@ -681,7 +690,7 @@ fn sparse_gpu_state_ping_pongs_and_matches_exact_eml_oracle() {
     assert_eq!(second_crossing.projection, [0.5]);
     assert!(second_crossing.evaluation_gpu_time_ns.is_none());
 
-    if ctx.timestamp_supported() {
+    if ctx.encoder_timestamp_supported() {
         const WARMUP: usize = 5;
         const SAMPLES: usize = 31;
         let regs = emit_on_threshold_registrations_to_gpu(&fixture.thresholds);
@@ -720,12 +729,15 @@ fn sparse_gpu_state_ping_pongs_and_matches_exact_eml_oracle() {
                 )
                 .expect("attached depth-1 emission warmup");
             assert!(warmup.evaluation_gpu_time_ns.is_none());
+            assert!(warmup.carry_gpu_time_ns.is_some());
         }
         let mut bare_crossing_samples_ns = Vec::new();
         let mut attached_crossing_samples_ns = Vec::new();
+        let mut attached_carry_samples_ns = Vec::new();
         let mut attached_emission_samples_ns = Vec::new();
         let mut attached_combined_samples_ns = Vec::new();
         let mut combined_delta_samples_ns = Vec::new();
+        let mut attached_full_samples_ns = Vec::new();
         for _ in 0..SAMPLES {
             crossing_session
                 .dispatch_threshold_scan(&ctx, &current, &previous)
@@ -754,30 +766,43 @@ fn sparse_gpu_state_ping_pongs_and_matches_exact_eml_oracle() {
             let emission = attached
                 .emission_gpu_time_ns
                 .expect("timestamp-supported EML/fixed-emission sample");
+            let carry = attached
+                .carry_gpu_time_ns
+                .expect("timestamp-supported StateCurrent-to-StateNext carry sample");
             let combined = attached_crossing + emission;
+            let full = combined + carry;
             bare_crossing_samples_ns.push(bare);
             attached_crossing_samples_ns.push(attached_crossing);
+            attached_carry_samples_ns.push(carry);
             attached_emission_samples_ns.push(emission);
             attached_combined_samples_ns.push(combined);
             combined_delta_samples_ns.push(combined - bare);
+            attached_full_samples_ns.push(full);
         }
         bare_crossing_samples_ns.sort_by(f64::total_cmp);
         attached_crossing_samples_ns.sort_by(f64::total_cmp);
+        attached_carry_samples_ns.sort_by(f64::total_cmp);
         attached_emission_samples_ns.sort_by(f64::total_cmp);
         attached_combined_samples_ns.sort_by(f64::total_cmp);
         combined_delta_samples_ns.sort_by(f64::total_cmp);
+        attached_full_samples_ns.sort_by(f64::total_cmp);
         let bare_median = bare_crossing_samples_ns[SAMPLES / 2];
         let attached_crossing_median = attached_crossing_samples_ns[SAMPLES / 2];
+        let carry_median = attached_carry_samples_ns[SAMPLES / 2];
         let emission_median = attached_emission_samples_ns[SAMPLES / 2];
         let combined_median = attached_combined_samples_ns[SAMPLES / 2];
         let delta_median = combined_delta_samples_ns[SAMPLES / 2];
+        let full_median = attached_full_samples_ns[SAMPLES / 2];
         let remaining_overhead = delta_median - emission_median;
         let ratio = combined_median / bare_median.max(1.0);
         let adapter = ctx.adapter.get_info();
         eprintln!(
-            "ACTIONBAND-DEPTH1-COMBINED-PATH adapter={:?} backend={:?} warmup={} samples={} statistic=median method=paired_same_run_same_threshold_workload timestamp_scope=production_compute_passes_excludes_cpu_sealed_join_maps_readback_and_boundary_apply bare_crossing_gpu_median_ns={bare_median:.0} attached_crossing_gpu_median_ns={attached_crossing_median:.0} attached_eml_fixed_emission_gpu_median_ns={emission_median:.0} attached_combined_gpu_median_ns={combined_median:.0} combined_path_delta_median_ns={delta_median:.0} remaining_actionband_overhead_median_ns={remaining_overhead:.0} depth1_target_evaluation_dispatches=0 depth1_world_regathers=0 crossing_timestamp_resolution_ns=1000 ratio={ratio:.3}",
+            "ACTIONBAND-DEPTH1-COMBINED-PATH adapter={:?} backend={:?} active_instance_rows={} state_width_bytes={} carry_bytes={} warmup={} samples={} statistic=median method=paired_same_run_same_threshold_workload timestamp_scope=production_gpu_commands_excludes_cpu_sealed_join_maps_readback_and_boundary_apply bare_crossing_gpu_median_ns={bare_median:.0} attached_crossing_gpu_median_ns={attached_crossing_median:.0} state_current_to_state_next_carry_gpu_median_ns={carry_median:.0} attached_eml_fixed_emission_gpu_median_ns={emission_median:.0} attached_combined_compute_gpu_median_ns={combined_median:.0} combined_compute_delta_median_ns={delta_median:.0} attached_full_gpu_median_ns={full_median:.0} remaining_actionband_compute_overhead_median_ns={remaining_overhead:.0} depth1_target_evaluation_dispatches=0 depth1_world_regathers=0 crossing_timestamp_resolution_ns=1000 ratio={ratio:.3}",
             adapter.name,
             adapter.backend,
+            active_instance_rows,
+            state_width_bytes,
+            carry_bytes,
             WARMUP,
             SAMPLES,
         );
@@ -1042,6 +1067,9 @@ fn inherited_admission_and_cpu_authority_fences_remain_closed() {
     assert!(shader.contains("var<storage, read> action_state_current"));
     assert!(!shader.contains("var<storage, read_write> action_state_current"));
     assert!(shader.contains("var<storage, read_write> action_state_next"));
+    assert!(shader.contains("@binding(7) var<storage, read> values: array<atomic<i32>>"));
+    assert!(!shader.contains("@binding(7) var<storage, read_write> values"));
+    assert!(kernel.contains("read_only: !matches!(binding, 5 | 6 | 13)"));
     assert!(kernel.contains(
         "encoder.copy_buffer_to_buffer(&self.state_current, 0, &self.state_next, 0, state_bytes)"
     ));

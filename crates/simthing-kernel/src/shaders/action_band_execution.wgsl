@@ -80,7 +80,7 @@ struct ActionBandDispatchParams {
 @group(0) @binding(4) var<storage, read> action_state_current: array<ActionBandStateGpu>;
 @group(0) @binding(5) var<storage, read_write> action_state_next: array<ActionBandStateGpu>;
 @group(0) @binding(6) var<storage, read_write> action_projection_next: array<f32>;
-@group(0) @binding(7) var<storage, read_write> values: array<atomic<i32>>;
+@group(0) @binding(7) var<storage, read> values: array<atomic<i32>>;
 @group(0) @binding(8) var<uniform> tick_params: ActionBandDispatchParams;
 @group(0) @binding(9) var<storage, read> action_bands: array<ActionBandBandGpu>;
 @group(0) @binding(10) var<storage, read> action_band_binding_indices: array<u32>;

@@ -27,7 +27,8 @@ fast entry instead: for a non-empty crossing batch a bounded GPU buffer copy
 carries current rows to next, the fast shader overwrites only crossing rows in
 next from the already-sealed `post_value`, and the same whole-buffer swap
 advances the generation. This preserves non-crossing rows without evaluating
-or gathering them. The entry performs total target projection, EML, and fixed
+or gathering them. One GPU timestamp pair brackets that existing carry command
+without changing its execution shape. The entry performs total target projection, EML, and fixed
 emission in one dispatch, with no target-evaluation dispatch or world-value
 gather. With no sealed crossing it performs no carry, compute work, or swap.
 
@@ -43,6 +44,10 @@ Numerical state readback exists only on the separately proof-gated
 `dispatch_and_readback` path. The sparse production egress is the unchanged
 `StructuralCommitment` packet minted through the existing sealed
 threshold/emission/boundary token chain.
+
+The world-values binding is read-only in both WGSL and the bind-group layout.
+ActionBand performs atomic loads from the shared numerical surface and has no
+write access to it.
 
 Crossing work can be obtained only by joining the immutable plan to existing
 sealed `BandCrossingDelta` rows. ActionBand has no comparator, crossing record,
@@ -85,23 +90,27 @@ failure class:
 
 | Test | Admission reason / defect caught |
 |---|---|
-| `sparse_gpu_state_ping_pongs_and_matches_exact_eml_oracle` | Runs production dispatch with proof readback disabled, then proof generations; checks strict read-current/write-next/swap progression, the depth-1 crossing → empty → crossing sequence (state generations 1 → 1 → 2), admitted velocity execution, exact GPU/CPU-referee EML parity, source-bound structural provenance, real `Remove` application, RED CPU numeric re-derivation, RED fabricated event-kind provenance, deferred non-7.2 destinations, the no-gather/no-evaluator depth-1 fast path, and the paired combined-path timestamp measurement. |
+| `sparse_gpu_state_ping_pongs_and_matches_exact_eml_oracle` | Runs production dispatch with proof readback disabled, then proof generations; checks strict read-current/write-next/swap progression, the depth-1 crossing → empty → crossing sequence (state generations 1 → 1 → 2), admitted velocity execution, exact GPU/CPU-referee EML parity, source-bound structural provenance, real `Remove` application, RED CPU numeric re-derivation, RED fabricated event-kind provenance, deferred non-7.2 destinations, the no-gather/no-evaluator depth-1 fast path, and the paired compute plus separately timestamped carry measurement. |
 | `sealed_crossings_are_the_only_emission_ingress_and_destinations_stay_frozen` | Empty sealed evidence emits nothing; the existing Phase-5 delta joins exactly once; an empty depth-1 batch performs zero ActionBand compute work. It catches a rival crossing input/record or unconditional shallow dispatch. |
 | `inactive_rows_allocate_zero_hot_storage_and_dense_mutant_is_red` | Proves zero active rows means zero hot bytes and plants a dense two-row allocation against a one-row frozen cap, which fails in production lowering. |
 | `bucketing_is_numeric_deterministic_and_labels_are_semantic_shadow_only` | Same numeric product under different labels has the same fingerprint/buckets; equal program/binding shapes share a bucket, a distinct EML program shape separates, and the resulting two numeric ranges execute as two production GPU dispatches. |
-| `inherited_admission_and_cpu_authority_fences_remain_closed` | Rechecks the one-shot 7.1 door, forbidden CPU evaluator/planner/scheduler/local-queue vocabulary, read-only `StateCurrent`, write-only-next shader progression, the bounded GPU current→next carry plus ordinary swap, absence of per-row buffer alternation or a world gather in the depth-1 entry, absence of raw value writes or detached structural-source constructors, preservation of threshold registration/locus identity, and absence of numeric selection in the generic structural door. |
+| `inherited_admission_and_cpu_authority_fences_remain_closed` | Rechecks the one-shot 7.1 door, forbidden CPU evaluator/planner/scheduler/local-queue vocabulary, read-only `StateCurrent` and world-values bindings, write-only-next shader progression, the bounded GPU current→next carry plus ordinary swap, absence of per-row buffer alternation or a world gather in the depth-1 entry, absence of raw value writes or detached structural-source constructors, preservation of threshold registration/locus identity, and absence of numeric selection in the generic structural door. |
 
 ## Repeated depth-1 measurement
 
-Method: paired samples of the same one-row/one-dimension threshold workload on
-one NVIDIA GeForce RTX 4080 Laptop GPU / Vulkan adapter and run. Arm 1 is the
+Method: paired samples of the same one-active-row/one-dimension threshold workload on
+one NVIDIA GeForce RTX 4080 Laptop GPU / Vulkan adapter and run. The carried
+`ActionBandStateGpu` row is 32 bytes, so the existing current-to-next copy moves
+32 bytes per attached sample. Arm 1 is the
 unchanged bare `AccumulatorOpSession` crossing pass. Arm 2 executes that same
 crossing pass and attaches the direct depth-1 ActionBand incremental work: one
 scalar-bound target, one admitted three-node payload program (`PARAM(0) * 2`),
 one sealed crossing, and one fixed structural binding. Five paired warmups and
 31 paired samples were recorded with GPU timestamp queries; the statistic is
-the median. The attached combined time is the crossing timestamp plus the
-crossing-triggered EML/fixed-emission timestamp for that sample. CPU sealed
+the median. One encoder timestamp pair separately measures the existing
+`StateCurrent -> StateNext` copy. The attached combined-compute time retains its
+prior definition: crossing timestamp plus the crossing-triggered
+EML/fixed-emission timestamp for that sample. CPU sealed
 join, maps, readback, boundary submission, and structural apply are excluded.
 The crossing accessor has 1,000 ns resolution.
 
@@ -109,22 +118,25 @@ Observed local median:
 
 - Bare crossing median: **5,000 ns**
 - Attached arm crossing component median: **5,000 ns**
-- Attached EML + fixed structural emission median: **5,632 ns**
-- Attached combined-path median: **10,568 ns**
-- Paired combined-path delta median: **5,568 ns**
-- Remaining compute-pass ActionBand overhead after EML/fixed emission: **-64 ns**
+- StateCurrent -> StateNext carry-copy median (32 bytes): **4,096 ns**
+- Attached EML + fixed structural emission median: **5,888 ns**
+- Attached combined-compute median (crossing + emission): **10,888 ns**
+- Paired combined-compute delta median: **5,888 ns**
+- Attached full GPU-command median (crossing + carry + emission): **15,240 ns**
+- Remaining compute-pass ActionBand overhead after EML/fixed emission: **0 ns**
 - Depth-1 target-evaluation dispatches: **0**
 - Depth-1 world re-gathers: **0**
-- Ratio: **2.114x**
+- Combined-compute / bare-crossing ratio: **2.178x**
 
 This closes the §15.2/§15.3 attribution defect: the actual attached production
 shape pays the already-owed crossing plus exactly the crossing-triggered EML
-and fixed-emission dispatch. The paired median delta is within 64 ns of that
-emission component (the signed -64 ns residual is timestamp/median noise);
+and fixed-emission dispatch. The paired median delta equals that emission
+component in this run;
 there is no independent target-evaluation pass, second comparison,
 CPU re-derivation, duplicate field projection, or shallow-path world re-gather.
-The bounded GPU current→next carry is a command-encoder buffer copy outside the
-unchanged compute-pass timestamp envelope; it performs no semantic evaluation.
+The bounded GPU current-to-next carry remains a command-encoder buffer copy and
+is now reported separately from the unchanged combined-compute envelope; it
+performs no semantic evaluation.
 This tiny shape still does not validate §15.6 production-cardinality
 sparse-gather scaling, and the ratio is not a pass/fail threshold or broad
 hardware performance claim.

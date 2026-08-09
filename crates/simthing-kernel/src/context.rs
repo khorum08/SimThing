@@ -20,6 +20,7 @@ pub struct GpuContext {
     pub device: Device,
     pub queue: Queue,
     timestamp_supported: bool,
+    encoder_timestamp_supported: bool,
     timestamp_period_ns: f32,
 }
 
@@ -57,12 +58,17 @@ impl GpuContext {
                 .ok_or(GpuInitError::NoAdapter)?,
         };
 
-        let timestamp_supported = adapter.features().contains(Features::TIMESTAMP_QUERY);
-        let required_features = if timestamp_supported {
-            Features::TIMESTAMP_QUERY
-        } else {
-            Features::empty()
-        };
+        let adapter_features = adapter.features();
+        let timestamp_supported = adapter_features.contains(Features::TIMESTAMP_QUERY);
+        let encoder_timestamp_supported = adapter_features
+            .contains(Features::TIMESTAMP_QUERY | Features::TIMESTAMP_QUERY_INSIDE_ENCODERS);
+        let mut required_features = Features::empty();
+        if timestamp_supported {
+            required_features |= Features::TIMESTAMP_QUERY;
+        }
+        if encoder_timestamp_supported {
+            required_features |= Features::TIMESTAMP_QUERY_INSIDE_ENCODERS;
+        }
 
         let mut limits = adapter.limits();
         // C-8a EvalEML adds two read-only storage bindings (8–9); need >8 total.
@@ -89,12 +95,17 @@ impl GpuContext {
             device,
             queue,
             timestamp_supported,
+            encoder_timestamp_supported,
             timestamp_period_ns,
         })
     }
 
     pub fn timestamp_supported(&self) -> bool {
         self.timestamp_supported
+    }
+
+    pub fn encoder_timestamp_supported(&self) -> bool {
+        self.encoder_timestamp_supported
     }
 
     pub fn timestamp_period_ns(&self) -> f32 {

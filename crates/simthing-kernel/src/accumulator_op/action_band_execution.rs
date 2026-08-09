@@ -479,8 +479,10 @@ pub struct ActionBandExecutionReadback {
     /// selection never reads these values.
     pub emission_payloads: Vec<f32>,
     /// Sum of ActionBand compute-pass GPU timestamps. `None` when the adapter
-    /// does not expose timestamp queries; excludes copies and CPU readback.
+    /// does not expose timestamp queries; excludes the separately measured
+    /// state carry and CPU readback.
     pub gpu_time_ns: Option<f64>,
+    pub carry_gpu_time_ns: Option<f64>,
     pub evaluation_gpu_time_ns: Option<f64>,
     pub emission_gpu_time_ns: Option<f64>,
 }
@@ -492,6 +494,7 @@ pub struct ActionBandProductionDispatch {
     pub commitments: Vec<StructuralCommitment>,
     pub bucket_dispatches: u32,
     pub gpu_time_ns: Option<f64>,
+    pub carry_gpu_time_ns: Option<f64>,
     pub evaluation_gpu_time_ns: Option<f64>,
     pub emission_gpu_time_ns: Option<f64>,
 }
@@ -610,7 +613,7 @@ impl ActionBandGpuSession {
                         wgpu::BufferBindingType::Uniform
                     } else {
                         wgpu::BufferBindingType::Storage {
-                            read_only: !matches!(binding, 5 | 6 | 7 | 13),
+                            read_only: !matches!(binding, 5 | 6 | 13),
                         }
                     },
                     has_dynamic_offset: false,
@@ -734,6 +737,7 @@ impl ActionBandGpuSession {
             commitments: production.commitments,
             emission_payloads,
             gpu_time_ns: production.gpu_time_ns,
+            carry_gpu_time_ns: production.carry_gpu_time_ns,
             evaluation_gpu_time_ns: production.evaluation_gpu_time_ns,
             emission_gpu_time_ns: production.emission_gpu_time_ns,
         })
@@ -841,11 +845,30 @@ impl ActionBandGpuSession {
         });
         let depth1_advances =
             self.plan.depth1_crossing_fast_path && !crossings.bucket_ranges.is_empty();
+        let carry_timestamped = depth1_advances
+            && ctx.encoder_timestamp_supported()
+            && self.timestamp_query_set.is_some();
         if depth1_advances {
             // Preserve rows that did not cross without evaluating or gathering
             // them. The fast shader overwrites only crossing rows in StateNext;
             // the ordinary whole-buffer swap remains the generation boundary.
+            if carry_timestamped {
+                encoder.write_timestamp(
+                    self.timestamp_query_set
+                        .as_ref()
+                        .expect("carry timestamp support creates a query set"),
+                    0,
+                );
+            }
             encoder.copy_buffer_to_buffer(&self.state_current, 0, &self.state_next, 0, state_bytes);
+            if carry_timestamped {
+                encoder.write_timestamp(
+                    self.timestamp_query_set
+                        .as_ref()
+                        .expect("carry timestamp support creates a query set"),
+                    1,
+                );
+            }
         }
         if !self.plan.depth1_crossing_fast_path {
             let timestamp_writes = self.timestamp_query_set.as_ref().map(|query_set| {
@@ -865,7 +888,11 @@ impl ActionBandGpuSession {
         }
         if !crossings.bucket_ranges.is_empty() {
             let timestamp_start = if self.plan.depth1_crossing_fast_path {
-                0
+                if carry_timestamped {
+                    2
+                } else {
+                    0
+                }
             } else {
                 2
             };
@@ -911,6 +938,8 @@ impl ActionBandGpuSession {
         let timestamp_count = if self.plan.depth1_crossing_fast_path {
             if crossings.bucket_ranges.is_empty() {
                 0
+            } else if carry_timestamped {
+                4
             } else {
                 2
             }
@@ -979,22 +1008,32 @@ impl ActionBandGpuSession {
         } else {
             (Vec::new(), Vec::new())
         };
-        let (evaluation_gpu_time_ns, emission_gpu_time_ns) = if timestamp_count == 0 {
-            (None, None)
-        } else if let Some(timestamp_buffer) = self.timestamp_readback.as_ref() {
-            let stamps = readback::<u64>(device, timestamp_buffer, timestamp_count as usize)?;
-            let period = ctx.timestamp_period_ns() as f64;
-            if self.plan.depth1_crossing_fast_path {
-                (None, Some((stamps[1] - stamps[0]) as f64 * period))
+        let (carry_gpu_time_ns, evaluation_gpu_time_ns, emission_gpu_time_ns) =
+            if timestamp_count == 0 {
+                (None, None, None)
+            } else if let Some(timestamp_buffer) = self.timestamp_readback.as_ref() {
+                let stamps = readback::<u64>(device, timestamp_buffer, timestamp_count as usize)?;
+                let period = ctx.timestamp_period_ns() as f64;
+                if self.plan.depth1_crossing_fast_path {
+                    if carry_timestamped {
+                        (
+                            Some((stamps[1] - stamps[0]) as f64 * period),
+                            None,
+                            Some((stamps[3] - stamps[2]) as f64 * period),
+                        )
+                    } else {
+                        (None, None, Some((stamps[1] - stamps[0]) as f64 * period))
+                    }
+                } else {
+                    (
+                        None,
+                        Some((stamps[1] - stamps[0]) as f64 * period),
+                        (timestamp_count == 4).then(|| (stamps[3] - stamps[2]) as f64 * period),
+                    )
+                }
             } else {
-                (
-                    Some((stamps[1] - stamps[0]) as f64 * period),
-                    (timestamp_count == 4).then(|| (stamps[3] - stamps[2]) as f64 * period),
-                )
-            }
-        } else {
-            (None, None)
-        };
+                (None, None, None)
+            };
         let gpu_time_ns = if evaluation_gpu_time_ns.is_some() || emission_gpu_time_ns.is_some() {
             Some(evaluation_gpu_time_ns.unwrap_or(0.0) + emission_gpu_time_ns.unwrap_or(0.0))
         } else {
@@ -1005,6 +1044,7 @@ impl ActionBandGpuSession {
                 commitments,
                 bucket_dispatches: crossings.bucket_ranges.len() as u32,
                 gpu_time_ns,
+                carry_gpu_time_ns,
                 evaluation_gpu_time_ns,
                 emission_gpu_time_ns,
             },
