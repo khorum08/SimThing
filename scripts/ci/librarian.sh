@@ -152,7 +152,15 @@ def cmd_staleness():
     lines = ["LIBRARIAN STALENESS"]
     lines.append(f"harness-fixture-count: {harness_fixture_count()}")
     anchor = run_script(ANCHOR_CHECK, "--resync", "--dry-run")
-    append_owner_block(lines, "anchor-resync-preview", anchor)
+    # Emit only anchors that would CHANGE. The dry-run prints one line per anchor
+    # and they are overwhelmingly `UNCHANGED <id>`, which carries no information
+    # the verdict line does not already state as `resynced=0`. That block scaled
+    # with the anchor table, so growing 35 -> 43 anchors pushed this report past
+    # its 60-line cap and the librarian refused to print while every underlying
+    # check passed. Health is unaffected: owner_ok() below reads the raw result,
+    # never these filtered lines.
+    append_owner_block(lines, "anchor-resync-preview", anchor,
+                       keep=lambda line: not line.startswith("UNCHANGED "))
     dead = run_script(ANCHOR_QUERY, "--dead-listeners")
     append_owner_block(lines, "dead-listeners", dead)
     prune = run_script(ANCHOR_QUERY, "--prune", "--dry-run")
