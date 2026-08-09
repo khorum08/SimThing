@@ -52,7 +52,7 @@ The rival crossing path is unconstructible at the admitted production boundary: 
 | `python scripts/ci/exit_proof_coverage_check.sh` | INSPECT — one inherited unrelated TODO-row finding on rung 11.2 |
 | `bash scripts/ci/test_inventory_drift_check.sh` | PASS — 1,171 discovered/ledgered, 0 unledgered, 0 stale after five DA-authorized data-ledger rows |
 
-Affected-package, orientation, anchor, doctrine, agent, exit-proof, hosted Doctrine Scan, and hosted Doctrine Exec results are recorded against the exact final evidence head in the PR and board relay so the repository evidence packet does not claim a self-referential SHA.
+Affected-package, orientation, anchor, doctrine, agent, exit-proof, hosted Doctrine Scan, and hosted Doctrine Exec results are recorded against the exact final evidence head in the PR and board relay, while this repository packet remains bound to the implementation identity it proves.
 
 ## Scope Ledger
 
