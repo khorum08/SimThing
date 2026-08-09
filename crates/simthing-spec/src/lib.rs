@@ -61,6 +61,13 @@ pub use boundary::{
     ScriptedEventBoundaryContext, ScriptedEventBoundaryHandler, ScriptedEventDiagnostic,
     ScriptedEventDiagnosticKind,
 };
+pub use compile::action_band_admission::{
+    ActionBandAdmissionError, ActionBandCrossingBinding, ActionBandSemanticShadow,
+    ActionBandSessionBuildDoor, ActionBandTableSpan, ActionBandTemplateIndex,
+    AdmittedActionBandBand, AdmittedActionBandChannel, AdmittedActionBandTarget,
+    AdmittedActionBandTemplate, ExistingThresholdRegistrationIndex, FrozenActionBandTemplates,
+    PreAdmittedEmissionBindingIndex,
+};
 pub use compile::jit_kernel_production_registry_shell::{
     ProductionKernelRegistryShell, ProductionKernelRegistryShellConfig,
     RegisteredProductionCandidate,
@@ -367,6 +374,11 @@ pub use runtime::{
     CapabilityTreeNotification, CapabilityTreeState, CapabilityUnlockRegistration, CompiledEffect,
     CompiledThresholdTrigger, CompiledTrigger, ScriptedEventDefinition, ScriptedEventDefinitionId,
     ScriptedEventInstance, ScriptedEventInstanceKey,
+};
+pub use spec::action_band::{
+    ActionBandAdmissionBudgetSpec, ActionBandBandSpec, ActionBandChannelBindingSpec,
+    ActionBandChannelKind, ActionBandRequirementSemantics, ActionBandSessionSpec,
+    ActionBandTargetSpec, ActionBandTemplateSpec, ActionBandVelocitySpec, ScalarBoundDirection,
 };
 pub use spec::capability::{
     ActivationMode, CapabilityCategorySpec, CapabilityEffectSpec, CapabilityPrereqSpec,
