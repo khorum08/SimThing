@@ -1,9 +1,9 @@
 glob	trigger_domains
-crates/simthing-kernel/**	kernel,seal,unsafe-adjacent,kernel-columns,kernel-eml,kernel-magnitude,scenario-candidate-home,core-0087,field-sweep-preservation
-crates/simthing-gpu/**	gpu,wgsl,seal,structural-execution,scenario-candidate-home,core-0087,field-sweep-preservation
-crates/simthing-sim/**	sim,field-policy,scenario-candidate-home,core-0087,field-sweep-preservation
+crates/simthing-kernel/**	kernel,seal,unsafe-adjacent,kernel-columns,kernel-eml,kernel-magnitude,scenario-candidate-home,core-0087,field-sweep-preservation,actionband
+crates/simthing-gpu/**	gpu,wgsl,seal,structural-execution,scenario-candidate-home,core-0087,field-sweep-preservation,actionband
+crates/simthing-sim/**	sim,field-policy,scenario-candidate-home,core-0087,field-sweep-preservation,actionband
 **/*.wgsl	wgsl,field-policy,sim
-crates/simthing-driver/**	driver,field-policy,overlay,structural-execution,scenario-candidate-home,founding-ontology,stead,core-0087
+crates/simthing-driver/**	driver,field-policy,overlay,structural-execution,scenario-candidate-home,founding-ontology,stead,core-0087,actionband
 crates/simthing-mapeditor/**	studio,mapeditor-gpu,mapeditor-session,map-domain,scenario-candidate-home,field-policy,founding-ontology,stead,core-0087
 crates/simthing-mapgenerator/**	mapgenerator,map,map-domain,movement-front,clausething-spatial,scenario-candidate-home,core-0087
 crates/simthing-clausething/**	spatial,clausething-spatial,map,scenario-candidate-home,core-0087
@@ -14,7 +14,7 @@ docs/design_0_0_8_3.md	spec-fidelity,exact-numeric,founding-ontology,clausething
 docs/simthing_core_design.md	field-policy,one-tree,property-value,drift-detectors,movement-front
 scripts/ci/doctrine_anchors.tsv	gate-wiring,orientation
 scripts/ci/anchor_triggers.tsv	gate-wiring,orientation
-crates/simthing-spec/**	spec,hydration,scenario-candidate-home,core-0087
+crates/simthing-spec/**	spec,hydration,scenario-candidate-home,core-0087,actionband
 crates/simthing-feeder/**	feeder,capability-paths,scenario-candidate-home,core-0087
 crates/simthing-core/**	scenario-candidate-home,core-0087,overlay,rf,property-value,stead,threshold-paths
 crates/simthing-tools/**	scenario-candidate-home
