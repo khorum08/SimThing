@@ -164,7 +164,13 @@ def cmd_staleness():
     dead = run_script(ANCHOR_QUERY, "--dead-listeners")
     append_owner_block(lines, "dead-listeners", dead)
     prune = run_script(ANCHOR_QUERY, "--prune", "--dry-run")
-    append_owner_block(lines, "reach-log-prune-preview", prune)
+    # Same unbounded-growth shape as anchor-resync-preview: one PRUNE-ITEM line per
+    # reach-log row crossing the 30-day window. 16 today, ~50 in a week, ~490 within
+    # a month -- it would breach the 60-line cap around 2026-08-16. The verdict line
+    # already states `removed=N kept=M days=30`, so the per-item lines restate it.
+    # Health is unaffected: owner_ok() below reads the raw result, not these lines.
+    append_owner_block(lines, "reach-log-prune-preview", prune,
+                       keep=lambda line: not line.startswith("ANCHOR-QUERY-PRUNE-ITEM:"))
     expiry = run_script(TRACK_CLOSEOUT, "--artifact-expiry")
     append_owner_block(lines, "lease-aging", expiry)
     discover = run_script(TRACK_CLOSEOUT, "--discover")
