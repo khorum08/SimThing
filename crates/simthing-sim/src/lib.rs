@@ -61,7 +61,6 @@ pub mod gpu_sync;
 pub mod legacy_oracle;
 pub mod mapping_atlas_scheduler;
 pub mod mapping_plan_tick;
-pub mod movement_ingress;
 pub mod observability;
 pub mod overlay_lifecycle;
 pub mod property_expiry;
@@ -101,11 +100,6 @@ pub use mapping_plan_tick::{
     cpu_min_plus_d_from_composed_interleaved, cpu_structured_field_horizon, CompiledMappingPlan,
     CompiledMappingStep, MappingTickInputs, SimGpuMappingReadbackPolicy, SimGpuMappingTickOutput,
     SimGpuMappingTickState,
-};
-pub use movement_ingress::{
-    apply_movement_commitments, validate_movement_cost_band, validate_movement_overlay,
-    MovementCommitment, MovementFieldLocus, MovementIngressError, MovementIngressOutcome,
-    MovementOverlayEffect,
 };
 pub use observability::{
     ObservabilityReport, ObserveFidelity, OverlayContribution, PropertyObservation,

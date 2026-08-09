@@ -54,15 +54,16 @@ use simthing_gpu::{
     ThresholdRegistration, TopologyState, WorldGpuState, DEFAULT_THRESHOLD_EMISSION_CAPACITY,
 };
 
-use crate::anchor_remap_encode::{
-    build_exact_anchor_remap_section, gate_structural_gpu_encode_exact, snapshot_anchored_loci,
-};
 use crate::delta_log::{entries_from_outcome, BoundaryDeltaEntry};
 use crate::fission::{resolve_fission_fusion, FissionLineageRecord, FissionOutcome};
 use crate::fission_clone_source_view::fission_clone_source_children;
+use crate::anchor_remap_encode::{
+    build_exact_anchor_remap_section, gate_structural_gpu_encode_exact, snapshot_anchored_loci,
+};
 use crate::gpu_sync::{sync_gpu_buffers, GpuSyncOutcome};
-use crate::movement_ingress::{
-    apply_movement_commitments, merge_maintainer, MovementCommitment, MovementIngressOutcome,
+use simthing_core::AnchorRemapSection;
+use simthing_gpu::{
+    apply_band_crossing_deltas_from_threshold_events, BandCrossingDelta,
 };
 use crate::observability::{observe, ObservabilityReport, ObserveFidelity};
 use crate::overlay_lifecycle::{resolve_overlay_lifecycle, LifecycleOutcome};
@@ -79,8 +80,6 @@ use crate::threshold_registry::{
 };
 use crate::tree_index::{build_node_paths, node_at_path};
 use crate::tree_mutation::apply_structural_mutations;
-use simthing_core::AnchorRemapSection;
-use simthing_gpu::{apply_band_crossing_deltas_from_threshold_events, BandCrossingDelta};
 use std::collections::HashSet;
 use std::time::Instant;
 
@@ -111,8 +110,6 @@ pub struct BoundaryOutcome {
     pub expiry: ExpiryOutcome,
     pub fission: FissionOutcome,
     pub maintainer: MaintainerOutcome,
-    /// Sealed field-crossing movements applied through the ordinary structural path.
-    pub movement: MovementIngressOutcome,
     pub gpu_sync: GpuSyncOutcome,
     /// Typed Anchored-locus remap witness for this boundary's structural encode.
     pub anchor_remap: AnchorRemapSection,
@@ -143,8 +140,6 @@ pub struct BoundaryHookContext<'a> {
     pub shadow: &'a mut [f32],
     pub n_dims: usize,
     pub requests: &'a mut Vec<BoundaryRequest>,
-    /// Boundary-only sealed movement ingress; never visible to the hot loop.
-    pub movements: &'a mut Vec<MovementCommitment>,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -484,7 +479,6 @@ impl BoundaryProtocol {
         };
         let n_dims = coord.n_dims() as usize;
         let mut requests = Vec::new();
-        let mut movements = Vec::new();
         let mut dirty_value_slots = Vec::new();
         let mut force_full_value_upload = false;
         let mut topology_dirty = false;
@@ -531,7 +525,8 @@ impl BoundaryProtocol {
         // BAND-QUANTIZED-DRAW-0: ordinary production CostBand path — every sealed
         // crossing resolves through the event_kind semantic table (observation
         // default N=0; admitted sinks quantize with authored throttle).
-        out.cost_band_draws = self.resolve_production_cost_band_draws(&out.band_crossing_deltas);
+        out.cost_band_draws =
+            self.resolve_production_cost_band_draws(&out.band_crossing_deltas);
         // Dynamic band/value/urgency/generation live on the GPU table (fused
         // threshold companion). BandCrossingDelta remains wire/replay evidence only.
         // Generation for *this* day's crossings was supplied before the fused
@@ -587,7 +582,6 @@ impl BoundaryProtocol {
                 shadow: &mut coord.shadow,
                 n_dims,
                 requests: &mut requests,
-                movements: &mut movements,
             };
             hook(&mut hook_ctx);
         }
@@ -739,7 +733,7 @@ impl BoundaryProtocol {
                 overlay: ai.overlay,
             });
         }
-        out.boundary_requests = requests.len() as u32 + movements.len() as u32;
+        out.boundary_requests = requests.len() as u32;
         out.timing.request_drain_ms = request_drain_started.elapsed().as_secs_f64() * 1000.0;
 
         // Pre-grow for AddChild subtrees so apply_structural_mutations can
@@ -770,18 +764,9 @@ impl BoundaryProtocol {
             coord.shadow.resize(needed, 0.0);
         }
 
-        let structural_started = Instant::now();
-        let (mut movement_maintainer, movement_outcome) = apply_movement_commitments(
-            movements,
-            &mut self.root,
-            &mut self.allocator,
-            &mut self.registry,
-            &mut coord.shadow,
-            n_dims,
-        );
-        out.movement = movement_outcome;
         let structural_paths = build_node_paths(self.root.inner());
-        let ordinary_maintainer = apply_structural_mutations(
+        let structural_started = Instant::now();
+        out.maintainer = apply_structural_mutations(
             requests,
             &mut self.root,
             &mut self.allocator,
@@ -790,8 +775,6 @@ impl BoundaryProtocol {
             n_dims,
             Some(&structural_paths),
         );
-        merge_maintainer(&mut movement_maintainer, ordinary_maintainer);
-        out.maintainer = movement_maintainer;
         for &id in &out.maintainer.allocated {
             push_slot_for_id(&self.allocator, id, &mut dirty_value_slots);
         }
@@ -1382,13 +1365,8 @@ impl BoundaryProtocol {
         n_dims: usize,
         loci: &simthing_core::AnchoredLocusMap,
     ) {
-        let table = mint_anchor_table_from_admission(
-            self.root.inner(),
-            &self.registry,
-            loci,
-            values,
-            n_dims,
-        );
+        let table =
+            mint_anchor_table_from_admission(self.root.inner(), &self.registry, loci, values, n_dims);
         state.upload_typed_anchor_table(&table);
         state.run_anchor_table_magnitude_maintain();
     }

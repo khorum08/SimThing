@@ -187,36 +187,6 @@ impl SimRuntimeTree {
         find_node(&self.inner, id).is_some()
     }
 
-    /// Current authoritative spatial parent. This observes tree membership;
-    /// it does not expose semantic kind or create a retained route.
-    pub fn parent_id_of(&self, id: SimThingId) -> Option<SimThingId> {
-        find_parent(&self.inner, id)
-    }
-
-    /// Pure effective-owner observation through the intrinsic owner channel.
-    pub fn resolved_owner(
-        &self,
-        id: SimThingId,
-    ) -> Result<
-        simthing_core::owner_channel::OwnerRef,
-        simthing_core::owner_channel::OwnerResolutionError,
-    > {
-        simthing_core::owner_channel::resolve_owner(&self.inner, id)
-    }
-
-    /// Clone one installed overlay for boundary/referee observation.
-    pub fn overlay_snapshot(
-        &self,
-        host: SimThingId,
-        overlay_id: OverlayId,
-    ) -> Option<simthing_core::Overlay> {
-        find_node(&self.inner, host)?
-            .overlays
-            .iter()
-            .find(|overlay| overlay.id == overlay_id)
-            .cloned()
-    }
-
     /// Query one node without exposing raw `SimThing` or `.kind`.
     pub fn snapshot_node(&self, id: SimThingId) -> Option<RuntimeNodeSnapshot> {
         let node = find_node(&self.inner, id)?;
@@ -330,13 +300,4 @@ fn find_node_mut<'a>(root: &'a mut SimThing, id: SimThingId) -> Option<&'a mut S
         }
     }
     None
-}
-
-fn find_parent(root: &SimThing, id: SimThingId) -> Option<SimThingId> {
-    if root.children.iter().any(|child| child.id == id) {
-        return Some(root.id);
-    }
-    root.children
-        .iter()
-        .find_map(|child| find_parent(child, id))
 }
