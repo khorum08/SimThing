@@ -1,177 +1,127 @@
 # Multi-Axis ActionBand + STEAD
-## Semantic value axes, recursive RF state, PALMA gradients, and typed multisource commitment
+## Intrinsic recursive event execution over STEAD value fields, PALMA routes, RF, EML, and CostBand
 
-> **Status: WORKSHOP / DESIGN SYNTHESIS — NOT DESIGN-ADMITTED BY THIS DOCUMENT.**
+> **Status: OWNER-RULED DESIGN CANDIDATE — FOR FABLE 5 MAX + ENGINEERING REVIEW.**
 >
-> This document consolidates two lines of SimThing design that have repeatedly reappeared as if they were separate problems:
+> Owner ruling, 2026-08-08: **ActionBand is a first-class intrinsic SimThing facility.** It is part of the base recursive stem-cell definition, inert by default, and is the generic facility by which a SimThing listens to recursively produced state, compares that state with desired conditions, follows a lawful STEAD/PALMA route toward resolution, and emits executable consequences as authored bands are crossed.
 >
-> 1. the **Capability Tree / talent / technology unlock** work, which already established the shape of a heterogeneous multi-source action requirement; and
-> 2. the **0.0.8.7 RF + STEAD + PALMA + ActionBand** work, which establishes how recursively evaluated SimThing state becomes observable field pressure and action potential.
+> This document is intended to become the governing ActionBand anchor after DA review/admission. It does **not** by itself edit the 0.0.8.7 ladder or close the separate rollback/reconciliation ceremony required for already-graduated movement/7.1a work.
 >
-> The additional clarifying model is the familiar **Stellaris-style opposing value-axis web**: a small number of well-chosen axes define a coordinate space; higher-order labels arise from location and motion in that space rather than becoming primitive mechanics.
+> The prior workshop disposition that attempted to infer ActionBand from already-landed domain witnesses is not the governing architectural premise of this document. The direction is inverted:
 >
-> The thesis of this document is that these are one composition:
+> **ActionBand is intrinsic. Domain behaviors are derived/vendorized uses of ActionBand.**
 >
-> ```text
-> recursive RF state
->     ↓
-> multi-axis semantic projection
->     ↓
-> STEAD field bundle / heat volume
->     ↓
-> actor/action-specific EML projection
->     ↓
-> PALMA potential / impedance gradient
->     ↓
-> ActionBand candidate commitment
->     ↓
-> typed multisource requirements
->     ↓
-> RF clear / hold / disburse
->     ↓
-> CostBand executable depth
->     ↓
-> ordinary consequence
->     ↓
-> new recursive RF state
-> ```
->
-> This closes the loop without introducing domain planners, bespoke goal systems, or a universal transaction subsystem.
+> In particular, physical movement is a useful spatial exemplar but never a peer core facility or the source from which ActionBand is generalized.
 
 ---
 
-## 1. Design question
+## 0. Executive definition
 
-Can a SimThing world express rich demographic, economic, social, spatial, strategic, or production behavior using:
+An **ActionBand** is an intrinsic, normally inert facility on every SimThing that represents an unresolved transition between:
 
-- a small set of **strong primitive value/resource axes**;
-- recursive RF evaluation over SimThing parent/child structure;
-- STEAD as the spatial/relational propagation of those values;
-- EML as the actor-specific projection of those values into action desirability;
-- PALMA as the topology-aware potential/impedance surface over which candidate progress is found;
-- and a **typed multisource ActionBand** that distinguishes capability checks, signals, consumables, reservations, transfers, and progress?
+1. the SimThing's **current coordinate** on one or more admitted STEAD value axes; and
+2. a **desired target point, interval, region, or condition set** on those same observables.
 
-The proposed answer is **yes in structure, subject to empirical falsification of the chosen semantic basis and quantitative commitment lowering**.
+The ActionBand derives the displacement between current and target state, observes whether that displacement is improving or worsening, evaluates the **stakes** of leaving the displacement unresolved, and uses admitted EML plus PALMA where topology exists to determine lawful progress toward the target.
 
-The important constraint is that the engine must not confuse three different spaces:
+Authored **bands** are threshold surfaces over ActionBand observables. Crossing a band emits an optional EML payload. That payload may:
 
-1. **semantic / observational field space** — what conditions exist and what they imply;
-2. **resource / conservation space** — what can actually be consumed, reserved, transferred, or allocated;
-3. **action / progress space** — what an actor can actually commit and complete this generation.
+- observe/check ordinary state;
+- originate or modify ordinary overlays/directives;
+- make ordinary RF claims;
+- consume/transfer/reserve through the resource's existing semantics;
+- invoke CostBand work/progress;
+- authorize ordinary state changes;
+- request an existing boundary-owned structural consequence; or
+- activate one or more subordinate ActionBands on the **same intrinsic SimThing facility**.
 
-These spaces interact, but they are not interchangeable.
+Most ActionBands are expected to be depth 1 or depth 2. Richer multiband and recursively nested forms are lawful, but complexity is pay-for-play.
+
+The complete conceptual loop is:
+
+```text
+recursive SimThing / RF state
+          ↓
+  resultant STEAD axes
+          ↓
+ current coordinate X(t)
+          │
+          │ compare against
+          ▼
+ target set G(t)
+          ↓
+ displacement D(t)
+ velocity dD/dt
+ stakes Σ(t)
+          ↓
+ EML valuation / deficiency resolution
+          ↓
+ PALMA-informed route where topology exists
+          ↓
+      ActionBand progress
+          ↓
+ authored band crossing
+          ↓
+ optional EML payload
+          ↓
+ existing RF / CostBand / overlay / boundary facilities
+          ↓
+ partial or terminal consequence
+          ↓
+ new ordinary SimThing state
+          ↓
+ next-generation recursive state
+```
+
+An ActionBand is therefore not merely a selector in front of execution. **It is the SimThing's intrinsic event/action execution trajectory from unresolved condition to resolved condition.**
 
 ---
 
-## 2. Archaeology: what the Capability Tree already solved
+# 1. Constitutional placement: ActionBand is the SimThing `act` facility
 
-The Capability Tree design is the strongest prior art for multisource action semantics inside SimThing.
+The existing StemThing thesis remains unchanged: the base recursive SimThing carries all generic capabilities inert-by-default, and domain specialization activates or authors those capabilities rather than introducing peer engines.
 
-A capability tree is one SimThing attached to an owner. The simulation does not know “technology tree,” “talent tree,” or “national ideas.” It sees:
+ActionBand belongs inside that rule.
 
-- GPU-tracked progress/rate properties;
-- threshold crossings;
-- prerequisite predicates;
-- suspended overlays;
-- and boundary activation of effects.
+It is **not**:
 
-The domain labels stay in the spec layer.
+- a fifth StemThing leg;
+- an `ActionThing` entity type;
+- an event manager;
+- a behavior tree;
+- a task graph;
+- a destination manager;
+- a movement engine;
+- a combat engine;
+- a production engine;
+- a planner service;
+- an administrative service;
+- a CPU goal selector; or
+- an independent lifecycle authority.
 
-### 2.1 The already-settled shape
+It is the intrinsic implementation of the SimThing's ability to **act on what it perceives**.
 
-The capability work established the following pattern:
+The base SimThing remains the sole point of iteration and failure. Recursive ActionBands never escape that ownership. A subordinate ActionBand is not another engine object with its own scheduler or authority; it is a recursively activated portion of the same ActionBand facility attached to the same SimThing.
 
-```text
-progress / achievement
-        ↓
-threshold reached
-        ↓
-all prerequisite conditions checked
-        ↓
-if all pass
-        ↓
-atomic consequence activation
-```
-
-The important part is that prerequisites were **heterogeneous in meaning but homogeneous in runtime form**. Same-category and cross-category dependencies were not separate engine concepts. They were resolved to ordinary property/value tests.
-
-A technology such as a hypothetical warp drive could require:
+This gives the system one failure surface:
 
 ```text
-propulsion::plasma_drive >= 1
-physics::gravitic_theory >= 1
-research_progress >= cost
+SimThing
+ ├─ participate
+ ├─ act  ← ActionBand
+ ├─ originate
+ └─ receive
 ```
 
-The simulation did not need a “cross-category tech prerequisite” subsystem. It needed a conjunction of resolved conditions.
-
-### 2.2 Progress and eligibility were distinct
-
-The capability work also established an important rule that maps directly onto current ActionBand persistence:
-
-> **completed or accumulated work is not the same thing as current eligibility to commit the consequence.**
-
-If progress was complete but another prerequisite was not, the design preserved the achieved progress and waited for the missing prerequisite rather than repeatedly erasing and repaying completed work.
-
-That is the ancestor of the current distinction between:
-
-- accumulated CostBand work/remainder;
-- unresolved RF claims;
-- current eligibility/guards;
-- and later persistence or dissolution.
-
-### 2.3 Consequences could be plural and atomic at the boundary
-
-One capability entry could activate several overlays together:
-
-- unlock a building;
-- increase industrial output;
-- modify fleet speed;
-- enable a construction option.
-
-Again, the simulation did not need separate activation machinery per domain. The consequence bundle was authored data applied at the boundary.
-
-### 2.4 What the Capability Tree did **not** prove
-
-The capability system mostly dealt with:
-
-- nonconsuming prerequisite checks;
-- accumulated progress;
-- boolean/selectable activation;
-- and atomic effect activation.
-
-It did **not** fully prove the hardest quantitative case:
-
-```text
-requires simultaneously:
-  fuel 4          consumed
-  money 20        transferred
-  machine slot 1  reserved
-  tech X          checked only
-  10 work         accumulated
-```
-
-when the consumable/reservable quantities are independently contested in RF arenas.
-
-That lower-level atomic-grant problem is real.
-
-But the semantic problem — “how can one action depend on multiple kinds of prerequisites?” — was already mostly solved.
-
-### 2.5 Correct inheritance into 0.0.8.7
-
-The current RF/STEAD/ActionBand work should therefore inherit this rule:
-
-> **Multisource action is settled in shape. The remaining open problem is the quantitative lowering of simultaneous contested grants, not whether heterogeneous requirements can compose.**
+ActionBand composes the already-existing mechanisms behind those legs rather than replacing them.
 
 ---
 
-## 3. Stellaris-style axes as a clarification of semantic field space
+# 2. The semantic coordinate model: Stellaris-style axes generalized
 
-The Stellaris ethics web is useful not because SimThing should copy its specific political values, but because it demonstrates a compact representation principle:
+The useful lesson from the Stellaris ethics web is geometric, not domain-specific.
 
-> **A small number of logically arranged axes can locate a complex state in a multidimensional value space without naming every composite category.**
-
-Stellaris exposes pairs such as:
+Stellaris presents several opposed value axes:
 
 ```text
 Authoritarian  ←→ Egalitarian
@@ -180,1380 +130,1612 @@ Xenophobe      ←→ Xenophile
 Spiritualist   ←→ Materialist
 ```
 
-The useful abstraction is:
+The important abstraction is:
+
+> **Complex state can be located as coordinates on a small number of logically chosen value axes rather than encoded as a catalog of named composite states.**
+
+SimThing generalizes this to arbitrary admitted semantic/value axes.
+
+Examples in a city simulation might include:
 
 ```text
-state = coordinates on several meaningful axes
+scarcity        ←→ abundance
+threat          ←→ safety
+isolation       ←→ accessibility
+degradation     ←→ physical quality
+job insecurity  ←→ job security
+housing pressure←→ housing abundance
 ```
 
-rather than:
+Other domains may author different axes.
+
+The engine does not know what these names mean. It knows admitted property/field bindings and the EML/STEAD laws that generate them.
+
+## 2.1 Resultant bipolar scalar law
+
+Where an axis is truly bipolar, it is one bounded degree of freedom:
+
+\[
+x_k \in [L_k,U_k]
+\]
+
+with opposite semantic poles at the bounds or ends of the admitted range.
+
+Ordinary state, falloff influence, policy/personality overlays, transient conditions, and other admitted transformations nudge the value toward one pole or the other.
+
+Conceptually:
+
+\[
+x'_k = \operatorname{Bound}_k\left(x_k + \sum_i \Delta_{i,k}\right)
+\]
+
+or the corresponding admitted EML/field reduction law.
+
+**The resultant is authoritative.**
+
+If equal and opposite influences produce:
+
+\[
++0.7 - 0.7 = 0
+\]
+
+then the receiving SimThing experiences that axis as `0`.
+
+There is no intrinsic obligation to preserve hidden contest magnitude merely because strong opposing emitters happened to cancel. If the distinction between “quiet neutrality” and “strong opposed pressures whose resultant is zero” matters to a model, that distinction must be authored as another observable/axis rather than smuggled into the bipolar scalar.
+
+This is deliberate. A SimThing can be neutral on one ActionBand while strongly displaced on another:
 
 ```text
-state = one named category
+border disposition = 0
+trade imbalance    = +0.8
+food security      = -0.5
+job security       = -0.3
 ```
 
-For SimThing, the axes need not be ideological and need not all be bipolar. They may be:
+No universal equilibrium is implied.
 
-- signed adversarial axes;
-- bounded complementary axes;
-- positive resource/opportunity magnitudes;
-- pressures, deficits, or capacities;
-- relational values over LinkGraph topology;
-- spatial values over GridOffsets topology.
+### 2.1.1 This is not RF conservation
 
-The key is that they are **primitive causal coordinates**, not human descriptive labels.
+A bipolar semantic coordinate is **not automatically a conserved RF resource**.
 
----
+“Moving toward one pole moves away from the other” describes one signed/bounded degree of freedom. It does not imply:
 
-## 4. Strong axes, emergent semantics
+\[
+\sum_s x_{s,k}=constant
+\]
 
-A candidate semantic law follows from the recursive SimThing principle:
+Actual RF conservation remains governed by the resource substrate. Semantic axes and conserved resources may interact, but they remain distinct authorities.
 
-> **Author strong primitive causal axes and generic resource mechanics; prefer higher-order domain concepts as observations over the interaction and trajectories of those axes.**
+## 2.2 Strong axes, emergent semantics
 
-This is the semantic analogue of “derive specialists from SimThing rather than minting bespoke object systems.”
+Primitive axes should carry independent causal information. Higher-order named phenomena should normally emerge from combinations and trajectories through those axes.
 
-### 4.1 Primitive versus derived concepts
-
-For an urban simulation, plausible primitive axes might include:
+For example, a city may author primitive values such as:
 
 ```text
-housing capacity / scarcity
+housing pressure
 housing condition
-land or rent cost
-vacancy
+rent/land price
 employment opportunity
 labor availability
-consumer demand
 capital availability
-transit accessibility
-freight accessibility
-safety / threat
-environmental quality
+consumer demand
+material access
+safety
+pollution/environmental quality
 education access
 health access
-amenity / leisure access
-material supply quality
-material price pressure
-congestion / network pressure
+amenity access
+passenger accessibility
+freight accessibility
+network congestion
 ```
 
-By contrast, concepts such as:
+while terms such as:
 
 ```text
-desirability
-affordability
-blight
 gentrification
+blight
 prosperity
 food desert
-transit-oriented development
+suburbanization
 commercial vitality
-neighborhood decline
+industrial decline
 ```
 
-should normally be **derived projections or temporal observations**, not primitive engine fields.
+remain derived observations unless they contain genuinely independent causal state.
 
-### 4.2 Example: blight and gentrification
-
-Blight may be observed from a combination such as:
-
-```text
-high vacancy
-+ poor housing condition
-+ weak investment
-+ low service access
-+ safety pressure
-```
-
-Gentrification may be observed as a trajectory in which:
-
-```text
-low current property cost
-+ increasing accessibility
-+ increasing amenity richness
-+ strong employment opportunity
-+ available capital
-        ↓
-investment actions increase
-        ↓
-housing condition rises
-amenities rise
-prices/rents rise
-income composition shifts
-incumbent low-income displacement pressure rises
-```
-
-No runtime `GentrificationSystem` is required.
-
-The world simply enters a recognizable region and trajectory in the primitive coordinate space.
+The same law applies outside cities.
 
 ---
 
-## 5. Recursive RF state produces semantic coordinates
+# 3. Recursive SimThing state produces STEAD coordinates
 
-A spatial or relational SimThing should not merely own arbitrary manually authored “heat values.” Its field coordinates should be derived from ordinary recursively evaluated state.
+A SimThing does not receive semantic labels by fiat. Its current coordinates arise from ordinary recursive state.
 
-For SimThing `s`, let its recursively evaluated state be:
+For SimThing `s`, define its recursively resolved state schematically as:
 
 ```text
 R_s = {
-    own resource properties,
-    child reductions,
-    parent/ancestor effects,
+    own ordinary properties,
+    child reduce-up results,
+    inherited/directive state,
     overlays,
-    RF pressure/allocation state,
+    RF balances and unresolved pressure,
+    topology observations,
+    existing commitment/progress state,
     ordinary anchored observables
 }
 ```
 
-Then define a semantic coordinate vector:
+An admitted EML projection may produce one or more semantic coordinates:
 
 \[
-S_s = [S_{s,0}, S_{s,1}, ..., S_{s,K-1}]
+X_s(t) = [x_{s,0}(t),x_{s,1}(t),...,x_{s,K-1}(t)]
 \]
 
-where each coordinate is a sealed authored EML projection:
+with:
 
 \[
-S_{s,k} = F_k(R_s)
+x_{s,k}(t) = F_k(R_s(t))
 \]
 
-The important design rule is:
+The coordinate is therefore a **projection of causal state**, not an independently authored domain label.
 
-> **The semantic coordinate is a projection of causal state, not an independently authored label.**
-
-This means a neighborhood, company, residency, polity, fleet, or grid cell can become an emitter because its recursive state already summarizes the relevant subtree.
-
-### 5.1 Fractal interpretation
-
-The same pattern applies at different scales:
+Because SimThings are recursive, this works at every scale:
 
 ```text
-person / cohort
-    ↓
+cohort
+  ↓
 residency
-    ↓
-block / district
-    ↓
-city / polity
-    ↓
-region / faction
+  ↓
+district
+  ↓
+city
+  ↓
+region
 ```
 
-Each level recursively evaluates its children and can project its resulting state onto an appropriate semantic basis.
+or any other domain hierarchy.
 
-The semantic basis may differ by property set or scenario vocabulary, but the mechanism does not.
+## 3.1 STEAD propagation
 
----
-
-## 6. STEAD as a multi-channel heat volume
-
-STEAD should not collapse the semantic basis into one universal “goodness” scalar.
-
-Instead, define a field tensor over admitted topology:
+A coordinate can become a STEAD field channel over admitted topology:
 
 \[
 \Phi(x,k)
 \]
 
-where:
-
-- `x` is a grid cell, LinkGraph node, or other admitted locus;
-- `k` is a primitive semantic field channel.
-
-Each SimThing emitter contributes to one or more channels according to its current semantic coordinate vector and falloff profile.
-
-For channel `k`:
+For emitter `e`, channel `k`, and locus `x`:
 
 \[
-\Phi_k(x) = \operatorname{Reduce}_{e \in E_k}
-\left( A_{e,k} \cdot f_{e,k}(d(e,x)) \right)
+\Phi_k(x)=\operatorname{Reduce}_{e\in E_k}
+\left(A_{e,k}\,f_{e,k}(d(e,x))\right)
 \]
 
 where:
 
-- `A_{e,k}` is the emitter’s current projected amplitude on axis `k`;
-- `f` is the admitted STEAD falloff/propagation law;
-- `Reduce` is the admitted non-conserved accumulation law.
+- `A_{e,k}` is the emitter amplitude/current coordinate contribution;
+- `f` is the admitted propagation/falloff law;
+- `d` is distance/impedance on the relevant topology; and
+- `Reduce` is the admitted non-conserved field reduction law.
 
-The result is a **multi-axis heat volume**, not a single map.
+Different axes may use different topologies, falloff laws, cadences, and reductions. “One STEAD field” is conceptual; physically it may be several channel arrays/sweeps.
 
-### 6.1 Opposing axes
+## 3.2 Derived compound fields
 
-Some semantic dimensions are naturally adversarial.
+Frequently reused combinations may be cached as derived fields, but those caches are lowerings, not new semantic authorities.
 
-For an opposing pair `a` and `b`, the engine may represent either:
+For example:
 
-1. two independent nonnegative channels; or
-2. one signed differential channel where the authored semantics make that legitimate.
+```text
+housing attractiveness
+commercial investment pressure
+healthcare accessibility
+```
+
+may be derived from primitive channels and cached when performance warrants it.
+
+The authoritative meaning remains the primitive inputs plus admitted EML.
+
+---
+
+# 4. ActionBand target semantics
+
+An ActionBand exists because a SimThing's current state differs from a desired state.
+
+Let the current coordinate relevant to ActionBand `b` be:
+
+\[
+X_{s,b}(t)
+\]
+
+and let its desired target be a set:
+
+\[
+\mathcal G_{s,b}(t)
+\]
+
+The target may be:
+
+- an exact point;
+- a scalar threshold;
+- an interval;
+- a multidimensional region;
+- an arrival locus/radius;
+- an admitted predicate-defined condition set; or
+- another EML-defined acceptable region.
+
+Exact-point targets are therefore only one case.
+
+Examples:
+
+```text
+food_security >= 0.6
+housing_pressure in [-0.1, +0.1]
+build_progress >= 1.0
+fleet within arrival radius of Orion IV
+capability.psionic_navigator >= 1
+```
+
+## 4.1 Where targets come from
+
+ActionBand owns no separate target manager.
+
+A target may arise from ordinary SimThing state and authoring such as:
+
+```text
+baseline disposition / personality
+standing conditions
+scripted state
+time
+incoming directives
+overlays
+resource needs
+deficits
+explicit authored goals
+```
+
+These influences may establish or deform the desired state without becoming a privileged command channel.
+
+The target itself may move over time:
+
+\[
+\mathcal G(t)
+\]
+
+which naturally represents changing priorities, orders, needs, prices, moving destinations, or evolving conditions without a retarget state machine.
+
+## 4.2 Displacement
+
+For point targets:
+
+\[
+D(t)=G(t)-X(t)
+\]
+
+For a target set, define the nearest lawful target projection conceptually as:
+
+\[
+D(t)=\Pi_{\mathcal G(t)}(X(t))-X(t)
+\]
+
+where `Π` is the admitted projection/distance-to-target operation appropriate to the axis/topology.
+
+The exact norm is authored/domain-dependent. The core law is simply:
+
+> **ActionBand acts on unresolved displacement between present state and an admitted desired state.**
+
+## 4.3 Velocity
+
+Velocity is useful ActionBand data:
+
+\[
+V_X(t)=X(t)-X(t-1)
+\]
+
+and, often more importantly:
+
+\[
+V_D(t)=D(t)-D(t-1)
+\]
+
+which indicates whether the discrepancy is closing or worsening.
+
+Velocity should preferentially derive from already-available current/previous generation planes rather than introduce an ActionBand-specific state handler. If longer history is required, that history remains ordinary SimThing state.
+
+---
+
+# 5. Stakes: consequence and urgency of unresolved displacement
+
+**Displacement is not stakes.**
+
+Displacement answers:
+
+> How far is the current state from the desired state?
+
+Stakes answer:
+
+> How consequential or urgent is it that this displacement remain unresolved?
+
+Let:
+
+\[
+\Sigma_{s,b}(t)=S_b\left(D, V_D, R_s, \Phi, overlays, reserves, deficits, history, ...\right)
+\]
+
+where `S_b` is ordinary admitted EML.
+
+The default conceptual relationship may be thought of as:
+
+\[
+P_b \sim \Sigma_b \cdot \|D_b\|
+\]
+
+but this is **not** a mandated formula. EML may define richer or nonlinear relationships.
+
+Examples:
+
+- a large food-quality displacement with deep food reserves may have modest stakes;
+- a smaller food-security displacement with zero reserves may have extreme stakes;
+- an ideological disagreement can be large but low-stakes until other conditions make it consequential;
+- a slowly worsening discrepancy may remain below threshold while the same discrepancy with sharply negative velocity crosses an escalation band.
+
+Therefore:
+
+> **Displacement supplies tension. Stakes supply urgency/consequence. Bands turn meaningful tension, urgency, or progress into emissions.**
+
+Stakes themselves are ordinary ActionBand observables and may be used as band operands.
+
+---
+
+# 6. PALMA supplies the route where a route exists
+
+ActionBand knows a current condition and a target condition. The means of reducing the displacement may require navigating an admitted topology.
+
+Where that topology exists, PALMA provides the lawful route/impedance structure.
+
+For physical movement this is intuitive:
+
+```text
+current spatial locus
+    ↓
+STEAD/PALMA impedance field
+    ↓
+target spatial locus
+```
+
+But the same principle applies to:
+
+- LinkGraph relations;
+- trade/supply accessibility;
+- service access;
+- social or diplomatic relation graphs;
+- recursive tree relations;
+- admitted progression ladders; or
+- other topology already present in the simulation.
+
+ActionBand does not mint a generic `ActionGraph`.
+
+## 6.1 Route degeneracy
+
+Not every ActionBand needs a nontrivial topology.
+
+A depth-1 capability check such as:
+
+```text
+psionic_navigator >= 1
+```
+
+has no reason to invent a graph. Its “route” degenerates to ordinary state progress/observation toward the target predicate.
+
+Thus PALMA is used **where target resolution is topological**. Direct threshold/property ActionBands remain lawful base cases.
+
+## 6.2 Local minima and adversarial navigation are deliberately fenced
+
+The base ActionBand definition does not attempt to settle:
+
+- local-minimum escape;
+- adversarial multi-field navigation;
+- starvation/livelock of competing routes;
+- iterative same-generation convergence; or
+- coordinated Vector CostBand clearing across several independently contested RF arenas.
+
+Those are explicitly fenced to the future `VECTOR-COSTBAND-PROBE-0` / related work.
+
+This fence is scope discipline, not doubt about ActionBand's existence.
+
+---
+
+# 7. Intrinsic ActionBand anatomy
+
+The semantic facility should remain small.
+
+Conceptually, an ActionBand requires only:
+
+```text
+ActionBand
+│
+├─ observation/current-state binding
+├─ target point/set binding
+├─ derived displacement / velocity / stakes
+├─ authored band descriptors
+├─ optional EML payload per band
+├─ optional subordinate ActionBand bindings
+└─ lifecycle / terminal condition
+```
+
+The runtime representation may be more compact than this conceptual form.
+
+## 7.1 Inert by default
+
+Every SimThing has the **capability** to host ActionBands, but no hot work is owed merely because the capability exists.
+
+An inactive SimThing should pay essentially the same cost as an unregistered property/threshold listener.
+
+ActionBands become active only when authored/derived registrations exist.
+
+This is required for city-scale and population-scale use.
+
+## 7.2 ActionBand as listener registration
+
+A SimThing “listens” for actionable conditions by registering an ActionBand against already-produced observables.
+
+Conceptually:
+
+```text
+watch:
+    property / STEAD / derived binding
+
+target:
+    desired point / set / predicate
+
+bands:
+    authored thresholds
+
+payload:
+    optional EML per crossing
+
+lifecycle:
+    continue / terminal / dissolve condition
+```
+
+There is no separate event subscription manager.
+
+The sweep already produces the observed values. ActionBand rides those values and emits only when a meaningful band crossing occurs.
+
+---
+
+# 8. Band semantics
+
+The word **Band** is intentional.
+
+A band is an authored threshold surface over any admitted ActionBand observable, carrying an optional EML payload.
+
+Possible band operands include:
+
+```text
+displacement magnitude
+one axis coordinate
+stakes
+closing/worsening velocity
+route distance
+PALMA impedance
+resource accumulation
+CostBand progress
+construction completion
+elapsed time
+another admitted derived value
+```
+
+The core does not require every ActionBand to normalize progress to `[0,1]` or divide trajectories into equal slices.
+
+Band segmentation is authored semantic structure.
+
+## 8.1 Default depth
+
+Expected common shape:
+
+```text
+0 bands   → inert
+1 band    → ordinary event/action trigger
+2 bands   → trigger + completion, or warning + action
+N bands   → richer authored progression/escalation/auditing
+```
+
+Most ActionBands should be depth 1 or depth 2.
+
+This common case should receive an explicit fast path in the physical lowering if measurement justifies it.
+
+## 8.2 Crossing semantics
+
+The baseline ActionBand behavior is edge/crossing driven:
+
+```text
+below band
+   ↓ crosses
+emit once
+   ↓ remains beyond threshold
+no duplicate emission solely for remaining there
+```
+
+A later recrossing may emit again according to the authored lifecycle/hysteresis law.
+
+This preserves the existing threshold/crossing discipline and prevents held conditions from generating duplicate actions every generation.
+
+If an author needs periodic milestones, they author multiple threshold bands or an explicit progress/time observable rather than an implicit “fire every tick while true” mode.
+
+## 8.3 EML payload
+
+Every band may carry a tight admitted EML payload.
+
+That payload can be trivial or specialized.
+
+Examples:
+
+```text
+band crossed
+→ emit telemetry only
+```
+
+```text
+band crossed
+→ check several state prerequisites
+→ if satisfied, authorize consequence
+```
+
+```text
+band crossed
+→ compute resource claims
+→ route them through ordinary RF
+```
+
+```text
+band crossed
+→ activate subordinate ActionBands representing unresolved deficiencies
+```
+
+The default implementation may be a simple threshold emission. Specialized uses may invoke richer EML reductions without changing ActionBand's core type.
+
+---
+
+# 9. ActionBand is the point of execution
+
+ActionBand does not stop at “candidate commitment.”
+
+It owns the lifecycle of the unresolved transition.
+
+For a multiband ActionBand:
+
+```text
+current state
+   ↓
+route/progress
+   ↓
+band crossing
+   ↓
+partial action
+   ↓
+new state/progress
+   ↓
+next band
+   ...
+   ↓
+terminal band
+   ↓
+final consequence
+   ↓
+ActionBand dissolves
+```
+
+Physical movement is a simple example:
+
+- one band may represent the amount of lawful progress a SimThing can traverse in one generation;
+- crossing that band emits the spatial consequence;
+- repeated generations move the current state closer to the target;
+- arrival crosses the terminal band;
+- terminal payload emits the final event;
+- ActionBand is removed.
+
+Construction is the same shape with a different progress observable.
+
+Food acquisition may be depth 1.
+
+A policy/capability gate may be depth 1 and emit no physical motion at all.
+
+The common facility is the target-seeking, band-emitting lifecycle—not a movement-specific operation.
+
+---
+
+# 10. Multisource action: inherited structure, native semantics
+
+The earlier Capability Tree work remains useful archaeology because it already established the semantic shape of heterogeneous prerequisites.
+
+The important inherited findings are:
+
+1. one transition may depend on several independent conditions;
+2. those conditions need not share semantics;
+3. progress and eligibility are distinct;
+4. completed/paid progress should not be repeatedly erased merely because another prerequisite remains unresolved; and
+5. consequence activation occurs when the required conjunction finally becomes executable.
+
+The ActionBand design therefore does **not** reopen the question “can an action require several kinds of things?”
+
+That is settled in shape.
+
+The remaining hard problem is quantitative lowering when several scarce contested RF lanes must clear together.
+
+## 10.1 Do not duplicate RF/property semantics inside ActionBand
+
+ActionBand should bind to the simulation's existing semantic authorities.
+
+A bound ordinary state/property check remains an observation.
+
+A bound conserved RF resource remains a conserved RF resource.
+
+A sink remains a CostBand.
+
+A residency/capacity lane retains its residency/capacity semantics.
+
+A transfer retains transfer semantics.
+
+Time remains ordinary state unless authored as a scarce resource.
+
+ActionBand must not invent a parallel “requirement resource” universe.
+
+The initial design should therefore prefer:
+
+```text
+ActionBand band EML
+    ↓
+reads ordinary prerequisite/property state
+    ↓
+uses ordinary RF claims where scarcity is real
+    ↓
+uses existing CostBand semantics for sinks/progress
+```
+
+rather than a new engine-wide requirement taxonomy.
+
+## 10.2 Braking / held progress
+
+The inherited capability behavior supplies the default multisource progression law:
+
+> **When one unresolved requirement blocks the next ActionBand band, already-resolved progress remains resolved according to the native semantics of its underlying binding. The parent ActionBand brakes rather than rewinding completed work.**
+
+Conceptually:
+
+```text
+work            satisfied
+capability A    satisfied
+capability B    unresolved
+energy          partially satisfied
+
+→ parent cannot cross next executable band
+→ satisfied state does not reset merely because another requirement remains open
+```
+
+Whether a scarce grant may remain held across generations, and under what fairness/livelock constraints, belongs to the later quantitative probe.
+
+ActionBand semantics do not require every satisfied prerequisite to become a permanently siloed RF grant.
+
+## 10.3 Multisource requirement as band payload
+
+A depth-1 ActionBand may use its one band EML as the all-of gate.
 
 Example:
 
 ```text
-safety  ←→ threat
-abundance ←→ scarcity
-integration ←→ isolation
+Goal: reach Shroud coordinate
+
+band EML requires:
+    psionic_navigator >= 1
+    shroud_access >= 1
+    required energy/fuel grant executable
 ```
 
-The important point is that opposition is authored mathematical structure, not implied by the presence of two human-language labels.
+`psionic_navigator` and `shroud_access` are ordinary capability/state observations.
 
-### 6.2 Complementary axes
+Energy/fuel remains ordinary RF/CostBand.
 
-Other dimensions interact positively:
+The band fires only when the authored conjunction allows it.
 
-```text
-transit accessibility
-+ employment opportunity
-+ amenity richness
-```
-
-may jointly produce a strong residential or commercial potential even though none is the opposite of another.
-
-Complementarity belongs in the **actor/action projection**, not necessarily in the primitive field storage.
-
-### 6.3 Derived fields are lawful caches, not new authorities
-
-Frequently used projections may be cached as derived field columns:
-
-```text
-working_class_housing_potential
-commercial_investment_potential
-healthcare_accessibility
-```
-
-but their authority remains the primitive fields plus their admitted EML projection.
-
-A cached compound field is a lowering/cache, not a new semantic primitive.
+This is multisource action without collapsing nonconserved prerequisites into RF.
 
 ---
 
-## 7. Actors do not experience the same field identically
+# 11. Recursive ActionBands
 
-A field channel describes the world. An actor-specific projection describes what that world means to a particular actor/action.
+ActionBand is structurally recursive because SimThing itself is structurally recursive.
 
-Let actor/cohort `a` carry compact state:
+An ActionBand band's EML payload may originate/register one or more **subordinate ActionBands** on the same SimThing's intrinsic ActionBand facility.
 
-\[
-D_a = \text{deficits / needs}
-\]
+This is the generic mechanism for expressing a target whose unresolved deficiencies themselves require target-seeking action.
 
-\[
-Q_a = \text{profile / preferences / capabilities}
-\]
+## 11.1 Parent unresolved-state model
+
+Let parent ActionBand `P` have subordinate unresolved conditions with distances:
 
 \[
-C_a = \text{current commitment / hysteresis}
-\]
-
-and observe local field vector:
-
-\[
-\Phi(x) = [\Phi_0(x), ..., \Phi_{K-1}(x)]
-\]
-
-Then an authored EML projection produces action-specific potential:
-
-\[
-P_{a,m}(x) = F_m(\Phi(x), D_a, Q_a, C_a, \text{prices}, \text{local capacity}, ...)
-\]
-
-where `m` is an action family or candidate interpretation.
-
-### 7.1 Example: same city, different projections
-
-A low-income household may value:
-
-```text
-+ employment access
-+ safety
-+ school access
-- rent burden (high weight)
-- transport cost
-```
-
-A high-income young professional may value:
-
-```text
-+ employment access
-+ transit
-+ amenities
-+ food quality
-- rent burden (lower weight)
-```
-
-A developer may value:
-
-```text
-+ expected demand
-+ accessibility
-+ amenity growth
-+ development capacity
-- current land cost
-- construction impedance
-```
-
-The shared world field does not change.
-
-The projection does.
-
----
-
-## 8. PALMA: once the projection exists, pathing falls out
-
-PALMA does not need to understand “housing,” “shopping,” “employment,” “diplomacy,” or “investment.”
-
-It requires an admitted topology and a scalar potential/impedance field.
-
-Given actor/action potential `P`, candidate progress along edge `e=(x→y)` can be expressed from:
-
-\[
-\Delta P_e = P(y) - P(x)
-\]
-
-or through a sealed impedance projection `W(e)` used by the `(min,+)` PALMA sweep.
-
-The action therefore becomes:
-
-```text
-multi-axis STEAD field
-        ↓
-actor/action EML projection
-        ↓
-scalar potential / impedance
-        ↓
-PALMA
-        ↓
-candidate descent / progress direction
-```
-
-### 8.1 “Path” is broader than physical movement
-
-The topology may be:
-
-- GridOffsets for physical locality;
-- road/transit LinkGraph;
-- supply/trade graph;
-- social/diplomatic graph;
-- recursive tree relations;
-- another admitted relation surface.
-
-A path can therefore represent:
-
-- commuting;
-- migration;
-- goods routing;
-- investment flow;
-- diplomatic attention;
-- production sourcing;
-- service access;
-- capability derivation.
-
-The core sees only potential over topology.
-
----
-
-## 9. ActionBand begins where potential meets reality
-
-The semantic field answers:
-
-> **What change is attractive, urgent, or valuable?**
-
-RF + CostBand answer:
-
-> **Can the actor actually commit the resources required to realize it, and how much determinate progress can occur?**
-
-These are intentionally separate.
-
-A high housing desirability potential does not itself create an apartment, money, transport capacity, or legal permission.
-
-ActionBand is the bridge:
-
-```text
-potential / candidate
-      ↓
-typed requirement bundle
-      ↓
-claims + guards + progress
-      ↓
-RF / CostBand
-      ↓
-consequence
-```
-
----
-
-## 10. Typed multisource requirements
-
-The capability-tree archaeology strongly suggests that “requirement” must not be synonymous with “consumable resource.”
-
-A generic action requirement bundle should distinguish at least the following semantic roles.
-
-| Role | Meaning | Example | RF behavior |
-|---|---|---|---|
-| **Guard / Capability** | observed prerequisite, not consumed | has tech, legal permission, age threshold | read/check only |
-| **Signal / Preference** | valuation input, not a prerequisite resource | policy bias, urgency, prestige | EML input only |
-| **Consume** | conserved resource destroyed/spent by action | fuel, food, steel | claim → clear → consume |
-| **Transfer** | conserved resource changes owner | payment, traded goods | claim → clear → transfer |
-| **Reserve** | scarce capacity held/assigned and later released | housing slot, bed, job, machine | claim → clear → hold/assign |
-| **Progress / Work** | accumulated determinate work | research, build work, travel progress | CostBand accumulation |
-| **Temporal guard** | elapsed time/state condition | generation ≥ T | observe unless time itself is scarce |
-
-The runtime must not infer these roles from names.
-
-They are authored/admitted semantics.
-
-### 10.1 Capability-tree degenerate case
-
-A capability unlock is simply:
-
-```text
-Guard: prerequisite tech A
-Guard: prerequisite tech B
-Progress: research >= threshold
-```
-
-with a depth-limited consequence:
-
-```text
-N ∈ {0,1}
-```
-
-### 10.2 Production case
-
-A recipe may be:
-
-```text
-Guard: technology unlocked
-Guard: factory operational
-Consume: steel 2
-Consume: energy 1
-Reserve: labor capacity 1
-Reserve: machine capacity 1
-Progress: production work
-```
-
-### 10.3 Household move
-
-A move may be:
-
-```text
-Guard: residency legally compatible
-Reserve/Transfer: housing slot 1
-Transfer: money deposit
-Reserve/Consume: transport capacity
-Progress: move work
-```
-
-The semantic shape is the same.
-
----
-
-## 11. Vector CostBand is the quantitative all-of gate
-
-The old capability gate was conceptually:
-
-\[
-G = \bigwedge_i (x_i \ge t_i)
-\]
-
-A depth-1 unlock occurs only if `G=1` and progress is complete.
-
-For quantitative scarce resources, the natural generalization is:
-
-\[
-N = G \cdot \min_{j \in Q}
-\left\lfloor\frac{V_j}{C_j}\right\rfloor
+u_i(t) \ge 0
 \]
 
 where:
 
-- `G ∈ {0,1}` is the conjunction of nonconsuming guards;
-- `Q` contains only quantitative constrained requirements;
-- `V_j` is the provisional/granted available value on lane `j`;
-- `C_j` is cost per determinate action quantum;
-- `N` is common executable depth.
-
-This is the important reinterpretation:
-
-> **Vector CostBand is not the semantics of multisource action. It is the quantitative lowering of the all-of gate for the subset of requirements that are actually scarce numerical resources.**
-
-The multisource semantic structure was already known.
-
-### 11.1 Disposition remains per lane
-
-The common `N` answers only:
-
-> how many action quanta can execute?
-
-It does not decide what each lane means after commit.
-
-For each lane, authored role determines disposition:
-
-```text
-Consume  → subtract N*C
-Transfer → move N*C to destination
-Reserve  → hold/assign N*C
-Progress → advance work state
-```
-
-Guards and signals are not consumed.
-
----
-
-## 12. Provisional grants and the holding problem
-
-The genuinely open multisource quantitative issue is independent RF clears.
-
-Suppose one action requires:
-
-```text
-fuel        4
-money      20
-housing     1
-```
-
-and current clears return:
-
-```text
-fuel grant     = 4
-money grant    = 20
-housing grant  = 0
-```
-
-The action cannot commit, but already-granted scarce quantities must not be double-spent.
-
-The lawful candidate is:
-
-```text
-independent RF clears
-        ↓
-provisional grants
-        ↓
-in-flight holding account
-        ↓
-common executable N
-        ↓
-commit N*C_j by lane role
-        ↓
-unused excess returns at next normal resolution opportunity
-```
-
-This holding problem is the part that was not already solved by capability prerequisites.
-
-### 12.1 No accidental long-lived hoarding
-
-Same-commit provisional holding must remain distinct from authored persistent reservation.
-
-A failed action must not automatically hold resources across generations forever.
-
-Persistent reservation must itself be an authored `Reserve` behavior or explicit persistence consequence.
-
-### 12.2 No same-generation convergence loop
-
-Do not perform:
-
-```text
-clear
-→ hold
-→ fail common N
-→ return
-→ re-clear
-→ repeat until convergence
-```
-
-within one generation.
-
-Returned capacity re-enters the next ordinary resolution opportunity.
-
-Generation pacing remains sovereign.
-
----
-
-## 13. Full recursive closed loop
-
-The combined model is now:
-
-### 13.1 Recursive state evaluation
-
-```text
-children RF state
-      ↓
-reduce upward
-      ↓
-parent overlays / policy / prices
-      ↓
-disburse downward
-      ↓
-current SimThing state
-```
-
-### 13.2 Semantic projection
-
-```text
-current recursive state
-      ↓
-EML semantic-axis projections
-      ↓
-S = [s0 ... sk]
-```
-
-### 13.3 STEAD propagation
-
-```text
-semantic-axis amplitudes
-      ↓
-STEAD falloff / superposition
-      ↓
-Φ[x,k]
-```
-
-### 13.4 Actor-specific action landscape
-
-```text
-Φ[x,*]
-+ actor deficits
-+ profile
-+ prices
-+ current commitment
-      ↓
-EML
-      ↓
-P_action(x)
-```
-
-### 13.5 PALMA candidate progress
-
-```text
-P_action / W_action
-      ↓
-PALMA over admitted topology
-      ↓
-candidate gradient / path
-```
-
-### 13.6 Typed multisource commitment
-
-```text
-candidate action
-      ↓
-Guard / Signal / Consume / Transfer / Reserve / Progress
-      ↓
-RF claims and checks
-      ↓
-common executable CostBand depth N
-```
-
-### 13.7 Consequence
-
-```text
-N
- ↓
-ordinary state change / transfer / work / reservation
- ↓
-structural request if required
- ↓
-next generation recursive state
-```
-
-This is a closed dynamical system.
-
----
-
-## 14. CS2-style city simulation as a worked witness
-
-Cities: Skylines II semantics are useful because they appear domain-rich while being unusually reducible to this generic composition.
-
-### 14.1 Candidate primitive urban axes
-
-A deliberately compact city basis might include:
-
-```text
-housing abundance / pressure
-housing condition
-land/rent price pressure
-employment opportunity
-labor availability
-consumer demand
-capital/investment access
-material supply access
-material price/quality
-safety / threat
-environmental quality
-education access
-health access
-amenity/leisure access
-passenger accessibility
-freight accessibility
-congestion/capacity pressure
-```
-
-These are not asserted as the final correct basis. Studio must test them.
-
-### 14.2 Household/cohort state remains small
-
-The population particle need not carry destination lists or private world copies.
-
-A compact row can retain only:
-
-```text
-count
-residency / household bindings
-behavior profile
-small deficit vector
-personal reserves
-current commitment
-CostBand remainder / slow hysteresis
-```
-
-The world supplies:
-
-- housing opportunity;
-- jobs;
-- service access;
-- commercial opportunity;
-- transportation impedance;
-- safety;
-- prices;
-- amenities;
-- congestion.
-
-### 14.3 Shopping
-
-```text
-material deficit
-+ food/material quality-price fields
-+ household money
-+ PALMA access impedance
-      ↓
-shopping potential
-      ↓
-claims: goods + money + transport/time
-      ↓
-RF / typed commit
-      ↓
-deficit reduction
-```
-
-### 14.4 Employment
-
-```text
-income/resource pressure
-+ employment field
-+ qualification guard
-+ commute impedance
-      ↓
-job action potential
-      ↓
-claim job capacity
-      ↓
-clear / relation consequence
-```
-
-### 14.5 Housing
-
-```text
-shelter pressure
-+ rent
-+ safety
-+ employment/school/service access
-+ household resources
-      ↓
-housing potential
-      ↓
-PALMA candidate destination
-      ↓
-housing reservation + money transfer + move work
-      ↓
-RF / CostBand
-      ↓
-residency reparent at boundary
-```
-
-### 14.6 Traffic
-
-Strategic movement:
-
-```text
-need/action target
-      ↓
-PALMA generalized impedance
-      ↓
-transport demand
-      ↓
-road/transit capacity claims
-```
-
-Microscopic local traffic:
-
-```text
-position / lane / local occupancy / signal
-      ↓
-Wei-style local automata
-```
-
-PALMA answers where flow wants to go.
-
-RF answers how much capacity is available.
-
-Wei answers how instantiated traffic locally advances.
-
-### 14.7 Gentrification
-
-No gentrification mechanic is required.
-
-A trajectory such as:
-
-```text
-high density
-+ low property cost
-+ moderate blight
-+ strong employment/transit access
-+ young population
-        ↓
-amenity demand
-        ↓
-commercial investment
-        ↓
-amenities and desirability rise
-        ↓
-capital/developer action gradient strengthens
-        ↓
-redevelopment
-        ↓
-condition rises, rent rises
-        ↓
-low-income shelter pressure / migration rises
-```
-
-is observable as gentrification.
-
-The runtime never names it.
-
----
-
-## 15. Generalization beyond cities
-
-The same geometry applies to other SimThing domains.
-
-### 15.1 Diplomacy
-
-Primitive relation axes may include:
-
-```text
-threat
-trade opportunity
-trust
-ideological affinity
-strategic access
-internal political cost
-```
-
-A polity projects those into candidate diplomatic potentials.
-
-PALMA over LinkGraph supplies relational gradients.
-
-ActionBand claims political capital, money, attention, logistics, or other real resources.
-
-### 15.2 Production
-
-Primitive axes may include:
-
-```text
-input scarcity
-labor scarcity
-capital scarcity
-consumer demand
-logistics impedance
-risk
-```
-
-EML projects marginal production value.
-
-ActionBand claims inputs/capacity.
-
-CostBand determines executable output depth.
-
-### 15.3 Military strategy
-
-Primitive axes may include:
-
-```text
-threat
-supply
-terrain impedance
-force concentration
-command pressure
-strategic value
-```
-
-STEAD/PALMA produce action surfaces.
-
-RF provides fuel, supply, command, and capacity.
-
-Gu-Yang supplies conserved saturating flux where applicable.
-
-### 15.4 Capability / derivation
-
-Deriving a specialized SimThing can use the same composition:
-
-```text
-growth/specialization potential
-      ↓
-EML valuation
-      ↓
-Guard: capability/legal prerequisites
-Reserve: residency capacity
-Consume/Transfer: derivation resources
-Progress: derivation work
-      ↓
-CostBand N
-      ↓
-existing structural boundary mints descendants
-```
-
-The child is the product.
-
----
-
-## 16. Adversarial and complementary axis design
-
-The semantic basis must support both opposition and combination without making either a special engine concept.
-
-### 16.1 Adversarial axes
-
-Examples:
-
-```text
-safety ↔ threat
-abundance ↔ scarcity
-integration ↔ isolation
-stability ↔ disruption
-```
-
-These may be represented as:
-
-- a signed coordinate;
-- two separate positive channels with EML comparison;
-- dominance + margin derived from competing emitter classes.
-
-The correct form is a modeling decision.
-
-### 16.2 Complementary axes
-
-Examples:
-
-```text
-transit accessibility
-× employment opportunity
-× amenity richness
-```
-
-may jointly create strong residential desirability.
-
-Likewise:
-
-```text
-cheap land
-× strong future demand
-× capital availability
-```
-
-may create investment opportunity.
-
-Complementarity is an EML composition over fields, not a reason to mint a “gentrification” or “investment” primitive field.
-
-### 16.3 Nonlinear interaction
-
-With `EXP`/`LN` available under admitted semantics, authored projections may use:
-
-- saturation;
-- logistic gates;
-- softmax-like competition;
-- power-law response;
-- decay/hysteresis;
-- multiplicative/complementary effects.
-
-This is important because social/economic interactions are rarely purely linear.
-
----
-
-## 17. Axis admission discipline
-
-The biggest danger is semantic axis explosion.
-
-A proposed primitive axis should be admitted only if it passes tests such as:
-
-1. **Independent causality** — does it represent state that cannot be reconstructed from existing axes?
-2. **Behavioral consequence** — does some admitted actor/action respond differently because this axis exists?
-3. **Non-duplication** — is it more than a correlated restatement of existing dimensions?
-4. **Stable interpretation** — can its sign/range/meaning remain coherent across scenarios?
-5. **Observable source** — can ordinary SimThing state actually emit or derive it?
-
-Names such as:
-
-```text
-good neighborhood
-desirable area
-high quality zone
-prosperous district
-```
-
-should usually fail as primitive axes because they are overlapping projections.
-
----
-
-## 18. Studio as the semantic laboratory
-
-The semantic basis cannot be validated by code review alone.
-
-Studio should test whether intended qualitative regimes emerge from primitive axes and laws.
-
-### 18.1 Workflow
-
-```text
-author primitive axes
-      ↓
-author emitter projections / falloff
-      ↓
-author actor EML projections
-      ↓
-author typed requirement bundles
-      ↓
-run controlled scenario
-      ↓
-observe field trajectories and RF flows
-      ↓
-classify higher-order behavior
-      ↓
-falsify / recalibrate basis
-```
-
-### 18.2 Gentrification witness
-
-Initial condition:
-
-```text
-high density
-moderate blight
-cheap housing
-strong transit
-near employment
-young incoming population
-available capital
-```
-
-Expected qualitative trajectory:
-
-```text
-amenity demand ↑
-commercial investment ↑
-property investment ↑
-housing condition ↑
-amenity density ↑
-rent/land price ↑
-higher-income inflow ↑
-incumbent displacement pressure ↑
-```
-
-If this does not emerge, inspect:
-
-- missing primitive axis;
-- wrong EML sign/magnitude;
-- incorrect RF constraint;
-- PALMA impedance shape;
-- wrong time constant;
-- actor profile weighting.
-
-Do **not** fix it by adding a hidden `gentrification_bonus` mechanic.
-
-### 18.3 Named phenomena belong in observers
-
-Studio may define observers for:
-
-```text
-blight
-gentrification
-food desert
-suburbanization
-industrial decline
-housing bubble
-crime spiral
-transit-oriented development
-```
-
-These observers classify trajectories.
-
-They do not become simulation authority.
-
----
-
-## 19. Candidate constitutional laws
-
-The following are candidate laws for later design review, not admitted by this workshop document.
-
-### 19.1 Primitive Causality / Emergent Semantics Law
-
-> SimThing authors independently causal state, resources, topology, and response laws as authoritative substrate. Composite domain concepts should preferentially be represented as projections or temporal observations over that substrate.
-
-### 19.2 Multi-Axis STEAD Law
-
-> A spatial/relational SimThing may project its recursively evaluated state onto an admitted semantic coordinate basis. STEAD propagates those coordinates as independent field channels; it does not require premature collapse to one universal scalar.
-
-### 19.3 Actor Projection Law
-
-> The world owns shared primitive field coordinates. Actors own deficits, profiles, resources, and commitment state. Actor/action-specific EML projections produce scalar potentials/impedances from the shared field bundle.
-
-### 19.4 PALMA Consequence
-
-> Once a lawful scalar action potential/impedance exists over admitted topology, quantitative candidate progress derives through PALMA rather than a domain planner.
-
-### 19.5 Typed Multisource Requirement Law
-
-> Action requirements retain authored semantic roles. Guards and signals are observed; conserved resources are claimed; consumables, transfers, reservations, and progress have distinct post-clear dispositions. Runtime never infers role from domain labels.
-
-### 19.6 Quantitative All-Of Law
-
-> For quantitative constrained requirements, common executable depth is the minimum affordable depth across required lanes, gated by nonconsuming prerequisites. Vector CostBand is the quantitative all-of lowering, not the semantic definition of multisource action.
-
-### 19.7 Generation-Paced Holding Law
-
-> Provisional grants required for atomic multi-lane commitment may be held in-flight through the commit decision. Unused grants return only at the next ordinary resolution opportunity; no same-generation iterative re-clear convergence is introduced.
-
----
-
-## 20. Falsifiers
-
-This synthesis should be considered wrong or incomplete if any of the following occur.
-
-### 20.1 Semantic-basis falsifier
-
-A required gameplay phenomenon cannot be produced without adding a named domain state that contains independent causal information unavailable from the primitive basis.
-
-### 20.2 Planner falsifier
-
-A major class of action requires an engine-authored domain planner because no lawful field/topology projection can express candidate progress.
-
-### 20.3 Resource-role falsifier
-
-A real action cannot be represented without runtime guessing whether a requirement is a guard, signal, consumable, transfer, reservation, or progress quantity.
-
-### 20.4 Atomicity falsifier
-
-Independent RF clears plus provisional holding cannot implement common multi-resource commitment without violating conservation, fairness/policy, or generation pacing.
-
-### 20.5 Axis-explosion falsifier
-
-A plausible scenario requires hundreds or thousands of primitive semantic channels because derived projections fail to preserve necessary distinctions.
-
-### 20.6 Cohort/particle falsifier
-
-Actor-specific behavior requires so much persistent per-row state that the field abstraction merely relocates rather than removes domain complexity.
-
----
-
-## 21. Implications for 0.0.8.7
-
-This document does not change the current workplan pointer by itself.
-
-It does suggest several clarifications for future DA review.
-
-### 21.1 ActionBand should inherit multisource semantics
-
-The 0.0.8.7 ActionBand discussion should not repeatedly reopen the question of whether an action can depend on multiple heterogeneous sources.
-
-That structure is inherited from capability-tree doctrine.
-
-The remaining new problem is narrower:
-
-> **prove quantitative atomic commitment across multiple independently cleared scarce lanes.**
-
-### 21.2 Vector CostBand should be framed as lowering
-
-Vector CostBand should not become a giant semantic type that absorbs permissions, policies, preferences, and consumables.
-
-It is the common-depth arithmetic for the constrained quantitative subset of a typed requirement bundle.
-
-### 21.3 STEAD should preserve multi-axis information
-
-The semantic field should remain a vector/tensor of primitive channels long enough for different actors and actions to project it differently.
-
-A single universal “desirability” or “utility” STEAD scalar would destroy important structure.
-
-### 21.4 Field outputs remain ordinary anchored columns
-
-The current 0.0.8.7 P0/P5 rule remains desirable:
-
-- field outputs are ordinary property columns;
-- those columns are born STEAD anchors;
-- derived outputs can recursively become later inputs;
-- no separate semantic-field service is required.
-
-### 21.5 Physical lowering is not semantic authority
-
-Whether a field bundle is evaluated through interpreted EML, SSA JIT, tiled gather, cached profile projection, or later fusion is an execution question.
-
-The semantic authority remains:
-
-- admitted axes;
-- admitted projection laws;
-- RF roles;
-- CostBand arithmetic;
-- topology;
-- generation pacing.
-
----
-
-## 22. Recommended prototype sequence
-
-A minimal falsification program can remain small.
-
-### Probe A — capability-shaped typed commitment
-
-Prove one action with:
-
-```text
-2 Guards
-1 Consume lane
-1 Reserve lane
-1 Progress lane
-```
-
-and a depth-1 consequence.
-
-This demonstrates inheritance from capability unlock semantics.
-
-### Probe B — quantitative repeated work
-
-Extend the same requirement bundle to `N > 1` and prove:
-
 \[
-N = G \cdot \min_j \lfloor V_j/C_j \rfloor
+u_i(t)=0
 \]
 
-with per-lane disposition.
+means the subordinate target is currently satisfied.
 
-### Probe C — multi-axis field projection
+Then:
 
-Create a small grid with perhaps four primitive axes:
+\[
+U_P(t)=[u_0(t),u_1(t),...,u_n(t)]
+\]
 
-```text
-opportunity
-cost
-safety
-amenity
-```
+is an ordinary input to the parent's EML.
 
-and several emitters with overlapping falloff.
+Parent progress may be:
 
-Prove two actor profiles produce different scalar potentials from the same field bundle.
+\[
+q_P(t)=F_P(D_P,V_{D_P},\Sigma_P,U_P,\Phi,R,...)
+\]
 
-### Probe D — PALMA action descent
-
-Use one of those actor-specific projections as PALMA impedance/potential and show candidate movement/action differs by profile without domain planner code.
-
-### Probe E — closed-loop emergence
-
-Allow committed actions to modify the primitive emitter state and demonstrate a stable feedback pattern not explicitly scripted as an outcome.
-
-A tiny urban witness could use:
+The common all-of form is simply one authored case:
 
 ```text
-housing cost
-amenity
-opportunity
-investment capacity
+if any u_i > 0:
+    parent next band cannot execute
+else:
+    parent may advance
 ```
 
-and test whether redevelopment/displacement-like dynamics can emerge.
+Other lawful EML compositions can represent substitution, quotas, weighted satisfaction, or other domain semantics without introducing ActionBand-specific boolean regimes.
+
+## 11.2 Nested discrepancies, not imperative tasks
+
+This distinction is constitutional.
+
+**Forbidden interpretation:**
+
+```text
+TaskNode {
+    next_step
+    retry_policy
+    success_handler
+    failure_handler
+    child task scheduler
+}
+```
+
+That is a behavior tree/planner wearing ActionBand vocabulary.
+
+**Lawful interpretation:**
+
+```text
+Parent target discrepancy
+  ├─ subordinate target discrepancy A
+  ├─ subordinate target discrepancy B
+  └─ subordinate target discrepancy C
+```
+
+There is no imperative “next.”
+
+Current world state determines which discrepancies remain unresolved.
+
+## 11.3 Recursion may be concurrent
+
+Sibling subordinate ActionBands may progress independently in the same broader interval when their resources/topologies permit it.
+
+A colonization target may simultaneously pursue:
+
+```text
+transport availability
+population commitment
+supply reserve
+route/access
+```
+
+instead of hardcoding:
+
+```text
+A then B then C then D
+```
+
+The parent simply observes the unresolved vector.
+
+This makes recursive ActionBand semantics naturally parallel.
+
+## 11.4 Recurse and collapse
+
+When a subordinate ActionBand reaches its terminal target:
+
+```text
+child terminal crossing
+        ↓
+ordinary consequence becomes world state
+        ↓
+child ActionBand dissolves
+        ↓
+parent later observes resulting ordinary state
+```
+
+Resolved child ActionBands do not become permanent “completed task” records merely to prove they once existed.
+
+The world is the durable memory.
+
+> **Resolved ActionBands collapse back into ordinary SimThing state.**
+
+The parent itself collapses when its terminal target is satisfied and its terminal consequence has been emitted.
+
+## 11.5 Generation-paced recursion
+
+Recursive ActionBands do **not** recursively execute to convergence inside one generation.
+
+If a parent crossing emits a child registration in generation `t`, the child participates normally in the next admitted generation/barrier ordering.
+
+Likewise, a child completion affects ordinary state; the parent observes that resolved state through the normal later-generation loop.
+
+Forbidden:
+
+```text
+parent fires
+→ spawn child
+→ execute child immediately
+→ spawn grandchild
+→ execute grandchild immediately
+→ converge in one dispatch
+```
+
+Required:
+
+```text
+generation t:
+    parent crossing emits registration
+
+barrier
+
+generation t+1:
+    child evaluates normally
+```
+
+This preserves determinism, bounds recursion, and keeps the Wei cellular-automaton cadence intact.
 
 ---
 
-## 23. Core deliverable
+# 12. Multisource requirements and recursive ActionBands can collapse into one form
 
-The combined resolution is:
+The recursive design gives an elegant unification.
 
-### 23.1 Stellaris-type axes solve the semantic organization problem
+A heterogeneous requirement may be represented in one of two physical ways while retaining one semantic model:
 
-A small, logically arranged coordinate basis gives the world a reusable vocabulary for expressing complementary, adversarial, and independent conditions.
+### Trivial requirement
 
-Higher-order concepts arise from combinations and trajectories through the basis.
-
-### 23.2 Recursive RF solves where field values come from
-
-A SimThing’s field coordinates are projections of its recursively evaluated causal/resource state, not manually pasted semantic labels.
-
-### 23.3 STEAD turns those coordinates into shared heat fields
-
-The semantic basis becomes a multi-channel spatial/relational heat volume through ordinary emitter falloff and superposition.
-
-### 23.4 EML + PALMA turn heat fields into candidate action
-
-Actors project the shared field according to their own deficits, profiles, prices, and commitment state. PALMA turns the resulting potential/impedance into topology-aware candidate progress.
-
-### 23.5 Capability-tree doctrine solves heterogeneous action prerequisites
-
-Actions may depend simultaneously on checks, signals, consumed resources, transfers, reservations, and accumulated work. Those roles are authored and mechanically distinct.
-
-### 23.6 Vector CostBand solves only the remaining quantitative all-of step
-
-For the subset of requirements that are actual constrained quantitative lanes, common executable action depth is the minimum affordable depth across all required grants.
-
-The holding account preserves provisional conservation until commit.
-
-### 23.7 The full loop is recursive
+If the condition has no independent lifecycle, it can lower directly into the parent band's EML:
 
 ```text
-RF state
-  ↓
-semantic axes
-  ↓
-STEAD field bundle
-  ↓
-EML projection
-  ↓
-PALMA gradient
-  ↓
-ActionBand
-  ↓
-typed multisource requirements
-  ↓
-RF / CostBand
-  ↓
-consequence
-  ↓
-RF state
+has_psionic_navigator >= 1
 ```
 
-The apparent domains — technology unlocks, household moves, production recipes, shopping, service access, diplomacy, derivation, investment, movement — become authored interpretations of the same recursive composition.
+No child runtime object is owed.
+
+### Stateful target-seeking requirement
+
+If satisfying the condition requires its own target, STEAD interaction, resources, multiple bands, duration, or subordinate requirements, it may materialize as a subordinate ActionBand:
+
+```text
+Acquire Colony Transport
+    target: required transport capacity available
+```
+
+Thus a complex parent can mix:
+
+```text
+inline capability checks
+inline property predicates
+native RF/CostBand requirements
+materialized subordinate ActionBands
+```
+
+without a parallel planner or requirement engine.
+
+## 12.1 Example: colonization
+
+```text
+COLONIZE ORION IV
+│
+│ target:
+│   colony_state(OrionIV) = viable/established
+│
+├─ Acquire Colony Transport
+│    target: transport_capacity >= required
+│
+├─ Establish Population Commitment
+│    target: population_commitment >= required
+│
+├─ Stage Supplies
+│    target: supply_reserve >= required
+│
+├─ Secure Access
+│    target: route/access condition acceptable
+│
+└─ inline capability/state checks
+```
+
+The parent does not contain an authored procedural sequence.
+
+It evaluates which deficiencies remain.
+
+If transport, population, and supply can progress concurrently, they do.
+
+When child consequences become ordinary state, the parent naturally sees a shrinking unresolved vector.
+
+When the terminal parent condition is satisfied, the parent terminal band emits the colonization consequence and collapses.
+
+## 12.2 Semantic route discovery remains EML territory
+
+Physical movement has an obvious route topology.
+
+More complex goals such as colonization, supply-chain construction, institutional change, or production expansion may require EML to determine **which deficiencies must be reduced** and which subordinate ActionBands should become active.
+
+The engine does not need to pre-author a universal planning graph.
+
+ActionBand provides the recursive target/discrepancy/band facility. EML supplies the authored semantic reduction that determines what remains unresolved.
 
 ---
 
-## 24. Closing judgment
+# 13. Events and directives are ActionBand emissions/inputs
 
-The recurring “multisource action” problem appears less open than the current workshop vocabulary has made it seem.
+ActionBand gives the base SimThing a concrete event-execution meaning.
 
-The Capability Tree work already established the essential semantic structure:
+An event is often simply:
 
-- heterogeneous prerequisites;
-- progress separate from eligibility;
-- generic value checks;
-- atomic consequence activation;
-- domain labels outside the simulation substrate.
+> **a meaningful ActionBand band crossing emitted from ordinary changing state.**
 
-The 0.0.8.7 work adds what that earlier design did not yet possess:
+A directive is ordinary received state/overlay that may:
 
-- intrinsic recursive RF participation;
-- STEAD field propagation;
-- EML-computed action valuation;
-- PALMA topology-aware potentials;
-- CostBand as exact determinate work depth;
-- and a candidate holding mechanism for multiple contested quantitative grants.
+- deform the target;
+- alter stakes;
+- change a band threshold;
+- affect a band's EML payload; or
+- activate/register a new ActionBand.
 
-The Stellaris-style axis web supplies the missing geometric clarification: **semantic state should be organized as a compact coordinate basis whose interactions create higher-order behavior, rather than as a catalog of named domain mechanics.**
+The engine does not need an independent event taxonomy to understand the domain meaning.
 
-The resulting architecture is therefore not “semantic fields plus multi-resource transactions.” It is one recursive SimThing cycle:
+Example:
 
-> **Strong causal axes create shared fields; actors descend the projections of those fields; typed multisource requirements determine whether and how far the desired action can become real; the consequence changes the same recursive state that emits the next field.**
+```text
+food_security falls below threshold
+        ↓
+registered ActionBand crosses band
+        ↓
+EML payload evaluates ordinary state/RF
+        ↓
+food-seeking response becomes actionable
+```
 
-That is the candidate multi-axis ActionBand + STEAD unification.
+This is the missing “listen and act” loop of the recursive SimThing stem cell.
+
+---
+
+# 14. Existing facilities retain their authority
+
+ActionBand is a composition facility. It must not absorb or duplicate the semantics of the mechanisms it uses.
+
+| Mechanism | Authority |
+|---|---|
+| **STEAD** | recursively produced/shared field coordinates and propagation |
+| **PALMA** | topology-aware potential/impedance routing where a route exists |
+| **EML** | authored valuation, target/deficiency reduction, band payload logic |
+| **RF** | resource claims, conserved quantities, constrained clearing/disbursement |
+| **CostBand** | exact resource-sink/work quantization and carried remainder |
+| **Overlay** | ordinary policy/directive/transient deformation |
+| **Threshold/crossing substrate** | detecting meaningful band crossings |
+| **Boundary authority** | structural mutation that numerical execution may authorize but never perform directly |
+| **ActionBand** | lifecycle of unresolved target displacement and band-emitted execution |
+
+This separation is load-bearing.
+
+## 14.1 ActionBand + CostBand
+
+ActionBand is an application/generalization of the threshold-emission idea that CostBand made useful for action.
+
+CostBand remains:
+
+\[
+N=\left\lfloor\frac{V}{C}\right\rfloor
+\]
+
+\[
+R=V-NC
+\]
+
+ActionBand may use CostBand output/progress as one of its band observables.
+
+A one-band event handler is often the depth-1 case of this same pattern.
+
+ActionBand must not invent another sink mechanism.
+
+## 14.2 Structural consequences
+
+An ActionBand EML payload may authorize a structural consequence, but the existing boundary still owns the mutation.
+
+ActionBand must never directly relocate rows, mint structural identity, mutate topology behind admission, or bypass sealed boundary requests.
+
+---
+
+# 15. Movement is a derived/vendorized ActionBand implementation
+
+Physical movement is useful because it makes the target/displacement/route model easy to visualize:
+
+```text
+current spatial coordinate
+        ↓
+PALMA impedance route
+        ↓
+target coordinate
+        ↓
+movement-progress bands
+        ↓
+partial spatial consequences
+        ↓
+arrival terminal band
+```
+
+But “movement” is not a peer core action facility.
+
+A movement implementation is lawful only insofar as it is a derived use of ActionBand and existing spatial/STEAD/PALMA/boundary facilities.
+
+The same ActionBand semantics also cover:
+
+```text
+get food
+build a door
+complete research
+acquire a capability
+repair a machine
+satisfy a service need
+establish a colony
+move a fleet to Orion IV
+```
+
+No one example defines the general case.
+
+---
+
+# 16. Worked examples
+
+## 16.1 Get food — likely depth 1
+
+```text
+current:
+    food_security = -0.7
+
+target:
+    food_security >= +0.2
+
+stakes:
+    function of displacement, reserves, worsening velocity, local conditions
+
+band:
+    actionable food deficit threshold
+
+payload:
+    EML reads food/access/price state
+    ordinary RF claims where necessary
+    CostBand consumption where necessary
+
+terminal:
+    target condition reached
+    ActionBand dissolves
+```
+
+## 16.2 Build a door — depth 1 or several authored milestones
+
+```text
+current:
+    build_progress = 0
+
+target:
+    build_progress >= 1
+
+bands:
+    0.25 optional milestone
+    0.50 optional milestone
+    0.75 optional milestone
+    1.00 terminal
+```
+
+Or the author may choose a single terminal band if intermediate state has no gameplay consequence.
+
+Each band payload may consume ordinary work/material CostBands or emit ordinary state changes.
+
+## 16.3 Fleet to Orion IV — spatial vendorization
+
+```text
+current:
+    spatial locus A
+
+target:
+    arrival set around Orion IV
+
+route:
+    PALMA over admitted spatial topology
+
+band:
+    lawful progress distance for this generation
+
+payload:
+    movement CostBand / ordinary boundary movement consequence
+
+terminal:
+    arrival predicate
+    terminal event
+    dissolve ActionBand
+```
+
+## 16.4 Shroud traversal with multisource requirements
+
+```text
+current:
+    not at target Shroud coordinate
+
+target:
+    target coordinate reached
+
+one executable band requires:
+    psionic_navigator >= 1
+    shroud_access >= 1
+    required energy/fuel executable
+```
+
+The two capability checks are ordinary state observations.
+
+Energy/fuel uses ordinary RF/CostBand.
+
+If prerequisites are not met, the ActionBand remains unresolved/braked.
+
+If acquiring one prerequisite itself requires extended action, that prerequisite may become a subordinate ActionBand instead of an inline predicate.
+
+## 16.5 Colonization — recursive ActionBand
+
+```text
+parent target:
+    colony established
+
+subordinate discrepancies:
+    transport capacity
+    population commitment
+    supplies
+    route/access
+
+inline checks:
+    legal/capability prerequisites
+```
+
+Subordinate ActionBands may progress concurrently. They collapse when their consequences become ordinary state. The parent crosses its terminal band once its EML reduction determines all required discrepancies are sufficiently resolved.
+
+---
+
+# 17. Physical lowering and performance law
+
+The semantic model is recursive. The hot implementation must not be forced to perform recursive pointer traversal.
+
+> **Recurse semantically; flatten physically.**
+
+Admission/JIT/lowering may compile recursive ActionBand structure into packed, contiguous evaluation data so long as semantics, generation ordering, band crossing behavior, and provenance are preserved.
+
+## 17.1 Sparse registration
+
+The desired scaling law is:
+
+\[
+O(\text{active ActionBand registrations})
+\]
+
+not:
+
+\[
+O(\text{all SimThings} \times \text{all possible actions})
+\]
+
+Inactive SimThings owe no generic behavior loop.
+
+## 17.2 Ride already-hot sweeps
+
+ActionBand should evaluate against values already produced by the ordinary reduce/disburse/STEAD/field passes whenever possible.
+
+The design target is approximately:
+
+```text
+value becomes available
+    ↓
+registered band compare
+    ↓
+no crossing → no additional work
+    ↓
+crossing → compact emission
+```
+
+rather than a second world scan.
+
+The phrase “free evaluation” means **piggybacking on already-required memory traffic and paying only sparse compare/emission cost**, not literal zero instructions.
+
+## 17.3 Depth-1/2 fast path
+
+Because most ActionBands are expected to be depth 1 or depth 2, physical layout should optimize that case.
+
+A plausible descriptor family may contain:
+
+```text
+observed binding
+target/threshold parameters
+band count / inline small bands
+EML program id or offset
+lifecycle flags/state
+optional child/dependency span
+```
+
+This is an engineering sketch, not a frozen ABI.
+
+## 17.4 Inline trivial children
+
+A subordinate condition such as:
+
+```text
+has_psionic_navigator >= 1
+```
+
+should not require a materialized child ActionBand if admission can faithfully inline it into the parent's EML payload.
+
+Only children with independent lifecycle—own target, progress, bands, RF interaction, topology, duration, or recursive dependencies—need materialization.
+
+This gives three physical cost tiers under one semantic model:
+
+```text
+inline predicate
+    ↓ cheapest
+
+materialized depth-1 ActionBand
+    ↓ sparse watcher
+
+multiband / recursive ActionBand
+    ↓ only when genuinely needed
+```
+
+## 17.5 Flatten recursive hierarchy
+
+Authoring may be recursive:
+
+```text
+parent
+ ├─ child A
+ ├─ child B
+ └─ child C
+```
+
+Physical lowering may compile this to a flat descriptor/program region with resolved indices/offsets and dependency inputs.
+
+The physical representation must not become semantic authority.
+
+No runtime recursive call stack is required by the design.
+
+## 17.6 Batch by program/binding shape
+
+Many ActionBands will share identical:
+
+```text
+EML program
+band schedule
+axis basis
+binding layout
+```
+
+while differing only in values/targets.
+
+The executor should be free to batch these by program/profile/binding shape for coherent GPU access.
+
+## 17.7 Keep continuous state on GPU
+
+Continuous ActionBand state such as:
+
+```text
+displacement
+velocity
+progress
+stakes
+```
+
+should remain GPU-resident unless a semantic/structural boundary is crossed.
+
+CPU-visible deltas should be sparse:
+
+```text
+band crossing
+terminal event
+structural consequence request
+persistent semantic transition
+```
+
+not per-generation continuous mirrors.
+
+## 17.8 Parallel subordinate evaluation
+
+Independent subordinate ActionBands are naturally parallel.
+
+Sibling discrepancies may evaluate concurrently, and a parent reduction consumes their resolved/unresolved states according to generation pacing.
+
+No serial procedural task order is implied by recursion.
+
+---
+
+# 18. Determinism and lifecycle
+
+ActionBand must inherit SimThing determinism laws.
+
+- ordering may never come from physical row order;
+- field values and EML are evaluated under the admitted arithmetic semantics;
+- threshold crossings are sealed/recordable where the surrounding substrate requires it;
+- structural consequences remain behind recorded boundary authority;
+- no same-generation recursive convergence is introduced;
+- unresolved ActionBands have explicit lifecycle/horizon semantics;
+- completed ActionBands collapse and do not leak permanent task-state residue.
+
+A moving target or changing overlay is not an exception. It simply changes ordinary input state for the next generation's displacement evaluation.
+
+---
+
+# 19. Candidate binding laws for DA review
+
+The following are proposed as the normative ActionBand laws.
+
+## 19.1 Intrinsic Action Law
+
+> Every SimThing possesses the inert-by-default capability to host ActionBands. ActionBand is the base SimThing event/action execution facility, not a domain service and not a fifth StemThing leg.
+
+## 19.2 Target-Displacement Law
+
+> An ActionBand represents unresolved displacement between current recursively evaluated state and an admitted target point/set on the same observable/field basis.
+
+## 19.3 Resultant Bipolar Axis Law
+
+> A truly bipolar semantic axis is one bounded resultant degree of freedom. Opposing influences resolve into the current scalar; cancellation to zero is zero unless contest magnitude is separately authored as another observable. Semantic bipolarity does not imply RF conservation.
+
+## 19.4 Stakes Law
+
+> Stakes are the EML-derived consequence/urgency of leaving an ActionBand displacement unresolved. Displacement and stakes are distinct observables; velocity may affect stakes.
+
+## 19.5 Authored Band Law
+
+> Bands are authored threshold surfaces over admitted ActionBand observables. Crossing a band emits its optional EML payload. Band segmentation is semantic/authored, not fixed to normalized or equally spaced progress.
+
+## 19.6 Native Semantics Law
+
+> ActionBand binds to existing property, RF, CostBand, overlay, STEAD, PALMA, and boundary semantics; it does not create a parallel resource, prerequisite, sink, transfer, or structural-mutation universe.
+
+## 19.7 Point-of-Execution Law
+
+> ActionBand owns the lifecycle from unresolved target through partial band emissions to terminal resolution. It is not merely a goal selector in front of another action engine.
+
+## 19.8 Recursive ActionBand Law
+
+> An ActionBand band payload may activate subordinate ActionBands on the same intrinsic SimThing facility. Subordinate bands are nested target discrepancies, not imperative tasks; they may resolve concurrently, collapse when their target conditions become ordinary state, and never execute recursively to convergence inside one generation.
+
+## 19.9 Multisource Collapse Law
+
+> Heterogeneous multisource requirements may remain inline ordinary predicates/resources or materialize as subordinate ActionBands when satisfying them has an independent target-seeking lifecycle. The parent advances according to authored EML over the resulting unresolved state. Already-resolved requirements are represented by ordinary world state, not permanent completed-task records.
+
+## 19.10 Semantic-Recursion / Physical-Flattening Law
+
+> Recursive ActionBand structure is semantic authority. Admission/execution may inline, batch, or flatten it into non-recursive packed GPU data so long as semantics, crossing order, lifecycle, provenance, and generation pacing remain unchanged.
+
+## 19.11 Generation-Pacing Law
+
+> ActionBand emissions may affect later ActionBands and world state only through the admitted generation/barrier ordering. No parent→child→grandchild same-generation convergence loop is lawful.
+
+## 19.12 Vendorization Law
+
+> Domain behaviors such as physical movement are derived/vendorized uses of ActionBand. No domain implementation may become a peer core action facility or bypass ActionBand decision/execution semantics where ActionBand applies.
+
+---
+
+# 20. Explicitly fenced questions
+
+The base ActionBand facility is considered semantically complete without resolving the following implementation/research questions:
+
+1. **Vector CostBand atomicity:** exact efficient common-depth commitment across several independently contested scarce RF lanes.
+2. **Holding/fairness:** how long provisional scarce grants may remain held while another requirement is unresolved without starvation or pathological hoarding.
+3. **Local minima / adversarial navigation:** escape and competition behavior when PALMA/STEAD target descent is not trivially monotone.
+4. **Optimal flattening:** the final packed GPU representation, inlining threshold, batching strategy, and whether depth-1/2 deserves dedicated fused lowering.
+5. **Performance envelope:** exact memory and bandwidth cost under millions of active/inactive SimThings.
+
+These questions are falsifiable engineering/research work. They do not reopen the constitutional existence or semantic role of ActionBand.
+
+---
+
+# 21. Engineering/Fable review obligations
+
+Review should attack the design at its actual load-bearing seams.
+
+## 21.1 StemThing integrity
+
+- Can ActionBand remain intrinsic to SimThing without creating an independent action object/service?
+- Does recursive activation preserve one sole iteration/failure point?
+- Does any proposed implementation secretly introduce a planner, task graph, destination registry, or domain action enum?
+
+## 21.2 Semantic sufficiency
+
+- Can target/displacement/stakes/bands express depth-1 event handling, multiband progress, and recursive target decomposition without a peer event engine?
+- Are bipolar resultant axes sufficient when the author can create additional observables where hidden contest magnitude matters?
+- Does target-set semantics avoid pathological exact-point oscillation?
+
+## 21.3 Multisource compatibility
+
+- Can ordinary state checks, RF lanes, and CostBand progress participate in one band payload without reclassifying them into a parallel requirement subsystem?
+- Can the inherited “brake, do not rewind already-resolved progress” behavior be implemented without violating RF conservation?
+- Which cases genuinely require future Vector CostBand work?
+
+## 21.4 Recursive collapse
+
+- Can trivial subordinate requirements be inlined while preserving exact semantics?
+- Can stateful subordinate ActionBands materialize sparsely and dissolve without leaving task-history residue?
+- Can siblings evaluate concurrently with only generation-paced parent observation?
+
+## 21.5 Performance
+
+- Can registration evaluation ride already-hot field/reduction passes rather than require a second world scan?
+- Is the common depth-1/2 case cheap enough for very large populations?
+- Can recursive authoring lower to packed non-recursive GPU descriptors?
+- Can identical EML/band shapes batch coherently?
+- Can CPU traffic remain threshold/terminal/structural deltas only?
+
+## 21.6 Determinism
+
+- Does flattening preserve canonical semantic order?
+- Are no decisions derived from physical row iteration order?
+- Does recursive ActionBand activation obey the existing barrier/history laws?
+
+---
+
+# 22. Falsifiers
+
+The ActionBand design should be remanded if any of these are demonstrated.
+
+### F1 — peer action authority is required
+
+A broad class of ordinary SimThing actions cannot be expressed without introducing a second authoritative goal/event/action service beside ActionBand.
+
+### F2 — recursion becomes an imperative planner
+
+A necessary use requires persistent `next_step`/retry/task scheduling semantics that cannot be reconstructed from ordinary target discrepancies and world state.
+
+### F3 — multisource semantics require duplication
+
+A real multisource action cannot be expressed without ActionBand inventing a second resource/property classification system beside admitted RF/property/CostBand semantics.
+
+### F4 — recursive state cannot collapse
+
+Resolved subordinate ActionBands must remain permanently resident merely to preserve correctness rather than their consequences being represented by ordinary world state.
+
+### F5 — performance requires population-wide action scans
+
+The only workable implementation requires iterating all possible actions over all SimThings rather than sparse active registrations / compiled programs.
+
+### F6 — semantic recursion cannot flatten
+
+Correct recursive semantics require runtime pointer recursion or per-child CPU scheduling that cannot be compiled into deterministic packed GPU execution.
+
+### F7 — band semantics are too narrow
+
+Important target-seeking behavior cannot be represented by authored threshold surfaces plus EML payloads without introducing domain-specific event stages in core.
+
+### F8 — topology requires a domain planner
+
+A major target-resolution class cannot use an admitted topology/PALMA or direct-state base case and instead requires a privileged engine-side domain planner.
+
+---
+
+# 23. Implications for 0.0.8.7 review
+
+This document is intended to fill the architectural space before movement or other derived actions are allowed to freeze as peer vocabulary.
+
+The workplan reconciliation itself belongs to the DA/Owner rollback ceremony, not to this document, but the engineering dependency is clear:
+
+```text
+ActionBand intrinsic door / semantics
+        ↓
+derived domain implementations
+        ↓
+movement as one vendorized spatial use
+```
+
+not:
+
+```text
+movement implementation
+        ↓
+infer/generalize ActionBand later
+```
+
+Any temporary placeholder/door used during rollback must therefore be a real path through which the derived consumer is constructed or evaluated, not kabuki beside the old peer facility.
+
+The already-proven gradient-derived authority substrate remains useful evidence: changing field/overlay state may redirect progress without editing a privileged destination/action identity. That substrate belongs underneath ActionBand rather than establishing movement as permanent peer vocabulary.
+
+---
+
+# 24. Core deliverable
+
+The complete ActionBand conception is now:
+
+```text
+                     SIMTHING
+                        │
+                recursive state/RF
+                        │
+                        ▼
+              resultant STEAD axes
+                        │
+              current coordinate X
+                        │
+            ┌───────────┴───────────┐
+            │                       │
+            │                 target set G(t)
+            │              (disposition / state /
+            │               time / directives /
+            │                   overlays)
+            │                       │
+            └───────────┬───────────┘
+                        ▼
+                displacement D
+                velocity dD/dt
+                   stakes Σ
+                        │
+                        ▼
+               EML deficiency logic
+                        │
+               PALMA route if needed
+                        │
+                        ▼
+                   ACTIONBAND
+                        │
+              authored threshold bands
+                        │
+             ┌──────────┴──────────┐
+             │                     │
+       inline native          subordinate
+       requirements           ActionBands
+             │                     │
+             └──────────┬──────────┘
+                        ▼
+                band EML payload
+                        │
+          ┌─────────────┼─────────────┐
+          │             │             │
+      ordinary RF    CostBand     overlays/events
+          │             │             │
+          └─────────────┼─────────────┘
+                        ▼
+               partial consequence
+                        │
+                 new world state
+                        │
+                        ▼
+                later generation
+                        │
+              next band / collapse
+                        │
+                        ▼
+                  terminal target
+                        │
+                terminal emission
+                        │
+                        ▼
+               ActionBand dissolves
+```
+
+The central architectural result is:
+
+> **ActionBand is the fractally recursive event-execution facility of the base SimThing. It turns tension between current and desired STEAD state into generation-paced, band-emitted action using existing EML, PALMA, RF, CostBand, overlay, and boundary authorities. Complex goals recurse into subordinate discrepancies on the same intrinsic facility and collapse back into ordinary world state as those discrepancies resolve.**
+
+That is the specification Fable and engineering should review.
