@@ -1,7 +1,7 @@
 # ACTIONBAND-ADMISSION-DOOR-0 results
 
 - Track: 0.0.8.7 RF arena modernization (rung 7.1)
-- Status: **PROBATION / proof-present / DA-review-pending**
+- Status: **COMPLETE — DA-GRADUATED / merged #1694 @ `66182aeb`**
 - Branch: `codex/actionband-admission-door-0`
 - base_sha: `ebff7ef15c0287960958d2997bcd1d1d14e6e9b5`
 - implementation_code_sha: `34d8b06690a23503289a969773669c3788fe476c`
