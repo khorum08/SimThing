@@ -5,6 +5,8 @@
 >
 > Owner ruling, 2026-08-08: **ActionBand is a first-class intrinsic SimThing facility.** It is part of the base recursive stem-cell definition, inert by default, and is the generic facility by which a SimThing listens to recursively produced state, compares that state with desired conditions, follows a lawful STEAD/PALMA route toward resolution, and emits executable consequences as authored bands are crossed.
 >
+> **Execution authority is GPU-only.** ActionBand numerical state and execution live entirely on the GPU. The CPU carries only the semantic shadow needed for human-readable designation, durable identity/persistence, diagnostics/presentation, and existing structural-boundary work. A CPU ActionBand evaluator, planner, scheduler, continuous mirror, or semantic decision path is forbidden.
+>
 > This document is intended to become the governing ActionBand anchor after DA review/admission. It does **not** by itself edit the 0.0.8.7 ladder or close the separate rollback/reconciliation ceremony required for already-graduated movement/7.1a work.
 >
 > The prior workshop disposition that attempted to infer ActionBand from already-landed domain witnesses is not the governing architectural premise of this document. The direction is inverted:
@@ -73,6 +75,8 @@ recursive SimThing / RF state
  next-generation recursive state
 ```
 
+Everything through ActionBand evaluation, crossing, recursive subordinate evaluation, and numerical consequence authorization is GPU-authoritative. CPU interaction occurs only when a sparse semantic/structural boundary delta must be remembered, presented, persisted, or applied through an already-existing CPU-owned structural boundary.
+
 An ActionBand is therefore not merely a selector in front of execution. **It is the SimThing's intrinsic event/action execution trajectory from unresolved condition to resolved condition.**
 
 ---
@@ -115,6 +119,56 @@ SimThing
 
 ActionBand composes the already-existing mechanisms behind those legs rather than replacing them.
 
+## 1.1 GPU numerical authority / CPU semantic shadow
+
+ActionBand is **implemented entirely in the GPU numerical regime**.
+
+The GPU owns, evaluates, and advances all ActionBand numerical authority, including as applicable:
+
+```text
+current coordinate / observed bindings
+target numeric bindings
+resultant STEAD inputs
+displacement
+velocity / delta-to-target
+stakes
+band thresholds and crossing state
+EML payload execution
+PALMA-derived route/impedance inputs
+progress / CostBand interaction
+recursive/subordinate ActionBand dependency state
+RF claim quantities and numerical commitment state
+terminal satisfaction / dissolve eligibility
+```
+
+No CPU copy of those values is authoritative, and no CPU loop is permitted to decide what an ActionBand wants, whether a band crossed, which subordinate discrepancy is active, or how far an ActionBand progresses.
+
+The CPU owns a **semantic shadow**, not a second executor. That shadow may contain:
+
+```text
+stable logical identity
+human-readable names/designations
+authoring/debug/UI metadata
+persistent categorical history
+mapping from opaque GPU identities to semantic labels
+sparse band/terminal/structural deltas after GPU execution
+existing structural-boundary requests and their recorded application
+```
+
+Human-readable domain names exist only in that CPU semantic shadow / authoring-presentation layer. GPU ActionBand programs and descriptors operate on sealed numeric/logical bindings, opaque ids, offsets, ranges, thresholds, and admitted EML programs; they do not branch on strings, domain nouns, or human-readable action names.
+
+The constitutional rule is:
+
+> **GPU computes and decides ActionBand numerical state. CPU remembers and names the semantic consequences.**
+
+A CPU semantic shadow may say that opaque ActionBand/program identity `317` corresponds in an authored scenario to “secure food supply” or “reach Orion IV.” That designation has no numerical authority and must never become a CPU-side dispatch key that selects behavior.
+
+A structural consequence remains lawful when the GPU emits the sealed request/delta and the existing CPU boundary performs the mutation. The boundary executes structure; it does not re-evaluate the ActionBand decision.
+
+This preserves the broader SimThing law:
+
+> **Numerical state remains GPU-resident until a semantic or structural boundary crossing. CPU workload scales with semantic change rate, not SimThing count × generation count.**
+
 ---
 
 # 2. The semantic coordinate model: Stellaris-style axes generalized
@@ -149,7 +203,7 @@ housing pressure←→ housing abundance
 
 Other domains may author different axes.
 
-The engine does not know what these names mean. It knows admitted property/field bindings and the EML/STEAD laws that generate them.
+The engine does not know what these names mean. It knows admitted property/field bindings and the EML/STEAD laws that generate them. Those human-readable axis names are CPU semantic-shadow/authoring designations; the GPU sees only their admitted numeric bindings.
 
 ## 2.1 Resultant bipolar scalar law
 
@@ -378,6 +432,8 @@ fleet within arrival radius of Orion IV
 capability.psionic_navigator >= 1
 ```
 
+These names are explanatory CPU-shadow labels. The GPU representation is the corresponding admitted numeric target/property/topology binding.
+
 ## 4.1 Where targets come from
 
 ActionBand owns no separate target manager.
@@ -442,7 +498,7 @@ V_D(t)=D(t)-D(t-1)
 
 which indicates whether the discrepancy is closing or worsening.
 
-Velocity should preferentially derive from already-available current/previous generation planes rather than introduce an ActionBand-specific state handler. If longer history is required, that history remains ordinary SimThing state.
+Velocity should preferentially derive from already-available current/previous generation GPU planes rather than introduce an ActionBand-specific state handler. If longer history is required, that history remains ordinary SimThing state; only semantically durable history need cross into CPU shadow.
 
 ---
 
@@ -464,7 +520,7 @@ Let:
 \Sigma_{s,b}(t)=S_b\left(D, V_D, R_s, \Phi, overlays, reserves, deficits, history, ...\right)
 \]
 
-where `S_b` is ordinary admitted EML.
+where `S_b` is ordinary admitted EML executed in the GPU numerical regime.
 
 The default conceptual relationship may be thought of as:
 
@@ -485,7 +541,7 @@ Therefore:
 
 > **Displacement supplies tension. Stakes supply urgency/consequence. Bands turn meaningful tension, urgency, or progress into emissions.**
 
-Stakes themselves are ordinary ActionBand observables and may be used as band operands.
+Stakes themselves are ordinary GPU-resident ActionBand observables and may be used as band operands.
 
 ---
 
@@ -565,7 +621,7 @@ ActionBand
 └─ lifecycle / terminal condition
 ```
 
-The runtime representation may be more compact than this conceptual form.
+The runtime representation may be more compact than this conceptual form, and its production numerical representation is GPU-resident. Human-readable names for any of these bindings exist only in the CPU semantic shadow/authoring layer.
 
 ## 7.1 Inert by default
 
@@ -602,7 +658,7 @@ lifecycle:
 
 There is no separate event subscription manager.
 
-The sweep already produces the observed values. ActionBand rides those values and emits only when a meaningful band crossing occurs.
+The sweep already produces the observed values. ActionBand rides those values and emits only when a meaningful band crossing occurs. Registration and evaluation are GPU-resident after admission; CPU-facing designations are descriptive shadow only.
 
 ---
 
@@ -665,6 +721,8 @@ This preserves the existing threshold/crossing discipline and prevents held cond
 
 If an author needs periodic milestones, they author multiple threshold bands or an explicit progress/time observable rather than an implicit “fire every tick while true” mode.
 
+Band crossing authority is GPU-only. The CPU may receive a sparse crossing delta after the fact; it may not perform the crossing test independently.
+
 ## 8.3 EML payload
 
 Every band may carry a tight admitted EML payload.
@@ -696,6 +754,8 @@ band crossed
 ```
 
 The default implementation may be a simple threshold emission. Specialized uses may invoke richer EML reductions without changing ActionBand's core type.
+
+All such payload evaluation is GPU-side. Human-readable payload/program designations are CPU-shadow metadata, not execution keys.
 
 ---
 
@@ -744,6 +804,8 @@ Food acquisition may be depth 1.
 A policy/capability gate may be depth 1 and emit no physical motion at all.
 
 The common facility is the target-seeking, band-emitting lifecycle—not a movement-specific operation.
+
+The entire numerical lifecycle is GPU-authoritative. A terminal structural request may cross to the CPU boundary for application, but CPU boundary code does not decide whether the terminal band was reached.
 
 ---
 
@@ -796,6 +858,8 @@ uses existing CostBand semantics for sinks/progress
 ```
 
 rather than a new engine-wide requirement taxonomy.
+
+These reads, claims, and CostBand progress decisions remain GPU-resident numerical operations.
 
 ## 10.2 Braking / held progress
 
@@ -893,6 +957,8 @@ else:
 
 Other lawful EML compositions can represent substitution, quotas, weighted satisfaction, or other domain semantics without introducing ActionBand-specific boolean regimes.
 
+All child state, parent reduction, and subordinate activation decisions are GPU-resident. The CPU shadow may name the parent/child relation for authoring or diagnostics but does not traverse or schedule it.
+
 ## 11.2 Nested discrepancies, not imperative tasks
 
 This distinction is constitutional.
@@ -945,7 +1011,7 @@ A then B then C then D
 
 The parent simply observes the unresolved vector.
 
-This makes recursive ActionBand semantics naturally parallel.
+This makes recursive ActionBand semantics naturally parallel and GPU-friendly.
 
 ## 11.4 Recurse and collapse
 
@@ -968,6 +1034,8 @@ The world is the durable memory.
 > **Resolved ActionBands collapse back into ordinary SimThing state.**
 
 The parent itself collapses when its terminal target is satisfied and its terminal consequence has been emitted.
+
+The CPU semantic shadow may retain a durable human-readable history if the design explicitly requires one, but that history is retrospective and non-authoritative; it cannot keep the completed ActionBand numerically alive.
 
 ## 11.5 Generation-paced recursion
 
@@ -1039,6 +1107,8 @@ materialized subordinate ActionBands
 ```
 
 without a parallel planner or requirement engine.
+
+All physically materialized subordinate ActionBands remain GPU-side numeric structures; the explanatory names above exist only in CPU shadow/authoring metadata.
 
 ## 12.1 Example: colonization
 
@@ -1117,6 +1187,8 @@ food-seeking response becomes actionable
 
 This is the missing “listen and act” loop of the recursive SimThing stem cell.
 
+All event detection and directive-driven numerical deformation occurs on GPU. CPU-readable event names are semantic-shadow projections of opaque band/program identities after the GPU has emitted a crossing.
+
 ---
 
 # 14. Existing facilities retain their authority
@@ -1133,7 +1205,8 @@ ActionBand is a composition facility. It must not absorb or duplicate the semant
 | **Overlay** | ordinary policy/directive/transient deformation |
 | **Threshold/crossing substrate** | detecting meaningful band crossings |
 | **Boundary authority** | structural mutation that numerical execution may authorize but never perform directly |
-| **ActionBand** | lifecycle of unresolved target displacement and band-emitted execution |
+| **GPU ActionBand** | numerical lifecycle of unresolved target displacement and band-emitted execution |
+| **CPU semantic shadow** | human-readable designation, durable identity/history, diagnostics/presentation, sparse boundary deltas; never numerical decision authority |
 
 This separation is load-bearing.
 
@@ -1162,6 +1235,8 @@ ActionBand must not invent another sink mechanism.
 An ActionBand EML payload may authorize a structural consequence, but the existing boundary still owns the mutation.
 
 ActionBand must never directly relocate rows, mint structural identity, mutate topology behind admission, or bypass sealed boundary requests.
+
+The CPU boundary applies the GPU-authorized request; it does not reinterpret its human-readable designation or re-decide the underlying ActionBand result.
 
 ---
 
@@ -1200,7 +1275,7 @@ establish a colony
 move a fleet to Orion IV
 ```
 
-No one example defines the general case.
+No one example defines the general case. These domain phrases are explanatory CPU-shadow labels; production GPU execution remains domain-nameless.
 
 ---
 
@@ -1316,6 +1391,8 @@ inline checks:
 
 Subordinate ActionBands may progress concurrently. They collapse when their consequences become ordinary state. The parent crosses its terminal band once its EML reduction determines all required discrepancies are sufficiently resolved.
 
+The labels in all examples are explanatory semantic-shadow names only. Their production form is sealed GPU numeric bindings/programs.
+
 ---
 
 # 17. Physical lowering and performance law
@@ -1325,6 +1402,8 @@ The semantic model is recursive. The hot implementation must not be forced to pe
 > **Recurse semantically; flatten physically.**
 
 Admission/JIT/lowering may compile recursive ActionBand structure into packed, contiguous evaluation data so long as semantics, generation ordering, band crossing behavior, and provenance are preserved.
+
+The physical execution target is GPU-only. CPU is not a fallback executor for uncommon ActionBand shapes.
 
 ## 17.1 Sparse registration
 
@@ -1349,16 +1428,16 @@ ActionBand should evaluate against values already produced by the ordinary reduc
 The design target is approximately:
 
 ```text
-value becomes available
+value becomes available on GPU
     ↓
-registered band compare
+registered band compare on GPU
     ↓
 no crossing → no additional work
     ↓
-crossing → compact emission
+crossing → compact GPU emission
 ```
 
-rather than a second world scan.
+rather than a second world scan or CPU readback/re-evaluation.
 
 The phrase “free evaluation” means **piggybacking on already-required memory traffic and paying only sparse compare/emission cost**, not literal zero instructions.
 
@@ -1366,10 +1445,10 @@ The phrase “free evaluation” means **piggybacking on already-required memory
 
 Because most ActionBands are expected to be depth 1 or depth 2, physical layout should optimize that case.
 
-A plausible descriptor family may contain:
+A plausible GPU descriptor family may contain:
 
 ```text
-observed binding
+opaque observed binding
 target/threshold parameters
 band count / inline small bands
 EML program id or offset
@@ -1378,6 +1457,8 @@ optional child/dependency span
 ```
 
 This is an engineering sketch, not a frozen ABI.
+
+No human-readable designation is part of the hot descriptor.
 
 ## 17.4 Inline trivial children
 
@@ -1404,6 +1485,8 @@ multiband / recursive ActionBand
     ↓ only when genuinely needed
 ```
 
+All three tiers execute on GPU.
+
 ## 17.5 Flatten recursive hierarchy
 
 Authoring may be recursive:
@@ -1415,11 +1498,11 @@ parent
  └─ child C
 ```
 
-Physical lowering may compile this to a flat descriptor/program region with resolved indices/offsets and dependency inputs.
+Physical lowering may compile this to a flat GPU descriptor/program region with resolved indices/offsets and dependency inputs.
 
 The physical representation must not become semantic authority.
 
-No runtime recursive call stack is required by the design.
+No runtime recursive call stack and no CPU child scheduler is required or permitted by the design.
 
 ## 17.6 Batch by program/binding shape
 
@@ -1436,29 +1519,41 @@ while differing only in values/targets.
 
 The executor should be free to batch these by program/profile/binding shape for coherent GPU access.
 
-## 17.7 Keep continuous state on GPU
+## 17.7 GPU residency is absolute for ActionBand numerical state
 
-Continuous ActionBand state such as:
+ActionBand numerical execution is not merely “GPU preferred”; **GPU is the authority**.
+
+Continuous and discrete numerical ActionBand state such as:
 
 ```text
 displacement
 velocity
 progress
 stakes
+band crossing state
+subordinate unresolved state
+EML intermediate/result values
+claim quantities
+terminal eligibility
 ```
 
-should remain GPU-resident unless a semantic/structural boundary is crossed.
+remains GPU-resident.
 
-CPU-visible deltas should be sparse:
+The CPU must not maintain a continuous mirror, duplicate crossing evaluator, task scheduler, goal selector, or fallback action executor.
+
+CPU-visible deltas are sparse and semantic/structural:
 
 ```text
-band crossing
-terminal event
+band crossing designation for UI/history when needed
+terminal event designation
 structural consequence request
-persistent semantic transition
+persistent categorical transition
+logical identity/lifecycle bookkeeping required by existing boundary law
 ```
 
-not per-generation continuous mirrors.
+Even these are records of GPU-produced authority, not CPU recomputation.
+
+Human-readable ActionBand, band, target, event, requirement, and domain designations live only in CPU semantic shadow/authoring metadata. GPU-side execution uses opaque admitted ids/bindings and numerical programs.
 
 ## 17.8 Parallel subordinate evaluation
 
@@ -1480,9 +1575,10 @@ ActionBand must inherit SimThing determinism laws.
 - structural consequences remain behind recorded boundary authority;
 - no same-generation recursive convergence is introduced;
 - unresolved ActionBands have explicit lifecycle/horizon semantics;
-- completed ActionBands collapse and do not leak permanent task-state residue.
+- completed ActionBands collapse and do not leak permanent task-state residue;
+- CPU semantic-shadow labels may never affect numerical ordering, target choice, crossing, or consequence selection.
 
-A moving target or changing overlay is not an exception. It simply changes ordinary input state for the next generation's displacement evaluation.
+A moving target or changing overlay is not an exception. It simply changes ordinary GPU input state for the next generation's displacement evaluation.
 
 ---
 
@@ -1538,6 +1634,10 @@ The following are proposed as the normative ActionBand laws.
 
 > Domain behaviors such as physical movement are derived/vendorized uses of ActionBand. No domain implementation may become a peer core action facility or bypass ActionBand decision/execution semantics where ActionBand applies.
 
+## 19.13 GPU Numerical Authority / CPU Semantic Shadow Law
+
+> ActionBand numerical authority exists only on the GPU. Current/target values, displacement, velocity, stakes, band crossing, EML execution, recursive dependency evaluation, RF/CostBand numerical commitment state, progress, and terminal eligibility are GPU-resident and GPU-decided. CPU state is a semantic shadow containing human-readable designations, durable logical identity/history, diagnostics/presentation metadata, and sparse GPU-produced semantic/structural deltas. Human-readable labels may never become numerical dispatch keys or CPU-side decision authority. Structural CPU boundary work may apply a GPU-authorized request but may not re-evaluate the ActionBand that emitted it.
+
 ---
 
 # 20. Explicitly fenced questions
@@ -1550,7 +1650,7 @@ The base ActionBand facility is considered semantically complete without resolvi
 4. **Optimal flattening:** the final packed GPU representation, inlining threshold, batching strategy, and whether depth-1/2 deserves dedicated fused lowering.
 5. **Performance envelope:** exact memory and bandwidth cost under millions of active/inactive SimThings.
 
-These questions are falsifiable engineering/research work. They do not reopen the constitutional existence or semantic role of ActionBand.
+These questions are falsifiable engineering/research work. They do not reopen the constitutional existence or semantic role of ActionBand, and none permits a CPU fallback execution model.
 
 ---
 
@@ -1582,19 +1682,23 @@ Review should attack the design at its actual load-bearing seams.
 - Can stateful subordinate ActionBands materialize sparsely and dissolve without leaving task-history residue?
 - Can siblings evaluate concurrently with only generation-paced parent observation?
 
-## 21.5 Performance
+## 21.5 Performance and GPU authority
 
-- Can registration evaluation ride already-hot field/reduction passes rather than require a second world scan?
+- Can registration evaluation ride already-hot GPU field/reduction passes rather than require a second world scan?
 - Is the common depth-1/2 case cheap enough for very large populations?
 - Can recursive authoring lower to packed non-recursive GPU descriptors?
 - Can identical EML/band shapes batch coherently?
 - Can CPU traffic remain threshold/terminal/structural deltas only?
+- Can every uncommon ActionBand shape remain GPU-executable without introducing a CPU fallback path?
+- Does any proposed representation accidentally mirror continuous ActionBand state on CPU?
+- Are human-readable designations absent from GPU decision/dispatch logic by construction rather than convention?
 
 ## 21.6 Determinism
 
 - Does flattening preserve canonical semantic order?
 - Are no decisions derived from physical row iteration order?
 - Does recursive ActionBand activation obey the existing barrier/history laws?
+- Can CPU semantic-shadow naming be proven incapable of changing GPU numerical behavior?
 
 ---
 
@@ -1634,6 +1738,10 @@ Important target-seeking behavior cannot be represented by authored threshold su
 
 A major target-resolution class cannot use an admitted topology/PALMA or direct-state base case and instead requires a privileged engine-side domain planner.
 
+### F9 — CPU ActionBand authority is required
+
+Correct behavior requires CPU-side ActionBand evaluation, continuous numerical mirroring, goal selection, band-crossing decisions, recursive child scheduling, or dispatch keyed by human-readable semantic designation. Any such requirement falsifies the intended GPU-native ActionBand architecture rather than licensing a fallback.
+
 ---
 
 # 23. Implications for 0.0.8.7 review
@@ -1643,7 +1751,7 @@ This document is intended to fill the architectural space before movement or oth
 The workplan reconciliation itself belongs to the DA/Owner rollback ceremony, not to this document, but the engineering dependency is clear:
 
 ```text
-ActionBand intrinsic door / semantics
+GPU-native ActionBand intrinsic door / semantics
         ↓
 derived domain implementations
         ↓
@@ -1658,7 +1766,7 @@ movement implementation
 infer/generalize ActionBand later
 ```
 
-Any temporary placeholder/door used during rollback must therefore be a real path through which the derived consumer is constructed or evaluated, not kabuki beside the old peer facility.
+Any temporary placeholder/door used during rollback must therefore be a real GPU path through which the derived consumer is constructed or evaluated, not kabuki beside the old peer facility.
 
 The already-proven gradient-derived authority substrate remains useful evidence: changing field/overlay state may redirect progress without editing a privileged destination/action identity. That substrate belongs underneath ActionBand rather than establishing movement as permanent peer vocabulary.
 
@@ -1732,10 +1840,20 @@ The complete ActionBand conception is now:
                         │
                         ▼
                ActionBand dissolves
+
+     ALL NUMERICAL AUTHORITY ABOVE: GPU
+                        │
+                        ▼ sparse semantic/structural deltas only
+
+                 CPU SEMANTIC SHADOW
+            names / durable identity / history
+              UI / diagnostics / persistence
+              existing structural boundary
+          (never ActionBand decision authority)
 ```
 
 The central architectural result is:
 
-> **ActionBand is the fractally recursive event-execution facility of the base SimThing. It turns tension between current and desired STEAD state into generation-paced, band-emitted action using existing EML, PALMA, RF, CostBand, overlay, and boundary authorities. Complex goals recurse into subordinate discrepancies on the same intrinsic facility and collapse back into ordinary world state as those discrepancies resolve.**
+> **ActionBand is the fractally recursive, GPU-native event-execution facility of the base SimThing. It turns tension between current and desired STEAD state into generation-paced, band-emitted action using existing EML, PALMA, RF, CostBand, overlay, and boundary authorities. Complex goals recurse into subordinate discrepancies on the same intrinsic facility and collapse back into ordinary world state as those discrepancies resolve. The CPU never executes the ActionBand: it holds only the semantic shadow by which opaque GPU identities and GPU-produced boundary deltas become human-readable, persistent, and presentable.**
 
 That is the specification Fable and engineering should review.
