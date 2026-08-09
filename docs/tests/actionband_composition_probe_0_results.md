@@ -1,6 +1,6 @@
 # ACTIONBAND-COMPOSITION-PROBE-0 results
 
-Status: **COMPLETE — DA-GRADUATED / merged #1683 @ `b99a254b`. DETERMINATION: CANDIDATE (B) — ActionBand REJECTED as core law.**
+Status: **COMPLETE — DA-GRADUATED / merged #1683 @ `b99a254b`. DETERMINATION: CANDIDATE (B) — the six-stage composition is NOT currently a shared execution path. ActionBand is NOT rejected; it is a first-class facility per Owner ruling 2026-08-08.**
 
 > **This document is born-mortal and reaps with the 0.0.8.7 workshop leaf. The determination does NOT live here** — the durable finding is stamped into the 7.1a row of `design_0_0_8_7_rf_arena_modernization.md`, which is permanent. Read that row, not this file, for what was decided.
 
