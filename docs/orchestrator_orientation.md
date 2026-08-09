@@ -45,9 +45,9 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 211b860c2a424d0386a01a2dc93d5c563abfd1411c1f58ec55c7b69d97426cb8 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | 26eab30ec86c97ac8dfd6beef7ae8c5b4d3f18c38fdaa431ec40ccce855396d3 |
-| design_0_0_8_7_rf_arena_modernization.md | 6cc5dbd2f282641c59960696354f78d9ed00e8fc50b2c6a1baad7615cba05454 |
+| design_0_0_8_7_rf_arena_modernization.md | 64414c5d4ad28b521e04fd360325d8289153af351d9e15a1faac9d91e2fc7212 |
 | relay_lint.sh | 4163f715cdc3b549dbf57c1744aff61ea96b9f9f0a2237376665fbdb24e986c8 |
-| doctrine_anchors.tsv | c805ae7da6ab7d9052bba7aea4e61a33877651c40ca2b85733cd80fa8e614805 |
+| doctrine_anchors.tsv | 9a9b1227d111c1857ad70b3a3f9973f91e44497996ed80282065b9c48b69c5ca |
 | execution_status_taxonomy.tsv | c33df8d86dbc939e1f6b9a847b3d54e255ae602481cd459c96fba4b13cd2f145 |
 | execution_status_mixed_posture.tsv | 1adf05f3ec5fd7b537efe29259d20649a2c6d3a0839590063e5308ff154e8f25 |
 | execution_status_non_execution.tsv | 214c1b557dfd3fc465f0171051e20281ff1dcf6c53128dbb29cba01524f9be02 |
@@ -68,7 +68,7 @@ Dark properties (1): `fixture::dark_reading` (reasons/spans in `property_admissi
 
 Track state: `open`
 
-> Compact view: 33 completed rungs elided; showing all 18 open rungs plus the 3 most recent completions. Full ladder in the design doc.
+> Compact view: 33 completed rungs elided; showing all 20 open rungs plus the 3 most recent completions. Full ladder in the design doc.
 
 | # | rung | deliverable | exit proof |
 | --- | --- | --- | --- |
@@ -81,9 +81,11 @@ Track state: `open`
 | 6.3 | CONTINUOUS-POSTURE-SOAK-0 | Phase 6: continuous posture (batched generations) + N-generation soak under forc | **DA-GRADUATED / merged #1624 @ fdc11efb — Phase 6 COMPLETE; the StemThing census trigger fires.** Soak exit-proof pe... |
 | 6.4 | SLOT-LOGICAL-IDENTITY-0 | **Phase 6→7 gap: StemThing-A (anchor: `docs/stead_stemthing_unification.md`; Tie | A forced epoch remap (scrambled physical rows, unchanged logical ids) reproduces a multi-generation run **bit-exactly... |
 | 6.5 | RESIDENCY-TIER-VOCABULARY-0 | **Phase 6→7 gap: StemThing-A.** The residency lane's authored vocabulary, per an | **GRADUATION OBLIGATION (recorded 2026-08-04; clauses landed early in #1628): at this rung's stamp the DA verifies th... |
-| 7.1 | MOVEMENT-DECISION-INGRESS-0 | Phase 7: movement authority — decisions as sealed Triad band crossings (need + p | Fleets move under the ordinary generation from band crossings only (no CPU branching on field reads); §7 automaton co... |
-| 7.1a | ACTIONBAND-COMPOSITION-PROBE-0 | **Phase 7 determination rung — Owner-committed adoption plan 2026-08-05; `EML_ex | **DISPOSITION RULE (two lawful outcomes):** (A) the common composition generalizes — witnesses share the literal path... |
-| 7.2 | MOVEMENT-AUTHORITY-READBACK-0 | Phase 7: authoritative movement readback; 12.5 icon descriptors express real tra | Studio shows authoritative transit with ZERO icon-layer change; test-private seam retired. **SCOPE COVERAGE (DA revie... |
+| 7.1 | ACTIONBAND-ADMISSION-DOOR-0 | Mint the one `simthing-spec` session-build ActionBand template admission door. B | A depth-1 synthetic ActionBand is admitted and bound to an ordinary anchored threshold; changing the observed value p... |
+| 7.2 | ACTIONBAND-GPU-EXECUTION-0 | Land sparse GPU templates/instances, `StateCurrent/StateNext`, depth-1/2 fast sh | CPU/interpreted/JIT or applicable faithful-lowering parity under existing EML semantics; no CPU evaluator/scheduler/m... |
+| 7.3 | ACTIONBAND-RECURSIVE-COMPOSITION-0 | Land pre-admitted subordinate activation, dependency spans, collapse, concurrent | Parent sets child-next state at generation `t`; child evaluates at `t+1`; child completion becomes ordinary state and... |
+| 7.4 | ACTIONBAND-SPATIAL-VENDORIZATION-0 | Born-mortal/scenario-neutral spatial witness proving the old useful movement sub | Field/overlay-only changes redirect the spatial ActionBand target-seeking result with zero movement-specific destinat... |
+| 7.5 | ACTIONBAND-SEMANTIC-SHADOW-0 | Bind generic stamped ActionBand crossings/terminal/structural deltas to existing | Same opaque GPU ActionBand run with semantic labels changed produces bit-identical numerical results; generic readbac... |
 | 8.1 | CONTENTION-CONSERVATION-JUDGE-0 | **BINDS 6.5 (StemThing-A; clauses landed early in #1628, verified at 6.5 graduat | Judge red/green proven on seeded violations against SCENARIO-NEUTRAL synthetic contention fixtures. **The R6 dress re... |
 | 8.2 | CONTENTION-ARENA-EXECUTED-0 | **BINDS 6.5 (StemThing-A; clauses landed early in #1628, verified at 6.5 graduat | Executed path judged green; **emergence falsifier: changing ONLY the authored resolution rule changes the outcome wit... |
 | 9.1 | GATED-RATES-EML-REWIRE-0 | Phase 9: exclusion-audit Family C — `gated_rates` gate evaluation → authored EML | Gate behavior parity via oracle; hardcoded cols gone; corpus green. **SCOPE COVERAGE (DA review 2026-08-03, Owner-dir... |
@@ -96,7 +98,7 @@ Track state: `open`
 
 ## Next Rung Pointer
 
-Active pointer: `MOVEMENT-DECISION-INGRESS-0`
+Active pointer: `ACTIONBAND-ADMISSION-DOOR-0`
 
 
 ## Cold-Start Spine (constitutional pointers)
@@ -195,7 +197,7 @@ GPU/desktop/bevy proof is owner-local execution with recorded `DOCTRINE-TESTS-VE
 - harness-error → fix data/target resolution before re-run.
 - FAIL(remedy) → apply named remedy and re-run clearance.
 - DA exit-proof stamp (binding): after DA pass (graduate-merge / formal admission / denial), DA updates active workplan Exit proof + results COMPLETE + orientation regen and merges the stamp PR; not orchestrator residual (see agent_onboarding).
-- **Graduation is mechanized — run the gate, never its parts.** `bash scripts/ci/track_closeout.sh --rungclose <RUNG-ID>` must report `RUNGCLOSE-VERDICT: PASS` before the stamp PR merges. It lifecycles transient fixtures; never hand-delete a fixture. Argument is the **backticked RUNG-ID** as it appears in the ladder row (`MOVEMENT-DECISION-INGRESS-0`), not the ladder number.
+- **Graduation is mechanized — run the gate, never its parts.** `bash scripts/ci/track_closeout.sh --rungclose <RUNG-ID>` must report `RUNGCLOSE-VERDICT: PASS` before the stamp PR merges. It lifecycles transient fixtures; never hand-delete a fixture. Argument is the **backticked RUNG-ID** exactly as it appears in the ladder row, not the ladder number -- the lookup matches `` `<RUNG-ID>` `` including backticks.
 - **Stamp text is matched literally**: the row must contain `merged #<PR> @ <sha>` as plain text. Markdown links or backticks around the PR/sha break the match and the gate FAILs. Both the exit-proof and status cells must read `DA-GRADUATED`, and neither may still carry `PROBATION`.
 - **A ruling is not a landing.** Order is merge -> stamp -> regen -> verify pointer; the stamp cannot precede the merge because it must carry the merge SHA. Report a rung graduated only once the stamp is on master.
 - **Every `gh` write is one bare command per invocation** - no `|`, `;`, or `&&`. Prefix permission rules match a single invocation only, so a chained or piped write is denied even when the verb is allowlisted. A directive that cannot run headless is a failed directive.
