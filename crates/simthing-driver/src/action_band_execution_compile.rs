@@ -10,9 +10,9 @@ use simthing_core::{
 use simthing_feeder::{BoundaryRequest, FeederError, FeederSender};
 use simthing_gpu::{
     action_band_target_kind, ActionBandActiveInstanceGpu, ActionBandBandGpu,
-    ActionBandEmissionBindingGpu, ActionBandEmissionDestination, ActionBandEmissionGpu,
-    ActionBandExecutionBucket, ActionBandExecutionError, ActionBandExecutionPlan,
-    ActionBandTemplateGpu, EmlTreeRangeGpu, ACTIONBAND_NO_PROGRAM,
+    ActionBandEmissionBindingGpu, ActionBandEmissionDestination, ActionBandExecutionBucket,
+    ActionBandExecutionError, ActionBandExecutionPlan, ActionBandTemplateGpu, EmlTreeRangeGpu,
+    ThresholdEmission, ACTIONBAND_NO_PROGRAM,
 };
 use simthing_spec::{
     ActionBandTemplateIndex, AdmittedActionBandTarget, FrozenActionBandTemplates,
@@ -65,29 +65,40 @@ pub enum ActionBandExecutionCompileError {
 #[derive(Clone, Debug)]
 pub struct FrozenActionBandStructuralRequests {
     rows: Vec<Option<BoundaryRequest>>,
+    bindings: Vec<ActionBandEmissionBindingGpu>,
 }
 
 impl FrozenActionBandStructuralRequests {
-    pub fn from_pre_admitted_rows(rows: Vec<Option<BoundaryRequest>>) -> Self {
-        Self { rows }
+    pub fn from_pre_admitted_rows(
+        rows: Vec<Option<BoundaryRequest>>,
+        bindings: Vec<ActionBandEmissionBindingGpu>,
+    ) -> Self {
+        Self { rows, bindings }
     }
 
     pub fn submit_gpu_authorized(
         &self,
-        emissions: &[ActionBandEmissionGpu],
+        emissions: &[ThresholdEmission],
         boundary: &FeederSender,
     ) -> Result<usize, ActionBandStructuralApplyError> {
         let mut submitted = 0;
         for emission in emissions {
-            if emission.destination() != ActionBandEmissionDestination::StructuralRequest {
+            let binding = self
+                .bindings
+                .get(emission.reg_idx() as usize)
+                .copied()
+                .ok_or(ActionBandStructuralApplyError::MissingPreAdmittedBinding(
+                    emission.reg_idx(),
+                ))?;
+            if binding.destination() != ActionBandEmissionDestination::StructuralRequest {
                 continue;
             }
             let request = self
                 .rows
-                .get(emission.destination_index as usize)
+                .get(binding.destination_index() as usize)
                 .and_then(Option::as_ref)
                 .ok_or(ActionBandStructuralApplyError::MissingPreAdmittedRequest(
-                    emission.destination_index,
+                    binding.destination_index(),
                 ))?;
             boundary.submit_boundary(request.clone())?;
             submitted += 1;
@@ -98,6 +109,8 @@ impl FrozenActionBandStructuralRequests {
 
 #[derive(Debug, Error)]
 pub enum ActionBandStructuralApplyError {
+    #[error("GPU-authorized consequence references missing admitted binding {0}")]
+    MissingPreAdmittedBinding(u32),
     #[error("GPU-authorized structural destination {0} has no pre-admitted boundary request")]
     MissingPreAdmittedRequest(u32),
     #[error(transparent)]
@@ -265,6 +278,15 @@ pub fn compile_action_band_gpu_execution(
                     )
                 }
             };
+        let (velocity_current_channel, velocity_previous_channel) = template
+            .velocity()
+            .map(|velocity| {
+                (
+                    velocity.current_channel().raw() as u32,
+                    velocity.previous_generation_channel().raw() as u32,
+                )
+            })
+            .unwrap_or((ACTIONBAND_NO_PROGRAM, ACTIONBAND_NO_PROGRAM));
         templates.push(ActionBandTemplateGpu {
             target_kind,
             channel_start,
@@ -275,6 +297,8 @@ pub fn compile_action_band_gpu_execution(
             band_count: template.band_span().len(),
             membership_range,
             projection_range,
+            velocity_current_channel,
+            velocity_previous_channel,
         });
     }
 

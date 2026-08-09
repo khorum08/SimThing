@@ -3,7 +3,8 @@
 pub use simthing_kernel::accumulator_op::action_band_execution::{
     target_kind as action_band_target_kind, ActionBandActiveInstanceGpu, ActionBandBandGpu,
     ActionBandCrossingBatch, ActionBandEmissionBindingGpu, ActionBandEmissionDestination,
-    ActionBandEmissionGpu, ActionBandExecutionBucket, ActionBandExecutionError,
-    ActionBandExecutionPlan, ActionBandExecutionReadback, ActionBandGpuExecution,
-    ActionBandGpuSession, ActionBandStateGpu, ActionBandTemplateGpu, ACTIONBAND_NO_PROGRAM,
+    ActionBandExecutionBucket, ActionBandExecutionError, ActionBandExecutionPlan,
+    ActionBandExecutionReadback, ActionBandGpuExecution, ActionBandGpuSession,
+    ActionBandProductionDispatch, ActionBandPropertyWrite, ActionBandStateGpu,
+    ActionBandTemplateGpu, ACTIONBAND_NO_PROGRAM,
 };

@@ -8,6 +8,8 @@ struct ActionBandTemplateGpu {
     band_count: u32,
     membership_range: u32,
     projection_range: u32,
+    velocity_current_channel: u32,
+    velocity_previous_channel: u32,
 }
 
 struct ActionBandInstanceGpu {
@@ -27,7 +29,7 @@ struct ActionBandStateGpu {
     projection_start: u32,
     projection_len: u32,
     distance: f32,
-    last_payload: f32,
+    velocity: f32,
     reserved0: u32,
     reserved1: u32,
 }
@@ -57,22 +59,18 @@ struct ActionBandCrossingInputGpu {
     reserved1: u32,
 }
 
-struct ActionBandEmissionGpu {
-    binding_index: u32,
-    destination_kind: u32,
-    destination_index: u32,
-    generation: u32,
+struct ThresholdEmissionGpu {
+    reg_idx: u32,
+    slot: u32,
+    col: u32,
     value: f32,
-    auxiliary0: u32,
-    auxiliary1: u32,
-    reserved: u32,
 }
 
 struct ActionBandDispatchParams {
     n_dims: u32,
     instance_count: u32,
+    crossing_start: u32,
     crossing_count: u32,
-    emission_count: u32,
 }
 
 @group(0) @binding(0) var<storage, read> action_templates: array<ActionBandTemplateGpu>;
@@ -88,7 +86,7 @@ struct ActionBandDispatchParams {
 @group(0) @binding(10) var<storage, read> action_band_binding_indices: array<u32>;
 @group(0) @binding(11) var<storage, read> action_emission_bindings: array<ActionBandEmissionBindingGpu>;
 @group(0) @binding(12) var<storage, read> action_crossings: array<ActionBandCrossingInputGpu>;
-@group(0) @binding(13) var<storage, read_write> action_emissions: array<ActionBandEmissionGpu>;
+@group(0) @binding(13) var<storage, read_write> action_consequences: array<ThresholdEmissionGpu>;
 @group(0) @binding(14) var<storage, read> eml_nodes: array<EmlNodeGpu>;
 @group(0) @binding(15) var<storage, read> eml_tree_ranges: array<EmlTreeRangeGpu>;
 
@@ -101,6 +99,10 @@ const ACTION_TARGET_LOCUS_RADIUS: u32 = 5u;
 const ACTION_TARGET_PALMA_REACHABLE: u32 = 6u;
 const ACTION_TARGET_EML_PROJECTED: u32 = 7u;
 const ACTION_NO_PROGRAM: u32 = 0xFFFFFFFFu;
+const ACTION_DEST_PROPERTY_NEXT: u32 = 0u;
+const ACTION_DEST_RF_CLAIM: u32 = 1u;
+const ACTION_DEST_COSTBAND: u32 = 2u;
+const ACTION_WRITE_SET: u32 = 0u;
 
 fn action_value(slot: u32, col: u32) -> f32 {
     return atomic_read_f32_at(slot * tick_params.n_dims + col);
@@ -118,6 +120,11 @@ fn actionband_evaluate(@builtin(global_invocation_id) gid: vec3<u32>) {
     let prior = action_state_current[row];
     var satisfied = 1u;
     var distance = 0.0;
+    var velocity = 0.0;
+    if (descriptor.velocity_current_channel != ACTION_NO_PROGRAM) {
+        velocity = action_value(instance.slot, descriptor.velocity_current_channel)
+            - action_value(instance.slot, descriptor.velocity_previous_channel);
+    }
 
     if (descriptor.target_kind == ACTION_TARGET_POINT) {
         for (var i = 0u; i < descriptor.projection_width; i = i + 1u) {
@@ -176,7 +183,7 @@ fn actionband_evaluate(@builtin(global_invocation_id) gid: vec3<u32>) {
         instance.projection_start,
         descriptor.projection_width,
         distance,
-        prior.last_payload,
+        velocity,
         0u,
         0u,
     );
@@ -184,30 +191,38 @@ fn actionband_evaluate(@builtin(global_invocation_id) gid: vec3<u32>) {
 
 @compute @workgroup_size(64)
 fn actionband_emit(@builtin(global_invocation_id) gid: vec3<u32>) {
-    let crossing_row = gid.x;
-    if (crossing_row >= tick_params.crossing_count) {
+    if (gid.x >= tick_params.crossing_count) {
         return;
     }
+    let crossing_row = tick_params.crossing_start + gid.x;
     let crossing = action_crossings[crossing_row];
     let band = action_bands[crossing.band_index];
     let state = action_state_next[crossing.instance_row];
     let instance = action_instances[crossing.instance_row];
     var payload = crossing.post_value;
     if (band.program_range != ACTION_NO_PROGRAM) {
-        payload = eml_eval(EmlEvalCtx(band.program_range, instance.slot, crossing.post_value, crossing.threshold, state.distance, f32(state.satisfied)));
+        payload = eml_eval(EmlEvalCtx(band.program_range, instance.slot, crossing.post_value, crossing.threshold, state.distance, state.velocity));
     }
     for (var i = 0u; i < crossing.output_count; i = i + 1u) {
         let binding_index = action_band_binding_indices[band.binding_start + i];
         let binding = action_emission_bindings[binding_index];
-        action_emissions[crossing.output_start + i] = ActionBandEmissionGpu(
-            binding_index,
-            binding.destination_kind,
-            binding.destination_index,
-            state.generation,
-            payload,
-            binding.auxiliary0,
-            binding.auxiliary1,
-            0u,
-        );
+        if (binding.destination_kind == ACTION_DEST_PROPERTY_NEXT
+            || binding.destination_kind == ACTION_DEST_RF_CLAIM
+            || binding.destination_kind == ACTION_DEST_COSTBAND) {
+            let destination = instance.slot * tick_params.n_dims + binding.destination_index;
+            if (binding.destination_kind == ACTION_DEST_PROPERTY_NEXT
+                && binding.auxiliary0 == ACTION_WRITE_SET) {
+                atomic_store_f32_at(destination, payload);
+            } else {
+                atomic_add_f32_at(destination, payload);
+            }
+        } else {
+            action_consequences[crossing.output_start + i] = ThresholdEmissionGpu(
+                binding_index,
+                instance.slot,
+                binding.destination_index,
+                payload,
+            );
+        }
     }
 }

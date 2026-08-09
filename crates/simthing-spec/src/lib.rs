@@ -65,7 +65,8 @@ pub use compile::action_band_admission::{
     ActionBandAdmissionError, ActionBandCrossingBinding, ActionBandSemanticShadow,
     ActionBandSessionBuildDoor, ActionBandTableSpan, ActionBandTemplateIndex,
     AdmittedActionBandBand, AdmittedActionBandChannel, AdmittedActionBandTarget,
-    AdmittedActionBandTemplate, ExistingThresholdRegistrationIndex, FrozenActionBandTemplates,
+    AdmittedActionBandTemplate, AdmittedActionBandVelocity, ExistingThresholdRegistrationIndex,
+    FrozenActionBandTemplates,
     PreAdmittedEmissionBindingIndex,
 };
 pub use compile::jit_kernel_production_registry_shell::{

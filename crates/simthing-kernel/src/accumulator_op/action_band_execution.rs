@@ -12,6 +12,7 @@ use simthing_core::EmlNodeGpu;
 use thiserror::Error;
 use wgpu::util::DeviceExt;
 
+use crate::sealed::{ThresholdEmission, ThresholdEmissionGpu};
 use crate::{debug_readback_allowed, BandCrossingDelta, EmlTreeRangeGpu, GpuContext};
 
 pub const ACTIONBAND_NO_PROGRAM: u32 = u32::MAX;
@@ -53,6 +54,14 @@ impl ActionBandEmissionDestination {
     }
 }
 
+/// Existing world-value write semantics used by a fixed PropertyNext binding.
+#[repr(u32)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ActionBandPropertyWrite {
+    Set = 0,
+    Add = 1,
+}
+
 /// One row from the existing pre-admitted generic emission-binding table.
 /// Destination kind is closed; ActionBand EML cannot manufacture or alter it.
 #[repr(C)]
@@ -65,18 +74,55 @@ pub struct ActionBandEmissionBindingGpu {
 }
 
 impl ActionBandEmissionBindingGpu {
-    pub fn new(
+    fn fixed(
         destination: ActionBandEmissionDestination,
         destination_index: u32,
         auxiliary0: u32,
-        auxiliary1: u32,
     ) -> Self {
         Self {
             destination_kind: destination as u32,
             destination_index,
             auxiliary0,
-            auxiliary1,
+            auxiliary1: 0,
         }
+    }
+
+    /// Bind a payload to the existing authoritative world-value lane.
+    pub fn property_next(column: u32, write: ActionBandPropertyWrite) -> Self {
+        Self::fixed(
+            ActionBandEmissionDestination::PropertyNext,
+            column,
+            write as u32,
+        )
+    }
+
+    /// Bind a payload as an ordinary additive RF claim column write.
+    pub fn rf_claim(column: u32) -> Self {
+        Self::fixed(ActionBandEmissionDestination::RfClaim, column, 1)
+    }
+
+    /// Bind a payload to an ordinary scalar CostBand input/progress column.
+    pub fn cost_band(column: u32) -> Self {
+        Self::fixed(ActionBandEmissionDestination::CostBand, column, 1)
+    }
+
+    /// Bind to the existing sealed threshold/event packet surface.
+    pub fn overlay_event(event_index: u32) -> Self {
+        Self::fixed(ActionBandEmissionDestination::OverlayEvent, event_index, 0)
+    }
+
+    /// Bind to a pre-admitted structural request at the existing boundary.
+    pub fn structural_request(request_index: u32) -> Self {
+        Self::fixed(
+            ActionBandEmissionDestination::StructuralRequest,
+            request_index,
+            0,
+        )
+    }
+
+    /// Bind to the existing sealed event/telemetry packet surface.
+    pub fn telemetry(event_index: u32) -> Self {
+        Self::fixed(ActionBandEmissionDestination::Telemetry, event_index, 0)
     }
 
     pub fn destination(self) -> ActionBandEmissionDestination {
@@ -101,6 +147,8 @@ pub struct ActionBandTemplateGpu {
     pub band_count: u32,
     pub membership_range: u32,
     pub projection_range: u32,
+    pub velocity_current_channel: u32,
+    pub velocity_previous_channel: u32,
 }
 
 #[repr(C)]
@@ -130,7 +178,7 @@ pub struct ActionBandStateGpu {
     pub projection_start: u32,
     pub projection_len: u32,
     pub distance: f32,
-    pub last_payload: f32,
+    pub velocity: f32,
     pub reserved: [u32; 2],
 }
 
@@ -146,35 +194,13 @@ struct ActionBandCrossingInputGpu {
     reserved: [u32; 2],
 }
 
-/// GPU-authored fixed-surface emission.  All destination fields are copied
-/// from the immutable admitted binding table, never from EML output.
-#[repr(C)]
-#[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
-pub struct ActionBandEmissionGpu {
-    pub binding_index: u32,
-    destination_kind: u32,
-    pub destination_index: u32,
-    pub generation: u32,
-    pub value: f32,
-    pub auxiliary0: u32,
-    pub auxiliary1: u32,
-    pub reserved: u32,
-}
-
-impl ActionBandEmissionGpu {
-    pub fn destination(self) -> ActionBandEmissionDestination {
-        ActionBandEmissionDestination::from_raw(self.destination_kind)
-            .expect("GPU can only copy a validated admitted binding kind")
-    }
-}
-
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Pod, Zeroable)]
 struct ActionBandDispatchParams {
     n_dims: u32,
     instance_count: u32,
+    crossing_start: u32,
     crossing_count: u32,
-    emission_count: u32,
 }
 
 /// Label-free deterministic bucket formed from program and binding shape.
@@ -198,6 +224,7 @@ pub struct ActionBandExecutionPlan {
     eml_ranges: Vec<EmlTreeRangeGpu>,
     active_instances: Vec<ActionBandActiveInstanceGpu>,
     buckets: Vec<ActionBandExecutionBucket>,
+    band_to_bucket: Vec<u32>,
     projection_floats: u32,
     fingerprint: u64,
 }
@@ -250,6 +277,21 @@ impl ActionBandExecutionPlan {
             &emission_bindings,
             &eml_ranges,
         )?;
+        let mut band_to_bucket = vec![u32::MAX; bands.len()];
+        for (bucket_index, bucket) in buckets.iter().enumerate() {
+            for &band_index in &bucket.band_indices {
+                let Some(slot) = band_to_bucket.get_mut(band_index as usize) else {
+                    return Err(ActionBandExecutionError::InvalidBucketPartition);
+                };
+                if *slot != u32::MAX {
+                    return Err(ActionBandExecutionError::InvalidBucketPartition);
+                }
+                *slot = bucket_index as u32;
+            }
+        }
+        if band_to_bucket.iter().any(|&index| index == u32::MAX) {
+            return Err(ActionBandExecutionError::InvalidBucketPartition);
+        }
         let fingerprint = plan_fingerprint(
             &templates,
             &target_channels,
@@ -272,6 +314,7 @@ impl ActionBandExecutionPlan {
             eml_ranges,
             active_instances,
             buckets,
+            band_to_bucket,
             projection_floats,
             fingerprint,
         })
@@ -300,8 +343,7 @@ impl ActionBandExecutionPlan {
         &self,
         deltas: &[BandCrossingDelta],
     ) -> Result<ActionBandCrossingBatch, ActionBandExecutionError> {
-        let mut rows = Vec::new();
-        let mut output_count = 0u32;
+        let mut joined = Vec::new();
         for delta in deltas {
             for (band_index, band) in self.bands.iter().enumerate() {
                 if band.threshold_registration != delta.reg_idx() {
@@ -312,25 +354,67 @@ impl ActionBandExecutionPlan {
                     let in_template = band_index as u32 >= template.band_start
                         && (band_index as u32) < template.band_start + template.band_count;
                     if in_template && instance.slot == delta.slot().raw() {
-                        rows.push(ActionBandCrossingInputGpu {
-                            instance_row: instance_row as u32,
-                            band_index: band_index as u32,
-                            output_start: output_count,
-                            output_count: band.binding_count,
-                            post_value: delta.post_value(),
-                            threshold: delta.threshold(),
-                            reserved: [0; 2],
-                        });
-                        output_count = output_count
-                            .checked_add(band.binding_count)
-                            .ok_or(ActionBandExecutionError::TableOverflow)?;
+                        joined.push((
+                            self.band_to_bucket[band_index],
+                            ActionBandCrossingInputGpu {
+                                instance_row: instance_row as u32,
+                                band_index: band_index as u32,
+                                output_start: 0,
+                                output_count: band.binding_count,
+                                post_value: delta.post_value(),
+                                threshold: delta.threshold(),
+                                reserved: [0; 2],
+                            },
+                        ));
                     }
                 }
             }
         }
+        joined.sort_by_key(|(bucket, row)| (*bucket, row.band_index, row.instance_row));
+        let mut rows = Vec::with_capacity(joined.len());
+        let mut output_count = 0u32;
+        let mut consequence_output_indices = Vec::new();
+        let mut bucket_ranges = Vec::new();
+        for (bucket_index, mut row) in joined {
+            if bucket_ranges
+                .last()
+                .is_none_or(|range: &ActionBandBucketDispatch| range.bucket_index != bucket_index)
+            {
+                bucket_ranges.push(ActionBandBucketDispatch {
+                    bucket_index,
+                    crossing_start: rows.len() as u32,
+                    crossing_count: 0,
+                });
+            }
+            row.output_start = output_count;
+            let band = &self.bands[row.band_index as usize];
+            for local_index in 0..band.binding_count {
+                let binding_index =
+                    self.band_binding_indices[(band.binding_start + local_index) as usize];
+                let binding = self.emission_bindings[binding_index as usize];
+                if matches!(
+                    binding.destination(),
+                    ActionBandEmissionDestination::OverlayEvent
+                        | ActionBandEmissionDestination::StructuralRequest
+                        | ActionBandEmissionDestination::Telemetry
+                ) {
+                    consequence_output_indices.push(output_count + local_index);
+                }
+            }
+            output_count = output_count
+                .checked_add(row.output_count)
+                .ok_or(ActionBandExecutionError::TableOverflow)?;
+            rows.push(row);
+            bucket_ranges
+                .last_mut()
+                .expect("range just inserted")
+                .crossing_count += 1;
+        }
         Ok(ActionBandCrossingBatch {
             rows,
             output_count,
+            consequence_output_indices,
+            bucket_ranges,
             plan_fingerprint: self.fingerprint,
         })
     }
@@ -341,7 +425,16 @@ impl ActionBandExecutionPlan {
 pub struct ActionBandCrossingBatch {
     rows: Vec<ActionBandCrossingInputGpu>,
     output_count: u32,
+    consequence_output_indices: Vec<u32>,
+    bucket_ranges: Vec<ActionBandBucketDispatch>,
     plan_fingerprint: u64,
+}
+
+#[derive(Clone, Copy, Debug)]
+struct ActionBandBucketDispatch {
+    bucket_index: u32,
+    crossing_start: u32,
+    crossing_count: u32,
 }
 
 impl ActionBandCrossingBatch {
@@ -352,15 +445,28 @@ impl ActionBandCrossingBatch {
     pub fn emission_count(&self) -> usize {
         self.output_count as usize
     }
+
+    pub fn bucket_dispatch_count(&self) -> usize {
+        self.bucket_ranges.len()
+    }
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct ActionBandExecutionReadback {
     pub states: Vec<ActionBandStateGpu>,
     pub projection: Vec<f32>,
-    pub emissions: Vec<ActionBandEmissionGpu>,
+    pub consequences: Vec<ThresholdEmission>,
     /// Sum of ActionBand compute-pass GPU timestamps. `None` when the adapter
     /// does not expose timestamp queries; excludes copies and CPU readback.
+    pub gpu_time_ns: Option<f64>,
+}
+
+/// Production dispatch result. Numerical state and projections stay resident;
+/// only already-sanctioned sealed event/structural/telemetry packets cross CPU.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct ActionBandProductionDispatch {
+    pub consequences: Vec<ThresholdEmission>,
+    pub bucket_dispatches: u32,
     pub gpu_time_ns: Option<f64>,
 }
 
@@ -374,10 +480,14 @@ pub enum ActionBandExecutionError {
     UnknownTemplate(u32),
     #[error("ActionBand descriptor table span is out of bounds")]
     InvalidTableSpan,
+    #[error("ActionBand bucket rows do not form a total disjoint band partition")]
+    InvalidBucketPartition,
     #[error("ActionBand table size overflow")]
     TableOverflow,
     #[error("crossing batch belongs to a different immutable ActionBand plan")]
     ForeignCrossingBatch,
+    #[error("ActionBand destination column {column} is outside world width {n_dims}")]
+    DestinationColumnOutOfBounds { column: u32, n_dims: u32 },
     #[error("ActionBand numerical readback is disabled outside an explicit proof scope")]
     ProofReadbackDisabled,
     #[error("GPU readback map failed")]
@@ -438,6 +548,7 @@ pub struct ActionBandGpuSession {
     timestamp_query_set: Option<wgpu::QuerySet>,
     timestamp_resolve: Option<wgpu::Buffer>,
     timestamp_readback: Option<wgpu::Buffer>,
+    generation: u32,
 }
 
 impl ActionBandGpuSession {
@@ -540,6 +651,7 @@ impl ActionBandGpuSession {
             timestamp_query_set,
             timestamp_resolve,
             timestamp_readback,
+            generation: 0,
             plan,
             layout,
             evaluate_pipeline,
@@ -547,9 +659,22 @@ impl ActionBandGpuSession {
         })
     }
 
-    /// Dispatches against the authoritative world-state GPU buffer. StateCurrent
-    /// is bound read-only and StateNext read-write, then the two private buffer
-    /// owners are swapped only after submission.
+    /// Production dispatch. Numerical state/projection never leave the GPU;
+    /// only sealed existing-surface consequence packets are returned.
+    pub fn dispatch(
+        &mut self,
+        ctx: &GpuContext,
+        world_values: &wgpu::Buffer,
+        n_dims: u32,
+        crossings: &ActionBandCrossingBatch,
+    ) -> Result<ActionBandProductionDispatch, ActionBandExecutionError> {
+        let (production, _, _) =
+            self.dispatch_internal(ctx, world_values, n_dims, crossings, false)?;
+        Ok(production)
+    }
+
+    /// Proof-only view of the exact production dispatch. This uses the same
+    /// pipelines and bind groups, adding copies only after the production work.
     pub fn dispatch_and_readback(
         &mut self,
         ctx: &GpuContext,
@@ -560,66 +685,125 @@ impl ActionBandGpuSession {
         if !debug_readback_allowed() {
             return Err(ActionBandExecutionError::ProofReadbackDisabled);
         }
+        let (production, states, projection) =
+            self.dispatch_internal(ctx, world_values, n_dims, crossings, true)?;
+        Ok(ActionBandExecutionReadback {
+            states: states.expect("proof dispatch requests state readback"),
+            projection: projection.expect("proof dispatch requests projection readback"),
+            consequences: production.consequences,
+            gpu_time_ns: production.gpu_time_ns,
+        })
+    }
+
+    fn dispatch_internal(
+        &mut self,
+        ctx: &GpuContext,
+        world_values: &wgpu::Buffer,
+        n_dims: u32,
+        crossings: &ActionBandCrossingBatch,
+        proof_readback: bool,
+    ) -> Result<
+        (
+            ActionBandProductionDispatch,
+            Option<Vec<ActionBandStateGpu>>,
+            Option<Vec<f32>>,
+        ),
+        ActionBandExecutionError,
+    > {
         if crossings.plan_fingerprint != self.plan.fingerprint {
             return Err(ActionBandExecutionError::ForeignCrossingBatch);
         }
+        for binding in &self.plan.emission_bindings {
+            if matches!(
+                binding.destination(),
+                ActionBandEmissionDestination::PropertyNext
+                    | ActionBandEmissionDestination::RfClaim
+                    | ActionBandEmissionDestination::CostBand
+            ) && binding.destination_index >= n_dims
+            {
+                return Err(ActionBandExecutionError::DestinationColumnOutOfBounds {
+                    column: binding.destination_index,
+                    n_dims,
+                });
+            }
+        }
+        for template in &self.plan.templates {
+            for column in [
+                template.velocity_current_channel,
+                template.velocity_previous_channel,
+            ] {
+                if column != ACTIONBAND_NO_PROGRAM && column >= n_dims {
+                    return Err(ActionBandExecutionError::DestinationColumnOutOfBounds {
+                        column,
+                        n_dims,
+                    });
+                }
+            }
+        }
         let device = &ctx.device;
         let crossing_buffer = storage(device, "actionband_sealed_crossings", &crossings.rows);
-        let emission_zeros =
-            vec![ActionBandEmissionGpu::zeroed(); crossings.output_count.max(1) as usize];
-        let emission_buffer = storage_rw(device, "actionband_emissions", &emission_zeros);
-        let params = ActionBandDispatchParams {
+        let consequence_zeros =
+            vec![ThresholdEmissionGpu::zeroed(); crossings.output_count.max(1) as usize];
+        let consequence_buffer = storage_rw(
+            device,
+            "actionband_existing_surface_packets",
+            &consequence_zeros,
+        );
+        let evaluation_params = ActionBandDispatchParams {
             n_dims,
             instance_count: self.plan.active_instances.len() as u32,
-            crossing_count: crossings.rows.len() as u32,
-            emission_count: crossings.output_count,
+            crossing_start: 0,
+            crossing_count: 0,
         };
-        let params_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("actionband_dispatch_params"),
-            contents: bytemuck::bytes_of(&params),
-            usage: wgpu::BufferUsages::UNIFORM,
-        });
-        let resources = [
-            &self.templates,
-            &self.target_channels,
-            &self.target_data,
-            &self.instances,
-            &self.state_current,
-            &self.state_next,
-            &self.projection_next,
+        let evaluation_params_buffer =
+            uniform(device, "actionband_evaluation_params", &evaluation_params);
+        let evaluation_bind_group = self.bind_group(
+            device,
             world_values,
-            &params_buffer,
-            &self.bands,
-            &self.band_binding_indices,
-            &self.emission_bindings,
+            &evaluation_params_buffer,
             &crossing_buffer,
-            &emission_buffer,
-            &self.eml_nodes,
-            &self.eml_ranges,
-        ];
-        let bind_entries: Vec<_> = resources
-            .iter()
-            .enumerate()
-            .map(|(binding, buffer)| wgpu::BindGroupEntry {
-                binding: binding as u32,
-                resource: buffer.as_entire_binding(),
-            })
-            .collect();
-        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("actionband_gpu_execution_bg"),
-            layout: &self.layout,
-            entries: &bind_entries,
-        });
+            &consequence_buffer,
+        );
+        let mut bucket_params_buffers = Vec::with_capacity(crossings.bucket_ranges.len());
+        let mut bucket_bind_groups = Vec::with_capacity(crossings.bucket_ranges.len());
+        for range in &crossings.bucket_ranges {
+            let params = ActionBandDispatchParams {
+                n_dims,
+                instance_count: self.plan.active_instances.len() as u32,
+                crossing_start: range.crossing_start,
+                crossing_count: range.crossing_count,
+            };
+            bucket_params_buffers.push(uniform(device, "actionband_bucket_params", &params));
+            bucket_bind_groups.push(
+                self.bind_group(
+                    device,
+                    world_values,
+                    bucket_params_buffers
+                        .last()
+                        .expect("bucket params inserted"),
+                    &crossing_buffer,
+                    &consequence_buffer,
+                ),
+            );
+        }
 
         let state_bytes =
             (self.plan.active_instances.len() * std::mem::size_of::<ActionBandStateGpu>()) as u64;
         let projection_bytes =
             (self.plan.projection_floats.max(1) as usize * std::mem::size_of::<f32>()) as u64;
-        let emission_bytes = (crossings.output_count.max(1) as usize
-            * std::mem::size_of::<ActionBandEmissionGpu>()) as u64;
-        let state_stage = staging(device, "actionband_state_readback", state_bytes);
-        let projection_stage = staging(device, "actionband_projection_readback", projection_bytes);
-        let emission_stage = staging(device, "actionband_emission_readback", emission_bytes);
+        let consequence_bytes = (crossings.output_count.max(1) as usize
+            * std::mem::size_of::<ThresholdEmissionGpu>()) as u64;
+        let state_stage =
+            proof_readback.then(|| staging(device, "actionband_state_readback", state_bytes));
+        let projection_stage = proof_readback
+            .then(|| staging(device, "actionband_projection_readback", projection_bytes));
+        let consequence_stage = (!crossings.consequence_output_indices.is_empty()).then(|| {
+            staging(
+                device,
+                "actionband_existing_surface_packet_readback",
+                consequence_bytes,
+            )
+        });
 
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("actionband_gpu_execution_encoder"),
@@ -637,10 +821,10 @@ impl ActionBandGpuSession {
                 timestamp_writes,
             });
             pass.set_pipeline(&self.evaluate_pipeline);
-            pass.set_bind_group(0, &bind_group, &[]);
-            pass.dispatch_workgroups((params.instance_count + 63) / 64, 1, 1);
+            pass.set_bind_group(0, &evaluation_bind_group, &[]);
+            pass.dispatch_workgroups((evaluation_params.instance_count + 63) / 64, 1, 1);
         }
-        if params.crossing_count > 0 {
+        if !crossings.bucket_ranges.is_empty() {
             let timestamp_writes = self.timestamp_query_set.as_ref().map(|query_set| {
                 wgpu::ComputePassTimestampWrites {
                     query_set,
@@ -653,19 +837,25 @@ impl ActionBandGpuSession {
                 timestamp_writes,
             });
             pass.set_pipeline(&self.emit_pipeline);
-            pass.set_bind_group(0, &bind_group, &[]);
-            pass.dispatch_workgroups((params.crossing_count + 63) / 64, 1, 1);
+            for (range, bind_group) in crossings.bucket_ranges.iter().zip(&bucket_bind_groups) {
+                pass.set_bind_group(0, bind_group, &[]);
+                pass.dispatch_workgroups((range.crossing_count + 63) / 64, 1, 1);
+            }
         }
-        encoder.copy_buffer_to_buffer(&self.state_next, 0, &state_stage, 0, state_bytes);
-        encoder.copy_buffer_to_buffer(
-            &self.projection_next,
-            0,
-            &projection_stage,
-            0,
-            projection_bytes,
-        );
-        encoder.copy_buffer_to_buffer(&emission_buffer, 0, &emission_stage, 0, emission_bytes);
-        let timestamp_count = if params.crossing_count > 0 { 4 } else { 2 };
+        if let Some(stage) = state_stage.as_ref() {
+            encoder.copy_buffer_to_buffer(&self.state_next, 0, stage, 0, state_bytes);
+        }
+        if let Some(stage) = projection_stage.as_ref() {
+            encoder.copy_buffer_to_buffer(&self.projection_next, 0, stage, 0, projection_bytes);
+        }
+        if let Some(stage) = consequence_stage.as_ref() {
+            encoder.copy_buffer_to_buffer(&consequence_buffer, 0, stage, 0, consequence_bytes);
+        }
+        let timestamp_count = if crossings.bucket_ranges.is_empty() {
+            2
+        } else {
+            4
+        };
         if let (Some(query_set), Some(resolve), Some(readback)) = (
             self.timestamp_query_set.as_ref(),
             self.timestamp_resolve.as_ref(),
@@ -675,19 +865,32 @@ impl ActionBandGpuSession {
             encoder.copy_buffer_to_buffer(resolve, 0, readback, 0, u64::from(timestamp_count) * 8);
         }
         ctx.queue.submit(Some(encoder.finish()));
+        self.generation = self.generation.saturating_add(1);
+        std::mem::swap(&mut self.state_current, &mut self.state_next);
 
-        let states =
-            readback::<ActionBandStateGpu>(device, &state_stage, self.plan.active_instances.len())?;
-        let projection = readback::<f32>(
-            device,
-            &projection_stage,
-            self.plan.projection_floats as usize,
-        )?;
-        let emissions = readback::<ActionBandEmissionGpu>(
-            device,
-            &emission_stage,
-            crossings.output_count as usize,
-        )?;
+        let states = state_stage
+            .as_ref()
+            .map(|stage| {
+                readback::<ActionBandStateGpu>(device, stage, self.plan.active_instances.len())
+            })
+            .transpose()?;
+        let projection = projection_stage
+            .as_ref()
+            .map(|stage| readback::<f32>(device, stage, self.plan.projection_floats as usize))
+            .transpose()?;
+        let consequences = if let Some(stage) = consequence_stage.as_ref() {
+            let packets =
+                readback::<ThresholdEmissionGpu>(device, stage, crossings.output_count as usize)?;
+            crossings
+                .consequence_output_indices
+                .iter()
+                .map(|&index| {
+                    ThresholdEmission::from_gpu_readback(&packets[index as usize], self.generation)
+                })
+                .collect()
+        } else {
+            Vec::new()
+        };
         let gpu_time_ns = if let Some(timestamp_buffer) = self.timestamp_readback.as_ref() {
             let stamps = readback::<u64>(device, timestamp_buffer, timestamp_count as usize)?;
             let ticks = (stamps[1] - stamps[0])
@@ -700,13 +903,64 @@ impl ActionBandGpuSession {
         } else {
             None
         };
-        std::mem::swap(&mut self.state_current, &mut self.state_next);
-        Ok(ActionBandExecutionReadback {
+        Ok((
+            ActionBandProductionDispatch {
+                consequences,
+                bucket_dispatches: crossings.bucket_ranges.len() as u32,
+                gpu_time_ns,
+            },
             states,
             projection,
-            emissions,
-            gpu_time_ns,
+        ))
+    }
+
+    fn bind_group(
+        &self,
+        device: &wgpu::Device,
+        world_values: &wgpu::Buffer,
+        params: &wgpu::Buffer,
+        crossings: &wgpu::Buffer,
+        consequences: &wgpu::Buffer,
+    ) -> wgpu::BindGroup {
+        let resources = [
+            &self.templates,
+            &self.target_channels,
+            &self.target_data,
+            &self.instances,
+            &self.state_current,
+            &self.state_next,
+            &self.projection_next,
+            world_values,
+            params,
+            &self.bands,
+            &self.band_binding_indices,
+            &self.emission_bindings,
+            crossings,
+            consequences,
+            &self.eml_nodes,
+            &self.eml_ranges,
+        ];
+        let entries: Vec<_> = resources
+            .iter()
+            .enumerate()
+            .map(|(binding, buffer)| wgpu::BindGroupEntry {
+                binding: binding as u32,
+                resource: buffer.as_entire_binding(),
+            })
+            .collect();
+        device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("actionband_gpu_execution_bg"),
+            layout: &self.layout,
+            entries: &entries,
         })
+    }
+
+    pub fn generation(&self) -> u32 {
+        self.generation
+    }
+
+    pub fn last_bucket_partition(&self) -> &[ActionBandExecutionBucket] {
+        &self.plan.buckets
     }
 }
 
@@ -745,6 +999,11 @@ fn validate_tables(
                 return Err(ActionBandExecutionError::InvalidTableSpan);
             }
         }
+        if (template.velocity_current_channel == ACTIONBAND_NO_PROGRAM)
+            != (template.velocity_previous_channel == ACTIONBAND_NO_PROGRAM)
+        {
+            return Err(ActionBandExecutionError::InvalidTableSpan);
+        }
     }
     for band in bands {
         if band.binding_start as usize + band.binding_count as usize > band_binding_indices.len()
@@ -760,11 +1019,23 @@ fn validate_tables(
     {
         return Err(ActionBandExecutionError::InvalidTableSpan);
     }
-    if emission_bindings
-        .iter()
-        .any(|b| ActionBandEmissionDestination::from_raw(b.destination_kind).is_none())
-    {
-        return Err(ActionBandExecutionError::InvalidTableSpan);
+    for binding in emission_bindings {
+        let Some(destination) = ActionBandEmissionDestination::from_raw(binding.destination_kind)
+        else {
+            return Err(ActionBandExecutionError::InvalidTableSpan);
+        };
+        let valid_shape = binding.auxiliary1 == 0
+            && match destination {
+                ActionBandEmissionDestination::PropertyNext => binding.auxiliary0 <= 1,
+                ActionBandEmissionDestination::RfClaim
+                | ActionBandEmissionDestination::CostBand => binding.auxiliary0 == 1,
+                ActionBandEmissionDestination::OverlayEvent
+                | ActionBandEmissionDestination::StructuralRequest
+                | ActionBandEmissionDestination::Telemetry => binding.auxiliary0 == 0,
+            };
+        if !valid_shape {
+            return Err(ActionBandExecutionError::InvalidTableSpan);
+        }
     }
     Ok(())
 }
@@ -809,10 +1080,22 @@ fn action_band_shader_source() -> Result<String, ActionBandExecutionError> {
         .find("fn atomic_add_f32_at")
         .ok_or(ActionBandExecutionError::ShaderSourceMarkersMissing)?;
     let shared_eml = &canonical[start..end];
+    let atomic_end = canonical
+        .find("// C-4 overlay OrderBands")
+        .ok_or(ActionBandExecutionError::ShaderSourceMarkersMissing)?;
+    let shared_atomic_writes = &canonical[end..atomic_end];
     Ok(format!(
-        "{shared_eml}\n{}",
+        "{shared_eml}\n{shared_atomic_writes}\n{}",
         include_str!("../shaders/action_band_execution.wgsl")
     ))
+}
+
+fn uniform<T: Pod>(device: &wgpu::Device, label: &str, value: &T) -> wgpu::Buffer {
+    device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some(label),
+        contents: bytemuck::bytes_of(value),
+        usage: wgpu::BufferUsages::UNIFORM,
+    })
 }
 
 fn storage<T: Pod>(device: &wgpu::Device, label: &str, rows: &[T]) -> wgpu::Buffer {
