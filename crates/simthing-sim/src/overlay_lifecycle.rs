@@ -1,5 +1,3 @@
-//! HORIZON-ENTRY(2026-08-08): ActionBand facility / docs/multi-axis-ActionBand-STEAD.md §9. Consumerless after the 7.1 rollback; movement was its only caller and movement is a vendorized
-//! implementation of ActionBand, not a peer. Claim B proved this substrate (gradient-derived action authority, sealed band crossings) on all four witnesses -- it is what ActionBand descends through.
 //! Overlay lifecycle management — step 4 and step 7 of the day boundary.
 //!
 //! ## Step 4: dissolve + writeback
@@ -319,3 +317,9 @@ mod tests {
     }
 
 }
+
+// HORIZON-ENTRY(2026-08-08): ActionBand facility / docs/multi-axis-ActionBand-STEAD.md §9. Consumerless after the 7.1 rollback;
+// movement was its only caller and movement is a vendorized implementation of
+// ActionBand, not a peer. Claim B proved this substrate on all four witnesses.
+// Appended, never prepended: inventory rows are line-number-keyed, so a header
+// comment shifts every doctest below it and trips the drift gate.
