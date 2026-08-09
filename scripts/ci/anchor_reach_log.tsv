@@ -519,3 +519,4 @@ date	role	query	anchors_served	hit
 2026-08-09T22:29:22Z	coding	--grep actionband-gpu-physical-model	actionband-gpu-physical-model	hit
 2026-08-09T22:29:22Z	coding	--grep actionband-executive	actionband-executive	hit
 2026-08-09T22:29:22Z	coding	--grep actionband-fenced-questions	actionband-fenced-questions	hit
+2026-08-09T22:50:32Z	coding	--paths docs/design_0_0_8_7_rf_arena_modernization.md docs/tests/current_evidence_index.md	none	none
