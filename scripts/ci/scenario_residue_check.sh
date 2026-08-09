@@ -33,6 +33,8 @@ Usage:
 """
 import pathlib
 import re
+import datetime
+import os
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
@@ -113,6 +115,23 @@ def reexported_symbols(lib_text: str, module: str) -> set[str]:
     return out
 
 
+HORIZON_ENTRY_RE = re.compile(r"HORIZON-ENTRY\((\d{4})-(\d{2})-(\d{2})\):\s*\S")
+HORIZON_ENTRY_STALE_DAYS = int(os.environ.get("HORIZON_ENTRY_STALE_DAYS", "90"))
+
+
+def fresh_horizon_entry(text: str) -> bool:
+    """True when text carries a dated HORIZON-ENTRY still inside the stale window."""
+    today = datetime.date.today()
+    for y, m, d in HORIZON_ENTRY_RE.findall(text):
+        try:
+            stamped = datetime.date(int(y), int(m), int(d))
+        except ValueError:
+            continue
+        if (today - stamped).days <= HORIZON_ENTRY_STALE_DAYS:
+            return True
+    return False
+
+
 def scan_dead_exports(root: pathlib.Path, min_lines: int) -> list[str]:
     """An engine module exported from its crate root that nothing outside its
     own crate's src references -- by module name OR by any symbol the crate
@@ -135,8 +154,18 @@ def scan_dead_exports(root: pathlib.Path, min_lines: int) -> list[str]:
             module = root / "crates" / crate / "src" / f"{name}.rs"
             if not module.exists():
                 continue
-            lines = len(module.read_text(encoding="utf-8", errors="replace").splitlines())
+            module_text = module.read_text(encoding="utf-8", errors="replace")
+            lines = len(module_text.splitlines())
             if lines < min_lines:
+                continue
+            # A FRESH dated HORIZON-ENTRY exempts a consumerless module, exactly as
+            # it exempts GUARD-KABUKI (doctrine_scan.sh HC-HORIZON-ENTRY-CONVENTION-0,
+            # 90-day window). The repo already ruled that dated + assessable is the
+            # sanctioned way to hold API ahead of its consumer; this scan simply did
+            # not honour that ruling, so a module whose consumer is being built read
+            # identically to one whose consumer will never exist. Stale markers fall
+            # through and are reported as before -- the marker buys time, not silence.
+            if fresh_horizon_entry(module_text):
                 continue
             needles = {name} | reexported_symbols(lib_text, name)
             pattern = re.compile(r"\b(" + "|".join(re.escape(n) for n in sorted(needles)) + r")\b")
