@@ -1,7 +1,7 @@
 # ACTIONBAND-GPU-EXECUTION-0 results
 
 - Track: 0.0.8.7 RF arena modernization (rung 7.2)
-- Status: **REMAND-RESPONSE / DA-review-pending**
+- Status: **COMPLETE — DA-GRADUATED / merged #1699 @ `6b2792b7`** (rulings `5232279126`, `5232410305`, `5233247368`)
 - Branch: `codex/actionband-gpu-execution-0`
 - base_sha: `80a3ea8c1db54d33cfd3eccc2f82cf1fd294520c`
 - HD-RECEIPT: `52bfd6f2c34d`
