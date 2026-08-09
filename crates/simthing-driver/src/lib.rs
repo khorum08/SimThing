@@ -1,4 +1,5 @@
 pub mod arena_allocation_oracle;
+pub mod action_band_execution_compile;
 pub mod arena_allocation_plan;
 pub mod arena_allocation_sync;
 pub mod arena_hierarchy;
@@ -86,6 +87,11 @@ pub mod structural_n4_theater_compile;
 pub mod w_impedance_compose_bridge;
 
 pub use arena_allocation_oracle::{run_arena_allocation_oracle, ArenaAllocationOracleTrace};
+pub use action_band_execution_compile::{
+    compile_action_band_gpu_execution, ActionBandActiveInstance,
+    ActionBandExecutionCompileError, ActionBandStructuralApplyError,
+    FrozenActionBandStructuralRequests,
+};
 pub use arena_allocation_plan::{
     max_disbursement_band, plan_arena_allocation, AllocationPlanError, ArenaAllocationPlan,
 };

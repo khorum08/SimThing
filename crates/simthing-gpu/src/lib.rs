@@ -5,6 +5,7 @@
 
 pub use wgpu;
 pub mod accumulator_op;
+pub mod action_band_execution;
 pub mod atlas_mask;
 pub mod candidate_f_magnitude;
 pub mod field_sweep_instances;
@@ -24,6 +25,13 @@ pub use atlas_mask::{
     max_full_tile_error, tile_origin, vram_multiplier, AtlasIsolationMode, AtlasIsolationPolicy,
     AtlasMaskGpuOp, AtlasMaskParamsGpu, AtlasNormalizeVariant, C0AtlasFixtureShape,
     C0_DEFAULT_N_DIMS,
+};
+pub use action_band_execution::{
+    action_band_target_kind, ActionBandActiveInstanceGpu, ActionBandBandGpu,
+    ActionBandCrossingBatch, ActionBandEmissionBindingGpu, ActionBandEmissionDestination,
+    ActionBandEmissionGpu, ActionBandExecutionBucket, ActionBandExecutionError,
+    ActionBandExecutionPlan, ActionBandExecutionReadback, ActionBandGpuExecution,
+    ActionBandGpuSession, ActionBandStateGpu, ActionBandTemplateGpu, ACTIONBAND_NO_PROGRAM,
 };
 pub use candidate_f_magnitude::{
     max_candidate_f_magnitude_bits, CandidateFMagnitudeError, CandidateFMagnitudeReport,
