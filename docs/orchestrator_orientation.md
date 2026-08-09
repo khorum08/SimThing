@@ -48,7 +48,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | design_0_0_8_7_rf_arena_modernization.md | bbb8725039b592829d2ef5902f7eff58b1c1e236b7f2242e7d4b78aeea64cc25 |
 | relay_lint.sh | 4163f715cdc3b549dbf57c1744aff61ea96b9f9f0a2237376665fbdb24e986c8 |
 | doctrine_anchors.tsv | 3a87cc69f40ec94cbb53d92acb1dd397d799d014c8dbb86310b37357530fbbdb |
-| execution_status_taxonomy.tsv | c33df8d86dbc939e1f6b9a847b3d54e255ae602481cd459c96fba4b13cd2f145 |
+| execution_status_taxonomy.tsv | 64381d52de2295cd397601c545c2285267640787f2e541479c17dfb33261e4b2 |
 | execution_status_mixed_posture.tsv | 1adf05f3ec5fd7b537efe29259d20649a2c6d3a0839590063e5308ff154e8f25 |
 | execution_status_non_execution.tsv | 214c1b557dfd3fc465f0171051e20281ff1dcf6c53128dbb29cba01524f9be02 |
 | specialization_citizen_counts.tsv | ed465628f7daeeb3d6a5a47e8a31efe35edf56883356f83b973eead2119fa7d2 |
@@ -56,7 +56,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 
 ## Execution-status taxonomy (driver/kernel)
 
-executed=59 oracle=6 rehearsal=14 compile-plan=49 mixed_ruled=0 (primary-inclusive taxonomy; DA dual-posture residual; census `execution_status_census.py`).
+executed=60 oracle=6 rehearsal=14 compile-plan=50 mixed_ruled=0 (primary-inclusive taxonomy; DA dual-posture residual; census `execution_status_census.py`).
 
 ## Live install inventories
 

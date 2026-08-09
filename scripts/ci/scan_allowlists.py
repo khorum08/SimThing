@@ -56,6 +56,7 @@ FIELD_SWEEP_EXPLICIT_NON_FIELD_SHADERS = frozenset(
         "crates/simthing-gpu/src/shaders/candidate_f_magnitude.wgsl",
         "crates/simthing-gpu/src/shaders/structural_validation.wgsl",
         "crates/simthing-kernel/src/shaders/accumulator_op.wgsl",
+        "crates/simthing-kernel/src/shaders/action_band_execution.wgsl",
         "crates/simthing-kernel/src/shaders/anchor_table_magnitude_values.wgsl",
         "crates/simthing-kernel/src/shaders/anchor_table_maintain.wgsl",
         "crates/simthing-kernel/src/shaders/anchor_table_remap.wgsl",
