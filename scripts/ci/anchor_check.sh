@@ -353,6 +353,39 @@ if mode == "check":
         print("  disposition: anchor it (doctrine agents must reach) or delete it (superseded).")
     else:
         print("ANCHOR-COVERAGE: PASS every docs/ and docs/adr/ file is anchored")
+
+    # ANCHOR-CURATION: anchors grow monotonically by design -- settled doctrine does
+    # not stop being true when a phase closes, and reaping it is how 6.4/6.5 came to
+    # re-derive an invariant adjudicated months earlier. But growth without
+    # re-curation lets superseded rows sit indefinitely looking authoritative, so
+    # this flags them for edit/resync. Advisory: it reports, a human dispositions.
+    #
+    # Two signals, deliberately separate because they mean different things:
+    #   SUPERSEDED - the anchored doc now lives under an archive/superseded path.
+    #                Definitionally stale; the row should be re-pointed or removed.
+    #   UNREACHED  - the anchor has never been served in the reach log. Usually a
+    #                wrong or too-narrow trigger domain rather than obsolescence,
+    #                and freshly added anchors appear here until first served, so
+    #                this is a review prompt, NEVER a deletion signal.
+    superseded = sorted(
+        r["anchor_id"] for r in rows
+        if "/archive/" in r["doc"].replace("\\", "/")
+        or "superseded" in r["doc"].replace("\\", "/")
+    )
+    reach = repo / "scripts" / "ci" / "anchor_reach_log.tsv"
+    reach_text = reach.read_text(encoding="utf-8", errors="replace") if reach.is_file() else ""
+    unreached = sorted(r["anchor_id"] for r in rows if r["anchor_id"] not in reach_text)
+    if superseded or unreached:
+        print(
+            f"ANCHOR-CURATION: INSPECT superseded={len(superseded)} "
+            f"unreached={len(unreached)}/{len(rows)}"
+        )
+        for a in superseded:
+            print(f"  superseded (doc archived; re-point or remove): {a}")
+        for a in unreached:
+            print(f"  unreached (check trigger_domains; not a deletion signal): {a}")
+    else:
+        print(f"ANCHOR-CURATION: PASS rows={len(rows)}")
     pass_ok()
 
 print("ANCHOR-CHECK-VERDICT: FAIL(harness-error)")
