@@ -2992,6 +2992,8 @@ def render_orientation(active_info: dict) -> tuple:
     "| `CLEARANCE-VERDICT: FAIL(missing-admitted-scope-router-gap-fields...)` | `admitted_envelope: YES` missing admitting_pr/rung, surfaces, or proof fields |",
     "| `CLEARANCE-VERDICT: FAIL(remedy)` | named fix required before re-attempt (CI not green, missing proof fields, etc.) |",
     "",
+    "**`scripts/ci/` holds two kinds of thing and a handoff must not fence them alike.** GATE CODE is `scripts/ci/**/*.sh`, `scripts/ci/**/*.py`, and `.github/workflows/**` -- self-application refusal applies, nobody edits it mid-rung. DATA LEDGERS are the `.tsv` surfaces the workflow is DESIGNED to write: `test_inventory.tsv` (a coder ledgers the tests it authors), `triage_log.tsv` and `inspect_justifications.tsv` (orchestrator), `authorized_renames.tsv` / `authorized_deletions.tsv` (DA), and the append-only `anchor_reach_log.tsv`. A blanket `scripts/ci/**` fence bans the ledgers the required checks demand and makes the rung unfinishable -- adding a row for a test you wrote is the ledger working, not a workaround. Fence gate code by extension; never by directory.",
+    "",
     "`DA-RESERVE(novelty)` is explicit-claim-only and overrides matched-class clearance. A novelty claim must",
     "include `novelty_basis` naming the unanticipated implementation discovery or substrate improvement.",
     "Without `novelty_basis`, clearance fails. Empty-class diffs with a valid admitted-envelope claim emit",
