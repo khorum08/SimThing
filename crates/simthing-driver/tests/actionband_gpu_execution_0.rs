@@ -633,6 +633,9 @@ fn sparse_gpu_state_ping_pongs_and_matches_exact_eml_oracle() {
     let fast_crossings = fast_plan
         .crossings_from_sealed(&[sealed_delta_from_gpu(&fixture, &ctx)])
         .expect("depth-1 fast path consumes the existing sealed crossing");
+    let empty_fast_crossings = fast_plan
+        .crossings_from_sealed(&[])
+        .expect("an empty generation remains sealed and inert");
     let mut fast_execution = match ActionBandGpuExecution::new(&ctx, fast_plan).unwrap() {
         ActionBandGpuExecution::Active(session) => session,
         ActionBandGpuExecution::Inactive => panic!("depth-1 row is active"),
@@ -650,6 +653,33 @@ fn sparse_gpu_state_ping_pongs_and_matches_exact_eml_oracle() {
     assert_eq!(fast_readback.states[0].velocity, 0.0);
     assert_eq!(fast_readback.projection, [0.5]);
     assert!(fast_readback.evaluation_gpu_time_ns.is_none());
+
+    let empty_generation = fast_execution
+        .dispatch_and_readback(
+            &ctx,
+            &values,
+            fixture.registry.total_columns as u32,
+            &empty_fast_crossings,
+        )
+        .expect("empty generation preserves StateCurrent without GPU ActionBand work");
+    assert_eq!(empty_generation.states[0], fast_readback.states[0]);
+    assert_eq!(empty_generation.projection, [0.5]);
+    assert!(empty_generation.gpu_time_ns.is_none());
+    assert!(empty_generation.evaluation_gpu_time_ns.is_none());
+    assert!(empty_generation.emission_gpu_time_ns.is_none());
+
+    let second_crossing = fast_execution
+        .dispatch_and_readback(
+            &ctx,
+            &values,
+            fixture.registry.total_columns as u32,
+            &fast_crossings,
+        )
+        .expect("crossing after an empty generation reads current and writes next");
+    assert_eq!(second_crossing.states[0].generation, 2);
+    assert_eq!(second_crossing.states[0].satisfied, 0);
+    assert_eq!(second_crossing.projection, [0.5]);
+    assert!(second_crossing.evaluation_gpu_time_ns.is_none());
 
     if ctx.timestamp_supported() {
         const WARMUP: usize = 5;
@@ -1009,8 +1039,13 @@ fn inherited_admission_and_cpu_authority_fences_remain_closed() {
         assert!(!kernel.contains(forbidden));
         assert!(!driver.contains(forbidden));
     }
-    assert!(shader.contains("var<storage, read_write> action_state_current"));
+    assert!(shader.contains("var<storage, read> action_state_current"));
+    assert!(!shader.contains("var<storage, read_write> action_state_current"));
     assert!(shader.contains("var<storage, read_write> action_state_next"));
+    assert!(kernel.contains(
+        "encoder.copy_buffer_to_buffer(&self.state_current, 0, &self.state_next, 0, state_bytes)"
+    ));
+    assert!(kernel.contains("std::mem::swap(&mut self.state_current, &mut self.state_next)"));
     let fast_shader = shader
         .split("fn actionband_emit_depth1")
         .nth(1)

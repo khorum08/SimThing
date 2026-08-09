@@ -610,7 +610,7 @@ impl ActionBandGpuSession {
                         wgpu::BufferBindingType::Uniform
                     } else {
                         wgpu::BufferBindingType::Storage {
-                            read_only: !matches!(binding, 4 | 5 | 6 | 7 | 13),
+                            read_only: !matches!(binding, 5 | 6 | 7 | 13),
                         }
                     },
                     has_dynamic_offset: false,
@@ -824,10 +824,8 @@ impl ActionBandGpuSession {
             (self.plan.projection_floats.max(1) as usize * std::mem::size_of::<f32>()) as u64;
         let consequence_bytes = (crossings.output_count.max(1) as usize
             * std::mem::size_of::<ThresholdEmissionGpu>()) as u64;
-        let state_current_stage = proof_readback
-            .then(|| staging(device, "actionband_state_current_readback", state_bytes));
-        let state_next_stage =
-            proof_readback.then(|| staging(device, "actionband_state_next_readback", state_bytes));
+        let state_stage =
+            proof_readback.then(|| staging(device, "actionband_state_readback", state_bytes));
         let projection_stage = proof_readback
             .then(|| staging(device, "actionband_projection_readback", projection_bytes));
         let consequence_stage = (!crossings.commitment_inputs.is_empty()).then(|| {
@@ -841,6 +839,14 @@ impl ActionBandGpuSession {
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("actionband_gpu_execution_encoder"),
         });
+        let depth1_advances =
+            self.plan.depth1_crossing_fast_path && !crossings.bucket_ranges.is_empty();
+        if depth1_advances {
+            // Preserve rows that did not cross without evaluating or gathering
+            // them. The fast shader overwrites only crossing rows in StateNext;
+            // the ordinary whole-buffer swap remains the generation boundary.
+            encoder.copy_buffer_to_buffer(&self.state_current, 0, &self.state_next, 0, state_bytes);
+        }
         if !self.plan.depth1_crossing_fast_path {
             let timestamp_writes = self.timestamp_query_set.as_ref().map(|query_set| {
                 wgpu::ComputePassTimestampWrites {
@@ -888,11 +894,13 @@ impl ActionBandGpuSession {
                 pass.dispatch_workgroups((range.crossing_count + 63) / 64, 1, 1);
             }
         }
-        if let Some(stage) = state_current_stage.as_ref() {
-            encoder.copy_buffer_to_buffer(&self.state_current, 0, stage, 0, state_bytes);
-        }
-        if let Some(stage) = state_next_stage.as_ref() {
-            encoder.copy_buffer_to_buffer(&self.state_next, 0, stage, 0, state_bytes);
+        if let Some(stage) = state_stage.as_ref() {
+            let result_state = if self.plan.depth1_crossing_fast_path && !depth1_advances {
+                &self.state_current
+            } else {
+                &self.state_next
+            };
+            encoder.copy_buffer_to_buffer(result_state, 0, stage, 0, state_bytes);
         }
         if let Some(stage) = projection_stage.as_ref() {
             encoder.copy_buffer_to_buffer(&self.projection_next, 0, stage, 0, projection_bytes);
@@ -929,38 +937,16 @@ impl ActionBandGpuSession {
         }
         ctx.queue.submit(Some(encoder.finish()));
         self.generation = self.generation.saturating_add(1);
-        if !self.plan.depth1_crossing_fast_path {
+        if !self.plan.depth1_crossing_fast_path || depth1_advances {
             std::mem::swap(&mut self.state_current, &mut self.state_next);
         }
 
-        let states = match (state_current_stage.as_ref(), state_next_stage.as_ref()) {
-            (Some(current_stage), Some(next_stage)) => {
-                let current = readback::<ActionBandStateGpu>(
-                    device,
-                    current_stage,
-                    self.plan.active_instances.len(),
-                )?;
-                let next = readback::<ActionBandStateGpu>(
-                    device,
-                    next_stage,
-                    self.plan.active_instances.len(),
-                )?;
-                Some(
-                    current
-                        .into_iter()
-                        .zip(next)
-                        .map(|(current, next)| {
-                            if next.generation > current.generation {
-                                next
-                            } else {
-                                current
-                            }
-                        })
-                        .collect(),
-                )
-            }
-            _ => None,
-        };
+        let states = state_stage
+            .as_ref()
+            .map(|stage| {
+                readback::<ActionBandStateGpu>(device, stage, self.plan.active_instances.len())
+            })
+            .transpose()?;
         let projection = projection_stage
             .as_ref()
             .map(|stage| readback::<f32>(device, stage, self.plan.projection_floats as usize))

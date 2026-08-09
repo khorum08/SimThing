@@ -77,7 +77,7 @@ struct ActionBandDispatchParams {
 @group(0) @binding(1) var<storage, read> action_target_channels: array<u32>;
 @group(0) @binding(2) var<storage, read> action_target_data: array<f32>;
 @group(0) @binding(3) var<storage, read> action_instances: array<ActionBandInstanceGpu>;
-@group(0) @binding(4) var<storage, read_write> action_state_current: array<ActionBandStateGpu>;
+@group(0) @binding(4) var<storage, read> action_state_current: array<ActionBandStateGpu>;
 @group(0) @binding(5) var<storage, read_write> action_state_next: array<ActionBandStateGpu>;
 @group(0) @binding(6) var<storage, read_write> action_projection_next: array<f32>;
 @group(0) @binding(7) var<storage, read_write> values: array<atomic<i32>>;
@@ -223,11 +223,7 @@ fn actionband_evaluate_depth1_crossing(
     }
 
     action_projection_next[instance.projection_start] = projected;
-    var prior = action_state_current[crossing.instance_row];
-    let alternate = action_state_next[crossing.instance_row];
-    if (alternate.generation > prior.generation) {
-        prior = alternate;
-    }
+    let prior = action_state_current[crossing.instance_row];
     let next = ActionBandStateGpu(
         satisfied,
         prior.generation + 1u,
@@ -238,11 +234,7 @@ fn actionband_evaluate_depth1_crossing(
         0u,
         0u,
     );
-    if (action_state_current[crossing.instance_row].generation <= action_state_next[crossing.instance_row].generation) {
-        action_state_current[crossing.instance_row] = next;
-    } else {
-        action_state_next[crossing.instance_row] = next;
-    }
+    action_state_next[crossing.instance_row] = next;
     return next;
 }
 
