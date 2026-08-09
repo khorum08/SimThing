@@ -7,10 +7,10 @@
 - implementation_code_sha: `34d8b06690a23503289a969773669c3788fe476c`
 - tested_code_sha: `34d8b06690a23503289a969773669c3788fe476c`
 - final_head_sha: PR/board-relay-bound after the evidence commit; this file does not self-hash
-- HD-RECEIPT: `b730ee57b576`
+- HD-RECEIPT: `e2bb63c363f4`
 - ORIENT-RECEIPT: `3b3b8c42b4e7`
 - orientation_rule_stamp: `8acaf97ae0e6037b`
-- orientation_digest_sha: `ca1c81792340264563b5a68bf98e4413e43c5d4189192514821c95d33a31213f`
+- orientation_digest_sha: `8945b86ef2c4fb319d85fa0e1e583cb972513e4cebbd9f8e2c45c902df731cd4`
 - expected_route: `DA-RESERVE(gate-wiring)`
 - coverage_basis: **PASS** — focused production admission/crossing referees at the implementation identity; affected-package and exact-final-head gate evidence is bound in the PR and board relay
 
@@ -50,7 +50,7 @@ The rival crossing path is unconstructible at the admitted production boundary: 
 | `bash scripts/ci/agent_scan.sh` | INSPECT — `failures=0 inspect=1`; sole finding is the expected `TEST-BUDGET` review of the five named referees above |
 | `bash scripts/ci/anchor_check.sh --check` | PASS |
 | `python scripts/ci/exit_proof_coverage_check.sh` | INSPECT — one inherited unrelated TODO-row finding on rung 11.2 |
-| `bash scripts/ci/test_inventory_drift_check.sh` | FAIL — the five required new referees are unledgered; the prescribed ledger is under forbidden `scripts/ci/**` scope and was not edited |
+| `bash scripts/ci/test_inventory_drift_check.sh` | PASS — 1,171 discovered/ledgered, 0 unledgered, 0 stale after five DA-authorized data-ledger rows |
 
 Affected-package, orientation, anchor, doctrine, agent, exit-proof, hosted Doctrine Scan, and hosted Doctrine Exec results are recorded against the exact final evidence head in the PR and board relay so the repository evidence packet does not claim a self-referential SHA.
 
@@ -66,8 +66,10 @@ Affected-package, orientation, anchor, doctrine, agent, exit-proof, hosted Doctr
 | `docs/tests/actionband_admission_door_0_results.md` | This probation evidence packet. |
 | `docs/design_0_0_8_7_rf_arena_modernization.md` | Only rung 7.1 moves from TODO to PROBATION. |
 | `docs/orchestrator_orientation.md` | Deterministic regeneration after the 7.1 status update. |
+| `handoffs/ACTIONBAND-ADMISSION-DOOR-0.hd.md`, `scripts/ci/gen_orientation.sh` | DA-authored commit `c5c83c77`, incorporated unchanged, narrows the gate-code fence and moves the HD receipt. |
+| `scripts/ci/test_inventory.tsv` | Five new KEEP/seal-proof data-ledger rows, one for each test authored by this rung. |
 
-No file under `scripts/ci/**` or `.github/workflows/**` was edited. Existing `designer_admission/mobility_*`, Movement-Front vocabulary, and successor rungs remain untouched.
+No gate code was authored or altered by coding; the DA-authored generator change was incorporated unchanged. No workflow, existing inventory row, `designer_admission/mobility_*`, Movement-Front vocabulary, or successor rung was edited.
 
 ## Conformance and anchor acknowledgements
 
@@ -117,12 +119,12 @@ The implementation was projected before edits and rechecked over the final plann
 
 - This rung admits descriptor data only. GPU numerical execution, recursive runtime composition, claims/clearing, and every 7.2+ or 8.x execution surface remain TODO.
 - Coding does not invoke `/clearance`, merge, graduate, move the workplan pointer, or dispatch a successor.
-- `TEST-INVENTORY-DRIFT-CHECK` reports the five required new integration tests as unledgered. Its prescribed remedy edits `scripts/ci/test_inventory.tsv`, but this handoff forbids every `scripts/ci/**` edit. Coding stopped at that authority boundary and reports the blocker rather than modifying CI.
+- DA-authored commit `c5c83c77` narrowed the gate-code fence by extension and explicitly authorized `test_inventory.tsv` rows earned by this rung. Exactly five KEEP/seal-proof rows were added; no gate code, existing inventory row, workflow, or harness behavior was changed.
 
 ## Graduation routing
 
-- CI verdict: **FAIL** locally on test-inventory admission; semantic tests are green and doctrine scan is `INSPECT failures=0 inspect=1`
-- Triage entries: `TEST-BUDGET:INSPECT` — five named permanent production-path referees justified above; `EXIT-PROOF-COVERAGE:INSPECT` — inherited unrelated rung 11.2; `TEST-INVENTORY-DRIFT-CHECK:FAIL` — five new rows require forbidden `scripts/ci/**` authority
+- CI verdict: local inventory drift PASS; exact-final-head hosted evidence pending
+- Triage entries: `TEST-BUDGET:INSPECT` — five named permanent production-path referees justified above; `EXIT-PROOF-COVERAGE:INSPECT` — inherited unrelated rung 11.2
 - Risk class: `gate-wiring` — constitutionally routed to `DA-RESERVE(gate-wiring)` despite zero gate edits
 - Falsification check: reproduce the five named referees, confirm the crossing is an existing sealed `BandCrossingDelta`, confirm both held markers and every rival ActionBand crossing/CPU authority are absent, and verify nonzero doctrine `inspect` with `failures=0` is PASS
 - Recommended posture: **deep** — the new constitutional admission/type boundary controls later GPU execution and must be DA-reviewed before graduation
