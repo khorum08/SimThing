@@ -8,11 +8,13 @@ use simthing_driver::{
 };
 use simthing_feeder::{feeder_channel, BoundaryRequest, FeederWork};
 use simthing_gpu::{
-    cpu_oracle_band_crossing_deltas, emit_on_threshold_registrations_to_gpu, eval_eml_cpu,
-    readback_buffer_bytes_blocking, scoped_debug_readback_allowed, wgpu, AccumulatorOpSession,
-    ActionBandEmissionBindingGpu, ActionBandExecutionError, ActionBandGpuExecution,
-    ActionBandPropertyWrite, GpuContext, PackedThresholdUpload, SlotAllocator,
+    apply_band_crossing_deltas_from_fused_emissions, cpu_oracle_band_crossing_deltas,
+    emit_on_threshold_registrations_to_gpu, eval_eml_cpu, readback_buffer_bytes_blocking,
+    scoped_debug_readback_allowed, wgpu, AccumulatorOpSession, ActionBandEmissionBindingGpu,
+    ActionBandExecutionError, ActionBandGpuExecution, GpuContext, PackedThresholdUpload,
+    SlotAllocator,
 };
+use simthing_sim::{apply_structural_mutations, SimRuntimeTree};
 use simthing_spec::{
     ActionBandAdmissionBudgetSpec, ActionBandAdmissionError, ActionBandBandSpec,
     ActionBandChannelBindingSpec, ActionBandChannelKind, ActionBandSessionBuildDoor,
@@ -27,9 +29,6 @@ struct Fixture {
     eml: EmlExpressionRegistry,
     column: ColumnIndex,
     previous_column: ColumnIndex,
-    property_destination: ColumnIndex,
-    rf_destination: ColumnIndex,
-    cost_destination: ColumnIndex,
 }
 
 fn fixture() -> Fixture {
@@ -47,9 +46,6 @@ fn fixture() -> Fixture {
             .expect("amount column")
     };
     let previous_column = register_column("previous");
-    let property_destination = register_column("property-destination");
-    let rf_destination = register_column("rf-destination");
-    let cost_destination = register_column("cost-destination");
     let thresholds = vec![EmitOnThresholdRegistration {
         slot: SlotIndex::new(0),
         col: column,
@@ -155,9 +151,6 @@ fn fixture() -> Fixture {
         eml,
         column,
         previous_column,
-        property_destination,
-        rf_destination,
-        cost_destination,
     }
 }
 
@@ -259,6 +252,45 @@ fn sealed_delta(fixture: &Fixture) -> simthing_gpu::BandCrossingDelta {
     .expect("existing Phase-5 crossing")
 }
 
+fn sealed_delta_from_gpu(
+    fixture: &Fixture,
+    ctx: &GpuContext,
+) -> simthing_gpu::BandCrossingDelta {
+    let root = SimThing::new(SimThingKind::GameSession, 0);
+    let mut allocator = SlotAllocator::new();
+    allocator.populate_from_tree(&root);
+    let regs = emit_on_threshold_registrations_to_gpu(&fixture.thresholds);
+    let previous = world_values(fixture, 0.5, 1.0);
+    let current = world_values(fixture, 1.5, 1.0);
+    let mut session = AccumulatorOpSession::new_attached(
+        ctx,
+        1,
+        fixture.registry.total_columns as u32,
+        4,
+    );
+    session.upload_values(ctx, &current);
+    session.upload_previous_values(ctx, &previous);
+    session
+        .upload_packed_threshold_ops(
+            ctx,
+            &PackedThresholdUpload::from_registrations(&regs).expect("threshold upload"),
+        )
+        .expect("upload existing Phase-5 registrations");
+    session.tick(ctx, 0).expect("existing fused threshold pass");
+    let emissions = session
+        .readback_threshold_emissions(ctx)
+        .expect("sealed GPU threshold emissions");
+    apply_band_crossing_deltas_from_fused_emissions(
+        &emissions,
+        session.threshold_registrations(),
+        &fixture.registry,
+        &allocator,
+    )
+    .into_iter()
+    .next()
+    .expect("real sealed Phase-5 GPU crossing")
+}
+
 #[test]
 fn sparse_gpu_state_ping_pongs_and_matches_exact_eml_oracle() {
     let fixture = fixture();
@@ -281,12 +313,12 @@ fn sparse_gpu_state_ping_pongs_and_matches_exact_eml_oracle() {
     )];
     let plan = compile_action_band_gpu_execution(&frozen, &fixture.eml, &[binding()], &active)
         .expect("numeric lowering");
-    let crossings = plan
-        .crossings_from_sealed(&[sealed_delta(&fixture)])
-        .expect("sealed join");
     let Some(ctx) = GpuContext::new_blocking().ok() else {
         return;
     };
+    let crossings = plan
+        .crossings_from_sealed(&[sealed_delta_from_gpu(&fixture, &ctx)])
+        .expect("real sealed GPU join");
     let initial_world = world_values(&fixture, 1.5, 1.0);
     let values = ctx
         .device
@@ -311,7 +343,7 @@ fn sparse_gpu_state_ping_pongs_and_matches_exact_eml_oracle() {
         .expect("production dispatch needs no proof readback");
     assert_eq!(production_execution.generation(), 1);
     assert_eq!(production.bucket_dispatches, 1);
-    assert_eq!(production.consequences.len(), 1);
+    assert_eq!(production.commitments.len(), 1);
     drop(_production_scope);
     let unchanged_world = readback_buffer_bytes_blocking(
         &ctx.device,
@@ -359,117 +391,94 @@ fn sparse_gpu_state_ping_pongs_and_matches_exact_eml_oracle() {
         fixture.registry.total_columns as u32,
         [1.5, 1.0, 0.5, 0.5],
     );
-    assert_eq!(first.consequences[0].value().to_bits(), oracle.to_bits());
-    assert_eq!(first.consequences[0].col(), 42);
-    assert!(first.consequences[0].is_production_sealed());
+    assert_eq!(first.emission_payloads[0].to_bits(), oracle.to_bits());
+    assert_eq!(first.commitments[0].slot(), 0);
+    assert_eq!(first.commitments[0].col(), fixture.column.raw_u32());
+    assert_eq!(first.commitments[0].value().to_bits(), 1.5f32.to_bits());
+    assert_eq!(first.commitments[0].event_kind(), 701);
 
-    let target = SimThing::new(SimThingKind::Location, 0).id;
+    let mut root = SimThing::new(SimThingKind::World, 0);
+    let target_node = SimThing::new(SimThingKind::Location, 0);
+    let target = target_node.id;
+    root.add_child(target_node);
+    let mut allocator = SlotAllocator::new();
+    allocator.populate_from_tree(&root);
+    let mut runtime = SimRuntimeTree::admit(root);
+    let mut structural_registry = DimensionRegistry::new();
+    structural_registry.register(SimProperty::simple("proof", "structural-shadow", 1));
+    let structural_dims = structural_registry.total_columns;
+    let mut structural_shadow = vec![0.0; allocator.capacity() * structural_dims];
+
     let mut pre_admitted = vec![None; 43];
     pre_admitted[42] = Some(BoundaryRequest::Remove { target });
-    let requests =
-        FrozenActionBandStructuralRequests::from_pre_admitted_rows(pre_admitted, vec![binding()]);
+    let requests = FrozenActionBandStructuralRequests::from_pre_admitted_rows(
+        pre_admitted.clone(),
+        vec![(701, binding())],
+    )
+    .expect("session-frozen structural door");
     let (sender, receiver) = feeder_channel();
-    assert_eq!(
-        requests
-            .submit_gpu_authorized(&first.consequences, &sender)
-            .unwrap(),
-        1
-    );
+    let submitted = requests
+        .submit_committed(&first.commitments, &sender)
+        .expect("sealed commitment selects fixed request");
+    assert_eq!(submitted, 1);
+    // Planted rival: any CPU numeric re-derivation would reject this already
+    // committed request, while the lawful structural door applies it.
+    let cpu_rederived = first
+        .commitments
+        .iter()
+        .filter(|commitment| commitment.value() > 10_000.0)
+        .count();
+    assert_eq!(cpu_rederived, 0);
     let drained = receiver.drain_now();
-    assert!(matches!(
-        drained.as_slice(),
-        [FeederWork::Boundary(BoundaryRequest::Remove { target: actual })] if *actual == target
-    ));
+    let boundary_requests = drained
+        .into_iter()
+        .map(|work| match work {
+            FeederWork::Boundary(request) => request,
+            _ => panic!("structural door emitted non-boundary work"),
+        })
+        .collect();
+    let outcome = apply_structural_mutations(
+        boundary_requests,
+        &mut runtime,
+        &mut allocator,
+        &mut structural_registry,
+        &mut structural_shadow,
+        structural_dims,
+        None,
+    );
+    assert_eq!(outcome.tombstoned, [target]);
+    assert_eq!(runtime.subtree_size(), 1);
 
-    let mut surface_spec = spec(
-        fixture.column.raw_u32(),
-        fixture.previous_column.raw_u32(),
-        "existing destination surfaces",
-        1,
-    );
-    surface_spec.budget.emission_binding_count = 6;
-    surface_spec.templates[0].bands[0].emission_binding_indices = (0..6).collect();
-    let mut surface_door = ActionBandSessionBuildDoor::new();
-    let surface_product = surface_door
-        .admit_once_at_session_build(
-            &surface_spec,
-            &fixture.registry,
-            &fixture.eml,
-            &fixture.thresholds,
-        )
-        .expect("fixed destination bundle admission")
-        .clone();
-    let surface_bindings = vec![
+    // Binding index 0 and request index 42 are deliberately unrelated to
+    // sealed event kind 701. Reintroducing the old reg_idx/binding overload
+    // cannot select this request.
+    let overloaded = FrozenActionBandStructuralRequests::from_pre_admitted_rows(
+        pre_admitted,
+        vec![(0, binding())],
+    )
+    .expect("planted overload door");
+    let (overload_sender, _overload_receiver) = feeder_channel();
+    assert!(overloaded
+        .submit_committed(&first.commitments, &overload_sender)
+        .is_err());
+
+    for deferred in [
         ActionBandEmissionBindingGpu::property_next(
-            fixture.property_destination.raw_u32(),
-            ActionBandPropertyWrite::Set,
+            fixture.column.raw_u32(),
+            simthing_gpu::ActionBandPropertyWrite::Set,
         ),
-        ActionBandEmissionBindingGpu::rf_claim(fixture.rf_destination.raw_u32()),
-        ActionBandEmissionBindingGpu::cost_band(fixture.cost_destination.raw_u32()),
+        ActionBandEmissionBindingGpu::rf_claim(fixture.column.raw_u32()),
+        ActionBandEmissionBindingGpu::cost_band(fixture.column.raw_u32()),
         ActionBandEmissionBindingGpu::overlay_event(90),
-        ActionBandEmissionBindingGpu::structural_request(42),
         ActionBandEmissionBindingGpu::telemetry(91),
-    ];
-    let surface_plan = compile_action_band_gpu_execution(
-        &surface_product,
-        &fixture.eml,
-        &surface_bindings,
-        &active,
-    )
-    .expect("existing-surface lowering");
-    let surface_crossings = surface_plan
-        .crossings_from_sealed(&[sealed_delta(&fixture)])
-        .expect("sealed surface join");
-    let mut surface_initial = world_values(&fixture, 1.5, 1.0);
-    surface_initial[fixture.rf_destination.raw()] = 1.0;
-    surface_initial[fixture.cost_destination.raw()] = 2.0;
-    let surface_values = ctx
-        .device
-        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("actionband_existing_surface_values"),
-            contents: bytemuck::cast_slice(&surface_initial),
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
-        });
-    let mut surface_execution = match ActionBandGpuExecution::new(&ctx, surface_plan).unwrap() {
-        ActionBandGpuExecution::Active(session) => session,
-        ActionBandGpuExecution::Inactive => panic!("surface instance is active"),
-    };
-    let _production_scope = scoped_debug_readback_allowed(false);
-    let surface_result = surface_execution
-        .dispatch(
-            &ctx,
-            &surface_values,
-            fixture.registry.total_columns as u32,
-            &surface_crossings,
-        )
-        .expect("fixed bindings reach existing surfaces");
-    drop(_production_scope);
-    let bytes = readback_buffer_bytes_blocking(
-        &ctx.device,
-        &ctx.queue,
-        &surface_values,
-        (fixture.registry.total_columns * std::mem::size_of::<f32>()) as u64,
-        "actionband_existing_surface_values",
-    )
-    .expect("proof-only world-value readback");
-    let surface_world: &[f32] = bytemuck::cast_slice(&bytes);
-    assert_eq!(surface_world[fixture.column.raw()], 1.5);
-    assert_eq!(surface_world[fixture.previous_column.raw()], 1.0);
-    assert_eq!(surface_world[fixture.property_destination.raw()], 3.0);
-    assert_eq!(surface_world[fixture.rf_destination.raw()], 4.0);
-    assert_eq!(surface_world[fixture.cost_destination.raw()], 5.0);
-    assert_eq!(
-        surface_result
-            .consequences
-            .iter()
-            .map(|packet| (packet.col(), packet.value().to_bits()))
-            .collect::<Vec<_>>(),
-        [
-            (90, 3.0f32.to_bits()),
-            (42, 3.0f32.to_bits()),
-            (91, 3.0f32.to_bits())
-        ]
-    );
+    ] {
+        assert!(matches!(
+            compile_action_band_gpu_execution(&frozen, &fixture.eml, &[deferred], &active),
+            Err(simthing_driver::ActionBandExecutionCompileError::Kernel(
+                ActionBandExecutionError::DestinationDeferred { .. }
+            ))
+        ));
+    }
 
     let closed_targets = vec![
         ActionBandTargetSpec::Point {
@@ -577,22 +586,49 @@ fn sparse_gpu_state_ping_pongs_and_matches_exact_eml_oracle() {
     assert_eq!(all_readback.projection, [0.5, 0.5, 0.0, 0.0, 0.0, 0.5, 0.0]);
 
     if ctx.timestamp_supported() {
+        const WARMUP: usize = 5;
+        const SAMPLES: usize = 31;
+        for _ in 0..WARMUP {
+            execution
+                .dispatch(
+                    &ctx,
+                    &values,
+                    fixture.registry.total_columns as u32,
+                    &crossings,
+                )
+                .expect("ActionBand warmup");
+        }
         let mut action_samples_ns = Vec::new();
-        for _ in 0..15 {
+        let mut evaluation_samples_ns = Vec::new();
+        let mut emission_samples_ns = Vec::new();
+        for _ in 0..SAMPLES {
+            let sample = execution
+                .dispatch(
+                    &ctx,
+                    &values,
+                    fixture.registry.total_columns as u32,
+                    &crossings,
+                )
+                .expect("timed ActionBand production dispatch");
             action_samples_ns.push(
-                execution
-                    .dispatch_and_readback(
-                        &ctx,
-                        &values,
-                        fixture.registry.total_columns as u32,
-                        &crossings,
-                    )
-                    .expect("timed ActionBand dispatch")
+                sample
                     .gpu_time_ns
                     .expect("timestamp-supported ActionBand sample"),
             );
+            evaluation_samples_ns.push(
+                sample
+                    .evaluation_gpu_time_ns
+                    .expect("timestamp-supported evaluation sample"),
+            );
+            emission_samples_ns.push(
+                sample
+                    .emission_gpu_time_ns
+                    .expect("timestamp-supported emission sample"),
+            );
         }
         action_samples_ns.sort_by(f64::total_cmp);
+        evaluation_samples_ns.sort_by(f64::total_cmp);
+        emission_samples_ns.sort_by(f64::total_cmp);
 
         let regs = emit_on_threshold_registrations_to_gpu(&fixture.thresholds);
         let upload = PackedThresholdUpload::from_registrations(&regs).expect("threshold packet");
@@ -614,8 +650,13 @@ fn sparse_gpu_state_ping_pongs_and_matches_exact_eml_oracle() {
                 contents: bytemuck::cast_slice(&[1.5f32]),
                 usage: wgpu::BufferUsages::STORAGE,
             });
+        for _ in 0..WARMUP {
+            crossing_session
+                .dispatch_threshold_scan(&ctx, &current, &previous)
+                .expect("existing crossing warmup");
+        }
         let mut crossing_samples_ns = Vec::new();
-        for _ in 0..15 {
+        for _ in 0..SAMPLES {
             crossing_session
                 .dispatch_threshold_scan(&ctx, &current, &previous)
                 .expect("timed existing crossing dispatch");
@@ -628,10 +669,18 @@ fn sparse_gpu_state_ping_pongs_and_matches_exact_eml_oracle() {
         }
         crossing_samples_ns.sort_by(f64::total_cmp);
         let action_median = action_samples_ns[action_samples_ns.len() / 2];
+        let evaluation_median = evaluation_samples_ns[evaluation_samples_ns.len() / 2];
+        let emission_median = emission_samples_ns[emission_samples_ns.len() / 2];
         let crossing_median = crossing_samples_ns[crossing_samples_ns.len() / 2];
         let ratio = action_median / crossing_median.max(1.0);
+        let delta = action_median - crossing_median;
+        let adapter = ctx.adapter.get_info();
         eprintln!(
-            "ACTIONBAND-DEPTH1-MEASUREMENT samples=15 action_gpu_median_ns={action_median:.0} existing_crossing_gpu_median_ns={crossing_median:.0} ratio={ratio:.3}"
+            "ACTIONBAND-DEPTH1-MEASUREMENT adapter={:?} backend={:?} warmup={} samples={} statistic=median timestamp_scope=compute_pass_only_excludes_cpu_join_copies_maps_readback_and_boundary_apply dispatch_boundaries=action_evaluate_plus_sealed_emission_vs_existing_threshold_scan action_evaluation_gpu_median_ns={evaluation_median:.0} action_emission_gpu_median_ns={emission_median:.0} action_total_gpu_median_ns={action_median:.0} existing_crossing_gpu_median_ns={crossing_median:.0} crossing_timestamp_resolution_ns=1000 marginal_delta_ns={delta:.0} ratio={ratio:.3}",
+            adapter.name,
+            adapter.backend,
+            WARMUP,
+            SAMPLES,
         );
         assert!(ratio.is_finite() && ratio > 0.0);
     }
@@ -723,7 +772,7 @@ fn bucketing_is_numeric_deterministic_and_labels_are_semantic_shadow_only() {
         "bucket authoring",
         1,
     );
-    bucket_spec.budget.emission_binding_count = 2;
+    bucket_spec.budget.emission_binding_count = 1;
     bucket_spec.templates[0].bands = vec![
         ActionBandBandSpec {
             threshold_registration_index: 0,
@@ -737,8 +786,8 @@ fn bucketing_is_numeric_deterministic_and_labels_are_semantic_shadow_only() {
         },
         ActionBandBandSpec {
             threshold_registration_index: 0,
-            eml_program: Some(0),
-            emission_binding_indices: vec![1],
+            eml_program: None,
+            emission_binding_indices: vec![0],
         },
     ];
     let mut door = ActionBandSessionBuildDoor::new();
@@ -759,10 +808,7 @@ fn bucketing_is_numeric_deterministic_and_labels_are_semantic_shadow_only() {
     let bucket_plan = compile_action_band_gpu_execution(
         &bucket_product,
         &fixture.eml,
-        &[
-            ActionBandEmissionBindingGpu::telemetry(9),
-            ActionBandEmissionBindingGpu::cost_band(fixture.cost_destination.raw_u32()),
-        ],
+        &[binding()],
         &bucket_active,
     )
     .expect("bucket lowering");
@@ -803,7 +849,7 @@ fn bucketing_is_numeric_deterministic_and_labels_are_semantic_shadow_only() {
         )
         .expect("bucket partition drives production dispatches");
     assert_eq!(result.bucket_dispatches, 2);
-    assert_eq!(result.consequences.len(), 2);
+    assert_eq!(result.commitments.len(), 3);
 }
 
 #[test]
@@ -834,11 +880,14 @@ fn inherited_admission_and_cpu_authority_fences_remain_closed() {
     ));
     let kernel = include_str!("../../simthing-kernel/src/accumulator_op/action_band_execution.rs");
     let driver = include_str!("../src/action_band_execution_compile.rs");
+    let structural_door = include_str!("../../simthing-sim/src/tree_mutation.rs");
     let shader = include_str!("../../simthing-kernel/src/shaders/action_band_execution.wgsl");
     for forbidden in [
         "ActionBandScheduler",
         "ActionBandPlanner",
         "ActionBandCallback",
+        "ActionBandBoundaryQueue",
+        "CrossingListener",
         "came_from",
     ] {
         assert!(!kernel.contains(forbidden));
@@ -851,10 +900,13 @@ fn inherited_admission_and_cpu_authority_fences_remain_closed() {
     assert!(kernel.contains("fn dispatch_internal("));
     assert!(!kernel.contains("pub struct ActionBandEmissionGpu"));
     assert!(shader.contains("struct ThresholdEmissionGpu"));
-    assert!(shader.contains("atomic_store_f32_at(destination, payload)"));
-    assert!(shader.contains("atomic_add_f32_at(destination, payload)"));
-    assert!(
-        !include_str!("../../simthing-kernel/src/decision_ingress.rs").contains("HORIZON-ENTRY")
-    );
-    assert!(!include_str!("../../simthing-sim/src/overlay_lifecycle.rs").contains("HORIZON-ENTRY"));
+    assert!(!shader.contains("atomic_store_f32_at"));
+    assert!(!shader.contains("atomic_add_f32_at"));
+    assert!(shader.contains("band.threshold_registration"));
+    assert!(shader.contains("crossing.crossing_col"));
+    assert!(!driver.contains("submit_gpu_authorized"));
+    assert!(!driver.contains("emission.reg_idx()"));
+    assert!(!structural_door.contains("commitment.value()"));
+    assert!(!structural_door.contains("commitment.slot()"));
+    assert!(!structural_door.contains("commitment.col()"));
 }

@@ -55,8 +55,8 @@ struct ActionBandCrossingInputGpu {
     output_count: u32,
     post_value: f32,
     threshold: f32,
-    reserved0: u32,
-    reserved1: u32,
+    crossing_col: u32,
+    reserved: u32,
 }
 
 struct ThresholdEmissionGpu {
@@ -99,11 +99,6 @@ const ACTION_TARGET_LOCUS_RADIUS: u32 = 5u;
 const ACTION_TARGET_PALMA_REACHABLE: u32 = 6u;
 const ACTION_TARGET_EML_PROJECTED: u32 = 7u;
 const ACTION_NO_PROGRAM: u32 = 0xFFFFFFFFu;
-const ACTION_DEST_PROPERTY_NEXT: u32 = 0u;
-const ACTION_DEST_RF_CLAIM: u32 = 1u;
-const ACTION_DEST_COSTBAND: u32 = 2u;
-const ACTION_WRITE_SET: u32 = 0u;
-
 fn action_value(slot: u32, col: u32) -> f32 {
     return atomic_read_f32_at(slot * tick_params.n_dims + col);
 }
@@ -204,25 +199,11 @@ fn actionband_emit(@builtin(global_invocation_id) gid: vec3<u32>) {
         payload = eml_eval(EmlEvalCtx(band.program_range, instance.slot, crossing.post_value, crossing.threshold, state.distance, state.velocity));
     }
     for (var i = 0u; i < crossing.output_count; i = i + 1u) {
-        let binding_index = action_band_binding_indices[band.binding_start + i];
-        let binding = action_emission_bindings[binding_index];
-        if (binding.destination_kind == ACTION_DEST_PROPERTY_NEXT
-            || binding.destination_kind == ACTION_DEST_RF_CLAIM
-            || binding.destination_kind == ACTION_DEST_COSTBAND) {
-            let destination = instance.slot * tick_params.n_dims + binding.destination_index;
-            if (binding.destination_kind == ACTION_DEST_PROPERTY_NEXT
-                && binding.auxiliary0 == ACTION_WRITE_SET) {
-                atomic_store_f32_at(destination, payload);
-            } else {
-                atomic_add_f32_at(destination, payload);
-            }
-        } else {
-            action_consequences[crossing.output_start + i] = ThresholdEmissionGpu(
-                binding_index,
-                instance.slot,
-                binding.destination_index,
-                payload,
-            );
-        }
+        action_consequences[crossing.output_start + i] = ThresholdEmissionGpu(
+            band.threshold_registration,
+            instance.slot,
+            crossing.crossing_col,
+            payload,
+        );
     }
 }

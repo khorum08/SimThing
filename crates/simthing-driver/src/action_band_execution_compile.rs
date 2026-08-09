@@ -7,13 +7,14 @@ use std::collections::{BTreeMap, BTreeSet};
 use simthing_core::{
     eml_nodes::execution_class_to_u32, EmlExpressionRegistry, EmlTreeId, SlotIndex,
 };
-use simthing_feeder::{BoundaryRequest, FeederError, FeederSender};
+use simthing_feeder::{BoundaryRequest, FeederSender};
 use simthing_gpu::{
     action_band_target_kind, ActionBandActiveInstanceGpu, ActionBandBandGpu,
     ActionBandEmissionBindingGpu, ActionBandEmissionDestination, ActionBandExecutionBucket,
     ActionBandExecutionError, ActionBandExecutionPlan, ActionBandTemplateGpu, EmlTreeRangeGpu,
-    ThresholdEmission, ACTIONBAND_NO_PROGRAM,
+    StructuralCommitment, ACTIONBAND_NO_PROGRAM,
 };
+use simthing_sim::{StructuralCommitmentApplicationDoor, StructuralCommitmentApplicationError};
 use simthing_spec::{
     ActionBandTemplateIndex, AdmittedActionBandTarget, FrozenActionBandTemplates,
     ScalarBoundDirection,
@@ -64,57 +65,53 @@ pub enum ActionBandExecutionCompileError {
 /// verbatim; it does not inspect payload, distance, satisfaction, or EML.
 #[derive(Clone, Debug)]
 pub struct FrozenActionBandStructuralRequests {
-    rows: Vec<Option<BoundaryRequest>>,
-    bindings: Vec<ActionBandEmissionBindingGpu>,
+    door: StructuralCommitmentApplicationDoor,
 }
 
 impl FrozenActionBandStructuralRequests {
     pub fn from_pre_admitted_rows(
         rows: Vec<Option<BoundaryRequest>>,
-        bindings: Vec<ActionBandEmissionBindingGpu>,
-    ) -> Self {
-        Self { rows, bindings }
-    }
-
-    pub fn submit_gpu_authorized(
-        &self,
-        emissions: &[ThresholdEmission],
-        boundary: &FeederSender,
-    ) -> Result<usize, ActionBandStructuralApplyError> {
-        let mut submitted = 0;
-        for emission in emissions {
-            let binding = self
-                .bindings
-                .get(emission.reg_idx() as usize)
-                .copied()
-                .ok_or(ActionBandStructuralApplyError::MissingPreAdmittedBinding(
-                    emission.reg_idx(),
-                ))?;
+        event_bindings: Vec<(u32, ActionBandEmissionBindingGpu)>,
+    ) -> Result<Self, ActionBandStructuralApplyError> {
+        let mut admitted = Vec::with_capacity(event_bindings.len());
+        for (event_kind, binding) in event_bindings {
             if binding.destination() != ActionBandEmissionDestination::StructuralRequest {
-                continue;
+                return Err(ActionBandStructuralApplyError::DeferredDestination(
+                    binding.destination(),
+                ));
             }
-            let request = self
-                .rows
+            let request = rows
                 .get(binding.destination_index() as usize)
                 .and_then(Option::as_ref)
                 .ok_or(ActionBandStructuralApplyError::MissingPreAdmittedRequest(
                     binding.destination_index(),
                 ))?;
-            boundary.submit_boundary(request.clone())?;
-            submitted += 1;
+            admitted.push((event_kind, request.clone()));
         }
-        Ok(submitted)
+        Ok(Self {
+            door: StructuralCommitmentApplicationDoor::from_pre_admitted_requests(admitted)?,
+        })
+    }
+
+    pub fn submit_committed(
+        &self,
+        commitments: &[StructuralCommitment],
+        boundary: &FeederSender,
+    ) -> Result<usize, ActionBandStructuralApplyError> {
+        self.door
+            .submit_committed(commitments, boundary)
+            .map_err(Into::into)
     }
 }
 
 #[derive(Debug, Error)]
 pub enum ActionBandStructuralApplyError {
-    #[error("GPU-authorized consequence references missing admitted binding {0}")]
-    MissingPreAdmittedBinding(u32),
     #[error("GPU-authorized structural destination {0} has no pre-admitted boundary request")]
     MissingPreAdmittedRequest(u32),
+    #[error("ActionBand 7.2 defers structural-door destination {0:?}")]
+    DeferredDestination(ActionBandEmissionDestination),
     #[error(transparent)]
-    Feeder(#[from] FeederError),
+    Door(#[from] StructuralCommitmentApplicationError),
 }
 
 /// Lower one already-frozen admission product. Human-readable semantic shadow

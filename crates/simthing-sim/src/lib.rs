@@ -122,7 +122,10 @@ pub use threshold_registry::{
     CostBandSemantic, SoftAggregateViolation, ThresholdBuilder, ThresholdRegistry,
     ThresholdSemantic, VelocityAlertEvent, VelocityAlertRegistration,
 };
-pub use tree_mutation::apply_structural_mutations;
+pub use tree_mutation::{
+    apply_structural_mutations, StructuralCommitmentApplicationDoor,
+    StructuralCommitmentApplicationError,
+};
 
 #[cfg(test)]
 mod dependency_budget;

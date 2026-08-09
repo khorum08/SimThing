@@ -104,7 +104,7 @@ pub use simthing_kernel::{
     Pipelines, PlacedParticipant, PlacedParticipantValidationError, PlannerError,
     ReductionOrderBandPlan, ReductionPlanError, ResolvedWriteAuthority, ScatterEntry,
     apply_epoch_rebind_to_values, SlotAllocError, SlotAllocator, SlotDeltaRange, SlotSummary,
-    StructuralGridPlacement,
+    StructuralCommitment, StructuralGridPlacement,
     ThresholdEmission, ThresholdEmissionGpu, ThresholdEvent, ThresholdEventGpu,
     ThresholdRegistration, Topology, TopologyState, TransferInputRef, TransferOpPlanSignature,
     TransferPlan, TransferPlanError, TransferRegistration, TransferSyncError,
