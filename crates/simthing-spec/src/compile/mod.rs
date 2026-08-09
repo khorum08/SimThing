@@ -11,6 +11,7 @@
 //! [`CompileContext`] threads the registry through batch compilation of multiple
 //! specs from the same `DomainPackSpec` / `GameModeSpec`.
 
+pub mod action_band_admission;
 pub mod capability;
 pub mod context;
 pub mod effect;
@@ -35,6 +36,13 @@ pub mod stress_compose_admission;
 pub mod trigger;
 pub mod w_impedance_compose_admission;
 
+pub use action_band_admission::{
+    ActionBandAdmissionError, ActionBandCrossingBinding, ActionBandSemanticShadow,
+    ActionBandSessionBuildDoor, ActionBandTableSpan, ActionBandTemplateIndex,
+    AdmittedActionBandBand, AdmittedActionBandChannel, AdmittedActionBandTarget,
+    AdmittedActionBandTemplate, ExistingThresholdRegistrationIndex, FrozenActionBandTemplates,
+    PreAdmittedEmissionBindingIndex,
+};
 pub use capability::{CapabilityTreeBuildOutput, CapabilityTreeBuilder};
 pub use context::CompileContext;
 pub use effect::compile_effect;
