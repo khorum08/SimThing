@@ -11,11 +11,22 @@
 
 ## Product
 
-The frozen 7.1 product now lowers once into flat, domain-free template, target,
-band, EML, binding, and sparse active-instance tables. Numerical state is held
-in distinct private GPU `StateCurrent` and `StateNext` buffers. One dispatch
-reads current and writes next; a post-submit buffer-owner swap advances the
-generation without same-generation recursion.
+The frozen 7.1 product now seals each band crossing binding to the actual
+Phase-5 threshold column and `event_kind`, then lowers once into flat,
+domain-free template, target, band, EML, binding, and sparse active-instance
+tables. The driver returns one private source-bound compilation containing both
+the GPU plan and the structural application provenance derived from those same
+frozen rows. No API accepts a detached `(event_kind, binding)` tuple.
+
+Numerical state is held in distinct private GPU `StateCurrent` and `StateNext`
+buffers. The general multiband/multichannel/velocity path reads current, writes
+next, and swaps buffer ownership after dispatch. The ordinary direct
+single-channel, one-band, no-velocity depth-1 shape uses a crossing-triggered
+fast entry instead: it consumes the already-sealed `post_value`, performs total
+target projection, EML, fixed emission, and per-instance current/next
+advancement in one dispatch. It issues no target-evaluation dispatch and calls
+no world-value gather. With no sealed crossing it issues no ActionBand compute
+work.
 
 Target evaluation covers the seven already-admitted forms with total
 `satisfied` and projection/distance output. Point and AABB projections are
@@ -44,10 +55,15 @@ unchanged `StructuralCommitment`.
 The authorized generic application seam lives beside the existing structural
 mutation authority in `simthing-sim`:
 `StructuralCommitment -> pre-admitted BoundaryRequest -> FeederSender::submit_boundary
--> apply_structural_mutations`. CPU selection reads sealed `event_kind` only and
-submits a session-fixed request. It does not inspect commitment value, slot, or
-column and does not recompute EML, displacement, crossing, or destination. There
-is no ActionBand-local generic emission record or boundary queue.
+-> apply_structural_mutations`. Its `event_kind -> request` map is derived only
+from the source-bound compilation's frozen band -> threshold/event-kind and
+band -> exact binding row -> structural destination chains. CPU application
+reads sealed `event_kind` only and submits that session-fixed request. It does
+not inspect commitment value, slot, or column and does not recompute EML,
+displacement, crossing, or destination. A separately frozen fabricated event
+kind cannot consume the real commitment, and ambiguous reused event kinds fail
+the generic door. There is no ActionBand-local generic emission record or
+boundary queue.
 
 Inactive plans return the `Inactive` execution variant before any ActionBand GPU
 buffer is created. Their hot rows and hot bytes are exactly zero. Active rows are
@@ -66,42 +82,46 @@ failure class:
 
 | Test | Admission reason / defect caught |
 |---|---|
-| `sparse_gpu_state_ping_pongs_and_matches_exact_eml_oracle` | Runs production dispatch with proof readback disabled, then two proof generations; checks current/next progression, admitted velocity execution, exact GPU/CPU-referee EML parity, sealed `StructuralCommitment` minting, real `Remove` application through the generic boundary authority, a RED CPU numeric re-derivation mutant, a RED binding-index overload, deferred non-7.2 destinations, and the repeated timestamp measurement. |
-| `sealed_crossings_are_the_only_emission_ingress_and_destinations_stay_frozen` | Empty sealed evidence emits nothing; the existing Phase-5 delta joins exactly once. It catches a rival crossing input/record or caller-authored destination. |
+| `sparse_gpu_state_ping_pongs_and_matches_exact_eml_oracle` | Runs production dispatch with proof readback disabled, then two proof generations; checks current/next progression, admitted velocity execution, exact GPU/CPU-referee EML parity, source-bound structural provenance, real `Remove` application, RED CPU numeric re-derivation, RED fabricated event-kind provenance, deferred non-7.2 destinations, the no-gather/no-evaluator depth-1 fast path, and the paired combined-path timestamp measurement. |
+| `sealed_crossings_are_the_only_emission_ingress_and_destinations_stay_frozen` | Empty sealed evidence emits nothing; the existing Phase-5 delta joins exactly once; an empty depth-1 batch performs zero ActionBand compute work. It catches a rival crossing input/record or unconditional shallow dispatch. |
 | `inactive_rows_allocate_zero_hot_storage_and_dense_mutant_is_red` | Proves zero active rows means zero hot bytes and plants a dense two-row allocation against a one-row frozen cap, which fails in production lowering. |
 | `bucketing_is_numeric_deterministic_and_labels_are_semantic_shadow_only` | Same numeric product under different labels has the same fingerprint/buckets; equal program/binding shapes share a bucket, a distinct EML program shape separates, and the resulting two numeric ranges execute as two production GPU dispatches. |
-| `inherited_admission_and_cpu_authority_fences_remain_closed` | Rechecks the one-shot 7.1 door, forbidden CPU evaluator/planner/scheduler/local-queue vocabulary, WGSL read-current/write-next qualifiers, absence of raw value writes, preservation of threshold registration/locus identity, and absence of numeric selection in the generic structural door. |
+| `inherited_admission_and_cpu_authority_fences_remain_closed` | Rechecks the one-shot 7.1 door, forbidden CPU evaluator/planner/scheduler/local-queue vocabulary, dual current/next ownership, absence of a world gather in the depth-1 entry, absence of raw value writes or detached structural-source constructors, preservation of threshold registration/locus identity, and absence of numeric selection in the generic structural door. |
 
 ## Repeated depth-1 measurement
 
-Method: one active scalar-bound template, one admitted three-node payload program
-(`PARAM(0) * 2`), one sealed crossing, and one fixed structural binding. After
-five warm-up dispatches, 31 ActionBand samples and 31 existing
-threshold-crossing samples were recorded on the same adapter/backend/run with
-GPU timestamp queries; the statistic is the median. ActionBand time is the sum
-of its target-evaluation and fixed-emission compute passes. CPU sealed join,
-copies, maps, readback, boundary submission, and structural apply are excluded.
-The existing baseline is the unchanged `AccumulatorOpSession` threshold-scan
-compute pass on the same NVIDIA GeForce RTX 4080 Laptop GPU / Vulkan adapter and
-one-row/one-dimension shape. Its public timestamp accessor has 1,000 ns resolution.
+Method: paired samples of the same one-row/one-dimension threshold workload on
+one NVIDIA GeForce RTX 4080 Laptop GPU / Vulkan adapter and run. Arm 1 is the
+unchanged bare `AccumulatorOpSession` crossing pass. Arm 2 executes that same
+crossing pass and attaches the direct depth-1 ActionBand incremental work: one
+scalar-bound target, one admitted three-node payload program (`PARAM(0) * 2`),
+one sealed crossing, and one fixed structural binding. Five paired warmups and
+31 paired samples were recorded with GPU timestamp queries; the statistic is
+the median. The attached combined time is the crossing timestamp plus the
+crossing-triggered EML/fixed-emission timestamp for that sample. CPU sealed
+join, maps, readback, boundary submission, and structural apply are excluded.
+The crossing accessor has 1,000 ns resolution.
 
 Observed local median:
 
-- ActionBand target evaluation median: **4,960 ns**
-- ActionBand EML + fixed structural emission median: **5,088 ns**
-- ActionBand total median: **9,920 ns**
-- Existing sealed crossing GPU compute: **5,000 ns**
-- Marginal delta: **4,920 ns**
-- Ratio: **1.984x**
+- Bare crossing median: **5,000 ns**
+- Attached arm crossing component median: **5,000 ns**
+- Attached EML + fixed structural emission median: **6,144 ns**
+- Attached combined-path median: **11,144 ns**
+- Paired combined-path delta median: **6,208 ns**
+- Remaining ActionBand overhead after EML/fixed emission: **64 ns**
+- Depth-1 target-evaluation dispatches: **0**
+- Depth-1 world re-gathers: **0**
+- Ratio: **2.229x**
 
-The ratio is consistent with the §15.2 physical path at this one-row size: the
-target-evaluation gather costs about one dispatch floor and the entire marginal
-delta is attributable to the requested EML + fixed-emission pass. There is no
-second comparison, CPU re-derivation, duplicate field projection, or
-emission-pass world gather. This tiny shape does not validate §15.6's scaling
-prediction that sparse gathers dominate at production cardinality; fixed
-dispatch cost masks that question here. These are raw local engineering
-measurements, not a pass/fail threshold or broad hardware performance claim.
+This closes the §15.2/§15.3 attribution defect: the actual attached production
+shape pays the already-owed crossing plus exactly the crossing-triggered EML
+and fixed-emission dispatch. The paired median delta is within 64 ns of that
+emission component; there is no independent target-evaluation pass, second comparison,
+CPU re-derivation, duplicate field projection, or shallow-path world re-gather.
+This tiny shape still does not validate §15.6 production-cardinality
+sparse-gather scaling, and the ratio is not a pass/fail threshold or broad
+hardware performance claim.
 
 ## Scope and inherited boundaries
 

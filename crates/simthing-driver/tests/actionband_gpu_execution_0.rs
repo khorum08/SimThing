@@ -219,6 +219,25 @@ fn frozen(
     .clone()
 }
 
+fn frozen_depth1_fast(fixture: &Fixture, label: &str) -> simthing_spec::FrozenActionBandTemplates {
+    let mut fast_spec = spec(
+        fixture.column.raw_u32(),
+        fixture.previous_column.raw_u32(),
+        label,
+        1,
+    );
+    fast_spec.templates[0].velocity = None;
+    let mut door = ActionBandSessionBuildDoor::new();
+    door.admit_once_at_session_build(
+        &fast_spec,
+        &fixture.registry,
+        &fixture.eml,
+        &fixture.thresholds,
+    )
+    .expect("depth-1 fast-path admission")
+    .clone()
+}
+
 fn binding() -> ActionBandEmissionBindingGpu {
     ActionBandEmissionBindingGpu::structural_request(42)
 }
@@ -252,22 +271,15 @@ fn sealed_delta(fixture: &Fixture) -> simthing_gpu::BandCrossingDelta {
     .expect("existing Phase-5 crossing")
 }
 
-fn sealed_delta_from_gpu(
-    fixture: &Fixture,
-    ctx: &GpuContext,
-) -> simthing_gpu::BandCrossingDelta {
+fn sealed_delta_from_gpu(fixture: &Fixture, ctx: &GpuContext) -> simthing_gpu::BandCrossingDelta {
     let root = SimThing::new(SimThingKind::GameSession, 0);
     let mut allocator = SlotAllocator::new();
     allocator.populate_from_tree(&root);
     let regs = emit_on_threshold_registrations_to_gpu(&fixture.thresholds);
     let previous = world_values(fixture, 0.5, 1.0);
     let current = world_values(fixture, 1.5, 1.0);
-    let mut session = AccumulatorOpSession::new_attached(
-        ctx,
-        1,
-        fixture.registry.total_columns as u32,
-        4,
-    );
+    let mut session =
+        AccumulatorOpSession::new_attached(ctx, 1, fixture.registry.total_columns as u32, 4);
     session.upload_values(ctx, &current);
     session.upload_previous_values(ctx, &previous);
     session
@@ -311,8 +323,9 @@ fn sparse_gpu_state_ping_pongs_and_matches_exact_eml_oracle() {
         SlotIndex::new(0),
         [0.0; 4],
     )];
-    let plan = compile_action_band_gpu_execution(&frozen, &fixture.eml, &[binding()], &active)
+    let compiled = compile_action_band_gpu_execution(&frozen, &fixture.eml, &[binding()], &active)
         .expect("numeric lowering");
+    let plan = compiled.execution_plan().clone();
     let Some(ctx) = GpuContext::new_blocking().ok() else {
         return;
     };
@@ -411,9 +424,9 @@ fn sparse_gpu_state_ping_pongs_and_matches_exact_eml_oracle() {
 
     let mut pre_admitted = vec![None; 43];
     pre_admitted[42] = Some(BoundaryRequest::Remove { target });
-    let requests = FrozenActionBandStructuralRequests::from_pre_admitted_rows(
+    let requests = FrozenActionBandStructuralRequests::from_compiled_admission(
+        &compiled,
         pre_admitted.clone(),
-        vec![(701, binding())],
     )
     .expect("session-frozen structural door");
     let (sender, receiver) = feeder_channel();
@@ -449,14 +462,34 @@ fn sparse_gpu_state_ping_pongs_and_matches_exact_eml_oracle() {
     assert_eq!(outcome.tombstoned, [target]);
     assert_eq!(runtime.subtree_size(), 1);
 
-    // Binding index 0 and request index 42 are deliberately unrelated to
-    // sealed event kind 701. Reintroducing the old reg_idx/binding overload
-    // cannot select this request.
-    let overloaded = FrozenActionBandStructuralRequests::from_pre_admitted_rows(
+    // A fabricated event-kind pairing cannot be supplied to the application
+    // door. Even a separately admitted product with event kind 0 remains
+    // source-bound to 0 and therefore rejects the real kind-701 commitment.
+    let mut fabricated_thresholds = fixture.thresholds.clone();
+    fabricated_thresholds[0].event_kind = 0;
+    let mut fabricated_door = ActionBandSessionBuildDoor::new();
+    let fabricated_frozen = fabricated_door
+        .admit_once_at_session_build(
+            &spec(
+                fixture.column.raw_u32(),
+                fixture.previous_column.raw_u32(),
+                "fabricated source",
+                1,
+            ),
+            &fixture.registry,
+            &fixture.eml,
+            &fabricated_thresholds,
+        )
+        .expect("separately frozen source")
+        .clone();
+    let fabricated_compiled =
+        compile_action_band_gpu_execution(&fabricated_frozen, &fixture.eml, &[binding()], &active)
+            .expect("fabricated product compiles only to its own sealed source");
+    let overloaded = FrozenActionBandStructuralRequests::from_compiled_admission(
+        &fabricated_compiled,
         pre_admitted,
-        vec![(0, binding())],
     )
-    .expect("planted overload door");
+    .expect("source-bound planted door");
     let (overload_sender, _overload_receiver) = feeder_channel();
     assert!(overloaded
         .submit_committed(&first.commitments, &overload_sender)
@@ -560,8 +593,9 @@ fn sparse_gpu_state_ping_pongs_and_matches_exact_eml_oracle() {
             ActionBandActiveInstance::new(template.index(), SlotIndex::new(0), [0.0; 4])
         })
         .collect();
-    let all_plan =
-        compile_action_band_gpu_execution(&all_forms, &fixture.eml, &[], &all_active).unwrap();
+    let all_plan = compile_action_band_gpu_execution(&all_forms, &fixture.eml, &[], &all_active)
+        .unwrap()
+        .into_execution_plan();
     let all_crossings = all_plan.crossings_from_sealed(&[]).unwrap();
     let mut all_execution = match ActionBandGpuExecution::new(&ctx, all_plan).unwrap() {
         ActionBandGpuExecution::Active(session) => session,
@@ -585,51 +619,41 @@ fn sparse_gpu_state_ping_pongs_and_matches_exact_eml_oracle() {
     );
     assert_eq!(all_readback.projection, [0.5, 0.5, 0.0, 0.0, 0.0, 0.5, 0.0]);
 
+    let fast_frozen = frozen_depth1_fast(&fixture, "depth-1 crossing fast path");
+    let fast_active = [ActionBandActiveInstance::new(
+        fast_frozen.templates()[0].index(),
+        SlotIndex::new(0),
+        [0.0; 4],
+    )];
+    let fast_plan =
+        compile_action_band_gpu_execution(&fast_frozen, &fixture.eml, &[binding()], &fast_active)
+            .expect("source-bound depth-1 lowering")
+            .into_execution_plan();
+    assert!(fast_plan.uses_depth1_crossing_fast_path());
+    let fast_crossings = fast_plan
+        .crossings_from_sealed(&[sealed_delta_from_gpu(&fixture, &ctx)])
+        .expect("depth-1 fast path consumes the existing sealed crossing");
+    let mut fast_execution = match ActionBandGpuExecution::new(&ctx, fast_plan).unwrap() {
+        ActionBandGpuExecution::Active(session) => session,
+        ActionBandGpuExecution::Inactive => panic!("depth-1 row is active"),
+    };
+    let fast_readback = fast_execution
+        .dispatch_and_readback(
+            &ctx,
+            &values,
+            fixture.registry.total_columns as u32,
+            &fast_crossings,
+        )
+        .expect("depth-1 crossing-triggered execution");
+    assert_eq!(fast_readback.states[0].generation, 1);
+    assert_eq!(fast_readback.states[0].satisfied, 0);
+    assert_eq!(fast_readback.states[0].velocity, 0.0);
+    assert_eq!(fast_readback.projection, [0.5]);
+    assert!(fast_readback.evaluation_gpu_time_ns.is_none());
+
     if ctx.timestamp_supported() {
         const WARMUP: usize = 5;
         const SAMPLES: usize = 31;
-        for _ in 0..WARMUP {
-            execution
-                .dispatch(
-                    &ctx,
-                    &values,
-                    fixture.registry.total_columns as u32,
-                    &crossings,
-                )
-                .expect("ActionBand warmup");
-        }
-        let mut action_samples_ns = Vec::new();
-        let mut evaluation_samples_ns = Vec::new();
-        let mut emission_samples_ns = Vec::new();
-        for _ in 0..SAMPLES {
-            let sample = execution
-                .dispatch(
-                    &ctx,
-                    &values,
-                    fixture.registry.total_columns as u32,
-                    &crossings,
-                )
-                .expect("timed ActionBand production dispatch");
-            action_samples_ns.push(
-                sample
-                    .gpu_time_ns
-                    .expect("timestamp-supported ActionBand sample"),
-            );
-            evaluation_samples_ns.push(
-                sample
-                    .evaluation_gpu_time_ns
-                    .expect("timestamp-supported evaluation sample"),
-            );
-            emission_samples_ns.push(
-                sample
-                    .emission_gpu_time_ns
-                    .expect("timestamp-supported emission sample"),
-            );
-        }
-        action_samples_ns.sort_by(f64::total_cmp);
-        evaluation_samples_ns.sort_by(f64::total_cmp);
-        emission_samples_ns.sort_by(f64::total_cmp);
-
         let regs = emit_on_threshold_registrations_to_gpu(&fixture.thresholds);
         let upload = PackedThresholdUpload::from_registrations(&regs).expect("threshold packet");
         let mut crossing_session = AccumulatorOpSession::new(&ctx, 1, 1);
@@ -653,36 +677,81 @@ fn sparse_gpu_state_ping_pongs_and_matches_exact_eml_oracle() {
         for _ in 0..WARMUP {
             crossing_session
                 .dispatch_threshold_scan(&ctx, &current, &previous)
-                .expect("existing crossing warmup");
+                .expect("bare crossing warmup");
+            crossing_session
+                .dispatch_threshold_scan(&ctx, &current, &previous)
+                .expect("attached crossing warmup");
+            let warmup = fast_execution
+                .dispatch(
+                    &ctx,
+                    &values,
+                    fixture.registry.total_columns as u32,
+                    &fast_crossings,
+                )
+                .expect("attached depth-1 emission warmup");
+            assert!(warmup.evaluation_gpu_time_ns.is_none());
         }
-        let mut crossing_samples_ns = Vec::new();
+        let mut bare_crossing_samples_ns = Vec::new();
+        let mut attached_crossing_samples_ns = Vec::new();
+        let mut attached_emission_samples_ns = Vec::new();
+        let mut attached_combined_samples_ns = Vec::new();
+        let mut combined_delta_samples_ns = Vec::new();
         for _ in 0..SAMPLES {
             crossing_session
                 .dispatch_threshold_scan(&ctx, &current, &previous)
-                .expect("timed existing crossing dispatch");
-            crossing_samples_ns.push(
-                crossing_session
-                    .last_pass_time_us()
-                    .expect("timestamp-supported crossing sample") as f64
-                    * 1_000.0,
-            );
+                .expect("timed bare crossing dispatch");
+            let bare = crossing_session
+                .last_pass_time_us()
+                .expect("timestamp-supported bare crossing sample") as f64
+                * 1_000.0;
+            crossing_session
+                .dispatch_threshold_scan(&ctx, &current, &previous)
+                .expect("timed attached crossing dispatch");
+            let attached_crossing = crossing_session
+                .last_pass_time_us()
+                .expect("timestamp-supported attached crossing sample")
+                as f64
+                * 1_000.0;
+            let attached = fast_execution
+                .dispatch(
+                    &ctx,
+                    &values,
+                    fixture.registry.total_columns as u32,
+                    &fast_crossings,
+                )
+                .expect("timed depth-1 attached execution");
+            assert!(attached.evaluation_gpu_time_ns.is_none());
+            let emission = attached
+                .emission_gpu_time_ns
+                .expect("timestamp-supported EML/fixed-emission sample");
+            let combined = attached_crossing + emission;
+            bare_crossing_samples_ns.push(bare);
+            attached_crossing_samples_ns.push(attached_crossing);
+            attached_emission_samples_ns.push(emission);
+            attached_combined_samples_ns.push(combined);
+            combined_delta_samples_ns.push(combined - bare);
         }
-        crossing_samples_ns.sort_by(f64::total_cmp);
-        let action_median = action_samples_ns[action_samples_ns.len() / 2];
-        let evaluation_median = evaluation_samples_ns[evaluation_samples_ns.len() / 2];
-        let emission_median = emission_samples_ns[emission_samples_ns.len() / 2];
-        let crossing_median = crossing_samples_ns[crossing_samples_ns.len() / 2];
-        let ratio = action_median / crossing_median.max(1.0);
-        let delta = action_median - crossing_median;
+        bare_crossing_samples_ns.sort_by(f64::total_cmp);
+        attached_crossing_samples_ns.sort_by(f64::total_cmp);
+        attached_emission_samples_ns.sort_by(f64::total_cmp);
+        attached_combined_samples_ns.sort_by(f64::total_cmp);
+        combined_delta_samples_ns.sort_by(f64::total_cmp);
+        let bare_median = bare_crossing_samples_ns[SAMPLES / 2];
+        let attached_crossing_median = attached_crossing_samples_ns[SAMPLES / 2];
+        let emission_median = attached_emission_samples_ns[SAMPLES / 2];
+        let combined_median = attached_combined_samples_ns[SAMPLES / 2];
+        let delta_median = combined_delta_samples_ns[SAMPLES / 2];
+        let remaining_overhead = delta_median - emission_median;
+        let ratio = combined_median / bare_median.max(1.0);
         let adapter = ctx.adapter.get_info();
         eprintln!(
-            "ACTIONBAND-DEPTH1-MEASUREMENT adapter={:?} backend={:?} warmup={} samples={} statistic=median timestamp_scope=compute_pass_only_excludes_cpu_join_copies_maps_readback_and_boundary_apply dispatch_boundaries=action_evaluate_plus_sealed_emission_vs_existing_threshold_scan action_evaluation_gpu_median_ns={evaluation_median:.0} action_emission_gpu_median_ns={emission_median:.0} action_total_gpu_median_ns={action_median:.0} existing_crossing_gpu_median_ns={crossing_median:.0} crossing_timestamp_resolution_ns=1000 marginal_delta_ns={delta:.0} ratio={ratio:.3}",
+            "ACTIONBAND-DEPTH1-COMBINED-PATH adapter={:?} backend={:?} warmup={} samples={} statistic=median method=paired_same_run_same_threshold_workload timestamp_scope=production_compute_passes_excludes_cpu_sealed_join_maps_readback_and_boundary_apply bare_crossing_gpu_median_ns={bare_median:.0} attached_crossing_gpu_median_ns={attached_crossing_median:.0} attached_eml_fixed_emission_gpu_median_ns={emission_median:.0} attached_combined_gpu_median_ns={combined_median:.0} combined_path_delta_median_ns={delta_median:.0} remaining_actionband_overhead_median_ns={remaining_overhead:.0} depth1_target_evaluation_dispatches=0 depth1_world_regathers=0 crossing_timestamp_resolution_ns=1000 ratio={ratio:.3}",
             adapter.name,
             adapter.backend,
             WARMUP,
             SAMPLES,
         );
-        assert!(ratio.is_finite() && ratio > 0.0);
+        assert!(ratio.is_finite() && ratio > 0.0 && delta_median.is_finite());
     }
 }
 
@@ -695,8 +764,9 @@ fn sealed_crossings_are_the_only_emission_ingress_and_destinations_stay_frozen()
         SlotIndex::new(0),
         [0.0; 4],
     )];
-    let plan =
-        compile_action_band_gpu_execution(&frozen, &fixture.eml, &[binding()], &active).unwrap();
+    let plan = compile_action_band_gpu_execution(&frozen, &fixture.eml, &[binding()], &active)
+        .unwrap()
+        .into_execution_plan();
     let empty = plan.crossings_from_sealed(&[]).expect("empty sealed input");
     assert_eq!(empty.emission_count(), 0);
     let admitted = plan
@@ -715,13 +785,56 @@ fn sealed_crossings_are_the_only_emission_ingress_and_destinations_stay_frozen()
         "raw crossing row stays sealed"
     );
     assert!(source.contains("crossings_from_sealed"));
+
+    let fast_frozen = frozen_depth1_fast(&fixture, "empty fast path");
+    let fast_active = [ActionBandActiveInstance::new(
+        fast_frozen.templates()[0].index(),
+        SlotIndex::new(0),
+        [0.0; 4],
+    )];
+    let fast_plan =
+        compile_action_band_gpu_execution(&fast_frozen, &fixture.eml, &[binding()], &fast_active)
+            .unwrap()
+            .into_execution_plan();
+    assert!(fast_plan.uses_depth1_crossing_fast_path());
+    let empty_fast = fast_plan.crossings_from_sealed(&[]).unwrap();
+    let Some(ctx) = GpuContext::new_blocking().ok() else {
+        return;
+    };
+    let world = world_values(&fixture, 1.5, 1.0);
+    let values = ctx
+        .device
+        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("actionband_empty_fast_world_values"),
+            contents: bytemuck::cast_slice(&world),
+            usage: wgpu::BufferUsages::STORAGE,
+        });
+    let mut execution = match ActionBandGpuExecution::new(&ctx, fast_plan).unwrap() {
+        ActionBandGpuExecution::Active(session) => session,
+        ActionBandGpuExecution::Inactive => panic!("one fast row is active"),
+    };
+    let result = execution
+        .dispatch(
+            &ctx,
+            &values,
+            fixture.registry.total_columns as u32,
+            &empty_fast,
+        )
+        .expect("no crossing performs no ActionBand compute work");
+    assert_eq!(result.bucket_dispatches, 0);
+    assert!(result.commitments.is_empty());
+    assert!(result.gpu_time_ns.is_none());
+    assert!(result.evaluation_gpu_time_ns.is_none());
+    assert!(result.emission_gpu_time_ns.is_none());
 }
 
 #[test]
 fn inactive_rows_allocate_zero_hot_storage_and_dense_mutant_is_red() {
     let fixture = fixture();
     let frozen = frozen(&fixture, "zero", 1);
-    let plan = compile_action_band_gpu_execution(&frozen, &fixture.eml, &[binding()], &[]).unwrap();
+    let plan = compile_action_band_gpu_execution(&frozen, &fixture.eml, &[binding()], &[])
+        .unwrap()
+        .into_execution_plan();
     assert_eq!(plan.active_instance_rows(), 0);
     assert_eq!(plan.hot_state_bytes(), 0);
 
@@ -755,10 +868,12 @@ fn bucketing_is_numeric_deterministic_and_labels_are_semantic_shadow_only() {
         SlotIndex::new(0),
         [0.0; 4],
     )];
-    let plan_a =
-        compile_action_band_gpu_execution(&a, &fixture.eml, &[binding()], &active_a).unwrap();
-    let plan_b =
-        compile_action_band_gpu_execution(&b, &fixture.eml, &[binding()], &active_b).unwrap();
+    let plan_a = compile_action_band_gpu_execution(&a, &fixture.eml, &[binding()], &active_a)
+        .unwrap()
+        .into_execution_plan();
+    let plan_b = compile_action_band_gpu_execution(&b, &fixture.eml, &[binding()], &active_b)
+        .unwrap()
+        .into_execution_plan();
     assert_eq!(plan_a.numeric_fingerprint(), plan_b.numeric_fingerprint());
     assert_eq!(plan_a.buckets(), plan_b.buckets());
     assert_ne!(
@@ -811,7 +926,8 @@ fn bucketing_is_numeric_deterministic_and_labels_are_semantic_shadow_only() {
         &[binding()],
         &bucket_active,
     )
-    .expect("bucket lowering");
+    .expect("bucket lowering")
+    .into_execution_plan();
     assert_eq!(bucket_plan.buckets().len(), 2);
     assert!(bucket_plan
         .buckets()
@@ -893,9 +1009,17 @@ fn inherited_admission_and_cpu_authority_fences_remain_closed() {
         assert!(!kernel.contains(forbidden));
         assert!(!driver.contains(forbidden));
     }
-    assert!(shader.contains("var<storage, read> action_state_current"));
+    assert!(shader.contains("var<storage, read_write> action_state_current"));
     assert!(shader.contains("var<storage, read_write> action_state_next"));
-    assert!(!shader.contains("action_state_current[row] ="));
+    let fast_shader = shader
+        .split("fn actionband_emit_depth1")
+        .nth(1)
+        .expect("depth-1 fast entry")
+        .split("fn actionband_emit(")
+        .next()
+        .expect("bounded fast entry source");
+    assert!(fast_shader.contains("crossing.post_value"));
+    assert!(!fast_shader.contains("action_value("));
     assert!(kernel.contains("pub fn dispatch("));
     assert!(kernel.contains("fn dispatch_internal("));
     assert!(!kernel.contains("pub struct ActionBandEmissionGpu"));
@@ -905,6 +1029,9 @@ fn inherited_admission_and_cpu_authority_fences_remain_closed() {
     assert!(shader.contains("band.threshold_registration"));
     assert!(shader.contains("crossing.crossing_col"));
     assert!(!driver.contains("submit_gpu_authorized"));
+    assert!(!driver.contains("from_pre_admitted_rows"));
+    assert!(!driver.contains("event_bindings: Vec<(u32"));
+    assert!(driver.contains("crossing_binding_for_band"));
     assert!(!driver.contains("emission.reg_idx()"));
     assert!(!structural_door.contains("commitment.value()"));
     assert!(!structural_door.contains("commitment.slot()"));

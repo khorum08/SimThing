@@ -56,8 +56,36 @@ pub enum ActionBandExecutionCompileError {
     MissingEmlProgram(u32),
     #[error("frozen ActionBand table span is invalid")]
     InvalidFrozenSpan,
+    #[error("frozen ActionBand crossing provenance is incomplete or inconsistent")]
+    InvalidFrozenCrossingSource,
     #[error(transparent)]
     Kernel(#[from] ActionBandExecutionError),
+}
+
+#[derive(Clone, Copy, Debug)]
+struct FrozenStructuralSource {
+    event_kind: u32,
+    destination_index: u32,
+}
+
+/// One source-bound compilation of the frozen 7.1 admission product. The GPU
+/// plan and structural application provenance are derived together from the
+/// same immutable band/binding rows, so a caller cannot supply a detached
+/// `(event_kind, binding)` assertion beside the plan.
+#[derive(Clone, Debug)]
+pub struct CompiledActionBandGpuExecution {
+    plan: ActionBandExecutionPlan,
+    structural_sources: Vec<FrozenStructuralSource>,
+}
+
+impl CompiledActionBandGpuExecution {
+    pub fn execution_plan(&self) -> &ActionBandExecutionPlan {
+        &self.plan
+    }
+
+    pub fn into_execution_plan(self) -> ActionBandExecutionPlan {
+        self.plan
+    }
 }
 
 /// Session-fixed structural consequences addressed by the numeric destination
@@ -69,24 +97,19 @@ pub struct FrozenActionBandStructuralRequests {
 }
 
 impl FrozenActionBandStructuralRequests {
-    pub fn from_pre_admitted_rows(
+    pub fn from_compiled_admission(
+        compiled: &CompiledActionBandGpuExecution,
         rows: Vec<Option<BoundaryRequest>>,
-        event_bindings: Vec<(u32, ActionBandEmissionBindingGpu)>,
     ) -> Result<Self, ActionBandStructuralApplyError> {
-        let mut admitted = Vec::with_capacity(event_bindings.len());
-        for (event_kind, binding) in event_bindings {
-            if binding.destination() != ActionBandEmissionDestination::StructuralRequest {
-                return Err(ActionBandStructuralApplyError::DeferredDestination(
-                    binding.destination(),
-                ));
-            }
+        let mut admitted = Vec::with_capacity(compiled.structural_sources.len());
+        for source in &compiled.structural_sources {
             let request = rows
-                .get(binding.destination_index() as usize)
+                .get(source.destination_index as usize)
                 .and_then(Option::as_ref)
                 .ok_or(ActionBandStructuralApplyError::MissingPreAdmittedRequest(
-                    binding.destination_index(),
+                    source.destination_index,
                 ))?;
-            admitted.push((event_kind, request.clone()));
+            admitted.push((source.event_kind, request.clone()));
         }
         Ok(Self {
             door: StructuralCommitmentApplicationDoor::from_pre_admitted_requests(admitted)?,
@@ -121,7 +144,7 @@ pub fn compile_action_band_gpu_execution(
     eml_registry: &EmlExpressionRegistry,
     pre_admitted_emission_bindings: &[ActionBandEmissionBindingGpu],
     active_instances: &[ActionBandActiveInstance],
-) -> Result<ActionBandExecutionPlan, ActionBandExecutionCompileError> {
+) -> Result<CompiledActionBandGpuExecution, ActionBandExecutionCompileError> {
     let required_bindings = frozen.budget().emission_binding_count;
     if pre_admitted_emission_bindings.len() != required_bindings as usize {
         return Err(ActionBandExecutionCompileError::EmissionTableWidth {
@@ -327,6 +350,7 @@ pub fn compile_action_band_gpu_execution(
         &band_binding_indices,
         pre_admitted_emission_bindings,
     )?;
+    let depth1_crossing_fast_path = depth1_crossing_fast_path(frozen, active_instances)?;
     let active_instances = active_instances
         .iter()
         .map(|instance| ActionBandActiveInstanceGpu {
@@ -337,7 +361,7 @@ pub fn compile_action_band_gpu_execution(
             params: instance.params,
         })
         .collect();
-    ActionBandExecutionPlan::from_admitted_numeric_tables(
+    let plan = ActionBandExecutionPlan::from_admitted_numeric_tables(
         templates,
         target_channels,
         target_data,
@@ -349,8 +373,80 @@ pub fn compile_action_band_gpu_execution(
         active_instances,
         buckets,
         frozen.budget().storage_rows,
+        depth1_crossing_fast_path,
     )
-    .map_err(Into::into)
+    .map_err(ActionBandExecutionCompileError::from)?;
+
+    let mut structural_sources = Vec::with_capacity(frozen.bands().len());
+    for (band_index, band) in frozen.bands().iter().enumerate() {
+        let source = frozen
+            .crossing_binding_for_band(band_index as u32)
+            .filter(|source| source.threshold_registration() == band.threshold_registration())
+            .ok_or(ActionBandExecutionCompileError::InvalidFrozenCrossingSource)?;
+        let span = band.emission_binding_span();
+        let binding_indices = frozen
+            .emission_bindings()
+            .get(span.start() as usize..(span.start() + span.len()) as usize)
+            .ok_or(ActionBandExecutionCompileError::InvalidFrozenSpan)?;
+        for binding_index in binding_indices {
+            let binding = pre_admitted_emission_bindings
+                .get(binding_index.raw() as usize)
+                .ok_or(ActionBandExecutionCompileError::InvalidFrozenSpan)?;
+            if binding.destination() == ActionBandEmissionDestination::StructuralRequest {
+                structural_sources.push(FrozenStructuralSource {
+                    event_kind: source.event_kind(),
+                    destination_index: binding.destination_index(),
+                });
+            }
+        }
+    }
+    Ok(CompiledActionBandGpuExecution {
+        plan,
+        structural_sources,
+    })
+}
+
+fn depth1_crossing_fast_path(
+    frozen: &FrozenActionBandTemplates,
+    active_instances: &[ActionBandActiveInstance],
+) -> Result<bool, ActionBandExecutionCompileError> {
+    if active_instances.is_empty() {
+        return Ok(false);
+    }
+    for instance in active_instances {
+        let template = frozen
+            .templates()
+            .get(instance.template().raw() as usize)
+            .ok_or(ActionBandExecutionCompileError::InvalidFrozenSpan)?;
+        if template.band_span().len() != 1 || template.velocity().is_some() {
+            return Ok(false);
+        }
+        let target_channel = match template.target() {
+            AdmittedActionBandTarget::Point {
+                current_channels, ..
+            } if current_channels.len() == 1 => current_channels[0],
+            AdmittedActionBandTarget::ScalarBound { channel, .. }
+            | AdmittedActionBandTarget::Interval { channel, .. } => *channel,
+            AdmittedActionBandTarget::AxisAlignedBox { channels, .. } if channels.len() == 1 => {
+                channels[0]
+            }
+            AdmittedActionBandTarget::LocusRadius {
+                distance_channel, ..
+            }
+            | AdmittedActionBandTarget::PalmaReachableSet {
+                distance_channel, ..
+            } => *distance_channel,
+            _ => return Ok(false),
+        };
+        let band_index = template.band_span().start();
+        let source = frozen
+            .crossing_binding_for_band(band_index)
+            .ok_or(ActionBandExecutionCompileError::InvalidFrozenCrossingSource)?;
+        if source.threshold_column() != target_channel {
+            return Ok(false);
+        }
+    }
+    Ok(true)
 }
 
 fn range_for(

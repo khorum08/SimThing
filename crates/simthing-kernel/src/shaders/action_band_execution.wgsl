@@ -77,7 +77,7 @@ struct ActionBandDispatchParams {
 @group(0) @binding(1) var<storage, read> action_target_channels: array<u32>;
 @group(0) @binding(2) var<storage, read> action_target_data: array<f32>;
 @group(0) @binding(3) var<storage, read> action_instances: array<ActionBandInstanceGpu>;
-@group(0) @binding(4) var<storage, read> action_state_current: array<ActionBandStateGpu>;
+@group(0) @binding(4) var<storage, read_write> action_state_current: array<ActionBandStateGpu>;
 @group(0) @binding(5) var<storage, read_write> action_state_next: array<ActionBandStateGpu>;
 @group(0) @binding(6) var<storage, read_write> action_projection_next: array<f32>;
 @group(0) @binding(7) var<storage, read_write> values: array<atomic<i32>>;
@@ -182,6 +182,93 @@ fn actionband_evaluate(@builtin(global_invocation_id) gid: vec3<u32>) {
         0u,
         0u,
     );
+}
+
+fn actionband_evaluate_depth1_crossing(
+    crossing: ActionBandCrossingInputGpu,
+    instance: ActionBandInstanceGpu,
+    descriptor: ActionBandTemplateGpu,
+) -> ActionBandStateGpu {
+    let current = crossing.post_value;
+    var satisfied = 0u;
+    var distance = 0.0;
+    var projected = 0.0;
+
+    if (descriptor.target_kind == ACTION_TARGET_POINT) {
+        projected = action_target_data[descriptor.target_data_start] - current;
+        distance = abs(projected);
+        satisfied = select(0u, 1u, projected == 0.0);
+    } else if (descriptor.target_kind == ACTION_TARGET_SCALAR_AT_LEAST || descriptor.target_kind == ACTION_TARGET_SCALAR_AT_MOST) {
+        projected = action_target_data[descriptor.target_data_start] - current;
+        let ok = select(current <= action_target_data[descriptor.target_data_start], current >= action_target_data[descriptor.target_data_start], descriptor.target_kind == ACTION_TARGET_SCALAR_AT_LEAST);
+        projected = select(projected, 0.0, ok);
+        distance = projected;
+        satisfied = select(0u, 1u, ok);
+    } else if (descriptor.target_kind == ACTION_TARGET_INTERVAL) {
+        let lo = action_target_data[descriptor.target_data_start];
+        let hi = action_target_data[descriptor.target_data_start + 1u];
+        projected = select(select(hi - current, 0.0, current <= hi), lo - current, current < lo);
+        distance = projected;
+        satisfied = select(0u, 1u, projected == 0.0);
+    } else if (descriptor.target_kind == ACTION_TARGET_AABB) {
+        let lo = action_target_data[descriptor.target_data_start];
+        let hi = action_target_data[descriptor.target_data_start + 1u];
+        projected = clamp(current, lo, hi) - current;
+        distance = abs(projected);
+        satisfied = select(0u, 1u, projected == 0.0);
+    } else if (descriptor.target_kind == ACTION_TARGET_LOCUS_RADIUS || descriptor.target_kind == ACTION_TARGET_PALMA_REACHABLE) {
+        projected = max(current - action_target_data[descriptor.target_data_start], 0.0);
+        distance = projected;
+        satisfied = select(0u, 1u, projected == 0.0);
+    }
+
+    action_projection_next[instance.projection_start] = projected;
+    var prior = action_state_current[crossing.instance_row];
+    let alternate = action_state_next[crossing.instance_row];
+    if (alternate.generation > prior.generation) {
+        prior = alternate;
+    }
+    let next = ActionBandStateGpu(
+        satisfied,
+        prior.generation + 1u,
+        instance.projection_start,
+        1u,
+        distance,
+        0.0,
+        0u,
+        0u,
+    );
+    if (action_state_current[crossing.instance_row].generation <= action_state_next[crossing.instance_row].generation) {
+        action_state_current[crossing.instance_row] = next;
+    } else {
+        action_state_next[crossing.instance_row] = next;
+    }
+    return next;
+}
+
+@compute @workgroup_size(64)
+fn actionband_emit_depth1(@builtin(global_invocation_id) gid: vec3<u32>) {
+    if (gid.x >= tick_params.crossing_count) {
+        return;
+    }
+    let crossing_row = tick_params.crossing_start + gid.x;
+    let crossing = action_crossings[crossing_row];
+    let band = action_bands[crossing.band_index];
+    let instance = action_instances[crossing.instance_row];
+    let descriptor = action_templates[instance.template_index];
+    let state = actionband_evaluate_depth1_crossing(crossing, instance, descriptor);
+    var payload = crossing.post_value;
+    if (band.program_range != ACTION_NO_PROGRAM) {
+        payload = eml_eval(EmlEvalCtx(band.program_range, instance.slot, crossing.post_value, crossing.threshold, state.distance, state.velocity));
+    }
+    for (var i = 0u; i < crossing.output_count; i = i + 1u) {
+        action_consequences[crossing.output_start + i] = ThresholdEmissionGpu(
+            band.threshold_registration,
+            instance.slot,
+            crossing.crossing_col,
+            payload,
+        );
+    }
 }
 
 @compute @workgroup_size(64)

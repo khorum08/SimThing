@@ -274,6 +274,8 @@ impl ActionBandSemanticShadow {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ActionBandCrossingBinding {
     threshold_registration: ExistingThresholdRegistrationIndex,
+    threshold_column: ColumnIndex,
+    event_kind: u32,
     template: ActionBandTemplateIndex,
     band_table_index: u32,
 }
@@ -281,6 +283,14 @@ pub struct ActionBandCrossingBinding {
 impl ActionBandCrossingBinding {
     pub fn threshold_registration(self) -> ExistingThresholdRegistrationIndex {
         self.threshold_registration
+    }
+
+    pub fn threshold_column(self) -> ColumnIndex {
+        self.threshold_column
+    }
+
+    pub fn event_kind(self) -> u32 {
+        self.event_kind
     }
 
     pub fn template(self) -> ActionBandTemplateIndex {
@@ -344,6 +354,18 @@ impl FrozenActionBandTemplates {
         self.crossing_bindings.iter().filter(move |binding| {
             binding.threshold_registration.raw() == threshold_registration_index
         })
+    }
+
+    /// Admission-sealed provenance for one flattened band row. This is the
+    /// only source used by later structural lowering; callers cannot pair a
+    /// fresh event kind with an otherwise constructible emission binding.
+    pub fn crossing_binding_for_band(
+        &self,
+        band_table_index: u32,
+    ) -> Option<&ActionBandCrossingBinding> {
+        self.crossing_bindings
+            .iter()
+            .find(|binding| binding.band_table_index == band_table_index)
     }
 }
 
@@ -532,8 +554,12 @@ fn compile_frozen_product(
                 &mut emission_bindings,
             )?;
             let flat_band_index = to_u32(bands.len())?;
+            let threshold_registration =
+                &threshold_registrations[admitted_band.threshold_registration.raw() as usize];
             crossing_bindings.push(ActionBandCrossingBinding {
                 threshold_registration: admitted_band.threshold_registration,
+                threshold_column: threshold_registration.col,
+                event_kind: threshold_registration.event_kind,
                 template: index,
                 band_table_index: flat_band_index,
             });

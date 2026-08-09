@@ -230,6 +230,7 @@ pub struct ActionBandExecutionPlan {
     buckets: Vec<ActionBandExecutionBucket>,
     band_to_bucket: Vec<u32>,
     projection_floats: u32,
+    depth1_crossing_fast_path: bool,
     fingerprint: u64,
 }
 
@@ -247,6 +248,7 @@ impl ActionBandExecutionPlan {
         mut active_instances: Vec<ActionBandActiveInstanceGpu>,
         buckets: Vec<ActionBandExecutionBucket>,
         reserved_instance_rows: u32,
+        depth1_crossing_fast_path: bool,
     ) -> Result<Self, ActionBandExecutionError> {
         if active_instances.len() > reserved_instance_rows as usize {
             return Err(ActionBandExecutionError::SparseRowBudgetExceeded {
@@ -296,7 +298,7 @@ impl ActionBandExecutionPlan {
         if band_to_bucket.iter().any(|&index| index == u32::MAX) {
             return Err(ActionBandExecutionError::InvalidBucketPartition);
         }
-        let fingerprint = plan_fingerprint(
+        let mut fingerprint = plan_fingerprint(
             &templates,
             &target_channels,
             &target_data,
@@ -307,6 +309,9 @@ impl ActionBandExecutionPlan {
             &eml_ranges,
             &active_instances,
         );
+        if depth1_crossing_fast_path {
+            fingerprint ^= 0xD1F4_57A7_5EA1_ED01;
+        }
         Ok(Self {
             templates,
             target_channels,
@@ -320,6 +325,7 @@ impl ActionBandExecutionPlan {
             buckets,
             band_to_bucket,
             projection_floats,
+            depth1_crossing_fast_path,
             fingerprint,
         })
     }
@@ -339,6 +345,13 @@ impl ActionBandExecutionPlan {
 
     pub fn numeric_fingerprint(&self) -> u64 {
         self.fingerprint
+    }
+
+    /// True only when every active row is a one-band, direct single-channel
+    /// target with no velocity gather. Such rows consume the sealed crossing's
+    /// already-hot value directly in the emission dispatch.
+    pub fn uses_depth1_crossing_fast_path(&self) -> bool {
+        self.depth1_crossing_fast_path
     }
 
     /// The only ActionBand crossing bridge. Input evidence is the existing
@@ -377,6 +390,16 @@ impl ActionBandExecutionPlan {
             }
         }
         joined.sort_by_key(|(bucket, row, _)| (*bucket, row.band_index, row.instance_row));
+        if self.depth1_crossing_fast_path {
+            let mut instance_rows = joined
+                .iter()
+                .map(|(_, row, _)| row.instance_row)
+                .collect::<Vec<_>>();
+            instance_rows.sort_unstable();
+            if instance_rows.windows(2).any(|rows| rows[0] == rows[1]) {
+                return Err(ActionBandExecutionError::DuplicateDepth1Crossing);
+            }
+        }
         let mut rows = Vec::with_capacity(joined.len());
         let mut output_count = 0u32;
         let mut commitment_inputs = Vec::new();
@@ -497,6 +520,8 @@ pub enum ActionBandExecutionError {
     },
     #[error("ActionBand 7.2 admits exactly one structural binding per band, found {count}")]
     StructuralBindingCount { count: u32 },
+    #[error("depth-1 fast path received more than one sealed crossing for one active instance")]
+    DuplicateDepth1Crossing,
     #[error("GPU structural packet does not preserve sealed crossing identity")]
     StructuralPacketIdentityMismatch,
     #[error(transparent)]
@@ -546,6 +571,7 @@ pub struct ActionBandGpuSession {
     layout: wgpu::BindGroupLayout,
     evaluate_pipeline: wgpu::ComputePipeline,
     emit_pipeline: wgpu::ComputePipeline,
+    emit_depth1_pipeline: wgpu::ComputePipeline,
     templates: wgpu::Buffer,
     target_channels: wgpu::Buffer,
     target_data: wgpu::Buffer,
@@ -584,7 +610,7 @@ impl ActionBandGpuSession {
                         wgpu::BufferBindingType::Uniform
                     } else {
                         wgpu::BufferBindingType::Storage {
-                            read_only: !matches!(binding, 5 | 6 | 7 | 13),
+                            read_only: !matches!(binding, 4 | 5 | 6 | 7 | 13),
                         }
                     },
                     has_dynamic_offset: false,
@@ -614,6 +640,7 @@ impl ActionBandGpuSession {
         };
         let evaluate_pipeline = pipeline("actionband_evaluate");
         let emit_pipeline = pipeline("actionband_emit");
+        let emit_depth1_pipeline = pipeline("actionband_emit_depth1");
 
         let state = vec![ActionBandStateGpu::zeroed(); plan.active_instances.len()];
         let projection = vec![0.0f32; plan.projection_floats.max(1) as usize];
@@ -669,6 +696,7 @@ impl ActionBandGpuSession {
             layout,
             evaluate_pipeline,
             emit_pipeline,
+            emit_depth1_pipeline,
         })
     }
 
@@ -796,8 +824,10 @@ impl ActionBandGpuSession {
             (self.plan.projection_floats.max(1) as usize * std::mem::size_of::<f32>()) as u64;
         let consequence_bytes = (crossings.output_count.max(1) as usize
             * std::mem::size_of::<ThresholdEmissionGpu>()) as u64;
-        let state_stage =
-            proof_readback.then(|| staging(device, "actionband_state_readback", state_bytes));
+        let state_current_stage = proof_readback
+            .then(|| staging(device, "actionband_state_current_readback", state_bytes));
+        let state_next_stage =
+            proof_readback.then(|| staging(device, "actionband_state_next_readback", state_bytes));
         let projection_stage = proof_readback
             .then(|| staging(device, "actionband_projection_readback", projection_bytes));
         let consequence_stage = (!crossings.commitment_inputs.is_empty()).then(|| {
@@ -811,7 +841,7 @@ impl ActionBandGpuSession {
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("actionband_gpu_execution_encoder"),
         });
-        {
+        if !self.plan.depth1_crossing_fast_path {
             let timestamp_writes = self.timestamp_query_set.as_ref().map(|query_set| {
                 wgpu::ComputePassTimestampWrites {
                     query_set,
@@ -828,24 +858,40 @@ impl ActionBandGpuSession {
             pass.dispatch_workgroups((evaluation_params.instance_count + 63) / 64, 1, 1);
         }
         if !crossings.bucket_ranges.is_empty() {
+            let timestamp_start = if self.plan.depth1_crossing_fast_path {
+                0
+            } else {
+                2
+            };
             let timestamp_writes = self.timestamp_query_set.as_ref().map(|query_set| {
                 wgpu::ComputePassTimestampWrites {
                     query_set,
-                    beginning_of_pass_write_index: Some(2),
-                    end_of_pass_write_index: Some(3),
+                    beginning_of_pass_write_index: Some(timestamp_start),
+                    end_of_pass_write_index: Some(timestamp_start + 1),
                 }
             });
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("actionband_sealed_crossing_emission"),
+                label: Some(if self.plan.depth1_crossing_fast_path {
+                    "actionband_depth1_sealed_crossing_emission"
+                } else {
+                    "actionband_sealed_crossing_emission"
+                }),
                 timestamp_writes,
             });
-            pass.set_pipeline(&self.emit_pipeline);
+            pass.set_pipeline(if self.plan.depth1_crossing_fast_path {
+                &self.emit_depth1_pipeline
+            } else {
+                &self.emit_pipeline
+            });
             for (range, bind_group) in crossings.bucket_ranges.iter().zip(&bucket_bind_groups) {
                 pass.set_bind_group(0, bind_group, &[]);
                 pass.dispatch_workgroups((range.crossing_count + 63) / 64, 1, 1);
             }
         }
-        if let Some(stage) = state_stage.as_ref() {
+        if let Some(stage) = state_current_stage.as_ref() {
+            encoder.copy_buffer_to_buffer(&self.state_current, 0, stage, 0, state_bytes);
+        }
+        if let Some(stage) = state_next_stage.as_ref() {
             encoder.copy_buffer_to_buffer(&self.state_next, 0, stage, 0, state_bytes);
         }
         if let Some(stage) = projection_stage.as_ref() {
@@ -854,7 +900,13 @@ impl ActionBandGpuSession {
         if let Some(stage) = consequence_stage.as_ref() {
             encoder.copy_buffer_to_buffer(&consequence_buffer, 0, stage, 0, consequence_bytes);
         }
-        let timestamp_count = if crossings.bucket_ranges.is_empty() {
+        let timestamp_count = if self.plan.depth1_crossing_fast_path {
+            if crossings.bucket_ranges.is_empty() {
+                0
+            } else {
+                2
+            }
+        } else if crossings.bucket_ranges.is_empty() {
             2
         } else {
             4
@@ -864,19 +916,51 @@ impl ActionBandGpuSession {
             self.timestamp_resolve.as_ref(),
             self.timestamp_readback.as_ref(),
         ) {
-            encoder.resolve_query_set(query_set, 0..timestamp_count, resolve, 0);
-            encoder.copy_buffer_to_buffer(resolve, 0, readback, 0, u64::from(timestamp_count) * 8);
+            if timestamp_count > 0 {
+                encoder.resolve_query_set(query_set, 0..timestamp_count, resolve, 0);
+                encoder.copy_buffer_to_buffer(
+                    resolve,
+                    0,
+                    readback,
+                    0,
+                    u64::from(timestamp_count) * 8,
+                );
+            }
         }
         ctx.queue.submit(Some(encoder.finish()));
         self.generation = self.generation.saturating_add(1);
-        std::mem::swap(&mut self.state_current, &mut self.state_next);
+        if !self.plan.depth1_crossing_fast_path {
+            std::mem::swap(&mut self.state_current, &mut self.state_next);
+        }
 
-        let states = state_stage
-            .as_ref()
-            .map(|stage| {
-                readback::<ActionBandStateGpu>(device, stage, self.plan.active_instances.len())
-            })
-            .transpose()?;
+        let states = match (state_current_stage.as_ref(), state_next_stage.as_ref()) {
+            (Some(current_stage), Some(next_stage)) => {
+                let current = readback::<ActionBandStateGpu>(
+                    device,
+                    current_stage,
+                    self.plan.active_instances.len(),
+                )?;
+                let next = readback::<ActionBandStateGpu>(
+                    device,
+                    next_stage,
+                    self.plan.active_instances.len(),
+                )?;
+                Some(
+                    current
+                        .into_iter()
+                        .zip(next)
+                        .map(|(current, next)| {
+                            if next.generation > current.generation {
+                                next
+                            } else {
+                                current
+                            }
+                        })
+                        .collect(),
+                )
+            }
+            _ => None,
+        };
         let projection = projection_stage
             .as_ref()
             .map(|stage| readback::<f32>(device, stage, self.plan.projection_floats as usize))
@@ -909,19 +993,27 @@ impl ActionBandGpuSession {
         } else {
             (Vec::new(), Vec::new())
         };
-        let (evaluation_gpu_time_ns, emission_gpu_time_ns) =
-            if let Some(timestamp_buffer) = self.timestamp_readback.as_ref() {
-                let stamps = readback::<u64>(device, timestamp_buffer, timestamp_count as usize)?;
-                let period = ctx.timestamp_period_ns() as f64;
+        let (evaluation_gpu_time_ns, emission_gpu_time_ns) = if timestamp_count == 0 {
+            (None, None)
+        } else if let Some(timestamp_buffer) = self.timestamp_readback.as_ref() {
+            let stamps = readback::<u64>(device, timestamp_buffer, timestamp_count as usize)?;
+            let period = ctx.timestamp_period_ns() as f64;
+            if self.plan.depth1_crossing_fast_path {
+                (None, Some((stamps[1] - stamps[0]) as f64 * period))
+            } else {
                 (
                     Some((stamps[1] - stamps[0]) as f64 * period),
                     (timestamp_count == 4).then(|| (stamps[3] - stamps[2]) as f64 * period),
                 )
-            } else {
-                (None, None)
-            };
-        let gpu_time_ns = evaluation_gpu_time_ns
-            .map(|evaluation| evaluation + emission_gpu_time_ns.unwrap_or(0.0));
+            }
+        } else {
+            (None, None)
+        };
+        let gpu_time_ns = if evaluation_gpu_time_ns.is_some() || emission_gpu_time_ns.is_some() {
+            Some(evaluation_gpu_time_ns.unwrap_or(0.0) + emission_gpu_time_ns.unwrap_or(0.0))
+        } else {
+            None
+        };
         Ok((
             ActionBandProductionDispatch {
                 commitments,
