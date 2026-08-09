@@ -68,7 +68,7 @@ readback, and structural application are excluded.
 | 1 | 32 | 4,096 ns |
 | 64 | 2,048 | 4,096 ns |
 | 1,024 | 32,768 | 5,120 ns |
-| 4,096 | 131,072 | 9,216 ns |
+| 4,096 | 131,072 | 8,192 ns |
 
 Assessment against section 15: the fixed floor remains flat through 64 rows,
 then rises with contiguous bytes. This is consistent with the current/next
