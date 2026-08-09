@@ -14,7 +14,7 @@
 //! commitment ingress. Free `BoundaryRequest` construction in feeder remains
 //! B4 residual for non-decision structural work (declared size in results).
 
-use crate::sealed::{ThresholdEmission, ThresholdEvent};
+use crate::sealed::{BandCrossingDelta, ThresholdEmission, ThresholdEvent};
 
 /// Token proving a sealed threshold crossing was observed (from GPU / CPU-oracle path).
 ///
@@ -341,5 +341,19 @@ mod tests {
         // In-crate mint of sealed ThresholdEmission for tests.
         let emission = ThresholdEmission::from_kernel_threshold_crossing(0, slot, col, value, 0);
         EmissionToken::from_sealed_threshold_emission(&emission)
+    }
+}
+
+impl ThresholdCrossingToken {
+    /// Mint from the sealed Phase-5 band-crossing product. This is the
+    /// ActionBand bridge: it preserves the original crossing locus and event
+    /// identity without running another comparator.
+    pub fn from_sealed_band_crossing(delta: &BandCrossingDelta) -> Self {
+        Self {
+            slot: delta.slot().raw(),
+            col: delta.col().raw() as u32,
+            value: delta.post_value(),
+            event_kind: delta.event_kind(),
+        }
     }
 }

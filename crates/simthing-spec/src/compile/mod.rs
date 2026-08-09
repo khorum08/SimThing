@@ -40,7 +40,8 @@ pub use action_band_admission::{
     ActionBandAdmissionError, ActionBandCrossingBinding, ActionBandSemanticShadow,
     ActionBandSessionBuildDoor, ActionBandTableSpan, ActionBandTemplateIndex,
     AdmittedActionBandBand, AdmittedActionBandChannel, AdmittedActionBandTarget,
-    AdmittedActionBandTemplate, ExistingThresholdRegistrationIndex, FrozenActionBandTemplates,
+    AdmittedActionBandTemplate, AdmittedActionBandVelocity, ExistingThresholdRegistrationIndex,
+    FrozenActionBandTemplates,
     PreAdmittedEmissionBindingIndex,
 };
 pub use capability::{CapabilityTreeBuildOutput, CapabilityTreeBuilder};

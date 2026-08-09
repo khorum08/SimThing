@@ -69,9 +69,69 @@ use simthing_core::{
     prepare_fission_clone_sources_subtree, DimensionRegistry, ObjectResidencyRequest, OverlayId,
     OverlayLifecycle, SimThing, SimThingId,
 };
-use simthing_feeder::{BoundaryRequest, MaintainerOutcome};
+use simthing_feeder::{BoundaryRequest, FeederError, FeederSender, MaintainerOutcome};
 use simthing_gpu::SlotAllocator;
-use std::collections::HashMap;
+use simthing_kernel::StructuralCommitment;
+use std::collections::{BTreeMap, HashMap};
+use thiserror::Error;
+
+/// Session-frozen application door from a sealed structural commitment to an
+/// already-admitted boundary request. The numeric commitment fields are never
+/// inspected: sealed `event_kind` identity selects one fixed request, and the
+/// existing feeder/boundary authority applies it later.
+#[derive(Clone, Debug)]
+pub struct StructuralCommitmentApplicationDoor {
+    requests_by_event_kind: BTreeMap<u32, BoundaryRequest>,
+}
+
+impl StructuralCommitmentApplicationDoor {
+    pub fn from_pre_admitted_requests(
+        requests: Vec<(u32, BoundaryRequest)>,
+    ) -> Result<Self, StructuralCommitmentApplicationError> {
+        let mut requests_by_event_kind = BTreeMap::new();
+        for (event_kind, request) in requests {
+            if requests_by_event_kind.insert(event_kind, request).is_some() {
+                return Err(StructuralCommitmentApplicationError::DuplicateEventKind(
+                    event_kind,
+                ));
+            }
+        }
+        Ok(Self {
+            requests_by_event_kind,
+        })
+    }
+
+    pub fn submit_committed(
+        &self,
+        commitments: &[StructuralCommitment],
+        boundary: &FeederSender,
+    ) -> Result<usize, StructuralCommitmentApplicationError> {
+        let requests = commitments
+            .iter()
+            .map(|commitment| {
+                self.requests_by_event_kind
+                    .get(&commitment.event_kind())
+                    .ok_or(StructuralCommitmentApplicationError::UnknownEventKind(
+                        commitment.event_kind(),
+                    ))
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        for request in requests {
+            boundary.submit_boundary(request.clone())?;
+        }
+        Ok(commitments.len())
+    }
+}
+
+#[derive(Debug, Error)]
+pub enum StructuralCommitmentApplicationError {
+    #[error("duplicate pre-admitted structural event kind {0}")]
+    DuplicateEventKind(u32),
+    #[error("structural commitment has no pre-admitted request for event kind {0}")]
+    UnknownEventKind(u32),
+    #[error(transparent)]
+    Feeder(#[from] FeederError),
+}
 
 /// Apply every `BoundaryRequest` to the authoritative tree + slot table.
 ///

@@ -113,6 +113,7 @@ impl PreAdmittedEmissionBindingIndex {
 pub struct AdmittedActionBandTemplate {
     index: ActionBandTemplateIndex,
     target: AdmittedActionBandTarget,
+    velocity: Option<AdmittedActionBandVelocity>,
     channel_span: ActionBandTableSpan,
     band_span: ActionBandTableSpan,
     dependency_span: ActionBandTableSpan,
@@ -127,6 +128,10 @@ impl AdmittedActionBandTemplate {
 
     pub fn target(&self) -> &AdmittedActionBandTarget {
         &self.target
+    }
+
+    pub fn velocity(&self) -> Option<AdmittedActionBandVelocity> {
+        self.velocity
     }
 
     pub fn channel_span(&self) -> ActionBandTableSpan {
@@ -147,6 +152,23 @@ impl AdmittedActionBandTemplate {
 
     pub fn reserved_instance_rows(&self) -> u32 {
         self.reserved_instance_rows
+    }
+}
+
+/// Frozen binding for an admitted previous-plane velocity observable.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct AdmittedActionBandVelocity {
+    current_channel: ColumnIndex,
+    previous_generation_channel: ColumnIndex,
+}
+
+impl AdmittedActionBandVelocity {
+    pub fn current_channel(self) -> ColumnIndex {
+        self.current_channel
+    }
+
+    pub fn previous_generation_channel(self) -> ColumnIndex {
+        self.previous_generation_channel
     }
 }
 
@@ -252,6 +274,8 @@ impl ActionBandSemanticShadow {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ActionBandCrossingBinding {
     threshold_registration: ExistingThresholdRegistrationIndex,
+    threshold_column: ColumnIndex,
+    event_kind: u32,
     template: ActionBandTemplateIndex,
     band_table_index: u32,
 }
@@ -259,6 +283,14 @@ pub struct ActionBandCrossingBinding {
 impl ActionBandCrossingBinding {
     pub fn threshold_registration(self) -> ExistingThresholdRegistrationIndex {
         self.threshold_registration
+    }
+
+    pub fn threshold_column(self) -> ColumnIndex {
+        self.threshold_column
+    }
+
+    pub fn event_kind(self) -> u32 {
+        self.event_kind
     }
 
     pub fn template(self) -> ActionBandTemplateIndex {
@@ -322,6 +354,18 @@ impl FrozenActionBandTemplates {
         self.crossing_bindings.iter().filter(move |binding| {
             binding.threshold_registration.raw() == threshold_registration_index
         })
+    }
+
+    /// Admission-sealed provenance for one flattened band row. This is the
+    /// only source used by later structural lowering; callers cannot pair a
+    /// fresh event kind with an otherwise constructible emission binding.
+    pub fn crossing_binding_for_band(
+        &self,
+        band_table_index: u32,
+    ) -> Option<&ActionBandCrossingBinding> {
+        self.crossing_bindings
+            .iter()
+            .find(|binding| binding.band_table_index == band_table_index)
     }
 }
 
@@ -493,7 +537,7 @@ fn compile_frozen_product(
             eml_registry,
             &mut session_eml_programs,
         )?;
-        validate_velocity(template, &declared_channels, registry, registry_width)?;
+        let velocity = compile_velocity(template, &declared_channels, registry, registry_width)?;
 
         let band_start = to_u32(bands.len())?;
         for (band_index, band) in template.bands.iter().enumerate() {
@@ -510,8 +554,12 @@ fn compile_frozen_product(
                 &mut emission_bindings,
             )?;
             let flat_band_index = to_u32(bands.len())?;
+            let threshold_registration =
+                &threshold_registrations[admitted_band.threshold_registration.raw() as usize];
             crossing_bindings.push(ActionBandCrossingBinding {
                 threshold_registration: admitted_band.threshold_registration,
+                threshold_column: threshold_registration.col,
+                event_kind: threshold_registration.event_kind,
                 template: index,
                 band_table_index: flat_band_index,
             });
@@ -545,6 +593,7 @@ fn compile_frozen_product(
         templates.push(AdmittedActionBandTemplate {
             index,
             target,
+            velocity,
             channel_span: span(channel_start, channels.len())?,
             band_span: span(band_start, bands.len())?,
             dependency_span: span(dependency_start, dependencies.len())?,
@@ -758,14 +807,14 @@ fn compile_target(
     })
 }
 
-fn validate_velocity(
+fn compile_velocity(
     template: &ActionBandTemplateSpec,
     declared_channels: &BTreeSet<u32>,
     registry: &DimensionRegistry,
     registry_width: u32,
-) -> Result<(), ActionBandAdmissionError> {
+) -> Result<Option<AdmittedActionBandVelocity>, ActionBandAdmissionError> {
     let Some(velocity) = template.velocity else {
-        return Ok(());
+        return Ok(None);
     };
     let Some(previous) = velocity.previous_generation_channel else {
         return Err(ActionBandAdmissionError::PreviousGenerationPlaneRequired {
@@ -774,9 +823,14 @@ fn validate_velocity(
     };
     require_declared_column(template, velocity.current_channel, declared_channels)?;
     require_declared_column(template, previous, declared_channels)?;
-    seal_anchored_column(template, velocity.current_channel, registry, registry_width)?;
-    seal_anchored_column(template, previous, registry, registry_width)?;
-    Ok(())
+    let current_channel =
+        seal_anchored_column(template, velocity.current_channel, registry, registry_width)?;
+    let previous_generation_channel =
+        seal_anchored_column(template, previous, registry, registry_width)?;
+    Ok(Some(AdmittedActionBandVelocity {
+        current_channel,
+        previous_generation_channel,
+    }))
 }
 
 #[allow(clippy::too_many_arguments)]

@@ -156,9 +156,18 @@ fn depth_one_template_binds_the_existing_sealed_crossing_path() {
 
 #[test]
 fn closed_targets_admit_total_forms_and_reject_predicate_only_or_unretained_velocity() {
-    let (registry, thresholds, column) = registry_and_threshold();
+    let (mut registry, thresholds, column) = registry_and_threshold();
     let eml = eml_registry();
-    let second_column = column.raw_u32() + 1;
+    let previous_property_id =
+        registry.register(SimProperty::simple("synthetic", "previous_action_axis", 1));
+    let previous_column = registry
+        .column_range(previous_property_id)
+        .col_for_role(
+            &SubFieldRole::Amount,
+            &registry.property(previous_property_id).layout,
+        )
+        .expect("previous-generation amount column");
+    let second_column = previous_column.raw_u32();
     let forms = vec![
         ActionBandTargetSpec::Point {
             current_channels: vec![column.raw_u32(), second_column],
@@ -239,6 +248,33 @@ fn closed_targets_admit_total_forms_and_reject_predicate_only_or_unretained_velo
         ),
         Err(ActionBandAdmissionError::PreviousGenerationPlaneRequired { .. })
     ));
+
+    let mut retained_velocity = base_template(column.raw_u32());
+    retained_velocity.axis_channels.push(channel(
+        previous_column.raw_u32(),
+        ActionBandChannelKind::CachedDerived,
+    ));
+    retained_velocity.velocity = Some(ActionBandVelocitySpec {
+        current_channel: column.raw_u32(),
+        previous_generation_channel: Some(previous_column.raw_u32()),
+    });
+    let mut door = ActionBandSessionBuildDoor::new();
+    let admitted = door
+        .admit_once_at_session_build(
+            &session_spec(retained_velocity),
+            &registry,
+            &eml,
+            &thresholds,
+        )
+        .expect("retained velocity pair admits");
+    let frozen_velocity = admitted.templates()[0]
+        .velocity()
+        .expect("admission freezes the velocity binding");
+    assert_eq!(frozen_velocity.current_channel(), column);
+    assert_eq!(
+        frozen_velocity.previous_generation_channel(),
+        previous_column
+    );
 }
 
 #[test]

@@ -4,6 +4,7 @@
 //! `BoundaryProtocol`. Operation-family semantics are authoritative only once
 //! their C/E migration PRs pass parity.
 
+pub mod action_band_execution;
 mod bootstrap_validate;
 mod cpu_oracle;
 mod eml_program_table;
