@@ -129,3 +129,5 @@ crates/simthing-kernel/src/transfer_accumulator.rs	executed	Live driver/kernel e
 crates/simthing-kernel/src/velocity_accumulator.rs	executed	Live driver/kernel execution or residency path in the recursive RF / arena stack
 crates/simthing-kernel/src/wgsl_encode.rs	compile-plan	Single typed-plan to raw WGSL POD encoding boundary; promotion blocker PLAN-STRUCT-TYPING-0
 crates/simthing-kernel/src/world_state.rs	executed	Live WorldGpuState buffer residency and upload; compile-plan encoding helpers relocated to wgsl_encode.rs
+crates/simthing-driver/src/action_band_execution_compile.rs	compile-plan	Frozen 7.1 ActionBand admission product lowers to domain-free GPU template/target/band/EML/binding tables
+crates/simthing-kernel/src/accumulator_op/action_band_execution.rs	executed	Live driver/kernel execution or residency path in the recursive RF / arena stack
