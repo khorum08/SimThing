@@ -21,6 +21,14 @@ struct ActionBandInstanceGpu {
     param1: f32,
     param2: f32,
     param3: f32,
+    dependency_start: u32,
+    dependency_count: u32,
+    flags: u32,
+    reserved: u32,
+}
+
+struct ActionBandDependencyGpu {
+    child_instance_row: u32,
 }
 
 struct ActionBandStateGpu {
@@ -89,6 +97,7 @@ struct ActionBandDispatchParams {
 @group(0) @binding(13) var<storage, read_write> action_consequences: array<ThresholdEmissionGpu>;
 @group(0) @binding(14) var<storage, read> eml_nodes: array<EmlNodeGpu>;
 @group(0) @binding(15) var<storage, read> eml_tree_ranges: array<EmlTreeRangeGpu>;
+@group(0) @binding(16) var<storage, read> action_dependencies: array<ActionBandDependencyGpu>;
 
 const ACTION_TARGET_POINT: u32 = 0u;
 const ACTION_TARGET_SCALAR_AT_LEAST: u32 = 1u;
@@ -99,6 +108,9 @@ const ACTION_TARGET_LOCUS_RADIUS: u32 = 5u;
 const ACTION_TARGET_PALMA_REACHABLE: u32 = 6u;
 const ACTION_TARGET_EML_PROJECTED: u32 = 7u;
 const ACTION_NO_PROGRAM: u32 = 0xFFFFFFFFu;
+const ACTION_INSTANCE_SUBORDINATE: u32 = 2u;
+const ACTION_STATE_ACTIVE: u32 = 1u;
+const ACTION_STATE_TERMINAL: u32 = 2u;
 fn action_value(slot: u32, col: u32) -> f32 {
     return atomic_read_f32_at(slot * tick_params.n_dims + col);
 }
@@ -113,6 +125,9 @@ fn actionband_evaluate(@builtin(global_invocation_id) gid: vec3<u32>) {
     let instance = action_instances[row];
     let descriptor = action_templates[instance.template_index];
     let prior = action_state_current[row];
+    if ((prior.reserved0 & ACTION_STATE_ACTIVE) == 0u) {
+        return;
+    }
     var satisfied = 1u;
     var distance = 0.0;
     var velocity = 0.0;
@@ -179,8 +194,8 @@ fn actionband_evaluate(@builtin(global_invocation_id) gid: vec3<u32>) {
         descriptor.projection_width,
         distance,
         velocity,
-        0u,
-        0u,
+        prior.reserved0,
+        prior.reserved1,
     );
 }
 
@@ -234,8 +249,26 @@ fn actionband_evaluate_depth1_crossing(
         0u,
         0u,
     );
-    action_state_next[crossing.instance_row] = next;
     return next;
+}
+
+fn actionband_dependencies_terminal_or_activate(
+    instance: ActionBandInstanceGpu,
+) -> bool {
+    var all_terminal = true;
+    for (var i = 0u; i < instance.dependency_count; i = i + 1u) {
+        let dependency = action_dependencies[instance.dependency_start + i];
+        let child_current = action_state_current[dependency.child_instance_row];
+        if ((child_current.reserved0 & ACTION_STATE_TERMINAL) == 0u) {
+            all_terminal = false;
+            if ((child_current.reserved0 & ACTION_STATE_ACTIVE) == 0u) {
+                var child_next = child_current;
+                child_next.reserved0 = ACTION_STATE_ACTIVE;
+                action_state_next[dependency.child_instance_row] = child_next;
+            }
+        }
+    }
+    return all_terminal;
 }
 
 @compute @workgroup_size(64)
@@ -248,7 +281,22 @@ fn actionband_emit_depth1(@builtin(global_invocation_id) gid: vec3<u32>) {
     let band = action_bands[crossing.band_index];
     let instance = action_instances[crossing.instance_row];
     let descriptor = action_templates[instance.template_index];
-    let state = actionband_evaluate_depth1_crossing(crossing, instance, descriptor);
+    let prior = action_state_current[crossing.instance_row];
+    if ((prior.reserved0 & ACTION_STATE_ACTIVE) == 0u) {
+        return;
+    }
+    if (!actionband_dependencies_terminal_or_activate(instance)) {
+        var waiting = prior;
+        waiting.generation = prior.generation + 1u;
+        action_state_next[crossing.instance_row] = waiting;
+        return;
+    }
+    var state = actionband_evaluate_depth1_crossing(crossing, instance, descriptor);
+    state.reserved0 = ACTION_STATE_ACTIVE;
+    if ((instance.flags & ACTION_INSTANCE_SUBORDINATE) != 0u && state.satisfied != 0u) {
+        state.reserved0 = ACTION_STATE_TERMINAL;
+    }
+    action_state_next[crossing.instance_row] = state;
     var payload = crossing.post_value;
     if (band.program_range != ACTION_NO_PROGRAM) {
         payload = eml_eval(EmlEvalCtx(band.program_range, instance.slot, crossing.post_value, crossing.threshold, state.distance, state.velocity));

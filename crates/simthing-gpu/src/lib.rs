@@ -28,11 +28,13 @@ pub use atlas_mask::{
 };
 pub use action_band_execution::{
     action_band_target_kind, ActionBandActiveInstanceGpu, ActionBandBandGpu,
-    ActionBandCrossingBatch, ActionBandEmissionBindingGpu, ActionBandEmissionDestination,
-    ActionBandExecutionBucket, ActionBandExecutionError, ActionBandExecutionPlan,
-    ActionBandExecutionReadback, ActionBandGpuExecution, ActionBandGpuSession,
-    ActionBandProductionDispatch, ActionBandPropertyWrite, ActionBandStateGpu,
-    ActionBandTemplateGpu, ACTIONBAND_NO_PROGRAM,
+    ActionBandCrossingBatch, ActionBandDependencyGpu, ActionBandEmissionBindingGpu,
+    ActionBandEmissionDestination, ActionBandExecutionBucket, ActionBandExecutionError,
+    ActionBandExecutionPlan, ActionBandExecutionReadback, ActionBandGpuExecution,
+    ActionBandGpuSession, ActionBandProductionDispatch, ActionBandPropertyWrite,
+    ActionBandStateGpu, ActionBandTemplateGpu, ACTIONBAND_INSTANCE_INITIALLY_ACTIVE,
+    ACTIONBAND_INSTANCE_SUBORDINATE, ACTIONBAND_NO_PROGRAM, ACTIONBAND_STATE_ACTIVE,
+    ACTIONBAND_STATE_TERMINAL,
 };
 pub use candidate_f_magnitude::{
     max_candidate_f_magnitude_bits, CandidateFMagnitudeError, CandidateFMagnitudeReport,

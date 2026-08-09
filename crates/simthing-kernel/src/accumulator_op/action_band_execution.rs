@@ -19,6 +19,10 @@ use crate::{
 };
 
 pub const ACTIONBAND_NO_PROGRAM: u32 = u32::MAX;
+pub const ACTIONBAND_INSTANCE_INITIALLY_ACTIVE: u32 = 1;
+pub const ACTIONBAND_INSTANCE_SUBORDINATE: u32 = 1 << 1;
+pub const ACTIONBAND_STATE_ACTIVE: u32 = 1;
+pub const ACTIONBAND_STATE_TERMINAL: u32 = 1 << 1;
 
 pub mod target_kind {
     pub const POINT: u32 = 0;
@@ -171,6 +175,18 @@ pub struct ActionBandActiveInstanceGpu {
     pub projection_start: u32,
     pub generation: u32,
     pub params: [f32; 4],
+    pub dependency_start: u32,
+    pub dependency_count: u32,
+    pub flags: u32,
+    pub reserved: u32,
+}
+
+/// One session-built edge from an instance to a pre-admitted child row. The
+/// row is numeric and stable for the session; it is never appended at runtime.
+#[repr(C)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Pod, Zeroable)]
+pub struct ActionBandDependencyGpu {
+    pub child_instance_row: u32,
 }
 
 #[repr(C)]
@@ -227,10 +243,12 @@ pub struct ActionBandExecutionPlan {
     eml_nodes: Vec<EmlNodeGpu>,
     eml_ranges: Vec<EmlTreeRangeGpu>,
     active_instances: Vec<ActionBandActiveInstanceGpu>,
+    dependencies: Vec<ActionBandDependencyGpu>,
     buckets: Vec<ActionBandExecutionBucket>,
     band_to_bucket: Vec<u32>,
     projection_floats: u32,
     depth1_crossing_fast_path: bool,
+    depth2_common_fast_shape: bool,
     fingerprint: u64,
 }
 
@@ -246,6 +264,7 @@ impl ActionBandExecutionPlan {
         eml_nodes: Vec<EmlNodeGpu>,
         eml_ranges: Vec<EmlTreeRangeGpu>,
         mut active_instances: Vec<ActionBandActiveInstanceGpu>,
+        dependencies: Vec<ActionBandDependencyGpu>,
         buckets: Vec<ActionBandExecutionBucket>,
         reserved_instance_rows: u32,
         depth1_crossing_fast_path: bool,
@@ -282,7 +301,12 @@ impl ActionBandExecutionPlan {
             &band_binding_indices,
             &emission_bindings,
             &eml_ranges,
+            &active_instances,
+            &dependencies,
         )?;
+        if !dependencies.is_empty() && !depth1_crossing_fast_path {
+            return Err(ActionBandExecutionError::RecursiveShapeDeferred);
+        }
         let mut band_to_bucket = vec![u32::MAX; bands.len()];
         for (bucket_index, bucket) in buckets.iter().enumerate() {
             for &band_index in &bucket.band_indices {
@@ -308,9 +332,14 @@ impl ActionBandExecutionPlan {
             &eml_nodes,
             &eml_ranges,
             &active_instances,
+            &dependencies,
         );
         if depth1_crossing_fast_path {
             fingerprint ^= 0xD1F4_57A7_5EA1_ED01;
+        }
+        let depth2_common_fast_shape = !dependencies.is_empty();
+        if depth2_common_fast_shape {
+            fingerprint ^= 0xD2C0_6D00_0000_0001;
         }
         Ok(Self {
             templates,
@@ -322,10 +351,12 @@ impl ActionBandExecutionPlan {
             eml_nodes,
             eml_ranges,
             active_instances,
+            dependencies,
             buckets,
             band_to_bucket,
             projection_floats,
             depth1_crossing_fast_path,
+            depth2_common_fast_shape,
             fingerprint,
         })
     }
@@ -352,6 +383,16 @@ impl ActionBandExecutionPlan {
     /// already-hot value directly in the emission dispatch.
     pub fn uses_depth1_crossing_fast_path(&self) -> bool {
         self.depth1_crossing_fast_path
+    }
+
+    /// The recursive common shape reuses the depth-1 crossing entry and the
+    /// same descriptor/EML tables; only the flat dependency rows are added.
+    pub fn uses_depth2_common_fast_shape(&self) -> bool {
+        self.depth2_common_fast_shape
+    }
+
+    pub fn dependency_row_count(&self) -> usize {
+        self.dependencies.len()
     }
 
     /// The only ActionBand crossing bridge. Input evidence is the existing
@@ -525,6 +566,8 @@ pub enum ActionBandExecutionError {
     StructuralBindingCount { count: u32 },
     #[error("depth-1 fast path received more than one sealed crossing for one active instance")]
     DuplicateDepth1Crossing,
+    #[error("ActionBand recursive dependencies require the shared depth-1/2 fast shape")]
+    RecursiveShapeDeferred,
     #[error("GPU structural packet does not preserve sealed crossing identity")]
     StructuralPacketIdentityMismatch,
     #[error(transparent)]
@@ -587,6 +630,7 @@ pub struct ActionBandGpuSession {
     emission_bindings: wgpu::Buffer,
     eml_nodes: wgpu::Buffer,
     eml_ranges: wgpu::Buffer,
+    dependencies: wgpu::Buffer,
     timestamp_query_set: Option<wgpu::QuerySet>,
     timestamp_resolve: Option<wgpu::Buffer>,
     timestamp_readback: Option<wgpu::Buffer>,
@@ -604,7 +648,7 @@ impl ActionBandGpuSession {
             label: Some("actionband_gpu_execution_shader"),
             source: wgpu::ShaderSource::Wgsl(shader_source.into()),
         });
-        let entries: Vec<_> = (0..16)
+        let entries: Vec<_> = (0..17)
             .map(|binding| wgpu::BindGroupLayoutEntry {
                 binding,
                 visibility: wgpu::ShaderStages::COMPUTE,
@@ -645,7 +689,21 @@ impl ActionBandGpuSession {
         let emit_pipeline = pipeline("actionband_emit");
         let emit_depth1_pipeline = pipeline("actionband_emit_depth1");
 
-        let state = vec![ActionBandStateGpu::zeroed(); plan.active_instances.len()];
+        let state = plan
+            .active_instances
+            .iter()
+            .map(|instance| ActionBandStateGpu {
+                reserved: [
+                    if instance.flags & ACTIONBAND_INSTANCE_INITIALLY_ACTIVE != 0 {
+                        ACTIONBAND_STATE_ACTIVE
+                    } else {
+                        0
+                    },
+                    0,
+                ],
+                ..ActionBandStateGpu::zeroed()
+            })
+            .collect::<Vec<_>>();
         let projection = vec![0.0f32; plan.projection_floats.max(1) as usize];
         let (timestamp_query_set, timestamp_resolve, timestamp_readback) =
             if ctx.timestamp_supported() {
@@ -691,6 +749,7 @@ impl ActionBandGpuSession {
             ),
             eml_nodes: storage(device, "actionband_eml_nodes", &plan.eml_nodes),
             eml_ranges: storage(device, "actionband_eml_ranges", &plan.eml_ranges),
+            dependencies: storage(device, "actionband_dependencies", &plan.dependencies),
             timestamp_query_set,
             timestamp_resolve,
             timestamp_readback,
@@ -777,8 +836,18 @@ impl ActionBandGpuSession {
         }
         let device = &ctx.device;
         let crossing_buffer = storage(device, "actionband_sealed_crossings", &crossings.rows);
-        let consequence_zeros =
-            vec![ThresholdEmissionGpu::zeroed(); crossings.output_count.max(1) as usize];
+        // An unresolved parent or inactive child performs no shader write; the
+        // impossible column sentinel therefore remains and cannot mint a CPU
+        // consequence. Authorized rows keep the graduated 16-byte packet.
+        let consequence_zeros = vec![
+            ThresholdEmissionGpu {
+                reg_idx: 0,
+                slot: 0,
+                col: u32::MAX,
+                value: 0.0,
+            };
+            crossings.output_count.max(1) as usize
+        ];
         let consequence_buffer = storage_rw(
             device,
             "actionband_existing_surface_packets",
@@ -987,6 +1056,9 @@ impl ActionBandGpuSession {
             let mut payloads = Vec::with_capacity(crossings.commitment_inputs.len());
             for (index, delta) in &crossings.commitment_inputs {
                 let packet = &packets[*index as usize];
+                if packet.col == u32::MAX {
+                    continue;
+                }
                 let emission = ThresholdEmission::from_gpu_readback(packet, self.generation);
                 if emission.reg_idx() != delta.reg_idx()
                     || emission.slot() != delta.slot().raw()
@@ -1079,6 +1151,7 @@ impl ActionBandGpuSession {
             consequences,
             &self.eml_nodes,
             &self.eml_ranges,
+            &self.dependencies,
         ];
         let entries: Vec<_> = resources
             .iter()
@@ -1112,6 +1185,8 @@ fn validate_tables(
     band_binding_indices: &[u32],
     emission_bindings: &[ActionBandEmissionBindingGpu],
     eml_ranges: &[EmlTreeRangeGpu],
+    instances: &[ActionBandActiveInstanceGpu],
+    dependencies: &[ActionBandDependencyGpu],
 ) -> Result<(), ActionBandExecutionError> {
     for template in templates {
         let channels_end = template.channel_start as usize + template.channel_count as usize;
@@ -1185,6 +1260,92 @@ fn validate_tables(
             return Err(ActionBandExecutionError::DestinationDeferred { destination });
         }
     }
+    for instance in instances {
+        let end = instance.dependency_start as usize + instance.dependency_count as usize;
+        if end > dependencies.len()
+            || instance.flags
+                & !(ACTIONBAND_INSTANCE_INITIALLY_ACTIVE | ACTIONBAND_INSTANCE_SUBORDINATE)
+                != 0
+            || instance.reserved != 0
+        {
+            return Err(ActionBandExecutionError::InvalidTableSpan);
+        }
+    }
+    if dependencies
+        .iter()
+        .any(|dependency| dependency.child_instance_row as usize >= instances.len())
+    {
+        return Err(ActionBandExecutionError::InvalidTableSpan);
+    }
+    validate_dependency_rows(instances, dependencies)?;
+    Ok(())
+}
+
+fn validate_dependency_rows(
+    instances: &[ActionBandActiveInstanceGpu],
+    dependencies: &[ActionBandDependencyGpu],
+) -> Result<(), ActionBandExecutionError> {
+    let mut covered_dependencies = vec![0u8; dependencies.len()];
+    let mut claimed_children = vec![false; instances.len()];
+    for (parent_row, instance) in instances.iter().enumerate() {
+        let start = instance.dependency_start as usize;
+        let end = start + instance.dependency_count as usize;
+        for dependency_index in start..end {
+            covered_dependencies[dependency_index] = covered_dependencies[dependency_index]
+                .checked_add(1)
+                .ok_or(ActionBandExecutionError::InvalidTableSpan)?;
+            let child_row = dependencies[dependency_index].child_instance_row as usize;
+            if child_row == parent_row || claimed_children[child_row] {
+                return Err(ActionBandExecutionError::InvalidTableSpan);
+            }
+            claimed_children[child_row] = true;
+        }
+    }
+    if covered_dependencies.iter().any(|&count| count != 1) {
+        return Err(ActionBandExecutionError::InvalidTableSpan);
+    }
+    for (row, instance) in instances.iter().enumerate() {
+        let subordinate = instance.flags & ACTIONBAND_INSTANCE_SUBORDINATE != 0;
+        let initially_active = instance.flags & ACTIONBAND_INSTANCE_INITIALLY_ACTIVE != 0;
+        if subordinate != claimed_children[row]
+            || (subordinate && initially_active)
+            || (!subordinate && !initially_active)
+        {
+            return Err(ActionBandExecutionError::InvalidTableSpan);
+        }
+    }
+
+    let mut marks = vec![0u8; instances.len()];
+    for row in 0..instances.len() {
+        validate_dependency_acyclic(row, instances, dependencies, &mut marks)?;
+    }
+    Ok(())
+}
+
+fn validate_dependency_acyclic(
+    row: usize,
+    instances: &[ActionBandActiveInstanceGpu],
+    dependencies: &[ActionBandDependencyGpu],
+    marks: &mut [u8],
+) -> Result<(), ActionBandExecutionError> {
+    match marks[row] {
+        1 => return Err(ActionBandExecutionError::InvalidTableSpan),
+        2 => return Ok(()),
+        _ => {}
+    }
+    marks[row] = 1;
+    let instance = &instances[row];
+    let start = instance.dependency_start as usize;
+    let end = start + instance.dependency_count as usize;
+    for dependency in &dependencies[start..end] {
+        validate_dependency_acyclic(
+            dependency.child_instance_row as usize,
+            instances,
+            dependencies,
+            marks,
+        )?;
+    }
+    marks[row] = 2;
     Ok(())
 }
 
@@ -1198,6 +1359,7 @@ fn plan_fingerprint(
     eml_nodes: &[EmlNodeGpu],
     eml_ranges: &[EmlTreeRangeGpu],
     instances: &[ActionBandActiveInstanceGpu],
+    dependencies: &[ActionBandDependencyGpu],
 ) -> u64 {
     let mut hash = 0xcbf29ce484222325u64;
     for bytes in [
@@ -1210,6 +1372,7 @@ fn plan_fingerprint(
         bytemuck::cast_slice::<_, u8>(eml_nodes),
         bytemuck::cast_slice::<_, u8>(eml_ranges),
         bytemuck::cast_slice::<_, u8>(instances),
+        bytemuck::cast_slice::<_, u8>(dependencies),
     ] {
         for byte in bytes {
             hash ^= u64::from(*byte);
