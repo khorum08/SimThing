@@ -124,9 +124,9 @@ fn process_node(
                 }
                 | OverlayLifecycle::UntilDissolvedWith {
                     dissolution_conditions,
-                } => dissolution_conditions.iter().all(|cond| {
-                    evaluate_condition(cond, node, registry, allocator, values_shadow, base)
-                }),
+                } => dissolution_conditions
+                    .iter()
+                    .all(|cond| evaluate_condition(cond, node, registry, values_shadow, base)),
                 _ => false,
             })
             .collect();
@@ -183,15 +183,10 @@ fn evaluate_condition(
     cond: &DissolveCondition,
     node: &SimThing,
     registry: &DimensionRegistry,
-    allocator: &SlotAllocator,
     values_shadow: &[f32],
     base: Option<usize>,
 ) -> bool {
     match cond {
-        DissolveCondition::ArrivedAt { destination } => matches!(
-            allocator.relation_of(node.id),
-            Some(simthing_core::ObjectResidencyRelation::ChildOf(parent)) if parent == *destination
-        ),
         DissolveCondition::AtSessionEnd => false,
         DissolveCondition::OverrideReceived => false, // handled by attach step
         DissolveCondition::AfterTicks { remaining } => *remaining == 0,
@@ -320,4 +315,5 @@ mod tests {
             lifecycle,
         }
     }
+
 }
