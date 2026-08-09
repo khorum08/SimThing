@@ -78,7 +78,7 @@ row71a = ("| 7.1a | `ACTIONBAND-COMPOSITION-PROBE-0` | **Phase 7 determination r
 "| **DISPOSITION RULE (two lawful outcomes):** (A) the common composition generalizes — witnesses share the "
 "literal path with no domain branch and Claim B holds; ActionBand becomes eligible for DA canonization "
 "(§22 texts go to ruling). (B) witnesses require materially different action semantics — ActionBand is "
-"REJECTED as core law, workshop artifacts are reaped, and 7.1/8.2 retain only their independently-valid "
+"workshop artifacts are reaped, and 7.1/8.2 retain only their independently-valid "
 "amendments (gradient-derived movement; temporal attrition factorization). A probe that cannot conclude (B) "
 "has failed regardless of green checks. Planted defects: a hard-coded destination and a bypassed-clearing "
 "path must each red the referee. | Std — Grok | TODO |")
