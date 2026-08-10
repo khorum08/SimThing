@@ -22,7 +22,7 @@ stop_conditions: ["field-neutral semantic/readback vocabulary cannot be achieved
 - Preserve graduated 7.1-7.4. The new Gu-Yang sequence is additive and ordered: 7.5 gate -> 7.5a -> 7.5b -> 7.5c -> 8.1 -> 8.2. One rung in flight.
 - `unowned` is not an error sink; stale stamps fail closed. Fence icon-layer edits, successor rungs, Vector CostBand, StemThing-B, scenarios, gates, and held harness defects.
 ## EXIT-PROOF
-- Field-neutrality gate is explicit and evidenced: opaque semantic/readback vocabulary can represent ActionBand state and bound observable identity/provenance without PALMA-only assumptions, or the 7.5 surface was corrected before graduation.
+- Field-neutrality gate is explicit and positively evidenced: flow a synthetic bound-observable identity that is not PALMA-derived through the semantic/readback schema and prove it is carried, reported, and round-tripped without special-casing; this is a semantic/readback proof only and does not implement Gu-Yang or 7.5a. If the existing schema cannot carry it without PALMA-only assumptions, correct the smallest 7.5 surface before graduation.
 - Change only semantic labels/designations on the same opaque ActionBand execution and prove numerical results plus sealed authoritative products are bit-identical.
 - Readback reports stamped identity/designation, field-neutral bound-observable provenance where present, and resolved owner after authority; planted foreign/malformed owner and stale-stamp mutants RED; no alias to `unowned`.
 - Existing icon descriptor/readback consumes the generic projection without icon-layer source changes; return PROBATION / proof-present / DA-review-pending. Coding does not `/clearance`, merge, move pointer, or start 7.5a.
