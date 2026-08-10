@@ -6,31 +6,43 @@
 //! crossing detector, or peer movement executor. Deleting it cannot remove the
 //! graduated ActionBand facility in production crates.
 //!
-//! The sealed locus arrives already authorized (ActionBand + Phase-5
-//! `BandCrossingDelta` / `StructuralCommitment`). This consumer only:
-//! - reattaches the sealed `(slot, col)` to exactly one admitted logical cell,
+//! Authority boundary: spatial admission consumes the existing sealed
+//! [`StructuralCommitment`] minted by the graduated ActionBand + Phase-5 path.
+//! Raw slot/col/value/event integers are not an admission door.
+//!
+//! This consumer only:
+//! - reattaches the sealed locus to exactly one admitted logical cell,
 //! - fails closed on zero or multiple loci (physical-row order never chooses),
 //! - requires exactly one N4 adjacent structural edge,
 //! - quantizes consumption through ordinary CostBand algebra,
 //! - mints an ordinary overlay with a real origin and lawful lifecycle.
 //!
-//! Human-readable “movement” language is proof prose only.
+//! Slot identity is an opaque sealed key in an admitted mapping table — never
+//! required to equal `row * width + col`. Structural `(row,col)` + logical cell
+//! identity govern spatial meaning.
 
 use simthing_core::{
     admit_dispatch_minted_overlay, cost_band_quantize, CostBandDraw, DissolveCondition, Overlay,
     OverlayId, OverlayKind, OverlayLifecycle, OverlaySource, PropertyTransformDelta, SimPropertyId,
     SimThingId, SubFieldRole, TransformOp,
 };
+use simthing_kernel::StructuralCommitment;
 use thiserror::Error;
 
-/// One admitted synthetic topology cell. Coordinates are N4 topology only;
-/// magnitudes never live here.
+/// One admitted synthetic topology cell.
+///
+/// `slot` is the opaque sealed ActionBand/Phase-5 locus key from the admitted
+/// mapping — it is **not** structural coordinates and need not be row-major.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct AdmittedTopologyCell {
-    pub slot: u32,
-    pub value_col: u32,
+    /// Opaque sealed locus key (ActionBand / GPU slot identity).
+    pub sealed_slot: u32,
+    /// Sealed value-plane column expected on the commitment.
+    pub sealed_col: u32,
+    /// Structural N4 coordinates (authoritative spatial geometry).
     pub grid_row: u32,
     pub grid_col: u32,
+    /// Logical cell identity.
     pub cell: SimThingId,
 }
 
@@ -41,26 +53,21 @@ pub struct SpatialStepOverlayEffect {
     pub deltas: Vec<(SubFieldRole, TransformOp)>,
 }
 
-/// Boundary-ready spatial step admitted from a sealed ActionBand locus.
+/// Boundary-ready spatial step admitted from a sealed ActionBand commitment.
 ///
 /// Destination is not an argument: it is reattached from the unique sealed
-/// `(slot, value_col)` binding. Callers cannot replace the field-derived cell
-/// after admission.
+/// locus on the typed commitment. Callers cannot replace the field-derived
+/// cell after admission.
 #[derive(Clone, Debug, PartialEq)]
 pub struct SpatialVendorizationStep {
     actor: SimThingId,
     from_cell: SimThingId,
     to_cell: SimThingId,
-    field_width: u32,
-    value_col: u32,
     from_row: u32,
     from_col: u32,
     to_row: u32,
     to_col: u32,
-    sealed_slot: u32,
-    sealed_col: u32,
-    sealed_value: f32,
-    event_kind: u32,
+    commitment: StructuralCommitment,
     unit_cost: f32,
     is_sink: bool,
     throttle: Option<u32>,
@@ -69,25 +76,24 @@ pub struct SpatialVendorizationStep {
 }
 
 impl SpatialVendorizationStep {
-    /// Admit exactly one field-derived N4 edge from a sealed ActionBand locus.
+    /// Admit exactly one field-derived N4 edge from a sealed ActionBand product.
+    ///
+    /// Locus/value/event identity is derived only from `commitment` — the
+    /// graduated typed seal. Raw integers are not accepted at this door.
     #[allow(clippy::too_many_arguments)]
     pub fn admit(
-        sealed_slot: u32,
-        sealed_col: u32,
-        sealed_value: f32,
-        event_kind: u32,
+        commitment: StructuralCommitment,
         actor: SimThingId,
         actor_parent: SimThingId,
-        field_width: u32,
         cells: &[AdmittedTopologyCell],
         effect: SpatialStepOverlayEffect,
         is_sink: bool,
         unit_cost: f32,
         throttle: Option<u32>,
     ) -> Result<Self, SpatialVendorizationError> {
-        validate_topology(field_width, cells)?;
+        validate_admitted_mapping(cells)?;
 
-        let to = resolve_authoritative_cell(cells, sealed_slot, sealed_col)?;
+        let to = resolve_authoritative_cell(cells, commitment.slot(), commitment.col())?;
         let from = resolve_authoritative_parent(cells, actor_parent)?;
         if from.cell == to.cell || manhattan(from, to) != 1 {
             return Err(SpatialVendorizationError::NotOneN4Edge {
@@ -96,7 +102,7 @@ impl SpatialVendorizationStep {
             });
         }
 
-        let draw = cost_band_quantize(sealed_value, unit_cost, is_sink, throttle)
+        let draw = cost_band_quantize(commitment.value(), unit_cost, is_sink, throttle)
             .map_err(|error| SpatialVendorizationError::CostBand(error.to_string()))?;
         if is_sink && draw.n != 1 {
             return Err(SpatialVendorizationError::CostBandDidNotAuthorize {
@@ -131,16 +137,11 @@ impl SpatialVendorizationStep {
             actor,
             from_cell: from.cell,
             to_cell: to.cell,
-            field_width,
-            value_col: to.value_col,
             from_row: from.grid_row,
             from_col: from.grid_col,
             to_row: to.grid_row,
             to_col: to.grid_col,
-            sealed_slot,
-            sealed_col,
-            sealed_value,
-            event_kind,
+            commitment,
             unit_cost,
             is_sink,
             throttle,
@@ -163,20 +164,8 @@ impl SpatialVendorizationStep {
         self.to_cell
     }
 
-    pub fn sealed_slot(&self) -> u32 {
-        self.sealed_slot
-    }
-
-    pub fn sealed_col(&self) -> u32 {
-        self.sealed_col
-    }
-
-    pub fn sealed_value(&self) -> f32 {
-        self.sealed_value
-    }
-
-    pub fn event_kind(&self) -> u32 {
-        self.event_kind
+    pub fn commitment(&self) -> StructuralCommitment {
+        self.commitment
     }
 
     pub fn cost_band_draw(&self) -> CostBandDraw {
@@ -198,7 +187,7 @@ impl SpatialVendorizationStep {
     /// Recompute the admitted CostBand draw; any stored direct decrement fails.
     pub fn validate_cost_band(&self) -> Result<(), SpatialVendorizationError> {
         let expected = cost_band_quantize(
-            self.sealed_value,
+            self.commitment.value(),
             self.unit_cost,
             self.is_sink,
             self.throttle,
@@ -218,24 +207,12 @@ impl SpatialVendorizationStep {
         Ok(())
     }
 
-    /// Reject missing/synthesized origins and non-lawful lifecycles.
     pub fn validate_overlay(&self) -> Result<(), SpatialVendorizationError> {
         validate_spatial_overlay(self.actor, self.to_cell, &self.overlay)
     }
 
     fn validate_integrity(&self) -> Result<(), SpatialVendorizationError> {
-        let selected_slot = self
-            .to_row
-            .checked_mul(self.field_width)
-            .and_then(|v| v.checked_add(self.to_col))
-            .ok_or(SpatialVendorizationError::InvalidFieldTopology)?;
-        if self.to_col >= self.field_width
-            || self.from_col >= self.field_width
-            || selected_slot != self.sealed_slot
-            || self.value_col != self.sealed_col
-        {
-            return Err(SpatialVendorizationError::DecisionLocusDrift);
-        }
+        // Structural geometry only — never re-derive sealed slot from row-major.
         let distance = self.from_row.abs_diff(self.to_row) + self.from_col.abs_diff(self.to_col);
         if self.from_cell == self.to_cell || distance != 1 {
             return Err(SpatialVendorizationError::NotOneN4Edge {
@@ -273,17 +250,23 @@ pub fn validate_spatial_overlay(
 /// iteration order cannot choose among multiples — multiplicity fails closed.
 pub fn resolve_authoritative_cell(
     cells: &[AdmittedTopologyCell],
-    slot: u32,
-    col: u32,
+    sealed_slot: u32,
+    sealed_col: u32,
 ) -> Result<AdmittedTopologyCell, SpatialVendorizationError> {
     let mut selected = cells
         .iter()
-        .filter(|cell| cell.slot == slot && cell.value_col == col);
+        .filter(|cell| cell.sealed_slot == sealed_slot && cell.sealed_col == sealed_col);
     let first = *selected
         .next()
-        .ok_or(SpatialVendorizationError::UnboundDecisionLocus { slot, col })?;
+        .ok_or(SpatialVendorizationError::UnboundDecisionLocus {
+            slot: sealed_slot,
+            col: sealed_col,
+        })?;
     if selected.next().is_some() {
-        return Err(SpatialVendorizationError::AmbiguousDecisionLocus { slot, col });
+        return Err(SpatialVendorizationError::AmbiguousDecisionLocus {
+            slot: sealed_slot,
+            col: sealed_col,
+        });
     }
     Ok(first)
 }
@@ -302,21 +285,23 @@ fn resolve_authoritative_parent(
     Ok(first)
 }
 
-fn validate_topology(
-    field_width: u32,
-    cells: &[AdmittedTopologyCell],
-) -> Result<(), SpatialVendorizationError> {
-    if field_width == 0 {
+/// Mapping validity: unique sealed keys, unique logical cells, finite coords.
+/// Deliberately does **not** require `sealed_slot == row * width + col`.
+fn validate_admitted_mapping(cells: &[AdmittedTopologyCell]) -> Result<(), SpatialVendorizationError> {
+    if cells.is_empty() {
         return Err(SpatialVendorizationError::InvalidFieldTopology);
     }
-    for cell in cells {
-        let expected = cell
-            .grid_row
-            .checked_mul(field_width)
-            .and_then(|v| v.checked_add(cell.grid_col))
-            .ok_or(SpatialVendorizationError::InvalidFieldTopology)?;
-        if cell.grid_col >= field_width || cell.slot != expected {
-            return Err(SpatialVendorizationError::InvalidFieldTopology);
+    for (i, cell) in cells.iter().enumerate() {
+        for other in cells.iter().skip(i + 1) {
+            if cell.sealed_slot == other.sealed_slot && cell.sealed_col == other.sealed_col {
+                return Err(SpatialVendorizationError::AmbiguousDecisionLocus {
+                    slot: cell.sealed_slot,
+                    col: cell.sealed_col,
+                });
+            }
+            if cell.cell == other.cell {
+                return Err(SpatialVendorizationError::InvalidFieldTopology);
+            }
         }
     }
     Ok(())
@@ -354,8 +339,6 @@ pub enum SpatialVendorizationError {
     AmbiguousActorParent { actor_parent: SimThingId },
     #[error("spatial step from {from:?} to {to:?} is not exactly one N4 edge")]
     NotOneN4Edge { from: SimThingId, to: SimThingId },
-    #[error("spatial decision locus drifted after sealed admission")]
-    DecisionLocusDrift,
     #[error("spatial overlay origin is not the sealed deciding cell")]
     OverlayOriginDrift,
     #[error("spatial overlay requires UntilDissolvedWith AfterTicks{{remaining:1}}")]
@@ -377,10 +360,10 @@ mod pure_unit {
     use super::*;
     use simthing_core::SimThingId;
 
-    fn cell(slot: u32, row: u32, col: u32) -> AdmittedTopologyCell {
+    fn cell(sealed_slot: u32, row: u32, col: u32) -> AdmittedTopologyCell {
         AdmittedTopologyCell {
-            slot,
-            value_col: 0,
+            sealed_slot,
+            sealed_col: 0,
             grid_row: row,
             grid_col: col,
             cell: SimThingId::new(),
@@ -389,28 +372,29 @@ mod pure_unit {
 
     #[test]
     fn zero_and_multiple_loci_fail_closed_independent_of_order() {
-        let a = cell(0, 0, 0);
-        let b = cell(1, 0, 1);
+        // Non-row-major sealed keys: structural (0,1) is not sealed_slot 1.
+        let a = cell(10, 0, 0);
+        let b = cell(99, 0, 1);
         let mut cells = vec![a, b, b];
         assert!(matches!(
-            resolve_authoritative_cell(&cells, 1, 0),
-            Err(SpatialVendorizationError::AmbiguousDecisionLocus { slot: 1, col: 0 })
+            resolve_authoritative_cell(&cells, 99, 0),
+            Err(SpatialVendorizationError::AmbiguousDecisionLocus { slot: 99, col: 0 })
         ));
         cells.reverse();
         assert!(matches!(
-            resolve_authoritative_cell(&cells, 1, 0),
-            Err(SpatialVendorizationError::AmbiguousDecisionLocus { slot: 1, col: 0 })
+            resolve_authoritative_cell(&cells, 99, 0),
+            Err(SpatialVendorizationError::AmbiguousDecisionLocus { slot: 99, col: 0 })
         ));
         assert!(matches!(
-            resolve_authoritative_cell(&cells, 9, 0),
-            Err(SpatialVendorizationError::UnboundDecisionLocus { slot: 9, col: 0 })
+            resolve_authoritative_cell(&cells, 7, 0),
+            Err(SpatialVendorizationError::UnboundDecisionLocus { slot: 7, col: 0 })
         ));
     }
 
     #[test]
     fn multi_hop_and_teleport_are_red() {
-        let a = cell(0, 0, 0);
-        let far = cell(2, 1, 1);
+        let a = cell(10, 0, 0);
+        let far = cell(40, 1, 1);
         assert!(matches!(
             reject_non_adjacent(a, far),
             Err(SpatialVendorizationError::NotOneN4Edge { .. })
@@ -419,5 +403,18 @@ mod pure_unit {
             reject_non_adjacent(a, a),
             Err(SpatialVendorizationError::NotOneN4Edge { .. })
         ));
+    }
+
+    #[test]
+    fn sealed_slot_need_not_equal_row_major_index() {
+        // Structural (1,0) with sealed_slot 777 — mapping is admitted, not formulaic.
+        let a = cell(50, 0, 0);
+        let c = cell(777, 1, 0);
+        let cells = [a, c];
+        let resolved = resolve_authoritative_cell(&cells, 777, 0).unwrap();
+        assert_eq!(resolved.grid_row, 1);
+        assert_eq!(resolved.grid_col, 0);
+        assert_ne!(resolved.sealed_slot, resolved.grid_row * 2 + resolved.grid_col);
+        assert_eq!(manhattan(a, c), 1);
     }
 }

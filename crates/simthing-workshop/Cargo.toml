@@ -12,6 +12,7 @@ serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 simthing-clausething = { path = "../simthing-clausething" }
 simthing-core = { path = "../simthing-core" }
+simthing-kernel = { path = "../simthing-kernel" }
 simthing-spec = { path = "../simthing-spec" }
 simthing-tools = { path = "../simthing-tools" }
 thiserror = { workspace = true }
@@ -23,7 +24,6 @@ naga = { version = "22.1", features = ["spv-out", "wgsl-in"] }
 tempfile = "3"
 simthing-driver = { path = "../simthing-driver", features = ["rf-test-harness"] }
 simthing-feeder = { path = "../simthing-feeder" }
-simthing-kernel = { path = "../simthing-kernel" }
 simthing-gpu = { path = "../simthing-gpu", features = ["eml-resource-profiling"] }
 simthing-mapeditor = { path = "../simthing-mapeditor" }
 simthing-sim = { path = "../simthing-sim" }

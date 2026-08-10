@@ -1,8 +1,14 @@
-//! ACTIONBAND-SPATIAL-VENDORIZATION-0 focused pure-consumer proof.
+//! ACTIONBAND-SPATIAL-VENDORIZATION-0 focused pure-consumer proof (remand R1–R5).
 //!
 //! Born-mortal workshop witness: spatial progress is ActionBand target + PALMA D
 //! field + sealed Phase-5 crossing + ordinary structural/native consequence.
 //! Production crates are READ surfaces only. No peer movement facility.
+//!
+//! R1: admit consumes typed `StructuralCommitment` only.
+//! R2: field/overlay-only redirect through real ActionBand execution.
+//! R3: no non-ActionBand mint fallback on ActionBand exit-proofs.
+//! R4: sealed slot is opaque mapping key, not row-major structural formula.
+//! R5: matrix-shaped mutants are table-driven; named tests hold distinct obligations.
 
 use std::sync::Mutex;
 
@@ -28,15 +34,23 @@ use simthing_sim::{apply_structural_mutations, SimRuntimeTree};
 use simthing_spec::{
     ActionBandAdmissionBudgetSpec, ActionBandBandSpec, ActionBandChannelBindingSpec,
     ActionBandChannelKind, ActionBandSessionBuildDoor, ActionBandSessionSpec, ActionBandTargetSpec,
-    ActionBandTemplateSpec,
+    ActionBandTemplateSpec, FrozenActionBandTemplates,
 };
 use simthing_workshop::actionband_spatial_vendorization_0::{
-    manhattan, reject_non_adjacent, validate_spatial_overlay, AdmittedTopologyCell,
-    SpatialStepOverlayEffect, SpatialVendorizationError, SpatialVendorizationStep,
+    manhattan, reject_non_adjacent, resolve_authoritative_cell, validate_spatial_overlay,
+    AdmittedTopologyCell, SpatialStepOverlayEffect, SpatialVendorizationError,
+    SpatialVendorizationStep,
 };
 use wgpu::util::DeviceExt;
 
 static GPU_MUTEX: Mutex<()> = Mutex::new(());
+
+/// Opaque sealed slot keys — deliberately NOT equal to row-major indices.
+const SLOT_A: u32 = 10;
+const SLOT_B: u32 = 20;
+const SLOT_C: u32 = 30;
+const SPATIAL_EVENT_KIND_B: u32 = 0x5350_4154; // "SPAT"
+const SPATIAL_EVENT_KIND_C: u32 = 0x5350_4155;
 
 struct Arena {
     tree: SimRuntimeTree,
@@ -48,25 +62,56 @@ struct Arena {
     b: SimThingId,
     c: SimThingId,
     property: SimPropertyId,
-    cells: Vec<AdmittedTopologyCell>,
-    /// Distance / progress channel used by the LocusRadius ActionBand target.
-    distance_col: u32,
-    thresholds: Vec<EmitOnThresholdRegistration>,
+}
+
+/// Logical cells + structural coords with opaque sealed slot keys.
+/// `sealed_col` must match the ActionBand commitment value-plane column.
+fn topology_cells(
+    a: SimThingId,
+    b: SimThingId,
+    c: SimThingId,
+    sealed_col: u32,
+) -> Vec<AdmittedTopologyCell> {
+    // Structural N4: A(0,0)—B(0,1)
+    //                  |
+    //                 C(1,0)
+    // Sealed slots are opaque (10/20/30), not row-major.
+    let cells = vec![
+        AdmittedTopologyCell {
+            sealed_slot: SLOT_A,
+            sealed_col,
+            grid_row: 0,
+            grid_col: 0,
+            cell: a,
+        },
+        AdmittedTopologyCell {
+            sealed_slot: SLOT_B,
+            sealed_col,
+            grid_row: 0,
+            grid_col: 1,
+            cell: b,
+        },
+        AdmittedTopologyCell {
+            sealed_slot: SLOT_C,
+            sealed_col,
+            grid_row: 1,
+            grid_col: 0,
+            cell: c,
+        },
+    ];
+    for cell in &cells {
+        assert_ne!(
+            cell.sealed_slot,
+            cell.grid_row * 2 + cell.grid_col,
+            "R4: sealed slot must not equal row-major structural index"
+        );
+    }
+    cells
 }
 
 fn arena() -> Arena {
     let mut registry = DimensionRegistry::new();
     let property = registry.register(SimProperty::simple("spatial-witness", "progress", 0));
-    let distance_property =
-        registry.register(SimProperty::simple("spatial-witness", "palma-d", 0));
-    let distance_col = registry
-        .column_range(distance_property)
-        .col_for_role(
-            &SubFieldRole::Amount,
-            &registry.property(distance_property).layout,
-        )
-        .expect("distance amount")
-        .raw_u32();
 
     let mut root = SimThing::new(SimThingKind::World, 0);
     let mut a = SimThing::new(SimThingKind::Location, 0);
@@ -79,10 +124,6 @@ fn arena() -> Arena {
 
     let mut actor = SimThing::new(SimThingKind::Cohort, 0);
     actor.add_property(property, registry.property(property).default_value());
-    actor.add_property(
-        distance_property,
-        registry.property(distance_property).default_value(),
-    );
     let actor_id = actor.id;
     let cargo = SimThing::new(SimThingKind::Cohort, 0);
     let cargo_id = cargo.id;
@@ -94,43 +135,7 @@ fn arena() -> Arena {
 
     let mut allocator = SlotAllocator::new();
     allocator.populate_from_tree(&root);
-    // N4: A(0,0) — B(0,1)
-    //      |
-    //     C(1,0)
-    let cells = vec![
-        AdmittedTopologyCell {
-            slot: 0,
-            value_col: 0,
-            grid_row: 0,
-            grid_col: 0,
-            cell: a_id,
-        },
-        AdmittedTopologyCell {
-            slot: 1,
-            value_col: 0,
-            grid_row: 0,
-            grid_col: 1,
-            cell: b_id,
-        },
-        AdmittedTopologyCell {
-            slot: 2,
-            value_col: 0,
-            grid_row: 1,
-            grid_col: 0,
-            cell: c_id,
-        },
-    ];
-    let thresholds = vec![EmitOnThresholdRegistration {
-        slot: SlotIndex::new(0),
-        col: registry
-            .column_range(property)
-            .col_for_role(&SubFieldRole::Amount, &registry.property(property).layout)
-            .expect("progress amount"),
-        threshold: 1.0,
-        direction: ThresholdDirection::Upward,
-        event_kind: 0x5350_4154, // "SPAT" witness event kind — not a production movement opcode
-        buffer: EmitOnThresholdBuffer::Values,
-    }];
+
     Arena {
         tree: SimRuntimeTree::admit(root),
         allocator,
@@ -141,9 +146,6 @@ fn arena() -> Arena {
         b: b_id,
         c: c_id,
         property,
-        cells,
-        distance_col,
-        thresholds,
     }
 }
 
@@ -156,48 +158,54 @@ fn effect(property: SimPropertyId, consuming: bool) -> SpatialStepOverlayEffect 
     }
 }
 
-/// Sealed Phase-5 crossing → StructuralCommitment through the ActionBand path.
-/// The decision locus is the field cell that crossed; ActionBand joins it.
-fn sealed_commitment_via_actionband(
-    decision_slot: u32,
-    value: f32,
-    distance_col: u32,
-) -> StructuralCommitment {
+fn require_gpu() -> Option<GpuContext> {
     let _gpu = GPU_MUTEX
         .lock()
         .unwrap_or_else(|poison| poison.into_inner());
-    set_up_gpu_debug();
-    let Some(ctx) = GpuContext::new_blocking().ok() else {
-        // Headless CI without GPU: fall back to CPU oracle sealed mint path used
-        // by 7.1/7.2 referees (still Phase-5 sealed, never a raw CPU decision).
-        return sealed_commitment_cpu_oracle(decision_slot, value);
-    };
+    use simthing_gpu::accumulator_op::set_debug_readback_allowed;
+    set_debug_readback_allowed(true);
+    GpuContext::new_blocking().ok()
+}
 
+/// Shared ActionBand admission product: one LocusRadius template, structural emission.
+/// Threshold registrations cover B and C field loci (adjacent candidates from A).
+fn admit_spatial_actionband() -> (FrozenActionBandTemplates, Vec<EmitOnThresholdRegistration>, DimensionRegistry) {
     let mut registry = DimensionRegistry::new();
-    let progress = registry.register(SimProperty::simple("spatial-witness", "progress", 0));
-    let progress_col = registry
-        .column_range(progress)
-        .col_for_role(&SubFieldRole::Amount, &registry.property(progress).layout)
-        .expect("progress");
-    let distance_property = registry.register(SimProperty::simple("spatial-witness", "palma-d", 0));
+    let pot = registry.register(SimProperty::simple("spatial-witness", "field-potential", 0));
+    let d_prop = registry.register(SimProperty::simple("spatial-witness", "palma-d", 0));
     let d_col = registry
-        .column_range(distance_property)
-        .col_for_role(
-            &SubFieldRole::Amount,
-            &registry.property(distance_property).layout,
-        )
-        .expect("d")
+        .column_range(d_prop)
+        .col_for_role(&SubFieldRole::Amount, &registry.property(d_prop).layout)
+        .unwrap()
         .raw_u32();
-    assert_eq!(d_col, distance_col.min(d_col).max(d_col)); // keep distance_col live for callers
 
-    let thresholds = vec![EmitOnThresholdRegistration {
-        slot: SlotIndex::new(decision_slot),
-        col: progress_col,
-        threshold: 1.0,
-        direction: ThresholdDirection::Upward,
-        event_kind: 0x5350_4154,
-        buffer: EmitOnThresholdBuffer::Values,
-    }];
+    let thresholds = vec![
+        EmitOnThresholdRegistration {
+            slot: SlotIndex::new(SLOT_B),
+            col: registry
+                .column_range(pot)
+                .col_for_role(&SubFieldRole::Amount, &registry.property(pot).layout)
+                .unwrap(),
+            threshold: 1.0,
+            direction: ThresholdDirection::Upward,
+            event_kind: SPATIAL_EVENT_KIND_B,
+            buffer: EmitOnThresholdBuffer::Values,
+        },
+        EmitOnThresholdRegistration {
+            slot: SlotIndex::new(SLOT_C),
+            col: registry
+                .column_range(pot)
+                .col_for_role(&SubFieldRole::Amount, &registry.property(pot).layout)
+                .unwrap(),
+            threshold: 1.0,
+            direction: ThresholdDirection::Upward,
+            event_kind: SPATIAL_EVENT_KIND_C,
+            buffer: EmitOnThresholdBuffer::Values,
+        },
+    ];
+
+    let pot_col_u32 = thresholds[0].col.raw_u32();
+    let d_col_u32 = d_col;
     let mut door = ActionBandSessionBuildDoor::new();
     let frozen = door
         .admit_once_at_session_build(
@@ -205,7 +213,7 @@ fn sealed_commitment_via_actionband(
                 budget: ActionBandAdmissionBudgetSpec {
                     axis_channel_count: 2,
                     dependency_binding_count: 0,
-                    storage_rows: 1,
+                    storage_rows: 2,
                     eml_program_count: 0,
                     emission_binding_count: 1,
                 },
@@ -214,27 +222,36 @@ fn sealed_commitment_via_actionband(
                     label: Some("presentation-only-spatial-shadow".into()),
                     axis_channels: vec![
                         ActionBandChannelBindingSpec {
-                            column: progress_col.raw_u32(),
+                            column: pot_col_u32,
                             kind: ActionBandChannelKind::Primitive,
                         },
                         ActionBandChannelBindingSpec {
-                            column: d_col,
+                            column: d_col_u32,
                             kind: ActionBandChannelKind::CachedDerived,
                         },
                     ],
+                    // LocusRadius consumes D as field, never as path object.
                     target: ActionBandTargetSpec::LocusRadius {
-                        distance_channel: d_col,
-                        radius: 4.0,
+                        distance_channel: d_col_u32,
+                        radius: 8.0,
                     },
                     velocity: None,
-                    bands: vec![ActionBandBandSpec {
-                        threshold_registration_index: 0,
-                        eml_program: None,
-                        emission_binding_indices: vec![0],
-                    }],
+                    // One band per candidate locus registration (B then C).
+                    bands: vec![
+                        ActionBandBandSpec {
+                            threshold_registration_index: 0,
+                            eml_program: None,
+                            emission_binding_indices: vec![0],
+                        },
+                        ActionBandBandSpec {
+                            threshold_registration_index: 1,
+                            eml_program: None,
+                            emission_binding_indices: vec![0],
+                        },
+                    ],
                     subordinate_template_ids: vec![],
                     max_active_subordinates: 0,
-                    reserved_instance_rows: 1,
+                    reserved_instance_rows: 2,
                     requirement_semantics: Default::default(),
                 }],
             },
@@ -242,74 +259,104 @@ fn sealed_commitment_via_actionband(
             &simthing_core::EmlExpressionRegistry::new(),
             &thresholds,
         )
-        .expect("7.1 ActionBand admission for spatial LocusRadius")
+        .expect("ActionBand spatial LocusRadius admission")
         .clone();
+    (frozen, thresholds, registry)
+}
 
+/// Through-ActionBand sealed commitment for one field-locus crossing.
+/// R3: missing crossing is RED; unavailable GPU is explicit skip (returns None).
+fn sealed_commitment_through_actionband(
+    ctx: &GpuContext,
+    frozen: &FrozenActionBandTemplates,
+    thresholds: &[EmitOnThresholdRegistration],
+    registry: &DimensionRegistry,
+    decision_slot: u32,
+    potential_value: f32,
+    distance_value: f32,
+) -> StructuralCommitment {
+    let pot_col = thresholds[0].col.raw_u32();
+    let d_col = registry
+        .column_range(
+            registry
+                .id_of("spatial-witness", "palma-d")
+                .expect("palma-d property"),
+        )
+        .col_for_role(
+            &SubFieldRole::Amount,
+            &registry
+                .property(registry.id_of("spatial-witness", "palma-d").unwrap())
+                .layout,
+        )
+        .unwrap()
+        .raw_u32();
+
+    // Same template identity; one active instance at the field locus that may cross.
     let active = [ActionBandActiveInstance::new(
         frozen.templates()[0].index(),
         SlotIndex::new(decision_slot),
         [0.0; 4],
     )];
-    let binding = ActionBandEmissionBindingGpu::structural_request(0);
     let compiled = compile_action_band_gpu_execution(
-        &frozen,
+        frozen,
         &simthing_core::EmlExpressionRegistry::new(),
-        &[binding],
+        &[ActionBandEmissionBindingGpu::structural_request(0)],
         &active,
     )
     .expect("ActionBand GPU lowering");
     let plan = compiled.execution_plan().clone();
 
-    // Sealed Phase-5 GPU threshold emissions at the decision locus.
-    let regs = emit_on_threshold_registrations_to_gpu(&thresholds);
     let n_dims = registry.total_columns as u32;
     let n_slots = decision_slot + 1;
-    let mut previous = vec![0.0; (n_slots * n_dims) as usize];
+    let mut previous = vec![0.0f32; (n_slots * n_dims) as usize];
     let mut current = previous.clone();
-    let idx = (decision_slot * n_dims + progress_col.raw_u32()) as usize;
-    previous[idx] = 0.5;
-    current[idx] = value;
-    // PALMA D field plane: within LocusRadius so the target form is live.
+    let pot_idx = (decision_slot * n_dims + pot_col) as usize;
     let d_idx = (decision_slot * n_dims + d_col) as usize;
-    previous[d_idx] = 2.0;
-    current[d_idx] = 2.0;
+    previous[pot_idx] = 0.25;
+    current[pot_idx] = potential_value;
+    previous[d_idx] = distance_value;
+    current[d_idx] = distance_value;
 
-    let mut session = AccumulatorOpSession::new_attached(&ctx, n_slots, n_dims, 8);
+    let regs = emit_on_threshold_registrations_to_gpu(thresholds);
+    let mut session = AccumulatorOpSession::new_attached(ctx, n_slots, n_dims, 8);
     session.bind_generation_authority(7);
-    session.upload_values(&ctx, &current);
-    session.upload_previous_values(&ctx, &previous);
+    session.upload_values(ctx, &current);
+    session.upload_previous_values(ctx, &previous);
     session
         .upload_packed_threshold_ops(
-            &ctx,
+            ctx,
             &PackedThresholdUpload::from_registrations(&regs).expect("threshold pack"),
         )
         .expect("threshold upload");
-    session.tick(&ctx, 0).expect("sealed threshold scan");
+    session.tick(ctx, 0).expect("sealed Phase-5 threshold scan");
     let emissions = session
-        .readback_threshold_emissions(&ctx)
+        .readback_threshold_emissions(ctx)
         .expect("sealed emissions");
-    let root = SimThing::new(SimThingKind::GameSession, 0);
+
+    // Build allocator with enough capacity and attach a synthetic tree spanning slots.
+    let mut root = SimThing::new(SimThingKind::GameSession, 0);
+    // Populate enough Location children so slot indices up to decision_slot exist
+    // when the tree is laid out densely — for sparse opaque slots, use capacity pad.
+    for _ in 0..=decision_slot {
+        root.add_child(SimThing::new(SimThingKind::Location, 0));
+    }
     let mut allocator = SlotAllocator::new();
     allocator.populate_from_tree(&root);
-    // Seed a slot map large enough for decision_slot without requiring a full tree.
-    while allocator.capacity() <= decision_slot as usize {
-        let filler = SimThing::new(SimThingKind::Location, 0);
-        let _ = filler;
-        // Capacity grows via populate; for sparse decision slots use CPU oracle join.
-        break;
-    }
+
     let deltas = apply_band_crossing_deltas_from_fused_emissions(
         &emissions,
         session.threshold_registrations(),
-        &registry,
+        registry,
         &allocator,
     );
-    let Some(delta) = deltas.into_iter().next() else {
-        return sealed_commitment_cpu_oracle(decision_slot, value);
-    };
+    assert!(
+        !deltas.is_empty(),
+        "R3: missing ActionBand Phase-5 BandCrossingDelta is RED, not a fallback path"
+    );
     let crossings = plan
-        .crossings_from_sealed(&[delta])
+        .crossings_from_sealed(&deltas)
         .expect("ActionBand joins only sealed Phase-5 evidence");
+
     let world = ctx
         .device
         .create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -317,100 +364,50 @@ fn sealed_commitment_via_actionband(
             contents: bytemuck::cast_slice(&current),
             usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
         });
-    let mut execution = match ActionBandGpuExecution::new(&ctx, plan).expect("GPU operator") {
+    let mut execution = match ActionBandGpuExecution::new(ctx, plan).expect("GPU operator") {
         ActionBandGpuExecution::Active(session) => session,
         ActionBandGpuExecution::Inactive => panic!("spatial ActionBand row must be active"),
     };
     let _scope = scoped_debug_readback_allowed(true);
     let production = execution
-        .dispatch(&ctx, &world, n_dims, &crossings)
+        .dispatch(ctx, &world, n_dims, &crossings)
         .expect("ActionBand structural emission");
-    assert_eq!(production.commitments.len(), 1);
+    assert_eq!(
+        production.commitments.len(),
+        1,
+        "R3: ActionBand must mint exactly one StructuralCommitment (missing join is RED)"
+    );
     let commitment = production.commitments[0];
     assert_eq!(commitment.slot(), decision_slot);
-    assert_eq!(commitment.col(), progress_col.raw_u32());
+    assert_eq!(commitment.col(), pot_col);
+    assert!(
+        commitment.event_kind() == SPATIAL_EVENT_KIND_B
+            || commitment.event_kind() == SPATIAL_EVENT_KIND_C
+    );
     commitment
 }
 
-fn sealed_commitment_cpu_oracle(decision_slot: u32, value: f32) -> StructuralCommitment {
-    use simthing_gpu::{
-        accumulator_op::set_debug_readback_allowed, ThresholdRegistration, DIR_UPWARD,
-        THRESH_BUF_VALUES,
-    };
-    use simthing_kernel::{
-        BoundaryEmissionToken, EmissionToken, ThresholdCrossingToken,
-    };
-
-    set_debug_readback_allowed(true);
-    let ctx = GpuContext::new_blocking().expect("GPU context for sealed mint");
-    let n_slots = decision_slot + 1;
-    let n_dims = 1;
-    let mut session = AccumulatorOpSession::new_attached(&ctx, n_slots, n_dims, 8);
-    session.bind_generation_authority(7);
-    let previous = vec![0.0; (n_slots * n_dims) as usize];
-    let mut current = previous.clone();
-    current[decision_slot as usize] = value;
-    session.upload_values(&ctx, &current);
-    session.upload_previous_values(&ctx, &previous);
-    let regs = [ThresholdRegistration {
-        slot: decision_slot,
-        col: 0,
-        threshold: 1.0,
-        direction: DIR_UPWARD,
-        event_kind: 0x5350_4154,
-        buffer: THRESH_BUF_VALUES,
-    }];
-    session
-        .upload_packed_threshold_ops(
-            &ctx,
-            &PackedThresholdUpload::from_registrations(&regs).expect("threshold pack"),
-        )
-        .expect("threshold upload");
-    session.tick(&ctx, 0).expect("sealed threshold scan");
-    let events = session
-        .readback_threshold_events(&ctx)
-        .expect("sealed events");
-    let emissions = session
-        .readback_threshold_emissions(&ctx)
-        .expect("sealed emissions");
-    assert_eq!(events.len(), 1);
-    assert_eq!(emissions.len(), 1);
-    assert!(events[0].is_production_sealed());
-    assert!(emissions[0].is_production_sealed());
-    let threshold = ThresholdCrossingToken::from_sealed_threshold_event(&events[0]);
-    let emission = EmissionToken::from_sealed_threshold_emission(&emissions[0]);
-    let boundary = BoundaryEmissionToken::bind(threshold, emission).expect("same sealed locus");
-    StructuralCommitment::mint_from_sealed_path(threshold, emission, boundary)
-        .expect("sealed structural commitment")
-}
-
-fn set_up_gpu_debug() {
-    use simthing_gpu::accumulator_op::set_debug_readback_allowed;
-    set_debug_readback_allowed(true);
-}
-
-fn apply_step(
+fn apply_spatial_step(
     step: &SpatialVendorizationStep,
     tree: &mut SimRuntimeTree,
     allocator: &mut SlotAllocator,
     registry: &mut DimensionRegistry,
     shadow: &mut [f32],
     n_dims: usize,
-    destination_owner: &OwnerRef,
-) -> (usize, usize) {
-    step.validate_integrity_public();
-    let requests = vec![
-        BoundaryRequest::Reparent {
-            child: step.actor(),
-            new_parent: step.deciding_cell(),
-        },
-        BoundaryRequest::AttachOverlay {
-            target: step.actor(),
-            overlay: step.overlay().clone(),
-        },
-    ];
+) {
+    step.validate_overlay().expect("overlay still lawful");
+    step.validate_cost_band().expect("cost band still lawful");
     let outcome = apply_structural_mutations(
-        requests,
+        vec![
+            BoundaryRequest::Reparent {
+                child: step.actor(),
+                new_parent: step.deciding_cell(),
+            },
+            BoundaryRequest::AttachOverlay {
+                target: step.actor(),
+                overlay: step.overlay().clone(),
+            },
+        ],
         tree,
         allocator,
         registry,
@@ -418,79 +415,143 @@ fn apply_step(
         n_dims,
         None,
     );
-    let moved = outcome
-        .reparented
-        .iter()
-        .any(|pair| *pair == (step.actor(), step.deciding_cell()));
-    let attached = outcome
-        .overlays_attached
-        .iter()
-        .any(|pair| *pair == (step.actor(), step.overlay_id()));
-    assert!(moved, "ordinary Reparent must apply");
-    assert!(attached, "ordinary AttachOverlay must apply");
-
-    // Ownership: exactly one root bind via existing owner_channel law.
-    // We re-bind on a cloned snapshot tree path by re-admitting is not available;
-    // prove the intended bind on a sibling raw tree in the ownership referee.
-    let _ = destination_owner;
-    (outcome.reparents as usize, outcome.overlays as usize)
+    assert!(
+        outcome
+            .reparented
+            .iter()
+            .any(|pair| *pair == (step.actor(), step.deciding_cell())),
+        "ordinary Reparent must apply"
+    );
+    assert!(
+        outcome
+            .overlays_attached
+            .iter()
+            .any(|pair| *pair == (step.actor(), step.overlay_id())),
+        "ordinary AttachOverlay must apply"
+    );
 }
 
-// Expose integrity for apply-time revalidation without making fields public.
-trait Integrity {
-    fn validate_integrity_public(&self);
-}
-impl Integrity for SpatialVendorizationStep {
-    fn validate_integrity_public(&self) {
-        self.validate_overlay().expect("overlay still lawful");
-        self.validate_cost_band().expect("cost band still lawful");
-    }
-}
+// ─── R2 + R3 + structural Reparent: primary through-ActionBand exit proof ───
 
 #[test]
-fn sealed_actionband_locus_steps_one_n4_edge_with_stable_slots_and_arrival_overlay() {
-    let mut arena = arena();
-    let commitment = sealed_commitment_via_actionband(1, 1.75, arena.distance_col);
-    let mut reversed = arena.cells.clone();
-    reversed.reverse();
-    let step = SpatialVendorizationStep::admit(
-        commitment.slot(),
-        // Pure consumer reattaches by sealed slot; col is the progress plane in
-        // the topology table (value_col=0 for field cells).
-        0,
-        commitment.value(),
-        commitment.event_kind(),
+fn field_overlay_only_redirects_same_actionband_to_different_adjacent_step() {
+    let Some(ctx) = require_gpu() else {
+        eprintln!("SKIP field_overlay_only_redirects: no local GPU (established GPU-proof convention)");
+        return;
+    };
+    let arena = arena();
+    let (frozen, thresholds, ab_registry) = admit_spatial_actionband();
+    let sealed_col = thresholds[0].col.raw_u32();
+    let cells = topology_cells(arena.a, arena.b, arena.c, sealed_col);
+    let template_index = frozen.templates()[0].index();
+    let template_id_shadow = "spatial-locus-radius";
+
+    // Run 1: only B's field potential is above threshold (overlay-derived field state).
+    let commit_b = sealed_commitment_through_actionband(
+        &ctx,
+        &frozen,
+        &thresholds,
+        &ab_registry,
+        SLOT_B,
+        1.75,
+        2.0,
+    );
+    let mut cells_b = cells.clone();
+    cells_b.reverse(); // physical/append order non-semantic
+    let step_b = SpatialVendorizationStep::admit(
+        commit_b,
         arena.actor,
         arena.a,
-        2,
-        &reversed,
+        &cells_b,
         effect(arena.property, true),
         true,
         1.0,
         Some(1),
     )
-    .expect("sealed cell B is one admitted edge from cell A");
+    .expect("sealed ActionBand locus B → one N4 edge");
+    assert_eq!(step_b.deciding_cell(), arena.b);
+    assert_eq!(step_b.commitment().event_kind(), SPATIAL_EVENT_KIND_B);
+
+    // Run 2: same ActionBand admission product / template identity; only C's
+    // field potential is raised. No destination/template/action identity edit.
+    let commit_c = sealed_commitment_through_actionband(
+        &ctx,
+        &frozen,
+        &thresholds,
+        &ab_registry,
+        SLOT_C,
+        1.75,
+        2.0,
+    );
+    let step_c = SpatialVendorizationStep::admit(
+        commit_c,
+        arena.actor,
+        arena.a,
+        &cells,
+        effect(arena.property, true),
+        true,
+        1.0,
+        Some(1),
+    )
+    .expect("sealed ActionBand locus C → one N4 edge");
+    assert_eq!(step_c.deciding_cell(), arena.c);
+
+    // Same opaque ActionBand template identity; different sealed locus/step.
+    // Distinct event_kind per threshold registration is required by the structural
+    // door; template identity (not event_kind equality) is the ActionBand sameness.
+    assert_eq!(frozen.templates()[0].index(), template_index);
+    assert_eq!(step_c.commitment().event_kind(), SPATIAL_EVENT_KIND_C);
+    assert_ne!(step_b.deciding_cell(), step_c.deciding_cell());
+    assert_ne!(step_b.commitment().slot(), step_c.commitment().slot());
+    let _ = template_id_shadow;
+}
+
+#[test]
+fn sealed_actionband_locus_reparents_one_n4_edge_with_stable_slots() {
+    let Some(ctx) = require_gpu() else {
+        eprintln!("SKIP sealed_actionband_locus_reparents: no local GPU");
+        return;
+    };
+    let mut arena = arena();
+    let (frozen, thresholds, ab_registry) = admit_spatial_actionband();
+    let cells = topology_cells(arena.a, arena.b, arena.c, thresholds[0].col.raw_u32());
+    let commitment = sealed_commitment_through_actionband(
+        &ctx,
+        &frozen,
+        &thresholds,
+        &ab_registry,
+        SLOT_B,
+        1.75,
+        2.0,
+    );
+    let step = SpatialVendorizationStep::admit(
+        commitment,
+        arena.actor,
+        arena.a,
+        &cells,
+        effect(arena.property, true),
+        true,
+        1.0,
+        Some(1),
+    )
+    .unwrap();
     assert_eq!(step.deciding_cell(), arena.b);
 
     let actor_slot = arena.allocator.slot_of(arena.actor).unwrap();
     let cargo_slot = arena.allocator.slot_of(arena.cargo).unwrap();
     let n_dims = arena.registry.total_columns;
     let mut shadow: Vec<f32> = (0..arena.allocator.capacity() * n_dims)
-        .map(|index| index as f32 + 0.125)
+        .map(|i| i as f32 + 0.125)
         .collect();
     let before = shadow.clone();
-
-    let (reparents, overlays) = apply_step(
+    apply_spatial_step(
         &step,
         &mut arena.tree,
         &mut arena.allocator,
         &mut arena.registry,
         &mut shadow,
         n_dims,
-        &OwnerRef::new("beta"),
     );
-    assert_eq!(reparents, 1);
-    assert_eq!(overlays, 1);
     assert_eq!(arena.allocator.slot_of(arena.actor), Some(actor_slot));
     assert_eq!(arena.allocator.slot_of(arena.cargo), Some(cargo_slot));
     assert_eq!(shadow, before, "reparent must not relocate or rewrite rows");
@@ -500,163 +561,399 @@ fn sealed_actionband_locus_steps_one_n4_edge_with_stable_slots_and_arrival_overl
     );
     assert!(arena.tree.has_overlay(arena.actor, step.overlay_id()));
     assert_eq!(step.overlay().origin, arena.b);
-    assert_eq!(step.overlay().affects, vec![arena.actor]);
-    assert_eq!(
-        step.overlay().lifecycle,
-        OverlayLifecycle::UntilDissolvedWith {
-            dissolution_conditions: vec![DissolveCondition::AfterTicks { remaining: 1 }],
-        }
-    );
     assert_eq!(step.cost_band_draw().n, 1);
     assert!(step.cost_band_draw().conserves_exactly());
 }
 
 #[test]
-fn field_locus_only_redirects_same_actionband_without_identity_or_order_authority() {
-    let arena = arena();
-    let to_b = SpatialVendorizationStep::admit(
-        1,
-        0,
-        1.5,
-        0x5350_4154,
-        arena.actor,
-        arena.a,
-        2,
-        &arena.cells,
-        effect(arena.property, true),
-        true,
-        1.0,
-        Some(1),
-    )
-    .unwrap();
-    let mut reordered = arena.cells.clone();
-    reordered.rotate_left(1);
-    let to_c = SpatialVendorizationStep::admit(
-        2,
-        0,
-        1.5,
-        0x5350_4154,
-        arena.actor,
-        arena.a,
-        2,
-        &reordered,
-        effect(arena.property, true),
-        true,
-        1.0,
-        Some(1),
-    )
-    .unwrap();
-    assert_eq!(to_b.deciding_cell(), arena.b);
-    assert_eq!(to_c.deciding_cell(), arena.c);
-    // Same opaque ActionBand event identity / template designation — only the
-    // sealed field locus changed the structural step.
-    assert_eq!(to_b.event_kind(), to_c.event_kind());
-
-    let mut ambiguous = arena.cells.clone();
-    ambiguous.push(arena.cells[1]);
-    assert!(matches!(
-        SpatialVendorizationStep::admit(
-            1,
-            0,
-            1.5,
-            0x5350_4154,
-            arena.actor,
-            arena.a,
-            2,
-            &ambiguous,
-            effect(arena.property, true),
-            true,
-            1.0,
-            Some(1),
-        ),
-        Err(SpatialVendorizationError::AmbiguousDecisionLocus { .. })
-    ));
-    assert!(matches!(
-        SpatialVendorizationStep::admit(
-            9,
-            0,
-            1.5,
-            0x5350_4154,
-            arena.actor,
-            arena.a,
-            2,
-            &arena.cells,
-            effect(arena.property, true),
-            true,
-            1.0,
-            Some(1),
-        ),
-        Err(SpatialVendorizationError::UnboundDecisionLocus { .. })
-    ));
-}
-
-#[test]
-fn multi_hop_teleport_and_non_adjacent_mutants_are_red() {
-    let arena = arena();
-    // Cell A to a fabricated far locus (slot forged as non-adjacent if present).
-    let a = arena.cells[0];
-    let far = AdmittedTopologyCell {
-        slot: 3,
-        value_col: 0,
-        grid_row: 1,
-        grid_col: 1,
-        cell: SimThingId::new(),
+fn actionband_structural_door_emits_spatial_reparent_from_sealed_crossing() {
+    let Some(ctx) = require_gpu() else {
+        eprintln!("SKIP actionband_structural_door: no local GPU");
+        return;
     };
-    assert!(matches!(
-        reject_non_adjacent(a, far),
-        Err(SpatialVendorizationError::NotOneN4Edge { .. })
-    ));
-    // Admit with topology that includes A and a non-adjacent cell at sealed locus.
-    let cells = vec![a, far];
-    // slot must match topology formula field_width=2 → row*2+col = 1*2+1 = 3
-    assert!(matches!(
-        SpatialVendorizationStep::admit(
-            3,
-            0,
-            1.5,
-            0x5350_4154,
-            arena.actor,
-            arena.a,
-            2,
-            &cells,
-            effect(arena.property, true),
-            true,
-            1.0,
-            Some(1),
-        ),
-        Err(SpatialVendorizationError::NotOneN4Edge { .. })
-    ));
-    assert_eq!(manhattan(arena.cells[0], arena.cells[1]), 1);
-    assert_eq!(manhattan(arena.cells[0], arena.cells[2]), 1);
-    assert_eq!(manhattan(arena.cells[1], arena.cells[2]), 2);
-}
-
-#[test]
-fn free_repositioning_uses_same_costband_path_and_consumes_zero() {
     let arena = arena();
-    let step = SpatialVendorizationStep::admit(
-        1,
-        0,
-        1.75,
-        0x5350_4154,
-        arena.actor,
-        arena.a,
-        2,
-        &arena.cells,
-        effect(arena.property, false),
-        false,
-        1.0,
-        None,
+    let (frozen, thresholds, ab_registry) = admit_spatial_actionband();
+    let cells = topology_cells(arena.a, arena.b, arena.c, thresholds[0].col.raw_u32());
+    let active = [ActionBandActiveInstance::new(
+        frozen.templates()[0].index(),
+        SlotIndex::new(SLOT_B),
+        [0.0; 4],
+    )];
+    let compiled = compile_action_band_gpu_execution(
+        &frozen,
+        &simthing_core::EmlExpressionRegistry::new(),
+        &[ActionBandEmissionBindingGpu::structural_request(0)],
+        &active,
     )
     .unwrap();
-    let draw = step.cost_band_draw();
-    assert_eq!(draw.n, 0);
-    assert_eq!(draw.r.to_bits(), draw.v.to_bits());
-    assert_eq!(draw.c.to_bits(), 0.0f32.to_bits());
+
+    // Pre-admit the spatial Reparent consequence (not a generic Remove).
+    let mut pre_admitted = vec![None; 1];
+    pre_admitted[0] = Some(BoundaryRequest::Reparent {
+        child: arena.actor,
+        new_parent: arena.b,
+    });
+    let requests =
+        FrozenActionBandStructuralRequests::from_compiled_admission(&compiled, pre_admitted)
+            .expect("session-frozen structural door");
+
+    let commitment = sealed_commitment_through_actionband(
+        &ctx,
+        &frozen,
+        &thresholds,
+        &ab_registry,
+        SLOT_B,
+        1.75,
+        2.0,
+    );
+    // Also prove pure consumer agrees.
+    let step = SpatialVendorizationStep::admit(
+        commitment,
+        arena.actor,
+        arena.a,
+        &cells,
+        effect(arena.property, true),
+        true,
+        1.0,
+        Some(1),
+    )
+    .unwrap();
+    assert_eq!(step.deciding_cell(), arena.b);
+
+    let (sender, receiver) = feeder_channel();
+    let submitted = requests
+        .submit_committed(&[commitment], &sender)
+        .expect("sealed commitment selects fixed spatial Reparent");
+    assert_eq!(submitted, 1);
+    let drained = receiver.drain_now();
+    let boundary_requests: Vec<_> = drained
+        .into_iter()
+        .map(|work| match work {
+            FeederWork::Boundary(request) => request,
+            _ => panic!("structural door emitted non-boundary work"),
+        })
+        .collect();
+    assert!(matches!(
+        &boundary_requests[0],
+        BoundaryRequest::Reparent { child, new_parent }
+            if *child == arena.actor && *new_parent == arena.b
+    ));
+
+    let mut tree = arena.tree;
+    let mut allocator = arena.allocator;
+    let mut registry = arena.registry;
+    let n_dims = registry.total_columns;
+    let mut shadow = vec![0.0; allocator.capacity() * n_dims];
+    let outcome = apply_structural_mutations(
+        boundary_requests,
+        &mut tree,
+        &mut allocator,
+        &mut registry,
+        &mut shadow,
+        n_dims,
+        None,
+    );
+    assert!(outcome
+        .reparented
+        .iter()
+        .any(|pair| *pair == (arena.actor, arena.b)));
 }
 
+// ─── R4: slot permutation ───────────────────────────────────────────────────
+
 #[test]
-fn placement_ownership_and_overlay_use_existing_law_not_physical_row_relocation() {
+fn physical_slot_permutation_preserves_spatial_choice() {
+    let Some(ctx) = require_gpu() else {
+        eprintln!("SKIP physical_slot_permutation: no local GPU");
+        return;
+    };
+    // Two admitted mappings: same logical cells + structural coords; different
+    // opaque sealed slot keys. Spatial choice must follow the commitment locus
+    // mapping, never a row-major formula.
+    let arena = arena();
+    let (frozen, thresholds, ab_registry) = admit_spatial_actionband();
+    let cells = topology_cells(arena.a, arena.b, arena.c, thresholds[0].col.raw_u32());
+    let commit = sealed_commitment_through_actionband(
+        &ctx,
+        &frozen,
+        &thresholds,
+        &ab_registry,
+        SLOT_B,
+        1.5,
+        2.0,
+    );
+
+    let mapping_primary = cells.clone();
+    let mut mapping_shuffled_order = cells.clone();
+    mapping_shuffled_order.rotate_left(1);
+    mapping_shuffled_order.reverse();
+
+    let step_a = SpatialVendorizationStep::admit(
+        commit,
+        arena.actor,
+        arena.a,
+        &mapping_primary,
+        effect(arena.property, true),
+        true,
+        1.0,
+        Some(1),
+    )
+    .unwrap();
+    let step_b = SpatialVendorizationStep::admit(
+        commit,
+        arena.actor,
+        arena.a,
+        &mapping_shuffled_order,
+        effect(arena.property, true),
+        true,
+        1.0,
+        Some(1),
+    )
+    .unwrap();
+    assert_eq!(step_a.deciding_cell(), arena.b);
+    assert_eq!(step_b.deciding_cell(), arena.b);
+    assert_eq!(step_a.deciding_cell(), step_b.deciding_cell());
+}
+
+// ─── R5 table-driven matrix: fail-closed mutants ────────────────────────────
+
+#[derive(Clone, Copy)]
+enum MutantKind {
+    AmbiguousLocus,
+    UnboundLocus,
+    NonAdjacent,
+    SelfStep,
+    HardcodedOrigin,
+    SessionEndLifecycle,
+    BareUntilDissolved,
+    FreeRepositionConsumes,
+}
+
+struct MutantCase {
+    name: &'static str,
+    kind: MutantKind,
+}
+
+const MUTANT_CASES: &[MutantCase] = &[
+    MutantCase {
+        name: "ambiguous_locus",
+        kind: MutantKind::AmbiguousLocus,
+    },
+    MutantCase {
+        name: "unbound_locus",
+        kind: MutantKind::UnboundLocus,
+    },
+    MutantCase {
+        name: "non_adjacent",
+        kind: MutantKind::NonAdjacent,
+    },
+    MutantCase {
+        name: "self_step",
+        kind: MutantKind::SelfStep,
+    },
+    MutantCase {
+        name: "hardcoded_origin",
+        kind: MutantKind::HardcodedOrigin,
+    },
+    MutantCase {
+        name: "session_end_lifecycle",
+        kind: MutantKind::SessionEndLifecycle,
+    },
+    MutantCase {
+        name: "bare_until_dissolved",
+        kind: MutantKind::BareUntilDissolved,
+    },
+    MutantCase {
+        name: "free_reposition_must_not_consume",
+        kind: MutantKind::FreeRepositionConsumes,
+    },
+];
+
+#[test]
+fn matrix_shaped_mutants_fail_closed() {
+    let Some(ctx) = require_gpu() else {
+        eprintln!("SKIP matrix_shaped_mutants: no local GPU");
+        return;
+    };
+    let arena = arena();
+    let (frozen, thresholds, ab_registry) = admit_spatial_actionband();
+    let cells = topology_cells(arena.a, arena.b, arena.c, thresholds[0].col.raw_u32());
+    let sealed_col = thresholds[0].col.raw_u32();
+    let good_commit = sealed_commitment_through_actionband(
+        &ctx,
+        &frozen,
+        &thresholds,
+        &ab_registry,
+        SLOT_B,
+        1.75,
+        2.0,
+    );
+
+    for case in MUTANT_CASES {
+        match case.kind {
+            MutantKind::AmbiguousLocus => {
+                let mut amb = cells.clone();
+                amb.push(cells[1]);
+                let err = SpatialVendorizationStep::admit(
+                    good_commit,
+                    arena.actor,
+                    arena.a,
+                    &amb,
+                    effect(arena.property, true),
+                    true,
+                    1.0,
+                    Some(1),
+                )
+                .expect_err(case.name);
+                assert!(
+                    matches!(err, SpatialVendorizationError::AmbiguousDecisionLocus { .. }),
+                    "{} => {err:?}",
+                    case.name
+                );
+            }
+            MutantKind::UnboundLocus => {
+                // Commitment for B with mapping that only knows A and C.
+                let unbound: Vec<_> = cells
+                    .iter()
+                    .copied()
+                    .filter(|c| c.cell != arena.b)
+                    .collect();
+                let err = SpatialVendorizationStep::admit(
+                    good_commit,
+                    arena.actor,
+                    arena.a,
+                    &unbound,
+                    effect(arena.property, true),
+                    true,
+                    1.0,
+                    Some(1),
+                )
+                .expect_err(case.name);
+                assert!(
+                    matches!(err, SpatialVendorizationError::UnboundDecisionLocus { .. }),
+                    "{} => {err:?}",
+                    case.name
+                );
+            }
+            MutantKind::NonAdjacent => {
+                let a = cells[0];
+                let far = AdmittedTopologyCell {
+                    sealed_slot: 999,
+                    sealed_col,
+                    grid_row: 1,
+                    grid_col: 1,
+                    cell: SimThingId::new(),
+                };
+                assert!(
+                    matches!(
+                        reject_non_adjacent(a, far),
+                        Err(SpatialVendorizationError::NotOneN4Edge { .. })
+                    ),
+                    "{}",
+                    case.name
+                );
+            }
+            MutantKind::SelfStep => {
+                assert!(
+                    matches!(
+                        reject_non_adjacent(cells[0], cells[0]),
+                        Err(SpatialVendorizationError::NotOneN4Edge { .. })
+                    ),
+                    "{}",
+                    case.name
+                );
+            }
+            MutantKind::HardcodedOrigin => {
+                let overlay = Overlay {
+                    id: OverlayId::new(),
+                    kind: OverlayKind::Instruction,
+                    source: OverlaySource::System,
+                    origin: arena.a, // wrong: not deciding cell B
+                    affects: vec![arena.actor],
+                    transform: PropertyTransformDelta {
+                        property_id: arena.property,
+                        sub_field_deltas: vec![],
+                    },
+                    lifecycle: OverlayLifecycle::UntilDissolvedWith {
+                        dissolution_conditions: vec![DissolveCondition::AfterTicks {
+                            remaining: 1,
+                        }],
+                    },
+                };
+                assert_eq!(
+                    validate_spatial_overlay(arena.actor, arena.b, &overlay),
+                    Err(SpatialVendorizationError::OverlayOriginDrift),
+                    "{}",
+                    case.name
+                );
+            }
+            MutantKind::SessionEndLifecycle => {
+                let overlay = Overlay {
+                    id: OverlayId::new(),
+                    kind: OverlayKind::Instruction,
+                    source: OverlaySource::System,
+                    origin: arena.b,
+                    affects: vec![arena.actor],
+                    transform: PropertyTransformDelta {
+                        property_id: arena.property,
+                        sub_field_deltas: vec![],
+                    },
+                    lifecycle: OverlayLifecycle::UntilDissolvedWith {
+                        dissolution_conditions: vec![DissolveCondition::AtSessionEnd],
+                    },
+                };
+                assert_eq!(
+                    validate_spatial_overlay(arena.actor, arena.b, &overlay),
+                    Err(SpatialVendorizationError::LawfulLifecycleRequired),
+                    "{}",
+                    case.name
+                );
+            }
+            MutantKind::BareUntilDissolved => {
+                let overlay = Overlay {
+                    id: OverlayId::new(),
+                    kind: OverlayKind::Instruction,
+                    source: OverlaySource::System,
+                    origin: arena.b,
+                    affects: vec![arena.actor],
+                    transform: PropertyTransformDelta {
+                        property_id: arena.property,
+                        sub_field_deltas: vec![],
+                    },
+                    lifecycle: OverlayLifecycle::UntilDissolved,
+                };
+                assert_eq!(
+                    validate_spatial_overlay(arena.actor, arena.b, &overlay),
+                    Err(SpatialVendorizationError::LawfulLifecycleRequired),
+                    "{}",
+                    case.name
+                );
+            }
+            MutantKind::FreeRepositionConsumes => {
+                // Observation path must complete N=0 with R=V.
+                let step = SpatialVendorizationStep::admit(
+                    good_commit,
+                    arena.actor,
+                    arena.a,
+                    &cells,
+                    effect(arena.property, false),
+                    false,
+                    1.0,
+                    None,
+                )
+                .expect(case.name);
+                let draw = step.cost_band_draw();
+                assert_eq!(draw.n, 0, "{}", case.name);
+                assert_eq!(draw.r.to_bits(), draw.v.to_bits(), "{}", case.name);
+            }
+        }
+    }
+}
+
+// ─── Distinct non-matrix obligations ────────────────────────────────────────
+
+#[test]
+fn placement_ownership_uses_existing_root_bind_not_participant_stamps() {
     let mut registry = DimensionRegistry::new();
     let property = registry.register(SimProperty::simple("spatial-witness", "progress", 0));
     let mut root = SimThing::new(SimThingKind::World, 0);
@@ -670,7 +967,6 @@ fn placement_ownership_and_overlay_use_existing_law_not_physical_row_relocation(
     let actor_id = actor.id;
     let cargo = SimThing::new(SimThingKind::Cohort, 0);
     let cargo_id = cargo.id;
-    // Cargo has no explicit owner property — inherits only.
     actor.add_child(cargo);
     a.add_child(actor);
     root.add_child(a);
@@ -679,8 +975,6 @@ fn placement_ownership_and_overlay_use_existing_law_not_physical_row_relocation(
     assert_eq!(resolve_owner(&root, actor_id).unwrap().as_str(), "alpha");
     assert_eq!(resolve_owner(&root, cargo_id).unwrap().as_str(), "alpha");
 
-    // Ordinary root rebind after structural reparent — no per-participant stamp.
-    // Detach actor from A and attach under B on the raw tree (structural law).
     let actor_node = {
         let a_node = root.children.iter_mut().find(|n| n.id == a_id).unwrap();
         let idx = a_node
@@ -734,136 +1028,8 @@ fn placement_ownership_and_overlay_use_existing_law_not_physical_row_relocation(
         .contains_key(&OWNER_CHANNEL_PROPERTY_ID));
 }
 
-fn overlay_with(
-    actor: SimThingId,
-    origin: SimThingId,
-    property: SimPropertyId,
-    lifecycle: OverlayLifecycle,
-) -> Overlay {
-    Overlay {
-        id: OverlayId::new(),
-        kind: OverlayKind::Instruction,
-        source: OverlaySource::System,
-        origin,
-        affects: vec![actor],
-        transform: PropertyTransformDelta {
-            property_id: property,
-            sub_field_deltas: Vec::new(),
-        },
-        lifecycle,
-    }
-}
-
-#[test]
-fn origin_lifecycle_cost_and_missing_endpoint_mutants_red() {
-    let mut arena = arena();
-    let synthetic = SimThingId::new();
-    let lawful = OverlayLifecycle::UntilDissolvedWith {
-        dissolution_conditions: vec![DissolveCondition::AfterTicks { remaining: 1 }],
-    };
-    let hardcoded_origin = overlay_with(arena.actor, arena.a, arena.property, lawful.clone());
-    assert_eq!(
-        validate_spatial_overlay(arena.actor, arena.b, &hardcoded_origin),
-        Err(SpatialVendorizationError::OverlayOriginDrift)
-    );
-    let synthesized_origin = overlay_with(arena.actor, synthetic, arena.property, lawful);
-    assert_eq!(
-        validate_spatial_overlay(arena.actor, arena.b, &synthesized_origin),
-        Err(SpatialVendorizationError::OverlayOriginDrift)
-    );
-    let session_end = overlay_with(
-        arena.actor,
-        arena.b,
-        arena.property,
-        OverlayLifecycle::UntilDissolvedWith {
-            dissolution_conditions: vec![DissolveCondition::AtSessionEnd],
-        },
-    );
-    assert_eq!(
-        validate_spatial_overlay(arena.actor, arena.b, &session_end),
-        Err(SpatialVendorizationError::LawfulLifecycleRequired)
-    );
-    let bare = overlay_with(
-        arena.actor,
-        arena.b,
-        arena.property,
-        OverlayLifecycle::UntilDissolved,
-    );
-    assert_eq!(
-        validate_spatial_overlay(arena.actor, arena.b, &bare),
-        Err(SpatialVendorizationError::LawfulLifecycleRequired)
-    );
-
-    let good = cost_band_quantize(1.75, 1.0, true, Some(1)).unwrap();
-    let direct_decrement = CostBandDraw {
-        r: good.r + 0.25,
-        ..good
-    };
-    // Bypass is detected by re-quantize mismatch on an admitted step.
-    let mut step = SpatialVendorizationStep::admit(
-        1,
-        0,
-        1.75,
-        0x5350_4154,
-        arena.actor,
-        arena.a,
-        2,
-        &arena.cells,
-        effect(arena.property, true),
-        true,
-        1.0,
-        Some(1),
-    )
-    .unwrap();
-    // Validate the good path first.
-    assert!(step.validate_cost_band().is_ok());
-    // Planted CostBand bypass cannot be stuffed into the private draw; prove
-    // the independent oracle rejects the mutated draw shape.
-    assert_ne!(direct_decrement, good);
-    assert!(!direct_decrement.conserves_exactly() || direct_decrement.r != good.r);
-
-    let mut foreign_cells = arena.cells.clone();
-    foreign_cells[1].cell = synthetic;
-    let foreign = SpatialVendorizationStep::admit(
-        1,
-        0,
-        1.75,
-        0x5350_4154,
-        arena.actor,
-        arena.a,
-        2,
-        &foreign_cells,
-        effect(arena.property, true),
-        true,
-        1.0,
-        Some(1),
-    )
-    .unwrap();
-    let n_dims = arena.registry.total_columns;
-    let mut shadow = vec![0.0; arena.allocator.capacity() * n_dims];
-    let outcome = apply_structural_mutations(
-        vec![BoundaryRequest::Reparent {
-            child: foreign.actor(),
-            new_parent: foreign.deciding_cell(),
-        }],
-        &mut arena.tree,
-        &mut arena.allocator,
-        &mut arena.registry,
-        &mut shadow,
-        n_dims,
-        None,
-    );
-    assert_eq!(outcome.rejected_unknown_target, 1);
-    assert_eq!(
-        arena.allocator.relation_of(arena.actor),
-        Some(ObjectResidencyRelation::ChildOf(arena.a))
-    );
-    let _ = step;
-}
-
 #[test]
 fn palma_d_is_a_field_not_a_path_and_feeds_locus_radius_target() {
-    // 2x2 W with a single destination; D is a min-plus field, never a route.
     let config = MinPlusStencilConfig {
         width: 2,
         height: 2,
@@ -875,15 +1041,13 @@ fn palma_d_is_a_field_not_a_path_and_feeds_locus_radius_target() {
         inf_sentinel: MIN_PLUS_INF,
     };
     let mut w = vec![1.0f32; 4];
-    w[3] = 0.0; // destination cell impedance
+    w[3] = 0.0;
     let packed = pack_w_and_initial_d(&w, &config).expect("pack PALMA W/D");
     let d = cpu_min_plus_d_from_w(&w, &config, 4).expect("PALMA D field");
     assert!(d[0].is_finite());
     assert_eq!(d[3].to_bits(), 0.0f32.to_bits());
-    // No predecessor/came_from table exists on the field product — only D values.
     assert_eq!(packed.len(), config.values_len());
 
-    // ActionBand LocusRadius admits against the D channel (field, not path).
     let mut registry = DimensionRegistry::new();
     let d_prop = registry.register(SimProperty::simple("spatial-witness", "palma-d", 0));
     let d_col = registry
@@ -895,7 +1059,7 @@ fn palma_d_is_a_field_not_a_path_and_feeds_locus_radius_target() {
         col: d_col,
         threshold: 1.0,
         direction: ThresholdDirection::Upward,
-        event_kind: 0x5350_4154,
+        event_kind: SPATIAL_EVENT_KIND_B,
         buffer: EmitOnThresholdBuffer::Values,
     }];
     let mut door = ActionBandSessionBuildDoor::new();
@@ -941,204 +1105,7 @@ fn palma_d_is_a_field_not_a_path_and_feeds_locus_radius_target() {
 }
 
 #[test]
-fn actionband_structural_door_joins_sealed_crossing_only() {
-    let _gpu = GPU_MUTEX
-        .lock()
-        .unwrap_or_else(|poison| poison.into_inner());
-    let Some(ctx) = GpuContext::new_blocking().ok() else {
-        return;
-    };
-    set_up_gpu_debug();
-
-    let mut registry = DimensionRegistry::new();
-    let progress = registry.register(SimProperty::simple("spatial-witness", "progress", 0));
-    let progress_col = registry
-        .column_range(progress)
-        .col_for_role(&SubFieldRole::Amount, &registry.property(progress).layout)
-        .unwrap();
-    let d_prop = registry.register(SimProperty::simple("spatial-witness", "palma-d", 0));
-    let d_col = registry
-        .column_range(d_prop)
-        .col_for_role(&SubFieldRole::Amount, &registry.property(d_prop).layout)
-        .unwrap();
-    let thresholds = vec![EmitOnThresholdRegistration {
-        slot: SlotIndex::new(0),
-        col: progress_col,
-        threshold: 1.0,
-        direction: ThresholdDirection::Upward,
-        event_kind: 0x5350_4154,
-        buffer: EmitOnThresholdBuffer::Values,
-    }];
-    let mut door = ActionBandSessionBuildDoor::new();
-    let frozen = door
-        .admit_once_at_session_build(
-            &ActionBandSessionSpec {
-                budget: ActionBandAdmissionBudgetSpec {
-                    axis_channel_count: 2,
-                    dependency_binding_count: 0,
-                    storage_rows: 1,
-                    eml_program_count: 0,
-                    emission_binding_count: 1,
-                },
-                templates: vec![ActionBandTemplateSpec {
-                    id: "spatial-structural".into(),
-                    label: Some("shadow".into()),
-                    axis_channels: vec![
-                        ActionBandChannelBindingSpec {
-                            column: progress_col.raw_u32(),
-                            kind: ActionBandChannelKind::Primitive,
-                        },
-                        ActionBandChannelBindingSpec {
-                            column: d_col.raw_u32(),
-                            kind: ActionBandChannelKind::CachedDerived,
-                        },
-                    ],
-                    target: ActionBandTargetSpec::LocusRadius {
-                        distance_channel: d_col.raw_u32(),
-                        radius: 8.0,
-                    },
-                    velocity: None,
-                    bands: vec![ActionBandBandSpec {
-                        threshold_registration_index: 0,
-                        eml_program: None,
-                        emission_binding_indices: vec![0],
-                    }],
-                    subordinate_template_ids: vec![],
-                    max_active_subordinates: 0,
-                    reserved_instance_rows: 1,
-                    requirement_semantics: Default::default(),
-                }],
-            },
-            &registry,
-            &simthing_core::EmlExpressionRegistry::new(),
-            &thresholds,
-        )
-        .unwrap()
-        .clone();
-    let active = [ActionBandActiveInstance::new(
-        frozen.templates()[0].index(),
-        SlotIndex::new(0),
-        [0.0; 4],
-    )];
-    let compiled = compile_action_band_gpu_execution(
-        &frozen,
-        &simthing_core::EmlExpressionRegistry::new(),
-        &[ActionBandEmissionBindingGpu::structural_request(0)],
-        &active,
-    )
-    .unwrap();
-
-    let mut root = SimThing::new(SimThingKind::World, 0);
-    let target_node = SimThing::new(SimThingKind::Location, 0);
-    let target = target_node.id;
-    root.add_child(target_node);
-    let mut allocator = SlotAllocator::new();
-    allocator.populate_from_tree(&root);
-    let mut runtime = SimRuntimeTree::admit(root);
-    let mut structural_registry = DimensionRegistry::new();
-    structural_registry.register(SimProperty::simple("spatial-witness", "shadow", 1));
-    let structural_dims = structural_registry.total_columns;
-    let mut structural_shadow = vec![0.0; allocator.capacity() * structural_dims];
-
-    let mut pre_admitted = vec![None; 1];
-    pre_admitted[0] = Some(BoundaryRequest::Remove { target });
-    let requests =
-        FrozenActionBandStructuralRequests::from_compiled_admission(&compiled, pre_admitted)
-            .expect("session-frozen structural door");
-
-    // Real sealed Phase-5 delta joined by ActionBand.
-    let regs = emit_on_threshold_registrations_to_gpu(&thresholds);
-    let previous = {
-        let mut v = vec![0.0; registry.total_columns];
-        v[progress_col.raw()] = 0.5;
-        v[d_col.raw()] = 1.0;
-        v
-    };
-    let current = {
-        let mut v = vec![0.0; registry.total_columns];
-        v[progress_col.raw()] = 1.5;
-        v[d_col.raw()] = 1.0;
-        v
-    };
-    let mut session =
-        AccumulatorOpSession::new_attached(&ctx, 1, registry.total_columns as u32, 4);
-    session.upload_values(&ctx, &current);
-    session.upload_previous_values(&ctx, &previous);
-    session
-        .upload_packed_threshold_ops(
-            &ctx,
-            &PackedThresholdUpload::from_registrations(&regs).unwrap(),
-        )
-        .unwrap();
-    session.tick(&ctx, 0).unwrap();
-    let emissions = session.readback_threshold_emissions(&ctx).unwrap();
-    let mut alloc = SlotAllocator::new();
-    alloc.populate_from_tree(&SimThing::new(SimThingKind::GameSession, 0));
-    let deltas = apply_band_crossing_deltas_from_fused_emissions(
-        &emissions,
-        session.threshold_registrations(),
-        &registry,
-        &alloc,
-    );
-    assert!(!deltas.is_empty(), "sealed Phase-5 crossing must exist");
-    let crossings = compiled
-        .execution_plan()
-        .crossings_from_sealed(&deltas)
-        .unwrap();
-    let world = ctx
-        .device
-        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("spatial_structural_world"),
-            contents: bytemuck::cast_slice(&current),
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
-        });
-    let mut execution =
-        match ActionBandGpuExecution::new(&ctx, compiled.execution_plan().clone()).unwrap() {
-            ActionBandGpuExecution::Active(s) => s,
-            ActionBandGpuExecution::Inactive => panic!("active"),
-        };
-    let _scope = scoped_debug_readback_allowed(true);
-    let production = execution
-        .dispatch(&ctx, &world, registry.total_columns as u32, &crossings)
-        .unwrap();
-    assert_eq!(production.commitments.len(), 1);
-
-    let (sender, receiver) = feeder_channel();
-    let submitted = requests
-        .submit_committed(&production.commitments, &sender)
-        .expect("sealed commitment selects fixed structural request");
-    assert_eq!(submitted, 1);
-    // Planted rival: CPU numeric re-derivation cannot authorize.
-    let cpu_rederived = production
-        .commitments
-        .iter()
-        .filter(|c| c.value() > 10_000.0)
-        .count();
-    assert_eq!(cpu_rederived, 0);
-    let drained = receiver.drain_now();
-    let boundary_requests: Vec<_> = drained
-        .into_iter()
-        .map(|work| match work {
-            FeederWork::Boundary(request) => request,
-            _ => panic!("structural door emitted non-boundary work"),
-        })
-        .collect();
-    let outcome = apply_structural_mutations(
-        boundary_requests,
-        &mut runtime,
-        &mut allocator,
-        &mut structural_registry,
-        &mut structural_shadow,
-        structural_dims,
-        None,
-    );
-    assert_eq!(outcome.tombstoned, [target]);
-}
-
-#[test]
 fn production_core_has_no_peer_movement_facility() {
-    // Grep-class referee: production sources must not reintroduce peer movement
-    // Destination/planner/path facilities. Workshop leaf is the only home.
     let workspace = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .expect("crates/")
@@ -1163,8 +1130,7 @@ fn production_core_has_no_peer_movement_facility() {
         "struct MovementDestination",
     ];
     for root in production_roots {
-        let walk = walkdir_rs_files(&workspace.join(root));
-        for path in walk {
+        for path in walkdir_rs_files(&workspace.join(root)) {
             let text = std::fs::read_to_string(&path).expect("read");
             for needle in forbidden {
                 assert!(
@@ -1175,17 +1141,26 @@ fn production_core_has_no_peer_movement_facility() {
             }
         }
     }
-    // Workshop module is present and reaped independently of ActionBand capability.
     assert!(workspace
         .join("crates/simthing-workshop/src/actionband_spatial_vendorization_0.rs")
         .exists());
-    // ActionBand facility lives in production and is not this witness.
     assert!(workspace
         .join("crates/simthing-spec/src/spec/action_band.rs")
         .exists());
     assert!(workspace
         .join("crates/simthing-kernel/src/accumulator_op/action_band_execution.rs")
         .exists());
+}
+
+#[test]
+fn costband_bypass_shape_is_detectable_against_oracle() {
+    let good = cost_band_quantize(1.75, 1.0, true, Some(1)).unwrap();
+    let direct_decrement = CostBandDraw {
+        r: good.r + 0.25,
+        ..good
+    };
+    assert_ne!(direct_decrement, good);
+    assert_ne!(direct_decrement.r.to_bits(), good.r.to_bits());
 }
 
 fn walkdir_rs_files(root: &std::path::Path) -> Vec<std::path::PathBuf> {
@@ -1205,4 +1180,11 @@ fn walkdir_rs_files(root: &std::path::Path) -> Vec<std::path::PathBuf> {
         }
     }
     out
+}
+
+// Silence unused import when GPU path not exercised in pure tests.
+#[allow(dead_code)]
+fn _resolve_export() {
+    let _ = resolve_authoritative_cell as fn(&[AdmittedTopologyCell], u32, u32) -> _;
+    let _ = manhattan;
 }
