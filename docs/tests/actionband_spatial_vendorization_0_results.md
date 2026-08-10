@@ -1,7 +1,9 @@
 # ACTIONBAND-SPATIAL-VENDORIZATION-0 results
 
 - Track: 0.0.8.7 RF arena modernization (rung 7.4)
-- Status: **PROBATION / proof-present / DA-review-pending**
+- Status: **COMPLETE — DA-GRADUATED / merged #1709 @ `2800853e`** (pre-dispatch ruling `5244437034`)
+
+> This witness is **born-mortal** and reaps with the 0.0.8.7 workshop leaf. Reaping it removes no ActionBand capability — that is structural, since nothing in the Cargo graph depends on `simthing-workshop`.
 - Branch: `coding/actionband-spatial-vendorization-0`
 - PR: **#1709**
 - Canonical base: `e3c2e1a57ac474a310c2607341caede4232528fd`
