@@ -634,6 +634,16 @@ ActionBand progress / band observables / CostBand input
 
 If realized flux is already an ordinary property/field output from an already-hot sweep, ActionBand should bind to it directly. A second ActionBand throughput pass is a defect.
 
+> **Gu-Yang remains the instantaneous conservative mechanism. Persistence of saturation/stall is authored ordinary state (for example admitted decay-memory state) and never hidden history owned by Gu-Yang, ActionBand, or a saturation listener.**
+
+This complements §17.21's previous-plane law and §17.19's single-crossing-surface law. A request for "stall memory" therefore means an admitted state/overlay/property, not a new flux-history facility.
+
+**Per-binding conserved-progress bound source.** No universal formula such as `min(RF_grant, flux_available, flux_realized)` is canonized, because different native lanes expose different already-resolved authorities. Instead each conserved-progress binding declares **exactly one** authoritative bound source from a closed vocabulary — semantically `None | RfGrant | GuYangAvailable | GuYangRealized`; the exact Rust spelling is rung-local. Admission rejects **double-bounding** (re-applying an RF grant against a realized flux that already includes it), **zero-bounding** (each authority assuming the other supplied the executable bound), and any vendor-local fifth source or implicit default invented outside the one ActionBand admission door. This is a binding descriptor, not a new resource taxonomy and not a target form.
+
+**Signed progress, not magnitude.** Gu-Yang conservative flux is signed with respect to canonical edge orientation / target-relative progress. An ActionBand binding consumes flux **projected toward its authorized direction** while preserving the native canonical Gu-Yang sign/order authority; `abs(flux)` is not a generic progress lowering. Symmetric opposed demand on one channel must produce mutual stall/contest, never mutual positive progress.
+
+**Bounded feedback on field-seeding emissions.** An ActionBand emission binding that writes into a lane seeding a field/RF recurrence is admitted under the existing bounded-feedback contract — finite decay where persistence is used, explicit bounds/clamps, no admitted positive unbounded recurrence. Generation pacing bounds update *rate*, not feedback *gain*; an authored `demand += k * stall` is a positive-feedback amplifier. This reuses existing EML/gadget admission law and mints no controller subsystem.
+
 ### 12.3 Structural consequences
 
 A band result may authorize structure, but only existing boundary authority mutates it. CPU applies the sealed request without re-evaluating ActionBand, PALMA, or Gu-Yang.
