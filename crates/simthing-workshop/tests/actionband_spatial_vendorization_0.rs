@@ -45,12 +45,35 @@ use wgpu::util::DeviceExt;
 
 static GPU_MUTEX: Mutex<()> = Mutex::new(());
 
-/// Opaque sealed slot keys — deliberately NOT equal to row-major indices.
+/// Default opaque sealed slot keys — deliberately NOT equal to row-major indices.
 const SLOT_A: u32 = 10;
 const SLOT_B: u32 = 20;
 const SLOT_C: u32 = 30;
+/// R4 alternate assignment: same logical A/B/C, different physical sealed keys.
+const SLOT_A_ALT: u32 = 77;
+const SLOT_B_ALT: u32 = 10;
+const SLOT_C_ALT: u32 = 55;
 const SPATIAL_EVENT_KIND_B: u32 = 0x5350_4154; // "SPAT"
 const SPATIAL_EVENT_KIND_C: u32 = 0x5350_4155;
+
+/// Opaque sealed-slot assignment for the three logical cells.
+#[derive(Clone, Copy, Debug)]
+struct SlotAssignment {
+    a: u32,
+    b: u32,
+    c: u32,
+}
+
+const ASSIGNMENT_PRIMARY: SlotAssignment = SlotAssignment {
+    a: SLOT_A,
+    b: SLOT_B,
+    c: SLOT_C,
+};
+const ASSIGNMENT_PERMUTED: SlotAssignment = SlotAssignment {
+    a: SLOT_A_ALT,
+    b: SLOT_B_ALT,
+    c: SLOT_C_ALT,
+};
 
 struct Arena {
     tree: SimRuntimeTree,
@@ -71,28 +94,29 @@ fn topology_cells(
     b: SimThingId,
     c: SimThingId,
     sealed_col: u32,
+    slots: SlotAssignment,
 ) -> Vec<AdmittedTopologyCell> {
     // Structural N4: A(0,0)—B(0,1)
     //                  |
     //                 C(1,0)
-    // Sealed slots are opaque (10/20/30), not row-major.
+    // Sealed slots are opaque mapping keys, not row-major.
     let cells = vec![
         AdmittedTopologyCell {
-            sealed_slot: SLOT_A,
+            sealed_slot: slots.a,
             sealed_col,
             grid_row: 0,
             grid_col: 0,
             cell: a,
         },
         AdmittedTopologyCell {
-            sealed_slot: SLOT_B,
+            sealed_slot: slots.b,
             sealed_col,
             grid_row: 0,
             grid_col: 1,
             cell: b,
         },
         AdmittedTopologyCell {
-            sealed_slot: SLOT_C,
+            sealed_slot: slots.c,
             sealed_col,
             grid_row: 1,
             grid_col: 0,
@@ -168,8 +192,10 @@ fn require_gpu() -> Option<GpuContext> {
 }
 
 /// Shared ActionBand admission product: one LocusRadius template, structural emission.
-/// Threshold registrations cover B and C field loci (adjacent candidates from A).
-fn admit_spatial_actionband() -> (FrozenActionBandTemplates, Vec<EmitOnThresholdRegistration>, DimensionRegistry) {
+/// Threshold registrations always cover **both** adjacent candidate loci B and C.
+fn admit_spatial_actionband(
+    slots: SlotAssignment,
+) -> (FrozenActionBandTemplates, Vec<EmitOnThresholdRegistration>, DimensionRegistry) {
     let mut registry = DimensionRegistry::new();
     let pot = registry.register(SimProperty::simple("spatial-witness", "field-potential", 0));
     let d_prop = registry.register(SimProperty::simple("spatial-witness", "palma-d", 0));
@@ -181,7 +207,7 @@ fn admit_spatial_actionband() -> (FrozenActionBandTemplates, Vec<EmitOnThreshold
 
     let thresholds = vec![
         EmitOnThresholdRegistration {
-            slot: SlotIndex::new(SLOT_B),
+            slot: SlotIndex::new(slots.b),
             col: registry
                 .column_range(pot)
                 .col_for_role(&SubFieldRole::Amount, &registry.property(pot).layout)
@@ -192,7 +218,7 @@ fn admit_spatial_actionband() -> (FrozenActionBandTemplates, Vec<EmitOnThreshold
             buffer: EmitOnThresholdBuffer::Values,
         },
         EmitOnThresholdRegistration {
-            slot: SlotIndex::new(SLOT_C),
+            slot: SlotIndex::new(slots.c),
             col: registry
                 .column_range(pot)
                 .col_for_role(&SubFieldRole::Amount, &registry.property(pot).layout)
@@ -264,15 +290,20 @@ fn admit_spatial_actionband() -> (FrozenActionBandTemplates, Vec<EmitOnThreshold
     (frozen, thresholds, registry)
 }
 
-/// Through-ActionBand sealed commitment for one field-locus crossing.
-/// R3: missing crossing is RED; unavailable GPU is explicit skip (returns None).
-fn sealed_commitment_through_actionband(
+/// Both candidate loci always active. Only field-plane values differ between runs.
+/// R2: caller does **not** choose the winning slot; field values do.
+/// R3: missing crossing/commitment is RED (no non-ActionBand mint fallback).
+fn sealed_commitment_from_field_state(
     ctx: &GpuContext,
     frozen: &FrozenActionBandTemplates,
     thresholds: &[EmitOnThresholdRegistration],
     registry: &DimensionRegistry,
-    decision_slot: u32,
-    potential_value: f32,
+    slots: SlotAssignment,
+    // Potential previous/current at B and C field loci (the sole run-varying authority).
+    pot_b_prev: f32,
+    pot_b_curr: f32,
+    pot_c_prev: f32,
+    pot_c_curr: f32,
     distance_value: f32,
 ) -> StructuralCommitment {
     let pot_col = thresholds[0].col.raw_u32();
@@ -291,12 +322,12 @@ fn sealed_commitment_through_actionband(
         .unwrap()
         .raw_u32();
 
-    // Same template identity; one active instance at the field locus that may cross.
-    let active = [ActionBandActiveInstance::new(
-        frozen.templates()[0].index(),
-        SlotIndex::new(decision_slot),
-        [0.0; 4],
-    )];
+    let template = frozen.templates()[0].index();
+    // R2: identical active-instance set on every run — both candidates present.
+    let active = [
+        ActionBandActiveInstance::new(template, SlotIndex::new(slots.b), [0.0; 4]),
+        ActionBandActiveInstance::new(template, SlotIndex::new(slots.c), [0.0; 4]),
+    ];
     let compiled = compile_action_band_gpu_execution(
         frozen,
         &simthing_core::EmlExpressionRegistry::new(),
@@ -307,15 +338,21 @@ fn sealed_commitment_through_actionband(
     let plan = compiled.execution_plan().clone();
 
     let n_dims = registry.total_columns as u32;
-    let n_slots = decision_slot + 1;
+    let n_slots = slots.a.max(slots.b).max(slots.c) + 1;
     let mut previous = vec![0.0f32; (n_slots * n_dims) as usize];
     let mut current = previous.clone();
-    let pot_idx = (decision_slot * n_dims + pot_col) as usize;
-    let d_idx = (decision_slot * n_dims + d_col) as usize;
-    previous[pot_idx] = 0.25;
-    current[pot_idx] = potential_value;
-    previous[d_idx] = distance_value;
-    current[d_idx] = distance_value;
+    let write = |buf: &mut [f32], slot: u32, col: u32, value: f32| {
+        buf[(slot * n_dims + col) as usize] = value;
+    };
+    write(&mut previous, slots.b, pot_col, pot_b_prev);
+    write(&mut current, slots.b, pot_col, pot_b_curr);
+    write(&mut previous, slots.c, pot_col, pot_c_prev);
+    write(&mut current, slots.c, pot_col, pot_c_curr);
+    // PALMA D field plane: within LocusRadius for both candidates (field, not path).
+    write(&mut previous, slots.b, d_col, distance_value);
+    write(&mut current, slots.b, d_col, distance_value);
+    write(&mut previous, slots.c, d_col, distance_value);
+    write(&mut current, slots.c, d_col, distance_value);
 
     let regs = emit_on_threshold_registrations_to_gpu(thresholds);
     let mut session = AccumulatorOpSession::new_attached(ctx, n_slots, n_dims, 8);
@@ -333,11 +370,8 @@ fn sealed_commitment_through_actionband(
         .readback_threshold_emissions(ctx)
         .expect("sealed emissions");
 
-    // Build allocator with enough capacity and attach a synthetic tree spanning slots.
     let mut root = SimThing::new(SimThingKind::GameSession, 0);
-    // Populate enough Location children so slot indices up to decision_slot exist
-    // when the tree is laid out densely — for sparse opaque slots, use capacity pad.
-    for _ in 0..=decision_slot {
+    for _ in 0..n_slots {
         root.add_child(SimThing::new(SimThingKind::Location, 0));
     }
     let mut allocator = SlotAllocator::new();
@@ -366,7 +400,7 @@ fn sealed_commitment_through_actionband(
         });
     let mut execution = match ActionBandGpuExecution::new(ctx, plan).expect("GPU operator") {
         ActionBandGpuExecution::Active(session) => session,
-        ActionBandGpuExecution::Inactive => panic!("spatial ActionBand row must be active"),
+        ActionBandGpuExecution::Inactive => panic!("spatial ActionBand rows must be active"),
     };
     let _scope = scoped_debug_readback_allowed(true);
     let production = execution
@@ -375,10 +409,10 @@ fn sealed_commitment_through_actionband(
     assert_eq!(
         production.commitments.len(),
         1,
-        "R3: ActionBand must mint exactly one StructuralCommitment (missing join is RED)"
+        "R2/R3: exactly one sealed commitment when exactly one candidate field crosses; got {}",
+        production.commitments.len()
     );
     let commitment = production.commitments[0];
-    assert_eq!(commitment.slot(), decision_slot);
     assert_eq!(commitment.col(), pot_col);
     assert!(
         commitment.event_kind() == SPATIAL_EVENT_KIND_B
@@ -440,24 +474,28 @@ fn field_overlay_only_redirects_same_actionband_to_different_adjacent_step() {
         return;
     };
     let arena = arena();
-    let (frozen, thresholds, ab_registry) = admit_spatial_actionband();
+    let slots = ASSIGNMENT_PRIMARY;
+    let (frozen, thresholds, ab_registry) = admit_spatial_actionband(slots);
     let sealed_col = thresholds[0].col.raw_u32();
-    let cells = topology_cells(arena.a, arena.b, arena.c, sealed_col);
+    let cells = topology_cells(arena.a, arena.b, arena.c, sealed_col, slots);
     let template_index = frozen.templates()[0].index();
-    let template_id_shadow = "spatial-locus-radius";
 
-    // Run 1: only B's field potential is above threshold (overlay-derived field state).
-    let commit_b = sealed_commitment_through_actionband(
+    // R2: same frozen product, same thresholds, same dual active-instance set.
+    // Run A: only B's field potential crosses; C stays below.
+    let commit_b = sealed_commitment_from_field_state(
         &ctx,
         &frozen,
         &thresholds,
         &ab_registry,
-        SLOT_B,
-        1.75,
+        slots,
+        0.25,
+        1.75, // B crosses
+        0.25,
+        0.40, // C does not
         2.0,
     );
     let mut cells_b = cells.clone();
-    cells_b.reverse(); // physical/append order non-semantic
+    cells_b.reverse(); // append order non-semantic
     let step_b = SpatialVendorizationStep::admit(
         commit_b,
         arena.actor,
@@ -468,19 +506,23 @@ fn field_overlay_only_redirects_same_actionband_to_different_adjacent_step() {
         1.0,
         Some(1),
     )
-    .expect("sealed ActionBand locus B → one N4 edge");
+    .expect("field-selected sealed locus B → one N4 edge");
     assert_eq!(step_b.deciding_cell(), arena.b);
+    assert_eq!(step_b.commitment().slot(), slots.b);
     assert_eq!(step_b.commitment().event_kind(), SPATIAL_EVENT_KIND_B);
 
-    // Run 2: same ActionBand admission product / template identity; only C's
-    // field potential is raised. No destination/template/action identity edit.
-    let commit_c = sealed_commitment_through_actionband(
+    // Run B: only C's field potential crosses; B stays below. No active-instance,
+    // threshold, template, or destination identity change — field values only.
+    let commit_c = sealed_commitment_from_field_state(
         &ctx,
         &frozen,
         &thresholds,
         &ab_registry,
-        SLOT_C,
-        1.75,
+        slots,
+        0.25,
+        0.40, // B does not
+        0.25,
+        1.75, // C crosses
         2.0,
     );
     let step_c = SpatialVendorizationStep::admit(
@@ -493,17 +535,14 @@ fn field_overlay_only_redirects_same_actionband_to_different_adjacent_step() {
         1.0,
         Some(1),
     )
-    .expect("sealed ActionBand locus C → one N4 edge");
+    .expect("field-selected sealed locus C → one N4 edge");
     assert_eq!(step_c.deciding_cell(), arena.c);
-
-    // Same opaque ActionBand template identity; different sealed locus/step.
-    // Distinct event_kind per threshold registration is required by the structural
-    // door; template identity (not event_kind equality) is the ActionBand sameness.
-    assert_eq!(frozen.templates()[0].index(), template_index);
+    assert_eq!(step_c.commitment().slot(), slots.c);
     assert_eq!(step_c.commitment().event_kind(), SPATIAL_EVENT_KIND_C);
+
+    assert_eq!(frozen.templates()[0].index(), template_index);
     assert_ne!(step_b.deciding_cell(), step_c.deciding_cell());
     assert_ne!(step_b.commitment().slot(), step_c.commitment().slot());
-    let _ = template_id_shadow;
 }
 
 #[test]
@@ -513,15 +552,19 @@ fn sealed_actionband_locus_reparents_one_n4_edge_with_stable_slots() {
         return;
     };
     let mut arena = arena();
-    let (frozen, thresholds, ab_registry) = admit_spatial_actionband();
-    let cells = topology_cells(arena.a, arena.b, arena.c, thresholds[0].col.raw_u32());
-    let commitment = sealed_commitment_through_actionband(
+    let slots = ASSIGNMENT_PRIMARY;
+    let (frozen, thresholds, ab_registry) = admit_spatial_actionband(slots);
+    let cells = topology_cells(arena.a, arena.b, arena.c, thresholds[0].col.raw_u32(), slots);
+    let commitment = sealed_commitment_from_field_state(
         &ctx,
         &frozen,
         &thresholds,
         &ab_registry,
-        SLOT_B,
+        slots,
+        0.25,
         1.75,
+        0.25,
+        0.40,
         2.0,
     );
     let step = SpatialVendorizationStep::admit(
@@ -572,13 +615,15 @@ fn actionband_structural_door_emits_spatial_reparent_from_sealed_crossing() {
         return;
     };
     let arena = arena();
-    let (frozen, thresholds, ab_registry) = admit_spatial_actionband();
-    let cells = topology_cells(arena.a, arena.b, arena.c, thresholds[0].col.raw_u32());
-    let active = [ActionBandActiveInstance::new(
-        frozen.templates()[0].index(),
-        SlotIndex::new(SLOT_B),
-        [0.0; 4],
-    )];
+    let slots = ASSIGNMENT_PRIMARY;
+    let (frozen, thresholds, ab_registry) = admit_spatial_actionband(slots);
+    let cells = topology_cells(arena.a, arena.b, arena.c, thresholds[0].col.raw_u32(), slots);
+    let template = frozen.templates()[0].index();
+    // Same dual active set as the R2 field-only referee.
+    let active = [
+        ActionBandActiveInstance::new(template, SlotIndex::new(slots.b), [0.0; 4]),
+        ActionBandActiveInstance::new(template, SlotIndex::new(slots.c), [0.0; 4]),
+    ];
     let compiled = compile_action_band_gpu_execution(
         &frozen,
         &simthing_core::EmlExpressionRegistry::new(),
@@ -588,6 +633,8 @@ fn actionband_structural_door_emits_spatial_reparent_from_sealed_crossing() {
     .unwrap();
 
     // Pre-admit the spatial Reparent consequence (not a generic Remove).
+    // Two event kinds (B/C) share destination_index 0 → same Reparent shape;
+    // field state selects which commitment fires.
     let mut pre_admitted = vec![None; 1];
     pre_admitted[0] = Some(BoundaryRequest::Reparent {
         child: arena.actor,
@@ -597,13 +644,16 @@ fn actionband_structural_door_emits_spatial_reparent_from_sealed_crossing() {
         FrozenActionBandStructuralRequests::from_compiled_admission(&compiled, pre_admitted)
             .expect("session-frozen structural door");
 
-    let commitment = sealed_commitment_through_actionband(
+    let commitment = sealed_commitment_from_field_state(
         &ctx,
         &frozen,
         &thresholds,
         &ab_registry,
-        SLOT_B,
+        slots,
+        0.25,
         1.75,
+        0.25,
+        0.40,
         2.0,
     );
     // Also prove pure consumer agrees.
@@ -662,57 +712,73 @@ fn actionband_structural_door_emits_spatial_reparent_from_sealed_crossing() {
 // ─── R4: slot permutation ───────────────────────────────────────────────────
 
 #[test]
-fn physical_slot_permutation_preserves_spatial_choice() {
+fn physical_slot_assignment_permutation_preserves_spatial_choice() {
     let Some(ctx) = require_gpu() else {
-        eprintln!("SKIP physical_slot_permutation: no local GPU");
+        eprintln!("SKIP physical_slot_assignment_permutation: no local GPU");
         return;
     };
-    // Two admitted mappings: same logical cells + structural coords; different
-    // opaque sealed slot keys. Spatial choice must follow the commitment locus
-    // mapping, never a row-major formula.
+    // R4: two genuinely different opaque sealed-slot assignments for the same
+    // logical topology. Not a vector reorder of the same keys.
+    //   primary:  A→10, B→20, C→30
+    //   permuted: A→77, B→10, C→55
     let arena = arena();
-    let (frozen, thresholds, ab_registry) = admit_spatial_actionband();
-    let cells = topology_cells(arena.a, arena.b, arena.c, thresholds[0].col.raw_u32());
-    let commit = sealed_commitment_through_actionband(
-        &ctx,
-        &frozen,
-        &thresholds,
-        &ab_registry,
-        SLOT_B,
-        1.5,
-        2.0,
-    );
 
-    let mapping_primary = cells.clone();
-    let mut mapping_shuffled_order = cells.clone();
-    mapping_shuffled_order.rotate_left(1);
-    mapping_shuffled_order.reverse();
+    let run = |slots: SlotAssignment| {
+        let (frozen, thresholds, ab_registry) = admit_spatial_actionband(slots);
+        assert_eq!(frozen.templates().len(), 1);
+        let cells = topology_cells(
+            arena.a,
+            arena.b,
+            arena.c,
+            thresholds[0].col.raw_u32(),
+            slots,
+        );
+        // Same logical field state: B crosses, C does not.
+        let commit = sealed_commitment_from_field_state(
+            &ctx,
+            &frozen,
+            &thresholds,
+            &ab_registry,
+            slots,
+            0.25,
+            1.75,
+            0.25,
+            0.40,
+            2.0,
+        );
+        assert_eq!(
+            commit.slot(),
+            slots.b,
+            "field-selected sealed slot must be B under this assignment"
+        );
+        let step = SpatialVendorizationStep::admit(
+            commit,
+            arena.actor,
+            arena.a,
+            &cells,
+            effect(arena.property, true),
+            true,
+            1.0,
+            Some(1),
+        )
+        .expect("admit under slot assignment");
+        assert_eq!(step.deciding_cell(), arena.b);
+        assert_eq!(manhattan(cells[0], cells[1]), 1);
+        (step.deciding_cell(), step.commitment().slot(), slots)
+    };
 
-    let step_a = SpatialVendorizationStep::admit(
-        commit,
-        arena.actor,
-        arena.a,
-        &mapping_primary,
-        effect(arena.property, true),
-        true,
-        1.0,
-        Some(1),
-    )
-    .unwrap();
-    let step_b = SpatialVendorizationStep::admit(
-        commit,
-        arena.actor,
-        arena.a,
-        &mapping_shuffled_order,
-        effect(arena.property, true),
-        true,
-        1.0,
-        Some(1),
-    )
-    .unwrap();
-    assert_eq!(step_a.deciding_cell(), arena.b);
-    assert_eq!(step_b.deciding_cell(), arena.b);
-    assert_eq!(step_a.deciding_cell(), step_b.deciding_cell());
+    let (dest_primary, sealed_primary, assign_primary) = run(ASSIGNMENT_PRIMARY);
+    let (dest_permuted, sealed_permuted, assign_permuted) = run(ASSIGNMENT_PERMUTED);
+
+    // Same logical destination and one-edge consequence.
+    assert_eq!(dest_primary, arena.b);
+    assert_eq!(dest_permuted, arena.b);
+    assert_eq!(dest_primary, dest_permuted);
+    // Physical sealed keys differ across assignments.
+    assert_ne!(assign_primary.b, assign_permuted.b);
+    assert_ne!(sealed_primary, sealed_permuted);
+    assert_eq!(sealed_primary, assign_primary.b);
+    assert_eq!(sealed_permuted, assign_permuted.b);
 }
 
 // ─── R5 table-driven matrix: fail-closed mutants ────────────────────────────
@@ -776,16 +842,20 @@ fn matrix_shaped_mutants_fail_closed() {
         return;
     };
     let arena = arena();
-    let (frozen, thresholds, ab_registry) = admit_spatial_actionband();
-    let cells = topology_cells(arena.a, arena.b, arena.c, thresholds[0].col.raw_u32());
+    let slots = ASSIGNMENT_PRIMARY;
+    let (frozen, thresholds, ab_registry) = admit_spatial_actionband(slots);
+    let cells = topology_cells(arena.a, arena.b, arena.c, thresholds[0].col.raw_u32(), slots);
     let sealed_col = thresholds[0].col.raw_u32();
-    let good_commit = sealed_commitment_through_actionband(
+    let good_commit = sealed_commitment_from_field_state(
         &ctx,
         &frozen,
         &thresholds,
         &ab_registry,
-        SLOT_B,
+        slots,
+        0.25,
         1.75,
+        0.25,
+        0.40,
         2.0,
     );
 

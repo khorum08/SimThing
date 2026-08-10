@@ -24,19 +24,19 @@ and existing PALMA / sealed-crossing / structural / native surfaces.
 | Item | Discharge |
 |---|---|
 | **R1** | `SpatialVendorizationStep::admit` takes typed `StructuralCommitment` only; locus/value/event derived from that product. No raw-tuple admission door. Workshop depends on `simthing-kernel` as a pure consumer of the existing sealed type (no new minter, no production edit). |
-| **R2** | `field_overlay_only_redirects_same_actionband_to_different_adjacent_step` runs the same admitted ActionBand template twice through real GPU Phase-5 + ActionBand execution; only which field-locus potential is above threshold changes (B vs C). Different sealed lawful adjacent steps. No caller-selected slot substitute. |
-| **R3** | No non-ActionBand mint fallback. Unavailable GPU → explicit SKIP under established local-GPU convention. Missing `BandCrossingDelta` / commitment → assert RED. Structural door proof emits spatial `Reparent`, not generic `Remove`. |
-| **R4** | Opaque sealed slot keys (10/20/30) are **not** row-major structural indices. Mapping table binds sealed key → logical cell + structural `(row,col)`. `physical_slot_permutation_preserves_spatial_choice` shuffles mapping append order with identical spatial choice. |
-| **R5** | Matrix-shaped mutants consolidated into one table-driven `matrix_shaped_mutants_fail_closed` (8 cases). Named integration tests each hold a distinct exit-proof obligation (see table). Hosted `TEST-BUDGET` INSPECT, if any remains on matrix-vs-named balance, is justified here for orchestration triage — do not claim hosted `inspect=0` unless the hosted run is actually zero. |
+| **R2** | `field_overlay_only_redirects…`: **same** frozen product, thresholds, dual active instances at B+C on both runs. Only uploaded field potentials differ (B crosses / C does not, then reverse). Sealed commitment uniquely selects B then C. No caller-selected active locus. |
+| **R3** | No non-ActionBand mint fallback. Unavailable GPU → explicit SKIP. Missing crossing/commitment → RED. Structural door emits spatial `Reparent`. |
+| **R4** | Opaque sealed slots ≠ row-major. `physical_slot_assignment_permutation_preserves_spatial_choice` runs **two different assignments** `{A→10,B→20,C→30}` vs `{A→77,B→10,C→55}` with corresponding ActionBand execution; same logical B destination. Not a vector reorder. |
+| **R5** | Hosted Doctrine at `ea1eb3c3` already `TEST-BUDGET PASS 0`. Matrix mutants remain table-driven. |
 
 ## TEST-BUDGET — named tests (distinct obligations)
 
 | Test | Distinct obligation |
 |---|---|
-| `field_overlay_only_redirects_same_actionband_to_different_adjacent_step` | **R2 primary:** same ActionBand template, field-potential-only redirect B vs C through real ActionBand. |
+| `field_overlay_only_redirects_same_actionband_to_different_adjacent_step` | **R2 primary:** dual-active same shape; field-potential-only redirect B vs C (no caller-selected instance). |
 | `sealed_actionband_locus_reparents_one_n4_edge_with_stable_slots` | Through-ActionBand commitment → one N4 Reparent; slots/value plane stable; CostBand N=1. |
 | `actionband_structural_door_emits_spatial_reparent_from_sealed_crossing` | Structural door applies **spatial Reparent** from sealed ActionBand commitment (not Remove). |
-| `physical_slot_permutation_preserves_spatial_choice` | **R4:** append-order permutation of opaque slot mapping is non-semantic. |
+| `physical_slot_assignment_permutation_preserves_spatial_choice` | **R4:** two distinct opaque slot assignments; same logical destination. |
 | `matrix_shaped_mutants_fail_closed` | **R5 table-driven:** ambiguity, unbound, non-adjacent, self, origin, lifecycle, free-reposition. |
 | `placement_ownership_uses_existing_root_bind_not_participant_stamps` | Existing root `bind_owner`; descendants inherit; no participant stamps. |
 | `palma_d_is_a_field_not_a_path_and_feeds_locus_radius_target` | PALMA min-plus D field (no route table) admits as `PalmaReachableSet`. |
