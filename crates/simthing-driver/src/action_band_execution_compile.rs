@@ -5,16 +5,20 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use simthing_core::{
-    eml_nodes::execution_class_to_u32, EmlExpressionRegistry, EmlTreeId, SlotIndex,
+    eml_nodes::execution_class_to_u32, ColumnIndex, CompiledAccumulatorOpPlan, DimensionRegistry,
+    EmitOnThresholdRegistration, EmlExpressionRegistry, EmlTreeId, SlotIndex,
 };
 use simthing_feeder::{BoundaryRequest, FeederSender};
 use simthing_gpu::{
     action_band_target_kind, ActionBandActiveInstanceGpu, ActionBandBandGpu,
-    ActionBandEmissionBindingGpu, ActionBandEmissionDestination, ActionBandExecutionBucket,
-    ActionBandExecutionError, ActionBandExecutionPlan, ActionBandTemplateGpu, EmlTreeRangeGpu,
-    StructuralCommitment, ACTIONBAND_NO_PROGRAM,
+    ActionBandDependencyGpu, ActionBandEmissionBindingGpu, ActionBandEmissionDestination,
+    ActionBandExecutionBucket, ActionBandExecutionError, ActionBandExecutionPlan,
+    ActionBandTemplateGpu, EmlTreeRangeGpu, StructuralCommitment,
+    ACTIONBAND_INSTANCE_INITIALLY_ACTIVE, ACTIONBAND_INSTANCE_SUBORDINATE, ACTIONBAND_NO_PROGRAM,
 };
-use simthing_sim::{StructuralCommitmentApplicationDoor, StructuralCommitmentApplicationError};
+use simthing_sim::{
+    StructuralCommitmentApplicationDoor, StructuralCommitmentApplicationError, ThresholdRegistry,
+};
 use simthing_spec::{
     ActionBandTemplateIndex, AdmittedActionBandTarget, FrozenActionBandTemplates,
     ScalarBoundDirection,
@@ -28,6 +32,7 @@ pub struct ActionBandActiveInstance {
     template: ActionBandTemplateIndex,
     slot: SlotIndex,
     params: [f32; 4],
+    initially_active: bool,
 }
 
 impl ActionBandActiveInstance {
@@ -36,6 +41,22 @@ impl ActionBandActiveInstance {
             template,
             slot,
             params,
+            initially_active: true,
+        }
+    }
+
+    /// Materialize one already-reserved child row without activating it. Only
+    /// a frozen parent dependency may activate this row on the GPU.
+    pub fn pre_admitted_subordinate(
+        template: ActionBandTemplateIndex,
+        slot: SlotIndex,
+        params: [f32; 4],
+    ) -> Self {
+        Self {
+            template,
+            slot,
+            params,
+            initially_active: false,
         }
     }
 
@@ -45,6 +66,10 @@ impl ActionBandActiveInstance {
 
     pub fn slot(self) -> SlotIndex {
         self.slot
+    }
+
+    pub fn is_initially_active(self) -> bool {
+        self.initially_active
     }
 }
 
@@ -58,8 +83,105 @@ pub enum ActionBandExecutionCompileError {
     InvalidFrozenSpan,
     #[error("frozen ActionBand crossing provenance is incomplete or inconsistent")]
     InvalidFrozenCrossingSource,
+    #[error("ActionBand parent template {parent_template} dependency span {dependency_count} exceeds its frozen concurrent cap {max_active}")]
+    DependencyCapacityDeferred {
+        parent_template: u32,
+        dependency_count: u32,
+        max_active: u32,
+    },
+    #[error("ActionBand parent template {parent_template} slot {slot} has no pre-admitted child row for template {child_template}")]
+    MissingPreAdmittedChild {
+        parent_template: u32,
+        child_template: u32,
+        slot: u32,
+    },
+    #[error(
+        "ActionBand child template {child_template} slot {slot} is claimed by more than one parent"
+    )]
+    SharedChildLifecycle { child_template: u32, slot: u32 },
+    #[error("ActionBand child template {child_template} slot {slot} must begin inactive")]
+    ChildMustBeginInactive { child_template: u32, slot: u32 },
+    #[error(
+        "inactive ActionBand template {template} slot {slot} is not claimed by a frozen dependency"
+    )]
+    UnclaimedInactiveRow { template: u32, slot: u32 },
+    #[error("ActionBand template {template} materializes {actual} rows beyond its frozen reservation {reserved}")]
+    TemplateRowBudgetExceeded {
+        template: u32,
+        actual: u32,
+        reserved: u32,
+    },
+    #[error("ActionBand frozen dependency graph contains a runtime lifecycle cycle")]
+    DependencyCycle,
+    #[error("ActionBand native destination {destination:?} column {column} is not admitted by its existing authoritative lane")]
+    NativeDestinationNotAdmitted {
+        destination: ActionBandEmissionDestination,
+        column: u32,
+    },
     #[error(transparent)]
     Kernel(#[from] ActionBandExecutionError),
+}
+
+/// Source-bound permission to lower ActionBand payloads into existing ordinary
+/// next-state lanes. It carries no values or lifecycle authority: RF columns
+/// come from compiled accumulator plans and CostBand columns from admitted sink
+/// registrations in the ordinary threshold registry.
+#[derive(Clone, Debug, Default)]
+pub struct ActionBandNativeLaneAdmission {
+    property_next_columns: BTreeSet<u32>,
+    rf_claim_columns: BTreeSet<u32>,
+    cost_band_columns: BTreeSet<u32>,
+}
+
+impl ActionBandNativeLaneAdmission {
+    pub fn from_existing_surfaces(
+        dimensions: &DimensionRegistry,
+        property_next_columns: &[ColumnIndex],
+        rf_plans: &[CompiledAccumulatorOpPlan],
+        threshold_registrations: &[EmitOnThresholdRegistration],
+        threshold_registry: &ThresholdRegistry,
+    ) -> Self {
+        let in_bounds = |column: u32| column < dimensions.total_columns as u32;
+        let property_next_columns = property_next_columns
+            .iter()
+            .map(|column| column.raw_u32())
+            .filter(|&column| in_bounds(column))
+            .collect();
+        let rf_claim_columns = rf_plans
+            .iter()
+            .map(|plan| plan.input_channel.raw())
+            .filter(|&column| in_bounds(column))
+            .collect();
+        let cost_band_columns = threshold_registrations
+            .iter()
+            .filter(|registration| {
+                threshold_registry
+                    .cost_band(registration.event_kind)
+                    .is_sink
+            })
+            .map(|registration| registration.col.raw_u32())
+            .filter(|&column| in_bounds(column))
+            .collect();
+        Self {
+            property_next_columns,
+            rf_claim_columns,
+            cost_band_columns,
+        }
+    }
+
+    fn admits(&self, binding: ActionBandEmissionBindingGpu) -> bool {
+        let column = binding.destination_index();
+        match binding.destination() {
+            ActionBandEmissionDestination::PropertyNext => {
+                self.property_next_columns.contains(&column)
+            }
+            ActionBandEmissionDestination::RfClaim => self.rf_claim_columns.contains(&column),
+            ActionBandEmissionDestination::CostBand => self.cost_band_columns.contains(&column),
+            ActionBandEmissionDestination::StructuralRequest => true,
+            ActionBandEmissionDestination::OverlayEvent
+            | ActionBandEmissionDestination::Telemetry => false,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -144,6 +266,50 @@ pub fn compile_action_band_gpu_execution(
     eml_registry: &EmlExpressionRegistry,
     pre_admitted_emission_bindings: &[ActionBandEmissionBindingGpu],
     active_instances: &[ActionBandActiveInstance],
+) -> Result<CompiledActionBandGpuExecution, ActionBandExecutionCompileError> {
+    compile_action_band_gpu_execution_inner(
+        frozen,
+        eml_registry,
+        pre_admitted_emission_bindings,
+        active_instances,
+        None,
+    )
+}
+
+/// 7.3 lowering door for bindings proven to be existing authoritative native
+/// lanes. The default 7.2 compiler remains structural-only.
+pub fn compile_action_band_gpu_execution_with_native_lanes(
+    frozen: &FrozenActionBandTemplates,
+    eml_registry: &EmlExpressionRegistry,
+    pre_admitted_emission_bindings: &[ActionBandEmissionBindingGpu],
+    active_instances: &[ActionBandActiveInstance],
+    native_lanes: &ActionBandNativeLaneAdmission,
+) -> Result<CompiledActionBandGpuExecution, ActionBandExecutionCompileError> {
+    for &binding in pre_admitted_emission_bindings {
+        if !native_lanes.admits(binding) {
+            return Err(
+                ActionBandExecutionCompileError::NativeDestinationNotAdmitted {
+                    destination: binding.destination(),
+                    column: binding.destination_index(),
+                },
+            );
+        }
+    }
+    compile_action_band_gpu_execution_inner(
+        frozen,
+        eml_registry,
+        pre_admitted_emission_bindings,
+        active_instances,
+        Some(native_lanes),
+    )
+}
+
+fn compile_action_band_gpu_execution_inner(
+    frozen: &FrozenActionBandTemplates,
+    eml_registry: &EmlExpressionRegistry,
+    pre_admitted_emission_bindings: &[ActionBandEmissionBindingGpu],
+    active_instances: &[ActionBandActiveInstance],
+    native_lanes: Option<&ActionBandNativeLaneAdmission>,
 ) -> Result<CompiledActionBandGpuExecution, ActionBandExecutionCompileError> {
     let required_bindings = frozen.budget().emission_binding_count;
     if pre_admitted_emission_bindings.len() != required_bindings as usize {
@@ -350,15 +516,46 @@ pub fn compile_action_band_gpu_execution(
         &band_binding_indices,
         pre_admitted_emission_bindings,
     )?;
-    let depth1_crossing_fast_path = depth1_crossing_fast_path(frozen, active_instances)?;
-    let active_instances = active_instances
+    let mut materialized_instances = active_instances.to_vec();
+    materialized_instances.sort_by_key(|instance| (instance.template.raw(), instance.slot.raw()));
+    let (dependencies, subordinate_rows) = lower_dependency_rows(frozen, &materialized_instances)?;
+    let depth1_crossing_fast_path = depth1_crossing_fast_path(frozen, &materialized_instances)?;
+    if !dependencies.is_empty() && !depth1_crossing_fast_path {
+        return Err(ActionBandExecutionError::RecursiveShapeDeferred.into());
+    }
+    let active_instances = materialized_instances
         .iter()
-        .map(|instance| ActionBandActiveInstanceGpu {
+        .enumerate()
+        .map(|(row, instance)| ActionBandActiveInstanceGpu {
             slot: instance.slot.raw(),
             template_index: instance.template.raw(),
             projection_start: 0,
             generation: 0,
             params: instance.params,
+            dependency_start: dependencies
+                .iter()
+                .take_while(|dependency| dependency.parent_row < row as u32)
+                .count() as u32,
+            dependency_count: dependencies
+                .iter()
+                .filter(|dependency| dependency.parent_row == row as u32)
+                .count() as u32,
+            flags: if instance.initially_active {
+                ACTIONBAND_INSTANCE_INITIALLY_ACTIVE
+            } else {
+                0
+            } | if subordinate_rows.contains(&row) {
+                ACTIONBAND_INSTANCE_SUBORDINATE
+            } else {
+                0
+            },
+            reserved: 0,
+        })
+        .collect::<Vec<_>>();
+    let dependencies = dependencies
+        .into_iter()
+        .map(|dependency| ActionBandDependencyGpu {
+            child_instance_row: dependency.child_row,
         })
         .collect();
     let plan = ActionBandExecutionPlan::from_admitted_numeric_tables(
@@ -371,9 +568,11 @@ pub fn compile_action_band_gpu_execution(
         eml_nodes,
         eml_ranges,
         active_instances,
+        dependencies,
         buckets,
         frozen.budget().storage_rows,
         depth1_crossing_fast_path,
+        native_lanes.is_some(),
     )
     .map_err(ActionBandExecutionCompileError::from)?;
 
@@ -404,6 +603,141 @@ pub fn compile_action_band_gpu_execution(
         plan,
         structural_sources,
     })
+}
+
+#[derive(Clone, Copy, Debug)]
+struct LoweredDependency {
+    parent_row: u32,
+    child_row: u32,
+}
+
+fn lower_dependency_rows(
+    frozen: &FrozenActionBandTemplates,
+    instances: &[ActionBandActiveInstance],
+) -> Result<(Vec<LoweredDependency>, BTreeSet<usize>), ActionBandExecutionCompileError> {
+    let mut rows = BTreeMap::new();
+    let mut rows_per_template = BTreeMap::<u32, u32>::new();
+    for (row, instance) in instances.iter().enumerate() {
+        if rows
+            .insert(
+                (instance.template().raw(), instance.slot().raw()),
+                row as u32,
+            )
+            .is_some()
+        {
+            return Err(ActionBandExecutionError::DuplicateActiveInstance.into());
+        }
+        *rows_per_template
+            .entry(instance.template().raw())
+            .or_default() += 1;
+    }
+    if instances.len() <= frozen.budget().storage_rows as usize {
+        for (&template_index, &actual) in &rows_per_template {
+            let template = frozen
+                .templates()
+                .get(template_index as usize)
+                .ok_or(ActionBandExecutionCompileError::InvalidFrozenSpan)?;
+            if actual > template.reserved_instance_rows() {
+                return Err(ActionBandExecutionCompileError::TemplateRowBudgetExceeded {
+                    template: template_index,
+                    actual,
+                    reserved: template.reserved_instance_rows(),
+                });
+            }
+        }
+    }
+
+    let mut lowered = Vec::new();
+    let mut subordinate_rows = BTreeSet::new();
+    for (parent_row, instance) in instances.iter().enumerate() {
+        let template = frozen
+            .templates()
+            .get(instance.template().raw() as usize)
+            .ok_or(ActionBandExecutionCompileError::InvalidFrozenSpan)?;
+        let span = template.dependency_span();
+        if span.len() > template.max_active_subordinates() {
+            return Err(
+                ActionBandExecutionCompileError::DependencyCapacityDeferred {
+                    parent_template: instance.template().raw(),
+                    dependency_count: span.len(),
+                    max_active: template.max_active_subordinates(),
+                },
+            );
+        }
+        let dependencies = frozen
+            .dependencies()
+            .get(span.start() as usize..(span.start() + span.len()) as usize)
+            .ok_or(ActionBandExecutionCompileError::InvalidFrozenSpan)?;
+        for child_template in dependencies {
+            let key = (child_template.raw(), instance.slot().raw());
+            let Some(&child_row) = rows.get(&key) else {
+                return Err(ActionBandExecutionCompileError::MissingPreAdmittedChild {
+                    parent_template: instance.template().raw(),
+                    child_template: child_template.raw(),
+                    slot: instance.slot().raw(),
+                });
+            };
+            if child_row == parent_row as u32 {
+                return Err(ActionBandExecutionCompileError::DependencyCycle);
+            }
+            if !subordinate_rows.insert(child_row as usize) {
+                return Err(ActionBandExecutionCompileError::SharedChildLifecycle {
+                    child_template: child_template.raw(),
+                    slot: instance.slot().raw(),
+                });
+            }
+            lowered.push(LoweredDependency {
+                parent_row: parent_row as u32,
+                child_row,
+            });
+        }
+    }
+
+    for (row, instance) in instances.iter().enumerate() {
+        if subordinate_rows.contains(&row) && instance.is_initially_active() {
+            return Err(ActionBandExecutionCompileError::ChildMustBeginInactive {
+                child_template: instance.template().raw(),
+                slot: instance.slot().raw(),
+            });
+        }
+        if !subordinate_rows.contains(&row) && !instance.is_initially_active() {
+            return Err(ActionBandExecutionCompileError::UnclaimedInactiveRow {
+                template: instance.template().raw(),
+                slot: instance.slot().raw(),
+            });
+        }
+    }
+
+    // Dependency order is not semantic. Canonical physical row order makes an
+    // authored append/reversal perturbation compile to the identical table.
+    lowered.sort_by_key(|dependency| (dependency.parent_row, dependency.child_row));
+
+    let mut marks = vec![0u8; instances.len()];
+    for row in 0..instances.len() {
+        reject_dependency_cycle(row, &lowered, &mut marks)?;
+    }
+    Ok((lowered, subordinate_rows))
+}
+
+fn reject_dependency_cycle(
+    row: usize,
+    dependencies: &[LoweredDependency],
+    marks: &mut [u8],
+) -> Result<(), ActionBandExecutionCompileError> {
+    match marks[row] {
+        1 => return Err(ActionBandExecutionCompileError::DependencyCycle),
+        2 => return Ok(()),
+        _ => {}
+    }
+    marks[row] = 1;
+    for dependency in dependencies
+        .iter()
+        .filter(|dependency| dependency.parent_row as usize == row)
+    {
+        reject_dependency_cycle(dependency.child_row as usize, dependencies, marks)?;
+    }
+    marks[row] = 2;
+    Ok(())
 }
 
 fn depth1_crossing_fast_path(

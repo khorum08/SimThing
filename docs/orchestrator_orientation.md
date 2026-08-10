@@ -45,7 +45,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 211b860c2a424d0386a01a2dc93d5c563abfd1411c1f58ec55c7b69d97426cb8 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | 26eab30ec86c97ac8dfd6beef7ae8c5b4d3f18c38fdaa431ec40ccce855396d3 |
-| design_0_0_8_7_rf_arena_modernization.md | 14aa4f99089963fe0a8e9e565501cd83f4bd1bcd326c8bfedf4fee23f51ac9af |
+| design_0_0_8_7_rf_arena_modernization.md | fa5e2f589b3d8d7c4d346b6ff3b338ede1258a229e18e30a145b4adc3cf5c219 |
 | relay_lint.sh | 4163f715cdc3b549dbf57c1744aff61ea96b9f9f0a2237376665fbdb24e986c8 |
 | doctrine_anchors.tsv | cbdca20399e8a50e3f3b609b7c0b66f8f2a5e912ec011a3704fc081c97471174 |
 | execution_status_taxonomy.tsv | 64381d52de2295cd397601c545c2285267640787f2e541479c17dfb33261e4b2 |
@@ -83,7 +83,7 @@ Track state: `open`
 | 6.5 | RESIDENCY-TIER-VOCABULARY-0 | **Phase 6→7 gap: StemThing-A.** The residency lane's authored vocabulary, per an | **GRADUATION OBLIGATION (recorded 2026-08-04; clauses landed early in #1628): at this rung's stamp the DA verifies th... |
 | 7.1 | ACTIONBAND-ADMISSION-DOOR-0 | Mint the one `simthing-spec` session-build ActionBand template admission door. B | A depth-1 synthetic ActionBand is admitted and bound to an ordinary anchored threshold; changing the observed value p... |
 | 7.2 | ACTIONBAND-GPU-EXECUTION-0 | Land sparse GPU templates/instances, `StateCurrent/StateNext`, depth-1/2 fast sh | CPU/interpreted/JIT or applicable faithful-lowering parity under existing EML semantics; no CPU evaluator/scheduler/m... |
-| 7.3 | ACTIONBAND-RECURSIVE-COMPOSITION-0 | Land pre-admitted subordinate activation, dependency spans, collapse, concurrent | Parent sets child-next state at generation `t`; child evaluates at `t+1`; child completion becomes ordinary state and... |
+| 7.3 | ACTIONBAND-RECURSIVE-COMPOSITION-0 | Land pre-admitted subordinate activation, dependency spans, collapse, concurrent | Parent sets child-next state from a real Phase-5 crossing at generation `t`; children evaluate from distinct Phase-5 ... |
 | 7.4 | ACTIONBAND-SPATIAL-VENDORIZATION-0 | Born-mortal/scenario-neutral spatial witness proving the old useful movement sub | Field/overlay-only changes redirect the spatial ActionBand target-seeking result with zero movement-specific destinat... |
 | 7.5 | ACTIONBAND-SEMANTIC-SHADOW-0 | Bind generic stamped ActionBand crossings/terminal/structural deltas to existing | Same opaque GPU ActionBand run with semantic labels changed produces bit-identical numerical results; generic readbac... |
 | 8.1 | CONTENTION-CONSERVATION-JUDGE-0 | **BINDS 6.5 (StemThing-A; clauses landed early in #1628, verified at 6.5 graduat | Judge red/green proven on seeded violations against SCENARIO-NEUTRAL synthetic contention fixtures. **The R6 dress re... |
