@@ -242,7 +242,7 @@ fn a1_synthetic_non_palma_bound_observable_round_trips() {
     };
     let (commitment, _, gen) = sealed_execution(&ctx, &fixture, &frozen);
     let authority = seal_actionband_authority(&frozen, commitment, gen).unwrap();
-    let (tree, actor, from, to) = authority_tree_with_actor("faction-alpha");
+    let (tree, actor, from, to) = authority_tree_with_actor("owner-alpha");
     let synthetic = BoundObservableIdentity::new(
         "synthetic-rf-grant-axis-v1",
         Some("post-authority-semantic-metadata"),
