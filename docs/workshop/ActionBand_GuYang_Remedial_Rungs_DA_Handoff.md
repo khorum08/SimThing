@@ -82,6 +82,16 @@ Either:
 This is an inspection of **semantic/public vocabulary**, not a request to make the CPU shadow compute
 Gu-Yang. Gu-Yang and ActionBand numerical authority remain GPU-only.
 
+### Reorient before inspecting
+
+The Gu-Yang anchors landed at master `3b93add1` and moved the rule stamp, so **7.5's handoff
+predates the doctrine it must now be judged against**. Its coder orients at `20761ed21351`; a relay
+carried on the older stamp `FAIL(stale-orient-receipt)`s on relay-lint.
+
+No code implication -- 7.5 is readback and the 12.5 icon descriptors, and nothing in the Gu-Yang
+revision touches either. The reorientation exists so the field-neutrality inspection above is made
+against reachable Field-Triad doctrine rather than from memory.
+
 ---
 
 ## 2. Fable refinements to bind at rung mint
@@ -365,11 +375,49 @@ search, retarget itself, sample distant alternatives, or invent adversarial rout
 
 ---
 
-## 6. Anchor/document co-evolution required at mint
+## 6. Anchor/document co-evolution
 
-The Gu-Yang ActionBand revision intentionally changed anchored sections, including §18. The DA mint
-PR must therefore perform the normal co-evolution/resync of the affected doctrine anchors and
-invalidate/resync carried ORIENT-RECEIPTs as required by the rule-stamp mechanism.
+### 6.0 ANCHOR CO-EVOLUTION IS DONE -- landed at master `3b93add1` (PR #1713)
+
+The resync this section anticipated has been performed. The DA mint PR does **not** need to repeat
+it; what remains is the document folding in 6.1 below.
+
+All **thirteen** prior `actionband-*` anchors survived the revision -- every heading still matches
+exactly, so hash drift only, no `missing-anchor`. Two sections carried the new Gu-Yang doctrine and
+were unreachable; both are now anchored, for **fifteen** total (`ANCHOR-CURATION: PASS rows=57`).
+
+| anchor | section | why |
+|---|---|---|
+| `actionband-field-triad-authority` | **7** | renamed from *"PALMA supplies the route where a route exists"* to *"The Field Triad supplies influence, route, and flux where each applies"* -- **the rename is the substantive fix**. Covers 7.1 route/flux degeneracy, 7.2 PALMA route authority, **7.3 Gu-Yang conserved-flow authority**, 7.4 the untouched local-minimum fence. |
+| `actionband-native-authority-table` | **12** | now carries **12.2 "ActionBand + Gu-Yang"** -- the authority sentence absent when the table listed eleven mechanisms including STEAD and PALMA but not Gu-Yang. |
+
+**Receipts moved. Reorient before ruling:**
+
+| role | ORIENT-RECEIPT |
+|---|---|
+| da | `b38fd48b41a7` |
+| orchestrator | `b123f7073c44` |
+| coding | `20761ed21351` |
+| rule stamp | `e49aad8855f903ec` |
+
+**Already reachable -- do not mint anchors for these:** 17.24 Field-Triad Native Progress Law (via
+section 17); 15.2 "Ride already-hot sweeps -- including Gu-Yang", 15.6, and 15.10 field-output
+consumption fast path (via section 15); and 4.6 "Conserved progress is flux-bounded" (via the 4.2
+anchor). That last one rests on a mechanism worth knowing when assessing coverage:
+`heading_section` breaks **only** on `## ` (`anchor_check.sh:131`), never on `###`, so a `###`
+anchor swallows every following subsection until the next `##`.
+
+**Deliberately not anchored:** section 20's **F15** falsifier and sections 21/23 -- DA review and
+ladder-sequencing material rather than implementer doctrine, consistent with the original map which
+anchored the fences and not the falsifiers. F15 is one row if the DA wants it reachable.
+
+**Blast radius verified before landing:** anchor `--check`/`--selftest` (7), gen_orientation
+`--check`/`--selftest` (29), DOC-BUDGET, orient `--selftest` (4), relay-lint `--selftest` (36),
+selftest-gate-guard, rule-expiry, agents-stub, librarian, track-closeout `--prove`, and the
+whole-tree doctrine scan at `failures=0`. All PASS. No ladder rows, handoffs, or lifecycle data were
+touched -- the section 21.2 sequencing remains the DA's to land.
+
+### 6.1 Document folding still required at mint
 
 At that time also fold Fable refinement 2.3 into `multi-axis-ActionBand-STEAD.md` §12.2:
 
@@ -397,8 +445,10 @@ The DA should rule on and, if approved, land the following sequence:
 
 1. **Immediately inspect 7.5 before graduation** for PALMA-only shadow/public vocabulary. Amend the
    in-flight handoff/implementation if needed; otherwise record field-neutral proof.
-2. Perform the ActionBand anchor co-evolution/resync caused by the Gu-Yang revision and fold in the
-   four Fable refinements above.
+2. Fold in the four Fable refinements (section 6.1). **The anchor co-evolution/resync is already
+   done** -- landed at `3b93add1`; reorient at the receipts in section 6.0 before ruling. Rule on
+   section 18.7, whose premise the revised document now answers: revise it to match 7.3/12.2, or
+   strike it as discharged. Leaving it is a live prohibition against a settled question.
 3. Mint `ACTIONBAND-FIELD-TRIAD-PROGRESS-0`.
 4. Mint `ACTIONBAND-SPATIAL-FLUX-WITNESS-0`.
 5. Mint Owner-added `ACTIONBAND-FULL-FIELD-TRIAD-MOVEMENT-VENDOR-0` as the new positive complete
