@@ -45,9 +45,9 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 211b860c2a424d0386a01a2dc93d5c563abfd1411c1f58ec55c7b69d97426cb8 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | 26eab30ec86c97ac8dfd6beef7ae8c5b4d3f18c38fdaa431ec40ccce855396d3 |
-| design_0_0_8_7_rf_arena_modernization.md | 79914fac561c745f5584e7de321ce1d22fde3103952bb886c0ac25a23fb354d5 |
+| design_0_0_8_7_rf_arena_modernization.md | 56304cda323bafda46705a4102028c5dc94b1ab2b051e4e6e45013af3e34ed78 |
 | relay_lint.sh | 4163f715cdc3b549dbf57c1744aff61ea96b9f9f0a2237376665fbdb24e986c8 |
-| doctrine_anchors.tsv | c57e95391b16969af5d89ea848f7a5b46743de0b702a9f4548dd625896112151 |
+| doctrine_anchors.tsv | b82b7339a4859ba31072b10b6117316237ab280307bd6fecc0d4bcadec63fa12 |
 | execution_status_taxonomy.tsv | 64381d52de2295cd397601c545c2285267640787f2e541479c17dfb33261e4b2 |
 | execution_status_mixed_posture.tsv | 1adf05f3ec5fd7b537efe29259d20649a2c6d3a0839590063e5308ff154e8f25 |
 | execution_status_non_execution.tsv | 214c1b557dfd3fc465f0171051e20281ff1dcf6c53128dbb29cba01524f9be02 |
@@ -68,7 +68,7 @@ Dark properties (1): `fixture::dark_reading` (reasons/spans in `property_admissi
 
 Track state: `open`
 
-> Compact view: 33 completed rungs elided; showing all 20 open rungs plus the 3 most recent completions. Full ladder in the design doc.
+> Compact view: 33 completed rungs elided; showing all 23 open rungs plus the 3 most recent completions. Full ladder in the design doc.
 
 | # | rung | deliverable | exit proof |
 | --- | --- | --- | --- |
@@ -86,6 +86,9 @@ Track state: `open`
 | 7.3 | ACTIONBAND-RECURSIVE-COMPOSITION-0 | Land pre-admitted subordinate activation, dependency spans, collapse, concurrent | Parent sets child-next state from a real Phase-5 crossing at generation `t`; children evaluate from distinct Phase-5 ... |
 | 7.4 | ACTIONBAND-SPATIAL-VENDORIZATION-0 | Born-mortal/scenario-neutral spatial witness proving the old useful movement sub | Field/overlay-only changes redirect the spatial ActionBand target-seeking result with zero movement-specific destinat... |
 | 7.5 | ACTIONBAND-SEMANTIC-SHADOW-0 | Bind generic stamped ActionBand crossings/terminal/structural deltas to existing | Same opaque GPU ActionBand run with semantic labels changed produces bit-identical numerical results; generic readbac... |
+| 7.5a | ACTIONBAND-FIELD-TRIAD-PROGRESS-0 | **Gu-Yang remediation, rung 1 of 3 (Owner-directed 2026-08-10; Fable-approved re | A synthetic conserved-channel ActionBand consumes a REAL Gu-Yang / `FieldSweepRegistration` output with **zero Action... |
+| 7.5b | ACTIONBAND-SPATIAL-FLUX-WITNESS-0 | **Gu-Yang remediation, rung 2 of 3.** Prove the generic Field-Triad ActionBand b | Same target and PALMA potential, different Gu-Yang channel capacity ⇒ **same lawful descent identity, different per-g... |
+| 7.5c | ACTIONBAND-FULL-FIELD-TRIAD-MOVEMENT-VENDOR-0 | **Gu-Yang remediation, rung 3 of 3 — OWNER ADDITION.** **Do NOT reopen 7.4 to re | One movement ActionBand reaches the same target under identical PALMA potential at two admitted lane capacities: **ro... |
 | 8.1 | CONTENTION-CONSERVATION-JUDGE-0 | **BINDS 6.5 (StemThing-A; clauses landed early in #1628, verified at 6.5 graduat | Judge red/green proven on seeded violations against SCENARIO-NEUTRAL synthetic contention fixtures. **The R6 dress re... |
 | 8.2 | CONTENTION-ARENA-EXECUTED-0 | **BINDS 6.5 (StemThing-A; clauses landed early in #1628, verified at 6.5 graduat | Executed path judged green; **emergence falsifier: changing ONLY the authored resolution rule changes the outcome wit... |
 | 9.1 | GATED-RATES-EML-REWIRE-0 | Phase 9: exclusion-audit Family C — `gated_rates` gate evaluation → authored EML | Gate behavior parity via oracle; hardcoded cols gone; corpus green. **SCOPE COVERAGE (DA review 2026-08-03, Owner-dir... |
