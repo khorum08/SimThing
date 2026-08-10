@@ -22,7 +22,6 @@ pub const ACTIONBAND_NO_PROGRAM: u32 = u32::MAX;
 pub const ACTIONBAND_INSTANCE_INITIALLY_ACTIVE: u32 = 1;
 pub const ACTIONBAND_INSTANCE_SUBORDINATE: u32 = 1 << 1;
 pub const ACTIONBAND_STATE_ACTIVE: u32 = 1;
-pub const ACTIONBAND_STATE_TERMINAL: u32 = 1 << 1;
 
 pub mod target_kind {
     pub const POINT: u32 = 0;
@@ -249,6 +248,7 @@ pub struct ActionBandExecutionPlan {
     projection_floats: u32,
     depth1_crossing_fast_path: bool,
     depth2_common_fast_shape: bool,
+    native_destinations: bool,
     fingerprint: u64,
 }
 
@@ -268,6 +268,7 @@ impl ActionBandExecutionPlan {
         buckets: Vec<ActionBandExecutionBucket>,
         reserved_instance_rows: u32,
         depth1_crossing_fast_path: bool,
+        native_destinations: bool,
     ) -> Result<Self, ActionBandExecutionError> {
         if active_instances.len() > reserved_instance_rows as usize {
             return Err(ActionBandExecutionError::SparseRowBudgetExceeded {
@@ -303,6 +304,7 @@ impl ActionBandExecutionPlan {
             &eml_ranges,
             &active_instances,
             &dependencies,
+            native_destinations,
         )?;
         if !dependencies.is_empty() && !depth1_crossing_fast_path {
             return Err(ActionBandExecutionError::RecursiveShapeDeferred);
@@ -341,6 +343,9 @@ impl ActionBandExecutionPlan {
         if depth2_common_fast_shape {
             fingerprint ^= 0xD2C0_6D00_0000_0001;
         }
+        if native_destinations {
+            fingerprint ^= 0xA73A_71E0_0000_0001;
+        }
         Ok(Self {
             templates,
             target_channels,
@@ -357,6 +362,7 @@ impl ActionBandExecutionPlan {
             projection_floats,
             depth1_crossing_fast_path,
             depth2_common_fast_shape,
+            native_destinations,
             fingerprint,
         })
     }
@@ -459,7 +465,13 @@ impl ActionBandExecutionPlan {
             row.output_start = output_count;
             let band = &self.bands[row.band_index as usize];
             for local_index in 0..band.binding_count {
-                commitment_inputs.push((output_count + local_index, delta.clone()));
+                let binding_index =
+                    self.band_binding_indices[(band.binding_start + local_index) as usize] as usize;
+                if self.emission_bindings[binding_index].destination()
+                    == ActionBandEmissionDestination::StructuralRequest
+                {
+                    commitment_inputs.push((output_count + local_index, delta.clone()));
+                }
             }
             output_count = output_count
                 .checked_add(row.output_count)
@@ -564,6 +576,12 @@ pub enum ActionBandExecutionError {
     },
     #[error("ActionBand 7.2 admits exactly one structural binding per band, found {count}")]
     StructuralBindingCount { count: u32 },
+    #[error("ActionBand native destinations require an ordinary external next-state buffer")]
+    NativeNextRequired,
+    #[error("ActionBand current/next buffers differ in size")]
+    NativeNextSizeMismatch,
+    #[error("ActionBand native bindings would create more than one writer for slot {slot}, column {column}")]
+    NativeDestinationCollision { slot: u32, column: u32 },
     #[error("depth-1 fast path received more than one sealed crossing for one active instance")]
     DuplicateDepth1Crossing,
     #[error("ActionBand recursive dependencies require the shared depth-1/2 fast shape")]
@@ -648,13 +666,15 @@ impl ActionBandGpuSession {
             label: Some("actionband_gpu_execution_shader"),
             source: wgpu::ShaderSource::Wgsl(shader_source.into()),
         });
-        let entries: Vec<_> = (0..17)
+        let entries: Vec<_> = (0..18)
             .map(|binding| wgpu::BindGroupLayoutEntry {
                 binding,
                 visibility: wgpu::ShaderStages::COMPUTE,
                 ty: wgpu::BindingType::Buffer {
                     ty: if binding == 8 {
                         wgpu::BufferBindingType::Uniform
+                    } else if binding == 17 {
+                        wgpu::BufferBindingType::Storage { read_only: false }
                     } else {
                         wgpu::BufferBindingType::Storage {
                             read_only: !matches!(binding, 5 | 6 | 13),
@@ -772,7 +792,29 @@ impl ActionBandGpuSession {
         crossings: &ActionBandCrossingBatch,
     ) -> Result<ActionBandProductionDispatch, ActionBandExecutionError> {
         let (production, _, _, _) =
-            self.dispatch_internal(ctx, world_values, n_dims, crossings, false)?;
+            self.dispatch_internal(ctx, world_values, None, n_dims, crossings, false)?;
+        Ok(production)
+    }
+
+    /// Production dispatch for an admitted native destination. The caller-owned
+    /// buffer is the ordinary authoritative next-state surface; this operator
+    /// only copies current to next and applies its fixed admitted writes.
+    pub fn dispatch_with_native_next(
+        &mut self,
+        ctx: &GpuContext,
+        world_values: &wgpu::Buffer,
+        world_values_next: &wgpu::Buffer,
+        n_dims: u32,
+        crossings: &ActionBandCrossingBatch,
+    ) -> Result<ActionBandProductionDispatch, ActionBandExecutionError> {
+        let (production, _, _, _) = self.dispatch_internal(
+            ctx,
+            world_values,
+            Some(world_values_next),
+            n_dims,
+            crossings,
+            false,
+        )?;
         Ok(production)
     }
 
@@ -789,7 +831,39 @@ impl ActionBandGpuSession {
             return Err(ActionBandExecutionError::ProofReadbackDisabled);
         }
         let (production, states, projection, emission_payloads) =
-            self.dispatch_internal(ctx, world_values, n_dims, crossings, true)?;
+            self.dispatch_internal(ctx, world_values, None, n_dims, crossings, true)?;
+        Ok(ActionBandExecutionReadback {
+            states: states.expect("proof dispatch requests state readback"),
+            projection: projection.expect("proof dispatch requests projection readback"),
+            commitments: production.commitments,
+            emission_payloads,
+            gpu_time_ns: production.gpu_time_ns,
+            carry_gpu_time_ns: production.carry_gpu_time_ns,
+            evaluation_gpu_time_ns: production.evaluation_gpu_time_ns,
+            emission_gpu_time_ns: production.emission_gpu_time_ns,
+        })
+    }
+
+    /// Proof view of [`Self::dispatch_with_native_next`].
+    pub fn dispatch_with_native_next_and_readback(
+        &mut self,
+        ctx: &GpuContext,
+        world_values: &wgpu::Buffer,
+        world_values_next: &wgpu::Buffer,
+        n_dims: u32,
+        crossings: &ActionBandCrossingBatch,
+    ) -> Result<ActionBandExecutionReadback, ActionBandExecutionError> {
+        if !debug_readback_allowed() {
+            return Err(ActionBandExecutionError::ProofReadbackDisabled);
+        }
+        let (production, states, projection, emission_payloads) = self.dispatch_internal(
+            ctx,
+            world_values,
+            Some(world_values_next),
+            n_dims,
+            crossings,
+            true,
+        )?;
         Ok(ActionBandExecutionReadback {
             states: states.expect("proof dispatch requests state readback"),
             projection: projection.expect("proof dispatch requests projection readback"),
@@ -806,6 +880,7 @@ impl ActionBandGpuSession {
         &mut self,
         ctx: &GpuContext,
         world_values: &wgpu::Buffer,
+        world_values_next: Option<&wgpu::Buffer>,
         n_dims: u32,
         crossings: &ActionBandCrossingBatch,
         proof_readback: bool,
@@ -821,6 +896,14 @@ impl ActionBandGpuSession {
         if crossings.plan_fingerprint != self.plan.fingerprint {
             return Err(ActionBandExecutionError::ForeignCrossingBatch);
         }
+        if self.plan.native_destinations && world_values_next.is_none() {
+            return Err(ActionBandExecutionError::NativeNextRequired);
+        }
+        if let Some(next) = world_values_next {
+            if next.size() != world_values.size() {
+                return Err(ActionBandExecutionError::NativeNextSizeMismatch);
+            }
+        }
         for template in &self.plan.templates {
             for column in [
                 template.velocity_current_channel,
@@ -834,7 +917,25 @@ impl ActionBandGpuSession {
                 }
             }
         }
+        for binding in &self.plan.emission_bindings {
+            if self.plan.native_destinations
+                && matches!(
+                    binding.destination(),
+                    ActionBandEmissionDestination::PropertyNext
+                        | ActionBandEmissionDestination::RfClaim
+                        | ActionBandEmissionDestination::CostBand
+                )
+                && binding.destination_index >= n_dims
+            {
+                return Err(ActionBandExecutionError::DestinationColumnOutOfBounds {
+                    column: binding.destination_index,
+                    n_dims,
+                });
+            }
+        }
         let device = &ctx.device;
+        let native_next_dummy = storage_rw(device, "actionband_native_next_dummy", &[0u32]);
+        let native_next = world_values_next.unwrap_or(&native_next_dummy);
         let crossing_buffer = storage(device, "actionband_sealed_crossings", &crossings.rows);
         // An unresolved parent or inactive child performs no shader write; the
         // impossible column sentinel therefore remains and cannot mint a CPU
@@ -867,6 +968,7 @@ impl ActionBandGpuSession {
             &evaluation_params_buffer,
             &crossing_buffer,
             &consequence_buffer,
+            native_next,
         );
         let mut bucket_params_buffers = Vec::with_capacity(crossings.bucket_ranges.len());
         let mut bucket_bind_groups = Vec::with_capacity(crossings.bucket_ranges.len());
@@ -887,6 +989,7 @@ impl ActionBandGpuSession {
                         .expect("bucket params inserted"),
                     &crossing_buffer,
                     &consequence_buffer,
+                    native_next,
                 ),
             );
         }
@@ -912,6 +1015,9 @@ impl ActionBandGpuSession {
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("actionband_gpu_execution_encoder"),
         });
+        if self.plan.native_destinations {
+            encoder.copy_buffer_to_buffer(world_values, 0, native_next, 0, world_values.size());
+        }
         let depth1_advances =
             self.plan.depth1_crossing_fast_path && !crossings.bucket_ranges.is_empty();
         let carry_timestamped = depth1_advances
@@ -1133,6 +1239,7 @@ impl ActionBandGpuSession {
         params: &wgpu::Buffer,
         crossings: &wgpu::Buffer,
         consequences: &wgpu::Buffer,
+        world_values_next: &wgpu::Buffer,
     ) -> wgpu::BindGroup {
         let resources = [
             &self.templates,
@@ -1152,6 +1259,7 @@ impl ActionBandGpuSession {
             &self.eml_nodes,
             &self.eml_ranges,
             &self.dependencies,
+            world_values_next,
         ];
         let entries: Vec<_> = resources
             .iter()
@@ -1187,6 +1295,7 @@ fn validate_tables(
     eml_ranges: &[EmlTreeRangeGpu],
     instances: &[ActionBandActiveInstanceGpu],
     dependencies: &[ActionBandDependencyGpu],
+    native_destinations: bool,
 ) -> Result<(), ActionBandExecutionError> {
     for template in templates {
         let channels_end = template.channel_start as usize + template.channel_count as usize;
@@ -1227,10 +1336,12 @@ fn validate_tables(
         {
             return Err(ActionBandExecutionError::InvalidTableSpan);
         }
-        if band.binding_count != 1 {
+        if !native_destinations && band.binding_count != 1 {
             return Err(ActionBandExecutionError::StructuralBindingCount {
                 count: band.binding_count,
             });
+        } else if native_destinations && band.binding_count == 0 {
+            return Err(ActionBandExecutionError::InvalidTableSpan);
         }
     }
     if band_binding_indices
@@ -1256,9 +1367,26 @@ fn validate_tables(
         if !valid_shape {
             return Err(ActionBandExecutionError::InvalidTableSpan);
         }
-        if destination != ActionBandEmissionDestination::StructuralRequest {
+        if destination != ActionBandEmissionDestination::StructuralRequest
+            && (!native_destinations
+                || !matches!(
+                    destination,
+                    ActionBandEmissionDestination::PropertyNext
+                        | ActionBandEmissionDestination::RfClaim
+                        | ActionBandEmissionDestination::CostBand
+                ))
+        {
             return Err(ActionBandExecutionError::DestinationDeferred { destination });
         }
+    }
+    if native_destinations {
+        validate_native_write_collisions(
+            templates,
+            bands,
+            band_binding_indices,
+            emission_bindings,
+            instances,
+        )?;
     }
     for instance in instances {
         let end = instance.dependency_start as usize + instance.dependency_count as usize;
@@ -1278,6 +1406,47 @@ fn validate_tables(
         return Err(ActionBandExecutionError::InvalidTableSpan);
     }
     validate_dependency_rows(instances, dependencies)?;
+    Ok(())
+}
+
+fn validate_native_write_collisions(
+    templates: &[ActionBandTemplateGpu],
+    bands: &[ActionBandBandGpu],
+    band_binding_indices: &[u32],
+    emission_bindings: &[ActionBandEmissionBindingGpu],
+    instances: &[ActionBandActiveInstanceGpu],
+) -> Result<(), ActionBandExecutionError> {
+    let mut writers = std::collections::BTreeMap::new();
+    for (instance_row, instance) in instances.iter().enumerate() {
+        let template = &templates[instance.template_index as usize];
+        for band_index in template.band_start..template.band_start + template.band_count {
+            let band = &bands[band_index as usize];
+            let mut band_writes = std::collections::BTreeSet::new();
+            for local in 0..band.binding_count {
+                let index = band_binding_indices[(band.binding_start + local) as usize] as usize;
+                let binding = emission_bindings[index];
+                if !matches!(
+                    binding.destination(),
+                    ActionBandEmissionDestination::PropertyNext
+                        | ActionBandEmissionDestination::RfClaim
+                        | ActionBandEmissionDestination::CostBand
+                ) {
+                    continue;
+                }
+                let key = (instance.slot, binding.destination_index);
+                let duplicate_in_band = !band_writes.insert(key);
+                let rival_instance = writers
+                    .insert(key, instance_row)
+                    .is_some_and(|prior| prior != instance_row);
+                if duplicate_in_band || rival_instance {
+                    return Err(ActionBandExecutionError::NativeDestinationCollision {
+                        slot: instance.slot,
+                        column: binding.destination_index,
+                    });
+                }
+            }
+        }
+    }
     Ok(())
 }
 

@@ -34,7 +34,6 @@ pub use action_band_execution::{
     ActionBandGpuSession, ActionBandProductionDispatch, ActionBandPropertyWrite,
     ActionBandStateGpu, ActionBandTemplateGpu, ACTIONBAND_INSTANCE_INITIALLY_ACTIVE,
     ACTIONBAND_INSTANCE_SUBORDINATE, ACTIONBAND_NO_PROGRAM, ACTIONBAND_STATE_ACTIVE,
-    ACTIONBAND_STATE_TERMINAL,
 };
 pub use candidate_f_magnitude::{
     max_candidate_f_magnitude_bits, CandidateFMagnitudeError, CandidateFMagnitudeReport,

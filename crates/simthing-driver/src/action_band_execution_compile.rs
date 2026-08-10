@@ -5,7 +5,8 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use simthing_core::{
-    eml_nodes::execution_class_to_u32, EmlExpressionRegistry, EmlTreeId, SlotIndex,
+    eml_nodes::execution_class_to_u32, ColumnIndex, CompiledAccumulatorOpPlan, DimensionRegistry,
+    EmitOnThresholdRegistration, EmlExpressionRegistry, EmlTreeId, SlotIndex,
 };
 use simthing_feeder::{BoundaryRequest, FeederSender};
 use simthing_gpu::{
@@ -15,7 +16,9 @@ use simthing_gpu::{
     ActionBandTemplateGpu, EmlTreeRangeGpu, StructuralCommitment,
     ACTIONBAND_INSTANCE_INITIALLY_ACTIVE, ACTIONBAND_INSTANCE_SUBORDINATE, ACTIONBAND_NO_PROGRAM,
 };
-use simthing_sim::{StructuralCommitmentApplicationDoor, StructuralCommitmentApplicationError};
+use simthing_sim::{
+    StructuralCommitmentApplicationDoor, StructuralCommitmentApplicationError, ThresholdRegistry,
+};
 use simthing_spec::{
     ActionBandTemplateIndex, AdmittedActionBandTarget, FrozenActionBandTemplates,
     ScalarBoundDirection,
@@ -110,8 +113,75 @@ pub enum ActionBandExecutionCompileError {
     },
     #[error("ActionBand frozen dependency graph contains a runtime lifecycle cycle")]
     DependencyCycle,
+    #[error("ActionBand native destination {destination:?} column {column} is not admitted by its existing authoritative lane")]
+    NativeDestinationNotAdmitted {
+        destination: ActionBandEmissionDestination,
+        column: u32,
+    },
     #[error(transparent)]
     Kernel(#[from] ActionBandExecutionError),
+}
+
+/// Source-bound permission to lower ActionBand payloads into existing ordinary
+/// next-state lanes. It carries no values or lifecycle authority: RF columns
+/// come from compiled accumulator plans and CostBand columns from admitted sink
+/// registrations in the ordinary threshold registry.
+#[derive(Clone, Debug, Default)]
+pub struct ActionBandNativeLaneAdmission {
+    property_next_columns: BTreeSet<u32>,
+    rf_claim_columns: BTreeSet<u32>,
+    cost_band_columns: BTreeSet<u32>,
+}
+
+impl ActionBandNativeLaneAdmission {
+    pub fn from_existing_surfaces(
+        dimensions: &DimensionRegistry,
+        property_next_columns: &[ColumnIndex],
+        rf_plans: &[CompiledAccumulatorOpPlan],
+        threshold_registrations: &[EmitOnThresholdRegistration],
+        threshold_registry: &ThresholdRegistry,
+    ) -> Self {
+        let in_bounds = |column: u32| column < dimensions.total_columns as u32;
+        let property_next_columns = property_next_columns
+            .iter()
+            .map(|column| column.raw_u32())
+            .filter(|&column| in_bounds(column))
+            .collect();
+        let rf_claim_columns = rf_plans
+            .iter()
+            .map(|plan| plan.input_channel.raw())
+            .filter(|&column| in_bounds(column))
+            .collect();
+        let cost_band_columns = threshold_registrations
+            .iter()
+            .filter(|registration| {
+                threshold_registry
+                    .cost_band(registration.event_kind)
+                    .is_sink
+            })
+            .map(|registration| registration.col.raw_u32())
+            .filter(|&column| in_bounds(column))
+            .collect();
+        Self {
+            property_next_columns,
+            rf_claim_columns,
+            cost_band_columns,
+        }
+    }
+
+    fn admits(&self, binding: ActionBandEmissionBindingGpu) -> bool {
+        let column = binding.destination_index();
+        match binding.destination() {
+            ActionBandEmissionDestination::PropertyNext => {
+                self.property_next_columns.contains(&column)
+            }
+            ActionBandEmissionDestination::RfClaim => self.rf_claim_columns.contains(&column),
+            ActionBandEmissionDestination::CostBand => self.cost_band_columns.contains(&column),
+            ActionBandEmissionDestination::StructuralRequest => true,
+            ActionBandEmissionDestination::OverlayEvent
+            | ActionBandEmissionDestination::Telemetry => false,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -196,6 +266,50 @@ pub fn compile_action_band_gpu_execution(
     eml_registry: &EmlExpressionRegistry,
     pre_admitted_emission_bindings: &[ActionBandEmissionBindingGpu],
     active_instances: &[ActionBandActiveInstance],
+) -> Result<CompiledActionBandGpuExecution, ActionBandExecutionCompileError> {
+    compile_action_band_gpu_execution_inner(
+        frozen,
+        eml_registry,
+        pre_admitted_emission_bindings,
+        active_instances,
+        None,
+    )
+}
+
+/// 7.3 lowering door for bindings proven to be existing authoritative native
+/// lanes. The default 7.2 compiler remains structural-only.
+pub fn compile_action_band_gpu_execution_with_native_lanes(
+    frozen: &FrozenActionBandTemplates,
+    eml_registry: &EmlExpressionRegistry,
+    pre_admitted_emission_bindings: &[ActionBandEmissionBindingGpu],
+    active_instances: &[ActionBandActiveInstance],
+    native_lanes: &ActionBandNativeLaneAdmission,
+) -> Result<CompiledActionBandGpuExecution, ActionBandExecutionCompileError> {
+    for &binding in pre_admitted_emission_bindings {
+        if !native_lanes.admits(binding) {
+            return Err(
+                ActionBandExecutionCompileError::NativeDestinationNotAdmitted {
+                    destination: binding.destination(),
+                    column: binding.destination_index(),
+                },
+            );
+        }
+    }
+    compile_action_band_gpu_execution_inner(
+        frozen,
+        eml_registry,
+        pre_admitted_emission_bindings,
+        active_instances,
+        Some(native_lanes),
+    )
+}
+
+fn compile_action_band_gpu_execution_inner(
+    frozen: &FrozenActionBandTemplates,
+    eml_registry: &EmlExpressionRegistry,
+    pre_admitted_emission_bindings: &[ActionBandEmissionBindingGpu],
+    active_instances: &[ActionBandActiveInstance],
+    native_lanes: Option<&ActionBandNativeLaneAdmission>,
 ) -> Result<CompiledActionBandGpuExecution, ActionBandExecutionCompileError> {
     let required_bindings = frozen.budget().emission_binding_count;
     if pre_admitted_emission_bindings.len() != required_bindings as usize {
@@ -458,6 +572,7 @@ pub fn compile_action_band_gpu_execution(
         buckets,
         frozen.budget().storage_rows,
         depth1_crossing_fast_path,
+        native_lanes.is_some(),
     )
     .map_err(ActionBandExecutionCompileError::from)?;
 

@@ -8,5 +8,4 @@ pub use simthing_kernel::accumulator_op::action_band_execution::{
     ActionBandGpuSession, ActionBandProductionDispatch, ActionBandPropertyWrite,
     ActionBandStateGpu, ActionBandTemplateGpu, ACTIONBAND_INSTANCE_INITIALLY_ACTIVE,
     ACTIONBAND_INSTANCE_SUBORDINATE, ACTIONBAND_NO_PROGRAM, ACTIONBAND_STATE_ACTIVE,
-    ACTIONBAND_STATE_TERMINAL,
 };
