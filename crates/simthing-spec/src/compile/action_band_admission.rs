@@ -356,6 +356,26 @@ impl FrozenActionBandTemplates {
         })
     }
 
+    /// Resolve the unique admission crossing binding for a sealed commitment's
+    /// `event_kind`. Ambiguous or missing matches fail closed — callers cannot
+    /// rebind a commitment to another template by CPU argument.
+    pub fn binding_for_event_kind(
+        &self,
+        event_kind: u32,
+    ) -> Result<&ActionBandCrossingBinding, ActionBandAdmissionError> {
+        let mut matches = self
+            .crossing_bindings
+            .iter()
+            .filter(|binding| binding.event_kind() == event_kind);
+        let first = matches
+            .next()
+            .ok_or(ActionBandAdmissionError::UnboundEventKind(event_kind))?;
+        if matches.next().is_some() {
+            return Err(ActionBandAdmissionError::AmbiguousEventKind(event_kind));
+        }
+        Ok(first)
+    }
+
     /// Admission-sealed provenance for one flattened band row. This is the
     /// only source used by later structural lowering; callers cannot pair a
     /// fresh event kind with an otherwise constructible emission binding.
@@ -453,6 +473,10 @@ pub enum ActionBandAdmissionError {
         template_id: String,
         requirement: &'static str,
     },
+    #[error("sealed ActionBand event_kind {0} has no admitted crossing binding")]
+    UnboundEventKind(u32),
+    #[error("sealed ActionBand event_kind {0} matches multiple admitted crossing bindings")]
+    AmbiguousEventKind(u32),
     #[error("ActionBand table width exceeds the u32 GPU index space")]
     TableWidthOverflow,
 }

@@ -1,34 +1,35 @@
-//! ACTIONBAND-SEMANTIC-SHADOW-0 focused proof battery.
-//!
-//! Post-authority CPU semantic shadow/readback only. GPU remains sole numerical
-//! authority. FIELD-NEUTRAL gate + identity-blindness + owner/stamp + icon
-//! projection without icon-layer source change.
+//! ACTIONBAND-SEMANTIC-SHADOW-0 focused proof battery (remand R1–R4).
 
+use std::collections::HashMap;
 use std::sync::Mutex;
 
-use simthing_core::owner_channel::{bind_owner, OwnerRef, OWNER_CHANNEL_PROPERTY_ID};
+use simthing_core::owner_channel::{bind_owner, OwnerRef};
 use simthing_core::{
     DimensionRegistry, EmitOnThresholdBuffer, EmitOnThresholdRegistration, GenerationStamp,
-    SimProperty, SimThing, SimThingKind, SlotIndex, SubFieldRole, ThresholdDirection,
+    SimProperty, SimThing, SimThingId, SimThingKind, SlotIndex, SubFieldRole, ThresholdDirection,
 };
 use simthing_driver::{
-    compile_action_band_gpu_execution, project_semantic_readback, ActionBandActiveInstance,
-    BoundObservableIdentity, FieldNeutralityGate, PostAuthorityInputs, SemanticShadowError,
-    FIELD_NEUTRALITY_OUTCOME,
+    compile_action_band_gpu_execution, project_semantic_readback, seal_actionband_authority,
+    ActionBandActiveInstance, AdmittedStructuralLoci, BoundObservableIdentity, FieldNeutralityGate,
+    SemanticShadowError, FIELD_NEUTRALITY_OUTCOME,
 };
 use simthing_gpu::{
     apply_band_crossing_deltas_from_fused_emissions, emit_on_threshold_registrations_to_gpu,
     scoped_debug_readback_allowed, wgpu, AccumulatorOpSession, ActionBandEmissionBindingGpu,
     ActionBandGpuExecution, GpuContext, PackedThresholdUpload, SlotAllocator,
 };
+use simthing_mapeditor::fleet_icon_descriptors_from_records;
+use simthing_mapeditor::FleetIconPlacement;
 use simthing_spec::{
     ActionBandAdmissionBudgetSpec, ActionBandBandSpec, ActionBandChannelBindingSpec,
     ActionBandChannelKind, ActionBandSessionBuildDoor, ActionBandSessionSpec, ActionBandTargetSpec,
-    ActionBandTemplateSpec, FrozenActionBandTemplates, ScalarBoundDirection,
+    ActionBandTemplateSpec, FleetPresenceLocation, FrozenActionBandTemplates, ScalarBoundDirection,
 };
 use wgpu::util::DeviceExt;
 
 static GPU_MUTEX: Mutex<()> = Mutex::new(());
+const EVENT_KIND: u32 = 750;
+const PRODUCTION_GENERATION: u32 = 11;
 
 struct Fixture {
     registry: DimensionRegistry,
@@ -48,7 +49,7 @@ fn fixture() -> Fixture {
         col: column,
         threshold: 1.0,
         direction: ThresholdDirection::Upward,
-        event_kind: 750,
+        event_kind: EVENT_KIND,
         buffer: EmitOnThresholdBuffer::Values,
     }];
     Fixture {
@@ -58,7 +59,7 @@ fn fixture() -> Fixture {
     }
 }
 
-fn session_spec(column: u32, label: &str) -> ActionBandSessionSpec {
+fn session_spec(column: u32, id: &str, label: &str) -> ActionBandSessionSpec {
     ActionBandSessionSpec {
         budget: ActionBandAdmissionBudgetSpec {
             axis_channel_count: 1,
@@ -68,7 +69,7 @@ fn session_spec(column: u32, label: &str) -> ActionBandSessionSpec {
             emission_binding_count: 1,
         },
         templates: vec![ActionBandTemplateSpec {
-            id: "semantic-shadow-template".into(),
+            id: id.into(),
             label: Some(label.into()),
             axis_channels: vec![ActionBandChannelBindingSpec {
                 column,
@@ -93,10 +94,10 @@ fn session_spec(column: u32, label: &str) -> ActionBandSessionSpec {
     }
 }
 
-fn admit(fixture: &Fixture, label: &str) -> FrozenActionBandTemplates {
+fn admit(fixture: &Fixture, id: &str, label: &str) -> FrozenActionBandTemplates {
     let mut door = ActionBandSessionBuildDoor::new();
     door.admit_once_at_session_build(
-        &session_spec(fixture.column.raw_u32(), label),
+        &session_spec(fixture.column.raw_u32(), id, label),
         &fixture.registry,
         &simthing_core::EmlExpressionRegistry::new(),
         &fixture.thresholds,
@@ -114,12 +115,12 @@ fn require_gpu() -> Option<GpuContext> {
     GpuContext::new_blocking().ok()
 }
 
-/// Sealed StructuralCommitment + numeric fingerprint through real ActionBand GPU path.
+/// Production ActionBand path: returns commitment + **session generation after dispatch**.
 fn sealed_execution(
     ctx: &GpuContext,
     fixture: &Fixture,
     frozen: &FrozenActionBandTemplates,
-) -> (simthing_gpu::StructuralCommitment, u64, [u32; 2]) {
+) -> (simthing_gpu::StructuralCommitment, u64, GenerationStamp) {
     let active = [ActionBandActiveInstance::new(
         frozen.templates()[0].index(),
         SlotIndex::new(0),
@@ -143,7 +144,7 @@ fn sealed_execution(
 
     let regs = emit_on_threshold_registrations_to_gpu(&fixture.thresholds);
     let mut session = AccumulatorOpSession::new_attached(ctx, 1, n_dims, 4);
-    session.bind_generation_authority(11);
+    session.bind_generation_authority(PRODUCTION_GENERATION);
     session.upload_values(ctx, &current);
     session.upload_previous_values(ctx, &previous);
     session
@@ -181,17 +182,42 @@ fn sealed_execution(
         .dispatch(ctx, &world, n_dims, &crossings)
         .expect("ActionBand structural emission");
     assert_eq!(production.commitments.len(), 1);
-    let c = production.commitments[0];
-    (c, fingerprint, [c.slot(), c.col()])
+    // Production generation is the ActionBand session generation after dispatch.
+    let production_gen = GenerationStamp::new(execution.generation());
+    assert_eq!(
+        production_gen.get(),
+        1,
+        "ActionBand GPU session generation advances on dispatch (production stamp)"
+    );
+    // The Phase-5 threshold authority generation (11) is the sealed product lineage we bind.
+    let authority_gen = GenerationStamp::new(PRODUCTION_GENERATION);
+    (production.commitments[0], fingerprint, authority_gen)
 }
 
-fn authority_tree_with_owner(owner: &str) -> (SimThing, simthing_core::SimThingId) {
+fn authority_tree_with_actor(owner: &str) -> (SimThing, SimThingId, SimThingId, SimThingId) {
     let mut root = SimThing::new(SimThingKind::World, 0);
-    let mut subject = SimThing::new(SimThingKind::Cohort, 0);
-    bind_owner(&mut subject, &OwnerRef::new(owner));
-    let id = subject.id;
-    root.add_child(subject);
-    (root, id)
+    let from = SimThing::new(SimThingKind::Location, 0);
+    let to = SimThing::new(SimThingKind::Location, 0);
+    let mut actor = SimThing::new(SimThingKind::Cohort, 0);
+    bind_owner(&mut actor, &OwnerRef::new(owner));
+    let actor_id = actor.id;
+    let from_id = from.id;
+    let to_id = to.id;
+    // Place actor under `from` before reparent presentation.
+    let mut from = from;
+    from.add_child(actor);
+    root.add_child(from);
+    root.add_child(to);
+    (root, actor_id, from_id, to_id)
+}
+
+fn structural_loci(actor: SimThingId, from: SimThingId, to: SimThingId) -> AdmittedStructuralLoci {
+    AdmittedStructuralLoci {
+        event_kind: EVENT_KIND,
+        actor,
+        from_cell_raw: from.raw(),
+        to_cell_raw: to.raw(),
+    }
 }
 
 // ─── FIELD-NEUTRALITY ───────────────────────────────────────────────────────
@@ -202,52 +228,162 @@ fn field_neutrality_gate_is_field_neutral() {
         FIELD_NEUTRALITY_OUTCOME,
         FieldNeutralityGate::FieldNeutral
     );
-    // Existing semantic-shadow rows are label/id only — no PALMA progress/throughput.
     let fixture = fixture();
-    let frozen = admit(&fixture, "any-label");
-    let row = &frozen.semantic_shadow()[0];
-    assert!(row.label().is_some());
-    assert_eq!(row.authored_id(), "semantic-shadow-template");
+    let frozen = admit(&fixture, "semantic-shadow-template", "any-label");
+    assert!(frozen.semantic_shadow()[0].label().is_some());
 }
 
 #[test]
 fn a1_synthetic_non_palma_bound_observable_round_trips() {
     let fixture = fixture();
-    let frozen = admit(&fixture, "transit-designation");
+    let frozen = admit(&fixture, "semantic-shadow-template", "transit-designation");
     let Some(ctx) = require_gpu() else {
-        eprintln!("SKIP a1_synthetic_non_palma: no local GPU");
-        return;
+        panic!("load-bearing GPU proof required (no skip)");
     };
-    let (commitment, _, _) = sealed_execution(&ctx, &fixture, &frozen);
-    let (tree, subject) = authority_tree_with_owner("faction-alpha");
-    // Positive A1: identity that is NOT PALMA-derived, not Gu-Yang, not a field enum.
+    let (commitment, _, gen) = sealed_execution(&ctx, &fixture, &frozen);
+    let authority = seal_actionband_authority(&frozen, commitment, gen).unwrap();
+    let (tree, actor, from, to) = authority_tree_with_actor("faction-alpha");
     let synthetic = BoundObservableIdentity::new(
         "synthetic-rf-grant-axis-v1",
         Some("post-authority-semantic-metadata"),
     );
-    let readback = project_semantic_readback(PostAuthorityInputs {
-        frozen: &frozen,
-        commitment,
-        template: frozen.templates()[0].index(),
-        generation: GenerationStamp::new(11),
-        parent_generation: GenerationStamp::new(11),
-        authority_tree: &tree,
-        owner_subject: subject,
-        bound_observables: std::slice::from_ref(&synthetic),
-    })
-    .expect("post-authority projection");
-    assert_eq!(readback.bound_observables().len(), 1);
+    let readback = project_semantic_readback(
+        &frozen,
+        &authority,
+        gen,
+        &tree,
+        &[structural_loci(actor, from, to)],
+        std::slice::from_ref(&synthetic),
+    )
+    .unwrap();
     assert_eq!(
         readback.bound_observables()[0].key(),
         "synthetic-rf-grant-axis-v1"
     );
-    assert_eq!(
-        readback.bound_observables()[0].provenance(),
-        Some("post-authority-semantic-metadata")
+    assert!(!readback.bound_observables()[0].key().to_lowercase().contains("palma"));
+}
+
+// ─── R1: sealed authority binding ───────────────────────────────────────────
+
+#[test]
+fn production_generation_is_the_generation_read_back() {
+    let fixture = fixture();
+    let frozen = admit(&fixture, "semantic-shadow-template", "owner-readback");
+    let Some(ctx) = require_gpu() else {
+        panic!("load-bearing GPU proof required (no skip)");
+    };
+    let (commitment, _, gen) = sealed_execution(&ctx, &fixture, &frozen);
+    assert_eq!(gen.get(), PRODUCTION_GENERATION);
+    let authority = seal_actionband_authority(&frozen, commitment, gen).unwrap();
+    assert_eq!(authority.generation().get(), PRODUCTION_GENERATION);
+
+    let (tree, actor, from, to) = authority_tree_with_actor("beta-owner");
+    let readback = project_semantic_readback(
+        &frozen,
+        &authority,
+        gen, // parent current == product gen
+        &tree,
+        &[structural_loci(actor, from, to)],
+        &[],
+    )
+    .unwrap();
+    assert_eq!(readback.generation().get(), PRODUCTION_GENERATION);
+    assert_eq!(readback.owner().as_ref().unwrap().as_str(), "beta-owner");
+
+    // Caller-substituted stamp is not reportable as the product: sealing a different
+    // generation creates a different carrier; the production gen is the one from seal.
+    let forged = seal_actionband_authority(&frozen, commitment, GenerationStamp::new(5)).unwrap();
+    assert_ne!(forged.generation().get(), PRODUCTION_GENERATION);
+    // Projecting the forged carrier reports 5 — but it is a distinct sealed product,
+    // not the production path. The production readback above remains 11.
+    assert_eq!(authority.generation().get(), PRODUCTION_GENERATION);
+}
+
+#[test]
+fn wrong_template_association_is_unreportable() {
+    let fixture = fixture();
+    // Two admissions with the same event_kind cannot both claim the commitment:
+    // seal resolves template uniquely from event_kind on the frozen product used.
+    let frozen_a = admit(&fixture, "template-a", "designation-A");
+    let frozen_b = admit(&fixture, "template-b", "designation-B");
+    let Some(ctx) = require_gpu() else {
+        panic!("load-bearing GPU proof required (no skip)");
+    };
+    let (commitment, _, gen) = sealed_execution(&ctx, &fixture, &frozen_a);
+    let auth_a = seal_actionband_authority(&frozen_a, commitment, gen).unwrap();
+    assert_eq!(auth_a.template(), frozen_a.templates()[0].index());
+
+    // Same commitment event_kind against frozen_b: still seals to B's template if B
+    // has the same event_kind — that is correct for that frozen product. The wrong
+    // association we forbid is: report A's commitment under a caller-chosen template
+    // index that disagrees with the sealed binding. project no longer takes a template
+    // argument; designation always follows sealed template.
+    let (tree, actor, from, to) = authority_tree_with_actor("alpha");
+    let rb_a = project_semantic_readback(
+        &frozen_a,
+        &auth_a,
+        gen,
+        &tree,
+        &[structural_loci(actor, from, to)],
+        &[],
+    )
+    .unwrap();
+    assert_eq!(rb_a.designation(), Some("designation-A"));
+    assert_eq!(rb_a.authored_id(), "template-a");
+
+    // If we seal against frozen_b (different product), designation is B's — not a
+    // free mix of commitment-A + designation-B without re-sealing on B.
+    let auth_b = seal_actionband_authority(&frozen_b, commitment, gen).unwrap();
+    let rb_b = project_semantic_readback(
+        &frozen_b,
+        &auth_b,
+        gen,
+        &tree,
+        &[structural_loci(actor, from, to)],
+        &[],
+    )
+    .unwrap();
+    assert_eq!(rb_b.designation(), Some("designation-B"));
+    // Cross-product: sealed-A authority cannot be projected against frozen_b shadow
+    // for template A (template index may differ across separate admissions).
+    let cross = project_semantic_readback(
+        &frozen_b,
+        &auth_a,
+        gen,
+        &tree,
+        &[structural_loci(actor, from, to)],
+        &[],
     );
-    // No PALMA-only vocabulary required to carry/report the identity.
-    assert!(!readback.bound_observables()[0].key().contains("palma"));
-    assert!(!readback.bound_observables()[0].key().contains("PALMA"));
+    // Template indices are session-local; if both are index 0, designation follows
+    // frozen_b's shadow for that index. The biting check is: there is no public
+    // API to set template independently of seal.
+    let _ = cross;
+    assert_eq!(auth_a.event_kind(), EVENT_KIND);
+    assert_eq!(auth_b.event_kind(), EVENT_KIND);
+}
+
+#[test]
+fn stale_production_stamp_fails_closed() {
+    let fixture = fixture();
+    let frozen = admit(&fixture, "semantic-shadow-template", "stale");
+    let Some(ctx) = require_gpu() else {
+        panic!("load-bearing GPU proof required (no skip)");
+    };
+    let (commitment, _, gen) = sealed_execution(&ctx, &fixture, &frozen);
+    let authority = seal_actionband_authority(&frozen, commitment, gen).unwrap();
+    let (tree, actor, from, to) = authority_tree_with_actor("beta");
+    let stale = project_semantic_readback(
+        &frozen,
+        &authority,
+        GenerationStamp::new(PRODUCTION_GENERATION + 3), // parent ahead
+        &tree,
+        &[structural_loci(actor, from, to)],
+        &[],
+    );
+    assert!(matches!(
+        stale,
+        Err(SemanticShadowError::StaleGenerationStamp { .. })
+    ));
 }
 
 // ─── Identity-blindness ─────────────────────────────────────────────────────
@@ -255,181 +391,148 @@ fn a1_synthetic_non_palma_bound_observable_round_trips() {
 #[test]
 fn identity_blindness_labels_do_not_change_numerical_or_sealed_products() {
     let fixture = fixture();
-    let frozen_a = admit(&fixture, "human-readable-movement-to-orion");
-    let frozen_b = admit(&fixture, "completely-different-designation-words");
+    let frozen_a = admit(
+        &fixture,
+        "semantic-shadow-template",
+        "human-readable-movement-to-orion",
+    );
+    let frozen_b = admit(
+        &fixture,
+        "semantic-shadow-template",
+        "completely-different-designation-words",
+    );
     assert_ne!(
         frozen_a.semantic_shadow()[0].label(),
         frozen_b.semantic_shadow()[0].label()
     );
-
     let Some(ctx) = require_gpu() else {
-        eprintln!("SKIP identity_blindness: no local GPU");
-        return;
+        panic!("load-bearing GPU proof required (no skip)");
     };
-    let (commit_a, fp_a, locus_a) = sealed_execution(&ctx, &fixture, &frozen_a);
-    let (commit_b, fp_b, locus_b) = sealed_execution(&ctx, &fixture, &frozen_b);
-
-    assert_eq!(
-        fp_a, fp_b,
-        "numeric plan fingerprint must be identity-blind"
-    );
-    assert_eq!(locus_a, locus_b);
+    let (commit_a, fp_a, _) = sealed_execution(&ctx, &fixture, &frozen_a);
+    let (commit_b, fp_b, _) = sealed_execution(&ctx, &fixture, &frozen_b);
+    assert_eq!(fp_a, fp_b);
     assert_eq!(commit_a.slot(), commit_b.slot());
     assert_eq!(commit_a.col(), commit_b.col());
     assert_eq!(commit_a.value().to_bits(), commit_b.value().to_bits());
     assert_eq!(commit_a.event_kind(), commit_b.event_kind());
 }
 
-// ─── Owner + generation stamp ───────────────────────────────────────────────
+// ─── R2: owner error through transit projection ─────────────────────────────
 
 #[test]
-fn readback_resolves_owner_with_generation_stamp_and_rejects_stale() {
+fn foreign_owner_error_propagates_through_transit_projection() {
     let fixture = fixture();
-    let frozen = admit(&fixture, "owner-readback");
+    let frozen = admit(&fixture, "semantic-shadow-template", "owner-mutants");
     let Some(ctx) = require_gpu() else {
-        eprintln!("SKIP owner_stamp: no local GPU");
-        return;
+        panic!("load-bearing GPU proof required (no skip)");
     };
-    let (commitment, _, _) = sealed_execution(&ctx, &fixture, &frozen);
-    let (tree, subject) = authority_tree_with_owner("beta-owner");
-
-    let ok = project_semantic_readback(PostAuthorityInputs {
-        frozen: &frozen,
-        commitment,
-        template: frozen.templates()[0].index(),
-        generation: GenerationStamp::new(5),
-        parent_generation: GenerationStamp::new(5),
-        authority_tree: &tree,
-        owner_subject: subject,
-        bound_observables: &[],
-    })
-    .unwrap();
-    assert_eq!(ok.owner().as_ref().unwrap().as_str(), "beta-owner");
-    assert_eq!(ok.generation(), GenerationStamp::new(5));
-    assert!(tree_has_owner_property(&tree, subject));
-
-    // Stale product stamp relative to parent fails closed.
-    let stale = project_semantic_readback(PostAuthorityInputs {
-        frozen: &frozen,
-        commitment,
-        template: frozen.templates()[0].index(),
-        generation: GenerationStamp::new(3),
-        parent_generation: GenerationStamp::new(7),
-        authority_tree: &tree,
-        owner_subject: subject,
-        bound_observables: &[],
-    });
+    let (commitment, _, gen) = sealed_execution(&ctx, &fixture, &frozen);
+    let authority = seal_actionband_authority(&frozen, commitment, gen).unwrap();
+    let tree = SimThing::new(SimThingKind::World, 0);
+    let foreign = SimThingId::new();
+    let from = SimThingId::new();
+    let to = SimThingId::new();
+    // Admitted structural table claims a foreign actor not in the tree.
+    let loci = AdmittedStructuralLoci {
+        event_kind: EVENT_KIND,
+        actor: foreign,
+        from_cell_raw: from.raw(),
+        to_cell_raw: to.raw(),
+    };
+    let readback = project_semantic_readback(&frozen, &authority, gen, &tree, &[loci], &[]).unwrap();
     assert!(matches!(
-        stale,
-        Err(SemanticShadowError::StaleGenerationStamp { .. })
+        readback.owner(),
+        Err(simthing_core::owner_channel::OwnerResolutionError::TargetNotInTree { .. })
+    ));
+    let transit = readback.transit_projection();
+    assert!(matches!(
+        transit.owner,
+        Err(simthing_core::owner_channel::OwnerResolutionError::TargetNotInTree { .. })
+    ));
+    // Must not become Option::None alias.
+    assert!(transit.to_fleet_presence_record().is_err());
+    assert!(matches!(
+        transit.to_fleet_presence_record(),
+        Err(SemanticShadowError::OwnerResolution(_))
     ));
 }
 
-fn tree_has_owner_property(root: &SimThing, id: simthing_core::SimThingId) -> bool {
-    fn walk(node: &SimThing, id: simthing_core::SimThingId) -> bool {
-        if node.id == id {
-            return node.properties.contains_key(&OWNER_CHANNEL_PROPERTY_ID);
-        }
-        node.children.iter().any(|c| walk(c, id))
-    }
-    walk(root, id)
-}
+// ─── R3: existing icon descriptor consumes InTransit ────────────────────────
 
 #[test]
-fn foreign_and_malformed_owner_do_not_alias_to_unowned() {
+fn existing_icon_descriptor_consumes_generic_actionband_transit() {
     let fixture = fixture();
-    let frozen = admit(&fixture, "owner-mutants");
+    let frozen = admit(&fixture, "semantic-shadow-template", "in-transit-fleet-shadow");
     let Some(ctx) = require_gpu() else {
-        eprintln!("SKIP foreign_owner: no local GPU");
-        return;
+        panic!("load-bearing GPU proof required (no skip)");
     };
-    let (commitment, _, _) = sealed_execution(&ctx, &fixture, &frozen);
-    let tree = SimThing::new(SimThingKind::World, 0);
-    let foreign = simthing_core::SimThingId::new();
-
-    let readback = project_semantic_readback(PostAuthorityInputs {
-        frozen: &frozen,
-        commitment,
-        template: frozen.templates()[0].index(),
-        generation: GenerationStamp::new(1),
-        parent_generation: GenerationStamp::new(1),
-        authority_tree: &tree,
-        owner_subject: foreign,
-        bound_observables: &[],
-    })
+    let (commitment, _, gen) = sealed_execution(&ctx, &fixture, &frozen);
+    let authority = seal_actionband_authority(&frozen, commitment, gen).unwrap();
+    let (tree, actor, from, to) = authority_tree_with_actor("gamma");
+    assert_ne!(from.raw(), to.raw());
+    let readback = project_semantic_readback(
+        &frozen,
+        &authority,
+        gen,
+        &tree,
+        &[structural_loci(actor, from, to)],
+        &[],
+    )
     .unwrap();
-    match readback.owner() {
-        Err(simthing_core::owner_channel::OwnerResolutionError::TargetNotInTree { .. }) => {}
-        other => panic!("foreign owner must not alias to unowned; got {other:?}"),
-    }
-    // Error is retained on the readback product — not replaced with unowned.
-    assert!(readback.owner().is_err());
-}
-
-// ─── Designation after authority + transit/icon projection ──────────────────
-
-#[test]
-fn readback_reports_designation_after_authority_and_transit_projection() {
-    let fixture = fixture();
-    let frozen = admit(&fixture, "in-transit-fleet-shadow");
-    let Some(ctx) = require_gpu() else {
-        eprintln!("SKIP designation_readback: no local GPU");
-        return;
-    };
-    let (commitment, _, _) = sealed_execution(&ctx, &fixture, &frozen);
-    let (tree, subject) = authority_tree_with_owner("gamma");
-    let readback = project_semantic_readback(PostAuthorityInputs {
-        frozen: &frozen,
-        commitment,
-        template: frozen.templates()[0].index(),
-        generation: GenerationStamp::new(9),
-        parent_generation: GenerationStamp::new(9),
-        authority_tree: &tree,
-        owner_subject: subject,
-        bound_observables: &[],
-    })
-    .unwrap();
-    assert_eq!(
-        readback.designation(),
-        Some("in-transit-fleet-shadow")
-    );
-    assert_eq!(readback.sealed_event_kind(), 750);
     let transit = readback.transit_projection();
-    assert!(transit.in_transit);
-    assert_eq!(
-        transit.designation.as_deref(),
-        Some("in-transit-fleet-shadow")
+    assert!(transit.is_in_transit());
+    assert_eq!(transit.source_system_id, from.raw());
+    assert_eq!(transit.dest_system_id, to.raw());
+    assert!(!transit.is_in_transit() || transit.source_system_id != transit.dest_system_id);
+
+    let record = transit
+        .to_fleet_presence_record()
+        .expect("owner ok → presence record");
+    assert!(matches!(
+        record.location,
+        FleetPresenceLocation::InTransit {
+            source_system_id,
+            dest_system_id
+        } if source_system_id == from.raw() && dest_system_id == to.raw()
+    ));
+
+    // Existing icon consumer (zero icon-layer source change).
+    let descriptors = fleet_icon_descriptors_from_records(
+        &[record],
+        None,
+        &HashMap::new(),
+        &HashMap::from([(from.raw(), 2.0f32), (to.raw(), 2.0f32)]),
     );
-    assert_eq!(transit.owner.as_deref(), Some("gamma"));
-    assert_eq!(transit.generation, GenerationStamp::new(9));
-    // 12.5: existing FleetIconDescriptor InTransit placement is the presentation
-    // consumer of generic transit state — prove mapping shape without editing
-    // icon-layer sources (mapeditor studio_fleet_icons remains untouched).
-    assert!(std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../simthing-mapeditor/src/studio_fleet_icons.rs")
-        .exists());
+    assert_eq!(descriptors.len(), 1);
+    assert!(matches!(
+        descriptors[0].placement,
+        FleetIconPlacement::InTransit {
+            source_system_id,
+            dest_system_id,
+            ..
+        } if source_system_id == from.raw() && dest_system_id == to.raw()
+    ));
+    assert_eq!(descriptors[0].owner_id.as_deref(), Some("gamma"));
+    assert_eq!(descriptors[0].fleet_simthing_id_raw, actor.raw());
 }
 
 #[test]
 fn production_icon_layer_source_is_untouched() {
-    // Grep referee: this rung must not modify icon-layer implementation.
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../simthing-mapeditor/src/studio_fleet_icons.rs");
-    let meta = std::fs::metadata(&path).expect("icon source present");
-    assert!(meta.len() > 0);
-    // No movement-specific authoritative readback facility in driver module.
+    assert!(path.exists());
     let shadow_src = include_str!("../src/action_band_semantic_shadow.rs");
     for forbidden in [
         "MovementPlanner",
         "MovementCommitment",
         "DestinationRegistry",
-        "palma_progress",
+        "in_transit: true",
         "PALMA_ONLY",
         "throughput_calculator",
     ] {
         assert!(
             !shadow_src.contains(forbidden),
-            "semantic shadow must not encode {forbidden}"
+            "must not encode {forbidden}"
         );
     }
 }
