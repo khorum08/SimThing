@@ -7,39 +7,34 @@
 - Base: `80e61a7062598486be1caf929617ac2037af2c34`
 - HD-RECEIPT: `edeb59f58239`
 - ORIENT-RECEIPT: `98a916672d1a`
-- orientation_rule_stamp: `3e2afa381d2aea10`
-- Dispatch: `5246978127` · Remand: `5247122299` (R1–R4)
+- Dispatch: `5246978127` · Remands: `5247122299`, `5247237560`
 - DA pre-dispatch: `5246937280`
 
-## Field-neutrality gate
+## Field-neutrality
 
-**Outcome: `FIELD-NEUTRAL`**
+**FIELD-NEUTRAL** + A1 `synthetic-rf-grant-axis-v1` (preserved).
 
-A1 positive proof: synthetic bound-observable `synthetic-rf-grant-axis-v1`
-round-trips through post-authority readback without PALMA special-casing.
+## Authority binding (remand 2 / R1)
 
-## Remand R1–R4 discharge
-
-| Item | Discharge |
+| Mechanism | Property |
 |---|---|
-| **R1** | `SealedActionBandAuthority` private fields; `seal_actionband_authority` binds template via `FrozenActionBandTemplates::binding_for_event_kind` and generation from the production sealed-path authority generation. `project_semantic_readback` no longer accepts free template/generation/owner_subject. Wrong association + production-stamp proofs plant. |
-| **R2** | `ActionBandTransitProjection.owner` is `Result<OwnerRef, OwnerResolutionError>`; foreign owner errors propagate through transit and refuse `to_fleet_presence_record` (no `None` alias). |
-| **R3** | Transit loci from admitted structural table (source≠dest); `to_fleet_presence_record` → existing `fleet_icon_descriptors_from_records` yields `FleetIconPlacement::InTransit`. Zero icon-layer source change. |
-| **R4** | PR body normalized with Rung/Handoff/HD-RECEIPT/tested_code_sha (orchestration re-clears). |
+| `CompiledActionBandGpuExecution::seal_production` | Only public seal door; generation from `ActionBandGpuSession` after dispatch; template + plan fingerprint from compile product |
+| `ActionBandSemanticSession` | Owns frozen product + private structural loci table; project requires matching plan fingerprint |
+| Free `seal_actionband_authority(commitment, gen)` | **Deleted** |
+| Public `AdmittedStructuralLoci` | **Deleted**; loci only at session open |
 
-## Product
+### Biting falsifiers
 
-- `simthing-spec`: `binding_for_event_kind` + `UnboundEventKind` / `AmbiguousEventKind`
-- `simthing-driver::action_band_semantic_shadow`: seal + project + fleet presence bridge
+- substituted generation: unconstructible (no free seal API)
+- foreign compile session: `PlanFingerprintMismatch` when fingerprints differ
+- forged loci at project time: unconstructible (no loci arg on project)
 
-## Tests (9 integration + 2 unit)
+## R2 / R3 / R4
 
-Load-bearing GPU proofs do not skip.
+Preserved: owner `Result` through transit; icon `InTransit` via existing consumer; PR routing metadata.
 
 ## Batteries
 
-Focused 7.5 + inherited 7.1/7.2/7.3/7.4 bound to final head in PR/board relay.
+Focused 11 integration + 2 unit (no GPU skips). Inherited 7.1–7.4 green at final head (relay).
 
-## Scope
-
-Only 7.5 PROBATION. No 7.5a+, no merge, no pointer advance, no `/clearance` by coding.
+Coding does not `/clearance`, merge, move pointer, or start 7.5a.

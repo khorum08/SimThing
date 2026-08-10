@@ -1,25 +1,29 @@
 //! ACTIONBAND-SEMANTIC-SHADOW-0 — post-authority CPU semantic shadow / readback.
 //!
-//! GPU remains the sole ActionBand numerical authority. This module attaches
-//! human-readable designation and resolved ownership to **already-sealed**
-//! ActionBand products whose template identity and generation stamp are bound
-//! beside the sealed product — not supplied as free CPU arguments.
+//! GPU remains the sole ActionBand numerical authority. Semantic carriers are
+//! minted only at the production compile/dispatch boundary:
+//! - generation is read from the ActionBand GPU session that produced the commitment
+//! - template and plan fingerprint come from the compile product that owns the plan
+//! - structural actor/source/dest come from a session-frozen private table
 //!
-//! ## Field-neutrality gate
+//! Free re-seal of a commitment under an arbitrary generation, foreign frozen
+//! product, or caller-forged loci is unconstructible or RED.
 //!
-//! **FIELD-NEUTRAL** — opaque products + this projection do not encode
-//! PALMA-only progress/throughput semantics.
+//! ## Field-neutrality: FIELD-NEUTRAL
+
+use std::collections::BTreeMap;
 
 use simthing_core::owner_channel::{resolve_owner, OwnerRef, OwnerResolutionError};
 use simthing_core::{GenerationStamp, SimThing, SimThingId};
-use simthing_gpu::StructuralCommitment;
+use simthing_gpu::{ActionBandGpuSession, ActionBandProductionDispatch, StructuralCommitment};
 use simthing_spec::{
-    ActionBandAdmissionError, ActionBandSemanticShadow, ActionBandTemplateIndex,
-    FleetPresenceLocation, FleetPresenceRecord, FrozenActionBandTemplates, OwnerRef as SpecOwnerRef,
+    ActionBandSemanticShadow, ActionBandTemplateIndex, FleetPresenceLocation, FleetPresenceRecord,
+    FrozenActionBandTemplates, OwnerRef as SpecOwnerRef,
 };
 use thiserror::Error;
 
-/// Inspection outcome for the 7.5 field-neutrality gate.
+use crate::action_band_execution_compile::CompiledActionBandGpuExecution;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum FieldNeutralityGate {
     FieldNeutral,
@@ -27,7 +31,6 @@ pub enum FieldNeutralityGate {
 
 pub const FIELD_NEUTRALITY_OUTCOME: FieldNeutralityGate = FieldNeutralityGate::FieldNeutral;
 
-/// Opaque bound-observable identity for post-authority readback (not a field-class enum).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct BoundObservableIdentity {
     key: String,
@@ -51,28 +54,130 @@ impl BoundObservableIdentity {
     }
 }
 
-/// Session-frozen ordinary structural consequence loci for one sealed event kind.
-///
-/// These are admission-time facts about the pre-admitted structural door row,
-/// not free CPU arguments. Source/dest are structural identity raw ids for
-/// presentation consumers (existing FleetPresence InTransit contract).
+/// Private structural consequence row for one sealed event_kind.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct AdmittedStructuralLoci {
-    pub event_kind: u32,
-    pub actor: SimThingId,
-    pub from_cell_raw: u32,
-    pub to_cell_raw: u32,
+struct StructuralLociRow {
+    actor: SimThingId,
+    from_cell_raw: u32,
+    to_cell_raw: u32,
 }
 
-/// Production-bound ActionBand authority: sealed commitment + generation +
-/// template resolved from admission crossing bindings by event_kind.
-///
-/// Fields are private. Construct only via [`seal_actionband_authority`].
+/// Session-owned semantic projection context: frozen admission product + private
+/// structural loci table. Opened once; plan fingerprint must match the compile
+/// product used for production dispatch.
+#[derive(Clone, Debug)]
+pub struct ActionBandSemanticSession {
+    frozen: FrozenActionBandTemplates,
+    plan_fingerprint: u64,
+    structural_by_event: BTreeMap<u32, StructuralLociRow>,
+}
+
+impl ActionBandSemanticSession {
+    /// Open a semantic session bound to a specific compile product fingerprint.
+    /// Structural loci are frozen here and cannot be replaced at project time.
+    pub fn open(
+        frozen: FrozenActionBandTemplates,
+        compiled: &CompiledActionBandGpuExecution,
+        structural: &[(u32, SimThingId, u32, u32)],
+    ) -> Result<Self, SemanticShadowError> {
+        let mut structural_by_event = BTreeMap::new();
+        for &(event_kind, actor, from_cell_raw, to_cell_raw) in structural {
+            if structural_by_event
+                .insert(
+                    event_kind,
+                    StructuralLociRow {
+                        actor,
+                        from_cell_raw,
+                        to_cell_raw,
+                    },
+                )
+                .is_some()
+            {
+                return Err(SemanticShadowError::AmbiguousStructuralLoci(event_kind));
+            }
+        }
+        Ok(Self {
+            frozen,
+            plan_fingerprint: compiled.plan_fingerprint(),
+            structural_by_event,
+        })
+    }
+
+    pub fn plan_fingerprint(&self) -> u64 {
+        self.plan_fingerprint
+    }
+
+    pub fn frozen(&self) -> &FrozenActionBandTemplates {
+        &self.frozen
+    }
+
+    /// Project a production-sealed authority carrier. Plan fingerprint must match
+    /// this session; structural loci come only from the session table.
+    pub fn project(
+        &self,
+        authority: &SealedActionBandAuthority,
+        parent_generation: GenerationStamp,
+        authority_tree: &SimThing,
+        bound_observables: &[BoundObservableIdentity],
+    ) -> Result<ActionBandSemanticReadback, SemanticShadowError> {
+        if authority.plan_fingerprint != self.plan_fingerprint {
+            return Err(SemanticShadowError::PlanFingerprintMismatch {
+                sealed: authority.plan_fingerprint,
+                session: self.plan_fingerprint,
+            });
+        }
+        if authority
+            .generation
+            .is_stale_relative_to_parent(parent_generation)
+        {
+            return Err(SemanticShadowError::StaleGenerationStamp {
+                parent: parent_generation,
+                product: authority.generation,
+            });
+        }
+
+        let shadow = self
+            .frozen
+            .semantic_shadow()
+            .iter()
+            .find(|row| row.template() == authority.template)
+            .ok_or(SemanticShadowError::UnboundTemplate(authority.template))?;
+
+        let loci = *self
+            .structural_by_event
+            .get(&authority.event_kind())
+            .ok_or(SemanticShadowError::UnboundStructuralLoci(
+                authority.event_kind(),
+            ))?;
+
+        let owner = resolve_owner(authority_tree, loci.actor);
+
+        Ok(ActionBandSemanticReadback {
+            template: shadow.template(),
+            authored_id: shadow.authored_id().to_string(),
+            designation: shadow.label().map(str::to_string),
+            generation: authority.generation,
+            owner,
+            actor: loci.actor,
+            sealed_slot: authority.commitment.slot(),
+            sealed_col: authority.commitment.col(),
+            sealed_event_kind: authority.commitment.event_kind(),
+            sealed_value_bits: authority.commitment.value().to_bits(),
+            from_cell_raw: loci.from_cell_raw,
+            to_cell_raw: loci.to_cell_raw,
+            bound_observables: bound_observables.to_vec(),
+        })
+    }
+}
+
+/// Production-bound ActionBand authority. Private fields; mint only via
+/// [`CompiledActionBandGpuExecution::seal_production`].
 #[derive(Clone, Debug, PartialEq)]
 pub struct SealedActionBandAuthority {
     commitment: StructuralCommitment,
     generation: GenerationStamp,
     template: ActionBandTemplateIndex,
+    plan_fingerprint: u64,
 }
 
 impl SealedActionBandAuthority {
@@ -88,32 +193,40 @@ impl SealedActionBandAuthority {
         self.template
     }
 
+    pub fn plan_fingerprint(&self) -> u64 {
+        self.plan_fingerprint
+    }
+
     pub fn event_kind(&self) -> u32 {
         self.commitment.event_kind()
     }
 }
 
-/// Mint a sealed authority carrier from a production ActionBand commitment and
-/// the generation reported by the same GPU session after that dispatch.
-///
-/// Template identity is derived only from `frozen.binding_for_event_kind` —
-/// a caller cannot rebind the commitment to another template.
-pub fn seal_actionband_authority(
-    frozen: &FrozenActionBandTemplates,
-    commitment: StructuralCommitment,
-    production_generation: GenerationStamp,
-) -> Result<SealedActionBandAuthority, SemanticShadowError> {
-    let binding = frozen
-        .binding_for_event_kind(commitment.event_kind())
-        .map_err(SemanticShadowError::from)?;
-    Ok(SealedActionBandAuthority {
-        commitment,
-        generation: production_generation,
-        template: binding.template(),
-    })
+/// Production seal door: generation from the ActionBand GPU session that just
+/// produced `production`; template + plan identity from `self` only.
+impl CompiledActionBandGpuExecution {
+    pub fn seal_production(
+        &self,
+        production: &ActionBandProductionDispatch,
+        execution: &ActionBandGpuSession,
+    ) -> Result<Vec<SealedActionBandAuthority>, SemanticShadowError> {
+        let generation = GenerationStamp::new(execution.generation());
+        let mut out = Vec::with_capacity(production.commitments.len());
+        for commitment in &production.commitments {
+            let template = self
+                .template_for_event_kind(commitment.event_kind())
+                .ok_or(SemanticShadowError::UnboundEventKind(commitment.event_kind()))?;
+            out.push(SealedActionBandAuthority {
+                commitment: *commitment,
+                generation,
+                template,
+                plan_fingerprint: self.plan_fingerprint(),
+            });
+        }
+        Ok(out)
+    }
 }
 
-/// Post-authority semantic readback of one sealed ActionBand product.
 #[derive(Clone, Debug, PartialEq)]
 pub struct ActionBandSemanticReadback {
     template: ActionBandTemplateIndex,
@@ -126,7 +239,6 @@ pub struct ActionBandSemanticReadback {
     sealed_col: u32,
     sealed_event_kind: u32,
     sealed_value_bits: u32,
-    /// Ordinary structural consequence loci (presentation; not movement authority).
     from_cell_raw: u32,
     to_cell_raw: u32,
     bound_observables: Vec<BoundObservableIdentity>,
@@ -185,8 +297,6 @@ impl ActionBandSemanticReadback {
         &self.bound_observables
     }
 
-    /// Presentation projection. Owner-resolution failure is retained exactly
-    /// (never aliased to absence/`unowned`).
     pub fn transit_projection(&self) -> ActionBandTransitProjection {
         ActionBandTransitProjection {
             action_band_template: self.template,
@@ -199,35 +309,11 @@ impl ActionBandSemanticReadback {
         }
     }
 
-    /// Existing 12.4/12.5 consumer surface: `FleetPresenceRecord` for
-    /// `fleet_icon_descriptors_from_records`. Refuses on owner-resolution error.
     pub fn to_fleet_presence_record(&self) -> Result<FleetPresenceRecord, SemanticShadowError> {
-        let owner_ref = match &self.owner {
-            Ok(owner) => Some(SpecOwnerRef::new(owner.as_str())),
-            Err(err) => {
-                return Err(SemanticShadowError::OwnerResolution(err.clone()));
-            }
-        };
-        // Transit only when structural consequence loci are distinct ordinary cells.
-        if self.from_cell_raw == self.to_cell_raw {
-            return Err(SemanticShadowError::MissingTransitLoci);
-        }
-        Ok(FleetPresenceRecord {
-            fleet_simthing_id_raw: self.actor.raw(),
-            owner_ref,
-            posture: self.designation.clone(),
-            location: FleetPresenceLocation::InTransit {
-                source_system_id: self.from_cell_raw,
-                dest_system_id: self.to_cell_raw,
-            },
-        })
+        self.transit_projection().to_fleet_presence_record()
     }
 }
 
-/// Generic transit projection for presentation consumers.
-///
-/// Owner is `Result` — never `Option` alias of resolution failure.
-/// Loci come from admitted structural consequence facts, not hardcoded flags.
 #[derive(Clone, Debug, PartialEq)]
 pub struct ActionBandTransitProjection {
     pub action_band_template: ActionBandTemplateIndex,
@@ -240,7 +326,6 @@ pub struct ActionBandTransitProjection {
 }
 
 impl ActionBandTransitProjection {
-    /// True when ordinary structural loci describe a real edge (source ≠ dest).
     pub fn is_in_transit(&self) -> bool {
         self.source_system_id != self.dest_system_id
     }
@@ -267,7 +352,7 @@ impl ActionBandTransitProjection {
 
 #[derive(Clone, Debug, Error, PartialEq, Eq)]
 pub enum SemanticShadowError {
-    #[error("sealed ActionBand commitment has no matching semantic-shadow row for template index {0:?}")]
+    #[error("sealed ActionBand commitment has no matching semantic-shadow row for template {0:?}")]
     UnboundTemplate(ActionBandTemplateIndex),
     #[error("authoritative generation stamp is stale relative to parent {parent:?} (product {product:?})")]
     StaleGenerationStamp {
@@ -278,78 +363,14 @@ pub enum SemanticShadowError {
     UnboundStructuralLoci(u32),
     #[error("ambiguous admitted structural loci for sealed event_kind {0}")]
     AmbiguousStructuralLoci(u32),
+    #[error("sealed event_kind {0} has no template on the production compile product")]
+    UnboundEventKind(u32),
+    #[error("plan fingerprint mismatch: sealed={sealed} session={session}")]
+    PlanFingerprintMismatch { sealed: u64, session: u64 },
     #[error("transit presentation requires distinct ordinary structural source/dest loci")]
     MissingTransitLoci,
     #[error("owner resolution failure: {0}")]
     OwnerResolution(OwnerResolutionError),
-    #[error(transparent)]
-    Admission(#[from] ActionBandAdmissionError),
-}
-
-/// Project a **sealed** ActionBand authority carrier into CPU semantic readback.
-///
-/// Template and generation are taken only from `authority`. Structural actor and
-/// transit loci are taken only from the admitted structural table row matching
-/// the sealed event_kind. Bound observables remain post-authority field-neutral
-/// metadata (A1).
-pub fn project_semantic_readback(
-    frozen: &FrozenActionBandTemplates,
-    authority: &SealedActionBandAuthority,
-    parent_generation: GenerationStamp,
-    authority_tree: &SimThing,
-    structural_loci: &[AdmittedStructuralLoci],
-    bound_observables: &[BoundObservableIdentity],
-) -> Result<ActionBandSemanticReadback, SemanticShadowError> {
-    if authority
-        .generation
-        .is_stale_relative_to_parent(parent_generation)
-    {
-        return Err(SemanticShadowError::StaleGenerationStamp {
-            parent: parent_generation,
-            product: authority.generation,
-        });
-    }
-
-    let shadow = frozen
-        .semantic_shadow()
-        .iter()
-        .find(|row| row.template() == authority.template)
-        .ok_or(SemanticShadowError::UnboundTemplate(authority.template))?;
-
-    let loci = resolve_structural_loci(structural_loci, authority.event_kind())?;
-
-    // Owner subject is the admitted structural actor, not a free CPU argument.
-    let owner = resolve_owner(authority_tree, loci.actor);
-
-    Ok(ActionBandSemanticReadback {
-        template: shadow.template(),
-        authored_id: shadow.authored_id().to_string(),
-        designation: shadow.label().map(str::to_string),
-        generation: authority.generation,
-        owner,
-        actor: loci.actor,
-        sealed_slot: authority.commitment.slot(),
-        sealed_col: authority.commitment.col(),
-        sealed_event_kind: authority.commitment.event_kind(),
-        sealed_value_bits: authority.commitment.value().to_bits(),
-        from_cell_raw: loci.from_cell_raw,
-        to_cell_raw: loci.to_cell_raw,
-        bound_observables: bound_observables.to_vec(),
-    })
-}
-
-fn resolve_structural_loci(
-    table: &[AdmittedStructuralLoci],
-    event_kind: u32,
-) -> Result<AdmittedStructuralLoci, SemanticShadowError> {
-    let mut matches = table.iter().filter(|row| row.event_kind == event_kind);
-    let first = *matches
-        .next()
-        .ok_or(SemanticShadowError::UnboundStructuralLoci(event_kind))?;
-    if matches.next().is_some() {
-        return Err(SemanticShadowError::AmbiguousStructuralLoci(event_kind));
-    }
-    Ok(first)
 }
 
 pub fn carry_bound_observables(

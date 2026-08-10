@@ -194,10 +194,18 @@ struct FrozenStructuralSource {
 /// plan and structural application provenance are derived together from the
 /// same immutable band/binding rows, so a caller cannot supply a detached
 /// `(event_kind, binding)` assertion beside the plan.
+///
+/// Also carries the opaque plan fingerprint and event_kind→template map used by
+/// 7.5 semantic-authority sealing so generation/template cannot be re-bound to
+/// a foreign frozen session after production.
 #[derive(Clone, Debug)]
 pub struct CompiledActionBandGpuExecution {
     plan: ActionBandExecutionPlan,
     structural_sources: Vec<FrozenStructuralSource>,
+    /// Numeric plan identity of this compile product.
+    plan_fingerprint: u64,
+    /// Admission crossing map: sealed commitment event_kind → template index.
+    event_kind_to_template: BTreeMap<u32, ActionBandTemplateIndex>,
 }
 
 impl CompiledActionBandGpuExecution {
@@ -207,6 +215,17 @@ impl CompiledActionBandGpuExecution {
 
     pub fn into_execution_plan(self) -> ActionBandExecutionPlan {
         self.plan
+    }
+
+    pub fn plan_fingerprint(&self) -> u64 {
+        self.plan_fingerprint
+    }
+
+    pub(crate) fn template_for_event_kind(
+        &self,
+        event_kind: u32,
+    ) -> Option<ActionBandTemplateIndex> {
+        self.event_kind_to_template.get(&event_kind).copied()
     }
 }
 
@@ -599,9 +618,20 @@ fn compile_action_band_gpu_execution_inner(
             }
         }
     }
+    let mut event_kind_to_template = BTreeMap::new();
+    for band_index in 0..frozen.bands().len() {
+        if let Some(source) = frozen.crossing_binding_for_band(band_index as u32) {
+            event_kind_to_template
+                .entry(source.event_kind())
+                .or_insert_with(|| source.template());
+        }
+    }
+    let plan_fingerprint = plan.numeric_fingerprint();
     Ok(CompiledActionBandGpuExecution {
         plan,
         structural_sources,
+        plan_fingerprint,
+        event_kind_to_template,
     })
 }
 
