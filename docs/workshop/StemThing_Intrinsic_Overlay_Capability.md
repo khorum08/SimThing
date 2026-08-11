@@ -3,11 +3,11 @@
 
 > **Status: WORKSHOP / ENGINEERING-REVIEW CANDIDATE / UNANCHORED.**
 >
-> Owner-approved working design, revised 2026-08-10 after Fable review. This document is deliberately housed under `docs/workshop/` while the overlay closure is tested, reviewed, and prepared for promotion. It proposes the final semantic closure of the base recursive **StemThing**: the thesis that the base `SimThing` is the sole semantic owner of overlay origination/emission, retention, reception, routing/filtering, projection, activation/suspension, lifecycle, dissolution, and collapse; and that ordinary numerical action is expressed by that intrinsic overlay capability rather than by a peer event-execution or behavior subsystem.
+> Owner-approved working design, revised 2026-08-10 after engineering review and designer-language stress analysis. This document remains under `docs/workshop/` while the overlay closure is tested, reviewed, and prepared for promotion. It proposes the final semantic closure of the base recursive **StemThing**: the base `SimThing` is the sole semantic owner of overlay origination/emission, retention, reception, routing/filtering, projection, activation/suspension, lifecycle, dissolution, and collapse; ordinary numerical action is expressed by that intrinsic overlay capability rather than by a peer event-execution or behavior subsystem.
 >
 > **This document does not amend the 0.0.8.7 ladder, does not supersede an anchor, and does not authorize implementation by itself.** Existing anchors and graduated rungs remain authoritative until this workshop is adjudicated and promoted.
 >
-> The design explicitly incorporates the **full RF / Field-Triad authority** — STEAD, PALMA, and Gu-Yang / `SaturatingFlux` — plus the **full admitted EML direction**, including deterministic `EXP` / `LN` and their gadget-space consequences. The earlier STEAD/PALMA-only framing is superseded.
+> The design explicitly incorporates the **full RF / Field-Triad authority** — STEAD, PALMA, and Gu-Yang / `SaturatingFlux` — plus the **full admitted EML direction**, including deterministic `EXP` / `LN` and their gadget-space consequences. It also anticipates the chosen designer-facing **ClauseScript** language: rich authored modifier/effect vocabulary must compile into this finite native capability set without creating a ClauseScript runtime, modifier manager, or semantic dispatcher.
 
 Primary companions:
 
@@ -34,6 +34,11 @@ Implementation archaeology:
 - [`../../crates/simthing-feeder/src/work.rs`](../../crates/simthing-feeder/src/work.rs)
 - [`../../crates/simthing-feeder/src/patcher.rs`](../../crates/simthing-feeder/src/patcher.rs)
 - [`../../crates/simthing-spec/src/compile/overlay.rs`](../../crates/simthing-spec/src/compile/overlay.rs)
+
+Designer-language stress corpus/reference:
+
+- [`../../scenarios/terran_pirate_galaxy.clause`](../../scenarios/terran_pirate_galaxy.clause)
+- [`../clausething/ClauseThing.md`](../clausething/ClauseThing.md) — foreign-language reference only; not SimThing runtime doctrine
 
 ---
 
@@ -116,22 +121,38 @@ BoundaryRequest
                                   └────────────► next generation
 ```
 
-No CPU behavior tree, action dispatcher, movement executor, combat executor, event engine, or domain action taxonomy is required by this model.
+No CPU behavior tree, action dispatcher, movement executor, combat executor, modifier evaluator, event engine, or domain action taxonomy is required by this model.
 
 ### 0.2 Closure by authority concentration
 
 The repository already contains the pieces:
 
-- `SimThing` already owns `overlays`;
+- `SimThing` already owns overlays;
 - standing overlays already recurse by inheritance;
 - routed overlays already derive origin → LCA → target routes;
 - RF disbursement already terminates delivered directives in the receiving `SimThing` overlay store;
-- overlays already lower into the numerical columns ordinary GPU execution consumes;
+- overlays already lower into numerical columns ordinary GPU execution consumes;
 - CostBand already defines exact sink/work quantization;
 - ActionBand is intrinsic `act` over the existing Phase-5 crossing surface;
 - generation pacing already forbids same-generation recursive convergence.
 
 The architectural act is therefore **concentration**: remove remaining peer overlay authority from feeder/driver/sim lifecycle paths and make StemThing the one semantic home.
+
+### 0.3 Designer-language closure criterion
+
+ClauseScript remains the default designer-facing script language. Its authoring vocabulary may be extremely rich — generated modifier names, script values, conditional effects, scope-relative references, timed modifiers, iterators, and mutually dependent modifier networks — but none of those authored nouns should survive as runtime semantic authority.
+
+The runtime closure test is:
+
+```text
+rich ClauseScript authoring
+        ↓ admission / compilation
+bounded templates + EML + bindings + RF/CostBand/ActionBand state
+        ↓
+ordinary StemThing execution
+```
+
+If a new authored construct requires a new domain runtime executor instead of lowering through admitted native capability, the closure has failed or the native capability boundary has genuinely been shown incomplete.
 
 ---
 
@@ -220,6 +241,30 @@ Structural consequences remain behind the existing sealed boundary.
 
 Everything participates in the recursive SimThing architecture; only genuinely conserved/constrained quantities use RF conservation semantics.
 
+### 3.3 Overlay is not every numerical intermediate
+
+The closure must not over-expand Overlay until it becomes meaningless.
+
+```text
+EML scratch/result          = not automatically Overlay
+RF claim quantity           = RF state, not automatically Overlay
+CostBand quotient/remainder = CostBand state
+PALMA D                     = field state
+Gu-Yang flux                = field/RF state
+
+persistent/external actuation
+policy pressure
+transient bonus/penalty
+movement actuation
+standing directive effect
+lifecycle-bearing modifier
+                             = Overlay candidates
+```
+
+A useful rule is:
+
+> **Persistent or externally effective actuation should have an Overlay representation; pure internal numerical intermediates remain in their native mechanism.**
+
 ---
 
 ## 4. Current overlay archaeology
@@ -244,7 +289,7 @@ child effective state + child-local overlays
 grandchild effective state + grandchild-local overlays
 ```
 
-This is the basis for the stronger scale law in §18.10.
+This is the basis for the stronger scale law in §15.
 
 ### 4.4 RF → Overlay already exists
 
@@ -329,6 +374,19 @@ generation t+1:
 
 No emit→apply→re-cross→re-emit same-generation loop.
 
+### 6.4 Pure-current versus next-state distinction
+
+Within a generation, ordinary overlay transforms may read admitted **Current** values and compute a pure EML result. But activation, dissolution, parameter mutation, newly emitted actuation, and structural consequences write their lawful next-state/boundary destinations rather than recursively re-entering the current evaluation.
+
+This distinction is load-bearing for designer-authored feedback:
+
+```text
+pure current transform     = DAG-shaped numerical evaluation
+state-changing consequence = Current → Next edge
+```
+
+Cyclic authored behavior is therefore represented as time evolution, not evaluator recursion.
+
 ---
 
 ## 7. GPU physical target
@@ -364,6 +422,27 @@ GPU sees ids, slots, bindings, state bits, parameters, and programs. CPU keeps n
 ### 7.2 Sparse program/profile batching
 
 Bucket by template/program/binding shape. Trivial ordered affine chains may fold to an equivalent `(a,b)` representation where exact authored semantics are preserved. General EML remains shared admitted program execution.
+
+### 7.3 Persistent templates, parameterized instances
+
+Designer-facing languages frequently express “apply modifier/effect X with duration/intensity/target Y.” The physical model should prefer one admitted immutable template plus sparse parameterized instances over runtime template minting.
+
+```text
+OverlayTemplate
+    immutable admitted program/binding/lifecycle shape
+
+OverlayInstance
+    target/origin
+    numeric params
+    active state
+    expiry/lifecycle state
+```
+
+This is also the natural ActionBand/CostBand emission target.
+
+### 7.4 Semantic dissolve need not imply immediate allocation churn
+
+An instance that becomes semantically dissolved may retire/recycle through the existing bounded residency/free-list discipline. High-frequency activate/suspend/dissolve semantics must not require heap-style allocation/deallocation on every authored state change.
 
 ---
 
@@ -412,6 +491,22 @@ ActionBand observes current state, target discrepancy, and native Field-Triad ou
 ### 8.8 CostBand
 
 CostBand remains exact sink/work quantization. Overlay expresses the resulting actuation intensity; it does not redefine sink arithmetic.
+
+### 8.9 Designer-authored effect destinations remain finite
+
+The chosen authoring language may expose hundreds of named effects, but runtime effect destinations should remain a small admitted set such as:
+
+```text
+activate/update/suspend/dissolve Overlay
+write admitted PropertyNext
+create/update ordinary RF claim/obligation
+configure/update ActionBand state
+configure/update CostBand state
+emit sealed BoundaryRequest
+telemetry/history through existing stamped surfaces
+```
+
+This is the effect-side analogue of compiling large generated modifier vocabularies into generic numerical semantics.
 
 ---
 
@@ -495,6 +590,22 @@ EML     = temporal/nonlinear law
 Overlay = actuation
 PALMA/RF/STEAD = native consequence
 ```
+
+### 9.9 Gated contributions should normally remain resident
+
+A designer-authored triggered modifier should usually compile to a resident admitted template/instance whose numerical contribution is gated by an EML predicate, not repeated attach/remove churn every time the predicate flips.
+
+```text
+active contribution = predicate(Current) ? transform(Current) : identity
+```
+
+Lifecycle attach/dissolve remains available when the authored semantics genuinely require lifetime identity; simple conditionally active contribution should prefer numeric gating.
+
+### 9.10 Bounded control flow lowers to dataflow
+
+Designer-facing `if/else`, `switch`, bounded iterator predicates, and similar control flow should lower to admitted `SELECT`/gating/dataflow where exact semantics permit. Runtime need not carry a script program counter or general effect interpreter.
+
+Bounded loop-like source constructs may be statically unrolled/gated only under an explicit admission cap. Unbounded runtime loops are not part of the intrinsic overlay ABI.
 
 ---
 
@@ -682,7 +793,7 @@ A path-sum telescoping argument does not prove invariance of a local conserved f
 
 ## 14. Field-solver performance research program — separate promotion unit
 
-> **This section is intentionally NOT a dependency of the semantic overlay closure.** It remains workshop/performance research even if §§0–13 and §§17–19 promote to doctrine.
+> **This section is intentionally NOT a dependency of the semantic overlay closure.** It remains workshop/performance research even if the semantic closure promotes to doctrine.
 
 ### 14.1 FIM for PALMA
 
@@ -783,9 +894,225 @@ The exact representation is not law. The required property is that unchanged sta
 
 Ancestor overlay changes should invalidate only the affected subtree/range and dependent parameter/field spans. This is the recursive-tree analogue of `OverlayFieldDependency`.
 
+### 15.5 Broadcast-down authoring maps naturally to ancestor residency
+
+ClauseScript's modifier language permits higher-level application of lower-granularity effects that broadcast downward. This does not justify leaf stamping. It reinforces the ancestor law: attach once at the semantic scope owner, then project/filter through the recursive tree.
+
+A single authored doctrine/policy/world condition across a large subtree should remain one authoritative semantic overlay unless descendants genuinely diverge in lifecycle or parameters.
+
 ---
 
-## 16. What is explicitly not proposed
+## 16. Designer-language closure: complex modifiers, scopes, and feedback
+
+ClauseScript is the chosen designer-facing language. The runtime must be broad enough to host its most difficult semantics while remaining ClauseScript-blind after admission.
+
+This section is therefore a **capability stress contract**, not a foreign-engine implementation plan.
+
+### 16.1 Generated names compile away
+
+Long modifier strings and generated modifier families are admission vocabulary, not runtime vocabulary.
+
+```text
+authored modifier/effect key
+        ↓
+grammar / registered vocabulary / source-context decode
+        ↓
+property/role + composition class + EML/template binding
+        ↓
+runtime numeric ids only
+```
+
+The intrinsic Overlay design must never require a runtime dictionary dispatch on arbitrary modifier strings.
+
+### 16.2 Scope-relative targeting compiles to bounded bindings
+
+Designer scripts commonly express effects relative to implicit scope, owner/root/source relations, ancestor/descendant context, or selected child sets. The runtime need not retain a foreign scope machine.
+
+Admission should lower these forms into bounded recipes such as:
+
+```text
+Self
+Ancestor-resident inheritance
+Descendant subtree/span
+Predicate-filtered admitted receiver span
+Explicit admitted receiver set
+RF-routed receiver
+Structural/local-neighborhood binding
+Cross-tree stamped receive product
+```
+
+Human-readable scope expressions compile away before numerical execution.
+
+### 16.3 One logical action may project to many receivers
+
+Iterator-shaped authoring must not imply a CPU loop attaching one overlay per receiver.
+
+Prefer:
+
+```text
+one authoritative overlay instance
+        + admitted projection/filter span
+```
+
+where receivers share semantics.
+
+Split into independent instances only when descendants truly require independent parameters, provenance, lifecycle, or state.
+
+This is the designer-language counterpart of the ancestor-residency scale law.
+
+### 16.4 Active-state observability
+
+The authoring language can test whether a modifier/effect state is active. Runtime predicates therefore need lawful numeric observability of admitted overlay state.
+
+That must resolve through admitted template/instance ids or an equivalent compiled state lane, not CPU string lookup.
+
+Conceptually:
+
+```text
+OverlayActive(template/instance binding) → numeric predicate input
+```
+
+### 16.5 Static variable/state vocabulary
+
+Named authored variables should lower to admitted Property/sub-field state where they participate in simulation.
+
+Dynamic construction of runtime variable/modifier names is incompatible with bounded admission unless the possible name family is statically enumerable and budgeted. Unbounded dynamic-name creation should fail closed.
+
+### 16.6 Ordered effects and composition
+
+Designer effect order may be semantically significant. This does not require an imperative runtime interpreter, but it does require admission to preserve ordering where later effects observe earlier authored effects.
+
+Within one pure transform expression, authored operation order is preserved under the exact EML arithmetic law.
+
+Where an authored statement changes persistent state, its visibility follows the admitted state/boundary ordering contract; the transpiler must not silently pretend batch-next semantics are equivalent to a source-language sequential dependency when they are not. Unsupported source semantics fail closed or require an explicit admitted staged lowering.
+
+### 16.7 Gated/triggered modifiers
+
+Conditionally active modifiers should normally become resident templates with pure numeric gating rather than attach/detach churn:
+
+\[
+y = p(x) ? F(x) : x
+\]
+
+or the appropriate identity contribution for the declared composition class.
+
+This is especially important for large authored modifier networks because it keeps template identity stable and allows profile batching.
+
+### 16.8 Timed modifiers and explicit removal
+
+Authored duration/remove semantics map naturally to intrinsic overlay lifecycle:
+
+```text
+activation generation / timer state
+lifecycle predicate
+suspend/dissolve state
+explicit remove/override binding
+```
+
+They must not require CPU timer decrements or a special script-side modifier store after GPU lifecycle authority is promoted.
+
+### 16.9 Cyclic authored modifier graphs are temporal feedback
+
+The most dangerous designer-language case is not a long modifier name but a dependency cycle:
+
+```text
+A modifies B
+B changes a predicate on C
+C modifies A
+```
+
+or an apparent self-reference.
+
+StemThing must support such behavior as an ordinary discrete dynamical system:
+
+\[
+S_{t+1}=F(S_t)
+\]
+
+not as same-generation recursive evaluation:
+
+\[
+S_t=F(S_t).
+\]
+
+Canonical pacing:
+
+```text
+generation t
+    Current properties / RF / fields / overlay state
+        ↓
+    pure EML transforms and native field/RF execution
+        ↓
+    crossings / lifecycle / action resolution
+        ↓
+    OverlayStateNext / PropertyNext / sealed boundary requests
+
+---------------- generation barrier ----------------
+
+generation t+1
+```
+
+The loop is the simulation. There is no modifier recalc cascade.
+
+### 16.10 Within-generation dependency DAG
+
+Admission should prove or construct an acyclic dependency graph for pure current-generation numerical evaluation.
+
+A cycle is lawful only when at least one edge is a declared state transition across the generation boundary (or another already-admitted staged boundary).
+
+This gives a precise rejection criterion for pathological authored self-reference:
+
+```text
+pure Current → Current algebraic cycle
+    = reject/remand
+
+Current → Next → next generation Current cycle
+    = ordinary stateful feedback
+```
+
+### 16.11 Bounded feedback admission
+
+Generation pacing bounds feedback **rate**, not feedback **gain**. Authored loops can still diverge or chatter.
+
+Any emitted overlay that feeds a field/RF lane capable of driving its own future activation/intensity must obey the existing bounded-feedback posture: explicit clamps/finite ranges, admitted decay or other stabilizing law where required, and no unbounded positive recurrence silently admitted.
+
+Hysteresis may be authored with separate activation/deactivation thresholds, decay, minimum lifetime, cooldown, or other ordinary state/band laws. No hidden scheduler cadence should be introduced to simulate stability.
+
+### 16.12 Effect ABI remains closed and extensible by data
+
+The authoring language may evolve indefinitely, but its runtime consequences should compile to finite native destinations:
+
+```text
+Overlay state
+Property next-state
+RF claim/obligation
+ActionBand state
+CostBand state
+sealed BoundaryRequest
+existing telemetry/history
+```
+
+New source vocabulary should normally require compiler/admission data or standard-library templates, not a new runtime semantic subsystem.
+
+### 16.13 Staged progress constructs require no new engine
+
+Long-running authored situations, projects, negotiations, explorations, and similar staged constructs should generally lower as:
+
+```text
+ordinary progress Property
++ prerequisite predicates
++ CostBand/RF work
++ ActionBand unresolved target where purposeful trajectory exists
++ threshold bands
++ Overlay approach/state actuation
++ terminal structural consequence only when truly structural
+```
+
+This is a capability claim, not a promise that every foreign construct is already mapped. A construct that cannot be expressed faithfully through these primitives must be identified explicitly rather than approximated by a hidden domain engine.
+
+---
+
+## 17. What is explicitly not proposed
 
 1. No fifth StemThing leg.
 2. No `ActionThing` peer entity.
@@ -806,86 +1133,111 @@ Ancestor overlay changes should invalidate only the affected subtree/range and d
 17. No silent sign erasure of Gu-Yang flux.
 18. No per-leaf stamping of subtree-wide standing overlays.
 19. No per-generation full ancestor-chain inheritance walk at population scale.
+20. No ClauseScript/modifier/effect interpreter in the runtime.
+21. No arbitrary runtime string dispatch for modifier/effect names.
+22. No unbounded dynamic variable/template names.
+23. No CPU iterator loop as the normal implementation of subtree-wide authored effects.
+24. No pure same-generation algebraic cycle disguised as a modifier recalc loop.
 
 ---
 
-## 17. Candidate promoted semantic laws
+## 18. Candidate promoted semantic laws
 
-### 17.1 Intrinsic Overlay Ownership Law
+### 18.1 Intrinsic Overlay Ownership Law
 
 > Every active overlay is semantically owned by a StemThing. No peer subsystem owns overlay lifetime or numerical execution.
 
-### 17.2 Overlay Actuation Law
+### 18.2 Overlay Actuation Law
 
 > Ordinary numerical action resolves through admitted overlay-state changes and ordinary Property/RF/Field-Triad/boundary consequences rather than a peer domain executor.
 
-### 17.3 Sparse Inert Germ Law
+### 18.3 Sparse Inert Germ Law
 
 > Overlay capability is universal in semantics but sparse in active physical state.
 
-### 17.4 RF Distinction Law
+### 18.4 RF Distinction Law
 
 > Overlay may deform RF inputs and claims, but only genuinely conserved/constrained quantities become RF resources.
 
-### 17.5 Full Field-Triad Parameterization Law
+### 18.5 Full Field-Triad Parameterization Law
 
 > Overlay may parameterize admitted STEAD, PALMA, and Gu-Yang inputs while those mechanisms retain their native mathematical authority.
 
-### 17.6 Field Certificate Envelope Law
+### 18.6 Field Certificate Envelope Law
 
 > Runtime overlay variation must remain inside the admitted field registration's structural/conservation/stability envelope.
 
-### 17.7 Overlay Lifecycle Authority Law
+### 18.7 Overlay Lifecycle Authority Law
 
 > Overlay activation, suspension, temporal state, dissolution, and collapse belong to the intrinsic overlay facility; CPU shadow may not remain ordinary numerical lifecycle authority after GPU promotion.
 
-### 17.8 Generation-Paced Actuation Law
+### 18.8 Generation-Paced Actuation Law
 
-> Overlay next-state authorized in generation `t` participates no earlier than the ordinary next generation/barrier.
+> Overlay next-state authorized in generation `t` participates no earlier than the ordinary next generation/barrier unless the value is part of an already-admitted pure current-generation transform that does not mutate overlay/state identity.
 
-### 17.9 Opportunity-Horizon Law
+### 18.9 Opportunity-Horizon Law
 
 > Nonlocal opportunity awareness is a field-propagation responsibility, not an ActionBand search-depth responsibility.
 
-### 17.10 Dirty-Provenance Law
+### 18.10 Dirty-Provenance Law
 
 > Admitted overlay bindings should directly identify/invalidate dependent numerical work rather than rely on global change detection.
 
-### 17.11 Ancestor Overlay Residency Law
+### 18.11 Ancestor Overlay Residency Law
 
 > Subtree-scoped standing overlays are retained at the lawful ancestor whose scope they define and projected by recursive inheritance; stamping equivalent semantic overlay instances onto descendants is unlawful.
 
-### 17.12 Inheritance Hot-Path Law
+### 18.12 Inheritance Hot-Path Law
 
 > Standing-overlay inheritance may be semantically recursive but may not require a per-generation `O(depth × descendants)` ancestor rewalk. Equivalent epoch/boundary-compiled effective parameters or another sparse invalidation-based lowering must provide hot reads without population-scale traversal.
 
-### 17.13 Overlay Composition-Class Law
+### 18.13 Overlay Composition-Class Law
 
 > Every overlay binding declares its composition class at admission. Sequential value transforms compose in authored order. Conjunctive restrictions compose monotonically and may not be weakened by a descendant. When multiple overlays bind one field/program parameter, the admitted per-parameter combine law is explicit; physical row/order accidents never choose semantics.
 
 This closes the descendant-`Set`-weakens-ancestor-cap class of failure.
 
-### 17.14 Derivation-to-Overlay-Template Law
+### 18.14 Derivation-to-Overlay-Template Law
 
 > A derivation/tier capability grant includes the admitted overlay-template capability span the descendant may activate, alongside its other lane/residency capabilities. Derived specialists inherit lawful actuation vocabulary as data; vendors do not mint template scope per domain.
 
-### 17.15 One-History / Crossing-History Law
+### 18.15 One-History / Crossing-History Law
 
 > Overlay actuation history is recorded through the existing stamped crossing/schedule history surfaces. Overlay lifecycle must not mint a second replay/history mechanism.
 
-### 17.16 Cross-Tree Actuation Seam Law
+### 18.16 Cross-Tree Actuation Seam Law
 
 > Routed overlays derive origin→LCA→target within one authority tree. Cross-tree actuation enters another tree through the existing stamped product/receive seam; it does not bypass per-tree instantiation with a hidden global overlay route.
 
-### 17.17 Gu-Yang Instantaneous-State Law
+### 18.17 Gu-Yang Instantaneous-State Law
 
 > Gu-Yang owns instantaneous conservative flux/stall facts; persistence belongs to separately admitted ordinary state/overlay memory.
 
+### 18.18 Designer-Language Compilation Law
+
+> Designer-facing semantic vocabulary, including ClauseScript modifier/effect names, scopes, scripted values, iterator forms, and control flow, must compile away at admission into bounded native templates, EML programs/predicates, projection bindings, Property/RF/CostBand/ActionBand state, or sealed structural requests. Source-language semantic nouns may not become runtime numerical authority.
+
+### 18.19 Temporal Feedback Law
+
+> Pure within-generation overlay/property/field transforms form an admitted acyclic numerical dependency graph. Cyclic authored semantics are represented by explicit Current→Next/staged state edges and recur only across an admitted generation/stage boundary; same-generation recursive modifier convergence is unlawful.
+
+### 18.20 Bounded Projection Law
+
+> Recursive authored application over descendants, scopes, selected receivers, or iterators lowers to bounded admitted projection/binding data. Population-scale semantic fanout may not be implemented as an unbounded CPU traversal or runtime dynamic semantic search.
+
+### 18.21 Overlay-State Observability Law
+
+> Active/suspended/lifecycle state required by authored predicates is exposed through admitted numeric state/bindings, not human-readable runtime lookup.
+
+### 18.22 Static Runtime Vocabulary Law
+
+> Runtime template, variable, property, and effect destinations are statically admitted/budgeted. Source-language dynamic names are rejected unless they resolve to a finite predeclared family.
+
 ---
 
-## 18. Composition, derivation, and routing consequences
+## 19. Composition, derivation, routing, and authoring consequences
 
-### 18.1 Composition classes are admission data
+### 19.1 Composition classes are admission data
 
 The core must not infer combine semantics from overlay kind or iteration order.
 
@@ -899,25 +1251,39 @@ DeclaredParameterCombine
 
 Exact Rust names are implementation-local; semantic class declaration is the law.
 
-### 18.2 Ancestor restrictions cannot be loosened by descendants
+### 19.2 Ancestor restrictions cannot be loosened by descendants
 
 Policy/governance-style predicates remain conjunctive/monotone. Ordinary value transforms may retain sequential authored semantics. The two categories must not be conflated.
 
-### 18.3 Derivation closes into actuation vocabulary
+### 19.3 Derivation closes into actuation vocabulary
 
 Tier/capability price vectors should carry the set/span of overlay templates a derived child may activate. This makes “what the descendant can do” intrinsic admitted data.
 
-### 18.4 Cross-tree actuation
+### 19.4 Cross-tree actuation
 
 Per-tree routing remains local. Inter-tree consequences cross the stamped seam as products/directives, then enter the destination tree through its receive leg and ordinary overlay routing/retention semantics.
 
-### 18.5 History
+### 19.5 History
 
 A crossing/lifecycle event that matters for replay is represented by the existing stamped schedule/crossing history. Do not create an OverlayHistory service.
 
+### 19.6 Authoring scopes become bindings, not runtime scope stacks
+
+The compiler/admission layer may preserve rich source scope semantics while resolving them to stable relationships, spans, and selector bindings. Runtime overlay execution should consume only admitted structural/numeric references.
+
+### 19.7 Ordered source semantics require explicit lowering proof
+
+If a source-language effect depends on immediate visibility of an earlier state mutation, ordinary batch-next lowering is not automatically faithful. The authoring compiler must either:
+
+- lower it into a proven equivalent pure EML/dataflow expression;
+- use an already-admitted staged boundary with defined visibility;
+- or reject/remand the construct.
+
+A general imperative effect VM is not the answer.
+
 ---
 
-## 19. Falsifiers
+## 20. Falsifiers
 
 Promotion should remand if any of the following is required:
 
@@ -941,19 +1307,27 @@ Promotion should remand if any of the following is required:
 18. Descendant overlay composition can weaken an ancestor conjunctive restriction because composition class was implicit.
 19. A second overlay-specific replay/history mechanism is required.
 20. Cross-tree overlay routing bypasses the stamped receive/product seam.
+21. Runtime ClauseScript/modifier/effect string dispatch is required for numerical semantics.
+22. A designer-authored cyclic dependency requires re-evaluating the same current-generation state until convergence.
+23. An authored subtree/iterator effect requires a CPU per-receiver semantic loop as ordinary execution.
+24. `has_modifier`-like predicates require CPU name lookup rather than admitted overlay-state observability.
+25. Unbounded dynamic variable/modifier/template names are required at runtime.
+26. Bounded source control flow requires a general script interpreter rather than finite admitted dataflow/staging.
+27. Feedback into RF/Field-Triad lanes can amplify without admission bounds/clamps/stabilizing semantics.
 
 ---
 
-## 20. Engineering questions left open
+## 21. Engineering questions left open
 
-### 20.1 Overlay instance storage
+### 21.1 Overlay instance storage
 
 - exact template/instance/binding table layout;
 - capacity and residency pricing;
 - grouping by owner/template/profile;
-- logical-slot epoch rebind consequences.
+- logical-slot epoch rebind consequences;
+- slot reuse after semantic dissolve.
 
-### 20.2 GPU lifecycle extraction
+### 21.2 GPU lifecycle extraction
 
 This is the centerpiece engineering question:
 
@@ -964,7 +1338,7 @@ This is the centerpiece engineering question:
 - sparse semantic readback;
 - indistinguishability versus the current CPU lifecycle oracle.
 
-### 20.3 Ancestor inheritance lowering
+### 21.3 Ancestor inheritance lowering
 
 - subtree-contiguous range use;
 - effective-parameter plane/cache representation;
@@ -972,45 +1346,57 @@ This is the centerpiece engineering question:
 - standing + local overlay composition;
 - conjunction vs sequential transform lowering.
 
-### 20.4 Cross-tree seam lowering
+### 21.4 Cross-tree seam lowering
 
 - product identity/stamp carried into receive-leg overlay ingress;
 - replay ordering;
 - origin provenance across tree boundaries.
 
-### 20.5 OverlayFieldDependency
+### 21.5 OverlayFieldDependency
 
 - dependency granularity: slot/cell/tile/property/field profile;
 - duplicate dirty marks;
 - current/next masks;
 - dependency fanout admission bounds.
 
-### 20.6 Field solver research questions
+### 21.6 Designer-language dependency admission
+
+- exact representation of the pure current-generation dependency DAG;
+- cycle classification and diagnostics;
+- projection/iterator fanout pricing;
+- bounded dynamic-name families;
+- ordered-effect equivalence/staging proof;
+- mapping source `has_modifier`-like predicates onto admitted overlay-state lanes;
+- deciding when a gated contribution should remain one persistent instance versus lifecycle attach/dissolve.
+
+### 21.7 Field solver research questions
 
 Remain in §14 and are not anchor blockers.
 
 ---
 
-## 21. Two promotion units
+## 22. Two promotion units
 
-Fable's split is adopted because the semantic closure and field-solver research have different proof standards.
+The semantic closure and field-solver research have different proof standards and should not be anchored as one empirical dependency.
 
-### 21.A Semantic closure — anchor candidate
+### 22.A Semantic closure — anchor candidate
 
 Includes:
 
-- §§0–10;
-- §§15–20;
+- StemThing overlay germ and ownership/lifecycle laws;
+- RF + full Field-Triad parameterization;
+- full EML actuation;
 - ancestor residency/inheritance;
 - composition classes;
 - derivation→template capability;
 - one-history and cross-tree seam;
-- GPU lifecycle extraction/equivalence;
-- ActionBand→Overlay and full-Triad overlay integration.
+- ActionBand/CostBand→Overlay actuation;
+- designer-language compilation/feedback/projection closure;
+- GPU lifecycle extraction/equivalence.
 
-Evidence standard: archaeology, semantic equivalence, determinism, scale falsifiers, deletion of peer authority.
+Evidence standard: archaeology, semantic equivalence, determinism, scale falsifiers, bounded admission, deletion of peer authority.
 
-### 21.B Field-solver performance program — remains workshop research
+### 22.B Field-solver performance program — remains workshop research
 
 Includes §14:
 
@@ -1028,7 +1414,7 @@ Evidence standard: measurement and equivalence to the already-admitted field sem
 
 ---
 
-## 22. Suggested semantic rung/probe sequence
+## 23. Suggested semantic rung/probe sequence
 
 This is a proposal for DA review, not a workplan edit.
 
@@ -1061,20 +1447,47 @@ E. ANCESTOR-RESIDENCY / FRACTAL-ROUTING
    local overlays compose correctly
    conjunctive restriction mutant REDS
 
-F. CROSS-TREE / ONE-HISTORY
+F. DESIGNER-LANGUAGE-FEEDBACK-CLOSURE
+   generated modifier/effect names compile away
+   gated modifier remains resident without attach churn
+   has-modifier predicate reads admitted overlay state
+   subtree iterator lowers to bounded projection
+   Current→Current cycle REDS
+   Current→Next temporal feedback loop runs deterministically
+
+G. CROSS-TREE / ONE-HISTORY
    cross-tree actuation crosses stamped receive seam
    existing crossing/schedule history is sufficient for replay
 ```
 
 Recommended sequencing relative to 0.0.8.7: after the ActionBand Gu-Yang remediation/semantic-shadow surfaces are stable and **before 8.2 outcomes-as-overlays hardens a second actuation path**. Exact numbering belongs to DA.
 
-### 22.1 Lifecycle extraction deserves a dedicated rung
+### 23.1 Lifecycle extraction deserves a dedicated rung
 
 Do not hide `resolve_overlay_lifecycle()` removal inside a broad composition rung. Treat current CPU lifecycle as the oracle, prove GPU equivalence/indistinguishability, then retire the peer authority.
 
+### 23.2 Designer-language probe should be adversarial, not broad-vocabulary busywork
+
+The useful stress proof is not thousands of modifier names. It is a small deliberately difficult scenario containing:
+
+```text
+ancestor-scoped standing modifier
++ descendant-local modifier
++ generated long modifier key compiled to generic binding
++ gated/triggered modifier
++ timed modifier
++ has-modifier predicate
++ bounded subtree projection
++ RF/Field-Triad feedback
++ one lawful temporal cycle
++ one illegal same-generation algebraic cycle
+```
+
+This tests the semantic closure rather than parser breadth.
+
 ---
 
-## 23. Separate performance research sequence
+## 24. Separate performance research sequence
 
 ```text
 P1. OVERLAY-DIRTY-PALMA
@@ -1102,9 +1515,9 @@ Nothing in this sequence blocks semantic promotion.
 
 ---
 
-## 24. Promotion criteria
+## 25. Promotion criteria
 
-### 24.1 Semantic anchor readiness
+### 25.1 Semantic anchor readiness
 
 The semantic closure is ready to move from `docs/workshop/` to `docs/` when:
 
@@ -1123,15 +1536,21 @@ The semantic closure is ready to move from `docs/workshop/` to `docs/` when:
 13. Existing crossing/schedule history is the one replay surface.
 14. GPU lifecycle extraction has an equivalence/referee plan.
 15. Default inertness remains credible at million-child scale.
-16. No second crossing, planner, overlay manager, private flux solver, or CPU numerical lifecycle remains necessary.
+16. Designer-facing ClauseScript modifier/effect vocabulary compiles to bounded native destinations without runtime semantic dispatch.
+17. Active overlay state needed by authored predicates is numerically observable through admitted bindings.
+18. Recursive/iterator authoring lowers to bounded projection rather than CPU population traversal.
+19. Pure within-generation dependencies are acyclic; authored cycles become explicit temporal/staged feedback.
+20. Dynamic authored names are bounded/static at runtime.
+21. Ordered source semantics have an explicit equivalence/staging/rejection rule rather than accidental batch semantics.
+22. No second crossing, planner, overlay manager, private flux solver, script VM, modifier manager, or CPU numerical lifecycle remains necessary.
 
-### 24.2 Performance research is explicitly non-blocking
+### 25.2 Performance research is explicitly non-blocking
 
 FIM/multiscale/shared-profile measurements do not gate the semantic anchor. They may promote later as measured physical lowerings.
 
 ---
 
-## 25. Working synthesis
+## 26. Working synthesis
 
 The strongest current architecture is:
 
@@ -1157,6 +1576,29 @@ state / RF / Field-Triad parameters
 next generation
 ```
 
-The performance program is layered underneath this closure rather than fused to it: overlay provenance may seed incremental PALMA/Gu-Yang work; FIM/multiscale may accelerate PALMA; Gu-Yang may expose free signed-feasibility or a reusable driving potential if archaeology proves one exists; and EXP/LN provide bounded temporal/nonlinear coupling between instantaneous field facts and overlay actuation. None of those optimizations changes the semantic owner or creates a new engine.
+The designer-language contract fits above, not inside, this loop:
 
-If this closure survives implementation scrutiny, future capability growth becomes admitted data — templates, EML, field parameters, RF lanes, targets, thresholds, and derivation spans — rather than another architectural refactor.
+```text
+ClauseScript
+rich semantic vocabulary
+scope-relative authoring
+generated modifier names
+script values / conditions
+bounded iterators
+staged activities
+cyclic authored dependencies
+        ↓
+admission / compilation
+        ↓
+finite Overlay templates + EML + bindings
+RF / CostBand / ActionBand state
+Property next-state / sealed boundary effects
+        ↓
+StemThing loop
+```
+
+The critical closure property is that even an ugly self-referential modifier network becomes **ordinary temporal feedback through StemThing** rather than a recursive modifier evaluator. Long names and rich scope syntax are an admission problem; persistence, actuation, propagation, conservation, and action remain native SimThing concerns.
+
+The performance program is layered underneath this semantic closure rather than fused to it: overlay provenance may seed incremental PALMA/Gu-Yang work; FIM/multiscale may accelerate PALMA; Gu-Yang may expose free signed-feasibility or a reusable driving potential if archaeology proves one exists; and EXP/LN provide bounded temporal/nonlinear coupling between instantaneous field facts and overlay actuation. None of those optimizations changes the semantic owner or creates a new engine.
+
+If this closure survives implementation scrutiny, future capability growth becomes admitted data — templates, EML, field parameters, RF lanes, targets, thresholds, derivation spans, and bounded projection bindings — rather than another architectural refactor.
