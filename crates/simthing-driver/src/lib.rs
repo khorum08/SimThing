@@ -92,7 +92,8 @@ pub use action_band_execution_compile::{
     compile_action_band_gpu_execution, compile_action_band_gpu_execution_with_native_lanes,
     frozen_admission_binding_id, ActionBandActiveInstance, ActionBandExecutionCompileError,
     ActionBandNativeLaneAdmission, ActionBandSessionOrigin, ActionBandStructuralApplyError,
-    CompiledActionBandGpuExecution, FrozenActionBandStructuralRequests,
+    CompiledActionBandConservedProgressBinding, CompiledActionBandGpuExecution,
+    FrozenActionBandStructuralRequests,
 };
 pub use action_band_semantic_shadow::{
     carry_bound_observables, designation_for_template, ActionBandBoundDispatch,

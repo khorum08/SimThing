@@ -115,6 +115,7 @@ const ACTION_DEST_PROPERTY_NEXT: u32 = 0u;
 const ACTION_DEST_RF_CLAIM: u32 = 1u;
 const ACTION_DEST_COST_BAND: u32 = 2u;
 const ACTION_DEST_STRUCTURAL_REQUEST: u32 = 4u;
+const ACTION_CONSERVED_BOUND_NONE: u32 = 0u;
 fn action_value(slot: u32, col: u32) -> f32 {
     return atomic_read_f32_at(slot * tick_params.n_dims + col);
 }
@@ -323,8 +324,16 @@ fn actionband_emit_binding(
     if (binding.destination_kind == ACTION_DEST_PROPERTY_NEXT
         || binding.destination_kind == ACTION_DEST_RF_CLAIM
         || binding.destination_kind == ACTION_DEST_COST_BAND) {
+        var executable_payload = payload;
+        if (binding.auxiliary1 != ACTION_CONSERVED_BOUND_NONE) {
+            executable_payload = select(
+                clamp(payload, crossing.post_value, 0.0),
+                clamp(payload, 0.0, crossing.post_value),
+                crossing.post_value >= 0.0,
+            );
+        }
         let index = instance.slot * tick_params.n_dims + binding.destination_index;
-        let value = select(payload, action_value(instance.slot, binding.destination_index) + payload, binding.auxiliary0 == 1u);
+        let value = select(executable_payload, action_value(instance.slot, binding.destination_index) + executable_payload, binding.auxiliary0 == 1u);
         atomicStore(&values_next[index], bitcast<i32>(value));
     }
 }

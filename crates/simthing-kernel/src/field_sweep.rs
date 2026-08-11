@@ -26,7 +26,7 @@
 //! ```
 
 use std::collections::{BTreeMap, BTreeSet};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::mpsc;
 
 use bytemuck::{Pod, Zeroable};
@@ -1874,6 +1874,9 @@ pub struct FieldSweepSession {
     values_len: usize,
     read_a: bool,
     transient_initialized: bool,
+    registration_dispatches: AtomicU64,
+    resident_exports: AtomicU64,
+    host_readbacks: AtomicU64,
 }
 
 impl FieldSweepSession {
@@ -2026,7 +2029,26 @@ impl FieldSweepSession {
             values_len,
             read_a: true,
             transient_initialized: false,
+            registration_dispatches: AtomicU64::new(0),
+            resident_exports: AtomicU64::new(0),
+            host_readbacks: AtomicU64::new(0),
         })
+    }
+
+    /// Number of admitted registration executions submitted by this session.
+    /// This observes the execution call graph and exposes no numerical values.
+    pub fn registration_dispatches(&self) -> u64 {
+        self.registration_dispatches.load(Ordering::Relaxed)
+    }
+
+    /// Number of GPU-resident exports submitted by this session.
+    pub fn resident_exports(&self) -> u64 {
+        self.resident_exports.load(Ordering::Relaxed)
+    }
+
+    /// Number of successful host readbacks performed by this session.
+    pub fn host_readbacks(&self) -> u64 {
+        self.host_readbacks.load(Ordering::Relaxed)
     }
 
     pub fn upload_values(
@@ -2079,6 +2101,7 @@ impl FieldSweepSession {
             });
         encoder.copy_buffer_to_buffer(source, 0, target, 0, byte_len);
         ctx.queue.submit(Some(encoder.finish()));
+        self.resident_exports.fetch_add(1, Ordering::Relaxed);
     }
 
     pub fn dispatch(
@@ -2208,6 +2231,7 @@ impl FieldSweepSession {
             );
         }
         ctx.queue.submit(Some(encoder.finish()));
+        self.registration_dispatches.fetch_add(2, Ordering::Relaxed);
         self.read_a = !self.read_a;
         self.transient_initialized = true;
         ctx.device.poll(wgpu::Maintain::Wait);
@@ -2319,6 +2343,10 @@ impl FieldSweepSession {
             }
         }
         ctx.queue.submit(Some(encoder.finish()));
+        self.registration_dispatches.fetch_add(
+            registrations.len() as u64 * u64::from(iterations),
+            Ordering::Relaxed,
+        );
         self.read_a = read_a;
         self.transient_initialized = transient_available;
         ctx.device.poll(wgpu::Maintain::Wait);
@@ -2359,6 +2387,7 @@ impl FieldSweepSession {
         let output = bytemuck::cast_slice(&mapped).to_vec();
         drop(mapped);
         staging.unmap();
+        self.host_readbacks.fetch_add(1, Ordering::Relaxed);
         Ok(output)
     }
 
