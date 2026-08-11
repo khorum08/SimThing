@@ -1,5 +1,5 @@
 //! ACTIONBAND-SEMANTIC-SHADOW-0 focused proof
-//! (remand 4: same-origin association; same-shape cross-session RED).
+//! (remand 5: label-blind association; same-authority dual semantic views).
 
 use std::sync::Mutex;
 
@@ -9,9 +9,9 @@ use simthing_core::{
     SimProperty, SimThing, SimThingId, SimThingKind, SlotIndex, SubFieldRole, ThresholdDirection,
 };
 use simthing_driver::{
-    compile_action_band_gpu_execution, ActionBandActiveInstance, ActionBandSemanticSession,
-    BoundObservableIdentity, FieldNeutralityGate, FrozenActionBandStructuralRequests,
-    SemanticShadowError, FIELD_NEUTRALITY_OUTCOME,
+    compile_action_band_gpu_execution, frozen_admission_binding_id, ActionBandActiveInstance,
+    ActionBandSemanticSession, BoundObservableIdentity, FieldNeutralityGate,
+    FrozenActionBandStructuralRequests, SemanticShadowError, FIELD_NEUTRALITY_OUTCOME,
 };
 use simthing_feeder::BoundaryRequest;
 use simthing_gpu::{
@@ -438,9 +438,13 @@ fn stale_production_stamp_fails_closed() {
     ));
 }
 
+/// EXIT-PROOF: labels/designations differ on the **same** opaque ActionBand
+/// execution — one dispatch, one sealed production, one authority — projected
+/// through two lawful post-authority semantic views.
 #[test]
 fn identity_blindness_labels_do_not_change_numerical_or_sealed_products() {
     let fixture = fixture();
+    // Same logical authored/template identity; designations differ only.
     let frozen_a = admit(
         &fixture,
         "semantic-shadow-template",
@@ -451,32 +455,155 @@ fn identity_blindness_labels_do_not_change_numerical_or_sealed_products() {
         "semantic-shadow-template",
         "completely-different-designation-words",
     );
-    let ctx = require_gpu();
-    let world = world_tree("alpha");
-    let (session_a, sealed_a) = produce(&ctx, &fixture, &frozen_a, world.actor, world.to);
-    let (session_b, sealed_b) = produce(&ctx, &fixture, &frozen_b, world.actor, world.to);
     assert_eq!(
-        sealed_a.production().commitments[0].value().to_bits(),
-        sealed_b.production().commitments[0].value().to_bits()
+        frozen_a.semantic_shadow()[0].authored_id(),
+        frozen_b.semantic_shadow()[0].authored_id()
     );
-    assert_eq!(
-        sealed_a.authorities()[0].plan_fingerprint(),
-        sealed_b.authorities()[0].plan_fingerprint()
-    );
-    // Origins still diverge under identity-blind same-shape plans.
-    assert_ne!(session_a.session_origin(), session_b.session_origin());
-}
-
-/// R1a.1 — same numeric plan/fingerprint, different authored semantic identity.
-/// Foreign compile cannot be selected at seal time; assemble rejects mismatched frozen.
-#[test]
-fn same_shape_foreign_compile_cannot_be_selected_at_seal_or_open() {
-    let fixture = fixture();
-    let frozen_a = admit(&fixture, "semantic-shadow-template", "label-session-A");
-    let frozen_b = admit(&fixture, "semantic-shadow-template", "label-session-B");
     assert_ne!(
         frozen_a.semantic_shadow()[0].label(),
         frozen_b.semantic_shadow()[0].label()
+    );
+    // Label must not affect pre-dispatch association binding.
+    assert_eq!(
+        frozen_admission_binding_id(&frozen_a),
+        frozen_admission_binding_id(&frozen_b)
+    );
+
+    let ctx = require_gpu();
+    let world = world_tree("alpha");
+    let active = [ActionBandActiveInstance::new(
+        frozen_a.templates()[0].index(),
+        SlotIndex::new(0),
+        [0.0; 4],
+    )];
+    // One compile / one structural admission for the logical session.
+    let compiled = compile_action_band_gpu_execution(
+        &frozen_a,
+        &simthing_core::EmlExpressionRegistry::new(),
+        &[ActionBandEmissionBindingGpu::structural_request(0)],
+        &active,
+    )
+    .unwrap();
+    let mut pre = vec![None; 1];
+    pre[0] = Some(BoundaryRequest::Reparent {
+        child: world.actor,
+        new_parent: world.to,
+    });
+    let structural =
+        FrozenActionBandStructuralRequests::from_compiled_admission(&compiled, pre).unwrap();
+
+    // Two post-authority semantic views of the same logical admission/compile.
+    let session_a = ActionBandSemanticSession::open(
+        frozen_a.clone(),
+        compiled.clone(),
+        structural.clone(),
+    )
+    .expect("view A open");
+    let session_b = ActionBandSemanticSession::open(frozen_b, compiled, structural)
+        .expect("view B open — label-only change must not block open/dispatch");
+    assert_eq!(session_a.session_origin(), session_b.session_origin());
+
+    // One GPU dispatch / one sealed production on the shared logical origin.
+    let plan = session_a.compiled().execution_plan().clone();
+    let n_dims = fixture.registry.total_columns as u32;
+    let mut previous = vec![0.0f32; n_dims as usize];
+    let mut current = previous.clone();
+    previous[fixture.column.raw()] = 0.5;
+    current[fixture.column.raw()] = 1.5;
+    let regs = emit_on_threshold_registrations_to_gpu(&fixture.thresholds);
+    let mut thresh = AccumulatorOpSession::new_attached(&ctx, 1, n_dims, 4);
+    thresh.bind_generation_authority(11);
+    thresh.upload_values(&ctx, &current);
+    thresh.upload_previous_values(&ctx, &previous);
+    thresh
+        .upload_packed_threshold_ops(
+            &ctx,
+            &PackedThresholdUpload::from_registrations(&regs).unwrap(),
+        )
+        .unwrap();
+    thresh.tick(&ctx, 0).unwrap();
+    let emissions = thresh.readback_threshold_emissions(&ctx).unwrap();
+    let mut allocator = SlotAllocator::new();
+    allocator.populate_from_tree(&SimThing::new(SimThingKind::GameSession, 0));
+    let deltas = apply_band_crossing_deltas_from_fused_emissions(
+        &emissions,
+        thresh.threshold_registrations(),
+        &fixture.registry,
+        &allocator,
+    );
+    let crossings = plan.crossings_from_sealed(&deltas).unwrap();
+    let world_buf = ctx
+        .device
+        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("identity_blind_world"),
+            contents: bytemuck::cast_slice(&current),
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+        });
+    let _scope = scoped_debug_readback_allowed(true);
+    let mut bound = session_a.bind_dispatch(&ctx).expect("bind_dispatch");
+    let sealed = bound
+        .dispatch_and_seal(&ctx, &world_buf, n_dims, &crossings)
+        .expect("single dispatch_and_seal");
+    assert_eq!(sealed.authorities().len(), 1);
+    let authority = &sealed.authorities()[0];
+    assert_eq!(authority.session_origin(), session_a.session_origin());
+    assert_eq!(authority.session_origin(), session_b.session_origin());
+
+    let read_a = session_a
+        .project(authority, authority.generation(), &world.tree, &[])
+        .unwrap();
+    let read_b = session_b
+        .project(authority, authority.generation(), &world.tree, &[])
+        .unwrap();
+
+    // Designation differs as authored; sealed authoritative products identical.
+    assert_eq!(
+        read_a.designation(),
+        Some("human-readable-movement-to-orion")
+    );
+    assert_eq!(
+        read_b.designation(),
+        Some("completely-different-designation-words")
+    );
+    assert_eq!(read_a.generation(), read_b.generation());
+    assert_eq!(read_a.sealed_slot(), read_b.sealed_slot());
+    assert_eq!(read_a.sealed_col(), read_b.sealed_col());
+    assert_eq!(read_a.sealed_event_kind(), read_b.sealed_event_kind());
+    assert_eq!(read_a.sealed_value_bits(), read_b.sealed_value_bits());
+    assert_eq!(read_a.actor(), read_b.actor());
+    assert_eq!(read_a.from_cell_raw(), read_b.from_cell_raw());
+    assert_eq!(read_a.to_cell_raw(), read_b.to_cell_raw());
+    assert_eq!(
+        read_a.owner().as_ref().unwrap().as_str(),
+        read_b.owner().as_ref().unwrap().as_str()
+    );
+    assert_eq!(authority.plan_fingerprint(), session_a.plan_fingerprint());
+    assert_eq!(authority.plan_fingerprint(), session_b.plan_fingerprint());
+    assert_eq!(
+        sealed.production().commitments[0].value().to_bits(),
+        read_a.sealed_value_bits()
+    );
+}
+
+/// Negative control: foreign **logical** admission (different authored_id),
+/// bit-identical numeric plan — not a label-only difference.
+#[test]
+fn same_shape_foreign_logical_admission_cannot_be_selected_at_open() {
+    let fixture = fixture();
+    let frozen_a = admit(&fixture, "logical-template-A", "shared-designation");
+    let frozen_b = admit(&fixture, "logical-template-B", "shared-designation");
+    assert_ne!(
+        frozen_a.semantic_shadow()[0].authored_id(),
+        frozen_b.semantic_shadow()[0].authored_id()
+    );
+    // Labels match — foreignness is logical authored identity only.
+    assert_eq!(
+        frozen_a.semantic_shadow()[0].label(),
+        frozen_b.semantic_shadow()[0].label()
+    );
+    assert_ne!(
+        frozen_admission_binding_id(&frozen_a),
+        frozen_admission_binding_id(&frozen_b)
     );
 
     let active = [ActionBandActiveInstance::new(
@@ -503,7 +630,6 @@ fn same_shape_foreign_compile_cannot_be_selected_at_seal_or_open() {
     )
     .unwrap();
 
-    // The important case: numeric fingerprints match under identity-blindness.
     assert_eq!(
         compiled_a.plan_fingerprint(),
         compiled_b.plan_fingerprint(),
@@ -524,7 +650,7 @@ fn same_shape_foreign_compile_cannot_be_selected_at_seal_or_open() {
     let structural_a =
         FrozenActionBandStructuralRequests::from_compiled_admission(&compiled_a, pre_a).unwrap();
 
-    // Pair frozen_b with compile_a (same shape) — must RED at open.
+    // Pair foreign logical frozen_b with compile_a — must RED at open.
     let err = ActionBandSemanticSession::open(frozen_b, compiled_a.clone(), structural_a.clone())
         .unwrap_err();
     assert!(matches!(
@@ -532,9 +658,7 @@ fn same_shape_foreign_compile_cannot_be_selected_at_seal_or_open() {
         SemanticShadowError::FrozenCompileBindingMismatch { .. }
     ));
 
-    // Matching assemble works; seal path cannot take a foreign compiled argument.
-    let session_a =
-        ActionBandSemanticSession::open(frozen_a, compiled_a, structural_a).unwrap();
+    let session_a = ActionBandSemanticSession::open(frozen_a, compiled_a, structural_a).unwrap();
     let src = include_str!("../src/action_band_semantic_shadow.rs");
     assert!(
         !src.contains("pub fn dispatch_and_seal(\n    compiled"),

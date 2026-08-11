@@ -7,30 +7,30 @@
 - Base: `80e61a7062598486be1caf929617ac2037af2c34`
 - HD-RECEIPT: `edeb59f58239`
 - ORIENT-RECEIPT: `98a916672d1a`
-- Dispatch: `5246978127` · Remands: `5247122299`, `5247237560`, `5247464771`, `5247550364`
+- Dispatch: `5246978127` · Remands: `5247122299`, `5247237560`, `5247464771`, `5247550364`, `5247671801`
 - DA pre-dispatch: `5246937280`
 
 ## Field-neutrality
 
 **FIELD-NEUTRAL** + A1 `synthetic-rf-grant-axis-v1` (preserved).
 
-## Authority binding (remand 4 / R1a.1 + R1b.1)
+## Authority binding (remand 5 / identity-blind association)
 
 | Mechanism | Property |
 |---|---|
-| `ActionBandSessionOrigin` | Opaque per-compile association id; distinct under identity-blind same numeric fingerprints |
-| `frozen_admission_binding_id` | Binds compile product to the frozen admission it was lowered from (authored semantic identity included) |
-| `ActionBandSemanticSession::open` | Requires structural.origin == compiled.origin and frozen binding match |
-| `ActionBandBoundDispatch` | Sole seal door: `bind_dispatch` + `dispatch_and_seal`; foreign `compiled` not independently selectable |
+| `ActionBandSessionOrigin` | Opaque per-compile association id |
+| `frozen_admission_binding_id` | Logical template + `authored_id` + numeric shape; **label omitted** |
+| `ActionBandSemanticSession::open` | Structural origin + frozen logical binding match; label-only change does not block open |
+| `ActionBandBoundDispatch` | Sole seal door; foreign compile not independently selectable |
 | Sealed authority | Carries session origin; project rejects foreign origin |
-| Structural loci | Admitted `Reparent` + tree parent (R1b preserved) |
+| Structural loci | Admitted `Reparent` + tree parent |
 | Detachability | R5 held: no driver→mapeditor dep |
 
 ### Biting falsifiers
 
-- same-shape foreign compile at open/seal: `same_shape_foreign_compile_cannot_be_selected_at_seal_or_open`
+- same-authority dual-view identity-blindness: `identity_blindness_labels_do_not_change_numerical_or_sealed_products`
+- foreign **logical** admission (authored_id), same plan fingerprint: `same_shape_foreign_logical_admission_cannot_be_selected_at_open`
 - same-shape cross-session structural projection: `same_shape_cross_session_structural_projection_is_red` → `SessionOriginMismatch`
-- free cross-dispatch / foreign-compile seal API: `cross_dispatch_restamp_and_foreign_compile_api_is_absent`
 
 ## R2 / R3 / R4 / R5
 

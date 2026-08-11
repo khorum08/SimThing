@@ -212,14 +212,19 @@ impl ActionBandSessionOrigin {
 }
 
 /// Association-only binding of a compile product to the frozen 7.1 admission it
-/// was lowered from. Includes authored semantic identity so two identity-blind
-/// admissions with equal numeric plans still diverge.
+/// was lowered from.
+///
+/// Includes **logical** opaque identity (`template` index + `authored_id`) and
+/// numeric plan shape so a foreign logical admission with an equal numeric plan
+/// still diverges. **Does not** include human-readable `label`/designation —
+/// designation is post-authority metadata and must not gate dispatch/seal.
 pub fn frozen_admission_binding_id(frozen: &FrozenActionBandTemplates) -> u64 {
     let mut hasher = std::collections::hash_map::DefaultHasher::new();
     for row in frozen.semantic_shadow() {
         row.template().raw().hash(&mut hasher);
+        // Logical opaque admission identity (not human-readable designation).
         row.authored_id().hash(&mut hasher);
-        row.label().hash(&mut hasher);
+        // Intentionally omit row.label() — identity-blindness fence.
     }
     // Numeric plan tables also contribute so a pure numeric mutation still diverges.
     frozen.budget().axis_channel_count.hash(&mut hasher);

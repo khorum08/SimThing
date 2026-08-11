@@ -1,9 +1,13 @@
 //! ACTIONBAND-SEMANTIC-SHADOW-0 — post-authority CPU semantic shadow / readback.
 //!
-//! ## Authority rules (remand 4)
-//! - One opaque [`ActionBandSessionOrigin`] binds frozen admission + compile product
-//!   + admitted structural door + sealed authority. Same-shape numeric fingerprints
-//!   do not authorize cross-session substitution.
+//! ## Authority rules (remand 5)
+//! - One opaque [`ActionBandSessionOrigin`] binds **logical** frozen admission +
+//!   compile product + admitted structural door + sealed authority. Same-shape
+//!   numeric fingerprints do not authorize cross-session substitution of a
+//!   foreign **logical** admission (different authored/template identity).
+//! - Human-readable designation (`ActionBandSemanticShadow::label`) is strictly
+//!   post-authority metadata: it must not enter association values used before
+//!   or during dispatch/seal, and must not gate GPU execution eligibility.
 //! - GPU dispatch and semantic seal are one method on [`ActionBandBoundDispatch`],
 //!   which owns the session's compile product — a foreign `compiled` is not
 //!   independently selectable at seal time.
