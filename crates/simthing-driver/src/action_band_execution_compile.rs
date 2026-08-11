@@ -3,6 +3,8 @@
 //! never enter a key, and crossing evidence remains kernel-sealed.
 
 use std::collections::{BTreeMap, BTreeSet};
+use std::hash::{Hash, Hasher};
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use simthing_core::{
     eml_nodes::execution_class_to_u32, ColumnIndex, CompiledAccumulatorOpPlan, DimensionRegistry,
@@ -190,14 +192,56 @@ struct FrozenStructuralSource {
     destination_index: u32,
 }
 
+/// Opaque association identity for one compile of an ActionBand admission product.
+///
+/// Minted once per `compile_action_band_gpu_execution*` call. Distinct even when
+/// two admissions share a bit-identical numeric plan fingerprint (identity-blind
+/// labels). Association metadata only — not numerical or structural authority.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct ActionBandSessionOrigin(u64);
+
+impl ActionBandSessionOrigin {
+    fn mint() -> Self {
+        static NEXT: AtomicU64 = AtomicU64::new(1);
+        Self(NEXT.fetch_add(1, Ordering::Relaxed))
+    }
+
+    pub fn raw(self) -> u64 {
+        self.0
+    }
+}
+
+/// Association-only binding of a compile product to the frozen 7.1 admission it
+/// was lowered from. Includes authored semantic identity so two identity-blind
+/// admissions with equal numeric plans still diverge.
+pub fn frozen_admission_binding_id(frozen: &FrozenActionBandTemplates) -> u64 {
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    for row in frozen.semantic_shadow() {
+        row.template().raw().hash(&mut hasher);
+        row.authored_id().hash(&mut hasher);
+        row.label().hash(&mut hasher);
+    }
+    // Numeric plan tables also contribute so a pure numeric mutation still diverges.
+    frozen.budget().axis_channel_count.hash(&mut hasher);
+    frozen.budget().storage_rows.hash(&mut hasher);
+    frozen.budget().emission_binding_count.hash(&mut hasher);
+    for template in frozen.templates() {
+        template.index().raw().hash(&mut hasher);
+        template.reserved_instance_rows().hash(&mut hasher);
+    }
+    hasher.finish()
+}
+
 /// One source-bound compilation of the frozen 7.1 admission product. The GPU
 /// plan and structural application provenance are derived together from the
 /// same immutable band/binding rows, so a caller cannot supply a detached
 /// `(event_kind, binding)` assertion beside the plan.
 ///
-/// Also carries the opaque plan fingerprint and event_kind→template map used by
-/// 7.5 semantic-authority sealing so generation/template cannot be re-bound to
-/// a foreign frozen session after production.
+/// Also carries:
+/// - opaque plan fingerprint + event_kind→template map for 7.5 sealing
+/// - unique [`ActionBandSessionOrigin`] for same-shape cross-session association
+/// - frozen admission binding id so the compile cannot be paired with a foreign
+///   frozen product that happens to share a numeric plan fingerprint
 #[derive(Clone, Debug)]
 pub struct CompiledActionBandGpuExecution {
     plan: ActionBandExecutionPlan,
@@ -206,6 +250,10 @@ pub struct CompiledActionBandGpuExecution {
     plan_fingerprint: u64,
     /// Admission crossing map: sealed commitment event_kind → template index.
     event_kind_to_template: BTreeMap<u32, ActionBandTemplateIndex>,
+    /// Unique per-compile association origin (not the numeric fingerprint).
+    session_origin: ActionBandSessionOrigin,
+    /// Binding of this compile to the frozen admission it was lowered from.
+    frozen_admission_binding: u64,
 }
 
 impl CompiledActionBandGpuExecution {
@@ -221,6 +269,14 @@ impl CompiledActionBandGpuExecution {
         self.plan_fingerprint
     }
 
+    pub fn session_origin(&self) -> ActionBandSessionOrigin {
+        self.session_origin
+    }
+
+    pub fn frozen_admission_binding(&self) -> u64 {
+        self.frozen_admission_binding
+    }
+
     pub(crate) fn template_for_event_kind(
         &self,
         event_kind: u32,
@@ -232,9 +288,13 @@ impl CompiledActionBandGpuExecution {
 /// Session-fixed structural consequences addressed by the numeric destination
 /// index in an admitted emission binding. The boundary applies the selected row
 /// verbatim; it does not inspect payload, distance, satisfaction, or EML.
+///
+/// Carries the compile [`ActionBandSessionOrigin`] so a structural door cannot
+/// be paired with a foreign same-shape compile/semantic session.
 #[derive(Clone, Debug)]
 pub struct FrozenActionBandStructuralRequests {
     door: StructuralCommitmentApplicationDoor,
+    session_origin: ActionBandSessionOrigin,
 }
 
 impl FrozenActionBandStructuralRequests {
@@ -254,7 +314,12 @@ impl FrozenActionBandStructuralRequests {
         }
         Ok(Self {
             door: StructuralCommitmentApplicationDoor::from_pre_admitted_requests(admitted)?,
+            session_origin: compiled.session_origin(),
         })
+    }
+
+    pub fn session_origin(&self) -> ActionBandSessionOrigin {
+        self.session_origin
     }
 
     pub fn submit_committed(
@@ -637,6 +702,8 @@ fn compile_action_band_gpu_execution_inner(
         structural_sources,
         plan_fingerprint,
         event_kind_to_template,
+        session_origin: ActionBandSessionOrigin::mint(),
+        frozen_admission_binding: frozen_admission_binding_id(frozen),
     })
 }
 
