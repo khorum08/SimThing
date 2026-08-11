@@ -1,47 +1,40 @@
 # StemThing Intrinsic Overlay Capability
-## Working design for closing RF, STEAD/PALMA, CostBand, ActionBand, and Overlay into one recursive SimThing automaton
+## Engineering-review candidate for closing RF + Field Triad (STEAD / PALMA / Gu-Yang), full EML, CostBand, ActionBand, and Overlay into one recursive SimThing automaton
 
-> **Status: WORKSHOP / UNANCHORED / OWNER-DIRECTION IN DEVELOPMENT.**
+> **Status: WORKSHOP / ENGINEERING-REVIEW CANDIDATE / UNANCHORED.**
 >
-> This document is deliberately housed under `docs/workshop/`. It is the working surface for the proposed final closure of the base recursive **StemThing**: the thesis that the base SimThing is the sole semantic owner of overlay origination/emission, retention, reception, filtering/projection, activation/suspension, lifecycle, and dissolution, and that ordinary simulation action is expressed by that intrinsic overlay capability rather than by a peer event-execution or behavior subsystem.
+> Owner-approved working design, revised 2026-08-10. This document is deliberately housed under `docs/workshop/` while the overlay closure is tested, reviewed, and amended. It proposes the final semantic closure of the base recursive **StemThing**: the thesis that the base `SimThing` is the sole semantic owner of overlay origination/emission, retention, reception, routing/filtering, projection, activation/suspension, lifecycle, dissolution, and collapse; and that ordinary numerical action is expressed by that intrinsic overlay capability rather than by a peer event-execution or behavior subsystem.
 >
-> **This document does not amend the 0.0.8.7 ladder, does not supersede an anchor, and does not authorize implementation by itself.** Where it conflicts with an existing anchor or graduated rung, the existing authority wins until this workshop is adjudicated and promoted.
+> **This document does not amend the 0.0.8.7 ladder, does not supersede an anchor, and does not authorize implementation by itself.** Existing anchors and graduated rungs remain authoritative until this workshop is adjudicated and promoted.
 >
-> Intended promotion path, if the design survives review:
->
-> ```text
-> docs/workshop/StemThing_Intrinsic_Overlay_Capability.md
->                     ↓ Owner / DA review
->              completed design candidate
->                     ↓ promotion
->>                           docs/
->                     ↓
->       doctrine anchors + 0.0.8.7 amendment
-> ```
->
-> Primary repository companions:
->
-> - [`../stead_stemthing_unification.md`](../stead_stemthing_unification.md) — StemThing base recursive object, four-leg/lane unification, residency/derivation law.
-> - [`../stead_simthing_automata.md`](../stead_simthing_automata.md) — minimum viable Wei automaton, four legs, events-as-RF, CostBand, overlay hold/project archaeology.
-> - [`../multi-axis-ActionBand-STEAD.md`](../multi-axis-ActionBand-STEAD.md) — intrinsic GPU ActionBand, target/displacement/stakes, recursive GPU lowering, PALMA interaction, existing band-crossing reuse.
-> - [`../simthing_core_design.md`](../simthing_core_design.md) — core GPU/RF/overlay/STEAD/PALMA architecture and authority laws.
-> - [`../stead_spatial_contract.md`](../stead_spatial_contract.md) — spatial/STEAD/Movement-Front contract.
-> - [`../design_0_0_8_7_rf_arena_modernization.md`](../design_0_0_8_7_rf_arena_modernization.md) — live workplan; ladder authority wins over this workshop.
->
-> Primary implementation archaeology:
->
-> - [`../../crates/simthing-core/src/simthing.rs`](../../crates/simthing-core/src/simthing.rs)
-> - [`../../crates/simthing-core/src/overlay.rs`](../../crates/simthing-core/src/overlay.rs)
-> - [`../../crates/simthing-core/src/automaton.rs`](../../crates/simthing-core/src/automaton.rs)
-> - [`../../crates/simthing-core/src/property.rs`](../../crates/simthing-core/src/property.rs)
-> - [`../../crates/simthing-kernel/src/overlay_prep.rs`](../../crates/simthing-kernel/src/overlay_prep.rs)
-> - [`../../crates/simthing-sim/src/overlay_lifecycle.rs`](../../crates/simthing-sim/src/overlay_lifecycle.rs)
-> - [`../../crates/simthing-sim/src/tree_mutation.rs`](../../crates/simthing-sim/src/tree_mutation.rs)
-> - [`../../crates/simthing-sim/src/gpu_sync.rs`](../../crates/simthing-sim/src/gpu_sync.rs)
-> - [`../../crates/simthing-driver/src/automaton_reception.rs`](../../crates/simthing-driver/src/automaton_reception.rs)
-> - [`../../crates/simthing-feeder/src/work.rs`](../../crates/simthing-feeder/src/work.rs)
-> - [`../../crates/simthing-feeder/src/patcher.rs`](../../crates/simthing-feeder/src/patcher.rs)
-> - [`../../crates/simthing-spec/src/compile/overlay.rs`](../../crates/simthing-spec/src/compile/overlay.rs)
+> The design now explicitly incorporates the **full RF / Field-Triad authority** — STEAD, PALMA, and Gu-Yang / `SaturatingFlux` — and the **full admitted EML direction**, including deterministic `EXP`/`LN` and their gadget-space consequences. The earlier STEAD/PALMA-only framing is superseded in this workshop.
+
+Primary repository companions:
+
+- [`../stead_stemthing_unification.md`](../stead_stemthing_unification.md) — StemThing four-leg/lane unification and residency/derivation law.
+- [`../stead_simthing_automata.md`](../stead_simthing_automata.md) — minimum viable Wei automaton; four legs; events-as-RF; overlay hold/project archaeology.
+- [`../multi-axis-ActionBand-STEAD.md`](../multi-axis-ActionBand-STEAD.md) — intrinsic GPU ActionBand, now re-derived against the full Field Triad.
+- [`../simthing_core_design.md`](../simthing_core_design.md) — core GPU/RF/Field-Triad/overlay authority.
+- [`../stead_spatial_contract.md`](../stead_spatial_contract.md) — spatial substrate, PALMA/Gu-Yang field-sweep contract, comparative projections.
+- [`../full_eml_unification.md`](../full_eml_unification.md) — `EXP`/`LN` admission design and full EML operator/gadget consequences.
+- [`../EML_exp_ln_unification_expansion.md`](../EML_exp_ln_unification_expansion.md) — ActionBand/EML horizon synthesis and tiled execution candidates.
+- [`../eml_gadget_library.md`](../eml_gadget_library.md) — reusable admitted numerical gadgets and bounded-feedback discipline.
+- [`../design_0_0_8_7_rf_arena_modernization.md`](../design_0_0_8_7_rf_arena_modernization.md) — live workplan; ladder authority wins over this workshop.
+
+Primary implementation archaeology:
+
+- [`../../crates/simthing-core/src/simthing.rs`](../../crates/simthing-core/src/simthing.rs)
+- [`../../crates/simthing-core/src/overlay.rs`](../../crates/simthing-core/src/overlay.rs)
+- [`../../crates/simthing-core/src/automaton.rs`](../../crates/simthing-core/src/automaton.rs)
+- [`../../crates/simthing-core/src/property.rs`](../../crates/simthing-core/src/property.rs)
+- [`../../crates/simthing-kernel/src/overlay_prep.rs`](../../crates/simthing-kernel/src/overlay_prep.rs)
+- [`../../crates/simthing-sim/src/overlay_lifecycle.rs`](../../crates/simthing-sim/src/overlay_lifecycle.rs)
+- [`../../crates/simthing-sim/src/tree_mutation.rs`](../../crates/simthing-sim/src/tree_mutation.rs)
+- [`../../crates/simthing-sim/src/gpu_sync.rs`](../../crates/simthing-sim/src/gpu_sync.rs)
+- [`../../crates/simthing-driver/src/automaton_reception.rs`](../../crates/simthing-driver/src/automaton_reception.rs)
+- [`../../crates/simthing-feeder/src/work.rs`](../../crates/simthing-feeder/src/work.rs)
+- [`../../crates/simthing-feeder/src/patcher.rs`](../../crates/simthing-feeder/src/patcher.rs)
+- [`../../crates/simthing-spec/src/compile/overlay.rs`](../../crates/simthing-spec/src/compile/overlay.rs)
 
 ---
 
@@ -49,106 +42,121 @@
 
 The candidate closure is:
 
-> **The StemThing is the simulation cell. All ordinary action is expressed by the StemThing originating, retaining, projecting, modifying, suspending, or dissolving admitted overlays. CostBand and ActionBand do not become peer executors; they authorize changes in intrinsic overlay state. Those overlays in turn deform ordinary SimThing properties, RF lanes, STEAD fields, PALMA impedance/valuation, and target conditions until the authored goal/lifecycle condition resolves.**
+> **The StemThing is the simulation cell. All ordinary numerical action is expressed by the StemThing originating, retaining, projecting, modifying, suspending, or dissolving admitted overlays. ActionBand and CostBand do not become peer executors; they authorize changes in intrinsic overlay state. Those overlays parameterize and deform ordinary properties, RF lanes, and the complete Field Triad — STEAD, PALMA, and Gu-Yang — through admitted EML until authored lifecycle/goal conditions resolve.**
 
-This does **not** mean every quantity becomes an RF-conserved resource and does **not** mean an overlay is a second mutable world-state object beside properties.
+This does **not** mean every quantity becomes RF-conserved and does **not** mean an overlay gains authority over the physics it influences.
 
-The intended distinction is:
+The intended authority split is:
 
 ```text
 Property / governed value
     = ordinary state
 
 RF
-    = conserved / constrained flow and allocation
+    = conserved / constrained claims, clearing, disbursement, balances
 
 STEAD
-    = propagated field state / pressure / causal circumstance
+    = non-conserved propagated signal / influence / causal circumstance
 
 PALMA
-    = reach / impedance / value-potential solve over admitted field state
+    = non-conserved min-plus potential / impedance / reach-value field
+
+Gu-Yang / SaturatingFlux
+    = conserved saturating flux / realizable channel throughput / stall
+
+EML
+    = admitted deterministic numerical law over those observables
 
 ActionBand
-    = unresolved target discrepancy and its lifecycle/progress bands
+    = unresolved target discrepancy and target-seeking lifecycle
 
 CostBand
-    = exact quantization of affordable/executable work
+    = exact sink/work quantization over actually available value
 
 Overlay
-    = intrinsic actuation state emitted by a SimThing
+    = intrinsic actuation state / parameterization emitted by a SimThing
 
 BoundaryRequest
-    = sealed structural consequence when numerical state requires tree mutation
+    = sealed structural consequence when numerical state requires tree/topology mutation
 ```
 
-Everything participates in the same recursive SimThing automaton, but these mechanisms keep their distinct mathematics.
+Everything participates in one recursive SimThing automaton, but these mechanisms retain distinct mathematics and authority.
 
-### 0.1 The proposed complete recursive loop
+### 0.1 Complete recursive loop
 
 ```text
-                            STEMTHING
-                                │
-                           participate
-                                │
-                  Properties / RF / STEAD state
-                                │
-                    reduce-up / disburse-down
-                                │
-                       PALMA field potential
-                                │
-                              act
-                                │
-                    ActionBand / CostBand
-                                │
-                   sealed threshold crossing
-                                │
-                    EML authorization/value
-                                │
-                            originate
-                                │
-                    intrinsic Overlay state
-                                │
-                 route / filter / inherit / apply
-                                │
-                             receive
-                                │
-              Property / RF / STEAD / target deformation
-                                │
-                         next generation
-                                │
-                                └──────────► STEMTHING
+                              STEMTHING
+                                  │
+                            ordinary state
+                                  │
+                        participate / receive
+                                  │
+                 Properties + RF + active Overlays
+                                  │
+                    admitted EML parameterization
+                                  │
+                    FIELD-TRIAD / RF EXECUTION
+               ┌──────────────────┼──────────────────┐
+               │                  │                  │
+            STEAD               PALMA             GU-YANG
+      non-conserved field      min-plus D       conserved flux
+        / influence            / impedance      / saturation
+               │                  │                  │
+               └──────────────────┼──────────────────┘
+                                  │
+                      anchored/resultant observables
+                                  │
+                                 act
+                                  │
+                       ActionBand / CostBand
+                                  │
+                    existing sealed threshold crossing
+                                  │
+                            admitted EML
+                                  │
+                              originate
+                                  │
+                         OverlayStateNext
+                                  │
+                        generation boundary
+                                  │
+                             route/filter
+                                  │
+                              receive
+                                  │
+                                 └──────────────► STEMTHING
 ```
 
 No CPU behavior tree, action dispatcher, movement executor, combat executor, event execution engine, or domain action taxonomy is required by this model.
 
-### 0.2 Why this is a closure rather than a new subsystem
+### 0.2 Why this is closure rather than a new subsystem
 
-The repository already contains most of the pieces:
+The repository already contains most pieces:
 
-- `SimThing` already directly owns `overlays: Vec<Overlay>` and already has the base hold operation.
+- `SimThing` already directly owns `overlays: Vec<Overlay>`.
 - standing overlays already inherit recursively without descendant copies;
 - routed overlays already derive origin → common ancestor → target policy paths;
-- RF disbursement already has a production route that terminates a delivered directive in `SimThing.overlays`;
-- overlays already lower into property transforms consumed by the GPU AccumulatorOp path;
-- CostBand already defines sink/action quantization;
-- ActionBand is being implemented as the intrinsic `act` facility over the existing Phase-5 crossing machinery;
+- RF disbursement already has a production path that terminates a delivered directive in `SimThing.overlays`;
+- overlays already lower into transforms consumed by GPU accumulator/order-band machinery;
+- `TransformOp` is already EML-shaped rather than a rival static modifier language;
+- PALMA and Gu-Yang already use generic `FieldSweepRegistration` machinery over admitted adjacency;
+- CostBand already defines the singular sink/work quantization hinge;
+- ActionBand is being implemented as intrinsic `act` over the existing Phase-5 crossing machinery;
 - generation pacing already prevents same-generation recursive convergence.
 
-The proposed new architectural act is therefore **authority concentration**: move the remaining overlay lifecycle and action-emission semantics behind the StemThing germ rather than letting feeder/driver/sim layers retain peer overlay authorities.
+The new architectural act is **authority concentration**: move remaining overlay lifecycle/origination authority behind the StemThing germ and make overlays the one intrinsic actuation layer over the native RF/Field-Triad substrate.
 
 ---
 
 ## 1. Authority vocabulary used in this workshop
 
-To prevent this working document from accidentally promoting hypotheses into law, statements are classified as follows.
-
 | Tag | Meaning |
 |---|---|
-| **INHERITED LAW** | Already governed by an existing anchor / graduated mechanism. This workshop consumes it. |
-| **OWNER-DIRECTED** | Owner has explicitly directed the architectural intent in the design session, but promotion still requires normal corpus process. |
-| **WORKSHOP CANDIDATE** | Proposed interpretation/design that must survive DA/engineering review. |
-| **RESEARCH CANDIDATE** | Promising physical optimization; not required for semantic closure. |
-| **REJECTED** | Considered and deliberately excluded from the proposed architecture. |
+| **INHERITED LAW** | already governed by anchor / graduated mechanism; this workshop consumes it |
+| **OWNER-DIRECTED** | explicit Owner architectural intent; promotion still requires corpus process |
+| **WORKSHOP CANDIDATE** | proposed design interpretation requiring DA/engineering review |
+| **RESEARCH CANDIDATE** | promising physical optimization; not required for semantic closure |
+| **REJECTED** | considered and deliberately excluded |
 
 ---
 
@@ -164,189 +172,114 @@ SimThing
  └─ receive
 ```
 
-Residency, derivation, RF participation, ActionBand, and overlay capability are lanes/behaviors flowing through these four legs, not additional anatomy.
+Candidate closed-loop interpretation:
 
-The proposed overlay closure gives the four legs a particularly clean interpretation:
-
-| Leg | Candidate closed-loop meaning |
+| Leg | Closed-loop meaning |
 |---|---|
-| **participate** | expose ordinary property/RF/STEAD state to recursive reduce/disburse/field evaluation |
-| **act** | ActionBand and CostBand determine unresolved discrepancy and executable amount |
-| **originate** | emit/activate/update the StemThing's intrinsic overlays as the numerical actuation consequence |
-| **receive** | receive routed/inherited overlays, filter them through policy/route law, and expose their admitted transforms to local property/RF/STEAD evaluation |
+| **participate** | expose ordinary property/RF/Field-Triad state to recursive reduce/disburse/field execution |
+| **act** | ActionBand identifies unresolved discrepancy; CostBand quantizes executable work from native resolved means |
+| **originate** | activate/parameterize/update/dissolve intrinsic overlays as numerical actuation |
+| **receive** | receive routed/inherited overlays, filter them through route/policy law, and expose admitted numerical effects to local property/RF/Field-Triad evaluation |
 
-This recovers the old automaton archaeology in `stead_simthing_automata.md`: `originate` was already described as **produce, hold, and project overlays**; hold and project existed, while production/origination remained incomplete.
+This recovers the old automaton archaeology: `originate` was already “produce, hold, project overlays”; hold/project existed while production/origination remained incomplete.
 
 ### 2.1 Default inertness
 
-**INHERITED LAW / OWNER-DIRECTED:** the base recursive SimThing must remain default-inert.
-
-The semantic presence of overlay capability on every StemThing must not imply a hot per-SimThing overlay object, a behavior loop, a CPU scheduler entry, or a mandatory per-generation scan.
-
-Expected physical principle:
+**INHERITED LAW / OWNER-DIRECTED:** overlay capability is universal semantically and sparse physically.
 
 ```text
 no active overlay
-    → no overlay instance row
+    → no active overlay instance row
     → no active binding span
     → no lifecycle work
-    → no PALMA dirtying from overlay state
-    → essentially zero hot-loop cost
+    → no field dirtiness
+    → essentially zero hot-loop overlay cost
 ```
 
-The germ is universal; instantiated numerical state is sparse and pay-for-play.
+The germ is universal; numerical state is pay-for-play.
 
 ---
 
-## 3. Overlay is proposed as the intrinsic actuation language
+## 3. Overlay is the candidate intrinsic actuation language
 
 **OWNER-DIRECTED / WORKSHOP CANDIDATE:**
 
-> **An action is the activation, parameterization, modification, suspension, or dissolution of an admitted overlay whose numerical consequences are realized through ordinary SimThing substrate.**
+> **An action is the activation, parameterization, modification, suspension, or dissolution of an admitted overlay whose consequences are realized through ordinary SimThing property/RF/Field-Triad substrate.**
 
-A shorter but slightly less precise slogan is “overlays are action.” The preferred formulation is:
+Preferred concise form:
 
 > **Overlays are the intrinsic actuation language/state of SimThing.**
 
-The distinction matters because an overlay is not necessarily an instantaneous mutation. It may remain active over many generations and continuously deform values/weights/fields until its own lifecycle condition is satisfied.
+An overlay need not be instantaneous. It may remain active for many generations and continuously parameterize values, weights, fields, demand, impedance, or capacity until its lifecycle resolves.
 
-### 3.1 CostBand and ActionBand stop at overlay authorization
-
-Candidate responsibility split:
+### 3.1 Responsibility split
 
 ```text
 ActionBand
-    why / toward what / when a discrepancy should be reduced
+    why / toward what / when unresolved discrepancy should be reduced
+
+RF + Gu-Yang
+    what constrained/conserved means and channel throughput actually exist
 
 CostBand
-    how much executable work the cleared resources afford
+    how much sink/work those means buy
 
 Overlay
-    what numerical actuation remains active as a consequence
+    what actuation/parameterization remains active
 
-RF
-    constrained means / resource allocation
-
-Property / STEAD
-    resulting state and field
+STEAD / PALMA / Properties
+    resultant non-conserved field, route/value, and ordinary state
 ```
 
-Thus a normal ActionBand or CostBand consequence should prefer:
+A normal ActionBand/CostBand consequence should prefer:
 
 ```text
-activate/update OverlayTemplate K with parameters P
+activate/update admitted OverlayTemplate K with parameters P
 ```
 
 over bespoke world mutation.
 
-Structural effects remain exceptions in the existing sense: a numerical consequence can authorize a sealed `BoundaryRequest`, but the CPU structural boundary applies topology mutation without re-evaluating the action decision.
+Structural effects remain sealed boundary consequences.
 
-### 3.2 Action does not mean all state is RF-conserved
+### 3.2 “Everything is RF” is rejected as a conservation statement
 
-**REJECTED:** “everything is RF” if interpreted as “every property must obey RF conservation.”
+**REJECTED:** converting location, political disposition, target, threat, ActionBand displacement, PALMA potential, or semantic axes into conserved RF merely because overlays affect them.
 
-The stronger and correct statement is:
+Correct statement:
 
-> **Everything participates in the recursive SimThing flow architecture; only actually conserved/constrained quantities use RF conservation semantics.**
-
-Examples that are not automatically conserved RF resources:
-
-```text
-location coordinate
-political disposition
-threat field
-semantic axis coordinate
-target coordinate
-policy
-ActionBand displacement
-PALMA potential
-```
-
-Movement points, food stock, material stock, capacity, or a deliberately finite command bandwidth may be RF resources. A coordinate or semantic field is not converted into a resource merely because an overlay changes it.
+> **Everything participates in one recursive SimThing flow architecture; only genuinely conserved/constrained quantities use RF/Gu-Yang conservation semantics.**
 
 ---
 
 ## 4. Current overlay archaeology: what already belongs to the germ
 
-This section records live repository behavior so the eventual design does not accidentally replace working substrate.
-
 ### 4.1 Retention/home already lives on `SimThing`
 
-Current base object:
+Current base storage includes `pub overlays: Vec<Overlay>` and `add_overlay`. The semantic home is therefore already the SimThing rather than a global event manager.
 
-```rust
-pub struct SimThing {
-    ...
-    pub properties: HashMap<SimPropertyId, PropertyValue>,
-    pub resource_parent_edges: Vec<ResourceParentEdge>,
-    pub overlays: Vec<Overlay>,
-    pub children: Vec<SimThing>,
-    ...
-}
-```
+### 4.2 Routed attachment terminates in ordinary retained overlay state
 
-and:
+`deliver_routed_overlay()` validates attributable origin/target authority, derives origin→LCA→target route identity, applies dispatch-mint admission where required, and terminates by adding the overlay to the target SimThing.
 
-```rust
-pub fn add_overlay(&mut self, overlay: Overlay) {
-    self.overlays.push(overlay);
-}
-```
+Delivery is not a peer inbox.
 
-This is already the correct semantic home: overlays are owned by the SimThing, not by a global event manager.
+### 4.3 Standing inheritance and route filtering already recurse fractally
 
-### 4.2 Routed attachment already terminates in the ordinary overlay store
-
-`simthing-core::deliver_routed_overlay()`:
-
-1. validates that origin and target belong to the supplied authority tree;
-2. derives the origin path and target path;
-3. constructs origin → common ancestor → target route identity;
-4. applies dispatch-mint lifecycle admission where required;
-5. resets `affects` to the target;
-6. terminates by `target.add_overlay(overlay)`.
-
-`deliver_deficit_directive()` and `deliver_standing_directive()` reuse this common primitive.
-
-This is a strong precedent for the germ: delivery is **not** a second inbox. `SimThing.overlays` is the inbox/retained actuation state.
-
-### 4.3 Standing inheritance and routed filtering already recurse fractally
-
-`inherit_active_overlays()` extends the inherited `TransformStack` with each node's active overlays. Descendants receive effective standing state by recursion; no descendant copy is materialized.
-
-`LiveOverlayRoutes` builds an ephemeral route view only when routed instructions exist. It derives active policy/governance filters from the current tree on each pass, so policy suspension/dissolution changes the effective route without redelivery.
-
-This is already the fractal behavior sought by this workshop:
-
-```text
-ancestor active overlays
-        ↓
-child receives effective stack
-        +
-child local overlays
-        ↓
-grandchild receives effective stack
-        +
-...
-```
+`inherit_active_overlays()` folds ancestor active overlays into inherited `TransformStack`; `LiveOverlayRoutes` re-evaluates live route policy instead of retaining a separate route cache. This is already the fractal projection shape sought here.
 
 ### 4.4 RF → Overlay already exists
 
-`simthing-driver::automaton_reception` constructs `CommandDeficit`s, runs them through existing owner-silo disburse-down and runtime-local allocation, and only delivers the attributable overlay when a conserved command unit was actually allocated.
-
-Therefore one direction of the desired closed loop already literally exists:
+`simthing-driver::automaton_reception` routes attributable command deficits through existing RF disbursement and only delivers the directive overlay when allocation is positive.
 
 ```text
-RF deficit / disbursement
+RF deficit / clear / disburse
         ↓
 allocated directive
         ↓
 Overlay retained by receiving SimThing
 ```
 
-### 4.5 Overlay → RF already exists indirectly through property columns
-
-An overlay does not need a special “enter RF arena” call. Overlay transforms write/deform the same property/weight/rate columns ordinary RF consumes.
+### 4.5 Overlay → RF already exists through ordinary numerical lanes
 
 Current physical path:
 
@@ -355,185 +288,106 @@ SimThing.overlays
       ↓ CPU preparation today
 build_overlay_deltas()
       ↓
-per-slot ordered OverlayDelta ranges
+ordered per-slot deltas
       ↓
-AccumulatorOp overlay OrderBands
+AccumulatorOp / OrderBands
       ↓
 Property / RF input columns
       ↓
-ordinary RF reduce / settle / disburse
+ordinary RF execution
 ```
 
-This is an important semantic law for the final design:
+Candidate semantic law:
 
-> **An overlay affects RF by changing the numerical conditions under which the ordinary RF machinery executes; it does not invoke a separate RF API.**
+> **Overlay affects RF by changing admitted numerical conditions under which ordinary RF executes; overlay does not invoke a second RF API.**
 
 ### 4.6 Transform operations are already EML-shaped
 
-`TransformOp` is already a singular admitted EML program representation. `Set`, `Add`, and `Multiply` are degenerate constructors, not a competing static execution language.
-
-That strongly supports using overlay templates as the universal numerical actuator: richer overlay behavior can remain data/program state, not domain kernels.
+`TransformOp` is an admitted EML program representation; `Set`, `Add`, `Multiply` are degenerate constructors. This is strong evidence that overlays should become a universal numerical actuator through shared EML rather than domain kernels.
 
 ---
 
-## 5. Current authority fragmentation to be examined/reconciled
-
-The semantic home is already correct; remaining lifecycle/ingress/compilation authority is distributed.
+## 5. Current authority fragmentation to reconcile
 
 ### 5.1 Player/AI feeder paths remain peer ingress machinery
 
-Current feeder code has distinct `PlayerIntentOverlay` and `AiIntentOverlay` types and can:
-
-```text
-player / AI intent
-       ├─ apply/fold transform as immediate GPU intent / CPU-shadow path
-       └─ park overlay for boundary attachment
-```
-
-This is historical machinery that should be reviewed against the final germ. The likely desired end-state is:
-
-> player, AI, script, ActionBand, and CostBand may differ in provenance and authorization, but they should not own distinct overlay-activation semantics.
-
-This workshop does **not** yet authorize deletion; it identifies a probable convergence target.
+`PlayerIntentOverlay` / `AiIntentOverlay` paths currently combine immediate patch/GPU intent with parked boundary attachment. Desired end state: provenance may differ, activation semantics should not.
 
 ### 5.2 Overlay lifecycle is still CPU boundary authority
 
-`simthing-sim::resolve_overlay_lifecycle()` currently:
+Current `resolve_overlay_lifecycle()` walks the tree, reads GPU-fresh values through CPU shadow, evaluates dissolve conditions, decrements timers, removes overlays, and applies expire effects.
 
-- walks the SimThing tree;
-- checks `Transient` / `UntilDissolvedWith` conditions;
-- reads GPU-fresh values through the CPU shadow;
-- decrements `AfterTicks` counters;
-- removes dissolved overlays from `node.overlays`;
-- applies property `on_expire` effects to the CPU shadow.
+This is the largest obvious peer numerical authority to extract if GPU-resident overlay lifecycle is promoted.
 
-That means current lifecycle authority is still approximately:
+### 5.3 Activation/suspension are boundary mutations today
 
-```text
-GPU numerical state
-       ↓ readback
-CPU shadow
-       ↓
-CPU lifecycle evaluator
-       ↓
-remove/update Overlay objects
-       ↓
-recompile overlay tables
-       ↓
-GPU
-```
+Current `BoundaryRequest` includes attach/activate/suspend. Workshop question: ordinary numerical activation/suspension should likely become GPU current/next overlay state, reserving CPU boundary work for storage/structural persistence.
 
-If intrinsic overlay capability is promoted under the same GPU-authority law as ActionBand, this is the largest obvious peer authority to extract.
+### 5.4 Explicit generic dissolution/removal needs one canonical door
 
-### 5.3 Activation and suspension are structural-boundary operations today
+Automatic lifecycle removal exists; explicit ordinary dissolve/removal needs to be proven as one intrinsic overlay lifecycle operation rather than an assortment of caller-specific mutations.
 
-Current `BoundaryRequest` includes:
+### 5.5 `OverrideReceived` requires archaeology
 
-```text
-AttachOverlay
-ActivateOverlay
-SuspendOverlay
-```
-
-and `simthing-sim::tree_mutation` directly rewrites `OverlayLifecycle` for activation/suspension.
-
-This workshop asks whether ordinary numerical activation/suspension should instead become GPU-resident overlay state transitions, leaving CPU boundary work only for semantic persistence/structural storage changes.
-
-### 5.4 Explicit generic overlay dissolution/removal should be re-audited
-
-The corpus law says explicit removal is ordinary under the Definable Horizon doctrine, but the currently obvious `BoundaryRequest` vocabulary exposes attach/activate/suspend rather than a symmetrical generic overlay-removal verb.
-
-Automatic lifecycle removal exists. The eventual germ should explicitly prove how an authored or action-resolved overlay can be dissolved without bespoke removal paths.
-
-### 5.5 `OverrideReceived` handling requires archaeology before promotion
-
-`overlay_lifecycle.rs` treats `OverrideReceived` as false during ordinary condition evaluation with a note that attachment handles it. The common routed-attachment primitive should be verified to actually own the promised override transition. This workshop does not assume the loop is already closed.
+Current lifecycle code defers `OverrideReceived` semantics to attach. Promotion must prove the promised transition exists in one authoritative place.
 
 ---
 
 ## 6. Candidate intrinsic overlay germ
 
-The semantic StemThing capability should own five behaviors, not five services:
+The semantic StemThing capability owns five behaviors, not five services:
 
 ```text
 OVERLAY GERM
 
 originate
-    activate/parameterize an admitted overlay
+    activate / parameterize an admitted overlay
 
 receive
-    accept an attributable routed/inherited overlay
+    accept attributable routed / inherited overlay state
 
 project
-    expose effective overlay transforms into the SimThing's property/RF/STEAD lanes
+    expose effective overlay EML/parameters into Property / RF / Field-Triad inputs
 
 lifecycle
     active ↔ suspended → dissolved under admitted conditions
 
 collapse
-    retire resolved transient numerical state, preserving only ordinary resulting world state
+    retire resolved transient numerical state; ordinary world state is durable memory
 ```
 
-### 6.1 Proposed semantic law
+### 6.1 Intrinsic ownership candidate law
 
 > **Nothing outside the SimThing owns an overlay's active lifetime. External systems may author templates, supply directives, or apply genuinely structural storage changes at a boundary, but originate/receive/project/activate/suspend/dissolve are one intrinsic StemThing capability.**
 
-This is a candidate law, not yet an anchor.
-
-### 6.2 Collapse law
-
-The ActionBand collapse principle generalizes naturally:
-
-```text
-overlay active
-      ↓
-ordinary state changes
-      ↓
-authored lifecycle/goal condition resolves
-      ↓
-overlay dissolves
-      ↓
-ordinary world state is the durable memory
-```
-
-Do not retain a completed-action object solely to remember that the action happened unless an authored persistent property/history demands that semantic memory.
-
-### 6.3 Generation pacing remains authoritative
-
-Overlay emission must preserve the one-generation recursive law:
+### 6.2 Generation pacing
 
 ```text
 generation t
-    ActionBand / CostBand crossing authorizes OverlayNext change
+    ActionBand / CostBand / RF consequence authorizes OverlayNext
 
-barrier / current-next swap
+barrier
 
 generation t+1
-    new overlay participates normally
+    new overlay participates in ordinary RF/Field-Triad evaluation
 ```
 
-No same-generation emit → apply → re-cross → re-emit convergence loop.
+No same-generation emit→apply→re-cross→re-emit convergence.
 
 ---
 
 ## 7. Proposed GPU physical model
 
-**WORKSHOP CANDIDATE:** semantic ownership by every StemThing does **not** imply a rich overlay object physically embedded in every hot row.
-
-The preferred physical interpretation mirrors ActionBand:
-
-> **StemThing owns overlay semantics; sparse GPU tables own active numerical overlay instances. CPU objects/names are semantic shadow and admission/persistence representation.**
-
-Possible shape:
+Semantic ownership by every StemThing does not imply a rich overlay object in every hot row.
 
 ```text
 OverlayTemplate[]
-    immutable admitted shape
-    EML program / transform program
-    lifecycle predicate program
+    admitted EML program(s)
+    lifecycle predicate/program
     projection/filter law
     target/binding schema
     parameter schema
+    field-dependency span
 
 OverlayInstance[]
     owner logical slot
@@ -542,330 +396,413 @@ OverlayInstance[]
     binding span
     parameter span
     lifecycle state
-    generation stamp / temporal state where admitted
+    admitted temporal state where required
 
 OverlayStateCurrent[]
 OverlayStateNext[]
 
 OverlayBinding[]
-    instance → target slot/property/role or inherited/routed projection descriptor
+    instance → target slot/property/role/field parameter
+
+OverlayFieldDependency[]
+    overlay binding → affected RF/STEAD/PALMA/Gu-Yang registration/locus/profile
 ```
 
-### 7.1 Human-readable designations remain CPU semantic shadow
+### 7.1 CPU semantic shadow
 
-Consistent with ActionBand authority:
+GPU owns ids, slots, EML programs, lifecycle bits/state, parameter vectors, field binding spans, and numerical execution. CPU owns authoring/display names, source spans, diagnostics, persistence mapping, categorical history, and sparse structural/lifecycle egress where required.
 
-```text
-GPU
-    numeric ids
-    logical slots
-    columns
-    EML programs
-    lifecycle bits/state
-    parameter vectors
-    binding spans
-
-CPU semantic shadow
-    display name
-    authoring name
-    source file/span
-    history / diagnostics
-    UI labels
-    persistence mapping
-```
-
-Human-readable overlay names must not become runtime dispatch keys.
+Human-readable overlay names must not be runtime dispatch keys.
 
 ### 7.2 Overlay taxonomy should not become GPU behavior taxonomy
 
-Current `OverlayKind` / `OverlaySource` contain useful author-facing provenance such as Policy, Governance, Player, AI, System, Event.
+`OverlayKind` / `OverlaySource` may remain useful provenance. Numerical behavior should prefer orthogonal admitted descriptors: projection law, lifecycle law, transform EML, origin/target binding, field-parameter binding, and route/filter law.
 
-A future intrinsic-germ implementation should examine whether GPU numerical behavior can instead be described by orthogonal admitted descriptors:
+### 7.3 Sparse batching and exact local fusion
 
-```text
-projection/filter law
-lifecycle law
-transform EML
-origin/target binding law
-provenance metadata (shadow only where possible)
-```
-
-**WORKSHOP QUESTION:** Policy/Governance currently influence routed predicate composition and runtime dispatch-mint admission. Promotion should determine which distinctions are true numerical laws and which are merely semantic labels.
-
-### 7.3 Sparse program/profile batching
-
-The default physical target should preserve homogeneous GPU work:
-
-```text
-bucket by OverlayTemplate / EML program / binding shape
-        ↓
-execute large coherent batches
-        ↓
-instance parameters vary per row
-```
-
-Trivial `Set/Add/Multiply` overlay chains should be eligible for composition/fusion where exact authored order is preserved.
-
-For sequential affine transforms:
-
-\[
-x' = a x + b
-\]
-
-with:
-
-```text
-Multiply(m) : a=m, b=0
-Add(c)      : a=1, b=c
-Set(c)      : a=0, b=c
-```
-
-compatible chains can be folded to one `(a,b)` pair without inventing a new semantic execution path. More general EML remains shared admitted program execution.
+Bucket active instances by template/program/binding shape. Trivial affine chains may be folded when exact authored ordering and EML arithmetic semantics are preserved. More general transforms remain shared admitted EML execution.
 
 ---
 
-## 8. Alignment with RF, STEAD, PALMA, CostBand, and ActionBand
+## 8. Full RF / Field-Triad integration
+
+This section is load-bearing. Overlay is the actuation/parameterization layer over native mechanisms; it never becomes a replacement for them.
 
 ### 8.1 RF: constrained means
 
-RF retains conservation authority. Overlay output can:
+Overlay may parameterize production/consumption rates, claim pressure, allocator weights, availability, or demand activation. It may not bypass claim→clear→disburse or mutate conservation balances directly outside native RF semantics.
 
-- change production/consumption rates;
-- change allocator weights;
-- change claim pressure/priority through admitted numerical lanes;
-- activate/deactivate demand conditions;
-- change constrained-flow topology only through the already lawful structural boundary when required.
+### 8.2 STEAD: non-conserved field composition
 
-An overlay does not bypass claim → clear → disburse.
-
-### 8.2 STEAD: field composition
-
-The intended field ordering is:
+Overlay may alter admitted source strength, attenuation/falloff parameters, contextual valuation, or other STEAD inputs.
 
 ```text
-ordinary SimThing / RF state
-        +
-active overlays
+base STEAD inputs
+    + admitted overlay parameterization
         ↓
-resultant STEAD field / causal landscape
+existing STEAD field sweep
 ```
 
-Overlays are ordinary contributors/deformers of the field. They are not post-hoc private ActionBand corrections that evade global field solution.
+An overlay should normally alter the native input before the authoritative field is solved, not bolt a private local correction onto the solved field.
 
-### 8.3 PALMA: exposes route/value over the composed field
+### 8.3 PALMA: route/value over the composed field
 
-The current design synthesis is:
-
-> **STEAD describes/composes the field. Overlays deform it. PALMA resolves the lawful reach/impedance/value potential over that field. ActionBand consumes the resulting potential; it does not run its own graph search.**
-
-Where a semantic factor materially affects route choice, prefer including that factor in PALMA's admitted impedance/terminal valuation before the potential is solved rather than applying a purely local greedy correction afterward.
-
-### 8.4 ActionBand: unresolved discrepancy
-
-ActionBand remains the intrinsic `act` facility. It observes current state and admitted target form, derives discrepancy/progress/stakes, consumes PALMA potential where topology exists, and uses the existing sealed Phase-5 crossing machinery.
-
-Candidate closure:
+Overlay may alter admitted `W`, terminal opportunity value, access/impedance, or other PALMA input parameterization.
 
 ```text
-ActionBand band crossing
+base state + STEAD + overlays
         ↓
-EML result
+admitted PALMA W / terminal-value EML
         ↓
-pre-admitted overlay emission/update binding
+PALMA solve
         ↓
-OverlayStateNext
+authoritative D / potential
 ```
 
-ActionBand does not become a peer lifecycle owner for the emitted overlay.
+Semantic factors that materially alter route choice should enter the admitted PALMA valuation before solve where practical, avoiding false local minima caused by post-hoc local deformation.
 
-### 8.5 CostBand: executable amount
+### 8.4 Gu-Yang / `SaturatingFlux`: conserved realizable throughput
 
-CostBand remains the exact sink/quantizer:
-
-\[
-N=\left\lfloor\frac{V}{C}\right\rfloor,
-\qquad
-R=V-NC.
-\]
-
-Candidate closure:
+Gu-Yang remains the native conserved-field authority. Overlay may parameterize admitted demand/source/sink intensity, availability, capacity factor, conductance weighting, or channel participation **inside the already-certified registration envelope**.
 
 ```text
-RF clear V
-    ↓
-CostBand produces N
-    ↓
-parameterize / intensify / repeat overlay actuation by N units
+base RF / channel state
+    + admitted overlay parameterization
+        ↓
+existing Gu-Yang conservative sweep
+        ↓
+realized signed flux / gross flux / stall / saturation / sanctioned projections
 ```
 
-CostBand determines how much actuation is affordable; Overlay expresses that actuation into ordinary state.
+Overlay may not compute a private throughput result, congestion model, or claimant arbitration law.
+
+### 8.5 Overlay Field-Parameter Law — candidate
+
+> **An overlay may parameterize admitted Field-Triad programs and ordinary numerical inputs but may not mutate structural adjacency, canonical-order proof, conservation/symmetry certificate, χ/stability certificate, or the semantic field law under which the registration was admitted. Runtime variation must remain inside the registration's admitted parameter envelope.**
+
+This is especially important for Gu-Yang conductance/capacity variation.
+
+### 8.6 Gu-Yang is instantaneous; persistence is authored state
+
+> **Gu-Yang remains the instantaneous conservative mechanism. Persistence of saturation/stall belongs to admitted ordinary state/overlay state/EML memory and never to hidden Gu-Yang history or a saturation listener.**
+
+If an author needs “stall for 20 generations,” that persistence is explicit state.
 
 ---
 
-## 9. Movement as the literal worked example
+## 9. Full EML overlay actuation
 
-Movement is not privileged architecture. It is useful because the generic vector/value/velocity model is unusually literal.
+The overlay architecture must consume the full admitted EML direction, not merely `Set/Add/Multiply`.
 
-### 9.1 Location as ordinary property state
+### 9.1 Arithmetic/primitive authority
 
-A location property can carry a vector coordinate and governed velocity:
+Overlay EML inherits the same arm-independent arithmetic law as every other EML consumer: IEEE single-rounding, no reassociation, uniqueness-based MUL→ADD/SUB fusion, and pinned exact primitive semantics for admitted `EXP`/`LN`.
 
-\[
-L_t = [x_t,y_t,\ldots],
-\qquad
-\dot L_t = 0
-\]
+No overlay-specific arithmetic dialect is lawful.
 
-while stationary.
+### 9.2 ContinuousDecay
 
-The destination is an ActionBand target over that same admitted location topology.
-
-### 9.2 Waypoints as ActionBand/threshold bands
-
-The historical design intuition was that location CostBand bands could function as waypoints: movement accrues toward one milestone, crosses it, then progresses to the next.
-
-Under the current sealed crossing machinery, the physically useful scalar observable is PALMA distance/potential to the waypoint:
+Canonical form:
 
 \[
-D_i(L)=\operatorname{PALMA}(L,W_i)
+x_{t+1}=x_t\,\mathrm{EXP}(-\lambda\Delta t)
 \]
 
-and arrival is:
+Useful overlay state: urgency, fear, memory, mobilization, temporary efficiency, exploration pressure, disease pressure, political momentum, congestion memory.
+
+This converts “persistent temporary effect” into ordinary state + EML rather than a lifecycle-type explosion.
+
+### 9.3 Logistic / bounded smooth response
+
+A stabilized logistic gadget provides bounded response in `(0,1)` without stair-step engine states.
+
+Uses: scarcity→rationing intensity, threat→mobilization, unemployment→recruitment response, saturation-memory→route aversion, price differential→trade preference.
+
+> **Bands decide discrete semantic events; EML shapes continuous overlay intensity between events.**
+
+### 9.4 PowerLaw
 
 \[
-D_i(L)\le r_i.
+x^a=\mathrm{EXP}(a\,\mathrm{LN}(x))
 \]
 
-Thus the semantic statement “waypoint is a band” remains valid while the Phase-5 crossing machinery continues to operate on an admitted ordered scalar projection.
+Uses: falloff, congestion penalty, economies/diseconomies of scale, influence attenuation, risk sensitivity, substitution curves. Domain guards/certificates remain the EML primitive-admission law, not overlay exceptions.
 
-### 9.3 Movement points fund velocity magnitude
+### 9.5 Softmax weighting
 
-Let cleared movement resource be `M`, unit movement cost `C`, and PALMA provide lawful local descent direction `u`.
+For candidate channels/edges/options:
 
 \[
-N=\left\lfloor M/C\right\rfloor
+p_i = \frac{\mathrm{EXP}(\beta(z_i-z_{max}))}{\sum_j \mathrm{EXP}(\beta(z_j-z_{max}))}
 \]
 
-and candidate velocity is:
+Useful for RF claim weights, supplier preference, migration pressure, target/profile weighting, or policy emphasis. `β` smoothly spans diversified effort to winner-take-most without an engine enum.
+
+### 9.6 Entropy / LN meta-observable
 
 \[
-\dot L_t = v(N)\,\hat u_t.
+H=-\sum_i p_i\mathrm{LN}(p_i)
 \]
 
-Then ordinary governed property integration advances location.
+This generic scalar may drive commitment persistence, diversification response, diagnostic output, or other EML feedback without the engine assigning semantic nouns.
 
-### 9.4 Intrinsic overlay actuation
+### 9.7 Log-domain accumulation is a new authored law, never a hidden Product optimization
 
-Candidate final movement shape:
+For positive multiplicative effects one may author:
+
+\[
+\log x' = \log x + \sum_i \log a_i
+\]
+
+but this is not bit-equivalent to ordered f32 multiplication and must not silently replace it.
+
+A promising Gu-Yang parameterization is a positive conductance factor:
+
+\[
+c = \operatorname{ClampCertified}\left(\mathrm{EXP}(\ell_0 + \sum_i \Delta\ell_i)\right)
+\]
+
+where the final value remains inside the Gu-Yang registration's certified envelope.
+
+### 9.8 Canonical Gu-Yang stall-memory response
+
+Let `s_t` be instantaneous Gu-Yang stall and `m_t` explicit admitted memory:
+
+\[
+m_{t+1}=m_t\,\mathrm{EXP}(-\lambda\Delta t)+\alpha s_t
+\]
+
+Then bounded aversion/response:
+
+\[
+a_t=\sigma(k(m_t-m_0))
+\]
+
+and an overlay may parameterize next-generation PALMA impedance or RF demand with `a_t`.
+
+Authority remains clean:
 
 ```text
-ActionBand target = destination
-       ↓
-PALMA potential gives lawful local direction
-       ↓
-RF clears movement resource
-       ↓
-CostBand yields executable N
-       ↓
-activate/update MovementActuation overlay
-       ↓
-location velocity / movement demand lanes are deformed
-       ↓
-ordinary property/RF evaluation advances location
-       ↓
-waypoint/destination crossing
-       ↓
-overlay changes or dissolves
-       ↓
-ActionBand continues/collapses
+Gu-Yang = instantaneous physical fact
+EML     = temporal / nonlinear law
+Overlay = actuation
+PALMA   = route/value consequence
 ```
 
-There is no `MoveFleet()` numerical engine function in the generic architecture.
-
-If location is expressed partly by structural parentage rather than only coordinate columns, numerical action may terminate in a sealed `BoundaryRequest::Reparent`; the structural boundary applies the authorized mutation without becoming movement authority.
+All field-seeded recurrent emissions must obey the existing bounded-feedback admission contract: finite decay where persistence is used, explicit clamps/bounds, no admitted positive unbounded recurrence.
 
 ---
 
-## 10. Opportunity horizon and local-minimum findings
+## 10. Overlay lifecycle should ride already-hot RF / Field-Triad outputs
 
-The workshop discussion distinguished two problems that must not be conflated.
+Field/RF outputs are ordinary anchored observables. Therefore lifecycle should prefer existing threshold machinery rather than a new scanner.
 
-### 10.1 Escape problem
-
-```text
-ultimate goal is already known
-but locally composed valuation makes current neighborhood appear stationary
-```
-
-### 10.2 Opportunity-horizon problem
+Examples:
 
 ```text
-a much better remote resolution exists
-but the local actor has no information about it
+Blockade overlay
+    dissolve when GuYangRealized > reopen threshold
+
+Emergency rationing overlay
+    dissolve when RF food balance > target
+
+Evacuation overlay
+    dissolve when PALMA D to safe locus reaches terminal bound
+
+Exploration-pressure overlay
+    dissolve when ActionBand progress resumes
 ```
 
-The second is broader and should not be solved by giving ActionBand a private search tree.
+Preferred path:
 
-### 10.3 Candidate Opportunity Horizon Principle
+```text
+already-hot RF / FieldSweep write
+        ↓
+existing Phase-5 crossing
+        ↓
+OverlayStateNext.active / suspended / dissolved
+```
 
-> **An ActionBand remains a local consumer of fields. Awareness of nonlocal opportunities is supplied by ordinary GPU field propagation. Increasing opportunity horizon means expanding/accelerating the admitted field's propagation or hierarchy, not increasing an agent-side search depth.**
-
-### 10.4 Bellman/PALMA composition principle
-
-For a target/value field satisfying a Bellman-style min-plus equation:
-
-\[
-J(x)=\min_{y\in N(x)}\left[W(x,y)+J(y)\right],
-\]
-
-a reachable nonterminal state on an optimal route has a lawful descending neighbor under ordinary positive impedance assumptions.
-
-False local minima are introduced when a globally solved potential is subsequently deformed by an inconsistent purely local preference field.
-
-Candidate guidance:
-
-> **Semantic factors that materially alter route choice should, where feasible, enter the admitted PALMA edge/terminal valuation before the value field is solved.**
-
-### 10.5 Opportunity-valued multi-source field
-
-A promising formulation is to seed remote admissible resolutions with semantic opportunity value `Q_a(g)` and solve cost plus terminal value together:
-
-\[
-J_a(x)=\min_g\left[B_a(g)+\operatorname{Dist}_{W_a}(x,g)\right]
-\]
-
-where, for example,
-
-\[
-B_a(g)=-\lambda Q_a(g).
-\]
-
-This means a local descent of `J_a` can carry information propagated from a remote opportunity set without requiring an actor-owned graph search.
-
-**Important correction:** assigning different terminal opportunity values intentionally changes the objective. It is not, by itself, the policy-invariant reward-shaping theorem of Ng/Harada/Russell.
+No `SaturationListener`, CPU lifecycle predicate loop, or second threshold engine.
 
 ---
 
-## 11. Research evaluation: papers, mathematics, and disposition
+## 11. Movement as full-Field-Triad worked example
 
-This section records the external ideas evaluated during the workshop and how they are being used—or not used—in SimThing.
+Movement is not privileged architecture. It is a literal witness because location vectors, route potential, conserved movement throughput, and CostBand work can all be observed together.
 
-### 11.1 Potential-based reward shaping — useful analogy, corrected claim
+```text
+Location property / velocity state
+        ↓
+ActionBand destination target
+        ↓
+STEAD + overlays compose local circumstances
+        ↓
+PALMA gives lawful local potential descent
+        ↓
+Gu-Yang/RF gives signed realizable capacity-bearing throughput where applicable
+        ↓
+CostBand quantizes movement/fuel sink from the authoritative available value
+        ↓
+ActionBand crossing authorizes MovementActuation overlay
+        ↓
+location velocity / demand / structural ingress changes
+        ↓
+ordinary next-generation state
+```
+
+No movement-specific destination authority, path/predecessor object, congestion solver, saturation listener, or `MoveFleet()` execution engine is needed.
+
+If structural parentage is authoritative placement, the numerical overlay/action ultimately authorizes the existing sealed structural boundary request.
+
+---
+
+## 12. Opportunity horizon and local-minimum findings
+
+The workshop distinguishes four causes of an apparent trap.
+
+### 12.1 Escape vs opportunity horizon
+
+**Escape problem:** target is known but local effective behavior appears stationary.
+
+**Opportunity-horizon problem:** a better remote resolution exists but its information has not propagated to the actor.
+
+ActionBand should not acquire a private search tree for either.
+
+### 12.2 Opportunity Horizon Principle — candidate
+
+> **ActionBand remains a local consumer of native fields. Nonlocal opportunity awareness is a field-propagation responsibility. Increasing horizon means improving the admitted field's propagation, hierarchy, or shared profile solution, not increasing actor-side search depth.**
+
+### 12.3 Bellman/PALMA composition
+
+For:
+
+\[
+J(x)=\min_{y\in N(x)}[W(x,y)+J(y)]
+\]
+
+a converged reachable nonterminal value field under ordinary positive impedance has lawful descending local structure. Apparent traps often indicate stale/incomplete value propagation or omitted dynamic impedance rather than a need for actor search.
+
+### 12.4 Opportunity-valued multi-source PALMA
+
+A promising objective is:
+
+\[
+J_a(x)=\min_g[B_a(g)+\operatorname{Dist}_{W_a}(x,g)]
+\]
+
+with `B_a(g)` carrying authored opportunity value.
+
+Assigning different terminal values intentionally changes the objective; it is **not** policy-invariant reward shaping.
+
+---
+
+## 13. Gu-Yang as opportunity-surface information
+
+Gu-Yang may contribute to the opportunity-horizon solution more directly than a simple throughput cap.
+
+### 13.1 Signed realized flux is local feasibility information
+
+For conserved actions, target-aligned signed flux carries a stronger fact than PALMA alone:
+
+```text
+PALMA D gradient
+    = desirable / low-cost local descent
+
+Gu-Yang q
+    = physically realizable conserved transport direction and magnitude now
+```
+
+If both agree, ActionBand can consume the native field result with almost no marginal routing computation. If PALMA points through a saturated edge while Gu-Yang shows zero/negative target-aligned flux, the route/value field is missing a live feasibility cost rather than proving a need for actor search.
+
+### 13.2 Gu-Yang stall/contest/choke can become PALMA input through overlays
+
+A lawful coupled path is:
+
+```text
+Gu-Yang realized/gross/net flux
+        ↓
+instantaneous stall / sanctioned contest/choke projection
+        ↓
+EML bounded temporal response
+        ↓
+Overlay parameterizes PALMA W
+        ↓
+PALMA repairs value field
+```
+
+This converts congestion-induced apparent traps into ordinary coupled-field evolution.
+
+### 13.3 Gu-Yang driving-potential / dual-like archaeology probe
+
+**ENGINEERING/RESEARCH QUESTION:** many conservative-flow formulations derive flux from a scalar pressure/driving potential. Do not assume this exists in Gu-Yang; inspect the landed law.
+
+Probe questions:
+
+```text
+Does Gu-Yang already compute or imply:
+    node pressure?
+    source potential?
+    residual / dual-like scalar?
+    reduced-cost-like driver?
+    another scalar whose difference determines signed flux?
+
+If yes:
+    is it already materialized?
+    can PALMA consume it directly?
+    can it warm-start / bound / precondition PALMA?
+    can exposing it avoid a duplicate field solve?
+```
+
+A positive finding could surface nearly-free route-relevant information. A negative finding leaves signed flux/stall reuse intact.
+
+### 13.4 Gu-Yang may shrink the true local-minimum problem
+
+Diagnostic order for an apparent trap:
+
+```text
+1. Is PALMA converged/current?
+      no → repair PALMA (dense/FIM/multiscale as lawful)
+
+2. Is the conserved channel physically saturated or opposed?
+      yes → consume Gu-Yang flux/stall and feed native field response next generation
+
+3. Is remote opportunity outside current information horizon?
+      yes → improve PALMA opportunity propagation / shared hierarchy
+
+4. Does an actual authored nonconvex/adversarial valuation remain?
+      yes → later fenced navigation research
+```
+
+A large fraction of “local minima” may therefore reduce to stale PALMA information, omitted Gu-Yang capacity information, slow opportunity propagation, or badly damped feedback.
+
+### 13.5 Zero flux is not structural unreachability
+
+`q == 0` can mean no demand, cancellation, temporary saturation, absent source, or closed capacity. Only an admitted capacity/reachability certificate may permanently prune PALMA. Temporary Gu-Yang state may still suppress unnecessary high-frequency repair until the dependency changes.
+
+---
+
+## 14. Research evaluation and disposition
+
+### 14.1 Ng–Harada–Russell potential shaping: corrected use
 
 **Paper:** Andrew Y. Ng, Daishi Harada, Stuart Russell, *Policy Invariance Under Reward Transformations: Theory and Application to Reward Shaping* (ICML 1999).
 
-- Author bibliography / publication record: <https://aima.cs.berkeley.edu/~russell/resume.html>
-- Common theorem form:
+Reference: <https://aima.cs.berkeley.edu/~russell/resume.html>
+
+Useful theorem form:
 
 \[
-F(s,s')=\gamma\Phi(s')-\Phi(s).
+F(s,s')=\gamma\Phi(s')-\Phi(s)
 \]
 
-**What is useful:** potential-difference shaping is a strong reminder that arbitrary local corrections can change behavior, while differences of a globally coherent potential have special invariance properties.
+**Retained insight:** arbitrary local shaping can change behavior; globally coherent potential differences have special invariance properties.
 
-**What was rejected/corrected:** the theorem does **not** prove that setting PALMA terminal conditions to `-λ Q(g)` preserves some prior route/objective. Different terminal values intentionally make some resolutions more valuable than others.
+**Rejected overclaim:** opportunity-valued terminal conditions do not preserve an old objective; they intentionally define a new one.
 
-**Promising but deferred:** a true potential/gauge reparameterization of a shortest-path/value solve may be useful as a preconditioner. For a state potential `h`:
+### 14.2 Potential/gauge reparameterization as PALMA preconditioning
+
+Research candidate:
 
 \[
 W_h(u,v)=W(u,v)+h(v)-h(u)
@@ -874,607 +811,570 @@ W_h(u,v)=W(u,v)+h(v)-h(u)
 with terminal adjustment:
 
 \[
-B_h(g)=B(g)-h(g).
+B_h(g)=B(g)-h(g)
 \]
 
-Along a path from fixed start `x`, the added potentials telescope, shifting all candidate route values by the same `-h(x)` term. This can preserve minimizers when admissibility/nonnegative-impedance requirements are satisfied.
+For fixed start, potential terms telescope along a path and can preserve minimizers under the required admissibility conditions.
 
-Potential use: warm-start residual solving with `h ≈ J_{t-1}`. **Not required for overlay-germ closure; research-only until PALMA baseline exists and consistency constraints are proven.**
+Candidate use:
 
-### 11.2 Hamilton–Jacobi / Bellman interpretation — retained as mathematical framing
+```text
+h ≈ J[t-1]
+    ↓
+residual / reweighted PALMA problem
+    ↓
+dirty FIM / multiscale repair
+```
 
-The PALMA min-plus recursion is naturally understood as a discrete dynamic-programming/value-function relation:
+This complements FIM rather than replacing it: reparameterization may make the residual easier; FIM reduces the region/iterations solved.
 
-\[
-J_i=\min_j(W_{ij}+J_j).
-\]
+**Explicit rejection:** do not apply this transform to Gu-Yang flux merely because it telescopes on paths. Gu-Yang is a local conservative law, not a shortest-path objective. Changing its driver changes physical flux unless separately authored.
 
-This is closely related to discrete Hamilton–Jacobi / Eikonal value propagation and tropical/min-plus algebra.
+### 14.3 HJB/Bellman framing
 
-**Included because:** it explains why “the field is the route/value function” and why an ActionBand can consume a local descent without owning a predecessor tree or A* search.
+PALMA's min-plus recursion is naturally related to discrete Hamilton–Jacobi/Eikonal/value-function propagation. Included as mathematical framing, not a claim that every SimThing field is a continuous HJB problem.
 
-**Caution:** SimThing PALMA is not automatically every form of continuous HJB control problem. The analogy is strongest where the admitted topology/cost model really satisfies the corresponding Bellman/min-plus fixed-point assumptions.
+### 14.4 FIM
 
-### 11.3 FIM — retained as a high-priority PALMA physical optimization
+**Original:** Won-Ki Jeong, Ross T. Whitaker, *A Fast Iterative Method for Eikonal Equations*, SIAM J. Sci. Comput. 30(5), 2008.
 
-**Original paper:** Won-Ki Jeong, Ross T. Whitaker, *A Fast Iterative Method for Eikonal Equations*, SIAM Journal on Scientific Computing 30(5), 2008.
-
-- DOI/publisher: <https://epubs.siam.org/doi/10.1137/060670298>
-- PDF landing: <https://epubs.siam.org/doi/pdf/10.1137/060670298>
-
-The method manages active nodes and iteratively updates only nodes not yet locally converged, avoiding expensive globally ordered structures. It was specifically designed for parallel/SIMD execution.
+- <https://epubs.siam.org/doi/10.1137/060670298>
 
 **GPU-oriented improvement:** Yuhao Huang, *Improved Fast Iterative Algorithm for Eikonal Equation for GPU Computing* (2021).
 
-- arXiv: <https://arxiv.org/abs/2106.15869>
+- <https://arxiv.org/abs/2106.15869>
 
-This work further emphasizes active/remedy sets that do not require a special global update ordering, making parallel GPU implementation practical.
+FIM is retained as a **PALMA physical-lowering candidate**, not a new semantic. SimThing should prefer deterministic active-tile/current-next lowering over semantic dependence on dynamic atomic queue order.
 
-**Why included:** FIM does not replace PALMA semantics. It is a candidate physical lowering for solving/repairing the PALMA/Eikonal-like value field while preserving local parallel updates.
+### 14.5 Multiscale FIM
 
-The SimThing-specific opportunity is stronger than a one-shot solver because overlays provide exact dirty provenance:
+**Paper:** Jingqi Zhang et al., *A parallel multiscale FIM approach in solving the Eikonal equation on GPU*, Computer-Aided Design 189 (2025), 103949.
 
-```text
-Overlay change
-    ↓
-known affected field binding/locus
-    ↓
-seed active PALMA tiles
-    ↓
-relax only causally affected regions
-```
+- <https://www.sciencedirect.com/science/article/pii/S0010448525001101>
+- <https://doi.org/10.1016/j.cad.2025.103949>
 
-Instead of clearing and re-solving the entire field each generation, retain `J_t` and incrementally repair it into `J_{t+1}`.
+Retained because it accelerates long-range propagation of the **same PALMA problem** through coarse/fine V-cycle structure while leaving the fine field authoritative.
 
-### 11.4 SimThing FIM physical candidate: sparse active tiles, dense local math
+Rejected interpretation: coarse/smoothed field becomes behavior authority or erases real prohibitions/chokepoints.
 
-**RESEARCH CANDIDATE:** do not copy textbook dynamic active lists literally if that would introduce atomic append ordering or nondeterministic queue semantics.
+### 14.6 Multiscale Gu-Yang: conditional research only
 
-Prefer:
+The multiscale/FIM **systems architecture** — hierarchy, dirty regions, current/next tiles, coarse correction — may transfer to Gu-Yang, but FIM mathematics does not.
 
-```text
-TileActiveCurrent[]
-TileActiveNext[]
+Critical semantic test:
 
-active tile
-    → dense regular N4/N8 PALMA relaxation in workgroup
-    → if tile boundary changes materially, mark adjacent tile in Next
+> **Is a given Gu-Yang registration a within-generation equilibrium/fixed-point solve, or is each local conservative sweep itself the intended finite-rate physical evolution?**
 
-barrier
-    → swap masks
-```
+If the former, a conservative multilevel acceleration may be lawful if it converges to the exact fine-grid authority and preserves conservation/certificates.
 
-This deliberately performs some redundant work inside a dirty tile to preserve coalesced memory access and GPU occupancy.
+If the latter, coarse propagation would change information/transport speed and therefore change simulation semantics. It is forbidden as a mere optimization.
 
-Expected hybrid execution posture:
+### 14.7 Dirty conservative theaters — immediately promising
+
+Even if multiscale Gu-Yang is rejected, FIM-inspired **causal work scheduling** remains promising:
 
 ```text
-small dirty fraction
-    → tiled FIM / incremental repair
-
-large dirty fraction / cold start
-    → dense PALMA sweep
-```
-
-The switch is a physical optimization only; both lower the same admitted PALMA semantics.
-
-### 11.5 Multiscale FIM — retained as promising opportunity-horizon acceleration
-
-**Paper:** Jingqi Zhang, Zihao Zhou, Lixin Ren, Junyuan Liu, Ying Li, Xiaowei He, *A parallel multiscale FIM approach in solving the Eikonal equation on GPU*, Computer-Aided Design 189 (2025), 103949.
-
-- Publisher/DOI landing: <https://www.sciencedirect.com/science/article/pii/S0010448525001101>
-- DOI: <https://doi.org/10.1016/j.cad.2025.103949>
-
-The paper extends GPU-friendly single-grid FIM using multiscale V-cycles so long-range information can propagate faster than one fine-grid spacing per iteration.
-
-**Why included:** it gives a much stronger, mathematically coherent answer to “expand the opportunity horizon” than making ActionBand perform bounded graph search or subgroup peeking.
-
-Preferred interpretation:
-
-```text
-coarse relaxation of the SAME PALMA problem
+Overlay changes Gu-Yang parameter at locus
         ↓
-prolongate coarse value estimate
+known Gu-Yang dependency span
         ↓
-fine-grid PALMA/FIM refinement
+mark conservative tiles/theater dirty
         ↓
-final fine field remains authoritative
+run native Gu-Yang only where required by its own propagation law
 ```
 
-**Rejected interpretation:** blur/smooth the field and let the smoothed result authorize behavior that the fine field forbids. Multiscale should accelerate convergence to the authoritative fine solution, not replace it with an advisory approximation that can erase real chokepoints/prohibitions.
+This avoids recomputing unchanged conservative theaters without accelerating physical propagation.
 
-### 11.6 MeshFIM / irregular topology — retained as future evidence
+### 14.8 MeshFIM / irregular topology
 
-**Paper:** Zhisong Fu, Won-Ki Jeong, Yongsheng Pan, Robert M. Kirby, Ross T. Whitaker, *A Fast Iterative Method for Solving the Eikonal Equation on Triangulated Surfaces*, SIAM Journal on Scientific Computing.
+**Paper:** Zhisong Fu et al., *A Fast Iterative Method for Solving the Eikonal Equation on Triangulated Surfaces*.
 
-- Publisher: <https://epubs.siam.org/doi/10.1137/100788951>
-- Open article mirror: <https://pmc.ncbi.nlm.nih.gov/articles/PMC3360588/>
+- <https://epubs.siam.org/doi/10.1137/100788951>
+- <https://pmc.ncbi.nlm.nih.gov/articles/PMC3360588/>
 
-**Why included:** it is evidence that the FIM idea is not intrinsically tied to one perfectly regular rectangular grid. SimThing should still prefer the simplest structured lowering for ordinary Location lattices, but irregular/derived topologies do not automatically invalidate the method family.
+Retained as evidence that the FIM family is not intrinsically limited to rectangular grids. Ordinary structured Location lattices should still prefer the simplest structured lowering.
 
-### 11.7 Reaction–diffusion / operator splitting — retained as execution analogy, not ontology proof
+### 14.9 Reaction–diffusion/operator splitting
 
-**Classic reference:** Alan Turing, *The Chemical Basis of Morphogenesis* (1952). Historical publication information is summarized by Cambridge at:
+Turing-style reaction-diffusion is retained as an execution analogy, not ontology proof. The useful engineering split is local pointwise overlay/EML reaction versus RF/Field-Triad transport/relaxation.
 
-- <https://www.cambridge.org/core/books/alan-m-turing/morphogenesis/C7287DF8C5923FA02F7671FD6A9CEA1A>
+### 14.10 PID / closed-loop control
 
-The useful systems analogy is local reaction plus spatial diffusion producing complex pattern without central planning.
+Retained only as broad feedback analogy. PID is not universal ActionBand semantics.
 
-A closer GPU engineering reference is operator-split reaction/diffusion work, for example:
+### 14.11 Subgroup horizon probing
 
-- *Accelerating the Finite-Element Method for Reaction-Diffusion Simulations on GPUs with CUDA*: <https://pmc.ncbi.nlm.nih.gov/articles/PMC7569852/>
-- *Multi-Dimensional, Mesoscopic Monte Carlo Simulations of Inhomogeneous Reaction-Drift-Diffusion Systems on Graphics-Processing Units*: <https://pmc.ncbi.nlm.nih.gov/articles/PMC3323590/>
+**REJECTED as semantic architecture.** Subgroup operations may optimize a field kernel but may not make ActionBand a local planner that samples neighbors and silently changes its target.
 
-**Included lesson:** local pointwise “reaction” and spatial transport have different execution geometries and are profitably split into separate parallel operators.
+### 14.12 Tropical/min-plus matrix view
 
-Candidate SimThing analogy:
+PALMA may be viewed as min-plus/tropical matrix-vector relaxation:
 
 \[
-\text{generation update}
-\approx
-\mathcal R_{overlay/EML}
-\circ
-\mathcal T_{RF/STEAD/PALMA}
-\circ
-\mathcal A_{ActionBand/CostBand}.
+D'_i=\min_j(W_{ij}+D_j)
 \]
 
-**Rejected claim:** SimThing is literally a Turing reaction-diffusion system. RF conservation, target discrepancy, structural mutation, and min-plus routing are broader than classical reaction-diffusion PDEs. The analogy is architectural, not a proof of semantics.
-
-### 11.8 Closed-loop feedback / PID — retained only as a design analogy
-
-Movement and other ActionBands are closed-loop feedback controllers in the broad sense:
-
-```text
-measure discrepancy
-    → determine affordable control effort
-    → actuate via overlay
-    → world changes
-    → measure again next generation
-```
-
-Displacement can resemble a proportional term; velocity can resemble derivative information; an explicitly authored accumulated frustration/stakes state can resemble integration.
-
-**REJECTED:** making PID universal ActionBand semantics. Not every ActionBand requires an integral term, derivative term, or PID tuning law.
-
-### 11.9 Deterministic “thermal frustration” / barrier tolerance — retained as authorable overlay pattern, not core solver
-
-A stalled ActionBand can detect something like:
-
-\[
-\|D\|>0,\qquad \dot D\approx 0
-\]
-
-and author a transient escalation overlay that increases willingness to pay or changes impedance weights over time.
-
-This can model deterministic barrier-tolerance escalation:
-
-```text
-stall band crossing
-    ↓
-emit ExplorationPressure / urgency overlay
-    ↓
-ordinary field/RF valuation changes
-    ↓
-progress resumes
-    ↓
-overlay dissolves
-```
-
-**Correction:** this is not stochastic simulated annealing unless actual stochastic exploration/noise is present.
-
-**Included because:** the intrinsic overlay emitter makes such adaptive response ordinary without adding an escape-planner subsystem.
-
-### 11.10 Subgroup “horizon probing” — rejected as semantic architecture
-
-Proposal evaluated: when stalled, use GPU subgroup shuffles to inspect neighbor/neighbor-of-neighbor candidate loci and overwrite the ActionBand target.
-
-**REJECTED for semantics:**
-
-1. subgroup lanes are not inherently topological neighbors; work mapping would have to make them so;
-2. evaluating 8 candidates is not automatically the same cost as evaluating 1—register pressure, gathers, and arithmetic remain real;
-3. most importantly, ActionBand would become a planner/search owner that silently mutates its own target based on local sampling.
-
-Subgroup operations remain lawful **physical implementation tools** for a field kernel when useful. They are not part of ActionBand meaning.
-
-### 11.11 Tropical/min-plus matrix view — retained, with an implementation warning
-
-PALMA/Bellman relaxation has the semiring-linear-algebra form:
-
-\[
-D'_i=\min_j(W_{ij}+D_j).
-\]
-
-This can be viewed as min-plus/tropical matrix-vector multiplication.
-
-**Included because:** it explains why PALMA belongs naturally in the same broad GPU numerical/table architecture as the rest of SimThing.
-
-**Critical warning:** algebraically matrix-shaped does not imply that the ordinary spatial lowering should materialize a dense matrix or use conventional GEMM.
-
-For N4/N8 structured lattices the likely efficient physical lowering is:
-
-```text
-neighbor stencil gather
-+ local add
-+ min reduction
-+ ping-pong write
-```
-
-Dense tropical matrix multiplication may become interesting for coarse strategic graphs or other dense relationships. Ordinary tensor-core `FMA` units do not natively implement exact `min,+`; replacing authoritative min with softmin/log-sum-exp merely to reach MMA hardware would change semantics and is currently rejected.
+but structured N4/N8 lowerings should normally be stencil/tile kernels rather than dense GEMM. Softmin/log-sum-exp must not replace exact min merely to access tensor-core hardware.
 
 ---
 
-## 12. Deeper GPU optimization opportunities exposed by intrinsic overlays
+## 15. Deeper GPU optimizations exposed by intrinsic overlays
 
-### 12.1 Overlay emission can become the dirty-set generator
+### 15.1 Overlay state is the dirty-set generator for the full Field Triad
 
-If overlay templates/bindings are admitted and resident, activation already knows which fields/properties it can change.
-
-Therefore:
+Because an admitted overlay binding already knows the parameters/loci it can modify:
 
 ```text
 OverlayStateNext changes
         ↓
-binding table names affected field loci/columns
+OverlayFieldDependency span
         ↓
-mark STEAD/PALMA tiles dirty directly
+mark only affected:
+    RF lane(s)
+    STEAD registration/loci
+    PALMA profile/tile(s)
+    Gu-Yang conservative theater/tile(s)
 ```
 
 No global “what changed?” scan is required.
 
-This is one of the strongest reasons FIM is included in this workshop: intrinsic overlay actuation and incremental PALMA repair are causally compatible by construction.
+### 15.2 Invalidation classes
 
-### 12.2 Temporal warm start
-
-Retain the previous converged/settled PALMA potential:
+A physical descriptor may distinguish scheduler behavior without adding domain semantics:
 
 ```text
-J[t]
- + localized overlay/field changes
+PointwiseOnly
+LocalStencil
+PropagatingPotential
+ConservativeFlux
+```
+
+Exact names are implementation-local. The key is that overlay admission provides the dependency shape needed to seed native work.
+
+### 15.3 Overlay-to-Field ingress fusion
+
+If an overlay-deformed intermediate is not independently authoritative/observable, the local overlay EML and a `FieldSweepRegistration` map program may be faithfully fused:
+
+```text
+base column + overlay params
         ↓
-repair
+fused exact EML ingress
         ↓
-J[t+1]
+existing field fold/post
 ```
 
-Quiet regions should pay essentially zero PALMA work under the FIM posture.
+instead of materialize→barrier→reload.
 
-### 12.3 Hybrid dense/sparse PALMA execution
+This is physical-only and lawful only if exact EML arithmetic/order, route/filter resolution, field certification, and generation ordering are unchanged.
 
-FIM bookkeeping can lose to a regular dense sweep when nearly every tile is dirty or the field is being initialized.
+### 15.4 Temporal PALMA warm start
 
-Candidate runtime physical choice:
+Retain `J[t]`, apply localized overlay/field changes, repair into `J[t+1]`. Quiet regions should pay essentially zero PALMA work under incremental posture.
 
-\[
-\rho=\frac{\text{dirty tiles}}{\text{all admitted tiles}}
-\]
+### 15.5 Hybrid dense/FIM PALMA
 
 ```text
-ρ small    → tiled FIM
-ρ large    → dense PALMA sweep
+small dirty fraction → tiled FIM
+large dirty fraction / cold start → dense PALMA
 ```
 
-The crossover is empirical and hardware/profile dependent. It must not become gameplay semantics.
+Crossover is empirical, not semantic.
 
-### 12.4 Shared PALMA profiles / many right-hand sides
+### 15.6 Multiscale PALMA hierarchy
 
-Actors should not automatically own unique full routing fields.
+Coarse levels accelerate information propagation; fine PALMA remains authoritative. Structural SimThing hierarchy may be reused only where its geometry genuinely supplies lawful restriction/prolongation.
 
-Many SimThings may share:
+### 15.7 Shared PALMA profiles
+
+Do not solve one full field per actor. Batch by admitted shared theater/topology/impedance/opportunity profile. Actor-specific EML may select among a finite admitted set of solved profiles; it may not algebraically synthesize an exact actor-specific optimum from fields that do not support that identity.
+
+### 15.8 EXP/LN can reduce profile explosion — carefully
+
+A smooth family of actor preferences can be mapped to a finite set of field-profile classes using EML/softmax-style weighting. The actual route still comes from an authoritative solved profile. This is a research performance strategy, not proof that a nonlinear family of shortest paths is linearly composable.
+
+### 15.9 Gu-Yang → PALMA dirty-front coupling
 
 ```text
-same theater
-topology
-impedance projection profile
-target/opportunity class
-policy/personality program shape
+Gu-Yang stall/flux changes
+        ↓
+EML/overlay changes PALMA W locally
+        ↓
+known PALMA dependency tile becomes dirty
+        ↓
+FIM / multiscale FIM repairs only affected value region
 ```
 
-Candidate optimization:
+This makes live congestion/capacity feedback affordable without actor-side search.
 
-\[
-D\in\mathbb R^{N_{cells}\times K_{profiles}}
-\]
+### 15.10 Operator-split generation posture
 
-with coherent batches across a small number of shared profiles. Individual ActionBands bind to a profile and carry only truly instance-specific parameters/corrections.
-
-This mirrors ActionBand program/profile batching and is likely more important than forcing literal dense GEMM.
-
-### 12.5 Operator fusion on local overlay reaction
-
-Overlay EML is pointwise/sparse; RF/STEAD/PALMA are transport/reduction/stencil-like. Treating these as operator phases suggests aggressive fusion within the local overlay reaction phase while keeping spatial/recursive propagation separate.
-
-Candidate generation pipeline:
+Candidate physical phase decomposition:
 
 ```text
-1. current → previous snapshot where required
-2. local active-overlay EML / transform reaction
-3. RF / STEAD reduce-disburse-field operations
-4. PALMA dense or FIM/multiscale relaxation
+1. snapshot previous plane where admitted
+2. local overlay EML / parameter reaction
+3. RF + STEAD + Gu-Yang native execution
+4. PALMA dense/FIM/multiscale solve/repair
 5. ActionBand target/progress evaluation
 6. existing sealed crossings + EML
 7. CostBand quantization / RF commitments
 8. OverlayStateNext activation/update/lifecycle
-9. generation barrier / swap
+9. barrier / swap
 ```
 
-Exact OrderBand placement remains an engineering/admission problem; this workshop asserts only the dependency direction.
+Exact OrderBand placement remains engineering/admission work; only dependency direction is asserted.
 
 ---
 
-## 13. What is explicitly not being proposed
+## 16. What is explicitly not proposed
 
-The following shapes are rejected or fenced from the intrinsic-overlay design:
-
-1. **No fifth StemThing leg.** Overlay capability belongs to originate/receive and is driven by act/participate.
-2. **No `ActionThing` peer entity.** ActionBand remains intrinsic to the acting SimThing.
-3. **No overlay event manager/service.** The SimThing overlay store/table is the retained actuation surface.
-4. **No CPU per-generation overlay evaluator** as final numerical authority.
-5. **No CPU child/action scheduler** for recursive ActionBands.
-6. **No human-readable OverlayKind/Action name as GPU dispatch key.**
-7. **No second band-crossing machine.** Existing Phase-5 crossing substrate remains singular.
-8. **No A* / predecessor / route-object simulation authority.** PALMA produces a field/potential.
-9. **No ActionBand subgroup search semantic.** Subgroups may optimize field kernels only.
-10. **No claim that all properties are RF resources.** Conservation remains scoped to conserved quantities.
-11. **No smoothed/coarse PALMA field overruling the authoritative fine solution.** Multiscale is a solver acceleration.
-12. **No dynamic GPU template authoring.** Overlay and ActionBand program shapes are admitted before execution; runtime activates/parameterizes admitted templates.
-13. **No same-generation recursive convergence loop.** Current/next state and generation pacing remain mandatory.
-14. **No assumption that FIM always beats dense PALMA.** Cold starts, small theaters, and field-wide changes may favor dense sweeps.
-15. **No premature promise that structural hierarchy is automatically the correct multigrid hierarchy.** Geometry must justify restriction/prolongation relationships.
+1. No fifth StemThing leg.
+2. No `ActionThing` peer entity or action service.
+3. No overlay manager/service owning lifetime beside SimThing.
+4. No CPU per-generation overlay numerical evaluator as final authority.
+5. No human-readable overlay/action noun as GPU dispatch key.
+6. No second threshold/crossing machine.
+7. No A* / predecessor / path-object simulation authority.
+8. No ActionBand subgroup-search semantics.
+9. No claim all properties are RF resources.
+10. No overlay-private PALMA, Gu-Yang, congestion, or throughput model.
+11. No overlay mutation of FieldSweep structural/certificate metadata.
+12. No hidden Gu-Yang stall history.
+13. No coarse PALMA result overruling fine authority.
+14. No multiscale Gu-Yang acceleration if it changes physical propagation speed.
+15. No Ng-style potential transform applied to Gu-Yang as if flux were a shortest-path objective.
+16. No `EXP(SUM(LN()))` rewrite silently replacing ordered Product semantics.
+17. No dynamic GPU template/EML authoring.
+18. No same-generation recursive convergence.
+19. No assumption FIM always beats dense PALMA.
+20. No assumption structural hierarchy is automatically a valid numerical multigrid hierarchy.
 
 ---
 
-## 14. Candidate full StemThing germ
-
-A useful semantic model for review—not yet a Rust layout—is:
+## 17. Candidate full StemThing germ
 
 ```text
 StemThing
 │
 ├─ ordinary sparse Property state
-│
-├─ recursive structural children / parent relationships
-│
+├─ recursive structural parent/children
 ├─ RF participation bindings
-│
+├─ intrinsic Field-Triad participation
+│   ├─ STEAD bindings
+│   ├─ PALMA profile/bindings
+│   └─ Gu-Yang conservative bindings
 ├─ intrinsic ActionBand facility (normally inert)
-│
 └─ intrinsic Overlay facility (normally inert)
-    │
-    ├─ admitted overlay template bindings
-    ├─ active instance bindings
+    ├─ admitted overlay templates
+    ├─ sparse active instances
     ├─ receive / route / filter
-    ├─ project to Property/RF/STEAD
+    ├─ project to Property / RF / Field-Triad parameters
+    ├─ full admitted EML response
     ├─ activate / suspend / parameterize
+    ├─ lifecycle via ordinary anchored/crossing state
+    ├─ dirty native dependency spans
     └─ dissolve / collapse
 ```
 
-Physical GPU state may be entirely out-of-line/sparse even though semantic ownership is intrinsic.
+Physical GPU state may be entirely out-of-line/sparse while semantic ownership remains intrinsic.
 
-### 14.1 The recursive simulation identity
-
-If the closure holds, a recursive SimThing tree is no longer a model operated by several engines. It is a family of identical inert-capable cells whose ordinary numerical relationships generate the simulation:
+### 17.1 Recursive simulation identity
 
 ```text
 state
   ↓
-flow / field
+RF + Field Triad
   ↓
-value potential
+opportunity / route / conserved feasibility
   ↓
-discrepancy
+ActionBand discrepancy
   ↓
-affordable action
+CostBand executable work
   ↓
-overlay actuation
+Overlay actuation
   ↓
 state
 ```
 
-Specialized domain behavior is authoring over properties, templates, EML, RF lanes, field channels, targets, and thresholds—not a new runtime subsystem.
+Specialized domains are authoring over properties, EML, RF lanes, field registrations, targets, bands, and overlays — not new runtime engines.
 
 ---
 
-## 15. Candidate laws for eventual promotion
+## 18. Candidate laws for eventual promotion
 
-These are **workshop candidate laws**, intentionally not doctrine yet.
-
-### 15.1 Intrinsic Overlay Ownership Law
+### 18.1 Intrinsic Overlay Ownership Law
 
 > Every active overlay is semantically owned by a StemThing. No peer subsystem owns overlay lifetime or numerical execution.
 
-### 15.2 Overlay Actuation Law
+### 18.2 Overlay Actuation Law
 
-> Ordinary numerical action resolves by activating, parameterizing, modifying, suspending, or dissolving an admitted overlay. Direct numerical world mutation outside admitted property/RF/field/overlay/boundary surfaces is not a second action mechanism.
+> Ordinary numerical action resolves by activating, parameterizing, modifying, suspending, or dissolving an admitted overlay whose effects are realized through native Property/RF/Field-Triad/boundary surfaces.
 
-### 15.3 Sparse Inert Germ Law
+### 18.3 Sparse Inert Germ Law
 
-> Overlay capability is universal in semantics but sparse in physical instantiation. An inactive StemThing incurs no hot overlay scan or mandatory per-instance program state.
+> Overlay capability is universal in semantics but sparse in physical instantiation. An inactive StemThing incurs no hot overlay scan or mandatory per-instance state.
 
-### 15.4 RF Distinction Law
+### 18.4 Native Conservation Distinction Law
 
-> Overlay actuation may deform RF inputs and claims, but only genuinely conserved/constrained quantities become RF resources. Semantic/value fields remain nonconserved unless separately authored otherwise.
+> Overlay may parameterize RF and Gu-Yang, but only genuinely conserved/constrained quantities use their conservation semantics. Overlay may not bypass or duplicate those laws.
 
-### 15.5 Field-Before-Route Law
+### 18.5 Full Field-Triad Parameterization Law
 
-> STEAD plus active overlays compose the actionable field. PALMA solves the admitted reach/impedance/value potential over that composition. ActionBand consumes the solved potential rather than inventing a private route search.
+> Overlay may parameterize STEAD, PALMA, and Gu-Yang only through admitted numerical inputs/bindings while each native mechanism retains its conservation/topology/stability authority.
 
-### 15.6 Overlay Lifecycle Authority Law
+### 18.6 Field-Parameter Certificate Law
 
-> Overlay activation, suspension, temporal state, and dissolution are part of the intrinsic overlay facility. CPU state may remain semantic/persistence/structural shadow but may not become the ordinary numerical lifecycle evaluator once the GPU-resident form is admitted.
+> Runtime overlay variation may not mutate canonical adjacency/order, conservation/symmetry certificates, χ/stability certificates, or field-law identity; parameterization remains within admitted certified envelopes.
 
-### 15.7 Generation-Paced Actuation Law
+### 18.7 Field-Before-Route Law
 
-> An action authorized in generation `t` changes overlay next-state; the resulting overlay participates no earlier than the ordinary next generation/barrier. No same-generation recursive action convergence.
+> Semantics that materially change route choice should, where practical, parameterize the authoritative PALMA problem before solve rather than create a private post-hoc ActionBand correction.
 
-### 15.8 PALMA Physical-Lowering Law
+### 18.8 Gu-Yang Instantaneous Law
 
-> PALMA semantics are independent of solver posture. Dense relaxation, tiled FIM, multiscale FIM, and future lawful accelerators are interchangeable physical lowerings only if they preserve the admitted value-field semantics and deterministic authority.
+> Gu-Yang owns instantaneous conserved flux/saturation. Persistent stall memory is explicit ordinary/overlay state under admitted EML, never hidden Gu-Yang or listener state.
 
-### 15.9 Opportunity-Horizon Law
+### 18.9 Full EML Actuation Law
 
-> Nonlocal opportunity awareness is a field-propagation responsibility, not an ActionBand search-depth responsibility.
+> Overlay numerical behavior uses the same admitted EML language, exact arithmetic, primitive-domain, and bounded-feedback laws as every other consumer. No overlay-specific numerical dialect exists.
 
-### 15.10 Dirty-Provenance Law
+### 18.10 Overlay Lifecycle Authority Law
 
-> Where an admitted overlay binding identifies the field loci it can alter, overlay state transitions should directly seed incremental field work rather than requiring a population-wide or field-wide change-detection scan.
+> Activation, suspension, temporal state, and dissolution are intrinsic overlay capability. CPU may remain semantic/persistence/structural shadow but may not be the ordinary numerical lifecycle evaluator after GPU-resident lifecycle is admitted.
+
+### 18.11 Generation-Paced Actuation Law
+
+> Action authorized in generation `t` changes overlay next-state; the resulting overlay participates no earlier than the next ordinary generation/barrier.
+
+### 18.12 Opportunity-Horizon Law
+
+> Nonlocal opportunity awareness is a native field-propagation responsibility, not ActionBand search depth.
+
+### 18.13 Gu-Yang Opportunity-Surface Law — candidate
+
+> Signed Gu-Yang flux/stall/contest/choke may be consumed as native feasibility/opportunity observables and may parameterize PALMA/RF through admitted overlay EML; ActionBand may not reinterpret flux magnitude as progress without preserving native sign/target orientation.
+
+### 18.14 PALMA Physical-Lowering Law
+
+> Dense relaxation, tiled FIM, multiscale FIM, and future lawful accelerators are physical PALMA lowerings only if they preserve the admitted fine-field authority and deterministic semantics.
+
+### 18.15 Dirty-Provenance Law
+
+> An overlay transition should directly seed native RF/Field-Triad work using admitted dependency spans rather than require a global change-detection scan.
+
+### 18.16 No Algebraic Semantic Substitution Law
+
+> Algebraic relation does not authorize silent semantic substitution: Product is not LogAccumulate, Gu-Yang flux is not potential-shaped PALMA, and finite-rate transport is not equilibrium multigrid merely because a related transformation is mathematically convenient.
 
 ---
 
-## 16. Falsifiers / conditions that would invalidate this closure
+## 19. Falsifiers / remand conditions
 
 Promotion should fail or remand if implementation requires any of the following:
 
-1. A CPU behavior/action/event dispatcher is necessary to interpret routine ActionBand/CostBand results.
-2. A runtime action cannot be expressed as admitted overlay/property/RF/field/BoundaryRequest consequences without adding domain execution code.
-3. Intrinsic overlay ownership requires a per-SimThing hot object allocation even for inactive SimThings.
-4. Overlay lifecycle requires continuous CPU mirrors of GPU values/progress after a GPU authoritative representation is introduced.
-5. Emitting an overlay requires dynamic creation of new shader/EML/template semantics at runtime rather than activating admitted data.
-6. Overlay recursion creates same-generation convergence or an unbounded cascade.
-7. A second threshold/band-crossing detector is introduced for overlay lifecycle or ActionBand emission.
-8. FIM/multiscale changes the authoritative PALMA answer rather than only its solve posture, unless such approximation is separately admitted as non-authoritative.
-9. ActionBand must search or retain predecessor/path graphs to function over PALMA.
-10. Human-readable domain nouns become runtime behavior branches in core/kernel/GPU code.
-11. A new overlay manager becomes the true owner while `SimThing` retains a ceremonial `overlays` field.
-12. Overlay actuation can bypass RF conservation for a conserved resource.
+1. CPU behavior/action/event dispatcher to interpret routine ActionBand/CostBand results.
+2. Domain execution code because a routine action cannot be expressed through admitted overlay/property/RF/Field-Triad/boundary consequences.
+3. Per-SimThing hot overlay object/state for inactive SimThings.
+4. Continuous CPU mirrors for ordinary overlay lifecycle after GPU authority exists.
+5. Runtime creation of new shader/EML/template semantics rather than activation of admitted data.
+6. Same-generation recursive overlay/action convergence.
+7. Second threshold/crossing detector.
+8. Overlay bypass of RF conservation for a conserved resource.
+9. Private ActionBand/overlay throughput/congestion/saturation model beside Gu-Yang/RF.
+10. Runtime overlay modification of Gu-Yang/PALMA structural proof metadata.
+11. Hidden stall history inside Gu-Yang or a saturation listener.
+12. FIM/multiscale changes the authoritative PALMA result rather than solve posture.
+13. Multiscale Gu-Yang changes intended physical propagation speed.
+14. `abs(flux)` or other sign-erasing binding counts opposed Gu-Yang flow as positive target progress.
+15. Potential/gauge transformation of Gu-Yang is treated as invariant without a conservation proof.
+16. Log-domain accumulation silently replaces an existing ordered Product law.
+17. Human-readable domain nouns become runtime behavior branches in core/kernel/GPU code.
+18. A new overlay manager becomes the true owner while SimThing storage is ceremonial.
 
 ---
 
-## 17. Engineering questions deliberately left open
+## 20. Engineering review questions
 
-These are valid workshop questions, not permission to invent answers during implementation.
+### 20.1 Overlay instance storage / capacity
 
-### 17.1 Overlay instance storage and capacities
+- exact template/instance/binding/dependency table layout;
+- maximum active overlay capacity and residency accounting;
+- global packing vs owner/template/profile grouping;
+- SlotIndex epoch remap behavior.
 
-- exact template/instance/binding table layout;
-- maximum concurrent active overlay capacity and how it consumes residency resources;
-- whether instance rows are globally packed or grouped by owner/template/profile;
-- epoch rebind consequences for logical SlotIndex references.
-
-### 17.2 Lifecycle lowering
+### 20.2 Lifecycle lowering
 
 - mapping current `DissolveCondition` vocabulary to GPU EML/threshold registrations;
-- `AfterTicks` representation without CPU decrement loops;
-- override semantics and deterministic ordering;
-- whether activation/suspension is a lifecycle bit, a threshold state, or a degenerate ActionBand/overlay condition;
-- structural/persistence readback requirements for semantically durable transitions.
+- `AfterTicks` representation without CPU decrement loop;
+- explicit dissolve/remove/override semantics;
+- activation/suspension current/next representation;
+- durable lifecycle readback requirements.
 
-### 17.3 Overlay routing representation
+### 20.3 Routing representation
 
-- standing inheritance lowering without duplicating transforms per descendant;
-- routed instruction origin→LCA→target filtering in GPU-resident tables;
-- whether route bindings are precompiled per epoch or derived from parent tables;
-- preserving conjunctive policy predicate law distinct from ordinary sequential value transforms.
+- standing inheritance without per-descendant duplication;
+- routed origin→LCA→target filter lowering;
+- precompiled epoch route spans vs parent-table derivation;
+- conjunctive policy predicate composition distinct from sequential value transform semantics.
 
-### 17.4 Overlay-to-field dirty provenance
+### 20.4 Full-Field-Triad overlay bindings
 
-- binding granularity: slot, cell, tile, property channel, or field profile;
-- duplicate dirty activation handling;
-- deterministic current/next tile masks;
-- crossover criteria between FIM and dense solve.
+- exact binding shape into STEAD/PALMA/Gu-Yang map/program parameters;
+- certified runtime parameter envelopes;
+- whether currently materialized Gu-Yang outputs expose all desired signed/gross/net/stall values;
+- one authoritative conserved-progress bound source per binding where ActionBand/CostBand consumes flow.
 
-### 17.5 Multiscale hierarchy
+### 20.5 Gu-Yang opportunity-surface reuse probe
 
-- whether existing spatial atlas hierarchy can provide lawful coarse grids;
-- restriction/prolongation operators;
-- handling obstacles/chokepoints without semantic smoothing;
-- interaction with bounded theater and atlas scheduling.
+- can target-aligned signed edge flux be bound directly as local feasibility/progress input?
+- does landed Gu-Yang possess a node pressure/driving/dual-like scalar?
+- if so, can that scalar seed/warm-start/bound PALMA without duplicate solve?
+- can Gu-Yang stall/contest/choke parameterize PALMA W with zero duplicate field calculation?
+- can Gu-Yang dirty frontier and PALMA FIM dirty frontier share dependency provenance?
 
-### 17.6 Shared PALMA profile cardinality
+### 20.6 Overlay-to-field dirty provenance
 
-- profile key definition;
-- which overlays require actor-specific impedance vs shared profile deformations;
-- when caching a derived opportunity field is cheaper than evaluating EML locally;
-- capacity/budget accounting for profile fields.
+- dependency granularity: slot/cell/tile/channel/profile;
+- deterministic duplicate activation handling;
+- current/next masks;
+- dense/FIM crossover;
+- conservative-theater scheduling for Gu-Yang without changing physical propagation.
 
-### 17.7 Structural consequences
+### 20.7 Multiscale hierarchy
 
-- which action results remain numerical overlays indefinitely;
-- which must emit a sealed BoundaryRequest;
-- how an overlay lifecycle relates to pending structural consequences and replay.
+- lawful PALMA restriction/prolongation operators;
+- obstacle/chokepoint preservation;
+- whether atlas hierarchy can be reused;
+- for Gu-Yang, classify each candidate registration as equilibrium/fixed-point vs finite-rate evolution before considering multilevel acceleration.
+
+### 20.8 Full EML actuation
+
+- EXP/LN primitive availability on the target branch/rung at implementation time;
+- domain-certified vs explicitly guarded call sites;
+- bounded-feedback admission for field-seeded recurrent overlay emissions;
+- JIT/program bucketing for logistic/decay/power/softmax shapes;
+- log-domain authored laws where semantically intended.
+
+### 20.9 Shared PALMA profile cardinality
+
+- profile-key definition;
+- actor-specific vs shared overlay deformations;
+- finite profile class selection with EML;
+- profile field budget/residency accounting.
+
+### 20.10 Structural consequences
+
+- which numerical overlays remain purely numerical;
+- which resolve to sealed `BoundaryRequest`;
+- pending structural request + overlay lifecycle replay semantics.
 
 ---
 
-## 18. Suggested workshop/probe sequence before promotion
+## 21. Suggested probe sequence before promotion
 
-This is not a workplan amendment; it is a research sequence for making the anchor candidate complete.
+This is not a workplan amendment.
 
 ```text
 A. OVERLAY-GERM-ARCHAEOLOGY
-   enumerate every attach/activate/suspend/dissolve/apply path
-   prove which are semantic duplicates vs genuinely structural
+   enumerate every attach/activate/suspend/dissolve/apply/override path
+   classify semantic duplicate vs genuinely structural
 
 B. GPU-OVERLAY-LIFECYCLE-PROBE
    one admitted transient overlay
-   GPU owns active/current/next + PropertyReaches/AfterTicks equivalent
-   CPU receives only sparse semantic lifecycle delta
+   GPU owns active/current/next + threshold/AfterTicks-equivalent lifecycle
+   CPU receives sparse semantic delta only
 
 C. ACTIONBAND→OVERLAY-PROBE
    existing sealed ActionBand crossing
-   → fixed admitted overlay activation/update
-   → next-generation ordinary property/RF consequence
-   no direct state write
+   → fixed admitted OverlayStateNext activation/update
+   → next-generation ordinary RF/Field-Triad consequence
 
-D. OVERLAY-DIRTY-PALMA-PROBE
-   localized overlay changes impedance
-   → exact dirty tile seed
-   → warm-start tiled FIM repair
-   compare bit/semantic result against dense PALMA oracle
+D. FULL-TRIAD-OVERLAY-BINDING-PROBE
+   one overlay parameterizes STEAD, PALMA W, and Gu-Yang input through admitted bindings
+   prove no private solver and no certificate mutation
 
-E. DENSE↔FIM-CROSSOVER-PROBE
-   cold / 1% / 10% / 50% / 100% dirty theater
-   identify hardware crossover without semantic mode difference
+E. GU-YANG-OPPORTUNITY-SURFACE-PROBE
+   signed opposed demand + target-aligned flux binding
+   inspect whether driving/dual-like scalar exists and is reusable
+   abs(flux) mutant RED
 
-F. MULTISCALE-FIM-PROBE
+F. OVERLAY-DIRTY-TRIAD-PROBE
+   overlay transition directly dirties only affected STEAD/PALMA/Gu-Yang dependency spans
+   no global change scan
+
+G. OVERLAY-DIRTY-PALMA-FIM-PROBE
+   localized impedance change
+   → exact tile seed
+   → warm-start tiled FIM
+   compare with dense PALMA oracle
+
+H. DENSE↔FIM-CROSSOVER-PROBE
+   cold / 1% / 10% / 50% / 100% dirty theaters
+   derive physical crossover only
+
+I. MULTISCALE-FIM-PROBE
    same fine PALMA oracle
-   multiscale V-cycle acceleration
-   prove no coarse approximation becomes authority
+   V-cycle acceleration
+   no coarse behavioral authority
 
-G. FRACTAL-ROUTING-PROBE
-   standing + routed + policy-conjunctive overlay behavior
-   GPU table lowering across multi-depth StemThing tree
+J. GU-YANG-MULTILEVEL-DISPOSITION
+   classify finite-rate vs equilibrium semantics
+   only equilibrium-like candidate may proceed to conservative multilevel proof
 
-H. PROMOTION REVIEW
-   delete/retire peer lifecycle/action authority only after equivalence is proven
+K. FULL-EML-OVERLAY-PROBE
+   ContinuousDecay + Logistic stall-response
+   Softmax RF weighting
+   PowerLaw / positive log-domain parameter case
+   prove primitive domain + bounded-feedback admission
+
+L. FRACTAL-ROUTING-PROBE
+   standing + routed + conjunctive policy behavior
+   GPU table lowering across multi-depth tree
+
+M. PROMOTION REVIEW
+   retire peer lifecycle/action authority only after equivalence and falsifiers are proven
 ```
 
-The probe philosophy should follow existing SimThing practice: temporary witnesses prove or falsify the design and are reaped when their result is promoted into a type/admission/anchor.
+---
+
+## 22. Promotion criteria
+
+The workshop is ready to move to `docs/` only when:
+
+1. Owner/DA adjudicates overlay as intrinsic StemThing actuation state.
+2. GPU numerical authority vs CPU semantic/structural shadow is explicit.
+3. Attach/receive/route/filter/activate/suspend/dissolve/remove/override/collapse have one lawful home.
+4. RF and Gu-Yang conservation boundaries cannot be bypassed.
+5. Full Field-Triad parameterization is explicit and certificate-safe.
+6. Full EML/EXP/LN behavior is governed by the one EML language and bounded-feedback admission.
+7. ActionBand integration uses the one existing crossing/emission surface.
+8. Default inertness is physically credible.
+9. Recursive routing is bounded/deterministic.
+10. FIM is correctly scoped as PALMA physical optimization.
+11. Multiscale PALMA retains fine authority.
+12. Gu-Yang multilevel work is explicitly classified by semantic propagation law before optimization.
+13. Gu-Yang opportunity-surface reuse has an engineering disposition, including dual/driving-potential archaeology.
+14. Overlay dirty provenance covers all native RF/Field-Triad dependencies.
+15. Current feeder/sim/kernel overlay authorities have keep/migrate/delete dispositions.
+16. All falsifiers remain green.
+17. Exact 0.0.8.7 amendment/consumer point is known.
 
 ---
 
-## 19. Promotion criteria
-
-This workshop is ready to move from `docs/workshop/` to `docs/` only when all of the following are true:
-
-1. **Semantic closure is adjudicated:** Owner/DA agrees that overlays are the intrinsic SimThing actuation state and that ActionBand/CostBand ordinarily resolve into overlay changes.
-2. **Authority is explicit:** the document states exactly what numerical overlay state is GPU authority and what remains CPU semantic/structural shadow.
-3. **Lifecycle is total:** attach/receive, route/filter, activate, suspend, dissolve, explicit removal/override, and collapse each have one lawful home.
-4. **RF boundaries are clear:** overlay deformation cannot bypass constrained-resource semantics.
-5. **ActionBand integration is singular:** existing crossing/EML/emission surfaces are reused; no rival event mechanism.
-6. **Default inertness is physically credible:** no population-wide overlay scan or mandatory hot storage.
-7. **Recursive routing is bounded and deterministic.**
-8. **FIM is correctly scoped:** a PALMA physical optimization with a dense oracle/equivalence story, not a new navigation semantic.
-9. **Multiscale is correctly scoped:** convergence accelerator toward the fine authoritative field, not coarse behavioral authority.
-10. **Current implementation migration is enumerated:** every feeder/sim/kernel overlay authority has a keep/migrate/delete disposition.
-11. **Falsifiers remain green:** no CPU planner/lifecycle authority, domain dispatch key, second crossing machine, or same-generation recursive loop is required.
-12. **The 0.0.8.7 amendment point is known:** promotion states exactly which current/future rung consumes the germ and which later rungs depend on it.
-
----
-
-## 20. Working synthesis
+## 23. Engineering-review synthesis
 
 The strongest current candidate is:
 
-> **StemThing is a default-inert recursive automaton whose state is ordinary properties and field/resource participation; whose `act` leg is ActionBand plus CostBand; whose `originate` and `receive` legs are one intrinsic overlay capability; and whose nonlocal opportunity/navigation information is supplied by STEAD/PALMA fields rather than by actor-owned search.**
+> **StemThing is a default-inert recursive Wei-style automaton whose state is ordinary properties plus native RF/Field-Triad participation; whose `act` leg is ActionBand plus CostBand; whose `originate` and `receive` legs are one intrinsic overlay capability; and whose nonlocal opportunity, routing, and conserved-feasibility information is supplied by STEAD/PALMA/Gu-Yang rather than by actor-owned planners. Full EML is the singular programmable numerical law that shapes overlay intensity, memory, weighting, and field parameterization.**
 
-The intended GPU execution pattern is correspondingly uniform:
+The intended GPU posture is correspondingly uniform:
 
 ```text
-local table/EML reaction
+local overlay / EML reaction
         ↓
-recursive RF / STEAD transport
+RF + STEAD + Gu-Yang native execution
         ↓
-PALMA min-plus value relaxation
+PALMA min-plus value solve / repair
         ↓
 sparse ActionBand / CostBand threshold response
         ↓
@@ -1483,6 +1383,6 @@ OverlayStateNext
 generation swap
 ```
 
-FIM is included because it can turn PALMA from a repeated full-field solve into **incremental causal field maintenance** driven directly by overlay dirty provenance while retaining massively parallel local relaxations. Multiscale FIM is included because it can expand the effective information horizon by accelerating propagation of the **same** value problem rather than granting ActionBand a planner/search tree. Potential-based reward shaping, Turing reaction-diffusion, and PID are retained only at the level their mathematics actually supports: useful structural analogies or possible preconditioning ideas, not proofs that SimThing's ontology follows from those literatures.
+FIM is included because it can turn PALMA from repeated full-field recomputation into incremental causal field maintenance driven by exact overlay dirty provenance while retaining massively parallel local relaxations. Multiscale FIM is included because it can expand effective information horizon by accelerating the same authoritative PALMA problem rather than giving ActionBand search depth. Ng–Harada–Russell is retained at the level actually supported: it motivates caution around local shaping and suggests exact potential/gauge reparameterization as a PALMA preconditioning research path, not a Gu-Yang flux transform. Gu-Yang contributes not only throughput limits but potentially already-paid opportunity information through signed realized flux, stall/contest/choke, and — if archaeology proves it exists — a reusable driving/dual-like scalar. `EXP`/`LN` complete the feedback loop by enabling deterministic decay, bounded logistic response, soft weighting, entropy, power laws, and positive log-domain parameterization without domain kernels.
 
-If this closure survives implementation scrutiny, the recursive SimThing ceases to be an object interpreted by a collection of simulation subsystems. The recursive SimThing family **is** the simulation: state produces fields; fields expose opportunities and constraints; discrepancies consume constrained means; resolved work emits intrinsic actuation; actuation changes state; and the next generation repeats the same rule everywhere.
+If this closure survives engineering scrutiny, the recursive SimThing family **is** the simulation: state produces native fields and conserved flow; those fields expose opportunities, route/value, and feasibility; discrepancies consume constrained means; resolved work emits intrinsic actuation; actuation parameterizes the next native field/RF generation; and the same rule repeats everywhere.
