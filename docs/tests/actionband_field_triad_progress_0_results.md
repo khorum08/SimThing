@@ -1,7 +1,8 @@
 # ACTIONBAND-FIELD-TRIAD-PROGRESS-0 results
 
 - Track: 0.0.8.7 RF arena modernization (rung 7.5a)
-- Status: **PROBATION / proof-present / DA-review-pending**
+- Status: **COMPLETE — DA-GRADUATED / merged #1723 @ `b7881687`** (adjudication `5248796666`, Option B)
+- Execution shape: EML evaluates first; conserved `q_exec` is clamped at the emission write to the **signed** interval between zero and native `crossing.post_value`. `q_desired` stays lawful per §4.6; `abs(flux)` is never used.
 - Branch: `codex/actionband-field-triad-progress-0`
 - Base: `153093821f1cae83623f07b9cd0f1e1351cf5a50`
 - HD-RECEIPT: `1d744631ed8b`
