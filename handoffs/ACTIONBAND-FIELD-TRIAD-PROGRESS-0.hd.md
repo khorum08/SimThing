@@ -20,6 +20,7 @@ stop_conditions: ["the required resident Gu-Yang/RF result is not available thro
 ## FENCES
 - No new field solve, crossing surface, target form, throughput/congestion model, CPU numerical mirror/readback decision, or ActionBand-local conservation/clearing authority. Gu-Yang remains instantaneous; no hidden stall history.
 - Preserve native Gu-Yang sign/order. Saturation limits progress but does not authorize search/rerouting. The full opposed-demand spatial witness is 7.5b, not 7.5a.
+- F15 is a STOP fence, not design license: if the native Gu-Yang/RF authority is genuinely insufficient for an ordinary conserved-progress case, return that missing-authority fact to orchestration/DA.
 - Preserve 7.1-7.5 as graduated and the 7.5 field-neutral semantic schema unchanged. Fence 7.5b/7.5c, 8.x, Vector CostBand, StemThing-B, movement vendorization, scenarios, icons, gates, and held harness defects.
 ## EXIT-PROOF
 - A synthetic conserved-channel ActionBand consumes a REAL resident Gu-Yang/`FieldSweepRegistration` or RF result with zero ActionBand-local throughput solver. Capacity down => executable progress down; capacity restored => progress restored, with target and ActionBand EML unchanged.
