@@ -1,7 +1,8 @@
 # ACTIONBAND-SEMANTIC-SHADOW-0 results
 
 - Track: 0.0.8.7 RF arena modernization (rung 7.5)
-- Status: **PROBATION / proof-present / DA-review-pending**
+- Status: **COMPLETE — DA-GRADUATED / merged #1719 @ `beccd380`** (rulings `5246828092`, `5246937280`)
+- Field-neutrality gate: **outcome (i) FIELD-NEUTRAL**, proven positively via a synthetic non-PALMA bound observable; the schema was **not widened**.
 - Branch: `coding/actionband-semantic-shadow-0`
 - PR: **#1719**
 - Base: `80e61a7062598486be1caf929617ac2037af2c34`
