@@ -95,9 +95,10 @@ pub use action_band_execution_compile::{
     FrozenActionBandStructuralRequests,
 };
 pub use action_band_semantic_shadow::{
-    carry_bound_observables, designation_for_template, ActionBandSemanticReadback,
+    carry_bound_observables, designation_for_template, dispatch_and_seal, ActionBandSemanticReadback,
     ActionBandSemanticSession, ActionBandTransitProjection, BoundObservableIdentity,
-    FieldNeutralityGate, SealedActionBandAuthority, SemanticShadowError, FIELD_NEUTRALITY_OUTCOME,
+    FieldNeutralityGate, SealedActionBandAuthority, SemanticallySealedProduction,
+    SemanticShadowError, FIELD_NEUTRALITY_OUTCOME,
 };
 pub use arena_allocation_plan::{
     max_disbursement_band, plan_arena_allocation, AllocationPlanError, ArenaAllocationPlan,

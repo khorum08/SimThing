@@ -266,6 +266,11 @@ impl FrozenActionBandStructuralRequests {
             .submit_committed(commitments, boundary)
             .map_err(Into::into)
     }
+
+    /// Read-only access to the admitted structural request for a sealed event_kind.
+    pub fn request_for_event_kind(&self, event_kind: u32) -> Option<&BoundaryRequest> {
+        self.door.request_for_event_kind(event_kind)
+    }
 }
 
 #[derive(Debug, Error)]

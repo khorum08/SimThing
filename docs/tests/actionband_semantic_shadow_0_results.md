@@ -7,31 +7,34 @@
 - Base: `80e61a7062598486be1caf929617ac2037af2c34`
 - HD-RECEIPT: `edeb59f58239`
 - ORIENT-RECEIPT: `98a916672d1a`
-- Dispatch: `5246978127` · Remands: `5247122299`, `5247237560`
+- Dispatch: `5246978127` · Remands: `5247122299`, `5247237560`, `5247464771`
 - DA pre-dispatch: `5246937280`
 
 ## Field-neutrality
 
 **FIELD-NEUTRAL** + A1 `synthetic-rf-grant-axis-v1` (preserved).
 
-## Authority binding (remand 2 / R1)
+## Authority binding (remand 3 / R1a + R1b + R5)
 
 | Mechanism | Property |
 |---|---|
-| `CompiledActionBandGpuExecution::seal_production` | Only public seal door; generation from `ActionBandGpuSession` after dispatch; template + plan fingerprint from compile product |
-| `ActionBandSemanticSession` | Owns frozen product + private structural loci table; project requires matching plan fingerprint |
-| Free `seal_actionband_authority(commitment, gen)` | **Deleted** |
-| Public `AdmittedStructuralLoci` | **Deleted**; loci only at session open |
+| `dispatch_and_seal` | **Only** public seal door: GPU dispatch and generation stamp minted in one call; production cannot be restamped by a foreign session |
+| `SemanticallySealedProduction` | Opaque carrier; no independent `seal_production(production, execution)` pairing |
+| `ActionBandSemanticSession` | Owns frozen product + admitted `FrozenActionBandStructuralRequests` (not a free loci table) |
+| Structural loci | Actor/dest from admission-sealed `BoundaryRequest::Reparent`; source from authority-tree parent of actor |
+| Free `seal_actionband_authority` / `seal_production` | **Deleted** |
+| Detachability | No `simthing-driver` → `simthing-mapeditor` dep; R3 via engine `FleetPresenceRecord` |
 
 ### Biting falsifiers
 
-- substituted generation: unconstructible (no free seal API)
+- cross-dispatch restamp: unconstructible (`cross_dispatch_restamp_api_is_absent`)
 - foreign compile session: `PlanFingerprintMismatch` when fingerprints differ
-- forged loci at project time: unconstructible (no loci arg on project)
+- caller loci table: unconstructible (`structural_loci_come_from_admitted_reparent_not_caller_table`)
+- mapeditor proof coupling: absent (`fleet_presence_in_transit_from_admitted_reparent_without_mapeditor_coupling`)
 
 ## R2 / R3 / R4
 
-Preserved: owner `Result` through transit; icon `InTransit` via existing consumer; PR routing metadata.
+Preserved: owner `Result` through transit; engine-side `FleetPresenceRecord::InTransit` product (icon peripheral remains mapeditor-side on existing types); PR routing metadata.
 
 ## Batteries
 

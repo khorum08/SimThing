@@ -1,28 +1,33 @@
 //! ACTIONBAND-SEMANTIC-SHADOW-0 — post-authority CPU semantic shadow / readback.
 //!
-//! GPU remains the sole ActionBand numerical authority. Semantic carriers are
-//! minted only at the production compile/dispatch boundary:
-//! - generation is read from the ActionBand GPU session that produced the commitment
-//! - template and plan fingerprint come from the compile product that owns the plan
-//! - structural actor/source/dest come from a session-frozen private table
-//!
-//! Free re-seal of a commitment under an arbitrary generation, foreign frozen
-//! product, or caller-forged loci is unconstructible or RED.
+//! ## Authority rules (remand 3)
+//! - Semantic seal is minted only inside [`dispatch_and_seal`], which owns both
+//!   the GPU dispatch and the generation stamp of that same session — production
+//!   results cannot be restamped by a foreign session.
+//! - Actor / transit loci come only from admission-sealed
+//!   [`FrozenActionBandStructuralRequests`] (`BoundaryRequest::Reparent`) plus
+//!   the authority tree's current parent of the actor. No caller-authored loci table.
+//! - Presentation may produce `FleetPresenceRecord` for peripheral consumers;
+//!   engine crates must not depend on mapeditor (detachability).
 //!
 //! ## Field-neutrality: FIELD-NEUTRAL
 
-use std::collections::BTreeMap;
-
 use simthing_core::owner_channel::{resolve_owner, OwnerRef, OwnerResolutionError};
 use simthing_core::{GenerationStamp, SimThing, SimThingId};
-use simthing_gpu::{ActionBandGpuSession, ActionBandProductionDispatch, StructuralCommitment};
+use simthing_feeder::BoundaryRequest;
+use simthing_gpu::{
+    ActionBandCrossingBatch, ActionBandGpuSession, ActionBandProductionDispatch, GpuContext,
+    StructuralCommitment,
+};
 use simthing_spec::{
     ActionBandSemanticShadow, ActionBandTemplateIndex, FleetPresenceLocation, FleetPresenceRecord,
     FrozenActionBandTemplates, OwnerRef as SpecOwnerRef,
 };
 use thiserror::Error;
 
-use crate::action_band_execution_compile::CompiledActionBandGpuExecution;
+use crate::action_band_execution_compile::{
+    CompiledActionBandGpuExecution, FrozenActionBandStructuralRequests,
+};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum FieldNeutralityGate {
@@ -54,52 +59,77 @@ impl BoundObservableIdentity {
     }
 }
 
-/// Private structural consequence row for one sealed event_kind.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-struct StructuralLociRow {
-    actor: SimThingId,
-    from_cell_raw: u32,
-    to_cell_raw: u32,
+/// Production result whose semantic authorities were sealed in the same dispatch.
+/// There is no public way to re-stamp `production` with a foreign session generation.
+#[derive(Clone, Debug)]
+pub struct SemanticallySealedProduction {
+    production: ActionBandProductionDispatch,
+    authorities: Vec<SealedActionBandAuthority>,
 }
 
-/// Session-owned semantic projection context: frozen admission product + private
-/// structural loci table. Opened once; plan fingerprint must match the compile
-/// product used for production dispatch.
+impl SemanticallySealedProduction {
+    pub fn production(&self) -> &ActionBandProductionDispatch {
+        &self.production
+    }
+
+    pub fn authorities(&self) -> &[SealedActionBandAuthority] {
+        &self.authorities
+    }
+}
+
+/// Dispatch ActionBand GPU production and seal semantic authorities in one step.
+///
+/// Generation is taken only from `execution` after this dispatch. Callers cannot
+/// pair a prior production with a different session.
+pub fn dispatch_and_seal(
+    compiled: &CompiledActionBandGpuExecution,
+    execution: &mut ActionBandGpuSession,
+    ctx: &GpuContext,
+    world_values: &simthing_gpu::wgpu::Buffer,
+    n_dims: u32,
+    crossings: &ActionBandCrossingBatch,
+) -> Result<SemanticallySealedProduction, SemanticShadowError> {
+    let production = execution
+        .dispatch(ctx, world_values, n_dims, crossings)
+        .map_err(|e| SemanticShadowError::GpuDispatch(e.to_string()))?;
+    let generation = GenerationStamp::new(execution.generation());
+    let mut authorities = Vec::with_capacity(production.commitments.len());
+    for commitment in &production.commitments {
+        let template = compiled
+            .template_for_event_kind(commitment.event_kind())
+            .ok_or(SemanticShadowError::UnboundEventKind(commitment.event_kind()))?;
+        authorities.push(SealedActionBandAuthority {
+            commitment: *commitment,
+            generation,
+            template,
+            plan_fingerprint: compiled.plan_fingerprint(),
+        });
+    }
+    Ok(SemanticallySealedProduction {
+        production,
+        authorities,
+    })
+}
+
+/// Session owns frozen product + admitted structural door (not a free loci table).
 #[derive(Clone, Debug)]
 pub struct ActionBandSemanticSession {
     frozen: FrozenActionBandTemplates,
     plan_fingerprint: u64,
-    structural_by_event: BTreeMap<u32, StructuralLociRow>,
+    structural: FrozenActionBandStructuralRequests,
 }
 
 impl ActionBandSemanticSession {
-    /// Open a semantic session bound to a specific compile product fingerprint.
-    /// Structural loci are frozen here and cannot be replaced at project time.
+    /// Open against a compile product and the matching admitted structural door.
     pub fn open(
         frozen: FrozenActionBandTemplates,
         compiled: &CompiledActionBandGpuExecution,
-        structural: &[(u32, SimThingId, u32, u32)],
+        structural: FrozenActionBandStructuralRequests,
     ) -> Result<Self, SemanticShadowError> {
-        let mut structural_by_event = BTreeMap::new();
-        for &(event_kind, actor, from_cell_raw, to_cell_raw) in structural {
-            if structural_by_event
-                .insert(
-                    event_kind,
-                    StructuralLociRow {
-                        actor,
-                        from_cell_raw,
-                        to_cell_raw,
-                    },
-                )
-                .is_some()
-            {
-                return Err(SemanticShadowError::AmbiguousStructuralLoci(event_kind));
-            }
-        }
         Ok(Self {
             frozen,
             plan_fingerprint: compiled.plan_fingerprint(),
-            structural_by_event,
+            structural,
         })
     }
 
@@ -111,8 +141,6 @@ impl ActionBandSemanticSession {
         &self.frozen
     }
 
-    /// Project a production-sealed authority carrier. Plan fingerprint must match
-    /// this session; structural loci come only from the session table.
     pub fn project(
         &self,
         authority: &SealedActionBandAuthority,
@@ -143,14 +171,25 @@ impl ActionBandSemanticSession {
             .find(|row| row.template() == authority.template)
             .ok_or(SemanticShadowError::UnboundTemplate(authority.template))?;
 
-        let loci = *self
-            .structural_by_event
-            .get(&authority.event_kind())
-            .ok_or(SemanticShadowError::UnboundStructuralLoci(
-                authority.event_kind(),
-            ))?;
+        // Loci from admission-sealed structural consequence only.
+        let request = self
+            .structural
+            .request_for_event_kind(authority.event_kind())
+            .ok_or(SemanticShadowError::UnboundStructuralLoci(authority.event_kind()))?;
+        let (actor, to_cell) = match request {
+            BoundaryRequest::Reparent { child, new_parent } => (*child, *new_parent),
+            _ => {
+                return Err(SemanticShadowError::StructuralRequestNotReparent(
+                    authority.event_kind(),
+                ))
+            }
+        };
+        // Source locus is the authority tree's current parent of the actor
+        // (pre-apply residency), not a caller-forged coordinate.
+        let from_cell_raw = parent_raw(authority_tree, actor)
+            .ok_or(SemanticShadowError::ActorParentUnresolved { actor })?;
 
-        let owner = resolve_owner(authority_tree, loci.actor);
+        let owner = resolve_owner(authority_tree, actor);
 
         Ok(ActionBandSemanticReadback {
             template: shadow.template(),
@@ -158,20 +197,33 @@ impl ActionBandSemanticSession {
             designation: shadow.label().map(str::to_string),
             generation: authority.generation,
             owner,
-            actor: loci.actor,
+            actor,
             sealed_slot: authority.commitment.slot(),
             sealed_col: authority.commitment.col(),
             sealed_event_kind: authority.commitment.event_kind(),
             sealed_value_bits: authority.commitment.value().to_bits(),
-            from_cell_raw: loci.from_cell_raw,
-            to_cell_raw: loci.to_cell_raw,
+            from_cell_raw,
+            to_cell_raw: to_cell.raw(),
             bound_observables: bound_observables.to_vec(),
         })
     }
 }
 
-/// Production-bound ActionBand authority. Private fields; mint only via
-/// [`CompiledActionBandGpuExecution::seal_production`].
+fn parent_raw(root: &SimThing, child: SimThingId) -> Option<u32> {
+    fn walk(node: &SimThing, child: SimThingId) -> Option<u32> {
+        for c in &node.children {
+            if c.id == child {
+                return Some(node.id.raw());
+            }
+            if let Some(found) = walk(c, child) {
+                return Some(found);
+            }
+        }
+        None
+    }
+    walk(root, child)
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct SealedActionBandAuthority {
     commitment: StructuralCommitment,
@@ -199,31 +251,6 @@ impl SealedActionBandAuthority {
 
     pub fn event_kind(&self) -> u32 {
         self.commitment.event_kind()
-    }
-}
-
-/// Production seal door: generation from the ActionBand GPU session that just
-/// produced `production`; template + plan identity from `self` only.
-impl CompiledActionBandGpuExecution {
-    pub fn seal_production(
-        &self,
-        production: &ActionBandProductionDispatch,
-        execution: &ActionBandGpuSession,
-    ) -> Result<Vec<SealedActionBandAuthority>, SemanticShadowError> {
-        let generation = GenerationStamp::new(execution.generation());
-        let mut out = Vec::with_capacity(production.commitments.len());
-        for commitment in &production.commitments {
-            let template = self
-                .template_for_event_kind(commitment.event_kind())
-                .ok_or(SemanticShadowError::UnboundEventKind(commitment.event_kind()))?;
-            out.push(SealedActionBandAuthority {
-                commitment: *commitment,
-                generation,
-                template,
-                plan_fingerprint: self.plan_fingerprint(),
-            });
-        }
-        Ok(out)
     }
 }
 
@@ -309,6 +336,8 @@ impl ActionBandSemanticReadback {
         }
     }
 
+    /// Engine-side presentation product for peripheral icon consumers.
+    /// Does not import mapeditor (detachability).
     pub fn to_fleet_presence_record(&self) -> Result<FleetPresenceRecord, SemanticShadowError> {
         self.transit_projection().to_fleet_presence_record()
     }
@@ -359,10 +388,12 @@ pub enum SemanticShadowError {
         parent: GenerationStamp,
         product: GenerationStamp,
     },
-    #[error("no admitted structural loci for sealed event_kind {0}")]
+    #[error("no admitted structural request for sealed event_kind {0}")]
     UnboundStructuralLoci(u32),
-    #[error("ambiguous admitted structural loci for sealed event_kind {0}")]
-    AmbiguousStructuralLoci(u32),
+    #[error("admitted structural request for event_kind {0} is not Reparent")]
+    StructuralRequestNotReparent(u32),
+    #[error("actor {actor:?} has no parent in the authority tree for transit source")]
+    ActorParentUnresolved { actor: SimThingId },
     #[error("sealed event_kind {0} has no template on the production compile product")]
     UnboundEventKind(u32),
     #[error("plan fingerprint mismatch: sealed={sealed} session={session}")]
@@ -371,6 +402,8 @@ pub enum SemanticShadowError {
     MissingTransitLoci,
     #[error("owner resolution failure: {0}")]
     OwnerResolution(OwnerResolutionError),
+    #[error("ActionBand GPU dispatch failed: {0}")]
+    GpuDispatch(String),
 }
 
 pub fn carry_bound_observables(
@@ -408,7 +441,6 @@ mod unit {
             Some("semantic-readback-only"),
         );
         assert_eq!(obs.key(), "synthetic-non-palma-grant-axis");
-        let carried = carry_bound_observables(&[obs.clone()]);
-        assert_eq!(carried, vec![obs]);
+        assert_eq!(carry_bound_observables(&[obs.clone()]), vec![obs]);
     }
 }
