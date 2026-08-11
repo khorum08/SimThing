@@ -1,5 +1,6 @@
 pub mod arena_allocation_oracle;
 pub mod action_band_execution_compile;
+pub mod action_band_semantic_shadow;
 pub mod arena_allocation_plan;
 pub mod arena_allocation_sync;
 pub mod arena_hierarchy;
@@ -89,9 +90,15 @@ pub mod w_impedance_compose_bridge;
 pub use arena_allocation_oracle::{run_arena_allocation_oracle, ArenaAllocationOracleTrace};
 pub use action_band_execution_compile::{
     compile_action_band_gpu_execution, compile_action_band_gpu_execution_with_native_lanes,
-    ActionBandActiveInstance, ActionBandExecutionCompileError, ActionBandNativeLaneAdmission,
-    ActionBandStructuralApplyError, CompiledActionBandGpuExecution,
-    FrozenActionBandStructuralRequests,
+    frozen_admission_binding_id, ActionBandActiveInstance, ActionBandExecutionCompileError,
+    ActionBandNativeLaneAdmission, ActionBandSessionOrigin, ActionBandStructuralApplyError,
+    CompiledActionBandGpuExecution, FrozenActionBandStructuralRequests,
+};
+pub use action_band_semantic_shadow::{
+    carry_bound_observables, designation_for_template, ActionBandBoundDispatch,
+    ActionBandSemanticReadback, ActionBandSemanticSession, ActionBandTransitProjection,
+    BoundObservableIdentity, FieldNeutralityGate, SealedActionBandAuthority,
+    SemanticallySealedProduction, SemanticShadowError, FIELD_NEUTRALITY_OUTCOME,
 };
 pub use arena_allocation_plan::{
     max_disbursement_band, plan_arena_allocation, AllocationPlanError, ArenaAllocationPlan,

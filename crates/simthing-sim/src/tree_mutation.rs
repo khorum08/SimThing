@@ -121,6 +121,12 @@ impl StructuralCommitmentApplicationDoor {
         }
         Ok(commitments.len())
     }
+
+    /// Read-only lookup of the pre-admitted structural request for a sealed
+    /// event_kind (7.5 semantic projection). Does not mint or alter authority.
+    pub fn request_for_event_kind(&self, event_kind: u32) -> Option<&BoundaryRequest> {
+        self.requests_by_event_kind.get(&event_kind)
+    }
 }
 
 #[derive(Debug, Error)]
