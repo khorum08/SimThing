@@ -39,7 +39,8 @@ pub mod w_impedance_compose_admission;
 pub use action_band_admission::{
     ActionBandAdmissionError, ActionBandCrossingBinding, ActionBandSemanticShadow,
     ActionBandSessionBuildDoor, ActionBandTableSpan, ActionBandTemplateIndex,
-    AdmittedActionBandBand, AdmittedActionBandChannel, AdmittedActionBandTarget,
+    AdmittedActionBandBand, AdmittedActionBandChannel, AdmittedActionBandConservedProgressBinding,
+    AdmittedActionBandConservedProgressBoundSource, AdmittedActionBandTarget,
     AdmittedActionBandTemplate, AdmittedActionBandVelocity, ExistingThresholdRegistrationIndex,
     FrozenActionBandTemplates,
     PreAdmittedEmissionBindingIndex,

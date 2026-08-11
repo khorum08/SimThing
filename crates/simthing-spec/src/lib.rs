@@ -64,7 +64,8 @@ pub use boundary::{
 pub use compile::action_band_admission::{
     ActionBandAdmissionError, ActionBandCrossingBinding, ActionBandSemanticShadow,
     ActionBandSessionBuildDoor, ActionBandTableSpan, ActionBandTemplateIndex,
-    AdmittedActionBandBand, AdmittedActionBandChannel, AdmittedActionBandTarget,
+    AdmittedActionBandBand, AdmittedActionBandChannel, AdmittedActionBandConservedProgressBinding,
+    AdmittedActionBandConservedProgressBoundSource, AdmittedActionBandTarget,
     AdmittedActionBandTemplate, AdmittedActionBandVelocity, ExistingThresholdRegistrationIndex,
     FrozenActionBandTemplates,
     PreAdmittedEmissionBindingIndex,
@@ -378,8 +379,10 @@ pub use runtime::{
 };
 pub use spec::action_band::{
     ActionBandAdmissionBudgetSpec, ActionBandBandSpec, ActionBandChannelBindingSpec,
-    ActionBandChannelKind, ActionBandRequirementSemantics, ActionBandSessionSpec,
-    ActionBandTargetSpec, ActionBandTemplateSpec, ActionBandVelocitySpec, ScalarBoundDirection,
+    ActionBandChannelKind, ActionBandConservedProgressBindingSpec,
+    ActionBandConservedProgressBoundSourceSpec, ActionBandRequirementSemantics,
+    ActionBandSessionSpec, ActionBandTargetSpec, ActionBandTemplateSpec, ActionBandVelocitySpec,
+    ScalarBoundDirection,
 };
 pub use spec::capability::{
     ActivationMode, CapabilityCategorySpec, CapabilityEffectSpec, CapabilityPrereqSpec,

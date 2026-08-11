@@ -90,6 +90,32 @@ pub struct ActionBandBandSpec {
     pub emission_binding_indices: Vec<u32>,
 }
 
+/// One explicit conserved-progress use of an already-admitted band/binding.
+///
+/// This is supplied to the same session-build door as the template set. The
+/// bound source is semantic provenance for an existing threshold observable;
+/// it does not name a field solver or create another crossing surface.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ActionBandConservedProgressBindingSpec {
+    pub template_id: String,
+    pub band_index: u32,
+    pub emission_binding_index: u32,
+    pub bound_source: ActionBandConservedProgressBoundSourceSpec,
+}
+
+/// Closed native authority vocabulary for one conserved-progress binding.
+///
+/// `None` is the explicit non-conserved/no-flux shape. It is rejected when a
+/// row is declared as conserved progress, preventing a zero-bound leg. There
+/// is deliberately no vendor extension or catch-all variant.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ActionBandConservedProgressBoundSourceSpec {
+    None,
+    RfGrant,
+    GuYangAvailable,
+    GuYangRealized,
+}
+
 /// Closed target-form vocabulary. No catch-all/predicate-only variant exists.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum ActionBandTargetSpec {

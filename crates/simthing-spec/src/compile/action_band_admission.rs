@@ -14,6 +14,7 @@ use thiserror::Error;
 
 use crate::spec::action_band::{
     ActionBandAdmissionBudgetSpec, ActionBandBandSpec, ActionBandChannelKind,
+    ActionBandConservedProgressBindingSpec, ActionBandConservedProgressBoundSourceSpec,
     ActionBandRequirementSemantics, ActionBandSessionSpec, ActionBandTargetSpec,
     ActionBandTemplateSpec,
 };
@@ -38,6 +39,26 @@ impl ActionBandSessionBuildDoor {
         eml_registry: &EmlExpressionRegistry,
         threshold_registrations: &[EmitOnThresholdRegistration],
     ) -> Result<&FrozenActionBandTemplates, ActionBandAdmissionError> {
+        self.admit_once_with_conserved_progress_at_session_build(
+            spec,
+            &[],
+            registry,
+            eml_registry,
+            threshold_registrations,
+        )
+    }
+
+    /// Validate and freeze templates plus explicit native conserved-progress
+    /// bindings through this same one-shot door. A binding can only name the
+    /// ordinary threshold registration already owned by its admitted band.
+    pub fn admit_once_with_conserved_progress_at_session_build(
+        &mut self,
+        spec: &ActionBandSessionSpec,
+        conserved_progress: &[ActionBandConservedProgressBindingSpec],
+        registry: &DimensionRegistry,
+        eml_registry: &EmlExpressionRegistry,
+        threshold_registrations: &[EmitOnThresholdRegistration],
+    ) -> Result<&FrozenActionBandTemplates, ActionBandAdmissionError> {
         if let Some(existing) = &self.product {
             return Err(ActionBandAdmissionError::MidSessionTemplateMintRefused {
                 admitted: existing.templates.len(),
@@ -45,8 +66,13 @@ impl ActionBandSessionBuildDoor {
             });
         }
 
-        let product =
-            compile_frozen_product(spec, registry, eml_registry, threshold_registrations)?;
+        let product = compile_frozen_product(
+            spec,
+            conserved_progress,
+            registry,
+            eml_registry,
+            threshold_registrations,
+        )?;
         self.product = Some(product);
         Ok(self.product.as_ref().expect("just inserted"))
     }
@@ -105,6 +131,54 @@ pub struct PreAdmittedEmissionBindingIndex(u32);
 impl PreAdmittedEmissionBindingIndex {
     pub fn raw(self) -> u32 {
         self.0
+    }
+}
+
+/// Frozen native authority for one conserved-progress binding. The carried
+/// index is the band's existing Phase-5 threshold registration; no field-sweep
+/// reference kind or numerical authority is introduced.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum AdmittedActionBandConservedProgressBoundSource {
+    RfGrant(ExistingThresholdRegistrationIndex),
+    GuYangAvailable(ExistingThresholdRegistrationIndex),
+    GuYangRealized(ExistingThresholdRegistrationIndex),
+}
+
+impl AdmittedActionBandConservedProgressBoundSource {
+    pub fn threshold_registration(self) -> ExistingThresholdRegistrationIndex {
+        match self {
+            Self::RfGrant(index) | Self::GuYangAvailable(index) | Self::GuYangRealized(index) => {
+                index
+            }
+        }
+    }
+}
+
+/// One admitted use of a pre-existing emission row whose executable quantity
+/// is bounded by exactly one native conserved authority.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct AdmittedActionBandConservedProgressBinding {
+    template: ActionBandTemplateIndex,
+    band_table_index: u32,
+    emission_binding: PreAdmittedEmissionBindingIndex,
+    bound_source: AdmittedActionBandConservedProgressBoundSource,
+}
+
+impl AdmittedActionBandConservedProgressBinding {
+    pub fn template(self) -> ActionBandTemplateIndex {
+        self.template
+    }
+
+    pub fn band_table_index(self) -> u32 {
+        self.band_table_index
+    }
+
+    pub fn emission_binding(self) -> PreAdmittedEmissionBindingIndex {
+        self.emission_binding
+    }
+
+    pub fn bound_source(self) -> AdmittedActionBandConservedProgressBoundSource {
+        self.bound_source
     }
 }
 
@@ -312,6 +386,7 @@ pub struct FrozenActionBandTemplates {
     dependencies: Vec<ActionBandTemplateIndex>,
     emission_bindings: Vec<PreAdmittedEmissionBindingIndex>,
     crossing_bindings: Vec<ActionBandCrossingBinding>,
+    conserved_progress_bindings: Vec<AdmittedActionBandConservedProgressBinding>,
     semantic_shadow: Vec<ActionBandSemanticShadow>,
 }
 
@@ -338,6 +413,10 @@ impl FrozenActionBandTemplates {
 
     pub fn emission_bindings(&self) -> &[PreAdmittedEmissionBindingIndex] {
         &self.emission_bindings
+    }
+
+    pub fn conserved_progress_bindings(&self) -> &[AdmittedActionBandConservedProgressBinding] {
+        &self.conserved_progress_bindings
     }
 
     pub fn semantic_shadow(&self) -> &[ActionBandSemanticShadow] {
@@ -468,6 +547,33 @@ pub enum ActionBandAdmissionError {
         binding_index: u32,
         available: u32,
     },
+    #[error(
+        "ActionBand conserved-progress declaration references unknown template `{template_id}`"
+    )]
+    UnknownConservedProgressTemplate { template_id: String },
+    #[error("ActionBand template `{template_id}` has no conserved-progress band {band_index}")]
+    UnknownConservedProgressBand {
+        template_id: String,
+        band_index: u32,
+    },
+    #[error("ActionBand template `{template_id}` band {band_index} does not contain emission binding {binding_index}")]
+    ConservedProgressBindingOutsideBand {
+        template_id: String,
+        band_index: u32,
+        binding_index: u32,
+    },
+    #[error("ActionBand template `{template_id}` band {band_index} emission binding {binding_index} declares conserved progress without a native bound source")]
+    ConservedProgressBoundRequired {
+        template_id: String,
+        band_index: u32,
+        binding_index: u32,
+    },
+    #[error("ActionBand template `{template_id}` band {band_index} emission binding {binding_index} is conserved-bound more than once")]
+    DuplicateConservedProgressBound {
+        template_id: String,
+        band_index: u32,
+        binding_index: u32,
+    },
     #[error("ActionBand template `{template_id}` requires pre-8.x scarce-lane semantics `{requirement}`; admission fails/defer-closes")]
     Pre8xScarceLaneSemanticsUnsupported {
         template_id: String,
@@ -483,6 +589,7 @@ pub enum ActionBandAdmissionError {
 
 fn compile_frozen_product(
     spec: &ActionBandSessionSpec,
+    conserved_progress_specs: &[ActionBandConservedProgressBindingSpec],
     registry: &DimensionRegistry,
     eml_registry: &EmlExpressionRegistry,
     threshold_registrations: &[EmitOnThresholdRegistration],
@@ -638,6 +745,15 @@ fn compile_frozen_product(
         });
     }
 
+    let conserved_progress_bindings = compile_conserved_progress_bindings(
+        conserved_progress_specs,
+        &template_ids,
+        &templates,
+        &bands,
+        &emission_bindings,
+        spec.budget.emission_binding_count,
+    )?;
+
     Ok(FrozenActionBandTemplates {
         budget: spec.budget,
         templates,
@@ -646,8 +762,96 @@ fn compile_frozen_product(
         dependencies,
         emission_bindings,
         crossing_bindings,
+        conserved_progress_bindings,
         semantic_shadow,
     })
+}
+
+fn compile_conserved_progress_bindings(
+    specs: &[ActionBandConservedProgressBindingSpec],
+    template_ids: &BTreeMap<&str, (usize, ActionBandTemplateIndex)>,
+    templates: &[AdmittedActionBandTemplate],
+    bands: &[AdmittedActionBandBand],
+    emission_bindings: &[PreAdmittedEmissionBindingIndex],
+    emission_binding_count: u32,
+) -> Result<Vec<AdmittedActionBandConservedProgressBinding>, ActionBandAdmissionError> {
+    let mut admitted = Vec::with_capacity(specs.len());
+    let mut seen = BTreeSet::new();
+    for spec in specs {
+        let Some(&(_, template_index)) = template_ids.get(spec.template_id.as_str()) else {
+            return Err(ActionBandAdmissionError::UnknownConservedProgressTemplate {
+                template_id: spec.template_id.clone(),
+            });
+        };
+        let template = &templates[template_index.raw() as usize];
+        if spec.band_index >= template.band_span().len() {
+            return Err(ActionBandAdmissionError::UnknownConservedProgressBand {
+                template_id: spec.template_id.clone(),
+                band_index: spec.band_index,
+            });
+        }
+        if spec.emission_binding_index >= emission_binding_count {
+            return Err(ActionBandAdmissionError::UnknownEmissionBinding {
+                template_id: spec.template_id.clone(),
+                band_index: spec.band_index as usize,
+                binding_index: spec.emission_binding_index,
+                available: emission_binding_count,
+            });
+        }
+        let band_table_index = template.band_span().start() + spec.band_index;
+        let band = &bands[band_table_index as usize];
+        let span = band.emission_binding_span();
+        let rows = emission_bindings
+            .get(span.start() as usize..(span.start() + span.len()) as usize)
+            .ok_or(ActionBandAdmissionError::TableWidthOverflow)?;
+        if rows
+            .iter()
+            .filter(|row| row.raw() == spec.emission_binding_index)
+            .count()
+            != 1
+        {
+            return Err(
+                ActionBandAdmissionError::ConservedProgressBindingOutsideBand {
+                    template_id: spec.template_id.clone(),
+                    band_index: spec.band_index,
+                    binding_index: spec.emission_binding_index,
+                },
+            );
+        }
+        if !seen.insert((band_table_index, spec.emission_binding_index)) {
+            return Err(ActionBandAdmissionError::DuplicateConservedProgressBound {
+                template_id: spec.template_id.clone(),
+                band_index: spec.band_index,
+                binding_index: spec.emission_binding_index,
+            });
+        }
+        let threshold = band.threshold_registration();
+        let bound_source = match spec.bound_source {
+            ActionBandConservedProgressBoundSourceSpec::None => {
+                return Err(ActionBandAdmissionError::ConservedProgressBoundRequired {
+                    template_id: spec.template_id.clone(),
+                    band_index: spec.band_index,
+                    binding_index: spec.emission_binding_index,
+                })
+            }
+            ActionBandConservedProgressBoundSourceSpec::RfGrant => {
+                AdmittedActionBandConservedProgressBoundSource::RfGrant(threshold)
+            }
+            ActionBandConservedProgressBoundSourceSpec::GuYangAvailable => {
+                AdmittedActionBandConservedProgressBoundSource::GuYangAvailable(threshold)
+            }
+            ActionBandConservedProgressBoundSourceSpec::GuYangRealized => {
+                AdmittedActionBandConservedProgressBoundSource::GuYangRealized(threshold)
+            }
+        };
+        admitted.push(AdmittedActionBandConservedProgressBinding {
+            template: template_index,
+            band_table_index,
+            emission_binding: PreAdmittedEmissionBindingIndex(spec.emission_binding_index),
+            bound_source,
+        });
+    }
+    Ok(admitted)
 }
 
 fn reject_deferred_requirement(
