@@ -852,7 +852,7 @@ This is load-bearing for the target scale.
 
 ### 15.1 Ancestor Overlay Residency Law
 
-> **An overlay whose semantic scope is a subtree is retained at the lawful ancestor that defines that scope, not stamped onto descendants. Parent-level policy/state overlays are naturally sparse: `OwnerThing`, `GameState`, world/map parents, star/system parents, and other structural ancestors hold the authoritative instance; recursive inheritance/filtering projects its effective value downward.**
+> **An overlay whose semantic scope is a subtree is retained at the lawful ancestor that defines that scope, not stamped onto descendants. Parent-level policy/state overlays are naturally sparse: `OwnerThing`, `GameSession`, world/map parents, star/system parents, and other structural ancestors hold the authoritative instance; recursive inheritance/filtering projects its effective value downward.**
 
 Examples:
 
