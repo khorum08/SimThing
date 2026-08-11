@@ -95,22 +95,3 @@ fn malformed_chains_emit_deterministic_diagnostics() {
     assert!(report.diagnostics[0].span.is_some());
 }
 
-#[test]
-#[ignore = "developer utility: regenerate CT-0d scope JSON goldens locally"]
-fn write_scope_goldens() {
-    for (name, text) in [("scope_basic", SCOPE_BASIC), ("scope_chains", SCOPE_CHAINS)] {
-        let json = report_json_from_fixture(text);
-        let path = format!("{}/tests/goldens/{}.json", env!("CARGO_MANIFEST_DIR"), name);
-        std::fs::write(&path, format!("{json}\n")).expect("write golden");
-        eprintln!("wrote {path}");
-    }
-    let expanded = expanded_post_expand();
-    let report = extract_scopes_validated(&expanded, &synthetic_scope_table());
-    let json = scope_report_to_json(&report).expect("serialize");
-    let path = format!(
-        "{}/tests/goldens/scope_post_expand.json",
-        env!("CARGO_MANIFEST_DIR")
-    );
-    std::fs::write(&path, format!("{json}\n")).expect("write golden");
-    eprintln!("wrote {path}");
-}

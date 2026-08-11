@@ -98,26 +98,3 @@ fn missing_inline_script_is_a_deterministic_diagnostic() {
     );
 }
 
-#[test]
-#[ignore = "developer utility: regenerate CT-0c expansion goldens locally"]
-fn write_expansion_goldens() {
-    let cases: &[(&str, String)] = &[
-        (
-            "expand_plague_quarantine",
-            expanded_json(&parse(PLAGUE_MAIN), &plague_input("yes")),
-        ),
-        (
-            "expand_plague_open",
-            expanded_json(&parse(PLAGUE_MAIN), &plague_input("no")),
-        ),
-        (
-            "expand_scope_untouched",
-            expanded_json(&parse(SCOPE_UNTOUCHED), &ExpansionInput::default()),
-        ),
-    ];
-    for (name, json) in cases {
-        let path = format!("{}/tests/goldens/{}.json", env!("CARGO_MANIFEST_DIR"), name);
-        std::fs::write(&path, format!("{json}\n")).expect("write golden");
-        eprintln!("wrote {path}");
-    }
-}

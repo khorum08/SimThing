@@ -52,13 +52,3 @@ fn parse_matches_json_golden() {
     }
 }
 
-#[test]
-#[ignore = "developer utility: regenerate JSON goldens locally"]
-fn write_goldens() {
-    for (name, text) in FIXTURES {
-        let json = canonical_from_fixture(text);
-        let path = format!("{}/tests/goldens/{}.json", env!("CARGO_MANIFEST_DIR"), name);
-        std::fs::write(&path, format!("{json}\n")).expect("write golden");
-        eprintln!("wrote {path}");
-    }
-}
