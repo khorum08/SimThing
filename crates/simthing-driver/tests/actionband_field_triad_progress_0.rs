@@ -156,6 +156,52 @@ fn empty_eml() -> EmlExpressionRegistry {
     EmlExpressionRegistry::new()
 }
 
+fn amplifying_eml(fixture: &Fixture) -> EmlExpressionRegistry {
+    use simthing_core::eml_nodes::{opcode, EmlNode};
+
+    let node = |opcode| EmlNode {
+        opcode,
+        flags: 0,
+        a: 0,
+        b: 0,
+        c: 0,
+        d: 0,
+    };
+    let mut eml = EmlExpressionRegistry::new();
+    eml.register_formula(
+        EmlTreeId(17),
+        EmlFormulaMeta {
+            tree_id: EmlTreeId(17),
+            execution_class: EmlExecutionClass::ExactDeterministic,
+            allowed_consumers: EmlConsumerMask(EmlConsumerMask::ALL_PRODUCTION),
+            max_abs_error: None,
+            deterministic_gpu: true,
+            requires_guard_for_hard_threshold: false,
+            node_count: 4,
+            max_stack_depth: 2,
+            has_loops: false,
+            has_recursion: false,
+            display_name: "forbidden-conserved-progress-amplifier-2x".into(),
+        },
+        vec![
+            EmlNode {
+                opcode: opcode::SLOT_VALUE,
+                a: fixture.value.raw_u32(),
+                ..node(opcode::SLOT_VALUE)
+            },
+            EmlNode {
+                opcode: opcode::LITERAL_F32,
+                a: 2.0f32.to_bits(),
+                ..node(opcode::LITERAL_F32)
+            },
+            node(opcode::MUL),
+            node(opcode::RETURN_TOP),
+        ],
+    )
+    .expect("2*x amplifier is an otherwise valid ActionBand EML program");
+    eml
+}
+
 #[test]
 fn conserved_progress_source_is_closed_exactly_once_and_existing_threshold_bound() {
     let fixture = fixture(0.15);
@@ -233,13 +279,38 @@ fn conserved_progress_source_is_closed_exactly_once_and_existing_threshold_bound
         ),
         Err(ActionBandExecutionCompileError::ConservedProgressRequiresNativeLane { .. })
     ));
+
+    let amplifier = amplifying_eml(&fixture);
+    assert!(matches!(
+        admit(
+            &fixture,
+            &amplifier,
+            ActionBandConservedProgressBoundSourceSpec::GuYangRealized,
+        ),
+        Err(ActionBandAdmissionError::ConservedProgressEmlPayloadForbidden { tree_id: 17, .. })
+    ));
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct FieldSweepCallGraphProbe {
+    registration_dispatches: u64,
+    resident_exports: u64,
+    host_readbacks: u64,
+}
+
+impl FieldSweepCallGraphProbe {
+    fn observe(session: &FieldSweepSession) -> Self {
+        Self {
+            registration_dispatches: session.registration_dispatches(),
+            resident_exports: session.resident_exports(),
+            host_readbacks: session.host_readbacks(),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 struct ResidentPathProbe {
-    field_registration_dispatches: u32,
-    raw_field_readbacks: u32,
-    cpu_numerical_interpositions: u32,
+    field: FieldSweepCallGraphProbe,
     sparse_phase5_readbacks: u32,
     proof_result_readbacks: u32,
 }
@@ -286,10 +357,6 @@ fn values(fixture: &Fixture, left: f32, right: f32) -> Vec<f32> {
     values
 }
 
-fn private_actionband_throughput_mutant(palma_potential: f32, costband_affordability: f32) -> f32 {
-    palma_potential.abs().min(costband_affordability)
-}
-
 fn storage_buffer(ctx: &GpuContext, label: &str, byte_len: u64) -> wgpu::Buffer {
     ctx.device.create_buffer(&wgpu::BufferDescriptor {
         label: Some(label),
@@ -309,7 +376,8 @@ fn run_resident_progress(
     plan: &simthing_gpu::ActionBandExecutionPlan,
     rf_plan: &CompiledAccumulatorOpPlan,
 ) -> (f32, ResidentPathProbe) {
-    let mut probe = ResidentPathProbe::default();
+    let mut sparse_phase5_readbacks = 0;
+    let mut proof_result_readbacks = 0;
     assert_eq!(
         registrations[0].output(),
         FieldSweepOutput::Matrix(fixture.conductance)
@@ -322,7 +390,6 @@ fn run_resident_progress(
     let mut field = FieldSweepSession::new(ctx, &registrations[0]).unwrap();
     field.upload_values(ctx, initial).unwrap();
     field.dispatch_chain(ctx, registrations, 1).unwrap();
-    probe.field_registration_dispatches = 2;
 
     let resident = storage_buffer(
         ctx,
@@ -347,7 +414,7 @@ fn run_resident_progress(
         .unwrap();
     phase5.tick(ctx, 0).unwrap();
     let emissions = phase5.readback_threshold_emissions(ctx).unwrap();
-    probe.sparse_phase5_readbacks = 1;
+    sparse_phase5_readbacks += 1;
 
     let root = SimThing::new(SimThingKind::GameSession, 0);
     let mut allocator = SlotAllocator::new();
@@ -391,8 +458,28 @@ fn run_resident_progress(
     .unwrap();
     rf.tick(ctx, 0).unwrap();
     let result = rf.readback_full(ctx).unwrap();
-    probe.proof_result_readbacks = 1;
-    (result[fixture.rf_result.raw()], probe)
+    proof_result_readbacks += 1;
+    (
+        result[fixture.rf_result.raw()],
+        ResidentPathProbe {
+            field: FieldSweepCallGraphProbe::observe(&field),
+            sparse_phase5_readbacks,
+            proof_result_readbacks,
+        },
+    )
+}
+
+fn run_duplicate_solve_and_readback_mutant(
+    ctx: &GpuContext,
+    registrations: &[simthing_gpu::FieldSweepRegistration; 2],
+    initial: &[f32],
+) -> FieldSweepCallGraphProbe {
+    let mut field = FieldSweepSession::new(ctx, &registrations[0]).unwrap();
+    field.upload_values(ctx, initial).unwrap();
+    field.dispatch_chain(ctx, registrations, 1).unwrap();
+    field.dispatch_chain(ctx, registrations, 1).unwrap();
+    field.readback(ctx).unwrap();
+    FieldSweepCallGraphProbe::observe(&field)
 }
 
 fn compile_resident_plan(
@@ -478,21 +565,21 @@ fn real_gu_yang_resident_output_bounds_rf_progress_without_duplicate_solve_or_cp
         high_progress.to_bits(),
         "capacity restored => exact progress restored"
     );
-    let private_high = private_actionband_throughput_mutant(0.8, 1.0);
-    let private_low = private_actionband_throughput_mutant(0.8, 1.0);
-    assert_eq!(private_high.to_bits(), private_low.to_bits());
-    assert_ne!(
-        (private_high.to_bits(), private_low.to_bits()),
-        (high_progress.to_bits(), low_progress.to_bits()),
-        "a PALMA/CostBand private throughput reconstruction must RED against native Gu-Yang capacity authority"
-    );
     for probe in [high_probe, low_probe, restored_probe] {
-        assert_eq!(probe.field_registration_dispatches, 2);
-        assert_eq!(probe.raw_field_readbacks, 0);
-        assert_eq!(probe.cpu_numerical_interpositions, 0);
+        assert_eq!(probe.field.registration_dispatches, 2);
+        assert_eq!(probe.field.resident_exports, 1);
+        assert_eq!(probe.field.host_readbacks, 0);
         assert_eq!(probe.sparse_phase5_readbacks, 1);
         assert_eq!(probe.proof_result_readbacks, 1);
     }
+    let rival = run_duplicate_solve_and_readback_mutant(&ctx, &high, &initial);
+    assert_eq!(rival.registration_dispatches, 4);
+    assert_eq!(rival.resident_exports, 0);
+    assert_eq!(rival.host_readbacks, 1);
+    assert_ne!(
+        rival, high_probe.field,
+        "real duplicate/readback seam must RED"
+    );
 
     let signed_fixture = fixture(-0.75);
     let signed_initial = values(&signed_fixture, -0.8, -0.1);
@@ -510,7 +597,7 @@ fn real_gu_yang_resident_output_bounds_rf_progress_without_duplicate_solve_or_cp
         signed_progress < 0.0,
         "native signed order is preserved; no abs(flux)"
     );
-    assert_eq!(signed_probe.raw_field_readbacks, 0);
+    assert_eq!(signed_probe.field.host_readbacks, 0);
 }
 
 #[test]
@@ -571,12 +658,15 @@ fn field_or_rf_recurrence_reuses_existing_bounded_feedback_admission() {
         compiled.nodes,
     )
     .unwrap();
-    let frozen = admit(
-        &fixture,
-        &eml,
-        ActionBandConservedProgressBoundSourceSpec::GuYangAvailable,
-    )
-    .expect("ActionBand references the already-admitted bounded program");
+    let mut door = ActionBandSessionBuildDoor::new();
+    let frozen = door
+        .admit_once_at_session_build(
+            &session_spec(&fixture, Some(17)),
+            &fixture.registry,
+            &eml,
+            std::slice::from_ref(&fixture.threshold),
+        )
+        .expect("ordinary ActionBand references the already-admitted bounded program");
     assert_eq!(frozen.bands()[0].eml_program(), Some(EmlTreeId(17)));
 }
 

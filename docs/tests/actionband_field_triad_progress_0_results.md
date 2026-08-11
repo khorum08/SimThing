@@ -7,6 +7,7 @@
 - HD-RECEIPT: `e0e8fa9d2164`
 - ORIENT-RECEIPT: `98a916672d1a`
 - Handoff: Board comment `5248238142`
+- Remand: Board comment `5248615928`
 
 ## Authority binding
 
@@ -15,7 +16,9 @@ The same 7.1 session-build door admits the closed authored source vocabulary
 binding must select exactly one non-`None` source. Its frozen product carries
 only the band's existing `ExistingThresholdRegistrationIndex`; it does not mint
 a FieldSweep reference, crossing surface, field solver, or private throughput
-model.
+model. A conserved band also fails admission if it names an EML program: the
+existing sealed crossing `post_value` is therefore the only constructible
+executable payload, and an EML replacer/amplifier cannot bypass its native bound.
 
 Driver lowering accepts a conserved-progress binding only on an existing native
 next-state lane and seals its signed value through the existing Phase-5
@@ -32,9 +35,9 @@ and consumed by the ordinary RF accumulator.
 
 - capacity `1.0 -> 0.5 -> 1.0` produces progress down then bit-exact restoration;
 - the signed negative fixture remains negative, proving no `abs(flux)` rewrite;
-- each run dispatches exactly the two native Gu-Yang registrations;
-- raw field readbacks: 0;
-- CPU numerical interpositions: 0;
+- actual `FieldSweepSession` observations report exactly two native Gu-Yang
+  registration dispatches and one resident export per clean run;
+- actual FieldSweep host readbacks: 0;
 - duplicate/equivalent field solves: 0.
 
 The RF result readback and sparse Phase-5 crossing readback are proof surfaces,
@@ -46,11 +49,14 @@ not raw-field CPU authority.
 - `GuYangRealized + RfGrant` on one conserved leg fails as a duplicate bound;
 - a fifth `PrivateThroughput` source fails deserialization;
 - a declared conserved leg cannot use structural-only compilation;
+- an otherwise valid `2*x` EML payload amplifier on `GuYangRealized` fails at
+  the real session-build admission door;
 - an unbounded positive feedback gadget fails the existing bounded-feedback
-  admission while its bounded/decaying counterpart admits;
-- a planted PALMA-potential/CostBand-affordability private throughput
-  reconstruction is capacity-insensitive and REDs against the native Gu-Yang
-  capacity result.
+  admission while its bounded/decaying counterpart admits on an ordinary,
+  non-conserved ActionBand band;
+- a planted rival invokes the real FieldSweep dispatch seam twice and its real
+  host-readback seam once; actual observations change from `(2 dispatches,
+  1 resident export, 0 readbacks)` to `(4, 0, 1)` and RED the clean witness.
 
 ## Schema preservation
 
@@ -65,10 +71,12 @@ Four tests are admitted because each covers a distinct load-bearing contract:
 
 1. `conserved_progress_source_is_closed_exactly_once_and_existing_threshold_bound`
    covers the closed source vocabulary, missing/double/private REDs, and binding
-   to the existing threshold registration.
+   to the existing threshold registration, including rejection of a real `2*x`
+   EML payload replacer.
 2. `real_gu_yang_resident_output_bounds_rf_progress_without_duplicate_solve_or_cpu_mirror`
    covers the real resident Gu-Yang-to-Phase5-to-ActionBand-to-RF chain, capacity
-   monotonicity/restoration, signedness, and residency counters.
+   monotonicity/restoration, signedness, actual execution observations, and the
+   duplicate-solve/readback seam mutant.
 3. `field_or_rf_recurrence_reuses_existing_bounded_feedback_admission` covers the
    required existing bounded-feedback contract and generation-pacing falsifier.
 4. `field_triad_identity_uses_the_graduated_field_neutral_semantic_schema` covers
