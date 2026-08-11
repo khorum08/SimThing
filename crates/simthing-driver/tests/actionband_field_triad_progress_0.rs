@@ -79,13 +79,18 @@ fn fixture(threshold: f32) -> Fixture {
 }
 
 fn session_spec(fixture: &Fixture, eml_program: Option<u32>) -> ActionBandSessionSpec {
+    let emission_binding_indices = if eml_program.is_some() {
+        vec![0, 1]
+    } else {
+        vec![0]
+    };
     ActionBandSessionSpec {
         budget: ActionBandAdmissionBudgetSpec {
             axis_channel_count: if eml_program.is_some() { 3 } else { 1 },
             dependency_binding_count: 0,
             storage_rows: 1,
             eml_program_count: u32::from(eml_program.is_some()),
-            emission_binding_count: 1,
+            emission_binding_count: emission_binding_indices.len() as u32,
         },
         templates: vec![ActionBandTemplateSpec {
             id: "field-triad-progress".into(),
@@ -108,7 +113,7 @@ fn session_spec(fixture: &Fixture, eml_program: Option<u32>) -> ActionBandSessio
             bands: vec![ActionBandBandSpec {
                 threshold_registration_index: 0,
                 eml_program,
-                emission_binding_indices: vec![0],
+                emission_binding_indices,
             }],
             subordinate_template_ids: vec![],
             max_active_subordinates: 0,
@@ -181,7 +186,7 @@ fn amplifying_eml(fixture: &Fixture) -> EmlExpressionRegistry {
             max_stack_depth: 2,
             has_loops: false,
             has_recursion: false,
-            display_name: "forbidden-conserved-progress-amplifier-2x".into(),
+            display_name: "conserved-progress-desired-amplifier-2x".into(),
         },
         vec![
             EmlNode {
@@ -281,13 +286,68 @@ fn conserved_progress_source_is_closed_exactly_once_and_existing_threshold_bound
     ));
 
     let amplifier = amplifying_eml(&fixture);
-    assert!(matches!(
-        admit(
-            &fixture,
-            &amplifier,
-            ActionBandConservedProgressBoundSourceSpec::GuYangRealized,
+    let amplified = admit(
+        &fixture,
+        &amplifier,
+        ActionBandConservedProgressBoundSourceSpec::GuYangRealized,
+    )
+    .expect("conserved EML computes desired quantity before the native clamp");
+    assert_eq!(amplified.bands()[0].eml_program(), Some(EmlTreeId(17)));
+
+    let rf_plan = rf_plan(&fixture);
+    let native = ActionBandNativeLaneAdmission::from_existing_surfaces(
+        &fixture.registry,
+        &[fixture.feedback_output],
+        std::slice::from_ref(&rf_plan),
+        &[],
+        &ThresholdRegistry::new(),
+    );
+    let active = [ActionBandActiveInstance::new(
+        amplified.templates()[0].index(),
+        SlotIndex::new(0),
+        [0.0; 4],
+    )];
+    let reapplied = [
+        ActionBandEmissionBindingGpu::rf_claim(fixture.rf_claim.raw_u32())
+            .with_conserved_progress_bound_source(
+                ActionBandEmissionBindingGpu::CONSERVED_BOUND_RF_GRANT,
+            ),
+        ActionBandEmissionBindingGpu::property_next(
+            fixture.feedback_output.raw_u32(),
+            simthing_gpu::ActionBandPropertyWrite::Set,
         ),
-        Err(ActionBandAdmissionError::ConservedProgressEmlPayloadForbidden { tree_id: 17, .. })
+    ];
+    assert!(matches!(
+        compile_action_band_gpu_execution_with_native_lanes(
+            &amplified, &amplifier, &reapplied, &active, &native,
+        ),
+        Err(ActionBandExecutionCompileError::InvalidConservedProgressBinding { .. })
+    ));
+
+    let mut ordinary_door = ActionBandSessionBuildDoor::new();
+    let ordinary = ordinary_door
+        .admit_once_at_session_build(
+            &session_spec(&fixture, None),
+            &fixture.registry,
+            &eml,
+            std::slice::from_ref(&fixture.threshold),
+        )
+        .unwrap();
+    let invalid_fifth = [
+        ActionBandEmissionBindingGpu::rf_claim(fixture.rf_claim.raw_u32())
+            .with_conserved_progress_bound_source(4),
+    ];
+    assert!(matches!(
+        compile_action_band_gpu_execution_with_native_lanes(
+            ordinary,
+            &eml,
+            &invalid_fifth,
+            &active,
+            &native,
+        ),
+        Err(ActionBandExecutionCompileError::Kernel(
+            simthing_gpu::ActionBandExecutionError::InvalidTableSpan
+        ))
     ));
 }
 
@@ -375,7 +435,7 @@ fn run_resident_progress(
     initial: &[f32],
     plan: &simthing_gpu::ActionBandExecutionPlan,
     rf_plan: &CompiledAccumulatorOpPlan,
-) -> (f32, ResidentPathProbe) {
+) -> (f32, f32, f32, ResidentPathProbe) {
     let mut sparse_phase5_readbacks = 0;
     let mut proof_result_readbacks = 0;
     assert_eq!(
@@ -426,6 +486,7 @@ fn run_resident_progress(
         &allocator,
     );
     assert_eq!(deltas.len(), 1, "real Phase-5 crossing");
+    let native_flux = deltas[0].post_value();
     let crossings = plan.crossings_from_sealed(&deltas).unwrap();
     assert_eq!(crossings.crossing_count(), 1);
 
@@ -461,6 +522,8 @@ fn run_resident_progress(
     proof_result_readbacks += 1;
     (
         result[fixture.rf_result.raw()],
+        result[fixture.feedback_output.raw()],
+        native_flux,
         ResidentPathProbe {
             field: FieldSweepCallGraphProbe::observe(&field),
             sparse_phase5_readbacks,
@@ -488,7 +551,7 @@ fn compile_resident_plan(
     simthing_gpu::ActionBandExecutionPlan,
     CompiledAccumulatorOpPlan,
 ) {
-    let eml = empty_eml();
+    let eml = amplifying_eml(fixture);
     let frozen = admit(
         fixture,
         &eml,
@@ -498,7 +561,7 @@ fn compile_resident_plan(
     let rf_plan = rf_plan(fixture);
     let native = ActionBandNativeLaneAdmission::from_existing_surfaces(
         &fixture.registry,
-        &[],
+        &[fixture.feedback_output],
         std::slice::from_ref(&rf_plan),
         &[],
         &ThresholdRegistry::new(),
@@ -506,9 +569,13 @@ fn compile_resident_plan(
     let compiled = compile_action_band_gpu_execution_with_native_lanes(
         &frozen,
         &eml,
-        &[ActionBandEmissionBindingGpu::rf_claim(
-            fixture.rf_claim.raw_u32(),
-        )],
+        &[
+            ActionBandEmissionBindingGpu::rf_claim(fixture.rf_claim.raw_u32()),
+            ActionBandEmissionBindingGpu::property_next(
+                fixture.feedback_output.raw_u32(),
+                simthing_gpu::ActionBandPropertyWrite::Set,
+            ),
+        ],
         &[ActionBandActiveInstance::new(
             frozen.templates()[0].index(),
             SlotIndex::new(0),
@@ -549,12 +616,25 @@ fn real_gu_yang_resident_output_bounds_rf_progress_without_duplicate_solve_or_cp
     let restored = gu_yang(&fx, 1.0);
     let (plan, rf_plan) = compile_resident_plan(&fx);
 
-    let (high_progress, high_probe) =
+    let (high_progress, high_desired, high_flux, high_probe) =
         run_resident_progress(&ctx, &fx, &high, &initial, &plan, &rf_plan);
-    let (low_progress, low_probe) =
+    let (low_progress, low_desired, low_flux, low_probe) =
         run_resident_progress(&ctx, &fx, &low, &initial, &plan, &rf_plan);
-    let (restored_progress, restored_probe) =
+    let (restored_progress, restored_desired, restored_flux, restored_probe) =
         run_resident_progress(&ctx, &fx, &restored, &initial, &plan, &rf_plan);
+
+    for (progress, desired, flux) in [
+        (high_progress, high_desired, high_flux),
+        (low_progress, low_desired, low_flux),
+        (restored_progress, restored_desired, restored_flux),
+    ] {
+        assert_eq!(desired.to_bits(), (2.0 * flux).to_bits());
+        assert_eq!(
+            progress.to_bits(),
+            flux.to_bits(),
+            "native q_flux clamps the amplified q_desired"
+        );
+    }
 
     assert!(
         low_progress < high_progress,
@@ -585,7 +665,7 @@ fn real_gu_yang_resident_output_bounds_rf_progress_without_duplicate_solve_or_cp
     let signed_initial = values(&signed_fixture, -0.8, -0.1);
     let signed_registrations = gu_yang(&signed_fixture, 1.0);
     let (signed_plan, signed_rf) = compile_resident_plan(&signed_fixture);
-    let (signed_progress, signed_probe) = run_resident_progress(
+    let (signed_progress, signed_desired, signed_flux, signed_probe) = run_resident_progress(
         &ctx,
         &signed_fixture,
         &signed_registrations,
@@ -597,6 +677,8 @@ fn real_gu_yang_resident_output_bounds_rf_progress_without_duplicate_solve_or_cp
         signed_progress < 0.0,
         "native signed order is preserved; no abs(flux)"
     );
+    assert_eq!(signed_desired.to_bits(), (2.0 * signed_flux).to_bits());
+    assert_eq!(signed_progress.to_bits(), signed_flux.to_bits());
     assert_eq!(signed_probe.field.host_readbacks, 0);
 }
 

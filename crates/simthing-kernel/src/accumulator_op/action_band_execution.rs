@@ -80,6 +80,11 @@ pub struct ActionBandEmissionBindingGpu {
 }
 
 impl ActionBandEmissionBindingGpu {
+    pub const CONSERVED_BOUND_NONE: u32 = 0;
+    pub const CONSERVED_BOUND_RF_GRANT: u32 = 1;
+    pub const CONSERVED_BOUND_GU_YANG_AVAILABLE: u32 = 2;
+    pub const CONSERVED_BOUND_GU_YANG_REALIZED: u32 = 3;
+
     fn fixed(
         destination: ActionBandEmissionDestination,
         destination_index: u32,
@@ -138,6 +143,17 @@ impl ActionBandEmissionBindingGpu {
 
     pub fn destination_index(self) -> u32 {
         self.destination_index
+    }
+
+    /// Lower one already-admitted conserved-progress source into the existing
+    /// reserved binding word. Table validation keeps this wire code closed.
+    pub fn with_conserved_progress_bound_source(mut self, source: u32) -> Self {
+        self.auxiliary1 = source;
+        self
+    }
+
+    pub fn conserved_progress_bound_source(self) -> u32 {
+        self.auxiliary1
     }
 }
 
@@ -1355,15 +1371,19 @@ fn validate_tables(
         else {
             return Err(ActionBandExecutionError::InvalidTableSpan);
         };
-        let valid_shape = binding.auxiliary1 == 0
-            && match destination {
-                ActionBandEmissionDestination::PropertyNext => binding.auxiliary0 <= 1,
-                ActionBandEmissionDestination::RfClaim
-                | ActionBandEmissionDestination::CostBand => binding.auxiliary0 == 1,
-                ActionBandEmissionDestination::OverlayEvent
-                | ActionBandEmissionDestination::StructuralRequest
-                | ActionBandEmissionDestination::Telemetry => binding.auxiliary0 == 0,
-            };
+        let valid_shape = matches!(
+            binding.auxiliary1,
+            ActionBandEmissionBindingGpu::CONSERVED_BOUND_NONE
+                ..=ActionBandEmissionBindingGpu::CONSERVED_BOUND_GU_YANG_REALIZED
+        ) && match destination {
+            ActionBandEmissionDestination::PropertyNext => binding.auxiliary0 <= 1,
+            ActionBandEmissionDestination::RfClaim | ActionBandEmissionDestination::CostBand => {
+                binding.auxiliary0 == 1
+            }
+            ActionBandEmissionDestination::OverlayEvent
+            | ActionBandEmissionDestination::StructuralRequest
+            | ActionBandEmissionDestination::Telemetry => binding.auxiliary0 == 0,
+        };
         if !valid_shape {
             return Err(ActionBandExecutionError::InvalidTableSpan);
         }

@@ -568,13 +568,6 @@ pub enum ActionBandAdmissionError {
         band_index: u32,
         binding_index: u32,
     },
-    #[error("ActionBand template `{template_id}` band {band_index} emission binding {binding_index} cannot attach EML program {tree_id} to conserved progress; the native threshold bound is the executable payload")]
-    ConservedProgressEmlPayloadForbidden {
-        template_id: String,
-        band_index: u32,
-        binding_index: u32,
-        tree_id: u32,
-    },
     #[error("ActionBand template `{template_id}` band {band_index} emission binding {binding_index} is conserved-bound more than once")]
     DuplicateConservedProgressBound {
         template_id: String,
@@ -831,16 +824,6 @@ fn compile_conserved_progress_bindings(
                 band_index: spec.band_index,
                 binding_index: spec.emission_binding_index,
             });
-        }
-        if let Some(tree_id) = band.eml_program() {
-            return Err(
-                ActionBandAdmissionError::ConservedProgressEmlPayloadForbidden {
-                    template_id: spec.template_id.clone(),
-                    band_index: spec.band_index,
-                    binding_index: spec.emission_binding_index,
-                    tree_id: tree_id.0,
-                },
-            );
         }
         let threshold = band.threshold_registration();
         let bound_source = match spec.bound_source {

@@ -471,11 +471,9 @@ fn compile_action_band_gpu_execution_inner(
         });
     }
 
-    let conserved_progress_bindings = lower_conserved_progress_bindings(
-        frozen,
-        pre_admitted_emission_bindings,
-        native_lanes.is_some(),
-    )?;
+    let mut emission_bindings = pre_admitted_emission_bindings.to_vec();
+    let conserved_progress_bindings =
+        lower_conserved_progress_bindings(frozen, &mut emission_bindings, native_lanes.is_some())?;
 
     let mut program_ids = BTreeSet::new();
     for template in frozen.templates() {
@@ -669,11 +667,7 @@ fn compile_action_band_gpu_execution_inner(
         });
     }
 
-    let buckets = deterministic_buckets(
-        &bands,
-        &band_binding_indices,
-        pre_admitted_emission_bindings,
-    )?;
+    let buckets = deterministic_buckets(&bands, &band_binding_indices, &emission_bindings)?;
     let mut materialized_instances = active_instances.to_vec();
     materialized_instances.sort_by_key(|instance| (instance.template.raw(), instance.slot.raw()));
     let (dependencies, subordinate_rows) = lower_dependency_rows(frozen, &materialized_instances)?;
@@ -722,7 +716,7 @@ fn compile_action_band_gpu_execution_inner(
         target_data,
         bands,
         band_binding_indices,
-        pre_admitted_emission_bindings.to_vec(),
+        emission_bindings.clone(),
         eml_nodes,
         eml_ranges,
         active_instances,
@@ -746,7 +740,7 @@ fn compile_action_band_gpu_execution_inner(
             .get(span.start() as usize..(span.start() + span.len()) as usize)
             .ok_or(ActionBandExecutionCompileError::InvalidFrozenSpan)?;
         for binding_index in binding_indices {
-            let binding = pre_admitted_emission_bindings
+            let binding = emission_bindings
                 .get(binding_index.raw() as usize)
                 .ok_or(ActionBandExecutionCompileError::InvalidFrozenSpan)?;
             if binding.destination() == ActionBandEmissionDestination::StructuralRequest {
@@ -779,7 +773,7 @@ fn compile_action_band_gpu_execution_inner(
 
 fn lower_conserved_progress_bindings(
     frozen: &FrozenActionBandTemplates,
-    pre_admitted_emission_bindings: &[ActionBandEmissionBindingGpu],
+    emission_bindings: &mut [ActionBandEmissionBindingGpu],
     has_native_lanes: bool,
 ) -> Result<Vec<CompiledActionBandConservedProgressBinding>, ActionBandExecutionCompileError> {
     let mut compiled = Vec::with_capacity(frozen.conserved_progress_bindings().len());
@@ -821,14 +815,24 @@ fn lower_conserved_progress_bindings(
                 },
             );
         }
-        let emission = pre_admitted_emission_bindings
-            .get(admitted.emission_binding().raw() as usize)
+        let emission = emission_bindings
+            .get_mut(admitted.emission_binding().raw() as usize)
             .ok_or(
                 ActionBandExecutionCompileError::InvalidConservedProgressBinding {
                     band_table_index: admitted.band_table_index(),
                     emission_binding_index: admitted.emission_binding().raw(),
                 },
             )?;
+        if emission.conserved_progress_bound_source()
+            != ActionBandEmissionBindingGpu::CONSERVED_BOUND_NONE
+        {
+            return Err(
+                ActionBandExecutionCompileError::InvalidConservedProgressBinding {
+                    band_table_index: admitted.band_table_index(),
+                    emission_binding_index: admitted.emission_binding().raw(),
+                },
+            );
+        }
         match emission.destination() {
             ActionBandEmissionDestination::PropertyNext
             | ActionBandEmissionDestination::RfClaim
@@ -850,6 +854,18 @@ fn lower_conserved_progress_bindings(
                     emission_binding_index: admitted.emission_binding().raw(),
                 },
             )?;
+        let bound_source_code = match admitted.bound_source() {
+            AdmittedActionBandConservedProgressBoundSource::RfGrant(_) => {
+                ActionBandEmissionBindingGpu::CONSERVED_BOUND_RF_GRANT
+            }
+            AdmittedActionBandConservedProgressBoundSource::GuYangAvailable(_) => {
+                ActionBandEmissionBindingGpu::CONSERVED_BOUND_GU_YANG_AVAILABLE
+            }
+            AdmittedActionBandConservedProgressBoundSource::GuYangRealized(_) => {
+                ActionBandEmissionBindingGpu::CONSERVED_BOUND_GU_YANG_REALIZED
+            }
+        };
+        *emission = emission.with_conserved_progress_bound_source(bound_source_code);
         compiled.push(CompiledActionBandConservedProgressBinding {
             template: admitted.template(),
             band_table_index: admitted.band_table_index(),
