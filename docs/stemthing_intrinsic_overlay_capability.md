@@ -1,7 +1,22 @@
 # StemThing Intrinsic Overlay Capability
 ## Engineering-review candidate for closing RF + Field Triad (STEAD / PALMA / Gu-Yang), full EML, CostBand, ActionBand, and Overlay into one recursive SimThing automaton
 
-> **Status: WORKSHOP / ENGINEERING-REVIEW CANDIDATE / UNANCHORED.**
+> **Status: PROMOTED SEMANTIC-CLOSURE ANCHOR (Owner-adjudicated 2026-08-10).**
+>
+> **OWNER RULING — promotion criteria 1 and 2 APPROVED:**
+> **(1) Overlays are intrinsic StemThing actuation state** — with the Owner's clarifying gloss, which is
+> the correct reading of the prohibition: the closure forbids PEER executors, never acting SimThings.
+> Anything that acts — a user seat, a network controller, any would-be "action executor" — is itself a
+> SimThing, which surfaces its auditability as ordinary columns, exposes its API as admitted
+> lanes/templates/bands, and binds to the STEAD field for telemetry.
+> **(2) The core SimThing stem cell is the sole owner, emitter, and possessor of overlays** — every
+> overlay that disburses its values is attached to a SimThing somewhere up the tree.
+>
+> This document is the promoted anchor for the §22.A semantic closure. The §22.B field-solver
+> performance program **remains workshop research** and is explicitly non-blocking. Anchor-table rows
+> ride the rung-mint PR per sequencing. Rung minting follows the recorded order: after the 7.5a/7.5b
+> ActionBand Field-Triad remediation stabilizes, before 8.2 hardens a second actuation path. Exact
+> numbering belongs to the DA.
 >
 > Owner-approved working design, revised 2026-08-10 after engineering review and designer-language stress analysis. This document remains under `docs/workshop/` while the overlay closure is tested, reviewed, and prepared for promotion. It proposes the final semantic closure of the base recursive **StemThing**: the base `SimThing` is the sole semantic owner of overlay origination/emission, retention, reception, routing/filtering, projection, activation/suspension, lifecycle, dissolution, and collapse; ordinary numerical action is expressed by that intrinsic overlay capability rather than by a peer event-execution or behavior subsystem.
 >
@@ -1115,7 +1130,7 @@ This is a capability claim, not a promise that every foreign construct is alread
 ## 17. What is explicitly not proposed
 
 1. No fifth StemThing leg.
-2. No `ActionThing` peer entity.
+2. No `ActionThing` peer entity. *(Owner gloss, adjudication 2026-08-10: this forbids PEER authority, not acting SimThings — an authored controller/actor of any kind is an ordinary SimThing acting through its own bands and overlays, auditable and STEAD-bound by construction.)*
 3. No overlay manager/service as true owner.
 4. No CPU per-generation overlay evaluator as final numerical authority.
 5. No CPU child/action scheduler.
