@@ -1,0 +1,7 @@
+crates/simthing-workshop/src/actionband_spatial_flux_witness_0.rs
+crates/simthing-workshop/src/lib.rs
+crates/simthing-workshop/tests/actionband_spatial_flux_witness_0.rs
+docs/tests/actionband_spatial_flux_witness_0_results.md
+scripts/ci/test_inventory.tsv
+scripts/ci/inspect_justifications.tsv
+crates/simthing-driver/src/session.rs

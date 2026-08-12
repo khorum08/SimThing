@@ -1,0 +1,3 @@
+crates/simthing-workshop/src/multitarget_replay.rs
+crates/simthing-workshop/tests/field_sweep_ir_probe_0.rs
+docs/tests/some_unrelated_workshop_results.md
