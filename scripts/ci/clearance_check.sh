@@ -1854,6 +1854,9 @@ run_selftest() {
     clearance_selftest_live_ops_class_explicit_novelty
     clearance_selftest_live_ops_class_admitted_scope_gap
     clearance_selftest_live_ops_class_clock_substrate_nonregression
+    clearance_selftest_actionband_workshop_witness_clearable
+    clearance_selftest_actionband_workshop_witness_rejects_engine_src
+    clearance_selftest_actionband_workshop_witness_unrelated_workshop_no_match
     clearance_selftest_tp_closed_track_no_longer_clearable
     clearance_selftest_triage_ancestor_evidence_tail_ok
     clearance_selftest_triage_ancestor_code_delta_missing
