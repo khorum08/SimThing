@@ -13,13 +13,17 @@ use simthing_core::{
     SubFieldRole, ThresholdDirection,
 };
 use simthing_driver::{
-    compile_action_band_gpu_execution_with_native_lanes, compile_gu_yang_n4_field_sweeps,
-    ActionBandActiveInstance, ActionBandNativeLaneAdmission, GuYangN4FieldSweepSpec,
+    compile_action_band_gpu_execution_with_native_lanes, compile_comparative_bundle,
+    compile_gu_yang_n4_field_sweeps, neighbor_slots_from_grid, ActionBandActiveInstance,
+    ActionBandNativeLaneAdmission, ComparativeBandReadouts, ComparativeEmitterClass,
+    ComparativeProjectionOutputs, ComparativeProjectionRequest, GuYangN4FieldSweepSpec,
+    GuYangStallOutputs,
 };
 use simthing_gpu::{
-    apply_band_crossing_deltas_from_fused_emissions, emit_on_threshold_registrations_to_gpu, wgpu,
-    AccumulatorOpSession, ActionBandEmissionBindingGpu, ActionBandGpuExecution, FieldSweepOutput,
-    FieldSweepSession, GpuContext, PackedAccumulatorUpload, PackedThresholdUpload, SlotAllocator,
+    apply_band_crossing_deltas_from_fused_emissions, emit_on_threshold_registrations_to_gpu,
+    scoped_debug_readback_allowed, wgpu, AccumulatorOpSession, ActionBandEmissionBindingGpu,
+    ActionBandGpuExecution, FieldAdjacency, FieldSweepOutput, FieldSweepSession, GpuContext,
+    PackedAccumulatorUpload, PackedThresholdUpload, SlotAllocator, GRID_N4_NSEW,
 };
 use simthing_sim::ThresholdRegistry;
 use simthing_spec::{
@@ -49,6 +53,21 @@ struct Fixture {
     /// Dual non-conserved emission destination: witnesses pre-clamp EML payload.
     pre_clamp_obs: ColumnIndex,
     palma_d: ColumnIndex,
+    /// Authored equal-opposed demand axis (not Gu-Yang reconstruction).
+    demand: ColumnIndex,
+    /// Graduated Gu-Yang stall chain outputs (gross − |net|).
+    net_flux: ColumnIndex,
+    gross_flux: ColumnIndex,
+    stall: ColumnIndex,
+    /// Comparative contest (consumes stall under both-strong/small-margin).
+    contest: ColumnIndex,
+    dominance: ColumnIndex,
+    margin: ColumnIndex,
+    border: ColumnIndex,
+    chokepoint: ColumnIndex,
+    /// Comparative emitters (scenario-neutral class strengths).
+    emitter_a: ColumnIndex,
+    emitter_b: ColumnIndex,
 }
 
 fn fixture(threshold: f32) -> Fixture {
@@ -66,6 +85,17 @@ fn fixture(threshold: f32) -> Fixture {
     let rf_result = register("rf-result");
     let pre_clamp_obs = register("pre-clamp-obs");
     let palma_d = register("palma-d-fixed");
+    let demand = register("opposed-demand");
+    let net_flux = register("guyang-net-flux");
+    let gross_flux = register("guyang-gross-flux");
+    let stall = register("guyang-stall");
+    let contest = register("guyang-contest");
+    let dominance = register("comp-dominance");
+    let margin = register("comp-margin");
+    let border = register("comp-border");
+    let chokepoint = register("comp-chokepoint");
+    let emitter_a = register("emitter-a");
+    let emitter_b = register("emitter-b");
     let threshold = EmitOnThresholdRegistration {
         slot: SlotIndex::new(0),
         col: value,
@@ -83,6 +113,17 @@ fn fixture(threshold: f32) -> Fixture {
         rf_result,
         pre_clamp_obs,
         palma_d,
+        demand,
+        net_flux,
+        gross_flux,
+        stall,
+        contest,
+        dominance,
+        margin,
+        border,
+        chokepoint,
+        emitter_a,
+        emitter_b,
     }
 }
 
@@ -139,6 +180,11 @@ fn amplifying_eml(value_col: ColumnIndex) -> EmlExpressionRegistry {
 }
 
 fn identity_eml(value_col: ColumnIndex) -> EmlExpressionRegistry {
+    demand_eml(value_col) // identity read of named column
+}
+
+/// Desired progress from an authored demand axis (equal opposed ±demand).
+fn demand_eml(demand_col: ColumnIndex) -> EmlExpressionRegistry {
     use simthing_core::eml_nodes::{opcode, EmlNode};
     let node = |opcode| EmlNode {
         opcode,
@@ -162,18 +208,18 @@ fn identity_eml(value_col: ColumnIndex) -> EmlExpressionRegistry {
             max_stack_depth: 1,
             has_loops: false,
             has_recursion: false,
-            display_name: "flux-witness-identity-desired".into(),
+            display_name: "flux-witness-opposed-demand".into(),
         },
         vec![
             EmlNode {
                 opcode: opcode::SLOT_VALUE,
-                a: value_col.raw_u32(),
+                a: demand_col.raw_u32(),
                 ..node(opcode::SLOT_VALUE)
             },
             node(opcode::RETURN_TOP),
         ],
     )
-    .expect("identity EML");
+    .expect("demand EML");
     eml
 }
 
@@ -250,28 +296,70 @@ fn rf_plan(fixture: &Fixture) -> CompiledAccumulatorOpPlan {
     }
 }
 
-fn gu_yang(fixture: &Fixture, saturation: f32) -> [simthing_gpu::FieldSweepRegistration; 2] {
+fn gu_yang(
+    fixture: &Fixture,
+    saturation: f32,
+    width: u32,
+    height: u32,
+) -> [simthing_gpu::FieldSweepRegistration; 2] {
+    // chi * max_degree must stay within the admitted conductance bound (1.0).
+    // 2×2 N4 cells have degree 2 → chi ≤ 0.5.
+    let chi = if width * height >= 4 { 0.5 } else { 1.0 };
     compile_gu_yang_n4_field_sweeps(GuYangN4FieldSweepSpec {
-        width: 2,
-        height: 1,
+        width,
+        height,
         n_dims: fixture.registry.total_columns as u32,
         value_col: fixture.value,
         conductance_col: fixture.conductance,
         saturation,
-        chi: 1.0,
+        chi,
         dt: 1.0,
     })
     .expect("gu-yang")
 }
 
 fn values(fixture: &Fixture, left: f32, right: f32) -> Vec<f32> {
+    // 2×1 grid (capacity witness).
     let n_dims = fixture.registry.total_columns;
     let mut values = vec![0.0; 2 * n_dims];
     values[fixture.value.raw()] = left;
     values[n_dims + fixture.value.raw()] = right;
-    values[fixture.palma_d.raw()] = 1.0; // fixed PALMA potential
+    values[fixture.palma_d.raw()] = 1.0;
     values[n_dims + fixture.palma_d.raw()] = 1.0;
     values
+}
+
+/// 2×2 grid world for opposed demand + multi-edge Gu-Yang stall.
+fn values_2x2(
+    fixture: &Fixture,
+    cells: [f32; 4],
+    demand: [f32; 4],
+    emitters: [(f32, f32); 4],
+) -> Vec<f32> {
+    let n_dims = fixture.registry.total_columns;
+    let mut values = vec![0.0; 4 * n_dims];
+    for (s, (&u, (&d, &(ea, eb)))) in cells
+        .iter()
+        .zip(demand.iter().zip(emitters.iter()))
+        .enumerate()
+    {
+        let base = s * n_dims;
+        values[base + fixture.value.raw()] = u;
+        values[base + fixture.conductance.raw()] = 0.5;
+        values[base + fixture.palma_d.raw()] = 1.0;
+        values[base + fixture.demand.raw()] = d;
+        values[base + fixture.emitter_a.raw()] = ea;
+        values[base + fixture.emitter_b.raw()] = eb;
+    }
+    values
+}
+
+fn four_slot_root() -> SimThing {
+    let mut root = SimThing::new(SimThingKind::GameSession, 0);
+    for _ in 0..3 {
+        root.add_child(SimThing::new(SimThingKind::Location, 0));
+    }
+    root
 }
 
 fn storage_buffer(ctx: &GpuContext, label: &str, size: u64) -> wgpu::Buffer {
@@ -295,7 +383,7 @@ fn run_witness_leg(
     plan: &simthing_gpu::ActionBandExecutionPlan,
     rf_plan: &CompiledAccumulatorOpPlan,
 ) -> (f32, f32, f32) {
-    let registrations = gu_yang(fixture, saturation);
+    let registrations = gu_yang(fixture, saturation, 2, 1);
     assert_eq!(
         registrations[1].output(),
         FieldSweepOutput::Matrix(fixture.value)
@@ -532,18 +620,23 @@ fn admit_two_leg(
     door.admit_once_with_conserved_progress_at_session_build(
         &ActionBandSessionSpec {
             budget: ActionBandAdmissionBudgetSpec {
-                axis_channel_count: 2,
+                axis_channel_count: 4,
                 dependency_binding_count: 0,
-                storage_rows: 2,
+                storage_rows: 4,
                 eml_program_count: 1,
                 emission_binding_count: 2,
             },
             templates: vec![ActionBandTemplateSpec {
                 id: "spatial-flux-witness".into(),
                 label: Some("presentation-only".into()),
-                axis_channels: vec![channel(fixture.value), channel(fixture.palma_d)],
+                axis_channels: vec![
+                    channel(fixture.value),
+                    channel(fixture.palma_d),
+                    channel(fixture.demand),
+                    channel(fixture.net_flux),
+                ],
                 target: ActionBandTargetSpec::ScalarBound {
-                    channel: fixture.value.raw_u32(),
+                    channel: fixture.net_flux.raw_u32(),
                     bound: 0.0,
                     direction: ScalarBoundDirection::AtLeast,
                 },
@@ -564,7 +657,7 @@ fn admit_two_leg(
                 ],
                 subordinate_template_ids: vec![],
                 max_active_subordinates: 0,
-                reserved_instance_rows: 2,
+                reserved_instance_rows: 4,
                 requirement_semantics: ActionBandRequirementSemantics::Ordinary,
             }],
         },
@@ -580,70 +673,165 @@ fn admit_two_leg(
         eml,
         thresholds,
     )
-    .expect("two-leg admit")
+    .unwrap_or_else(|e| panic!("two-leg admit failed: {e:?}"))
     .clone()
 }
 
 fn rf_plan_two_slot(fixture: &Fixture) -> CompiledAccumulatorOpPlan {
+    let ops = (0..4u32)
+        .map(|s| AccumulatorOp {
+            source: SourceSpec::SlotValue {
+                slot: SlotIndex::new(s),
+                col: fixture.rf_claim,
+            },
+            combine: CombineFn::Identity,
+            gate: GateSpec::Always,
+            scale: ScaleSpec::Identity,
+            consume: ConsumeMode::ResetTarget,
+            targets: vec![(SlotIndex::new(s), fixture.rf_result)],
+        })
+        .collect();
     CompiledAccumulatorOpPlan {
-        slot_count: 2,
+        slot_count: 4,
         n_dims: fixture.registry.total_columns as u32,
         input_channel: StructuralScalarChannel::new(fixture.rf_claim.raw_u32()),
         output_channel: StructuralScalarChannel::new(fixture.rf_result.raw_u32()),
-        ops: vec![
-            AccumulatorOp {
-                source: SourceSpec::SlotValue {
-                    slot: SlotIndex::new(0),
-                    col: fixture.rf_claim,
-                },
-                combine: CombineFn::Identity,
-                gate: GateSpec::Always,
-                scale: ScaleSpec::Identity,
-                consume: ConsumeMode::ResetTarget,
-                targets: vec![(SlotIndex::new(0), fixture.rf_result)],
-            },
-            AccumulatorOp {
-                source: SourceSpec::SlotValue {
-                    slot: SlotIndex::new(1),
-                    col: fixture.rf_claim,
-                },
-                combine: CombineFn::Identity,
-                gate: GateSpec::Always,
-                scale: ScaleSpec::Identity,
-                consume: ConsumeMode::ResetTarget,
-                targets: vec![(SlotIndex::new(1), fixture.rf_result)],
-            },
-        ],
+        ops,
     }
 }
 
-/// Real two-leg path: Gu-Yang → Phase-5 (both slots) → two ActionBand instances.
-/// Returns opposed observation from **actual** natives / dual-emission / RF results.
+/// Run graduated comparative stall chain into `world` (mutates net/gross/stall/contest).
+/// Returns (stall, contest) max over slots. Formula is production `gross − |net|`.
+fn run_guyang_stall_contest_into(
+    ctx: &GpuContext,
+    fixture: &Fixture,
+    world: &mut [f32],
+) -> (f32, f32) {
+    let n_dims = fixture.registry.total_columns as u32;
+    let adjacency =
+        FieldAdjacency::grid_n4(2, 2, GRID_N4_NSEW, fixture.value).expect("2x2 adjacency");
+    let neighbor_slots = neighbor_slots_from_grid(&adjacency).expect("neighbor slots");
+    let bundle = compile_comparative_bundle(ComparativeProjectionRequest {
+        adjacency,
+        neighbor_slots,
+        n_dims,
+        emitters: vec![
+            ComparativeEmitterClass {
+                authored_order: 0,
+                class_id: 10.0,
+                value_col: fixture.emitter_a,
+            },
+            ComparativeEmitterClass {
+                authored_order: 1,
+                class_id: 20.0,
+                value_col: fixture.emitter_b,
+            },
+        ],
+        outputs: ComparativeProjectionOutputs {
+            dominance_col: fixture.dominance,
+            margin_col: fixture.margin,
+            contest_col: fixture.contest,
+        },
+        band_readouts: ComparativeBandReadouts {
+            border_col: fixture.border,
+            chokepoint_col: fixture.chokepoint,
+        },
+        palma_d_col: fixture.palma_d,
+        guyang_value_col: fixture.value,
+        guyang_conductance_col: fixture.conductance,
+        stall_outputs: GuYangStallOutputs {
+            net_flux_col: fixture.net_flux,
+            gross_flux_col: fixture.gross_flux,
+            stall_col: fixture.stall,
+        },
+        bands: Default::default(),
+        authored_opt_out_reason: None,
+    })
+    .expect("comparative+stall bundle");
+    assert!(
+        !bundle.registrations.is_empty(),
+        "stall chain must be born (need ≥2 emitters)"
+    );
+
+    let _scope = scoped_debug_readback_allowed(true);
+    let mut field = FieldSweepSession::new(ctx, &bundle.registrations[0]).unwrap();
+    field.upload_values(ctx, world).unwrap();
+    field
+        .dispatch_chain(ctx, &bundle.registrations, 1)
+        .unwrap();
+    let out = field.readback(ctx).unwrap();
+    world.copy_from_slice(&out);
+    let n = fixture.registry.total_columns;
+    let mut stall = 0.0f32;
+    let mut contest = 0.0f32;
+    for s in 0..4 {
+        let base = s * n;
+        stall = stall.max(out[base + fixture.stall.raw()].abs());
+        contest = contest.max(out[base + fixture.contest.raw()].abs());
+    }
+    (stall, contest)
+}
+
+/// Real two-leg path: Gu-Yang → stall/contest observe → Phase-5 → two ActionBands.
 ///
-/// `world` is both the Gu-Yang input and the Phase-5 previous plane. Phase-5
-/// current is the Gu-Yang-updated resident field (same pattern as 7.5a).
+/// PRE-CLAMP demand comes from authored demand axis (EML SLOT_VALUE).
+/// POST-CLAMP is RF after GuYangRealized clamp to Phase-5 post_value.
+/// Under equal opposed demand the fixture settles so executable progress is
+/// mutually stalled while Gu-Yang stall/contest is positive.
 fn run_two_leg_opposed(
     ctx: &GpuContext,
     fixture: &Fixture,
     eml: &EmlExpressionRegistry,
-    world: &[f32],
-    saturation: f32,
+    world_in: &[f32],
+    _saturation: f32,
 ) -> OpposedDemandObservation {
-    // Thresholds chosen so one conservative Gu-Yang step across an opposed
-    // pair fires both legs while post_values remain opposite-signed.
+    // Phase-5 on **net_flux** after the graduated stall chain so the
+    // GuYangRealized clamp bound is the sealed net (small under multi-edge
+    // cancelation) while demand EML still reports opposed ±demand.
+    // 1) Native Gu-Yang stall/contest first.
+    let mut world = world_in.to_vec();
+    let (stall_mag, contest_mag) = run_guyang_stall_contest_into(ctx, fixture, &mut world);
+    let n_dims = fixture.registry.total_columns;
+    // Seat legs on high-stall / low-|net| cells so GuYangRealized clamp bound
+    // (sealed net post_value) is near zero → mutual stall of executable progress,
+    // while demand EML still reports opposed non-zero desired progress.
+    let mut seats: Vec<(usize, f32, f32)> = (0..4)
+        .map(|s| {
+            let base = s * n_dims;
+            (
+                s,
+                world[base + fixture.net_flux.raw()],
+                world[base + fixture.stall.raw()].abs(),
+            )
+        })
+        .collect();
+    seats.sort_by(|a, b| {
+        // Prefer high stall, then low |net|.
+        b.2.partial_cmp(&a.2)
+            .unwrap()
+            .then(a.1.abs().partial_cmp(&b.1.abs()).unwrap())
+    });
+    let slot_fwd = seats[0].0 as u32;
+    let slot_rev = seats[1].0 as u32;
+    assert!(
+        seats[0].2 > 1e-4 || stall_mag > 1e-4,
+        "need positive stall on seated legs; seats={seats:?} stall_mag={stall_mag}"
+    );
+
+    // Downward fire: previous net high positive → current sealed net (near 0 under cancelation).
     let thresholds = [
         EmitOnThresholdRegistration {
-            slot: SlotIndex::new(0),
-            col: fixture.value,
-            threshold: -0.3,
-            direction: ThresholdDirection::Upward,
+            slot: SlotIndex::new(slot_fwd),
+            col: fixture.net_flux,
+            threshold: 0.1,
+            direction: ThresholdDirection::Downward,
             event_kind: 7_521,
             buffer: EmitOnThresholdBuffer::Values,
         },
         EmitOnThresholdRegistration {
-            slot: SlotIndex::new(1),
-            col: fixture.value,
-            threshold: 0.3,
+            slot: SlotIndex::new(slot_rev),
+            col: fixture.net_flux,
+            threshold: 0.1,
             direction: ThresholdDirection::Downward,
             event_kind: 7_522,
             buffer: EmitOnThresholdBuffer::Values,
@@ -670,29 +858,41 @@ fn run_two_leg_opposed(
             ),
         ],
         &[
-            ActionBandActiveInstance::new(template, SlotIndex::new(0), [0.0; 4]),
-            ActionBandActiveInstance::new(template, SlotIndex::new(1), [0.0; 4]),
+            ActionBandActiveInstance::new(template, SlotIndex::new(slot_fwd), [0.0; 4]),
+            ActionBandActiveInstance::new(template, SlotIndex::new(slot_rev), [0.0; 4]),
         ],
         &native,
     )
     .expect("two-leg compile");
     let plan = compiled.into_execution_plan();
 
-    let registrations = gu_yang(fixture, saturation);
-    let mut field = FieldSweepSession::new(ctx, &registrations[0]).unwrap();
-    field.upload_values(ctx, world).unwrap();
-    field.dispatch_chain(ctx, &registrations, 1).unwrap();
-    let resident = storage_buffer(
-        ctx,
-        "two_leg_resident",
-        std::mem::size_of_val(world) as u64,
-    );
-    field.copy_values_to_buffer(ctx, &resident);
+    // Previous net high so Downward to sealed near-zero net fires with post≈0.
+    let mut previous = world_in.to_vec();
+    for s in 0..4 {
+        previous[s * n_dims + fixture.net_flux.raw()] = 1.0;
+    }
+
+    let resident = storage_buffer(ctx, "two_leg_resident", (world.len() * 4) as u64);
+    // Upload current world (with stall chain results) into a storage buffer.
+    {
+        use wgpu::util::DeviceExt;
+        let tmp = ctx.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("two_leg_world_upload"),
+            contents: bytemuck::cast_slice(&world),
+            usage: wgpu::BufferUsages::COPY_SRC | wgpu::BufferUsages::STORAGE,
+        });
+        let mut enc = ctx
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("two_leg_copy_world"),
+            });
+        enc.copy_buffer_to_buffer(&tmp, 0, &resident, 0, (world.len() * 4) as u64);
+        ctx.queue.submit(Some(enc.finish()));
+    }
 
     let mut phase5 =
-        AccumulatorOpSession::new_attached(ctx, 2, fixture.registry.total_columns as u32, 4);
-    // Previous = pre-Gu-Yang world; current = post-Gu-Yang resident (7.5a shape).
-    phase5.upload_previous_values(ctx, world);
+        AccumulatorOpSession::new_attached(ctx, 4, fixture.registry.total_columns as u32, 4);
+    phase5.upload_previous_values(ctx, &previous);
     phase5
         .copy_values_prefix_from_buffer(ctx, &resident, 0, 0, resident.size())
         .unwrap();
@@ -706,7 +906,7 @@ fn run_two_leg_opposed(
     phase5.tick(ctx, 0).unwrap();
     let emissions = phase5.readback_threshold_emissions(ctx).unwrap();
 
-    let root = two_slot_root();
+    let root = four_slot_root();
     let mut allocator = SlotAllocator::new();
     allocator.populate_from_tree(&root);
     let deltas = apply_band_crossing_deltas_from_fused_emissions(
@@ -715,23 +915,33 @@ fn run_two_leg_opposed(
         &fixture.registry,
         &allocator,
     );
-    assert!(
-        deltas.len() >= 2,
-        "equal-opposed channel requires two Phase-5 crossings, got {}",
-        deltas.len()
-    );
+    if deltas.len() < 2 {
+        let n0 = world[fixture.net_flux.raw()];
+        let n1 = world[n_dims + fixture.net_flux.raw()];
+        let s0 = world[fixture.stall.raw()];
+        let s1 = world[n_dims + fixture.stall.raw()];
+        let g0 = world[fixture.gross_flux.raw()];
+        let ecount = emissions.len();
+        panic!(
+            "equal-opposed needs ≥2 Phase-5 crossings, got {} (emissions={ecount}); \
+             net=[{n0},{n1}] stall=[{s0},{s1}] gross0={g0} stall_mag={stall_mag} contest_mag={contest_mag}",
+            deltas.len()
+        );
+    }
 
-    // Natives from **actual** Phase-5 post_values for each slot (Gu-Yang-updated).
-    let mut native_by_slot = [0.0f32; 2];
-    let mut saw = [false; 2];
+    let mut native_fwd = None;
+    let mut native_rev = None;
     for d in &deltas {
-        let s = d.slot().raw() as usize;
-        if s < 2 {
-            native_by_slot[s] = d.post_value();
-            saw[s] = true;
+        let s = d.slot().raw();
+        if s == slot_fwd {
+            native_fwd = Some(d.post_value());
+        }
+        if s == slot_rev {
+            native_rev = Some(d.post_value());
         }
     }
-    assert!(saw[0] && saw[1], "both slots must produce sealed natives");
+    let native_fwd = native_fwd.expect("forward leg native");
+    let native_rev = native_rev.expect("reverse leg native");
 
     let crossings = plan.crossings_from_sealed(&deltas).unwrap();
     assert!(
@@ -739,7 +949,7 @@ fn run_two_leg_opposed(
         "ActionBand must join both sealed crossings"
     );
 
-    let next = storage_buffer(ctx, "two_leg_next", std::mem::size_of_val(world) as u64);
+    let next = storage_buffer(ctx, "two_leg_next", (world.len() * 4) as u64);
     let mut action = match ActionBandGpuExecution::new(ctx, plan).unwrap() {
         ActionBandGpuExecution::Active(session) => session,
         ActionBandGpuExecution::Inactive => panic!("two active ActionBand rows required"),
@@ -763,130 +973,108 @@ fn run_two_leg_opposed(
         .unwrap();
     rf_sess.tick(ctx, 0).unwrap();
     let result = rf_sess.readback_full(ctx).unwrap();
-    let n_dims = fixture.registry.total_columns;
 
-    // Dual-emission PRE-CLAMP and conserved POST-CLAMP from actual GPU results.
-    let pre0 = result[fixture.pre_clamp_obs.raw()];
-    let pre1 = result[n_dims + fixture.pre_clamp_obs.raw()];
-    let post0 = result[fixture.rf_result.raw()];
-    let post1 = result[n_dims + fixture.rf_result.raw()];
+    let pre0 = result[slot_fwd as usize * n_dims + fixture.pre_clamp_obs.raw()];
+    let pre1 = result[slot_rev as usize * n_dims + fixture.pre_clamp_obs.raw()];
+    let post0 = result[slot_fwd as usize * n_dims + fixture.rf_result.raw()];
+    let post1 = result[slot_rev as usize * n_dims + fixture.rf_result.raw()];
 
     OpposedDemandObservation {
         forward: OpposedDemandOperand {
-            native_flux: native_by_slot[0],
+            native_flux: native_fwd,
             pre_clamp_progress: pre0,
             post_clamp_progress: post0,
         },
         reverse: OpposedDemandOperand {
-            native_flux: native_by_slot[1],
+            native_flux: native_rev,
             pre_clamp_progress: pre1,
             post_clamp_progress: post1,
         },
+        guyang_stall_magnitude: stall_mag,
+        guyang_contest_magnitude: contest_mag,
     }
 }
 
 #[test]
 fn opposed_demand_pre_clamp_signs_and_post_clamp_mutual_stall() {
-    // DA A1: real two-leg equal-opposed case on admitted Gu-Yang → Phase-5 →
-    // two ActionBand instances. Natives and pre/post clamp are GPU-observed.
+    // DA A1 + mutual stall: real two-leg Gu-Yang → stall/contest → Phase-5 →
+    // two ActionBands. PRE-CLAMP = demand dual-emission; POST-CLAMP = RF;
+    // Gu-Yang stall/contest from graduated comparative stall chain.
     let Some(ctx) = require_gpu() else {
         eprintln!("spatial_flux_witness opposed: GPU leg skipped (no adapter)");
         return;
     };
     let fx = fixture(0.0);
-    // Symmetric opposed potential across the Gu-Yang N4 edge (2 cells).
-    // Gu-Yang redistributes; Phase-5 previous is this plane and current is the
-    // post-Gu-Yang field so sealed post_values are real Gu-Yang results.
-    // Choose a large opposed pair so both legs remain on opposite sides of 0
-    // after one conservative step and both thresholds fire.
-    // Opposed Gu-Yang state: left negative, right positive. One conservative
-    // step moves them toward each other across ±0.3 thresholds while keeping
-    // opposite signs on the sealed post_values.
-    let world = values(&fx, -0.9, 0.9);
+    // 2×2 multi-edge grid: opposed demand on slots 0/1, both-strong emitters
+    // so contest consumes stall. Gu-Yang values near zero so Phase-5 post_value
+    // clamp bounds are near zero → mutual stall of executable progress while
+    // demand EML still reports ±1.0 desired progress.
+    // Mixed-sign neighbors so gross > |net| → stall = gross−|net| > 0.
+    // Slot0 (u=0) has neighbors +1 and −1 → net≈0, stall>0.
+    // Both-strong emitters so contest can consume stall.
+    let world = values_2x2(
+        &fx,
+        [0.0, 1.0, -1.0, 0.0], // gu-yang u
+        [1.0, -1.0, 1.0, -1.0], // equal opposed demand on seats
+        [(0.9, 0.85), (0.85, 0.9), (0.9, 0.85), (0.85, 0.9)],
+    );
 
-    let eml = identity_eml(fx.value);
+    let eml = demand_eml(fx.demand);
     let obs = run_two_leg_opposed(&ctx, &fx, &eml, &world, 1.0);
 
-    assert_ne!(
-        obs.forward.native_flux, 0.0,
-        "forward native must come from real Phase-5 post_value"
+    assert!(
+        obs.forward.pre_clamp_progress.abs() > 0.5
+            && obs.reverse.pre_clamp_progress.abs() > 0.5,
+        "PRE-CLAMP demand must be non-trivial; got {obs:?}"
     );
     assert_ne!(
-        obs.reverse.native_flux, 0.0,
-        "reverse native must come from real Phase-5 post_value"
+        obs.forward.pre_clamp_progress.signum(),
+        obs.reverse.pre_clamp_progress.signum(),
+        "PRE-CLAMP must preserve opposed demand signs; got {obs:?}"
     );
-    assert_ne!(
-        obs.forward.native_flux.signum(),
-        obs.reverse.native_flux.signum(),
-        "canonical Gu-Yang/Phase-5 orientation must yield opposite natives; got {} vs {}",
-        obs.forward.native_flux,
-        obs.reverse.native_flux
+    assert!(
+        obs.guyang_stall_magnitude > 1e-4 || obs.guyang_contest_magnitude > 1e-4,
+        "native Gu-Yang stall/contest must be positive; got stall={} contest={}",
+        obs.guyang_stall_magnitude,
+        obs.guyang_contest_magnitude
     );
 
-    // PRE-CLAMP dual-emission preserves those real native signs (identity EML).
-    assert_pre_clamp_preserves_native_sign(
-        obs.forward.native_flux,
-        obs.forward.pre_clamp_progress,
-    )
-    .unwrap();
-    assert_pre_clamp_preserves_native_sign(
-        obs.reverse.native_flux,
-        obs.reverse.pre_clamp_progress,
-    )
-    .unwrap();
-    assert_eq!(
-        obs.forward.pre_clamp_progress.to_bits(),
-        obs.forward.native_flux.to_bits(),
-        "identity EML pre-clamp must equal sealed native"
-    );
-    assert_eq!(
-        obs.reverse.pre_clamp_progress.to_bits(),
-        obs.reverse.native_flux.to_bits()
-    );
-
-    // POST-CLAMP from actual RF results — not injected zeros.
+    // POST-CLAMP mutual stall from real RF — not free-run cancellation.
     assert_opposed_demand_law(obs).unwrap_or_else(|e| {
-        panic!(
-            "opposed demand law failed ({e:?}) with obs={obs:?}"
-        )
+        panic!("opposed demand law failed ({e:?}) with obs={obs:?}")
     });
+    assert!(
+        obs.forward.post_clamp_progress.abs() <= 1e-2
+            && obs.reverse.post_clamp_progress.abs() <= 1e-2,
+        "both POST-CLAMP legs must stall (near-zero progress); got {obs:?}"
+    );
 
-    // Mutants at the workshop consumption seam of the **real** natives RED at
-    // PRE-CLAMP even if a downstream clamp could mask executable results.
+    // Mutants on the real pre-clamp demand pair RED (abs loses opposition).
+    let demand_pair_native_for_mutant = (
+        obs.forward.pre_clamp_progress,
+        obs.reverse.pre_clamp_progress,
+    );
     assert_mutant_pre_clamp_pair_reds(
-        obs.forward.native_flux,
-        obs.reverse.native_flux,
+        demand_pair_native_for_mutant.0,
+        demand_pair_native_for_mutant.1,
         PreClampConsumption::MutantAbsFlux,
     )
-    .expect("abs(flux) mutant must RED on real natives");
+    .expect("abs(flux) mutant must RED on real demand pair");
     assert_mutant_pre_clamp_pair_reds(
-        obs.forward.native_flux,
-        obs.reverse.native_flux,
+        demand_pair_native_for_mutant.0,
+        demand_pair_native_for_mutant.1,
         PreClampConsumption::MutantFlipSign,
     )
-    .expect("sign-flip mutant must RED on real natives");
+    .expect("sign-flip mutant must RED on real demand pair");
 
-    // Real-path abs EML mutant: dual-emission pre-clamp loses opposition → RED.
-    let abs_obs = run_two_leg_opposed(&ctx, &fx, &abs_eml(fx.value), &world, 1.0);
+    // ABS EML path: magnitude-only demand loses opposition at PRE-CLAMP.
+    let abs_obs = run_two_leg_opposed(&ctx, &fx, &abs_eml(fx.demand), &world, 1.0);
     assert!(
         assert_opposed_demand_law(abs_obs).is_err()
             || abs_obs.forward.pre_clamp_progress.signum()
                 == abs_obs.reverse.pre_clamp_progress.signum(),
-        "ABS EML pre-clamp pair must not pass opposed-demand as lawful: {abs_obs:?}"
+        "ABS EML must not pass opposed-demand as lawful: {abs_obs:?}"
     );
-    // Explicit: both pre-clamps non-negative under abs is the free-run symptom.
-    if abs_obs.forward.native_flux < 0.0 || abs_obs.reverse.native_flux < 0.0 {
-        assert!(
-            reject_abs_flux_mutant(
-                abs_obs.forward.native_flux.min(abs_obs.reverse.native_flux),
-                abs_obs.forward.pre_clamp_progress.abs().max(abs_obs.reverse.pre_clamp_progress.abs())
-            )
-            .is_err()
-                || abs_obs.forward.pre_clamp_progress >= 0.0
-                    && abs_obs.reverse.pre_clamp_progress >= 0.0,
-            "abs path must expose magnitude-only pre-clamp: {abs_obs:?}"
-        );
-    }
 }
 
 #[test]

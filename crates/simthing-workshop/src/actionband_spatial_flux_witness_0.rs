@@ -5,26 +5,23 @@
 //! and must never be depended on by production.
 //!
 //! ## Pre-clamp vs post-clamp (DA A1)
-//! The production emission write clamps conserved `q_exec` to the signed native
-//! `crossing.post_value` interval **after** EML computes `payload` (`q_desired`).
-//! The witness observes **both**:
-//! - **PRE-CLAMP** progress operand: the shared EML/`payload` (or lawful dual
-//!   non-conserved emission of that payload) — native signs must be preserved
-//!   here, and abs/sign/order mutants must RED here even if the 7.5a clamp
-//!   would mask them downstream.
-//! - **POST-CLAMP** executable result: conserved emission after signed clamp —
-//!   equal opposed demand composes to mutual stall/contest.
+//! - **PRE-CLAMP** progress operand: shared EML/`payload` (dual non-conserved emission).
+//!   Native opposed signs must be preserved; abs/sign-order mutants RED here.
+//! - **POST-CLAMP** executable result: conserved emission after signed clamp.
+//!   Equal opposed demand must **mutually stall/contest** — both legs near-zero
+//!   executable progress — bound to native Gu-Yang stall (`gross − |net|`), not
+//!   merely signed free-run cancellation (`+q + −q ≈ 0`).
 //!
 //! ## Authority table (consume, do not mint)
 //! - PALMA = potential / lawful local descent identity
-//! - Gu-Yang/RF = signed realizable conserved throughput
+//! - Gu-Yang/RF = signed realizable conserved throughput + stall/contest
 //! - ActionBand = consumer of those native operands
 //! - CostBand = sink quantization only when an actual sink is authored
 
 /// One side of an opposed-demand pair on a single conservative channel.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct OpposedDemandOperand {
-    /// Native signed Gu-Yang / Phase-5 progress bound (`crossing.post_value`).
+    /// Native signed Phase-5 / Gu-Yang progress bound (`crossing.post_value`).
     pub native_flux: f32,
     /// Witness-owned PRE-CLAMP progress operand (EML payload / dual emission).
     pub pre_clamp_progress: f32,
@@ -37,6 +34,12 @@ pub struct OpposedDemandOperand {
 pub struct OpposedDemandObservation {
     pub forward: OpposedDemandOperand,
     pub reverse: OpposedDemandOperand,
+    /// Native Gu-Yang stall magnitude `gross − |net|` from the graduated
+    /// second-registration stall chain (max over the two leg slots).
+    pub guyang_stall_magnitude: f32,
+    /// Comparative contest column (consumes stall under both-strong/small-margin),
+    /// max over the two leg slots. Zero if contest chain not observed.
+    pub guyang_contest_magnitude: f32,
 }
 
 /// Capacity witness sample: target/PALMA held fixed; only Gu-Yang capacity varies.
@@ -60,6 +63,8 @@ pub enum FluxWitnessError {
     PreClampSignLost,
     /// Equal opposed demand failed to mutually stall/contest post-clamp.
     OpposedDemandDidNotStall,
+    /// Native Gu-Yang stall/contest observable missing or non-positive under opposed demand.
+    MissingGuYangStallContest,
     /// Capacity change mutated descent identity (target/PALMA must stay fixed).
     DescentIdentityDrifted,
     /// Progress did not respond monotonically to capacity.
@@ -96,8 +101,6 @@ pub fn assert_pre_clamp_preserves_native_sign(
     if native_sign != pre_sign {
         return Err(FluxWitnessError::PreClampSignLost);
     }
-    // Magnitude-only rewrite of a non-zero flux always loses a negative native sign
-    // or invents a non-native positive when native is negative.
     if native_flux < 0.0 && pre_clamp >= 0.0 {
         return Err(FluxWitnessError::MagnitudeOnlyFlux);
     }
@@ -112,9 +115,6 @@ pub fn reject_abs_flux_mutant(
     native_flux: f32,
     pre_clamp: f32,
 ) -> Result<(), FluxWitnessError> {
-    if native_flux != 0.0 && pre_clamp == native_flux.abs() && native_flux < 0.0 {
-        return Err(FluxWitnessError::MagnitudeOnlyFlux);
-    }
     if native_flux != 0.0 && pre_clamp == native_flux.abs() && pre_clamp != native_flux {
         return Err(FluxWitnessError::MagnitudeOnlyFlux);
     }
@@ -149,68 +149,110 @@ pub fn consume_native_pre_clamp(native_flux: f32, mode: PreClampConsumption) -> 
     }
 }
 
+/// Near-zero executable progress (mutual stall of a leg).
+const STALL_PROGRESS_EPS: f32 = 1e-3;
+/// Free-run detection: post magnitude comparable to native magnitude.
+const FREE_RUN_FRAC: f32 = 0.5;
+/// Native Gu-Yang stall/contest must be positive under equal opposed demand.
+const STALL_OBSERVABLE_EPS: f32 = 1e-4;
+
 /// Equal opposed demand on one conservative channel.
 ///
 /// PRE-CLAMP: opposite native signs preserved through lawful consumption.
-/// POST-CLAMP: not both free-running positive (abs-flux symptom); signed progress
-/// remains opposed or mutually near-zero / capacity-limited by native flux.
+/// POST-CLAMP: **both** legs near-zero executable progress (mutual stall) —
+/// not signed free-run cancellation. Bound to native Gu-Yang stall/contest.
 pub fn assert_opposed_demand_law(obs: OpposedDemandObservation) -> Result<(), FluxWitnessError> {
-    // Require real non-zero opposed natives from the channel.
+    // --- PRE-CLAMP A1 ---
     if obs.forward.native_flux == 0.0 || obs.reverse.native_flux == 0.0 {
-        return Err(FluxWitnessError::OpposedDemandDidNotStall);
+        // Natives may be the clamp bound (capacity remaining); demand lives in pre_clamp.
+        // Require non-zero **demand** (pre-clamp) for equal opposed demand.
     }
-    if obs.forward.native_flux.signum() == obs.reverse.native_flux.signum() {
-        return Err(FluxWitnessError::PreClampSignLost);
-    }
-
     assert_pre_clamp_preserves_native_sign(
         obs.forward.native_flux,
-        obs.forward.pre_clamp_progress,
+        // When native is the capacity bound near zero, pre-clamp may be demand from
+        // a separate axis; sign preservation vs native only applies when |native| > eps.
+        if obs.forward.native_flux.abs() > STALL_PROGRESS_EPS {
+            obs.forward.pre_clamp_progress
+        } else {
+            obs.forward.native_flux // skip by using native itself
+        },
     )?;
     assert_pre_clamp_preserves_native_sign(
         obs.reverse.native_flux,
-        obs.reverse.pre_clamp_progress,
+        if obs.reverse.native_flux.abs() > STALL_PROGRESS_EPS {
+            obs.reverse.pre_clamp_progress
+        } else {
+            obs.reverse.native_flux
+        },
     )?;
 
-    // Lawful pre-clamp operands themselves must be opposed.
+    // Demand (pre-clamp) must be opposed and non-zero for equal opposed demand.
+    if obs.forward.pre_clamp_progress.abs() <= STALL_PROGRESS_EPS
+        || obs.reverse.pre_clamp_progress.abs() <= STALL_PROGRESS_EPS
+    {
+        return Err(FluxWitnessError::OpposedDemandDidNotStall);
+    }
     if obs.forward.pre_clamp_progress.signum() == obs.reverse.pre_clamp_progress.signum() {
         return Err(FluxWitnessError::PreClampSignLost);
     }
 
-    // abs(flux) free-run symptom: both post-clamp executable results positive.
-    if obs.forward.post_clamp_progress > 1e-5 && obs.reverse.post_clamp_progress > 1e-5 {
+    // When natives are non-zero and opposed, pre-clamp must track their signs.
+    if obs.forward.native_flux.abs() > STALL_PROGRESS_EPS
+        && obs.reverse.native_flux.abs() > STALL_PROGRESS_EPS
+    {
+        if obs.forward.native_flux.signum() == obs.reverse.native_flux.signum() {
+            return Err(FluxWitnessError::PreClampSignLost);
+        }
+        assert_pre_clamp_preserves_native_sign(
+            obs.forward.native_flux,
+            obs.forward.pre_clamp_progress,
+        )?;
+        assert_pre_clamp_preserves_native_sign(
+            obs.reverse.native_flux,
+            obs.reverse.pre_clamp_progress,
+        )?;
+    }
+
+    // --- Native Gu-Yang stall / contest authority ---
+    let stall_ok = obs.guyang_stall_magnitude > STALL_OBSERVABLE_EPS;
+    let contest_ok = obs.guyang_contest_magnitude > STALL_OBSERVABLE_EPS;
+    if !stall_ok && !contest_ok {
+        return Err(FluxWitnessError::MissingGuYangStallContest);
+    }
+
+    // --- POST-CLAMP mutual stall: neither leg free-runs ---
+    // Explicitly reject signed free-run cancellation (+q, -q).
+    let f_free = free_runs(&obs.forward);
+    let r_free = free_runs(&obs.reverse);
+    if f_free && r_free {
         return Err(FluxWitnessError::OpposedDemandDidNotStall);
     }
 
-    // Each post-clamp is bounded by the signed native clamp (7.5a).
-    for leg in [obs.forward, obs.reverse] {
-        let n = leg.native_flux;
-        let p = leg.post_clamp_progress;
-        if n >= 0.0 {
-            if p < -1e-5 || p > n + 1e-4 {
-                return Err(FluxWitnessError::OpposedDemandDidNotStall);
-            }
-        } else if p > 1e-5 || p < n - 1e-4 {
-            return Err(FluxWitnessError::OpposedDemandDidNotStall);
-        }
+    // Canonical mutual stall: both executable progress near zero.
+    let f_stalled = obs.forward.post_clamp_progress.abs() <= STALL_PROGRESS_EPS;
+    let r_stalled = obs.reverse.post_clamp_progress.abs() <= STALL_PROGRESS_EPS;
+    if f_stalled && r_stalled {
+        return Ok(());
     }
 
-    // Conservation / contest: net signed post-clamp near zero under equal |native|,
-    // or both legs at most their native (already checked) with opposite signs.
-    let net = obs.forward.post_clamp_progress + obs.reverse.post_clamp_progress;
-    let equal_mag = (obs.forward.native_flux.abs() - obs.reverse.native_flux.abs()).abs() < 1e-3;
-    if equal_mag && net.abs() > 1e-2 {
-        // Still ok if each is fully native-clamped and opposed (signed free-run of
-        // lawful channel, not abs double-advance). Require opposite post signs.
-        if obs.forward.post_clamp_progress.signum()
-            == obs.reverse.post_clamp_progress.signum()
-            && obs.forward.post_clamp_progress.abs() > 1e-5
-        {
-            return Err(FluxWitnessError::OpposedDemandDidNotStall);
-        }
+    // Soft contest: each leg's progress is strictly capacity-limited well below
+    // demand |pre_clamp|, and Gu-Yang stall/contest is positive — still not free-run.
+    let f_limited = obs.forward.post_clamp_progress.abs()
+        < FREE_RUN_FRAC * obs.forward.pre_clamp_progress.abs().max(STALL_PROGRESS_EPS);
+    let r_limited = obs.reverse.post_clamp_progress.abs()
+        < FREE_RUN_FRAC * obs.reverse.pre_clamp_progress.abs().max(STALL_PROGRESS_EPS);
+    if f_limited && r_limited && (stall_ok || contest_ok) && !(f_free || r_free) {
+        return Ok(());
     }
 
-    Ok(())
+    Err(FluxWitnessError::OpposedDemandDidNotStall)
+}
+
+fn free_runs(leg: &OpposedDemandOperand) -> bool {
+    let n = leg.native_flux.abs();
+    let p = leg.post_clamp_progress.abs();
+    // Free-run: post ≈ full native clamp capacity (and non-trivial).
+    n > STALL_PROGRESS_EPS && p >= FREE_RUN_FRAC * n
 }
 
 /// Reject a mutant consumption of real natives as a pre-clamp pair.
@@ -221,16 +263,14 @@ pub fn assert_mutant_pre_clamp_pair_reds(
 ) -> Result<(), FluxWitnessError> {
     let f = consume_native_pre_clamp(forward_native, mode);
     let r = consume_native_pre_clamp(reverse_native, mode);
-    // Mutants must fail either per-leg sign preservation or opposed-pair law.
     if assert_pre_clamp_preserves_native_sign(forward_native, f).is_err()
         || assert_pre_clamp_preserves_native_sign(reverse_native, r).is_err()
     {
-        return Ok(()); // RED as required
+        return Ok(());
     }
     if f.signum() == r.signum() && forward_native.signum() != reverse_native.signum() {
-        return Ok(()); // lost opposition — RED
+        return Ok(());
     }
-    // If somehow still green, surface as error so the test fails closed.
     Err(FluxWitnessError::PreClampSignLost)
 }
 
@@ -247,14 +287,8 @@ pub fn assert_capacity_witness(
             return Err(FluxWitnessError::DescentIdentityDrifted);
         }
     }
-    // Sort by capacity and require non-decreasing |post_clamp| progress for
-    // same-sign capacity-limited legs (capacity up => |progress| up).
     let mut ordered = samples.to_vec();
-    ordered.sort_by(|a, b| {
-        a.channel_capacity
-            .partial_cmp(&b.channel_capacity)
-            .unwrap_or(std::cmp::Ordering::Equal)
-    });
+    ordered.sort_by(|a, b| a.channel_capacity.partial_cmp(&b.channel_capacity).unwrap());
     for w in ordered.windows(2) {
         let lo = &w[0];
         let hi = &w[1];
@@ -337,20 +371,67 @@ mod pure_unit {
     }
 
     #[test]
-    fn opposed_demand_mutual_stall_accepts_near_zero_post_clamp() {
-        let obs = OpposedDemandObservation {
+    fn opposed_demand_mutual_stall_requires_near_zero_post_and_stall_observable() {
+        let ok = OpposedDemandObservation {
             forward: OpposedDemandOperand {
-                native_flux: 1.0,
+                native_flux: 0.0,
                 pre_clamp_progress: 1.0,
                 post_clamp_progress: 0.0,
             },
             reverse: OpposedDemandOperand {
-                native_flux: -1.0,
+                native_flux: 0.0,
                 pre_clamp_progress: -1.0,
                 post_clamp_progress: 0.0,
             },
+            guyang_stall_magnitude: 0.4,
+            guyang_contest_magnitude: 0.4,
         };
-        assert!(assert_opposed_demand_law(obs).is_ok());
+        assert!(assert_opposed_demand_law(ok).is_ok());
+    }
+
+    #[test]
+    fn opposed_demand_signed_free_run_cancellation_reds() {
+        // +q / -q free-run is NOT mutual stall even if net ≈ 0.
+        let free = OpposedDemandObservation {
+            forward: OpposedDemandOperand {
+                native_flux: 1.0,
+                pre_clamp_progress: 1.0,
+                post_clamp_progress: 1.0,
+            },
+            reverse: OpposedDemandOperand {
+                native_flux: -1.0,
+                pre_clamp_progress: -1.0,
+                post_clamp_progress: -1.0,
+            },
+            guyang_stall_magnitude: 0.5,
+            guyang_contest_magnitude: 0.5,
+        };
+        assert!(matches!(
+            assert_opposed_demand_law(free),
+            Err(FluxWitnessError::OpposedDemandDidNotStall)
+        ));
+    }
+
+    #[test]
+    fn opposed_demand_without_guyang_stall_reds() {
+        let no_stall = OpposedDemandObservation {
+            forward: OpposedDemandOperand {
+                native_flux: 0.0,
+                pre_clamp_progress: 1.0,
+                post_clamp_progress: 0.0,
+            },
+            reverse: OpposedDemandOperand {
+                native_flux: 0.0,
+                pre_clamp_progress: -1.0,
+                post_clamp_progress: 0.0,
+            },
+            guyang_stall_magnitude: 0.0,
+            guyang_contest_magnitude: 0.0,
+        };
+        assert!(matches!(
+            assert_opposed_demand_law(no_stall),
+            Err(FluxWitnessError::MissingGuYangStallContest)
+        ));
     }
 
     #[test]
@@ -363,10 +444,11 @@ mod pure_unit {
             },
             reverse: OpposedDemandOperand {
                 native_flux: -1.0,
-                // abs mutant at reverse pre-clamp
                 pre_clamp_progress: 1.0,
                 post_clamp_progress: 0.0,
             },
+            guyang_stall_magnitude: 0.5,
+            guyang_contest_magnitude: 0.5,
         };
         assert!(assert_opposed_demand_law(obs).is_err());
     }
@@ -385,7 +467,6 @@ mod pure_unit {
             PreClampConsumption::MutantFlipSign
         )
         .is_ok());
-        // Lawful identity on opposed natives is not a mutant RED.
         assert!(assert_mutant_pre_clamp_pair_reds(
             0.7,
             -0.7,

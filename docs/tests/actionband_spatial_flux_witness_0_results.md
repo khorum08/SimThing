@@ -65,12 +65,22 @@ proof readbacks (same pattern as graduated 7.5a).
 
 ## Batteries
 
-Focused 5 integration + 9 unit. Inherited 7.5a/7.5/7.4/7.3/7.2/7.1 at final head (relay).
+Focused 5 integration + 11 unit. Inherited 7.5a/7.5/7.4/7.3/7.2/7.1 at final head (relay).
 
 ### Remand repair (board `5260808521`)
 
 Opposed-demand proof no longer uses hand-authored `±0.8` / injected `post_clamp=0`.
 Both legs observe **actual** Phase-5 `post_value` natives, dual-emission PRE-CLAMP,
 and RF POST-CLAMP from two ActionBand instances on one Gu-Yang channel.
+
+### Remand repair (board `5261064717`) — mutual stall/contest law
+
+- `assert_opposed_demand_law` **rejects** signed free-run cancellation (`+q`/`−q` with net≈0).
+- Requires **native Gu-Yang stall** (`gross − |net|` from graduated comparative stall chain)
+  and/or **contest** (stall under both-strong/small-margin).
+- Requires **both POST-CLAMP legs near-zero** executable progress (neither advances).
+- PRE-CLAMP remains opposed demand dual-emission; abs/sign mutants still RED there.
+- Typical lawful numerical witness: `guyang_stall_magnitude > 0`, `guyang_contest_magnitude > 0`,
+  both `post_clamp_progress ≈ 0` while `|pre_clamp_progress| ≈ 1` (equal opposed demand).
 
 Coding does not `/clearance`, merge, move pointer, or begin 7.5c.
