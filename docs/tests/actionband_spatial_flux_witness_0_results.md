@@ -1,7 +1,9 @@
 # ACTIONBAND-SPATIAL-FLUX-WITNESS-0 results
 
 - Track: 0.0.8.7 RF arena modernization (rung 7.5b)
-- Status: **PROBATION / proof-present / DA-review-pending**
+- Status: **COMPLETE — DA-GRADUATED / merged #1732 @ `2ef325b7`** (pre-dispatch ruling `5260442354`)
+
+> **Born-mortal.** This witness reaps with the 0.0.8.7 workshop leaf; nothing in the Cargo graph depends on `simthing-workshop`, so removing it takes no production ActionBand/Field-Triad capability with it.
 - Branch: `coding/actionband-spatial-flux-witness-0`
 - PR: **#1732**
 - Base: `46347c81f17091ad6d3aa4bc51a9f43f2f3729f5`
