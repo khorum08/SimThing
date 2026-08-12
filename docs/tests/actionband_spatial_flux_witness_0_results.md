@@ -3,7 +3,9 @@
 - Track: 0.0.8.7 RF arena modernization (rung 7.5b)
 - Status: **PROBATION / proof-present / DA-review-pending**
 - Branch: `coding/actionband-spatial-flux-witness-0`
+- PR: **#1732**
 - Base: `46347c81f17091ad6d3aa4bc51a9f43f2f3729f5`
+- tested_code_sha: `d0c017e4bfcd93ad60fadc8b834fae992efb20fb`
 - HD-RECEIPT: `c9f03eccc77a`
 - ORIENT-RECEIPT: `98a916672d1a`
 - orientation_rule_stamp: `3e2afa381d2aea10`
