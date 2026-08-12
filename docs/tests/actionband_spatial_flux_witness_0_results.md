@@ -57,14 +57,20 @@ proof readbacks (same pattern as graduated 7.5a).
 | Obligation | Evidence |
 |---|---|
 | Capacity: fixed descent, vary Gu-Yang capacity | `capacity_witness_fixed_descent_varying_gu_yang_capacity` |
-| Opposed demand: PRE-CLAMP opposite signs + POST-CLAMP stall | `opposed_demand_pre_clamp_signs_and_post_clamp_mutual_stall` |
-| abs(flux) / sign mutants RED on pre-clamp | pure_unit + opposed GPU negative fixture |
+| Opposed demand: real two-leg Gu-Yang→Phase-5→ActionBand PRE/POST clamp | `opposed_demand_pre_clamp_signs_and_post_clamp_mutual_stall` |
+| abs(flux) / sign mutants RED on real native pre-clamp consumption | pure_unit + ABS EML path + `assert_mutant_pre_clamp_pair_reds` |
 | No-sink capacity-bearing lane | `no_sink_capacity_bearing_lane_without_costband` |
 | Reapability / detachability | `reapability_production_has_zero_workshop_coupling` |
 | Pre-clamp seam without production hook | `pre_clamp_seam_is_workshop_observable_without_production_src_edit` |
 
 ## Batteries
 
-Focused 5 integration + 8 unit. Inherited 7.5a/7.5/7.4/7.3/7.2/7.1 at final head (relay).
+Focused 5 integration + 9 unit. Inherited 7.5a/7.5/7.4/7.3/7.2/7.1 at final head (relay).
+
+### Remand repair (board `5260808521`)
+
+Opposed-demand proof no longer uses hand-authored `±0.8` / injected `post_clamp=0`.
+Both legs observe **actual** Phase-5 `post_value` natives, dual-emission PRE-CLAMP,
+and RF POST-CLAMP from two ActionBand instances on one Gu-Yang channel.
 
 Coding does not `/clearance`, merge, move pointer, or begin 7.5c.
