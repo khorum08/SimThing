@@ -45,7 +45,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 211b860c2a424d0386a01a2dc93d5c563abfd1411c1f58ec55c7b69d97426cb8 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | 26eab30ec86c97ac8dfd6beef7ae8c5b4d3f18c38fdaa431ec40ccce855396d3 |
-| design_0_0_8_7_rf_arena_modernization.md | 0786a32fffb2f11d0d0c37c1c80122cff821528ec16a99afbe68678bf3a0fa23 |
+| design_0_0_8_7_rf_arena_modernization.md | 0461c0995180a79eed65d1ca0caaa778336c7988a7e6193611b4a75802b9acf6 |
 | relay_lint.sh | 4163f715cdc3b549dbf57c1744aff61ea96b9f9f0a2237376665fbdb24e986c8 |
 | doctrine_anchors.tsv | b82b7339a4859ba31072b10b6117316237ab280307bd6fecc0d4bcadec63fa12 |
 | execution_status_taxonomy.tsv | 64381d52de2295cd397601c545c2285267640787f2e541479c17dfb33261e4b2 |
@@ -101,7 +101,7 @@ Track state: `open`
 
 ## Next Rung Pointer
 
-Active pointer: `ACTIONBAND-SPATIAL-FLUX-WITNESS-0`
+Active pointer: `ACTIONBAND-FULL-FIELD-TRIAD-MOVEMENT-VENDOR-0`
 
 
 ## Cold-Start Spine (constitutional pointers)
