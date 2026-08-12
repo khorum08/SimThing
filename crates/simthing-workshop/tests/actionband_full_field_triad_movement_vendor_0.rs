@@ -14,11 +14,10 @@ use simthing_core::{
 };
 use simthing_driver::{
     compile_action_band_gpu_execution_with_native_lanes, compile_comparative_bundle,
-    compile_gu_yang_n4_field_sweeps, compile_palma_n4_field_sweep, frozen_admission_binding_id,
-    neighbor_slots_from_grid, ActionBandActiveInstance, ActionBandNativeLaneAdmission,
-    ComparativeBandReadouts, ComparativeEmitterClass, ComparativeProjectionOutputs,
-    ComparativeProjectionRequest, GuYangN4FieldSweepSpec, GuYangStallOutputs,
-    PalmaN4FieldSweepSpec,
+    compile_gu_yang_n4_field_sweeps, compile_palma_n4_field_sweep, neighbor_slots_from_grid,
+    ActionBandActiveInstance, ActionBandNativeLaneAdmission, ComparativeBandReadouts,
+    ComparativeEmitterClass, ComparativeProjectionOutputs, ComparativeProjectionRequest,
+    GuYangN4FieldSweepSpec, GuYangStallOutputs, PalmaN4FieldSweepSpec,
 };
 use simthing_gpu::{
     apply_band_crossing_deltas_from_fused_emissions, emit_on_threshold_registrations_to_gpu,
@@ -206,7 +205,11 @@ fn eml(column: ColumnIndex, absolute: bool) -> EmlExpressionRegistry {
     registry
 }
 
-fn session_spec(fx: &Fixture, label: Option<&str>) -> ActionBandSessionSpec {
+fn session_spec(
+    fx: &Fixture,
+    authored_template_id: &str,
+    label: Option<&str>,
+) -> ActionBandSessionSpec {
     ActionBandSessionSpec {
         budget: ActionBandAdmissionBudgetSpec {
             axis_channel_count: 2,
@@ -216,7 +219,7 @@ fn session_spec(fx: &Fixture, label: Option<&str>) -> ActionBandSessionSpec {
             emission_binding_count: 4,
         },
         templates: vec![ActionBandTemplateSpec {
-            id: "full-field-triad-vendor".into(),
+            id: authored_template_id.into(),
             label: label.map(str::to_owned),
             axis_channels: vec![
                 channel(fx.d, ActionBandChannelKind::CachedDerived),
@@ -243,13 +246,14 @@ fn session_spec(fx: &Fixture, label: Option<&str>) -> ActionBandSessionSpec {
 fn admit(
     fx: &Fixture,
     programs: &EmlExpressionRegistry,
+    authored_template_id: &str,
     label: Option<&str>,
 ) -> FrozenActionBandTemplates {
     let mut door = ActionBandSessionBuildDoor::new();
     door.admit_once_with_conserved_progress_at_session_build(
-        &session_spec(fx, label),
+        &session_spec(fx, authored_template_id, label),
         &[ActionBandConservedProgressBindingSpec {
-            template_id: "full-field-triad-vendor".into(),
+            template_id: authored_template_id.into(),
             band_index: 0,
             emission_binding_index: 0,
             bound_source: ActionBandConservedProgressBoundSourceSpec::GuYangRealized,
@@ -293,9 +297,10 @@ struct CompiledVendor {
 fn compile_vendor(
     fx: &Fixture,
     programs: &EmlExpressionRegistry,
+    authored_template_id: &str,
     label: Option<&str>,
 ) -> CompiledVendor {
-    let frozen = admit(fx, programs, label);
+    let frozen = admit(fx, programs, authored_template_id, label);
     let rf = rf_plan(fx);
     let mut cost_registry = ThresholdRegistry::new();
     let cost_event = cost_registry.push_with_cost_band(
@@ -356,12 +361,18 @@ fn initial_values(fx: &Fixture, ordinary_condition: f32) -> Vec<f32> {
         } else {
             MIN_PLUS_INF
         };
-        values[base + fx.w.raw()] = if slot as u32 == STEP_SLOT {
-            ordinary_condition
+        values[base + fx.w.raw()] = 1.0;
+        // One ordinary STEAD/RF pressure condition changes only the source
+        // field presented to the already-admitted Gu-Yang chain. PALMA
+        // impedance and topology remain fixed, so the local descent cannot be
+        // silently rerouted by this next-generation condition witness.
+        values[base + fx.flux.raw()] = if slot as u32 == STEP_SLOT {
+            0.1
+        } else if slot as u32 == ACTOR_SLOT {
+            0.8 * ordinary_condition
         } else {
-            1.0
+            0.8
         };
-        values[base + fx.flux.raw()] = if slot as u32 == STEP_SLOT { 0.1 } else { 0.8 };
         values[base + fx.demand.raw()] = if slot % 2 == 0 { 1.0 } else { -1.0 };
         values[base + fx.emitter_a.raw()] = if slot % 2 == 0 { 0.9 } else { 0.85 };
         values[base + fx.emitter_b.raw()] = if slot % 2 == 0 { 0.85 } else { 0.9 };
@@ -382,6 +393,7 @@ fn storage(ctx: &GpuContext, label: &str, bytes: u64) -> wgpu::Buffer {
 
 #[derive(Debug)]
 struct VendorRun {
+    generation: u32,
     native_flux: f32,
     desired: f32,
     physical_progress: f32,
@@ -395,6 +407,7 @@ fn run_vendor(
     ctx: &GpuContext,
     fx: &Fixture,
     vendor: &CompiledVendor,
+    generation: u32,
     saturation: f32,
     ordinary_condition: f32,
 ) -> VendorRun {
@@ -452,7 +465,8 @@ fn run_vendor(
 
     let mut phase5 =
         AccumulatorOpSession::new_attached(ctx, WIDTH, fx.registry.total_columns as u32, 4);
-    phase5.bind_generation_authority(75);
+    phase5.bind_generation_authority(generation);
+    assert_eq!(phase5.generation(), generation);
     phase5.upload_previous_values(ctx, &palma_values);
     phase5
         .copy_values_prefix_from_buffer(ctx, &resident, 0, 0, resident.size())
@@ -516,6 +530,7 @@ fn run_vendor(
     let result = rf.readback_full(ctx).expect("proof readback");
     let base = STEP_SLOT as usize * n;
     VendorRun {
+        generation: phase5.generation(),
         native_flux,
         desired: result[base + fx.desired.raw()],
         physical_progress: result[base + fx.rf_result.raw()],
@@ -570,6 +585,18 @@ fn consequence_fingerprint(actor: SimThingId, target: SimThingId) -> u64 {
     let mut hasher = std::collections::hash_map::DefaultHasher::new();
     actor.raw().hash(&mut hasher);
     target.raw().hash(&mut hasher);
+    hasher.finish()
+}
+
+fn numeric_binding_fingerprint(vendor: &CompiledVendor) -> u64 {
+    let binding = vendor.compiled.conserved_progress_bindings()[0];
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    binding.template().raw().hash(&mut hasher);
+    binding.band_table_index().hash(&mut hasher);
+    binding.emission_binding_index().hash(&mut hasher);
+    binding.bound_source().hash(&mut hasher);
+    binding.threshold_column().raw_u32().hash(&mut hasher);
+    binding.destination().hash(&mut hasher);
     hasher.finish()
 }
 
@@ -797,12 +824,18 @@ fn full_vendor_capacity_overlay_costband_and_arrival_chain_is_native_bounded() {
         GpuContext::new_blocking().expect("7.5c requires a real GPU adapter; skips forbidden");
     let fx = fixture();
     let programs = eml(fx.flux, false);
-    let vendor = compile_vendor(&fx, &programs, Some("presentation movement"));
+    let vendor = compile_vendor(
+        &fx,
+        &programs,
+        "full-field-triad-vendor",
+        Some("presentation movement"),
+    );
     let target_identity = ((fx.d.raw_u32() as u64) << 32) | 2.0f32.to_bits() as u64;
     let descent = local_descent_identity(fx.d.raw_u32(), fx.d.raw_u32(), ACTOR_SLOT, STEP_SLOT);
     let mut runs = Vec::new();
     for (generation, capacity) in [(75, 1.0f32), (76, 0.25), (77, 1.0)] {
-        let run = run_vendor(&ctx, &fx, &vendor, capacity, 1.0);
+        let run = run_vendor(&ctx, &fx, &vendor, generation, capacity, 1.0);
+        assert_eq!(run.generation, generation);
         assert_eq!(run.desired.to_bits(), (2.0 * run.native_flux).to_bits());
         assert_eq!(run.cost_progress.to_bits(), run.desired.to_bits());
         assert_eq!(run.physical_progress.to_bits(), run.native_flux.to_bits());
@@ -810,9 +843,9 @@ fn full_vendor_capacity_overlay_costband_and_arrival_chain_is_native_bounded() {
     }
     let samples: Vec<_> = runs
         .iter()
-        .map(|(generation, capacity, run)| {
+        .map(|(_generation, capacity, run)| {
             VendorGenerationSample::new(
-                *generation,
+                run.generation,
                 *capacity,
                 1.0,
                 target_identity,
@@ -824,6 +857,38 @@ fn full_vendor_capacity_overlay_costband_and_arrival_chain_is_native_bounded() {
         })
         .collect();
     assert_capacity_and_next_generation_law(&samples).expect("capacity/restore law");
+
+    // At fixed Gu-Yang capacity, change one ordinary condition only in N+1.
+    // The same admitted plan and local PALMA descent dispatch at each bound
+    // generation; the generic native field/throughput result changes, then
+    // restores bit-exactly at N+2. No route, search, convergence or history
+    // object participates in this next-generation witness.
+    let condition_runs =
+        [(90, 1.0f32), (91, 0.5f32), (92, 1.0f32)].map(|(generation, condition)| {
+            (
+                condition,
+                run_vendor(&ctx, &fx, &vendor, generation, 1.0, condition),
+            )
+        });
+    for ((expected_generation, _), (_, run)) in [(90, 1.0f32), (91, 0.5), (92, 1.0)]
+        .iter()
+        .zip(condition_runs.iter())
+    {
+        assert_eq!(run.generation, *expected_generation);
+        assert_eq!(run.plan_fingerprint, runs[0].2.plan_fingerprint);
+        assert_eq!(run.palma_d, runs[0].2.palma_d);
+        assert_eq!(run.physical_progress.to_bits(), run.native_flux.to_bits());
+    }
+    assert_ne!(
+        condition_runs[1].1.physical_progress.to_bits(),
+        condition_runs[0].1.physical_progress.to_bits(),
+        "N+1 ordinary condition must reach the Gu-Yang field/throughput result"
+    );
+    assert_eq!(
+        condition_runs[2].1.physical_progress.to_bits(),
+        condition_runs[0].1.physical_progress.to_bits(),
+        "restoring the ordinary condition at N+2 must restore throughput exactly"
+    );
 
     let native = runs[0].2.physical_progress;
     let cost_rows = [
@@ -937,9 +1002,19 @@ fn semantic_rename_delete_is_blind_at_shadow_to_positional_template_boundary() {
         GpuContext::new_blocking().expect("7.5c requires a real GPU adapter; skips forbidden");
     let fx = fixture();
     let programs = eml(fx.flux, false);
-    let canonical = compile_vendor(&fx, &programs, Some("advance to beacon"));
-    let renamed = compile_vendor(&fx, &programs, Some("renamed presentation only"));
-    let deleted = compile_vendor(&fx, &programs, None);
+    let canonical = compile_vendor(
+        &fx,
+        &programs,
+        "full-field-triad-vendor",
+        Some("advance to beacon"),
+    );
+    let renamed = compile_vendor(
+        &fx,
+        &programs,
+        "renamed-full-field-triad-vendor",
+        Some("renamed presentation only"),
+    );
+    let deleted = compile_vendor(&fx, &programs, "replacement-opaque-template-id", None);
 
     let canonical_order: Vec<_> = canonical
         .frozen
@@ -948,31 +1023,71 @@ fn semantic_rename_delete_is_blind_at_shadow_to_positional_template_boundary() {
         .map(|row| row.template().raw())
         .collect();
     assert_eq!(canonical_order, vec![0]);
-    assert_eq!(
+    assert_ne!(
         renamed.frozen.semantic_shadow()[0].authored_id(),
         canonical.frozen.semantic_shadow()[0].authored_id(),
-        "template_ids remains duplicate/dependency lookup only"
+        "the A1 mutation must actually rename authored identity"
     );
-    assert_eq!(renamed.frozen.semantic_shadow()[0].template().raw(), 0);
-    assert_eq!(deleted.frozen.semantic_shadow()[0].template().raw(), 0);
+    assert_ne!(
+        deleted.frozen.semantic_shadow()[0].authored_id(),
+        canonical.frozen.semantic_shadow()[0].authored_id(),
+        "replacement identity must reach the semantic shadow"
+    );
+    let renamed_order: Vec<_> = renamed
+        .frozen
+        .semantic_shadow()
+        .iter()
+        .map(|row| row.template().raw())
+        .collect();
+    let deleted_order: Vec<_> = deleted
+        .frozen
+        .semantic_shadow()
+        .iter()
+        .map(|row| row.template().raw())
+        .collect();
+    assert_eq!(
+        renamed_order, canonical_order,
+        "authored order must be stable"
+    );
+    assert_eq!(
+        deleted_order, canonical_order,
+        "authored order must be stable"
+    );
     assert_ne!(
         canonical.frozen.semantic_shadow()[0].label(),
         renamed.frozen.semantic_shadow()[0].label()
     );
     assert_eq!(deleted.frozen.semantic_shadow()[0].label(), None);
 
-    let run = run_vendor(&ctx, &fx, &canonical, 1.0, 1.0);
+    let run = run_vendor(&ctx, &fx, &canonical, 75, 1.0, 1.0);
+    let renamed_run = run_vendor(&ctx, &fx, &renamed, 75, 1.0, 1.0);
+    let deleted_run = run_vendor(&ctx, &fx, &deleted, 75, 1.0, 1.0);
     let binding = canonical.compiled.conserved_progress_bindings()[0];
     let source_code = native_bound_source_code(binding.bound_source());
     let target_identity = ((fx.d.raw_u32() as u64) << 32) | 2.0f32.to_bits() as u64;
     let descent = local_descent_identity(fx.d.raw_u32(), fx.d.raw_u32(), ACTOR_SLOT, STEP_SLOT);
     let (_tree, _allocator, _cells, actor, ids) = topology();
-    let consequence = consequence_fingerprint(actor, ids[STEP_SLOT as usize]);
+    let consequence_for = |variant_run: &VendorRun| {
+        consequence_fingerprint(actor, ids[variant_run.commitment.slot() as usize])
+    };
+    let consequence = consequence_for(&run);
+    let sealed_invariant = |variant_run: &VendorRun| {
+        (
+            variant_run.generation,
+            variant_run.native_flux.to_bits(),
+            variant_run.commitment.slot(),
+            variant_run.commitment.col(),
+            variant_run.commitment.event_kind(),
+            variant_run.commitment.value().to_bits(),
+        )
+    };
+    assert_eq!(sealed_invariant(&renamed_run), sealed_invariant(&run));
+    assert_eq!(sealed_invariant(&deleted_run), sealed_invariant(&run));
     let authority = SealedVendorAuthority {
         template_index: canonical.frozen.templates()[0].index().raw(),
         plan_fingerprint: run.plan_fingerprint,
-        frozen_binding: frozen_admission_binding_id(&canonical.frozen),
-        generation: 75,
+        frozen_binding: numeric_binding_fingerprint(&canonical),
+        generation: run.generation,
         sealed_slot: run.commitment.slot(),
         sealed_column: run.commitment.col(),
         sealed_event_kind: run.commitment.event_kind(),
@@ -984,27 +1099,31 @@ fn semantic_rename_delete_is_blind_at_shadow_to_positional_template_boundary() {
         stall_bits: 0.0f32.to_bits(),
         structural_consequence_fingerprint: consequence,
     };
-    let projection = |vendor: &CompiledVendor| SemanticMutationProjection {
-        authored_order: vendor
-            .frozen
-            .semantic_shadow()
-            .iter()
-            .map(|row| row.template().raw())
-            .collect(),
-        plan_fingerprint: vendor.compiled.plan_fingerprint(),
-        frozen_binding: frozen_admission_binding_id(&vendor.frozen),
-        template_index: vendor.frozen.templates()[0].index().raw(),
-        target_identity,
-        descent_identity: descent,
-        bound_source_code: native_bound_source_code(
-            vendor.compiled.conserved_progress_bindings()[0].bound_source(),
-        ),
-        structural_consequence_fingerprint: consequence,
-    };
+    let projection =
+        |vendor: &CompiledVendor, variant_run: &VendorRun| SemanticMutationProjection {
+            authored_order: vendor
+                .frozen
+                .semantic_shadow()
+                .iter()
+                .map(|row| row.template().raw())
+                .collect(),
+            plan_fingerprint: vendor.compiled.plan_fingerprint(),
+            frozen_binding: numeric_binding_fingerprint(vendor),
+            template_index: vendor.frozen.templates()[0].index().raw(),
+            target_identity,
+            descent_identity: descent,
+            bound_source_code: native_bound_source_code(
+                vendor.compiled.conserved_progress_bindings()[0].bound_source(),
+            ),
+            structural_consequence_fingerprint: consequence_for(variant_run),
+        };
     assert_semantic_mutations_are_authority_blind(
         &authority,
         &canonical_order,
-        &[projection(&renamed), projection(&deleted)],
+        &[
+            projection(&renamed, &renamed_run),
+            projection(&deleted, &deleted_run),
+        ],
     )
     .expect("one sealed result remains authoritative under in-place label mutation");
     assert_eq!(
@@ -1021,7 +1140,12 @@ fn semantic_rename_delete_is_blind_at_shadow_to_positional_template_boundary() {
 fn costband_selector_is_unrepresentable_and_workshop_is_structurally_reapable() {
     let fx = fixture();
     let programs = eml(fx.flux, false);
-    let vendor = compile_vendor(&fx, &programs, Some("semantic only"));
+    let vendor = compile_vendor(
+        &fx,
+        &programs,
+        "full-field-triad-vendor",
+        Some("semantic only"),
+    );
     let source = vendor.compiled.conserved_progress_bindings()[0].bound_source();
     assert_eq!(native_bound_source_code(source), 3);
     // This exhaustive type projection is the A2 proof: no CostBand member exists.
