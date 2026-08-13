@@ -559,7 +559,10 @@ is **the first tool every agent must reach for** when a feature seems to demand 
 - **`EvalEML` is the one generic expression interpreter.** Because a single primitive suffices to
   generate all elementary functions as uniform binary trees, *any* designer formula — urgency,
   desirability, decay, policy conditionals, personality weighting — compiles to a postfix opcode
-  stack over the **fixed** `EvalEML` vocabulary and executes in the same unified kernel. The
+  stack over the **closed, admission-grown** `EvalEML` vocabulary and executes in the same unified
+  kernel *(corrected 2026-08-13: the vocabulary is closed but no longer frozen — exact primitives
+  `EXP` and `LN` were admitted at 5.11/5.12 through the `ExactPrimitiveAdmission` door, and the
+  field-sweep edge context added `TARGET_VALUE`/`NEIGHBOR_VALUE` under the EML growth law)*. The
   interpreter sees only floats and indices; the formula is data.
 - **The EML gadget library** is the authoring layer over that fact: gadgets (FieldSampler,
   WeightedAccumulator, SoftStep, VelocityMonitor, Decay/EMA, BoundedFeedback, Hysteresis,
@@ -568,16 +571,24 @@ is **the first tool every agent must reach for** when a feature seems to demand 
   temporal state uses explicit authored columns (current/previous/state/output) with a snapshot copy
   band, and every recurrent gadget carries a bounded-feedback admission contract (finite decay < 1,
   explicit clamp, no positive unbounded recurrence) — Anchor A's P3 stability applied to formulas.
-- **The JIT shader compiler** (`ProductionKernelRegistryShell`, default-off) is the performance
-  escape hatch on the same principle: a validated, semantic-free, straight-line kernel compiled from
+- **The JIT shader compiler** is production, not an escape hatch *(corrected 2026-08-13: the 5.7
+  postfix-IR-to-WGSL SSA JIT, cached by sealed resource class and complete program identity, is an
+  ordinary field-sweep execution form — its generated PALMA kernel measured FASTER than the bespoke
+  shader at worst case; `ProductionKernelRegistryShell` remains the exact-authority door)*. The
+  original principle stands: a validated, semantic-free, straight-line kernel compiled from
   an expression tree, admitted only with pinned artifacts, exhaustive proof for exact authority
   (the Candidate-F `sqrt` precedent), and CPU-oracle parity. Approximate outputs never feed
   exact-authoritative state.
 
 **The extension ladder for future agents, in order:** (1) express it as an EML gadget tree over the
 existing interpreter (authoring surface: [`eml_gadget_library.md`](eml_gadget_library.md)); (2) if a
-genuinely new *generic* primitive is unavoidable, register it only through `OpcodeRegistrationGate` →
-`AdmittedEvalEmlOpcode` / `AdmittedEvalEmlCombine` (closed vocab; bit-exact CPU-oracle parity) — never a
+genuinely new *generic* primitive is unavoidable, register it through the gate that matches its class:
+ordinary combines via `OpcodeRegistrationGate` → `AdmittedEvalEmlOpcode` / `AdmittedEvalEmlCombine`
+(closed vocab; bit-exact CPU-oracle parity), and **exact transcendental-class primitives via
+`ExactPrimitiveAdmission`** — sealed `PrimitiveDomain`, algorithm-as-spec with append-only semantics,
+exhaustive 2^32 digest per certified toolchain, and the cost key against the primitive's own gadget
+baseline (the door 5.10 built; `EXP` and `LN` are its admitted precedents, with `POW`, stabilized
+`Logistic`/`SoftmaxWeight`, and the literal `eml(x,y)` landed as gadget-library entries) — never a
 raw semantic opcode; (3) a scenario-specific or semantic op is **never** admissible (type-rejected).
 Reaching for a new subsystem before exhausting (1) is the canonical drift this section exists to prevent.
 
@@ -864,7 +875,8 @@ binding constraints. Every mapping rule in `invariants.md` is one of them in dis
   the horizon to "see further" is action-at-a-distance, and the cure is hierarchy (Layer 2), not a
   bigger light cone.
 - **P2 Symmetry — one shared rule, every cell, every tick.** All cells evolve under the **same
-  generic `StructuredFieldStencilOp` kernel with the same authored weights** — no per-cell bespoke
+  generic field-sweep interpreter/JIT with the same authored map/fold/post program and weights**
+  (the pre-5.5 `StructuredFieldStencilOp` is a retained test-only referee) — no per-cell bespoke
   rules, no coordinate-dependent logic, no semantic WGSL. This is what makes a rule learned/tuned on
   one region valid on every region and at every map scale; a per-cell special case breaks
   generalization exactly as the paper predicts.
@@ -886,7 +898,8 @@ front crossing the whole map takes the ticks it takes. Sources are caller-manage
 
 ```
 Layer 1 — the Movement-Front heat map (local, bounded falloff)
-  StructuredFieldStencilOp evolves cell field columns (threat, disruption,
+  The generic field sweep (authored map/fold/post; interpreter or JIT) evolves cell field
+  columns (threat, disruption,
   suppression, supply reach, desirability) across the 2D lattice. Values SPILL
   ACROSS the map with falloff; the falloff gradient IS the signal, and the
   moving contour where opposing pressures meet IS the front.
@@ -937,9 +950,16 @@ Movement-Front vocabulary for borders, chokepoints, reach, and pathfinding:
 The front is the route. A path polyline, if later rendered for UI, is a presentation artifact derived
 from the field, never a simulation subsystem.
 
-**Production operators — the realized rule (Gu-Yang flux) and the reach utility (PALMA).** Two seated,
-semantic-free GPU operators give the automaton its production form, each a generic
-`StructuredFieldStencilOp`-family utility, not a new primitive or a semantic engine:
+**Production operators — the realized rule (Gu-Yang flux) and the reach utility (PALMA).**
+*(Corrected 2026-08-13 — execution form superseded by the FIELD-SWEEP remodel, 5.4–5.7: both operators
+are now **authored `FieldSweepRegistration` instances over the one generic EML map/fold/post IR** —
+interpreted or JIT-compiled, bit-exact either way — carrying sealed `FieldLawProof`,
+`CanonicalOrderProof`, and for conservative folds the `UndirectedSymmetryCertificate`; the pre-remodel
+bespoke shaders survive only as test-only parity referees pending their 10.1 retirement. Adjacency is a
+registration axis — weighted `GridOffsets` N4/N8/radius-r presets and `LinkGraph` — with per-node
+conductance/χ certificates on graphs; N4 below is the reference instance, not the law.)* Two seated,
+semantic-free field laws give the automaton its production form, neither a new primitive nor a semantic
+engine:
 
 - **Gu-Yang `SaturatingFlux`** — an engineering ansatz *inspired by* Gu & Yang's hydrodynamic-limit
   results (arXiv:2509.20797), not a literal implementation — is the conservative, state-dependent
@@ -949,7 +969,7 @@ semantic-free GPU operators give the automaton its production form, each a gener
   operator that makes chokepoints and contested boundaries *emerge from the flow* rather than from a
   bespoke border service. The optional choke readout is one resident scalar column in the same dispatch.
 - **PALMA** min-plus traversal (tropical algebra, arXiv:2601.17028) is the seated **reach/impedance
-  utility** over the front: `D = W + min(N4 D)` is a *field*, not a route — it realizes "the front is
+  utility** over the front: `D = W + min(N D)` over the admitted adjacency (N4 reference; N8/radius-r/`LinkGraph` per 5.6) is a *field*, not a route — it realizes "the front is
   the route" (§7.2) as the reach metric a supply/threat gradient implies. No sqrt, no predecessor, no
   path object; it is a generic GPU utility a Movement-Front consumer composes (impedance W from choke
   fields → D), never a pathfinding engine.

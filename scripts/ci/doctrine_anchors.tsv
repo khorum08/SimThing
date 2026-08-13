@@ -5,7 +5,7 @@ seal-residue-cross-crate	docs/simthing_core_design.md	heading:### 1.2.1 The kern
 stead-spatial-contract-core	docs/stead_spatial_contract.md	lines:23-59	map,spatial,mapgenerator,clausething-spatial,stead	8585db4ac631f2fb390a6735409a6bc7d61760390a371ea5d6292328cf4accf3
 one-tree-owners-never-spatial	docs/simthing_core_design.md	heading:## 2. The one tree: Scenario wrapper, GameSession root, owners, and spatial containment	spec,hydration,one-tree	a8689d4344f9185421aa1dc81f55c7871ee91a529b467276047d54b45bc7562b
 core-property-value-model	docs/simthing_core_design.md	heading:## 3. SimProperty	property-value,kernel-columns	17cd41a567b7f0d734c4c34f85a6dd2fcec44fa58c17a9380e72b7fbc078a749
-core-gpu-residency	docs/simthing_core_design.md	heading:## 4. GPU residency	kernel-columns,gpu,driver	8db4198cbc29399744520a10cae4b8e819774d423936ff1036f30925236be0ec
+core-gpu-residency	docs/simthing_core_design.md	heading:## 4. GPU residency	kernel-columns,gpu,driver	eea1356db08745e11c59f9f9a741a586e10424f70b5aa91b38ec5e2aaa0e04e2
 core-rf-arenas	docs/simthing_core_design.md	heading:## 5. Resource flow arenas	rf,driver	d171614211e9e6aa7e7af0f43f1ee536d9091d74547e0bd8fa05196569e8ee47
 core-overlays	docs/simthing_core_design.md	heading:## 6. Overlays	overlay	f95c9376ee06c16cf46f22cc2c124d5b08280a3e1f84865062a111b0a12c7436
 eml-extension-ladder	docs/eml_gadget_library.md	heading:## 2. Constitutional placement / guardrails	kernel-eml,wgsl	7755bc72ffbe73411916f1d8aca76156ad45dcfd9570d345b1aec3adc26765a9
@@ -19,7 +19,7 @@ peripheral-scope-adrs	docs/adr/capability_effect_target_scope.md	heading:## Cont
 founding-ontology-invariants	docs/design_0_0_8_3.md	lines:100-129	founding-ontology	46802793fba78f7823cc1896246fc70f6486f56e6e88c7eab1fa3ad29bd0167e
 orientation-harness-core	docs/design_0_0_8_4_7_orchestration_harness.md	heading:## 1. Root cause this track closes	orientation,gate-wiring,receipt-admission	8a365d1c086487ee32150d457754df35becc4ad93465874253fc7d40baf2582f
 scanner-selftest-delta-gate	docs/ci_screening_surface.md	heading:### Scanner selftest delta gate	scanner-selftest-gate,gate-wiring	34fb2662baae168aade990530e837bf633a91e9e08956ecbd15caad50efba737
-movement-front	docs/simthing_core_design.md	heading:## 7. Mapping — the Movement-Front automaton over gridcell SimThings	movement-front,map-domain	a0592b2f37caf3c3e13a5012c91fdcb981e15db634bcac593cbfd7f42f068b37
+movement-front	docs/simthing_core_design.md	heading:## 7. Mapping — the Movement-Front automaton over gridcell SimThings	movement-front,map-domain	2515d33588e782e25c0a43e10a8923b3c640d19925992a4406f58cf4b1dc3a60
 workshop-candidate-homing	docs/ci_screening_surface.md	heading:## 12. Workshop is the scenario candidate-code sandbox (owner ruling, 2026-07-04)	scenario-candidate-home	3e584f0ad1754a23a0a7fa841cc5f56ec8ffd4ed8fbc4bc7e0e2e2faf671e848
 simthing-0087-pillars	docs/design_0_0_8_7_rf_arena_modernization.md	heading:## 2. Pillars (Owner requirements, binding at commitment)	core-0087	61487cba1f9e6e3c2f2c8d2e5cdc6ee630fc0ec38bf25df678bb84068097f14e
 simthing-0087-binding-laws	docs/design_0_0_8_7_rf_arena_modernization.md	heading:## 4. Binding laws (carry from day one)	core-0087	8f13cba4aa7aa7f076263cd2bcb09b3596a1fa69776db2ca86391e3d884eeffd
