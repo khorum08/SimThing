@@ -45,7 +45,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 211b860c2a424d0386a01a2dc93d5c563abfd1411c1f58ec55c7b69d97426cb8 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | 26eab30ec86c97ac8dfd6beef7ae8c5b4d3f18c38fdaa431ec40ccce855396d3 |
-| design_0_0_8_7_rf_arena_modernization.md | d858fff43e13a9b6d61e1bbdc8daa7b14a470eca1030ad0e3d62fd0152ad11ff |
+| design_0_0_8_7_rf_arena_modernization.md | 0b9e21fd53a21617eec5d81c46ff390c00f7243c3c15a541acab5ced4da04c10 |
 | relay_lint.sh | 4163f715cdc3b549dbf57c1744aff61ea96b9f9f0a2237376665fbdb24e986c8 |
 | doctrine_anchors.tsv | ddc753498b845b0e5084222b35f94286e5163cc6479de58883e3ecc3c2d743dd |
 | execution_status_taxonomy.tsv | 64381d52de2295cd397601c545c2285267640787f2e541479c17dfb33261e4b2 |
@@ -68,7 +68,7 @@ Dark properties (1): `fixture::dark_reading` (reasons/spans in `property_admissi
 
 Track state: `open`
 
-> Compact view: 34 completed rungs elided; showing all 26 open rungs plus the 3 most recent completions. Full ladder in the design doc.
+> Compact view: 34 completed rungs elided; showing all 27 open rungs plus the 3 most recent completions. Full ladder in the design doc.
 
 | # | rung | deliverable | exit proof |
 | --- | --- | --- | --- |
@@ -91,6 +91,7 @@ Track state: `open`
 | 7.6 | OVERLAY-GERM-ARCHAEOLOGY-0 | **Overlay closure, rung 1 of 4 — anchored by `docs/stemthing_intrinsic_overlay_c | Census TSV lands with reconciliation line; every route classified with a disposition; checker `--check` PASS in CI an... |
 | 7.7 | GPU-OVERLAY-LIFECYCLE-EXTRACTION-0 | **Overlay closure, rung 2 of 4 — the dedicated extraction rung the anchor's §23. | Oracle/GPU bit-identical across the witness battery incl. a planted divergence RED; `AfterTicks` proven with zero CPU... |
 | 7.8 | ACTIONBAND-OVERLAY-ACTUATION-0 | **Overlay closure, rung 3 of 4 — probes C+D fused: the actuation door.** An Acti | Crossing → `OverlayStateNext` → next-generation consequence witness green; a certificate-envelope mutant (out-of-enve... |
+| 7.8a | DERIVED-SPAN-PROJECTION-INVALIDATION-0 | **Unification sweep, the ONE new architectural rung (Sol/Fable v4, 2026-08-13) — | Million-row homogeneous subtree resolves to **O(distinct-profiles) effective descriptors, never O(descendants)** sema... |
 | 7.9 | OVERLAY-FRACTAL-CLOSURE-WITNESS-0 | **Overlay closure, rung 4 of 4 — probes E+F plus the anchor's §23.2 ADVERSARIAL  | Ten-element scenario green end-to-end; the illegal cycle rejects at admission (planted acceptance REDs); rewalk instr... |
 | 8.1 | CONTENTION-CONSERVATION-JUDGE-0 | **BINDS 6.5 (StemThing-A; clauses landed early in #1628, verified at 6.5 graduat | Judge red/green proven on seeded violations against SCENARIO-NEUTRAL synthetic contention fixtures. **The R6 dress re... |
 | 8.2 | CONTENTION-ARENA-EXECUTED-0 | **BINDS 6.5 (StemThing-A; clauses landed early in #1628, verified at 6.5 graduat | Executed path judged green; **emergence falsifier: changing ONLY the authored resolution rule changes the outcome wit... |
