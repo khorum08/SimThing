@@ -1495,6 +1495,8 @@ run_all_cases() {
     setup_heuristic_owner_policy_weight_authority_mint_clause
   case_run expect_heuristic_quiet "owner_policy_weight_authority_mint_clean" "OWNER-POLICY-WEIGHT-AUTHORITY-MINT" \
     setup_quiet_owner_policy_weight_authority_mint
+  case_run expect_heuristic_inspect "overlay_peer_authority" "OVERLAY-PEER-AUTHORITY" \
+    setup_heuristic_kernel overlay_peer_authority.rs
   case_run expect_constitution_reach_log_append
   case_run expect_owner_policy_weight_authority_mint_reach_log_append
   case_run expect_heuristic_inspect "sim_kind_read" "SIM-KIND-READ" \

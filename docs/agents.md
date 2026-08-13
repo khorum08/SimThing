@@ -30,6 +30,7 @@
    start at [`clausething/ClauseThingDoc.md`](clausething/ClauseThingDoc.md) (clearinghouse:
    concepts/practices/APIs) and [`adr/ClauseThingADR.md`](adr/ClauseThingADR.md) (decisions).
    The production-track ladders are archived under `archive/closed_production/`.
+5b. **MANDATORY for any overlay/actuation task** — [`stemthing_intrinsic_overlay_capability.md`](stemthing_intrinsic_overlay_capability.md) (Owner-adjudicated closure: lifecycle, actuation door, ancestor residency, composition classes, designer-language lowering).
 6. **MANDATORY for any spatial task** — [`stead_spatial_contract.md`](stead_spatial_contract.md)
    is **required reading** (in addition to core §0/§7) before you touch any of: MapGen lattice,
    MapGeneratorCLI, Location grids / `grid_metadata` placements, the Movement-Front engine, STEAD,

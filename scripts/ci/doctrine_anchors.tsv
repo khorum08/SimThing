@@ -7,11 +7,11 @@ one-tree-owners-never-spatial	docs/simthing_core_design.md	heading:## 2. The one
 core-property-value-model	docs/simthing_core_design.md	heading:## 3. SimProperty	property-value,kernel-columns	17cd41a567b7f0d734c4c34f85a6dd2fcec44fa58c17a9380e72b7fbc078a749
 core-gpu-residency	docs/simthing_core_design.md	heading:## 4. GPU residency	kernel-columns,gpu,driver	8db4198cbc29399744520a10cae4b8e819774d423936ff1036f30925236be0ec
 core-rf-arenas	docs/simthing_core_design.md	heading:## 5. Resource flow arenas	rf,driver	d171614211e9e6aa7e7af0f43f1ee536d9091d74547e0bd8fa05196569e8ee47
-core-overlays	docs/simthing_core_design.md	heading:## 6. Overlays	overlay	54df7604a49d32a027a49e4addd245f61af2f73506bd7ead7786740d8b22d4ea
+core-overlays	docs/simthing_core_design.md	heading:## 6. Overlays	overlay	f95c9376ee06c16cf46f22cc2c124d5b08280a3e1f84865062a111b0a12c7436
 eml-extension-ladder	docs/eml_gadget_library.md	heading:## 2. Constitutional placement / guardrails	kernel-eml,wgsl	7755bc72ffbe73411916f1d8aca76156ad45dcfd9570d345b1aec3adc26765a9
 spec-fidelity-anti-ceremony	docs/design_0_0_8_3.md	heading:### 0.6 Specification Fidelity — no silent flattening (the anti-drift law)	closure-surfaces,spec-fidelity	add4dbbc267ac54c2ecc317b8a792321f2bbb51ca64f9c58ccd69e10ef175745
 exact-numeric-candidate-f	docs/design_0_0_8_3.md	heading:### 0.7 Exact numeric authority for decision gates	kernel-magnitude,threshold-paths,exact-numeric	6938a2efadb5f939b8e655700a02f6789e5806ac8792efeee06f6ca4d1e6506e
-drift-detectors-six-line	docs/simthing_core_design.md	heading:## 9. The drift detectors — litmus tests for every change	retain-set,drift-detectors	af20f8122501575b30b61cf06fbfe9cc278c516e97cda886111fbb05236cd003
+drift-detectors-six-line	docs/simthing_core_design.md	heading:## 9. The drift detectors — litmus tests for every change	retain-set,drift-detectors	4d729de4be4a1601163c7f8e713d6eee2330bd0d88a518ba2e051d913eb153b4
 clausething-closed-vertical	docs/design_0_0_8_3.md	heading:## A. Closeout addendum — the ClauseThing vertical (ratified 2026-06-15)	clausething,mapgenerator	beb30ffaba500f7823222ed31b1fd81cf3a02d0fb6fd3f9825b0f3f54f32c1fe
 structural-execution-convergence	docs/stead_spatial_contract.md	heading:## 10. Structural execution convergence (Studio → GPU horizon)	gpu,driver,mapeditor-gpu,studio,structural-execution	6b4cedec482b9b256619a8a66642442637bb26d4bcedc1e33037096c0d75c277
 session-lifecycle-adr-family	docs/adr/README.md	heading:# Architecture Decision Records	driver-session,feeder-session,mapeditor-session	d73fe5a83f25055d741a542c270d40849cbda207d6417983b000f9f068a7f844

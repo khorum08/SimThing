@@ -756,6 +756,18 @@ direct `affects` targeting, which bypasses every intermediate policy layer. 6.0b
 filters along the path. Until it graduates, the tuple above is the built shape. See
 [`stead_simthing_automata.md`](stead_simthing_automata.md).
 
+**Intrinsic overlay closure (Owner-adjudicated 2026-08-10; Tier-2 addition).** The overlay is the
+**intrinsic actuation language of the StemThing**: ordinary numerical action resolves by
+activating, parameterizing, suspending, or dissolving an admitted overlay, and the base SimThing
+is the sole owner, emitter, and possessor of overlay lifetime — every disbursing overlay is
+attached to a SimThing up the tree. The closure forbids **peer** executors, never acting
+SimThings: anything that acts — a user seat, a network controller — is itself a SimThing,
+auditable as ordinary columns, API as admitted lanes, STEAD-bound for telemetry.
+[`stemthing_intrinsic_overlay_capability.md`](stemthing_intrinsic_overlay_capability.md) governs
+the actuation semantics (laws §18, probes §23, rungs 7.6–7.9); **full §6 canonization is bound to
+12.2 `CORE-CANONIZATION-0`** — this section's boundary-lifecycle sentences remain true until
+`GPU-OVERLAY-LIFECYCLE-EXTRACTION-0` graduates and are rewritten only then.
+
 ---
 
 ## 7. Mapping — the Movement-Front automaton over gridcell SimThings
@@ -1073,6 +1085,10 @@ do not rationalize.
 13. Am I minting a **StructuralCommitment** (or other decision effect) outside the sealed ingress
     `ThresholdCrossingToken → EmissionToken → BoundaryEmissionToken`, or from a CPU/approximate
     diagnostic?
+14. Am I minting an **overlay manager, overlay service, `ActionThing`, second actuation path, or
+    per-leaf stamps of a subtree-scoped overlay** — instead of the intrinsic germ, the one
+    ancestor-resident instance, and the one actuation door
+    ([`stemthing_intrinsic_overlay_capability.md`](stemthing_intrinsic_overlay_capability.md))?
 
 **Promotion over repetition.** When a detector above keeps firing across rungs, the remedy is **not louder
 prose** — it is to lift the invariant to a higher admission rung: a type boundary that makes the drift
