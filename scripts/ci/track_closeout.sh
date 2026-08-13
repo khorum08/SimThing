@@ -3052,11 +3052,103 @@ def cmd_prove():
               and "APPLY-VERDICT:" in r_pre.stdout
               and "binding_reaped=0" in r_pre.stdout)
 
+    # --rungclose workplan resolution. The graduation gate had NO coverage here,
+    # which is how mtime-order resolution survived: it is the one command CI
+    # never runs. These cases pin the declaration as the only source and pin the
+    # absence of any guess-based fallback.
+    global ACTIVE_TRACK
+    declared = read_active_track_pointer().get("path", "")
+    saved_active_track = ACTIVE_TRACK
+    rungclose_dir = pathlib.Path(tempfile.mkdtemp(prefix="rungclose-workplan-"))
+    try:
+        ACTIVE_TRACK = rungclose_dir / "active_track.txt"
+
+        # 1. The declared pointer is followed exactly.
+        ACTIVE_TRACK.write_text(
+            f"{ACTIVE_TRACK_COMMENT}\n{declared}\n", encoding="utf-8")
+        resolved, error = resolve_rungclose_workplan([])
+        check("rungclose-workplan-follows-declared-pointer",
+              not error and declared and resolved == ROOT / declared)
+
+        # 2. An explicit --workplan still overrides the declaration.
+        override, error = resolve_rungclose_workplan(
+            ["SOME-RUNG-0", "--workplan", "docs/other.md"])
+        check("rungclose-workplan-explicit-override-wins",
+              not error and override == pathlib.Path("docs/other.md"))
+        _, error = resolve_rungclose_workplan(["SOME-RUNG-0", "--workplan"])
+        check("rungclose-workplan-override-needs-path", bool(error))
+
+        # 3. FAIL CLOSED rather than guess. This is the regression guard: the
+        #    old resolver answered from mtime in exactly these states.
+        ACTIVE_TRACK.write_text(
+            f"{ACTIVE_TRACK_COMMENT}\n{NO_ACTIVE_TRACK}\n", encoding="utf-8")
+        resolved, error = resolve_rungclose_workplan([])
+        check("rungclose-no-active-track-fails-closed",
+              resolved is None and "no active track" in error)
+        ACTIVE_TRACK.write_text(f"{ACTIVE_TRACK_COMMENT}\n", encoding="utf-8")
+        resolved, error = resolve_rungclose_workplan([])
+        check("rungclose-empty-pointer-fails-closed",
+              resolved is None and bool(error))
+        ACTIVE_TRACK.write_text(
+            f"{ACTIVE_TRACK_COMMENT}\ndocs/does_not_exist.md\n", encoding="utf-8")
+        resolved, error = resolve_rungclose_workplan([])
+        check("rungclose-missing-target-fails-closed",
+              resolved is None and "missing-target" in error)
+
+        # 4. Planted defect: a NEWER superseded design doc must not be selected
+        #    while a valid declaration stands. This is the observed 2026-08-13
+        #    failure -- design_0_0_8_1.md won on mtime and returned a false FAIL.
+        superseded = sorted(
+            (q for q in (ROOT / "docs").glob("design_0_0_*.md")
+             if q != ROOT / declared),
+            key=lambda q: q.name)
+        if superseded and declared:
+            os.utime(superseded[0], None)
+            ACTIVE_TRACK.write_text(
+                f"{ACTIVE_TRACK_COMMENT}\n{declared}\n", encoding="utf-8")
+            resolved, error = resolve_rungclose_workplan([])
+            check("rungclose-ignores-newer-superseded-workplan",
+                  not error and resolved == ROOT / declared
+                  and resolved != superseded[0])
+    finally:
+        ACTIVE_TRACK = saved_active_track
+        shutil.rmtree(rungclose_dir, ignore_errors=True)
+
     if failures:
         print(f"TRACK-CLOSEOUT-PROVE-VERDICT: FAIL ({len(failures)})")
         return 1
     print("TRACK-CLOSEOUT-PROVE-VERDICT: PASS")
     return 0
+
+
+def resolve_rungclose_workplan(args: list) -> tuple:
+    """Resolve --rungclose's workplan from the DECLARED pointer, never a guess.
+
+    This previously took `max(docs/design_0_0_*.md, key=st_mtime)`. mtime is not
+    a fact about the repository -- any checkout, sync or worktree switch rewrites
+    it -- so the graduation gate's answer depended on checkout order and was not
+    reproducible across machines. Observed 2026-08-13: it selected the superseded
+    `design_0_0_8_1.md` and returned a false FAIL for a rung that passes.
+
+    `active_track.txt` already declares the active workplan and gen_orientation.sh
+    already validates it, so read the declaration and fail closed when it is
+    unusable. Returns (path_or_None, error_or_empty).
+    """
+    if "--workplan" in args:
+        index = args.index("--workplan") + 1
+        if index >= len(args):
+            return None, "--workplan given without a path"
+        return pathlib.Path(args[index]), ""
+    info = read_active_track_pointer()
+    rel = info.get("path", "")
+    if rel == NO_ACTIVE_TRACK:
+        return None, "no active track declared in active_track.txt; pass --workplan <path>"
+    error = active_track_validation_error(info)
+    if error:
+        return None, f"active_track.txt {error}; pass --workplan <path>"
+    if not rel:
+        return None, "active_track.txt empty or missing; pass --workplan <path>"
+    return ROOT / rel, ""
 
 
 def cmd_rungclose() -> int:
@@ -3074,14 +3166,12 @@ def cmd_rungclose() -> int:
         print("RUNGCLOSE-VERDICT: FAIL missing <RUNG-ID>")
         return 1
     rung = args[0].strip()
-    workplan = None
-    if "--workplan" in args:
-        workplan = pathlib.Path(args[args.index("--workplan") + 1])
-    if workplan is None:
-        pointers = sorted((ROOT / "docs").glob("design_0_0_*.md"))
-        workplan = max(pointers, key=lambda q: q.stat().st_mtime) if pointers else None
+    workplan, resolve_error = resolve_rungclose_workplan(args)
     failures: list[str] = []
 
+    if resolve_error:
+        print(f"RUNGCLOSE-VERDICT: FAIL {resolve_error}")
+        return 1
     if workplan is None or not workplan.exists():
         print("RUNGCLOSE-VERDICT: FAIL no workplan resolved")
         return 1
