@@ -1857,6 +1857,10 @@ run_selftest() {
     clearance_selftest_actionband_workshop_witness_clearable
     clearance_selftest_actionband_workshop_witness_rejects_engine_src
     clearance_selftest_actionband_workshop_witness_unrelated_workshop_no_match
+    clearance_selftest_actionband_full_vendor_clearable
+    clearance_selftest_actionband_full_vendor_rejects_engine_src
+    clearance_selftest_actionband_full_vendor_rejects_gate_wiring
+    clearance_selftest_actionband_full_vendor_rejects_anchor_reach_log
     clearance_selftest_tp_closed_track_no_longer_clearable
     clearance_selftest_triage_ancestor_evidence_tail_ok
     clearance_selftest_triage_ancestor_code_delta_missing
