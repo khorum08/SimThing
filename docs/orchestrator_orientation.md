@@ -45,9 +45,9 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 211b860c2a424d0386a01a2dc93d5c563abfd1411c1f58ec55c7b69d97426cb8 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | 26eab30ec86c97ac8dfd6beef7ae8c5b4d3f18c38fdaa431ec40ccce855396d3 |
-| design_0_0_8_7_rf_arena_modernization.md | 0461c0995180a79eed65d1ca0caaa778336c7988a7e6193611b4a75802b9acf6 |
+| design_0_0_8_7_rf_arena_modernization.md | ccd4cc12788e1e24e6a947b8a107bfc6d9def844cd4029412c36707b8205c5aa |
 | relay_lint.sh | 4163f715cdc3b549dbf57c1744aff61ea96b9f9f0a2237376665fbdb24e986c8 |
-| doctrine_anchors.tsv | b82b7339a4859ba31072b10b6117316237ab280307bd6fecc0d4bcadec63fa12 |
+| doctrine_anchors.tsv | ba0d25bfc5592e1bf8e25a7842c0514ae4b02145a91dbd87fe2cae0e2262b5a2 |
 | execution_status_taxonomy.tsv | 64381d52de2295cd397601c545c2285267640787f2e541479c17dfb33261e4b2 |
 | execution_status_mixed_posture.tsv | 1adf05f3ec5fd7b537efe29259d20649a2c6d3a0839590063e5308ff154e8f25 |
 | execution_status_non_execution.tsv | 214c1b557dfd3fc465f0171051e20281ff1dcf6c53128dbb29cba01524f9be02 |
@@ -68,7 +68,7 @@ Dark properties (1): `fixture::dark_reading` (reasons/spans in `property_admissi
 
 Track state: `open`
 
-> Compact view: 33 completed rungs elided; showing all 23 open rungs plus the 3 most recent completions. Full ladder in the design doc.
+> Compact view: 34 completed rungs elided; showing all 26 open rungs plus the 3 most recent completions. Full ladder in the design doc.
 
 | # | rung | deliverable | exit proof |
 | --- | --- | --- | --- |
@@ -76,7 +76,6 @@ Track state: `open`
 | 5.9d | TP-EXPORT-ERADICATION-0 | **Phase 5 hygiene — Owner-directed 2026-08-01, DA-implemented.** Eliminates TP's | ZERO files matching scenario vocabulary anywhere outside `simthing-clausething`; mapeditor `src` and `tests` build an... |
 | 5.13 | EXACT-CONSUMER-OBLIGATION-0 | **PHASE 5 REOPENED (Owner ruling 2026-08-04) — the exact-primitive door's missin | A consumer declaring exact-bearing WITHOUT a cross-arm digest **hard-errors at admission**, planted-defect proven in ... |
 | 5.14 | EML-ARITHMETIC-SEMANTICS-0 | **Owner-directed 2026-08-05 — finish the language instead of policing it. THE DE | Every rounding-bearing opcode and every contraction-exposed composition has ONE specified arm-independent meaning, wi... |
-| 6.2 | ASYNC-COMMAND-QUEUE-0 | Phase 6: async CPU action queue landing at generation barriers; injection genera | **DA-GRADUATED / merged #1616 @ af4f9dbb — the async seam is a holding account, not a transport.** Replay bit-exact f... |
 | 6.2b | RESOLUTION-SITE-SPLIT-0 | **Phase 6: Owner-approved 2026-08-02 — the closed loop becomes the DEFAULT SimTh | **DA-GRADUATED / merged #1621 @ 1a520eee — the closed loop is the default; CPU-authoritative is a vendorized placemen... |
 | 6.3 | CONTINUOUS-POSTURE-SOAK-0 | Phase 6: continuous posture (batched generations) + N-generation soak under forc | **DA-GRADUATED / merged #1624 @ fdc11efb — Phase 6 COMPLETE; the StemThing census trigger fires.** Soak exit-proof pe... |
 | 6.4 | SLOT-LOGICAL-IDENTITY-0 | **Phase 6→7 gap: StemThing-A (anchor: `docs/stead_stemthing_unification.md`; Tie | A forced epoch remap (scrambled physical rows, unchanged logical ids) reproduces a multi-generation run **bit-exactly... |
@@ -88,7 +87,11 @@ Track state: `open`
 | 7.5 | ACTIONBAND-SEMANTIC-SHADOW-0 | Bind generic stamped ActionBand crossings/terminal/structural deltas to existing | Same opaque GPU ActionBand run with semantic labels changed produces bit-identical numerical results; generic readbac... |
 | 7.5a | ACTIONBAND-FIELD-TRIAD-PROGRESS-0 | **Gu-Yang remediation, rung 1 of 3 (Owner-directed 2026-08-10; Fable-approved re | A synthetic conserved-channel ActionBand consumes a REAL Gu-Yang / `FieldSweepRegistration` output with **zero Action... |
 | 7.5b | ACTIONBAND-SPATIAL-FLUX-WITNESS-0 | **Gu-Yang remediation, rung 2 of 3.** Prove the generic Field-Triad ActionBand b | Same target and PALMA potential, different Gu-Yang channel capacity ⇒ **same lawful descent identity, different per-g... |
-| 7.5c | ACTIONBAND-FULL-FIELD-TRIAD-MOVEMENT-VENDOR-0 | **Gu-Yang remediation, rung 3 of 3 — OWNER ADDITION.** **Do NOT reopen 7.4 to re | One movement ActionBand reaches the same target under identical PALMA potential at two admitted lane capacities: **ro... |
+| 7.5c | ACTIONBAND-FULL-FIELD-TRIAD-MOVEMENT-VENDOR-0 | **Gu-Yang remediation, rung 3 of 3 — OWNER ADDITION.** **Do NOT reopen 7.4 to re | **DA-GRADUATED / merged #1738 @ 73b72e6c** — One movement ActionBand reaches the same target under identical PALMA po... |
+| 7.6 | OVERLAY-GERM-ARCHAEOLOGY-0 | **Overlay closure, rung 1 of 4 — anchored by `docs/stemthing_intrinsic_overlay_c | Census TSV lands with reconciliation line; every route classified with a disposition; checker `--check` PASS in CI an... |
+| 7.7 | GPU-OVERLAY-LIFECYCLE-EXTRACTION-0 | **Overlay closure, rung 2 of 4 — the dedicated extraction rung the anchor's §23. | Oracle/GPU bit-identical across the witness battery incl. a planted divergence RED; `AfterTicks` proven with zero CPU... |
+| 7.8 | ACTIONBAND-OVERLAY-ACTUATION-0 | **Overlay closure, rung 3 of 4 — probes C+D fused: the actuation door.** An Acti | Crossing → `OverlayStateNext` → next-generation consequence witness green; a certificate-envelope mutant (out-of-enve... |
+| 7.9 | OVERLAY-FRACTAL-CLOSURE-WITNESS-0 | **Overlay closure, rung 4 of 4 — probes E+F plus the anchor's §23.2 ADVERSARIAL  | Ten-element scenario green end-to-end; the illegal cycle rejects at admission (planted acceptance REDs); rewalk instr... |
 | 8.1 | CONTENTION-CONSERVATION-JUDGE-0 | **BINDS 6.5 (StemThing-A; clauses landed early in #1628, verified at 6.5 graduat | Judge red/green proven on seeded violations against SCENARIO-NEUTRAL synthetic contention fixtures. **The R6 dress re... |
 | 8.2 | CONTENTION-ARENA-EXECUTED-0 | **BINDS 6.5 (StemThing-A; clauses landed early in #1628, verified at 6.5 graduat | Executed path judged green; **emergence falsifier: changing ONLY the authored resolution rule changes the outcome wit... |
 | 9.1 | GATED-RATES-EML-REWIRE-0 | Phase 9: exclusion-audit Family C — `gated_rates` gate evaluation → authored EML | Gate behavior parity via oracle; hardcoded cols gone; corpus green. **SCOPE COVERAGE (DA review 2026-08-03, Owner-dir... |
@@ -101,7 +104,7 @@ Track state: `open`
 
 ## Next Rung Pointer
 
-Active pointer: `ACTIONBAND-FULL-FIELD-TRIAD-MOVEMENT-VENDOR-0`
+Active pointer: `OVERLAY-GERM-ARCHAEOLOGY-0`
 
 
 ## Cold-Start Spine (constitutional pointers)

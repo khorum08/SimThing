@@ -1,7 +1,7 @@
 # ACTIONBAND-FULL-FIELD-TRIAD-MOVEMENT-VENDOR-0 results
 
 - Track: 0.0.8.7 RF arena modernization (rung 7.5c)
-- Status: **PROBATION / proof-present / DA-review-pending**
+- Status: **COMPLETE — DA-GRADUATED / merged #1738 @ `73b72e6c`** (Owner-relayed DA ruling)
 - Branch: `codex/actionband-full-field-triad-movement-vendor-0`
 - Inherited master/class base: `206db59cd2dc864241a2a7927b11293f525632a9`
 - tested_code_sha: `cc2fdb7f755d1e325561206546bf1ae2ede309ca`
