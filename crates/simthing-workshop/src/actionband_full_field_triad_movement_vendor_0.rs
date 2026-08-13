@@ -5,7 +5,7 @@
 //! checks observations produced by those surfaces. Deleting it removes no
 //! production capability.
 
-use simthing_core::{cost_band_quantize, CostBandDraw};
+use simthing_core::CostBandDraw;
 use simthing_spec::AdmittedActionBandConservedProgressBoundSource;
 use thiserror::Error;
 
@@ -112,23 +112,18 @@ pub struct CostBandOrderingObservation {
 }
 
 impl CostBandOrderingObservation {
-    pub fn from_native(
+    /// Capture independently observed progress from one real vendor run and
+    /// the downstream draw resolved for that run's admitted CostBand sink.
+    pub fn from_run(
         native_progress: f32,
+        physical_progress: f32,
         unit_price: f32,
-        throttle: Option<u32>,
-    ) -> Result<Self, VendorProofError> {
-        let draw = cost_band_quantize(native_progress.abs(), unit_price, true, throttle)
-            .map_err(|error| VendorProofError::CostBand(error.to_string()))?;
-        Ok(Self::from_draw(native_progress, unit_price, draw))
-    }
-
-    pub fn from_draw(native_progress: f32, unit_price: f32, draw: CostBandDraw) -> Self {
+        draw: CostBandDraw,
+    ) -> Self {
         Self {
             unit_price_bits: unit_price.to_bits(),
             native_progress_bits: native_progress.to_bits(),
-            // Lawful ordering: physical progress is fixed by native flux before
-            // downstream sink quantization.
-            physical_progress_bits: native_progress.to_bits(),
+            physical_progress_bits: physical_progress.to_bits(),
             draw_n: draw.n,
             draw_remainder_bits: draw.r.to_bits(),
         }
@@ -298,8 +293,6 @@ pub enum VendorProofError {
     CapacityDidNotLimitProgress,
     #[error("restored capacity did not restore progress bit-exactly")]
     CapacityRestoreNotExact,
-    #[error("CostBand admission failed: {0}")]
-    CostBand(String),
     #[error("CostBand proof has no observation")]
     MissingCostBandObservation,
     #[error("sink price changed physical movement")]

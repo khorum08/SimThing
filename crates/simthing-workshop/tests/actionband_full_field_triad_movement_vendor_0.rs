@@ -15,9 +15,10 @@ use simthing_core::{
 use simthing_driver::{
     compile_action_band_gpu_execution_with_native_lanes, compile_comparative_bundle,
     compile_gu_yang_n4_field_sweeps, compile_palma_n4_field_sweep, neighbor_slots_from_grid,
-    ActionBandActiveInstance, ActionBandNativeLaneAdmission, ComparativeBandReadouts,
-    ComparativeEmitterClass, ComparativeProjectionOutputs, ComparativeProjectionRequest,
-    GuYangN4FieldSweepSpec, GuYangStallOutputs, PalmaN4FieldSweepSpec,
+    ActionBandActiveInstance, ActionBandExecutionCompileError, ActionBandNativeLaneAdmission,
+    ComparativeBandReadouts, ComparativeEmitterClass, ComparativeProjectionOutputs,
+    ComparativeProjectionRequest, GuYangN4FieldSweepSpec, GuYangStallOutputs,
+    PalmaN4FieldSweepSpec,
 };
 use simthing_gpu::{
     apply_band_crossing_deltas_from_fused_emissions, emit_on_threshold_registrations_to_gpu,
@@ -292,6 +293,8 @@ struct CompiledVendor {
     frozen: FrozenActionBandTemplates,
     compiled: simthing_driver::CompiledActionBandGpuExecution,
     rf: CompiledAccumulatorOpPlan,
+    cost_registry: ThresholdRegistry,
+    cost_event: u32,
 }
 
 fn compile_vendor(
@@ -348,6 +351,8 @@ fn compile_vendor(
         frozen,
         compiled,
         rf,
+        cost_registry,
+        cost_event,
     }
 }
 
@@ -394,10 +399,13 @@ fn storage(ctx: &GpuContext, label: &str, bytes: u64) -> wgpu::Buffer {
 #[derive(Debug)]
 struct VendorRun {
     generation: u32,
+    saturation: f32,
     native_flux: f32,
     desired: f32,
     physical_progress: f32,
     cost_progress: f32,
+    unit_price: f32,
+    cost_draw: simthing_core::CostBandDraw,
     palma_d: Vec<f32>,
     commitment: simthing_kernel::StructuralCommitment,
     plan_fingerprint: u64,
@@ -410,6 +418,7 @@ fn run_vendor(
     generation: u32,
     saturation: f32,
     ordinary_condition: f32,
+    unit_price: f32,
 ) -> VendorRun {
     let initial = initial_values(fx, ordinary_condition);
     let palma = compile_palma_n4_field_sweep(PalmaN4FieldSweepSpec {
@@ -529,12 +538,20 @@ fn run_vendor(
     rf.tick(ctx, 0).expect("RF tick");
     let result = rf.readback_full(ctx).expect("proof readback");
     let base = STEP_SLOT as usize * n;
+    let cost_progress = result[base + fx.cost_progress.raw()];
+    let mut cost_registry = vendor.cost_registry.clone();
+    let cost_draw = cost_registry
+        .resolve_cost_band_draw(vendor.cost_event, cost_progress.abs(), unit_price)
+        .expect("admitted CostBand sink draw");
     VendorRun {
         generation: phase5.generation(),
+        saturation,
         native_flux,
         desired: result[base + fx.desired.raw()],
         physical_progress: result[base + fx.rf_result.raw()],
-        cost_progress: result[base + fx.cost_progress.raw()],
+        cost_progress,
+        unit_price,
+        cost_draw,
         palma_d,
         commitment: production.commitments[0],
         plan_fingerprint: vendor.compiled.plan_fingerprint(),
@@ -665,6 +682,7 @@ fn run_opposed_actionband(
     ctx: &GpuContext,
     fx: &Fixture,
     world: &[f32],
+    programs: &EmlExpressionRegistry,
     stall: f32,
     contest: f32,
 ) -> OpposedDemandObservation {
@@ -704,8 +722,7 @@ fn run_opposed_actionband(
             buffer: EmitOnThresholdBuffer::Values,
         },
     ];
-    let programs = eml(fx.demand, false);
-    let frozen = admit_opposed(fx, &programs, &thresholds);
+    let frozen = admit_opposed(fx, programs, &thresholds);
     let rf = rf_plan(fx);
     let native = ActionBandNativeLaneAdmission::from_existing_surfaces(
         &fx.registry,
@@ -717,7 +734,7 @@ fn run_opposed_actionband(
     let template = frozen.templates()[0].index();
     let compiled = compile_action_band_gpu_execution_with_native_lanes(
         &frozen,
-        &programs,
+        programs,
         &[
             ActionBandEmissionBindingGpu::rf_claim(fx.rf_claim.raw_u32()),
             ActionBandEmissionBindingGpu::property_next(
@@ -834,7 +851,7 @@ fn full_vendor_capacity_overlay_costband_and_arrival_chain_is_native_bounded() {
     let descent = local_descent_identity(fx.d.raw_u32(), fx.d.raw_u32(), ACTOR_SLOT, STEP_SLOT);
     let mut runs = Vec::new();
     for (generation, capacity) in [(75, 1.0f32), (76, 0.25), (77, 1.0)] {
-        let run = run_vendor(&ctx, &fx, &vendor, generation, capacity, 1.0);
+        let run = run_vendor(&ctx, &fx, &vendor, generation, capacity, 1.0, 1.0);
         assert_eq!(run.generation, generation);
         assert_eq!(run.desired.to_bits(), (2.0 * run.native_flux).to_bits());
         assert_eq!(run.cost_progress.to_bits(), run.desired.to_bits());
@@ -867,7 +884,7 @@ fn full_vendor_capacity_overlay_costband_and_arrival_chain_is_native_bounded() {
         [(90, 1.0f32), (91, 0.5f32), (92, 1.0f32)].map(|(generation, condition)| {
             (
                 condition,
-                run_vendor(&ctx, &fx, &vendor, generation, 1.0, condition),
+                run_vendor(&ctx, &fx, &vendor, generation, 1.0, condition, 1.0),
             )
         });
     for ((expected_generation, _), (_, run)) in [(90, 1.0f32), (91, 0.5), (92, 1.0)]
@@ -890,11 +907,39 @@ fn full_vendor_capacity_overlay_costband_and_arrival_chain_is_native_bounded() {
         "restoring the ordinary condition at N+2 must restore throughput exactly"
     );
 
-    let native = runs[0].2.physical_progress;
-    let cost_rows = [
-        CostBandOrderingObservation::from_native(native, native.abs() / 2.0, None).unwrap(),
-        CostBandOrderingObservation::from_native(native, native.abs(), None).unwrap(),
-    ];
+    let native = runs[0].2.native_flux;
+    let cost_runs = [native.abs() / 2.0, native.abs()]
+        .map(|unit_price| run_vendor(&ctx, &fx, &vendor, 78, 1.0, 1.0, unit_price));
+    for run in &cost_runs {
+        assert_eq!(run.saturation.to_bits(), 1.0f32.to_bits());
+        assert_eq!(run.native_flux.to_bits(), native.to_bits());
+        assert_eq!(run.physical_progress.to_bits(), run.native_flux.to_bits());
+        assert_eq!(run.cost_progress.to_bits(), run.desired.to_bits());
+        assert_eq!(run.plan_fingerprint, runs[0].2.plan_fingerprint);
+        assert_eq!(run.palma_d, runs[0].2.palma_d);
+    }
+    let cost_rows = [&cost_runs[0], &cost_runs[1]].map(|run| {
+        CostBandOrderingObservation::from_run(
+            run.native_flux,
+            run.physical_progress,
+            run.unit_price,
+            run.cost_draw,
+        )
+    });
+    println!(
+        "R2_GPU_TRACE price0={} draw0=({}, {}) native0={} physical0={} price1={} draw1=({}, {}) native1={} physical1={} plan={} capacity=1",
+        cost_runs[0].unit_price,
+        cost_runs[0].cost_draw.n,
+        cost_runs[0].cost_draw.r,
+        cost_runs[0].native_flux,
+        cost_runs[0].physical_progress,
+        cost_runs[1].unit_price,
+        cost_runs[1].cost_draw.n,
+        cost_runs[1].cost_draw.r,
+        cost_runs[1].native_flux,
+        cost_runs[1].physical_progress,
+        cost_runs[0].plan_fingerprint,
+    );
     assert_costband_is_downstream(&cost_rows).expect("sink price is downstream");
     assert_costband_scaling_mutant_reds(cost_rows[0])
         .expect("constructible CostBand-scaled movement mutant must RED");
@@ -1059,9 +1104,9 @@ fn semantic_rename_delete_is_blind_at_shadow_to_positional_template_boundary() {
     );
     assert_eq!(deleted.frozen.semantic_shadow()[0].label(), None);
 
-    let run = run_vendor(&ctx, &fx, &canonical, 75, 1.0, 1.0);
-    let renamed_run = run_vendor(&ctx, &fx, &renamed, 75, 1.0, 1.0);
-    let deleted_run = run_vendor(&ctx, &fx, &deleted, 75, 1.0, 1.0);
+    let run = run_vendor(&ctx, &fx, &canonical, 75, 1.0, 1.0, 1.0);
+    let renamed_run = run_vendor(&ctx, &fx, &renamed, 75, 1.0, 1.0, 1.0);
+    let deleted_run = run_vendor(&ctx, &fx, &deleted, 75, 1.0, 1.0, 1.0);
     let binding = canonical.compiled.conserved_progress_bindings()[0];
     let source_code = native_bound_source_code(binding.bound_source());
     let target_identity = ((fx.d.raw_u32() as u64) << 32) | 2.0f32.to_bits() as u64;
@@ -1148,7 +1193,17 @@ fn costband_selector_is_unrepresentable_and_workshop_is_structurally_reapable() 
     );
     let source = vendor.compiled.conserved_progress_bindings()[0].bound_source();
     assert_eq!(native_bound_source_code(source), 3);
-    // This exhaustive type projection is the A2 proof: no CostBand member exists.
+    assert_eq!(ActionBandEmissionBindingGpu::CONSERVED_BOUND_NONE, 0);
+    assert_eq!(ActionBandEmissionBindingGpu::CONSERVED_BOUND_RF_GRANT, 1);
+    assert_eq!(
+        ActionBandEmissionBindingGpu::CONSERVED_BOUND_GU_YANG_AVAILABLE,
+        2
+    );
+    assert_eq!(
+        ActionBandEmissionBindingGpu::CONSERVED_BOUND_GU_YANG_REALIZED,
+        3
+    );
+
     // CostBand is separately constructible only as an emission destination.
     let cargos = [
         include_str!("../../simthing-core/Cargo.toml"),
@@ -1164,11 +1219,66 @@ fn costband_selector_is_unrepresentable_and_workshop_is_structurally_reapable() 
             !line.starts_with('#') && line.contains("simthing-workshop")
         }));
     }
-    assert!(
-        ActionBandEmissionBindingGpu::cost_band(fx.cost_progress.raw_u32())
-            .conserved_progress_bound_source()
-            == ActionBandEmissionBindingGpu::CONSERVED_BOUND_NONE
+    let mut ordinary_door = ActionBandSessionBuildDoor::new();
+    let ordinary = ordinary_door
+        .admit_once_at_session_build(
+            &session_spec(&fx, "closed-bound-source-vocabulary", None),
+            &fx.registry,
+            &programs,
+            std::slice::from_ref(&fx.movement_threshold),
+        )
+        .expect("ordinary admission for closed wire-code validation");
+    let rf = rf_plan(&fx);
+    let mut cost_registry = ThresholdRegistry::new();
+    let cost_event = cost_registry.push_with_cost_band(
+        ThresholdSemantic::ScriptedEventTrigger {
+            event_id: "closed-bound-source-cost".into(),
+        },
+        CostBandSemantic::admit_sink(None, None).expect("sink admission"),
     );
+    let cost_threshold = EmitOnThresholdRegistration {
+        slot: SlotIndex::new(STEP_SLOT),
+        col: fx.cost_progress,
+        threshold: 0.25,
+        direction: ThresholdDirection::Upward,
+        event_kind: cost_event,
+        buffer: EmitOnThresholdBuffer::Values,
+    };
+    let native = ActionBandNativeLaneAdmission::from_existing_surfaces(
+        &fx.registry,
+        &[fx.desired],
+        std::slice::from_ref(&rf),
+        std::slice::from_ref(&cost_threshold),
+        &cost_registry,
+    );
+    let invalid_fifth = [
+        ActionBandEmissionBindingGpu::rf_claim(fx.rf_claim.raw_u32())
+            .with_conserved_progress_bound_source(4),
+        ActionBandEmissionBindingGpu::property_next(
+            fx.desired.raw_u32(),
+            simthing_gpu::ActionBandPropertyWrite::Set,
+        ),
+        ActionBandEmissionBindingGpu::cost_band(fx.cost_progress.raw_u32()),
+        ActionBandEmissionBindingGpu::structural_request(0),
+    ];
+    let rejected = compile_action_band_gpu_execution_with_native_lanes(
+        ordinary,
+        &programs,
+        &invalid_fifth,
+        &[ActionBandActiveInstance::new(
+            ordinary.templates()[0].index(),
+            SlotIndex::new(STEP_SLOT),
+            [0.0; 4],
+        )],
+        &native,
+    );
+    assert!(matches!(
+        rejected,
+        Err(ActionBandExecutionCompileError::Kernel(
+            simthing_gpu::ActionBandExecutionError::InvalidTableSpan
+        ))
+    ));
+    println!("R3_CLOSED_SET_TRACE constants=[0,1,2,3] rejected_code=4 error=InvalidTableSpan");
 }
 
 #[test]
@@ -1245,21 +1355,22 @@ fn opposed_demand_requires_native_contest_and_abs_gross_mutant_reds() {
         stall > 1e-4 || contest > 1e-4,
         "contest versus absence must be positive"
     );
-    let lawful = run_opposed_actionband(&ctx, &fx, &out, stall, contest);
+    let lawful_program = eml(fx.demand, false);
+    let lawful = run_opposed_actionband(&ctx, &fx, &out, &lawful_program, stall, contest);
     assert_opposed_demand_law(lawful).expect("native contest gates real ActionBand mutual stall");
-    let abs_gross_mutant = OpposedDemandObservation {
-        forward: OpposedDemandOperand {
-            native_flux: lawful.forward.native_flux.abs(),
-            pre_clamp_progress: lawful.forward.pre_clamp_progress.abs(),
-            post_clamp_progress: stall.abs(),
-        },
-        reverse: OpposedDemandOperand {
-            native_flux: lawful.reverse.native_flux.abs(),
-            pre_clamp_progress: lawful.reverse.pre_clamp_progress.abs(),
-            post_clamp_progress: stall.abs(),
-        },
-        guyang_stall_magnitude: stall,
-        guyang_contest_magnitude: contest,
-    };
-    assert!(assert_opposed_demand_law(abs_gross_mutant).is_err());
+    let abs_program = eml(fx.flux, true);
+    assert!(
+        abs_program
+            .get_nodes(EmlTreeId(75))
+            .expect("ABS mutant program")
+            .iter()
+            .any(|node| node.opcode == simthing_core::eml_nodes::opcode::ABS),
+        "the exact program passed into the mutant GPU dispatch must contain ABS"
+    );
+    let abs_gross_mutant = run_opposed_actionband(&ctx, &fx, &out, &abs_program, stall, contest);
+    let mutant_error = assert_opposed_demand_law(abs_gross_mutant)
+        .expect_err("GPU-produced ABS/gross mutant must RED the opposed-demand law");
+    println!(
+        "R1_GPU_TRACE lawful={lawful:?} abs_program_dispatched=true mutant={abs_gross_mutant:?} rejection={mutant_error:?}"
+    );
 }
