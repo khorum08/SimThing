@@ -46,7 +46,7 @@ use simthing_workshop::actionband_full_field_triad_movement_vendor_0::{
     SealedVendorAuthority, SemanticMutationProjection, VendorGenerationSample,
 };
 use simthing_workshop::actionband_spatial_flux_witness_0::{
-    assert_opposed_demand_law, OpposedDemandObservation, OpposedDemandOperand,
+    assert_opposed_demand_law, FluxWitnessError, OpposedDemandObservation, OpposedDemandOperand,
 };
 use simthing_workshop::actionband_spatial_vendorization_0::{
     AdmittedTopologyCell, SpatialStepOverlayEffect, SpatialVendorizationStep,
@@ -168,15 +168,14 @@ fn eml(column: ColumnIndex, absolute: bool) -> EmlExpressionRegistry {
         a: column.raw_u32(),
         ..node(opcode::SLOT_VALUE)
     }];
+    nodes.push(EmlNode {
+        opcode: opcode::LITERAL_F32,
+        a: 2.0f32.to_bits(),
+        ..node(opcode::LITERAL_F32)
+    });
+    nodes.push(node(opcode::MUL));
     if absolute {
         nodes.push(node(opcode::ABS));
-    } else {
-        nodes.push(EmlNode {
-            opcode: opcode::LITERAL_F32,
-            a: 2.0f32.to_bits(),
-            ..node(opcode::LITERAL_F32)
-        });
-        nodes.push(node(opcode::MUL));
     }
     nodes.push(node(opcode::RETURN_TOP));
     let mut registry = EmlExpressionRegistry::new();
@@ -1358,19 +1357,58 @@ fn opposed_demand_requires_native_contest_and_abs_gross_mutant_reds() {
     let lawful_program = eml(fx.demand, false);
     let lawful = run_opposed_actionband(&ctx, &fx, &out, &lawful_program, stall, contest);
     assert_opposed_demand_law(lawful).expect("native contest gates real ActionBand mutual stall");
-    let abs_program = eml(fx.flux, true);
+    assert!(lawful.forward.pre_clamp_progress.abs() > 1e-4);
+    assert!(lawful.reverse.pre_clamp_progress.abs() > 1e-4);
+    assert_ne!(
+        lawful.forward.pre_clamp_progress.signum(),
+        lawful.reverse.pre_clamp_progress.signum(),
+        "lawful GPU operands must preserve authored demand opposition"
+    );
+
+    let abs_program = eml(fx.demand, true);
+    let lawful_nodes = lawful_program
+        .get_nodes(EmlTreeId(75))
+        .expect("lawful demand program");
+    let abs_nodes = abs_program
+        .get_nodes(EmlTreeId(75))
+        .expect("ABS demand mutant program");
+    assert_eq!(
+        lawful_nodes[0].opcode,
+        simthing_core::eml_nodes::opcode::SLOT_VALUE
+    );
+    assert_eq!(
+        abs_nodes[0].opcode,
+        simthing_core::eml_nodes::opcode::SLOT_VALUE
+    );
+    assert_eq!(lawful_nodes[0].a, fx.demand.raw_u32());
+    assert_eq!(abs_nodes[0].a, lawful_nodes[0].a);
     assert!(
-        abs_program
-            .get_nodes(EmlTreeId(75))
-            .expect("ABS mutant program")
+        abs_nodes
             .iter()
             .any(|node| node.opcode == simthing_core::eml_nodes::opcode::ABS),
-        "the exact program passed into the mutant GPU dispatch must contain ABS"
+        "the exact same-source program passed into the mutant GPU dispatch must contain ABS"
     );
     let abs_gross_mutant = run_opposed_actionband(&ctx, &fx, &out, &abs_program, stall, contest);
+    assert!(abs_gross_mutant.forward.pre_clamp_progress.abs() > 1e-4);
+    assert!(abs_gross_mutant.reverse.pre_clamp_progress.abs() > 1e-4);
+    assert_eq!(
+        abs_gross_mutant.forward.pre_clamp_progress.signum(),
+        abs_gross_mutant.reverse.pre_clamp_progress.signum(),
+        "ABS mutant must express sign loss through non-zero same-signed GPU operands"
+    );
+    assert_eq!(
+        abs_gross_mutant.forward.pre_clamp_progress.to_bits(),
+        2.0f32.to_bits()
+    );
+    assert_eq!(
+        abs_gross_mutant.reverse.pre_clamp_progress.to_bits(),
+        2.0f32.to_bits()
+    );
     let mutant_error = assert_opposed_demand_law(abs_gross_mutant)
         .expect_err("GPU-produced ABS/gross mutant must RED the opposed-demand law");
+    assert_eq!(mutant_error, FluxWitnessError::PreClampSignLost);
     println!(
-        "R1_GPU_TRACE lawful={lawful:?} abs_program_dispatched=true mutant={abs_gross_mutant:?} rejection={mutant_error:?}"
+        "R1_GPU_TRACE source_col={} lawful={lawful:?} abs_program_dispatched=true mutant={abs_gross_mutant:?} rejection={mutant_error:?}",
+        fx.demand.raw_u32()
     );
 }
