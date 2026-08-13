@@ -504,6 +504,9 @@ own placement belongs to its granter's barrier, which for the session root is se
      same window, before any Phase 7 row is dispatched.
   4. StemThing-A implements; Phase 7 movement lands **under the §7.1 clause**; 8.1/8.2 land;
      StemThing-B rows are minted and implemented; Phase 11's door follows.
+- **StemThing-B forward-bind (v4 unification sweep, 2026-08-13, #1743):** B's partial
+  reconciliation consumes the **7.8a `DERIVED-SPAN-PROJECTION-INVALIDATION-0` span/invalidation
+  substrate** — never any consumer's representation. The B-mint session inherits this bind.
 - **Split insertion (Owner ruling 2026-08-03, placement inside 0.0.8.7):**
   **StemThing-A** lands in the **Phase 6 → 7 gap** — the census, the §3.1 Tier-2 ruling, the
   residency/tier vocabulary, and the §7.1 movement clause — so allocation/tiling awareness exists

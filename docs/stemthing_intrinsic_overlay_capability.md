@@ -18,6 +18,16 @@
 > ActionBand Field-Triad remediation stabilizes, before 8.2 hardens a second actuation path. Exact
 > numbering belongs to the DA.
 >
+> **AMENDED INTO THE WORKPLAN (v4 unification sweep, 2026-08-13, #1743 @ `34db7956`).** The §23 probe
+> sequence is superseded-in-part: ladder rows **7.6–7.9 plus the new 7.8a
+> `DERIVED-SPAN-PROJECTION-INVALIDATION-0`** govern. v4 added (engineering-converged, Sol/Fable): the
+> three-armed `CrossingConsequenceBinding` ABI (facility-local `ResidentNextWrite` /
+> `RoutedOverlayDelivery` / `StructuralAuthorization`), the **Deadline Authority Law** and the
+> **Routed Lifecycle Epoch Law**, the source-blind `DerivedDependencyIndex`, effective-profile
+> interning with materialization-as-derived-cache, session-frozen facility residency accounting, the
+> canonical EML program registry binding, and the write-only telemetry law. Where this document and
+> those rows differ, **the rows govern**.
+>
 > Owner-approved working design, revised 2026-08-10 after engineering review and designer-language stress analysis. This document remains under `docs/workshop/` while the overlay closure is tested, reviewed, and prepared for promotion. It proposes the final semantic closure of the base recursive **StemThing**: the base `SimThing` is the sole semantic owner of overlay origination/emission, retention, reception, routing/filtering, projection, activation/suspension, lifecycle, dissolution, and collapse; ordinary numerical action is expressed by that intrinsic overlay capability rather than by a peer event-execution or behavior subsystem.
 >
 > **This document does not amend the 0.0.8.7 ladder, does not supersede an anchor, and does not authorize implementation by itself.** Existing anchors and graduated rungs remain authoritative until this workshop is adjudicated and promoted.
