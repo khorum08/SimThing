@@ -1,0 +1,4 @@
+tested_code_sha: beb86f8bb496de61213521a920b750d5b2ce7f35
+coverage_basis: PASS - anchor reach log remains outside the witness envelope
+ci_green: PASS
+novelty_claim: NO
