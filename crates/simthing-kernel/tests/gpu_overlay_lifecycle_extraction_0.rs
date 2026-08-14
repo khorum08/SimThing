@@ -138,6 +138,14 @@ fn real_phase5_crossings_project_conjunctive_lifecycle_state() {
         .configure_overlay_lifecycle_projection(&state.ctx, &grown)
         .is_err());
 
+    let mut over_capacity = plan.clone();
+    over_capacity
+        .rows
+        .extend([OverlayLifecycleStateGpu::pending(0b1); 4]);
+    assert!(mutant
+        .configure_overlay_lifecycle_projection(&state.ctx, &over_capacity)
+        .is_err());
+
     assert_eq!(
         admit_overlay_lifecycle(&OverlayLifecycle::Transient {
             dissolution_conditions: vec![DissolveCondition::OverrideReceived],
