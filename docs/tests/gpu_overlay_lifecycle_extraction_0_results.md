@@ -1,6 +1,6 @@
 # GPU-OVERLAY-LIFECYCLE-EXTRACTION-0 (7.7) evidence
 
-Status: **PROBATION / proof-present / DA-review-pending**. Coding does not merge, move the ladder pointer, close the binding row, retire `OVERLAY-PEER-AUTHORITY`, or begin 7.8.
+Status: **COMPLETE — DA-GRADUATED / merged #1761 @ `3fbdf56f`** (pre-dispatch `5290429128`, substrate STOP `5293929841`, census-pin `5298015175`, graduation ruling on Board #1332). The `OverrideReceived` promotion blocker is discharged by admission rejection.
 
 ## Receipts and authority
 
