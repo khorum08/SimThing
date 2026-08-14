@@ -21,9 +21,8 @@ import tempfile
 from pathlib import Path
 
 ROOT = Path(".").resolve()
-UNIVERSE_PATH = ROOT / "scripts/ci/overlay_germ_census_universe.txt"
-TSV_PATH = ROOT / "scripts/ci/overlay_germ_census.tsv"
-RESIDUE_PATH = ROOT / "scripts/ci/overlay_germ_census_residue.tsv"
+UNIVERSE_PATH = ROOT / "scripts/ci/overlay_germ_archaeology_census_universe.txt"
+TSV_PATH = ROOT / "scripts/ci/overlay_germ_archaeology_census.tsv"
 
 SCAN_CRATES = (
     "simthing-core",
@@ -123,9 +122,8 @@ CLASSIFICATION = {
     "SEMANTIC-DUPLICATE",
     "GENUINELY-STRUCTURAL",
     "DEAD",
-    "OPEN",
 }
-DISPOSITION = {"keep", "migrate", "delete", "open"}
+DISPOSITION = {"keep", "migrate", "delete"}
 FAMILIES = {"OVERLAY", "INHERIT", "CROSSING-WRITE", "EML-REGISTRY"}
 
 
@@ -294,13 +292,14 @@ def load_tsv() -> list[dict[str, str]]:
 
 
 def load_residue() -> list[dict[str, str]]:
+    """Justified non-route hits live as `# RESIDUE\\t...` comments in the TSV."""
     rows: list[dict[str, str]] = []
-    if not RESIDUE_PATH.is_file():
-        raise SystemExit("CENSUS-CHECK-VERDICT: FAIL(missing-residue)")
-    for lineno, raw in enumerate(RESIDUE_PATH.read_text(encoding="utf-8").splitlines(), 1):
-        if not raw or raw.startswith("#") or "\t" not in raw:
+    if not TSV_PATH.is_file():
+        raise SystemExit("CENSUS-CHECK-VERDICT: FAIL(missing-tsv)")
+    for lineno, raw in enumerate(TSV_PATH.read_text(encoding="utf-8").splitlines(), 1):
+        if not raw.startswith("# RESIDUE\t"):
             continue
-        cols = raw.split("\t")
+        cols = raw[len("# RESIDUE\t") :].split("\t")
         if len(cols) < 3:
             raise SystemExit(f"CENSUS-CHECK-VERDICT: FAIL(residue-short-row:{lineno})")
         rows.append(
@@ -371,8 +370,6 @@ def run_check(extra_files: list[Path] | None = None) -> int:
             problems.append(f"BAD-DISPOSITION:{r['id']}:{r['disposition']}")
         if r["family"] not in FAMILIES:
             problems.append(f"BAD-FAMILY:{r['id']}:{r['family']}")
-        if r["classification"] == "OPEN" and r["disposition"] != "open":
-            problems.append(f"OPEN-MUST-DISPOSITION-OPEN:{r['id']}")
         if r["classification"] == "SEMANTIC-DUPLICATE" and r["disposition"] != "migrate":
             problems.append(f"DUP-MUST-MIGRATE:{r['id']}")
         if r["classification"] == "GENUINELY-STRUCTURAL" and r["disposition"] != "keep":
@@ -441,7 +438,7 @@ def run_harvest() -> int:
         difflib.unified_diff(
             [p + "\n" for p in pinned],
             [p + "\n" for p in live],
-            fromfile="overlay_germ_census_universe.txt",
+            fromfile="overlay_germ_archaeology_census_universe.txt",
             tofile="live-discovery",
         )
     )
@@ -501,7 +498,7 @@ def main(argv: list[str]) -> int:
     if mode in ("--check",):
         return run_check()
     print(
-        "usage: overlay_germ_census_check.sh [--check|--harvest|--selftest]",
+        "usage: overlay_germ_archaeology_census_check.sh [--check|--harvest|--selftest]",
         file=sys.stderr,
     )
     return 2

@@ -8,20 +8,23 @@
 - ANCHOR-ACK: `orientation-harness-core@8a365d1c0864`
 - ANCHOR-ACK: `scanner-selftest-delta-gate@34fb2662baae`
 - Board dispatch: comment `5289606240`
-- base_sha (dispatch master): `26a33167a03d1f719c69b7781019d655e6b606a5`
+- Remand: `5289859340` (DA `5289831443`; parked mechanical `5289705592`)
 - expected_route: `DA-RESERVE(gate-wiring)`
 - Coverage: docs/TSV/TXT/script only; zero `crates/**`; zero `.github/workflows/**`; checker not CI-wired (DA graduation PR)
 
 ## What landed
 
-Tree-derived census of every overlay attach/activate/suspend/dissolve/apply/override/expire route plus the three v4 unification surfaces. Known starting files (`work.rs`, `patcher.rs`, `overlay_lifecycle.rs`, `tree_mutation.rs`, `overlay_prep.rs`, `automaton_reception.rs`, `compile/overlay.rs`) were seeds, not the universe.
+Tree-derived census of every overlay attach/activate/suspend/dissolve/apply/override/expire route plus the three v4 unification surfaces. Known starting files were seeds, not the universe.
+
+Declared surfaces (handoff `surfaces:` exactly):
 
 | Artifact | Role |
 |---|---|
-| `scripts/ci/overlay_germ_census.tsv` | classified routes + analysis rows |
-| `scripts/ci/overlay_germ_census_universe.txt` | pinned harvest (71 tokens) |
-| `scripts/ci/overlay_germ_census_residue.tsv` | justified non-route overlay-named hits |
-| `scripts/ci/overlay_germ_census_check.sh` | `--check` / `--harvest` / `--selftest` |
+| `scripts/ci/overlay_germ_archaeology_census.tsv` | classified routes + folded `# RESIDUE` justifications |
+| `scripts/ci/overlay_germ_archaeology_census_universe.txt` | pinned harvest (71 tokens) |
+| `scripts/ci/overlay_germ_archaeology_census_check.sh` | `--check` / `--harvest` / `--selftest` |
+| `docs/tests/overlay_germ_archaeology_0_results.md` | this signal-only record |
+| `docs/tests/current_evidence_index.md` | one evidence line |
 
 ## Family counts (classified rows)
 
@@ -33,10 +36,14 @@ Tree-derived census of every overlay attach/activate/suspend/dissolve/apply/over
 | EML-REGISTRY | 6 | `EmlExpressionRegistry`, session cache, JIT `pipeline_cache_digest` |
 | **total** | **74** | 71 harvested + 3 analysis |
 
+Class: 56 GENUINELY-STRUCTURAL / 16 SEMANTIC-DUPLICATE / 2 DEAD. Zero unclassified. Zero fourth class.
+
+`OverrideReceived` is **SEMANTIC-DUPLICATE / migrate**: reachable-but-unimplemented. Authored input can name the serde-visible variant, admission accepts a non-empty dissolution-condition list, lifecycle evaluation returns false, and the documented attach-side replacement handler does not exist. 7.6 does not implement replacement.
+
 ## Reconciliation
 
 ```text
-RECONCILIATION: routes=74 discovery=71 residue=49 unclassified=0 open=1
+RECONCILIATION: routes=74 discovery=71 residue=49 unclassified=0 open=0
 CENSUS-CHECK-VERDICT: PASS
 ```
 
@@ -49,10 +56,6 @@ CENSUS-SELFTEST-VERDICT: PASS
 
 `--harvest` is local-only: dirty tree → `CENSUS-HARVEST-VERDICT: FAIL(dirty-tree)`; clean-tree drift → `CENSUS-HARVEST-VERDICT: STALE (universe drifted; re-reconcile the TSV, do not hand-edit)`.
 
-## Open row
-
-`AN-OVERRIDE` (`OverrideReceived`): condition is hardcoded false and attach does not implement replacement. Recorded OPEN per the 7.6 row — a false disposition would invent a path that is not in the tree.
-
 ## Fences held
 
-No migrate/delete/refactor of engine routes. No 7.7/7.8/7.8a/7.9 start. No workflow wiring. Pointer unchanged.
+No migrate/delete/refactor of engine routes. No 7.7/7.8/7.8a/7.9 start. No workflow wiring. No `binding_conditions.tsv` edit. Pointer unchanged.
