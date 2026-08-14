@@ -1,0 +1,81 @@
+# Overlay-germ archaeology census (OVERLAY-GERM-ARCHAEOLOGY-0 / 7.6)
+# schema: id	token	verb	layer	family	classification	disposition	rationale
+# families: OVERLAY | INHERIT | CROSSING-WRITE | EML-REGISTRY
+# classification: SEMANTIC-DUPLICATE→migrate / GENUINELY-STRUCTURAL→keep / DEAD→delete / OPEN→open
+# universe is tree-derived (scripts/ci/overlay_germ_census_universe.txt); do not hand-edit that pin.
+# RECONCILIATION: discovery=71 classified-universe=71 analysis=3 residue=see overlay_germ_census_residue.tsv unclassified=0
+OVL-STORE	core:simthing.rs:add_overlay	attach	core	OVERLAY	GENUINELY-STRUCTURAL	keep	The one overlay store. Anchor §4.1 semantic home; every live attach terminates here except replay restore.
+OVL-RECEIVE	core:automaton.rs:deliver_routed_overlay	attach	core	OVERLAY	GENUINELY-STRUCTURAL	keep	The one receive/route primitive. Anchor §4.2; origin/target validated; terminates at add_overlay. Germ receive door.
+OVL-DEFICIT-ALIAS	core:automaton.rs:deliver_deficit_directive	attach	core	OVERLAY	SEMANTIC-DUPLICATE	migrate	Thin alias of deliver_routed_overlay. Collapse onto the one receive door.
+OVL-STANDING-ALIAS	core:automaton.rs:deliver_standing_directive	attach	core	OVERLAY	SEMANTIC-DUPLICATE	migrate	Thin alias of deliver_routed_overlay. Standing install is receive-at-subtree-root, not a second inbox.
+OVL-PREDICATE-BCAST	core:automaton.rs:deliver_predicate_broadcast	attach	core	OVERLAY	GENUINELY-STRUCTURAL	keep	Admitted paid push-by-predicate mode. Per-receiver stamps are this delivery mode, not inheritance. Keep as the one broadcast door.
+OVL-LIFECYCLE-ATTACH	sim:overlay_lifecycle.rs:attach_overlay	attach	sim	OVERLAY	DEAD	delete	Wrapper around deliver_routed_overlay with zero production callers. Boundary attach is tree_mutation; this door is unused residue.
+OVL-STRUCTURAL-APPLY	sim:tree_mutation.rs:apply_structural_mutations	attach	sim	OVERLAY	GENUINELY-STRUCTURAL	keep	Live boundary apply of Attach/Activate/Suspend. Genuine structural seam; stays boundary.
+OVL-FEEDER-ATTACH	feeder:work.rs:AttachOverlay	attach	feeder	OVERLAY	GENUINELY-STRUCTURAL	keep	Ingress type for routed attach. Feeder/spec/driver mint this; sim applies it.
+OVL-PLAYER-INTENT	feeder:work.rs:submit_player_intent	attach	feeder	OVERLAY	SEMANTIC-DUPLICATE	migrate	Provenance-split player ingress (§5.1). Same attach semantics as AI/system; should converge on one activation door.
+OVL-BARRIER-MINT	sim:resolution_site.rs:mint_attach_overlay_at_barrier	attach	sim	OVERLAY	GENUINELY-STRUCTURAL	keep	Slot-identity reattach then mint AttachOverlay. Fail-closed identity door; not a second inbox.
+OVL-INSTALL-ONE	driver:install.rs:install_standalone_overlay	attach	driver	OVERLAY	GENUINELY-STRUCTURAL	keep	Install-time compile+host attach. Admission/install boundary, not runtime germ lifecycle.
+OVL-INSTALL-PACK	driver:install.rs:install_pack_standalone_overlays	attach	driver	OVERLAY	GENUINELY-STRUCTURAL	keep	Pack-level install driver for standalone overlays. Same install boundary as OVL-INSTALL-ONE.
+OVL-COMPILE	spec:compile/overlay.rs:compile_overlay	attach	spec	OVERLAY	GENUINELY-STRUCTURAL	keep	OverlaySpec → Overlay compile. Authoring/admission, not runtime attach authority.
+OVL-RF-RECEIVE	driver:automaton_reception.rs:receive_command_deficits_from_disbursement	attach	driver	OVERLAY	GENUINELY-STRUCTURAL	keep	RF disburse-down → deliver_deficit_directive. Anchor §4.4 arrival hook; RF allocation stays here, terminal receive is the germ.
+OVL-ORDER-BUILD	driver:order_directive.rs:build_order_directive_overlay	attach	driver	OVERLAY	GENUINELY-STRUCTURAL	keep	Class-bound Player Transient mint. Admission/authoring of an ordinary overlay, not a peer executor.
+OVL-ORDER-GATE	driver:order_directive.rs:gate_raw_player_overlay	attach	driver	OVERLAY	GENUINELY-STRUCTURAL	keep	Magnitude/class gate on raw Player overlays. Admission, not a second apply path.
+OVL-ORDER-SUBMIT	driver:session.rs:submit_order_directive	attach	driver	OVERLAY	SEMANTIC-DUPLICATE	migrate	Another player-provenance ingress onto the feeder intent channel. Converge with submit_player_intent onto one door.
+OVL-COMMIT-ATTACH	driver:session.rs:submit_commitment_effects	attach	driver	OVERLAY	SEMANTIC-DUPLICATE	migrate	Mapping commitment crossing mints AttachOverlay. Crossing→consequence should ride the 7.8 shared ABI; this is a private mapping door.
+OVL-DISPATCH-HORIZON	core:generation_stamp.rs:dispatch_until_dissolved	attach	core	OVERLAY	GENUINELY-STRUCTURAL	keep	Definable-horizon constructor for dispatch-minted overlays. Admission helper, not a lifetime authority.
+OVL-DISPATCH-ADMIT	core:generation_stamp.rs:admit_dispatch_minted_overlay	attach	core	OVERLAY	GENUINELY-STRUCTURAL	keep	Admission check that dispatch-minted overlays carry UntilDissolvedWith. Keep as the one mint-discipline door.
+OVL-DELTA-ATTACHED	sim:delta_log.rs:OverlayAttached	attach	sim	OVERLAY	GENUINELY-STRUCTURAL	keep	Replay transport of attach. One-history surface; not a second store.
+OVL-ACTIVATE-FN	sim:tree_mutation.rs:activate_overlay	activate	sim	OVERLAY	GENUINELY-STRUCTURAL	keep	Structural Suspended→active restore. §5.3 storage mutation; stays boundary until 7.7 extracts numerical lifecycle.
+OVL-SUSPEND-FN	sim:tree_mutation.rs:suspend_overlay	suspend	sim	OVERLAY	GENUINELY-STRUCTURAL	keep	Structural wrap-in-Suspended. Pair of activate_overlay; genuine storage boundary.
+OVL-FEEDER-ACTIVATE	feeder:work.rs:ActivateOverlay	activate	feeder	OVERLAY	GENUINELY-STRUCTURAL	keep	Ingress type for boundary activate.
+OVL-FEEDER-SUSPEND	feeder:work.rs:SuspendOverlay	suspend	feeder	OVERLAY	GENUINELY-STRUCTURAL	keep	Ingress type for boundary suspend.
+OVL-CE-ACTIVATE	spec:runtime/compiled_effect.rs:ActivateOverlay	activate	spec	OVERLAY	GENUINELY-STRUCTURAL	keep	Compiled scripted-event activate arm. Lowers to feeder ActivateOverlay.
+OVL-CE-SUSPEND	spec:runtime/compiled_effect.rs:SuspendOverlay	suspend	spec	OVERLAY	GENUINELY-STRUCTURAL	keep	Compiled scripted-event suspend arm.
+OVL-SPEC-ACTIVATE	spec:spec/effect.rs:ActivateOverlay	activate	spec	OVERLAY	GENUINELY-STRUCTURAL	keep	Authored effect spec activate arm.
+OVL-SPEC-ACTIVATE-REF	spec:spec/effect.rs:ActivateOverlayRef	activate	spec	OVERLAY	GENUINELY-STRUCTURAL	keep	Install-time overlay-ref activate. Resolved to ActivateOverlay at install.
+OVL-SPEC-SUSPEND	spec:spec/effect.rs:SuspendOverlay	suspend	spec	OVERLAY	GENUINELY-STRUCTURAL	keep	Authored effect spec suspend arm.
+OVL-CAP-EMIT	spec:boundary/capability_handler.rs:emit_activation	activate	spec	OVERLAY	GENUINELY-STRUCTURAL	keep	Capability entry → ActivateOverlay/SuspendOldest requests. Domain handler on the existing boundary types.
+OVL-DELTA-ACTIVATED	sim:delta_log.rs:OverlayActivated	activate	sim	OVERLAY	GENUINELY-STRUCTURAL	keep	Replay transport of activate.
+OVL-DELTA-SUSPENDED	sim:delta_log.rs:OverlaySuspended	suspend	sim	OVERLAY	GENUINELY-STRUCTURAL	keep	Replay transport of suspend.
+OVL-LIFECYCLE	sim:overlay_lifecycle.rs:resolve_overlay_lifecycle	dissolve	sim	OVERLAY	SEMANTIC-DUPLICATE	migrate	Largest remaining peer numerical authority (§5.2). CPU tree walk, AfterTicks decrement, dissolve. 7.7 extracts to GPU; CPU stays oracle then leaves the production path.
+OVL-EXPIRE-FX	sim:overlay_lifecycle.rs:apply_expire_effects	expire	sim	OVERLAY	SEMANTIC-DUPLICATE	migrate	on_expire writeback into the CPU shadow. Germ collapse should own expire consequence; this is bundled with the CPU lifecycle peer.
+OVL-DELTA-DISSOLVED	sim:delta_log.rs:OverlayDissolved	dissolve	sim	OVERLAY	GENUINELY-STRUCTURAL	keep	Replay transport of dissolve. One-history surface.
+OVL-PREP	kernel:overlay_prep.rs:build_overlay_deltas	apply	kernel	OVERLAY	SEMANTIC-DUPLICATE	migrate	CPU prep reimplements the ancestor+local inherit walk to emit GPU deltas. Duplicate of inherit_active_overlays / LiveOverlayRoutes. Migrates to germ project / 7.8a span.
+OVL-GPU-RUN	kernel:passes.rs:run_accumulator_overlays	apply	kernel	OVERLAY	GENUINELY-STRUCTURAL	keep	GPU apply plane for overlay OrderBands. Physical execution, not a second semantic authority.
+OVL-GPU-UPLOAD	kernel:world_state.rs:upload_overlay_deltas	apply	kernel	OVERLAY	GENUINELY-STRUCTURAL	keep	Upload of prepared overlay deltas. GPU boundary.
+OVL-ORDERBAND	kernel:overlay_orderband.rs:plan_overlay_orderband	apply	kernel	OVERLAY	GENUINELY-STRUCTURAL	keep	GPU lowering of degenerate Set/Add/Mul overlay ops. Physical OrderBand plan, not a second transform language.
+OVL-STACK-FROM	core:evaluate.rs:from_ordered_overlays	apply	core	OVERLAY	SEMANTIC-DUPLICATE	migrate	CPU-oracle stack builder. Retain as oracle; production project migrates to germ/GPU.
+OVL-STACK-PUSH	core:evaluate.rs:push_overlay	apply	core	OVERLAY	SEMANTIC-DUPLICATE	migrate	CPU-oracle stack push. Pair of from_ordered_overlays.
+OVL-APPLY-DATA	core:overlay.rs:apply_to_data	apply	core	OVERLAY	GENUINELY-STRUCTURAL	keep	The one CPU role→lane apply primitive. GPU uses resolved columns; this stays the CPU oracle apply.
+OVL-APPLY-DATA-N	core:overlay.rs:apply_to_data_with_n	apply	core	OVERLAY	GENUINELY-STRUCTURAL	keep	CostBand-n parameterized twin of apply_to_data. Same apply primitive.
+OVL-PATCHER	feeder:patcher.rs:apply_collected	apply	feeder	OVERLAY	SEMANTIC-DUPLICATE	migrate	Mid-day applies overlay.transform to the CPU shadow AND parks attach. §5.1 provenance split + apply-before-attach. Converge on generation-paced germ apply.
+OVL-PATCHER-INTENT	feeder:patcher.rs:apply_collected_as_intents	apply	feeder	OVERLAY	SEMANTIC-DUPLICATE	migrate	Same mid-day overlay apply, folded to GPU intents. Duplicate of apply_collected.
+OVL-EVAL-EML	core:property.rs:eval_overlay_eml	apply	core	OVERLAY	GENUINELY-STRUCTURAL	keep	EML interpreter for overlay transforms. One eval; 7.7 forbids an OverlayThing-local evaluator.
+OVL-REMAP-ORIGIN	sim:fission.rs:remap_overlay_origins	attach	sim	OVERLAY	GENUINELY-STRUCTURAL	keep	Fission identity remap of overlay.origin. Structural id rewrite, not a new attach.
+OVL-REMAP-AFFECTS	sim:fission.rs:remap_overlay_affects	attach	sim	OVERLAY	GENUINELY-STRUCTURAL	keep	Fission identity remap of overlay.affects. Pair of remap_overlay_origins.
+INH-INHERIT	core:automaton.rs:inherit_active_overlays	inherit	core	INHERIT	SEMANTIC-DUPLICATE	migrate	Canonical standing-inherit step. 7.8a replaces the O(depth×descendants) hot path; retain as query/oracle like resolve_owner.
+INH-ORDERED	core:automaton.rs:ordered_active_overlays	inherit	core	INHERIT	SEMANTIC-DUPLICATE	migrate	Route-aware inherit (instruction + deferred policy). Same ancestor walk family; migrates onto 7.8a effective-profile spans.
+INH-CAPTURE	core:automaton.rs:capture_ancestor_standing_policy	inherit	core	INHERIT	SEMANTIC-DUPLICATE	migrate	Site-local ancestor policy capture. 7.8a span/invalidation is the production substrate; this remains a snapshot oracle.
+INH-WALK	core:simthing.rs:walk_inherited_until	inherit	core	INHERIT	GENUINELY-STRUCTURAL	keep	Shared absence-means-inherit walk used by owner + overlay. CPU oracle primitive; 7.8a may consume it, not delete the query shape.
+INH-OWNER	core:owner_channel.rs:resolve_owner	inherit	core	INHERIT	GENUINELY-STRUCTURAL	keep	resolve_owner-class ancestor walk. 7.8a explicitly retains this as the query/oracle surface.
+INH-OWNERS	core:owner_channel.rs:resolve_owners_in_order	inherit	core	INHERIT	GENUINELY-STRUCTURAL	keep	Batched resolve_owner. Same oracle family; keep.
+INH-GRANT-CENSUS	core:residency_tier.rs:materialize_granting_census	inherit	core	INHERIT	GENUINELY-STRUCTURAL	keep	Sparse granting-node census materialization. Not a descendant stamp; cost scales with granting-active nodes.
+INH-PREREQ	spec:boundary/capability_handler.rs:sweep_on_prereq_met	inherit	spec	INHERIT	GENUINELY-STRUCTURAL	keep	Capability/tier grant propagation: OnPrereqMet sweep emits ActivateOverlay. Admission/handler, not a second inherit walk.
+XWR-FUSED	kernel:sealed/band_crossing_delta.rs:apply_band_crossing_deltas_from_fused_emissions	crossing	kernel	CROSSING-WRITE	GENUINELY-STRUCTURAL	keep	Sealed mint of BandCrossingDelta from fused emissions. The one crossing surface (17.19).
+XWR-THRESH	kernel:sealed/band_crossing_delta.rs:apply_band_crossing_deltas_from_threshold_events	crossing	kernel	CROSSING-WRITE	GENUINELY-STRUCTURAL	keep	Sealed mint from threshold events. Twin of the fused door; same crossing surface.
+XWR-SEALED-AT	kernel:sealed/anchor_table.rs:apply_sealed_band_crossings_to_anchor_table	crossing	kernel	CROSSING-WRITE	GENUINELY-STRUCTURAL	keep	Oracle/test apply of sealed crossings onto the typed anchor table. Not production boundary (boundary is banned from this path).
+XWR-AT	core:anchor_table.rs:apply_band_crossings_to_anchor_table	crossing	core	CROSSING-WRITE	GENUINELY-STRUCTURAL	keep	Observation-table write from crossings. Observation, not overlay store.
+XWR-AB-NEXT	kernel:accumulator_op/action_band_execution.rs:dispatch_with_native_next	crossing	kernel	CROSSING-WRITE	GENUINELY-STRUCTURAL	keep	7.3 ActionBand crossing → StateNext. Reference instance of CrossingConsequenceBinding; 7.8 leaves it unless consolidation requires oracle-first delete.
+XWR-AB-OVL	kernel:accumulator_op/action_band_execution.rs:overlay_event	crossing	kernel	CROSSING-WRITE	GENUINELY-STRUCTURAL	keep	Admitted OverlayEvent emission destination. Existing sealed event packet; the 7.8 door's overlay arm binds here rather than minting a dispatcher.
+XWR-SUBORD	driver:action_band_execution_compile.rs:pre_admitted_subordinate	crossing	driver	CROSSING-WRITE	GENUINELY-STRUCTURAL	keep	7.3 subordinate-activation compile: reserved inactive child row activated only by a frozen parent dependency. Reference instance; keep.
+XWR-BIND	spec:compile/action_band_admission.rs:crossing_binding_for_band	crossing	spec	CROSSING-WRITE	GENUINELY-STRUCTURAL	keep	Admission-sealed crossing provenance lookup. Compile/admission, not a second crossing detector.
+EML-REG	core:eml_registry.rs:register_formula	registry	core	EML-REGISTRY	GENUINELY-STRUCTURAL	keep	The canonical EML program registry. 7.7 binds one library; OverlayThing must not mint a local table.
+EML-REG-ORACLE	core:eml_registry.rs:register_cpu_oracle_formula	registry	core	EML-REGISTRY	GENUINELY-STRUCTURAL	keep	CPU-oracle registration arm of the same registry. Not a second namespace.
+EML-SESSION	kernel:world_state.rs:eml_registry_mut	cache	kernel	EML-REGISTRY	GENUINELY-STRUCTURAL	keep	Session-resident registry cache / merge. Artifact reuse keyed on the canonical registry generation.
+EML-CACHE	kernel:eml_resource_class.rs:pipeline_cache_digest	cache	kernel	EML-REGISTRY	GENUINELY-STRUCTURAL	keep	JIT/dispatch-grouping key (resource class + program identity). 7.7 compiled-artifact cache shape.
+EML-ADMIT	core:property.rs:admit_overlay_eml_program	registry	core	EML-REGISTRY	GENUINELY-STRUCTURAL	keep	Admission of an overlay EML program into the existing language. Not an overlay-local ISA.
+EML-VALIDATE	core:property.rs:validate_overlay_eml_program	registry	core	EML-REGISTRY	GENUINELY-STRUCTURAL	keep	Validation twin of admit_overlay_eml_program.
+# analysis-added (not name-harvested; mutation/walk/scaffold evidence)
+AN-CAP-ATTACH	[analysis]spec:compile/capability.rs:add_overlay	attach	spec	OVERLAY	GENUINELY-STRUCTURAL	keep	Capability compile stamps a Suspended overlay onto the tree via add_overlay. Install/compile attach; activation is later emit_activation.
+AN-MAINTAINER	[analysis]feeder:maintainer.rs:TreeMaintainer::execute	attach	feeder	OVERLAY	DEAD	delete	Scaffold execute: classifies every BoundaryRequest then defers. Live apply is tree_mutation; no production caller.
+AN-OVERRIDE	[analysis]sim:overlay_lifecycle.rs:OverrideReceived	override	sim	OVERLAY	OPEN	open	§5.5 obligation. DissolveCondition::OverrideReceived is hardcoded false ("handled by attach") but attach/deliver_routed_overlay does not replace or dissolve. False keep/migrate/delete would invent a path that is not in the tree.
