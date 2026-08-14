@@ -129,3 +129,14 @@ AN-OVERRIDE	[analysis]sim:overlay_lifecycle.rs:OverrideReceived	override	sim	OVE
 # RESIDUE	spec:spec/overlay.rs:default_overlay_install	serde	Serde default for OverlaySpec.install. Authoring default, not a route.
 # RESIDUE	spec:validate_order_weight.rs:validate_order_weight_overlay	admission	Order-weight validation of an OverlaySpec. Admission, classified mint is build_order_directive_overlay.
 # RESIDUE	spec:validate_order_weight.rs:validate_runtime_player_overlay_magnitude	admission	Runtime magnitude gate helper used by gate_raw_player_overlay.
+# RESIDUE	core:overlay_lifecycle_deadline.rs:admit_overlay_lifecycle	admission	Session-build lifetime validation; rejects unrepresentable deadline forms before any runtime route exists.
+# RESIDUE	core:overlay_lifecycle_deadline.rs:establish_overlay_deadline	admission	Admission-time conversion of a relative duration into an owning-generation deadline; it neither decides nor applies lifecycle state.
+# RESIDUE	core:overlay_lifecycle_deadline.rs:rebase_routed_overlay_duration	admission	Receive-time normalization of an already-routed overlay's relative duration against the target generation; not a second route.
+# RESIDUE	kernel:accumulator_op/runtime.rs:configure_overlay_lifecycle_projection	gpu-plumbing	Runtime wrapper that installs an admitted projection plan into the existing threshold session.
+# RESIDUE	kernel:accumulator_op/runtime.rs:readback_overlay_lifecycle_states	gpu-plumbing	Runtime wrapper that reads semantic-shadow rows after the GPU has made the lifecycle decision.
+# RESIDUE	kernel:accumulator_op/session.rs:configure_overlay_lifecycle_projection	gpu-plumbing	Session resource configuration for the resident current/next plane and crossing projection bindings.
+# RESIDUE	kernel:accumulator_op/session.rs:readback_overlay_lifecycle_states	gpu-plumbing	Readback of GPU-owned lifecycle state for CPU structural consequence application; contains no comparator or decision logic.
+# RESIDUE	kernel:world_state.rs:configure_overlay_lifecycle_projection	gpu-plumbing	World-state forwarding seam into the one accumulator threshold session projection configuration.
+# RESIDUE	kernel:world_state.rs:readback_overlay_lifecycle_states	gpu-plumbing	World-state forwarding seam for the GPU lifecycle semantic shadow.
+# RESIDUE	sim:overlay_lifecycle.rs:append_overlay_lifecycle_registrations	gpu-plumbing	Builds bindings onto existing Phase-5 BandCrossingDelta registrations; it does not detect crossings or apply consequences.
+# RESIDUE	sim:overlay_lifecycle.rs:apply_gpu_overlay_lifecycle	structural-boundary	Applies already-decided GPU dissolved bits as the existing structural removal consequence; no lifecycle predicate authority remains on CPU.
