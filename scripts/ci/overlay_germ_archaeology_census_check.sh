@@ -4,8 +4,10 @@
 # Sibling of stemthing_slot_census_check.sh. Docs/TSV/script only.
 #   --check     CI-safe. Re-discovers live routes; reconciles TSV + universe.
 #               Planted unlisted route → CENSUS-CHECK-VERDICT: FAIL(unlisted-route:TOKEN)
-#   --harvest   LOCAL ONLY. Refuses a dirty tree. Re-derives the pinned universe.
-#               Drift → CENSUS-HARVEST-VERDICT: STALE (re-reconcile; do not hand-edit)
+#   --harvest   LOCAL ONLY. Refuses a dirty tree. DETECTS pin drift; never writes.
+#               Drift → CENSUS-HARVEST-VERDICT: STALE (re-pin with --repin)
+#   --repin     LOCAL ONLY. Refuses a dirty tree. Re-derives and WRITES the pin.
+#               --check still fails until every added route is classified in the TSV.
 #   --selftest  Proves planted unlisted dissolve_overlay REDs for the exact reason.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
@@ -272,6 +274,11 @@ def load_lines(path: Path, kind: str) -> list[str]:
     ]
 
 
+def pin_text(header: list[str], routes: list[str]) -> str:
+    """Render a universe pin: comment header preserved, one route per line."""
+    return "\n".join(list(header) + list(routes)) + "\n"
+
+
 def load_tsv() -> list[dict[str, str]]:
     rows: list[dict[str, str]] = []
     if not TSV_PATH.is_file():
@@ -450,9 +457,57 @@ def run_harvest() -> int:
     )
     print(
         "CENSUS-HARVEST-VERDICT: STALE "
-        "(universe drifted; re-reconcile the TSV, do not hand-edit)"
+        "(universe drifted; re-pin with --repin, classify added routes in the TSV, do not hand-edit)"
     )
     return 1
+
+
+def run_repin(require_clean: bool = True) -> int:
+    """Re-derive the pinned universe from the live tree.
+
+    `--harvest` only DETECTS drift -- it never wrote the pin. So "reconcile by
+    re-derivation, never hand-edit" named a mechanism that did not exist, and the
+    only way to move the pin was the hand-edit the fence forbids. This is that
+    missing half: the pin becomes machine-derived, so it stays a re-derivable
+    statement ABOUT the tree instead of a file somebody maintains.
+
+    Deliberately NOT folded into `--harvest`. Drift detection must stay a
+    read-only signal a gate can fail on; re-pinning is an authoring act and
+    should say so at the call site. This cannot launder an unclassified route:
+    `--check` still fails until every added route carries a TSV classification.
+    """
+    # The selftest re-pins a SCRATCH pin, so it opts out of the clean-tree
+    # guard. The real command never does: re-pinning against uncommitted work
+    # would record a universe nobody can reproduce from a commit.
+    if require_clean:
+        dirty = porcelain().strip()
+        if dirty:
+            print("CENSUS-REPIN-VERDICT: FAIL(dirty-tree)")
+            print(dirty)
+            return 1
+    live = discover()
+    pinned = load_lines(UNIVERSE_PATH, "universe") if UNIVERSE_PATH.is_file() else []
+    if live == pinned:
+        print(f"CENSUS-REPIN-VERDICT: PASS (universe unchanged, {len(live)} routes)")
+        return 0
+    live_set, pinned_set = set(live), set(pinned)
+    added = [route for route in live if route not in pinned_set]
+    removed = [route for route in pinned if route not in live_set]
+    header = [
+        line.rstrip()
+        for line in UNIVERSE_PATH.read_text(encoding="utf-8").splitlines()
+        if line.lstrip().startswith("#")
+    ]
+    UNIVERSE_PATH.write_text(pin_text(header, live), encoding="utf-8")
+    for route in added:
+        print(f"  repin-added: {route}")
+    for route in removed:
+        print(f"  repin-removed: {route}")
+    print(
+        f"CENSUS-REPIN-VERDICT: PASS (universe re-derived, {len(live)} routes, "
+        f"+{len(added)}/-{len(removed)}; classify every added route in the TSV, then --check)"
+    )
+    return 0
 
 
 def run_selftest() -> int:
@@ -489,9 +544,61 @@ def run_selftest() -> int:
         if live_clean and live_clean != live_clean[:-1]:
             print(
                 "CENSUS-HARVEST-VERDICT: STALE "
-                "(universe drifted; re-reconcile the TSV, do not hand-edit)"
+                "(universe drifted; re-pin with --repin, classify added routes in the TSV, do not hand-edit)"
             )
-        print("CENSUS-SELFTEST-VERDICT: PASS (planted unlisted dissolve_overlay REDs)")
+        # --repin must ADD a drifted route to the pin and must NOT launder it:
+        # --check still has to RED until the route is classified in the TSV.
+        # Proved against a temporary pin so the repo pin is never touched.
+        global UNIVERSE_PATH
+        real_universe = UNIVERSE_PATH
+        try:
+            scratch = Path(td) / "scratch_universe.txt"
+            header = [
+                line.rstrip()
+                for line in real_universe.read_text(encoding="utf-8").splitlines()
+                if line.lstrip().startswith("#")
+            ]
+            truncated = load_lines(real_universe, "universe")[:-1]
+            dropped = load_lines(real_universe, "universe")[-1]
+            scratch.write_text(pin_text(header, truncated), encoding="utf-8")
+            UNIVERSE_PATH = scratch
+            buf = StringIO()
+            with contextlib.redirect_stdout(buf):
+                rc_repin = run_repin(require_clean=False)
+            repin_out = buf.getvalue()
+            repinned = load_lines(scratch, "universe")
+            if rc_repin != 0 or dropped not in repinned:
+                print(repin_out, end="")
+                print("CENSUS-SELFTEST-VERDICT: FAIL(repin-did-not-restore-drifted-route)")
+                return 1
+            if f"repin-added: {dropped}" not in repin_out:
+                print(repin_out, end="")
+                print("CENSUS-SELFTEST-VERDICT: FAIL(repin-did-not-report-added-route)")
+                return 1
+            # The laundering falsifier: re-pin a route that has NO TSV row and
+            # --check must still RED it as unlisted.
+            scratch.write_text(
+                pin_text(
+                    header,
+                    sorted(
+                        set(truncated) | {"core:planted_repin_route.rs:dissolve_overlay"}
+                    ),
+                ),
+                encoding="utf-8",
+            )
+            buf = StringIO()
+            with contextlib.redirect_stdout(buf):
+                rc_after = run_check()
+            if rc_after == 0:
+                print(buf.getvalue(), end="")
+                print("CENSUS-SELFTEST-VERDICT: FAIL(repin-laundered-an-unclassified-route)")
+                return 1
+        finally:
+            UNIVERSE_PATH = real_universe
+        print(
+            "CENSUS-SELFTEST-VERDICT: PASS "
+            "(planted unlisted dissolve_overlay REDs; --repin restores drift and cannot launder)"
+        )
         return 0
 
 
@@ -499,12 +606,14 @@ def main(argv: list[str]) -> int:
     mode = argv[1] if len(argv) > 1 else "--check"
     if mode == "--harvest":
         return run_harvest()
+    if mode == "--repin":
+        return run_repin()
     if mode == "--selftest":
         return run_selftest()
     if mode in ("--check",):
         return run_check()
     print(
-        "usage: overlay_germ_archaeology_census_check.sh [--check|--harvest|--selftest]",
+        "usage: overlay_germ_archaeology_census_check.sh [--check|--harvest|--repin|--selftest]",
         file=sys.stderr,
     )
     return 2
