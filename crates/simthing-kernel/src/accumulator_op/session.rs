@@ -2149,7 +2149,9 @@ impl AccumulatorOpSession {
             emission_capacity: self.emission_readback.capacity(),
             threshold_emission_capacity: self.threshold_emission_readback.capacity(),
             dt_bits: 0,
-            _pad1: 0,
+            // Threshold scans reuse the already-uploaded reserved word for the
+            // owning tree generation. No bind-group entry changes shape.
+            _pad1: self.generation,
         };
         ctx.queue
             .write_buffer(&self.tick_uniform, 0, bytemuck::bytes_of(&tick_params));
@@ -3269,6 +3271,5 @@ mod tests {
         out
     }
 }
-
 
 

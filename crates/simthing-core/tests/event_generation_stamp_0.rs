@@ -5,9 +5,9 @@
 use simthing_core::{
     admit_dispatch_minted_overlay, deliver_routed_overlay, dispatch_until_dissolved,
     BackpressurePolicy, DissolveCondition, GenerationStamp, Overlay, OverlayId, OverlayKind,
-    OverlayLifecycle, OverlaySource, PropertyTransformDelta, RingPushOutcome, SimPropertyId,
-    SimThing, SimThingId, SimThingKind, StampedEgressEntry, StampedEventRing, SubFieldRole,
-    TransformOp,
+    OverlayLifecycle, OverlaySource, PropertyTransformDelta, RingPushOutcome,
+    RoutedGenerationDuration, SimPropertyId, SimThing, SimThingId, SimThingKind,
+    StampedEgressEntry, StampedEventRing, SubFieldRole, TransformOp,
 };
 
 fn stamp(g: u32) -> GenerationStamp {
@@ -161,4 +161,23 @@ fn admit_dispatch_helpers_match_production_door() {
     };
     assert!(admit_dispatch_minted_overlay(&bare).is_err());
     assert!(dispatch_until_dissolved(Vec::new()).is_err());
+
+    // FACILITY-RESIDENT-PLANE-SUBSTRATE-0 A1: the routed carrier can express
+    // duration plus provenance, but an absolute deadline has no admitted shape.
+    let carrier = RoutedGenerationDuration::new(5, stamp(7));
+    assert_eq!(carrier.authored_duration(), 5);
+    assert_eq!(carrier.provenance(), stamp(7));
+    assert_eq!(
+        serde_json::to_value(carrier).unwrap(),
+        serde_json::json!({"authored_duration": 5, "provenance": 7})
+    );
+
+    let foreign_absolute = serde_json::json!({
+        "authored_duration": 5,
+        "provenance": 7,
+        "foreign_absolute_deadline": 12
+    });
+    let error = serde_json::from_value::<RoutedGenerationDuration>(foreign_absolute)
+        .expect_err("deny_unknown_fields must make an absolute deadline unconstructible");
+    assert!(error.to_string().contains("unknown field"));
 }

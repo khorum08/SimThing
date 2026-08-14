@@ -62,6 +62,10 @@ pub use saturating_flux_choke_threshold::{
     CHOKE_THRESHOLD_PARTIAL_FLOATS, CHOKE_THRESHOLD_REDUCE_WORKGROUP_SIZE,
 };
 pub use simthing_core::SlotIndex;
+pub use simthing_kernel::accumulator_op::{
+    FacilityPlaneError, FacilityPlaneGenerationBoundary, FacilityPlaneOwner,
+    FacilityResidentPlane, THRESH_BUF_OWNING_GENERATION,
+};
 pub use simthing_kernel::{
     ao_wgsl0_fast_path_compatible, build_column_rule_descriptors, build_column_rules,
     build_governed_pairs, build_intensity_eml_entries, build_overlay_deltas, build_topology,

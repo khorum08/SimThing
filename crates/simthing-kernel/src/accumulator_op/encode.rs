@@ -6,6 +6,7 @@ use simthing_core::{
     EmlTreeId, GateSpec, ScaleSpec, SlotIndex, SourceSpec, ThresholdDirection,
 };
 
+use super::THRESH_BUF_OWNING_GENERATION;
 use crate::eml_opcode_gate::OpcodeGateError;
 use crate::registration::{
     ThresholdRegistration, DIR_DOWNWARD, DIR_EITHER, DIR_UPWARD, THRESH_BUF_OUTPUT,
@@ -43,6 +44,8 @@ pub enum EncodeError {
     },
     #[error("EML registry error: {0}")]
     EmlRegistry(#[from] simthing_core::EmlRegistryError),
+    #[error("threshold registration selects unknown observation source {0}")]
+    InvalidThresholdObservationSource(u32),
     /// OC-K-EML-OPCODE-GATE-0: closed combine/opcode vocabulary at encode/pack.
     #[error("EvalEML opcode/combine gate: {0}")]
     OpcodeGate(#[from] OpcodeGateError),
@@ -201,8 +204,8 @@ fn intent_delta_to_gpu(delta: &IntentDelta) -> AccumulatorOpGpu {
 
 /// Convert E-1 builder registrations into GPU threshold registrations.
 ///
-/// Canonical bridge for both [`EmitOnThresholdBuffer::Values`] and
-/// [`EmitOnThresholdBuffer::Output`]. Upload the result via
+/// Canonical bridge for values, output, and the existing-uniform owning
+/// generation operand. Upload the result via
 /// `AccumulatorOpSession::upload_threshold_ops` so `ThresholdRegistration.buffer`
 /// is written into `AccumulatorOpGpu.source_count`.
 pub fn emit_on_threshold_registrations_to_gpu(
@@ -218,6 +221,7 @@ pub fn emit_on_threshold_registrations_to_gpu(
             buffer: match r.buffer {
                 EmitOnThresholdBuffer::Values => THRESH_BUF_VALUES,
                 EmitOnThresholdBuffer::Output => THRESH_BUF_OUTPUT,
+                EmitOnThresholdBuffer::OwningGeneration => THRESH_BUF_OWNING_GENERATION,
             },
         })
         .collect()
@@ -233,10 +237,10 @@ pub fn emit_on_threshold_registrations_to_ops(
 ) -> Result<(Vec<AccumulatorOp>, Vec<u32>), EncodeError> {
     if regs
         .iter()
-        .any(|r| r.buffer == EmitOnThresholdBuffer::Output)
+        .any(|r| r.buffer != EmitOnThresholdBuffer::Values)
     {
         return Err(EncodeError::Unsupported(
-            "EmitOnThreshold Output-buffer registrations must be uploaded through ThresholdRegistration / upload_threshold_ops so source_count preserves THRESH_BUF_OUTPUT",
+            "non-Values EmitOnThreshold registrations must be uploaded through ThresholdRegistration / upload_threshold_ops so source_count preserves the admitted observation source",
         ));
     }
     let gpu_regs = emit_on_threshold_registrations_to_gpu(regs);
@@ -250,7 +254,12 @@ pub fn threshold_registrations_to_ops(
     let mut ops = Vec::with_capacity(regs.len());
     let mut event_kinds = Vec::with_capacity(regs.len());
     for r in regs {
-        debug_assert!(r.buffer == THRESH_BUF_VALUES || r.buffer == THRESH_BUF_OUTPUT);
+        if !matches!(
+            r.buffer,
+            THRESH_BUF_VALUES | THRESH_BUF_OUTPUT | THRESH_BUF_OWNING_GENERATION
+        ) {
+            return Err(EncodeError::InvalidThresholdObservationSource(r.buffer));
+        }
         ops.push(AccumulatorOp {
             source: SourceSpec::SlotValue {
                 slot: SlotIndex::new(r.slot),
