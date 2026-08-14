@@ -2,7 +2,7 @@
 rung: GPU-OVERLAY-LIFECYCLE-EXTRACTION-0
 kind: remedial
 track: 0.0.8.7
-base_sha: 9593ca2e658cfa063797e8d74a8cf6b29505a7b0
+base_sha: 6251af844230626982980f3f732675831a756619
 audience: coding
 model_tier: frontier
 expected_route: DA-RESERVE(gate-wiring)
