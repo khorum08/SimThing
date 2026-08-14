@@ -1539,6 +1539,54 @@ impl WorldGpuState {
         }
     }
 
+    pub fn configure_overlay_lifecycle_projection(
+        &mut self,
+        plan: &crate::accumulator_op::OverlayLifecycleProjectionPlan,
+    ) -> Result<(), crate::AccumulatorOpSessionError> {
+        let runtime = self
+            .accumulator_runtime
+            .as_mut()
+            .ok_or(crate::AccumulatorOpSessionError::NoOps)?;
+        runtime.configure_overlay_lifecycle_projection(&self.ctx, plan)
+    }
+
+    pub fn freeze_overlay_lifecycle_admission(
+        &mut self,
+        plan: &crate::accumulator_op::OverlayLifecycleProjectionPlan,
+        registrations: &[ThresholdRegistration],
+    ) -> Result<(), crate::AccumulatorOpSessionError> {
+        let runtime = self
+            .accumulator_runtime
+            .as_mut()
+            .ok_or(crate::AccumulatorOpSessionError::NoOps)?;
+        runtime.freeze_overlay_lifecycle_admission(plan, registrations)
+    }
+
+    pub fn preflight_overlay_lifecycle_admission(
+        &self,
+        plan: &crate::accumulator_op::OverlayLifecycleProjectionPlan,
+        registrations: &[ThresholdRegistration],
+    ) -> Result<(), crate::AccumulatorOpSessionError> {
+        let runtime = self
+            .accumulator_runtime
+            .as_ref()
+            .ok_or(crate::AccumulatorOpSessionError::NoOps)?;
+        runtime.preflight_overlay_lifecycle_admission(plan, registrations)
+    }
+
+    pub fn readback_overlay_lifecycle_states(
+        &self,
+    ) -> Result<
+        Vec<crate::accumulator_op::OverlayLifecycleStateGpu>,
+        crate::AccumulatorOpSessionError,
+    > {
+        let runtime = self
+            .accumulator_runtime
+            .as_ref()
+            .ok_or(crate::AccumulatorOpSessionError::NoOps)?;
+        runtime.readback_overlay_lifecycle_states(&self.ctx)
+    }
+
     pub fn set_post_rf_need_threshold_regs(&mut self, regs: Vec<ThresholdRegistration>) {
         self.post_rf_need_threshold_regs = regs;
     }

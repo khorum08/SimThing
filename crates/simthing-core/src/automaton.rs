@@ -38,6 +38,8 @@ pub enum OverlayDeliveryError {
     },
     #[error("runtime dispatch-minted overlay fails dissolve discipline: {detail}")]
     DispatchDissolveRequired { detail: String },
+    #[error("overlay lifecycle admission failed: {detail}")]
+    LifecycleAdmission { detail: String },
 }
 
 fn is_runtime_dispatch_mint(overlay: &Overlay) -> bool {
@@ -73,6 +75,11 @@ pub fn deliver_routed_overlay(
     target: SimThingId,
     mut overlay: Overlay,
 ) -> Result<DirectiveDeliveryReceipt, OverlayDeliveryError> {
+    crate::admit_overlay_lifecycle(&overlay.lifecycle).map_err(|error| {
+        OverlayDeliveryError::LifecycleAdmission {
+            detail: error.to_string(),
+        }
+    })?;
     // EVENT-GENERATION-STAMP-0 / Definable Horizon: runtime dispatch-minted
     // overlays (Event/System instruction-class) must carry UntilDissolvedWith
     // and an authored dissolve condition. Authored Policy/Governance unit

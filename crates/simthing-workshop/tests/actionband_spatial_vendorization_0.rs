@@ -12,7 +12,9 @@
 
 use std::sync::Mutex;
 
-use simthing_core::owner_channel::{bind_owner, resolve_owner, OwnerRef, OWNER_CHANNEL_PROPERTY_ID};
+use simthing_core::owner_channel::{
+    bind_owner, resolve_owner, OwnerRef, OWNER_CHANNEL_PROPERTY_ID,
+};
 use simthing_core::{
     cost_band_quantize, CostBandDraw, DimensionRegistry, DissolveCondition, EmitOnThresholdBuffer,
     EmitOnThresholdRegistration, ObjectResidencyRelation, Overlay, OverlayId, OverlayKind,
@@ -195,7 +197,11 @@ fn require_gpu() -> Option<GpuContext> {
 /// Threshold registrations always cover **both** adjacent candidate loci B and C.
 fn admit_spatial_actionband(
     slots: SlotAssignment,
-) -> (FrozenActionBandTemplates, Vec<EmitOnThresholdRegistration>, DimensionRegistry) {
+) -> (
+    FrozenActionBandTemplates,
+    Vec<EmitOnThresholdRegistration>,
+    DimensionRegistry,
+) {
     let mut registry = DimensionRegistry::new();
     let pot = registry.register(SimProperty::simple("spatial-witness", "field-potential", 0));
     let d_prop = registry.register(SimProperty::simple("spatial-witness", "palma-d", 0));
@@ -440,6 +446,7 @@ fn apply_spatial_step(
             BoundaryRequest::AttachOverlay {
                 target: step.actor(),
                 overlay: step.overlay().clone(),
+                source_generation: simthing_core::GenerationStamp::new(0),
             },
         ],
         tree,
@@ -448,6 +455,8 @@ fn apply_spatial_step(
         shadow,
         n_dims,
         None,
+        simthing_core::GenerationStamp::new(0),
+        &mut simthing_sim::overlay_lifecycle::OverlayLifecycleAdmissionState::default(),
     );
     assert!(
         outcome
@@ -470,7 +479,9 @@ fn apply_spatial_step(
 #[test]
 fn field_overlay_only_redirects_same_actionband_to_different_adjacent_step() {
     let Some(ctx) = require_gpu() else {
-        eprintln!("SKIP field_overlay_only_redirects: no local GPU (established GPU-proof convention)");
+        eprintln!(
+            "SKIP field_overlay_only_redirects: no local GPU (established GPU-proof convention)"
+        );
         return;
     };
     let arena = arena();
@@ -554,7 +565,13 @@ fn sealed_actionband_locus_reparents_one_n4_edge_with_stable_slots() {
     let mut arena = arena();
     let slots = ASSIGNMENT_PRIMARY;
     let (frozen, thresholds, ab_registry) = admit_spatial_actionband(slots);
-    let cells = topology_cells(arena.a, arena.b, arena.c, thresholds[0].col.raw_u32(), slots);
+    let cells = topology_cells(
+        arena.a,
+        arena.b,
+        arena.c,
+        thresholds[0].col.raw_u32(),
+        slots,
+    );
     let commitment = sealed_commitment_from_field_state(
         &ctx,
         &frozen,
@@ -617,7 +634,13 @@ fn actionband_structural_door_emits_spatial_reparent_from_sealed_crossing() {
     let arena = arena();
     let slots = ASSIGNMENT_PRIMARY;
     let (frozen, thresholds, ab_registry) = admit_spatial_actionband(slots);
-    let cells = topology_cells(arena.a, arena.b, arena.c, thresholds[0].col.raw_u32(), slots);
+    let cells = topology_cells(
+        arena.a,
+        arena.b,
+        arena.c,
+        thresholds[0].col.raw_u32(),
+        slots,
+    );
     let template = frozen.templates()[0].index();
     // Same dual active set as the R2 field-only referee.
     let active = [
@@ -702,6 +725,8 @@ fn actionband_structural_door_emits_spatial_reparent_from_sealed_crossing() {
         &mut shadow,
         n_dims,
         None,
+        simthing_core::GenerationStamp::new(0),
+        &mut simthing_sim::overlay_lifecycle::OverlayLifecycleAdmissionState::default(),
     );
     assert!(outcome
         .reparented
@@ -844,7 +869,13 @@ fn matrix_shaped_mutants_fail_closed() {
     let arena = arena();
     let slots = ASSIGNMENT_PRIMARY;
     let (frozen, thresholds, ab_registry) = admit_spatial_actionband(slots);
-    let cells = topology_cells(arena.a, arena.b, arena.c, thresholds[0].col.raw_u32(), slots);
+    let cells = topology_cells(
+        arena.a,
+        arena.b,
+        arena.c,
+        thresholds[0].col.raw_u32(),
+        slots,
+    );
     let sealed_col = thresholds[0].col.raw_u32();
     let good_commit = sealed_commitment_from_field_state(
         &ctx,
@@ -876,7 +907,10 @@ fn matrix_shaped_mutants_fail_closed() {
                 )
                 .expect_err(case.name);
                 assert!(
-                    matches!(err, SpatialVendorizationError::AmbiguousDecisionLocus { .. }),
+                    matches!(
+                        err,
+                        SpatialVendorizationError::AmbiguousDecisionLocus { .. }
+                    ),
                     "{} => {err:?}",
                     case.name
                 );

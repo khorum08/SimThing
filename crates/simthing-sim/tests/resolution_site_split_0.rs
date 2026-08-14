@@ -240,6 +240,7 @@ fn draft(arena: &Arena) -> SlotSpaceOverlayDraft {
 fn vendorized_attach(arena: &Arena, d: &SlotSpaceOverlayDraft) -> BoundaryRequest {
     BoundaryRequest::AttachOverlay {
         target: arena.b_id,
+        source_generation: simthing_core::GenerationStamp::new(0),
         overlay: Overlay {
             id: d.id,
             kind: d.kind.clone(),
@@ -259,15 +260,22 @@ fn slot_space_origination_attach_stream_bit_identical_and_divergence_mutant_reds
 
     // Closed-loop placement: origin carried in slot space, SimThingId
     // re-attached only at the barrier through the admitted slot map.
-    let closed_loop = mint_attach_overlay_at_barrier(&d, &arena.allocator)
-        .expect("admitted draft re-attaches totally");
+    let closed_loop = mint_attach_overlay_at_barrier(
+        &d,
+        &arena.allocator,
+        simthing_core::GenerationStamp::new(0),
+    )
+    .expect("admitted draft re-attaches totally");
     let vendorized = vendorized_attach(&arena, &d);
 
     // BIT-IDENTICAL BoundaryRequest streams (finite payloads; {:?} is
     // bit-faithful and covers the -0.0 delta planted in the draft).
     assert_eq!(format!("{closed_loop:?}"), format!("{vendorized:?}"));
 
-    let BoundaryRequest::AttachOverlay { target, overlay } = &closed_loop else {
+    let BoundaryRequest::AttachOverlay {
+        target, overlay, ..
+    } = &closed_loop
+    else {
         panic!("closed-loop mint must produce AttachOverlay");
     };
     assert_eq!(*target, arena.b_id);
@@ -282,8 +290,12 @@ fn slot_space_origination_attach_stream_bit_identical_and_divergence_mutant_reds
     // no divergence seam exists in production): parity REDs.
     let mut diverged = d.clone();
     diverged.transform.sub_field_deltas.pop();
-    let mutant = mint_attach_overlay_at_barrier(&diverged, &arena.allocator)
-        .expect("mutant still re-attaches; it diverges semantically");
+    let mutant = mint_attach_overlay_at_barrier(
+        &diverged,
+        &arena.allocator,
+        simthing_core::GenerationStamp::new(0),
+    )
+    .expect("mutant still re-attaches; it diverges semantically");
     assert_ne!(
         format!("{closed_loop:?}"),
         format!("{mutant:?}"),
@@ -298,8 +310,12 @@ fn unadmitted_slot_reattachment_fails_closed_never_default_origin() {
     // Unadmitted origin slot: the real door fails closed...
     let mut orphan = draft(&arena);
     orphan.origin_slot = SlotIndex::new(97);
-    let err = mint_attach_overlay_at_barrier(&orphan, &arena.allocator)
-        .expect_err("a slot with no admitted SimThing is an admission-integrity failure");
+    let err = mint_attach_overlay_at_barrier(
+        &orphan,
+        &arena.allocator,
+        simthing_core::GenerationStamp::new(0),
+    )
+    .expect_err("a slot with no admitted SimThing is an admission-integrity failure");
     assert_eq!(
         err,
         SlotIdentityReattachError::UnadmittedOriginSlot {
@@ -317,6 +333,7 @@ fn unadmitted_slot_reattachment_fails_closed_never_default_origin() {
     let fallback = arena.tree.id;
     let forged = BoundaryRequest::AttachOverlay {
         target: arena.b_id,
+        source_generation: simthing_core::GenerationStamp::new(0),
         overlay: Overlay {
             id: orphan.id,
             kind: orphan.kind.clone(),
@@ -345,7 +362,11 @@ fn unadmitted_slot_reattachment_fails_closed_never_default_origin() {
     let mut untargeted = draft(&arena);
     untargeted.target_slot = SlotIndex::new(98);
     assert!(matches!(
-        mint_attach_overlay_at_barrier(&untargeted, &arena.allocator),
+        mint_attach_overlay_at_barrier(
+            &untargeted,
+            &arena.allocator,
+            simthing_core::GenerationStamp::new(0),
+        ),
         Err(SlotIdentityReattachError::UnadmittedTargetSlot { slot: 98, .. })
     ));
 
@@ -382,7 +403,12 @@ fn reception_identical_at_both_sites() {
     let arena = arena();
     let d = draft(&arena);
 
-    let closed_loop = mint_attach_overlay_at_barrier(&d, &arena.allocator).unwrap();
+    let closed_loop = mint_attach_overlay_at_barrier(
+        &d,
+        &arena.allocator,
+        simthing_core::GenerationStamp::new(0),
+    )
+    .unwrap();
     let vendorized = vendorized_attach(&arena, &d);
 
     // 6.0b reception: both placements' requests arrive through the SAME routed
@@ -390,13 +416,19 @@ fn reception_identical_at_both_sites() {
     let mut tree_cl = arena.tree.clone();
     let mut tree_ven = arena.tree.clone();
     let receipt_cl = {
-        let BoundaryRequest::AttachOverlay { target, overlay } = closed_loop else {
+        let BoundaryRequest::AttachOverlay {
+            target, overlay, ..
+        } = closed_loop
+        else {
             panic!("AttachOverlay expected");
         };
         deliver_routed_overlay(&mut tree_cl, target, overlay).expect("routed delivery")
     };
     let receipt_ven = {
-        let BoundaryRequest::AttachOverlay { target, overlay } = vendorized else {
+        let BoundaryRequest::AttachOverlay {
+            target, overlay, ..
+        } = vendorized
+        else {
             panic!("AttachOverlay expected");
         };
         deliver_routed_overlay(&mut tree_ven, target, overlay).expect("routed delivery")
@@ -436,8 +468,9 @@ fn unconverted_semantics_and_default_placement_no_flag_day() {
     let events = oracle_crossings(&arena, &regs);
 
     let vend_v = collect_velocity_alerts_vendorized(&events, &sem);
-    let cl_v = reattach_velocity_alerts_at_barrier(&events, &sem, &arena.registry, &arena.allocator)
-        .unwrap();
+    let cl_v =
+        reattach_velocity_alerts_at_barrier(&events, &sem, &arena.registry, &arena.allocator)
+            .unwrap();
     let vend_a = collect_aggregate_alerts_vendorized(&events, &sem);
     let cl_a =
         reattach_aggregate_alerts_at_barrier(&events, &sem, &arena.registry, &arena.allocator)

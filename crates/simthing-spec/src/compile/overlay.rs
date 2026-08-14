@@ -25,6 +25,12 @@ pub fn compile_overlay(
     registry: &DimensionRegistry,
     origin: SimThingId,
 ) -> SpecResult<Overlay> {
+    simthing_core::admit_overlay_lifecycle(&spec.lifecycle).map_err(|error| {
+        SpecError::OverlayLifecycleAdmission {
+            overlay: spec.id.clone(),
+            reason: error.to_string(),
+        }
+    })?;
     let (ns, name) = parse_property_ref(&spec.id, &spec.targets_property)?;
 
     let property_id = registry

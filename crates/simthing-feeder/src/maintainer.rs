@@ -56,6 +56,8 @@ pub struct MaintainerOutcome {
     pub dimensions: u32,
     /// Requests rejected because the target id was not found in the tree.
     pub rejected_unknown_target: u32,
+    /// Overlay attaches rejected by destination lifecycle admission.
+    pub rejected_overlay_lifecycle: u32,
     /// Requests deferred because they reference state not yet implemented
     /// (everything, currently — see TODO list at module top).
     pub deferred: u32,
@@ -142,5 +144,4 @@ mod tests {
     use super::*;
     use crate::work::BoundaryRequest;
     use simthing_core::{SimThing, SimThingKind};
-
 }

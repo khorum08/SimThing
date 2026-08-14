@@ -53,9 +53,11 @@ sim:delta_log.rs:OverlayDissolved
 sim:delta_log.rs:OverlaySuspended
 sim:fission.rs:remap_overlay_affects
 sim:fission.rs:remap_overlay_origins
+sim:overlay_lifecycle.rs:activate_overlay
 sim:overlay_lifecycle.rs:apply_expire_effects
 sim:overlay_lifecycle.rs:attach_overlay
 sim:overlay_lifecycle.rs:resolve_overlay_lifecycle
+sim:overlay_lifecycle.rs:suspend_overlay
 sim:resolution_site.rs:mint_attach_overlay_at_barrier
 sim:tree_mutation.rs:activate_overlay
 sim:tree_mutation.rs:apply_structural_mutations

@@ -1,5 +1,6 @@
 //! Persistent GPU buffer ownership for AccumulatorOp v2 Pass B.
 
+use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use bytemuck;
@@ -15,10 +16,14 @@ use wgpu::{
 
 use crate::context::GpuContext;
 use crate::gpu_readback::{EmissionRecordReadback, KernelReadbackError, ThresholdEmissionReadback};
-use crate::registration::ThresholdRegistration;
+use crate::registration::{ThresholdRegistration, DIR_DOWNWARD, DIR_UPWARD, THRESH_BUF_VALUES};
 use crate::sealed::ThresholdEvent;
 
 use super::encode::EncodeError;
+use super::facility_resident_plane::{
+    FacilityPlaneError, FacilityPlaneGenerationBoundary, FacilityPlaneOwner, FacilityResidentPlane,
+    OverlayLifecycleProjectionPlan, OverlayLifecycleStateGpu,
+};
 use super::packed_session_upload::{
     PackedAccumulatorUpload, PackedIntentUpload, PackedThresholdUpload,
 };
@@ -31,6 +36,8 @@ use super::types::{
 
 pub const WORKGROUP_SIZE: u32 = 64;
 const EXECUTE_MODE_COMPACT_VELOCITY: u32 = 1;
+const DIR_LEVEL_AT_OR_ABOVE: u32 = 3;
+const DIR_LEVEL_BELOW: u32 = 4;
 
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
@@ -116,6 +123,8 @@ pub enum AccumulatorOpSessionError {
     OpUploadByteSizeOverflow { ops: usize, op_size: usize },
     #[error("input-list upload byte size overflow: inputs={inputs}, input_size={input_size}")]
     InputListUploadByteSizeOverflow { inputs: usize, input_size: usize },
+    #[error("overlay lifecycle resident-plane error: {0}")]
+    OverlayLifecyclePlane(#[from] FacilityPlaneError),
 }
 
 impl From<KernelReadbackError> for AccumulatorOpSessionError {
@@ -186,6 +195,16 @@ pub struct AccumulatorOpSession {
     threshold_event_kinds: Vec<u32>,
     /// Full threshold registration sidecar for sealed BandCrossingDelta mint.
     threshold_registrations: Vec<ThresholdRegistration>,
+    threshold_gpu_ops: Vec<AccumulatorOpGpu>,
+    overlay_lifecycle_binding_by_event_kind: HashMap<u32, u32>,
+    overlay_lifecycle_boundary: FacilityPlaneGenerationBoundary,
+    overlay_lifecycle_owner: FacilityPlaneOwner,
+    overlay_lifecycle_plane: FacilityResidentPlane,
+    overlay_lifecycle_capacity: usize,
+    overlay_lifecycle_template_shapes: HashSet<Vec<[u32; 5]>>,
+    overlay_lifecycle_templates_frozen: bool,
+    overlay_lifecycle_rows: usize,
+    overlay_lifecycle_enabled: bool,
     /// Producing-tree generation for EVENT-GENERATION-STAMP-0 production seal/readback.
     /// Advanced by the host each generation; every sealed egress record carries this value.
     generation: u32,
@@ -309,6 +328,16 @@ impl AccumulatorOpSession {
 
         let (eml_node_buffer, eml_range_buffer) = mk_dummy_eml_buffers(device);
         let input_list_buffer = mk_dummy_input_list_buffer(device);
+        let overlay_lifecycle_boundary = FacilityPlaneGenerationBoundary::new();
+        let overlay_lifecycle_owner = overlay_lifecycle_boundary.admit_facility();
+        let overlay_lifecycle_plane = FacilityResidentPlane::from_rows(
+            ctx,
+            "overlay_lifecycle",
+            &overlay_lifecycle_boundary,
+            &overlay_lifecycle_owner,
+            &[OverlayLifecycleStateGpu::pending(u32::MAX)],
+        )
+        .expect("fresh lifecycle plane owner belongs to its boundary");
 
         let canonical_accumulator_shader = include_str!("../shaders/accumulator_op.wgsl");
         let compact_shader_source = crate::eml_resource_class::specialize_eml_stack_limit(
@@ -344,6 +373,7 @@ impl AccumulatorOpSession {
                 storage_entry(10, true),
                 storage_entry(11, true),
                 storage_entry(12, true),
+                storage_entry(13, false),
             ],
         });
 
@@ -386,6 +416,7 @@ impl AccumulatorOpSession {
                 storage_entry(10, true),
                 storage_entry(11, true),
                 storage_entry(12, true),
+                storage_entry(13, false),
             ],
         });
 
@@ -582,6 +613,16 @@ impl AccumulatorOpSession {
             last_pass_time_us: None,
             threshold_event_kinds: Vec::new(),
             threshold_registrations: Vec::new(),
+            threshold_gpu_ops: Vec::new(),
+            overlay_lifecycle_binding_by_event_kind: HashMap::new(),
+            overlay_lifecycle_boundary,
+            overlay_lifecycle_owner,
+            overlay_lifecycle_plane,
+            overlay_lifecycle_capacity: threshold_emission_capacity.max(1) as usize,
+            overlay_lifecycle_template_shapes: HashSet::new(),
+            overlay_lifecycle_templates_frozen: false,
+            overlay_lifecycle_rows: 0,
+            overlay_lifecycle_enabled: false,
             generation: 0,
         };
 
@@ -995,11 +1036,161 @@ impl AccumulatorOpSession {
         ctx: &GpuContext,
         upload: &PackedThresholdUpload,
     ) -> Result<(), AccumulatorOpSessionError> {
-        self.write_op_bytes(ctx, upload.ops())?;
+        let mut ops = upload.ops().to_vec();
+        for (op, registration) in ops.iter_mut().zip(upload.registrations()) {
+            op._pad = self
+                .overlay_lifecycle_binding_by_event_kind
+                .get(&registration.event_kind)
+                .copied()
+                .unwrap_or(0);
+        }
+        self.write_op_bytes(ctx, &ops)?;
         self.n_ops = upload.ops().len() as u32;
         self.threshold_event_kinds = upload.threshold_event_kinds().to_vec();
         self.threshold_registrations = upload.registrations().to_vec();
+        self.threshold_gpu_ops = ops;
         Ok(())
+    }
+
+    /// Bind admitted lifecycle conditions to the existing Phase-5 crossing packet.
+    /// The packed op word is projection metadata only; it cannot evaluate a crossing.
+    pub fn preflight_overlay_lifecycle_admission(
+        &self,
+        plan: &OverlayLifecycleProjectionPlan,
+        registrations: &[ThresholdRegistration],
+    ) -> Result<(), AccumulatorOpSessionError> {
+        self.validate_overlay_lifecycle_admission(plan, registrations)
+            .map(|_| ())
+    }
+
+    /// Freeze the complete session-build lifecycle catalogue before any live
+    /// projection is configured. Suspended templates belong to this catalogue
+    /// even though they do not own a resident row until activation.
+    pub fn freeze_overlay_lifecycle_admission(
+        &mut self,
+        plan: &OverlayLifecycleProjectionPlan,
+        registrations: &[ThresholdRegistration],
+    ) -> Result<(), AccumulatorOpSessionError> {
+        let template_shapes = self.validate_overlay_lifecycle_admission(plan, registrations)?;
+        if !self.overlay_lifecycle_templates_frozen {
+            self.overlay_lifecycle_template_shapes = template_shapes;
+            self.overlay_lifecycle_templates_frozen = true;
+        }
+        Ok(())
+    }
+
+    fn validate_overlay_lifecycle_admission(
+        &self,
+        plan: &OverlayLifecycleProjectionPlan,
+        registrations: &[ThresholdRegistration],
+    ) -> Result<HashSet<Vec<[u32; 5]>>, AccumulatorOpSessionError> {
+        if plan.rows.len() > self.overlay_lifecycle_capacity {
+            return Err(FacilityPlaneError::LifecycleCapacityExceeded {
+                rows: plan.rows.len(),
+                capacity: self.overlay_lifecycle_capacity,
+            }
+            .into());
+        }
+        let mut template_shapes = HashSet::new();
+        for (row_index, row) in plan.rows.iter().enumerate() {
+            let mut shape = vec![[row.required_mask, u32::MAX, 0, 0, 0]];
+            for binding in plan
+                .bindings
+                .iter()
+                .filter(|binding| binding.row as usize == row_index)
+            {
+                let registration = registrations
+                    .get(binding.registration_index as usize)
+                    .ok_or(FacilityPlaneError::InvalidLifecycleProjection)?;
+                shape.push([
+                    binding.condition_bit,
+                    registration.col,
+                    if registration.buffer == super::THRESH_BUF_OWNING_GENERATION {
+                        0
+                    } else {
+                        registration.threshold.to_bits()
+                    },
+                    registration.direction,
+                    registration.buffer,
+                ]);
+            }
+            shape[1..].sort_unstable();
+            template_shapes.insert(shape);
+        }
+        if self.overlay_lifecycle_templates_frozen
+            && !template_shapes.is_subset(&self.overlay_lifecycle_template_shapes)
+        {
+            return Err(FacilityPlaneError::MidSessionLifecycleTemplateMint.into());
+        }
+        Ok(template_shapes)
+    }
+
+    pub fn configure_overlay_lifecycle_projection(
+        &mut self,
+        ctx: &GpuContext,
+        plan: &OverlayLifecycleProjectionPlan,
+    ) -> Result<(), AccumulatorOpSessionError> {
+        let registrations = self.threshold_registrations.clone();
+        self.freeze_overlay_lifecycle_admission(plan, &registrations)?;
+        let mut ops = self.threshold_gpu_ops.clone();
+        self.overlay_lifecycle_binding_by_event_kind.clear();
+        for op in &mut ops {
+            op._pad = 0;
+        }
+        for binding in &plan.bindings {
+            let op = ops
+                .get_mut(binding.registration_index as usize)
+                .ok_or(FacilityPlaneError::InvalidLifecycleProjection)?;
+            if binding.row as usize >= plan.rows.len() || binding.condition_bit >= 31 {
+                return Err(FacilityPlaneError::InvalidLifecycleProjection.into());
+            }
+            op._pad = ((binding.row + 1) << 5) | binding.condition_bit;
+            let registration = self.threshold_registrations[binding.registration_index as usize];
+            if registration.buffer == THRESH_BUF_VALUES {
+                op.gate_a = match registration.direction {
+                    DIR_UPWARD => DIR_LEVEL_AT_OR_ABOVE,
+                    DIR_DOWNWARD => DIR_LEVEL_BELOW,
+                    _ => return Err(FacilityPlaneError::InvalidLifecycleProjection.into()),
+                };
+            }
+            let event_kind = registration.event_kind;
+            self.overlay_lifecycle_binding_by_event_kind
+                .insert(event_kind, op._pad);
+        }
+        self.write_op_bytes(ctx, &ops)?;
+        let dummy_rows = [OverlayLifecycleStateGpu::pending(u32::MAX)];
+        let resident_rows = if plan.rows.is_empty() {
+            &dummy_rows[..]
+        } else {
+            &plan.rows
+        };
+        self.overlay_lifecycle_plane = FacilityResidentPlane::from_rows(
+            ctx,
+            "overlay_lifecycle",
+            &self.overlay_lifecycle_boundary,
+            &self.overlay_lifecycle_owner,
+            resident_rows,
+        )?;
+        self.overlay_lifecycle_rows = plan.rows.len();
+        self.overlay_lifecycle_enabled = !plan.rows.is_empty();
+        Ok(())
+    }
+
+    /// Read the compact semantic shadow after the generation boundary swap.
+    pub fn readback_overlay_lifecycle_states(
+        &self,
+        ctx: &GpuContext,
+    ) -> Result<Vec<OverlayLifecycleStateGpu>, AccumulatorOpSessionError> {
+        if !self.overlay_lifecycle_enabled {
+            return Ok(Vec::new());
+        }
+        let current = self
+            .overlay_lifecycle_plane
+            .current_for(&self.overlay_lifecycle_owner)?;
+        let bytes = self.read_buffer_bytes(ctx, current);
+        Ok(bytemuck::cast_slice::<u8, OverlayLifecycleStateGpu>(&bytes)
+            [..self.overlay_lifecycle_rows]
+            .to_vec())
     }
 
     pub fn append_packed_threshold_ops(
@@ -1267,6 +1458,11 @@ impl AccumulatorOpSession {
         previous_output_values: &Buffer,
         anchor: Option<(&Buffer, u32, u32)>,
     ) {
+        if self.overlay_lifecycle_enabled {
+            self.overlay_lifecycle_plane
+                .encode_carry(&self.overlay_lifecycle_owner, encoder)
+                .expect("lifecycle facility owns its resident plane");
+        }
         if self.n_ops > 0 {
             self.last_pass_time_us = None;
 
@@ -1487,6 +1683,14 @@ impl AccumulatorOpSession {
     /// Public timestamp readback hook for callers that drove
     /// `encode_threshold_scan_into` directly.
     pub fn finish_threshold_scan(&mut self, ctx: &GpuContext) {
+        if self.overlay_lifecycle_enabled {
+            self.overlay_lifecycle_boundary
+                .advance(&mut [(
+                    &self.overlay_lifecycle_owner,
+                    &mut self.overlay_lifecycle_plane,
+                )])
+                .expect("lifecycle plane advances once under its owning boundary");
+        }
         self.read_execute_pass_timestamp(ctx);
     }
 
@@ -1829,6 +2033,14 @@ impl AccumulatorOpSession {
                 BindGroupEntry {
                     binding: 12,
                     resource: previous_values.as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 13,
+                    resource: self
+                        .overlay_lifecycle_plane
+                        .next_for(&self.overlay_lifecycle_owner)
+                        .expect("lifecycle facility owns its resident plane")
+                        .as_entire_binding(),
                 },
             ],
         })
@@ -2272,6 +2484,14 @@ impl AccumulatorOpSession {
                 BindGroupEntry {
                     binding: 12,
                     resource: output_values.as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 13,
+                    resource: self
+                        .overlay_lifecycle_plane
+                        .next_for(&self.overlay_lifecycle_owner)
+                        .expect("lifecycle facility owns its resident plane")
+                        .as_entire_binding(),
                 },
             ],
         })
@@ -2826,7 +3046,9 @@ mod tests {
                 emit_count: 2,
             }],
         );
-        let sealed = session.readback_emissions(&ctx).expect("sealed readback gen1");
+        let sealed = session
+            .readback_emissions(&ctx)
+            .expect("sealed readback gen1");
         assert_eq!(sealed.len(), 1);
         assert_eq!(sealed[0].generation(), 1);
         assert!(sealed[0].is_production_sealed());
@@ -2849,7 +3071,9 @@ mod tests {
                 emit_count: 3,
             }],
         );
-        let sealed2 = session.readback_emissions(&ctx).expect("sealed readback gen2");
+        let sealed2 = session
+            .readback_emissions(&ctx)
+            .expect("sealed readback gen2");
         assert_eq!(sealed2[0].generation(), 2);
         session
             .push_emissions_into_production_egress(&ctx, &mut ring)
@@ -2995,7 +3219,9 @@ mod tests {
     }
 
     /// Discover production emission-door call sites under `crates_root`.
-    fn collect_emission_door_call_sites(crates_root: &std::path::Path) -> Vec<EmissionDoorCallSite> {
+    fn collect_emission_door_call_sites(
+        crates_root: &std::path::Path,
+    ) -> Vec<EmissionDoorCallSite> {
         let mut sites = Vec::new();
         for entry in walkdir_rs_files(crates_root) {
             let Ok(text) = std::fs::read_to_string(&entry) else {
@@ -3032,9 +3258,7 @@ mod tests {
         sites
     }
 
-    fn collect_emission_door_defs(
-        crates_root: &std::path::Path,
-    ) -> Vec<(String, String)> {
+    fn collect_emission_door_defs(crates_root: &std::path::Path) -> Vec<(String, String)> {
         let mut defs = Vec::new();
         for entry in walkdir_rs_files(crates_root) {
             let Ok(text) = std::fs::read_to_string(&entry) else {
@@ -3089,10 +3313,9 @@ mod tests {
                     }
                     matched_sanctioned[i] = true;
                 }
-                None => unmatched_found.push(format!(
-                    "{}::{} :: {}",
-                    site.path, site.api, site.line
-                )),
+                None => {
+                    unmatched_found.push(format!("{}::{} :: {}", site.path, site.api, site.line))
+                }
             }
         }
         if !unmatched_found.is_empty() {
@@ -3228,8 +3451,7 @@ mod tests {
         let planted_sites = collect_emission_door_call_sites(&tmp);
         assert!(
             planted_sites.iter().any(|s| {
-                s.api == "readback_emissions_capped"
-                    && s.path.contains("observer_bypass")
+                s.api == "readback_emissions_capped" && s.path.contains("observer_bypass")
             }),
             "walk must discover planted readback_emissions_capped call: {planted_sites:?}"
         );
@@ -3239,8 +3461,7 @@ mod tests {
         let walk_err = verify_emission_door_census(&merged, &defs)
             .expect_err("filesystem-planted direct readback must RED");
         assert!(
-            walk_err.contains("unsanctioned")
-                && walk_err.contains("readback_emissions_capped"),
+            walk_err.contains("unsanctioned") && walk_err.contains("readback_emissions_capped"),
             "walk RED must name capped readback plant, got: {walk_err}"
         );
         let _ = std::fs::remove_dir_all(&tmp);
@@ -3271,5 +3492,3 @@ mod tests {
         out
     }
 }
-
-

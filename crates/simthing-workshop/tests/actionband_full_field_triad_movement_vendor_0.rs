@@ -974,6 +974,7 @@ fn full_vendor_capacity_overlay_costband_and_arrival_chain_is_native_bounded() {
             simthing_feeder::BoundaryRequest::AttachOverlay {
                 target: actor,
                 overlay: step.overlay().clone(),
+                source_generation: simthing_core::GenerationStamp::new(0),
             },
         ],
         &mut tree,
@@ -982,6 +983,8 @@ fn full_vendor_capacity_overlay_costband_and_arrival_chain_is_native_bounded() {
         &mut shadow,
         n_dims,
         None,
+        simthing_core::GenerationStamp::new(0),
+        &mut simthing_sim::overlay_lifecycle::OverlayLifecycleAdmissionState::default(),
     );
     assert_eq!(outcome.reparented, vec![(actor, ids[STEP_SLOT as usize])]);
     assert!(tree.has_overlay(actor, step.overlay_id()));

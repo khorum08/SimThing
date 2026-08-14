@@ -41,7 +41,7 @@
 
 use simthing_core::{
     mint_anchor_table_from_admission, prepare_fission_clone_sources_for_registry, DecayBehavior,
-    DimensionRegistry, OverlayLifecycle, SimPropertyId, SimThing, SimThingId,
+    DimensionRegistry, GenerationStamp, OverlayLifecycle, SimPropertyId, SimThing, SimThingId,
 };
 use simthing_feeder::{
     BoundaryRequest, CapabilityUnlockRegistration, DispatchCoordinator, MaintainerOutcome,
@@ -54,19 +54,18 @@ use simthing_gpu::{
     ThresholdRegistration, TopologyState, WorldGpuState, DEFAULT_THRESHOLD_EMISSION_CAPACITY,
 };
 
-use crate::delta_log::{entries_from_outcome, BoundaryDeltaEntry};
-use crate::fission::{resolve_fission_fusion, FissionLineageRecord, FissionOutcome};
-use crate::fission_clone_source_view::fission_clone_source_children;
 use crate::anchor_remap_encode::{
     build_exact_anchor_remap_section, gate_structural_gpu_encode_exact, snapshot_anchored_loci,
 };
+use crate::delta_log::{entries_from_outcome, BoundaryDeltaEntry};
+use crate::fission::{resolve_fission_fusion, FissionLineageRecord, FissionOutcome};
+use crate::fission_clone_source_view::fission_clone_source_children;
 use crate::gpu_sync::{sync_gpu_buffers, GpuSyncOutcome};
-use simthing_core::AnchorRemapSection;
-use simthing_gpu::{
-    apply_band_crossing_deltas_from_threshold_events, BandCrossingDelta,
-};
 use crate::observability::{observe, ObservabilityReport, ObserveFidelity};
-use crate::overlay_lifecycle::{resolve_overlay_lifecycle, LifecycleOutcome};
+use crate::overlay_lifecycle::{
+    apply_gpu_overlay_lifecycle, derive_overlay_lifecycle_admission_catalog, LifecycleOutcome,
+    OverlayLifecycleAdmissionState, OverlayLifecycleTarget,
+};
 use crate::property_expiry::{resolve_property_expiry, ExpiryOutcome};
 use crate::reduced_field::ReducedField;
 use crate::resolution_site::{
@@ -80,6 +79,8 @@ use crate::threshold_registry::{
 };
 use crate::tree_index::{build_node_paths, node_at_path};
 use crate::tree_mutation::apply_structural_mutations;
+use simthing_core::AnchorRemapSection;
+use simthing_gpu::{apply_band_crossing_deltas_from_threshold_events, BandCrossingDelta};
 use std::collections::HashSet;
 use std::time::Instant;
 
@@ -273,6 +274,8 @@ pub struct BoundaryProtocol {
     /// through the admitted slot map; `CpuAuthoritative` is the vendorized
     /// mirror placement. Placement only — same semantics either way.
     resolution_site: ResolutionSite,
+    overlay_lifecycle_admission: OverlayLifecycleAdmissionState,
+    overlay_lifecycle_targets: Vec<OverlayLifecycleTarget>,
 }
 
 impl BoundaryProtocol {
@@ -299,6 +302,8 @@ impl BoundaryProtocol {
             fission_lineage: Vec::new(),
             cached_topology_state: TopologyState::default(),
             resolution_site: ResolutionSite::default(),
+            overlay_lifecycle_admission: OverlayLifecycleAdmissionState::default(),
+            overlay_lifecycle_targets: Vec::new(),
         }
     }
 
@@ -439,6 +444,90 @@ impl BoundaryProtocol {
             .expect("AccumulatorOp threshold op upload failed");
     }
 
+    /// Stage structural requests against a cloned semantic tree and ask the
+    /// existing kernel admission door whether newly reserved lifecycle rows
+    /// still fit the session-frozen catalogue. A rejection cannot touch the
+    /// authoritative tree, slot table, registry, or GPU projection.
+    fn preflight_lifecycle_membership_requests(
+        &self,
+        requests: Vec<BoundaryRequest>,
+        state: &WorldGpuState,
+        n_dims: usize,
+        destination_generation: u32,
+    ) -> (Vec<BoundaryRequest>, u32) {
+        if !requests.iter().any(|request| {
+            matches!(
+                request,
+                BoundaryRequest::AttachOverlay { .. } | BoundaryRequest::AddChild { .. }
+            )
+        }) {
+            return (requests, 0);
+        }
+        let mut staged_root = self.root.clone();
+        let mut staged_allocator = self.allocator.clone();
+        let mut staged_registry = self.registry.clone();
+        let mut staged_shadow = vec![0.0; staged_allocator.capacity() * n_dims];
+        let mut staged_admission = self.overlay_lifecycle_admission.clone();
+        let (initial_catalogue, _) = derive_overlay_lifecycle_admission_catalog(
+            staged_root.inner(),
+            &staged_registry,
+            &staged_allocator,
+            GenerationStamp::new(destination_generation),
+            &staged_admission,
+        );
+        let mut staged_catalogue_rows = initial_catalogue.rows.len();
+        let mut admitted_requests = Vec::with_capacity(requests.len());
+        let mut rejected = 0u32;
+
+        for request in requests {
+            let mut trial_root = staged_root.clone();
+            let mut trial_allocator = staged_allocator.clone();
+            let mut trial_registry = staged_registry.clone();
+            let mut trial_shadow = staged_shadow.clone();
+            let mut trial_admission = staged_admission.clone();
+            let projected_slots = trial_allocator
+                .capacity()
+                .saturating_add(projected_add_child_slots(std::slice::from_ref(&request)));
+            trial_shadow.resize(projected_slots * n_dims, 0.0);
+            let _ = apply_structural_mutations(
+                vec![request.clone()],
+                &mut trial_root,
+                &mut trial_allocator,
+                &mut trial_registry,
+                &mut trial_shadow,
+                n_dims,
+                None,
+                GenerationStamp::new(destination_generation),
+                &mut trial_admission,
+            );
+            let (catalogue, registrations) = derive_overlay_lifecycle_admission_catalog(
+                trial_root.inner(),
+                &trial_registry,
+                &trial_allocator,
+                GenerationStamp::new(destination_generation),
+                &trial_admission,
+            );
+            if catalogue.rows.len() > staged_catalogue_rows
+                && state
+                    .preflight_overlay_lifecycle_admission(&catalogue, &registrations)
+                    .is_err()
+            {
+                rejected = rejected.saturating_add(1);
+                continue;
+            }
+
+            staged_root = trial_root;
+            staged_allocator = trial_allocator;
+            staged_registry = trial_registry;
+            staged_shadow = trial_shadow;
+            staged_admission = trial_admission;
+            staged_catalogue_rows = catalogue.rows.len();
+            admitted_requests.push(request);
+        }
+
+        (admitted_requests, rejected)
+    }
+
     /// Run the full §10 boundary sequence (steps 4–9).
     ///
     /// `events`   — GPU threshold events from the last tick's Pass 7 readback.
@@ -525,8 +614,7 @@ impl BoundaryProtocol {
         // BAND-QUANTIZED-DRAW-0: ordinary production CostBand path — every sealed
         // crossing resolves through the event_kind semantic table (observation
         // default N=0; admitted sinks quantize with authored throttle).
-        out.cost_band_draws =
-            self.resolve_production_cost_band_draws(&out.band_crossing_deltas);
+        out.cost_band_draws = self.resolve_production_cost_band_draws(&out.band_crossing_deltas);
         // Dynamic band/value/urgency/generation live on the GPU table (fused
         // threshold companion). BandCrossingDelta remains wire/replay evidence only.
         // Generation for *this* day's crossings was supplied before the fused
@@ -591,19 +679,30 @@ impl BoundaryProtocol {
         // Step 4: Overlay lifecycle — dissolve + expire effects.
         // Mutates coord.shadow directly (apply_expire_effects writes into it).
         let lifecycle_started = Instant::now();
-        out.lifecycle = resolve_overlay_lifecycle(
-            self.root.inner_mut(),
-            &self.registry,
-            &self.allocator,
-            &mut coord.shadow,
-            n_dims,
-            day as u32,
-            Some(&boundary_paths),
-        );
+        if self.overlay_lifecycle_targets.is_empty() {
+            out.lifecycle = LifecycleOutcome::default();
+        } else {
+            let rows = state
+                .readback_overlay_lifecycle_states()
+                .expect("GPU overlay lifecycle state readback failed");
+            self.overlay_lifecycle_admission
+                .observe_gpu_rows(&self.overlay_lifecycle_targets, &rows);
+            out.lifecycle = apply_gpu_overlay_lifecycle(
+                self.root.inner_mut(),
+                &self.registry,
+                &self.allocator,
+                &mut coord.shadow,
+                n_dims,
+                &boundary_paths,
+                &self.overlay_lifecycle_targets,
+                &rows,
+            );
+        }
         for &(target, _) in &out.lifecycle.dissolved_overlays {
             push_slot_for_id(&self.allocator, target, &mut dirty_value_slots);
         }
         if out.lifecycle.dissolved > 0 {
+            threshold_dirty = true;
             self.bump_overlay_compile_revision();
         }
         out.timing.lifecycle_ms = lifecycle_started.elapsed().as_secs_f64() * 1000.0;
@@ -722,6 +821,7 @@ impl BoundaryProtocol {
             requests.push(BoundaryRequest::AttachOverlay {
                 target: pi.target,
                 overlay: pi.overlay,
+                source_generation: GenerationStamp::new(day as u32),
             });
         }
 
@@ -731,9 +831,12 @@ impl BoundaryProtocol {
             requests.push(BoundaryRequest::AttachOverlay {
                 target: ai.target,
                 overlay: ai.overlay,
+                source_generation: GenerationStamp::new(day as u32),
             });
         }
         out.boundary_requests = requests.len() as u32;
+        let (requests, preflight_rejected_overlay_lifecycle) =
+            self.preflight_lifecycle_membership_requests(requests, state, n_dims, day as u32);
         out.timing.request_drain_ms = request_drain_started.elapsed().as_secs_f64() * 1000.0;
 
         // Pre-grow for AddChild subtrees so apply_structural_mutations can
@@ -774,7 +877,13 @@ impl BoundaryProtocol {
             &mut coord.shadow,
             n_dims,
             Some(&structural_paths),
+            GenerationStamp::new(day as u32),
+            &mut self.overlay_lifecycle_admission,
         );
+        out.maintainer.rejected_overlay_lifecycle = out
+            .maintainer
+            .rejected_overlay_lifecycle
+            .saturating_add(preflight_rejected_overlay_lifecycle);
         for &id in &out.maintainer.allocated {
             push_slot_for_id(&self.allocator, id, &mut dirty_value_slots);
         }
@@ -787,6 +896,12 @@ impl BoundaryProtocol {
             || !out.maintainer.dimensions_added.is_empty()
         {
             topology_dirty = true;
+            threshold_dirty = true;
+        }
+        if !out.maintainer.overlays_attached.is_empty()
+            || !out.maintainer.overlays_activated.is_empty()
+            || !out.maintainer.overlays_suspended.is_empty()
+        {
             threshold_dirty = true;
         }
         if !out.maintainer.allocated.is_empty()
@@ -1038,6 +1153,8 @@ impl BoundaryProtocol {
             &self.capability_unlocks,
             &self.scripted_event_triggers,
             &self.fission_lineage,
+            simthing_core::GenerationStamp::new(day as u32),
+            &mut self.overlay_lifecycle_admission,
             dirty_value_slots.as_deref(),
             threshold_dirty,
             topology_dirty,
@@ -1068,6 +1185,12 @@ impl BoundaryProtocol {
         if let Some(regs) = gpu_out.rebuilt_threshold_regs.as_deref() {
             self.sync_accumulator_threshold_ops(state, regs);
         }
+        if let Some(plan) = gpu_out.overlay_lifecycle_plan.as_ref() {
+            state
+                .configure_overlay_lifecycle_projection(plan)
+                .expect("overlay lifecycle projection admission failed");
+            self.overlay_lifecycle_targets = gpu_out.overlay_lifecycle_targets.clone();
+        }
         self.sync_accumulator_intent_session(state);
         self.sync_accumulator_overlay_add_session(state);
         self.sync_accumulator_reduction_soft_session(state);
@@ -1093,6 +1216,8 @@ impl BoundaryProtocol {
                 .saturating_add(threshold_regs_appended),
             new_threshold_registry: None, // moved into self above
             rebuilt_threshold_regs: None,
+            overlay_lifecycle_plan: None,
+            overlay_lifecycle_targets: Vec::new(),
             // When gpu_sync's full reduction rebuild path ran, these come
             // from gpu_out; when Approach C's append path ran, gpu_out
             // values are 0 and the cached `topology_appended_*` values
@@ -1138,6 +1263,12 @@ impl BoundaryProtocol {
     /// Read-only access to the current threshold registry (for diagnostics).
     pub fn threshold_registry(&self) -> &ThresholdRegistry {
         &self.cpu_threshold_registry
+    }
+
+    /// Number of logical identities bound to the resident lifecycle plane.
+    /// Exposed as semantic-shadow diagnostics; row order remains non-authority.
+    pub fn overlay_lifecycle_target_count(&self) -> usize {
+        self.overlay_lifecycle_targets.len()
     }
 
     /// Production CostBand resolve door — same call site as `execute`.
@@ -1318,6 +1449,8 @@ impl BoundaryProtocol {
             &self.capability_unlocks,
             &self.scripted_event_triggers,
             &self.fission_lineage,
+            simthing_core::GenerationStamp::new(0),
+            &mut self.overlay_lifecycle_admission,
             None,
             true,
             true,
@@ -1335,6 +1468,23 @@ impl BoundaryProtocol {
         }
         if let Some(regs) = out.rebuilt_threshold_regs.as_deref() {
             self.sync_accumulator_threshold_ops(state, regs);
+        }
+        let (admission_catalogue, admission_registrations) =
+            derive_overlay_lifecycle_admission_catalog(
+                self.root.inner(),
+                &self.registry,
+                &self.allocator,
+                GenerationStamp::new(0),
+                &self.overlay_lifecycle_admission,
+            );
+        state
+            .freeze_overlay_lifecycle_admission(&admission_catalogue, &admission_registrations)
+            .expect("initial overlay lifecycle catalogue admission failed");
+        if let Some(plan) = out.overlay_lifecycle_plan.as_ref() {
+            state
+                .configure_overlay_lifecycle_projection(plan)
+                .expect("initial overlay lifecycle projection admission failed");
+            self.overlay_lifecycle_targets = out.overlay_lifecycle_targets.clone();
         }
         self.sync_accumulator_intent_session(state);
         self.sync_accumulator_overlay_add_session(state);
@@ -1365,8 +1515,13 @@ impl BoundaryProtocol {
         n_dims: usize,
         loci: &simthing_core::AnchoredLocusMap,
     ) {
-        let table =
-            mint_anchor_table_from_admission(self.root.inner(), &self.registry, loci, values, n_dims);
+        let table = mint_anchor_table_from_admission(
+            self.root.inner(),
+            &self.registry,
+            loci,
+            values,
+            n_dims,
+        );
         state.upload_typed_anchor_table(&table);
         state.run_anchor_table_magnitude_maintain();
     }

@@ -50,7 +50,8 @@ use serde::{Deserialize, Serialize};
 use simthing_core::{
     cost_band_quantize, CostBandAdmissionError, CostBandDraw, CostBandRegistrationMarker,
     CostBandResourceMarker, DecayBehavior, DimensionRegistry, Direction, ReductionRule,
-    SimPropertyId, SimThing, SimThingId, SoftAggregateGuard, SubFieldRole, admit_cost_band_marker,
+    OverlayId, SimPropertyId, SimThing, SimThingId, SoftAggregateGuard, SubFieldRole,
+    admit_cost_band_marker,
 };
 use simthing_feeder::{
     CapabilityUnlockEvent, CapabilityUnlockRegistration, ScriptedEventTriggerEvent,
@@ -137,6 +138,14 @@ pub enum ThresholdSemantic {
         /// Matches `simthing_spec::EventKey.0`.
         event_id: String,
     },
+
+    /// Identity-only CPU shadow for a lifecycle condition projected by the
+    /// existing Phase-5 crossing dispatch into the GPU resident plane.
+    OverlayLifecycleCondition {
+        sim_thing_id: SimThingId,
+        overlay_id: OverlayId,
+        condition_index: u32,
+    },
 }
 
 impl ThresholdSemantic {
@@ -151,6 +160,7 @@ impl ThresholdSemantic {
             ThresholdSemantic::AggregateAlert { .. } => "aggregate_alert",
             ThresholdSemantic::CapabilityUnlock { .. } => "capability_unlock",
             ThresholdSemantic::ScriptedEventTrigger { .. } => "scripted_event_trigger",
+            ThresholdSemantic::OverlayLifecycleCondition { .. } => "overlay_lifecycle_condition",
         }
     }
 }
@@ -482,6 +492,7 @@ fn is_hard_structural_trigger(s: &ThresholdSemantic) -> bool {
             | ThresholdSemantic::FusionTrigger { .. }
             | ThresholdSemantic::PropertyExpiry { .. }
             | ThresholdSemantic::CapabilityUnlock { .. }
+            | ThresholdSemantic::OverlayLifecycleCondition { .. }
     )
 }
 
@@ -494,6 +505,7 @@ fn semantic_kind(s: &ThresholdSemantic) -> &'static str {
         ThresholdSemantic::VelocityAlert { .. } => "VelocityAlert",
         ThresholdSemantic::AggregateAlert { .. } => "AggregateAlert",
         ThresholdSemantic::ScriptedEventTrigger { .. } => "ScriptedEventTrigger",
+        ThresholdSemantic::OverlayLifecycleCondition { .. } => "OverlayLifecycleCondition",
     }
 }
 
