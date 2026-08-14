@@ -42,10 +42,10 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | source | sha256 |
 | --- | --- |
 | precedented_classes.tsv | 19105ec83b268a5e48a1e14bc5befd389139f100fc10cdbe8e9285a7cd773032 |
-| binding_conditions.tsv | 211b860c2a424d0386a01a2dc93d5c563abfd1411c1f58ec55c7b69d97426cb8 |
+| binding_conditions.tsv | a8c828d066f049f7282254ba0851b5867c43b99c41abaab9805e2aa1c136dc24 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | 26eab30ec86c97ac8dfd6beef7ae8c5b4d3f18c38fdaa431ec40ccce855396d3 |
-| design_0_0_8_7_rf_arena_modernization.md | 0b9e21fd53a21617eec5d81c46ff390c00f7243c3c15a541acab5ced4da04c10 |
+| design_0_0_8_7_rf_arena_modernization.md | e0c9796992abb0d575a469dca35f5ed9d1a91f674612642a743ce1fc7fe33988 |
 | relay_lint.sh | 4163f715cdc3b549dbf57c1744aff61ea96b9f9f0a2237376665fbdb24e986c8 |
 | doctrine_anchors.tsv | ddc753498b845b0e5084222b35f94286e5163cc6479de58883e3ecc3c2d743dd |
 | execution_status_taxonomy.tsv | 64381d52de2295cd397601c545c2285267640787f2e541479c17dfb33261e4b2 |
@@ -68,7 +68,7 @@ Dark properties (1): `fixture::dark_reading` (reasons/spans in `property_admissi
 
 Track state: `open`
 
-> Compact view: 34 completed rungs elided; showing all 27 open rungs plus the 3 most recent completions. Full ladder in the design doc.
+> Compact view: 35 completed rungs elided; showing all 26 open rungs plus the 3 most recent completions. Full ladder in the design doc.
 
 | # | rung | deliverable | exit proof |
 | --- | --- | --- | --- |
@@ -76,7 +76,6 @@ Track state: `open`
 | 5.9d | TP-EXPORT-ERADICATION-0 | **Phase 5 hygiene — Owner-directed 2026-08-01, DA-implemented.** Eliminates TP's | ZERO files matching scenario vocabulary anywhere outside `simthing-clausething`; mapeditor `src` and `tests` build an... |
 | 5.13 | EXACT-CONSUMER-OBLIGATION-0 | **PHASE 5 REOPENED (Owner ruling 2026-08-04) — the exact-primitive door's missin | A consumer declaring exact-bearing WITHOUT a cross-arm digest **hard-errors at admission**, planted-defect proven in ... |
 | 5.14 | EML-ARITHMETIC-SEMANTICS-0 | **Owner-directed 2026-08-05 — finish the language instead of policing it. THE DE | Every rounding-bearing opcode and every contraction-exposed composition has ONE specified arm-independent meaning, wi... |
-| 6.2b | RESOLUTION-SITE-SPLIT-0 | **Phase 6: Owner-approved 2026-08-02 — the closed loop becomes the DEFAULT SimTh | **DA-GRADUATED / merged #1621 @ 1a520eee — the closed loop is the default; CPU-authoritative is a vendorized placemen... |
 | 6.3 | CONTINUOUS-POSTURE-SOAK-0 | Phase 6: continuous posture (batched generations) + N-generation soak under forc | **DA-GRADUATED / merged #1624 @ fdc11efb — Phase 6 COMPLETE; the StemThing census trigger fires.** Soak exit-proof pe... |
 | 6.4 | SLOT-LOGICAL-IDENTITY-0 | **Phase 6→7 gap: StemThing-A (anchor: `docs/stead_stemthing_unification.md`; Tie | A forced epoch remap (scrambled physical rows, unchanged logical ids) reproduces a multi-generation run **bit-exactly... |
 | 6.5 | RESIDENCY-TIER-VOCABULARY-0 | **Phase 6→7 gap: StemThing-A.** The residency lane's authored vocabulary, per an | **GRADUATION OBLIGATION (recorded 2026-08-04; clauses landed early in #1628): at this rung's stamp the DA verifies th... |
@@ -88,7 +87,7 @@ Track state: `open`
 | 7.5a | ACTIONBAND-FIELD-TRIAD-PROGRESS-0 | **Gu-Yang remediation, rung 1 of 3 (Owner-directed 2026-08-10; Fable-approved re | A synthetic conserved-channel ActionBand consumes a REAL Gu-Yang / `FieldSweepRegistration` output with **zero Action... |
 | 7.5b | ACTIONBAND-SPATIAL-FLUX-WITNESS-0 | **Gu-Yang remediation, rung 2 of 3.** Prove the generic Field-Triad ActionBand b | Same target and PALMA potential, different Gu-Yang channel capacity ⇒ **same lawful descent identity, different per-g... |
 | 7.5c | ACTIONBAND-FULL-FIELD-TRIAD-MOVEMENT-VENDOR-0 | **Gu-Yang remediation, rung 3 of 3 — OWNER ADDITION.** **Do NOT reopen 7.4 to re | **DA-GRADUATED / merged #1738 @ 73b72e6c** — One movement ActionBand reaches the same target under identical PALMA po... |
-| 7.6 | OVERLAY-GERM-ARCHAEOLOGY-0 | **Overlay closure, rung 1 of 4 — anchored by `docs/stemthing_intrinsic_overlay_c | Census TSV lands with reconciliation line; every route classified with a disposition; checker `--check` PASS in CI an... |
+| 7.6 | OVERLAY-GERM-ARCHAEOLOGY-0 | **Overlay closure, rung 1 of 4 — anchored by `docs/stemthing_intrinsic_overlay_c | **DA-GRADUATED / merged #1748 @ e52b5603 — 74 routes across four families (OVERLAY 52 / INHERIT 8 / CROSSING-WRITE 8 ... |
 | 7.7 | GPU-OVERLAY-LIFECYCLE-EXTRACTION-0 | **Overlay closure, rung 2 of 4 — the dedicated extraction rung the anchor's §23. | Oracle/GPU bit-identical across the witness battery incl. a planted divergence RED; `AfterTicks` proven with zero CPU... |
 | 7.8 | ACTIONBAND-OVERLAY-ACTUATION-0 | **Overlay closure, rung 3 of 4 — probes C+D fused: the actuation door.** An Acti | Crossing → `OverlayStateNext` → next-generation consequence witness green; a certificate-envelope mutant (out-of-enve... |
 | 7.8a | DERIVED-SPAN-PROJECTION-INVALIDATION-0 | **Unification sweep, the ONE new architectural rung (Sol/Fable v4, 2026-08-13) — | Million-row homogeneous subtree resolves to **O(distinct-profiles) effective descriptors, never O(descendants)** sema... |
@@ -105,7 +104,7 @@ Track state: `open`
 
 ## Next Rung Pointer
 
-Active pointer: `OVERLAY-GERM-ARCHAEOLOGY-0`
+Active pointer: `GPU-OVERLAY-LIFECYCLE-EXTRACTION-0`
 
 
 ## Cold-Start Spine (constitutional pointers)
@@ -169,6 +168,7 @@ Without `novelty_basis`, clearance fails. Empty-class diffs with a valid admitte
 
 | rung | condition | set_by | status | promotion_blocker |
 | --- | --- | --- | --- | --- |
+| GPU-OVERLAY-LIFECYCLE-EXTRACTION-0 | DissolveCondition::OverrideReceived passes admission as a bounded lifecycle but evaluates false every generation; 7.7 must either implement override-replacement in the germ or reject the variant at admission | DA ruling 5289831443 (7.6 AN-OVERRIDE archaeology) | open | yes |
 
 ## Clearance Ledger (recent)
 
