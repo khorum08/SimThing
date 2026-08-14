@@ -1,6 +1,11 @@
 //! Overlay lifecycle management — step 4 and step 7 of the day boundary.
 //!
-//! ## Step 4: dissolve + writeback
+//! ## Step 4: GPU decision consume + structural writeback
+//!
+//! Production maps property and owning-generation conditions onto existing
+//! Phase-5 registrations. The GPU owns the conjunctive state and deadline
+//! decision; [`resolve_overlay_lifecycle`] retains the legacy decrementing
+//! behavior only as an oracle. `OverrideReceived` is rejected at admission.
 //!
 //! Each `Overlay` carries an `OverlayLifecycle`. At the boundary:
 //! - `UntilDissolved` overlays are removed only by explicit removal (no automatic
@@ -33,12 +38,17 @@
 //! N+1. `gpu_sync` then calls `build_overlay_deltas` to reflect those lists.
 
 use simthing_core::{
-    DimensionRegistry, DissolveCondition, OverlayId, OverlayLifecycle, SimThing, SimThingId,
-    SubFieldRole,
+    admit_overlay_lifecycle, establish_overlay_deadline, DimensionRegistry, DissolveCondition,
+    GenerationStamp, OverlayId, OverlayLifecycle, SimThing, SimThingId, SubFieldRole,
 };
-use simthing_gpu::SlotAllocator;
+use simthing_gpu::{
+    OverlayLifecycleProjectionBinding, OverlayLifecycleProjectionPlan, OverlayLifecycleStateGpu,
+    SlotAllocator, ThresholdRegistration, DIR_DOWNWARD, DIR_UPWARD, THRESH_BUF_OWNING_GENERATION,
+    THRESH_BUF_VALUES,
+};
 use std::collections::HashMap;
 
+use crate::threshold_registry::{ThresholdRegistry, ThresholdSemantic};
 use crate::tree_index::{node_at_path_mut, paths_preorder};
 
 /// Counts from one boundary's lifecycle pass.
@@ -50,7 +60,202 @@ pub struct LifecycleOutcome {
     pub overlays_attached: u32,
 }
 
-/// Walk the tree and:
+/// Logical identity sidecar for compact GPU rows. Physical row numbers are
+/// rebuilt at each admitted sync and never become durable identity.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct OverlayLifecycleTarget {
+    pub sim_thing_id: SimThingId,
+    pub overlay_id: OverlayId,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct OverlayLifecycleAdmissionState {
+    activation_generations: HashMap<(SimThingId, OverlayId), GenerationStamp>,
+    satisfied_masks: HashMap<(SimThingId, OverlayId), u32>,
+}
+
+impl OverlayLifecycleAdmissionState {
+    pub fn observe_gpu_rows(
+        &mut self,
+        targets: &[OverlayLifecycleTarget],
+        rows: &[OverlayLifecycleStateGpu],
+    ) {
+        for (target, row) in targets.iter().zip(rows) {
+            self.satisfied_masks
+                .insert((target.sim_thing_id, target.overlay_id), row.satisfied_mask);
+        }
+    }
+}
+
+/// Append lifecycle predicates to the canonical Phase-5 registration packet.
+/// This builds bindings only: crossing authority remains the kernel's sole
+/// `threshold_crossed` call.
+pub fn append_overlay_lifecycle_registrations(
+    root: &SimThing,
+    registry: &DimensionRegistry,
+    allocator: &SlotAllocator,
+    generation: GenerationStamp,
+    gpu_regs: &mut Vec<ThresholdRegistration>,
+    cpu_reg: &mut ThresholdRegistry,
+    admission: &mut OverlayLifecycleAdmissionState,
+) -> (OverlayLifecycleProjectionPlan, Vec<OverlayLifecycleTarget>) {
+    let mut plan = OverlayLifecycleProjectionPlan::default();
+    let mut targets = Vec::new();
+    append_node_lifecycle(
+        root,
+        registry,
+        allocator,
+        generation,
+        gpu_regs,
+        cpu_reg,
+        admission,
+        &mut plan,
+        &mut targets,
+    );
+    (plan, targets)
+}
+
+#[allow(clippy::too_many_arguments)]
+fn append_node_lifecycle(
+    node: &SimThing,
+    registry: &DimensionRegistry,
+    allocator: &SlotAllocator,
+    generation: GenerationStamp,
+    gpu_regs: &mut Vec<ThresholdRegistration>,
+    cpu_reg: &mut ThresholdRegistry,
+    admission: &mut OverlayLifecycleAdmissionState,
+    plan: &mut OverlayLifecycleProjectionPlan,
+    targets: &mut Vec<OverlayLifecycleTarget>,
+) {
+    for overlay in &node.overlays {
+        admit_overlay_lifecycle(&overlay.lifecycle).unwrap_or_else(|error| {
+            panic!(
+                "overlay {:?} lifecycle admission failed: {error}",
+                overlay.id
+            )
+        });
+        let conditions = match &overlay.lifecycle {
+            OverlayLifecycle::Transient {
+                dissolution_conditions,
+            }
+            | OverlayLifecycle::UntilDissolvedWith {
+                dissolution_conditions,
+            } => dissolution_conditions,
+            OverlayLifecycle::UntilDissolved | OverlayLifecycle::Suspended { .. } => continue,
+        };
+        let key = (node.id, overlay.id);
+        let activation = *admission
+            .activation_generations
+            .entry(key)
+            .or_insert(generation);
+        let row = plan.rows.len() as u32;
+        let required_mask = (1u32 << conditions.len()) - 1;
+        let mut satisfied_mask = admission.satisfied_masks.get(&key).copied().unwrap_or(0);
+        let slot = allocator
+            .slot_of(node.id)
+            .unwrap_or_else(|| {
+                panic!(
+                    "lifecycle overlay owner {:?} lacks an admitted slot",
+                    node.id
+                )
+            })
+            .raw();
+
+        for (condition_index, condition) in conditions.iter().enumerate() {
+            let bit = condition_index as u32;
+            let registration = match condition {
+                DissolveCondition::PropertyReaches {
+                    property,
+                    sub_field,
+                    value,
+                }
+                | DissolveCondition::PropertyBelow {
+                    property,
+                    sub_field,
+                    value,
+                } => {
+                    let range = registry
+                        .try_column_range(*property)
+                        .unwrap_or_else(|| panic!("lifecycle property {property:?} is not active"));
+                    let property_spec = registry
+                        .try_property(*property)
+                        .expect("active lifecycle property has a registry entry");
+                    let col = range
+                        .col_for_role(sub_field, &property_spec.layout)
+                        .unwrap_or_else(|| {
+                            panic!("lifecycle sub-field {sub_field:?} is not admitted")
+                        });
+                    Some(ThresholdRegistration {
+                        slot,
+                        col: col.raw() as u32,
+                        threshold: *value,
+                        direction: if matches!(condition, DissolveCondition::PropertyReaches { .. })
+                        {
+                            DIR_UPWARD
+                        } else {
+                            DIR_DOWNWARD
+                        },
+                        event_kind: 0,
+                        buffer: THRESH_BUF_VALUES,
+                    })
+                }
+                DissolveCondition::AfterTicks { remaining } if *remaining == 0 => {
+                    satisfied_mask |= 1u32 << bit;
+                    None
+                }
+                DissolveCondition::AfterTicks { remaining } => {
+                    let deadline = establish_overlay_deadline(activation, *remaining)
+                        .unwrap_or_else(|error| {
+                            panic!("overlay deadline admission failed: {error}")
+                        });
+                    Some(ThresholdRegistration {
+                        slot: 0,
+                        col: 0,
+                        threshold: (deadline.get() - 1) as f32,
+                        direction: DIR_UPWARD,
+                        event_kind: 0,
+                        buffer: THRESH_BUF_OWNING_GENERATION,
+                    })
+                }
+                DissolveCondition::AtSessionEnd => None,
+                DissolveCondition::OverrideReceived => unreachable!("rejected by admission"),
+            };
+            if let Some(mut registration) = registration {
+                registration.event_kind =
+                    cpu_reg.push(ThresholdSemantic::OverlayLifecycleCondition {
+                        sim_thing_id: node.id,
+                        overlay_id: overlay.id,
+                        condition_index: bit,
+                    });
+                let registration_index = gpu_regs.len() as u32;
+                gpu_regs.push(registration);
+                plan.bindings.push(OverlayLifecycleProjectionBinding {
+                    registration_index,
+                    row,
+                    condition_bit: bit,
+                });
+            }
+        }
+        let dissolved = u32::from((satisfied_mask & required_mask) == required_mask);
+        plan.rows.push(OverlayLifecycleStateGpu {
+            satisfied_mask,
+            required_mask,
+            dissolved,
+            generation: if dissolved == 1 { generation.get() } else { 0 },
+        });
+        targets.push(OverlayLifecycleTarget {
+            sim_thing_id: node.id,
+            overlay_id: overlay.id,
+        });
+    }
+    for child in &node.children {
+        append_node_lifecycle(
+            child, registry, allocator, generation, gpu_regs, cpu_reg, admission, plan, targets,
+        );
+    }
+}
+
+/// CPU oracle only. Walk the tree and:
 /// 1. Decrement AfterTicks counters on all transient overlays.
 /// 2. Remove overlays whose dissolution conditions are all met.
 /// 3. Apply `on_expire` effects from dissolved overlays to the CPU shadow.
@@ -79,6 +284,56 @@ pub fn resolve_overlay_lifecycle(
         }
     } else {
         resolve_node(root, registry, allocator, values_shadow, n_dims, &mut out);
+    }
+    out
+}
+
+/// Production structural consumer for lifecycle decisions already made on the
+/// GPU resident plane. The CPU performs no predicate or countdown evaluation;
+/// it maps logical identities to overlay removals and applies authored
+/// writeback effects.
+pub fn apply_gpu_overlay_lifecycle(
+    root: &mut SimThing,
+    registry: &DimensionRegistry,
+    allocator: &SlotAllocator,
+    values_shadow: &mut [f32],
+    n_dims: usize,
+    node_paths: &HashMap<SimThingId, Vec<usize>>,
+    targets: &[OverlayLifecycleTarget],
+    rows: &[OverlayLifecycleStateGpu],
+) -> LifecycleOutcome {
+    let mut out = LifecycleOutcome::default();
+    for (target, row) in targets.iter().zip(rows) {
+        if row.dissolved == 0 {
+            continue;
+        }
+        let Some(path) = node_paths.get(&target.sim_thing_id) else {
+            continue;
+        };
+        let Some(node) = node_at_path_mut(root, path) else {
+            continue;
+        };
+        let Some(index) = node
+            .overlays
+            .iter()
+            .position(|overlay| overlay.id == target.overlay_id)
+        else {
+            continue;
+        };
+        let overlay = node.overlays.remove(index);
+        out.dissolved += 1;
+        out.dissolved_overlays.push((node.id, overlay.id));
+        if let Some(slot) = allocator.slot_of(node.id) {
+            let base = slot.as_usize() * n_dims;
+            let pid = overlay.transform.property_id;
+            if let Some(handler) = registry
+                .try_property(pid)
+                .filter(|_| registry.is_active(pid))
+                .and_then(|property| property.on_expire.as_ref())
+            {
+                apply_expire_effects(handler, registry, values_shadow, base, n_dims);
+            }
+        }
     }
     out
 }
@@ -315,5 +570,4 @@ mod tests {
             lifecycle,
         }
     }
-
 }

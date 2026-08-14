@@ -31,6 +31,7 @@ pub use encode::{
 };
 pub use facility_resident_plane::{
     FacilityPlaneError, FacilityPlaneGenerationBoundary, FacilityPlaneOwner, FacilityResidentPlane,
+    OverlayLifecycleProjectionBinding, OverlayLifecycleProjectionPlan, OverlayLifecycleStateGpu,
 };
 pub use input_list_table::{
     AccumulatorInputListTable, InputListRange, InputListUploadError, DEFAULT_INPUT_LIST_CAPACITY,

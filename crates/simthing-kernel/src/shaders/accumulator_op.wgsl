@@ -69,6 +69,13 @@ struct ThresholdEmissionGpu {
     value: f32,
 }
 
+struct OverlayLifecycleStateGpu {
+    satisfied_mask: atomic<u32>,
+    required_mask: u32,
+    dissolved: atomic<u32>,
+    generation: atomic<u32>,
+}
+
 struct AccumulatorInputGpu {
     slot: u32,
     col: u32,
@@ -133,6 +140,7 @@ const THRESH_BUF_OWNING_GENERATION: u32 = 2u;
 @group(0) @binding(10) var<storage, read> input_list: array<AccumulatorInputGpu>;
 @group(0) @binding(11) var<storage, read> previous_output_values: array<f32>;
 @group(0) @binding(12) var<storage, read> output_values: array<f32>;
+@group(0) @binding(13) var<storage, read_write> overlay_lifecycle_next: array<OverlayLifecycleStateGpu>;
 
 struct EmlNodeGpu {
     opcode: u32,
@@ -669,6 +677,23 @@ fn threshold_operands(op: AccumulatorOpGpu) -> vec2<f32> {
     );
 }
 
+fn project_overlay_lifecycle_crossing(op: AccumulatorOpGpu) {
+    // Zero means that this ordinary Phase-5 registration has no lifecycle
+    // projection. The sole threshold comparator remains `threshold_crossed`.
+    if (op._pad == 0u) {
+        return;
+    }
+    let row = (op._pad >> 5u) - 1u;
+    let condition_bit = op._pad & 31u;
+    let condition_mask = 1u << condition_bit;
+    let prior = atomicOr(&overlay_lifecycle_next[row].satisfied_mask, condition_mask);
+    let satisfied = prior | condition_mask;
+    if ((satisfied & overlay_lifecycle_next[row].required_mask) == overlay_lifecycle_next[row].required_mask) {
+        atomicStore(&overlay_lifecycle_next[row].dissolved, 1u);
+        atomicStore(&overlay_lifecycle_next[row].generation, tick_params._pad1);
+    }
+}
+
 fn maybe_emit_threshold(op_idx: u32, op: AccumulatorOpGpu) {
     // Caller guarantees op.gate_kind == GATE_THRESHOLD &&
     // op.consume == CONSUME_EMIT_EVENT. Read `curr` once and reuse for the
@@ -680,6 +705,7 @@ fn maybe_emit_threshold(op_idx: u32, op: AccumulatorOpGpu) {
     if (!threshold_crossed(prev, curr, threshold, op.gate_a)) {
         return;
     }
+    project_overlay_lifecycle_crossing(op);
     let out_idx = atomicAdd(&threshold_emission_count, 1u);
     if (out_idx < tick_params.threshold_emission_capacity) {
         threshold_emissions[out_idx].reg_idx = op_idx;

@@ -388,6 +388,29 @@ impl WorldAccumulatorRuntime {
         self.threshold_session.as_mut()
     }
 
+    pub fn configure_overlay_lifecycle_projection(
+        &mut self,
+        ctx: &GpuContext,
+        plan: &super::OverlayLifecycleProjectionPlan,
+    ) -> Result<(), super::AccumulatorOpSessionError> {
+        let session = self
+            .threshold_session
+            .as_mut()
+            .ok_or(super::AccumulatorOpSessionError::NoOps)?;
+        session.configure_overlay_lifecycle_projection(ctx, plan)
+    }
+
+    pub fn readback_overlay_lifecycle_states(
+        &self,
+        ctx: &GpuContext,
+    ) -> Result<Vec<super::OverlayLifecycleStateGpu>, super::AccumulatorOpSessionError> {
+        let session = self
+            .threshold_session
+            .as_ref()
+            .ok_or(super::AccumulatorOpSessionError::NoOps)?;
+        session.readback_overlay_lifecycle_states(ctx)
+    }
+
     /// All live AccumulatorOp sessions that mint sealed records (generation stamp authority).
     pub fn all_sessions_mut(&mut self) -> impl Iterator<Item = &mut AccumulatorOpSession> {
         [
@@ -1227,7 +1250,11 @@ impl WorldAccumulatorRuntime {
         }
     }
 
-    pub(crate) fn dispatch_world_summary(&mut self, ctx: &GpuContext, values: &wgpu::Buffer) -> bool {
+    pub(crate) fn dispatch_world_summary(
+        &mut self,
+        ctx: &GpuContext,
+        values: &wgpu::Buffer,
+    ) -> bool {
         if let Some(summary) = self.summary.as_ref() {
             summary.dispatch(ctx, values);
             true
@@ -1252,5 +1279,4 @@ impl WorldAccumulatorRuntime {
 mod tests {
     use super::*;
     use crate::world_state::IntentDelta;
-
 }

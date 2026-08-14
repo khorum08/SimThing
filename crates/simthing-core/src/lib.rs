@@ -21,6 +21,7 @@ pub mod owner_channel;
 pub mod ids;
 pub mod intensity_eml;
 pub mod overlay;
+pub mod overlay_lifecycle_deadline;
 pub mod placed_participant;
 pub mod property;
 pub mod reduction;
@@ -117,6 +118,10 @@ pub use generation_stamp::{
 pub use overlay::{
     DissolveCondition, Overlay, OverlayKind, OverlayLifecycle, OverlaySource,
     PropertyTransformDelta,
+};
+pub use overlay_lifecycle_deadline::{
+    admit_dissolve_conditions, admit_overlay_lifecycle, establish_overlay_deadline,
+    rebase_routed_overlay_duration, OverlayLifecycleAdmitError,
 };
 pub use evaluate::{RoutedPredicate, RoutedPredicateComparison, TransformStack};
 pub use execution_posture::{ExecutionPosture, ExecutionPostureError};

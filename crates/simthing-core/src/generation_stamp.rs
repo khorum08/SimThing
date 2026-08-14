@@ -671,6 +671,8 @@ pub fn dispatch_until_dissolved(
 ///
 /// Planted defect: minting without a dissolve condition REDs.
 pub fn admit_dispatch_minted_overlay(overlay: &Overlay) -> Result<(), DispatchOverlayError> {
+    crate::overlay_lifecycle_deadline::admit_overlay_lifecycle(&overlay.lifecycle)
+        .map_err(|_| DispatchOverlayError::NotUntilDissolved)?;
     match &overlay.lifecycle {
         OverlayLifecycle::UntilDissolvedWith {
             dissolution_conditions,

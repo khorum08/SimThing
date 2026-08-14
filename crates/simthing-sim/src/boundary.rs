@@ -66,7 +66,10 @@ use simthing_gpu::{
     apply_band_crossing_deltas_from_threshold_events, BandCrossingDelta,
 };
 use crate::observability::{observe, ObservabilityReport, ObserveFidelity};
-use crate::overlay_lifecycle::{resolve_overlay_lifecycle, LifecycleOutcome};
+use crate::overlay_lifecycle::{
+    apply_gpu_overlay_lifecycle, LifecycleOutcome, OverlayLifecycleAdmissionState,
+    OverlayLifecycleTarget,
+};
 use crate::property_expiry::{resolve_property_expiry, ExpiryOutcome};
 use crate::reduced_field::ReducedField;
 use crate::resolution_site::{
@@ -273,6 +276,8 @@ pub struct BoundaryProtocol {
     /// through the admitted slot map; `CpuAuthoritative` is the vendorized
     /// mirror placement. Placement only — same semantics either way.
     resolution_site: ResolutionSite,
+    overlay_lifecycle_admission: OverlayLifecycleAdmissionState,
+    overlay_lifecycle_targets: Vec<OverlayLifecycleTarget>,
 }
 
 impl BoundaryProtocol {
@@ -299,6 +304,8 @@ impl BoundaryProtocol {
             fission_lineage: Vec::new(),
             cached_topology_state: TopologyState::default(),
             resolution_site: ResolutionSite::default(),
+            overlay_lifecycle_admission: OverlayLifecycleAdmissionState::default(),
+            overlay_lifecycle_targets: Vec::new(),
         }
     }
 
@@ -591,15 +598,25 @@ impl BoundaryProtocol {
         // Step 4: Overlay lifecycle — dissolve + expire effects.
         // Mutates coord.shadow directly (apply_expire_effects writes into it).
         let lifecycle_started = Instant::now();
-        out.lifecycle = resolve_overlay_lifecycle(
-            self.root.inner_mut(),
-            &self.registry,
-            &self.allocator,
-            &mut coord.shadow,
-            n_dims,
-            day as u32,
-            Some(&boundary_paths),
-        );
+        if self.overlay_lifecycle_targets.is_empty() {
+            out.lifecycle = LifecycleOutcome::default();
+        } else {
+            let rows = state
+                .readback_overlay_lifecycle_states()
+                .expect("GPU overlay lifecycle state readback failed");
+            self.overlay_lifecycle_admission
+                .observe_gpu_rows(&self.overlay_lifecycle_targets, &rows);
+            out.lifecycle = apply_gpu_overlay_lifecycle(
+                self.root.inner_mut(),
+                &self.registry,
+                &self.allocator,
+                &mut coord.shadow,
+                n_dims,
+                &boundary_paths,
+                &self.overlay_lifecycle_targets,
+                &rows,
+            );
+        }
         for &(target, _) in &out.lifecycle.dissolved_overlays {
             push_slot_for_id(&self.allocator, target, &mut dirty_value_slots);
         }
@@ -1038,6 +1055,8 @@ impl BoundaryProtocol {
             &self.capability_unlocks,
             &self.scripted_event_triggers,
             &self.fission_lineage,
+            simthing_core::GenerationStamp::new(day as u32),
+            &mut self.overlay_lifecycle_admission,
             dirty_value_slots.as_deref(),
             threshold_dirty,
             topology_dirty,
@@ -1068,6 +1087,12 @@ impl BoundaryProtocol {
         if let Some(regs) = gpu_out.rebuilt_threshold_regs.as_deref() {
             self.sync_accumulator_threshold_ops(state, regs);
         }
+        if let Some(plan) = gpu_out.overlay_lifecycle_plan.as_ref() {
+            state
+                .configure_overlay_lifecycle_projection(plan)
+                .expect("overlay lifecycle projection admission failed");
+            self.overlay_lifecycle_targets = gpu_out.overlay_lifecycle_targets.clone();
+        }
         self.sync_accumulator_intent_session(state);
         self.sync_accumulator_overlay_add_session(state);
         self.sync_accumulator_reduction_soft_session(state);
@@ -1093,6 +1118,8 @@ impl BoundaryProtocol {
                 .saturating_add(threshold_regs_appended),
             new_threshold_registry: None, // moved into self above
             rebuilt_threshold_regs: None,
+            overlay_lifecycle_plan: None,
+            overlay_lifecycle_targets: Vec::new(),
             // When gpu_sync's full reduction rebuild path ran, these come
             // from gpu_out; when Approach C's append path ran, gpu_out
             // values are 0 and the cached `topology_appended_*` values
@@ -1318,6 +1345,8 @@ impl BoundaryProtocol {
             &self.capability_unlocks,
             &self.scripted_event_triggers,
             &self.fission_lineage,
+            simthing_core::GenerationStamp::new(0),
+            &mut self.overlay_lifecycle_admission,
             None,
             true,
             true,
@@ -1335,6 +1364,12 @@ impl BoundaryProtocol {
         }
         if let Some(regs) = out.rebuilt_threshold_regs.as_deref() {
             self.sync_accumulator_threshold_ops(state, regs);
+        }
+        if let Some(plan) = out.overlay_lifecycle_plan.as_ref() {
+            state
+                .configure_overlay_lifecycle_projection(plan)
+                .expect("initial overlay lifecycle projection admission failed");
+            self.overlay_lifecycle_targets = out.overlay_lifecycle_targets.clone();
         }
         self.sync_accumulator_intent_session(state);
         self.sync_accumulator_overlay_add_session(state);

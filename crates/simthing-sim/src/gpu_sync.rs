@@ -21,11 +21,14 @@
 //!    Rebuilt only when tree shape, slot assignment, or registry layout changed.
 
 use crate::fission::FissionLineageRecord;
+use crate::overlay_lifecycle::{
+    append_overlay_lifecycle_registrations, OverlayLifecycleAdmissionState, OverlayLifecycleTarget,
+};
 use crate::sim_runtime_tree::SimRuntimeTree;
 use crate::threshold_registry::{
     AggregateAlertRegistration, ThresholdBuilder, ThresholdRegistry, VelocityAlertRegistration,
 };
-use simthing_core::DimensionRegistry;
+use simthing_core::{DimensionRegistry, GenerationStamp};
 use simthing_feeder::{
     CapabilityUnlockRegistration, DispatchCoordinator, ScriptedEventTriggerRegistration,
 };
@@ -72,6 +75,8 @@ pub struct GpuSyncOutcome {
     pub new_threshold_registry: Option<ThresholdRegistry>,
     /// GPU threshold registrations when `rebuild_thresholds` ran (C-1 sync).
     pub rebuilt_threshold_regs: Option<Vec<ThresholdRegistration>>,
+    pub overlay_lifecycle_plan: Option<simthing_gpu::OverlayLifecycleProjectionPlan>,
+    pub overlay_lifecycle_targets: Vec<OverlayLifecycleTarget>,
     pub reduction_depths: u32,
     pub reduction_edges: u32,
     pub reduction_slots: u32,
@@ -96,6 +101,8 @@ pub fn sync_gpu_buffers(
     capability_unlocks: &[CapabilityUnlockRegistration],
     scripted_event_triggers: &[ScriptedEventTriggerRegistration],
     fission_lineage: &[FissionLineageRecord],
+    generation: GenerationStamp,
+    overlay_lifecycle_admission: &mut OverlayLifecycleAdmissionState,
     dirty_value_slots: Option<&[u32]>,
     rebuild_thresholds: bool,
     rebuild_reduction_topology: bool,
@@ -249,12 +256,23 @@ pub fn sync_gpu_buffers(
             &mut gpu_regs,
             &mut cpu_reg,
         );
+        let (lifecycle_plan, lifecycle_targets) = append_overlay_lifecycle_registrations(
+            root.inner(),
+            registry,
+            allocator,
+            generation,
+            &mut gpu_regs,
+            &mut cpu_reg,
+            overlay_lifecycle_admission,
+        );
         threshold_upload_bytes = gpu_regs.len() as u64
             * std::mem::size_of::<simthing_gpu::ThresholdRegistration>() as u64;
         out.threshold_regs_uploaded = gpu_regs.len() as u32;
         state.upload_thresholds(&gpu_regs);
         out.rebuilt_threshold_regs = Some(gpu_regs);
         out.new_threshold_registry = Some(cpu_reg);
+        out.overlay_lifecycle_plan = Some(lifecycle_plan);
+        out.overlay_lifecycle_targets = lifecycle_targets;
     }
 
     // 3. Values shadow flush.

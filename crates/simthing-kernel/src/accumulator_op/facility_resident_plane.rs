@@ -7,11 +7,45 @@
 
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use bytemuck::Pod;
+use bytemuck::{Pod, Zeroable};
 use thiserror::Error;
 use wgpu::util::DeviceExt;
 
 use crate::GpuContext;
+
+/// GPU-resident conjunctive lifecycle state. Phase-5 is the sole writer.
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Pod, Zeroable)]
+pub struct OverlayLifecycleStateGpu {
+    pub satisfied_mask: u32,
+    pub required_mask: u32,
+    pub dissolved: u32,
+    pub generation: u32,
+}
+
+impl OverlayLifecycleStateGpu {
+    pub const fn pending(required_mask: u32) -> Self {
+        Self {
+            satisfied_mask: 0,
+            required_mask,
+            dissolved: 0,
+            generation: 0,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct OverlayLifecycleProjectionBinding {
+    pub registration_index: u32,
+    pub row: u32,
+    pub condition_bit: u32,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct OverlayLifecycleProjectionPlan {
+    pub rows: Vec<OverlayLifecycleStateGpu>,
+    pub bindings: Vec<OverlayLifecycleProjectionBinding>,
+}
 
 static NEXT_BOUNDARY_ID: AtomicU64 = AtomicU64::new(1);
 static NEXT_OWNER_ID: AtomicU64 = AtomicU64::new(1);
@@ -205,4 +239,12 @@ pub enum FacilityPlaneError {
     GenerationOverflow,
     #[error("facility resident plane requires at least one admitted row")]
     EmptyPlane,
+    #[error(
+        "overlay lifecycle projection references an invalid registration, row, or condition bit"
+    )]
+    InvalidLifecycleProjection,
+    #[error("overlay lifecycle semantic templates are frozen for this session")]
+    MidSessionLifecycleTemplateMint,
+    #[error("overlay lifecycle rows {rows} exceed frozen session capacity {capacity}")]
+    LifecycleCapacityExceeded { rows: usize, capacity: usize },
 }
