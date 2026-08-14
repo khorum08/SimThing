@@ -1,7 +1,7 @@
 # FACILITY-RESIDENT-PLANE-SUBSTRATE-0 Results
 
 - Track: 0.0.8.7 RF arena modernization (rung 7.6a)
-- Status: **PROBATION — proof present; DA review pending**
+- Status: **COMPLETE — DA-GRADUATED / merged #1758 @ `cfc537b9`** (pre-dispatch `5294698585`, remand `5295498578`, graduation ruling on Board #1332)
 - Handoff: Board comment `5294906778`
 - DA authority: Board comment `5294698585` (A1/A2)
 - HD-RECEIPT: `ccec55ce2422`

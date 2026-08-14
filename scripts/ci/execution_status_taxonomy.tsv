@@ -89,6 +89,7 @@ crates/simthing-driver/src/structural_n4_theater_compile.rs	compile-plan	Plan/co
 crates/simthing-kernel/src/accumulator_op/bootstrap_validate.rs	executed	Live driver/kernel execution or residency path in the recursive RF / arena stack
 crates/simthing-kernel/src/accumulator_op/cpu_oracle.rs	oracle	CPU/judge independence surface for conservation or plan parity
 crates/simthing-kernel/src/accumulator_op/eml_program_table.rs	executed	Live driver/kernel execution or residency path in the recursive RF / arena stack
+crates/simthing-kernel/src/accumulator_op/facility_resident_plane.rs	executed	Live driver/kernel execution or residency path in the recursive RF / arena stack
 crates/simthing-kernel/src/accumulator_op/encode.rs	executed	Live driver/kernel execution or residency path in the recursive RF / arena stack
 crates/simthing-kernel/src/accumulator_op/input_list_table.rs	executed	Live driver/kernel execution or residency path in the recursive RF / arena stack
 crates/simthing-kernel/src/accumulator_op/mod.rs	executed	Live driver/kernel execution or residency path in the recursive RF / arena stack
