@@ -218,23 +218,43 @@ pub fn apply_structural_mutations(
                 }
             }
             BoundaryRequest::ActivateOverlay { target, overlay_id } => {
-                match activate_overlay(root, target, overlay_id, node_paths) {
+                match activate_overlay(
+                    root,
+                    target,
+                    overlay_id,
+                    node_paths,
+                    destination_generation,
+                    lifecycle_admission,
+                ) {
                     OverlayTransition::Changed => {
                         out.overlay_activations += 1;
                         out.overlays_activated.push((target, overlay_id));
                     }
                     OverlayTransition::NoOp => {}
                     OverlayTransition::Missing => out.rejected_unknown_target += 1,
+                    OverlayTransition::RejectedLifecycle => {
+                        out.rejected_overlay_lifecycle += 1;
+                    }
                 }
             }
             BoundaryRequest::SuspendOverlay { target, overlay_id } => {
-                match suspend_overlay(root, target, overlay_id, node_paths) {
+                match suspend_overlay(
+                    root,
+                    target,
+                    overlay_id,
+                    node_paths,
+                    destination_generation,
+                    lifecycle_admission,
+                ) {
                     OverlayTransition::Changed => {
                         out.overlay_suspensions += 1;
                         out.overlays_suspended.push((target, overlay_id));
                     }
                     OverlayTransition::NoOp => {}
                     OverlayTransition::Missing => out.rejected_unknown_target += 1,
+                    OverlayTransition::RejectedLifecycle => {
+                        out.rejected_overlay_lifecycle += 1;
+                    }
                 }
             }
             BoundaryRequest::AddDimension { property } => {
@@ -517,6 +537,7 @@ enum OverlayTransition {
     Changed,
     NoOp,
     Missing,
+    RejectedLifecycle,
 }
 
 fn activate_overlay(
@@ -524,6 +545,8 @@ fn activate_overlay(
     target: SimThingId,
     overlay_id: OverlayId,
     node_paths: Option<&HashMap<SimThingId, Vec<usize>>>,
+    destination_generation: GenerationStamp,
+    lifecycle_admission: &mut OverlayLifecycleAdmissionState,
 ) -> OverlayTransition {
     let Some(node) = lookup_node_mut(root, target, node_paths) else {
         return OverlayTransition::Missing;
@@ -538,6 +561,12 @@ fn activate_overlay(
     let OverlayLifecycle::Suspended { when_activated } = overlay.lifecycle.clone() else {
         return OverlayTransition::NoOp;
     };
+    if lifecycle_admission
+        .activate_overlay(target, overlay_id, &when_activated, destination_generation)
+        .is_err()
+    {
+        return OverlayTransition::RejectedLifecycle;
+    }
     overlay.lifecycle = *when_activated;
     OverlayTransition::Changed
 }
@@ -547,6 +576,8 @@ fn suspend_overlay(
     target: SimThingId,
     overlay_id: OverlayId,
     node_paths: Option<&HashMap<SimThingId, Vec<usize>>>,
+    destination_generation: GenerationStamp,
+    lifecycle_admission: &mut OverlayLifecycleAdmissionState,
 ) -> OverlayTransition {
     let Some(node) = lookup_node_mut(root, target, node_paths) else {
         return OverlayTransition::Missing;
@@ -562,6 +593,12 @@ fn suspend_overlay(
         return OverlayTransition::NoOp;
     }
     let active_lifecycle = overlay.lifecycle.clone();
+    lifecycle_admission.suspend_overlay(
+        target,
+        overlay_id,
+        &active_lifecycle,
+        destination_generation,
+    );
     overlay.lifecycle = OverlayLifecycle::Suspended {
         when_activated: Box::new(active_lifecycle),
     };

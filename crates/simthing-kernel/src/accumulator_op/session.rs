@@ -16,7 +16,7 @@ use wgpu::{
 
 use crate::context::GpuContext;
 use crate::gpu_readback::{EmissionRecordReadback, KernelReadbackError, ThresholdEmissionReadback};
-use crate::registration::ThresholdRegistration;
+use crate::registration::{ThresholdRegistration, DIR_DOWNWARD, DIR_UPWARD, THRESH_BUF_VALUES};
 use crate::sealed::ThresholdEvent;
 
 use super::encode::EncodeError;
@@ -36,6 +36,8 @@ use super::types::{
 
 pub const WORKGROUP_SIZE: u32 = 64;
 const EXECUTE_MODE_COMPACT_VELOCITY: u32 = 1;
+const DIR_LEVEL_AT_OR_ABOVE: u32 = 3;
+const DIR_LEVEL_BELOW: u32 = 4;
 
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
@@ -1143,8 +1145,15 @@ impl AccumulatorOpSession {
                 return Err(FacilityPlaneError::InvalidLifecycleProjection.into());
             }
             op._pad = ((binding.row + 1) << 5) | binding.condition_bit;
-            let event_kind =
-                self.threshold_registrations[binding.registration_index as usize].event_kind;
+            let registration = self.threshold_registrations[binding.registration_index as usize];
+            if registration.buffer == THRESH_BUF_VALUES {
+                op.gate_a = match registration.direction {
+                    DIR_UPWARD => DIR_LEVEL_AT_OR_ABOVE,
+                    DIR_DOWNWARD => DIR_LEVEL_BELOW,
+                    _ => return Err(FacilityPlaneError::InvalidLifecycleProjection.into()),
+                };
+            }
+            let event_kind = registration.event_kind;
             self.overlay_lifecycle_binding_by_event_kind
                 .insert(event_kind, op._pad);
         }

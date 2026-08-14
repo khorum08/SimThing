@@ -124,6 +124,8 @@ const EXECUTE_MODE_COMPACT_VELOCITY: u32 = 1u;
 const DIR_UPWARD: u32 = 0u;
 const DIR_DOWNWARD: u32 = 1u;
 const DIR_EITHER: u32 = 2u;
+const DIR_LEVEL_AT_OR_ABOVE: u32 = 3u;
+const DIR_LEVEL_BELOW: u32 = 4u;
 const THRESH_BUF_OUTPUT: u32 = 1u;
 const THRESH_BUF_OWNING_GENERATION: u32 = 2u;
 
@@ -652,6 +654,15 @@ fn gate_matches_bandwise(op: AccumulatorOpGpu) -> bool {
 }
 
 fn threshold_crossed(prev: f32, curr: f32, threshold: f32, direction: u32) -> bool {
+    // Overlay lifecycle property predicates are levels, not edges. They still
+    // route through this sole Phase-5 comparator; the CPU only binds the
+    // admitted direction mode and never evaluates the resident value.
+    if (direction == DIR_LEVEL_AT_OR_ABOVE) {
+        return curr >= threshold;
+    }
+    if (direction == DIR_LEVEL_BELOW) {
+        return curr < threshold;
+    }
     let up = (prev <= threshold) && (curr > threshold);
     let down = (prev >= threshold) && (curr < threshold);
     if (direction == DIR_UPWARD) {
@@ -698,6 +709,14 @@ fn maybe_emit_threshold(op_idx: u32, op: AccumulatorOpGpu) {
     // Caller guarantees op.gate_kind == GATE_THRESHOLD &&
     // op.consume == CONSUME_EMIT_EVENT. Read `curr` once and reuse for the
     // crossing test and the emission payload.
+    if (op._pad != 0u &&
+        (op.gate_a == DIR_LEVEL_AT_OR_ABOVE || op.gate_a == DIR_LEVEL_BELOW)) {
+        let row = (op._pad >> 5u) - 1u;
+        let condition_mask = 1u << (op._pad & 31u);
+        if ((atomicLoad(&overlay_lifecycle_next[row].satisfied_mask) & condition_mask) != 0u) {
+            return;
+        }
+    }
     let operands = threshold_operands(op);
     let prev = operands.x;
     let curr = operands.y;

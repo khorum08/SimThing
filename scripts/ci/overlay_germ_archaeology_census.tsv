@@ -4,13 +4,15 @@
 # classification: SEMANTIC-DUPLICATE→migrate / GENUINELY-STRUCTURAL→keep / DEAD→delete
 # universe is tree-derived (scripts/ci/overlay_germ_archaeology_census_universe.txt); do not hand-edit that pin.
 # Justified non-route overlay-named hits are `# RESIDUE` comments below (not a sixth artifact).
-# RECONCILIATION: discovery=71 classified-universe=71 analysis=3 residue=70 unclassified=0
+# RECONCILIATION: discovery=73 classified-universe=73 analysis=3 residue=70 unclassified=0
 OVL-STORE	core:simthing.rs:add_overlay	attach	core	OVERLAY	GENUINELY-STRUCTURAL	keep	The one overlay store. Anchor §4.1 semantic home; every live attach terminates here except replay restore.
 OVL-RECEIVE	core:automaton.rs:deliver_routed_overlay	attach	core	OVERLAY	GENUINELY-STRUCTURAL	keep	The one receive/route primitive. Anchor §4.2; origin/target validated; terminates at add_overlay. Germ receive door.
 OVL-DEFICIT-ALIAS	core:automaton.rs:deliver_deficit_directive	attach	core	OVERLAY	SEMANTIC-DUPLICATE	migrate	Thin alias of deliver_routed_overlay. Collapse onto the one receive door.
 OVL-STANDING-ALIAS	core:automaton.rs:deliver_standing_directive	attach	core	OVERLAY	SEMANTIC-DUPLICATE	migrate	Thin alias of deliver_routed_overlay. Standing install is receive-at-subtree-root, not a second inbox.
 OVL-PREDICATE-BCAST	core:automaton.rs:deliver_predicate_broadcast	attach	core	OVERLAY	GENUINELY-STRUCTURAL	keep	Admitted paid push-by-predicate mode. Per-receiver stamps are this delivery mode, not inheritance. Keep as the one broadcast door.
 OVL-LIFECYCLE-ATTACH	sim:overlay_lifecycle.rs:attach_overlay	attach	sim	OVERLAY	DEAD	delete	Wrapper around deliver_routed_overlay with zero production callers. Boundary attach is tree_mutation; this door is unused residue.
+OVL-LIFECYCLE-ACTIVATE	sim:overlay_lifecycle.rs:activate_overlay	activate	sim	OVERLAY	SEMANTIC-DUPLICATE	migrate	Admission sidecar establishes the active-generation deadline consumed by the GPU lifecycle projection; numerical lifecycle state migrates to the germ while the tree mutation stays structural.
+OVL-LIFECYCLE-SUSPEND	sim:overlay_lifecycle.rs:suspend_overlay	suspend	sim	OVERLAY	SEMANTIC-DUPLICATE	migrate	Admission sidecar rebases the remaining active-tick duration at the structural suspension boundary; numerical lifecycle state migrates to the germ while the tree mutation stays structural.
 OVL-STRUCTURAL-APPLY	sim:tree_mutation.rs:apply_structural_mutations	attach	sim	OVERLAY	GENUINELY-STRUCTURAL	keep	Live boundary apply of Attach/Activate/Suspend. Genuine structural seam; stays boundary.
 OVL-FEEDER-ATTACH	feeder:work.rs:AttachOverlay	attach	feeder	OVERLAY	GENUINELY-STRUCTURAL	keep	Ingress type for routed attach. Feeder/spec/driver mint this; sim applies it.
 OVL-PLAYER-INTENT	feeder:work.rs:submit_player_intent	attach	feeder	OVERLAY	SEMANTIC-DUPLICATE	migrate	Provenance-split player ingress (§5.1). Same attach semantics as AI/system; should converge on one activation door.

@@ -252,6 +252,16 @@ fn gpu_production_decision_is_bit_identical_to_retained_cpu_oracle() {
             value: 1.0,
         }],
     };
+    let below_lifecycle = OverlayLifecycle::Transient {
+        dissolution_conditions: vec![DissolveCondition::PropertyBelow {
+            property,
+            sub_field: SubFieldRole::Amount,
+            value: 1.0,
+        }],
+    };
+    let timed_lifecycle = OverlayLifecycle::Transient {
+        dissolution_conditions: vec![DissolveCondition::AfterTicks { remaining: 4 }],
+    };
     let seed_id = OverlayId::new();
     boundary_root.overlays.push(Overlay {
         id: seed_id,
@@ -265,6 +275,36 @@ fn gpu_production_decision_is_bit_identical_to_retained_cpu_oracle() {
         },
         lifecycle: OverlayLifecycle::Suspended {
             when_activated: Box::new(admitted_lifecycle.clone()),
+        },
+    });
+    let below_seed_id = OverlayId::new();
+    boundary_root.overlays.push(Overlay {
+        id: below_seed_id,
+        kind: OverlayKind::Transient,
+        source: OverlaySource::System,
+        origin: boundary_target,
+        affects: Vec::new(),
+        transform: PropertyTransformDelta {
+            property_id: property,
+            sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::add(0.0))],
+        },
+        lifecycle: OverlayLifecycle::Suspended {
+            when_activated: Box::new(below_lifecycle),
+        },
+    });
+    let timed_seed_id = OverlayId::new();
+    boundary_root.overlays.push(Overlay {
+        id: timed_seed_id,
+        kind: OverlayKind::Transient,
+        source: OverlaySource::System,
+        origin: boundary_target,
+        affects: Vec::new(),
+        transform: PropertyTransformDelta {
+            property_id: property,
+            sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::add(0.0))],
+        },
+        lifecycle: OverlayLifecycle::Suspended {
+            when_activated: Box::new(timed_lifecycle),
         },
     });
     let make_boundary_overlay = |id, lifecycle| Overlay {
@@ -288,13 +328,14 @@ fn gpu_production_decision_is_bit_identical_to_retained_cpu_oracle() {
     );
     let mut coord = DispatchCoordinator::new(1, n_dims, 1);
     let mut patcher = TransformPatcher::new(1);
-    state.ensure_threshold_accumulator(1);
+    state.ensure_threshold_accumulator(3);
     protocol.initial_gpu_sync(&coord, &mut state);
     assert_eq!(protocol.overlay_lifecycle_target_count(), 0);
     assert_eq!(state.n_thresholds, 0);
 
-    // The seed consumes the sole frozen catalogue reservation. A second row
-    // is refused before attachment, so the authoritative tree stays unchanged.
+    // The three suspended seeds consume the frozen catalogue capacity. A
+    // fourth row is refused before attachment, so the authoritative tree
+    // stays unchanged.
     let capacity_id = OverlayId::new();
     let capacity_request = BoundaryRequest::AttachOverlay {
         target: boundary_target,
@@ -506,4 +547,198 @@ fn gpu_production_decision_is_bit_identical_to_retained_cpu_oracle() {
         .readback_overlay_lifecycle_states()
         .unwrap()
         .is_empty());
+
+    // PropertyReaches is a level predicate. Reactivation while the resident
+    // value is already above the threshold must dissolve through the real GPU
+    // Phase-5 comparator even though no edge occurs after activation.
+    coord.shadow[0] = 2.0;
+    let level_reaches_activation = protocol.execute_with_boundary_hook(
+        Vec::new(),
+        &mut patcher,
+        &mut coord,
+        &mut state,
+        9,
+        |ctx| ctx.requests.push(activate_toggled.clone()),
+    );
+    assert_eq!(level_reaches_activation.maintainer.overlay_activations, 1);
+    state.install_resolved_previous_values_at_boundary(&crossed_values);
+    state.install_resolved_values_at_boundary(&crossed_values);
+    state.bind_production_generation(10);
+    let mut resident_session = state
+        .accumulator_runtime
+        .as_mut()
+        .unwrap()
+        .take_threshold_session()
+        .unwrap();
+    state
+        .dispatch_accumulator_threshold_scan(&mut resident_session)
+        .unwrap();
+    state
+        .accumulator_runtime
+        .as_mut()
+        .unwrap()
+        .restore_threshold_session(Some(resident_session));
+    let level_reaches = protocol.execute(Vec::new(), &mut patcher, &mut coord, &mut state, 10);
+    assert_eq!(
+        level_reaches.lifecycle.dissolved_overlays,
+        vec![(boundary_target, toggled_id)]
+    );
+
+    // PropertyBelow has the same level-at-activation contract. Both previous
+    // and current values are already below, so only the admitted GPU level
+    // mode inside threshold_crossed can authorize dissolution.
+    coord.shadow[0] = 0.0;
+    let activate_below = BoundaryRequest::ActivateOverlay {
+        target: boundary_target,
+        overlay_id: below_seed_id,
+    };
+    let below_activation = protocol.execute_with_boundary_hook(
+        Vec::new(),
+        &mut patcher,
+        &mut coord,
+        &mut state,
+        11,
+        |ctx| ctx.requests.push(activate_below.clone()),
+    );
+    assert_eq!(below_activation.maintainer.overlay_activations, 1);
+    let below_values = vec![0.0; n_dims as usize];
+    state.install_resolved_previous_values_at_boundary(&below_values);
+    state.install_resolved_values_at_boundary(&below_values);
+    state.bind_production_generation(12);
+    let mut resident_session = state
+        .accumulator_runtime
+        .as_mut()
+        .unwrap()
+        .take_threshold_session()
+        .unwrap();
+    state
+        .dispatch_accumulator_threshold_scan(&mut resident_session)
+        .unwrap();
+    state
+        .accumulator_runtime
+        .as_mut()
+        .unwrap()
+        .restore_threshold_session(Some(resident_session));
+    let level_below = protocol.execute(Vec::new(), &mut patcher, &mut coord, &mut state, 12);
+    assert_eq!(
+        level_below.lifecycle.dissolved_overlays,
+        vec![(boundary_target, below_seed_id)]
+    );
+
+    // AfterTicks counts active owning-tree generations. Activate for two
+    // ticks, suspend across generations 16-17, then reactivate at 18. The
+    // remaining two active ticks dissolve at 20: neither attachment time nor
+    // the original absolute deadline can produce that result.
+    let activate_timed = BoundaryRequest::ActivateOverlay {
+        target: boundary_target,
+        overlay_id: timed_seed_id,
+    };
+    let timed_activation = protocol.execute_with_boundary_hook(
+        Vec::new(),
+        &mut patcher,
+        &mut coord,
+        &mut state,
+        13,
+        |ctx| ctx.requests.push(activate_timed.clone()),
+    );
+    assert_eq!(timed_activation.maintainer.overlay_activations, 1);
+    for generation in [14u32, 15] {
+        state.bind_production_generation(generation);
+        let mut resident_session = state
+            .accumulator_runtime
+            .as_mut()
+            .unwrap()
+            .take_threshold_session()
+            .unwrap();
+        state
+            .dispatch_accumulator_threshold_scan(&mut resident_session)
+            .unwrap();
+        state
+            .accumulator_runtime
+            .as_mut()
+            .unwrap()
+            .restore_threshold_session(Some(resident_session));
+        if generation == 14 {
+            let still_active = protocol.execute(
+                Vec::new(),
+                &mut patcher,
+                &mut coord,
+                &mut state,
+                generation as u64,
+            );
+            assert_eq!(still_active.lifecycle.dissolved, 0);
+        } else {
+            let suspend_timed = BoundaryRequest::SuspendOverlay {
+                target: boundary_target,
+                overlay_id: timed_seed_id,
+            };
+            let suspended = protocol.execute_with_boundary_hook(
+                Vec::new(),
+                &mut patcher,
+                &mut coord,
+                &mut state,
+                generation as u64,
+                |ctx| ctx.requests.push(suspend_timed.clone()),
+            );
+            assert_eq!(suspended.lifecycle.dissolved, 0);
+            assert_eq!(suspended.maintainer.overlay_suspensions, 1);
+        }
+    }
+    assert_eq!(protocol.overlay_lifecycle_target_count(), 0);
+    for generation in [16u32, 17] {
+        let paused = protocol.execute(
+            Vec::new(),
+            &mut patcher,
+            &mut coord,
+            &mut state,
+            generation as u64,
+        );
+        assert_eq!(paused.lifecycle.dissolved, 0);
+    }
+    let timed_reactivation = protocol.execute_with_boundary_hook(
+        Vec::new(),
+        &mut patcher,
+        &mut coord,
+        &mut state,
+        18,
+        |ctx| ctx.requests.push(activate_timed.clone()),
+    );
+    assert_eq!(timed_reactivation.maintainer.overlay_activations, 1);
+    state.bind_production_generation(19);
+    let mut resident_session = state
+        .accumulator_runtime
+        .as_mut()
+        .unwrap()
+        .take_threshold_session()
+        .unwrap();
+    state
+        .dispatch_accumulator_threshold_scan(&mut resident_session)
+        .unwrap();
+    state
+        .accumulator_runtime
+        .as_mut()
+        .unwrap()
+        .restore_threshold_session(Some(resident_session));
+    let one_remaining = protocol.execute(Vec::new(), &mut patcher, &mut coord, &mut state, 19);
+    assert_eq!(one_remaining.lifecycle.dissolved, 0);
+    state.bind_production_generation(20);
+    let mut resident_session = state
+        .accumulator_runtime
+        .as_mut()
+        .unwrap()
+        .take_threshold_session()
+        .unwrap();
+    state
+        .dispatch_accumulator_threshold_scan(&mut resident_session)
+        .unwrap();
+    state
+        .accumulator_runtime
+        .as_mut()
+        .unwrap()
+        .restore_threshold_session(Some(resident_session));
+    let timed_dissolved = protocol.execute(Vec::new(), &mut patcher, &mut coord, &mut state, 20);
+    assert_eq!(
+        timed_dissolved.lifecycle.dissolved_overlays,
+        vec![(boundary_target, timed_seed_id)]
+    );
 }

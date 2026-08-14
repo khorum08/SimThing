@@ -20,7 +20,9 @@ fn real_phase5_crossings_project_conjunctive_lifecycle_state() {
     let mut registry = DimensionRegistry::new();
     registry.register(SimProperty::simple("proof", "amount", 0));
     let state = WorldGpuState::new(ctx, &registry, 1);
-    state.install_resolved_previous_values_at_boundary(&[0.0, 0.0, 0.0]);
+    // PropertyReaches is already satisfied in both resident planes. The GPU
+    // lifecycle level mode must resolve it without inventing a new edge.
+    state.install_resolved_previous_values_at_boundary(&[2.0, 0.0, 0.0]);
     state.install_resolved_values_at_boundary(&[2.0, 0.0, 0.0]);
 
     let registrations = [

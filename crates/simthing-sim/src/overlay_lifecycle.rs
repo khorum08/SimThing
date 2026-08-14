@@ -38,9 +38,9 @@
 //! N+1. `gpu_sync` then calls `build_overlay_deltas` to reflect those lists.
 
 use simthing_core::{
-    admit_overlay_lifecycle, establish_overlay_deadline, rebase_routed_overlay_duration,
-    DimensionRegistry, DissolveCondition, GenerationStamp, OverlayId, OverlayLifecycle,
-    OverlayLifecycleAdmitError, RoutedGenerationDuration, SimThing, SimThingId, SubFieldRole,
+    admit_overlay_lifecycle, establish_overlay_deadline, DimensionRegistry, DissolveCondition,
+    GenerationStamp, OverlayId, OverlayLifecycle, OverlayLifecycleAdmitError, SimThing, SimThingId,
+    SubFieldRole,
 };
 use simthing_gpu::{
     OverlayLifecycleProjectionBinding, OverlayLifecycleProjectionPlan, OverlayLifecycleStateGpu,
@@ -74,6 +74,7 @@ pub struct OverlayLifecycleAdmissionState {
     activation_generations: HashMap<(SimThingId, OverlayId), GenerationStamp>,
     routed_provenance: HashMap<(SimThingId, OverlayId), GenerationStamp>,
     satisfied_masks: HashMap<(SimThingId, OverlayId), u32>,
+    after_ticks_remaining: HashMap<(SimThingId, OverlayId, u32), u32>,
 }
 
 impl OverlayLifecycleAdmissionState {
@@ -86,37 +87,120 @@ impl OverlayLifecycleAdmissionState {
         destination_generation: GenerationStamp,
     ) -> Result<(), OverlayLifecycleAdmitError> {
         admit_overlay_lifecycle(lifecycle)?;
-        let conditions = match lifecycle {
-            OverlayLifecycle::Transient {
-                dissolution_conditions,
-            }
-            | OverlayLifecycle::UntilDissolvedWith {
-                dissolution_conditions,
-            } => dissolution_conditions.as_slice(),
-            OverlayLifecycle::Suspended { when_activated } => {
-                return self.admit_routed_overlay(
-                    target,
-                    overlay_id,
-                    when_activated,
-                    source_generation,
-                    destination_generation,
-                );
-            }
-            OverlayLifecycle::UntilDissolved => &[],
+        let (active_lifecycle, suspended) = match lifecycle {
+            OverlayLifecycle::Suspended { when_activated } => (when_activated.as_ref(), true),
+            active => (active, false),
         };
-        for condition in conditions {
-            if let DissolveCondition::AfterTicks { remaining } = condition {
-                rebase_routed_overlay_duration(
-                    RoutedGenerationDuration::new(*remaining, source_generation),
-                    destination_generation,
-                )?;
-            }
+        if !suspended {
+            validate_authored_deadlines(active_lifecycle, destination_generation)?;
         }
+
         let key = (target, overlay_id);
-        self.activation_generations
-            .insert(key, destination_generation);
+        self.activation_generations.remove(&key);
+        self.satisfied_masks.remove(&key);
+        self.after_ticks_remaining
+            .retain(|(sim_thing_id, resident_overlay_id, _), _| {
+                (*sim_thing_id, *resident_overlay_id) != key
+            });
+        self.seed_after_ticks_remaining(key, active_lifecycle);
+        if !suspended {
+            self.activation_generations
+                .insert(key, destination_generation);
+        }
         self.routed_provenance.insert(key, source_generation);
         Ok(())
+    }
+
+    pub(crate) fn activate_overlay(
+        &mut self,
+        target: SimThingId,
+        overlay_id: OverlayId,
+        lifecycle: &OverlayLifecycle,
+        destination_generation: GenerationStamp,
+    ) -> Result<(), OverlayLifecycleAdmitError> {
+        admit_overlay_lifecycle(lifecycle)?;
+        self.establish_activation((target, overlay_id), lifecycle, destination_generation)
+    }
+
+    pub(crate) fn suspend_overlay(
+        &mut self,
+        target: SimThingId,
+        overlay_id: OverlayId,
+        lifecycle: &OverlayLifecycle,
+        destination_generation: GenerationStamp,
+    ) {
+        let key = (target, overlay_id);
+        let Some(activation) = self.activation_generations.remove(&key) else {
+            return;
+        };
+        let elapsed = destination_generation
+            .get()
+            .saturating_sub(activation.get());
+        if let Some(conditions) = lifecycle_conditions(lifecycle) {
+            for (condition_index, condition) in conditions.iter().enumerate() {
+                if let DissolveCondition::AfterTicks { remaining } = condition {
+                    let remaining_at_activation = self
+                        .after_ticks_remaining
+                        .get(&(target, overlay_id, condition_index as u32))
+                        .copied()
+                        .unwrap_or(*remaining);
+                    self.after_ticks_remaining.insert(
+                        (target, overlay_id, condition_index as u32),
+                        remaining_at_activation.saturating_sub(elapsed),
+                    );
+                }
+            }
+        }
+    }
+
+    fn seed_after_ticks_remaining(
+        &mut self,
+        key: (SimThingId, OverlayId),
+        lifecycle: &OverlayLifecycle,
+    ) {
+        if let Some(conditions) = lifecycle_conditions(lifecycle) {
+            for (condition_index, condition) in conditions.iter().enumerate() {
+                if let DissolveCondition::AfterTicks { remaining } = condition {
+                    self.after_ticks_remaining
+                        .insert((key.0, key.1, condition_index as u32), *remaining);
+                }
+            }
+        }
+    }
+
+    fn establish_activation(
+        &mut self,
+        key: (SimThingId, OverlayId),
+        lifecycle: &OverlayLifecycle,
+        destination_generation: GenerationStamp,
+    ) -> Result<(), OverlayLifecycleAdmitError> {
+        if let Some(conditions) = lifecycle_conditions(lifecycle) {
+            for (condition_index, condition) in conditions.iter().enumerate() {
+                if let DissolveCondition::AfterTicks { remaining } = condition {
+                    let remaining = self
+                        .after_ticks_remaining
+                        .get(&(key.0, key.1, condition_index as u32))
+                        .copied()
+                        .unwrap_or(*remaining);
+                    establish_overlay_deadline(destination_generation, remaining)?;
+                }
+            }
+        }
+        self.activation_generations
+            .insert(key, destination_generation);
+        Ok(())
+    }
+
+    fn after_ticks_remaining(
+        &self,
+        key: (SimThingId, OverlayId),
+        condition_index: u32,
+        authored_remaining: u32,
+    ) -> u32 {
+        self.after_ticks_remaining
+            .get(&(key.0, key.1, condition_index))
+            .copied()
+            .unwrap_or(authored_remaining)
     }
 
     pub fn routed_provenance(
@@ -302,12 +386,15 @@ fn append_node_lifecycle(
                         buffer: THRESH_BUF_VALUES,
                     })
                 }
-                DissolveCondition::AfterTicks { remaining } if *remaining == 0 => {
+                DissolveCondition::AfterTicks { remaining }
+                    if admission.after_ticks_remaining(key, bit, *remaining) == 0 =>
+                {
                     satisfied_mask |= 1u32 << bit;
                     None
                 }
                 DissolveCondition::AfterTicks { remaining } => {
-                    let deadline = establish_overlay_deadline(activation, *remaining)
+                    let remaining = admission.after_ticks_remaining(key, bit, *remaining);
+                    let deadline = establish_overlay_deadline(activation, remaining)
                         .unwrap_or_else(|error| {
                             panic!("overlay deadline admission failed: {error}")
                         });
@@ -365,6 +452,33 @@ fn append_node_lifecycle(
             include_suspended,
         );
     }
+}
+
+fn lifecycle_conditions(lifecycle: &OverlayLifecycle) -> Option<&[DissolveCondition]> {
+    match lifecycle {
+        OverlayLifecycle::Transient {
+            dissolution_conditions,
+        }
+        | OverlayLifecycle::UntilDissolvedWith {
+            dissolution_conditions,
+        } => Some(dissolution_conditions),
+        OverlayLifecycle::Suspended { when_activated } => lifecycle_conditions(when_activated),
+        OverlayLifecycle::UntilDissolved => None,
+    }
+}
+
+fn validate_authored_deadlines(
+    lifecycle: &OverlayLifecycle,
+    destination_generation: GenerationStamp,
+) -> Result<(), OverlayLifecycleAdmitError> {
+    if let Some(conditions) = lifecycle_conditions(lifecycle) {
+        for condition in conditions {
+            if let DissolveCondition::AfterTicks { remaining } = condition {
+                establish_overlay_deadline(destination_generation, *remaining)?;
+            }
+        }
+    }
+    Ok(())
 }
 
 /// CPU oracle only. Walk the tree and:
