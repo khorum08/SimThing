@@ -24,6 +24,12 @@ ROOT = Path(".").resolve()
 UNIVERSE_PATH = ROOT / "scripts/ci/overlay_germ_archaeology_census_universe.txt"
 TSV_PATH = ROOT / "scripts/ci/overlay_germ_archaeology_census.tsv"
 
+# simthing-core is included beyond the 7.6 row's feeder/sim/kernel/driver/spec
+# list because the overlay germ and core lifetime/query routes live there;
+# omitting it would be an incomplete census. simthing-clausething is excluded
+# because it is an authoring/parser surface: authored attach_overlay parses to
+# a product that enters through already-classified engine routes, not another
+# runtime attach/lifecycle route.
 SCAN_CRATES = (
     "simthing-core",
     "simthing-feeder",

@@ -16,6 +16,8 @@
 
 Tree-derived census of every overlay attach/activate/suspend/dissolve/apply/override/expire route plus the three v4 unification surfaces. Known starting files were seeds, not the universe.
 
+`simthing-core` is deliberately included beyond the row's listed feeder/sim/kernel/driver/spec scope because the overlay germ and core lifetime/query routes live there; this inclusion is load-bearing to completeness. `simthing-clausething` is deliberately excluded because it is an authoring/parser surface: authored `attach_overlay` parses to a product that enters through already-classified engine routes rather than constituting another runtime attach/lifecycle route.
+
 Declared surfaces (handoff `surfaces:` exactly):
 
 | Artifact | Role |
