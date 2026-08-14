@@ -11,8 +11,9 @@ use simthing_gpu::{
     apply_band_crossing_deltas_from_fused_emissions, cpu_oracle_band_crossing_deltas,
     emit_on_threshold_registrations_to_gpu, eval_eml_cpu, readback_buffer_bytes_blocking,
     scoped_debug_readback_allowed, wgpu, AccumulatorOpSession, ActionBandEmissionBindingGpu,
-    ActionBandExecutionError, ActionBandGpuExecution, ActionBandStateGpu, GpuContext,
-    PackedThresholdUpload, SlotAllocator,
+    ActionBandExecutionError, ActionBandGpuExecution, ActionBandStateGpu, FacilityPlaneError,
+    FacilityPlaneGenerationBoundary, FacilityResidentPlane, GpuContext, PackedThresholdUpload,
+    SlotAllocator, ThresholdRegistration, DIR_UPWARD, THRESH_BUF_OWNING_GENERATION,
 };
 use simthing_sim::{apply_structural_mutations, SimRuntimeTree};
 use simthing_spec::{
@@ -690,6 +691,43 @@ fn sparse_gpu_state_ping_pongs_and_matches_exact_eml_oracle() {
     assert_eq!(second_crossing.projection, [0.5]);
     assert!(second_crossing.evaluation_gpu_time_ns.is_none());
 
+    // FACILITY-RESIDENT-PLANE-SUBSTRATE-0 A2: this stable numerical record is
+    // captured once before the runtime extraction and compared byte-for-byte
+    // after ActionBand is migrated to the reusable facility-plane primitive.
+    // GPU timings are deliberately excluded because they are measurements,
+    // not numerical behavior.
+    let numerical_record = format!(
+        "ACTIONBAND-NUMERICAL-RECORD-V1 first_state={:?} second_state={:?} first_projection_bits={:?} first_emission_bits={:?} first_commitment=({},{},{:08x},{}) all_satisfied={:?} all_projection_bits={:?} fast_state={:?} fast_projection_bits={:?} empty_state={:?} second_fast_state={:?}",
+        first.states[0],
+        second.states[0],
+        first.projection.iter().map(|value| value.to_bits()).collect::<Vec<_>>(),
+        first.emission_payloads.iter().map(|value| value.to_bits()).collect::<Vec<_>>(),
+        first.commitments[0].slot(),
+        first.commitments[0].col(),
+        first.commitments[0].value().to_bits(),
+        first.commitments[0].event_kind(),
+        all_readback.states.iter().map(|state| state.satisfied).collect::<Vec<_>>(),
+        all_readback.projection.iter().map(|value| value.to_bits()).collect::<Vec<_>>(),
+        fast_readback.states[0],
+        fast_readback.projection.iter().map(|value| value.to_bits()).collect::<Vec<_>>(),
+        empty_generation.states[0],
+        second_crossing.states[0],
+    );
+    const PRE_EXTRACTION_NUMERICAL_RECORD: &str = concat!(
+        "ACTIONBAND-NUMERICAL-RECORD-V1 first_state=ActionBandStateGpu { satisfied: 0, generation: 1, projection_start: 0, projection_len: 1, distance: 0.5, velocity: 0.5, reserved: [1, 0] } ",
+        "second_state=ActionBandStateGpu { satisfied: 0, generation: 2, projection_start: 0, projection_len: 1, distance: 0.5, velocity: 0.5, reserved: [1, 0] } ",
+        "first_projection_bits=[1056964608] first_emission_bits=[1077936128] first_commitment=(0,0,3fc00000,701) ",
+        "all_satisfied=[0, 0, 1, 1, 1, 0, 1] all_projection_bits=[1056964608, 1056964608, 0, 0, 0, 1056964608, 0] ",
+        "fast_state=ActionBandStateGpu { satisfied: 0, generation: 1, projection_start: 0, projection_len: 1, distance: 0.5, velocity: 0.0, reserved: [1, 0] } ",
+        "fast_projection_bits=[1056964608] empty_state=ActionBandStateGpu { satisfied: 0, generation: 1, projection_start: 0, projection_len: 1, distance: 0.5, velocity: 0.0, reserved: [1, 0] } ",
+        "second_fast_state=ActionBandStateGpu { satisfied: 0, generation: 2, projection_start: 0, projection_len: 1, distance: 0.5, velocity: 0.0, reserved: [1, 0] }",
+    );
+    assert_eq!(
+        numerical_record.as_bytes(),
+        PRE_EXTRACTION_NUMERICAL_RECORD.as_bytes()
+    );
+    eprintln!("{numerical_record}");
+
     if ctx.encoder_timestamp_supported() {
         const WARMUP: usize = 5;
         const SAMPLES: usize = 31;
@@ -908,6 +946,95 @@ fn inactive_rows_allocate_zero_hot_storage_and_dense_mutant_is_red() {
     ));
 }
 
+fn prove_owning_generation_and_facility_plane_authority_use_the_graduated_gpu_path() {
+    let Some(ctx) = GpuContext::new_blocking().ok() else {
+        return;
+    };
+
+    // Owning generation occupies the existing final AccumulatorTickParams
+    // word and runs through the sole Phase-5 comparator and emission buffers.
+    let registration = ThresholdRegistration {
+        slot: 0,
+        col: 0,
+        threshold: 3.5,
+        direction: DIR_UPWARD,
+        event_kind: 7601,
+        buffer: THRESH_BUF_OWNING_GENERATION,
+    };
+    let upload = PackedThresholdUpload::from_registrations(&[registration])
+        .expect("owning generation is an admitted Phase-5 observation source");
+    let mut threshold_session = AccumulatorOpSession::new(&ctx, 1, 1);
+    threshold_session
+        .upload_packed_threshold_ops(&ctx, &upload)
+        .expect("generation threshold upload retains the ordinary op shape");
+    threshold_session.bind_generation_authority(4);
+    let dummy_current = ctx
+        .device
+        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("facility_substrate_dummy_current"),
+            contents: bytemuck::cast_slice(&[0.0f32]),
+            usage: wgpu::BufferUsages::STORAGE,
+        });
+    let dummy_previous = ctx
+        .device
+        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("facility_substrate_dummy_previous"),
+            contents: bytemuck::cast_slice(&[0.0f32]),
+            usage: wgpu::BufferUsages::STORAGE,
+        });
+    threshold_session
+        .dispatch_threshold_scan(&ctx, &dummy_current, &dummy_previous)
+        .expect("ordinary Phase-5 generation crossing");
+    let events = threshold_session
+        .readback_threshold_events(&ctx)
+        .expect("sealed generation crossing readback");
+    assert_eq!(events.len(), 1);
+    assert_eq!(events[0].event_kind(), 7601);
+    assert_eq!(events[0].value().to_bits(), 4.0f32.to_bits());
+
+    let mut invalid = registration;
+    invalid.buffer = 99;
+    assert!(matches!(
+        PackedThresholdUpload::from_registrations(&[invalid]),
+        Err(simthing_gpu::EncodeError::InvalidThresholdObservationSource(99))
+    ));
+    let shader = include_str!("../../simthing-kernel/src/shaders/accumulator_op.wgsl");
+    assert_eq!(shader.matches("fn threshold_crossed(").count(), 1);
+    assert!(!shader.contains("generation_crossed"));
+
+    // N facilities share the boundary discipline, never a resident plane.
+    let mut boundary = FacilityPlaneGenerationBoundary::new();
+    let owner_a = boundary.admit_facility();
+    let owner_b = boundary.admit_facility();
+    let mut plane_a =
+        FacilityResidentPlane::from_rows(&ctx, "facility_a", &boundary, &owner_a, &[1u32, 2, 3, 4])
+            .unwrap();
+    let mut plane_b =
+        FacilityResidentPlane::from_rows(&ctx, "facility_b", &boundary, &owner_b, &[9u32, 8])
+            .unwrap();
+    assert_eq!(plane_a.rows(), 4);
+    assert_eq!(plane_a.bytes_per_plane(), 16);
+    assert_eq!(plane_b.rows(), 2);
+    assert_eq!(plane_b.bytes_per_plane(), 8);
+    assert_eq!(
+        plane_a.validate_owner(&owner_b),
+        Err(FacilityPlaneError::ForeignPlaneWrite)
+    );
+
+    let mut second_swap_authority = FacilityPlaneGenerationBoundary::new();
+    assert_eq!(
+        second_swap_authority.advance(&mut [(&owner_a, &mut plane_a)]),
+        Err(FacilityPlaneError::ForeignSwapAuthority)
+    );
+    assert_eq!(plane_a.generation(), 0);
+    assert_eq!(
+        boundary.advance(&mut [(&owner_a, &mut plane_a), (&owner_b, &mut plane_b)]),
+        Ok(1)
+    );
+    assert_eq!(plane_a.generation(), 1);
+    assert_eq!(plane_b.generation(), 1);
+}
+
 #[test]
 fn bucketing_is_numeric_deterministic_and_labels_are_semantic_shadow_only() {
     let fixture = fixture();
@@ -1053,6 +1180,8 @@ fn inherited_admission_and_cpu_authority_fences_remain_closed() {
     let driver = include_str!("../src/action_band_execution_compile.rs");
     let structural_door = include_str!("../../simthing-sim/src/tree_mutation.rs");
     let shader = include_str!("../../simthing-kernel/src/shaders/action_band_execution.wgsl");
+    let facility_plane =
+        include_str!("../../simthing-kernel/src/accumulator_op/facility_resident_plane.rs");
     for forbidden in [
         "ActionBandScheduler",
         "ActionBandPlanner",
@@ -1070,10 +1199,12 @@ fn inherited_admission_and_cpu_authority_fences_remain_closed() {
     assert!(shader.contains("@binding(7) var<storage, read> values: array<atomic<i32>>"));
     assert!(!shader.contains("@binding(7) var<storage, read_write> values"));
     assert!(kernel.contains("read_only: !matches!(binding, 5 | 6 | 13)"));
-    assert!(kernel.contains(
-        "encoder.copy_buffer_to_buffer(&self.state_current, 0, &self.state_next, 0, state_bytes)"
-    ));
-    assert!(kernel.contains("std::mem::swap(&mut self.state_current, &mut self.state_next)"));
+    assert!(kernel.contains(".encode_carry(&self.state_owner, &mut encoder)"));
+    assert!(kernel.contains(".advance(&mut [(&self.state_owner, &mut self.state_plane)])"));
+    assert!(facility_plane.contains("encoder.copy_buffer_to_buffer(current, 0, next, 0"));
+    assert!(facility_plane.contains("std::mem::swap(&mut plane.current, &mut plane.next)"));
+    assert!(!kernel.contains("state_current: wgpu::Buffer"));
+    assert!(!kernel.contains("state_next: wgpu::Buffer"));
     let fast_shader = shader
         .split("fn actionband_emit_depth1")
         .nth(1)
@@ -1099,4 +1230,5 @@ fn inherited_admission_and_cpu_authority_fences_remain_closed() {
     assert!(!structural_door.contains("commitment.value()"));
     assert!(!structural_door.contains("commitment.slot()"));
     assert!(!structural_door.contains("commitment.col()"));
+    prove_owning_generation_and_facility_plane_authority_use_the_graduated_gpu_path();
 }

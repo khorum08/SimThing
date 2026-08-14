@@ -9,6 +9,7 @@ mod bootstrap_validate;
 mod cpu_oracle;
 mod eml_program_table;
 mod encode;
+pub mod facility_resident_plane;
 mod input_list_table;
 mod packed_session_upload;
 mod runtime;
@@ -27,6 +28,9 @@ pub use eml_program_table::{
 pub use encode::{
     emit_on_threshold_registrations_to_gpu, emit_on_threshold_registrations_to_ops,
     threshold_registrations_to_ops, validate_intent_deltas_no_duplicate_cells, EncodeError,
+};
+pub use facility_resident_plane::{
+    FacilityPlaneError, FacilityPlaneGenerationBoundary, FacilityPlaneOwner, FacilityResidentPlane,
 };
 pub use input_list_table::{
     AccumulatorInputListTable, InputListRange, InputListUploadError, DEFAULT_INPUT_LIST_CAPACITY,
@@ -56,3 +60,6 @@ pub use wgsl_path::{
     AoWgsl0FallbackReason, AoWgsl0PlanShape, AO_WGSL0_ENTRY_POINT, AO_WGSL0_N_BANDS_UNIFORM_FIELD,
 };
 pub use world_summary::WorldSummaryRuntime;
+
+/// Existing-uniform owning-generation operand; no GPU buffer is bound.
+pub const THRESH_BUF_OWNING_GENERATION: u32 = 2;

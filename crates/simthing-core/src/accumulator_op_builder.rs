@@ -159,6 +159,10 @@ pub enum EmitOnThresholdBuffer {
     Values,
     /// Post-reduction `output_vectors` / `previous_output_vectors`.
     Output,
+    /// Owning tree generation carried in the existing AccumulatorTickParams
+    /// reserved word. This is an operand of the ordinary Phase-5 comparator,
+    /// not a buffer, binding, clock, or second crossing surface.
+    OwningGeneration,
 }
 
 /// One threshold-emission registration compiled by the E-1 builder surface.

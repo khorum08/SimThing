@@ -12,6 +12,9 @@ use simthing_core::EmlNodeGpu;
 use thiserror::Error;
 use wgpu::util::DeviceExt;
 
+use super::{
+    FacilityPlaneError, FacilityPlaneGenerationBoundary, FacilityPlaneOwner, FacilityResidentPlane,
+};
 use crate::sealed::{ThresholdEmission, ThresholdEmissionGpu};
 use crate::{
     debug_readback_allowed, BandCrossingDelta, BoundaryEmissionToken, DecisionIngressError,
@@ -612,6 +615,8 @@ pub enum ActionBandExecutionError {
     MapFailed,
     #[error("ActionBand shader source markers are missing")]
     ShaderSourceMarkersMissing,
+    #[error(transparent)]
+    FacilityPlane(#[from] FacilityPlaneError),
 }
 
 /// Zero-row execution has no GPU buffers and therefore zero hot bytes.
@@ -656,8 +661,9 @@ pub struct ActionBandGpuSession {
     target_channels: wgpu::Buffer,
     target_data: wgpu::Buffer,
     instances: wgpu::Buffer,
-    state_current: wgpu::Buffer,
-    state_next: wgpu::Buffer,
+    state_boundary: FacilityPlaneGenerationBoundary,
+    state_owner: FacilityPlaneOwner,
+    state_plane: FacilityResidentPlane,
     projection_next: wgpu::Buffer,
     bands: wgpu::Buffer,
     band_binding_indices: wgpu::Buffer,
@@ -741,6 +747,15 @@ impl ActionBandGpuSession {
             })
             .collect::<Vec<_>>();
         let projection = vec![0.0f32; plan.projection_floats.max(1) as usize];
+        let state_boundary = FacilityPlaneGenerationBoundary::new();
+        let state_owner = state_boundary.admit_facility();
+        let state_plane = FacilityResidentPlane::from_rows(
+            ctx,
+            "actionband_state",
+            &state_boundary,
+            &state_owner,
+            &state,
+        )?;
         let (timestamp_query_set, timestamp_resolve, timestamp_readback) =
             if ctx.timestamp_supported() {
                 (
@@ -769,8 +784,9 @@ impl ActionBandGpuSession {
                 "actionband_active_instances",
                 &plan.active_instances,
             ),
-            state_current: storage_rw(device, "actionband_state_current", &state),
-            state_next: storage_rw(device, "actionband_state_next", &state),
+            state_boundary,
+            state_owner,
+            state_plane,
             projection_next: storage_rw(device, "actionband_projection_next", &projection),
             bands: storage(device, "actionband_bands", &plan.bands),
             band_binding_indices: storage(
@@ -1051,7 +1067,8 @@ impl ActionBandGpuSession {
                     0,
                 );
             }
-            encoder.copy_buffer_to_buffer(&self.state_current, 0, &self.state_next, 0, state_bytes);
+            self.state_plane
+                .encode_carry(&self.state_owner, &mut encoder)?;
             if carry_timestamped {
                 encoder.write_timestamp(
                     self.timestamp_query_set
@@ -1114,9 +1131,9 @@ impl ActionBandGpuSession {
         }
         if let Some(stage) = state_stage.as_ref() {
             let result_state = if self.plan.depth1_crossing_fast_path && !depth1_advances {
-                &self.state_current
+                self.state_plane.current_for(&self.state_owner)?
             } else {
-                &self.state_next
+                self.state_plane.next_for(&self.state_owner)?
             };
             encoder.copy_buffer_to_buffer(result_state, 0, stage, 0, state_bytes);
         }
@@ -1158,7 +1175,8 @@ impl ActionBandGpuSession {
         ctx.queue.submit(Some(encoder.finish()));
         self.generation = self.generation.saturating_add(1);
         if !self.plan.depth1_crossing_fast_path || depth1_advances {
-            std::mem::swap(&mut self.state_current, &mut self.state_next);
+            self.state_boundary
+                .advance(&mut [(&self.state_owner, &mut self.state_plane)])?;
         }
 
         let states = state_stage
@@ -1262,8 +1280,12 @@ impl ActionBandGpuSession {
             &self.target_channels,
             &self.target_data,
             &self.instances,
-            &self.state_current,
-            &self.state_next,
+            self.state_plane
+                .current_for(&self.state_owner)
+                .expect("ActionBand owns its facility Current plane"),
+            self.state_plane
+                .next_for(&self.state_owner)
+                .expect("ActionBand owns its facility Next plane"),
             &self.projection_next,
             world_values,
             params,

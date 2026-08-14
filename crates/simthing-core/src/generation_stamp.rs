@@ -67,6 +67,37 @@ impl<T> GenerationStamped<T> {
     }
 }
 
+/// Minimal routed duration carrier for generation-denominated facilities.
+///
+/// This substrate intentionally carries only authored duration and source
+/// provenance. It cannot represent an absolute deadline, and serde rejects
+/// unknown fields rather than silently admitting a foreign deadline-shaped
+/// payload. Interpretation belongs to the receiving facility's later admitted
+/// semantics; this type performs no lifecycle calculation.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RoutedGenerationDuration {
+    authored_duration: u32,
+    provenance: GenerationStamp,
+}
+
+impl RoutedGenerationDuration {
+    pub const fn new(authored_duration: u32, provenance: GenerationStamp) -> Self {
+        Self {
+            authored_duration,
+            provenance,
+        }
+    }
+
+    pub const fn authored_duration(self) -> u32 {
+        self.authored_duration
+    }
+
+    pub const fn provenance(self) -> GenerationStamp {
+        self.provenance
+    }
+}
+
 /// One recorded integration of a stamped child product at a parent generation.
 ///
 /// **Per-product row, full generation set** (Definable schedule fence / HD-RECEIPT

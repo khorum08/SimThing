@@ -112,7 +112,7 @@ pub use generation_stamp::{
     AncestorStandingPolicyView, AuthoredSeamStaleness, BackpressurePolicy,
     DispatchOverlayError, GenerationStamp, GenerationStamped, IntegrateError, IntegrationReceipt,
     IntegrationSchedule, IntegrationScheduleEntry, IntegrationScheduleRowKind, RingPushOutcome,
-    StampedEgressEntry, StampedEventRing, StandingViewDoubleBuffer,
+    RoutedGenerationDuration, StampedEgressEntry, StampedEventRing, StandingViewDoubleBuffer,
 };
 pub use overlay::{
     DissolveCondition, Overlay, OverlayKind, OverlayLifecycle, OverlaySource,
