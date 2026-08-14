@@ -1,1 +1,2 @@
 rung	condition	set_by	status	promotion_blocker
+GPU-OVERLAY-LIFECYCLE-EXTRACTION-0	DissolveCondition::OverrideReceived passes admission as a bounded lifecycle but evaluates false every generation; 7.7 must either implement override-replacement in the germ or reject the variant at admission	DA ruling 5289831443 (7.6 AN-OVERRIDE archaeology)	open	yes

@@ -1,7 +1,7 @@
 # OVERLAY-GERM-ARCHAEOLOGY-0 results
 
 - Track: 0.0.8.7 RF arena modernization (rung 7.6)
-- Status: **PROBATION / proof-present / DA-review-pending**
+- Status: **COMPLETE — DA-GRADUATED / merged #1748 @ `e52b5603`** (pre-dispatch `5289571616`, STOP ruling `5289831443`, remand `5290043139`, graduation ruling on Board #1332)
 - HD-RECEIPT: `e16ae62d9ce6`
 - ORIENT-RECEIPT: `e0ac65d38d15`
 - orientation_rule_stamp: `497b2a43330e6f9d`
