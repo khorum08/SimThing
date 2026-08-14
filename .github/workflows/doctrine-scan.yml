@@ -149,6 +149,17 @@ jobs:
           set -o pipefail
           bash scripts/ci/relay_lint.sh --selftest 2>&1 | tee doctrine-relay-selftest-report.txt
 
+      - name: Overlay germ archaeology census check
+        run: |
+          set -o pipefail
+          bash scripts/ci/overlay_germ_archaeology_census_check.sh --check 2>&1 | tee doctrine-overlay-germ-census-report.txt
+
+      - name: Overlay germ archaeology census selftest
+        if: steps.gate.outputs.run_selftests == 'true'
+        run: |
+          set -o pipefail
+          bash scripts/ci/overlay_germ_archaeology_census_check.sh --selftest 2>&1 | tee doctrine-overlay-germ-census-selftest-report.txt
+
       - name: DOC-BUDGET check
         run: |
           set -o pipefail
