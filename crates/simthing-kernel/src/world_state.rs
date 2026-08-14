@@ -1550,6 +1550,30 @@ impl WorldGpuState {
         runtime.configure_overlay_lifecycle_projection(&self.ctx, plan)
     }
 
+    pub fn freeze_overlay_lifecycle_admission(
+        &mut self,
+        plan: &crate::accumulator_op::OverlayLifecycleProjectionPlan,
+        registrations: &[ThresholdRegistration],
+    ) -> Result<(), crate::AccumulatorOpSessionError> {
+        let runtime = self
+            .accumulator_runtime
+            .as_mut()
+            .ok_or(crate::AccumulatorOpSessionError::NoOps)?;
+        runtime.freeze_overlay_lifecycle_admission(plan, registrations)
+    }
+
+    pub fn preflight_overlay_lifecycle_admission(
+        &self,
+        plan: &crate::accumulator_op::OverlayLifecycleProjectionPlan,
+        registrations: &[ThresholdRegistration],
+    ) -> Result<(), crate::AccumulatorOpSessionError> {
+        let runtime = self
+            .accumulator_runtime
+            .as_ref()
+            .ok_or(crate::AccumulatorOpSessionError::NoOps)?;
+        runtime.preflight_overlay_lifecycle_admission(plan, registrations)
+    }
+
     pub fn readback_overlay_lifecycle_states(
         &self,
     ) -> Result<

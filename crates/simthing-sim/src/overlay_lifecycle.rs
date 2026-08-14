@@ -173,8 +173,40 @@ pub fn append_overlay_lifecycle_registrations(
         admission,
         &mut plan,
         &mut targets,
+        false,
     );
     (plan, targets)
+}
+
+/// Derive the complete session admission catalogue, including the active
+/// lifecycle nested under every suspended overlay. Catalogue derivation uses a
+/// cloned semantic shadow: it reserves template/capacity without activating a
+/// suspended overlay or minting numerical authority on the CPU.
+pub fn derive_overlay_lifecycle_admission_catalog(
+    root: &SimThing,
+    registry: &DimensionRegistry,
+    allocator: &SlotAllocator,
+    generation: GenerationStamp,
+    admission: &OverlayLifecycleAdmissionState,
+) -> (OverlayLifecycleProjectionPlan, Vec<ThresholdRegistration>) {
+    let mut gpu_regs = Vec::new();
+    let mut cpu_reg = ThresholdRegistry::new();
+    let mut admission_shadow = admission.clone();
+    let mut plan = OverlayLifecycleProjectionPlan::default();
+    let mut targets = Vec::new();
+    append_node_lifecycle(
+        root,
+        registry,
+        allocator,
+        generation,
+        &mut gpu_regs,
+        &mut cpu_reg,
+        &mut admission_shadow,
+        &mut plan,
+        &mut targets,
+        true,
+    );
+    (plan, gpu_regs)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -188,22 +220,31 @@ fn append_node_lifecycle(
     admission: &mut OverlayLifecycleAdmissionState,
     plan: &mut OverlayLifecycleProjectionPlan,
     targets: &mut Vec<OverlayLifecycleTarget>,
+    include_suspended: bool,
 ) {
     for overlay in &node.overlays {
-        admit_overlay_lifecycle(&overlay.lifecycle).unwrap_or_else(|error| {
+        let lifecycle = match &overlay.lifecycle {
+            OverlayLifecycle::Suspended { when_activated } if include_suspended => {
+                when_activated.as_ref()
+            }
+            OverlayLifecycle::Suspended { .. } => continue,
+            lifecycle => lifecycle,
+        };
+        admit_overlay_lifecycle(lifecycle).unwrap_or_else(|error| {
             panic!(
                 "overlay {:?} lifecycle admission failed: {error}",
                 overlay.id
             )
         });
-        let conditions = match &overlay.lifecycle {
+        let conditions = match lifecycle {
             OverlayLifecycle::Transient {
                 dissolution_conditions,
             }
             | OverlayLifecycle::UntilDissolvedWith {
                 dissolution_conditions,
             } => dissolution_conditions,
-            OverlayLifecycle::UntilDissolved | OverlayLifecycle::Suspended { .. } => continue,
+            OverlayLifecycle::UntilDissolved => continue,
+            OverlayLifecycle::Suspended { .. } => unreachable!("suspended lifecycle was unwrapped"),
         };
         let key = (node.id, overlay.id);
         let activation = *admission
@@ -312,7 +353,16 @@ fn append_node_lifecycle(
     }
     for child in &node.children {
         append_node_lifecycle(
-            child, registry, allocator, generation, gpu_regs, cpu_reg, admission, plan, targets,
+            child,
+            registry,
+            allocator,
+            generation,
+            gpu_regs,
+            cpu_reg,
+            admission,
+            plan,
+            targets,
+            include_suspended,
         );
     }
 }

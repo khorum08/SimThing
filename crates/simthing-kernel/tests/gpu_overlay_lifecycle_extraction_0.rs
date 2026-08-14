@@ -15,10 +15,8 @@ use std::time::Instant;
 
 #[test]
 fn real_phase5_crossings_project_conjunctive_lifecycle_state() {
-    let Ok(ctx) = GpuContext::new_blocking() else {
-        eprintln!("skipping: no GPU adapter");
-        return;
-    };
+    let ctx = GpuContext::new_blocking()
+        .expect("GPU-OVERLAY-LIFECYCLE-EXTRACTION-0 requires a real GPU adapter");
     let mut registry = DimensionRegistry::new();
     registry.register(SimProperty::simple("proof", "amount", 0));
     let state = WorldGpuState::new(ctx, &registry, 1);

@@ -400,6 +400,30 @@ impl WorldAccumulatorRuntime {
         session.configure_overlay_lifecycle_projection(ctx, plan)
     }
 
+    pub fn freeze_overlay_lifecycle_admission(
+        &mut self,
+        plan: &super::OverlayLifecycleProjectionPlan,
+        registrations: &[ThresholdRegistration],
+    ) -> Result<(), super::AccumulatorOpSessionError> {
+        let session = self
+            .threshold_session
+            .as_mut()
+            .ok_or(super::AccumulatorOpSessionError::NoOps)?;
+        session.freeze_overlay_lifecycle_admission(plan, registrations)
+    }
+
+    pub fn preflight_overlay_lifecycle_admission(
+        &self,
+        plan: &super::OverlayLifecycleProjectionPlan,
+        registrations: &[ThresholdRegistration],
+    ) -> Result<(), super::AccumulatorOpSessionError> {
+        let session = self
+            .threshold_session
+            .as_ref()
+            .ok_or(super::AccumulatorOpSessionError::NoOps)?;
+        session.preflight_overlay_lifecycle_admission(plan, registrations)
+    }
+
     pub fn readback_overlay_lifecycle_states(
         &self,
         ctx: &GpuContext,

@@ -1052,11 +1052,36 @@ impl AccumulatorOpSession {
 
     /// Bind admitted lifecycle conditions to the existing Phase-5 crossing packet.
     /// The packed op word is projection metadata only; it cannot evaluate a crossing.
-    pub fn configure_overlay_lifecycle_projection(
-        &mut self,
-        ctx: &GpuContext,
+    pub fn preflight_overlay_lifecycle_admission(
+        &self,
         plan: &OverlayLifecycleProjectionPlan,
+        registrations: &[ThresholdRegistration],
     ) -> Result<(), AccumulatorOpSessionError> {
+        self.validate_overlay_lifecycle_admission(plan, registrations)
+            .map(|_| ())
+    }
+
+    /// Freeze the complete session-build lifecycle catalogue before any live
+    /// projection is configured. Suspended templates belong to this catalogue
+    /// even though they do not own a resident row until activation.
+    pub fn freeze_overlay_lifecycle_admission(
+        &mut self,
+        plan: &OverlayLifecycleProjectionPlan,
+        registrations: &[ThresholdRegistration],
+    ) -> Result<(), AccumulatorOpSessionError> {
+        let template_shapes = self.validate_overlay_lifecycle_admission(plan, registrations)?;
+        if !self.overlay_lifecycle_templates_frozen {
+            self.overlay_lifecycle_template_shapes = template_shapes;
+            self.overlay_lifecycle_templates_frozen = true;
+        }
+        Ok(())
+    }
+
+    fn validate_overlay_lifecycle_admission(
+        &self,
+        plan: &OverlayLifecycleProjectionPlan,
+        registrations: &[ThresholdRegistration],
+    ) -> Result<HashSet<Vec<[u32; 5]>>, AccumulatorOpSessionError> {
         if plan.rows.len() > self.overlay_lifecycle_capacity {
             return Err(FacilityPlaneError::LifecycleCapacityExceeded {
                 rows: plan.rows.len(),
@@ -1072,8 +1097,7 @@ impl AccumulatorOpSession {
                 .iter()
                 .filter(|binding| binding.row as usize == row_index)
             {
-                let registration = self
-                    .threshold_registrations
+                let registration = registrations
                     .get(binding.registration_index as usize)
                     .ok_or(FacilityPlaneError::InvalidLifecycleProjection)?;
                 shape.push([
@@ -1096,10 +1120,16 @@ impl AccumulatorOpSession {
         {
             return Err(FacilityPlaneError::MidSessionLifecycleTemplateMint.into());
         }
-        if !self.overlay_lifecycle_templates_frozen {
-            self.overlay_lifecycle_template_shapes = template_shapes;
-            self.overlay_lifecycle_templates_frozen = true;
-        }
+        Ok(template_shapes)
+    }
+
+    pub fn configure_overlay_lifecycle_projection(
+        &mut self,
+        ctx: &GpuContext,
+        plan: &OverlayLifecycleProjectionPlan,
+    ) -> Result<(), AccumulatorOpSessionError> {
+        let registrations = self.threshold_registrations.clone();
+        self.freeze_overlay_lifecycle_admission(plan, &registrations)?;
         let mut ops = self.threshold_gpu_ops.clone();
         self.overlay_lifecycle_binding_by_event_kind.clear();
         for op in &mut ops {
