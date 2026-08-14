@@ -33,7 +33,8 @@
 //! N+1. `gpu_sync` then calls `build_overlay_deltas` to reflect those lists.
 
 use simthing_core::{
-    DimensionRegistry, DissolveCondition, OverlayId, OverlayLifecycle, SimThing, SimThingId,
+    authored_after_ticks_duration, deadline_reached, establish_deadline, DimensionRegistry,
+    DissolveCondition, GenerationStamp, OverlayId, OverlayLifecycle, SimThing, SimThingId,
     SubFieldRole,
 };
 use simthing_gpu::SlotAllocator;
@@ -67,18 +68,60 @@ pub fn resolve_overlay_lifecycle(
     allocator: &SlotAllocator,
     values_shadow: &mut [f32],
     n_dims: usize,
-    _day: u32,
+    generation: u32,
+    node_paths: Option<&HashMap<SimThingId, Vec<usize>>>,
+) -> LifecycleOutcome {
+    let mut deadlines = HashMap::new();
+    resolve_overlay_lifecycle_oracle(
+        root,
+        registry,
+        allocator,
+        values_shadow,
+        n_dims,
+        GenerationStamp::new(generation),
+        &mut deadlines,
+        node_paths,
+    )
+}
+
+/// CPU oracle: compare deadlines, never decrement AfterTicks.
+pub fn resolve_overlay_lifecycle_oracle(
+    root: &mut SimThing,
+    registry: &DimensionRegistry,
+    allocator: &SlotAllocator,
+    values_shadow: &mut [f32],
+    n_dims: usize,
+    generation: GenerationStamp,
+    deadlines: &mut HashMap<OverlayId, GenerationStamp>,
     node_paths: Option<&HashMap<SimThingId, Vec<usize>>>,
 ) -> LifecycleOutcome {
     let mut out = LifecycleOutcome::default();
     if let Some(paths) = node_paths {
         for path in paths_preorder(paths) {
             if let Some(node) = node_at_path_mut(root, &path) {
-                process_node(node, registry, allocator, values_shadow, n_dims, &mut out);
+                process_node(
+                    node,
+                    registry,
+                    allocator,
+                    values_shadow,
+                    n_dims,
+                    generation,
+                    deadlines,
+                    &mut out,
+                );
             }
         }
     } else {
-        resolve_node(root, registry, allocator, values_shadow, n_dims, &mut out);
+        resolve_node(
+            root,
+            registry,
+            allocator,
+            values_shadow,
+            n_dims,
+            generation,
+            deadlines,
+            &mut out,
+        );
     }
     out
 }
@@ -89,11 +132,31 @@ fn resolve_node(
     allocator: &SlotAllocator,
     values_shadow: &mut [f32],
     n_dims: usize,
+    generation: GenerationStamp,
+    deadlines: &mut HashMap<OverlayId, GenerationStamp>,
     out: &mut LifecycleOutcome,
 ) {
-    process_node(node, registry, allocator, values_shadow, n_dims, out);
+    process_node(
+        node,
+        registry,
+        allocator,
+        values_shadow,
+        n_dims,
+        generation,
+        deadlines,
+        out,
+    );
     for child in &mut node.children {
-        resolve_node(child, registry, allocator, values_shadow, n_dims, out);
+        resolve_node(
+            child,
+            registry,
+            allocator,
+            values_shadow,
+            n_dims,
+            generation,
+            deadlines,
+            out,
+        );
     }
 }
 
@@ -103,56 +166,51 @@ fn process_node(
     allocator: &SlotAllocator,
     values_shadow: &mut [f32],
     n_dims: usize,
+    generation: GenerationStamp,
+    deadlines: &mut HashMap<OverlayId, GenerationStamp>,
     out: &mut LifecycleOutcome,
 ) {
     let slot = allocator.slot_of(node.id);
     let base = slot.map(|s| s.as_usize() * n_dims);
 
-    // First pass (immutable): check which overlays should dissolve.
-    // We separate condition evaluation (needs immutable `node`) from
-    // AfterTicks decrement (needs mutable overlay) to satisfy the borrow
-    // checker — `evaluate_condition` borrows `node` immutably, but
-    // iterating `node.overlays.iter_mut()` would hold a mutable borrow.
     let mut dissolved_indices = Vec::new();
     {
         let should_dissolve: Vec<bool> = node
             .overlays
             .iter()
-            .map(|overlay| match &overlay.lifecycle {
-                OverlayLifecycle::Transient {
-                    dissolution_conditions,
+            .map(|overlay| {
+                if let Some(duration) = authored_after_ticks_duration(&overlay.lifecycle) {
+                    deadlines.entry(overlay.id).or_insert_with(|| {
+                        establish_deadline(generation, duration)
+                            .unwrap_or(GenerationStamp::new(u32::MAX))
+                    });
                 }
-                | OverlayLifecycle::UntilDissolvedWith {
-                    dissolution_conditions,
-                } => dissolution_conditions
-                    .iter()
-                    .all(|cond| evaluate_condition(cond, node, registry, values_shadow, base)),
-                _ => false,
+                match &overlay.lifecycle {
+                    OverlayLifecycle::Transient {
+                        dissolution_conditions,
+                    }
+                    | OverlayLifecycle::UntilDissolvedWith {
+                        dissolution_conditions,
+                    } => dissolution_conditions.iter().all(|cond| {
+                        evaluate_condition(
+                            cond,
+                            node,
+                            registry,
+                            values_shadow,
+                            base,
+                            generation,
+                            deadlines.get(&overlay.id).copied(),
+                        )
+                    }),
+                    _ => false,
+                }
             })
             .collect();
 
-        // Second sub-pass (mutable): decrement AfterTicks on surviving overlays.
-        for (i, overlay) in node.overlays.iter_mut().enumerate() {
-            let conditions = match &mut overlay.lifecycle {
-                OverlayLifecycle::Transient {
-                    dissolution_conditions,
-                }
-                | OverlayLifecycle::UntilDissolvedWith {
-                    dissolution_conditions,
-                } => Some(dissolution_conditions),
-                _ => None,
-            };
-            if let Some(dissolution_conditions) = conditions {
-                for cond in dissolution_conditions.iter_mut() {
-                    if let DissolveCondition::AfterTicks { remaining } = cond {
-                        if *remaining > 0 {
-                            *remaining -= 1;
-                            out.after_ticks_decremented += 1;
-                        }
-                    }
-                }
-            }
-            if should_dissolve[i] {
+        // AfterTicks remaining is authored duration. Never decrement.
+        out.after_ticks_decremented = 0;
+        for (i, should) in should_dissolve.into_iter().enumerate() {
+            if should {
                 dissolved_indices.push(i);
             }
         }
@@ -185,11 +243,19 @@ fn evaluate_condition(
     registry: &DimensionRegistry,
     values_shadow: &[f32],
     base: Option<usize>,
+    generation: GenerationStamp,
+    deadline: Option<GenerationStamp>,
 ) -> bool {
     match cond {
         DissolveCondition::AtSessionEnd => false,
-        DissolveCondition::OverrideReceived => false, // handled by attach step
-        DissolveCondition::AfterTicks { remaining } => *remaining == 0,
+        DissolveCondition::OverrideReceived => false,
+        DissolveCondition::AfterTicks { remaining } => {
+            if let Some(deadline) = deadline {
+                deadline_reached(generation, deadline)
+            } else {
+                *remaining == 0
+            }
+        }
         DissolveCondition::PropertyReaches {
             property,
             sub_field,

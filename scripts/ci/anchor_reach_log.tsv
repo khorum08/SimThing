@@ -601,3 +601,5 @@ date	role	query	anchors_served	hit
 2026-08-14T04:50:49Z	coding	--domain scanner-selftest-delta-gate	none	none
 2026-08-14T04:51:24Z	coding	--grep orientation-harness-core	orientation-harness-core	hit
 2026-08-14T04:51:25Z	coding	--grep scanner-selftest-delta-gate	scanner-selftest-delta-gate	hit
+2026-08-14T07:32:08Z	coding	--grep overlay-germ	overlay-germ	hit
+2026-08-14T07:32:08Z	coding	--grep overlay-promoted-laws	overlay-promoted-laws	hit

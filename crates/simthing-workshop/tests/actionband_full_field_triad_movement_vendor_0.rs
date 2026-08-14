@@ -26,7 +26,7 @@ use simthing_gpu::{
     ActionBandGpuExecution, FieldAdjacency, FieldSweepSession, GpuContext, PackedAccumulatorUpload,
     PackedThresholdUpload, SlotAllocator, GRID_N4_NSEW, MIN_PLUS_INF,
 };
-use simthing_sim::overlay_lifecycle::resolve_overlay_lifecycle;
+use simthing_sim::overlay_lifecycle::resolve_overlay_lifecycle_oracle;
 use simthing_sim::{
     apply_structural_mutations, CostBandSemantic, SimRuntimeTree, ThresholdRegistry,
     ThresholdSemantic,
@@ -996,23 +996,26 @@ fn full_vendor_capacity_overlay_costband_and_arrival_chain_is_native_bounded() {
     let mut lifecycle_allocator = SlotAllocator::new();
     lifecycle_allocator.populate_from_tree(&lifecycle_root);
     let mut lifecycle_shadow = vec![0.0; lifecycle_allocator.capacity() * n_dims];
-    let first = resolve_overlay_lifecycle(
+    let mut lifecycle_deadlines = std::collections::HashMap::new();
+    let first = resolve_overlay_lifecycle_oracle(
         &mut lifecycle_root,
         &registry,
         &lifecycle_allocator,
         &mut lifecycle_shadow,
         n_dims,
-        76,
+        simthing_core::GenerationStamp::new(76),
+        &mut lifecycle_deadlines,
         None,
     );
-    assert_eq!(first.after_ticks_decremented, 1);
-    let second = resolve_overlay_lifecycle(
+    assert_eq!(first.after_ticks_decremented, 0);
+    let second = resolve_overlay_lifecycle_oracle(
         &mut lifecycle_root,
         &registry,
         &lifecycle_allocator,
         &mut lifecycle_shadow,
         n_dims,
-        77,
+        simthing_core::GenerationStamp::new(77),
+        &mut lifecycle_deadlines,
         None,
     );
     assert_eq!(second.dissolved, 1);

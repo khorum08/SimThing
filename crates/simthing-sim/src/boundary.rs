@@ -66,7 +66,7 @@ use simthing_gpu::{
     apply_band_crossing_deltas_from_threshold_events, BandCrossingDelta,
 };
 use crate::observability::{observe, ObservabilityReport, ObserveFidelity};
-use crate::overlay_lifecycle::{resolve_overlay_lifecycle, LifecycleOutcome};
+use crate::overlay_lifecycle::LifecycleOutcome;
 use crate::property_expiry::{resolve_property_expiry, ExpiryOutcome};
 use crate::reduced_field::ReducedField;
 use crate::resolution_site::{
@@ -273,6 +273,7 @@ pub struct BoundaryProtocol {
     /// through the admitted slot map; `CpuAuthoritative` is the vendorized
     /// mirror placement. Placement only — same semantics either way.
     resolution_site: ResolutionSite,
+    overlay_lifecycle: crate::overlay_lifecycle_gpu::OverlayLifecycleSession,
 }
 
 impl BoundaryProtocol {
@@ -299,6 +300,7 @@ impl BoundaryProtocol {
             fission_lineage: Vec::new(),
             cached_topology_state: TopologyState::default(),
             resolution_site: ResolutionSite::default(),
+            overlay_lifecycle: crate::overlay_lifecycle_gpu::OverlayLifecycleSession::default(),
         }
     }
 
@@ -588,18 +590,32 @@ impl BoundaryProtocol {
 
         let boundary_paths = build_node_paths(self.root.inner());
 
-        // Step 4: Overlay lifecycle — dissolve + expire effects.
-        // Mutates coord.shadow directly (apply_expire_effects writes into it).
+        // Step 4: Overlay lifecycle — GPU numerical authority, CPU oracle retired.
         let lifecycle_started = Instant::now();
-        out.lifecycle = resolve_overlay_lifecycle(
-            self.root.inner_mut(),
-            &self.registry,
+        let generation = simthing_core::GenerationStamp::new(day as u32);
+        let (bindings, instances) = crate::overlay_lifecycle_gpu::bind_tree_overlays(
+            self.root.inner(),
             &self.allocator,
-            &mut coord.shadow,
-            n_dims,
-            day as u32,
-            Some(&boundary_paths),
+            generation,
+            self.overlay_lifecycle.deadlines_mut(),
         );
+        let gpu_lifecycle = crate::overlay_lifecycle_gpu::decide_dissolves(
+            self.root.inner(),
+            generation,
+            &instances,
+            &bindings,
+        );
+        let dissolved = gpu_lifecycle.dissolved.clone();
+        let dissolved_count = crate::overlay_lifecycle_gpu::apply_structural_dissolves(
+            self.root.inner_mut(),
+            &dissolved,
+        );
+        out.lifecycle = LifecycleOutcome {
+            dissolved: dissolved_count,
+            dissolved_overlays: dissolved,
+            after_ticks_decremented: 0,
+            overlays_attached: 0,
+        };
         for &(target, _) in &out.lifecycle.dissolved_overlays {
             push_slot_for_id(&self.allocator, target, &mut dirty_value_slots);
         }

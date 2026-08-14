@@ -619,6 +619,8 @@ pub enum DispatchOverlayError {
     NotUntilDissolved,
     #[error("dispatch-minted overlay origin must be a real originating node (not default/borrowed)")]
     InvalidOrigin,
+    #[error("DissolveCondition::OverrideReceived is rejected at admission")]
+    OverrideReceivedForbidden,
 }
 
 /// Build the only admitted lifecycle for a dispatch-minted overlay.
@@ -647,6 +649,8 @@ pub fn admit_dispatch_minted_overlay(overlay: &Overlay) -> Result<(), DispatchOv
             if dissolution_conditions.is_empty() {
                 return Err(DispatchOverlayError::MissingDissolveCondition);
             }
+            crate::overlay_lifecycle_deadline::admit_dissolve_conditions(dissolution_conditions)
+                .map_err(|_| DispatchOverlayError::OverrideReceivedForbidden)?;
         }
         OverlayLifecycle::UntilDissolved => {
             // Unit UntilDissolved has no authored automatic condition — forbidden for dispatch.

@@ -46,6 +46,12 @@ pub fn compile_overlay(
         }
     }
 
+    simthing_core::admit_overlay_lifecycle(&spec.lifecycle).map_err(|_| {
+        SpecError::OverrideReceivedForbidden {
+            overlay: spec.id.clone(),
+        }
+    })?;
+
     let overlay = Overlay {
         id: OverlayId::new(),
         kind: spec.kind.clone(),

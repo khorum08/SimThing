@@ -77,6 +77,11 @@ pub fn deliver_routed_overlay(
     // overlays (Event/System instruction-class) must carry UntilDissolvedWith
     // and an authored dissolve condition. Authored Policy/Governance unit
     // UntilDissolved remains admissible.
+    crate::overlay_lifecycle_deadline::admit_overlay_lifecycle(&overlay.lifecycle).map_err(|e| {
+        OverlayDeliveryError::DispatchDissolveRequired {
+            detail: e.to_string(),
+        }
+    })?;
     if is_runtime_dispatch_mint(&overlay) {
         crate::generation_stamp::admit_dispatch_minted_overlay(&overlay).map_err(|e| {
             OverlayDeliveryError::DispatchDissolveRequired {

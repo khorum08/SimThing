@@ -84,6 +84,10 @@ impl OverlayId {
         static NEXT: AtomicU32 = AtomicU32::new(1);
         Self(NEXT.fetch_add(1, Ordering::Relaxed))
     }
+
+    pub const fn raw(self) -> u32 {
+        self.0
+    }
 }
 
 impl Default for OverlayId {

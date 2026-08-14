@@ -70,6 +70,9 @@ pub enum SpecError {
         targets_property: String,
     },
 
+    #[error("overlay `{overlay}` authors DissolveCondition::OverrideReceived, which is rejected at admission")]
+    OverrideReceivedForbidden { overlay: String },
+
     // ── Capability tree builder (PR 3) ───────────────────────────────────────
     #[error(
         "entry `{0}` was authored with ActivationMode::OnPrereqMet — that state is runtime-only"

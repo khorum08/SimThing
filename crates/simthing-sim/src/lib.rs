@@ -63,6 +63,7 @@ pub mod mapping_atlas_scheduler;
 pub mod mapping_plan_tick;
 pub mod observability;
 pub mod overlay_lifecycle;
+pub mod overlay_lifecycle_gpu;
 pub mod property_expiry;
 pub mod reduced_field;
 pub mod replay;
