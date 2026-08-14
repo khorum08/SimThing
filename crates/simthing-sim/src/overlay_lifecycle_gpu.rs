@@ -89,6 +89,8 @@ pub enum OverlayLifecycleGpuError {
     OverlayLocalEmlTable,
     #[error("global clock used for overlay deadline compare")]
     GlobalClock,
+    #[error("second crossing detector is forbidden; expiry uses the existing Phase-5 surface")]
+    SecondCrossingDetector,
 }
 
 pub fn refuse_overlay_local_eml_table() -> OverlayLifecycleGpuError {
@@ -105,6 +107,10 @@ pub fn refuse_foreign_absolute_deadline() -> OverlayLifecycleGpuError {
 
 pub fn refuse_global_clock() -> OverlayLifecycleGpuError {
     OverlayLifecycleGpuError::GlobalClock
+}
+
+pub fn refuse_second_crossing_detector() -> OverlayLifecycleGpuError {
+    OverlayLifecycleGpuError::SecondCrossingDetector
 }
 
 /// Numerical twin of the overlay-lifecycle WGSL. Production GPU and this

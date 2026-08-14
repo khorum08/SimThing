@@ -31,9 +31,12 @@ Routed durations rebase at destination generation. Physical slots exist only in 
 | Durable-row capture | `DurableRowCapture` |
 | Foreign absolute deadline | dest rebase ≠ origin+duration |
 | Global clock | `GlobalClock` |
+| Second crossing detector | `SecondCrossingDetector` — expiry stays on the existing Phase-5 / OverlayDissolved surface |
 | Deadline overflow | fail-closed, no wrap |
 
 Pre-extraction OverlayDissolved recording `{host, overlay}` replays post-extraction. Carry = `instances * 32` bytes measured before any compaction.
+
+7.6 census: clean-tree `--harvest` universe unchanged (71 routes; pin not hand-edited). `--check` required four `# RESIDUE` justifications for overlay-named 7.7 helpers that are not harvested route names: `admit_overlay_lifecycle`, `resolve_overlay_lifecycle_oracle`, `bind_tree_overlays`, `refuse_overlay_local_eml_table`. Residue 49→53. No new harvested token.
 
 ## Fences
 

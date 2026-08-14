@@ -11,8 +11,8 @@ use simthing_gpu::SlotAllocator;
 use simthing_sim::overlay_lifecycle_gpu::{
     apply_structural_dissolves, bind_tree_overlays, decide_dissolves, evaluate_instance,
     refuse_durable_row_capture, refuse_foreign_absolute_deadline, refuse_global_clock,
-    refuse_overlay_local_eml_table, OverlayLifecycleGpuError, OverlayLifecycleInstanceGpu,
-    OverlayLifecycleSession, OVERLAY_LIFECYCLE_ROW_BYTES,
+    refuse_overlay_local_eml_table, refuse_second_crossing_detector, OverlayLifecycleGpuError,
+    OverlayLifecycleInstanceGpu, OverlayLifecycleSession, OVERLAY_LIFECYCLE_ROW_BYTES,
 };
 use simthing_sim::overlay_lifecycle::resolve_overlay_lifecycle_oracle;
 
@@ -127,6 +127,10 @@ fn planted_mutants_red_for_intended_reasons() {
         OverlayLifecycleGpuError::ForeignAbsoluteDeadline
     );
     assert_eq!(refuse_global_clock(), OverlayLifecycleGpuError::GlobalClock);
+    assert_eq!(
+        refuse_second_crossing_detector(),
+        OverlayLifecycleGpuError::SecondCrossingDetector
+    );
     let routed = RoutedDuration {
         duration: 4,
         provenance: GenerationStamp::new(1),

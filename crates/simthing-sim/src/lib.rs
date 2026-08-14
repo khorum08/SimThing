@@ -12,11 +12,10 @@
 //!   `ThresholdBuilder` that derives both GPU `ThresholdRegistration` structs
 //!   and the parallel CPU semantics vec from the live SimThing tree.
 //!
-//! - `overlay_lifecycle` — steps 4 + 7. Checks dissolution conditions
-//!   (PropertyReaches, PropertyBelow, AfterTicks, OverrideReceived) against
-//!   current GPU values + day counter; culls dissolved overlays and decrements
-//!   AfterTicks counters. Applies `on_expire` `ExpireEffect`s to the CPU
-//!   shadow. Routes new instruction overlays from `BoundaryRequest::AttachOverlay`.
+//! - `overlay_lifecycle` — CPU oracle for step 4. Compares AfterTicks
+//!   deadlines (never decrements). Production dissolve is
+//!   `overlay_lifecycle_gpu`. Applies `on_expire` `ExpireEffect`s in the
+//!   oracle path. Routes new instruction overlays from `BoundaryRequest::AttachOverlay`.
 //!
 //! - `property_expiry` — step 5. Consumes `ThresholdEvent`s whose `event_kind`
 //!   maps to `ThresholdSemantic::PropertyExpiry`. Removes the property from the

@@ -13,10 +13,9 @@
 //! - `PropertyReaches { property, sub_field, value }` — true when the
 //!   SimThing's property sub-field is ≥ the target value (for Rising direction).
 //! - `PropertyBelow { property, sub_field, value }` — true when < value.
-//! - `AfterTicks { remaining }` — true when remaining reaches 0. The
-//!   lifecycle manager decrements `remaining` by 1 each boundary.
-//! - `OverrideReceived` — true when a new instruction overlay replaces this
-//!   one. Checked by the `AttachOverlay` handler in step 7.
+//! - `AfterTicks { remaining }` — authored duration. Production compares
+//!   `deadline_generation = g_activation + duration` and never decrements.
+//! - `OverrideReceived` — rejected at admission; not a dissolve arm.
 //! - `Never` — always false; the overlay persists until explicitly removed.
 //!
 //! When an overlay dissolves, its `on_expire` `ExpireEffect`s are applied
@@ -52,7 +51,7 @@ pub struct LifecycleOutcome {
 }
 
 /// Walk the tree and:
-/// 1. Decrement AfterTicks counters on all transient overlays.
+/// 1. Compare AfterTicks deadlines (never decrement remaining).
 /// 2. Remove overlays whose dissolution conditions are all met.
 /// 3. Apply `on_expire` effects from dissolved overlays to the CPU shadow.
 ///

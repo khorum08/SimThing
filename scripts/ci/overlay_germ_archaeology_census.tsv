@@ -4,7 +4,7 @@
 # classification: SEMANTIC-DUPLICATE→migrate / GENUINELY-STRUCTURAL→keep / DEAD→delete
 # universe is tree-derived (scripts/ci/overlay_germ_archaeology_census_universe.txt); do not hand-edit that pin.
 # Justified non-route overlay-named hits are `# RESIDUE` comments below (not a sixth artifact).
-# RECONCILIATION: discovery=71 classified-universe=71 analysis=3 residue=49 unclassified=0
+# RECONCILIATION: discovery=71 classified-universe=71 analysis=3 residue=53 unclassified=0
 OVL-STORE	core:simthing.rs:add_overlay	attach	core	OVERLAY	GENUINELY-STRUCTURAL	keep	The one overlay store. Anchor §4.1 semantic home; every live attach terminates here except replay restore.
 OVL-RECEIVE	core:automaton.rs:deliver_routed_overlay	attach	core	OVERLAY	GENUINELY-STRUCTURAL	keep	The one receive/route primitive. Anchor §4.2; origin/target validated; terminates at add_overlay. Germ receive door.
 OVL-DEFICIT-ALIAS	core:automaton.rs:deliver_deficit_directive	attach	core	OVERLAY	SEMANTIC-DUPLICATE	migrate	Thin alias of deliver_routed_overlay. Collapse onto the one receive door.
@@ -129,3 +129,7 @@ AN-OVERRIDE	[analysis]sim:overlay_lifecycle.rs:OverrideReceived	override	sim	OVE
 # RESIDUE	spec:spec/overlay.rs:default_overlay_install	serde	Serde default for OverlaySpec.install. Authoring default, not a route.
 # RESIDUE	spec:validate_order_weight.rs:validate_order_weight_overlay	admission	Order-weight validation of an OverlaySpec. Admission, classified mint is build_order_directive_overlay.
 # RESIDUE	spec:validate_order_weight.rs:validate_runtime_player_overlay_magnitude	admission	Runtime magnitude gate helper used by gate_raw_player_overlay.
+# RESIDUE	core:overlay_lifecycle_deadline.rs:admit_overlay_lifecycle	admission	7.7 OverrideReceived admission reject (and dissolve-condition admit). Not a harvested attach/dissolve route; harvested doors remain admit_dispatch_minted_overlay + resolve_overlay_lifecycle.
+# RESIDUE	sim:overlay_lifecycle.rs:resolve_overlay_lifecycle_oracle	oracle	Named CPU oracle twin of resolve_overlay_lifecycle. Same dissolve walk with a shared deadline map; production uses GPU bind/decide. Not a second dissolve authority.
+# RESIDUE	sim:overlay_lifecycle_gpu.rs:bind_tree_overlays	gpu-plumbing	Session/epoch bind of logical overlay ids onto upload rows. Production numerical compare is decide_dissolves; harvested dissolve door remains resolve_overlay_lifecycle.
+# RESIDUE	sim:overlay_lifecycle_gpu.rs:refuse_overlay_local_eml_table	test-hook	Planted 7.7 overlay-local-EML mutant refuse. Not a lifetime route.
