@@ -1314,6 +1314,7 @@ impl ActionBandGpuSession {
         })
     }
 
+    /// Returns the pre-existing dispatch/emission sequence, which advances on every dispatch (including no-swap fast paths); resident-plane swap generation is owned by `FacilityPlaneGenerationBoundary`.
     pub fn generation(&self) -> u32 {
         self.generation
     }

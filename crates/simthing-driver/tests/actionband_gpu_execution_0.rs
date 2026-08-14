@@ -947,9 +947,8 @@ fn inactive_rows_allocate_zero_hot_storage_and_dense_mutant_is_red() {
 }
 
 fn prove_owning_generation_and_facility_plane_authority_use_the_graduated_gpu_path() {
-    let Some(ctx) = GpuContext::new_blocking().ok() else {
-        return;
-    };
+    let ctx =
+        GpuContext::new_blocking().expect("7.6a requires a real GPU adapter; skips forbidden");
 
     // Owning generation occupies the existing final AccumulatorTickParams
     // word and runs through the sole Phase-5 comparator and emission buffers.
