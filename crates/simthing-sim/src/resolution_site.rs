@@ -37,8 +37,8 @@
 //! barrier in BOTH placements.
 
 use simthing_core::{
-    DimensionRegistry, Overlay, OverlayId, OverlayKind, OverlayLifecycle, OverlaySource,
-    PropertyTransformDelta, SimPropertyId, SimThingId, SlotIndex, SubFieldRole,
+    DimensionRegistry, GenerationStamp, Overlay, OverlayId, OverlayKind, OverlayLifecycle,
+    OverlaySource, PropertyTransformDelta, SimPropertyId, SimThingId, SlotIndex, SubFieldRole,
 };
 use simthing_feeder::BoundaryRequest;
 use simthing_gpu::{SlotAllocator, ThresholdEvent};
@@ -106,12 +106,12 @@ fn reattach_crossing_identity(
     registry: &DimensionRegistry,
     allocator: &SlotAllocator,
 ) -> Result<(SimThingId, SimPropertyId, SubFieldRole), SlotIdentityReattachError> {
-    let sim_thing_id = allocator
-        .owner_of(SlotIndex::new(event.slot()))
-        .ok_or(SlotIdentityReattachError::UnadmittedSlot {
+    let sim_thing_id = allocator.owner_of(SlotIndex::new(event.slot())).ok_or(
+        SlotIdentityReattachError::UnadmittedSlot {
             slot: event.slot(),
             event_kind: event.event_kind(),
-        })?;
+        },
+    )?;
     let (property_id, offset) = *registry.column_owners.get(event.col() as usize).ok_or(
         SlotIdentityReattachError::UnownedColumn {
             col: event.col(),
@@ -287,6 +287,7 @@ pub struct SlotSpaceOverlayDraft {
 pub fn mint_attach_overlay_at_barrier(
     draft: &SlotSpaceOverlayDraft,
     allocator: &SlotAllocator,
+    source_generation: GenerationStamp,
 ) -> Result<BoundaryRequest, SlotIdentityReattachError> {
     let origin = allocator.owner_of(draft.origin_slot).ok_or(
         SlotIdentityReattachError::UnadmittedOriginSlot {
@@ -302,6 +303,7 @@ pub fn mint_attach_overlay_at_barrier(
     )?;
     Ok(BoundaryRequest::AttachOverlay {
         target,
+        source_generation,
         overlay: Overlay {
             id: draft.id,
             kind: draft.kind.clone(),

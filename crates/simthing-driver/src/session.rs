@@ -214,8 +214,7 @@ pub struct SimSession {
     /// hot-cycle + boundary path — never a second kernel or semantic fork.
     execution_posture: simthing_core::ExecutionPosture,
     resolved_order_directives: Mutex<crate::order_directive::OrderDirectiveGateState>,
-    order_directive_injection_log:
-        Mutex<Vec<crate::order_directive::OrderDirectiveInjection>>,
+    order_directive_injection_log: Mutex<Vec<crate::order_directive::OrderDirectiveInjection>>,
 }
 
 /// CT-3b+4a Line 3: everything the session loop needs to run the admitted
@@ -390,8 +389,9 @@ impl SimSession {
             mapping: None,
             mapping_commitments: Vec::new(),
             execution_posture: simthing_core::ExecutionPosture::Paced,
-            resolved_order_directives:
-                Mutex::new(crate::order_directive::OrderDirectiveGateState::default()),
+            resolved_order_directives: Mutex::new(
+                crate::order_directive::OrderDirectiveGateState::default(),
+            ),
             order_directive_injection_log: Mutex::new(Vec::new()),
         })
     }
@@ -828,6 +828,9 @@ impl SimSession {
             .submit_boundary(simthing_feeder::BoundaryRequest::AttachOverlay {
                 target: effect.target,
                 overlay,
+                source_generation: simthing_core::GenerationStamp::new(
+                    self.coord.day_index() as u32
+                ),
             })
             .map_err(|e| SessionError::Mapping(format!("{e:?}")))?;
         summary.mapping_commitment_effects_applied += 1;
@@ -1064,8 +1067,7 @@ impl SimSession {
                         entries: Vec::new(),
                         shadow_values: None,
                         spec_entries: Vec::new(),
-                        injection_entries: self
-                            .take_order_directive_injections_through(day)?,
+                        injection_entries: self.take_order_directive_injections_through(day)?,
                     };
                     writer.write_frame(&frame)?;
                     summary.frames_written += 1;
@@ -1116,8 +1118,7 @@ impl SimSession {
                     entries: self.proto.take_delta_log(),
                     shadow_values: Some(self.coord.shadow.clone()),
                     spec_entries,
-                    injection_entries: self
-                        .take_order_directive_injections_through(day)?,
+                    injection_entries: self.take_order_directive_injections_through(day)?,
                 };
                 writer.write_frame(&frame)?;
                 summary.frames_written += 1;

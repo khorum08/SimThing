@@ -21,7 +21,8 @@
 //! side lives on the feeder thread and is consumed by `TransformPatcher::drain`.
 
 use simthing_core::{
-    Overlay, OverlayId, PropertyTransformDelta, SimPropertyId, SimThing, SimThingId,
+    GenerationStamp, Overlay, OverlayId, PropertyTransformDelta, SimPropertyId, SimThing,
+    SimThingId,
 };
 use std::sync::mpsc::{channel, Receiver, Sender};
 
@@ -155,6 +156,10 @@ pub enum BoundaryRequest {
     AttachOverlay {
         target: SimThingId,
         overlay: Overlay,
+        /// Generation of the originating tree when the routed duration was
+        /// authored. The destination rebases relative durations against its
+        /// own generation; this stamp is provenance, never a deadline.
+        source_generation: GenerationStamp,
     },
     /// Activate a suspended overlay at the boundary. No-op if the overlay is
     /// missing or already active.
@@ -268,5 +273,4 @@ mod tests {
     use simthing_core::{
         PropertyTransformDelta, SimPropertyId, SimThing, SimThingKind, SubFieldRole, TransformOp,
     };
-
 }

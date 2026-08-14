@@ -3,6 +3,7 @@ use simthing_core::{
     OverlayLifecycle, OverlaySource, PropertyTransformDelta, SimProperty, SimThing, SimThingKind,
     SubFieldRole, TransformOp,
 };
+use simthing_feeder::BoundaryRequest;
 use simthing_gpu::{
     AccumulatorOpSession, GpuContext, PackedThresholdUpload, SlotAllocator, WorldGpuState,
 };
@@ -10,8 +11,8 @@ use simthing_sim::overlay_lifecycle::{
     append_overlay_lifecycle_registrations, apply_gpu_overlay_lifecycle, resolve_overlay_lifecycle,
     OverlayLifecycleAdmissionState,
 };
-use simthing_sim::ThresholdRegistry;
-use simthing_sim::{ReplayDriver, ReplayReader};
+use simthing_sim::tree_mutation::apply_structural_mutations;
+use simthing_sim::{ReplayDriver, ReplayReader, SimRuntimeTree, ThresholdRegistry};
 use std::collections::HashMap;
 use std::io::{BufReader, Cursor};
 
@@ -134,4 +135,106 @@ fn gpu_production_decision_is_bit_identical_to_retained_cpu_oracle() {
     replay.apply_frame(reader.next_frame().unwrap().unwrap());
     assert!(!replay.root.has_overlay(recorded_target, recorded_overlay));
     assert!(reader.next_frame().unwrap().is_none());
+
+    // Production attach-door falsifiers: the request transports source
+    // provenance, while the destination boundary owns deadline establishment.
+    // Forced skew must yield destination 7 + duration 4 = deadline 11, never
+    // the foreign absolute 904. Overflow and OverrideReceived reject before
+    // the overlay reaches the authoritative tree.
+    let mut routed_root = SimThing::new(SimThingKind::World, 0);
+    routed_root.add_property(property, registry.property(property).default_value());
+    let routed_target = routed_root.id;
+    let mut routed_allocator = SlotAllocator::new();
+    routed_allocator.populate_from_tree(&routed_root);
+    let mut routed_runtime = SimRuntimeTree::admit(routed_root);
+    let mut routed_shadow = vec![0.0; n_dims as usize];
+    let mut routed_admission = OverlayLifecycleAdmissionState::default();
+    let routed_id = OverlayId::new();
+    let routed_overlay = Overlay {
+        id: routed_id,
+        kind: OverlayKind::Transient,
+        source: OverlaySource::System,
+        origin: routed_target,
+        affects: Vec::new(),
+        transform: PropertyTransformDelta {
+            property_id: property,
+            sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::add(0.0))],
+        },
+        lifecycle: OverlayLifecycle::Transient {
+            dissolution_conditions: vec![DissolveCondition::AfterTicks { remaining: 4 }],
+        },
+    };
+    let accepted = apply_structural_mutations(
+        vec![BoundaryRequest::AttachOverlay {
+            target: routed_target,
+            overlay: routed_overlay.clone(),
+            source_generation: GenerationStamp::new(900),
+        }],
+        &mut routed_runtime,
+        &mut routed_allocator,
+        &mut registry,
+        &mut routed_shadow,
+        n_dims as usize,
+        None,
+        GenerationStamp::new(7),
+        &mut routed_admission,
+    );
+    assert_eq!(accepted.overlays_attached, vec![(routed_target, routed_id)]);
+    assert_eq!(
+        routed_admission.routed_provenance(routed_target, routed_id),
+        Some(GenerationStamp::new(900))
+    );
+    assert_eq!(
+        routed_admission.activation_generation(routed_target, routed_id),
+        Some(GenerationStamp::new(7)),
+        "source generation 900 must remain provenance; destination generation 7 owns the deadline"
+    );
+
+    let overflow_id = OverlayId::new();
+    let mut overflow_overlay = routed_overlay.clone();
+    overflow_overlay.id = overflow_id;
+    overflow_overlay.lifecycle = OverlayLifecycle::Transient {
+        dissolution_conditions: vec![DissolveCondition::AfterTicks { remaining: 1 }],
+    };
+    let overflow = apply_structural_mutations(
+        vec![BoundaryRequest::AttachOverlay {
+            target: routed_target,
+            overlay: overflow_overlay,
+            source_generation: GenerationStamp::new(3),
+        }],
+        &mut routed_runtime,
+        &mut routed_allocator,
+        &mut registry,
+        &mut routed_shadow,
+        n_dims as usize,
+        None,
+        GenerationStamp::new(u32::MAX),
+        &mut routed_admission,
+    );
+    assert_eq!(overflow.rejected_overlay_lifecycle, 1);
+    assert!(!routed_runtime.has_overlay(routed_target, overflow_id));
+
+    let override_id = OverlayId::new();
+    let mut override_overlay = routed_overlay;
+    override_overlay.id = override_id;
+    override_overlay.lifecycle = OverlayLifecycle::Transient {
+        dissolution_conditions: vec![DissolveCondition::OverrideReceived],
+    };
+    let override_rejected = apply_structural_mutations(
+        vec![BoundaryRequest::AttachOverlay {
+            target: routed_target,
+            overlay: override_overlay,
+            source_generation: GenerationStamp::new(7),
+        }],
+        &mut routed_runtime,
+        &mut routed_allocator,
+        &mut registry,
+        &mut routed_shadow,
+        n_dims as usize,
+        None,
+        GenerationStamp::new(7),
+        &mut routed_admission,
+    );
+    assert_eq!(override_rejected.rejected_overlay_lifecycle, 1);
+    assert!(!routed_runtime.has_overlay(routed_target, override_id));
 }

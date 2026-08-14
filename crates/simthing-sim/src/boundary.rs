@@ -41,7 +41,7 @@
 
 use simthing_core::{
     mint_anchor_table_from_admission, prepare_fission_clone_sources_for_registry, DecayBehavior,
-    DimensionRegistry, OverlayLifecycle, SimPropertyId, SimThing, SimThingId,
+    DimensionRegistry, GenerationStamp, OverlayLifecycle, SimPropertyId, SimThing, SimThingId,
 };
 use simthing_feeder::{
     BoundaryRequest, CapabilityUnlockRegistration, DispatchCoordinator, MaintainerOutcome,
@@ -54,17 +54,13 @@ use simthing_gpu::{
     ThresholdRegistration, TopologyState, WorldGpuState, DEFAULT_THRESHOLD_EMISSION_CAPACITY,
 };
 
-use crate::delta_log::{entries_from_outcome, BoundaryDeltaEntry};
-use crate::fission::{resolve_fission_fusion, FissionLineageRecord, FissionOutcome};
-use crate::fission_clone_source_view::fission_clone_source_children;
 use crate::anchor_remap_encode::{
     build_exact_anchor_remap_section, gate_structural_gpu_encode_exact, snapshot_anchored_loci,
 };
+use crate::delta_log::{entries_from_outcome, BoundaryDeltaEntry};
+use crate::fission::{resolve_fission_fusion, FissionLineageRecord, FissionOutcome};
+use crate::fission_clone_source_view::fission_clone_source_children;
 use crate::gpu_sync::{sync_gpu_buffers, GpuSyncOutcome};
-use simthing_core::AnchorRemapSection;
-use simthing_gpu::{
-    apply_band_crossing_deltas_from_threshold_events, BandCrossingDelta,
-};
 use crate::observability::{observe, ObservabilityReport, ObserveFidelity};
 use crate::overlay_lifecycle::{
     apply_gpu_overlay_lifecycle, LifecycleOutcome, OverlayLifecycleAdmissionState,
@@ -83,6 +79,8 @@ use crate::threshold_registry::{
 };
 use crate::tree_index::{build_node_paths, node_at_path};
 use crate::tree_mutation::apply_structural_mutations;
+use simthing_core::AnchorRemapSection;
+use simthing_gpu::{apply_band_crossing_deltas_from_threshold_events, BandCrossingDelta};
 use std::collections::HashSet;
 use std::time::Instant;
 
@@ -532,8 +530,7 @@ impl BoundaryProtocol {
         // BAND-QUANTIZED-DRAW-0: ordinary production CostBand path — every sealed
         // crossing resolves through the event_kind semantic table (observation
         // default N=0; admitted sinks quantize with authored throttle).
-        out.cost_band_draws =
-            self.resolve_production_cost_band_draws(&out.band_crossing_deltas);
+        out.cost_band_draws = self.resolve_production_cost_band_draws(&out.band_crossing_deltas);
         // Dynamic band/value/urgency/generation live on the GPU table (fused
         // threshold companion). BandCrossingDelta remains wire/replay evidence only.
         // Generation for *this* day's crossings was supplied before the fused
@@ -739,6 +736,7 @@ impl BoundaryProtocol {
             requests.push(BoundaryRequest::AttachOverlay {
                 target: pi.target,
                 overlay: pi.overlay,
+                source_generation: GenerationStamp::new(day as u32),
             });
         }
 
@@ -748,6 +746,7 @@ impl BoundaryProtocol {
             requests.push(BoundaryRequest::AttachOverlay {
                 target: ai.target,
                 overlay: ai.overlay,
+                source_generation: GenerationStamp::new(day as u32),
             });
         }
         out.boundary_requests = requests.len() as u32;
@@ -791,6 +790,8 @@ impl BoundaryProtocol {
             &mut coord.shadow,
             n_dims,
             Some(&structural_paths),
+            GenerationStamp::new(day as u32),
+            &mut self.overlay_lifecycle_admission,
         );
         for &id in &out.maintainer.allocated {
             push_slot_for_id(&self.allocator, id, &mut dirty_value_slots);
@@ -1400,8 +1401,13 @@ impl BoundaryProtocol {
         n_dims: usize,
         loci: &simthing_core::AnchoredLocusMap,
     ) {
-        let table =
-            mint_anchor_table_from_admission(self.root.inner(), &self.registry, loci, values, n_dims);
+        let table = mint_anchor_table_from_admission(
+            self.root.inner(),
+            &self.registry,
+            loci,
+            values,
+            n_dims,
+        );
         state.upload_typed_anchor_table(&table);
         state.run_anchor_table_magnitude_maintain();
     }

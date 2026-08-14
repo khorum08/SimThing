@@ -104,6 +104,32 @@ fn real_phase5_crossings_project_conjunctive_lifecycle_state() {
     assert_eq!(mutant_rows[0].satisfied_mask, 0b01);
     assert_eq!(mutant_rows[0].dissolved, 0);
 
+    // Biting threshold-bypass mutant: replace the real resident property
+    // observation with the owning-generation source and an unreachable
+    // threshold. The real Phase-5 dispatch must leave the property bit clear.
+    let mut bypass_registrations = registrations;
+    bypass_registrations[0].buffer = THRESH_BUF_OWNING_GENERATION;
+    bypass_registrations[0].threshold = 99.0;
+    let mut bypass = AccumulatorOpSession::new_attached(&state.ctx, 1, state.n_dims, 4);
+    bypass
+        .upload_packed_threshold_ops(
+            &state.ctx,
+            &PackedThresholdUpload::from_registrations(&bypass_registrations).unwrap(),
+        )
+        .unwrap();
+    bypass.bind_generation_authority(5);
+    bypass
+        .configure_overlay_lifecycle_projection(&state.ctx, &plan)
+        .unwrap();
+    state
+        .dispatch_accumulator_threshold_scan(&mut bypass)
+        .unwrap();
+    let bypass_rows = bypass
+        .readback_overlay_lifecycle_states(&state.ctx)
+        .unwrap();
+    assert_eq!(bypass_rows[0].satisfied_mask, 0b10);
+    assert_eq!(bypass_rows[0].dissolved, 0);
+
     // The real session admission door freezes capacity: a mid-session semantic
     // mint cannot silently grow the resident facility.
     let mut grown = plan.clone();

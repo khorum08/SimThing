@@ -63,11 +63,12 @@
 //! - Records the property id so the boundary protocol can widen the CPU
 //!   shadow and rebuild `WorldGpuState` before step 9 sync.
 
+use crate::overlay_lifecycle::OverlayLifecycleAdmissionState;
 use crate::sim_runtime_tree::SimRuntimeTree;
 use crate::tree_index::{detach_at_path, node_at_path, node_at_path_mut};
 use simthing_core::{
-    prepare_fission_clone_sources_subtree, DimensionRegistry, ObjectResidencyRequest, OverlayId,
-    OverlayLifecycle, SimThing, SimThingId,
+    prepare_fission_clone_sources_subtree, DimensionRegistry, GenerationStamp,
+    ObjectResidencyRequest, OverlayId, OverlayLifecycle, SimThing, SimThingId,
 };
 use simthing_feeder::{BoundaryRequest, FeederError, FeederSender, MaintainerOutcome};
 use simthing_gpu::SlotAllocator;
@@ -154,6 +155,8 @@ pub fn apply_structural_mutations(
     values_shadow: &mut [f32],
     n_dims: usize,
     node_paths: Option<&HashMap<SimThingId, Vec<usize>>>,
+    destination_generation: GenerationStamp,
+    lifecycle_admission: &mut OverlayLifecycleAdmissionState,
 ) -> MaintainerOutcome {
     let mut out = MaintainerOutcome::default();
     let root = root.inner_mut();
@@ -187,8 +190,25 @@ pub fn apply_structural_mutations(
             BoundaryRequest::Reparent { child, new_parent } => {
                 apply_reparent(root, allocator, child, new_parent, node_paths, &mut out);
             }
-            BoundaryRequest::AttachOverlay { target, overlay } => {
+            BoundaryRequest::AttachOverlay {
+                target,
+                overlay,
+                source_generation,
+            } => {
                 let oid = overlay.id;
+                if lifecycle_admission
+                    .admit_routed_overlay(
+                        target,
+                        oid,
+                        &overlay.lifecycle,
+                        source_generation,
+                        destination_generation,
+                    )
+                    .is_err()
+                {
+                    out.rejected_overlay_lifecycle += 1;
+                    continue;
+                }
                 match simthing_core::deliver_routed_overlay(root, target, overlay) {
                     Ok(_) => {
                         out.overlays += 1;
@@ -639,6 +659,7 @@ mod tests {
         let mut runtime = SimRuntimeTree::admit(root);
         let n_dims = registry.total_columns;
         let mut shadow = vec![0.0; 16 * n_dims];
+        let mut lifecycle_admission = OverlayLifecycleAdmissionState::default();
 
         let child = SimThing::new(SimThingKind::Cohort, 1);
         let child_id = child.id;
@@ -653,6 +674,8 @@ mod tests {
             &mut shadow,
             n_dims,
             None,
+            GenerationStamp::new(0),
+            &mut lifecycle_admission,
         );
         assert_eq!(added.allocated, vec![child_id]);
         let stable_slot = allocator.slot_of(child_id).unwrap();
@@ -672,6 +695,8 @@ mod tests {
             &mut shadow,
             n_dims,
             None,
+            GenerationStamp::new(0),
+            &mut lifecycle_admission,
         );
         assert_eq!(reparented.reparented, vec![(child_id, parent_b_id)]);
         assert_eq!(allocator.slot_of(child_id), Some(stable_slot));
@@ -688,6 +713,8 @@ mod tests {
             &mut shadow,
             n_dims,
             None,
+            GenerationStamp::new(0),
+            &mut lifecycle_admission,
         );
         assert_eq!(removed.tombstoned, vec![child_id]);
         assert!(allocator.slot_of(child_id).is_none());

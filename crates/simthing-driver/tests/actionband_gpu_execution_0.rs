@@ -459,6 +459,8 @@ fn sparse_gpu_state_ping_pongs_and_matches_exact_eml_oracle() {
         &mut structural_shadow,
         structural_dims,
         None,
+        simthing_core::GenerationStamp::new(0),
+        &mut simthing_sim::overlay_lifecycle::OverlayLifecycleAdmissionState::default(),
     );
     assert_eq!(outcome.tombstoned, [target]);
     assert_eq!(runtime.subtree_size(), 1);

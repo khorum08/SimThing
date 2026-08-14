@@ -38,8 +38,9 @@
 //! N+1. `gpu_sync` then calls `build_overlay_deltas` to reflect those lists.
 
 use simthing_core::{
-    admit_overlay_lifecycle, establish_overlay_deadline, DimensionRegistry, DissolveCondition,
-    GenerationStamp, OverlayId, OverlayLifecycle, SimThing, SimThingId, SubFieldRole,
+    admit_overlay_lifecycle, establish_overlay_deadline, rebase_routed_overlay_duration,
+    DimensionRegistry, DissolveCondition, GenerationStamp, OverlayId, OverlayLifecycle,
+    OverlayLifecycleAdmitError, RoutedGenerationDuration, SimThing, SimThingId, SubFieldRole,
 };
 use simthing_gpu::{
     OverlayLifecycleProjectionBinding, OverlayLifecycleProjectionPlan, OverlayLifecycleStateGpu,
@@ -71,10 +72,71 @@ pub struct OverlayLifecycleTarget {
 #[derive(Clone, Debug, Default)]
 pub struct OverlayLifecycleAdmissionState {
     activation_generations: HashMap<(SimThingId, OverlayId), GenerationStamp>,
+    routed_provenance: HashMap<(SimThingId, OverlayId), GenerationStamp>,
     satisfied_masks: HashMap<(SimThingId, OverlayId), u32>,
 }
 
 impl OverlayLifecycleAdmissionState {
+    pub(crate) fn admit_routed_overlay(
+        &mut self,
+        target: SimThingId,
+        overlay_id: OverlayId,
+        lifecycle: &OverlayLifecycle,
+        source_generation: GenerationStamp,
+        destination_generation: GenerationStamp,
+    ) -> Result<(), OverlayLifecycleAdmitError> {
+        admit_overlay_lifecycle(lifecycle)?;
+        let conditions = match lifecycle {
+            OverlayLifecycle::Transient {
+                dissolution_conditions,
+            }
+            | OverlayLifecycle::UntilDissolvedWith {
+                dissolution_conditions,
+            } => dissolution_conditions.as_slice(),
+            OverlayLifecycle::Suspended { when_activated } => {
+                return self.admit_routed_overlay(
+                    target,
+                    overlay_id,
+                    when_activated,
+                    source_generation,
+                    destination_generation,
+                );
+            }
+            OverlayLifecycle::UntilDissolved => &[],
+        };
+        for condition in conditions {
+            if let DissolveCondition::AfterTicks { remaining } = condition {
+                rebase_routed_overlay_duration(
+                    RoutedGenerationDuration::new(*remaining, source_generation),
+                    destination_generation,
+                )?;
+            }
+        }
+        let key = (target, overlay_id);
+        self.activation_generations
+            .insert(key, destination_generation);
+        self.routed_provenance.insert(key, source_generation);
+        Ok(())
+    }
+
+    pub fn routed_provenance(
+        &self,
+        target: SimThingId,
+        overlay_id: OverlayId,
+    ) -> Option<GenerationStamp> {
+        self.routed_provenance.get(&(target, overlay_id)).copied()
+    }
+
+    pub fn activation_generation(
+        &self,
+        target: SimThingId,
+        overlay_id: OverlayId,
+    ) -> Option<GenerationStamp> {
+        self.activation_generations
+            .get(&(target, overlay_id))
+            .copied()
+    }
+
     pub fn observe_gpu_rows(
         &mut self,
         targets: &[OverlayLifecycleTarget],

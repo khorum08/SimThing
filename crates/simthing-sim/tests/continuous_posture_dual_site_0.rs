@@ -63,7 +63,11 @@ fn locus(arena: &Arena, id: SimThingId, role: &SubFieldRole) -> (u32, u32) {
     (slot, col)
 }
 
-fn oracle_crossings(arena: &Arena, regs: &[ThresholdRegistration], salt: u32) -> Vec<ThresholdEvent> {
+fn oracle_crossings(
+    arena: &Arena,
+    regs: &[ThresholdRegistration],
+    salt: u32,
+) -> Vec<ThresholdEvent> {
     let n_dims = arena.registry.total_columns as u32;
     let n_slots = arena.allocator.capacity() as u32;
     let len = (n_slots * n_dims) as usize;
@@ -108,6 +112,7 @@ fn attach_draft(arena: &Arena, amount: f32) -> SlotSpaceOverlayDraft {
 fn vendorized_attach(arena: &Arena, d: &SlotSpaceOverlayDraft) -> BoundaryRequest {
     BoundaryRequest::AttachOverlay {
         target: arena.b_id,
+        source_generation: simthing_core::GenerationStamp::new(0),
         overlay: Overlay {
             id: d.id,
             kind: d.kind.clone(),
@@ -164,7 +169,12 @@ fn n_generation_forced_lag_dual_site_boundary_streams_bit_identical_and_mode_div
         // AttachOverlay stream parity under the same generation salt.
         let amount = 0.1 + gen as f32 * 0.01;
         let d = attach_draft(&arena, amount);
-        let cl_attach = mint_attach_overlay_at_barrier(&d, &arena.allocator).expect("mint");
+        let cl_attach = mint_attach_overlay_at_barrier(
+            &d,
+            &arena.allocator,
+            simthing_core::GenerationStamp::new(0),
+        )
+        .expect("mint");
         let cpu_attach = vendorized_attach(&arena, &d);
         assert_eq!(
             format!("{cl_attach:?}"),
