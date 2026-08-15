@@ -234,19 +234,39 @@ struct FrozenConsequences {
 
 #[derive(Debug, Default)]
 struct GenerationBoundCrossingDedupe {
-    generation: u32,
+    generation_offset: Option<u32>,
+    generation: Option<u32>,
     keys: HashSet<ActionBandCrossingConsumptionKey>,
 }
 
 impl GenerationBoundCrossingDedupe {
     fn admit(
         &mut self,
-        executable_generation: u32,
+        execution_generation: u32,
         keys: &[ActionBandCrossingConsumptionKey],
     ) -> Result<(), CrossingConsequenceDispatchError> {
         if keys.iter().any(|key| self.keys.contains(key)) {
             return Err(CrossingConsequenceDispatchError::DuplicateCrossingConsumption);
         }
+        let Some(generation_offset) = self.generation_offset.or_else(|| {
+            keys.first()
+                .and_then(|key| key.generation().checked_sub(execution_generation))
+        }) else {
+            if let Some(key) = keys.first() {
+                return Err(
+                    CrossingConsequenceDispatchError::CrossingGenerationMismatch {
+                        expected: execution_generation,
+                        actual: key.generation(),
+                    },
+                );
+            }
+            self.generation = None;
+            self.keys.clear();
+            return Ok(());
+        };
+        let executable_generation = generation_offset
+            .checked_add(execution_generation)
+            .ok_or(CrossingConsequenceDispatchError::GenerationWatermarkOverflow)?;
         if let Some(key) = keys
             .iter()
             .find(|key| key.generation() != executable_generation)
@@ -258,15 +278,16 @@ impl GenerationBoundCrossingDedupe {
                 },
             );
         }
-        if self.generation != executable_generation {
-            self.generation = executable_generation;
+        if self.generation != Some(executable_generation) {
+            self.generation_offset = Some(generation_offset);
+            self.generation = Some(executable_generation);
             self.keys.clear();
         }
         self.keys.extend(keys.iter().cloned());
         Ok(())
     }
 
-    fn proof_snapshot(&self) -> (u32, usize) {
+    fn proof_snapshot(&self) -> (Option<u32>, usize) {
         (self.generation, self.keys.len())
     }
 }
@@ -442,8 +463,7 @@ impl CrossingConsequenceDispatch<'_> {
                 .generation_dedupe
                 .lock()
                 .map_err(|_| CrossingConsequenceDispatchError::GenerationDedupePoisoned)?;
-            let executable_generation = self.execution.generation();
-            dedupe.admit(executable_generation, crossings.consumption_keys())?;
+            dedupe.admit(self.execution.generation(), crossings.consumption_keys())?;
         }
         let production = self
             .execution
@@ -457,7 +477,7 @@ impl CrossingConsequenceDispatch<'_> {
     /// are neither retained nor exposed.
     pub fn generation_dedupe_for_proof(
         &self,
-    ) -> Result<(u32, usize), CrossingConsequenceDispatchError> {
+    ) -> Result<(Option<u32>, usize), CrossingConsequenceDispatchError> {
         self.admitted
             .generation_dedupe
             .lock()
@@ -560,6 +580,8 @@ pub enum CrossingConsequenceDispatchError {
         "sealed ActionBand crossing generation {actual} is not executable generation {expected}"
     )]
     CrossingGenerationMismatch { expected: u32, actual: u32 },
+    #[error("ActionBand crossing generation watermark overflowed")]
+    GenerationWatermarkOverflow,
     #[error("ActionBand current-generation crossing dedupe is poisoned")]
     GenerationDedupePoisoned,
     #[error("ActionBand GPU consequence dispatch failed: {0}")]

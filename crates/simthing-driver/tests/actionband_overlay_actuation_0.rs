@@ -307,7 +307,10 @@ fn one_real_gpu_door_executes_all_three_consequence_arms() {
         ),
         Err(simthing_driver::CrossingConsequenceDispatchError::DuplicateCrossingConsumption)
     ));
-    assert_eq!(dispatch.generation_dedupe_for_proof().unwrap(), (0, 1));
+    assert_eq!(
+        dispatch.generation_dedupe_for_proof().unwrap(),
+        (Some(0), 1)
+    );
 
     let next_generation_crossings = resident_session
         .compiled()
@@ -322,7 +325,10 @@ fn one_real_gpu_door_executes_all_three_consequence_arms() {
             &tx,
         )
         .unwrap();
-    assert_eq!(dispatch.generation_dedupe_for_proof().unwrap(), (1, 0));
+    assert_eq!(
+        dispatch.generation_dedupe_for_proof().unwrap(),
+        (Some(1), 0)
+    );
     let stale_generation_crossings = resident_session
         .compiled()
         .execution_plan()
@@ -342,7 +348,10 @@ fn one_real_gpu_door_executes_all_three_consequence_arms() {
             }
         )
     ));
-    assert_eq!(dispatch.generation_dedupe_for_proof().unwrap(), (1, 0));
+    assert_eq!(
+        dispatch.generation_dedupe_for_proof().unwrap(),
+        (Some(1), 0)
+    );
 
     // RoutedOverlayDelivery: only authored duration + sealed source provenance
     // leave the new arm. Destination generation 7 establishes the activation
