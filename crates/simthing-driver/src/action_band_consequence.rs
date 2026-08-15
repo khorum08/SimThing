@@ -5,24 +5,27 @@
 //! existing boundary channel; there is no comparator, listener, or second
 //! dispatcher here.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
+use std::sync::{Arc, Mutex};
 
 use simthing_core::{
-    admit_overlay_lifecycle, GenerationStamp, Overlay, OverlayLifecycleAdmitError, SimPropertyId,
-    SimThingId, SubFieldRole,
+    admit_overlay_lifecycle, GenerationStamp, GenerationStamped, Overlay,
+    OverlayLifecycleAdmitError, SimPropertyId, SimThingId, SubFieldRole,
 };
+use serde::{Deserialize, Serialize};
 use simthing_feeder::{BoundaryRequest, FeederError, FeederSender};
 use simthing_gpu::{
-    ActionBandCrossingBatch, ActionBandEmissionBindingGpu, ActionBandEmissionDestination,
-    ActionBandGpuExecution, ActionBandGpuSession, ActionBandProductionDispatch, GpuContext,
+    ActionBandCrossingBatch, ActionBandCrossingConsumptionKey, ActionBandEmissionBindingGpu,
+    ActionBandEmissionDestination, ActionBandGpuExecution, ActionBandGpuSession,
+    ActionBandProductionDispatch, GpuContext,
 };
 use simthing_spec::FrozenActionBandTemplates;
 use thiserror::Error;
 
 use crate::action_band_execution_compile::{
     compile_action_band_gpu_execution_with_native_lanes, ActionBandActiveInstance,
-    ActionBandExecutionCompileError, ActionBandNativeLaneAdmission, ActionBandSessionOrigin,
-    CompiledActionBandGpuExecution,
+    ActionBandExecutionCompileError, ActionBandNativeLaneAdmission, ActionBandNativeLaneOrigin,
+    ActionBandSessionOrigin, CompiledActionBandGpuExecution,
 };
 
 /// The complete admitted post-crossing vocabulary. Adding a fourth arm is an
@@ -34,6 +37,29 @@ pub enum CrossingConsequenceBinding {
     StructuralAuthorization(StructuralAuthorization),
 }
 
+impl CrossingConsequenceBinding {
+    /// Shared boundary submission for ActionBand and legacy commitment crossings.
+    pub fn submit_boundary(
+        &self,
+        source_generation: GenerationStamp,
+        boundary: &FeederSender,
+    ) -> Result<(), CrossingConsequenceDispatchError> {
+        match self {
+            Self::ResidentNextWrite(_) => {
+                Err(CrossingConsequenceDispatchError::ResidentWriteReadback)
+            }
+            Self::RoutedOverlayDelivery(route) => {
+                route.submit(source_generation, boundary)?;
+                Ok(())
+            }
+            Self::StructuralAuthorization(authorization) => {
+                boundary.submit_boundary(authorization.request.clone())?;
+                Ok(())
+            }
+        }
+    }
+}
+
 /// A write to an already-admitted native Next lane.
 ///
 /// Logical property/role identity is retained with the physical column chosen
@@ -41,6 +67,7 @@ pub enum CrossingConsequenceBinding {
 #[derive(Clone, Debug)]
 pub struct ResidentNextWrite {
     gpu_binding: ActionBandEmissionBindingGpu,
+    native_lane_origin: ActionBandNativeLaneOrigin,
     property_id: SimPropertyId,
     role: SubFieldRole,
 }
@@ -86,6 +113,7 @@ impl ActionBandNativeLaneAdmission {
         Ok(CrossingConsequenceBinding::ResidentNextWrite(
             ResidentNextWrite {
                 gpu_binding: binding,
+                native_lane_origin: self.origin(),
                 property_id,
                 role,
             },
@@ -98,6 +126,15 @@ impl ActionBandNativeLaneAdmission {
 /// There is deliberately no absolute-deadline field.
 #[derive(Clone, Debug)]
 pub struct RoutedOverlayDelivery {
+    target: SimThingId,
+    overlay: Overlay,
+}
+
+/// Production carrier for a routed consequence crossing a tree seam.
+/// Absolute deadlines are not fields and unknown serialized fields are rejected.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RoutedOverlayProduct {
     target: SimThingId,
     overlay: Overlay,
 }
@@ -121,6 +158,38 @@ impl RoutedOverlayDelivery {
     pub fn overlay(&self) -> &Overlay {
         &self.overlay
     }
+
+    pub fn stamped_product(
+        &self,
+        source_generation: GenerationStamp,
+    ) -> GenerationStamped<RoutedOverlayProduct> {
+        GenerationStamped::stamp(
+            source_generation,
+            RoutedOverlayProduct {
+                target: self.target,
+                overlay: self.overlay.clone(),
+            },
+        )
+    }
+
+    pub fn submit(
+        &self,
+        source_generation: GenerationStamp,
+        boundary: &FeederSender,
+    ) -> Result<(), FeederError> {
+        submit_routed_overlay_product(self.stamped_product(source_generation), boundary)
+    }
+}
+
+pub fn submit_routed_overlay_product(
+    stamped: GenerationStamped<RoutedOverlayProduct>,
+    boundary: &FeederSender,
+) -> Result<(), FeederError> {
+    boundary.submit_boundary(BoundaryRequest::AttachOverlay {
+        target: stamped.product.target,
+        overlay: stamped.product.overlay,
+        source_generation: stamped.generation,
+    })
 }
 
 /// Authorization for an existing structural boundary verb. This type has no
@@ -169,6 +238,7 @@ struct FrozenConsequences {
 pub struct CrossingConsequenceSession {
     compiled: CompiledActionBandGpuExecution,
     frozen: FrozenConsequences,
+    consumed_crossings: Arc<Mutex<HashSet<ActionBandCrossingConsumptionKey>>>,
 }
 
 impl CrossingConsequenceSession {
@@ -230,6 +300,15 @@ pub fn compile_crossing_consequence_session(
             required,
             actual: consequence_rows.len(),
         });
+    }
+    if consequence_rows.iter().any(|row| {
+        matches!(
+            row,
+            CrossingConsequenceBinding::ResidentNextWrite(write)
+                if write.native_lane_origin != native_lanes.origin()
+        )
+    }) {
+        return Err(CrossingConsequenceAdmissionError::ForeignResidentLaneAdmission);
     }
 
     // Structural destination indices address the compact pre-admitted
@@ -294,6 +373,7 @@ pub fn compile_crossing_consequence_session(
             by_event_kind,
         },
         compiled,
+        consumed_crossings: Arc::new(Mutex::new(HashSet::new())),
     })
 }
 
@@ -317,6 +397,21 @@ impl CrossingConsequenceDispatch<'_> {
         crossings: ActionBandCrossingBatch,
         boundary: &FeederSender,
     ) -> Result<CrossingConsequenceDispatchOutcome, CrossingConsequenceDispatchError> {
+        {
+            let mut consumed = self
+                .admitted
+                .consumed_crossings
+                .lock()
+                .map_err(|_| CrossingConsequenceDispatchError::ConsumptionLedgerPoisoned)?;
+            if crossings
+                .consumption_keys()
+                .iter()
+                .any(|key| consumed.contains(key))
+            {
+                return Err(CrossingConsequenceDispatchError::DuplicateCrossingConsumption);
+            }
+            consumed.extend(crossings.consumption_keys().iter().cloned());
+        }
         let production = self
             .execution
             .dispatch_resident_next(ctx, n_dims, &crossings)
@@ -350,24 +445,18 @@ impl CrossingConsequenceDispatch<'_> {
                 .ok_or(CrossingConsequenceDispatchError::UnboundCommitment(
                     commitment.event_kind(),
                 ))?;
-            let request = match binding {
+            match binding {
                 CrossingConsequenceBinding::ResidentNextWrite(_) => {
                     return Err(CrossingConsequenceDispatchError::ResidentWriteReadback)
                 }
-                CrossingConsequenceBinding::RoutedOverlayDelivery(route) => {
+                CrossingConsequenceBinding::RoutedOverlayDelivery(_) => {
                     routed += 1;
-                    BoundaryRequest::AttachOverlay {
-                        target: route.target,
-                        overlay: route.overlay.clone(),
-                        source_generation,
-                    }
                 }
-                CrossingConsequenceBinding::StructuralAuthorization(authorization) => {
+                CrossingConsequenceBinding::StructuralAuthorization(_) => {
                     structural += 1;
-                    authorization.request.clone()
                 }
-            };
-            boundary.submit_boundary(request)?;
+            }
+            binding.submit_boundary(source_generation, boundary)?;
         }
         Ok(CrossingConsequenceDispatchOutcome {
             generation: source_generation,
@@ -397,6 +486,8 @@ pub enum CrossingConsequenceAdmissionError {
     },
     #[error("resident destination column {0} has no logical PropertyId/role identity")]
     MissingLogicalDestination(u32),
+    #[error("resident binding was admitted by a foreign native-lane facility")]
+    ForeignResidentLaneAdmission,
     #[error("boundary verb is outside the closed structural-authorization vocabulary")]
     NonStructuralBoundaryVerb,
     #[error("frozen ActionBand crossing provenance is invalid")]
@@ -417,6 +508,10 @@ pub enum CrossingConsequenceDispatchError {
     UnboundCommitment(u32),
     #[error("a resident Next write appeared on the boundary packet surface")]
     ResidentWriteReadback,
+    #[error("sealed ActionBand crossing was already consumed by this consequence session")]
+    DuplicateCrossingConsumption,
+    #[error("ActionBand crossing consumption ledger is poisoned")]
+    ConsumptionLedgerPoisoned,
     #[error("ActionBand GPU consequence dispatch failed: {0}")]
     Gpu(String),
     #[error(transparent)]

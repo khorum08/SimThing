@@ -5,10 +5,11 @@
 //! [`BandCrossingDelta`] rows at a tick boundary; it never compares thresholds,
 //! re-evaluates an ActionBand result, or chooses an emission destination.
 
+use std::collections::HashSet;
 use std::sync::mpsc;
 
 use bytemuck::{Pod, Zeroable};
-use simthing_core::EmlNodeGpu;
+use simthing_core::{ColumnIndex, EmlNodeGpu, SimPropertyId, SimThingId, SlotIndex, SubFieldRole};
 use thiserror::Error;
 use wgpu::util::DeviceExt;
 
@@ -17,7 +18,8 @@ use super::{
 };
 use crate::sealed::{ThresholdEmission, ThresholdEmissionGpu};
 use crate::{
-    debug_readback_allowed, BandCrossingDelta, BoundaryEmissionToken, DecisionIngressError,
+    debug_readback_allowed, BandCrossingDelta, BandCrossingDirection, BoundaryEmissionToken,
+    DecisionIngressError,
     EmissionToken, EmlTreeRangeGpu, GpuContext, StructuralCommitment, ThresholdCrossingToken,
 };
 
@@ -469,8 +471,27 @@ impl ActionBandExecutionPlan {
         let mut rows = Vec::with_capacity(joined.len());
         let mut output_count = 0u32;
         let mut commitment_inputs = Vec::new();
+        let mut consumption_keys = Vec::new();
+        let mut seen_consumption_keys = HashSet::new();
         let mut bucket_ranges = Vec::new();
         for (bucket_index, mut row, delta) in joined {
+            let consumption_key = ActionBandCrossingConsumptionKey {
+                plan_fingerprint: self.fingerprint,
+                generation: delta.generation(),
+                reg_idx: delta.reg_idx(),
+                sim_thing_id: delta.sim_thing_id(),
+                property_id: delta.property_id(),
+                role: delta.role().clone(),
+                slot: delta.slot(),
+                col: delta.col(),
+                threshold_bits: delta.threshold().to_bits(),
+                direction: delta.direction(),
+                post_value_bits: delta.post_value().to_bits(),
+                event_kind: delta.event_kind(),
+            };
+            if seen_consumption_keys.insert(consumption_key.clone()) {
+                consumption_keys.push(consumption_key);
+            }
             if bucket_ranges
                 .last()
                 .is_none_or(|range: &ActionBandBucketDispatch| range.bucket_index != bucket_index)
@@ -505,6 +526,7 @@ impl ActionBandExecutionPlan {
             rows,
             output_count,
             commitment_inputs,
+            consumption_keys,
             bucket_ranges,
             plan_fingerprint: self.fingerprint,
         })
@@ -517,8 +539,27 @@ pub struct ActionBandCrossingBatch {
     rows: Vec<ActionBandCrossingInputGpu>,
     output_count: u32,
     commitment_inputs: Vec<(u32, BandCrossingDelta)>,
+    consumption_keys: Vec<ActionBandCrossingConsumptionKey>,
     bucket_ranges: Vec<ActionBandBucketDispatch>,
     plan_fingerprint: u64,
+}
+
+/// Opaque semantic identity for one sealed Phase-5 crossing consumed by one
+/// frozen ActionBand plan. A later real crossing has a distinct generation.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct ActionBandCrossingConsumptionKey {
+    plan_fingerprint: u64,
+    generation: u32,
+    reg_idx: u32,
+    sim_thing_id: SimThingId,
+    property_id: SimPropertyId,
+    role: SubFieldRole,
+    slot: SlotIndex,
+    col: ColumnIndex,
+    threshold_bits: u32,
+    direction: BandCrossingDirection,
+    post_value_bits: u32,
+    event_kind: u32,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -539,6 +580,10 @@ impl ActionBandCrossingBatch {
 
     pub fn bucket_dispatch_count(&self) -> usize {
         self.bucket_ranges.len()
+    }
+
+    pub fn consumption_keys(&self) -> &[ActionBandCrossingConsumptionKey] {
+        &self.consumption_keys
     }
 }
 

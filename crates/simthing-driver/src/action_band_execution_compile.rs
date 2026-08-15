@@ -140,8 +140,9 @@ pub enum ActionBandExecutionCompileError {
 /// next-state lanes. It carries no values or lifecycle authority: RF columns
 /// come from compiled accumulator plans and CostBand columns from admitted sink
 /// registrations in the ordinary threshold registry.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct ActionBandNativeLaneAdmission {
+    origin: ActionBandNativeLaneOrigin,
     property_next_columns: BTreeSet<u32>,
     rf_claim_columns: BTreeSet<u32>,
     cost_band_columns: BTreeSet<u32>,
@@ -186,6 +187,7 @@ impl ActionBandNativeLaneAdmission {
             })
             .collect();
         Self {
+            origin: ActionBandNativeLaneOrigin::mint(),
             property_next_columns,
             rf_claim_columns,
             cost_band_columns,
@@ -209,6 +211,20 @@ impl ActionBandNativeLaneAdmission {
 
     pub(crate) fn logical_destination(&self, column: u32) -> Option<(SimPropertyId, SubFieldRole)> {
         self.logical_destinations.get(&column).cloned()
+    }
+
+    pub(crate) fn origin(&self) -> ActionBandNativeLaneOrigin {
+        self.origin
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct ActionBandNativeLaneOrigin(u64);
+
+impl ActionBandNativeLaneOrigin {
+    fn mint() -> Self {
+        static NEXT: AtomicU64 = AtomicU64::new(1);
+        Self(NEXT.fetch_add(1, Ordering::Relaxed))
     }
 }
 

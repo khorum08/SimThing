@@ -90,10 +90,11 @@ pub mod w_impedance_compose_bridge;
 
 pub use arena_allocation_oracle::{run_arena_allocation_oracle, ArenaAllocationOracleTrace};
 pub use action_band_consequence::{
-    compile_crossing_consequence_session, CrossingConsequenceAdmissionError,
+    compile_crossing_consequence_session, submit_routed_overlay_product,
+    CrossingConsequenceAdmissionError,
     CrossingConsequenceBinding, CrossingConsequenceDispatch, CrossingConsequenceDispatchError,
     CrossingConsequenceDispatchOutcome, CrossingConsequenceSession, ResidentNextWrite,
-    RoutedOverlayDelivery, StructuralAuthorization,
+    RoutedOverlayDelivery, RoutedOverlayProduct, StructuralAuthorization,
 };
 pub use action_band_execution_compile::{
     compile_action_band_gpu_execution, compile_action_band_gpu_execution_with_native_lanes,

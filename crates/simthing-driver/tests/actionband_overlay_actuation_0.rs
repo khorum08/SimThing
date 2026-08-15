@@ -2,26 +2,26 @@
 
 use std::sync::Mutex;
 
+use simthing_core::evaluate::Evaluator;
 use simthing_core::{
-    eml_opcode, ColumnIndex, DimensionRegistry, DissolveCondition, EmitOnThresholdBuffer,
+    ColumnIndex, DimensionRegistry, DissolveCondition, EmitOnThresholdBuffer,
     EmitOnThresholdRegistration, EmlConsumerMask, EmlExecutionClass, EmlExpressionRegistry,
-    EmlFormulaMeta, EmlNodeGpu, EmlTreeId, GenerationStamp, Overlay, OverlayId, OverlayKind,
-    OverlayLifecycle, OverlaySource, PropertyTransformDelta, SimProperty, SimThing, SimThingKind,
-    SlotIndex, SubFieldRole, ThresholdDirection, TransformOp,
+    EmlFormulaMeta, EmlTreeId, GenerationStamp, GenerationStamped, Overlay, OverlayId,
+    OverlayKind, OverlayLifecycle, OverlaySource, PropertyTransformDelta, SimProperty, SimThing,
+    SimThingKind, SlotIndex, SubFieldRole, ThresholdDirection, TransformOp,
 };
 use simthing_driver::{
     compile_crossing_consequence_session, compile_gu_yang_overlay_parameterized_n4_field_sweeps,
     compile_palma_overlay_parameterized_n4_field_sweep,
     compile_stead_overlay_parameterized_n4_field_sweep, ActionBandActiveInstance,
     ActionBandNativeLaneAdmission, CrossingConsequenceBinding, GuYangOverlayParameterizedN4Spec,
-    PalmaOverlayParameterizedN4Spec, RoutedOverlayDelivery, SteadOverlayParameterizedN4Spec,
-    StructuralAuthorization,
+    PalmaOverlayParameterizedN4Spec, RoutedOverlayDelivery, RoutedOverlayProduct,
+    SteadOverlayParameterizedN4Spec, StructuralAuthorization,
 };
 use simthing_feeder::{feeder_channel, BoundaryRequest, FeederWork};
 use simthing_gpu::{
     apply_band_crossing_deltas_from_fused_emissions, emit_on_threshold_registrations_to_gpu,
-    scoped_debug_readback_allowed, AccumulatorOpSession, ActionBandEmissionBindingGpu,
-    FacilityPlaneError, FacilityPlaneGenerationBoundary, FacilityResidentPlane, GpuContext,
+    scoped_debug_readback_allowed, AccumulatorOpSession, ActionBandEmissionBindingGpu, GpuContext,
     PackedThresholdUpload, SlotAllocator,
 };
 use simthing_sim::overlay_lifecycle::OverlayLifecycleAdmissionState;
@@ -90,34 +90,26 @@ fn fixture() -> Fixture {
         event_kind: 7801,
         buffer: EmitOnThresholdBuffer::Values,
     }];
+    let feedback = EmlGadgetInstanceSpec::BoundedFeedback {
+        id: "actionband-7-8-field-seeded-feedback".into(),
+        previous_col: column.raw_u32(),
+        input_col: stead_output.raw_u32(),
+        output_col: Some(column.raw_u32()),
+        decay: 0.5,
+        gain: 0.5,
+        min: 0.0,
+        max: 4.0,
+    };
+    let compiled_feedback = compile_eml_gadget(
+        &feedback,
+        EmlGadgetCompileOptions {
+            max_col: registry.total_columns as u32,
+        },
+    )
+    .expect("bounded feedback is admitted before becoming the ActionBand program");
     let mut eml = EmlExpressionRegistry::new();
     let program = EmlTreeId(7801);
-    let nodes = vec![
-        EmlNodeGpu {
-            opcode: eml_opcode::PARAM,
-            flags: 0,
-            a: 0,
-            b: 0,
-            c: 0,
-            d: 0,
-        },
-        EmlNodeGpu {
-            opcode: eml_opcode::LITERAL_F32,
-            flags: 0,
-            a: 2.0f32.to_bits(),
-            b: 0,
-            c: 0,
-            d: 0,
-        },
-        EmlNodeGpu {
-            opcode: eml_opcode::MUL,
-            flags: 0,
-            a: 0,
-            b: 0,
-            c: 0,
-            d: 0,
-        },
-    ];
+    let nodes = compiled_feedback.nodes;
     eml.register_formula(
         program,
         EmlFormulaMeta {
@@ -128,7 +120,7 @@ fn fixture() -> Fixture {
             deterministic_gpu: true,
             requires_guard_for_hard_threshold: false,
             node_count: nodes.len() as u32,
-            max_stack_depth: 2,
+            max_stack_depth: 3,
             has_loops: false,
             has_recursion: false,
             display_name: "shared-actionband-actuation-program".into(),
@@ -244,6 +236,7 @@ fn real_gpu_crossing(fx: &Fixture, ctx: &GpuContext) -> simthing_gpu::BandCrossi
 fn resident_values(fx: &Fixture) -> Vec<f32> {
     let mut values = vec![0.0; fx.registry.total_columns];
     values[fx.column.raw()] = 1.5;
+    values[fx.stead_output.raw()] = 2.0;
     values
 }
 
@@ -281,6 +274,11 @@ fn one_real_gpu_door_executes_all_three_consequence_arms() {
         .execution_plan()
         .crossings_from_sealed(std::slice::from_ref(&delta))
         .unwrap();
+    let replay_crossings = resident_session
+        .compiled()
+        .execution_plan()
+        .crossings_from_sealed(std::slice::from_ref(&delta))
+        .expect("a cloned sealed delta can mint a rival batch, but not consume twice");
     let (tx, _rx) = feeder_channel();
     let initial_resident = resident_values(&fx);
     let mut dispatch = resident_session
@@ -299,26 +297,61 @@ fn one_real_gpu_door_executes_all_three_consequence_arms() {
     assert_eq!(resident_outcome.structural_authorizations, 0);
     let _proof = scoped_debug_readback_allowed(true);
     let values = dispatch.resident_current_for_proof(&ctx).unwrap();
-    assert_eq!(values[fx.column.raw()].to_bits(), 3.0f32.to_bits());
+    assert_eq!(values[fx.column.raw()].to_bits(), 1.75f32.to_bits());
+    assert!(matches!(
+        dispatch.dispatch_and_apply(
+            &ctx,
+            fx.registry.total_columns as u32,
+            replay_crossings,
+            &tx,
+        ),
+        Err(simthing_driver::CrossingConsequenceDispatchError::DuplicateCrossingConsumption)
+    ));
 
     // RoutedOverlayDelivery: only authored duration + sealed source provenance
     // leave the new arm. Destination generation 7 establishes the activation
     // epoch and therefore deadline 11, not a source-relative absolute 5.
     let mut route_root = SimThing::new(SimThingKind::World, 0);
-    let target = route_root.id;
+    let mut policy_host = SimThing::new(SimThingKind::Location, 0);
+    let origin_node = SimThing::new(SimThingKind::Cohort, 0);
+    let origin = origin_node.id;
+    policy_host.add_child(origin_node);
+    let policy_host_id = policy_host.id;
     let property = resident_identity.property_id();
-    route_root.add_property(property, fx.registry.property(property).default_value());
+    policy_host.add_overlay(Overlay {
+        id: OverlayId::new(),
+        kind: OverlayKind::Policy,
+        source: OverlaySource::System,
+        origin: policy_host_id,
+        affects: Vec::new(),
+        transform: PropertyTransformDelta {
+            property_id: property,
+            sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::multiply(0.5))],
+        },
+        lifecycle: OverlayLifecycle::UntilDissolved,
+    });
+    let mut target_node = SimThing::new(SimThingKind::Cohort, 0);
+    let target = target_node.id;
+    let mut target_value = fx.registry.property(property).default_value();
+    target_value.set_role(
+        &SubFieldRole::Amount,
+        &fx.registry.property(property).layout,
+        0.2,
+    );
+    target_node.add_property(property, target_value);
+    route_root.add_child(policy_host);
+    route_root.add_child(target_node);
     let overlay_id = OverlayId::new();
     let overlay = Overlay {
         id: overlay_id,
-        kind: OverlayKind::Transient,
-        source: OverlaySource::System,
-        origin: target,
+        kind: OverlayKind::Instruction,
+        source: OverlaySource::Ai,
+        origin,
         affects: Vec::new(),
         transform: PropertyTransformDelta {
             property_id: property,
             sub_field_deltas: vec![
-                (SubFieldRole::Amount, TransformOp::set(1.0)),
+                (SubFieldRole::Amount, TransformOp::add(0.4)),
                 (SubFieldRole::Named("vec_0".into()), TransformOp::set(0.5)),
                 (SubFieldRole::Named("vec_1".into()), TransformOp::set(1.0)),
                 (SubFieldRole::Named("vec_2".into()), TransformOp::set(0.0)),
@@ -372,7 +405,7 @@ fn one_real_gpu_door_executes_all_three_consequence_arms() {
     route_allocator.populate_from_tree(&route_root);
     let mut route_runtime = SimRuntimeTree::admit(route_root);
     let mut route_registry = fx.registry.clone();
-    let mut shadow = vec![0.0; route_registry.total_columns];
+    let mut shadow = vec![0.0; route_allocator.capacity() * route_registry.total_columns];
     let mut lifecycle = OverlayLifecycleAdmissionState::default();
     let applied = apply_structural_mutations(
         requests,
@@ -402,22 +435,46 @@ fn one_real_gpu_door_executes_all_three_consequence_arms() {
         .unwrap(),
         GenerationStamp::new(11)
     );
+    let received_tree: SimThing = serde_json::from_value(
+        serde_json::to_value(&route_runtime).expect("serialize the authoritative receive tree"),
+    )
+    .expect("inspect the authoritative receive tree through its public serialized shape");
+    let evaluated = Evaluator::new(&route_registry, 0.0).evaluate(&received_tree, 0);
+    let received_amount = evaluated
+        .get(target)
+        .and_then(|entity| entity.properties.get(&property))
+        .expect("received target retains the routed property")
+        .get_role(
+            &SubFieldRole::Amount,
+            &route_registry.property(property).layout,
+        );
+    assert_eq!(
+        received_amount.to_bits(),
+        0.3f32.to_bits(),
+        "origin→policy-host→LCA→target traversal must preserve the live route filter; direct target append yields 0.6"
+    );
 
     // The same routed overlay's ordinary logical sub-fields are valid inputs
     // to all three existing generic field-sweep registrations. Only values
     // vary; adjacency, canonical order, conservation, symmetry, and chi proofs
     // are minted by the existing admission door and remain frozen.
     assert_eq!(overlay.transform.sub_field_deltas.len(), 6);
-    compile_stead_overlay_parameterized_n4_field_sweep(SteadOverlayParameterizedN4Spec {
-        width: 2,
-        height: 1,
-        n_dims: fx.registry.total_columns as u32,
-        source_col: fx.column,
-        falloff_col: fx.stead_falloff,
-        output_col: fx.stead_output,
-        dt: 1.0,
-    })
-    .expect("one overlay parameterizes STEAD source/falloff inside the generic sweep");
+    let field_seed =
+        compile_stead_overlay_parameterized_n4_field_sweep(SteadOverlayParameterizedN4Spec {
+            width: 2,
+            height: 1,
+            n_dims: fx.registry.total_columns as u32,
+            source_col: fx.column,
+            falloff_col: fx.stead_falloff,
+            output_col: fx.stead_output,
+            dt: 1.0,
+        })
+        .expect("one overlay parameterizes STEAD source/falloff inside the generic sweep");
+    assert_eq!(
+        field_seed.output(),
+        simthing_gpu::FieldSweepOutput::Matrix(fx.stead_output),
+        "the ActionBand bounded-feedback input is the actual admitted field output"
+    );
     compile_palma_overlay_parameterized_n4_field_sweep(PalmaOverlayParameterizedN4Spec {
         width: 2,
         height: 1,
@@ -518,7 +575,7 @@ fn one_real_gpu_door_executes_all_three_consequence_arms() {
 #[test]
 fn forbidden_overlay_and_state_plane_shapes_are_rejected_by_the_real_door() {
     let _guard = GPU.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
-    let ctx =
+    let _ctx =
         GpuContext::new_blocking().expect("7.8 falsifiers require a real GPU adapter; no skips");
     let fx = fixture();
     let lanes = native_lanes(&fx);
@@ -562,22 +619,57 @@ fn forbidden_overlay_and_state_plane_shapes_are_rejected_by_the_real_door() {
         Err(simthing_driver::CrossingConsequenceAdmissionError::NonStructuralBoundaryVerb)
     ));
 
-    // A direct write/bind against a sibling facility plane is rejected by the
-    // real owner capability, before either GPU buffer can be accessed.
-    let boundary = FacilityPlaneGenerationBoundary::new();
-    let resident_owner = boundary.admit_facility();
-    let foreign_owner = boundary.admit_facility();
-    let resident = FacilityResidentPlane::from_rows(
-        &ctx,
-        "actionband_7_8_foreign_write_falsifier",
-        &boundary,
-        &resident_owner,
-        &[0.0f32],
+    // A resident binding admitted by an otherwise identical sibling native
+    // facility must RED at the actual consequence compile door.
+    let foreign_lanes = native_lanes(&fx);
+    let foreign_resident = foreign_lanes
+        .bind_resident_next(ActionBandEmissionBindingGpu::property_next(
+            fx.column.raw_u32(),
+            simthing_gpu::ActionBandPropertyWrite::Set,
+        ))
+        .unwrap();
+    assert!(matches!(
+        compile_crossing_consequence_session(
+            &fx.frozen,
+            &fx.eml,
+            &[foreign_resident],
+            &active(&fx),
+            &lanes,
+        ),
+        Err(simthing_driver::CrossingConsequenceAdmissionError::ForeignResidentLaneAdmission)
+    ));
+
+    // DA A1: the real generation-stamped routed carrier rejects a planted
+    // source-relative absolute deadline before it reaches boundary ingress.
+    let deadline_overlay = Overlay {
+        id: OverlayId::new(),
+        kind: OverlayKind::Instruction,
+        source: OverlaySource::System,
+        origin: target,
+        affects: Vec::new(),
+        transform: PropertyTransformDelta {
+            property_id: fx.registry.column_owners[fx.column.raw()].0,
+            sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::add(1.0))],
+        },
+        lifecycle: OverlayLifecycle::Transient {
+            dissolution_conditions: vec![DissolveCondition::AfterTicks { remaining: 4 }],
+        },
+    };
+    let deadline_binding = RoutedOverlayDelivery::admit(target, deadline_overlay).unwrap();
+    let CrossingConsequenceBinding::RoutedOverlayDelivery(deadline_route) = deadline_binding else {
+        unreachable!()
+    };
+    let mut planted = serde_json::to_value(
+        deadline_route.stamped_product(GenerationStamp::new(1)),
     )
     .unwrap();
-    assert_eq!(
-        resident.validate_owner(&foreign_owner),
-        Err(FacilityPlaneError::ForeignPlaneWrite)
+    planted["product"]
+        .as_object_mut()
+        .unwrap()
+        .insert("foreign_absolute_deadline".into(), serde_json::json!(5));
+    assert!(
+        serde_json::from_value::<GenerationStamped<RoutedOverlayProduct>>(planted).is_err(),
+        "the production routed carrier must RED a foreign source-relative deadline"
     );
 
     // Certificate-envelope mutation: chi is an admission certificate bound,
@@ -597,22 +689,27 @@ fn forbidden_overlay_and_state_plane_shapes_are_rejected_by_the_real_door() {
     )
     .is_err());
 
-    // Generation pacing cannot legalize gain >= 1 without a finite clamp.
+    // Mutate the same field-seeded feedback admission used by the positive
+    // consequence chain into an unbounded form.
     let unbounded = EmlGadgetInstanceSpec::BoundedFeedback {
         id: "actionband-7-8-unbounded-field-feedback".into(),
-        previous_col: 0,
-        input_col: 0,
-        output_col: Some(0),
+        previous_col: fx.column.raw_u32(),
+        input_col: fx.stead_output.raw_u32(),
+        output_col: Some(fx.column.raw_u32()),
         decay: 1.0,
-        gain: 2.0,
+        gain: 0.5,
         min: f32::NEG_INFINITY,
         max: f32::INFINITY,
     };
-    assert!(compile_eml_gadget(
+    let error = compile_eml_gadget(
         &unbounded,
         EmlGadgetCompileOptions {
             max_col: fx.registry.total_columns as u32,
         },
     )
-    .is_err());
+    .unwrap_err();
+    assert!(
+        error.to_string().contains("0 <= decay < 1"),
+        "the same admission must RED specifically when feedback becomes unbounded: {error}"
+    );
 }
