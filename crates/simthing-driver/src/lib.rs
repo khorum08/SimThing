@@ -1,4 +1,5 @@
 pub mod arena_allocation_oracle;
+pub mod action_band_consequence;
 pub mod action_band_execution_compile;
 pub mod action_band_semantic_shadow;
 pub mod arena_allocation_plan;
@@ -88,6 +89,12 @@ pub mod structural_n4_theater_compile;
 pub mod w_impedance_compose_bridge;
 
 pub use arena_allocation_oracle::{run_arena_allocation_oracle, ArenaAllocationOracleTrace};
+pub use action_band_consequence::{
+    compile_crossing_consequence_session, CrossingConsequenceAdmissionError,
+    CrossingConsequenceBinding, CrossingConsequenceDispatch, CrossingConsequenceDispatchError,
+    CrossingConsequenceDispatchOutcome, CrossingConsequenceSession, ResidentNextWrite,
+    RoutedOverlayDelivery, StructuralAuthorization,
+};
 pub use action_band_execution_compile::{
     compile_action_band_gpu_execution, compile_action_band_gpu_execution_with_native_lanes,
     frozen_admission_binding_id, ActionBandActiveInstance, ActionBandExecutionCompileError,
