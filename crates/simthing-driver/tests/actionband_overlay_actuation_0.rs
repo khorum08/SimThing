@@ -10,9 +10,12 @@ use simthing_core::{
     SlotIndex, SubFieldRole, ThresholdDirection, TransformOp,
 };
 use simthing_driver::{
-    compile_crossing_consequence_session, compile_gu_yang_n4_field_sweeps,
-    ActionBandActiveInstance, ActionBandNativeLaneAdmission, CrossingConsequenceBinding,
-    GuYangN4FieldSweepSpec, RoutedOverlayDelivery, StructuralAuthorization,
+    compile_crossing_consequence_session, compile_gu_yang_overlay_parameterized_n4_field_sweeps,
+    compile_palma_overlay_parameterized_n4_field_sweep,
+    compile_stead_overlay_parameterized_n4_field_sweep, ActionBandActiveInstance,
+    ActionBandNativeLaneAdmission, CrossingConsequenceBinding, GuYangOverlayParameterizedN4Spec,
+    PalmaOverlayParameterizedN4Spec, RoutedOverlayDelivery, SteadOverlayParameterizedN4Spec,
+    StructuralAuthorization,
 };
 use simthing_feeder::{feeder_channel, BoundaryRequest, FeederWork};
 use simthing_gpu::{
@@ -37,16 +40,48 @@ struct Fixture {
     thresholds: Vec<EmitOnThresholdRegistration>,
     eml: EmlExpressionRegistry,
     column: ColumnIndex,
+    stead_falloff: ColumnIndex,
+    palma_w: ColumnIndex,
+    palma_terminal: ColumnIndex,
+    guyang_conductance_input: ColumnIndex,
+    guyang_capacity: ColumnIndex,
+    stead_output: ColumnIndex,
+    palma_d: ColumnIndex,
+    guyang_conductance_output: ColumnIndex,
     frozen: simthing_spec::FrozenActionBandTemplates,
 }
 
 fn fixture() -> Fixture {
     let mut registry = DimensionRegistry::new();
-    let property = registry.register(SimProperty::simple("actuation-proof", "parameter", 1));
+    let property = registry.register(SimProperty::simple("actuation-proof", "parameter", 5));
     let column = registry
         .column_range(property)
         .col_for_role(&SubFieldRole::Amount, &registry.property(property).layout)
         .unwrap();
+    let parameter_col = |registry: &DimensionRegistry, index: usize| {
+        registry
+            .column_range(property)
+            .col_for_role(
+                &SubFieldRole::Named(format!("vec_{index}")),
+                &registry.property(property).layout,
+            )
+            .unwrap()
+    };
+    let stead_falloff = parameter_col(&registry, 0);
+    let palma_w = parameter_col(&registry, 1);
+    let palma_terminal = parameter_col(&registry, 2);
+    let guyang_conductance_input = parameter_col(&registry, 3);
+    let guyang_capacity = parameter_col(&registry, 4);
+    let mut output_col = |name: &str| {
+        let id = registry.register(SimProperty::simple("actuation-proof", name, 0));
+        registry
+            .column_range(id)
+            .col_for_role(&SubFieldRole::Amount, &registry.property(id).layout)
+            .unwrap()
+    };
+    let stead_output = output_col("stead-output");
+    let palma_d = output_col("palma-d");
+    let guyang_conductance_output = output_col("guyang-conductance-output");
     let thresholds = vec![EmitOnThresholdRegistration {
         slot: SlotIndex::new(0),
         col: column,
@@ -143,6 +178,14 @@ fn fixture() -> Fixture {
         thresholds,
         eml,
         column,
+        stead_falloff,
+        palma_w,
+        palma_terminal,
+        guyang_conductance_input,
+        guyang_capacity,
+        stead_output,
+        palma_d,
+        guyang_conductance_output,
         frozen,
     }
 }
@@ -274,13 +317,20 @@ fn one_real_gpu_door_executes_all_three_consequence_arms() {
         affects: Vec::new(),
         transform: PropertyTransformDelta {
             property_id: property,
-            sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::add(0.25))],
+            sub_field_deltas: vec![
+                (SubFieldRole::Amount, TransformOp::set(1.0)),
+                (SubFieldRole::Named("vec_0".into()), TransformOp::set(0.5)),
+                (SubFieldRole::Named("vec_1".into()), TransformOp::set(1.0)),
+                (SubFieldRole::Named("vec_2".into()), TransformOp::set(0.0)),
+                (SubFieldRole::Named("vec_3".into()), TransformOp::set(0.75)),
+                (SubFieldRole::Named("vec_4".into()), TransformOp::set(1.0)),
+            ],
         },
         lifecycle: OverlayLifecycle::Transient {
             dissolution_conditions: vec![DissolveCondition::AfterTicks { remaining: 4 }],
         },
     };
-    let routed = RoutedOverlayDelivery::admit(target, overlay).unwrap();
+    let routed = RoutedOverlayDelivery::admit(target, overlay.clone()).unwrap();
     let routed_session =
         compile_crossing_consequence_session(&fx.frozen, &fx.eml, &[routed], &active(&fx), &lanes)
             .unwrap();
@@ -352,6 +402,45 @@ fn one_real_gpu_door_executes_all_three_consequence_arms() {
         .unwrap(),
         GenerationStamp::new(11)
     );
+
+    // The same routed overlay's ordinary logical sub-fields are valid inputs
+    // to all three existing generic field-sweep registrations. Only values
+    // vary; adjacency, canonical order, conservation, symmetry, and chi proofs
+    // are minted by the existing admission door and remain frozen.
+    assert_eq!(overlay.transform.sub_field_deltas.len(), 6);
+    compile_stead_overlay_parameterized_n4_field_sweep(SteadOverlayParameterizedN4Spec {
+        width: 2,
+        height: 1,
+        n_dims: fx.registry.total_columns as u32,
+        source_col: fx.column,
+        falloff_col: fx.stead_falloff,
+        output_col: fx.stead_output,
+        dt: 1.0,
+    })
+    .expect("one overlay parameterizes STEAD source/falloff inside the generic sweep");
+    compile_palma_overlay_parameterized_n4_field_sweep(PalmaOverlayParameterizedN4Spec {
+        width: 2,
+        height: 1,
+        n_dims: fx.registry.total_columns as u32,
+        d_col: fx.palma_d,
+        w_col: fx.palma_w,
+        terminal_value_col: fx.palma_terminal,
+        destination_slot: SlotIndex::new(1),
+        inf_sentinel: simthing_gpu::MIN_PLUS_INF,
+    })
+    .expect("one overlay parameterizes PALMA W/terminal value inside the generic sweep");
+    compile_gu_yang_overlay_parameterized_n4_field_sweeps(GuYangOverlayParameterizedN4Spec {
+        width: 2,
+        height: 1,
+        n_dims: fx.registry.total_columns as u32,
+        value_col: fx.column,
+        conductance_input_col: fx.guyang_conductance_input,
+        conductance_output_col: fx.guyang_conductance_output,
+        capacity_col: fx.guyang_capacity,
+        chi: 0.5,
+        dt: 1.0,
+    })
+    .expect("one overlay parameterizes Gu-Yang conductance/capacity inside its certificate");
 
     // StructuralAuthorization: the same sealed packet authorizes only the
     // existing Reparent boundary verb; no GPU state-plane target is expressible.
@@ -493,26 +582,19 @@ fn forbidden_overlay_and_state_plane_shapes_are_rejected_by_the_real_door() {
 
     // Certificate-envelope mutation: chi is an admission certificate bound,
     // not a runtime parameter that an overlay may widen.
-    let mut field_registry = fx.registry.clone();
-    let conductance_property =
-        field_registry.register(SimProperty::simple("actuation-proof", "conductance", 1));
-    let conductance_col = field_registry
-        .column_range(conductance_property)
-        .col_for_role(
-            &SubFieldRole::Amount,
-            &field_registry.property(conductance_property).layout,
-        )
-        .unwrap();
-    assert!(compile_gu_yang_n4_field_sweeps(GuYangN4FieldSweepSpec {
-        width: 2,
-        height: 1,
-        n_dims: field_registry.total_columns as u32,
-        value_col: fx.column,
-        conductance_col,
-        saturation: 1.0,
-        chi: 1.25,
-        dt: 1.0,
-    })
+    assert!(compile_gu_yang_overlay_parameterized_n4_field_sweeps(
+        GuYangOverlayParameterizedN4Spec {
+            width: 2,
+            height: 1,
+            n_dims: fx.registry.total_columns as u32,
+            value_col: fx.column,
+            conductance_input_col: fx.guyang_conductance_input,
+            conductance_output_col: fx.guyang_conductance_output,
+            capacity_col: fx.guyang_capacity,
+            chi: 1.25,
+            dt: 1.0,
+        }
+    )
     .is_err());
 
     // Generation pacing cannot legalize gain >= 1 without a finite clamp.
