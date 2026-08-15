@@ -8,11 +8,11 @@
 use std::collections::{BTreeMap, HashSet};
 use std::sync::{Arc, Mutex};
 
+use serde::{Deserialize, Serialize};
 use simthing_core::{
     admit_overlay_lifecycle, GenerationStamp, GenerationStamped, Overlay,
     OverlayLifecycleAdmitError, SimPropertyId, SimThingId, SubFieldRole,
 };
-use serde::{Deserialize, Serialize};
 use simthing_feeder::{BoundaryRequest, FeederError, FeederSender};
 use simthing_gpu::{
     ActionBandCrossingBatch, ActionBandCrossingConsumptionKey, ActionBandEmissionBindingGpu,
@@ -232,13 +232,52 @@ struct FrozenConsequences {
     by_event_kind: BTreeMap<u32, CrossingConsequenceBinding>,
 }
 
+#[derive(Debug, Default)]
+struct GenerationBoundCrossingDedupe {
+    generation: u32,
+    keys: HashSet<ActionBandCrossingConsumptionKey>,
+}
+
+impl GenerationBoundCrossingDedupe {
+    fn admit(
+        &mut self,
+        executable_generation: u32,
+        keys: &[ActionBandCrossingConsumptionKey],
+    ) -> Result<(), CrossingConsequenceDispatchError> {
+        if keys.iter().any(|key| self.keys.contains(key)) {
+            return Err(CrossingConsequenceDispatchError::DuplicateCrossingConsumption);
+        }
+        if let Some(key) = keys
+            .iter()
+            .find(|key| key.generation() != executable_generation)
+        {
+            return Err(
+                CrossingConsequenceDispatchError::CrossingGenerationMismatch {
+                    expected: executable_generation,
+                    actual: key.generation(),
+                },
+            );
+        }
+        if self.generation != executable_generation {
+            self.generation = executable_generation;
+            self.keys.clear();
+        }
+        self.keys.extend(keys.iter().cloned());
+        Ok(())
+    }
+
+    fn proof_snapshot(&self) -> (u32, usize) {
+        (self.generation, self.keys.len())
+    }
+}
+
 /// One source-bound compile product: GPU plan and all three consequence arms
 /// are frozen together and cannot be paired across sessions.
 #[derive(Clone, Debug)]
 pub struct CrossingConsequenceSession {
     compiled: CompiledActionBandGpuExecution,
     frozen: FrozenConsequences,
-    consumed_crossings: Arc<Mutex<HashSet<ActionBandCrossingConsumptionKey>>>,
+    generation_dedupe: Arc<Mutex<GenerationBoundCrossingDedupe>>,
 }
 
 impl CrossingConsequenceSession {
@@ -373,7 +412,7 @@ pub fn compile_crossing_consequence_session(
             by_event_kind,
         },
         compiled,
-        consumed_crossings: Arc::new(Mutex::new(HashSet::new())),
+        generation_dedupe: Arc::new(Mutex::new(GenerationBoundCrossingDedupe::default())),
     })
 }
 
@@ -398,25 +437,32 @@ impl CrossingConsequenceDispatch<'_> {
         boundary: &FeederSender,
     ) -> Result<CrossingConsequenceDispatchOutcome, CrossingConsequenceDispatchError> {
         {
-            let mut consumed = self
+            let mut dedupe = self
                 .admitted
-                .consumed_crossings
+                .generation_dedupe
                 .lock()
-                .map_err(|_| CrossingConsequenceDispatchError::ConsumptionLedgerPoisoned)?;
-            if crossings
-                .consumption_keys()
-                .iter()
-                .any(|key| consumed.contains(key))
-            {
-                return Err(CrossingConsequenceDispatchError::DuplicateCrossingConsumption);
-            }
-            consumed.extend(crossings.consumption_keys().iter().cloned());
+                .map_err(|_| CrossingConsequenceDispatchError::GenerationDedupePoisoned)?;
+            let executable_generation = self.execution.generation();
+            dedupe.admit(executable_generation, crossings.consumption_keys())?;
         }
         let production = self
             .execution
             .dispatch_resident_next(ctx, n_dims, &crossings)
             .map_err(|error| CrossingConsequenceDispatchError::Gpu(error.to_string()))?;
         self.apply_boundary_consequences(production, boundary)
+    }
+
+    /// Proof-only view of the bounded current-generation dedupe window.
+    /// The generation changes replace the set; prior-generation identities
+    /// are neither retained nor exposed.
+    pub fn generation_dedupe_for_proof(
+        &self,
+    ) -> Result<(u32, usize), CrossingConsequenceDispatchError> {
+        self.admitted
+            .generation_dedupe
+            .lock()
+            .map(|dedupe| dedupe.proof_snapshot())
+            .map_err(|_| CrossingConsequenceDispatchError::GenerationDedupePoisoned)
     }
 
     pub fn resident_current_for_proof(
@@ -510,8 +556,12 @@ pub enum CrossingConsequenceDispatchError {
     ResidentWriteReadback,
     #[error("sealed ActionBand crossing was already consumed by this consequence session")]
     DuplicateCrossingConsumption,
-    #[error("ActionBand crossing consumption ledger is poisoned")]
-    ConsumptionLedgerPoisoned,
+    #[error(
+        "sealed ActionBand crossing generation {actual} is not executable generation {expected}"
+    )]
+    CrossingGenerationMismatch { expected: u32, actual: u32 },
+    #[error("ActionBand current-generation crossing dedupe is poisoned")]
+    GenerationDedupePoisoned,
     #[error("ActionBand GPU consequence dispatch failed: {0}")]
     Gpu(String),
     #[error(transparent)]

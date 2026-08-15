@@ -19,8 +19,8 @@ use super::{
 use crate::sealed::{ThresholdEmission, ThresholdEmissionGpu};
 use crate::{
     debug_readback_allowed, BandCrossingDelta, BandCrossingDirection, BoundaryEmissionToken,
-    DecisionIngressError,
-    EmissionToken, EmlTreeRangeGpu, GpuContext, StructuralCommitment, ThresholdCrossingToken,
+    DecisionIngressError, EmissionToken, EmlTreeRangeGpu, GpuContext, StructuralCommitment,
+    ThresholdCrossingToken,
 };
 
 pub const ACTIONBAND_NO_PROGRAM: u32 = u32::MAX;
@@ -560,6 +560,15 @@ pub struct ActionBandCrossingConsumptionKey {
     direction: BandCrossingDirection,
     post_value_bits: u32,
     event_kind: u32,
+}
+
+impl ActionBandCrossingConsumptionKey {
+    /// Generation of the sealed Phase-5 crossing represented by this key.
+    /// Consumers compare this stamp with their executable generation; it is
+    /// not a request to retain crossing history.
+    pub fn generation(&self) -> u32 {
+        self.generation
+    }
 }
 
 #[derive(Clone, Copy, Debug)]

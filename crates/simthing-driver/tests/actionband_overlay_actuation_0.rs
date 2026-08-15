@@ -6,9 +6,9 @@ use simthing_core::evaluate::Evaluator;
 use simthing_core::{
     ColumnIndex, DimensionRegistry, DissolveCondition, EmitOnThresholdBuffer,
     EmitOnThresholdRegistration, EmlConsumerMask, EmlExecutionClass, EmlExpressionRegistry,
-    EmlFormulaMeta, EmlTreeId, GenerationStamp, GenerationStamped, Overlay, OverlayId,
-    OverlayKind, OverlayLifecycle, OverlaySource, PropertyTransformDelta, SimProperty, SimThing,
-    SimThingKind, SlotIndex, SubFieldRole, ThresholdDirection, TransformOp,
+    EmlFormulaMeta, EmlTreeId, GenerationStamp, GenerationStamped, Overlay, OverlayId, OverlayKind,
+    OverlayLifecycle, OverlaySource, PropertyTransformDelta, SimProperty, SimThing, SimThingKind,
+    SlotIndex, SubFieldRole, ThresholdDirection, TransformOp,
 };
 use simthing_driver::{
     compile_crossing_consequence_session, compile_gu_yang_overlay_parameterized_n4_field_sweeps,
@@ -307,6 +307,42 @@ fn one_real_gpu_door_executes_all_three_consequence_arms() {
         ),
         Err(simthing_driver::CrossingConsequenceDispatchError::DuplicateCrossingConsumption)
     ));
+    assert_eq!(dispatch.generation_dedupe_for_proof().unwrap(), (0, 1));
+
+    let next_generation_crossings = resident_session
+        .compiled()
+        .execution_plan()
+        .crossings_from_sealed(&[])
+        .unwrap();
+    dispatch
+        .dispatch_and_apply(
+            &ctx,
+            fx.registry.total_columns as u32,
+            next_generation_crossings,
+            &tx,
+        )
+        .unwrap();
+    assert_eq!(dispatch.generation_dedupe_for_proof().unwrap(), (1, 0));
+    let stale_generation_crossings = resident_session
+        .compiled()
+        .execution_plan()
+        .crossings_from_sealed(std::slice::from_ref(&delta))
+        .unwrap();
+    assert!(matches!(
+        dispatch.dispatch_and_apply(
+            &ctx,
+            fx.registry.total_columns as u32,
+            stale_generation_crossings,
+            &tx,
+        ),
+        Err(
+            simthing_driver::CrossingConsequenceDispatchError::CrossingGenerationMismatch {
+                expected: 2,
+                actual: 0,
+            }
+        )
+    ));
+    assert_eq!(dispatch.generation_dedupe_for_proof().unwrap(), (1, 0));
 
     // RoutedOverlayDelivery: only authored duration + sealed source provenance
     // leave the new arm. Destination generation 7 establishes the activation
@@ -659,10 +695,8 @@ fn forbidden_overlay_and_state_plane_shapes_are_rejected_by_the_real_door() {
     let CrossingConsequenceBinding::RoutedOverlayDelivery(deadline_route) = deadline_binding else {
         unreachable!()
     };
-    let mut planted = serde_json::to_value(
-        deadline_route.stamped_product(GenerationStamp::new(1)),
-    )
-    .unwrap();
+    let mut planted =
+        serde_json::to_value(deadline_route.stamped_product(GenerationStamp::new(1))).unwrap();
     planted["product"]
         .as_object_mut()
         .unwrap()
