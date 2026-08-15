@@ -41,7 +41,9 @@ The same routed overlay carries six logical parameter transforms and compiles th
 
 ## 7.5c oracle-first migration
 
-The graduated 7.5c real-GPU vendor now executes its three native Next lanes plus `Reparent` through the canonical consequence door. Its prior low-level dispatch is retained only inside the proof as the migration oracle. The compact structural destination ABI remains row 0 and the numeric plan fingerprint remains `1584755073879803108`.
+The 7.5c real-GPU vendor was already graduated before this rung. It now executes its three native Next lanes plus `Reparent` through the canonical consequence door, while its prior low-level dispatch is retained only inside the proof as the migration oracle.
+
+The compact structural destination ABI remains row 0 and the numeric plan fingerprint remains `1584755073879803108`.
 
 Bit-identical native-lane parity digests from the capacity N/N+1/N+2 series:
 
