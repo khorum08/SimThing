@@ -5,11 +5,11 @@ Status: **PROBATION / proof-present / DA-review-pending**. Coding does not invok
 ## Receipts and scope
 
 - Authoritative implementation base: `ebbae0617d5630cd9ab61a0beb67badbeb8586dc`
-- Tested code checkpoint: `61026c2d24d4d018364274a40e7a8cb1d3a6ac45`
+- Tested code checkpoint: `445a4dbfd2a107d0c7e16ed273632f7e1d80e7eb`
 - ORIENT-RECEIPT: `4c9f068db285`
 - orientation_rule_stamp: `ea1f69606c6929ea`
 - HD-RECEIPT: `cf41c4ec2316`
-- Orchestrator handoff: Board comment `5299283073`
+- Orchestrator handoff: Board comment `5299283073`; bounded-history remand `5303319505`
 
 Every rendered REQUIRED-ANCHOR was queried and read before its governed path was edited. Load-bearing ACKs include `actionband-binding-laws` `d6a8b1b2d673`, `actionband-crossing-surface` `623db585f145`, `actionband-determinism-lifecycle` `6306c484732c`, `actionband-field-triad-authority` `56cf5cdf2d2c`, `actionband-native-authority-table` `541a03cb00a1`, `core-gpu-residency` `eea1356db087`, `core-overlays` `f95c9376ee06`, `field-sweep-preservation` `acc521a5a361`, `movement-front-adjudications` (queried/read), `overlay-germ` (queried/read), and `structural-execution-convergence` (queried/read). The generated reach log carries the complete query set.
 
@@ -25,17 +25,17 @@ There is one session-frozen `CrossingConsequenceBinding` enum with exactly three
 
 The exact production trace is:
 
-`Phase-5 threshold emission` → generation-bearing sealed `BandCrossingDelta` → `ActionBandExecutionPlan::crossings_from_sealed` → opaque `ActionBandCrossingBatch` plus semantic consumption key → `CrossingConsequenceDispatch::dispatch_and_apply` atomically claims the key → `ActionBandGpuSession::dispatch_resident_next` → admitted facility-local Current/Next plane → the existing `FacilityPlaneGenerationBoundary` advances ActionBand state and resident consequence planes together → `CrossingConsequenceBinding::submit_boundary` submits either the stamped routed product or the frozen structural request through the ordinary feeder boundary. The outcome returns counts and generation only; a second batch minted from cloned sealed evidence is rejected before GPU dispatch.
+`Phase-5 threshold emission` → generation-bearing sealed `BandCrossingDelta` → `ActionBandExecutionPlan::crossings_from_sealed` → opaque `ActionBandCrossingBatch` plus semantic consumption key → `CrossingConsequenceDispatch::dispatch_and_apply` derives one scalar world/local generation offset from the first sealed batch, compares later stamps with `offset + execution.generation()`, and admits keys only into that executable world's bounded dedupe window → `ActionBandGpuSession::dispatch_resident_next` → admitted facility-local Current/Next plane → the existing `FacilityPlaneGenerationBoundary` advances ActionBand state and resident consequence planes together → `CrossingConsequenceBinding::submit_boundary` submits either the stamped routed product or the frozen structural request through the ordinary feeder boundary. A second batch minted from cloned same-generation evidence is rejected before GPU dispatch. Entering the next generation replaces the key set; stale evidence then REDs by generation comparison without any retained old identity. This keeps a newly bound local counter at 0 compatible with inherited real world-generation crossings such as 75/76/77 without conflating the two clocks.
 
 The former private `SimSession::submit_commitment_effects` AttachOverlay mapper is deleted. Its genuine journal-watermark boundary pacing remains, but it now stores an admitted `CrossingConsequenceBinding` and calls the same shared stamped-product boundary door with the sealed mapping-event generation.
 
-Thus a crossing at t writes resident Next or authorizes a boundary consequence consumed no earlier than t+1. There is no comparator, listener, CPU crossing evaluator, direct tree mutation, second local swap authority, or post-door replay seam.
+Thus a crossing at t writes resident Next or authorizes a boundary consequence consumed no earlier than t+1. There is no comparator, listener, CPU crossing evaluator, direct tree mutation, second local swap authority, append-only crossing ledger, or session-lifetime replay history.
 
 ## Three-arm witness and routed epoch
 
 `one_real_gpu_door_executes_all_three_consequence_arms` starts from a real Phase-5 GPU crossing and proves:
 
-- resident `PropertyNext(Set)` runs the admitted bounded-feedback EML over resident previous `1.5` plus the real STEAD registration's output column value `2.0`, yielding bit-exact `1.75` only through the facility-local plane; a second batch minted from the same cloned sealed delta REDs as duplicate consumption before another GPU dispatch;
+- resident `PropertyNext(Set)` runs the admitted bounded-feedback EML over resident previous `1.5` plus the real STEAD registration's output column value `2.0`, yielding bit-exact `1.75` only through the facility-local plane; a second batch minted from the same cloned sealed delta REDs as duplicate consumption before another GPU dispatch; the next empty opaque batch advances the existing production generation boundary, replaces `(generation=0, keys=1)` with `(generation=1, keys=0)`, and replay of the prior delta REDs `CrossingGenerationMismatch { expected: 2, actual: 0 }` without consulting a retained identity;
 - routed delivery starts at a distinct origin below a policy host, crosses the LCA to a distinct target, emits one ordinary `AttachOverlay` stamped with source generation 1, arrives through ordinary receive ingress at destination generation 7, and evaluates to policy-filtered `0.3` rather than the direct-target mutant's `0.6`; activation at 7 rebases authored duration 4 to deadline 11, never source-relative 5;
 - structural authorization emits and applies one ordinary `Reparent`, with no GPU state-plane destination.
 
@@ -59,7 +59,7 @@ Each run also applies the door-produced `Reparent` through the ordinary structur
 
 1. **Certificate envelope:** χ `1.25` on the new overlay-parameterized Gu-Yang surface fails the existing conductance-certificate admission; runtime input EML is clamped and cannot mutate adjacency/order/symmetry/χ.
 2. **Direct FOREIGN resident write:** a binding minted from an otherwise identical sibling `ActionBandNativeLaneAdmission` fails the actual `compile_crossing_consequence_session` door with `ForeignResidentLaneAdmission`; the foreign consequence cannot compile or dispatch.
-3. **Second post-crossing dispatcher:** two batches are deliberately minted from the same cloned sealed delta. The first dispatch succeeds; the second bites the production consumption ledger and REDs `DuplicateCrossingConsumption` before GPU dispatch. The key includes sealed generation, so a later genuine crossing remains distinct.
+3. **Second post-crossing dispatcher / stale generation:** two batches are deliberately minted from the same cloned sealed delta. The first dispatch succeeds; the second bites the bounded current-generation set and REDs `DuplicateCrossingConsumption` before GPU dispatch. Advancing the existing boundary with the next empty opaque batch replaces the set and proves the old key count is zero; replaying generation 0 at executable generation 2 then REDs `CrossingGenerationMismatch`, while the bounded state remains `(generation=1, keys=0)`. Production `src` contains no append-only/session-lifetime crossing ledger.
 4. **Unbounded positive feedback:** the positive ActionBand program is the existing bounded-feedback gadget reading the admitted STEAD output column. Mutating that same admission to `decay=1` and infinite bounds REDs specifically at bounded-feedback admission; generation pacing cannot legalize it.
 5. **Overlay-local EML:** `RoutedOverlayDelivery` has exactly private `{ target, overlay }`; compile accepts only the canonical shared `&EmlExpressionRegistry`. No program table/evaluator/cache field or constructor exists.
 6. **Durable-row capture:** `ResidentNextWrite` has exactly `{ gpu_binding, property_id, role }`; the physical column is a compile binding re-derived from `DimensionRegistry`, and no row/slot/buffer survives as semantic identity.
@@ -78,7 +78,7 @@ The census row `OVL-COMMIT-ATTACH` is now `GENUINELY-STRUCTURAL / keep`: its pri
 
 The focused budget is exactly two permanent seal proofs:
 
-- `one_real_gpu_door_executes_all_three_consequence_arms`: the sole positive real-GPU three-arm witness, including sealed-evidence replay rejection, bounded field-output feedback, nontrivial routed filter traversal, destination pacing, and Field-Triad binding.
+- `one_real_gpu_door_executes_all_three_consequence_arms`: the sole positive real-GPU three-arm witness, including same-generation duplicate rejection, generation-window replacement and stale-generation rejection, bounded field-output feedback, nontrivial routed filter traversal, destination pacing, and Field-Triad binding.
 - `forbidden_overlay_and_state_plane_shapes_are_rejected_by_the_real_door`: the independent negative proof for foreign native-lane consequence compilation, foreign deadline wire injection, closed structural vocabulary, certificate envelope, and the same feedback admission mutated unbounded.
 
 Validation at the tested code checkpoint:
