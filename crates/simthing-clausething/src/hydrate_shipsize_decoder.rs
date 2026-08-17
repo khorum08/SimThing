@@ -545,6 +545,10 @@ fn build_overlay(
 
         order_weight_class: None,
 
+        composition_class: None,
+        current_dependency_edges: Vec::new(),
+        next_dependency_edges: Vec::new(),
+
         source_span_token: None,
 
     })

@@ -106,6 +106,17 @@ pub enum OverlayProjectionHostChange {
 ///     projection.insert_runtime_dependency();
 /// }
 /// ```
+///
+/// Descendant leaf stamping is likewise absent from the production type:
+///
+/// ```compile_fail,E0599
+/// fn descendant_semantic_instances_cannot_be_stamped_compile_fail(
+///     projection: &mut simthing_kernel::OverlaySpanProjection,
+///     leaf: simthing_core::SimThingId,
+/// ) {
+///     projection.stamp_descendant_overlay(leaf);
+/// }
+/// ```
 #[derive(Clone, Debug, PartialEq)]
 pub struct OverlaySpanProjection {
     projection: DerivedSpanProjection<OverlayEffectiveDescriptor>,
@@ -226,17 +237,35 @@ impl OverlaySpanProjection {
         (metrics.profiles, metrics.spans)
     }
 
+    pub fn projection_counts(&self) -> (u64, u64, u64) {
+        let metrics = self.metrics();
+        (metrics.logical_rows, metrics.profiles, metrics.spans)
+    }
+
     pub fn refresh(
         &mut self,
         root: &SimThing,
         changes: &[OverlayProjectionHostChange],
         generation: GenerationStamp,
     ) -> (u64, u64) {
+        let (rebuilt, _, _, rows) =
+            self.refresh_with_metrics(root, changes, generation);
+        (rebuilt, rows)
+    }
+
+    pub fn refresh_with_metrics(
+        &mut self,
+        root: &SimThing,
+        changes: &[OverlayProjectionHostChange],
+        generation: GenerationStamp,
+    ) -> (u64, u64, u64, u64) {
         let refresh = self
             .try_refresh(root, changes, generation)
             .unwrap_or_else(|error| panic!("derived overlay span invalidation failed: {error}"));
         (
             refresh.semantic_spans_rebuilt,
+            refresh.invalidation.dirty_span_ranges.len() as u64,
+            refresh.invalidation.spans_examined,
             refresh.invalidation.logical_member_rows_scanned,
         )
     }

@@ -67,13 +67,25 @@ fn upload_accumulator_reduction_plan(
     }
 }
 
-/// Outcome of the GPU sync step.
+/// Outcome of the GPU sync step. Telemetry is deliberately fixed-cardinality
+/// and aggregate; no per-template identity or transition table is retained.
+///
+/// ```compile_fail,E0609
+/// fn fine_overlay_telemetry_is_not_simulation_readable_compile_fail(
+///     outcome: simthing_sim::GpuSyncOutcome,
+/// ) {
+///     let _ = outcome.overlay_template_transition_counts;
+/// }
+/// ```
 #[derive(Clone, Debug, Default)]
 pub struct GpuSyncOutcome {
     pub overlay_deltas_uploaded: u32,
+    pub overlay_logical_row_count: u64,
     pub overlay_profile_count: u32,
     pub overlay_span_count: u32,
     pub overlay_invalidated_spans: u64,
+    pub overlay_dirty_spans: u64,
+    pub overlay_invalidation_candidate_spans: u64,
     pub overlay_invalidation_rows_scanned: u64,
     pub threshold_regs_uploaded: u32,
     pub new_threshold_registry: Option<ThresholdRegistry>,
@@ -152,7 +164,8 @@ pub fn sync_gpu_buffers(
                 .and_then(|runtime| runtime.overlay_compile_cache.as_ref())
             {
                 n_deltas = cache.cached_deltas.len() as u32;
-                let (profiles, spans) = cache.projection.profile_and_span_counts();
+                let (logical_rows, profiles, spans) = cache.projection.projection_counts();
+                out.overlay_logical_row_count = logical_rows;
                 out.overlay_profile_count = profiles as u32;
                 out.overlay_span_count = spans as u32;
                 state.set_overlay_add_dispatch(
@@ -206,13 +219,20 @@ pub fn sync_gpu_buffers(
                 projection = simthing_gpu::OverlaySpanProjection::compile(root.inner());
             } else if had_cache {
                 if !overlay_projection_changes.is_empty() {
-                    let (spans_rebuilt, rows_scanned) =
-                        projection.refresh(root.inner(), overlay_projection_changes, generation);
+                    let (spans_rebuilt, dirty_spans, candidate_spans, rows_scanned) =
+                        projection.refresh_with_metrics(
+                            root.inner(),
+                            overlay_projection_changes,
+                            generation,
+                        );
                     out.overlay_invalidated_spans = spans_rebuilt;
+                    out.overlay_dirty_spans = dirty_spans;
+                    out.overlay_invalidation_candidate_spans = candidate_spans;
                     out.overlay_invalidation_rows_scanned = rows_scanned;
                 }
             }
-            let (profiles, spans) = projection.profile_and_span_counts();
+            let (logical_rows, profiles, spans) = projection.projection_counts();
+            out.overlay_logical_row_count = logical_rows;
             out.overlay_profile_count = profiles as u32;
             out.overlay_span_count = spans as u32;
             let (deltas, mut ranges) = projection.materialize_dense(registry, allocator);

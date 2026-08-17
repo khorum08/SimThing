@@ -73,6 +73,13 @@ pub enum SpecError {
     #[error("overlay `{overlay}` lifecycle admission failed: {reason}")]
     OverlayLifecycleAdmission { overlay: String, reason: String },
 
+    #[error("overlay `{overlay}` evaluation admission failed: {reason} (source_span_token={source_span_token:?})")]
+    OverlayEvaluationAdmission {
+        overlay: String,
+        reason: String,
+        source_span_token: Option<usize>,
+    },
+
     // ── Capability tree builder (PR 3) ───────────────────────────────────────
     #[error(
         "entry `{0}` was authored with ActivationMode::OnPrereqMet — that state is runtime-only"

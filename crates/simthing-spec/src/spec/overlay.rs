@@ -30,6 +30,20 @@ pub struct OverlaySpec {
     /// must match the named finite class, and non-finite values are rejected.
     #[serde(default)]
     pub order_weight_class: Option<String>,
+    /// Admission-only combine class. `conjunctive-restriction` accepts only
+    /// finite Multiply factors in `[0, 1]`, so a descendant contribution
+    /// cannot weaken an ancestor restriction. The string is consumed here
+    /// and never survives as a runtime dispatch key.
+    #[serde(default)]
+    pub composition_class: Option<String>,
+    /// Pure Current -> Current dependencies for this bounded template.
+    /// Admission requires this graph to be acyclic.
+    #[serde(default)]
+    pub current_dependency_edges: Vec<(String, String)>,
+    /// Explicit Current -> Next/staged dependencies. These edges are omitted
+    /// from the pure-current DAG, making generation-paced feedback lawful.
+    #[serde(default)]
+    pub next_dependency_edges: Vec<(String, String)>,
     /// Loader-derived source position for admission diagnostics.
     #[serde(skip)]
     pub source_span_token: Option<usize>,

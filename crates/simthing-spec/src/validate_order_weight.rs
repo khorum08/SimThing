@@ -292,6 +292,9 @@ mod tests {
             source,
             install: InstallTargetSpec::SessionRoot,
             order_weight_class: class_id.map(|s| s.into()),
+            composition_class: None,
+            current_dependency_edges: Vec::new(),
+            next_dependency_edges: Vec::new(),
             source_span_token: Some(9),
         }
     }

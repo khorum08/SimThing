@@ -1607,6 +1607,9 @@ fn lower_field_economy(
                     target_id: overlay.owner.clone(),
                 },
                 order_weight_class: None,
+                composition_class: None,
+                current_dependency_edges: Vec::new(),
+                next_dependency_edges: Vec::new(),
                 source_span_token: None,
             }),
     );
@@ -1777,6 +1780,9 @@ fn location_overlay(
             target_id: location.to_string(),
         },
         order_weight_class: None,
+        composition_class: None,
+        current_dependency_edges: Vec::new(),
+        next_dependency_edges: Vec::new(),
         source_span_token: None,
     }
 }

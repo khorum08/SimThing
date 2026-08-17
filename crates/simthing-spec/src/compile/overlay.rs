@@ -4,6 +4,7 @@ use crate::spec::overlay::OverlaySpec;
 use simthing_core::{
     DimensionRegistry, Overlay, OverlayId, PropertyTransformDelta, SimThingId, SubFieldRole,
 };
+use std::collections::{BTreeMap, BTreeSet};
 
 /// Compile an `OverlaySpec` into a live `Overlay` instance.
 ///
@@ -25,6 +26,7 @@ pub fn compile_overlay(
     registry: &DimensionRegistry,
     origin: SimThingId,
 ) -> SpecResult<Overlay> {
+    validate_evaluation_admission(spec)?;
     simthing_core::admit_overlay_lifecycle(&spec.lifecycle).map_err(|error| {
         SpecError::OverlayLifecycleAdmission {
             overlay: spec.id.clone(),
@@ -66,6 +68,140 @@ pub fn compile_overlay(
     };
 
     Ok((overlay, SpecDiagnostics::default()))
+}
+
+const MAX_OVERLAY_DEPENDENCY_EDGES: usize = 256;
+
+fn evaluation_error(spec: &OverlaySpec, reason: impl Into<String>) -> SpecError {
+    SpecError::OverlayEvaluationAdmission {
+        overlay: spec.id.clone(),
+        reason: reason.into(),
+        source_span_token: spec.source_span_token,
+    }
+}
+
+fn validate_evaluation_admission(spec: &OverlaySpec) -> Result<(), SpecError> {
+    match spec.composition_class.as_deref().unwrap_or("sequential") {
+        "sequential" => {}
+        "conjunctive-restriction" => {
+            for (role, op) in &spec.sub_field_deltas {
+                let Some(factor) = op.as_multiply_literal() else {
+                    return Err(evaluation_error(
+                        spec,
+                        format!(
+                            "conjunctive restriction for {} must lower to Multiply; Set/Add could weaken an ancestor restriction",
+                            format_role(role)
+                        ),
+                    ));
+                };
+                if !factor.is_finite() || !(0.0..=1.0).contains(&factor) {
+                    return Err(evaluation_error(
+                        spec,
+                        format!(
+                            "conjunctive restriction factor {factor:?} for {} must be finite and within [0, 1]",
+                            format_role(role)
+                        ),
+                    ));
+                }
+            }
+        }
+        other => {
+            return Err(evaluation_error(
+                spec,
+                format!("unknown overlay composition class `{other}`"),
+            ));
+        }
+    }
+
+    if spec.current_dependency_edges.len() > MAX_OVERLAY_DEPENDENCY_EDGES
+        || spec.next_dependency_edges.len() > MAX_OVERLAY_DEPENDENCY_EDGES
+    {
+        return Err(evaluation_error(
+            spec,
+            format!(
+                "dependency edge budget exceeded (current={}, next={}, max_each={MAX_OVERLAY_DEPENDENCY_EDGES})",
+                spec.current_dependency_edges.len(),
+                spec.next_dependency_edges.len()
+            ),
+        ));
+    }
+    for (from, to) in spec
+        .current_dependency_edges
+        .iter()
+        .chain(&spec.next_dependency_edges)
+    {
+        if from.trim().is_empty() || to.trim().is_empty() {
+            return Err(evaluation_error(
+                spec,
+                "dependency endpoints must be non-empty statically admitted names",
+            ));
+        }
+    }
+
+    // Only pure Current -> Current edges participate. A cycle that includes
+    // any explicit Next edge is time evolution and intentionally absent here.
+    let mut outgoing: BTreeMap<&str, Vec<&str>> = BTreeMap::new();
+    for (from, to) in &spec.current_dependency_edges {
+        outgoing.entry(from.as_str()).or_default().push(to.as_str());
+    }
+    let mut visiting = BTreeSet::new();
+    let mut visited = BTreeSet::new();
+    let mut stack = Vec::new();
+    for node in outgoing.keys().copied().collect::<Vec<_>>() {
+        if let Some(cycle) = find_current_cycle(
+            node,
+            &outgoing,
+            &mut visiting,
+            &mut visited,
+            &mut stack,
+        ) {
+            return Err(evaluation_error(
+                spec,
+                format!(
+                    "pure Current -> Current algebraic cycle `{}`; declare a Current -> Next edge to pace feedback",
+                    cycle.join(" -> ")
+                ),
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn find_current_cycle<'a>(
+    node: &'a str,
+    outgoing: &BTreeMap<&'a str, Vec<&'a str>>,
+    visiting: &mut BTreeSet<&'a str>,
+    visited: &mut BTreeSet<&'a str>,
+    stack: &mut Vec<&'a str>,
+) -> Option<Vec<&'a str>> {
+    if visited.contains(node) {
+        return None;
+    }
+    if let Some(start) = stack.iter().position(|candidate| *candidate == node) {
+        let mut cycle = stack[start..].to_vec();
+        cycle.push(node);
+        return Some(cycle);
+    }
+    visiting.insert(node);
+    stack.push(node);
+    for next in outgoing.get(node).into_iter().flatten().copied() {
+        if visiting.contains(next) {
+            let start = stack
+                .iter()
+                .position(|candidate| *candidate == next)
+                .unwrap_or(0);
+            let mut cycle = stack[start..].to_vec();
+            cycle.push(next);
+            return Some(cycle);
+        }
+        if let Some(cycle) = find_current_cycle(next, outgoing, visiting, visited, stack) {
+            return Some(cycle);
+        }
+    }
+    stack.pop();
+    visiting.remove(node);
+    visited.insert(node);
+    None
 }
 
 fn parse_property_ref<'a>(
