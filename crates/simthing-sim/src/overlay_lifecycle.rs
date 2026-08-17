@@ -35,7 +35,7 @@
 //! structural change that doesn't require a slot mutation.
 //!
 //! After step 7 the overlay list for every SimThing is authoritative for day
-//! N+1. `gpu_sync` then calls `build_overlay_deltas` to reflect those lists.
+//! N+1. `gpu_sync` then refreshes the derived overlay span projection to reflect those lists.
 
 use simthing_core::{
     admit_overlay_lifecycle, establish_overlay_deadline, DimensionRegistry, DissolveCondition,

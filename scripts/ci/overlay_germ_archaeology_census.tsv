@@ -4,7 +4,7 @@
 # classification: SEMANTIC-DUPLICATE→migrate / GENUINELY-STRUCTURAL→keep / DEAD→delete
 # universe is tree-derived (scripts/ci/overlay_germ_archaeology_census_universe.txt); do not hand-edit that pin.
 # Justified non-route overlay-named hits are `# RESIDUE` comments below (not a sixth artifact).
-# RECONCILIATION: discovery=73 classified-universe=73 analysis=3 residue=70 unclassified=0
+# RECONCILIATION: discovery=73 classified-universe=73 analysis=3 residue=77 unclassified=0
 OVL-STORE	core:simthing.rs:add_overlay	attach	core	OVERLAY	GENUINELY-STRUCTURAL	keep	The one overlay store. Anchor §4.1 semantic home; every live attach terminates here except replay restore.
 OVL-RECEIVE	core:automaton.rs:deliver_routed_overlay	attach	core	OVERLAY	GENUINELY-STRUCTURAL	keep	The one receive/route primitive. Anchor §4.2; origin/target validated; terminates at add_overlay. Germ receive door.
 OVL-DEFICIT-ALIAS	core:automaton.rs:deliver_deficit_directive	attach	core	OVERLAY	SEMANTIC-DUPLICATE	migrate	Thin alias of deliver_routed_overlay. Collapse onto the one receive door.
@@ -43,7 +43,7 @@ OVL-DELTA-SUSPENDED	sim:delta_log.rs:OverlaySuspended	suspend	sim	OVERLAY	GENUIN
 OVL-LIFECYCLE	sim:overlay_lifecycle.rs:resolve_overlay_lifecycle	dissolve	sim	OVERLAY	SEMANTIC-DUPLICATE	migrate	Largest remaining peer numerical authority (§5.2). CPU tree walk, AfterTicks decrement, dissolve. 7.7 extracts to GPU; CPU stays oracle then leaves the production path.
 OVL-EXPIRE-FX	sim:overlay_lifecycle.rs:apply_expire_effects	expire	sim	OVERLAY	SEMANTIC-DUPLICATE	migrate	on_expire writeback into the CPU shadow. Germ collapse should own expire consequence; this is bundled with the CPU lifecycle peer.
 OVL-DELTA-DISSOLVED	sim:delta_log.rs:OverlayDissolved	dissolve	sim	OVERLAY	GENUINELY-STRUCTURAL	keep	Replay transport of dissolve. One-history surface.
-OVL-PREP	kernel:overlay_prep.rs:build_overlay_deltas	apply	kernel	OVERLAY	SEMANTIC-DUPLICATE	migrate	CPU prep reimplements the ancestor+local inherit walk to emit GPU deltas. Duplicate of inherit_active_overlays / LiveOverlayRoutes. Migrates to germ project / 7.8a span.
+OVL-PREP	kernel:overlay_prep.rs:build_overlay_deltas	apply	kernel	OVERLAY	SEMANTIC-DUPLICATE	migrate	Former CPU prep reimplements the ancestor+local inherit walk. 7.8a removes it from production GPU sync and retains it only as the parity oracle for the generic span projection; later closeout may delete the oracle.
 OVL-GPU-RUN	kernel:passes.rs:run_accumulator_overlays	apply	kernel	OVERLAY	GENUINELY-STRUCTURAL	keep	GPU apply plane for overlay OrderBands. Physical execution, not a second semantic authority.
 OVL-GPU-UPLOAD	kernel:world_state.rs:upload_overlay_deltas	apply	kernel	OVERLAY	GENUINELY-STRUCTURAL	keep	Upload of prepared overlay deltas. GPU boundary.
 OVL-ORDERBAND	kernel:overlay_orderband.rs:plan_overlay_orderband	apply	kernel	OVERLAY	GENUINELY-STRUCTURAL	keep	GPU lowering of degenerate Set/Add/Mul overlay ops. Physical OrderBand plan, not a second transform language.
@@ -158,3 +158,7 @@ AN-ACTION-CONSEQUENCE	[analysis]driver:action_band_consequence.rs:CrossingConseq
 # RESIDUE	driver:field_sweep_compile.rs:compile_stead_overlay_parameterized_n4_field_sweep	field-parameter	Generic FieldSweep registration reading ordinary overlay-parameter columns; it neither attaches nor applies an Overlay and owns no lifetime route.
 # RESIDUE	driver:field_sweep_compile.rs:compile_palma_overlay_parameterized_n4_field_sweep	field-parameter	Generic min-plus FieldSweep registration reading ordinary W/terminal columns; it neither attaches nor applies an Overlay and owns no lifetime route.
 # RESIDUE	driver:field_sweep_compile.rs:compile_gu_yang_overlay_parameterized_n4_field_sweeps	field-parameter	Generic conservative FieldSweep registrations reading bounded conductance/capacity columns; they neither attach nor apply an Overlay and own no lifetime route.
+# RESIDUE	kernel:overlay_prep.rs:append_overlay_profile_ops	projection-plumbing	Compiles already-admitted active overlays into consumer-local effective descriptor operations; it does not attach, activate, suspend, dissolve, or mutate an Overlay.
+# RESIDUE	kernel:overlay_prep.rs:build_frozen_overlay_dependencies	projection-plumbing	Derives immutable span-dependency admission rows from retained overlay metadata; it neither discovers dependencies in refresh nor attaches, activates, suspends, dissolves, or mutates an Overlay.
+# RESIDUE	kernel:overlay_prep.rs:resolve_ordered_overlay_hosts	projection-query	Reads the graduated standing/routed overlay order to build a derived effective descriptor; it is not a second inheritance, attach, or lifecycle authority route.
+# RESIDUE	kernel:overlay_prep.rs:same_overlay_dependency_shape	projection-guard	Compares retained dependency-bearing overlay shape and rejects refresh when fresh admission is required; it does not mutate a dependency registry or an Overlay.

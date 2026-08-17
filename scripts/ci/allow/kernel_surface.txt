@@ -198,6 +198,8 @@ overlay_prep | authority-export | Exported kernel module surface; authority-bear
 OverlayCompileCache | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
 OverlayDelta | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
 OverlayOrderBandPlan | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
+OverlayProjectionHostChange | authority-export | DERIVED-SPAN-PROJECTION-INVALIDATION-0 authoritative changed-locus kind minted by simthing-sim boundary and consumed through gpu_sync; carries no writer-subsystem discriminant | retire when boundary change reporting is admitted wholly inside the kernel
+OverlaySpanProjection | authority-export | DERIVED-SPAN-PROJECTION-INVALIDATION-0 compiled span/profile projection compiled and refreshed by simthing-sim gpu_sync and retained by OverlayCompileCache | retire when projection compile and retention are in-crate only
 PackedAccumulatorUpload | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
 PackedIntentUpload | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
 PackedThresholdUpload | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission

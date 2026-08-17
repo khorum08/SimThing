@@ -71,6 +71,10 @@ fn upload_accumulator_reduction_plan(
 #[derive(Clone, Debug, Default)]
 pub struct GpuSyncOutcome {
     pub overlay_deltas_uploaded: u32,
+    pub overlay_profile_count: u32,
+    pub overlay_span_count: u32,
+    pub overlay_invalidated_spans: u64,
+    pub overlay_invalidation_rows_scanned: u64,
     pub threshold_regs_uploaded: u32,
     pub new_threshold_registry: Option<ThresholdRegistry>,
     /// GPU threshold registrations when `rebuild_thresholds` ran (C-1 sync).
@@ -112,6 +116,8 @@ pub fn sync_gpu_buffers(
     use_accumulator_velocity: bool,
     use_accumulator_eml: bool,
     overlay_compile_revision: u64,
+    overlay_projection_topology_changed: bool,
+    overlay_projection_changes: &[simthing_gpu::OverlayProjectionHostChange],
     // B2 Approach C: the canonical TopologyState owned by the boundary.
     // When `rebuild_reduction_topology` is true, this routine refreshes
     // the cache from a full tree walk and re-flattens to CSR. When false
@@ -146,14 +152,70 @@ pub fn sync_gpu_buffers(
                 .and_then(|runtime| runtime.overlay_compile_cache.as_ref())
             {
                 n_deltas = cache.cached_deltas.len() as u32;
+                let (profiles, spans) = cache.projection.profile_and_span_counts();
+                out.overlay_profile_count = profiles as u32;
+                out.overlay_span_count = spans as u32;
                 state.set_overlay_add_dispatch(
                     cache.cached_op_buffer_uploaded_n_ops > 0,
                     cache.cached_n_bands,
                 );
             }
         } else {
-            let (deltas, mut ranges) =
-                simthing_gpu::build_overlay_deltas(root.inner(), registry, allocator);
+            let cache = state
+                .accumulator_runtime
+                .as_mut()
+                .and_then(|runtime| runtime.overlay_compile_cache.take());
+            let had_cache = cache.is_some();
+            let (
+                mut projection,
+                prior_deltas,
+                prior_ranges,
+                prior_n_bands,
+                prior_uploaded_n_ops,
+                prior_counts,
+            ) = if let Some(cache) = cache {
+                let simthing_gpu::OverlayCompileCache {
+                    projection,
+                    cached_deltas,
+                    cached_ranges,
+                    cached_n_bands,
+                    cached_op_buffer_uploaded_n_ops,
+                    compile_count,
+                    upload_count,
+                    ..
+                } = cache;
+                (
+                    projection,
+                    cached_deltas,
+                    cached_ranges,
+                    cached_n_bands,
+                    cached_op_buffer_uploaded_n_ops,
+                    (compile_count, upload_count),
+                )
+            } else {
+                (
+                    simthing_gpu::OverlaySpanProjection::compile(root.inner()),
+                    Vec::new(),
+                    Vec::new(),
+                    0,
+                    0,
+                    (0, 0),
+                )
+            };
+            if overlay_projection_topology_changed && had_cache {
+                projection = simthing_gpu::OverlaySpanProjection::compile(root.inner());
+            } else if had_cache {
+                if !overlay_projection_changes.is_empty() {
+                    let (spans_rebuilt, rows_scanned) =
+                        projection.refresh(root.inner(), overlay_projection_changes, generation);
+                    out.overlay_invalidated_spans = spans_rebuilt;
+                    out.overlay_invalidation_rows_scanned = rows_scanned;
+                }
+            }
+            let (profiles, spans) = projection.profile_and_span_counts();
+            out.overlay_profile_count = profiles as u32;
+            out.overlay_span_count = spans as u32;
+            let (deltas, mut ranges) = projection.materialize_dense(registry, allocator);
             if (ranges.len() as u32) < state.n_slots {
                 ranges.resize(
                     state.n_slots as usize,
@@ -162,35 +224,25 @@ pub fn sync_gpu_buffers(
             }
             n_deltas = deltas.len() as u32;
 
-            let cache_equal = state
-                .accumulator_runtime
-                .as_ref()
-                .and_then(|runtime| runtime.overlay_compile_cache.as_ref())
-                .is_some_and(|cache| {
-                    cache.cached_deltas == deltas && cache.cached_ranges == ranges
-                });
+            let cache_equal = had_cache && prior_deltas == deltas && prior_ranges == ranges;
 
             if cache_equal {
-                let mut dispatch = None;
-                if let Some(runtime) = state.accumulator_runtime.as_mut() {
-                    if let Some(cache) = runtime.overlay_compile_cache.as_mut() {
-                        cache.compiled_at_revision = overlay_compile_revision;
-                        dispatch = Some((
-                            cache.cached_op_buffer_uploaded_n_ops > 0,
-                            cache.cached_n_bands,
-                        ));
-                    }
-                }
-                if let Some((active, n_bands)) = dispatch {
-                    state.set_overlay_add_dispatch(active, n_bands);
-                }
-            } else {
-                let prior_counts = state
+                state.set_overlay_add_dispatch(prior_uploaded_n_ops > 0, prior_n_bands);
+                state
                     .accumulator_runtime
-                    .as_ref()
-                    .and_then(|runtime| runtime.overlay_compile_cache.as_ref())
-                    .map(|cache| (cache.compile_count, cache.upload_count))
-                    .unwrap_or((0, 0));
+                    .as_mut()
+                    .expect("overlay runtime ensured")
+                    .overlay_compile_cache = Some(simthing_gpu::OverlayCompileCache {
+                    compiled_at_revision: overlay_compile_revision,
+                    projection,
+                    cached_deltas: prior_deltas,
+                    cached_ranges: prior_ranges,
+                    cached_n_bands: prior_n_bands,
+                    cached_op_buffer_uploaded_n_ops: prior_uploaded_n_ops,
+                    compile_count: prior_counts.0,
+                    upload_count: prior_counts.1,
+                });
+            } else {
                 let simthing_gpu::OverlayOrderBandPlan { ops, n_bands } =
                     simthing_gpu::plan_overlay_orderband(&deltas, &ranges, state.n_slots);
                 state
@@ -199,8 +251,9 @@ pub fn sync_gpu_buffers(
                 if let Some(runtime) = state.accumulator_runtime.as_mut() {
                     runtime.overlay_compile_cache = Some(simthing_gpu::OverlayCompileCache {
                         compiled_at_revision: overlay_compile_revision,
-                        cached_deltas: deltas.clone(),
-                        cached_ranges: ranges.clone(),
+                        projection,
+                        cached_deltas: deltas,
+                        cached_ranges: ranges,
                         cached_n_bands: n_bands,
                         cached_op_buffer_uploaded_n_ops: ops.len() as u32,
                         compile_count: prior_counts.0 + 1,
@@ -212,24 +265,9 @@ pub fn sync_gpu_buffers(
             }
         }
     } else {
-        let (deltas, mut ranges) =
-            simthing_gpu::build_overlay_deltas(root.inner(), registry, allocator);
-        if (ranges.len() as u32) < state.n_slots {
-            ranges.resize(
-                state.n_slots as usize,
-                simthing_gpu::SlotDeltaRange::default(),
-            );
-        }
-        n_deltas = deltas.len() as u32;
-        if !deltas.is_empty() {
-            panic!(
-                "Legacy overlay path was deleted in S-3; AccumulatorOp overlay must remain enabled."
-            );
-        }
-        if let Some(runtime) = state.accumulator_runtime.as_mut() {
-            runtime.clear_overlay_orderband();
-        }
-        state.set_overlay_add_dispatch(false, 0);
+        panic!(
+            "Legacy overlay path was deleted in S-3; disabling the derived span projection is not an admitted runtime route."
+        );
     }
     out.overlay_deltas_uploaded = n_deltas;
 
