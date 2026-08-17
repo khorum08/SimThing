@@ -1,6 +1,6 @@
 # OVERLAY-FRACTAL-CLOSURE-WITNESS-0 (7.9) evidence
 
-Status: implementation complete; DA review pending.
+Status: implementation complete; independent review pending.
 
 ## Receipts and fences
 
