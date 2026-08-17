@@ -14,17 +14,19 @@ use simthing_core::{
 };
 use simthing_driver::{
     compile_action_band_gpu_execution_with_native_lanes, compile_comparative_bundle,
-    compile_gu_yang_n4_field_sweeps, compile_palma_n4_field_sweep, neighbor_slots_from_grid,
-    ActionBandActiveInstance, ActionBandExecutionCompileError, ActionBandNativeLaneAdmission,
-    ComparativeBandReadouts, ComparativeEmitterClass, ComparativeProjectionOutputs,
-    ComparativeProjectionRequest, GuYangN4FieldSweepSpec, GuYangStallOutputs,
-    PalmaN4FieldSweepSpec,
+    compile_crossing_consequence_session, compile_gu_yang_n4_field_sweeps,
+    compile_palma_n4_field_sweep, neighbor_slots_from_grid, ActionBandActiveInstance,
+    ActionBandExecutionCompileError, ActionBandNativeLaneAdmission, ComparativeBandReadouts,
+    ComparativeEmitterClass, ComparativeProjectionOutputs, ComparativeProjectionRequest,
+    GuYangN4FieldSweepSpec, GuYangStallOutputs, PalmaN4FieldSweepSpec, StructuralAuthorization,
 };
+use simthing_feeder::{feeder_channel, BoundaryRequest, FeederWork};
 use simthing_gpu::{
     apply_band_crossing_deltas_from_fused_emissions, emit_on_threshold_registrations_to_gpu,
-    scoped_debug_readback_allowed, wgpu, AccumulatorOpSession, ActionBandEmissionBindingGpu,
-    ActionBandGpuExecution, FieldAdjacency, FieldSweepSession, GpuContext, PackedAccumulatorUpload,
-    PackedThresholdUpload, SlotAllocator, GRID_N4_NSEW, MIN_PLUS_INF,
+    readback_buffer_bytes_blocking, scoped_debug_readback_allowed, wgpu, AccumulatorOpSession,
+    ActionBandEmissionBindingGpu, ActionBandGpuExecution, FieldAdjacency, FieldSweepSession,
+    GpuContext, PackedAccumulatorUpload, PackedThresholdUpload, SlotAllocator, GRID_N4_NSEW,
+    MIN_PLUS_INF,
 };
 use simthing_sim::overlay_lifecycle::resolve_overlay_lifecycle;
 use simthing_sim::{
@@ -291,6 +293,8 @@ fn rf_plan(fx: &Fixture) -> CompiledAccumulatorOpPlan {
 struct CompiledVendor {
     frozen: FrozenActionBandTemplates,
     compiled: simthing_driver::CompiledActionBandGpuExecution,
+    programs: EmlExpressionRegistry,
+    native: ActionBandNativeLaneAdmission,
     rf: CompiledAccumulatorOpPlan,
     cost_registry: ThresholdRegistry,
     cost_event: u32,
@@ -349,6 +353,8 @@ fn compile_vendor(
     CompiledVendor {
         frozen,
         compiled,
+        programs: programs.clone(),
+        native,
         rf,
         cost_registry,
         cost_event,
@@ -408,6 +414,8 @@ struct VendorRun {
     palma_d: Vec<f32>,
     commitment: simthing_kernel::StructuralCommitment,
     plan_fingerprint: u64,
+    consequence_parity_digest: u64,
+    consequence_door_reparented: bool,
 }
 
 fn run_vendor(
@@ -468,6 +476,12 @@ fn run_vendor(
     guyang_session
         .dispatch_chain(ctx, &guyang, 1)
         .expect("Gu-Yang chain");
+    let guyang_values = {
+        let _proof = scoped_debug_readback_allowed(true);
+        guyang_session
+            .readback(ctx)
+            .expect("Gu-Yang consequence-door input")
+    };
     let resident = storage(ctx, "movement_vendor_resident", (initial.len() * 4) as u64);
     guyang_session.copy_values_to_buffer(ctx, &resident);
 
@@ -526,6 +540,112 @@ fn run_vendor(
         .expect("ActionBand native+structural dispatch");
     assert_eq!(production.commitments.len(), 1);
 
+    // 7.8 oracle-first migration: the graduated 7.5c binding executes through
+    // the canonical consequence door. The old low-level dispatch above is
+    // retained here only as the bit-exact oracle for the migration proof.
+    let (mut door_tree, mut door_allocator, _cells, actor, ids) = topology();
+    let consequence_rows = vec![
+        vendor
+            .native
+            .bind_resident_next(ActionBandEmissionBindingGpu::rf_claim(
+                fx.rf_claim.raw_u32(),
+            ))
+            .expect("admitted RF Next consequence"),
+        vendor
+            .native
+            .bind_resident_next(ActionBandEmissionBindingGpu::property_next(
+                fx.desired.raw_u32(),
+                simthing_gpu::ActionBandPropertyWrite::Set,
+            ))
+            .expect("admitted property Next consequence"),
+        vendor
+            .native
+            .bind_resident_next(ActionBandEmissionBindingGpu::cost_band(
+                fx.cost_progress.raw_u32(),
+            ))
+            .expect("admitted CostBand Next consequence"),
+        StructuralAuthorization::admit(BoundaryRequest::Reparent {
+            child: actor,
+            new_parent: ids[STEP_SLOT as usize],
+        })
+        .expect("admitted structural consequence"),
+    ];
+    let door = compile_crossing_consequence_session(
+        &vendor.frozen,
+        &vendor.programs,
+        &consequence_rows,
+        &[ActionBandActiveInstance::new(
+            vendor.frozen.templates()[0].index(),
+            SlotIndex::new(STEP_SLOT),
+            [0.0; 4],
+        )],
+        &vendor.native,
+    )
+    .expect("compile 7.5c through the 7.8 consequence door");
+    assert_eq!(
+        door.compiled().plan_fingerprint(),
+        vendor.compiled.plan_fingerprint(),
+        "the door must preserve the graduated numeric plan"
+    );
+    let (door_tx, door_rx) = feeder_channel();
+    let mut door_dispatch = door
+        .bind_dispatch(ctx, &guyang_values)
+        .expect("bind facility-local resident plane");
+    let door_outcome = door_dispatch
+        .dispatch_and_apply(ctx, fx.registry.total_columns as u32, crossings, &door_tx)
+        .expect("one canonical crossing consequence dispatch");
+    assert_eq!(door_outcome.structural_authorizations, 1);
+    let door_values = {
+        let _proof = scoped_debug_readback_allowed(true);
+        door_dispatch
+            .resident_current_for_proof(ctx)
+            .expect("door resident proof")
+    };
+    let old_bytes = readback_buffer_bytes_blocking(
+        &ctx.device,
+        &ctx.queue,
+        &next,
+        next.size(),
+        "movement_vendor_7_5c_oracle_next",
+    )
+    .expect("old 7.5c oracle readback");
+    let old_values: &[f32] = bytemuck::cast_slice(&old_bytes);
+    let base = STEP_SLOT as usize * fx.registry.total_columns;
+    let mut consequence_hasher = std::collections::hash_map::DefaultHasher::new();
+    for column in [fx.rf_claim, fx.desired, fx.cost_progress] {
+        let old_bits = old_values[base + column.raw()].to_bits();
+        let door_bits = door_values[base + column.raw()].to_bits();
+        assert_eq!(door_bits, old_bits, "7.5c native Next parity at {column:?}");
+        door_bits.hash(&mut consequence_hasher);
+    }
+    let door_requests = door_rx
+        .drain_now()
+        .into_iter()
+        .map(|work| match work {
+            FeederWork::Boundary(request) => request,
+            _ => panic!("consequence door emitted a non-boundary work item"),
+        })
+        .collect::<Vec<_>>();
+    let mut door_registry = fx.registry.clone();
+    let mut door_shadow = vec![0.0; door_allocator.capacity() * door_registry.total_columns];
+    let door_applied = apply_structural_mutations(
+        door_requests,
+        &mut door_tree,
+        &mut door_allocator,
+        &mut door_registry,
+        &mut door_shadow,
+        fx.registry.total_columns,
+        None,
+        simthing_core::GenerationStamp::new(1),
+        &mut simthing_sim::overlay_lifecycle::OverlayLifecycleAdmissionState::default(),
+    );
+    let consequence_door_reparented =
+        door_applied.reparented == vec![(actor, ids[STEP_SLOT as usize])];
+    assert!(
+        consequence_door_reparented,
+        "the 7.5c structural consequence must use the ordinary boundary"
+    );
+
     let mut rf = AccumulatorOpSession::new(ctx, vendor.rf.slot_count, vendor.rf.n_dims);
     rf.copy_values_prefix_from_buffer(ctx, &next, 0, 0, next.size())
         .expect("next into RF");
@@ -554,6 +674,8 @@ fn run_vendor(
         palma_d,
         commitment: production.commitments[0],
         plan_fingerprint: vendor.compiled.plan_fingerprint(),
+        consequence_parity_digest: consequence_hasher.finish(),
+        consequence_door_reparented,
     }
 }
 
@@ -855,6 +977,11 @@ fn full_vendor_capacity_overlay_costband_and_arrival_chain_is_native_bounded() {
         assert_eq!(run.desired.to_bits(), (2.0 * run.native_flux).to_bits());
         assert_eq!(run.cost_progress.to_bits(), run.desired.to_bits());
         assert_eq!(run.physical_progress.to_bits(), run.native_flux.to_bits());
+        assert!(run.consequence_door_reparented);
+        println!(
+            "ACTIONBAND_7_8_MOVEMENT_PARITY generation={} digest={:016x}",
+            generation, run.consequence_parity_digest
+        );
         runs.push((generation, capacity, run));
     }
     let samples: Vec<_> = runs

@@ -233,9 +233,7 @@ struct MappingBoundaryState {
 
 /// Install-resolved authored commitment consequence (CT-3b+4a closure).
 struct ResolvedCommitmentEffect {
-    target: simthing_core::SimThingId,
-    property_id: simthing_core::SimPropertyId,
-    deltas: Vec<(simthing_core::SubFieldRole, simthing_core::TransformOp)>,
+    consequence: crate::CrossingConsequenceBinding,
     once: bool,
     fired: bool,
 }
@@ -747,10 +745,26 @@ impl SimSession {
                     .root
                     .seed_properties_on_node(target, &props, &self.proto.registry);
                 self.proto.initial_gpu_sync(&self.coord, &mut self.state);
+                let overlay = simthing_core::Overlay {
+                    id: simthing_core::OverlayId::new(),
+                    kind: simthing_core::OverlayKind::Custom("mapping_commitment".into()),
+                    source: simthing_core::OverlaySource::System,
+                    origin: self.scenario.root.id,
+                    affects: vec![target],
+                    transform: simthing_core::PropertyTransformDelta {
+                        property_id,
+                        sub_field_deltas: spec.sub_field_deltas.clone(),
+                    },
+                    lifecycle: simthing_core::dispatch_until_dissolved(vec![
+                        simthing_core::DissolveCondition::AtSessionEnd,
+                    ])
+                    .expect("AtSessionEnd is a non-empty authored condition"),
+                };
+                simthing_core::admit_dispatch_minted_overlay(&overlay)
+                    .expect("dispatch-minted overlay admits under Definable Horizon");
                 Some(ResolvedCommitmentEffect {
-                    target,
-                    property_id,
-                    deltas: spec.sub_field_deltas.clone(),
+                    consequence: crate::RoutedOverlayDelivery::admit(target, overlay)
+                        .map_err(|error| SessionError::Mapping(error.to_string()))?,
                     once: spec.once,
                     fired: false,
                 })
@@ -780,19 +794,28 @@ impl SimSession {
         Ok(())
     }
 
-    /// CT-3b+4a closure: convert journaled commitment crossings into the
-    /// authored `BoundaryRequest::AttachOverlay` consequence, submitted into
-    /// the ordinary boundary channel (drained and applied by the existing
-    /// structural machinery). Returns `true` when a request was submitted so
-    /// the caller never takes the empty-boundary fast path past it.
+    /// CT-3b+4a closure: submit journaled commitment crossings through the
+    /// shared admitted consequence binding and ordinary boundary channel.
     fn submit_commitment_effects(
         &mut self,
         summary: &mut RunSummary,
     ) -> Result<bool, SessionError> {
+        let Some(consumed) = self
+            .mapping
+            .as_ref()
+            .map(|mapping| mapping.boundary.commitments_consumed)
+        else {
+            return Ok(false);
+        };
+        let pending_generation = self
+            .mapping_commitments
+            .get(consumed..)
+            .and_then(|pending| pending.last())
+            .map(|record| simthing_core::GenerationStamp::new(record.event.generation()));
         let Some(m) = self.mapping.as_mut() else {
             return Ok(false);
         };
-        let pending = self.mapping_commitments.len() > m.boundary.commitments_consumed;
+        let pending = pending_generation.is_some();
         m.boundary.commitments_consumed = self.mapping_commitments.len();
         if !pending {
             return Ok(false);
@@ -804,34 +827,9 @@ impl SimSession {
             return Ok(false);
         }
         effect.fired = true;
-        // EVENT-GENERATION-STAMP-0: dispatch-minted overlays carry UntilDissolved
-        // with an authored dissolve condition (Definable Horizon). AtSessionEnd is
-        // a definable horizon, never "never".
-        let overlay = simthing_core::Overlay {
-            id: simthing_core::OverlayId::new(),
-            kind: simthing_core::OverlayKind::Custom("mapping_commitment".into()),
-            source: simthing_core::OverlaySource::System,
-            origin: self.scenario.root.id,
-            affects: vec![effect.target],
-            transform: simthing_core::PropertyTransformDelta {
-                property_id: effect.property_id,
-                sub_field_deltas: effect.deltas.clone(),
-            },
-            lifecycle: simthing_core::dispatch_until_dissolved(vec![
-                simthing_core::DissolveCondition::AtSessionEnd,
-            ])
-            .expect("AtSessionEnd is a non-empty authored condition"),
-        };
-        simthing_core::admit_dispatch_minted_overlay(&overlay)
-            .expect("dispatch-minted overlay admits under Definable Horizon");
-        self.tx
-            .submit_boundary(simthing_feeder::BoundaryRequest::AttachOverlay {
-                target: effect.target,
-                overlay,
-                source_generation: simthing_core::GenerationStamp::new(
-                    self.coord.day_index() as u32
-                ),
-            })
+        effect
+            .consequence
+            .submit_boundary(pending_generation.expect("pending checked"), &self.tx)
             .map_err(|e| SessionError::Mapping(format!("{e:?}")))?;
         summary.mapping_commitment_effects_applied += 1;
         Ok(true)

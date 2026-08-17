@@ -16,7 +16,7 @@ use crate::slot::SlotAllocator;
 use crate::wgsl_encode::column_from_wire;
 
 /// Deterministic direction of a crossed band edge.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum BandCrossingDirection {
     Rising,
     Falling,
@@ -60,6 +60,7 @@ pub enum BandCrossingDirection {
 /// ```
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct BandCrossingDelta {
+    generation: u32,
     reg_idx: u32,
     sim_thing_id: SimThingId,
     property_id: SimPropertyId,
@@ -73,6 +74,10 @@ pub struct BandCrossingDelta {
 }
 
 impl BandCrossingDelta {
+    pub fn generation(&self) -> u32 {
+        self.generation
+    }
+
     pub fn reg_idx(&self) -> u32 {
         self.reg_idx
     }
@@ -151,6 +156,7 @@ impl BandCrossingDelta {
             _ => return None,
         };
         Some(Self {
+            generation: emission.generation(),
             reg_idx: emission.reg_idx(),
             sim_thing_id,
             property_id,

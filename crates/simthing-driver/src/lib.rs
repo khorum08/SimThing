@@ -1,4 +1,5 @@
 pub mod arena_allocation_oracle;
+pub mod action_band_consequence;
 pub mod action_band_execution_compile;
 pub mod action_band_semantic_shadow;
 pub mod arena_allocation_plan;
@@ -88,6 +89,13 @@ pub mod structural_n4_theater_compile;
 pub mod w_impedance_compose_bridge;
 
 pub use arena_allocation_oracle::{run_arena_allocation_oracle, ArenaAllocationOracleTrace};
+pub use action_band_consequence::{
+    compile_crossing_consequence_session, submit_routed_overlay_product,
+    CrossingConsequenceAdmissionError,
+    CrossingConsequenceBinding, CrossingConsequenceDispatch, CrossingConsequenceDispatchError,
+    CrossingConsequenceDispatchOutcome, CrossingConsequenceSession, ResidentNextWrite,
+    RoutedOverlayDelivery, RoutedOverlayProduct, StructuralAuthorization,
+};
 pub use action_band_execution_compile::{
     compile_action_band_gpu_execution, compile_action_band_gpu_execution_with_native_lanes,
     frozen_admission_binding_id, ActionBandActiveInstance, ActionBandExecutionCompileError,
@@ -154,8 +162,11 @@ pub use comparative_projection::{
     BAND_READOUT_COLUMN_COUNT, COMPARATIVE_DERIVED_COLUMN_COUNT, GUYANG_STALL_DERIVED_COLUMN_COUNT,
 };
 pub use field_sweep_compile::{
-    compile_gu_yang_n4_field_sweeps, compile_palma_n4_field_sweep, GuYangN4FieldSweepSpec,
-    PalmaN4FieldSweepSpec,
+    compile_gu_yang_n4_field_sweeps, compile_gu_yang_overlay_parameterized_n4_field_sweeps,
+    compile_palma_n4_field_sweep, compile_palma_overlay_parameterized_n4_field_sweep,
+    compile_stead_overlay_parameterized_n4_field_sweep, GuYangN4FieldSweepSpec,
+    GuYangOverlayParameterizedN4Spec, PalmaN4FieldSweepSpec, PalmaOverlayParameterizedN4Spec,
+    SteadOverlayParameterizedN4Spec,
 };
 pub use field_scheduler::{
     count_cadence_due_ticks, execute_scheduled_regions_with,

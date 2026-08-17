@@ -8,7 +8,8 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use simthing_core::{
     eml_nodes::execution_class_to_u32, ColumnIndex, CompiledAccumulatorOpPlan, DimensionRegistry,
-    EmitOnThresholdRegistration, EmlExpressionRegistry, EmlTreeId, SlotIndex,
+    EmitOnThresholdRegistration, EmlExpressionRegistry, EmlTreeId, SimPropertyId, SlotIndex,
+    SubFieldRole,
 };
 use simthing_feeder::{BoundaryRequest, FeederSender};
 use simthing_gpu::{
@@ -139,11 +140,13 @@ pub enum ActionBandExecutionCompileError {
 /// next-state lanes. It carries no values or lifecycle authority: RF columns
 /// come from compiled accumulator plans and CostBand columns from admitted sink
 /// registrations in the ordinary threshold registry.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct ActionBandNativeLaneAdmission {
+    origin: ActionBandNativeLaneOrigin,
     property_next_columns: BTreeSet<u32>,
     rf_claim_columns: BTreeSet<u32>,
     cost_band_columns: BTreeSet<u32>,
+    logical_destinations: BTreeMap<u32, (SimPropertyId, SubFieldRole)>,
 }
 
 impl ActionBandNativeLaneAdmission {
@@ -155,17 +158,17 @@ impl ActionBandNativeLaneAdmission {
         threshold_registry: &ThresholdRegistry,
     ) -> Self {
         let in_bounds = |column: u32| column < dimensions.total_columns as u32;
-        let property_next_columns = property_next_columns
+        let property_next_columns: BTreeSet<u32> = property_next_columns
             .iter()
             .map(|column| column.raw_u32())
             .filter(|&column| in_bounds(column))
             .collect();
-        let rf_claim_columns = rf_plans
+        let rf_claim_columns: BTreeSet<u32> = rf_plans
             .iter()
             .map(|plan| plan.input_channel.raw())
             .filter(|&column| in_bounds(column))
             .collect();
-        let cost_band_columns = threshold_registrations
+        let cost_band_columns: BTreeSet<u32> = threshold_registrations
             .iter()
             .filter(|registration| {
                 threshold_registry
@@ -175,14 +178,24 @@ impl ActionBandNativeLaneAdmission {
             .map(|registration| registration.col.raw_u32())
             .filter(|&column| in_bounds(column))
             .collect();
+        let logical_destinations = property_next_columns
+            .iter()
+            .chain(rf_claim_columns.iter())
+            .chain(cost_band_columns.iter())
+            .filter_map(|&column| {
+                logical_destination(dimensions, column).map(|identity| (column, identity))
+            })
+            .collect();
         Self {
+            origin: ActionBandNativeLaneOrigin::mint(),
             property_next_columns,
             rf_claim_columns,
             cost_band_columns,
+            logical_destinations,
         }
     }
 
-    fn admits(&self, binding: ActionBandEmissionBindingGpu) -> bool {
+    pub(crate) fn admits(&self, binding: ActionBandEmissionBindingGpu) -> bool {
         let column = binding.destination_index();
         match binding.destination() {
             ActionBandEmissionDestination::PropertyNext => {
@@ -195,6 +208,40 @@ impl ActionBandNativeLaneAdmission {
             | ActionBandEmissionDestination::Telemetry => false,
         }
     }
+
+    pub(crate) fn logical_destination(&self, column: u32) -> Option<(SimPropertyId, SubFieldRole)> {
+        self.logical_destinations.get(&column).cloned()
+    }
+
+    pub(crate) fn origin(&self) -> ActionBandNativeLaneOrigin {
+        self.origin
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct ActionBandNativeLaneOrigin(u64);
+
+impl ActionBandNativeLaneOrigin {
+    fn mint() -> Self {
+        static NEXT: AtomicU64 = AtomicU64::new(1);
+        Self(NEXT.fetch_add(1, Ordering::Relaxed))
+    }
+}
+
+fn logical_destination(
+    dimensions: &DimensionRegistry,
+    column: u32,
+) -> Option<(SimPropertyId, SubFieldRole)> {
+    let (property_id, offset) = *dimensions.column_owners.get(column as usize)?;
+    let property = dimensions.try_property(property_id)?;
+    let mut start = 0usize;
+    for sub_field in &property.layout.sub_fields {
+        if offset < start + sub_field.width {
+            return Some((property_id, sub_field.role.clone()));
+        }
+        start += sub_field.width;
+    }
+    None
 }
 
 #[derive(Clone, Copy, Debug)]

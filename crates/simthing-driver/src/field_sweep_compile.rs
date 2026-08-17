@@ -65,6 +65,62 @@ pub fn compile_palma_n4_field_sweep(
     })
 }
 
+/// PALMA whose impedance and terminal value are ordinary resident columns.
+/// An overlay may parameterize those columns, but adjacency, canonical order,
+/// and the min-plus fold remain frozen in the admitted registration.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct PalmaOverlayParameterizedN4Spec {
+    pub width: u32,
+    pub height: u32,
+    pub n_dims: u32,
+    pub d_col: ColumnIndex,
+    pub w_col: ColumnIndex,
+    pub terminal_value_col: ColumnIndex,
+    pub destination_slot: SlotIndex,
+    pub inf_sentinel: f32,
+}
+
+pub fn compile_palma_overlay_parameterized_n4_field_sweep(
+    spec: PalmaOverlayParameterizedN4Spec,
+) -> Result<FieldSweepRegistration, FieldSweepAdmissionError> {
+    let adjacency = FieldAdjacency::grid_n4(spec.width, spec.height, GRID_N4_WENS, spec.d_col)?;
+    if spec.destination_slot.raw() >= adjacency.slots() {
+        return Err(FieldSweepAdmissionError::InvalidDestinationSlot {
+            slot: spec.destination_slot,
+            slots: adjacency.slots(),
+        });
+    }
+    let canonical_order_proof = adjacency.apply_canonical_order_proof();
+    apply_field_sweep_registration(FieldSweepRegistrationRequest {
+        adjacency,
+        n_dims: spec.n_dims,
+        output: FieldSweepOutput::Matrix(spec.d_col),
+        map_program: vec![neighbor(spec.d_col), ret()],
+        fold_program: vec![
+            param(field_param::ACCUMULATOR),
+            param(field_param::MAPPED),
+            binary(eml_opcode::MIN),
+            ret(),
+        ],
+        identity_bits: spec.inf_sentinel.to_bits(),
+        post_program: vec![
+            param(field_param::TARGET_SLOT),
+            literal(spec.destination_slot.raw() as f32),
+            binary(eml_opcode::CMP_EQ),
+            target(spec.terminal_value_col),
+            target(spec.w_col),
+            param(field_param::FOLDED),
+            binary(eml_opcode::ADD),
+            select(),
+            ret(),
+        ],
+        field_law_proof: Some(FieldLawProof::apply_non_conservative()),
+        transient_read_proof: None,
+        canonical_order_proof: Some(canonical_order_proof),
+        dt: 1.0,
+    })
+}
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct GuYangN4FieldSweepSpec {
     pub width: u32,
@@ -164,6 +220,101 @@ pub fn compile_gu_yang_n4_field_sweeps(
     Ok([conductance, flux])
 }
 
+/// Gu-Yang with overlay-parameterizable conductance scale and capacity input
+/// columns. Both are clamped inside the authored EML map; the conservative
+/// symmetry/conductance certificate and chi bound remain admission-frozen.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct GuYangOverlayParameterizedN4Spec {
+    pub width: u32,
+    pub height: u32,
+    pub n_dims: u32,
+    pub value_col: ColumnIndex,
+    pub conductance_input_col: ColumnIndex,
+    pub conductance_output_col: ColumnIndex,
+    pub capacity_col: ColumnIndex,
+    pub chi: f32,
+    pub dt: f32,
+}
+
+pub fn compile_gu_yang_overlay_parameterized_n4_field_sweeps(
+    spec: GuYangOverlayParameterizedN4Spec,
+) -> Result<[FieldSweepRegistration; 2], FieldSweepAdmissionError> {
+    let adjacency = FieldAdjacency::grid_n4(spec.width, spec.height, GRID_N4_NSEW, spec.value_col)?;
+    let canonical_order_proof = adjacency.apply_canonical_order_proof();
+    let conductance = apply_field_sweep_registration(FieldSweepRegistrationRequest {
+        adjacency: adjacency.clone(),
+        n_dims: spec.n_dims,
+        output: FieldSweepOutput::Matrix(spec.conductance_output_col),
+        map_program: vec![
+            neighbor(spec.value_col),
+            neighbor(spec.capacity_col),
+            safe_binary(eml_opcode::DIV),
+            clamp_bounded(0.0, 1.0),
+            unary(eml_opcode::NEG),
+            literal(1.0),
+            binary(eml_opcode::ADD),
+            target(spec.conductance_input_col),
+            clamp_bounded(0.0, 1.0),
+            binary(eml_opcode::MUL),
+            ret(),
+        ],
+        fold_program: vec![
+            param(field_param::ACCUMULATOR),
+            param(field_param::MAPPED),
+            binary(eml_opcode::MUL),
+            ret(),
+        ],
+        identity_bits: spec.chi.to_bits(),
+        post_program: vec![param(field_param::FOLDED), ret()],
+        field_law_proof: Some(FieldLawProof::apply_non_conservative()),
+        transient_read_proof: None,
+        canonical_order_proof: Some(canonical_order_proof),
+        dt: spec.dt,
+    })?;
+
+    let symmetry = adjacency.apply_undirected_symmetry_certificate()?;
+    let conductance_certificate =
+        adjacency.apply_conductance_certificate(vec![spec.chi; adjacency.slots() as usize], 1.0)?;
+    let flux = apply_field_sweep_registration(FieldSweepRegistrationRequest {
+        adjacency,
+        n_dims: spec.n_dims,
+        output: FieldSweepOutput::Matrix(spec.value_col),
+        map_program: vec![
+            target(spec.conductance_output_col),
+            neighbor(spec.conductance_output_col),
+            binary(eml_opcode::ADD),
+            literal(0.5),
+            binary(eml_opcode::MUL),
+            neighbor(spec.value_col),
+            target(spec.value_col),
+            binary(eml_opcode::SUB),
+            binary(eml_opcode::MUL),
+            ret(),
+        ],
+        fold_program: vec![
+            param(field_param::ACCUMULATOR),
+            param(field_param::MAPPED),
+            binary(eml_opcode::ADD),
+            ret(),
+        ],
+        identity_bits: 0.0f32.to_bits(),
+        post_program: vec![
+            target(spec.value_col),
+            param(field_param::FOLDED),
+            binary(eml_opcode::ADD),
+            ret(),
+        ],
+        field_law_proof: Some(FieldLawProof::apply_conservative(
+            symmetry,
+            conductance_certificate,
+        )),
+        transient_read_proof: None,
+        canonical_order_proof: Some(canonical_order_proof),
+        dt: spec.dt,
+    })?;
+    Ok([conductance, flux])
+}
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct SteadExponentialFalloffSpec {
     pub width: u32,
@@ -217,6 +368,57 @@ pub fn compile_stead_exponential_falloff_field_sweep(
         fold_program,
         identity_bits: 0.0f32.to_bits(),
         post_program,
+        field_law_proof: Some(FieldLawProof::apply_non_conservative()),
+        transient_read_proof: None,
+        canonical_order_proof: Some(canonical_order_proof),
+        dt: spec.dt,
+    })
+}
+
+/// STEAD falloff whose source and non-negative falloff rate are ordinary
+/// resident columns. The exponential saturation guard remains the existing
+/// admitted EML shape; no overlay can alter adjacency or program structure.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct SteadOverlayParameterizedN4Spec {
+    pub width: u32,
+    pub height: u32,
+    pub n_dims: u32,
+    pub source_col: ColumnIndex,
+    pub falloff_col: ColumnIndex,
+    pub output_col: ColumnIndex,
+    pub dt: f32,
+}
+
+pub fn compile_stead_overlay_parameterized_n4_field_sweep(
+    spec: SteadOverlayParameterizedN4Spec,
+) -> Result<FieldSweepRegistration, FieldSweepAdmissionError> {
+    let adjacency =
+        FieldAdjacency::grid_n4(spec.width, spec.height, GRID_N4_NSEW, spec.source_col)?;
+    let canonical_order_proof = adjacency.apply_canonical_order_proof();
+    apply_field_sweep_registration(FieldSweepRegistrationRequest {
+        adjacency,
+        n_dims: spec.n_dims,
+        output: FieldSweepOutput::Matrix(spec.output_col),
+        map_program: vec![
+            neighbor(spec.source_col),
+            param(field_param::EDGE_SCALAR),
+            target(spec.falloff_col),
+            clamp_bounded(0.0, f32::MAX),
+            binary(eml_opcode::MUL),
+            unary(eml_opcode::NEG),
+            exp_saturation_guard(),
+            unary(eml_opcode::EXP),
+            binary(eml_opcode::MUL),
+            ret(),
+        ],
+        fold_program: vec![
+            param(field_param::ACCUMULATOR),
+            param(field_param::MAPPED),
+            binary(eml_opcode::ADD),
+            ret(),
+        ],
+        identity_bits: 0.0f32.to_bits(),
+        post_program: vec![param(field_param::FOLDED), ret()],
         field_law_proof: Some(FieldLawProof::apply_non_conservative()),
         transient_read_proof: None,
         canonical_order_proof: Some(canonical_order_proof),

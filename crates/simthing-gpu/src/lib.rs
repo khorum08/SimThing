@@ -28,7 +28,8 @@ pub use atlas_mask::{
 };
 pub use action_band_execution::{
     action_band_target_kind, ActionBandActiveInstanceGpu, ActionBandBandGpu,
-    ActionBandCrossingBatch, ActionBandDependencyGpu, ActionBandEmissionBindingGpu,
+    ActionBandCrossingBatch, ActionBandCrossingConsumptionKey, ActionBandDependencyGpu,
+    ActionBandEmissionBindingGpu,
     ActionBandEmissionDestination, ActionBandExecutionBucket, ActionBandExecutionError,
     ActionBandExecutionPlan, ActionBandExecutionReadback, ActionBandGpuExecution,
     ActionBandGpuSession, ActionBandProductionDispatch, ActionBandPropertyWrite,

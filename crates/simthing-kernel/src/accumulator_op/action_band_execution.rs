@@ -5,10 +5,11 @@
 //! [`BandCrossingDelta`] rows at a tick boundary; it never compares thresholds,
 //! re-evaluates an ActionBand result, or chooses an emission destination.
 
+use std::collections::HashSet;
 use std::sync::mpsc;
 
 use bytemuck::{Pod, Zeroable};
-use simthing_core::EmlNodeGpu;
+use simthing_core::{ColumnIndex, EmlNodeGpu, SimPropertyId, SimThingId, SlotIndex, SubFieldRole};
 use thiserror::Error;
 use wgpu::util::DeviceExt;
 
@@ -17,8 +18,9 @@ use super::{
 };
 use crate::sealed::{ThresholdEmission, ThresholdEmissionGpu};
 use crate::{
-    debug_readback_allowed, BandCrossingDelta, BoundaryEmissionToken, DecisionIngressError,
-    EmissionToken, EmlTreeRangeGpu, GpuContext, StructuralCommitment, ThresholdCrossingToken,
+    debug_readback_allowed, BandCrossingDelta, BandCrossingDirection, BoundaryEmissionToken,
+    DecisionIngressError, EmissionToken, EmlTreeRangeGpu, GpuContext, StructuralCommitment,
+    ThresholdCrossingToken,
 };
 
 pub const ACTIONBAND_NO_PROGRAM: u32 = u32::MAX;
@@ -469,8 +471,27 @@ impl ActionBandExecutionPlan {
         let mut rows = Vec::with_capacity(joined.len());
         let mut output_count = 0u32;
         let mut commitment_inputs = Vec::new();
+        let mut consumption_keys = Vec::new();
+        let mut seen_consumption_keys = HashSet::new();
         let mut bucket_ranges = Vec::new();
         for (bucket_index, mut row, delta) in joined {
+            let consumption_key = ActionBandCrossingConsumptionKey {
+                plan_fingerprint: self.fingerprint,
+                generation: delta.generation(),
+                reg_idx: delta.reg_idx(),
+                sim_thing_id: delta.sim_thing_id(),
+                property_id: delta.property_id(),
+                role: delta.role().clone(),
+                slot: delta.slot(),
+                col: delta.col(),
+                threshold_bits: delta.threshold().to_bits(),
+                direction: delta.direction(),
+                post_value_bits: delta.post_value().to_bits(),
+                event_kind: delta.event_kind(),
+            };
+            if seen_consumption_keys.insert(consumption_key.clone()) {
+                consumption_keys.push(consumption_key);
+            }
             if bucket_ranges
                 .last()
                 .is_none_or(|range: &ActionBandBucketDispatch| range.bucket_index != bucket_index)
@@ -505,6 +526,7 @@ impl ActionBandExecutionPlan {
             rows,
             output_count,
             commitment_inputs,
+            consumption_keys,
             bucket_ranges,
             plan_fingerprint: self.fingerprint,
         })
@@ -512,13 +534,41 @@ impl ActionBandExecutionPlan {
 }
 
 /// Opaque batch that cannot be forged from a second comparator or raw integers.
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct ActionBandCrossingBatch {
     rows: Vec<ActionBandCrossingInputGpu>,
     output_count: u32,
     commitment_inputs: Vec<(u32, BandCrossingDelta)>,
+    consumption_keys: Vec<ActionBandCrossingConsumptionKey>,
     bucket_ranges: Vec<ActionBandBucketDispatch>,
     plan_fingerprint: u64,
+}
+
+/// Opaque semantic identity for one sealed Phase-5 crossing consumed by one
+/// frozen ActionBand plan. A later real crossing has a distinct generation.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct ActionBandCrossingConsumptionKey {
+    plan_fingerprint: u64,
+    generation: u32,
+    reg_idx: u32,
+    sim_thing_id: SimThingId,
+    property_id: SimPropertyId,
+    role: SubFieldRole,
+    slot: SlotIndex,
+    col: ColumnIndex,
+    threshold_bits: u32,
+    direction: BandCrossingDirection,
+    post_value_bits: u32,
+    event_kind: u32,
+}
+
+impl ActionBandCrossingConsumptionKey {
+    /// Generation of the sealed Phase-5 crossing represented by this key.
+    /// Consumers compare this stamp with their executable generation; it is
+    /// not a request to retain crossing history.
+    pub fn generation(&self) -> u32 {
+        self.generation
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -539,6 +589,10 @@ impl ActionBandCrossingBatch {
 
     pub fn bucket_dispatch_count(&self) -> usize {
         self.bucket_ranges.len()
+    }
+
+    pub fn consumption_keys(&self) -> &[ActionBandCrossingConsumptionKey] {
+        &self.consumption_keys
     }
 }
 
@@ -597,6 +651,8 @@ pub enum ActionBandExecutionError {
     StructuralBindingCount { count: u32 },
     #[error("ActionBand native destinations require an ordinary external next-state buffer")]
     NativeNextRequired,
+    #[error("ActionBand facility-local resident Next plane was not admitted at session build")]
+    ResidentNextNotAdmitted,
     #[error("ActionBand current/next buffers differ in size")]
     NativeNextSizeMismatch,
     #[error("ActionBand native bindings would create more than one writer for slot {slot}, column {column}")]
@@ -636,6 +692,25 @@ impl ActionBandGpuExecution {
         Ok(Self::Active(ActionBandGpuSession::new(ctx, plan)?))
     }
 
+    /// Open the 7.8 consequence posture with one facility-local resident
+    /// Current/Next plane. The plane is admitted under the ActionBand session's
+    /// existing generation boundary; callers never receive either buffer or an
+    /// owner capability.
+    pub fn new_with_resident_next(
+        ctx: &GpuContext,
+        plan: ActionBandExecutionPlan,
+        resident_values: &[f32],
+    ) -> Result<Self, ActionBandExecutionError> {
+        if plan.active_instances.is_empty() {
+            return Ok(Self::Inactive);
+        }
+        Ok(Self::Active(ActionBandGpuSession::new_inner(
+            ctx,
+            plan,
+            Some(resident_values),
+        )?))
+    }
+
     pub fn active_instance_rows(&self) -> usize {
         match self {
             Self::Inactive => 0,
@@ -664,6 +739,8 @@ pub struct ActionBandGpuSession {
     state_boundary: FacilityPlaneGenerationBoundary,
     state_owner: FacilityPlaneOwner,
     state_plane: FacilityResidentPlane,
+    resident_owner: Option<FacilityPlaneOwner>,
+    resident_plane: Option<FacilityResidentPlane>,
     projection_next: wgpu::Buffer,
     bands: wgpu::Buffer,
     band_binding_indices: wgpu::Buffer,
@@ -681,6 +758,14 @@ impl ActionBandGpuSession {
     fn new(
         ctx: &GpuContext,
         plan: ActionBandExecutionPlan,
+    ) -> Result<Self, ActionBandExecutionError> {
+        Self::new_inner(ctx, plan, None)
+    }
+
+    fn new_inner(
+        ctx: &GpuContext,
+        plan: ActionBandExecutionPlan,
+        resident_values: Option<&[f32]>,
     ) -> Result<Self, ActionBandExecutionError> {
         let shader_source = action_band_shader_source()?;
         let device = &ctx.device;
@@ -756,6 +841,19 @@ impl ActionBandGpuSession {
             &state_owner,
             &state,
         )?;
+        let (resident_owner, resident_plane) = if let Some(values) = resident_values {
+            let owner = state_boundary.admit_facility();
+            let plane = FacilityResidentPlane::from_rows(
+                ctx,
+                "actionband_resident_consequence",
+                &state_boundary,
+                &owner,
+                values,
+            )?;
+            (Some(owner), Some(plane))
+        } else {
+            (None, None)
+        };
         let (timestamp_query_set, timestamp_resolve, timestamp_readback) =
             if ctx.timestamp_supported() {
                 (
@@ -787,6 +885,8 @@ impl ActionBandGpuSession {
             state_boundary,
             state_owner,
             state_plane,
+            resident_owner,
+            resident_plane,
             projection_next: storage_rw(device, "actionband_projection_next", &projection),
             bands: storage(device, "actionband_bands", &plan.bands),
             band_binding_indices: storage(
@@ -823,8 +923,15 @@ impl ActionBandGpuSession {
         n_dims: u32,
         crossings: &ActionBandCrossingBatch,
     ) -> Result<ActionBandProductionDispatch, ActionBandExecutionError> {
-        let (production, _, _, _) =
-            self.dispatch_internal(ctx, world_values, None, n_dims, crossings, false)?;
+        let (production, _, _, _) = self.dispatch_internal(
+            ctx,
+            Some(world_values),
+            None,
+            n_dims,
+            crossings,
+            false,
+            false,
+        )?;
         Ok(production)
     }
 
@@ -841,13 +948,65 @@ impl ActionBandGpuSession {
     ) -> Result<ActionBandProductionDispatch, ActionBandExecutionError> {
         let (production, _, _, _) = self.dispatch_internal(
             ctx,
-            world_values,
+            Some(world_values),
             Some(world_values_next),
             n_dims,
             crossings,
             false,
+            false,
         )?;
         Ok(production)
+    }
+
+    /// Canonical 7.8 dispatch. Resident Current and Next are facility-local and
+    /// advance under the same boundary as ActionBand state; no caller-supplied
+    /// buffer can be substituted as a foreign resident plane.
+    pub fn dispatch_resident_next(
+        &mut self,
+        ctx: &GpuContext,
+        n_dims: u32,
+        crossings: &ActionBandCrossingBatch,
+    ) -> Result<ActionBandProductionDispatch, ActionBandExecutionError> {
+        let (production, _, _, _) =
+            self.dispatch_internal(ctx, None, None, n_dims, crossings, false, true)?;
+        Ok(production)
+    }
+
+    /// Proof-only snapshot of the facility-local resident Current plane.
+    pub fn readback_resident_current_for_proof(
+        &self,
+        ctx: &GpuContext,
+    ) -> Result<Vec<f32>, ActionBandExecutionError> {
+        if !debug_readback_allowed() {
+            return Err(ActionBandExecutionError::ProofReadbackDisabled);
+        }
+        let owner = self
+            .resident_owner
+            .as_ref()
+            .ok_or(ActionBandExecutionError::ResidentNextNotAdmitted)?;
+        let plane = self
+            .resident_plane
+            .as_ref()
+            .ok_or(ActionBandExecutionError::ResidentNextNotAdmitted)?;
+        let stage = staging(
+            &ctx.device,
+            "actionband_resident_current_readback",
+            plane.bytes_per_plane() as u64,
+        );
+        let mut encoder = ctx
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("actionband_resident_current_readback_encoder"),
+            });
+        encoder.copy_buffer_to_buffer(
+            plane.current_for(owner)?,
+            0,
+            &stage,
+            0,
+            plane.bytes_per_plane() as u64,
+        );
+        ctx.queue.submit(Some(encoder.finish()));
+        readback::<f32>(&ctx.device, &stage, plane.rows())
     }
 
     /// Proof-only view of the exact production dispatch. This uses the same
@@ -862,8 +1021,15 @@ impl ActionBandGpuSession {
         if !debug_readback_allowed() {
             return Err(ActionBandExecutionError::ProofReadbackDisabled);
         }
-        let (production, states, projection, emission_payloads) =
-            self.dispatch_internal(ctx, world_values, None, n_dims, crossings, true)?;
+        let (production, states, projection, emission_payloads) = self.dispatch_internal(
+            ctx,
+            Some(world_values),
+            None,
+            n_dims,
+            crossings,
+            true,
+            false,
+        )?;
         Ok(ActionBandExecutionReadback {
             states: states.expect("proof dispatch requests state readback"),
             projection: projection.expect("proof dispatch requests projection readback"),
@@ -890,11 +1056,12 @@ impl ActionBandGpuSession {
         }
         let (production, states, projection, emission_payloads) = self.dispatch_internal(
             ctx,
-            world_values,
+            Some(world_values),
             Some(world_values_next),
             n_dims,
             crossings,
             true,
+            false,
         )?;
         Ok(ActionBandExecutionReadback {
             states: states.expect("proof dispatch requests state readback"),
@@ -911,11 +1078,12 @@ impl ActionBandGpuSession {
     fn dispatch_internal(
         &mut self,
         ctx: &GpuContext,
-        world_values: &wgpu::Buffer,
+        external_world_values: Option<&wgpu::Buffer>,
         world_values_next: Option<&wgpu::Buffer>,
         n_dims: u32,
         crossings: &ActionBandCrossingBatch,
         proof_readback: bool,
+        resident_mode: bool,
     ) -> Result<
         (
             ActionBandProductionDispatch,
@@ -928,6 +1096,18 @@ impl ActionBandGpuSession {
         if crossings.plan_fingerprint != self.plan.fingerprint {
             return Err(ActionBandExecutionError::ForeignCrossingBatch);
         }
+        let resident_owner = self.resident_owner.as_ref();
+        let resident_plane = self.resident_plane.as_ref();
+        let (world_values, world_values_next) = if resident_mode {
+            let owner = resident_owner.ok_or(ActionBandExecutionError::ResidentNextNotAdmitted)?;
+            let plane = resident_plane.ok_or(ActionBandExecutionError::ResidentNextNotAdmitted)?;
+            (plane.current_for(owner)?, Some(plane.next_for(owner)?))
+        } else {
+            (
+                external_world_values.ok_or(ActionBandExecutionError::ResidentNextNotAdmitted)?,
+                world_values_next,
+            )
+        };
         if self.plan.native_destinations && world_values_next.is_none() {
             return Err(ActionBandExecutionError::NativeNextRequired);
         }
@@ -1175,8 +1355,23 @@ impl ActionBandGpuSession {
         ctx.queue.submit(Some(encoder.finish()));
         self.generation = self.generation.saturating_add(1);
         if !self.plan.depth1_crossing_fast_path || depth1_advances {
-            self.state_boundary
-                .advance(&mut [(&self.state_owner, &mut self.state_plane)])?;
+            if resident_mode {
+                let resident_owner = self
+                    .resident_owner
+                    .as_ref()
+                    .ok_or(ActionBandExecutionError::ResidentNextNotAdmitted)?;
+                let resident_plane = self
+                    .resident_plane
+                    .as_mut()
+                    .ok_or(ActionBandExecutionError::ResidentNextNotAdmitted)?;
+                self.state_boundary.advance(&mut [
+                    (&self.state_owner, &mut self.state_plane),
+                    (resident_owner, resident_plane),
+                ])?;
+            } else {
+                self.state_boundary
+                    .advance(&mut [(&self.state_owner, &mut self.state_plane)])?;
+            }
         }
 
         let states = state_stage
@@ -1317,6 +1512,13 @@ impl ActionBandGpuSession {
     /// Returns the pre-existing dispatch/emission sequence, which advances on every dispatch (including no-swap fast paths); resident-plane swap generation is owned by `FacilityPlaneGenerationBoundary`.
     pub fn generation(&self) -> u32 {
         self.generation
+    }
+
+    /// Returns the actual facility-plane generation advanced by the sole
+    /// Current/Next swap authority. Unlike [`Self::generation`], this does not
+    /// change for a depth-1 no-crossing dispatch that performs no swap.
+    pub fn facility_generation(&self) -> u32 {
+        self.state_boundary.generation()
     }
 
     pub fn last_bucket_partition(&self) -> &[ActionBandExecutionBucket] {
