@@ -152,9 +152,9 @@ pub fn sync_gpu_buffers(
                 .and_then(|runtime| runtime.overlay_compile_cache.as_ref())
             {
                 n_deltas = cache.cached_deltas.len() as u32;
-                let metrics = cache.projection.metrics();
-                out.overlay_profile_count = metrics.profiles as u32;
-                out.overlay_span_count = metrics.spans as u32;
+                let (profiles, spans) = cache.projection.profile_and_span_counts();
+                out.overlay_profile_count = profiles as u32;
+                out.overlay_span_count = spans as u32;
                 state.set_overlay_add_dispatch(
                     cache.cached_op_buffer_uploaded_n_ops > 0,
                     cache.cached_n_bands,
@@ -194,9 +194,7 @@ pub fn sync_gpu_buffers(
                 )
             } else {
                 (
-                    simthing_gpu::OverlaySpanProjection::compile(root.inner()).unwrap_or_else(
-                        |error| panic!("derived overlay span admission failed: {error}"),
-                    ),
+                    simthing_gpu::OverlaySpanProjection::compile(root.inner()),
                     Vec::new(),
                     Vec::new(),
                     0,
@@ -205,28 +203,19 @@ pub fn sync_gpu_buffers(
                 )
             };
             if overlay_projection_topology_changed && had_cache {
-                projection = simthing_gpu::OverlaySpanProjection::compile(root.inner())
-                    .unwrap_or_else(|error| {
-                        panic!("derived overlay span admission failed: {error}")
-                    });
+                projection = simthing_gpu::OverlaySpanProjection::compile(root.inner());
             } else if had_cache {
                 if !overlay_projection_changes.is_empty() {
-                    let refresh = projection
-                        .refresh(root.inner(), overlay_projection_changes, generation)
-                        .unwrap_or_else(|error| {
-                            panic!("derived overlay span invalidation failed: {error}")
-                        });
-                    out.overlay_invalidated_spans = refresh.semantic_spans_rebuilt;
-                    out.overlay_invalidation_rows_scanned =
-                        refresh.invalidation.logical_member_rows_scanned;
+                    let (spans_rebuilt, rows_scanned) =
+                        projection.refresh(root.inner(), overlay_projection_changes, generation);
+                    out.overlay_invalidated_spans = spans_rebuilt;
+                    out.overlay_invalidation_rows_scanned = rows_scanned;
                 }
             }
-            let metrics = projection.metrics();
-            out.overlay_profile_count = metrics.profiles as u32;
-            out.overlay_span_count = metrics.spans as u32;
-            let materialized = projection.materialize_dense(registry, allocator);
-            let deltas = materialized.deltas;
-            let mut ranges = materialized.ranges;
+            let (profiles, spans) = projection.profile_and_span_counts();
+            out.overlay_profile_count = profiles as u32;
+            out.overlay_span_count = spans as u32;
+            let (deltas, mut ranges) = projection.materialize_dense(registry, allocator);
             if (ranges.len() as u32) < state.n_slots {
                 ranges.resize(
                     state.n_slots as usize,

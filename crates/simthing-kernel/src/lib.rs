@@ -65,12 +65,6 @@ pub use decision_ingress::{
     ApproximateDecisionDiagnostic, BoundaryEmissionToken, CpuDiagnosticDecision,
     DecisionIngressError, EmissionToken, StructuralCommitment, ThresholdCrossingToken,
 };
-pub use derived_span_projection::{
-    ChangedLocus, DerivedDependencyBinding, DerivedDependencyIndex, DerivedDependencyTarget,
-    DerivedInvalidation, DerivedLocusNarrowing, DerivedSpanAdmissionError, DerivedSpanProjection,
-    DerivedWorkId, EffectiveProfileId, EffectiveSpanSeed,
-    FieldRegistrationAuthority, FieldRegistrationRef, LogicalRowRange, LogicalSubtreeDirectory,
-};
 pub use eml_opcode_gate::{
     admit_exp_call_sites, combine_in_closed_vocabulary, exp_primitive_domain, ln_primitive_domain,
     opcode_in_accumulator_vocabulary, opcode_in_closed_vocabulary, AdmittedEvalEmlCombine,
@@ -127,8 +121,7 @@ pub use intensity_accumulator::{
 };
 pub use overlay_orderband::{plan_overlay_orderband, OverlayOrderBandPlan};
 pub use overlay_prep::{
-    build_overlay_deltas, OverlayDenseMaterialization, OverlayProjectionHostChange,
-    OverlayProjectionMetrics, OverlayProjectionRefresh, OverlaySpanProjection,
+    build_overlay_deltas, OverlayProjectionHostChange, OverlaySpanProjection,
 };
 pub use participation::{
     validate_and_mint_placed_participants_by_location_id,

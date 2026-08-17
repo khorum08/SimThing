@@ -145,19 +145,21 @@ pub struct OverlayCompileCache {
 impl OverlayCompileCache {
     /// Delete only the dense per-row materialization. Semantic profile/span
     /// authority remains in `projection` and can rebuild this cache exactly.
-    pub fn drop_dense_materialization(&mut self) {
+    pub(crate) fn drop_dense_materialization(&mut self) {
         self.cached_deltas.clear();
         self.cached_ranges.clear();
         self.cached_n_bands = 0;
         self.cached_op_buffer_uploaded_n_ops = 0;
     }
 
-    pub fn rebuild_dense_materialization(
+    pub(crate) fn rebuild_dense_materialization(
         &mut self,
         registry: &simthing_core::DimensionRegistry,
         allocator: &crate::slot::SlotAllocator,
     ) -> crate::overlay_prep::OverlayDenseMaterialization {
-        let materialized = self.projection.materialize_dense(registry, allocator);
+        let materialized = self
+            .projection
+            .materialize_dense_internal(registry, allocator);
         self.cached_deltas = materialized.deltas.clone();
         self.cached_ranges = materialized.ranges.clone();
         materialized

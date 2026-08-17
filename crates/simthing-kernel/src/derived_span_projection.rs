@@ -16,7 +16,7 @@ use thiserror::Error;
 /// consumers may identify one admitted binding or one effective profile, but
 /// may not name a writer subsystem.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum DerivedLocusNarrowing {
+pub(crate) enum DerivedLocusNarrowing {
     Binding(u64),
     Profile(u64),
 }
@@ -25,7 +25,7 @@ pub enum DerivedLocusNarrowing {
 /// field: identical state changes invalidate identical work.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct ChangedLocus {
+pub(crate) struct ChangedLocus {
     logical_id: SimThingId,
     property_id: SimPropertyId,
     role: SubFieldRole,
@@ -67,7 +67,7 @@ impl ChangedLocus {
 /// Opaque identity of an already-composed effective descriptor. It derives
 /// from semantic bindings, never a slot or physical row.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct EffectiveProfileId(u64);
+pub(crate) struct EffectiveProfileId(u64);
 
 impl EffectiveProfileId {
     pub fn from_semantic_digest(digest: u64) -> Self {
@@ -82,14 +82,14 @@ impl EffectiveProfileId {
 /// Generic field registration target. The authority tag says which existing
 /// Field-Triad registration owns the work; it does not alter key semantics.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub enum FieldRegistrationAuthority {
+pub(crate) enum FieldRegistrationAuthority {
     Stead,
     Palma,
     GuYang,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct FieldRegistrationRef {
+pub(crate) struct FieldRegistrationRef {
     authority: FieldRegistrationAuthority,
     registration_id: u32,
 }
@@ -112,7 +112,7 @@ impl FieldRegistrationRef {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct DerivedWorkId(u32);
+pub(crate) struct DerivedWorkId(u32);
 
 impl DerivedWorkId {
     pub fn new(raw: u32) -> Self {
@@ -127,7 +127,7 @@ impl DerivedWorkId {
 /// A frozen dependency target. `SpanRoot` names a logical subtree and is
 /// resolved against the current span partition at invalidation time.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum DerivedDependencyTarget {
+pub(crate) enum DerivedDependencyTarget {
     SpanRoot(SimThingId),
     LogicalMember(SimThingId),
     FieldRegistration(FieldRegistrationRef),
@@ -135,7 +135,7 @@ pub enum DerivedDependencyTarget {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct DerivedDependencyBinding {
+pub(crate) struct DerivedDependencyBinding {
     locus: ChangedLocus,
     target: DerivedDependencyTarget,
 }
@@ -148,18 +148,8 @@ impl DerivedDependencyBinding {
 
 /// Session-frozen source-blind dependency index. Admission consumes the rows;
 /// there is no runtime registration or mutation surface.
-///
-/// ```compile_fail,E0599
-/// use simthing_kernel::DerivedDependencyIndex;
-///
-/// fn runtime_dependency_registry_is_not_mutable_compile_fail(
-///     index: &mut DerivedDependencyIndex,
-/// ) {
-///     index.insert_runtime_dependency();
-/// }
-/// ```
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct DerivedDependencyIndex {
+pub(crate) struct DerivedDependencyIndex {
     by_locus: HashMap<ChangedLocus, Vec<DerivedDependencyTarget>>,
 }
 
@@ -190,7 +180,7 @@ impl DerivedDependencyIndex {
 /// Half-open logical preorder range. This is structural range vocabulary,
 /// never a physical row range.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct LogicalRowRange {
+pub(crate) struct LogicalRowRange {
     start: u64,
     len: u64,
 }
@@ -227,7 +217,7 @@ impl LogicalRowRange {
 /// Frozen logical-id -> subtree-range directory. It is independent of slot
 /// bindings and survives a physical epoch remap unchanged.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct LogicalSubtreeDirectory {
+pub(crate) struct LogicalSubtreeDirectory {
     total_rows: u64,
     ranges: HashMap<SimThingId, LogicalRowRange>,
 }
@@ -265,7 +255,7 @@ impl LogicalSubtreeDirectory {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct EffectiveSpanSeed<D> {
+pub(crate) struct EffectiveSpanSeed<D> {
     range: LogicalRowRange,
     profile_id: EffectiveProfileId,
     descriptor: D,
@@ -300,7 +290,7 @@ impl<D> EffectiveSpan<D> {
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct DerivedInvalidation {
+pub(crate) struct DerivedInvalidation {
     /// Exact logical ranges named by the frozen dependency index.
     pub affected_ranges: Vec<LogicalRowRange>,
     pub dirty_span_ranges: Vec<LogicalRowRange>,
@@ -313,7 +303,7 @@ pub struct DerivedInvalidation {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct DerivedSpanProjection<D> {
+pub(crate) struct DerivedSpanProjection<D> {
     directory: LogicalSubtreeDirectory,
     spans: BTreeMap<u64, EffectiveSpan<D>>,
     profiles: HashMap<EffectiveProfileId, Arc<D>>,
@@ -687,7 +677,7 @@ fn coalesce_ranges(mut ranges: Vec<LogicalRowRange>) -> Vec<LogicalRowRange> {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Error)]
-pub enum DerivedSpanAdmissionError {
+pub(crate) enum DerivedSpanAdmissionError {
     #[error("derived projection requires at least one logical row and one span")]
     EmptyProjection,
     #[error("logical range start {start} length {len} is empty or overflows")]
@@ -714,3 +704,7 @@ pub enum DerivedSpanAdmissionError {
     #[error("frozen dependency shape changed at {0:?}; admit a fresh projection")]
     FrozenDependencyShapeChanged(SimThingId),
 }
+
+#[cfg(test)]
+#[path = "derived_span_projection_tests.rs"]
+mod tests;

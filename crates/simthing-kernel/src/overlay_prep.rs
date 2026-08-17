@@ -68,23 +68,23 @@ struct OverlayNodeSnapshot {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct OverlayDenseMaterialization {
-    pub deltas: Vec<OverlayDelta>,
-    pub ranges: Vec<SlotDeltaRange>,
-    pub rows_materialized: u64,
+pub(crate) struct OverlayDenseMaterialization {
+    pub(crate) deltas: Vec<OverlayDelta>,
+    pub(crate) ranges: Vec<SlotDeltaRange>,
+    pub(crate) rows_materialized: u64,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct OverlayProjectionMetrics {
-    pub logical_rows: u64,
-    pub profiles: u64,
-    pub spans: u64,
+pub(crate) struct OverlayProjectionMetrics {
+    pub(crate) logical_rows: u64,
+    pub(crate) profiles: u64,
+    pub(crate) spans: u64,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct OverlayProjectionRefresh {
-    pub invalidation: DerivedInvalidation,
-    pub semantic_spans_rebuilt: u64,
+pub(crate) struct OverlayProjectionRefresh {
+    pub(crate) invalidation: DerivedInvalidation,
+    pub(crate) semantic_spans_rebuilt: u64,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -96,6 +96,16 @@ pub enum OverlayProjectionHostChange {
 /// Boundary-compiled effective overlay profiles. Descriptors contain logical
 /// PropertyId/role bindings and semantic order only; physical slots are read
 /// solely when a dense upload cache is materialized.
+///
+/// The production seam deliberately exposes no runtime dependency mutation:
+///
+/// ```compile_fail,E0599
+/// fn runtime_dependency_registry_is_not_mutable_compile_fail(
+///     projection: &mut simthing_kernel::OverlaySpanProjection,
+/// ) {
+///     projection.insert_runtime_dependency();
+/// }
+/// ```
 #[derive(Clone, Debug, PartialEq)]
 pub struct OverlaySpanProjection {
     projection: DerivedSpanProjection<OverlayEffectiveDescriptor>,
@@ -104,11 +114,16 @@ pub struct OverlaySpanProjection {
 }
 
 impl OverlaySpanProjection {
-    pub fn compile(root: &SimThing) -> Result<Self, DerivedSpanAdmissionError> {
+    pub fn compile(root: &SimThing) -> Self {
+        Self::try_compile(root)
+            .unwrap_or_else(|error| panic!("derived overlay span admission failed: {error}"))
+    }
+
+    pub(crate) fn try_compile(root: &SimThing) -> Result<Self, DerivedSpanAdmissionError> {
         Self::compile_with_dependencies(root, Vec::new())
     }
 
-    pub fn compile_with_dependencies(
+    fn compile_with_dependencies(
         root: &SimThing,
         mut dependencies: Vec<DerivedDependencyBinding>,
     ) -> Result<Self, DerivedSpanAdmissionError> {
@@ -181,7 +196,7 @@ impl OverlaySpanProjection {
         })
     }
 
-    pub fn metrics(&self) -> OverlayProjectionMetrics {
+    fn metrics(&self) -> OverlayProjectionMetrics {
         OverlayProjectionMetrics {
             logical_rows: self.logical_members.len() as u64,
             profiles: self.projection.profile_count() as u64,
@@ -189,19 +204,11 @@ impl OverlaySpanProjection {
         }
     }
 
-    pub fn dependency_index(&self) -> &DerivedDependencyIndex {
+    fn dependency_index(&self) -> &DerivedDependencyIndex {
         self.projection.dependency_index()
     }
 
-    pub fn profile_for(&self, id: SimThingId) -> Option<EffectiveProfileId> {
-        let row = self
-            .logical_members
-            .iter()
-            .position(|candidate| *candidate == id)?;
-        self.projection.effective_profile_at(row as u64)
-    }
-
-    pub fn profile_digest_by_logical_identity(&self) -> Vec<(SimThingId, u64)> {
+    fn profile_digest_by_logical_identity(&self) -> Vec<(SimThingId, u64)> {
         self.logical_members
             .iter()
             .copied()
@@ -214,7 +221,27 @@ impl OverlaySpanProjection {
             .collect()
     }
 
+    pub fn profile_and_span_counts(&self) -> (u64, u64) {
+        let metrics = self.metrics();
+        (metrics.profiles, metrics.spans)
+    }
+
     pub fn refresh(
+        &mut self,
+        root: &SimThing,
+        changes: &[OverlayProjectionHostChange],
+        generation: GenerationStamp,
+    ) -> (u64, u64) {
+        let refresh = self
+            .try_refresh(root, changes, generation)
+            .unwrap_or_else(|error| panic!("derived overlay span invalidation failed: {error}"));
+        (
+            refresh.semantic_spans_rebuilt,
+            refresh.invalidation.logical_member_rows_scanned,
+        )
+    }
+
+    pub(crate) fn try_refresh(
         &mut self,
         root: &SimThing,
         changes: &[OverlayProjectionHostChange],
@@ -314,6 +341,15 @@ impl OverlaySpanProjection {
     }
 
     pub fn materialize_dense(
+        &self,
+        registry: &DimensionRegistry,
+        allocator: &SlotAllocator,
+    ) -> (Vec<OverlayDelta>, Vec<SlotDeltaRange>) {
+        let dense = self.materialize_dense_internal(registry, allocator);
+        (dense.deltas, dense.ranges)
+    }
+
+    pub(crate) fn materialize_dense_internal(
         &self,
         registry: &DimensionRegistry,
         allocator: &SlotAllocator,
@@ -819,12 +855,16 @@ fn emit_transform(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::accumulator_op::OverlayCompileCache;
+    use crate::overlay_orderband::plan_overlay_orderband;
     use crate::slot::SlotAllocator;
     use crate::world_state::{OP_ADD, OP_MULTIPLY, OP_SET};
+    use simthing_core::deliver_routed_overlay;
     use simthing_core::ids::OverlayId;
     use simthing_core::overlay::{Overlay, OverlayKind, OverlayLifecycle, OverlaySource};
     use simthing_core::property::{SimProperty, SubFieldRole};
     use simthing_core::{DimensionRegistry, SimThing, SimThingKind, TransformOp};
+    use std::collections::BTreeMap;
 
     fn reg_with_loyalty() -> (DimensionRegistry, simthing_core::SimPropertyId) {
         let mut reg = DimensionRegistry::new();
@@ -848,5 +888,236 @@ mod tests {
             },
             lifecycle: OverlayLifecycle::UntilDissolved,
         }
+    }
+
+    fn projection_registry() -> (DimensionRegistry, SimPropertyId) {
+        let mut registry = DimensionRegistry::new();
+        let property = registry.register(SimProperty::simple("span-proof", "signal", 0));
+        (registry, property)
+    }
+
+    fn node_with_property(registry: &DimensionRegistry, property: SimPropertyId) -> SimThing {
+        let mut node = SimThing::new(SimThingKind::Cohort, 0);
+        node.add_property(property, registry.property(property).default_value());
+        node
+    }
+
+    fn projection_overlay(
+        host: SimThingId,
+        kind: OverlayKind,
+        property: SimPropertyId,
+        op: TransformOp,
+    ) -> Overlay {
+        let lifecycle = if matches!(kind, OverlayKind::Instruction | OverlayKind::Custom(_)) {
+            OverlayLifecycle::UntilDissolvedWith {
+                dissolution_conditions: vec![simthing_core::DissolveCondition::AtSessionEnd],
+            }
+        } else {
+            OverlayLifecycle::UntilDissolved
+        };
+        Overlay {
+            id: OverlayId::new(),
+            kind,
+            source: OverlaySource::System,
+            origin: host,
+            affects: Vec::new(),
+            transform: PropertyTransformDelta {
+                property_id: property,
+                sub_field_deltas: vec![(SubFieldRole::Amount, op)],
+            },
+            lifecycle,
+        }
+    }
+
+    fn find_mut(root: &mut SimThing, target: SimThingId) -> &mut SimThing {
+        if root.id == target {
+            return root;
+        }
+        root.children
+            .iter_mut()
+            .find_map(|child| {
+                if child.id == target {
+                    Some(child)
+                } else {
+                    find_mut_optional(child, target)
+                }
+            })
+            .expect("target in test tree")
+    }
+
+    fn find_mut_optional(root: &mut SimThing, target: SimThingId) -> Option<&mut SimThing> {
+        if root.id == target {
+            return Some(root);
+        }
+        root.children
+            .iter_mut()
+            .find_map(|child| find_mut_optional(child, target))
+    }
+
+    fn ops_for(
+        id: SimThingId,
+        allocator: &SlotAllocator,
+        dense: &OverlayDenseMaterialization,
+    ) -> Vec<(u32, u32, u32)> {
+        let range = dense.ranges[allocator.slot_of(id).unwrap().as_usize()];
+        dense.deltas[range.offset as usize..(range.offset + range.length) as usize]
+            .iter()
+            .map(|delta| (delta.col, delta.op_kind, delta.value.to_bits()))
+            .collect()
+    }
+
+    #[test]
+    fn dense_materialization_is_deletable_cache_and_remaps_by_logical_identity() {
+        let (registry, property) = projection_registry();
+        let mut root = node_with_property(&registry, property);
+        root.add_overlay(projection_overlay(
+            root.id,
+            OverlayKind::Policy,
+            property,
+            TransformOp::add(0.25),
+        ));
+        let child_a = node_with_property(&registry, property);
+        let child_a_id = child_a.id;
+        let child_b = node_with_property(&registry, property);
+        let child_b_id = child_b.id;
+        root.add_child(child_a);
+        root.add_child(child_b);
+
+        let projection = OverlaySpanProjection::try_compile(&root).unwrap();
+        assert_eq!(projection.metrics().profiles, 1);
+        assert_eq!(projection.metrics().spans, 1);
+        let semantic_before = projection.profile_digest_by_logical_identity();
+
+        let mut allocator = SlotAllocator::new();
+        allocator.populate_from_tree(&root);
+        let dense_before = projection.materialize_dense_internal(&registry, &allocator);
+        let by_id_before = [
+            (root.id, ops_for(root.id, &allocator, &dense_before)),
+            (child_a_id, ops_for(child_a_id, &allocator, &dense_before)),
+            (child_b_id, ops_for(child_b_id, &allocator, &dense_before)),
+        ];
+        let plan = plan_overlay_orderband(
+            &dense_before.deltas,
+            &dense_before.ranges,
+            allocator.capacity() as u32,
+        );
+        let mut cache = OverlayCompileCache {
+            compiled_at_revision: 1,
+            projection,
+            cached_deltas: dense_before.deltas.clone(),
+            cached_ranges: dense_before.ranges.clone(),
+            cached_n_bands: plan.n_bands,
+            cached_op_buffer_uploaded_n_ops: plan.ops.len() as u32,
+            compile_count: 1,
+            upload_count: 1,
+        };
+        cache.drop_dense_materialization();
+        assert!(cache.cached_deltas.is_empty());
+        assert!(cache.cached_ranges.is_empty());
+        assert_eq!(
+            cache.projection.profile_digest_by_logical_identity(),
+            semantic_before
+        );
+        let rebuilt = cache.rebuild_dense_materialization(&registry, &allocator);
+        assert_eq!(rebuilt, dense_before);
+        let rebuilt_again = cache.rebuild_dense_materialization(&registry, &allocator);
+        assert_eq!(rebuilt, rebuilt_again);
+
+        let pre = allocator.binding_table_snapshot();
+        let mut ids = pre.keys().copied().collect::<Vec<_>>();
+        let mut slots = pre.values().copied().collect::<Vec<_>>();
+        ids.sort_unstable();
+        slots.sort_unstable();
+        slots.reverse();
+        let assignment = ids.into_iter().zip(slots).collect::<BTreeMap<_, _>>();
+        allocator
+            .epoch_rebind(&assignment, &BTreeMap::new(), &BTreeMap::new())
+            .unwrap();
+        cache.drop_dense_materialization();
+        let after_remap = cache.rebuild_dense_materialization(&registry, &allocator);
+        for (id, expected) in by_id_before {
+            assert_eq!(ops_for(id, &allocator, &after_remap), expected);
+        }
+        assert_eq!(
+            cache.projection.profile_digest_by_logical_identity(),
+            semantic_before
+        );
+    }
+
+    #[test]
+    fn standing_and_routed_projection_match_inheritance_oracle_after_local_split() {
+        let (registry, property) = projection_registry();
+        let mut root = node_with_property(&registry, property);
+        let mut policy_host = node_with_property(&registry, property);
+        let origin = node_with_property(&registry, property);
+        let origin_id = origin.id;
+        policy_host.add_child(origin);
+        let policy_host_id = policy_host.id;
+        let mut deferred_policy = projection_overlay(
+            policy_host_id,
+            OverlayKind::Policy,
+            property,
+            TransformOp::multiply(0.5),
+        );
+        let deferred_policy_id = deferred_policy.id;
+        deferred_policy.lifecycle = OverlayLifecycle::Suspended {
+            when_activated: Box::new(OverlayLifecycle::UntilDissolved),
+        };
+        policy_host.add_overlay(deferred_policy);
+        let receiver = node_with_property(&registry, property);
+        let receiver_id = receiver.id;
+        root.add_child(policy_host);
+        root.add_child(receiver);
+        let instruction = projection_overlay(
+            origin_id,
+            OverlayKind::Instruction,
+            property,
+            TransformOp::add(0.4),
+        );
+        deliver_routed_overlay(&mut root, receiver_id, instruction).unwrap();
+
+        let mut allocator = SlotAllocator::new();
+        allocator.populate_from_tree(&root);
+        let mut projection = OverlaySpanProjection::try_compile(&root).unwrap();
+        assert!(projection.dependency_index().binding_count() > 0);
+        let initial = projection.materialize_dense_internal(&registry, &allocator);
+        let (oracle_deltas, oracle_ranges) = build_overlay_deltas(&root, &registry, &allocator);
+        assert_eq!(initial.deltas, oracle_deltas);
+        assert_eq!(initial.ranges, oracle_ranges);
+
+        find_mut(&mut root, policy_host_id)
+            .overlays
+            .iter_mut()
+            .find(|overlay| overlay.id == deferred_policy_id)
+            .unwrap()
+            .lifecycle = OverlayLifecycle::UntilDissolved;
+        let refresh = projection
+            .try_refresh(
+                &root,
+                &[OverlayProjectionHostChange::OverlayState(policy_host_id)],
+                GenerationStamp::new(11),
+            )
+            .unwrap();
+        assert_eq!(refresh.invalidation.logical_member_rows_scanned, 0);
+        assert!(refresh.semantic_spans_rebuilt > 0);
+        let incrementally_rebuilt = projection.materialize_dense_internal(&registry, &allocator);
+        let (oracle_deltas, oracle_ranges) = build_overlay_deltas(&root, &registry, &allocator);
+        assert_eq!(incrementally_rebuilt.deltas, oracle_deltas);
+        assert_eq!(incrementally_rebuilt.ranges, oracle_ranges);
+
+        find_mut(&mut root, policy_host_id).add_overlay(projection_overlay(
+            policy_host_id,
+            OverlayKind::Policy,
+            property,
+            TransformOp::add(0.1),
+        ));
+        assert!(matches!(
+            projection.try_refresh(
+                &root,
+                &[OverlayProjectionHostChange::OverlayState(policy_host_id)],
+                GenerationStamp::new(12),
+            ),
+            Err(DerivedSpanAdmissionError::FrozenDependencyShapeChanged(id)) if id == policy_host_id
+        ));
     }
 }

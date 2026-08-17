@@ -9,7 +9,7 @@ Status: **PROBATION — proof present; DA review pending**
 - orientation_rule_stamp: `61818ff7d4adda84`
 - orientation digest: `1eb98b1bd147714ee421cdc5f43cf892b8b65038c9b72b7b65a5e6cf72cf5100`
 - HD-RECEIPT: `713dc041018b`
-- Orchestrator handoff: Board comment `5311539724`
+- Orchestrator handoff: Board comment `5311539724`; public-surface remand `5312326895`
 - Expected route: `DA-RESERVE(gate-wiring)`
 
 Every rendered REQUIRED-ANCHOR was queried before governed edits. The generated reach log carries the complete 56-anchor projection. Load-bearing ACKs include `overlay-scale-laws@c2ffb2826df7`, `overlay-germ@f0c8d2ebade9`, `overlay-promoted-laws@248c7893b462`, `overlay-closure-thesis@241cc54c5706`, `overlay-designer-closure@4a047b29243d`, `core-overlays@f95c9376ee06`, `stemthing-slot-identity-ruling@02c87b9126e1`, `core-gpu-residency@eea1356db087`, `evaluation-identity-invariants@64ad30392930`, `one-tree-owners-never-spatial@a8689d4344f9`, `actionband-determinism-lifecycle@6306c484732c`, `actionband-performance-model@8d93f06d4bae`, `actionband-eml-payload-purity@2a1d981f3958`, and `actionband-native-authority-table@541a03cb00a1`.
@@ -71,7 +71,7 @@ Seven permanent inventory entries are admitted:
 
 Validation:
 
-- focused 7.8a integration: 6 passed;
+- focused 7.8a unit proofs: 6 passed after re-homing from the external integration target;
 - `simthing-kernel` doctests: 44 passed, including the new compile-fail proof;
 - owner-channel oracle: 11 passed;
 - intrinsic overlay inheritance: 3 passed;
@@ -82,6 +82,33 @@ Validation:
 - overlay census: `RECONCILIATION: routes=77 discovery=73 residue=79 unclassified=0 open=0`; PASS; two honest projection-plumbing/guard residues added, no universe delta or repin;
 - `test_inventory_check.sh`: existing repository-wide INSPECT findings remain (172 mechanically enumerated cfg-test module rows plus pre-existing lifecycle judgments); the authoritative drift gate for this diff is clean.
 
-The public-surface audit was reduced from 22 to 20 residual kernel rows by making `EffectiveSpan` crate-private and removing the redundant public module export. The exact HOLD set is: `ChangedLocus`, `DerivedDependencyBinding`, `DerivedDependencyIndex`, `DerivedDependencyTarget`, `DerivedInvalidation`, `DerivedLocusNarrowing`, `DerivedSpanAdmissionError`, `DerivedSpanProjection`, `DerivedWorkId`, `EffectiveProfileId`, `EffectiveSpanSeed`, `FieldRegistrationAuthority`, `FieldRegistrationRef`, `LogicalRowRange`, `LogicalSubtreeDirectory`, `OverlayDenseMaterialization`, `OverlayProjectionHostChange`, `OverlayProjectionMetrics`, `OverlayProjectionRefresh`, and `OverlaySpanProjection`. These remain visible for production cross-crate use or the consumer-neutral 7.8a/StemThing-B forward bind. No allowlist row was edited.
+## Exact public-surface minimization
+
+The remand audited every one of the prior 20 residual rows against current non-test cross-crate production use. Proofs were re-homed into kernel unit modules so test access does not create production authority. External metrics, refresh, and dense-materialization results are flattened to primitive tuples; admission and refresh errors remain on private `try_*` paths while the production seam keeps its existing fail-closed panic behavior. The public dependency-mutation compile-fail proof now attacks `OverlaySpanProjection` directly.
+
+| Symbol | Current production cross-crate caller / signature necessity | Disposition |
+|---|---|---|
+| `ChangedLocus` | None; constructed only by kernel overlay preparation | crate-private |
+| `DerivedDependencyBinding` | None; frozen rows are derived in kernel admission | crate-private |
+| `DerivedDependencyIndex` | None; owned and consumed entirely by the kernel projection | crate-private |
+| `DerivedDependencyTarget` | None; internal target vocabulary, including the future-neutral reconciliation locus | crate-private |
+| `DerivedInvalidation` | None; public refresh returns only spans rebuilt and rows scanned | crate-private |
+| `DerivedLocusNarrowing` | None; internal source-blind key narrowing vocabulary | crate-private |
+| `DerivedSpanAdmissionError` | None; private `try_compile` / `try_refresh` proof paths retain exact variants | crate-private |
+| `DerivedSpanProjection` | None; generic interval substrate is owned behind the overlay seam | crate-private |
+| `DerivedWorkId` | None; consumer-neutral internal derived-work identity | crate-private |
+| `EffectiveProfileId` | None; profile identity never crosses the crate boundary | crate-private |
+| `EffectiveSpanSeed` | None; admission seed only | crate-private |
+| `FieldRegistrationAuthority` | None; Field-Triad tag remains an internal substrate capability | crate-private |
+| `FieldRegistrationRef` | None; no current external registration consumer | crate-private |
+| `LogicalRowRange` | None; interval geometry stays behind the projection seam | crate-private |
+| `LogicalSubtreeDirectory` | None; frozen logical directory is kernel-owned | crate-private |
+| `OverlayDenseMaterialization` | None; public materialization returns `(Vec<OverlayDelta>, Vec<SlotDeltaRange>)` | crate-private |
+| `OverlayProjectionMetrics` | None; public count query returns `(profiles, spans)` | crate-private |
+| `OverlayProjectionRefresh` | None; public refresh returns `(semantic_spans_rebuilt, logical_member_rows_scanned)` | crate-private |
+| `OverlayProjectionHostChange` | `simthing-sim::boundary` constructs both variants and `gpu_sync` passes the typed slice | **public: keep** |
+| `OverlaySpanProjection` | `simthing-sim::gpu_sync` compiles/refreshes/materializes it; `OverlayCompileCache` stores it in a public production signature through `simthing-gpu` | **public: keep** |
+
+Result: the exact genuine HOLD set is two rows, `OverlayProjectionHostChange` and `OverlaySpanProjection`, down from 20. The consumer-agnostic StemThing-B forward-bind remains expressible inside the kernel substrate without pre-authorizing any B-facing public API. No allowlist, scanner, workflow, or gate code was edited.
 
 Exact-head agent scan, doctrine scan, relay-lint, hosted checks, and PR identity are recorded in the orchestration relay after publication.
