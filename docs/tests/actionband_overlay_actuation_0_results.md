@@ -5,7 +5,7 @@ Status: **PROBATION / proof-present / DA-review-pending**. Coding does not invok
 ## Receipts and scope
 
 - Authoritative implementation base: `ebbae0617d5630cd9ab61a0beb67badbeb8586dc`
-- Tested code checkpoint: `a7953f8c9d9dd3cbd6628fe207ec73d97ec4c983`
+- Tested code checkpoint: `a7953f8c27a0a8008620e93a050011fccacaad7a`
 - ORIENT-RECEIPT: `4c9f068db285`
 - orientation_rule_stamp: `ea1f69606c6929ea`
 - HD-RECEIPT: `cf41c4ec2316`
