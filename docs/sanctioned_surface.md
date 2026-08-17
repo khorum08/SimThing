@@ -11,7 +11,7 @@ This digest is a derived context artifact for low-context agents. If it disagree
 | --- | --- | --- |
 | scripts/ci/allow/sealed_producers.txt | 25 | 6923796f3bacd3b27b29f778d5276c3f82a3a67c3f010c30f10b78de8a1866f6 |
 | scripts/ci/allow/inert_buffer_handles.txt | 2 | 9e2069fa5730f17cacde1c671ebc17beb59f50738d2dcb914bceae13f9b8b3a4 |
-| scripts/ci/allow/kernel_surface.txt | 294 | 5b64a6b5454914e4a9ecd7b2252de09eb27b3fd67c7de31a623342a09b12e65e |
+| scripts/ci/allow/kernel_surface.txt | 296 | 00446f2f241131c0c2489f8e1730c6172454d7e1ba00a0935f8b3ce8cefe6f28 |
 | scripts/ci/allow/sealed_types.txt | 19 | 9d427e3b41a586b06f24ca02cc45f78934237d2229b0c38d46e2a8a6ef5016be |
 | scripts/ci/allow/contention_mechanisms.txt | 8 | eb22cbb7755c364804f1c5ac6b10c2346735f8a53d0a57426f3065a879a6cb14 |
 | scripts/ci/scans.tsv | 27 | cc081f04b69c80b0b706ca598467778ced55f7f098c4c2af0d31099b7fc18155 |
@@ -256,6 +256,8 @@ This digest is a derived context artifact for low-context agents. If it disagree
 | OverlayCompileCache | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |
 | OverlayDelta | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |
 | OverlayOrderBandPlan | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |
+| OverlayProjectionHostChange | authority-export | DERIVED-SPAN-PROJECTION-INVALIDATION-0 authoritative changed-locus kind minted by simthing-sim boundary and consumed through gpu_sync; carries no writer-subsystem discriminant | retire when boundary change reporting is admitted wholly inside the kernel | kernel_surface.txt |
+| OverlaySpanProjection | authority-export | DERIVED-SPAN-PROJECTION-INVALIDATION-0 compiled span/profile projection compiled and refreshed by simthing-sim gpu_sync and retained by OverlayCompileCache | retire when projection compile and retention are in-crate only | kernel_surface.txt |
 | PackedAccumulatorUpload | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |
 | PackedIntentUpload | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |
 | PackedThresholdUpload | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |
