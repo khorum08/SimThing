@@ -1,6 +1,5 @@
 # ACTIONBAND-OVERLAY-ACTUATION-0 (7.8) evidence
-
-Status: **PROBATION / proof-present / DA-review-pending**. Coding does not invoke `/clearance`, merge, move the pointer, close the binding row, retire `OVERLAY-PEER-AUTHORITY`, or begin 7.8a/7.9/8.x.
+Status: **COMPLETE — DA-GRADUATED / merged #1766 @ `f26bba1c`** (pre-dispatch `5299264210`, history ruling `5302829951`, graduation ruling on Board #1332)
 
 ## Receipts and scope
 

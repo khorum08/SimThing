@@ -42,10 +42,10 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | source | sha256 |
 | --- | --- |
 | precedented_classes.tsv | 19105ec83b268a5e48a1e14bc5befd389139f100fc10cdbe8e9285a7cd773032 |
-| binding_conditions.tsv | 968cfe9292cc757889d79aa12c09f60024cc6c11d01bf1e0b787a285f9d97994 |
+| binding_conditions.tsv | 26e025f8b1e76f7f649571aaa4f2da2c82ca722b4d8c549f5ce9d14b4604f3a6 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | 26eab30ec86c97ac8dfd6beef7ae8c5b4d3f18c38fdaa431ec40ccce855396d3 |
-| design_0_0_8_7_rf_arena_modernization.md | f93a26202e634c3d734bf8c05b7d54760d135b3e0fc25d383d03a245e65b9995 |
+| design_0_0_8_7_rf_arena_modernization.md | abc27de73ef1c6c07f6712a9e0ac042c0a614e34c0d1c7648886672afb672da6 |
 | relay_lint.sh | 4163f715cdc3b549dbf57c1744aff61ea96b9f9f0a2237376665fbdb24e986c8 |
 | doctrine_anchors.tsv | ddc753498b845b0e5084222b35f94286e5163cc6479de58883e3ecc3c2d743dd |
 | execution_status_taxonomy.tsv | dafea2186a122418076be4f5772da260501d01127c9ea83d20892506e8a8c6ca |
@@ -68,7 +68,7 @@ Dark properties (1): `fixture::dark_reading` (reasons/spans in `property_admissi
 
 Track state: `open`
 
-> Compact view: 37 completed rungs elided; showing all 25 open rungs plus the 3 most recent completions. Full ladder in the design doc.
+> Compact view: 38 completed rungs elided; showing all 24 open rungs plus the 3 most recent completions. Full ladder in the design doc.
 
 | # | rung | deliverable | exit proof |
 | --- | --- | --- | --- |
@@ -85,10 +85,9 @@ Track state: `open`
 | 7.5 | ACTIONBAND-SEMANTIC-SHADOW-0 | Bind generic stamped ActionBand crossings/terminal/structural deltas to existing | Same opaque GPU ActionBand run with semantic labels changed produces bit-identical numerical results; generic readbac... |
 | 7.5a | ACTIONBAND-FIELD-TRIAD-PROGRESS-0 | **Gu-Yang remediation, rung 1 of 3 (Owner-directed 2026-08-10; Fable-approved re | A synthetic conserved-channel ActionBand consumes a REAL Gu-Yang / `FieldSweepRegistration` output with **zero Action... |
 | 7.5b | ACTIONBAND-SPATIAL-FLUX-WITNESS-0 | **Gu-Yang remediation, rung 2 of 3.** Prove the generic Field-Triad ActionBand b | Same target and PALMA potential, different Gu-Yang channel capacity ⇒ **same lawful descent identity, different per-g... |
-| 7.6 | OVERLAY-GERM-ARCHAEOLOGY-0 | **Overlay closure, rung 1 of 4 — anchored by `docs/stemthing_intrinsic_overlay_c | **DA-GRADUATED / merged #1748 @ e52b5603 — 74 routes across four families (OVERLAY 52 / INHERIT 8 / CROSSING-WRITE 8 ... |
 | 7.6a | FACILITY-RESIDENT-PLANE-SUBSTRATE-0 | **Overlay closure, prerequisite rung — DA-minted 2026-08-14 on the genuine 7.7 s | **DA-GRADUATED / merged #1758 @ cfc537b9 — the three seams are admitted and the graduated facility is provably unchan... |
 | 7.7 | GPU-OVERLAY-LIFECYCLE-EXTRACTION-0 | **Overlay closure, rung 2 of 4 — the dedicated extraction rung the anchor's §23. | **DA-GRADUATED / merged #1761 @ 3fbdf56f — overlay lifecycle numerical authority is on the real Phase-5 GPU path and ... |
-| 7.8 | ACTIONBAND-OVERLAY-ACTUATION-0 | **Overlay closure, rung 3 of 4 — probes C+D fused: the actuation door.** An Acti | Crossing → `OverlayStateNext` → next-generation consequence witness green; a certificate-envelope mutant (out-of-enve... |
+| 7.8 | ACTIONBAND-OVERLAY-ACTUATION-0 | **Overlay closure, rung 3 of 4 — probes C+D fused: the actuation door.** An Acti | **DA-GRADUATED / merged #1766 @ f26bba1c — one crossing-to-consequence substrate, three arms, and the two hardest obl... |
 | 7.8a | DERIVED-SPAN-PROJECTION-INVALIDATION-0 | **Unification sweep, the ONE new architectural rung (Sol/Fable v4, 2026-08-13) — | Million-row homogeneous subtree resolves to **O(distinct-profiles) effective descriptors, never O(descendants)** sema... |
 | 7.9 | OVERLAY-FRACTAL-CLOSURE-WITNESS-0 | **Overlay closure, rung 4 of 4 — probes E+F plus the anchor's §23.2 ADVERSARIAL  | Ten-element scenario green end-to-end; the illegal cycle rejects at admission (planted acceptance REDs); rewalk instr... |
 | 8.1 | CONTENTION-CONSERVATION-JUDGE-0 | **BINDS 6.5 (StemThing-A; clauses landed early in #1628, verified at 6.5 graduat | Judge red/green proven on seeded violations against SCENARIO-NEUTRAL synthetic contention fixtures. **The R6 dress re... |
@@ -103,7 +102,7 @@ Track state: `open`
 
 ## Next Rung Pointer
 
-Active pointer: `ACTIONBAND-OVERLAY-ACTUATION-0`
+Active pointer: `DERIVED-SPAN-PROJECTION-INVALIDATION-0`
 
 
 ## Cold-Start Spine (constitutional pointers)
@@ -168,7 +167,7 @@ Without `novelty_basis`, clearance fails. Empty-class diffs with a valid admitte
 | rung | condition | set_by | status | promotion_blocker |
 | --- | --- | --- | --- | --- |
 | GPU-OVERLAY-LIFECYCLE-EXTRACTION-0 | DissolveCondition::OverrideReceived passes admission as a bounded lifecycle but evaluates false every generation; 7.7 must either implement override-replacement in the germ or reject the variant at admission | DA ruling 5289831443 (7.6 AN-OVERRIDE archaeology) | discharged | no |
-| ACTIONBAND-OVERLAY-ACTUATION-0 | 7.7 proved overlay-local-EML-surface absence and durable-row-capture avoidance by audited assertion, not by a planted falsifier; 7.8 authors CrossingConsequenceBinding/ResidentNextWrite and durable binding targets, where both become constructible: plant each and RED it, or report it unrepresentable at a type boundary with citation | DA ruling on 7.7 graduation (relay 5298234855) | open | yes |
+| ACTIONBAND-OVERLAY-ACTUATION-0 | 7.7 proved overlay-local-EML-surface absence and durable-row-capture avoidance by audited assertion, not by a planted falsifier; 7.8 authors CrossingConsequenceBinding/ResidentNextWrite and durable binding targets, where both become constructible: plant each and RED it, or report it unrepresentable at a type boundary with citation | DA ruling on 7.7 graduation (relay 5298234855) | discharged | no |
 
 ## Clearance Ledger (recent)
 
