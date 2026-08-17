@@ -3,21 +3,27 @@
 use std::io::Cursor;
 use std::sync::Mutex;
 
+use simthing_core::evaluate::Evaluator;
 use simthing_core::{
-    deliver_routed_overlay, DimensionRegistry, DissolveCondition, EmitOnThresholdBuffer,
-    EmitOnThresholdRegistration, EmlExpressionRegistry, GenerationStamp, OverlayKind,
-    OverlayLifecycle, OverlaySource, SimProperty, SimThing, SimThingKind, SlotIndex, SubFieldRole,
-    ThresholdDirection, TransformOp,
+    deliver_predicate_broadcast, deliver_routed_overlay, AccumulatorOp, CombineFn,
+    CompiledAccumulatorOpPlan, ConsumeMode, DimensionRegistry, DissolveCondition,
+    EmitOnThresholdBuffer, EmitOnThresholdRegistration, EmlConsumerMask, EmlExecutionClass,
+    EmlExpressionRegistry, EmlFormulaMeta, EmlTreeId, GateSpec, GenerationStamp, OverlayKind,
+    OverlayLifecycle, OverlaySource, RoutedPredicate, RoutedPredicateComparison, ScaleSpec,
+    SimProperty, SimThing, SimThingKind, SlotIndex, SourceSpec, StructuralScalarChannel,
+    SubFieldRole, ThresholdDirection, TransformOp,
 };
 use simthing_driver::{
-    compile_crossing_consequence_session, compile_gu_yang_n4_field_sweeps,
-    ActionBandActiveInstance, ActionBandNativeLaneAdmission, GuYangN4FieldSweepSpec,
-    RoutedOverlayDelivery,
+    compile_action_band_gpu_execution_with_native_lanes, compile_crossing_consequence_session,
+    compile_gu_yang_n4_field_sweeps, ActionBandActiveInstance, ActionBandNativeLaneAdmission,
+    GuYangN4FieldSweepSpec, RoutedOverlayDelivery,
 };
 use simthing_feeder::{feeder_channel, BoundaryRequest, FeederWork};
 use simthing_gpu::{
     apply_band_crossing_deltas_from_fused_emissions, emit_on_threshold_registrations_to_gpu,
-    AccumulatorOpSession, GpuContext, OverlayProjectionHostChange, OverlaySpanProjection,
+    scoped_debug_readback_allowed, wgpu, AccumulatorOpSession, ActionBandEmissionBindingGpu,
+    ActionBandGpuExecution, FieldSweepOutput, FieldSweepSession, GpuContext,
+    OverlayProjectionHostChange, OverlaySpanProjection, PackedAccumulatorUpload,
     PackedThresholdUpload, SlotAllocator, OP_MULTIPLY,
 };
 use simthing_sim::overlay_lifecycle::OverlayLifecycleAdmissionState;
@@ -41,7 +47,9 @@ struct ActionFixture {
     registry: DimensionRegistry,
     threshold: EmitOnThresholdRegistration,
     feedback_input: simthing_core::ColumnIndex,
-    feedback_output: simthing_core::ColumnIndex,
+    feedback_previous: simthing_core::ColumnIndex,
+    rf_claim: simthing_core::ColumnIndex,
+    rf_result: simthing_core::ColumnIndex,
     eml: EmlExpressionRegistry,
     frozen: simthing_spec::FrozenActionBandTemplates,
 }
@@ -62,13 +70,29 @@ fn action_fixture() -> ActionFixture {
             &registry.property(feedback_input_property).layout,
         )
         .unwrap();
-    let feedback_output_property =
-        registry.register(SimProperty::simple("closure", "feedback-output", 0));
-    let feedback_output = registry
-        .column_range(feedback_output_property)
+    let feedback_previous_property =
+        registry.register(SimProperty::simple("closure", "feedback-previous", 0));
+    let feedback_previous = registry
+        .column_range(feedback_previous_property)
         .col_for_role(
             &SubFieldRole::Amount,
-            &registry.property(feedback_output_property).layout,
+            &registry.property(feedback_previous_property).layout,
+        )
+        .unwrap();
+    let rf_claim_property = registry.register(SimProperty::simple("closure", "rf-claim", 0));
+    let rf_claim = registry
+        .column_range(rf_claim_property)
+        .col_for_role(
+            &SubFieldRole::Amount,
+            &registry.property(rf_claim_property).layout,
+        )
+        .unwrap();
+    let rf_result_property = registry.register(SimProperty::simple("closure", "rf-result", 0));
+    let rf_result = registry
+        .column_range(rf_result_property)
+        .col_for_role(
+            &SubFieldRole::Amount,
+            &registry.property(rf_result_property).layout,
         )
         .unwrap();
     let threshold = EmitOnThresholdRegistration {
@@ -121,7 +145,9 @@ fn action_fixture() -> ActionFixture {
         registry,
         threshold,
         feedback_input,
-        feedback_output,
+        feedback_previous,
+        rf_claim,
+        rf_result,
         eml,
         frozen,
     }
@@ -204,6 +230,302 @@ fn write_replay(snapshot: &ReplaySnapshot, frame: &ReplayFrame) -> Vec<u8> {
     writer.into_inner()
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct ClosureFeedbackGeneration {
+    field_signal_bits: u32,
+    native_flux_bits: u32,
+    feedback_bits: u32,
+    rf_increment_bits: u32,
+    action_generation: u32,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct ClosureFeedbackRun {
+    generations: [ClosureFeedbackGeneration; 2],
+    final_world_bits: Vec<u32>,
+}
+
+fn closure_rf_plan(action: &ActionFixture) -> CompiledAccumulatorOpPlan {
+    CompiledAccumulatorOpPlan {
+        slot_count: 2,
+        n_dims: action.registry.total_columns as u32,
+        input_channel: StructuralScalarChannel::new(action.rf_claim.raw_u32()),
+        output_channel: StructuralScalarChannel::new(action.rf_result.raw_u32()),
+        ops: vec![AccumulatorOp {
+            source: SourceSpec::SlotValue {
+                slot: SlotIndex::new(0),
+                col: action.rf_claim,
+            },
+            combine: CombineFn::Identity,
+            gate: GateSpec::Always,
+            scale: ScaleSpec::Identity,
+            consume: ConsumeMode::ResetTarget,
+            targets: vec![(SlotIndex::new(0), action.rf_result)],
+        }],
+    }
+}
+
+fn closure_feedback_plan(
+    action: &ActionFixture,
+    threshold: &EmitOnThresholdRegistration,
+    rf_plan: &CompiledAccumulatorOpPlan,
+) -> simthing_gpu::ActionBandExecutionPlan {
+    let compiled_feedback = compile_eml_gadget(
+        &EmlGadgetInstanceSpec::BoundedFeedback {
+            id: "closure-field-rf-feedback".into(),
+            previous_col: action.feedback_previous.raw_u32(),
+            input_col: action.threshold.col.raw_u32(),
+            output_col: Some(action.feedback_previous.raw_u32()),
+            decay: 0.5,
+            gain: 0.6,
+            min: 0.0,
+            max: 1.0,
+        },
+        EmlGadgetCompileOptions {
+            max_col: action.registry.total_columns as u32,
+        },
+    )
+    .expect("bounded Current -> Next field/RF recurrence");
+    let feedback_program = EmlTreeId(7_902);
+    let mut eml = EmlExpressionRegistry::new();
+    eml.register_formula(
+        feedback_program,
+        EmlFormulaMeta {
+            tree_id: feedback_program,
+            execution_class: EmlExecutionClass::ExactDeterministic,
+            allowed_consumers: EmlConsumerMask(EmlConsumerMask::ALL_PRODUCTION),
+            max_abs_error: None,
+            deterministic_gpu: true,
+            requires_guard_for_hard_threshold: false,
+            node_count: compiled_feedback.nodes.len() as u32,
+            max_stack_depth: 3,
+            has_loops: false,
+            has_recursion: false,
+            display_name: "closure-bounded-feedback".into(),
+        },
+        compiled_feedback.nodes,
+    )
+    .unwrap();
+    let spec = ActionBandSessionSpec {
+        budget: ActionBandAdmissionBudgetSpec {
+            axis_channel_count: 2,
+            dependency_binding_count: 0,
+            storage_rows: 1,
+            eml_program_count: 1,
+            emission_binding_count: 2,
+        },
+        templates: vec![ActionBandTemplateSpec {
+            id: "closure-feedback".into(),
+            label: None,
+            axis_channels: vec![
+                ActionBandChannelBindingSpec {
+                    column: action.threshold.col.raw_u32(),
+                    kind: ActionBandChannelKind::Primitive,
+                },
+                ActionBandChannelBindingSpec {
+                    column: action.feedback_previous.raw_u32(),
+                    kind: ActionBandChannelKind::Primitive,
+                },
+            ],
+            target: ActionBandTargetSpec::ScalarBound {
+                channel: action.threshold.col.raw_u32(),
+                bound: threshold.threshold,
+                direction: ScalarBoundDirection::AtLeast,
+            },
+            velocity: None,
+            bands: vec![ActionBandBandSpec {
+                threshold_registration_index: 0,
+                eml_program: Some(feedback_program.0),
+                emission_binding_indices: vec![0, 1],
+            }],
+            subordinate_template_ids: Vec::new(),
+            max_active_subordinates: 0,
+            reserved_instance_rows: 1,
+            requirement_semantics: Default::default(),
+        }],
+    };
+    let conserved = [ActionBandConservedProgressBindingSpec {
+        template_id: "closure-feedback".into(),
+        band_index: 0,
+        emission_binding_index: 0,
+        bound_source: ActionBandConservedProgressBoundSourceSpec::GuYangRealized,
+    }];
+    let mut door = ActionBandSessionBuildDoor::new();
+    let frozen = door
+        .admit_once_with_conserved_progress_at_session_build(
+            &spec,
+            &conserved,
+            &action.registry,
+            &eml,
+            std::slice::from_ref(threshold),
+        )
+        .unwrap()
+        .clone();
+    let native = ActionBandNativeLaneAdmission::from_existing_surfaces(
+        &action.registry,
+        &[action.feedback_previous],
+        std::slice::from_ref(rf_plan),
+        &[],
+        &ThresholdRegistry::new(),
+    );
+    let active = [ActionBandActiveInstance::new(
+        frozen.templates()[0].index(),
+        SlotIndex::new(0),
+        [0.0; 4],
+    )];
+    compile_action_band_gpu_execution_with_native_lanes(
+        &frozen,
+        &eml,
+        &[
+            ActionBandEmissionBindingGpu::rf_claim(action.rf_claim.raw_u32()),
+            ActionBandEmissionBindingGpu::property_next(
+                action.feedback_previous.raw_u32(),
+                simthing_gpu::ActionBandPropertyWrite::Set,
+            ),
+        ],
+        &active,
+        &native,
+    )
+    .unwrap()
+    .into_execution_plan()
+}
+
+fn closure_storage_buffer(ctx: &GpuContext, label: &str, byte_len: u64) -> wgpu::Buffer {
+    ctx.device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some(label),
+        size: byte_len,
+        usage: wgpu::BufferUsages::STORAGE
+            | wgpu::BufferUsages::COPY_SRC
+            | wgpu::BufferUsages::COPY_DST,
+        mapped_at_creation: false,
+    })
+}
+
+fn run_closure_feedback(
+    ctx: &GpuContext,
+    action: &ActionFixture,
+    overlay_effective: f32,
+) -> ClosureFeedbackRun {
+    let threshold = EmitOnThresholdRegistration {
+        slot: SlotIndex::new(0),
+        col: action.threshold.col,
+        threshold: 0.15,
+        direction: ThresholdDirection::Upward,
+        event_kind: 7_902,
+        buffer: EmitOnThresholdBuffer::Values,
+    };
+    let registrations = compile_gu_yang_n4_field_sweeps(GuYangN4FieldSweepSpec {
+        width: 2,
+        height: 1,
+        n_dims: action.registry.total_columns as u32,
+        value_col: action.threshold.col,
+        conductance_col: action.feedback_input,
+        saturation: 1.0,
+        chi: 0.25,
+        dt: 1.0,
+    })
+    .expect("Gu-Yang remains the admitted conservative field law");
+    assert_eq!(
+        registrations[1].output(),
+        FieldSweepOutput::Matrix(action.threshold.col)
+    );
+    let rf_plan = closure_rf_plan(action);
+    let plan = closure_feedback_plan(action, &threshold, &rf_plan);
+    let mut execution = match ActionBandGpuExecution::new(ctx, plan.clone()).unwrap() {
+        ActionBandGpuExecution::Active(session) => session,
+        ActionBandGpuExecution::Inactive => panic!("one closure feedback row is active"),
+    };
+    let _proof = scoped_debug_readback_allowed(true);
+    let n_dims = action.registry.total_columns;
+    let mut current = vec![0.0f32; 2 * n_dims];
+    current[action.threshold.col.raw()] = overlay_effective;
+    current[n_dims + action.threshold.col.raw()] = 0.8;
+    current[action.feedback_previous.raw()] = overlay_effective;
+    let mut observed = Vec::new();
+
+    for generation in 1..=2 {
+        let prior_rf = current[action.rf_result.raw()];
+        let mut field = FieldSweepSession::new(ctx, &registrations[0]).unwrap();
+        field.upload_values(ctx, &current).unwrap();
+        field.dispatch_chain(ctx, &registrations, 1).unwrap();
+        let resident = closure_storage_buffer(
+            ctx,
+            "overlay_closure_field_resident",
+            std::mem::size_of_val(current.as_slice()) as u64,
+        );
+        field.copy_values_to_buffer(ctx, &resident);
+
+        let mut phase5 =
+            AccumulatorOpSession::new_attached(ctx, 2, action.registry.total_columns as u32, 1);
+        phase5.upload_previous_values(ctx, &vec![0.0; current.len()]);
+        phase5
+            .copy_values_prefix_from_buffer(ctx, &resident, 0, 0, resident.size())
+            .unwrap();
+        phase5
+            .upload_packed_threshold_ops(
+                ctx,
+                &PackedThresholdUpload::from_registrations(
+                    &emit_on_threshold_registrations_to_gpu(std::slice::from_ref(&threshold)),
+                )
+                .unwrap(),
+            )
+            .unwrap();
+        phase5.tick(ctx, 0).unwrap();
+        let emissions = phase5.readback_threshold_emissions(ctx).unwrap();
+        let mut allocator = SlotAllocator::new();
+        allocator.populate_from_tree(&SimThing::new(SimThingKind::GameSession, 0));
+        let deltas = apply_band_crossing_deltas_from_fused_emissions(
+            &emissions,
+            phase5.threshold_registrations(),
+            &action.registry,
+            &allocator,
+        );
+        assert_eq!(
+            deltas.len(),
+            1,
+            "one real field-seeded crossing per generation"
+        );
+        let field_signal = deltas[0].post_value();
+        let crossings = plan.crossings_from_sealed(&deltas).unwrap();
+        let next = closure_storage_buffer(ctx, "overlay_closure_next", resident.size());
+        let action_readback = execution
+            .dispatch_with_native_next_and_readback(
+                ctx,
+                &resident,
+                &next,
+                action.registry.total_columns as u32,
+                &crossings,
+            )
+            .unwrap();
+
+        let mut rf = AccumulatorOpSession::new(ctx, rf_plan.slot_count, rf_plan.n_dims);
+        rf.copy_values_prefix_from_buffer(ctx, &next, 0, 0, next.size())
+            .unwrap();
+        rf.upload_packed_ops(
+            ctx,
+            &PackedAccumulatorUpload::from_ops(&rf_plan.ops).unwrap(),
+        )
+        .unwrap();
+        rf.tick(ctx, 0).unwrap();
+        current = rf.readback_full(ctx).unwrap();
+        observed.push(ClosureFeedbackGeneration {
+            field_signal_bits: field_signal.to_bits(),
+            native_flux_bits: deltas[0].post_value().to_bits(),
+            feedback_bits: current[action.feedback_previous.raw()].to_bits(),
+            rf_increment_bits: (current[action.rf_result.raw()] - prior_rf).to_bits(),
+            action_generation: action_readback.states[0].generation,
+        });
+        assert_eq!(field.host_readbacks(), 0);
+        assert_eq!(field.registration_dispatches(), 2);
+        assert_eq!(action_readback.states[0].generation, generation);
+    }
+
+    ClosureFeedbackRun {
+        generations: observed.try_into().unwrap(),
+        final_world_bits: current.into_iter().map(f32::to_bits).collect(),
+    }
+}
+
 #[test]
 fn adversarial_fractal_closure_uses_one_intrinsic_overlay_loop() {
     let _guard = GPU.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
@@ -214,7 +536,13 @@ fn adversarial_fractal_closure_uses_one_intrinsic_overlay_loop() {
     let (registry, property) = admitted_property_registry();
     let mut target_root = SimThing::new(SimThingKind::GameSession, 0);
     let target_root_id = target_root.id;
-    target_root.add_property(property, registry.property(property).default_value());
+    let mut root_value = registry.property(property).default_value();
+    root_value.set_role(
+        &SubFieldRole::Amount,
+        &registry.property(property).layout,
+        1.0,
+    );
+    target_root.add_property(property, root_value);
 
     // (1), (9): one ancestor standing modifier carries a lawful temporal
     // feedback cycle. The pure-current half is acyclic; the return edge is
@@ -246,7 +574,13 @@ fn adversarial_fractal_closure_uses_one_intrinsic_overlay_loop() {
     let mut special_leaf = None;
     for index in 0..LARGE_SUBTREE_LEAVES {
         let mut leaf = SimThing::new(SimThingKind::Location, 0);
-        leaf.add_property(property, registry.property(property).default_value());
+        let mut leaf_value = registry.property(property).default_value();
+        leaf_value.set_role(
+            &SubFieldRole::Amount,
+            &registry.property(property).layout,
+            1.0,
+        );
+        leaf.add_property(property, leaf_value);
         if index == LARGE_SUBTREE_LEAVES / 2 {
             special_leaf = Some(leaf.id);
         }
@@ -256,25 +590,23 @@ fn adversarial_fractal_closure_uses_one_intrinsic_overlay_loop() {
 
     let source_id = target_root_id;
     let local_id = format!("local::{generated_key}");
-    let (mut local, _) = compile_overlay(
-        &overlay_spec(
-            local_id,
-            0.8,
-            OverlayLifecycle::Suspended {
-                when_activated: Box::new(OverlayLifecycle::Transient {
-                    dissolution_conditions: vec![DissolveCondition::AfterTicks { remaining: 3 }],
-                }),
-            },
-            Vec::new(),
-            Vec::new(),
-            Some(7_902),
-        ),
-        &registry,
-        source_id,
-    )
-    .unwrap();
+    let mut local_spec = overlay_spec(
+        local_id,
+        1.6,
+        OverlayLifecycle::Suspended {
+            when_activated: Box::new(OverlayLifecycle::Transient {
+                dissolution_conditions: vec![DissolveCondition::AfterTicks { remaining: 3 }],
+            }),
+        },
+        Vec::new(),
+        Vec::new(),
+        Some(7_902),
+    );
+    local_spec.composition_class = Some("sequential".into());
+    let (mut local, _) = compile_overlay(&local_spec, &registry, source_id).unwrap();
     local.source = OverlaySource::Ai;
     let local_overlay_id = local.id;
+    let predicate_template = local.clone();
 
     // (2), (4), (5), cross-tree seam: the real Phase-5 crossing passes the
     // canonical 7.8 consequence door and emits the existing stamped receive
@@ -409,101 +741,77 @@ fn adversarial_fractal_closure_uses_one_intrinsic_overlay_loop() {
     let local_slot = allocator.slot_of(special_leaf).unwrap();
     let local_range = ranges[local_slot.as_usize()];
     assert_eq!(local_range.length, 2);
-    let mut effective = 1.0f32;
     for delta in
         &deltas[local_range.offset as usize..(local_range.offset + local_range.length) as usize]
     {
         assert_eq!(delta.op_kind, OP_MULTIPLY);
-        effective *= delta.value;
     }
-    assert_eq!(effective.to_bits(), 0.4f32.to_bits());
-    assert!(
-        effective < 0.45,
-        "(6) active-state numeric projection feeds the admitted predicate"
-    );
+    let evaluated = Evaluator::new(&registry, 0.0).evaluate(&live_tree, 8);
+    let effective = evaluated
+        .get(special_leaf)
+        .and_then(|entity| entity.properties.get(&property))
+        .expect("ordinary evaluated Property retains the overlay-composed value")
+        .get_role(&SubFieldRole::Amount, &registry.property(property).layout);
+    assert_eq!(effective.to_bits(), 0.8f32.to_bits());
+
+    // (6): the existing paid routed-predicate path reads the ordinary
+    // overlay-composed Property. Exactly the one leaf carrying both the
+    // inherited and local modifier satisfies the has-modifier-like selector.
+    let mut predicate_tree = live_tree.clone();
+    let predicate_receipts = deliver_predicate_broadcast(
+        &mut predicate_tree,
+        target_root_id,
+        &predicate_template,
+        &RoutedPredicate {
+            property_id: property,
+            sub_field: SubFieldRole::Amount,
+            comparison: RoutedPredicateComparison::AtLeast,
+            threshold: 0.75,
+        },
+        &registry,
+    )
+    .expect("the production predicate-broadcast evaluator owns the one paid walk");
+    assert_eq!(predicate_receipts.len(), 1);
+    assert_eq!(predicate_receipts[0].target, special_leaf);
     assert_eq!(runtime.overlay_count(target_root_id), Some(1));
     assert_eq!(runtime.overlay_count(special_leaf), Some(1));
 
-    // (8): RF and Gu-Yang remain the native bound/input authorities, while
-    // recurrence is the existing bounded-feedback EML shape.
-    let field_columns = action.registry.total_columns as u32;
-    compile_gu_yang_n4_field_sweeps(GuYangN4FieldSweepSpec {
-        width: 2,
-        height: 1,
-        n_dims: field_columns,
-        value_col: action.threshold.col,
-        conductance_col: action.feedback_input,
-        saturation: 1.0,
-        chi: 0.25,
-        dt: 1.0,
-    })
-    .expect("Gu-Yang remains the admitted conservative field law");
-    compile_eml_gadget(
-        &EmlGadgetInstanceSpec::BoundedFeedback {
-            id: "closure-field-rf-feedback".into(),
-            previous_col: action.threshold.col.raw_u32(),
-            input_col: action.feedback_input.raw_u32(),
-            output_col: Some(action.feedback_output.raw_u32()),
-            decay: 0.5,
-            gain: 0.25,
-            min: 0.0,
-            max: 1.0,
-        },
-        EmlGadgetCompileOptions {
-            max_col: field_columns,
-        },
-    )
-    .expect("bounded Current -> Next field/RF recurrence");
-    let mut conserved_door = ActionBandSessionBuildDoor::new();
-    let conserved = [ActionBandConservedProgressBindingSpec {
-        template_id: "closure-trigger".into(),
-        band_index: 0,
-        emission_binding_index: 0,
-        bound_source: ActionBandConservedProgressBoundSourceSpec::GuYangRealized,
-    }];
-    conserved_door
-        .admit_once_with_conserved_progress_at_session_build(
-            &ActionBandSessionSpec {
-                budget: ActionBandAdmissionBudgetSpec {
-                    axis_channel_count: 1,
-                    dependency_binding_count: 0,
-                    storage_rows: 1,
-                    eml_program_count: 0,
-                    emission_binding_count: 1,
-                },
-                templates: vec![ActionBandTemplateSpec {
-                    id: "closure-trigger".into(),
-                    label: None,
-                    axis_channels: vec![ActionBandChannelBindingSpec {
-                        column: action.threshold.col.raw_u32(),
-                        kind: ActionBandChannelKind::Primitive,
-                    }],
-                    target: ActionBandTargetSpec::ScalarBound {
-                        channel: action.threshold.col.raw_u32(),
-                        bound: 1.0,
-                        direction: ScalarBoundDirection::AtLeast,
-                    },
-                    velocity: None,
-                    bands: vec![ActionBandBandSpec {
-                        threshold_registration_index: 0,
-                        eml_program: None,
-                        emission_binding_indices: vec![0],
-                    }],
-                    subordinate_template_ids: Vec::new(),
-                    max_active_subordinates: 0,
-                    reserved_instance_rows: 1,
-                    requirement_semantics: Default::default(),
-                }],
-            },
-            &conserved,
-            &action.registry,
-            &action.eml,
-            std::slice::from_ref(&action.threshold),
-        )
-        .expect("one existing Gu-Yang/RF bound source is frozen at admission");
+    // (8), (9): the actual overlay-composed value seeds Gu-Yang. Its resident
+    // field result crosses the existing Phase-5 surface, bounds an ordinary RF
+    // claim, and feeds a bounded EML Current -> Next write for two real GPU
+    // generations. A second execution from the same input is bit-identical.
+    let feedback = run_closure_feedback(&ctx, &action, effective);
+    let repeated_feedback = run_closure_feedback(&ctx, &action, effective);
+    assert_eq!(feedback, repeated_feedback);
+    assert_eq!(feedback.generations[0].action_generation, 1);
+    assert_eq!(feedback.generations[1].action_generation, 2);
+    for generation in feedback.generations {
+        assert_eq!(generation.native_flux_bits, generation.field_signal_bits);
+        assert_eq!(generation.rf_increment_bits, generation.native_flux_bits);
+    }
+    assert_ne!(
+        feedback.generations[0].feedback_bits, feedback.generations[1].feedback_bits,
+        "t+1 must consume t's resident feedback value rather than converge in one generation"
+    );
+    eprintln!(
+        "OVERLAY-CLOSURE-FEEDBACK g1(field={:08x},progress={:08x},next={:08x}) g2(field={:08x},progress={:08x},next={:08x})",
+        feedback.generations[0].field_signal_bits,
+        feedback.generations[0].rf_increment_bits,
+        feedback.generations[0].feedback_bits,
+        feedback.generations[1].field_signal_bits,
+        feedback.generations[1].rf_increment_bits,
+        feedback.generations[1].feedback_bits,
+    );
 
     // Existing stamped crossing + canonical schedule/delta history is the
     // entire replay surface. No OverlayHistory or second log exists.
+    let gate_col = registry
+        .column_range(property)
+        .col_for_role(&SubFieldRole::Amount, &registry.property(property).layout)
+        .unwrap();
+    let mut replay_shadow = shadow.clone();
+    replay_shadow[local_slot.as_usize() * registry.total_columns + gate_col.raw()] =
+        f32::from_bits(feedback.generations[1].feedback_bits);
     let frame = ReplayFrame {
         day: 8,
         entries: vec![
@@ -515,7 +823,7 @@ fn adversarial_fractal_closure_uses_one_intrinsic_overlay_loop() {
                 deltas: vec![crossing.clone()],
             },
         ],
-        shadow_values: None,
+        shadow_values: Some(replay_shadow.clone()),
         spec_entries: Vec::new(),
         injection_entries: Vec::new(),
     };
@@ -526,6 +834,14 @@ fn adversarial_fractal_closure_uses_one_intrinsic_overlay_loop() {
     let mut replay = ReplayDriver::from_snapshot(decoded_snapshot);
     replay.apply_frame(decoded_frame);
     assert_eq!(replay.last_band_crossing_deltas, vec![crossing]);
+    assert_eq!(replay.shadow_values.as_ref(), Some(&replay_shadow));
+    assert_eq!(
+        replay.shadow_values.as_ref().unwrap()
+            [local_slot.as_usize() * registry.total_columns + gate_col.raw()]
+        .to_bits(),
+        feedback.generations[1].feedback_bits,
+        "existing post-boundary shadow checkpoint carries the executed feedback consequence"
+    );
     assert_eq!(
         serde_json::to_value(&replay.root).unwrap(),
         serde_json::to_value(&runtime).unwrap()
