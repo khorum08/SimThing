@@ -278,7 +278,7 @@ fn one_real_gpu_door_executes_all_three_consequence_arms() {
         .compiled()
         .execution_plan()
         .crossings_from_sealed(std::slice::from_ref(&delta))
-        .expect("a cloned sealed delta can mint a rival batch, but not consume twice");
+        .expect("a cloned sealed delta can mint a rival batch, but becomes stale at the boundary");
     let (tx, _rx) = feeder_channel();
     let initial_resident = resident_values(&fx);
     let mut dispatch = resident_session
@@ -298,6 +298,12 @@ fn one_real_gpu_door_executes_all_three_consequence_arms() {
     let _proof = scoped_debug_readback_allowed(true);
     let values = dispatch.resident_current_for_proof(&ctx).unwrap();
     assert_eq!(values[fx.column.raw()].to_bits(), 1.75f32.to_bits());
+    assert_eq!(dispatch.generation(), 1);
+    assert_eq!(
+        dispatch.generation_dedupe_for_proof().unwrap(),
+        (Some(1), 0),
+        "the real resident-plane boundary must drop every prior-generation key immediately"
+    );
     assert!(matches!(
         dispatch.dispatch_and_apply(
             &ctx,
@@ -305,45 +311,9 @@ fn one_real_gpu_door_executes_all_three_consequence_arms() {
             replay_crossings,
             &tx,
         ),
-        Err(simthing_driver::CrossingConsequenceDispatchError::DuplicateCrossingConsumption)
-    ));
-    assert_eq!(
-        dispatch.generation_dedupe_for_proof().unwrap(),
-        (Some(0), 1)
-    );
-
-    let next_generation_crossings = resident_session
-        .compiled()
-        .execution_plan()
-        .crossings_from_sealed(&[])
-        .unwrap();
-    dispatch
-        .dispatch_and_apply(
-            &ctx,
-            fx.registry.total_columns as u32,
-            next_generation_crossings,
-            &tx,
-        )
-        .unwrap();
-    assert_eq!(
-        dispatch.generation_dedupe_for_proof().unwrap(),
-        (Some(1), 0)
-    );
-    let stale_generation_crossings = resident_session
-        .compiled()
-        .execution_plan()
-        .crossings_from_sealed(std::slice::from_ref(&delta))
-        .unwrap();
-    assert!(matches!(
-        dispatch.dispatch_and_apply(
-            &ctx,
-            fx.registry.total_columns as u32,
-            stale_generation_crossings,
-            &tx,
-        ),
         Err(
             simthing_driver::CrossingConsequenceDispatchError::CrossingGenerationMismatch {
-                expected: 2,
+                expected: 1,
                 actual: 0,
             }
         )

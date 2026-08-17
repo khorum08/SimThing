@@ -1514,6 +1514,13 @@ impl ActionBandGpuSession {
         self.generation
     }
 
+    /// Returns the actual facility-plane generation advanced by the sole
+    /// Current/Next swap authority. Unlike [`Self::generation`], this does not
+    /// change for a depth-1 no-crossing dispatch that performs no swap.
+    pub fn facility_generation(&self) -> u32 {
+        self.state_boundary.generation()
+    }
+
     pub fn last_bucket_partition(&self) -> &[ActionBandExecutionBucket] {
         &self.plan.buckets
     }

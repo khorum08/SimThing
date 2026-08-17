@@ -6,7 +6,6 @@
 //! dispatcher here.
 
 use std::collections::{BTreeMap, HashSet};
-use std::sync::{Arc, Mutex};
 
 use serde::{Deserialize, Serialize};
 use simthing_core::{
@@ -242,31 +241,27 @@ struct GenerationBoundCrossingDedupe {
 impl GenerationBoundCrossingDedupe {
     fn admit(
         &mut self,
-        execution_generation: u32,
+        facility_generation: u32,
         keys: &[ActionBandCrossingConsumptionKey],
     ) -> Result<(), CrossingConsequenceDispatchError> {
-        if keys.iter().any(|key| self.keys.contains(key)) {
-            return Err(CrossingConsequenceDispatchError::DuplicateCrossingConsumption);
-        }
         let Some(generation_offset) = self.generation_offset.or_else(|| {
             keys.first()
-                .and_then(|key| key.generation().checked_sub(execution_generation))
+                .and_then(|key| key.generation().checked_sub(facility_generation))
         }) else {
             if let Some(key) = keys.first() {
                 return Err(
                     CrossingConsequenceDispatchError::CrossingGenerationMismatch {
-                        expected: execution_generation,
+                        expected: facility_generation,
                         actual: key.generation(),
                     },
                 );
             }
-            self.generation = None;
-            self.keys.clear();
             return Ok(());
         };
         let executable_generation = generation_offset
-            .checked_add(execution_generation)
+            .checked_add(facility_generation)
             .ok_or(CrossingConsequenceDispatchError::GenerationWatermarkOverflow)?;
+        self.synchronize(executable_generation);
         if let Some(key) = keys
             .iter()
             .find(|key| key.generation() != executable_generation)
@@ -278,13 +273,33 @@ impl GenerationBoundCrossingDedupe {
                 },
             );
         }
+        if keys.iter().any(|key| self.keys.contains(key)) {
+            return Err(CrossingConsequenceDispatchError::DuplicateCrossingConsumption);
+        }
+        self.generation_offset = Some(generation_offset);
+        self.keys.extend(keys.iter().cloned());
+        Ok(())
+    }
+
+    fn observe_boundary(
+        &mut self,
+        facility_generation: u32,
+    ) -> Result<(), CrossingConsequenceDispatchError> {
+        let Some(generation_offset) = self.generation_offset else {
+            return Ok(());
+        };
+        let executable_generation = generation_offset
+            .checked_add(facility_generation)
+            .ok_or(CrossingConsequenceDispatchError::GenerationWatermarkOverflow)?;
+        self.synchronize(executable_generation);
+        Ok(())
+    }
+
+    fn synchronize(&mut self, executable_generation: u32) {
         if self.generation != Some(executable_generation) {
-            self.generation_offset = Some(generation_offset);
             self.generation = Some(executable_generation);
             self.keys.clear();
         }
-        self.keys.extend(keys.iter().cloned());
-        Ok(())
     }
 
     fn proof_snapshot(&self) -> (Option<u32>, usize) {
@@ -294,11 +309,14 @@ impl GenerationBoundCrossingDedupe {
 
 /// One source-bound compile product: GPU plan and all three consequence arms
 /// are frozen together and cannot be paired across sessions.
-#[derive(Clone, Debug)]
+///
+/// This type is deliberately neither `Clone` nor multiply bindable:
+/// [`Self::bind_dispatch`] consumes it, so one admitted consequence session
+/// owns exactly one facility generation boundary.
+#[derive(Debug)]
 pub struct CrossingConsequenceSession {
     compiled: CompiledActionBandGpuExecution,
     frozen: FrozenConsequences,
-    generation_dedupe: Arc<Mutex<GenerationBoundCrossingDedupe>>,
 }
 
 impl CrossingConsequenceSession {
@@ -311,10 +329,10 @@ impl CrossingConsequenceSession {
     }
 
     pub fn bind_dispatch(
-        &self,
+        self,
         ctx: &GpuContext,
         resident_values: &[f32],
-    ) -> Result<CrossingConsequenceDispatch<'_>, CrossingConsequenceDispatchError> {
+    ) -> Result<CrossingConsequenceDispatch, CrossingConsequenceDispatchError> {
         if self.frozen.session_origin != self.compiled.session_origin() {
             return Err(CrossingConsequenceDispatchError::ForeignCompile);
         }
@@ -333,8 +351,9 @@ impl CrossingConsequenceSession {
             }
         };
         Ok(CrossingConsequenceDispatch {
-            admitted: self,
+            frozen: self.frozen,
             execution,
+            generation_dedupe: GenerationBoundCrossingDedupe::default(),
         })
     }
 }
@@ -433,21 +452,24 @@ pub fn compile_crossing_consequence_session(
             by_event_kind,
         },
         compiled,
-        generation_dedupe: Arc::new(Mutex::new(GenerationBoundCrossingDedupe::default())),
     })
 }
 
 /// The sole 7.8 post-crossing dispatch. It performs native GPU Next writes and
 /// submits routed/structural requests in the same call. Sealed commitments are
 /// consumed internally and are not returned for a rival dispatcher to replay.
-pub struct CrossingConsequenceDispatch<'a> {
-    admitted: &'a CrossingConsequenceSession,
+/// `dispatch_and_apply` requires exclusive access, and every successful
+/// non-empty depth-1 dispatch advances the facility boundary before returning;
+/// therefore two successful batches cannot execute in one actual generation.
+pub struct CrossingConsequenceDispatch {
+    frozen: FrozenConsequences,
     execution: ActionBandGpuSession,
+    generation_dedupe: GenerationBoundCrossingDedupe,
 }
 
-impl CrossingConsequenceDispatch<'_> {
+impl CrossingConsequenceDispatch {
     pub fn generation(&self) -> u32 {
-        self.execution.generation()
+        self.execution.facility_generation()
     }
 
     pub fn dispatch_and_apply(
@@ -457,32 +479,26 @@ impl CrossingConsequenceDispatch<'_> {
         crossings: ActionBandCrossingBatch,
         boundary: &FeederSender,
     ) -> Result<CrossingConsequenceDispatchOutcome, CrossingConsequenceDispatchError> {
-        {
-            let mut dedupe = self
-                .admitted
-                .generation_dedupe
-                .lock()
-                .map_err(|_| CrossingConsequenceDispatchError::GenerationDedupePoisoned)?;
-            dedupe.admit(self.execution.generation(), crossings.consumption_keys())?;
-        }
+        self.generation_dedupe.admit(
+            self.execution.facility_generation(),
+            crossings.consumption_keys(),
+        )?;
         let production = self
             .execution
             .dispatch_resident_next(ctx, n_dims, &crossings)
             .map_err(|error| CrossingConsequenceDispatchError::Gpu(error.to_string()))?;
+        self.generation_dedupe
+            .observe_boundary(self.execution.facility_generation())?;
         self.apply_boundary_consequences(production, boundary)
     }
 
     /// Proof-only view of the bounded current-generation dedupe window.
-    /// The generation changes replace the set; prior-generation identities
-    /// are neither retained nor exposed.
+    /// The actual facility boundary changes replace the set before dispatch
+    /// returns; prior-generation identities are neither retained nor exposed.
     pub fn generation_dedupe_for_proof(
         &self,
     ) -> Result<(Option<u32>, usize), CrossingConsequenceDispatchError> {
-        self.admitted
-            .generation_dedupe
-            .lock()
-            .map(|dedupe| dedupe.proof_snapshot())
-            .map_err(|_| CrossingConsequenceDispatchError::GenerationDedupePoisoned)
+        Ok(self.generation_dedupe.proof_snapshot())
     }
 
     pub fn resident_current_for_proof(
@@ -499,12 +515,11 @@ impl CrossingConsequenceDispatch<'_> {
         production: ActionBandProductionDispatch,
         boundary: &FeederSender,
     ) -> Result<CrossingConsequenceDispatchOutcome, CrossingConsequenceDispatchError> {
-        let source_generation = GenerationStamp::new(self.execution.generation());
+        let source_generation = GenerationStamp::new(self.execution.facility_generation());
         let mut routed = 0u32;
         let mut structural = 0u32;
         for commitment in production.commitments {
             let binding = self
-                .admitted
                 .frozen
                 .by_event_kind
                 .get(&commitment.event_kind())
@@ -582,8 +597,6 @@ pub enum CrossingConsequenceDispatchError {
     CrossingGenerationMismatch { expected: u32, actual: u32 },
     #[error("ActionBand crossing generation watermark overflowed")]
     GenerationWatermarkOverflow,
-    #[error("ActionBand current-generation crossing dedupe is poisoned")]
-    GenerationDedupePoisoned,
     #[error("ActionBand GPU consequence dispatch failed: {0}")]
     Gpu(String),
     #[error(transparent)]
