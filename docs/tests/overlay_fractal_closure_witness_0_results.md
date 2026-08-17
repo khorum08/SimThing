@@ -5,6 +5,7 @@ Status: implementation complete; DA review pending.
 ## Receipts and fences
 
 - Canonical implementation base: `e1eef38a16393539a2472400c299a6ddc2bf1f35`
+- Implementation checkpoint: `935b6ac95596b17d40ef46eb4e7f20ce9e0f6216`
 - HD-RECEIPT: `edbc505dae18`
 - ORIENT-RECEIPT: `a5dc59920dd4`
 - orientation rule stamp: `61818ff7d4adda84`
@@ -65,7 +66,7 @@ The live activation is replayed from the existing `ReplaySnapshot` plus one cano
 
 ## Census and test budget
 
-The overlay-authority route universe did not change. `overlay_germ_archaeology_census_check.sh --check` reports `routes=77 discovery=73 residue=79 unclassified=0 open=0`, PASS. The dirty-tree safety fence correctly refused `--harvest` during implementation; clean-tree harvest is performed after the implementation commit, and `--repin` is used only if that authoritative comparison reports changed truth.
+The overlay-authority route universe did not change. `overlay_germ_archaeology_census_check.sh --check` reports `routes=77 discovery=73 residue=79 unclassified=0 open=0`, PASS. The dirty-tree safety fence correctly refused `--harvest` during implementation; clean-tree harvest at checkpoint `935b6ac9` then reported `PASS (universe unchanged, 73 routes)`, so no repin or census edit was made.
 
 The focused budget is two terminal integration proofs plus two compiler-owned doctests:
 
