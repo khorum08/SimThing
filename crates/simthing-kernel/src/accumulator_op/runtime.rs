@@ -131,12 +131,37 @@ impl OpSetHandle {
 #[derive(Clone, Debug, PartialEq)]
 pub struct OverlayCompileCache {
     pub compiled_at_revision: u64,
+    /// Authoritative derived span/profile metadata. This remains valid when
+    /// the dense upload cache below is deleted and rebuilt.
+    pub projection: crate::overlay_prep::OverlaySpanProjection,
     pub cached_deltas: Vec<OverlayDelta>,
     pub cached_ranges: Vec<SlotDeltaRange>,
     pub cached_n_bands: u32,
     pub cached_op_buffer_uploaded_n_ops: u32,
     pub compile_count: u64,
     pub upload_count: u64,
+}
+
+impl OverlayCompileCache {
+    /// Delete only the dense per-row materialization. Semantic profile/span
+    /// authority remains in `projection` and can rebuild this cache exactly.
+    pub fn drop_dense_materialization(&mut self) {
+        self.cached_deltas.clear();
+        self.cached_ranges.clear();
+        self.cached_n_bands = 0;
+        self.cached_op_buffer_uploaded_n_ops = 0;
+    }
+
+    pub fn rebuild_dense_materialization(
+        &mut self,
+        registry: &simthing_core::DimensionRegistry,
+        allocator: &crate::slot::SlotAllocator,
+    ) -> crate::overlay_prep::OverlayDenseMaterialization {
+        let materialized = self.projection.materialize_dense(registry, allocator);
+        self.cached_deltas = materialized.deltas.clone();
+        self.cached_ranges = materialized.ranges.clone();
+        materialized
+    }
 }
 
 /// Single AccumulatorOp runtime envelope for `WorldGpuState`.

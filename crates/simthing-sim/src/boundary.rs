@@ -250,7 +250,7 @@ pub struct BoundaryProtocol {
     scripted_event_triggers: Vec<ScriptedEventTriggerRegistration>,
     threshold_config_revision: u64,
     synced_threshold_config_revision: u64,
-    /// Bumped when tree/lifecycle changes can alter `build_overlay_deltas`.
+    /// Bumped when tree/lifecycle changes can alter the derived overlay span projection.
     overlay_compile_revision: u64,
     /// Append-only log of semantic state changes. Each boundary appends its
     /// entries; callers drain with `take_delta_log()`. The serialization
@@ -572,6 +572,7 @@ impl BoundaryProtocol {
         let mut force_full_value_upload = false;
         let mut topology_dirty = false;
         let mut slot_capacity_grew = false;
+        let mut overlay_projection_changes = Vec::new();
         let mut threshold_dirty =
             self.threshold_config_revision != self.synced_threshold_config_revision;
 
@@ -700,6 +701,9 @@ impl BoundaryProtocol {
         }
         for &(target, _) in &out.lifecycle.dissolved_overlays {
             push_slot_for_id(&self.allocator, target, &mut dirty_value_slots);
+            overlay_projection_changes.push(
+                simthing_gpu::OverlayProjectionHostChange::OverlayState(target),
+            );
         }
         if out.lifecycle.dissolved > 0 {
             threshold_dirty = true;
@@ -722,6 +726,9 @@ impl BoundaryProtocol {
         if !out.expiry.expired.is_empty() {
             threshold_dirty = true;
             topology_dirty = true;
+            overlay_projection_changes.extend(out.expiry.expired.iter().map(|(target, _)| {
+                simthing_gpu::OverlayProjectionHostChange::PropertyShape(*target)
+            }));
         }
         if out.expiry.properties_removed > 0 || out.expiry.cpu_side_removals > 0 {
             self.bump_overlay_compile_revision();
@@ -904,6 +911,16 @@ impl BoundaryProtocol {
         {
             threshold_dirty = true;
         }
+        overlay_projection_changes.extend(
+            out.maintainer
+                .overlays_attached
+                .iter()
+                .chain(&out.maintainer.overlays_activated)
+                .chain(&out.maintainer.overlays_suspended)
+                .map(|(target, _)| {
+                    simthing_gpu::OverlayProjectionHostChange::OverlayState(*target)
+                }),
+        );
         if !out.maintainer.allocated.is_empty()
             || !out.maintainer.tombstoned.is_empty()
             || !out.maintainer.reparented.is_empty()
@@ -1142,6 +1159,17 @@ impl BoundaryProtocol {
         } else {
             Some(dedup_slots(dirty_value_slots))
         };
+        overlay_projection_changes.sort_unstable_by_key(|change| match change {
+            simthing_gpu::OverlayProjectionHostChange::OverlayState(id) => (id.raw(), 0u8),
+            simthing_gpu::OverlayProjectionHostChange::PropertyShape(id) => (id.raw(), 1u8),
+        });
+        overlay_projection_changes.dedup();
+        let overlay_projection_topology_changed = out.fission.fissions_executed > 0
+            || out.fission.fusions_executed > 0
+            || !out.maintainer.allocated.is_empty()
+            || !out.maintainer.tombstoned.is_empty()
+            || !out.maintainer.reparented.is_empty()
+            || !out.maintainer.dimensions_added.is_empty();
         let gpu_out = sync_gpu_buffers(
             &self.root,
             &self.registry,
@@ -1164,6 +1192,8 @@ impl BoundaryProtocol {
             self.flags.use_accumulator_velocity,
             self.flags.use_accumulator_eml,
             self.overlay_compile_revision,
+            overlay_projection_topology_changed,
+            &overlay_projection_changes,
             &mut self.cached_topology_state,
         );
         #[cfg(debug_assertions)]
@@ -1207,6 +1237,10 @@ impl BoundaryProtocol {
         self.sync_accumulator_emission_session(state);
         out.gpu_sync = GpuSyncOutcome {
             overlay_deltas_uploaded: gpu_out.overlay_deltas_uploaded,
+            overlay_profile_count: gpu_out.overlay_profile_count,
+            overlay_span_count: gpu_out.overlay_span_count,
+            overlay_invalidated_spans: gpu_out.overlay_invalidated_spans,
+            overlay_invalidation_rows_scanned: gpu_out.overlay_invalidation_rows_scanned,
             // Sum: gpu_out.threshold_regs_uploaded counts entries written by
             // the full rebuild path (0 when we took the append path);
             // threshold_regs_appended counts entries written by Approach B's
@@ -1460,6 +1494,8 @@ impl BoundaryProtocol {
             self.flags.use_accumulator_velocity,
             self.flags.use_accumulator_eml,
             self.overlay_compile_revision,
+            true,
+            &[],
             &mut self.cached_topology_state,
         );
         if let Some(new_reg) = out.new_threshold_registry {

@@ -36,7 +36,7 @@
 //!   `AddDimension` (boundary-time registry activation + GPU layout rebuild).
 //!
 //! - `gpu_sync` — step 9. After all structural mutations are done, rebuilds the
-//!   GPU buffer state: `build_overlay_deltas` → upload, threshold registration
+//!   GPU buffer state: derived overlay span projection → upload, threshold registration
 //!   rebuild → upload, dirty-row flush via the `DispatchCoordinator` shadow.
 //!
 //! - `boundary` — top-level `BoundaryProtocol` struct that owns the SimThing

@@ -5356,6 +5356,7 @@ dependencies = [
  "bytemuck",
  "pollster 0.3.0",
  "serde",
+ "serde_json",
  "simthing-core",
  "thiserror 2.0.18",
  "wgpu 22.1.0",

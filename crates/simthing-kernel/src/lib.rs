@@ -10,6 +10,7 @@ pub mod accumulator_op;
 pub mod candidate_f_magnitude;
 pub mod context;
 pub mod decision_ingress;
+pub mod derived_span_projection;
 pub mod eml_exp_qualification;
 pub mod eml_ln_qualification;
 pub mod eml_opcode_gate;
@@ -63,6 +64,12 @@ pub use candidate_f_magnitude::{
 pub use decision_ingress::{
     ApproximateDecisionDiagnostic, BoundaryEmissionToken, CpuDiagnosticDecision,
     DecisionIngressError, EmissionToken, StructuralCommitment, ThresholdCrossingToken,
+};
+pub use derived_span_projection::{
+    ChangedLocus, DerivedDependencyBinding, DerivedDependencyIndex, DerivedDependencyTarget,
+    DerivedInvalidation, DerivedLocusNarrowing, DerivedSpanAdmissionError, DerivedSpanProjection,
+    DerivedWorkId, EffectiveProfileId, EffectiveSpan, EffectiveSpanSeed,
+    FieldRegistrationAuthority, FieldRegistrationRef, LogicalRowRange, LogicalSubtreeDirectory,
 };
 pub use eml_opcode_gate::{
     admit_exp_call_sites, combine_in_closed_vocabulary, exp_primitive_domain, ln_primitive_domain,
@@ -119,7 +126,10 @@ pub use intensity_accumulator::{
     IntensityEmlEntry, IntensityEmlPlan,
 };
 pub use overlay_orderband::{plan_overlay_orderband, OverlayOrderBandPlan};
-pub use overlay_prep::build_overlay_deltas;
+pub use overlay_prep::{
+    build_overlay_deltas, OverlayDenseMaterialization, OverlayProjectionHostChange,
+    OverlayProjectionMetrics, OverlayProjectionRefresh, OverlaySpanProjection,
+};
 pub use participation::{
     validate_and_mint_placed_participants_by_location_id,
     validate_location_ids_have_structural_placements, PlacedParticipant,
