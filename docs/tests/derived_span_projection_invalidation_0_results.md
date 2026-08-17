@@ -1,6 +1,5 @@
 # DERIVED-SPAN-PROJECTION-INVALIDATION-0 (7.8a) evidence
-
-Status: **PROBATION — proof present; DA review pending**
+Status: **COMPLETE — DA-GRADUATED / merged #1770 @ `563c91c5`** (pre-dispatch `5311512352`, graduation ruling on Board #1332)
 
 ## Receipts and scope
 
