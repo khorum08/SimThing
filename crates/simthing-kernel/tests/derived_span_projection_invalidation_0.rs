@@ -72,6 +72,32 @@ fn homogeneous_million_row_projection_rejects_descendant_scale_profile_explosion
 fn invalidation_visits_spans_not_depth_times_descendants() {
     let root = logical(10_010);
     let divergent = logical(10_011);
+    let root_locus = ChangedLocus::new(root, SimPropertyId(0), SubFieldRole::Amount);
+    let mut homogeneous = DerivedSpanProjection::admit(
+        compact_directory(
+            1_000_000,
+            vec![(root, LogicalRowRange::new(0, 1_000_000).unwrap())],
+        ),
+        vec![EffectiveSpanSeed::new(
+            LogicalRowRange::new(0, 1_000_000).unwrap(),
+            EffectiveProfileId::from_semantic_digest(1),
+            1u8,
+        )],
+        DerivedDependencyIndex::admit(vec![DerivedDependencyBinding::new(
+            root_locus.clone(),
+            DerivedDependencyTarget::SpanRoot(root),
+        )])
+        .unwrap(),
+    )
+    .unwrap();
+    let all = homogeneous
+        .invalidate(&[root_locus], GenerationStamp::new(8))
+        .unwrap();
+    assert_eq!(all.affected_ranges.len(), 1);
+    assert_eq!(all.spans_examined, 1);
+    assert_eq!(homogeneous.span_count(), 1);
+    assert_eq!(all.logical_member_rows_scanned, 0);
+
     let directory = compact_directory(
         1_000_000,
         vec![
@@ -79,45 +105,44 @@ fn invalidation_visits_spans_not_depth_times_descendants() {
             (divergent, LogicalRowRange::new(500_000, 1).unwrap()),
         ],
     );
+    let seeds = (0..10_000u64)
+        .map(|span| {
+            EffectiveSpanSeed::new(
+                LogicalRowRange::new(span * 100, 100).unwrap(),
+                EffectiveProfileId::from_semantic_digest(span % 2 + 1),
+                (span % 2) as u8,
+            )
+        })
+        .collect();
+    let divergent_locus = ChangedLocus::new(divergent, SimPropertyId(0), SubFieldRole::Amount);
     let mut projection = DerivedSpanProjection::admit(
         directory,
-        vec![EffectiveSpanSeed::new(
-            LogicalRowRange::new(0, 1_000_000).unwrap(),
-            EffectiveProfileId::from_semantic_digest(1),
-            1u8,
-        )],
-        DerivedDependencyIndex::admit(Vec::new()).unwrap(),
+        seeds,
+        DerivedDependencyIndex::admit(vec![DerivedDependencyBinding::new(
+            divergent_locus.clone(),
+            DerivedDependencyTarget::LogicalMember(divergent),
+        )])
+        .unwrap(),
     )
     .unwrap();
-
-    let root_locus = ChangedLocus::new(root, SimPropertyId(0), SubFieldRole::Amount);
-    let all = projection
-        .invalidate(&[root_locus], GenerationStamp::new(8))
-        .unwrap();
-    assert_eq!(all.spans_examined, 1);
-    assert_eq!(all.logical_member_rows_scanned, 0);
+    assert_eq!(projection.span_count(), 10_000);
 
     let rebuilt = projection
         .remap_range(
             LogicalRowRange::new(500_000, 1).unwrap(),
             GenerationStamp::new(9),
-            |_, _, _| (2u8, EffectiveProfileId::from_semantic_digest(2)),
+            |_, _, _| (2u8, EffectiveProfileId::from_semantic_digest(3)),
         )
         .unwrap();
     assert_eq!(rebuilt, 1);
-    assert_eq!(projection.profile_count(), 2);
-    assert_eq!(projection.span_count(), 3);
+    assert_eq!(projection.profile_count(), 3);
+    assert_eq!(projection.span_count(), 10_001);
     let local = projection
-        .invalidate(
-            &[ChangedLocus::new(
-                divergent,
-                SimPropertyId(0),
-                SubFieldRole::Amount,
-            )],
-            GenerationStamp::new(10),
-        )
+        .invalidate(&[divergent_locus], GenerationStamp::new(10))
         .unwrap();
     assert_eq!(local.dirty_span_ranges.len(), 1);
+    assert_eq!(local.spans_examined, 1);
+    assert_eq!(projection.span_count(), 10_001);
     assert_eq!(local.logical_member_rows_scanned, 0);
 }
 
@@ -143,6 +168,10 @@ fn dependency_index_is_frozen_and_routes_exact_span_field_and_work_targets() {
     let guyang = FieldRegistrationRef::new(FieldRegistrationAuthority::GuYang, 13);
     let work = DerivedWorkId::new(14);
     let index = DerivedDependencyIndex::admit(vec![
+        DerivedDependencyBinding::new(
+            locus.clone(),
+            DerivedDependencyTarget::LogicalMember(changed),
+        ),
         DerivedDependencyBinding::new(locus.clone(), DerivedDependencyTarget::SpanRoot(dependent)),
         DerivedDependencyBinding::new(
             locus.clone(),
@@ -159,7 +188,7 @@ fn dependency_index_is_frozen_and_routes_exact_span_field_and_work_targets() {
         DerivedDependencyBinding::new(locus.clone(), DerivedDependencyTarget::Work(work)),
     ])
     .unwrap();
-    assert_eq!(index.binding_count(), 5);
+    assert_eq!(index.binding_count(), 6);
 
     let directory = compact_directory(
         8,
@@ -201,7 +230,7 @@ fn dependency_index_is_frozen_and_routes_exact_span_field_and_work_targets() {
     assert_eq!(invalidation.dirty_span_ranges.len(), 2);
     assert_eq!(invalidation.field_registrations, vec![stead, palma, guyang]);
     assert_eq!(invalidation.work, vec![work]);
-    assert_eq!(projection.dependency_index().binding_count(), 5);
+    assert_eq!(projection.dependency_index().binding_count(), 6);
 }
 
 fn registry() -> (DimensionRegistry, SimPropertyId) {
@@ -367,6 +396,17 @@ fn standing_and_routed_projection_match_inheritance_oracle_after_local_split() {
     let origin_id = origin.id;
     policy_host.add_child(origin);
     let policy_host_id = policy_host.id;
+    let mut deferred_policy = overlay(
+        policy_host_id,
+        OverlayKind::Policy,
+        property,
+        TransformOp::multiply(0.5),
+    );
+    let deferred_policy_id = deferred_policy.id;
+    deferred_policy.lifecycle = OverlayLifecycle::Suspended {
+        when_activated: Box::new(OverlayLifecycle::UntilDissolved),
+    };
+    policy_host.add_overlay(deferred_policy);
     let receiver = node_with_property(&registry, property);
     let receiver_id = receiver.id;
     root.add_child(policy_host);
@@ -382,17 +422,18 @@ fn standing_and_routed_projection_match_inheritance_oracle_after_local_split() {
     let mut allocator = SlotAllocator::new();
     allocator.populate_from_tree(&root);
     let mut projection = OverlaySpanProjection::compile(&root).unwrap();
+    assert!(projection.dependency_index().binding_count() > 0);
     let initial = projection.materialize_dense(&registry, &allocator);
     let (oracle_deltas, oracle_ranges) = build_overlay_deltas(&root, &registry, &allocator);
     assert_eq!(initial.deltas, oracle_deltas);
     assert_eq!(initial.ranges, oracle_ranges);
 
-    find_mut(&mut root, policy_host_id).add_overlay(overlay(
-        policy_host_id,
-        OverlayKind::Policy,
-        property,
-        TransformOp::multiply(0.5),
-    ));
+    find_mut(&mut root, policy_host_id)
+        .overlays
+        .iter_mut()
+        .find(|overlay| overlay.id == deferred_policy_id)
+        .unwrap()
+        .lifecycle = OverlayLifecycle::UntilDissolved;
     let refresh = projection
         .refresh(
             &root,
@@ -406,4 +447,19 @@ fn standing_and_routed_projection_match_inheritance_oracle_after_local_split() {
     let (oracle_deltas, oracle_ranges) = build_overlay_deltas(&root, &registry, &allocator);
     assert_eq!(incrementally_rebuilt.deltas, oracle_deltas);
     assert_eq!(incrementally_rebuilt.ranges, oracle_ranges);
+
+    find_mut(&mut root, policy_host_id).add_overlay(overlay(
+        policy_host_id,
+        OverlayKind::Policy,
+        property,
+        TransformOp::add(0.1),
+    ));
+    assert!(matches!(
+        projection.refresh(
+            &root,
+            &[OverlayProjectionHostChange::OverlayState(policy_host_id)],
+            GenerationStamp::new(12),
+        ),
+        Err(DerivedSpanAdmissionError::FrozenDependencyShapeChanged(id)) if id == policy_host_id
+    ));
 }

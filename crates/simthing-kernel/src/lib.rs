@@ -10,7 +10,7 @@ pub mod accumulator_op;
 pub mod candidate_f_magnitude;
 pub mod context;
 pub mod decision_ingress;
-pub mod derived_span_projection;
+mod derived_span_projection;
 pub mod eml_exp_qualification;
 pub mod eml_ln_qualification;
 pub mod eml_opcode_gate;
@@ -68,7 +68,7 @@ pub use decision_ingress::{
 pub use derived_span_projection::{
     ChangedLocus, DerivedDependencyBinding, DerivedDependencyIndex, DerivedDependencyTarget,
     DerivedInvalidation, DerivedLocusNarrowing, DerivedSpanAdmissionError, DerivedSpanProjection,
-    DerivedWorkId, EffectiveProfileId, EffectiveSpan, EffectiveSpanSeed,
+    DerivedWorkId, EffectiveProfileId, EffectiveSpanSeed,
     FieldRegistrationAuthority, FieldRegistrationRef, LogicalRowRange, LogicalSubtreeDirectory,
 };
 pub use eml_opcode_gate::{

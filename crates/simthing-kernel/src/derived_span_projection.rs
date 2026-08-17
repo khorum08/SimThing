@@ -5,7 +5,7 @@
 //! and its stable profile identity. Logical subtree ranges are authoritative;
 //! dense row materializations are optional caches built by consumers.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
@@ -129,6 +129,7 @@ impl DerivedWorkId {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum DerivedDependencyTarget {
     SpanRoot(SimThingId),
+    LogicalMember(SimThingId),
     FieldRegistration(FieldRegistrationRef),
     Work(DerivedWorkId),
 }
@@ -281,7 +282,7 @@ impl<D> EffectiveSpanSeed<D> {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct EffectiveSpan<D> {
+pub(crate) struct EffectiveSpan<D> {
     range: LogicalRowRange,
     profile_id: EffectiveProfileId,
     descriptor: Arc<D>,
@@ -289,25 +290,19 @@ pub struct EffectiveSpan<D> {
 }
 
 impl<D> EffectiveSpan<D> {
-    pub fn range(&self) -> LogicalRowRange {
+    pub(crate) fn range(&self) -> LogicalRowRange {
         self.range
     }
 
-    pub fn profile_id(&self) -> EffectiveProfileId {
-        self.profile_id
-    }
-
-    pub fn descriptor(&self) -> &D {
+    pub(crate) fn descriptor(&self) -> &D {
         &self.descriptor
-    }
-
-    pub fn dirty_at(&self) -> Option<GenerationStamp> {
-        self.dirty_at
     }
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct DerivedInvalidation {
+    /// Exact logical ranges named by the frozen dependency index.
+    pub affected_ranges: Vec<LogicalRowRange>,
     pub dirty_span_ranges: Vec<LogicalRowRange>,
     pub field_registrations: Vec<FieldRegistrationRef>,
     pub work: Vec<DerivedWorkId>,
@@ -320,8 +315,9 @@ pub struct DerivedInvalidation {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DerivedSpanProjection<D> {
     directory: LogicalSubtreeDirectory,
-    spans: Vec<EffectiveSpan<D>>,
+    spans: BTreeMap<u64, EffectiveSpan<D>>,
     profiles: HashMap<EffectiveProfileId, Arc<D>>,
+    profile_uses: HashMap<EffectiveProfileId, usize>,
     dependencies: DerivedDependencyIndex,
 }
 
@@ -361,7 +357,8 @@ impl<D: Clone + PartialEq> DerivedSpanProjection<D> {
             });
         }
         let mut profiles: HashMap<EffectiveProfileId, Arc<D>> = HashMap::new();
-        let mut spans = Vec::with_capacity(seeds.len());
+        let mut spans = BTreeMap::new();
+        let mut profile_uses = HashMap::new();
         for seed in seeds {
             let descriptor = match profiles.get(&seed.profile_id) {
                 Some(admitted) if admitted.as_ref() != &seed.descriptor => {
@@ -376,23 +373,44 @@ impl<D: Clone + PartialEq> DerivedSpanProjection<D> {
                     admitted
                 }
             };
-            spans.push(EffectiveSpan {
-                range: seed.range,
-                profile_id: seed.profile_id,
-                descriptor,
-                dirty_at: None,
-            });
+            *profile_uses.entry(seed.profile_id).or_insert(0) += 1;
+            spans.insert(
+                seed.range.start(),
+                EffectiveSpan {
+                    range: seed.range,
+                    profile_id: seed.profile_id,
+                    descriptor,
+                    dirty_at: None,
+                },
+            );
         }
         Ok(Self {
             directory,
             spans,
             profiles,
+            profile_uses,
             dependencies,
         })
     }
 
-    pub fn spans(&self) -> &[EffectiveSpan<D>] {
-        &self.spans
+    pub(crate) fn iter_spans(&self) -> impl Iterator<Item = &EffectiveSpan<D>> {
+        self.spans.values()
+    }
+
+    pub(crate) fn spans_in_range(
+        &self,
+        range: LogicalRowRange,
+    ) -> impl Iterator<Item = &EffectiveSpan<D>> {
+        let first = self
+            .spans
+            .range(..=range.start())
+            .next_back()
+            .map(|(&start, _)| start)
+            .unwrap_or(range.start());
+        self.spans
+            .range(first..range.end())
+            .map(|(_, span)| span)
+            .filter(move |span| span.range.intersects(range))
     }
 
     pub fn span_count(&self) -> usize {
@@ -413,8 +431,10 @@ impl<D: Clone + PartialEq> DerivedSpanProjection<D> {
 
     pub fn effective_profile_at(&self, logical_row: u64) -> Option<EffectiveProfileId> {
         self.spans
-            .iter()
-            .find(|span| span.range.contains(logical_row))
+            .range(..=logical_row)
+            .next_back()
+            .map(|(_, span)| span)
+            .filter(|span| span.range.contains(logical_row))
             .map(|span| span.profile_id)
     }
 
@@ -427,9 +447,9 @@ impl<D: Clone + PartialEq> DerivedSpanProjection<D> {
         let mut field_registrations = HashSet::new();
         let mut work = HashSet::new();
         for locus in loci {
-            ranges.push(self.directory.range(locus.logical_id()).ok_or(
+            self.directory.range(locus.logical_id()).ok_or(
                 DerivedSpanAdmissionError::UnknownLogicalIdentity(locus.logical_id()),
-            )?);
+            )?;
             for target in self.dependencies.dependents(locus) {
                 match *target {
                     DerivedDependencyTarget::SpanRoot(id) => ranges.push(
@@ -437,6 +457,13 @@ impl<D: Clone + PartialEq> DerivedSpanProjection<D> {
                             .range(id)
                             .ok_or(DerivedSpanAdmissionError::UnknownLogicalIdentity(id))?,
                     ),
+                    DerivedDependencyTarget::LogicalMember(id) => {
+                        let range = self
+                            .directory
+                            .range(id)
+                            .ok_or(DerivedSpanAdmissionError::UnknownLogicalIdentity(id))?;
+                        ranges.push(LogicalRowRange::new(range.start(), 1)?);
+                    }
                     DerivedDependencyTarget::FieldRegistration(registration) => {
                         field_registrations.insert(registration);
                     }
@@ -448,23 +475,30 @@ impl<D: Clone + PartialEq> DerivedSpanProjection<D> {
         }
         let ranges = coalesce_ranges(ranges);
         let mut dirty_span_ranges = Vec::new();
-        let mut spans_examined = 0u64;
-        for span in &mut self.spans {
-            spans_examined += 1;
-            if ranges.iter().any(|range| span.range.intersects(*range)) {
-                span.dirty_at = Some(generation);
-                dirty_span_ranges.push(span.range);
-            }
+        let mut candidate_starts = HashSet::new();
+        for range in &ranges {
+            candidate_starts.extend(self.spans_in_range(*range).map(|span| span.range.start()));
+        }
+        let mut candidate_starts = candidate_starts.into_iter().collect::<Vec<_>>();
+        candidate_starts.sort_unstable();
+        for start in &candidate_starts {
+            let span = self
+                .spans
+                .get_mut(start)
+                .expect("candidate came from span index");
+            span.dirty_at = Some(generation);
+            dirty_span_ranges.push(span.range);
         }
         let mut field_registrations = field_registrations.into_iter().collect::<Vec<_>>();
         field_registrations.sort_unstable();
         let mut work = work.into_iter().collect::<Vec<_>>();
         work.sort_unstable();
         Ok(DerivedInvalidation {
+            affected_ranges: ranges,
             dirty_span_ranges,
             field_registrations,
             work,
-            spans_examined,
+            spans_examined: candidate_starts.len() as u64,
             logical_member_rows_scanned: 0,
         })
     }
@@ -479,10 +513,38 @@ impl<D: Clone + PartialEq> DerivedSpanProjection<D> {
         generation: GenerationStamp,
         mut remap: impl FnMut(LogicalRowRange, &D, EffectiveProfileId) -> (D, EffectiveProfileId),
     ) -> Result<u64, DerivedSpanAdmissionError> {
-        let mut rewritten = Vec::with_capacity(self.spans.len() + 2);
-        let mut profiles = std::mem::take(&mut self.profiles);
+        let affected_keys = self.span_keys_in_range(range);
+        if affected_keys.is_empty() {
+            return Ok(0);
+        }
+        let first = affected_keys[0];
+        let last = *affected_keys.last().expect("non-empty checked above");
+        let neighbor_before = self.spans.range(..first).next_back().map(|(&key, _)| key);
+        let neighbor_after = self
+            .spans
+            .range((std::ops::Bound::Excluded(last), std::ops::Bound::Unbounded))
+            .next()
+            .map(|(&key, _)| key);
+        let mut window_keys = affected_keys.clone();
+        if let Some(key) = neighbor_before {
+            window_keys.push(key);
+        }
+        if let Some(key) = neighbor_after {
+            window_keys.push(key);
+        }
+        window_keys.sort_unstable();
+        window_keys.dedup();
+
+        let mut window = BTreeMap::new();
+        for key in window_keys {
+            let span = self
+                .remove_span(key)
+                .expect("window key came from span index");
+            window.insert(key, span);
+        }
+        let mut rewritten = Vec::with_capacity(window.len() + 2);
         let mut changed_spans = 0u64;
-        for span in self.spans.drain(..) {
+        for (_, span) in window {
             if !span.range.intersects(range) {
                 rewritten.push(span);
                 continue;
@@ -506,19 +568,7 @@ impl<D: Clone + PartialEq> DerivedSpanProjection<D> {
             };
             let (descriptor, profile_id) =
                 remap(overlap, span.descriptor.as_ref(), span.profile_id);
-            let descriptor = match profiles.get(&profile_id) {
-                Some(admitted) if admitted.as_ref() == &descriptor => admitted.clone(),
-                Some(_) => {
-                    return Err(DerivedSpanAdmissionError::ProfileIdentityCollision {
-                        profile: profile_id,
-                    });
-                }
-                None => {
-                    let admitted = Arc::new(descriptor);
-                    profiles.insert(profile_id, admitted.clone());
-                    admitted
-                }
-            };
+            let descriptor = self.intern_profile(profile_id, descriptor)?;
             rewritten.push(EffectiveSpan {
                 range: overlap,
                 profile_id,
@@ -538,21 +588,67 @@ impl<D: Clone + PartialEq> DerivedSpanProjection<D> {
                 });
             }
         }
-        self.spans = merge_adjacent(rewritten);
-        let live_profiles = self
-            .spans
-            .iter()
-            .map(|span| span.profile_id)
-            .collect::<HashSet<_>>();
-        profiles.retain(|profile, _| live_profiles.contains(profile));
-        self.profiles = profiles;
+        for span in merge_adjacent(rewritten) {
+            self.insert_span(span)?;
+        }
         Ok(changed_spans)
     }
 
-    pub fn clear_dirty(&mut self) {
-        for span in &mut self.spans {
-            span.dirty_at = None;
+    fn span_keys_in_range(&self, range: LogicalRowRange) -> Vec<u64> {
+        self.spans_in_range(range)
+            .map(|span| span.range.start())
+            .collect()
+    }
+
+    fn remove_span(&mut self, start: u64) -> Option<EffectiveSpan<D>> {
+        let span = self.spans.remove(&start)?;
+        let uses = self
+            .profile_uses
+            .get_mut(&span.profile_id)
+            .expect("every span profile has a use count");
+        *uses -= 1;
+        if *uses == 0 {
+            self.profile_uses.remove(&span.profile_id);
+            self.profiles.remove(&span.profile_id);
         }
+        Some(span)
+    }
+
+    fn intern_profile(
+        &mut self,
+        profile_id: EffectiveProfileId,
+        descriptor: D,
+    ) -> Result<Arc<D>, DerivedSpanAdmissionError> {
+        match self.profiles.get(&profile_id) {
+            Some(admitted) if admitted.as_ref() == &descriptor => Ok(admitted.clone()),
+            Some(_) => Err(DerivedSpanAdmissionError::ProfileIdentityCollision {
+                profile: profile_id,
+            }),
+            None => {
+                let descriptor = Arc::new(descriptor);
+                self.profiles.insert(profile_id, descriptor.clone());
+                Ok(descriptor)
+            }
+        }
+    }
+
+    fn insert_span(&mut self, span: EffectiveSpan<D>) -> Result<(), DerivedSpanAdmissionError> {
+        match self.profiles.get(&span.profile_id) {
+            Some(admitted) if admitted.as_ref() != span.descriptor.as_ref() => {
+                return Err(DerivedSpanAdmissionError::ProfileIdentityCollision {
+                    profile: span.profile_id,
+                });
+            }
+            Some(_) => {}
+            None => {
+                self.profiles
+                    .insert(span.profile_id, span.descriptor.clone());
+            }
+        }
+        *self.profile_uses.entry(span.profile_id).or_insert(0) += 1;
+        let prior = self.spans.insert(span.range.start(), span);
+        debug_assert!(prior.is_none(), "span starts remain unique");
+        Ok(())
     }
 }
 
@@ -615,4 +711,6 @@ pub enum DerivedSpanAdmissionError {
     ProfileIdentityCollision { profile: EffectiveProfileId },
     #[error("the frozen dependency index contains a duplicate locus/target row")]
     DuplicateDependency,
+    #[error("frozen dependency shape changed at {0:?}; admit a fresh projection")]
+    FrozenDependencyShapeChanged(SimThingId),
 }

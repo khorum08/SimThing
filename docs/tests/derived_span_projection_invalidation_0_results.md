@@ -24,9 +24,9 @@ The former production path was:
 
 That is the current O(depth × descendants) path replaced by this rung. `build_overlay_deltas` remains only as the CPU parity oracle. The disabled AccumulatorOp route now REDs immediately and cannot invoke that recursive builder.
 
-The production path is now:
+The remediated production path is now:
 
-`BoundaryProtocol::execute` collects exact overlay/property host changes and the existing `GenerationStamp` → `sync_gpu_buffers` retains one `OverlaySpanProjection` in `OverlayCompileCache` → session/topology admission builds the logical preorder range directory and sparse routed-target index once → already-composed standing/routed overlay behavior interns into `EffectiveProfileId` descriptors and maximal homogeneous `EffectiveSpan`s → an ordinary lifecycle/property boundary emits source-blind `ChangedLocus { logical_id, PropertyId, role, optional narrowing }` → frozen `DerivedDependencyIndex` resolves dependent span roots, STEAD/PALMA/Gu-Yang registrations, and derived work → only intersecting spans split/remap and receive the existing generation stamp → the separate dense materializer resolves current columns/slots and feeds the existing overlay OrderBand ABI.
+`BoundaryProtocol::execute` collects exact overlay/property host changes and the existing `GenerationStamp` → `sync_gpu_buffers` retains one `OverlaySpanProjection` in `OverlayCompileCache` → admission builds the logical preorder directory and derives one immutable `DerivedDependencyIndex` from the full retained overlay set → already-composed standing/routed behavior interns into `EffectiveProfileId` descriptors and maximal homogeneous `EffectiveSpan`s held in a start-keyed interval map → activation/suspension emits source-blind `ChangedLocus { logical_id, PropertyId, role, optional narrowing }` → the frozen index resolves exact local/dependent ranges, STEAD/PALMA/Gu-Yang registrations, and derived work → interval lookups examine and remap only intersecting spans under the existing generation stamp → the separate dense materializer resolves current columns/slots and feeds the existing overlay OrderBand ABI. Attachment/removal changes dependency topology and therefore admits a fresh projection; it cannot mutate or rediscover dependencies inside `refresh`.
 
 The projection has no writer/source discriminant, mutable registry/service, listener, second generation/epoch authority, owner GPU identity plane, or universal value resolver. Overlay composition remains owned by the graduated overlay law. `resolve_owner()` and `resolve_owners_in_order()` are unchanged CPU query/oracle surfaces.
 
@@ -34,21 +34,21 @@ The projection has no writer/source discriminant, mutable registry/service, list
 
 The compact million-row fixture admits one logical subtree range without allocating a million descendants:
 
-| Fixture | Logical rows | Profiles | Spans | Invalidation member rows scanned |
-|---|---:|---:|---:|---:|
-| homogeneous | 1,000,000 | 1 | 1 | 0 |
-| one-row local divergence | 1,000,000 | 2 | 3 | 0 |
+| Fixture | Logical rows | Profiles | Total spans | Affected ranges | Candidate spans examined | Member rows scanned |
+|---|---:|---:|---:|---:|---:|---:|
+| homogeneous | 1,000,000 | 1 | 1 | 1 | 1 | 0 |
+| divergent/many-span after one-row split | 1,000,000 | 3 | 10,001 | 1 | 1 | 0 |
 
-Homogeneous adjacent duplicates fail admission as `DescendantScaleProfileExplosion`. Profile descriptors are actually interned by semantic identity; a profile-id collision with unequal semantics fails closed. Runtime invalidation examines the span partition, not member rows. Sparse routed influence is indexed by active overlay host and route host, so a changed host does not rediscover routes by scanning every descendant.
+Homogeneous adjacent duplicates fail admission as `DescendantScaleProfileExplosion`. Profile descriptors are actually interned by semantic identity; a profile-id collision with unequal semantics fails closed. Runtime invalidation uses the start-keyed interval map, so the many-span fixture proves one affected member examines one candidate rather than scanning 10,001 spans. Routed influence is admitted into the frozen dependency index from retained overlay metadata; `refresh` performs no all-span, all-overlay-host, or route-rediscovery pass.
 
 Dense materialization remains explicit and separately reports `rows_materialized`; it is retained only for the current one-op-per-physical-row OrderBand upload ABI. Deleting `OverlayCompileCache`'s dense vectors leaves the profile/span authority intact. Rebuilding produces identical deltas/ranges, and a forced `SlotAllocator::epoch_rebind` changes physical slots while preserving the logical-id profile digest and per-logical-id operations.
 
 ## Five mandatory production falsifiers
 
 1. **Descendant-scale profile/span explosion:** a planted adjacent split of the one-profile million-row span REDs `DescendantScaleProfileExplosion`; the admitted fixture stays one profile/one span.
-2. **O(depth × descendants) generation rewalk:** source-blind invalidation of the million-row root examines one span and zero member rows; a one-row local change yields three total spans and dirties only the dependent span. Production GPU sync no longer calls the recursive builder, and disabling the projection REDs immediately.
+2. **O(depth × descendants) generation rewalk:** source-blind invalidation of the homogeneous million-row root examines one of one spans and zero member rows. In a separate million-row, 10,001-span divergent fixture, a one-row change examines exactly one candidate span and zero member rows. Production GPU sync no longer calls the recursive builder, and disabling the projection REDs immediately.
 3. **Writer-subsystem/source branch:** `ChangedLocus` uses `deny_unknown_fields`; injecting `change_source` REDs deserialization. Identical state changes therefore have identical invalidation keys.
-4. **Runtime-mutable dependency registry/service:** `DerivedDependencyIndex::admit` consumes its rows and exposes reads only. The compile-fail proof REDs a planted `insert_runtime_dependency` call; exact admitted bindings route to the span plus all three existing Field-Triad authority tags and derived work.
+4. **Runtime-mutable dependency registry/service:** `DerivedDependencyIndex::admit` consumes its rows and exposes reads only. The compile-fail proof REDs a planted `insert_runtime_dependency` call; production `OverlaySpanProjection::compile` supplies the real frozen overlay dependency rows, activation consumes them, and a changed dependency shape REDs `FrozenDependencyShapeChanged` rather than mutating a sidecar registry. Exact generic bindings also route to all three existing Field-Triad authority tags and derived work.
 5. **Dense materializer as semantic authority:** the test deletes the real `OverlayCompileCache` dense vectors, proves the semantic profile digest remains, rebuilds bit-identical dense output, forces a physical epoch rebind, deletes again, and rematerializes identical behavior by logical identity.
 
 These falsifiers exercise production types and routes, not inert `refuse_*` helpers.
@@ -62,12 +62,12 @@ The §6.4/§6.5 partial-reconciliation forward-bind is expressible without B-spe
 Seven permanent inventory entries are admitted:
 
 - `homogeneous_million_row_projection_rejects_descendant_scale_profile_explosion` — mandatory profile/span explosion falsifier and million-row scale proof.
-- `invalidation_visits_spans_not_depth_times_descendants` — mandatory ancestor-rewalk falsifier plus local-divergence measurement.
+- `invalidation_visits_spans_not_depth_times_descendants` — mandatory ancestor-rewalk falsifier plus homogeneous and 10,001-span candidate-work measurements.
 - `changed_locus_rejects_writer_subsystem_discriminants` — mandatory source-blind-key falsifier.
 - `dependency_index_is_frozen_and_routes_exact_span_field_and_work_targets` — exact dependency routing proof for the generic substrate.
 - `dense_materialization_is_deletable_cache_and_remaps_by_logical_identity` — mandatory semantic-materializer falsifier plus EpochRebind parity.
-- `standing_and_routed_projection_match_inheritance_oracle_after_local_split` — one retained-oracle parity proof for both graduated overlay modes.
-- `compile_fail_line_151` — the only mechanically enforceable proof that the dependency index has no runtime mutation API.
+- `standing_and_routed_projection_match_inheritance_oracle_after_local_split` — retained-oracle parity for both graduated overlay modes, production frozen-index use, and fail-closed dependency-topology change.
+- `compile_fail_line_152` — the only mechanically enforceable proof that the dependency index has no runtime mutation API.
 
 Validation:
 
@@ -79,7 +79,9 @@ Validation:
 - full `simthing-sim` package: PASS;
 - `cargo check -p simthing-sim`: PASS;
 - `TEST-INVENTORY-DRIFT-CHECK`: PASS (`rows=1269 discovered=1269 unledgered=0 stale=0`);
-- overlay census: `RECONCILIATION: routes=77 discovery=73 residue=77 unclassified=0 open=0`; PASS; no universe delta or repin;
+- overlay census: `RECONCILIATION: routes=77 discovery=73 residue=79 unclassified=0 open=0`; PASS; two honest projection-plumbing/guard residues added, no universe delta or repin;
 - `test_inventory_check.sh`: existing repository-wide INSPECT findings remain (172 mechanically enumerated cfg-test module rows plus pre-existing lifecycle judgments); the authoritative drift gate for this diff is clean.
+
+The public-surface audit was reduced from 22 to 20 residual kernel rows by making `EffectiveSpan` crate-private and removing the redundant public module export. The exact HOLD set is: `ChangedLocus`, `DerivedDependencyBinding`, `DerivedDependencyIndex`, `DerivedDependencyTarget`, `DerivedInvalidation`, `DerivedLocusNarrowing`, `DerivedSpanAdmissionError`, `DerivedSpanProjection`, `DerivedWorkId`, `EffectiveProfileId`, `EffectiveSpanSeed`, `FieldRegistrationAuthority`, `FieldRegistrationRef`, `LogicalRowRange`, `LogicalSubtreeDirectory`, `OverlayDenseMaterialization`, `OverlayProjectionHostChange`, `OverlayProjectionMetrics`, `OverlayProjectionRefresh`, and `OverlaySpanProjection`. These remain visible for production cross-crate use or the consumer-neutral 7.8a/StemThing-B forward bind. No allowlist row was edited.
 
 Exact-head agent scan, doctrine scan, relay-lint, hosted checks, and PR identity are recorded in the orchestration relay after publication.

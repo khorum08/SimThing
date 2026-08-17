@@ -62,6 +62,7 @@ struct OverlayEffectiveDescriptor {
 struct OverlayNodeSnapshot {
     parent: Option<SimThingId>,
     path: Vec<usize>,
+    overlays: Vec<Overlay>,
     active_overlays: Vec<Overlay>,
     admitted_properties: Arc<Vec<SimPropertyId>>,
 }
@@ -100,9 +101,6 @@ pub struct OverlaySpanProjection {
     projection: DerivedSpanProjection<OverlayEffectiveDescriptor>,
     logical_members: Vec<SimThingId>,
     nodes: HashMap<SimThingId, OverlayNodeSnapshot>,
-    overlay_hosts: HashSet<SimThingId>,
-    routed_targets: HashSet<SimThingId>,
-    routed_targets_by_host: HashMap<SimThingId, HashSet<SimThingId>>,
 }
 
 impl OverlaySpanProjection {
@@ -112,7 +110,7 @@ impl OverlaySpanProjection {
 
     pub fn compile_with_dependencies(
         root: &SimThing,
-        dependencies: Vec<DerivedDependencyBinding>,
+        mut dependencies: Vec<DerivedDependencyBinding>,
     ) -> Result<Self, DerivedSpanAdmissionError> {
         let mut logical_members = Vec::new();
         let mut nodes = HashMap::new();
@@ -125,12 +123,8 @@ impl OverlaySpanProjection {
             &mut nodes,
             &mut ranges,
         );
-        let overlay_hosts = nodes
-            .iter()
-            .filter_map(|(&id, node)| (!node.active_overlays.is_empty()).then_some(id))
-            .collect::<HashSet<_>>();
-        let (routed_targets, routed_targets_by_host) =
-            build_routed_target_index(&nodes, &overlay_hosts);
+        let routed_targets = active_routed_targets(&nodes);
+        dependencies.extend(build_frozen_overlay_dependencies(&nodes));
 
         let mut recipes: HashMap<SimThingId, Arc<Vec<OverlayProfileOp>>> = HashMap::new();
         let mut candidates: Vec<(
@@ -184,9 +178,6 @@ impl OverlaySpanProjection {
             projection,
             logical_members,
             nodes,
-            overlay_hosts,
-            routed_targets,
-            routed_targets_by_host,
         })
     }
 
@@ -233,7 +224,6 @@ impl OverlaySpanProjection {
         let mut property_hosts = HashSet::new();
         let mut old_ops: HashMap<SimThingId, Vec<OverlayProfileOp>> = HashMap::new();
         let mut old_properties: HashMap<SimThingId, Vec<SimPropertyId>> = HashMap::new();
-        let old_routed_targets_by_host = self.routed_targets_by_host.clone();
         for change in changes {
             let (id, property_only) = match *change {
                 OverlayProjectionHostChange::OverlayState(id) => (id, false),
@@ -247,7 +237,11 @@ impl OverlaySpanProjection {
             old_properties.insert(id, snapshot.admitted_properties.as_ref().clone());
             let live = node_at_projection_path(root, &snapshot.path)
                 .ok_or(DerivedSpanAdmissionError::UnknownLogicalIdentity(id))?;
+            if !same_overlay_dependency_shape(&snapshot.overlays, &live.overlays) {
+                return Err(DerivedSpanAdmissionError::FrozenDependencyShapeChanged(id));
+            }
             let replacement = self.nodes.get_mut(&id).expect("checked above");
+            replacement.overlays = live.overlays.clone();
             replacement.active_overlays = live
                 .overlays
                 .iter()
@@ -261,16 +255,6 @@ impl OverlaySpanProjection {
                 overlay_hosts.insert(id);
             }
         }
-
-        for &host in &overlay_hosts {
-            if self.nodes[&host].active_overlays.is_empty() {
-                self.overlay_hosts.remove(&host);
-            } else {
-                self.overlay_hosts.insert(host);
-            }
-        }
-        (self.routed_targets, self.routed_targets_by_host) =
-            build_routed_target_index(&self.nodes, &self.overlay_hosts);
 
         let mut loci = Vec::new();
         for &host in &overlay_hosts {
@@ -299,53 +283,11 @@ impl OverlaySpanProjection {
         }
         let invalidation = self.projection.invalidate(&loci, generation)?;
 
-        let mut dirty_ranges = Vec::new();
-        for &host in &overlay_hosts {
-            dirty_ranges.push(
-                self.projection
-                    .directory()
-                    .range(host)
-                    .ok_or(DerivedSpanAdmissionError::UnknownLogicalIdentity(host))?,
-            );
-            let mut routed_targets = old_routed_targets_by_host
-                .get(&host)
-                .into_iter()
-                .flatten()
-                .copied()
-                .collect::<HashSet<_>>();
-            routed_targets.extend(
-                self.routed_targets_by_host
-                    .get(&host)
-                    .into_iter()
-                    .flatten()
-                    .copied(),
-            );
-            for target in routed_targets {
-                let target_range = self
-                    .projection
-                    .directory()
-                    .range(target)
-                    .ok_or(DerivedSpanAdmissionError::UnknownLogicalIdentity(target))?;
-                dirty_ranges.push(LogicalRowRange::new(target_range.start(), 1)?);
-            }
-        }
-        for &host in &property_hosts {
-            let host_range = self
-                .projection
-                .directory()
-                .range(host)
-                .ok_or(DerivedSpanAdmissionError::UnknownLogicalIdentity(host))?;
-            dirty_ranges.push(LogicalRowRange::new(host_range.start(), 1)?);
-        }
-        dirty_ranges = coalesce_projection_ranges(dirty_ranges);
-
         let mut semantic_spans_rebuilt = 0u64;
-        for dirty_range in dirty_ranges {
+        for dirty_range in invalidation.affected_ranges.iter().copied() {
             let replacements = self
                 .projection
-                .spans()
-                .iter()
-                .filter(|span| span.range().intersects(dirty_range))
+                .spans_in_range(dirty_range)
                 .map(|span| {
                     let start = span.range().start().max(dirty_range.start());
                     let representative = self.logical_members[start as usize];
@@ -378,15 +320,16 @@ impl OverlaySpanProjection {
     ) -> OverlayDenseMaterialization {
         let mut deltas = Vec::new();
         let mut ranges = vec![SlotDeltaRange::default(); allocator.capacity()];
-        let mut span_index = 0usize;
+        let mut spans = self.projection.iter_spans();
+        let mut span = spans.next().expect("admitted projection has a span");
         for (logical_row, id) in self.logical_members.iter().copied().enumerate() {
-            while self.projection.spans()[span_index].range().end() <= logical_row as u64 {
-                span_index += 1;
+            while span.range().end() <= logical_row as u64 {
+                span = spans.next().expect("span coverage is complete");
             }
             let Some(slot) = allocator.slot_of(id) else {
                 continue;
             };
-            let descriptor = self.projection.spans()[span_index].descriptor();
+            let descriptor = span.descriptor();
             let offset = deltas.len() as u32;
             for op in descriptor
                 .sources
@@ -444,6 +387,7 @@ fn collect_projection_topology(
         OverlayNodeSnapshot {
             parent,
             path: path.clone(),
+            overlays: node.overlays.clone(),
             active_overlays: node
                 .overlays
                 .iter()
@@ -541,17 +485,10 @@ fn route(
     Some(routed)
 }
 
-fn build_routed_target_index(
-    nodes: &HashMap<SimThingId, OverlayNodeSnapshot>,
-    overlay_hosts: &HashSet<SimThingId>,
-) -> (
-    HashSet<SimThingId>,
-    HashMap<SimThingId, HashSet<SimThingId>>,
-) {
+fn active_routed_targets(nodes: &HashMap<SimThingId, OverlayNodeSnapshot>) -> HashSet<SimThingId> {
     let mut routed_targets = HashSet::new();
-    let mut routed_targets_by_host: HashMap<SimThingId, HashSet<SimThingId>> = HashMap::new();
-    for origin_host in overlay_hosts {
-        for overlay in &nodes[origin_host].active_overlays {
+    for node in nodes.values() {
+        for overlay in &node.active_overlays {
             if !matches!(overlay.kind, OverlayKind::Instruction) {
                 continue;
             }
@@ -559,20 +496,72 @@ fn build_routed_target_index(
                 if overlay.origin == target {
                     continue;
                 }
-                let Some(route) = route(overlay.origin, target, nodes) else {
-                    continue;
-                };
                 routed_targets.insert(target);
-                for host in route {
-                    routed_targets_by_host
-                        .entry(host)
-                        .or_default()
-                        .insert(target);
+            }
+        }
+    }
+    routed_targets
+}
+
+fn build_frozen_overlay_dependencies(
+    nodes: &HashMap<SimThingId, OverlayNodeSnapshot>,
+) -> Vec<DerivedDependencyBinding> {
+    use crate::derived_span_projection::DerivedDependencyTarget;
+
+    let mut rows = HashSet::new();
+    for (&host, node) in nodes {
+        for &property_id in node.admitted_properties.iter() {
+            rows.insert((
+                ChangedLocus::new(host, property_id, SubFieldRole::Amount),
+                DerivedDependencyTarget::LogicalMember(host),
+            ));
+        }
+        for overlay in &node.overlays {
+            for op in profile_ops_for_host(host, std::slice::from_ref(overlay)) {
+                rows.insert((
+                    ChangedLocus::new(host, op.property_id, op.role),
+                    DerivedDependencyTarget::SpanRoot(host),
+                ));
+            }
+            if !matches!(overlay.kind, OverlayKind::Instruction) {
+                continue;
+            }
+            for &target in &overlay.affects {
+                if overlay.origin == target {
+                    continue;
+                }
+                for route_host in route(overlay.origin, target, nodes).into_iter().flatten() {
+                    for policy in nodes[&route_host].overlays.iter().filter(|candidate| {
+                        matches!(
+                            candidate.kind,
+                            OverlayKind::Policy | OverlayKind::Governance
+                        )
+                    }) {
+                        for op in profile_ops_for_host(route_host, std::slice::from_ref(policy)) {
+                            rows.insert((
+                                ChangedLocus::new(route_host, op.property_id, op.role),
+                                DerivedDependencyTarget::SpanRoot(target),
+                            ));
+                        }
+                    }
                 }
             }
         }
     }
-    (routed_targets, routed_targets_by_host)
+    rows.into_iter()
+        .map(|(locus, target)| DerivedDependencyBinding::new(locus, target))
+        .collect()
+}
+
+fn same_overlay_dependency_shape(left: &[Overlay], right: &[Overlay]) -> bool {
+    left.len() == right.len()
+        && left.iter().zip(right).all(|(left, right)| {
+            left.id == right.id
+                && left.kind == right.kind
+                && left.origin == right.origin
+                && left.affects == right.affects
+                && left.transform == right.transform
+        })
 }
 
 fn resolve_ordered_overlay_hosts(
@@ -697,23 +686,6 @@ fn node_at_projection_path<'a>(root: &'a SimThing, path: &[usize]) -> Option<&'a
         node = node.children.get(index)?;
     }
     Some(node)
-}
-
-fn coalesce_projection_ranges(mut ranges: Vec<LogicalRowRange>) -> Vec<LogicalRowRange> {
-    ranges.sort_unstable_by_key(|range| (range.start(), range.end()));
-    let mut merged: Vec<LogicalRowRange> = Vec::new();
-    for range in ranges {
-        if let Some(prior) = merged.last_mut() {
-            if range.start() <= prior.end() {
-                let end = prior.end().max(range.end());
-                *prior = LogicalRowRange::new(prior.start(), end - prior.start())
-                    .expect("coalesced range stays non-empty");
-                continue;
-            }
-        }
-        merged.push(range);
-    }
-    merged
 }
 
 /// Build the per-tick overlay delta batch for upload to `WorldGpuState`.

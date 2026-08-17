@@ -1169,7 +1169,9 @@ impl BoundaryProtocol {
             || !out.maintainer.allocated.is_empty()
             || !out.maintainer.tombstoned.is_empty()
             || !out.maintainer.reparented.is_empty()
-            || !out.maintainer.dimensions_added.is_empty();
+            || !out.maintainer.dimensions_added.is_empty()
+            || !out.maintainer.overlays_attached.is_empty()
+            || !out.lifecycle.dissolved_overlays.is_empty();
         let gpu_out = sync_gpu_buffers(
             &self.root,
             &self.registry,
