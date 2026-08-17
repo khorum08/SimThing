@@ -5,7 +5,7 @@ Status: implementation complete; independent review pending.
 ## Receipts and fences
 
 - Canonical implementation base: `e1eef38a16393539a2472400c299a6ddc2bf1f35`
-- Implementation checkpoint: `935b6ac95596b17d40ef46eb4e7f20ce9e0f6216`
+- Positive-loop implementation checkpoint: `f6d67095c11c62b8b6a651bd480a3e91c3bba476`
 - HD-RECEIPT: `edbc505dae18`
 - ORIENT-RECEIPT: `a5dc59920dd4`
 - orientation rule stamp: `61818ff7d4adda84`
@@ -17,19 +17,19 @@ Status: implementation complete; independent review pending.
 `adversarial_fractal_closure_uses_one_intrinsic_overlay_loop` contains all ten required elements in one production composition:
 
 1. One ancestor-resident standing restriction (`Multiply(0.5)`) is stored at the session root.
-2. One descendant-local restriction (`Multiply(0.8)`) is stored only at the deliberately divergent leaf.
+2. One descendant-local sequential modifier (`Multiply(1.6)`) is stored only at the deliberately divergent leaf; the separate ancestor remains the admitted conjunctive restriction.
 3. A generated 4,106-byte authored key passes admission and is absent from the compiled `Overlay` wire shape; runtime identity is numeric.
 4. The local instance arrives suspended, then activates through the ordinary boundary lifecycle verb after a real Phase-5 crossing.
 5. Its activated lifecycle is timed by `AfterTicks { remaining: 3 }`, with activation generation 8 recorded by the existing lifecycle admission state.
-6. Active-state predicate input is the normally admitted `closure::admitted-gate` Property projection. The numeric effective value changes from the ancestor-only contribution to bit-exact `0.4`, with no string lookup or special active-count store.
+6. The production `Evaluator` and `deliver_predicate_broadcast` path reads the normally admitted `closure::admitted-gate` Property through the ordinary inherited/local overlay stack. Activation moves only the modified leaf from `0.5` to bit-exact `0.8`, so the admitted `AtLeast(0.75)` selector returns exactly that leaf; there is no Rust-side multiply, name lookup, or special active-count store.
 7. A bounded 100,001-row subtree is represented by one ancestor semantic instance plus one genuine local divergence.
-8. The scenario admits the existing Gu-Yang N4 conservative field registrations, the existing bounded-feedback EML gadget, and an ActionBand `GuYangRealized` conserved-progress bound. RF/Field-Triad authority is consumed rather than recomputed.
-9. `ancestor-current -> field-current -> Next(ancestor-current)` admits as ordinary generation-paced feedback.
+8. The overlay-composed `0.8` executes through the existing two-pass Gu-Yang N4 field registration, its resident output produces the existing Phase-5 crossing, ActionBand clamps an ordinary RF claim with `GuYangRealized`, and the existing RF `AccumulatorOp` realizes the increment. Both generations produce field/RF bits `3f4ccccd`; no compile-only coexistence claim remains.
+9. `ancestor-current -> field-current -> Next(ancestor-current)` executes for two real GPU generations through the existing bounded-feedback EML and `property_next` binding. Next-state bits advance `3f6147ae` at generation 1 to `3f6b851f` at generation 2, and an independent repeat from the same initial state is bit-identical.
 10. The same graph with both edges declared Current -> Current rejects at `compile_overlay`, and the error preserves `source_span_token=7913`.
 
 The execution trace is:
 
-`real fused Phase-5 emission` -> sealed `BandCrossingDelta` -> `CrossingConsequenceBinding::RoutedOverlayDelivery` -> consuming ActionBand consequence dispatch -> generation-stamped `RoutedOverlayProduct` -> existing feeder boundary -> ordinary overlay receive/attach -> ordinary activation boundary -> `OverlaySpanProjection::refresh_with_metrics` -> existing dense OrderBand cache.
+`real fused Phase-5 emission` -> sealed `BandCrossingDelta` -> `CrossingConsequenceBinding::RoutedOverlayDelivery` -> consuming ActionBand consequence dispatch -> generation-stamped `RoutedOverlayProduct` -> existing feeder boundary -> ordinary overlay receive/attach -> ordinary activation boundary -> production Property/predicate evaluation -> `OverlaySpanProjection::refresh_with_metrics` -> existing dense OrderBand cache -> resident Gu-Yang field -> existing Phase-5 crossing -> conserved ActionBand RF claim + bounded EML `property_next` -> ordinary RF `AccumulatorOp` -> next generation.
 
 There is no overlay-local lowerer, second crossing detector, peer dispatcher, second generation source, CPU convergence loop, or new history.
 
@@ -54,7 +54,7 @@ An unchanged generation returns `(rebuilt=0, dirty=0, candidates=0, member_rows=
 
 ## Replay
 
-The live activation is replayed from the existing `ReplaySnapshot` plus one canonical `ReplayFrame` containing only `OverlayActivated` and the real sealed `BandCrossingDeltasApplied` row. `ReplayDriver` reconstructs an identical authoritative tree, retains a field-for-field equal sealed crossing, and re-materializes byte/bit-identical overlay deltas and slot ranges. No `OverlayHistory`, overlay journal, second schedule, or shadow crossing record was added.
+The live activation and executed feedback consequence are replayed from the existing `ReplaySnapshot` plus one canonical `ReplayFrame`: `OverlayActivated`, the real sealed `BandCrossingDeltasApplied` row, and the already-standard post-boundary `shadow_values` checkpoint. `ReplayDriver` reconstructs an identical authoritative tree, retains a field-for-field equal sealed crossing, restores the final feedback bits `3f6b851f`, and re-materializes byte/bit-identical overlay deltas and slot ranges. No `OverlayHistory`, overlay journal, second schedule, or shadow crossing record was added.
 
 ## Five planted production falsifiers
 
@@ -75,4 +75,4 @@ The focused budget is two terminal integration proofs plus two compiler-owned do
 - `descendant_semantic_instances_cannot_be_stamped_compile_fail`: necessary negative API proof; runtime success cannot prove an absent leaf-stamping authority.
 - `fine_overlay_telemetry_is_not_simulation_readable_compile_fail`: necessary negative API proof; aggregate telemetry success cannot prove the absence of a fine simulation-readable table.
 
-Focused validation: 2 passed, 0 failed, 0 ignored; 100,001-row scenario completed in 5.48s on the implementation workstation. Inherited suites, inventory, census, scans, relay lint, and hosted doctrine results are carried in the exact-head orchestration relay.
+Focused validation after the positive-loop remand: 2 passed, 0 failed, 0 ignored; 100,001-row scenario completed in 4.73s on the implementation workstation. Inherited suites, inventory, census, scans, relay lint, and hosted doctrine results are carried in the exact-head orchestration relay.
