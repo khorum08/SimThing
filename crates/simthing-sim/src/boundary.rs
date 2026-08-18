@@ -60,7 +60,7 @@ use crate::anchor_remap_encode::{
 use crate::delta_log::{entries_from_outcome, BoundaryDeltaEntry};
 use crate::fission::{resolve_fission_fusion, FissionLineageRecord, FissionOutcome};
 use crate::fission_clone_source_view::fission_clone_source_children;
-use crate::gpu_sync::{sync_gpu_buffers, GpuSyncOutcome};
+use crate::gpu_sync::{sync_gpu_buffers, GpuSyncError, GpuSyncOutcome};
 use crate::observability::{observe, ObservabilityReport, ObserveFidelity};
 use crate::overlay_lifecycle::{
     apply_gpu_overlay_lifecycle, derive_overlay_lifecycle_admission_catalog, LifecycleOutcome,
@@ -542,7 +542,7 @@ impl BoundaryProtocol {
         coord: &mut DispatchCoordinator,
         state: &mut WorldGpuState,
         day: u64,
-    ) -> BoundaryOutcome {
+    ) -> Result<BoundaryOutcome, GpuSyncError> {
         self.execute_with_boundary_hook(events, patcher, coord, state, day, |_| {})
     }
 
@@ -558,7 +558,7 @@ impl BoundaryProtocol {
         state: &mut WorldGpuState,
         day: u64,
         mut hook: F,
-    ) -> BoundaryOutcome
+    ) -> Result<BoundaryOutcome, GpuSyncError>
     where
         F: FnMut(&mut BoundaryHookContext<'_>),
     {
@@ -1197,7 +1197,7 @@ impl BoundaryProtocol {
             overlay_projection_topology_changed,
             &overlay_projection_changes,
             &mut self.cached_topology_state,
-        );
+        )?;
         #[cfg(debug_assertions)]
         if topology_full_rebuild_pending {
             debug_assert_topology_cache_matches_tree(
@@ -1283,7 +1283,7 @@ impl BoundaryProtocol {
             .extend(entries_from_outcome(&out, self.root.inner()));
         out.timing.delta_log_ms = delta_log_started.elapsed().as_secs_f64() * 1000.0;
 
-        out
+        Ok(out)
     }
 
     /// True when a day boundary has no semantic work that requires CPU shadow
@@ -1477,7 +1477,11 @@ impl BoundaryProtocol {
     /// Manually seed the GPU threshold registry at session start (before any
     /// ticks). Normally called once after constructing the protocol, so that
     /// Pass 7 has registrations from tick 1 onward.
-    pub fn initial_gpu_sync(&mut self, coord: &DispatchCoordinator, state: &mut WorldGpuState) {
+    pub fn initial_gpu_sync(
+        &mut self,
+        coord: &DispatchCoordinator,
+        state: &mut WorldGpuState,
+    ) -> Result<(), GpuSyncError> {
         let out = sync_gpu_buffers(
             &self.root,
             &self.registry,
@@ -1503,7 +1507,7 @@ impl BoundaryProtocol {
             true,
             &[],
             &mut self.cached_topology_state,
-        );
+        )?;
         if let Some(new_reg) = out.new_threshold_registry {
             self.cpu_threshold_registry = new_reg;
             self.synced_threshold_config_revision = self.threshold_config_revision;
@@ -1548,6 +1552,7 @@ impl BoundaryProtocol {
             state.read_values()
         };
         self.upload_admission_anchor_table(state, &values, n_dims, &loci);
+        Ok(())
     }
 
     fn upload_admission_anchor_table(

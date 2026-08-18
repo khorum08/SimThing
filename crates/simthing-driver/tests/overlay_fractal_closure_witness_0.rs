@@ -690,7 +690,8 @@ fn adversarial_fractal_closure_uses_one_intrinsic_overlay_loop() {
         registry: registry.clone(),
         fission_lineage: Vec::new(),
     };
-    let mut projection = OverlaySpanProjection::compile(&attached_tree);
+    let mut projection = OverlaySpanProjection::compile(&attached_tree)
+        .expect("valid closure witness projection must be admitted");
     assert_eq!(
         projection.projection_counts(),
         (LARGE_SUBTREE_LEAVES as u64 + 1, 1, 1)
@@ -722,17 +723,21 @@ fn adversarial_fractal_closure_uses_one_intrinsic_overlay_loop() {
 
     // (7): 7.8a reports the entire cost model. One changed one-row subtree
     // dirties/examines one span and scans zero member rows.
-    let (rebuilt, dirty, candidates, member_rows) = projection.refresh_with_metrics(
-        &live_tree,
-        &[OverlayProjectionHostChange::OverlayState(special_leaf)],
-        GenerationStamp::new(8),
-    );
+    let (rebuilt, dirty, candidates, member_rows) = projection
+        .refresh_with_metrics(
+            &live_tree,
+            &[OverlayProjectionHostChange::OverlayState(special_leaf)],
+            GenerationStamp::new(8),
+        )
+        .expect("valid overlay refresh must remain admitted");
     let (logical_rows, profiles, spans) = projection.projection_counts();
     assert_eq!(logical_rows, LARGE_SUBTREE_LEAVES as u64 + 1);
     assert_eq!((profiles, spans), (2, 3));
     assert_eq!((rebuilt, dirty, candidates, member_rows), (1, 1, 1, 0));
     assert_eq!(
-        projection.refresh_with_metrics(&live_tree, &[], GenerationStamp::new(9)),
+        projection
+            .refresh_with_metrics(&live_tree, &[], GenerationStamp::new(9))
+            .expect("empty valid refresh must remain admitted"),
         (0, 0, 0, 0),
         "unchanged generations perform no semantic rewalk"
     );
@@ -847,7 +852,8 @@ fn adversarial_fractal_closure_uses_one_intrinsic_overlay_loop() {
         serde_json::to_value(&runtime).unwrap()
     );
     let replay_tree = tree_from_runtime(&replay.root);
-    let replay_projection = OverlaySpanProjection::compile(&replay_tree);
+    let replay_projection = OverlaySpanProjection::compile(&replay_tree)
+        .expect("valid replay projection must be admitted");
     let (replay_deltas, replay_ranges) =
         replay_projection.materialize_dense(&registry, &replay.allocator);
     assert_eq!(replay_deltas, deltas);

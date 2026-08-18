@@ -41,6 +41,8 @@ pub enum SessionError {
     ResourceFlow(#[from] crate::arena_allocation_sync::ResourceFlowSyncError),
     #[error("resource economy sync: {0}")]
     ResourceEconomy(#[from] crate::resource_economy_sync::ResourceEconomySyncError),
+    #[error("GPU boundary sync: {0}")]
+    GpuSync(#[from] simthing_sim::GpuSyncError),
     #[error("session mapping: {0}")]
     Mapping(String),
     #[error("resource flow opt-in: {0}")]
@@ -339,6 +341,13 @@ impl SimSession {
     }
 
     pub fn open(scenario: Scenario) -> Result<Self, SessionError> {
+        // Admit the semantic projection before the slot allocator, whose
+        // residency contract assumes unique logical identities. Malformed
+        // trees therefore fail through the typed session door rather than an
+        // allocator invariant panic; the admitted projection is rebuilt into
+        // the GPU-owned cache during initial sync below.
+        simthing_gpu::OverlaySpanProjection::compile(&scenario.root)
+            .map_err(simthing_sim::GpuSyncError::from)?;
         let ctx = GpuContext::new_blocking()?;
         let n_dims = scenario.registry.total_columns as u32;
         let mut allocator = simthing_gpu::SlotAllocator::new();
@@ -368,7 +377,7 @@ impl SimSession {
             scenario.registry.clone(),
             allocator,
         );
-        proto.initial_gpu_sync(&coord, &mut state);
+        proto.initial_gpu_sync(&coord, &mut state)?;
 
         Ok(Self {
             scenario,
@@ -430,7 +439,7 @@ impl SimSession {
         self.sync_resource_economy_at_install()?;
         // Re-project tree (including entity-hosted Constant PropertyValue seeds)
         // then upload thresholds. No dense install_resolved_values authority.
-        self.proto.initial_gpu_sync(&self.coord, &mut self.state);
+        self.proto.initial_gpu_sync(&self.coord, &mut self.state)?;
         self.sync_resource_economy_threshold_ops_at_install()?;
         Ok(())
     }
@@ -744,7 +753,7 @@ impl SimSession {
                 self.proto
                     .root
                     .seed_properties_on_node(target, &props, &self.proto.registry);
-                self.proto.initial_gpu_sync(&self.coord, &mut self.state);
+                self.proto.initial_gpu_sync(&self.coord, &mut self.state)?;
                 let overlay = simthing_core::Overlay {
                     id: simthing_core::OverlayId::new(),
                     kind: simthing_core::OverlayKind::Custom("mapping_commitment".into()),
@@ -987,7 +996,7 @@ impl SimSession {
             &mut self.state,
             day,
             |ctx| spec_state.run_boundary_handlers(ctx),
-        );
+        )?;
         summary.boundary_total_ms += boundary_started.elapsed().as_secs_f64() * 1000.0;
         summary.fission_events += outcome.fission.fissions_executed;
         accumulate_boundary_timing(summary, outcome.timing);
@@ -1086,7 +1095,7 @@ impl SimSession {
                     &mut self.state,
                     day,
                     |ctx| spec_state.run_boundary_handlers(ctx),
-                );
+                )?;
                 summary.boundary_total_ms += boundary_started.elapsed().as_secs_f64() * 1000.0;
                 summary.fission_events += outcome.fission.fissions_executed;
                 accumulate_boundary_timing(&mut summary, outcome.timing);
@@ -1419,6 +1428,30 @@ mod continuous_posture_session_proofs {
             4,
         );
         SimSession::open(scenario).expect("session open requires a supported live GPU")
+    }
+
+    #[test]
+    fn invalid_overlay_projection_returns_typed_session_error_without_panic() {
+        let _guard = GPU_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+        let mut scenario = Scenario::map_light(
+            "invalid_overlay_projection_session_proof".into(),
+            1,
+            1,
+            1.0,
+            4,
+        );
+        let duplicate_id = scenario.root.id;
+        let mut duplicate = simthing_core::SimThing::new(simthing_core::SimThingKind::Cohort, 0);
+        duplicate.id = duplicate_id;
+        scenario.root.add_child(duplicate);
+
+        match SimSession::open(scenario) {
+            Err(SessionError::GpuSync(simthing_sim::GpuSyncError::OverlayProjection(
+                simthing_gpu::DerivedSpanAdmissionError::DuplicateLogicalIdentity(id),
+            ))) if id == duplicate_id => {}
+            Err(other) => panic!("expected typed duplicate-identity admission error, got {other}"),
+            Ok(_) => panic!("invalid overlay projection must fail session construction"),
+        }
     }
 
     #[test]

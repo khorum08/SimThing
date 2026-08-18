@@ -38,6 +38,12 @@ use simthing_gpu::{
     TopologyState, WorldGpuState,
 };
 
+#[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
+pub enum GpuSyncError {
+    #[error("overlay span projection admission: {0}")]
+    OverlayProjection(#[from] simthing_gpu::DerivedSpanAdmissionError),
+}
+
 fn upload_accumulator_reduction_plan(
     state: &mut WorldGpuState,
     topology_state: &TopologyState,
@@ -136,7 +142,7 @@ pub fn sync_gpu_buffers(
     // (because the boundary already applied an incremental delta and
     // uploaded), the cache is left as-is.
     topology_state: &mut TopologyState,
-) -> GpuSyncOutcome {
+) -> Result<GpuSyncOutcome, GpuSyncError> {
     let mut out = GpuSyncOutcome::default();
 
     // 1. Overlay deltas - compiled into AccumulatorOp OrderBands.
@@ -207,7 +213,7 @@ pub fn sync_gpu_buffers(
                 )
             } else {
                 (
-                    simthing_gpu::OverlaySpanProjection::compile(root.inner()),
+                    simthing_gpu::OverlaySpanProjection::compile(root.inner())?,
                     Vec::new(),
                     Vec::new(),
                     0,
@@ -216,15 +222,15 @@ pub fn sync_gpu_buffers(
                 )
             };
             if overlay_projection_topology_changed && had_cache {
-                projection = simthing_gpu::OverlaySpanProjection::compile(root.inner());
+                projection = simthing_gpu::OverlaySpanProjection::compile(root.inner())?;
             } else if had_cache {
                 if !overlay_projection_changes.is_empty() {
-                    let (spans_rebuilt, dirty_spans, candidate_spans, rows_scanned) =
-                        projection.refresh_with_metrics(
+                    let (spans_rebuilt, dirty_spans, candidate_spans, rows_scanned) = projection
+                        .refresh_with_metrics(
                             root.inner(),
                             overlay_projection_changes,
                             generation,
-                        );
+                        )?;
                     out.overlay_invalidated_spans = spans_rebuilt;
                     out.overlay_dirty_spans = dirty_spans;
                     out.overlay_invalidation_candidate_spans = candidate_spans;
@@ -454,7 +460,7 @@ pub fn sync_gpu_buffers(
     out.boundary_upload_bytes =
         value_upload_bytes + overlay_upload_bytes + threshold_upload_bytes + reduction_upload_bytes;
 
-    out
+    Ok(out)
 }
 
 #[cfg(test)]

@@ -125,9 +125,8 @@ pub struct OverlaySpanProjection {
 }
 
 impl OverlaySpanProjection {
-    pub fn compile(root: &SimThing) -> Self {
+    pub fn compile(root: &SimThing) -> Result<Self, DerivedSpanAdmissionError> {
         Self::try_compile(root)
-            .unwrap_or_else(|error| panic!("derived overlay span admission failed: {error}"))
     }
 
     pub(crate) fn try_compile(root: &SimThing) -> Result<Self, DerivedSpanAdmissionError> {
@@ -247,10 +246,12 @@ impl OverlaySpanProjection {
         root: &SimThing,
         changes: &[OverlayProjectionHostChange],
         generation: GenerationStamp,
-    ) -> (u64, u64) {
-        let (rebuilt, _, _, rows) =
-            self.refresh_with_metrics(root, changes, generation);
-        (rebuilt, rows)
+    ) -> Result<(u64, u64), DerivedSpanAdmissionError> {
+        let refresh = self.try_refresh(root, changes, generation)?;
+        Ok((
+            refresh.semantic_spans_rebuilt,
+            refresh.invalidation.logical_member_rows_scanned,
+        ))
     }
 
     pub fn refresh_with_metrics(
@@ -258,16 +259,14 @@ impl OverlaySpanProjection {
         root: &SimThing,
         changes: &[OverlayProjectionHostChange],
         generation: GenerationStamp,
-    ) -> (u64, u64, u64, u64) {
-        let refresh = self
-            .try_refresh(root, changes, generation)
-            .unwrap_or_else(|error| panic!("derived overlay span invalidation failed: {error}"));
-        (
+    ) -> Result<(u64, u64, u64, u64), DerivedSpanAdmissionError> {
+        let refresh = self.try_refresh(root, changes, generation)?;
+        Ok((
             refresh.semantic_spans_rebuilt,
             refresh.invalidation.dirty_span_ranges.len() as u64,
             refresh.invalidation.spans_examined,
             refresh.invalidation.logical_member_rows_scanned,
-        )
+        ))
     }
 
     pub(crate) fn try_refresh(
@@ -713,11 +712,10 @@ fn profile_id_for(descriptor: &OverlayEffectiveDescriptor) -> EffectiveProfileId
         }
     }
     let mut hash = FNV_OFFSET;
-    for op in descriptor
-        .sources
-        .iter()
-        .filter(|op| descriptor.admitted_properties.contains(&op.property_id))
-    {
+    mix(&mut hash, b"overlay-effective-descriptor-v1");
+    mix(&mut hash, &(descriptor.sources.len() as u64).to_le_bytes());
+    for op in descriptor.sources.iter() {
+        mix(&mut hash, &op.host.raw().to_le_bytes());
         mix(&mut hash, &op.property_id.0.to_le_bytes());
         match &op.role {
             SubFieldRole::Amount => mix(&mut hash, &[0]),
@@ -725,10 +723,12 @@ fn profile_id_for(descriptor: &OverlayEffectiveDescriptor) -> EffectiveProfileId
             SubFieldRole::Intensity => mix(&mut hash, &[2]),
             SubFieldRole::Named(name) => {
                 mix(&mut hash, &[3]);
+                mix(&mut hash, &(name.len() as u64).to_le_bytes());
                 mix(&mut hash, name.as_bytes());
             }
             SubFieldRole::Custom(name) => {
                 mix(&mut hash, &[4]);
+                mix(&mut hash, &(name.len() as u64).to_le_bytes());
                 mix(&mut hash, name.as_bytes());
             }
         }
@@ -741,6 +741,13 @@ fn profile_id_for(descriptor: &OverlayEffectiveDescriptor) -> EffectiveProfileId
             }],
         );
         mix(&mut hash, &op.value_bits.to_le_bytes());
+    }
+    mix(
+        &mut hash,
+        &(descriptor.admitted_properties.len() as u64).to_le_bytes(),
+    );
+    for property_id in descriptor.admitted_properties.iter() {
+        mix(&mut hash, &property_id.0.to_le_bytes());
     }
     EffectiveProfileId::from_semantic_digest(hash)
 }
@@ -1071,6 +1078,88 @@ mod tests {
             cache.projection.profile_digest_by_logical_identity(),
             semantic_before
         );
+    }
+
+    #[test]
+    fn profile_digest_covers_full_effective_descriptor_and_reuses_equal_descriptors() {
+        let (registry, property) = projection_registry();
+
+        // An empty operation stream does not erase the admitted-property shape.
+        let mut property_shape_root = SimThing::new(SimThingKind::Cohort, 0);
+        let property_shape_child = node_with_property(&registry, property);
+        let property_shape_child_id = property_shape_child.id;
+        property_shape_root.add_child(property_shape_child);
+        let property_shape_projection =
+            OverlaySpanProjection::compile(&property_shape_root).unwrap();
+        let property_shape_digests = property_shape_projection
+            .profile_digest_by_logical_identity()
+            .into_iter()
+            .collect::<BTreeMap<_, _>>();
+        assert_ne!(
+            property_shape_digests[&property_shape_root.id],
+            property_shape_digests[&property_shape_child_id]
+        );
+
+        // An operation for a property absent from its host is still semantic
+        // descriptor data. The two genuinely empty descriptors lawfully reuse
+        // one identity even though they are separated by the non-applicable op.
+        let mut no_applicable_root = SimThing::new(SimThingKind::Cohort, 0);
+        let mut no_applicable_child = SimThing::new(SimThingKind::Cohort, 0);
+        let no_applicable_child_id = no_applicable_child.id;
+        no_applicable_child.add_overlay(projection_overlay(
+            no_applicable_child_id,
+            OverlayKind::Policy,
+            property,
+            TransformOp::add(0.25),
+        ));
+        let equal_empty_child = SimThing::new(SimThingKind::Cohort, 0);
+        let equal_empty_child_id = equal_empty_child.id;
+        no_applicable_root.add_child(no_applicable_child);
+        no_applicable_root.add_child(equal_empty_child);
+        let no_applicable_projection = OverlaySpanProjection::compile(&no_applicable_root).unwrap();
+        let no_applicable_digests = no_applicable_projection
+            .profile_digest_by_logical_identity()
+            .into_iter()
+            .collect::<BTreeMap<_, _>>();
+        assert_eq!(
+            no_applicable_digests[&no_applicable_root.id],
+            no_applicable_digests[&equal_empty_child_id],
+            "equal descriptors reuse the interned profile identity"
+        );
+        assert_ne!(
+            no_applicable_digests[&no_applicable_root.id],
+            no_applicable_digests[&no_applicable_child_id],
+            "a no-applicable-op descriptor must not collapse to empty"
+        );
+        assert_eq!(no_applicable_projection.profile_and_span_counts(), (2, 3));
+
+        // Otherwise-equal local programs remain distinct when their semantic
+        // overlay hosts differ.
+        let mut host_root = SimThing::new(SimThingKind::Cohort, 0);
+        let mut host_a = node_with_property(&registry, property);
+        let host_a_id = host_a.id;
+        host_a.add_overlay(projection_overlay(
+            host_a_id,
+            OverlayKind::Policy,
+            property,
+            TransformOp::multiply(0.5),
+        ));
+        let mut host_b = node_with_property(&registry, property);
+        let host_b_id = host_b.id;
+        host_b.add_overlay(projection_overlay(
+            host_b_id,
+            OverlayKind::Policy,
+            property,
+            TransformOp::multiply(0.5),
+        ));
+        host_root.add_child(host_a);
+        host_root.add_child(host_b);
+        let host_projection = OverlaySpanProjection::compile(&host_root).unwrap();
+        let host_digests = host_projection
+            .profile_digest_by_logical_identity()
+            .into_iter()
+            .collect::<BTreeMap<_, _>>();
+        assert_ne!(host_digests[&host_a_id], host_digests[&host_b_id]);
     }
 
     #[test]

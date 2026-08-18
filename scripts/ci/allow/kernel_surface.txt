@@ -102,6 +102,7 @@ CpuOracleError | authority-export | Exported kernel runtime/planning/oracle surf
 CpuOracleParityProof | sealed-export | OC-K-EML-OPCODE-GATE-0 Tier-2 bit-exact CPU-oracle parity proof | retire when kernel export set is closed by type-boundary admission
 debug_readback_allowed | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
 DebugReadbackGuard | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
+DerivedSpanAdmissionError | authority-export | DERIVED-SPAN-PROJECTION-INVALIDATION-0 typed span-admission rejection returned by the public OverlaySpanProjection::compile seam and carried through simthing-sim GpuSyncError into SessionError | retire when projection compile and its failure contract are in-crate only
 decision_ingress | authority-export | OC-K-DECISION-INGRESS-0 sealed decision ingress module | retire when kernel export set is closed by type-boundary admission
 DecisionIngressError | authority-export | OC-K-DECISION-INGRESS-0 decision ingress error type | retire when kernel export set is closed by type-boundary admission
 DEFAULT_EMISSION_CAPACITY | surface-inert | Inert public kernel constant | retire when kernel export set is closed by type-boundary admission
