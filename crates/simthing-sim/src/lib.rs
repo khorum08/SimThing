@@ -88,6 +88,7 @@ pub use boundary::{
 pub use delta_log::BoundaryDeltaEntry;
 pub use fission::{ClonedCapabilityRoot, FissionLineageRecord, FissionOutcome};
 pub use fission_clone_source_view::FissionCloneSourceView;
+pub use gpu_sync::{GpuSyncError, GpuSyncOutcome};
 pub use legacy_oracle::{
     apply_oracle_flags, assert_events_oracle, assert_values_oracle, run_family_oracle,
     LegacyOracleRun, OracleCapture, OracleExactness, OracleFamily, OracleScenario,
