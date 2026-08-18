@@ -23,8 +23,7 @@ stop_conditions: ["judge cannot be expressed from existing landed owner-channel/
 - Prove rule-independence with inline synthetic contested partitions: at least two different lawful grant distributions over the same bounded supply must both judge GREEN; a seeded over/under-accounting violation must RED. Do not implement 8.2 resolution rules merely to produce these partitions.
 ## FENCES
 - Conservation only. Never reject a container because participant owners differ, never re-derive ownership by a second path, and never turn the referee into an owner-policy or contention-semantics service.
-- One channel, one equation. Cross-resource transformations are observed as consumption on one channel and creation on another; no cross-channel balance is invented.
-- One seam, one history. In-flight state is ordinary conserved state at the 6.2 seam; do not skip it, duplicate it, or introduce another schedule/history surface.
+- One channel, one equation; one seam, one history. Cross-resource transformations are observed as consumption on one channel and creation on another, while in-flight state remains ordinary conserved state at the 6.2 seam; do not invent cross-channel balance, skip or duplicate the seam, or introduce another schedule/history surface.
 - ActionBand remains an ordinary claim source. 7.3/7.8 authority stays where it is; 8.1 adds no facility-local conservation machinery and no execution shortcut.
 - Keep 8.2, Vector CostBand, StemThing-B, Phase 9+, scenario/corpus rehearsals, gate/workflow/allowlist edits, and `OVERLAY-PEER-AUTHORITY` retirement fenced.
 ## EXIT-PROOF
