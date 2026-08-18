@@ -52,5 +52,5 @@ Mechanical transport/proof record only. Judge semantics unchanged (`owner_unifor
 | `cargo test -p simthing-core --test band_quantized_draw_0` | 9/9 |
 | `cargo test -p simthing-driver --test residency_tier_vocabulary_0` | 4/4 |
 | `cargo test -p simthing-driver --test actionband_recursive_composition_0` | 5/5 |
-| `cargo check -p simthing-driver` | ok |
+| `cargo test -p simthing-driver --lib` | 16/16 at tested_code_sha `a3dc9ac8` |
 | detachability / lifecycle-schema / doc-budget / inventory-drift | PASS |
