@@ -483,6 +483,11 @@ pub use spec::owner_silo_runtime_writeback::{
 pub use spec::async_staleness::{
     derive_staleness_f32, AsyncStalenessColumn, AsyncStalenessError, AuthoredStalenessHorizon,
 };
+pub use spec::contention_conservation_judge::{
+    judge_conservation, ChannelBound, ConservationJudgeReason, ConservationSnapshot,
+    ConservationVerdict, QuantizedChannelObservation, SeamObservation,
+    StemThingPartitionObservation,
+};
 pub use spec::owner_channel_rf::{
     replay_async_owner_channel_rf_seam, AsyncOwnerChannelRfReplay, AsyncOwnerChannelRfSeam,
     AsyncQueueBarrierReceipt,

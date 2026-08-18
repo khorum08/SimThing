@@ -311,6 +311,22 @@ impl OwnerChannelRfSeamBalance {
             .and_then(|value| value.checked_add(self.parent))
             == Some(self.admitted)
     }
+
+    /// Referee observation of the three live locations plus the admitted total.
+    /// Does not transfer product; the 8.1 judge consumes this snapshot.
+    pub fn observe(
+        child: OwnerChannelRfConservedValue,
+        seam: OwnerChannelRfConservedValue,
+        parent: OwnerChannelRfConservedValue,
+        admitted: OwnerChannelRfConservedValue,
+    ) -> Self {
+        Self {
+            child,
+            seam,
+            parent,
+            admitted,
+        }
+    }
 }
 
 /// One losslessly coalesced pending carrier. There is at most one carrier for each scope key.
