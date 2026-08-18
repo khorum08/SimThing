@@ -329,7 +329,9 @@ fn gpu_production_decision_is_bit_identical_to_retained_cpu_oracle() {
     let mut coord = DispatchCoordinator::new(1, n_dims, 1);
     let mut patcher = TransformPatcher::new(1);
     state.ensure_threshold_accumulator(3);
-    protocol.initial_gpu_sync(&coord, &mut state);
+    protocol
+        .initial_gpu_sync(&coord, &mut state)
+        .expect("valid initial projection");
     assert_eq!(protocol.overlay_lifecycle_target_count(), 0);
     assert_eq!(state.n_thresholds, 0);
 
@@ -349,7 +351,7 @@ fn gpu_production_decision_is_bit_identical_to_retained_cpu_oracle() {
         &mut state,
         0,
         |ctx| ctx.requests.push(capacity_request.clone()),
-    );
+    ).expect("valid capacity-rejection projection");
     assert_eq!(capacity_outcome.maintainer.rejected_overlay_lifecycle, 1);
     assert!(!protocol.root.has_overlay(boundary_target, capacity_id));
 
@@ -366,7 +368,7 @@ fn gpu_production_decision_is_bit_identical_to_retained_cpu_oracle() {
         &mut state,
         1,
         |ctx| ctx.requests.push(activate_seed.clone()),
-    );
+    ).expect("valid activation projection");
     assert_eq!(
         activation.maintainer.overlays_activated,
         vec![(boundary_target, seed_id)]
@@ -394,7 +396,9 @@ fn gpu_production_decision_is_bit_identical_to_retained_cpu_oracle() {
         .as_mut()
         .unwrap()
         .restore_threshold_session(Some(resident_session));
-    let seed_dissolved = protocol.execute(Vec::new(), &mut patcher, &mut coord, &mut state, 2);
+    let seed_dissolved = protocol
+        .execute(Vec::new(), &mut patcher, &mut coord, &mut state, 2)
+        .expect("valid seed-dissolution projection");
     assert_eq!(
         seed_dissolved.lifecycle.dissolved_overlays,
         vec![(boundary_target, seed_id)]
@@ -431,7 +435,7 @@ fn gpu_production_decision_is_bit_identical_to_retained_cpu_oracle() {
         &mut state,
         3,
         |ctx| ctx.requests.push(novel_request.clone()),
-    );
+    ).expect("valid novel-template rejection projection");
     assert_eq!(novel.maintainer.rejected_overlay_lifecycle, 1);
     assert!(!protocol.root.has_overlay(boundary_target, novel_id));
 
@@ -450,7 +454,7 @@ fn gpu_production_decision_is_bit_identical_to_retained_cpu_oracle() {
         &mut state,
         4,
         |ctx| ctx.requests.push(admitted_request.clone()),
-    );
+    ).expect("valid attachment projection");
     assert_eq!(
         attached.maintainer.overlays_attached,
         vec![(boundary_target, attached_id)]
@@ -476,7 +480,9 @@ fn gpu_production_decision_is_bit_identical_to_retained_cpu_oracle() {
         .as_mut()
         .unwrap()
         .restore_threshold_session(Some(resident_session));
-    let attached_dissolved = protocol.execute(Vec::new(), &mut patcher, &mut coord, &mut state, 5);
+    let attached_dissolved = protocol
+        .execute(Vec::new(), &mut patcher, &mut coord, &mut state, 5)
+        .expect("valid attached-dissolution projection");
     assert_eq!(
         attached_dissolved.lifecycle.dissolved_overlays,
         vec![(boundary_target, attached_id)]
@@ -504,7 +510,7 @@ fn gpu_production_decision_is_bit_identical_to_retained_cpu_oracle() {
         &mut state,
         6,
         |ctx| ctx.requests.push(suspended_request.clone()),
-    );
+    ).expect("valid suspended-attachment projection");
     assert_eq!(
         suspended_attach.maintainer.overlays_attached,
         vec![(boundary_target, toggled_id)]
@@ -523,7 +529,7 @@ fn gpu_production_decision_is_bit_identical_to_retained_cpu_oracle() {
         &mut state,
         7,
         |ctx| ctx.requests.push(activate_toggled.clone()),
-    );
+    ).expect("valid toggled-activation projection");
     assert_eq!(toggled_active.maintainer.overlay_activations, 1);
     assert_eq!(protocol.overlay_lifecycle_target_count(), 1);
     assert_eq!(state.n_thresholds, 1);
@@ -539,7 +545,7 @@ fn gpu_production_decision_is_bit_identical_to_retained_cpu_oracle() {
         &mut state,
         8,
         |ctx| ctx.requests.push(suspend_toggled.clone()),
-    );
+    ).expect("valid toggled-suspension projection");
     assert_eq!(toggled_suspended.maintainer.overlay_suspensions, 1);
     assert_eq!(protocol.overlay_lifecycle_target_count(), 0);
     assert_eq!(state.n_thresholds, 0);
@@ -559,7 +565,7 @@ fn gpu_production_decision_is_bit_identical_to_retained_cpu_oracle() {
         &mut state,
         9,
         |ctx| ctx.requests.push(activate_toggled.clone()),
-    );
+    ).expect("valid level-reaches activation projection");
     assert_eq!(level_reaches_activation.maintainer.overlay_activations, 1);
     state.install_resolved_previous_values_at_boundary(&crossed_values);
     state.install_resolved_values_at_boundary(&crossed_values);
@@ -578,7 +584,9 @@ fn gpu_production_decision_is_bit_identical_to_retained_cpu_oracle() {
         .as_mut()
         .unwrap()
         .restore_threshold_session(Some(resident_session));
-    let level_reaches = protocol.execute(Vec::new(), &mut patcher, &mut coord, &mut state, 10);
+    let level_reaches = protocol
+        .execute(Vec::new(), &mut patcher, &mut coord, &mut state, 10)
+        .expect("valid level-reaches projection");
     assert_eq!(
         level_reaches.lifecycle.dissolved_overlays,
         vec![(boundary_target, toggled_id)]
@@ -599,7 +607,7 @@ fn gpu_production_decision_is_bit_identical_to_retained_cpu_oracle() {
         &mut state,
         11,
         |ctx| ctx.requests.push(activate_below.clone()),
-    );
+    ).expect("valid below activation projection");
     assert_eq!(below_activation.maintainer.overlay_activations, 1);
     let below_values = vec![0.0; n_dims as usize];
     state.install_resolved_previous_values_at_boundary(&below_values);
@@ -619,7 +627,9 @@ fn gpu_production_decision_is_bit_identical_to_retained_cpu_oracle() {
         .as_mut()
         .unwrap()
         .restore_threshold_session(Some(resident_session));
-    let level_below = protocol.execute(Vec::new(), &mut patcher, &mut coord, &mut state, 12);
+    let level_below = protocol
+        .execute(Vec::new(), &mut patcher, &mut coord, &mut state, 12)
+        .expect("valid level-below projection");
     assert_eq!(
         level_below.lifecycle.dissolved_overlays,
         vec![(boundary_target, below_seed_id)]
@@ -640,7 +650,7 @@ fn gpu_production_decision_is_bit_identical_to_retained_cpu_oracle() {
         &mut state,
         13,
         |ctx| ctx.requests.push(activate_timed.clone()),
-    );
+    ).expect("valid timed activation projection");
     assert_eq!(timed_activation.maintainer.overlay_activations, 1);
     for generation in [14u32, 15] {
         state.bind_production_generation(generation);
@@ -665,7 +675,7 @@ fn gpu_production_decision_is_bit_identical_to_retained_cpu_oracle() {
                 &mut coord,
                 &mut state,
                 generation as u64,
-            );
+            ).expect("valid still-active projection");
             assert_eq!(still_active.lifecycle.dissolved, 0);
         } else {
             let suspend_timed = BoundaryRequest::SuspendOverlay {
@@ -679,7 +689,7 @@ fn gpu_production_decision_is_bit_identical_to_retained_cpu_oracle() {
                 &mut state,
                 generation as u64,
                 |ctx| ctx.requests.push(suspend_timed.clone()),
-            );
+            ).expect("valid timed suspension projection");
             assert_eq!(suspended.lifecycle.dissolved, 0);
             assert_eq!(suspended.maintainer.overlay_suspensions, 1);
         }
@@ -692,7 +702,7 @@ fn gpu_production_decision_is_bit_identical_to_retained_cpu_oracle() {
             &mut coord,
             &mut state,
             generation as u64,
-        );
+        ).expect("valid paused projection");
         assert_eq!(paused.lifecycle.dissolved, 0);
     }
     let timed_reactivation = protocol.execute_with_boundary_hook(
@@ -702,7 +712,7 @@ fn gpu_production_decision_is_bit_identical_to_retained_cpu_oracle() {
         &mut state,
         18,
         |ctx| ctx.requests.push(activate_timed.clone()),
-    );
+    ).expect("valid timed reactivation projection");
     assert_eq!(timed_reactivation.maintainer.overlay_activations, 1);
     state.bind_production_generation(19);
     let mut resident_session = state
@@ -719,7 +729,9 @@ fn gpu_production_decision_is_bit_identical_to_retained_cpu_oracle() {
         .as_mut()
         .unwrap()
         .restore_threshold_session(Some(resident_session));
-    let one_remaining = protocol.execute(Vec::new(), &mut patcher, &mut coord, &mut state, 19);
+    let one_remaining = protocol
+        .execute(Vec::new(), &mut patcher, &mut coord, &mut state, 19)
+        .expect("valid one-remaining projection");
     assert_eq!(one_remaining.lifecycle.dissolved, 0);
     state.bind_production_generation(20);
     let mut resident_session = state
@@ -736,7 +748,9 @@ fn gpu_production_decision_is_bit_identical_to_retained_cpu_oracle() {
         .as_mut()
         .unwrap()
         .restore_threshold_session(Some(resident_session));
-    let timed_dissolved = protocol.execute(Vec::new(), &mut patcher, &mut coord, &mut state, 20);
+    let timed_dissolved = protocol
+        .execute(Vec::new(), &mut patcher, &mut coord, &mut state, 20)
+        .expect("valid timed-dissolution projection");
     assert_eq!(
         timed_dissolved.lifecycle.dissolved_overlays,
         vec![(boundary_target, timed_seed_id)]

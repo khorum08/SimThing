@@ -353,7 +353,7 @@ impl<D: Clone + PartialEq> DerivedSpanProjection<D> {
             let descriptor = match profiles.get(&seed.profile_id) {
                 Some(admitted) if admitted.as_ref() != &seed.descriptor => {
                     return Err(DerivedSpanAdmissionError::ProfileIdentityCollision {
-                        profile: seed.profile_id,
+                        profile_digest: seed.profile_id.digest(),
                     });
                 }
                 Some(admitted) => admitted.clone(),
@@ -612,7 +612,7 @@ impl<D: Clone + PartialEq> DerivedSpanProjection<D> {
         match self.profiles.get(&profile_id) {
             Some(admitted) if admitted.as_ref() == &descriptor => Ok(admitted.clone()),
             Some(_) => Err(DerivedSpanAdmissionError::ProfileIdentityCollision {
-                profile: profile_id,
+                profile_digest: profile_id.digest(),
             }),
             None => {
                 let descriptor = Arc::new(descriptor);
@@ -626,7 +626,7 @@ impl<D: Clone + PartialEq> DerivedSpanProjection<D> {
         match self.profiles.get(&span.profile_id) {
             Some(admitted) if admitted.as_ref() != span.descriptor.as_ref() => {
                 return Err(DerivedSpanAdmissionError::ProfileIdentityCollision {
-                    profile: span.profile_id,
+                    profile_digest: span.profile_id.digest(),
                 });
             }
             Some(_) => {}
@@ -677,7 +677,7 @@ fn coalesce_ranges(mut ranges: Vec<LogicalRowRange>) -> Vec<LogicalRowRange> {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Error)]
-pub(crate) enum DerivedSpanAdmissionError {
+pub enum DerivedSpanAdmissionError {
     #[error("derived projection requires at least one logical row and one span")]
     EmptyProjection,
     #[error("logical range start {start} length {len} is empty or overflows")]
@@ -697,8 +697,8 @@ pub(crate) enum DerivedSpanAdmissionError {
     IncompleteCoverage { covered: u64, total_rows: u64 },
     #[error("homogeneous profile was split into descendant-scale adjacent spans at row {at_row}")]
     DescendantScaleProfileExplosion { at_row: u64 },
-    #[error("effective profile id {profile:?} names more than one semantic descriptor")]
-    ProfileIdentityCollision { profile: EffectiveProfileId },
+    #[error("effective profile id {profile_digest:#018x} names more than one semantic descriptor")]
+    ProfileIdentityCollision { profile_digest: u64 },
     #[error("the frozen dependency index contains a duplicate locus/target row")]
     DuplicateDependency,
     #[error("frozen dependency shape changed at {0:?}; admit a fresh projection")]

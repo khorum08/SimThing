@@ -119,6 +119,7 @@ pub use intensity_accumulator::{
     build_intensity_eml_entries, plan_intensity_eml_ops, register_intensity_eml_formulas,
     IntensityEmlEntry, IntensityEmlPlan,
 };
+pub use derived_span_projection::DerivedSpanAdmissionError;
 pub use overlay_orderband::{plan_overlay_orderband, OverlayOrderBandPlan};
 pub use overlay_prep::{
     build_overlay_deltas, OverlayProjectionHostChange, OverlaySpanProjection,
