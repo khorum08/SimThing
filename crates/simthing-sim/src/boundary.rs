@@ -1239,9 +1239,13 @@ impl BoundaryProtocol {
         self.sync_accumulator_emission_session(state);
         out.gpu_sync = GpuSyncOutcome {
             overlay_deltas_uploaded: gpu_out.overlay_deltas_uploaded,
+            overlay_logical_row_count: gpu_out.overlay_logical_row_count,
             overlay_profile_count: gpu_out.overlay_profile_count,
             overlay_span_count: gpu_out.overlay_span_count,
             overlay_invalidated_spans: gpu_out.overlay_invalidated_spans,
+            overlay_dirty_spans: gpu_out.overlay_dirty_spans,
+            overlay_invalidation_candidate_spans: gpu_out
+                .overlay_invalidation_candidate_spans,
             overlay_invalidation_rows_scanned: gpu_out.overlay_invalidation_rows_scanned,
             // Sum: gpu_out.threshold_regs_uploaded counts entries written by
             // the full rebuild path (0 when we took the append path);

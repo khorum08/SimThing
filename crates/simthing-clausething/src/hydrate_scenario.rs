@@ -1452,6 +1452,9 @@ fn payload_economy_overlays(
                     target_id: scenario_id.to_string(),
                 },
                 order_weight_class: None,
+                composition_class: None,
+                current_dependency_edges: Vec::new(),
+                next_dependency_edges: Vec::new(),
                 source_span_token: None,
             }
         })
@@ -2787,6 +2790,9 @@ fn parse_modifier_spec(
             target_id: target_id.to_string(),
         },
         order_weight_class: None,
+        composition_class: None,
+        current_dependency_edges: Vec::new(),
+        next_dependency_edges: Vec::new(),
         source_span_token: None,
     })
 }
