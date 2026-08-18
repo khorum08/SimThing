@@ -2,7 +2,7 @@
 
 - Track: 0.0.8.7 RF arena modernization (rung 8.1)
 - Status: **PROBATION / proof-present / DA-review-pending**
-- HD-RECEIPT: `ba7a36cfbf18`
+- HD-RECEIPT: `6c58b7771d63` (ingress repair #1780; prior `ba7a36cfbf18` stale)
 - ORIENT-RECEIPT: `a5dc59920dd4`
 - orientation_rule_stamp: `61818ff7d4adda84`
 - ANCHOR-ACK: `orientation-harness-core@8a365d1c0864`
@@ -37,3 +37,20 @@ One scenario-neutral conservation referee: `judge_conservation`. It judges decla
 | ActionBandOmitted | RED | `ActionBandOmission` |
 
 All seven planted REDs fire on `judge_conservation` with their named reason. No `refuse_*` helper, no 8.2 executor, no ladder/orientation edit, no `OVERLAY-PEER-AUTHORITY` retirement.
+
+## Remand 5324058663 blast radius
+
+Mechanical transport/proof record only. Judge semantics unchanged (`owner_uniformity_required`, `fold_output_into_input`, `omit_seam` preserved).
+
+| Command | Result |
+|---|---|
+| `cargo test -p simthing-driver --test contention_conservation_judge_0` | 1/1 |
+| `cargo test -p simthing-driver --test owner_channel_intrinsic_reduce_up_0` | 4/4 |
+| `cargo test -p simthing-spec --lib owner_channel_rf` | 4/4 (9 filtered) |
+| `cargo test -p simthing-spec --test async_command_queue_0` | 3/3 |
+| `cargo test -p simthing-spec --test event_generation_stamp_reduce_up_0` | 4/4 |
+| `cargo test -p simthing-core --test band_quantized_draw_0` | 9/9 |
+| `cargo test -p simthing-driver --test residency_tier_vocabulary_0` | 4/4 |
+| `cargo test -p simthing-driver --test actionband_recursive_composition_0` | 5/5 |
+| `cargo check -p simthing-driver` | ok |
+| detachability / lifecycle-schema / doc-budget / inventory-drift | PASS |
