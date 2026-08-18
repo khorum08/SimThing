@@ -944,3 +944,7 @@ date	role	query	anchors_served	hit
 2026-08-18T13:16:12Z	coding	--grep exact-numeric-candidate-f	exact-numeric-candidate-f	hit
 2026-08-18T13:16:12Z	coding	--grep orientation-harness-core	orientation-harness-core	hit
 2026-08-18T13:16:13Z	coding	--grep scanner-selftest-delta-gate	scanner-selftest-delta-gate	hit
+2026-08-18T14:44:39Z	coding	--grep ^movement-front$	none	none
+2026-08-18T14:44:44Z	coding	--grep movement-front	clausething-closed-vertical,core-overlays,core-property-value-model,core-rf-arenas,drift-detectors-six-line,exact-numeric-candidate-f,field-policy-time-decisions,movement-front,movement-front-adjudications,spec-fidelity-anti-ceremony	hit
+2026-08-18T14:44:45Z	coding	--domain movement-front	movement-front,movement-front-adjudications	hit
+2026-08-18T14:44:50Z	coding	--grep ^movement-front	none	none
