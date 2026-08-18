@@ -1,6 +1,6 @@
 # OVERLAY-FRACTAL-CLOSURE-WITNESS-0 (7.9) evidence
 
-Status: implementation complete; independent review pending.
+Status: **COMPLETE — DA-GRADUATED / merged #1774 @ `c5896e19`** (pre-dispatch `5315908359`, One-History adjudication + HOLD `5316943177`, 7.8a repair `5323104852`, graduation ruling on Board #1332).
 
 ## Receipts and fences
 
