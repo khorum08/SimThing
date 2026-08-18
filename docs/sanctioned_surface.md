@@ -11,7 +11,7 @@ This digest is a derived context artifact for low-context agents. If it disagree
 | --- | --- | --- |
 | scripts/ci/allow/sealed_producers.txt | 25 | 6923796f3bacd3b27b29f778d5276c3f82a3a67c3f010c30f10b78de8a1866f6 |
 | scripts/ci/allow/inert_buffer_handles.txt | 2 | 9e2069fa5730f17cacde1c671ebc17beb59f50738d2dcb914bceae13f9b8b3a4 |
-| scripts/ci/allow/kernel_surface.txt | 296 | 00446f2f241131c0c2489f8e1730c6172454d7e1ba00a0935f8b3ce8cefe6f28 |
+| scripts/ci/allow/kernel_surface.txt | 297 | 4cd22d9a00d01f0e6a62c668642f4be953a9c0ffd645df72e9dc7fb41881f2ad |
 | scripts/ci/allow/sealed_types.txt | 19 | 9d427e3b41a586b06f24ca02cc45f78934237d2229b0c38d46e2a8a6ef5016be |
 | scripts/ci/allow/contention_mechanisms.txt | 8 | eb22cbb7755c364804f1c5ac6b10c2346735f8a53d0a57426f3065a879a6cb14 |
 | scripts/ci/scans.tsv | 27 | cc081f04b69c80b0b706ca598467778ced55f7f098c4c2af0d31099b7fc18155 |
@@ -160,6 +160,7 @@ This digest is a derived context artifact for low-context agents. If it disagree
 | CpuOracleParityProof | sealed-export | OC-K-EML-OPCODE-GATE-0 Tier-2 bit-exact CPU-oracle parity proof | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |
 | debug_readback_allowed | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |
 | DebugReadbackGuard | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |
+| DerivedSpanAdmissionError | authority-export | DERIVED-SPAN-PROJECTION-INVALIDATION-0 typed span-admission rejection returned by the public OverlaySpanProjection::compile seam and carried through simthing-sim GpuSyncError into SessionError | retire when projection compile and its failure contract are in-crate only | kernel_surface.txt |
 | decision_ingress | authority-export | OC-K-DECISION-INGRESS-0 sealed decision ingress module | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |
 | DecisionIngressError | authority-export | OC-K-DECISION-INGRESS-0 decision ingress error type | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |
 | DEFAULT_EMISSION_CAPACITY | surface-inert | Inert public kernel constant | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |
