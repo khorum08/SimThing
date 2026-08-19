@@ -65,7 +65,7 @@ test-side sequential-row mutant changes recipients. Persistence observes
 
 | Landed mechanism | Ready surface | Promotion blocker |
 |---|---|---|
-| unresolved-demand EML→CostBand overlay persistence | `UnresolvedDemandObservation` + `fund_unresolved_persistence` | DA must author the companion `scripts/ci/allow/contention_mechanisms.txt` row at graduation under ruling `5337607437`; coding intentionally did not edit that registry. |
+| unresolved-demand EML→CostBand overlay persistence | `UnresolvedDemandObservation` + `fund_unresolved_persistence` | DA must author the companion `scripts/ci/allow/contention_mechanisms.txt` row at rung close; governing DA ruling is Board comment `5337607437`; coding intentionally did not edit that registry. |
 
 No other persistence or attrition mechanism landed.
 
