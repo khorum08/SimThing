@@ -150,5 +150,4 @@ pub fn spawn_aa_test_pattern_root(
 mod tests {
     use super::*;
     use bevy::render::mesh::VertexAttributeValues;
-
 }

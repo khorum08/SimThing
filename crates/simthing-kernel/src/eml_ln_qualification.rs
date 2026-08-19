@@ -69,11 +69,21 @@ mod tests {
             EML_LN_QUALIFIED_ALGORITHM_IDENTITY,
             "pinned LN sequence/table drifted; exhaustive artifacts are STALE — requalify locally"
         );
-        assert_eq!(simthing_core::eml_opcode::LN, 27, "LN opcode value is pinned");
+        assert_eq!(
+            simthing_core::eml_opcode::LN,
+            27,
+            "LN opcode value is pinned"
+        );
         assert_eq!(eml_ln::EML_LN_DOMAIN_SIZE, EML_LN_EXHAUSTIVE_DOMAIN_SIZE);
         for toolchain in EML_LN_CERTIFIED_TOOLCHAINS {
-            assert_eq!(toolchain.interpreted_replay_digest, EML_LN_EXHAUSTIVE_REFERENCE_DIGEST);
-            assert_eq!(toolchain.jit_replay_digest, EML_LN_EXHAUSTIVE_REFERENCE_DIGEST);
+            assert_eq!(
+                toolchain.interpreted_replay_digest,
+                EML_LN_EXHAUSTIVE_REFERENCE_DIGEST
+            );
+            assert_eq!(
+                toolchain.jit_replay_digest,
+                EML_LN_EXHAUSTIVE_REFERENCE_DIGEST
+            );
         }
     }
 

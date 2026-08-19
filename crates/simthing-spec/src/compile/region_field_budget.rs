@@ -138,5 +138,4 @@ pub fn estimate_region_field_budget(
 #[cfg(test)]
 mod unit_tests {
     use super::*;
-
 }

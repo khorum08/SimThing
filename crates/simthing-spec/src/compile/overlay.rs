@@ -148,13 +148,9 @@ fn validate_evaluation_admission(spec: &OverlaySpec) -> Result<(), SpecError> {
     let mut visited = BTreeSet::new();
     let mut stack = Vec::new();
     for node in outgoing.keys().copied().collect::<Vec<_>>() {
-        if let Some(cycle) = find_current_cycle(
-            node,
-            &outgoing,
-            &mut visiting,
-            &mut visited,
-            &mut stack,
-        ) {
+        if let Some(cycle) =
+            find_current_cycle(node, &outgoing, &mut visiting, &mut visited, &mut stack)
+        {
             return Err(evaluation_error(
                 spec,
                 format!(

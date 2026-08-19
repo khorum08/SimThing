@@ -958,8 +958,8 @@ fn execution_layout(session: &SimSession) -> (ArenaTreeLayout, NodeColumnRefs) {
         .registry
         .id_of("core", "food_flow")
         .expect("food_flow");
-    let cols = resolve_node_columns_for_property(&session.proto.registry, flow_id, "food")
-        .expect("cols");
+    let cols =
+        resolve_node_columns_for_property(&session.proto.registry, flow_id, "food").expect("cols");
     let layout = build_execution_plan(&session.proto.registry, &session.spec_state.arena_registry)
         .expect("plan")
         .arenas

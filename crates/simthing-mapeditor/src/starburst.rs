@@ -117,5 +117,4 @@ pub fn generate_star_circle_image(size: u32) -> Image {
 #[cfg(test)]
 mod tests {
     use super::*;
-
 }

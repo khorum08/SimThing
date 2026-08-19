@@ -184,8 +184,7 @@ fn same_key_burst_coalesces_exactly_conserves_and_replay_mutants_red() {
     assert!(rejected_schedule.entries().is_empty());
 
     let out_of_order = products_at([5, 3]);
-    let mut out_of_order_seam =
-        AsyncOwnerChannelRfSeam::admit(AuthoredSeamStaleness::new(3));
+    let mut out_of_order_seam = AsyncOwnerChannelRfSeam::admit(AuthoredSeamStaleness::new(3));
     out_of_order_seam
         .enqueue_reduce_up(&out_of_order[0])
         .unwrap();

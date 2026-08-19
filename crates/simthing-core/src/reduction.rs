@@ -74,5 +74,4 @@ impl ReductionRule {
 #[cfg(test)]
 mod tests {
     use super::*;
-
 }

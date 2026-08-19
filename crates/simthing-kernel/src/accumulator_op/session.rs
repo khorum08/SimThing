@@ -3124,7 +3124,7 @@ mod tests {
         (
             "simthing-driver/src/resource_economy_burn_in.rs",
             "push_emissions_into_production_egress",
-            "session.push_emissions_into_production_egress(&state.ctx, &mut state.production_event_egress)?;",
+            ".push_emissions_into_production_egress(&state.ctx, &mut state.production_event_egress)?;",
         ),
         (
             "simthing-driver/src/resource_economy_burn_in.rs",
@@ -3384,20 +3384,26 @@ mod tests {
             env!("CARGO_MANIFEST_DIR"),
             "/../simthing-driver/src/resource_economy_burn_in.rs"
         ));
+        // Collapse whitespace before source-shape checks: rustfmt may break a
+        // method chain across lines, which would otherwise let a swallowed
+        // Result slip past the negative check and break the order discipline
+        // search. Formatting must not weaken a sealed-door census.
+        let burn_in_flat = burn_in.split_whitespace().collect::<Vec<_>>().join(" ");
         assert!(
             burn_in.contains(".push_emissions_into_production_egress(") && burn_in.contains("?"),
             "burn-in must propagate production egress Result"
         );
         assert!(
-            !burn_in.contains("let _ = session.push_emissions_into_production_egress"),
+            !burn_in_flat.contains("let _ = session .push_emissions_into_production_egress")
+                && !burn_in_flat.contains("let _ = session.push_emissions_into_production_egress"),
             "burn-in must not swallow production egress Result"
         );
         // Order discipline: ring admit line appears before parity readback line.
-        let push_at = burn_in
-            .find("session.push_emissions_into_production_egress")
+        let push_at = burn_in_flat
+            .find(".push_emissions_into_production_egress")
             .expect("burn-in push");
-        let read_at = burn_in
-            .find("session.readback_emissions")
+        let read_at = burn_in_flat
+            .find(".readback_emissions")
             .expect("burn-in parity readback");
         assert!(
             push_at < read_at,

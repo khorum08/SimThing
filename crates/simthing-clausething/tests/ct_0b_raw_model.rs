@@ -51,4 +51,3 @@ fn parse_matches_json_golden() {
         assert_eq!(actual, expected, "JSON golden mismatch for {name}");
     }
 }
-

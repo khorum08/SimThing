@@ -3,14 +3,15 @@
 use simthing_core::{
     derive_exact_anchor_remaps, validate_anchor_remap_for_encode,
     validate_exact_anchor_remap_endpoints, AnchorLocusRemap, AnchorRemapOperation,
-    AnchorRemapSection, AnchoredLocusMap, ColumnIndex, DimensionRegistry, PropertyAdmissionDisposition,
-    RemapKey, SimProperty, SimPropertyId, SimThing, SimThingId, SimThingKind, SlotIndex,
+    AnchorRemapSection, AnchoredLocusMap, ColumnIndex, DimensionRegistry,
+    PropertyAdmissionDisposition, RemapKey, SimProperty, SimPropertyId, SimThing, SimThingId,
+    SimThingKind, SlotIndex,
 };
 use simthing_gpu::{
     apply_band_crossing_deltas_from_fused_emissions, cpu_oracle_band_crossing_deltas,
-    AccumulatorOpSession, BandCrossingDirection, GpuContext, PackedThresholdUpload,
-    SlotAllocator, ThresholdRegistration, DIR_DOWNWARD, DIR_UPWARD, THRESH_BUF_VALUES,
-    set_debug_readback_allowed,
+    set_debug_readback_allowed, AccumulatorOpSession, BandCrossingDirection, GpuContext,
+    PackedThresholdUpload, SlotAllocator, ThresholdRegistration, DIR_DOWNWARD, DIR_UPWARD,
+    THRESH_BUF_VALUES,
 };
 use simthing_sim::{
     gate_structural_gpu_encode, BoundaryDeltaEntry, ReplayDriver, ReplayFrame, ReplaySnapshot,
@@ -62,9 +63,8 @@ fn rising_falling_exact_edge_no_crossing_and_multi_edge_oracle() {
     // Rising multi-edge jump 0.5 → 2.5 crosses both upward edges.
     let prev = [0.5f32, 6.0];
     let curr = [2.5f32, 6.0];
-    let rising = cpu_oracle_band_crossing_deltas(
-        &prev, &curr, &[], &[], 2, &regs, &registry, &allocator,
-    );
+    let rising =
+        cpu_oracle_band_crossing_deltas(&prev, &curr, &[], &[], 2, &regs, &registry, &allocator);
     assert_eq!(rising.len(), 2);
     assert_eq!(rising[0].direction(), BandCrossingDirection::Rising);
     assert_eq!(rising[1].direction(), BandCrossingDirection::Rising);
@@ -106,7 +106,14 @@ fn rising_falling_exact_edge_no_crossing_and_multi_edge_oracle() {
     let prev_nc = [0.0f32, 6.0];
     let curr_nc = [0.5f32, 5.5];
     let none = cpu_oracle_band_crossing_deltas(
-        &prev_nc, &curr_nc, &[], &[], 2, &regs, &registry, &allocator,
+        &prev_nc,
+        &curr_nc,
+        &[],
+        &[],
+        2,
+        &regs,
+        &registry,
+        &allocator,
     );
     assert!(none.is_empty());
 }
@@ -134,9 +141,8 @@ fn unobserved_exclusion_without_caller_column_filter() {
     }];
     let prev = [0.0f32];
     let curr = [2.0f32];
-    let deltas = cpu_oracle_band_crossing_deltas(
-        &prev, &curr, &[], &[], 1, &regs, &registry, &allocator,
-    );
+    let deltas =
+        cpu_oracle_band_crossing_deltas(&prev, &curr, &[], &[], 1, &regs, &registry, &allocator);
     assert!(deltas.is_empty());
 }
 
@@ -375,9 +381,7 @@ fn gpu_multi_edge_band_delta_boundary_replay_transport() {
     let n_slots = 1u32;
     let n_dims = 1u32;
     let (registry, allocator) = anchored_fixture(n_slots, n_dims as usize);
-    let owner = allocator
-        .owner_of(SlotIndex::new(0))
-        .expect("slot 0 owner");
+    let owner = allocator.owner_of(SlotIndex::new(0)).expect("slot 0 owner");
     let prop = SimPropertyId(0);
     let regs = [
         ThresholdRegistration {
@@ -452,7 +456,10 @@ fn gpu_multi_edge_band_delta_boundary_replay_transport() {
         &registry,
         &allocator,
     );
-    assert_eq!(gpu_deltas, cpu_deltas, "GPU-minted deltas must agree with CPU oracle");
+    assert_eq!(
+        gpu_deltas, cpu_deltas,
+        "GPU-minted deltas must agree with CPU oracle"
+    );
 
     // GPU-derived deltas through BoundaryDeltaEntry JSON → replay retention.
     let root = SimThing::new(SimThingKind::GameSession, 0);

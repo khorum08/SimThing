@@ -266,5 +266,4 @@ mod tests {
             links: Vec::new(),
         }
     }
-
 }

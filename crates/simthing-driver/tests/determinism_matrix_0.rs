@@ -13,25 +13,22 @@ use simthing_core::{
     SimThingKind, SubFieldRole, TransformOp,
 };
 use simthing_gpu::{plan_overlay_orderband, OverlayDelta, OverlayOrderBandPlan, SlotDeltaRange};
-use simthing_sim::{
-    BoundaryDeltaEntry, ReplayDriver, ReplayFrame, ReplaySnapshot, SimRuntimeTree,
-};
+use simthing_sim::{BoundaryDeltaEntry, ReplayDriver, ReplayFrame, ReplaySnapshot, SimRuntimeTree};
 use simthing_spec::designer_admission::{
     mobility_alloc0_layout_checksum_cpu, plan_mobility_alloc0, MobilityAlloc0BlockSpec,
-    MobilityAlloc0BoundaryEvent, MobilityAlloc0BoundaryEventKind, MobilityAlloc0ForbiddenPathRequests,
-    MobilityAlloc0ParentKey, MobilityAlloc0PlanInput,
+    MobilityAlloc0BoundaryEvent, MobilityAlloc0BoundaryEventKind,
+    MobilityAlloc0ForbiddenPathRequests, MobilityAlloc0ParentKey, MobilityAlloc0PlanInput,
 };
 use simthing_spec::{
     apply_owner_silo_runtime_disburse_down_cpu, compile_eml_gadget,
     deserialize_mobility_scenario0_packet_ron, serialize_mobility_scenario0_packet_ron,
     CompiledEmlGadget, EmlGadgetCompileOptions, EmlGadgetInstanceSpec, EmlGadgetKind,
-    MobilityAllocationBounds,
-    MobilityBlockadeSemantics, MobilityIdentityBoundary, MobilityIdentityChannelBudget,
-    MobilityOwnerColumn, MobilityOwnerRelationDiscipline, MobilityOwnerRelationKind,
-    MobilityQuantityClasses, MobilityRoutingMode, MobilityRoutingPolicy, MobilityScenario0GuardrailRequests,
-    MobilityScenario0Packet, MobilityScenario0Status, MobilitySoakProfile, MobilitySupplyScope,
-    MobilityTheaterScale, MobilityTheaterShape, OwnerRef, ResourceKey,
-    RuntimeOwnerSiloDemandBucket, RuntimeOwnerSiloDisburseDownResult,
+    MobilityAllocationBounds, MobilityBlockadeSemantics, MobilityIdentityBoundary,
+    MobilityIdentityChannelBudget, MobilityOwnerColumn, MobilityOwnerRelationDiscipline,
+    MobilityOwnerRelationKind, MobilityQuantityClasses, MobilityRoutingMode, MobilityRoutingPolicy,
+    MobilityScenario0GuardrailRequests, MobilityScenario0Packet, MobilityScenario0Status,
+    MobilitySoakProfile, MobilitySupplyScope, MobilityTheaterScale, MobilityTheaterShape, OwnerRef,
+    ResourceKey, RuntimeOwnerSiloDemandBucket, RuntimeOwnerSiloDisburseDownResult,
     RuntimeOwnerSiloWritebackResult, ScopeId, PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY,
 };
 
@@ -128,10 +125,7 @@ fn inline_replay_bundle() -> (ReplaySnapshot, ReplayFrame, OverlayId) {
         day: 1,
         entries: vec![
             BoundaryDeltaEntry::OverlayAttached { target, overlay },
-            BoundaryDeltaEntry::OverlaySuspended {
-                target,
-                overlay_id,
-            },
+            BoundaryDeltaEntry::OverlaySuspended { target, overlay_id },
         ],
         shadow_values: None,
         spec_entries: Vec::new(),
@@ -140,7 +134,11 @@ fn inline_replay_bundle() -> (ReplaySnapshot, ReplayFrame, OverlayId) {
     (snapshot, frame, overlay_id)
 }
 
-fn replay_fingerprint(driver: &ReplayDriver, target: simthing_core::SimThingId, overlay_id: OverlayId) -> (u32, bool, bool) {
+fn replay_fingerprint(
+    driver: &ReplayDriver,
+    target: simthing_core::SimThingId,
+    overlay_id: OverlayId,
+) -> (u32, bool, bool) {
     (
         driver.day,
         driver
@@ -201,8 +199,11 @@ fn mutant_plan_overlay_sort_by_value(
         let start = range.offset as usize;
         let end = (range.offset + range.length) as usize;
         if end <= reordered.len() {
-            reordered[start..end]
-                .sort_by(|a, b| a.value.partial_cmp(&b.value).unwrap_or(std::cmp::Ordering::Equal));
+            reordered[start..end].sort_by(|a, b| {
+                a.value
+                    .partial_cmp(&b.value)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            });
         }
     }
     plan_overlay_orderband(&reordered, ranges, n_slots)
@@ -278,7 +279,9 @@ fn equal_claim_demands() -> (
     (writeback, demands)
 }
 
-fn allocation_fingerprint(report: &[RuntimeOwnerSiloDisburseDownResult]) -> Vec<(Option<u32>, u32)> {
+fn allocation_fingerprint(
+    report: &[RuntimeOwnerSiloDisburseDownResult],
+) -> Vec<(Option<u32>, u32)> {
     report
         .iter()
         .flat_map(|r| {
@@ -312,10 +315,10 @@ fn ordering_owner_silo_tiebreak_path(plant_defect: bool) -> bool {
     let mut reversed = demands.clone();
     reversed.reverse();
     if !plant_defect {
-        let a = apply_owner_silo_runtime_disburse_down_cpu(&writeback, &demands)
-            .expect("disburse a");
-        let b = apply_owner_silo_runtime_disburse_down_cpu(&writeback, &reversed)
-            .expect("disburse b");
+        let a =
+            apply_owner_silo_runtime_disburse_down_cpu(&writeback, &demands).expect("disburse a");
+        let b =
+            apply_owner_silo_runtime_disburse_down_cpu(&writeback, &reversed).expect("disburse b");
         return allocation_fingerprint(&a) == allocation_fingerprint(&b)
             && a[0].allocations[0].source_simthing_id_raw == Some(1)
             && a[0].allocations[0].allocated == 20

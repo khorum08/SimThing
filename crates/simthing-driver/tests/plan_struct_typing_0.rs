@@ -1,15 +1,15 @@
 //! Driver referee: NodeColumnRefs carries ColumnIndex end-to-end (no remint).
 
+use simthing_core::SimPropertyId;
 use simthing_core::{
     AccumulatorOp, AccumulatorRole, AccumulatorSpec, ClampBehavior, ColumnIndex, CombineFn,
     ConsumeMode, GateSpec, LogTier, PropertyColumnRange, PropertyLayout, ScaleSpec, SlotIndex,
     SourceSpec, SubFieldRole, SubFieldSpec,
 };
-use simthing_driver::arena_hierarchy::{resolve_node_columns, NodeColumnRefs};
 use simthing_driver::arena_allocation_plan::plan_arena_allocation;
 use simthing_driver::arena_hierarchy::{build_custom_layout, HierarchyNode};
+use simthing_driver::arena_hierarchy::{resolve_node_columns, NodeColumnRefs};
 use simthing_driver::arena_registry::GpuArenaDescriptor;
-use simthing_core::SimPropertyId;
 
 fn flow_layout() -> PropertyLayout {
     let arena = "food".to_string();
@@ -190,7 +190,10 @@ fn arena_plan_ops_carry_resolved_column_index_without_remint() {
             matches!(
                 op.source,
                 SourceSpec::SlotValue { col, .. } if col == cols.weight_col
-            ) || op.targets.iter().any(|(_, c)| *c == cols.allocated_flow_col)
+            ) || op
+                .targets
+                .iter()
+                .any(|(_, c)| *c == cols.allocated_flow_col)
         })
         .collect();
     assert!(

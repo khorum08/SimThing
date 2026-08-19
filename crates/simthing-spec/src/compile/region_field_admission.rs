@@ -146,15 +146,14 @@ fn field_err(field: &str, reason: impl Into<String>) -> SpecError {
 }
 
 /// Bounded authoring→compiled conversion: authored `u32` → typed [`ColumnIndex`].
-fn admit_authored_col(
-    field: &str,
-    raw: u32,
-    n_dims: u32,
-) -> Result<ColumnIndex, SpecError> {
+fn admit_authored_col(field: &str, raw: u32, n_dims: u32) -> Result<ColumnIndex, SpecError> {
     ColumnIndex::try_from_admitted_authored(raw, n_dims).map_err(|e| {
         field_err(
             field,
-            format!("authored column {} out of range for n_dims {}", e.raw, e.bound),
+            format!(
+                "authored column {} out of range for n_dims {}",
+                e.raw, e.bound
+            ),
         )
     })
 }

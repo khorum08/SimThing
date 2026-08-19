@@ -66,9 +66,7 @@ pub enum AsyncStalenessError {
     SlotOutOfRange(u32),
     #[error("staleness column admission rejected: n_slots must be > 0")]
     EmptyColumn,
-    #[error(
-        "STEAD values plane length {actual} != n_slots ({n_slots}) × n_dims ({n_dims})"
-    )]
+    #[error("STEAD values plane length {actual} != n_slots ({n_slots}) × n_dims ({n_dims})")]
     ValuesPlaneLengthMismatch {
         actual: usize,
         n_slots: usize,
@@ -425,13 +423,9 @@ mod column_proofs {
         let mut slots = BTreeMap::new();
         slots.insert(seed, SlotIndex::new(0));
         let mut registry = empty_registry();
-        let mut col = AsyncStalenessColumn::admit(
-            &mut registry,
-            1,
-            [seed],
-            AuthoredStalenessHorizon::new(0),
-        )
-        .expect("admit registered seed");
+        let mut col =
+            AsyncStalenessColumn::admit(&mut registry, 1, [seed], AuthoredStalenessHorizon::new(0))
+                .expect("admit registered seed");
         let mut plane = stead_plane(&col);
         let parent = GenerationStamp::new(10);
         let empty_latest = BTreeMap::new();

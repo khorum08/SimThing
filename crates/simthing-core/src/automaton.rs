@@ -44,13 +44,11 @@ pub enum OverlayDeliveryError {
 
 fn is_runtime_dispatch_mint(overlay: &Overlay) -> bool {
     use crate::overlay::{OverlayKind, OverlaySource};
-    matches!(
-        overlay.source,
-        OverlaySource::Event | OverlaySource::System
-    ) && matches!(
-        overlay.kind,
-        OverlayKind::Instruction | OverlayKind::Custom(_)
-    )
+    matches!(overlay.source, OverlaySource::Event | OverlaySource::System)
+        && matches!(
+            overlay.kind,
+            OverlayKind::Instruction | OverlayKind::Custom(_)
+        )
 }
 
 /// Deliver a consumed/deficit-driven directive through the existing tree path.

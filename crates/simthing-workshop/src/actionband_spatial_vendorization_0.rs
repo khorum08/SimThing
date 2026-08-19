@@ -105,9 +105,7 @@ impl SpatialVendorizationStep {
         let draw = cost_band_quantize(commitment.value(), unit_cost, is_sink, throttle)
             .map_err(|error| SpatialVendorizationError::CostBand(error.to_string()))?;
         if is_sink && draw.n != 1 {
-            return Err(SpatialVendorizationError::CostBandDidNotAuthorize {
-                completed: draw.n,
-            });
+            return Err(SpatialVendorizationError::CostBandDidNotAuthorize { completed: draw.n });
         }
         if !is_sink && (draw.n != 0 || draw.r.to_bits() != draw.v.to_bits()) {
             return Err(SpatialVendorizationError::FreeRepositionConsumed);
@@ -287,7 +285,9 @@ fn resolve_authoritative_parent(
 
 /// Mapping validity: unique sealed keys, unique logical cells, finite coords.
 /// Deliberately does **not** require `sealed_slot == row * width + col`.
-fn validate_admitted_mapping(cells: &[AdmittedTopologyCell]) -> Result<(), SpatialVendorizationError> {
+fn validate_admitted_mapping(
+    cells: &[AdmittedTopologyCell],
+) -> Result<(), SpatialVendorizationError> {
     if cells.is_empty() {
         return Err(SpatialVendorizationError::InvalidFieldTopology);
     }
@@ -414,7 +414,10 @@ mod pure_unit {
         let resolved = resolve_authoritative_cell(&cells, 777, 0).unwrap();
         assert_eq!(resolved.grid_row, 1);
         assert_eq!(resolved.grid_col, 0);
-        assert_ne!(resolved.sealed_slot, resolved.grid_row * 2 + resolved.grid_col);
+        assert_ne!(
+            resolved.sealed_slot,
+            resolved.grid_row * 2 + resolved.grid_col
+        );
         assert_eq!(manhattan(a, c), 1);
     }
 }

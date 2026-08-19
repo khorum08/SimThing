@@ -46,8 +46,10 @@ const MINIMAL_LEGACY_WORLD_ROOT: &str = r#"{
 
 #[test]
 fn studio_legacy_world_root_report_is_legacy_compatibility() {
-    let report =
-        studio_ingest_scenario_text_for_report("legacy_world_root_minimal", MINIMAL_LEGACY_WORLD_ROOT);
+    let report = studio_ingest_scenario_text_for_report(
+        "legacy_world_root_minimal",
+        MINIMAL_LEGACY_WORLD_ROOT,
+    );
     assert_ne!(report.classification, "Rejected");
     assert!(report.legacy_world_root);
     assert_eq!(

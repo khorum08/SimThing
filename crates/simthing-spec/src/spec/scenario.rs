@@ -871,9 +871,7 @@ pub fn parse_color_rgb_text(text: &str) -> Result<(u8, u8, u8), String> {
     }
     let body = if let Some(hex) = trimmed.strip_prefix('#') {
         if hex.len() != 6 {
-            return Err(format!(
-                "color_rgb hex must be #RRGGBB, got `{trimmed}`"
-            ));
+            return Err(format!("color_rgb hex must be #RRGGBB, got `{trimmed}`"));
         }
         let r = u8::from_str_radix(&hex[0..2], 16)
             .map_err(|_| format!("color_rgb hex invalid R in `{trimmed}`"))?;

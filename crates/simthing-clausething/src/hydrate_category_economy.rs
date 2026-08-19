@@ -1516,11 +1516,7 @@ fn parse_recipe_block(property: &RawProperty) -> Result<ResourceRecipeSpec, Hydr
         target_role: amount_role(),
         target_host_entity: None,
         target_host_span_token: None,
-        output_coefficient: require_field(
-            output_coefficient,
-            "output_coefficient",
-            property,
-        )?,
+        output_coefficient: require_field(output_coefficient, "output_coefficient", property)?,
         order_band: require_field(order_band, "order_band", property)?,
         throttle_hint_max_per_tick: require_field(throttle, "throttle", property)?,
     })

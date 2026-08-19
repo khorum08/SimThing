@@ -573,5 +573,4 @@ mod tests {
         }
         pixels
     }
-
 }

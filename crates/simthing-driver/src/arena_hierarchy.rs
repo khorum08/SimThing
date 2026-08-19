@@ -1,8 +1,8 @@
 //! E-11 — arena participant hierarchy and band layout (driver-only).
 
 use simthing_core::{
-    expand_arena_internal_columns, AccumulatorRole, ColumnIndex, DimensionRegistry, PropertyLayout,
-    PropertyColumnRange, SimPropertyId, SimThingId, SubFieldRole,
+    expand_arena_internal_columns, AccumulatorRole, ColumnIndex, DimensionRegistry,
+    PropertyColumnRange, PropertyLayout, SimPropertyId, SimThingId, SubFieldRole,
 };
 use std::collections::HashMap;
 use thiserror::Error;
@@ -205,12 +205,12 @@ pub fn resolve_node_columns(
     };
     let arena = arena_name.to_string();
 
-    let intrinsic_flow_col =
-        find_role_col(&range, &expanded, |r| matches!(r, AccumulatorRole::IntrinsicFlow)).ok_or_else(
-            || HierarchyError::MissingIntrinsicFlow {
-                arena: arena.clone(),
-            },
-        )?;
+    let intrinsic_flow_col = find_role_col(&range, &expanded, |r| {
+        matches!(r, AccumulatorRole::IntrinsicFlow)
+    })
+    .ok_or_else(|| HierarchyError::MissingIntrinsicFlow {
+        arena: arena.clone(),
+    })?;
     let allocated_flow_col = find_role_col(
         &range,
         &expanded,
@@ -233,8 +233,8 @@ pub fn resolve_node_columns(
             .as_ref()
             .is_some_and(|spec| matches!(&spec.role, AccumulatorRole::Balance(_)))
     });
-    let balance_col = balance_subfield
-        .and_then(|subfield| range.col_for_role(&subfield.role, &expanded));
+    let balance_col =
+        balance_subfield.and_then(|subfield| range.col_for_role(&subfield.role, &expanded));
     let balance_governing_col = balance_subfield
         .and_then(|subfield| subfield.governed_by.as_ref())
         .and_then(|role| range.col_for_role(role, &expanded));

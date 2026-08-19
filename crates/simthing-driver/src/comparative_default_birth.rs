@@ -56,9 +56,7 @@ pub struct SealedFieldTopology {
 impl SealedFieldTopology {
     /// Capture neighbor rows from public grid metadata at the same site that
     /// already holds the admitted grid adjacency (5.8 grid seam).
-    pub fn from_grid_adjacency(
-        adjacency: FieldAdjacency,
-    ) -> Result<Self, FieldPlanAdmissionError> {
+    pub fn from_grid_adjacency(adjacency: FieldAdjacency) -> Result<Self, FieldPlanAdmissionError> {
         let neighbor_slots = neighbor_slots_from_grid(&adjacency)
             .ok_or(FieldPlanAdmissionError::GridNeighborCaptureUnavailable)?;
         if neighbor_slots.len() as u32 != adjacency.slots() {
@@ -198,16 +196,17 @@ pub fn admit_field_plan_from_region_fields(
         let config = compiled_stencil_to_gpu_config(&preview.stencil);
         let registrations = compile_structured_field_sweeps(&config)?;
         // Typed columns from admitted stencil (not raw u32 mint).
-        let value_col =
-            matrix_value_col_for_field(spec, &preview.stencil, &registrations)?;
+        let value_col = matrix_value_col_for_field(spec, &preview.stencil, &registrations)?;
         let adjacency = registrations
             .first()
             .map(|r| r.adjacency().clone())
-            .ok_or_else(|| FieldPlanAdmissionError::AmbiguousOrMissingMatrixValueColumn {
-                name: spec.name.clone(),
-                target_col: spec.target_col,
-                source_col: spec.source_col,
-            })?;
+            .ok_or_else(
+                || FieldPlanAdmissionError::AmbiguousOrMissingMatrixValueColumn {
+                    name: spec.name.clone(),
+                    target_col: spec.target_col,
+                    source_col: spec.source_col,
+                },
+            )?;
         let order = authored_order as u32;
         staged.push((
             order,
@@ -301,11 +300,13 @@ fn matrix_value_col_for_field(
     // Incidental registration order must not change the unique binding.
     match (forward, reverse) {
         (Ok(a), Ok(b)) if a == b => Ok(a),
-        _ => Err(FieldPlanAdmissionError::AmbiguousOrMissingMatrixValueColumn {
-            name: spec.name.clone(),
-            target_col: spec.target_col,
-            source_col: spec.source_col,
-        }),
+        _ => Err(
+            FieldPlanAdmissionError::AmbiguousOrMissingMatrixValueColumn {
+                name: spec.name.clone(),
+                target_col: spec.target_col,
+                source_col: spec.source_col,
+            },
+        ),
     }
 }
 

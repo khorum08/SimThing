@@ -190,7 +190,13 @@ fn resolve_anchored_identity(
     allocator: &SlotAllocator,
     slot: u32,
     col: u32,
-) -> Option<(SimThingId, SimPropertyId, SubFieldRole, SlotIndex, ColumnIndex)> {
+) -> Option<(
+    SimThingId,
+    SimPropertyId,
+    SubFieldRole,
+    SlotIndex,
+    ColumnIndex,
+)> {
     let slot_idx = SlotIndex::new(slot);
     let sim_thing_id = allocator.owner_of(slot_idx)?;
     let (property_id, offset) = *registry.column_owners.get(col as usize)?;
@@ -384,7 +390,14 @@ mod tests {
         let prev = [5.0f32];
         let curr = [5.0f32];
         let deltas = cpu_oracle_band_crossing_deltas(
-            &prev, &curr, &[], &[], 1, &regs, &registry, &allocator,
+            &prev,
+            &curr,
+            &[],
+            &[],
+            1,
+            &regs,
+            &registry,
+            &allocator,
         );
         assert!(deltas.is_empty());
     }
@@ -413,7 +426,14 @@ mod tests {
         let prev = [0.5f32];
         let curr = [2.5f32];
         let deltas = cpu_oracle_band_crossing_deltas(
-            &prev, &curr, &[], &[], 1, &regs, &registry, &allocator,
+            &prev,
+            &curr,
+            &[],
+            &[],
+            1,
+            &regs,
+            &registry,
+            &allocator,
         );
         assert_eq!(deltas.len(), 2);
         assert_eq!(deltas[0].reg_idx(), 0);
@@ -446,7 +466,14 @@ mod tests {
         let prev = [0.0f32];
         let curr = [2.0f32];
         let deltas = cpu_oracle_band_crossing_deltas(
-            &prev, &curr, &[], &[], 1, &regs, &registry, &allocator,
+            &prev,
+            &curr,
+            &[],
+            &[],
+            1,
+            &regs,
+            &registry,
+            &allocator,
         );
         assert!(deltas.is_empty());
     }

@@ -4,16 +4,17 @@
 //! capabilities — tests and small validation helpers only.
 
 use simthing_clausething::{
-    MAPGEN_MF_DEFAULT_HORIZON, MAPGEN_MF_MAX_HORIZON, MapGenLatticeOptions,
-    MapGenMovementFrontOptions, assert_allowed_simthing_kinds, collect_gridcell_location_ids,
+    assert_allowed_simthing_kinds, collect_gridcell_location_ids,
     generate_default_mapgen_links_enrollment, generate_default_mapgen_movement_front_authoring,
     generate_default_mapgen_palma_feedstock, generate_mapgen_lattice_hierarchy,
     generate_mapgen_movement_front_authoring, parse_mapgen_neutral_document,
     validate_l1_operator_locality, validate_one_system_per_gridcell, validate_options,
+    MapGenLatticeOptions, MapGenMovementFrontOptions, MAPGEN_MF_DEFAULT_HORIZON,
+    MAPGEN_MF_MAX_HORIZON,
 };
 use simthing_core::SimThingKind;
 use simthing_spec::{
-    MappingExecutionProfile, RegionFieldOperatorSpec, compile_region_field_preview,
+    compile_region_field_preview, MappingExecutionProfile, RegionFieldOperatorSpec,
 };
 
 const RAW_FIXTURE: &str = include_str!("fixtures/mapgen/tiny_pentad_hub_slice_raw.clause");

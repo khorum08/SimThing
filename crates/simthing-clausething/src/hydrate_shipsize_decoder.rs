@@ -8,13 +8,12 @@
 use std::collections::BTreeMap;
 
 use simthing_core::{
-    eml_nodes, EmlNodeGpu, OverlayKind, OverlayLifecycle, OverlaySource, SubFieldRole,
-    TransformOp,
+    eml_nodes, EmlNodeGpu, OverlayKind, OverlayLifecycle, OverlaySource, SubFieldRole, TransformOp,
 };
 use simthing_spec::spec::install_target::InstallTargetSpec;
 use simthing_spec::spec::resource_flow::{
-    GatedRateOpSpec, GatedRateSpec, GatedRateTriggerSpec, RateFormulaOp, RateFormulaOperandSpec,
-    RateFormulaOpSpec, RateFormulaSpec,
+    GatedRateOpSpec, GatedRateSpec, GatedRateTriggerSpec, RateFormulaOp, RateFormulaOpSpec,
+    RateFormulaOperandSpec, RateFormulaSpec,
 };
 use simthing_spec::spec::script::PropertyKey;
 use simthing_spec::{
@@ -30,13 +29,8 @@ use crate::raw::{RawDocument, RawProperty, RawSpan, RawValue};
 pub const MAX_SHIP_EML_NODES: usize = 32;
 
 /// Closed ship/country modifier attributes admitted by TP-SHIPSIZE-DECODER-0.
-pub const SHIP_MODIFIER_ATTRIBUTES: &[&str] = &[
-    "hull",
-    "weapon_damage",
-    "fire_rate",
-    "upkeep",
-    "naval_cap",
-];
+pub const SHIP_MODIFIER_ATTRIBUTES: &[&str] =
+    &["hull", "weapon_damage", "fire_rate", "upkeep", "naval_cap"];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ShipModifierOp {
@@ -493,7 +487,9 @@ fn property_key_for_attribute(
     properties: &BTreeMap<String, ShipPropertyEntry>,
 ) -> Result<PropertyKey, HydrateError> {
     let entry = properties.get(attribute).ok_or_else(|| {
-        HydrateError::new(format!("no ship_property registered for attribute `{attribute}`"))
+        HydrateError::new(format!(
+            "no ship_property registered for attribute `{attribute}`"
+        ))
     })?;
     Ok(PropertyKey::new(&entry.namespace, &entry.name))
 }
@@ -503,12 +499,14 @@ fn overlay_install_for_key(
     custom_kinds: &BTreeMap<String, String>,
 ) -> InstallTargetSpec {
     match (&decoded.family, decoded.op) {
-        (ShipModifierFamily::Shipsize { class }, ShipModifierOp::Add) => InstallTargetSpec::AllOfKind {
-            kind: custom_kinds
-                .get(class)
-                .cloned()
-                .unwrap_or_else(|| format!("ship_hull_{class}")),
-        },
+        (ShipModifierFamily::Shipsize { class }, ShipModifierOp::Add) => {
+            InstallTargetSpec::AllOfKind {
+                kind: custom_kinds
+                    .get(class)
+                    .cloned()
+                    .unwrap_or_else(|| format!("ship_hull_{class}")),
+            }
+        }
         (ShipModifierFamily::Country, _) => InstallTargetSpec::AllOfKind {
             kind: "Faction".into(),
         },
@@ -550,7 +548,6 @@ fn build_overlay(
         next_dependency_edges: Vec::new(),
 
         source_span_token: None,
-
     })
 }
 
@@ -701,7 +698,6 @@ fn parse_triggered_modifier_block(
         cooldown: None,
         priority: Default::default(),
         install: InstallTargetSpec::SessionRoot,
-
     });
     Ok(())
 }
@@ -834,7 +830,10 @@ fn parse_column_backed_potential(
     let value = read_scalar_text(field, &field.key.text)?;
     if value != "yes" && value != "true" && value != "1" {
         return Err(HydrateError::new_spanned(
-            format!("trigger alias `{}` expects affirmative scalar", field.key.text),
+            format!(
+                "trigger alias `{}` expects affirmative scalar",
+                field.key.text
+            ),
             Some(field.key.span.clone()),
         ));
     }
@@ -1185,7 +1184,9 @@ fn parse_script_value(property: &RawProperty) -> Result<(String, RateFormulaSpec
                         let text = read_scalar_text(entry, "property")?;
                         let Some((namespace, name)) = text.split_once("::") else {
                             return Err(HydrateError::new_spanned(
-                                format!("operand `property` must be `namespace::name`, got `{text}`"),
+                                format!(
+                                    "operand `property` must be `namespace::name`, got `{text}`"
+                                ),
                                 Some(entry.key.span.clone()),
                             ));
                         };
@@ -1215,7 +1216,10 @@ fn parse_script_value(property: &RawProperty) -> Result<(String, RateFormulaSpec
     }
     Ok((
         id.ok_or_else(|| {
-            HydrateError::new_spanned("script_value requires `id`", Some(property.key.span.clone()))
+            HydrateError::new_spanned(
+                "script_value requires `id`",
+                Some(property.key.span.clone()),
+            )
         })?,
         RateFormulaSpec {
             base: base.ok_or_else(|| {

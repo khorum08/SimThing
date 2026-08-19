@@ -160,7 +160,11 @@ mod tests {
             EML_EXP_QUALIFIED_ALGORITHM_IDENTITY,
             "pinned EXP sequence drifted; exhaustive artifacts are STALE — requalify locally"
         );
-        assert_eq!(simthing_core::eml_opcode::EXP, 26, "EXP opcode value is pinned");
+        assert_eq!(
+            simthing_core::eml_opcode::EXP,
+            26,
+            "EXP opcode value is pinned"
+        );
         assert_eq!(eml_exp::EML_EXP_SEQUENCE_VERSION, 1);
         assert!(!EML_EXP_CERTIFIED_TOOLCHAINS.is_empty());
         for toolchain in EML_EXP_CERTIFIED_TOOLCHAINS {
@@ -235,7 +239,11 @@ mod tests {
     #[test]
     fn eml_exp_primitive_0_door_admits_exactly_one_exp_from_pinned_evidence() {
         let mut door = ExactPrimitiveAdmissionDoor::default();
-        assert_eq!(door.admitted_count(), 0, "the exact base admits zero primitives");
+        assert_eq!(
+            door.admitted_count(),
+            0,
+            "the exact base admits zero primitives"
+        );
 
         let determinism = ExactPrimitiveAdmissionDoor::verify_determinism(
             exp_qualified_determinism_evidence(&EML_EXP_CERTIFIED_TOOLCHAINS[0]),

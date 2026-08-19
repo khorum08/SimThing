@@ -126,10 +126,7 @@ impl ColumnIndex {
         bound: u32,
     ) -> Result<Self, AuthoredColumnAdmitError> {
         if bound == 0 || raw >= bound {
-            return Err(AuthoredColumnAdmitError {
-                raw,
-                bound,
-            });
+            return Err(AuthoredColumnAdmitError { raw, bound });
         }
         Ok(Self(raw as usize))
     }

@@ -1,14 +1,16 @@
 pub mod action_band;
+pub mod async_staleness;
 pub mod capability;
 pub mod channel_key;
 pub mod constrained_clearing;
+pub mod contention_conservation_judge;
 pub mod disruption_readout;
 pub mod domain_pack;
 pub mod effect;
 pub mod eml_gadget;
 pub mod event;
-pub mod fleet_presence;
 pub mod first_slice_scenario;
+pub mod fleet_presence;
 pub mod game_mode;
 pub mod install_target;
 pub mod loaded_scenario_recursive_rf_runtime;
@@ -21,8 +23,6 @@ pub mod local_participant_effects;
 pub mod need_binding;
 pub mod order_weight;
 pub mod overlay;
-pub mod async_staleness;
-pub mod contention_conservation_judge;
 pub mod owner_channel_admission;
 pub mod owner_channel_rf;
 pub mod owner_silo_disburse_down;
@@ -74,6 +74,11 @@ pub use constrained_clearing::{
     ConstrainedClearingResult, ConstrainedGrant, ConstrainedSupply, PersistenceConsequence,
     PersistenceConsequenceError, PersistenceOverlayBinding, UnresolvedDemandObservation,
 };
+pub use contention_conservation_judge::{
+    judge_conservation, ChannelBound, ConservationJudgeReason, ConservationSnapshot,
+    ConservationVerdict, QuantizedChannelObservation, SeamObservation,
+    StemThingPartitionObservation,
+};
 pub use disruption_readout::{
     disruption_readout_snapshot, disruption_readout_snapshot_with_readback,
     AbsentDisruptionAuthorityReadback, DisruptionAuthorityReadback,
@@ -84,11 +89,11 @@ pub use domain_pack::DomainPackSpec;
 pub use effect::EffectSpec;
 pub use eml_gadget::{EmlGadgetInstanceSpec, EmlGadgetStackSpec};
 pub use event::{CooldownSpec, EventKey, EventPriority, EventSpec};
+pub use first_slice_scenario::FirstSliceScenarioSpec;
 pub use fleet_presence::{
     fleet_presence_snapshot, FleetPresenceLocation, FleetPresenceRecord, FleetPresenceSnapshot,
     FleetPresenceSnapshotError, TP_FLEET_HOME_SYSTEM_PROPERTY_ID, TP_FLEET_POSTURE_PROPERTY_ID,
 };
-pub use first_slice_scenario::FirstSliceScenarioSpec;
 pub use game_mode::GameModeSpec;
 pub use install_target::InstallTargetSpec;
 pub use loaded_scenario_recursive_rf_runtime::{
@@ -133,22 +138,31 @@ pub use local_effect_recursive_rf_source::{
     LocalEffectRecursiveSourceError, LocalEffectRecursiveSourceErrorKind, LocalEffectRfSourceMode,
     LocalEffectRfSourceSelection,
 };
-pub use need_binding::{NeedBindingSpec, SemanticPropertyLocusSpec};
-pub use order_weight::OrderWeightClassSpec;
 pub use local_participant_effects::{
     evaluate_local_participant_effects, local_participant_effects_aggregate_totals,
     local_participant_effects_from_allocations, LocalParticipantEffectsDeferral,
     LocalParticipantEffectsDeferralKind, LocalParticipantEffectsError,
     LocalParticipantEffectsErrorKind, LocalParticipantEffectsReport, RuntimeLocalParticipantEffect,
 };
+pub use need_binding::{NeedBindingSpec, SemanticPropertyLocusSpec};
+pub use order_weight::OrderWeightClassSpec;
 pub use overlay::OverlaySpec;
+pub use owner_channel_admission::{
+    admit_intrinsic_owner_channels, IntrinsicOwnerChannelAdmissionStats, IntrinsicOwnerChannelView,
+    OwnerChannelAdmissionError,
+};
+pub use owner_channel_rf::{
+    reconstruct_owner_channel_rf_map, reduce_owner_channel_rf, OwnerChannelRfBucket,
+    OwnerChannelRfCrossingFlow, OwnerChannelRfCrossingResourceFlow, OwnerChannelRfError,
+    OwnerChannelRfErrorKind, OwnerChannelRfOwnAggregate, OwnerChannelRfReduceUpReport,
+    OwnerChannelRfSteadSurface,
+};
 pub use owner_silo_disburse_down::{
     apply_owner_silo_runtime_disburse_down_cpu, owner_silo_demand_aggregate_totals,
     owner_silo_demand_buckets_from_owner_view, owner_silo_demand_buckets_from_planet_child_rf,
-    RuntimeOwnerSiloDemandBucket,
-    RuntimeOwnerSiloDisburseDownAllocation, RuntimeOwnerSiloDisburseDownError,
-    RuntimeOwnerSiloDisburseDownErrorKind, RuntimeOwnerSiloDisburseDownInput,
-    RuntimeOwnerSiloDisburseDownResult,
+    RuntimeOwnerSiloDemandBucket, RuntimeOwnerSiloDisburseDownAllocation,
+    RuntimeOwnerSiloDisburseDownError, RuntimeOwnerSiloDisburseDownErrorKind,
+    RuntimeOwnerSiloDisburseDownInput, RuntimeOwnerSiloDisburseDownResult,
 };
 pub use owner_silo_recursive_rf_source::{
     evaluate_owner_silo_disburse_down_with_rf_source,
@@ -163,21 +177,6 @@ pub use owner_silo_runtime_writeback::{
     read_owner_silo_current_from_owner, runtime_owner_silo_states_from_scenario,
     RuntimeOwnerSiloState, RuntimeOwnerSiloWritebackError, RuntimeOwnerSiloWritebackErrorKind,
     RuntimeOwnerSiloWritebackInput, RuntimeOwnerSiloWritebackResult,
-};
-pub use contention_conservation_judge::{
-    judge_conservation, ChannelBound, ConservationJudgeReason, ConservationSnapshot,
-    ConservationVerdict, QuantizedChannelObservation, SeamObservation,
-    StemThingPartitionObservation,
-};
-pub use owner_channel_rf::{
-    reconstruct_owner_channel_rf_map, reduce_owner_channel_rf, OwnerChannelRfBucket,
-    OwnerChannelRfCrossingFlow, OwnerChannelRfCrossingResourceFlow, OwnerChannelRfError,
-    OwnerChannelRfErrorKind, OwnerChannelRfOwnAggregate, OwnerChannelRfReduceUpReport,
-    OwnerChannelRfSteadSurface,
-};
-pub use owner_channel_admission::{
-    admit_intrinsic_owner_channels, IntrinsicOwnerChannelAdmissionStats,
-    IntrinsicOwnerChannelView, OwnerChannelAdmissionError,
 };
 pub use planet_child_location::{
     all_planet_child_locations, apply_planet_child_location_command, apply_planet_child_metadata,
@@ -209,11 +208,10 @@ pub use recursive_local_rf::{
     recursive_local_rf_participant_rows_from_planet_child_inputs,
     recursive_local_rf_report_matches_planet_child_compatibility_slice,
     recursive_local_rf_report_matches_planet_child_compatibility_slice_from_owner_view,
-    LocalRfArenaKey,
-    LocalRfArenaSettlement, LocalRfChildOutputRow, LocalRfParticipantRow, LocationRfArenaReport,
-    RecursiveLocalRfAuthorityProof, RecursiveLocalRfCompatibilityReport, RecursiveLocalRfDeferral,
-    RecursiveLocalRfDeferralKind, RecursiveLocalRfError, RecursiveLocalRfErrorKind,
-    RecursiveLocalRfEvaluationReport,
+    LocalRfArenaKey, LocalRfArenaSettlement, LocalRfChildOutputRow, LocalRfParticipantRow,
+    LocationRfArenaReport, RecursiveLocalRfAuthorityProof, RecursiveLocalRfCompatibilityReport,
+    RecursiveLocalRfDeferral, RecursiveLocalRfDeferralKind, RecursiveLocalRfError,
+    RecursiveLocalRfErrorKind, RecursiveLocalRfEvaluationReport,
 };
 pub use region_field::{
     ArenaPressureBindingSpec, CommitmentEffectLifecycleSpec, CommitmentEffectSpec,
@@ -252,7 +250,8 @@ pub use runtime_tick_history::{
 };
 pub use scenario::{
     apply_galaxy_map_metadata, apply_gridcell_property_edit, apply_gridcell_role_metadata,
-    apply_owner_entity_metadata, apply_owner_faction_identity_metadata, apply_owner_silo_metadata,
+    apply_owner_entity_metadata, apply_owner_faction_identity_metadata,
+    apply_owner_policy_weight_authority, apply_owner_silo_metadata,
     apply_participant_owner_flow_demand_metadata, apply_participant_owner_flow_metadata,
     apply_participant_owner_flow_resource_key_metadata, apply_scenario_metadata_to_root,
     apply_star_system_display_name_metadata, canonical_scenario_link_key,
@@ -260,48 +259,49 @@ pub use scenario::{
     galaxy_map_display_name, galaxy_map_id, galaxy_map_role, game_session_child,
     game_session_galaxy_map, game_session_galaxy_maps, game_session_owners,
     gridcell_generated_system_id, gridcell_role, gridcell_structural_col, gridcell_structural_row,
-    is_galaxy_map_entity, is_owner_entity_kind, make_galaxy_map, make_owner_entity, owner_archetype,
-    owner_color_index, owner_display_name, owner_entity_id, owner_faction_alliance,
-    owner_faction_color_rgb, owner_faction_display_name, owner_flow_deficit, owner_flow_demand,
-    owner_flow_owner_ref, owner_flow_priority, owner_flow_resource_key, owner_flow_surplus,
-    owner_has_silo_metadata, owner_silo_capacity, owner_silo_current, owner_hosts_policy_weight_authority, owner_policy_weight_authority,
-    apply_owner_policy_weight_authority, owner_silo_marker,
-    parse_color_rgb_text, property_u32, reserve_simthing_ids_from_scenario, resolve_map_container,
-    resolve_map_container_mut, scenario_metadata_seed, scenario_metadata_seed_value,
-    scenario_metadata_string, scenario_metadata_string_value, scenario_metadata_u32,
-    scenario_metadata_u32_value, serialize_scenario_authority, set_galaxy_map_display_name,
-    set_owner_display_name, spatial_authority_root, star_system_display_name,
-    structural_property_value_u32, sync_root_metadata_from_sidecar,
-    sync_sidecar_from_root_metadata, validate_legacy_world_root_compatibility,
-    validate_scenario_game_session_child, validate_scenario_links,
-    validate_scenario_root_authority, validate_session_galaxy_map, validate_session_owner_entities,
-    validate_stead_mapping_consistency, ScenarioEditError, ScenarioLinkError, ScenarioRootError,
-    ScenarioRootValidationMode, ScenarioSerdeError, SimThingScenarioGrid, SimThingScenarioLink,
-    SimThingScenarioProvenance, SimThingScenarioSpec, SimThingStructuralGridFrame,
-    SimThingStructuralGridPlacement, SteadMappingError, GALAXY_CHILD_LOCATION_ROLE_MOON,
-    GALAXY_CHILD_LOCATION_ROLE_PLANET, GALAXY_CHILD_LOCATION_ROLE_PROPERTY_ID,
-    GALAXY_GRIDCELL_ROLE_INERT, GALAXY_GRIDCELL_ROLE_PROPERTY_ID, GALAXY_GRIDCELL_ROLE_STAR_SYSTEM,
+    is_galaxy_map_entity, is_owner_entity_kind, make_galaxy_map, make_owner_entity,
+    owner_archetype, owner_color_index, owner_display_name, owner_entity_id,
+    owner_faction_alliance, owner_faction_color_rgb, owner_faction_display_name,
+    owner_flow_deficit, owner_flow_demand, owner_flow_owner_ref, owner_flow_priority,
+    owner_flow_resource_key, owner_flow_surplus, owner_has_silo_metadata,
+    owner_hosts_policy_weight_authority, owner_policy_weight_authority, owner_silo_capacity,
+    owner_silo_current, owner_silo_marker, parse_color_rgb_text, property_u32,
+    reserve_simthing_ids_from_scenario, resolve_map_container, resolve_map_container_mut,
+    scenario_metadata_seed, scenario_metadata_seed_value, scenario_metadata_string,
+    scenario_metadata_string_value, scenario_metadata_u32, scenario_metadata_u32_value,
+    serialize_scenario_authority, set_galaxy_map_display_name, set_owner_display_name,
+    spatial_authority_root, star_system_display_name, structural_property_value_u32,
+    sync_root_metadata_from_sidecar, sync_sidecar_from_root_metadata,
+    validate_legacy_world_root_compatibility, validate_scenario_game_session_child,
+    validate_scenario_links, validate_scenario_root_authority, validate_session_galaxy_map,
+    validate_session_owner_entities, validate_stead_mapping_consistency, ScenarioEditError,
+    ScenarioLinkError, ScenarioRootError, ScenarioRootValidationMode, ScenarioSerdeError,
+    SimThingScenarioGrid, SimThingScenarioLink, SimThingScenarioProvenance, SimThingScenarioSpec,
+    SimThingStructuralGridFrame, SimThingStructuralGridPlacement, SteadMappingError,
+    GALAXY_CHILD_LOCATION_ROLE_MOON, GALAXY_CHILD_LOCATION_ROLE_PLANET,
+    GALAXY_CHILD_LOCATION_ROLE_PROPERTY_ID, GALAXY_GRIDCELL_ROLE_INERT,
+    GALAXY_GRIDCELL_ROLE_PROPERTY_ID, GALAXY_GRIDCELL_ROLE_STAR_SYSTEM,
     GALAXY_MAP_DISPLAY_NAME_PROPERTY_ID, GALAXY_MAP_ID_PROPERTY_ID, GALAXY_MAP_ROLE_CANONICAL,
     GALAXY_MAP_ROLE_PROPERTY_ID, OWNER_ARCHETYPE_PROPERTY_ID, OWNER_COLOR_INDEX_PROPERTY_ID,
     OWNER_COLOR_RGB_PROPERTY_ID, OWNER_DISPLAY_NAME_PROPERTY_ID, OWNER_FACTION_ALLIANCE_NONE,
     OWNER_FACTION_ALLIANCE_PROPERTY_ID, OWNER_FACTION_IDENTITY_RESERVED_0_PROPERTY_ID,
     OWNER_FACTION_IDENTITY_RESERVED_1_PROPERTY_ID, OWNER_FACTION_NAME_PROPERTY_ID,
-    OWNER_POLICY_WEIGHT_AUTHORITY_PROPERTY_ID,
     OWNER_FLOW_DEFAULT_PRIORITY, OWNER_FLOW_DEFICIT_PROPERTY_ID, OWNER_FLOW_DEMAND_PROPERTY_ID,
     OWNER_FLOW_OWNER_REF_PROPERTY_ID, OWNER_FLOW_PRIORITY_PROPERTY_ID,
     OWNER_FLOW_RESOURCE_KEY_PROPERTY_ID, OWNER_FLOW_SURPLUS_PROPERTY_ID, OWNER_ID_PROPERTY_ID,
-    OWNER_SILO_CAPACITY_PROPERTY_ID, OWNER_SILO_CURRENT_PROPERTY_ID, OWNER_SILO_MARKER_PROPERTY_ID,
-    PLANET_CLASS_PROPERTY_ID, PLANET_DISPLAY_NAME_PROPERTY_ID, PLANET_ID_PROPERTY_ID,
-    PLANET_ORBIT_INDEX_PROPERTY_ID, PLANET_OWNER_REF_PROPERTY_ID,
-    RUNTIME_PREVIEW_APPLIED_SIM_PROPERTY_ID, RUNTIME_PREVIEW_SATISFIED_SIM_PROPERTY_ID,
-    RUNTIME_PREVIEW_SHORTFALL_SIM_PROPERTY_ID, SCENARIO_GENERATED_SYSTEM_ID_PROPERTY_ID,
-    SCENARIO_GENERATOR_SEED_PROPERTY_ID, SCENARIO_GENERATOR_SHAPE_PROPERTY_ID,
-    SCENARIO_ID_PROPERTY_ID, SCENARIO_RENDER_WORLD_X_PROPERTY_ID,
-    SCENARIO_RENDER_WORLD_Y_PROPERTY_ID, SCENARIO_RENDER_WORLD_Z_PROPERTY_ID,
-    SCENARIO_SCHEMA_VERSION, SCENARIO_SCHEMA_VERSION_PROPERTY_ID,
-    SCENARIO_SOURCE_LABEL_PROPERTY_ID, SCENARIO_STRUCTURAL_COL_PROPERTY_ID,
-    SCENARIO_STRUCTURAL_INTEGER_MAX, SCENARIO_STRUCTURAL_ROW_PROPERTY_ID,
-    SIMTHING_SCENARIO_AUTHORITY_LABEL, STAR_SYSTEM_DISPLAY_NAME_PROPERTY_ID,
+    OWNER_POLICY_WEIGHT_AUTHORITY_PROPERTY_ID, OWNER_SILO_CAPACITY_PROPERTY_ID,
+    OWNER_SILO_CURRENT_PROPERTY_ID, OWNER_SILO_MARKER_PROPERTY_ID, PLANET_CLASS_PROPERTY_ID,
+    PLANET_DISPLAY_NAME_PROPERTY_ID, PLANET_ID_PROPERTY_ID, PLANET_ORBIT_INDEX_PROPERTY_ID,
+    PLANET_OWNER_REF_PROPERTY_ID, RUNTIME_PREVIEW_APPLIED_SIM_PROPERTY_ID,
+    RUNTIME_PREVIEW_SATISFIED_SIM_PROPERTY_ID, RUNTIME_PREVIEW_SHORTFALL_SIM_PROPERTY_ID,
+    SCENARIO_GENERATED_SYSTEM_ID_PROPERTY_ID, SCENARIO_GENERATOR_SEED_PROPERTY_ID,
+    SCENARIO_GENERATOR_SHAPE_PROPERTY_ID, SCENARIO_ID_PROPERTY_ID,
+    SCENARIO_RENDER_WORLD_X_PROPERTY_ID, SCENARIO_RENDER_WORLD_Y_PROPERTY_ID,
+    SCENARIO_RENDER_WORLD_Z_PROPERTY_ID, SCENARIO_SCHEMA_VERSION,
+    SCENARIO_SCHEMA_VERSION_PROPERTY_ID, SCENARIO_SOURCE_LABEL_PROPERTY_ID,
+    SCENARIO_STRUCTURAL_COL_PROPERTY_ID, SCENARIO_STRUCTURAL_INTEGER_MAX,
+    SCENARIO_STRUCTURAL_ROW_PROPERTY_ID, SIMTHING_SCENARIO_AUTHORITY_LABEL,
+    STAR_SYSTEM_DISPLAY_NAME_PROPERTY_ID,
 };
 pub use scenario_candidate_from_runtime::{
     evaluate_scenario_candidate_from_runtime_from_json_str,

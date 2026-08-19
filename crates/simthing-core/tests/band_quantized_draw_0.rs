@@ -80,10 +80,7 @@ fn per_program_cap_at_admission_not_optional_helper() {
     let err = TransformOp::admit_eml(nodes, EmlPerProgramCap::new(3)).unwrap_err();
     assert!(matches!(
         err,
-        EmlPerProgramCapError::ExceedsCap {
-            max_nodes: 3,
-            ..
-        }
+        EmlPerProgramCapError::ExceedsCap { max_nodes: 3, .. }
     ));
     // Cap-bypass forge is a compile_fail on TransformOp { nodes: ... }
     // (private field). Public API only admits via admit_eml.
@@ -118,11 +115,9 @@ fn runtime_depth_mutation_changes_output_without_rehydration() {
 
 #[test]
 fn cost_band_marker_and_throttle_surface() {
-    assert!(admit_cost_band_marker(
-        Some(CostBandRegistrationMarker { is_sink: true }),
-        None
-    )
-    .unwrap());
+    assert!(
+        admit_cost_band_marker(Some(CostBandRegistrationMarker { is_sink: true }), None).unwrap()
+    );
     assert!(admit_cost_band_marker(
         Some(CostBandRegistrationMarker { is_sink: true }),
         Some(CostBandResourceMarker { is_sink: false }),

@@ -105,8 +105,8 @@ fn run_accumulator_emission(
     // Production observer path: sealed readback → admitted ring. Parity still
     // needs the sealed records; drain only after ring admission proves the seam.
     let session = emission_session.as_ref().unwrap();
-    let _pushed =
-        session.push_emissions_into_production_egress(&state.ctx, &mut state.production_event_egress)?;
+    let _pushed = session
+        .push_emissions_into_production_egress(&state.ctx, &mut state.production_event_egress)?;
     let gpu_records = session.readback_emissions(&state.ctx)?;
     state
         .accumulator_runtime

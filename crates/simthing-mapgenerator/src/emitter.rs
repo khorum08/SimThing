@@ -12,8 +12,8 @@ use crate::field_operator::emit_nebula_declarations;
 use crate::lattice::SquareLattice;
 use crate::nebula::NebulaField;
 use crate::params::MapGeneratorParams;
-use crate::strategy::{PlacedSystemSeed, ShapePlacement};
 use crate::star_names::assign_star_names;
+use crate::strategy::{PlacedSystemSeed, ShapePlacement};
 use crate::topology::HyperlaneTopology;
 
 pub const DEFAULT_INITIALIZER_REF: &str = "example_rim_initializer";
@@ -164,12 +164,7 @@ fn write_static_galaxy_block(
         let display_name = star_names
             .get(&system.id)
             .ok_or(ScenarioEmitError::MissingStarName { id: system.id })?;
-        write_system_block(
-            out,
-            system,
-            display_name,
-            &config.default_initializer_ref,
-        )?;
+        write_system_block(out, system, display_name, &config.default_initializer_ref)?;
         out.push('\n');
     }
     if let Some(topology) = hyperlanes {

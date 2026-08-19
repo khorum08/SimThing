@@ -257,5 +257,4 @@ mod tests {
             targets: vec![(SlotIndex::new(0), simthing_core::ColumnIndex::new(0))],
         }
     }
-
 }

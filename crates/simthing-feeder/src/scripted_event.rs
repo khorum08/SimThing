@@ -69,5 +69,4 @@ pub struct ScriptedEventTriggerEvent {
 #[cfg(test)]
 mod tests {
     use super::*;
-
 }

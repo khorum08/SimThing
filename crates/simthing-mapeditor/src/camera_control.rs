@@ -70,5 +70,4 @@ pub fn apply_orbit_delta(
 #[cfg(test)]
 mod tests {
     use super::*;
-
 }

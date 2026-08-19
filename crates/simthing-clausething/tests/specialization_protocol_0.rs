@@ -152,7 +152,10 @@ fn one_installed_canonical_report_derives_all_three_seed_populations() {
     // Owner-seat oracle: the ADMITTED field-economy policy/weight authorities
     // (policy-overlay owners + flow-coupling weight owners), mapped to ids via
     // the hydrated owner list — independent of tree stamps and kind counts.
-    let economy = pack.field_economy.as_ref().expect("canonical field economy");
+    let economy = pack
+        .field_economy
+        .as_ref()
+        .expect("canonical field economy");
     let mut authority_keys: BTreeSet<&str> = BTreeSet::new();
     for overlay in &economy.owner_policy_overlays {
         authority_keys.insert(overlay.owner.as_str());
@@ -265,7 +268,9 @@ fn owner_seat_requires_the_admitted_policy_weight_authority() {
     let mut silo_owner = simthing_spec::make_owner_entity("silo_only", "Silo Only", "settler");
     simthing_spec::apply_owner_silo_metadata(&mut silo_owner, 3, Some(10));
     let silo_owner_id = silo_owner.id.raw();
-    assert!(!simthing_spec::owner_hosts_policy_weight_authority(&silo_owner));
+    assert!(!simthing_spec::owner_hosts_policy_weight_authority(
+        &silo_owner
+    ));
 
     let mut authority_owner = simthing_spec::make_owner_entity("seat", "Seat", "settler");
     simthing_spec::apply_owner_policy_weight_authority(&mut authority_owner);
@@ -296,7 +301,9 @@ fn owner_seat_requires_the_admitted_policy_weight_authority() {
         "an unrelated accumulator host must NOT derive owner-seat"
     );
     assert!(
-        !report.derived_ids(silo_owner_id).contains(&PROFILE_OWNER_SEAT),
+        !report
+            .derived_ids(silo_owner_id)
+            .contains(&PROFILE_OWNER_SEAT),
         "inert default silo metadata must NOT derive owner-seat"
     );
     assert!(report
@@ -344,12 +351,16 @@ fn callers_cannot_fabricate_spatial_placement() {
 #[test]
 fn session_root_enforces_the_strict_sole_direct_child_invariant() {
     let derive = |root: &SimThing| {
-        derive_specializations(root, &seed_profiles(), &SpecializationObservations::default())
-            .expect("derives")
-            .rows
-            .iter()
-            .filter(|r| r.derived.iter().any(|d| d == PROFILE_SESSION_ROOT))
-            .count()
+        derive_specializations(
+            root,
+            &seed_profiles(),
+            &SpecializationObservations::default(),
+        )
+        .expect("derives")
+        .rows
+        .iter()
+        .filter(|r| r.derived.iter().any(|d| d == PROFILE_SESSION_ROOT))
+        .count()
     };
 
     // Negative 1: two GameSessions.
@@ -398,8 +409,7 @@ fn custom_kind_impostors_never_satisfy_builtin_identity() {
         obs.policy_weight_hosts.insert(n.id.raw());
     });
 
-    let report =
-        derive_specializations(&scenario_root, &seed_profiles(), &obs).expect("derives");
+    let report = derive_specializations(&scenario_root, &seed_profiles(), &obs).expect("derives");
     for row in &report.rows {
         assert!(
             row.derived.is_empty(),

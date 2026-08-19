@@ -369,5 +369,4 @@ pub fn quality_panel_flags_report(report: &GenerationReport) -> bool {
 mod tests {
     use super::*;
     use crate::shape_params::report_has_spiral_only_params;
-
 }

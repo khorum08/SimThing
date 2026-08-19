@@ -151,7 +151,10 @@ pub fn validate_capability_tree(spec: &CapabilityTreeSpec) -> Result<SpecDiagnos
                     source_span_token: pre.source_span_token,
                 });
             }
-            edge_spans.insert((node_id.clone(), resolved.prereq_node.clone()), pre.source_span_token);
+            edge_spans.insert(
+                (node_id.clone(), resolved.prereq_node.clone()),
+                pre.source_span_token,
+            );
             prereq_nodes.push(resolved.prereq_node);
         }
         adjacency.insert(node_id.clone(), prereq_nodes);
@@ -269,7 +272,10 @@ fn detect_cycle(
                 path.push(next.as_str());
                 let cycle_path = path.join(" -> ");
                 let entry_id = next.rsplit("::").next().unwrap_or(next).to_owned();
-                let source_span_token = edge_spans.get(&(node.to_owned(), next.clone())).copied().flatten();
+                let source_span_token = edge_spans
+                    .get(&(node.to_owned(), next.clone()))
+                    .copied()
+                    .flatten();
                 return Err(SpecError::PrereqCycle {
                     in_tree: in_tree.to_owned(),
                     entry_id,
@@ -299,12 +305,25 @@ mod tests {
     #[derive(Clone, Copy, Debug)]
     enum Expect {
         Ok,
-        SelfPrereq { span: usize },
-        DanglingEntry { span: usize },
-        CrossTreeCategory { span: usize },
+        SelfPrereq {
+            span: usize,
+        },
+        DanglingEntry {
+            span: usize,
+        },
+        CrossTreeCategory {
+            span: usize,
+        },
         Cycle,
-        TierOrder { span: usize, entry_tier: u32, prereq_tier: u32 },
-        MalformedMaxActive { span: usize, reason_sub: &'static str },
+        TierOrder {
+            span: usize,
+            entry_tier: u32,
+            prereq_tier: u32,
+        },
+        MalformedMaxActive {
+            span: usize,
+            reason_sub: &'static str,
+        },
     }
 
     fn effect() -> CapabilityEffectSpec {
@@ -387,14 +406,7 @@ mod tests {
                 None,
             )]),
             "tiered_chain_admits" => tree(vec![
-                category(
-                    "tech",
-                    "basic",
-                    0,
-                    None,
-                    vec![entry("chem", vec![])],
-                    None,
-                ),
+                category("tech", "basic", 0, None, vec![entry("chem", vec![])], None),
                 category(
                     "tech",
                     "advanced",
@@ -454,10 +466,7 @@ mod tests {
                     "basic",
                     0,
                     None,
-                    vec![entry(
-                        "low",
-                        vec![pre("tech::advanced", "high", Some(55))],
-                    )],
+                    vec![entry("low", vec![pre("tech::advanced", "high", Some(55))])],
                     None,
                 ),
                 category(
@@ -501,7 +510,10 @@ mod tests {
         ("tiered_chain_admits", Expect::Ok),
         ("self_prereq", Expect::SelfPrereq { span: 11 }),
         ("dangling_entry", Expect::DanglingEntry { span: 22 }),
-        ("cross_tree_category", Expect::CrossTreeCategory { span: 33 }),
+        (
+            "cross_tree_category",
+            Expect::CrossTreeCategory { span: 33 },
+        ),
         ("cycle", Expect::Cycle),
         (
             "tier_order",

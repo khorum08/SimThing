@@ -9,15 +9,15 @@ use simthing_spec::spec::region_field::MappingExecutionProfile;
 use simthing_spec::spec::w_impedance_compose::{
     WImpedanceComposeProfileSpec, WImpedanceComposeSpec,
 };
-use simthing_spec::{PropertySpec, compile_w_impedance_compose_preview};
+use simthing_spec::{compile_w_impedance_compose_preview, PropertySpec};
 
 use crate::error::HydrateError;
 use crate::hydrate_palma_feedstock::{
-    HydratedScenarioPalmaFeedstock, build_palma_feedstock_from_region_field,
+    build_palma_feedstock_from_region_field, HydratedScenarioPalmaFeedstock,
 };
 use crate::hydrate_scenario::HydratedScenarioPack;
 use crate::mapgen_lattice::assert_allowed_simthing_kinds;
-use crate::mapgen_movement_front::{MAPGEN_MF_FIELD_OPERATOR_ID, MapGenMovementFrontAuthoring};
+use crate::mapgen_movement_front::{MapGenMovementFrontAuthoring, MAPGEN_MF_FIELD_OPERATOR_ID};
 use crate::mapgen_neutral_ast::MapGenNeutralDocument;
 
 const FORBIDDEN_GENERATED_PROPERTY_NAMES: &[&str] = &[

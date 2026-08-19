@@ -122,5 +122,4 @@ mod tests {
         p.intensity_behavior = Some(IntensityBehavior::default());
         p
     }
-
 }

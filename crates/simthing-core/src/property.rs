@@ -412,7 +412,6 @@ impl TransformOp {
             .or_else(|| self.as_multiply_literal())
             .unwrap_or(0.0)
     }
-
 }
 
 #[cfg(test)]
@@ -511,7 +510,13 @@ pub fn eval_overlay_eml(nodes: &[crate::eml_nodes::EmlNode], current: f32, n: f3
 
 /// Build magnitude-band EML: `SELECT(CMP_GE(N,t2), hi, SELECT(CMP_GE(N,t1), mid, lo))`.
 /// Uses only existing opcodes; `N` is `PARAM(1)`.
-pub fn magnitude_band_eml_nodes(lo: f32, mid: f32, hi: f32, t1: f32, t2: f32) -> Vec<crate::eml_nodes::EmlNode> {
+pub fn magnitude_band_eml_nodes(
+    lo: f32,
+    mid: f32,
+    hi: f32,
+    t1: f32,
+    t2: f32,
+) -> Vec<crate::eml_nodes::EmlNode> {
     use crate::eml_nodes::{opcode, EmlNode};
     let lit = |v: f32| EmlNode {
         opcode: opcode::LITERAL_F32,
@@ -663,7 +668,6 @@ pub fn logistic_steering_oracle(lo: f32, hi: f32, k: f32, x0: f32, n: f32) -> f3
         lo + half_span * e
     }
 }
-
 
 // ── SubFieldSpec ──────────────────────────────────────────────────────────────
 

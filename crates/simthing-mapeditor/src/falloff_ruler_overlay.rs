@@ -158,5 +158,4 @@ fn draw_emphasized_cut_line(
 #[cfg(test)]
 mod tests {
     use super::*;
-
 }

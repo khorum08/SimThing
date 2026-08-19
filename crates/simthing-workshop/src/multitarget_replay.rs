@@ -1893,5 +1893,4 @@ pub fn write_multitarget_replay_reports_bundle(reports: &[MultiTargetReplayRepor
 #[cfg(test)]
 mod unit_tests {
     use super::*;
-
 }

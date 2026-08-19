@@ -423,5 +423,4 @@ pub fn origin_source_label(source: MapViewOriginSource) -> &'static str {
 mod tests {
     use super::*;
     use bevy::prelude::Transform;
-
 }

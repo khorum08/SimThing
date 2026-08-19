@@ -107,10 +107,10 @@ pub fn resolve_gated_rates(
         let layout = &registry.property(flow_property_id).layout;
         let _cols = resolve_node_columns_for_property(registry, flow_property_id, &arena.name)
             .map_err(|_| {
-            InstallError::Spec(SpecError::UnknownResourceFlowProperty {
-                property: format!("{} flow columns", arena.name),
-            })
-        })?;
+                InstallError::Spec(SpecError::UnknownResourceFlowProperty {
+                    property: format!("{} flow columns", arena.name),
+                })
+            })?;
         let base_role = SubFieldRole::Named(RATE_BASE_SUB_FIELD.into());
         let base_offset = layout.offset_of(&base_role).ok_or_else(|| {
             InstallError::GatedRateMissingBaseColumn {

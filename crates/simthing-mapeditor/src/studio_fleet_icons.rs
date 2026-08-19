@@ -412,8 +412,8 @@ pub fn resolve_fleet_icon_world_pose(
     let scale = clamp_fleet_icon_scale(descriptor.scale, blur);
     let offset = blur * FLEET_ICON_ANCHOR_OFFSET_FRACTION;
     let (rx, rz) = {
-        let len = (right_axis_xz[0] * right_axis_xz[0] + right_axis_xz[1] * right_axis_xz[1])
-            .sqrt();
+        let len =
+            (right_axis_xz[0] * right_axis_xz[0] + right_axis_xz[1] * right_axis_xz[1]).sqrt();
         if len < 1e-8 {
             (1.0, 0.0)
         } else {

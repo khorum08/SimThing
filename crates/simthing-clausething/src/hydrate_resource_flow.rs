@@ -126,7 +126,7 @@ pub fn hydrate_resource_flow_pack(
         base_obligations: vec![],
         capacity_budget: None,
         gated_rates: vec![],
-                need_bindings: vec![],
+        need_bindings: vec![],
     };
 
     Ok(HydratedResourceFlowPack {
@@ -186,8 +186,7 @@ fn parse_flow_property_block(property: &RawProperty) -> Result<FlowPropertyIdent
             "display_name" => display_name = read_scalar_text(field, "display_name")?,
             "description" => description = read_scalar_text(field, "description")?,
             "disposition" => {
-                admission_disposition =
-                    crate::hydrate_scenario::parse_property_disposition(field)?;
+                admission_disposition = crate::hydrate_scenario::parse_property_disposition(field)?;
             }
             other => {
                 return Err(HydrateError::new_spanned(

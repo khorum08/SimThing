@@ -1,18 +1,18 @@
 use std::collections::HashMap;
 
 use simthing_core::{
-    DimensionRegistry, Direction, FissionTemplate, FissionThreshold, Overlay, OverlayId,
-    OverlayKind, OverlayLifecycle, OverlaySource, PropertyTransformDelta, ReductionRule,
-    SimProperty, SimThing, SimThingId, SimThingKind, SimThingKindTag, SoftAggregateGuard,
-    SubFieldRole, TransformOp, prepare_fission_clone_sources_for_registry,
+    prepare_fission_clone_sources_for_registry, DimensionRegistry, Direction, FissionTemplate,
+    FissionThreshold, Overlay, OverlayId, OverlayKind, OverlayLifecycle, OverlaySource,
+    PropertyTransformDelta, ReductionRule, SimProperty, SimThing, SimThingId, SimThingKind,
+    SimThingKindTag, SoftAggregateGuard, SubFieldRole, TransformOp,
 };
 use simthing_gpu::{
-    DIR_DOWNWARD, DIR_UPWARD, SlotAllocator, THRESH_BUF_OUTPUT, THRESH_BUF_VALUES,
-    ThresholdRegistration, cpu_oracle_threshold_events,
+    cpu_oracle_threshold_events, SlotAllocator, ThresholdRegistration, DIR_DOWNWARD, DIR_UPWARD,
+    THRESH_BUF_OUTPUT, THRESH_BUF_VALUES,
 };
 use simthing_sim::{
-    AggregateAlertRegistration, SoftAggregateViolation, ThresholdBuilder, ThresholdRegistry,
-    ThresholdSemantic, assert_no_hard_trigger_on_soft_aggregate as soft_guard_check,
+    assert_no_hard_trigger_on_soft_aggregate as soft_guard_check, AggregateAlertRegistration,
+    SoftAggregateViolation, ThresholdBuilder, ThresholdRegistry, ThresholdSemantic,
 };
 
 fn weighted_mean_property(
@@ -228,8 +228,15 @@ fn clone_capability_children() {
         event_kind,
         buffer: THRESH_BUF_VALUES,
     }];
-    let events =
-        cpu_oracle_threshold_events(&previous, &values, &previous, &values, n_dims as u32, &regs, 0);
+    let events = cpu_oracle_threshold_events(
+        &previous,
+        &values,
+        &previous,
+        &values,
+        n_dims as u32,
+        &regs,
+        0,
+    );
     assert_eq!(events.len(), 1, "fission threshold must fire once");
 
     let paths = HashMap::from([(faction_id, vec![0])]);

@@ -159,12 +159,8 @@ fn sparse_owned_rows_execute_single_writer_rf1_and_replay_exact_on_gpu() {
         .registry
         .id_of("remand", "food_flow")
         .expect("flow property");
-    let cols = resolve_node_columns_for_property(
-        &session.proto.registry,
-        flow_id,
-        "sparse_food",
-    )
-    .expect("flow columns");
+    let cols = resolve_node_columns_for_property(&session.proto.registry, flow_id, "sparse_food")
+        .expect("flow columns");
     let layout = build_execution_plan(&session.proto.registry, &session.spec_state.arena_registry)
         .expect("sparse execution plan")
         .arenas

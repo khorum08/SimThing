@@ -405,7 +405,11 @@ fn to_u64_partial(mut d: &[u8], start: u64) -> (u64, &[u8]) {
 }
 
 const fn digits_in(n: u64) -> usize {
-    if n == 0 { 1 } else { n.ilog10() as usize + 1 }
+    if n == 0 {
+        1
+    } else {
+        n.ilog10() as usize + 1
+    }
 }
 
 const POWER_OF_TEN: [f64; 23] = [

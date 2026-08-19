@@ -4,22 +4,22 @@ use std::collections::HashMap;
 use std::sync::Mutex;
 
 use simthing_clausething::{
-    EconomicAxis, EconomicOp, decode_economic_modifier_key, hydrate_category_economy_pack,
-    hydrate_daily_economy_game_mode, parse_raw_document,
+    decode_economic_modifier_key, hydrate_category_economy_pack, hydrate_daily_economy_game_mode,
+    parse_raw_document, EconomicAxis, EconomicOp,
 };
 use simthing_core::{
     AccumulatorRole, AccumulatorSpec, BalanceSpec, ClampBehavior, DimensionRegistry, LogTier,
     SimThing, SimThingKind, SlotIndex, SubFieldRole, SubFieldSpec,
 };
 use simthing_driver::{
-    AllocatorStepObservation, ArenaConservationSnapshot, ArenaMemberObservation,
-    ArenaStructuralEvidence, ResourceFlowFlagSource, Scenario, SimSession, build_execution_plan,
-    check_conservation, resolve_node_columns_for_property, run_arena_allocation_oracle,
+    build_execution_plan, check_conservation, resolve_node_columns_for_property,
+    run_arena_allocation_oracle, AllocatorStepObservation, ArenaConservationSnapshot,
+    ArenaMemberObservation, ArenaStructuralEvidence, ResourceFlowFlagSource, Scenario, SimSession,
 };
 use simthing_gpu::SlotAllocator;
 use simthing_spec::{
-    BaseFlowDirectionSpec, ExplicitParticipantSpec, GameModeSpec, ResourceFlowOptInMode,
-    compile_property, deserialize_game_mode_ron,
+    compile_property, deserialize_game_mode_ron, BaseFlowDirectionSpec, ExplicitParticipantSpec,
+    GameModeSpec, ResourceFlowOptInMode,
 };
 
 const CATEGORY_FIXTURE: &str = include_str!("fixtures/ct2c_categories.clause");
@@ -190,12 +190,9 @@ fn gpu_category_micro_economy_matches_arena_allocation_oracle() {
         .registry
         .id_of("simthing", "settlement_food_flow")
         .expect("settlement_food_flow registered");
-    let cols = resolve_node_columns_for_property(
-        &session.proto.registry,
-        flow_id,
-        "settlement_food",
-    )
-    .expect("column refs");
+    let cols =
+        resolve_node_columns_for_property(&session.proto.registry, flow_id, "settlement_food")
+            .expect("column refs");
     let food_arena_idx = session
         .spec_state
         .arena_registry
@@ -203,15 +200,12 @@ fn gpu_category_micro_economy_matches_arena_allocation_oracle() {
         .iter()
         .position(|arena| arena.name == "settlement_food")
         .expect("settlement_food arena") as u32;
-    let layout = build_execution_plan(
-        &session.proto.registry,
-        &session.spec_state.arena_registry,
-    )
-    .expect("execution plan")
-    .arenas
-    .into_iter()
-    .find(|arena| arena.arena_idx == food_arena_idx)
-    .expect("settlement_food arena");
+    let layout = build_execution_plan(&session.proto.registry, &session.spec_state.arena_registry)
+        .expect("execution plan")
+        .arenas
+        .into_iter()
+        .find(|arena| arena.arena_idx == food_arena_idx)
+        .expect("settlement_food arena");
 
     let root = layout.participant_roots[0].participant_slot;
     let leaves: Vec<SlotIndex> = layout.participant_roots[0]
@@ -340,18 +334,16 @@ fn gpu_category_micro_economy_matches_arena_allocation_oracle() {
             .iter()
             .zip(leaf_ids.iter())
             .zip(disbursed.iter())
-            .map(
-                |((&slot, &id), &allocated_flow)| ArenaMemberObservation {
-                    id,
-                    is_leaf: true,
-                    intrinsic_flow: 0.0,
-                    allocated_flow,
-                    balance_delta: Some(
-                        cell(&gpu_out, slot, balance_global, n_dims)
-                            - cell(&before, slot, balance_global, n_dims),
-                    ),
-                },
-            ),
+            .map(|((&slot, &id), &allocated_flow)| ArenaMemberObservation {
+                id,
+                is_leaf: true,
+                intrinsic_flow: 0.0,
+                allocated_flow,
+                balance_delta: Some(
+                    cell(&gpu_out, slot, balance_global, n_dims)
+                        - cell(&before, slot, balance_global, n_dims),
+                ),
+            }),
     )
     .collect();
     let report = check_conservation(

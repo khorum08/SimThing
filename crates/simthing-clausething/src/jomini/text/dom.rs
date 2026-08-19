@@ -2,11 +2,11 @@
 // License: MIT - see crates/simthing-clausething/src/jomini/LICENSE
 use super::fnv::FnvBuildHasher;
 use crate::jomini::{
-    DeserializeError, DeserializeErrorKind, Encoding, Scalar, TextTape, TextToken, text::Operator,
+    text::Operator, DeserializeError, DeserializeErrorKind, Encoding, Scalar, TextTape, TextToken,
 };
 use std::{
     borrow::Cow,
-    collections::{HashMap, hash_map::Entry},
+    collections::{hash_map::Entry, HashMap},
 };
 
 pub type KeyValue<'data, 'tokens, E> = (

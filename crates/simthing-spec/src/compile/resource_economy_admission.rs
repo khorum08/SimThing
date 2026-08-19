@@ -4,7 +4,7 @@
 //! for designers and agents. Does not execute economy at runtime.
 
 use crate::compile::resource_economy::{
-    CompiledResourceEconomy, ResourceEconomyDiagnostic, compile_resource_economy,
+    compile_resource_economy, CompiledResourceEconomy, ResourceEconomyDiagnostic,
 };
 use crate::error::SpecError;
 use crate::spec::game_mode::GameModeSpec;

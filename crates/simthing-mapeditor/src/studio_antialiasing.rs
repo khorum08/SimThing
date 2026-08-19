@@ -276,5 +276,4 @@ pub fn apply_and_record_studio_antialiasing_mode(
 #[cfg(test)]
 mod tests {
     use super::*;
-
 }

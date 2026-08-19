@@ -78,5 +78,4 @@ mod tests {
             accumulator_spec: None,
         }
     }
-
 }

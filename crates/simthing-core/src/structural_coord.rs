@@ -88,5 +88,4 @@ impl RenderCoord {
 #[cfg(test)]
 mod tests {
     use super::{RenderCoord, StructuralCoord};
-
 }

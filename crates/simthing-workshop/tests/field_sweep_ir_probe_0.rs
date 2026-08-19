@@ -9,10 +9,10 @@ mod field_sweep_ir_probe;
 use field_sweep_ir_probe::{
     bits_eq, build_gather, counter_surface_report, cpu_sweep_iters, cpu_sweep_once,
     format_degree_distribution, live_eml_cap_facts, max_ulp_diff, median_f64,
-    planted_left_fold_stack_probe, program_banded_flux, program_metrics,
-    program_min_x_input_list, program_product_conductance, threshold_adjudication_status,
-    worst_f64, GatherTable, MeasurementRow, ProbeGpuSession, N4_OFFSETS_NSEW, N4_OFFSETS_WENS,
-    N8_OFFSETS_THROWAWAY, RESOURCE_CLASS_LABEL, SAMPLE_RUNS, WARM_RUNS,
+    planted_left_fold_stack_probe, program_banded_flux, program_metrics, program_min_x_input_list,
+    program_product_conductance, threshold_adjudication_status, worst_f64, GatherTable,
+    MeasurementRow, ProbeGpuSession, N4_OFFSETS_NSEW, N4_OFFSETS_WENS, N8_OFFSETS_THROWAWAY,
+    RESOURCE_CLASS_LABEL, SAMPLE_RUNS, WARM_RUNS,
 };
 use simthing_gpu::{
     cpu_horizon, cpu_min_plus_d_from_w, extract_d_flat, pack_w_and_initial_d, params_from_config,
@@ -248,7 +248,14 @@ fn field_sweep_ir_probe_0_n4_parity_absolute_before_timing() {
     let gather_flux = build_gather(width, height, &N4_OFFSETS_NSEW, "GridN4_NSEW");
     let prog_c = program_product_conductance(0, 1.0, SATURATING_FLUX_CHI_CFL_MAX);
     let after_c = cpu_sweep_once(
-        &flux_values, width, height, 2, 1, &gather_flux, &prog_c, None,
+        &flux_values,
+        width,
+        height,
+        2,
+        1,
+        &gather_flux,
+        &prog_c,
+        None,
     );
     let mut dual = after_c;
     for i in 0..(width * height) as usize {
@@ -278,7 +285,10 @@ fn field_sweep_ir_probe_0_n8_throwaway_gather_cliff_and_caps() {
         node_count > peak,
         "planted left-fold must have node_count ({node_count}) > peak stack ({peak})"
     );
-    assert_eq!(peak, 2, "left-fold ((((a+b)+c)+d)+e) peak operand stack is 2");
+    assert_eq!(
+        peak, 2,
+        "left-fold ((((a+b)+c)+d)+e) peak operand stack is 2"
+    );
     let planted_m = program_metrics(&planted);
     assert_eq!(planted_m.actual_peak_operand_stack, peak);
     assert_ne!(planted_m.actual_peak_operand_stack, planted_m.total_nodes);
@@ -298,14 +308,23 @@ fn field_sweep_ir_probe_0_n8_throwaway_gather_cliff_and_caps() {
     let caps = live_eml_cap_facts(per_tree, m.total_nodes, m.actual_peak_operand_stack);
     assert_eq!(caps.configured_max_tree_nodes, 32);
     assert_eq!(caps.configured_stack_max, 32);
-    assert_eq!(caps.observed_max_tree_nodes, 9, "Gu-Yang-shaped map tree is 9 nodes");
-    assert_eq!(caps.observed_total_program_nodes, 13, "map+fold+post composition only");
+    assert_eq!(
+        caps.observed_max_tree_nodes, 9,
+        "Gu-Yang-shaped map tree is 9 nodes"
+    );
+    assert_eq!(
+        caps.observed_total_program_nodes, 13,
+        "map+fold+post composition only"
+    );
     assert!(caps.observed_max_tree_nodes <= caps.configured_max_tree_nodes);
     assert!(caps.observed_peak_operand_stack <= caps.configured_stack_max);
     assert_ne!(m.actual_peak_operand_stack, m.total_nodes);
 
     let edge_ratio = gather_n8.edge_count as f64 / gather_n4.edge_count as f64;
-    assert!(edge_ratio > 1.5, "N8 cliff not located: edge_ratio={edge_ratio}");
+    assert!(
+        edge_ratio > 1.5,
+        "N8 cliff not located: edge_ratio={edge_ratio}"
+    );
 }
 
 #[test]
@@ -452,7 +471,14 @@ fn field_sweep_ir_probe_0_adapter_pinned_measurement() {
     // Build dual on GPU via C then time flux-only on N8 would need C first — for cliff,
     // time one flux dispatch over N8 gather on precomputed dual from CPU (setup excluded).
     let after_c_cpu = cpu_sweep_once(
-        &flux_values, width, height, 2, 1, &gather_flux, &prog_c, None,
+        &flux_values,
+        width,
+        height,
+        2,
+        1,
+        &gather_flux,
+        &prog_c,
+        None,
     );
     let mut dual = after_c_cpu;
     for i in 0..(width * height) as usize {
@@ -545,7 +571,10 @@ fn field_sweep_ir_probe_0_adapter_pinned_measurement() {
     );
 
     let per_tree_min = m_min.map_nodes.max(m_min.fold_nodes).max(m_min.post_nodes);
-    let per_tree_flux = m_flux.map_nodes.max(m_flux.fold_nodes).max(m_flux.post_nodes);
+    let per_tree_flux = m_flux
+        .map_nodes
+        .max(m_flux.fold_nodes)
+        .max(m_flux.post_nodes);
     let caps = live_eml_cap_facts(
         per_tree_min.max(per_tree_flux),
         m_min.total_nodes.max(m_flux.total_nodes),

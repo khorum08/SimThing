@@ -53,13 +53,13 @@ mod stellaris_names;
 pub use emit::emit_text;
 pub use error::{EmitError, ExpandError, HydrateError, ParseError};
 pub use expand::{
-    ExpansionInput, ExpansionOptions, expand_document, is_inline_math, is_value_reference,
+    expand_document, is_inline_math, is_value_reference, ExpansionInput, ExpansionOptions,
 };
-pub use hydrate::{HydratedEntityPack, hydrate_entity_pack};
+pub use hydrate::{hydrate_entity_pack, HydratedEntityPack};
 pub use hydrate_category_economy::{
+    decode_economic_modifier_key, hydrate_category_economy_pack, hydrate_daily_economy_game_mode,
     CategoryFlowContribution, DecodedEconomicKey, EconomicAxis, EconomicOp,
-    HydratedCategoryEconomyPack, decode_economic_modifier_key, hydrate_category_economy_pack,
-    hydrate_daily_economy_game_mode,
+    HydratedCategoryEconomyPack,
 };
 pub use hydrate_field_economy::{
     HydratedDisruptionPresence, HydratedFieldEconomy, HydratedFieldEconomyWeightProfile,
@@ -67,93 +67,92 @@ pub use hydrate_field_economy::{
     HydratedProductionBuilding, HydratedStockpileSilo,
 };
 pub use hydrate_field_operator::{
+    hydrate_field_operator_pack, hydrate_field_operator_property, HydratedFieldOperatorPack,
     BH3_MAX_FIELD_IMPEDANCE_PROFILES, BH3_MAX_FIELD_STRESS_PROFILES,
-    BH3_SATURATING_FLUX_CHI_CFL_MAX, HydratedFieldOperatorPack, hydrate_field_operator_pack,
-    hydrate_field_operator_property,
+    BH3_SATURATING_FLUX_CHI_CFL_MAX,
 };
 pub use hydrate_palma_feedstock::{
-    HydratedScenarioPalmaFeedstock, PR5_MAX_SCENARIO_PALMA_FEEDSTOCK,
-    build_palma_feedstock_from_region_field,
+    build_palma_feedstock_from_region_field, HydratedScenarioPalmaFeedstock,
+    PR5_MAX_SCENARIO_PALMA_FEEDSTOCK,
 };
 pub use hydrate_resource_flow::{
-    HydratedResourceFlowPack, hydrate_resource_flow_pack, net_intrinsic_flow,
+    hydrate_resource_flow_pack, net_intrinsic_flow, HydratedResourceFlowPack,
 };
 pub use hydrate_scenario::{
+    hydrate_scenario, hydrate_scenario_with_source_base, resolve_clause_source_path,
     HydratedEmbeddedStaticGalaxyScenario, HydratedFleetPlacement, HydratedFleetShipPayload,
     HydratedOwnedSystem, HydratedOwnershipVolume, HydratedPlanetSurfacePayload,
     HydratedScenarioGridMetadata, HydratedScenarioGridPlacement, HydratedScenarioLink,
     HydratedScenarioNode, HydratedScenarioOwner, HydratedScenarioPack, PR3_MAX_LINK_FANOUT,
-    PR4_MAX_SCENARIO_FIELD_OPERATORS, hydrate_scenario, hydrate_scenario_with_source_base,
-    resolve_clause_source_path,
+    PR4_MAX_SCENARIO_FIELD_OPERATORS,
 };
 pub use hydrate_shipsize_decoder::{
-    DecodedShipModifierKey, HydratedShipsizeDecoderPack, MAX_SHIP_EML_NODES,
-    SHIP_MODIFIER_ATTRIBUTES, ShipModifierFamily, ShipModifierOp, compile_value_formula_eml,
-    decode_ship_modifier_key, decode_ship_modifier_key_spanned, hydrate_shipsize_decoder_pack,
+    compile_value_formula_eml, decode_ship_modifier_key, decode_ship_modifier_key_spanned,
+    hydrate_shipsize_decoder_pack, DecodedShipModifierKey, HydratedShipsizeDecoderPack,
+    ShipModifierFamily, ShipModifierOp, MAX_SHIP_EML_NODES, SHIP_MODIFIER_ATTRIBUTES,
 };
 pub mod clause_scenario_projection;
 pub use clause_scenario_projection::{
-    ClauseScenarioProjectionError, ClauseScenarioProjectionMode, ClauseScenarioProjectionReport,
     project_pack_to_authority_tree_candidate, rebind_authority_tree_candidate,
-    rebind_pack_to_structural_rebind_ready,
+    rebind_pack_to_structural_rebind_ready, ClauseScenarioProjectionError,
+    ClauseScenarioProjectionMode, ClauseScenarioProjectionReport,
 };
 pub use hydrate_scenario_commitment::{HydratedScenarioCommitment, PR6_MAX_SCENARIO_COMMITMENT};
 pub use jomini::{TextTape, TextToken};
 pub use json::to_canonical_json;
 pub use literal_install::{
-    LiteralInstallSnapshot, OverlaySpecFingerprint, admit_and_apply_domain_pack,
-    admit_and_apply_pack,
+    admit_and_apply_domain_pack, admit_and_apply_pack, LiteralInstallSnapshot,
+    OverlaySpecFingerprint,
 };
 pub use mapgen_lattice::{
-    MAPGEN_CANONICAL_LATTICE_EDGE, MAPGEN_DEFAULT_FIXTURE_LATTICE_EDGE, MapGenLatticeError,
-    MapGenLatticeHierarchy, MapGenLatticeOptions, MapgenStructuralGridBudget,
-    STRUCTURAL_BYTES_PER_LINK, STRUCTURAL_BYTES_PER_OCCUPIED_CELL, StructuralGridFrame,
-    StructuralGridStats, admit_structural_grid, assert_allowed_simthing_kinds,
-    collect_gridcell_location_ids, generate_mapgen_lattice_hierarchy,
-    validate_fixture_lattice_edge, validate_one_system_per_gridcell,
+    admit_structural_grid, assert_allowed_simthing_kinds, collect_gridcell_location_ids,
+    generate_mapgen_lattice_hierarchy, validate_fixture_lattice_edge,
+    validate_one_system_per_gridcell, MapGenLatticeError, MapGenLatticeHierarchy,
+    MapGenLatticeOptions, MapgenStructuralGridBudget, StructuralGridFrame, StructuralGridStats,
+    MAPGEN_CANONICAL_LATTICE_EDGE, MAPGEN_DEFAULT_FIXTURE_LATTICE_EDGE, STRUCTURAL_BYTES_PER_LINK,
+    STRUCTURAL_BYTES_PER_OCCUPIED_CELL,
 };
 pub use mapgen_links::{
-    MAPGEN_PR5_DEFAULT_MAX_LANE_COUPLING_FANOUT, MAPGEN_PR5_DEFAULT_MAX_LANE_COUPLINGS,
-    MAPGEN_PR5_DEFAULT_MAX_LINKS, MapGenLaneCoupling, MapGenLinksEnrollment, MapGenLinksError,
-    MapGenLinksExpansionReport, MapGenLinksOptions, extract_hyperlane_declarations,
-    generate_default_mapgen_links_enrollment, generate_mapgen_links, lower_hyperlane_topology,
+    extract_hyperlane_declarations, generate_default_mapgen_links_enrollment,
+    generate_mapgen_links, lower_hyperlane_topology, MapGenLaneCoupling, MapGenLinksEnrollment,
+    MapGenLinksError, MapGenLinksExpansionReport, MapGenLinksOptions,
+    MAPGEN_PR5_DEFAULT_MAX_LANE_COUPLINGS, MAPGEN_PR5_DEFAULT_MAX_LANE_COUPLING_FANOUT,
+    MAPGEN_PR5_DEFAULT_MAX_LINKS,
 };
 pub use mapgen_movement_front::{
-    MAPGEN_MF_CHOKE_OUTPUT_COL, MAPGEN_MF_COMMITMENT_ID, MAPGEN_MF_DEFAULT_HORIZON,
-    MAPGEN_MF_FIELD_OPERATOR_ID, MAPGEN_MF_L2_REDUCTION_SCOPE, MAPGEN_MF_MAX_HORIZON,
-    MAPGEN_MF_N_DIMS, MAPGEN_MF_SOURCE_COL, MapGenMovementFrontAuthoring,
-    MapGenMovementFrontAuthoringReport, MapGenMovementFrontError, MapGenMovementFrontErrorKind,
-    MapGenMovementFrontOptions, assert_no_palma_feedstock,
-    generate_default_mapgen_movement_front_authoring, generate_mapgen_movement_front_authoring,
-    validate_l1_operator_locality, validate_options,
+    assert_no_palma_feedstock, generate_default_mapgen_movement_front_authoring,
+    generate_mapgen_movement_front_authoring, validate_l1_operator_locality, validate_options,
+    MapGenMovementFrontAuthoring, MapGenMovementFrontAuthoringReport, MapGenMovementFrontError,
+    MapGenMovementFrontErrorKind, MapGenMovementFrontOptions, MAPGEN_MF_CHOKE_OUTPUT_COL,
+    MAPGEN_MF_COMMITMENT_ID, MAPGEN_MF_DEFAULT_HORIZON, MAPGEN_MF_FIELD_OPERATOR_ID,
+    MAPGEN_MF_L2_REDUCTION_SCOPE, MAPGEN_MF_MAX_HORIZON, MAPGEN_MF_N_DIMS, MAPGEN_MF_SOURCE_COL,
 };
-pub use mapgen_neutral_ast::{MapGenNeutralDocument, parse_mapgen_neutral_document};
+pub use mapgen_neutral_ast::{parse_mapgen_neutral_document, MapGenNeutralDocument};
 pub use mapgen_palma::{
-    MAPGEN_PALMA_D_OUTPUT_COL, MAPGEN_PALMA_FEEDSTOCK_ID, MAPGEN_PALMA_W_OUTPUT_COL,
-    MapGenPalmaAuthoringReport, MapGenPalmaError, MapGenPalmaFeedstockAuthoring,
-    MapGenPalmaOptions, build_w_impedance_compose_from_palma,
-    generate_default_mapgen_palma_feedstock, generate_mapgen_palma_feedstock,
-    validate_palma_options,
+    build_w_impedance_compose_from_palma, generate_default_mapgen_palma_feedstock,
+    generate_mapgen_palma_feedstock, validate_palma_options, MapGenPalmaAuthoringReport,
+    MapGenPalmaError, MapGenPalmaFeedstockAuthoring, MapGenPalmaOptions, MAPGEN_PALMA_D_OUTPUT_COL,
+    MAPGEN_PALMA_FEEDSTOCK_ID, MAPGEN_PALMA_W_OUTPUT_COL,
 };
 pub use mapgen_resource_flow::{
-    MAPGEN_RF_DEFAULT_DEPOSIT_MAX_PARTICIPANTS, MAPGEN_RF_DEFAULT_MAX_COUPLING_FANOUT,
-    MAPGEN_RF_DEFAULT_MAX_ORDERBAND_DEPTH, MAPGEN_RF_DEFAULT_SUPPRESSION_MAX_PARTICIPANTS,
-    MAPGEN_RF_DEPOSIT_ARENA, MAPGEN_RF_PROPERTY_NAMESPACE, MAPGEN_RF_SUPPRESSION_ARENA,
-    MapGenResourceFlowArenaExpansion, MapGenResourceFlowEnrollment, MapGenResourceFlowError,
-    MapGenResourceFlowExpansionReport, MapGenResourceFlowOptions, SpatialArenaBindingReport,
-    SpatialBindingMode, generate_default_mapgen_resource_flow_enrollment,
-    generate_mapgen_resource_flow_enrollment, validate_arena_caps, validate_explicit_enrollment,
-    validate_resource_flow_enrollment, validate_spatial_binding,
+    generate_default_mapgen_resource_flow_enrollment, generate_mapgen_resource_flow_enrollment,
+    validate_arena_caps, validate_explicit_enrollment, validate_resource_flow_enrollment,
+    validate_spatial_binding, MapGenResourceFlowArenaExpansion, MapGenResourceFlowEnrollment,
+    MapGenResourceFlowError, MapGenResourceFlowExpansionReport, MapGenResourceFlowOptions,
+    SpatialArenaBindingReport, SpatialBindingMode, MAPGEN_RF_DEFAULT_DEPOSIT_MAX_PARTICIPANTS,
+    MAPGEN_RF_DEFAULT_MAX_COUPLING_FANOUT, MAPGEN_RF_DEFAULT_MAX_ORDERBAND_DEPTH,
+    MAPGEN_RF_DEFAULT_SUPPRESSION_MAX_PARTICIPANTS, MAPGEN_RF_DEPOSIT_ARENA,
+    MAPGEN_RF_PROPERTY_NAMESPACE, MAPGEN_RF_SUPPRESSION_ARENA,
 };
 pub use parse::parse_raw_document;
 pub use raw::RawDocument;
 pub use scope::{
-    ScopeAtom, ScopeAtomKind, ScopeChain, ScopeDiagnostic, ScopeDiagnosticKind,
-    ScopeExtractionReport, ScopeReference, ScopeReferenceRole, ScopeTable, extract_scopes,
-    extract_scopes_validated, parse_scope_chain, synthetic_scope_table,
+    extract_scopes, extract_scopes_validated, parse_scope_chain, synthetic_scope_table, ScopeAtom,
+    ScopeAtomKind, ScopeChain, ScopeDiagnostic, ScopeDiagnosticKind, ScopeExtractionReport,
+    ScopeReference, ScopeReferenceRole, ScopeTable,
 };
 pub use scope_json::scope_report_to_json;
-pub use scope_lab::{LabFrequencyReport, scan_lab_scopes};
+pub use scope_lab::{scan_lab_scopes, LabFrequencyReport};
 pub use stellaris_names::{
-    StellarisStarNameCatalog, StellarisStarNameError, parse_stellaris_star_name_catalog,
+    parse_stellaris_star_name_catalog, StellarisStarNameCatalog, StellarisStarNameError,
 };

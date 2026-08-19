@@ -456,5 +456,4 @@ mod tests {
         let (frame, locations, links) = sample_rows();
         PackedUpload::new(frame, locations, links).expect("sample packet")
     }
-
 }

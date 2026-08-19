@@ -1,18 +1,18 @@
 //! MapGen PR7 — PALMA W/D reach feedstock tests.
 
 use simthing_clausething::{
-    MAPGEN_MF_CHOKE_OUTPUT_COL, MAPGEN_MF_FIELD_OPERATOR_ID, MAPGEN_MF_SOURCE_COL,
-    MAPGEN_PALMA_D_OUTPUT_COL, MAPGEN_PALMA_FEEDSTOCK_ID, MAPGEN_PALMA_W_OUTPUT_COL,
-    MapGenLatticeOptions, MapGenPalmaOptions, MapGenResourceFlowOptions,
     build_palma_feedstock_from_region_field, build_w_impedance_compose_from_palma,
     generate_default_mapgen_links_enrollment, generate_default_mapgen_movement_front_authoring,
     generate_default_mapgen_palma_feedstock, generate_mapgen_lattice_hierarchy,
     generate_mapgen_palma_feedstock, generate_mapgen_resource_flow_enrollment,
-    parse_mapgen_neutral_document,
+    parse_mapgen_neutral_document, MapGenLatticeOptions, MapGenPalmaOptions,
+    MapGenResourceFlowOptions, MAPGEN_MF_CHOKE_OUTPUT_COL, MAPGEN_MF_FIELD_OPERATOR_ID,
+    MAPGEN_MF_SOURCE_COL, MAPGEN_PALMA_D_OUTPUT_COL, MAPGEN_PALMA_FEEDSTOCK_ID,
+    MAPGEN_PALMA_W_OUTPUT_COL,
 };
 use simthing_core::SimThingKind;
 use simthing_spec::{
-    MappingExecutionProfile, RegionFieldOperatorSpec, compile_w_impedance_compose_preview,
+    compile_w_impedance_compose_preview, MappingExecutionProfile, RegionFieldOperatorSpec,
 };
 
 const RAW_FIXTURE: &str = include_str!("fixtures/mapgen/tiny_pentad_hub_slice_raw.clause");

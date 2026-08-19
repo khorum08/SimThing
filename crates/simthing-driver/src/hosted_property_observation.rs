@@ -12,8 +12,8 @@
 use std::collections::BTreeMap;
 
 use simthing_core::{
-    AnchorIdentity, AnchorTable, AnchorTableRow, DimensionRegistry, SimThingId,
-    SlotIndex, SubFieldRole,
+    AnchorIdentity, AnchorTable, AnchorTableRow, DimensionRegistry, SimThingId, SlotIndex,
+    SubFieldRole,
 };
 use simthing_gpu::SlotAllocator;
 use simthing_spec::{DisruptionAuthorityReadback, DisruptionAuthorityReadbackError, PropertyKey};
@@ -31,9 +31,7 @@ impl AnchorTableSnapshot {
     /// Sole production observation door: decode the GPU-resident compact table.
     pub fn from_session(sim: &SimSession) -> Self {
         Self {
-            table: sim
-                .state
-                .read_typed_anchor_table(&sim.proto.registry),
+            table: sim.state.read_typed_anchor_table(&sim.proto.registry),
         }
     }
 

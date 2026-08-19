@@ -100,9 +100,7 @@ pub use special_routes::{
     SpecialRouteEdge, SpecialRouteError, SpecialRouteKind, SpecialRouteOptions, SpecialRouteReport,
     SpecialRouteTopology,
 };
-pub use star_names::{
-    assign_star_names, star_name_for_index_or_seed, StarNameAssignment,
-};
+pub use star_names::{assign_star_names, star_name_for_index_or_seed, StarNameAssignment};
 pub use strategy::{
     PlacedSystemSeed, ShapePlacement, ShapePlacementError, ShapeStrategy, ShapeStrategyContext,
 };

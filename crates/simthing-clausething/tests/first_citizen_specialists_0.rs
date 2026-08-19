@@ -318,11 +318,7 @@ fn load_citizen_counts_tsv(path: &Path) -> BTreeMap<String, usize> {
         }
         let mut parts = line.split('\t');
         let profile = parts.next().expect("profile").to_string();
-        let count: usize = parts
-            .next()
-            .expect("count")
-            .parse()
-            .expect("count parses");
+        let count: usize = parts.next().expect("count").parse().expect("count parses");
         out.insert(profile, count);
     }
     out
@@ -398,15 +394,21 @@ fn generator_cli() {
             if let Err(err) = assert_tsv_matches_live(&out) {
                 panic!("{err}");
             }
-            eprintln!("gen_specialization_citizen_counts --check: PASS ({})", out.display());
+            eprintln!(
+                "gen_specialization_citizen_counts --check: PASS ({})",
+                out.display()
+            );
         }
         "write" => {
             let (spatial, owner_seat, session_root) = live_citizen_counts();
             if let Some(parent) = out.parent() {
                 std::fs::create_dir_all(parent).expect("create output parent");
             }
-            std::fs::write(&out, render_citizen_counts_tsv(spatial, owner_seat, session_root))
-                .expect("write citizen counts TSV");
+            std::fs::write(
+                &out,
+                render_citizen_counts_tsv(spatial, owner_seat, session_root),
+            )
+            .expect("write citizen counts TSV");
             eprintln!(
                 "gen_specialization_citizen_counts: wrote {} (spatial={spatial} owner-seat={owner_seat} session-root={session_root})",
                 out.display()

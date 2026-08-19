@@ -205,5 +205,4 @@ pub fn summaries_from_values(values: &[f32], n_slots: u32, n_dims: u32) -> Vec<S
 #[cfg(test)]
 mod summary_tests {
     use super::*;
-
 }

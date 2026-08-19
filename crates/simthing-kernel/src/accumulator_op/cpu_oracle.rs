@@ -65,11 +65,25 @@ pub fn eval_eml_cpu(
     for node in nodes {
         match node.opcode {
             eml_opcode::LITERAL_F32 => {
-                push(&mut stack, &mut mul_a, &mut mul_b, &mut is_mul, &mut sp, f32::from_bits(node.a));
+                push(
+                    &mut stack,
+                    &mut mul_a,
+                    &mut mul_b,
+                    &mut is_mul,
+                    &mut sp,
+                    f32::from_bits(node.a),
+                );
             }
             eml_opcode::SLOT_VALUE => {
                 let i = idx(eval_slot, node.a, n_dims);
-                push(&mut stack, &mut mul_a, &mut mul_b, &mut is_mul, &mut sp, values[i]);
+                push(
+                    &mut stack,
+                    &mut mul_a,
+                    &mut mul_b,
+                    &mut is_mul,
+                    &mut sp,
+                    values[i],
+                );
             }
             eml_opcode::PARAM => {
                 push(

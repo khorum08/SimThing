@@ -161,5 +161,4 @@ mod tests {
 
     const SCREEN_W: f32 = 1920.0;
     const SCREEN_H: f32 = 1080.0;
-
 }

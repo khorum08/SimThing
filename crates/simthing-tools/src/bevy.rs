@@ -1870,5 +1870,4 @@ pub fn profile_bevy_fixed_width_numeric_damage_bench(
 mod asset_store_tests {
     use super::*;
     use bevy::asset::AssetPlugin;
-
 }

@@ -275,10 +275,7 @@ fn produce(
 
 #[test]
 fn field_neutrality_gate_is_field_neutral() {
-    assert_eq!(
-        FIELD_NEUTRALITY_OUTCOME,
-        FieldNeutralityGate::FieldNeutral
-    );
+    assert_eq!(FIELD_NEUTRALITY_OUTCOME, FieldNeutralityGate::FieldNeutral);
 }
 
 #[test]
@@ -493,12 +490,9 @@ fn identity_blindness_labels_do_not_change_numerical_or_sealed_products() {
         FrozenActionBandStructuralRequests::from_compiled_admission(&compiled, pre).unwrap();
 
     // Two post-authority semantic views of the same logical admission/compile.
-    let session_a = ActionBandSemanticSession::open(
-        frozen_a.clone(),
-        compiled.clone(),
-        structural.clone(),
-    )
-    .expect("view A open");
+    let session_a =
+        ActionBandSemanticSession::open(frozen_a.clone(), compiled.clone(), structural.clone())
+            .expect("view A open");
     let session_b = ActionBandSemanticSession::open(frozen_b, compiled, structural)
         .expect("view B open — label-only change must not block open/dispatch");
     assert_eq!(session_a.session_origin(), session_b.session_origin());
@@ -759,7 +753,11 @@ fn foreign_owner_error_propagates_through_transit_projection() {
 #[test]
 fn fleet_presence_in_transit_from_admitted_reparent_without_mapeditor_coupling() {
     let fixture = fixture();
-    let frozen = admit(&fixture, "semantic-shadow-template", "in-transit-fleet-shadow");
+    let frozen = admit(
+        &fixture,
+        "semantic-shadow-template",
+        "in-transit-fleet-shadow",
+    );
     let ctx = require_gpu();
     let world = world_tree("gamma");
     let (session, sealed) = produce(&ctx, &fixture, &frozen, world.actor, world.to);
@@ -780,10 +778,7 @@ fn fleet_presence_in_transit_from_admitted_reparent_without_mapeditor_coupling()
         } if source_system_id == world.from.raw() && dest_system_id == world.to.raw()
     ));
     assert_eq!(record.fleet_simthing_id_raw, world.actor.raw());
-    assert_eq!(
-        record.owner_ref.as_ref().map(|o| o.as_str()),
-        Some("gamma")
-    );
+    assert_eq!(record.owner_ref.as_ref().map(|o| o.as_str()), Some("gamma"));
     let cargo = include_str!("../Cargo.toml");
     assert!(!cargo.contains("simthing-mapeditor"));
 }
@@ -793,7 +788,10 @@ fn identity_blindness_labels_do_not_change_plan_fingerprint() {
     let fixture = fixture();
     let a = admit(&fixture, "semantic-shadow-template", "label-A");
     let b = admit(&fixture, "semantic-shadow-template", "label-B");
-    assert_ne!(a.semantic_shadow()[0].label(), b.semantic_shadow()[0].label());
+    assert_ne!(
+        a.semantic_shadow()[0].label(),
+        b.semantic_shadow()[0].label()
+    );
     let ctx = require_gpu();
     let world = world_tree("alpha");
     let (_, sa) = produce(&ctx, &fixture, &a, world.actor, world.to);

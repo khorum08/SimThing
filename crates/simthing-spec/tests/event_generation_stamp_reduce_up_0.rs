@@ -4,13 +4,11 @@
 //! schedule is per-product full generation set.
 
 use simthing_core::owner_channel::{bind_owner, OwnerRef};
-use simthing_core::{
-    GenerationStamp, IntegrationSchedule, SimThing, SimThingId, SimThingKind,
-};
+use simthing_core::{GenerationStamp, IntegrationSchedule, SimThing, SimThingId, SimThingKind};
 use simthing_spec::{
-    integrate_raw_reduce_up_report_forbidden, integrate_stamped_reduce_up,
-    reduce_owner_channel_rf, reduce_up_product_key, replay_reduce_up_schedule,
-    OwnerChannelRfOwnAggregate, ParentRfIntegrationState, ResourceKey,
+    integrate_raw_reduce_up_report_forbidden, integrate_stamped_reduce_up, reduce_owner_channel_rf,
+    reduce_up_product_key, replay_reduce_up_schedule, OwnerChannelRfOwnAggregate,
+    ParentRfIntegrationState, ResourceKey,
 };
 
 fn node() -> SimThing {
@@ -79,8 +77,12 @@ fn raw_unstamped_report_is_rejected_at_production_integration_door() {
     let raw = stamped.product().clone();
     let mut schedule = IntegrationSchedule::new();
     let mut parent = ParentRfIntegrationState::default();
-    let err = integrate_raw_reduce_up_report_forbidden(&raw, &mut parent, &mut schedule).unwrap_err();
-    assert!(matches!(err, simthing_core::IntegrateError::UnstampedProduct));
+    let err =
+        integrate_raw_reduce_up_report_forbidden(&raw, &mut parent, &mut schedule).unwrap_err();
+    assert!(matches!(
+        err,
+        simthing_core::IntegrateError::UnstampedProduct
+    ));
 }
 
 #[test]
@@ -100,7 +102,10 @@ fn production_integrate_n_plus_3_from_n_never_waits() {
     .expect("production path has no wait branch");
     assert_eq!(parent.product_count, 1);
     assert_eq!(schedule.entries().len(), 1);
-    assert_eq!(schedule.entries()[0].child_generation, GenerationStamp::new(1));
+    assert_eq!(
+        schedule.entries()[0].child_generation,
+        GenerationStamp::new(1)
+    );
 }
 
 #[test]

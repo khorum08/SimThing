@@ -24,8 +24,8 @@ use simthing_gpu::{
     GpuContext, IndexedScatterOp, IntentDelta, PackedAccumulatorUpload, PackedIntentUpload,
     ScatterEntry, StructuredFieldStencilBoundaryMode, StructuredFieldStencilConfig,
     StructuredFieldStencilMaskMode, StructuredFieldStencilOp, StructuredFieldStencilOperator,
-    StructuredFieldStencilSourcePolicy, TransferInputRef, TransferRegistration, WImpedanceComposeConfig,
-    WImpedanceComposeOp, WImpedanceComposeProfile, CLAMP_UNBOUNDED,
+    StructuredFieldStencilSourcePolicy, TransferInputRef, TransferRegistration,
+    WImpedanceComposeConfig, WImpedanceComposeOp, WImpedanceComposeProfile, CLAMP_UNBOUNDED,
 };
 use wgpu::util::DeviceExt;
 
@@ -124,18 +124,22 @@ fn case_mobility(ctx: &GpuContext, plant_defect: bool) -> bool {
         entries
     };
     let op = IndexedScatterOp::new(ctx);
-    let src = ctx.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("mob_src"),
-        contents: cast_slice(&src_host),
-        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-    });
-    let dst = ctx.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("mob_dst"),
-        contents: cast_slice(&[0.0f32; 4]),
-        usage: wgpu::BufferUsages::STORAGE
-            | wgpu::BufferUsages::COPY_DST
-            | wgpu::BufferUsages::COPY_SRC,
-    });
+    let src = ctx
+        .device
+        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("mob_src"),
+            contents: cast_slice(&src_host),
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+        });
+    let dst = ctx
+        .device
+        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("mob_dst"),
+            contents: cast_slice(&[0.0f32; 4]),
+            usage: wgpu::BufferUsages::STORAGE
+                | wgpu::BufferUsages::COPY_DST
+                | wgpu::BufferUsages::COPY_SRC,
+        });
     op.dispatch(ctx, &src, &dst, &gpu_entries).expect("scatter");
     bits_eq(&dst_cpu, &readback_buffer(ctx, &dst, 4))
 }
@@ -228,9 +232,8 @@ fn case_eml_eval(ctx: &GpuContext, plant_defect: bool) -> bool {
         consume: ConsumeMode::ResetTarget,
         targets: vec![(SlotIndex::new(0), col(0))],
     };
-    let upload =
-        PackedAccumulatorUpload::from_ops_with_eml(std::slice::from_ref(&op), Some(&reg))
-            .expect("pack");
+    let upload = PackedAccumulatorUpload::from_ops_with_eml(std::slice::from_ref(&op), Some(&reg))
+        .expect("pack");
     let mut session = AccumulatorOpSession::new_attached(ctx, 1, 1, 1);
     session.upload_values(ctx, &values);
     session.copy_values_to_previous(ctx);
@@ -313,9 +316,7 @@ fn accumulator_emission(ctx: &GpuContext, plant_defect: bool) -> bool {
         .expect("upload");
     session.tick(ctx, 0).expect("tick");
     let records = session.readback_emissions(ctx).expect("emissions");
-    records.len() == 1
-        && records[0].reg_idx() == 7
-        && records[0].emit_count() == cpu_emit
+    records.len() == 1 && records[0].reg_idx() == 7 && records[0].emit_count() == cpu_emit
 }
 
 /// Intent subpath: live `PackedIntentUpload` + `upload_packed_intent_ops` + tick.
@@ -381,18 +382,22 @@ fn accumulator_velocity(ctx: &GpuContext, plant_defect: bool) -> bool {
             &PackedAccumulatorUpload::from_gpu_ops(plan.ops.clone()).expect("pack"),
         )
         .expect("vel ops");
-    let values_buf = ctx.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("vel_values"),
-        contents: cast_slice(&values),
-        usage: wgpu::BufferUsages::STORAGE
-            | wgpu::BufferUsages::COPY_DST
-            | wgpu::BufferUsages::COPY_SRC,
-    });
-    let prev_buf = ctx.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("vel_prev"),
-        contents: cast_slice(&values),
-        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-    });
+    let values_buf = ctx
+        .device
+        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("vel_values"),
+            contents: cast_slice(&values),
+            usage: wgpu::BufferUsages::STORAGE
+                | wgpu::BufferUsages::COPY_DST
+                | wgpu::BufferUsages::COPY_SRC,
+        });
+    let prev_buf = ctx
+        .device
+        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("vel_prev"),
+            contents: cast_slice(&values),
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+        });
     let mut encoder = ctx
         .device
         .create_command_encoder(&wgpu::CommandEncoderDescriptor {
@@ -430,9 +435,7 @@ fn accumulator_weighted_mean(ctx: &GpuContext, plant_defect: bool) -> bool {
             count: 2,
             col: col(0),
         },
-        combine: CombineFn::WeightedMean {
-            weight_col: col(1),
-        },
+        combine: CombineFn::WeightedMean { weight_col: col(1) },
         gate: GateSpec::Always,
         scale: ScaleSpec::Identity,
         consume: ConsumeMode::ResetTarget,
@@ -531,13 +534,15 @@ fn accumulator_bh2_w(ctx: &GpuContext, plant_defect: bool) -> bool {
         gpu_config.profiles[0].weight_a = 9.0;
     }
     let op = WImpedanceComposeOp::new(ctx);
-    let buf = ctx.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("w_vals"),
-        contents: cast_slice(&values),
-        usage: wgpu::BufferUsages::STORAGE
-            | wgpu::BufferUsages::COPY_DST
-            | wgpu::BufferUsages::COPY_SRC,
-    });
+    let buf = ctx
+        .device
+        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("w_vals"),
+            contents: cast_slice(&values),
+            usage: wgpu::BufferUsages::STORAGE
+                | wgpu::BufferUsages::COPY_DST
+                | wgpu::BufferUsages::COPY_SRC,
+        });
     op.compose_resident_field(ctx, &buf, &gpu_config)
         .expect("compose");
     bits_eq(&cpu, &readback_buffer(ctx, &buf, values.len()))
@@ -683,7 +688,8 @@ fn case_rf_need_binding(ctx: &GpuContext, plant_defect: bool) -> bool {
             .mark_tree_uploaded(id, idx, table.generation)
             .expect("mark");
     }
-    let upload = PackedAccumulatorUpload::from_ops_with_eml(&gpu_ops, Some(&gpu_reg)).expect("pack");
+    let upload =
+        PackedAccumulatorUpload::from_ops_with_eml(&gpu_ops, Some(&gpu_reg)).expect("pack");
     let mut session = AccumulatorOpSession::new_attached(ctx, n_slots as u32, n_cols as u32, 8);
     session.upload_values(ctx, &initial);
     session.copy_values_to_previous(ctx);
@@ -785,7 +791,10 @@ fn cpu_gpu_parity_matrix_planted_defects_fail() {
     assert!(!accumulator_emission(&ctx, true), "emission defect");
     assert!(!accumulator_intent(&ctx, true), "intent defect");
     assert!(!accumulator_velocity(&ctx, true), "velocity defect");
-    assert!(!accumulator_weighted_mean(&ctx, true), "weighted-mean defect");
+    assert!(
+        !accumulator_weighted_mean(&ctx, true),
+        "weighted-mean defect"
+    );
     assert!(!accumulator_owner_silo(&ctx, true), "owner-silo defect");
     assert!(!accumulator_bh2_w(&ctx, true), "bh2-w defect");
 }

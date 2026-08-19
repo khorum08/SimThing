@@ -86,7 +86,12 @@ impl WorldSummaryRuntime {
         self.n_dims
     }
 
-    pub(crate) fn encode_into(&self, ctx: &GpuContext, encoder: &mut CommandEncoder, values: &Buffer) {
+    pub(crate) fn encode_into(
+        &self,
+        ctx: &GpuContext,
+        encoder: &mut CommandEncoder,
+        values: &Buffer,
+    ) {
         self.encode_write_summaries_for_values(ctx, encoder, values);
     }
 
@@ -228,5 +233,4 @@ mod tests {
         }
         state.install_resolved_values_at_boundary(&values);
     }
-
 }

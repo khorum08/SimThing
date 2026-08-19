@@ -174,5 +174,4 @@ fn manifest_icon_error(err: IconError) -> TypefaceError {
 #[cfg(test)]
 mod tests {
     use super::*;
-
 }

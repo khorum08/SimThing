@@ -118,5 +118,4 @@ pub fn report_has_spiral_only_params(report_shape_params: &BTreeMap<String, f64>
 #[cfg(test)]
 mod tests {
     use super::*;
-
 }

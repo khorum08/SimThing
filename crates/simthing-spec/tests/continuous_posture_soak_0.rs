@@ -62,9 +62,10 @@ fn scaling_tree(
     let rows = ids
         .iter()
         .flat_map(|&id| {
-            resources.iter().enumerate().map(move |(ri, r)| {
-                own(id, r, ((ri as u32) + 1) % 5, ((ri as u32) * 2) % 3)
-            })
+            resources
+                .iter()
+                .enumerate()
+                .map(move |(ri, r)| own(id, r, ((ri as u32) + 1) % 5, ((ri as u32) * 2) % 3))
         })
         .collect();
     (root, rows, crossing_count)
@@ -159,8 +160,7 @@ fn owner_channel_stead_growth_crossing_bounded_over_scaling_matrix_and_product_f
                 "crossing rows must never reach nodes×owners×resources product form"
             );
             // Retained STEAD cardinality = own + crossings (the measured bound).
-            let retained =
-                report.stead.own_aggregates.len() + report.stead.crossing_flows.len();
+            let retained = report.stead.own_aggregates.len() + report.stead.crossing_flows.len();
             assert_eq!(retained, nodes * n_resources + crossings);
         }
         measured.push((nodes, n_owners, n_resources, max_own, max_cross));
@@ -172,8 +172,7 @@ fn owner_channel_stead_growth_crossing_bounded_over_scaling_matrix_and_product_f
 
     // Planted product-form growth mutant: inflate crossings to nodes×owners×resources.
     let (root, rows, crossings) = scaling_tree(64, 8, &["r0", "r1"]);
-    let stamped =
-        reduce_owner_channel_rf(&root, &rows, GenerationStamp::new(0)).expect("reduce");
+    let stamped = reduce_owner_channel_rf(&root, &rows, GenerationStamp::new(0)).expect("reduce");
     let mut mutant = stamped.product().stead.clone();
     let n_owners = crossings + 1;
     let product = 64 * n_owners * 2;
@@ -203,8 +202,7 @@ fn owner_channel_stead_growth_crossing_bounded_over_scaling_matrix_and_product_f
 #[test]
 fn staleness_is_one_derived_stead_lane_seeded_horizon_inert_zero_and_whole_lattice_reds() {
     let (root, rows, _crossings) = scaling_tree(48, 12, &["r0"]);
-    let stamped =
-        reduce_owner_channel_rf(&root, &rows, GenerationStamp::new(1)).expect("reduce");
+    let stamped = reduce_owner_channel_rf(&root, &rows, GenerationStamp::new(1)).expect("reduce");
     let crossings = &stamped.product().stead.crossing_flows;
     let seeds = AsyncStalenessColumn::seeds_from_crossings(crossings);
     assert!(!seeds.is_empty());
@@ -278,13 +276,7 @@ fn staleness_is_one_derived_stead_lane_seeded_horizon_inert_zero_and_whole_latti
     .expect("admit");
     let mut missing_plane = vec![0.0; n_slots * missing.n_dims()];
     let err = missing
-        .sweep_seeded(
-            &mut missing_plane,
-            &root,
-            &slots,
-            parent,
-            &BTreeMap::new(),
-        )
+        .sweep_seeded(&mut missing_plane, &root, &slots, parent, &BTreeMap::new())
         .expect_err("missing stamp must RED");
     assert!(matches!(
         err,
@@ -308,9 +300,7 @@ fn forced_lag_soak_replays_from_one_schedule_and_causal_cycle_is_generation_pace
     const N: u32 = 24;
     let (root, rows, _) = scaling_tree(40, 10, &["r0", "r1"]);
     let products: Vec<_> = (1..=N)
-        .map(|g| {
-            reduce_owner_channel_rf(&root, &rows, GenerationStamp::new(g)).expect("product")
-        })
+        .map(|g| reduce_owner_channel_rf(&root, &rows, GenerationStamp::new(g)).expect("product"))
         .collect();
 
     // Forced lag: parent runs ahead; child products arrive lagged by 3.
@@ -325,7 +315,8 @@ fn forced_lag_soak_replays_from_one_schedule_and_causal_cycle_is_generation_pace
         let child_gen = parent_gen.saturating_sub(3);
         if child_gen >= 1 && child_gen <= N {
             let product = &products[(child_gen - 1) as usize];
-            seam.enqueue_reduce_up(product).expect("nonblocking enqueue");
+            seam.enqueue_reduce_up(product)
+                .expect("nonblocking enqueue");
         }
 
         // Closed causal cycle once per generation:
@@ -357,8 +348,7 @@ fn forced_lag_soak_replays_from_one_schedule_and_causal_cycle_is_generation_pace
     }
 
     assert_eq!(
-        cycle_passes,
-        N,
+        cycle_passes, N,
         "cycle runs exactly once per generation under load — no authored cascade bound"
     );
 

@@ -43,7 +43,10 @@ fn compatibility_owner_stamps_convert_once_then_rf_reads_only_intrinsic_view() {
     assert!(owner_view.stats().compatibility_property_count > 0);
     assert_eq!(owner_view.stats().legacy_owner_properties_remaining, 0);
     assert_eq!(
-        count_property(&owner_view.scenario().root, OWNER_FLOW_OWNER_REF_PROPERTY_ID),
+        count_property(
+            &owner_view.scenario().root,
+            OWNER_FLOW_OWNER_REF_PROPERTY_ID
+        ),
         0
     );
     assert_eq!(
@@ -56,16 +59,22 @@ fn compatibility_owner_stamps_convert_once_then_rf_reads_only_intrinsic_view() {
     assert_eq!(before.len(), 4);
     assert!(before.iter().all(|participant| {
         !participant.owner_ref.is_unowned()
-            && owner_view.admitted_owners().contains(&participant.owner_ref)
+            && owner_view
+                .admitted_owners()
+                .contains(&participant.owner_ref)
     }));
 
     let first = before.first().expect("participant");
-    let source_node = find_mut(&mut source.root, first.simthing_id_raw).expect("source participant");
+    let source_node =
+        find_mut(&mut source.root, first.simthing_id_raw).expect("source participant");
     apply_participant_owner_flow_metadata(source_node, "owner_b", 999, 999);
 
     let after = planet_child_rf_participant_inputs_from_owner_view(&owner_view)
         .expect("same resolved execution view");
-    assert_eq!(after, before, "post-ingress flat metadata cannot affect RF authority");
+    assert_eq!(
+        after, before,
+        "post-ingress flat metadata cannot affect RF authority"
+    );
 }
 
 #[test]

@@ -24,12 +24,8 @@ pub const NEED_STAGE_MAX_PAIRS: usize = 4;
 
 /// Named roles `need_stage_in_{i}` / `need_stage_w_{i}` for i in 0..NEED_STAGE_MAX_PAIRS.
 pub fn need_stage_role_names() -> impl Iterator<Item = String> {
-    (0..NEED_STAGE_MAX_PAIRS).flat_map(|i| {
-        [
-            format!("need_stage_in_{i}"),
-            format!("need_stage_w_{i}"),
-        ]
-    })
+    (0..NEED_STAGE_MAX_PAIRS)
+        .flat_map(|i| [format!("need_stage_in_{i}"), format!("need_stage_w_{i}")])
 }
 
 fn named(role: &str) -> SubFieldRole {
@@ -90,8 +86,7 @@ pub fn expand_arena_internal_columns(layout: PropertyLayout) -> PropertyLayout {
         if out.offset_of(&role).is_some() {
             continue;
         }
-        out.sub_fields
-            .push(internal_plumbing_subfield(&role_name));
+        out.sub_fields.push(internal_plumbing_subfield(&role_name));
     }
     out
 }

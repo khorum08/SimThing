@@ -140,12 +140,10 @@ fn eml_arithmetic_semantics_0_new_exp_consumer_needs_zero_exactness_evidence() {
         })
         .collect();
     let v = simthing_kernel::eval_eml_cpu(&gpu, 0, &[1.25], 1, [0.0; 4]);
-    let expected = simthing_core::eml_exp_pinned_f32(
-        (-1.25_f32.abs()).clamp(
-            f32::from_bits(simthing_core::EML_EXP_DOMAIN_MIN_BITS),
-            f32::from_bits(simthing_core::EML_EXP_SATURATION_CEILING_BITS),
-        ),
-    );
+    let expected = simthing_core::eml_exp_pinned_f32((-1.25_f32.abs()).clamp(
+        f32::from_bits(simthing_core::EML_EXP_DOMAIN_MIN_BITS),
+        f32::from_bits(simthing_core::EML_EXP_SATURATION_CEILING_BITS),
+    ));
     assert_eq!(v.to_bits(), expected.to_bits());
     // Absence of the deleted 5.13 policing symbols is proven by
     // `eml_arithmetic_semantics_0_deleted_plumbing_grep_absent` — this test
@@ -157,11 +155,11 @@ fn eml_arithmetic_semantics_0_new_exp_consumer_needs_zero_exactness_evidence() {
 fn eml_arithmetic_semantics_0_cpu_seam_plant_reds_falloff() {
     let registration = stead_falloff_registration();
     let values = probe_falloff_values();
-    let clean = simthing_gpu::execute_field_sweep_cpu_iterations(&values, &registration, 3)
-        .expect("clean");
+    let clean =
+        simthing_gpu::execute_field_sweep_cpu_iterations(&values, &registration, 3).expect("clean");
     simthing_kernel::field_sweep::plant_seam_cpu_separate_rounding(true);
-    let planted = simthing_gpu::execute_field_sweep_cpu_iterations(&values, &registration, 3)
-        .expect("plant");
+    let planted =
+        simthing_gpu::execute_field_sweep_cpu_iterations(&values, &registration, 3).expect("plant");
     simthing_kernel::field_sweep::plant_seam_cpu_separate_rounding(false);
     assert_ne!(
         digest_outputs(&clean),
@@ -183,9 +181,7 @@ fn eml_arithmetic_semantics_0_interpreted_seam_plant_reds_falloff() {
     let mut clean_session =
         FieldSweepSession::new_interpreted_for_profiling(&ctx, &registration, class)
             .expect("clean interpreted");
-    clean_session
-        .upload_values(&ctx, &values)
-        .expect("upload");
+    clean_session.upload_values(&ctx, &values).expect("upload");
     clean_session
         .dispatch_chain(&ctx, std::slice::from_ref(&registration), 3)
         .expect("dispatch");
@@ -230,9 +226,7 @@ fn eml_arithmetic_semantics_0_jit_seam_separate_rounding_plant_is_recontracted()
     let mut clean_session =
         FieldSweepSession::new_with_profiling_resource_class(&ctx, &registration, class)
             .expect("clean jit");
-    clean_session
-        .upload_values(&ctx, &values)
-        .expect("upload");
+    clean_session.upload_values(&ctx, &values).expect("upload");
     clean_session
         .dispatch_chain(&ctx, std::slice::from_ref(&registration), 3)
         .expect("dispatch");
@@ -379,9 +373,7 @@ fn ao_eval_interpreted(ctx: &GpuContext, nodes: &[eml_nodes::EmlNode]) -> f32 {
     session.upload_values(ctx, &[0.0]);
     session.copy_values_to_previous(ctx);
     session.upload_packed_ops(ctx, &upload).expect("ops");
-    session
-        .tick_with_eml(ctx, 0, Some(&table))
-        .expect("tick");
+    session.tick_with_eml(ctx, 0, Some(&table)).expect("tick");
     session.readback_full(ctx).expect("rb")[0]
 }
 
@@ -443,8 +435,7 @@ fn eml_arithmetic_semantics_0_unique_mul_into_sub_matches_fms_on_derived_arms() 
             };
             let separate = c - (a * b);
             let fused = (-a).mul_add(b, c);
-            if separate.to_bits() != fused.to_bits() && fused.is_finite() && separate.is_finite()
-            {
+            if separate.to_bits() != fused.to_bits() && fused.is_finite() && separate.is_finite() {
                 found = Some((a, b, c, fused));
                 break;
             }

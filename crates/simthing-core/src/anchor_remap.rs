@@ -261,7 +261,9 @@ impl std::fmt::Display for AnchorRemapEncodeError {
 impl std::error::Error for AnchorRemapEncodeError {}
 
 fn locus_keys(keys: &[(SimThingId, SimPropertyId)]) -> Vec<RemapKey> {
-    keys.iter().map(|&(id, prop)| RemapKey::Locus(id, prop)).collect()
+    keys.iter()
+        .map(|&(id, prop)| RemapKey::Locus(id, prop))
+        .collect()
 }
 
 /// Derive exact remaps from pre-/post-mutation Anchored locus snapshots.
@@ -572,11 +574,7 @@ pub fn validate_epoch_rebind_section(
     // endpoints.
     let mut missing = Vec::new();
     for &(id, from, to) in &moves {
-        match section
-            .remaps
-            .iter()
-            .find(|r| r.key() == RemapKey::Row(id))
-        {
+        match section.remaps.iter().find(|r| r.key() == RemapKey::Row(id)) {
             None => missing.push(RemapKey::Row(id)),
             Some(row) => {
                 if row.from_slot != Some(from) || row.to_slot != Some(to) {
@@ -655,12 +653,7 @@ pub fn validate_epoch_rebind_section(
                 detail: "epoch rebind may not birth or retire loci",
             });
         };
-        if pre_col != post_col
-            && !section
-                .remaps
-                .iter()
-                .any(|r| r.locus_key() == Some(key))
-        {
+        if pre_col != post_col && !section.remaps.iter().any(|r| r.locus_key() == Some(key)) {
             return Err(AnchorRemapEncodeError {
                 operation: section.operation,
                 missing: vec![RemapKey::Locus(key.0, key.1)],
@@ -865,8 +858,22 @@ mod tests {
         let dup = AnchorRemapSection::with_remaps(
             AnchorRemapOperation::Fission,
             vec![
-                AnchorLocusRemap::move_locus(id, prop, SlotIndex::new(1), col(0), SlotIndex::new(2), col(0)),
-                AnchorLocusRemap::move_locus(id, prop, SlotIndex::new(1), col(0), SlotIndex::new(2), col(0)),
+                AnchorLocusRemap::move_locus(
+                    id,
+                    prop,
+                    SlotIndex::new(1),
+                    col(0),
+                    SlotIndex::new(2),
+                    col(0),
+                ),
+                AnchorLocusRemap::move_locus(
+                    id,
+                    prop,
+                    SlotIndex::new(1),
+                    col(0),
+                    SlotIndex::new(2),
+                    col(0),
+                ),
             ],
         );
         assert!(validate_anchor_remap_for_encode(&dup, &[(id, prop)]).is_err());
@@ -959,10 +966,9 @@ mod tests {
                 SlotIndex::new(2),
             )],
         );
-        let err = validate_epoch_rebind_section(
-            &omitted, &pre_rows, &post_rows, &pre_loci, &post_loci,
-        )
-        .unwrap_err();
+        let err =
+            validate_epoch_rebind_section(&omitted, &pre_rows, &post_rows, &pre_loci, &post_loci)
+                .unwrap_err();
         assert_eq!(err.missing, vec![RemapKey::Row(zero_anchor)]);
         assert!(err.detail.contains("zero-anchor"));
     }
@@ -988,9 +994,8 @@ mod tests {
                 AnchorLocusRemap::object_row(id, SlotIndex::new(3), SlotIndex::new(9)),
             ],
         );
-        let err =
-            validate_epoch_rebind_section(&dup, &pre_rows, &post_rows, &pre_loci, &post_loci)
-                .unwrap_err();
+        let err = validate_epoch_rebind_section(&dup, &pre_rows, &post_rows, &pre_loci, &post_loci)
+            .unwrap_err();
         assert_eq!(err.missing, vec![RemapKey::Row(id)]);
         assert!(err.detail.contains("duplicate"));
 

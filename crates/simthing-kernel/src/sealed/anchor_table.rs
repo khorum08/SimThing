@@ -278,7 +278,10 @@ mod tests {
         };
         let gpu_zero = AnchorTableRowGpu::encode(&gen_zero);
         assert_eq!(gpu_zero.last_crossing_generation, 0);
-        assert_ne!(gpu_zero.last_crossing_generation, ANCHOR_GENERATION_NONE_POD);
+        assert_ne!(
+            gpu_zero.last_crossing_generation,
+            ANCHOR_GENERATION_NONE_POD
+        );
 
         let crossed = AnchorTableRow {
             band: Some(BandIndex::new(4)),

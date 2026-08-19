@@ -261,11 +261,13 @@ fn resolve_one(
         ));
     }
     let flow_layout = &registry.property(flow_property_id).layout;
-    let _ = resolve_node_columns_for_property(registry, flow_property_id, &arena.name).map_err(|_| {
-        InstallError::Spec(SpecError::UnknownResourceFlowProperty {
-            property: format!("{} flow columns", arena.name),
-        })
-    })?;
+    let _ = resolve_node_columns_for_property(registry, flow_property_id, &arena.name).map_err(
+        |_| {
+            InstallError::Spec(SpecError::UnknownResourceFlowProperty {
+                property: format!("{} flow columns", arena.name),
+            })
+        },
+    )?;
     let flow_range = registry.column_range(flow_property_id);
     let need_col = flow_range
         .col_for_role(&SubFieldRole::Named("weight".into()), flow_layout)

@@ -897,5 +897,4 @@ pub(crate) struct WorldTextRenderDiagnostics {
 #[cfg(test)]
 mod tests {
     use super::*;
-
 }

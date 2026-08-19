@@ -9,8 +9,11 @@
 pub mod accumulator_op;
 pub mod candidate_f_magnitude;
 pub mod context;
+pub mod cpu_oracle;
 pub mod decision_ingress;
 mod derived_span_projection;
+pub mod emission_accumulator;
+pub mod emission_oracle;
 pub mod eml_exp_qualification;
 pub mod eml_ln_qualification;
 pub mod eml_opcode_gate;
@@ -18,9 +21,6 @@ mod eml_resource_class;
 mod eml_uniqueness;
 pub mod exact_magnitude_gate;
 pub mod field_sweep;
-pub mod cpu_oracle;
-pub mod emission_accumulator;
-pub mod emission_oracle;
 pub mod gpu_readback;
 pub mod indexed_scatter;
 pub mod intensity_accumulator;
@@ -61,10 +61,23 @@ pub use candidate_f_magnitude::{
     max_candidate_f_magnitude_bits, CandidateFMagnitudeError, CandidateFMagnitudeReport,
     CandidateFMagnitudeRequest, GradientPairGpu,
 };
+pub use context::{GpuContext, GpuInitError};
+pub use cpu_oracle::{
+    cpu_reduce_oracle, cpu_reduce_oracle_call_count, execute_ops_cpu_with_emissions,
+    reset_cpu_reduce_oracle_call_count, CpuOracleError,
+};
 pub use decision_ingress::{
     ApproximateDecisionDiagnostic, BoundaryEmissionToken, CpuDiagnosticDecision,
     DecisionIngressError, EmissionToken, StructuralCommitment, ThresholdCrossingToken,
 };
+pub use derived_span_projection::DerivedSpanAdmissionError;
+pub use emission_accumulator::{
+    cpu_oracle_emission_records, emission_plan_signature_fields, encode_emission_plan,
+    plan_emission_ops, EmissionFormula, EmissionPlan, EmissionPlanError, EmissionRegistration,
+    EmissionSyncError, FORMULA_KIND_CONSTANT, FORMULA_KIND_EVAL_EML, FORMULA_KIND_IDENTITY_FLOOR,
+    NO_CONSTANT, NO_MAX_EMIT, NO_TREE_ID,
+};
+pub use emission_oracle::{EmissionOracleError, EmissionOracleFormula, EmissionOracleRegistration};
 pub use eml_opcode_gate::{
     admit_exp_call_sites, combine_in_closed_vocabulary, exp_primitive_domain, ln_primitive_domain,
     opcode_in_accumulator_vocabulary, opcode_in_closed_vocabulary, AdmittedEvalEmlCombine,
@@ -75,8 +88,13 @@ pub use eml_opcode_gate::{
     ExactPrimitiveCostKey, ExactPrimitiveDeterminismEvidence, ExactPrimitiveDeterminismKey,
     ExactPrimitiveDomainPolicy, ExactPrimitiveResourceEffect, GenericPrimitiveRegistration,
     LnConsumerGadgets, OpcodeGateError, OpcodeRegistrationGate, OpcodeRegistrationRequest,
-    SemanticOpcodeRegistration, SoftStepPolicyConditional, SoftmaxWeightGadget,
-    EXP_PRIMITIVE_NAME, LN_PRIMITIVE_NAME,
+    SemanticOpcodeRegistration, SoftStepPolicyConditional, SoftmaxWeightGadget, EXP_PRIMITIVE_NAME,
+    LN_PRIMITIVE_NAME,
+};
+pub use exact_magnitude_gate::{
+    exact_mag2_bits_q16, mint_exact_magnitude_proof_candidate_f,
+    mint_exact_magnitude_proof_candidate_f_cpu, sqrt_cr_f_bits, ApproximateDiagnostic,
+    CommitmentRegistration, ExactMagnitudeProof,
 };
 pub use field_sweep::{
     apply_field_sweep_registration, execute_field_sweep_cpu, execute_field_sweep_cpu_chain,
@@ -84,29 +102,11 @@ pub use field_sweep::{
     grid_n4_offsets, grid_n8_offsets, grid_radius_offsets, CanonicalOrderProof, FieldAdjacency,
     FieldConductanceCertificate, FieldDegreeBucket, FieldLawProof, FieldSweepAdmissionError,
     FieldSweepExecutionError, FieldSweepJitCacheIdentity, FieldSweepOutput,
-    FieldSweepProgramIdentity, FieldSweepRegistration,
-    FieldSweepRegistrationRequest, FieldSweepResourceClass,
-    FieldSweepSession, FieldTransientCertificate, GridN4Offset, GridOffset, LinkGraphNeighbor,
-    UndirectedSymmetryCertificate, FIELD_SWEEP_LEGACY_PROGRAM_NODES,
+    FieldSweepProgramIdentity, FieldSweepRegistration, FieldSweepRegistrationRequest,
+    FieldSweepResourceClass, FieldSweepSession, FieldTransientCertificate, GridN4Offset,
+    GridOffset, LinkGraphNeighbor, UndirectedSymmetryCertificate, FIELD_SWEEP_LEGACY_PROGRAM_NODES,
     FIELD_SWEEP_LEGACY_STACK_SLOTS, FIELD_SWEEP_WORKGROUP_SIZE, GRID_N4_NSEW, GRID_N4_WENS,
 };
-pub use exact_magnitude_gate::{
-    exact_mag2_bits_q16, mint_exact_magnitude_proof_candidate_f,
-    mint_exact_magnitude_proof_candidate_f_cpu, sqrt_cr_f_bits, ApproximateDiagnostic,
-    CommitmentRegistration, ExactMagnitudeProof,
-};
-pub use context::{GpuContext, GpuInitError};
-pub use cpu_oracle::{
-    cpu_reduce_oracle, cpu_reduce_oracle_call_count, execute_ops_cpu_with_emissions,
-    reset_cpu_reduce_oracle_call_count, CpuOracleError,
-};
-pub use emission_accumulator::{
-    cpu_oracle_emission_records, emission_plan_signature_fields, encode_emission_plan,
-    plan_emission_ops, EmissionFormula, EmissionPlan, EmissionPlanError, EmissionRegistration,
-    EmissionSyncError, FORMULA_KIND_CONSTANT, FORMULA_KIND_EVAL_EML, FORMULA_KIND_IDENTITY_FLOOR,
-    NO_CONSTANT, NO_MAX_EMIT, NO_TREE_ID,
-};
-pub use emission_oracle::{EmissionOracleError, EmissionOracleFormula, EmissionOracleRegistration};
 pub use gpu_readback::{
     EmissionRecordReadback, KernelReadbackError, ThresholdEmissionReadback,
     ThresholdEventCandidatesReadback,
@@ -119,11 +119,8 @@ pub use intensity_accumulator::{
     build_intensity_eml_entries, plan_intensity_eml_ops, register_intensity_eml_formulas,
     IntensityEmlEntry, IntensityEmlPlan,
 };
-pub use derived_span_projection::DerivedSpanAdmissionError;
 pub use overlay_orderband::{plan_overlay_orderband, OverlayOrderBandPlan};
-pub use overlay_prep::{
-    build_overlay_deltas, OverlayProjectionHostChange, OverlaySpanProjection,
-};
+pub use overlay_prep::{build_overlay_deltas, OverlayProjectionHostChange, OverlaySpanProjection};
 pub use participation::{
     validate_and_mint_placed_participants_by_location_id,
     validate_location_ids_have_structural_placements, PlacedParticipant,
@@ -163,9 +160,9 @@ pub use velocity_accumulator::{
     GovernedIntegrationPlan, PlannerError, VelocityAccumulatorPlan,
 };
 pub use wgsl_encode::{
-    build_governed_pairs, column_from_wire, encode_column, encode_rule, governed_pairs_for_property,
-    GovernedPair, CLAMP_BOUNDED, CLAMP_FLOORED, CLAMP_UNBOUNDED, RULE_FIRST, RULE_MAX, RULE_MEAN,
-    RULE_MIN, RULE_SUM, RULE_WEIGHTED_MEAN, WEIGHT_COL_NONE,
+    build_governed_pairs, column_from_wire, encode_column, encode_rule,
+    governed_pairs_for_property, GovernedPair, CLAMP_BOUNDED, CLAMP_FLOORED, CLAMP_UNBOUNDED,
+    RULE_FIRST, RULE_MAX, RULE_MEAN, RULE_MIN, RULE_SUM, RULE_WEIGHTED_MEAN, WEIGHT_COL_NONE,
 };
 pub use world_state::{
     IntentDelta, OverlayDelta, SlotDeltaRange, WorldGpuState, OP_ADD, OP_MULTIPLY, OP_SET,

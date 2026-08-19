@@ -1,8 +1,9 @@
 //! PLAN-STRUCT-TYPING-0 referees: typed plan columns + WGSL wire parity.
 
 use simthing_core::{
-    AccumulatorOp, ClampBehavior, ColumnIndex, CombineFn, ConsumeMode, GateSpec, PropertyColumnRange,
-    PropertyLayout, ScaleSpec, SlotIndex, SourceSpec, SubFieldRole, SubFieldSpec,
+    AccumulatorOp, ClampBehavior, ColumnIndex, CombineFn, ConsumeMode, GateSpec,
+    PropertyColumnRange, PropertyLayout, ScaleSpec, SlotIndex, SourceSpec, SubFieldRole,
+    SubFieldSpec,
 };
 use simthing_kernel::{
     column_from_wire, encode_column, governed_pairs_for_property, AccumulatorOpGpu, GovernedPair,
@@ -61,7 +62,11 @@ fn governed_pair_wire_bytes_drop_only_through_encode_column() {
     assert_eq!(pairs.len(), 1);
     let expected = GovernedPair {
         governed_col: encode_column(range.col_for_role(&SubFieldRole::Amount, &layout).unwrap()),
-        governing_col: encode_column(range.col_for_role(&SubFieldRole::Velocity, &layout).unwrap()),
+        governing_col: encode_column(
+            range
+                .col_for_role(&SubFieldRole::Velocity, &layout)
+                .unwrap(),
+        ),
         clamp_min: f32::NEG_INFINITY,
         clamp_max: f32::INFINITY,
         vel_max: f32::INFINITY,

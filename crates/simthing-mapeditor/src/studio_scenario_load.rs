@@ -80,5 +80,4 @@ pub fn scenario_path_has_valid_suffix(path: &Path) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-
 }

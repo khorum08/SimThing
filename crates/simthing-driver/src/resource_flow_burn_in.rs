@@ -132,9 +132,8 @@ pub fn run_flat_star_burn_in(
     ticks: u32,
     dt: f32,
 ) -> ResourceFlowBurnInReport {
-    let idx = |slot: u32, col: ColumnIndex| {
-        (SlotId::new(slot).raw() * n_dims + col.raw_u32()) as usize
-    };
+    let idx =
+        |slot: u32, col: ColumnIndex| (SlotId::new(slot).raw() * n_dims + col.raw_u32()) as usize;
     let mut report = ResourceFlowBurnInReport {
         n_bands,
         ..Default::default()

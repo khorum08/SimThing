@@ -510,5 +510,4 @@ impl DispatchCoordinator {
 #[cfg(test)]
 mod tests {
     use super::*;
-
 }

@@ -12,9 +12,9 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use serde::{Deserialize, Serialize};
 use simthing_core::{
-    ClampBehavior, OverlayKind, OverlayLifecycle, OverlaySource, PlacedParticipantValidationError,
-    SimThingKind, StructuralCoord, StructuralGridPlacement, SubFieldRole, SubFieldSpec, TransformOp,
-    validate_location_ids_have_structural_placements,
+    validate_location_ids_have_structural_placements, ClampBehavior, OverlayKind, OverlayLifecycle,
+    OverlaySource, PlacedParticipantValidationError, SimThingKind, StructuralCoord,
+    StructuralGridPlacement, SubFieldRole, SubFieldSpec, TransformOp,
 };
 use simthing_spec::spec::eml_gadget::{EmlGadgetInstanceSpec, EmlGadgetStackSpec};
 use simthing_spec::spec::install_target::InstallTargetSpec;
@@ -31,9 +31,9 @@ use simthing_spec::spec::trigger::TriggerDirection;
 
 use crate::error::HydrateError;
 use crate::hydrate_scenario::{
+    header_or_block_body, read_scalar_f32, read_scalar_text, read_scalar_u32, require_block,
     HydratedFleetShipPayload, HydratedScenarioGridMetadata, HydratedScenarioNode,
-    HydratedScenarioOwner, header_or_block_body, read_scalar_f32, read_scalar_text, read_scalar_u32,
-    require_block,
+    HydratedScenarioOwner,
 };
 use crate::raw::{RawProperty, RawSpan};
 
@@ -235,9 +235,18 @@ pub fn hydrate_field_economy_property(
     fleet_ship_payloads: &[HydratedFleetShipPayload],
 ) -> Result<FieldEconomyLowering, HydrateError> {
     let parsed = parse_field_economy_property(property)?;
-    validate_field_economy(&parsed, root_node, owners, grid_metadata, fleet_ship_payloads)?;
-    let disruption_presences =
-        expand_disruption_presences(&parsed.disruption_presences, fleet_ship_payloads, &parsed.span)?;
+    validate_field_economy(
+        &parsed,
+        root_node,
+        owners,
+        grid_metadata,
+        fleet_ship_payloads,
+    )?;
+    let disruption_presences = expand_disruption_presences(
+        &parsed.disruption_presences,
+        fleet_ship_payloads,
+        &parsed.span,
+    )?;
     lower_field_economy(parsed, disruption_presences)
 }
 
@@ -282,12 +291,7 @@ fn parse_field_economy_property(
             }
             "flow_coupling" => {
                 let coupling = parse_flow_coupling(field)?;
-                admit_unique_field_economy_id(
-                    &mut seen_ids,
-                    "flow_coupling",
-                    &coupling.id,
-                    field,
-                )?;
+                admit_unique_field_economy_id(&mut seen_ids, "flow_coupling", &coupling.id, field)?;
                 flow_couplings.push(coupling);
             }
             "stockpile_silo" => {
@@ -516,11 +520,7 @@ fn parse_flow_coupling(property: &RawProperty) -> Result<HydratedFlowCoupling, H
         weight_unit_cost: weight.unit_cost,
         sink_location: sink.location,
         sink_resource: sink.resource,
-        output_coefficient: require_local(
-            output_coefficient,
-            "output_coefficient",
-            property,
-        )?,
+        output_coefficient: require_local(output_coefficient, "output_coefficient", property)?,
         order_band: require_local(order_band, "order_band", property)?,
     })
 }
@@ -1158,9 +1158,12 @@ fn validate_field_economy(
         .production_buildings
         .iter()
         .map(|building| (building.location.clone(), building.output_resource.clone()))
-        .chain(parsed.field_resource_quantities.iter().map(|quantity| {
-            (quantity.location.clone(), quantity.resource.clone())
-        }))
+        .chain(
+            parsed
+                .field_resource_quantities
+                .iter()
+                .map(|quantity| (quantity.location.clone(), quantity.resource.clone())),
+        )
         .collect();
     let pressure_loci: BTreeSet<(String, String)> = parsed
         .disruption_presences
@@ -1264,7 +1267,10 @@ fn validate_field_economy(
             && coupling.source_resource == coupling.sink_resource
         {
             return Err(HydrateError::new_spanned(
-                format!("flow_coupling `{}` source and sink must differ", coupling.id),
+                format!(
+                    "flow_coupling `{}` source and sink must differ",
+                    coupling.id
+                ),
                 Some(parsed.span.clone()),
             ));
         }
@@ -1414,61 +1420,64 @@ fn lower_field_economy(
             throttle_hint_max_per_tick: building.throttle_hint_max_per_tick,
         })
         .collect();
-    recipes.extend(parsed.flow_couplings.iter().map(|coupling| {
-        ResourceRecipeSpec {
-            id: format!("{}_coupling_{}", parsed.id, coupling.id),
-            inputs: vec![
-                RecipeInputSpec {
-                    property: located_resource_key(
-                        &parsed.namespace,
-                        &coupling.source_location,
-                        &coupling.source_resource,
-                        "quantity",
-                    ),
-                    role: SubFieldRole::Amount,
-                    unit_cost: coupling.source_unit_cost,
-                    host_entity: Some(coupling.source_location.clone()),
-                    host_span_token: None,
-                },
-                RecipeInputSpec {
-                    property: located_resource_key(
-                        &parsed.namespace,
-                        &coupling.pressure_location,
-                        &coupling.pressure_resource,
-                        "presence",
-                    ),
-                    role: SubFieldRole::Amount,
-                    unit_cost: coupling.pressure_unit_cost,
-                    host_entity: Some(coupling.pressure_location.clone()),
-                    host_span_token: None,
-                },
-                RecipeInputSpec {
-                    property: owner_resource_key(
-                        &parsed.namespace,
-                        &coupling.weight_owner,
-                        &coupling.weight_resource,
-                        "stockpile",
-                    ),
-                    role: SubFieldRole::Amount,
-                    unit_cost: coupling.weight_unit_cost,
-                    host_entity: Some(coupling.weight_owner.clone()),
-                    host_span_token: None,
-                },
-            ],
-            target: located_resource_key(
-                &parsed.namespace,
-                &coupling.sink_location,
-                &coupling.sink_resource,
-                "quantity",
-            ),
-            target_role: SubFieldRole::Amount,
-            target_host_entity: Some(coupling.sink_location.clone()),
-            target_host_span_token: None,
-            output_coefficient: coupling.output_coefficient,
-            order_band: coupling.order_band,
-            throttle_hint_max_per_tick: 1,
-        }
-    }));
+    recipes.extend(
+        parsed
+            .flow_couplings
+            .iter()
+            .map(|coupling| ResourceRecipeSpec {
+                id: format!("{}_coupling_{}", parsed.id, coupling.id),
+                inputs: vec![
+                    RecipeInputSpec {
+                        property: located_resource_key(
+                            &parsed.namespace,
+                            &coupling.source_location,
+                            &coupling.source_resource,
+                            "quantity",
+                        ),
+                        role: SubFieldRole::Amount,
+                        unit_cost: coupling.source_unit_cost,
+                        host_entity: Some(coupling.source_location.clone()),
+                        host_span_token: None,
+                    },
+                    RecipeInputSpec {
+                        property: located_resource_key(
+                            &parsed.namespace,
+                            &coupling.pressure_location,
+                            &coupling.pressure_resource,
+                            "presence",
+                        ),
+                        role: SubFieldRole::Amount,
+                        unit_cost: coupling.pressure_unit_cost,
+                        host_entity: Some(coupling.pressure_location.clone()),
+                        host_span_token: None,
+                    },
+                    RecipeInputSpec {
+                        property: owner_resource_key(
+                            &parsed.namespace,
+                            &coupling.weight_owner,
+                            &coupling.weight_resource,
+                            "stockpile",
+                        ),
+                        role: SubFieldRole::Amount,
+                        unit_cost: coupling.weight_unit_cost,
+                        host_entity: Some(coupling.weight_owner.clone()),
+                        host_span_token: None,
+                    },
+                ],
+                target: located_resource_key(
+                    &parsed.namespace,
+                    &coupling.sink_location,
+                    &coupling.sink_resource,
+                    "quantity",
+                ),
+                target_role: SubFieldRole::Amount,
+                target_host_entity: Some(coupling.sink_location.clone()),
+                target_host_span_token: None,
+                output_coefficient: coupling.output_coefficient,
+                order_band: coupling.order_band,
+                throttle_hint_max_per_tick: 1,
+            }),
+    );
 
     let transfers = parsed
         .stockpile_silos

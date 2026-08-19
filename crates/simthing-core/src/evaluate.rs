@@ -35,9 +35,9 @@ struct StackedTransform {
 
 impl TransformStack {
     pub(crate) fn from_ordered_overlays(overlays: &[&Overlay]) -> Self {
-        overlays
-            .iter()
-            .fold(Self::default(), |stack, overlay| stack.push_overlay(overlay))
+        overlays.iter().fold(Self::default(), |stack, overlay| {
+            stack.push_overlay(overlay)
+        })
     }
 
     pub fn push(&self, transform: &PropertyTransformDelta) -> Self {

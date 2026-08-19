@@ -48,10 +48,10 @@
 
 use serde::{Deserialize, Serialize};
 use simthing_core::{
-    cost_band_quantize, CostBandAdmissionError, CostBandDraw, CostBandRegistrationMarker,
-    CostBandResourceMarker, DecayBehavior, DimensionRegistry, Direction, ReductionRule,
-    OverlayId, SimPropertyId, SimThing, SimThingId, SoftAggregateGuard, SubFieldRole,
-    admit_cost_band_marker,
+    admit_cost_band_marker, cost_band_quantize, CostBandAdmissionError, CostBandDraw,
+    CostBandRegistrationMarker, CostBandResourceMarker, DecayBehavior, DimensionRegistry,
+    Direction, OverlayId, ReductionRule, SimPropertyId, SimThing, SimThingId, SoftAggregateGuard,
+    SubFieldRole,
 };
 use simthing_feeder::{
     CapabilityUnlockEvent, CapabilityUnlockRegistration, ScriptedEventTriggerEvent,
@@ -239,10 +239,8 @@ impl CostBandSemantic {
         if let Some(0) = throttle_hint_max_per_tick {
             return Err(CostBandAdmissionError::InvalidThrottle);
         }
-        let is_sink = admit_cost_band_marker(
-            Some(CostBandRegistrationMarker { is_sink: true }),
-            resource,
-        )?;
+        let is_sink =
+            admit_cost_band_marker(Some(CostBandRegistrationMarker { is_sink: true }), resource)?;
         Ok(Self {
             is_sink,
             throttle_hint_max_per_tick,
@@ -289,14 +287,17 @@ impl ThresholdRegistry {
     }
 
     /// Push with explicit CostBand admission (production sink path).
-    pub fn push_with_cost_band(&mut self, sem: ThresholdSemantic, cost_band: CostBandSemantic) -> u32 {
+    pub fn push_with_cost_band(
+        &mut self,
+        sem: ThresholdSemantic,
+        cost_band: CostBandSemantic,
+    ) -> u32 {
         debug_assert_eq!(self.entries.len(), self.cost_bands.len());
         let idx = self.entries.len() as u32;
         self.entries.push(sem);
         self.cost_bands.push(cost_band);
         idx
     }
-
 
     /// Production CostBand door: resolve draw from sealed delta operands +
     /// admitted `event_kind` semantics. Callers cannot opt out a sink via
@@ -307,8 +308,7 @@ impl ThresholdRegistry {
         available_v: f32,
         unit_cost_c: f32,
     ) -> Result<CostBandDraw, CostBandAdmissionError> {
-        self.cost_band_resolve_invocations =
-            self.cost_band_resolve_invocations.saturating_add(1);
+        self.cost_band_resolve_invocations = self.cost_band_resolve_invocations.saturating_add(1);
         let cb = self.cost_band(event_kind);
         cost_band_quantize(
             available_v,
@@ -1288,5 +1288,4 @@ mod tests {
             template_idx: 0,
         }
     }
-
 }

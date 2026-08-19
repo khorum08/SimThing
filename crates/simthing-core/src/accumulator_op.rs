@@ -325,5 +325,4 @@ mod tests {
             targets: vec![(SlotIndex::new(0), ColumnIndex::new(0))],
         }
     }
-
 }

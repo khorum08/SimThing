@@ -10,9 +10,7 @@ use bytemuck::cast_slice;
 use simthing_driver::{
     check_allocator_step, AllocatorConservationViolation, AllocatorStepObservation,
 };
-use simthing_gpu::{
-    PackedThresholdUpload, ThresholdRegistration, DIR_UPWARD, THRESH_BUF_VALUES,
-};
+use simthing_gpu::{PackedThresholdUpload, ThresholdRegistration, DIR_UPWARD, THRESH_BUF_VALUES};
 
 fn packed_upload_bytes(upload: &PackedThresholdUpload) -> Vec<u8> {
     let mut out = Vec::new();

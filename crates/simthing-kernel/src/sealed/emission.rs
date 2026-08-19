@@ -98,13 +98,7 @@ impl ThresholdEmission {
     }
 
     pub(crate) fn from_gpu_readback(gpu: &ThresholdEmissionGpu, generation: u32) -> Self {
-        Self::from_kernel_threshold_crossing(
-            gpu.reg_idx,
-            gpu.slot,
-            gpu.col,
-            gpu.value,
-            generation,
-        )
+        Self::from_kernel_threshold_crossing(gpu.reg_idx, gpu.slot, gpu.col, gpu.value, generation)
     }
 
     /// Planted-defect helper: strip the production seal so egress must reject it.
@@ -207,7 +201,9 @@ pub struct EmissionRecordGpu {
 #[cfg(test)]
 mod generation_stamp_tests {
     use super::*;
-    use simthing_core::{BackpressurePolicy, GenerationStamp, StampedEgressEntry, StampedEventRing};
+    use simthing_core::{
+        BackpressurePolicy, GenerationStamp, StampedEgressEntry, StampedEventRing,
+    };
 
     #[test]
     fn production_mint_stamps_generation_without_widening_gpu_pod() {

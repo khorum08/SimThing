@@ -209,7 +209,10 @@ const fn eml_ln_algorithm_identity() -> u64 {
     hash = fnv_fold_word(hash, EML_LN_C3.to_bits());
     hash = fnv_fold_word(hash, 0x3E4C_CCCD); // 0.2 (poly c5)
     hash = fnv_fold_word(hash, 0xBE80_0000); // -0.25 (poly c4)
-    hash = fnv_fold_word(hash, EML_LN_DOMAIN_MIN_BITS ^ EML_LN_DOMAIN_MAX_BITS.rotate_left(16));
+    hash = fnv_fold_word(
+        hash,
+        EML_LN_DOMAIN_MIN_BITS ^ EML_LN_DOMAIN_MAX_BITS.rotate_left(16),
+    );
     let mut i = 0;
     while i < 128 {
         hash = fnv_fold_word(hash, EML_LN_TABLE[i][0]);
@@ -309,8 +312,10 @@ mod tests {
         hash = fnv_fold_word(hash, EML_LN_C3.to_bits());
         hash = fnv_fold_word(hash, 0x3E4C_CCCD);
         hash = fnv_fold_word(hash, 0xBE80_0000);
-        hash =
-            fnv_fold_word(hash, EML_LN_DOMAIN_MIN_BITS ^ EML_LN_DOMAIN_MAX_BITS.rotate_left(16));
+        hash = fnv_fold_word(
+            hash,
+            EML_LN_DOMAIN_MIN_BITS ^ EML_LN_DOMAIN_MAX_BITS.rotate_left(16),
+        );
         let mut i = 0;
         while i < 128 {
             let drift = u32::from(i == 0);
@@ -319,6 +324,9 @@ mod tests {
             hash = fnv_fold_word(hash, EML_LN_TABLE[i][2]);
             i += 1;
         }
-        assert_ne!(EML_LN_ALGORITHM_IDENTITY, hash, "planted table drift must move identity");
+        assert_ne!(
+            EML_LN_ALGORITHM_IDENTITY, hash,
+            "planted table drift must move identity"
+        );
     }
 }

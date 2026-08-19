@@ -523,11 +523,7 @@ mod tests {
             .iter()
             .filter(|op| {
                 op.gate == GateSpec::OrderBand(layout.band_layout.upsweep_band(0, 2))
-                    && op.targets
-                        == vec![(
-                            root_slot,
-                            root.cols.weight_sum_col,
-                        )]
+                    && op.targets == vec![(root_slot, root.cols.weight_sum_col)]
             })
             .collect();
         assert_eq!(

@@ -47,7 +47,10 @@ fn two_owner_tree(alpha: u32, beta: u32) -> (SimThing, Vec<OwnerChannelRfOwnAggr
     let crossing_id = crossing.id;
     let root_id = root.id;
     root.add_child(crossing);
-    let rows = vec![own(root_id, "ore", alpha, 0), own(crossing_id, "ore", beta, 0)];
+    let rows = vec![
+        own(root_id, "ore", alpha, 0),
+        own(crossing_id, "ore", beta, 0),
+    ];
     (root, rows)
 }
 
@@ -169,42 +172,32 @@ fn judge_case(case: Case) -> ConservationVerdict {
         Case::LawfulA => {
             let (root, rows) = two_owner_tree(6, 4);
             let channels = ore_channels(10);
-            judge_conservation(&snapshot(
-                &root, &rows, &channels, None, None, None, &[],
-            ))
-            .expect("reduce")
+            judge_conservation(&snapshot(&root, &rows, &channels, None, None, None, &[]))
+                .expect("reduce")
         }
         Case::LawfulB => {
             let (root, rows) = two_owner_tree(3, 7);
             let channels = ore_channels(10);
-            judge_conservation(&snapshot(
-                &root, &rows, &channels, None, None, None, &[],
-            ))
-            .expect("reduce")
+            judge_conservation(&snapshot(&root, &rows, &channels, None, None, None, &[]))
+                .expect("reduce")
         }
         Case::MultiOwner => {
             let (root, rows) = two_owner_tree(5, 5);
             let channels = ore_channels(10);
-            judge_conservation(&snapshot(
-                &root, &rows, &channels, None, None, None, &[],
-            ))
-            .expect("reduce")
+            judge_conservation(&snapshot(&root, &rows, &channels, None, None, None, &[]))
+                .expect("reduce")
         }
         Case::OverAccounting => {
             let (root, rows) = two_owner_tree(6, 5);
             let channels = ore_channels(10);
-            judge_conservation(&snapshot(
-                &root, &rows, &channels, None, None, None, &[],
-            ))
-            .expect("reduce")
+            judge_conservation(&snapshot(&root, &rows, &channels, None, None, None, &[]))
+                .expect("reduce")
         }
         Case::UnderAccounting => {
             let (root, rows) = two_owner_tree(3, 2);
             let channels = ore_channels(10);
-            judge_conservation(&snapshot(
-                &root, &rows, &channels, None, None, None, &[],
-            ))
-            .expect("reduce")
+            judge_conservation(&snapshot(&root, &rows, &channels, None, None, None, &[]))
+                .expect("reduce")
         }
         Case::QuantizedConserves => {
             let (root, rows) = two_owner_tree(6, 4);
