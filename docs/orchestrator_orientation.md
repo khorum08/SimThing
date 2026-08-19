@@ -45,7 +45,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 26e025f8b1e76f7f649571aaa4f2da2c82ca722b4d8c549f5ce9d14b4604f3a6 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | 26eab30ec86c97ac8dfd6beef7ae8c5b4d3f18c38fdaa431ec40ccce855396d3 |
-| design_0_0_8_7_rf_arena_modernization.md | ed37691b669d48e2575571df44373f6a19cfa56f8096acbe1d745df2d7b7cf97 |
+| design_0_0_8_7_rf_arena_modernization.md | 319dc59d84b653f5a4f5bfec979bc9bd04edc15ee7754043d722a5f7ca707750 |
 | relay_lint.sh | 4163f715cdc3b549dbf57c1744aff61ea96b9f9f0a2237376665fbdb24e986c8 |
 | doctrine_anchors.tsv | ddc753498b845b0e5084222b35f94286e5163cc6479de58883e3ecc3c2d743dd |
 | execution_status_taxonomy.tsv | dafea2186a122418076be4f5772da260501d01127c9ea83d20892506e8a8c6ca |
@@ -68,7 +68,7 @@ Dark properties (1): `fixture::dark_reading` (reasons/spans in `property_admissi
 
 Track state: `open`
 
-> Compact view: 41 completed rungs elided; showing all 22 open rungs plus the 3 most recent completions. Full ladder in the design doc.
+> Compact view: 42 completed rungs elided; showing all 21 open rungs plus the 3 most recent completions. Full ladder in the design doc.
 
 | # | rung | deliverable | exit proof |
 | --- | --- | --- | --- |
@@ -85,10 +85,9 @@ Track state: `open`
 | 7.5 | ACTIONBAND-SEMANTIC-SHADOW-0 | Bind generic stamped ActionBand crossings/terminal/structural deltas to existing | Same opaque GPU ActionBand run with semantic labels changed produces bit-identical numerical results; generic readbac... |
 | 7.5a | ACTIONBAND-FIELD-TRIAD-PROGRESS-0 | **Gu-Yang remediation, rung 1 of 3 (Owner-directed 2026-08-10; Fable-approved re | A synthetic conserved-channel ActionBand consumes a REAL Gu-Yang / `FieldSweepRegistration` output with **zero Action... |
 | 7.5b | ACTIONBAND-SPATIAL-FLUX-WITNESS-0 | **Gu-Yang remediation, rung 2 of 3.** Prove the generic Field-Triad ActionBand b | Same target and PALMA potential, different Gu-Yang channel capacity ⇒ **same lawful descent identity, different per-g... |
-| 7.8a | DERIVED-SPAN-PROJECTION-INVALIDATION-0 | **Unification sweep, the ONE new architectural rung (Sol/Fable v4, 2026-08-13) — | **DA-GRADUATED / merged #1770 @ 563c91c5 — one generic physical span substrate, and the invalidation is source-blind ... |
 | 7.9 | OVERLAY-FRACTAL-CLOSURE-WITNESS-0 | **Overlay closure, rung 4 of 4 — probes E+F plus the anchor's §23.2 ADVERSARIAL  | **DA-GRADUATED / merged #1774 @ c5896e19 — the overlay closure arc is CLOSED.** The anchor §23.2 ten-element adversar... |
 | 8.1 | CONTENTION-CONSERVATION-JUDGE-0 | **BINDS 6.5 (StemThing-A; clauses landed early in #1628, verified at 6.5 graduat | **DA-GRADUATED / merged #1779 @ 989ea914 — a conservation referee whose falsifiers bite the ORDINARY path, after a re... |
-| 8.2 | CONTENTION-ARENA-EXECUTED-0 | **BINDS 6.5 (StemThing-A; clauses landed early in #1628, verified at 6.5 graduat | Executed path judged green; **emergence falsifier: changing ONLY the authored resolution rule changes the outcome wit... |
+| 8.2 | CONTENTION-ARENA-EXECUTED-0 | **BINDS 6.5 (StemThing-A; clauses landed early in #1628, verified at 6.5 graduat | **DA-GRADUATED / merged #1784 @ 202340a8 — the resolution rule is DATA, proven by inversion.** The emergence falsifie... |
 | 9.1 | GATED-RATES-EML-REWIRE-0 | Phase 9: exclusion-audit Family C — `gated_rates` gate evaluation → authored EML | Gate behavior parity via oracle; hardcoded cols gone; corpus green. **SCOPE COVERAGE (DA review 2026-08-03, Owner-dir... |
 | 9.2 | RF-COLUMN-MINT-MIGRATE-0 | Phase 9: the sweep — remaining sites onto doors; DELETE the exclusion list; reti | Exclusion list empty; tripwire retired per its promotion-blocker; full build + RF batteries green. **SCOPE COVERAGE (... |
 | 10.1 | DOCTRINE-CI-RECONCILE-0 | Phase 10: retire impossible-state detectors; mechanize new gates (EML-addition D | Phase-row falsifier: zero impossible-state scans; zero unwatched new surfaces; selftests green. **SCOPE COVERAGE (DA ... |
@@ -100,7 +99,7 @@ Track state: `open`
 
 ## Next Rung Pointer
 
-Active pointer: `CONTENTION-ARENA-EXECUTED-0`
+Active pointer: `GATED-RATES-EML-REWIRE-0`
 
 
 ## Cold-Start Spine (constitutional pointers)
