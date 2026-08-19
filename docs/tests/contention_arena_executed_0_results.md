@@ -1,7 +1,7 @@
 # CONTENTION-ARENA-EXECUTED-0 results
 
 - Track: 0.0.8.7 RF arena modernization (rung 8.2)
-- Status: **PROBATION / proof-present / DA-review-pending**
+Status: **COMPLETE — DA-GRADUATED / merged #1784 @ `202340a8`** (pre-dispatch `5337607437`, graduation ruling on Board #1332)
 - Branch: `codex/contention-arena-executed-0`
 - Canonical live base: `dc24ddde4f3048d6a103196c74ac7b21e47c0a41`
 - HD-RECEIPT: `5adea81721be`
