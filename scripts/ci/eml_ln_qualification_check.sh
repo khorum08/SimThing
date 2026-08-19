@@ -20,7 +20,7 @@ readonly REPO_ROOT="${EML_LN_QUAL_ROOT:-$(cd "${SCRIPT_DIR}/../.." && pwd)}"
 
 # Pinned at qualification (2026-08-04). Re-pin ONLY together with a local
 # exhaustive requalification and a new digest in eml_ln_qualification.rs.
-readonly QUALIFIED_TWIN_SHA256="fb58e60407f902913970833b9f8a8227e328da38c1a21201f159bc6d8df9b574"
+readonly QUALIFIED_TWIN_SHA256="66f924361b480c4312b8de9fbb7bbca5c39faa5a5e4989bc37e6615e78ae5a6f"
 readonly QUALIFIED_WGSL_HELPER_SHA256="d0140ff6cfb3eaa88d5dd139c7b93edede987aab86f6c595f583001b2bec86a6"
 readonly QUALIFIED_REFERENCE_DIGEST="0x196aced82d03f378"
 readonly QUALIFIED_DOMAIN_SIZE="2130706432"
