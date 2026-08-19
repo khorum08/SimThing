@@ -11,13 +11,16 @@
 - ANCHOR-ACK: `core-rf-arenas@d171614211e9`
 - ANCHOR-ACK: `stemthing-binding-laws@6787a118c3ca`
 - Board dispatch: comment `5323932594`
+- DA ruling: `5337253416`
+- Orch remand: `5337283941`
 - expected_route: `DA-RESERVE(gate-wiring)`
+- tested_code_sha: `620b3d20901b8d60b141b6dba18e5277c70580fb`
 
 ## What landed
 
-One scenario-neutral conservation referee: `judge_conservation`. It judges declared snapshots and never allocates or picks a winner. Reconstruction uses only `reduce_owner_channel_rf` / `reconstruct_owner_channel_rf_map`. Multi-owner containers are normal.
+One scenario-neutral conservation referee: `judge_conservation`. It judges declared snapshots and never allocates or picks a winner. Reconstruction uses only `reduce_owner_channel_rf` / `reconstruct_owner_channel_rf_map`. Multi-owner containers are normal. Production snapshot carries no field whose purpose is to make the judge wrong.
 
-## Table battery
+## Ordinary-path table
 
 | Case | Verdict | Reason |
 |---|---|---|
@@ -26,21 +29,26 @@ One scenario-neutral conservation referee: `judge_conservation`. It judges decla
 | MultiOwner | GREEN | distinct owners are not a defect |
 | OverAccounting | RED | `SeededOverAccounting` |
 | UnderAccounting | RED | `SeededUnderAccounting` |
-| OwnerUniformity | RED | `OwnerUniformityRejection` |
 | QuantizedConserves | GREEN | input `V = N*C + R`; output is creation |
-| CrossChannelSum | RED | `CrossChannelSum` |
 | SeamExact | GREEN | `child + seam + parent == admitted` |
-| ChildParentOnly | RED | `ChildParentOnly` |
 | StemThingExact | GREEN | `free + in_flight + occupied == capacity` |
 | StemThingBroken | RED | `StemThingPartition` |
 | ActionBandIncluded | GREEN | ActionBand claim is an ordinary declared claim |
 | ActionBandOmitted | RED | `ActionBandOmission` |
 
-All seven planted REDs fire on `judge_conservation` with their named reason. No `refuse_*` helper, no 8.2 executor, no ladder/orientation edit, no `OVERLAY-PEER-AUTHORITY` retirement.
+Four genuine REDs remain on the ordinary production path: over, under, StemThing partition, ActionBand omission.
 
-## Remand 5324058663 blast radius
+## DA 5337253416 falsifier repair
 
-Mechanical transport/proof record only. Judge semantics unchanged (`owner_uniformity_required`, `fold_output_into_input`, `omit_seam` preserved).
+| Check | Production | Proof |
+|---|---|---|
+| Owner uniformity | field/branch deleted; multi-owner GREEN | `include_str!` census: no `owner_uniformity_required`, `OwnerUniformityRejection`, or owner-equality comparison in the production judge |
+| Cross-input/output fold | `fold_output_into_input` deleted | lawful quantized GREEN vs test-side folding accountant RED |
+| Seam omission | `omit_seam` deleted | in-flight exact seam GREEN vs test-side child+parent-only accountant RED |
+
+No replacement production flags, mutant enums, helper-only `refuse_*`, or second production judge.
+
+## Remand 5337283941 blast radius at tested_code_sha `620b3d20`
 
 | Command | Result |
 |---|---|
@@ -52,5 +60,5 @@ Mechanical transport/proof record only. Judge semantics unchanged (`owner_unifor
 | `cargo test -p simthing-core --test band_quantized_draw_0` | 9/9 |
 | `cargo test -p simthing-driver --test residency_tier_vocabulary_0` | 4/4 |
 | `cargo test -p simthing-driver --test actionband_recursive_composition_0` | 5/5 |
-| `cargo test -p simthing-driver --lib` | 16/16 at tested_code_sha `1865d372` |
-| detachability / lifecycle-schema / doc-budget / inventory-drift | PASS |
+| `cargo test -p simthing-driver --lib` | 16/16 |
+| detachability / lifecycle-schema / doc-budget / inventory-drift / agent-scan | PASS |
