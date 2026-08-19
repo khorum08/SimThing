@@ -1,7 +1,7 @@
 # CONTENTION-CONSERVATION-JUDGE-0 results
 
 - Track: 0.0.8.7 RF arena modernization (rung 8.1)
-- Status: **PROBATION / proof-present / DA-review-pending**
+Status: **COMPLETE — DA-GRADUATED / merged #1779 @ `989ea914`** (pre-dispatch `5323877029`, proof-adequacy remand `5337253416`, graduation ruling on Board #1332)
 - HD-RECEIPT: `6c58b7771d63` (ingress repair #1780; prior `ba7a36cfbf18` stale)
 - ORIENT-RECEIPT: `a5dc59920dd4`
 - orientation_rule_stamp: `61818ff7d4adda84`
