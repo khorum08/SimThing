@@ -21,6 +21,7 @@ pub mod need_binding;
 pub mod order_weight;
 pub mod overlay;
 pub mod async_staleness;
+pub mod contention_conservation_judge;
 pub mod owner_channel_admission;
 pub mod owner_channel_rf;
 pub mod owner_silo_disburse_down;
@@ -154,6 +155,11 @@ pub use owner_silo_runtime_writeback::{
     read_owner_silo_current_from_owner, runtime_owner_silo_states_from_scenario,
     RuntimeOwnerSiloState, RuntimeOwnerSiloWritebackError, RuntimeOwnerSiloWritebackErrorKind,
     RuntimeOwnerSiloWritebackInput, RuntimeOwnerSiloWritebackResult,
+};
+pub use contention_conservation_judge::{
+    judge_conservation, ChannelBound, ConservationJudgeReason, ConservationSnapshot,
+    ConservationVerdict, QuantizedChannelObservation, SeamObservation,
+    StemThingPartitionObservation,
 };
 pub use owner_channel_rf::{
     reconstruct_owner_channel_rf_map, reduce_owner_channel_rf, OwnerChannelRfBucket,
