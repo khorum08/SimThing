@@ -1,6 +1,7 @@
 pub mod action_band;
 pub mod capability;
 pub mod channel_key;
+pub mod constrained_clearing;
 pub mod disruption_readout;
 pub mod domain_pack;
 pub mod effect;
@@ -66,6 +67,13 @@ pub use capability::{
     CapabilitySpec, CapabilityTreeSpec, MaxActivePolicy,
 };
 pub use channel_key::{OwnerChannelScopeKey, OwnerRef, ResourceKey, ScopeId};
+pub use constrained_clearing::{
+    clear_constrained_claims, clear_reduced_owner_channels, fund_unresolved_persistence,
+    is_authored_until_dissolved, AuthoredClaimClearingData, AuthoredClearingProgram,
+    AuthoredPersistenceValuation, ConstrainedClaim, ConstrainedClearingError,
+    ConstrainedClearingResult, ConstrainedGrant, ConstrainedSupply, PersistenceConsequence,
+    PersistenceConsequenceError, PersistenceOverlayBinding, UnresolvedDemandObservation,
+};
 pub use disruption_readout::{
     disruption_readout_snapshot, disruption_readout_snapshot_with_readback,
     AbsentDisruptionAuthorityReadback, DisruptionAuthorityReadback,

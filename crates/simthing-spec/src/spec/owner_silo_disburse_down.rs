@@ -6,7 +6,7 @@ use std::collections::BTreeMap;
 
 use simthing_core::SimThing;
 
-use super::channel_key::{OwnerRef, ResourceKey, ScopeId};
+use super::channel_key::{OwnerChannelScopeKey, OwnerRef, ResourceKey, ScopeId};
 use super::owner_channel_admission::{admit_intrinsic_owner_channels, IntrinsicOwnerChannelView};
 use super::owner_silo_runtime_writeback::RuntimeOwnerSiloWritebackResult;
 use super::planet_child_location::{
@@ -48,6 +48,17 @@ pub struct RuntimeOwnerSiloDemandBucket {
     pub requested: u32,
     pub priority: u32,
     pub source_simthing_id_raw: Option<u32>,
+}
+
+impl RuntimeOwnerSiloDemandBucket {
+    /// Return the already-admitted RF scope without reconstructing ownership.
+    pub fn scope_key(&self) -> OwnerChannelScopeKey {
+        OwnerChannelScopeKey {
+            owner_ref: self.owner_ref.clone(),
+            resource_key: self.resource_key.clone(),
+            scope_id: self.scope_id.clone(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

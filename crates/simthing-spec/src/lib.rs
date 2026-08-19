@@ -391,6 +391,13 @@ pub use spec::capability::{
 pub use spec::channel_key::{
     OwnerChannelScopeKey, OwnerRef, ParentLocationId, ResourceKey, ScopeId,
 };
+pub use spec::constrained_clearing::{
+    clear_constrained_claims, clear_reduced_owner_channels, fund_unresolved_persistence,
+    is_authored_until_dissolved, AuthoredClaimClearingData, AuthoredClearingProgram,
+    AuthoredPersistenceValuation, ConstrainedClaim, ConstrainedClearingError,
+    ConstrainedClearingResult, ConstrainedGrant, ConstrainedSupply, PersistenceConsequence,
+    PersistenceConsequenceError, PersistenceOverlayBinding, UnresolvedDemandObservation,
+};
 pub use spec::disruption_readout::{
     disruption_readout_snapshot, disruption_readout_snapshot_with_readback,
     AbsentDisruptionAuthorityReadback, DisruptionAuthorityReadback,
