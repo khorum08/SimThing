@@ -1,7 +1,11 @@
 //! CONTENTION-CONSERVATION-JUDGE-0 referee.
 //!
-//! One table-driven battery. Every GREEN/RED is a verdict of `judge_conservation`.
-//! Feedstock is inline and synthetic.
+//! Table-driven ordinary-path GREEN/RED on `judge_conservation`, plus:
+//! - owner-uniformity unrepresentability (no production switch)
+//! - test-side folding accountant disagreement on a lawful quantized case
+//! - test-side child+parent-only accountant disagreement on an in-flight seam
+//!
+//! Feedstock is inline and synthetic. Test-side mutants are not production.
 
 use simthing_core::owner_channel::{bind_owner, OwnerRef};
 use simthing_core::{
@@ -13,6 +17,9 @@ use simthing_spec::{
     OwnerChannelRfSeamBalance, QuantizedChannelObservation, ResourceKey, SeamObservation,
     StemThingPartitionObservation,
 };
+
+const PRODUCTION_JUDGE_SRC: &str =
+    include_str!("../../simthing-spec/src/spec/contention_conservation_judge.rs");
 
 fn node() -> SimThing {
     SimThing::new(SimThingKind::Custom("synthetic".into()), 0)
@@ -54,6 +61,70 @@ fn conserved(surplus: u64) -> OwnerChannelRfConservedValue {
     }
 }
 
+fn ore_channels(supply: u32) -> [ChannelBound; 1] {
+    [ChannelBound {
+        resource: ResourceKey::new("ore"),
+        supply,
+        remainder: 0,
+    }]
+}
+
+fn snapshot<'a>(
+    root: &'a SimThing,
+    rows: &'a [OwnerChannelRfOwnAggregate],
+    channels: &'a [ChannelBound],
+    quantized: Option<QuantizedChannelObservation>,
+    seam: Option<SeamObservation>,
+    stemthing: Option<StemThingPartitionObservation>,
+    actionband_originated: &'a [OwnerChannelRfOwnAggregate],
+) -> ConservationSnapshot<'a> {
+    ConservationSnapshot {
+        root,
+        own_aggregates: rows,
+        channels,
+        quantized,
+        seam,
+        stemthing,
+        actionband_originated,
+    }
+}
+
+fn in_flight_seam() -> SeamObservation {
+    let in_flight = conserved(4);
+    SeamObservation {
+        balance: OwnerChannelRfSeamBalance::observe(
+            conserved(0),
+            in_flight,
+            conserved(0),
+            in_flight,
+        ),
+    }
+}
+
+fn lawful_quantized() -> QuantizedChannelObservation {
+    let input = cost_band_quantize(10.0, 3.0, true, None).expect("quantize");
+    QuantizedChannelObservation {
+        input,
+        output_created: input.n,
+    }
+}
+
+/// Test-side wrong accountant: fold created output into the input conservation sum.
+fn fold_output_into_input_accountant(obs: QuantizedChannelObservation) -> bool {
+    let folded = obs.input.v + obs.output_created as f32;
+    folded != obs.input.v
+}
+
+/// Test-side wrong accountant: child+parent only, omitting the 6.2 seam.
+fn child_parent_only_accountant(balance: OwnerChannelRfSeamBalance) -> bool {
+    let child_plus_parent = balance
+        .child()
+        .surplus_total
+        .checked_add(balance.parent().surplus_total);
+    let in_flight = balance.seam().surplus_total;
+    in_flight != 0 && child_plus_parent != Some(balance.admitted().surplus_total)
+}
+
 #[derive(Clone, Copy, Debug)]
 enum Case {
     LawfulA,
@@ -61,11 +132,8 @@ enum Case {
     MultiOwner,
     OverAccounting,
     UnderAccounting,
-    OwnerUniformity,
     QuantizedConserves,
-    CrossChannelSum,
     SeamExact,
-    ChildParentOnly,
     StemThingExact,
     StemThingBroken,
     ActionBandIncluded,
@@ -74,21 +142,19 @@ enum Case {
 
 fn expected(case: Case) -> ConservationVerdict {
     match case {
-        Case::LawfulA | Case::LawfulB | Case::MultiOwner | Case::QuantizedConserves
-        | Case::SeamExact | Case::StemThingExact | Case::ActionBandIncluded => {
-            ConservationVerdict::Green
-        }
+        Case::LawfulA
+        | Case::LawfulB
+        | Case::MultiOwner
+        | Case::QuantizedConserves
+        | Case::SeamExact
+        | Case::StemThingExact
+        | Case::ActionBandIncluded => ConservationVerdict::Green,
         Case::OverAccounting => {
             ConservationVerdict::Red(ConservationJudgeReason::SeededOverAccounting)
         }
         Case::UnderAccounting => {
             ConservationVerdict::Red(ConservationJudgeReason::SeededUnderAccounting)
         }
-        Case::OwnerUniformity => {
-            ConservationVerdict::Red(ConservationJudgeReason::OwnerUniformityRejection)
-        }
-        Case::CrossChannelSum => ConservationVerdict::Red(ConservationJudgeReason::CrossChannelSum),
-        Case::ChildParentOnly => ConservationVerdict::Red(ConservationJudgeReason::ChildParentOnly),
         Case::StemThingBroken => {
             ConservationVerdict::Red(ConservationJudgeReason::StemThingPartition)
         }
@@ -102,271 +168,111 @@ fn judge_case(case: Case) -> ConservationVerdict {
     match case {
         Case::LawfulA => {
             let (root, rows) = two_owner_tree(6, 4);
-            let channels = [ChannelBound {
-                resource: ResourceKey::new("ore"),
-                supply: 10,
-                remainder: 0,
-            }];
-            judge_conservation(&ConservationSnapshot {
-                root: &root,
-                own_aggregates: &rows,
-                channels: &channels,
-                owner_uniformity_required: false,
-                quantized: None,
-                seam: None,
-                stemthing: None,
-                actionband_originated: &[],
-            })
+            let channels = ore_channels(10);
+            judge_conservation(&snapshot(
+                &root, &rows, &channels, None, None, None, &[],
+            ))
             .expect("reduce")
         }
         Case::LawfulB => {
             let (root, rows) = two_owner_tree(3, 7);
-            let channels = [ChannelBound {
-                resource: ResourceKey::new("ore"),
-                supply: 10,
-                remainder: 0,
-            }];
-            judge_conservation(&ConservationSnapshot {
-                root: &root,
-                own_aggregates: &rows,
-                channels: &channels,
-                owner_uniformity_required: false,
-                quantized: None,
-                seam: None,
-                stemthing: None,
-                actionband_originated: &[],
-            })
+            let channels = ore_channels(10);
+            judge_conservation(&snapshot(
+                &root, &rows, &channels, None, None, None, &[],
+            ))
             .expect("reduce")
         }
         Case::MultiOwner => {
             let (root, rows) = two_owner_tree(5, 5);
-            let channels = [ChannelBound {
-                resource: ResourceKey::new("ore"),
-                supply: 10,
-                remainder: 0,
-            }];
-            judge_conservation(&ConservationSnapshot {
-                root: &root,
-                own_aggregates: &rows,
-                channels: &channels,
-                owner_uniformity_required: false,
-                quantized: None,
-                seam: None,
-                stemthing: None,
-                actionband_originated: &[],
-            })
+            let channels = ore_channels(10);
+            judge_conservation(&snapshot(
+                &root, &rows, &channels, None, None, None, &[],
+            ))
             .expect("reduce")
         }
         Case::OverAccounting => {
             let (root, rows) = two_owner_tree(6, 5);
-            let channels = [ChannelBound {
-                resource: ResourceKey::new("ore"),
-                supply: 10,
-                remainder: 0,
-            }];
-            judge_conservation(&ConservationSnapshot {
-                root: &root,
-                own_aggregates: &rows,
-                channels: &channels,
-                owner_uniformity_required: false,
-                quantized: None,
-                seam: None,
-                stemthing: None,
-                actionband_originated: &[],
-            })
+            let channels = ore_channels(10);
+            judge_conservation(&snapshot(
+                &root, &rows, &channels, None, None, None, &[],
+            ))
             .expect("reduce")
         }
         Case::UnderAccounting => {
             let (root, rows) = two_owner_tree(3, 2);
-            let channels = [ChannelBound {
-                resource: ResourceKey::new("ore"),
-                supply: 10,
-                remainder: 0,
-            }];
-            judge_conservation(&ConservationSnapshot {
-                root: &root,
-                own_aggregates: &rows,
-                channels: &channels,
-                owner_uniformity_required: false,
-                quantized: None,
-                seam: None,
-                stemthing: None,
-                actionband_originated: &[],
-            })
-            .expect("reduce")
-        }
-        Case::OwnerUniformity => {
-            let (root, rows) = two_owner_tree(5, 5);
-            let channels = [ChannelBound {
-                resource: ResourceKey::new("ore"),
-                supply: 10,
-                remainder: 0,
-            }];
-            judge_conservation(&ConservationSnapshot {
-                root: &root,
-                own_aggregates: &rows,
-                channels: &channels,
-                owner_uniformity_required: true,
-                quantized: None,
-                seam: None,
-                stemthing: None,
-                actionband_originated: &[],
-            })
+            let channels = ore_channels(10);
+            judge_conservation(&snapshot(
+                &root, &rows, &channels, None, None, None, &[],
+            ))
             .expect("reduce")
         }
         Case::QuantizedConserves => {
             let (root, rows) = two_owner_tree(6, 4);
-            let channels = [ChannelBound {
-                resource: ResourceKey::new("ore"),
-                supply: 10,
-                remainder: 0,
-            }];
-            let input = cost_band_quantize(10.0, 3.0, true, None).expect("quantize");
-            judge_conservation(&ConservationSnapshot {
-                root: &root,
-                own_aggregates: &rows,
-                channels: &channels,
-                owner_uniformity_required: false,
-                quantized: Some(QuantizedChannelObservation {
-                    input,
-                    output_created: input.n,
-                    fold_output_into_input: false,
-                }),
-                seam: None,
-                stemthing: None,
-                actionband_originated: &[],
-            })
-            .expect("reduce")
-        }
-        Case::CrossChannelSum => {
-            let (root, rows) = two_owner_tree(6, 4);
-            let channels = [ChannelBound {
-                resource: ResourceKey::new("ore"),
-                supply: 10,
-                remainder: 0,
-            }];
-            let input = cost_band_quantize(10.0, 3.0, true, None).expect("quantize");
-            judge_conservation(&ConservationSnapshot {
-                root: &root,
-                own_aggregates: &rows,
-                channels: &channels,
-                owner_uniformity_required: false,
-                quantized: Some(QuantizedChannelObservation {
-                    input,
-                    output_created: input.n,
-                    fold_output_into_input: true,
-                }),
-                seam: None,
-                stemthing: None,
-                actionband_originated: &[],
-            })
+            let channels = ore_channels(10);
+            judge_conservation(&snapshot(
+                &root,
+                &rows,
+                &channels,
+                Some(lawful_quantized()),
+                None,
+                None,
+                &[],
+            ))
             .expect("reduce")
         }
         Case::SeamExact => {
             let (root, rows) = two_owner_tree(6, 4);
-            let channels = [ChannelBound {
-                resource: ResourceKey::new("ore"),
-                supply: 10,
-                remainder: 0,
-            }];
-            let in_flight = conserved(4);
-            judge_conservation(&ConservationSnapshot {
-                root: &root,
-                own_aggregates: &rows,
-                channels: &channels,
-                owner_uniformity_required: false,
-                quantized: None,
-                seam: Some(SeamObservation {
-                    balance: OwnerChannelRfSeamBalance::observe(
-                        conserved(0),
-                        in_flight,
-                        conserved(0),
-                        in_flight,
-                    ),
-                    omit_seam: false,
-                }),
-                stemthing: None,
-                actionband_originated: &[],
-            })
-            .expect("reduce")
-        }
-        Case::ChildParentOnly => {
-            let (root, rows) = two_owner_tree(6, 4);
-            let channels = [ChannelBound {
-                resource: ResourceKey::new("ore"),
-                supply: 10,
-                remainder: 0,
-            }];
-            let in_flight = conserved(4);
-            judge_conservation(&ConservationSnapshot {
-                root: &root,
-                own_aggregates: &rows,
-                channels: &channels,
-                owner_uniformity_required: false,
-                quantized: None,
-                seam: Some(SeamObservation {
-                    balance: OwnerChannelRfSeamBalance::observe(
-                        conserved(0),
-                        in_flight,
-                        conserved(0),
-                        in_flight,
-                    ),
-                    omit_seam: true,
-                }),
-                stemthing: None,
-                actionband_originated: &[],
-            })
+            let channels = ore_channels(10);
+            judge_conservation(&snapshot(
+                &root,
+                &rows,
+                &channels,
+                None,
+                Some(in_flight_seam()),
+                None,
+                &[],
+            ))
             .expect("reduce")
         }
         Case::StemThingExact => {
             let (root, rows) = two_owner_tree(6, 4);
-            let channels = [ChannelBound {
-                resource: ResourceKey::new("ore"),
-                supply: 10,
-                remainder: 0,
-            }];
+            let channels = ore_channels(10);
             let mut partition = ResidencyCapacityPartition::new(16);
             partition.issue(6).expect("issue");
             partition.deliver(2).expect("deliver");
-            judge_conservation(&ConservationSnapshot {
-                root: &root,
-                own_aggregates: &rows,
-                channels: &channels,
-                owner_uniformity_required: false,
-                quantized: None,
-                seam: None,
-                stemthing: Some(StemThingPartitionObservation {
+            judge_conservation(&snapshot(
+                &root,
+                &rows,
+                &channels,
+                None,
+                None,
+                Some(StemThingPartitionObservation {
                     free: partition.free(),
                     in_flight: partition.in_flight(),
                     occupied: partition.occupied(),
                     capacity: partition.capacity(),
                 }),
-                actionband_originated: &[],
-            })
+                &[],
+            ))
             .expect("reduce")
         }
         Case::StemThingBroken => {
             let (root, rows) = two_owner_tree(6, 4);
-            let channels = [ChannelBound {
-                resource: ResourceKey::new("ore"),
-                supply: 10,
-                remainder: 0,
-            }];
-            judge_conservation(&ConservationSnapshot {
-                root: &root,
-                own_aggregates: &rows,
-                channels: &channels,
-                owner_uniformity_required: false,
-                quantized: None,
-                seam: None,
-                stemthing: Some(StemThingPartitionObservation {
+            let channels = ore_channels(10);
+            judge_conservation(&snapshot(
+                &root,
+                &rows,
+                &channels,
+                None,
+                None,
+                Some(StemThingPartitionObservation {
                     free: 10,
                     in_flight: 0,
                     occupied: 0,
                     capacity: 16,
                 }),
-                actionband_originated: &[],
-            })
+                &[],
+            ))
             .expect("reduce")
         }
         Case::ActionBandIncluded => {
@@ -385,38 +291,53 @@ fn judge_case(case: Case) -> ConservationVerdict {
                     remainder: 0,
                 },
             ];
-            judge_conservation(&ConservationSnapshot {
-                root: &root,
-                own_aggregates: &rows,
-                channels: &channels,
-                owner_uniformity_required: false,
-                quantized: None,
-                seam: None,
-                stemthing: None,
-                actionband_originated: &[ab],
-            })
+            judge_conservation(&snapshot(
+                &root,
+                &rows,
+                &channels,
+                None,
+                None,
+                None,
+                std::slice::from_ref(&ab),
+            ))
             .expect("reduce")
         }
         Case::ActionBandOmitted => {
             let (root, rows) = two_owner_tree(6, 4);
             let ab = own(root.id, "actuate", 2, 0);
-            let channels = [ChannelBound {
-                resource: ResourceKey::new("ore"),
-                supply: 10,
-                remainder: 0,
-            }];
-            judge_conservation(&ConservationSnapshot {
-                root: &root,
-                own_aggregates: &rows,
-                channels: &channels,
-                owner_uniformity_required: false,
-                quantized: None,
-                seam: None,
-                stemthing: None,
-                actionband_originated: &[ab],
-            })
+            let channels = ore_channels(10);
+            judge_conservation(&snapshot(
+                &root,
+                &rows,
+                &channels,
+                None,
+                None,
+                None,
+                std::slice::from_ref(&ab),
+            ))
             .expect("reduce")
         }
+    }
+}
+
+fn assert_owner_uniformity_unrepresentable() {
+    for needle in [
+        "owner_uniformity_required",
+        "OwnerUniformityRejection",
+        "owner_uniformity",
+        "OwnerUniformity",
+        "owners_equal",
+        "same_owner",
+        "uniform_owner",
+        "owner_eq",
+        "fold_output_into_input",
+        "omit_seam",
+        "CrossChannelSum",
+    ] {
+        assert!(
+            !PRODUCTION_JUDGE_SRC.contains(needle),
+            "production judge must not contain {needle}"
+        );
     }
 }
 
@@ -428,11 +349,8 @@ fn contention_conservation_judge_table() {
         Case::MultiOwner,
         Case::OverAccounting,
         Case::UnderAccounting,
-        Case::OwnerUniformity,
         Case::QuantizedConserves,
-        Case::CrossChannelSum,
         Case::SeamExact,
-        Case::ChildParentOnly,
         Case::StemThingExact,
         Case::StemThingBroken,
         Case::ActionBandIncluded,
@@ -441,4 +359,22 @@ fn contention_conservation_judge_table() {
     for case in cases {
         assert_eq!(judge_case(case), expected(case), "case {case:?}");
     }
+
+    assert_eq!(judge_case(Case::MultiOwner), ConservationVerdict::Green);
+    assert_owner_uniformity_unrepresentable();
+
+    assert_eq!(
+        judge_case(Case::QuantizedConserves),
+        ConservationVerdict::Green
+    );
+    assert!(
+        fold_output_into_input_accountant(lawful_quantized()),
+        "test-side folding accountant must RED/disagree on the lawful quantized case"
+    );
+
+    assert_eq!(judge_case(Case::SeamExact), ConservationVerdict::Green);
+    assert!(
+        child_parent_only_accountant(in_flight_seam().balance),
+        "test-side child+parent-only accountant must RED/disagree on the in-flight seam"
+    );
 }
