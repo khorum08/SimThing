@@ -370,9 +370,12 @@ fn encode_source(op: &AccumulatorOp) -> Result<(u32, u32, u32, u32), EncodeError
         SourceSpec::SlotValue { slot, col } => {
             Ok((source_kind::SLOT_VALUE, slot.raw(), encode_column(*col), 0))
         }
-        SourceSpec::SlotRange { start, count, col } => {
-            Ok((source_kind::SLOT_RANGE, start.raw(), encode_column(*col), *count))
-        }
+        SourceSpec::SlotRange { start, count, col } => Ok((
+            source_kind::SLOT_RANGE,
+            start.raw(),
+            encode_column(*col),
+            *count,
+        )),
         SourceSpec::ConjunctiveCrossing { inputs } => {
             if inputs.is_empty() {
                 return Err(EncodeError::Unsupported(
@@ -396,9 +399,13 @@ fn encode_combine(
         CombineFn::Mean => Ok((combine_kind::MEAN, 0, 0, 0, 0)),
         CombineFn::Max => Ok((combine_kind::MAX, 0, 0, 0, 0)),
         CombineFn::Min => Ok((combine_kind::MIN, 0, 0, 0, 0)),
-        CombineFn::WeightedMean { weight_col } => {
-            Ok((combine_kind::WEIGHTED_MEAN, encode_column(*weight_col), 0, 0, 0))
-        }
+        CombineFn::WeightedMean { weight_col } => Ok((
+            combine_kind::WEIGHTED_MEAN,
+            encode_column(*weight_col),
+            0,
+            0,
+            0,
+        )),
         CombineFn::IntegrateWithClamp {
             dt: _,
             vel_max,
@@ -519,5 +526,4 @@ mod tests {
         let _ = op.validate();
         encode_combine(&op, eml)
     }
-
 }

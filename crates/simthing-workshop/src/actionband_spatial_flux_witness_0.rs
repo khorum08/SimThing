@@ -111,10 +111,7 @@ pub fn assert_pre_clamp_preserves_native_sign(
 }
 
 /// Reject abs/magnitude-only pre-clamp operands against native signed flux.
-pub fn reject_abs_flux_mutant(
-    native_flux: f32,
-    pre_clamp: f32,
-) -> Result<(), FluxWitnessError> {
+pub fn reject_abs_flux_mutant(native_flux: f32, pre_clamp: f32) -> Result<(), FluxWitnessError> {
     if native_flux != 0.0 && pre_clamp == native_flux.abs() && pre_clamp != native_flux {
         return Err(FluxWitnessError::MagnitudeOnlyFlux);
     }
@@ -122,10 +119,7 @@ pub fn reject_abs_flux_mutant(
 }
 
 /// Reject private sign flip / reorientation relative to admitted native flux.
-pub fn reject_sign_order_mutant(
-    native_flux: f32,
-    pre_clamp: f32,
-) -> Result<(), FluxWitnessError> {
+pub fn reject_sign_order_mutant(native_flux: f32, pre_clamp: f32) -> Result<(), FluxWitnessError> {
     if (pre_clamp + native_flux).abs() < f32::EPSILON && native_flux != 0.0 {
         return Err(FluxWitnessError::SignOrOrderReinterpretation);
     }
@@ -275,9 +269,7 @@ pub fn assert_mutant_pre_clamp_pair_reds(
 }
 
 /// Capacity series: same descent identity; post-clamp progress monotonic in capacity.
-pub fn assert_capacity_witness(
-    samples: &[CapacityWitnessSample],
-) -> Result<(), FluxWitnessError> {
+pub fn assert_capacity_witness(samples: &[CapacityWitnessSample]) -> Result<(), FluxWitnessError> {
     if samples.len() < 2 {
         return Ok(());
     }
@@ -329,7 +321,11 @@ pub fn assert_production_has_zero_workshop_coupling(
 }
 
 /// Opaque descent identity from target channel + PALMA column ids (not capacity).
-pub fn descent_identity(target_col_raw: u32, palma_col_raw: u32, template_authored_id: &str) -> u64 {
+pub fn descent_identity(
+    target_col_raw: u32,
+    palma_col_raw: u32,
+    template_authored_id: &str,
+) -> u64 {
     use std::hash::{Hash, Hasher};
     let mut h = std::collections::hash_map::DefaultHasher::new();
     target_col_raw.hash(&mut h);
@@ -455,24 +451,18 @@ mod pure_unit {
 
     #[test]
     fn mutant_consumption_of_real_natives_reds_at_pre_clamp() {
-        assert!(assert_mutant_pre_clamp_pair_reds(
-            0.7,
-            -0.7,
-            PreClampConsumption::MutantAbsFlux
-        )
-        .is_ok());
-        assert!(assert_mutant_pre_clamp_pair_reds(
-            0.7,
-            -0.7,
-            PreClampConsumption::MutantFlipSign
-        )
-        .is_ok());
-        assert!(assert_mutant_pre_clamp_pair_reds(
-            0.7,
-            -0.7,
-            PreClampConsumption::LawfulIdentity
-        )
-        .is_err());
+        assert!(
+            assert_mutant_pre_clamp_pair_reds(0.7, -0.7, PreClampConsumption::MutantAbsFlux)
+                .is_ok()
+        );
+        assert!(
+            assert_mutant_pre_clamp_pair_reds(0.7, -0.7, PreClampConsumption::MutantFlipSign)
+                .is_ok()
+        );
+        assert!(
+            assert_mutant_pre_clamp_pair_reds(0.7, -0.7, PreClampConsumption::LawfulIdentity)
+                .is_err()
+        );
     }
 
     #[test]

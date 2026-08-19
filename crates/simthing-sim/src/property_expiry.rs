@@ -323,5 +323,4 @@ mod tests {
         assert_eq!(out.columns_tombstoned, 0);
         assert!(reg.is_active(pid));
     }
-
 }

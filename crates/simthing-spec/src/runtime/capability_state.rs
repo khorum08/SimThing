@@ -100,5 +100,4 @@ impl std::fmt::Display for CapabilityTreeDiagnostic {
 mod display_tests {
     use super::*;
     use crate::keys::CapabilityEntryKey;
-
 }

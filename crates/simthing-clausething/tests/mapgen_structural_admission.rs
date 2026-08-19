@@ -6,8 +6,8 @@
 //! bounded-theater Movement-Front deferral does **not** invalidate the structural layout.
 
 use simthing_clausething::{
-    MapGenLatticeOptions, MapgenStructuralGridBudget, admit_structural_grid,
-    generate_mapgen_lattice_hierarchy, parse_mapgen_neutral_document,
+    admit_structural_grid, generate_mapgen_lattice_hierarchy, parse_mapgen_neutral_document,
+    MapGenLatticeOptions, MapgenStructuralGridBudget,
 };
 
 const UNBOUNDED: MapgenStructuralGridBudget = MapgenStructuralGridBudget {
@@ -100,7 +100,7 @@ fn structural_grid_capacity_math_does_not_wrap() {
     );
     let stats = admit_structural_grid(edge, edge, 0, 0, &UNBOUNDED).expect("admit huge edge");
     assert_eq!(stats.cell_count, 10_000_000_000u128); // exact 10^10, not a u32 wrap
-    // The extreme u32 edge also yields its exact u128 product.
+                                                      // The extreme u32 edge also yields its exact u128 product.
     let huge =
         admit_structural_grid(u32::MAX, u32::MAX, 0, 0, &UNBOUNDED).expect("u32::MAX edge admits");
     assert_eq!(huge.cell_count, (u32::MAX as u128) * (u32::MAX as u128));

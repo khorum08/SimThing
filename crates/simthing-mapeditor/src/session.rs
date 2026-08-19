@@ -21,11 +21,11 @@ use crate::scenario_projection::{
 use crate::studio_admission_report::{
     build_studio_admission_summary_from_spec, StudioScenarioAdmissionSummary,
 };
+use crate::studio_live_session_bridge::StudioAuthoredLiveProfile;
 use crate::studio_scenario_document::{
     build_studio_scenario_document_with_admission, StudioScenarioDocument,
     StudioScenarioDocumentError,
 };
-use crate::studio_live_session_bridge::StudioAuthoredLiveProfile;
 use crate::view_model::StudioGalaxyViewModel;
 
 #[derive(Debug, Clone, PartialEq)]

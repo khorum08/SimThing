@@ -533,15 +533,13 @@ fn resolve_property_col(
         .ok_or_else(|| unknown_property(key.namespace.clone(), key.name.clone()))?;
     let layout = &registry.property(property_id).layout;
     let range = registry.column_range(property_id);
-    let col = range
-        .col_for_role(role, layout)
-        .ok_or_else(|| {
-            invalid_role(
-                context.to_string(),
-                format!("{}::{}", key.namespace, key.name),
-                format_role(role),
-            )
-        })?;
+    let col = range.col_for_role(role, layout).ok_or_else(|| {
+        invalid_role(
+            context.to_string(),
+            format!("{}::{}", key.namespace, key.name),
+            format_role(role),
+        )
+    })?;
     Ok((property_id, col))
 }
 

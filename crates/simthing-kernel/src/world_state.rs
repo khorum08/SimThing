@@ -308,9 +308,12 @@ impl WorldGpuState {
                 },
             ],
         });
-        let mut encoder = self.ctx.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("anchor_table_magnitude_values"),
-        });
+        let mut encoder = self
+            .ctx
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("anchor_table_magnitude_values"),
+            });
         {
             let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
                 label: Some("anchor_magnitude_values_pass"),
@@ -385,7 +388,12 @@ impl WorldGpuState {
                 }
                 continue;
             };
-            match (remap.to_slot, remap.to_col(), remap.from_slot, remap.from_col()) {
+            match (
+                remap.to_slot,
+                remap.to_col(),
+                remap.from_slot,
+                remap.from_col(),
+            ) {
                 (None, None, Some(from_slot), Some(from_col)) => {
                     ops.push(AnchorRemapOpGpu {
                         sim_thing_id: remap.sim_thing_id.raw(),
@@ -430,7 +438,11 @@ impl WorldGpuState {
         self.dispatch_anchor_remap_gpu(&ops, &births);
     }
 
-    fn dispatch_anchor_remap_gpu(&mut self, ops: &[AnchorRemapOpGpu], births: &[AnchorTableRowGpu]) {
+    fn dispatch_anchor_remap_gpu(
+        &mut self,
+        ops: &[AnchorRemapOpGpu],
+        births: &[AnchorTableRowGpu],
+    ) {
         let n_src = self.n_anchor_rows;
         let capacity = (n_src as usize)
             .saturating_add(births.len())
@@ -471,18 +483,18 @@ impl WorldGpuState {
             usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC | BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
-        self.ctx.queue.write_buffer(&count_buf, 0, &0u32.to_le_bytes());
+        self.ctx
+            .queue
+            .write_buffer(&count_buf, 0, &0u32.to_le_bytes());
         let params = AnchorRemapParams {
             n_src_rows: n_src,
             n_ops: ops.len() as u32,
             n_births: births.len() as u32,
             _pad: 0,
         };
-        self.ctx.queue.write_buffer(
-            &self.anchor_remap_uniform,
-            0,
-            bytemuck::bytes_of(&params),
-        );
+        self.ctx
+            .queue
+            .write_buffer(&self.anchor_remap_uniform, 0, bytemuck::bytes_of(&params));
         let bind_group = self.ctx.device.create_bind_group(&BindGroupDescriptor {
             label: Some("anchor_table_remap_bg"),
             layout: &self.anchor_remap_layout,
@@ -513,9 +525,12 @@ impl WorldGpuState {
                 },
             ],
         });
-        let mut encoder = self.ctx.device.create_command_encoder(&CommandEncoderDescriptor {
-            label: Some("anchor_table_remap_encoder"),
-        });
+        let mut encoder = self
+            .ctx
+            .device
+            .create_command_encoder(&CommandEncoderDescriptor {
+                label: Some("anchor_table_remap_encoder"),
+            });
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("anchor_table_remap_pass"),
@@ -677,39 +692,45 @@ impl WorldGpuState {
             },
             count: None,
         };
-        let anchor_remap_layout = ctx.device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-            label: Some("anchor_table_remap_layout"),
-            entries: &[
-                storage(0, true),
-                storage(1, true),
-                storage(2, true),
-                storage(3, false),
-                storage(4, false),
-                BindGroupLayoutEntry {
-                    binding: 5,
-                    visibility: ShaderStages::COMPUTE,
-                    ty: BindingType::Buffer {
-                        ty: BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+        let anchor_remap_layout = ctx
+            .device
+            .create_bind_group_layout(&BindGroupLayoutDescriptor {
+                label: Some("anchor_table_remap_layout"),
+                entries: &[
+                    storage(0, true),
+                    storage(1, true),
+                    storage(2, true),
+                    storage(3, false),
+                    storage(4, false),
+                    BindGroupLayoutEntry {
+                        binding: 5,
+                        visibility: ShaderStages::COMPUTE,
+                        ty: BindingType::Buffer {
+                            ty: BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-            ],
-        });
-        let remap_pl = ctx.device.create_pipeline_layout(&PipelineLayoutDescriptor {
-            label: Some("anchor_table_remap_pl"),
-            bind_group_layouts: &[&anchor_remap_layout],
-            push_constant_ranges: &[],
-        });
-        let anchor_remap_pipeline = ctx.device.create_compute_pipeline(&ComputePipelineDescriptor {
-            label: Some("anchor_table_remap_pipeline"),
-            layout: Some(&remap_pl),
-            module: &remap_shader,
-            entry_point: "apply_anchor_remaps",
-            compilation_options: Default::default(),
-            cache: None,
-        });
+                ],
+            });
+        let remap_pl = ctx
+            .device
+            .create_pipeline_layout(&PipelineLayoutDescriptor {
+                label: Some("anchor_table_remap_pl"),
+                bind_group_layouts: &[&anchor_remap_layout],
+                push_constant_ranges: &[],
+            });
+        let anchor_remap_pipeline =
+            ctx.device
+                .create_compute_pipeline(&ComputePipelineDescriptor {
+                    label: Some("anchor_table_remap_pipeline"),
+                    layout: Some(&remap_pl),
+                    module: &remap_shader,
+                    entry_point: "apply_anchor_remaps",
+                    compilation_options: Default::default(),
+                    cache: None,
+                });
         let anchor_remap_uniform = ctx.device.create_buffer(&BufferDescriptor {
             label: Some("anchor_table_remap_uniform"),
             size: std::mem::size_of::<AnchorRemapParams>() as u64,
@@ -742,11 +763,13 @@ impl WorldGpuState {
                         },
                     ],
                 });
-        let magnitude_values_pl = ctx.device.create_pipeline_layout(&PipelineLayoutDescriptor {
-            label: Some("anchor_magnitude_values_pl"),
-            bind_group_layouts: &[&anchor_magnitude_values_layout],
-            push_constant_ranges: &[],
-        });
+        let magnitude_values_pl = ctx
+            .device
+            .create_pipeline_layout(&PipelineLayoutDescriptor {
+                label: Some("anchor_magnitude_values_pl"),
+                bind_group_layouts: &[&anchor_magnitude_values_layout],
+                push_constant_ranges: &[],
+            });
         let anchor_magnitude_values_pipeline =
             ctx.device
                 .create_compute_pipeline(&ComputePipelineDescriptor {
@@ -1304,8 +1327,14 @@ impl WorldGpuState {
                 n_entries: entries.len() as u32,
                 n_ops: ops.len() as u32,
                 tree_ids: entries.iter().map(|e| e.tree_id.0).collect(),
-                intensity_cols: entries.iter().map(|e| encode_column(e.intensity_col)).collect(),
-                velocity_cols: entries.iter().map(|e| encode_column(e.velocity_col)).collect(),
+                intensity_cols: entries
+                    .iter()
+                    .map(|e| encode_column(e.intensity_col))
+                    .collect(),
+                velocity_cols: entries
+                    .iter()
+                    .map(|e| encode_column(e.velocity_col))
+                    .collect(),
             };
             runtime
                 .upload_intensity_eml_ops(&self.ctx, &ops, n_bands, signature)

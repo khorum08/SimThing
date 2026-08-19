@@ -4,11 +4,11 @@
 //! `RegionFieldFormulaBindingSpec`, and reduction feedstock on the referenced scenario
 //! field operator. No CPU planner, movement, routes, or runtime semantics.
 
-use simthing_spec::FIRST_SLICE_FIELD_URGENCY_COL;
 use simthing_spec::spec::region_field::{
     CommitmentEffectSpec, FirstSliceCommitmentDirectionSpec, FirstSliceCommitmentSpec,
     RegionFieldFormulaBindingSpec, RegionFieldOperatorSpec, RegionFieldReductionSpec,
 };
+use simthing_spec::FIRST_SLICE_FIELD_URGENCY_COL;
 
 use crate::error::HydrateError;
 use crate::hydrate_category_economy::parse_commitment_effect_block;

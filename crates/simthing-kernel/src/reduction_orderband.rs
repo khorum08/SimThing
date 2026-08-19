@@ -215,5 +215,4 @@ mod tests {
         let n_dims = reg.total_columns as u32;
         (topo, reg, n_dims)
     }
-
 }

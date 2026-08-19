@@ -5,13 +5,13 @@
 //! commitment, bounded links/grid metadata, default-off posture, and semantic-free lowering.
 
 use simthing_clausething::{
-    HydratedScenarioGridPlacement, HydratedScenarioLink, hydrate_scenario, parse_raw_document,
+    hydrate_scenario, parse_raw_document, HydratedScenarioGridPlacement, HydratedScenarioLink,
 };
 use simthing_core::{SimThingKind, TransformOp};
 use simthing_spec::compile_region_field_preview;
 use simthing_spec::{
-    FIRST_SLICE_FIELD_URGENCY_COL, InstallTargetSpec, MappingExecutionProfile,
-    RegionFieldOperatorSpec,
+    InstallTargetSpec, MappingExecutionProfile, RegionFieldOperatorSpec,
+    FIRST_SLICE_FIELD_URGENCY_COL,
 };
 
 const FIXTURE: &str = include_str!("fixtures/ct_scenario_container_minimal.clause");

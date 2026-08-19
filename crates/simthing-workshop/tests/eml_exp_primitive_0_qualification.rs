@@ -126,7 +126,7 @@ fn probe_corpus() -> Vec<f32> {
         f32::from_bits(EML_EXP_DOMAIN_MAX_BITS),
         0.0,
         -0.0,
-        f32::from_bits(1),          // smallest positive subnormal
+        f32::from_bits(1),           // smallest positive subnormal
         f32::from_bits(0x8000_0001), // smallest negative subnormal
         f32::from_bits(0x0080_0000), // min positive normal
         1.0,
@@ -247,7 +247,13 @@ fn run_gpu_arm(interpreted: bool, arm: &str) -> (u64, u64) {
             inputs[fill] = f32::from_bits(bits);
             fill += 1;
             if fill == CHUNK_SLOTS {
-                flush(&mut inputs, &mut fill, &mut digest, &mut tested, &mut session);
+                flush(
+                    &mut inputs,
+                    &mut fill,
+                    &mut digest,
+                    &mut tested,
+                    &mut session,
+                );
                 eprintln!("EML_EXP_QUALIFY arm={arm} progress bits={bits:#010x} tested={tested}");
             }
             if bits == end {
@@ -255,7 +261,13 @@ fn run_gpu_arm(interpreted: bool, arm: &str) -> (u64, u64) {
             }
             bits += 1;
         }
-        flush(&mut inputs, &mut fill, &mut digest, &mut tested, &mut session);
+        flush(
+            &mut inputs,
+            &mut fill,
+            &mut digest,
+            &mut tested,
+            &mut session,
+        );
     }
     (digest, tested)
 }
@@ -341,9 +353,20 @@ fn eml_exp_primitive_0_stead_falloff_law_is_three_way_bit_exact() {
     let registration =
         compile_stead_exponential_falloff_field_sweep(spec).expect("falloff law admits");
     let values: Vec<f32> = (0..4 * 4 * 2)
-        .map(|index| if index % 2 == 0 { 1.0 + (index / 2) as f32 * 0.25 } else { 0.0 })
+        .map(|index| {
+            if index % 2 == 0 {
+                1.0 + (index / 2) as f32 * 0.25
+            } else {
+                0.0
+            }
+        })
         .collect();
-    let bits = |values: &[f32]| values.iter().map(|value| value.to_bits()).collect::<Vec<_>>();
+    let bits = |values: &[f32]| {
+        values
+            .iter()
+            .map(|value| value.to_bits())
+            .collect::<Vec<_>>()
+    };
     let cpu = simthing_gpu::execute_field_sweep_cpu_iterations(&values, &registration, 1)
         .expect("CPU falloff execution");
     let run_arm = |interpreted: bool| {
@@ -355,7 +378,9 @@ fn eml_exp_primitive_0_stead_falloff_law_is_three_way_bit_exact() {
             FieldSweepSession::new_with_profiling_resource_class(&ctx, &registration, class)
                 .expect("generated JIT falloff session")
         };
-        session.upload_values(&ctx, &values).expect("falloff upload");
+        session
+            .upload_values(&ctx, &values)
+            .expect("falloff upload");
         session
             .dispatch_chain(&ctx, std::slice::from_ref(&registration), 1)
             .expect("falloff dispatch");
@@ -424,13 +449,8 @@ fn eml_exp_primitive_0_jit_fold_seam_witness_is_exp_free() {
     };
     let col = ColumnIndex::try_from_admitted_authored(0, 2).expect("value column");
     let out_col = ColumnIndex::try_from_admitted_authored(1, 2).expect("output column");
-    let adjacency = simthing_gpu::FieldAdjacency::grid_n4(
-        4,
-        4,
-        simthing_gpu::GRID_N4_NSEW,
-        col,
-    )
-    .expect("grid adjacency");
+    let adjacency = simthing_gpu::FieldAdjacency::grid_n4(4, 4, simthing_gpu::GRID_N4_NSEW, col)
+        .expect("grid adjacency");
     let order = adjacency.apply_canonical_order_proof();
     let registration = apply_field_sweep_registration(FieldSweepRegistrationRequest {
         adjacency,
@@ -460,14 +480,23 @@ fn eml_exp_primitive_0_jit_fold_seam_witness_is_exp_free() {
     })
     .expect("EXP-free mul-map admission");
     let values: Vec<f32> = (0..4 * 4 * 2)
-        .map(|index| if index % 2 == 0 { 1.1 + index as f32 * 0.7 } else { 0.0 })
+        .map(|index| {
+            if index % 2 == 0 {
+                1.1 + index as f32 * 0.7
+            } else {
+                0.0
+            }
+        })
         .collect();
     let cpu = simthing_gpu::execute_field_sweep_cpu_iterations(&values, &registration, 1)
         .expect("CPU witness execution");
     let class = registration.resource_class();
-    let mut session = FieldSweepSession::new_with_profiling_resource_class(&ctx, &registration, class)
-        .expect("generated JIT witness session");
-    session.upload_values(&ctx, &values).expect("witness upload");
+    let mut session =
+        FieldSweepSession::new_with_profiling_resource_class(&ctx, &registration, class)
+            .expect("generated JIT witness session");
+    session
+        .upload_values(&ctx, &values)
+        .expect("witness upload");
     session
         .dispatch_chain(&ctx, std::slice::from_ref(&registration), 1)
         .expect("witness dispatch");
@@ -515,15 +544,15 @@ fn eml_exp_primitive_0_planted_ln2_fusion_mutant_reds_the_digest() {
         let s2 = f32::from_bits(((k2 + 127) as u32) << 23);
         (y * s1) * s2
     }
-    let (reference, mutant) = probe_corpus().iter().fold(
-        (FNV_OFFSET, FNV_OFFSET),
-        |(reference, mutant), input| {
-            (
-                fnv_fold(reference, eml_exp_pinned_f32(*input).to_bits()),
-                fnv_fold(mutant, mutant_fused_ln2(*input).to_bits()),
-            )
-        },
-    );
+    let (reference, mutant) =
+        probe_corpus()
+            .iter()
+            .fold((FNV_OFFSET, FNV_OFFSET), |(reference, mutant), input| {
+                (
+                    fnv_fold(reference, eml_exp_pinned_f32(*input).to_bits()),
+                    fnv_fold(mutant, mutant_fused_ln2(*input).to_bits()),
+                )
+            });
     assert_ne!(
         reference, mutant,
         "planted ln2-fusion reassociation must RED the digest referee"
@@ -562,15 +591,15 @@ fn eml_exp_primitive_0_planted_scale_reassociation_mutant_reds_the_digest() {
         !mutant_scale_reassociated(ceiling).is_finite(),
         "reassociated scale must overflow at the domain ceiling"
     );
-    let (reference, mutant) = probe_corpus().iter().fold(
-        (FNV_OFFSET, FNV_OFFSET),
-        |(reference, mutant), input| {
-            (
-                fnv_fold(reference, eml_exp_pinned_f32(*input).to_bits()),
-                fnv_fold(mutant, mutant_scale_reassociated(*input).to_bits()),
-            )
-        },
-    );
+    let (reference, mutant) =
+        probe_corpus()
+            .iter()
+            .fold((FNV_OFFSET, FNV_OFFSET), |(reference, mutant), input| {
+                (
+                    fnv_fold(reference, eml_exp_pinned_f32(*input).to_bits()),
+                    fnv_fold(mutant, mutant_scale_reassociated(*input).to_bits()),
+                )
+            });
     assert_ne!(
         reference, mutant,
         "planted scale reassociation must RED the digest referee"

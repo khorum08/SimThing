@@ -135,5 +135,4 @@ fn decode_label_property(value: &PropertyValue) -> Option<FissionCloneSourceLabe
 #[cfg(test)]
 mod tests {
     use super::*;
-
 }

@@ -115,5 +115,4 @@ mod tests {
     use simthing_core::ConjunctiveRecipeInput;
 
     use super::*;
-
 }

@@ -1,7 +1,7 @@
-pub mod arena_allocation_oracle;
 pub mod action_band_consequence;
 pub mod action_band_execution_compile;
 pub mod action_band_semantic_shadow;
+pub mod arena_allocation_oracle;
 pub mod arena_allocation_plan;
 pub mod arena_allocation_sync;
 pub mod arena_hierarchy;
@@ -88,13 +88,12 @@ pub mod structural_n4_atlas_partition;
 pub mod structural_n4_theater_compile;
 pub mod w_impedance_compose_bridge;
 
-pub use arena_allocation_oracle::{run_arena_allocation_oracle, ArenaAllocationOracleTrace};
 pub use action_band_consequence::{
     compile_crossing_consequence_session, submit_routed_overlay_product,
-    CrossingConsequenceAdmissionError,
-    CrossingConsequenceBinding, CrossingConsequenceDispatch, CrossingConsequenceDispatchError,
-    CrossingConsequenceDispatchOutcome, CrossingConsequenceSession, ResidentNextWrite,
-    RoutedOverlayDelivery, RoutedOverlayProduct, StructuralAuthorization,
+    CrossingConsequenceAdmissionError, CrossingConsequenceBinding, CrossingConsequenceDispatch,
+    CrossingConsequenceDispatchError, CrossingConsequenceDispatchOutcome,
+    CrossingConsequenceSession, ResidentNextWrite, RoutedOverlayDelivery, RoutedOverlayProduct,
+    StructuralAuthorization,
 };
 pub use action_band_execution_compile::{
     compile_action_band_gpu_execution, compile_action_band_gpu_execution_with_native_lanes,
@@ -106,9 +105,10 @@ pub use action_band_execution_compile::{
 pub use action_band_semantic_shadow::{
     carry_bound_observables, designation_for_template, ActionBandBoundDispatch,
     ActionBandSemanticReadback, ActionBandSemanticSession, ActionBandTransitProjection,
-    BoundObservableIdentity, FieldNeutralityGate, SealedActionBandAuthority,
-    SemanticallySealedProduction, SemanticShadowError, FIELD_NEUTRALITY_OUTCOME,
+    BoundObservableIdentity, FieldNeutralityGate, SealedActionBandAuthority, SemanticShadowError,
+    SemanticallySealedProduction, FIELD_NEUTRALITY_OUTCOME,
 };
+pub use arena_allocation_oracle::{run_arena_allocation_oracle, ArenaAllocationOracleTrace};
 pub use arena_allocation_plan::{
     max_disbursement_band, plan_arena_allocation, AllocationPlanError, ArenaAllocationPlan,
 };
@@ -120,9 +120,8 @@ pub use arena_hierarchy::{
     build_custom_layout, build_execution_plan, build_execution_plan_from_authoring,
     build_flat_star_layout, build_nested_layout, nested_hierarchy_materialization_report,
     resolve_node_columns, resolve_node_columns_for_property, total_bands_for_depth,
-    ArenaBandLayout, ArenaExecutionPlan,
-    ArenaTreeLayout, HierarchyError, HierarchyNode, NestedHierarchyMaterializationReport,
-    NodeColumnRefs,
+    ArenaBandLayout, ArenaExecutionPlan, ArenaTreeLayout, HierarchyError, HierarchyNode,
+    NestedHierarchyMaterializationReport, NodeColumnRefs,
 };
 pub use arena_pressure::{
     compile_arena_pressure_scatter, project_arena_pressure_seeds, ArenaPressureError,
@@ -161,19 +160,19 @@ pub use comparative_projection::{
     ComparativeProjectionRequest, ComparativeThresholdPlan, GuYangStallOutputs,
     BAND_READOUT_COLUMN_COUNT, COMPARATIVE_DERIVED_COLUMN_COUNT, GUYANG_STALL_DERIVED_COLUMN_COUNT,
 };
+pub use field_scheduler::{
+    count_cadence_due_ticks, execute_scheduled_regions_with, visit_scheduled_regions,
+    DirtyRegionState, FieldCadence, FieldDispatchDecision, FieldDispatchReason,
+    FieldDispatchSchedule, FieldGridDescriptor, FieldId, FieldRegionId, FieldRegionRegistration,
+    FieldScheduleState, FieldScheduler, FieldSchedulerError, FieldSchedulerReport,
+    ScheduledRegionsExecutionSummary, ScheduledSingleStencilExecution,
+};
 pub use field_sweep_compile::{
     compile_gu_yang_n4_field_sweeps, compile_gu_yang_overlay_parameterized_n4_field_sweeps,
     compile_palma_n4_field_sweep, compile_palma_overlay_parameterized_n4_field_sweep,
     compile_stead_overlay_parameterized_n4_field_sweep, GuYangN4FieldSweepSpec,
     GuYangOverlayParameterizedN4Spec, PalmaN4FieldSweepSpec, PalmaOverlayParameterizedN4Spec,
     SteadOverlayParameterizedN4Spec,
-};
-pub use field_scheduler::{
-    count_cadence_due_ticks, execute_scheduled_regions_with,
-    visit_scheduled_regions, DirtyRegionState, FieldCadence, FieldDispatchDecision,
-    FieldDispatchReason, FieldDispatchSchedule, FieldGridDescriptor, FieldId, FieldRegionId,
-    FieldRegionRegistration, FieldScheduleState, FieldScheduler, FieldSchedulerError,
-    FieldSchedulerReport, ScheduledRegionsExecutionSummary, ScheduledSingleStencilExecution,
 };
 pub use first_slice_mapping_runtime::{
     compiled_cadence_to_field_cadence, compiled_stencil_to_gpu_config, estimate_first_slice_budget,
@@ -236,16 +235,20 @@ pub use min_plus_traversal_field::{
     TraversalFieldShadowColumnCompatInput, TraversalFieldWInputKind, TRAVERSAL_FIELD_ID,
     TRAVERSAL_FIELD_REGION_ID, TRAVERSAL_FIELD_UTILITY_ID,
 };
-pub use owner_silo_accumulator_compile::{
-    compile_owner_silo_gpu_tick_plan, owner_silo_aggregate_slot, owner_silo_deficit_tick_inputs,
-    owner_silo_participant_deficit_total, owner_silo_participant_surplus_total,
-    owner_silo_surplus_tick_inputs, OwnerSiloGpuTickPlan,
+pub use order_directive::{
+    build_order_directive_overlay, order_directive_injections_from_frame, AdmittedOrderWeightClass,
+    OrderDirectiveError, OrderDirectiveInjection, OrderDirectiveRequest,
 };
 pub use owner_channel_rf_compile::{
     compile_owner_channel_rf_gpu_proof_plan, owner_channel_rf_bucket_aggregate_slot,
     owner_channel_rf_bucket_deficit_tick_inputs, owner_channel_rf_bucket_surplus_tick_inputs,
     prove_owner_channel_rf_cpu_gpu_parity, OwnerChannelRfBucketAccumulatorPlan,
     OwnerChannelRfGpuParityReport, OwnerChannelRfGpuProofError, OwnerChannelRfGpuProofPlan,
+};
+pub use owner_silo_accumulator_compile::{
+    compile_owner_silo_gpu_tick_plan, owner_silo_aggregate_slot, owner_silo_deficit_tick_inputs,
+    owner_silo_participant_deficit_total, owner_silo_participant_surplus_total,
+    owner_silo_surplus_tick_inputs, OwnerSiloGpuTickPlan,
 };
 pub use owner_silo_disburse_down_compile::{
     compile_owner_silo_disburse_down_plan, owner_silo_disburse_down_cpu_demand_aggregate_total,
@@ -458,11 +461,6 @@ pub use semantic_local_effects_recursive_source_compile::{
 };
 pub use semantic_participant_delta_preview_compile::{
     compile_semantic_participant_delta_preview_plan, SemanticParticipantDeltaPreviewPlan,
-};
-pub use order_directive::{
-    build_order_directive_overlay, order_directive_injections_from_frame,
-    AdmittedOrderWeightClass, OrderDirectiveError, OrderDirectiveInjection,
-    OrderDirectiveRequest,
 };
 pub use session::{RunSummary, SessionError, SimSession, StepOnceOutcome};
 pub use session_resource_flow_silos::{

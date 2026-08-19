@@ -61,5 +61,4 @@ pub fn paths_preorder(paths: &HashMap<SimThingId, Vec<usize>>) -> Vec<Vec<usize>
 mod tests {
     use super::*;
     use simthing_core::SimThingKind;
-
 }

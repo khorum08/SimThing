@@ -13,8 +13,8 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use simthing_core::owner_channel::{resolve_owner, resolve_owners_in_order, OwnerRef};
 use simthing_core::{
-    integrate_stamped_product, AncestorStandingPolicyView, AuthoredSeamStaleness,
-    GenerationStamp, GenerationStamped, IntegrateError, IntegrationReceipt, IntegrationSchedule,
+    integrate_stamped_product, AncestorStandingPolicyView, AuthoredSeamStaleness, GenerationStamp,
+    GenerationStamped, IntegrateError, IntegrationReceipt, IntegrationSchedule,
     IntegrationScheduleRowKind, SimThing, SimThingId, StandingViewDoubleBuffer,
 };
 
@@ -201,9 +201,7 @@ pub fn replay_reduce_up_schedule(
     }
     let mut state = ParentRfIntegrationState::default();
     let mut scratch = IntegrationSchedule::new();
-    for entry in schedule
-        .entries_of_kind(IntegrationScheduleRowKind::DirectReduceUp)
-    {
+    for entry in schedule.entries_of_kind(IntegrationScheduleRowKind::DirectReduceUp) {
         let found = products.iter().find(|p| {
             p.generation() == entry.child_generation
                 && reduce_up_product_key(p.product()) == entry.product_key
@@ -211,12 +209,7 @@ pub fn replay_reduce_up_schedule(
         let Some(product) = found else {
             continue;
         };
-        integrate_stamped_reduce_up(
-            entry.parent_generation,
-            product,
-            &mut state,
-            &mut scratch,
-        )?;
+        integrate_stamped_reduce_up(entry.parent_generation, product, &mut state, &mut scratch)?;
     }
     Ok(state)
 }
@@ -258,7 +251,9 @@ impl OwnerChannelRfConservedValue {
 
     fn checked_add(self, other: Self) -> Option<Self> {
         Some(Self {
-            participant_count: self.participant_count.checked_add(other.participant_count)?,
+            participant_count: self
+                .participant_count
+                .checked_add(other.participant_count)?,
             surplus_total: self.surplus_total.checked_add(other.surplus_total)?,
             deficit_total: self.deficit_total.checked_add(other.deficit_total)?,
             net_surplus: self.net_surplus.checked_add(other.net_surplus)?,
@@ -268,7 +263,9 @@ impl OwnerChannelRfConservedValue {
 
     fn checked_sub(self, other: Self) -> Option<Self> {
         Some(Self {
-            participant_count: self.participant_count.checked_sub(other.participant_count)?,
+            participant_count: self
+                .participant_count
+                .checked_sub(other.participant_count)?,
             surplus_total: self.surplus_total.checked_sub(other.surplus_total)?,
             deficit_total: self.deficit_total.checked_sub(other.deficit_total)?,
             net_surplus: self.net_surplus.checked_sub(other.net_surplus)?,
@@ -401,10 +398,9 @@ impl AsyncOwnerChannelRfSeam {
         self.admitted_product_count
             .checked_add(1)
             .ok_or(IntegrateError::ArithmeticOverflow)?;
-        let mut incoming = BTreeMap::<
-            OwnerChannelScopeKey,
-            (OwnerChannelRfConservedValue, GenerationStamp),
-        >::new();
+        let mut incoming =
+            BTreeMap::<OwnerChannelScopeKey, (OwnerChannelRfConservedValue, GenerationStamp)>::new(
+            );
         for bucket in &product.product().buckets {
             let value = OwnerChannelRfConservedValue::from_bucket(bucket);
             match incoming.entry(bucket.scope.clone()) {
@@ -449,7 +445,10 @@ impl AsyncOwnerChannelRfSeam {
             let balance = self.balances.entry(scope.clone()).or_default();
             balance.admitted = balance.admitted.checked_add(value).expect("preflight");
             balance.child = balance.child.checked_add(value).expect("preflight");
-            debug_assert!(balance.is_exact(), "child receipt must conserve immediately");
+            debug_assert!(
+                balance.is_exact(),
+                "child receipt must conserve immediately"
+            );
             balance.child = balance.child.checked_sub(value).expect("just credited");
             balance.seam = balance.seam.checked_add(value).expect("preflight");
             debug_assert!(balance.is_exact(), "seam holding transfer must conserve");
@@ -487,9 +486,7 @@ impl AsyncOwnerChannelRfSeam {
 
     /// Read coalesced carriers in canonical scope order. Each carrier stamp is the newest/max
     /// contributing generation; the complete contributing set remains in the schedule rows.
-    pub fn pending_carriers(
-        &self,
-    ) -> Vec<GenerationStamped<QueuedOwnerChannelRfBucket>> {
+    pub fn pending_carriers(&self) -> Vec<GenerationStamped<QueuedOwnerChannelRfBucket>> {
         self.pending
             .iter()
             .map(|(scope, pending)| {
@@ -504,10 +501,7 @@ impl AsyncOwnerChannelRfSeam {
             .collect()
     }
 
-    pub fn balance(
-        &self,
-        scope: &OwnerChannelScopeKey,
-    ) -> Option<OwnerChannelRfSeamBalance> {
+    pub fn balance(&self, scope: &OwnerChannelScopeKey) -> Option<OwnerChannelRfSeamBalance> {
         self.balances.get(scope).copied()
     }
 
@@ -534,9 +528,7 @@ impl AsyncOwnerChannelRfSeam {
         }
         let pending_count = u64::try_from(self.pending_products.len())
             .map_err(|_| IntegrateError::ConservationViolation)?;
-        if self
-            .applied_product_count
-            .checked_add(pending_count)
+        if self.applied_product_count.checked_add(pending_count)
             != Some(self.admitted_product_count)
         {
             return Err(IntegrateError::ConservationViolation);
@@ -569,16 +561,18 @@ impl AsyncOwnerChannelRfSeam {
             .product_count
             .checked_add(contributing_product_count_u64)
             .ok_or(IntegrateError::ArithmeticOverflow)?;
-        self.pending.values().try_fold(
-            (parent_state.surplus_total, parent_state.deficit_total),
-            |(surplus, deficit), pending| {
-                Some((
-                    surplus.checked_add(pending.value.surplus_total)?,
-                    deficit.checked_add(pending.value.deficit_total)?,
-                ))
-            },
-        )
-        .ok_or(IntegrateError::ArithmeticOverflow)?;
+        self.pending
+            .values()
+            .try_fold(
+                (parent_state.surplus_total, parent_state.deficit_total),
+                |(surplus, deficit), pending| {
+                    Some((
+                        surplus.checked_add(pending.value.surplus_total)?,
+                        deficit.checked_add(pending.value.deficit_total)?,
+                    ))
+                },
+            )
+            .ok_or(IntegrateError::ArithmeticOverflow)?;
         for (scope, pending) in &self.pending {
             parent_state
                 .buckets
@@ -605,10 +599,7 @@ impl AsyncOwnerChannelRfSeam {
                 .balances
                 .get_mut(scope)
                 .expect("queued scope has accounting");
-            balance.seam = balance
-                .seam
-                .checked_sub(pending.value)
-                .expect("preflight");
+            balance.seam = balance.seam.checked_sub(pending.value).expect("preflight");
             balance.parent = balance
                 .parent
                 .checked_add(pending.value)
@@ -697,11 +688,8 @@ impl AsyncOwnerChannelRfSeam {
         child_generation: GenerationStamp,
         schedule: &mut IntegrationSchedule,
     ) -> Result<Option<IntegrationReceipt>, IntegrateError> {
-        self.standing.publish_at_generation_barrier(
-            child_generation,
-            self.tolerance,
-            schedule,
-        )
+        self.standing
+            .publish_at_generation_barrier(child_generation, self.tolerance, schedule)
     }
 
     pub fn standing_view(
@@ -1569,7 +1557,10 @@ mod wait_mutant_proof {
         .expect_err("wait mutant must RED");
         assert!(matches!(
             err,
-            IntegrateError::WouldWaitForLaggingChild { parent: 4, child: 1 }
+            IntegrateError::WouldWaitForLaggingChild {
+                parent: 4,
+                child: 1
+            }
         ));
         plant_wait_for_fresh_child_mutant(false);
         integrate_stamped_reduce_up_for_wait_mutant_proof(
@@ -1711,12 +1702,8 @@ mod async_queue_accounting_mutant_proof {
 
         let mut parent = ParentRfIntegrationState::default();
         let mut schedule = IntegrationSchedule::new();
-        seam.apply_parent_generation_barrier(
-            GenerationStamp::new(8),
-            &mut parent,
-            &mut schedule,
-        )
-        .expect("canonical newest/max carrier stamp 5 is within authored tolerance 3");
+        seam.apply_parent_generation_barrier(GenerationStamp::new(8), &mut parent, &mut schedule)
+            .expect("canonical newest/max carrier stamp 5 is within authored tolerance 3");
         assert_eq!(
             schedule
                 .entries_of_kind(IntegrationScheduleRowKind::QueueInjection)

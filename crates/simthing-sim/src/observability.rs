@@ -211,5 +211,4 @@ mod tests {
     fn cohort_row(shadow: &[f32], slot: usize, n_dims: usize) -> &[f32] {
         &shadow[slot * n_dims..slot * n_dims + n_dims]
     }
-
 }

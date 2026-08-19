@@ -11,10 +11,10 @@ use crate::spec::region_field::MappingExecutionProfile;
 use crate::spec::resource_flow::{ResourceFlowExecutionProfile, ResourceFlowOptInMode};
 
 use super::artifact_target::{
-    AcceptedFrontierArtifactTarget, accepted_frontier_v2_artifact_target_ids,
+    accepted_frontier_v2_artifact_target_ids, AcceptedFrontierArtifactTarget,
 };
 use super::diagnostic::{
-    DesignerAdmissionDiagnostic, DesignerAdmissionDiagnosticCode, designer_admission_diagnostic,
+    designer_admission_diagnostic, DesignerAdmissionDiagnostic, DesignerAdmissionDiagnosticCode,
 };
 use super::manifest::DesignerAdmissionPreflightManifest;
 use super::preflight::resolve_frontier_artifact_target_id;

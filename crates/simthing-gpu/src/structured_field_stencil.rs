@@ -1262,5 +1262,4 @@ mod unit_tests {
             allow_extended_horizon: false,
         }
     }
-
 }

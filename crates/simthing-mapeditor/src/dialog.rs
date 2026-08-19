@@ -174,5 +174,4 @@ impl TelemetryDialogModel {
 #[cfg(test)]
 mod tests {
     use super::*;
-
 }

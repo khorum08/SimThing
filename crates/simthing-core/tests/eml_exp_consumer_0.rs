@@ -11,7 +11,11 @@ use simthing_core::{
 fn eml_exp_primitive_0_logistic_steering_admits_and_matches_its_oracle_bit_for_bit() {
     let (lo, hi, k, x0) = (0.25f32, 4.0f32, 0.9f32, 6.0f32);
     let nodes = logistic_steering_eml_nodes(lo, hi, k, x0);
-    assert_eq!(nodes.len(), 31, "pinned sign-stable construction is 31 nodes");
+    assert_eq!(
+        nodes.len(),
+        31,
+        "pinned sign-stable construction is 31 nodes"
+    );
     let nodes = admit_overlay_eml_program(nodes, EmlPerProgramCap::DEFAULT)
         .expect("logistic steering admits under the overlay per-program cap");
 

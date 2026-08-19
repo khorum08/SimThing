@@ -1,11 +1,11 @@
 //! MapGen PR5 — bounded hyperlane-to-link and lane-coupling tests.
 
 use simthing_clausething::{
-    MAPGEN_RF_DEPOSIT_ARENA, MapGenLatticeOptions, MapGenLinksOptions, MapGenResourceFlowOptions,
     extract_hyperlane_declarations, generate_default_mapgen_links_enrollment,
     generate_mapgen_lattice_hierarchy, generate_mapgen_links,
     generate_mapgen_resource_flow_enrollment, lower_hyperlane_topology,
-    parse_mapgen_neutral_document,
+    parse_mapgen_neutral_document, MapGenLatticeOptions, MapGenLinksOptions,
+    MapGenResourceFlowOptions, MAPGEN_RF_DEPOSIT_ARENA,
 };
 use simthing_core::SimThingKind;
 

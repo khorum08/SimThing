@@ -44,7 +44,9 @@ use crate::ids::SimThingId;
 
 /// Closed lane vocabulary — the four legs (StemThing §2). A tier's lane set
 /// answers what a descendant can DO; membership is data, not behavior.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(
+    Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize,
+)]
 pub struct LaneSet {
     pub participate: bool,
     pub act: bool,
@@ -137,7 +139,9 @@ pub enum TierAdmissionError {
         row_index: usize,
         name: String,
     },
-    #[error("authored tier set of {attempted} rows exceeds the session admission width limit {limit}")]
+    #[error(
+        "authored tier set of {attempted} rows exceeds the session admission width limit {limit}"
+    )]
     TooManyTiers { attempted: usize, limit: usize },
     #[error(
         "mid-session tier mint refused: the session tier set is FROZEN at admission ({admitted} rows); the Owner-gated epoch-boundary dynamic-tier door is chartered but does not exist (StemThing §5, Owner ruling 2026-08-03); attempted to admit {attempted} rows mid-session"
@@ -498,10 +502,17 @@ mod tests {
 
     #[test]
     fn admission_freezes_a_validated_open_authored_set() {
-        let set = SessionTierSet::admit(vec![row("spatial-container", 4), row("compact-participant", 1)])
-            .expect("valid rows admit");
+        let set = SessionTierSet::admit(vec![
+            row("spatial-container", 4),
+            row("compact-participant", 1),
+        ])
+        .expect("valid rows admit");
         assert_eq!(set.census_width(), 2);
-        assert_eq!(set.tier_id_by_name("compact-participant").map(|t| t.index()), Some(1));
+        assert_eq!(
+            set.tier_id_by_name("compact-participant")
+                .map(|t| t.index()),
+            Some(1)
+        );
         // No mutation surface exists on the frozen set (type boundary).
     }
 
@@ -535,7 +546,10 @@ mod tests {
         b.shape = ResidencyShapeClass::SpatialBlock;
         // Identical price vectors, different authored names → identical
         // draw shapes: the engine cannot see the difference.
-        assert_eq!(resolve_residency_draw(&a, 25), resolve_residency_draw(&b, 25));
+        assert_eq!(
+            resolve_residency_draw(&a, 25),
+            resolve_residency_draw(&b, 25)
+        );
         assert_eq!(resolve_residency_draw(&a, 25).rows, 75);
     }
 

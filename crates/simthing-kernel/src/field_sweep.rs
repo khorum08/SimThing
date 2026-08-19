@@ -1342,9 +1342,16 @@ fn eval_field_eml_step(
     sp: &mut usize,
 ) -> Result<Option<f32>, FieldSweepExecutionError> {
     match node.opcode {
-        eml_opcode::LITERAL_F32 => push_step(stack, mul_a, mul_b, is_mul, sp, f32::from_bits(node.a))?,
+        eml_opcode::LITERAL_F32 => {
+            push_step(stack, mul_a, mul_b, is_mul, sp, f32::from_bits(node.a))?
+        }
         eml_opcode::TARGET_VALUE => {
-            let value = read_cell(values, context.target_slot, column_from_wire(node.a), n_dims)?;
+            let value = read_cell(
+                values,
+                context.target_slot,
+                column_from_wire(node.a),
+                n_dims,
+            )?;
             push_step(stack, mul_a, mul_b, is_mul, sp, value)?;
         }
         eml_opcode::NEIGHBOR_VALUE => {

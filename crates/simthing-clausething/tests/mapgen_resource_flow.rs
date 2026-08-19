@@ -1,16 +1,15 @@
 //! MapGen PR4 — bounded Resource Flow enrollment tests.
 
 use simthing_clausething::{
-    MAPGEN_RF_DEPOSIT_ARENA, MAPGEN_RF_SUPPRESSION_ARENA, MapGenLatticeOptions,
-    MapGenResourceFlowOptions, generate_default_mapgen_resource_flow_enrollment,
-    generate_mapgen_lattice_hierarchy, generate_mapgen_resource_flow_enrollment,
-    parse_mapgen_neutral_document, validate_arena_caps, validate_explicit_enrollment,
-    validate_resource_flow_enrollment,
+    generate_default_mapgen_resource_flow_enrollment, generate_mapgen_lattice_hierarchy,
+    generate_mapgen_resource_flow_enrollment, parse_mapgen_neutral_document, validate_arena_caps,
+    validate_explicit_enrollment, validate_resource_flow_enrollment, MapGenLatticeOptions,
+    MapGenResourceFlowOptions, MAPGEN_RF_DEPOSIT_ARENA, MAPGEN_RF_SUPPRESSION_ARENA,
 };
 use simthing_core::{DimensionRegistry, SimThingKind};
 use simthing_spec::{
-    ArenaSpec, EnrollmentSelectorSpec, ExplicitParticipantSpec, FissionPolicySpec, PropertyKey,
-    SpecError, compile_property, compile_resource_flow_admission,
+    compile_property, compile_resource_flow_admission, ArenaSpec, EnrollmentSelectorSpec,
+    ExplicitParticipantSpec, FissionPolicySpec, PropertyKey, SpecError,
 };
 
 const RAW_FIXTURE: &str = include_str!("fixtures/mapgen/tiny_pentad_hub_slice_raw.clause");

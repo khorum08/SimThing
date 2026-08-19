@@ -1,0 +1,8 @@
+# Pin formatting so `cargo fmt` is idempotent across toolchains.
+#
+# Without this, style_edition follows the crate edition implicitly and drifts
+# with the installed rustfmt. That produced a 200-file phantom diff in a working
+# tree and moved line-keyed test_inventory.tsv rows, reddening
+# TEST-INVENTORY-DRIFT locally. Same class as the CRLF/.gitattributes gotcha:
+# unpinned tooling generating spurious diffs against byte-sensitive gates.
+style_edition = "2021"

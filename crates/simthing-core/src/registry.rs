@@ -5,9 +5,7 @@
 
 use crate::column_index::ColumnIndex;
 use crate::ids::SimPropertyId;
-use crate::property::{
-    PropertyAdmissionDisposition, PropertyLayout, SimProperty, SubFieldRole,
-};
+use crate::property::{PropertyAdmissionDisposition, PropertyLayout, SimProperty, SubFieldRole};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use std::collections::HashMap;

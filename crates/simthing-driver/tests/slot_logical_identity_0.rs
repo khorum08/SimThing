@@ -20,9 +20,9 @@ use std::collections::BTreeMap;
 
 use simthing_core::{
     apply_anchor_remaps_to_table, mint_anchor_table_from_admission, resolve_slot_through_chain,
-    AnchorIdentity, AnchorRemapOperation, AnchoredLocusMap,
-    BindingTableSnapshot, ColumnIndex, DimensionRegistry, ReductionRule, RemapSubject,
-    SimProperty, SimPropertyId, SimThing, SimThingId, SimThingKind, SlotIndex,
+    AnchorIdentity, AnchorRemapOperation, AnchoredLocusMap, BindingTableSnapshot, ColumnIndex,
+    DimensionRegistry, ReductionRule, RemapSubject, SimProperty, SimPropertyId, SimThing,
+    SimThingId, SimThingKind, SlotIndex,
 };
 use simthing_driver::{apply_spec_delta, SpecDelta, SpecSessionState};
 use simthing_gpu::{
@@ -122,10 +122,7 @@ fn base_row(vals: &[f32; 2]) -> [f32; N_DIMS] {
     row
 }
 
-fn flat_values(
-    alloc: &SlotAllocator,
-    authored: &BTreeMap<SimThingId, [f32; 2]>,
-) -> Vec<f32> {
+fn flat_values(alloc: &SlotAllocator, authored: &BTreeMap<SimThingId, [f32; 2]>) -> Vec<f32> {
     let mut flat = vec![0.0_f32; alloc.capacity() * N_DIMS];
     for (&id, vals) in authored {
         let row = alloc.slot_of(id).expect("live row").as_usize();
@@ -193,11 +190,21 @@ fn cpu_generation(
 
 /// Per-id projection of a slot-major plane — the logical-identity view every
 /// comparison uses.
-fn by_id(plane: &[f32], alloc: &SlotAllocator, ids: &BTreeMap<SimThingId, [f32; 2]>) -> Vec<(SimThingId, [f32; 2])> {
+fn by_id(
+    plane: &[f32],
+    alloc: &SlotAllocator,
+    ids: &BTreeMap<SimThingId, [f32; 2]>,
+) -> Vec<(SimThingId, [f32; 2])> {
     ids.keys()
         .map(|&id| {
             let row = alloc.slot_of(id).expect("live row").as_usize();
-            (id, [plane[row * N_DIMS + MASS_COL], plane[row * N_DIMS + MOOD_COL]])
+            (
+                id,
+                [
+                    plane[row * N_DIMS + MASS_COL],
+                    plane[row * N_DIMS + MOOD_COL],
+                ],
+            )
         })
         .collect()
 }
@@ -228,7 +235,6 @@ fn scramble_assignment(alloc: &SlotAllocator, fx: &Fixture) -> BindingTableSnaps
     }
     assignment
 }
-
 
 /// Flat family for the GPU OrderBand arm: root with SIX kids; kids carry the
 /// order-sensitive Sum triple (1e8, 1.0, -1e8) followed by (3.5, -0.5,
@@ -267,7 +273,11 @@ fn contiguous_family_rebind(alloc: &SlotAllocator, root: &SimThing) -> BindingTa
     }
     // Sanity: every row moves (root was 0; kids were 1..=6).
     for (&id, &slot) in &assignment {
-        assert_ne!(alloc.slot_of(id), Some(slot), "forced scramble moves every row");
+        assert_ne!(
+            alloc.slot_of(id),
+            Some(slot),
+            "forced scramble moves every row"
+        );
     }
     assignment
 }
@@ -400,7 +410,13 @@ fn slot_logical_identity_0_forced_epoch_rebind_is_bit_identical_cpu_gpu() {
     let mut base_values = flat_values(&base_alloc, &fx.authored);
     let mut base_outputs = Vec::new();
     for _ in 0..GENERATIONS {
-        let out = cpu_generation(&base_topo, &registry, &base_alloc, &fx.authored, &mut base_values);
+        let out = cpu_generation(
+            &base_topo,
+            &registry,
+            &base_alloc,
+            &fx.authored,
+            &mut base_values,
+        );
         base_outputs.push(by_id(&out, &base_alloc, &fx.authored));
     }
 
@@ -531,7 +547,13 @@ fn slot_logical_identity_0_forced_epoch_rebind_is_bit_identical_cpu_gpu() {
     let base_topo2 = TopologyState::build(&flat_root, &base_alloc2).flatten();
     let mut cpu_values = flat_values(&base_alloc2, &flat_authored);
     for gpu in base_gpu_outputs.iter() {
-        let out = cpu_generation(&base_topo2, &registry, &base_alloc2, &flat_authored, &mut cpu_values);
+        let out = cpu_generation(
+            &base_topo2,
+            &registry,
+            &base_alloc2,
+            &flat_authored,
+            &mut cpu_values,
+        );
         let cpu = by_id(&out, &base_alloc2, &flat_authored);
         for ((id_c, vals_c), (id_g, vals_g)) in cpu.iter().zip(gpu.iter()) {
             assert_eq!(id_c, id_g);
@@ -559,7 +581,11 @@ fn slot_logical_identity_0_production_row_order_mutant_reds() {
     // Bake the recorded rebind into the pre-rebind plane; the result must
     // equal the plane laid out directly from the post-rebind binding table.
     let values = apply_epoch_rebind_to_values(&pre_values, N_DIMS, &section);
-    assert_eq!(values, flat_values(&alloc, &fx.authored), "baking == post-table layout");
+    assert_eq!(
+        values,
+        flat_values(&alloc, &fx.authored),
+        "baking == post-table layout"
+    );
 
     // Production order: authored tree order — invariant under the scramble.
     let good_state = TopologyState::build(&fx.root, &alloc);
@@ -656,10 +682,22 @@ fn slot_logical_identity_0_production_row_order_mutant_reds() {
 
     // The authored CPU oracle on the same placement.
     let mut cpu_out = vec![0.0_f32; values.len()];
-    cpu_reduce_oracle(&authored_state.flatten(), &descriptors6, N_DIMS, &values, &mut cpu_out);
+    cpu_reduce_oracle(
+        &authored_state.flatten(),
+        &descriptors6,
+        N_DIMS,
+        &values,
+        &mut cpu_out,
+    );
     let root_row = g_alloc.slot_of(root_id2).expect("root").as_usize();
-    assert_eq!(cpu_out[root_row * N_DIMS + MASS_COL].to_bits(), 15.25_f32.to_bits());
-    assert_eq!(gpu_out[root_row * N_DIMS + MASS_COL].to_bits(), 16.25_f32.to_bits());
+    assert_eq!(
+        cpu_out[root_row * N_DIMS + MASS_COL].to_bits(),
+        15.25_f32.to_bits()
+    );
+    assert_eq!(
+        gpu_out[root_row * N_DIMS + MASS_COL].to_bits(),
+        16.25_f32.to_bits()
+    );
     assert_ne!(
         cpu_out[root_row * N_DIMS + MASS_COL].to_bits(),
         gpu_out[root_row * N_DIMS + MASS_COL].to_bits(),
@@ -678,13 +716,12 @@ fn slot_logical_identity_0_pre_remap_replay_resolves_through_the_chain() {
 
     // Anchored loci for TWO objects (root gets a mass locus; `a` gets a mood
     // locus) — `c` and everyone else are zero-anchor rows and still rebind.
-    let mass_col = ColumnIndex::try_from_admitted_authored(MASS_COL as u32, N_DIMS as u32).expect("col");
-    let mood_col = ColumnIndex::try_from_admitted_authored(MOOD_COL as u32, N_DIMS as u32).expect("col");
+    let mass_col =
+        ColumnIndex::try_from_admitted_authored(MASS_COL as u32, N_DIMS as u32).expect("col");
+    let mood_col =
+        ColumnIndex::try_from_admitted_authored(MOOD_COL as u32, N_DIMS as u32).expect("col");
     let mut pre_loci = AnchoredLocusMap::new();
-    pre_loci.insert(
-        (fx.root_id, SimPropertyId(0)),
-        (pre_root_slot, mass_col),
-    );
+    pre_loci.insert((fx.root_id, SimPropertyId(0)), (pre_root_slot, mass_col));
     pre_loci.insert(
         (fx.a_id, SimPropertyId(1)),
         (alloc.slot_of(fx.a_id).expect("a row"), mood_col),
@@ -692,12 +729,19 @@ fn slot_logical_identity_0_pre_remap_replay_resolves_through_the_chain() {
 
     let assignment = scramble_assignment(&alloc, &fx);
     let mut post_loci = AnchoredLocusMap::new();
-    post_loci.insert((fx.root_id, SimPropertyId(0)), (assignment[&fx.root_id], mass_col));
-    post_loci.insert((fx.a_id, SimPropertyId(1)), (assignment[&fx.a_id], mood_col));
+    post_loci.insert(
+        (fx.root_id, SimPropertyId(0)),
+        (assignment[&fx.root_id], mass_col),
+    );
+    post_loci.insert(
+        (fx.a_id, SimPropertyId(1)),
+        (assignment[&fx.a_id], mood_col),
+    );
 
     // Values plane BEFORE the rebind mints the typed anchor table.
     let values = flat_values(&alloc, &fx.authored);
-    let mut table = mint_anchor_table_from_admission(&fx.root, &registry, &pre_loci, &values, N_DIMS);
+    let mut table =
+        mint_anchor_table_from_admission(&fx.root, &registry, &pre_loci, &values, N_DIMS);
 
     let section = alloc
         .epoch_rebind(&assignment, &pre_loci, &post_loci)
@@ -751,7 +795,8 @@ fn slot_logical_identity_0_pre_remap_replay_resolves_through_the_chain() {
         return;
     };
     let mut state = WorldGpuState::new(ctx, &registry, alloc.capacity() as u32);
-    let pre_table = mint_anchor_table_from_admission(&fx.root, &registry, &pre_loci, &values, N_DIMS);
+    let pre_table =
+        mint_anchor_table_from_admission(&fx.root, &registry, &pre_loci, &values, N_DIMS);
     state.upload_typed_anchor_table(&pre_table);
     state.apply_anchor_remap_section(&section, &registry);
     let gpu_table = state.read_typed_anchor_table(&registry);

@@ -4,8 +4,8 @@
 //! driver/admission rungs. No pathfinding, movement, routes, or runtime semantics.
 
 use serde::{Deserialize, Serialize};
-use simthing_spec::RegionFieldOperatorSpec;
 use simthing_spec::spec::region_field::RegionFieldSpec;
+use simthing_spec::RegionFieldOperatorSpec;
 
 use crate::error::HydrateError;
 use crate::hydrate_field_operator::HydratedFieldOperatorPack;

@@ -220,10 +220,13 @@ mod tests {
         );
         // Retire omitted.
         let omitted_retire = AnchorRemapSection::with_remaps(AnchorRemapOperation::Fusion, vec![]);
-        assert!(
-            gate_structural_gpu_encode_exact(&omitted_retire, &pre, &AnchoredLocusMap::new(), false)
-                .is_err()
-        );
+        assert!(gate_structural_gpu_encode_exact(
+            &omitted_retire,
+            &pre,
+            &AnchoredLocusMap::new(),
+            false
+        )
+        .is_err());
         // Move omitted.
         post.insert(
             (id, prop),

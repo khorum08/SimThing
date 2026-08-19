@@ -4,9 +4,9 @@
 //! Default-derived install birth is 5.8b (out of scope). TP witness is void.
 
 use simthing_core::{
-    emit_on_threshold_registration_to_op, ColumnIndex, DimensionRegistry, EmitOnThresholdRegistration,
-    PropertyAdmissionDisposition, SimProperty, SimPropertyId, SimThing, SimThingKind, SlotIndex,
-    ThresholdDirection,
+    emit_on_threshold_registration_to_op, ColumnIndex, DimensionRegistry,
+    EmitOnThresholdRegistration, PropertyAdmissionDisposition, SimProperty, SimPropertyId,
+    SimThing, SimThingKind, SlotIndex, ThresholdDirection,
 };
 use simthing_driver::{
     admit_comparative_projections, comparative_event_kind, comparative_projection_cpu_oracle,
@@ -170,8 +170,14 @@ fn install_does_not_invent_topology_or_string_default_birth() {
         region_fields: Vec::new(),
         mapping_execution_profile: Default::default(),
     };
-    let state = compile_and_install(&game_mode, &scenario, &mut registry, &mut root, &mut allocator)
-        .expect("install");
+    let state = compile_and_install(
+        &game_mode,
+        &scenario,
+        &mut registry,
+        &mut root,
+        &mut allocator,
+    )
+    .expect("install");
     assert!(
         state.comparative_projection.is_none(),
         "5.8 install leaves comparative birth unset; default birth is 5.8b"
@@ -224,7 +230,10 @@ fn explicit_admit_dispositions_and_fixed_comparative_column_count() {
             comparative_column_count: COMPARATIVE_DERIVED_COLUMN_COUNT,
         }
     );
-    assert_eq!(two.bundle.comparative_column_count, COMPARATIVE_DERIVED_COLUMN_COUNT);
+    assert_eq!(
+        two.bundle.comparative_column_count,
+        COMPARATIVE_DERIVED_COLUMN_COUNT
+    );
     assert_eq!(COMPARATIVE_DERIVED_COLUMN_COUNT, 3);
     assert_eq!(BAND_READOUT_COLUMN_COUNT, 2);
     assert!(!two.bundle.registrations.is_empty());
@@ -315,7 +324,10 @@ fn authored_order_tie_break_invariant_under_registration_vector_reversal() {
         },
     ];
     let out_wrong = execute_field_sweep_cpu_chain(&values, &mk(e_wrong).registrations).unwrap();
-    assert_eq!(out_wrong[10], 20.0, "planted wrong authored_order flips winner");
+    assert_eq!(
+        out_wrong[10], 20.0,
+        "planted wrong authored_order flips winner"
+    );
     assert_ne!(out_ab[10], out_wrong[10]);
 }
 
@@ -426,8 +438,7 @@ fn grid_and_link_graph_cpu_oracle_and_gpu_parity() {
 
     // Grid GPU
     if let Some(ctx) = gpu_context() {
-        let mut session =
-            FieldSweepSession::new(&ctx, &admission.bundle.registrations[0]).unwrap();
+        let mut session = FieldSweepSession::new(&ctx, &admission.bundle.registrations[0]).unwrap();
         session.upload_values(&ctx, &values).unwrap();
         session
             .dispatch_chain(&ctx, &admission.bundle.registrations, 1)
@@ -532,19 +543,16 @@ fn grid_and_link_graph_cpu_oracle_and_gpu_parity() {
             "link oracle parity col {col_i}"
         );
     }
-    assert!(
-        column(
-            &chain_l,
-            n_dims_l as usize,
-            adm_l.band_readouts.border_col.raw()
-        )
-        .iter()
-        .any(|&b| b >= 0.5)
-    );
+    assert!(column(
+        &chain_l,
+        n_dims_l as usize,
+        adm_l.band_readouts.border_col.raw()
+    )
+    .iter()
+    .any(|&b| b >= 0.5));
 
     if let Some(ctx) = gpu_context() {
-        let mut session =
-            FieldSweepSession::new(&ctx, &adm_l.bundle.registrations[0]).unwrap();
+        let mut session = FieldSweepSession::new(&ctx, &adm_l.bundle.registrations[0]).unwrap();
         session.upload_values(&ctx, &vals_l).unwrap();
         session
             .dispatch_chain(&ctx, &adm_l.bundle.registrations, 1)
@@ -618,7 +626,11 @@ fn front_formed_hardened_and_chokepoint_threshold_plan_compatible() {
     }
     let projected =
         execute_field_sweep_cpu_chain(&values, &admission.bundle.registrations).expect("proj");
-    let contest_vals = column(&projected, n_dims as usize, admission.outputs.contest_col.raw());
+    let contest_vals = column(
+        &projected,
+        n_dims as usize,
+        admission.outputs.contest_col.raw(),
+    );
     assert!(
         contest_vals
             .iter()
@@ -661,8 +673,7 @@ fn front_formed_hardened_and_chokepoint_threshold_plan_compatible() {
         .collect();
     let kinds: Vec<_> = regs.iter().map(|r| r.event_kind).collect();
     let mut cur = projected.clone();
-    let emissions =
-        execute_threshold_ops_cpu(&values, &mut cur, &ops, n_dims, 0).expect("thresh");
+    let emissions = execute_threshold_ops_cpu(&values, &mut cur, &ops, n_dims, 0).expect("thresh");
     let formed = emissions
         .iter()
         .filter(|e| kinds[e.reg_idx() as usize] == comparative_event_kind::FRONT_FORMED)

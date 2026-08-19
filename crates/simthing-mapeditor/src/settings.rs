@@ -355,5 +355,4 @@ pub enum SettingsError {
 mod tests {
     use super::*;
     use tempfile::TempDir;
-
 }

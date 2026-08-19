@@ -10,8 +10,8 @@
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::owner_channel::OwnerRef;
 use crate::overlay::Overlay;
+use crate::owner_channel::OwnerRef;
 
 /// Per-tree generation counter value. One authority per tree (per-tree instantiation);
 /// not a global barrier or cross-tree sequence.
@@ -648,7 +648,9 @@ pub enum DispatchOverlayError {
     MissingDissolveCondition,
     #[error("dispatch-minted overlay must use UntilDissolved lifecycle (no permanence variant)")]
     NotUntilDissolved,
-    #[error("dispatch-minted overlay origin must be a real originating node (not default/borrowed)")]
+    #[error(
+        "dispatch-minted overlay origin must be a real originating node (not default/borrowed)"
+    )]
     InvalidOrigin,
 }
 

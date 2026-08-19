@@ -36,11 +36,7 @@ impl CostBandDraw {
     }
 
     /// `N` must match the floor/throttle oracle (independent of recomputed R).
-    pub fn n_matches_oracle(
-        self,
-        is_sink: bool,
-        throttle_hint_max_per_tick: Option<u32>,
-    ) -> bool {
+    pub fn n_matches_oracle(self, is_sink: bool, throttle_hint_max_per_tick: Option<u32>) -> bool {
         match cost_band_expected_n(self.v, self.c, is_sink, throttle_hint_max_per_tick) {
             Ok(expected) => self.n == expected,
             Err(_) => false,

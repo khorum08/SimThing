@@ -912,8 +912,7 @@ fn status_label(s: StudioLiveSessionBridgeStatus) -> &'static str {
 fn register_bridge_column_shape_placeholder(registry: &mut DimensionRegistry) {
     let mut seed = SimProperty::simple("_studio_live_bridge", "seed", 0);
     seed.admission_disposition = PropertyAdmissionDisposition::Unobserved {
-        reason: "GPU column-shape placeholder; no authored structure admits a host"
-            .into(),
+        reason: "GPU column-shape placeholder; no authored structure admits a host".into(),
         source_span_token: 0,
     };
     let _ = registry.register(seed);
@@ -1137,8 +1136,8 @@ fn emission_sample_loci_from_session(sim: &SimSession) -> Vec<FieldAccretionSamp
         if !seen.insert(key) {
             continue;
         }
-        let property_key = property_key_for_col(reg, source_col)
-            .unwrap_or_else(|| format!("col:{source_col}"));
+        let property_key =
+            property_key_for_col(reg, source_col).unwrap_or_else(|| format!("col:{source_col}"));
         out.push(FieldAccretionSampleLocus {
             property_key,
             source_slot: emission.source_slot,
@@ -1151,8 +1150,8 @@ fn emission_sample_loci_from_session(sim: &SimSession) -> Vec<FieldAccretionSamp
         if !seen.insert(key) {
             continue;
         }
-        let property_key = property_key_for_col(reg, target_col)
-            .unwrap_or_else(|| format!("col:{target_col}"));
+        let property_key =
+            property_key_for_col(reg, target_col).unwrap_or_else(|| format!("col:{target_col}"));
         out.push(FieldAccretionSampleLocus {
             property_key,
             source_slot: recipe.target_slot.raw(),
@@ -1184,8 +1183,7 @@ fn collect_field_accretion_sample_from_snapshot(
 ) -> Vec<StudioFieldAccretionSample> {
     let mut samples = Vec::new();
     for locus in sample_loci {
-        let Some(amount) =
-            snapshot.observed_value_at_slot_col(locus.source_slot, locus.source_col)
+        let Some(amount) = snapshot.observed_value_at_slot_col(locus.source_slot, locus.source_col)
         else {
             continue;
         };
@@ -1214,12 +1212,8 @@ fn recursive_rf_locus_from_session(
                 profile.property_namespace, profile.property_name
             )
         })?;
-    let cols = resolve_node_columns_for_property(
-        &sim.proto.registry,
-        property_id,
-        &profile.arena,
-    )
-    .map_err(|e| format!("resolve recursive RF columns: {e}"))?;
+    let cols = resolve_node_columns_for_property(&sim.proto.registry, property_id, &profile.arena)
+        .map_err(|e| format!("resolve recursive RF columns: {e}"))?;
     let balance_col = cols
         .balance_col
         .ok_or_else(|| "recursive RF property has no governed Balance column".to_string())?
@@ -1241,8 +1235,7 @@ fn recursive_rf_locus_from_session(
         balance_col,
     };
     let snapshot = AnchorTableSnapshot::from_session(sim);
-    let aggregate_before =
-        snapshot.observed_value_at_slot_col(ancestor_slot, locus.aggregate_col);
+    let aggregate_before = snapshot.observed_value_at_slot_col(ancestor_slot, locus.aggregate_col);
     let balance_before = snapshot.observed_value_at_slot_col(root_slot, balance_col);
     let mut readout = StudioRecursiveRfReadout {
         active: sim.state.accumulator_resource_flow_active,
@@ -1292,7 +1285,8 @@ fn fill_need_binding_readout(
         return;
     };
     let snapshot = AnchorTableSnapshot::from_session(sim);
-    let live = snapshot.observed_value_at_slot_col(binding.participant_slot, binding.need_col.raw_u32());
+    let live =
+        snapshot.observed_value_at_slot_col(binding.participant_slot, binding.need_col.raw_u32());
     readout.need_profile_id = Some(binding.id.clone());
     readout.need_profile_kind = Some(binding.profile.clone());
     readout.need_weight_values = Some(

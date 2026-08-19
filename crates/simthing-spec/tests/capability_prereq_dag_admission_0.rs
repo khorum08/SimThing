@@ -100,9 +100,8 @@ fn existing_authored_ron_capability_trees_admit_unchanged() {
                 .unwrap_or_else(|e| panic!("census FAIL {label} tree {}: {e}", tree.tree_id));
             let mut registry = DimensionRegistry::new();
             seed_mode_properties(&mode, &mut registry);
-            CapabilityTreeBuilder::build(tree, &mut registry).unwrap_or_else(|e| {
-                panic!("builder FAIL {label} tree {}: {e}", tree.tree_id)
-            });
+            CapabilityTreeBuilder::build(tree, &mut registry)
+                .unwrap_or_else(|e| panic!("builder FAIL {label} tree {}: {e}", tree.tree_id));
             admitted_trees += 1;
         }
         sources_checked += 1;

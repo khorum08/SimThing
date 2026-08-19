@@ -387,5 +387,4 @@ mod tests {
     ) -> usize {
         entries.iter().filter(|e| f(e)).count()
     }
-
 }

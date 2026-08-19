@@ -314,5 +314,4 @@ pub fn sync_studio_antialiasing_system(
 mod tests {
     use super::*;
     use crate::hyperlane_buckets::{compute_hyperlane_visual, HyperlaneRenderSettings};
-
 }

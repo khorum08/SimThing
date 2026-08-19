@@ -9,13 +9,13 @@ use simthing_core::{
     SimThing, SimThingKind, SlotIndex, SubFieldRole, SubFieldSpec,
 };
 use simthing_driver::{
-    AllocatorStepObservation, ArenaConservationSnapshot, ArenaMemberObservation,
-    ArenaStructuralEvidence, ResourceFlowFlagSource, Scenario, SimSession, build_execution_plan,
-    check_conservation, resolve_node_columns_for_property, run_arena_allocation_oracle,
+    build_execution_plan, check_conservation, resolve_node_columns_for_property,
+    run_arena_allocation_oracle, AllocatorStepObservation, ArenaConservationSnapshot,
+    ArenaMemberObservation, ArenaStructuralEvidence, ResourceFlowFlagSource, Scenario, SimSession,
 };
 use simthing_gpu::SlotAllocator;
 use simthing_spec::{
-    ExplicitParticipantSpec, GameModeSpec, ResourceFlowOptInMode, compile_property,
+    compile_property, ExplicitParticipantSpec, GameModeSpec, ResourceFlowOptInMode,
 };
 
 const CLAUSE_FIXTURE: &str = include_str!("fixtures/ct2a_micro_economy.clause");
@@ -177,21 +177,14 @@ fn gpu_micro_economy_matches_arena_allocation_oracle() {
         .registry
         .id_of("simthing", "food_flow")
         .expect("food_flow registered");
-    let cols = resolve_node_columns_for_property(
-        &session.proto.registry,
-        flow_id,
-        "ct2a_food",
-    )
-    .expect("column refs");
-    let layout = build_execution_plan(
-        &session.proto.registry,
-        &session.spec_state.arena_registry,
-    )
-    .expect("execution plan")
-    .arenas
-    .into_iter()
-    .next()
-    .expect("one arena");
+    let cols = resolve_node_columns_for_property(&session.proto.registry, flow_id, "ct2a_food")
+        .expect("column refs");
+    let layout = build_execution_plan(&session.proto.registry, &session.spec_state.arena_registry)
+        .expect("execution plan")
+        .arenas
+        .into_iter()
+        .next()
+        .expect("one arena");
 
     let root = layout.participant_roots[0].participant_slot;
     let leaves: Vec<SlotIndex> = layout.participant_roots[0]
@@ -269,18 +262,16 @@ fn gpu_micro_economy_matches_arena_allocation_oracle() {
             .iter()
             .zip(leaf_ids.iter())
             .zip(disbursed.iter())
-            .map(
-                |((&slot, &id), &allocated_flow)| ArenaMemberObservation {
-                    id,
-                    is_leaf: true,
-                    intrinsic_flow: 0.0,
-                    allocated_flow,
-                    balance_delta: Some(
-                        gpu_out[idx(slot, balance_col, n_dims)]
-                            - before[idx(slot, balance_col, n_dims)],
-                    ),
-                },
-            ),
+            .map(|((&slot, &id), &allocated_flow)| ArenaMemberObservation {
+                id,
+                is_leaf: true,
+                intrinsic_flow: 0.0,
+                allocated_flow,
+                balance_delta: Some(
+                    gpu_out[idx(slot, balance_col, n_dims)]
+                        - before[idx(slot, balance_col, n_dims)],
+                ),
+            }),
     )
     .collect();
     let report = check_conservation(

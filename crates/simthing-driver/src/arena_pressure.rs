@@ -57,15 +57,12 @@ pub fn project_arena_pressure_seeds(
 
     let range = registry.column_range(descriptor.flow_property_id);
     let layout = &registry.property(descriptor.flow_property_id).layout;
-    let cols = resolve_node_columns_for_property(
-        registry,
-        descriptor.flow_property_id,
-        &binding.arena,
-    )
-    .map_err(|e| ArenaPressureError::ColumnResolution {
-        arena: binding.arena.clone(),
-        reason: format!("{e:?}"),
-    })?;
+    let cols =
+        resolve_node_columns_for_property(registry, descriptor.flow_property_id, &binding.arena)
+            .map_err(|e| ArenaPressureError::ColumnResolution {
+                arena: binding.arena.clone(),
+                reason: format!("{e:?}"),
+            })?;
     let global_col = match &binding.source {
         PressureSourceSpec::IntrinsicFlow => cols.intrinsic_flow_col,
         PressureSourceSpec::AllocatedFlow => cols.allocated_flow_col,
@@ -145,15 +142,12 @@ pub fn compile_arena_pressure_scatter(
         })?;
     let range = registry.column_range(descriptor.flow_property_id);
     let layout = &registry.property(descriptor.flow_property_id).layout;
-    let cols = resolve_node_columns_for_property(
-        registry,
-        descriptor.flow_property_id,
-        &binding.arena,
-    )
-    .map_err(|e| ArenaPressureError::ColumnResolution {
-        arena: binding.arena.clone(),
-        reason: format!("{e:?}"),
-    })?;
+    let cols =
+        resolve_node_columns_for_property(registry, descriptor.flow_property_id, &binding.arena)
+            .map_err(|e| ArenaPressureError::ColumnResolution {
+                arena: binding.arena.clone(),
+                reason: format!("{e:?}"),
+            })?;
     let global_col = match &binding.source {
         PressureSourceSpec::IntrinsicFlow => cols.intrinsic_flow_col,
         PressureSourceSpec::AllocatedFlow => cols.allocated_flow_col,

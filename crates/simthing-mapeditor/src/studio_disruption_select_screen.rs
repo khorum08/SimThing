@@ -53,10 +53,7 @@ pub fn disruption_select_screen_from_raw(raw_disruption: f32) -> DisruptionSelec
 }
 
 /// Fail-soft read of admitted disruption for a generated system id.
-pub fn raw_disruption_for_system(
-    readout: &StudioDisruptionReadoutMap,
-    system_id: u32,
-) -> f32 {
+pub fn raw_disruption_for_system(readout: &StudioDisruptionReadoutMap, system_id: u32) -> f32 {
     readout
         .by_system_id
         .get(&system_id)

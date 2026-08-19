@@ -143,10 +143,7 @@ fn scenario_with_owner(
             compile_property(&property, &mut registry).expect("property admission");
         property_ids.insert(key, property_id);
     }
-    let property_id = *property_ids
-        .values()
-        .next()
-        .expect("at least one property");
+    let property_id = *property_ids.values().next().expect("at least one property");
     let property = registry.property(property_id);
     let mut value = property.default_value();
     value.set_role(&SubFieldRole::Amount, &property.layout, seed_amount);
@@ -208,7 +205,11 @@ struct AtomicityTrace {
     boundaries_b: u64,
 }
 
-fn read_owner_amount(session: &SimSession, owner_id: SimThingId, property_id: SimPropertyId) -> f32 {
+fn read_owner_amount(
+    session: &SimSession,
+    owner_id: SimThingId,
+    property_id: SimPropertyId,
+) -> f32 {
     let owner_slot = session
         .proto
         .allocator
@@ -417,13 +418,20 @@ fn max_active_sibling_switch_atomic_on_live_gpu_session() {
             .queue_player_selection_by_key(owner_id, &tree_id, "idea_a")
             .expect("queue A");
         let step_a = session.step_once().expect("A boundary");
-        assert!(step_a.boundary_reached, "A must land at a generation barrier");
+        assert!(
+            step_a.boundary_reached,
+            "A must land at a generation barrier"
+        );
         assert!(
             step_a.boundaries_run >= 1,
             "A boundary must execute structural mutations"
         );
         let after_a_active = active_entry_ids(&session, owner_id);
-        assert_eq!(after_a_active, vec!["idea_a".to_string()], "only A in spec state");
+        assert_eq!(
+            after_a_active,
+            vec!["idea_a".to_string()],
+            "only A in spec state"
+        );
 
         // Load-bearing lifecycle: A active, B still suspended — before production tick.
         let after_a_a_active = session
@@ -465,7 +473,10 @@ fn max_active_sibling_switch_atomic_on_live_gpu_session() {
             .queue_player_selection_by_key(owner_id, &tree_id, "idea_b")
             .expect("queue B");
         let step_b = session.step_once().expect("B boundary");
-        assert!(step_b.boundary_reached, "B must land at a generation barrier");
+        assert!(
+            step_b.boundary_reached,
+            "B must land at a generation barrier"
+        );
         let after_b_boundary_active = active_entry_ids(&session, owner_id);
         assert_eq!(
             after_b_boundary_active,
@@ -583,4 +594,3 @@ fn max_active_sibling_switch_atomic_on_live_gpu_session() {
         "complete-trace equality: A/B active sets, lifecycle flags, GPU bits, boundary markers"
     );
 }
-

@@ -97,9 +97,8 @@ pub fn sync_resource_economy_accumulator(
     } else if has_transfer && !skip_upload {
         let mut gpu_regs =
             discrete_transfer_registrations_to_transfer(&registry.registrations.transfers);
-        let mut recipe_regs = conjunctive_recipe_registrations_to_transfer(
-            &registry.registrations.recipes,
-        );
+        let mut recipe_regs =
+            conjunctive_recipe_registrations_to_transfer(&registry.registrations.recipes);
         let coefficients = &registry.registrations.report.recipe_output_coefficients;
         let order_bands = &registry.registrations.report.recipe_order_bands;
         if coefficients.len() != recipe_regs.len() || order_bands.len() != recipe_regs.len() {

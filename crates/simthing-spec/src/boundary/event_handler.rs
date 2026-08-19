@@ -291,5 +291,4 @@ fn resolve_effects(def: &ScriptedEventDefinition, ctx: &mut ScriptedEventBoundar
 mod display_tests {
     use super::*;
     use crate::spec::script::ScriptEvalError;
-
 }

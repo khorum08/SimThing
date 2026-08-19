@@ -208,7 +208,9 @@ impl ActionBandSemanticSession {
         let request = self
             .structural
             .request_for_event_kind(authority.event_kind())
-            .ok_or(SemanticShadowError::UnboundStructuralLoci(authority.event_kind()))?;
+            .ok_or(SemanticShadowError::UnboundStructuralLoci(
+                authority.event_kind(),
+            ))?;
         let (actor, to_cell) = match request {
             BoundaryRequest::Reparent { child, new_parent } => (*child, *new_parent),
             _ => {
@@ -275,7 +277,9 @@ impl ActionBandBoundDispatch<'_> {
         for commitment in &production.commitments {
             let template = compiled
                 .template_for_event_kind(commitment.event_kind())
-                .ok_or(SemanticShadowError::UnboundEventKind(commitment.event_kind()))?;
+                .ok_or(SemanticShadowError::UnboundEventKind(
+                    commitment.event_kind(),
+                ))?;
             authorities.push(SealedActionBandAuthority {
                 commitment: *commitment,
                 generation,
@@ -487,9 +491,7 @@ pub enum SemanticShadowError {
     PlanFingerprintMismatch { sealed: u64, session: u64 },
     #[error("ActionBand session origin mismatch: expected={expected} actual={actual}")]
     SessionOriginMismatch { expected: u64, actual: u64 },
-    #[error(
-        "frozen admission binding mismatch: compiled={compiled} frozen={frozen}"
-    )]
+    #[error("frozen admission binding mismatch: compiled={compiled} frozen={frozen}")]
     FrozenCompileBindingMismatch { compiled: u64, frozen: u64 },
     #[error("transit presentation requires distinct ordinary structural source/dest loci")]
     MissingTransitLoci,
@@ -521,10 +523,7 @@ mod unit {
 
     #[test]
     fn field_neutrality_outcome_is_field_neutral() {
-        assert_eq!(
-            FIELD_NEUTRALITY_OUTCOME,
-            FieldNeutralityGate::FieldNeutral
-        );
+        assert_eq!(FIELD_NEUTRALITY_OUTCOME, FieldNeutralityGate::FieldNeutral);
     }
 
     #[test]

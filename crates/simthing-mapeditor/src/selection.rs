@@ -152,5 +152,4 @@ pub fn selected_incident_hyperlane_keys(
 mod tests {
     use super::*;
     use crate::generation::{run_generation, GenerationProfile};
-
 }

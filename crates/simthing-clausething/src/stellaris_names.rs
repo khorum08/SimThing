@@ -9,7 +9,7 @@ use std::collections::BTreeMap;
 use thiserror::Error;
 
 use crate::raw::{RawArray, RawValue};
-use crate::{ParseError, parse_raw_document};
+use crate::{parse_raw_document, ParseError};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StellarisStarNameCatalog {
@@ -143,5 +143,4 @@ fn splitmix64(state: &mut u64) -> u64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-
 }

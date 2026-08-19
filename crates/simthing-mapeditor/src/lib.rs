@@ -30,11 +30,14 @@ pub mod studio_antialiasing;
 pub mod studio_config;
 pub mod studio_disruption_readout;
 pub mod studio_disruption_select_screen;
-pub mod studio_frame_phase_gpu_telemetry;
+pub mod studio_faction_nameplates;
 pub mod studio_fleet_icons;
 pub mod studio_fleet_presence;
+pub mod studio_frame_phase_gpu_telemetry;
 pub mod studio_frosted_glass;
 pub mod studio_gpu_adapter_policy;
+pub mod studio_live_observe;
+pub mod studio_live_session_bridge;
 pub mod studio_performance_telemetry;
 pub mod studio_planet_child_location;
 pub mod studio_render_loop_dirty_gate;
@@ -42,9 +45,6 @@ pub mod studio_scenario_document;
 pub mod studio_scenario_library_ui;
 pub mod studio_scenario_load;
 pub mod studio_screenshot;
-pub mod studio_faction_nameplates;
-pub mod studio_live_observe;
-pub mod studio_live_session_bridge;
 pub mod studio_sim_clock;
 pub mod studio_sim_clock_ui;
 pub mod studio_structural_edit;
@@ -71,14 +71,6 @@ pub fn run() {
     std::process::exit(1);
 }
 
-pub use dialog::{SettingsDialogModel, StudioAction, TelemetryDialogModel, WarningDialogModel};
-pub use falloff_metric::{
-    compute_map_radius_falloff_context, map_radius_progress, map_radius_progress_percent,
-    origin_source_label, plateau_falloff_t, plateau_falloff_t_percent, plateau_interpolate,
-    world_position_map_progress_percent, MapPlaneBounds, MapViewOriginSource,
-    StudioMapRadiusFalloffContext, FALLOFF_MODE_CAMERA_DISTANCE, FALLOFF_MODE_MAP_RADIUS,
-    FALLOFF_MODE_VISUAL_HORIZON,
-};
 pub use clause_scenario_ingest::{
     ingest_clause_scenario_bytes, ingest_clause_scenario_path,
     load_clause_studio_session_from_path, load_studio_session_from_clause_ingest_result,
@@ -92,12 +84,17 @@ pub use clause_scenario_picker::{
     ClausePickerActionResult, ClausePickerSelection, FakeClauseFilePicker, NativeClauseFilePicker,
     OPEN_CLAUSE_SCENARIO_ACTION_LABEL,
 };
+pub use dialog::{SettingsDialogModel, StudioAction, TelemetryDialogModel, WarningDialogModel};
+pub use falloff_metric::{
+    compute_map_radius_falloff_context, map_radius_progress, map_radius_progress_percent,
+    origin_source_label, plateau_falloff_t, plateau_falloff_t_percent, plateau_interpolate,
+    world_position_map_progress_percent, MapPlaneBounds, MapViewOriginSource,
+    StudioMapRadiusFalloffContext, FALLOFF_MODE_CAMERA_DISTANCE, FALLOFF_MODE_MAP_RADIUS,
+    FALLOFF_MODE_VISUAL_HORIZON,
+};
 pub use falloff_ruler_overlay::{draw_falloff_ruler_overlay, FalloffRulerOverlayParams};
 pub use generation::{GenerationPreset, GenerationProfile, GenerationRunOutput};
 // Re-export projection mode from clausething for callers.
-pub use simthing_clausething::{
-    ClauseScenarioProjectionMode, ClauseScenarioProjectionReport,
-};
 pub use hydration::{
     generate_simthing_spec_scenario, heatmap_readiness_from_simthing_spec,
     hydrate_generation_into_studio_grid, rf_accumulator_readiness_from_simthing_spec,
@@ -143,6 +140,7 @@ pub use scenario_runtime_saveload_ui::{
 pub use selection::{SelectedSystemDetails, StudioSelectionState};
 pub use session::{StudioScenarioSummary, StudioSession, StudioSessionSource};
 pub use settings::{EditorSettings, PersistedCameraState, WindowModeSetting};
+pub use simthing_clausething::{ClauseScenarioProjectionMode, ClauseScenarioProjectionReport};
 pub use studio_admission_report::{
     build_studio_admission_summary_from_ingestion, build_studio_admission_summary_from_spec,
     studio_ingest_scenario_text_for_report, studio_scenario_authority_snapshot,
@@ -162,13 +160,12 @@ pub use studio_disruption_select_screen::{
     quantize_blur_scale_milli, quantize_disruption_milli, quantize_red_fraction_milli,
     raw_disruption_for_system, selected_disruption_select_screen, DisruptionSelectScreen,
 };
-pub use studio_frame_phase_gpu_telemetry::{
-    apply_diagnostic_minimal_render, capture_normal_render_snapshot, format_present_mode_label,
-    frame_phase_settings_lines, gpu_context_settings_lines, instrumented_render_loop_ms,
-    performance_capture_steps_lines, read_frame_time_ms_from_diagnostics,
-    restore_normal_render_from_snapshot, studio_build_profile_label, unexplained_frame_ms,
-    vram_tracked_asset_lines, PerformanceDiagnosticFlags, PerformanceNormalRenderSnapshot,
-    DIAGNOSTIC_MINIMAL_RENDER_BUTTON, RESTORE_NORMAL_RENDER_BUTTON,
+pub use studio_faction_nameplates::{
+    fallback_simthing_nameplate_id, nameplate_rgba_from_color_rgb, owned_star_highlight_system_ids,
+    owner_color_rgb_map_from_authority, selected_owner_id_for_system, star_nameplate_presentations,
+    star_nameplate_rgba_for_gridcell, star_nameplate_rgba_for_placement,
+    star_owner_id_by_system_id, star_owner_id_for_placement, star_ownership_presentations,
+    star_visual_selected_for_owned_set, StarOwnershipPresentation, NEUTRAL_NAMEPLATE_RGBA,
 };
 pub use studio_fleet_icons::{
     admitted_base_max_star_blur_world, admitted_base_star_blur_by_system, anchored_fleet_side,
@@ -178,9 +175,9 @@ pub use studio_fleet_icons::{
     fleet_icon_ops_telemetry_rows, fleet_icon_outline_geometry, fleet_icon_plane_legible_to_view,
     fleet_icon_plane_normal_world, fleet_icon_silhouette_by_id, fleet_icon_transform_data,
     fleet_icon_transform_local_x_world, fleet_icon_transform_local_y_world,
-    fleet_presence_records_flat, galaxy_scene_cleanup_entity_ids, production_fleet_icon_render_frame,
-    select_fleet_presence_records_for_icons,
-    resolve_fleet_icon_world_pose, rotate_yaw_y, yaw_toward_xz, DummySecondFleetIconBackend,
+    fleet_presence_records_flat, galaxy_scene_cleanup_entity_ids,
+    production_fleet_icon_render_frame, resolve_fleet_icon_world_pose, rotate_yaw_y,
+    select_fleet_presence_records_for_icons, yaw_toward_xz, DummySecondFleetIconBackend,
     FleetIconDescriptor, FleetIconEntityOp, FleetIconMeshDrawPlan, FleetIconOpsTelemetryRow,
     FleetIconOrientation, FleetIconOutlineGeometry, FleetIconPlacement, FleetIconRenderContext,
     FleetIconRenderFrame, FleetIconRenderer, FleetIconSceneState, FleetIconSide,
@@ -193,18 +190,39 @@ pub use studio_fleet_presence::{
     studio_fleet_presence_map_from_session, studio_fleet_presence_map_from_snapshot,
     StudioFleetPresenceMap,
 };
+pub use studio_frame_phase_gpu_telemetry::{
+    apply_diagnostic_minimal_render, capture_normal_render_snapshot, format_present_mode_label,
+    frame_phase_settings_lines, gpu_context_settings_lines, instrumented_render_loop_ms,
+    performance_capture_steps_lines, read_frame_time_ms_from_diagnostics,
+    restore_normal_render_from_snapshot, studio_build_profile_label, unexplained_frame_ms,
+    vram_tracked_asset_lines, PerformanceDiagnosticFlags, PerformanceNormalRenderSnapshot,
+    DIAGNOSTIC_MINIMAL_RENDER_BUTTON, RESTORE_NORMAL_RENDER_BUTTON,
+};
 pub use studio_frosted_glass::{
     FrostedGlassFrameTelemetry, FrostedGlassPanelRegistry, FrostedGlassRenderPlan,
     FrostedGlassSettings, StudioFrostedGlassPlugin, FROSTED_GLASS_BLUR_PASS_COUNT,
-    FROSTED_GLASS_DOWNSAMPLE_FACTOR, FROSTED_GLASS_MAX_PANELS,
-    FROSTED_GLASS_SHARED_TARGET_COUNT,
+    FROSTED_GLASS_DOWNSAMPLE_FACTOR, FROSTED_GLASS_MAX_PANELS, FROSTED_GLASS_SHARED_TARGET_COUNT,
 };
 pub use studio_gpu_adapter_policy::{
     populate_and_validate_studio_gpu_telemetry, required_studio_wgpu_settings,
     validate_studio_gpu_adapter, StudioGpuAdapterPolicyViolation, StudioGpuAdapterSnapshot,
-    BLOCKED_STUDIO_GPU_BACKEND, REQUIRED_STUDIO_GPU_ADAPTER_NAME,
-    REQUIRED_STUDIO_GPU_DEVICE_TYPE, REQUIRED_STUDIO_GPU_VENDOR_ID,
-    STUDIO_GPU_FORCE_FALLBACK_ADAPTER, STUDIO_GPU_POLICY_SATISFIED_PREFIX,
+    BLOCKED_STUDIO_GPU_BACKEND, REQUIRED_STUDIO_GPU_ADAPTER_NAME, REQUIRED_STUDIO_GPU_DEVICE_TYPE,
+    REQUIRED_STUDIO_GPU_VENDOR_ID, STUDIO_GPU_FORCE_FALLBACK_ADAPTER,
+    STUDIO_GPU_POLICY_SATISFIED_PREFIX,
+};
+pub use studio_live_observe::{
+    build_studio_live_observation_readout, StudioLiveObservationReadout,
+    StudioLiveObservationSourceKind,
+};
+pub use studio_live_session_bridge::{
+    apply_live_bridge_reset_before_tick, authored_live_profile_from_pack,
+    bridge_module_source_forbids_workshop_residue, driver_scenario_field_bearing_from_profile,
+    driver_scenario_from_authority, field_bearing_game_mode,
+    request_live_bridge_reset_after_session_replacement, revalidate_authority_stead,
+    studio_summary_identity_eq, BridgeOpenIdentity, StudioAuthoredLiveProfile,
+    StudioDisruptionObservationLocus, StudioFieldAccretionSample, StudioLiveSessionBridge,
+    StudioLiveSessionBridgeError, StudioLiveSessionBridgeReadout, StudioLiveSessionBridgeStatus,
+    StudioLiveSessionPath, StudioLiveSessionPathPreference,
 };
 pub use studio_performance_telemetry::{
     bytes_to_vram_mb, estimate_image_vram_bytes, estimate_mesh_vram_bytes,
@@ -244,27 +262,6 @@ pub use studio_scenario_library_ui::{
     STUDIO_SCENARIO_LIBRARY_CREATE_PROVENANCE, STUDIO_SCENARIO_LIBRARY_DEFAULT_CREATE_ID,
 };
 pub use studio_screenshot::{next_screenshot_filename, parse_screenshot_index};
-pub use studio_faction_nameplates::{
-    fallback_simthing_nameplate_id, nameplate_rgba_from_color_rgb, owner_color_rgb_map_from_authority,
-    owned_star_highlight_system_ids, selected_owner_id_for_system, star_nameplate_presentations,
-    star_nameplate_rgba_for_gridcell, star_nameplate_rgba_for_placement, star_owner_id_by_system_id,
-    star_owner_id_for_placement, star_ownership_presentations, star_visual_selected_for_owned_set,
-    StarOwnershipPresentation, NEUTRAL_NAMEPLATE_RGBA,
-};
-pub use studio_live_observe::{
-    build_studio_live_observation_readout, StudioLiveObservationReadout,
-    StudioLiveObservationSourceKind,
-};
-pub use studio_live_session_bridge::{
-    apply_live_bridge_reset_before_tick, authored_live_profile_from_pack,
-    bridge_module_source_forbids_workshop_residue, driver_scenario_field_bearing_from_profile,
-    driver_scenario_from_authority, field_bearing_game_mode,
-    request_live_bridge_reset_after_session_replacement, revalidate_authority_stead,
-    studio_summary_identity_eq, BridgeOpenIdentity, StudioAuthoredLiveProfile,
-    StudioDisruptionObservationLocus, StudioFieldAccretionSample, StudioLiveSessionBridge,
-    StudioLiveSessionBridgeError, StudioLiveSessionBridgeReadout, StudioLiveSessionBridgeStatus,
-    StudioLiveSessionPath, StudioLiveSessionPathPreference,
-};
 pub use studio_sim_clock::{
     StudioSimClock, StudioSimClockError, StudioSimClockRate, STUDIO_SIM_CLOCK_DEFAULT_MAX_TPS,
     STUDIO_SIM_CLOCK_RATE_RATIO_TOLERANCE,

@@ -117,9 +117,7 @@ impl AnchorTable {
     }
 
     pub fn get_by_slot_col(&self, slot: SlotIndex, col: ColumnIndex) -> Option<&AnchorTableRow> {
-        self.rows
-            .iter()
-            .find(|r| r.slot == slot && r.col == col)
+        self.rows.iter().find(|r| r.slot == slot && r.col == col)
     }
 
     /// Replace rows with a deterministically ordered mint from live Anchored loci.
@@ -270,13 +268,11 @@ fn apply_one_remap(
                     // back to the typed remap endpoint when this row was the
                     // primary locus (no oracle/rehearsal ColumnIndex mint).
                     if let Some(resolved) =
-                        registry
-                            .try_column_range(property_id)
-                            .and_then(|range| {
-                                registry.try_property(property_id).and_then(|prop| {
-                                    range.col_for_role(&row.role, &prop.layout)
-                                })
-                            })
+                        registry.try_column_range(property_id).and_then(|range| {
+                            registry
+                                .try_property(property_id)
+                                .and_then(|prop| range.col_for_role(&row.role, &prop.layout))
+                        })
                     {
                         row.col = resolved;
                     } else if from_col == Some(row.col) {

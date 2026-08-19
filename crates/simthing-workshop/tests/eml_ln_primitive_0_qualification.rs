@@ -12,8 +12,8 @@
 //! `cargo test -p simthing-workshop --test eml_ln_primitive_0_qualification -- --ignored --nocapture`
 
 use simthing_core::eml_ln::{
-    eml_ln_pinned_bits, EML_LN_ALGORITHM_IDENTITY, EML_LN_DOMAIN_MAX_BITS,
-    EML_LN_DOMAIN_MIN_BITS, EML_LN_DOMAIN_SIZE, EML_LN_TABLE,
+    eml_ln_pinned_bits, EML_LN_ALGORITHM_IDENTITY, EML_LN_DOMAIN_MAX_BITS, EML_LN_DOMAIN_MIN_BITS,
+    EML_LN_DOMAIN_SIZE, EML_LN_TABLE,
 };
 use simthing_gpu::GpuContext;
 use wgpu::util::DeviceExt;
@@ -178,9 +178,21 @@ fn edge_corpus() -> Vec<u32> {
 #[test]
 fn eml_ln_primitive_0_edge_battery_is_bit_exact_on_the_standalone_candidate() {
     // CPU-side hard pins first (cheap, run even without a GPU).
-    assert_eq!(eml_ln_pinned_bits(0x3F80_0000), 0, "ln(1.0) must be exactly +0.0");
-    assert_eq!(eml_ln_pinned_bits(0x0080_0000), 0xC2AE_AC50, "min_normal pinned bits");
-    assert_eq!(eml_ln_pinned_bits(0x7F7F_FFFF), 0x42B1_7218, "f32::MAX pinned bits");
+    assert_eq!(
+        eml_ln_pinned_bits(0x3F80_0000),
+        0,
+        "ln(1.0) must be exactly +0.0"
+    );
+    assert_eq!(
+        eml_ln_pinned_bits(0x0080_0000),
+        0xC2AE_AC50,
+        "min_normal pinned bits"
+    );
+    assert_eq!(
+        eml_ln_pinned_bits(0x7F7F_FFFF),
+        0x42B1_7218,
+        "f32::MAX pinned bits"
+    );
     let Some(ctx) = certified_context() else {
         return;
     };
@@ -445,7 +457,9 @@ fn eml_ln_primitive_0_exhaustive_standalone_gpu_replay() {
         tested += n as u64;
         bits += n as u64;
         if (bits & 0x0FFF_FFFF) < CHUNK as u64 {
-            eprintln!("EML_LN_QUALIFY arm=standalone-gpu progress bits={bits:#010x} tested={tested}");
+            eprintln!(
+                "EML_LN_QUALIFY arm=standalone-gpu progress bits={bits:#010x} tested={tested}"
+            );
         }
     }
     assert_eq!(tested, EML_LN_DOMAIN_SIZE);
@@ -461,7 +475,14 @@ use simthing_gpu::{
 };
 
 fn node(opcode: u32, a: u32, b: u32) -> EmlNodeGpu {
-    EmlNodeGpu { opcode, flags: 0, a, b, c: 0, d: 0 }
+    EmlNodeGpu {
+        opcode,
+        flags: 0,
+        a,
+        b,
+        c: 0,
+        d: 0,
+    }
 }
 
 /// Elementwise guarded-LN post program (clamp is identity over the domain).
@@ -484,7 +505,11 @@ fn ln_elementwise_registration(slots: u32) -> FieldSweepRegistration {
         identity_bits: 0.0f32.to_bits(),
         post_program: vec![
             node(eml_opcode::TARGET_VALUE, 0, 0),
-            node(eml_opcode::CLAMP_BOUNDED, EML_LN_DOMAIN_MIN_BITS, EML_LN_DOMAIN_MAX_BITS),
+            node(
+                eml_opcode::CLAMP_BOUNDED,
+                EML_LN_DOMAIN_MIN_BITS,
+                EML_LN_DOMAIN_MAX_BITS,
+            ),
             node(eml_opcode::LN, 0, 0),
             node(eml_opcode::RETURN_TOP, 0, 0),
         ],

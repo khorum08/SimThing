@@ -55,7 +55,13 @@ fn empty_game_mode(region_fields: Vec<RegionFieldSpec>) -> GameModeSpec {
     }
 }
 
-fn region_field(name: &str, grid: u32, source_col: u32, target_col: u32, n_dims: u32) -> RegionFieldSpec {
+fn region_field(
+    name: &str,
+    grid: u32,
+    source_col: u32,
+    target_col: u32,
+    n_dims: u32,
+) -> RegionFieldSpec {
     RegionFieldSpec {
         name: name.into(),
         grid_size: grid,
@@ -96,8 +102,13 @@ fn ordinary_scenario(n_slots: u32, registry: DimensionRegistry) -> Scenario {
     }
 }
 
-fn install_with_fields(fields: Vec<RegionFieldSpec>) -> (DimensionRegistry, simthing_driver::SpecSessionState) {
-    let n = fields.first().map(|f| f.grid_size * f.grid_size).unwrap_or(4);
+fn install_with_fields(
+    fields: Vec<RegionFieldSpec>,
+) -> (DimensionRegistry, simthing_driver::SpecSessionState) {
+    let n = fields
+        .first()
+        .map(|f| f.grid_size * f.grid_size)
+        .unwrap_or(4);
     let n_dims = fields.first().map(|f| f.n_dims).unwrap_or(8).max(16);
     let mut registry = DimensionRegistry::new();
     let _ = registry.register(SimProperty::simple("_seed", "pad", 0));
@@ -157,7 +168,10 @@ fn ordinary_install_mints_field_plan_from_region_fields() {
     assert_eq!(report.emitters()[0].class_id, 0.0);
     assert_eq!(report.emitters()[1].authored_order, 1);
     assert_eq!(report.emitters()[1].class_id, 1.0);
-    assert_eq!(report.emitter_names(), &["e0".to_string(), "e1".to_string()]);
+    assert_eq!(
+        report.emitter_names(),
+        &["e0".to_string(), "e1".to_string()]
+    );
 }
 
 #[test]
@@ -259,13 +273,7 @@ fn default_emitters_match_explicit_with_same_triad() {
     let triad = (col(10), col(11), col(12));
     let bands = ComparativeProjectionBands::default();
     let defaulted = admit_comparative_from_field_plan(
-        &mut reg_a,
-        &report,
-        triad.0,
-        triad.1,
-        triad.2,
-        bands,
-        None,
+        &mut reg_a, &report, triad.0, triad.1, triad.2, bands, None,
     )
     .unwrap();
     let explicit = admit_comparative_projections(
@@ -605,7 +613,8 @@ fn grid_default_emitter_cpu_oracle_gpu_parity() {
         values[base + 12] = 0.5; // guyang C (Matrix input to 5.8 stall)
     }
 
-    let chain = execute_field_sweep_cpu_chain(&values, &adm.bundle.registrations).expect("cpu chain");
+    let chain =
+        execute_field_sweep_cpu_chain(&values, &adm.bundle.registrations).expect("cpu chain");
     let oracle = comparative_projection_cpu_oracle(
         &chain,
         slots,

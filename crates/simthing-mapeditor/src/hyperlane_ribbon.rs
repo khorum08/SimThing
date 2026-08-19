@@ -227,5 +227,4 @@ mod tests {
             basis: HyperlaneRibbonBasis::CameraFacing3D,
         }
     }
-
 }

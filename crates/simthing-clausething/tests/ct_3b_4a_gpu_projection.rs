@@ -12,13 +12,13 @@ use std::sync::Mutex;
 use simthing_clausething::{hydrate_category_economy_pack, parse_raw_document};
 use simthing_core::{DimensionRegistry, SimThing, SimThingId, SimThingKind};
 use simthing_driver::{
-    FirstSliceMappingSession, FirstSliceTickOptions, Scenario, SimSession,
     build_execution_plan_from_authoring, compile_arena_pressure_scatter,
-    project_arena_pressure_seeds,
+    project_arena_pressure_seeds, FirstSliceMappingSession, FirstSliceTickOptions, Scenario,
+    SimSession,
 };
 use simthing_gpu::{IndexedScatterOp, SlotAllocator};
 use simthing_spec::{
-    ExplicitParticipantSpec, GameModeSpec, PressureSourceSpec, compile_region_field_preview,
+    compile_region_field_preview, ExplicitParticipantSpec, GameModeSpec, PressureSourceSpec,
 };
 
 const HEADLINE_FIXTURE: &str = include_str!("fixtures/ct3b4a_headline.clause");
@@ -92,9 +92,7 @@ fn gpu_scatter_projection_matches_cpu_oracle_through_commitment() {
         .root
         .children
         .iter()
-        .map(|c| {
-            ExplicitParticipantSpec::flat(alloc.slot_of(c.id).unwrap().raw(), c.id.raw())
-        })
+        .map(|c| ExplicitParticipantSpec::flat(alloc.slot_of(c.id).unwrap().raw(), c.id.raw()))
         .collect();
     for arena in &mut game_mode.resource_flow.as_mut().unwrap().arenas {
         arena.explicit_participants = participants.clone();

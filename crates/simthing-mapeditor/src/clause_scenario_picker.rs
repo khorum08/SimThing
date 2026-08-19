@@ -314,10 +314,12 @@ pub fn run_clause_picker_action_staged(
         // Persist/reload remains the authority source; attach authored live profile from the
         // same hydrate pack so Auto can open field-bearing (OVL: staged UI must not drop it).
         let session = observe_loader_stage(StudioLoaderStage::Projection, observer, || {
-            Ok(StudioSession::from_loaded_scenario(scenario, json_path.clone(), profile_hint)
-                .map_err(ScenarioIoError::from)
-                .map_err(ClauseScenarioIngestError::from)?
-                .with_authored_live_profile(authored_live_profile_from_pack(&ingest.pack)))
+            Ok(
+                StudioSession::from_loaded_scenario(scenario, json_path.clone(), profile_hint)
+                    .map_err(ScenarioIoError::from)
+                    .map_err(ClauseScenarioIngestError::from)?
+                    .with_authored_live_profile(authored_live_profile_from_pack(&ingest.pack)),
+            )
         })?;
         Ok::<_, ClauseScenarioIngestError>((ingest, session))
     })();

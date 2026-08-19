@@ -76,5 +76,4 @@ mod tests {
             capability_container_kinds: Vec::new(),
         }
     }
-
 }

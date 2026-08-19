@@ -30,8 +30,8 @@ use simthing_spec::{
     ActionBandAdmissionBudgetSpec, ActionBandBandSpec, ActionBandChannelBindingSpec,
     ActionBandChannelKind, ActionBandConservedProgressBindingSpec,
     ActionBandConservedProgressBoundSourceSpec, ActionBandRequirementSemantics,
-    ActionBandSessionBuildDoor, ActionBandSessionSpec, ActionBandTargetSpec, ActionBandTemplateSpec,
-    ScalarBoundDirection,
+    ActionBandSessionBuildDoor, ActionBandSessionSpec, ActionBandTargetSpec,
+    ActionBandTemplateSpec, ScalarBoundDirection,
 };
 use simthing_workshop::actionband_spatial_flux_witness_0::{
     assert_capacity_witness, assert_mutant_pre_clamp_pair_reds, assert_no_sink_posture,
@@ -460,7 +460,7 @@ fn run_witness_leg(
     rf.tick(ctx, 0).unwrap();
     let result = rf.readback_full(ctx).unwrap();
     (
-        result[fixture.rf_result.raw()],      // post-clamp conserved progress
+        result[fixture.rf_result.raw()],     // post-clamp conserved progress
         result[fixture.pre_clamp_obs.raw()], // pre-clamp dual emission
         native_flux,
     )
@@ -531,7 +531,11 @@ fn capacity_witness_fixed_descent_varying_gu_yang_capacity() {
     let eml = amplifying_eml(fx.value);
     let (plan, rf) = compile_witness_plan(&fx, &eml, false);
     let initial = values(&fx, 0.1, 0.8);
-    let descent = descent_identity(fx.value.raw_u32(), fx.palma_d.raw_u32(), "spatial-flux-witness");
+    let descent = descent_identity(
+        fx.value.raw_u32(),
+        fx.palma_d.raw_u32(),
+        "spatial-flux-witness",
+    );
 
     let mut samples = Vec::new();
     for cap in [0.5f32, 1.0, 0.75] {
@@ -551,11 +555,7 @@ fn capacity_witness_fixed_descent_varying_gu_yang_capacity() {
     assert_capacity_witness(&samples).expect("capacity witness");
     // Monotonicity on ordered pair 0.5 < 0.75 < 1.0 when natives follow capacity.
     let mut by_cap = samples.clone();
-    by_cap.sort_by(|a, b| {
-        a.channel_capacity
-            .partial_cmp(&b.channel_capacity)
-            .unwrap()
-    });
+    by_cap.sort_by(|a, b| a.channel_capacity.partial_cmp(&b.channel_capacity).unwrap());
     assert!(
         by_cap[0].post_clamp_progress.abs() <= by_cap[2].post_clamp_progress.abs() + 1e-5
             || by_cap[0].native_flux.abs() <= by_cap[2].native_flux.abs() + 1e-5
@@ -756,9 +756,7 @@ fn run_guyang_stall_contest_into(
     let _scope = scoped_debug_readback_allowed(true);
     let mut field = FieldSweepSession::new(ctx, &bundle.registrations[0]).unwrap();
     field.upload_values(ctx, world).unwrap();
-    field
-        .dispatch_chain(ctx, &bundle.registrations, 1)
-        .unwrap();
+    field.dispatch_chain(ctx, &bundle.registrations, 1).unwrap();
     let out = field.readback(ctx).unwrap();
     world.copy_from_slice(&out);
     let n = fixture.registry.total_columns;
@@ -876,11 +874,13 @@ fn run_two_leg_opposed(
     // Upload current world (with stall chain results) into a storage buffer.
     {
         use wgpu::util::DeviceExt;
-        let tmp = ctx.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("two_leg_world_upload"),
-            contents: bytemuck::cast_slice(&world),
-            usage: wgpu::BufferUsages::COPY_SRC | wgpu::BufferUsages::STORAGE,
-        });
+        let tmp = ctx
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("two_leg_world_upload"),
+                contents: bytemuck::cast_slice(&world),
+                usage: wgpu::BufferUsages::COPY_SRC | wgpu::BufferUsages::STORAGE,
+            });
         let mut enc = ctx
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
@@ -1014,7 +1014,7 @@ fn opposed_demand_pre_clamp_signs_and_post_clamp_mutual_stall() {
     // Both-strong emitters so contest can consume stall.
     let world = values_2x2(
         &fx,
-        [0.0, 1.0, -1.0, 0.0], // gu-yang u
+        [0.0, 1.0, -1.0, 0.0],  // gu-yang u
         [1.0, -1.0, 1.0, -1.0], // equal opposed demand on seats
         [(0.9, 0.85), (0.85, 0.9), (0.9, 0.85), (0.85, 0.9)],
     );
@@ -1023,8 +1023,7 @@ fn opposed_demand_pre_clamp_signs_and_post_clamp_mutual_stall() {
     let obs = run_two_leg_opposed(&ctx, &fx, &eml, &world, 1.0);
 
     assert!(
-        obs.forward.pre_clamp_progress.abs() > 0.5
-            && obs.reverse.pre_clamp_progress.abs() > 0.5,
+        obs.forward.pre_clamp_progress.abs() > 0.5 && obs.reverse.pre_clamp_progress.abs() > 0.5,
         "PRE-CLAMP demand must be non-trivial; got {obs:?}"
     );
     assert_ne!(
@@ -1040,9 +1039,8 @@ fn opposed_demand_pre_clamp_signs_and_post_clamp_mutual_stall() {
     );
 
     // POST-CLAMP mutual stall from real RF — not free-run cancellation.
-    assert_opposed_demand_law(obs).unwrap_or_else(|e| {
-        panic!("opposed demand law failed ({e:?}) with obs={obs:?}")
-    });
+    assert_opposed_demand_law(obs)
+        .unwrap_or_else(|e| panic!("opposed demand law failed ({e:?}) with obs={obs:?}"));
     assert!(
         obs.forward.post_clamp_progress.abs() <= 1e-2
             && obs.reverse.post_clamp_progress.abs() <= 1e-2,

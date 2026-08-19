@@ -118,14 +118,19 @@ fn threshold_builder_and_boundary_admit_recipe_throttle_sink() {
     let _ = proto.resolve_production_cost_band_draws(empty);
 
     let sink_cb = proto.threshold_registry().cost_band(sink_kind);
-    let sink = cost_band_quantize(12.5, 4.0, sink_cb.is_sink, sink_cb.throttle_hint_max_per_tick)
-        .unwrap();
+    let sink = cost_band_quantize(
+        12.5,
+        4.0,
+        sink_cb.is_sink,
+        sink_cb.throttle_hint_max_per_tick,
+    )
+    .unwrap();
     assert_eq!(sink.n, 3);
     assert!(sink.n_matches_oracle(true, Some(3)));
 
     let obs_cb = proto.threshold_registry().cost_band(obs_kind);
-    let obs = cost_band_quantize(12.5, 4.0, obs_cb.is_sink, obs_cb.throttle_hint_max_per_tick)
-        .unwrap();
+    let obs =
+        cost_band_quantize(12.5, 4.0, obs_cb.is_sink, obs_cb.throttle_hint_max_per_tick).unwrap();
     assert_eq!(obs.n, 0);
     assert_eq!(obs.r.to_bits(), 12.5f32.to_bits());
 }
@@ -157,10 +162,7 @@ fn boundary_resolve_door_must_be_the_execute_path() {
     let _ = proto.resolve_production_cost_band_draws(empty);
 
     assert!(
-        proto
-            .threshold_registry()
-            .cost_band(0)
-            .is_sink,
+        proto.threshold_registry().cost_band(0).is_sink,
         "builder must have admitted sink; push-only rebuild REDs"
     );
 }

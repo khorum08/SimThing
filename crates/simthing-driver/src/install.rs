@@ -178,11 +178,8 @@ pub fn compile_and_install(
     simthing_spec::validate_order_weight_classes(&game_mode.order_weight_classes)
         .map_err(InstallError::Spec)?;
     for overlay_spec in &game_mode.overlays {
-        simthing_spec::validate_order_weight_overlay(
-            overlay_spec,
-            &game_mode.order_weight_classes,
-        )
-        .map_err(InstallError::Spec)?;
+        simthing_spec::validate_order_weight_overlay(overlay_spec, &game_mode.order_weight_classes)
+            .map_err(InstallError::Spec)?;
     }
     for pack in &game_mode.domain_packs {
         for overlay_spec in &pack.overlays {
@@ -433,9 +430,9 @@ pub fn compile_and_install(
     // 5.8b (DA 5154348081): ordinary install mints the field-plan product from
     // authored GameModeSpec.region_fields (S3 + default emitters). Triad columns
     // remain explicit 5.8 consumer inputs — not defaulted here.
-    if let Some(report) =
-        crate::comparative_default_birth::admit_field_plan_from_region_fields(&game_mode.region_fields)?
-    {
+    if let Some(report) = crate::comparative_default_birth::admit_field_plan_from_region_fields(
+        &game_mode.region_fields,
+    )? {
         state.field_plan_admission = Some(report);
     }
 
@@ -833,7 +830,10 @@ fn game_mode_has_value_placing_vocabulary(game_mode: &GameModeSpec, root: &SimTh
         }
     }
     if let Some(rf) = &game_mode.resource_flow {
-        if rf.need_bindings.iter().any(|b| !b.inputs.is_empty() || !b.weights.is_empty())
+        if rf
+            .need_bindings
+            .iter()
+            .any(|b| !b.inputs.is_empty() || !b.weights.is_empty())
         {
             return true;
         }
@@ -855,13 +855,13 @@ fn resolve_observation_host_id(
     provenance: &str,
 ) -> Result<SimThingId, InstallError> {
     if let Some(raw) = host_entity.strip_prefix("simthing:") {
-        let id = raw.parse::<u32>().map_err(|_| {
-            InstallError::ObservationHostMaterialization {
+        let id = raw
+            .parse::<u32>()
+            .map_err(|_| InstallError::ObservationHostMaterialization {
                 property: property.into(),
                 reason: format!("malformed RF host key `{host_entity}`"),
                 provenance: provenance.into(),
-            }
-        })?;
+            })?;
         return Ok(SimThingId::from_session_raw(id));
     }
     let Some(hosts) = scenario.install_targets.get(host_entity) else {
@@ -1159,12 +1159,8 @@ fn compile_and_install_event(
         let slot = allocator
             .slot_of(owner_id)
             .ok_or(InstallError::RootHasNoSlot)?;
-        let _ = state.attach_scripted_event_instance(
-            definition_id,
-            event_id.clone(),
-            owner_id,
-            slot,
-        );
+        let _ =
+            state.attach_scripted_event_instance(definition_id, event_id.clone(), owner_id, slot);
     }
     Ok(())
 }

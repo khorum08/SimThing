@@ -1151,7 +1151,7 @@ fn to_binary(year: i16, ordinal_day: i32, hour: u8) -> i32 {
 #[cfg(feature = "serde")]
 mod datederive {
     use super::{Date, DateHour, PdsDate, UniformDate};
-    use serde::{Deserialize, Deserializer, Serialize, Serializer, de, de::Visitor};
+    use serde::{de, de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
     use std::fmt;
 
     impl Serialize for Date {

@@ -513,5 +513,4 @@ pub fn manual_slot_range_sum_op(
 mod tests {
     use super::*;
     use crate::{ColumnIndex, SlotIndex};
-
 }

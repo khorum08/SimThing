@@ -141,5 +141,4 @@ impl CellSpaceIndex {
 #[cfg(test)]
 mod behavior {
     use super::*;
-
 }

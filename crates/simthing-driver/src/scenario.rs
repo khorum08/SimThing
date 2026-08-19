@@ -416,5 +416,4 @@ impl Scenario {
 #[cfg(test)]
 mod tests {
     use super::*;
-
 }

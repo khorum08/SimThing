@@ -6,11 +6,11 @@ use std::collections::BTreeMap;
 
 use simthing_core::SimThingKind;
 use simthing_spec::{
-    game_session_galaxy_map, gridcell_structural_col, gridcell_structural_row, is_galaxy_map_entity,
-    structural_property_value_u32, validate_scenario_links, validate_stead_mapping_consistency,
-    SimThingScenarioGrid, SimThingScenarioLink, SimThingScenarioProvenance, SimThingScenarioSpec,
-    SimThingStructuralGridFrame, SimThingStructuralGridPlacement,
-    SCENARIO_GENERATED_SYSTEM_ID_PROPERTY_ID,
+    game_session_galaxy_map, gridcell_structural_col, gridcell_structural_row,
+    is_galaxy_map_entity, structural_property_value_u32, validate_scenario_links,
+    validate_stead_mapping_consistency, SimThingScenarioGrid, SimThingScenarioLink,
+    SimThingScenarioProvenance, SimThingScenarioSpec, SimThingStructuralGridFrame,
+    SimThingStructuralGridPlacement, SCENARIO_GENERATED_SYSTEM_ID_PROPERTY_ID,
 };
 
 use crate::hydrate_scenario::HydratedScenarioPack;
@@ -114,8 +114,7 @@ pub fn project_pack_to_authority_tree_candidate(
 /// Rebind authority-tree candidate Spec to StructuralRebindReady using pack embed lattice.
 pub fn rebind_pack_to_structural_rebind_ready(
     pack: &HydratedScenarioPack,
-) -> Result<(SimThingScenarioSpec, ClauseScenarioProjectionReport), ClauseScenarioProjectionError>
-{
+) -> Result<(SimThingScenarioSpec, ClauseScenarioProjectionReport), ClauseScenarioProjectionError> {
     let candidate = project_pack_to_authority_tree_candidate(pack)?;
     rebind_authority_tree_candidate(&candidate, pack)
 }
@@ -124,8 +123,7 @@ pub fn rebind_pack_to_structural_rebind_ready(
 pub fn rebind_authority_tree_candidate(
     candidate: &SimThingScenarioSpec,
     pack: &HydratedScenarioPack,
-) -> Result<(SimThingScenarioSpec, ClauseScenarioProjectionReport), ClauseScenarioProjectionError>
-{
+) -> Result<(SimThingScenarioSpec, ClauseScenarioProjectionReport), ClauseScenarioProjectionError> {
     let mut scenario = candidate.clone();
 
     let galaxy_map = game_session_galaxy_map(&scenario).map_err(|e| {
@@ -140,11 +138,14 @@ pub fn rebind_authority_tree_candidate(
     let map_container_id = galaxy_map.id.raw().to_string();
     let galaxy_map_raw = galaxy_map.id.raw();
 
-    let embedded = pack.embedded_static_galaxy_scenarios.first().ok_or_else(|| {
-        ClauseScenarioProjectionError::new(
-            "rebind requires embedded_static_galaxy_scenarios[0] for lattice join",
-        )
-    })?;
+    let embedded = pack
+        .embedded_static_galaxy_scenarios
+        .first()
+        .ok_or_else(|| {
+            ClauseScenarioProjectionError::new(
+                "rebind requires embedded_static_galaxy_scenarios[0] for lattice join",
+            )
+        })?;
 
     let mut by_coord: BTreeMap<(u32, u32), &simthing_spec::SimThingStructuralGridPlacement> =
         BTreeMap::new();
@@ -228,9 +229,8 @@ pub fn rebind_authority_tree_candidate(
     let mut links = Vec::new();
     let mut links_residue = None;
     if embedded.namespaced_links.is_empty() {
-        links_residue = Some(
-            "embedded namespaced_links empty — Spec links remain empty".to_string(),
-        );
+        links_residue =
+            Some("embedded namespaced_links empty — Spec links remain empty".to_string());
     } else {
         let mut dropped = 0usize;
         for link in &embedded.namespaced_links {
@@ -253,9 +253,8 @@ pub fn rebind_authority_tree_candidate(
             ));
         }
         if links.is_empty() {
-            links_residue = Some(
-                "namespaced links present but none mapped to system_id endpoints".to_string(),
-            );
+            links_residue =
+                Some("namespaced links present but none mapped to system_id endpoints".to_string());
         }
     }
 

@@ -139,5 +139,4 @@ mod tests {
         op.source_kind = source_kind::SLOT_VALUE;
         op
     }
-
 }

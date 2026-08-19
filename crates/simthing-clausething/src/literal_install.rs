@@ -68,8 +68,7 @@ pub fn admit_and_apply_domain_pack(
     value.set_role(&SubFieldRole::Amount, layout, seed_amount);
 
     let mut final_amount = seed_amount;
-    let scenario_origin =
-        simthing_core::SimThing::new(simthing_core::SimThingKind::Scenario, 0).id;
+    let scenario_origin = simthing_core::SimThing::new(simthing_core::SimThingKind::Scenario, 0).id;
     for overlay_spec in &pack.overlays {
         let (overlay, diag) = compile_overlay(overlay_spec, &registry, scenario_origin)
             .map_err(|err| HydrateError::new(format!("compile_overlay failed: {err}")))?;
@@ -79,7 +78,9 @@ pub fn admit_and_apply_domain_pack(
                 diag.diagnostics
             )));
         }
-        overlay.transform.apply_to_data(value.raw_lanes_mut(), layout);
+        overlay
+            .transform
+            .apply_to_data(value.raw_lanes_mut(), layout);
         final_amount = value.get_role(&SubFieldRole::Amount, layout);
     }
 

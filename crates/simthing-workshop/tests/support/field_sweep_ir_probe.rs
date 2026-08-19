@@ -185,10 +185,7 @@ fn is_unary(op: u32) -> bool {
 }
 
 fn is_binary(op: u32) -> bool {
-    matches!(
-        op,
-        OP_ADD | OP_SUB | OP_MUL | OP_MIN | OP_MAX | OP_DIV
-    )
+    matches!(op, OP_ADD | OP_SUB | OP_MUL | OP_MIN | OP_MAX | OP_DIV)
 }
 
 /// Peak live operand-stack depth when `nodes[0..=root]` is lowered post-order to a stack machine.
@@ -634,7 +631,10 @@ pub fn counter_surface_report(timestamp_supported: bool) -> (String, String) {
 
 /// Threshold adjudication is only lawful when occupancy is measured and envelopes match.
 /// With occupancy UNMEASURED / counter STOP, timing is diagnostic only.
-pub fn threshold_adjudication_status(occupancy_measured: bool, envelope_matched: bool) -> &'static str {
+pub fn threshold_adjudication_status(
+    occupancy_measured: bool,
+    envelope_matched: bool,
+) -> &'static str {
     if !occupancy_measured {
         "DIAGNOSTIC_ONLY(occupancy_UNMEASURED;no_threshold_verdict)"
     } else if !envelope_matched {
@@ -809,23 +809,24 @@ impl ProbeGpuSession {
             usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC | BufferUsages::COPY_DST,
             mapped_at_creation: false,
         }));
-        self.ranges = Some(self.device.create_buffer_init(
-            &wgpu::util::BufferInitDescriptor {
-                label: Some("fsir_ranges"),
-                contents: bytemuck::cast_slice(&gather.ranges),
-                usage: BufferUsages::STORAGE,
-            },
-        ));
-        self.neighbors = Some(self.device.create_buffer_init(
-            &wgpu::util::BufferInitDescriptor {
-                label: Some("fsir_neighbors"),
-                contents: bytemuck::cast_slice(&gather.neighbors),
-                usage: BufferUsages::STORAGE,
-            },
-        ));
+        self.ranges = Some(
+            self.device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("fsir_ranges"),
+                    contents: bytemuck::cast_slice(&gather.ranges),
+                    usage: BufferUsages::STORAGE,
+                }),
+        );
+        self.neighbors = Some(
+            self.device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("fsir_neighbors"),
+                    contents: bytemuck::cast_slice(&gather.neighbors),
+                    usage: BufferUsages::STORAGE,
+                }),
+        );
         // Fixed node capacity so C→flux program swaps never overflow.
-        let node_bytes =
-            (PROBE_NODE_CAP as usize * std::mem::size_of::<IrNode>()) as u64;
+        let node_bytes = (PROBE_NODE_CAP as usize * std::mem::size_of::<IrNode>()) as u64;
         self.map_nodes = Some(self.device.create_buffer(&BufferDescriptor {
             label: Some("fsir_map"),
             size: node_bytes,
@@ -891,16 +892,22 @@ impl ProbeGpuSession {
             fold_seed_col,
             _pad0: 0,
         };
-        self.queue
-            .write_buffer(self.params.as_ref().unwrap(), 0, bytemuck::bytes_of(&params));
+        self.queue.write_buffer(
+            self.params.as_ref().unwrap(),
+            0,
+            bytemuck::bytes_of(&params),
+        );
     }
 
     pub fn upload_values(&mut self, values: &[f32]) -> Result<()> {
         if values.len() != self.values_len {
             bail!("values len mismatch");
         }
-        self.queue
-            .write_buffer(self.input.as_ref().unwrap(), 0, bytemuck::cast_slice(values));
+        self.queue.write_buffer(
+            self.input.as_ref().unwrap(),
+            0,
+            bytemuck::cast_slice(values),
+        );
         self.read_input = true;
         Ok(())
     }

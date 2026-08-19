@@ -5,14 +5,14 @@
 //! pressure. Authoring/lowering only — no driver/GPU/runtime execution, no PALMA, no
 //! pathfinding/movement/routes/predecessors/border/frontline semantics.
 
-use simthing_spec::FIRST_SLICE_FIELD_URGENCY_COL;
 use simthing_spec::spec::region_field::{
     ArenaPressureBindingSpec, FirstSliceCommitmentDirectionSpec, FirstSliceCommitmentSpec,
     MappingExecutionProfile, PressurePlacementSpec, PressureSourceSpec, RegionFieldCadenceSpec,
     RegionFieldFormulaBindingSpec, RegionFieldGridProfile, RegionFieldOperatorSpec,
     RegionFieldReductionSpec, RegionFieldSourcePolicySpec, RegionFieldSpec,
 };
-use simthing_spec::{PropertySpec, compile_region_field_preview};
+use simthing_spec::FIRST_SLICE_FIELD_URGENCY_COL;
+use simthing_spec::{compile_region_field_preview, PropertySpec};
 
 use crate::hydrate_field_operator::BH3_SATURATING_FLUX_CHI_CFL_MAX;
 use crate::hydrate_scenario::HydratedScenarioPack;

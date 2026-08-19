@@ -156,5 +156,4 @@ Supported Scopes: all
 Output Scope: various
 
 "#;
-
 }

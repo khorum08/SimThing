@@ -119,4 +119,3 @@ fn c0_mapping_profile_default_remains_disabled() {
     assert!(mapping_profile_default_disabled());
     assert!(!MappingExecutionProfile::default().enables_execution());
 }
-

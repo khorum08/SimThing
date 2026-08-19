@@ -6,9 +6,9 @@ use std::collections::BTreeMap;
 use std::path::Path;
 
 use simthing_clausething::{
-    ExpansionInput, ScopeDiagnosticKind, ScopeReferenceRole, expand_document, extract_scopes,
-    extract_scopes_validated, parse_raw_document, scan_lab_scopes, scope_report_to_json,
-    synthetic_scope_table,
+    expand_document, extract_scopes, extract_scopes_validated, parse_raw_document, scan_lab_scopes,
+    scope_report_to_json, synthetic_scope_table, ExpansionInput, ScopeDiagnosticKind,
+    ScopeReferenceRole,
 };
 
 const SCOPE_BASIC: &str = include_str!("fixtures/scope_basic.clause");
@@ -78,12 +78,10 @@ fn malformed_chains_emit_deterministic_diagnostics() {
     let document = parse_raw_document(SCOPE_MALFORMED.as_bytes()).expect("parse malformed");
     let report = extract_scopes(&document);
     assert_eq!(report.diagnostics.len(), 2);
-    assert!(
-        report
-            .diagnostics
-            .iter()
-            .all(|d| d.kind == ScopeDiagnosticKind::MalformedChain)
-    );
+    assert!(report
+        .diagnostics
+        .iter()
+        .all(|d| d.kind == ScopeDiagnosticKind::MalformedChain));
     assert_eq!(
         report.diagnostics[0].message,
         "malformed scope chain `root..owner`: empty dot segment"
@@ -94,4 +92,3 @@ fn malformed_chains_emit_deterministic_diagnostics() {
     );
     assert!(report.diagnostics[0].span.is_some());
 }
-

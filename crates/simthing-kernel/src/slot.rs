@@ -404,15 +404,15 @@ impl SlotAllocator {
         self.free = (0..capacity)
             .rev()
             .filter(|raw| {
-                self.slot_owners[*raw as usize].is_none()
-                    && !self.exclusive_reserved.contains(raw)
+                self.slot_owners[*raw as usize].is_none() && !self.exclusive_reserved.contains(raw)
             })
             .collect();
         let post = self.binding_table_snapshot();
-        derive_epoch_rebind_section(&pre, &post, pre_loci, post_loci)
-            .map_err(|refused| SlotAllocError::RebindSectionRefused {
+        derive_epoch_rebind_section(&pre, &post, pre_loci, post_loci).map_err(|refused| {
+            SlotAllocError::RebindSectionRefused {
                 detail: refused.detail,
-            })
+            }
+        })
     }
 
     pub fn slot_of(&self, id: SimThingId) -> Option<SlotIndex> {
@@ -619,7 +619,6 @@ mod tests {
         SimThingKind, SubFieldRole,
     };
 
-
     #[test]
     fn epoch_rebind_moves_rows_exact_once_and_rebuilds_the_one_table() {
         use simthing_core::AnchoredLocusMap;
@@ -642,11 +641,12 @@ mod tests {
         let loci = AnchoredLocusMap::new();
         let section = alloc.epoch_rebind(&assignment, &loci, &loci).unwrap();
 
-        let moved = pre
-            .iter()
-            .filter(|(id, s)| assignment[id] != **s)
-            .count();
-        assert_eq!(section.remaps.len(), moved, "exactly one record per moved row");
+        let moved = pre.iter().filter(|(id, s)| assignment[id] != **s).count();
+        assert_eq!(
+            section.remaps.len(),
+            moved,
+            "exactly one record per moved row"
+        );
         assert!(section
             .remaps
             .iter()

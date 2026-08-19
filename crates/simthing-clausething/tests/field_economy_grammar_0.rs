@@ -49,7 +49,12 @@ fn overlay_add_install(
     let amount = overlay.sub_field_deltas[0]
         .1
         .as_add_literal()
-        .unwrap_or_else(|| panic!("expected add overlay {id}, got {:?}", overlay.sub_field_deltas[0].1));
+        .unwrap_or_else(|| {
+            panic!(
+                "expected add overlay {id}, got {:?}",
+                overlay.sub_field_deltas[0].1
+            )
+        });
     let target_id = match &overlay.install {
         InstallTargetSpec::ScenarioListed { target_id } => target_id.clone(),
         other => panic!("expected ScenarioListed install for {id}, got {other:?}"),
@@ -204,7 +209,10 @@ fn production_output_coefficient_is_required_and_spanned() {
     let document = parse_raw_document(missing.as_bytes()).expect("parse ClauseScript");
     let err = hydrate_scenario(&document).expect_err("missing coefficient must fail closed");
     assert!(err.message.contains("coefficient"), "{}", err.message);
-    assert!(err.span.is_some(), "missing coefficient must carry a source span");
+    assert!(
+        err.span.is_some(),
+        "missing coefficient must carry a source span"
+    );
 }
 /// catches: unsupported silo capacity being flattened onto unrelated runtime records.
 #[test]
@@ -213,10 +221,9 @@ fn stockpile_capacity_is_spanned_unsupported_authoring_error() {
         FOUNDRY_SCENARIO.replace("current = 20", "capacity = 100\n            current = 20");
     let document = parse_raw_document(unsupported.as_bytes()).expect("parse ClauseScript");
     let err = hydrate_scenario(&document).expect_err("must reject unsupported silo capacity");
-    assert!(
-        err.message
-            .contains("unsupported stockpile_silo field `capacity`")
-    );
+    assert!(err
+        .message
+        .contains("unsupported stockpile_silo field `capacity`"));
     assert!(
         err.span.is_some(),
         "unsupported silo capacity must carry a source span"
@@ -228,10 +235,9 @@ fn malformed_field_economy_is_spanned_hard_error_at_admission() {
     let malformed = FOUNDRY_SCENARIO.replace("current = 20", "current = -1");
     let document = parse_raw_document(malformed.as_bytes()).expect("parse ClauseScript");
     let err = hydrate_scenario(&document).expect_err("must reject at admission");
-    assert!(
-        err.message
-            .contains("`stockpile_silo.current` must be non-negative")
-    );
+    assert!(err
+        .message
+        .contains("`stockpile_silo.current` must be non-negative"));
     assert!(
         err.span.is_some(),
         "admission error must carry a source span"

@@ -9,9 +9,7 @@ use std::collections::BTreeMap;
 use std::sync::Mutex;
 
 use simthing_core::owner_channel::{bind_owner, OwnerRef};
-use simthing_core::{
-    DimensionRegistry, GenerationStamp, SimThing, SimThingKind, SlotIndex,
-};
+use simthing_core::{DimensionRegistry, GenerationStamp, SimThing, SimThingKind, SlotIndex};
 use simthing_gpu::{set_debug_readback_allowed, GpuContext, WorldGpuState};
 use simthing_spec::{
     derive_staleness_f32, reduce_owner_channel_rf, AsyncStalenessColumn, AuthoredStalenessHorizon,
@@ -33,7 +31,11 @@ fn own(id: simthing_core::SimThingId, surplus: u32, deficit: u32) -> OwnerChanne
     }
 }
 
-fn crossing_tree() -> (SimThing, Vec<OwnerChannelRfOwnAggregate>, BTreeMap<simthing_core::SimThingId, SlotIndex>) {
+fn crossing_tree() -> (
+    SimThing,
+    Vec<OwnerChannelRfOwnAggregate>,
+    BTreeMap<simthing_core::SimThingId, SlotIndex>,
+) {
     let mut root = node();
     bind_owner(&mut root, &OwnerRef::new("owner-0"));
     let mut child = node();
@@ -68,8 +70,7 @@ fn derived_staleness_reads_from_world_gpu_stead_values_plane() {
     set_debug_readback_allowed(true);
 
     let (root, rows, slots) = crossing_tree();
-    let stamped =
-        reduce_owner_channel_rf(&root, &rows, GenerationStamp::new(1)).expect("reduce");
+    let stamped = reduce_owner_channel_rf(&root, &rows, GenerationStamp::new(1)).expect("reduce");
     let seeds = AsyncStalenessColumn::seeds_from_crossings(&stamped.product().stead.crossing_flows);
     assert!(
         !seeds.is_empty(),
@@ -87,7 +88,10 @@ fn derived_staleness_reads_from_world_gpu_stead_values_plane() {
         AuthoredStalenessHorizon::new(1),
     )
     .expect("admit derived STEAD lane");
-    assert!(column.n_dims() >= 2, "staleness lane shares the world n_dims");
+    assert!(
+        column.n_dims() >= 2,
+        "staleness lane shares the world n_dims"
+    );
     assert_eq!(column.n_dims(), registry.total_columns as usize);
 
     let mut stead = vec![0.0; n_slots * column.n_dims()];

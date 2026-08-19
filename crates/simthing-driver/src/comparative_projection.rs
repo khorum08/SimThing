@@ -125,8 +125,12 @@ pub struct ComparativeProjectionRequest {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ComparativeProjectionDisposition {
-    InsufficientEmitters { emitter_count: u32 },
-    AuthoredOptOut { reason: String },
+    InsufficientEmitters {
+        emitter_count: u32,
+    },
+    AuthoredOptOut {
+        reason: String,
+    },
     Born {
         emitter_count: u32,
         comparative_column_count: u32,
@@ -488,7 +492,11 @@ fn insufficient_admission(emitter_count: u32) -> ComparativeProjectionAdmission 
             comparative_column_count: 0,
         },
         threshold_plan: ComparativeThresholdPlan {
-            front_formed: (dummy_band.border_col, 0.5, comparative_event_kind::FRONT_FORMED),
+            front_formed: (
+                dummy_band.border_col,
+                0.5,
+                comparative_event_kind::FRONT_FORMED,
+            ),
             front_hardened: (
                 dummy_out.contest_col,
                 0.1,
@@ -838,19 +846,21 @@ fn admit_reg(
     post_program: Vec<EmlNodeGpu>,
     transient_read_proof: Option<FieldTransientCertificate>,
 ) -> Result<FieldSweepRegistration, ComparativeProjectionError> {
-    Ok(apply_field_sweep_registration(FieldSweepRegistrationRequest {
-        adjacency: request.adjacency.clone(),
-        n_dims: request.n_dims,
-        output,
-        map_program,
-        fold_program,
-        identity_bits,
-        post_program,
-        field_law_proof: Some(FieldLawProof::apply_non_conservative()),
-        transient_read_proof,
-        canonical_order_proof: Some(order),
-        dt: 1.0,
-    })?)
+    Ok(apply_field_sweep_registration(
+        FieldSweepRegistrationRequest {
+            adjacency: request.adjacency.clone(),
+            n_dims: request.n_dims,
+            output,
+            map_program,
+            fold_program,
+            identity_bits,
+            post_program,
+            field_law_proof: Some(FieldLawProof::apply_non_conservative()),
+            transient_read_proof,
+            canonical_order_proof: Some(order),
+            dt: 1.0,
+        },
+    )?)
 }
 
 // ── EML helpers ─────────────────────────────────────────────────────────────

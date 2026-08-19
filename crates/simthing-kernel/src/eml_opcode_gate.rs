@@ -390,7 +390,9 @@ pub enum ExactPrimitiveRangeEvidence<'a> {
     GuardedFormula(&'a ExactPrimitiveGuardedInput),
     /// EML-EXP-PRIMITIVE-0: an authored in-domain literal is its own shape-1
     /// certificate (full_eml_unification §4 names "literal in range").
-    LiteralInRange { bits: u32 },
+    LiteralInRange {
+        bits: u32,
+    },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -1245,7 +1247,6 @@ fn saturation_exp_full_guard() -> EmlNode {
     }
 }
 
-
 /// The canonical saturated-tail guard node: `CLAMP_BOUNDED(x, domain_min, 0)`.
 fn saturation_clamp_guard() -> EmlNode {
     EmlNode {
@@ -1636,7 +1637,11 @@ mod tests {
             1,
             "LN appears exactly once (5.12 widening)"
         );
-        assert_eq!(closed.len(), 25, "5.11+5.12 widen the 23-opcode roster by exactly two");
+        assert_eq!(
+            closed.len(),
+            25,
+            "5.11+5.12 widen the 23-opcode roster by exactly two"
+        );
         assert!(opcode_in_accumulator_vocabulary(eml_nodes::opcode::EXP));
         let domain = exp_primitive_domain();
         assert_eq!(domain.min_bits(), simthing_core::EML_EXP_DOMAIN_MIN_BITS);
@@ -1650,11 +1655,7 @@ mod tests {
     #[test]
     fn eml_exp_primitive_0_call_sites_admit_only_the_two_shapes_and_span_the_rest() {
         // Shape 2: saturation clamp guard immediately precedes EXP.
-        let guarded = returning(vec![
-            slot(0),
-            saturation_clamp_guard(),
-            exp_node(),
-        ]);
+        let guarded = returning(vec![slot(0), saturation_clamp_guard(), exp_node()]);
         admit_exp_call_sites(&guarded).expect("clamp-guarded EXP admits (shape 2)");
 
         // Shape 1: in-domain literal immediately precedes EXP.
@@ -1734,8 +1735,7 @@ mod tests {
             [-250.0, 3.0], // saturated tail: clamped at the domain floor
         ];
         for row in values {
-            let via_interpreter =
-                crate::accumulator_op::eval_eml_cpu(&nodes, 0, &row, 2, [0.0; 4]);
+            let via_interpreter = crate::accumulator_op::eval_eml_cpu(&nodes, 0, &row, 2, [0.0; 4]);
             assert_eq!(
                 via_interpreter.to_bits(),
                 gadget.oracle(row[0], row[1]).to_bits(),

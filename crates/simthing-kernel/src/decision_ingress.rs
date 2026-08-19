@@ -295,12 +295,8 @@ impl std::error::Error for DecisionIngressError {}
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::registration::{
-        ThresholdRegistration, DIR_UPWARD, THRESH_BUF_VALUES,
-    };
-    use crate::sealed::{
-        cpu_oracle_threshold_events, ThresholdEmission,
-    };
+    use crate::registration::{ThresholdRegistration, DIR_UPWARD, THRESH_BUF_VALUES};
+    use crate::sealed::{cpu_oracle_threshold_events, ThresholdEmission};
     fn sealed_tokens_for_locus(
         slot: u32,
         col: u32,
@@ -322,15 +318,8 @@ mod tests {
             event_kind,
             buffer: THRESH_BUF_VALUES,
         };
-        let events = cpu_oracle_threshold_events(
-            &previous,
-            &values,
-            &previous,
-            &values,
-            n_dims,
-            &[reg],
-            0,
-        );
+        let events =
+            cpu_oracle_threshold_events(&previous, &values, &previous, &values, n_dims, &[reg], 0);
         assert_eq!(events.len(), 1);
         let threshold_tok = ThresholdCrossingToken::from_sealed_threshold_event(&events[0]);
         let emission_tok = sealed_emission_only(slot, col, values[addr]);

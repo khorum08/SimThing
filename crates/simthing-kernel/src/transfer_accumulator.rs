@@ -276,5 +276,4 @@ pub fn discrete_transfer_registrations_to_transfer(
 #[cfg(test)]
 mod tests {
     use super::*;
-
 }

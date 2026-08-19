@@ -5,9 +5,7 @@
 //! Turns RED if the production egress call is removed or wrapped in `if false`
 //! (`admit_invocations` stays 0). Forced ring lag must not perturb sim values.
 
-use simthing_core::{
-    ClampBehavior, DimensionRegistry, SimProperty, SubFieldRole, SubFieldSpec,
-};
+use simthing_core::{ClampBehavior, DimensionRegistry, SimProperty, SubFieldRole, SubFieldSpec};
 use simthing_feeder::{feeder_channel, DispatchCoordinator, TickGpuError, TransformPatcher};
 use simthing_gpu::{
     set_debug_readback_allowed, GpuContext, Pipelines, SlotAllocator, WorldGpuState,
@@ -109,11 +107,13 @@ fn ordinary_feeder_tick_admits_to_production_event_egress() {
     // Forced lag on the production ring does not write sim state.
     let lag_before = values_after.clone();
     for i in 0..300u64 {
-        let _ = state.production_event_egress.push(simthing_core::StampedEgressEntry {
-            generation: simthing_core::GenerationStamp::new(9),
-            key: i,
-            payload_bits: i,
-        });
+        let _ = state
+            .production_event_egress
+            .push(simthing_core::StampedEgressEntry {
+                generation: simthing_core::GenerationStamp::new(9),
+                key: i,
+                payload_bits: i,
+            });
     }
     assert!(
         state.production_event_egress.backpressure_actions >= 1,

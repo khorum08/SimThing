@@ -288,10 +288,9 @@ fn expression_for(
     output: &mut String,
 ) -> Option<EmitEntry> {
     match node.opcode {
-        eml_opcode::LITERAL_F32 => Some(EmitEntry::plain(format!(
-            "bitcast<f32>(0x{:08x}u)",
-            node.a
-        ))),
+        eml_opcode::LITERAL_F32 => {
+            Some(EmitEntry::plain(format!("bitcast<f32>(0x{:08x}u)", node.a)))
+        }
         eml_opcode::TARGET_VALUE => Some(EmitEntry::plain(format!(
             "values_in[context.target_slot * params.n_dims + {}u]",
             node.a
@@ -300,9 +299,7 @@ fn expression_for(
             "values_in[context.neighbor_slot * params.n_dims + {}u]",
             node.a
         ))),
-        eml_opcode::PARAM => Some(EmitEntry::plain(
-            field_param_expression(node.a).to_owned(),
-        )),
+        eml_opcode::PARAM => Some(EmitEntry::plain(field_param_expression(node.a).to_owned())),
         eml_opcode::NEG
         | eml_opcode::CLAMP_BOUNDED
         | eml_opcode::CLAMP_FLOORED
@@ -382,9 +379,7 @@ fn expression_for(
             let rhs = stack.pop().expect("admitted binary rhs");
             let lhs = stack.pop().expect("admitted binary lhs");
             Some(EmitEntry::plain(binary_expression(
-                opcode,
-                &lhs.expr,
-                &rhs.expr,
+                opcode, &lhs.expr, &rhs.expr,
             )))
         }
     }
@@ -511,11 +506,7 @@ mod eml_exp_lowering_tests {
             let start = source
                 .find("fn eml_exp_pinned(")
                 .expect("pinned helper present");
-            let end = start
-                + source[start..]
-                    .find("\n}")
-                    .expect("pinned helper closes")
-                + 2;
+            let end = start + source[start..].find("\n}").expect("pinned helper closes") + 2;
             &source[start..end]
         }
         let field = helper_block(include_str!("shaders/field_sweep.wgsl"));

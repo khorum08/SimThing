@@ -8,8 +8,8 @@ use std::collections::BTreeMap;
 
 use simthing_clausething::raw::{RawValue, ScalarForm};
 use simthing_clausething::{
-    ExpansionInput, RawDocument, expand_document, is_inline_math, is_value_reference,
-    parse_raw_document, to_canonical_json,
+    expand_document, is_inline_math, is_value_reference, parse_raw_document, to_canonical_json,
+    ExpansionInput, RawDocument,
 };
 
 const PLAGUE_MAIN: &str = include_str!("fixtures/expand_plague_main.clause");
@@ -97,4 +97,3 @@ fn missing_inline_script_is_a_deterministic_diagnostic() {
         "inline_script target `simthing/order_probe` is not in the synthetic library"
     );
 }
-

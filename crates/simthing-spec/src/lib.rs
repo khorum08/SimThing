@@ -67,8 +67,7 @@ pub use compile::action_band_admission::{
     AdmittedActionBandBand, AdmittedActionBandChannel, AdmittedActionBandConservedProgressBinding,
     AdmittedActionBandConservedProgressBoundSource, AdmittedActionBandTarget,
     AdmittedActionBandTemplate, AdmittedActionBandVelocity, ExistingThresholdRegistrationIndex,
-    FrozenActionBandTemplates,
-    PreAdmittedEmissionBindingIndex,
+    FrozenActionBandTemplates, PreAdmittedEmissionBindingIndex,
 };
 pub use compile::jit_kernel_production_registry_shell::{
     ProductionKernelRegistryShell, ProductionKernelRegistryShellConfig,
@@ -140,24 +139,24 @@ pub use compile::{
     CompiledRegionFieldStencilSpec, CompiledResourceEconomy, CompiledResourceEmission,
     CompiledResourceFlowAdmission, CompiledResourceRecipe, CompiledResourceRecipeInput,
     CompiledResourceTransfer, CompiledStressCompose, CompiledStressComposeProfile,
-    CompiledWImpedanceCompose, CompiledWImpedanceComposeProfile, EmlGadgetCompileOptions, EmlGadgetCompositionPlan,
-    EmlGadgetDiagnostic, EmlGadgetKind, EmlGadgetPreviewReport, EmlGadgetRegistry,
-    EventAuthorityContract, EventBucketReductionInputAuthority, EventBucketReductionOrderAuthority,
-    EventCodeBucketMembershipAuthority, EventCodeBucketOrderAuthority,
-    EventCompactionMembershipAuthority, EventCompactionOrderAuthority, ExactPreSqrtInputContract,
-    ExactSqrtArtifactDescriptor, ExactSqrtAuthorityClass, KernelDescriptorSpec,
-    KernelGraphCohortPreview, KernelGraphCohortPreviewSet, KernelGraphEdgeSpec,
-    KernelGraphIdentity, KernelGraphRequestSpec, KernelGraphSpec, KernelLane, KernelOutputSpec,
-    KernelRegistryEntryPreview, KernelRegistryLane, KernelRegistryManifestPreview,
-    Mag2SourceContract, NativeMathClass, NumericProposalMembershipAuthority,
-    NumericProposalOrderAuthority, OutputAuthority, PhaseEEconomicFixtureRecordAuthority,
-    PhaseEFixtureProposalAdmissionAuthority, PhaseEProposalConsumerInputAuthority,
-    PhaseEProposalSummaryOrderAuthority, RecipePreview, RegionFieldBudgetError,
-    RegionFieldBudgetEstimate, RegionFieldBudgetSpec, RegionFieldIsolationPolicyEstimate,
-    ResourceBindingPreview, ResourceEconomyAuthoringPreview, ResourceEconomyDiagnostic,
-    ResourceEconomyExpansionReport, ResourceEconomyPreviewReport, ResourceFlowDiagnostic,
-    ResourceFlowExpansionReport, ScoreAuthorityContract, StaticPropertyNetPreview,
-    ThresholdAuthorityContract, ThresholdEmitPreview, TransferPreview,
+    CompiledWImpedanceCompose, CompiledWImpedanceComposeProfile, EmlGadgetCompileOptions,
+    EmlGadgetCompositionPlan, EmlGadgetDiagnostic, EmlGadgetKind, EmlGadgetPreviewReport,
+    EmlGadgetRegistry, EventAuthorityContract, EventBucketReductionInputAuthority,
+    EventBucketReductionOrderAuthority, EventCodeBucketMembershipAuthority,
+    EventCodeBucketOrderAuthority, EventCompactionMembershipAuthority,
+    EventCompactionOrderAuthority, ExactPreSqrtInputContract, ExactSqrtArtifactDescriptor,
+    ExactSqrtAuthorityClass, KernelDescriptorSpec, KernelGraphCohortPreview,
+    KernelGraphCohortPreviewSet, KernelGraphEdgeSpec, KernelGraphIdentity, KernelGraphRequestSpec,
+    KernelGraphSpec, KernelLane, KernelOutputSpec, KernelRegistryEntryPreview, KernelRegistryLane,
+    KernelRegistryManifestPreview, Mag2SourceContract, NativeMathClass,
+    NumericProposalMembershipAuthority, NumericProposalOrderAuthority, OutputAuthority,
+    PhaseEEconomicFixtureRecordAuthority, PhaseEFixtureProposalAdmissionAuthority,
+    PhaseEProposalConsumerInputAuthority, PhaseEProposalSummaryOrderAuthority, RecipePreview,
+    RegionFieldBudgetError, RegionFieldBudgetEstimate, RegionFieldBudgetSpec,
+    RegionFieldIsolationPolicyEstimate, ResourceBindingPreview, ResourceEconomyAuthoringPreview,
+    ResourceEconomyDiagnostic, ResourceEconomyExpansionReport, ResourceEconomyPreviewReport,
+    ResourceFlowDiagnostic, ResourceFlowExpansionReport, ScoreAuthorityContract,
+    StaticPropertyNetPreview, ThresholdAuthorityContract, ThresholdEmitPreview, TransferPreview,
     ADMITTED_REGION_FIELD_FORMULA_CLASSES, DEFERRED_GADGET_KINDS, FIELD_POLICY_ACT0_CODE_COUNT,
     FIELD_POLICY_ACT0_DESCRIPTOR_ID, FIELD_POLICY_ACT0_LABEL,
     FIELD_POLICY_ACT1_ADMITTED_TABLE_SIZE, FIELD_POLICY_ACT1_DESCRIPTOR_ID,
@@ -384,6 +383,9 @@ pub use spec::action_band::{
     ActionBandSessionSpec, ActionBandTargetSpec, ActionBandTemplateSpec, ActionBandVelocitySpec,
     ScalarBoundDirection,
 };
+pub use spec::async_staleness::{
+    derive_staleness_f32, AsyncStalenessColumn, AsyncStalenessError, AuthoredStalenessHorizon,
+};
 pub use spec::capability::{
     ActivationMode, CapabilityCategorySpec, CapabilityEffectSpec, CapabilityPrereqSpec,
     CapabilitySpec, CapabilityTreeSpec, EffectTarget, MaxActivePolicy, ReplacementPolicy,
@@ -398,6 +400,11 @@ pub use spec::constrained_clearing::{
     ConstrainedClearingResult, ConstrainedGrant, ConstrainedSupply, PersistenceConsequence,
     PersistenceConsequenceError, PersistenceOverlayBinding, UnresolvedDemandObservation,
 };
+pub use spec::contention_conservation_judge::{
+    judge_conservation, ChannelBound, ConservationJudgeReason, ConservationSnapshot,
+    ConservationVerdict, QuantizedChannelObservation, SeamObservation,
+    StemThingPartitionObservation,
+};
 pub use spec::disruption_readout::{
     disruption_readout_snapshot, disruption_readout_snapshot_with_readback,
     AbsentDisruptionAuthorityReadback, DisruptionAuthorityReadback,
@@ -408,11 +415,11 @@ pub use spec::domain_pack::DomainPackSpec;
 pub use spec::effect::EffectSpec;
 pub use spec::eml_gadget::{EmlGadgetInstanceSpec, EmlGadgetStackSpec};
 pub use spec::event::{CooldownSpec, EventKey, EventPriority, EventSpec};
+pub use spec::first_slice_scenario::FirstSliceScenarioSpec;
 pub use spec::fleet_presence::{
     fleet_presence_snapshot, FleetPresenceLocation, FleetPresenceRecord, FleetPresenceSnapshot,
     FleetPresenceSnapshotError, TP_FLEET_HOME_SYSTEM_PROPERTY_ID, TP_FLEET_POSTURE_PROPERTY_ID,
 };
-pub use spec::first_slice_scenario::FirstSliceScenarioSpec;
 pub use spec::game_mode::GameModeSpec;
 pub use spec::install_target::InstallTargetSpec;
 pub use spec::loaded_scenario_recursive_rf_runtime::{
@@ -463,15 +470,30 @@ pub use spec::local_participant_effects::{
     LocalParticipantEffectsDeferralKind, LocalParticipantEffectsError,
     LocalParticipantEffectsErrorKind, LocalParticipantEffectsReport, RuntimeLocalParticipantEffect,
 };
+pub use spec::need_binding::{NeedBindingSpec, SemanticPropertyLocusSpec};
 pub use spec::order_weight::OrderWeightClassSpec;
 pub use spec::overlay::OverlaySpec;
+pub use spec::owner_channel_admission::{
+    admit_intrinsic_owner_channels, IntrinsicOwnerChannelAdmissionStats, IntrinsicOwnerChannelView,
+    OwnerChannelAdmissionError,
+};
+pub use spec::owner_channel_rf::{
+    integrate_raw_reduce_up_report_forbidden, integrate_stamped_reduce_up,
+    reconstruct_owner_channel_rf_map, reduce_owner_channel_rf, reduce_owner_channel_rf_unstamped,
+    reduce_up_product_key, replay_async_owner_channel_rf_seam, replay_reduce_up_schedule,
+    AsyncOwnerChannelRfReplay, AsyncOwnerChannelRfSeam, AsyncQueueBarrierReceipt,
+    OwnerChannelRfBucket, OwnerChannelRfConservedValue, OwnerChannelRfCrossingFlow,
+    OwnerChannelRfCrossingResourceFlow, OwnerChannelRfError, OwnerChannelRfErrorKind,
+    OwnerChannelRfOwnAggregate, OwnerChannelRfReduceUpReport, OwnerChannelRfSeamBalance,
+    OwnerChannelRfSteadSurface, ParentRfIntegrationState, QueuedOwnerChannelRfBucket,
+    StampedReduceUpProduct,
+};
 pub use spec::owner_silo_disburse_down::{
     apply_owner_silo_runtime_disburse_down_cpu, owner_silo_demand_aggregate_totals,
     owner_silo_demand_buckets_from_owner_view, owner_silo_demand_buckets_from_planet_child_rf,
-    RuntimeOwnerSiloDemandBucket,
-    RuntimeOwnerSiloDisburseDownAllocation, RuntimeOwnerSiloDisburseDownError,
-    RuntimeOwnerSiloDisburseDownErrorKind, RuntimeOwnerSiloDisburseDownInput,
-    RuntimeOwnerSiloDisburseDownResult,
+    RuntimeOwnerSiloDemandBucket, RuntimeOwnerSiloDisburseDownAllocation,
+    RuntimeOwnerSiloDisburseDownError, RuntimeOwnerSiloDisburseDownErrorKind,
+    RuntimeOwnerSiloDisburseDownInput, RuntimeOwnerSiloDisburseDownResult,
 };
 pub use spec::owner_silo_recursive_rf_source::{
     evaluate_owner_silo_disburse_down_with_rf_source,
@@ -486,29 +508,6 @@ pub use spec::owner_silo_runtime_writeback::{
     read_owner_silo_current_from_owner, runtime_owner_silo_states_from_scenario,
     RuntimeOwnerSiloState, RuntimeOwnerSiloWritebackError, RuntimeOwnerSiloWritebackErrorKind,
     RuntimeOwnerSiloWritebackInput, RuntimeOwnerSiloWritebackResult,
-};
-pub use spec::async_staleness::{
-    derive_staleness_f32, AsyncStalenessColumn, AsyncStalenessError, AuthoredStalenessHorizon,
-};
-pub use spec::contention_conservation_judge::{
-    judge_conservation, ChannelBound, ConservationJudgeReason, ConservationSnapshot,
-    ConservationVerdict, QuantizedChannelObservation, SeamObservation,
-    StemThingPartitionObservation,
-};
-pub use spec::owner_channel_rf::{
-    replay_async_owner_channel_rf_seam, AsyncOwnerChannelRfReplay, AsyncOwnerChannelRfSeam,
-    AsyncQueueBarrierReceipt,
-    integrate_raw_reduce_up_report_forbidden, integrate_stamped_reduce_up,
-    reconstruct_owner_channel_rf_map, reduce_owner_channel_rf, reduce_owner_channel_rf_unstamped,
-    reduce_up_product_key, replay_reduce_up_schedule, OwnerChannelRfBucket,
-    OwnerChannelRfCrossingFlow, OwnerChannelRfCrossingResourceFlow, OwnerChannelRfError,
-    OwnerChannelRfErrorKind, OwnerChannelRfOwnAggregate, OwnerChannelRfReduceUpReport,
-    OwnerChannelRfConservedValue, OwnerChannelRfSeamBalance, OwnerChannelRfSteadSurface,
-    ParentRfIntegrationState, QueuedOwnerChannelRfBucket, StampedReduceUpProduct,
-};
-pub use spec::owner_channel_admission::{
-    admit_intrinsic_owner_channels, IntrinsicOwnerChannelAdmissionStats,
-    IntrinsicOwnerChannelView, OwnerChannelAdmissionError,
 };
 pub use spec::planet_child_location::{
     all_planet_child_locations, all_planet_gridcells, apply_local_gridcell_metadata,
@@ -550,9 +549,8 @@ pub use spec::recursive_local_rf::{
     recursive_local_rf_participant_rows_from_planet_child_inputs,
     recursive_local_rf_report_matches_planet_child_compatibility_slice,
     recursive_local_rf_report_matches_planet_child_compatibility_slice_from_owner_view,
-    LocalRfArenaKey,
-    LocalRfArenaSettlement, LocalRfChildOutputRow, LocalRfParticipantRow, LocationRfArenaReport,
-    RecursiveLocalRfAggregateSourceKind, RecursiveLocalRfAggregateSourceRow,
+    LocalRfArenaKey, LocalRfArenaSettlement, LocalRfChildOutputRow, LocalRfParticipantRow,
+    LocationRfArenaReport, RecursiveLocalRfAggregateSourceKind, RecursiveLocalRfAggregateSourceRow,
     RecursiveLocalRfAuthorityProof, RecursiveLocalRfCompatibilityReport, RecursiveLocalRfDeferral,
     RecursiveLocalRfDeferralKind, RecursiveLocalRfError, RecursiveLocalRfErrorKind,
     RecursiveLocalRfEvaluationReport,
@@ -581,7 +579,6 @@ pub use spec::resource_economy::{
     ResourceEconomyOptInMode, ResourceEconomySpec, ResourceEmissionSpec, ResourceRecipeSpec,
     ResourceTransferSpec,
 };
-pub use spec::need_binding::{NeedBindingSpec, SemanticPropertyLocusSpec};
 pub use spec::resource_flow::{
     effective_resource_flow_arena_caps, resolve_resource_flow_capacity_budget,
     spatial_arena_explicit_participants, ArenaSpec, BaseFlowDirectionSpec, BaseFlowObligationSpec,
@@ -643,7 +640,8 @@ pub use spec::runtime_tick_shell::{
 };
 pub use spec::scenario::{
     apply_galaxy_map_metadata, apply_gridcell_property_edit, apply_gridcell_role_metadata,
-    apply_owner_entity_metadata, apply_owner_faction_identity_metadata, apply_owner_silo_metadata,
+    apply_owner_entity_metadata, apply_owner_faction_identity_metadata,
+    apply_owner_policy_weight_authority, apply_owner_silo_metadata,
     apply_participant_owner_flow_demand_metadata, apply_participant_owner_flow_metadata,
     apply_participant_owner_flow_resource_key_metadata, apply_scenario_metadata_to_root,
     apply_star_system_display_name_metadata, canonical_scenario_link_key,
@@ -651,13 +649,13 @@ pub use spec::scenario::{
     galaxy_map_display_name, galaxy_map_id, galaxy_map_role, game_session_child,
     game_session_galaxy_map, game_session_galaxy_maps, game_session_owners,
     gridcell_generated_system_id, gridcell_role, gridcell_structural_col, gridcell_structural_row,
-    is_galaxy_map_entity, is_owner_entity_kind, make_galaxy_map, make_owner_entity, owner_archetype,
-    owner_color_index, owner_display_name, owner_entity_id, owner_faction_alliance,
-    owner_faction_color_rgb, owner_faction_display_name, owner_flow_deficit, owner_flow_demand,
-    owner_flow_owner_ref, owner_flow_priority, owner_flow_resource_key, owner_flow_surplus,
-    owner_has_silo_metadata, owner_silo_capacity, owner_silo_current, owner_hosts_policy_weight_authority, owner_policy_weight_authority,
-    apply_owner_policy_weight_authority, owner_silo_marker,
-    parse_color_rgb_text, property_u32,
+    is_galaxy_map_entity, is_owner_entity_kind, make_galaxy_map, make_owner_entity,
+    owner_archetype, owner_color_index, owner_display_name, owner_entity_id,
+    owner_faction_alliance, owner_faction_color_rgb, owner_faction_display_name,
+    owner_flow_deficit, owner_flow_demand, owner_flow_owner_ref, owner_flow_priority,
+    owner_flow_resource_key, owner_flow_surplus, owner_has_silo_metadata,
+    owner_hosts_policy_weight_authority, owner_policy_weight_authority, owner_silo_capacity,
+    owner_silo_current, owner_silo_marker, parse_color_rgb_text, property_u32,
     reserve_simthing_ids_from_scenario, resolve_map_container, resolve_map_container_mut,
     scenario_metadata_seed, scenario_metadata_seed_value, scenario_metadata_string,
     scenario_metadata_string_value, scenario_metadata_u32, scenario_metadata_u32_value,
@@ -678,23 +676,23 @@ pub use spec::scenario::{
     OWNER_COLOR_RGB_PROPERTY_ID, OWNER_DISPLAY_NAME_PROPERTY_ID, OWNER_FACTION_ALLIANCE_NONE,
     OWNER_FACTION_ALLIANCE_PROPERTY_ID, OWNER_FACTION_IDENTITY_RESERVED_0_PROPERTY_ID,
     OWNER_FACTION_IDENTITY_RESERVED_1_PROPERTY_ID, OWNER_FACTION_NAME_PROPERTY_ID,
-    OWNER_POLICY_WEIGHT_AUTHORITY_PROPERTY_ID,
     OWNER_FLOW_DEFAULT_PRIORITY, OWNER_FLOW_DEFAULT_RESOURCE_KEY, OWNER_FLOW_DEFICIT_PROPERTY_ID,
     OWNER_FLOW_DEMAND_PROPERTY_ID, OWNER_FLOW_OWNER_REF_PROPERTY_ID,
     OWNER_FLOW_PRIORITY_PROPERTY_ID, OWNER_FLOW_RESOURCE_KEY_PROPERTY_ID,
-    OWNER_FLOW_SURPLUS_PROPERTY_ID, OWNER_ID_PROPERTY_ID, OWNER_SILO_CAPACITY_PROPERTY_ID,
-    OWNER_SILO_CURRENT_PROPERTY_ID, OWNER_SILO_MARKER_PROPERTY_ID,
-    PLANET_CLASS_PROPERTY_ID, PLANET_DISPLAY_NAME_PROPERTY_ID, PLANET_ID_PROPERTY_ID,
-    PLANET_ORBIT_INDEX_PROPERTY_ID, PLANET_OWNER_REF_PROPERTY_ID,
-    RUNTIME_PREVIEW_APPLIED_SIM_PROPERTY_ID, RUNTIME_PREVIEW_SATISFIED_SIM_PROPERTY_ID,
-    RUNTIME_PREVIEW_SHORTFALL_SIM_PROPERTY_ID, SCENARIO_GENERATED_SYSTEM_ID_PROPERTY_ID,
-    SCENARIO_GENERATOR_SEED_PROPERTY_ID, SCENARIO_GENERATOR_SHAPE_PROPERTY_ID,
-    SCENARIO_ID_PROPERTY_ID, SCENARIO_RENDER_WORLD_X_PROPERTY_ID,
-    SCENARIO_RENDER_WORLD_Y_PROPERTY_ID, SCENARIO_RENDER_WORLD_Z_PROPERTY_ID,
-    SCENARIO_SCHEMA_VERSION, SCENARIO_SCHEMA_VERSION_PROPERTY_ID,
-    SCENARIO_SOURCE_LABEL_PROPERTY_ID, SCENARIO_STRUCTURAL_COL_PROPERTY_ID,
-    SCENARIO_STRUCTURAL_INTEGER_MAX, SCENARIO_STRUCTURAL_ROW_PROPERTY_ID,
-    SIMTHING_SCENARIO_AUTHORITY_LABEL, STAR_SYSTEM_DISPLAY_NAME_PROPERTY_ID,
+    OWNER_FLOW_SURPLUS_PROPERTY_ID, OWNER_ID_PROPERTY_ID,
+    OWNER_POLICY_WEIGHT_AUTHORITY_PROPERTY_ID, OWNER_SILO_CAPACITY_PROPERTY_ID,
+    OWNER_SILO_CURRENT_PROPERTY_ID, OWNER_SILO_MARKER_PROPERTY_ID, PLANET_CLASS_PROPERTY_ID,
+    PLANET_DISPLAY_NAME_PROPERTY_ID, PLANET_ID_PROPERTY_ID, PLANET_ORBIT_INDEX_PROPERTY_ID,
+    PLANET_OWNER_REF_PROPERTY_ID, RUNTIME_PREVIEW_APPLIED_SIM_PROPERTY_ID,
+    RUNTIME_PREVIEW_SATISFIED_SIM_PROPERTY_ID, RUNTIME_PREVIEW_SHORTFALL_SIM_PROPERTY_ID,
+    SCENARIO_GENERATED_SYSTEM_ID_PROPERTY_ID, SCENARIO_GENERATOR_SEED_PROPERTY_ID,
+    SCENARIO_GENERATOR_SHAPE_PROPERTY_ID, SCENARIO_ID_PROPERTY_ID,
+    SCENARIO_RENDER_WORLD_X_PROPERTY_ID, SCENARIO_RENDER_WORLD_Y_PROPERTY_ID,
+    SCENARIO_RENDER_WORLD_Z_PROPERTY_ID, SCENARIO_SCHEMA_VERSION,
+    SCENARIO_SCHEMA_VERSION_PROPERTY_ID, SCENARIO_SOURCE_LABEL_PROPERTY_ID,
+    SCENARIO_STRUCTURAL_COL_PROPERTY_ID, SCENARIO_STRUCTURAL_INTEGER_MAX,
+    SCENARIO_STRUCTURAL_ROW_PROPERTY_ID, SIMTHING_SCENARIO_AUTHORITY_LABEL,
+    STAR_SYSTEM_DISPLAY_NAME_PROPERTY_ID,
 };
 pub use spec::scenario::{
     LOCAL_GRIDCELL_COL_PROPERTY_ID, LOCAL_GRIDCELL_ROLE_INERT, LOCAL_GRIDCELL_ROLE_PLANET,

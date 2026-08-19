@@ -1,8 +1,8 @@
 //! Raw model → ClauseScript-shaped text (CT-0b round-trip layer).
 
 use crate::error::EmitError;
-use crate::jomini::TextWriterBuilder;
 use crate::jomini::text::Operator;
+use crate::jomini::TextWriterBuilder;
 use crate::raw::{
     RawArray, RawBlock, RawDocument, RawOperator, RawProperty, RawScalar, RawValue, ScalarForm,
 };

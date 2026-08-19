@@ -42,9 +42,7 @@ pub enum ExecutionPostureError {
 
 impl ExecutionPosture {
     /// Admit a continuous batch size. Zero fails closed.
-    pub const fn admit_continuous(
-        batch_generations: u32,
-    ) -> Result<Self, ExecutionPostureError> {
+    pub const fn admit_continuous(batch_generations: u32) -> Result<Self, ExecutionPostureError> {
         if batch_generations == 0 {
             return Err(ExecutionPostureError::ZeroContinuousBatch);
         }

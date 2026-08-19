@@ -8,12 +8,12 @@
 //! DA `5193244394` / remand `5193312235`: the same walk also counts MUL→SUB
 //! dataflows (reachability of fused-multiply-subtract).
 
+use simthing_core::eml_nodes::EmlNode;
 use simthing_core::{
     eml_nodes, AccumulatorOp, ColumnIndex, CombineFn, ConsumeMode, EmlExecutionClass,
     EmlExpressionRegistry, EmlFormulaMeta, EmlNodeGpu, EmlTreeId, GateSpec, ScaleSpec, SlotIndex,
     SourceSpec,
 };
-use simthing_core::eml_nodes::EmlNode;
 use simthing_gpu::{
     set_debug_readback_allowed, AccumulatorOpSession, EmlGpuProgramTable, GpuContext,
     PackedAccumulatorUpload,
@@ -112,7 +112,10 @@ fn classify_contraction_walk(
             eml_nodes::opcode::RETURN_TOP => {}
             _ => {
                 // Unknown opcode — refuse to classify as non-ambiguous.
-                panic!("census refuses unknown opcode {} at node {idx}", node.opcode);
+                panic!(
+                    "census refuses unknown opcode {} at node {idx}",
+                    node.opcode
+                );
             }
         }
     }
@@ -261,12 +264,7 @@ fn eval_cpu(nodes: &[EmlNode], row: &[f32], columns: u32, params: [f32; 4]) -> f
     simthing_kernel::eval_eml_cpu(&to_gpu(nodes), 0, row, columns, params)
 }
 
-fn eval_interpreted_gpu(
-    ctx: &GpuContext,
-    nodes: &[EmlNode],
-    row: &[f32],
-    columns: u32,
-) -> f32 {
+fn eval_interpreted_gpu(ctx: &GpuContext, nodes: &[EmlNode], row: &[f32], columns: u32) -> f32 {
     set_debug_readback_allowed(true);
     let gpu_nodes = to_gpu(nodes);
     let n_cols = columns + 1;
@@ -316,9 +314,7 @@ fn eval_interpreted_gpu(
     session.upload_values(ctx, &values);
     session.copy_values_to_previous(ctx);
     session.upload_packed_ops(ctx, &upload).expect("ops");
-    session
-        .tick_with_eml(ctx, 0, Some(&table))
-        .expect("tick");
+    session.tick_with_eml(ctx, 0, Some(&table)).expect("tick");
     let gpu_values = session.readback_full(ctx).expect("readback");
     gpu_values[columns as usize]
 }
@@ -329,7 +325,14 @@ fn compile_gadget(instance: EmlGadgetInstanceSpec) -> Vec<EmlNode> {
         .nodes
 }
 
-fn admitted_programs() -> Vec<(&'static str, &'static str, Vec<EmlNode>, u32, Vec<f32>, [f32; 4])> {
+fn admitted_programs() -> Vec<(
+    &'static str,
+    &'static str,
+    Vec<EmlNode>,
+    u32,
+    Vec<f32>,
+    [f32; 4],
+)> {
     let mut out = Vec::new();
 
     // Tier-1 / Tier-2 gadgets (canonical admitted compilers).

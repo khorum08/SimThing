@@ -20,36 +20,36 @@ use simthing_spec::spec::overlay::OverlaySpec;
 use simthing_spec::spec::property::PropertySpec;
 use simthing_spec::spec::region_field::{CommitmentEffectSpec, MappingExecutionProfile};
 use simthing_spec::spec::scenario::{
-    GALAXY_GRIDCELL_ROLE_STAR_SYSTEM, OWNER_COLOR_INDEX_PROPERTY_ID,
-    OWNER_FLOW_OWNER_REF_PROPERTY_ID, SCENARIO_SCHEMA_VERSION, SCENARIO_STRUCTURAL_COL_PROPERTY_ID,
-    SCENARIO_STRUCTURAL_ROW_PROPERTY_ID, SimThingScenarioGrid, SimThingScenarioProvenance,
     apply_gridcell_role_metadata, apply_owner_silo_metadata, apply_participant_owner_flow_metadata,
     apply_participant_owner_flow_resource_key_metadata, apply_scenario_metadata_to_root,
     apply_star_system_display_name_metadata, deserialize_scenario_authority,
     gridcell_generated_system_id, make_galaxy_map, make_owner_entity,
     scenario_metadata_string_value, scenario_metadata_u32_value, star_system_display_name,
-    structural_property_value_u32,
+    structural_property_value_u32, SimThingScenarioGrid, SimThingScenarioProvenance,
+    GALAXY_GRIDCELL_ROLE_STAR_SYSTEM, OWNER_COLOR_INDEX_PROPERTY_ID,
+    OWNER_FLOW_OWNER_REF_PROPERTY_ID, SCENARIO_SCHEMA_VERSION, SCENARIO_STRUCTURAL_COL_PROPERTY_ID,
+    SCENARIO_STRUCTURAL_ROW_PROPERTY_ID,
 };
 use simthing_spec::spec::stress_compose::StressComposeSpec;
 use simthing_spec::spec::w_impedance_compose::WImpedanceComposeSpec;
 use simthing_spec::{
+    apply_star_system_local_grid_frame_metadata, is_surface_gridcell, make_planet_gridcell,
     PLANET_OWNER_REF_PROPERTY_ID, STAR_SYSTEM_LOCAL_GRID_DEFAULT_COLS,
     STAR_SYSTEM_LOCAL_GRID_DEFAULT_ROWS, TP_FLEET_HOME_SYSTEM_PROPERTY_ID,
-    TP_FLEET_POSTURE_PROPERTY_ID, apply_star_system_local_grid_frame_metadata, is_surface_gridcell,
-    make_planet_gridcell,
+    TP_FLEET_POSTURE_PROPERTY_ID,
 };
 
 use crate::error::HydrateError;
-use crate::hydrate_category_economy::{DecodedEconomicKey, decode_economic_modifier_key};
-use crate::hydrate_field_economy::{HydratedFieldEconomy, hydrate_field_economy_property};
+use crate::hydrate_category_economy::{decode_economic_modifier_key, DecodedEconomicKey};
+use crate::hydrate_field_economy::{hydrate_field_economy_property, HydratedFieldEconomy};
 use crate::hydrate_field_operator::hydrate_field_operator_property;
 use crate::hydrate_palma_feedstock::{
-    HydratedScenarioPalmaFeedstock, PR5_MAX_SCENARIO_PALMA_FEEDSTOCK, finalize_palma_feedstock,
-    parse_palma_feedstock_property,
+    finalize_palma_feedstock, parse_palma_feedstock_property, HydratedScenarioPalmaFeedstock,
+    PR5_MAX_SCENARIO_PALMA_FEEDSTOCK,
 };
 use crate::hydrate_scenario_commitment::{
-    HydratedScenarioCommitment, PR6_MAX_SCENARIO_COMMITMENT, ParsedCommitmentEffectDraft,
-    finalize_scenario_commitment, parse_commitment_property,
+    finalize_scenario_commitment, parse_commitment_property, HydratedScenarioCommitment,
+    ParsedCommitmentEffectDraft, PR6_MAX_SCENARIO_COMMITMENT,
 };
 use crate::raw::{RawBlock, RawDocument, RawHeaderValue, RawProperty, RawSpan, RawValue};
 
@@ -1736,9 +1736,7 @@ fn finalize_fleet_ship_payloads(
             &enemy_volume.assigned_systems,
         );
         let interior_fleet_count = fleet_count - border_fleet_count;
-        let border_posture = draft
-            .border_posture
-            .unwrap_or_else(|| "border".to_string());
+        let border_posture = draft.border_posture.unwrap_or_else(|| "border".to_string());
         let interior_posture = draft
             .interior_posture
             .unwrap_or_else(|| "interior".to_string());

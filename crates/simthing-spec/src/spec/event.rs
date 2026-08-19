@@ -61,5 +61,4 @@ pub enum EventPriority {
 #[cfg(test)]
 mod tests {
     use super::EventKey;
-
 }

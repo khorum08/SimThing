@@ -111,9 +111,9 @@ fn stead_falloff_digest(ctx: &GpuContext, arm: FieldArm) -> u64 {
             session.readback(ctx).expect("readback")
         }
     };
-    outputs
-        .iter()
-        .fold(FNV_OFFSET, |digest, value| fnv_fold(digest, value.to_bits()))
+    outputs.iter().fold(FNV_OFFSET, |digest, value| {
+        fnv_fold(digest, value.to_bits())
+    })
 }
 
 fn ao_consumer_digest_cpu(nodes: &[EmlNodeGpu], columns: u32) -> u64 {
@@ -327,9 +327,7 @@ fn language_witness_ao_consumers_cpu_matches_interpreted() {
             interpreted, cpu,
             "{consumer_id}: AO interpreted must match CPU twin"
         );
-        eprintln!(
-            "LANGUAGE_WITNESS {consumer_id} primitive={primitive} digest={cpu:#018x}"
-        );
+        eprintln!("LANGUAGE_WITNESS {consumer_id} primitive={primitive} digest={cpu:#018x}");
     }
 }
 
@@ -341,9 +339,9 @@ fn language_witness_log_accumulate_bit_identical_across_arms() {
     let registration = log_accumulate_registration();
     let values = probe_values(16);
     let digest_for = |outputs: &[f32]| {
-        outputs
-            .iter()
-            .fold(FNV_OFFSET, |digest, value| fnv_fold(digest, value.to_bits()))
+        outputs.iter().fold(FNV_OFFSET, |digest, value| {
+            fnv_fold(digest, value.to_bits())
+        })
     };
     let cpu = digest_for(
         &simthing_gpu::execute_field_sweep_cpu_iterations(&values, &registration, 1)

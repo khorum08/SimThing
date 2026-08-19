@@ -293,5 +293,4 @@ mod tests {
     fn try_ctx() -> Option<GpuContext> {
         GpuContext::new_blocking().ok()
     }
-
 }

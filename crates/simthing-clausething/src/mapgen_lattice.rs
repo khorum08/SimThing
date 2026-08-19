@@ -13,8 +13,8 @@ use simthing_spec::PropertySpec;
 
 use crate::error::HydrateError;
 use crate::hydrate_scenario::{
-    HydratedScenarioGridMetadata, HydratedScenarioGridPlacement, HydratedScenarioNode,
-    HydratedScenarioPack, PR3_MAX_LINK_FANOUT, hydrate_scenario,
+    hydrate_scenario, HydratedScenarioGridMetadata, HydratedScenarioGridPlacement,
+    HydratedScenarioNode, HydratedScenarioPack, PR3_MAX_LINK_FANOUT,
 };
 use crate::mapgen_neutral_ast::MapGenNeutralDocument;
 use crate::parse::parse_raw_document;

@@ -344,10 +344,12 @@ impl SpecSessionState {
         rows: Vec<simthing_core::ResidencyTierRow>,
     ) -> Result<&simthing_core::SessionTierSet, simthing_core::TierAdmissionError> {
         if let Some(existing) = &self.session_residency_tiers {
-            return Err(simthing_core::TierAdmissionError::MidSessionTierMintRefused {
-                admitted: existing.len(),
-                attempted: rows.len(),
-            });
+            return Err(
+                simthing_core::TierAdmissionError::MidSessionTierMintRefused {
+                    admitted: existing.len(),
+                    attempted: rows.len(),
+                },
+            );
         }
         let set = simthing_core::SessionTierSet::admit(rows)?;
         Ok(self.session_residency_tiers.insert(set))

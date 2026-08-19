@@ -123,10 +123,7 @@ fn residency_tier_vocabulary_0_session_admits_and_freezes_mid_session_mint_reds(
         })
     ));
     // The frozen set is untouched by the refused mint.
-    assert_eq!(
-        session.session_residency_tiers().map(|s| s.len()),
-        Some(4)
-    );
+    assert_eq!(session.session_residency_tiers().map(|s| s.len()), Some(4));
 }
 
 #[test]
@@ -156,11 +153,14 @@ fn residency_tier_vocabulary_0_capacity_partition_is_exact_over_synthetic_grants
         match op {
             "issue" => p.issue(rows).expect("free covers the issue"),
             "deliver" => p.deliver(rows).expect("in_flight covers the delivery"),
-            "cancel" => p.cancel_in_flight(rows).expect("in_flight covers the cancel"),
+            "cancel" => p
+                .cancel_in_flight(rows)
+                .expect("in_flight covers the cancel"),
             "release" => p.release(rows).expect("occupied covers the release"),
             _ => unreachable!(),
         }
-        p.verify_exact().expect("partition holds after every transition");
+        p.verify_exact()
+            .expect("partition holds after every transition");
     }
     assert_eq!(p.capacity(), 10_000);
     assert_eq!(p.free() + p.in_flight() + p.occupied(), 10_000);
@@ -249,8 +249,10 @@ fn residency_tier_vocabulary_0_census_is_sparse_bytes_absent_on_non_granting_nod
         .clone();
 
     let nodes: BTreeSet<SimThingId> = (1..=200).map(SimThingId::from_session_raw).collect();
-    let granting: BTreeSet<SimThingId> =
-        [1, 40, 155].map(SimThingId::from_session_raw).into_iter().collect();
+    let granting: BTreeSet<SimThingId> = [1, 40, 155]
+        .map(SimThingId::from_session_raw)
+        .into_iter()
+        .collect();
 
     let census = materialize_granting_census(&set, &nodes, &granting);
     assert_eq!(census.width(), 4);

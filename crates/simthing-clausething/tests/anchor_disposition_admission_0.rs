@@ -11,10 +11,10 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
+use simthing_clausething::raw::RawValue;
 use simthing_clausething::{
     hydrate_resource_flow_pack, parse_raw_document, HydratedScenarioPack, RawDocument,
 };
-use simthing_clausething::raw::RawValue;
 use simthing_core::{
     DimensionRegistry, PropertyAdmissionDisposition, PropertyAdmissionReport, SimThing,
     SimThingKind,
@@ -205,8 +205,12 @@ fn live_canonical_inventory() -> String {
 
 fn assert_inventory_matches_live(path: &Path) -> Result<(), String> {
     let expected = live_canonical_inventory();
-    let actual = std::fs::read_to_string(path)
-        .map_err(|err| format!("missing property-admission inventory {}: {err}", path.display()))?;
+    let actual = std::fs::read_to_string(path).map_err(|err| {
+        format!(
+            "missing property-admission inventory {}: {err}",
+            path.display()
+        )
+    })?;
     if actual == expected {
         Ok(())
     } else {
@@ -315,12 +319,18 @@ fn assert_canonical_tp_disposition_admission_totality() {
     );
     assert_eq!(
         report.resource_properties,
-        preview.registry.property_admission_report().resource_properties,
+        preview
+            .registry
+            .property_admission_report()
+            .resource_properties,
         "install report is projected from the canonical live registry"
     );
     for (index, row) in report.resource_properties.iter().enumerate() {
         assert_eq!(row.property_id.index(), index);
-        assert!(!row.roles.is_empty(), "resource property has no role pathway");
+        assert!(
+            !row.roles.is_empty(),
+            "resource property has no role pathway"
+        );
     }
 }
 
@@ -419,18 +429,16 @@ fn board_and_orientation_render_property_admission_inventory() {
         String::from_utf8_lossy(&board.stdout),
         String::from_utf8_lossy(&board.stderr)
     );
-    let board: serde_json::Value =
-        serde_json::from_slice(&board.stdout).expect("parse Board JSON");
+    let board: serde_json::Value = serde_json::from_slice(&board.stdout).expect("parse Board JSON");
     // The Board must report the pointer the design doc CURRENTLY names. This
     // previously hard-coded a literal rung id, which made the referee go red at
     // every graduation -- a false-red generator, and it was already red on
     // master (expected CANONICAL-ANCHOR-MATERIALIZATION-0, actual
     // COMPARATIVE-DEFAULT-BIRTH-0). Compare against the doc so the assertion
     // tracks the Two-Source Pointer Rule instead of drifting away from it.
-    let design = std::fs::read_to_string(
-        repo_root().join("docs/design_0_0_8_7_rf_arena_modernization.md"),
-    )
-    .expect("read active design doc");
+    let design =
+        std::fs::read_to_string(repo_root().join("docs/design_0_0_8_7_rf_arena_modernization.md"))
+            .expect("read active design doc");
     let expected_pointer = design
         .lines()
         .find(|line| line.starts_with("| Active open rung |"))

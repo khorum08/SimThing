@@ -1,10 +1,10 @@
 // Vendored from github.com/rakaly/jomini @ v0.34.1 (commit fff00d8c7f8f06c084d776d1a2c98b34324e64ed)
 // License: MIT - see crates/simthing-clausething/src/jomini/LICENSE
 use crate::jomini::{
-    Encoding, Error, ErrorKind, TextTape, TextToken,
     binary::Rgb,
     common::PdsDateFormatter,
     text::{ArrayReader, ObjectReader, Operator, ValueReader},
+    Encoding, Error, ErrorKind, TextTape, TextToken,
 };
 use std::{fmt::Arguments, io::Write, ops::Deref};
 

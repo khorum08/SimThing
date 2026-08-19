@@ -5,8 +5,8 @@ use simthing_core::{
     EmlTreeId, GateSpec, ScaleSpec, SlotIndex, SourceSpec,
 };
 
-use crate::{AccumulatorOpGpu, EncodeError};
 use crate::wgsl_encode::encode_column;
+use crate::{AccumulatorOpGpu, EncodeError};
 
 /// Formula kind tags for [`EmissionOpPlanSignature::formula_kinds`].
 pub const FORMULA_KIND_IDENTITY_FLOOR: u32 = 0;
