@@ -18,6 +18,7 @@ use simthing_core::{
     eml_nodes, AccumulatorOp, ColumnIndex, CombineFn, ConsumeMode, DimensionRegistry,
     EmlConsumerMask, EmlExecutionClass, EmlExpressionRegistry, EmlFormulaMeta, EmlNodeGpu,
     EmlTreeId, GateSpec, RoleOffset, ScaleSpec, SimThing, SlotIndex, SourceSpec, SubFieldRole,
+    MAX_EML_TREE_NODES,
 };
 use simthing_spec::{
     GatedRateOpSpec, RateFormulaOp, RateFormulaOperandSpec, ResourceFlowSpec, SpecError,
@@ -44,11 +45,11 @@ pub struct ResolvedGatedRate {
     /// Local data offsets within the flow property (node seeding).
     pub base_offset: RoleOffset,
     pub intrinsic_offset: RoleOffset,
-    /// Global columns (EML SLOT_VALUE / op targets).
-    pub base_col: u32,
-    pub intrinsic_col: u32,
+    /// Role-pathway columns (EML SLOT_VALUE / op targets). Never reminted raw.
+    pub base_col: ColumnIndex,
+    pub intrinsic_col: ColumnIndex,
     /// `(trigger_col, at_least)` for gated terms; `None` = always-on dynamic.
-    pub trigger: Option<(u32, f32)>,
+    pub trigger: Option<(ColumnIndex, f32)>,
     pub magnitude: ResolvedMagnitude,
     pub is_mult: bool,
 }
@@ -69,7 +70,7 @@ pub enum ResolvedMagnitude {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum ResolvedOperand {
     Literal(f32),
-    Column(u32),
+    Column(ColumnIndex),
 }
 
 /// Resolve every authored gated rate against the live install: arena →
@@ -105,7 +106,7 @@ pub fn resolve_gated_rates(
                 })
             })?;
         let layout = &registry.property(flow_property_id).layout;
-        let _cols = resolve_node_columns_for_property(registry, flow_property_id, &arena.name)
+        let cols = resolve_node_columns_for_property(registry, flow_property_id, &arena.name)
             .map_err(|_| {
                 InstallError::Spec(SpecError::UnknownResourceFlowProperty {
                     property: format!("{} flow columns", arena.name),
@@ -118,10 +119,17 @@ pub fn resolve_gated_rates(
                 arena: gated.arena.clone(),
             }
         })?;
-        let flow_start = registry.column_range(flow_property_id).start as u32;
+        let range = registry.column_range(flow_property_id);
+        let base_col = range.col_for_role(&base_role, layout).ok_or_else(|| {
+            InstallError::GatedRateMissingBaseColumn {
+                gated: gated.id.clone(),
+                arena: gated.arena.clone(),
+            }
+        })?;
+        let intrinsic_col = cols.intrinsic_flow_col;
 
         let amount_col =
-            |key: &simthing_spec::PropertyKey, what: &str| -> Result<u32, InstallError> {
+            |key: &simthing_spec::PropertyKey, what: &str| -> Result<ColumnIndex, InstallError> {
                 let property_id = registry.id_of(&key.namespace, &key.name).ok_or_else(|| {
                     InstallError::GatedRateUnknownTriggerProperty {
                         gated: gated.id.clone(),
@@ -129,14 +137,13 @@ pub fn resolve_gated_rates(
                     }
                 })?;
                 let property_layout = &registry.property(property_id).layout;
-                Ok(registry
+                registry
                     .column_range(property_id)
                     .col_for_role(&SubFieldRole::Amount, property_layout)
                     .ok_or_else(|| InstallError::GatedRateUnknownTriggerProperty {
                         gated: gated.id.clone(),
                         property: format!("{what} Amount sub-field"),
-                    })?
-                    .raw_u32())
+                    })
             };
 
         let trigger = match &gated.trigger {
@@ -197,8 +204,8 @@ pub fn resolve_gated_rates(
                 participant_slot: participant_slot.raw(),
                 base_offset,
                 intrinsic_offset,
-                base_col: flow_start + base_offset.lane() as u32,
-                intrinsic_col: flow_start + intrinsic_offset.lane() as u32,
+                base_col,
+                intrinsic_col,
                 trigger,
                 magnitude: magnitude.clone(),
                 is_mult,
@@ -233,7 +240,7 @@ pub fn seed_gated_rate_base_columns(
         };
         let flow_property_id = registry
             .column_owners
-            .get(gated.intrinsic_col as usize)
+            .get(gated.intrinsic_col.raw())
             .map(|(pid, _)| *pid)
             .ok_or(InstallError::Spec(SpecError::ValidationFailed))?;
         let Some(value) = node.properties.get_mut(&flow_property_id) else {
@@ -256,11 +263,11 @@ fn literal(value: f32) -> EmlNodeGpu {
     }
 }
 
-fn slot_value(col: u32) -> EmlNodeGpu {
+fn slot_value(col: ColumnIndex) -> EmlNodeGpu {
     EmlNodeGpu {
         opcode: eml_nodes::opcode::SLOT_VALUE,
         flags: 0,
-        a: col,
+        a: col.raw_u32(),
         b: 0,
         c: 0,
         d: 0,
@@ -328,17 +335,18 @@ pub fn build_gated_rate_ops(
     resolved: &[ResolvedGatedRate],
     eml_registry: &mut EmlExpressionRegistry,
 ) -> Vec<AccumulatorOp> {
-    let mut groups: BTreeMap<(u32, u32), Vec<&ResolvedGatedRate>> = BTreeMap::new();
+    let mut groups: BTreeMap<(u32, usize), Vec<&ResolvedGatedRate>> = BTreeMap::new();
     for gated in resolved {
         groups
-            .entry((gated.participant_slot, gated.intrinsic_col))
+            .entry((gated.participant_slot, gated.intrinsic_col.raw()))
             .or_default()
             .push(gated);
     }
 
     let mut ops = Vec::with_capacity(groups.len());
-    for (group_idx, ((slot, intrinsic_col), terms)) in groups.into_iter().enumerate() {
+    for (group_idx, ((slot, _), terms)) in groups.into_iter().enumerate() {
         let base_col = terms[0].base_col;
+        let intrinsic_col = terms[0].intrinsic_col;
         let mut nodes = vec![slot_value(base_col)];
         for term in terms.iter().filter(|t| !t.is_mult) {
             push_term(&mut nodes, term);
@@ -349,6 +357,11 @@ pub fn build_gated_rate_ops(
         }
         nodes.push(op_node(eml_nodes::opcode::MUL));
         nodes.push(op_node(eml_nodes::opcode::RETURN_TOP));
+
+        debug_assert!(
+            (nodes.len() as u32) <= MAX_EML_TREE_NODES,
+            "gated-rate tree must inherit the one existing per-program cap ({MAX_EML_TREE_NODES})"
+        );
 
         let tree_id = EmlTreeId(GATED_RATE_TREE_BASE + group_idx as u32);
         eml_registry
@@ -371,21 +384,18 @@ pub fn build_gated_rate_ops(
                 },
                 nodes,
             )
-            .expect("gated effective-rate formula registers (exact-class opcodes, ≤32 nodes)");
+            .expect("gated effective-rate formula registers on the ordinary EML library");
 
         ops.push(AccumulatorOp {
             source: SourceSpec::SlotValue {
                 slot: SlotIndex::new(slot),
-                col: ColumnIndex::new(base_col as usize),
+                col: base_col,
             },
             combine: CombineFn::EvalEML { tree_id: tree_id.0 },
             gate: GateSpec::OrderBand(0),
             scale: ScaleSpec::Identity,
             consume: ConsumeMode::ResetTarget,
-            targets: vec![(
-                SlotIndex::new(slot),
-                ColumnIndex::new(intrinsic_col as usize),
-            )],
+            targets: vec![(SlotIndex::new(slot), intrinsic_col)],
         });
     }
     ops

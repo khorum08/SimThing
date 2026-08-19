@@ -15,7 +15,7 @@ pub mod comparative_default_birth;
 pub mod comparative_projection;
 pub mod field_scheduler;
 pub mod field_sweep_compile;
-pub mod first_slice_mapping_runtime;
+pub mod mapping_runtime;
 pub mod gated_rates;
 pub mod hosted_property_observation;
 pub mod install;
@@ -174,7 +174,7 @@ pub use field_sweep_compile::{
     GuYangOverlayParameterizedN4Spec, PalmaN4FieldSweepSpec, PalmaOverlayParameterizedN4Spec,
     SteadOverlayParameterizedN4Spec,
 };
-pub use first_slice_mapping_runtime::{
+pub use mapping_runtime::{
     compiled_cadence_to_field_cadence, compiled_stencil_to_gpu_config, estimate_first_slice_budget,
     FirstSliceCommitmentReport, FirstSliceMappingError, FirstSliceMappingReport,
     FirstSliceMappingSession, FirstSliceReadinessReport, FirstSliceResidencyReport,

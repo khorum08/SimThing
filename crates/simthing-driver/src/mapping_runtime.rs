@@ -6,9 +6,9 @@
 
 use simthing_core::{
     column_aware_reduction_op, eml_opcode, AccumulatorOp, ColumnAwareReductionCombine,
-    ColumnAwareReductionSpec, CombineFn, ConsumeMode, EmlConsumerMask, EmlExecutionClass,
-    EmlExpressionRegistry, EmlFormulaMeta, EmlNodeGpu, EmlTreeId, GateSpec, ScaleSpec, SlotIndex,
-    SourceSpec, StructuralScalarChannel,
+    ColumnAwareReductionSpec, ColumnIndex, CombineFn, ConsumeMode, EmlConsumerMask,
+    EmlExecutionClass, EmlExpressionRegistry, EmlFormulaMeta, EmlNodeGpu, EmlTreeId, GateSpec,
+    ScaleSpec, SlotIndex, SourceSpec, StructuralScalarChannel,
 };
 use simthing_gpu::{
     accumulator_op::set_debug_readback_allowed, compile_structured_field_sweeps, encode_column,
@@ -26,6 +26,7 @@ use simthing_spec::{
     CompiledRegionFieldStencilSpec, CompiledRegionFieldSummaryPolicy, MappingExecutionProfile,
     RegionFieldBudgetError, RegionFieldBudgetEstimate, RegionFieldBudgetSpec,
     RegionFieldIsolationPolicyEstimate, RegionFieldSpec, SpecError,
+    FIRST_SLICE_FIELD_URGENCY_COL,
 };
 use thiserror::Error;
 
@@ -472,10 +473,10 @@ pub struct FirstSliceMappingSession {
     /// baseline has been initialized (zeroed once at first scan, then
     /// snapshotted on-device after every scan — never reset per tick).
     commitment_scan_initialized: bool,
-    eml_weight_a_col: u32,
-    eml_weight_b_col: u32,
-    eml_output_col: u32,
-    eml_resource_col: u32,
+    eml_weight_a_col: ColumnIndex,
+    eml_weight_b_col: ColumnIndex,
+    eml_output_col: ColumnIndex,
+    eml_resource_col: ColumnIndex,
     seeds_applied_this_tick: bool,
     gpu_state_canonical: bool,
     host_values_valid: bool,
@@ -633,12 +634,30 @@ impl FirstSliceMappingSession {
         let n_dims = preview.stencil.n_dims;
         let parent_slot = SlotIndex::new(reduction.parent_slot);
         let n_slots = parent_slot.raw() + 1;
-        let eml_resource_col = 1;
-        let eml_weight_a_col = 2;
-        let eml_weight_b_col = 3;
-        let eml_output_col = 4;
+        let admit = |raw: u32| {
+            ColumnIndex::try_from_admitted_authored(raw, n_dims).map_err(|e| {
+                FirstSliceMappingError::EmlSetup(format!(
+                    "mapping col {raw} not admitted for n_dims {}",
+                    e.bound
+                ))
+            })
+        };
+        let eml_resource_col = admit(1)?;
+        let eml_weight_a_col = admit(2)?;
+        let eml_weight_b_col = admit(3)?;
+        let eml_output_col = preview
+            .commitment
+            .as_ref()
+            .map(|commitment| commitment.urgency_col)
+            .unwrap_or(admit(FIRST_SLICE_FIELD_URGENCY_COL)?);
 
-        let (eml_registry, eml_table) = build_field_urgency_eml(ctx, tree_id)?;
+        let (eml_registry, eml_table) = build_field_urgency_eml(
+            ctx,
+            tree_id,
+            eml_resource_col,
+            eml_weight_a_col,
+            eml_weight_b_col,
+        )?;
 
         let acc_session = AccumulatorOpSession::new(ctx, n_slots, n_dims);
 
@@ -1080,14 +1099,14 @@ impl FirstSliceMappingSession {
 
         let parent_scalar_writes = 2u32;
         self.acc_session
-            .fill_slot_range_col(ctx, 0, cell_count, self.eml_resource_col, 1.0)
+            .fill_slot_range_col(ctx, 0, cell_count, self.eml_resource_col.raw_u32(), 1.0)
             .map_err(|e| FirstSliceMappingError::Accumulator(format!("{e}")))?;
         self.acc_session
             .write_slot_col_values(
                 ctx,
                 &[
-                    (parent_slot, self.eml_weight_a_col, weight_a),
-                    (parent_slot, self.eml_weight_b_col, weight_b),
+                    (parent_slot, self.eml_weight_a_col.raw_u32(), weight_a),
+                    (parent_slot, self.eml_weight_b_col.raw_u32(), weight_b),
                 ],
             )
             .map_err(|e| FirstSliceMappingError::Accumulator(format!("{e}")))?;
@@ -1125,8 +1144,10 @@ impl FirstSliceMappingSession {
         self.reduction_stencil_readbacks_this_tick = 0;
         let _bridge = self.bridge_stencil_field_to_accumulator(ctx, weight_a, weight_b)?;
 
-        let resource_col = StructuralScalarChannel::new(self.eml_resource_col).into_plan_column();
-        let output_col = StructuralScalarChannel::new(self.eml_output_col).into_plan_column();
+        let resource_col =
+            StructuralScalarChannel::new(self.eml_resource_col.raw_u32()).into_plan_column();
+        let output_col =
+            StructuralScalarChannel::new(self.eml_output_col.raw_u32()).into_plan_column();
 
         let sum_resource_op = AccumulatorOp {
             source: SourceSpec::SlotRange {
@@ -1183,7 +1204,7 @@ impl FirstSliceMappingSession {
             .readback_full(ctx)
             .map_err(|e| FirstSliceMappingError::Accumulator(format!("{e}")))?;
         let threat = out[self.slot_idx(parent_slot.raw(), encode_column(parent_col))];
-        let urgency = out[self.slot_idx(parent_slot.raw(), self.eml_output_col)];
+        let urgency = out[self.slot_idx(parent_slot.raw(), self.eml_output_col.raw_u32())];
         Ok((Some(threat), Some(urgency)))
     }
 
@@ -1210,7 +1231,7 @@ impl FirstSliceMappingSession {
         let threshold_upload =
             PackedThresholdUpload::from_registrations(&[ThresholdRegistration {
                 slot: parent_slot,
-                col: self.eml_output_col,
+                col: self.eml_output_col.raw_u32(),
                 threshold,
                 direction: DIR_UPWARD,
                 event_kind,
@@ -1277,7 +1298,7 @@ impl FirstSliceMappingSession {
         let threshold_upload =
             PackedThresholdUpload::from_registrations(&[ThresholdRegistration {
                 slot: parent_slot,
-                col: self.eml_output_col,
+                col: self.eml_output_col.raw_u32(),
                 threshold,
                 direction: DIR_UPWARD,
                 event_kind,
@@ -1491,6 +1512,9 @@ pub fn estimate_first_slice_budget(
 fn build_field_urgency_eml(
     ctx: &GpuContext,
     tree_id: u32,
+    resource_col: ColumnIndex,
+    weight_a_col: ColumnIndex,
+    weight_b_col: ColumnIndex,
 ) -> Result<(EmlExpressionRegistry, EmlGpuProgramTable), FirstSliceMappingError> {
     let nodes = vec![
         EmlNodeGpu {
@@ -1504,7 +1528,7 @@ fn build_field_urgency_eml(
         EmlNodeGpu {
             opcode: eml_opcode::SLOT_VALUE,
             flags: 0,
-            a: 2,
+            a: weight_a_col.raw_u32(),
             b: 0,
             c: 0,
             d: 0,
@@ -1520,7 +1544,7 @@ fn build_field_urgency_eml(
         EmlNodeGpu {
             opcode: eml_opcode::SLOT_VALUE,
             flags: 0,
-            a: 1,
+            a: resource_col.raw_u32(),
             b: 0,
             c: 0,
             d: 0,
@@ -1528,7 +1552,7 @@ fn build_field_urgency_eml(
         EmlNodeGpu {
             opcode: eml_opcode::SLOT_VALUE,
             flags: 0,
-            a: 3,
+            a: weight_b_col.raw_u32(),
             b: 0,
             c: 0,
             d: 0,

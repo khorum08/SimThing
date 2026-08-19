@@ -23,7 +23,7 @@ crates/simthing-driver/src/dress_rehearsal_r6_combat_hp_damage.rs	rehearsal	Dres
 crates/simthing-driver/src/dress_rehearsal_r6b_ship_cohort_reinforcement.rs	rehearsal	Dress-rehearsal falsification surface (R1-R6C / atlas-batch family); not production default
 crates/simthing-driver/src/dress_rehearsal_r6c_integrated_run.rs	rehearsal	Dress-rehearsal falsification surface (R1-R6C / atlas-batch family); not production default
 crates/simthing-driver/src/field_scheduler.rs	executed	Field/policy scheduler driving ordered execution of field-related work
-crates/simthing-driver/src/first_slice_mapping_runtime.rs	executed	First-slice mapping runtime path (executed mapping/runtime surface)
+crates/simthing-driver/src/mapping_runtime.rs	executed	First-slice mapping runtime path (executed mapping/runtime surface)
 crates/simthing-driver/src/gated_rates.rs	executed	Live driver/kernel execution or residency path in the recursive RF / arena stack
 crates/simthing-driver/src/install.rs	executed	GPU/session install boundary that lands plans onto live residency
 crates/simthing-driver/src/loaded_scenario_recursive_rf_runtime_compile.rs	compile-plan	Plan/compile builder producing GPU/session plans (not the live tick itself)

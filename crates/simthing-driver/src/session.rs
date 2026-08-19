@@ -779,7 +779,7 @@ impl SimSession {
                 })
             }
         };
-        let mapping = crate::first_slice_mapping_runtime::FirstSliceMappingSession::open(
+        let mapping = crate::mapping_runtime::FirstSliceMappingSession::open(
             &self.state.ctx,
             game_mode.mapping_execution_profile,
             field,
