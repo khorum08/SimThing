@@ -44,7 +44,7 @@ use simthing_feeder::{
 use simthing_gpu::{GpuContext, Pipelines, SlotAllocator, ThresholdEvent, WorldGpuState};
 use simthing_spec::CompiledFirstSliceCommitmentThreshold;
 
-use crate::first_slice_mapping_runtime::{FirstSliceMappingSession, FirstSliceTickOptions};
+use crate::mapping_runtime::{FirstSliceMappingSession, FirstSliceTickOptions};
 
 /// Alias for the hot-path tick result (feeder GPU dispatch outcome).
 pub type FabricTickOutcome = TickOutcome;

@@ -33,7 +33,7 @@ use crate::comparative_projection::{
     ComparativeEmitterClass, ComparativeProjectionAdmission, ComparativeProjectionBands,
     ComparativeProjectionError,
 };
-use crate::first_slice_mapping_runtime::compiled_stencil_to_gpu_config;
+use crate::mapping_runtime::compiled_stencil_to_gpu_config;
 use simthing_core::{ColumnIndex, DimensionRegistry, SlotIndex};
 use simthing_gpu::{
     compile_structured_field_sweeps, FieldAdjacency, FieldSweepAdmissionError, FieldSweepOutput,

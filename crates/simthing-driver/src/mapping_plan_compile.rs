@@ -7,7 +7,7 @@ use simthing_sim::{CompiledMappingPlan, CompiledMappingStep};
 use simthing_spec::{CompiledRegionFieldPreview, CompiledWImpedanceCompose};
 use thiserror::Error;
 
-use crate::first_slice_mapping_runtime::compiled_stencil_to_gpu_config;
+use crate::mapping_runtime::compiled_stencil_to_gpu_config;
 use crate::structural_n4_theater_compile::CompiledStructuralN4Theater;
 use crate::w_impedance_compose_bridge::{
     compiled_w_impedance_compose_to_gpu_config, composed_w_min_plus_stencil_config,

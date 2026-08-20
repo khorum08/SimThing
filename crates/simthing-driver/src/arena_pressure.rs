@@ -12,7 +12,7 @@ use thiserror::Error;
 
 use crate::arena_hierarchy::resolve_node_columns_for_property;
 use crate::arena_registry::ArenaRegistry;
-use crate::first_slice_mapping_runtime::FirstSliceSeed;
+use crate::mapping_runtime::FirstSliceSeed;
 use crate::scenario::Scenario;
 
 #[derive(Debug, Error)]

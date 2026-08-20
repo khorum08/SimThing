@@ -6,9 +6,9 @@
 
 use simthing_core::{
     column_aware_reduction_op, eml_opcode, AccumulatorOp, ColumnAwareReductionCombine,
-    ColumnAwareReductionSpec, CombineFn, ConsumeMode, EmlConsumerMask, EmlExecutionClass,
-    EmlExpressionRegistry, EmlFormulaMeta, EmlNodeGpu, EmlTreeId, GateSpec, ScaleSpec, SlotIndex,
-    SourceSpec, StructuralScalarChannel,
+    ColumnAwareReductionSpec, ColumnIndex, CombineFn, ConsumeMode, EmlConsumerMask,
+    EmlExecutionClass, EmlExpressionRegistry, EmlFormulaMeta, EmlNodeGpu, EmlTreeId, GateSpec,
+    ScaleSpec, SlotIndex, SourceSpec, StructuralScalarChannel,
 };
 use simthing_gpu::{
     accumulator_op::set_debug_readback_allowed, compile_structured_field_sweeps, encode_column,
@@ -25,7 +25,7 @@ use simthing_spec::{
     CompiledRegionFieldOperator, CompiledRegionFieldPreview, CompiledRegionFieldReduction,
     CompiledRegionFieldStencilSpec, CompiledRegionFieldSummaryPolicy, MappingExecutionProfile,
     RegionFieldBudgetError, RegionFieldBudgetEstimate, RegionFieldBudgetSpec,
-    RegionFieldIsolationPolicyEstimate, RegionFieldSpec, SpecError,
+    RegionFieldIsolationPolicyEstimate, RegionFieldSpec, SpecError, FIRST_SLICE_FIELD_URGENCY_COL,
 };
 use thiserror::Error;
 
@@ -442,6 +442,104 @@ pub enum FirstSliceMappingError {
     NonFiniteSeedValue { row: u32, col: u32 },
     #[error("scenario preview missing commitment binding")]
     MissingCommitmentBinding,
+    #[error("plan-local mapping channel {channel} is outside n_dims {n_dims}")]
+    PlanChannelOutOfGrid { channel: u32, n_dims: u32 },
+}
+
+/// Plan-local field_urgency gadget channels in the mapping session's `n_dims` grid.
+/// Not registry/property columns — convert through [`StructuralScalarChannel::into_plan_column`]
+/// only when sealing an AccumulatorOp / EvalEML plan surface.
+pub const EML_RESOURCE: StructuralScalarChannel = StructuralScalarChannel::new(1);
+pub const EML_WEIGHT_PRESSURE: StructuralScalarChannel = StructuralScalarChannel::new(2);
+pub const EML_WEIGHT_RESOURCE: StructuralScalarChannel = StructuralScalarChannel::new(3);
+
+fn require_plan_channel(
+    channel: StructuralScalarChannel,
+    n_dims: u32,
+) -> Result<StructuralScalarChannel, FirstSliceMappingError> {
+    if n_dims == 0 || channel.raw() >= n_dims {
+        return Err(FirstSliceMappingError::PlanChannelOutOfGrid {
+            channel: channel.raw(),
+            n_dims,
+        });
+    }
+    Ok(channel)
+}
+
+/// Named field_urgency plan identities after the load-bearing `raw < n_dims` check.
+pub fn field_urgency_plan_channels(
+    n_dims: u32,
+) -> Result<
+    (
+        StructuralScalarChannel,
+        StructuralScalarChannel,
+        StructuralScalarChannel,
+    ),
+    FirstSliceMappingError,
+> {
+    Ok((
+        require_plan_channel(EML_RESOURCE, n_dims)?,
+        require_plan_channel(EML_WEIGHT_PRESSURE, n_dims)?,
+        require_plan_channel(EML_WEIGHT_RESOURCE, n_dims)?,
+    ))
+}
+
+fn slot_value_plan_channel(channel: StructuralScalarChannel) -> EmlNodeGpu {
+    EmlNodeGpu {
+        opcode: eml_opcode::SLOT_VALUE,
+        flags: 0,
+        a: channel.into_plan_column().raw_u32(),
+        b: 0,
+        c: 0,
+        d: 0,
+    }
+}
+
+/// Production field_urgency tree: `weight_pressure * pressure + weight_resource * resource`.
+/// Plan-local lanes enter SLOT_VALUE only through [`StructuralScalarChannel::into_plan_column`].
+pub fn field_urgency_eml_nodes(
+    resource: StructuralScalarChannel,
+    weight_pressure: StructuralScalarChannel,
+    weight_resource: StructuralScalarChannel,
+) -> Vec<EmlNodeGpu> {
+    vec![
+        slot_value_plan_channel(StructuralScalarChannel::INPUT),
+        slot_value_plan_channel(weight_pressure),
+        EmlNodeGpu {
+            opcode: eml_opcode::MUL,
+            flags: 0,
+            a: 0,
+            b: 0,
+            c: 0,
+            d: 0,
+        },
+        slot_value_plan_channel(resource),
+        slot_value_plan_channel(weight_resource),
+        EmlNodeGpu {
+            opcode: eml_opcode::MUL,
+            flags: 0,
+            a: 0,
+            b: 0,
+            c: 0,
+            d: 0,
+        },
+        EmlNodeGpu {
+            opcode: eml_opcode::ADD,
+            flags: 0,
+            a: 0,
+            b: 0,
+            c: 0,
+            d: 0,
+        },
+        EmlNodeGpu {
+            opcode: eml_opcode::RETURN_TOP,
+            flags: 0,
+            a: 0,
+            b: 0,
+            c: 0,
+            d: 0,
+        },
+    ]
 }
 
 /// Opt-in first-slice mapping runtime session.
@@ -472,10 +570,10 @@ pub struct FirstSliceMappingSession {
     /// baseline has been initialized (zeroed once at first scan, then
     /// snapshotted on-device after every scan — never reset per tick).
     commitment_scan_initialized: bool,
-    eml_weight_a_col: u32,
-    eml_weight_b_col: u32,
-    eml_output_col: u32,
-    eml_resource_col: u32,
+    eml_weight_pressure: StructuralScalarChannel,
+    eml_weight_resource: StructuralScalarChannel,
+    eml_output_col: ColumnIndex,
+    eml_resource: StructuralScalarChannel,
     seeds_applied_this_tick: bool,
     gpu_state_canonical: bool,
     host_values_valid: bool,
@@ -633,12 +731,26 @@ impl FirstSliceMappingSession {
         let n_dims = preview.stencil.n_dims;
         let parent_slot = SlotIndex::new(reduction.parent_slot);
         let n_slots = parent_slot.raw() + 1;
-        let eml_resource_col = 1;
-        let eml_weight_a_col = 2;
-        let eml_weight_b_col = 3;
-        let eml_output_col = 4;
+        let (eml_resource, eml_weight_pressure, eml_weight_resource) =
+            field_urgency_plan_channels(n_dims)?;
+        let eml_output_col = match preview.commitment.as_ref() {
+            Some(commitment) => commitment.urgency_col,
+            None => ColumnIndex::try_from_admitted_authored(FIRST_SLICE_FIELD_URGENCY_COL, n_dims)
+                .map_err(|e| {
+                    FirstSliceMappingError::EmlSetup(format!(
+                        "commitment urgency col {FIRST_SLICE_FIELD_URGENCY_COL} not admitted for n_dims {}",
+                        e.bound
+                    ))
+                })?,
+        };
 
-        let (eml_registry, eml_table) = build_field_urgency_eml(ctx, tree_id)?;
+        let (eml_registry, eml_table) = build_field_urgency_eml(
+            ctx,
+            tree_id,
+            eml_resource,
+            eml_weight_pressure,
+            eml_weight_resource,
+        )?;
 
         let acc_session = AccumulatorOpSession::new(ctx, n_slots, n_dims);
 
@@ -665,10 +777,10 @@ impl FirstSliceMappingSession {
             eml_registry,
             eml_table,
             acc_session,
-            eml_weight_a_col,
-            eml_weight_b_col,
+            eml_weight_pressure,
+            eml_weight_resource,
             eml_output_col,
-            eml_resource_col,
+            eml_resource,
             seeds_applied_this_tick: false,
             gpu_state_canonical: true,
             host_values_valid: true,
@@ -1080,14 +1192,14 @@ impl FirstSliceMappingSession {
 
         let parent_scalar_writes = 2u32;
         self.acc_session
-            .fill_slot_range_col(ctx, 0, cell_count, self.eml_resource_col, 1.0)
+            .fill_slot_range_col(ctx, 0, cell_count, self.eml_resource.raw(), 1.0)
             .map_err(|e| FirstSliceMappingError::Accumulator(format!("{e}")))?;
         self.acc_session
             .write_slot_col_values(
                 ctx,
                 &[
-                    (parent_slot, self.eml_weight_a_col, weight_a),
-                    (parent_slot, self.eml_weight_b_col, weight_b),
+                    (parent_slot, self.eml_weight_pressure.raw(), weight_a),
+                    (parent_slot, self.eml_weight_resource.raw(), weight_b),
                 ],
             )
             .map_err(|e| FirstSliceMappingError::Accumulator(format!("{e}")))?;
@@ -1125,8 +1237,8 @@ impl FirstSliceMappingSession {
         self.reduction_stencil_readbacks_this_tick = 0;
         let _bridge = self.bridge_stencil_field_to_accumulator(ctx, weight_a, weight_b)?;
 
-        let resource_col = StructuralScalarChannel::new(self.eml_resource_col).into_plan_column();
-        let output_col = StructuralScalarChannel::new(self.eml_output_col).into_plan_column();
+        let resource_col = self.eml_resource.into_plan_column();
+        let output_col = self.eml_output_col;
 
         let sum_resource_op = AccumulatorOp {
             source: SourceSpec::SlotRange {
@@ -1183,7 +1295,7 @@ impl FirstSliceMappingSession {
             .readback_full(ctx)
             .map_err(|e| FirstSliceMappingError::Accumulator(format!("{e}")))?;
         let threat = out[self.slot_idx(parent_slot.raw(), encode_column(parent_col))];
-        let urgency = out[self.slot_idx(parent_slot.raw(), self.eml_output_col)];
+        let urgency = out[self.slot_idx(parent_slot.raw(), self.eml_output_col.raw_u32())];
         Ok((Some(threat), Some(urgency)))
     }
 
@@ -1210,7 +1322,7 @@ impl FirstSliceMappingSession {
         let threshold_upload =
             PackedThresholdUpload::from_registrations(&[ThresholdRegistration {
                 slot: parent_slot,
-                col: self.eml_output_col,
+                col: self.eml_output_col.raw_u32(),
                 threshold,
                 direction: DIR_UPWARD,
                 event_kind,
@@ -1277,7 +1389,7 @@ impl FirstSliceMappingSession {
         let threshold_upload =
             PackedThresholdUpload::from_registrations(&[ThresholdRegistration {
                 slot: parent_slot,
-                col: self.eml_output_col,
+                col: self.eml_output_col.raw_u32(),
                 threshold,
                 direction: DIR_UPWARD,
                 event_kind,
@@ -1491,73 +1603,11 @@ pub fn estimate_first_slice_budget(
 fn build_field_urgency_eml(
     ctx: &GpuContext,
     tree_id: u32,
+    resource: StructuralScalarChannel,
+    weight_pressure: StructuralScalarChannel,
+    weight_resource: StructuralScalarChannel,
 ) -> Result<(EmlExpressionRegistry, EmlGpuProgramTable), FirstSliceMappingError> {
-    let nodes = vec![
-        EmlNodeGpu {
-            opcode: eml_opcode::SLOT_VALUE,
-            flags: 0,
-            a: 0,
-            b: 0,
-            c: 0,
-            d: 0,
-        },
-        EmlNodeGpu {
-            opcode: eml_opcode::SLOT_VALUE,
-            flags: 0,
-            a: 2,
-            b: 0,
-            c: 0,
-            d: 0,
-        },
-        EmlNodeGpu {
-            opcode: eml_opcode::MUL,
-            flags: 0,
-            a: 0,
-            b: 0,
-            c: 0,
-            d: 0,
-        },
-        EmlNodeGpu {
-            opcode: eml_opcode::SLOT_VALUE,
-            flags: 0,
-            a: 1,
-            b: 0,
-            c: 0,
-            d: 0,
-        },
-        EmlNodeGpu {
-            opcode: eml_opcode::SLOT_VALUE,
-            flags: 0,
-            a: 3,
-            b: 0,
-            c: 0,
-            d: 0,
-        },
-        EmlNodeGpu {
-            opcode: eml_opcode::MUL,
-            flags: 0,
-            a: 0,
-            b: 0,
-            c: 0,
-            d: 0,
-        },
-        EmlNodeGpu {
-            opcode: eml_opcode::ADD,
-            flags: 0,
-            a: 0,
-            b: 0,
-            c: 0,
-            d: 0,
-        },
-        EmlNodeGpu {
-            opcode: eml_opcode::RETURN_TOP,
-            flags: 0,
-            a: 0,
-            b: 0,
-            c: 0,
-            d: 0,
-        },
-    ];
+    let nodes = field_urgency_eml_nodes(resource, weight_pressure, weight_resource);
     let mut registry = EmlExpressionRegistry::new();
     registry
         .register_formula(

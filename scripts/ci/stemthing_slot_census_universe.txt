@@ -4,7 +4,7 @@ driver:arena_allocation_plan.rs
 driver:arena_pressure.rs
 driver:comparative_projection.rs
 driver:field_sweep_compile.rs
-driver:first_slice_mapping_runtime.rs
+driver:mapping_runtime.rs
 driver:gated_rates.rs
 driver:hosted_property_observation.rs
 driver:install.rs
