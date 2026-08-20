@@ -1,7 +1,7 @@
 # RF-COLUMN-MINT-MIGRATE-0 results
 
 - Track: 0.0.8.7 RF arena modernization (rung 9.2)
-- Status: **PROBATION / remand-discharged / DA-review-pending**
+Status: **COMPLETE — DA-GRADUATED / merged #1792 @ `987f7fd8`** (identity remand `5356888559`, Fable deep review, graduation ruling on Board #1332)
 - HD-RECEIPT: `11176c638ff7`
 - ORIENT-RECEIPT: `a5dc59920dd4`
 - orientation_rule_stamp: `61818ff7d4adda84`
