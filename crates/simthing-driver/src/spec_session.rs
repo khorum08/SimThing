@@ -135,6 +135,9 @@ pub struct SpecSessionState {
     /// Precedented by `property_admission`. Triad columns are NOT stored here —
     /// they remain explicit 5.8 consumer inputs (DA `5154348081`).
     pub field_plan_admission: Option<crate::comparative_default_birth::FieldPlanAdmissionReport>,
+    /// 9.2: session-local interned RF layout. Survives owner flag-switch,
+    /// owner add/remove, and 6.4 epoch rebind. Not a second owner authority.
+    pub persistent_rf_layout: simthing_spec::PersistentRfLayout,
 }
 
 impl SpecSessionState {

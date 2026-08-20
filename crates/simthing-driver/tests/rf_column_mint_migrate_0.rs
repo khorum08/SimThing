@@ -1,15 +1,15 @@
 //! RF-COLUMN-MINT-MIGRATE-0 proofs.
 //!
-//! Production layout keys interned owner id + logical SlotIndex. Wrong
+//! Production layout keys interned owner id + `SimThingId`. Wrong
 //! implementations are test-side lexical-OwnerRef order and physical-row keys.
 
 use serde::Deserialize;
-use simthing_core::owner_channel::{bind_owner, OwnerInterner, OwnerRef};
+use simthing_core::owner_channel::{bind_owner, unbind_owner, OwnerInterner, OwnerRef};
 use simthing_core::{
     AnchorRemapOperation, AnchoredLocusMap, BindingTableSnapshot, ColumnIndex, DimensionRegistry,
     SimProperty, SimThing, SimThingKind, SlotIndex, SubFieldRole,
 };
-use simthing_driver::compile_owner_channel_rf_gpu_proof_plan;
+use simthing_driver::{compile_owner_channel_rf_gpu_proof_plan, SpecSessionState};
 use simthing_gpu::SlotAllocator;
 use simthing_spec::{OwnerChannelRfOwnAggregate, OwnerChannelScopeKey, ResourceKey};
 
@@ -22,6 +22,7 @@ enum Case {
     OwnerFlipStable,
     IndependentSessions,
     EpochRebindLogicalStable,
+    OwnerAddRemoveStable,
     SeamRejectsInternedId,
 }
 
@@ -48,6 +49,15 @@ fn tree_two_owners(a: &str, b: &str) -> (SimThing, Vec<OwnerChannelRfOwnAggregat
         },
     ];
     (root, rows)
+}
+
+fn compile_held(
+    session: &mut SpecSessionState,
+    root: &SimThing,
+    rows: &[OwnerChannelRfOwnAggregate],
+) -> Result<simthing_driver::OwnerChannelRfGpuProofPlan, String> {
+    compile_owner_channel_rf_gpu_proof_plan(root, rows, &mut session.persistent_rf_layout)
+        .map_err(|e| format!("{e:?}"))
 }
 
 fn intern_owner_order(plan_scopes: &[OwnerChannelScopeKey], interner: &OwnerInterner) -> Vec<u32> {
@@ -122,8 +132,8 @@ fn run_case(case: Case) -> Result<(), String> {
         }
         Case::InternOrderVsLexical => {
             let (root, rows) = tree_two_owners("zulu", "alpha");
-            let plan = compile_owner_channel_rf_gpu_proof_plan(&root, &rows)
-                .map_err(|e| format!("{e:?}"))?;
+            let mut session = SpecSessionState::new();
+            let plan = compile_held(&mut session, &root, &rows)?;
             let scopes: Vec<_> = plan.bucket_plans.iter().map(|b| b.scope.clone()).collect();
             let interned = intern_owner_order(&scopes, &plan.layout.interner);
             let production_names: Vec<_> = scopes
@@ -145,32 +155,61 @@ fn run_case(case: Case) -> Result<(), String> {
         }
         Case::OwnerFlipStable => {
             let (root, rows) = tree_two_owners("alpha", "beta");
-            let before = compile_owner_channel_rf_gpu_proof_plan(&root, &rows)
-                .map_err(|e| format!("{e:?}"))?;
+            let mut session = SpecSessionState::new();
+            let before = compile_held(&mut session, &root, &rows)?;
             let before_ids = intern_owner_order(
                 &before
                     .bucket_plans
                     .iter()
                     .map(|b| b.scope.clone())
                     .collect::<Vec<_>>(),
-                &before.layout.interner,
+                &session.persistent_rf_layout.interner,
             );
+            let beta = OwnerRef::new("beta");
+            let beta_before = session
+                .persistent_rf_layout
+                .interner
+                .id_of(&beta)
+                .ok_or("beta interned")?;
             let mut flipped = root;
             bind_owner(&mut flipped, &OwnerRef::new("zulu"));
-            let after = compile_owner_channel_rf_gpu_proof_plan(&flipped, &rows)
-                .map_err(|e| format!("{e:?}"))?;
+            let after = compile_held(&mut session, &flipped, &rows)?;
             let after_ids = intern_owner_order(
                 &after
                     .bucket_plans
                     .iter()
                     .map(|b| b.scope.clone())
                     .collect::<Vec<_>>(),
-                &after.layout.interner,
+                &session.persistent_rf_layout.interner,
             );
             if before_ids != after_ids {
                 return Err(format!(
                     "interned layout order moved under owner flip {before_ids:?} -> {after_ids:?}"
                 ));
+            }
+            let beta_after = session
+                .persistent_rf_layout
+                .interner
+                .id_of(&beta)
+                .ok_or("beta still interned")?;
+            if beta_before != beta_after {
+                return Err("unrelated interned id remapped under owner flip".into());
+            }
+            let zulu_id = session
+                .persistent_rf_layout
+                .interner
+                .id_of(&OwnerRef::new("zulu"))
+                .ok_or("zulu interned after rebind")?;
+            if session
+                .persistent_rf_layout
+                .interner
+                .id_of(&OwnerRef::new("alpha"))
+                .is_some()
+            {
+                return Err("rebind must drop the old OwnerRef string".into());
+            }
+            if zulu_id.raw() != before_ids[0] {
+                return Err("flag-switch rebind must keep the flipped interned id".into());
             }
             let before_lex = lexical_owner_order(
                 &before
@@ -192,19 +231,6 @@ fn run_case(case: Case) -> Result<(), String> {
                         .into(),
                 );
             }
-            let mut persistent = OwnerInterner::new();
-            let alpha = OwnerRef::new("alpha");
-            let zulu = OwnerRef::new("zulu");
-            let held = persistent.intern(&alpha);
-            persistent
-                .rebind(&alpha, zulu.clone())
-                .map_err(|e| e.to_string())?;
-            if persistent.id_of(&zulu) != Some(held) {
-                return Err("rebind must keep interned layout id across alpha->zulu".into());
-            }
-            if persistent.id_of(&alpha).is_some() {
-                return Err("rebind must drop the old OwnerRef string".into());
-            }
             Ok(())
         }
         Case::IndependentSessions => {
@@ -225,20 +251,23 @@ fn run_case(case: Case) -> Result<(), String> {
         }
         Case::EpochRebindLogicalStable => {
             let (root, rows) = tree_two_owners("alpha", "beta");
+            let mut session = SpecSessionState::new();
             let mut alloc = SlotAllocator::new();
             alloc.populate_from_tree(&root);
             let pre = alloc.binding_table_snapshot();
-            let before = compile_owner_channel_rf_gpu_proof_plan(&root, &rows)
-                .map_err(|e| format!("{e:?}"))?;
+            let before = compile_held(&mut session, &root, &rows)?;
             let before_ids = intern_owner_order(
                 &before
                     .bucket_plans
                     .iter()
                     .map(|b| b.scope.clone())
                     .collect::<Vec<_>>(),
-                &before.layout.interner,
+                &session.persistent_rf_layout.interner,
             );
-            let before_keys = before.layout.keys().to_vec();
+            let before_keys = session.persistent_rf_layout.keys().to_vec();
+            if before_keys.iter().any(|k| pre.get(&k.object).is_none()) {
+                return Err("production layout keys must use live SimThingId identity".into());
+            }
 
             let mut slots: Vec<SlotIndex> = pre.values().copied().collect();
             slots.sort();
@@ -260,55 +289,100 @@ fn run_case(case: Case) -> Result<(), String> {
                 return Err("forced scramble must move physical rows".into());
             }
 
-            let after = compile_owner_channel_rf_gpu_proof_plan(&root, &rows)
-                .map_err(|e| format!("{e:?}"))?;
+            let after = compile_held(&mut session, &root, &rows)?;
             let after_ids = intern_owner_order(
                 &after
                     .bucket_plans
                     .iter()
                     .map(|b| b.scope.clone())
                     .collect::<Vec<_>>(),
-                &after.layout.interner,
+                &session.persistent_rf_layout.interner,
             );
-            if before_ids != after_ids || before_keys != after.layout.keys() {
+            let after_keys = session.persistent_rf_layout.keys().to_vec();
+            if before_ids != after_ids || before_keys != after_keys {
                 return Err(format!(
                     "persistent interned layout moved under EpochRebind {before_ids:?} -> {after_ids:?}"
                 ));
             }
-
-            let mut rival_before: Vec<_> = pre.iter().map(|(id, slot)| (slot.raw(), *id)).collect();
-            rival_before.sort_by_key(|(row, _)| *row);
-            let mut rival_after: Vec<_> = assignment
+            let mut physical_key_before: Vec<_> = before_keys
                 .iter()
-                .map(|(id, slot)| (slot.raw(), *id))
+                .map(|k| (pre.get(&k.object).map(|s| s.raw()).unwrap_or(0), k.object))
                 .collect();
-            rival_after.sort_by_key(|(row, _)| *row);
-            if rival_before == rival_after {
-                return Err("physical-row rival must permute under EpochRebind".into());
-            }
-
-            let mut physical_after: Vec<(u32, String)> = Vec::new();
-            for bucket in &after.bucket_plans {
-                let row_index = bucket.source_row_indices[0];
-                let simthing_id = rows[row_index].simthing_id;
-                let physical = alloc
-                    .slot_of(simthing_id)
-                    .ok_or("missing physical slot")?
-                    .raw();
-                physical_after.push((physical, bucket.scope.owner_ref.as_str().to_string()));
-            }
-            let intern_names: Vec<String> = after
-                .bucket_plans
+            physical_key_before.sort_by_key(|(row, _)| *row);
+            let mut physical_key_after: Vec<_> = after_keys
                 .iter()
-                .map(|b| b.scope.owner_ref.as_str().to_string())
+                .map(|k| {
+                    (
+                        alloc.slot_of(k.object).map(|s| s.raw()).unwrap_or(0),
+                        k.object,
+                    )
+                })
                 .collect();
-            physical_after.sort_by_key(|(row, _)| *row);
-            let physical_names: Vec<String> =
-                physical_after.into_iter().map(|(_, name)| name).collect();
-            if intern_names == physical_names {
+            physical_key_after.sort_by_key(|(row, _)| *row);
+            if physical_key_before == physical_key_after {
                 return Err(
-                    "physical-row rival must disagree with interned production layout".into(),
+                    "physical SlotIndex keyed by slot_of must permute under EpochRebind".into(),
                 );
+            }
+            Ok(())
+        }
+        Case::OwnerAddRemoveStable => {
+            let (mut root, mut rows) = tree_two_owners("alpha", "beta");
+            let mut session = SpecSessionState::new();
+            let _first = compile_held(&mut session, &root, &rows)?;
+            let alpha = OwnerRef::new("alpha");
+            let beta = OwnerRef::new("beta");
+            let alpha_id = session
+                .persistent_rf_layout
+                .interner
+                .id_of(&alpha)
+                .ok_or("alpha interned")?;
+            let beta_id = session
+                .persistent_rf_layout
+                .interner
+                .id_of(&beta)
+                .ok_or("beta interned")?;
+            let first_keys = session.persistent_rf_layout.keys().to_vec();
+            let first_indices: Vec<_> = first_keys
+                .iter()
+                .map(|k| session.persistent_rf_layout.index_of(k))
+                .collect();
+
+            let mut extra = SimThing::new(SimThingKind::Custom("synthetic".into()), 0);
+            bind_owner(&mut extra, &OwnerRef::new("gamma"));
+            let extra_id = extra.id;
+            root.add_child(extra);
+            rows.push(OwnerChannelRfOwnAggregate {
+                simthing_id: extra_id,
+                resource_key: ResourceKey::new("ore"),
+                surplus: 1,
+                deficit: 0,
+            });
+            let _added = compile_held(&mut session, &root, &rows)?;
+            if session.persistent_rf_layout.interner.id_of(&alpha) != Some(alpha_id)
+                || session.persistent_rf_layout.interner.id_of(&beta) != Some(beta_id)
+            {
+                return Err("adding an owner remapped unrelated interned ids".into());
+            }
+            let added_indices: Vec<_> = first_keys
+                .iter()
+                .map(|k| session.persistent_rf_layout.index_of(k))
+                .collect();
+            if added_indices != first_indices {
+                return Err("adding an owner remapped unrelated layout indices".into());
+            }
+
+            let child = root
+                .children
+                .iter_mut()
+                .find(|c| c.id == extra_id)
+                .ok_or("gamma child")?;
+            unbind_owner(child);
+            let _removed = compile_held(&mut session, &root, &rows)?;
+            if session.persistent_rf_layout.interner.id_of(&alpha) != Some(alpha_id)
+                || session.persistent_rf_layout.interner.id_of(&beta) != Some(beta_id)
+            {
+                return Err("removing an owner remapped unrelated interned ids".into());
             }
             Ok(())
         }
@@ -340,6 +414,7 @@ fn rf_column_mint_migrate_table() {
         Case::OwnerFlipStable,
         Case::IndependentSessions,
         Case::EpochRebindLogicalStable,
+        Case::OwnerAddRemoveStable,
         Case::SeamRejectsInternedId,
     ] {
         run_case(case).unwrap_or_else(|e| panic!("{case:?}: {e}"));

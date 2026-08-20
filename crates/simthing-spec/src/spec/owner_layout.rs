@@ -1,29 +1,37 @@
 //! Session-local persistent RF layout keys (rung 9.2).
 //!
-//! Layout identity is interned owner id + logical [`SlotIndex`] + resource/scope.
-//! It is never `OwnerRef` lexical order, physical row, or allocation order.
+//! Layout identity is interned owner id + [`SimThingId`] (graduated 6.4
+//! stable logical identity) + resource/scope. It is never `OwnerRef`
+//! lexical order, physical [`SlotIndex`], or allocation/vector order.
 
-use simthing_core::owner_channel::{OwnerInterner, OwnerLayoutId};
-use simthing_core::SlotIndex;
+use std::collections::{HashMap, HashSet};
+
+use simthing_core::owner_channel::{OwnerInternError, OwnerInterner, OwnerLayoutId, OwnerRef};
+use simthing_core::SimThingId;
 
 use super::channel_key::{OwnerChannelScopeKey, ResourceKey, ScopeId};
-use super::owner_channel_rf::OwnerChannelRfBucket;
-use simthing_core::owner_channel::OwnerRef;
+use super::owner_channel_rf::{OwnerChannelRfBucket, OwnerChannelRfOwnAggregate};
 
 /// Persistent RF layout key. Session-local; not seam-serializable.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct PersistentRfLayoutKey {
     pub owner: OwnerLayoutId,
-    pub logical_slot: SlotIndex,
+    pub object: SimThingId,
     pub resource_key: ResourceKey,
     pub scope_id: ScopeId,
 }
 
-/// Session-local intern + dense layout index assignment.
+/// Session-local intern + append-only layout index assignment.
+///
+/// Held by the driver `SpecSessionState`. First-seen interned owner
+/// ids and layout indices survive owner flag-switch, owner add/remove, and
+/// 6.4 `EpochRebind`. They are never rebuilt from vector enumeration.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct PersistentRfLayout {
     pub interner: OwnerInterner,
+    object_owners: HashMap<SimThingId, OwnerRef>,
     keys: Vec<PersistentRfLayoutKey>,
+    index: HashMap<PersistentRfLayoutKey, u32>,
 }
 
 impl PersistentRfLayout {
@@ -35,43 +43,94 @@ impl PersistentRfLayout {
         self.interner.intern(owner)
     }
 
-    /// Assign dense layout indices by interned owner, then resource, then scope, then logical slot.
+    /// Reuse held interned ids: flag-switch rebinds when the old owner is
+    /// no longer live; a new owner appends. Unrelated ids are never
+    /// renumbered. `AlreadyInterned` on rebind means the target string is
+    /// already a live interned owner — intern that existing id instead of
+    /// remapping anyone else.
+    pub fn sync_owners(
+        &mut self,
+        resolved: &[(SimThingId, OwnerRef)],
+    ) -> Result<(), OwnerInternError> {
+        let live: HashSet<SimThingId> = resolved.iter().map(|(id, _)| *id).collect();
+        for (object, new_owner) in resolved {
+            match self.object_owners.get(object).cloned() {
+                Some(old) if old != *new_owner => {
+                    let old_still_live = resolved
+                        .iter()
+                        .any(|(id, owner)| *id != *object && owner == &old);
+                    if !old_still_live {
+                        match self.interner.rebind(&old, new_owner.clone()) {
+                            Ok(_) => {}
+                            Err(OwnerInternError::AlreadyInterned { .. }) => {
+                                self.interner.intern(new_owner);
+                            }
+                            Err(err) => return Err(err),
+                        }
+                    } else {
+                        self.interner.intern(new_owner);
+                    }
+                    self.object_owners.insert(*object, new_owner.clone());
+                }
+                Some(_) => {
+                    self.interner.intern(new_owner);
+                }
+                None => {
+                    self.interner.intern(new_owner);
+                    self.object_owners.insert(*object, new_owner.clone());
+                }
+            }
+        }
+        self.object_owners.retain(|id, _| live.contains(id));
+        Ok(())
+    }
+
+    /// Append layout keys for current buckets. Existing keys keep their
+    /// first-seen indices; new keys are appended. Never re-sorts.
     pub fn assign_from_buckets(
         &mut self,
         buckets: &[OwnerChannelRfBucket],
-        logical_slots: &[SlotIndex],
+        aggregates: &[OwnerChannelRfOwnAggregate],
     ) {
-        let mut keys = Vec::new();
-        for (bucket, slot) in buckets.iter().zip(logical_slots.iter()) {
+        for bucket in buckets {
             let owner = self.interner.intern(&bucket.scope.owner_ref);
-            keys.push(PersistentRfLayoutKey {
-                owner,
-                logical_slot: *slot,
-                resource_key: bucket.scope.resource_key.clone(),
-                scope_id: bucket.scope.scope_id.clone(),
-            });
+            for &row in &bucket.source_row_indices {
+                let Some(aggregate) = aggregates.get(row) else {
+                    continue;
+                };
+                let key = PersistentRfLayoutKey {
+                    owner,
+                    object: aggregate.simthing_id,
+                    resource_key: bucket.scope.resource_key.clone(),
+                    scope_id: bucket.scope.scope_id.clone(),
+                };
+                if self.index.contains_key(&key) {
+                    continue;
+                }
+                let idx = self.keys.len() as u32;
+                self.keys.push(key.clone());
+                self.index.insert(key, idx);
+            }
         }
-        keys.sort();
-        self.keys = keys;
     }
 
     pub fn index_of(&self, key: &PersistentRfLayoutKey) -> Option<u32> {
-        self.keys.binary_search(key).ok().map(|i| i as u32)
+        self.index.get(key).copied()
     }
 
     pub fn keys(&self) -> &[PersistentRfLayoutKey] {
         &self.keys
     }
 
-    pub fn layout_key_for_scope(
+    pub fn layout_key_for_object(
         &self,
         scope: &OwnerChannelScopeKey,
-        logical_slot: SlotIndex,
+        object: SimThingId,
     ) -> Option<PersistentRfLayoutKey> {
         let owner = self.interner.id_of(&scope.owner_ref)?;
         Some(PersistentRfLayoutKey {
             owner,
-            logical_slot,
+            object,
             resource_key: scope.resource_key.clone(),
             scope_id: scope.scope_id.clone(),
         })

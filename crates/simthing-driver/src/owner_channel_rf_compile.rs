@@ -54,39 +54,37 @@ impl From<OwnerChannelRfError> for OwnerChannelRfGpuProofError {
 }
 
 /// Compile one existing generic sum plan per canonical owner/resource/scope bucket.
+///
+/// `layout` is session-held: interned owner ids and layout keys are reused
+/// across compiles. Pass the driver `SpecSessionState.persistent_rf_layout`.
 pub fn compile_owner_channel_rf_gpu_proof_plan(
     root: &SimThing,
     own_aggregates: &[OwnerChannelRfOwnAggregate],
+    layout: &mut PersistentRfLayout,
 ) -> Result<OwnerChannelRfGpuProofPlan, OwnerChannelRfGpuProofError> {
     let stamped =
         reduce_owner_channel_rf(root, own_aggregates, simthing_core::GenerationStamp::new(0))?;
     let reduce_up_report = stamped.into_product();
-    let mut layout = PersistentRfLayout::new();
-    for (_, owner) in resolve_owners_in_order(root)
-        .map_err(|e| OwnerChannelRfGpuProofError::Execution(e.to_string()))?
-    {
-        layout.intern_owner(&owner);
-    }
+    let resolved = resolve_owners_in_order(root)
+        .map_err(|e| OwnerChannelRfGpuProofError::Execution(e.to_string()))?;
+    layout
+        .sync_owners(&resolved)
+        .map_err(|e| OwnerChannelRfGpuProofError::Execution(e.to_string()))?;
     let mut ordered_buckets = reduce_up_report.buckets.clone();
     ordered_buckets.sort_by(|a, b| {
         let a_id = layout
             .interner
             .id_of(&a.scope.owner_ref)
-            .expect("tree-walk interned owner");
+            .expect("session-interned owner");
         let b_id = layout
             .interner
             .id_of(&b.scope.owner_ref)
-            .expect("tree-walk interned owner");
+            .expect("session-interned owner");
         a_id.cmp(&b_id)
             .then_with(|| a.scope.resource_key.cmp(&b.scope.resource_key))
             .then_with(|| a.scope.scope_id.cmp(&b.scope.scope_id))
     });
-    let logical_slots: Vec<_> = ordered_buckets
-        .iter()
-        .enumerate()
-        .map(|(i, _)| simthing_core::SlotIndex::new(i as u32))
-        .collect();
-    layout.assign_from_buckets(&ordered_buckets, &logical_slots);
+    layout.assign_from_buckets(&ordered_buckets, &reduce_up_report.stead.own_aggregates);
     let bucket_plans = ordered_buckets
         .iter()
         .map(|bucket| OwnerChannelRfBucketAccumulatorPlan {
@@ -107,7 +105,7 @@ pub fn compile_owner_channel_rf_gpu_proof_plan(
     Ok(OwnerChannelRfGpuProofPlan {
         reduce_up_report,
         bucket_plans,
-        layout,
+        layout: layout.clone(),
     })
 }
 

@@ -1,11 +1,13 @@
 # RF-COLUMN-MINT-MIGRATE-0 results
 
 - Track: 0.0.8.7 RF arena modernization (rung 9.2)
-- Status: **PROBATION / proof-present / DA-review-pending**
+- Status: **PROBATION / remand-discharged / DA-review-pending**
 - HD-RECEIPT: `11176c638ff7`
 - ORIENT-RECEIPT: `a5dc59920dd4`
 - orientation_rule_stamp: `61818ff7d4adda84`
 - Board dispatch: comment `5356305326`
+- DA ruling: `5356888559`
+- Bounded remand: `5356974067`
 - expected_route: `DA-RESERVE(gate-wiring)`
 
 ## Mint census (live tree)
@@ -22,16 +24,17 @@
 
 ## Owner layout
 
-`OwnerInterner` / `OwnerLayoutId` are session-local, not serde. GPU bucket plans sort by interned id (tree-walk first-seen), not `OwnerRef` lexical `Ord`. Seam identity remains `OwnerRef`.
+`OwnerInterner` / `OwnerLayoutId` are session-local, not serde. Held on `SpecSessionState.persistent_rf_layout`. Keys are interned owner id + `SimThingId` (6.4 stable logical identity) + resource/scope. GPU bucket plans sort by interned id, not `OwnerRef` lexical `Ord`. Seam identity remains `OwnerRef`. Q3 unchanged: no serde, no production seam carrier.
 
 ## Falsifiers
 
 | Production | Rival | Result |
 |---|---|---|
-| interned layout under `alpha -> zulu` (tree-walk compile + `OwnerInterner::rebind`) | lexical `OwnerRef` sort | interned ids stable; lexical permutes |
+| held-session compile under `alpha -> zulu` (`sync_owners`/`rebind`) | lexical `OwnerRef` sort | interned ids stable including rebind; unrelated beta id unchanged; lexical permutes |
 | independent sessions intern `alpha`/`zulu` in opposite order | same raw interned id | ids differ |
-| GPU plan compile after forced `SlotAllocator::epoch_rebind` | order buckets by post-rebind physical `slot_of` | interned keys/ids stable; physical-row rival permutes |
-| seam JSON with `OwnerRef` | extra `interned_owner_id` | deny_unknown_fields RED |
+| held-session compile after forced `SlotAllocator::epoch_rebind` | layout keyed by physical `slot_of` | `SimThingId` keys stable; physical-row rival permutes |
+| held-session compile adding then unbinding a third owner | rebuild-from-zero intern | unrelated interned ids and layout indices unchanged |
+| seam JSON with `OwnerRef` | extra `interned_owner_id` | deny_unknown_fields RED (not load-bearing; type boundary is) |
 | comparative `col_for_role(Amount)` after a pad property | `from_gpu_round_trip` of pad Amount | production Amount is not GPU-wire column 0 |
 
 ## Blast radius (local, pre-push)
