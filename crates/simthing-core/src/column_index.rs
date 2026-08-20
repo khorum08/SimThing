@@ -63,19 +63,6 @@ impl std::fmt::Display for ColumnIndex {
 }
 
 impl ColumnIndex {
-    /// Compatibility alias for legacy column mints.
-    ///
-    /// New production code must use the layout-derived role pathway or the
-    /// explicitly fenced GPU round-trip and oracle/rehearsal doors.
-    /// Promotion blocker: rung 9.2 migrates legacy callers and removes this
-    /// compatibility surface.
-    #[deprecated(
-        note = "new code must use PropertyColumnRange::col_for_role, from_gpu_round_trip, or from_raw_for_oracle_or_rehearsal"
-    )]
-    pub fn new(raw: usize) -> Self {
-        Self::from_raw_for_oracle_or_rehearsal(raw)
-    }
-
     /// LAYOUT-DERIVED door: combines a registry-owned global range with a
     /// [`RoleOffset`] resolved by [`crate::property::PropertyLayout::offset_of`].
     ///
@@ -190,14 +177,5 @@ mod tests {
     #[test]
     fn raw_oracle_rehearsal_door_preserves_column_bits() {
         assert_eq!(ColumnIndex::from_raw_for_oracle_or_rehearsal(23).raw(), 23);
-    }
-
-    #[test]
-    #[allow(deprecated)]
-    fn legacy_new_delegates_to_the_fenced_raw_door() {
-        assert_eq!(
-            ColumnIndex::new(31),
-            ColumnIndex::from_raw_for_oracle_or_rehearsal(31)
-        );
     }
 }

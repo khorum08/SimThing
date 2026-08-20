@@ -521,7 +521,10 @@ mod tests {
             gate: GateSpec::Always,
             scale: ScaleSpec::Identity,
             consume: ConsumeMode::None,
-            targets: vec![(SlotIndex::new(0), ColumnIndex::new(0))],
+            targets: vec![(
+                SlotIndex::new(0),
+                ColumnIndex::from_raw_for_oracle_or_rehearsal(0),
+            )],
         };
         let _ = op.validate();
         encode_combine(&op, eml)

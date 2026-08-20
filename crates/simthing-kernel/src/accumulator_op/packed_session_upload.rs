@@ -240,12 +240,12 @@ mod tests {
                 inputs: vec![
                     InputSpec {
                         slot: SlotIndex::new(0),
-                        col: simthing_core::ColumnIndex::new(0),
+                        col: simthing_core::ColumnIndex::from_raw_for_oracle_or_rehearsal(0),
                         unit_cost: 1.0,
                     },
                     InputSpec {
                         slot: SlotIndex::new(1),
-                        col: simthing_core::ColumnIndex::new(0),
+                        col: simthing_core::ColumnIndex::from_raw_for_oracle_or_rehearsal(0),
                         unit_cost: 2.0,
                     },
                 ],
@@ -254,7 +254,10 @@ mod tests {
             gate: GateSpec::Always,
             scale: ScaleSpec::Identity,
             consume: ConsumeMode::AddToTarget,
-            targets: vec![(SlotIndex::new(0), simthing_core::ColumnIndex::new(0))],
+            targets: vec![(
+                SlotIndex::new(0),
+                simthing_core::ColumnIndex::from_raw_for_oracle_or_rehearsal(0),
+            )],
         }
     }
 }

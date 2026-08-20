@@ -477,6 +477,7 @@ pub use spec::owner_channel_admission::{
     admit_intrinsic_owner_channels, IntrinsicOwnerChannelAdmissionStats, IntrinsicOwnerChannelView,
     OwnerChannelAdmissionError,
 };
+pub use spec::owner_layout::{PersistentRfLayout, PersistentRfLayoutKey};
 pub use spec::owner_channel_rf::{
     integrate_raw_reduce_up_report_forbidden, integrate_stamped_reduce_up,
     reconstruct_owner_channel_rf_map, reduce_owner_channel_rf, reduce_owner_channel_rf_unstamped,

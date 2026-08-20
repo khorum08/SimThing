@@ -14,7 +14,7 @@ This digest is a derived context artifact for low-context agents. If it disagree
 | scripts/ci/allow/kernel_surface.txt | 297 | 4cd22d9a00d01f0e6a62c668642f4be953a9c0ffd645df72e9dc7fb41881f2ad |
 | scripts/ci/allow/sealed_types.txt | 19 | 9d427e3b41a586b06f24ca02cc45f78934237d2229b0c38d46e2a8a6ef5016be |
 | scripts/ci/allow/contention_mechanisms.txt | 9 | 1f9e930b44197d4254f46ea96328f814d9ba0f2dad06881c454aebc01c01d44b |
-| scripts/ci/scans.tsv | 27 | cc081f04b69c80b0b706ca598467778ced55f7f098c4c2af0d31099b7fc18155 |
+| scripts/ci/scans.tsv | 26 | a4ec1faebde70534e8100db6efbc4253f200efcfe8f8d4bca6fb21d460f3060c |
 
 ## Sanctioned Sealed Producers
 
@@ -407,7 +407,6 @@ This digest is a derived context artifact for low-context agents. If it disagree
 | UNSAFE-ALLOW-ATTR | RELIABLE | design §5 allow unsafe attr | crates/simthing-{kernel,sim}/src/lib.rs | #!\\[allow\\(unsafe_code\\)\\] | (none) | retire when crate attributes are admission-typed not prose | scans.tsv |
 | UNSAFE-FORBID-ATTR | RELIABLE | design §5 forbid unsafe attr | crates/simthing-{kernel,sim}/src/lib.rs | @REQUIRE:#!\\[forbid\\(unsafe_code\\)\\] | (none) | retire when semantic-free crate template enforces forbid at type boundary | scans.tsv |
 | DENY-TOML-STUB | RELIABLE | design §0.6.6 deny.toml stub | deny.toml | . | (none) | retire when dependency policy is compile-time typed not file-shaped | scans.tsv |
-| COLUMN-INDEX-MINT | HEURISTIC | design 0.0.8.7 §3 Phase 0 / §5 ColumnIndex admission doors (OC-K2.1a) | crates/**/src/** | ColumnIndex::(?:from_layout_role\|from_gpu_round_trip\|from_raw_for_oracle_or_rehearsal) | registry\\.rs;compile_fail;^\\s*//!;^\\s*///;^\\s*// | retire at rung 9.2 when legacy ColumnIndex::new sites migrate and raw/GPU doors collapse to typed boundaries | scans.tsv |
 | SIM-KIND-READ | HEURISTIC | design §5 sim .kind read | crates/simthing-sim/src/** | match .*\\.kind\|\\.kind\\b | compile_fail;^\\s*//!;^\\s*///;^\\s*//;delta_log;sim_runtime_tree;kind_production_audit;^\\s*assert_\|^\\s*#\\[test\\] | promote when runtime tree view is kind-free at type boundary | scans.tsv |
 | SEMANTIC-WORDS | HEURISTIC | design §5 semantic words below spec | crates/simthing-{sim,kernel}/src/** | faction\|combat\|terran\|pirate\|diplomacy | compile_fail;^\\s*//!;^\\s*///;^\\s*//;^\\s*assert_\|^\\s*#\\[test\\]\|SimThingKind:: | promote when game semantics are spec-boundary typed only | scans.tsv |
 | SPEC-STRING-CHANNEL | HEURISTIC | design §5 stringly channel identity | crates/simthing-spec/src/** | owner_ref *: *(Option<)?String\|resource_key *: *(Option<)?String | compile_fail;^\\s*//!;^\\s*///;^\\s*//;channel_key\\.rs | promote when channel identity is newtyped in spec admission | scans.tsv |

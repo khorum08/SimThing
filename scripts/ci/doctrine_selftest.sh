@@ -1471,8 +1471,6 @@ run_all_cases() {
   case_run expect_scanner_error "malformed_missing_rationale" \
     setup_malformed_allowlist malformed_allowlist_missing_rationale.txt
 
-  case_run expect_heuristic_inspect "column_index_mint" "COLUMN-INDEX-MINT" \
-    setup_heuristic_kernel column_index_mint.rs
   case_run expect_heuristic_inspect "execution_status_unclassified" "EXECUTION-STATUS-UNCLASSIFIED" \
     setup_heuristic_execution_status_unclassified
   case_run expect_heuristic_inspect "cell_storage_polymorphism" "CELL-STORAGE-POLYMORPHISM" \

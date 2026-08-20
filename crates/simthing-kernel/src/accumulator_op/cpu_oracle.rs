@@ -247,13 +247,16 @@ mod tests {
         let op = AccumulatorOp {
             source: SourceSpec::SlotValue {
                 slot: SlotIndex::new(0),
-                col: ColumnIndex::new(0),
+                col: ColumnIndex::from_raw_for_oracle_or_rehearsal(0),
             },
             combine: CombineFn::Identity,
             gate: GateSpec::Always,
             scale: ScaleSpec::Constant(10.0),
             consume: ConsumeMode::SubtractFromSource,
-            targets: vec![(SlotIndex::new(1), ColumnIndex::new(0))],
+            targets: vec![(
+                SlotIndex::new(1),
+                ColumnIndex::from_raw_for_oracle_or_rehearsal(0),
+            )],
         };
         execute_ops_cpu(&mut values, std::slice::from_ref(&op), 0, 1).unwrap();
         assert_eq!(values[1], 5.0);
@@ -263,13 +266,16 @@ mod tests {
         let op = AccumulatorOp {
             source: SourceSpec::SlotValue {
                 slot: SlotIndex::new(0),
-                col: ColumnIndex::new(0),
+                col: ColumnIndex::from_raw_for_oracle_or_rehearsal(0),
             },
             combine: CombineFn::Identity,
             gate: GateSpec::Always,
             scale: ScaleSpec::Constant(3.0),
             consume: ConsumeMode::SubtractFromSource,
-            targets: vec![(SlotIndex::new(1), ColumnIndex::new(0))],
+            targets: vec![(
+                SlotIndex::new(1),
+                ColumnIndex::from_raw_for_oracle_or_rehearsal(0),
+            )],
         };
         execute_ops_cpu(&mut values, std::slice::from_ref(&op), 0, 1).unwrap();
         assert_eq!(values[1], 3.0);
