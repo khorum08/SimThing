@@ -78,3 +78,4 @@ simthing-workshop	crates/simthing-workshop/tests/actionband_composition_probe_0.
 simthing-workshop	crates/simthing-workshop/tests/actionband_composition_probe_0.rs	structural_table_concludes_candidate_b_with_special_seams	integration	5229219748-OWNER	ACTIONBAND-COMPOSITION-PROBE-0	6f36cb778e6f
 simthing-workshop	crates/simthing-workshop/src/actionband_composition_probe_0.rs	measured_tables_conclude_candidate_b	unit	5229219748-OWNER	ACTIONBAND-COMPOSITION-PROBE-0	6f36cb778e6f
 simthing-workshop	crates/simthing-workshop/src/actionband_composition_probe_0.rs	candidate_a_requires_identical_literal_paths	unit	5229219748-OWNER	ACTIONBAND-COMPOSITION-PROBE-0	6f36cb778e6f
+simthing-core	crates/simthing-core/src/column_index.rs	legacy_new_delegates_to_the_fenced_raw_door	unit	5356131544-DA	RF-COLUMN-MINT-MIGRATE-0	11176c638ff7

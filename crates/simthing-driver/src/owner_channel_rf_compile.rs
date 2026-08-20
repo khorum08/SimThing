@@ -1,11 +1,12 @@
 //! OWNER-CHANNEL-INTRINSIC-0 — AccumulatorOp lowering for generalized owner scopes.
 
+use simthing_core::owner_channel::resolve_owners_in_order;
 use simthing_core::{CompiledAccumulatorOpPlan, SimThing, StructuralScalarChannel};
 use simthing_gpu::GpuContext;
 use simthing_sim::{execute_accumulator_plan_tick_cpu, execute_accumulator_plan_tick_gpu};
 use simthing_spec::{
     reduce_owner_channel_rf, OwnerChannelRfError, OwnerChannelRfOwnAggregate,
-    OwnerChannelRfReduceUpReport, OwnerChannelScopeKey,
+    OwnerChannelRfReduceUpReport, OwnerChannelScopeKey, PersistentRfLayout,
 };
 
 use crate::owner_silo_accumulator_compile::compile_participant_channel_sum_plan;
@@ -22,6 +23,7 @@ pub struct OwnerChannelRfBucketAccumulatorPlan {
 pub struct OwnerChannelRfGpuProofPlan {
     pub reduce_up_report: OwnerChannelRfReduceUpReport,
     pub bucket_plans: Vec<OwnerChannelRfBucketAccumulatorPlan>,
+    pub layout: PersistentRfLayout,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -52,15 +54,38 @@ impl From<OwnerChannelRfError> for OwnerChannelRfGpuProofError {
 }
 
 /// Compile one existing generic sum plan per canonical owner/resource/scope bucket.
+///
+/// `layout` is session-held: interned owner ids and layout keys are reused
+/// across compiles. Pass the driver `SpecSessionState.persistent_rf_layout`.
 pub fn compile_owner_channel_rf_gpu_proof_plan(
     root: &SimThing,
     own_aggregates: &[OwnerChannelRfOwnAggregate],
+    layout: &mut PersistentRfLayout,
 ) -> Result<OwnerChannelRfGpuProofPlan, OwnerChannelRfGpuProofError> {
     let stamped =
         reduce_owner_channel_rf(root, own_aggregates, simthing_core::GenerationStamp::new(0))?;
     let reduce_up_report = stamped.into_product();
-    let bucket_plans = reduce_up_report
-        .buckets
+    let resolved = resolve_owners_in_order(root)
+        .map_err(|e| OwnerChannelRfGpuProofError::Execution(e.to_string()))?;
+    layout
+        .sync_owners(&resolved)
+        .map_err(|e| OwnerChannelRfGpuProofError::Execution(e.to_string()))?;
+    let mut ordered_buckets = reduce_up_report.buckets.clone();
+    ordered_buckets.sort_by(|a, b| {
+        let a_id = layout
+            .interner
+            .id_of(&a.scope.owner_ref)
+            .expect("session-interned owner");
+        let b_id = layout
+            .interner
+            .id_of(&b.scope.owner_ref)
+            .expect("session-interned owner");
+        a_id.cmp(&b_id)
+            .then_with(|| a.scope.resource_key.cmp(&b.scope.resource_key))
+            .then_with(|| a.scope.scope_id.cmp(&b.scope.scope_id))
+    });
+    layout.assign_from_buckets(&ordered_buckets, &reduce_up_report.stead.own_aggregates);
+    let bucket_plans = ordered_buckets
         .iter()
         .map(|bucket| OwnerChannelRfBucketAccumulatorPlan {
             scope: bucket.scope.clone(),
@@ -80,6 +105,7 @@ pub fn compile_owner_channel_rf_gpu_proof_plan(
     Ok(OwnerChannelRfGpuProofPlan {
         reduce_up_report,
         bucket_plans,
+        layout: layout.clone(),
     })
 }
 
@@ -116,22 +142,18 @@ pub fn prove_owner_channel_rf_cpu_gpu_parity(
     ctx: &GpuContext,
     plan: &OwnerChannelRfGpuProofPlan,
 ) -> Result<OwnerChannelRfGpuParityReport, OwnerChannelRfGpuProofError> {
-    let canonical_bucket_ordering = plan
-        .reduce_up_report
-        .buckets
-        .windows(2)
-        .all(|pair| pair[0].scope < pair[1].scope);
+    let canonical_bucket_ordering = intern_layout_order_holds(plan);
     if !canonical_bucket_ordering {
         return Err(OwnerChannelRfGpuProofError::NonCanonicalBucketOrder);
     }
 
-    for (bucket_index, (bucket, compiled)) in plan
-        .reduce_up_report
-        .buckets
-        .iter()
-        .zip(&plan.bucket_plans)
-        .enumerate()
-    {
+    for (bucket_index, compiled) in plan.bucket_plans.iter().enumerate() {
+        let bucket = plan
+            .reduce_up_report
+            .buckets
+            .iter()
+            .find(|b| b.scope == compiled.scope)
+            .ok_or(OwnerChannelRfGpuProofError::NonCanonicalBucketOrder)?;
         prove_channel(
             ctx,
             bucket_index,
@@ -156,6 +178,19 @@ pub fn prove_owner_channel_rf_cpu_gpu_parity(
         bucket_count: plan.reduce_up_report.bucket_count,
         canonical_bucket_ordering,
         cpu_gpu_bit_exact: true,
+    })
+}
+
+fn intern_layout_order_holds(plan: &OwnerChannelRfGpuProofPlan) -> bool {
+    plan.bucket_plans.windows(2).all(|pair| {
+        let Some(a) = plan.layout.interner.id_of(&pair[0].scope.owner_ref) else {
+            return false;
+        };
+        let Some(b) = plan.layout.interner.id_of(&pair[1].scope.owner_ref) else {
+            return false;
+        };
+        (a, &pair[0].scope.resource_key, &pair[0].scope.scope_id)
+            <= (b, &pair[1].scope.resource_key, &pair[1].scope.scope_id)
     })
 }
 

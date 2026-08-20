@@ -11,7 +11,7 @@
 //! Raw integer targets are uncompilable:
 //!
 //! ```compile_fail
-//! use simthing_core::{AccumulatorOp, ColumnIndex, CombineFn, ConsumeMode, GateSpec, ScaleSpec, SourceSpec};
+//! use simthing_core::{AccumulatorOp, CombineFn, ConsumeMode, GateSpec, ScaleSpec, SourceSpec, StructuralScalarChannel};
 //!
 //! fn accumulator_op_rejects_raw_integer_target_slot_compile_fail() {
 //!     let _ = AccumulatorOp {
@@ -20,7 +20,7 @@
 //!         gate: GateSpec::Always,
 //!         scale: ScaleSpec::Identity,
 //!         consume: ConsumeMode::None,
-//!         targets: vec![(0u32, ColumnIndex::new(0))],
+//!         targets: vec![(0u32, StructuralScalarChannel::INPUT.into_plan_column())],
 //!     };
 //! }
 //! ```
@@ -322,7 +322,10 @@ mod tests {
             gate: GateSpec::Always,
             scale: ScaleSpec::Identity,
             consume: ConsumeMode::None,
-            targets: vec![(SlotIndex::new(0), ColumnIndex::new(0))],
+            targets: vec![(
+                SlotIndex::new(0),
+                ColumnIndex::from_raw_for_oracle_or_rehearsal(0),
+            )],
         }
     }
 }

@@ -264,3 +264,95 @@ fn decode_owner_property(value: &PropertyValue) -> Result<String, &'static str> 
     bytes.truncate(len);
     String::from_utf8(bytes).map_err(|_| "payload is not valid UTF-8")
 }
+
+/// Session-local interned owner identity for persistent RF layout keys.
+///
+/// Not semantic identity, not seam currency, and not serializable. Independent
+/// sessions may assign different ids to the same [`OwnerRef`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct OwnerLayoutId(u32);
+
+impl OwnerLayoutId {
+    pub fn raw(self) -> u32 {
+        self.0
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Error)]
+pub enum OwnerInternError {
+    #[error("owner `{owner}` is not interned in this session")]
+    UnknownOwner { owner: String },
+    #[error("owner `{owner}` is already interned")]
+    AlreadyInterned { owner: String },
+}
+
+/// Session-local first-seen intern of [`OwnerRef`] for layout metadata only.
+///
+/// Rebuild from tree-walk/first-seen order, or [`Self::rebind`] a flag-switch
+/// so the interned id survives an `alpha -> zulu` string change.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct OwnerInterner {
+    ids: std::collections::HashMap<OwnerRef, OwnerLayoutId>,
+    refs: Vec<OwnerRef>,
+}
+
+impl OwnerInterner {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn intern(&mut self, owner: &OwnerRef) -> OwnerLayoutId {
+        if let Some(id) = self.ids.get(owner) {
+            return *id;
+        }
+        let id = OwnerLayoutId(self.refs.len() as u32);
+        self.refs.push(owner.clone());
+        self.ids.insert(owner.clone(), id);
+        id
+    }
+
+    pub fn id_of(&self, owner: &OwnerRef) -> Option<OwnerLayoutId> {
+        self.ids.get(owner).copied()
+    }
+
+    pub fn owner_of(&self, id: OwnerLayoutId) -> Option<&OwnerRef> {
+        self.refs.get(id.0 as usize)
+    }
+
+    pub fn len(&self) -> usize {
+        self.refs.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.refs.is_empty()
+    }
+
+    /// Keep the same layout id while the canonical [`OwnerRef`] string changes.
+    pub fn rebind(
+        &mut self,
+        from: &OwnerRef,
+        to: OwnerRef,
+    ) -> Result<OwnerLayoutId, OwnerInternError> {
+        if from == &to {
+            return self
+                .id_of(from)
+                .ok_or_else(|| OwnerInternError::UnknownOwner {
+                    owner: from.as_str().to_string(),
+                });
+        }
+        if self.ids.contains_key(&to) {
+            return Err(OwnerInternError::AlreadyInterned {
+                owner: to.as_str().to_string(),
+            });
+        }
+        let id = self
+            .ids
+            .remove(from)
+            .ok_or_else(|| OwnerInternError::UnknownOwner {
+                owner: from.as_str().to_string(),
+            })?;
+        self.refs[id.0 as usize] = to.clone();
+        self.ids.insert(to, id);
+        Ok(id)
+    }
+}

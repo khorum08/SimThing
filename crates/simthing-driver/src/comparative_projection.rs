@@ -21,7 +21,7 @@ use std::collections::BTreeSet;
 
 use simthing_core::{
     eml_opcode, ColumnIndex, DimensionRegistry, EmlNodeGpu, PropertyAdmissionDisposition,
-    SimProperty, SimPropertyId, SlotIndex,
+    SimProperty, SimPropertyId, SlotIndex, StructuralScalarChannel, SubFieldRole,
 };
 use simthing_gpu::{
     apply_field_sweep_registration, encode_column, field_param, FieldAdjacency, FieldLawProof,
@@ -428,7 +428,11 @@ pub fn admit_comparative_projections(
 }
 
 fn col_of(registry: &DimensionRegistry, id: SimPropertyId) -> ColumnIndex {
-    ColumnIndex::from_gpu_round_trip(registry.column_range(id).start as u32)
+    let layout = &registry.property(id).layout;
+    registry
+        .column_range(id)
+        .col_for_role(&SubFieldRole::Amount, layout)
+        .expect("derived comparative property exposes Amount")
 }
 
 fn mint_derived_properties(registry: &mut DimensionRegistry) -> ComparativeDerivedPropertyIds {
@@ -451,19 +455,20 @@ fn mint_derived_properties(registry: &mut DimensionRegistry) -> ComparativeDeriv
 }
 
 fn insufficient_admission(emitter_count: u32) -> ComparativeProjectionAdmission {
+    let dummy = StructuralScalarChannel::INPUT.into_plan_column();
     let dummy_out = ComparativeProjectionOutputs {
-        dominance_col: ColumnIndex::from_gpu_round_trip(0),
-        margin_col: ColumnIndex::from_gpu_round_trip(0),
-        contest_col: ColumnIndex::from_gpu_round_trip(0),
+        dominance_col: dummy,
+        margin_col: dummy,
+        contest_col: dummy,
     };
     let dummy_band = ComparativeBandReadouts {
-        border_col: ColumnIndex::from_gpu_round_trip(0),
-        chokepoint_col: ColumnIndex::from_gpu_round_trip(0),
+        border_col: dummy,
+        chokepoint_col: dummy,
     };
     let dummy_stall = GuYangStallOutputs {
-        net_flux_col: ColumnIndex::from_gpu_round_trip(0),
-        gross_flux_col: ColumnIndex::from_gpu_round_trip(0),
-        stall_col: ColumnIndex::from_gpu_round_trip(0),
+        net_flux_col: dummy,
+        gross_flux_col: dummy,
+        stall_col: dummy,
     };
     let disp = ComparativeProjectionDisposition::InsufficientEmitters { emitter_count };
     ComparativeProjectionAdmission {

@@ -25,6 +25,7 @@ pub mod order_weight;
 pub mod overlay;
 pub mod owner_channel_admission;
 pub mod owner_channel_rf;
+pub mod owner_layout;
 pub mod owner_silo_disburse_down;
 pub mod owner_silo_recursive_rf_source;
 pub mod owner_silo_runtime_writeback;
@@ -157,6 +158,7 @@ pub use owner_channel_rf::{
     OwnerChannelRfErrorKind, OwnerChannelRfOwnAggregate, OwnerChannelRfReduceUpReport,
     OwnerChannelRfSteadSurface,
 };
+pub use owner_layout::{PersistentRfLayout, PersistentRfLayoutKey};
 pub use owner_silo_disburse_down::{
     apply_owner_silo_runtime_disburse_down_cpu, owner_silo_demand_aggregate_totals,
     owner_silo_demand_buckets_from_owner_view, owner_silo_demand_buckets_from_planet_child_rf,

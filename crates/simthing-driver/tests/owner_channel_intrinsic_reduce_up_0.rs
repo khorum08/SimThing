@@ -274,7 +274,10 @@ fn every_owner_resource_scope_bucket_is_bit_exact_on_cpu_and_gpu() {
         return;
     };
     let (root, rows) = three_owner_tree();
-    let plan = compile_owner_channel_rf_gpu_proof_plan(&root, &rows).expect("compile");
+    let mut session = simthing_driver::SpecSessionState::new();
+    let plan =
+        compile_owner_channel_rf_gpu_proof_plan(&root, &rows, &mut session.persistent_rf_layout)
+            .expect("compile");
     let parity = prove_owner_channel_rf_cpu_gpu_parity(&ctx, &plan).expect("parity");
     assert_eq!(parity.bucket_count, plan.reduce_up_report.bucket_count);
     assert!(parity.canonical_bucket_ordering);

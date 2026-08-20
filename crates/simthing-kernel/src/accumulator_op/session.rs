@@ -2924,13 +2924,16 @@ mod tests {
             AccumulatorOp {
                 source: SourceSpec::SlotValue {
                     slot: SlotIndex::new(0),
-                    col: ColumnIndex::new(0),
+                    col: ColumnIndex::from_raw_for_oracle_or_rehearsal(0),
                 },
                 combine: CombineFn::Identity,
                 gate: GateSpec::OrderBand(0),
                 scale: ScaleSpec::Constant(3.0),
                 consume: ConsumeMode::SubtractFromSource,
-                targets: vec![(SlotIndex::new(1), ColumnIndex::new(0))],
+                targets: vec![(
+                    SlotIndex::new(1),
+                    ColumnIndex::from_raw_for_oracle_or_rehearsal(0),
+                )],
             },
             AccumulatorOp {
                 source: SourceSpec::Constant(5.0),
@@ -2938,19 +2941,25 @@ mod tests {
                 gate: GateSpec::OrderBand(0),
                 scale: ScaleSpec::Identity,
                 consume: ConsumeMode::None,
-                targets: vec![(SlotIndex::new(2), ColumnIndex::new(0))],
+                targets: vec![(
+                    SlotIndex::new(2),
+                    ColumnIndex::from_raw_for_oracle_or_rehearsal(0),
+                )],
             },
             AccumulatorOp {
                 source: SourceSpec::SlotRange {
                     start: SlotIndex::new(3),
                     count: 2,
-                    col: ColumnIndex::new(0),
+                    col: ColumnIndex::from_raw_for_oracle_or_rehearsal(0),
                 },
                 combine: CombineFn::Sum,
                 gate: GateSpec::OrderBand(1),
                 scale: ScaleSpec::Identity,
                 consume: ConsumeMode::None,
-                targets: vec![(SlotIndex::new(5), ColumnIndex::new(0))],
+                targets: vec![(
+                    SlotIndex::new(5),
+                    ColumnIndex::from_raw_for_oracle_or_rehearsal(0),
+                )],
             },
         ]
     }
@@ -2970,7 +2979,10 @@ mod tests {
                 gate: GateSpec::OrderBand(0),
                 scale: ScaleSpec::Identity,
                 consume: ConsumeMode::None,
-                targets: vec![(SlotIndex::new(i), ColumnIndex::new(0))],
+                targets: vec![(
+                    SlotIndex::new(i),
+                    ColumnIndex::from_raw_for_oracle_or_rehearsal(0),
+                )],
             })
             .collect()
     }
