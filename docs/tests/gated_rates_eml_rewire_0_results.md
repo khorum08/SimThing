@@ -1,7 +1,7 @@
 # GATED-RATES-EML-REWIRE-0 results
 
 - Track: 0.0.8.7 RF arena modernization (rung 9.1)
-- Status: **PROBATION / proof-present / DA-review-pending**
+Status: **COMPLETE — DA-GRADUATED / merged #1789 @ `059b4896`** (5.14 reconciliation #1787, remand `5343274168`, substrate STOP ruling `5351400933`, graduation ruling on Board #1332)
 - HD-RECEIPT: `30b58045c5ed`
 - ORIENT-RECEIPT: `a5dc59920dd4`
 - orientation_rule_stamp: `61818ff7d4adda84`
