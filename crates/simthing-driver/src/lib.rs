@@ -15,7 +15,6 @@ pub mod comparative_default_birth;
 pub mod comparative_projection;
 pub mod field_scheduler;
 pub mod field_sweep_compile;
-pub mod mapping_runtime;
 pub mod gated_rates;
 pub mod hosted_property_observation;
 pub mod install;
@@ -27,6 +26,7 @@ pub mod local_effect_application_compile;
 pub mod local_effect_recursive_source_compile;
 pub mod local_participant_effects_compile;
 pub mod mapping_plan_compile;
+pub mod mapping_runtime;
 pub mod min_plus_traversal_field;
 pub mod need_binding;
 pub mod order_directive;
@@ -174,16 +174,9 @@ pub use field_sweep_compile::{
     GuYangOverlayParameterizedN4Spec, PalmaN4FieldSweepSpec, PalmaOverlayParameterizedN4Spec,
     SteadOverlayParameterizedN4Spec,
 };
-pub use mapping_runtime::{
-    compiled_cadence_to_field_cadence, compiled_stencil_to_gpu_config, estimate_first_slice_budget,
-    FirstSliceCommitmentReport, FirstSliceMappingError, FirstSliceMappingReport,
-    FirstSliceMappingSession, FirstSliceReadinessReport, FirstSliceResidencyReport,
-    FirstSliceResidencyStatus, FirstSliceSeed, FirstSliceSummaryReport, FirstSliceSummaryStatus,
-    FirstSliceTickOptions,
-};
 pub use gated_rates::{
     build_gated_rate_ops, resolve_gated_rates, seed_gated_rate_base_columns, ResolvedGatedRate,
-    RATE_BASE_SUB_FIELD,
+    ResolvedMagnitude, RATE_BASE_SUB_FIELD,
 };
 pub use hosted_property_observation::{
     observe_hosted_property_cell, system_id_by_host_raw_from_structural_authority,
@@ -227,6 +220,14 @@ pub use local_participant_effects_compile::{
 pub use mapping_plan_compile::{
     compile_mapping_plan_from_admitted_theater, compile_structured_field_mapping_plan,
     MappingPlanCompileError, MappingPlanCompileSpec,
+};
+pub use mapping_runtime::{
+    compiled_cadence_to_field_cadence, compiled_stencil_to_gpu_config, estimate_first_slice_budget,
+    field_urgency_eml_nodes, field_urgency_plan_channels, FirstSliceCommitmentReport,
+    FirstSliceMappingError, FirstSliceMappingReport, FirstSliceMappingSession,
+    FirstSliceReadinessReport, FirstSliceResidencyReport, FirstSliceResidencyStatus,
+    FirstSliceSeed, FirstSliceSummaryReport, FirstSliceSummaryStatus, FirstSliceTickOptions,
+    EML_RESOURCE, EML_WEIGHT_PRESSURE, EML_WEIGHT_RESOURCE,
 };
 pub use min_plus_traversal_field::{
     TraversalFieldBandError, TraversalFieldBandSession, TraversalFieldDispatchReport,

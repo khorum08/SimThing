@@ -6,22 +6,25 @@
 - ORIENT-RECEIPT: `a5dc59920dd4`
 - orientation_rule_stamp: `61818ff7d4adda84`
 - Board dispatch: comment `5342561390`
+- DA identity ruling: `5351400933`
+- Orchestrator resume: `5351414730`
 - expected_route: `DA-RESERVE(gate-wiring)`
 
 ## What landed
 
-`gated_rates` keeps `ColumnIndex` from `col_for_role` / `resolve_node_columns_for_property`. It no longer remints via `ColumnIndex::new` or `flow_start + offset`. Trees register on the ordinary `EmlExpressionRegistry` and inherit `MAX_EML_TREE_NODES`. Gate formulas stay the existing CMP_GE staircase (no EXP/LN consumed; no third exact-consumer variant).
+`gated_rates` keeps `ColumnIndex` from `col_for_role` / `resolve_node_columns_for_property`. Trees register on the ordinary `EmlExpressionRegistry` and inherit `MAX_EML_TREE_NODES`. Gate formulas stay the existing CMP_GE staircase (no EXP/LN).
 
-`crates/simthing-driver/src/first_slice_mapping_runtime.rs` is deleted. Live mapping session/callers moved to `mapping_runtime.rs`, which admits columns with `try_from_admitted_authored` / compiled `urgency_col`.
+`first_slice_mapping_runtime.rs` remains deleted. Mapping gadget lanes are named plan-local `StructuralScalarChannel` identities (`EML_RESOURCE`, `EML_WEIGHT_PRESSURE`, `EML_WEIGHT_RESOURCE`) with an explicit `raw < n_dims` check. They convert to `ColumnIndex` only through `into_plan_column()` on AccumulatorOp / EvalEML surfaces. `eml_output_col` still comes from compiled `commitment.urgency_col`.
 
-## Falsifiers
+## Executed oracles
 
-| Check | Production | Wrong implementation |
-|---|---|---|
-| Role-pathway columns | `col_for_role` / admitted authored | test-side `from_raw_for_oracle_or_rehearsal(1)` disagrees with admitted col 4 |
-| No raw remint | grep absence of `ColumnIndex::new` | would restore Family C mint |
-| Mapping file | `first_slice_mapping_runtime.rs` absent | file present |
-| Mapping cols | no `let eml_resource_col = 1` | hardcoded magic |
+| Case | Production | Oracle / rival | Result |
+|---|---|---|---|
+| Gate below / equal / above / ungated add / gated mult | `build_gated_rate_ops` + `eval_eml_cpu` | independent `trigger >= at_least` referee | bit-identical |
+| Mapping successor | `field_urgency_eml_nodes` via named structural channels | pre-delete positional SLOT_VALUE 1/2/3 | bit-identical |
+| Authored-admit mutant | named `EML_RESOURCE` | `try_from_admitted_authored(urgency_col=4)` as resource | RED (values disagree) |
+| Always-on gate mutant | CMP_GE production | drop the gate | RED when trigger < at_least |
+| Plan bound | `field_urgency_plan_channels(2)` | channel 2 in n_dims 2 | `PlanChannelOutOfGrid` |
 
 EXP/LN necessity was not opened: production gated-rate trees do not contain EXP/LN opcodes.
 
