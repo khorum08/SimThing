@@ -1,6 +1,6 @@
 # DOCTRINE-CI-RECONCILE-0 (10.1) evidence
 
-Status: **PROBATION / proof-present / DA-review-pending**
+Status: **COMPLETE — DA-GRADUATED / merged #1796 @ `9da3f112`** (pre-dispatch `5365284584`, remand `5366507518`, Fable deep review, graduation ruling on Board #1332)
 
 ## Identity, authority, and scope
 
