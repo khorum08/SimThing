@@ -79,7 +79,9 @@ pub fn compile_owner_silo_flow_admission(
 > {
     let silo_admission = evaluate_owner_silo_flow(scenario);
     let flow_spec =
-        build_owner_silo_resource_flow_spec(scenario).ok_or(SpecError::ValidationFailed)?;
+        build_owner_silo_resource_flow_spec(scenario).ok_or(SpecError::ValidationFailedAt {
+            site: "simthing-driver/session_resource_flow_silos",
+        })?;
     let admission = compile_resource_flow_admission(&flow_spec, registry)?;
     Ok((
         admission,
@@ -122,7 +124,9 @@ pub fn compile_and_materialize_owner_silo_flow_via_resource_flow(
 ) -> Result<(ArenaRegistry, OwnerSiloFlowMaterializationReport), SpecError> {
     let silo_admission = evaluate_owner_silo_flow(scenario);
     let flow_spec =
-        build_owner_silo_resource_flow_spec(scenario).ok_or(SpecError::ValidationFailed)?;
+        build_owner_silo_resource_flow_spec(scenario).ok_or(SpecError::ValidationFailedAt {
+            site: "simthing-driver/session_resource_flow_silos",
+        })?;
     let (registry, _) = compile_and_materialize_resource_flow(&flow_spec, registry)?;
     Ok((registry, owner_silo_materialization_report(&silo_admission)))
 }
@@ -134,6 +138,8 @@ fn map_registry_error(err: crate::arena_registry::ArenaRegistryError) -> SpecErr
                 arena: arena.to_string(),
             }
         }
-        _ => SpecError::ValidationFailed,
+        _ => SpecError::ValidationFailedAt {
+            site: "simthing-driver/session_resource_flow_silos",
+        },
     }
 }

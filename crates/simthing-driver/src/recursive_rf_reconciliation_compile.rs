@@ -27,14 +27,21 @@ pub fn compile_recursive_rf_reconciliation_plan(
     scenario: &SimThingScenarioSpec,
 ) -> Result<RecursiveRfReconciliationPlan, SpecError> {
     let owner_view =
-        admit_intrinsic_owner_channels(scenario).map_err(|_| SpecError::ValidationFailed)?;
+        admit_intrinsic_owner_channels(scenario).map_err(|_| SpecError::ValidationFailedAt {
+            site: "simthing-driver/recursive_rf_reconciliation_compile",
+        })?;
     let recursive_local_rf_plan = compile_recursive_local_rf_plan_from_owner_view(&owner_view)?;
-    let reconciliation_report =
-        reconcile_planet_child_rf_with_recursive_local_rf_from_owner_view(&owner_view)
-            .map_err(|_| SpecError::ValidationFailed)?;
+    let reconciliation_report = reconcile_planet_child_rf_with_recursive_local_rf_from_owner_view(
+        &owner_view,
+    )
+    .map_err(|_| SpecError::ValidationFailedAt {
+        site: "simthing-driver/recursive_rf_reconciliation_compile",
+    })?;
 
     if !reconciliation_report.recursive_evaluator_preserved {
-        return Err(SpecError::ValidationFailed);
+        return Err(SpecError::ValidationFailedAt {
+            site: "simthing-driver/recursive_rf_reconciliation_compile",
+        });
     }
 
     Ok(RecursiveRfReconciliationPlan {

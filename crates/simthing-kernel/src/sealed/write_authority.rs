@@ -5,7 +5,7 @@
 ///
 /// External crates cannot construct write authority directly:
 ///
-/// ```compile_fail
+/// ```compile_fail,E0423
 /// fn external_resolved_write_authority_forge() {
 ///     let _ = simthing_kernel::ResolvedWriteAuthority(());
 /// }

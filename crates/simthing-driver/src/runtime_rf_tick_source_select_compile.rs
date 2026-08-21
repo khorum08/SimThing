@@ -48,15 +48,20 @@ pub fn compile_runtime_rf_tick_source_selection_plan(
     selection_mode: RuntimeRfTickSourceSelectionMode,
 ) -> Result<RuntimeRfTickSourceSelectionPlan, SpecError> {
     if tick_id.0 == 0 {
-        return Err(SpecError::ValidationFailed);
+        return Err(SpecError::ValidationFailedAt {
+            site: "simthing-driver/runtime_rf_tick_source_select_compile",
+        });
     }
 
     let comparison_plan = compile_runtime_rf_tick_source_comparison_plan(scenario)?;
     let default_tick_plan = compile_runtime_rf_tick_plan(scenario)?;
     let default_tick_shell_plan = compile_runtime_tick_shell_plan(scenario, tick_id)?;
     let selected_source_report =
-        evaluate_runtime_rf_tick_source_selection(scenario, selection_mode)
-            .map_err(|_| SpecError::ValidationFailed)?;
+        evaluate_runtime_rf_tick_source_selection(scenario, selection_mode).map_err(|_| {
+            SpecError::ValidationFailedAt {
+                site: "simthing-driver/runtime_rf_tick_source_select_compile",
+            }
+        })?;
 
     Ok(RuntimeRfTickSourceSelectionPlan {
         selected_source_kind: selected_source_report.selection_gate.selected_source_kind,

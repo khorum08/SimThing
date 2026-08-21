@@ -45,7 +45,7 @@
 //! Semantic kind names must not be imported from this crate
 //! (`sim_public_surface_rejects_kind_import_compile_fail`):
 //!
-//! ```compile_fail
+//! ```compile_fail,E0432
 //! use simthing_sim::SimThingKind;
 //! ```
 

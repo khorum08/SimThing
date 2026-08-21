@@ -406,7 +406,7 @@ impl ExplicitParticipantSpec {
     ///
     /// External code cannot enroll a spatial gridcell `Location` with channel identity alone:
     ///
-    /// ```compile_fail
+    /// ```compile_fail,E0599
     /// use simthing_core::{SimThingId, StructuralCoord};
     /// use simthing_spec::ExplicitParticipantSpec;
     /// fn spatial_arena_member_without_placed_proof() {

@@ -39,6 +39,7 @@ fi
 
 "$PYTHON_BIN" - <<'PY' "$ROOT" "$INVENTORY" "$PROVE"
 import csv
+import hashlib
 import pathlib
 import re
 import shutil
@@ -82,19 +83,42 @@ def read_residue_classes(path: pathlib.Path) -> set[str]:
         sys.exit(1)
     return values
 
-permanent_targets = read_residue_classes(residue_classes_path)
-kernel_sim_permanent = permanent_targets | {
-    "permanent-residue:seal-proof",
-    "permanent-residue:oracle-parity",
-    "permanent-residue:golden-byte",
-    "permanent-residue:determinism",
-    "permanent-residue:behavior-regression",
+until_closeout_targets = read_residue_classes(residue_classes_path)
+kernel_sim_until_closeout = until_closeout_targets | {
+    "until-closeout:seal-proof",
+    "until-closeout:oracle-parity",
+    "until-closeout:golden-byte",
+    "until-closeout:determinism",
+    "until-closeout:behavior-regression",
 }
 
 test_attr_re = re.compile(r"#\[\s*(?:(?:tokio|async_std)::)?test(?:\(|\])")
 fn_re = re.compile(r"\bfn\s+([A-Za-z_][A-Za-z0-9_]*)")
-cfg_test_re = re.compile(r"#\[\s*cfg\s*\(\s*test\s*\)\s*\]")
-mod_re = re.compile(r"\bmod\s+([A-Za-z_][A-Za-z0-9_]*)")
+compile_fail_fence_re = re.compile(
+    r"```compile_fail(?P<codes>(?:,E[0-9]{4})+)\s*$"
+)
+
+
+def strip_doc_prefix(line: str) -> str:
+    return re.sub(r"^\s*//(?:/|!)\s?", "", line)
+
+
+def compile_fail_identity(lines: list[str], index: int) -> str:
+    match = compile_fail_fence_re.search(lines[index])
+    if not match:
+        raise ValueError("compile_fail fence lacks pinned E#### error identity")
+    codes = match.group("codes").lstrip(",").split(",")
+    snippet: list[str] = []
+    for raw in lines[index + 1 :]:
+        cleaned = strip_doc_prefix(raw)
+        if "```" in cleaned:
+            break
+        if cleaned.startswith("# "):
+            cleaned = cleaned[2:]
+        snippet.append(cleaned.rstrip())
+    normalized = "\n".join(snippet).strip() + "\n"
+    digest = hashlib.sha256(normalized.encode("utf-8")).hexdigest()[:12]
+    return f"compile_fail_{'-'.join(codes)}_{digest}"
 
 def crate_for(path: pathlib.Path) -> str:
     parts = path.parts
@@ -113,8 +137,9 @@ def rust_files(base: pathlib.Path) -> list[pathlib.Path]:
         files.update(base.glob(pattern))
     return sorted(path.relative_to(base) for path in files)
 
-def discovered_items(base: pathlib.Path) -> set[tuple[str, str, str, str]]:
+def discovered_items(base: pathlib.Path) -> tuple[set[tuple[str, str, str, str]], list[str]]:
     items: set[tuple[str, str, str, str]] = set()
+    errors: list[str] = []
     for rel in rust_files(base):
         text = (base / rel).read_text(encoding="utf-8", errors="replace").splitlines()
         file_kind = "unit" if "/src/" in f"/{rel.as_posix()}/" else "integration"
@@ -128,15 +153,15 @@ def discovered_items(base: pathlib.Path) -> set[tuple[str, str, str, str]]:
                         break
                 if name:
                     items.add((crate_for(rel), norm(rel), name, file_kind))
-            if cfg_test_re.search(line):
-                name = None
-                for later in text[index : min(index + 8, len(text))]:
-                    m = mod_re.search(later)
-                    if m:
-                        name = f"cfg_test_mod::{m.group(1)}"
-                        break
+            # A cfg(test) module is a source container, not an executable test.
+            # Its child #[test] functions are inventoried individually above.
             if "```compile_fail" in line:
-                items.add((crate_for(rel), norm(rel), f"compile_fail_line_{index + 1}", "compile_fail"))
+                try:
+                    identity = compile_fail_identity(text, index)
+                except ValueError as exc:
+                    errors.append(f"{norm(rel)}:{index + 1}: {exc}")
+                    continue
+                items.add((crate_for(rel), norm(rel), identity, "compile_fail"))
             if "trybuild::TestCases" in line or ".compile_fail(" in line:
                 items.add((crate_for(rel), norm(rel), f"trybuild_line_{index + 1}", "trybuild"))
     fixtures = sorted((base / "scripts/ci/fixtures").glob("**/*"))
@@ -144,7 +169,7 @@ def discovered_items(base: pathlib.Path) -> set[tuple[str, str, str, str]]:
         if path.is_file():
             rel = path.relative_to(base)
             items.add(("scripts-ci", norm(rel), rel.name, "fixture"))
-    return items
+    return items, errors
 
 def read_inventory(path: pathlib.Path) -> tuple[list[dict[str, str]], list[str]]:
     errors: list[str] = []
@@ -182,7 +207,8 @@ def read_parked_keys(base: pathlib.Path) -> set:
 
 def check(base: pathlib.Path, inv_path: pathlib.Path) -> tuple[bool, list[str], dict[str, int]]:
     rows, errors = read_inventory(inv_path)
-    discovered = discovered_items(base)
+    discovered, discovery_errors = discovered_items(base)
+    errors.extend(discovery_errors)
     inventory_keys = {
         (row["crate"], row["file"], row["test_name"], row["kind"]): row
         for row in rows
@@ -194,7 +220,7 @@ def check(base: pathlib.Path, inv_path: pathlib.Path) -> tuple[bool, list[str], 
         key
         for key in (set(inventory_keys) - discovered)
         if inventory_keys[key].get("promotion_target", "").strip()
-        != "permanent-residue:dependency-floor"
+        != "until-closeout:dependency-floor"
         and not is_cfg_module_marker_deletion_candidate(inventory_keys[key])
     )
     if missing:
@@ -208,15 +234,15 @@ def check(base: pathlib.Path, inv_path: pathlib.Path) -> tuple[bool, list[str], 
         target = row.get("promotion_target", "").strip()
         verdict = row.get("verdict", "").strip()
         if verdict == "KEEP":
-            if target not in permanent_targets and not target.startswith("promotion-target:"):
+            if target not in until_closeout_targets and not target.startswith("promotion-target:"):
                 errors.append(
-                    f"line {line_no}: unowned KEEP row lacks permanent-residue class or promotion target: "
+                    f"line {line_no}: unowned KEEP row lacks until-closeout class or promotion target: "
                     f"{row['crate']} {row['file']}::{row['test_name']}"
                 )
             if row["crate"] in {"simthing-kernel", "simthing-sim"}:
-                if target not in kernel_sim_permanent:
+                if target not in kernel_sim_until_closeout:
                     errors.append(
-                        f"line {line_no}: kernel/sim KEEP row is not permanent-residue: "
+                        f"line {line_no}: kernel/sim KEEP row is not until-closeout: "
                         f"{row['crate']} {row['file']}::{row['test_name']}"
                     )
     promotion_count = sum(1 for row in rows if row.get("promotion_target", "").startswith("promotion-target:"))
@@ -319,7 +345,7 @@ def setup_cfg_marker_keep_stale_fails(base: pathlib.Path) -> None:
             "superseding_boundary": "B-T7-GOLDEN-BYTE-DETERMINISM",
             "verdict": "KEEP",
             "note": "stale cfg module KEEP fixture",
-            "promotion_target": "permanent-residue:golden-byte",
+            "promotion_target": "until-closeout:golden-byte",
             "birth_track": "pre-lifecycle",
             "dsu_survivals": "0",
         }],
@@ -337,7 +363,7 @@ def setup_stale(base: pathlib.Path) -> None:
             "superseding_boundary": "B-T5-BEHAVIOR-REGRESSION",
             "verdict": "KEEP",
             "note": "stale fixture",
-            "promotion_target": "permanent-residue:behavior-regression",
+            "promotion_target": "until-closeout:behavior-regression",
         }],
     )
 
@@ -373,7 +399,7 @@ def setup_parked_test_ok(base: pathlib.Path) -> None:
             "crate": "simthing-spec", "file": "crates/simthing-spec/tests/parked_test.rs",
             "test_name": "parked_regression", "kind": "integration", "class": "behavior-regression",
             "superseding_boundary": "B-T5", "verdict": "AUDIT", "note": "undecided",
-            "promotion_target": "permanent-residue:behavior-regression", "birth_track": "pre-lifecycle",
+            "promotion_target": "until-closeout:behavior-regression", "birth_track": "pre-lifecycle",
             "dsu_survivals": "0", "parked_at": "2026-07-07", "closeout_track": "pre-lifecycle",
             "park_reason": "undecided-audit",
         })

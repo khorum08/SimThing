@@ -65,8 +65,8 @@ pub use saturating_flux_choke_threshold::{
 pub use simthing_core::SlotIndex;
 pub use simthing_kernel::accumulator_op::{
     FacilityPlaneError, FacilityPlaneGenerationBoundary, FacilityPlaneOwner, FacilityResidentPlane,
-    OverlayLifecycleProjectionBinding, OverlayLifecycleProjectionPlan, OverlayLifecycleStateGpu,
-    THRESH_BUF_OWNING_GENERATION,
+    OverlayLifecycleProjectionBinding, OverlayLifecycleProjectionPlan,
+    OverlayLifecycleProjectionSeed, OverlayLifecycleStateGpu, THRESH_BUF_OWNING_GENERATION,
 };
 pub use simthing_kernel::field_param;
 pub use simthing_kernel::{

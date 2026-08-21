@@ -89,7 +89,7 @@ pub enum DissolveCondition {
 /// An unreachable or session-bounded condition means no *automatic* trigger; it never
 /// means permanence, and no consumer may treat it as licence to skip cleanup.
 ///
-/// There is deliberately no `Permanent` variant. `permanent-residue` in the test inventory
+/// There is deliberately no `Permanent` variant. The former `permanent-residue` test-inventory
 /// is the cautionary precedent: a name that makes immortality feel normal produces
 /// immortality by omission.
 pub enum OverlayLifecycle {

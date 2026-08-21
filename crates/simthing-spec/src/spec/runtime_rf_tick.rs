@@ -2,6 +2,11 @@
 //!
 //! Composes participant admission → reduce-up → writeback → disburse-down → local allocation.
 
+use super::legacy_owner_channel_rf::{
+    evaluate_planet_child_rf_admission_from_owner_view,
+    evaluate_planet_child_rf_reduce_up_from_owner_view, PlanetChildRfAdmissionClassification,
+    PlanetChildRfAdmissionReport, PlanetChildRfReduceUpReport,
+};
 use super::owner_channel_admission::{admit_intrinsic_owner_channels, IntrinsicOwnerChannelView};
 use super::owner_silo_disburse_down::{
     apply_owner_silo_runtime_disburse_down_cpu, owner_silo_demand_buckets_from_owner_view,
@@ -11,11 +16,6 @@ use super::owner_silo_runtime_writeback::{
     apply_owner_silo_runtime_writeback_cpu,
     owner_silo_writeback_inputs_from_planet_child_reduce_up,
     runtime_owner_silo_states_from_scenario, RuntimeOwnerSiloWritebackResult,
-};
-use super::planet_child_rf::{
-    evaluate_planet_child_rf_admission_from_owner_view,
-    evaluate_planet_child_rf_reduce_up_from_owner_view, PlanetChildRfAdmissionClassification,
-    PlanetChildRfAdmissionReport, PlanetChildRfReduceUpReport,
 };
 use super::runtime_local_allocation::{
     apply_runtime_local_allocations_from_disburse_down, RuntimeLocalAllocationApplicationReport,

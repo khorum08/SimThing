@@ -50,28 +50,40 @@ pub fn compile_recursive_local_rf_plan(
     scenario: &SimThingScenarioSpec,
 ) -> Result<RecursiveLocalRfPlan, SpecError> {
     let owner_view =
-        admit_intrinsic_owner_channels(scenario).map_err(|_| SpecError::ValidationFailed)?;
+        admit_intrinsic_owner_channels(scenario).map_err(|_| SpecError::ValidationFailedAt {
+            site: "simthing-driver/recursive_local_rf_compile",
+        })?;
     compile_recursive_local_rf_plan_from_owner_view(&owner_view)
 }
 
 pub fn compile_recursive_local_rf_plan_from_owner_view(
     owner_view: &IntrinsicOwnerChannelView,
 ) -> Result<RecursiveLocalRfPlan, SpecError> {
-    let evaluation_report = evaluate_recursive_local_rf_from_owner_view(owner_view)
-        .map_err(|_| SpecError::ValidationFailed)?;
+    let evaluation_report =
+        evaluate_recursive_local_rf_from_owner_view(owner_view).map_err(|_| {
+            SpecError::ValidationFailedAt {
+                site: "simthing-driver/recursive_local_rf_compile",
+            }
+        })?;
 
     let authority_proof = prove_recursive_local_rf_preserves_authority_from_owner_view(owner_view)
-        .map_err(|_| SpecError::ValidationFailed)?;
+        .map_err(|_| SpecError::ValidationFailedAt {
+            site: "simthing-driver/recursive_local_rf_compile",
+        })?;
 
     if !authority_proof.scenario_authority_unchanged {
-        return Err(SpecError::ValidationFailed);
+        return Err(SpecError::ValidationFailedAt {
+            site: "simthing-driver/recursive_local_rf_compile",
+        });
     }
 
     let compatibility_report =
         recursive_local_rf_report_matches_planet_child_compatibility_slice_from_owner_view(
             owner_view,
         )
-        .map_err(|_| SpecError::ValidationFailed)?;
+        .map_err(|_| SpecError::ValidationFailedAt {
+            site: "simthing-driver/recursive_local_rf_compile",
+        })?;
 
     let aggregate_source_rows = recursive_local_rf_aggregate_source_rows(&evaluation_report);
     let gpu_arena_aggregate_proof_plans =

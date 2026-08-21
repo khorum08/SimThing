@@ -7,13 +7,13 @@ use std::collections::BTreeMap;
 use simthing_core::SimThing;
 
 use super::channel_key::{OwnerChannelScopeKey, OwnerRef, ResourceKey, ScopeId};
+use super::legacy_owner_channel_rf::planet_child_rf_default_resource_key;
 use super::owner_channel_admission::{admit_intrinsic_owner_channels, IntrinsicOwnerChannelView};
 use super::owner_silo_runtime_writeback::RuntimeOwnerSiloWritebackResult;
 use super::planet_child_location::{
     is_admitted_planet_non_grid_child, planet_id, planet_non_grid_child_kind_label,
     star_system_gridcells,
 };
-use super::planet_child_rf::planet_child_rf_default_resource_key;
 use super::scenario::{
     game_session_galaxy_map, property_u32, SimThingScenarioSpec, OWNER_FLOW_DEFAULT_PRIORITY,
     OWNER_FLOW_DEMAND_PROPERTY_ID, OWNER_FLOW_PRIORITY_PROPERTY_ID,

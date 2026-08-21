@@ -44,20 +44,30 @@ pub fn compile_local_effect_application_plan(
     replay_count: u32,
 ) -> Result<LocalEffectApplicationPlan, SpecError> {
     if tick_id.0 == 0 {
-        return Err(SpecError::ValidationFailed);
+        return Err(SpecError::ValidationFailedAt {
+            site: "simthing-driver/local_effect_application_compile",
+        });
     }
 
     let tick_history_plan = compile_runtime_tick_history_plan(scenario, tick_id, replay_count)?;
     let local_participant_effects_plan = compile_local_participant_effects_plan(scenario, tick_id)?;
 
-    let application_report = evaluate_runtime_local_effect_application(scenario, tick_id)
-        .map_err(|_| SpecError::ValidationFailed)?;
+    let application_report =
+        evaluate_runtime_local_effect_application(scenario, tick_id).map_err(|_| {
+            SpecError::ValidationFailedAt {
+                site: "simthing-driver/local_effect_application_compile",
+            }
+        })?;
 
     let authority_proof = prove_local_effect_application_preserves_authority(scenario, tick_id)
-        .map_err(|_| SpecError::ValidationFailed)?;
+        .map_err(|_| SpecError::ValidationFailedAt {
+            site: "simthing-driver/local_effect_application_compile",
+        })?;
 
     if !authority_proof.scenario_authority_unchanged {
-        return Err(SpecError::ValidationFailed);
+        return Err(SpecError::ValidationFailedAt {
+            site: "simthing-driver/local_effect_application_compile",
+        });
     }
 
     let gpu_application_aggregate_proof_plans =
@@ -96,7 +106,9 @@ fn compile_application_aggregate_proof_plans(
             .map(|(index, _)| index)
             .collect::<Vec<_>>();
         if source_record_indices.is_empty() {
-            return Err(SpecError::ValidationFailed);
+            return Err(SpecError::ValidationFailedAt {
+                site: "simthing-driver/local_effect_application_compile",
+            });
         }
 
         let participant_count = source_record_indices.len() as u32;

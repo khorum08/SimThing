@@ -6,7 +6,7 @@
 //!
 //! Structural paths accept [`StructuralCoord`] only — render floats cannot enter:
 //!
-//! ```compile_fail
+//! ```compile_fail,E0308
 //! use simthing_core::RenderCoord;
 //! use simthing_driver::CompiledStructuralN4Theater;
 //! fn demo(theater: &CompiledStructuralN4Theater) {

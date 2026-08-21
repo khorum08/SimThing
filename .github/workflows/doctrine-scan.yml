@@ -105,6 +105,27 @@ jobs:
           set -o pipefail
           bash scripts/ci/gen_orientation.sh --check 2>&1 | tee doctrine-orientation-report.txt
 
+      - name: Plan struct typing census
+        run: |
+          set -o pipefail
+          bash scripts/ci/plan_struct_typing_census.sh 2>&1 | tee doctrine-plan-struct-typing-census-report.txt
+
+      - name: Write-door band delta census
+        run: |
+          set -o pipefail
+          bash scripts/ci/write_door_band_delta_census.sh 2>&1 | tee doctrine-write-door-band-delta-census-report.txt
+
+      - name: Constitutional surface census
+        run: |
+          set -o pipefail
+          bash scripts/ci/constitutional_surface_check.sh --check 2>&1 | tee doctrine-constitutional-surface-report.txt
+
+      - name: Constitutional surface census selftest
+        if: steps.gate.outputs.run_selftests == 'true'
+        run: |
+          set -o pipefail
+          bash scripts/ci/constitutional_surface_check.sh --selftest 2>&1 | tee -a doctrine-constitutional-surface-report.txt
+
       - name: EML EXP qualification artifact freshness
         run: |
           set -o pipefail
@@ -311,9 +332,24 @@ jobs:
             cat doctrine-orientation-report.txt 2>/dev/null || true
             echo '```'
             echo
+            echo "## Plan struct typing census"
+            echo '```'
+            cat doctrine-plan-struct-typing-census-report.txt 2>/dev/null || true
+            echo '```'
+            echo
+            echo "## Write-door band delta census"
+            echo '```'
+            cat doctrine-write-door-band-delta-census-report.txt 2>/dev/null || true
+            echo '```'
+            echo
             echo "## Lifecycle schema gate"
             echo '```'
             cat doctrine-lifecycle-schema-gate-report.txt 2>/dev/null || true
+            echo '```'
+            echo
+            echo "## Constitutional surface census"
+            echo '```'
+            cat doctrine-constitutional-surface-report.txt 2>/dev/null || true
             echo '```'
             echo
             echo "## Doctrine scan"
@@ -335,6 +371,9 @@ jobs:
           path: |
             doctrine-digest-report.txt
             doctrine-orientation-report.txt
+            doctrine-plan-struct-typing-census-report.txt
+            doctrine-write-door-band-delta-census-report.txt
+            doctrine-constitutional-surface-report.txt
             doctrine-lifecycle-schema-gate-report.txt
             doctrine-selftest-report.txt
             doctrine-scan-report.txt

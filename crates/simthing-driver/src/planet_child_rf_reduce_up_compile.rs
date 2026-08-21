@@ -4,8 +4,8 @@ use simthing_core::{CompiledAccumulatorOpPlan, StructuralScalarChannel};
 use simthing_spec::{
     admit_intrinsic_owner_channels, evaluate_planet_child_rf_reduce_up_from_owner_view,
     planet_child_rf_participant_inputs_from_owner_view, scope_key_from_participant,
-    IntrinsicOwnerChannelView, PlanetChildRfAdmissionClassification, PlanetChildRfParticipantInput,
-    PlanetChildRfReduceUpReport, PlanetChildRfScopeKey, SimThingScenarioSpec, SpecError,
+    IntrinsicOwnerChannelView, OwnerChannelScopeKey, PlanetChildRfAdmissionClassification,
+    PlanetChildRfParticipantInput, PlanetChildRfReduceUpReport, SimThingScenarioSpec, SpecError,
 };
 
 use crate::owner_silo_accumulator_compile::compile_participant_channel_sum_plan;
@@ -13,7 +13,7 @@ use crate::owner_silo_accumulator_compile::compile_participant_channel_sum_plan;
 /// Per-scope AccumulatorOp plans over participant indices in that bucket.
 #[derive(Debug, Clone, PartialEq)]
 pub struct PlanetChildRfBucketAccumulatorPlan {
-    pub scope: PlanetChildRfScopeKey,
+    pub scope: OwnerChannelScopeKey,
     pub participant_indices: Vec<usize>,
     pub surplus_plan: CompiledAccumulatorOpPlan,
     pub deficit_plan: CompiledAccumulatorOpPlan,
@@ -34,7 +34,9 @@ pub fn compile_planet_child_rf_reduce_up_gpu_proof_plan(
     scenario: &SimThingScenarioSpec,
 ) -> Result<PlanetChildRfReduceUpGpuProofPlan, SpecError> {
     let owner_view =
-        admit_intrinsic_owner_channels(scenario).map_err(|_| SpecError::ValidationFailed)?;
+        admit_intrinsic_owner_channels(scenario).map_err(|_| SpecError::ValidationFailedAt {
+            site: "simthing-driver/planet_child_rf_reduce_up_compile",
+        })?;
     compile_planet_child_rf_reduce_up_gpu_proof_plan_from_owner_view(&owner_view)
 }
 
@@ -43,16 +45,26 @@ pub fn compile_planet_child_rf_reduce_up_gpu_proof_plan_from_owner_view(
 ) -> Result<PlanetChildRfReduceUpGpuProofPlan, SpecError> {
     let reduce_up_report = evaluate_planet_child_rf_reduce_up_from_owner_view(owner_view);
     if reduce_up_report.classification == PlanetChildRfAdmissionClassification::Rejected {
-        return Err(SpecError::ValidationFailed);
+        return Err(SpecError::ValidationFailedAt {
+            site: "simthing-driver/planet_child_rf_reduce_up_compile",
+        });
     }
     if !reduce_up_report.errors.is_empty() {
-        return Err(SpecError::ValidationFailed);
+        return Err(SpecError::ValidationFailedAt {
+            site: "simthing-driver/planet_child_rf_reduce_up_compile",
+        });
     }
 
-    let participants = planet_child_rf_participant_inputs_from_owner_view(owner_view)
-        .map_err(|_| SpecError::ValidationFailed)?;
+    let participants =
+        planet_child_rf_participant_inputs_from_owner_view(owner_view).map_err(|_| {
+            SpecError::ValidationFailedAt {
+                site: "simthing-driver/planet_child_rf_reduce_up_compile",
+            }
+        })?;
     if participants.is_empty() || reduce_up_report.buckets.is_empty() {
-        return Err(SpecError::ValidationFailed);
+        return Err(SpecError::ValidationFailedAt {
+            site: "simthing-driver/planet_child_rf_reduce_up_compile",
+        });
     }
 
     let mut bucket_plans = Vec::with_capacity(reduce_up_report.buckets.len());
@@ -64,7 +76,9 @@ pub fn compile_planet_child_rf_reduce_up_gpu_proof_plan_from_owner_view(
             .map(|(index, _)| index)
             .collect::<Vec<_>>();
         if participant_indices.is_empty() {
-            return Err(SpecError::ValidationFailed);
+            return Err(SpecError::ValidationFailedAt {
+                site: "simthing-driver/planet_child_rf_reduce_up_compile",
+            });
         }
 
         let participant_count = participant_indices.len() as u32;

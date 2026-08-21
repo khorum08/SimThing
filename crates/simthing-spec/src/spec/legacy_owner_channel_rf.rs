@@ -81,16 +81,10 @@ pub fn planet_child_rf_default_resource_key() -> ResourceKey {
     ResourceKey::new(PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY)
 }
 
-/// Compatibility name for the generalized owner/resource/execution-scope key.
-///
-/// The key intentionally has no domain-shaped scope fields. New generic code should name
-/// [`OwnerChannelScopeKey`] directly.
-pub type PlanetChildRfScopeKey = OwnerChannelScopeKey;
-
 /// Per-scope reduce-up bucket after grouping admitted participants.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct PlanetChildRfReduceUpBucket {
-    pub scope: PlanetChildRfScopeKey,
+pub struct LegacyOwnerChannelReduceUpBucket {
+    pub scope: OwnerChannelScopeKey,
     pub participant_count: u32,
     pub surplus_total: u32,
     pub deficit_total: u32,
@@ -106,7 +100,7 @@ pub struct PlanetChildRfReduceUpReport {
     pub scope_count: u32,
     pub surplus_total: u32,
     pub deficit_total: u32,
-    pub buckets: Vec<PlanetChildRfReduceUpBucket>,
+    pub buckets: Vec<LegacyOwnerChannelReduceUpBucket>,
     pub classification: PlanetChildRfAdmissionClassification,
     pub deferrals: Vec<PlanetChildRfDeferral>,
     pub errors: Vec<PlanetChildRfAdmissionError>,
@@ -311,7 +305,7 @@ pub fn evaluate_planet_child_rf_reduce_up_from_owner_view(
         }
     };
 
-    let mut bucket_map: BTreeMap<PlanetChildRfScopeKey, PlanetChildRfReduceUpBucket> =
+    let mut bucket_map: BTreeMap<OwnerChannelScopeKey, LegacyOwnerChannelReduceUpBucket> =
         BTreeMap::new();
     let mut participant_count: u32 = 0;
     let mut surplus_total: u32 = 0;
@@ -347,7 +341,7 @@ pub fn evaluate_planet_child_rf_reduce_up_from_owner_view(
         let entry =
             bucket_map
                 .entry(scope.clone())
-                .or_insert_with(|| PlanetChildRfReduceUpBucket {
+                .or_insert_with(|| LegacyOwnerChannelReduceUpBucket {
                     scope,
                     participant_count: 0,
                     surplus_total: 0,
@@ -381,7 +375,7 @@ pub fn evaluate_planet_child_rf_reduce_up_from_owner_view(
         };
     }
 
-    let mut buckets: Vec<PlanetChildRfReduceUpBucket> = bucket_map.into_values().collect();
+    let mut buckets: Vec<LegacyOwnerChannelReduceUpBucket> = bucket_map.into_values().collect();
     for bucket in &mut buckets {
         let surplus = bucket.surplus_total as i64;
         let deficit = bucket.deficit_total as i64;
@@ -422,8 +416,8 @@ pub fn evaluate_planet_child_rf_reduce_up_from_owner_view(
 /// Derive the scoped reduce-up key for a participant row.
 pub fn scope_key_from_participant(
     participant: &PlanetChildRfParticipantInput,
-) -> PlanetChildRfScopeKey {
-    PlanetChildRfScopeKey {
+) -> OwnerChannelScopeKey {
+    OwnerChannelScopeKey {
         owner_ref: participant.owner_ref.clone(),
         resource_key: planet_child_rf_default_resource_key(),
         scope_id: ScopeId::from_boundary(SimThingId::from_session_raw(

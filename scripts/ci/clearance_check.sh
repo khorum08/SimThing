@@ -17,6 +17,9 @@ GATE_WIRING_PATHS=(
   "scripts/ci/artifact_provenance_check.py"
   "scripts/ci/scenario_residue_check.sh"
   "scripts/ci/detachability_check.sh"
+  "scripts/ci/compile_fail_error_identity_check.sh"
+  "scripts/ci/constitutional_surface_check.sh"
+  "scripts/ci/constitutional_surfaces.tsv"
   "scripts/ci/allow/contention_mechanisms.txt"
   "scripts/ci/allow/kernel_surface.txt"
   "scripts/ci/allow/sealed_types.txt"
@@ -1764,6 +1767,7 @@ run_selftest() {
     clearance_selftest_fail_closed_malformed_tsv
     clearance_selftest_fail_closed_ambiguous_class
     clearance_selftest_gate_wiring_self_application
+    clearance_selftest_gate_wiring_contention_registry
     clearance_selftest_gate_wiring_doctrine_anchors_tsv
     clearance_selftest_gate_wiring_anchor_triggers_tsv
     clearance_selftest_gate_wiring_scans_exclusion_row

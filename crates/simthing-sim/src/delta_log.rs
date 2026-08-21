@@ -19,7 +19,7 @@
 //! Delta payloads do not expose raw `SimThing` or `.kind`
 //! (`boundary_delta_entry_hides_raw_simthing_kind_compile_fail`):
 //!
-//! ```compile_fail
+//! ```compile_fail,E0624
 //! use simthing_sim::BoundaryDeltaEntry;
 //!
 //! fn peek_delta_node_kind(entry: BoundaryDeltaEntry) {

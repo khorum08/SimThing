@@ -35,7 +35,9 @@ pub fn compile_semantic_effect_execution_boundary_plan(
     replay_count: u32,
 ) -> Result<SemanticEffectExecutionBoundaryPlan, SpecError> {
     if tick_id.0 == 0 {
-        return Err(SpecError::ValidationFailed);
+        return Err(SpecError::ValidationFailedAt {
+            site: "simthing-driver/semantic_effect_execution_boundary_compile",
+        });
     }
 
     let semantic_rf_mode = match source_mode {
@@ -55,7 +57,9 @@ pub fn compile_semantic_effect_execution_boundary_plan(
     )?;
     let execution_report =
         evaluate_semantic_effect_execution_boundary(scenario, tick_id, source_mode, replay_count)
-            .map_err(|_| SpecError::ValidationFailed)?;
+            .map_err(|_| SpecError::ValidationFailedAt {
+            site: "simthing-driver/semantic_effect_execution_boundary_compile",
+        })?;
 
     Ok(SemanticEffectExecutionBoundaryPlan {
         selected_source_mode: execution_report.selected_source_mode,

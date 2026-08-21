@@ -3,8 +3,8 @@
 //! Public session upload consumes only packed packets; semantic ops and free GPU row slices
 //! must be converted at pack time (see module doc compile_fail proofs).
 //!
-//! ```compile_fail
-//! use simthing_gpu::PackedAccumulatorUpload;
+//! ```compile_fail,E0451
+//! use simthing_kernel::PackedAccumulatorUpload;
 //!
 //! fn packed_accumulator_upload_fields_private_compile_fail() {
 //!     let _ = PackedAccumulatorUpload {
@@ -14,9 +14,9 @@
 //! }
 //! ```
 //!
-//! ```compile_fail
+//! ```compile_fail,E0599
 //! use simthing_core::AccumulatorOp;
-//! use simthing_gpu::{AccumulatorOpSession, GpuContext, PackedThresholdUpload, PackedIntentUpload};
+//! use simthing_kernel::{AccumulatorOpSession, GpuContext, PackedThresholdUpload, PackedIntentUpload};
 //!
 //! fn session_upload_rejects_accumulator_ops_compile_fail(
 //!     session: &mut AccumulatorOpSession,
@@ -27,8 +27,8 @@
 //! }
 //! ```
 //!
-//! ```compile_fail
-//! use simthing_gpu::{AccumulatorOpSession, GpuContext, ThresholdRegistration};
+//! ```compile_fail,E0599
+//! use simthing_kernel::{AccumulatorOpSession, GpuContext, ThresholdRegistration};
 //!
 //! fn session_upload_rejects_threshold_registrations_compile_fail(
 //!     session: &mut AccumulatorOpSession,
@@ -39,8 +39,8 @@
 //! }
 //! ```
 //!
-//! ```compile_fail
-//! use simthing_gpu::{AccumulatorOpSession, GpuContext, IntentDelta};
+//! ```compile_fail,E0599
+//! use simthing_kernel::{AccumulatorOpSession, GpuContext, IntentDelta};
 //!
 //! fn session_upload_rejects_intent_deltas_compile_fail(
 //!     session: &mut AccumulatorOpSession,
@@ -51,8 +51,8 @@
 //! }
 //! ```
 //!
-//! ```compile_fail
-//! use simthing_gpu::{AccumulatorOpGpu, AccumulatorOpSession, GpuContext};
+//! ```compile_fail,E0599
+//! use simthing_kernel::{AccumulatorOpGpu, AccumulatorOpSession, GpuContext};
 //!
 //! fn session_upload_rejects_free_gpu_ops_compile_fail(
 //!     session: &mut AccumulatorOpSession,
@@ -63,9 +63,9 @@
 //! }
 //! ```
 //!
-//! ```compile_fail
+//! ```compile_fail,E0599
 //! use simthing_core::{AccumulatorOp, EmlExpressionRegistry};
-//! use simthing_gpu::{AccumulatorOpSession, GpuContext};
+//! use simthing_kernel::{AccumulatorOpSession, GpuContext};
 //!
 //! fn session_upload_rejects_eml_registry_argument_compile_fail(
 //!     session: &mut AccumulatorOpSession,

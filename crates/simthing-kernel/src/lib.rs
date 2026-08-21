@@ -13,7 +13,7 @@ pub mod cpu_oracle;
 pub mod decision_ingress;
 mod derived_span_projection;
 pub mod emission_accumulator;
-pub mod emission_oracle;
+mod emission_oracle;
 pub mod eml_exp_qualification;
 pub mod eml_ln_qualification;
 pub mod eml_opcode_gate;
@@ -21,7 +21,7 @@ mod eml_resource_class;
 mod eml_uniqueness;
 pub mod exact_magnitude_gate;
 pub mod field_sweep;
-pub mod gpu_readback;
+mod gpu_readback;
 pub mod indexed_scatter;
 pub mod intensity_accumulator;
 pub mod overlay_orderband;
@@ -77,7 +77,6 @@ pub use emission_accumulator::{
     EmissionSyncError, FORMULA_KIND_CONSTANT, FORMULA_KIND_EVAL_EML, FORMULA_KIND_IDENTITY_FLOOR,
     NO_CONSTANT, NO_MAX_EMIT, NO_TREE_ID,
 };
-pub use emission_oracle::{EmissionOracleError, EmissionOracleFormula, EmissionOracleRegistration};
 pub use eml_opcode_gate::{
     admit_exp_call_sites, combine_in_closed_vocabulary, exp_primitive_domain, ln_primitive_domain,
     opcode_in_accumulator_vocabulary, opcode_in_closed_vocabulary, AdmittedEvalEmlCombine,
@@ -106,10 +105,6 @@ pub use field_sweep::{
     FieldSweepResourceClass, FieldSweepSession, FieldTransientCertificate, GridN4Offset,
     GridOffset, LinkGraphNeighbor, UndirectedSymmetryCertificate, FIELD_SWEEP_LEGACY_PROGRAM_NODES,
     FIELD_SWEEP_LEGACY_STACK_SLOTS, FIELD_SWEEP_WORKGROUP_SIZE, GRID_N4_NSEW, GRID_N4_WENS,
-};
-pub use gpu_readback::{
-    EmissionRecordReadback, KernelReadbackError, ThresholdEmissionReadback,
-    ThresholdEventCandidatesReadback,
 };
 pub use indexed_scatter::{
     cpu_scatter_indexed, validate_scatter_entries, IndexedScatterError, IndexedScatterOp,

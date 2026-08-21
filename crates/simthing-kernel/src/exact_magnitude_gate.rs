@@ -14,13 +14,13 @@ use crate::registration::{ThresholdRegistration, THRESH_BUF_VALUES};
 ///
 /// Private field — bare integer / f32 forgery is uncompilable:
 ///
-/// ```compile_fail
+/// ```compile_fail,E0451
 /// fn forge_exact_magnitude_proof_from_bits() {
 ///     let _ = simthing_kernel::ExactMagnitudeProof { bits: 0 };
 /// }
 /// ```
 ///
-/// ```compile_fail
+/// ```compile_fail,E0277
 /// fn forge_exact_magnitude_proof_from_approx() {
 ///     use simthing_kernel::ApproximateDiagnostic;
 ///     let d = ApproximateDiagnostic::from_native_sqrt(3.0, 4.0);
@@ -51,7 +51,7 @@ impl ExactMagnitudeProof {
 
 /// Diagnostic-only magnitude (native sqrt / approximate). Cannot feed exact gates.
 ///
-/// ```compile_fail
+/// ```compile_fail,E0308
 /// fn approximate_cannot_register_exact_threshold() {
 ///     use simthing_kernel::{ApproximateDiagnostic, ThresholdRegistration};
 ///     let d = ApproximateDiagnostic::from_native_sqrt(3.0, 4.0);
@@ -61,7 +61,7 @@ impl ExactMagnitudeProof {
 /// }
 /// ```
 ///
-/// ```compile_fail
+/// ```compile_fail,E0308
 /// fn approximate_cannot_register_exact_commitment() {
 ///     use simthing_kernel::{ApproximateDiagnostic, CommitmentRegistration};
 ///     let d = ApproximateDiagnostic::from_native_sqrt(3.0, 4.0);

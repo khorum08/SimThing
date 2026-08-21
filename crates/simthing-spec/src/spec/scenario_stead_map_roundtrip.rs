@@ -224,8 +224,11 @@ fn collect_spatial_tree_rows(
     let is_location = thing.kind == SimThingKind::Location;
     let (has_interior_grid, interior_grid_width, interior_grid_height) =
         if is_location && is_spatial_gridcell_location(thing) {
-            let frame = interior_local_grid_frame_for_gridcell(thing)
-                .map_err(|_| SpecError::ValidationFailed)?;
+            let frame = interior_local_grid_frame_for_gridcell(thing).map_err(|_| {
+                SpecError::ValidationFailedAt {
+                    site: "simthing-spec/scenario_stead_map_roundtrip",
+                }
+            })?;
             (true, Some(frame.cols), Some(frame.rows))
         } else {
             (false, None, None)
@@ -355,14 +358,20 @@ fn link_row_from_spec_link(
     link: &SimThingScenarioLink,
     system_to_raw: &std::collections::BTreeMap<String, u32>,
 ) -> Result<ScenarioSteadLinkRow, SpecError> {
-    let source_id_raw = system_to_raw
-        .get(&link.from_system_id)
-        .copied()
-        .ok_or(SpecError::ValidationFailed)?;
-    let target_id_raw = system_to_raw
-        .get(&link.to_system_id)
-        .copied()
-        .ok_or(SpecError::ValidationFailed)?;
+    let source_id_raw =
+        system_to_raw
+            .get(&link.from_system_id)
+            .copied()
+            .ok_or(SpecError::ValidationFailedAt {
+                site: "simthing-spec/scenario_stead_map_roundtrip",
+            })?;
+    let target_id_raw =
+        system_to_raw
+            .get(&link.to_system_id)
+            .copied()
+            .ok_or(SpecError::ValidationFailedAt {
+                site: "simthing-spec/scenario_stead_map_roundtrip",
+            })?;
     Ok(ScenarioSteadLinkRow {
         source_id_raw,
         target_id_raw,
@@ -373,7 +382,9 @@ fn link_row_from_spec_link(
 fn prove_owner_metadata_not_spatial_parentage(
     scenario: &SimThingScenarioSpec,
 ) -> Result<bool, SpecError> {
-    validate_session_owner_entities(scenario).map_err(|_| SpecError::ValidationFailed)?;
+    validate_session_owner_entities(scenario).map_err(|_| SpecError::ValidationFailedAt {
+        site: "simthing-spec/scenario_stead_map_roundtrip",
+    })?;
     let owners_ok = !owner_is_spatial_parent_in_tree(&scenario.root);
     let refs_ok = !owner_ref_implies_spatial_parentage(&scenario.root);
     Ok(owners_ok && refs_ok)
@@ -410,7 +421,10 @@ fn owner_ref_implies_spatial_parentage(thing: &simthing_core::SimThing) -> bool 
 fn prove_local_rf_parent_node_resolution_prerequisites(
     scenario: &SimThingScenarioSpec,
 ) -> Result<bool, SpecError> {
-    let map_container = resolve_map_container(scenario).map_err(|_| SpecError::ValidationFailed)?;
+    let map_container =
+        resolve_map_container(scenario).map_err(|_| SpecError::ValidationFailedAt {
+            site: "simthing-spec/scenario_stead_map_roundtrip",
+        })?;
     let has_location_tree = map_container.kind == SimThingKind::Location;
     let mut spatial_gridcell_with_interior = false;
     let mut parent_location_arena = false;
@@ -456,13 +470,22 @@ fn visit_locations(
 fn prove_studio_projection_rebuild_ready(
     scenario: &SimThingScenarioSpec,
 ) -> Result<bool, SpecError> {
-    validate_scenario_root_authority(scenario, ScenarioRootValidationMode::Canonical)
-        .map_err(|_| SpecError::ValidationFailed)?;
-    validate_stead_mapping_consistency(scenario).map_err(|_| SpecError::ValidationFailed)?;
-    validate_scenario_links(scenario).map_err(|_| SpecError::ValidationFailed)?;
+    validate_scenario_root_authority(scenario, ScenarioRootValidationMode::Canonical).map_err(
+        |_| SpecError::ValidationFailedAt {
+            site: "simthing-spec/scenario_stead_map_roundtrip",
+        },
+    )?;
+    validate_stead_mapping_consistency(scenario).map_err(|_| SpecError::ValidationFailedAt {
+        site: "simthing-spec/scenario_stead_map_roundtrip",
+    })?;
+    validate_scenario_links(scenario).map_err(|_| SpecError::ValidationFailedAt {
+        site: "simthing-spec/scenario_stead_map_roundtrip",
+    })?;
     scenario
         .reserve_loaded_simthing_ids()
-        .map_err(|_| SpecError::ValidationFailed)?;
+        .map_err(|_| SpecError::ValidationFailedAt {
+            site: "simthing-spec/scenario_stead_map_roundtrip",
+        })?;
 
     let ingestion = ingest_scenario(
         "stead_roundtrip_projection",

@@ -43,9 +43,9 @@ use simthing_core::{
     SubFieldRole,
 };
 use simthing_gpu::{
-    OverlayLifecycleProjectionBinding, OverlayLifecycleProjectionPlan, OverlayLifecycleStateGpu,
-    SlotAllocator, ThresholdRegistration, DIR_DOWNWARD, DIR_UPWARD, THRESH_BUF_OWNING_GENERATION,
-    THRESH_BUF_VALUES,
+    OverlayLifecycleProjectionBinding, OverlayLifecycleProjectionPlan,
+    OverlayLifecycleProjectionSeed, OverlayLifecycleStateGpu, SlotAllocator, ThresholdRegistration,
+    DIR_DOWNWARD, DIR_UPWARD, THRESH_BUF_OWNING_GENERATION, THRESH_BUF_VALUES,
 };
 use std::collections::HashMap;
 
@@ -227,8 +227,10 @@ impl OverlayLifecycleAdmissionState {
         rows: &[OverlayLifecycleStateGpu],
     ) {
         for (target, row) in targets.iter().zip(rows) {
-            self.satisfied_masks
-                .insert((target.sim_thing_id, target.overlay_id), row.satisfied_mask);
+            self.satisfied_masks.insert(
+                (target.sim_thing_id, target.overlay_id),
+                row.satisfied_mask(),
+            );
         }
     }
 }
@@ -337,7 +339,7 @@ fn append_node_lifecycle(
             .or_insert(generation);
         let row = plan.rows.len() as u32;
         let required_mask = (1u32 << conditions.len()) - 1;
-        let mut satisfied_mask = admission.satisfied_masks.get(&key).copied().unwrap_or(0);
+        let satisfied_mask = admission.satisfied_masks.get(&key).copied().unwrap_or(0);
         let slot = allocator
             .slot_of(node.id)
             .unwrap_or_else(|| {
@@ -386,12 +388,6 @@ fn append_node_lifecycle(
                         buffer: THRESH_BUF_VALUES,
                     })
                 }
-                DissolveCondition::AfterTicks { remaining }
-                    if admission.after_ticks_remaining(key, bit, *remaining) == 0 =>
-                {
-                    satisfied_mask |= 1u32 << bit;
-                    None
-                }
                 DissolveCondition::AfterTicks { remaining } => {
                     let remaining = admission.after_ticks_remaining(key, bit, *remaining);
                     let deadline = establish_overlay_deadline(activation, remaining)
@@ -401,7 +397,7 @@ fn append_node_lifecycle(
                     Some(ThresholdRegistration {
                         slot: 0,
                         col: 0,
-                        threshold: (deadline.get() - 1) as f32,
+                        threshold: deadline.get().saturating_sub(1) as f32,
                         direction: DIR_UPWARD,
                         event_kind: 0,
                         buffer: THRESH_BUF_OWNING_GENERATION,
@@ -426,13 +422,11 @@ fn append_node_lifecycle(
                 });
             }
         }
-        let dissolved = u32::from((satisfied_mask & required_mask) == required_mask);
-        plan.rows.push(OverlayLifecycleStateGpu {
-            satisfied_mask,
-            required_mask,
-            dissolved,
-            generation: if dissolved == 1 { generation.get() } else { 0 },
-        });
+        plan.rows
+            .push(OverlayLifecycleProjectionSeed::with_satisfied_mask(
+                satisfied_mask,
+                required_mask,
+            ));
         targets.push(OverlayLifecycleTarget {
             sim_thing_id: node.id,
             overlay_id: overlay.id,
@@ -530,7 +524,7 @@ pub fn apply_gpu_overlay_lifecycle(
 ) -> LifecycleOutcome {
     let mut out = LifecycleOutcome::default();
     for (target, row) in targets.iter().zip(rows) {
-        if row.dissolved == 0 {
+        if !row.is_dissolved() {
             continue;
         }
         let Some(path) = node_paths.get(&target.sim_thing_id) else {

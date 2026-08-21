@@ -6,14 +6,14 @@
 //!
 //! Float construction is forbidden:
 //!
-//! ```compile_fail
+//! ```compile_fail,E0308
 //! use simthing_core::StructuralCoord;
 //! let _ = StructuralCoord::new(1.0_f32, 2.0_f32);
 //! ```
 //!
 //! Direct field construction is forbidden:
 //!
-//! ```compile_fail
+//! ```compile_fail,E0451
 //! use simthing_core::StructuralCoord;
 //! let _ = StructuralCoord { col: 1, row: 2 };
 //! ```

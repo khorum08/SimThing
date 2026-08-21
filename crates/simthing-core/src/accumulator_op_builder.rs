@@ -5,7 +5,7 @@
 //!
 //! Slot and column identities are typed — bare integers are uncompilable:
 //!
-//! ```compile_fail
+//! ```compile_fail,E0308
 //! use simthing_core::{AccumulatorOpBuilder, StructuralScalarChannel, ThresholdDirection};
 //!
 //! fn accumulator_builder_rejects_raw_integer_slot_compile_fail() {
@@ -18,7 +18,7 @@
 //! }
 //! ```
 //!
-//! ```compile_fail
+//! ```compile_fail,E0308
 //! use simthing_core::{AccumulatorOpBuilder, PropertyLayout, StructuralScalarChannel, SubFieldRole, ThresholdDirection};
 //!
 //! fn accumulator_builder_rejects_role_offset_as_slot_compile_fail() {
@@ -33,7 +33,7 @@
 //! }
 //! ```
 //!
-//! ```compile_fail
+//! ```compile_fail,E0308
 //! use simthing_core::{AccumulatorOpBuilder, ColumnIndex, SlotIndex, ThresholdDirection};
 //!
 //! fn accumulator_builder_rejects_raw_integer_column_compile_fail() {
@@ -46,7 +46,7 @@
 //! }
 //! ```
 //!
-//! ```compile_fail
+//! ```compile_fail,E0308
 //! use simthing_core::{AccumulatorOpBuilder, PropertyLayout, SlotIndex, SubFieldRole, ThresholdDirection};
 //!
 //! fn accumulator_builder_rejects_slot_as_role_offset_compile_fail() {

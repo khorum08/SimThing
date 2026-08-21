@@ -93,6 +93,8 @@ AUDIENCE_VALUES = {"coding", "orchestrator", "da"}
 APPROVAL_VALUES = {"true", "false"}
 LIST_KEYS = {"surfaces", "forbidden", "required_checks", "stop_conditions"}
 SECTION_HEADINGS = ["## BUILD", "## FENCES", "## EXIT-PROOF"]
+CODING_PROJECTION_LINE_CAP = 90
+INGRESS_LINE_CAP = 93
 
 
 class HDError(Exception):
@@ -344,11 +346,11 @@ def shared_lines(obj, role):
     return lines
 
 
-def render_projection(role, obj):
+def render_projection(role, obj, *, enforce_approval=True):
     fm = obj["frontmatter"]
     if role not in {"coding", "orchestrator", "da"}:
         raise HDError("invalid-render-role")
-    if role == "coding" and fm["owner_approved"] != "true":
+    if role == "coding" and enforce_approval and fm["owner_approved"] != "true":
         raise HDError("owner-approval-required")
 
     lines = shared_lines(obj, role)
@@ -379,7 +381,7 @@ def render_projection(role, obj):
         lines.extend(["forbidden_surfaces:"] + [f"- {x}" for x in fm["forbidden"]])
 
     out = "\n".join(lines).rstrip() + "\n"
-    if role == "coding" and len(out.splitlines()) > 60:
+    if role == "coding" and len(out.splitlines()) > CODING_PROJECTION_LINE_CAP:
         raise HDError("projection-line-cap")
     return out
 
@@ -709,6 +711,10 @@ def command_lint(path):
         obj = parse_handoff(Path(path))
         anchor_ids_for_surfaces(obj["frontmatter"]["surfaces"])
         owner_directives()
+        # Lint is a structural dry run, not a dispatch. Render every audience so
+        # a role-specific projection failure cannot remain latent until ingress.
+        for role in ("coding", "orchestrator", "da"):
+            render_projection(role, obj, enforce_approval=False)
     except HDError as exc:
         return fail(exc.detail)
     print("HD-LINT-VERDICT: PASS")
@@ -746,7 +752,7 @@ def command_render_ingress(pr_number, path):
         f"- PR: #{pr_number} handoff: `{rel}`",
     ]
     lines.extend(projection.rstrip().splitlines())
-    if len(lines) > 60:
+    if len(lines) > INGRESS_LINE_CAP:
         return fail("ingress-line-cap")
     sys.stdout.write("\n".join(lines).rstrip() + "\n")
     return 0
@@ -1379,8 +1385,12 @@ stop_conditions: ["scope-widening"]
         check("board-issue-paginated-update", paged.returncode == 0 and paged.stdout.strip() == "update 7")
 
         ingress_handoff = Path(tmp) / "INGRESS-CAP-FIXTURE-0.hd.md"
-        build_lines = "\n".join(f"- wrapper cap line {i}" for i in range(1, 34))
-        write(ingress_handoff, f"""---
+
+        def write_cap_fixture(body_rows: int) -> None:
+            build_lines = "\n".join(
+                f"- wrapper cap line {i}" for i in range(1, body_rows + 1)
+            )
+            write(ingress_handoff, f"""---
 rung: INGRESS-CAP-FIXTURE-0
 kind: rung
 track: 0.0.8.4.8.4
@@ -1402,8 +1412,45 @@ stop_conditions: ["scope-widening"]
 ## EXIT-PROOF
 - Wrapper line cap fails.
 """)
-        ingress_big = run_cmd([bash_cmd, script_arg, "--render-ingress", "1", str(ingress_handoff)])
-        check("ingress-line-cap-fails", ("HD-LINT-VERDICT: FAIL(ingress-line-cap)" in ingress_big.stdout) or ("HD-LINT-VERDICT: FAIL(projection-line-cap)" in ingress_big.stdout))
+
+        exact_rows = None
+        for body_rows in range(1, 78):
+            write_cap_fixture(body_rows)
+            try:
+                candidate = render_projection("coding", parse_handoff(ingress_handoff))
+            except HDError:
+                continue
+            if len(candidate.splitlines()) == CODING_PROJECTION_LINE_CAP:
+                exact_rows = body_rows
+                break
+        check("projection-cap-90-fixture-found", exact_rows is not None)
+        if exact_rows is not None:
+            write_cap_fixture(exact_rows)
+            projection_exact = run_cmd(
+                [bash_cmd, script_arg, "--render", "coding", str(ingress_handoff)]
+            )
+            ingress_exact = run_cmd(
+                [bash_cmd, script_arg, "--render-ingress", "1", str(ingress_handoff)]
+            )
+            check(
+                "projection-line-cap-90-passes",
+                projection_exact.returncode == 0
+                and len(projection_exact.stdout.splitlines()) == CODING_PROJECTION_LINE_CAP,
+            )
+            check(
+                "ingress-line-cap-93-passes",
+                ingress_exact.returncode == 0
+                and len(ingress_exact.stdout.splitlines()) == INGRESS_LINE_CAP,
+            )
+            write_cap_fixture(exact_rows + 1)
+            ingress_big = run_cmd(
+                [bash_cmd, script_arg, "--render-ingress", "1", str(ingress_handoff)]
+            )
+            check(
+                "projection-line-cap-91-fails",
+                ingress_big.returncode != 0
+                and "HD-LINT-VERDICT: FAIL(projection-line-cap)" in ingress_big.stdout,
+            )
 
     if failures:
         print(f"HANDOFF-DISPATCH-SELFTEST: FAIL ({len(failures)})")

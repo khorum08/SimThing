@@ -2,7 +2,7 @@
 //!
 //! Runtime-facing spawn blueprint does not expose authored kind metadata:
 //!
-//! ```compile_fail
+//! ```compile_fail,E0609
 //! use simthing_core::{FissionTemplate, ResolvedFissionChildBlueprint};
 //!
 //! fn peek_kind(v: ResolvedFissionChildBlueprint<'_>) {
@@ -10,7 +10,7 @@
 //! }
 //! ```
 //!
-//! ```compile_fail
+//! ```compile_fail,E0609
 //! use simthing_core::{FissionTemplate, ResolvedFissionChildBlueprint};
 //!
 //! fn peek_child_kind(v: ResolvedFissionChildBlueprint<'_>) {

@@ -21,6 +21,7 @@ normalize() {
 hits="$(
   rg -n --glob 'crates/**/*.rs' 'BandCrossingDelta\s*\{' \
     | normalize \
+    | grep -Ev -- '->[[:space:]]*([[:alnum:]_]+::)*BandCrossingDelta[[:space:]]*\{[[:space:]]*$' \
     | grep -Ev 'crates/simthing-kernel/src/sealed/band_crossing_delta\.rs' \
     | grep -Ev 'compile_fail|doctest|docs/' \
     || true
@@ -52,8 +53,8 @@ if ! rg -q 'fn expected_anchored_remap_keys' crates/simthing-core/src/anchor_rem
 fi
 # Required keys must not be seeded from a proposed section (self-certify fence).
 hits="$(
-  rg -n --glob 'crates/simthing-sim/src/anchor_remap_encode.rs' \
-    'required_anchored_loci_for_boundary|expected_anchored_remap_keys' \
+  rg -n 'required_anchored_loci_for_boundary|expected_anchored_remap_keys' \
+    crates/simthing-sim/src/anchor_remap_encode.rs \
     | normalize \
     || true
 )"
@@ -61,8 +62,8 @@ if [[ -z "${hits}" ]]; then
   fail "anchor_remap_encode.rs missing independent pre/post required-key derivation"
 fi
 hits="$(
-  rg -n --glob 'crates/simthing-sim/src/anchor_remap_encode.rs' \
-    'section\.remaps\.iter\(\).*key|for .* in &?section\.remaps' \
+  rg -n 'section\.remaps\.iter\(\).*key|for .* in &?section\.remaps' \
+    crates/simthing-sim/src/anchor_remap_encode.rs \
     | normalize \
     || true
 )"
@@ -83,7 +84,8 @@ echo "PASS: boundary.rs gates structural GPU sync on exact anchor remap"
 
 # ── 5. Remap-free relocation doors must not bypass the gate ──────────────────
 hits="$(
-  rg -n --glob 'crates/simthing-sim/src/{fission,tree_mutation}.rs' 'sync_gpu_buffers\(' \
+  rg -n 'sync_gpu_buffers\(' \
+    crates/simthing-sim/src/fission.rs crates/simthing-sim/src/tree_mutation.rs \
     | normalize \
     || true
 )"
@@ -113,8 +115,8 @@ echo "PASS: no public band-delta readback; sealed apply mint doors present"
 
 # ── 7. Zero fabricated/default remap endpoints ───────────────────────────────
 hits="$(
-  rg -n --glob 'crates/simthing-sim/src/anchor_remap_encode.rs' \
-    'unwrap_or\(SlotIndex::new\(0\)\)|unwrap_or\(ColumnIndex::' \
+  rg -n 'unwrap_or\(SlotIndex::new\(0\)\)|unwrap_or\(ColumnIndex::' \
+    crates/simthing-sim/src/anchor_remap_encode.rs \
     | normalize \
     || true
 )"

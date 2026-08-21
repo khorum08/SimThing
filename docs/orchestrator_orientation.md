@@ -46,7 +46,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | 26eab30ec86c97ac8dfd6beef7ae8c5b4d3f18c38fdaa431ec40ccce855396d3 |
 | design_0_0_8_7_rf_arena_modernization.md | 5eac4e6102005f1210a81dc66f6238d6327159cf1cd36f0a08ccfe25cdd0a999 |
-| relay_lint.sh | 4163f715cdc3b549dbf57c1744aff61ea96b9f9f0a2237376665fbdb24e986c8 |
+| relay_lint.sh | ae19bdca12e90f6bc988e064f081ff62903034d69bf34b08ffd5c27e352181ba |
 | doctrine_anchors.tsv | ddc753498b845b0e5084222b35f94286e5163cc6479de58883e3ecc3c2d743dd |
 | execution_status_taxonomy.tsv | 6a6a6c3a0cadc89b51b674c23598fa38794185258db6a1e0826c1ba03ec812be |
 | execution_status_mixed_posture.tsv | 1adf05f3ec5fd7b537efe29259d20649a2c6d3a0839590063e5308ff154e8f25 |
@@ -180,7 +180,7 @@ Proof identity fields required in relay body:
 - `tested_code_sha: <8+ hex>`
 - `coverage_basis: PASS` (or explicit coverage basis)
 
-relay_lint.sh schema stamp: `4163f715cdc3`
+relay_lint.sh schema stamp: `ae19bdca12e9`
 
 ## tested_code_sha + coverage_basis Rule
 

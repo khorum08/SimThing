@@ -96,7 +96,7 @@ impl EmissionToken {
 ///
 /// Cannot be forged without both sealed tokens (no public field constructor).
 ///
-/// ```compile_fail
+/// ```compile_fail,E0451
 /// fn forge_boundary_emission_token() {
 ///     let _ = simthing_kernel::BoundaryEmissionToken { _priv: () };
 /// }
@@ -130,7 +130,7 @@ impl BoundaryEmissionToken {
 ///
 /// External crates cannot forge commitment effects directly:
 ///
-/// ```compile_fail
+/// ```compile_fail,E0451
 /// fn raw_structural_commitment_constructor_blocked() {
 ///     let _ = simthing_kernel::StructuralCommitment {
 ///         slot: 0,
@@ -151,7 +151,7 @@ pub struct StructuralCommitment {
 impl StructuralCommitment {
     /// Sanctioned mint: sealed threshold → emission → boundary → commitment.
     ///
-    /// ```compile_fail
+    /// ```compile_fail,E0061
     /// fn mint_without_boundary_token_blocked() {
     ///     use simthing_kernel::StructuralCommitment;
     ///     // Missing BoundaryEmissionToken argument — does not compile.
@@ -195,7 +195,7 @@ impl StructuralCommitment {
 
 /// CPU-side diagnostic decision (planner / UI / telemetry). Cannot mint commitment.
 ///
-/// ```compile_fail
+/// ```compile_fail,E0277
 /// fn cpu_diagnostic_cannot_mint_commitment() {
 ///     use simthing_kernel::{CpuDiagnosticDecision, StructuralCommitment};
 ///     let d = CpuDiagnosticDecision::observe(0, 0, 1.0, 1);
@@ -240,7 +240,7 @@ impl CpuDiagnosticDecision {
 
 /// Approximate / heuristic decision diagnostic. Cannot mint commitment.
 ///
-/// ```compile_fail
+/// ```compile_fail,E0277
 /// fn approximate_cannot_mint_commitment() {
 ///     use simthing_kernel::{ApproximateDecisionDiagnostic, StructuralCommitment};
 ///     let d = ApproximateDecisionDiagnostic::from_cpu_urgency(0.9);

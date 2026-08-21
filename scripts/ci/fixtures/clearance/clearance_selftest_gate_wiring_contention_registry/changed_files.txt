@@ -1,0 +1,1 @@
+scripts/ci/allow/contention_mechanisms.txt

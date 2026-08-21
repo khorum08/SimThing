@@ -67,7 +67,10 @@ pub fn save_scenario_spec_to_canonical_json(
     let authority_digest = scenario_authority_digest_u64_from_json(&canonical_json);
     let repeat = to_deterministic_canonical_json(scenario)?;
     let deterministic = repeat == canonical_json;
-    let byte_len = u32::try_from(canonical_json.len()).map_err(|_| SpecError::ValidationFailed)?;
+    let byte_len =
+        u32::try_from(canonical_json.len()).map_err(|_| SpecError::ValidationFailedAt {
+            site: "simthing-spec/scenario_canonical_io",
+        })?;
 
     Ok(ScenarioCanonicalSaveReport {
         canonical_json,
@@ -119,7 +122,9 @@ fn build_load_report(
     let canonical_json = to_deterministic_canonical_json(scenario)?;
     let authority_digest = scenario_authority_digest_u64_from_json(&canonical_json);
     let simthing_count =
-        u32::try_from(scenario.root.subtree_size()).map_err(|_| SpecError::ValidationFailed)?;
+        u32::try_from(scenario.root.subtree_size()).map_err(|_| SpecError::ValidationFailedAt {
+            site: "simthing-spec/scenario_canonical_io",
+        })?;
     let scenario_id = if scenario.scenario_id.is_empty() {
         None
     } else {
@@ -203,11 +208,15 @@ fn property_tuple_id(value: &Value) -> Option<u64> {
 }
 
 fn map_serde_error(_err: ScenarioSerdeError) -> SpecError {
-    SpecError::ValidationFailed
+    SpecError::ValidationFailedAt {
+        site: "simthing-spec/scenario_canonical_io",
+    }
 }
 
 fn map_json_error(_message: String) -> SpecError {
-    SpecError::ValidationFailed
+    SpecError::ValidationFailedAt {
+        site: "simthing-spec/scenario_canonical_io",
+    }
 }
 
 fn scenario_authority_digest_u64_from_json(json: &str) -> u64 {

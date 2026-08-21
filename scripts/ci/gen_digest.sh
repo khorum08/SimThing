@@ -68,6 +68,8 @@ GLOBAL_SOURCES = [
     "scripts/ci/allow/sealed_types.txt",
     "scripts/ci/allow/contention_mechanisms.txt",
     "scripts/ci/scans.tsv",
+    "scripts/ci/constitutional_surfaces.tsv",
+    "scripts/ci/constitutional_surface_check.sh",
 ]
 TRACK_ALLOW_FILES = [
     "contention_mechanisms.txt",

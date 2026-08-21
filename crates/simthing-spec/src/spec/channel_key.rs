@@ -3,7 +3,7 @@
 //!
 //! Transposition between channel identity slots is uncompilable:
 //!
-//! ```compile_fail
+//! ```compile_fail,E0308
 //! use simthing_spec::{OwnerRef, ResourceKey};
 //!
 //! fn takes_owner(_: OwnerRef) {}
@@ -13,7 +13,7 @@
 //! }
 //! ```
 //!
-//! ```compile_fail
+//! ```compile_fail,E0308
 //! use simthing_core::SimThingId;
 //! use simthing_spec::OwnerRef;
 //!
@@ -24,7 +24,7 @@
 //! }
 //! ```
 //!
-//! ```compile_fail
+//! ```compile_fail,E0308
 //! use simthing_spec::{OwnerRef, ResourceKey};
 //!
 //! fn takes_resource(_: ResourceKey) {}
@@ -34,7 +34,7 @@
 //! }
 //! ```
 //!
-//! ```compile_fail
+//! ```compile_fail,E0308
 //! use simthing_spec::{ResourceKey, ScopeId};
 //!
 //! fn takes_resource(_: ResourceKey) {}
@@ -44,7 +44,7 @@
 //! }
 //! ```
 //!
-//! ```compile_fail
+//! ```compile_fail,E0308
 //! use simthing_spec::{ResourceKey, ScopeId};
 //!
 //! fn takes_scope(_: ScopeId) {}
@@ -54,7 +54,7 @@
 //! }
 //! ```
 //!
-//! ```compile_fail
+//! ```compile_fail,E0308
 //! use simthing_spec::{OwnerRef, ParentLocationId};
 //!
 //! fn takes_owner(_: OwnerRef) {}
@@ -64,7 +64,7 @@
 //! }
 //! ```
 //!
-//! ```compile_fail
+//! ```compile_fail,E0308
 //! use simthing_spec::{OwnerRef, ParentLocationId};
 //!
 //! fn takes_parent_location(_: ParentLocationId) {}

@@ -9,12 +9,12 @@ use std::collections::{BTreeMap, BTreeSet};
 use simthing_core::{SimThing, SimThingKind};
 
 use super::channel_key::{OwnerRef, ParentLocationId, ResourceKey};
-use super::owner_channel_admission::{admit_intrinsic_owner_channels, IntrinsicOwnerChannelView};
-use super::planet_child_rf::{
+use super::legacy_owner_channel_rf::{
     evaluate_planet_child_rf_admission_from_owner_view, planet_child_rf_default_resource_key,
     planet_child_rf_participant_inputs_from_owner_view, PlanetChildRfAdmissionClassification,
     PlanetChildRfParticipantInput,
 };
+use super::owner_channel_admission::{admit_intrinsic_owner_channels, IntrinsicOwnerChannelView};
 use super::runtime_tick_history::scenario_authority_digest;
 use super::scenario::{
     game_session_galaxy_map, owner_flow_deficit, owner_flow_resource_key, owner_flow_surplus,

@@ -105,7 +105,9 @@ pub fn evaluate_scenario_candidate_save_reopen_from_json_str(
     let candidate_report =
         evaluate_scenario_candidate_from_runtime_from_json_str(source_label, json)?;
     if !candidate_report.candidate_scenario_spec_ready {
-        return Err(SpecError::ValidationFailed);
+        return Err(SpecError::ValidationFailedAt {
+            site: "simthing-spec/scenario_candidate_save_reopen",
+        });
     }
 
     let (original_scenario, _) = load_scenario_spec_from_json_str(source_label, json)?;
@@ -114,7 +116,9 @@ pub fn evaluate_scenario_candidate_save_reopen_from_json_str(
         TICK_ONE,
         REPLAY_ONE,
     )
-    .map_err(|_| SpecError::ValidationFailed)?;
+    .map_err(|_| SpecError::ValidationFailedAt {
+        site: "simthing-spec/scenario_candidate_save_reopen",
+    })?;
 
     let canonical_save = save_scenario_spec_to_canonical_json(&candidate)?;
     let write_policy = candidate_scenario_write_policy_report();
@@ -254,23 +258,31 @@ pub fn write_candidate_scenario_canonical_json_atomic(
     output_path: &Path,
 ) -> Result<(), SpecError> {
     if output_path.exists() {
-        return Err(SpecError::ValidationFailed);
+        return Err(SpecError::ValidationFailedAt {
+            site: "simthing-spec/scenario_candidate_save_reopen",
+        });
     }
 
     let tmp = candidate_scenario_write_temp_path(output_path);
-    let mut file = std::fs::File::create(&tmp).map_err(|_| SpecError::ValidationFailed)?;
+    let mut file = std::fs::File::create(&tmp).map_err(|_| SpecError::ValidationFailedAt {
+        site: "simthing-spec/scenario_candidate_save_reopen",
+    })?;
     if file
         .write_all(canonical_json.as_bytes())
         .and_then(|_| file.sync_all())
         .is_err()
     {
         cleanup_candidate_write_temp(&tmp);
-        return Err(SpecError::ValidationFailed);
+        return Err(SpecError::ValidationFailedAt {
+            site: "simthing-spec/scenario_candidate_save_reopen",
+        });
     }
 
     if std::fs::rename(&tmp, output_path).is_err() {
         cleanup_candidate_write_temp(&tmp);
-        return Err(SpecError::ValidationFailed);
+        return Err(SpecError::ValidationFailedAt {
+            site: "simthing-spec/scenario_candidate_save_reopen",
+        });
     }
 
     Ok(())

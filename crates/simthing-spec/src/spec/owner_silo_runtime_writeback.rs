@@ -7,7 +7,7 @@ use std::collections::BTreeMap;
 use simthing_core::SimThing;
 
 use super::channel_key::{OwnerRef, ResourceKey};
-use super::planet_child_rf::{
+use super::legacy_owner_channel_rf::{
     planet_child_rf_default_resource_key, PlanetChildRfAdmissionClassification,
     PlanetChildRfReduceUpReport,
 };

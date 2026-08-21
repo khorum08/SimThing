@@ -5,7 +5,7 @@
 //!
 //! Transposition with slot identity is uncompilable:
 //!
-//! ```compile_fail
+//! ```compile_fail,E0308
 //! use simthing_core::{ColumnIndex, SlotIndex};
 //!
 //! fn takes_slot(_: SlotIndex) {}
@@ -15,7 +15,7 @@
 //! }
 //! ```
 //!
-//! ```compile_fail
+//! ```compile_fail,E0308
 //! use simthing_core::{ColumnIndex, SlotIndex};
 //!
 //! fn takes_column(_: ColumnIndex) {}
@@ -27,7 +27,7 @@
 //!
 //! Private field — bare integer column forgery is uncompilable:
 //!
-//! ```compile_fail
+//! ```compile_fail,E0423
 //! use simthing_core::ColumnIndex;
 //!
 //! fn column_index_fields_private_compile_fail() {
@@ -37,7 +37,7 @@
 //!
 //! Layout-resolved lane offsets must not substitute for global columns:
 //!
-//! ```compile_fail
+//! ```compile_fail,E0308
 //! use simthing_core::{ColumnIndex, PropertyLayout, SubFieldRole};
 //!
 //! fn column_index_rejects_role_offset_compile_fail() {

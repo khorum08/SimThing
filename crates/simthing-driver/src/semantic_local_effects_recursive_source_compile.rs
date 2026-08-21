@@ -32,7 +32,9 @@ pub fn compile_semantic_local_effects_recursive_source_plan(
     replay_count: u32,
 ) -> Result<SemanticLocalEffectsRecursiveSourcePlan, SpecError> {
     if tick_id.0 == 0 {
-        return Err(SpecError::ValidationFailed);
+        return Err(SpecError::ValidationFailedAt {
+            site: "simthing-driver/semantic_local_effects_recursive_source_compile",
+        });
     }
 
     let local_effect_mode = match source_mode {
@@ -52,7 +54,9 @@ pub fn compile_semantic_local_effects_recursive_source_plan(
         source_mode,
         replay_count,
     )
-    .map_err(|_| SpecError::ValidationFailed)?;
+    .map_err(|_| SpecError::ValidationFailedAt {
+        site: "simthing-driver/semantic_local_effects_recursive_source_compile",
+    })?;
 
     Ok(SemanticLocalEffectsRecursiveSourcePlan {
         selected_source_mode: semantic_report.selected_source_mode,

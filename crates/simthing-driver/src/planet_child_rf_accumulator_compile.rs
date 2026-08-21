@@ -26,7 +26,9 @@ pub fn compile_planet_child_rf_gpu_tick_plan(
     scenario: &SimThingScenarioSpec,
 ) -> Result<PlanetChildRfGpuTickPlan, SpecError> {
     let owner_view =
-        admit_intrinsic_owner_channels(scenario).map_err(|_| SpecError::ValidationFailed)?;
+        admit_intrinsic_owner_channels(scenario).map_err(|_| SpecError::ValidationFailedAt {
+            site: "simthing-driver/planet_child_rf_accumulator_compile",
+        })?;
     compile_planet_child_rf_gpu_tick_plan_from_owner_view(&owner_view)
 }
 
@@ -35,12 +37,20 @@ pub fn compile_planet_child_rf_gpu_tick_plan_from_owner_view(
 ) -> Result<PlanetChildRfGpuTickPlan, SpecError> {
     let admission = evaluate_planet_child_rf_admission_from_owner_view(owner_view);
     if admission.classification == PlanetChildRfAdmissionClassification::Rejected {
-        return Err(SpecError::ValidationFailed);
+        return Err(SpecError::ValidationFailedAt {
+            site: "simthing-driver/planet_child_rf_accumulator_compile",
+        });
     }
-    let participants = planet_child_rf_participant_inputs_from_owner_view(owner_view)
-        .map_err(|_| SpecError::ValidationFailed)?;
+    let participants =
+        planet_child_rf_participant_inputs_from_owner_view(owner_view).map_err(|_| {
+            SpecError::ValidationFailedAt {
+                site: "simthing-driver/planet_child_rf_accumulator_compile",
+            }
+        })?;
     if participants.is_empty() {
-        return Err(SpecError::ValidationFailed);
+        return Err(SpecError::ValidationFailedAt {
+            site: "simthing-driver/planet_child_rf_accumulator_compile",
+        });
     }
 
     let participant_count = participants.len() as u32;

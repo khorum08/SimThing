@@ -42,21 +42,30 @@ pub fn compile_semantic_local_effects_plan(
     replay_count: u32,
 ) -> Result<SemanticLocalEffectsPlan, SpecError> {
     if tick_id.0 == 0 {
-        return Err(SpecError::ValidationFailed);
+        return Err(SpecError::ValidationFailedAt {
+            site: "simthing-driver/semantic_local_effects_compile",
+        });
     }
 
     let local_effect_application_plan =
         compile_local_effect_application_plan(scenario, tick_id, replay_count)?;
 
     let semantic_report = evaluate_semantic_local_effects(scenario, tick_id, replay_count)
-        .map_err(|_| SpecError::ValidationFailed)?;
+        .map_err(|_| SpecError::ValidationFailedAt {
+            site: "simthing-driver/semantic_local_effects_compile",
+        })?;
 
     let authority_proof =
-        prove_semantic_local_effects_preserve_authority(scenario, tick_id, replay_count)
-            .map_err(|_| SpecError::ValidationFailed)?;
+        prove_semantic_local_effects_preserve_authority(scenario, tick_id, replay_count).map_err(
+            |_| SpecError::ValidationFailedAt {
+                site: "simthing-driver/semantic_local_effects_compile",
+            },
+        )?;
 
     if !authority_proof.scenario_authority_unchanged {
-        return Err(SpecError::ValidationFailed);
+        return Err(SpecError::ValidationFailedAt {
+            site: "simthing-driver/semantic_local_effects_compile",
+        });
     }
 
     let gpu_semantic_aggregate_proof_plans =
@@ -107,7 +116,9 @@ fn compile_semantic_aggregate_proof_plans(
             .map(|(index, _)| index)
             .collect::<Vec<_>>();
         if applied_indices.is_empty() {
-            return Err(SpecError::ValidationFailed);
+            return Err(SpecError::ValidationFailedAt {
+                site: "simthing-driver/semantic_local_effects_compile",
+            });
         }
 
         let applied_count = applied_indices.len() as u32;

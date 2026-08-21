@@ -34,7 +34,9 @@ pub fn compile_runtime_participant_property_mutation_boundary_plan(
     replay_count: u32,
 ) -> Result<RuntimeParticipantPropertyMutationBoundaryPlan, SpecError> {
     if tick_id.0 == 0 {
-        return Err(SpecError::ValidationFailed);
+        return Err(SpecError::ValidationFailedAt {
+            site: "simthing-driver/runtime_participant_property_mutation_boundary_compile",
+        });
     }
 
     let state_mutation_mode = match source_mode {
@@ -59,7 +61,9 @@ pub fn compile_runtime_participant_property_mutation_boundary_plan(
             source_mode,
             replay_count,
         )
-        .map_err(|_| SpecError::ValidationFailed)?;
+        .map_err(|_| SpecError::ValidationFailedAt {
+            site: "simthing-driver/runtime_participant_property_mutation_boundary_compile",
+        })?;
 
     Ok(RuntimeParticipantPropertyMutationBoundaryPlan {
         selected_source_mode: property_mutation_boundary_report.selected_source_mode,

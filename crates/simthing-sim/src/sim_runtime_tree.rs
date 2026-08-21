@@ -6,7 +6,7 @@
 //! Direct kind construction at the boundary is uncompilable
 //! (`boundary_protocol_rejects_semantic_root_compile_fail`):
 //!
-//! ```compile_fail
+//! ```compile_fail,E0061,E0308
 //! use simthing_core::{DimensionRegistry, SimThing, SimThingKind};
 //! use simthing_gpu::SlotAllocator;
 //! use simthing_sim::BoundaryProtocol;
@@ -22,7 +22,7 @@
 //!
 //! `SimRuntimeTree` exposes no kind accessor (`sim_runtime_tree_hides_kind_compile_fail`):
 //!
-//! ```compile_fail
+//! ```compile_fail,E0609
 //! use simthing_sim::SimRuntimeTree;
 //!
 //! fn peek_runtime_kind(v: SimRuntimeTree) {
@@ -32,7 +32,7 @@
 //!
 //! Raw-tree borrows are not public (`sim_runtime_tree_rejects_access_kind_backdoor_compile_fail`):
 //!
-//! ```compile_fail
+//! ```compile_fail,E0624
 //! use simthing_sim::SimRuntimeTree;
 //!
 //! fn peek_kind_via_access(v: SimRuntimeTree) {
@@ -40,7 +40,7 @@
 //! }
 //! ```
 //!
-//! ```compile_fail
+//! ```compile_fail,E0624
 //! use simthing_sim::SimRuntimeTree;
 //!
 //! fn peek_kind_via_access_mut(mut v: SimRuntimeTree) {
@@ -50,7 +50,7 @@
 //!
 //! Owned-tree extraction is not public (`sim_runtime_tree_rejects_into_admitted_kind_escape_compile_fail`):
 //!
-//! ```compile_fail
+//! ```compile_fail,E0624
 //! use simthing_core::SimThingKind;
 //! use simthing_sim::SimRuntimeTree;
 //!
@@ -62,7 +62,7 @@
 //!
 //! Raw-tree replacement is not public (`sim_runtime_tree_rejects_replace_kind_escape_compile_fail`):
 //!
-//! ```compile_fail
+//! ```compile_fail,E0624
 //! use simthing_core::{SimThing, SimThingKind};
 //! use simthing_sim::SimRuntimeTree;
 //!

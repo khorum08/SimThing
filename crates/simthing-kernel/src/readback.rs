@@ -2,7 +2,7 @@
 //!
 //! External crates cannot launder forged GPU POD into sealed events via a public bridge:
 //!
-//! ```compile_fail
+//! ```compile_fail,E0425
 //! fn external_pod_bridge_launder() {
 //!     let forged = simthing_kernel::ThresholdEventGpu {
 //!         slot: 0,
@@ -16,7 +16,7 @@
 //!
 //! External crates cannot mint readback authority and launder forged threshold events:
 //!
-//! ```compile_fail
+//! ```compile_fail,E0425,E0433
 //! fn external_mint_then_launder_threshold_event() {
 //!     let auth = simthing_kernel::ReadbackAuthority::for_kernel_readback();
 //!     let forged = simthing_kernel::ThresholdEventGpu {
@@ -31,7 +31,7 @@
 //!
 //! External crates cannot launder forged emission POD without readback authority:
 //!
-//! ```compile_fail
+//! ```compile_fail,E0425
 //! fn external_emission_pod_bridge_launder() {
 //!     let forged = simthing_kernel::EmissionRecordGpu {
 //!         reg_idx: 0,
@@ -43,7 +43,7 @@
 //!
 //! External crates cannot mint readback authority and launder forged emission records:
 //!
-//! ```compile_fail
+//! ```compile_fail,E0425,E0433
 //! fn external_mint_then_launder_emission_record() {
 //!     let auth = simthing_kernel::ReadbackAuthority::for_kernel_readback();
 //!     let forged = simthing_kernel::EmissionRecordGpu {
@@ -56,7 +56,7 @@
 //!
 //! External crates cannot obtain a public resolved-values buffer handle for queue writes:
 //!
-//! ```compile_fail
+//! ```compile_fail,E0624
 //! fn external_resolved_queue_write(
 //!     queue: &wgpu::Queue,
 //!     buffers: &simthing_kernel::ResolvedGpuBuffers,
@@ -68,7 +68,7 @@
 //!
 //! External crates cannot obtain a public write-authority minter:
 //!
-//! ```compile_fail
+//! ```compile_fail,E0599
 //! fn external_write_authority_minter() {
 //!     let _ = simthing_kernel::ResolvedWriteAuthority::for_boundary_install();
 //! }
@@ -76,7 +76,7 @@
 //!
 //! External crates cannot obtain session resolved-values buffer for queue writes:
 //!
-//! ```compile_fail
+//! ```compile_fail,E0624
 //! fn external_session_values_queue_write(
 //!     queue: &wgpu::Queue,
 //!     session: &simthing_kernel::AccumulatorOpSession,
@@ -88,7 +88,7 @@
 //!
 //! External crates cannot obtain EML program node/range buffers for queue writes:
 //!
-//! ```compile_fail
+//! ```compile_fail,E0599
 //! fn external_eml_program_node_write(
 //!     queue: &wgpu::Queue,
 //!     table: &simthing_kernel::EmlGpuProgramTable,
@@ -98,7 +98,7 @@
 //! }
 //! ```
 //!
-//! ```compile_fail
+//! ```compile_fail,E0599
 //! fn external_eml_program_range_write(
 //!     queue: &wgpu::Queue,
 //!     table: &simthing_kernel::EmlGpuProgramTable,
@@ -110,7 +110,7 @@
 //!
 //! External crates cannot obtain input-list buffer for queue writes:
 //!
-//! ```compile_fail
+//! ```compile_fail,E0624
 //! fn external_input_list_buffer_write(
 //!     queue: &wgpu::Queue,
 //!     table: &simthing_kernel::AccumulatorInputListTable,
@@ -120,7 +120,7 @@
 //! }
 //! ```
 //!
-//! ```compile_fail
+//! ```compile_fail,E0616
 //! fn external_input_list_field_write(
 //!     queue: &wgpu::Queue,
 //!     table: &simthing_kernel::AccumulatorInputListTable,
@@ -132,7 +132,7 @@
 //!
 //! External crates cannot obtain the threshold decision registry buffer for queue writes:
 //!
-//! ```compile_fail
+//! ```compile_fail,E0616
 //! fn external_threshold_registry_queue_write(
 //!     state: &simthing_kernel::WorldGpuState,
 //! ) {
@@ -143,7 +143,7 @@
 //!
 //! External crates cannot call the retired session candidate-F write helper:
 //!
-//! ```compile_fail
+//! ```compile_fail,E0599
 //! fn external_session_candidate_f_write(
 //!     ctx: &simthing_kernel::GpuContext,
 //!     session: &simthing_kernel::AccumulatorOpSession,
@@ -155,7 +155,7 @@
 //!
 //! External crates cannot call the retired kernel candidate-F write helper:
 //!
-//! ```compile_fail
+//! ```compile_fail,E0425
 //! fn external_kernel_candidate_f_write_helper(
 //!     ctx: &simthing_kernel::GpuContext,
 //!     target: &wgpu::Buffer,

@@ -5,7 +5,7 @@
 //!
 //! Direct field indexing is forbidden:
 //!
-//! ```compile_fail
+//! ```compile_fail,E0616
 //! use simthing_core::{PropertyLayout, PropertyValue};
 //! let layout = PropertyLayout::standard(0);
 //! let value = PropertyValue::from_layout(&layout);
@@ -14,7 +14,7 @@
 //!
 //! Bare integer lane indices are forbidden:
 //!
-//! ```compile_fail
+//! ```compile_fail,E0308
 //! use simthing_core::{PropertyLayout, PropertyValue};
 //! let layout = PropertyLayout::standard(0);
 //! let mut value = PropertyValue::from_layout(&layout);
@@ -23,7 +23,7 @@
 //!
 //! `RoleOffset` cannot be forged from a bare integer:
 //!
-//! ```compile_fail
+//! ```compile_fail,E0308
 //! use simthing_core::RoleOffset;
 //! let _off: RoleOffset = 0usize;
 //! ```
@@ -121,7 +121,7 @@ pub enum SubFieldRole {
 ///
 /// Cap-bypass forge via private nodes is a type error:
 ///
-/// ```compile_fail
+/// ```compile_fail,E0308
 /// use simthing_core::TransformOp;
 /// let _ = TransformOp { nodes: vec![] };
 /// ```

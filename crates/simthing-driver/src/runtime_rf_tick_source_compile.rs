@@ -41,8 +41,11 @@ pub fn compile_runtime_rf_tick_source_comparison_plan(
 ) -> Result<RuntimeRfTickSourceComparisonPlan, SpecError> {
     let legacy_tick_plan = compile_runtime_rf_tick_plan(scenario)?;
     let reconciliation_plan = compile_recursive_rf_reconciliation_plan(scenario)?;
-    let comparison_report = evaluate_runtime_rf_tick_source_comparison(scenario)
-        .map_err(|_| SpecError::ValidationFailed)?;
+    let comparison_report = evaluate_runtime_rf_tick_source_comparison(scenario).map_err(|_| {
+        SpecError::ValidationFailedAt {
+            site: "simthing-driver/runtime_rf_tick_source_compile",
+        }
+    })?;
 
     Ok(RuntimeRfTickSourceComparisonPlan {
         default_source_kind: comparison_report.default_source_kind,

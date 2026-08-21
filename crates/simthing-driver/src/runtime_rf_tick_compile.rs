@@ -45,7 +45,9 @@ pub fn compile_runtime_rf_tick_plan(
     scenario: &SimThingScenarioSpec,
 ) -> Result<RuntimeRfTickPlan, SpecError> {
     let owner_view =
-        admit_intrinsic_owner_channels(scenario).map_err(|_| SpecError::ValidationFailed)?;
+        admit_intrinsic_owner_channels(scenario).map_err(|_| SpecError::ValidationFailedAt {
+            site: "simthing-driver/runtime_rf_tick_compile",
+        })?;
     let participant_plan = compile_planet_child_rf_gpu_tick_plan_from_owner_view(&owner_view)?;
     let reduce_up_plan =
         compile_planet_child_rf_reduce_up_gpu_proof_plan_from_owner_view(&owner_view)?;
@@ -56,8 +58,11 @@ pub fn compile_runtime_rf_tick_plan(
     let runtime_local_allocation_plan =
         compile_runtime_local_allocation_application_plan_from_owner_view(&owner_view)?;
 
-    let tick_report = evaluate_runtime_rf_tick_from_owner_view(&owner_view)
-        .map_err(|_| SpecError::ValidationFailed)?;
+    let tick_report = evaluate_runtime_rf_tick_from_owner_view(&owner_view).map_err(|_| {
+        SpecError::ValidationFailedAt {
+            site: "simthing-driver/runtime_rf_tick_compile",
+        }
+    })?;
 
     let gpu_proof_summary = RuntimeRfTickGpuProofSummary {
         participant_surplus_plan_ready: !participant_plan.surplus_plan.ops.is_empty(),

@@ -42,7 +42,9 @@ pub fn compile_owner_silo_runtime_writeback_plan(
     scenario: &SimThingScenarioSpec,
 ) -> Result<OwnerSiloRuntimeWritebackPlan, SpecError> {
     let owner_view =
-        admit_intrinsic_owner_channels(scenario).map_err(|_| SpecError::ValidationFailed)?;
+        admit_intrinsic_owner_channels(scenario).map_err(|_| SpecError::ValidationFailedAt {
+            site: "simthing-driver/owner_silo_runtime_writeback_compile",
+        })?;
     compile_owner_silo_runtime_writeback_plan_from_owner_view(&owner_view)
 }
 
@@ -51,25 +53,39 @@ pub fn compile_owner_silo_runtime_writeback_plan_from_owner_view(
 ) -> Result<OwnerSiloRuntimeWritebackPlan, SpecError> {
     let reduce_up_report = evaluate_planet_child_rf_reduce_up_from_owner_view(owner_view);
     if reduce_up_report.classification == PlanetChildRfAdmissionClassification::Rejected {
-        return Err(SpecError::ValidationFailed);
+        return Err(SpecError::ValidationFailedAt {
+            site: "simthing-driver/owner_silo_runtime_writeback_compile",
+        });
     }
     if !reduce_up_report.errors.is_empty() {
-        return Err(SpecError::ValidationFailed);
+        return Err(SpecError::ValidationFailedAt {
+            site: "simthing-driver/owner_silo_runtime_writeback_compile",
+        });
     }
 
     let initial_owner_silos = runtime_owner_silo_states_from_scenario(owner_view.scenario())
-        .map_err(|_| SpecError::ValidationFailed)?;
+        .map_err(|_| SpecError::ValidationFailedAt {
+            site: "simthing-driver/owner_silo_runtime_writeback_compile",
+        })?;
     if initial_owner_silos.is_empty() {
-        return Err(SpecError::ValidationFailed);
+        return Err(SpecError::ValidationFailedAt {
+            site: "simthing-driver/owner_silo_runtime_writeback_compile",
+        });
     }
 
-    let writeback_inputs =
-        owner_silo_writeback_inputs_from_planet_child_reduce_up(&reduce_up_report)
-            .map_err(|_| SpecError::ValidationFailed)?;
+    let writeback_inputs = owner_silo_writeback_inputs_from_planet_child_reduce_up(
+        &reduce_up_report,
+    )
+    .map_err(|_| SpecError::ValidationFailedAt {
+        site: "simthing-driver/owner_silo_runtime_writeback_compile",
+    })?;
 
     let cpu_results =
-        apply_owner_silo_runtime_writeback_cpu(&initial_owner_silos, &writeback_inputs)
-            .map_err(|_| SpecError::ValidationFailed)?;
+        apply_owner_silo_runtime_writeback_cpu(&initial_owner_silos, &writeback_inputs).map_err(
+            |_| SpecError::ValidationFailedAt {
+                site: "simthing-driver/owner_silo_runtime_writeback_compile",
+            },
+        )?;
 
     let gpu_aggregate_proof_plans =
         compile_writeback_aggregate_proof_plans(&reduce_up_report, &writeback_inputs)?;
@@ -102,7 +118,9 @@ fn compile_writeback_aggregate_proof_plans(
             .map(|(index, _)| index)
             .collect::<Vec<_>>();
         if source_bucket_indices.is_empty() {
-            return Err(SpecError::ValidationFailed);
+            return Err(SpecError::ValidationFailedAt {
+                site: "simthing-driver/owner_silo_runtime_writeback_compile",
+            });
         }
 
         let participant_count = source_bucket_indices.len() as u32;

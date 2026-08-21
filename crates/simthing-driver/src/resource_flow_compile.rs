@@ -164,7 +164,9 @@ fn expansion_report_from_registry(registry: &ArenaRegistry) -> ResourceFlowExpan
 
 fn map_registry_error(err: ArenaRegistryError) -> SpecError {
     match err {
-        ArenaRegistryError::InvalidArenaIdx(_) => SpecError::ValidationFailed,
+        ArenaRegistryError::InvalidArenaIdx(_) => SpecError::ValidationFailedAt {
+            site: "simthing-driver/resource_flow_compile",
+        },
         ArenaRegistryError::ImplicitParticipation { arena } => SpecError::ImplicitParticipation {
             arena: arena.to_string(),
         },

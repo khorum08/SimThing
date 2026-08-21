@@ -5,7 +5,7 @@
 //! Public upload consumes only [`PackedUpload`]; free row bundles and typed indices must not cross
 //! the upload seam (see module doc compile_fail proofs).
 //!
-//! ```compile_fail
+//! ```compile_fail,E0451
 //! use simthing_gpu::PackedUpload;
 //!
 //! fn packed_upload_fields_private_compile_fail() {
@@ -17,7 +17,7 @@
 //! }
 //! ```
 //!
-//! ```compile_fail
+//! ```compile_fail,E0061
 //! use simthing_gpu::{
 //!     upload_structural_rows_to_gpu, StructuralFrameGpuRow, StructuralLinkGpuRow,
 //!     StructuralLocationGpuRow,
@@ -34,7 +34,7 @@
 //! }
 //! ```
 //!
-//! ```compile_fail
+//! ```compile_fail,E0061
 //! use simthing_core::{ColumnIndex, SlotIndex};
 //! use simthing_gpu::upload_structural_rows_to_gpu;
 //!

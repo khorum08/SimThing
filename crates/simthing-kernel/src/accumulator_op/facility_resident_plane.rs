@@ -13,23 +13,109 @@ use wgpu::util::DeviceExt;
 
 use crate::GpuContext;
 
-/// GPU-resident conjunctive lifecycle state. Phase-5 is the sole writer.
-#[repr(C)]
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Pod, Zeroable)]
-pub struct OverlayLifecycleStateGpu {
-    pub satisfied_mask: u32,
-    pub required_mask: u32,
-    pub dissolved: u32,
-    pub generation: u32,
+/// Admission seed uploaded to the GPU-resident lifecycle plane.
+///
+/// This input shape is deliberately distinct from [`OverlayLifecycleStateGpu`]:
+/// callers may describe admitted initial state, but only kernel readback can mint
+/// the lifecycle decision consumed by the structural applicator.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct OverlayLifecycleProjectionSeed {
+    satisfied_mask: u32,
+    required_mask: u32,
 }
 
-impl OverlayLifecycleStateGpu {
+impl OverlayLifecycleProjectionSeed {
     pub const fn pending(required_mask: u32) -> Self {
         Self {
             satisfied_mask: 0,
             required_mask,
+        }
+    }
+
+    pub const fn with_satisfied_mask(satisfied_mask: u32, required_mask: u32) -> Self {
+        Self {
+            satisfied_mask,
+            required_mask,
+        }
+    }
+
+    pub(crate) const fn required_mask(&self) -> u32 {
+        self.required_mask
+    }
+
+    pub(crate) const fn to_gpu_wire(self) -> OverlayLifecycleStateGpuWire {
+        OverlayLifecycleStateGpuWire {
+            satisfied_mask: self.satisfied_mask,
+            required_mask: self.required_mask,
             dissolved: 0,
             generation: 0,
+        }
+    }
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Pod, Zeroable)]
+pub(crate) struct OverlayLifecycleStateGpuWire {
+    satisfied_mask: u32,
+    required_mask: u32,
+    dissolved: u32,
+    generation: u32,
+}
+
+impl OverlayLifecycleStateGpuWire {
+    pub(crate) const fn pending(required_mask: u32) -> Self {
+        OverlayLifecycleProjectionSeed::pending(required_mask).to_gpu_wire()
+    }
+}
+
+/// GPU-decided conjunctive lifecycle state, sealed at kernel readback.
+///
+/// External peers cannot construct a dissolved row and feed it directly to the
+/// structural applicator:
+///
+/// ```compile_fail,E0451
+/// use simthing_kernel::accumulator_op::OverlayLifecycleStateGpu;
+///
+/// fn forge_peer_dissolution() -> OverlayLifecycleStateGpu {
+///     OverlayLifecycleStateGpu {
+///         satisfied_mask: 1,
+///         required_mask: 1,
+///         dissolved: 1,
+///         generation: 0,
+///     }
+/// }
+/// ```
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct OverlayLifecycleStateGpu {
+    satisfied_mask: u32,
+    required_mask: u32,
+    dissolved: u32,
+    generation: u32,
+}
+
+impl OverlayLifecycleStateGpu {
+    pub fn satisfied_mask(&self) -> u32 {
+        self.satisfied_mask
+    }
+
+    pub fn required_mask(&self) -> u32 {
+        self.required_mask
+    }
+
+    pub fn is_dissolved(&self) -> bool {
+        self.dissolved != 0
+    }
+
+    pub fn generation(&self) -> u32 {
+        self.generation
+    }
+
+    pub(crate) fn from_gpu_readback(row: &OverlayLifecycleStateGpuWire) -> Self {
+        Self {
+            satisfied_mask: row.satisfied_mask,
+            required_mask: row.required_mask,
+            dissolved: row.dissolved,
+            generation: row.generation,
         }
     }
 }
@@ -43,7 +129,7 @@ pub struct OverlayLifecycleProjectionBinding {
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct OverlayLifecycleProjectionPlan {
-    pub rows: Vec<OverlayLifecycleStateGpu>,
+    pub rows: Vec<OverlayLifecycleProjectionSeed>,
     pub bindings: Vec<OverlayLifecycleProjectionBinding>,
 }
 

@@ -36,7 +36,9 @@ pub fn compile_scenario_property_mutation_authority_boundary_plan(
     replay_count: u32,
 ) -> Result<ScenarioPropertyMutationAuthorityBoundaryPlan, SpecError> {
     if tick_id.0 == 0 {
-        return Err(SpecError::ValidationFailed);
+        return Err(SpecError::ValidationFailedAt {
+            site: "simthing-driver/scenario_property_mutation_authority_boundary_compile",
+        });
     }
 
     let property_view_mode = match source_mode {
@@ -61,7 +63,9 @@ pub fn compile_scenario_property_mutation_authority_boundary_plan(
         source_mode,
         replay_count,
     )
-    .map_err(|_| SpecError::ValidationFailed)?;
+    .map_err(|_| SpecError::ValidationFailedAt {
+        site: "simthing-driver/scenario_property_mutation_authority_boundary_compile",
+    })?;
 
     Ok(ScenarioPropertyMutationAuthorityBoundaryPlan {
         selected_source_mode: scenario_property_mutation_report.selected_source_mode,

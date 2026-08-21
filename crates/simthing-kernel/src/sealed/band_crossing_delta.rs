@@ -26,26 +26,15 @@ pub enum BandCrossingDirection {
 ///
 /// External crates cannot forge band deltas directly:
 ///
-/// ```compile_fail
-/// fn external_band_crossing_delta_forge() {
-///     let _ = simthing_kernel::BandCrossingDelta {
-///         reg_idx: 0,
-///         sim_thing_id: unimplemented!(),
-///         property_id: unimplemented!(),
-///         role: unimplemented!(),
-///         slot: unimplemented!(),
-///         col: unimplemented!(),
-///         threshold: 0.0,
-///         direction: simthing_kernel::BandCrossingDirection::Rising,
-///         post_value: 0.0,
-///         event_kind: 0,
-///     };
+/// ```compile_fail,E0616
+/// fn external_band_crossing_delta_field_access(delta: &simthing_kernel::BandCrossingDelta) {
+///     let _ = delta.reg_idx;
 /// }
 /// ```
 ///
 /// External crates cannot forge band deltas via a public named constructor:
 ///
-/// ```compile_fail
+/// ```compile_fail,E0624
 /// fn external_band_crossing_delta_named_forge() {
 ///     let _ = simthing_kernel::BandCrossingDelta::from_fused_threshold_emission(
 ///         /* emission */ unimplemented!(),

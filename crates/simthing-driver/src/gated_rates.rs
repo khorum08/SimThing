@@ -242,9 +242,13 @@ pub fn seed_gated_rate_base_columns(
             .column_owners
             .get(gated.intrinsic_col.raw())
             .map(|(pid, _)| *pid)
-            .ok_or(InstallError::Spec(SpecError::ValidationFailed))?;
+            .ok_or(InstallError::Spec(SpecError::ValidationFailedAt {
+                site: "simthing-driver/gated_rates",
+            }))?;
         let Some(value) = node.properties.get_mut(&flow_property_id) else {
-            return Err(InstallError::Spec(SpecError::ValidationFailed));
+            return Err(InstallError::Spec(SpecError::ValidationFailedAt {
+                site: "simthing-driver/gated_rates",
+            }));
         };
         let intrinsic = value.lane_at_offset(gated.intrinsic_offset);
         value.set_lane_at_offset(gated.base_offset, intrinsic);

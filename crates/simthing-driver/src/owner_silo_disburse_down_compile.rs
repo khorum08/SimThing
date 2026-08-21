@@ -38,7 +38,9 @@ pub fn compile_owner_silo_disburse_down_plan(
     scenario: &SimThingScenarioSpec,
 ) -> Result<OwnerSiloDisburseDownPlan, SpecError> {
     let owner_view =
-        admit_intrinsic_owner_channels(scenario).map_err(|_| SpecError::ValidationFailed)?;
+        admit_intrinsic_owner_channels(scenario).map_err(|_| SpecError::ValidationFailedAt {
+            site: "simthing-driver/owner_silo_disburse_down_compile",
+        })?;
     compile_owner_silo_disburse_down_plan_from_owner_view(&owner_view)
 }
 
@@ -47,14 +49,19 @@ pub fn compile_owner_silo_disburse_down_plan_from_owner_view(
 ) -> Result<OwnerSiloDisburseDownPlan, SpecError> {
     let writeback_plan = compile_owner_silo_runtime_writeback_plan_from_owner_view(owner_view)?;
 
-    let demand_buckets = owner_silo_demand_buckets_from_owner_view(owner_view)
-        .map_err(|_| SpecError::ValidationFailed)?;
+    let demand_buckets = owner_silo_demand_buckets_from_owner_view(owner_view).map_err(|_| {
+        SpecError::ValidationFailedAt {
+            site: "simthing-driver/owner_silo_disburse_down_compile",
+        }
+    })?;
 
     let cpu_results = if demand_buckets.is_empty() {
         Vec::new()
     } else {
         apply_owner_silo_runtime_disburse_down_cpu(&writeback_plan.cpu_results, &demand_buckets)
-            .map_err(|_| SpecError::ValidationFailed)?
+            .map_err(|_| SpecError::ValidationFailedAt {
+                site: "simthing-driver/owner_silo_disburse_down_compile",
+            })?
     };
 
     let gpu_demand_aggregate_proof_plans = compile_demand_aggregate_proof_plans(&demand_buckets)?;
@@ -88,7 +95,9 @@ fn compile_demand_aggregate_proof_plans(
             .map(|(index, _)| index)
             .collect::<Vec<_>>();
         if source_demand_indices.is_empty() {
-            return Err(SpecError::ValidationFailed);
+            return Err(SpecError::ValidationFailedAt {
+                site: "simthing-driver/owner_silo_disburse_down_compile",
+            });
         }
 
         let participant_count = source_demand_indices.len() as u32;

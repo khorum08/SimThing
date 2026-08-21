@@ -10,11 +10,11 @@ use std::collections::BTreeMap;
 use simthing_core::SimThingId;
 
 use super::channel_key::{OwnerRef, ParentLocationId, ResourceKey, ScopeId};
-use super::owner_channel_admission::{admit_intrinsic_owner_channels, IntrinsicOwnerChannelView};
-use super::planet_child_rf::{
+use super::legacy_owner_channel_rf::{
     planet_child_rf_participant_inputs_from_owner_view, scope_key_from_participant,
     PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY,
 };
+use super::owner_channel_admission::{admit_intrinsic_owner_channels, IntrinsicOwnerChannelView};
 use super::recursive_local_rf::{
     evaluate_recursive_local_rf_from_owner_view, recursive_local_rf_aggregate_source_rows,
     RecursiveLocalRfAggregateSourceKind,
@@ -162,7 +162,7 @@ pub fn project_planet_child_rf_ladder_rows_from_owner_view(
             planet_gridcell_id_raw: participant.planet_gridcell_id_raw,
             scope_id: scope.scope_id,
             owner_ref: participant.owner_ref.clone(),
-            resource_key: super::planet_child_rf::planet_child_rf_default_resource_key(),
+            resource_key: super::legacy_owner_channel_rf::planet_child_rf_default_resource_key(),
             surplus: participant.surplus,
             demand: participant.deficit,
             deficit: participant.deficit,
