@@ -33,7 +33,9 @@ pub fn compile_runtime_participant_state_mutation_plan(
     replay_count: u32,
 ) -> Result<RuntimeParticipantStateMutationPlan, SpecError> {
     if tick_id.0 == 0 {
-        return Err(SpecError::ValidationFailed);
+        return Err(SpecError::ValidationFailedAt {
+            site: "simthing-driver/runtime_participant_state_mutation_compile",
+        });
     }
 
     let delta_preview_mode = match source_mode {
@@ -53,7 +55,9 @@ pub fn compile_runtime_participant_state_mutation_plan(
     )?;
     let mutation_report =
         evaluate_runtime_participant_state_mutation(scenario, tick_id, source_mode, replay_count)
-            .map_err(|_| SpecError::ValidationFailed)?;
+            .map_err(|_| SpecError::ValidationFailedAt {
+            site: "simthing-driver/runtime_participant_state_mutation_compile",
+        })?;
 
     Ok(RuntimeParticipantStateMutationPlan {
         selected_source_mode: mutation_report.selected_source_mode,

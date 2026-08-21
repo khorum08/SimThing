@@ -38,7 +38,9 @@ pub fn compile_owner_silo_recursive_source_plan(
     source_mode: OwnerSiloRfSourceMode,
 ) -> Result<OwnerSiloRecursiveSourcePlan, SpecError> {
     if tick_id.0 == 0 {
-        return Err(SpecError::ValidationFailed);
+        return Err(SpecError::ValidationFailedAt {
+            site: "simthing-driver/owner_silo_recursive_source_compile",
+        });
     }
 
     let selection_mode = match source_mode {
@@ -53,7 +55,9 @@ pub fn compile_owner_silo_recursive_source_plan(
     let recursive_local_rf_plan = compile_recursive_local_rf_plan(scenario)?;
     let reconciliation_plan = compile_recursive_rf_reconciliation_plan(scenario)?;
     let disburse_report = evaluate_owner_silo_disburse_down_with_rf_source(scenario, source_mode)
-        .map_err(|_| SpecError::ValidationFailed)?;
+        .map_err(|_| SpecError::ValidationFailedAt {
+        site: "simthing-driver/owner_silo_recursive_source_compile",
+    })?;
 
     Ok(OwnerSiloRecursiveSourcePlan {
         selected_source_mode: disburse_report.selected_source_mode,

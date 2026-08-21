@@ -83,7 +83,9 @@ pub fn evaluate_scenario_candidate_from_runtime_from_json_str(
     let runtime_chain =
         evaluate_loaded_scenario_runtime_report_chain_from_json_str(source_label, json)?;
     if !runtime_chain.runtime_property_view_rows_ready {
-        return Err(SpecError::ValidationFailed);
+        return Err(SpecError::ValidationFailedAt {
+            site: "simthing-spec/scenario_candidate_from_runtime",
+        });
     }
 
     let (scenario, _) = load_scenario_spec_from_json_str(source_label, json)?;
@@ -93,11 +95,15 @@ pub fn evaluate_scenario_candidate_from_runtime_from_json_str(
         ScenarioPropertyMutationSourceMode::RecursiveRuntimePropertyViewSelectable,
         REPLAY_ONE,
     )
-    .map_err(|_| SpecError::ValidationFailed)?;
+    .map_err(|_| SpecError::ValidationFailedAt {
+        site: "simthing-spec/scenario_candidate_from_runtime",
+    })?;
 
     let candidate =
         clone_scenario_candidate_with_runtime_property_view(&scenario, TICK_ONE, REPLAY_ONE)
-            .map_err(|_| SpecError::ValidationFailed)?;
+            .map_err(|_| SpecError::ValidationFailedAt {
+                site: "simthing-spec/scenario_candidate_from_runtime",
+            })?;
 
     let stead_report = evaluate_scenario_stead_map_roundtrip_from_json_str(source_label, json)?;
     let original_stead_ids = extract_scenario_stead_id_rows(&scenario)?;
@@ -169,7 +175,9 @@ pub fn prove_scenario_candidate_from_runtime_preserves_original_authority(
         ScenarioPropertyMutationSourceMode::RecursiveRuntimePropertyViewSelectable,
         REPLAY_ONE,
     )
-    .map_err(|_| SpecError::ValidationFailed)?;
+    .map_err(|_| SpecError::ValidationFailedAt {
+        site: "simthing-spec/scenario_candidate_from_runtime",
+    })?;
 
     Ok(mutation_proof
         && report.original_authority_preserved

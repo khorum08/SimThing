@@ -122,6 +122,16 @@ VARIANT_RE = re.compile(
     r")\b"
 )
 BROAD_FN_RE = FN_DEF_RE
+# Vocabulary-independent second net: route discovery cannot depend only on the
+# enumerated names above. Any lifecycle/dispatch/write verb paired with an
+# overlay-family object is census-shaped even when the exact spelling is new.
+OVERLAY_VERB_SHAPE_RE = re.compile(
+    r"^(?:add|admit|apply|attach|build|capture|compile|cross|deliver|dispatch|"
+    r"dissolve|emit|expire|gate|inherit|install|materialize|mint|override|plan|"
+    r"push|receive|register|remap|remove|renew|resolve|route|run|submit|suspend|"
+    r"sweep|upload|validate|walk)_[a-z0-9_]*"
+    r"(?:overlay|directive|germ|lifecycle)(?:_[a-z0-9_]*)?$"
+)
 MUTATION_RE = re.compile(
     r"(?:\.overlays\.(?:push|remove|retain|clear|insert)\s*\(|\.add_overlay\s*\()"
 )
@@ -244,8 +254,10 @@ def broad_hits(extra_files: list[Path] | None = None) -> list[str]:
             if in_spans(lineno, spans):
                 continue
             m = BROAD_FN_RE.match(line)
-            if m and "overlay" in m.group("name").lower():
-                hits.add(token(crate, path, m.group("name")))
+            if m:
+                name = m.group("name")
+                if "overlay" in name.lower() or OVERLAY_VERB_SHAPE_RE.match(name):
+                    hits.add(token(crate, path, name))
     return sorted(hits)
 
 
@@ -538,6 +550,29 @@ def run_selftest() -> int:
         if rc == 0 or "FAIL(unlisted-route:" not in out or "dissolve_overlay" not in out:
             print("CENSUS-SELFTEST-VERDICT: FAIL(planted-route-did-not-red-exact-reason)")
             return 1
+        # A route whose exact name is absent from ROUTE_NAME_RE and which does
+        # not contain the token "overlay" must still be discovered by shape.
+        shaped = Path(td) / "planted_overlay_verb_shape.rs"
+        shaped.write_text(
+            "pub fn renew_directive_germ(epoch: u32) {\n    let _ = epoch;\n}\n",
+            encoding="utf-8",
+        )
+        shaped_live = discover([shaped])
+        if any(t.endswith(":renew_directive_germ") for t in shaped_live):
+            print("CENSUS-SELFTEST-VERDICT: FAIL(shaped-route-leaked-into-enumerated-universe)")
+            return 1
+        shaped_hits = broad_hits([shaped])
+        if not any(t.endswith(":renew_directive_germ") for t in shaped_hits):
+            print("CENSUS-SELFTEST-VERDICT: FAIL(shaped-route-not-discovered)")
+            return 1
+        buf = StringIO()
+        with contextlib.redirect_stdout(buf):
+            shaped_rc = run_check(extra_files=[shaped])
+        shaped_out = buf.getvalue()
+        print(shaped_out, end="")
+        if shaped_rc == 0 or "UNJUSTIFIED-BROAD:" not in shaped_out or "renew_directive_germ" not in shaped_out:
+            print("CENSUS-SELFTEST-VERDICT: FAIL(shaped-route-did-not-red-exact-reason)")
+            return 1
         # Prove the STALE branch without dirtying the repo: compare live
         # discovery against a truncated pin in memory.
         live_clean = discover()
@@ -597,7 +632,7 @@ def run_selftest() -> int:
             UNIVERSE_PATH = real_universe
         print(
             "CENSUS-SELFTEST-VERDICT: PASS "
-            "(planted unlisted dissolve_overlay REDs; --repin restores drift and cannot launder)"
+            "(enumerated and verb-shaped routes RED; --repin restores drift and cannot launder)"
         )
         return 0
 

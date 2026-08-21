@@ -12,11 +12,13 @@ fi
 
 "$PYTHON_BIN" - <<'PY' "$ROOT" "$INVENTORY" "$@"
 import csv
+import hashlib
 import os
 import pathlib
 import re
 import subprocess
 import sys
+import tempfile
 
 root = pathlib.Path(sys.argv[1])
 inventory = pathlib.Path(sys.argv[2])
@@ -63,10 +65,36 @@ bad_judgment_notes = {
     "catches: behavior regression",
     "catches: escaped bug",
     "catches: important coverage",
-    "permanent-residue:behavior-regression",
-    "permanent-residue:escaped-bug",
+    "until-closeout:behavior-regression",
+    "until-closeout:escaped-bug",
     "regression test",
 }
+
+compile_fail_fence_re = re.compile(
+    r"```compile_fail(?P<codes>(?:,E[0-9]{4})+)\s*$"
+)
+
+
+def strip_doc_prefix(line: str) -> str:
+    return re.sub(r"^\s*//(?:/|!)\s?", "", line)
+
+
+def compile_fail_identity(lines: list[str], index: int) -> str:
+    match = compile_fail_fence_re.search(lines[index])
+    if not match:
+        raise ValueError("compile_fail fence lacks pinned E#### error identity")
+    codes = match.group("codes").lstrip(",").split(",")
+    snippet: list[str] = []
+    for raw in lines[index + 1 :]:
+        cleaned = strip_doc_prefix(raw)
+        if "```" in cleaned:
+            break
+        if cleaned.startswith("# "):
+            cleaned = cleaned[2:]
+        snippet.append(cleaned.rstrip())
+    normalized = "\n".join(snippet).strip() + "\n"
+    digest = hashlib.sha256(normalized.encode("utf-8")).hexdigest()[:12]
+    return f"compile_fail_{'-'.join(codes)}_{digest}"
 
 def judgment_note_ok(note: str) -> bool:
     normalized = " ".join(note.strip().lower().split())
@@ -86,7 +114,7 @@ def prove_judgment_note_rule() -> None:
         "catches: behavior regression",
         "catches: escaped bug",
         "catches: important coverage",
-        "permanent-residue:behavior-regression",
+        "until-closeout:behavior-regression",
         "regression test",
         "kept because it matters",
     ]
@@ -109,8 +137,69 @@ def prove_judgment_note_rule() -> None:
     print("JUDGMENT-NOTE-RULE-VERDICT: PASS")
     sys.exit(0)
 
+
+def prove_compile_fail_identity() -> None:
+    right = ["/// ```compile_fail,E0308", '/// let _: u32 = "wrong";', "/// ```"]
+    wrong_code = ["/// ```compile_fail,E0425", '/// let _: u32 = "wrong";', "/// ```"]
+    changed = ["/// ```compile_fail,E0308", '/// let _: u64 = "wrong";', "/// ```"]
+    if len({
+        compile_fail_identity(right, 0),
+        compile_fail_identity(wrong_code, 0),
+        compile_fail_identity(changed, 0),
+    }) != 3:
+        print("COMPILE-FAIL-IDENTITY-PROVE-VERDICT: FAIL(identity-collision)")
+        sys.exit(1)
+    try:
+        compile_fail_identity(["/// ```compile_fail", "/// missing();", "/// ```"], 0)
+    except ValueError:
+        pass
+    else:
+        print("COMPILE-FAIL-IDENTITY-PROVE-VERDICT: FAIL(unpinned-fence-accepted)")
+        sys.exit(1)
+
+    # Rustdoc itself accepts any failure for compile_fail. Compile probes must
+    # therefore compare the emitted rustc code with the pinned identity.
+    with tempfile.TemporaryDirectory() as td:
+        fixture = pathlib.Path(td) / "probe.rs"
+
+        def rustc_codes(source: str) -> set[str]:
+            fixture.write_text(source, encoding="utf-8")
+            proc = subprocess.run(
+                [
+                    "rustc", "--edition", "2021", "--crate-type", "lib",
+                    "--emit", "metadata", "--error-format", "json", str(fixture),
+                ],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            import json
+            codes: set[str] = set()
+            for line in proc.stderr.splitlines() + proc.stdout.splitlines():
+                try:
+                    message = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                code = (message.get("code") or {}).get("code")
+                if code:
+                    codes.add(code)
+            return codes
+
+        wrong = rustc_codes("pub fn probe() { missing_compile_fail_name(); }\n")
+        right_codes = rustc_codes('pub fn probe() { let _: u32 = "wrong"; }\n')
+        if wrong != {"E0425"} or wrong == {"E0308"}:
+            print("COMPILE-FAIL-IDENTITY-PROVE-VERDICT: FAIL(wrong-error-passed)")
+            sys.exit(1)
+        if right_codes != {"E0308"}:
+            print("COMPILE-FAIL-IDENTITY-PROVE-VERDICT: FAIL(right-error-rejected)")
+            sys.exit(1)
+    print("COMPILE-FAIL-IDENTITY-PROVE-VERDICT: PASS")
+    sys.exit(0)
+
 if args == ["--prove-judgment-note-rule"]:
     prove_judgment_note_rule()
+if args == ["--prove-compile-fail-identity"]:
+    prove_compile_fail_identity()
 if args:
     print(f"unknown arg(s): {' '.join(args)}", file=sys.stderr)
     sys.exit(2)
@@ -133,8 +222,6 @@ allowed_keep_targets = read_residue_classes(residue_classes)
 collapse_re = re.compile(r"^COLLAPSE\([0-9]+(?:->|→)1\)$")
 test_attr_re = re.compile(r"#\[\s*(?:(?:tokio|async_std)::)?test(?:\(|\])")
 fn_re = re.compile(r"\bfn\s+([A-Za-z_][A-Za-z0-9_]*)")
-cfg_test_re = re.compile(r"#\[\s*cfg\s*\(\s*test\s*\)\s*\]")
-mod_re = re.compile(r"\bmod\s+([A-Za-z_][A-Za-z0-9_]*)")
 
 def crate_for(path: pathlib.Path) -> str:
     parts = path.parts
@@ -177,17 +264,15 @@ def discovered_items() -> set[tuple[str, str, str, str]]:
                         break
                 if name:
                     items.add((crate_for(rel), norm(rel), name, file_kind))
-            if cfg_test_re.search(line):
-                name = None
-                for later in text[index : min(index + 8, len(text))]:
-                    m = mod_re.search(later)
-                    if m:
-                        name = f"cfg_test_mod::{m.group(1)}"
-                        break
-                if name:
-                    items.add((crate_for(rel), norm(rel), name, "unit"))
+            # A cfg(test) module is a source container, not an executable test.
+            # Its child #[test] functions are inventoried individually above.
             if "```compile_fail" in line:
-                items.add((crate_for(rel), norm(rel), f"compile_fail_line_{index + 1}", "compile_fail"))
+                try:
+                    identity = compile_fail_identity(text, index)
+                except ValueError as exc:
+                    errors.append(f"{norm(rel)}:{index + 1}: {exc}")
+                    continue
+                items.add((crate_for(rel), norm(rel), identity, "compile_fail"))
             if "trybuild::TestCases" in line or ".compile_fail(" in line:
                 items.add((crate_for(rel), norm(rel), f"trybuild_line_{index + 1}", "trybuild"))
     fixtures = sorted((root / "scripts/ci/fixtures").glob("**/*"))
@@ -225,7 +310,7 @@ else:
         if row["verdict"] == "KEEP":
             target = row["promotion_target"].strip()
             if target not in allowed_keep_targets and not target.startswith("promotion-target:"):
-                errors.append(f"line {line_no}: KEEP row lacks permanent-residue class or promotion target")
+                errors.append(f"line {line_no}: KEEP row lacks until-closeout class or promotion target")
             if row["class"] in judgment_note_classes and not judgment_note_ok(row["note"]):
                 errors.append(
                     f"line {line_no}: KEEP {row['class']} row lacks specific 'catches:' judgment note"

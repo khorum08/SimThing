@@ -5,7 +5,7 @@
 //!
 //! Transposition with layout-resolved lane offsets is uncompilable:
 //!
-//! ```compile_fail
+//! ```compile_fail,E0308
 //! use simthing_core::{RoleOffset, SlotIndex};
 //!
 //! fn takes_role_offset(_: RoleOffset) {}
@@ -15,7 +15,7 @@
 //! }
 //! ```
 //!
-//! ```compile_fail
+//! ```compile_fail,E0308
 //! use simthing_core::{RoleOffset, SlotIndex};
 //!
 //! fn takes_slot(_: SlotIndex) {}
@@ -27,7 +27,7 @@
 //!
 //! Private field — bare integer slot forgery is uncompilable:
 //!
-//! ```compile_fail
+//! ```compile_fail,E0423
 //! use simthing_core::SlotIndex;
 //!
 //! fn slot_index_fields_private_compile_fail() {
@@ -35,7 +35,7 @@
 //! }
 //! ```
 //!
-//! ```compile_fail
+//! ```compile_fail,E0308
 //! use simthing_core::{ColumnIndex, SlotIndex};
 //!
 //! fn takes_column(_: ColumnIndex) {}
@@ -98,7 +98,7 @@ pub fn _slot_index_axis_distinct_from_role_offset(_slot: SlotIndex, _offset: Rol
 /// baking one into an EML literal bakes an authored coordinate, not a
 /// physical row. Transposition with `SlotIndex` is uncompilable:
 ///
-/// ```compile_fail
+/// ```compile_fail,E0308
 /// use simthing_core::{CellSpaceIndex, SlotIndex};
 ///
 /// fn takes_slot(_: SlotIndex) {}
@@ -108,7 +108,7 @@ pub fn _slot_index_axis_distinct_from_role_offset(_slot: SlotIndex, _offset: Rol
 /// }
 /// ```
 ///
-/// ```compile_fail
+/// ```compile_fail,E0308
 /// use simthing_core::{CellSpaceIndex, SlotIndex};
 ///
 /// fn takes_cell(_: CellSpaceIndex) {}

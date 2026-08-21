@@ -12,7 +12,7 @@
 //! Same-length neighbor substitution onto a sealed adjacency is unconstructible
 //! (fields private; no rebind constructor). Remand `5156686392` privacy referee:
 //!
-//! ```compile_fail,E0423,E0560
+//! ```compile_fail,E0451
 //! use simthing_driver::SealedFieldTopology;
 //! use simthing_gpu::FieldAdjacency;
 //! use simthing_core::{ColumnIndex, SlotIndex};

@@ -98,9 +98,9 @@ def read_residue_durable_targets(path: pathlib.Path) -> set[str]:
         reader = csv.DictReader(f, delimiter="\t")
         for row in reader:
             target = row.get("promotion_target", "").strip()
-            if not target.startswith("permanent-residue:"):
+            if not target.startswith("until-closeout:"):
                 continue
-            suffix = target.removeprefix("permanent-residue:")
+            suffix = target.removeprefix("until-closeout:")
             if suffix in DURABLE_PROMOTION_SUFFIXES:
                 targets.add(target)
     return targets
@@ -136,62 +136,23 @@ def is_live_anchor_survivor(row: dict[str, str]) -> bool:
     lower = note.lower()
     if any(marker in lower for marker in LIVE_ANCHOR_MARKERS):
         return True
-    if row.get("promotion_target", "").strip() == "permanent-residue:escaped-bug":
+    if row.get("promotion_target", "").strip() == "until-closeout:escaped-bug":
         detail = lower.removeprefix("catches:").strip()
         if len(detail) >= 40:
             return True
     return False
 
 
-# OWNER MANDATE 2026-07-30: a test may not outlive its birth track by more
-# than GRACE_DAYS wall-clock days. Renewal (a named DSU consumer) is the only
-# way to extend; classification is not.
-GRACE_DAYS = 5
-# One-time mortalization runway. Emptying the durability allowlists made 1317
-# long-immortal rows mortal at once; without a floor every closed-track row
-# would expire on the same day and red the repo instead of forcing renewal or
-# reaping. After this date the rule is strictly closed_at + GRACE_DAYS.
-_DEFAULT_MORTALIZATION_RUNWAY = "2026-08-11"
-
-
-def mortalization_runway() -> str:
-    """Runway floor; overridable so fixtures exercise the pure closed_at+N rule."""
-    import os
-    return os.environ.get("TEST_LIFECYCLE_RUNWAY", _DEFAULT_MORTALIZATION_RUNWAY)
-
-
-def _today() -> str:
-    import datetime
-    return datetime.date.today().isoformat()
-
-
-def _add_days(iso: str, days: int) -> str:
-    import datetime
-    try:
-        d = datetime.date.fromisoformat(iso.strip())
-    except ValueError:
-        return iso
-    return (d + datetime.timedelta(days=days)).isoformat()
-
-
-def track_reap_due(track: dict[str, str]) -> str:
-    """Wall-clock date on/after which a row born in this track is reapable."""
-    closed_at = (track.get("closed_at") or "").strip()
-    runway = mortalization_runway()
-    due = _add_days(closed_at, GRACE_DAYS) if closed_at and closed_at != "-" else runway
-    return max(due, runway)
-
-
-def track_grace_active(track: dict[str, str]) -> bool:
-    return _today() < track_reap_due(track)
-
-
 def is_durable(row: dict[str, str]) -> bool:
     if row.get("kind", "") in {"compile_fail", "trybuild"}:
         return True
+    target = row.get("promotion_target", "").strip()
+    # `until-closeout` is an event lease. It is never promoted into durability
+    # by its target or residue class after the birth track closes.
+    if target.startswith("until-closeout:"):
+        return False
     if row.get("class", "") in DURABLE_CLASSES:
         return True
-    target = row.get("promotion_target", "").strip()
     if target in durable_promotion_targets:
         return True
     if is_live_anchor_survivor(row):
@@ -410,13 +371,8 @@ def scan_expiry(
         note = row.get("note", "")
         if is_durable(row):
             continue
-        # Wall-clock grace: closed_at + GRACE_DAYS (never earlier than the
-        # one-time mortalization runway). Nothing is exempt by class; rows are
-        # simply not yet due. Grace suppresses only the live scheduled sweep --
-        # closeout and gate modes still enumerate everything entering the
-        # countdown, so a closing track reports its full reap set.
-        if mode == "scheduled" and track_grace_active(track):
-            continue
+        # Track status is the closeout event. There is deliberately no
+        # closed_at + wall-clock grace: `until-closeout` ends at that event.
         consumer = parse_dsu_consumer(note)
         if consumer is not None:
             justified_audit.append(
@@ -565,10 +521,6 @@ def write_tsv(path: pathlib.Path, header: list[str], rows: list[dict[str, str]])
 
 
 def prove_cases() -> int:
-    import os
-    # Fixtures assert the pure closed_at + GRACE_DAYS rule; the one-time
-    # mortalization runway is a production-only floor and would mask them.
-    os.environ["TEST_LIFECYCLE_RUNWAY"] = "1970-01-01"
     failures: list[str] = []
     _, tiers = read_dsu_tiers(dsu_tiers_path)
 
@@ -640,7 +592,7 @@ def prove_cases() -> int:
         klass: str = "behavior-regression",
         kind: str = "unit",
         note: str = "catches: synthetic proof fixture row for lifecycle expiry",
-        promotion_target: str = "permanent-residue:behavior-regression",
+        promotion_target: str = "until-closeout:behavior-regression",
         dsu_survivals: str = "0",
         test_name: str | None = None,
     ) -> dict[str, str]:
@@ -670,13 +622,12 @@ def prove_cases() -> int:
     )
 
     # OWNER MANDATE 2026-07-30: NOTHING is immune by classification. A
-    # seal-proof row with no named consumer expires like any other once its
-    # birth track has been closed longer than GRACE_DAYS. This case is kept
+    # seal-proof row with no named consumer expires at the closeout event. This case is kept
     # under its original name and inverted so the retired immunity cannot
     # silently return.
     run_case(
         "durable-immune",
-        [row(birth_track="pre-lifecycle", klass="seal-proof", promotion_target="permanent-residue:seal-proof")],
+        [row(birth_track="pre-lifecycle", klass="seal-proof", promotion_target="until-closeout:seal-proof")],
         base_track_rows,
         mode="scheduled",
         expect_verdict="INSPECT",
@@ -760,15 +711,15 @@ def prove_cases() -> int:
     anchor_row = row(
         birth_track="pre-lifecycle",
         note="catches: registry tombstoning regression (invariants.md registry tombstoning row)",
-        promotion_target="permanent-residue:escaped-bug",
+        promotion_target="until-closeout:escaped-bug",
     )
     run_case(
-        "live-anchor-not-flagged",
+        "live-anchor-until-closeout-expires-at-event",
         [anchor_row],
         base_track_rows,
         mode="scheduled",
-        expect_verdict="PASS",
-        expect_expired=0,
+        expect_verdict="INSPECT",
+        expect_expired=1,
         expect_audit=0,
     )
 
@@ -919,7 +870,6 @@ def prove_cases() -> int:
                 failures.append(f"live-anchor-flagged: {key}")
         # Live inventory is judged under the PRODUCTION runway, not the
         # fixture override.
-        os.environ.pop("TEST_LIFECYCLE_RUNWAY", None)
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf):
             rc = scan_expiry(inventory_path, tracks_path, mode="scheduled")

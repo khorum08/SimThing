@@ -1,7 +1,7 @@
 //! FIELD-SWEEP-IR-PROBE-0 — integration-test-only support (not a workshop library API).
 //!
 //! Compiled solely by `field_sweep_ir_probe_0` tests. No `pub mod` in `simthing-workshop` lib.
-//! Disposable: birth track 0.0.8.7 envelope, dsu_survivals=0, no permanent-residue.
+//! Disposable: birth track 0.0.8.7 envelope, dsu_survivals=0, no unbounded residue target.
 
 use std::time::Instant;
 

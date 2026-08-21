@@ -181,6 +181,35 @@ has_homing = bool(re.search(r'homing boundary\s+classification', text, re.IGNORE
 has_scope_class = bool(re.search(r'scope ledger', text, re.IGNORECASE)) and bool(
     re.search(r'scope ledger[\s\S]{0,800}classification', text, re.IGNORECASE)
 )
+changed_paths = [
+    path.strip().replace("\\", "/")
+    for path in changed_files_env.splitlines()
+    if path.strip()
+]
+if not changed_paths and fixture_dir:
+    changed_fixture = pathlib.Path(fixture_dir) / "changed_files.txt"
+    if changed_fixture.is_file():
+        changed_paths = [
+            path.strip().replace("\\", "/")
+            for path in changed_fixture.read_text(encoding="utf-8").splitlines()
+            if path.strip()
+        ]
+engine_src_prefixes = (
+    "crates/simthing-core/src/",
+    "crates/simthing-kernel/src/",
+    "crates/simthing-gpu/src/",
+    "crates/simthing-feeder/src/",
+    "crates/simthing-sim/src/",
+    "crates/simthing-driver/src/",
+    "crates/simthing-spec/src/",
+    "crates/simthing-clausething/src/",
+    "crates/simthing-mapgenerator/src/",
+    "crates/simthing-mapeditor/src/",
+    "crates/simthing-tools/src/",
+)
+if any(path.startswith(engine_src_prefixes) for path in changed_paths) and not has_homing:
+    print("FAIL:missing-engine-homing-classification")
+    sys.exit(0)
 has_lifecycle = bool(
     re.search(
         r'\b(PROBATION|DA-GRADUATED|ORCHESTRATOR-GRADUATED|HOLD|DA-OWNER)\b',
@@ -461,6 +490,7 @@ if anchor_fail:
 
 def clearance_gate_required():
     patterns = [
+        r"\bORCHESTRATOR-CLEARABLE\b",
         r"\bDA-review\b",
         r"\bDA review\b",
         r"\bDA-review-pending\b",
@@ -491,7 +521,9 @@ def validate_clearance_verdict():
         return "missing-clearance-verdict"
     verdict = m.group(1)
     if verdict.upper().startswith("ORCHESTRATOR-CLEARABLE"):
-        return "clearable-not-da-relay"
+        if re.search(r"\bDA[- ]review(?:-pending)?\b|held for DA review", text, re.IGNORECASE):
+            return "clearable-not-da-relay"
+        return None
     if verdict.upper().startswith("FAIL("):
         return "clearance-fail-remedy"
     if not verdict.upper().startswith("DA-RESERVE("):
@@ -923,6 +955,7 @@ run_selftest() {
     relay_lint_selftest_pass_1154_shape
     relay_lint_selftest_fail_missing_coverage_basis
     relay_lint_selftest_fail_missing_classification
+    relay_lint_selftest_fail_engine_missing_homing
     relay_lint_selftest_fail_missing_graduation_routing
     relay_lint_selftest_pass_optional_5_1_sketch
     relay_lint_selftest_fail_empty_kabuki_sections
@@ -933,6 +966,7 @@ run_selftest() {
     relay_lint_selftest_fail_stale_clearance_verdict
     relay_lint_selftest_pass_fresh_da_reserve_clearance
     relay_lint_selftest_fail_clearable_da_relay
+    relay_lint_selftest_pass_clearable_self_merge
     relay_lint_selftest_pass_non_da_without_clearance
     relay_lint_selftest_fail_claimed_merge_not_master
     relay_lint_selftest_fail_unresolvable_claimed_merge

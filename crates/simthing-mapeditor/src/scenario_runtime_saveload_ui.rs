@@ -235,7 +235,9 @@ pub fn reopen_candidate_scenario_for_studio(
         .file_name()
         .and_then(|name| name.to_str())
         .unwrap_or("studio_candidate_reopen");
-    let json = fs::read_to_string(input_path).map_err(|_| SpecError::ValidationFailed)?;
+    let json = fs::read_to_string(input_path).map_err(|_| SpecError::ValidationFailedAt {
+        site: "simthing-mapeditor/scenario_runtime_saveload_ui",
+    })?;
 
     let (_, load_report) = load_scenario_spec_from_json_str(source_label, &json)?;
     let stead_report = evaluate_scenario_stead_map_roundtrip_from_json_str(source_label, &json)?;
@@ -293,8 +295,11 @@ pub fn reopen_candidate_scenario_for_studio_session(
         });
     }
 
-    let session = load_studio_session_from_scenario_path(input_path, None)
-        .map_err(|_| SpecError::ValidationFailed)?;
+    let session = load_studio_session_from_scenario_path(input_path, None).map_err(|_| {
+        SpecError::ValidationFailedAt {
+            site: "simthing-mapeditor/scenario_runtime_saveload_ui",
+        }
+    })?;
     let status = refresh_runtime_saveload_status_from_session(
         "studio_reopened_candidate",
         &session.scenario_authority,

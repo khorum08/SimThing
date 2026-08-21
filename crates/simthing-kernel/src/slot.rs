@@ -18,9 +18,9 @@
 //! Public slot parameters use [`SlotIndex`] — bare `u32` slot identity is
 //! uncompilable at this boundary:
 //!
-//! ```compile_fail
+//! ```compile_fail,E0308
 //! use simthing_core::SimThingId;
-//! use simthing_gpu::SlotAllocator;
+//! use simthing_kernel::SlotAllocator;
 //!
 //! fn slot_allocator_rejects_raw_integer_slot_compile_fail(
 //!     alloc: &SlotAllocator,

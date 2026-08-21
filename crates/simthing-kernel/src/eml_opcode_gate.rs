@@ -81,7 +81,7 @@ impl EvalEmlVocabulary {
 ///
 /// Private field — bare construction is uncompilable outside this module.
 ///
-/// ```compile_fail
+/// ```compile_fail,E0451
 /// fn forge_cpu_oracle_parity_proof() {
 ///     let _ = simthing_kernel::CpuOracleParityProof { bits: 0 };
 /// }
@@ -270,8 +270,9 @@ pub enum ExactPrimitiveDomainPolicy {
 
 /// Validated binary32 input domain for an exact primitive.
 ///
-/// ```compile_fail
-/// use simthing_kernel::{ExactPrimitiveDomainPolicy, PrimitiveDomain};
+/// ```compile_fail,E0451
+/// use simthing_kernel::ExactPrimitiveDomainPolicy;
+/// use simthing_kernel::eml_opcode_gate::PrimitiveDomain;
 /// let _ = PrimitiveDomain {
 ///     min_bits: 0,
 ///     max_bits: 1,

@@ -94,7 +94,9 @@ pub fn evaluate_loaded_scenario_runtime_report_chain_from_json_str(
     let recursive_rf_report =
         evaluate_loaded_scenario_recursive_rf_runtime_from_json_str(source_label, json)?;
     if !recursive_rf_report.recursive_rf_runtime_ready {
-        return Err(SpecError::ValidationFailed);
+        return Err(SpecError::ValidationFailedAt {
+            site: "simthing-spec/loaded_scenario_runtime_report_chain",
+        });
     }
 
     let (scenario, _) = load_scenario_spec_from_json_str(source_label, json)?;
@@ -103,20 +105,26 @@ pub fn evaluate_loaded_scenario_runtime_report_chain_from_json_str(
         &scenario,
         OwnerSiloRfSourceMode::RecursiveLocalRfSelectable,
     )
-    .map_err(|_| SpecError::ValidationFailed)?;
+    .map_err(|_| SpecError::ValidationFailedAt {
+        site: "simthing-spec/loaded_scenario_runtime_report_chain",
+    })?;
 
     let allocation_report = evaluate_runtime_local_allocation_with_rf_source(
         &scenario,
         LocalAllocationRfSourceMode::RecursiveOwnerSiloSelectable,
     )
-    .map_err(|_| SpecError::ValidationFailed)?;
+    .map_err(|_| SpecError::ValidationFailedAt {
+        site: "simthing-spec/loaded_scenario_runtime_report_chain",
+    })?;
 
     let local_effect_report = evaluate_local_effect_application_with_rf_source(
         &scenario,
         TICK_ONE,
         LocalEffectRfSourceMode::RecursiveLocalAllocationSelectable,
     )
-    .map_err(|_| SpecError::ValidationFailed)?;
+    .map_err(|_| SpecError::ValidationFailedAt {
+        site: "simthing-spec/loaded_scenario_runtime_report_chain",
+    })?;
 
     let semantic_report = evaluate_semantic_local_effects_with_rf_source(
         &scenario,
@@ -124,7 +132,9 @@ pub fn evaluate_loaded_scenario_runtime_report_chain_from_json_str(
         SemanticLocalEffectRfSourceMode::RecursiveLocalEffectSelectable,
         REPLAY_ONE,
     )
-    .map_err(|_| SpecError::ValidationFailed)?;
+    .map_err(|_| SpecError::ValidationFailedAt {
+        site: "simthing-spec/loaded_scenario_runtime_report_chain",
+    })?;
 
     let execution_report = evaluate_semantic_effect_execution_boundary(
         &scenario,
@@ -132,7 +142,9 @@ pub fn evaluate_loaded_scenario_runtime_report_chain_from_json_str(
         SemanticEffectExecutionSourceMode::RecursiveSemanticLocalEffectsSelectable,
         REPLAY_ONE,
     )
-    .map_err(|_| SpecError::ValidationFailed)?;
+    .map_err(|_| SpecError::ValidationFailedAt {
+        site: "simthing-spec/loaded_scenario_runtime_report_chain",
+    })?;
 
     let delta_preview_report = evaluate_semantic_participant_delta_preview(
         &scenario,
@@ -140,7 +152,9 @@ pub fn evaluate_loaded_scenario_runtime_report_chain_from_json_str(
         ParticipantDeltaPreviewSourceMode::RecursiveSemanticExecutionSelectable,
         REPLAY_ONE,
     )
-    .map_err(|_| SpecError::ValidationFailed)?;
+    .map_err(|_| SpecError::ValidationFailedAt {
+        site: "simthing-spec/loaded_scenario_runtime_report_chain",
+    })?;
 
     let state_mutation_report = evaluate_runtime_participant_state_mutation(
         &scenario,
@@ -148,7 +162,9 @@ pub fn evaluate_loaded_scenario_runtime_report_chain_from_json_str(
         RuntimeParticipantStateMutationSourceMode::RecursiveDeltaPreviewSelectable,
         REPLAY_ONE,
     )
-    .map_err(|_| SpecError::ValidationFailed)?;
+    .map_err(|_| SpecError::ValidationFailedAt {
+        site: "simthing-spec/loaded_scenario_runtime_report_chain",
+    })?;
 
     let property_view_report = evaluate_runtime_participant_property_mutation_boundary(
         &scenario,
@@ -156,7 +172,9 @@ pub fn evaluate_loaded_scenario_runtime_report_chain_from_json_str(
         RuntimeParticipantPropertyMutationSourceMode::RecursiveRuntimeStateSelectable,
         REPLAY_ONE,
     )
-    .map_err(|_| SpecError::ValidationFailed)?;
+    .map_err(|_| SpecError::ValidationFailedAt {
+        site: "simthing-spec/loaded_scenario_runtime_report_chain",
+    })?;
 
     let owner_silo_ready = owner_silo_report.source_selection.selection_allowed
         && owner_silo_report.owner_silo_disburse_down_executed_for_selected_source
@@ -311,7 +329,9 @@ pub fn prove_loaded_scenario_runtime_report_chain_preserves_authority(
             RuntimeParticipantPropertyMutationSourceMode::RecursiveRuntimeStateSelectable,
             REPLAY_ONE,
         )
-        .map_err(|_| SpecError::ValidationFailed)?;
+        .map_err(|_| SpecError::ValidationFailedAt {
+            site: "simthing-spec/loaded_scenario_runtime_report_chain",
+        })?;
 
     Ok(recursive_authority
         && property_boundary_authority

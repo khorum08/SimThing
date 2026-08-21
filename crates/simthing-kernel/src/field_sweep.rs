@@ -7,8 +7,8 @@
 //!
 //! Raw semantic identities cannot enter a field-sweep registration:
 //!
-//! ```compile_fail
-//! use simthing_gpu::FieldSweepRegistrationRequest;
+//! ```compile_fail,E0308
+//! use simthing_kernel::FieldSweepRegistrationRequest;
 //!
 //! fn field_sweep_registration_rejects_raw_column(
 //!     mut request: FieldSweepRegistrationRequest,
@@ -17,8 +17,8 @@
 //! }
 //! ```
 //!
-//! ```compile_fail
-//! use simthing_gpu::FieldEmlContext;
+//! ```compile_fail,E0308
+//! use simthing_kernel::field_sweep::FieldEmlContext;
 //!
 //! fn field_sweep_context_rejects_raw_slot(mut context: FieldEmlContext) {
 //!     context.target_slot = 0u32;

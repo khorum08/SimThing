@@ -2,7 +2,7 @@
 //!
 //! Direct kind access is uncompilable (`fission_clone_source_view_hides_kind_compile_fail`):
 //!
-//! ```compile_fail
+//! ```compile_fail,E0609
 //! use simthing_sim::FissionCloneSourceView;
 //!
 //! fn peek_kind(v: FissionCloneSourceView<'_>) {
@@ -13,7 +13,7 @@
 //! Recovering `SimThing` for kind reads is also uncompilable
 //! (`fission_clone_source_view_inner_kind_backdoor_compile_fail`):
 //!
-//! ```compile_fail
+//! ```compile_fail,E0599
 //! use simthing_sim::FissionCloneSourceView;
 //!
 //! fn peek_inner_kind(v: FissionCloneSourceView<'_>) {

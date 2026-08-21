@@ -14,20 +14,15 @@ pub const DEFAULT_THRESHOLD_EMISSION_CAPACITY: u32 = 4096;
 ///
 /// External crates cannot forge threshold emissions directly:
 ///
-/// ```compile_fail
-/// fn external_threshold_emission_forge() {
-///     let _ = simthing_kernel::ThresholdEmission {
-///         reg_idx: 0,
-///         slot: 0,
-///         col: 0,
-///         value: 0.0,
-///     };
+/// ```compile_fail,E0616
+/// fn external_threshold_emission_field_access(value: &simthing_kernel::ThresholdEmission) {
+///     let _ = value.production_sealed;
 /// }
 /// ```
 ///
 /// External crates cannot forge threshold emissions via a public named constructor:
 ///
-/// ```compile_fail
+/// ```compile_fail,E0624
 /// fn external_threshold_emission_named_forge() {
 ///     let _ = simthing_kernel::ThresholdEmission::from_kernel_threshold_crossing(0, 0, 0, 0.0, 0);
 /// }
@@ -122,18 +117,15 @@ pub struct ThresholdEmissionGpu {
 ///
 /// External crates cannot forge emission records directly:
 ///
-/// ```compile_fail
-/// fn external_emission_record_forge() {
-///     let _ = simthing_kernel::EmissionRecord {
-///         reg_idx: 0,
-///         emit_count: 1,
-///     };
+/// ```compile_fail,E0616
+/// fn external_emission_record_field_access(value: &simthing_kernel::EmissionRecord) {
+///     let _ = value.production_sealed;
 /// }
 /// ```
 ///
 /// External crates cannot forge emission records via a public named constructor:
 ///
-/// ```compile_fail
+/// ```compile_fail,E0624
 /// fn external_emission_record_named_forge() {
 ///     let _ = simthing_kernel::EmissionRecord::from_kernel_emit_event(0, 1, 0);
 /// }

@@ -10,20 +10,15 @@ use crate::registration::{ThresholdRegistration, DIR_DOWNWARD, DIR_UPWARD, THRES
 ///
 /// External crates cannot forge decision events directly:
 ///
-/// ```compile_fail
-/// fn external_threshold_event_forge() {
-///     let _ = simthing_kernel::ThresholdEvent {
-///         slot: 0,
-///         col: 0,
-///         value: 0.0,
-///         event_kind: 0,
-///     };
+/// ```compile_fail,E0616
+/// fn external_threshold_event_field_access(value: &simthing_kernel::ThresholdEvent) {
+///     let _ = value.generation;
 /// }
 /// ```
 ///
 /// External crates cannot forge decision events via a public named constructor:
 ///
-/// ```compile_fail
+/// ```compile_fail,E0599
 /// fn external_threshold_event_named_forge() {
 ///     let _ = simthing_kernel::ThresholdEvent::from_boundary_delivery(0, 0, 999.0, 7);
 /// }

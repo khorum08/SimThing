@@ -34,7 +34,9 @@ pub fn compile_runtime_local_allocation_application_plan(
     scenario: &SimThingScenarioSpec,
 ) -> Result<RuntimeLocalAllocationApplicationPlan, SpecError> {
     let owner_view =
-        admit_intrinsic_owner_channels(scenario).map_err(|_| SpecError::ValidationFailed)?;
+        admit_intrinsic_owner_channels(scenario).map_err(|_| SpecError::ValidationFailedAt {
+            site: "simthing-driver/runtime_local_allocation_compile",
+        })?;
     compile_runtime_local_allocation_application_plan_from_owner_view(&owner_view)
 }
 
@@ -45,7 +47,9 @@ pub fn compile_runtime_local_allocation_application_plan_from_owner_view(
 
     let application_report =
         apply_runtime_local_allocations_from_disburse_down(&disburse_down_plan.cpu_results)
-            .map_err(|_| SpecError::ValidationFailed)?;
+            .map_err(|_| SpecError::ValidationFailedAt {
+                site: "simthing-driver/runtime_local_allocation_compile",
+            })?;
 
     let gpu_allocation_aggregate_proof_plans =
         compile_allocation_aggregate_proof_plans(&application_report)?;
@@ -77,7 +81,9 @@ fn compile_allocation_aggregate_proof_plans(
             .map(|(index, _)| index)
             .collect::<Vec<_>>();
         if source_allocation_indices.is_empty() {
-            return Err(SpecError::ValidationFailed);
+            return Err(SpecError::ValidationFailedAt {
+                site: "simthing-driver/runtime_local_allocation_compile",
+            });
         }
 
         let participant_count = source_allocation_indices.len() as u32;

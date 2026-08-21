@@ -42,7 +42,7 @@
 //! Replay snapshots do not expose raw root `.kind`
 //! (`replay_snapshot_hides_raw_root_kind_compile_fail`):
 //!
-//! ```compile_fail
+//! ```compile_fail,E0624
 //! use simthing_sim::ReplaySnapshot;
 //!
 //! fn peek_replay_root_kind(snap: ReplaySnapshot) {

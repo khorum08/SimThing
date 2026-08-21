@@ -5,6 +5,11 @@
 
 use simthing_core::SimThingKind;
 
+use super::legacy_owner_channel_rf::{
+    evaluate_planet_child_rf_admission, evaluate_planet_child_rf_reduce_up,
+    PlanetChildRfAdmissionClassification, PlanetChildRfAdmissionReport,
+    PlanetChildRfReduceUpReport,
+};
 use super::local_effect_application::prove_local_effect_application_preserves_authority;
 use super::local_participant_effects::evaluate_local_participant_effects;
 use super::owner_silo_disburse_down::owner_silo_demand_buckets_from_planet_child_rf;
@@ -15,11 +20,6 @@ use super::owner_silo_runtime_writeback::{
 use super::planet_child_location::{
     evaluate_planet_child_locations, PlanetChildLocationAdmissionClassification,
     PlanetChildLocationAdmissionErrorKind, PlanetChildLocationAdmissionReport,
-};
-use super::planet_child_rf::{
-    evaluate_planet_child_rf_admission, evaluate_planet_child_rf_reduce_up,
-    PlanetChildRfAdmissionClassification, PlanetChildRfAdmissionReport,
-    PlanetChildRfReduceUpReport,
 };
 use super::recursive_local_rf::prove_recursive_local_rf_preserves_authority;
 use super::runtime_local_allocation::apply_runtime_local_allocations_from_disburse_down;
@@ -810,14 +810,14 @@ fn integrate_runtime_local_allocation(
     }
 
     // Compile-readiness only: disburse-down CPU results must apply to runtime allocation state.
+    use super::legacy_owner_channel_rf::{
+        evaluate_planet_child_rf_reduce_up, PlanetChildRfAdmissionClassification,
+    };
     use super::owner_silo_disburse_down::apply_owner_silo_runtime_disburse_down_cpu;
     use super::owner_silo_runtime_writeback::{
         apply_owner_silo_runtime_writeback_cpu,
         owner_silo_writeback_inputs_from_planet_child_reduce_up,
         runtime_owner_silo_states_from_scenario,
-    };
-    use super::planet_child_rf::{
-        evaluate_planet_child_rf_reduce_up, PlanetChildRfAdmissionClassification,
     };
 
     let reduce_up = evaluate_planet_child_rf_reduce_up(spec);

@@ -408,7 +408,9 @@ fn validate_finite_f64_participants(
 ) -> Result<(), SpecError> {
     for row in rows {
         if !row.requested_amount.is_finite() || !row.available_amount.is_finite() {
-            return Err(SpecError::ValidationFailed);
+            return Err(SpecError::ValidationFailedAt {
+                site: "simthing-spec/loaded_scenario_recursive_rf_runtime",
+            });
         }
     }
     Ok(())
@@ -426,7 +428,9 @@ fn validate_finite_f64_arenas(rows: &[LoadedScenarioRfParentArenaRow]) -> Result
             row.net_upward_available,
         ] {
             if !value.is_finite() {
-                return Err(SpecError::ValidationFailed);
+                return Err(SpecError::ValidationFailedAt {
+                    site: "simthing-spec/loaded_scenario_recursive_rf_runtime",
+                });
             }
         }
     }
@@ -444,7 +448,9 @@ fn validate_finite_f64_channels(rows: &[LoadedScenarioRfChannelRow]) -> Result<(
             row.net_upward_delta,
         ] {
             if !value.is_finite() {
-                return Err(SpecError::ValidationFailed);
+                return Err(SpecError::ValidationFailedAt {
+                    site: "simthing-spec/loaded_scenario_recursive_rf_runtime",
+                });
             }
         }
     }
@@ -560,5 +566,7 @@ fn collect_surface_to_planet_links_recursive(thing: &SimThing, links: &mut BTree
 }
 
 fn map_recursive_rf_error(_error: RecursiveLocalRfError) -> SpecError {
-    SpecError::ValidationFailed
+    SpecError::ValidationFailedAt {
+        site: "simthing-spec/loaded_scenario_recursive_rf_runtime",
+    }
 }

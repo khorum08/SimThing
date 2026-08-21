@@ -10,7 +10,7 @@
 //!
 //! Raw integer targets are uncompilable:
 //!
-//! ```compile_fail
+//! ```compile_fail,E0308
 //! use simthing_core::{AccumulatorOp, CombineFn, ConsumeMode, GateSpec, ScaleSpec, SourceSpec, StructuralScalarChannel};
 //!
 //! fn accumulator_op_rejects_raw_integer_target_slot_compile_fail() {

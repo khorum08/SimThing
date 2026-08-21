@@ -33,7 +33,7 @@ therefore only ever one of:
   hard-error / scan / integration path, or an auto-clear rule) that makes the test redundant.
 - **`elevate`** — worth keeping, so it must not linger as a deletion-bound TSV row. Two targets:
   `elevate-code` (relocate the source/capability into a destination crate) or `elevate-class`
-  (promote a genuine proof into a `permanent-residue:*` class in `test_residue_classes.tsv`).
+  (promote a genuine proof into an `until-closeout:*` class in `test_residue_classes.tsv`).
 - **`keep-durable`** — already carries a durable class; retained, no mutation.
 - **`lease`** — undecided. The row is **relocated out of live `test_inventory.tsv` into the parking pen**
   (`test_lifecycle_parked.tsv`). Boundary-row audit ledger retired (HU-INVENTORY-ONEWRITE-0); inventory is the sole

@@ -37,13 +37,18 @@ pub fn compile_local_participant_effects_plan(
     tick_id: RuntimeTickId,
 ) -> Result<LocalParticipantEffectsPlan, SpecError> {
     if tick_id.0 == 0 {
-        return Err(SpecError::ValidationFailed);
+        return Err(SpecError::ValidationFailedAt {
+            site: "simthing-driver/local_participant_effects_compile",
+        });
     }
 
     let tick_shell_plan = compile_runtime_tick_shell_plan(scenario, tick_id)?;
 
-    let effects_report = evaluate_local_participant_effects(scenario, tick_id)
-        .map_err(|_| SpecError::ValidationFailed)?;
+    let effects_report = evaluate_local_participant_effects(scenario, tick_id).map_err(|_| {
+        SpecError::ValidationFailedAt {
+            site: "simthing-driver/local_participant_effects_compile",
+        }
+    })?;
 
     let gpu_effect_aggregate_proof_plans = compile_effect_aggregate_proof_plans(&effects_report)?;
 
@@ -77,7 +82,9 @@ fn compile_effect_aggregate_proof_plans(
             .map(|(index, _)| index)
             .collect::<Vec<_>>();
         if source_effect_indices.is_empty() {
-            return Err(SpecError::ValidationFailed);
+            return Err(SpecError::ValidationFailedAt {
+                site: "simthing-driver/local_participant_effects_compile",
+            });
         }
 
         let participant_count = source_effect_indices.len() as u32;

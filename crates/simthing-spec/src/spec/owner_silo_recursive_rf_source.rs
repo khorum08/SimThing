@@ -9,6 +9,10 @@ use std::collections::BTreeSet;
 use simthing_core::SimThingId;
 
 use super::channel_key::{OwnerRef, ScopeId};
+use super::legacy_owner_channel_rf::{
+    evaluate_planet_child_rf_reduce_up, planet_child_rf_default_resource_key,
+    PlanetChildRfAdmissionClassification,
+};
 use super::owner_silo_disburse_down::{
     apply_owner_silo_runtime_disburse_down_cpu, demand_bucket_sort_key,
     owner_silo_demand_buckets_from_planet_child_rf, RuntimeOwnerSiloDemandBucket,
@@ -18,10 +22,6 @@ use super::owner_silo_runtime_writeback::{
     apply_owner_silo_runtime_writeback_cpu,
     owner_silo_writeback_inputs_from_planet_child_reduce_up,
     runtime_owner_silo_states_from_scenario,
-};
-use super::planet_child_rf::{
-    evaluate_planet_child_rf_reduce_up, planet_child_rf_default_resource_key,
-    PlanetChildRfAdmissionClassification,
 };
 use super::recursive_local_rf::{
     evaluate_recursive_local_rf, recursive_local_rf_aggregate_source_rows,

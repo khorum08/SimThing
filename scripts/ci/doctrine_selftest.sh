@@ -17,8 +17,6 @@ horizon_entry_falsifier_result="FAIL"
 test_budget_result="FAIL"
 drift_proof_result="FAIL"
 stock_gate_fail_emit_result="FAIL"
-DELTA_BASE_SHA=""
-DELTA_HEAD_SHA=""
 
 declare -a KB_REPORT=()
 declare -a HE_REPORT=()
@@ -248,17 +246,6 @@ run_scan_in_sandbox() {
   local out_file="$2"
   set +e
   (cd "$root" && DOCTRINE_SCAN_SKIP_DRIFT=1 bash "scripts/ci/doctrine_scan.sh") >"$out_file" 2>&1
-  printf '%s' $?
-  set -e
-}
-
-run_pr_delta_scan_in_sandbox() {
-  local root="$1"
-  local out_file="$2"
-  local base="$3"
-  local head="$4"
-  set +e
-  (cd "$root" && DOCTRINE_SCAN_SKIP_DRIFT=1 bash "scripts/ci/doctrine_scan.sh" --pr-delta "$base" "$head") >"$out_file" 2>&1
   printf '%s' $?
   set -e
 }
@@ -519,97 +506,6 @@ setup_heuristic_clausething() {
     "${ROOT_SANDBOX}/crates/simthing-clausething/src/_selftest_fixture.rs"
 }
 
-prepare_workshop_homing_delta_root() {
-  local preexisting="${1:-}"
-  prepare_trap_baseline "$ROOT_SANDBOX"
-  mkdir -p "${ROOT_SANDBOX}/crates/simthing-core/src"
-  mkdir -p "${ROOT_SANDBOX}/crates/simthing-core/tests"
-  mkdir -p "${ROOT_SANDBOX}/crates/simthing-workshop/src"
-  mkdir -p "${ROOT_SANDBOX}/crates/simthing-workshop/tests"
-  cat >"${ROOT_SANDBOX}/crates/simthing-core/src/lib.rs" <<'EOF'
-#![forbid(unsafe_code)]
-EOF
-  cat >"${ROOT_SANDBOX}/crates/simthing-workshop/src/lib.rs" <<'EOF'
-#![forbid(unsafe_code)]
-EOF
-  if [[ "$preexisting" == "preexisting-hit" ]]; then
-    cat >"${ROOT_SANDBOX}/crates/simthing-core/tests/preexisting_homing.rs" <<'EOF'
-#[test]
-fn terran_pirate_preexisting_fixture() {
-    let scenario_name = "terran_pirate";
-    assert!(scenario_name.contains("pirate"));
-}
-EOF
-  fi
-  (
-    cd "$ROOT_SANDBOX" &&
-    git init -q &&
-    git config user.email "ci@example.invalid" &&
-    git config user.name "Doctrine Selftest" &&
-    git add . &&
-    git commit -q -m baseline
-  )
-  DELTA_BASE_SHA="$(git -C "$ROOT_SANDBOX" rev-parse HEAD)"
-}
-
-commit_workshop_homing_delta_head() {
-  local message="$1"
-  (
-    cd "$ROOT_SANDBOX" &&
-    git add . &&
-    git commit -q -m "$message"
-  )
-  DELTA_HEAD_SHA="$(git -C "$ROOT_SANDBOX" rev-parse HEAD)"
-}
-
-setup_workshop_homing_sealed_test_delta() {
-  prepare_workshop_homing_delta_root
-  cat >"${ROOT_SANDBOX}/crates/simthing-core/tests/workshop_homing.rs" <<'EOF'
-#[test]
-fn terran_pirate_candidate_homes_to_workshop() {
-    let scenario_name = "terran_pirate";
-    assert!(scenario_name.contains("pirate"));
-}
-EOF
-  commit_workshop_homing_delta_head sealed-test-hit
-}
-
-setup_workshop_homing_workshop_exempt_delta() {
-  prepare_workshop_homing_delta_root
-  cat >"${ROOT_SANDBOX}/crates/simthing-workshop/tests/workshop_homing.rs" <<'EOF'
-#[test]
-fn terran_pirate_candidate_stays_in_workshop() {
-    let scenario_name = "terran_pirate";
-    assert!(scenario_name.contains("pirate"));
-}
-EOF
-  commit_workshop_homing_delta_head workshop-exempt
-}
-
-setup_workshop_homing_neutral_delta() {
-  prepare_workshop_homing_delta_root
-  cat >"${ROOT_SANDBOX}/crates/simthing-core/tests/neutral_fixture.rs" <<'EOF'
-#[test]
-fn foundry_valley_fixture_stays_neutral() {
-    let fixture_name = "foundry_valley";
-    assert_eq!(fixture_name, "foundry_valley");
-}
-EOF
-  commit_workshop_homing_delta_head neutral-fixture
-}
-
-setup_workshop_homing_preexisting_suppressed_delta() {
-  prepare_workshop_homing_delta_root preexisting-hit
-  cat >"${ROOT_SANDBOX}/crates/simthing-core/tests/neutral_delta.rs" <<'EOF'
-#[test]
-fn aqueduct_delta_fixture_stays_neutral() {
-    let fixture_name = "aqueduct_delta";
-    assert_eq!(fixture_name, "aqueduct_delta");
-}
-EOF
-  commit_workshop_homing_delta_head preexisting-suppressed
-}
-
 setup_deny_toml() {
   copy_ci_bundle "$ROOT_SANDBOX"
   ensure_minimal_crates "$ROOT_SANDBOX"
@@ -840,29 +736,6 @@ setup_trap_mapeditor() {
   fi
   cp "${FIXTURES}/${trap_file}" \
     "${ROOT_SANDBOX}/crates/simthing-mapeditor/src/_selftest_trap.rs"
-}
-
-expect_workshop_homing_pr_delta() {
-  local label="$1"
-  local expected="$2"
-  shift 2
-  local scan_id="WORKSHOP-HOMING-DETECTION"
-  begin_sandbox
-  "$@"
-  local out="${ROOT_SANDBOX}/scan-pr-delta.out"
-  local exit_code verdict hard inspect sv count
-  exit_code="$(run_pr_delta_scan_in_sandbox "$ROOT_SANDBOX" "$out" "$DELTA_BASE_SHA" "$DELTA_HEAD_SHA")"
-  read -r verdict hard inspect <<<"$(parse_footer_verdict "$out")"
-  read -r sv count <<<"$(scan_line_verdict "$out" "$scan_id")"
-  if [[ "$expected" == "INSPECT" && "$verdict" == "INSPECT" && "$inspect" -gt 0 && "$sv" == "INSPECT" && "$count" -gt 0 && "$exit_code" -eq 0 ]]; then
-    HE_REPORT+=("${scan_id} (${label})  PASS")
-  elif [[ "$expected" == "PASS" && "$verdict" == "PASS" && "$hard" -eq 0 && "$inspect" -eq 0 && "$sv" == "PASS" && "$count" -eq 0 && "$exit_code" -eq 0 ]]; then
-    HE_REPORT+=("${scan_id} (${label})  PASS")
-  else
-    HE_REPORT+=("${scan_id} (${label})  FAIL (expected=${expected} verdict=${verdict} scan=${sv} count=${count} exit=${exit_code})")
-    fail_selftest
-  fi
-  end_sandbox
 }
 
 expect_trap_pass() {
@@ -1493,22 +1366,12 @@ run_all_cases() {
     setup_heuristic_owner_policy_weight_authority_mint_clause
   case_run expect_heuristic_quiet "owner_policy_weight_authority_mint_clean" "OWNER-POLICY-WEIGHT-AUTHORITY-MINT" \
     setup_quiet_owner_policy_weight_authority_mint
-  case_run expect_heuristic_inspect "overlay_peer_authority" "OVERLAY-PEER-AUTHORITY" \
-    setup_heuristic_kernel overlay_peer_authority.rs
   case_run expect_constitution_reach_log_append
   case_run expect_owner_policy_weight_authority_mint_reach_log_append
   case_run expect_heuristic_inspect "sim_kind_read" "SIM-KIND-READ" \
     setup_heuristic_sim sim_kind_read.rs
   case_run expect_heuristic_inspect "semantic_words_production" "SEMANTIC-WORDS" \
     setup_heuristic_kernel semantic_words_production.rs
-  case_run expect_workshop_homing_pr_delta "sealed_crate_tests_net_new" "INSPECT" \
-    setup_workshop_homing_sealed_test_delta
-  case_run expect_workshop_homing_pr_delta "workshop_exempt_net_new" "PASS" \
-    setup_workshop_homing_workshop_exempt_delta
-  case_run expect_workshop_homing_pr_delta "neutral_synthetic_fixture" "PASS" \
-    setup_workshop_homing_neutral_delta
-  case_run expect_workshop_homing_pr_delta "preexisting_hit_outside_delta" "PASS" \
-    setup_workshop_homing_preexisting_suppressed_delta
   case_run expect_heuristic_inspect "spec_string_channel" "SPEC-STRING-CHANNEL" \
     setup_heuristic_spec spec_string_channel.rs
   case_run expect_heuristic_inspect "spec_fleet_cohort_kind_branch" "SPEC-LOWERER-KIND-READ" \

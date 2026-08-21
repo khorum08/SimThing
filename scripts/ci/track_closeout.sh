@@ -136,7 +136,7 @@ DURABLE_KINDS = {"compile_fail", "trybuild"}
 DISPOSITIONS = {
     "delete",         # remove inventory row now (Necessity Test: owner required)
     "elevate-code",   # relocate source file into a destination crate (target = dest path)
-    "elevate-class",  # promote a proof into a permanent-residue class (target = class)
+    "elevate-class",  # classify a proof until the next explicit closeout (target = class)
     "keep-durable",   # already durable; retained, no mutation
     "lease",          # undecided; row is PARKED out of the live tables into the pen,
                       # on a wall-clock clock (target = optional reason)
@@ -328,25 +328,10 @@ def now_date() -> _dt.date:
     return _dt.datetime.now(_dt.timezone.utc).date()
 
 
-def durable_promotion_targets() -> set:
-    targets = set()
-    _, rows = read_tsv(RESIDUE_CLASSES)
-    for row in rows:
-        t = (row.get("promotion_target") or "").strip()
-        if t.startswith("permanent-residue:"):
-            targets.add(t)
-    return targets
-
-
-DURABLE_TARGETS = durable_promotion_targets()
-
-
 def is_durable(row: dict) -> bool:
     if row.get("kind", "") in DURABLE_KINDS:
         return True
     if row.get("class", "") in DURABLE_CLASSES:
-        return True
-    if (row.get("promotion_target") or "").strip() in DURABLE_TARGETS:
         return True
     return False
 
@@ -394,30 +379,40 @@ def load_authorized_renames(ref: str) -> list:
     return list(reader)
 
 
+def compile_fail_identities_from_source(source: str) -> set[str]:
+    lines = source.splitlines()
+    fence_re = re.compile(r"```compile_fail(?P<codes>(?:,E[0-9]{4})+)\s*$")
+    identities: set[str] = set()
+    for index, line in enumerate(lines):
+        match = fence_re.search(line)
+        if not match:
+            continue
+        snippet: list[str] = []
+        for raw in lines[index + 1:]:
+            cleaned = re.sub(r"^\s*//(?:/|!)\s?", "", raw)
+            if "```" in cleaned:
+                break
+            if cleaned.startswith("# "):
+                cleaned = cleaned[2:]
+            snippet.append(cleaned.rstrip())
+        normalized = "\n".join(snippet).strip() + "\n"
+        digest = hashlib.sha256(normalized.encode("utf-8")).hexdigest()[:12]
+        codes = match.group("codes").lstrip(",").replace(",", "-")
+        identities.add(f"compile_fail_{codes}_{digest}")
+    return identities
+
+
 def new_identity_present_in_diff(base: str, head: str, file: str, new_identity: str) -> bool:
     """True when fn <new_identity> is added (or newly present) in file between base..head.
 
-    compile_fail_line_N identities are line-locator seals (not fn names): present when
-    head source has a compile_fail fence at line N (authorized renames.tsv maps line shifts).
+    compile_fail identities bind the pinned rustc error code(s) plus normalized
+    snippet content, so line movement is irrelevant and a wrong failure changes identity.
     """
     head_src = git_show_text(head, file) or ""
-    # Durable compile_fail line-locator identity (inventory discovery name).
-    if new_identity.startswith("compile_fail_line_"):
-        try:
-            line_no = int(new_identity.rsplit("_", 1)[-1])
-        except ValueError:
-            return False
-        lines = head_src.splitlines()
-        if not (1 <= line_no <= len(lines)):
-            return False
-        if "compile_fail" not in lines[line_no - 1]:
-            return False
-        # Require the locator to be new vs base (line shift) or newly added fence.
-        base_src = git_show_text(base, file) or ""
-        base_lines = base_src.splitlines()
-        if len(base_lines) < line_no or "compile_fail" not in base_lines[line_no - 1]:
-            return True
-        return False
+    if new_identity.startswith("compile_fail_"):
+        head_ids = compile_fail_identities_from_source(head_src)
+        base_ids = compile_fail_identities_from_source(git_show_text(base, file) or "")
+        return new_identity in head_ids and new_identity not in base_ids
     if f"fn {new_identity}" not in head_src:
         return False
     base_src = git_show_text(base, file) or ""
@@ -1117,8 +1112,8 @@ def validate_dispositions(rows):
             errors.append(f"row {i} ({r.get('ref','?')}): elevate-code lacks a target destination path")
         if disp == "elevate-class":
             tgt = (r.get("target") or "").strip()
-            if not tgt.startswith("permanent-residue:"):
-                errors.append(f"row {i} ({r.get('ref','?')}): elevate-class target must be a permanent-residue:* class")
+            if not tgt.startswith("until-closeout:"):
+                errors.append(f"row {i} ({r.get('ref','?')}): elevate-class target must be a until-closeout:* class")
     return errors
 
 
@@ -1365,7 +1360,7 @@ def cmd_apply():
     for row in new_inv:
         key = inv_key(row)
         if key in class_updates:
-            cls = class_updates[key].removeprefix("permanent-residue:")
+            cls = class_updates[key].removeprefix("until-closeout:")
             row["class"] = cls
             row["verdict"] = "KEEP"
             row["promotion_target"] = class_updates[key]
@@ -1919,7 +1914,7 @@ def cmd_prove():
     check("elevate-class-needs-residue", bool(validate_dispositions(
         [{"ref": "r", "disposition": "elevate-class", "owner": "", "target": "golden-byte"}])))
     check("elevate-class-residue-ok", not validate_dispositions(
-        [{"ref": "r", "disposition": "elevate-class", "owner": "", "target": "permanent-residue:golden-byte"}]))
+        [{"ref": "r", "disposition": "elevate-class", "owner": "", "target": "until-closeout:golden-byte"}]))
     check("doc-lease-design-rejected", bool(validate_dispositions(
         [{"asset_kind": "doc", "ref": "d", "file": "docs/track_closeout_protocol.md",
           "disposition": "lease", "owner": "", "target": ""}])))
@@ -1960,7 +1955,7 @@ def cmd_prove():
         write_tsv(root / "scripts/ci/test_inventory.tsv", INVENTORY_HEADER, [
             {"crate": "c", "file": "crates/c/tests/min.rs", "test_name": "golden",
              "kind": "integration", "class": "golden-byte", "superseding_boundary": "B",
-             "verdict": "KEEP", "note": "keep", "promotion_target": "permanent-residue:golden-byte",
+             "verdict": "KEEP", "note": "keep", "promotion_target": "until-closeout:golden-byte",
              "birth_track": "min-track", "dsu_survivals": "0"},
         ])
         write_tsv(root / "scripts/ci/test_lifecycle_tracks.tsv", TRACKS_HEADER, [
@@ -1968,7 +1963,7 @@ def cmd_prove():
              "source": "docs/min_track.md", "note": "fixture"},
         ])
         write_tsv(root / "scripts/ci/test_residue_classes.tsv", ["promotion_target"], [
-            {"promotion_target": "permanent-residue:golden-byte"},
+            {"promotion_target": "until-closeout:golden-byte"},
         ])
         write_tsv(root / "scripts/ci/closeout_artifacts.tsv", ARTIFACT_LEDGER_HEADER, [])
         (root / "scripts/ci/active_track.txt").write_text(
@@ -2034,11 +2029,11 @@ def cmd_prove():
              "birth_track": "sb-track", "dsu_survivals": "0"},
             {"crate": "c", "file": "crates/c/tests/keep.rs", "test_name": "golden",
              "kind": "integration", "class": "golden-byte", "superseding_boundary": "B-T7-GOLDEN-BYTE-DETERMINISM",
-             "verdict": "KEEP", "note": "keep", "promotion_target": "permanent-residue:golden-byte",
+             "verdict": "KEEP", "note": "keep", "promotion_target": "until-closeout:golden-byte",
              "birth_track": "sb-track", "dsu_survivals": "0"},
             {"crate": "c", "file": "crates/c/tests/park.rs", "test_name": "park_me",
              "kind": "integration", "class": "behavior-regression", "superseding_boundary": "B-T5",
-             "verdict": "AUDIT", "note": "undecided", "promotion_target": "permanent-residue:behavior-regression",
+             "verdict": "AUDIT", "note": "undecided", "promotion_target": "until-closeout:behavior-regression",
              "birth_track": "sb-track", "dsu_survivals": "0"},
         ]
         b_rows = [
@@ -2057,7 +2052,7 @@ def cmd_prove():
             {"track_id": "sb-track", "status": "open", "closed_at": "-", "source": "docs/sb.md", "note": "x"},
         ])
         write_tsv(sb / "scripts/ci/test_residue_classes.tsv", ["promotion_target"], [
-            {"promotion_target": "permanent-residue:golden-byte"},
+            {"promotion_target": "until-closeout:golden-byte"},
         ])
         write_tsv(sb / "scripts/ci/closeout_autoclear.tsv",
                   ["test_name_prefix", "class", "owner"],
@@ -2136,7 +2131,7 @@ def cmd_prove():
             {"crate": "c", "file": "crates/c/tests/late.rs", "test_name": "late_arrival",
              "kind": "integration", "class": "behavior-regression", "superseding_boundary": "B-T5",
              "verdict": "AUDIT", "note": "born after manifest",
-             "promotion_target": "permanent-residue:behavior-regression",
+             "promotion_target": "until-closeout:behavior-regression",
              "birth_track": "sb-track", "dsu_survivals": "0"},
         ])
         r_stale = run("--apply", manifest_rel)
@@ -2279,15 +2274,15 @@ def cmd_prove():
         write_tsv(br / "scripts/ci/test_inventory.tsv", INVENTORY_HEADER, [
             {"crate": "c", "file": "crates/c/tests/keep.rs", "test_name": "golden",
              "kind": "integration", "class": "golden-byte", "superseding_boundary": "B-T7",
-             "verdict": "KEEP", "note": "keep", "promotion_target": "permanent-residue:golden-byte",
+             "verdict": "KEEP", "note": "keep", "promotion_target": "until-closeout:golden-byte",
              "birth_track": "ba-track", "dsu_survivals": "0"},
             {"crate": "c", "file": "crates/c/tests/gone.rs", "test_name": "delete_me",
              "kind": "integration", "class": "behavior-regression", "superseding_boundary": "B-T5",
-             "verdict": "AUDIT", "note": "x", "promotion_target": "permanent-residue:behavior-regression",
+             "verdict": "AUDIT", "note": "x", "promotion_target": "until-closeout:behavior-regression",
              "birth_track": "ba-track", "dsu_survivals": "0"},
             {"crate": "c", "file": "crates/c/tests/park.rs", "test_name": "park_me",
              "kind": "integration", "class": "behavior-regression", "superseding_boundary": "B-T5",
-             "verdict": "AUDIT", "note": "u", "promotion_target": "permanent-residue:behavior-regression",
+             "verdict": "AUDIT", "note": "u", "promotion_target": "until-closeout:behavior-regression",
              "birth_track": "ba-track", "dsu_survivals": "0"},
         ])
         # intentionally NO test_lifecycle_boundary_rows.tsv
@@ -2295,7 +2290,7 @@ def cmd_prove():
             {"track_id": "ba-track", "status": "open", "closed_at": "-", "source": "docs/ba.md", "note": "x"},
         ])
         write_tsv(br / "scripts/ci/test_residue_classes.tsv", ["promotion_target"], [
-            {"promotion_target": "permanent-residue:golden-byte"},
+            {"promotion_target": "until-closeout:golden-byte"},
         ])
         (br / "scripts/ci/active_track.txt").write_text(
             f"{ACTIVE_TRACK_COMMENT}\ndocs/ba.md\n", encoding="utf-8")
@@ -2363,7 +2358,7 @@ def cmd_prove():
         write_tsv(nr / "scripts/ci/test_inventory.tsv", INVENTORY_HEADER, [
             {"crate": "c", "file": "crates/c/tests/none.rs", "test_name": "golden",
              "kind": "integration", "class": "golden-byte", "superseding_boundary": "B",
-             "verdict": "KEEP", "note": "keep", "promotion_target": "permanent-residue:golden-byte",
+             "verdict": "KEEP", "note": "keep", "promotion_target": "until-closeout:golden-byte",
              "birth_track": "none-track", "dsu_survivals": "0"},
         ])
         # boundary ledger absent (post-retirement path)
@@ -2371,7 +2366,7 @@ def cmd_prove():
             {"track_id": "none-track", "status": "open", "closed_at": "-", "source": "docs/none_track.md", "note": "x"},
         ])
         write_tsv(nr / "scripts/ci/test_residue_classes.tsv", ["promotion_target"], [
-            {"promotion_target": "permanent-residue:golden-byte"},
+            {"promotion_target": "until-closeout:golden-byte"},
         ])
         (nr / "scripts/ci/active_track.txt").write_text(
             f"{ACTIVE_TRACK_COMMENT}\n{NO_ACTIVE_TRACK}\n", encoding="utf-8")
@@ -2426,14 +2421,14 @@ def cmd_prove():
         write_tsv(ar / "scripts/ci/test_inventory.tsv", INVENTORY_HEADER, [
             {"crate": "c", "file": "crates/c/tests/quiet.rs", "test_name": "golden",
              "kind": "integration", "class": "golden-byte", "superseding_boundary": "B",
-             "verdict": "KEEP", "note": "keep", "promotion_target": "permanent-residue:golden-byte",
+             "verdict": "KEEP", "note": "keep", "promotion_target": "until-closeout:golden-byte",
              "birth_track": "quiet-track", "dsu_survivals": "0"},
         ])
         write_tsv(ar / "scripts/ci/test_lifecycle_tracks.tsv", TRACKS_HEADER, [
             {"track_id": "quiet-track", "status": "open", "closed_at": "-", "source": "docs/quiet.md", "note": "x"},
         ])
         write_tsv(ar / "scripts/ci/test_residue_classes.tsv", ["promotion_target"], [
-            {"promotion_target": "permanent-residue:golden-byte"},
+            {"promotion_target": "until-closeout:golden-byte"},
         ])
         (ar / "scripts/ci/active_track.txt").write_text(
             f"{ACTIVE_TRACK_COMMENT}\ndocs/other_active.md\n", encoding="utf-8")
@@ -2492,7 +2487,7 @@ def cmd_prove():
         inv0 = [
             {"crate": "c", "file": "crates/c/tests/open.rs", "test_name": "open_t", "kind": "integration",
              "class": "behavior-regression", "superseding_boundary": "B", "verdict": "KEEP", "note": "n",
-             "promotion_target": "permanent-residue:behavior-regression", "birth_track": "open-track", "dsu_survivals": "0"},
+             "promotion_target": "until-closeout:behavior-regression", "birth_track": "open-track", "dsu_survivals": "0"},
             {"crate": "c", "file": "crates/c/src/m.rs", "test_name": "cfg_test_mod::tests", "kind": "unit",
              "class": "deletion-candidate", "superseding_boundary": "B-T6", "verdict": "AUDIT", "note": "marker",
              "promotion_target": "ledger-only", "birth_track": "open-track", "dsu_survivals": "0"},
@@ -2587,7 +2582,7 @@ def cmd_prove():
             {"crate": "c", "file": "crates/c/tests/open.rs", "test_name": "open_t_renamed", "kind": "integration",
              "class": "behavior-regression", "superseding_boundary": "B", "verdict": "KEEP",
              "note": "n",
-             "promotion_target": "permanent-residue:behavior-regression", "birth_track": "open-track", "dsu_survivals": "0"},
+             "promotion_target": "until-closeout:behavior-regression", "birth_track": "open-track", "dsu_survivals": "0"},
             inv0[1],
         ]
         rename_row = [{
@@ -2829,7 +2824,7 @@ def cmd_prove():
         def parked(file, test_name, kind, at):
             return {"crate": "c", "file": file, "test_name": test_name, "kind": kind,
                     "class": "behavior-regression", "superseding_boundary": "B-T5", "verdict": "AUDIT",
-                    "note": "u", "promotion_target": "permanent-residue:behavior-regression",
+                    "note": "u", "promotion_target": "until-closeout:behavior-regression",
                     "birth_track": "pre-lifecycle", "dsu_survivals": "0",
                     "parked_at": at, "closeout_track": "pre-lifecycle", "park_reason": "undecided"}
         write_tsv(rr / "scripts/ci/test_lifecycle_parked.tsv", PARKED_HEADER, [
@@ -2930,7 +2925,7 @@ def cmd_prove():
         write_tsv(br / "scripts/ci/test_inventory.tsv", INVENTORY_HEADER, [
             {"crate": "c", "file": "crates/c/tests/close.rs", "test_name": "golden",
              "kind": "integration", "class": "golden-byte", "superseding_boundary": "B",
-             "verdict": "KEEP", "note": "keep", "promotion_target": "permanent-residue:golden-byte",
+             "verdict": "KEEP", "note": "keep", "promotion_target": "until-closeout:golden-byte",
              "birth_track": "close-me", "dsu_survivals": "0"},
         ])
         write_tsv(br / "scripts/ci/test_lifecycle_tracks.tsv", TRACKS_HEADER, [
@@ -2940,7 +2935,7 @@ def cmd_prove():
              "source": "docs/other_open.md", "note": "open-track negative control"},
         ])
         write_tsv(br / "scripts/ci/test_residue_classes.tsv", ["promotion_target"], [
-            {"promotion_target": "permanent-residue:golden-byte"},
+            {"promotion_target": "until-closeout:golden-byte"},
         ])
         binding_rows = [
             {"rung": "CLOSE-ME-0", "condition": "fixture-discharged-closing",
@@ -3110,6 +3105,31 @@ def cmd_prove():
             check("rungclose-ignores-newer-superseded-workplan",
                   not error and resolved == ROOT / declared
                   and resolved != superseded[0])
+
+        # 5. Rung identity belongs only to the exact ladder ID cell. A decoy
+        # prose/table mention before the ladder must not become the selected row,
+        # and duplicate ladder identities must fail closed.
+        ladder_fixture = """| Note | Status |
+|---|---|
+| Mentions `EXACT-RUNG-0` | DA-GRADUATED merged #1 @ deadbee DA-GRADUATED |
+
+| # | Rung | Deliverable | Exit proof | Status |
+|---|---|---|---|---|
+| 1 | `OTHER-RUNG-0` | text containing `EXACT-RUNG-0` | open | OPEN |
+| 2 | `EXACT-RUNG-0` | exact | DA-GRADUATED merged #2 @ feedbee | DA-GRADUATED |
+"""
+        exact_rows = exact_ladder_rows(ladder_fixture, "EXACT-RUNG-0")
+        check(
+            "rungclose-selects-exact-stable-ladder-identity",
+            len(exact_rows) == 1 and "| 2 | `EXACT-RUNG-0` |" in exact_rows[0],
+        )
+        duplicate_fixture = ladder_fixture + (
+            "| 3 | `EXACT-RUNG-0` | duplicate | DA-GRADUATED merged #3 @ abcdef0 | DA-GRADUATED |\n"
+        )
+        check(
+            "rungclose-duplicate-exact-ladder-identity-fails-closed",
+            len(exact_ladder_rows(duplicate_fixture, "EXACT-RUNG-0")) == 2,
+        )
     finally:
         ACTIVE_TRACK = saved_active_track
         shutil.rmtree(rungclose_dir, ignore_errors=True)
@@ -3151,6 +3171,33 @@ def resolve_rungclose_workplan(args: list) -> tuple:
     return ROOT / rel, ""
 
 
+def exact_ladder_rows(text: str, rung: str) -> list[str]:
+    """Return rows whose ladder ID cell is exactly ``rung``.
+
+    Prose, binding tables, and other Markdown tables are deliberately ignored.
+    The caller requires exactly one result so duplicate stable identities fail
+    closed instead of selecting the first textual match.
+    """
+    rows: list[str] = []
+    in_ladder = False
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped.startswith("|"):
+            in_ladder = False
+            continue
+        if _is_ladder_header(stripped):
+            in_ladder = True
+            continue
+        if re.match(r"^\|[\s\-:|]+\|$", stripped):
+            continue
+        if not in_ladder:
+            continue
+        parts = [part.strip() for part in stripped.strip("|").split("|")]
+        if len(parts) >= 2 and _clean_rung_token(parts[1]) == rung:
+            rows.append(line)
+    return rows
+
+
 def cmd_rungclose() -> int:
     """DA-facing rung graduation gate (Owner mandate 2026-07-30).
 
@@ -3177,13 +3224,14 @@ def cmd_rungclose() -> int:
         return 1
     text = workplan.read_text(encoding="utf-8", errors="replace")
 
-    row = None
-    for line in text.splitlines():
-        if line.startswith("|") and f"`{rung}`" in line:
-            row = line
-            break
-    if row is None:
+    matching_rows = exact_ladder_rows(text, rung)
+    row = matching_rows[0] if len(matching_rows) == 1 else None
+    if not matching_rows:
         failures.append(f"rung row not found in {workplan.name}")
+    elif len(matching_rows) > 1:
+        failures.append(
+            f"duplicate exact rung rows in {workplan.name}: {len(matching_rows)}"
+        )
     else:
         cells = [c.strip() for c in row.split("|")]
         stamped = [c for c in cells if "DA-GRADUATED" in c]

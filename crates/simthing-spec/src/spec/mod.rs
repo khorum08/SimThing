@@ -13,6 +13,7 @@ pub mod first_slice_scenario;
 pub mod fleet_presence;
 pub mod game_mode;
 pub mod install_target;
+pub mod legacy_owner_channel_rf;
 pub mod loaded_scenario_recursive_rf_runtime;
 pub mod loaded_scenario_runtime_report_chain;
 pub mod loaded_scenario_studio_session_envelope;
@@ -30,7 +31,6 @@ pub mod owner_silo_disburse_down;
 pub mod owner_silo_recursive_rf_source;
 pub mod owner_silo_runtime_writeback;
 pub mod planet_child_location;
-pub mod planet_child_rf;
 pub mod property;
 pub mod recursive_local_rf;
 pub mod recursive_rf_reconciliation;
@@ -97,6 +97,16 @@ pub use fleet_presence::{
 };
 pub use game_mode::GameModeSpec;
 pub use install_target::InstallTargetSpec;
+pub use legacy_owner_channel_rf::{
+    evaluate_planet_child_rf_admission, evaluate_planet_child_rf_admission_from_owner_view,
+    evaluate_planet_child_rf_reduce_up, evaluate_planet_child_rf_reduce_up_from_owner_view,
+    planet_child_rf_admission_classification_label, planet_child_rf_participant_inputs,
+    planet_child_rf_participant_inputs_from_owner_view, scope_key_from_participant,
+    LegacyOwnerChannelReduceUpBucket, PlanetChildRfAdmissionClassification,
+    PlanetChildRfAdmissionError, PlanetChildRfAdmissionErrorKind, PlanetChildRfAdmissionReport,
+    PlanetChildRfDeferral, PlanetChildRfDeferralKind, PlanetChildRfParticipantInput,
+    PlanetChildRfReduceUpReport, PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY,
+};
 pub use loaded_scenario_recursive_rf_runtime::{
     evaluate_loaded_scenario_recursive_rf_runtime_from_json_str,
     prove_loaded_scenario_recursive_rf_runtime_preserves_authority,
@@ -190,16 +200,6 @@ pub use planet_child_location::{
     PlanetChildLocationAdmissionErrorKind, PlanetChildLocationAdmissionReport,
     PlanetChildLocationCommand, PlanetChildLocationDeferral, PlanetChildLocationEditError,
     PlanetChildLocationEditErrorKind, PlanetChildLocationEditReport,
-};
-pub use planet_child_rf::{
-    evaluate_planet_child_rf_admission, evaluate_planet_child_rf_admission_from_owner_view,
-    evaluate_planet_child_rf_reduce_up, evaluate_planet_child_rf_reduce_up_from_owner_view,
-    planet_child_rf_admission_classification_label, planet_child_rf_participant_inputs,
-    planet_child_rf_participant_inputs_from_owner_view, scope_key_from_participant,
-    PlanetChildRfAdmissionClassification, PlanetChildRfAdmissionError,
-    PlanetChildRfAdmissionErrorKind, PlanetChildRfAdmissionReport, PlanetChildRfDeferral,
-    PlanetChildRfDeferralKind, PlanetChildRfParticipantInput, PlanetChildRfReduceUpBucket,
-    PlanetChildRfReduceUpReport, PlanetChildRfScopeKey, PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY,
 };
 pub use property::PropertySpec;
 pub use recursive_local_rf::{

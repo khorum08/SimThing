@@ -231,14 +231,16 @@ pub fn emission_plan_signature_fields(
     )
 }
 
-fn to_oracle_registration(reg: &EmissionRegistration) -> crate::EmissionOracleRegistration {
-    use crate::EmissionOracleFormula;
+fn to_oracle_registration(
+    reg: &EmissionRegistration,
+) -> crate::emission_oracle::EmissionOracleRegistration {
+    use crate::emission_oracle::EmissionOracleFormula;
     let formula = match &reg.formula {
         EmissionFormula::IdentityFloor => EmissionOracleFormula::IdentityFloor,
         EmissionFormula::Constant { value } => EmissionOracleFormula::Constant { value: *value },
         EmissionFormula::EvalEml { .. } => EmissionOracleFormula::EvalEml,
     };
-    crate::EmissionOracleRegistration {
+    crate::emission_oracle::EmissionOracleRegistration {
         reg_idx: reg.reg_idx,
         source_slot: reg.source_slot,
         source_col: encode_column(reg.source_col),
@@ -258,7 +260,9 @@ pub fn cpu_oracle_emission_records(
     let oracle_regs: Vec<_> = emissions.iter().map(to_oracle_registration).collect();
     crate::emission_oracle::cpu_oracle_emission_records(flat, n_dims, &oracle_regs, generation)
         .map_err(|e| match e {
-            crate::EmissionOracleError::MissingEmlRegistry => EmissionPlanError::MissingEmlRegistry,
+            crate::emission_oracle::EmissionOracleError::MissingEmlRegistry => {
+                EmissionPlanError::MissingEmlRegistry
+            }
         })
 }
 

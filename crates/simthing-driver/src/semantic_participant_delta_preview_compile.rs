@@ -33,7 +33,9 @@ pub fn compile_semantic_participant_delta_preview_plan(
     replay_count: u32,
 ) -> Result<SemanticParticipantDeltaPreviewPlan, SpecError> {
     if tick_id.0 == 0 {
-        return Err(SpecError::ValidationFailed);
+        return Err(SpecError::ValidationFailedAt {
+            site: "simthing-driver/semantic_participant_delta_preview_compile",
+        });
     }
 
     let execution_boundary_mode = match source_mode {
@@ -53,7 +55,9 @@ pub fn compile_semantic_participant_delta_preview_plan(
     )?;
     let delta_preview_report =
         evaluate_semantic_participant_delta_preview(scenario, tick_id, source_mode, replay_count)
-            .map_err(|_| SpecError::ValidationFailed)?;
+            .map_err(|_| SpecError::ValidationFailedAt {
+            site: "simthing-driver/semantic_participant_delta_preview_compile",
+        })?;
 
     let delta_preview_boundary_proven = delta_preview_report.delta_preview_count > 0
         || delta_preview_report.preview_amount_total > 0;

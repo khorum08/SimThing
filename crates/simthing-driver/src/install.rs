@@ -502,7 +502,9 @@ fn install_standalone_overlay(
     let (template, diag) =
         compile_overlay(overlay_spec, registry, scenario.root.id).map_err(InstallError::Spec)?;
     if !diag.diagnostics.is_empty() {
-        return Err(InstallError::Spec(SpecError::ValidationFailed));
+        return Err(InstallError::Spec(SpecError::ValidationFailedAt {
+            site: "simthing-driver/install",
+        }));
     }
 
     let owners = resolve_install_target(&overlay_spec.install, scenario, root)?;
@@ -557,7 +559,9 @@ fn ensure_resource_economy_properties(
         };
         let property_id = registry
             .id_of(&placement.key.namespace, &placement.key.name)
-            .ok_or_else(|| SpecError::ValidationFailed)?;
+            .ok_or_else(|| SpecError::ValidationFailedAt {
+                site: "simthing-driver/install",
+            })?;
         let host_id = resolve_unique_install_host(scenario, entity, placement.host_span)?;
         if let Some(previous_host) = qualified_hosts.insert(property_id, host_id) {
             if previous_host != host_id {
@@ -576,7 +580,9 @@ fn ensure_resource_economy_properties(
     for placement in placements {
         let property_id = registry
             .id_of(&placement.key.namespace, &placement.key.name)
-            .ok_or_else(|| SpecError::ValidationFailed)?;
+            .ok_or_else(|| SpecError::ValidationFailedAt {
+                site: "simthing-driver/install",
+            })?;
         let host_id = match &placement.host_entity {
             Some(entity) => resolve_unique_install_host(scenario, entity, placement.host_span)?,
             None => {
@@ -590,8 +596,11 @@ fn ensure_resource_economy_properties(
                 }
             }
         };
-        let host = find_simthing_mut(root, host_id)
-            .ok_or_else(|| InstallError::Spec(SpecError::ValidationFailed))?;
+        let host = find_simthing_mut(root, host_id).ok_or_else(|| {
+            InstallError::Spec(SpecError::ValidationFailedAt {
+                site: "simthing-driver/install",
+            })
+        })?;
         if !host.properties.contains_key(&property_id) {
             let layout = registry.property(property_id).layout.clone();
             host.add_property(property_id, PropertyValue::from_layout(&layout));
@@ -1089,7 +1098,9 @@ fn seed_base_flow_obligations(
                 });
             };
             let Some(value) = participant_node.properties.get_mut(&flow_property_id) else {
-                return Err(InstallError::Spec(SpecError::ValidationFailed));
+                return Err(InstallError::Spec(SpecError::ValidationFailedAt {
+                    site: "simthing-driver/install",
+                }));
             };
             value.add_lane_at_offset(intrinsic_offset, obligation.signed_rate);
         }

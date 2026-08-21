@@ -21,8 +21,8 @@ pub enum SpecError {
     #[error("Threshold activation requires research_cost > 0 on entry `{0}`")]
     ThresholdRequiresPositiveCost(String),
 
-    #[error("validation failed")]
-    ValidationFailed,
+    #[error("validation failed at {site}")]
+    ValidationFailedAt { site: &'static str },
 
     // ── Event effect compilation (CT-1b) ─────────────────────────────────────
     #[error(

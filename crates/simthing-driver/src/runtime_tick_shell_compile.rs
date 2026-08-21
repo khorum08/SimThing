@@ -33,13 +33,18 @@ pub fn compile_runtime_tick_shell_plan(
     tick_id: RuntimeTickId,
 ) -> Result<RuntimeTickShellPlan, SpecError> {
     if tick_id.0 == 0 {
-        return Err(SpecError::ValidationFailed);
+        return Err(SpecError::ValidationFailedAt {
+            site: "simthing-driver/runtime_tick_shell_compile",
+        });
     }
 
     let runtime_rf_tick_plan = compile_runtime_rf_tick_plan(scenario)?;
 
-    let mut execution_report =
-        evaluate_runtime_tick_shell(scenario, tick_id).map_err(|_| SpecError::ValidationFailed)?;
+    let mut execution_report = evaluate_runtime_tick_shell(scenario, tick_id).map_err(|_| {
+        SpecError::ValidationFailedAt {
+            site: "simthing-driver/runtime_tick_shell_compile",
+        }
+    })?;
 
     let gpu_summary = &runtime_rf_tick_plan.gpu_proof_summary;
     let stage_local_gpu_proofs_available = gpu_summary.participant_surplus_plan_ready

@@ -9,7 +9,7 @@ use crate::{SimThingId, StructuralCoord};
 ///
 /// External crates cannot construct this type directly:
 ///
-/// ```compile_fail
+/// ```compile_fail,E0451
 /// use simthing_core::{PlacedParticipant, SimThingId, StructuralCoord};
 /// let _ = PlacedParticipant {
 ///     participant: SimThingId::from_session_raw(1),
@@ -20,7 +20,7 @@ use crate::{SimThingId, StructuralCoord};
 ///
 /// External crates cannot mint a placement proof via the internal minter:
 ///
-/// ```compile_fail
+/// ```compile_fail,E0624
 /// use simthing_core::{PlacedParticipant, SimThingId, StructuralCoord};
 /// let _ = PlacedParticipant::from_validated_spatial_binding(
 ///     SimThingId::from_session_raw(1),

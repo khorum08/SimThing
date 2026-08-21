@@ -116,18 +116,13 @@ DIR_UPWARD | surface-inert | Inert public kernel constant | retire when kernel e
 discrete_transfer_registration_to_transfer | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
 discrete_transfer_registrations_to_transfer | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
 emission_accumulator | authority-export | Exported kernel module surface; authority-bearing namespace | retire when kernel export set is closed by type-boundary admission
-emission_oracle | authority-export | Exported kernel module surface; authority-bearing namespace | retire when kernel export set is closed by type-boundary admission
 emission_plan_signature_fields | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
 EmissionFormula | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
 EmissionOpPlanSignature | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
-EmissionOracleError | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
-EmissionOracleFormula | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
-EmissionOracleRegistration | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
 EmissionPlan | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
 EmissionPlanError | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
 EmissionRecord | sealed-export | Sealed record/type export; produced only through sanctioned doors | retire when kernel export set is closed by type-boundary admission
 EmissionRecordGpu | sealed-export | Sealed record/type export; produced only through sanctioned doors | retire when kernel export set is closed by type-boundary admission
-EmissionRecordReadback | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
 EmissionRegistration | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
 EmissionSyncError | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
 EmissionToken | sealed-export | OC-K-DECISION-INGRESS-0 emission token from sealed ThresholdEmission | retire when kernel export set is closed by type-boundary admission
@@ -162,7 +157,6 @@ GenericPrimitiveRegistration | sealed-export | OC-K-EML-OPCODE-GATE-0 Tier-2 gen
 governed_pairs_for_property | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
 GovernedIntegrationPlan | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
 GovernedPair | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
-gpu_readback | authority-export | Exported kernel module surface; authority-bearing namespace | retire when kernel export set is closed by type-boundary admission
 GpuContext | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
 GpuInitError | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
 GradientPairGpu | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
@@ -176,7 +170,6 @@ IntensityEmlEntry | authority-export | Exported kernel runtime/planning/oracle s
 IntensityEmlOpPlanSignature | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
 IntensityEmlPlan | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
 IntentDelta | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
-KernelReadbackError | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
 LegacyOracleFamily | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
 max_candidate_f_magnitude_bits | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
 mint_exact_magnitude_proof_candidate_f | authority-export | OC-K-EXACT-GATE-0 GPU Candidate F mint of ExactMagnitudeProof | retire when kernel export set is closed by type-boundary admission
@@ -260,9 +253,7 @@ threshold_registrations_to_ops | authority-export | Exported kernel runtime/plan
 ThresholdCrossingToken | sealed-export | OC-K-DECISION-INGRESS-0 threshold crossing token from sealed ThresholdEvent | retire when kernel export set is closed by type-boundary admission
 ThresholdEmission | sealed-export | Sealed record/type export; produced only through sanctioned doors | retire when kernel export set is closed by type-boundary admission
 ThresholdEmissionGpu | sealed-export | Sealed record/type export; produced only through sanctioned doors | retire when kernel export set is closed by type-boundary admission
-ThresholdEmissionReadback | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
 ThresholdEvent | sealed-export | Sealed record/type export; produced only through sanctioned doors | retire when kernel export set is closed by type-boundary admission
-ThresholdEventCandidatesReadback | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
 ThresholdEventGpu | sealed-export | Sealed record/type export; produced only through sanctioned doors | retire when kernel export set is closed by type-boundary admission
 ThresholdRegistration | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
 Topology | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission

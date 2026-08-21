@@ -30,7 +30,9 @@ pub fn compile_owner_silo_gpu_tick_plan(
     scenario: &SimThingScenarioSpec,
 ) -> Result<OwnerSiloGpuTickPlan, SpecError> {
     let owner_view =
-        admit_intrinsic_owner_channels(scenario).map_err(|_| SpecError::ValidationFailed)?;
+        admit_intrinsic_owner_channels(scenario).map_err(|_| SpecError::ValidationFailedAt {
+            site: "simthing-driver/owner_silo_accumulator_compile",
+        })?;
     compile_owner_silo_gpu_tick_plan_from_owner_view(&owner_view)
 }
 
@@ -39,12 +41,20 @@ pub fn compile_owner_silo_gpu_tick_plan_from_owner_view(
 ) -> Result<OwnerSiloGpuTickPlan, SpecError> {
     let admission = evaluate_owner_silo_flow_from_owner_view(owner_view);
     if admission.classification == OwnerSiloAdmissionClassification::Rejected {
-        return Err(SpecError::ValidationFailed);
+        return Err(SpecError::ValidationFailedAt {
+            site: "simthing-driver/owner_silo_accumulator_compile",
+        });
     }
-    let participants = owner_silo_flow_participant_inputs_from_owner_view(owner_view)
-        .map_err(|_| SpecError::ValidationFailed)?;
+    let participants =
+        owner_silo_flow_participant_inputs_from_owner_view(owner_view).map_err(|_| {
+            SpecError::ValidationFailedAt {
+                site: "simthing-driver/owner_silo_accumulator_compile",
+            }
+        })?;
     if participants.is_empty() {
-        return Err(SpecError::ValidationFailed);
+        return Err(SpecError::ValidationFailedAt {
+            site: "simthing-driver/owner_silo_accumulator_compile",
+        });
     }
 
     let participant_count = participants.len() as u32;

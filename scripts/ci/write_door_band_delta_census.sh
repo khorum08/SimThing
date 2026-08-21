@@ -21,6 +21,7 @@ normalize() {
 hits="$(
   rg -n --glob 'crates/**/*.rs' 'BandCrossingDelta\s*\{' \
     | normalize \
+    | grep -Ev -- '->[[:space:]]*([[:alnum:]_]+::)*BandCrossingDelta[[:space:]]*\{[[:space:]]*$' \
     | grep -Ev 'crates/simthing-kernel/src/sealed/band_crossing_delta\.rs' \
     | grep -Ev 'compile_fail|doctest|docs/' \
     || true

@@ -31,17 +31,26 @@ pub fn compile_runtime_tick_history_plan(
     replay_count: u32,
 ) -> Result<RuntimeTickHistoryPlan, SpecError> {
     if tick_id.0 == 0 {
-        return Err(SpecError::ValidationFailed);
+        return Err(SpecError::ValidationFailedAt {
+            site: "simthing-driver/runtime_tick_history_compile",
+        });
     }
 
     let tick_shell_plan = compile_runtime_tick_shell_plan(scenario, tick_id)?;
     let local_participant_effects_plan = compile_local_participant_effects_plan(scenario, tick_id)?;
 
-    let history_entry = evaluate_runtime_tick_history_entry(scenario, tick_id)
-        .map_err(|_| SpecError::ValidationFailed)?;
+    let history_entry = evaluate_runtime_tick_history_entry(scenario, tick_id).map_err(|_| {
+        SpecError::ValidationFailedAt {
+            site: "simthing-driver/runtime_tick_history_compile",
+        }
+    })?;
 
-    let replay_report = replay_runtime_tick_history(scenario, tick_id, replay_count)
-        .map_err(|_| SpecError::ValidationFailed)?;
+    let replay_report =
+        replay_runtime_tick_history(scenario, tick_id, replay_count).map_err(|_| {
+            SpecError::ValidationFailedAt {
+                site: "simthing-driver/runtime_tick_history_compile",
+            }
+        })?;
 
     let gpu_stage_proof_summary_available = tick_shell_plan
         .gpu_stage_proof_summary

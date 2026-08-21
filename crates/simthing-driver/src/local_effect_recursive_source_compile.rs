@@ -32,7 +32,9 @@ pub fn compile_local_effect_recursive_source_plan(
     source_mode: LocalEffectRfSourceMode,
 ) -> Result<LocalEffectRecursiveSourcePlan, SpecError> {
     if tick_id.0 == 0 {
-        return Err(SpecError::ValidationFailed);
+        return Err(SpecError::ValidationFailedAt {
+            site: "simthing-driver/local_effect_recursive_source_compile",
+        });
     }
 
     let allocation_mode = match source_mode {
@@ -47,8 +49,11 @@ pub fn compile_local_effect_recursive_source_plan(
     let local_allocation_recursive_source_plan =
         compile_local_allocation_recursive_source_plan(scenario, tick_id, allocation_mode)?;
     let local_effect_report =
-        evaluate_local_effect_application_with_rf_source(scenario, tick_id, source_mode)
-            .map_err(|_| SpecError::ValidationFailed)?;
+        evaluate_local_effect_application_with_rf_source(scenario, tick_id, source_mode).map_err(
+            |_| SpecError::ValidationFailedAt {
+                site: "simthing-driver/local_effect_recursive_source_compile",
+            },
+        )?;
 
     Ok(LocalEffectRecursiveSourcePlan {
         selected_source_mode: local_effect_report.selected_source_mode,

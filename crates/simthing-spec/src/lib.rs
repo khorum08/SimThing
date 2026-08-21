@@ -422,6 +422,16 @@ pub use spec::fleet_presence::{
 };
 pub use spec::game_mode::GameModeSpec;
 pub use spec::install_target::InstallTargetSpec;
+pub use spec::legacy_owner_channel_rf::{
+    evaluate_planet_child_rf_admission, evaluate_planet_child_rf_admission_from_owner_view,
+    evaluate_planet_child_rf_reduce_up, evaluate_planet_child_rf_reduce_up_from_owner_view,
+    planet_child_rf_admission_classification_label, planet_child_rf_participant_inputs,
+    planet_child_rf_participant_inputs_from_owner_view, scope_key_from_participant,
+    LegacyOwnerChannelReduceUpBucket, PlanetChildRfAdmissionClassification,
+    PlanetChildRfAdmissionError, PlanetChildRfAdmissionErrorKind, PlanetChildRfAdmissionReport,
+    PlanetChildRfDeferral, PlanetChildRfDeferralKind, PlanetChildRfParticipantInput,
+    PlanetChildRfReduceUpReport, PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY,
+};
 pub use spec::loaded_scenario_recursive_rf_runtime::{
     evaluate_loaded_scenario_recursive_rf_runtime_from_json_str,
     prove_loaded_scenario_recursive_rf_runtime_preserves_authority,
@@ -530,16 +540,6 @@ pub use spec::planet_child_location::{
     PlanetChildLocationCommand, PlanetChildLocationDeferral, PlanetChildLocationEditError,
     PlanetChildLocationEditErrorKind, PlanetChildLocationEditReport, PlanetLocalGridCommand,
     PlanetNonGridChildEntry,
-};
-pub use spec::planet_child_rf::{
-    evaluate_planet_child_rf_admission, evaluate_planet_child_rf_admission_from_owner_view,
-    evaluate_planet_child_rf_reduce_up, evaluate_planet_child_rf_reduce_up_from_owner_view,
-    planet_child_rf_admission_classification_label, planet_child_rf_participant_inputs,
-    planet_child_rf_participant_inputs_from_owner_view, scope_key_from_participant,
-    PlanetChildRfAdmissionClassification, PlanetChildRfAdmissionError,
-    PlanetChildRfAdmissionErrorKind, PlanetChildRfAdmissionReport, PlanetChildRfDeferral,
-    PlanetChildRfDeferralKind, PlanetChildRfParticipantInput, PlanetChildRfReduceUpBucket,
-    PlanetChildRfReduceUpReport, PlanetChildRfScopeKey, PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY,
 };
 pub use spec::property::PropertySpec;
 pub use spec::recursive_local_rf::{

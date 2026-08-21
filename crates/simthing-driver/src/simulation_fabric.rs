@@ -8,28 +8,28 @@
 //!
 //! Boundary protocol, scenario, and runtime tree access are forbidden:
 //!
-//! ```compile_fail
-//! fn reach_boundary(fabric: &crate::SimulationFabric<'_>) {
+//! ```compile_fail,E0609
+//! fn reach_boundary(fabric: &simthing_driver::SimulationFabric<'_>) {
 //!     let _ = &fabric.proto;
 //! }
 //! ```
 //!
-//! ```compile_fail
-//! fn reach_scenario(fabric: &crate::SimulationFabric<'_>) {
+//! ```compile_fail,E0609
+//! fn reach_scenario(fabric: &simthing_driver::SimulationFabric<'_>) {
 //!     let _ = &fabric.scenario;
 //! }
 //! ```
 //!
-//! ```compile_fail
-//! fn reach_root(fabric: &crate::SimulationFabric<'_>) {
+//! ```compile_fail,E0609
+//! fn reach_root(fabric: &simthing_driver::SimulationFabric<'_>) {
 //!     let _ = &fabric.runtime_tree;
 //! }
 //! ```
 //!
 //! Mapping hot-path state must not reach boundary-time commitment effects:
 //!
-//! ```compile_fail
-//! fn reach_boundary_effect(hot: &crate::MappingHotPathState) {
+//! ```compile_fail,E0609
+//! fn reach_boundary_effect(hot: &simthing_driver::MappingHotPathState) {
 //!     let _ = &hot.effect;
 //! }
 //! ```
