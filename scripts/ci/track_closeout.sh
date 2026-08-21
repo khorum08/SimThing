@@ -379,10 +379,10 @@ def load_authorized_renames(ref: str) -> list:
     return list(reader)
 
 
-def compile_fail_identities_from_source(source: str) -> set[str]:
+def compile_fail_fences_from_source(source: str) -> list[tuple[int, str, str | None]]:
     lines = source.splitlines()
-    fence_re = re.compile(r"```compile_fail(?P<codes>(?:,E[0-9]{4})+)\s*$")
-    identities: set[str] = set()
+    fence_re = re.compile(r"```compile_fail(?P<codes>(?:,E[0-9]{4})*)\s*$")
+    fences: list[tuple[int, str, str | None]] = []
     for index, line in enumerate(lines):
         match = fence_re.search(line)
         if not match:
@@ -398,8 +398,74 @@ def compile_fail_identities_from_source(source: str) -> set[str]:
         normalized = "\n".join(snippet).strip() + "\n"
         digest = hashlib.sha256(normalized.encode("utf-8")).hexdigest()[:12]
         codes = match.group("codes").lstrip(",").replace(",", "-")
-        identities.add(f"compile_fail_{codes}_{digest}")
-    return identities
+        identity = f"compile_fail_{codes}_{digest}" if codes else None
+        fences.append((index + 1, digest, identity))
+    return fences
+
+
+def compile_fail_identities_from_source(source: str) -> set[str]:
+    return {
+        identity
+        for _, _, identity in compile_fail_fences_from_source(source)
+        if identity is not None
+    }
+
+
+def stable_compile_fail_upgrade_target(
+    removed_row: dict,
+    head_rows: list,
+    base_source: str,
+    head_source: str,
+) -> str | None:
+    """Resolve the one-time line-locator -> content/error identity migration.
+
+    The old line number is consulted only at the historical base to recover the
+    normalized snippet digest. The admitted head identity and all future checks
+    are content/error based; changed snippets do not pass this migration path.
+    """
+    if (removed_row.get("kind") or "").strip() != "compile_fail":
+        return None
+    old_name = (removed_row.get("test_name") or "").strip()
+    match = re.fullmatch(r"compile_fail_line_(\d+)", old_name)
+    if not match:
+        return None
+    old_line = int(match.group(1))
+    base_digests = [
+        digest
+        for line, digest, _ in compile_fail_fences_from_source(base_source)
+        if line == old_line
+    ]
+    if len(base_digests) != 1:
+        return None
+    digest = base_digests[0]
+    file = (removed_row.get("file") or "").strip().replace("\\", "/")
+    head_identities = compile_fail_identities_from_source(head_source)
+    candidates = {
+        (row.get("test_name") or "").strip()
+        for row in head_rows
+        if (row.get("file") or "").strip().replace("\\", "/") == file
+        and (row.get("kind") or "").strip() == "compile_fail"
+        and (row.get("test_name") or "").strip().endswith(f"_{digest}")
+        and (row.get("test_name") or "").strip() in head_identities
+    }
+    return next(iter(candidates)) if len(candidates) == 1 else None
+
+
+def is_stable_compile_fail_identity_upgrade(
+    removed_row: dict,
+    head_rows: list,
+    base: str,
+    head: str,
+) -> bool:
+    file = (removed_row.get("file") or "").strip().replace("\\", "/")
+    if not file:
+        return False
+    return stable_compile_fail_upgrade_target(
+        removed_row,
+        head_rows,
+        git_show_text(base, file) or "",
+        git_show_text(head, file) or "",
+    ) is not None
 
 
 def new_identity_present_in_diff(base: str, head: str, file: str, new_identity: str) -> bool:
@@ -1841,12 +1907,16 @@ def cmd_deletion_guard():
     ledger_rows = load_authorized_renames(head)
     deletion_ledger_rows = load_authorized_deletions(head)
     violations = []
+    stable_compile_fail_upgrades = 0
     authorized_renames = 0
     authorized_deletions = 0
     for r in removed:
         bt = r.get("birth_track", "").strip()
         if is_cfg_marker_deletion_candidate(r):
             continue  # ledger-only residue has its own sanctioned sweep route
+        if is_stable_compile_fail_identity_upgrade(r, head_rows, base, head):
+            stable_compile_fail_upgrades += 1
+            continue  # one-time positional -> content/error identity migration
         if is_authorized_inventory_rename(r, head_rows, base, head, ledger_rows):
             authorized_renames += 1
             continue  # scripts/ci/authorized_renames.tsv + inventory + code presence
@@ -1863,6 +1933,7 @@ def cmd_deletion_guard():
 
     print("TRACK-CLOSEOUT DELETION-GUARD")
     print(f"  removed inventory rows: {len(removed)}")
+    print(f"  stable compile-fail identity upgrades: {stable_compile_fail_upgrades}")
     print(f"  authorized renames: {authorized_renames}")
     print(f"  authorized deletions: {authorized_deletions}")
     print(f"  unauthorized (birth_track not closed by closeout): {len(violations)}")
@@ -1903,6 +1974,35 @@ def cmd_prove():
     m3 = "# track: t\n# CLOSEOUT-RECEIPT: x\nasset_kind\tref\n" + "inventory-row\ta::b::c::CHANGED\n"
     check("receipt-ignores-comment-churn", closeout_receipt(m1) == closeout_receipt(m2))
     check("receipt-tracks-body-change", closeout_receipt(m1) != closeout_receipt(m3))
+
+    base_compile_fail = '//! proof\n//! ```compile_fail\n//! let value: u32 = "bad";\n//! ```\n'
+    head_compile_fail = base_compile_fail.replace("```compile_fail", "```compile_fail,E0308")
+    stable_identity = next(iter(compile_fail_identities_from_source(head_compile_fail)))
+    old_compile_row = {
+        "crate": "c",
+        "file": "crates/c/src/lib.rs",
+        "test_name": "compile_fail_line_2",
+        "kind": "compile_fail",
+    }
+    new_compile_rows = [{
+        "crate": "c",
+        "file": "crates/c/src/lib.rs",
+        "test_name": stable_identity,
+        "kind": "compile_fail",
+    }]
+    check(
+        "compile-fail-line-to-content-upgrade",
+        stable_compile_fail_upgrade_target(
+            old_compile_row, new_compile_rows, base_compile_fail, head_compile_fail
+        ) == stable_identity,
+    )
+    changed_compile_fail = head_compile_fail.replace('"bad"', '"different"')
+    check(
+        "compile-fail-upgrade-rejects-content-change",
+        stable_compile_fail_upgrade_target(
+            old_compile_row, new_compile_rows, base_compile_fail, changed_compile_fail
+        ) is None,
+    )
 
     # validate_dispositions
     check("delete-needs-owner", bool(validate_dispositions(

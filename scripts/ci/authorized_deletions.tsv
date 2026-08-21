@@ -17,6 +17,7 @@ simthing-driver	crates/simthing-driver/tests/anchor_table_surface_0.rs	successiv
 simthing-driver	crates/simthing-driver/tests/anchor_table_surface_0.rs	gpu_remap_post_sync_value_authority_with_and_without_threshold_session	integration	5133877275-DA	TP-PURGE-0	3555f6da869e
 simthing-driver	crates/simthing-driver/tests/anchor_table_surface_0.rs	boundary_protocol_structural_remap_value_authority	integration	5133877275-DA	TP-PURGE-0	3555f6da869e
 simthing-driver	crates/simthing-driver/tests/anchor_table_surface_0.rs	canonical_tp_gpu_table_matches_admission_totality	integration	5133877275-DA	TP-PURGE-0	3555f6da869e
+scripts-ci	scripts/ci/fixtures/known_bad/overlay_peer_authority.rs	overlay_peer_authority.rs	fixture	5365284584-DA	DOCTRINE-CI-RECONCILE-0	0d23f7c92251
 simthing-driver	crates/simthing-driver/tests/canonical_anchor_materialization_0.rs	candidate_evidence_census_before_implementation	integration	5133877275-DA	TP-PURGE-0	3555f6da869e
 simthing-driver	crates/simthing-driver/tests/canonical_anchor_materialization_0.rs	ordinary_install_proves_admission_totality	integration	5133877275-DA	TP-PURGE-0	3555f6da869e
 simthing-driver	crates/simthing-driver/tests/canonical_anchor_materialization_0.rs	materialization_preserves_existing_economy_values	integration	5133877275-DA	TP-PURGE-0	3555f6da869e
