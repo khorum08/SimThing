@@ -132,8 +132,8 @@ fn fill_explicit_participants(game_mode: &mut GameModeSpec, scenario: &Scenario)
     game_mode.resource_flow.as_mut().unwrap().arenas[0].explicit_participants = participants;
 }
 
-fn idx(slot: SlotIndex, col: u32, n_dims: u32) -> usize {
-    (slot.raw() * n_dims + col) as usize
+fn idx(slot: SlotIndex, col: simthing_core::ColumnIndex, n_dims: u32) -> usize {
+    (slot.raw() * n_dims + col.raw_u32()) as usize
 }
 
 fn flat_star_cell_inputs(
@@ -142,7 +142,7 @@ fn flat_star_cell_inputs(
     cols: simthing_driver::NodeColumnRefs,
     root_intrinsic_flow: f32,
     leaf_weights: &[f32],
-) -> HashMap<(SlotIndex, u32), f32> {
+) -> HashMap<(SlotIndex, simthing_core::ColumnIndex), f32> {
     let mut inputs = HashMap::from([((root_slot, cols.intrinsic_flow_col), root_intrinsic_flow)]);
     for (slot, &weight) in leaf_slots.iter().zip(leaf_weights.iter()) {
         inputs.insert((*slot, cols.weight_col), weight);

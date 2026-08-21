@@ -477,7 +477,6 @@ pub use spec::owner_channel_admission::{
     admit_intrinsic_owner_channels, IntrinsicOwnerChannelAdmissionStats, IntrinsicOwnerChannelView,
     OwnerChannelAdmissionError,
 };
-pub use spec::owner_layout::{PersistentRfLayout, PersistentRfLayoutKey};
 pub use spec::owner_channel_rf::{
     integrate_raw_reduce_up_report_forbidden, integrate_stamped_reduce_up,
     reconstruct_owner_channel_rf_map, reduce_owner_channel_rf, reduce_owner_channel_rf_unstamped,
@@ -489,6 +488,7 @@ pub use spec::owner_channel_rf::{
     OwnerChannelRfSteadSurface, ParentRfIntegrationState, QueuedOwnerChannelRfBucket,
     StampedReduceUpProduct,
 };
+pub use spec::owner_layout::{PersistentRfLayout, PersistentRfLayoutKey};
 pub use spec::owner_silo_disburse_down::{
     apply_owner_silo_runtime_disburse_down_cpu, owner_silo_demand_aggregate_totals,
     owner_silo_demand_buckets_from_owner_view, owner_silo_demand_buckets_from_planet_child_rf,

@@ -167,9 +167,9 @@ fn cell(values: &[f32], slot: SlotIndex, col: u32, n_dims: u32) -> f32 {
 fn global_flow_col(
     registry: &DimensionRegistry,
     flow_id: simthing_core::SimPropertyId,
-    local_col: u32,
+    local_col: simthing_core::ColumnIndex,
 ) -> u32 {
-    registry.column_range(flow_id).start as u32 + local_col
+    registry.column_range(flow_id).start as u32 + local_col.raw_u32()
 }
 
 #[test]

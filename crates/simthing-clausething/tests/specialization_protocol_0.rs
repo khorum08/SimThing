@@ -235,6 +235,7 @@ fn owner_seat_requires_the_admitted_policy_weight_authority() {
     // default silo metadata and unrelated accumulator hosts never qualify.
     let mut registry = DimensionRegistry::new();
     let property = PropertySpec {
+        admission_disposition: Default::default(),
         id: "unrelated_flow".into(),
         namespace: "factory".into(),
         name: "unrelated_flow".into(),
