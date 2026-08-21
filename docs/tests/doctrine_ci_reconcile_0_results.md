@@ -8,7 +8,7 @@ Status: **PROBATION / proof-present / DA-review-pending**
 - Implementation base: `bdf5ba7b62785ab378b2d2ec480463f2353bd8aa`
 - Branch: `codex/doctrine-ci-reconcile-0`
 - Pull request: #1796
-- Exact tested implementation head / `tested_code_sha`: `98d088d38807a9ac7f332bc1442c7a5d111d21f0`
+- Exact tested implementation head / `tested_code_sha`: `a67f7c9a92c4dc69027550c1943bb83992960f3d`
 - Publication head: evidence-only tail commit containing this report; exact SHA is recorded in the PR and board relay
 - HD-RECEIPT: `0d23f7c92251`
 - Coding ORIENT-RECEIPT: `a5dc59920dd4`
@@ -156,7 +156,7 @@ All existing standard Doctrine Scan gates are KEEP: pinned-rg capability, selfte
 - inventory and drift: PASS (`1284/1284`); lifecycle prove: PASS (`expired=0 audit=0`).
 - detachability: PASS (`production=0 proof=0 ceiling=0`); DOC-BUDGET check/selftest: PASS.
 - handoff dispatch selftest: PASS, including projection 90, ingress 93, and projection 91 RED.
-- Exact-head Agent scan and Doctrine PR scan at `98d088d38807a9ac7f332bc1442c7a5d111d21f0`: PASS (`failures=0 inspect=0`); deletion guard PASS (`85` identical-content upgrades, `4` authorized changed-content upgrades, `1` authorized retired fixture, `0` unauthorized); digest/orientation/anchor integrity PASS. Hosted workflow identities are recorded after the evidence tail publishes.
+- Exact-head Agent scan and Doctrine PR scan at `a67f7c9a92c4dc69027550c1943bb83992960f3d`: PASS (`failures=0 inspect=0`). Deletion guard PASS (`85` identical-content upgrades, `4` authorized changed-content upgrades, `1` authorized retired fixture, `0` unauthorized); digest/orientation/anchor integrity PASS. Hosted workflow identities are recorded after the evidence tail publishes.
 
 ## Return posture
 
