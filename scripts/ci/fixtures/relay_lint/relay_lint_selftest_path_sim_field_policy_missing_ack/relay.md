@@ -29,6 +29,8 @@ coverage_basis: PASS - fixture proof only
 
 ## Homing Boundary Classification
 
+Homing-Boundary: engine-native
+
 | Symbol | Classification |
 |---|---|
 | relay | relay classification |

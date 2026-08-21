@@ -4,40 +4,36 @@ PROBATION / proof-present.
 
 ## PR / branch / merge
 
-- PR: #2004
-- Branch: relay-non-da
+- PR: #2011
+- Branch: relay-engine-homing-unknown
 - Merge: orchestrator clearable
 
 ## What changed
 
-- Ordinary non-DA relay without clearance verdict.
+- Adds an engine source file with an unknown homing declaration.
 
 ## Load-bearing proofs
 
-tested_code_sha: eeeeeeee11111111222222223333333344444444
+tested_code_sha: aaaaaaaa11111111222222223333333344444444
 coverage_basis: PASS - fixture proof only
 
 ## Scope Ledger
 
 | Path | Classification |
 |---|---|
-| docs/tests/relay.md | relay classification |
-
-## Conformance
-
-- Fixture avoids reserved review semantics.
+| crates/simthing-kernel/src/new_generic_surface.rs | generic engine surface |
 
 ## Homing Boundary Classification
 
-Homing-Boundary: engine-native
+Homing-Boundary: generic-engine-helper
 
-| Symbol | Classification |
-|---|---|
-| relay | relay classification |
+## Conformance
+
+- Unknown closed-vocabulary value is intentionally planted.
 
 ## Known gaps / next
 
-- None.
+- None beyond the planted declaration defect.
 
 ## Graduation routing
 

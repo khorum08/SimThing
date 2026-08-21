@@ -5,16 +5,18 @@ Status: **PROBATION / proof-present / DA-review-pending**
 ## Identity, authority, and scope
 
 - Board handoff: issue #1332 comment `5365304239`
+- Bounded remand: issue #1332 comment `5369712168` (DA ruling `5366507518`; Q1 and all other accepted rows frozen)
 - Implementation base: `bdf5ba7b62785ab378b2d2ec480463f2353bd8aa`
 - Branch: `codex/doctrine-ci-reconcile-0`
 - Pull request: #1796
-- Exact tested implementation head / `tested_code_sha`: `a67f7c9a92c4dc69027550c1943bb83992960f3d`
+- Initial implementation tested head: `a67f7c9a92c4dc69027550c1943bb83992960f3d`
+- Bounded-remand tested head / `tested_code_sha`: recorded after the code-bearing remand commit in the publication relay
 - Publication head: evidence-only tail commit containing this report; exact SHA is recorded in the PR and board relay
 - HD-RECEIPT: `0d23f7c92251`
 - Coding ORIENT-RECEIPT: `a5dc59920dd4`
 - `orientation_rule_stamp`: `61818ff7d4adda84`
 - Ingress orientation digest: `ad50977973343ded1d404267b2c8ff1f1d224b371f62ab23347e7f1778d96443`
-- Final generated orientation digest: `d8fd8238991fb5df87264803c14f8d659f4759ba10f8e6e14095e75adea742cb`
+- Final generated orientation digest: `24904cba192398d437cdba522597e68d14d464d941538caecb2569c722c1c73b`
 - Expected route: `DA-RESERVE(gate-wiring)`
 
 The canonical handoff was rendered and read before governed edits. Every rendered REQUIRED-ANCHOR was queried through `anchor_query.sh`; the generated reach log carries the complete 56-anchor projection. Final content-bound ACKs: `accumulator-exact-vs-soft-semantics@0efceafc77cf`, `accumulator-op-v2-invariants@32fb4fc36080`, `actionband-8x-sequencing@067ef8ace1e0`, `actionband-axis-budget@52275c538689`, `actionband-binding-laws@d6a8b1b2d673`, `actionband-constitutional-placement@d56d9a04a620`, `actionband-crossing-surface@623db585f145`, `actionband-determinism-lifecycle@6306c484732c`, `actionband-eml-payload-purity@2a1d981f3958`, `actionband-executive@9c7e004e213b`, `actionband-fenced-questions@c40674d92d18`, `actionband-field-triad-authority@56cf5cdf2d2c`, `actionband-gpu-physical-model@3252c1b3c3b5`, `actionband-native-authority-table@541a03cb00a1`, `actionband-performance-model@8d93f06d4bae`, `actionband-target-forms@c3b7bce99f1f`, `actionband-vendorization-direction@20336db0d366`, `admission-ladder-necessity-test@4bedf826f6f7`, `candidate-f-exhaustive-proof-method@7c5ce0b93dab`, `core-gpu-residency@eea1356db087`, `core-overlays@f95c9376ee06`, `core-property-value-model@17cd41a567b7`, `core-rf-arenas@d171614211e9`, `eml-admission-shapes@bdcc0b9512f7`, `eml-extension-ladder@7755bc72ffbe`, `eml-integration-plan@8eba54b02320`, `eml-triad-integration@dada7d680557`, `evaluation-identity-invariants@64ad30392930`, `exact-numeric-candidate-f@6938a2efadb5`, `field-policy-time-decisions@993c7d0560e8`, `field-sweep-preservation@acc521a5a361`, `founding-ontology-invariants@46802793fba7`, `intrinsic-constrained-clearing@957b7c81b756`, `movement-front-adjudications@5af6a29acb75`, `one-tree-owners-never-spatial@a8689d4344f9`, `orientation-harness-core@8a365d1c0864`, `overlay-closure-thesis@241cc54c5706`, `overlay-designer-closure@4a047b29243d`, `overlay-germ@f0c8d2ebade9`, `overlay-promoted-laws@248c7893b462`, `overlay-scale-laws@c2ffb2826df7`, `rf-arena-allocation-invariants@82864469489b`, `rf-arena-substrate@17b5f1e5c2ba`, `scanner-selftest-delta-gate@34fb2662baae`, `seal-residue-cross-crate@49ee7c4ba6f4`, `simthing-0087-binding-laws@8f13cba4aa7a`, `simthing-0087-pillars@61487cba1f9e`, `stead-events-are-rf@525388344ef2`, `stead-rejected-shapes@3752549ff106`, `stead-shared-surface-ledger@87eaa1e7bb9c`, `stead-spatial-contract-core@8585db4ac631`, `stemthing-binding-laws@6787a118c3ca`, `stemthing-lane-not-leg@a9e9caa27a0f`, `stemthing-slot-identity-ruling@02c87b9126e1`, `structural-execution-convergence@6b4cedec482b`, `workshop-candidate-homing@3e584f0ad175`.
@@ -47,14 +49,14 @@ The handoff's historical counts were treated as archaeology, not truth. The live
 | `ALLOW-KERNEL-SURFACE` | KEEP | Kernel export drift remains representable; its live set was reduced. |
 | `TEST-BUDGET` | KEEP | Test admission is still ledger/file enforced. |
 | `SPEC-LOWERER-KIND-READ` | KEEP | Lowerer kind branching remains representable. |
-| `WORKSHOP-HOMING-DETECTION` | PROMOTE | The duplicate vocabulary row is removed; relay lint now hard-fails any engine-source change lacking a dedicated Homing Boundary Classification. `SCENARIO-RESIDUE` remains the sole vocabulary hard gate. |
+| `WORKSHOP-HOMING-DETECTION` | PROMOTE | The duplicate vocabulary row is removed. Relay lint parses the closed `Homing-Boundary` vocabulary (`engine-native`, `workshop-elevation(<rung>)`, `scenario-neutral-fixture`), rejects missing/unknown declarations, requires a verifiable workshop origin for elevation, and content-bites an `engine-native` engine-source diff that imports/includes `simthing-workshop`. `SCENARIO-RESIDUE` remains the sole scenario-vocabulary hard gate. |
 | `GUARD-KABUKI-TRIPWIRE` | KEEP | Test/source-scan surrogate proofs remain representable. |
 | `EXECUTION-STATUS-UNCLASSIFIED` | KEEP | Registry classification remains file-mediated. |
 | `CELL-STORAGE-POLYMORPHISM` | KEEP | Heterogeneous storage remains language-representable. |
 | `BESPOKE-PATHFINDER` | KEEP | A rival pathfinder remains language-representable. |
 | `BORDER-SERVICE` | KEEP | A rival border service remains language-representable. |
 | `OWNER-POLICY-WEIGHT-AUTHORITY-MINT` | KEEP | Out-of-band authored authority remains data-representable. |
-| `OVERLAY-PEER-AUTHORITY` | RETIRE | 7.7/7.8's sealed crossing-to-actuation boundary makes the named peer authority forms inadmissible; the stronger constitutional crossing inventory now rejects a second crossing/dispatcher surface. |
+| `OVERLAY-PEER-AUTHORITY` | RETIRE | The remand closes the reproduced peer forge: uploadable lifecycle projection seeds and consumable lifecycle decisions are distinct types; `OverlayLifecycleStateGpu` has private fields, is not POD/default-constructible, and is minted only by the kernel readback conversion. `apply_gpu_overlay_lifecycle` accepts only that sealed decision type. A pinned `E0451` compile-fail proves an external peer cannot construct `{ dissolved: 1, .. }`. |
 
 End state: 24 live `scans.tsv` rows, one placement guard promoted into relay lint, and one impossible peer-authority watch retired. Unattributable overlays and authored `Permanent` were already absent at the live base because origin/lifecycle admission types refuse them; no decorative replacement scan was added.
 
@@ -93,9 +95,9 @@ The handoff stop condition therefore fired in its intended shape: these seven fi
 
 ### Compile-fail and inventory census
 
-The live count is 103 fences, not the historical 93: core 29, driver 6, GPU 3, kernel 45, sim 12, spec 8. All now pin exact rustc error-code sets and use `compile_fail_<codes>_<normalized-snippet-sha12>` inventory identities. Generic positional churn mappings were removed; the deletion guard performs a one-time base-line-to-identical-content upgrade for 85 unchanged snippets, while four snippets whose imports/failure shape had to change carry explicit DA-authorized migration rows. The executable local checker proves both sides: the correct error is admitted and a planted wrong failure is rejected. It is intentionally not hosted because standing CI law forbids cargo test execution.
+The live base count was 103 fences, not the historical 93. The bounded remand adds one peer-forgery seal proof, for an end state of 104: core 29, driver 6, GPU 3, kernel 46, sim 12, spec 8. All pin exact rustc error-code sets and use `compile_fail_<codes>_<normalized-snippet-sha12>` inventory identities. Generic positional churn mappings were removed; the deletion guard performs a one-time base-line-to-identical-content upgrade for 85 unchanged snippets, while four snippets whose imports/failure shape had to change carry explicit DA-authorized migration rows. The executable local checker proves both sides: the correct error is admitted and a planted wrong failure is rejected. It is intentionally not hosted because standing CI law forbids cargo test execution.
 
-Inventory end state is exactly 1,284 rows = 1,284 discovered executable tests, with zero missing, extra, stale, parked, or promotion-target drift. `cfg(test)` module containers are not misclassified as executable test identities.
+Inventory end state after the bounded remand is exactly 1,295 rows = 1,295 discovered executable tests/fixtures, with zero missing, extra, stale, parked, or promotion-target drift. `cfg(test)` module containers are not misclassified as executable test identities.
 
 ### Standard workflow gate census
 
@@ -111,8 +113,8 @@ All existing standard Doctrine Scan gates are KEEP: pinned-rg capability, selfte
 | Stable rungclose identity | Exact ladder ID-cell parser ignores prose/other tables and rejects duplicate rows. |
 | Stable test/doctest identity | Compile-fail identities bind error codes plus normalized content, never line number. |
 | ORCHESTRATOR-CLEARABLE relay | Self-merge is accepted; contradictory DA relay remains rejected. |
-| `OVERLAY-PEER-AUTHORITY` | Retired against closed 7.7/7.8 admission and stronger crossing inventory. |
-| Workshop homing | Promoted as a placement/classification hard gate only; scenario vocabulary stays solely with `SCENARIO-RESIDUE`. |
+| `OVERLAY-PEER-AUTHORITY` | Retired together with the readback seal: only the kernel converts POD projection readback into the private-field decision type accepted by the applicator; external dissolved-row construction is pinned `E0451`. |
+| Workshop homing | Preferred structured closure chosen: closed declaration vocabulary, verifiable elevation origin, and a direct workshop-coupling content RED; scenario vocabulary stays solely with `SCENARIO-RESIDUE`. |
 | EML/telemetry/Root Contract/ActionBand surfaces | Closed data-backed constitutional inventory with seven planted defects. |
 | `contention_mechanisms.txt` wiring | Retained in digest sources and clearance gate-wiring paths; planted disconnect routes `DA-RESERVE(gate-wiring)`. |
 | EXP/LN certification | Freshness-only hosted law retained exactly. |
@@ -130,10 +132,11 @@ All existing standard Doctrine Scan gates are KEEP: pinned-rg capability, selfte
 | EML telemetry lifecycle | No binding census | Any matching telemetry surface must carry the nearby lifecycle marker. |
 | ActionBand one-crossing law | One-shot proof only | 14 admitted declarations/functions; planted rival crossing record RED. |
 | ActionBand target/caps | Prose-closed | 7 target forms, 2 channel forms, 5 session caps, and 10 template/cap fields are exact-registry checked. |
-| Workshop homing | Vocabulary heuristic duplicated scenario residue | Engine-source diff without Homing Boundary Classification hard-fails; scenario words are not reimplemented. |
+| Workshop homing | Vocabulary heuristic duplicated scenario residue; first repair checked only a heading phrase | Engine-source diffs require one parsed `Homing-Boundary`; missing/unknown values RED, elevation requires a changed workshop path or rung-matched authorized-deletion row, and an `engine-native` import/`include_str!` coupling to `simthing-workshop` REDs as `engine-native-workshop-coupling`. Scenario words are not reimplemented. |
+| Overlay peer authority | Public `OverlayLifecycleStateGpu` fields let a CPU peer forge `dissolved: 1` and call the public applicator | Projection seed and readback decision are separate; only kernel readback mints the private-field decision consumed by `apply_gpu_overlay_lifecycle`; external struct-literal forgery is exact `E0451`. |
 | Overlay archaeology | Exact route catalogue could miss newly-shaped verbs | Shaped lifecycle/dispatch verb universe is reconciled; unlisted and unjustified-broad plants RED. |
-| Compile-fail | Unpinned/line-position identity could pass for the wrong reason | 103 exact error/content identities; wrong-rustc-error selftest RED. |
-| Test discovery | `cfg(test)` module containers counted inconsistently | Both inventory checkers enumerate executable children only; exact 1,284 parity. |
+| Compile-fail | Unpinned/line-position identity could pass for the wrong reason | 104 exact error/content identities, including the peer-forgery seal; wrong-rustc-error selftest RED. |
+| Test discovery | `cfg(test)` module containers counted inconsistently | Both inventory checkers enumerate executable children only; exact 1,295 parity after the remand fixtures. |
 | Lifecycle | Permanent-named target plus wall-clock grace | `until-closeout:*`; immediate closeout event; zero grace/runway. |
 | Rungclose | First textual mention won | Exact ladder ID cell only; decoy and duplicate selftests. |
 | Relay clearable | Clearable self-merge could be rejected as missing DA relay | Correct self-merge passes; contradictory DA-review shape fails. |
@@ -146,14 +149,16 @@ All existing standard Doctrine Scan gates are KEEP: pinned-rg capability, selfte
 
 - `cargo fmt --all`; `git diff --check`: PASS.
 - `cargo check -p simthing-spec -p simthing-kernel -p simthing-driver`: PASS (pre-existing warnings only).
-- compile-fail executable identity check: PASS, 103 fences; wrong-error selftest PASS.
+- Bounded remand: `cargo check -p simthing-kernel -p simthing-gpu -p simthing-sim`: PASS (pre-existing warnings only).
+- Bounded remand GPU proof: `gpu_overlay_lifecycle_extraction_0` 1/1 PASS and `gpu_overlay_lifecycle_oracle_parity_0` 1/1 PASS on a real adapter.
+- compile-fail executable identity check: PASS, 104 fences; wrong-error selftest PASS; focused peer-forgery rustdoc fence PASS.
 - constitutional surface check: PASS; counts `25/9/7/2/5/10/14`, telemetry declarations `0`, tagged admission sites `128`; seven-defect selftest PASS.
-- doctrine selftest: PASS; relay-lint selftest: PASS (38 fixtures); clearance selftest: PASS (112 fixtures).
+- doctrine selftest: PASS; relay-lint selftest: PASS (41 fixtures); clearance selftest: PASS (112 fixtures).
 - track-closeout prove: PASS, including exact-rung decoy/duplicate cases.
 - overlay archaeology selftest: PASS; live census remains reconciled.
 - plan-struct census and write-door/band-delta census: PASS.
 - allowlist scans: PASS for all six registries.
-- inventory and drift: PASS (`1284/1284`); lifecycle prove: PASS (`expired=0 audit=0`).
+- inventory and drift: PASS (`1295/1295`); lifecycle prove: PASS (`expired=0 audit=0`).
 - detachability: PASS (`production=0 proof=0 ceiling=0`); DOC-BUDGET check/selftest: PASS.
 - handoff dispatch selftest: PASS, including projection 90, ingress 93, and projection 91 RED.
 - Exact-head Agent scan and Doctrine PR scan at `a67f7c9a92c4dc69027550c1943bb83992960f3d`: PASS (`failures=0 inspect=0`). Deletion guard PASS (`85` identical-content upgrades, `4` authorized changed-content upgrades, `1` authorized retired fixture, `0` unauthorized); digest/orientation/anchor integrity PASS. Hosted workflow identities are recorded after the evidence tail publishes.

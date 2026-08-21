@@ -4,8 +4,8 @@ use simthing_core::{
     OverlayLifecycleAdmitError, RoutedGenerationDuration, SimProperty,
 };
 use simthing_kernel::accumulator_op::{
-    OverlayLifecycleProjectionBinding, OverlayLifecycleProjectionPlan, OverlayLifecycleStateGpu,
-    THRESH_BUF_OWNING_GENERATION,
+    OverlayLifecycleProjectionBinding, OverlayLifecycleProjectionPlan,
+    OverlayLifecycleProjectionSeed, OverlayLifecycleStateGpu, THRESH_BUF_OWNING_GENERATION,
 };
 use simthing_kernel::{
     AccumulatorOpSession, GpuContext, PackedThresholdUpload, ThresholdRegistration, WorldGpuState,
@@ -44,7 +44,7 @@ fn real_phase5_crossings_project_conjunctive_lifecycle_state() {
         },
     ];
     let plan = OverlayLifecycleProjectionPlan {
-        rows: vec![OverlayLifecycleStateGpu::pending(0b11)],
+        rows: vec![OverlayLifecycleProjectionSeed::pending(0b11)],
         bindings: vec![
             OverlayLifecycleProjectionBinding {
                 registration_index: 0,
@@ -76,9 +76,9 @@ fn real_phase5_crossings_project_conjunctive_lifecycle_state() {
     let rows = session
         .readback_overlay_lifecycle_states(&state.ctx)
         .unwrap();
-    assert_eq!(rows[0].satisfied_mask, 0b11);
-    assert_eq!(rows[0].dissolved, 1);
-    assert_eq!(rows[0].generation, 5);
+    assert_eq!(rows[0].satisfied_mask(), 0b11);
+    assert!(rows[0].is_dissolved());
+    assert_eq!(rows[0].generation(), 5);
 
     // Biting production-path mutant: misbind the deadline to the already-used
     // property bit. The same hardware dispatch must remain pending.
@@ -101,8 +101,8 @@ fn real_phase5_crossings_project_conjunctive_lifecycle_state() {
     let mutant_rows = mutant
         .readback_overlay_lifecycle_states(&state.ctx)
         .unwrap();
-    assert_eq!(mutant_rows[0].satisfied_mask, 0b01);
-    assert_eq!(mutant_rows[0].dissolved, 0);
+    assert_eq!(mutant_rows[0].satisfied_mask(), 0b01);
+    assert!(!mutant_rows[0].is_dissolved());
 
     // Biting threshold-bypass mutant: replace the real resident property
     // observation with the owning-generation source and an unreachable
@@ -127,13 +127,15 @@ fn real_phase5_crossings_project_conjunctive_lifecycle_state() {
     let bypass_rows = bypass
         .readback_overlay_lifecycle_states(&state.ctx)
         .unwrap();
-    assert_eq!(bypass_rows[0].satisfied_mask, 0b10);
-    assert_eq!(bypass_rows[0].dissolved, 0);
+    assert_eq!(bypass_rows[0].satisfied_mask(), 0b10);
+    assert!(!bypass_rows[0].is_dissolved());
 
     // The real session admission door freezes capacity: a mid-session semantic
     // mint cannot silently grow the resident facility.
     let mut grown = plan.clone();
-    grown.rows.push(OverlayLifecycleStateGpu::pending(0b1));
+    grown
+        .rows
+        .push(OverlayLifecycleProjectionSeed::pending(0b1));
     assert!(mutant
         .configure_overlay_lifecycle_projection(&state.ctx, &grown)
         .is_err());
@@ -141,7 +143,7 @@ fn real_phase5_crossings_project_conjunctive_lifecycle_state() {
     let mut over_capacity = plan.clone();
     over_capacity
         .rows
-        .extend([OverlayLifecycleStateGpu::pending(0b1); 4]);
+        .extend([OverlayLifecycleProjectionSeed::pending(0b1); 4]);
     assert!(mutant
         .configure_overlay_lifecycle_projection(&state.ctx, &over_capacity)
         .is_err());
@@ -180,7 +182,7 @@ fn real_phase5_crossings_project_conjunctive_lifecycle_state() {
             )
             .unwrap();
         let carry_plan = OverlayLifecycleProjectionPlan {
-            rows: vec![OverlayLifecycleStateGpu::pending(0b1); row_count],
+            rows: vec![OverlayLifecycleProjectionSeed::pending(0b1); row_count],
             bindings: vec![OverlayLifecycleProjectionBinding {
                 registration_index: 0,
                 row: 0,

@@ -22,7 +22,7 @@ use crate::sealed::ThresholdEvent;
 use super::encode::EncodeError;
 use super::facility_resident_plane::{
     FacilityPlaneError, FacilityPlaneGenerationBoundary, FacilityPlaneOwner, FacilityResidentPlane,
-    OverlayLifecycleProjectionPlan, OverlayLifecycleStateGpu,
+    OverlayLifecycleProjectionPlan, OverlayLifecycleStateGpu, OverlayLifecycleStateGpuWire,
 };
 use super::packed_session_upload::{
     PackedAccumulatorUpload, PackedIntentUpload, PackedThresholdUpload,
@@ -335,7 +335,7 @@ impl AccumulatorOpSession {
             "overlay_lifecycle",
             &overlay_lifecycle_boundary,
             &overlay_lifecycle_owner,
-            &[OverlayLifecycleStateGpu::pending(u32::MAX)],
+            &[OverlayLifecycleStateGpuWire::pending(u32::MAX)],
         )
         .expect("fresh lifecycle plane owner belongs to its boundary");
 
@@ -1093,7 +1093,7 @@ impl AccumulatorOpSession {
         }
         let mut template_shapes = HashSet::new();
         for (row_index, row) in plan.rows.iter().enumerate() {
-            let mut shape = vec![[row.required_mask, u32::MAX, 0, 0, 0]];
+            let mut shape = vec![[row.required_mask(), u32::MAX, 0, 0, 0]];
             for binding in plan
                 .bindings
                 .iter()
@@ -1158,11 +1158,17 @@ impl AccumulatorOpSession {
                 .insert(event_kind, op._pad);
         }
         self.write_op_bytes(ctx, &ops)?;
-        let dummy_rows = [OverlayLifecycleStateGpu::pending(u32::MAX)];
-        let resident_rows = if plan.rows.is_empty() {
+        let dummy_rows = [OverlayLifecycleStateGpuWire::pending(u32::MAX)];
+        let admitted_rows: Vec<_> = plan
+            .rows
+            .iter()
+            .copied()
+            .map(|row| row.to_gpu_wire())
+            .collect();
+        let resident_rows = if admitted_rows.is_empty() {
             &dummy_rows[..]
         } else {
-            &plan.rows
+            &admitted_rows
         };
         self.overlay_lifecycle_plane = FacilityResidentPlane::from_rows(
             ctx,
@@ -1188,9 +1194,13 @@ impl AccumulatorOpSession {
             .overlay_lifecycle_plane
             .current_for(&self.overlay_lifecycle_owner)?;
         let bytes = self.read_buffer_bytes(ctx, current);
-        Ok(bytemuck::cast_slice::<u8, OverlayLifecycleStateGpu>(&bytes)
-            [..self.overlay_lifecycle_rows]
-            .to_vec())
+        Ok(
+            bytemuck::cast_slice::<u8, OverlayLifecycleStateGpuWire>(&bytes)
+                [..self.overlay_lifecycle_rows]
+                .iter()
+                .map(OverlayLifecycleStateGpu::from_gpu_readback)
+                .collect(),
+        )
     }
 
     pub fn append_packed_threshold_ops(

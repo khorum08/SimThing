@@ -177,7 +177,25 @@ if not re.search(r'coverage_basis\s*[:=]', text, re.IGNORECASE):
         print("FAIL:missing-coverage-basis")
         sys.exit(0)
 
-has_homing = bool(re.search(r'homing boundary\s+classification', text, re.IGNORECASE))
+homing_fields = re.findall(r'(?m)^\s*Homing-Boundary\s*:\s*(\S[^\r\n]*)\s*$', text)
+if len(homing_fields) > 1:
+    print("FAIL:duplicate-homing-boundary")
+    sys.exit(0)
+homing_value = homing_fields[0].strip() if homing_fields else ""
+homing_kind = ""
+homing_rung = ""
+if homing_value in {"engine-native", "scenario-neutral-fixture"}:
+    homing_kind = homing_value
+elif homing_value:
+    elevation = re.fullmatch(
+        r'workshop-elevation\(([A-Z0-9][A-Z0-9._-]*)\)', homing_value
+    )
+    if not elevation:
+        print("FAIL:unknown-homing-boundary")
+        sys.exit(0)
+    homing_kind = "workshop-elevation"
+    homing_rung = elevation.group(1)
+has_homing = bool(homing_kind)
 has_scope_class = bool(re.search(r'scope ledger', text, re.IGNORECASE)) and bool(
     re.search(r'scope ledger[\s\S]{0,800}classification', text, re.IGNORECASE)
 )
@@ -207,9 +225,73 @@ engine_src_prefixes = (
     "crates/simthing-mapeditor/src/",
     "crates/simthing-tools/src/",
 )
-if any(path.startswith(engine_src_prefixes) for path in changed_paths) and not has_homing:
+engine_src_paths = [
+    path for path in changed_paths if path.startswith(engine_src_prefixes)
+]
+if engine_src_paths and not has_homing:
     print("FAIL:missing-engine-homing-classification")
     sys.exit(0)
+
+patch = diff_env
+if not patch and fixture_dir:
+    fixture_patch = pathlib.Path(fixture_dir) / "diff.patch"
+    if fixture_patch.is_file():
+        patch = fixture_patch.read_text(encoding="utf-8")
+
+if homing_kind == "workshop-elevation":
+    origins = re.findall(r'(?m)^\s*Homing-Origin\s*:\s*(\S[^\r\n]*)\s*$', text)
+    if len(origins) != 1:
+        print("FAIL:missing-workshop-elevation-origin")
+        sys.exit(0)
+    origin = origins[0].strip().replace("\\", "/")
+    if not origin.startswith("crates/simthing-workshop/"):
+        print("FAIL:unverified-workshop-elevation-origin")
+        sys.exit(0)
+    changed_origin = origin in changed_paths
+    ledger_origin = False
+    in_deletion_ledger = False
+    for raw in patch.splitlines():
+        if raw.startswith("diff --git "):
+            in_deletion_ledger = raw.endswith(
+                " b/scripts/ci/authorized_deletions.tsv"
+            )
+            continue
+        if (
+            in_deletion_ledger
+            and raw.startswith("+")
+            and not raw.startswith("+++")
+            and origin in raw
+            and f"\t{homing_rung}\t" in raw
+        ):
+            ledger_origin = True
+            break
+    if not (changed_origin or ledger_origin):
+        print("FAIL:unverified-workshop-elevation-origin")
+        sys.exit(0)
+
+if engine_src_paths and homing_kind == "engine-native" and patch:
+    current_path = ""
+    for raw in patch.splitlines():
+        if raw.startswith("diff --git "):
+            match = re.match(r'^diff --git a/(.+) b/(.+)$', raw)
+            current_path = match.group(2) if match else ""
+            continue
+        if (
+            current_path not in engine_src_paths
+            or not raw.startswith("+")
+            or raw.startswith("+++")
+        ):
+            continue
+        added = raw[1:]
+        workshop_import = re.search(
+            r'\b(?:use|extern\s+crate)\s+(?:::)?simthing_workshop\b', added
+        )
+        workshop_include = re.search(
+            r'\binclude_str!.*simthing[-_]workshop', added
+        )
+        if workshop_import or workshop_include:
+            print("FAIL:engine-native-workshop-coupling")
+            sys.exit(0)
 has_lifecycle = bool(
     re.search(
         r'\b(PROBATION|DA-GRADUATED|ORCHESTRATOR-GRADUATED|HOLD|DA-OWNER)\b',
@@ -956,6 +1038,9 @@ run_selftest() {
     relay_lint_selftest_fail_missing_coverage_basis
     relay_lint_selftest_fail_missing_classification
     relay_lint_selftest_fail_engine_missing_homing
+    relay_lint_selftest_fail_engine_unknown_homing
+    relay_lint_selftest_fail_engine_native_workshop_coupling
+    relay_lint_selftest_fail_workshop_elevation_missing_origin
     relay_lint_selftest_fail_missing_graduation_routing
     relay_lint_selftest_pass_optional_5_1_sketch
     relay_lint_selftest_fail_empty_kabuki_sections

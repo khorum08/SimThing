@@ -1,0 +1,6 @@
+diff --git a/crates/simthing-kernel/src/new_native_surface.rs b/crates/simthing-kernel/src/new_native_surface.rs
+new file mode 100644
+--- /dev/null
++++ b/crates/simthing-kernel/src/new_native_surface.rs
+@@ -0,0 +1 @@
++use simthing_workshop::PeerLifecycleDecision;

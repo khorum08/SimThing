@@ -4,40 +4,36 @@ PROBATION / proof-present.
 
 ## PR / branch / merge
 
-- PR: #2004
-- Branch: relay-non-da
+- PR: #2012
+- Branch: relay-engine-native-workshop-coupling
 - Merge: orchestrator clearable
 
 ## What changed
 
-- Ordinary non-DA relay without clearance verdict.
+- Plants an engine-native claim over a direct workshop import.
 
 ## Load-bearing proofs
 
-tested_code_sha: eeeeeeee11111111222222223333333344444444
+tested_code_sha: aaaaaaaa11111111222222223333333344444444
 coverage_basis: PASS - fixture proof only
 
 ## Scope Ledger
 
 | Path | Classification |
 |---|---|
-| docs/tests/relay.md | relay classification |
-
-## Conformance
-
-- Fixture avoids reserved review semantics.
+| crates/simthing-kernel/src/new_native_surface.rs | claimed engine-native |
 
 ## Homing Boundary Classification
 
 Homing-Boundary: engine-native
 
-| Symbol | Classification |
-|---|---|
-| relay | relay classification |
+## Conformance
+
+- The direct workshop import is the planted detachability/homing violation.
 
 ## Known gaps / next
 
-- None.
+- None beyond the planted coupling.
 
 ## Graduation routing
 
