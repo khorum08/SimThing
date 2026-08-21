@@ -10,7 +10,7 @@ Status: **PROBATION / proof-present / DA-review-pending**
 - Branch: `codex/doctrine-ci-reconcile-0`
 - Pull request: #1796
 - Initial implementation tested head: `a67f7c9a92c4dc69027550c1943bb83992960f3d`
-- Bounded-remand tested head / `tested_code_sha`: recorded after the code-bearing remand commit in the publication relay
+- Bounded-remand tested head / `tested_code_sha`: `ca3430047eb50835650b161ac6577c521285321c`
 - Publication head: evidence-only tail commit containing this report; exact SHA is recorded in the PR and board relay
 - HD-RECEIPT: `0d23f7c92251`
 - Coding ORIENT-RECEIPT: `a5dc59920dd4`
@@ -162,6 +162,7 @@ All existing standard Doctrine Scan gates are KEEP: pinned-rg capability, selfte
 - detachability: PASS (`production=0 proof=0 ceiling=0`); DOC-BUDGET check/selftest: PASS.
 - handoff dispatch selftest: PASS, including projection 90, ingress 93, and projection 91 RED.
 - Exact-head Agent scan and Doctrine PR scan at `a67f7c9a92c4dc69027550c1943bb83992960f3d`: PASS (`failures=0 inspect=0`). Deletion guard PASS (`85` identical-content upgrades, `4` authorized changed-content upgrades, `1` authorized retired fixture, `0` unauthorized); digest/orientation/anchor integrity PASS. Hosted workflow identities are recorded after the evidence tail publishes.
+- Bounded-remand Agent scan at `ca3430047eb50835650b161ac6577c521285321c`: PASS (`failures=0 inspect=0`); Doctrine selftest PASS; orientation/sanctioned digest PASS.
 
 ## Return posture
 
