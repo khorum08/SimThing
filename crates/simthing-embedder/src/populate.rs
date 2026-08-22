@@ -1,8 +1,10 @@
 //! **Populate** — tree/RF authoring through existing admission.
 
+pub use simthing_core::eml_ln::eml_ln_pinned_f32;
 pub use simthing_core::{
-    CostBandAdmissionError, CostBandResourceMarker, OwnerBoundaryValidationError, OwnerRef,
-    PropertyValue, SimProperty, SimThing, SimThingKind,
+    eml_exp_pinned_f32, CostBandAdmissionError, CostBandResourceMarker, Direction,
+    OwnerBoundaryValidationError, OwnerRef, PropertyValue, SimProperty, SimPropertyId, SimThing,
+    SimThingId, SimThingKind, SubFieldRole,
 };
 pub use simthing_driver::Scenario;
 pub use simthing_sim::CostBandSemantic;
