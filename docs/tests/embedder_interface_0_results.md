@@ -108,7 +108,7 @@ has no mutable values, evaluator, or submission door.
 | Baseline `ct_2c_category_economy` red | `gpu_category_micro_economy_matches_arena_allocation_oracle`: existing install validation failure |
 | Baseline `ct_3b_4a_gpu_projection` red | `gpu_scatter_projection_matches_cpu_oracle_through_commitment`: existing install validation failure |
 | Baseline `studio_star_naming_pass_0` red | `star_naming_canonical_tp_all_systems_have_display_names`: existing canonical naming mismatch |
-| Hosted Doctrine Scan step inspection | Pending PR head |
+| Hosted Doctrine Scan `32554842664` / job `96987273824` | PASS — every PR-applicable step inspected; PR delta has zero hard failures and the same one test-budget INSPECT; whole-tree step skipped by PR policy |
 
 ## Scope disposition
 
