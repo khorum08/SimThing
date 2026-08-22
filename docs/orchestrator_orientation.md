@@ -45,7 +45,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 26e025f8b1e76f7f649571aaa4f2da2c82ca722b4d8c549f5ce9d14b4604f3a6 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | 26eab30ec86c97ac8dfd6beef7ae8c5b4d3f18c38fdaa431ec40ccce855396d3 |
-| design_0_0_8_7_rf_arena_modernization.md | 0394903e336de3f3e704f476a8f19290a58f16feaa191989f49607b8b65a8c1b |
+| design_0_0_8_7_rf_arena_modernization.md | be312930d7056a5b35dc7d31b24e725989f5da577e2a84066706e5002bf5343d |
 | relay_lint.sh | ae19bdca12e90f6bc988e064f081ff62903034d69bf34b08ffd5c27e352181ba |
 | doctrine_anchors.tsv | ddc753498b845b0e5084222b35f94286e5163cc6479de58883e3ecc3c2d743dd |
 | execution_status_taxonomy.tsv | 6a6a6c3a0cadc89b51b674c23598fa38794185258db6a1e0826c1ba03ec812be |
@@ -68,7 +68,7 @@ Dark properties (1): `fixture::dark_reading` (reasons/spans in `property_admissi
 
 Track state: `open`
 
-> Compact view: 45 completed rungs elided; showing all 18 open rungs plus the 3 most recent completions. Full ladder in the design doc.
+> Compact view: 46 completed rungs elided; showing all 17 open rungs plus the 3 most recent completions. Full ladder in the design doc.
 
 | # | rung | deliverable | exit proof |
 | --- | --- | --- | --- |
@@ -85,10 +85,9 @@ Track state: `open`
 | 7.5 | ACTIONBAND-SEMANTIC-SHADOW-0 | Bind generic stamped ActionBand crossings/terminal/structural deltas to existing | Same opaque GPU ActionBand run with semantic labels changed produces bit-identical numerical results; generic readbac... |
 | 7.5a | ACTIONBAND-FIELD-TRIAD-PROGRESS-0 | **Gu-Yang remediation, rung 1 of 3 (Owner-directed 2026-08-10; Fable-approved re | A synthetic conserved-channel ActionBand consumes a REAL Gu-Yang / `FieldSweepRegistration` output with **zero Action... |
 | 7.5b | ACTIONBAND-SPATIAL-FLUX-WITNESS-0 | **Gu-Yang remediation, rung 2 of 3.** Prove the generic Field-Triad ActionBand b | Same target and PALMA potential, different Gu-Yang channel capacity ⇒ **same lawful descent identity, different per-g... |
-| 9.1 | GATED-RATES-EML-REWIRE-0 | Phase 9: exclusion-audit Family C — `gated_rates` gate evaluation → authored EML | **DA-GRADUATED / merged #1789 @ 059b4896 — graduated through a substrate STOP that corrected the DA.** Registry-owned... |
 | 9.2 | RF-COLUMN-MINT-MIGRATE-0 | Phase 9: the sweep — remaining sites onto doors; DELETE the exclusion list; reti | **DA-GRADUATED / merged #1792 @ 987f7fd8 — the sweep is done and the mint is closed.** `ColumnIndex::new` is DELETED;... |
 | 10.1 | DOCTRINE-CI-RECONCILE-0 | Phase 10: retire impossible-state detectors; mechanize new gates (EML-addition D | **DA-GRADUATED / merged #1796 @ 9da3f112 — the harness reconciled against the landed type boundaries, census-first, w... |
-| 11.1 | EMBEDDER-INTERFACE-0 | Phase 11: the five-verb Vendor Door API (formalization of existing mechanisms) + | Five verbs stand up a tree end-to-end in a test; posture choice on Run; no new subsystem (diff-proven). **SCOPE COVER... |
+| 11.1 | EMBEDDER-INTERFACE-0 | Phase 11: the five-verb Vendor Door API (formalization of existing mechanisms) + | **DA-GRADUATED / merged #1800 @ 9929ac98 — the Vendor Door is five verbs over graduated machinery, and the crate that... |
 | 11.2 | EMBEDDER-GUIDE-EXEMPLARS-0 | Phase 11: DOC-BUDGET-capped Embedder's Guide + two non-game exemplars (finance t | Cold-reader exit-proof per phase row; exemplars green in CI. |
 | 11.3 | UNIFIED-FACILITY-CONVERGENCE-WITNESS-0 | **Unified-facility convergence witness — DA-minted 2026-08-17 on Owner direction | **Emergence falsifier in 8.2's shape, not an enumeration.** ONE authored change — data only, **zero code change** — m... |
 | 12.1 | PORTABILITY-PROOF-0 | Phase 12: a domain unrelated to any shipped scenario through the Vendor Door end | Exemplar-seeded domain simulates + STEAD-observes + serializes untouched. |
@@ -96,7 +95,7 @@ Track state: `open`
 
 ## Next Rung Pointer
 
-Active pointer: `EMBEDDER-INTERFACE-0`
+Active pointer: `EMBEDDER-GUIDE-EXEMPLARS-0`
 
 
 ## Cold-Start Spine (constitutional pointers)
