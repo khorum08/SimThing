@@ -11,6 +11,26 @@
 - Expected route: `DA-RESERVE(gate-wiring)`
 - Dispatch: board comment `5377904777`
 
+## Q3 validator narrow remand
+
+- Remand: board comment `5380573622`
+- DA ruling: board comment `5380544437`
+- Frozen accepted-surface head: `b0a46cfb06391c9cc2088ae4ddf199968e330cd4`
+- Carried coding receipt: `a5dc59920dd4` at unchanged rule stamp
+  `61818ff7d4adda84`
+
+The validator now rejects only the authored shape named by 11.1: a multi-node
+subtree whose every node explicitly declares the same owner. One deliberately
+redundant local binding remains lawful, as does an ordinary ownership crossing.
+The existing Populate/Run production-door falsifier proves both sides: the
+lawful local control initializes successfully, while the two-node uniform
+fallback returns `BulkUniformStamp { stamped_nodes: 2, .. }` through Populate
+and remains rejected by Run initialization.
+
+The remand changes only `owner_channel.rs`, the existing Vendor Door falsifier,
+its inventory description, and this evidence. All surfaces accepted and frozen
+by DA ruling `5380544437` remain byte-identical to `b0a46cfb`.
+
 ## Archaeology and gap classification
 
 The required first step completed before construction. No verb requires a new
@@ -85,7 +105,7 @@ has no mutable values, evaluator, or submission door.
 |---|---|
 | Kind-based owner/specialization answer | Changing `SimThingKind` while owner/profile facts stay fixed leaves the kind-free Derive query identical |
 | Authored party named `unowned` | `derive::owner_seat` rejects through `try_new_authored` |
-| Stamp owner on every node | Populate and Run reject a child binding equal to its inherited owner |
+| Stamp owner on every node | Populate and Run accept one deliberately redundant local binding but reject a multi-node subtree uniformly stamped with one explicit owner as `BulkUniformStamp` |
 | Synthesized/foreign overlay origin | `overlay::authored` rejects a foreign `SimThing`; bare-id origin is compile-fail |
 | Missing/default overlay horizon | `overlay::authored` rejects an empty condition list as `MissingDissolveCondition` |
 | Queue re-hydration | One admitted event/CostBand shape resolves runtime depths 1 and 4 without rebuilding the registration |

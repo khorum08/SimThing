@@ -78,6 +78,15 @@ fn derive_reserves_unowned_and_owner_specialization_query_has_no_kind_rival() {
 #[test]
 fn populate_and_run_reject_stamp_every_node_rival_for_inherited_owner() {
     let owner = OwnerRef::try_new_authored("alpha").expect("owner");
+
+    let mut lawful_local = Scenario::map_light("lawful-local-owner".into(), 1, 2, 1.0, 3);
+    populate::owner(&mut lawful_local.root, &owner);
+    populate::owner(&mut lawful_local.root.children[0], &owner);
+    populate::ownership(&lawful_local.root)
+        .expect("one deliberately redundant local binding remains lawful");
+    run::initialize(lawful_local, &Default::default())
+        .expect("ordinary Run accepts the lawful local binding");
+
     let mut root = node("root");
     root.add_child(node("child"));
     populate::owner(&mut root, &owner);
@@ -87,7 +96,10 @@ fn populate_and_run_reject_stamp_every_node_rival_for_inherited_owner() {
     let error = populate::ownership(&root).expect_err("flat stamp must RED");
     assert!(matches!(
         error,
-        OwnerBoundaryValidationError::RedundantBinding { .. }
+        OwnerBoundaryValidationError::BulkUniformStamp {
+            stamped_nodes: 2,
+            ..
+        }
     ));
 
     let run_error = match run::initialize(scenario_with_root(root), &Default::default()) {
