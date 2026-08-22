@@ -1,5 +1,6 @@
 //! **Bind** — band consequences/thresholds and read-only CPU observation.
 
+pub use simthing_core::{Direction, SimPropertyId, SimThingId, SubFieldRole};
 pub use simthing_driver::{
     compile_crossing_consequence_session as action_band_commitments, ActionBandActiveInstance,
     ActionBandNativeLaneAdmission, CrossingConsequenceAdmissionError, CrossingConsequenceBinding,

@@ -30,6 +30,7 @@
 
 | Evidence | PR | Merge SHA | Status |
 |---|---|---|---|
+| **EMBEDDER-GUIDE-EXEMPLARS-0** — cold-reader five-verb guide; finance-toy and network-saturation exemplars; EXP/LN volume-delay law vs staircase; CI admission gate with planted defect | branch evidence | branch evidence | **PROBATION / proof-present / DA-review-pending** — `docs/tests/embedder_guide_exemplars_0_results.md`; pointer unchanged; no coder clearance, merge, or 11.3 |
 | **DOCTRINE-CI-RECONCILE-0** — live detector/anchor/allowlist census; stable compile-fail/rung identity; constitutional EML/telemetry/Root-Contract/ActionBand inventories; workshop placement hard gate; lifecycle closeout event; standard census wiring | branch evidence | branch evidence | **PROBATION / proof-present / DA-review-pending** — `docs/tests/doctrine_ci_reconcile_0_results.md`; seven consumer-bearing shaders KEEP; no coder clearance, merge, pointer movement, or successor work |
 | **RF-COLUMN-MINT-MIGRATE-0** — late ColumnIndex sweep; session-local owner intern/layout; COLUMN-INDEX-MINT retired | branch evidence | branch evidence | **PROBATION** — `docs/tests/rf_column_mint_migrate_0_results.md`; pointer unchanged |
 | **GATED-RATES-EML-REWIRE-0** — Family-C rewire: gated_rates role-pathway EML + mapping StructuralScalarChannel identities; executed gate/successor oracles | #1789 | `059b4896` | **DA-GRADUATED** — pointer advanced to 9.2 |

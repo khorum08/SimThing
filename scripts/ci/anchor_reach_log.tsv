@@ -1258,3 +1258,7 @@ date	role	query	anchors_served	hit
 2026-08-22T04:54:11Z	coding	--grep workshop-candidate-homing	workshop-candidate-homing	hit
 2026-08-22T05:11:11Z	coding	--grep structural graduation certificate	none	none
 2026-08-22T05:11:12Z	coding	--grep zero owned state	none	none
+2026-08-22T15:13:33Z	coding	--grep orientation-harness	orientation-harness-core	hit
+2026-08-22T15:13:33Z	coding	--grep scanner-selftest	scanner-selftest-delta-gate	hit
+2026-08-22T15:19:32Z	coding	--grep orientation-harness-core	orientation-harness-core	hit
+2026-08-22T15:19:32Z	coding	--grep scanner-selftest-delta-gate	scanner-selftest-delta-gate	hit

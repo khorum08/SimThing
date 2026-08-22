@@ -1254,6 +1254,7 @@ run_closing_rung_stock_gates() {
   run_agents_stub_gate
   run_da_treeverify_lifecycle_gate
   run_stock_gate_script "CONSTITUTIONAL-SURFACES" "constitutional_surface_check.sh"
+  run_stock_gate_script "EMBEDDER-GUIDE-EXEMPLARS" "embedder_guide_exemplars_check.sh"
 }
 
 run_doc_budget_gate() {
