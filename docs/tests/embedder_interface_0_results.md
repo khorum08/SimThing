@@ -7,6 +7,7 @@
 - ORIENT-RECEIPT: `a5dc59920dd4`
 - Orientation rule stamp: `61818ff7d4adda84`
 - Coding branch: `codex/embedder-interface-0`
+- Tested code SHA: `466aa0ff`
 - Expected route: `DA-RESERVE(gate-wiring)`
 - Dispatch: board comment `5377904777`
 
@@ -102,8 +103,11 @@ has no mutable values, evaluator, or submission door.
 | Detachability / DOC-BUDGET / orientation / sanctioned digest | PASS |
 | DEAD-EXPORT residue scan | INSPECT — 48 pre-existing test-support exports; no touched or embedder path |
 | Local Doctrine Scan | INSPECT — zero hard failures; heuristic baseline findings only |
-| Agent scan | Pending committed head |
-| Full structural graduation certificate | Pending final head |
+| Agent scan at `466aa0ff` | INSPECT — zero hard failures; one test-budget heuristic for the six required named production-door falsifiers |
+| `cargo test --workspace --all-targets -j 1 --no-fail-fast -- --test-threads=1` at `466aa0ff` | Exit 1 — only the three handoff-declared baseline ClauseThing targets; every other target green |
+| Baseline `ct_2c_category_economy` red | `gpu_category_micro_economy_matches_arena_allocation_oracle`: existing install validation failure |
+| Baseline `ct_3b_4a_gpu_projection` red | `gpu_scatter_projection_matches_cpu_oracle_through_commitment`: existing install validation failure |
+| Baseline `studio_star_naming_pass_0` red | `star_naming_canonical_tp_all_systems_have_display_names`: existing canonical naming mismatch |
 | Hosted Doctrine Scan step inspection | Pending PR head |
 
 ## Scope disposition
