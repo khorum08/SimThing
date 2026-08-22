@@ -13,7 +13,7 @@
 - Coding branch: `coder/embedder-guide-exemplars-0`
 - Canonical base (handoff `base_sha`): `fc313a21e95d0853e93d2e3680ddc671f03bac4b`
 - Live PR base (current master at dispatch): `680e2d423101ba758050fa90d5ed424a46f32d2d`
-- tested_code_sha: pending commit on this branch
+- tested_code_sha: `06c1595d787ccff23e3865cb8d23197b0d714e78`
 - Pointer: 11.2 only. No merge, no pointer movement, no 11.3/12.x.
 
 ## Archaeology (first step)
@@ -83,6 +83,8 @@ staircase does.
 | Detachability | PASS `production_coupling=0 proof_coupling=0 ceiling=0` |
 | `gen_orientation.sh --check` | PASS |
 | `gen_digest.sh --check` | PASS |
+| `lifecycle_schema_pr_gate.sh 680e2d42..06c1595d` | PASS |
+| `agent_scan.sh` at `06c1595d` | PASS `delta_inspect=0` `DOCTRINE-SCAN-VERDICT: PASS failures=0 inspect=0` |
 | Hosted Doctrine Scan | pending push |
 
 ## Scope disposition
