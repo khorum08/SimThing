@@ -66,6 +66,52 @@ pub struct StepOnceOutcome {
     pub boundary_reached: bool,
 }
 
+/// Borrowed, generation-stamped observation of the session's existing CPU shadow.
+///
+/// The handle exposes no mutable slice, evaluator, submission method, or decision
+/// channel. Runtime decisions remain on-device; this is presentation/readback only.
+///
+/// ```compile_fail,E0616
+/// use simthing_driver::SessionShadowView;
+/// fn forge_write(view: SessionShadowView<'_>) {
+///     view.values[0] = 9.0;
+/// }
+/// ```
+pub struct SessionShadowView<'a> {
+    generation: simthing_core::GenerationStamp,
+    tick_index: u64,
+    n_dims: usize,
+    allocator: &'a simthing_gpu::SlotAllocator,
+    values: &'a [f32],
+}
+
+impl SessionShadowView<'_> {
+    pub fn generation(&self) -> simthing_core::GenerationStamp {
+        self.generation
+    }
+
+    pub fn tick_index(&self) -> u64 {
+        self.tick_index
+    }
+
+    pub fn value(
+        &self,
+        simthing: simthing_core::SimThingId,
+        column: simthing_core::ColumnIndex,
+    ) -> Option<f32> {
+        let slot = self.allocator.slot_of(simthing)?.raw() as usize;
+        self.values
+            .get(slot.checked_mul(self.n_dims)?.checked_add(column.raw())?)
+            .copied()
+    }
+
+    pub fn row(&self, simthing: simthing_core::SimThingId) -> Option<&[f32]> {
+        let slot = self.allocator.slot_of(simthing)?.raw() as usize;
+        let start = slot.checked_mul(self.n_dims)?;
+        self.values.get(start..start.checked_add(self.n_dims)?)
+    }
+}
+
 pub struct RunSummary {
     pub ticks_run: u64,
     pub boundaries_run: u64,
@@ -287,6 +333,27 @@ fn journal_mapping_commitments(
 }
 
 impl SimSession {
+    /// Installed kind-free owner × specialization observation.
+    pub fn owner_specializations(
+        &self,
+    ) -> Result<Vec<simthing_core::OwnerSpecializationRow>, simthing_core::OwnerResolutionError>
+    {
+        self.proto
+            .root
+            .owner_specializations(&self.spec_state.specialization)
+    }
+
+    /// Generation-coherent, strictly read-only view over the existing CPU shadow.
+    pub fn shadow_view(&self) -> SessionShadowView<'_> {
+        SessionShadowView {
+            generation: simthing_core::GenerationStamp::new(self.state.anchor_table_generation),
+            tick_index: self.coord.tick_index(),
+            n_dims: self.coord.n_dims() as usize,
+            allocator: &self.proto.allocator,
+            values: &self.coord.shadow,
+        }
+    }
+
     /// Hot-path cycle — pre-tick enqueue + ordinary tick + RF bands + mapping dispatch.
     fn run_hot_cycle(&mut self) -> Result<FabricHotCycleOutcome, SessionError> {
         // EVENT-GENERATION-STAMP-0: generation authority is the tree day/generation

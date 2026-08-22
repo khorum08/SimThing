@@ -10,6 +10,8 @@
 //! than the kind alone, additive-only. Custom kinds can never impersonate
 //! built-in authority kinds.
 
+use crate::ids::SimThingId;
+use crate::owner_channel::{resolve_owners_in_order, OwnerRef, OwnerResolutionError};
 use crate::property::SimThingKindTag;
 use crate::simthing::{SimThing, SimThingKind};
 use serde::{Deserialize, Serialize};
@@ -154,6 +156,43 @@ pub struct SpecializationRow {
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SpecializationReport {
     pub rows: Vec<SpecializationRow>,
+}
+
+/// Kind-free owner × specialization query row.
+///
+/// Ownership comes only from the intrinsic owner channel and specialization
+/// comes only from the admitted report. Deliberately omits `SimThingKind`: a
+/// consumer cannot branch on kind to answer this question through the query.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct OwnerSpecializationRow {
+    pub simthing: SimThingId,
+    pub owner: OwnerRef,
+    pub derived: Vec<String>,
+    pub declared: Vec<String>,
+}
+
+/// Join intrinsic ownership to an already-derived specialization report.
+///
+/// This is a pure, read-only query. A report normally contains one row per
+/// tree node; a missing row is represented honestly by empty profile lists.
+pub fn query_owner_specializations(
+    root: &SimThing,
+    report: &SpecializationReport,
+) -> Result<Vec<OwnerSpecializationRow>, OwnerResolutionError> {
+    resolve_owners_in_order(root).map(|owners| {
+        owners
+            .into_iter()
+            .map(|(simthing, owner)| {
+                let row = report.row_for(simthing.raw());
+                OwnerSpecializationRow {
+                    simthing,
+                    owner,
+                    derived: row.map(|row| row.derived.clone()).unwrap_or_default(),
+                    declared: row.map(|row| row.declared.clone()).unwrap_or_default(),
+                }
+            })
+            .collect()
+    })
 }
 
 impl SpecializationReport {

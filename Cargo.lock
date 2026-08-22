@@ -5326,6 +5326,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "simthing-embedder"
+version = "0.1.0"
+dependencies = [
+ "simthing-core",
+ "simthing-driver",
+ "simthing-sim",
+ "simthing-spec",
+ "tempfile",
+ "thiserror 2.0.18",
+]
+
+[[package]]
 name = "simthing-feeder"
 version = "0.1.0"
 dependencies = [

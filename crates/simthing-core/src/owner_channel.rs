@@ -130,6 +130,24 @@ pub enum OwnerResolutionError {
     BlankBinding { simthing_id: SimThingId },
 }
 
+/// Pure authoring-shape validation for intrinsic owner boundaries.
+///
+/// An explicit binding is lawful only when it changes the inherited owner. A
+/// binding equal to the inherited value is a redundant materialization of the
+/// resolved answer—the flat stamp-every-node shape this channel replaces.
+#[derive(Debug, Clone, PartialEq, Eq, Error)]
+pub enum OwnerBoundaryValidationError {
+    #[error(transparent)]
+    Resolution(#[from] OwnerResolutionError),
+    #[error(
+        "SimThing {simthing_id:?} redundantly stamps inherited owner `{owner}`; absence must inherit"
+    )]
+    RedundantBinding {
+        simthing_id: SimThingId,
+        owner: String,
+    },
+}
+
 /// Bind `owner` onto `node` as its explicit owner.
 ///
 /// This is the ONLY write in this module, and it is a *binding*, not a stamp of a resolved
@@ -207,6 +225,33 @@ pub fn resolve_owners_in_order(
         },
     )?;
     Ok(out)
+}
+
+/// Validate that explicit owner properties encode crossings only.
+///
+/// This is a read-only query over authored tree data. It never normalizes,
+/// stamps, or stores resolved ownership.
+pub fn validate_owner_binding_boundaries(
+    root: &SimThing,
+) -> Result<(), OwnerBoundaryValidationError> {
+    let seed = unowned();
+    let _: Option<()> = walk_inherited_until(
+        root,
+        &seed,
+        &mut |node, inherited| {
+            let declared = declared_owner(node)?;
+            if declared.as_ref().is_some_and(|owner| owner == inherited) {
+                let owner = declared.expect("checked Some");
+                return Err(OwnerBoundaryValidationError::RedundantBinding {
+                    simthing_id: node.id,
+                    owner: owner.into_inner(),
+                });
+            }
+            Ok(declared.unwrap_or_else(|| inherited.clone()))
+        },
+        &mut |_node, _effective| Ok(None),
+    )?;
+    Ok(())
 }
 
 /// True when `node`'s effective owner differs from `parent_owner` — i.e. the edge from its
