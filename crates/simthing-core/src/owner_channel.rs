@@ -130,6 +130,26 @@ pub enum OwnerResolutionError {
     BlankBinding { simthing_id: SimThingId },
 }
 
+/// Pure authoring-shape validation for intrinsic owner boundaries.
+///
+/// A lone explicit binding equal to its inherited owner is lawful authored
+/// data. The forbidden fallback is a multi-node subtree in which every node
+/// explicitly repeats the same owner: the flat stamp-every-node shape this
+/// channel replaces.
+#[derive(Debug, Clone, PartialEq, Eq, Error)]
+pub enum OwnerBoundaryValidationError {
+    #[error(transparent)]
+    Resolution(#[from] OwnerResolutionError),
+    #[error(
+        "subtree rooted at SimThing {subtree_root:?} uniformly stamps owner `{owner}` on all {stamped_nodes} nodes; bind the boundary and let descendants inherit"
+    )]
+    BulkUniformStamp {
+        subtree_root: SimThingId,
+        owner: String,
+        stamped_nodes: usize,
+    },
+}
+
 /// Bind `owner` onto `node` as its explicit owner.
 ///
 /// This is the ONLY write in this module, and it is a *binding*, not a stamp of a resolved
@@ -207,6 +227,60 @@ pub fn resolve_owners_in_order(
         },
     )?;
     Ok(out)
+}
+
+/// Reject the bulk uniform stamp-every-node fallback.
+///
+/// A single deliberately redundant local binding remains lawful. This is a
+/// read-only query over authored tree data; it never normalizes, stamps, or
+/// stores resolved ownership.
+pub fn validate_owner_binding_boundaries(
+    root: &SimThing,
+) -> Result<(), OwnerBoundaryValidationError> {
+    let (_, _, bulk_stamp) = owner_binding_shape(root)?;
+    if let Some((subtree_root, owner, stamped_nodes)) = bulk_stamp {
+        return Err(OwnerBoundaryValidationError::BulkUniformStamp {
+            subtree_root,
+            owner: owner.into_inner(),
+            stamped_nodes,
+        });
+    }
+    Ok(())
+}
+
+type BulkUniformStamp = (SimThingId, OwnerRef, usize);
+
+/// Return `(node_count, uniform_explicit_owner, widest_bulk_stamp)`.
+fn owner_binding_shape(
+    node: &SimThing,
+) -> Result<(usize, Option<OwnerRef>, Option<BulkUniformStamp>), OwnerResolutionError> {
+    let mut node_count = 1;
+    let mut uniform_explicit_owner = declared_owner(node)?;
+    let mut nested_bulk_stamp = None;
+
+    for child in &node.children {
+        let (child_count, child_uniform_owner, child_bulk_stamp) = owner_binding_shape(child)?;
+        node_count += child_count;
+        if nested_bulk_stamp.is_none() {
+            nested_bulk_stamp = child_bulk_stamp;
+        }
+        if !matches!(
+            (&uniform_explicit_owner, &child_uniform_owner),
+            (Some(owner), Some(child_owner)) if owner == child_owner
+        ) {
+            uniform_explicit_owner = None;
+        }
+    }
+
+    let widest_bulk_stamp = if node_count > 1 {
+        uniform_explicit_owner
+            .clone()
+            .map(|owner| (node.id, owner, node_count))
+            .or(nested_bulk_stamp)
+    } else {
+        nested_bulk_stamp
+    };
+    Ok((node_count, uniform_explicit_owner, widest_bulk_stamp))
 }
 
 /// True when `node`'s effective owner differs from `parent_owner` — i.e. the edge from its

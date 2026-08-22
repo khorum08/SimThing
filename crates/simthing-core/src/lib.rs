@@ -126,6 +126,12 @@ pub use overlay_lifecycle_deadline::{
     admit_dissolve_conditions, admit_overlay_lifecycle, establish_overlay_deadline,
     rebase_routed_overlay_duration, OverlayLifecycleAdmitError,
 };
+pub use owner_channel::{
+    bind_owner, declared_owner, is_ownership_crossing, resolve_owner, resolve_owners_in_order,
+    unbind_owner, unowned, validate_owner_binding_boundaries, AuthoredOwnerRefError,
+    OwnerBoundaryValidationError, OwnerInternError, OwnerInterner, OwnerLayoutId, OwnerRef,
+    OwnerResolutionError, OWNER_CHANNEL_PROPERTY_ID, UNOWNED_OWNER_REF,
+};
 pub use placed_participant::{
     validate_and_mint_placed_participants_by_location_id,
     validate_location_ids_have_structural_placements, PlacedParticipant,
@@ -155,8 +161,9 @@ pub use simthing::{
 };
 pub use slot_index::{CellSpaceIndex, SlotIndex};
 pub use specialization::{
-    derive_specializations, kind_identity, seed_profiles, DeclaredSpecialization, KindIdentity,
-    SpecializationError, SpecializationObservations, SpecializationProfile, SpecializationReport,
+    derive_specializations, kind_identity, query_owner_specializations, seed_profiles,
+    DeclaredSpecialization, KindIdentity, OwnerSpecializationRow, SpecializationError,
+    SpecializationObservations, SpecializationProfile, SpecializationReport,
     SpecializationRequirement, SpecializationRow, PROFILE_OWNER_SEAT, PROFILE_SESSION_ROOT,
     PROFILE_SPATIAL,
 };

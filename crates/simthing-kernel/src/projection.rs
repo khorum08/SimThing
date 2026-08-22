@@ -1,9 +1,11 @@
 //! Sparse SimThing tree → dense GPU values buffer.
 //!
-//! Each SimThing's sparse `HashMap<SimPropertyId, PropertyValue>` is written
-//! into the row at `slot_idx * n_dims`, with each property's data placed at
-//! the registry's column range for that property. Untouched columns retain
-//! their previous content (caller's responsibility to zero if needed).
+//! Each SimThing's sparse **registered dimension** properties are written into
+//! the row at `slot_idx * n_dims`, with each property's data placed at the
+//! registry's column range. Intrinsic structural metadata (for example the
+//! owner-channel binding) has no registry range and never enters GPU values.
+//! Untouched columns retain their previous content (caller's responsibility to
+//! zero if needed).
 //!
 //! This is the data-shaping half of what will eventually be the
 //! `EvaluationBatch` builder. The transform-matrix half waits on the
@@ -51,7 +53,12 @@ fn project_node(
         let slot = residency.slot();
         let slot_base = slot.as_usize() * n_dims;
         for (&prop_id, pv) in &node.properties {
-            let range = registry.column_range(prop_id);
+            let Some(range) = registry.try_column_range(prop_id) else {
+                // Sparse SimThing properties also carry intrinsic structural
+                // metadata. The DimensionRegistry remains the sole authority
+                // for which properties own dense GPU columns.
+                continue;
+            };
             let start = slot_base + range.start;
             let end = start + pv.lane_count();
             values[start..end].copy_from_slice(pv.raw_lanes_for_serialization());

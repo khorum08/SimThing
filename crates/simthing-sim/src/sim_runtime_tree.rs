@@ -198,6 +198,15 @@ impl SimRuntimeTree {
         })
     }
 
+    /// Kind-free owner × specialization observation over an admitted report.
+    pub fn owner_specializations(
+        &self,
+        report: &simthing_core::SpecializationReport,
+    ) -> Result<Vec<simthing_core::OwnerSpecializationRow>, simthing_core::OwnerResolutionError>
+    {
+        simthing_core::query_owner_specializations(&self.inner, report)
+    }
+
     pub fn add_property_to_node(
         &mut self,
         target: SimThingId,
