@@ -1,7 +1,7 @@
 # EMBEDDER-INTERFACE-0 results
 
 - Track: 0.0.8.7 RF arena modernization (rung 11.1)
-- Status: **PROBATION / proof-present / DA-review-pending**
+- Status: **COMPLETE — DA-GRADUATED / merged #1800 @ `9929ac98`** (pre-dispatch `5377813514`, review `5380544437`, Fable deep review, graduation ruling on Board #1332)
 - Canonical base: `30491614bb0b4a1ada23a523dfe662cba267b4d1`
 - HD-RECEIPT: `606500a6a787`
 - ORIENT-RECEIPT: `a5dc59920dd4`
