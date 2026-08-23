@@ -15,6 +15,39 @@
 - Live PR base (current master at dispatch): `680e2d423101ba758050fa90d5ed424a46f32d2d`
 - tested_code_sha: `06c1595d787ccff23e3865cb8d23197b0d714e78`
 - Pointer: 11.2 only. No merge, no pointer movement, no 11.3/12.x.
+- Remand: board comment `5383217941` (two verification gaps)
+
+## Remand 5383217941
+
+### Gap 1 — STOP (door cannot reach Field Triad)
+
+The five-verb surface does not execute PALMA potential/corridor, Gu-Yang
+saturating-flux/front, or derived contest/chokepoint.
+
+Exact missing interface, all already-landed in `simthing-driver` /
+`simthing-gpu` and **not** on `simthing-embedder` or `SimSession`:
+
+- `admit_comparative_projections` / `compile_comparative_bundle` /
+  `comparative_projection_cpu_oracle`
+- `compile_palma_n4_field_sweep` / `compile_gu_yang_n4_field_sweeps`
+- `FieldAdjacency` + `execute_field_sweep_cpu_chain` (`simthing-gpu`;
+  embedder has no gpu dependency; driver does not re-export `FieldAdjacency`)
+- `SimSession::open_from_spec` / `step_once` contain zero comparative /
+  palma / guyang references
+
+Wiring those onto Bind/Run would be a new simulation path behind the guide,
+or an engine edit to make `Run::tick` execute the Triad. Both are fenced.
+Generic velocity/aggregate thresholds are not that path. No second field
+mechanism was added.
+
+### Gap 2 — repaired (authored-law check)
+
+The CI gate now resolves local `use … as` / `let` aliases onto the admitted
+`eml_exp_pinned_f32` / `eml_ln_pinned_f32` callees, then requires their
+composition `exp(k * ln x)`. A staircase without that composition REDs as
+`FAIL(authored-law-staircase)`. Selftest `selftest_rename` aliases the
+callees to `exp`/`ln` and the law verdict stays PASS. Cargo still owns the
+runtime bits comparison (`3.4` vs `2.5` at ratio 2.0). CI still runs no cargo.
 
 ## Archaeology (first step)
 
@@ -76,7 +109,7 @@ staircase does.
 |---|---|
 | `cargo test -p simthing-embedder --test finance_toy_0 --test network_saturation_triad_0 --test vendor_door_0 -- --test-threads=1` | PASS — 1 + 2 + 6 |
 | `embedder_guide_exemplars_check.sh --check` | `EMBEDDER-GUIDE-EXEMPLARS-VERDICT: PASS` |
-| `embedder_guide_exemplars_check.sh --selftest` | live_shape / staircase / door_import / guide_path PASS |
+| `embedder_guide_exemplars_check.sh --selftest` | live_shape / staircase / door_import / guide_path / rename PASS |
 | `doc_budget_check.sh --check` | PASS |
 | `test_inventory_drift_check.sh` | PASS (1307/1307) |
 | `test_lifecycle_expiry_check.sh --schema` | PASS |

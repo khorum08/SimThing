@@ -33,8 +33,22 @@ ENGINE_CRATE = re.compile(
 )
 PATH_RE = re.compile(r"crates/simthing-embedder/tests/[A-Za-z0-9_./-]+\.rs")
 FENCE_RE = re.compile(r"```(?:rust)?\n(.*?)```", re.S)
-LAW_RE = re.compile(r"eml_exp_pinned_f32\([\s\S]{0,160}?eml_ln_pinned_f32", re.S)
 STAIR_RE = re.compile(r"else if [^\n]*<\s*[0-9]", re.M)
+ADMITTED_EXP = "eml_exp_pinned_f32"
+ADMITTED_LN = "eml_ln_pinned_f32"
+COMPOSITION_RE = re.compile(
+    rf"{ADMITTED_EXP}\s*\([\s\S]{{0,200}}?{ADMITTED_LN}",
+    re.S,
+)
+USE_BRACE_RE = re.compile(
+    r"use\s+(?:simthing_embedder::)?populate::\{([^}]+)\}"
+)
+USE_PATH_RE = re.compile(
+    r"use\s+(?:simthing_embedder::)?populate::(eml_(?:exp|ln)_pinned_f32)(?:\s+as\s+(\w+))?"
+)
+LET_BIND_RE = re.compile(
+    r"let\s+(\w+)\s*=\s*(?:populate::)?(eml_(?:exp|ln)_pinned_f32)\s*;"
+)
 
 
 def fail(reason: str) -> None:
@@ -44,6 +58,41 @@ def fail(reason: str) -> None:
 
 def pass_ok() -> None:
     print("EMBEDDER-GUIDE-EXEMPLARS-VERDICT: PASS")
+
+
+def resolve_admitted_callees(src: str) -> str:
+    """Map local aliases / let-bindings onto the admitted EXP/LN callees.
+
+    The law check is composition-shaped after this rewrite, so renaming a
+    local identifier does not change the verdict.
+    """
+    aliases: dict[str, str] = {}
+    for block in USE_BRACE_RE.findall(src):
+        for item in block.split(","):
+            item = item.strip()
+            m = re.match(r"(eml_(?:exp|ln)_pinned_f32)(?:\s+as\s+(\w+))?", item)
+            if m:
+                aliases[m.group(2) or m.group(1)] = m.group(1)
+    for m in USE_PATH_RE.finditer(src):
+        aliases[m.group(2) or m.group(1)] = m.group(1)
+    for m in LET_BIND_RE.finditer(src):
+        aliases[m.group(1)] = m.group(2)
+    out = re.sub(rf"(?:populate::)?{ADMITTED_EXP}", ADMITTED_EXP, src)
+    out = re.sub(rf"(?:populate::)?{ADMITTED_LN}", ADMITTED_LN, out)
+    for local, canon in sorted(aliases.items(), key=lambda kv: -len(kv[0])):
+        if local in {ADMITTED_EXP, ADMITTED_LN}:
+            continue
+        out = re.sub(rf"\b{re.escape(local)}\b", canon, out)
+    return out
+
+
+def authored_law_reason(joined: str) -> str | None:
+    resolved = resolve_admitted_callees(joined)
+    if COMPOSITION_RE.search(resolved):
+        return None
+    if STAIR_RE.search(joined):
+        return "authored-law-staircase"
+    return "authored-law-missing-composition"
 
 
 def check_tree(root: Path) -> str | None:
@@ -70,10 +119,9 @@ def check_tree(root: Path) -> str | None:
     joined = "\n".join(bodies)
     # Law before guide-drift so a planted staircase REDs for the law, not a
     # missing rust fence that cited the exp/ln composition.
-    if not LAW_RE.search(joined):
-        if STAIR_RE.search(joined):
-            return "authored-law-staircase"
-        return "authored-law-missing-composition"
+    law = authored_law_reason(joined)
+    if law:
+        return law
     for block in FENCE_RE.findall(text):
         snippet = block.replace("\r\n", "\n")
         if snippet.strip() and snippet not in joined:
@@ -104,13 +152,24 @@ def run_selftest() -> None:
     guide = GUIDE.read_text(encoding="utf-8")
     failures = 0
 
-    def case(name: str, want: str, mutator) -> None:
+    def case(name: str, want: str, mutator, law_only: bool = False) -> None:
         nonlocal failures
         tmp = Path(tempfile.mkdtemp(prefix="embedder-guide-"))
         try:
             write_min_tree(tmp, finance, network, guide)
             mutator(tmp)
-            reason = check_tree(tmp)
+            if law_only:
+                bodies = [
+                    (tmp / "crates/simthing-embedder/tests/finance_toy_0.rs").read_text(
+                        encoding="utf-8"
+                    ),
+                    (tmp / "crates/simthing-embedder/tests/network_saturation_triad_0.rs").read_text(
+                        encoding="utf-8"
+                    ),
+                ]
+                reason = authored_law_reason("\n".join(bodies))
+            else:
+                reason = check_tree(tmp)
             got = (
                 "EMBEDDER-GUIDE-EXEMPLARS-VERDICT: PASS"
                 if reason is None
@@ -161,6 +220,27 @@ def run_selftest() -> None:
         "selftest_guide_path",
         "EMBEDDER-GUIDE-EXEMPLARS-VERDICT: FAIL(guide-path:",
         plant_path,
+    )
+
+    def plant_rename(p: Path) -> None:
+        # Local aliases keep exp(k * ln x) and the staircase rival. The
+        # admitted callees disappear from call sites; only `as` imports remain.
+        path = p / "crates/simthing-embedder/tests/network_saturation_triad_0.rs"
+        body = path.read_text(encoding="utf-8")
+        body = body.replace(
+            "use simthing_embedder::{bind, derive, overlay, populate, run};",
+            "use simthing_embedder::{bind, derive, overlay, populate, run};\n"
+            "use simthing_embedder::populate::{eml_exp_pinned_f32 as exp, eml_ln_pinned_f32 as ln};",
+        )
+        body = body.replace("populate::eml_exp_pinned_f32", "exp")
+        body = body.replace("populate::eml_ln_pinned_f32", "ln")
+        path.write_text(body, encoding="utf-8")
+
+    case(
+        "selftest_rename",
+        "EMBEDDER-GUIDE-EXEMPLARS-VERDICT: PASS",
+        plant_rename,
+        True,
     )
 
     if failures:
