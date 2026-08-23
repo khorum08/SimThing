@@ -1,7 +1,8 @@
 # FIELD-SWEEP-SESSION-SEAM-0 results
 
 - Track: 0.0.8.7 RF arena modernization (remedial 11.1a)
-- Status: **COMPLETE — DA-GRADUATED / merged #1808 @ `1effef3f`** (unified Phase-11 authority `5385811865`, Fable deep review, graduation ruling on Board #1332)
+- Status: **COMPLETE — DA-GRADUATED / merged #1808 @ `1effef3f`** (Fable deep review, graduation ruling on Board #1332)
+- Unified Phase-11 authority: Board comment `5385811865`
 - Branch: `codex/field-sweep-session-seam-0`
 - branch base: `6b012e1377d8d292bff3e8237179053654b470f1`
 - implementation / tested / final head: PR-body-bound after the evidence commit; this file does not self-hash
@@ -33,11 +34,13 @@ groups, preserving transient producer/consumer adjacency while every group
 still executes through the one `dispatch_logical_field_step` path.
 
 `SimSession::open_from_spec_with_admitted_field_sweeps` is the explicit
-consumer seam. It accepts admitted generic registrations and the three Triad
-columns, calls `admit_comparative_from_field_plan`, assigns the admission to
-`SpecSessionState.comparative_projection`, and passes the combined producer +
-comparative chain into `FirstSliceMappingSession`. `install.rs` remains a
-field-plan producer only and contains no Triad-column default.
+consumer seam. After remedial rung 11.1b it accepts a deferred generic
+registration compiler and the three Triad columns, calls
+`admit_comparative_from_field_plan`, assigns the admission to
+`SpecSessionState.comparative_projection`, and invokes the compiler at the live
+post-admission width before passing the combined producer + comparative chain
+into `FirstSliceMappingSession`. `install.rs` remains a field-plan producer only
+and contains no Triad-column default.
 
 ## Load-bearing proof
 
