@@ -6,6 +6,11 @@ pub use simthing_core::{
     SpecializationReport, SpecializationRequirement, PROFILE_OWNER_SEAT, PROFILE_SESSION_ROOT,
     PROFILE_SPATIAL,
 };
+pub use simthing_driver::ComparativeEmitterClass;
+pub use simthing_spec::{
+    compile_eml_gadget_stack, CompiledEmlGadgetStack, EmlGadgetCompileOptions,
+    EmlGadgetInstanceSpec, EmlGadgetStackSpec,
+};
 
 /// Author one validated Owner seat using the canonical scenario metadata shape.
 pub fn owner_seat(
