@@ -51,8 +51,9 @@ withdraws that entry; 11.1d owns the disposition.
 | `cargo test -p simthing-embedder` with adapter match required | PASS — crate tests and 2 compile-fail doctests |
 | fabricated-observable planted mutation | EXPECTED RED — named production-path reason |
 | raw-column planted mutation | EXPECTED RED — named bounded-door reason |
-| inventory drift / lifecycle / detachability / DOC-BUDGET | PASS (lifecycle binds after commit) |
+| inventory drift / lifecycle / detachability / DOC-BUDGET | PASS — lifecycle bound to implementation commit `63c2930e` |
 | generated orientation / sanctioned digest | PASS |
+| Agent scan at `63c2930e` | PASS — zero hard failures and zero inspect flags |
 
 Required anchors acknowledged: `orientation-harness-core@8a365d1c0864` and
 `scanner-selftest-delta-gate@34fb2662baae`.
