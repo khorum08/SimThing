@@ -45,7 +45,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 26e025f8b1e76f7f649571aaa4f2da2c82ca722b4d8c549f5ce9d14b4604f3a6 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | 26eab30ec86c97ac8dfd6beef7ae8c5b4d3f18c38fdaa431ec40ccce855396d3 |
-| design_0_0_8_7_rf_arena_modernization.md | 709b0ac046d6581de5eab72900b38c98689c949391bc3e8a70cfee70287b6d61 |
+| design_0_0_8_7_rf_arena_modernization.md | 052f22c5fb3937ca959d42c9aa272df2e2c9ac88295817240528c18148502fb4 |
 | relay_lint.sh | ae19bdca12e90f6bc988e064f081ff62903034d69bf34b08ffd5c27e352181ba |
 | doctrine_anchors.tsv | ddc753498b845b0e5084222b35f94286e5163cc6479de58883e3ecc3c2d743dd |
 | execution_status_taxonomy.tsv | 6a6a6c3a0cadc89b51b674c23598fa38794185258db6a1e0826c1ba03ec812be |
@@ -68,7 +68,7 @@ Dark properties (1): `fixture::dark_reading` (reasons/spans in `property_admissi
 
 Track state: `open`
 
-> Compact view: 46 completed rungs elided; showing all 17 open rungs plus the 3 most recent completions. Full ladder in the design doc.
+> Compact view: 46 completed rungs elided; showing all 18 open rungs plus the 3 most recent completions. Full ladder in the design doc.
 
 | # | rung | deliverable | exit proof |
 | --- | --- | --- | --- |
@@ -88,6 +88,7 @@ Track state: `open`
 | 9.2 | RF-COLUMN-MINT-MIGRATE-0 | Phase 9: the sweep — remaining sites onto doors; DELETE the exclusion list; reti | **DA-GRADUATED / merged #1792 @ 987f7fd8 — the sweep is done and the mint is closed.** `ColumnIndex::new` is DELETED;... |
 | 10.1 | DOCTRINE-CI-RECONCILE-0 | Phase 10: retire impossible-state detectors; mechanize new gates (EML-addition D | **DA-GRADUATED / merged #1796 @ 9da3f112 — the harness reconciled against the landed type boundaries, census-first, w... |
 | 11.1 | EMBEDDER-INTERFACE-0 | Phase 11: the five-verb Vendor Door API (formalization of existing mechanisms) + | **DA-GRADUATED / merged #1800 @ 9929ac98 — the Vendor Door is five verbs over graduated machinery, and the crate that... |
+| 11.1a | VENDOR-DOOR-TRIAD-SURFACE-0 | **REMEDIAL — minted by DA ruling `5383361312` after a lawful 11.2 STOP.** The Ph | The 11.2 network-saturation full-Triad exemplar becomes writable through Derive/Populate/Overlay/Bind/Run ALONE — no ... |
 | 11.2 | EMBEDDER-GUIDE-EXEMPLARS-0 | Phase 11: DOC-BUDGET-capped Embedder's Guide + two non-game exemplars (finance t | A cold reader stands up a running, serialized, observed tree from the guide ALONE — zero engine edits, zero scenario-... |
 | 11.3 | UNIFIED-FACILITY-CONVERGENCE-WITNESS-0 | **Unified-facility convergence witness — DA-minted 2026-08-17 on Owner direction | **Emergence falsifier in 8.2's shape, not an enumeration.** ONE authored change — data only, **zero code change** — m... |
 | 12.1 | PORTABILITY-PROOF-0 | Phase 12: a domain unrelated to any shipped scenario through the Vendor Door end | Exemplar-seeded domain simulates + STEAD-observes + serializes untouched. |
