@@ -45,7 +45,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 26e025f8b1e76f7f649571aaa4f2da2c82ca722b4d8c549f5ce9d14b4604f3a6 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | 26eab30ec86c97ac8dfd6beef7ae8c5b4d3f18c38fdaa431ec40ccce855396d3 |
-| design_0_0_8_7_rf_arena_modernization.md | 997f9cfc154a2935661ec8b696155f794efef1f273e0c6ceb06ccc5900c034f0 |
+| design_0_0_8_7_rf_arena_modernization.md | 30ebe357d298a9c11ddd67f06e8461febac5f3ba12fb7487f36818f95d95104c |
 | relay_lint.sh | ae19bdca12e90f6bc988e064f081ff62903034d69bf34b08ffd5c27e352181ba |
 | doctrine_anchors.tsv | ddc753498b845b0e5084222b35f94286e5163cc6479de58883e3ecc3c2d743dd |
 | execution_status_taxonomy.tsv | 6a6a6c3a0cadc89b51b674c23598fa38794185258db6a1e0826c1ba03ec812be |
@@ -68,7 +68,7 @@ Dark properties (1): `fixture::dark_reading` (reasons/spans in `property_admissi
 
 Track state: `open`
 
-> Compact view: 46 completed rungs elided; showing all 19 open rungs plus the 3 most recent completions. Full ladder in the design doc.
+> Compact view: 46 completed rungs elided; showing all 22 open rungs plus the 3 most recent completions. Full ladder in the design doc.
 
 | # | rung | deliverable | exit proof |
 | --- | --- | --- | --- |
@@ -90,8 +90,11 @@ Track state: `open`
 | 11.1 | EMBEDDER-INTERFACE-0 | Phase 11: the five-verb Vendor Door API (formalization of existing mechanisms) + | **DA-GRADUATED / merged #1800 @ 9929ac98 — the Vendor Door is five verbs over graduated machinery, and the crate that... |
 | 11.1a | FIELD-SWEEP-SESSION-SEAM-0 | **SUBSTRATE — minted by DA after a SECOND lawful STOP on the 11.2 arc, Owner-dir | **COVERS THE FULL Owner-directed 2026-08-23 SEAM SCOPE.** An ordinary production session accepts admitted PALMA and G... |
 | 11.1b | VENDOR-DOOR-TRIAD-SURFACE-0 | **REMEDIAL — minted by DA ruling `5383361312`, RESEQUENCED to 11.1b behind the s | The 11.2 network-saturation full-Triad exemplar becomes writable through Derive/Populate/Overlay/Bind/Run ALONE — no ... |
+| 11.1c | ACCUMULATOR-CONVERGENCE-SEAL-0 | **CONVERGENCE SEAL — DA-minted after the Owner-directed single-ingress census 20 | **COVERS the Owner-directed 2026-08-23 single-ingress law.** For each of C-8c, C-8d and E-11: the unified Accumulator... |
+| 11.1d | ACTIONBAND-EXECUTION-INGRESS-0 | **INGRESS GAP — DA-minted after the Owner-directed single-ingress census 2026-08 | **COVERS the Owner-directed 2026-08-23 single-ingress law.** A compiled ActionBand execution session is driven by the... |
 | 11.2 | EMBEDDER-GUIDE-EXEMPLARS-0 | Phase 11: DOC-BUDGET-capped Embedder's Guide + two non-game exemplars (finance t | A cold reader stands up a running, serialized, observed tree from the guide ALONE — zero engine edits, zero scenario-... |
 | 11.3 | UNIFIED-FACILITY-CONVERGENCE-WITNESS-0 | **Unified-facility convergence witness — DA-minted 2026-08-17 on Owner direction | **Emergence falsifier in 8.2's shape, not an enumeration.** ONE authored change — data only, **zero code change** — m... |
+| 11.4 | UNIFIED-INGRESS-EXCLUSIVITY-0 | **THE OWNER LAW, MECHANIZED — DA-minted 2026-08-23. 11.3 proves the facilities C | **COVERS the Owner-directed 2026-08-23 single-ingress law.** The gate FAILS a producer graduated without a non-test p... |
 | 12.1 | PORTABILITY-PROOF-0 | Phase 12: a domain unrelated to any shipped scenario through the Vendor Door end | Exemplar-seeded domain simulates + STEAD-observes + serializes untouched. |
 | 12.2 | CORE-CANONIZATION-0 | Phase 12: object model (P0 Root Contract + cycle + EML-ISA + Triad Doors + overl | Canonized sections land; net-prose discipline; SimThing complete and distinct; the three early-discharged canonizatio... |
 
