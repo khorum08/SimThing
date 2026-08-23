@@ -1,7 +1,7 @@
 # DIMENSION-FINALIZATION-SEAM-0 results
 
 - Track: 0.0.8.7 RF arena modernization (remedial 11.1b)
-- Status: **PROBATION — proof present / DA review pending**
+- Status: **COMPLETE — DA-GRADUATED / merged #1813 @ `5d7000bd`** (Fable deep review, graduation ruling on Board #1332)
 - Branch: `codex/dimension-finalization-seam-0`
 - Branch base: `979dcb0e51902587476d8b58d7830352792f434d`
 - Implementation / tested / final head: PR-body-bound after the evidence commit; this file does not self-hash
