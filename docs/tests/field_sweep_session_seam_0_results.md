@@ -1,7 +1,8 @@
 # FIELD-SWEEP-SESSION-SEAM-0 results
 
 - Track: 0.0.8.7 RF arena modernization (remedial 11.1a)
-- Status: **COMPLETE — DA-GRADUATED / merged #1808 @ `1effef3f`** (unified Phase-11 authority `5385811865`, Fable deep review, graduation ruling on Board #1332)
+- Status: **COMPLETE — DA-GRADUATED / merged #1808 @ `1effef3f`** (Fable deep review, graduation ruling on Board #1332)
+- Unified Phase-11 authority: Board comment `5385811865`
 - Branch: `codex/field-sweep-session-seam-0`
 - branch base: `6b012e1377d8d292bff3e8237179053654b470f1`
 - implementation / tested / final head: PR-body-bound after the evidence commit; this file does not self-hash
