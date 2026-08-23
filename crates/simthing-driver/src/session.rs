@@ -689,13 +689,68 @@ impl SimSession {
         scenario: Scenario,
         game_mode: &GameModeSpec,
     ) -> Result<Self, SessionError> {
+        Self::open_from_spec_inner(scenario, game_mode, None)
+    }
+
+    /// Open an ordinary production session with caller-admitted PALMA /
+    /// Gu-Yang field-sweep products and explicit Triad consumer columns.
+    ///
+    /// The supplied registrations are appended to the existing
+    /// [`crate::mapping_runtime::FirstSliceMappingSession`] chain; no second
+    /// executor is constructed. Comparative projections are admitted from the
+    /// ordinary-install field plan and assigned to [`SpecSessionState`] before
+    /// the same mapping session is opened. The install path supplies no Triad
+    /// column defaults.
+    pub fn open_from_spec_with_admitted_field_sweeps(
+        scenario: Scenario,
+        game_mode: &GameModeSpec,
+        field_sweep_registrations: Vec<simthing_gpu::FieldSweepRegistration>,
+        triad_columns: (
+            simthing_core::ColumnIndex,
+            simthing_core::ColumnIndex,
+            simthing_core::ColumnIndex,
+        ),
+        comparative_bands: crate::comparative_projection::ComparativeProjectionBands,
+        authored_opt_out_reason: Option<&'static str>,
+    ) -> Result<Self, SessionError> {
+        if field_sweep_registrations.is_empty() {
+            return Err(SessionError::Mapping(
+                "admitted field-sweep session seam requires at least one registration".into(),
+            ));
+        }
+        Self::open_from_spec_inner(
+            scenario,
+            game_mode,
+            Some((
+                field_sweep_registrations,
+                triad_columns,
+                comparative_bands,
+                authored_opt_out_reason,
+            )),
+        )
+    }
+
+    fn open_from_spec_inner(
+        scenario: Scenario,
+        game_mode: &GameModeSpec,
+        admitted_field_sweeps: Option<(
+            Vec<simthing_gpu::FieldSweepRegistration>,
+            (
+                simthing_core::ColumnIndex,
+                simthing_core::ColumnIndex,
+                simthing_core::ColumnIndex,
+            ),
+            crate::comparative_projection::ComparativeProjectionBands,
+            Option<&'static str>,
+        )>,
+    ) -> Result<Self, SessionError> {
         let mut session = Self::open(scenario)?;
         // I1: `install_atomic` clones registry/root/allocator before
         // running the install, so a failed install leaves the
         // just-built `BoundaryProtocol` untouched. See
         // `docs/adr/install_clone_then_commit.md`.
         let mut admitted = session.scenario.root.clone();
-        let spec_state = install_atomic(
+        let mut spec_state = install_atomic(
             game_mode,
             &session.scenario,
             &mut session.proto.registry,
@@ -703,6 +758,39 @@ impl SimSession {
             &mut session.proto.allocator,
         )?;
         session.proto.root = SimRuntimeTree::admit(admitted);
+        let mut field_sweep_registrations = Vec::new();
+        if let Some((mut admitted, triad_columns, bands, authored_opt_out_reason)) =
+            admitted_field_sweeps
+        {
+            if !game_mode.mapping_execution_profile.enables_execution()
+                || game_mode.region_fields.is_empty()
+            {
+                return Err(SessionError::Mapping(
+                    "admitted field-sweep session seam requires an enabled ordinary mapping profile and at least one region field"
+                        .into(),
+                ));
+            }
+            let field_plan = spec_state.field_plan_admission.as_ref().ok_or_else(|| {
+                SessionError::Mapping(
+                    "admitted field-sweep session seam requires ordinary-install field-plan admission"
+                        .into(),
+                )
+            })?;
+            let comparative = crate::comparative_default_birth::admit_comparative_from_field_plan(
+                &mut session.proto.registry,
+                field_plan,
+                triad_columns.0,
+                triad_columns.1,
+                triad_columns.2,
+                bands,
+                authored_opt_out_reason,
+            )
+            .map_err(|error| SessionError::Mapping(error.to_string()))?;
+            admitted.extend(comparative.bundle.registrations.iter().cloned());
+            spec_state.comparative_projection = Some(comparative);
+            spec_state.property_admission = session.proto.registry.property_admission_report();
+            field_sweep_registrations = admitted;
+        }
         apply_resource_economy_opt_in(&mut session.proto.flags, game_mode);
         session.resource_flow_execution_profile = game_mode.resource_flow_execution_profile;
         session.resource_flow_flag_source =
@@ -711,7 +799,7 @@ impl SimSession {
             validate_resource_flow_flat_star_execution(game_mode, &spec_state)?;
         }
         session.install_spec_state(spec_state)?;
-        session.install_session_mapping(game_mode)?;
+        session.install_session_mapping(game_mode, &field_sweep_registrations)?;
         Ok(session)
     }
 
@@ -743,13 +831,17 @@ impl SimSession {
     /// the game mode authored the explicit profile, one region field, and a
     /// pressure binding. Absence of any piece leaves the session mapping-free;
     /// a half-authored configuration is a hard open error, never a silent skip.
-    fn install_session_mapping(&mut self, game_mode: &GameModeSpec) -> Result<(), SessionError> {
+    fn install_session_mapping(
+        &mut self,
+        game_mode: &GameModeSpec,
+        admitted_field_registrations: &[simthing_gpu::FieldSweepRegistration],
+    ) -> Result<(), SessionError> {
         if !game_mode.mapping_execution_profile.enables_execution()
             || game_mode.region_fields.is_empty()
         {
             return Ok(());
         }
-        if game_mode.region_fields.len() != 1 {
+        if admitted_field_registrations.is_empty() && game_mode.region_fields.len() != 1 {
             return Err(SessionError::Mapping(
                 "session-loop mapping v1 integrates exactly one region field".into(),
             ));
@@ -846,11 +938,20 @@ impl SimSession {
                 })
             }
         };
-        let mapping = crate::mapping_runtime::FirstSliceMappingSession::open(
-            &self.state.ctx,
-            game_mode.mapping_execution_profile,
-            field,
-        )
+        let mapping = if admitted_field_registrations.is_empty() {
+            crate::mapping_runtime::FirstSliceMappingSession::open(
+                &self.state.ctx,
+                game_mode.mapping_execution_profile,
+                field,
+            )
+        } else {
+            crate::mapping_runtime::FirstSliceMappingSession::open_with_admitted_field_sweeps(
+                &self.state.ctx,
+                game_mode.mapping_execution_profile,
+                field,
+                admitted_field_registrations,
+            )
+        }
         .map_err(|e| SessionError::Mapping(format!("{e:?}")))?;
         let scatter = simthing_gpu::IndexedScatterOp::new(&self.state.ctx);
         self.mapping = Some(SessionMappingState {
