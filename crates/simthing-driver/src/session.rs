@@ -25,6 +25,10 @@ use crate::simulation_fabric::{
 use crate::spec_replay::{self, make_spec_snapshot_record};
 use crate::spec_session::SpecSessionState;
 
+type FieldSweepCompilerResult =
+    Result<Vec<simthing_gpu::FieldSweepRegistration>, simthing_gpu::FieldSweepAdmissionError>;
+type FieldSweepCompilerFn = fn(u32) -> FieldSweepCompilerResult;
+
 #[derive(Debug, Error)]
 pub enum SessionError {
     #[error("gpu init: {0}")]
@@ -689,22 +693,23 @@ impl SimSession {
         scenario: Scenario,
         game_mode: &GameModeSpec,
     ) -> Result<Self, SessionError> {
-        Self::open_from_spec_inner(scenario, game_mode, None)
+        Self::open_from_spec_inner::<FieldSweepCompilerFn>(scenario, game_mode, None)
     }
 
-    /// Open an ordinary production session with caller-admitted PALMA /
-    /// Gu-Yang field-sweep products and explicit Triad consumer columns.
+    /// Open an ordinary production session with deferred PALMA / Gu-Yang
+    /// field-sweep compilation and explicit Triad consumer columns.
     ///
-    /// The supplied registrations are appended to the existing
+    /// The compiler is invoked once with the live post-admission registry
+    /// width. Its registrations are appended to the existing
     /// [`crate::mapping_runtime::FirstSliceMappingSession`] chain; no second
     /// executor is constructed. Comparative projections are admitted from the
     /// ordinary-install field plan and assigned to [`SpecSessionState`] before
     /// the same mapping session is opened. The install path supplies no Triad
     /// column defaults.
-    pub fn open_from_spec_with_admitted_field_sweeps(
+    pub fn open_from_spec_with_admitted_field_sweeps<F>(
         scenario: Scenario,
         game_mode: &GameModeSpec,
-        field_sweep_registrations: Vec<simthing_gpu::FieldSweepRegistration>,
+        compile_field_sweeps: F,
         triad_columns: (
             simthing_core::ColumnIndex,
             simthing_core::ColumnIndex,
@@ -712,17 +717,20 @@ impl SimSession {
         ),
         comparative_bands: crate::comparative_projection::ComparativeProjectionBands,
         authored_opt_out_reason: Option<&'static str>,
-    ) -> Result<Self, SessionError> {
-        if field_sweep_registrations.is_empty() {
-            return Err(SessionError::Mapping(
-                "admitted field-sweep session seam requires at least one registration".into(),
-            ));
-        }
+    ) -> Result<Self, SessionError>
+    where
+        F: FnOnce(
+            u32,
+        ) -> Result<
+            Vec<simthing_gpu::FieldSweepRegistration>,
+            simthing_gpu::FieldSweepAdmissionError,
+        >,
+    {
         Self::open_from_spec_inner(
             scenario,
             game_mode,
             Some((
-                field_sweep_registrations,
+                compile_field_sweeps,
                 triad_columns,
                 comparative_bands,
                 authored_opt_out_reason,
@@ -730,11 +738,11 @@ impl SimSession {
         )
     }
 
-    fn open_from_spec_inner(
+    fn open_from_spec_inner<F>(
         scenario: Scenario,
         game_mode: &GameModeSpec,
         admitted_field_sweeps: Option<(
-            Vec<simthing_gpu::FieldSweepRegistration>,
+            F,
             (
                 simthing_core::ColumnIndex,
                 simthing_core::ColumnIndex,
@@ -743,7 +751,10 @@ impl SimSession {
             crate::comparative_projection::ComparativeProjectionBands,
             Option<&'static str>,
         )>,
-    ) -> Result<Self, SessionError> {
+    ) -> Result<Self, SessionError>
+    where
+        F: FnOnce(u32) -> FieldSweepCompilerResult,
+    {
         let mut session = Self::open(scenario)?;
         // I1: `install_atomic` clones registry/root/allocator before
         // running the install, so a failed install leaves the
@@ -758,8 +769,8 @@ impl SimSession {
             &mut session.proto.allocator,
         )?;
         session.proto.root = SimRuntimeTree::admit(admitted);
-        let mut field_sweep_registrations = Vec::new();
-        if let Some((mut admitted, triad_columns, bands, authored_opt_out_reason)) =
+        let mut field_sweep_install = None;
+        if let Some((compile_field_sweeps, triad_columns, bands, authored_opt_out_reason)) =
             admitted_field_sweeps
         {
             if !game_mode.mapping_execution_profile.enables_execution()
@@ -786,10 +797,10 @@ impl SimSession {
                 authored_opt_out_reason,
             )
             .map_err(|error| SessionError::Mapping(error.to_string()))?;
-            admitted.extend(comparative.bundle.registrations.iter().cloned());
+            let derived_field_registrations = comparative.bundle.registrations.clone();
             spec_state.comparative_projection = Some(comparative);
             spec_state.property_admission = session.proto.registry.property_admission_report();
-            field_sweep_registrations = admitted;
+            field_sweep_install = Some((compile_field_sweeps, derived_field_registrations));
         }
         apply_resource_economy_opt_in(&mut session.proto.flags, game_mode);
         session.resource_flow_execution_profile = game_mode.resource_flow_execution_profile;
@@ -799,7 +810,7 @@ impl SimSession {
             validate_resource_flow_flat_star_execution(game_mode, &spec_state)?;
         }
         session.install_spec_state(spec_state)?;
-        session.install_session_mapping(game_mode, &field_sweep_registrations)?;
+        session.install_session_mapping(game_mode, field_sweep_install)?;
         Ok(session)
     }
 
@@ -831,17 +842,20 @@ impl SimSession {
     /// the game mode authored the explicit profile, one region field, and a
     /// pressure binding. Absence of any piece leaves the session mapping-free;
     /// a half-authored configuration is a hard open error, never a silent skip.
-    fn install_session_mapping(
+    fn install_session_mapping<F>(
         &mut self,
         game_mode: &GameModeSpec,
-        admitted_field_registrations: &[simthing_gpu::FieldSweepRegistration],
-    ) -> Result<(), SessionError> {
+        field_sweep_install: Option<(F, Vec<simthing_gpu::FieldSweepRegistration>)>,
+    ) -> Result<(), SessionError>
+    where
+        F: FnOnce(u32) -> FieldSweepCompilerResult,
+    {
         if !game_mode.mapping_execution_profile.enables_execution()
             || game_mode.region_fields.is_empty()
         {
             return Ok(());
         }
-        if admitted_field_registrations.is_empty() && game_mode.region_fields.len() != 1 {
+        if field_sweep_install.is_none() && game_mode.region_fields.len() != 1 {
             return Err(SessionError::Mapping(
                 "session-loop mapping v1 integrates exactly one region field".into(),
             ));
@@ -938,19 +952,22 @@ impl SimSession {
                 })
             }
         };
-        let mapping = if admitted_field_registrations.is_empty() {
-            crate::mapping_runtime::FirstSliceMappingSession::open(
+        let mapping = match field_sweep_install {
+            None => crate::mapping_runtime::FirstSliceMappingSession::open(
                 &self.state.ctx,
                 game_mode.mapping_execution_profile,
                 field,
-            )
-        } else {
-            crate::mapping_runtime::FirstSliceMappingSession::open_with_admitted_field_sweeps(
-                &self.state.ctx,
-                game_mode.mapping_execution_profile,
-                field,
-                admitted_field_registrations,
-            )
+            ),
+            Some((compile_field_sweeps, derived_field_registrations)) => {
+                crate::mapping_runtime::FirstSliceMappingSession::open_with_finalized_field_sweeps(
+                    &self.state.ctx,
+                    game_mode.mapping_execution_profile,
+                    field,
+                    &self.proto.registry,
+                    &derived_field_registrations,
+                    compile_field_sweeps,
+                )
+            }
         }
         .map_err(|e| SessionError::Mapping(format!("{e:?}")))?;
         let scatter = simthing_gpu::IndexedScatterOp::new(&self.state.ctx);

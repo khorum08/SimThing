@@ -33,11 +33,13 @@ groups, preserving transient producer/consumer adjacency while every group
 still executes through the one `dispatch_logical_field_step` path.
 
 `SimSession::open_from_spec_with_admitted_field_sweeps` is the explicit
-consumer seam. It accepts admitted generic registrations and the three Triad
-columns, calls `admit_comparative_from_field_plan`, assigns the admission to
-`SpecSessionState.comparative_projection`, and passes the combined producer +
-comparative chain into `FirstSliceMappingSession`. `install.rs` remains a
-field-plan producer only and contains no Triad-column default.
+consumer seam. After remedial rung 11.1b it accepts a deferred generic
+registration compiler and the three Triad columns, calls
+`admit_comparative_from_field_plan`, assigns the admission to
+`SpecSessionState.comparative_projection`, and invokes the compiler at the live
+post-admission width before passing the combined producer + comparative chain
+into `FirstSliceMappingSession`. `install.rs` remains a field-plan producer only
+and contains no Triad-column default.
 
 ## Load-bearing proof
 
