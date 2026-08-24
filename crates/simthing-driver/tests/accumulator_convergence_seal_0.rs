@@ -10,34 +10,34 @@ use simthing_spec::{GameModeSpec, ResourceEconomySpec, ResourceFlowSpec};
 use std::fs;
 use std::path::{Path, PathBuf};
 
-#[test]
-fn retired_transfer_selector_is_an_authored_red() {
-    let key = retired_mode_key();
-    let mut authored = empty_resource_economy();
-    authored
-        .as_object_mut()
-        .expect("resource economy object")
-        .insert(key.clone(), Value::String("TransferOnly".into()));
+#[derive(Clone, Copy)]
+enum AdmissionSurface {
+    ResourceEconomy,
+    ResourceFlow,
+    GameMode,
+}
 
-    assert_unknown_field::<ResourceEconomySpec>(authored, &key, "transfer workload");
+struct AuthoredSelectorCase {
+    workload: &'static str,
+    key: String,
+    authored: Value,
+    surface: AdmissionSurface,
 }
 
 #[test]
-fn retired_emission_selector_is_an_authored_red() {
-    let key = retired_mode_key();
-    let mut authored = empty_resource_economy();
-    authored
+fn retired_authored_selectors_are_workload_specific_reds() {
+    let mode_key = retired_mode_key();
+    let mut transfer = empty_resource_economy();
+    transfer
         .as_object_mut()
-        .expect("resource economy object")
-        .insert(key.clone(), Value::String("EmissionOnly".into()));
-
-    assert_unknown_field::<ResourceEconomySpec>(authored, &key, "emission workload");
-}
-
-#[test]
-fn retired_resource_flow_selector_is_an_authored_red() {
-    let key = retired_mode_key();
-    let mut authored = json!({
+        .expect("transfer economy object")
+        .insert(mode_key.clone(), Value::String("TransferOnly".into()));
+    let mut emission = empty_resource_economy();
+    emission
+        .as_object_mut()
+        .expect("emission economy object")
+        .insert(mode_key.clone(), Value::String("EmissionOnly".into()));
+    let mut resource_flow = json!({
         "arenas": [],
         "couplings": [],
         "base_obligations": [],
@@ -45,24 +45,57 @@ fn retired_resource_flow_selector_is_an_authored_red() {
         "gated_rates": [],
         "need_bindings": []
     });
-    authored
+    resource_flow
         .as_object_mut()
         .expect("resource flow object")
-        .insert(key.clone(), Value::String("FlatStarOptIn".into()));
-
-    assert_unknown_field::<ResourceFlowSpec>(authored, &key, "Resource Flow workload");
-}
-
-#[test]
-fn retired_execution_profile_is_an_authored_red() {
-    let key = ["resource_flow_execution", "_profile"].concat();
-    let mut authored = serde_json::to_value(GameModeSpec::default()).expect("serialize game mode");
-    authored
+        .insert(mode_key.clone(), Value::String("FlatStarOptIn".into()));
+    let profile_key = ["resource_flow_execution", "_profile"].concat();
+    let mut game_mode = serde_json::to_value(GameModeSpec::default()).expect("serialize game mode");
+    game_mode
         .as_object_mut()
         .expect("game mode object")
-        .insert(key.clone(), Value::String("DefaultDisabled".into()));
+        .insert(profile_key.clone(), Value::String("DefaultDisabled".into()));
 
-    assert_unknown_field::<GameModeSpec>(authored, &key, "game-mode admission");
+    let cases = [
+        AuthoredSelectorCase {
+            workload: "ACCUMULATOR-CONVERGENCE-C8C-LEGACY-ROUTE",
+            key: mode_key.clone(),
+            authored: transfer,
+            surface: AdmissionSurface::ResourceEconomy,
+        },
+        AuthoredSelectorCase {
+            workload: "ACCUMULATOR-CONVERGENCE-C8D-LEGACY-ROUTE",
+            key: mode_key.clone(),
+            authored: emission,
+            surface: AdmissionSurface::ResourceEconomy,
+        },
+        AuthoredSelectorCase {
+            workload: "ACCUMULATOR-CONVERGENCE-E11-LEGACY-ROUTE",
+            key: mode_key,
+            authored: resource_flow,
+            surface: AdmissionSurface::ResourceFlow,
+        },
+        AuthoredSelectorCase {
+            workload: "ACCUMULATOR-CONVERGENCE-E11-EXECUTION-PROFILE",
+            key: profile_key,
+            authored: game_mode,
+            surface: AdmissionSurface::GameMode,
+        },
+    ];
+
+    for case in cases {
+        match case.surface {
+            AdmissionSurface::ResourceEconomy => {
+                assert_unknown_field::<ResourceEconomySpec>(case.authored, &case.key, case.workload)
+            }
+            AdmissionSurface::ResourceFlow => {
+                assert_unknown_field::<ResourceFlowSpec>(case.authored, &case.key, case.workload)
+            }
+            AdmissionSurface::GameMode => {
+                assert_unknown_field::<GameModeSpec>(case.authored, &case.key, case.workload)
+            }
+        }
+    }
 }
 
 #[test]
