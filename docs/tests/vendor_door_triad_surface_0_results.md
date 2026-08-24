@@ -1,7 +1,7 @@
 # VENDOR-DOOR-TRIAD-SURFACE-0 results
 
 - Track: 0.0.8.7 RF arena modernization (rung 11.1c)
-- Status: **PROBATION — proof present / DA review pending**
+- Status: **COMPLETE — DA-GRADUATED / merged #1811 @ `36ffbc92`** (Fable deep review, graduation ruling on Board #1332)
 - Handoff baseline: `9e81ef6aa12725d185372eed3ab8c7c8bffc9cb8`
 - Reconciled execution base: `8cbdbd04cf1660c452cca0ea14a7b10d10a3009d`
 - Implementation / tested_code_sha: `502653b0e30b200d4a436ecb4d2a46dfac8b7e7a`
