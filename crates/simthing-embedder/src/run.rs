@@ -24,6 +24,43 @@ pub fn initialize(
     Ok(SimSession::open_from_spec(scenario, game_mode)?)
 }
 
+/// Initialize the single production session with deferred admitted field
+/// compilation and explicit, bounded-authored Triad columns.
+///
+/// Admission and execution are owned by the existing driver seam; this facade
+/// validates the same owner boundary as [`initialize`] and delegates the
+/// compiler so it receives the live post-admission registry width.
+pub fn initialize_with_admitted_field_sweeps<F>(
+    scenario: Scenario,
+    game_mode: &GameModeSpec,
+    compile_field_sweeps: F,
+    triad_columns: (
+        crate::bind::ColumnIndex,
+        crate::bind::ColumnIndex,
+        crate::bind::ColumnIndex,
+    ),
+    comparative_bands: crate::bind::ComparativeProjectionBands,
+    authored_opt_out_reason: Option<&'static str>,
+) -> Result<SimSession, InitializeError>
+where
+    F: FnOnce(
+        u32,
+    ) -> Result<
+        Vec<crate::bind::FieldSweepRegistration>,
+        crate::bind::FieldSweepAdmissionError,
+    >,
+{
+    simthing_core::validate_owner_binding_boundaries(&scenario.root)?;
+    Ok(SimSession::open_from_spec_with_admitted_field_sweeps(
+        scenario,
+        game_mode,
+        compile_field_sweeps,
+        triad_columns,
+        comparative_bands,
+        authored_opt_out_reason,
+    )?)
+}
+
 /// Start/select paced or continuous scheduling over the same kernel.
 pub fn start(session: &mut SimSession, posture: ExecutionPosture) -> Result<(), SessionError> {
     session.set_execution_posture(posture)

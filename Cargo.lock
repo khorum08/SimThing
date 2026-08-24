@@ -5331,6 +5331,7 @@ version = "0.1.0"
 dependencies = [
  "simthing-core",
  "simthing-driver",
+ "simthing-gpu",
  "simthing-sim",
  "simthing-spec",
  "tempfile",

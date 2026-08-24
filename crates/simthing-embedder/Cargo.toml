@@ -8,6 +8,7 @@ publish = false
 [dependencies]
 simthing-core = { path = "../simthing-core" }
 simthing-driver = { path = "../simthing-driver" }
+simthing-gpu = { path = "../simthing-gpu" }
 simthing-sim = { path = "../simthing-sim" }
 simthing-spec = { path = "../simthing-spec" }
 thiserror = { workspace = true }
