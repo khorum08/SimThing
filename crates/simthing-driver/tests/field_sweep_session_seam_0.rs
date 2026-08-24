@@ -1,7 +1,9 @@
 //! FIELD-SWEEP-SESSION-SEAM-0 — ordinary-session consumption of admitted
 //! PALMA / Gu-Yang products through the existing field-sweep executor.
 //! HD-RECEIPT: `d08d00d27308`
+//! DIMENSION-FINALIZATION-SEAM-0 HD-RECEIPT: `4ed070f7ace4`
 
+use std::cell::Cell;
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -11,12 +13,12 @@ use simthing_core::{
     SimProperty, SimThing, SimThingKind, SlotIndex, SubFieldRole, SubFieldSpec,
 };
 use simthing_driver::{
-    admit_comparative_from_field_plan, compile_gu_yang_n4_field_sweeps,
-    compile_palma_n4_field_sweep, compile_stead_overlay_parameterized_n4_field_sweep,
-    preview_install, ComparativeProjectionBands, FirstSliceSeed, GuYangN4FieldSweepSpec,
-    PalmaN4FieldSweepSpec, Scenario, SimSession, SteadOverlayParameterizedN4Spec,
+    compile_gu_yang_n4_field_sweeps, compile_palma_n4_field_sweep,
+    compile_stead_overlay_parameterized_n4_field_sweep, preview_install,
+    ComparativeProjectionBands, FirstSliceSeed, GuYangN4FieldSweepSpec, PalmaN4FieldSweepSpec,
+    Scenario, SimSession, SteadOverlayParameterizedN4Spec,
 };
-use simthing_gpu::{FieldSweepRegistration, SlotAllocator};
+use simthing_gpu::{FieldSweepAdmissionError, FieldSweepRegistration, SlotAllocator};
 use simthing_spec::{
     compile_property, ArenaPressureBindingSpec, ArenaSpec, ExplicitParticipantSpec,
     FirstSliceCommitmentDirectionSpec, FirstSliceCommitmentSpec, FissionPolicySpec, GameModeSpec,
@@ -76,7 +78,7 @@ fn region_field(name: &str, source_col: u32, target_col: u32, n_dims: u32) -> Re
     }
 }
 
-fn ordinary_fixture() -> (Scenario, GameModeSpec, u32) {
+fn ordinary_fixture() -> (Scenario, GameModeSpec) {
     let mut registry = DimensionRegistry::new();
     compile_property(
         &PropertySpec {
@@ -169,7 +171,7 @@ fn ordinary_fixture() -> (Scenario, GameModeSpec, u32) {
     });
     let second = region_field("emitter_b", 2, 3, 128);
 
-    let mut game_mode = GameModeSpec {
+    let game_mode = GameModeSpec {
         id: "field_sweep_session_seam_0".into(),
         display_name: String::new(),
         description: String::new(),
@@ -208,37 +210,10 @@ fn ordinary_fixture() -> (Scenario, GameModeSpec, u32) {
         mapping_execution_profile: MappingExecutionProfile::SparseRegionFieldV1,
     };
 
-    let preview = preview_install(
-        &game_mode,
-        &scenario,
-        &scenario.registry,
-        &scenario.root,
-        &allocator,
-    )
-    .expect("ordinary install preview");
-    let mut projected_registry = preview.registry.clone();
-    admit_comparative_from_field_plan(
-        &mut projected_registry,
-        preview
-            .state
-            .field_plan_admission
-            .as_ref()
-            .expect("preview field plan"),
-        col(10),
-        col(11),
-        col(12),
-        ComparativeProjectionBands::default(),
-        None,
-    )
-    .expect("project explicit comparative columns");
-    let final_n_dims = projected_registry.total_columns as u32;
-    for field in &mut game_mode.region_fields {
-        field.n_dims = final_n_dims;
-    }
-    (scenario, game_mode, final_n_dims)
+    (scenario, game_mode)
 }
 
-fn admitted_products(n_dims: u32) -> Vec<FieldSweepRegistration> {
+fn admitted_products(n_dims: u32) -> Result<Vec<FieldSweepRegistration>, FieldSweepAdmissionError> {
     let palma = compile_palma_n4_field_sweep(PalmaN4FieldSweepSpec {
         width: 2,
         height: 2,
@@ -247,8 +222,7 @@ fn admitted_products(n_dims: u32) -> Vec<FieldSweepRegistration> {
         w_col: col(13),
         destination_slot: SlotIndex::new(0),
         inf_sentinel: f32::MAX,
-    })
-    .expect("admitted PALMA registration");
+    })?;
     let guyang = compile_gu_yang_n4_field_sweeps(GuYangN4FieldSweepSpec {
         width: 2,
         height: 2,
@@ -258,8 +232,7 @@ fn admitted_products(n_dims: u32) -> Vec<FieldSweepRegistration> {
         saturation: 1.0,
         chi: 0.1,
         dt: 1.0,
-    })
-    .expect("admitted Gu-Yang registrations");
+    })?;
     // Keep the ordinary one-shot source alive for the configured propagation
     // hop using another admitted registration through the same executor.
     let resident_copy =
@@ -271,20 +244,32 @@ fn admitted_products(n_dims: u32) -> Vec<FieldSweepRegistration> {
             falloff_col: col(14),
             output_col: col(0),
             dt: 1.0,
-        })
-        .expect("resident source continuation registration");
-    vec![palma, guyang[0].clone(), guyang[1].clone(), resident_copy]
+        })?;
+    Ok(vec![
+        palma,
+        guyang[0].clone(),
+        guyang[1].clone(),
+        resident_copy,
+    ])
 }
 
 #[test]
 fn ordinary_session_executes_admitted_palma_guyang_and_observes_comparative() {
-    let (scenario, game_mode, n_dims) = ordinary_fixture();
-    let products = admitted_products(n_dims);
-    let product_count = products.len();
+    let (scenario, game_mode) = ordinary_fixture();
+    let product_count = 4usize;
+    let authored_n_dims: Vec<_> = game_mode
+        .region_fields
+        .iter()
+        .map(|field| field.n_dims)
+        .collect();
+    let compiled_n_dims = Cell::new(None);
     let mut session = match SimSession::open_from_spec_with_admitted_field_sweeps(
         scenario,
         &game_mode,
-        products,
+        |n_dims| {
+            compiled_n_dims.set(Some(n_dims));
+            admitted_products(n_dims)
+        },
         (col(10), col(11), col(12)),
         ComparativeProjectionBands::default(),
         None,
@@ -297,6 +282,25 @@ fn ordinary_session_executes_admitted_palma_guyang_and_observes_comparative() {
         }
         Err(error) => panic!("ordinary production session must open: {error}"),
     };
+    assert_eq!(
+        game_mode
+            .region_fields
+            .iter()
+            .map(|field| field.n_dims)
+            .collect::<Vec<_>>(),
+        authored_n_dims,
+        "authored RegionFieldSpec dimensions must remain untouched"
+    );
+    assert_eq!(
+        compiled_n_dims.get(),
+        Some(session.proto.registry.total_columns as u32),
+        "caller registrations must compile at the live post-admission registry width"
+    );
+    let adapter = session.state.ctx.adapter.get_info();
+    eprintln!(
+        "DIMENSION-FINALIZATION-SEAM-0 adapter={} backend={:?}",
+        adapter.name, adapter.backend
+    );
 
     let comparative = session
         .spec_state
@@ -306,6 +310,20 @@ fn ordinary_session_executes_admitted_palma_guyang_and_observes_comparative() {
     let comparative_registration_count = comparative.bundle.registrations.len();
     let margin_col = comparative.outputs.margin_col;
     let base_registration_count = 1usize;
+    let n_dims = session
+        .mapping
+        .as_ref()
+        .expect("ordinary mapping state")
+        .hot
+        .mapping
+        .preview()
+        .stencil
+        .n_dims;
+    assert_eq!(
+        n_dims,
+        compiled_n_dims.get().expect("caller compiler width"),
+        "ordinary mapping and caller registrations must share the one finalized width"
+    );
 
     let mapping = session.mapping.as_mut().expect("ordinary mapping state");
     assert_eq!(
@@ -350,6 +368,40 @@ fn session_seam_mutant_and_shape_seals_remain_closed() {
     second_field_execution_path_mutant_guard();
     ordinary_install_never_defaults_triad_columns();
     comparative_observable_names_have_no_public_driver_functions();
+}
+
+#[test]
+fn dimension_finalization_single_authority_and_no_prediction_seals() {
+    dimension_finalization_authority_mutant_guard();
+    caller_width_workaround_removal_guard();
+}
+
+fn dimension_finalization_authority_mutant_guard() {
+    let sources = production_rust_sources();
+    let authorities: Vec<_> = sources
+        .iter()
+        .flat_map(|(path, source)| {
+            source.lines().enumerate().filter_map(move |(line, text)| {
+                text.contains("DIMENSION-FINALIZATION-SEAM-0-AUTHORITY")
+                    .then_some((path.clone(), line + 1))
+            })
+        })
+        .collect();
+    assert_eq!(
+        authorities.len(),
+        1,
+        "DIMENSION-FINALIZATION-SEAM-0-SECOND-AUTHORITY: exactly one production site may own the post-admission registry width; got {authorities:?}"
+    );
+}
+
+fn caller_width_workaround_removal_guard() {
+    let witness = include_str!("field_sweep_session_seam_0.rs");
+    let authored_rewrite = ["field.n_", "dims ="].concat();
+    let projection_token = ["projected_", "registry"].concat();
+    assert!(
+        !witness.contains(&authored_rewrite) && !witness.contains(&projection_token),
+        "DIMENSION-FINALIZATION-SEAM-0-CALLER-WIDTH-WORKAROUND: the witness must neither rewrite authored field dimensions nor project the final registry width"
+    );
 }
 
 fn comparative_assignment_removal_mutant_guard() {
@@ -402,7 +454,7 @@ fn ordinary_install_never_defaults_triad_columns() {
         "FIELD-SWEEP-SESSION-SEAM-INSTALL-TRIAD-DEFAULT: ordinary install must only mint the field plan; Triad columns stay explicit consumer inputs"
     );
 
-    let (scenario, game_mode, _) = ordinary_fixture();
+    let (scenario, game_mode) = ordinary_fixture();
     let mut allocator = SlotAllocator::new();
     allocator.populate_from_tree(&scenario.root);
     let preview = preview_install(

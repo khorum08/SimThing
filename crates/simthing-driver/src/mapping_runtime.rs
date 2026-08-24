@@ -6,18 +6,19 @@
 
 use simthing_core::{
     column_aware_reduction_op, eml_opcode, AccumulatorOp, ColumnAwareReductionCombine,
-    ColumnAwareReductionSpec, ColumnIndex, CombineFn, ConsumeMode, EmlConsumerMask,
-    EmlExecutionClass, EmlExpressionRegistry, EmlFormulaMeta, EmlNodeGpu, EmlTreeId, GateSpec,
-    ScaleSpec, SlotIndex, SourceSpec, StructuralScalarChannel,
+    ColumnAwareReductionSpec, ColumnIndex, CombineFn, ConsumeMode, DimensionRegistry,
+    EmlConsumerMask, EmlExecutionClass, EmlExpressionRegistry, EmlFormulaMeta, EmlNodeGpu,
+    EmlTreeId, GateSpec, ScaleSpec, SlotIndex, SourceSpec, StructuralScalarChannel,
 };
 use simthing_gpu::{
     accumulator_op::set_debug_readback_allowed, compile_structured_field_sweeps, encode_column,
-    AccumulatorOpSession, EmlGpuProgramTable, FieldSweepRegistration, FieldSweepSession,
-    GpuContext, PackedAccumulatorUpload, PackedThresholdUpload, StructuredFieldExecutionReport,
-    StructuredFieldStencilBoundaryMode, StructuredFieldStencilConfig,
-    StructuredFieldStencilDebugReport, StructuredFieldStencilMaskMode,
-    StructuredFieldStencilOperator, StructuredFieldStencilSourcePolicy, ThresholdEvent,
-    ThresholdRegistration, DIR_UPWARD, THRESH_BUF_VALUES,
+    AccumulatorOpSession, EmlGpuProgramTable, FieldSweepAdmissionError, FieldSweepRegistration,
+    FieldSweepSession, GpuContext, PackedAccumulatorUpload, PackedThresholdUpload,
+    StructuredFieldExecutionReport, StructuredFieldStencilBoundaryMode,
+    StructuredFieldStencilConfig, StructuredFieldStencilDebugReport,
+    StructuredFieldStencilMaskMode, StructuredFieldStencilOperator,
+    StructuredFieldStencilSourcePolicy, ThresholdEvent, ThresholdRegistration, DIR_UPWARD,
+    THRESH_BUF_VALUES,
 };
 use simthing_spec::{
     compile_region_field_preview, estimate_region_field_budget, CompiledFieldCadence,
@@ -662,21 +663,48 @@ impl FirstSliceMappingSession {
         )
     }
 
-    /// Open the ordinary mapping session with additional, already-admitted
-    /// generic field-sweep products. They join the existing registration
-    /// chain before the existing [`FieldSweepSession`] binding is built and
-    /// therefore execute only through [`Self::dispatch_logical_field_step`].
-    pub(crate) fn open_with_admitted_field_sweeps(
+    /// Finalize the ordinary mapping and deferred caller field sweeps against
+    /// the live post-admission registry width. This is the sole production
+    /// owner of that width: authored input remains unchanged, and all products
+    /// still join the existing [`FieldSweepSession`] chain.
+    pub(crate) fn open_with_finalized_field_sweeps<F>(
         ctx: &GpuContext,
         profile: MappingExecutionProfile,
         spec: &RegionFieldSpec,
-        admitted_field_registrations: &[FieldSweepRegistration],
-    ) -> Result<Self, FirstSliceMappingError> {
-        let preview = compile_region_field_preview(spec)?;
-        let budget = estimate_first_slice_budget(
-            spec,
-            RegionFieldIsolationPolicyEstimate::SingleGridNoAtlas,
-        )
+        registry: &DimensionRegistry,
+        derived_field_registrations: &[FieldSweepRegistration],
+        compile_caller_field_sweeps: F,
+    ) -> Result<Self, FirstSliceMappingError>
+    where
+        F: FnOnce(u32) -> Result<Vec<FieldSweepRegistration>, FieldSweepAdmissionError>,
+    {
+        let final_n_dims = u32::try_from(registry.total_columns).map_err(|_| {
+            FirstSliceMappingError::FieldSweep(format!(
+                "post-admission registry width {} exceeds u32",
+                registry.total_columns
+            ))
+        })?;
+        let mut preview = compile_region_field_preview(spec)?;
+        // DIMENSION-FINALIZATION-SEAM-0-AUTHORITY: the one final-width binding site.
+        preview.stencil.n_dims = final_n_dims;
+        let mut admitted_field_registrations = compile_caller_field_sweeps(final_n_dims)
+            .map_err(|error| FirstSliceMappingError::FieldSweep(error.to_string()))?;
+        if admitted_field_registrations.is_empty() {
+            return Err(FirstSliceMappingError::FieldSweep(
+                "admitted field-sweep session seam requires at least one caller registration"
+                    .into(),
+            ));
+        }
+        admitted_field_registrations.extend_from_slice(derived_field_registrations);
+        let budget = estimate_region_field_budget(&RegionFieldBudgetSpec {
+            grid_size: preview.grid_size,
+            column_count: final_n_dims,
+            buffer_multiplier: 2.0,
+            copy_multiplier: 1.0,
+            tile_count: 1,
+            isolation_policy: RegionFieldIsolationPolicyEstimate::SingleGridNoAtlas,
+            max_region_field_vram_bytes: spec.max_region_field_vram_bytes,
+        })
         .ok();
         Self::open_preview_with_budget(
             ctx,
@@ -685,7 +713,7 @@ impl FirstSliceMappingSession {
             spec.parent_formula.as_ref().and_then(|f| f.tree_id),
             budget.map(|b| b.estimated_bytes),
             spec.max_region_field_vram_bytes,
-            admitted_field_registrations,
+            &admitted_field_registrations,
         )
     }
 
