@@ -1,7 +1,4 @@
-//! RF-T2 — controlled opt-in Resource Flow burn-in fixtures and runners (driver/test-only).
-//!
-//! Opens sessions via authored `ResourceFlowOptInMode::FlatStarOptIn` on `ResourceFlowSpec`
-//! through `SimSession::open_from_spec`. Does not flip global default-on.
+//! Converged Resource Flow burn-in fixtures and runners.
 
 use std::collections::HashMap;
 
@@ -13,8 +10,7 @@ use simthing_gpu::SlotAllocator;
 use simthing_sim::{BoundaryOutcome, FissionOutcome};
 use simthing_spec::{
     compile_property, ArenaSpec, ExplicitParticipantSpec, FissionPolicySpec, GameModeSpec,
-    PropertyKey, PropertySpec, ResourceFlowExecutionProfile, ResourceFlowOptInMode,
-    ResourceFlowSpec, SpecVersion, WildcardAdmissionSpec,
+    PropertyKey, PropertySpec, ResourceFlowSpec, SpecVersion, WildcardAdmissionSpec,
 };
 
 use crate::arena_hierarchy::{
@@ -36,32 +32,8 @@ pub const RF_T2_STATIC_FLAT_STAR_SKEWED: &str = "rf_t2_static_flat_star_skewed_w
 pub const RF_T2_DYNAMIC_SINGLE_FISSION: &str = "rf_t2_dynamic_single_fission_flat_star";
 pub const RF_T2_DYNAMIC_MULTI_FISSION: &str = "rf_t2_dynamic_multi_fission_flat_star";
 pub const RF_T2_TWO_ARENA_NO_COUPLING: &str = "rf_t2_two_arena_flat_star_no_coupling";
-pub const RF_T2_DISABLED_POPULATED: &str = "rf_t2_disabled_populated_spec_no_gpu_execution";
 pub const RF_T2_WILDCARD_REJECTED: &str = "rf_t2_wildcard_or_nested_claim_rejected";
-
-pub const RF_T3_PRODUCT_STATIC_128: &str = "rf_t3_product_static_128_participants";
-pub const RF_T3_PRODUCT_STATIC_256: &str = "rf_t3_product_static_256_participants";
-pub const RF_T3_PRODUCT_DYNAMIC_FISSION: &str = "rf_t3_product_dynamic_fission_cadence";
-pub const RF_T3_PRODUCT_MULTI_ARENA: &str = "rf_t3_product_multi_arena_no_coupling";
-pub const RF_T3_PRODUCT_MULTI_SESSION: &str = "rf_t3_product_multi_session_replay";
-pub const RF_T3_PRODUCT_DISABLED: &str = "rf_t3_product_disabled_spec_diagnostics";
-pub const RF_T3_PRODUCT_REJECTION: &str = "rf_t3_product_rejection_telemetry";
-pub const RF_T3_PRODUCT_RESYNC: &str = "rf_t3_product_repeated_resync_stable";
-
-pub const RF_T5_PROFILE_STATIC_128: &str = "rf_t5_profile_static_128_participants";
-pub const RF_T5_PROFILE_STATIC_256: &str = "rf_t5_profile_static_256_participants";
-pub const RF_T5_PROFILE_DYNAMIC_FISSION: &str = "rf_t5_profile_dynamic_fission_cadence";
-pub const RF_T5_PROFILE_MULTI_ARENA: &str = "rf_t5_profile_multi_arena_no_coupling";
-pub const RF_T5_PROFILE_MULTI_SESSION: &str = "rf_t5_profile_multi_session_replay";
-pub const RF_T5_PROFILE_DISABLED: &str = "rf_t5_profile_disabled_or_default_no_gpu_execution";
-pub const RF_T5_PROFILE_REJECTION: &str = "rf_t5_profile_rejection_telemetry";
-pub const RF_T5_PROFILE_RESYNC: &str = "rf_t5_profile_repeated_resync_stable";
-
-pub const RF_CONTINUED_STATIC_512: &str = "rf_continued_static_512_participants";
-pub const RF_CONTINUED_STATIC_SKEWED: &str = "rf_continued_static_skewed_weights";
-pub const RF_CONTINUED_DYNAMIC_POLICY_A: &str = "rf_continued_dynamic_policy_a_fission";
-pub const RF_CONTINUED_MULTI_ARENA: &str = "rf_continued_multi_arena_no_coupling";
-pub const RF_CONTINUED_REPLAY: &str = "rf_continued_replay_same_seed";
+pub const RF_CONVERGENCE_STATIC_512: &str = "rf_convergence_static_512_participants";
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum RfT2EnrollmentKind {
@@ -70,14 +42,12 @@ pub enum RfT2EnrollmentKind {
     DynamicFissionMulti,
     DynamicFissionReject,
     TwoArenaStatic,
-    DisabledPopulated,
     WildcardRejected,
 }
 
 #[derive(Clone, Debug)]
 pub struct RfT2BurnInFixture {
     pub name: &'static str,
-    pub opt_in_mode: ResourceFlowOptInMode,
     pub enrollment: RfT2EnrollmentKind,
     pub participant_count: u32,
     pub ticks: u32,
@@ -107,7 +77,7 @@ pub struct RfT2BurnInReport {
     pub replay_bit_exact: bool,
 }
 
-pub struct RfT2OptInSession {
+pub struct RfT2Session {
     pub session: SimSession,
     pub layout: ArenaTreeLayout,
     pub cols: NodeColumnRefs,
@@ -325,7 +295,6 @@ fn base_game_mode(id: &str) -> GameModeSpec {
         events: vec![],
         resource_flow: None,
         resource_economy: None,
-        resource_flow_execution_profile: Default::default(),
         region_fields: vec![],
         mapping_execution_profile: Default::default(),
     }
@@ -356,7 +325,6 @@ fn build_game_mode(fixture: &RfT2BurnInFixture, scenario: &Scenario) -> GameMode
     match fixture.enrollment {
         RfT2EnrollmentKind::TwoArenaStatic => {
             mode.resource_flow = Some(ResourceFlowSpec {
-                opt_in_mode: fixture.opt_in_mode,
                 arenas: vec![
                     food_arena_spec(max_participants, FissionPolicySpec::Inherit),
                     ArenaSpec {
@@ -403,7 +371,6 @@ fn build_game_mode(fixture: &RfT2BurnInFixture, scenario: &Scenario) -> GameMode
                 expanded_count: 0,
             });
             mode.resource_flow = Some(ResourceFlowSpec {
-                opt_in_mode: ResourceFlowOptInMode::FlatStarOptIn,
                 arenas: vec![arena],
                 couplings: vec![],
                 base_obligations: vec![],
@@ -421,7 +388,6 @@ fn build_game_mode(fixture: &RfT2BurnInFixture, scenario: &Scenario) -> GameMode
                 _ => FissionPolicySpec::Reject,
             };
             mode.resource_flow = Some(ResourceFlowSpec {
-                opt_in_mode: fixture.opt_in_mode,
                 arenas: vec![food_arena_spec(max_participants, fission)],
                 couplings: vec![],
                 base_obligations: vec![],
@@ -460,7 +426,6 @@ fn build_game_mode(fixture: &RfT2BurnInFixture, scenario: &Scenario) -> GameMode
 pub fn fixture_static_flat_star_10_participants() -> RfT2BurnInFixture {
     RfT2BurnInFixture {
         name: RF_T2_STATIC_FLAT_STAR_10,
-        opt_in_mode: ResourceFlowOptInMode::FlatStarOptIn,
         enrollment: RfT2EnrollmentKind::StaticExplicit,
         participant_count: 10,
         ticks: 1000,
@@ -478,7 +443,6 @@ pub fn fixture_static_flat_star_10_participants() -> RfT2BurnInFixture {
 pub fn fixture_static_flat_star_64_participants() -> RfT2BurnInFixture {
     RfT2BurnInFixture {
         name: RF_T2_STATIC_FLAT_STAR_64,
-        opt_in_mode: ResourceFlowOptInMode::FlatStarOptIn,
         enrollment: RfT2EnrollmentKind::StaticExplicit,
         participant_count: 64,
         ticks: 1000,
@@ -496,7 +460,6 @@ pub fn fixture_static_flat_star_64_participants() -> RfT2BurnInFixture {
 pub fn fixture_static_flat_star_skewed_weights() -> RfT2BurnInFixture {
     RfT2BurnInFixture {
         name: RF_T2_STATIC_FLAT_STAR_SKEWED,
-        opt_in_mode: ResourceFlowOptInMode::FlatStarOptIn,
         enrollment: RfT2EnrollmentKind::StaticExplicit,
         participant_count: 3,
         ticks: 1000,
@@ -514,7 +477,6 @@ pub fn fixture_static_flat_star_skewed_weights() -> RfT2BurnInFixture {
 pub fn fixture_dynamic_single_fission() -> RfT2BurnInFixture {
     RfT2BurnInFixture {
         name: RF_T2_DYNAMIC_SINGLE_FISSION,
-        opt_in_mode: ResourceFlowOptInMode::FlatStarOptIn,
         enrollment: RfT2EnrollmentKind::DynamicFissionSingle,
         participant_count: 16,
         ticks: 1000,
@@ -532,7 +494,6 @@ pub fn fixture_dynamic_single_fission() -> RfT2BurnInFixture {
 pub fn fixture_dynamic_multi_fission() -> RfT2BurnInFixture {
     RfT2BurnInFixture {
         name: RF_T2_DYNAMIC_MULTI_FISSION,
-        opt_in_mode: ResourceFlowOptInMode::FlatStarOptIn,
         enrollment: RfT2EnrollmentKind::DynamicFissionMulti,
         participant_count: 16,
         ticks: 1000,
@@ -550,7 +511,6 @@ pub fn fixture_dynamic_multi_fission() -> RfT2BurnInFixture {
 pub fn fixture_two_arena_no_coupling() -> RfT2BurnInFixture {
     RfT2BurnInFixture {
         name: RF_T2_TWO_ARENA_NO_COUPLING,
-        opt_in_mode: ResourceFlowOptInMode::FlatStarOptIn,
         enrollment: RfT2EnrollmentKind::TwoArenaStatic,
         participant_count: 16,
         ticks: 100,
@@ -565,28 +525,9 @@ pub fn fixture_two_arena_no_coupling() -> RfT2BurnInFixture {
     }
 }
 
-pub fn fixture_disabled_populated_spec() -> RfT2BurnInFixture {
-    RfT2BurnInFixture {
-        name: RF_T2_DISABLED_POPULATED,
-        opt_in_mode: ResourceFlowOptInMode::Disabled,
-        enrollment: RfT2EnrollmentKind::DisabledPopulated,
-        participant_count: 10,
-        ticks: 0,
-        sync_cycles: 0,
-        root_intrinsic_flow: 10.0,
-        leaf_weights: vec![],
-        expected_admissions: 0,
-        expected_rejections: 0,
-        expect_generation_bump: false,
-        expect_gpu_active: false,
-        require_bit_exact: true,
-    }
-}
-
 pub fn fixture_wildcard_rejected() -> RfT2BurnInFixture {
     RfT2BurnInFixture {
         name: RF_T2_WILDCARD_REJECTED,
-        opt_in_mode: ResourceFlowOptInMode::FlatStarOptIn,
         enrollment: RfT2EnrollmentKind::WildcardRejected,
         participant_count: 10,
         ticks: 0,
@@ -596,7 +537,7 @@ pub fn fixture_wildcard_rejected() -> RfT2BurnInFixture {
         expected_admissions: 0,
         expected_rejections: 0,
         expect_generation_bump: false,
-        expect_gpu_active: false,
+        expect_gpu_active: true,
         require_bit_exact: true,
     }
 }
@@ -604,7 +545,6 @@ pub fn fixture_wildcard_rejected() -> RfT2BurnInFixture {
 pub fn fixture_repeated_resync() -> RfT2BurnInFixture {
     RfT2BurnInFixture {
         name: "rf_t2_repeated_resync_stable",
-        opt_in_mode: ResourceFlowOptInMode::FlatStarOptIn,
         enrollment: RfT2EnrollmentKind::StaticExplicit,
         participant_count: 10,
         ticks: 10,
@@ -619,28 +559,9 @@ pub fn fixture_repeated_resync() -> RfT2BurnInFixture {
     }
 }
 
-pub fn fixture_product_static_128_participants() -> RfT2BurnInFixture {
+pub fn fixture_convergence_static_512_participants() -> RfT2BurnInFixture {
     RfT2BurnInFixture {
-        name: RF_T3_PRODUCT_STATIC_128,
-        opt_in_mode: ResourceFlowOptInMode::FlatStarOptIn,
-        enrollment: RfT2EnrollmentKind::StaticExplicit,
-        participant_count: 128,
-        ticks: 1000,
-        sync_cycles: 0,
-        root_intrinsic_flow: 10.0,
-        leaf_weights: vec![],
-        expected_admissions: 0,
-        expected_rejections: 0,
-        expect_generation_bump: false,
-        expect_gpu_active: true,
-        require_bit_exact: false,
-    }
-}
-
-pub fn fixture_product_static_512_participants() -> RfT2BurnInFixture {
-    RfT2BurnInFixture {
-        name: RF_CONTINUED_STATIC_512,
-        opt_in_mode: ResourceFlowOptInMode::FlatStarOptIn,
+        name: RF_CONVERGENCE_STATIC_512,
         enrollment: RfT2EnrollmentKind::StaticExplicit,
         participant_count: 512,
         ticks: 1000,
@@ -655,225 +576,9 @@ pub fn fixture_product_static_512_participants() -> RfT2BurnInFixture {
     }
 }
 
-pub fn fixture_product_static_256_participants() -> RfT2BurnInFixture {
-    RfT2BurnInFixture {
-        name: RF_T3_PRODUCT_STATIC_256,
-        opt_in_mode: ResourceFlowOptInMode::FlatStarOptIn,
-        enrollment: RfT2EnrollmentKind::StaticExplicit,
-        participant_count: 256,
-        ticks: 1000,
-        sync_cycles: 0,
-        root_intrinsic_flow: 10.0,
-        leaf_weights: vec![],
-        expected_admissions: 0,
-        expected_rejections: 0,
-        expect_generation_bump: false,
-        expect_gpu_active: true,
-        require_bit_exact: false,
-    }
-}
-
-pub fn fixture_product_dynamic_fission_cadence() -> RfT2BurnInFixture {
-    RfT2BurnInFixture {
-        name: RF_T3_PRODUCT_DYNAMIC_FISSION,
-        opt_in_mode: ResourceFlowOptInMode::FlatStarOptIn,
-        enrollment: RfT2EnrollmentKind::DynamicFissionMulti,
-        participant_count: 16,
-        ticks: 1000,
-        sync_cycles: 0,
-        root_intrinsic_flow: 10.0,
-        leaf_weights: vec![1.0, 1.0, 2.0, 3.0],
-        expected_admissions: 2,
-        expected_rejections: 0,
-        expect_generation_bump: true,
-        expect_gpu_active: true,
-        require_bit_exact: true,
-    }
-}
-
-pub fn fixture_product_multi_arena_no_coupling() -> RfT2BurnInFixture {
-    RfT2BurnInFixture {
-        name: RF_T3_PRODUCT_MULTI_ARENA,
-        opt_in_mode: ResourceFlowOptInMode::FlatStarOptIn,
-        enrollment: RfT2EnrollmentKind::TwoArenaStatic,
-        participant_count: 16,
-        ticks: 1000,
-        sync_cycles: 0,
-        root_intrinsic_flow: 10.0,
-        leaf_weights: vec![1.0],
-        expected_admissions: 0,
-        expected_rejections: 0,
-        expect_generation_bump: false,
-        expect_gpu_active: true,
-        require_bit_exact: true,
-    }
-}
-
-pub fn fixture_product_multi_session_replay() -> RfT2BurnInFixture {
-    RfT2BurnInFixture {
-        name: RF_T3_PRODUCT_MULTI_SESSION,
-        opt_in_mode: ResourceFlowOptInMode::FlatStarOptIn,
-        enrollment: RfT2EnrollmentKind::StaticExplicit,
-        participant_count: 10,
-        ticks: 1000,
-        sync_cycles: 0,
-        root_intrinsic_flow: 10.0,
-        leaf_weights: vec![],
-        expected_admissions: 0,
-        expected_rejections: 0,
-        expect_generation_bump: false,
-        expect_gpu_active: true,
-        require_bit_exact: true,
-    }
-}
-
-pub fn fixture_product_disabled_spec_diagnostics() -> RfT2BurnInFixture {
-    RfT2BurnInFixture {
-        name: RF_T3_PRODUCT_DISABLED,
-        opt_in_mode: ResourceFlowOptInMode::Disabled,
-        enrollment: RfT2EnrollmentKind::DisabledPopulated,
-        participant_count: 10,
-        ticks: 0,
-        sync_cycles: 0,
-        root_intrinsic_flow: 10.0,
-        leaf_weights: vec![],
-        expected_admissions: 0,
-        expected_rejections: 0,
-        expect_generation_bump: false,
-        expect_gpu_active: false,
-        require_bit_exact: true,
-    }
-}
-
-pub fn fixture_product_rejection_telemetry() -> RfT2BurnInFixture {
-    RfT2BurnInFixture {
-        name: RF_T3_PRODUCT_REJECTION,
-        opt_in_mode: ResourceFlowOptInMode::FlatStarOptIn,
-        enrollment: RfT2EnrollmentKind::DynamicFissionReject,
-        participant_count: 1,
-        ticks: 0,
-        sync_cycles: 0,
-        root_intrinsic_flow: 10.0,
-        leaf_weights: vec![1.0],
-        expected_admissions: 0,
-        expected_rejections: 1,
-        expect_generation_bump: false,
-        expect_gpu_active: true,
-        require_bit_exact: true,
-    }
-}
-
-pub fn fixture_product_repeated_resync() -> RfT2BurnInFixture {
-    RfT2BurnInFixture {
-        name: RF_T3_PRODUCT_RESYNC,
-        opt_in_mode: ResourceFlowOptInMode::FlatStarOptIn,
-        enrollment: RfT2EnrollmentKind::StaticExplicit,
-        participant_count: 10,
-        ticks: 10,
-        sync_cycles: 100,
-        root_intrinsic_flow: 10.0,
-        leaf_weights: vec![],
-        expected_admissions: 0,
-        expected_rejections: 0,
-        expect_generation_bump: false,
-        expect_gpu_active: true,
-        require_bit_exact: true,
-    }
-}
-
-fn profile_fixture_from_product(
-    mut base: RfT2BurnInFixture,
-    name: &'static str,
-) -> RfT2BurnInFixture {
-    base.name = name;
-    base.opt_in_mode = ResourceFlowOptInMode::Disabled;
-    base
-}
-
-pub fn fixture_profile_static_128_participants() -> RfT2BurnInFixture {
-    profile_fixture_from_product(
-        fixture_product_static_128_participants(),
-        RF_T5_PROFILE_STATIC_128,
-    )
-}
-
-pub fn fixture_profile_static_512_participants() -> RfT2BurnInFixture {
-    profile_fixture_from_product(
-        fixture_product_static_512_participants(),
-        RF_CONTINUED_STATIC_512,
-    )
-}
-
-pub fn fixture_profile_static_256_participants() -> RfT2BurnInFixture {
-    profile_fixture_from_product(
-        fixture_product_static_256_participants(),
-        RF_T5_PROFILE_STATIC_256,
-    )
-}
-
-pub fn fixture_profile_dynamic_fission_cadence() -> RfT2BurnInFixture {
-    profile_fixture_from_product(
-        fixture_product_dynamic_fission_cadence(),
-        RF_T5_PROFILE_DYNAMIC_FISSION,
-    )
-}
-
-pub fn fixture_profile_multi_arena_no_coupling() -> RfT2BurnInFixture {
-    profile_fixture_from_product(
-        fixture_product_multi_arena_no_coupling(),
-        RF_T5_PROFILE_MULTI_ARENA,
-    )
-}
-
-pub fn fixture_profile_multi_session_replay() -> RfT2BurnInFixture {
-    profile_fixture_from_product(
-        fixture_product_multi_session_replay(),
-        RF_T5_PROFILE_MULTI_SESSION,
-    )
-}
-
-pub fn fixture_profile_disabled_or_default() -> RfT2BurnInFixture {
-    RfT2BurnInFixture {
-        name: RF_T5_PROFILE_DISABLED,
-        opt_in_mode: ResourceFlowOptInMode::Disabled,
-        enrollment: RfT2EnrollmentKind::DisabledPopulated,
-        participant_count: 10,
-        ticks: 0,
-        sync_cycles: 0,
-        root_intrinsic_flow: 10.0,
-        leaf_weights: vec![],
-        expected_admissions: 0,
-        expected_rejections: 0,
-        expect_generation_bump: false,
-        expect_gpu_active: false,
-        require_bit_exact: true,
-    }
-}
-
-pub fn fixture_profile_rejection_telemetry() -> RfT2BurnInFixture {
-    profile_fixture_from_product(
-        fixture_product_rejection_telemetry(),
-        RF_T5_PROFILE_REJECTION,
-    )
-}
-
-pub fn fixture_profile_repeated_resync() -> RfT2BurnInFixture {
-    profile_fixture_from_product(fixture_product_repeated_resync(), RF_T5_PROFILE_RESYNC)
-}
-
-pub fn open_fixture_session_with_default_profile(
-    fixture: &RfT2BurnInFixture,
-) -> Result<RfT2OptInSession, SessionError> {
-    open_fixture_session_with_execution_profile(
-        fixture,
-        ResourceFlowExecutionProfile::DefaultDisabled,
-    )
-}
-
 pub fn fixture_replay_static() -> RfT2BurnInFixture {
     RfT2BurnInFixture {
         name: "rf_t2_replay_same_seed",
-        opt_in_mode: ResourceFlowOptInMode::FlatStarOptIn,
         enrollment: RfT2EnrollmentKind::StaticExplicit,
         participant_count: 10,
         ticks: 10,
@@ -909,10 +614,7 @@ fn scenario_for_fixture(fixture: &RfT2BurnInFixture) -> (Scenario, Option<Fissio
             (scenario, Some(fission))
         }
         _ => {
-            if matches!(
-                fixture.name,
-                RF_T2_STATIC_FLAT_STAR_SKEWED | RF_CONTINUED_STATIC_SKEWED
-            ) {
+            if fixture.name == RF_T2_STATIC_FLAT_STAR_SKEWED {
                 (build_skewed_scenario(reg), None)
             } else {
                 (
@@ -969,30 +671,10 @@ fn execution_layout(session: &SimSession) -> (ArenaTreeLayout, NodeColumnRefs) {
     (layout, cols)
 }
 
-pub fn open_fixture_session(fixture: &RfT2BurnInFixture) -> Result<RfT2OptInSession, SessionError> {
-    open_fixture_session_with_execution_profile(
-        fixture,
-        ResourceFlowExecutionProfile::DefaultDisabled,
-    )
-}
-
-pub fn open_fixture_session_with_execution_profile(
-    fixture: &RfT2BurnInFixture,
-    profile: ResourceFlowExecutionProfile,
-) -> Result<RfT2OptInSession, SessionError> {
+pub fn open_fixture_session(fixture: &RfT2BurnInFixture) -> Result<RfT2Session, SessionError> {
     let (scenario, fission) = scenario_for_fixture(fixture);
-    let mut game_mode = build_game_mode(fixture, &scenario);
-    game_mode.resource_flow_execution_profile = profile;
+    let game_mode = build_game_mode(fixture, &scenario);
     let mut session = SimSession::open_from_spec(scenario, &game_mode)?;
-
-    let expect_flag = fixture.opt_in_mode == ResourceFlowOptInMode::FlatStarOptIn
-        || profile.enables_arena_resource_flow();
-    assert_eq!(
-        session.proto.flags.use_accumulator_resource_flow,
-        expect_flag,
-        "fixture {name} flag must match opt-in/profile",
-        name = fixture.name
-    );
 
     let mut boundary_metrics = DynamicEnrollmentBoundaryMetrics::default();
     boundary_metrics.generation_start = session.spec_state.arena_registry.generation;
@@ -1011,11 +693,7 @@ pub fn open_fixture_session_with_execution_profile(
                 report,
                 1,
                 report.admissions.len() as u32,
-                if report.any_admissions() && session.proto.flags.use_accumulator_resource_flow {
-                    1
-                } else {
-                    0
-                },
+                if report.any_admissions() { 1 } else { 0 },
             );
         }
     } else {
@@ -1034,7 +712,7 @@ pub fn open_fixture_session_with_execution_profile(
         &fixture.leaf_weights,
     );
 
-    Ok(RfT2OptInSession {
+    Ok(RfT2Session {
         session,
         layout,
         cols,
@@ -1045,7 +723,7 @@ pub fn open_fixture_session_with_execution_profile(
     })
 }
 
-pub fn assert_fixture_contract(fx: &RfT2OptInSession, fixture: &RfT2BurnInFixture) {
+pub fn assert_fixture_contract(fx: &RfT2Session, fixture: &RfT2BurnInFixture) {
     assert_eq!(
         fx.layout.max_depth,
         2,
@@ -1086,14 +764,14 @@ pub fn assert_fixture_contract(fx: &RfT2OptInSession, fixture: &RfT2BurnInFixtur
     }
 }
 
-pub fn run_opt_in_burn_in(
-    fx: &mut RfT2OptInSession,
+pub fn run_resource_flow_burn_in(
+    fx: &mut RfT2Session,
     fixture: &RfT2BurnInFixture,
 ) -> Result<RfT2BurnInReport, SessionError> {
     assert_fixture_contract(fx, fixture);
 
     let mut sync_cycles_checked = 0u32;
-    if fixture.sync_cycles > 0 && fx.session.proto.flags.use_accumulator_resource_flow {
+    if fixture.sync_cycles > 0 {
         let (syncs, _, _) =
             run_dynamic_enrollment_resync_cycles(&mut fx.session, fixture.sync_cycles)?;
         sync_cycles_checked = syncs;
@@ -1109,7 +787,7 @@ pub fn run_opt_in_burn_in(
         .unwrap_or(0);
     let n_bands = fx.session.state.accumulator_resource_flow_bands;
 
-    let burn = if fixture.ticks > 0 && fx.session.proto.flags.use_accumulator_resource_flow {
+    let burn = if fixture.ticks > 0 {
         run_dynamic_enrollment_gpu_burn_in(
             &mut fx.session.state,
             &fx.layout,
@@ -1126,10 +804,7 @@ pub fn run_opt_in_burn_in(
     };
 
     let replay_bit_exact = burn.max_abs_error.to_bits() == 0.0_f32.to_bits();
-    if fixture.require_bit_exact
-        && fixture.ticks > 0
-        && fx.session.proto.flags.use_accumulator_resource_flow
-    {
+    if fixture.require_bit_exact && fixture.ticks > 0 {
         assert_eq!(
             burn.max_abs_error.to_bits(),
             0.0_f32.to_bits(),
@@ -1141,13 +816,7 @@ pub fn run_opt_in_burn_in(
     Ok(RfT2BurnInReport {
         scenario_name: fixture.name.to_string(),
         ticks_checked: burn.ticks_checked,
-        sync_cycles_checked: sync_cycles_checked.max(
-            if fx.session.proto.flags.use_accumulator_resource_flow {
-                1
-            } else {
-                0
-            },
-        ),
+        sync_cycles_checked: sync_cycles_checked.max(1),
         admissions_observed: fx.boundary_metrics.admissions_observed,
         rejections_observed: fx.boundary_metrics.rejections_observed,
         generation_start: fx.boundary_metrics.generation_start,
@@ -1160,19 +829,15 @@ pub fn run_opt_in_burn_in(
     })
 }
 
-pub fn clone_for_replay(fx: &RfT2OptInSession, fixture: &RfT2BurnInFixture) -> RfT2OptInSession {
+pub fn clone_for_replay(fx: &RfT2Session, fixture: &RfT2BurnInFixture) -> RfT2Session {
     let (scenario, _) = scenario_for_fixture(fixture);
-    let mut game_mode = build_game_mode(fixture, &scenario);
-    game_mode.resource_flow_execution_profile = fx.session.resource_flow_execution_profile;
+    let game_mode = build_game_mode(fixture, &scenario);
     let mut session = SimSession::open_from_spec(scenario, &game_mode).expect("replay open");
     session.proto.root = fx.session.proto.root.clone();
     session.proto.allocator = fx.session.proto.allocator.clone();
     session.proto.registry = fx.session.proto.registry.clone();
     session.spec_state.arena_registry = fx.session.spec_state.arena_registry.clone();
-    session.proto.flags = fx.session.proto.flags.clone();
-    session
-        .sync_resource_flow_if_enabled()
-        .expect("replay sync");
+    session.sync_resource_flow().expect("replay sync");
 
     let (layout, cols) = execution_layout(&session);
     let leaf_slots: Vec<u32> = leaf_slots_for_layout(&layout)
@@ -1186,7 +851,7 @@ pub fn clone_for_replay(fx: &RfT2OptInSession, fixture: &RfT2BurnInFixture) -> R
         &fixture.leaf_weights,
     );
 
-    RfT2OptInSession {
+    RfT2Session {
         session,
         layout,
         cols,

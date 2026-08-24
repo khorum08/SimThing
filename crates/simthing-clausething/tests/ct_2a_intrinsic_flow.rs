@@ -11,12 +11,10 @@ use simthing_core::{
 use simthing_driver::{
     build_execution_plan, check_conservation, resolve_node_columns_for_property,
     run_arena_allocation_oracle, AllocatorStepObservation, ArenaConservationSnapshot,
-    ArenaMemberObservation, ArenaStructuralEvidence, ResourceFlowFlagSource, Scenario, SimSession,
+    ArenaMemberObservation, ArenaStructuralEvidence, Scenario, SimSession,
 };
 use simthing_gpu::SlotAllocator;
-use simthing_spec::{
-    compile_property, ExplicitParticipantSpec, GameModeSpec, ResourceFlowOptInMode,
-};
+use simthing_spec::{compile_property, ExplicitParticipantSpec, GameModeSpec};
 
 const CLAUSE_FIXTURE: &str = include_str!("fixtures/ct2a_micro_economy.clause");
 const RON_BASELINE: &str = include_str!("fixtures/ct2a_micro_economy_baseline.ron");
@@ -97,7 +95,6 @@ fn balance_subfield() -> SubFieldSpec {
 
 fn admit_recursive_default_proof(game_mode: &mut GameModeSpec) {
     let resource_flow = game_mode.resource_flow.as_mut().expect("resource flow");
-    resource_flow.opt_in_mode = ResourceFlowOptInMode::Disabled;
     for arena in &mut resource_flow.arenas {
         arena.balance_property = Some(arena.flow_property.clone());
     }
@@ -155,22 +152,8 @@ fn gpu_micro_economy_matches_arena_allocation_oracle() {
     let guard = GPU_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
 
     let hydrated = hydrate_from_clause();
-    assert_eq!(
-        hydrated
-            .game_mode
-            .resource_flow
-            .as_ref()
-            .unwrap()
-            .opt_in_mode,
-        ResourceFlowOptInMode::FlatStarOptIn
-    );
     let mut session = open_ct2a_session(&hydrated);
-    assert!(session.proto.flags.use_accumulator_resource_flow);
-    assert_eq!(
-        session.resource_flow_flag_source,
-        ResourceFlowFlagSource::ScenarioClassDefaultOn,
-        "ct_2a must exercise recursive Arena RF through the ordinary default profile"
-    );
+    assert!(session.state.accumulator_resource_flow_active);
 
     let flow_id = session
         .proto
@@ -297,9 +280,8 @@ fn gpu_micro_economy_matches_arena_allocation_oracle() {
         "unchanged RF-1 must judge ct_2a: {report:?}"
     );
     println!(
-        "RF3-CT2A: participants={} disbursed={disbursed:?} residual={residual} balance_delta={root_balance_delta} rf1=PASS flag_source={:?}",
+        "RF3-CT2A: participants={} disbursed={disbursed:?} residual={residual} balance_delta={root_balance_delta} rf1=PASS converged_path=active",
         1 + leaves.len(),
-        session.resource_flow_flag_source,
     );
 
     drop(session);

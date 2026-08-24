@@ -15,7 +15,7 @@ pub use simthing_spec::{
     MappingExecutionProfile, PressurePlacementSpec, PressureSourceSpec, PropertyKey, PropertySpec,
     RegionFieldCadenceSpec, RegionFieldFormulaBindingSpec, RegionFieldGridProfile,
     RegionFieldOperatorSpec, RegionFieldReductionSpec, RegionFieldSourcePolicySpec,
-    RegionFieldSpec, RegionFieldSummaryPolicySpec, ResourceFlowOptInMode, ResourceFlowSpec,
+    RegionFieldSpec, RegionFieldSummaryPolicySpec, ResourceFlowSpec,
 };
 
 /// Bind a subtree ownership boundary. Descendants inherit by absence.

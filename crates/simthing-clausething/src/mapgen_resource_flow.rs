@@ -13,8 +13,7 @@ use simthing_core::{
 use simthing_spec::spec::install_target::InstallTargetSpec;
 use simthing_spec::spec::resource_flow::{
     BaseFlowDirectionSpec, BaseFlowObligationSpec, CouplingDelaySpec, CouplingSpec,
-    EnrollmentSelectorSpec, ResourceFlowCapacityBudgetSpec, ResourceFlowOptInMode,
-    ResourceFlowSpec,
+    EnrollmentSelectorSpec, ResourceFlowCapacityBudgetSpec, ResourceFlowSpec,
 };
 use simthing_spec::spec::script::PropertyKey;
 use simthing_spec::{
@@ -411,7 +410,6 @@ pub fn generate_mapgen_resource_flow_enrollment(
         .collect();
 
     let resource_flow = ResourceFlowSpec {
-        opt_in_mode: ResourceFlowOptInMode::Disabled,
         arenas: vec![deposit_arena.clone(), suppression_arena.clone()],
         couplings,
         base_obligations,

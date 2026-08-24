@@ -2,9 +2,7 @@
 
 use simthing_clausething::{hydrate_scenario, parse_raw_document};
 use simthing_core::TransformOp;
-use simthing_spec::{
-    EmissionFormulaSpec, EmlGadgetInstanceSpec, InstallTargetSpec, ResourceEconomyOptInMode,
-};
+use simthing_spec::{EmissionFormulaSpec, EmlGadgetInstanceSpec, InstallTargetSpec};
 
 const FIELD_ECONOMY_SEMANTIC_CASES: &[&str] = &[
     "well-formed-existing-surfaces",

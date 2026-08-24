@@ -8,9 +8,7 @@ use simthing_gpu::{
     emit_on_threshold_registrations_to_gpu, GpuContext, ThresholdEvent,
     DEFAULT_THRESHOLD_EMISSION_CAPACITY,
 };
-use simthing_spec::{
-    deserialize_game_mode_ron, GameModeSpec, MappingExecutionProfile, ResourceFlowOptInMode,
-};
+use simthing_spec::{deserialize_game_mode_ron, GameModeSpec, MappingExecutionProfile};
 pub const SURPLUS_RON: &str = include_str!("../fixtures/daily_economy_banking_scenario.ron");
 pub const DEFICIT_RON: &str =
     include_str!("../fixtures/daily_economy_banking_deficit_scenario.ron");
@@ -151,7 +149,7 @@ pub fn run_days_with_full_boundary(session: &mut SimSession, days: u32) {
             |ctx| spec_state.run_boundary_handlers(ctx),
         );
         session
-            .sync_resource_economy_if_enabled()
+            .sync_resource_economy()
             .expect("boundary economy sync");
         boundaries_run += 1;
     }
@@ -199,7 +197,7 @@ pub fn run_days_collecting_events(
             );
             boundaries_run += 1;
             session
-                .sync_resource_economy_if_enabled()
+                .sync_resource_economy()
                 .expect("boundary sync");
         }
     }
@@ -208,24 +206,10 @@ pub fn run_days_collecting_events(
 }
 
 pub fn assert_mapping_and_resource_flow_posture(session: &SimSession) {
-    assert_eq!(
-        session.resource_flow_execution_profile,
-        simthing_spec::ResourceFlowExecutionProfile::DefaultDisabled
-    );
-    assert!(!session.proto.flags.use_accumulator_resource_flow);
+    assert!(session.spec_state.arena_registry.arenas.is_empty());
+    assert!(!session.state.accumulator_resource_flow_active);
     assert_eq!(
         MappingExecutionProfile::default(),
         MappingExecutionProfile::Disabled
     );
-    assert_eq!(
-        game_mode_resource_flow_opt_in(&surplus_game_mode()),
-        ResourceFlowOptInMode::Disabled
-    );
-}
-
-fn game_mode_resource_flow_opt_in(mode: &GameModeSpec) -> ResourceFlowOptInMode {
-    mode.resource_flow
-        .as_ref()
-        .map(|spec| spec.opt_in_mode)
-        .unwrap_or(ResourceFlowOptInMode::Disabled)
 }

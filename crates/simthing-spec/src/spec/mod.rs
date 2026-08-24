@@ -224,9 +224,8 @@ pub use region_field::{
     RegionFieldSpec, RegionFieldSummaryPolicySpec,
 };
 pub use resource_economy::{
-    EmissionFormulaSpec, EmitBufferSpec, EmitOnThresholdSpec, RecipeInputSpec,
-    ResourceEconomyOptInMode, ResourceEconomySpec, ResourceEmissionSpec, ResourceRecipeSpec,
-    ResourceTransferSpec,
+    EmissionFormulaSpec, EmitBufferSpec, EmitOnThresholdSpec, RecipeInputSpec, ResourceEconomySpec,
+    ResourceEmissionSpec, ResourceRecipeSpec, ResourceTransferSpec,
 };
 pub use resource_flow::{
     effective_resource_flow_arena_caps, resolve_resource_flow_capacity_budget, ArenaSpec,
@@ -234,7 +233,7 @@ pub use resource_flow::{
     EnrollmentSelectorSpec, ExplicitParticipantSpec, FissionPolicySpec, GatedRateOpSpec,
     GatedRateSpec, GatedRateTriggerSpec, RateFormulaOp, RateFormulaOpSpec, RateFormulaOperandSpec,
     RateFormulaSpec, ResolvedResourceFlowCapacityBudget, ResourceFlowCapacityBudgetSpec,
-    ResourceFlowExecutionProfile, ResourceFlowOptInMode, ResourceFlowSpec, WildcardAdmissionSpec,
+    ResourceFlowSpec, WildcardAdmissionSpec,
 };
 pub use runtime_local_allocation::{
     apply_runtime_local_allocations_from_disburse_down, runtime_local_allocation_aggregate_totals,

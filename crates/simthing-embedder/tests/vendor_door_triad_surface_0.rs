@@ -13,8 +13,8 @@ use simthing_embedder::populate::{
     PressurePlacementSpec, PressureSourceSpec, PropertyKey, PropertySpec, RegionFieldCadenceSpec,
     RegionFieldFormulaBindingSpec, RegionFieldGridProfile, RegionFieldOperatorSpec,
     RegionFieldReductionSpec, RegionFieldSourcePolicySpec, RegionFieldSpec,
-    RegionFieldSummaryPolicySpec, ResourceFlowOptInMode, ResourceFlowSpec, SimProperty, SimThing,
-    SimThingKind, SlotAllocator, SubFieldRole, SubFieldSpec, TransformOp,
+    RegionFieldSummaryPolicySpec, ResourceFlowSpec, SimProperty, SimThing, SimThingKind,
+    SlotAllocator, SubFieldRole, SubFieldSpec, TransformOp,
 };
 use simthing_embedder::{bind, derive, overlay, populate, run};
 
@@ -183,7 +183,6 @@ fn full_triad_fixture() -> (run::Scenario, run::GameModeSpec, populate::SimThing
                 wildcard_admission: None,
             }],
             couplings: Vec::new(),
-            opt_in_mode: ResourceFlowOptInMode::FlatStarOptIn,
             ..Default::default()
         }),
         region_fields: vec![first, region_field("emitter_b", 2, 3)],

@@ -74,14 +74,12 @@ pub struct FabricHotCycleOutcome {
 
 /// Parameters for the combined hot step (resolved at the session loop edge).
 pub struct FabricHotStepParams<'a> {
-    pub resource_flow_pipeline_enabled: bool,
     pub mapping: Option<&'a mut MappingHotPathState>,
 }
 
 /// Parameters for a full hot cycle (pre-tick enqueue + hot step).
 pub struct FabricHotCycleParams<'a> {
     pub tick_patches: &'a [PatchTransform],
-    pub resource_flow_pipeline_enabled: bool,
     pub mapping: Option<&'a mut MappingHotPathState>,
 }
 
@@ -236,12 +234,9 @@ pub fn run_simulation_fabric_tick(fabric: &mut SimulationFabric<'_>) -> FabricTi
     }
 }
 
-/// Dispatch RF OrderBand ops when the pipeline flag and GPU state agree.
-pub fn run_resource_flow_bands_if_active(
-    fabric: &mut SimulationFabric<'_>,
-    resource_flow_pipeline_enabled: bool,
-) -> bool {
-    if resource_flow_pipeline_enabled && fabric.state.accumulator_resource_flow_active {
+/// Dispatch RF OrderBand ops when installed GPU state is active.
+pub fn run_resource_flow_bands_if_active(fabric: &mut SimulationFabric<'_>) -> bool {
+    if fabric.state.accumulator_resource_flow_active {
         fabric
             .state
             .run_resource_flow_bands(fabric.state.accumulator_resource_flow_bands, fabric.dt);
@@ -286,8 +281,7 @@ pub fn run_simulation_fabric_hot_step(
     params: FabricHotStepParams<'_>,
 ) -> Result<FabricHotStepOutcome, FabricHotStepError> {
     let tick = run_simulation_fabric_tick(fabric);
-    let resource_flow_band_dispatched =
-        run_resource_flow_bands_if_active(fabric, params.resource_flow_pipeline_enabled);
+    let resource_flow_band_dispatched = run_resource_flow_bands_if_active(fabric);
     // RF-5A: need EvalEML writes AllocatorWeight after ordinary threshold scan.
     if resource_flow_band_dispatched {
         fabric
@@ -331,7 +325,6 @@ pub fn run_simulation_fabric_hot_cycle(
     let hot = run_simulation_fabric_hot_step(
         fabric,
         FabricHotStepParams {
-            resource_flow_pipeline_enabled: params.resource_flow_pipeline_enabled,
             mapping: params.mapping,
         },
     )?;

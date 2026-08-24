@@ -68,12 +68,7 @@ pub fn small_flat_star_repeated_boundary_sync() -> BurnInScenarioFixture {
 }
 
 pub fn open_scenario_session(fixture: &BurnInScenarioFixture) -> FlatStarSession {
-    let fx = open_flat_star_session(fixture.hosted_count, true);
-    assert!(
-        fx.session.proto.flags.use_accumulator_resource_flow,
-        "scenario {name} must explicitly enable resource flow",
-        name = fixture.name
-    );
+    let fx = open_flat_star_session(fixture.hosted_count);
     assert_eq!(
         fx.layout.max_depth,
         2,
@@ -113,7 +108,6 @@ pub fn run_scenario_burn_in(
         &fx.session.spec_state.arena_registry,
         &[],
         &[],
-        true,
     )
     .expect("scenario sync");
 

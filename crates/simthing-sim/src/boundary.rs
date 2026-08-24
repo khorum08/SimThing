@@ -164,12 +164,6 @@ pub struct PipelineFlags {
     pub use_accumulator_eml: bool,
     /// C-8b: routes intensity update through AccumulatorOp EvalEML (requires `use_accumulator_eml`).
     pub use_accumulator_intensity: bool,
-    /// C-8c: routes exact economic transfer through AccumulatorOp (input-list substrate).
-    pub use_accumulator_transfer: bool,
-    /// C-8d: routes economic emission through AccumulatorOp (requires `use_accumulator_eml` for EvalEML).
-    pub use_accumulator_emission: bool,
-    /// E-11: routes arena resource-flow allocation through AccumulatorOp OrderBands (default off).
-    pub use_accumulator_resource_flow: bool,
     /// AO-WGSL-0: optional fast path for compatible OrderBand AO plans (default off).
     pub use_accumulator_wgsl_fast_path: bool,
 }
@@ -185,9 +179,6 @@ impl Default for PipelineFlags {
             use_accumulator_velocity: true,
             use_accumulator_eml: true,
             use_accumulator_intensity: true,
-            use_accumulator_transfer: false,
-            use_accumulator_emission: false,
-            use_accumulator_resource_flow: false,
             use_accumulator_wgsl_fast_path: false,
         }
     }
@@ -197,9 +188,6 @@ impl PipelineFlags {
     pub fn validate(&self) {
         if self.use_accumulator_intensity && !self.use_accumulator_eml {
             panic!("C-8b intensity requires use_accumulator_eml");
-        }
-        if self.use_accumulator_emission && !self.use_accumulator_eml {
-            panic!("C-8d emission EvalEML requires use_accumulator_eml");
         }
     }
 
@@ -398,25 +386,11 @@ impl BoundaryProtocol {
     }
 
     fn sync_accumulator_transfer_session(&self, state: &mut WorldGpuState) {
-        if !self.flags.use_accumulator_transfer {
-            if let Some(runtime) = state.accumulator_runtime.as_mut() {
-                runtime.clear_transfer();
-            }
-            state.set_transfer_dispatch(false, 0);
-            return;
-        }
         state.ensure_transfer_accumulator();
     }
 
     fn sync_accumulator_emission_session(&self, state: &mut WorldGpuState) {
         self.flags.validate();
-        if !self.flags.use_accumulator_emission {
-            if let Some(runtime) = state.accumulator_runtime.as_mut() {
-                runtime.clear_emission();
-            }
-            state.set_emission_dispatch(false, 0);
-            return;
-        }
         state.ensure_emission_accumulator();
     }
 

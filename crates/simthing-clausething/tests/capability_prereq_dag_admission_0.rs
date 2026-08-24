@@ -80,7 +80,6 @@ fn game_mode_from_hydrated(id: &str, hydrated: HydratedEntityPack) -> GameModeSp
         events: Vec::new(),
         resource_flow: None,
         resource_economy: None,
-        resource_flow_execution_profile: Default::default(),
         region_fields: Vec::new(),
         mapping_execution_profile: Default::default(),
     }

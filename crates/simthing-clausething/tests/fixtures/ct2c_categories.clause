@@ -2,7 +2,6 @@ simthing_ct2c_categories = {
     display_name = "CT-2c Category Economy"
     description = "Synthetic category economy fixture for ClauseThing CT-2c."
     resource_flow = {
-        opt_in = FlatStarOptIn
         max_participants = 16
         max_coupling_fanout = 4
         max_orderband_depth = 16

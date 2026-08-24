@@ -56,12 +56,8 @@ crates/simthing-driver/src/resource_flow_derivation.rs	compile-plan	Admission-ti
 crates/simthing-driver/src/resource_flow_dynamic_enrollment_soak.rs	executed	Live driver/kernel execution or residency path in the recursive RF / arena stack
 crates/simthing-driver/src/resource_flow_enrollment.rs	executed	Live driver/kernel execution or residency path in the recursive RF / arena stack
 crates/simthing-driver/src/resource_flow_fission_enrollment.rs	executed	Live driver/kernel execution or residency path in the recursive RF / arena stack
-crates/simthing-driver/src/resource_flow_flat_star_continued_soak.rs	executed	Live driver/kernel execution or residency path in the recursive RF / arena stack
-crates/simthing-driver/src/resource_flow_opt_in_burn_in.rs	executed	Live driver/kernel execution or residency path in the recursive RF / arena stack
-crates/simthing-driver/src/resource_flow_opt_in_product_soak.rs	executed	Live driver/kernel execution or residency path in the recursive RF / arena stack
-crates/simthing-driver/src/resource_flow_opt_in_telemetry.rs	executed	Live driver/kernel execution or residency path in the recursive RF / arena stack
+crates/simthing-driver/src/resource_flow_convergence_burn_in.rs	executed	Live driver/kernel execution or residency path in the recursive RF / arena stack
 crates/simthing-driver/src/resource_flow_preflight.rs	executed	Live driver/kernel execution or residency path in the recursive RF / arena stack
-crates/simthing-driver/src/resource_flow_scenario_class_burn_in.rs	executed	Live driver/kernel execution or residency path in the recursive RF / arena stack
 crates/simthing-driver/src/rf_conservation_oracle.rs	oracle	CPU/judge independence surface for conservation or plan parity
 crates/simthing-driver/src/runtime_local_allocation_compile.rs	compile-plan	Plan/compile builder producing GPU/session plans (not the live tick itself)
 crates/simthing-driver/src/runtime_participant_property_mutation_boundary_compile.rs	compile-plan	Plan/compile builder producing GPU/session plans (not the live tick itself)

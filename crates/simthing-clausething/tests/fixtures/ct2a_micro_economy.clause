@@ -12,7 +12,6 @@ simthing_ct2a_micro = {
         max_participants = 16
         max_coupling_fanout = 4
         max_orderband_depth = 16
-        opt_in = FlatStarOptIn
     }
     produces = {
         property = simthing::food_flow
