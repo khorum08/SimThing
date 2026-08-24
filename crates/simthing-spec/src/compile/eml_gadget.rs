@@ -1441,7 +1441,8 @@ mod authored_law_gadget_tests {
     }
 
     #[test]
-    fn authored_and_compile_gadget_vocabularies_are_one_to_one() {
+    fn authored_law_gadget_admission_table() {
+        // Paired constitutional vocabularies.
         let kinds = EmlGadgetKind::all();
         assert_eq!(kinds.len(), GADGET_NAMES.len());
         for (kind, expected_name) in kinds.iter().zip(GADGET_NAMES) {
@@ -1535,10 +1536,8 @@ mod authored_law_gadget_tests {
                 specimen.kind_name()
             );
         }
-    }
 
-    #[test]
-    fn power_law_lowering_is_canonical_and_id_independent() {
+        // Canonical lowering and id-independent semantics.
         let instance = EmlGadgetInstanceSpec::PowerLaw {
             id: "piecewise-looking-name-does-not-control-semantics".into(),
             input_col: 0,
@@ -1570,10 +1569,9 @@ mod authored_law_gadget_tests {
             eval_eml_postfix(&compiled.nodes, 0, &values, 2).to_bits(),
             oracle_power_law(4.0, 2.0, positive_floor()).to_bits(),
         );
-    }
 
-    #[test]
-    fn power_law_rejects_uncertified_ln_domain_at_admission() {
+        // Unsafe authoring table: LN domain and coefficient must be decidable
+        // before the nodes can reach any execution consumer.
         for floor in [0.0, -1.0, f32::from_bits(1), f32::NAN, f32::INFINITY] {
             let error = compile_eml_gadget(
                 &EmlGadgetInstanceSpec::PowerLaw {
@@ -1605,10 +1603,8 @@ mod authored_law_gadget_tests {
             .expect_err("non-finite authored exponent must RED before execution");
             assert!(error.to_string().contains("power_law_exponent_non_finite"));
         }
-    }
 
-    #[test]
-    fn power_law_role_rejects_staircase_semantics_not_spelling() {
+        // Semantic staircase mutant; the id/variant spelling is not the test.
         let staircase = vec![
             node_slot(0),
             node_literal(2.0),
