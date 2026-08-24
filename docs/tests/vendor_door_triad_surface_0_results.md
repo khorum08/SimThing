@@ -1,12 +1,14 @@
 # VENDOR-DOOR-TRIAD-SURFACE-0 results
 
-- Track: 0.0.8.7 RF arena modernization (rung 11.1b)
+- Track: 0.0.8.7 RF arena modernization (rung 11.1c)
 - Status: **PROBATION — proof present / DA review pending**
 - Handoff baseline: `9e81ef6aa12725d185372eed3ab8c7c8bffc9cb8`
+- Reconciled execution base: `8cbdbd04cf1660c452cca0ea14a7b10d10a3009d`
+- Implementation / tested_code_sha: `46530e8ef2b79b84b3832dcb50fac13eb398e6d8`
 - HD-RECEIPT: `622933c70c88`
 - ORIENT-RECEIPT: `a5dc59920dd4`
 - orientation_rule_stamp: `61818ff7d4adda84`
-- orientation_digest: `4e5f9cf2623ca69114e7fbfc9eeec9e25157dc1f12e1cc35145a6fec42eb30c9`
+- orientation_digest: `8bb010feac86eaa7346b7ce75c97f415afd3c58bb3220783a301b1da57825aea`
 - expected_route: `DA-RESERVE(gate-wiring)`
 - Homing boundary: `engine-native`
 
@@ -16,17 +18,33 @@ The leaf `simthing-embedder` facade now reaches the graduated full-Triad
 session seam through its five verbs. Derive exposes competing emitter classes
 and authored EML gadget data; Bind exposes bounded authored columns, admitted
 PALMA/Gu-Yang compilation, bands, and read-only stall observation; Run delegates
-to `SimSession::open_from_spec_with_admitted_field_sweeps`.
+to `SimSession::open_from_spec_with_admitted_field_sweeps` with a deferred
+compiler that receives the seam's live finalized registry width.
 
-The dimension projection helper is a stateless composition of the existing
-ordinary install preview and comparative admission. It retains no preview,
-mints no columns, and executes no simulation work.
+The pre-graduation caller workaround was removed: Bind no longer projects a
+registry width, the witness does not rewrite authored `RegionFieldSpec`
+dimensions, and Run does not precompile registrations. The one graduated
+dimension-finalization seam now owns that operation.
+
+## Delegation archaeology
+
+| Door entry | Graduated production surface |
+|---|---|
+| Derive competing emitter declaration | `simthing_driver::ComparativeEmitterClass` |
+| Derive authored EML data/compiler | `simthing_spec::{EmlGadgetStackSpec, EmlGadgetInstanceSpec, compile_eml_gadget_stack}` |
+| Bind PALMA admission | `simthing_driver::{PalmaN4FieldSweepSpec, compile_palma_n4_field_sweep}` |
+| Bind Gu-Yang admission | `simthing_driver::{GuYangN4FieldSweepSpec, compile_gu_yang_n4_field_sweeps}` |
+| Bind projection bands/output shape | `simthing_driver::{ComparativeProjectionBands, GuYangStallOutputs}` |
+| Bind authored Triad column | `simthing_core::ColumnIndex::try_from_admitted_authored` with the caller's bound |
+| Bind read-only observation | admitted `SpecSessionState.comparative_projection.stall_outputs` plus the ordinary mapping's `readback_canonical_field` |
+| Run initialization | `simthing_driver::SimSession::open_from_spec_with_admitted_field_sweeps` |
 
 ## Exit proofs
 
 | Proof | Result |
 |---|---|
-| Five-verb production witness | PASS — authored EML reaches `compile_eml_gadget_stack`; competing emitter declarations match the admitted field plan; PALMA and Gu-Yang registrations open through the ordinary seam and run one production tick. |
+| Five-verb production witness | PASS — authored EML reaches `compile_eml_gadget_stack`; competing emitter declarations match the admitted field plan; the seam supplies the finalized width to PALMA and Gu-Yang compilers; their registrations open through the ordinary seam and run one production tick. |
+| Dimension-finalization authority | PASS — authored field dimensions are unchanged, the compiler receives the live post-admission registry width, and no facade preview/prediction helper remains. |
 | Read-only observation | PASS — every returned bit is compared with the existing mapping's canonical GPU readback at the admitted `GuYangStallOutputs` columns. No observation feeds a CPU decision. |
 | Fabricated-observable mutant | EXPECTED RED — replacing the observed stall lane with `1.0` fails for `VENDOR-DOOR-TRIAD-FABRICATED-OBSERVABLE`. Mutation restored. |
 | Raw-column mutant | EXPECTED RED — replacing bounded admission with `ColumnIndex::from_gpu_round_trip(raw)` fails for `VENDOR-DOOR-TRIAD-RAW-COLUMN-MINT`. Mutation restored. |
@@ -47,13 +65,14 @@ withdraws that entry; 11.1d owns the disposition.
 | Command | Result |
 |---|---|
 | `cargo check -p simthing-embedder` | PASS |
-| `cargo test -p simthing-embedder --test vendor_door_triad_surface_0` | PASS — 2 integration tests |
-| `cargo test -p simthing-embedder` with adapter match required | PASS — crate tests and 2 compile-fail doctests |
-| fabricated-observable planted mutation | EXPECTED RED — named production-path reason |
-| raw-column planted mutation | EXPECTED RED — named bounded-door reason |
-| inventory drift / lifecycle / detachability / DOC-BUDGET | PASS — lifecycle bound to implementation commit `63c2930e` |
+| `cargo test -p simthing-embedder --test vendor_door_triad_surface_0` with adapter match required | PASS — 2 integration tests; `NVIDIA GeForce RTX 4080 Laptop GPU` / Vulkan |
+| `cargo test -p simthing-embedder` with adapter match required | PASS — 8 integration tests and 2 compile-fail doctests |
+| fabricated-observable planted mutation | EXPECTED RED — `VENDOR-DOOR-TRIAD-FABRICATED-OBSERVABLE` on the live production readback path; mutation restored |
+| raw-column planted mutation | EXPECTED RED — `VENDOR-DOOR-TRIAD-RAW-COLUMN-MINT` on the bounded authored door; mutation restored |
+| inventory drift prove / lifecycle schema + scheduled | PASS — inventory has 1,309 rows; zero expired candidates; implementation bound to `46530e8e` |
+| detachability / DOC-BUDGET | PASS — zero production/proof upward coupling; prose within budget |
 | generated orientation / sanctioned digest | PASS |
-| Agent scan at `63c2930e` | PASS — zero hard failures and zero inspect flags |
+| Agent scan at `46530e8e` | PASS — zero hard failures and zero inspect flags |
 
 Required anchors acknowledged: `orientation-harness-core@8a365d1c0864` and
 `scanner-selftest-delta-gate@34fb2662baae`.
