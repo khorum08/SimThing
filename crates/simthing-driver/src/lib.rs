@@ -423,7 +423,10 @@ pub use semantic_local_effects_recursive_source_compile::{
 pub use semantic_participant_delta_preview_compile::{
     compile_semantic_participant_delta_preview_plan, SemanticParticipantDeltaPreviewPlan,
 };
-pub use session::{RunSummary, SessionError, SessionShadowView, SimSession, StepOnceOutcome};
+pub use session::{
+    ActionBandExecutionIngressError, RunSummary, SessionError, SessionShadowView, SimSession,
+    StepOnceOutcome,
+};
 pub use session_resource_flow_silos::{
     build_owner_silo_resource_flow_spec, compile_and_materialize_owner_silo_flow,
     compile_and_materialize_owner_silo_flow_via_resource_flow, compile_owner_silo_flow_admission,

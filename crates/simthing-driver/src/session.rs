@@ -56,6 +56,36 @@ pub enum SessionError {
     PlayerIntentAdmission(String),
     #[error("execution posture: {0}")]
     ExecutionPosture(String),
+    #[error(transparent)]
+    ActionBandIngress(#[from] ActionBandExecutionIngressError),
+}
+
+/// Typed fail-closed outcomes for the one ordinary ActionBand execution
+/// ingress. None of these paths recompiles or silently rebinds a stale plan.
+#[derive(Debug, Error)]
+pub enum ActionBandExecutionIngressError {
+    #[error("ActionBand commitments are already installed for this session")]
+    AlreadyInstalled,
+    #[error(
+        "ActionBand commitments must bind at tick zero, not tick {tick} / generation {generation}"
+    )]
+    LateInstall { tick: u64, generation: u64 },
+    #[error(
+        "ActionBand resident bind shape is {actual} floats; ordinary session requires {expected}"
+    )]
+    InvalidResidentShape { expected: usize, actual: usize },
+    #[error("ActionBand dispatch is stale because the object binding table changed (tree growth or epoch rebind)")]
+    BindingTableStale,
+    #[error(
+        "ActionBand dispatch is stale because the admitted registry grew or changed activation"
+    )]
+    RegistryStale,
+    #[error("ActionBand dispatch is stale because the session slot/dimension shape changed")]
+    DimensionShapeStale,
+    #[error("spec state cannot be reinstalled after ActionBand commitments are bound")]
+    SpecInstallAfterActionBand,
+    #[error(transparent)]
+    Dispatch(#[from] crate::CrossingConsequenceDispatchError),
 }
 
 /// Outcome of a single [`SimSession::step_once`] production hot-cycle.
@@ -136,6 +166,11 @@ pub struct RunSummary {
     pub mapping_ticks: u64,
     pub mapping_commitment_events: u64,
     pub mapping_commitment_effects_applied: u64,
+    pub action_band_crossing_batches: u64,
+    pub action_band_crossings: u64,
+    pub action_band_routed_deliveries: u64,
+    pub action_band_structural_authorizations: u64,
+    pub action_band_bucket_dispatches: u64,
     pub boundary_total_ms: f64,
     pub boundary_value_readback_ms: f64,
     pub boundary_alert_collect_ms: f64,
@@ -187,6 +222,11 @@ impl RunSummary {
             mapping_ticks: 0,
             mapping_commitment_events: 0,
             mapping_commitment_effects_applied: 0,
+            action_band_crossing_batches: 0,
+            action_band_crossings: 0,
+            action_band_routed_deliveries: 0,
+            action_band_structural_authorizations: 0,
+            action_band_bucket_dispatches: 0,
             boundary_total_ms: 0.0,
             boundary_value_readback_ms: 0.0,
             boundary_alert_collect_ms: 0.0,
@@ -256,12 +296,34 @@ pub struct SimSession {
     /// session loop, in tick order. Consumed at boundaries; diagnostic
     /// readback never feeds runtime decisions.
     pub mapping_commitments: Vec<MappingCommitmentRecord>,
+    /// One consuming ActionBand dispatcher retained for the session lifetime.
+    /// It joins only canonical Phase-5 boundary deltas and owns no clock beside
+    /// its existing facility generation boundary.
+    action_band_execution: Option<SessionActionBandExecution>,
     /// CONTINUOUS-POSTURE-SOAK-0: scheduling policy over the same kernel.
     /// Default [`ExecutionPosture::Paced`]; continuous batches call the identical
     /// hot-cycle + boundary path — never a second kernel or semantic fork.
     execution_posture: simthing_core::ExecutionPosture,
     resolved_order_directives: Mutex<crate::order_directive::OrderDirectiveGateState>,
     order_directive_injection_log: Mutex<Vec<crate::order_directive::OrderDirectiveInjection>>,
+}
+
+struct SessionActionBandExecution {
+    dispatch: crate::CrossingConsequenceDispatch,
+    admitted_shape: ActionBandIngressShape,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct ActionBandIngressShape {
+    binding_table: simthing_core::BindingTableSnapshot,
+    registry_columns: usize,
+    registry_properties: usize,
+    registry_active: Vec<bool>,
+    coord_slots: u32,
+    coord_dims: u32,
+    state_slots: u32,
+    state_dims: u32,
+    resident_values_len: usize,
 }
 
 /// CT-3b+4a Line 3: everything the session loop needs to run the admitted
@@ -353,8 +415,122 @@ impl SimSession {
         }
     }
 
+    fn current_action_band_ingress_shape(&self) -> ActionBandIngressShape {
+        ActionBandIngressShape {
+            binding_table: self.proto.allocator.binding_table_snapshot(),
+            registry_columns: self.proto.registry.total_columns,
+            registry_properties: self.proto.registry.properties.len(),
+            registry_active: self.proto.registry.active.clone(),
+            coord_slots: self.coord.n_slots(),
+            coord_dims: self.coord.n_dims(),
+            state_slots: self.state.n_slots,
+            state_dims: self.state.n_dims,
+            resident_values_len: self.coord.shadow.len(),
+        }
+    }
+
+    fn ensure_action_band_ingress_current(&self) -> Result<(), ActionBandExecutionIngressError> {
+        let Some(installed) = self.action_band_execution.as_ref() else {
+            return Ok(());
+        };
+        let current = self.current_action_band_ingress_shape();
+        let admitted = &installed.admitted_shape;
+        if current.binding_table != admitted.binding_table {
+            return Err(ActionBandExecutionIngressError::BindingTableStale);
+        }
+        if current.registry_columns != admitted.registry_columns
+            || current.registry_properties != admitted.registry_properties
+            || current.registry_active != admitted.registry_active
+        {
+            return Err(ActionBandExecutionIngressError::RegistryStale);
+        }
+        if current.coord_slots != admitted.coord_slots
+            || current.coord_dims != admitted.coord_dims
+            || current.state_slots != admitted.state_slots
+            || current.state_dims != admitted.state_dims
+            || current.resident_values_len != admitted.resident_values_len
+        {
+            return Err(ActionBandExecutionIngressError::DimensionShapeStale);
+        }
+        Ok(())
+    }
+
+    /// Bind one already-admitted consequence session into the ordinary
+    /// production lifecycle. The resident values are the tick-zero CPU shadow
+    /// produced by the final ordinary install; later binding would race live
+    /// GPU state and therefore fails closed.
+    pub fn install_action_band_commitments(
+        &mut self,
+        commitments: crate::CrossingConsequenceSession,
+    ) -> Result<(), SessionError> {
+        if self.action_band_execution.is_some() {
+            return Err(ActionBandExecutionIngressError::AlreadyInstalled.into());
+        }
+        if self.coord.tick_index() != 0 || self.coord.day_index() != 0 {
+            return Err(ActionBandExecutionIngressError::LateInstall {
+                tick: self.coord.tick_index(),
+                generation: self.coord.day_index(),
+            }
+            .into());
+        }
+        let expected = self.coord.n_slots() as usize * self.coord.n_dims() as usize;
+        if self.coord.shadow.len() != expected {
+            return Err(ActionBandExecutionIngressError::InvalidResidentShape {
+                expected,
+                actual: self.coord.shadow.len(),
+            }
+            .into());
+        }
+        let dispatch = commitments
+            .bind_dispatch(&self.state.ctx, &self.coord.shadow)
+            .map_err(ActionBandExecutionIngressError::from)?;
+        self.action_band_execution = Some(SessionActionBandExecution {
+            dispatch,
+            admitted_shape: self.current_action_band_ingress_shape(),
+        });
+        Ok(())
+    }
+
+    /// Read-only proof/telemetry of the existing facility generation.
+    pub fn action_band_execution_generation(&self) -> Option<u32> {
+        self.action_band_execution
+            .as_ref()
+            .map(|installed| installed.dispatch.generation())
+    }
+
+    fn dispatch_action_band_boundary(
+        &mut self,
+        outcome: &BoundaryOutcome,
+        summary: &mut RunSummary,
+    ) -> Result<(), SessionError> {
+        self.ensure_action_band_ingress_current()?;
+        let Some(installed) = self.action_band_execution.as_mut() else {
+            return Ok(());
+        };
+        let Some(dispatched) = installed
+            .dispatch
+            .dispatch_sealed_and_apply(
+                &self.state.ctx,
+                self.state.n_dims,
+                &outcome.band_crossing_deltas,
+                &self.tx,
+            )
+            .map_err(ActionBandExecutionIngressError::from)?
+        else {
+            return Ok(());
+        };
+        summary.action_band_crossing_batches += 1;
+        summary.action_band_crossings += u64::from(dispatched.crossing_count);
+        summary.action_band_routed_deliveries += u64::from(dispatched.routed_deliveries);
+        summary.action_band_structural_authorizations +=
+            u64::from(dispatched.structural_authorizations);
+        summary.action_band_bucket_dispatches += u64::from(dispatched.bucket_dispatches);
+        Ok(())
+    }
+
     /// Hot-path cycle — pre-tick enqueue + ordinary tick + RF bands + mapping dispatch.
     fn run_hot_cycle(&mut self) -> Result<FabricHotCycleOutcome, SessionError> {
+        self.ensure_action_band_ingress_current()?;
         // EVENT-GENERATION-STAMP-0: generation authority is the tree day/generation
         // counter. Bind it into sealed emission/threshold mint at the ordinary
         // production step boundary (not an optional side setter).
@@ -456,6 +632,7 @@ impl SimSession {
             last_resource_flow_dynamic_enrollment_report: None,
             mapping: None,
             mapping_commitments: Vec::new(),
+            action_band_execution: None,
             execution_posture: simthing_core::ExecutionPosture::Paced,
             resolved_order_directives: Mutex::new(
                 crate::order_directive::OrderDirectiveGateState::default(),
@@ -485,6 +662,9 @@ impl SimSession {
     }
 
     pub fn install_spec_state(&mut self, spec_state: SpecSessionState) -> Result<(), SessionError> {
+        if self.action_band_execution.is_some() {
+            return Err(ActionBandExecutionIngressError::SpecInstallAfterActionBand.into());
+        }
         self.spec_state = spec_state;
         self.resync_gpu_shape_after_spec_install();
         self.reserve_resource_flow_capacity_budget();
@@ -1165,6 +1345,7 @@ impl SimSession {
         summary.reduction_depths_max = summary
             .reduction_depths_max
             .max(outcome.gpu_sync.reduction_depths);
+        self.dispatch_action_band_boundary(&outcome, summary)?;
         summary.boundaries_run += 1;
         self.react_to_fission_clones(&outcome);
         self.react_to_fission_resource_flow_enrollment(&outcome)?;
@@ -1264,6 +1445,7 @@ impl SimSession {
                 summary.reduction_depths_max = summary
                     .reduction_depths_max
                     .max(outcome.gpu_sync.reduction_depths);
+                self.dispatch_action_band_boundary(&outcome, &mut summary)?;
 
                 // O2 Replay v3: diff spec state, drain notifications, build
                 // `spec_entries` for the frame.

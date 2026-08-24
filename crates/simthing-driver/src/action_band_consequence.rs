@@ -16,7 +16,7 @@ use simthing_feeder::{BoundaryRequest, FeederError, FeederSender};
 use simthing_gpu::{
     ActionBandCrossingBatch, ActionBandCrossingConsumptionKey, ActionBandEmissionBindingGpu,
     ActionBandEmissionDestination, ActionBandGpuExecution, ActionBandGpuSession,
-    ActionBandProductionDispatch, GpuContext,
+    ActionBandProductionDispatch, BandCrossingDelta, GpuContext,
 };
 use simthing_spec::FrozenActionBandTemplates;
 use thiserror::Error;
@@ -479,6 +479,7 @@ impl CrossingConsequenceDispatch {
         crossings: ActionBandCrossingBatch,
         boundary: &FeederSender,
     ) -> Result<CrossingConsequenceDispatchOutcome, CrossingConsequenceDispatchError> {
+        let crossing_count = crossings.crossing_count() as u32;
         self.generation_dedupe.admit(
             self.execution.facility_generation(),
             crossings.consumption_keys(),
@@ -489,7 +490,30 @@ impl CrossingConsequenceDispatch {
             .map_err(|error| CrossingConsequenceDispatchError::Gpu(error.to_string()))?;
         self.generation_dedupe
             .observe_boundary(self.execution.facility_generation())?;
-        self.apply_boundary_consequences(production, boundary)
+        let mut outcome = self.apply_boundary_consequences(production, boundary)?;
+        outcome.crossing_count = crossing_count;
+        Ok(outcome)
+    }
+
+    /// Ordinary-session ingress from the canonical Phase-5 boundary product.
+    /// Empty boundaries do not manufacture facility generations; non-empty
+    /// batches reuse the sole consuming dispatcher above.
+    pub fn dispatch_sealed_and_apply(
+        &mut self,
+        ctx: &GpuContext,
+        n_dims: u32,
+        deltas: &[BandCrossingDelta],
+        boundary: &FeederSender,
+    ) -> Result<Option<CrossingConsequenceDispatchOutcome>, CrossingConsequenceDispatchError> {
+        let crossings = self
+            .execution
+            .crossings_from_sealed(deltas)
+            .map_err(|error| CrossingConsequenceDispatchError::Gpu(error.to_string()))?;
+        if crossings.crossing_count() == 0 {
+            return Ok(None);
+        }
+        self.dispatch_and_apply(ctx, n_dims, crossings, boundary)
+            .map(Some)
     }
 
     /// Proof-only view of the bounded current-generation dedupe window.
@@ -541,6 +565,7 @@ impl CrossingConsequenceDispatch {
         }
         Ok(CrossingConsequenceDispatchOutcome {
             generation: source_generation,
+            crossing_count: 0,
             routed_deliveries: routed,
             structural_authorizations: structural,
             bucket_dispatches: production.bucket_dispatches,
@@ -551,6 +576,7 @@ impl CrossingConsequenceDispatch {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct CrossingConsequenceDispatchOutcome {
     pub generation: GenerationStamp,
+    pub crossing_count: u32,
     pub routed_deliveries: u32,
     pub structural_authorizations: u32,
     pub bucket_dispatches: u32,

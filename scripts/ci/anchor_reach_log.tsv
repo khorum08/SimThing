@@ -1321,3 +1321,8 @@ date	role	query	anchors_served	hit
 2026-08-24T18:29:24Z	coding	--grep orientation-harness-core	orientation-harness-core	hit
 2026-08-24T18:29:25Z	coding	--grep scanner-selftest-delta-gate	scanner-selftest-delta-gate	hit
 2026-08-24T18:29:25Z	coding	--grep field-sweep-preservation	eml-triad-integration,field-sweep-preservation	hit
+2026-08-24T20:01:01Z	coding	--grep admission-ladder-necessity-test	admission-ladder-necessity-test	hit
+2026-08-24T20:01:02Z	coding	--grep eml-extension-ladder	eml-extension-ladder	hit
+2026-08-24T20:01:03Z	coding	--grep seal-residue-cross-crate	seal-residue-cross-crate	hit
+2026-08-24T20:24:46Z	coding	--grep actionband-determinism-lifecycle	actionband-determinism-lifecycle	hit
+2026-08-24T20:24:50Z	coding	--grep generation boundary	core-property-value-model,overlay-closure-thesis,overlay-designer-closure,simthing-0087-pillars	hit

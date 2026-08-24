@@ -438,6 +438,12 @@ fn facade_shape_column_and_actionband_seals_remain_closed() {
             && bind_source.contains("readback_canonical_field(&session.state.ctx)"),
         "VENDOR-DOOR-TRIAD-FABRICATED-OBSERVABLE: observation must delegate to admitted columns and live readback"
     );
+    assert!(
+        bind_source.contains("pub fn action_band_commitments(")
+            && bind_source.contains("session.install_action_band_commitments(compiled)?")
+            && !bind_source.contains("compile_crossing_consequence_session as action_band_commitments"),
+        "ACTIONBAND-EXECUTION-INGRESS-DROPPED-PRODUCT: the advertised door must compile-and-install atomically, never return a product ordinary SimSession can drop"
+    );
 
     let workspace = Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
@@ -459,20 +465,42 @@ fn facade_shape_column_and_actionband_seals_remain_closed() {
         "VENDOR-DOOR-TRIAD-FACADE-LEAF: engine dependency points upward: {reverse_dependencies:?}"
     );
 
-    let driver_sources = rust_sources_under(&workspace.join("crates/simthing-driver/src"));
-    let actionband_call_sites: Vec<_> = driver_sources
+    let mut production_sources = rust_sources_under(&workspace.join("crates/simthing-driver/src"));
+    production_sources.extend(rust_sources_under(
+        &workspace.join("crates/simthing-embedder/src"),
+    ));
+    let actionband_occurrences: Vec<_> = production_sources
         .iter()
         .flat_map(|(path, source)| {
             source.lines().enumerate().filter_map(move |(line, text)| {
                 text.contains("compile_crossing_consequence_session(")
-                    .then_some((path.clone(), line + 1))
+                    .then_some((path.clone(), line + 1, text.trim().to_owned()))
             })
         })
         .collect();
+    let actionband_declarations: Vec<_> = actionband_occurrences
+        .iter()
+        .filter(|(_, _, text)| text.starts_with("pub fn compile_crossing_consequence_session("))
+        .collect();
+    let actionband_production_callers: Vec<_> = actionband_occurrences
+        .iter()
+        .filter(|(_, _, text)| !text.starts_with("pub fn compile_crossing_consequence_session("))
+        .collect();
     assert_eq!(
-        actionband_call_sites.len(),
+        actionband_declarations.len(),
         1,
-        "VENDOR-DOOR-TRIAD-ACTIONBAND-11-1D: production caller count changed; leave the existing declaration-only door for 11.1d: {actionband_call_sites:?}"
+        "ACTIONBAND-EXECUTION-INGRESS-DECLARATION: the graduated compiler declaration moved or multiplied: {actionband_occurrences:?}"
+    );
+    assert_eq!(
+        actionband_production_callers.len(),
+        1,
+        "ACTIONBAND-EXECUTION-INGRESS-PRODUCTION-CALLER-CENSUS: the declaration is not execution proof; exactly one true production caller must remain at the atomic facade compile-and-install door: {actionband_production_callers:?}"
+    );
+    assert!(
+        actionband_production_callers[0]
+            .0
+            .ends_with(Path::new("simthing-embedder/src/bind.rs")),
+        "ACTIONBAND-EXECUTION-INGRESS-PRODUCTION-CALLER-CENSUS: the sole production caller moved away from the consuming Vendor Door: {actionband_production_callers:?}"
     );
 }
 

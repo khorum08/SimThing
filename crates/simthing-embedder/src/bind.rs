@@ -1,11 +1,10 @@
 //! **Bind** — band consequences/thresholds and read-only CPU observation.
 
 pub use simthing_driver::{
-    compile_crossing_consequence_session as action_band_commitments,
     compile_gu_yang_n4_field_sweeps, compile_palma_n4_field_sweep, ActionBandActiveInstance,
     ActionBandNativeLaneAdmission, ComparativeProjectionBands, CrossingConsequenceAdmissionError,
-    CrossingConsequenceBinding, CrossingConsequenceSession, GuYangN4FieldSweepSpec,
-    GuYangStallOutputs, PalmaN4FieldSweepSpec, SessionShadowView,
+    CrossingConsequenceBinding, GuYangN4FieldSweepSpec, GuYangStallOutputs, PalmaN4FieldSweepSpec,
+    SessionShadowView,
 };
 pub use simthing_gpu::{FieldSweepAdmissionError, FieldSweepRegistration};
 pub use simthing_sim::{
@@ -13,7 +12,39 @@ pub use simthing_sim::{
     VelocityAlertRegistration,
 };
 
-pub use simthing_core::{AuthoredColumnAdmitError, ColumnIndex, SlotIndex};
+pub use simthing_core::{AuthoredColumnAdmitError, ColumnIndex, EmlExpressionRegistry, SlotIndex};
+pub use simthing_spec::FrozenActionBandTemplates;
+use thiserror::Error;
+
+#[derive(Debug, Error)]
+pub enum ActionBandCommitmentsError {
+    #[error(transparent)]
+    Admission(#[from] CrossingConsequenceAdmissionError),
+    #[error(transparent)]
+    Session(#[from] simthing_driver::SessionError),
+}
+
+/// Compile and install one ActionBand consequence product into the ordinary
+/// session lifecycle. The facade never returns a detached compile product:
+/// successful admission consumes it into the session-owned dispatcher.
+pub fn action_band_commitments(
+    session: &mut simthing_driver::SimSession,
+    frozen: &FrozenActionBandTemplates,
+    eml_registry: &EmlExpressionRegistry,
+    consequence_rows: &[CrossingConsequenceBinding],
+    active_instances: &[ActionBandActiveInstance],
+    native_lanes: &ActionBandNativeLaneAdmission,
+) -> Result<(), ActionBandCommitmentsError> {
+    let compiled = simthing_driver::compile_crossing_consequence_session(
+        frozen,
+        eml_registry,
+        consequence_rows,
+        active_instances,
+        native_lanes,
+    )?;
+    session.install_action_band_commitments(compiled)?;
+    Ok(())
+}
 
 /// One read-only row copied from the existing Gu-Yang comparative outputs.
 #[derive(Clone, Copy, Debug, PartialEq)]
