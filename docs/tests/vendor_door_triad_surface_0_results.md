@@ -4,7 +4,7 @@
 - Status: **PROBATION — proof present / DA review pending**
 - Handoff baseline: `9e81ef6aa12725d185372eed3ab8c7c8bffc9cb8`
 - Reconciled execution base: `8cbdbd04cf1660c452cca0ea14a7b10d10a3009d`
-- Implementation / tested_code_sha: `46530e8ef2b79b84b3832dcb50fac13eb398e6d8`
+- Implementation / tested_code_sha: `502653b0e30b200d4a436ecb4d2a46dfac8b7e7a`
 - HD-RECEIPT: `622933c70c88`
 - ORIENT-RECEIPT: `a5dc59920dd4`
 - orientation_rule_stamp: `61818ff7d4adda84`
@@ -26,12 +26,17 @@ registry width, the witness does not rewrite authored `RegionFieldSpec`
 dimensions, and Run does not precompile registrations. The one graduated
 dimension-finalization seam now owns that operation.
 
+The integration witness imports only `simthing_embedder` and its five verb
+namespaces. Existing authored fixture shapes are re-exported through Populate,
+Overlay, and Bind, so the proof has no direct engine-crate bypass.
+
 ## Delegation archaeology
 
 | Door entry | Graduated production surface |
 |---|---|
 | Derive competing emitter declaration | `simthing_driver::ComparativeEmitterClass` |
 | Derive authored EML data/compiler | `simthing_spec::{EmlGadgetStackSpec, EmlGadgetInstanceSpec, compile_eml_gadget_stack}` |
+| Populate authored scenario/tree/RF shapes | existing `simthing_core`, `simthing_gpu`, and `simthing_spec` data types by direct re-export |
 | Bind PALMA admission | `simthing_driver::{PalmaN4FieldSweepSpec, compile_palma_n4_field_sweep}` |
 | Bind Gu-Yang admission | `simthing_driver::{GuYangN4FieldSweepSpec, compile_gu_yang_n4_field_sweeps}` |
 | Bind projection bands/output shape | `simthing_driver::{ComparativeProjectionBands, GuYangStallOutputs}` |
@@ -44,6 +49,7 @@ dimension-finalization seam now owns that operation.
 | Proof | Result |
 |---|---|
 | Five-verb production witness | PASS — authored EML reaches `compile_eml_gadget_stack`; competing emitter declarations match the admitted field plan; the seam supplies the finalized width to PALMA and Gu-Yang compilers; their registrations open through the ordinary seam and run one production tick. |
+| Five-verb-only surface | PASS — the witness contains no direct `simthing_core`, `simthing_driver`, `simthing_gpu`, `simthing_sim`, or `simthing_spec` reference. |
 | Dimension-finalization authority | PASS — authored field dimensions are unchanged, the compiler receives the live post-admission registry width, and no facade preview/prediction helper remains. |
 | Read-only observation | PASS — every returned bit is compared with the existing mapping's canonical GPU readback at the admitted `GuYangStallOutputs` columns. No observation feeds a CPU decision. |
 | Fabricated-observable mutant | EXPECTED RED — replacing the observed stall lane with `1.0` fails for `VENDOR-DOOR-TRIAD-FABRICATED-OBSERVABLE`. Mutation restored. |
@@ -69,10 +75,10 @@ withdraws that entry; 11.1d owns the disposition.
 | `cargo test -p simthing-embedder` with adapter match required | PASS — 8 integration tests and 2 compile-fail doctests |
 | fabricated-observable planted mutation | EXPECTED RED — `VENDOR-DOOR-TRIAD-FABRICATED-OBSERVABLE` on the live production readback path; mutation restored |
 | raw-column planted mutation | EXPECTED RED — `VENDOR-DOOR-TRIAD-RAW-COLUMN-MINT` on the bounded authored door; mutation restored |
-| inventory drift prove / lifecycle schema + scheduled | PASS — inventory has 1,309 rows; zero expired candidates; implementation bound to `46530e8e` |
+| inventory drift prove / lifecycle schema + scheduled | PASS — inventory has 1,309 rows; zero expired candidates; implementation bound to `502653b0` |
 | detachability / DOC-BUDGET | PASS — zero production/proof upward coupling; prose within budget |
 | generated orientation / sanctioned digest | PASS |
-| Agent scan at `46530e8e` | PASS — zero hard failures and zero inspect flags |
+| Agent scan at `502653b0` | PASS — zero hard failures and zero inspect flags |
 
 Required anchors acknowledged: `orientation-harness-core@8a365d1c0864` and
 `scanner-selftest-delta-gate@34fb2662baae`.
