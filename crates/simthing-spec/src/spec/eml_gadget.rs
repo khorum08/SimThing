@@ -107,6 +107,19 @@ pub enum EmlGadgetInstanceSpec {
         #[serde(default)]
         dt: Option<f32>,
     },
+    /// Authored power law: `EXP(exponent * LN(x))`.
+    ///
+    /// `input_floor` is required law semantics, not a runtime repair policy. The
+    /// compiler admits only positive-normal finite floors and emits the floor as
+    /// the lower endpoint of the existing exact-primitive range guard.
+    PowerLaw {
+        id: String,
+        input_col: u32,
+        #[serde(default)]
+        output_col: Option<u32>,
+        exponent: f32,
+        input_floor: f32,
+    },
 }
 
 impl EmlGadgetInstanceSpec {
@@ -120,7 +133,8 @@ impl EmlGadgetInstanceSpec {
             | Self::Ema { id, .. }
             | Self::BoundedFeedback { id, .. }
             | Self::Hysteresis { id, .. }
-            | Self::Acceleration { id, .. } => id,
+            | Self::Acceleration { id, .. }
+            | Self::PowerLaw { id, .. } => id,
         }
     }
 
@@ -135,6 +149,7 @@ impl EmlGadgetInstanceSpec {
             Self::BoundedFeedback { .. } => "BoundedFeedback",
             Self::Hysteresis { .. } => "Hysteresis",
             Self::Acceleration { .. } => "Acceleration",
+            Self::PowerLaw { .. } => "PowerLaw",
         }
     }
 
@@ -169,6 +184,7 @@ impl EmlGadgetInstanceSpec {
                 previous_velocity_col,
                 ..
             } => vec![*current_velocity_col, *previous_velocity_col],
+            Self::PowerLaw { input_col, .. } => vec![*input_col],
         }
     }
 
@@ -182,7 +198,8 @@ impl EmlGadgetInstanceSpec {
             | Self::Ema { output_col, .. }
             | Self::BoundedFeedback { output_col, .. }
             | Self::Hysteresis { output_col, .. }
-            | Self::Acceleration { output_col, .. } => *output_col,
+            | Self::Acceleration { output_col, .. }
+            | Self::PowerLaw { output_col, .. } => *output_col,
         }
     }
 }
