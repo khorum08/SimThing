@@ -755,6 +755,17 @@ pub struct ActionBandGpuSession {
 }
 
 impl ActionBandGpuSession {
+    /// Join the existing sealed Phase-5 crossing product against this
+    /// session's immutable admitted plan. This is the same join used by the
+    /// proof harness; exposing it on the owning session lets an ordinary
+    /// production lifecycle retain one dispatcher without cloning its plan.
+    pub fn crossings_from_sealed(
+        &self,
+        deltas: &[BandCrossingDelta],
+    ) -> Result<ActionBandCrossingBatch, ActionBandExecutionError> {
+        self.plan.crossings_from_sealed(deltas)
+    }
+
     fn new(
         ctx: &GpuContext,
         plan: ActionBandExecutionPlan,
