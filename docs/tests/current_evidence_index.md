@@ -491,6 +491,8 @@ in `crates/simthing-mapeditor` + `crates/simthing-tools` code and their live tes
 
 - [accumulator_convergence_seal_0_results.md](accumulator_convergence_seal_0_results.md) - ACCUMULATOR-CONVERGENCE-SEAL-0 **PROBATION / proof-present / DA-review-pending** - C-8c transfer, C-8d emission, and E-11 arena Resource Flow now have one AccumulatorOp production path; all three flags and authored selectors are deleted; four workload-specific admission REDs, standing absence proof, exact C-8c/C-8d referees, and real-adapter E-11 burn/dynamic/soak evidence are green; structural certificate owed graduation; no pointer movement claimed.
 
+- [actionband_execution_ingress_0_results.md](actionband_execution_ingress_0_results.md) - ACTIONBAND-EXECUTION-INGRESS-0 **PROBATION / proof-present / DA-review-pending** - the advertised Vendor Door now atomically compiles and installs one session-owned dispatcher; canonical Phase-5 crossings execute through the existing GPU/facility/feeder/ordinary-boundary chain; real structural consequence and named dropped-product mutant prove reachability; registry/binding/dimension drift fails closed; structural certificate owed graduation; no pointer movement claimed.
+
 ## Notes
 - **No global structural lattice edge cap exists.** Structural scale is governed by `MapgenStructuralGridBudget` (default unbounded) + checked-`u128` math. `200×200` is a *small reference*; `65,535` was a temporary arithmetic ceiling and is **not doctrine** (removed in STEAD-SCALE-1).
 - **Execution-profile limits are separate** (`simthing-spec` `REGION_FIELD_STANDARD/EXTENDED_MAX_GRID` ≤10/32 per edge bounded local theater). A vast layout may pass structurally while a dense execution profile **defers to atlas** — that is not "the map is too large."

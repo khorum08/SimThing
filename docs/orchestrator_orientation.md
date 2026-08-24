@@ -45,7 +45,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 26e025f8b1e76f7f649571aaa4f2da2c82ca722b4d8c549f5ce9d14b4604f3a6 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | 26eab30ec86c97ac8dfd6beef7ae8c5b4d3f18c38fdaa431ec40ccce855396d3 |
-| design_0_0_8_7_rf_arena_modernization.md | 5f4426d914f9afc1219a2313be244a98bad77ac09280eed6d2b3ae2c7690a591 |
+| design_0_0_8_7_rf_arena_modernization.md | e6f2c5c1cfb9c465bc3e25ae4facb8ea589186aae465cfbf99fda39e399f0e16 |
 | relay_lint.sh | ae19bdca12e90f6bc988e064f081ff62903034d69bf34b08ffd5c27e352181ba |
 | doctrine_anchors.tsv | ddc753498b845b0e5084222b35f94286e5163cc6479de58883e3ecc3c2d743dd |
 | execution_status_taxonomy.tsv | 924c086550221dd7136ec0682293900d8d03feb4bc1dae1a6e750a61e65153bc |
@@ -88,7 +88,7 @@ Track state: `open`
 | 11.1b | DIMENSION-FINALIZATION-SEAM-0 | **SUBSTRATE — DA-minted 2026-08-23 after a THIRD lawful STOP on this arc, and th | **DA-GRADUATED / merged #1813 @ 5d7000bd — the falsifier was a deletion and the deletion held.** `field.n_dims = fina... |
 | 11.1c | VENDOR-DOOR-TRIAD-SURFACE-0 | **REMEDIAL — minted by DA ruling `5383361312`, RESEQUENCED to 11.1b behind the s | **DA-GRADUATED / merged #1811 @ 36ffbc92 — the Vendor Door reaches the Triad through five verbs, and the facade law i... |
 | 11.1d | ACCUMULATOR-CONVERGENCE-SEAL-0 | **CONVERGENCE SEAL — DA-minted after the Owner-directed single-ingress census 20 | **DA-GRADUATED / merged #1819 @ 7ee2350d — bypass is now unrepresentable, not non-default.** The three unconverged fl... |
-| 11.1e | ACTIONBAND-EXECUTION-INGRESS-0 | **INGRESS GAP — DA-minted after the Owner-directed single-ingress census 2026-08 | **COVERS the Owner-directed 2026-08-23 single-ingress law.** A compiled ActionBand execution session is driven by the... |
+| 11.1e | ACTIONBAND-EXECUTION-INGRESS-0 | **INGRESS GAP — DA-minted after the Owner-directed single-ingress census 2026-08 | **PROBATION / proof-present / DA-review-pending — retained ingress is now real ordinary execution.** The Vendor Door ... |
 | 11.1f | AUTHORED-LAW-GADGET-0 | **OWNER RULING 2026-08-23 — always trust intrinsic mechanisms over prose; the la | **COVERS the Owner-ruled 2026-08-23 authored-law scope.** A vendor authors the law as DATA and it compiles to EML nod... |
 | 11.2 | EMBEDDER-GUIDE-EXEMPLARS-0 | Phase 11: DOC-BUDGET-capped Embedder's Guide + two non-game exemplars (finance t | A cold reader stands up a running, serialized, observed tree from the guide ALONE — zero engine edits, zero scenario-... |
 | 11.3 | UNIFIED-FACILITY-CONVERGENCE-WITNESS-0 | **Unified-facility convergence witness — DA-minted 2026-08-17 on Owner direction | **Emergence falsifier in 8.2's shape, not an enumeration.** ONE authored change — data only, **zero code change** — m... |
