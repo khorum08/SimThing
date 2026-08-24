@@ -13,7 +13,7 @@ pub use simthing_sim::{
     VelocityAlertRegistration,
 };
 
-pub use simthing_core::{AuthoredColumnAdmitError, ColumnIndex};
+pub use simthing_core::{AuthoredColumnAdmitError, ColumnIndex, SlotIndex};
 
 /// One read-only row copied from the existing Gu-Yang comparative outputs.
 #[derive(Clone, Copy, Debug, PartialEq)]

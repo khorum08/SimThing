@@ -6,20 +6,17 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use simthing_core::{
-    AccumulatorRole, AccumulatorSpec, ClampBehavior, DimensionRegistry, LogTier, SimProperty,
-    SimThing, SimThingKind, SlotIndex, SubFieldRole, SubFieldSpec, TransformOp,
+use simthing_embedder::populate::{
+    AccumulatorRole, AccumulatorSpec, ArenaPressureBindingSpec, ArenaSpec, ClampBehavior,
+    DimensionRegistry, ExplicitParticipantSpec, FirstSliceCommitmentDirectionSpec,
+    FirstSliceCommitmentSpec, FissionPolicySpec, LogTier, MappingExecutionProfile,
+    PressurePlacementSpec, PressureSourceSpec, PropertyKey, PropertySpec, RegionFieldCadenceSpec,
+    RegionFieldFormulaBindingSpec, RegionFieldGridProfile, RegionFieldOperatorSpec,
+    RegionFieldReductionSpec, RegionFieldSourcePolicySpec, RegionFieldSpec,
+    RegionFieldSummaryPolicySpec, ResourceFlowOptInMode, ResourceFlowSpec, SimProperty, SimThing,
+    SimThingKind, SlotAllocator, SubFieldRole, SubFieldSpec, TransformOp,
 };
 use simthing_embedder::{bind, derive, overlay, populate, run};
-use simthing_gpu::SlotAllocator;
-use simthing_spec::{
-    compile_property, ArenaPressureBindingSpec, ArenaSpec, ExplicitParticipantSpec,
-    FirstSliceCommitmentDirectionSpec, FirstSliceCommitmentSpec, FissionPolicySpec,
-    MappingExecutionProfile, PressurePlacementSpec, PressureSourceSpec, PropertyKey, PropertySpec,
-    RegionFieldCadenceSpec, RegionFieldFormulaBindingSpec, RegionFieldGridProfile,
-    RegionFieldOperatorSpec, RegionFieldReductionSpec, RegionFieldSourcePolicySpec,
-    RegionFieldSpec, RegionFieldSummaryPolicySpec, ResourceFlowOptInMode, ResourceFlowSpec,
-};
 
 const AUTHORED_BASE_DIMS: u32 = 25;
 
@@ -72,9 +69,9 @@ fn region_field(name: &str, source_col: u32, target_col: u32) -> RegionFieldSpec
     }
 }
 
-fn full_triad_fixture() -> (run::Scenario, run::GameModeSpec, simthing_core::SimThingId) {
+fn full_triad_fixture() -> (run::Scenario, run::GameModeSpec, populate::SimThingId) {
     let mut registry = DimensionRegistry::new();
-    let flow_property_id = compile_property(
+    let flow_property_id = populate::compile_property(
         &PropertySpec {
             id: "flow".into(),
             namespace: "vendor".into(),
@@ -252,14 +249,14 @@ fn five_verbs_reach_the_session_seam_and_observe_only_live_triad_output() {
         overlay::OverlayKind::Instruction,
         overlay::OverlaySource::System,
         vec![participant_id],
-        simthing_core::PropertyTransformDelta {
+        overlay::PropertyTransformDelta {
             property_id: scenario
                 .registry
                 .id_of("vendor", "flow")
                 .expect("flow property"),
             sub_field_deltas: vec![(SubFieldRole::Named("flow".into()), TransformOp::set(8.0))],
         },
-        vec![simthing_core::DissolveCondition::AtSessionEnd],
+        vec![overlay::DissolveCondition::AtSessionEnd],
     )
     .expect("Overlay admits an attributable finite-horizon declaration");
     assert_eq!(overlay.affects, vec![participant_id]);
@@ -277,7 +274,7 @@ fn five_verbs_reach_the_session_seam_and_observe_only_live_triad_output() {
                 n_dims,
                 d_col: col(10, authored_bound),
                 w_col: col(13, authored_bound),
-                destination_slot: SlotIndex::new(0),
+                destination_slot: bind::SlotIndex::new(0),
                 inf_sentinel: f32::MAX,
             })?;
             let guyang = bind::compile_gu_yang_n4_field_sweeps(bind::GuYangN4FieldSweepSpec {
@@ -368,6 +365,18 @@ fn five_verbs_reach_the_session_seam_and_observe_only_live_triad_output() {
 #[test]
 fn facade_shape_column_and_actionband_seals_remain_closed() {
     let sources = embedder_production_sources();
+    let witness = include_str!("vendor_door_triad_surface_0.rs");
+    let direct_engine_references: Vec<_> = ["core", "driver", "gpu", "sim", "spec"]
+        .into_iter()
+        .filter_map(|suffix| {
+            let crate_path = format!("simthing_{suffix}::");
+            witness.contains(&crate_path).then_some(crate_path)
+        })
+        .collect();
+    assert!(
+        direct_engine_references.is_empty(),
+        "VENDOR-DOOR-TRIAD-FIVE-VERB-ONLY: witness bypassed the facade: {direct_engine_references:?}"
+    );
     let forbidden = ["chokepoint", "corridor", "front", "dominance"];
     let public_observable_surfaces: Vec<_> = sources
         .iter()
