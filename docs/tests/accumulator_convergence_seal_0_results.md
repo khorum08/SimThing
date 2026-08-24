@@ -4,7 +4,7 @@
 - Status: **PROBATION / proof-present / DA-review-pending**
 - Branch: `codex/accumulator-convergence-seal-0`
 - Reconciled live-master base: `1e8650286d691ced0fc55824861a2fc415802011`
-- Implementation / tested_code_sha: `3e3ff911bf3d73b79fe292d09cbcb4e13fe0d803`
+- Implementation / tested_code_sha: `337383e4bba5804d0ecb9f843c9a792a56097696`
 - Evidence-only final head and hosted workflow IDs: bound in the PR body and board return
 - HD-RECEIPT: `28067af2cdab`
 - ORIENT-RECEIPT: `a5dc59920dd4`
@@ -48,12 +48,12 @@ textual residue. The census reports zero residues under `crates/`.
 ## Exact-head verification
 
 All passing commands below ran at tested code SHA
-`3e3ff911bf3d73b79fe292d09cbcb4e13fe0d803`.
+`337383e4bba5804d0ecb9f843c9a792a56097696`.
 
 | Command | Result |
 |---|---|
 | `cargo check --workspace --all-targets` | PASS |
-| `cargo test -p simthing-driver --test accumulator_convergence_seal_0 -- --nocapture` | PASS — 6/6; four authored RED assertions, standing absence, and E-11 carried soak |
+| `cargo test -p simthing-driver --test accumulator_convergence_seal_0 -- --nocapture` | PASS — 3/3; four table-driven authored RED cases, standing absence, and E-11 carried soak |
 | `cargo test -p simthing-sim --test c8c_transfer_accumulator_parity` | PASS — 2/2 |
 | `cargo test -p simthing-sim --test c8d_emission_accumulator_parity` | PASS — 3/3 |
 | `cargo test -p simthing-driver --test arena_participant_elimination_0 -- --nocapture` | PASS — 2/2; `NVIDIA GeForce RTX 4080 Laptop GPU`, Vulkan, DiscreteGpu |
@@ -62,7 +62,7 @@ All passing commands below ran at tested code SHA
 | `cargo test -p simthing-driver --lib` | PASS — 16/16 |
 | `cargo test -p simthing-spec --lib` | PASS — 13/13 |
 | `cargo test -p simthing-clausething --test field_economy_grammar_0` | PASS — 4/4 |
-| inventory check + drift prove + lifecycle schema | PASS — 1,316 inventory rows / 1,316 discovered; zero expired |
+| inventory check + drift prove + lifecycle schema | PASS — 1,313 inventory rows / 1,313 discovered; zero expired |
 | execution-status taxonomy scan + diff check | PASS |
 
 The structural certificate is intentionally owed to graduation, per the DA A1
