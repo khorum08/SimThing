@@ -8,8 +8,7 @@ use crate::compile::resource_economy::{
 };
 use crate::error::SpecError;
 use crate::spec::game_mode::GameModeSpec;
-use crate::spec::resource_economy::{ResourceEconomyOptInMode, ResourceEconomySpec};
-use crate::spec::resource_flow::ResourceFlowOptInMode;
+use crate::spec::resource_economy::ResourceEconomySpec;
 use crate::spec::script::PropertyKey;
 use simthing_core::{DimensionRegistry, EmlExpressionRegistry, SubFieldRole};
 use std::collections::{BTreeMap, BTreeSet};
@@ -24,7 +23,6 @@ pub struct ResourceEconomyAuthoringPreview {
 /// Human/agent-readable summary of authored resource economy content.
 #[derive(Clone, Debug, PartialEq)]
 pub struct ResourceEconomyPreviewReport {
-    pub opt_in_mode: ResourceEconomyOptInMode,
     pub transfer_count: usize,
     pub recipe_count: usize,
     pub emission_count: usize,
@@ -128,17 +126,10 @@ pub fn compile_game_mode_resource_economy_authoring_preview(
 }
 
 fn resource_flow_enabled_for_game_mode(game_mode: &GameModeSpec) -> bool {
-    let spec_opt_in = game_mode
+    game_mode
         .resource_flow
         .as_ref()
-        .map(|rf| rf.opt_in_mode)
-        .unwrap_or(ResourceFlowOptInMode::Disabled);
-    if spec_opt_in == ResourceFlowOptInMode::FlatStarOptIn {
-        return true;
-    }
-    game_mode
-        .resource_flow_execution_profile
-        .enables_arena_resource_flow()
+        .is_some_and(|resource_flow| !resource_flow.arenas.is_empty())
 }
 
 fn build_preview_report(
@@ -231,7 +222,6 @@ fn build_preview_report(
     }
 
     ResourceEconomyPreviewReport {
-        opt_in_mode: spec.opt_in_mode,
         transfer_count: compiled.transfers.len(),
         recipe_count: compiled.recipes.len(),
         emission_count: compiled.emissions.len(),

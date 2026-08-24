@@ -101,7 +101,6 @@ GameModeSpec(
         ),
     ],
     resource_economy: Some(ResourceEconomySpec(
-        opt_in_mode: TransferOnly,
         transfers: [
             ResourceTransferSpec(
                 id: "bank_daily_income",

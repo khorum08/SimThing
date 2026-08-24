@@ -119,7 +119,6 @@ pub fn flat_star_game_mode(max_orderband_depth: u32) -> GameModeSpec {
             ..Default::default()
         }),
         resource_economy: None,
-        resource_flow_execution_profile: Default::default(),
         region_fields: vec![],
         mapping_execution_profile: Default::default(),
     }
@@ -143,7 +142,7 @@ pub struct FlatStarSession {
     pub cols: NodeColumnRefs,
 }
 
-pub fn open_flat_star_session(hosted_count: usize, flag_enabled: bool) -> FlatStarSession {
+pub fn open_flat_star_session(hosted_count: usize) -> FlatStarSession {
     let scenario = flat_star_scenario(hosted_count, 32);
     let mut game_mode = flat_star_game_mode(16);
     fill_explicit_participants(&mut game_mode, &scenario);
@@ -158,7 +157,6 @@ pub fn open_flat_star_session(hosted_count: usize, flag_enabled: bool) -> FlatSt
     )
     .expect("install atomic");
 
-    session.proto.flags.use_accumulator_resource_flow = flag_enabled;
     session
         .install_spec_state(spec_state)
         .expect("install spec state");

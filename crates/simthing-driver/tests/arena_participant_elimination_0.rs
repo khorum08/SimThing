@@ -10,13 +10,13 @@ use simthing_core::{
 use simthing_driver::{
     build_execution_plan, check_conservation, clone_for_replay, fixture_dynamic_single_fission,
     flat_star_observations, open_fixture_session, resolve_node_columns_for_property,
-    run_arena_allocation_oracle, run_dynamic_enrollment_resync_cycles, run_opt_in_burn_in,
+    run_arena_allocation_oracle, run_dynamic_enrollment_resync_cycles, run_resource_flow_burn_in,
     Scenario, SimSession,
 };
 use simthing_gpu::SlotAllocator;
 use simthing_spec::{
     compile_property, ArenaSpec, ExplicitParticipantSpec, FissionPolicySpec, GameModeSpec,
-    PropertyKey, PropertySpec, ResourceFlowOptInMode, ResourceFlowSpec, SpecVersion,
+    PropertyKey, PropertySpec, ResourceFlowSpec, SpecVersion,
 };
 
 static GPU_MUTEX: Mutex<()> = Mutex::new(());
@@ -134,11 +134,9 @@ fn sparse_owned_row_fixture() -> (Scenario, GameModeSpec) {
                 wildcard_admission: None,
             }],
             couplings: Vec::new(),
-            opt_in_mode: ResourceFlowOptInMode::FlatStarOptIn,
             ..Default::default()
         }),
         resource_economy: None,
-        resource_flow_execution_profile: Default::default(),
         region_fields: Vec::new(),
         mapping_execution_profile: Default::default(),
     };
@@ -348,9 +346,10 @@ fn dynamic_fission_admits_the_existing_owned_row_once_and_replays_exactly() {
     let mut replay = clone_for_replay(&live, &fixture);
     fixture.expected_admissions = 0;
     fixture.expect_generation_bump = false;
-    let live_burn = run_opt_in_burn_in(&mut live, &fixture).expect("live own-row fission burn");
+    let live_burn =
+        run_resource_flow_burn_in(&mut live, &fixture).expect("live own-row fission burn");
     let replay_burn =
-        run_opt_in_burn_in(&mut replay, &fixture).expect("replay own-row fission burn");
+        run_resource_flow_burn_in(&mut replay, &fixture).expect("replay own-row fission burn");
     assert_eq!(live_burn, replay_burn);
     assert_eq!(live_burn.max_abs_error.to_bits(), 0.0_f32.to_bits());
     assert!(live_burn.replay_bit_exact);

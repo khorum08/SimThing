@@ -47,16 +47,12 @@ pub mod resource_economy_oracle;
 pub mod resource_economy_sync;
 pub mod resource_flow_burn_in;
 pub mod resource_flow_compile;
+pub mod resource_flow_convergence_burn_in;
 pub mod resource_flow_derivation;
 pub mod resource_flow_dynamic_enrollment_soak;
 pub mod resource_flow_enrollment;
 pub mod resource_flow_fission_enrollment;
-pub mod resource_flow_flat_star_continued_soak;
-pub mod resource_flow_opt_in_burn_in;
-pub mod resource_flow_opt_in_product_soak;
-pub mod resource_flow_opt_in_telemetry;
 pub mod resource_flow_preflight;
-pub mod resource_flow_scenario_class_burn_in;
 pub mod rf_conservation_oracle;
 pub mod runtime_local_allocation_compile;
 pub mod runtime_participant_property_mutation_boundary_compile;
@@ -326,6 +322,17 @@ pub use resource_flow_burn_in::{
 pub use resource_flow_compile::{
     compile_and_materialize_resource_flow, materialize_arena_registry,
 };
+pub use resource_flow_convergence_burn_in::{
+    assert_fixture_contract, clone_for_replay, fixture_convergence_static_512_participants,
+    fixture_dynamic_multi_fission, fixture_dynamic_single_fission, fixture_repeated_resync,
+    fixture_replay_static, fixture_static_flat_star_10_participants,
+    fixture_static_flat_star_64_participants, fixture_static_flat_star_skewed_weights,
+    fixture_two_arena_no_coupling, fixture_wildcard_rejected, open_fixture_session,
+    run_resource_flow_burn_in, RfT2BurnInFixture, RfT2BurnInReport, RfT2EnrollmentKind,
+    RfT2Session, RF_CONVERGENCE_STATIC_512, RF_T2_DYNAMIC_MULTI_FISSION,
+    RF_T2_DYNAMIC_SINGLE_FISSION, RF_T2_STATIC_FLAT_STAR_10, RF_T2_STATIC_FLAT_STAR_64,
+    RF_T2_STATIC_FLAT_STAR_SKEWED, RF_T2_TWO_ARENA_NO_COUPLING, RF_T2_WILDCARD_REJECTED,
+};
 pub use resource_flow_derivation::{
     derive_resource_flow_admission, ArenaAdmissionOrigin, DerivedArenaParticipation,
     DerivedParticipant, ResolvedResourceFlowAdmission, ResourceFlowDerivationError,
@@ -342,54 +349,7 @@ pub use resource_flow_fission_enrollment::{
     react_to_fission_resource_flow_enrollment_on_authoring, DynamicFissionEnrollmentAdmission,
     DynamicFissionEnrollmentRejection, DynamicFissionEnrollmentReport,
 };
-pub use resource_flow_flat_star_continued_soak::{
-    continued_static_512_participant_count, fixture_continued_dynamic_policy_a,
-    fixture_continued_multi_arena_no_coupling, fixture_continued_replay,
-    fixture_continued_static_512_participants, fixture_continued_static_skewed_weights,
-    open_continued_profile_session, run_continued_replay_pair, run_continued_soak_with_summary,
-    FlatStarContinuedSoakSummary,
-};
-pub use resource_flow_opt_in_burn_in::{
-    assert_fixture_contract, clone_for_replay, fixture_disabled_populated_spec,
-    fixture_dynamic_multi_fission, fixture_dynamic_single_fission,
-    fixture_product_static_512_participants, fixture_profile_static_512_participants,
-    fixture_repeated_resync, fixture_replay_static, fixture_static_flat_star_10_participants,
-    fixture_static_flat_star_64_participants, fixture_static_flat_star_skewed_weights,
-    fixture_two_arena_no_coupling, fixture_wildcard_rejected, open_fixture_session,
-    open_fixture_session_with_execution_profile, run_opt_in_burn_in, RfT2BurnInFixture,
-    RfT2BurnInReport, RfT2EnrollmentKind, RfT2OptInSession, RF_CONTINUED_DYNAMIC_POLICY_A,
-    RF_CONTINUED_MULTI_ARENA, RF_CONTINUED_REPLAY, RF_CONTINUED_STATIC_512,
-    RF_CONTINUED_STATIC_SKEWED, RF_T2_DISABLED_POPULATED, RF_T2_DYNAMIC_MULTI_FISSION,
-    RF_T2_DYNAMIC_SINGLE_FISSION, RF_T2_STATIC_FLAT_STAR_10, RF_T2_STATIC_FLAT_STAR_64,
-    RF_T2_STATIC_FLAT_STAR_SKEWED, RF_T2_TWO_ARENA_NO_COUPLING, RF_T2_WILDCARD_REJECTED,
-};
-pub use resource_flow_opt_in_product_soak::{
-    assert_telemetry_contract, fixture_product_disabled_spec_diagnostics,
-    fixture_product_dynamic_fission_cadence, fixture_product_multi_arena_no_coupling,
-    fixture_product_multi_session_replay, fixture_product_rejection_telemetry,
-    fixture_product_repeated_resync, fixture_product_static_128_participants,
-    fixture_product_static_256_participants, open_product_session, run_multi_session_replay,
-    run_product_soak_with_telemetry, telemetry_for_open_session, RF_T3_PRODUCT_DISABLED,
-    RF_T3_PRODUCT_DYNAMIC_FISSION, RF_T3_PRODUCT_MULTI_ARENA, RF_T3_PRODUCT_MULTI_SESSION,
-    RF_T3_PRODUCT_REJECTION, RF_T3_PRODUCT_RESYNC, RF_T3_PRODUCT_STATIC_128,
-    RF_T3_PRODUCT_STATIC_256,
-};
-pub use resource_flow_opt_in_telemetry::{
-    collect_resource_flow_opt_in_telemetry, flag_source_from_opt_in_mode, ResourceFlowFlagSource,
-    ResourceFlowOptInTelemetryReport,
-};
 pub use resource_flow_preflight::validate_resource_flow_preflight;
-pub use resource_flow_scenario_class_burn_in::{
-    assert_profile_telemetry_contract, fixture_profile_disabled_or_default,
-    fixture_profile_dynamic_fission_cadence, fixture_profile_multi_arena_no_coupling,
-    fixture_profile_multi_session_replay, fixture_profile_rejection_telemetry,
-    fixture_profile_repeated_resync, fixture_profile_static_128_participants,
-    fixture_profile_static_256_participants, open_default_profile_session, open_profile_session,
-    profile_telemetry_for_open_session, run_profile_multi_session_replay,
-    run_profile_soak_with_telemetry, RF_T5_PROFILE_DISABLED, RF_T5_PROFILE_DYNAMIC_FISSION,
-    RF_T5_PROFILE_MULTI_ARENA, RF_T5_PROFILE_MULTI_SESSION, RF_T5_PROFILE_REJECTION,
-    RF_T5_PROFILE_RESYNC, RF_T5_PROFILE_STATIC_128, RF_T5_PROFILE_STATIC_256,
-};
 pub use rf_conservation_oracle::{
     allocator_eps_bound, allocator_from_disbursements, check_allocator_step,
     check_arena_structural, check_conservation, check_recipe_exact, flat_star_observations,

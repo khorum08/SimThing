@@ -166,7 +166,6 @@ fn install_does_not_invent_topology_or_string_default_birth() {
         events: Vec::new(),
         resource_flow: None,
         resource_economy: None,
-        resource_flow_execution_profile: Default::default(),
         region_fields: Vec::new(),
         mapping_execution_profile: Default::default(),
     };

@@ -63,7 +63,6 @@ fn game_mode_with_pack(pack: DomainPackSpec) -> GameModeSpec {
         order_weight_classes: Vec::new(),
         resource_flow: None,
         resource_economy: None,
-        resource_flow_execution_profile: Default::default(),
         region_fields: vec![],
         mapping_execution_profile: Default::default(),
     }

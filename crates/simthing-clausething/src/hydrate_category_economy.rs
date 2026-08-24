@@ -19,13 +19,12 @@ use simthing_spec::spec::region_field::{
     RegionFieldOperatorSpec, RegionFieldReductionSpec, RegionFieldSpec,
 };
 use simthing_spec::spec::resource_economy::{
-    RecipeInputSpec, ResourceEconomyOptInMode, ResourceEconomySpec, ResourceRecipeSpec,
-    ResourceTransferSpec,
+    RecipeInputSpec, ResourceEconomySpec, ResourceRecipeSpec, ResourceTransferSpec,
 };
 use simthing_spec::spec::resource_flow::{
     BaseFlowDirectionSpec, BaseFlowObligationSpec, GatedRateOpSpec, GatedRateSpec,
     GatedRateTriggerSpec, RateFormulaOp, RateFormulaOpSpec, RateFormulaOperandSpec,
-    RateFormulaSpec, ResourceFlowOptInMode, ResourceFlowSpec,
+    RateFormulaSpec, ResourceFlowSpec,
 };
 use simthing_spec::spec::script::PropertyKey;
 use simthing_spec::{ArenaSpec, FissionPolicySpec, GameModeSpec, PropertySpec, SpecVersion};
@@ -113,7 +112,6 @@ struct ModifierFold {
 
 #[derive(Debug, Clone)]
 struct ArenaDefaults {
-    opt_in_mode: ResourceFlowOptInMode,
     max_participants: u32,
     max_coupling_fanout: u32,
     max_orderband_depth: u32,
@@ -122,7 +120,6 @@ struct ArenaDefaults {
 impl Default for ArenaDefaults {
     fn default() -> Self {
         Self {
-            opt_in_mode: ResourceFlowOptInMode::Disabled,
             max_participants: 16,
             max_coupling_fanout: 4,
             max_orderband_depth: 16,
@@ -287,7 +284,6 @@ pub fn hydrate_category_economy_pack(
             capability_trees: vec![],
             events: vec![],
             resource_flow: Some(ResourceFlowSpec {
-                opt_in_mode: arena_defaults.opt_in_mode,
                 arenas,
                 couplings: vec![],
                 base_obligations,
@@ -296,7 +292,6 @@ pub fn hydrate_category_economy_pack(
                 need_bindings: vec![],
             }),
             resource_economy: None,
-            resource_flow_execution_profile: Default::default(),
             region_fields,
             mapping_execution_profile: mapping_profile,
         },
@@ -625,7 +620,6 @@ pub fn hydrate_daily_economy_game_mode(
     let mut display_name = fixture.key.text.clone();
     let mut description = String::new();
     let mut properties = Vec::new();
-    let mut opt_in_mode = ResourceEconomyOptInMode::Disabled;
     let mut transfers = Vec::new();
     let mut recipes = Vec::new();
 
@@ -634,7 +628,6 @@ pub fn hydrate_daily_economy_game_mode(
             "display_name" => display_name = read_scalar_text(property, "display_name")?,
             "description" => description = read_scalar_text(property, "description")?,
             "property" => properties.push(parse_daily_property_block(property)?),
-            "resource_economy" => opt_in_mode = parse_resource_economy_block(property)?,
             "transfer" => transfers.push(parse_transfer_block(property)?),
             "recipe" => recipes.push(parse_recipe_block(property)?),
             other => {
@@ -666,13 +659,11 @@ pub fn hydrate_daily_economy_game_mode(
         events: vec![],
         resource_flow: None,
         resource_economy: Some(ResourceEconomySpec {
-            opt_in_mode,
             transfers,
             recipes,
             emissions: vec![],
             emit_on_threshold: vec![],
         }),
-        resource_flow_execution_profile: Default::default(),
         region_fields: vec![],
         mapping_execution_profile: Default::default(),
     })
@@ -1319,7 +1310,6 @@ fn parse_resource_flow_defaults(property: &RawProperty) -> Result<ArenaDefaults,
     let mut defaults = ArenaDefaults::default();
     for field in &block.properties {
         match field.key.text.as_str() {
-            "opt_in" => defaults.opt_in_mode = parse_flow_opt_in(field)?,
             "max_participants" => {
                 defaults.max_participants = read_scalar_u32(field, "max_participants")?
             }
@@ -1338,56 +1328,6 @@ fn parse_resource_flow_defaults(property: &RawProperty) -> Result<ArenaDefaults,
         }
     }
     Ok(defaults)
-}
-
-fn parse_flow_opt_in(property: &RawProperty) -> Result<ResourceFlowOptInMode, HydrateError> {
-    let text = read_scalar_text(property, "opt_in")?;
-    match text.as_str() {
-        "FlatStarOptIn" => Ok(ResourceFlowOptInMode::FlatStarOptIn),
-        "Disabled" => Ok(ResourceFlowOptInMode::Disabled),
-        other => Err(HydrateError::new_spanned(
-            format!("`opt_in` must be `FlatStarOptIn` or `Disabled`, got `{other}`"),
-            Some(property.key.span.clone()),
-        )),
-    }
-}
-
-fn parse_resource_economy_block(
-    property: &RawProperty,
-) -> Result<ResourceEconomyOptInMode, HydrateError> {
-    let RawValue::Block(block) = &property.value else {
-        return Err(HydrateError::new_spanned(
-            "`resource_economy` must be a block",
-            Some(property.key.span.clone()),
-        ));
-    };
-    let mut opt_in_mode = ResourceEconomyOptInMode::Disabled;
-    for field in &block.properties {
-        match field.key.text.as_str() {
-            "opt_in" => {
-                let text = read_scalar_text(field, "opt_in")?;
-                opt_in_mode = match text.as_str() {
-                    "Disabled" => ResourceEconomyOptInMode::Disabled,
-                    "TransferOnly" => ResourceEconomyOptInMode::TransferOnly,
-                    "EmissionOnly" => ResourceEconomyOptInMode::EmissionOnly,
-                    "TransferAndEmission" => ResourceEconomyOptInMode::TransferAndEmission,
-                    other => {
-                        return Err(HydrateError::new_spanned(
-                            format!("unsupported resource_economy opt_in `{other}`"),
-                            Some(field.key.span.clone()),
-                        ));
-                    }
-                };
-            }
-            other => {
-                return Err(HydrateError::new_spanned(
-                    format!("unsupported resource_economy field `{other}`"),
-                    Some(field.key.span.clone()),
-                ));
-            }
-        }
-    }
-    Ok(opt_in_mode)
 }
 
 fn parse_daily_property_block(property: &RawProperty) -> Result<PropertySpec, HydrateError> {

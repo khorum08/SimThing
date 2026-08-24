@@ -1,15 +1,14 @@
-//! FrontierV1 scenario skeleton, admission validator, and opt-in fixture CPU oracle (test-only).
+//! FrontierV1 scenario skeleton, admission validator, and fixture CPU oracle (test-only).
 
 use simthing_spec::{
     MappingExecutionProfile, RegionFieldCadenceSpec, RegionFieldFormulaBindingSpec,
     RegionFieldGridProfile, RegionFieldOperatorSpec, RegionFieldReductionSpec,
     RegionFieldSourcePolicySpec, RegionFieldSpec, RegionFieldSummaryPolicySpec,
-    ResourceFlowExecutionProfile, ResourceFlowOptInMode,
 };
 
 pub const FRONTIER_V1_PROFILE_NAME: &str = "FrontierV1";
 pub const FRONTIER_V1_SKELETON_ID: &str = "frontier_v1_0_scenario_skeleton_v1";
-pub const FRONTIER_V1_FIXTURE_ID: &str = "frontier_v1_1_opt_in_fixture_v1";
+pub const FRONTIER_V1_FIXTURE_ID: &str = "frontier_v1_1_converged_fixture_v1";
 pub const FRONTIER_V1_GPU_FIXTURE_ID: &str = "frontier_v1_2_gpu_replay_acceptance_v1";
 pub const FRONTIER_V1_GPU_RF_FIXTURE_ID: &str = "frontier_v1_3_gpu_resource_flow_v1";
 pub const FRONTIER_V1_FIELD_POLICY_ROUTE_FIXTURE_ID: &str =
@@ -95,8 +94,6 @@ pub struct FrontierV1ScenarioSkeleton {
     pub profile_name: &'static str,
     pub enabled_by_default: bool,
     pub mapping_execution_profile: MappingExecutionProfile,
-    pub resource_flow_opt_in: ResourceFlowOptInMode,
-    pub resource_flow_execution_profile: ResourceFlowExecutionProfile,
     pub theater: FrontierTheaterSpec,
     pub factions: [FrontierFactionSpec; 2],
     pub resource_flow: FrontierFlatStarResourceFlowSpec,
@@ -349,8 +346,6 @@ pub fn frontier_v1_happy_path_skeleton() -> FrontierV1ScenarioSkeleton {
         profile_name: FRONTIER_V1_PROFILE_NAME,
         enabled_by_default: false,
         mapping_execution_profile: MappingExecutionProfile::SparseRegionFieldV1,
-        resource_flow_opt_in: ResourceFlowOptInMode::FlatStarOptIn,
-        resource_flow_execution_profile: ResourceFlowExecutionProfile::RecursiveArenaResourceFlow,
         theater: FrontierTheaterSpec {
             theater_count: 1,
             grid_width: 32,
@@ -994,20 +989,6 @@ fn validate_default_off(
         rejected.push("mapping execution profile must not default-on");
         ok = false;
     }
-    if skeleton.enabled_by_default
-        && skeleton.resource_flow_opt_in != ResourceFlowOptInMode::Disabled
-    {
-        rejected.push("resource flow must not default-on");
-        ok = false;
-    }
-    if skeleton.enabled_by_default
-        && skeleton
-            .resource_flow_execution_profile
-            .enables_arena_resource_flow()
-    {
-        rejected.push("resource flow execution profile must not default-on");
-        ok = false;
-    }
     ok
 }
 
@@ -1111,10 +1092,6 @@ fn validate_flat_star(
     }
     if !rf.resource_flow_allocator_only {
         rejected.push("Resource Flow allocator routing required");
-        ok = false;
-    }
-    if skeleton.resource_flow_opt_in != ResourceFlowOptInMode::FlatStarOptIn {
-        rejected.push("resource flow requires explicit FlatStarOptIn when selected");
         ok = false;
     }
     ok

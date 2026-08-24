@@ -28,7 +28,7 @@ use simthing_spec::{
     compile_property, disruption_readout_snapshot_with_readback, game_session_child,
     game_session_owners, owner_entity_id, planet_child_rf_participant_inputs,
     validate_scenario_links, validate_stead_mapping_consistency, GameModeSpec, PropertyKey,
-    PropertySpec, ResourceEconomyOptInMode, ResourceFlowExecutionProfile, SimThingScenarioSpec,
+    PropertySpec, SimThingScenarioSpec,
 };
 
 use crate::session::{StudioScenarioSummary, StudioSession};
@@ -185,24 +185,20 @@ impl StudioAuthoredLiveProfile {
         }
     }
 
-    /// True when the authored profile carries field-economy / resource-economy opt-in.
+    /// True when the authored profile carries field-economy/resource-economy content.
     pub fn supports_field_bearing(&self) -> bool {
         if self.field_economy_present {
             return true;
         }
-        match self
-            .game_mode
+        self.game_mode
             .resource_economy
             .as_ref()
-            .map(|economy| economy.opt_in_mode)
-        {
-            Some(ResourceEconomyOptInMode::Disabled) | None => false,
-            Some(
-                ResourceEconomyOptInMode::TransferOnly
-                | ResourceEconomyOptInMode::EmissionOnly
-                | ResourceEconomyOptInMode::TransferAndEmission,
-            ) => true,
-        }
+            .is_some_and(|economy| {
+                !economy.transfers.is_empty()
+                    || !economy.recipes.is_empty()
+                    || !economy.emissions.is_empty()
+                    || !economy.emit_on_threshold.is_empty()
+            })
     }
 }
 
@@ -977,11 +973,7 @@ pub fn field_bearing_game_mode(mode: &GameModeSpec) -> GameModeSpec {
                     })
             })
         });
-    if field.resource_flow.is_none() && !has_resource_property {
-        // Small field-economy fixtures have no admitted RF topology. Keep
-        // their historical field-bearing economy path default-disabled.
-        field.resource_flow_execution_profile = ResourceFlowExecutionProfile::DefaultDisabled;
-    }
+    let _ = has_resource_property;
     let is_rf_property = |property: &PropertySpec| {
         property.sub_fields.iter().any(|sub_field| {
             sub_field
@@ -1239,7 +1231,7 @@ fn recursive_rf_locus_from_session(
     let balance_before = snapshot.observed_value_at_slot_col(root_slot, balance_col);
     let mut readout = StudioRecursiveRfReadout {
         active: sim.state.accumulator_resource_flow_active,
-        execution_profile: "RecursiveArenaResourceFlow",
+        execution_profile: "ConvergedArenaResourceFlow",
         arena: Some(profile.arena.clone()),
         named_child: Some(profile.named_child_label.clone()),
         ancestor: Some(profile.ancestor_label.clone()),

@@ -1,4 +1,4 @@
-//! Controlled opt-in soak reporting for E-2B-5R dynamic fission enrollment (driver/test-only).
+//! Converged-path soak reporting for E-2B-5R dynamic fission enrollment.
 
 use std::collections::HashMap;
 
@@ -158,7 +158,7 @@ pub fn run_dynamic_enrollment_resync_cycles(
     let initial_bands = session.state.accumulator_resource_flow_bands;
 
     for _ in 0..sync_cycles {
-        session.sync_resource_flow_if_enabled()?;
+        session.sync_resource_flow()?;
         syncs_run += 1;
         if sync_cycles > 1 {
             let ops = session
@@ -191,11 +191,11 @@ pub fn run_dynamic_enrollment_resync_cycles(
     ))
 }
 
-/// Initial sync via session wrapper; returns sync report when flag enabled.
+/// Initial sync via the session's sole Resource Flow path.
 pub fn initial_dynamic_enrollment_sync(
     session: &mut SimSession,
 ) -> Result<ResourceFlowSyncReport, crate::session::SessionError> {
-    session.sync_resource_flow_if_enabled()?;
+    session.sync_resource_flow()?;
     Ok(ResourceFlowSyncReport {
         arenas_planned: session.spec_state.arena_registry.arenas.len() as u32,
         total_ops: session
@@ -205,6 +205,5 @@ pub fn initial_dynamic_enrollment_sync(
             .map(|r| r.resource_flow_ops.count)
             .unwrap_or(0),
         n_bands: session.state.accumulator_resource_flow_bands,
-        enabled: session.proto.flags.use_accumulator_resource_flow,
     })
 }

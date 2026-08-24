@@ -393,7 +393,6 @@ pub fn hydrate_shipsize_decoder_pack(
                 None
             } else {
                 Some(simthing_spec::ResourceFlowSpec {
-                    opt_in_mode: simthing_spec::ResourceFlowOptInMode::Disabled,
                     arenas: vec![],
                     couplings: vec![],
                     base_obligations: vec![],
@@ -403,7 +402,6 @@ pub fn hydrate_shipsize_decoder_pack(
                 })
             },
             resource_economy: None,
-            resource_flow_execution_profile: Default::default(),
             region_fields: vec![],
             mapping_execution_profile: Default::default(),
         },

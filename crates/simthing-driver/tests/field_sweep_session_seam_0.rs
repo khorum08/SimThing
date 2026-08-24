@@ -25,8 +25,7 @@ use simthing_spec::{
     MappingExecutionProfile, PressurePlacementSpec, PressureSourceSpec, PropertyKey, PropertySpec,
     RegionFieldCadenceSpec, RegionFieldFormulaBindingSpec, RegionFieldGridProfile,
     RegionFieldOperatorSpec, RegionFieldReductionSpec, RegionFieldSourcePolicySpec,
-    RegionFieldSpec, RegionFieldSummaryPolicySpec, ResourceFlowOptInMode, ResourceFlowSpec,
-    SpecVersion,
+    RegionFieldSpec, RegionFieldSummaryPolicySpec, ResourceFlowSpec, SpecVersion,
 };
 
 fn col(raw: u32) -> ColumnIndex {
@@ -201,11 +200,9 @@ fn ordinary_fixture() -> (Scenario, GameModeSpec) {
                 wildcard_admission: None,
             }],
             couplings: Vec::new(),
-            opt_in_mode: ResourceFlowOptInMode::FlatStarOptIn,
             ..Default::default()
         }),
         resource_economy: None,
-        resource_flow_execution_profile: Default::default(),
         region_fields: vec![first, second],
         mapping_execution_profile: MappingExecutionProfile::SparseRegionFieldV1,
     };

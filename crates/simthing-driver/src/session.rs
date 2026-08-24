@@ -10,7 +10,6 @@ use simthing_sim::{
 };
 use simthing_spec::{
     CapabilityTreeInstance, CapabilityTreeState, CapabilityUnlockRegistration, GameModeSpec,
-    ResourceEconomyOptInMode, ResourceFlowExecutionProfile, ResourceFlowOptInMode,
 };
 use std::collections::HashMap;
 use std::sync::Mutex;
@@ -49,8 +48,8 @@ pub enum SessionError {
     GpuSync(#[from] simthing_sim::GpuSyncError),
     #[error("session mapping: {0}")]
     Mapping(String),
-    #[error("resource flow opt-in: {0}")]
-    ResourceFlowOptIn(String),
+    #[error("resource flow admission: {0}")]
+    ResourceFlowAdmission(String),
     #[error("threshold install: {0}")]
     ThresholdInstall(String),
     #[error("player-intent admission: {0}")]
@@ -249,10 +248,6 @@ pub struct SimSession {
     /// Last boundary dynamic Resource Flow fission enrollment report (E-2B-5R).
     pub last_resource_flow_dynamic_enrollment_report:
         Option<crate::resource_flow_fission_enrollment::DynamicFissionEnrollmentReport>,
-    /// RF-T3: why Resource Flow GPU execution is enabled/disabled on this session.
-    pub resource_flow_flag_source: crate::resource_flow_opt_in_telemetry::ResourceFlowFlagSource,
-    /// RF-T4: authored scenario-class / execution profile at session open.
-    pub resource_flow_execution_profile: ResourceFlowExecutionProfile,
     /// CT-3b+4a Line 3: profile-gated in-loop mapping state. `None` unless
     /// the game mode authored `SparseRegionFieldV1` + a region field with a
     /// pressure binding; presence alone never wires anything.
@@ -365,7 +360,6 @@ impl SimSession {
         // production step boundary (not an optional side setter).
         self.state
             .bind_production_generation(self.coord.day_index() as u32);
-        let resource_flow_pipeline_enabled = self.proto.flags.use_accumulator_resource_flow;
         let mapping_hot = self.mapping.as_mut().map(|m| &mut m.hot);
         let tick_patches = &self.scenario.tick_patches;
         let admitted = &self.spec_state.order_weight_classes;
@@ -398,7 +392,6 @@ impl SimSession {
             &mut fabric,
             FabricHotCycleParams {
                 tick_patches,
-                resource_flow_pipeline_enabled,
                 mapping: mapping_hot,
             },
         )
@@ -461,9 +454,6 @@ impl SimSession {
             tx,
             spec_state: SpecSessionState::new(),
             last_resource_flow_dynamic_enrollment_report: None,
-            resource_flow_flag_source:
-                crate::resource_flow_opt_in_telemetry::ResourceFlowFlagSource::DefaultDisabled,
-            resource_flow_execution_profile: ResourceFlowExecutionProfile::DefaultDisabled,
             mapping: None,
             mapping_commitments: Vec::new(),
             execution_posture: simthing_core::ExecutionPosture::Paced,
@@ -494,19 +484,12 @@ impl SimSession {
         Ok(())
     }
 
-    /// Test harness only: set Resource Flow flag directly (distinct from spec opt-in).
-    pub fn override_resource_flow_flag_for_tests(&mut self, enabled: bool) {
-        self.proto.flags.use_accumulator_resource_flow = enabled;
-        self.resource_flow_flag_source =
-            crate::resource_flow_opt_in_telemetry::ResourceFlowFlagSource::TestOverride;
-    }
-
     pub fn install_spec_state(&mut self, spec_state: SpecSessionState) -> Result<(), SessionError> {
         self.spec_state = spec_state;
         self.resync_gpu_shape_after_spec_install();
         self.reserve_resource_flow_capacity_budget();
         self.sync_spec_threshold_registrations();
-        self.sync_resource_flow_if_enabled()?;
+        self.sync_resource_flow()?;
         self.sync_resource_economy_at_install()?;
         // Re-project tree (including entity-hosted Constant PropertyValue seeds)
         // then upload thresholds. No dense install_resolved_values authority.
@@ -568,9 +551,8 @@ impl SimSession {
         self.state.ensure_threshold_accumulator(emission_capacity);
     }
 
-    /// Sync E-11 resource-flow AccumulatorOps when the pipeline flag is enabled.
-    pub fn sync_resource_flow_if_enabled(&mut self) -> Result<(), SessionError> {
-        let enabled = self.proto.flags.use_accumulator_resource_flow;
+    /// Sync E-11 resource-flow AccumulatorOps through the sole production path.
+    pub fn sync_resource_flow(&mut self) -> Result<(), SessionError> {
         // Production always includes stage projections. DISCONNECT harness uses
         // `harness_resync_resource_flow_without_need_stage_projections`.
         crate::arena_allocation_sync::sync_resource_flow_accumulator(
@@ -579,7 +561,6 @@ impl SimSession {
             &self.spec_state.arena_registry,
             &self.spec_state.resolved_gated_rates,
             &self.spec_state.resolved_need_bindings,
-            enabled,
         )?;
         Ok(())
     }
@@ -591,44 +572,34 @@ impl SimSession {
     pub fn harness_resync_resource_flow_without_need_stage_projections(
         &mut self,
     ) -> Result<(), SessionError> {
-        let enabled = self.proto.flags.use_accumulator_resource_flow;
         crate::arena_allocation_sync::sync_resource_flow_accumulator_with_options(
             &mut self.state,
             &self.proto.registry,
             &self.spec_state.arena_registry,
             &self.spec_state.resolved_gated_rates,
             &self.spec_state.resolved_need_bindings,
-            enabled,
             false,
         )?;
         Ok(())
     }
 
-    /// Session install: upload when flags allow; never reject populated specs with flags off.
+    /// Session install: upload authored registrations through the sole production path.
     fn sync_resource_economy_at_install(&mut self) -> Result<(), SessionError> {
-        self.sync_resource_economy_internal(false)
+        self.sync_resource_economy_internal()
     }
 
-    /// Boundary refresh: upload when flags allow; reject populated specs with flags off.
-    pub fn sync_resource_economy_if_enabled(&mut self) -> Result<(), SessionError> {
-        self.sync_resource_economy_internal(true)
+    /// Boundary refresh for the installed resource-economy registrations.
+    pub fn sync_resource_economy(&mut self) -> Result<(), SessionError> {
+        self.sync_resource_economy_internal()
     }
 
-    fn sync_resource_economy_internal(
-        &mut self,
-        reject_flag_off_populated: bool,
-    ) -> Result<(), SessionError> {
-        let transfer_enabled = self.proto.flags.use_accumulator_transfer;
-        let emission_enabled = self.proto.flags.use_accumulator_emission;
+    fn sync_resource_economy_internal(&mut self) -> Result<(), SessionError> {
         let uploaded_generation = self.spec_state.resource_economy_uploaded_generation();
         let mut generation = uploaded_generation;
         crate::resource_economy_sync::sync_resource_economy_if_present(
             &mut self.state,
             self.spec_state.resource_economy_registry.as_ref(),
             &mut generation,
-            transfer_enabled,
-            emission_enabled,
-            reject_flag_off_populated,
         )?;
         self.spec_state
             .set_resource_economy_uploaded_generation(generation);
@@ -802,12 +773,8 @@ impl SimSession {
             spec_state.property_admission = session.proto.registry.property_admission_report();
             field_sweep_install = Some((compile_field_sweeps, derived_field_registrations));
         }
-        apply_resource_economy_opt_in(&mut session.proto.flags, game_mode);
-        session.resource_flow_execution_profile = game_mode.resource_flow_execution_profile;
-        session.resource_flow_flag_source =
-            resolve_resource_flow_execution(&mut session.proto.flags, game_mode, &spec_state);
-        if session.proto.flags.use_accumulator_resource_flow {
-            validate_resource_flow_flat_star_execution(game_mode, &spec_state)?;
+        if !spec_state.arena_registry.arenas.is_empty() {
+            validate_resource_flow_execution(game_mode, &spec_state)?;
         }
         session.install_spec_state(spec_state)?;
         session.install_session_mapping(game_mode, field_sweep_install)?;
@@ -1201,7 +1168,7 @@ impl SimSession {
         summary.boundaries_run += 1;
         self.react_to_fission_clones(&outcome);
         self.react_to_fission_resource_flow_enrollment(&outcome)?;
-        self.sync_resource_economy_if_enabled()?;
+        self.sync_resource_economy()?;
         // Next day's fused scans stamp the upcoming day index.
         self.state
             .bind_production_generation((day as u32).saturating_add(1));
@@ -1319,7 +1286,7 @@ impl SimSession {
                 // instances + threshold registrations for fission clones.
                 self.react_to_fission_clones(&outcome);
                 self.react_to_fission_resource_flow_enrollment(&outcome)?;
-                self.sync_resource_economy_if_enabled()?;
+                self.sync_resource_economy()?;
             }
         }
 
@@ -1485,99 +1452,32 @@ impl SimSession {
                 &mut self.spec_state.arena_registry,
                 &self.proto.allocator,
             );
-        let should_sync = report.any_admissions() && self.proto.flags.use_accumulator_resource_flow;
+        let should_sync = report.any_admissions();
         if !report.admissions.is_empty() || !report.rejections.is_empty() {
             self.last_resource_flow_dynamic_enrollment_report = Some(report);
         } else {
             self.last_resource_flow_dynamic_enrollment_report = None;
         }
         if should_sync {
-            self.sync_resource_flow_if_enabled()?;
+            self.sync_resource_flow()?;
         }
         Ok(())
     }
 }
 
-fn apply_resource_economy_opt_in(
-    flags: &mut simthing_sim::PipelineFlags,
-    game_mode: &GameModeSpec,
-) {
-    let mode = game_mode
-        .resource_economy
-        .as_ref()
-        .map(|spec| spec.opt_in_mode)
-        .unwrap_or(ResourceEconomyOptInMode::Disabled);
-
-    match mode {
-        ResourceEconomyOptInMode::Disabled => {}
-        ResourceEconomyOptInMode::TransferOnly => {
-            flags.use_accumulator_transfer = true;
-        }
-        ResourceEconomyOptInMode::EmissionOnly => {
-            flags.use_accumulator_eml = true;
-            flags.use_accumulator_emission = true;
-        }
-        ResourceEconomyOptInMode::TransferAndEmission => {
-            flags.use_accumulator_transfer = true;
-            flags.use_accumulator_eml = true;
-            flags.use_accumulator_emission = true;
-        }
-    }
-}
-
-fn resolve_resource_flow_execution(
-    flags: &mut simthing_sim::PipelineFlags,
-    game_mode: &GameModeSpec,
-    spec_state: &SpecSessionState,
-) -> crate::resource_flow_opt_in_telemetry::ResourceFlowFlagSource {
-    use crate::resource_flow_opt_in_telemetry::ResourceFlowFlagSource;
-
-    let opt_in = game_mode
-        .resource_flow
-        .as_ref()
-        .map(|spec| spec.opt_in_mode)
-        .unwrap_or(ResourceFlowOptInMode::Disabled);
-
-    match opt_in {
-        ResourceFlowOptInMode::FlatStarOptIn => {
-            flags.use_accumulator_resource_flow = true;
-            ResourceFlowFlagSource::SpecFlatStarOptIn
-        }
-        ResourceFlowOptInMode::Disabled => {
-            if game_mode
-                .resource_flow_execution_profile
-                .enables_arena_resource_flow()
-                && !spec_state.arena_registry.arenas.is_empty()
-            {
-                flags.use_accumulator_resource_flow = true;
-                ResourceFlowFlagSource::ScenarioClassDefaultOn
-            } else {
-                ResourceFlowFlagSource::DefaultDisabled
-            }
-        }
-    }
-}
-
-fn validate_resource_flow_flat_star_execution(
-    game_mode: &GameModeSpec,
-    spec_state: &SpecSessionState,
-) -> Result<(), SessionError> {
-    validate_resource_flow_flat_star_opt_in(game_mode, spec_state)
-}
-
-fn validate_resource_flow_flat_star_opt_in(
+fn validate_resource_flow_execution(
     game_mode: &GameModeSpec,
     spec_state: &SpecSessionState,
 ) -> Result<(), SessionError> {
     if spec_state.arena_registry.arenas.is_empty() {
-        return Err(SessionError::ResourceFlowOptIn(
+        return Err(SessionError::ResourceFlowAdmission(
             "Resource Flow GPU execution requires at least one admitted arena".into(),
         ));
     }
     if let Some(flow) = game_mode.resource_flow.as_ref() {
         for arena in &flow.arenas {
             if arena.wildcard_admission.is_some() {
-                return Err(SessionError::ResourceFlowOptIn(format!(
+                return Err(SessionError::ResourceFlowAdmission(format!(
                     "arena `{}` wildcard admission is not supported for flat-star Resource Flow (E-11B deferred)",
                     arena.name
                 )));
@@ -1586,7 +1486,7 @@ fn validate_resource_flow_flat_star_opt_in(
     }
     for arena in &spec_state.arena_registry.arenas {
         if arena.wildcard_max_expansion.is_some() {
-            return Err(SessionError::ResourceFlowOptIn(format!(
+            return Err(SessionError::ResourceFlowAdmission(format!(
                 "arena `{}` wildcard expansion is not supported for flat-star Resource Flow",
                 arena.name
             )));

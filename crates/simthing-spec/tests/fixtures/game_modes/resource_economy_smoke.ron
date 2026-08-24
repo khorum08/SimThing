@@ -120,7 +120,6 @@ GameModeSpec(
         ),
     ],
     resource_economy: Some(ResourceEconomySpec(
-        opt_in_mode: TransferAndEmission,
         transfers: [
             ResourceTransferSpec(
                 id: "credits_to_store",
