@@ -86,7 +86,7 @@ jobs:
             PR="${{ github.event.pull_request.number }}"
             ISSUE_NUMBER="${PR}"
             COMMENT_ID="pull_request_review-${{ github.event.review.id }}"
-            JSON='${{ toJson(github.event.pull_request) }}'
+            JSON="$(jq -c '.pull_request' "$GITHUB_EVENT_PATH")"
             HEAD="$(echo "$JSON" | jq -r '.head.sha')"
             BASE="$(echo "$JSON" | jq -r '.base.sha')"
             HEAD_REF="$(echo "$JSON" | jq -r '.head.ref')"
@@ -100,7 +100,7 @@ jobs:
             PR="${{ github.event.pull_request.number }}"
             ISSUE_NUMBER="${PR}"
             COMMENT_ID="pull_request_review_comment-${{ github.event.comment.id }}"
-            JSON='${{ toJson(github.event.pull_request) }}'
+            JSON="$(jq -c '.pull_request' "$GITHUB_EVENT_PATH")"
             HEAD="$(echo "$JSON" | jq -r '.head.sha')"
             BASE="$(echo "$JSON" | jq -r '.base.sha')"
             HEAD_REF="$(echo "$JSON" | jq -r '.head.ref')"
