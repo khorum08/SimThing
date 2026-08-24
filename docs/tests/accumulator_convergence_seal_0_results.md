@@ -1,7 +1,7 @@
 # ACCUMULATOR-CONVERGENCE-SEAL-0 results
 
 - Track: 0.0.8.7 RF arena modernization (remedial 11.1d)
-- Status: **PROBATION / proof-present / DA-review-pending**
+- Status: **COMPLETE — DA-GRADUATED / merged #1819 @ `7ee2350d`** (Fable deep review, graduation ruling on Board #1332)
 - Branch: `codex/accumulator-convergence-seal-0`
 - Reconciled live-master base: `1e8650286d691ced0fc55824861a2fc415802011`
 - Implementation / tested_code_sha: `337383e4bba5804d0ecb9f843c9a792a56097696`
