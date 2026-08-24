@@ -1,6 +1,7 @@
 //! VENDOR-DOOR-TRIAD-SURFACE-0 — five-verb reach to the graduated 11.1a seam.
 //! HD-RECEIPT: `622933c70c88`
 
+use std::cell::Cell;
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -200,20 +201,19 @@ fn full_triad_fixture() -> (run::Scenario, run::GameModeSpec, simthing_core::Sim
 
 #[test]
 fn five_verbs_reach_the_session_seam_and_observe_only_live_triad_output() {
-    let (mut scenario, mut game_mode, participant_id) = full_triad_fixture();
+    let (mut scenario, game_mode, participant_id) = full_triad_fixture();
     let authored_bound = scenario.registry.total_columns as u32;
+    let authored_field_dimensions: Vec<_> = game_mode
+        .region_fields
+        .iter()
+        .map(|field| field.n_dims)
+        .collect();
     let triad_columns = (
         col(10, authored_bound),
         col(0, authored_bound),
         col(12, authored_bound),
     );
     let bands = bind::ComparativeProjectionBands::default();
-    let final_dims =
-        bind::projected_field_sweep_dimensions(&scenario, &game_mode, triad_columns, bands, None)
-            .expect("Bind projects the ordinary seam's post-admission dimensions");
-    for field in &mut game_mode.region_fields {
-        field.n_dims = final_dims;
-    }
 
     let declared_emitters = [
         derive::ComparativeEmitterClass {
@@ -239,7 +239,7 @@ fn five_verbs_reach_the_session_seam_and_observe_only_live_triad_output() {
     let compiled_law = derive::compile_eml_gadget_stack(
         &law,
         derive::EmlGadgetCompileOptions {
-            max_col: final_dims,
+            max_col: AUTHORED_BASE_DIMS,
         },
     )
     .expect("authored EML reaches its production compiler through Derive");
@@ -265,32 +265,33 @@ fn five_verbs_reach_the_session_seam_and_observe_only_live_triad_output() {
     assert_eq!(overlay.affects, vec![participant_id]);
     scenario.root.children[0].add_overlay(overlay);
 
-    let palma = bind::compile_palma_n4_field_sweep(bind::PalmaN4FieldSweepSpec {
-        width: 2,
-        height: 2,
-        n_dims: final_dims,
-        d_col: col(10, authored_bound),
-        w_col: col(13, authored_bound),
-        destination_slot: SlotIndex::new(0),
-        inf_sentinel: f32::MAX,
-    })
-    .expect("Bind compiles admitted PALMA topology");
-    let guyang = bind::compile_gu_yang_n4_field_sweeps(bind::GuYangN4FieldSweepSpec {
-        width: 2,
-        height: 2,
-        n_dims: final_dims,
-        value_col: col(0, authored_bound),
-        conductance_col: col(12, authored_bound),
-        saturation: 1.0,
-        chi: 0.1,
-        dt: 1.0,
-    })
-    .expect("Bind compiles admitted Gu-Yang topology");
-
+    let compiled_n_dims = Cell::new(None);
     let mut session = match run::initialize_with_admitted_field_sweeps(
         scenario,
         &game_mode,
-        vec![palma, guyang[0].clone(), guyang[1].clone()],
+        |n_dims| {
+            compiled_n_dims.set(Some(n_dims));
+            let palma = bind::compile_palma_n4_field_sweep(bind::PalmaN4FieldSweepSpec {
+                width: 2,
+                height: 2,
+                n_dims,
+                d_col: col(10, authored_bound),
+                w_col: col(13, authored_bound),
+                destination_slot: SlotIndex::new(0),
+                inf_sentinel: f32::MAX,
+            })?;
+            let guyang = bind::compile_gu_yang_n4_field_sweeps(bind::GuYangN4FieldSweepSpec {
+                width: 2,
+                height: 2,
+                n_dims,
+                value_col: col(0, authored_bound),
+                conductance_col: col(12, authored_bound),
+                saturation: 1.0,
+                chi: 0.1,
+                dt: 1.0,
+            })?;
+            Ok(vec![palma, guyang[0].clone(), guyang[1].clone()])
+        },
         triad_columns,
         bands,
         None,
@@ -303,6 +304,25 @@ fn five_verbs_reach_the_session_seam_and_observe_only_live_triad_output() {
         }
         Err(error) => panic!("Run must delegate to the ordinary admitted-sweep seam: {error}"),
     };
+    let adapter = session.state.ctx.adapter.get_info();
+    eprintln!(
+        "VENDOR-DOOR-TRIAD-SURFACE-0 adapter={} backend={:?}",
+        adapter.name, adapter.backend
+    );
+    assert_eq!(
+        game_mode
+            .region_fields
+            .iter()
+            .map(|field| field.n_dims)
+            .collect::<Vec<_>>(),
+        authored_field_dimensions,
+        "Run must leave vendor-authored field dimensions untouched"
+    );
+    assert_eq!(
+        compiled_n_dims.get(),
+        Some(session.proto.registry.total_columns as u32),
+        "Bind compilers must receive the seam's one live finalized width"
+    );
     assert_eq!(
         session
             .spec_state
@@ -399,6 +419,11 @@ fn facade_shape_column_and_actionband_seals_remain_closed() {
     assert!(
         run_source.contains("SimSession::open_from_spec_with_admitted_field_sweeps("),
         "VENDOR-DOOR-TRIAD-SEAM-DELEGATION: Run must reach the exact graduated 11.1a seam"
+    );
+    assert!(
+        !bind_source.contains("projected_field_sweep_dimensions")
+            && !bind_source.contains("preview_install("),
+        "VENDOR-DOOR-TRIAD-DIMENSION-PREDICTION: Bind must not predict the final registry width ahead of the graduated seam"
     );
     assert!(
         bind_source.contains(".stall_outputs")

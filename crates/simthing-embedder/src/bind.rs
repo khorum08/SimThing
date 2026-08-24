@@ -14,17 +14,6 @@ pub use simthing_sim::{
 };
 
 pub use simthing_core::{AuthoredColumnAdmitError, ColumnIndex};
-use thiserror::Error;
-
-#[derive(Debug, Error)]
-pub enum TriadProjectionPreviewError {
-    #[error(transparent)]
-    Install(#[from] simthing_driver::InstallError),
-    #[error("ordinary install did not admit a field plan")]
-    MissingFieldPlan,
-    #[error(transparent)]
-    Comparative(#[from] simthing_driver::FieldPlanAdmissionError),
-}
 
 /// One read-only row copied from the existing Gu-Yang comparative outputs.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -45,46 +34,6 @@ pub struct GuYangStallObservation {
 /// ```
 pub fn authored_column(raw: u32, bound: u32) -> Result<ColumnIndex, AuthoredColumnAdmitError> {
     ColumnIndex::try_from_admitted_authored(raw, bound)
-}
-
-/// Project the post-install comparative registry width required by admitted
-/// field-sweep registrations.
-///
-/// This is a stateless composition of the ordinary install preview and the
-/// same comparative admission consumed by the 11.1a session seam. It does not
-/// install, execute, retain the preview, or mint any columns.
-pub fn projected_field_sweep_dimensions(
-    scenario: &simthing_driver::Scenario,
-    game_mode: &simthing_spec::GameModeSpec,
-    triad_columns: (ColumnIndex, ColumnIndex, ColumnIndex),
-    comparative_bands: ComparativeProjectionBands,
-    authored_opt_out_reason: Option<&'static str>,
-) -> Result<u32, TriadProjectionPreviewError> {
-    let mut allocator = simthing_gpu::SlotAllocator::new();
-    allocator.populate_from_tree(&scenario.root);
-    let preview = simthing_driver::preview_install(
-        game_mode,
-        scenario,
-        &scenario.registry,
-        &scenario.root,
-        &allocator,
-    )?;
-    let mut registry = preview.registry;
-    let field_plan = preview
-        .state
-        .field_plan_admission
-        .as_ref()
-        .ok_or(TriadProjectionPreviewError::MissingFieldPlan)?;
-    simthing_driver::admit_comparative_from_field_plan(
-        &mut registry,
-        field_plan,
-        triad_columns.0,
-        triad_columns.1,
-        triad_columns.2,
-        comparative_bands,
-        authored_opt_out_reason,
-    )?;
-    Ok(registry.total_columns as u32)
 }
 
 /// Register a values-plane threshold on the ordinary session builder path.
