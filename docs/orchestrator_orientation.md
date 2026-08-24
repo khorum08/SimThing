@@ -45,10 +45,10 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 26e025f8b1e76f7f649571aaa4f2da2c82ca722b4d8c549f5ce9d14b4604f3a6 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | 26eab30ec86c97ac8dfd6beef7ae8c5b4d3f18c38fdaa431ec40ccce855396d3 |
-| design_0_0_8_7_rf_arena_modernization.md | 6174043dab9f14412998c6203cac01129c6ea2d3f290f816a96336a1d53927b5 |
+| design_0_0_8_7_rf_arena_modernization.md | 816e70b89121a7ea3c2b64b7ab350d9fcd6bf385c94b00b6a8e7c41f9931d67f |
 | relay_lint.sh | ae19bdca12e90f6bc988e064f081ff62903034d69bf34b08ffd5c27e352181ba |
 | doctrine_anchors.tsv | ddc753498b845b0e5084222b35f94286e5163cc6479de58883e3ecc3c2d743dd |
-| execution_status_taxonomy.tsv | 6a6a6c3a0cadc89b51b674c23598fa38794185258db6a1e0826c1ba03ec812be |
+| execution_status_taxonomy.tsv | 924c086550221dd7136ec0682293900d8d03feb4bc1dae1a6e750a61e65153bc |
 | execution_status_mixed_posture.tsv | 1adf05f3ec5fd7b537efe29259d20649a2c6d3a0839590063e5308ff154e8f25 |
 | execution_status_non_execution.tsv | 214c1b557dfd3fc465f0171051e20281ff1dcf6c53128dbb29cba01524f9be02 |
 | specialization_citizen_counts.tsv | ed465628f7daeeb3d6a5a47e8a31efe35edf56883356f83b973eead2119fa7d2 |
@@ -56,7 +56,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 
 ## Execution-status taxonomy (driver/kernel)
 
-executed=61 oracle=6 rehearsal=14 compile-plan=50 mixed_ruled=0 (primary-inclusive taxonomy; DA dual-posture residual; census `execution_status_census.py`).
+executed=57 oracle=6 rehearsal=14 compile-plan=50 mixed_ruled=0 (primary-inclusive taxonomy; DA dual-posture residual; census `execution_status_census.py`).
 
 ## Live install inventories
 
