@@ -1,0 +1,52 @@
+{
+  "cases": [
+    {
+      "event_name": "pull_request_review",
+      "event": {
+        "repository": {"default_branch": "master"},
+        "review": {"id": 71001},
+        "pull_request": {
+          "number": 1811,
+          "body": "can't'; touch __SENTINEL__; echo '",
+          "head": {"sha": "1111111111111111111111111111111111111111", "ref": "vendor-door-review", "repo": {"fork": false}},
+          "base": {"sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
+          "merged": false,
+          "merge_commit_sha": null
+        }
+      },
+      "expected": {
+        "issue_number": "1811",
+        "comment_id": "pull_request_review-71001",
+        "pr_number": "1811",
+        "head_sha": "1111111111111111111111111111111111111111",
+        "base_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "head_ref": "vendor-door-review",
+        "checkout_ref": "vendor-door-review"
+      }
+    },
+    {
+      "event_name": "pull_request_review_comment",
+      "event": {
+        "repository": {"default_branch": "master"},
+        "comment": {"id": 72002},
+        "pull_request": {
+          "number": 1811,
+          "body": "can't'; touch __SENTINEL__; echo '",
+          "head": {"sha": "2222222222222222222222222222222222222222", "ref": "vendor-door-comment", "repo": {"fork": true}},
+          "base": {"sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},
+          "merged": true,
+          "merge_commit_sha": "cccccccccccccccccccccccccccccccccccccccc"
+        }
+      },
+      "expected": {
+        "issue_number": "1811",
+        "comment_id": "pull_request_review_comment-72002",
+        "pr_number": "1811",
+        "head_sha": "2222222222222222222222222222222222222222",
+        "base_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "head_ref": "vendor-door-comment",
+        "checkout_ref": "cccccccccccccccccccccccccccccccccccccccc"
+      }
+    }
+  ]
+}
