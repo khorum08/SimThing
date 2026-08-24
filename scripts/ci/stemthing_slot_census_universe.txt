@@ -18,7 +18,7 @@ driver:resource_flow_compile.rs
 driver:resource_flow_derivation.rs
 driver:resource_flow_enrollment.rs
 driver:resource_flow_fission_enrollment.rs
-driver:resource_flow_opt_in_burn_in.rs
+driver:resource_flow_convergence_burn_in.rs
 driver:resource_flow_preflight.rs
 driver:scenario.rs
 driver:session.rs
