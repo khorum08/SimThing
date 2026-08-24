@@ -1,7 +1,7 @@
 # AUTHORED-LAW-GADGET-0 results
 
 - Track: 0.0.8.7 RF arena modernization (remedial 11.1f)
-- Status: **PROBATION / proof-present / DA-review-pending**
+- Status: **COMPLETE — DA-GRADUATED / merged #1825 @ `562f423a`** (Fable deep review, graduation ruling on Board #1332)
 - Branch: `codex/authored-law-gadget-0`
 - Reconciled live-master base: `5210c9d22df30102a76a9eca78a7724231e03597`
 - Implementation / tested_code_sha: `49cbf0f52729faf9a1690cfd390f46cc4656380e`
