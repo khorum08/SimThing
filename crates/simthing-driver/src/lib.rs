@@ -40,6 +40,7 @@ pub mod planet_child_rf_reduce_up_compile;
 pub mod production_path_0080_0;
 pub mod recursive_local_rf_compile;
 pub mod recursive_rf_reconciliation_compile;
+pub mod residency_market;
 pub mod resource_economy_boundary_schedule;
 pub mod resource_economy_burn_in;
 pub mod resource_economy_compile;

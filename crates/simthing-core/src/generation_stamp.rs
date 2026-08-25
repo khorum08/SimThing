@@ -114,6 +114,14 @@ pub enum IntegrationScheduleRowKind {
     QueueInjection,
     /// One downward standing/policy snapshot published at a child barrier.
     StandingView,
+    /// One provisional market entitlement realized as committed physical residency.
+    ResidencyPlacementCommit,
+    /// One ordinary physical infeasibility; geometry remained uncommitted and quantity stayed U.
+    ResidencyPlacementRefusal,
+    /// One committed placement moved through the existing epoch-rebind authority.
+    ResidencyRelocation,
+    /// One already-committed placement invariant breach recorded before session termination.
+    ResidencyCommittedCorruption,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]

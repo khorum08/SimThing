@@ -230,6 +230,12 @@ impl AdmittedSpecializationFlowMarket {
         self.offerings.get(id)
     }
 
+    /// Resolve the admitted conserved resource for an offering. Runtime bridges use this
+    /// read-only seam to prove that a cleared grant still names the authored resource.
+    pub fn offering_resource(&self, id: &str) -> Option<&ResourceKey> {
+        self.offering(id).map(|offering| &offering.resource_key)
+    }
+
     pub fn draw_envelope(&self, id: &str) -> Option<&DrawEnvelopeTemplateSpec> {
         self.draw_envelopes.get(id)
     }

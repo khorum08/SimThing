@@ -242,6 +242,20 @@ apply_epoch_rebind_to_values | authority-export | SLOT-LOGICAL-IDENTITY-0 bounda
 SlotAllocError | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
 SlotDeltaRange | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
 SlotSummary | authority-export | Exported kernel runtime/planning/oracle surface | retire when kernel export set is closed by type-boundary admission
+CommittedResidencyCorruption | sealed-export | STEMTHING-B-VRAM-RESIDENCY-0 typed committed overlap/out-of-bounds diagnostic with owning granters and exact extents | retire when committed-corruption observation is wholly session-internal
+CommittedResidencyPlacement | sealed-export | STEMTHING-B-VRAM-RESIDENCY-0 kernel-minted authoritative physical placement with private fields | retire when placement observation is wholly session-internal
+ProvisionalResidencyEntitlement | authority-export | STEMTHING-B-VRAM-RESIDENCY-0 typed physical input consumed by the kernel after the driver validates a graduated market grant | retire when the market grant and kernel boundary share one crate-private admission seam
+ResidencyEntitlementError | authority-export | STEMTHING-B-VRAM-RESIDENCY-0 typed provisional-entitlement shape refusal | retire when entitlement conversion is wholly driver-private
+ResidencyExtent | authority-export | STEMTHING-B-VRAM-RESIDENCY-0 checked half-open physical extent vocabulary explicitly authorized by A1 | retire when all physical placement authoring lowers through a narrower vendor door
+ResidencyExtentError | authority-export | STEMTHING-B-VRAM-RESIDENCY-0 typed zero-length and overflow extent refusal | retire when extent construction is wholly behind the vendor door
+ResidencyPlacementDisposition | authority-export | STEMTHING-B-VRAM-RESIDENCY-0 closed committed relocated unchanged outcome vocabulary | retire when placement observation is wholly session-internal
+ResidencyPlacementError | authority-export | STEMTHING-B-VRAM-RESIDENCY-0 typed ordinary refusal terminal corruption configuration and existing-remap refusal surface | retire when all placement consumers are in-crate
+ResidencyPlacementIdentity | sealed-export | STEMTHING-B-VRAM-RESIDENCY-0 private-field stable granter grantee market relationship identity | retire when placement observation is wholly session-internal
+ResidencyPlacementOutcome | sealed-export | STEMTHING-B-VRAM-RESIDENCY-0 kernel-minted committed placement and closed disposition | retire when placement observation is wholly session-internal
+ResidencyPlacementRefusal | sealed-export | STEMTHING-B-VRAM-RESIDENCY-0 kernel-minted U-preserving ordinary physical infeasibility product | retire when refusal handling is wholly session-internal
+ResidencyPlacementRefusalReason | authority-export | STEMTHING-B-VRAM-RESIDENCY-0 closed exact physical infeasibility vocabulary | retire when refusal handling is wholly session-internal
+ResidencyRelocationOutcome | sealed-export | STEMTHING-B-VRAM-RESIDENCY-0 kernel-minted placement plus the existing epoch-rebind section | retire when relocation observation is wholly session-internal
+ResidencySessionTermination | sealed-export | STEMTHING-B-VRAM-RESIDENCY-0 kernel-minted recorded hard-fault product with exact corruption cause and generation | retire when terminal handling is wholly session-internal
 SoftStepPolicyConditional | authority-export | OC-K-EML-OPCODE-GATE-0 SoftStep branchless policy conditional gadget | retire when kernel export set is closed by type-boundary admission
 sqrt_cr_f_bits | authority-export | OC-K-EXACT-GATE-0 Candidate F CR-F sqrt bits CPU twin | retire when kernel export set is closed by type-boundary admission
 StructuralCommitment | sealed-export | OC-K-DECISION-INGRESS-0 sealed structural commitment effect | retire when kernel export set is closed by type-boundary admission

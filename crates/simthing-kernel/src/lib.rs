@@ -33,6 +33,7 @@ pub mod readback;
 pub mod reduction;
 pub mod reduction_orderband;
 pub mod registration;
+mod residency_placement;
 pub mod resolved;
 pub mod sealed;
 pub mod slot;
@@ -134,6 +135,13 @@ pub use reduction_orderband::{
 pub use registration::{
     ThresholdRegistration, DIR_DOWNWARD, DIR_EITHER, DIR_UPWARD, THRESH_BUF_OUTPUT,
     THRESH_BUF_VALUES,
+};
+pub use residency_placement::{
+    CommittedResidencyCorruption, CommittedResidencyPlacement, ProvisionalResidencyEntitlement,
+    ResidencyEntitlementError, ResidencyExtent, ResidencyExtentError,
+    ResidencyPlacementDisposition, ResidencyPlacementError, ResidencyPlacementIdentity,
+    ResidencyPlacementOutcome, ResidencyPlacementRefusal, ResidencyPlacementRefusalReason,
+    ResidencyRelocationOutcome, ResidencySessionTermination,
 };
 pub use resolved::ResolvedGpuBuffers;
 pub use sealed::{
