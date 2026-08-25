@@ -1,7 +1,7 @@
 # STEMTHING-B-VRAM-RESIDENCY-0 results
 
 - Track: 0.0.8.7 RF arena modernization, rung 11.2b
-- Status: **PROBATION / proof-present / DA-review-pending**
+- Status: **COMPLETE — DA-GRADUATED / merged #1835 @ `12141dfa`** (Fable deep review, graduation ruling on Board #1332)
 - Implementation base: `78e1cfe5be507e60c1a523cd24c50f9164b8347d`
 - Branch: `codex/stemthing-b-vram-residency-0`
 - ORIENT-RECEIPT: `1a6a00162374`
