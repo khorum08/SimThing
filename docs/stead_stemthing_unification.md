@@ -546,6 +546,35 @@ own placement belongs to its granter's barrier, which for the session root is se
 5. Whether the census vector wants velocity lanes per tier from birth, or grows them on demand —
    the fixed-width commitment makes this a design-time choice.
 
+## 12. StemThing-B — the recursive conserved-resource market germ (Owner design session 2026-08-24, RATIFIED)
+
+> StemThing-B is not "malloc generalized." It is the recursive conserved-resource market germ; VRAM Residency is the distinct engine-native market that first proves it.
+
+> domain management → authored conserved-resource markets → RF + CostBand + Field Triad dynamics → replayable ML corpus
+
+**The market grammar** (one chain, already-intrinsic surfaces only): admitted conserved resource/capacity → descendant claims/Draws → recursive RF reduce-up → EML valuation / effective clearing weight → authored generic constrained clearing → CostBand quantization → grant/flow disbursement → Gu-Yang conserved throughput/saturation → PALMA potential/impedance/opportunity over admitted topology → STEAD anchored pressure/observation/bands → ordinary ActionBand/OverlayThing response → next-generation state.
+
+Every SimThing carries this germ; SessionThing / NetworkManagementThing / TeamManagerThing / ComputeNodeThing and every other domain-management derivative instantiate their own conserved-resource market over descendants **as authored data** — never as manager subsystems, never as additional core facilities. VRAM Residency remains a **distinct engine-native facility** (extents, placement oracle, disjointness, relocation — kernel physics); its entitlement side consumes the germ. Triad observations are ordinary numerical outputs, not semantic services; a degenerate domain need not invent topology.
+
+**Ratified laws (Owner, 2026-08-24):**
+
+- **Clearing weight** is ordinary authored clearing input, never implicitly derived from tier unit cost (authors may derive one from the other through EML; the engine never equates them). It is an ordinary effective SimThing value: tier-authored default, sparse inherited overrides (ancestor projects over subtree), dynamically deformable through admitted EML/OverlayThing. Claims consume the effective weight and carry no policy vocabulary.
+- **Ties and remainder:** equal clearing scores clear proportionally unless the author supplied an additional deterministic ranking. Discrete remainder is largest-remainder and work-conserving; exact fractional ties rotate deterministically over canonical logical identity under the owning granter StemThing generation authority — no permanently privileged ID order. Residual unmet demand is ordinary `U` (never CostBand `R`), re-valued next generation; **no residency-specific retry loop; no same-generation retry.**
+- **Draws:** a Draw is the specialization-profile-level claim template — admitted offering(s), lifecycle trigger(s), and a bounded quantity envelope from which runtime claims may be emitted. Draw vocabulary seals at session admission with the profile; instances author no new Draws; EML/OverlayThing/ActionBand state determines actual claim quantity within the envelope. **A Draw grants nothing by itself** — it only authorizes an ordinary RF claim, which may clear or remain `U`. Strict offering reference: no per-type parameter deltas (a delta is a shadow tier). No new vocabulary object: the existing specialization profile gains offering references and a Draw template.
+- **Oversubscription is ordinary.** Admission certifies model validity (envelopes finite and well-formed, offerings exist, triggers admitted, root arena declared) and never requires sum-of-envelopes ≤ capacity.
+- **Placement (residency), two-stage fail-closed:** a cleared entitlement is provisional until the owning boundary placement oracle proves a legal, disjoint, in-bounds realization. Infeasibility is an ordinary typed placement refusal — nothing commits, the quantity stays `U`, the refusal rides the one recorded schedule. Overlap or out-of-bounds observed in already-committed authoritative placement state is an invariant breach and hard-faults the session. *Ordinary infeasibility must not crash the sim; committed corruption must not be disguised as `U`.* Unchanged placements need no global per-generation re-proof.
+- **Grant lifecycle:** detachment does **not** inherently release a grant — a detached/spooled child (independently executing subtree) remains provisioned, observed, revalued, communicated-with, revocable and renewable by its ancestor through the existing stamped seam. Death/dissolution normally releases; fission/fusion partition or transfer exactly; **grant termination is an explicit lifecycle fact, never implied by topology.**
+- **Confinement (Owner R3):** no allocator path exists that is not a SimThing disbursing resources through the RF arena; scope is slots/extents and authored capacity lanes — registry column append and GPU buffer sizing remain infrastructure behind the placement boundary.
+
+**Implementation fences (Owner, enactment approval 2026-08-24):**
+
+- **F1:** the non-residency witness must exercise the FULL RF + CostBand + Triad + replay market grammar — not merely a second allocation lane.
+- **F2:** ML-corpus production must arise from existing authoritative observation/replay surfaces and may not create a second telemetry/history authority. Corpus-format/export optimization is a dated horizon deferral (2026-08-24), not silent scope.
+
+**Load-bearing witness:** a granter provisions a child; the child becomes an independently executing subtree; the same market relationship remains conserved and observable across the stamped seam with no global manager — defined at the landed level (detached subtree in-session, identity-keyed grant records, stamped seam); multi-session spooling is a SessionThing-derivative horizon (dated 2026-08-24).
+
+**Rung set (minted into the 0.0.8.7 ladder §3b):** 11.2a `STEMTHING-B-FLOW-MARKET-GERM-0`; 11.2b `STEMTHING-B-VRAM-RESIDENCY-0`; 11.2c `STEMTHING-B-ALLOCATOR-RETIREMENT-0`; 11.2d `VENDOR-DOOR-GRANTING-SURFACE-0` (facade-only, no sixth verb, recursive-granting witness, STOP-and-reopen fence). The core-design §4 residency text is amended in the same delta: entitlement is market-decided; free-lists are downstream physical machinery.
+
 ## References
 
 - [`simthing_core_design.md`](simthing_core_design.md) — §1.2 admission ladder; §2.1 fission and

@@ -5,7 +5,7 @@ seal-residue-cross-crate	docs/simthing_core_design.md	heading:### 1.2.1 The kern
 stead-spatial-contract-core	docs/stead_spatial_contract.md	lines:23-59	map,spatial,mapgenerator,clausething-spatial,stead	8585db4ac631f2fb390a6735409a6bc7d61760390a371ea5d6292328cf4accf3
 one-tree-owners-never-spatial	docs/simthing_core_design.md	heading:## 2. The one tree: Scenario wrapper, GameSession root, owners, and spatial containment	spec,hydration,one-tree	a8689d4344f9185421aa1dc81f55c7871ee91a529b467276047d54b45bc7562b
 core-property-value-model	docs/simthing_core_design.md	heading:## 3. SimProperty	property-value,kernel-columns	17cd41a567b7f0d734c4c34f85a6dd2fcec44fa58c17a9380e72b7fbc078a749
-core-gpu-residency	docs/simthing_core_design.md	heading:## 4. GPU residency	kernel-columns,gpu,driver	eea1356db08745e11c59f9f9a741a586e10424f70b5aa91b38ec5e2aaa0e04e2
+core-gpu-residency	docs/simthing_core_design.md	heading:## 4. GPU residency	kernel-columns,gpu,driver	75fc8c552d8f7eb50d8caee9bebbbe31943ceea4945a7278c9d0f7e1ae944a58
 core-rf-arenas	docs/simthing_core_design.md	heading:## 5. Resource flow arenas	rf,driver	d171614211e9e6aa7e7af0f43f1ee536d9091d74547e0bd8fa05196569e8ee47
 core-overlays	docs/simthing_core_design.md	heading:## 6. Overlays	overlay	f95c9376ee06c16cf46f22cc2c124d5b08280a3e1f84865062a111b0a12c7436
 eml-extension-ladder	docs/eml_gadget_library.md	heading:## 2. Constitutional placement / guardrails	kernel-eml,wgsl	7755bc72ffbe73411916f1d8aca76156ad45dcfd9570d345b1aec3adc26765a9
