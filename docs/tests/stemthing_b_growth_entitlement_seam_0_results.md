@@ -3,6 +3,7 @@
 - Track: 0.0.8.7 RF arena modernization, rung 11.2c
 - Status: **PROBATION / proof-present / DA-review-pending**
 - Implementation base: `39f98302bb8ca0b856a0c3d44addf30ace8d2f14`
+- Tested implementation: `4d99a216dc0c980facf4ed90a76caaa9a1e81b85`
 - Branch: `codex/stemthing-b-growth-entitlement-seam-0`
 - ORIENT-RECEIPT: `1a6a00162374`
 - orientation_rule_stamp: `9ee3f7649d1fc790`
