@@ -31,11 +31,17 @@
 //! ```
 
 use simthing_core::{
-    derive_epoch_rebind_section, AnchorRemapSection, AnchoredLocusMap, BindingTableSnapshot,
-    ObjectResidencyRelation, ObjectResidencyRelease, ObjectResidencyRequest, RemapSubject,
-    SimThing, SimThingId, SlotIndex,
+    derive_epoch_rebind_section, AnchorRemapOperation, AnchorRemapSection, AnchoredLocusMap,
+    BindingTableSnapshot, GenerationStamp, IntegrationSchedule, ObjectResidencyRelation,
+    ObjectResidencyRelease, ObjectResidencyRequest, RemapSubject, SimThing, SimThingId, SlotIndex,
 };
 use std::collections::{HashMap, HashSet};
+
+use crate::residency_placement::{
+    CommittedResidencyPlacement, ProvisionalResidencyEntitlement, ResidencyExtent,
+    ResidencyPlacementBook, ResidencyPlacementDisposition, ResidencyPlacementError,
+    ResidencyPlacementOutcome, ResidencyPlacementRefusalReason, ResidencyRelocationOutcome,
+};
 
 /// Bake one `EpochRebind` section into a slot-major values plane: every
 /// `ObjectRow` record moves its whole row from its pre-rebind physical
@@ -170,6 +176,9 @@ pub struct SlotAllocator {
     /// A test-only injected unbound row intentionally does not populate this
     /// table and therefore cannot satisfy [`Self::residency_for`].
     relations: HashMap<SimThingId, ObjectResidencyRelation>,
+    /// Authoritative level-local physical placement state. This is deliberately
+    /// co-owned by the one kernel residency boundary, not a driver sidecar.
+    residency_placements: ResidencyPlacementBook,
 }
 
 impl SlotAllocator {
@@ -274,6 +283,193 @@ impl SlotAllocator {
 
     pub fn relation_of(&self, object: SimThingId) -> Option<ObjectResidencyRelation> {
         self.relations.get(&object).copied()
+    }
+
+    /// Declare the containing physical extent owned by an admitted root granter.
+    pub fn declare_root_residency_extent(
+        &mut self,
+        granter: SimThingId,
+        extent: ResidencyExtent,
+    ) -> Result<(), ResidencyPlacementError> {
+        self.residency_placements.ensure_active()?;
+        if self.relations.get(&granter).copied() != Some(ObjectResidencyRelation::Root) {
+            return Err(ResidencyPlacementError::Configuration {
+                detail: format!(
+                    "root residency extent granter {} is not the admitted root",
+                    granter.raw()
+                ),
+            });
+        }
+        self.residency_placements
+            .declare_root_extent(granter, extent)
+    }
+
+    pub fn committed_residency_placement(
+        &self,
+        granter: SimThingId,
+        grantee: SimThingId,
+    ) -> Option<CommittedResidencyPlacement> {
+        self.residency_placements.placement(granter, grantee)
+    }
+
+    /// Refuse every later hot-path use after a recorded committed-placement fault.
+    pub fn ensure_residency_placement_active(&self) -> Result<(), ResidencyPlacementError> {
+        self.residency_placements.ensure_active()
+    }
+
+    /// Audit only `granter`'s direct placements against its own containing extent.
+    pub fn audit_residency_level(
+        &mut self,
+        granter: SimThingId,
+        generation: GenerationStamp,
+        schedule: &mut IntegrationSchedule,
+    ) -> Result<(), ResidencyPlacementError> {
+        let containing = self.residency_containing_extent(granter).ok_or_else(|| {
+            ResidencyPlacementError::Configuration {
+                detail: format!("granter {} has no owning residency extent", granter.raw()),
+            }
+        })?;
+        self.residency_placements
+            .audit_level(granter, containing, generation, schedule)
+    }
+
+    /// Realize one already-cleared entitlement. This performs no clearing, ranking,
+    /// retry, or free-list selection; the caller supplies the proposed extent once.
+    pub fn realize_provisional_residency(
+        &mut self,
+        entitlement: ProvisionalResidencyEntitlement,
+        proposed: ResidencyExtent,
+        generation: GenerationStamp,
+        schedule: &mut IntegrationSchedule,
+    ) -> Result<ResidencyPlacementOutcome, ResidencyPlacementError> {
+        self.residency_placements.ensure_active()?;
+        self.validate_placement_parent(entitlement, proposed, generation, schedule)?;
+        let containing = match self.residency_containing_extent(entitlement.granter()) {
+            Some(containing) => containing,
+            None => {
+                return Err(self.residency_placements.refuse(
+                    entitlement,
+                    proposed,
+                    ResidencyPlacementRefusalReason::MissingOwningExtent {
+                        granter: entitlement.granter(),
+                    },
+                    generation,
+                    schedule,
+                ));
+            }
+        };
+        let prepared = self.residency_placements.prepare(
+            entitlement,
+            containing,
+            proposed,
+            generation,
+            false,
+            schedule,
+        )?;
+        Ok(self
+            .residency_placements
+            .commit(prepared, entitlement.granted_generation(), schedule))
+    }
+
+    /// Relocate a committed physical placement only through the existing epoch-rebind
+    /// table and canonical remap history. Placement commits after that authority accepts.
+    #[allow(clippy::too_many_arguments)]
+    pub fn relocate_provisional_residency(
+        &mut self,
+        entitlement: ProvisionalResidencyEntitlement,
+        proposed: ResidencyExtent,
+        generation: GenerationStamp,
+        assignment: &BindingTableSnapshot,
+        pre_loci: &AnchoredLocusMap,
+        post_loci: &AnchoredLocusMap,
+        schedule: &mut IntegrationSchedule,
+    ) -> Result<ResidencyRelocationOutcome, ResidencyPlacementError> {
+        self.residency_placements.ensure_active()?;
+        self.validate_placement_parent(entitlement, proposed, generation, schedule)?;
+        let containing = match self.residency_containing_extent(entitlement.granter()) {
+            Some(containing) => containing,
+            None => {
+                return Err(self.residency_placements.refuse(
+                    entitlement,
+                    proposed,
+                    ResidencyPlacementRefusalReason::MissingOwningExtent {
+                        granter: entitlement.granter(),
+                    },
+                    generation,
+                    schedule,
+                ));
+            }
+        };
+        let prepared = self.residency_placements.prepare(
+            entitlement,
+            containing,
+            proposed,
+            generation,
+            true,
+            schedule,
+        )?;
+        let remap = if prepared.disposition() == ResidencyPlacementDisposition::Unchanged {
+            AnchorRemapSection::empty_not_required(AnchorRemapOperation::EpochRebind)
+        } else {
+            let before_rebind = self.clone();
+            match self.epoch_rebind(assignment, pre_loci, post_loci) {
+                Ok(remap) => remap,
+                Err(error) => {
+                    // The pre-existing epoch-rebind function derives its section after
+                    // installing the proposed table. Keep the new placement boundary
+                    // transactional even if that final derivation refuses.
+                    *self = before_rebind;
+                    return Err(ResidencyPlacementError::RemapRefused {
+                        detail: error.to_string(),
+                    });
+                }
+            }
+        };
+        let placement =
+            self.residency_placements
+                .commit(prepared, entitlement.granted_generation(), schedule);
+        Ok(ResidencyRelocationOutcome::new(placement, remap))
+    }
+
+    fn validate_placement_parent(
+        &mut self,
+        entitlement: ProvisionalResidencyEntitlement,
+        proposed: ResidencyExtent,
+        generation: GenerationStamp,
+        schedule: &mut IntegrationSchedule,
+    ) -> Result<(), ResidencyPlacementError> {
+        let relation = self.relations.get(&entitlement.grantee()).copied();
+        if relation == Some(ObjectResidencyRelation::ChildOf(entitlement.granter())) {
+            return Ok(());
+        }
+        let actual_parent = match relation {
+            Some(ObjectResidencyRelation::ChildOf(parent)) => Some(parent),
+            Some(ObjectResidencyRelation::Root) | None => None,
+        };
+        Err(self.residency_placements.refuse(
+            entitlement,
+            proposed,
+            ResidencyPlacementRefusalReason::NotDirectChild {
+                granter: entitlement.granter(),
+                grantee: entitlement.grantee(),
+                actual_parent,
+            },
+            generation,
+            schedule,
+        ))
+    }
+
+    fn residency_containing_extent(&self, granter: SimThingId) -> Option<ResidencyExtent> {
+        if let Some(root) = self.residency_placements.root_extent(granter) {
+            return Some(root);
+        }
+        let ObjectResidencyRelation::ChildOf(parent) = self.relations.get(&granter).copied()?
+        else {
+            return None;
+        };
+        self.residency_placements
+            .placement(parent, granter)
+            .map(CommittedResidencyPlacement::extent)
     }
 
     /// Execute the object's release request and retire both relation and row.

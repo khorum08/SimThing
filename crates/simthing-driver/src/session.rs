@@ -57,6 +57,10 @@ pub enum SessionError {
     #[error("execution posture: {0}")]
     ExecutionPosture(String),
     #[error(transparent)]
+    ResidencyPlacement(#[from] simthing_gpu::ResidencyPlacementError),
+    #[error(transparent)]
+    ResidencyMarket(#[from] crate::residency_market::ResidencyMarketBridgeError),
+    #[error(transparent)]
     ActionBandIngress(#[from] ActionBandExecutionIngressError),
 }
 
@@ -285,6 +289,8 @@ pub struct SimSession {
     pub rx: simthing_feeder::FeederReceiver,
     pub tx: simthing_feeder::FeederSender,
     pub spec_state: SpecSessionState,
+    /// THE canonical 6.1 integration recorder, extended with typed residency rows.
+    integration_schedule: simthing_core::IntegrationSchedule,
     /// Last boundary dynamic Resource Flow fission enrollment report (E-2B-5R).
     pub last_resource_flow_dynamic_enrollment_report:
         Option<crate::resource_flow_fission_enrollment::DynamicFissionEnrollmentReport>,
@@ -530,6 +536,7 @@ impl SimSession {
 
     /// Hot-path cycle — pre-tick enqueue + ordinary tick + RF bands + mapping dispatch.
     fn run_hot_cycle(&mut self) -> Result<FabricHotCycleOutcome, SessionError> {
+        self.proto.allocator.ensure_residency_placement_active()?;
         self.ensure_action_band_ingress_current()?;
         // EVENT-GENERATION-STAMP-0: generation authority is the tree day/generation
         // counter. Bind it into sealed emission/threshold mint at the ordinary
@@ -593,6 +600,11 @@ impl SimSession {
         let mut allocator = simthing_gpu::SlotAllocator::new();
         allocator.populate_from_tree(&scenario.root);
         let n_slots = scenario.n_slots.max(allocator.capacity() as u32);
+        allocator.declare_root_residency_extent(
+            scenario.root.id,
+            simthing_gpu::ResidencyExtent::try_new(0, n_slots)
+                .map_err(|error| SessionError::Mapping(error.to_string()))?,
+        )?;
 
         let mut state = WorldGpuState::new(ctx, &scenario.registry, n_slots);
         let pipelines = Pipelines::new(&state.ctx);
@@ -629,6 +641,7 @@ impl SimSession {
             rx,
             tx,
             spec_state: SpecSessionState::new(),
+            integration_schedule: simthing_core::IntegrationSchedule::new(),
             last_resource_flow_dynamic_enrollment_report: None,
             mapping: None,
             mapping_commitments: Vec::new(),
@@ -639,6 +652,34 @@ impl SimSession {
             ),
             order_directive_injection_log: Mutex::new(Vec::new()),
         })
+    }
+
+    /// Observe the one canonical integration schedule, including physical residency rows.
+    pub fn integration_schedule(&self) -> &simthing_core::IntegrationSchedule {
+        &self.integration_schedule
+    }
+
+    /// Consume one already-cleared market grant at the session's existing generation authority.
+    pub fn realize_market_grant_residency(
+        &mut self,
+        market: &simthing_spec::AdmittedSpecializationFlowMarket,
+        grant: &simthing_spec::MarketGrantRecord,
+        proposed: simthing_gpu::ResidencyExtent,
+    ) -> Result<simthing_gpu::ResidencyPlacementOutcome, SessionError> {
+        let generation = simthing_core::GenerationStamp::new(
+            u32::try_from(self.coord.day_index()).map_err(|_| {
+                SessionError::Mapping("session generation exceeds residency stamp range".into())
+            })?,
+        );
+        crate::residency_market::realize_market_grant_residency(
+            &mut self.proto.allocator,
+            market,
+            grant,
+            proposed,
+            generation,
+            &mut self.integration_schedule,
+        )
+        .map_err(Into::into)
     }
 
     /// Scheduling posture over this session's single kernel (default paced).
