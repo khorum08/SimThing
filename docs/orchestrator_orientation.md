@@ -45,7 +45,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 26e025f8b1e76f7f649571aaa4f2da2c82ca722b4d8c549f5ce9d14b4604f3a6 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | 26eab30ec86c97ac8dfd6beef7ae8c5b4d3f18c38fdaa431ec40ccce855396d3 |
-| design_0_0_8_7_rf_arena_modernization.md | 7b62391b1bc079e257470b1fcf6ec19297e22b7123f8cac9a4a50891d23df23b |
+| design_0_0_8_7_rf_arena_modernization.md | d890338e35147851a16007e8749bfc7debe55c21542b6c77a0d0b852a68dd1b1 |
 | relay_lint.sh | ae19bdca12e90f6bc988e064f081ff62903034d69bf34b08ffd5c27e352181ba |
 | doctrine_anchors.tsv | 995afa3572d63abf05f214d2c3736f4363d3597f1835f98ef0a2bd2e0f226e59 |
 | execution_status_taxonomy.tsv | 924c086550221dd7136ec0682293900d8d03feb4bc1dae1a6e750a61e65153bc |
@@ -68,7 +68,7 @@ Dark properties (1): `fixture::dark_reading` (reasons/spans in `property_admissi
 
 Track state: `open`
 
-> Compact view: 53 completed rungs elided; showing all 17 open rungs plus the 3 most recent completions. Full ladder in the design doc.
+> Compact view: 53 completed rungs elided; showing all 21 open rungs plus the 3 most recent completions. Full ladder in the design doc.
 
 | # | rung | deliverable | exit proof |
 | --- | --- | --- | --- |
@@ -88,6 +88,10 @@ Track state: `open`
 | 11.1e | ACTIONBAND-EXECUTION-INGRESS-0 | **INGRESS GAP — DA-minted after the Owner-directed single-ingress census 2026-08 | **DA-GRADUATED / merged #1822 @ 60654376 — the door stops advertising a product nothing runs; ActionBand execution no... |
 | 11.1f | AUTHORED-LAW-GADGET-0 | **OWNER RULING 2026-08-23 — always trust intrinsic mechanisms over prose; the la | **DA-GRADUATED / merged #1825 @ 562f423a — a vendor can now STATE a domain law as authored data, and the staircase is... |
 | 11.2 | EMBEDDER-GUIDE-EXEMPLARS-0 | Phase 11: DOC-BUDGET-capped Embedder's Guide + two non-game exemplars (finance t | **DA-GRADUATED / merged #1803 @ 9a883cc3 — the rung that opened the arc closes it: a cold reader can vendor SimThing ... |
+| 11.2a | STEMTHING-B-FLOW-MARKET-GERM-0 | **StemThing-B, rung 1 of 4 — Owner design session 2026-08-24, constitution at st | **COVERS the Owner-ratified 2026-08-24 scope (stead SECTION 12).** At least TWO conserved-resource markets witnessed:... |
+| 11.2b | STEMTHING-B-VRAM-RESIDENCY-0 | **StemThing-B, rung 2 of 4 — VRAM Residency as the DISTINCT engine-native market | **COVERS the Owner-ratified 2026-08-24 scope.** Two planted REDs fall directly out of the two-stage law: (1) planted ... |
+| 11.2c | STEMTHING-B-ALLOCATOR-RETIREMENT-0 | **StemThing-B, rung 3 of 4 — the deletion rung, 11.1d shape (Owner R3 confinemen | **COVERS the Owner-ratified 2026-08-24 scope.** The seal shape established by 11.1d: bypass is unrepresentable, not n... |
+| 11.2d | VENDOR-DOOR-GRANTING-SURFACE-0 | **StemThing-B, rung 4 of 4 — the Owner-sanctioned facade-only door completion (s | **COVERS the Owner-ratified 2026-08-24 scope.** The witness includes at least ONE recursively granting child subtree ... |
 | 11.3 | UNIFIED-FACILITY-CONVERGENCE-WITNESS-0 | **Unified-facility convergence witness — DA-minted 2026-08-17 on Owner direction | **Emergence falsifier in 8.2's shape, not an enumeration.** ONE authored change — data only, **zero code change** — m... |
 | 11.4 | UNIFIED-INGRESS-EXCLUSIVITY-0 | **THE OWNER LAW, MECHANIZED — DA-minted 2026-08-23. 11.3 proves the facilities C | **COVERS the Owner-directed 2026-08-23 single-ingress law.** The gate FAILS a producer graduated without a non-test p... |
 | 12.1 | PORTABILITY-PROOF-0 | Phase 12: a domain unrelated to any shipped scenario through the Vendor Door end | Exemplar-seeded domain simulates + STEAD-observes + serializes untouched. |
