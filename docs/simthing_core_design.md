@@ -524,8 +524,11 @@ no special cell type.
 
 ## 4. GPU residency — the tree as dense matrices
 
-The recursive tree flattens to **slots × columns**: one slot per SimThing (allocated by the
-`SlotAllocator`, recycled through tombstone free-lists, never compacted mid-generation; physical
+The recursive tree flattens to **slots × columns**: one slot per SimThing. **StemThing-B
+amendment (Owner-ratified 2026-08-24): residency entitlement — WHO is granted a slot — is decided
+only by the RF arena's authored clearing; free-list order is never grant policy.** The
+`SlotAllocator` and its tombstone free-lists survive strictly as physical realization machinery
+DOWNSTREAM of market-decided entitlement (recycled, never compacted mid-generation; physical
 rows are epoch-rebindable only at a recorded boundary remap per the §3 slot-identity law), one column per
 registered sub-field. A persistent `AccumulatorOpSession` owns the buffers for the whole session —
 **no per-tick device or buffer creation, ever.** The tick is:
