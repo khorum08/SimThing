@@ -109,12 +109,13 @@ pub use compile::{
     landed_jit_kernel_descriptors, mag2_fixed_exact_kernel_descriptor,
     mag_f_from_dxdy_probe_kernel_descriptor, mag_f_from_exact_mag2_kernel_descriptor,
     oracle_acceleration, oracle_bounded_feedback, oracle_decay, oracle_ema, oracle_field_sampler,
-    oracle_hysteresis, oracle_soft_step, oracle_velocity_monitor, oracle_weighted_accumulator,
-    preview_kernel_graph_cohorts, preview_kernel_graph_identity, preview_kernel_registry_manifest,
-    preview_production_candidate_registry_entry, region_field_isolation_multiplier,
-    reject_unknown_gadget_kind, sqrt_f_exact_kernel_descriptor, validate_exact_kernel_inputs,
-    validate_exact_pre_sqrt_contract, validate_exact_sqrt_artifact_admission,
-    validate_exact_sqrt_artifact_binding, validate_field_policy_act0_numeric_proposals_contract,
+    oracle_hysteresis, oracle_power_law, oracle_soft_step, oracle_velocity_monitor,
+    oracle_weighted_accumulator, preview_kernel_graph_cohorts, preview_kernel_graph_identity,
+    preview_kernel_registry_manifest, preview_production_candidate_registry_entry,
+    region_field_isolation_multiplier, reject_unknown_gadget_kind, sqrt_f_exact_kernel_descriptor,
+    validate_exact_kernel_inputs, validate_exact_pre_sqrt_contract,
+    validate_exact_sqrt_artifact_admission, validate_exact_sqrt_artifact_binding,
+    validate_field_policy_act0_numeric_proposals_contract,
     validate_field_policy_act1_phase_e_proposal_consumer_contract,
     validate_field_policy_act2_proposal_admission_records_contract,
     validate_field_policy_act3_economic_fixture_records_contract,
@@ -576,9 +577,8 @@ pub use spec::region_field::{
     RegionFieldSpec, RegionFieldSummaryPolicySpec,
 };
 pub use spec::resource_economy::{
-    EmissionFormulaSpec, EmitBufferSpec, EmitOnThresholdSpec, RecipeInputSpec,
-    ResourceEconomyOptInMode, ResourceEconomySpec, ResourceEmissionSpec, ResourceRecipeSpec,
-    ResourceTransferSpec,
+    EmissionFormulaSpec, EmitBufferSpec, EmitOnThresholdSpec, RecipeInputSpec, ResourceEconomySpec,
+    ResourceEmissionSpec, ResourceRecipeSpec, ResourceTransferSpec,
 };
 pub use spec::resource_flow::{
     effective_resource_flow_arena_caps, resolve_resource_flow_capacity_budget,
@@ -586,8 +586,7 @@ pub use spec::resource_flow::{
     CouplingDelaySpec, CouplingSpec, EnrollmentSelectorSpec, ExplicitParticipantSpec,
     FissionPolicySpec, GatedRateOpSpec, GatedRateSpec, GatedRateTriggerSpec, RateFormulaOp,
     RateFormulaOpSpec, RateFormulaOperandSpec, RateFormulaSpec, ResolvedResourceFlowCapacityBudget,
-    ResourceFlowCapacityBudgetSpec, ResourceFlowExecutionProfile, ResourceFlowOptInMode,
-    ResourceFlowSpec, WildcardAdmissionSpec,
+    ResourceFlowCapacityBudgetSpec, ResourceFlowSpec, WildcardAdmissionSpec,
 };
 pub use spec::runtime_local_allocation::{
     apply_runtime_local_allocations_from_disburse_down, runtime_local_allocation_aggregate_totals,

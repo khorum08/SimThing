@@ -723,7 +723,6 @@ pub fn hydrate_scenario_with_source_base(
             game_mode.overlays.push(overlay);
         }
         let mut economy = game_mode.resource_economy.take().unwrap_or_default();
-        economy.opt_in_mode = simthing_spec::ResourceEconomyOptInMode::TransferAndEmission;
         economy
             .transfers
             .extend(lowering.resource_economy.transfers);

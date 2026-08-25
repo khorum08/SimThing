@@ -50,7 +50,7 @@ pub use effect::compile_effect;
 pub use eml_gadget::{
     compile_eml_gadget, compile_eml_gadget_stack, eval_eml_postfix, oracle_acceleration,
     oracle_bounded_feedback, oracle_decay, oracle_ema, oracle_field_sampler, oracle_hysteresis,
-    oracle_soft_step, oracle_velocity_monitor, oracle_weighted_accumulator,
+    oracle_power_law, oracle_soft_step, oracle_velocity_monitor, oracle_weighted_accumulator,
     reject_unknown_gadget_kind, CompiledEmlGadget, CompiledEmlGadgetStack, EmlGadgetCompileOptions,
     EmlGadgetCompositionPlan, EmlGadgetDiagnostic, EmlGadgetKind, EmlGadgetPreviewReport,
     EmlGadgetRegistry, DEFERRED_GADGET_KINDS,

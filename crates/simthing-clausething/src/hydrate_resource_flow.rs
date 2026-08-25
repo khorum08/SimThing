@@ -8,7 +8,7 @@ use simthing_core::{
     AccumulatorRole, AccumulatorSpec, ClampBehavior, LogTier, PropertyAdmissionDisposition,
     SubFieldRole, SubFieldSpec,
 };
-use simthing_spec::spec::resource_flow::{ResourceFlowOptInMode, ResourceFlowSpec};
+use simthing_spec::spec::resource_flow::ResourceFlowSpec;
 use simthing_spec::spec::script::PropertyKey;
 use simthing_spec::{ArenaSpec, FissionPolicySpec, GameModeSpec, PropertySpec, SpecVersion};
 
@@ -84,14 +84,8 @@ pub fn hydrate_resource_flow_pack(
     }
 
     let flow_property = require_field(flow_property, "flow_property", entity)?;
-    let (
-        arena_name,
-        arena_flow_key,
-        max_participants,
-        max_coupling_fanout,
-        max_orderband_depth,
-        opt_in_mode,
-    ) = require_field(arena, "arena", entity)?;
+    let (arena_name, arena_flow_key, max_participants, max_coupling_fanout, max_orderband_depth) =
+        require_field(arena, "arena", entity)?;
     let produces = require_field(produces, "produces", entity)?;
     let upkeep = require_field(upkeep, "upkeep", entity)?;
 
@@ -108,7 +102,6 @@ pub fn hydrate_resource_flow_pack(
 
     let property_spec = build_flow_property_spec(&flow_property, &arena_name);
     let resource_flow = ResourceFlowSpec {
-        opt_in_mode,
         arenas: vec![ArenaSpec {
             name: arena_name,
             flow_property: arena_flow_key,
@@ -144,7 +137,6 @@ pub fn hydrate_resource_flow_pack(
             events: vec![],
             resource_flow: Some(resource_flow),
             resource_economy: None,
-            resource_flow_execution_profile: Default::default(),
             region_fields: vec![],
             mapping_execution_profile: Default::default(),
         },
@@ -209,7 +201,7 @@ fn parse_flow_property_block(property: &RawProperty) -> Result<FlowPropertyIdent
 
 fn parse_arena_block(
     property: &RawProperty,
-) -> Result<(String, PropertyKey, u32, u32, u32, ResourceFlowOptInMode), HydrateError> {
+) -> Result<(String, PropertyKey, u32, u32, u32), HydrateError> {
     let RawValue::Block(block) = &property.value else {
         return Err(HydrateError::new_spanned(
             "`arena` must be a block",
@@ -222,7 +214,6 @@ fn parse_arena_block(
     let mut max_participants = None;
     let mut max_coupling_fanout = None;
     let mut max_orderband_depth = None;
-    let mut opt_in_mode = ResourceFlowOptInMode::Disabled;
 
     for field in &block.properties {
         match field.key.text.as_str() {
@@ -236,9 +227,6 @@ fn parse_arena_block(
             }
             "max_orderband_depth" => {
                 max_orderband_depth = Some(read_scalar_u32(field, "max_orderband_depth")?);
-            }
-            "opt_in" => {
-                opt_in_mode = parse_opt_in_mode(field)?;
             }
             other => {
                 return Err(HydrateError::new_spanned(
@@ -255,7 +243,6 @@ fn parse_arena_block(
         require_field(max_participants, "max_participants", property)?,
         require_field(max_coupling_fanout, "max_coupling_fanout", property)?,
         require_field(max_orderband_depth, "max_orderband_depth", property)?,
-        opt_in_mode,
     ))
 }
 
@@ -307,18 +294,6 @@ fn parse_property_key(property: &RawProperty) -> Result<PropertyKey, HydrateErro
         ));
     }
     Ok(PropertyKey::new(namespace, name))
-}
-
-fn parse_opt_in_mode(property: &RawProperty) -> Result<ResourceFlowOptInMode, HydrateError> {
-    let text = read_scalar_text(property, "opt_in")?;
-    match text.as_str() {
-        "FlatStarOptIn" => Ok(ResourceFlowOptInMode::FlatStarOptIn),
-        "Disabled" => Ok(ResourceFlowOptInMode::Disabled),
-        other => Err(HydrateError::new_spanned(
-            format!("`opt_in` must be `FlatStarOptIn` or `Disabled`, got `{other}`"),
-            Some(property.key.span.clone()),
-        )),
-    }
 }
 
 fn build_flow_property_spec(flow: &FlowPropertyIdentity, arena_name: &str) -> PropertySpec {

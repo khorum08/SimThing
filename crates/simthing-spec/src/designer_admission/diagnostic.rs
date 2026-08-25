@@ -528,7 +528,7 @@ pub fn designer_admission_diagnostic_for_rejection(
         DesignerAdmissionRejectionKind::NestedE11BWithoutNamedScenario => (
             DesignerAdmissionDiagnosticCode::NestedE11BRequestedWithoutNamedScenario,
             "nested E-11B hierarchical allocation is rejected without a named depth>2 economy scenario",
-            Some("RecursiveArenaResourceFlow is the ordinary admitted execution posture; this FrontierV2 scenario still carries its own depth fence"),
+            Some("the converged Arena Resource Flow path is ordinary execution; this FrontierV2 scenario still carries its own depth fence"),
         ),
         DesignerAdmissionRejectionKind::E11B5WithoutNamedScenario => (
             DesignerAdmissionDiagnosticCode::E11B5RequestedWithoutNamedScenario,

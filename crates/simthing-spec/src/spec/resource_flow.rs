@@ -11,15 +11,9 @@ use simthing_core::PlacedParticipant;
 /// resource-parent edges. This surface retains explicit rows, caps, coupling
 /// edges, and fission policy for authored overrides.
 ///
-/// `opt_in_mode` controls **GPU execution** for Resource Flow (RF-T1). Presence of arenas
-/// alone does not enable `use_accumulator_resource_flow`; scenarios must opt in explicitly.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct ResourceFlowSpec {
-    /// Explicit production execution opt-in for E-11 flat-star Resource Flow GPU sync.
-    ///
-    /// Authored arena/coupling content is compiled regardless; only execution requires opt-in.
-    #[serde(default)]
-    pub opt_in_mode: ResourceFlowOptInMode,
     #[serde(default)]
     pub arenas: Vec<ArenaSpec>,
     #[serde(default)]
@@ -265,47 +259,6 @@ pub enum GatedRateOpSpec {
 pub struct GatedRateTriggerSpec {
     pub property: PropertyKey,
     pub at_least: f32,
-}
-
-/// Resource Flow GPU execution opt-in (RF-T1). Mirrors `ResourceEconomyOptInMode` posture.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "PascalCase")]
-pub enum ResourceFlowOptInMode {
-    /// Compile/install Resource Flow artifacts; do not enable GPU Resource Flow sync.
-    #[default]
-    Disabled,
-    /// Enable E-11 flat-star D=2 GPU path for this scenario/game mode only.
-    FlatStarOptIn,
-}
-
-/// RF-T4 / RF-2 — execution-profile enablement for the admitted Arena Resource Flow GPU path.
-///
-/// Distinct from `ResourceFlowOptInMode`: profile enablement applies at session open when
-/// spec `opt_in_mode` is `Disabled` or omitted. The admitted Arena plan selects flat or nested
-/// topology from the materialized participant tree; no second runtime source is selected here.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "PascalCase")]
-pub enum ResourceFlowExecutionProfile {
-    /// Explicitly disable Arena Resource Flow GPU execution for this game mode.
-    DefaultDisabled,
-    /// Execute the admitted recursive Arena plan through the ordinary session tick.
-    /// The historical serialized name is an inert input alias for this same variant.
-    #[serde(alias = "FlatStarResourceFlow")]
-    #[default]
-    RecursiveArenaResourceFlow,
-}
-
-impl ResourceFlowExecutionProfile {
-    pub fn as_str(self) -> &'static str {
-        match self {
-            Self::DefaultDisabled => "DefaultDisabled",
-            Self::RecursiveArenaResourceFlow => "RecursiveArenaResourceFlow",
-        }
-    }
-
-    pub fn enables_arena_resource_flow(self) -> bool {
-        matches!(self, Self::RecursiveArenaResourceFlow)
-    }
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

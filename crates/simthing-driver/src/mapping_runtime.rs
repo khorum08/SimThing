@@ -6,18 +6,19 @@
 
 use simthing_core::{
     column_aware_reduction_op, eml_opcode, AccumulatorOp, ColumnAwareReductionCombine,
-    ColumnAwareReductionSpec, ColumnIndex, CombineFn, ConsumeMode, EmlConsumerMask,
-    EmlExecutionClass, EmlExpressionRegistry, EmlFormulaMeta, EmlNodeGpu, EmlTreeId, GateSpec,
-    ScaleSpec, SlotIndex, SourceSpec, StructuralScalarChannel,
+    ColumnAwareReductionSpec, ColumnIndex, CombineFn, ConsumeMode, DimensionRegistry,
+    EmlConsumerMask, EmlExecutionClass, EmlExpressionRegistry, EmlFormulaMeta, EmlNodeGpu,
+    EmlTreeId, GateSpec, ScaleSpec, SlotIndex, SourceSpec, StructuralScalarChannel,
 };
 use simthing_gpu::{
     accumulator_op::set_debug_readback_allowed, compile_structured_field_sweeps, encode_column,
-    AccumulatorOpSession, EmlGpuProgramTable, FieldSweepRegistration, FieldSweepSession,
-    GpuContext, PackedAccumulatorUpload, PackedThresholdUpload, StructuredFieldExecutionReport,
-    StructuredFieldStencilBoundaryMode, StructuredFieldStencilConfig,
-    StructuredFieldStencilDebugReport, StructuredFieldStencilMaskMode,
-    StructuredFieldStencilOperator, StructuredFieldStencilSourcePolicy, ThresholdEvent,
-    ThresholdRegistration, DIR_UPWARD, THRESH_BUF_VALUES,
+    AccumulatorOpSession, EmlGpuProgramTable, FieldSweepAdmissionError, FieldSweepRegistration,
+    FieldSweepSession, GpuContext, PackedAccumulatorUpload, PackedThresholdUpload,
+    StructuredFieldExecutionReport, StructuredFieldStencilBoundaryMode,
+    StructuredFieldStencilConfig, StructuredFieldStencilDebugReport,
+    StructuredFieldStencilMaskMode, StructuredFieldStencilOperator,
+    StructuredFieldStencilSourcePolicy, ThresholdEvent, ThresholdRegistration, DIR_UPWARD,
+    THRESH_BUF_VALUES,
 };
 use simthing_spec::{
     compile_region_field_preview, estimate_region_field_budget, CompiledFieldCadence,
@@ -425,6 +426,16 @@ pub enum FirstSliceMappingError {
     Stencil(#[from] simthing_gpu::StructuredFieldStencilError),
     #[error("generic field sweep failed: {0}")]
     FieldSweep(String),
+    #[error(
+        "admitted field sweep {index} binding ({actual_slots} slots x {actual_dims} dims) does not match ordinary mapping field ({expected_slots} slots x {expected_dims} dims)"
+    )]
+    AdmittedFieldSweepBindingMismatch {
+        index: usize,
+        actual_slots: u32,
+        actual_dims: u32,
+        expected_slots: u32,
+        expected_dims: u32,
+    },
     #[error(transparent)]
     Scheduler(#[from] crate::field_scheduler::FieldSchedulerError),
     #[error("EML setup failed: {0}")]
@@ -550,6 +561,7 @@ pub struct FirstSliceMappingSession {
     stencil_config: StructuredFieldStencilConfig,
     field_registrations: Vec<FieldSweepRegistration>,
     field_sessions: Vec<FieldSweepSession>,
+    field_session_ranges: Vec<std::ops::Range<usize>>,
     field_buffer: simthing_gpu::wgpu::Buffer,
     values: Vec<f32>,
     tick: u32,
@@ -606,6 +618,27 @@ struct StencilTickResult {
     propagation_dispatches: u32,
 }
 
+fn contiguous_field_session_ranges(
+    registrations: &[FieldSweepRegistration],
+) -> Vec<std::ops::Range<usize>> {
+    debug_assert!(!registrations.is_empty());
+    let mut ranges = Vec::new();
+    let mut start = 0usize;
+    for index in 1..registrations.len() {
+        let binding = &registrations[start];
+        let candidate = &registrations[index];
+        if binding.n_dims() != candidate.n_dims()
+            || binding.slots() != candidate.slots()
+            || binding.adjacency() != candidate.adjacency()
+        {
+            ranges.push(start..index);
+            start = index;
+        }
+    }
+    ranges.push(start..registrations.len());
+    ranges
+}
+
 impl FirstSliceMappingSession {
     /// Open a first-slice session. Execution is enabled only when profile enables mapping.
     pub fn open(
@@ -626,6 +659,61 @@ impl FirstSliceMappingSession {
             spec.parent_formula.as_ref().and_then(|f| f.tree_id),
             budget.map(|b| b.estimated_bytes),
             spec.max_region_field_vram_bytes,
+            &[],
+        )
+    }
+
+    /// Finalize the ordinary mapping and deferred caller field sweeps against
+    /// the live post-admission registry width. This is the sole production
+    /// owner of that width: authored input remains unchanged, and all products
+    /// still join the existing [`FieldSweepSession`] chain.
+    pub(crate) fn open_with_finalized_field_sweeps<F>(
+        ctx: &GpuContext,
+        profile: MappingExecutionProfile,
+        spec: &RegionFieldSpec,
+        registry: &DimensionRegistry,
+        derived_field_registrations: &[FieldSweepRegistration],
+        compile_caller_field_sweeps: F,
+    ) -> Result<Self, FirstSliceMappingError>
+    where
+        F: FnOnce(u32) -> Result<Vec<FieldSweepRegistration>, FieldSweepAdmissionError>,
+    {
+        let final_n_dims = u32::try_from(registry.total_columns).map_err(|_| {
+            FirstSliceMappingError::FieldSweep(format!(
+                "post-admission registry width {} exceeds u32",
+                registry.total_columns
+            ))
+        })?;
+        let mut preview = compile_region_field_preview(spec)?;
+        // DIMENSION-FINALIZATION-SEAM-0-AUTHORITY: the one final-width binding site.
+        preview.stencil.n_dims = final_n_dims;
+        let mut admitted_field_registrations = compile_caller_field_sweeps(final_n_dims)
+            .map_err(|error| FirstSliceMappingError::FieldSweep(error.to_string()))?;
+        if admitted_field_registrations.is_empty() {
+            return Err(FirstSliceMappingError::FieldSweep(
+                "admitted field-sweep session seam requires at least one caller registration"
+                    .into(),
+            ));
+        }
+        admitted_field_registrations.extend_from_slice(derived_field_registrations);
+        let budget = estimate_region_field_budget(&RegionFieldBudgetSpec {
+            grid_size: preview.grid_size,
+            column_count: final_n_dims,
+            buffer_multiplier: 2.0,
+            copy_multiplier: 1.0,
+            tile_count: 1,
+            isolation_policy: RegionFieldIsolationPolicyEstimate::SingleGridNoAtlas,
+            max_region_field_vram_bytes: spec.max_region_field_vram_bytes,
+        })
+        .ok();
+        Self::open_preview_with_budget(
+            ctx,
+            profile,
+            preview,
+            spec.parent_formula.as_ref().and_then(|f| f.tree_id),
+            budget.map(|b| b.estimated_bytes),
+            spec.max_region_field_vram_bytes,
+            &admitted_field_registrations,
         )
     }
 
@@ -636,7 +724,7 @@ impl FirstSliceMappingSession {
         preview: CompiledRegionFieldPreview,
         tree_id_override: Option<u32>,
     ) -> Result<Self, FirstSliceMappingError> {
-        Self::open_preview_with_budget(ctx, profile, preview, tree_id_override, None, None)
+        Self::open_preview_with_budget(ctx, profile, preview, tree_id_override, None, None, &[])
     }
 
     /// Open from an admitted first-slice scenario compile preview.
@@ -651,6 +739,7 @@ impl FirstSliceMappingSession {
             preview.parent_formula_tree_id,
             preview.budget_estimate_bytes,
             preview.budget_limit_bytes,
+            &[],
         )
     }
 
@@ -661,6 +750,7 @@ impl FirstSliceMappingSession {
         tree_id_override: Option<u32>,
         budget_estimate_bytes: Option<u64>,
         budget_limit_bytes: Option<u64>,
+        admitted_field_registrations: &[FieldSweepRegistration],
     ) -> Result<Self, FirstSliceMappingError> {
         let enabled = profile.enables_execution();
         let gpu_config = compiled_stencil_to_gpu_config(&preview.stencil);
@@ -680,22 +770,28 @@ impl FirstSliceMappingSession {
             return Err(FirstSliceMappingError::MissingFieldUrgency);
         }
 
-        let field_registrations = compile_structured_field_sweeps(&gpu_config)
+        let mut field_registrations = compile_structured_field_sweeps(&gpu_config)
             .map_err(|error| FirstSliceMappingError::FieldSweep(error.to_string()))?;
-        let shared_binding = field_registrations.iter().skip(1).all(|registration| {
-            registration.n_dims() == field_registrations[0].n_dims()
-                && registration.adjacency() == field_registrations[0].adjacency()
-        });
-        let field_sessions = if shared_binding {
-            vec![FieldSweepSession::new(ctx, &field_registrations[0])
-                .map_err(|error| FirstSliceMappingError::FieldSweep(error.to_string()))?]
-        } else {
-            field_registrations
-                .iter()
-                .map(|registration| FieldSweepSession::new(ctx, registration))
-                .collect::<Result<Vec<_>, _>>()
-                .map_err(|error| FirstSliceMappingError::FieldSweep(error.to_string()))?
-        };
+        for (index, registration) in admitted_field_registrations.iter().enumerate() {
+            if registration.slots() != gpu_config.cells()
+                || registration.n_dims() != gpu_config.n_dims
+            {
+                return Err(FirstSliceMappingError::AdmittedFieldSweepBindingMismatch {
+                    index,
+                    actual_slots: registration.slots(),
+                    actual_dims: registration.n_dims(),
+                    expected_slots: gpu_config.cells(),
+                    expected_dims: gpu_config.n_dims,
+                });
+            }
+        }
+        field_registrations.extend_from_slice(admitted_field_registrations);
+        let field_session_ranges = contiguous_field_session_ranges(&field_registrations);
+        let field_sessions = field_session_ranges
+            .iter()
+            .map(|range| FieldSweepSession::new(ctx, &field_registrations[range.start]))
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|error| FirstSliceMappingError::FieldSweep(error.to_string()))?;
         let values = vec![0.0f32; gpu_config.values_len()];
         let field_buffer = ctx
             .device
@@ -765,6 +861,7 @@ impl FirstSliceMappingSession {
             stencil_config: gpu_config,
             field_registrations,
             field_sessions,
+            field_session_ranges,
             field_buffer,
             values,
             tick: 0,
@@ -949,6 +1046,20 @@ impl FirstSliceMappingSession {
 
     pub fn tick_index(&self) -> u32 {
         self.tick
+    }
+
+    /// Number of registrations owned by the ordinary field-sweep chain.
+    pub fn field_registration_count(&self) -> usize {
+        self.field_registrations.len()
+    }
+
+    /// Execution-call telemetry from the existing kernel-owned field sessions.
+    /// This exposes no numerical field values and never feeds a decision.
+    pub fn field_registration_dispatches(&self) -> u64 {
+        self.field_sessions
+            .iter()
+            .map(FieldSweepSession::registration_dispatches)
+            .sum()
     }
 
     /// Diagnostic readback of canonical GPU field state (input buffer).
@@ -1151,25 +1262,16 @@ impl FirstSliceMappingSession {
         &mut self,
         ctx: &GpuContext,
     ) -> Result<u32, FirstSliceMappingError> {
-        if self.field_sessions.len() == 1 {
-            let session = &mut self.field_sessions[0];
+        for (range, session) in self
+            .field_session_ranges
+            .iter()
+            .zip(&mut self.field_sessions)
+        {
             session.upload_values_from_buffer(ctx, &self.field_buffer);
             session
-                .dispatch_chain(ctx, &self.field_registrations, 1)
+                .dispatch_chain(ctx, &self.field_registrations[range.clone()], 1)
                 .map_err(|error| FirstSliceMappingError::FieldSweep(error.to_string()))?;
             session.copy_values_to_buffer(ctx, &self.field_buffer);
-        } else {
-            for (registration, session) in self
-                .field_registrations
-                .iter()
-                .zip(&mut self.field_sessions)
-            {
-                session.upload_values_from_buffer(ctx, &self.field_buffer);
-                session
-                    .dispatch(ctx, registration, 1)
-                    .map_err(|error| FirstSliceMappingError::FieldSweep(error.to_string()))?;
-                session.copy_values_to_buffer(ctx, &self.field_buffer);
-            }
         }
         Ok(self.field_registrations.len() as u32)
     }

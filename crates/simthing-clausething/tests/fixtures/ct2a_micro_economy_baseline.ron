@@ -46,7 +46,6 @@ GameModeSpec(
         ),
     ],
     resource_flow: Some((
-        opt_in_mode: FlatStarOptIn,
         arenas: [
             (
                 name: "ct2a_food",

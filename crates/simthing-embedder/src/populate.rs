@@ -1,14 +1,22 @@
 //! **Populate** — tree/RF authoring through existing admission.
 
-pub use simthing_core::eml_ln::eml_ln_pinned_f32;
 pub use simthing_core::{
-    eml_exp_pinned_f32, CostBandAdmissionError, CostBandResourceMarker, Direction,
-    OwnerBoundaryValidationError, OwnerRef, PropertyValue, SimProperty, SimPropertyId, SimThing,
-    SimThingId, SimThingKind, SubFieldRole,
+    AccumulatorRole, AccumulatorSpec, ClampBehavior, CostBandAdmissionError,
+    CostBandResourceMarker, DimensionRegistry, LogTier, OwnerBoundaryValidationError, OwnerRef,
+    PropertyValue, SimProperty, SimThing, SimThingId, SimThingKind, SubFieldRole, SubFieldSpec,
+    TransformOp,
 };
 pub use simthing_driver::Scenario;
+pub use simthing_gpu::SlotAllocator;
 pub use simthing_sim::CostBandSemantic;
-pub use simthing_spec::{GameModeSpec, PropertySpec, ResourceFlowSpec};
+pub use simthing_spec::{
+    compile_property, ArenaPressureBindingSpec, ArenaSpec, ExplicitParticipantSpec,
+    FirstSliceCommitmentDirectionSpec, FirstSliceCommitmentSpec, FissionPolicySpec, GameModeSpec,
+    MappingExecutionProfile, PressurePlacementSpec, PressureSourceSpec, PropertyKey, PropertySpec,
+    RegionFieldCadenceSpec, RegionFieldFormulaBindingSpec, RegionFieldGridProfile,
+    RegionFieldOperatorSpec, RegionFieldReductionSpec, RegionFieldSourcePolicySpec,
+    RegionFieldSpec, RegionFieldSummaryPolicySpec, ResourceFlowSpec,
+};
 
 /// Bind a subtree ownership boundary. Descendants inherit by absence.
 pub fn owner(node: &mut SimThing, owner: &OwnerRef) {

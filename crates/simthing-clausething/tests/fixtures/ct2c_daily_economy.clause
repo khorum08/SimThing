@@ -36,7 +36,6 @@ phase_m_daily_economy_banking = {
         display_name = "Upkeep Sink"
         default = 0
     }
-    resource_economy = { opt_in = TransferOnly }
     transfer = {
         id = "bank_daily_income"
         source = core::producer

@@ -22,9 +22,8 @@ use simthing_spec::spec::need_binding::{NeedBindingSpec, SemanticPropertyLocusSp
 use simthing_spec::spec::overlay::OverlaySpec;
 use simthing_spec::spec::property::PropertySpec;
 use simthing_spec::spec::resource_economy::{
-    EmissionFormulaSpec, EmitBufferSpec, EmitOnThresholdSpec, RecipeInputSpec,
-    ResourceEconomyOptInMode, ResourceEconomySpec, ResourceEmissionSpec, ResourceRecipeSpec,
-    ResourceTransferSpec,
+    EmissionFormulaSpec, EmitBufferSpec, EmitOnThresholdSpec, RecipeInputSpec, ResourceEconomySpec,
+    ResourceEmissionSpec, ResourceRecipeSpec, ResourceTransferSpec,
 };
 use simthing_spec::spec::script::PropertyKey;
 use simthing_spec::spec::trigger::TriggerDirection;
@@ -1641,7 +1640,6 @@ fn lower_field_economy(
         properties,
         overlays,
         resource_economy: ResourceEconomySpec {
-            opt_in_mode: ResourceEconomyOptInMode::TransferAndEmission,
             transfers,
             recipes,
             emissions,

@@ -1,7 +1,6 @@
 simthing_ct_rf_rate = {
     display_name = "CT-RF-EML-RATE-0 Gated Rates"
     resource_flow = {
-        opt_in = FlatStarOptIn
         max_participants = 16
         max_coupling_fanout = 4
         max_orderband_depth = 16

@@ -363,9 +363,9 @@ impl Pipelines {
             state.accumulator_velocity_active && state.accumulator_velocity_bands > 0;
         let use_accumulator_intensity =
             state.accumulator_intensity_eml_active && state.accumulator_intensity_eml_bands > 0;
-        let use_accumulator_transfer =
+        let transfer_active =
             state.accumulator_transfer_active && state.accumulator_transfer_bands > 0;
-        let use_accumulator_emission =
+        let emission_active =
             state.accumulator_emission_active && state.accumulator_emission_bands > 0;
 
         let mut encoder = ctx
@@ -423,7 +423,7 @@ impl Pipelines {
             }
         }
 
-        if use_accumulator_transfer {
+        if transfer_active {
             if let Some(session) = sessions.transfer.as_mut() {
                 let eml = state
                     .accumulator_runtime
@@ -445,7 +445,7 @@ impl Pipelines {
             }
         }
 
-        if use_accumulator_emission {
+        if emission_active {
             if let Some(session) = sessions.emission.as_mut() {
                 let eml = state
                     .accumulator_runtime

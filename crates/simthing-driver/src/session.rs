@@ -10,7 +10,6 @@ use simthing_sim::{
 };
 use simthing_spec::{
     CapabilityTreeInstance, CapabilityTreeState, CapabilityUnlockRegistration, GameModeSpec,
-    ResourceEconomyOptInMode, ResourceFlowExecutionProfile, ResourceFlowOptInMode,
 };
 use std::collections::HashMap;
 use std::sync::Mutex;
@@ -24,6 +23,10 @@ use crate::simulation_fabric::{
 };
 use crate::spec_replay::{self, make_spec_snapshot_record};
 use crate::spec_session::SpecSessionState;
+
+type FieldSweepCompilerResult =
+    Result<Vec<simthing_gpu::FieldSweepRegistration>, simthing_gpu::FieldSweepAdmissionError>;
+type FieldSweepCompilerFn = fn(u32) -> FieldSweepCompilerResult;
 
 #[derive(Debug, Error)]
 pub enum SessionError {
@@ -45,14 +48,44 @@ pub enum SessionError {
     GpuSync(#[from] simthing_sim::GpuSyncError),
     #[error("session mapping: {0}")]
     Mapping(String),
-    #[error("resource flow opt-in: {0}")]
-    ResourceFlowOptIn(String),
+    #[error("resource flow admission: {0}")]
+    ResourceFlowAdmission(String),
     #[error("threshold install: {0}")]
     ThresholdInstall(String),
     #[error("player-intent admission: {0}")]
     PlayerIntentAdmission(String),
     #[error("execution posture: {0}")]
     ExecutionPosture(String),
+    #[error(transparent)]
+    ActionBandIngress(#[from] ActionBandExecutionIngressError),
+}
+
+/// Typed fail-closed outcomes for the one ordinary ActionBand execution
+/// ingress. None of these paths recompiles or silently rebinds a stale plan.
+#[derive(Debug, Error)]
+pub enum ActionBandExecutionIngressError {
+    #[error("ActionBand commitments are already installed for this session")]
+    AlreadyInstalled,
+    #[error(
+        "ActionBand commitments must bind at tick zero, not tick {tick} / generation {generation}"
+    )]
+    LateInstall { tick: u64, generation: u64 },
+    #[error(
+        "ActionBand resident bind shape is {actual} floats; ordinary session requires {expected}"
+    )]
+    InvalidResidentShape { expected: usize, actual: usize },
+    #[error("ActionBand dispatch is stale because the object binding table changed (tree growth or epoch rebind)")]
+    BindingTableStale,
+    #[error(
+        "ActionBand dispatch is stale because the admitted registry grew or changed activation"
+    )]
+    RegistryStale,
+    #[error("ActionBand dispatch is stale because the session slot/dimension shape changed")]
+    DimensionShapeStale,
+    #[error("spec state cannot be reinstalled after ActionBand commitments are bound")]
+    SpecInstallAfterActionBand,
+    #[error(transparent)]
+    Dispatch(#[from] crate::CrossingConsequenceDispatchError),
 }
 
 /// Outcome of a single [`SimSession::step_once`] production hot-cycle.
@@ -133,6 +166,11 @@ pub struct RunSummary {
     pub mapping_ticks: u64,
     pub mapping_commitment_events: u64,
     pub mapping_commitment_effects_applied: u64,
+    pub action_band_crossing_batches: u64,
+    pub action_band_crossings: u64,
+    pub action_band_routed_deliveries: u64,
+    pub action_band_structural_authorizations: u64,
+    pub action_band_bucket_dispatches: u64,
     pub boundary_total_ms: f64,
     pub boundary_value_readback_ms: f64,
     pub boundary_alert_collect_ms: f64,
@@ -184,6 +222,11 @@ impl RunSummary {
             mapping_ticks: 0,
             mapping_commitment_events: 0,
             mapping_commitment_effects_applied: 0,
+            action_band_crossing_batches: 0,
+            action_band_crossings: 0,
+            action_band_routed_deliveries: 0,
+            action_band_structural_authorizations: 0,
+            action_band_bucket_dispatches: 0,
             boundary_total_ms: 0.0,
             boundary_value_readback_ms: 0.0,
             boundary_alert_collect_ms: 0.0,
@@ -245,10 +288,6 @@ pub struct SimSession {
     /// Last boundary dynamic Resource Flow fission enrollment report (E-2B-5R).
     pub last_resource_flow_dynamic_enrollment_report:
         Option<crate::resource_flow_fission_enrollment::DynamicFissionEnrollmentReport>,
-    /// RF-T3: why Resource Flow GPU execution is enabled/disabled on this session.
-    pub resource_flow_flag_source: crate::resource_flow_opt_in_telemetry::ResourceFlowFlagSource,
-    /// RF-T4: authored scenario-class / execution profile at session open.
-    pub resource_flow_execution_profile: ResourceFlowExecutionProfile,
     /// CT-3b+4a Line 3: profile-gated in-loop mapping state. `None` unless
     /// the game mode authored `SparseRegionFieldV1` + a region field with a
     /// pressure binding; presence alone never wires anything.
@@ -257,12 +296,34 @@ pub struct SimSession {
     /// session loop, in tick order. Consumed at boundaries; diagnostic
     /// readback never feeds runtime decisions.
     pub mapping_commitments: Vec<MappingCommitmentRecord>,
+    /// One consuming ActionBand dispatcher retained for the session lifetime.
+    /// It joins only canonical Phase-5 boundary deltas and owns no clock beside
+    /// its existing facility generation boundary.
+    action_band_execution: Option<SessionActionBandExecution>,
     /// CONTINUOUS-POSTURE-SOAK-0: scheduling policy over the same kernel.
     /// Default [`ExecutionPosture::Paced`]; continuous batches call the identical
     /// hot-cycle + boundary path — never a second kernel or semantic fork.
     execution_posture: simthing_core::ExecutionPosture,
     resolved_order_directives: Mutex<crate::order_directive::OrderDirectiveGateState>,
     order_directive_injection_log: Mutex<Vec<crate::order_directive::OrderDirectiveInjection>>,
+}
+
+struct SessionActionBandExecution {
+    dispatch: crate::CrossingConsequenceDispatch,
+    admitted_shape: ActionBandIngressShape,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct ActionBandIngressShape {
+    binding_table: simthing_core::BindingTableSnapshot,
+    registry_columns: usize,
+    registry_properties: usize,
+    registry_active: Vec<bool>,
+    coord_slots: u32,
+    coord_dims: u32,
+    state_slots: u32,
+    state_dims: u32,
+    resident_values_len: usize,
 }
 
 /// CT-3b+4a Line 3: everything the session loop needs to run the admitted
@@ -354,14 +415,127 @@ impl SimSession {
         }
     }
 
+    fn current_action_band_ingress_shape(&self) -> ActionBandIngressShape {
+        ActionBandIngressShape {
+            binding_table: self.proto.allocator.binding_table_snapshot(),
+            registry_columns: self.proto.registry.total_columns,
+            registry_properties: self.proto.registry.properties.len(),
+            registry_active: self.proto.registry.active.clone(),
+            coord_slots: self.coord.n_slots(),
+            coord_dims: self.coord.n_dims(),
+            state_slots: self.state.n_slots,
+            state_dims: self.state.n_dims,
+            resident_values_len: self.coord.shadow.len(),
+        }
+    }
+
+    fn ensure_action_band_ingress_current(&self) -> Result<(), ActionBandExecutionIngressError> {
+        let Some(installed) = self.action_band_execution.as_ref() else {
+            return Ok(());
+        };
+        let current = self.current_action_band_ingress_shape();
+        let admitted = &installed.admitted_shape;
+        if current.binding_table != admitted.binding_table {
+            return Err(ActionBandExecutionIngressError::BindingTableStale);
+        }
+        if current.registry_columns != admitted.registry_columns
+            || current.registry_properties != admitted.registry_properties
+            || current.registry_active != admitted.registry_active
+        {
+            return Err(ActionBandExecutionIngressError::RegistryStale);
+        }
+        if current.coord_slots != admitted.coord_slots
+            || current.coord_dims != admitted.coord_dims
+            || current.state_slots != admitted.state_slots
+            || current.state_dims != admitted.state_dims
+            || current.resident_values_len != admitted.resident_values_len
+        {
+            return Err(ActionBandExecutionIngressError::DimensionShapeStale);
+        }
+        Ok(())
+    }
+
+    /// Bind one already-admitted consequence session into the ordinary
+    /// production lifecycle. The resident values are the tick-zero CPU shadow
+    /// produced by the final ordinary install; later binding would race live
+    /// GPU state and therefore fails closed.
+    pub fn install_action_band_commitments(
+        &mut self,
+        commitments: crate::CrossingConsequenceSession,
+    ) -> Result<(), SessionError> {
+        if self.action_band_execution.is_some() {
+            return Err(ActionBandExecutionIngressError::AlreadyInstalled.into());
+        }
+        if self.coord.tick_index() != 0 || self.coord.day_index() != 0 {
+            return Err(ActionBandExecutionIngressError::LateInstall {
+                tick: self.coord.tick_index(),
+                generation: self.coord.day_index(),
+            }
+            .into());
+        }
+        let expected = self.coord.n_slots() as usize * self.coord.n_dims() as usize;
+        if self.coord.shadow.len() != expected {
+            return Err(ActionBandExecutionIngressError::InvalidResidentShape {
+                expected,
+                actual: self.coord.shadow.len(),
+            }
+            .into());
+        }
+        let dispatch = commitments
+            .bind_dispatch(&self.state.ctx, &self.coord.shadow)
+            .map_err(ActionBandExecutionIngressError::from)?;
+        self.action_band_execution = Some(SessionActionBandExecution {
+            dispatch,
+            admitted_shape: self.current_action_band_ingress_shape(),
+        });
+        Ok(())
+    }
+
+    /// Read-only proof/telemetry of the existing facility generation.
+    pub fn action_band_execution_generation(&self) -> Option<u32> {
+        self.action_band_execution
+            .as_ref()
+            .map(|installed| installed.dispatch.generation())
+    }
+
+    fn dispatch_action_band_boundary(
+        &mut self,
+        outcome: &BoundaryOutcome,
+        summary: &mut RunSummary,
+    ) -> Result<(), SessionError> {
+        self.ensure_action_band_ingress_current()?;
+        let Some(installed) = self.action_band_execution.as_mut() else {
+            return Ok(());
+        };
+        let Some(dispatched) = installed
+            .dispatch
+            .dispatch_sealed_and_apply(
+                &self.state.ctx,
+                self.state.n_dims,
+                &outcome.band_crossing_deltas,
+                &self.tx,
+            )
+            .map_err(ActionBandExecutionIngressError::from)?
+        else {
+            return Ok(());
+        };
+        summary.action_band_crossing_batches += 1;
+        summary.action_band_crossings += u64::from(dispatched.crossing_count);
+        summary.action_band_routed_deliveries += u64::from(dispatched.routed_deliveries);
+        summary.action_band_structural_authorizations +=
+            u64::from(dispatched.structural_authorizations);
+        summary.action_band_bucket_dispatches += u64::from(dispatched.bucket_dispatches);
+        Ok(())
+    }
+
     /// Hot-path cycle — pre-tick enqueue + ordinary tick + RF bands + mapping dispatch.
     fn run_hot_cycle(&mut self) -> Result<FabricHotCycleOutcome, SessionError> {
+        self.ensure_action_band_ingress_current()?;
         // EVENT-GENERATION-STAMP-0: generation authority is the tree day/generation
         // counter. Bind it into sealed emission/threshold mint at the ordinary
         // production step boundary (not an optional side setter).
         self.state
             .bind_production_generation(self.coord.day_index() as u32);
-        let resource_flow_pipeline_enabled = self.proto.flags.use_accumulator_resource_flow;
         let mapping_hot = self.mapping.as_mut().map(|m| &mut m.hot);
         let tick_patches = &self.scenario.tick_patches;
         let admitted = &self.spec_state.order_weight_classes;
@@ -394,7 +568,6 @@ impl SimSession {
             &mut fabric,
             FabricHotCycleParams {
                 tick_patches,
-                resource_flow_pipeline_enabled,
                 mapping: mapping_hot,
             },
         )
@@ -457,11 +630,9 @@ impl SimSession {
             tx,
             spec_state: SpecSessionState::new(),
             last_resource_flow_dynamic_enrollment_report: None,
-            resource_flow_flag_source:
-                crate::resource_flow_opt_in_telemetry::ResourceFlowFlagSource::DefaultDisabled,
-            resource_flow_execution_profile: ResourceFlowExecutionProfile::DefaultDisabled,
             mapping: None,
             mapping_commitments: Vec::new(),
+            action_band_execution: None,
             execution_posture: simthing_core::ExecutionPosture::Paced,
             resolved_order_directives: Mutex::new(
                 crate::order_directive::OrderDirectiveGateState::default(),
@@ -490,19 +661,15 @@ impl SimSession {
         Ok(())
     }
 
-    /// Test harness only: set Resource Flow flag directly (distinct from spec opt-in).
-    pub fn override_resource_flow_flag_for_tests(&mut self, enabled: bool) {
-        self.proto.flags.use_accumulator_resource_flow = enabled;
-        self.resource_flow_flag_source =
-            crate::resource_flow_opt_in_telemetry::ResourceFlowFlagSource::TestOverride;
-    }
-
     pub fn install_spec_state(&mut self, spec_state: SpecSessionState) -> Result<(), SessionError> {
+        if self.action_band_execution.is_some() {
+            return Err(ActionBandExecutionIngressError::SpecInstallAfterActionBand.into());
+        }
         self.spec_state = spec_state;
         self.resync_gpu_shape_after_spec_install();
         self.reserve_resource_flow_capacity_budget();
         self.sync_spec_threshold_registrations();
-        self.sync_resource_flow_if_enabled()?;
+        self.sync_resource_flow()?;
         self.sync_resource_economy_at_install()?;
         // Re-project tree (including entity-hosted Constant PropertyValue seeds)
         // then upload thresholds. No dense install_resolved_values authority.
@@ -564,9 +731,8 @@ impl SimSession {
         self.state.ensure_threshold_accumulator(emission_capacity);
     }
 
-    /// Sync E-11 resource-flow AccumulatorOps when the pipeline flag is enabled.
-    pub fn sync_resource_flow_if_enabled(&mut self) -> Result<(), SessionError> {
-        let enabled = self.proto.flags.use_accumulator_resource_flow;
+    /// Sync E-11 resource-flow AccumulatorOps through the sole production path.
+    pub fn sync_resource_flow(&mut self) -> Result<(), SessionError> {
         // Production always includes stage projections. DISCONNECT harness uses
         // `harness_resync_resource_flow_without_need_stage_projections`.
         crate::arena_allocation_sync::sync_resource_flow_accumulator(
@@ -575,7 +741,6 @@ impl SimSession {
             &self.spec_state.arena_registry,
             &self.spec_state.resolved_gated_rates,
             &self.spec_state.resolved_need_bindings,
-            enabled,
         )?;
         Ok(())
     }
@@ -587,44 +752,34 @@ impl SimSession {
     pub fn harness_resync_resource_flow_without_need_stage_projections(
         &mut self,
     ) -> Result<(), SessionError> {
-        let enabled = self.proto.flags.use_accumulator_resource_flow;
         crate::arena_allocation_sync::sync_resource_flow_accumulator_with_options(
             &mut self.state,
             &self.proto.registry,
             &self.spec_state.arena_registry,
             &self.spec_state.resolved_gated_rates,
             &self.spec_state.resolved_need_bindings,
-            enabled,
             false,
         )?;
         Ok(())
     }
 
-    /// Session install: upload when flags allow; never reject populated specs with flags off.
+    /// Session install: upload authored registrations through the sole production path.
     fn sync_resource_economy_at_install(&mut self) -> Result<(), SessionError> {
-        self.sync_resource_economy_internal(false)
+        self.sync_resource_economy_internal()
     }
 
-    /// Boundary refresh: upload when flags allow; reject populated specs with flags off.
-    pub fn sync_resource_economy_if_enabled(&mut self) -> Result<(), SessionError> {
-        self.sync_resource_economy_internal(true)
+    /// Boundary refresh for the installed resource-economy registrations.
+    pub fn sync_resource_economy(&mut self) -> Result<(), SessionError> {
+        self.sync_resource_economy_internal()
     }
 
-    fn sync_resource_economy_internal(
-        &mut self,
-        reject_flag_off_populated: bool,
-    ) -> Result<(), SessionError> {
-        let transfer_enabled = self.proto.flags.use_accumulator_transfer;
-        let emission_enabled = self.proto.flags.use_accumulator_emission;
+    fn sync_resource_economy_internal(&mut self) -> Result<(), SessionError> {
         let uploaded_generation = self.spec_state.resource_economy_uploaded_generation();
         let mut generation = uploaded_generation;
         crate::resource_economy_sync::sync_resource_economy_if_present(
             &mut self.state,
             self.spec_state.resource_economy_registry.as_ref(),
             &mut generation,
-            transfer_enabled,
-            emission_enabled,
-            reject_flag_off_populated,
         )?;
         self.spec_state
             .set_resource_economy_uploaded_generation(generation);
@@ -689,13 +844,75 @@ impl SimSession {
         scenario: Scenario,
         game_mode: &GameModeSpec,
     ) -> Result<Self, SessionError> {
+        Self::open_from_spec_inner::<FieldSweepCompilerFn>(scenario, game_mode, None)
+    }
+
+    /// Open an ordinary production session with deferred PALMA / Gu-Yang
+    /// field-sweep compilation and explicit Triad consumer columns.
+    ///
+    /// The compiler is invoked once with the live post-admission registry
+    /// width. Its registrations are appended to the existing
+    /// [`crate::mapping_runtime::FirstSliceMappingSession`] chain; no second
+    /// executor is constructed. Comparative projections are admitted from the
+    /// ordinary-install field plan and assigned to [`SpecSessionState`] before
+    /// the same mapping session is opened. The install path supplies no Triad
+    /// column defaults.
+    pub fn open_from_spec_with_admitted_field_sweeps<F>(
+        scenario: Scenario,
+        game_mode: &GameModeSpec,
+        compile_field_sweeps: F,
+        triad_columns: (
+            simthing_core::ColumnIndex,
+            simthing_core::ColumnIndex,
+            simthing_core::ColumnIndex,
+        ),
+        comparative_bands: crate::comparative_projection::ComparativeProjectionBands,
+        authored_opt_out_reason: Option<&'static str>,
+    ) -> Result<Self, SessionError>
+    where
+        F: FnOnce(
+            u32,
+        ) -> Result<
+            Vec<simthing_gpu::FieldSweepRegistration>,
+            simthing_gpu::FieldSweepAdmissionError,
+        >,
+    {
+        Self::open_from_spec_inner(
+            scenario,
+            game_mode,
+            Some((
+                compile_field_sweeps,
+                triad_columns,
+                comparative_bands,
+                authored_opt_out_reason,
+            )),
+        )
+    }
+
+    fn open_from_spec_inner<F>(
+        scenario: Scenario,
+        game_mode: &GameModeSpec,
+        admitted_field_sweeps: Option<(
+            F,
+            (
+                simthing_core::ColumnIndex,
+                simthing_core::ColumnIndex,
+                simthing_core::ColumnIndex,
+            ),
+            crate::comparative_projection::ComparativeProjectionBands,
+            Option<&'static str>,
+        )>,
+    ) -> Result<Self, SessionError>
+    where
+        F: FnOnce(u32) -> FieldSweepCompilerResult,
+    {
         let mut session = Self::open(scenario)?;
         // I1: `install_atomic` clones registry/root/allocator before
         // running the install, so a failed install leaves the
         // just-built `BoundaryProtocol` untouched. See
         // `docs/adr/install_clone_then_commit.md`.
         let mut admitted = session.scenario.root.clone();
-        let spec_state = install_atomic(
+        let mut spec_state = install_atomic(
             game_mode,
             &session.scenario,
             &mut session.proto.registry,
@@ -703,15 +920,44 @@ impl SimSession {
             &mut session.proto.allocator,
         )?;
         session.proto.root = SimRuntimeTree::admit(admitted);
-        apply_resource_economy_opt_in(&mut session.proto.flags, game_mode);
-        session.resource_flow_execution_profile = game_mode.resource_flow_execution_profile;
-        session.resource_flow_flag_source =
-            resolve_resource_flow_execution(&mut session.proto.flags, game_mode, &spec_state);
-        if session.proto.flags.use_accumulator_resource_flow {
-            validate_resource_flow_flat_star_execution(game_mode, &spec_state)?;
+        let mut field_sweep_install = None;
+        if let Some((compile_field_sweeps, triad_columns, bands, authored_opt_out_reason)) =
+            admitted_field_sweeps
+        {
+            if !game_mode.mapping_execution_profile.enables_execution()
+                || game_mode.region_fields.is_empty()
+            {
+                return Err(SessionError::Mapping(
+                    "admitted field-sweep session seam requires an enabled ordinary mapping profile and at least one region field"
+                        .into(),
+                ));
+            }
+            let field_plan = spec_state.field_plan_admission.as_ref().ok_or_else(|| {
+                SessionError::Mapping(
+                    "admitted field-sweep session seam requires ordinary-install field-plan admission"
+                        .into(),
+                )
+            })?;
+            let comparative = crate::comparative_default_birth::admit_comparative_from_field_plan(
+                &mut session.proto.registry,
+                field_plan,
+                triad_columns.0,
+                triad_columns.1,
+                triad_columns.2,
+                bands,
+                authored_opt_out_reason,
+            )
+            .map_err(|error| SessionError::Mapping(error.to_string()))?;
+            let derived_field_registrations = comparative.bundle.registrations.clone();
+            spec_state.comparative_projection = Some(comparative);
+            spec_state.property_admission = session.proto.registry.property_admission_report();
+            field_sweep_install = Some((compile_field_sweeps, derived_field_registrations));
+        }
+        if !spec_state.arena_registry.arenas.is_empty() {
+            validate_resource_flow_execution(game_mode, &spec_state)?;
         }
         session.install_spec_state(spec_state)?;
-        session.install_session_mapping(game_mode)?;
+        session.install_session_mapping(game_mode, field_sweep_install)?;
         Ok(session)
     }
 
@@ -743,13 +989,20 @@ impl SimSession {
     /// the game mode authored the explicit profile, one region field, and a
     /// pressure binding. Absence of any piece leaves the session mapping-free;
     /// a half-authored configuration is a hard open error, never a silent skip.
-    fn install_session_mapping(&mut self, game_mode: &GameModeSpec) -> Result<(), SessionError> {
+    fn install_session_mapping<F>(
+        &mut self,
+        game_mode: &GameModeSpec,
+        field_sweep_install: Option<(F, Vec<simthing_gpu::FieldSweepRegistration>)>,
+    ) -> Result<(), SessionError>
+    where
+        F: FnOnce(u32) -> FieldSweepCompilerResult,
+    {
         if !game_mode.mapping_execution_profile.enables_execution()
             || game_mode.region_fields.is_empty()
         {
             return Ok(());
         }
-        if game_mode.region_fields.len() != 1 {
+        if field_sweep_install.is_none() && game_mode.region_fields.len() != 1 {
             return Err(SessionError::Mapping(
                 "session-loop mapping v1 integrates exactly one region field".into(),
             ));
@@ -846,11 +1099,23 @@ impl SimSession {
                 })
             }
         };
-        let mapping = crate::mapping_runtime::FirstSliceMappingSession::open(
-            &self.state.ctx,
-            game_mode.mapping_execution_profile,
-            field,
-        )
+        let mapping = match field_sweep_install {
+            None => crate::mapping_runtime::FirstSliceMappingSession::open(
+                &self.state.ctx,
+                game_mode.mapping_execution_profile,
+                field,
+            ),
+            Some((compile_field_sweeps, derived_field_registrations)) => {
+                crate::mapping_runtime::FirstSliceMappingSession::open_with_finalized_field_sweeps(
+                    &self.state.ctx,
+                    game_mode.mapping_execution_profile,
+                    field,
+                    &self.proto.registry,
+                    &derived_field_registrations,
+                    compile_field_sweeps,
+                )
+            }
+        }
         .map_err(|e| SessionError::Mapping(format!("{e:?}")))?;
         let scatter = simthing_gpu::IndexedScatterOp::new(&self.state.ctx);
         self.mapping = Some(SessionMappingState {
@@ -1080,10 +1345,11 @@ impl SimSession {
         summary.reduction_depths_max = summary
             .reduction_depths_max
             .max(outcome.gpu_sync.reduction_depths);
+        self.dispatch_action_band_boundary(&outcome, summary)?;
         summary.boundaries_run += 1;
         self.react_to_fission_clones(&outcome);
         self.react_to_fission_resource_flow_enrollment(&outcome)?;
-        self.sync_resource_economy_if_enabled()?;
+        self.sync_resource_economy()?;
         // Next day's fused scans stamp the upcoming day index.
         self.state
             .bind_production_generation((day as u32).saturating_add(1));
@@ -1179,6 +1445,7 @@ impl SimSession {
                 summary.reduction_depths_max = summary
                     .reduction_depths_max
                     .max(outcome.gpu_sync.reduction_depths);
+                self.dispatch_action_band_boundary(&outcome, &mut summary)?;
 
                 // O2 Replay v3: diff spec state, drain notifications, build
                 // `spec_entries` for the frame.
@@ -1201,7 +1468,7 @@ impl SimSession {
                 // instances + threshold registrations for fission clones.
                 self.react_to_fission_clones(&outcome);
                 self.react_to_fission_resource_flow_enrollment(&outcome)?;
-                self.sync_resource_economy_if_enabled()?;
+                self.sync_resource_economy()?;
             }
         }
 
@@ -1367,99 +1634,32 @@ impl SimSession {
                 &mut self.spec_state.arena_registry,
                 &self.proto.allocator,
             );
-        let should_sync = report.any_admissions() && self.proto.flags.use_accumulator_resource_flow;
+        let should_sync = report.any_admissions();
         if !report.admissions.is_empty() || !report.rejections.is_empty() {
             self.last_resource_flow_dynamic_enrollment_report = Some(report);
         } else {
             self.last_resource_flow_dynamic_enrollment_report = None;
         }
         if should_sync {
-            self.sync_resource_flow_if_enabled()?;
+            self.sync_resource_flow()?;
         }
         Ok(())
     }
 }
 
-fn apply_resource_economy_opt_in(
-    flags: &mut simthing_sim::PipelineFlags,
-    game_mode: &GameModeSpec,
-) {
-    let mode = game_mode
-        .resource_economy
-        .as_ref()
-        .map(|spec| spec.opt_in_mode)
-        .unwrap_or(ResourceEconomyOptInMode::Disabled);
-
-    match mode {
-        ResourceEconomyOptInMode::Disabled => {}
-        ResourceEconomyOptInMode::TransferOnly => {
-            flags.use_accumulator_transfer = true;
-        }
-        ResourceEconomyOptInMode::EmissionOnly => {
-            flags.use_accumulator_eml = true;
-            flags.use_accumulator_emission = true;
-        }
-        ResourceEconomyOptInMode::TransferAndEmission => {
-            flags.use_accumulator_transfer = true;
-            flags.use_accumulator_eml = true;
-            flags.use_accumulator_emission = true;
-        }
-    }
-}
-
-fn resolve_resource_flow_execution(
-    flags: &mut simthing_sim::PipelineFlags,
-    game_mode: &GameModeSpec,
-    spec_state: &SpecSessionState,
-) -> crate::resource_flow_opt_in_telemetry::ResourceFlowFlagSource {
-    use crate::resource_flow_opt_in_telemetry::ResourceFlowFlagSource;
-
-    let opt_in = game_mode
-        .resource_flow
-        .as_ref()
-        .map(|spec| spec.opt_in_mode)
-        .unwrap_or(ResourceFlowOptInMode::Disabled);
-
-    match opt_in {
-        ResourceFlowOptInMode::FlatStarOptIn => {
-            flags.use_accumulator_resource_flow = true;
-            ResourceFlowFlagSource::SpecFlatStarOptIn
-        }
-        ResourceFlowOptInMode::Disabled => {
-            if game_mode
-                .resource_flow_execution_profile
-                .enables_arena_resource_flow()
-                && !spec_state.arena_registry.arenas.is_empty()
-            {
-                flags.use_accumulator_resource_flow = true;
-                ResourceFlowFlagSource::ScenarioClassDefaultOn
-            } else {
-                ResourceFlowFlagSource::DefaultDisabled
-            }
-        }
-    }
-}
-
-fn validate_resource_flow_flat_star_execution(
-    game_mode: &GameModeSpec,
-    spec_state: &SpecSessionState,
-) -> Result<(), SessionError> {
-    validate_resource_flow_flat_star_opt_in(game_mode, spec_state)
-}
-
-fn validate_resource_flow_flat_star_opt_in(
+fn validate_resource_flow_execution(
     game_mode: &GameModeSpec,
     spec_state: &SpecSessionState,
 ) -> Result<(), SessionError> {
     if spec_state.arena_registry.arenas.is_empty() {
-        return Err(SessionError::ResourceFlowOptIn(
+        return Err(SessionError::ResourceFlowAdmission(
             "Resource Flow GPU execution requires at least one admitted arena".into(),
         ));
     }
     if let Some(flow) = game_mode.resource_flow.as_ref() {
         for arena in &flow.arenas {
             if arena.wildcard_admission.is_some() {
-                return Err(SessionError::ResourceFlowOptIn(format!(
+                return Err(SessionError::ResourceFlowAdmission(format!(
                     "arena `{}` wildcard admission is not supported for flat-star Resource Flow (E-11B deferred)",
                     arena.name
                 )));
@@ -1468,7 +1668,7 @@ fn validate_resource_flow_flat_star_opt_in(
     }
     for arena in &spec_state.arena_registry.arenas {
         if arena.wildcard_max_expansion.is_some() {
-            return Err(SessionError::ResourceFlowOptIn(format!(
+            return Err(SessionError::ResourceFlowAdmission(format!(
                 "arena `{}` wildcard expansion is not supported for flat-star Resource Flow",
                 arena.name
             )));

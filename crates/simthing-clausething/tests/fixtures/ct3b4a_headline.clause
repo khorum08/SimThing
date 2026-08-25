@@ -2,7 +2,6 @@ simthing_ct3b4a_headline = {
     display_name = "CT-3b+4a Headline Vertical"
     description = "RF-fed movement-front heatmap with ai_will_do commitment."
     resource_flow = {
-        opt_in = FlatStarOptIn
         max_participants = 16
         max_coupling_fanout = 4
         max_orderband_depth = 16

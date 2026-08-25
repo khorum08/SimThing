@@ -24,6 +24,8 @@ pub enum EmlGadgetKind {
     Hysteresis,
     // Tier-2 explicit velocity-column acceleration (EML-GADGET-2E)
     Acceleration,
+    // Authored law gadget (AUTHORED-LAW-GADGET-0)
+    PowerLaw,
 }
 
 impl EmlGadgetKind {
@@ -38,6 +40,7 @@ impl EmlGadgetKind {
             Self::BoundedFeedback => "BoundedFeedback",
             Self::Hysteresis => "Hysteresis",
             Self::Acceleration => "Acceleration",
+            Self::PowerLaw => "PowerLaw",
         }
     }
 
@@ -65,6 +68,22 @@ impl EmlGadgetKind {
         ]
     }
 
+    /// Complete constitutional gadget-kind vocabulary.
+    pub fn all() -> &'static [EmlGadgetKind] {
+        &[
+            EmlGadgetKind::FieldSampler,
+            EmlGadgetKind::WeightedAccumulator,
+            EmlGadgetKind::SoftStep,
+            EmlGadgetKind::VelocityMonitor,
+            EmlGadgetKind::Decay,
+            EmlGadgetKind::Ema,
+            EmlGadgetKind::BoundedFeedback,
+            EmlGadgetKind::Hysteresis,
+            EmlGadgetKind::Acceleration,
+            EmlGadgetKind::PowerLaw,
+        ]
+    }
+
     pub fn parse(name: &str) -> Option<Self> {
         match name {
             "FieldSampler" => Some(Self::FieldSampler),
@@ -76,6 +95,7 @@ impl EmlGadgetKind {
             "BoundedFeedback" => Some(Self::BoundedFeedback),
             "Hysteresis" => Some(Self::Hysteresis),
             "Acceleration" => Some(Self::Acceleration),
+            "PowerLaw" => Some(Self::PowerLaw),
             _ => None,
         }
     }
@@ -195,14 +215,11 @@ impl EmlGadgetRegistry {
     }
 
     pub fn is_registered(&self, kind: EmlGadgetKind) -> bool {
-        EmlGadgetKind::all_tier1().contains(&kind)
+        EmlGadgetKind::all().contains(&kind)
     }
 
     pub fn available_names(&self) -> Vec<&'static str> {
-        EmlGadgetKind::all_tier1()
-            .iter()
-            .map(|k| k.name())
-            .collect()
+        EmlGadgetKind::all().iter().map(|k| k.name()).collect()
     }
 }
 
@@ -310,6 +327,7 @@ fn kind_from_instance(instance: &EmlGadgetInstanceSpec) -> Result<EmlGadgetKind,
         EmlGadgetInstanceSpec::BoundedFeedback { .. } => EmlGadgetKind::BoundedFeedback,
         EmlGadgetInstanceSpec::Hysteresis { .. } => EmlGadgetKind::Hysteresis,
         EmlGadgetInstanceSpec::Acceleration { .. } => EmlGadgetKind::Acceleration,
+        EmlGadgetInstanceSpec::PowerLaw { .. } => EmlGadgetKind::PowerLaw,
     };
     Ok(kind)
 }
@@ -519,6 +537,22 @@ fn compile_gadget_instance(
                 *output_col,
             )
         }
+        EmlGadgetInstanceSpec::PowerLaw {
+            input_col,
+            output_col,
+            exponent,
+            input_floor,
+            ..
+        } => {
+            validate_col(*input_col, opts, &id, "input_col")?;
+            if let Some(col) = output_col {
+                validate_col(*col, opts, &id, "output_col")?;
+            }
+            validate_power_law_params(*exponent, *input_floor, &id)?;
+            let nodes = compile_power_law_nodes(*input_col, *exponent, *input_floor);
+            validate_power_law_semantics(&nodes, *input_col, *exponent, *input_floor, &id)?;
+            (nodes, *output_col)
+        }
     };
 
     if nodes.len() > MAX_EML_TREE_NODES as usize {
@@ -716,6 +750,88 @@ fn compile_soft_step_nodes(input_col: u32, center: f32, steepness: f32) -> Vec<E
     nodes
 }
 
+fn validate_power_law_params(
+    exponent: f32,
+    input_floor: f32,
+    gadget: &str,
+) -> Result<(), SpecError> {
+    if !exponent.is_finite() {
+        return Err(SpecError::EmlGadgetAdmission {
+            gadget: gadget.to_string(),
+            reason: "power_law_exponent_non_finite: exponent must be finite".into(),
+        });
+    }
+    let domain_min = f32::from_bits(simthing_core::eml_ln::EML_LN_DOMAIN_MIN_BITS);
+    let domain_max = f32::from_bits(simthing_core::eml_ln::EML_LN_DOMAIN_MAX_BITS);
+    if !input_floor.is_finite() || input_floor < domain_min || input_floor > domain_max {
+        return Err(SpecError::EmlGadgetAdmission {
+            gadget: gadget.to_string(),
+            reason: format!(
+                "power_law_ln_domain_uncertified: input_floor must be a positive finite normal in [{domain_min:e}, {domain_max:e}]"
+            ),
+        });
+    }
+    Ok(())
+}
+
+fn compile_power_law_nodes(input_col: u32, exponent: f32, input_floor: f32) -> Vec<EmlNode> {
+    vec![
+        node_slot(input_col),
+        node_clamp_bounded(
+            input_floor,
+            f32::from_bits(simthing_core::eml_ln::EML_LN_DOMAIN_MAX_BITS),
+        ),
+        node_ln(),
+        node_literal(exponent),
+        node_mul(),
+        node_clamp_bounded(
+            f32::from_bits(simthing_core::EML_EXP_DOMAIN_MIN_BITS),
+            f32::from_bits(simthing_core::EML_EXP_DOMAIN_MAX_BITS),
+        ),
+        node_exp(),
+        node_return_top(),
+    ]
+}
+
+/// The authored law role is semantic: any implementation drift to a threshold,
+/// selector, staircase, or other piecewise lowering fails the same production
+/// admission path regardless of the gadget id or serialized spelling.
+fn validate_power_law_semantics(
+    nodes: &[EmlNode],
+    input_col: u32,
+    exponent: f32,
+    input_floor: f32,
+    gadget: &str,
+) -> Result<(), SpecError> {
+    let expected_opcodes = [
+        eml_nodes::opcode::SLOT_VALUE,
+        eml_nodes::opcode::CLAMP_BOUNDED,
+        eml_nodes::opcode::LN,
+        eml_nodes::opcode::LITERAL_F32,
+        eml_nodes::opcode::MUL,
+        eml_nodes::opcode::CLAMP_BOUNDED,
+        eml_nodes::opcode::EXP,
+        eml_nodes::opcode::RETURN_TOP,
+    ];
+    let opcodes_match = nodes.len() == expected_opcodes.len()
+        && nodes.iter().map(|node| node.opcode).eq(expected_opcodes);
+    let operands_match = nodes.len() == expected_opcodes.len()
+        && nodes[0].a == input_col
+        && nodes[1].a == input_floor.to_bits()
+        && nodes[1].b == simthing_core::eml_ln::EML_LN_DOMAIN_MAX_BITS
+        && nodes[3].a == exponent.to_bits()
+        && nodes[5].a == simthing_core::EML_EXP_DOMAIN_MIN_BITS
+        && nodes[5].b == simthing_core::EML_EXP_DOMAIN_MAX_BITS;
+    if !opcodes_match || !operands_match {
+        return Err(SpecError::EmlGadgetAdmission {
+            gadget: gadget.to_string(),
+            reason: "power_law_intrinsic_semantics_required: law-stating role must lower canonically as guarded EXP(exponent * LN(x)); staircase and piecewise substitutes are forbidden"
+                .into(),
+        });
+    }
+    Ok(())
+}
+
 fn compute_u_nodes(input_col: u32, center: f32, steepness: f32) -> Vec<EmlNode> {
     vec![
         node_slot(input_col),
@@ -739,6 +855,19 @@ pub fn oracle_weighted_accumulator(inputs: &[f32], weights: &[f32]) -> f32 {
 pub fn oracle_soft_step(x: f32, center: f32, steepness: f32) -> f32 {
     let u = steepness * (x - center);
     0.5 + 0.5 * u / (1.0 + u.abs())
+}
+
+/// CPU twin for the canonical authored power-law lowering.
+pub fn oracle_power_law(x: f32, exponent: f32, input_floor: f32) -> f32 {
+    let admitted_x = x.clamp(
+        input_floor,
+        f32::from_bits(simthing_core::eml_ln::EML_LN_DOMAIN_MAX_BITS),
+    );
+    let exponent_arg = (simthing_core::eml_ln::eml_ln_pinned_f32(admitted_x) * exponent).clamp(
+        f32::from_bits(simthing_core::EML_EXP_DOMAIN_MIN_BITS),
+        f32::from_bits(simthing_core::EML_EXP_DOMAIN_MAX_BITS),
+    );
+    simthing_core::eml_exp_pinned_f32(exponent_arg)
 }
 
 /// Evaluate a postfix EvalEML node program for spec-layer parity tests.
@@ -835,6 +964,28 @@ fn node_literal(v: f32) -> EmlNode {
         opcode: eml_nodes::opcode::LITERAL_F32,
         flags: 0,
         a: v.to_bits(),
+        b: 0,
+        c: 0,
+        d: 0,
+    }
+}
+
+fn node_ln() -> EmlNode {
+    EmlNode {
+        opcode: eml_nodes::opcode::LN,
+        flags: 0,
+        a: 0,
+        b: 0,
+        c: 0,
+        d: 0,
+    }
+}
+
+fn node_exp() -> EmlNode {
+    EmlNode {
+        opcode: eml_nodes::opcode::EXP,
+        flags: 0,
+        a: 0,
         b: 0,
         c: 0,
         d: 0,
@@ -999,7 +1150,7 @@ pub fn reject_unknown_gadget_kind(kind: &str, gadget_id: &str) -> Result<EmlGadg
     EmlGadgetKind::parse(kind).ok_or_else(|| SpecError::EmlGadgetAdmission {
         gadget: gadget_id.to_string(),
         reason: format!(
-            "unknown gadget kind `{kind}`; available: FieldSampler, WeightedAccumulator, SoftStep, VelocityMonitor, Decay, Ema, BoundedFeedback, Hysteresis, Acceleration"
+            "unknown gadget kind `{kind}`; available: FieldSampler, WeightedAccumulator, SoftStep, VelocityMonitor, Decay, Ema, BoundedFeedback, Hysteresis, Acceleration, PowerLaw"
         ),
     })
 }
@@ -1265,5 +1416,208 @@ pub fn oracle_hysteresis(
         off_value
     } else {
         previous
+    }
+}
+
+#[cfg(test)]
+mod authored_law_gadget_tests {
+    use super::*;
+
+    const GADGET_NAMES: [&str; 10] = [
+        "FieldSampler",
+        "WeightedAccumulator",
+        "SoftStep",
+        "VelocityMonitor",
+        "Decay",
+        "Ema",
+        "BoundedFeedback",
+        "Hysteresis",
+        "Acceleration",
+        "PowerLaw",
+    ];
+
+    fn positive_floor() -> f32 {
+        f32::from_bits(simthing_core::eml_ln::EML_LN_DOMAIN_MIN_BITS)
+    }
+
+    #[test]
+    fn authored_law_gadget_admission_table() {
+        // Paired constitutional vocabularies.
+        let kinds = EmlGadgetKind::all();
+        assert_eq!(kinds.len(), GADGET_NAMES.len());
+        for (kind, expected_name) in kinds.iter().zip(GADGET_NAMES) {
+            assert_eq!(kind.name(), expected_name);
+            assert_eq!(EmlGadgetKind::parse(expected_name), Some(*kind));
+        }
+
+        let specimens = vec![
+            EmlGadgetInstanceSpec::FieldSampler {
+                id: "a".into(),
+                input_col: 0,
+                output_col: None,
+                cap: 1.0,
+            },
+            EmlGadgetInstanceSpec::WeightedAccumulator {
+                id: "b".into(),
+                input_cols: vec![0],
+                weight_cols: vec![1],
+                output_col: None,
+            },
+            EmlGadgetInstanceSpec::SoftStep {
+                id: "c".into(),
+                input_col: 0,
+                output_col: None,
+                center: 0.0,
+                steepness: 1.0,
+            },
+            EmlGadgetInstanceSpec::VelocityMonitor {
+                id: "d".into(),
+                current_col: 0,
+                previous_col: 1,
+                output_col: None,
+                dt: None,
+            },
+            EmlGadgetInstanceSpec::Decay {
+                id: "e".into(),
+                state_col: 0,
+                output_col: None,
+                decay: 0.5,
+            },
+            EmlGadgetInstanceSpec::Ema {
+                id: "f".into(),
+                input_col: 0,
+                previous_col: 1,
+                output_col: None,
+                decay: 0.5,
+            },
+            EmlGadgetInstanceSpec::BoundedFeedback {
+                id: "g".into(),
+                previous_col: 0,
+                input_col: 1,
+                output_col: None,
+                decay: 0.5,
+                gain: 0.5,
+                min: 0.0,
+                max: 1.0,
+            },
+            EmlGadgetInstanceSpec::Hysteresis {
+                id: "h".into(),
+                input_col: 0,
+                previous_col: 1,
+                output_col: None,
+                on_threshold: 1.0,
+                off_threshold: 0.0,
+                off_value: 0.0,
+                on_value: 1.0,
+            },
+            EmlGadgetInstanceSpec::Acceleration {
+                id: "i".into(),
+                current_velocity_col: 0,
+                previous_velocity_col: 1,
+                output_col: None,
+                dt: None,
+            },
+            EmlGadgetInstanceSpec::PowerLaw {
+                id: "j".into(),
+                input_col: 0,
+                output_col: None,
+                exponent: 2.0,
+                input_floor: positive_floor(),
+            },
+        ];
+        let authored_names = specimens
+            .iter()
+            .map(EmlGadgetInstanceSpec::kind_name)
+            .collect::<Vec<_>>();
+        assert_eq!(authored_names, GADGET_NAMES);
+        for specimen in &specimens {
+            assert_eq!(
+                kind_from_instance(specimen).unwrap().name(),
+                specimen.kind_name()
+            );
+        }
+
+        // Canonical lowering and id-independent semantics.
+        let instance = EmlGadgetInstanceSpec::PowerLaw {
+            id: "piecewise-looking-name-does-not-control-semantics".into(),
+            input_col: 0,
+            output_col: Some(1),
+            exponent: 2.0,
+            input_floor: positive_floor(),
+        };
+        let compiled = compile_eml_gadget(&instance, EmlGadgetCompileOptions { max_col: 2 })
+            .expect("intrinsic power law admits regardless of its authored id");
+        assert_eq!(
+            compiled
+                .nodes
+                .iter()
+                .map(|node| node.opcode)
+                .collect::<Vec<_>>(),
+            vec![
+                eml_nodes::opcode::SLOT_VALUE,
+                eml_nodes::opcode::CLAMP_BOUNDED,
+                eml_nodes::opcode::LN,
+                eml_nodes::opcode::LITERAL_F32,
+                eml_nodes::opcode::MUL,
+                eml_nodes::opcode::CLAMP_BOUNDED,
+                eml_nodes::opcode::EXP,
+                eml_nodes::opcode::RETURN_TOP,
+            ]
+        );
+        let values = [4.0, 0.0];
+        assert_eq!(
+            eval_eml_postfix(&compiled.nodes, 0, &values, 2).to_bits(),
+            oracle_power_law(4.0, 2.0, positive_floor()).to_bits(),
+        );
+
+        // Unsafe authoring table: LN domain and coefficient must be decidable
+        // before the nodes can reach any execution consumer.
+        for floor in [0.0, -1.0, f32::from_bits(1), f32::NAN, f32::INFINITY] {
+            let error = compile_eml_gadget(
+                &EmlGadgetInstanceSpec::PowerLaw {
+                    id: "unsafe-law".into(),
+                    input_col: 0,
+                    output_col: None,
+                    exponent: 1.0,
+                    input_floor: floor,
+                },
+                EmlGadgetCompileOptions { max_col: 1 },
+            )
+            .expect_err("LN-unsafe authored law must RED before execution");
+            assert!(error
+                .to_string()
+                .contains("power_law_ln_domain_uncertified"));
+        }
+
+        for exponent in [f32::NAN, f32::NEG_INFINITY, f32::INFINITY] {
+            let error = compile_eml_gadget(
+                &EmlGadgetInstanceSpec::PowerLaw {
+                    id: "non-finite-law".into(),
+                    input_col: 0,
+                    output_col: None,
+                    exponent,
+                    input_floor: positive_floor(),
+                },
+                EmlGadgetCompileOptions { max_col: 1 },
+            )
+            .expect_err("non-finite authored exponent must RED before execution");
+            assert!(error.to_string().contains("power_law_exponent_non_finite"));
+        }
+
+        // Semantic staircase mutant; the id/variant spelling is not the test.
+        let staircase = vec![
+            node_slot(0),
+            node_literal(2.0),
+            node_cmp_ge(),
+            node_literal(4.0),
+            node_literal(1.0),
+            node_select(),
+            node_return_top(),
+        ];
+        let error = validate_power_law_semantics(&staircase, 0, 2.0, positive_floor(), "PowerLaw")
+            .expect_err("piecewise replacement of the law-stating role must RED");
+        assert!(error
+            .to_string()
+            .contains("power_law_intrinsic_semantics_required"));
     }
 }

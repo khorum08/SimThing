@@ -14,12 +14,12 @@ use simthing_core::{
 use simthing_driver::{
     build_execution_plan, check_conservation, resolve_node_columns_for_property,
     run_arena_allocation_oracle, AllocatorStepObservation, ArenaConservationSnapshot,
-    ArenaMemberObservation, ArenaStructuralEvidence, ResourceFlowFlagSource, Scenario, SimSession,
+    ArenaMemberObservation, ArenaStructuralEvidence, Scenario, SimSession,
 };
 use simthing_gpu::SlotAllocator;
 use simthing_spec::{
     compile_property, deserialize_game_mode_ron, BaseFlowDirectionSpec, ExplicitParticipantSpec,
-    GameModeSpec, ResourceFlowOptInMode,
+    GameModeSpec,
 };
 
 const CATEGORY_FIXTURE: &str = include_str!("fixtures/ct2c_categories.clause");
@@ -136,7 +136,6 @@ fn balance_subfield() -> SubFieldSpec {
 
 fn admit_recursive_default_proof(game_mode: &mut GameModeSpec) {
     let resource_flow = game_mode.resource_flow.as_mut().expect("resource flow");
-    resource_flow.opt_in_mode = ResourceFlowOptInMode::Disabled;
     for arena in &mut resource_flow.arenas {
         arena.balance_property = Some(arena.flow_property.clone());
     }
@@ -178,12 +177,7 @@ fn gpu_category_micro_economy_matches_arena_allocation_oracle() {
 
     let hydrated = hydrate_category();
     let mut session = open_ct2c_session(&hydrated);
-    assert!(session.proto.flags.use_accumulator_resource_flow);
-    assert_eq!(
-        session.resource_flow_flag_source,
-        ResourceFlowFlagSource::ScenarioClassDefaultOn,
-        "ct_2c must exercise recursive Arena RF through the ordinary default profile"
-    );
+    assert!(session.state.accumulator_resource_flow_active);
 
     let flow_id = session
         .proto
@@ -369,9 +363,8 @@ fn gpu_category_micro_economy_matches_arena_allocation_oracle() {
         "unchanged RF-1 must judge ct_2c: {report:?}"
     );
     println!(
-        "RF3-CT2C: participants={} disbursed={disbursed:?} residual={residual} balance_delta={root_balance_delta} rf1=PASS flag_source={:?}",
+        "RF3-CT2C: participants={} disbursed={disbursed:?} residual={residual} balance_delta={root_balance_delta} rf1=PASS converged_path=active",
         1 + leaves.len(),
-        session.resource_flow_flag_source,
     );
 
     drop(session);

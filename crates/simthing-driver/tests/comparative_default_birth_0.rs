@@ -49,7 +49,6 @@ fn empty_game_mode(region_fields: Vec<RegionFieldSpec>) -> GameModeSpec {
         events: Vec::new(),
         resource_flow: None,
         resource_economy: None,
-        resource_flow_execution_profile: Default::default(),
         region_fields,
         mapping_execution_profile: MappingExecutionProfile::default(),
     }

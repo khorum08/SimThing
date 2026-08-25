@@ -281,7 +281,6 @@ fn hydrate_field_operator_body(
             events: vec![],
             resource_flow: None,
             resource_economy: None,
-            resource_flow_execution_profile: Default::default(),
             region_fields: vec![region_field],
             mapping_execution_profile: MappingExecutionProfile::Disabled,
         },

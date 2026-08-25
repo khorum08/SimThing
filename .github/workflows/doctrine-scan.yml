@@ -297,6 +297,12 @@ jobs:
           set -o pipefail
           bash scripts/ci/doctrine_selftest.sh | tee doctrine-selftest-report.txt
 
+      - name: Doctrine exec review context selftest
+        if: steps.gate.outputs.run_selftests == 'true'
+        run: |
+          set -o pipefail
+          python3 scripts/ci/doctrine_exec_review_context_selftest.py --selftest 2>&1 | tee doctrine-exec-review-context-selftest-report.txt
+
       - name: Doctrine scan (PR delta)
         if: github.event_name == 'pull_request'
         run: |
@@ -331,6 +337,11 @@ jobs:
             echo "## Doctrine self-test"
             echo '```'
             cat doctrine-selftest-report.txt 2>/dev/null || true
+            echo '```'
+            echo
+            echo "## Doctrine exec review context selftest"
+            echo '```'
+            cat doctrine-exec-review-context-selftest-report.txt 2>/dev/null || true
             echo '```'
             echo
             echo "## Sanctioned surface digest freshness"
@@ -387,6 +398,7 @@ jobs:
             doctrine-constitutional-surface-report.txt
             doctrine-lifecycle-schema-gate-report.txt
             doctrine-selftest-report.txt
+            doctrine-exec-review-context-selftest-report.txt
             doctrine-scan-report.txt
             doctrine-triage-report.txt
           if-no-files-found: ignore

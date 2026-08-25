@@ -3,6 +3,7 @@ use crate::version::SpecVersion;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct GameModeSpec {
     pub id: String,
     pub display_name: String,
@@ -32,12 +33,6 @@ pub struct GameModeSpec {
     /// Production transfer / recipe / emission / threshold-emit registrations (Phase T).
     #[serde(default)]
     pub resource_economy: Option<super::resource_economy::ResourceEconomySpec>,
-    /// RF-2: admitted Arena Resource Flow execution profile at session open.
-    ///
-    /// Defaults to the executed Arena path. An explicit `DefaultDisabled` remains available;
-    /// execution still requires an admitted derived or authored-override arena.
-    #[serde(default)]
-    pub resource_flow_execution_profile: super::resource_flow::ResourceFlowExecutionProfile,
     /// Sparse RegionCell mapping field declarations (Phase M-3). Structure only; does not enable execution.
     #[serde(default)]
     pub region_fields: Vec<super::region_field::RegionFieldSpec>,

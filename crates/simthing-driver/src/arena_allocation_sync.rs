@@ -18,7 +18,6 @@ pub struct ResourceFlowSyncReport {
     pub arenas_planned: u32,
     pub total_ops: u32,
     pub n_bands: u32,
-    pub enabled: bool,
 }
 
 #[derive(Debug, Error)]
@@ -56,7 +55,7 @@ fn compose_pre_band_map(has_gated_rates: bool, has_need_bindings: bool) -> PreBa
     }
 }
 
-/// Plan and upload E-11 allocation ops when `use_accumulator_resource_flow` is enabled.
+/// Plan and upload E-11 allocation ops through the sole production path.
 ///
 /// When gated rates exist (CT-RF-EML-RATE-0), every arena op shifts up one
 /// OrderBand and the effective-rate `EvalEML` ops occupy band 0, so the
@@ -67,7 +66,6 @@ pub fn sync_resource_flow_accumulator(
     arena_registry: &ArenaRegistry,
     gated_rates: &[crate::gated_rates::ResolvedGatedRate],
     need_bindings: &[crate::need_binding::ResolvedNeedBinding],
-    enabled: bool,
 ) -> Result<ResourceFlowSyncReport, ResourceFlowSyncError> {
     sync_resource_flow_accumulator_with_options(
         state,
@@ -75,7 +73,6 @@ pub fn sync_resource_flow_accumulator(
         arena_registry,
         gated_rates,
         need_bindings,
-        enabled,
         true,
     )
 }
@@ -87,15 +84,11 @@ pub(crate) fn sync_resource_flow_accumulator_with_options(
     arena_registry: &ArenaRegistry,
     gated_rates: &[crate::gated_rates::ResolvedGatedRate],
     need_bindings: &[crate::need_binding::ResolvedNeedBinding],
-    enabled: bool,
     include_need_stage_projections: bool,
 ) -> Result<ResourceFlowSyncReport, ResourceFlowSyncError> {
-    if !enabled || arena_registry.arenas.is_empty() {
+    if arena_registry.arenas.is_empty() {
         state.clear_resource_flow_accumulator();
-        return Ok(ResourceFlowSyncReport {
-            enabled: false,
-            ..Default::default()
-        });
+        return Ok(ResourceFlowSyncReport::default());
     }
 
     let plan = build_execution_plan(registry, arena_registry)?;
@@ -166,7 +159,6 @@ pub(crate) fn sync_resource_flow_accumulator_with_options(
         arenas_planned: plan.arenas.len() as u32,
         total_ops: combined_cpu.len() as u32,
         n_bands: max_bands,
-        enabled: true,
     })
 }
 
