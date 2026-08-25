@@ -14,7 +14,7 @@
 - Coding branch: `coder/embedder-guide-exemplars-0` (resume draft #1803)
 - Handoff `base_sha`: `c0f8a1de46245b4479ae08abea88e389be2fdd1e`
 - Synchronized live master: `0bf9810d072d634f344b1fe4c663c6d9031fb426`
-- tested_code_sha: pending implementation commit
+- tested_code_sha: `cf48009df1a4e36d395adc0c1192fc749141dc7f`
 - Pointer: 11.2 only. No merge, no 11.3/11.4/12.x.
 
 ## Master sync
@@ -61,6 +61,8 @@ contest/border/chokepoint columns. Generic thresholds are not used.
 | `embedder_guide_exemplars_check.sh --selftest` | live_shape / staircase / door_import / guide_path / rename PASS |
 | DOC-BUDGET (`docs/embedders_guide.md` 115 / 120) | PASS |
 | inventory / detachability / orientation / digest | PASS |
+| `lifecycle_schema_pr_gate.sh` vs `0bf9810d` | PASS |
+| `agent_scan.sh` at `cf48009d` vs `0bf9810d` | PASS `delta_inspect=0` |
 
 ## Scope disposition
 
