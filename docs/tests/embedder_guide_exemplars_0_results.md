@@ -2,123 +2,65 @@
 
 - Track: 0.0.8.7 RF arena modernization (rung 11.2)
 - Status: **PROBATION / proof-present / DA-review-pending**
-- Dispatch: board comment `5381072419`
+- Resume dispatch: board/PR comment `5403241597`
+- DA authorization: `5403211098`
 - Canonical handoff: `handoffs/EMBEDDER-GUIDE-EXEMPLARS-0.hd.md`
-- HD-RECEIPT: `890b845b5655`
+- HD-RECEIPT: `99644421d2bd` (retired `890b845b5655` / `aff35cbd509a` never dispatched)
 - ORIENT-RECEIPT: `a5dc59920dd4`
 - Orientation rule stamp: `61818ff7d4adda84`
 - ANCHOR-ACK: `orientation-harness-core@8a365d1c0864`
 - ANCHOR-ACK: `scanner-selftest-delta-gate@34fb2662baae`
 - Expected route: `DA-RESERVE(gate-wiring)`
-- Coding branch: `coder/embedder-guide-exemplars-0`
-- Canonical base (handoff `base_sha`): `fc313a21e95d0853e93d2e3680ddc671f03bac4b`
-- Live PR base (current master at dispatch): `680e2d423101ba758050fa90d5ed424a46f32d2d`
-- tested_code_sha: `06c1595d787ccff23e3865cb8d23197b0d714e78`
-- Pointer: 11.2 only. No merge, no pointer movement, no 11.3/12.x.
-- Remand: board comment `5383217941` (two verification gaps)
+- Coding branch: `coder/embedder-guide-exemplars-0` (resume draft #1803)
+- Handoff `base_sha`: `c0f8a1de46245b4479ae08abea88e389be2fdd1e`
+- Synchronized live master: `0bf9810d072d634f344b1fe4c663c6d9031fb426`
+- tested_code_sha: pending implementation commit
+- Pointer: 11.2 only. No merge, no 11.3/11.4/12.x.
 
-## Remand 5383217941
+## Master sync
 
-### Gap 1 — STOP (door cannot reach Field Triad)
+FIRST STEP merged `origin/master` into #1803. Stale branch-side Vendor Door
+re-exports (`eml_exp_pinned_f32` / `eml_ln_pinned_f32` / `Direction` on
+populate/bind, `TransformOp` on overlay) were surrendered to the graduated
+master door. One onboarding re-export remains: `populate::SimPropertyId`,
+required to name Overlay's property id from the frozen finance exemplar.
 
-The five-verb surface does not execute PALMA potential/corridor, Gu-Yang
-saturating-flux/front, or derived contest/chokepoint.
+## Census (current five-verb door)
 
-Exact missing interface, all already-landed in `simthing-driver` /
-`simthing-gpu` and **not** on `simthing-embedder` or `SimSession`:
-
-- `admit_comparative_projections` / `compile_comparative_bundle` /
-  `comparative_projection_cpu_oracle`
-- `compile_palma_n4_field_sweep` / `compile_gu_yang_n4_field_sweeps`
-- `FieldAdjacency` + `execute_field_sweep_cpu_chain` (`simthing-gpu`;
-  embedder has no gpu dependency; driver does not re-export `FieldAdjacency`)
-- `SimSession::open_from_spec` / `step_once` contain zero comparative /
-  palma / guyang references
-
-Wiring those onto Bind/Run would be a new simulation path behind the guide,
-or an engine edit to make `Run::tick` execute the Triad. Both are fenced.
-Generic velocity/aggregate thresholds are not that path. No second field
-mechanism was added.
-
-### Gap 2 — repaired (authored-law check)
-
-The CI gate now resolves local `use … as` / `let` aliases onto the admitted
-`eml_exp_pinned_f32` / `eml_ln_pinned_f32` callees, then requires their
-composition `exp(k * ln x)`. A staircase without that composition REDs as
-`FAIL(authored-law-staircase)`. Selftest `selftest_rename` aliases the
-callees to `exp`/`ln` and the law verdict stays PASS. Cargo still owns the
-runtime bits comparison (`3.4` vs `2.5` at ratio 2.0). CI still runs no cargo.
-
-## Archaeology (first step)
-
-Read `crates/simthing-embedder/src` and `tests/vendor_door_0.rs` before writing
-the guide. The five-verb door already exists. The guide and exemplars call it.
-
-The door did not re-export every type a cold reader needs to *call* the verbs
-without an engine-crate `use`. Adding those re-exports on the verb modules is
-onboarding surface, not a new evaluator, authority, opcode, or simulation path.
-No engine crate was edited. No scenario pack was wired. `POW` was not minted.
-
-## Surfaces
-
-| Path | Role |
+| Verb | Graduated surface used by 11.2 |
 |---|---|
-| `docs/embedders_guide.md` | DOC-BUDGET-capped cold-reader five-verb guide (103 / 120 lines) |
-| `crates/simthing-embedder/tests/finance_toy_0.rs` | finance-toy exemplar: Derive → Populate → Overlay → Bind → Run |
-| `crates/simthing-embedder/tests/network_saturation_triad_0.rs` | network-saturation full-Triad + authored `exp(k * ln x)` law |
-| `crates/simthing-embedder/src/{populate,overlay,bind}.rs` | re-export existing types/primitives needed to call the door |
-| `scripts/ci/embedder_guide_exemplars_check.sh` | CI admission gate (no cargo) |
-| `scripts/ci/fixtures/embedder_guide/known_bad_staircase.rs` | planted staircase defect |
-| `scripts/ci/doctrine_scan.sh` / `.github/workflows/doctrine-scan.yml` | stock-gate + GHA check/selftest pair |
-| `scripts/ci/doc_budget_baseline.tsv` | new row `docs/embedders_guide.md` cap 120 |
-| `scripts/ci/test_inventory.tsv` | three exemplar rows + planted-fixture row |
+| Derive | `owner_seat`, `ComparativeEmitterClass`, `EmlGadgetInstanceSpec::PowerLaw`, `compile_eml_gadget_stack` |
+| Populate | tree/RF authoring, `compile_property`, `RegionFieldSpec`, `SlotAllocator` |
+| Overlay | `authored` finite-horizon overlay |
+| Bind | `compile_palma_n4_field_sweep`, `compile_gu_yang_n4_field_sweeps`, `observe_gu_yang_stall`, `authored_column` |
+| Run | `initialize`, `initialize_with_admitted_field_sweeps`, `start`, `tick`, `serialize` |
 
-## Five-verb teaching order
-
-Derive, Populate, Overlay, Bind, Run. Every rust fence in the guide is a
-verbatim substring of an exemplar that runs. Cited paths:
-
-- `crates/simthing-embedder/tests/finance_toy_0.rs`
-- `crates/simthing-embedder/tests/network_saturation_triad_0.rs`
+No direct engine imports in the two exemplars.
 
 ## Authored law
 
-Volume-delay is `1 + 0.15 * (v/c)^4`, composed as
-`eml_exp_pinned_f32(4.0 * eml_ln_pinned_f32(ratio))`. At ratio `2.0` the law
-is `3.4`; the piecewise rival is `2.5`; the bits disagree. No `POW` opcode.
+Volume-delay is admitted `PowerLaw { exponent: 4.0, input_floor: 0.25 }`.
+An LN-unsafe floor (`0.0`) REDs at compile. CI detects `EmlGadgetInstanceSpec::PowerLaw`
+plus `input_floor` after type-alias resolution. A staircase plant REDs
+`FAIL(authored-law-staircase)`. `selftest_rename` aliases the type and
+renames the gadget id; law verdict stays PASS. No `POW` opcode.
 
-Need / corridor / front / chokepoint are ordinary Bind velocity and aggregate
-thresholds over tree + overlay-born values. They are not hand-fed readouts.
+## Network full Triad
 
-## Biting falsifiers
-
-| Planted rival | Named RED |
-|---|---|
-| Staircase / piecewise volume-delay without EXP/LN composition | `FAIL(authored-law-staircase)` |
-| Engine-crate `use` in an exemplar | `FAIL(door-import:<crate>)` |
-| Guide cites a missing exemplar path | `FAIL(guide-path:...)` |
-| Guide rust fence not present in an exemplar | `FAIL(guide-drift:...)` |
-| Staircase bits equal to `exp(k * ln x)` at ratio 2.0 | cargo assert in `volume_delay_power_law_reds_a_staircase_rival` |
-
-Renaming a local symbol does not trip the gate. Replacing the law with a
-staircase does.
+`network_saturation_triad_0` declares two competing load-class emitters,
+admits PALMA + Gu-Yang through Bind, enters
+`run::initialize_with_admitted_field_sweeps`, and observes born stall plus
+contest/border/chokepoint columns. Generic thresholds are not used.
 
 ## Evidence
 
 | Command / proof | Result |
 |---|---|
-| `cargo test -p simthing-embedder --test finance_toy_0 --test network_saturation_triad_0 --test vendor_door_0 -- --test-threads=1` | PASS — 1 + 2 + 6 |
-| `embedder_guide_exemplars_check.sh --check` | `EMBEDDER-GUIDE-EXEMPLARS-VERDICT: PASS` |
+| `cargo test -p simthing-embedder --test finance_toy_0 --test network_saturation_triad_0 --test vendor_door_0 --test vendor_door_triad_surface_0 -- --test-threads=1` | PASS 1 + 2 + 6 + 2 |
+| `embedder_guide_exemplars_check.sh --check` | PASS |
 | `embedder_guide_exemplars_check.sh --selftest` | live_shape / staircase / door_import / guide_path / rename PASS |
-| `doc_budget_check.sh --check` | PASS |
-| `test_inventory_drift_check.sh` | PASS (1307/1307) |
-| `test_lifecycle_expiry_check.sh --schema` | PASS |
-| Detachability | PASS `production_coupling=0 proof_coupling=0 ceiling=0` |
-| `gen_orientation.sh --check` | PASS |
-| `gen_digest.sh --check` | PASS |
-| `lifecycle_schema_pr_gate.sh 680e2d42..06c1595d` | PASS |
-| `agent_scan.sh` at `06c1595d` | PASS `delta_inspect=0` `DOCTRINE-SCAN-VERDICT: PASS failures=0 inspect=0` |
-| Hosted Doctrine Scan | pending push |
+| DOC-BUDGET (`docs/embedders_guide.md` 115 / 120) | PASS |
+| inventory / detachability / orientation / digest | PASS |
 
 ## Scope disposition
 

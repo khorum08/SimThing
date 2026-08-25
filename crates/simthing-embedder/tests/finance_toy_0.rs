@@ -26,7 +26,7 @@ fn finance_mark_overlay(
             property_id,
             sub_field_deltas: vec![(
                 populate::SubFieldRole::Amount,
-                overlay::TransformOp::set(110.0),
+                populate::TransformOp::set(110.0),
             )],
         },
         vec![overlay::DissolveCondition::AtSessionEnd],

@@ -1331,3 +1331,5 @@ date	role	query	anchors_served	hit
 2026-08-24T22:49:49Z	coding	--grep core-property-value-model	core-property-value-model	hit
 2026-08-24T22:49:49Z	coding	--grep exact-numeric-candidate-f	exact-numeric-candidate-f	hit
 2026-08-24T22:49:49Z	coding	--grep one-tree-owners-never-spatial	one-tree-owners-never-spatial	hit
+2026-08-25T00:33:04Z	coding	--grep orientation-harness-core	orientation-harness-core	hit
+2026-08-25T00:33:05Z	coding	--grep scanner-selftest-delta-gate	scanner-selftest-delta-gate	hit

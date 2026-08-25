@@ -34,20 +34,13 @@ ENGINE_CRATE = re.compile(
 PATH_RE = re.compile(r"crates/simthing-embedder/tests/[A-Za-z0-9_./-]+\.rs")
 FENCE_RE = re.compile(r"```(?:rust)?\n(.*?)```", re.S)
 STAIR_RE = re.compile(r"else if [^\n]*<\s*[0-9]", re.M)
-ADMITTED_EXP = "eml_exp_pinned_f32"
-ADMITTED_LN = "eml_ln_pinned_f32"
-COMPOSITION_RE = re.compile(
-    rf"{ADMITTED_EXP}\s*\([\s\S]{{0,200}}?{ADMITTED_LN}",
-    re.S,
-)
+POWERLAW_RE = re.compile(r"EmlGadgetInstanceSpec::PowerLaw\s*\{")
+FLOOR_RE = re.compile(r"input_floor\s*:")
 USE_BRACE_RE = re.compile(
-    r"use\s+(?:simthing_embedder::)?populate::\{([^}]+)\}"
+    r"use\s+(?:simthing_embedder::)?derive::\{([^}]+)\}"
 )
 USE_PATH_RE = re.compile(
-    r"use\s+(?:simthing_embedder::)?populate::(eml_(?:exp|ln)_pinned_f32)(?:\s+as\s+(\w+))?"
-)
-LET_BIND_RE = re.compile(
-    r"let\s+(\w+)\s*=\s*(?:populate::)?(eml_(?:exp|ln)_pinned_f32)\s*;"
+    r"use\s+(?:simthing_embedder::)?derive::EmlGadgetInstanceSpec(?:\s+as\s+(\w+))?"
 )
 
 
@@ -60,35 +53,30 @@ def pass_ok() -> None:
     print("EMBEDDER-GUIDE-EXEMPLARS-VERDICT: PASS")
 
 
-def resolve_admitted_callees(src: str) -> str:
-    """Map local aliases / let-bindings onto the admitted EXP/LN callees.
-
-    The law check is composition-shaped after this rewrite, so renaming a
-    local identifier does not change the verdict.
+def resolve_powerlaw_type(src: str) -> str:
+    """Map local aliases onto EmlGadgetInstanceSpec so id/type renames do not
+    change the authored-law verdict.
     """
     aliases: dict[str, str] = {}
     for block in USE_BRACE_RE.findall(src):
         for item in block.split(","):
             item = item.strip()
-            m = re.match(r"(eml_(?:exp|ln)_pinned_f32)(?:\s+as\s+(\w+))?", item)
+            m = re.match(r"EmlGadgetInstanceSpec(?:\s+as\s+(\w+))?", item)
             if m:
-                aliases[m.group(2) or m.group(1)] = m.group(1)
+                aliases[m.group(1) or "EmlGadgetInstanceSpec"] = "EmlGadgetInstanceSpec"
     for m in USE_PATH_RE.finditer(src):
-        aliases[m.group(2) or m.group(1)] = m.group(1)
-    for m in LET_BIND_RE.finditer(src):
-        aliases[m.group(1)] = m.group(2)
-    out = re.sub(rf"(?:populate::)?{ADMITTED_EXP}", ADMITTED_EXP, src)
-    out = re.sub(rf"(?:populate::)?{ADMITTED_LN}", ADMITTED_LN, out)
+        aliases[m.group(1) or "EmlGadgetInstanceSpec"] = "EmlGadgetInstanceSpec"
+    out = src
     for local, canon in sorted(aliases.items(), key=lambda kv: -len(kv[0])):
-        if local in {ADMITTED_EXP, ADMITTED_LN}:
+        if local == canon:
             continue
-        out = re.sub(rf"\b{re.escape(local)}\b", canon, out)
+        out = re.sub(rf"\b{re.escape(local)}::PowerLaw\b", f"{canon}::PowerLaw", out)
     return out
 
 
 def authored_law_reason(joined: str) -> str | None:
-    resolved = resolve_admitted_callees(joined)
-    if COMPOSITION_RE.search(resolved):
+    resolved = resolve_powerlaw_type(joined)
+    if POWERLAW_RE.search(resolved) and FLOOR_RE.search(joined):
         return None
     if STAIR_RE.search(joined):
         return "authored-law-staircase"
@@ -118,7 +106,7 @@ def check_tree(root: Path) -> str | None:
             return f"door-import:{hit.group(1)}"
     joined = "\n".join(bodies)
     # Law before guide-drift so a planted staircase REDs for the law, not a
-    # missing rust fence that cited the exp/ln composition.
+    # missing rust fence that cited the PowerLaw gadget.
     law = authored_law_reason(joined)
     if law:
         return law
@@ -223,17 +211,16 @@ def run_selftest() -> None:
     )
 
     def plant_rename(p: Path) -> None:
-        # Local aliases keep exp(k * ln x) and the staircase rival. The
-        # admitted callees disappear from call sites; only `as` imports remain.
+        # Local type alias plus gadget-id rename keep PowerLaw + input_floor.
         path = p / "crates/simthing-embedder/tests/network_saturation_triad_0.rs"
         body = path.read_text(encoding="utf-8")
         body = body.replace(
             "use simthing_embedder::{bind, derive, overlay, populate, run};",
             "use simthing_embedder::{bind, derive, overlay, populate, run};\n"
-            "use simthing_embedder::populate::{eml_exp_pinned_f32 as exp, eml_ln_pinned_f32 as ln};",
+            "use simthing_embedder::derive::EmlGadgetInstanceSpec as Gadget;",
         )
-        body = body.replace("populate::eml_exp_pinned_f32", "exp")
-        body = body.replace("populate::eml_ln_pinned_f32", "ln")
+        body = body.replace("derive::EmlGadgetInstanceSpec::PowerLaw", "Gadget::PowerLaw")
+        body = body.replace('"volume-delay"', '"renamed-law"')
         path.write_text(body, encoding="utf-8")
 
     case(

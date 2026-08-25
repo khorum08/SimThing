@@ -1,6 +1,6 @@
 # Embedder Guide
 
-Cold-reader surface for the Vendor Door graduated at 11.1. Five verbs, in order: **Derive, Populate, Overlay, Bind, Run**. No engine edits. No scenario-side wiring. `POW` is not an admitted opcode; a power law is `exp(k * ln x)` from admitted `EXP` and `LN`.
+Cold-reader surface for the Vendor Door. Five verbs, in order: **Derive, Populate, Overlay, Bind, Run**. No engine edits. No scenario-side wiring. The only ingress is this door: unified authoring → RF Triad resolution → domain contention → unified SimThing execution. `POW` is not an opcode. Authored power is `EmlGadgetInstanceSpec::PowerLaw` with a positive `input_floor`.
 
 Every rust block below is copied from an exemplar that runs. Do not paraphrase the blocks; if they drift, the admission gate fails.
 
@@ -47,7 +47,7 @@ An overlay needs an in-tree origin and a non-empty horizon. From `crates/simthin
             property_id,
             sub_field_deltas: vec![(
                 populate::SubFieldRole::Amount,
-                overlay::TransformOp::set(110.0),
+                populate::TransformOp::set(110.0),
             )],
         },
         vec![overlay::DissolveCondition::AtSessionEnd],
@@ -72,32 +72,44 @@ Initialize, start, tick, observe, serialize. From `crates/simthing-embedder/test
 
 ## Network saturation (full Triad)
 
-Need, corridor, front, and chokepoint are ordinary Bind thresholds over values the tree and overlay produce. They are not hand-fed. From `crates/simthing-embedder/tests/network_saturation_triad_0.rs`:
+Declare competing emitters, admit PALMA and Gu-Yang through Bind, and observe born comparative outputs. Generic thresholds are not a substitute. From `crates/simthing-embedder/tests/network_saturation_triad_0.rs`:
 
 ```rust
-    let mut scenario = run::Scenario::map_light("network-saturation".into(), 1, 2, 1.0, 5);
-```
-
-```rust
-    bind::velocity_threshold(
-        &mut session,
-        bind::VelocityAlertRegistration {
-            sim_thing_id: origin.id,
-            property_id: pid,
-            sub_field: populate::SubFieldRole::Velocity,
-            threshold: 0.0,
-            direction: populate::Direction::Rising,
-            cost_band: cost_band.clone(),
+        derive::ComparativeEmitterClass {
+            authored_order: 0,
+            class_id: 0.0,
+            value_col: col(1, authored_bound),
         },
-    );
 ```
-
-## Authored law: power as EXP and LN
-
-Volume-delay is `1 + 0.15 * (v/c)^4`, composed as `exp(4 * ln ratio)`. From `crates/simthing-embedder/tests/network_saturation_triad_0.rs`:
 
 ```rust
-    let delay = 1.0 + 0.15 * populate::eml_exp_pinned_f32(4.0 * populate::eml_ln_pinned_f32(ratio));
+            let palma = bind::compile_palma_n4_field_sweep(bind::PalmaN4FieldSweepSpec {
+                width: 2,
+                height: 2,
+                n_dims,
+                d_col: col(10, authored_bound),
+                w_col: col(13, authored_bound),
+                destination_slot: bind::SlotIndex::new(0),
+                inf_sentinel: f32::MAX,
+            })?;
 ```
 
-A staircase or piecewise ladder is the rival; it must disagree. Do not mint `POW`.
+```rust
+    let observed = bind::observe_gu_yang_stall(&session).expect("born Gu-Yang stall");
+```
+
+## Authored law: PowerLaw gadget
+
+Volume-delay is the admitted gadget, not a staircase and not a hand-rolled `exp(k * ln x)` call. From `crates/simthing-embedder/tests/network_saturation_triad_0.rs`:
+
+```rust
+        gadgets: vec![derive::EmlGadgetInstanceSpec::PowerLaw {
+            id: "volume-delay".into(),
+            input_col: 0,
+            output_col: Some(1),
+            exponent: 4.0,
+            input_floor: 0.25,
+        }],
+```
+
+A staircase or piecewise ladder is the rival. Do not mint `POW`.
