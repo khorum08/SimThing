@@ -1,7 +1,7 @@
 # EMBEDDER-GUIDE-EXEMPLARS-0 results
 
 - Track: 0.0.8.7 RF arena modernization (rung 11.2)
-- Status: **PROBATION / proof-present / DA-review-pending**
+- Status: **COMPLETE — DA-GRADUATED / merged #1803 @ `9a883cc3`** (Fable deep review, graduation ruling on Board #1332)
 - Resume dispatch: board/PR comment `5403241597`
 - DA authorization: `5403211098`
 - Canonical handoff: `handoffs/EMBEDDER-GUIDE-EXEMPLARS-0.hd.md`
