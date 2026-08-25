@@ -15,7 +15,7 @@ use simthing_core::{
 use thiserror::Error;
 
 use super::channel_key::OwnerChannelScopeKey;
-use super::owner_channel_rf::OwnerChannelRfReduceUpReport;
+use super::owner_channel_rf::{OwnerChannelRfReduceUpReport, StampedReduceUpProduct};
 use super::owner_silo_disburse_down::RuntimeOwnerSiloDemandBucket;
 
 /// Existing runtime demand plus its authored price/weight input.
@@ -141,6 +141,17 @@ pub struct ConstrainedClearingResult {
     pub grants: Vec<ConstrainedGrant>,
 }
 
+/// Authority for deterministic largest-remainder tie rotation.
+///
+/// The granter owns the generation counter. This is not a clock or scheduler:
+/// it is the already-recorded logical identity + generation pair under which a
+/// clearing decision is made.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ClearingRemainderAuthority {
+    pub granter: SimThingId,
+    pub generation: GenerationStamp,
+}
+
 impl ConstrainedClearingResult {
     /// Oversubscription is an observation of this one path, never a route.
     pub fn is_oversubscribed(&self) -> bool {
@@ -187,6 +198,28 @@ pub fn clear_constrained_claims(
     supplies: &[ConstrainedSupply],
     claims: &[ConstrainedClaim],
     program: &AuthoredClearingProgram,
+) -> Result<Vec<ConstrainedClearingResult>, ConstrainedClearingError> {
+    // Compatibility entry point for pre-market callers. The StemThing-B
+    // market door uses `clear_constrained_claims_at_generation`, which binds
+    // tie rotation to the real granter generation.
+    clear_constrained_claims_at_generation(
+        supplies,
+        claims,
+        program,
+        ClearingRemainderAuthority {
+            granter: SimThingId::from_session_raw(0),
+            generation: GenerationStamp::new(0),
+        },
+    )
+}
+
+/// Clear bounded supplies with work-conserving largest remainder and rotate
+/// exact fractional ties under the owning granter's generation authority.
+pub fn clear_constrained_claims_at_generation(
+    supplies: &[ConstrainedSupply],
+    claims: &[ConstrainedClaim],
+    program: &AuthoredClearingProgram,
+    authority: ClearingRemainderAuthority,
 ) -> Result<Vec<ConstrainedClearingResult>, ConstrainedClearingError> {
     let mut supply_by_scope = BTreeMap::new();
     for supply in supplies {
@@ -252,6 +285,7 @@ pub fn clear_constrained_claims(
             };
             let available_for_band = u64::from(remaining).min(requested_total);
             let mut band_grants = Vec::with_capacity(end - cursor);
+            let mut fractional_remainders = Vec::with_capacity(end - cursor);
             let mut base_total = 0u64;
             for row in &scored[cursor..end] {
                 let numerator = available_for_band
@@ -266,13 +300,41 @@ pub fn clear_constrained_claims(
                     .checked_add(base)
                     .ok_or(ConstrainedClearingError::ArithmeticOverflow)?;
                 band_grants.push(base as u32);
+                fractional_remainders.push(numerator % requested_total);
             }
             let leftover = available_for_band
                 .checked_sub(base_total)
                 .ok_or(ConstrainedClearingError::ArithmeticOverflow)?
                 as usize;
-            for grant in band_grants.iter_mut().take(leftover) {
-                *grant = grant
+            let mut remainder_order: Vec<usize> = (0..band_grants.len()).collect();
+            remainder_order.sort_by(|&left, &right| {
+                fractional_remainders[right]
+                    .cmp(&fractional_remainders[left])
+                    .then_with(|| {
+                        scored[cursor + left]
+                            .claim
+                            .source_simthing_id
+                            .cmp(&scored[cursor + right].claim.source_simthing_id)
+                    })
+            });
+            let mut tie_start = 0usize;
+            while tie_start < remainder_order.len() {
+                let remainder = fractional_remainders[remainder_order[tie_start]];
+                let mut tie_end = tie_start + 1;
+                while tie_end < remainder_order.len()
+                    && fractional_remainders[remainder_order[tie_end]] == remainder
+                {
+                    tie_end += 1;
+                }
+                let tie_len = tie_end - tie_start;
+                let rotation = (u64::from(authority.granter.raw())
+                    + u64::from(authority.generation.get()))
+                    % tie_len as u64;
+                remainder_order[tie_start..tie_end].rotate_left(rotation as usize);
+                tie_start = tie_end;
+            }
+            for &index in remainder_order.iter().take(leftover) {
+                band_grants[index] = band_grants[index]
                     .checked_add(1)
                     .ok_or(ConstrainedClearingError::ArithmeticOverflow)?;
             }
@@ -324,6 +386,24 @@ pub fn clear_reduced_owner_channels(
     authored: &[AuthoredClaimClearingData],
     program: &AuthoredClearingProgram,
 ) -> Result<Vec<ConstrainedClearingResult>, ConstrainedClearingError> {
+    clear_reduced_owner_channels_at_generation(
+        report,
+        authored,
+        program,
+        ClearingRemainderAuthority {
+            granter: SimThingId::from_session_raw(0),
+            generation: GenerationStamp::new(0),
+        },
+    )
+}
+
+/// Bind stamped owner-channel RF to generation-authoritative market clearing.
+pub fn clear_reduced_owner_channels_at_generation(
+    report: &OwnerChannelRfReduceUpReport,
+    authored: &[AuthoredClaimClearingData],
+    program: &AuthoredClearingProgram,
+    authority: ClearingRemainderAuthority,
+) -> Result<Vec<ConstrainedClearingResult>, ConstrainedClearingError> {
     let mut authored_by_source = BTreeMap::new();
     for row in authored {
         let source_id = row
@@ -364,7 +444,26 @@ pub fn clear_reduced_owner_channels(
             )?);
         }
     }
-    clear_constrained_claims(&supplies, &claims, program)
+    clear_constrained_claims_at_generation(&supplies, &claims, program, authority)
+}
+
+/// Canonical market binding: derive remainder rotation from the stamped RF
+/// product itself, so a caller cannot pair claims with a different generation.
+pub fn clear_stamped_owner_channels(
+    stamped: &StampedReduceUpProduct,
+    authored: &[AuthoredClaimClearingData],
+    program: &AuthoredClearingProgram,
+    granter: SimThingId,
+) -> Result<Vec<ConstrainedClearingResult>, ConstrainedClearingError> {
+    clear_reduced_owner_channels_at_generation(
+        stamped.product(),
+        authored,
+        program,
+        ClearingRemainderAuthority {
+            granter,
+            generation: stamped.generation(),
+        },
+    )
 }
 
 /// Ordinary observation of unresolved U at the generation that cleared it.

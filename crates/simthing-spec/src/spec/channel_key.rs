@@ -74,6 +74,7 @@
 //! }
 //! ```
 
+use serde::{Deserialize, Serialize};
 /// Metadata owner/channel reference after admission resolution.
 ///
 /// **Re-exported from `simthing-core`** (rung 6.0). Ownership is intrinsic to the stem
@@ -85,7 +86,7 @@ pub use simthing_core::owner_channel::OwnerRef;
 use simthing_core::SimThingId;
 
 /// Resource key within an owner RF channel after admission resolution.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct ResourceKey(String);
 
 impl ResourceKey {
