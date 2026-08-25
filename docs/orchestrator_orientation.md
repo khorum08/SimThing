@@ -45,7 +45,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 26e025f8b1e76f7f649571aaa4f2da2c82ca722b4d8c549f5ce9d14b4604f3a6 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | 26eab30ec86c97ac8dfd6beef7ae8c5b4d3f18c38fdaa431ec40ccce855396d3 |
-| design_0_0_8_7_rf_arena_modernization.md | 5d06e12ef7df8a1229c410ac141054520a45f79c44eff2935861d87bb5313745 |
+| design_0_0_8_7_rf_arena_modernization.md | 7b62391b1bc079e257470b1fcf6ec19297e22b7123f8cac9a4a50891d23df23b |
 | relay_lint.sh | ae19bdca12e90f6bc988e064f081ff62903034d69bf34b08ffd5c27e352181ba |
 | doctrine_anchors.tsv | ddc753498b845b0e5084222b35f94286e5163cc6479de58883e3ecc3c2d743dd |
 | execution_status_taxonomy.tsv | 924c086550221dd7136ec0682293900d8d03feb4bc1dae1a6e750a61e65153bc |
@@ -68,7 +68,7 @@ Dark properties (1): `fixture::dark_reading` (reasons/spans in `property_admissi
 
 Track state: `open`
 
-> Compact view: 52 completed rungs elided; showing all 18 open rungs plus the 3 most recent completions. Full ladder in the design doc.
+> Compact view: 53 completed rungs elided; showing all 17 open rungs plus the 3 most recent completions. Full ladder in the design doc.
 
 | # | rung | deliverable | exit proof |
 | --- | --- | --- | --- |
@@ -85,10 +85,9 @@ Track state: `open`
 | 7.5 | ACTIONBAND-SEMANTIC-SHADOW-0 | Bind generic stamped ActionBand crossings/terminal/structural deltas to existing | Same opaque GPU ActionBand run with semantic labels changed produces bit-identical numerical results; generic readbac... |
 | 7.5a | ACTIONBAND-FIELD-TRIAD-PROGRESS-0 | **Gu-Yang remediation, rung 1 of 3 (Owner-directed 2026-08-10; Fable-approved re | A synthetic conserved-channel ActionBand consumes a REAL Gu-Yang / `FieldSweepRegistration` output with **zero Action... |
 | 7.5b | ACTIONBAND-SPATIAL-FLUX-WITNESS-0 | **Gu-Yang remediation, rung 2 of 3.** Prove the generic Field-Triad ActionBand b | Same target and PALMA potential, different Gu-Yang channel capacity ⇒ **same lawful descent identity, different per-g... |
-| 11.1d | ACCUMULATOR-CONVERGENCE-SEAL-0 | **CONVERGENCE SEAL — DA-minted after the Owner-directed single-ingress census 20 | **DA-GRADUATED / merged #1819 @ 7ee2350d — bypass is now unrepresentable, not non-default.** The three unconverged fl... |
 | 11.1e | ACTIONBAND-EXECUTION-INGRESS-0 | **INGRESS GAP — DA-minted after the Owner-directed single-ingress census 2026-08 | **DA-GRADUATED / merged #1822 @ 60654376 — the door stops advertising a product nothing runs; ActionBand execution no... |
 | 11.1f | AUTHORED-LAW-GADGET-0 | **OWNER RULING 2026-08-23 — always trust intrinsic mechanisms over prose; the la | **DA-GRADUATED / merged #1825 @ 562f423a — a vendor can now STATE a domain law as authored data, and the staircase is... |
-| 11.2 | EMBEDDER-GUIDE-EXEMPLARS-0 | Phase 11: DOC-BUDGET-capped Embedder's Guide + two non-game exemplars (finance t | A cold reader stands up a running, serialized, observed tree from the guide ALONE — zero engine edits, zero scenario-... |
+| 11.2 | EMBEDDER-GUIDE-EXEMPLARS-0 | Phase 11: DOC-BUDGET-capped Embedder's Guide + two non-game exemplars (finance t | **DA-GRADUATED / merged #1803 @ 9a883cc3 — the rung that opened the arc closes it: a cold reader can vendor SimThing ... |
 | 11.3 | UNIFIED-FACILITY-CONVERGENCE-WITNESS-0 | **Unified-facility convergence witness — DA-minted 2026-08-17 on Owner direction | **Emergence falsifier in 8.2's shape, not an enumeration.** ONE authored change — data only, **zero code change** — m... |
 | 11.4 | UNIFIED-INGRESS-EXCLUSIVITY-0 | **THE OWNER LAW, MECHANIZED — DA-minted 2026-08-23. 11.3 proves the facilities C | **COVERS the Owner-directed 2026-08-23 single-ingress law.** The gate FAILS a producer graduated without a non-test p... |
 | 12.1 | PORTABILITY-PROOF-0 | Phase 12: a domain unrelated to any shipped scenario through the Vendor Door end | Exemplar-seeded domain simulates + STEAD-observes + serializes untouched. |
@@ -96,7 +95,7 @@ Track state: `open`
 
 ## Next Rung Pointer
 
-Active pointer: `EMBEDDER-GUIDE-EXEMPLARS-0`
+Active pointer: `UNIFIED-FACILITY-CONVERGENCE-WITNESS-0`
 
 
 ## Cold-Start Spine (constitutional pointers)
