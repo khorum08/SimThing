@@ -118,7 +118,7 @@ fn assert_no_hard_trigger_on_soft_aggregate() {
     root.add_property(property_id, registry.property(property_id).default_value());
     let owner_id = root.id;
     let mut allocator = SlotAllocator::new();
-    allocator.populate_from_tree(&root);
+    allocator.install_initial_tree(&root);
     let runtime = simthing_sim::SimRuntimeTree::admit(root);
     let aggregate_alert = AggregateAlertRegistration {
         sim_thing_id: owner_id,
@@ -199,7 +199,7 @@ fn clone_capability_children() {
     prepare_fission_clone_sources_for_registry(&mut root, &registry);
 
     let mut allocator = SlotAllocator::new();
-    allocator.populate_from_tree(&root);
+    allocator.install_initial_tree(&root);
     let faction_slot = allocator.slot_of(faction_id).expect("faction slot").raw();
     let source_tree_slot = allocator
         .slot_of(source_tree_id)
@@ -240,7 +240,45 @@ fn clone_capability_children() {
     assert_eq!(events.len(), 1, "fission threshold must fire once");
 
     let paths = HashMap::from([(faction_id, vec![0])]);
-    let outcome = simthing_sim::fission::resolve_fission_fusion(
+    let generation = simthing_core::GenerationStamp::new(1);
+    allocator
+        .declare_root_residency_extent(
+            root.id,
+            simthing_gpu::ResidencyExtent::try_new(
+                0,
+                u32::try_from(values.len() / n_dims).unwrap(),
+            )
+            .unwrap(),
+        )
+        .unwrap();
+    let (prepared, initial) = simthing_sim::fission::prepare_fission_growth_candidates(
+        &root, &paths, &registry, &allocator, &events, &cpu_reg, &values, n_dims, 1,
+    );
+    let mut schedule = simthing_core::IntegrationSchedule::new();
+    let commits = prepared
+        .values()
+        .map(|prepared| {
+            let candidate = prepared.candidate();
+            let entitlement = simthing_gpu::ProvisionalResidencyEntitlement::try_new(
+                root.id,
+                candidate.grantee(),
+                1,
+                candidate.quantity(),
+                generation,
+            )
+            .unwrap();
+            let commit = allocator
+                .realize_unattached_growth_residency(
+                    entitlement,
+                    candidate.structural_parent(),
+                    generation,
+                    &mut schedule,
+                )
+                .unwrap();
+            (candidate.grantee(), commit)
+        })
+        .collect();
+    let outcome = simthing_sim::fission::resolve_prepared_fission_fusion(
         &mut root,
         &paths,
         &registry,
@@ -249,7 +287,9 @@ fn clone_capability_children() {
         &cpu_reg,
         &mut values,
         n_dims,
-        1,
+        prepared,
+        &commits,
+        initial,
     );
 
     assert_eq!(outcome.fissions_executed, 1);

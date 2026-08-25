@@ -38,7 +38,9 @@ use std::collections::HashMap;
 
 use crate::boundary::BoundaryOutcome;
 use crate::fission::FissionLineageRecord;
+use crate::growth_entitlement::RecordedGrowthResidencyFact;
 use crate::sim_runtime_tree::SimRuntimeTree;
+use simthing_gpu::GrowthResidencyCommit;
 
 // ── Entry type ────────────────────────────────────────────────────────────────
 
@@ -83,6 +85,7 @@ pub enum BoundaryDeltaEntry {
     SimThingAdded {
         parent: SimThingId,
         node: SimRuntimeTree,
+        residency: GrowthResidencyCommit,
     },
 
     /// A SimThing was removed from the tree (slot tombstoned).
@@ -99,7 +102,12 @@ pub enum BoundaryDeltaEntry {
     FissionOccurred {
         parent: SimThingId,
         node: SimRuntimeTree,
+        residency: GrowthResidencyCommit,
     },
+
+    /// Ordinary U fact from the same candidate batch. Replay records the
+    /// refusal and performs no attach, placement, or clearing.
+    GrowthResidencyRefused { fact: RecordedGrowthResidencyFact },
 
     /// A fusion event merged `child` back into `parent`'s subtree.
     FusionOccurred {
@@ -177,6 +185,22 @@ pub(crate) fn entries_from_outcome(
 ) -> Vec<BoundaryDeltaEntry> {
     let index = DeltaLogTreeIndex::new(root);
     let mut entries = Vec::with_capacity(estimated_entry_count(outcome));
+    let accepted_growth: HashMap<_, _> = outcome
+        .growth_residency_facts
+        .iter()
+        .filter_map(|fact| match fact {
+            RecordedGrowthResidencyFact::Accepted(commit) => {
+                Some((commit.entitlement().grantee(), *commit))
+            }
+            RecordedGrowthResidencyFact::Refused(_) => None,
+        })
+        .collect();
+
+    for fact in &outcome.growth_residency_facts {
+        if matches!(fact, RecordedGrowthResidencyFact::Refused(_)) {
+            entries.push(BoundaryDeltaEntry::GrowthResidencyRefused { fact: fact.clone() });
+        }
+    }
 
     // Step 4: lifecycle — dissolved overlays.
     for &(target, overlay_id) in &outcome.lifecycle.dissolved_overlays {
@@ -193,10 +217,13 @@ pub(crate) fn entries_from_outcome(
 
     // Step 6: fission / fusion.
     for &(parent, child) in &outcome.fission.fission_pairs {
-        if let Some(node) = index.node(child) {
+        if let (Some(node), Some(residency)) =
+            (index.node(child), accepted_growth.get(&child).copied())
+        {
             entries.push(BoundaryDeltaEntry::FissionOccurred {
                 parent,
                 node: SimRuntimeTree::admit(node.clone()),
+                residency,
             });
         }
         // If child not found in the post-boundary tree (shouldn't happen in
@@ -216,10 +243,14 @@ pub(crate) fn entries_from_outcome(
 
     // Steps 7+8: structural mutations from MaintainerOutcome.
     for &id in &outcome.maintainer.allocated {
-        if let Some((parent_id, node)) = index.node_with_parent(id) {
+        if let (Some((parent_id, node)), Some(residency)) = (
+            index.node_with_parent(id),
+            accepted_growth.get(&id).copied(),
+        ) {
             entries.push(BoundaryDeltaEntry::SimThingAdded {
                 parent: parent_id,
                 node: SimRuntimeTree::admit(node.clone()),
+                residency,
             });
         }
         // If not found (node was added and removed in same boundary): skip.
@@ -297,6 +328,7 @@ fn estimated_entry_count(outcome: &BoundaryOutcome) -> usize {
         + outcome.maintainer.dimensions_added.len()
         + outcome.velocity_alerts.len()
         + outcome.aggregate_alerts.len()
+        + outcome.growth_residency_facts.len()
         + 2 // AnchorRemapApplied + BandCrossingDeltasApplied
 }
 

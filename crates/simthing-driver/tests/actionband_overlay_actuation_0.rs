@@ -202,7 +202,7 @@ fn native_lanes(fx: &Fixture) -> ActionBandNativeLaneAdmission {
 
 fn real_gpu_crossing(fx: &Fixture, ctx: &GpuContext) -> simthing_gpu::BandCrossingDelta {
     let mut allocator = SlotAllocator::new();
-    allocator.populate_from_tree(&SimThing::new(SimThingKind::GameSession, 0));
+    allocator.install_initial_tree(&SimThing::new(SimThingKind::GameSession, 0));
     let mut previous = vec![0.0; fx.registry.total_columns];
     let mut current = previous.clone();
     previous[fx.column.raw()] = 0.5;
@@ -417,7 +417,7 @@ fn one_real_gpu_door_executes_all_three_consequence_arms() {
     };
     assert_eq!(*source_generation, GenerationStamp::new(1));
     let mut route_allocator = SlotAllocator::new();
-    route_allocator.populate_from_tree(&route_root);
+    route_allocator.install_initial_tree(&route_root);
     let mut route_runtime = SimRuntimeTree::admit(route_root);
     let mut route_registry = fx.registry.clone();
     let mut shadow = vec![0.0; route_allocator.capacity() * route_registry.total_columns];
@@ -432,6 +432,7 @@ fn one_real_gpu_door_executes_all_three_consequence_arms() {
         None,
         GenerationStamp::new(7),
         &mut lifecycle,
+        &std::collections::BTreeMap::new(),
     );
     assert_eq!(applied.overlays_attached, vec![(target, overlay_id)]);
     assert_eq!(
@@ -567,7 +568,7 @@ fn one_real_gpu_door_executes_all_three_consequence_arms() {
         })
         .collect::<Vec<_>>();
     let mut allocator = SlotAllocator::new();
-    allocator.populate_from_tree(&structural_root);
+    allocator.install_initial_tree(&structural_root);
     let mut runtime = SimRuntimeTree::admit(structural_root);
     let mut registry = fx.registry.clone();
     let mut shadow = vec![0.0; allocator.capacity() * registry.total_columns];
@@ -582,6 +583,7 @@ fn one_real_gpu_door_executes_all_three_consequence_arms() {
         None,
         GenerationStamp::new(1),
         &mut lifecycle,
+        &std::collections::BTreeMap::new(),
     );
     assert_eq!(applied.reparented, vec![(child_id, second_id)]);
     assert_eq!(first_id.raw() != second_id.raw(), true);

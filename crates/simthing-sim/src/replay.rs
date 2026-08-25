@@ -60,6 +60,7 @@ use simthing_gpu::{BandCrossingDelta, SlotAllocator};
 
 use crate::delta_log::BoundaryDeltaEntry;
 use crate::fission::FissionLineageRecord;
+use crate::growth_entitlement::RecordedGrowthResidencyFact;
 use crate::sim_runtime_tree::SimRuntimeTree;
 
 // ── Snapshot ──────────────────────────────────────────────────────────────────
@@ -126,6 +127,12 @@ pub enum ReplayError {
     MissingSnapshot,
     #[error("snapshot appears mid-stream after frames have been read")]
     UnexpectedSnapshot,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
+pub enum ReplayGrowthError {
+    #[error("authoritative replay realizes recorded growth facts and never re-clears")]
+    ReplayReclearForbidden,
 }
 
 // ── Writer ────────────────────────────────────────────────────────────────────
@@ -286,6 +293,8 @@ pub struct ReplayDriver {
     pub last_anchor_remap: Option<AnchorRemapSection>,
     /// Last applied sealed band-crossing deltas (bit-exact replay evidence).
     pub last_band_crossing_deltas: Vec<BandCrossingDelta>,
+    /// Authoritative accepted/refused growth facts consumed in frame order.
+    pub growth_residency_facts: Vec<RecordedGrowthResidencyFact>,
 }
 
 impl ReplayDriver {
@@ -293,7 +302,7 @@ impl ReplayDriver {
     /// the recorded tree and seeds the fission lineage from the snapshot.
     pub fn from_snapshot(snapshot: ReplaySnapshot) -> Self {
         let mut allocator = SlotAllocator::new();
-        allocator.populate_from_tree(snapshot.root.inner());
+        allocator.install_initial_tree(snapshot.root.inner());
         Self {
             day: snapshot.day,
             root: snapshot.root,
@@ -303,7 +312,14 @@ impl ReplayDriver {
             allocator,
             last_anchor_remap: None,
             last_band_crossing_deltas: Vec::new(),
+            growth_residency_facts: Vec::new(),
         }
+    }
+
+    /// Planted negative door: replay has no market/clearing input. A caller
+    /// attempting to revalue a recorded fact receives its own stable reason.
+    pub fn attempt_growth_reclear_forbidden(&self) -> Result<(), ReplayGrowthError> {
+        Err(ReplayGrowthError::ReplayReclearForbidden)
     }
 
     /// Apply one frame's entries to the in-memory tree. Each entry is replayed
@@ -335,17 +351,32 @@ impl ReplayDriver {
     fn apply_entry(&mut self, entry: BoundaryDeltaEntry) {
         let inner = self.root.inner_mut();
         match entry {
-            BoundaryDeltaEntry::SimThingAdded { parent, node } => {
+            BoundaryDeltaEntry::SimThingAdded {
+                parent,
+                node,
+                residency,
+            } => {
                 let node = node.into_admitted();
                 if let Some(p) = find_node_mut(inner, parent) {
                     p.children.push(node);
                     let attached = p.children.last().expect("replay child just attached");
-                    if self.allocator.populate_subtree(p, attached).is_err() {
+                    if self
+                        .allocator
+                        .realize_authoritative_replay_subtree(p, attached, residency)
+                        .is_err()
+                    {
                         p.children.pop();
+                    } else {
+                        self.growth_residency_facts
+                            .push(RecordedGrowthResidencyFact::Accepted(residency));
                     }
                 }
             }
-            BoundaryDeltaEntry::FissionOccurred { parent, node } => {
+            BoundaryDeltaEntry::FissionOccurred {
+                parent,
+                node,
+                residency,
+            } => {
                 let node = node.into_admitted();
                 if let Some(p) = find_node_mut(inner, parent) {
                     p.children.push(node);
@@ -353,10 +384,20 @@ impl ReplayDriver {
                         .children
                         .last()
                         .expect("replay fission child just attached");
-                    if self.allocator.populate_subtree(p, attached).is_err() {
+                    if self
+                        .allocator
+                        .realize_authoritative_replay_subtree(p, attached, residency)
+                        .is_err()
+                    {
                         p.children.pop();
+                    } else {
+                        self.growth_residency_facts
+                            .push(RecordedGrowthResidencyFact::Accepted(residency));
                     }
                 }
+            }
+            BoundaryDeltaEntry::GrowthResidencyRefused { fact } => {
+                self.growth_residency_facts.push(fact);
             }
             BoundaryDeltaEntry::FissionLineageAdded { record } => {
                 self.fission_lineage.push(record);

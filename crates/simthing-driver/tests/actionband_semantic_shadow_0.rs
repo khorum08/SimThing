@@ -239,7 +239,7 @@ fn produce(
     thresh.tick(ctx, 0).unwrap();
     let emissions = thresh.readback_threshold_emissions(ctx).unwrap();
     let mut allocator = SlotAllocator::new();
-    allocator.populate_from_tree(&SimThing::new(SimThingKind::GameSession, 0));
+    allocator.install_initial_tree(&SimThing::new(SimThingKind::GameSession, 0));
     let deltas = apply_band_crossing_deltas_from_fused_emissions(
         &emissions,
         thresh.threshold_registrations(),
@@ -518,7 +518,7 @@ fn identity_blindness_labels_do_not_change_numerical_or_sealed_products() {
     thresh.tick(&ctx, 0).unwrap();
     let emissions = thresh.readback_threshold_emissions(&ctx).unwrap();
     let mut allocator = SlotAllocator::new();
-    allocator.populate_from_tree(&SimThing::new(SimThingKind::GameSession, 0));
+    allocator.install_initial_tree(&SimThing::new(SimThingKind::GameSession, 0));
     let deltas = apply_band_crossing_deltas_from_fused_emissions(
         &emissions,
         thresh.threshold_registrations(),

@@ -160,7 +160,7 @@ fn arena() -> Arena {
     root.add_child(c);
 
     let mut allocator = SlotAllocator::new();
-    allocator.populate_from_tree(&root);
+    allocator.install_initial_tree(&root);
 
     Arena {
         tree: SimRuntimeTree::admit(root),
@@ -381,7 +381,7 @@ fn sealed_commitment_from_field_state(
         root.add_child(SimThing::new(SimThingKind::Location, 0));
     }
     let mut allocator = SlotAllocator::new();
-    allocator.populate_from_tree(&root);
+    allocator.install_initial_tree(&root);
 
     let deltas = apply_band_crossing_deltas_from_fused_emissions(
         &emissions,
@@ -457,6 +457,7 @@ fn apply_spatial_step(
         None,
         simthing_core::GenerationStamp::new(0),
         &mut simthing_sim::overlay_lifecycle::OverlayLifecycleAdmissionState::default(),
+        &std::collections::BTreeMap::new(),
     );
     assert!(
         outcome
@@ -727,6 +728,7 @@ fn actionband_structural_door_emits_spatial_reparent_from_sealed_crossing() {
         None,
         simthing_core::GenerationStamp::new(0),
         &mut simthing_sim::overlay_lifecycle::OverlayLifecycleAdmissionState::default(),
+        &std::collections::BTreeMap::new(),
     );
     assert!(outcome
         .reparented

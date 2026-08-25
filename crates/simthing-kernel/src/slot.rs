@@ -29,6 +29,31 @@
 //!     let _ = alloc.owner_of(slot);
 //! }
 //! ```
+//!
+//! Ordinary child growth cannot invoke the low-level object-residency mint or
+//! a general subtree population door:
+//!
+//! ```compile_fail,E0624
+//! use simthing_core::{SimThing, SimThingKind};
+//! use simthing_kernel::SlotAllocator;
+//!
+//! let mut parent = SimThing::new(SimThingKind::World, 0);
+//! let child = SimThing::new(SimThingKind::Location, 0);
+//! parent.add_child(child);
+//! let request = parent.attached_child_residency_request(&parent.children[0]).unwrap();
+//! let mut allocator = SlotAllocator::new();
+//! let _ = allocator.execute_residency(request);
+//! ```
+//!
+//! ```compile_fail,E0599
+//! use simthing_core::{SimThing, SimThingKind};
+//! use simthing_kernel::SlotAllocator;
+//!
+//! let parent = SimThing::new(SimThingKind::World, 0);
+//! let child = SimThing::new(SimThingKind::Location, 0);
+//! let mut allocator = SlotAllocator::new();
+//! let _ = allocator.populate_subtree(&parent, &child);
+//! ```
 
 use simthing_core::{
     derive_epoch_rebind_section, AnchorRemapOperation, AnchorRemapSection, AnchoredLocusMap,
@@ -38,9 +63,10 @@ use simthing_core::{
 use std::collections::{HashMap, HashSet};
 
 use crate::residency_placement::{
-    CommittedResidencyPlacement, ProvisionalResidencyEntitlement, ResidencyExtent,
-    ResidencyPlacementBook, ResidencyPlacementDisposition, ResidencyPlacementError,
-    ResidencyPlacementOutcome, ResidencyPlacementRefusalReason, ResidencyRelocationOutcome,
+    CommittedResidencyPlacement, GrowthResidencyCommit, ProvisionalResidencyEntitlement,
+    ResidencyExtent, ResidencyPlacementBook, ResidencyPlacementDisposition,
+    ResidencyPlacementError, ResidencyPlacementOutcome, ResidencyPlacementRefusalReason,
+    ResidencyRelocationOutcome,
 };
 
 /// Bake one `EpochRebind` section into a slot-major values plane: every
@@ -134,6 +160,24 @@ pub enum SlotAllocError {
     ObjectNotResident { object: SimThingId },
     #[error("reparent request for {object:?} must carry ChildOf, not Root")]
     ReparentRequiresParent { object: SimThingId },
+    #[error("growth row {slot:?} is already occupied")]
+    GrowthRowOccupied { slot: SlotIndex },
+    #[error("growth commit is for {committed:?}, not subtree root {requested:?}")]
+    GrowthCommitGranteeMismatch {
+        committed: SimThingId,
+        requested: SimThingId,
+    },
+    #[error("growth commit structural parent {committed:?} does not match {requested:?}")]
+    GrowthCommitParentMismatch {
+        committed: SimThingId,
+        requested: SimThingId,
+    },
+    #[error("growth commit quantity {committed} does not match subtree row count {requested}")]
+    GrowthCommitQuantityMismatch { committed: u32, requested: u32 },
+    #[error("growth subtree contains already-resident object {object:?}")]
+    GrowthObjectAlreadyResident { object: SimThingId },
+    #[error("growth commit no longer matches the kernel placement book")]
+    GrowthCommitNotAuthoritative,
 }
 
 /// Kernel-minted proof that one object relation owns one dense row.
@@ -203,13 +247,40 @@ impl SlotAllocator {
         SlotIndex::new(slot)
     }
 
+    fn alloc_slot_at(
+        &mut self,
+        id: SimThingId,
+        slot: SlotIndex,
+    ) -> Result<SlotIndex, SlotAllocError> {
+        if let Some(&existing) = self.by_id.get(&id) {
+            return Ok(SlotIndex::new(existing));
+        }
+        let raw = slot.raw();
+        if raw as usize >= self.slot_owners.len() {
+            let old_len = self.slot_owners.len() as u32;
+            self.slot_owners.resize(raw as usize + 1, None);
+            self.free.extend(
+                (old_len..raw)
+                    .rev()
+                    .filter(|gap| !self.exclusive_reserved.contains(gap)),
+            );
+        }
+        if self.slot_owners[raw as usize].is_some() {
+            return Err(SlotAllocError::GrowthRowOccupied { slot });
+        }
+        self.free.retain(|candidate| *candidate != raw);
+        self.slot_owners[raw as usize] = Some(id);
+        self.by_id.insert(id, raw);
+        Ok(slot)
+    }
+
     #[cfg(test)]
     fn inject_unbound_row_for_escaped_bug_referee(&mut self, id: SimThingId) -> SlotIndex {
         self.alloc_slot(id)
     }
 
     /// Execute one object-issued root/child relation and mint its stable row.
-    pub fn execute_residency(
+    pub(crate) fn execute_residency(
         &mut self,
         request: ObjectResidencyRequest,
     ) -> Result<ObjectResidency, SlotAllocError> {
@@ -369,6 +440,127 @@ impl SlotAllocator {
         Ok(self
             .residency_placements
             .commit(prepared, entitlement.granted_generation(), schedule))
+    }
+
+    /// Place one complete ordinary-growth candidate before it is attached or
+    /// assigned rows.  Entitlement has already cleared through the market;
+    /// this method owns only deterministic level-local physical first-fit.
+    pub fn realize_unattached_growth_residency(
+        &mut self,
+        entitlement: ProvisionalResidencyEntitlement,
+        structural_parent: SimThingId,
+        generation: GenerationStamp,
+        schedule: &mut IntegrationSchedule,
+    ) -> Result<GrowthResidencyCommit, ResidencyPlacementError> {
+        self.residency_placements.ensure_active()?;
+        if self.relations.contains_key(&entitlement.grantee()) {
+            return Err(ResidencyPlacementError::Configuration {
+                detail: format!(
+                    "growth grantee {} is already resident",
+                    entitlement.grantee().raw()
+                ),
+            });
+        }
+        if !self.relations.contains_key(&structural_parent) {
+            return Err(ResidencyPlacementError::Configuration {
+                detail: format!(
+                    "growth structural parent {} is not resident",
+                    structural_parent.raw()
+                ),
+            });
+        }
+        let containing = match self.residency_containing_extent(entitlement.granter()) {
+            Some(containing) => containing,
+            None => {
+                let proposed = ResidencyExtent::try_new(0, entitlement.quantity())
+                    .expect("nonzero entitlement quantity always forms an extent");
+                return Err(self.residency_placements.refuse(
+                    entitlement,
+                    proposed,
+                    ResidencyPlacementRefusalReason::MissingOwningExtent {
+                        granter: entitlement.granter(),
+                    },
+                    generation,
+                    schedule,
+                ));
+            }
+        };
+        let Some(proposed) =
+            self.first_growth_extent(entitlement.granter(), containing, entitlement.quantity())
+        else {
+            return Err(self.residency_placements.refuse(
+                entitlement,
+                containing,
+                ResidencyPlacementRefusalReason::NoContiguousExtent {
+                    containing,
+                    quantity: entitlement.quantity(),
+                },
+                generation,
+                schedule,
+            ));
+        };
+        let prepared = self.residency_placements.prepare(
+            entitlement,
+            containing,
+            proposed,
+            generation,
+            false,
+            schedule,
+        )?;
+        let outcome =
+            self.residency_placements
+                .commit(prepared, entitlement.granted_generation(), schedule);
+        Ok(GrowthResidencyCommit::new(
+            structural_parent,
+            entitlement,
+            outcome.placement(),
+        ))
+    }
+
+    /// Exact free quantity visible to an entitlement clear at one granter's
+    /// level. Geometry remains a later question: fragmented free rows may
+    /// still yield a typed placement refusal.
+    pub fn growth_capacity_available(&self, granter: SimThingId) -> u32 {
+        let Some(containing) = self.residency_containing_extent(granter) else {
+            return 0;
+        };
+        let placements = self.residency_placements.level_placements(granter);
+        (containing.start()..containing.end_exclusive())
+            .filter(|raw| {
+                self.owner_of(SlotIndex::new(*raw)).is_none()
+                    && !placements.iter().any(|placement| {
+                        placement.extent().start() <= *raw
+                            && *raw < placement.extent().end_exclusive()
+                    })
+            })
+            .count()
+            .try_into()
+            .unwrap_or(u32::MAX)
+    }
+
+    fn first_growth_extent(
+        &self,
+        granter: SimThingId,
+        containing: ResidencyExtent,
+        quantity: u32,
+    ) -> Option<ResidencyExtent> {
+        if quantity > containing.length() {
+            return None;
+        }
+        let placements = self.residency_placements.level_placements(granter);
+        let last_start = containing.end_exclusive().checked_sub(quantity)?;
+        for start in containing.start()..=last_start {
+            let candidate = ResidencyExtent::try_new(start, quantity).ok()?;
+            let rows_free = (start..candidate.end_exclusive())
+                .all(|raw| self.owner_of(SlotIndex::new(raw)).is_none());
+            let geometry_free = placements
+                .iter()
+                .all(|placement| !placement.extent().overlaps(candidate));
+            if rows_free && geometry_free {
+                return Some(candidate);
+            }
+        }
+        None
     }
 
     /// Relocate a committed physical placement only through the existing epoch-rebind
@@ -639,10 +831,13 @@ impl SlotAllocator {
             .unwrap_or(false)
     }
 
-    /// Recursively allocate slots for every node in a SimThing tree
-    /// (depth-first, root before children). Existing allocations are
-    /// preserved by the object-residency door's idempotency.
-    pub fn populate_from_tree(&mut self, root: &SimThing) {
+    /// Install-only initial bulk realization. The root owns the initial
+    /// extent; this door is not callable for ordinary attached growth.
+    pub fn install_initial_tree(&mut self, root: &SimThing) {
+        assert!(
+            self.relations.is_empty() && self.by_id.is_empty(),
+            "install_initial_tree is a one-shot install-only door"
+        );
         let mut newly_admitted = Vec::new();
         let result = self.populate_requested_subtree(
             root,
@@ -655,22 +850,140 @@ impl SlotAllocator {
         }
     }
 
-    /// Admit an attached subtree beneath an already-resident parent.
-    pub fn populate_subtree(
+    /// Consume a kernel-minted growth commit and realize the exact subtree
+    /// rows. There is no grantless ordinary population signature.
+    pub fn realize_growth_subtree(
         &mut self,
         parent: &SimThing,
         root: &SimThing,
+        commit: GrowthResidencyCommit,
     ) -> Result<(), SlotAllocError> {
+        self.validate_growth_commit(parent.id, root, commit)?;
         let request = parent.attached_child_residency_request(root).ok_or(
             SlotAllocError::ChildNotAttached {
                 object: root.id,
                 parent: parent.id,
             },
         )?;
+        self.realize_growth_rows(root, request, commit)
+    }
+
+    /// Authoritative replay realization consumes the recorded placement fact
+    /// verbatim. It never invokes clearing or the placement oracle.
+    pub fn realize_authoritative_replay_subtree(
+        &mut self,
+        parent: &SimThing,
+        root: &SimThing,
+        recorded: GrowthResidencyCommit,
+    ) -> Result<(), SlotAllocError> {
+        self.validate_growth_shape(parent.id, root, recorded)?;
+        self.residency_placements
+            .replay_recorded_commit(recorded)
+            .map_err(|_| SlotAllocError::GrowthCommitNotAuthoritative)?;
+        let request = parent.attached_child_residency_request(root).ok_or(
+            SlotAllocError::ChildNotAttached {
+                object: root.id,
+                parent: parent.id,
+            },
+        )?;
+        self.realize_growth_rows(root, request, recorded)
+    }
+
+    fn validate_growth_commit(
+        &self,
+        parent: SimThingId,
+        root: &SimThing,
+        commit: GrowthResidencyCommit,
+    ) -> Result<(), SlotAllocError> {
+        self.validate_growth_shape(parent, root, commit)?;
+        let placement = commit.placement();
+        if self.residency_placements.placement(
+            placement.identity().granter(),
+            placement.identity().grantee(),
+        ) != Some(placement)
+        {
+            return Err(SlotAllocError::GrowthCommitNotAuthoritative);
+        }
+        Ok(())
+    }
+
+    fn validate_growth_shape(
+        &self,
+        parent: SimThingId,
+        root: &SimThing,
+        commit: GrowthResidencyCommit,
+    ) -> Result<(), SlotAllocError> {
+        if commit.structural_parent() != parent {
+            return Err(SlotAllocError::GrowthCommitParentMismatch {
+                committed: commit.structural_parent(),
+                requested: parent,
+            });
+        }
+        if commit.entitlement().grantee() != root.id {
+            return Err(SlotAllocError::GrowthCommitGranteeMismatch {
+                committed: commit.entitlement().grantee(),
+                requested: root.id,
+            });
+        }
+        let requested = subtree_row_count(root);
+        if commit.entitlement().quantity() != requested
+            || commit.placement().quantity() != requested
+        {
+            return Err(SlotAllocError::GrowthCommitQuantityMismatch {
+                committed: commit.entitlement().quantity(),
+                requested,
+            });
+        }
+        let mut ids = Vec::new();
+        collect_subtree_ids(root, &mut ids);
+        if let Some(object) = ids.into_iter().find(|id| self.relations.contains_key(id)) {
+            return Err(SlotAllocError::GrowthObjectAlreadyResident { object });
+        }
+        Ok(())
+    }
+
+    fn realize_growth_rows(
+        &mut self,
+        root: &SimThing,
+        request: ObjectResidencyRequest,
+        commit: GrowthResidencyCommit,
+    ) -> Result<(), SlotAllocError> {
         let mut newly_admitted = Vec::new();
-        if let Err(error) = self.populate_requested_subtree(root, request, &mut newly_admitted) {
+        let mut next_slot = commit.placement().extent().start();
+        if let Err(error) = self.populate_requested_growth_subtree(
+            root,
+            request,
+            &mut next_slot,
+            &mut newly_admitted,
+        ) {
             self.rollback_population(newly_admitted);
             return Err(error);
+        }
+        Ok(())
+    }
+
+    fn populate_requested_growth_subtree(
+        &mut self,
+        root: &SimThing,
+        request: ObjectResidencyRequest,
+        next_slot: &mut u32,
+        newly_admitted: &mut Vec<SimThingId>,
+    ) -> Result<(), SlotAllocError> {
+        let object = request.object();
+        let relation = request.relation();
+        self.validate_residency_request(object, relation)?;
+        self.alloc_slot_at(object, SlotIndex::new(*next_slot))?;
+        self.relations.insert(object, relation);
+        newly_admitted.push(object);
+        *next_slot = (*next_slot).saturating_add(1);
+        for child in &root.children {
+            let request = root.attached_child_residency_request(child).ok_or(
+                SlotAllocError::ChildNotAttached {
+                    object: child.id,
+                    parent: root.id,
+                },
+            )?;
+            self.populate_requested_growth_subtree(child, request, next_slot, newly_admitted)?;
         }
         Ok(())
     }
@@ -806,6 +1119,22 @@ impl SlotAllocator {
     }
 }
 
+fn subtree_row_count(root: &SimThing) -> u32 {
+    1u32.saturating_add(
+        root.children
+            .iter()
+            .map(subtree_row_count)
+            .fold(0u32, u32::saturating_add),
+    )
+}
+
+fn collect_subtree_ids(root: &SimThing, out: &mut Vec<SimThingId>) {
+    out.push(root.id);
+    for child in &root.children {
+        collect_subtree_ids(child, out);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -820,7 +1149,7 @@ mod tests {
         use simthing_core::AnchoredLocusMap;
         let root = canonical_fixture();
         let mut alloc = SlotAllocator::new();
-        alloc.populate_from_tree(&root);
+        alloc.install_initial_tree(&root);
         let pre = alloc.binding_table_snapshot();
         assert!(pre.len() >= 3, "fixture yields several live rows");
 
@@ -859,7 +1188,7 @@ mod tests {
         use simthing_core::AnchoredLocusMap;
         let root = canonical_fixture();
         let mut alloc = SlotAllocator::new();
-        alloc.populate_from_tree(&root);
+        alloc.install_initial_tree(&root);
         let reserved = alloc.reserve_exclusive_gap_block(1)[0];
         let pre = alloc.binding_table_snapshot();
         let loci = AnchoredLocusMap::new();
@@ -970,7 +1299,7 @@ mod tests {
     fn row_slot_object_semantics_layout_identity_oracle_parity() {
         for root in [canonical_fixture(), uneven_fixture()] {
             let mut derived = SlotAllocator::new();
-            derived.populate_from_tree(&root);
+            derived.install_initial_tree(&root);
 
             let mut ids = Vec::new();
             collect_ids(&root, &mut ids);

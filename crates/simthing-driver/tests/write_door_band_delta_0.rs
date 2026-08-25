@@ -26,7 +26,7 @@ fn anchored_fixture(n_slots: u32, n_cols: usize) -> (DimensionRegistry, SlotAllo
         root.add_child(SimThing::new(SimThingKind::Location, 0));
     }
     let mut allocator = SlotAllocator::new();
-    allocator.populate_from_tree(&root);
+    allocator.install_initial_tree(&root);
     (registry, allocator)
 }
 
@@ -129,7 +129,7 @@ fn unobserved_exclusion_without_caller_column_filter() {
     let _ = registry.register(dark);
     let root = SimThing::new(SimThingKind::GameSession, 0);
     let mut allocator = SlotAllocator::new();
-    allocator.populate_from_tree(&root);
+    allocator.install_initial_tree(&root);
 
     let regs = [ThresholdRegistration {
         slot: 0,

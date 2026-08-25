@@ -93,7 +93,7 @@ fn cleared_entitlement_places_locally_refuses_to_u_then_revalues_and_relocates()
     root.add_child(granter);
 
     let mut allocator = SlotAllocator::new();
-    allocator.populate_from_tree(&root);
+    allocator.install_initial_tree(&root);
     allocator
         .declare_root_residency_extent(root_id, ResidencyExtent::try_new(0, 16).unwrap())
         .unwrap();

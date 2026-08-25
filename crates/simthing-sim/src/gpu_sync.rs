@@ -42,6 +42,8 @@ use simthing_gpu::{
 pub enum GpuSyncError {
     #[error("overlay span projection admission: {0}")]
     OverlayProjection(#[from] simthing_gpu::DerivedSpanAdmissionError),
+    #[error("ordinary growth entitlement: {0}")]
+    GrowthEntitlement(String),
 }
 
 fn upload_accumulator_reduction_plan(

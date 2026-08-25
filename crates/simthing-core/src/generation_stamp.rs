@@ -122,6 +122,9 @@ pub enum IntegrationScheduleRowKind {
     ResidencyRelocation,
     /// One already-committed placement invariant breach recorded before session termination.
     ResidencyCommittedCorruption,
+    /// One ordinary growth claim that remained U before structural attachment
+    /// (zero/partial market clearance or a non-placement admission refusal).
+    GrowthEntitlementRefusal,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]

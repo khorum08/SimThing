@@ -41,7 +41,8 @@
 
 use simthing_core::{
     mint_anchor_table_from_admission, prepare_fission_clone_sources_for_registry, DecayBehavior,
-    DimensionRegistry, GenerationStamp, OverlayLifecycle, SimPropertyId, SimThing, SimThingId,
+    DimensionRegistry, GenerationStamp, IntegrationSchedule, IntegrationScheduleRowKind,
+    OverlayLifecycle, SimPropertyId, SimThing, SimThingId,
 };
 use simthing_feeder::{
     BoundaryRequest, CapabilityUnlockRegistration, DispatchCoordinator, MaintainerOutcome,
@@ -58,9 +59,15 @@ use crate::anchor_remap_encode::{
     build_exact_anchor_remap_section, gate_structural_gpu_encode_exact, snapshot_anchored_loci,
 };
 use crate::delta_log::{entries_from_outcome, BoundaryDeltaEntry};
-use crate::fission::{resolve_fission_fusion, FissionLineageRecord, FissionOutcome};
-use crate::fission_clone_source_view::fission_clone_source_children;
+use crate::fission::{
+    prepare_fission_growth_candidates, resolve_prepared_fission_fusion, FissionLineageRecord,
+    FissionOutcome,
+};
 use crate::gpu_sync::{sync_gpu_buffers, GpuSyncError, GpuSyncOutcome};
+use crate::growth_entitlement::{
+    validate_decisions, GrowthEntitlementDecision, OrdinaryGrowthCandidate, OrdinaryGrowthOrigin,
+    OrdinaryGrowthRefusal, RecordedGrowthResidencyFact,
+};
 use crate::observability::{observe, ObservabilityReport, ObserveFidelity};
 use crate::overlay_lifecycle::{
     apply_gpu_overlay_lifecycle, derive_overlay_lifecycle_admission_catalog, LifecycleOutcome,
@@ -75,13 +82,15 @@ use crate::resolution_site::{
 use crate::sim_runtime_tree::SimRuntimeTree;
 use crate::threshold_registry::{
     AggregateAlertEvent, AggregateAlertRegistration, ThresholdBuilder, ThresholdRegistry,
-    ThresholdSemantic, VelocityAlertEvent, VelocityAlertRegistration,
+    VelocityAlertEvent, VelocityAlertRegistration,
 };
 use crate::tree_index::{build_node_paths, node_at_path};
 use crate::tree_mutation::apply_structural_mutations;
 use simthing_core::AnchorRemapSection;
-use simthing_gpu::{apply_band_crossing_deltas_from_threshold_events, BandCrossingDelta};
-use std::collections::HashSet;
+use simthing_gpu::{
+    apply_band_crossing_deltas_from_threshold_events, BandCrossingDelta, GrowthResidencyCommit,
+};
+use std::collections::{BTreeMap, HashSet};
 use std::time::Instant;
 
 #[derive(Clone, Copy, Debug, Default)]
@@ -110,6 +119,9 @@ pub struct BoundaryOutcome {
     pub lifecycle: LifecycleOutcome,
     pub expiry: ExpiryOutcome,
     pub fission: FissionOutcome,
+    /// Accepted placement products and ordinary U facts for the complete
+    /// pre-mutation fission/AddChild candidate batch.
+    pub growth_residency_facts: Vec<RecordedGrowthResidencyFact>,
     pub maintainer: MaintainerOutcome,
     pub gpu_sync: GpuSyncOutcome,
     /// Typed Anchored-locus remap witness for this boundary's structural encode.
@@ -428,14 +440,15 @@ impl BoundaryProtocol {
         state: &WorldGpuState,
         n_dims: usize,
         destination_generation: u32,
-    ) -> (Vec<BoundaryRequest>, u32) {
+        growth_decisions: &BTreeMap<SimThingId, GrowthEntitlementDecision>,
+    ) -> (Vec<BoundaryRequest>, u32, Vec<SimThingId>) {
         if !requests.iter().any(|request| {
             matches!(
                 request,
                 BoundaryRequest::AttachOverlay { .. } | BoundaryRequest::AddChild { .. }
             )
         }) {
-            return (requests, 0);
+            return (requests, 0, Vec::new());
         }
         let mut staged_root = self.root.clone();
         let mut staged_allocator = self.allocator.clone();
@@ -452,6 +465,7 @@ impl BoundaryProtocol {
         let mut staged_catalogue_rows = initial_catalogue.rows.len();
         let mut admitted_requests = Vec::with_capacity(requests.len());
         let mut rejected = 0u32;
+        let mut rejected_growth = Vec::new();
 
         for request in requests {
             let mut trial_root = staged_root.clone();
@@ -459,11 +473,27 @@ impl BoundaryProtocol {
             let mut trial_registry = staged_registry.clone();
             let mut trial_shadow = staged_shadow.clone();
             let mut trial_admission = staged_admission.clone();
+            let mut trial_commits = BTreeMap::new();
+            let mut scratch_schedule = IntegrationSchedule::new();
+            if let BoundaryRequest::AddChild { parent, child } = &request {
+                if let Some(GrowthEntitlementDecision::Granted { entitlement, .. }) =
+                    growth_decisions.get(&child.id).copied()
+                {
+                    if let Ok(commit) = trial_allocator.realize_unattached_growth_residency(
+                        entitlement,
+                        *parent,
+                        GenerationStamp::new(destination_generation),
+                        &mut scratch_schedule,
+                    ) {
+                        trial_commits.insert(child.id, commit);
+                    }
+                }
+            }
             let projected_slots = trial_allocator
                 .capacity()
                 .saturating_add(projected_add_child_slots(std::slice::from_ref(&request)));
             trial_shadow.resize(projected_slots * n_dims, 0.0);
-            let _ = apply_structural_mutations(
+            let trial_outcome = apply_structural_mutations(
                 vec![request.clone()],
                 &mut trial_root,
                 &mut trial_allocator,
@@ -473,7 +503,16 @@ impl BoundaryProtocol {
                 None,
                 GenerationStamp::new(destination_generation),
                 &mut trial_admission,
+                &trial_commits,
             );
+            if let BoundaryRequest::AddChild { child, .. } = &request {
+                if trial_commits.contains_key(&child.id)
+                    && !trial_outcome.allocated.contains(&child.id)
+                {
+                    rejected_growth.push(child.id);
+                    continue;
+                }
+            }
             let (catalogue, registrations) = derive_overlay_lifecycle_admission_catalog(
                 trial_root.inner(),
                 &trial_registry,
@@ -487,6 +526,11 @@ impl BoundaryProtocol {
                     .is_err()
             {
                 rejected = rejected.saturating_add(1);
+                if let BoundaryRequest::AddChild { child, .. } = &request {
+                    if trial_commits.contains_key(&child.id) {
+                        rejected_growth.push(child.id);
+                    }
+                }
                 continue;
             }
 
@@ -499,7 +543,7 @@ impl BoundaryProtocol {
             admitted_requests.push(request);
         }
 
-        (admitted_requests, rejected)
+        (admitted_requests, rejected, rejected_growth)
     }
 
     /// Run the full §10 boundary sequence (steps 4–9).
@@ -531,10 +575,53 @@ impl BoundaryProtocol {
         coord: &mut DispatchCoordinator,
         state: &mut WorldGpuState,
         day: u64,
-        mut hook: F,
+        hook: F,
     ) -> Result<BoundaryOutcome, GpuSyncError>
     where
         F: FnMut(&mut BoundaryHookContext<'_>),
+    {
+        let mut scratch_schedule = IntegrationSchedule::new();
+        self.execute_with_boundary_hook_and_growth(
+            events,
+            patcher,
+            coord,
+            state,
+            day,
+            &mut scratch_schedule,
+            hook,
+            |_, _, candidates| {
+                Ok(candidates
+                    .iter()
+                    .copied()
+                    .map(|candidate| GrowthEntitlementDecision::refused(candidate, 0, None))
+                    .collect())
+            },
+        )
+    }
+
+    /// Production boundary door with one session-installed entitlement input.
+    /// The resolver receives the complete logical candidate batch exactly once;
+    /// it may clear claims but cannot attach, allocate rows, choose geometry, or
+    /// mutate the tree.
+    #[allow(clippy::too_many_arguments)]
+    pub fn execute_with_boundary_hook_and_growth<F, G>(
+        &mut self,
+        events: Vec<ThresholdEvent>,
+        patcher: &mut TransformPatcher,
+        coord: &mut DispatchCoordinator,
+        state: &mut WorldGpuState,
+        day: u64,
+        integration_schedule: &mut IntegrationSchedule,
+        mut hook: F,
+        mut resolve_growth: G,
+    ) -> Result<BoundaryOutcome, GpuSyncError>
+    where
+        F: FnMut(&mut BoundaryHookContext<'_>),
+        G: FnMut(
+            &SlotAllocator,
+            GenerationStamp,
+            &[OrdinaryGrowthCandidate],
+        ) -> Result<Vec<GrowthEntitlementDecision>, String>,
     {
         let mut out = BoundaryOutcome {
             day,
@@ -709,90 +796,9 @@ impl BoundaryProtocol {
         }
         out.timing.expiry_ms = expiry_started.elapsed().as_secs_f64() * 1000.0;
 
-        // Pre-grow for possible fission children so seed_fission_child can
-        // write the new rows immediately instead of relying on a later
-        // semantic projection.
-        let fission_headroom = projected_fission_slots(
-            &events,
-            &self.cpu_threshold_registry,
-            self.root.inner(),
-            &boundary_paths,
-            &self.registry,
-        );
-        let pregrow_fission_started = Instant::now();
-        // Growth no longer forces a full value upload: `rebuild_for_slots`
-        // preserves existing GPU buffer contents via copy_buffer_to_buffer,
-        // and the freshly-grown region is zero-initialized in both the GPU
-        // buffer (wgpu default) and the CPU shadow (resize fill). Fission
-        // children are tracked individually via `fission_pairs` further down.
-        let grew_for_fission = self.ensure_slot_capacity(
-            self.allocator.capacity() + fission_headroom,
-            patcher,
-            coord,
-            state,
-        );
-        slot_capacity_grew |= grew_for_fission;
-        topology_dirty |= grew_for_fission;
-        if grew_for_fission {
-            self.bump_overlay_compile_revision();
-        }
-        out.timing.pregrow_fission_ms = pregrow_fission_started.elapsed().as_secs_f64() * 1000.0;
-
-        // Step 6: Fission and fusion. Spawns new SimThings + allocates slots.
-        // Reads from shadow for secondary-condition checks and seeds newly
-        // fissioned children from the parent's current GPU row.
-        // Lifecycle/expiry do not change tree shape — reuse the same index.
-        let fission_started = Instant::now();
-        out.fission = resolve_fission_fusion(
-            self.root.inner_mut(),
-            &boundary_paths,
-            &self.registry,
-            &mut self.allocator,
-            &events,
-            &self.cpu_threshold_registry,
-            &mut coord.shadow,
-            n_dims,
-            day as u32,
-        );
-        for &(_, child) in &out.fission.fission_pairs {
-            push_slot_for_id(&self.allocator, child, &mut dirty_value_slots);
-        }
-        for &(parent, _) in &out.fission.fusion_pairs {
-            push_slot_for_id(&self.allocator, parent, &mut dirty_value_slots);
-        }
-        if out.fission.fissions_executed > 0 || out.fission.fusions_executed > 0 {
-            topology_dirty = true;
-            threshold_dirty = true;
-            self.bump_overlay_compile_revision();
-        }
-        out.timing.fission_ms = fission_started.elapsed().as_secs_f64() * 1000.0;
-
-        // Lineage maintenance:
-        //   - New fissions append records; new fusions remove them.
-        //   - Records whose parent or child is no longer in the allocator
-        //     are pruned (e.g. tombstoned via Remove between boundaries, or
-        //     just now via fusion above).
-        let lineage_started = Instant::now();
-        for rec in &out.fission.lineage_added {
-            self.fission_lineage.push(*rec);
-        }
-        if !out.fission.lineage_removed.is_empty() {
-            let removed = &out.fission.lineage_removed;
-            self.fission_lineage.retain(|r| !removed.contains(r));
-            threshold_dirty = true;
-        }
-        // Prune tombstoned endpoints from fission/fusion (step 6). Remove
-        // requests in step 7/8 tombstone later — pruned again below.
-        self.prune_stale_fission_lineage();
-        out.timing.lineage_ms = lineage_started.elapsed().as_secs_f64() * 1000.0;
-
-        // Steps 7 + 8: Structural mutations (AddChild, Remove, Reparent,
-        // AttachOverlay, AddDimension). One pass through `apply_structural_mutations`
-        // handles every BoundaryRequest variant.
-        //
-        // Player intent overlays route through the same path: each is converted
-        // to `BoundaryRequest::AttachOverlay` and appended to the request list
-        // so attachment and slot-table updates happen in one consistent pass.
+        // Collect every ordinary AddChild request before fission mutates the
+        // tree. Together with the prepared fission set below this is the one
+        // complete candidate batch presented to 11.2a clearing.
         let request_drain_started = Instant::now();
         requests.extend(patcher.take_boundary_requests());
 
@@ -816,33 +822,208 @@ impl BoundaryProtocol {
             });
         }
         out.boundary_requests = requests.len() as u32;
-        let (requests, preflight_rejected_overlay_lifecycle) =
-            self.preflight_lifecycle_membership_requests(requests, state, n_dims, day as u32);
         out.timing.request_drain_ms = request_drain_started.elapsed().as_secs_f64() * 1000.0;
 
-        // Pre-grow for AddChild subtrees so apply_structural_mutations can
-        // project initialized semantic properties into the dense shadow.
-        // Like fission pre-grow, growth here preserves existing GPU data
-        // (rebuild_for_slots copies old → new); newly-allocated subtree
-        // slots are tracked individually via `out.maintainer.allocated`.
-        let pregrow_add_child_started = Instant::now();
-        let grew_for_add_child = self.ensure_slot_capacity(
-            self.allocator.capacity() + projected_add_child_slots(&requests),
-            patcher,
-            coord,
-            state,
+        let (prepared_fissions, fission_outcome) = prepare_fission_growth_candidates(
+            self.root.inner(),
+            &boundary_paths,
+            &self.registry,
+            &self.allocator,
+            &events,
+            &self.cpu_threshold_registry,
+            &coord.shadow,
+            n_dims,
+            day as u32,
         );
-        slot_capacity_grew |= grew_for_add_child;
-        topology_dirty |= grew_for_add_child;
-        if grew_for_add_child {
+        let mut candidates: Vec<_> = prepared_fissions
+            .values()
+            .map(|prepared| prepared.candidate())
+            .collect();
+        candidates.extend(requests.iter().filter_map(|request| match request {
+            BoundaryRequest::AddChild { parent, child } => Some(OrdinaryGrowthCandidate::new(
+                *parent,
+                child.id,
+                u32::try_from(subtree_size(child)).unwrap_or(u32::MAX),
+                OrdinaryGrowthOrigin::AddChild,
+            )),
+            _ => None,
+        }));
+        candidates.sort();
+
+        let generation = GenerationStamp::new(day as u32);
+        let decisions = resolve_growth(&self.allocator, generation, &candidates)
+            .map_err(GpuSyncError::GrowthEntitlement)?;
+        let mut decisions = validate_decisions(&candidates, decisions)
+            .map_err(|error| GpuSyncError::GrowthEntitlement(error.to_string()))?;
+
+        // Lifecycle admission stages accepted AddChild products on cloned
+        // state through the same placement/population seam. A rejection is U
+        // and cannot leave authoritative placement behind.
+        let (requests, preflight_rejected_overlay_lifecycle, lifecycle_refused) = self
+            .preflight_lifecycle_membership_requests(
+                requests, state, n_dims, day as u32, &decisions,
+            );
+        for child in lifecycle_refused {
+            let Some(GrowthEntitlementDecision::Granted {
+                candidate,
+                entitlement,
+            }) = decisions.get(&child).copied()
+            else {
+                continue;
+            };
+            let refusal = OrdinaryGrowthRefusal::lifecycle(
+                candidate,
+                generation,
+                entitlement.market_grant_key(),
+            );
+            integration_schedule.record_kind(
+                IntegrationScheduleRowKind::GrowthEntitlementRefusal,
+                generation,
+                generation,
+                refusal.schedule_product_key(),
+            );
+            out.growth_residency_facts
+                .push(RecordedGrowthResidencyFact::Refused(refusal));
+            decisions.insert(
+                child,
+                GrowthEntitlementDecision::refused(
+                    candidate,
+                    0,
+                    Some(entitlement.market_grant_key()),
+                ),
+            );
+        }
+
+        let mut growth_commits = BTreeMap::<SimThingId, GrowthResidencyCommit>::new();
+        for candidate in &candidates {
+            let decision = decisions
+                .get(&candidate.grantee())
+                .copied()
+                .expect("validated complete growth decision map");
+            match decision {
+                GrowthEntitlementDecision::Refused {
+                    granted,
+                    market_grant_key,
+                    ..
+                } => {
+                    // Lifecycle refusal was recorded above under its precise
+                    // reason; do not append a second row for the same fact.
+                    if out.growth_residency_facts.iter().any(|fact| {
+                        matches!(
+                            fact,
+                            RecordedGrowthResidencyFact::Refused(refusal)
+                                if refusal.candidate().grantee() == candidate.grantee()
+                        )
+                    }) {
+                        continue;
+                    }
+                    let refusal = OrdinaryGrowthRefusal::market(
+                        *candidate,
+                        generation,
+                        granted,
+                        market_grant_key,
+                    );
+                    integration_schedule.record_kind(
+                        IntegrationScheduleRowKind::GrowthEntitlementRefusal,
+                        generation,
+                        generation,
+                        refusal.schedule_product_key(),
+                    );
+                    out.growth_residency_facts
+                        .push(RecordedGrowthResidencyFact::Refused(refusal));
+                }
+                GrowthEntitlementDecision::Granted { entitlement, .. } => {
+                    match self.allocator.realize_unattached_growth_residency(
+                        entitlement,
+                        candidate.structural_parent(),
+                        generation,
+                        integration_schedule,
+                    ) {
+                        Ok(commit) => {
+                            growth_commits.insert(candidate.grantee(), commit);
+                            out.growth_residency_facts
+                                .push(RecordedGrowthResidencyFact::Accepted(commit));
+                        }
+                        Err(error) => {
+                            let Some(refusal) = error.refusal().cloned() else {
+                                return Err(GpuSyncError::GrowthEntitlement(error.to_string()));
+                            };
+                            out.growth_residency_facts
+                                .push(RecordedGrowthResidencyFact::Refused(
+                                    OrdinaryGrowthRefusal::placement(*candidate, refusal),
+                                ));
+                        }
+                    }
+                }
+            }
+        }
+
+        // Placement is complete for the full batch before any attach/row mint.
+        // Buffer growth remains infrastructure and follows the accepted
+        // physical products; it never decides entitlement.
+        let pregrow_fission_started = Instant::now();
+        let required_slots = growth_commits
+            .values()
+            .map(|commit| commit.placement().extent().end_exclusive() as usize)
+            .max()
+            .unwrap_or(self.allocator.capacity());
+        let grew_for_growth = self.ensure_slot_capacity(required_slots, patcher, coord, state);
+        slot_capacity_grew |= grew_for_growth;
+        topology_dirty |= grew_for_growth;
+        if grew_for_growth {
             self.bump_overlay_compile_revision();
         }
-        out.timing.pregrow_add_child_ms =
-            pregrow_add_child_started.elapsed().as_secs_f64() * 1000.0;
+        out.timing.pregrow_fission_ms = pregrow_fission_started.elapsed().as_secs_f64() * 1000.0;
+        out.timing.pregrow_add_child_ms = 0.0;
 
-        // Grow shadow to cover any new slots allocated during fission (step 6)
-        // before applying structural mutations. apply_structural_mutations
-        // expects values_shadow to be sized for the current allocator capacity.
+        let required_shadow = required_slots.saturating_mul(n_dims);
+        if coord.shadow.len() < required_shadow {
+            coord.shadow.resize(required_shadow, 0.0);
+        }
+
+        // Step 6: accepted fissions consume placement products; refused
+        // candidates attach nothing. Fusion stays on its existing path.
+        let fission_started = Instant::now();
+        out.fission = resolve_prepared_fission_fusion(
+            self.root.inner_mut(),
+            &boundary_paths,
+            &self.registry,
+            &mut self.allocator,
+            &events,
+            &self.cpu_threshold_registry,
+            &mut coord.shadow,
+            n_dims,
+            prepared_fissions,
+            &growth_commits,
+            fission_outcome,
+        );
+        for &(_, child) in &out.fission.fission_pairs {
+            push_slot_for_id(&self.allocator, child, &mut dirty_value_slots);
+        }
+        for &(parent, _) in &out.fission.fusion_pairs {
+            push_slot_for_id(&self.allocator, parent, &mut dirty_value_slots);
+        }
+        if out.fission.fissions_executed > 0 || out.fission.fusions_executed > 0 {
+            topology_dirty = true;
+            threshold_dirty = true;
+            self.bump_overlay_compile_revision();
+        }
+        out.timing.fission_ms = fission_started.elapsed().as_secs_f64() * 1000.0;
+
+        let lineage_started = Instant::now();
+        for rec in &out.fission.lineage_added {
+            self.fission_lineage.push(*rec);
+        }
+        if !out.fission.lineage_removed.is_empty() {
+            let removed = &out.fission.lineage_removed;
+            self.fission_lineage.retain(|r| !removed.contains(r));
+            threshold_dirty = true;
+        }
+        self.prune_stale_fission_lineage();
+        out.timing.lineage_ms = lineage_started.elapsed().as_secs_f64() * 1000.0;
+
+        // Accepted AddChild candidates consume the same placement-bearing
+        // population seam. Refused candidates remain U and attach nothing.
         let needed = self.allocator.capacity() * n_dims;
         if coord.shadow.len() < needed {
             coord.shadow.resize(needed, 0.0);
@@ -860,6 +1041,7 @@ impl BoundaryProtocol {
             Some(&structural_paths),
             GenerationStamp::new(day as u32),
             &mut self.overlay_lifecycle_admission,
+            &growth_commits,
         );
         out.maintainer.rejected_overlay_lifecycle = out
             .maintainer
@@ -1632,48 +1814,6 @@ fn projected_add_child_slots(requests: &[BoundaryRequest]) -> usize {
         .sum()
 }
 
-fn projected_fission_slots(
-    events: &[ThresholdEvent],
-    registry: &ThresholdRegistry,
-    root: &SimThing,
-    node_paths: &std::collections::HashMap<SimThingId, Vec<usize>>,
-    dim_reg: &DimensionRegistry,
-) -> usize {
-    let mut seen = HashSet::new();
-    events
-        .iter()
-        .filter_map(|event| match registry.get(event.event_kind())? {
-            ThresholdSemantic::FissionTrigger {
-                sim_thing_id,
-                property_id,
-                template_idx,
-            } => Some((*sim_thing_id, *property_id, *template_idx)),
-            _ => None,
-        })
-        .filter(|(sim_thing_id, _, template_idx)| seen.insert((*sim_thing_id, *template_idx)))
-        .map(|(sim_thing_id, property_id, template_idx)| {
-            let mut slots = 1;
-            if dim_reg.is_active(property_id) {
-                let prop = dim_reg.property(property_id);
-                if let Some(ft) = prop.fission_templates.get(template_idx) {
-                    if ft.template.clone_capability_children {
-                        if let Some(parent) = node_paths
-                            .get(&sim_thing_id)
-                            .and_then(|path| crate::tree_index::node_at_path(root, path))
-                        {
-                            let container_kinds = &ft.template.capability_container_kinds;
-                            slots += fission_clone_source_children(parent, container_kinds)
-                                .map(subtree_size)
-                                .sum::<usize>();
-                        }
-                    }
-                }
-            }
-            slots
-        })
-        .sum()
-}
-
 fn tree_has_boundary_lifecycle_work(node: &SimThing, registry: &DimensionRegistry) -> bool {
     if node.overlays.iter().any(|overlay| {
         overlay.is_active()
@@ -1791,7 +1931,7 @@ mod tests {
         child.add_property(pid, reg.property(pid).default_value());
         root.add_child(child);
         let mut alloc = SlotAllocator::new();
-        alloc.populate_from_tree(&root);
+        alloc.install_initial_tree(&root);
         let patcher = TransformPatcher::new(alloc.capacity());
         (
             BoundaryProtocol::new(SimRuntimeTree::admit(root), reg, alloc),

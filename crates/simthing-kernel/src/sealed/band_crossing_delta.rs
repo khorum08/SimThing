@@ -330,7 +330,7 @@ mod tests {
             root.add_child(SimThing::new(SimThingKind::Location, 0));
         }
         let mut allocator = SlotAllocator::new();
-        allocator.populate_from_tree(&root);
+        allocator.install_initial_tree(&root);
         assert_eq!(allocator.capacity() as u32, n_slots);
         (registry, allocator)
     }
@@ -442,7 +442,7 @@ mod tests {
         let _ = registry.register(unobserved);
         let root = SimThing::new(SimThingKind::GameSession, 0);
         let mut allocator = SlotAllocator::new();
-        allocator.populate_from_tree(&root);
+        allocator.install_initial_tree(&root);
 
         let regs = [ThresholdRegistration {
             slot: 0,

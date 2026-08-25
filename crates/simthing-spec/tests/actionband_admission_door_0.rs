@@ -126,7 +126,7 @@ fn depth_one_template_binds_the_existing_sealed_crossing_path() {
     let gpu_thresholds = simthing_gpu::emit_on_threshold_registrations_to_gpu(&thresholds);
     let root = SimThing::new(SimThingKind::GameSession, 0);
     let mut allocator = simthing_gpu::SlotAllocator::new();
-    allocator.populate_from_tree(&root);
+    allocator.install_initial_tree(&root);
     let n_dims = registry.total_columns as u32;
     let mut previous = vec![0.0; n_dims as usize];
     let mut current = vec![0.0; n_dims as usize];

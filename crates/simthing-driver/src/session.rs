@@ -15,6 +15,7 @@ use std::collections::HashMap;
 use std::sync::Mutex;
 use thiserror::Error;
 
+use crate::growth_entitlement::{GrowthEntitlementError, GrowthEntitlementMarketBinding};
 use crate::install::{install_atomic, InstallError, InstallPreview};
 use crate::scenario::Scenario;
 use crate::simulation_fabric::{
@@ -60,6 +61,8 @@ pub enum SessionError {
     ResidencyPlacement(#[from] simthing_gpu::ResidencyPlacementError),
     #[error(transparent)]
     ResidencyMarket(#[from] crate::residency_market::ResidencyMarketBridgeError),
+    #[error(transparent)]
+    GrowthEntitlement(#[from] GrowthEntitlementError),
     #[error(transparent)]
     ActionBandIngress(#[from] ActionBandExecutionIngressError),
 }
@@ -291,6 +294,8 @@ pub struct SimSession {
     pub spec_state: SpecSessionState,
     /// THE canonical 6.1 integration recorder, extended with typed residency rows.
     integration_schedule: simthing_core::IntegrationSchedule,
+    /// One admitted 11.2a input for all ordinary fission/AddChild growth.
+    growth_entitlement: GrowthEntitlementMarketBinding,
     /// Last boundary dynamic Resource Flow fission enrollment report (E-2B-5R).
     pub last_resource_flow_dynamic_enrollment_report:
         Option<crate::resource_flow_fission_enrollment::DynamicFissionEnrollmentReport>,
@@ -598,13 +603,15 @@ impl SimSession {
         let ctx = GpuContext::new_blocking()?;
         let n_dims = scenario.registry.total_columns as u32;
         let mut allocator = simthing_gpu::SlotAllocator::new();
-        allocator.populate_from_tree(&scenario.root);
+        allocator.install_initial_tree(&scenario.root);
         let n_slots = scenario.n_slots.max(allocator.capacity() as u32);
         allocator.declare_root_residency_extent(
             scenario.root.id,
             simthing_gpu::ResidencyExtent::try_new(0, n_slots)
                 .map_err(|error| SessionError::Mapping(error.to_string()))?,
         )?;
+        let growth_entitlement =
+            GrowthEntitlementMarketBinding::implicit_root_standing(scenario.root.id)?;
 
         let mut state = WorldGpuState::new(ctx, &scenario.registry, n_slots);
         let pipelines = Pipelines::new(&state.ctx);
@@ -642,6 +649,7 @@ impl SimSession {
             tx,
             spec_state: SpecSessionState::new(),
             integration_schedule: simthing_core::IntegrationSchedule::new(),
+            growth_entitlement,
             last_resource_flow_dynamic_enrollment_report: None,
             mapping: None,
             mapping_commitments: Vec::new(),
@@ -657,6 +665,35 @@ impl SimSession {
     /// Observe the one canonical integration schedule, including physical residency rows.
     pub fn integration_schedule(&self) -> &simthing_core::IntegrationSchedule {
         &self.integration_schedule
+    }
+
+    /// Frozen ordinary-growth market input used by the production boundary.
+    pub fn growth_entitlement_market(&self) -> &GrowthEntitlementMarketBinding {
+        &self.growth_entitlement
+    }
+
+    /// Replace the no-authored-market standing-root default with one already
+    /// admitted 11.2a market binding. The input freezes before the first tick;
+    /// growth never switches authorities while a session is live.
+    pub fn install_growth_entitlement_market(
+        &mut self,
+        binding: GrowthEntitlementMarketBinding,
+    ) -> Result<(), SessionError> {
+        if self.coord.tick_index() != 0 || self.coord.day_index() != 0 {
+            return Err(SessionError::GrowthEntitlement(
+                GrowthEntitlementError::LateInstall {
+                    tick: self.coord.tick_index(),
+                    generation: self.coord.day_index(),
+                },
+            ));
+        }
+        if self.proto.allocator.slot_of(binding.granter()).is_none() {
+            return Err(SessionError::GrowthEntitlement(
+                GrowthEntitlementError::UnresidentGranter(binding.granter()),
+            ));
+        }
+        self.growth_entitlement = binding;
+        Ok(())
     }
 
     /// Consume one already-cleared market grant at the session's existing generation authority.
@@ -1362,13 +1399,20 @@ impl SimSession {
         summary.boundary_readback_bytes += self.state.values_len() as u64 * 4;
         let boundary_started = Instant::now();
         let spec_state = &mut self.spec_state;
-        let outcome = self.proto.execute_with_boundary_hook(
+        let growth_entitlement = &self.growth_entitlement;
+        let outcome = self.proto.execute_with_boundary_hook_and_growth(
             tick.events,
             &mut self.patcher,
             &mut self.coord,
             &mut self.state,
             day,
+            &mut self.integration_schedule,
             |ctx| spec_state.run_boundary_handlers(ctx),
+            |allocator, generation, candidates| {
+                growth_entitlement
+                    .resolve_batch(allocator, generation, candidates)
+                    .map_err(|error| error.to_string())
+            },
         )?;
         summary.boundary_total_ms += boundary_started.elapsed().as_secs_f64() * 1000.0;
         summary.fission_events += outcome.fission.fissions_executed;
@@ -1462,13 +1506,20 @@ impl SimSession {
                 // runs so we can diff post-boundary and emit `SpecDelta`s.
                 let pre_spec = self.spec_state.pre_boundary_snapshot();
                 let spec_state = &mut self.spec_state;
-                let outcome = self.proto.execute_with_boundary_hook(
+                let growth_entitlement = &self.growth_entitlement;
+                let outcome = self.proto.execute_with_boundary_hook_and_growth(
                     tick.events,
                     &mut self.patcher,
                     &mut self.coord,
                     &mut self.state,
                     day,
+                    &mut self.integration_schedule,
                     |ctx| spec_state.run_boundary_handlers(ctx),
+                    |allocator, generation, candidates| {
+                        growth_entitlement
+                            .resolve_batch(allocator, generation, candidates)
+                            .map_err(|error| error.to_string())
+                    },
                 )?;
                 summary.boundary_total_ms += boundary_started.elapsed().as_secs_f64() * 1000.0;
                 summary.fission_events += outcome.fission.fissions_executed;

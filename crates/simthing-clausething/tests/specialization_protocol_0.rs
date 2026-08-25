@@ -180,7 +180,7 @@ fn one_installed_canonical_report_derives_all_three_seed_populations() {
     // ONE ordinary installed report through the production admission path.
     let scenario = minimal_scenario(authority.clone());
     let mut allocator = SlotAllocator::new();
-    allocator.populate_from_tree(&scenario.root);
+    allocator.install_initial_tree(&scenario.root);
     let preview = preview_install(
         &GameModeSpec::default(),
         &scenario,
@@ -284,7 +284,7 @@ fn owner_seat_requires_the_admitted_policy_weight_authority() {
     let mut scenario = minimal_scenario(root);
     scenario.registry = registry;
     let mut allocator = SlotAllocator::new();
-    allocator.populate_from_tree(&scenario.root);
+    allocator.install_initial_tree(&scenario.root);
 
     let preview = preview_install(
         &GameModeSpec::default(),
@@ -332,7 +332,7 @@ fn callers_cannot_fabricate_spatial_placement() {
 
     let scenario = minimal_scenario(root);
     let mut allocator = SlotAllocator::new();
-    allocator.populate_from_tree(&scenario.root);
+    allocator.install_initial_tree(&scenario.root);
     let preview = preview_install(
         &GameModeSpec::default(),
         &scenario,
@@ -538,7 +538,7 @@ fn authored_unknown_profile_carries_simthing_profile_and_span() {
     // Through the ordinary install path.
     let scenario = minimal_scenario(authority.clone());
     let mut allocator = SlotAllocator::new();
-    allocator.populate_from_tree(&scenario.root);
+    allocator.install_initial_tree(&scenario.root);
     let error = preview_install(
         &GameModeSpec::default(),
         &scenario,
@@ -584,7 +584,7 @@ fn pre_3_1_fixture_loads_admits_and_reserializes_without_the_new_field() {
     // Ordinary admission over the legacy tree.
     let scenario = minimal_scenario(legacy.clone());
     let mut allocator = SlotAllocator::new();
-    allocator.populate_from_tree(&scenario.root);
+    allocator.install_initial_tree(&scenario.root);
     preview_install(
         &GameModeSpec::default(),
         &scenario,

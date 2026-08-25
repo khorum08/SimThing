@@ -333,7 +333,7 @@ mod tests {
         world.add_child(loc);
 
         let mut alloc = SlotAllocator::new();
-        alloc.populate_from_tree(&world);
+        alloc.install_initial_tree(&world);
 
         (reg, lid, world, alloc)
     }

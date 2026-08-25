@@ -485,7 +485,7 @@ fn install_pack_standalone_overlays(
         overlay_ref_ids.insert(overlay_spec.id.clone(), installed);
     }
     if !pack.overlays.is_empty() && allocator.slot_of(root.id).is_none() {
-        allocator.populate_from_tree(root);
+        allocator.install_initial_tree(root);
     }
     Ok(())
 }
@@ -1386,7 +1386,7 @@ fn install_tree_for_owner(
     }
 
     // 3. Re-populate slots so the cloned subtree gets allocations.
-    allocator.populate_from_tree(root);
+    allocator.install_initial_tree(root);
     let tree_slot = allocator
         .slot_of(cloned_tree_id)
         .ok_or(InstallError::SlotOverflow { owner_id })?;
@@ -1858,7 +1858,7 @@ mod tests {
 
     fn fresh_caller_state(scenario: &Scenario) -> (DimensionRegistry, SimThing, SlotAllocator) {
         let mut allocator = SlotAllocator::new();
-        allocator.populate_from_tree(&scenario.root);
+        allocator.install_initial_tree(&scenario.root);
         (scenario.registry.clone(), scenario.root.clone(), allocator)
     }
 

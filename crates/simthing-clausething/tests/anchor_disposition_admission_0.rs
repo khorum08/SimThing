@@ -51,7 +51,7 @@ fn micro_preview(source: &str) -> (RawDocument, InstallPreview) {
         install_targets: HashMap::new(),
     };
     let mut allocator = SlotAllocator::new();
-    allocator.populate_from_tree(&scenario.root);
+    allocator.install_initial_tree(&scenario.root);
     let preview = preview_install(
         &pack.game_mode,
         &scenario,
@@ -188,7 +188,7 @@ fn canonical_preview() -> InstallPreview {
         install_targets: HashMap::new(),
     };
     let mut allocator = SlotAllocator::new();
-    allocator.populate_from_tree(&scenario.root);
+    allocator.install_initial_tree(&scenario.root);
     preview_install(
         &game_mode,
         &scenario,

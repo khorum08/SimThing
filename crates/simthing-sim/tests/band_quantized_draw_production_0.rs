@@ -28,7 +28,7 @@ fn simple_boundary() -> (BoundaryProtocol, SimThingId, SimPropertyId) {
     let child_id = child.id;
     root.add_child(child);
     let mut alloc = SlotAllocator::new();
-    alloc.populate_from_tree(&root);
+    alloc.install_initial_tree(&root);
     let proto = BoundaryProtocol::new(simthing_sim::SimRuntimeTree::admit(root), reg, alloc);
     (proto, child_id, pid)
 }

@@ -410,6 +410,7 @@ fn entry_kind(entry: &BoundaryDeltaEntry) -> &'static str {
         BoundaryDeltaEntry::SimThingRemoved { .. } => "SimThingRemoved",
         BoundaryDeltaEntry::DimensionAdded { .. } => "DimensionAdded",
         BoundaryDeltaEntry::FissionOccurred { .. } => "FissionOccurred",
+        BoundaryDeltaEntry::GrowthResidencyRefused { .. } => "GrowthResidencyRefused",
         BoundaryDeltaEntry::FusionOccurred { .. } => "FusionOccurred",
         BoundaryDeltaEntry::PropertyExpired { .. } => "PropertyExpired",
         BoundaryDeltaEntry::SimThingReparented { .. } => "SimThingReparented",

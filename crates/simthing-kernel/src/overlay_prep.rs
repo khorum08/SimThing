@@ -1025,7 +1025,7 @@ mod tests {
         let semantic_before = projection.profile_digest_by_logical_identity();
 
         let mut allocator = SlotAllocator::new();
-        allocator.populate_from_tree(&root);
+        allocator.install_initial_tree(&root);
         let dense_before = projection.materialize_dense_internal(&registry, &allocator);
         let by_id_before = [
             (root.id, ops_for(root.id, &allocator, &dense_before)),
@@ -1195,7 +1195,7 @@ mod tests {
         deliver_routed_overlay(&mut root, receiver_id, instruction).unwrap();
 
         let mut allocator = SlotAllocator::new();
-        allocator.populate_from_tree(&root);
+        allocator.install_initial_tree(&root);
         let mut projection = OverlaySpanProjection::try_compile(&root).unwrap();
         assert!(projection.dependency_index().binding_count() > 0);
         let initial = projection.materialize_dense_internal(&registry, &allocator);

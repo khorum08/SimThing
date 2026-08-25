@@ -87,7 +87,7 @@ fn ct2c_scenario(hosted_count: usize, game_mode: &GameModeSpec) -> Scenario {
 
 fn fill_explicit_participants(game_mode: &mut GameModeSpec, scenario: &Scenario) {
     let mut alloc = SlotAllocator::new();
-    alloc.populate_from_tree(&scenario.root);
+    alloc.install_initial_tree(&scenario.root);
     let participants: Vec<_> = scenario
         .root
         .children

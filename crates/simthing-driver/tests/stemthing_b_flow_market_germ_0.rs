@@ -679,7 +679,7 @@ fn non_residency_market_executes_rf_costband_full_triad_action_and_existing_repl
     let mut root = SimThing::new(SimThingKind::GameSession, 0);
     let root_id = root.id;
     let mut allocator = SlotAllocator::new();
-    allocator.populate_from_tree(&root);
+    allocator.install_initial_tree(&root);
     let deltas = apply_band_crossing_deltas_from_fused_emissions(
         &emissions,
         phase5.threshold_registrations(),

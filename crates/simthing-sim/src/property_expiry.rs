@@ -300,7 +300,7 @@ mod tests {
         root.add_child(loc_b);
 
         let mut alloc = SlotAllocator::new();
-        alloc.populate_from_tree(&root);
+        alloc.install_initial_tree(&root);
         let n_dims = reg.total_columns;
         let mut shadow = vec![0.0; alloc.capacity() * n_dims];
         let a_slot = alloc.slot_of(a_id).unwrap().as_usize();

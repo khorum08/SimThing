@@ -58,6 +58,7 @@ pub mod delta_log;
 pub mod fission;
 pub mod fission_clone_source_view;
 pub mod gpu_sync;
+pub mod growth_entitlement;
 pub mod legacy_oracle;
 pub mod mapping_atlas_scheduler;
 pub mod mapping_plan_tick;
@@ -89,6 +90,11 @@ pub use delta_log::BoundaryDeltaEntry;
 pub use fission::{ClonedCapabilityRoot, FissionLineageRecord, FissionOutcome};
 pub use fission_clone_source_view::FissionCloneSourceView;
 pub use gpu_sync::{GpuSyncError, GpuSyncOutcome};
+pub use growth_entitlement::{
+    GrowthEntitlementBatchError, GrowthEntitlementDecision, OrdinaryGrowthCandidate,
+    OrdinaryGrowthOrigin, OrdinaryGrowthRefusal, OrdinaryGrowthRefusalReason,
+    RecordedGrowthResidencyFact,
+};
 pub use legacy_oracle::{
     apply_oracle_flags, assert_events_oracle, assert_values_oracle, run_family_oracle,
     LegacyOracleRun, OracleCapture, OracleExactness, OracleFamily, OracleScenario,
@@ -108,8 +114,8 @@ pub use observability::{
 };
 pub use reduced_field::ReducedField;
 pub use replay::{
-    ReplayDriver, ReplayError, ReplayFrame, ReplayReader, ReplayRecord, ReplaySnapshot,
-    ReplayWriter,
+    ReplayDriver, ReplayError, ReplayFrame, ReplayGrowthError, ReplayReader, ReplayRecord,
+    ReplaySnapshot, ReplayWriter,
 };
 pub use resolution_site::{
     collect_aggregate_alerts_vendorized, collect_velocity_alerts_vendorized,

@@ -253,7 +253,7 @@ fn world_values(fixture: &Fixture, current: f32, previous: f32) -> Vec<f32> {
 fn sealed_delta(fixture: &Fixture) -> simthing_gpu::BandCrossingDelta {
     let root = SimThing::new(SimThingKind::GameSession, 0);
     let mut allocator = SlotAllocator::new();
-    allocator.populate_from_tree(&root);
+    allocator.install_initial_tree(&root);
     let regs = emit_on_threshold_registrations_to_gpu(&fixture.thresholds);
     let previous = world_values(fixture, 0.5, 1.0);
     let current = world_values(fixture, 1.5, 1.0);
@@ -275,7 +275,7 @@ fn sealed_delta(fixture: &Fixture) -> simthing_gpu::BandCrossingDelta {
 fn sealed_delta_from_gpu(fixture: &Fixture, ctx: &GpuContext) -> simthing_gpu::BandCrossingDelta {
     let root = SimThing::new(SimThingKind::GameSession, 0);
     let mut allocator = SlotAllocator::new();
-    allocator.populate_from_tree(&root);
+    allocator.install_initial_tree(&root);
     let regs = emit_on_threshold_registrations_to_gpu(&fixture.thresholds);
     let previous = world_values(fixture, 0.5, 1.0);
     let current = world_values(fixture, 1.5, 1.0);
@@ -416,7 +416,7 @@ fn sparse_gpu_state_ping_pongs_and_matches_exact_eml_oracle() {
     let target = target_node.id;
     root.add_child(target_node);
     let mut allocator = SlotAllocator::new();
-    allocator.populate_from_tree(&root);
+    allocator.install_initial_tree(&root);
     let mut runtime = SimRuntimeTree::admit(root);
     let mut structural_registry = DimensionRegistry::new();
     structural_registry.register(SimProperty::simple("proof", "structural-shadow", 1));
@@ -461,6 +461,7 @@ fn sparse_gpu_state_ping_pongs_and_matches_exact_eml_oracle() {
         None,
         simthing_core::GenerationStamp::new(0),
         &mut simthing_sim::overlay_lifecycle::OverlayLifecycleAdmissionState::default(),
+        &std::collections::BTreeMap::new(),
     );
     assert_eq!(outcome.tombstoned, [target]);
     assert_eq!(runtime.subtree_size(), 1);

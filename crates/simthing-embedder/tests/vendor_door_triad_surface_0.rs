@@ -110,7 +110,7 @@ fn full_triad_fixture() -> (run::Scenario, run::GameModeSpec, populate::SimThing
     let participant_id = participant.id;
     root.add_child(participant);
     let mut allocator = SlotAllocator::new();
-    allocator.populate_from_tree(&root);
+    allocator.install_initial_tree(&root);
     let participant_slot = allocator
         .slot_of(participant_id)
         .expect("participant slot")

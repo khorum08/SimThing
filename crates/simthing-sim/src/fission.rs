@@ -46,6 +46,7 @@
 //! is intentional (see `docs/state-authority.md`).
 
 use crate::fission_clone_source_view::fission_clone_source_children;
+use crate::growth_entitlement::{OrdinaryGrowthCandidate, OrdinaryGrowthOrigin};
 use crate::threshold_registry::{ThresholdRegistry, ThresholdSemantic};
 use crate::tree_index::{node_at_path, node_at_path_mut};
 use serde::{Deserialize, Serialize};
@@ -53,8 +54,8 @@ use simthing_core::{
     DimensionRegistry, PropertyValue, ResolvedFissionChildBlueprint, SecondaryCondition,
     SimPropertyId, SimThing, SimThingId, SubFieldRole,
 };
-use simthing_gpu::{SlotAllocator, ThresholdEvent};
-use std::collections::{HashMap, HashSet};
+use simthing_gpu::{GrowthResidencyCommit, SlotAllocator, ThresholdEvent};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
 /// One spawned child's lineage back to its parent + activating template.
 ///
@@ -79,6 +80,8 @@ pub struct FissionOutcome {
     pub fissions_executed: u32,
     pub fissions_skipped_secondary: u32,
     pub fissions_skipped_duplicate: u32,
+    /// Complete fission candidates that stayed U or failed physical placement.
+    pub fissions_refused_entitlement: u32,
     pub fusions_executed: u32,
     pub fusions_skipped_not_found: u32,
     /// Each successful fission: `(parent_id, child_id)`.
@@ -108,6 +111,30 @@ pub struct FissionOutcome {
     pub cloned_capability_roots: Vec<ClonedCapabilityRoot>,
 }
 
+/// Complete pre-mutation fission product. Fields stay opaque; the only public
+/// observation is its entitlement candidate, and execution still requires a
+/// kernel-minted residency commit.
+pub struct PreparedFission {
+    parent_id: SimThingId,
+    property_id: SimPropertyId,
+    template_idx: usize,
+    child: SimThing,
+    parent_slot: u32,
+    parent_property_ids: Vec<SimPropertyId>,
+    prepared_clones: Vec<(ClonedCapabilityRoot, Vec<(SimThingId, SimThingId)>)>,
+}
+
+impl PreparedFission {
+    pub fn candidate(&self) -> OrdinaryGrowthCandidate {
+        OrdinaryGrowthCandidate::new(
+            self.parent_id,
+            self.child.id,
+            subtree_size(&self.child),
+            OrdinaryGrowthOrigin::Fission,
+        )
+    }
+}
+
 /// Provenance record for one fission-cloned capability subtree root.
 /// Emitted per resolved clone-source child found on the fission parent
 /// and successfully cloned onto the spawned child.
@@ -129,12 +156,96 @@ pub struct ClonedCapabilityRoot {
     pub overlay_id_pairs: Vec<(simthing_core::OverlayId, simthing_core::OverlayId)>,
 }
 
-/// Execute all fission and fusion events for one boundary.
-///
-/// `node_paths` must reflect `root` before any fission mutation (see
-/// `tree_index::build_node_paths`). The caller rebuilds the index after
-/// fission if structural mutations follow in the same boundary.
-pub fn resolve_fission_fusion(
+/// Build every fission candidate before any ordinary growth mutation. Trigger
+/// descriptors are sorted before IDs are minted, so event order cannot change
+/// candidate identity or later clearing.
+pub fn prepare_fission_growth_candidates(
+    root: &SimThing,
+    node_paths: &HashMap<SimThingId, Vec<usize>>,
+    registry: &DimensionRegistry,
+    allocator: &SlotAllocator,
+    events: &[ThresholdEvent],
+    cpu_reg: &ThresholdRegistry,
+    values_shadow: &[f32],
+    n_dims: usize,
+    current_day: u32,
+) -> (
+    BTreeMap<(SimThingId, usize), PreparedFission>,
+    FissionOutcome,
+) {
+    let mut out = FissionOutcome::default();
+    let mut descriptors = BTreeMap::new();
+    for event in events {
+        let Some(sem) = cpu_reg.get(event.event_kind()) else {
+            continue;
+        };
+        if let ThresholdSemantic::FissionTrigger {
+            sim_thing_id,
+            property_id,
+            template_idx,
+        } = sem
+        {
+            let key = (*sim_thing_id, *template_idx);
+            if descriptors
+                .insert(key, (*property_id, *template_idx))
+                .is_some()
+            {
+                out.fissions_skipped_duplicate += 1;
+            }
+        }
+    }
+    let mut prepared = BTreeMap::new();
+    for ((parent_id, template_idx), (property_id, _)) in descriptors {
+        let Some(parent) = node_paths
+            .get(&parent_id)
+            .and_then(|path| node_at_path(root, path))
+        else {
+            continue;
+        };
+        let Some(parent_slot) = allocator.slot_of(parent.id) else {
+            continue;
+        };
+        let prop = registry.property(property_id);
+        let Some(ft) = prop.fission_templates.get(template_idx) else {
+            continue;
+        };
+        if !check_secondary(
+            ft.secondary.as_ref(),
+            property_id,
+            registry,
+            values_shadow,
+            parent_slot.raw(),
+            n_dims,
+        ) {
+            out.fissions_skipped_secondary += 1;
+            continue;
+        }
+        let mut child =
+            ResolvedFissionChildBlueprint::from_template(&ft.template).spawn(current_day);
+        let prepared_clones = if ft.template.clone_capability_children {
+            prepare_capability_children(parent, &mut child, &ft.template.capability_container_kinds)
+        } else {
+            Vec::new()
+        };
+        prepared.insert(
+            (parent_id, template_idx),
+            PreparedFission {
+                parent_id,
+                property_id,
+                template_idx,
+                child,
+                parent_slot: parent_slot.raw(),
+                parent_property_ids: parent.properties.keys().copied().collect(),
+                prepared_clones,
+            },
+        );
+    }
+    (prepared, out)
+}
+
+/// Execute the previously completed fission batch and ordinary fusion events.
+/// Every fission attachment must consume its kernel placement commit.
+pub fn resolve_prepared_fission_fusion(
     root: &mut SimThing,
     node_paths: &HashMap<SimThingId, Vec<usize>>,
     registry: &DimensionRegistry,
@@ -143,45 +254,41 @@ pub fn resolve_fission_fusion(
     cpu_reg: &ThresholdRegistry,
     values_shadow: &mut [f32],
     n_dims: usize,
-    current_day: u32,
+    mut prepared: BTreeMap<(SimThingId, usize), PreparedFission>,
+    commits: &BTreeMap<SimThingId, GrowthResidencyCommit>,
+    mut out: FissionOutcome,
 ) -> FissionOutcome {
-    let mut out = FissionOutcome::default();
-
-    // Deduplicate fission triggers.
-    let mut seen_fissions: HashSet<(SimThingId, usize)> = HashSet::new();
-
+    let mut seen_fissions = HashSet::new();
     for event in events {
-        let Some(sem) = cpu_reg.get(event.event_kind()) else {
+        let Some(semantic) = cpu_reg.get(event.event_kind()) else {
             continue;
         };
-        match sem {
+        match semantic {
             ThresholdSemantic::FissionTrigger {
                 sim_thing_id,
-                property_id,
                 template_idx,
+                ..
             } => {
                 let key = (*sim_thing_id, *template_idx);
-                if seen_fissions.contains(&key) {
-                    out.fissions_skipped_duplicate += 1;
+                if !seen_fissions.insert(key) {
                     continue;
                 }
-                seen_fissions.insert(key);
-
-                let stid = *sim_thing_id;
-                let pid = *property_id;
-                let idx = *template_idx;
-
-                if execute_fission(
+                let Some(candidate) = prepared.remove(&key) else {
+                    continue;
+                };
+                let Some(commit) = commits.get(&candidate.child.id).copied() else {
+                    out.fissions_refused_entitlement += 1;
+                    continue;
+                };
+                if execute_prepared_fission(
                     root,
                     registry,
                     allocator,
-                    &node_paths,
-                    stid,
-                    pid,
-                    idx,
+                    node_paths,
+                    candidate,
+                    commit,
                     values_shadow,
                     n_dims,
-                    current_day,
                     &mut out,
                 ) {
                     out.fissions_executed += 1;
@@ -192,169 +299,194 @@ pub fn resolve_fission_fusion(
                 parent_id,
                 property_id,
                 template_idx,
-            } => {
-                let cid = *child_id;
-                let par = *parent_id;
-                let pid = *property_id;
-                let idx = *template_idx;
-
-                execute_fusion(
-                    root,
-                    registry,
-                    allocator,
-                    cid,
-                    par,
-                    pid,
-                    idx,
-                    values_shadow,
-                    n_dims,
-                    &mut out,
-                );
-            }
+            } => execute_fusion(
+                root,
+                registry,
+                allocator,
+                *child_id,
+                *parent_id,
+                *property_id,
+                *template_idx,
+                values_shadow,
+                n_dims,
+                &mut out,
+            ),
             _ => {}
         }
     }
-
     out
 }
 
-fn execute_fission(
+#[cfg(test)]
+#[allow(clippy::too_many_arguments)]
+fn resolve_fission_fusion(
+    root: &mut SimThing,
+    node_paths: &HashMap<SimThingId, Vec<usize>>,
+    registry: &DimensionRegistry,
+    allocator: &mut SlotAllocator,
+    events: &[ThresholdEvent],
+    cpu_reg: &ThresholdRegistry,
+    values_shadow: &mut [f32],
+    n_dims: usize,
+    current_day: u32,
+) -> FissionOutcome {
+    use simthing_core::{GenerationStamp, IntegrationSchedule};
+    use simthing_gpu::{ProvisionalResidencyEntitlement, ResidencyExtent};
+
+    let generation = GenerationStamp::new(current_day);
+    let granter = root.id;
+    let rows = u32::try_from(values_shadow.len() / n_dims).expect("test shadow row count fits");
+    allocator
+        .declare_root_residency_extent(
+            granter,
+            ResidencyExtent::try_new(0, rows).expect("test extent is nonempty"),
+        )
+        .expect("test root extent admits");
+    let (prepared, out) = prepare_fission_growth_candidates(
+        root,
+        node_paths,
+        registry,
+        allocator,
+        events,
+        cpu_reg,
+        values_shadow,
+        n_dims,
+        current_day,
+    );
+    let mut schedule = IntegrationSchedule::new();
+    let commits = prepared
+        .values()
+        .enumerate()
+        .map(|(index, candidate)| {
+            let growth = candidate.candidate();
+            let entitlement = ProvisionalResidencyEntitlement::try_new(
+                granter,
+                growth.grantee(),
+                u64::try_from(index).unwrap() + 1,
+                growth.quantity(),
+                generation,
+            )
+            .unwrap();
+            let commit = allocator
+                .realize_unattached_growth_residency(
+                    entitlement,
+                    growth.structural_parent(),
+                    generation,
+                    &mut schedule,
+                )
+                .unwrap();
+            (growth.grantee(), commit)
+        })
+        .collect();
+    resolve_prepared_fission_fusion(
+        root,
+        node_paths,
+        registry,
+        allocator,
+        events,
+        cpu_reg,
+        values_shadow,
+        n_dims,
+        prepared,
+        &commits,
+        out,
+    )
+}
+
+fn execute_prepared_fission(
     root: &mut SimThing,
     registry: &DimensionRegistry,
     allocator: &mut SlotAllocator,
     node_paths: &HashMap<SimThingId, Vec<usize>>,
-    stid: SimThingId,
-    pid: SimPropertyId,
-    template_idx: usize,
+    prepared: PreparedFission,
+    commit: GrowthResidencyCommit,
     values_shadow: &mut [f32],
     n_dims: usize,
-    current_day: u32,
     out: &mut FissionOutcome,
 ) -> bool {
-    // Verify secondary condition before mutating the tree.
-    let ok = {
-        let node = node_paths
-            .get(&stid)
-            .and_then(|path| node_at_path(root, path));
-        let slot = node.and_then(|n| allocator.slot_of(n.id));
-        match (node, slot) {
-            (Some(_n), Some(s)) => {
-                let prop = registry.property(pid);
-                if template_idx >= prop.fission_templates.len() {
-                    return false;
-                }
-                let ft = &prop.fission_templates[template_idx];
-                check_secondary(
-                    ft.secondary.as_ref(),
-                    pid,
-                    registry,
-                    values_shadow,
-                    s.raw(),
-                    n_dims,
-                )
-            }
-            _ => false,
-        }
+    let PreparedFission {
+        parent_id,
+        property_id,
+        template_idx,
+        child,
+        parent_slot,
+        parent_property_ids,
+        prepared_clones,
+    } = prepared;
+    let new_id = child.id;
+    let Some(parent) = node_paths
+        .get(&parent_id)
+        .and_then(|path| node_at_path_mut(root, path))
+    else {
+        return false;
     };
-
-    if !ok {
-        out.fissions_skipped_secondary += 1;
+    parent.add_child(child);
+    let attached = parent.children.last().expect("fission child just attached");
+    if allocator
+        .realize_growth_subtree(parent, attached, commit)
+        .is_err()
+    {
+        parent.children.pop();
         return false;
     }
 
-    // Spawn the child.
-    let prop = registry.property(pid);
-    let ft = &prop.fission_templates[template_idx];
-    let mut new_child =
-        ResolvedFissionChildBlueprint::from_template(&ft.template).spawn(current_day);
-    let new_id = new_child.id;
-    let (parent_slot, parent_property_ids, prepared_clones) = {
-        let Some(parent) = node_paths
-            .get(&stid)
-            .and_then(|path| node_at_path(root, path))
-        else {
-            return false;
-        };
-        let Some(parent_slot) = allocator.slot_of(parent.id) else {
-            return false;
-        };
-        let parent_property_ids = parent.properties.keys().copied().collect::<Vec<_>>();
-        let prepared_clones = if ft.template.clone_capability_children {
-            prepare_capability_children(
-                parent,
-                &mut new_child,
-                &ft.template.capability_container_kinds,
-            )
-        } else {
-            Vec::new()
-        };
-        (parent_slot, parent_property_ids, prepared_clones)
-    };
+    let new_slot = allocator
+        .slot_of(new_id)
+        .expect("attached fission child received residency");
+    let attached = parent
+        .children
+        .last_mut()
+        .expect("admitted fission child remains attached");
+    seed_fission_child(
+        &parent_property_ids,
+        attached,
+        registry,
+        property_id,
+        parent_slot,
+        new_slot.raw(),
+        values_shadow,
+        n_dims,
+    );
 
-    let parent = node_paths
-        .get(&stid)
-        .and_then(|path| node_at_path_mut(root, path));
-    if let Some(p) = parent {
-        p.add_child(new_child);
-        let attached = p.children.last().expect("fission child just attached");
-        if allocator.populate_subtree(p, attached).is_err() {
-            p.children.pop();
-            return false;
+    let mut cloned_roots = Vec::new();
+    for (record, id_pairs) in prepared_clones {
+        let mut allocated_any = false;
+        for (source_id, cloned_id) in id_pairs {
+            let Some(source_slot) = allocator.slot_of(source_id) else {
+                continue;
+            };
+            let Some(cloned_slot) = allocator.slot_of(cloned_id) else {
+                continue;
+            };
+            copy_shadow_row(source_slot.raw(), cloned_slot.raw(), values_shadow, n_dims);
+            allocated_any = true;
         }
-
-        let new_slot = allocator
-            .slot_of(new_id)
-            .expect("attached fission child received residency");
-        let attached = p
-            .children
-            .last_mut()
-            .expect("admitted fission child remains attached");
-        seed_fission_child(
-            &parent_property_ids,
-            attached,
-            registry,
-            pid,
-            parent_slot.raw(),
-            new_slot.raw(),
-            values_shadow,
-            n_dims,
-        );
-
-        let mut cloned_roots = Vec::new();
-        for (record, id_pairs) in prepared_clones {
-            let mut allocated_any = false;
-            for (source_id, cloned_id) in id_pairs {
-                let Some(source_slot) = allocator.slot_of(source_id) else {
-                    continue;
-                };
-                let Some(cloned_slot) = allocator.slot_of(cloned_id) else {
-                    continue;
-                };
-                copy_shadow_row(source_slot.raw(), cloned_slot.raw(), values_shadow, n_dims);
-                allocated_any = true;
-            }
-            if allocated_any {
-                cloned_roots.push(record);
-            }
+        if allocated_any {
+            cloned_roots.push(record);
         }
-        if !cloned_roots.is_empty() {
-            out.cloned_capability_subtrees = true;
-            out.cloned_capability_roots.extend(cloned_roots);
-        }
-
-        out.fission_pairs.push((stid, new_id));
-        out.lineage_added.push(FissionLineageRecord {
-            parent_id: stid,
-            child_id: new_id,
-            property_id: pid,
-            template_idx,
-        });
-        true
-    } else {
-        // Parent disappeared between the check and the mutation — extremely
-        // unlikely but defensive.
-        false
     }
+    if !cloned_roots.is_empty() {
+        out.cloned_capability_subtrees = true;
+        out.cloned_capability_roots.extend(cloned_roots);
+    }
+
+    out.fission_pairs.push((parent_id, new_id));
+    out.lineage_added.push(FissionLineageRecord {
+        parent_id,
+        child_id: new_id,
+        property_id,
+        template_idx,
+    });
+    true
+}
+
+fn subtree_size(node: &SimThing) -> u32 {
+    1u32.saturating_add(
+        node.children
+            .iter()
+            .map(subtree_size)
+            .fold(0u32, u32::saturating_add),
+    )
 }
 
 fn seed_fission_child(
@@ -723,7 +855,7 @@ mod tests {
         let mut root = SimThing::new(SimThingKind::Location, 0);
         root.add_child(cohort);
         let mut alloc = SlotAllocator::new();
-        alloc.populate_from_tree(&root);
+        alloc.install_initial_tree(&root);
 
         let mut cpu_reg = ThresholdRegistry::new();
         let ek = cpu_reg.push(ThresholdSemantic::FissionTrigger {
@@ -781,7 +913,7 @@ mod tests {
         prepare_fission_clone_sources_for_registry(&mut root, &registry);
 
         let mut allocator = SlotAllocator::new();
-        allocator.populate_from_tree(&root);
+        allocator.install_initial_tree(&root);
         let mut threshold_registry = ThresholdRegistry::new();
         let event_kind = threshold_registry.push(ThresholdSemantic::FissionTrigger {
             sim_thing_id: parent_id,

@@ -120,7 +120,7 @@ fn declared_scalar_token(document: &RawDocument) -> usize {
 fn preview_err(root: SimThing) -> InstallError {
     let scenario = minimal_scenario(root);
     let mut allocator = SlotAllocator::new();
-    allocator.populate_from_tree(&scenario.root);
+    allocator.install_initial_tree(&scenario.root);
     preview_install(
         &GameModeSpec::default(),
         &scenario,
@@ -134,7 +134,7 @@ fn preview_err(root: SimThing) -> InstallError {
 fn preview_ok(root: SimThing) -> InstallPreview {
     let scenario = minimal_scenario(root);
     let mut allocator = SlotAllocator::new();
-    allocator.populate_from_tree(&scenario.root);
+    allocator.install_initial_tree(&scenario.root);
     preview_install(
         &GameModeSpec::default(),
         &scenario,

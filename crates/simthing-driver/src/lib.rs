@@ -16,6 +16,7 @@ pub mod comparative_projection;
 pub mod field_scheduler;
 pub mod field_sweep_compile;
 pub mod gated_rates;
+pub mod growth_entitlement;
 pub mod hosted_property_observation;
 pub mod install;
 pub mod loaded_scenario_recursive_rf_runtime_compile;
@@ -175,6 +176,7 @@ pub use gated_rates::{
     build_gated_rate_ops, resolve_gated_rates, seed_gated_rate_base_columns, ResolvedGatedRate,
     ResolvedMagnitude, RATE_BASE_SUB_FIELD,
 };
+pub use growth_entitlement::{GrowthEntitlementError, GrowthEntitlementMarketBinding};
 pub use hosted_property_observation::{
     observe_hosted_property_cell, system_id_by_host_raw_from_structural_authority,
     AnchorTableSnapshot, GpuValuesSnapshot, HostedPropertyLocus, HostedPropertyObservationError,

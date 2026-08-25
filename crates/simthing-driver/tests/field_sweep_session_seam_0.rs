@@ -116,7 +116,7 @@ fn ordinary_fixture() -> (Scenario, GameModeSpec) {
     let participant_id = participant.id;
     root.add_child(participant);
     let mut allocator = SlotAllocator::new();
-    allocator.populate_from_tree(&root);
+    allocator.install_initial_tree(&root);
     let participant_slot = allocator
         .slot_of(participant_id)
         .expect("participant slot")
@@ -453,7 +453,7 @@ fn ordinary_install_never_defaults_triad_columns() {
 
     let (scenario, game_mode) = ordinary_fixture();
     let mut allocator = SlotAllocator::new();
-    allocator.populate_from_tree(&scenario.root);
+    allocator.install_initial_tree(&scenario.root);
     let preview = preview_install(
         &game_mode,
         &scenario,
