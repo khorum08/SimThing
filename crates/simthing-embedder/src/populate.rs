@@ -3,8 +3,8 @@
 pub use simthing_core::{
     AccumulatorRole, AccumulatorSpec, ClampBehavior, CostBandAdmissionError,
     CostBandResourceMarker, DimensionRegistry, LogTier, OwnerBoundaryValidationError, OwnerRef,
-    PropertyValue, SimProperty, SimThing, SimThingId, SimThingKind, SubFieldRole, SubFieldSpec,
-    TransformOp,
+    PropertyValue, SimProperty, SimPropertyId, SimThing, SimThingId, SimThingKind, SubFieldRole,
+    SubFieldSpec, TransformOp,
 };
 pub use simthing_driver::Scenario;
 pub use simthing_gpu::SlotAllocator;

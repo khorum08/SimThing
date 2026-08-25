@@ -181,6 +181,17 @@ jobs:
           set -o pipefail
           bash scripts/ci/overlay_germ_archaeology_census_check.sh --selftest 2>&1 | tee doctrine-overlay-germ-census-selftest-report.txt
 
+      - name: Embedder guide exemplars check
+        run: |
+          set -o pipefail
+          bash scripts/ci/embedder_guide_exemplars_check.sh --check 2>&1 | tee doctrine-embedder-guide-exemplars-report.txt
+
+      - name: Embedder guide exemplars selftest
+        if: steps.gate.outputs.run_selftests == 'true'
+        run: |
+          set -o pipefail
+          bash scripts/ci/embedder_guide_exemplars_check.sh --selftest 2>&1 | tee doctrine-embedder-guide-exemplars-selftest-report.txt
+
       - name: DOC-BUDGET check
         run: |
           set -o pipefail

@@ -1,7 +1,7 @@
 //! **Overlay** — attributable authored change with a definable horizon.
 
 pub use simthing_core::{
-    DissolveCondition, Overlay, OverlayKind, OverlaySource, PropertyTransformDelta,
+    DissolveCondition, Overlay, OverlayKind, OverlaySource, PropertyTransformDelta, TransformOp,
 };
 use thiserror::Error;
 

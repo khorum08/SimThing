@@ -1,5 +1,6 @@
 //! **Bind** — band consequences/thresholds and read-only CPU observation.
 
+pub use simthing_core::{Direction, SimPropertyId, SimThingId, SubFieldRole};
 pub use simthing_driver::{
     compile_gu_yang_n4_field_sweeps, compile_palma_n4_field_sweep, ActionBandActiveInstance,
     ActionBandNativeLaneAdmission, ComparativeProjectionBands, CrossingConsequenceAdmissionError,
