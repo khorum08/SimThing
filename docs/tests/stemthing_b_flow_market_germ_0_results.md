@@ -1,7 +1,7 @@
 # STEMTHING-B-FLOW-MARKET-GERM-0 results
 
 - Track: 0.0.8.7 RF arena modernization, rung 11.2a
-- Status: **PROBATION / proof-present / DA-review-pending**
+- Status: **COMPLETE — DA-GRADUATED / merged #1832 @ `22d06383`** (Fable deep review, graduation ruling on Board #1332)
 - Implementation base: `a2ea1b6edaca415113beb7a42543dd1c38440b5a`
 - Branch: `codex/stemthing-b-flow-market-germ-0`
 - ORIENT-RECEIPT: `1a6a00162374`
