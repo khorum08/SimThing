@@ -21,6 +21,12 @@ stop_conditions: ["the graduated 11.2a entitlement cannot reach the existing res
 - Relocation remains granter-owned boundary structural work on the existing epoch-rebind/remap surface with recorded remap; stable logical identity survives physical relocation.
 - Land one signal-only results doc, one current-evidence-index line, and the 11.2b row as PROBATION in the coding diff; no pointer movement.
 
+## FENCES
+- 11.2c `STEMTHING-B-ALLOCATOR-RETIREMENT-0` remains fenced: do **not** retire allocator-policy/free-list-order machinery in this rung beyond proving it is downstream of market-decided entitlement.
+- 11.2d `VENDOR-DOOR-GRANTING-SURFACE-0` remains fenced; no `simthing-embedder` changes.
+- 11.3 remains the pointer rung but implementation stays blocked until all four StemThing-B predecessor rungs graduate. 11.4, 12.x, Vector CostBand, and the three ClauseThing baseline reds remain fenced.
+- Do not add cargo execution to CI. Retired handoff receipts `890b845b5655` and `aff35cbd509a` must never be dispatched.
+
 ## EXIT-PROOF
 - **Planted RED 1 — provisional infeasibility:** a cleared entitlement that cannot be legally placed returns a typed placement refusal; nothing commits; the quantity remains ordinary `U`; the refusal rides the one canonical 6.1 recorded schedule; claimant re-values next generation. Ordinary infeasibility must not crash the sim.
 - **Planted RED 2 — committed corruption:** overlap or out-of-bounds observed in already-committed authoritative placement state is an invariant breach and hard-faults the session. Committed corruption must not be disguised as `U`.
@@ -28,9 +34,3 @@ stop_conditions: ["the graduated 11.2a entitlement cannot reach the existing res
 - Residency entitlement demonstrably comes from the graduated 11.2a market germ; there is no residency-specific clearing path, retry loop, same-generation retry, or free-list-order entitlement policy.
 - Relocation/rebind reuses the existing recorded boundary-remap surface and preserves stable logical slot identity; no second history/remap/generation authority is created.
 - Focused falsifiers RED a second clearing door, ordinary-infeasibility crash, committed-corruption-as-U, free-list policy reach, duplicate remap/history authority, and premature 11.2c retirement work. Structural certificate is supplied by DA at graduation.
-
-## FENCES
-- 11.2c `STEMTHING-B-ALLOCATOR-RETIREMENT-0` remains fenced: do **not** retire allocator-policy/free-list-order machinery in this rung beyond proving it is downstream of market-decided entitlement.
-- 11.2d `VENDOR-DOOR-GRANTING-SURFACE-0` remains fenced; no `simthing-embedder` changes.
-- 11.3 remains the pointer rung but implementation stays blocked until all four StemThing-B predecessor rungs graduate. 11.4, 12.x, Vector CostBand, and the three ClauseThing baseline reds remain fenced.
-- Do not add cargo execution to CI. Retired handoff receipts `890b845b5655` and `aff35cbd509a` must never be dispatched.
