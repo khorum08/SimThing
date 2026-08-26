@@ -4,7 +4,7 @@
 - Status: **PROBATION / proof-present / DA-review-pending**
 - Implementation base: `39f98302bb8ca0b856a0c3d44addf30ace8d2f14`
 - DA-remand reviewed head: `78606e7a17d4b9ee00bb88b562ad5bf8e2af363b`
-- Remand tested-code checkpoint: `TESTED_CODE_SHA_PENDING`
+- Remand tested-code checkpoint: `0596dd19a914ca94b3c024cc9a6f3013f405333d`
 - Branch: `codex/stemthing-b-growth-entitlement-seam-0`
 - ORIENT-RECEIPT: `1a6a00162374`
 - orientation_rule_stamp: `9ee3f7649d1fc790`
@@ -130,13 +130,16 @@ bash scripts/ci/agent_scan.sh
 bash scripts/ci/doctrine_scan.sh
 ```
 
-All named commands pass locally. The primary witness is `5 passed; 0 failed` on
+All named commands exit zero locally. The primary witness is `5 passed; 0 failed` on
 the real GPU path; the existing market germ is `4 passed; 0 failed`; existing
 VRAM residency is `1 passed; 0 failed`; GPU lifecycle parity is `1 passed; 0
 failed`; protected-representative restore is `2 passed; 0 failed`; kernel
 rustdoc is `48 passed; 0 failed`. Kernel, sim, and driver test targets compile;
 core/kernel/feeder/sim library suites pass. Inventory is exact at `1334/1334`,
 and `AGENT-SCAN-VERDICT: PASS` reports zero hard failures and zero inspect flags.
+The standalone whole-tree doctrine census reports its pre-existing heuristic
+`INSPECT` set (`419`, zero hard failures); the required PR-delta doctrine run
+inside Agent scan is `PASS` with zero inspect flags at the tested-code SHA.
 Exact tested/head SHAs, PR, and hosted workflow run IDs are carried by the
 coding Board return.
 
