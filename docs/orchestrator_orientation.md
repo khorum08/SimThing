@@ -45,7 +45,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 26e025f8b1e76f7f649571aaa4f2da2c82ca722b4d8c549f5ce9d14b4604f3a6 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | 26eab30ec86c97ac8dfd6beef7ae8c5b4d3f18c38fdaa431ec40ccce855396d3 |
-| design_0_0_8_7_rf_arena_modernization.md | 3f70d9989d30a905e6712a580606f858fdee33ede2c5d9ad97ab9d8772c113d0 |
+| design_0_0_8_7_rf_arena_modernization.md | 99d34c023e875d489c2c41ad9c6d7c9faf949455f9d4931e5c76e52ac4c51e35 |
 | relay_lint.sh | ae19bdca12e90f6bc988e064f081ff62903034d69bf34b08ffd5c27e352181ba |
 | doctrine_anchors.tsv | 995afa3572d63abf05f214d2c3736f4363d3597f1835f98ef0a2bd2e0f226e59 |
 | execution_status_taxonomy.tsv | 924c086550221dd7136ec0682293900d8d03feb4bc1dae1a6e750a61e65153bc |
@@ -68,7 +68,7 @@ Dark properties (1): `fixture::dark_reading` (reasons/spans in `property_admissi
 
 Track state: `open`
 
-> Compact view: 56 completed rungs elided; showing all 19 open rungs plus the 3 most recent completions. Full ladder in the design doc.
+> Compact view: 57 completed rungs elided; showing all 18 open rungs plus the 3 most recent completions. Full ladder in the design doc.
 
 | # | rung | deliverable | exit proof |
 | --- | --- | --- | --- |
@@ -85,10 +85,9 @@ Track state: `open`
 | 7.5 | ACTIONBAND-SEMANTIC-SHADOW-0 | Bind generic stamped ActionBand crossings/terminal/structural deltas to existing | Same opaque GPU ActionBand run with semantic labels changed produces bit-identical numerical results; generic readbac... |
 | 7.5a | ACTIONBAND-FIELD-TRIAD-PROGRESS-0 | **Gu-Yang remediation, rung 1 of 3 (Owner-directed 2026-08-10; Fable-approved re | A synthetic conserved-channel ActionBand consumes a REAL Gu-Yang / `FieldSweepRegistration` output with **zero Action... |
 | 7.5b | ACTIONBAND-SPATIAL-FLUX-WITNESS-0 | **Gu-Yang remediation, rung 2 of 3.** Prove the generic Field-Triad ActionBand b | Same target and PALMA potential, different Gu-Yang channel capacity ⇒ **same lawful descent identity, different per-g... |
-| 11.2a | STEMTHING-B-FLOW-MARKET-GERM-0 | **StemThing-B, rung 1 of 4 — Owner design session 2026-08-24, constitution at st | **DA-GRADUATED / merged #1832 @ 22d06383 — the germ exists: every SimThing now carries the recursive conserved-resour... |
 | 11.2b | STEMTHING-B-VRAM-RESIDENCY-0 | **StemThing-B, rung 2 of 4 — VRAM Residency as the DISTINCT engine-native market | **DA-GRADUATED / merged #1835 @ 12141dfa — the two-stage law is kernel physics, and both halves of the Owner sentence... |
 | 11.2c | STEMTHING-B-GROWTH-ENTITLEMENT-SEAM-0 | **SUBSTRATE — DA-minted 2026-08-25 after the SIXTH lawful STOP of the track, fir | **DA-GRADUATED / merged #1841 @ 471821a3 — ordinary growth is entitlement-fed, the credential is unforgeable, and the... |
-| 11.2d | STEMTHING-B-ALLOCATOR-RETIREMENT-0 | **StemThing-B, rung 3 of 4 — the deletion rung, 11.1d shape (Owner R3 confinemen | **COVERS the Owner-ratified 2026-08-24 scope.** The seal shape established by 11.1d: bypass is unrepresentable, not n... |
+| 11.2d | STEMTHING-B-ALLOCATOR-RETIREMENT-0 | **StemThing-B, rung 3 of 4 — the deletion rung, 11.1d shape (Owner R3 confinemen | **DA-GRADUATED / merged #1844 @ e8e00356 — the deletion rung delivered: order-as-authority is GONE from the tree.** `... |
 | 11.2e | VENDOR-DOOR-GRANTING-SURFACE-0 | **StemThing-B, rung 4 of 4 — the Owner-sanctioned facade-only door completion (s | **COVERS the Owner-ratified 2026-08-24 scope.** The witness includes at least ONE recursively granting child subtree ... |
 | 11.3 | UNIFIED-FACILITY-CONVERGENCE-WITNESS-0 | **Unified-facility convergence witness — DA-minted 2026-08-17 on Owner direction | **Emergence falsifier in 8.2's shape, not an enumeration.** ONE authored change — data only, **zero code change** — m... |
 | 11.4 | UNIFIED-INGRESS-EXCLUSIVITY-0 | **THE OWNER LAW, MECHANIZED — DA-minted 2026-08-23. 11.3 proves the facilities C | **COVERS the Owner-directed 2026-08-23 single-ingress law.** The gate FAILS a producer graduated without a non-test p... |

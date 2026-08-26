@@ -1,7 +1,7 @@
 # STEMTHING-B-ALLOCATOR-RETIREMENT-0 results
 
 - Track: 0.0.8.7 RF arena modernization, rung 11.2d
-- Status: **PROBATION / proof-present / DA-review-pending**
+- Status: **COMPLETE — DA-GRADUATED / merged #1844 @ `e8e00356`** (Fable deep review, graduation ruling on Board #1332; net production census corrected to -498 per repository compare)
 - Exact implementation base: `8282f77903e9313d7417fb794a05a884d263efd3`
 - Tested-code checkpoint: `e81d34620b296cef64d3348323e242e9cf912538`
 - Branch: `codex/stemthing-b-allocator-retirement-0`
@@ -80,7 +80,7 @@ Exact production/designer narrowing touches:
 - the existing driver determinism witness plus the 34k projection support fixture.
 
 Across production Rust sources (`crates/**/src/**/*.rs`), the delta is 128
-insertions and 627 deletions: **net -499 production lines**. The new lines are
+insertions and 627 deletions: **net -498 production lines**. The new lines are
 slot-preserving narrowing and documentation, not a replacement allocator,
 manager, entitlement/provenance authority, policy registry, retry loop, or scan
 surface. Kernel free-range/index physics, 11.2b placement, 11.2c provenance,
