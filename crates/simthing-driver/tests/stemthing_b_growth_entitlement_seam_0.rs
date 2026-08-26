@@ -257,6 +257,8 @@ fn place_and_record(
 
 #[test]
 fn oversubscribed_mixed_batch_is_permutation_independent_through_schedule_and_placement() {
+    const CANDIDATE_ORDER_CASES: [[usize; 2]; 2] = [[0, 1], [1, 0]];
+
     let mut root = SimThing::new(SimThingKind::World, 0);
     let parent = SimThing::new(SimThingKind::Location, 0);
     let parent_id = parent.id;
@@ -281,12 +283,14 @@ fn oversubscribed_mixed_batch_is_permutation_independent_through_schedule_and_pl
         OrdinaryGrowthOrigin::AddChild,
     );
     let generation = GenerationStamp::new(9);
-    let forward = binding
-        .resolve_batch(&allocator, generation, &[fission, add_child])
-        .unwrap();
-    let reverse = binding
-        .resolve_batch(&allocator, generation, &[add_child, fission])
-        .unwrap();
+    let candidates = [fission, add_child];
+    let decisions = CANDIDATE_ORDER_CASES.map(|order| {
+        let ordered = order.map(|index| candidates[index]);
+        binding
+            .resolve_batch(&allocator, generation, &ordered)
+            .unwrap()
+    });
+    let [forward, reverse] = decisions;
 
     assert_eq!(
         normalized_decisions(&forward),
