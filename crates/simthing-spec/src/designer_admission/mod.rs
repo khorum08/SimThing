@@ -44,13 +44,7 @@ pub use diagnostic::{
     DesignerAdmissionDiagnosticCode, DesignerAdmissionRejectionKind, DesignerFacingGuardrailClass,
 };
 pub use manifest::DesignerAdmissionPreflightManifest;
-pub use mobility_alloc0::{
-    mobility_alloc0_layout_checksum_cpu, mobility_alloc0_layout_checksum_gpu_proxy,
-    plan_mobility_alloc0, MobilityAlloc0Assignment, MobilityAlloc0BlockSpec,
-    MobilityAlloc0BoundaryEvent, MobilityAlloc0BoundaryEventKind,
-    MobilityAlloc0ForbiddenPathRequests, MobilityAlloc0LiveSlice, MobilityAlloc0ParentKey,
-    MobilityAlloc0PlanInput, MobilityAlloc0PlanReport, MOBILITY_ALLOC0_ID,
-};
+pub use mobility_alloc0::{MobilityAlloc0LiveSlice, MobilityAlloc0ParentKey};
 pub use mobility_audit0::{
     audit_mobility_owner_band_budget, audit_mobility_owner_band_budget_with_ceiling,
     mobility_audit0_family_budgets, mobility_audit0_packet_matches_accepted_constants,

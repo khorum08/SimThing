@@ -25,8 +25,7 @@ pub use mobility_gpu_kernel3_projection_fixture::{
 };
 
 use simthing_spec::{
-    IdentityLane, MobilityAlloc0BlockSpec, MobilityAlloc0ForbiddenPathRequests,
-    MobilityAlloc0LiveSlice, MobilityAlloc0ParentKey, MobilityAlloc0PlanInput,
+    IdentityLane, MobilityAlloc0LiveSlice, MobilityAlloc0ParentKey,
     MobilityEcon0ForbiddenPathRequests, MobilityEcon0LocalCellRecord, MobilityEcon0PlanInput,
     MobilityIdroute0ForbiddenPathRequests, MobilityIdroute0LocalRecord, MobilityIdroute0PlanInput,
     MobilityOwner0ColumnKind, MobilityOwner0ColumnValue, MobilityOwner0ForbiddenPathRequests,
@@ -46,7 +45,6 @@ pub const MOBILITY_GPU_KERNEL4_ROWS_PER_BLOCK: usize = 100;
 pub const MOBILITY_GPU_KERNEL4_SLOTS_PER_BLOCK: u32 = 256;
 pub const MOBILITY_GPU_KERNEL4_REPEATED_DEST_KEY: u64 = 50_001;
 pub const MOBILITY_GPU_KERNEL4_ALTERNATE_DEST_KEY: u64 = 50_002;
-pub const MOBILITY_GPU_KERNEL4_REPEATED_DEST_SLOTS: u32 = 4_096;
 pub const MOBILITY_GPU_KERNEL4_NEW_SHADER_TEXT_ADDED: bool = false;
 
 pub const MOBILITY_GPU_KERNEL4_DENSE_CLUSTER_START: usize = 10_000;
@@ -213,17 +211,11 @@ pub fn run_mobility_gpu_kernel4_fixture(
 }
 
 pub fn generate_34k_runtime_composition_input() -> MobilityRuntime0CompositionInput {
-    let mut blocks = Vec::with_capacity(MOBILITY_GPU_KERNEL4_BLOCK_COUNT + 2);
     let mut live_slices = Vec::with_capacity(MOBILITY_GPU_KERNEL4_ROW_COUNT);
 
     for block_index in 0..MOBILITY_GPU_KERNEL4_BLOCK_COUNT {
         let key_id = source_key_for_block(block_index);
         let start_slot = (block_index as u32) * MOBILITY_GPU_KERNEL4_SLOTS_PER_BLOCK;
-        blocks.push(block(
-            key_id,
-            start_slot,
-            MOBILITY_GPU_KERNEL4_SLOTS_PER_BLOCK,
-        ));
         for local_row in 0..MOBILITY_GPU_KERNEL4_ROWS_PER_BLOCK {
             let row = block_index * MOBILITY_GPU_KERNEL4_ROWS_PER_BLOCK + local_row;
             live_slices.push(live(
@@ -233,19 +225,6 @@ pub fn generate_34k_runtime_composition_input() -> MobilityRuntime0CompositionIn
             ));
         }
     }
-    let repeated_start =
-        (MOBILITY_GPU_KERNEL4_BLOCK_COUNT as u32) * MOBILITY_GPU_KERNEL4_SLOTS_PER_BLOCK;
-    blocks.push(block(
-        MOBILITY_GPU_KERNEL4_REPEATED_DEST_KEY,
-        repeated_start,
-        MOBILITY_GPU_KERNEL4_REPEATED_DEST_SLOTS,
-    ));
-    blocks.push(block(
-        MOBILITY_GPU_KERNEL4_ALTERNATE_DEST_KEY,
-        repeated_start + MOBILITY_GPU_KERNEL4_REPEATED_DEST_SLOTS,
-        MOBILITY_GPU_KERNEL4_SLOTS_PER_BLOCK,
-    ));
-
     let mut moves = Vec::new();
     for row in 0..MOBILITY_GPU_KERNEL4_ROW_COUNT {
         if move_mask_for_row(row) {
@@ -261,15 +240,8 @@ pub fn generate_34k_runtime_composition_input() -> MobilityRuntime0CompositionIn
 
     MobilityRuntime0CompositionInput {
         config: MobilityRuntime0HarnessConfig::opt_in_test_harness(),
-        alloc: MobilityAlloc0PlanInput {
-            blocks: blocks.clone(),
-            live_slices: live_slices.clone(),
-            events: vec![],
-            forbidden: MobilityAlloc0ForbiddenPathRequests::default(),
-        },
         reenroll: MobilityReenroll0PlanInput {
             registry: MobilityReenroll0RegistryState {
-                blocks,
                 live_slices,
                 origin_generations: Default::default(),
                 destination_generations: Default::default(),
@@ -334,9 +306,6 @@ pub fn generate_34k_runtime_composition_input() -> MobilityRuntime0CompositionIn
 
 pub fn generate_permuted_34k_runtime_composition_input() -> MobilityRuntime0CompositionInput {
     let mut input = generate_34k_runtime_composition_input();
-    input.alloc.blocks.reverse();
-    input.alloc.live_slices.reverse();
-    input.reenroll.registry.blocks.reverse();
     input.reenroll.registry.live_slices.reverse();
     input.reenroll.moves.reverse();
     input.idroute.records.reverse();
@@ -522,15 +491,6 @@ fn key(key_id: u64) -> MobilityAlloc0ParentKey {
     }
 }
 
-fn block(key_id: u64, start_slot: u32, slot_count: u32) -> MobilityAlloc0BlockSpec {
-    MobilityAlloc0BlockSpec {
-        parent_key: key(key_id),
-        start_slot,
-        slot_count,
-        reserved_headroom: slot_count / 2,
-    }
-}
-
 fn live(key_id: u64, entity_id: u64, slot: u32) -> MobilityAlloc0LiveSlice {
     MobilityAlloc0LiveSlice {
         entity_id,
@@ -544,7 +504,6 @@ fn mv(row: usize, origin_key: u64, destination_key: u64) -> MobilityReenroll0Mov
         entity_id: entity_for_row(row),
         origin: key(origin_key),
         destination: key(destination_key),
-        arrival_order: row as u64,
     }
 }
 

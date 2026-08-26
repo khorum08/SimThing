@@ -5,11 +5,6 @@
 //! in the documented order and does not wire production `SimSession`, a GPU
 //! pass graph, runtime gameplay, or default-on behavior.
 
-use super::mobility_alloc0::{
-    mobility_alloc0_layout_checksum_cpu, mobility_alloc0_layout_checksum_gpu_proxy,
-    plan_mobility_alloc0, MobilityAlloc0BoundaryEvent, MobilityAlloc0BoundaryEventKind,
-    MobilityAlloc0PlanInput, MobilityAlloc0PlanReport,
-};
 use super::mobility_econ0::{plan_mobility_econ0, MobilityEcon0PlanInput, MobilityEcon0PlanReport};
 use super::mobility_idroute0::{
     plan_mobility_idroute0, MobilityIdroute0PlanInput, MobilityIdroute0PlanReport,
@@ -23,7 +18,7 @@ use super::mobility_reenroll0::{
 };
 
 pub const MOBILITY_RUNTIME0_ID: &str = "mobility_runtime0_substrate_composition_harness";
-pub const MOBILITY_RUNTIME0_ORDER: [&str; 5] = ["ALLOC", "REENROLL", "IDROUTE", "ECON", "OWNER"];
+pub const MOBILITY_RUNTIME0_ORDER: [&str; 4] = ["REENROLL", "IDROUTE", "ECON", "OWNER"];
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct MobilityRuntime0HarnessConfig {
@@ -59,7 +54,6 @@ pub struct MobilityRuntime0ForbiddenPathRequests {
 #[derive(Clone, Debug, PartialEq)]
 pub struct MobilityRuntime0CompositionInput {
     pub config: MobilityRuntime0HarnessConfig,
-    pub alloc: MobilityAlloc0PlanInput,
     pub reenroll: MobilityReenroll0PlanInput,
     pub idroute: MobilityIdroute0PlanInput,
     pub econ: MobilityEcon0PlanInput,
@@ -79,7 +73,6 @@ pub struct MobilityRuntime0CompositionReport {
     pub test_only: bool,
     pub substrate_order: Vec<&'static str>,
 
-    pub alloc_report: Option<MobilityAlloc0PlanReport>,
     pub reenroll_report: Option<MobilityReenroll0PlanReport>,
     pub idroute_report: Option<MobilityIdroute0PlanReport>,
     pub econ_report: Option<MobilityEcon0PlanReport>,
@@ -117,14 +110,12 @@ pub fn compose_mobility_runtime0(
     }
 
     let canonical = canonical_input(input);
-    let alloc_report = plan_mobility_alloc0(&canonical.alloc);
     let reenroll_report = plan_mobility_reenroll0(&canonical.reenroll);
     let idroute_report = plan_mobility_idroute0(&canonical.idroute);
     let econ_report = plan_mobility_econ0(&canonical.econ);
     let owner_report = plan_mobility_owner0(&canonical.owner);
 
     collect_substrate_diagnostics(
-        &alloc_report,
         &reenroll_report,
         &idroute_report,
         &econ_report,
@@ -132,21 +123,17 @@ pub fn compose_mobility_runtime0(
         &mut diagnostics,
     );
 
-    let alloc_cpu = mobility_alloc0_layout_checksum_cpu(&alloc_report.final_live_slices);
-    let alloc_gpu = mobility_alloc0_layout_checksum_gpu_proxy(&alloc_report.final_live_slices);
     let reenroll_cpu = mobility_reenroll0_layout_checksum_cpu(&reenroll_report.final_live_slices);
     let reenroll_gpu =
         mobility_reenroll0_layout_checksum_gpu_proxy(&reenroll_report.final_live_slices);
 
     let composed_cpu_checksum = compose_checksums(&[
-        alloc_cpu,
         reenroll_cpu,
         idroute_report.cpu_gpu_parity_checksum,
         econ_report.cpu_gpu_parity_checksum,
         owner_report.cpu_gpu_parity_checksum,
     ]);
     let composed_gpu_proxy_checksum = compose_checksums(&[
-        alloc_gpu,
         reenroll_gpu,
         idroute_report.cpu_gpu_parity_checksum,
         econ_report.cpu_gpu_parity_checksum,
@@ -191,7 +178,6 @@ pub fn compose_mobility_runtime0(
         default_off: true,
         test_only: true,
         substrate_order: MOBILITY_RUNTIME0_ORDER.to_vec(),
-        alloc_report: Some(alloc_report),
         reenroll_report: Some(reenroll_report),
         idroute_report: Some(idroute_report),
         econ_report: Some(econ_report),
@@ -228,7 +214,6 @@ fn rejected_report(
         default_off: !config.enabled_by_default,
         test_only: true,
         substrate_order: MOBILITY_RUNTIME0_ORDER.to_vec(),
-        alloc_report: None,
         reenroll_report: None,
         idroute_report: None,
         econ_report: None,
@@ -304,16 +289,12 @@ fn validate_forbidden(
 }
 
 fn collect_substrate_diagnostics(
-    alloc: &MobilityAlloc0PlanReport,
     reenroll: &MobilityReenroll0PlanReport,
     idroute: &MobilityIdroute0PlanReport,
     econ: &MobilityEcon0PlanReport,
     owner: &MobilityOwner0PlanReport,
     diagnostics: &mut Vec<&'static str>,
 ) {
-    if !alloc.admitted {
-        diagnostics.push("alloc_substrate_rejected");
-    }
     if !reenroll.admitted {
         diagnostics.push("reenroll_substrate_rejected");
     }
@@ -331,24 +312,6 @@ fn collect_substrate_diagnostics(
 fn canonical_input(input: &MobilityRuntime0CompositionInput) -> MobilityRuntime0CompositionInput {
     let mut canonical = input.clone();
 
-    canonical
-        .alloc
-        .blocks
-        .sort_by_key(|block| (block.parent_key, block.start_slot, block.slot_count));
-    canonical
-        .alloc
-        .live_slices
-        .sort_by_key(|slice| (slice.parent_key, slice.entity_id, slice.slot));
-    canonical
-        .alloc
-        .events
-        .sort_by_key(|event| (event.parent_key, event.entity_id, event_kind_rank(event)));
-
-    canonical
-        .reenroll
-        .registry
-        .blocks
-        .sort_by_key(|block| (block.parent_key, block.start_slot, block.slot_count));
     canonical
         .reenroll
         .registry
@@ -403,14 +366,6 @@ fn canonical_input(input: &MobilityRuntime0CompositionInput) -> MobilityRuntime0
     });
 
     canonical
-}
-
-fn event_kind_rank(event: &MobilityAlloc0BoundaryEvent) -> u8 {
-    match event.kind {
-        MobilityAlloc0BoundaryEventKind::Departure => 0,
-        MobilityAlloc0BoundaryEventKind::Arrival => 1,
-        MobilityAlloc0BoundaryEventKind::ParentRemoved => 2,
-    }
 }
 
 fn compose_checksums(values: &[u64]) -> u64 {

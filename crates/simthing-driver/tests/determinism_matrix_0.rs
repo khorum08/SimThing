@@ -15,9 +15,9 @@ use simthing_core::{
 use simthing_gpu::{plan_overlay_orderband, OverlayDelta, OverlayOrderBandPlan, SlotDeltaRange};
 use simthing_sim::{BoundaryDeltaEntry, ReplayDriver, ReplayFrame, ReplaySnapshot, SimRuntimeTree};
 use simthing_spec::designer_admission::{
-    mobility_alloc0_layout_checksum_cpu, plan_mobility_alloc0, MobilityAlloc0BlockSpec,
-    MobilityAlloc0BoundaryEvent, MobilityAlloc0BoundaryEventKind,
-    MobilityAlloc0ForbiddenPathRequests, MobilityAlloc0ParentKey, MobilityAlloc0PlanInput,
+    plan_mobility_reenroll0, MobilityAlloc0LiveSlice, MobilityAlloc0ParentKey,
+    MobilityReenroll0ForbiddenPathRequests, MobilityReenroll0Move, MobilityReenroll0PlanInput,
+    MobilityReenroll0PlanReport, MobilityReenroll0RegistryState,
 };
 use simthing_spec::{
     apply_owner_silo_runtime_disburse_down_cpu, compile_eml_gadget,
@@ -58,34 +58,45 @@ fn fnv(bytes: &[u8]) -> u64 {
     h
 }
 
-fn inline_alloc_input() -> MobilityAlloc0PlanInput {
-    let key = MobilityAlloc0ParentKey {
+fn inline_reenroll_input() -> MobilityReenroll0PlanInput {
+    let origin = MobilityAlloc0ParentKey {
         parent_id: 1,
         key_id: 7,
     };
-    MobilityAlloc0PlanInput {
-        blocks: vec![MobilityAlloc0BlockSpec {
-            parent_key: key,
-            start_slot: 0,
-            slot_count: 4,
-            reserved_headroom: 0,
-        }],
-        live_slices: vec![],
-        events: vec![
-            MobilityAlloc0BoundaryEvent {
-                kind: MobilityAlloc0BoundaryEventKind::Arrival,
-                parent_key: key,
-                entity_id: Some(10),
-                arrival_order: 0,
+    let destination = MobilityAlloc0ParentKey {
+        parent_id: 1,
+        key_id: 8,
+    };
+    MobilityReenroll0PlanInput {
+        registry: MobilityReenroll0RegistryState {
+            live_slices: vec![
+                MobilityAlloc0LiveSlice {
+                    entity_id: 10,
+                    parent_key: origin,
+                    slot: 2,
+                },
+                MobilityAlloc0LiveSlice {
+                    entity_id: 11,
+                    parent_key: origin,
+                    slot: 0,
+                },
+            ],
+            origin_generations: Default::default(),
+            destination_generations: Default::default(),
+        },
+        moves: vec![
+            MobilityReenroll0Move {
+                entity_id: 10,
+                origin,
+                destination,
             },
-            MobilityAlloc0BoundaryEvent {
-                kind: MobilityAlloc0BoundaryEventKind::Arrival,
-                parent_key: key,
-                entity_id: Some(11),
-                arrival_order: 1,
+            MobilityReenroll0Move {
+                entity_id: 11,
+                origin,
+                destination,
             },
         ],
-        forbidden: MobilityAlloc0ForbiddenPathRequests::default(),
+        forbidden: MobilityReenroll0ForbiddenPathRequests::default(),
     }
 }
 
@@ -438,44 +449,49 @@ fn case_canonical_serialization(plant_defect: bool) -> bool {
     fnv(a.as_bytes()) == fnv(b.as_bytes()) && a == round_a2
 }
 
-fn assignment_order(
-    report: &simthing_spec::designer_admission::MobilityAlloc0PlanReport,
+fn movement_layout(
+    report: &MobilityReenroll0PlanReport,
 ) -> Vec<(MobilityAlloc0ParentKey, u32, u64)> {
     report
-        .assignments
+        .final_live_slices
         .iter()
-        .map(|a| (a.parent_key, a.slot, a.entity_id))
+        .map(|slice| (slice.parent_key, slice.slot, slice.entity_id))
         .collect()
 }
 
-/// Defective mobility dispatch: ignore arrival_order; assign by descending entity_id.
-fn defective_dispatch_by_entity_desc(
-    input: &MobilityAlloc0PlanInput,
+/// Defective retired policy: discard stable logical slots and allocate rows by
+/// descending entity identity.
+fn defective_first_free_by_entity_desc(
+    input: &MobilityReenroll0PlanInput,
 ) -> Vec<(MobilityAlloc0ParentKey, u32, u64)> {
-    let key = input.blocks[0].parent_key;
-    let mut arrivals: Vec<u64> = input
-        .events
+    let destination = input.moves[0].destination;
+    let mut entities: Vec<u64> = input
+        .moves
         .iter()
-        .filter(|e| matches!(e.kind, MobilityAlloc0BoundaryEventKind::Arrival))
-        .filter_map(|e| e.entity_id)
+        .map(|movement| movement.entity_id)
         .collect();
-    arrivals.sort_by_key(|id| std::cmp::Reverse(*id));
-    arrivals
+    entities.sort_by_key(|id| std::cmp::Reverse(*id));
+    let mut rows = entities
         .into_iter()
         .enumerate()
-        .map(|(slot, entity_id)| (key, slot as u32, entity_id))
-        .collect()
+        .map(|(slot, entity_id)| (destination, slot as u32, entity_id))
+        .collect::<Vec<_>>();
+    rows.sort();
+    rows
 }
 
-/// Mobility-dispatch: live `plan_mobility_alloc0` assignment order deterministic.
-/// Planted defect: entity-id descending allocator (ignores arrival_order).
+/// Mobility dispatch preserves stable logical slots and is input-order
+/// invariant. The planted defect reconstructs the retired first-free policy.
 fn case_mobility_dispatch(plant_defect: bool) -> bool {
-    let input = inline_alloc_input();
-    let live = assignment_order(&plan_mobility_alloc0(&input));
+    let input = inline_reenroll_input();
+    let live = movement_layout(&plan_mobility_reenroll0(&input));
     let other = if plant_defect {
-        defective_dispatch_by_entity_desc(&input)
+        defective_first_free_by_entity_desc(&input)
     } else {
-        assignment_order(&plan_mobility_alloc0(&input))
+        let mut permuted = input.clone();
+        permuted.registry.live_slices.reverse();
+        permuted.moves.reverse();
+        movement_layout(&plan_mobility_reenroll0(&permuted))
     };
     live == other
 }
@@ -637,7 +653,4 @@ fn determinism_matrix_planted_defects_fail() {
         !ordering_overlay_path(true),
         "overlay ordering planted defect must diverge"
     );
-    // Keep layout checksum import live for absorbed replay/layout evidence surface.
-    let report = plan_mobility_alloc0(&inline_alloc_input());
-    let _ = mobility_alloc0_layout_checksum_cpu(&report.final_live_slices);
 }
