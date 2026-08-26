@@ -3,14 +3,15 @@
 - Track: 0.0.8.7 RF arena modernization, rung 11.2c
 - Status: **PROBATION / proof-present / DA-review-pending**
 - Implementation base: `39f98302bb8ca0b856a0c3d44addf30ace8d2f14`
-- Full focused battery checkpoint: `4d99a216dc0c980facf4ed90a76caaa9a1e81b85`
-- Final primary-witness / Agent-scan checkpoint: `558ef10caf065350d49c5dbd0891922d26ed4e4a`
+- DA-remand reviewed head: `78606e7a17d4b9ee00bb88b562ad5bf8e2af363b`
+- Remand tested-code checkpoint: `TESTED_CODE_SHA_PENDING`
 - Branch: `codex/stemthing-b-growth-entitlement-seam-0`
 - ORIENT-RECEIPT: `1a6a00162374`
 - orientation_rule_stamp: `9ee3f7649d1fc790`
 - HD-RECEIPT: `7d5052c34f5d`
-- Handoff: Board comment `5417954669`
-- Expected route: `DA-review`
+- Original handoff: Board comment `5417954669`
+- Remand: Board comment `5419014773`; governing DA ruling `5419004038`
+- Expected route: `DA-RESERVE(gate-wiring)` / `DEEP-TREE`
 - Pointer movement: none
 - Structural certificate: owed at graduation because the ordinary tick growth path changed
 
@@ -28,6 +29,34 @@
 
 No mapped link was replaced. The missing node was a typed, consumed product joining
 the graduated grant and placement authorities to the ordinary structural door.
+
+## Target 1 DA-remand closure
+
+The remand found that a caller could construct a bare
+`ProvisionalResidencyEntitlement` key, obtain a public 11.2b raw commit, and feed
+that commit into ordinary mutation. The repaired authority chain is now:
+
+`clear_constrained_claims_at_generation` -> sealed `ConstrainedGrant` ->
+`MarketGrantRecord` -> opaque `MarketGrantResidencyProvenance` -> driver
+entitlement decision -> boundary full-field provenance comparison -> 11.2b raw
+placement commit -> `VerifiedGrowthResidencyCommit` -> ordinary fission/AddChild.
+
+The constrained-clearing product retains its public observation fields for the
+accepted 11.2a API, but carries a private snapshot seal over every field. Both
+initial recording and renewal reject a cloned-and-mutated product as
+`InvalidClearingSeal`. `MarketGrantResidencyProvenance` has private
+representation and is projected only from the resulting private-field
+`MarketGrantRecord`. The ordinary mutation signatures no longer accept a raw
+`GrowthResidencyCommit`; their only production input is the private-field
+verified wrapper minted by matching granter, grantee, stable grant key,
+quantity, and generation against that opaque provenance. Initial install and
+authoritative replay keep their already named, separate exceptions.
+
+A provenance mismatch becomes typed U before placement: exactly one
+`GrowthEntitlementRefusal` schedule row and one refusal fact, no attach, no
+allocator slot, no committed residency row, no same-generation retry, and an
+explicit next-generation revaluation. This closes only remanded Target 1;
+accepted Targets 2-8 and their semantics remain frozen.
 
 ## Landed seam
 
@@ -52,7 +81,7 @@ there is no default grant or placement bypass.
 | ordinary refusal | partial or zero clear records one refusal fact, preserves U, names the next generation, attaches nothing, and mints no row |
 | real fission | rebellion prepares a candidate before mutation, then clears, places, and resolves with the exact consumed commit |
 | mixed oversubscription | one fission plus one AddChild batch at insufficient capacity yields identical logical grants, refusals, placements, and schedule facts under reversed request order |
-| compile/admission seal | low-level residency execution is crate-private, the old grantless subtree population entry does not exist, initial install is one-shot, replay is explicitly named, and missing AddChild commit rejects at the only structural door |
+| compile/admission seal | low-level residency execution is crate-private; ordinary mutation accepts only `VerifiedGrowthResidencyCommit`; clearing/grant provenance rejects public-field mutation; the old grantless subtree population entry does not exist; initial install is one-shot; replay is explicitly named |
 | replay | accepted recorded commits realize exact rows without clearing; recorded refusal reproduces exactly; a re-clear attempt returns `ReplayReclearForbidden` |
 
 ## Standing falsifiers
@@ -63,6 +92,8 @@ there is no default grant or placement bypass.
 | `real_fission_clears_places_then_attaches_through_the_implicit_market` | grantless fission or loss of the real grant/placement chain |
 | `oversubscribed_mixed_batch_is_permutation_independent_through_schedule_and_placement` | vector, event, free-list, or arrival-order authority over a mixed batch |
 | `grantless_ordinary_add_child_is_rejected_at_the_only_structural_door` | structural attachment or row residency without the consumed commit |
+| `fabricated_market_grant_key_is_typed_refusal_without_attach_row_or_retry_and_revalues_next_generation` | the exact remanded bare-key path reaching ordinary mutation, duplicate refusal facts, attach/row mint on refusal, same-generation retry, or lost next-generation revaluation |
+| `cleared_entitlement_places_locally_refuses_to_u_then_revalues_and_relocates` | cloned-and-mutated `ConstrainedGrant` minting a market record/provenance, or any accepted 11.2b behavior changing |
 | kernel rustdoc compile-fail seals | public low-level residency execution or restoration of grantless `populate_subtree` |
 
 ## Authority census
@@ -90,19 +121,21 @@ cargo test -p simthing-sim --lib
 cargo test -p simthing-sim --test gpu_overlay_lifecycle_oracle_parity_0
 cargo test -p simthing-sim --test protected_representative_restore
 cargo test -p simthing-kernel --doc
-cargo test -p simthing-driver --tests --no-run
+cargo check -p simthing-spec
+cargo check -p simthing-driver --tests
+cargo test -p simthing-sim --tests --no-run
 bash scripts/ci/test_inventory_check.sh
 bash scripts/ci/test_inventory_drift_check.sh
 bash scripts/ci/agent_scan.sh
 bash scripts/ci/doctrine_scan.sh
 ```
 
-All named commands pass locally. The primary witness is `4 passed; 0 failed` on
+All named commands pass locally. The primary witness is `5 passed; 0 failed` on
 the real GPU path; the existing market germ is `4 passed; 0 failed`; existing
 VRAM residency is `1 passed; 0 failed`; GPU lifecycle parity is `1 passed; 0
 failed`; protected-representative restore is `2 passed; 0 failed`; kernel
 rustdoc is `48 passed; 0 failed`. Kernel, sim, and driver test targets compile;
-core/kernel/feeder/sim library suites pass. Inventory is exact at `1333/1333`,
+core/kernel/feeder/sim library suites pass. Inventory is exact at `1334/1334`,
 and `AGENT-SCAN-VERDICT: PASS` reports zero hard failures and zero inspect flags.
 Exact tested/head SHAs, PR, and hosted workflow run IDs are carried by the
 coding Board return.

@@ -93,7 +93,7 @@ pub use gpu_sync::{GpuSyncError, GpuSyncOutcome};
 pub use growth_entitlement::{
     GrowthEntitlementBatchError, GrowthEntitlementDecision, OrdinaryGrowthCandidate,
     OrdinaryGrowthOrigin, OrdinaryGrowthRefusal, OrdinaryGrowthRefusalReason,
-    RecordedGrowthResidencyFact,
+    RecordedGrowthResidencyFact, VerifiedGrowthResidencyCommit,
 };
 pub use legacy_oracle::{
     apply_oracle_flags, assert_events_oracle, assert_values_oracle, run_family_oracle,

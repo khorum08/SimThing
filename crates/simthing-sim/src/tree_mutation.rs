@@ -63,6 +63,7 @@
 //! - Records the property id so the boundary protocol can widen the CPU
 //!   shadow and rebuild `WorldGpuState` before step 9 sync.
 
+use crate::growth_entitlement::VerifiedGrowthResidencyCommit;
 use crate::overlay_lifecycle::OverlayLifecycleAdmissionState;
 use crate::sim_runtime_tree::SimRuntimeTree;
 use crate::tree_index::{detach_at_path, node_at_path, node_at_path_mut};
@@ -71,7 +72,7 @@ use simthing_core::{
     ObjectResidencyRequest, OverlayId, OverlayLifecycle, SimThing, SimThingId,
 };
 use simthing_feeder::{BoundaryRequest, FeederError, FeederSender, MaintainerOutcome};
-use simthing_gpu::{GrowthResidencyCommit, SlotAllocator};
+use simthing_gpu::SlotAllocator;
 use simthing_kernel::StructuralCommitment;
 use std::collections::{BTreeMap, HashMap};
 use thiserror::Error;
@@ -157,7 +158,7 @@ pub fn apply_structural_mutations(
     node_paths: Option<&HashMap<SimThingId, Vec<usize>>>,
     destination_generation: GenerationStamp,
     lifecycle_admission: &mut OverlayLifecycleAdmissionState,
-    growth_commits: &BTreeMap<SimThingId, GrowthResidencyCommit>,
+    growth_commits: &BTreeMap<SimThingId, VerifiedGrowthResidencyCommit>,
 ) -> MaintainerOutcome {
     let mut out = MaintainerOutcome::default();
     let root = root.inner_mut();
@@ -286,7 +287,7 @@ fn apply_add_child(
     parent_id: SimThingId,
     mut child: SimThing,
     node_paths: Option<&HashMap<SimThingId, Vec<usize>>>,
-    commit: Option<GrowthResidencyCommit>,
+    commit: Option<VerifiedGrowthResidencyCommit>,
     out: &mut MaintainerOutcome,
 ) {
     let Some(commit) = commit else {
@@ -314,7 +315,7 @@ fn apply_add_child(
     // pushed is at the end of parent's children list.
     let attached = parent.children.last().expect("just pushed");
     if allocator
-        .realize_growth_subtree(parent, attached, commit)
+        .realize_growth_subtree(parent, attached, commit.commit())
         .is_err()
     {
         parent.children.pop();
@@ -733,7 +734,10 @@ mod tests {
                 &mut schedule,
             )
             .unwrap();
-        let growth_commits = BTreeMap::from([(child_id, commit)]);
+        let growth_commits = BTreeMap::from([(
+            child_id,
+            VerifiedGrowthResidencyCommit::unchecked_for_test(commit),
+        )]);
         let added = apply_structural_mutations(
             vec![BoundaryRequest::AddChild {
                 parent: parent_a_id,

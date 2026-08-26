@@ -66,7 +66,7 @@ use crate::fission::{
 use crate::gpu_sync::{sync_gpu_buffers, GpuSyncError, GpuSyncOutcome};
 use crate::growth_entitlement::{
     validate_decisions, GrowthEntitlementDecision, OrdinaryGrowthCandidate, OrdinaryGrowthOrigin,
-    OrdinaryGrowthRefusal, RecordedGrowthResidencyFact,
+    OrdinaryGrowthRefusal, RecordedGrowthResidencyFact, VerifiedGrowthResidencyCommit,
 };
 use crate::observability::{observe, ObservabilityReport, ObserveFidelity};
 use crate::overlay_lifecycle::{
@@ -87,9 +87,7 @@ use crate::threshold_registry::{
 use crate::tree_index::{build_node_paths, node_at_path};
 use crate::tree_mutation::apply_structural_mutations;
 use simthing_core::AnchorRemapSection;
-use simthing_gpu::{
-    apply_band_crossing_deltas_from_threshold_events, BandCrossingDelta, GrowthResidencyCommit,
-};
+use simthing_gpu::{apply_band_crossing_deltas_from_threshold_events, BandCrossingDelta};
 use std::collections::{BTreeMap, HashSet};
 use std::time::Instant;
 
@@ -476,8 +474,11 @@ impl BoundaryProtocol {
             let mut trial_commits = BTreeMap::new();
             let mut scratch_schedule = IntegrationSchedule::new();
             if let BoundaryRequest::AddChild { parent, child } = &request {
-                if let Some(GrowthEntitlementDecision::Granted { entitlement, .. }) =
-                    growth_decisions.get(&child.id).copied()
+                if let Some(GrowthEntitlementDecision::Granted {
+                    entitlement,
+                    provenance,
+                    ..
+                }) = growth_decisions.get(&child.id).copied()
                 {
                     if let Ok(commit) = trial_allocator.realize_unattached_growth_residency(
                         entitlement,
@@ -485,7 +486,11 @@ impl BoundaryProtocol {
                         GenerationStamp::new(destination_generation),
                         &mut scratch_schedule,
                     ) {
-                        trial_commits.insert(child.id, commit);
+                        if let Some(verified) =
+                            VerifiedGrowthResidencyCommit::try_from_market_grant(commit, provenance)
+                        {
+                            trial_commits.insert(child.id, verified);
+                        }
                     }
                 }
             }
@@ -856,6 +861,47 @@ impl BoundaryProtocol {
         let mut decisions = validate_decisions(&candidates, decisions)
             .map_err(|error| GpuSyncError::GrowthEntitlement(error.to_string()))?;
 
+        // A raw kernel entitlement is not ordinary-growth authority. Match it
+        // to the opaque projection of the actual 11.2a MarketGrantRecord
+        // before placement; a fabricated key becomes one canonical U fact.
+        for candidate in &candidates {
+            let Some(
+                decision @ GrowthEntitlementDecision::Granted {
+                    entitlement,
+                    provenance,
+                    ..
+                },
+            ) = decisions.get(&candidate.grantee()).copied()
+            else {
+                continue;
+            };
+            if decision.grant_provenance_matches() {
+                continue;
+            }
+            let refusal = OrdinaryGrowthRefusal::grant_provenance(
+                *candidate,
+                generation,
+                provenance.stable_key(),
+                entitlement.market_grant_key(),
+            );
+            integration_schedule.record_kind(
+                IntegrationScheduleRowKind::GrowthEntitlementRefusal,
+                generation,
+                generation,
+                refusal.schedule_product_key(),
+            );
+            out.growth_residency_facts
+                .push(RecordedGrowthResidencyFact::Refused(refusal));
+            decisions.insert(
+                candidate.grantee(),
+                GrowthEntitlementDecision::refused(
+                    *candidate,
+                    0,
+                    Some(entitlement.market_grant_key()),
+                ),
+            );
+        }
+
         // Lifecycle admission stages accepted AddChild products on cloned
         // state through the same placement/population seam. A rejection is U
         // and cannot leave authoritative placement behind.
@@ -867,6 +913,7 @@ impl BoundaryProtocol {
             let Some(GrowthEntitlementDecision::Granted {
                 candidate,
                 entitlement,
+                ..
             }) = decisions.get(&child).copied()
             else {
                 continue;
@@ -894,7 +941,7 @@ impl BoundaryProtocol {
             );
         }
 
-        let mut growth_commits = BTreeMap::<SimThingId, GrowthResidencyCommit>::new();
+        let mut growth_commits = BTreeMap::<SimThingId, VerifiedGrowthResidencyCommit>::new();
         for candidate in &candidates {
             let decision = decisions
                 .get(&candidate.grantee())
@@ -932,7 +979,11 @@ impl BoundaryProtocol {
                     out.growth_residency_facts
                         .push(RecordedGrowthResidencyFact::Refused(refusal));
                 }
-                GrowthEntitlementDecision::Granted { entitlement, .. } => {
+                GrowthEntitlementDecision::Granted {
+                    entitlement,
+                    provenance,
+                    ..
+                } => {
                     match self.allocator.realize_unattached_growth_residency(
                         entitlement,
                         candidate.structural_parent(),
@@ -940,7 +991,16 @@ impl BoundaryProtocol {
                         integration_schedule,
                     ) {
                         Ok(commit) => {
-                            growth_commits.insert(candidate.grantee(), commit);
+                            let Some(verified) =
+                                VerifiedGrowthResidencyCommit::try_from_market_grant(
+                                    commit, provenance,
+                                )
+                            else {
+                                return Err(GpuSyncError::GrowthEntitlement(
+                                    "placement commit lost its validated market provenance".into(),
+                                ));
+                            };
+                            growth_commits.insert(candidate.grantee(), verified);
                             out.growth_residency_facts
                                 .push(RecordedGrowthResidencyFact::Accepted(commit));
                         }
@@ -964,7 +1024,7 @@ impl BoundaryProtocol {
         let pregrow_fission_started = Instant::now();
         let required_slots = growth_commits
             .values()
-            .map(|commit| commit.placement().extent().end_exclusive() as usize)
+            .map(|verified| verified.commit().placement().extent().end_exclusive() as usize)
             .max()
             .unwrap_or(self.allocator.capacity());
         let grew_for_growth = self.ensure_slot_capacity(required_slots, patcher, coord, state);

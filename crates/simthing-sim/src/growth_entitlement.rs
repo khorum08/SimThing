@@ -9,6 +9,7 @@ use simthing_core::{GenerationStamp, SimThingId};
 use simthing_gpu::{
     GrowthResidencyCommit, ProvisionalResidencyEntitlement, ResidencyPlacementRefusal,
 };
+use simthing_spec::MarketGrantResidencyProvenance;
 use std::collections::{BTreeMap, BTreeSet};
 use thiserror::Error;
 
@@ -88,6 +89,7 @@ pub enum GrowthEntitlementDecision {
     Granted {
         candidate: OrdinaryGrowthCandidate,
         entitlement: ProvisionalResidencyEntitlement,
+        provenance: MarketGrantResidencyProvenance,
     },
     Refused {
         candidate: OrdinaryGrowthCandidate,
@@ -100,10 +102,12 @@ impl GrowthEntitlementDecision {
     pub fn granted(
         candidate: OrdinaryGrowthCandidate,
         entitlement: ProvisionalResidencyEntitlement,
+        provenance: MarketGrantResidencyProvenance,
     ) -> Self {
         Self::Granted {
             candidate,
             entitlement,
+            provenance,
         }
     }
 
@@ -124,11 +128,34 @@ impl GrowthEntitlementDecision {
             Self::Granted { candidate, .. } | Self::Refused { candidate, .. } => candidate,
         }
     }
+
+    pub fn grant_provenance_matches(self) -> bool {
+        match self {
+            Self::Granted {
+                entitlement,
+                provenance,
+                ..
+            } => {
+                entitlement.granter() == provenance.granter()
+                    && entitlement.grantee() == provenance.grantee()
+                    && entitlement.market_grant_key() == provenance.stable_key()
+                    && entitlement.quantity() == provenance.quantity()
+                    && entitlement.granted_generation() == provenance.granted_generation()
+            }
+            Self::Refused { .. } => true,
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum OrdinaryGrowthRefusalReason {
-    MarketUnresolved { granted: u32 },
+    MarketUnresolved {
+        granted: u32,
+    },
+    GrantProvenanceMismatch {
+        recorded_market_grant_key: u64,
+        presented_market_grant_key: u64,
+    },
     Placement(ResidencyPlacementRefusal),
     LifecycleAdmission,
 }
@@ -168,6 +195,24 @@ impl OrdinaryGrowthRefusal {
             revalue_generation: refusal.revalue_generation(),
             market_grant_key: Some(refusal.identity().market_grant_key()),
             reason: OrdinaryGrowthRefusalReason::Placement(refusal),
+        }
+    }
+
+    pub fn grant_provenance(
+        candidate: OrdinaryGrowthCandidate,
+        attempted_generation: GenerationStamp,
+        recorded_market_grant_key: u64,
+        presented_market_grant_key: u64,
+    ) -> Self {
+        Self {
+            candidate,
+            attempted_generation,
+            revalue_generation: GenerationStamp::new(attempted_generation.get().saturating_add(1)),
+            market_grant_key: Some(presented_market_grant_key),
+            reason: OrdinaryGrowthRefusalReason::GrantProvenanceMismatch {
+                recorded_market_grant_key,
+                presented_market_grant_key,
+            },
         }
     }
 
@@ -215,6 +260,42 @@ impl OrdinaryGrowthRefusal {
 pub enum RecordedGrowthResidencyFact {
     Accepted(GrowthResidencyCommit),
     Refused(OrdinaryGrowthRefusal),
+}
+
+/// Ordinary mutation capability minted only after the boundary matches a raw
+/// kernel placement commit to its opaque 11.2a provenance product.
+///
+/// Replay deliberately consumes the recorded raw commit through its separate
+/// named authoritative door; ordinary fission/AddChild accepts this wrapper.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct VerifiedGrowthResidencyCommit {
+    commit: GrowthResidencyCommit,
+}
+
+impl VerifiedGrowthResidencyCommit {
+    /// Mint the ordinary mutation capability only when the kernel commit still
+    /// names the exact opaque product projected from constrained clearing.
+    pub fn try_from_market_grant(
+        commit: GrowthResidencyCommit,
+        provenance: MarketGrantResidencyProvenance,
+    ) -> Option<Self> {
+        let entitlement = commit.entitlement();
+        (entitlement.granter() == provenance.granter()
+            && entitlement.grantee() == provenance.grantee()
+            && entitlement.market_grant_key() == provenance.stable_key()
+            && entitlement.quantity() == provenance.quantity()
+            && entitlement.granted_generation() == provenance.granted_generation())
+        .then_some(Self { commit })
+    }
+
+    #[cfg(test)]
+    pub(crate) const fn unchecked_for_test(commit: GrowthResidencyCommit) -> Self {
+        Self { commit }
+    }
+
+    pub const fn commit(self) -> GrowthResidencyCommit {
+        self.commit
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Error)]

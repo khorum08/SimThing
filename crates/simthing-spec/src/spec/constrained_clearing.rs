@@ -129,6 +129,66 @@ pub struct ConstrainedGrant {
     pub priority: u32,
     pub order_weight: f32,
     pub clearing_score: f32,
+    clearance_seal: ConstrainedGrantSeal,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct ConstrainedGrantSeal {
+    scope: OwnerChannelScopeKey,
+    source_simthing_id: SimThingId,
+    requested: u32,
+    granted: u32,
+    unresolved: u32,
+    priority: u32,
+    order_weight_bits: u32,
+    clearing_score_bits: u32,
+}
+
+impl ConstrainedGrant {
+    #[allow(clippy::too_many_arguments)]
+    fn from_clearance(
+        scope: OwnerChannelScopeKey,
+        source_simthing_id: SimThingId,
+        requested: u32,
+        granted: u32,
+        unresolved: u32,
+        priority: u32,
+        order_weight: f32,
+        clearing_score: f32,
+    ) -> Self {
+        let clearance_seal = ConstrainedGrantSeal {
+            scope: scope.clone(),
+            source_simthing_id,
+            requested,
+            granted,
+            unresolved,
+            priority,
+            order_weight_bits: order_weight.to_bits(),
+            clearing_score_bits: clearing_score.to_bits(),
+        };
+        Self {
+            scope,
+            source_simthing_id,
+            requested,
+            granted,
+            unresolved,
+            priority,
+            order_weight,
+            clearing_score,
+            clearance_seal,
+        }
+    }
+
+    pub(crate) fn has_intact_clearance_seal(&self) -> bool {
+        self.clearance_seal.scope == self.scope
+            && self.clearance_seal.source_simthing_id == self.source_simthing_id
+            && self.clearance_seal.requested == self.requested
+            && self.clearance_seal.granted == self.granted
+            && self.clearance_seal.unresolved == self.unresolved
+            && self.clearance_seal.priority == self.priority
+            && self.clearance_seal.order_weight_bits == self.order_weight.to_bits()
+            && self.clearance_seal.clearing_score_bits == self.clearing_score.to_bits()
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -340,16 +400,16 @@ pub fn clear_constrained_claims_at_generation(
             }
 
             for (row, granted) in scored[cursor..end].iter().zip(band_grants) {
-                grants.push(ConstrainedGrant {
-                    scope: row.claim.scope.clone(),
-                    source_simthing_id: row.claim.source_simthing_id,
-                    requested: row.claim.requested,
+                grants.push(ConstrainedGrant::from_clearance(
+                    row.claim.scope.clone(),
+                    row.claim.source_simthing_id,
+                    row.claim.requested,
                     granted,
-                    unresolved: row.claim.requested - granted,
-                    priority: row.claim.priority,
-                    order_weight: row.claim.order_weight,
-                    clearing_score: row.score,
-                });
+                    row.claim.requested - granted,
+                    row.claim.priority,
+                    row.claim.order_weight,
+                    row.score,
+                ));
             }
             remaining = remaining
                 .checked_sub(available_for_band as u32)

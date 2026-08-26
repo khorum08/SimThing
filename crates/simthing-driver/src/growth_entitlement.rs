@@ -216,12 +216,17 @@ impl GrowthEntitlementMarketBinding {
                     .market
                     .record_cleared_grant(self.granter, &self.offering_id, grant, generation)
                     .map_err(|error| GrowthEntitlementError::Grant(error.to_string()))?;
-                let entitlement = crate::residency_market::provisional_residency_from_market_grant(
-                    &self.market,
-                    &record,
-                )
-                .map_err(|error| GrowthEntitlementError::Bridge(error.to_string()))?;
-                decisions.push(GrowthEntitlementDecision::granted(*candidate, entitlement));
+                let (entitlement, provenance) =
+                    crate::residency_market::provisional_residency_and_provenance_from_market_grant(
+                        &self.market,
+                        &record,
+                    )
+                    .map_err(|error| GrowthEntitlementError::Bridge(error.to_string()))?;
+                decisions.push(GrowthEntitlementDecision::granted(
+                    *candidate,
+                    entitlement,
+                    provenance,
+                ));
             } else {
                 let key = if grant.granted == 0 {
                     None

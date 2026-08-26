@@ -17,6 +17,8 @@ pub enum ResidencyMarketBridgeError {
     UnknownOffering(String),
     #[error("market grant resource does not match admitted offering `{0}`")]
     OfferingResourceMismatch(String),
+    #[error("market grant provenance projection failed: {0}")]
+    Provenance(String),
     #[error(transparent)]
     Entitlement(#[from] ResidencyEntitlementError),
     #[error(transparent)]
@@ -30,6 +32,20 @@ pub fn provisional_residency_from_market_grant(
     market: &AdmittedSpecializationFlowMarket,
     grant: &MarketGrantRecord,
 ) -> Result<ProvisionalResidencyEntitlement, ResidencyMarketBridgeError> {
+    provisional_residency_and_provenance_from_market_grant(market, grant)
+        .map(|(entitlement, _)| entitlement)
+}
+
+pub(crate) fn provisional_residency_and_provenance_from_market_grant(
+    market: &AdmittedSpecializationFlowMarket,
+    grant: &MarketGrantRecord,
+) -> Result<
+    (
+        ProvisionalResidencyEntitlement,
+        simthing_spec::MarketGrantResidencyProvenance,
+    ),
+    ResidencyMarketBridgeError,
+> {
     let offering_id = &grant.key().offering_id;
     let resource = market
         .offering_resource(offering_id)
@@ -39,14 +55,17 @@ pub fn provisional_residency_from_market_grant(
             offering_id.clone(),
         ));
     }
-    ProvisionalResidencyEntitlement::try_new(
-        grant.key().granter,
-        grant.key().grantee,
-        market_grant_stable_key(market, grant),
-        grant.quantity(),
-        grant.granted_generation(),
-    )
-    .map_err(Into::into)
+    let provenance = market
+        .residency_provenance(grant)
+        .map_err(|error| ResidencyMarketBridgeError::Provenance(error.to_string()))?;
+    let entitlement = ProvisionalResidencyEntitlement::try_new(
+        provenance.granter(),
+        provenance.grantee(),
+        provenance.stable_key(),
+        provenance.quantity(),
+        provenance.granted_generation(),
+    )?;
+    Ok((entitlement, provenance))
 }
 
 pub fn realize_market_grant_residency(
@@ -87,28 +106,4 @@ pub fn relocate_market_grant_residency(
             schedule,
         )
         .map_err(Into::into)
-}
-
-fn market_grant_stable_key(
-    market: &AdmittedSpecializationFlowMarket,
-    grant: &MarketGrantRecord,
-) -> u64 {
-    let mut hash = 0xcbf2_9ce4_8422_2325_u64;
-    for component in [
-        grant.key().granter.raw().to_le_bytes().as_slice(),
-        grant.key().grantee.raw().to_le_bytes().as_slice(),
-        market.specialization_profile_id().as_bytes(),
-        grant.key().offering_id.as_bytes(),
-        grant.scope().owner_ref.as_str().as_bytes(),
-        grant.scope().resource_key.as_str().as_bytes(),
-        grant.scope().scope_id.as_str().as_bytes(),
-    ] {
-        hash ^= component.len() as u64;
-        hash = hash.wrapping_mul(0x0000_0100_0000_01b3);
-        for byte in component {
-            hash ^= u64::from(*byte);
-            hash = hash.wrapping_mul(0x0000_0100_0000_01b3);
-        }
-    }
-    hash
 }

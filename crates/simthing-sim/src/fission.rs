@@ -46,7 +46,9 @@
 //! is intentional (see `docs/state-authority.md`).
 
 use crate::fission_clone_source_view::fission_clone_source_children;
-use crate::growth_entitlement::{OrdinaryGrowthCandidate, OrdinaryGrowthOrigin};
+use crate::growth_entitlement::{
+    OrdinaryGrowthCandidate, OrdinaryGrowthOrigin, VerifiedGrowthResidencyCommit,
+};
 use crate::threshold_registry::{ThresholdRegistry, ThresholdSemantic};
 use crate::tree_index::{node_at_path, node_at_path_mut};
 use serde::{Deserialize, Serialize};
@@ -255,7 +257,7 @@ pub fn resolve_prepared_fission_fusion(
     values_shadow: &mut [f32],
     n_dims: usize,
     mut prepared: BTreeMap<(SimThingId, usize), PreparedFission>,
-    commits: &BTreeMap<SimThingId, GrowthResidencyCommit>,
+    commits: &BTreeMap<SimThingId, VerifiedGrowthResidencyCommit>,
     mut out: FissionOutcome,
 ) -> FissionOutcome {
     let mut seen_fissions = HashSet::new();
@@ -286,7 +288,7 @@ pub fn resolve_prepared_fission_fusion(
                     allocator,
                     node_paths,
                     candidate,
-                    commit,
+                    commit.commit(),
                     values_shadow,
                     n_dims,
                     &mut out,
@@ -375,7 +377,10 @@ fn resolve_fission_fusion(
                     &mut schedule,
                 )
                 .unwrap();
-            (growth.grantee(), commit)
+            (
+                growth.grantee(),
+                VerifiedGrowthResidencyCommit::unchecked_for_test(commit),
+            )
         })
         .collect();
     resolve_prepared_fission_fusion(

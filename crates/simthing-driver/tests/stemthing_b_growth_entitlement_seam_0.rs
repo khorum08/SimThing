@@ -6,10 +6,13 @@ use simthing_core::{
 };
 use simthing_driver::{GrowthEntitlementMarketBinding, Scenario, SimSession};
 use simthing_feeder::BoundaryRequest;
-use simthing_gpu::{GrowthResidencyCommit, ResidencyExtent, SlotAllocator};
+use simthing_gpu::{
+    GrowthResidencyCommit, ProvisionalResidencyEntitlement, ResidencyExtent, SlotAllocator,
+};
 use simthing_sim::{
     BoundaryDeltaEntry, GrowthEntitlementDecision, OrdinaryGrowthCandidate, OrdinaryGrowthOrigin,
-    RecordedGrowthResidencyFact, ReplayDriver, ReplayFrame, ReplayGrowthError,
+    OrdinaryGrowthRefusalReason, RecordedGrowthResidencyFact, ReplayDriver, ReplayFrame,
+    ReplayGrowthError,
 };
 
 fn add_child_scenario(n_slots: u32) -> (Scenario, simthing_core::SimThingId) {
@@ -193,6 +196,185 @@ fn real_fission_clears_places_then_attaches_through_the_implicit_market() {
     ));
 }
 
+#[test]
+fn fabricated_market_grant_key_is_typed_refusal_without_attach_row_or_retry_and_revalues_next_generation(
+) {
+    let (scenario, parent_id) = add_child_scenario(5);
+    let root_id = scenario.root.id;
+    let mut session = SimSession::open(scenario).expect("GPU session opens");
+    let child = SimThing::new(SimThingKind::Cohort, 1);
+    let child_id = child.id;
+    let candidate =
+        OrdinaryGrowthCandidate::new(parent_id, child_id, 1, OrdinaryGrowthOrigin::AddChild);
+    let binding = session.growth_entitlement_market().clone();
+    let real_decision = binding
+        .resolve_batch(
+            &session.proto.allocator,
+            GenerationStamp::new(0),
+            &[candidate],
+        )
+        .expect("11.2a clears the candidate")
+        .pop()
+        .expect("one candidate has one decision");
+    let GrowthEntitlementDecision::Granted {
+        entitlement: real_entitlement,
+        provenance,
+        ..
+    } = real_decision
+    else {
+        panic!("fixture must receive a full real grant")
+    };
+    let fabricated_key = real_entitlement.market_grant_key() ^ (1_u64 << 63);
+    let fabricated = ProvisionalResidencyEntitlement::try_new(
+        real_entitlement.granter(),
+        real_entitlement.grantee(),
+        fabricated_key,
+        real_entitlement.quantity(),
+        real_entitlement.granted_generation(),
+    )
+    .expect("the remanded bare-key credential is constructible");
+
+    // Reproduce the DA falsifier through the raw kernel placement bridge. A
+    // fabricated entitlement can still obtain a raw commit, but that commit is
+    // not the ordinary-mutation capability introduced by the provenance seal.
+    let mut forged_allocator = session.proto.allocator.clone();
+    let mut forged_schedule = IntegrationSchedule::new();
+    let forged_commit = forged_allocator
+        .realize_unattached_growth_residency(
+            fabricated,
+            parent_id,
+            GenerationStamp::new(0),
+            &mut forged_schedule,
+        )
+        .expect("raw placement reproduces the pre-remand open credential path");
+    assert_eq!(
+        forged_commit.entitlement().market_grant_key(),
+        fabricated_key
+    );
+
+    session
+        .tx
+        .submit_boundary(BoundaryRequest::AddChild {
+            parent: parent_id,
+            child: child.clone(),
+        })
+        .unwrap();
+    let n_dims = session.proto.registry.total_columns;
+    session.patcher.drain(
+        &session.rx,
+        &session.proto.registry,
+        &session.proto.allocator,
+        n_dims,
+        &mut session.coord.shadow,
+        None,
+    );
+    let mut schedule = IntegrationSchedule::new();
+    let refused = session
+        .proto
+        .execute_with_boundary_hook_and_growth(
+            Vec::new(),
+            &mut session.patcher,
+            &mut session.coord,
+            &mut session.state,
+            0,
+            &mut schedule,
+            |_| {},
+            |_, _, candidates| {
+                assert_eq!(candidates, &[candidate]);
+                Ok(vec![GrowthEntitlementDecision::granted(
+                    candidate, fabricated, provenance,
+                )])
+            },
+        )
+        .expect("fabricated credential is an ordinary typed refusal");
+
+    assert!(!session.proto.root.contains_id(child_id));
+    assert!(session.proto.allocator.slot_of(child_id).is_none());
+    assert!(session
+        .proto
+        .allocator
+        .committed_residency_placement(root_id, child_id)
+        .is_none());
+    assert_eq!(refused.growth_residency_facts.len(), 1);
+    let RecordedGrowthResidencyFact::Refused(refusal) = &refused.growth_residency_facts[0] else {
+        panic!("fabricated key produced an accepted fact")
+    };
+    assert!(matches!(
+        refusal.reason(),
+        OrdinaryGrowthRefusalReason::GrantProvenanceMismatch {
+            recorded_market_grant_key,
+            presented_market_grant_key,
+        } if *recorded_market_grant_key == provenance.stable_key()
+            && *presented_market_grant_key == fabricated_key
+    ));
+    assert_eq!(refusal.attempted_generation(), GenerationStamp::new(0));
+    assert_eq!(refusal.revalue_generation(), GenerationStamp::new(1));
+    assert_eq!(
+        schedule
+            .entries()
+            .iter()
+            .filter(|row| row.row_kind() == IntegrationScheduleRowKind::GrowthEntitlementRefusal)
+            .count(),
+        1,
+        "one canonical refusal fact; no same-generation retry"
+    );
+    assert_eq!(
+        schedule
+            .entries()
+            .iter()
+            .filter(|row| row.row_kind() == IntegrationScheduleRowKind::ResidencyPlacementCommit)
+            .count(),
+        0,
+        "provenance refusal mints no authoritative residency row"
+    );
+
+    // The retained U candidate is eligible for ordinary revaluation only at
+    // the next generation. The real market path then admits and attaches it.
+    session
+        .tx
+        .submit_boundary(BoundaryRequest::AddChild {
+            parent: parent_id,
+            child,
+        })
+        .unwrap();
+    session.patcher.drain(
+        &session.rx,
+        &session.proto.registry,
+        &session.proto.allocator,
+        n_dims,
+        &mut session.coord.shadow,
+        None,
+    );
+    let accepted = session
+        .proto
+        .execute_with_boundary_hook_and_growth(
+            Vec::new(),
+            &mut session.patcher,
+            &mut session.coord,
+            &mut session.state,
+            1,
+            &mut schedule,
+            |_| {},
+            |allocator, generation, candidates| {
+                binding
+                    .resolve_batch(allocator, generation, candidates)
+                    .map_err(|error| error.to_string())
+            },
+        )
+        .expect("next-generation real grant revalues and attaches");
+    assert!(session.proto.root.contains_id(child_id));
+    assert!(session.proto.allocator.slot_of(child_id).is_some());
+    assert!(session
+        .proto
+        .allocator
+        .committed_residency_placement(root_id, child_id)
+        .is_some());
+    assert!(matches!(
+        accepted.growth_residency_facts.as_slice(),
+        [RecordedGrowthResidencyFact::Accepted(_)]
+    ));
+}
+
 fn normalized_decisions(decisions: &[GrowthEntitlementDecision]) -> Vec<(u32, u32, Option<u64>)> {
     let mut rows = decisions
         .iter()
@@ -200,6 +382,7 @@ fn normalized_decisions(decisions: &[GrowthEntitlementDecision]) -> Vec<(u32, u3
             GrowthEntitlementDecision::Granted {
                 candidate,
                 entitlement,
+                ..
             } => (
                 candidate.grantee().raw(),
                 entitlement.quantity(),
@@ -230,6 +413,7 @@ fn place_and_record(
             GrowthEntitlementDecision::Granted {
                 candidate,
                 entitlement,
+                ..
             } => commits.push(
                 allocator
                     .realize_unattached_growth_residency(

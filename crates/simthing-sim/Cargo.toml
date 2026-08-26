@@ -9,6 +9,7 @@ simthing-core    = { path = "../simthing-core" }
 simthing-kernel  = { path = "../simthing-kernel" }
 simthing-gpu     = { path = "../simthing-gpu" }
 simthing-feeder  = { path = "../simthing-feeder" }
+simthing-spec    = { path = "../simthing-spec" }
 bytemuck         = { workspace = true }
 thiserror        = { workspace = true }
 serde            = { workspace = true }
