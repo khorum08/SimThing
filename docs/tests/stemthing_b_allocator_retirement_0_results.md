@@ -3,7 +3,7 @@
 - Track: 0.0.8.7 RF arena modernization, rung 11.2d
 - Status: **PROBATION / proof-present / DA-review-pending**
 - Exact implementation base: `8282f77903e9313d7417fb794a05a884d263efd3`
-- Tested-code checkpoint: `PENDING-CODE-COMMIT`
+- Tested-code checkpoint: `e81d34620b296cef64d3348323e242e9cf912538`
 - Branch: `codex/stemthing-b-allocator-retirement-0`
 - ORIENT-RECEIPT: `1a6a00162374`
 - orientation_rule_stamp: `9ee3f7649d1fc790`
