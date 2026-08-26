@@ -1,0 +1,8 @@
+(
+    name: "map_1m_light",
+    builtin: "map_1m_light",
+    ticks_per_day: 8,
+    max_days: 2,
+    dt: 0.25,
+    n_slots: 1000000,
+)

@@ -1,0 +1,30 @@
+---
+description: Foreground shell block_until_ms budgets for cargo/git (avoid hangs)
+alwaysApply: true
+---
+
+# Shell timeout budgets (foreground blocking)
+
+A too-short `block_until_ms` makes long `cargo test` / `cargo check` runs look **hung** when the shell was moved to background. Use foreground blocking with enough budget.
+
+## block_until_ms defaults
+
+| Command | Minimum `block_until_ms` |
+|---|---|
+| `cargo check -p <crate>` | 120000 |
+| `cargo check --workspace` | 120000 |
+| `cargo test -p <crate> --test <one>` | 180000 |
+| `cargo test -p simthing-driver --test <runtime_*>` | 300000 |
+| `cargo test --workspace` (final gate only) | 600000 |
+| `git push` / `gh pr merge` | 60000 |
+
+## Rules
+
+- **Final verification** (`cargo test` before PASS / commit / merge): foreground only — see `no-background-final-tests.mdc`.
+- **Never** use `block_until_ms: 0` for tests or git/gh unless the user explicitly asked for a background diagnostic run.
+- Prefer **narrow tests first** (`cargo test -p simthing-driver --test foo`) over full-workspace runs when exploring.
+- If a command exceeds the budget, re-run the **same narrow command** with a higher `block_until_ms` — do not pipe or redirect output to “save time” (`no-shell-redirection.mdc`).
+
+## Windows note
+
+`cargo test 2>&1` and `cargo test | Select-Object` are **forbidden** — they surface `NativeCommandError` on informational stderr and abort the turn (looks like a crash).

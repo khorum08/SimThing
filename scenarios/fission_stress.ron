@@ -1,0 +1,8 @@
+(
+    name: "fission_stress",
+    builtin: "fission_stress",
+    ticks_per_day: 1,
+    max_days: 2,
+    dt: 1.0,
+    n_slots: 20000,
+)

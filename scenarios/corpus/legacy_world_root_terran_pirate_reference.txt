@@ -1,0 +1,1 @@
+C:\Users\mvorm\SimThing\crates\simthing-spec\../../scenarios/horizon/terran_pirate_skeleton.simthing-scenario.json
