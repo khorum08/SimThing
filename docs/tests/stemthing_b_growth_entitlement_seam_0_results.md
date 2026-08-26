@@ -1,7 +1,7 @@
 # STEMTHING-B-GROWTH-ENTITLEMENT-SEAM-0 results
 
 - Track: 0.0.8.7 RF arena modernization, rung 11.2c
-- Status: **PROBATION / proof-present / DA-review-pending**
+- Status: **COMPLETE — DA-GRADUATED / merged #1841 @ `471821a3`** (Fable deep review, graduation ruling on Board #1332)
 - Implementation base: `39f98302bb8ca0b856a0c3d44addf30ace8d2f14`
 - DA provenance-remand reviewed head: `e896f07080425f18a88a43fe9a7757521602de67`
 - Provenance-remand tested-code checkpoint: `0596dd19a914ca94b3c024cc9a6f3013f405333d`
