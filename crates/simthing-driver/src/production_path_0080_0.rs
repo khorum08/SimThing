@@ -1,7 +1,6 @@
 use simthing_spec::{
-    run_mobility_runtime1a_production_fixture, IdentityLane, MobilityAlloc0BlockSpec,
-    MobilityAlloc0ForbiddenPathRequests, MobilityAlloc0LiveSlice, MobilityAlloc0ParentKey,
-    MobilityAlloc0PlanInput, MobilityEcon0ForbiddenPathRequests, MobilityEcon0LocalCellRecord,
+    run_mobility_runtime1a_production_fixture, IdentityLane, MobilityAlloc0LiveSlice,
+    MobilityAlloc0ParentKey, MobilityEcon0ForbiddenPathRequests, MobilityEcon0LocalCellRecord,
     MobilityEcon0PlanInput, MobilityIdroute0ForbiddenPathRequests, MobilityIdroute0LocalRecord,
     MobilityIdroute0PlanInput, MobilityOwner0ColumnKind, MobilityOwner0ColumnValue,
     MobilityOwner0ForbiddenPathRequests, MobilityOwner0LocalRecord, MobilityOwner0Overlay,
@@ -420,12 +419,6 @@ fn mobility_input(input: &ProductionPath0080Input) -> MobilityRuntime1aProductio
 }
 
 fn mobility_composition(scenario: &LocalPatrolEconomyScenario) -> MobilityRuntime0CompositionInput {
-    let blocks = vec![
-        block(SOURCE_CELL_ID, 0, 8),
-        block(DESTINATION_CELL_ID, 8, 8),
-        block(30, 16, 2),
-        block(31, 18, 2),
-    ];
     let live_slices = vec![
         live(SOURCE_CELL_ID, scenario.patrol_entity_id, 0),
         live(SOURCE_CELL_ID, 8_001, 1),
@@ -435,15 +428,8 @@ fn mobility_composition(scenario: &LocalPatrolEconomyScenario) -> MobilityRuntim
 
     MobilityRuntime0CompositionInput {
         config: MobilityRuntime0HarnessConfig::opt_in_test_harness(),
-        alloc: MobilityAlloc0PlanInput {
-            blocks: blocks.clone(),
-            live_slices: live_slices.clone(),
-            events: vec![],
-            forbidden: MobilityAlloc0ForbiddenPathRequests::default(),
-        },
         reenroll: MobilityReenroll0PlanInput {
             registry: MobilityReenroll0RegistryState {
-                blocks,
                 live_slices,
                 origin_generations: Default::default(),
                 destination_generations: Default::default(),
@@ -452,7 +438,6 @@ fn mobility_composition(scenario: &LocalPatrolEconomyScenario) -> MobilityRuntim
                 entity_id: scenario.patrol_entity_id,
                 origin: key(SOURCE_CELL_ID),
                 destination: key(DESTINATION_CELL_ID),
-                arrival_order: 9,
             }],
             forbidden: MobilityReenroll0ForbiddenPathRequests::default(),
         },
@@ -539,15 +524,6 @@ fn mobility_composition(scenario: &LocalPatrolEconomyScenario) -> MobilityRuntim
             forbidden: MobilityOwner0ForbiddenPathRequests::default(),
         },
         forbidden: MobilityRuntime0ForbiddenPathRequests::default(),
-    }
-}
-
-fn block(cell_id: u64, start_slot: u32, slot_count: u32) -> MobilityAlloc0BlockSpec {
-    MobilityAlloc0BlockSpec {
-        parent_key: key(cell_id),
-        start_slot,
-        slot_count,
-        reserved_headroom: slot_count / 2,
     }
 }
 
