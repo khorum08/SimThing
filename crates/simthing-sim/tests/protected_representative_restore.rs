@@ -1,10 +1,11 @@
-use std::collections::HashMap;
+use std::collections::{BTreeSet, HashMap};
 
+use simthing_core::owner_channel::OwnerRef;
 use simthing_core::{
     prepare_fission_clone_sources_for_registry, DimensionRegistry, Direction, FissionTemplate,
-    FissionThreshold, Overlay, OverlayId, OverlayKind, OverlayLifecycle, OverlaySource,
-    PropertyTransformDelta, ReductionRule, SimProperty, SimThing, SimThingId, SimThingKind,
-    SimThingKindTag, SoftAggregateGuard, SubFieldRole, TransformOp,
+    FissionThreshold, GenerationStamp, Overlay, OverlayId, OverlayKind, OverlayLifecycle,
+    OverlaySource, PropertyTransformDelta, ReductionRule, SimProperty, SimThing, SimThingId,
+    SimThingKind, SimThingKindTag, SoftAggregateGuard, SubFieldRole, TransformOp,
 };
 use simthing_gpu::{
     cpu_oracle_threshold_events, SlotAllocator, ThresholdRegistration, DIR_DOWNWARD, DIR_UPWARD,
@@ -13,6 +14,12 @@ use simthing_gpu::{
 use simthing_sim::{
     assert_no_hard_trigger_on_soft_aggregate as soft_guard_check, AggregateAlertRegistration,
     SoftAggregateViolation, ThresholdBuilder, ThresholdRegistry, ThresholdSemantic,
+};
+use simthing_spec::{
+    admit_specialization_flow_market, clear_constrained_claims_at_generation,
+    AuthoredClearingProgram, ClearingRemainderAuthority, ConservedOfferingSpec, ConstrainedClaim,
+    ConstrainedSupply, DrawEnvelopeTemplateSpec, OfferingPriceVectorSpec, OwnerChannelScopeKey,
+    ResourceKey, RuntimeOwnerSiloDemandBucket, ScopeId, SpecializationFlowMarketSpec,
 };
 
 fn weighted_mean_property(
@@ -118,7 +125,7 @@ fn assert_no_hard_trigger_on_soft_aggregate() {
     root.add_property(property_id, registry.property(property_id).default_value());
     let owner_id = root.id;
     let mut allocator = SlotAllocator::new();
-    allocator.populate_from_tree(&root);
+    allocator.install_initial_tree(&root);
     let runtime = simthing_sim::SimRuntimeTree::admit(root);
     let aggregate_alert = AggregateAlertRegistration {
         sim_thing_id: owner_id,
@@ -199,7 +206,7 @@ fn clone_capability_children() {
     prepare_fission_clone_sources_for_registry(&mut root, &registry);
 
     let mut allocator = SlotAllocator::new();
-    allocator.populate_from_tree(&root);
+    allocator.install_initial_tree(&root);
     let faction_slot = allocator.slot_of(faction_id).expect("faction slot").raw();
     let source_tree_slot = allocator
         .slot_of(source_tree_id)
@@ -240,7 +247,112 @@ fn clone_capability_children() {
     assert_eq!(events.len(), 1, "fission threshold must fire once");
 
     let paths = HashMap::from([(faction_id, vec![0])]);
-    let outcome = simthing_sim::fission::resolve_fission_fusion(
+    let generation = GenerationStamp::new(1);
+    allocator
+        .declare_root_residency_extent(
+            root.id,
+            simthing_gpu::ResidencyExtent::try_new(
+                0,
+                u32::try_from(values.len() / n_dims).unwrap(),
+            )
+            .unwrap(),
+        )
+        .unwrap();
+    let (prepared, initial) = simthing_sim::fission::prepare_fission_growth_candidates(
+        &root, &paths, &registry, &allocator, &events, &cpu_reg, &values, n_dims, 1,
+    );
+    let market = admit_specialization_flow_market(
+        &simthing_core::seed_profiles(),
+        &BTreeSet::from(["while-resident".into()]),
+        SpecializationFlowMarketSpec {
+            specialization_profile_id: "session-root".into(),
+            offerings: vec![ConservedOfferingSpec {
+                id: "residency-claim".into(),
+                resource_key: ResourceKey::new("residency-slots"),
+                price: OfferingPriceVectorSpec {
+                    unit_cost: 1.0,
+                    default_clearing_weight: 1.0,
+                },
+            }],
+            draw_envelopes: vec![DrawEnvelopeTemplateSpec {
+                id: "residency-draw".into(),
+                offering_refs: vec!["residency-claim".into()],
+                lifecycle_trigger_refs: vec!["while-resident".into()],
+                min_quantity: 1,
+                max_quantity: u32::MAX,
+            }],
+        },
+    )
+    .expect("test residency market admits");
+    let mut schedule = simthing_core::IntegrationSchedule::new();
+    let commits = prepared
+        .values()
+        .map(|prepared| {
+            let candidate = prepared.candidate();
+            let scope = OwnerChannelScopeKey {
+                owner_ref: OwnerRef::new("protected-restore"),
+                resource_key: ResourceKey::new("residency-slots"),
+                scope_id: ScopeId::from_boundary(root.id),
+            };
+            let demand = RuntimeOwnerSiloDemandBucket {
+                owner_ref: scope.owner_ref.clone(),
+                resource_key: scope.resource_key.clone(),
+                scope_id: scope.scope_id.clone(),
+                requested: candidate.quantity(),
+                priority: 0,
+                source_simthing_id_raw: Some(candidate.grantee().raw()),
+            };
+            let claim = ConstrainedClaim::from_runtime_demand(&demand, 1.0).unwrap();
+            let cleared = clear_constrained_claims_at_generation(
+                &[ConstrainedSupply {
+                    scope,
+                    available: candidate.quantity(),
+                }],
+                &[claim],
+                &AuthoredClearingProgram::new(TransformOp::set(1.0)),
+                ClearingRemainderAuthority {
+                    granter: root.id,
+                    generation,
+                },
+            )
+            .expect("real constrained clearing mints the test grant");
+            let grant = market
+                .record_cleared_grant(
+                    root.id,
+                    "residency-claim",
+                    &cleared[0].grants[0],
+                    generation,
+                )
+                .expect("sealed clearing grant records");
+            let provenance = market
+                .residency_provenance(&grant)
+                .expect("recorded grant projects opaque provenance");
+            let entitlement = simthing_gpu::ProvisionalResidencyEntitlement::try_new(
+                provenance.granter(),
+                provenance.grantee(),
+                provenance.stable_key(),
+                provenance.quantity(),
+                provenance.granted_generation(),
+            )
+            .unwrap();
+            let commit = allocator
+                .realize_unattached_growth_residency(
+                    entitlement,
+                    candidate.structural_parent(),
+                    generation,
+                    &mut schedule,
+                )
+                .unwrap();
+            (
+                candidate.grantee(),
+                simthing_sim::VerifiedGrowthResidencyCommit::try_from_market_grant(
+                    commit, provenance,
+                )
+                .expect("opaque market provenance verifies the mutation commit"),
+            )
+        })
+        .collect();
+    let outcome = simthing_sim::fission::resolve_prepared_fission_fusion(
         &mut root,
         &paths,
         &registry,
@@ -249,7 +361,9 @@ fn clone_capability_children() {
         &cpu_reg,
         &mut values,
         n_dims,
-        1,
+        prepared,
+        &commits,
+        initial,
     );
 
     assert_eq!(outcome.fissions_executed, 1);

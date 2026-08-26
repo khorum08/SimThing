@@ -5422,6 +5422,7 @@ dependencies = [
  "simthing-feeder",
  "simthing-gpu",
  "simthing-kernel",
+ "simthing-spec",
  "thiserror 2.0.18",
 ]
 

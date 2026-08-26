@@ -84,7 +84,7 @@ fn sparse_owned_row_fixture() -> (Scenario, GameModeSpec) {
     root.add_child(third);
 
     let mut allocator = SlotAllocator::new();
-    allocator.populate_from_tree(&root);
+    allocator.install_initial_tree(&root);
     let participants = [first_id, second_id, third_id]
         .into_iter()
         .map(|id| {

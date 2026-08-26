@@ -299,7 +299,7 @@ fn clause_effect_host_executes_through_boundary_overlay_prep_and_gpu() {
     );
 
     let mut allocator = SlotAllocator::new();
-    allocator.populate_from_tree(&scenario.root);
+    allocator.install_initial_tree(&scenario.root);
     let preview = preview_install(
         &game_mode,
         &scenario,
@@ -389,7 +389,7 @@ fn clause_effect_host_rejection_uses_authored_property_reference_span() {
     );
     let (scenario, owner_id, _) = scenario_with_admitted_properties(&mut game_mode, false);
     let mut allocator = SlotAllocator::new();
-    allocator.populate_from_tree(&scenario.root);
+    allocator.install_initial_tree(&scenario.root);
 
     let error = preview_install(
         &game_mode,
@@ -454,7 +454,7 @@ fn existing_capability_effect_corpus_has_no_mis_hosted_overlay() {
         let authored = effect_count(&game_mode);
         let (scenario, _, _) = scenario_with_admitted_properties(&mut game_mode, true);
         let mut allocator = SlotAllocator::new();
-        allocator.populate_from_tree(&scenario.root);
+        allocator.install_initial_tree(&scenario.root);
         let preview = preview_install(
             &game_mode,
             &scenario,

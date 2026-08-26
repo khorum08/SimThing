@@ -126,7 +126,7 @@ pub fn flat_star_game_mode(max_orderband_depth: u32) -> GameModeSpec {
 
 pub fn fill_explicit_participants(game_mode: &mut GameModeSpec, scenario: &Scenario) {
     let mut alloc = simthing_gpu::SlotAllocator::new();
-    alloc.populate_from_tree(&scenario.root);
+    alloc.install_initial_tree(&scenario.root);
     let participants: Vec<_> = scenario
         .root
         .children

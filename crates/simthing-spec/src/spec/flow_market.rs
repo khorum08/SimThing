@@ -318,6 +318,9 @@ impl AdmittedSpecializationFlowMarket {
         grant: &ConstrainedGrant,
         generation: GenerationStamp,
     ) -> Result<MarketGrantRecord, GrantLifecycleError> {
+        if !grant.has_intact_clearance_seal() {
+            return Err(GrantLifecycleError::InvalidClearingSeal);
+        }
         let offering = self
             .offerings
             .get(offering_id)
@@ -413,6 +416,44 @@ pub struct MarketGrantRecord {
     granted_generation: GenerationStamp,
 }
 
+/// Opaque projection of one [`MarketGrantRecord`] validated against the
+/// admitted market that authored its offering.
+///
+/// The representation is private and the sole production mint is
+/// [`AdmittedSpecializationFlowMarket::residency_provenance`]. Consumers may
+/// compare the projected identity/state but cannot invent a provenance value
+/// from a bare grant key.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct MarketGrantResidencyProvenance {
+    granter: SimThingId,
+    grantee: SimThingId,
+    stable_key: u64,
+    quantity: u32,
+    granted_generation: GenerationStamp,
+}
+
+impl MarketGrantResidencyProvenance {
+    pub fn granter(self) -> SimThingId {
+        self.granter
+    }
+
+    pub fn grantee(self) -> SimThingId {
+        self.grantee
+    }
+
+    pub fn stable_key(self) -> u64 {
+        self.stable_key
+    }
+
+    pub fn quantity(self) -> u32 {
+        self.quantity
+    }
+
+    pub fn granted_generation(self) -> GenerationStamp {
+        self.granted_generation
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum GrantReleaseCause {
     Death,
@@ -431,6 +472,8 @@ pub struct GrantRelease {
 
 #[derive(Clone, Debug, PartialEq, Eq, Error)]
 pub enum GrantLifecycleError {
+    #[error("clearing grant was not minted intact by constrained clearing")]
+    InvalidClearingSeal,
     #[error("unknown offering `{0}`")]
     UnknownOffering(String),
     #[error("clearing grant resource does not match its offering")]
@@ -501,6 +544,9 @@ impl MarketGrantRecord {
         clearance: &ConstrainedGrant,
         generation: GenerationStamp,
     ) -> Result<(), GrantLifecycleError> {
+        if !clearance.has_intact_clearance_seal() {
+            return Err(GrantLifecycleError::InvalidClearingSeal);
+        }
         if clearance.granted == 0 {
             return Err(GrantLifecycleError::ZeroGrant);
         }
@@ -602,4 +648,57 @@ impl MarketGrantRecord {
             granted_generation: generation,
         })
     }
+}
+
+impl AdmittedSpecializationFlowMarket {
+    /// Project an already-recorded 11.2a grant into the opaque product used by
+    /// ordinary residency consumption. This retains no registry and performs
+    /// no clearing, ranking, retry, or placement.
+    pub fn residency_provenance(
+        &self,
+        grant: &MarketGrantRecord,
+    ) -> Result<MarketGrantResidencyProvenance, GrantLifecycleError> {
+        let offering_id = &grant.key.offering_id;
+        let offering = self
+            .offerings
+            .get(offering_id)
+            .ok_or_else(|| GrantLifecycleError::UnknownOffering(offering_id.clone()))?;
+        if offering.resource_key != grant.scope.resource_key {
+            return Err(GrantLifecycleError::OfferingResourceMismatch);
+        }
+        if grant.quantity == 0 {
+            return Err(GrantLifecycleError::ZeroGrant);
+        }
+        Ok(MarketGrantResidencyProvenance {
+            granter: grant.key.granter,
+            grantee: grant.key.grantee,
+            stable_key: market_grant_stable_key(self, grant),
+            quantity: grant.quantity,
+            granted_generation: grant.granted_generation,
+        })
+    }
+}
+
+fn market_grant_stable_key(
+    market: &AdmittedSpecializationFlowMarket,
+    grant: &MarketGrantRecord,
+) -> u64 {
+    let mut hash = 0xcbf2_9ce4_8422_2325_u64;
+    for component in [
+        grant.key.granter.raw().to_le_bytes().as_slice(),
+        grant.key.grantee.raw().to_le_bytes().as_slice(),
+        market.specialization_profile_id.as_bytes(),
+        grant.key.offering_id.as_bytes(),
+        grant.scope.owner_ref.as_str().as_bytes(),
+        grant.scope.resource_key.as_str().as_bytes(),
+        grant.scope.scope_id.as_str().as_bytes(),
+    ] {
+        hash ^= component.len() as u64;
+        hash = hash.wrapping_mul(0x0000_0100_0000_01b3);
+        for byte in component {
+            hash ^= u64::from(*byte);
+            hash = hash.wrapping_mul(0x0000_0100_0000_01b3);
+        }
+    }
+    hash
 }

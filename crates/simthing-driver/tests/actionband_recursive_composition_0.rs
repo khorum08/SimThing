@@ -211,7 +211,7 @@ fn gpu_deltas(
 ) -> Vec<simthing_gpu::BandCrossingDelta> {
     let root = SimThing::new(SimThingKind::GameSession, 0);
     let mut allocator = SlotAllocator::new();
-    allocator.populate_from_tree(&root);
+    allocator.install_initial_tree(&root);
     let registrations = emit_on_threshold_registrations_to_gpu(registrations);
     let mut session = AccumulatorOpSession::new_attached(
         ctx,
@@ -246,7 +246,7 @@ fn gpu_deltas_from_buffer(
 ) -> Vec<simthing_gpu::BandCrossingDelta> {
     let root = SimThing::new(SimThingKind::GameSession, 0);
     let mut allocator = SlotAllocator::new();
-    allocator.populate_from_tree(&root);
+    allocator.install_initial_tree(&root);
     let registrations = emit_on_threshold_registrations_to_gpu(registrations);
     let mut session = AccumulatorOpSession::new_attached(
         ctx,

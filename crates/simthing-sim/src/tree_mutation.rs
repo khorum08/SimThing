@@ -63,6 +63,7 @@
 //! - Records the property id so the boundary protocol can widen the CPU
 //!   shadow and rebuild `WorldGpuState` before step 9 sync.
 
+use crate::growth_entitlement::VerifiedGrowthResidencyCommit;
 use crate::overlay_lifecycle::OverlayLifecycleAdmissionState;
 use crate::sim_runtime_tree::SimRuntimeTree;
 use crate::tree_index::{detach_at_path, node_at_path, node_at_path_mut};
@@ -157,6 +158,7 @@ pub fn apply_structural_mutations(
     node_paths: Option<&HashMap<SimThingId, Vec<usize>>>,
     destination_generation: GenerationStamp,
     lifecycle_admission: &mut OverlayLifecycleAdmissionState,
+    growth_commits: &BTreeMap<SimThingId, VerifiedGrowthResidencyCommit>,
 ) -> MaintainerOutcome {
     let mut out = MaintainerOutcome::default();
     let root = root.inner_mut();
@@ -164,6 +166,7 @@ pub fn apply_structural_mutations(
     for req in requests {
         match req {
             BoundaryRequest::AddChild { parent, child } => {
+                let commit = growth_commits.get(&child.id).copied();
                 apply_add_child(
                     root,
                     allocator,
@@ -173,6 +176,7 @@ pub fn apply_structural_mutations(
                     parent,
                     child,
                     node_paths,
+                    commit,
                     &mut out,
                 );
             }
@@ -283,8 +287,13 @@ fn apply_add_child(
     parent_id: SimThingId,
     mut child: SimThing,
     node_paths: Option<&HashMap<SimThingId, Vec<usize>>>,
+    commit: Option<VerifiedGrowthResidencyCommit>,
     out: &mut MaintainerOutcome,
 ) {
+    let Some(commit) = commit else {
+        out.rejected_growth_entitlement += 1;
+        return;
+    };
     prepare_fission_clone_sources_subtree(&mut child, registry);
 
     // Collect every id in the subtree being added (typically just the
@@ -305,7 +314,10 @@ fn apply_add_child(
     // get a stable order (root before children); the SimThing we just
     // pushed is at the end of parent's children list.
     let attached = parent.children.last().expect("just pushed");
-    if allocator.populate_subtree(parent, attached).is_err() {
+    if allocator
+        .realize_growth_subtree(parent, attached, commit.commit())
+        .is_err()
+    {
         parent.children.pop();
         out.rejected_unknown_target += 1;
         return;
@@ -665,7 +677,7 @@ mod tests {
         FISSION_CLONE_SOURCE_PROPERTY_ID,
     };
     use simthing_feeder::BoundaryRequest;
-    use simthing_gpu::SlotAllocator;
+    use simthing_gpu::{ProvisionalResidencyEntitlement, ResidencyExtent, SlotAllocator};
 
     fn fixture() -> (DimensionRegistry, SlotAllocator, SimRuntimeTree) {
         let mut reg = DimensionRegistry::new();
@@ -674,7 +686,7 @@ mod tests {
         let loc = SimThing::new(SimThingKind::Location, 0);
         root.add_child(loc);
         let mut alloc = SlotAllocator::new();
-        alloc.populate_from_tree(&root);
+        alloc.install_initial_tree(&root);
         (reg, alloc, SimRuntimeTree::admit(root))
     }
 
@@ -692,7 +704,7 @@ mod tests {
         root.add_child(parent_b);
 
         let mut allocator = SlotAllocator::new();
-        allocator.populate_from_tree(&root);
+        allocator.install_initial_tree(&root);
         let mut runtime = SimRuntimeTree::admit(root);
         let n_dims = registry.total_columns;
         let mut shadow = vec![0.0; 16 * n_dims];
@@ -700,6 +712,32 @@ mod tests {
 
         let child = SimThing::new(SimThingKind::Cohort, 1);
         let child_id = child.id;
+        allocator
+            .declare_root_residency_extent(
+                runtime.inner().id,
+                ResidencyExtent::try_new(0, 16).unwrap(),
+            )
+            .unwrap();
+        let mut schedule = simthing_core::IntegrationSchedule::new();
+        let commit = allocator
+            .realize_unattached_growth_residency(
+                ProvisionalResidencyEntitlement::try_new(
+                    runtime.inner().id,
+                    child_id,
+                    1,
+                    1,
+                    GenerationStamp::new(0),
+                )
+                .unwrap(),
+                parent_a_id,
+                GenerationStamp::new(0),
+                &mut schedule,
+            )
+            .unwrap();
+        let growth_commits = BTreeMap::from([(
+            child_id,
+            VerifiedGrowthResidencyCommit::unchecked_for_test(commit),
+        )]);
         let added = apply_structural_mutations(
             vec![BoundaryRequest::AddChild {
                 parent: parent_a_id,
@@ -713,6 +751,7 @@ mod tests {
             None,
             GenerationStamp::new(0),
             &mut lifecycle_admission,
+            &growth_commits,
         );
         assert_eq!(added.allocated, vec![child_id]);
         let stable_slot = allocator.slot_of(child_id).unwrap();
@@ -734,6 +773,7 @@ mod tests {
             None,
             GenerationStamp::new(0),
             &mut lifecycle_admission,
+            &BTreeMap::new(),
         );
         assert_eq!(reparented.reparented, vec![(child_id, parent_b_id)]);
         assert_eq!(allocator.slot_of(child_id), Some(stable_slot));
@@ -752,6 +792,7 @@ mod tests {
             None,
             GenerationStamp::new(0),
             &mut lifecycle_admission,
+            &BTreeMap::new(),
         );
         assert_eq!(removed.tombstoned, vec![child_id]);
         assert!(allocator.slot_of(child_id).is_none());

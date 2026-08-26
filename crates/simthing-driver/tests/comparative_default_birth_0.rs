@@ -120,7 +120,7 @@ fn install_with_fields(
     let game = empty_game_mode(fields);
     let mut root = scenario.root.clone();
     let mut alloc = SlotAllocator::new();
-    alloc.populate_from_tree(&root);
+    alloc.install_initial_tree(&root);
     let mut reg = registry;
     let state = compile_and_install(&game, &scenario, &mut reg, &mut root, &mut alloc)
         .expect("ordinary install");

@@ -194,7 +194,7 @@ mod tests {
         cohort.add_property(pid, PropertyValue::from_layout(&reg.property(pid).layout));
         world.add_child(cohort);
         let mut alloc = SlotAllocator::new();
-        alloc.populate_from_tree(&world);
+        alloc.install_initial_tree(&world);
         let topo = TopologyState::build(&world, &alloc);
         let n_dims = reg.total_columns as u32;
         (topo, reg, n_dims)
@@ -210,7 +210,7 @@ mod tests {
         cohort.add_property(pid, PropertyValue::from_layout(&reg.property(pid).layout));
         world.add_child(cohort);
         let mut alloc = SlotAllocator::new();
-        alloc.populate_from_tree(&world);
+        alloc.install_initial_tree(&world);
         let topo = TopologyState::build(&world, &alloc);
         let n_dims = reg.total_columns as u32;
         (topo, reg, n_dims)

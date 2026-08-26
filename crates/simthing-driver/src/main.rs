@@ -368,7 +368,10 @@ fn cmd_replay(args: &[String]) {
         process::exit(1);
     });
 
-    let mut driver = ReplayDriver::from_snapshot(snapshot);
+    let mut driver = ReplayDriver::from_snapshot(snapshot).unwrap_or_else(|e| {
+        eprintln!("failed to install replay snapshot: {e}");
+        process::exit(1);
+    });
     let mut frame_count = 0u32;
     let mut entry_counts: std::collections::HashMap<&'static str, u32> =
         std::collections::HashMap::new();
@@ -410,6 +413,7 @@ fn entry_kind(entry: &BoundaryDeltaEntry) -> &'static str {
         BoundaryDeltaEntry::SimThingRemoved { .. } => "SimThingRemoved",
         BoundaryDeltaEntry::DimensionAdded { .. } => "DimensionAdded",
         BoundaryDeltaEntry::FissionOccurred { .. } => "FissionOccurred",
+        BoundaryDeltaEntry::GrowthResidencyRefused { .. } => "GrowthResidencyRefused",
         BoundaryDeltaEntry::FusionOccurred { .. } => "FusionOccurred",
         BoundaryDeltaEntry::PropertyExpired { .. } => "PropertyExpired",
         BoundaryDeltaEntry::SimThingReparented { .. } => "SimThingReparented",

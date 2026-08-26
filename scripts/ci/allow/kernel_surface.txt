@@ -301,3 +301,4 @@ LN_PRIMITIVE_NAME | surface-inert | EML-LN-PRIMITIVE-0 admitted primitive regist
 LnConsumerGadgets | authority-export | EML-LN-PRIMITIVE-0 guarded PowerLaw eml-operator entropy LogAccumulate authored-data builders | retire when kernel export set is closed by type-boundary admission
 eml_ln_qualification | authority-export | EML-LN-PRIMITIVE-0 pinned exhaustive-qualification artifacts and certified roster | retire if qualification pinning becomes wholly kernel-internal
 ln_primitive_domain | authority-export | EML-LN-PRIMITIVE-0 canonical positive-normal LN interval constructor | retire if exact primitive call-site admission becomes wholly kernel-internal
+GrowthResidencyCommit | sealed-export | STEMTHING-B-GROWTH-ENTITLEMENT-SEAM-0 consumed product joining real 11.2a grant provenance to committed 11.2b placement before ordinary structural attachment | retire when the ordinary structural mutation boundary is wholly kernel-internal

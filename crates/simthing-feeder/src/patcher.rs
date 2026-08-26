@@ -560,7 +560,7 @@ mod tests {
         let child = SimThing::new(SimThingKind::Cohort, 0);
         let b = child.id;
         root.add_child(child);
-        alloc.populate_from_tree(&root);
+        alloc.install_initial_tree(&root);
         (reg, alloc, pid, [a, b], n_dims)
     }
 }

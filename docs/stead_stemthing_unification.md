@@ -573,7 +573,7 @@ Every SimThing carries this germ; SessionThing / NetworkManagementThing / TeamMa
 
 **Load-bearing witness:** a granter provisions a child; the child becomes an independently executing subtree; the same market relationship remains conserved and observable across the stamped seam with no global manager — defined at the landed level (detached subtree in-session, identity-keyed grant records, stamped seam); multi-session spooling is a SessionThing-derivative horizon (dated 2026-08-24).
 
-**Rung set (minted into the 0.0.8.7 ladder §3b):** 11.2a `STEMTHING-B-FLOW-MARKET-GERM-0`; 11.2b `STEMTHING-B-VRAM-RESIDENCY-0`; 11.2c `STEMTHING-B-ALLOCATOR-RETIREMENT-0`; 11.2d `VENDOR-DOOR-GRANTING-SURFACE-0` (facade-only, no sixth verb, recursive-granting witness, STOP-and-reopen fence). The core-design §4 residency text is amended in the same delta: entitlement is market-decided; free-lists are downstream physical machinery.
+**Rung set (minted into the 0.0.8.7 ladder §3b):** 11.2a `STEMTHING-B-FLOW-MARKET-GERM-0`; 11.2b `STEMTHING-B-VRAM-RESIDENCY-0`; 11.2c `STEMTHING-B-GROWTH-ENTITLEMENT-SEAM-0`; 11.2d `STEMTHING-B-ALLOCATOR-RETIREMENT-0`; 11.2e `VENDOR-DOOR-GRANTING-SURFACE-0` (facade-only, no sixth verb, recursive-granting witness, STOP-and-reopen fence). The core-design §4 residency text is amended in the same delta: entitlement is market-decided; free-lists are downstream physical machinery.
 
 ## References
 

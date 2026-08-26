@@ -478,7 +478,7 @@ fn run_resident_progress(
 
     let root = SimThing::new(SimThingKind::GameSession, 0);
     let mut allocator = SlotAllocator::new();
-    allocator.populate_from_tree(&root);
+    allocator.install_initial_tree(&root);
     let deltas = apply_band_crossing_deltas_from_fused_emissions(
         &emissions,
         phase5.threshold_registrations(),

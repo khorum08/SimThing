@@ -10,6 +10,7 @@ mod tests {
         "simthing-kernel",
         "simthing-gpu",
         "simthing-feeder",
+        "simthing-spec",
         "bytemuck",
         "thiserror",
         "serde",

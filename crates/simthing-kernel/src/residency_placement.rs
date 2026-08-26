@@ -160,6 +160,47 @@ pub struct CommittedResidencyPlacement {
     committed_generation: GenerationStamp,
 }
 
+/// Kernel-minted proof that an ordinary growth candidate crossed physical
+/// placement before structural attachment and row realization.
+///
+/// The structural parent is recorded separately from the residency granter:
+/// an authored market may provision a descendant from a standing ancestor
+/// without rewriting the one-tree attachment relation.  Fields remain private
+/// so ordinary population can consume only a product minted by the placement
+/// boundary (or decoded by the authoritative replay door).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct GrowthResidencyCommit {
+    structural_parent: SimThingId,
+    entitlement: ProvisionalResidencyEntitlement,
+    placement: CommittedResidencyPlacement,
+}
+
+impl GrowthResidencyCommit {
+    pub(crate) const fn new(
+        structural_parent: SimThingId,
+        entitlement: ProvisionalResidencyEntitlement,
+        placement: CommittedResidencyPlacement,
+    ) -> Self {
+        Self {
+            structural_parent,
+            entitlement,
+            placement,
+        }
+    }
+
+    pub const fn structural_parent(self) -> SimThingId {
+        self.structural_parent
+    }
+
+    pub const fn entitlement(self) -> ProvisionalResidencyEntitlement {
+        self.entitlement
+    }
+
+    pub const fn placement(self) -> CommittedResidencyPlacement {
+        self.placement
+    }
+}
+
 impl CommittedResidencyPlacement {
     pub const fn identity(self) -> ResidencyPlacementIdentity {
         self.identity
@@ -252,6 +293,10 @@ pub enum ResidencyPlacementRefusalReason {
     },
     MissingCommittedPlacementForRelocation {
         requested: ResidencyPlacementIdentity,
+    },
+    NoContiguousExtent {
+        containing: ResidencyExtent,
+        quantity: u32,
     },
 }
 
@@ -442,6 +487,53 @@ impl ResidencyPlacementBook {
         grantee: SimThingId,
     ) -> Option<CommittedResidencyPlacement> {
         self.committed.get(&granter)?.get(&grantee).copied()
+    }
+
+    pub(crate) fn level_placements(&self, granter: SimThingId) -> Vec<CommittedResidencyPlacement> {
+        self.committed
+            .get(&granter)
+            .into_iter()
+            .flat_map(|level| level.values())
+            .copied()
+            .collect()
+    }
+
+    /// Authoritative replay consumes the recorded placement product.  It
+    /// never calls the oracle or mints a fresh identity; exact conflicts in
+    /// the recording fail closed.
+    pub(crate) fn replay_recorded_commit(
+        &mut self,
+        recorded: GrowthResidencyCommit,
+    ) -> Result<(), ResidencyPlacementError> {
+        self.ensure_active()?;
+        let placement = recorded.placement();
+        let identity = placement.identity();
+        if identity != recorded.entitlement().identity()
+            || placement.quantity() != recorded.entitlement().quantity()
+        {
+            return Err(ResidencyPlacementError::Configuration {
+                detail: "recorded growth placement does not match its entitlement".into(),
+            });
+        }
+        let level = self.committed.entry(identity.granter()).or_default();
+        if let Some(existing) = level.get(&identity.grantee()).copied() {
+            if existing != placement {
+                return Err(ResidencyPlacementError::Configuration {
+                    detail: "recorded growth placement conflicts with replay state".into(),
+                });
+            }
+            return Ok(());
+        }
+        if level
+            .values()
+            .any(|existing| existing.extent().overlaps(placement.extent()))
+        {
+            return Err(ResidencyPlacementError::Configuration {
+                detail: "recorded growth placement overlaps replay state".into(),
+            });
+        }
+        level.insert(identity.grantee(), placement);
+        Ok(())
     }
 
     pub(crate) fn ensure_active(&self) -> Result<(), ResidencyPlacementError> {

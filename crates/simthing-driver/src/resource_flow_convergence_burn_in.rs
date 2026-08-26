@@ -270,7 +270,7 @@ fn build_two_arena_scenario(registry: DimensionRegistry) -> Scenario {
 
 fn fill_explicit_roots(game_mode: &mut GameModeSpec, scenario: &Scenario) {
     let mut alloc = SlotAllocator::new();
-    alloc.populate_from_tree(&scenario.root);
+    alloc.install_initial_tree(&scenario.root);
     let participants: Vec<_> = scenario
         .root
         .children
@@ -348,7 +348,7 @@ fn build_game_mode(fixture: &RfT2BurnInFixture, scenario: &Scenario) -> GameMode
                 need_bindings: vec![],
             });
             let mut alloc = SlotAllocator::new();
-            alloc.populate_from_tree(&scenario.root);
+            alloc.install_initial_tree(&scenario.root);
             let explicit: Vec<_> = scenario
                 .root
                 .children
@@ -402,7 +402,7 @@ fn build_game_mode(fixture: &RfT2BurnInFixture, scenario: &Scenario) -> GameMode
                     | RfT2EnrollmentKind::DynamicFissionReject
             ) {
                 let mut alloc = SlotAllocator::new();
-                alloc.populate_from_tree(&scenario.root);
+                alloc.install_initial_tree(&scenario.root);
                 let explicit: Vec<_> = scenario
                     .root
                     .children

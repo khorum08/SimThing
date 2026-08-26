@@ -405,7 +405,7 @@ fn slot_logical_identity_0_forced_epoch_rebind_is_bit_identical_cpu_gpu() {
 
     // ── Baseline: never scrambled ─────────────────────────────────────────
     let mut base_alloc = SlotAllocator::new();
-    base_alloc.populate_from_tree(&fx.root);
+    base_alloc.install_initial_tree(&fx.root);
     let base_topo = TopologyState::build(&fx.root, &base_alloc).flatten();
     let mut base_values = flat_values(&base_alloc, &fx.authored);
     let mut base_outputs = Vec::new();
@@ -422,7 +422,7 @@ fn slot_logical_identity_0_forced_epoch_rebind_is_bit_identical_cpu_gpu() {
 
     // ── Scrambled: rebind between generation 1 and 2 ──────────────────────
     let mut alloc = SlotAllocator::new();
-    alloc.populate_from_tree(&fx.root);
+    alloc.install_initial_tree(&fx.root);
     let mut topo = TopologyState::build(&fx.root, &alloc).flatten();
     let mut values = flat_values(&alloc, &fx.authored);
     let mut outputs = Vec::new();
@@ -488,7 +488,7 @@ fn slot_logical_identity_0_forced_epoch_rebind_is_bit_identical_cpu_gpu() {
 
     // Baseline GPU: no rebind.
     let mut base_alloc2 = SlotAllocator::new();
-    base_alloc2.populate_from_tree(&flat_root);
+    base_alloc2.install_initial_tree(&flat_root);
     let mut base_gpu_outputs = Vec::new();
     {
         let mut state = gpu_state_with_orderband(&flat_root, &base_alloc2, &registry);
@@ -502,7 +502,7 @@ fn slot_logical_identity_0_forced_epoch_rebind_is_bit_identical_cpu_gpu() {
     // Scrambled GPU: rebind between generation 1 and 2 — every row moves,
     // the child block stays contiguous in authored order (compaction shape).
     let mut g_alloc = SlotAllocator::new();
-    g_alloc.populate_from_tree(&flat_root);
+    g_alloc.install_initial_tree(&flat_root);
     let mut gpu_outputs = Vec::new();
     {
         let mut state = gpu_state_with_orderband(&flat_root, &g_alloc, &registry);
@@ -572,7 +572,7 @@ fn slot_logical_identity_0_production_row_order_mutant_reds() {
     let descriptors = build_column_rule_descriptors(&registry, N_DIMS);
 
     let mut alloc = SlotAllocator::new();
-    alloc.populate_from_tree(&fx.root);
+    alloc.install_initial_tree(&fx.root);
     let assignment = scramble_assignment(&alloc, &fx);
     let pre_values = flat_values(&alloc, &fx.authored);
     let section = alloc
@@ -634,7 +634,7 @@ fn slot_logical_identity_0_production_row_order_mutant_reds() {
     }
     let (flat_root, flat_authored, flat_kids) = flat_family_fixture();
     let mut g_alloc = SlotAllocator::new();
-    g_alloc.populate_from_tree(&flat_root);
+    g_alloc.install_initial_tree(&flat_root);
     // Swap k2/k3 physically; keep the block contiguous.
     let mut assignment = BindingTableSnapshot::new();
     let root_id2 = flat_root.id;
@@ -711,7 +711,7 @@ fn slot_logical_identity_0_pre_remap_replay_resolves_through_the_chain() {
     let registry = witness_registry();
 
     let mut alloc = SlotAllocator::new();
-    alloc.populate_from_tree(&fx.root);
+    alloc.install_initial_tree(&fx.root);
     let pre_root_slot = alloc.slot_of(fx.root_id).expect("root row");
 
     // Anchored loci for TWO objects (root gets a mass locus; `a` gets a mood

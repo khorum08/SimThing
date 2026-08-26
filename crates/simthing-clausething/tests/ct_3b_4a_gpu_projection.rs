@@ -87,7 +87,7 @@ fn gpu_scatter_projection_matches_cpu_oracle_through_commitment() {
     let (scenario, _farmer_id) = scenario(&hydrated.game_mode);
     let mut game_mode = hydrated.game_mode.clone();
     let mut alloc = SlotAllocator::new();
-    alloc.populate_from_tree(&scenario.root);
+    alloc.install_initial_tree(&scenario.root);
     let participants: Vec<_> = scenario
         .root
         .children

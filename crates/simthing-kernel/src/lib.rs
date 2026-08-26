@@ -137,11 +137,11 @@ pub use registration::{
     THRESH_BUF_VALUES,
 };
 pub use residency_placement::{
-    CommittedResidencyCorruption, CommittedResidencyPlacement, ProvisionalResidencyEntitlement,
-    ResidencyEntitlementError, ResidencyExtent, ResidencyExtentError,
-    ResidencyPlacementDisposition, ResidencyPlacementError, ResidencyPlacementIdentity,
-    ResidencyPlacementOutcome, ResidencyPlacementRefusal, ResidencyPlacementRefusalReason,
-    ResidencyRelocationOutcome, ResidencySessionTermination,
+    CommittedResidencyCorruption, CommittedResidencyPlacement, GrowthResidencyCommit,
+    ProvisionalResidencyEntitlement, ResidencyEntitlementError, ResidencyExtent,
+    ResidencyExtentError, ResidencyPlacementDisposition, ResidencyPlacementError,
+    ResidencyPlacementIdentity, ResidencyPlacementOutcome, ResidencyPlacementRefusal,
+    ResidencyPlacementRefusalReason, ResidencyRelocationOutcome, ResidencySessionTermination,
 };
 pub use resolved::ResolvedGpuBuffers;
 pub use sealed::{

@@ -456,7 +456,7 @@ mod tests {
         root.add_child(parent);
 
         let mut allocator = SlotAllocator::new();
-        allocator.populate_from_tree(&root);
+        allocator.install_initial_tree(&root);
         (registry, root, allocator)
     }
 

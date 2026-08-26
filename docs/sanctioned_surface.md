@@ -11,7 +11,7 @@ This digest is a derived context artifact for low-context agents. If it disagree
 | --- | --- | --- |
 | scripts/ci/allow/sealed_producers.txt | 25 | 6923796f3bacd3b27b29f778d5276c3f82a3a67c3f010c30f10b78de8a1866f6 |
 | scripts/ci/allow/inert_buffer_handles.txt | 2 | 9e2069fa5730f17cacde1c671ebc17beb59f50738d2dcb914bceae13f9b8b3a4 |
-| scripts/ci/allow/kernel_surface.txt | 302 | 63dd8f6db399db062fe8b70e9797ab857aa662a0e5619ad7be99fe49f67966f1 |
+| scripts/ci/allow/kernel_surface.txt | 303 | d6bc11a03b392def0fa6161e22bf010ab4024b22d90754e3db9bcdd427c0ed12 |
 | scripts/ci/allow/sealed_types.txt | 19 | 9d427e3b41a586b06f24ca02cc45f78934237d2229b0c38d46e2a8a6ef5016be |
 | scripts/ci/allow/contention_mechanisms.txt | 9 | 1f9e930b44197d4254f46ea96328f814d9ba0f2dad06881c454aebc01c01d44b |
 | scripts/ci/scans.tsv | 24 | 36bf78ae4a81a9c49b570051a0f53cb10aa88ab5cf57faa0a05d83abfd068e79 |
@@ -361,6 +361,7 @@ This digest is a derived context artifact for low-context agents. If it disagree
 | LnConsumerGadgets | authority-export | EML-LN-PRIMITIVE-0 guarded PowerLaw eml-operator entropy LogAccumulate authored-data builders | retire when kernel export set is closed by type-boundary admission | kernel_surface.txt |
 | eml_ln_qualification | authority-export | EML-LN-PRIMITIVE-0 pinned exhaustive-qualification artifacts and certified roster | retire if qualification pinning becomes wholly kernel-internal | kernel_surface.txt |
 | ln_primitive_domain | authority-export | EML-LN-PRIMITIVE-0 canonical positive-normal LN interval constructor | retire if exact primitive call-site admission becomes wholly kernel-internal | kernel_surface.txt |
+| GrowthResidencyCommit | sealed-export | STEMTHING-B-GROWTH-ENTITLEMENT-SEAM-0 consumed product joining real 11.2a grant provenance to committed 11.2b placement before ordinary structural attachment | retire when the ordinary structural mutation boundary is wholly kernel-internal | kernel_surface.txt |
 
 ## Sealed Types
 

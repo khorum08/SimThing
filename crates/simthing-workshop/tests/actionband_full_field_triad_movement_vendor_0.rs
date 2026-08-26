@@ -511,7 +511,7 @@ fn run_vendor(
         root.add_child(SimThing::new(SimThingKind::Location, 0));
     }
     let mut allocator = SlotAllocator::new();
-    allocator.populate_from_tree(&root);
+    allocator.install_initial_tree(&root);
     let deltas = apply_band_crossing_deltas_from_fused_emissions(
         &emissions,
         phase5.threshold_registrations(),
@@ -638,6 +638,7 @@ fn run_vendor(
         None,
         simthing_core::GenerationStamp::new(1),
         &mut simthing_sim::overlay_lifecycle::OverlayLifecycleAdmissionState::default(),
+        &std::collections::BTreeMap::new(),
     );
     let consequence_door_reparented =
         door_applied.reparented == vec![(actor, ids[STEP_SLOT as usize])];
@@ -700,7 +701,7 @@ fn topology() -> (
         root.add_child(cell);
     }
     let mut allocator = SlotAllocator::new();
-    allocator.populate_from_tree(&root);
+    allocator.install_initial_tree(&root);
     let cells = (0..WIDTH)
         .map(|slot| AdmittedTopologyCell {
             sealed_slot: slot,
@@ -905,7 +906,7 @@ fn run_opposed_actionband(
         root.add_child(SimThing::new(SimThingKind::Location, 0));
     }
     let mut allocator = SlotAllocator::new();
-    allocator.populate_from_tree(&root);
+    allocator.install_initial_tree(&root);
     let deltas = apply_band_crossing_deltas_from_fused_emissions(
         &emissions,
         phase5.threshold_registrations(),
@@ -1112,6 +1113,7 @@ fn full_vendor_capacity_overlay_costband_and_arrival_chain_is_native_bounded() {
         None,
         simthing_core::GenerationStamp::new(0),
         &mut simthing_sim::overlay_lifecycle::OverlayLifecycleAdmissionState::default(),
+        &std::collections::BTreeMap::new(),
     );
     assert_eq!(outcome.reparented, vec![(actor, ids[STEP_SLOT as usize])]);
     assert!(tree.has_overlay(actor, step.overlay_id()));
@@ -1124,7 +1126,7 @@ fn full_vendor_capacity_overlay_costband_and_arrival_chain_is_native_bounded() {
     let mut lifecycle_root = SimThing::new(SimThingKind::World, 0);
     lifecycle_root.add_child(lifecycle_actor);
     let mut lifecycle_allocator = SlotAllocator::new();
-    lifecycle_allocator.populate_from_tree(&lifecycle_root);
+    lifecycle_allocator.install_initial_tree(&lifecycle_root);
     let mut lifecycle_shadow = vec![0.0; lifecycle_allocator.capacity() * n_dims];
     let first = resolve_overlay_lifecycle(
         &mut lifecycle_root,

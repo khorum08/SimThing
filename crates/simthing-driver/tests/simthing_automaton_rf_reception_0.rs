@@ -120,7 +120,7 @@ fn target_gpu_ops(
     target: SimThingId,
 ) -> Vec<(u32, f32)> {
     let mut allocator = SlotAllocator::new();
-    allocator.populate_from_tree(root);
+    allocator.install_initial_tree(root);
     let (deltas, ranges) = build_overlay_deltas(root, registry, &allocator);
     let slot = allocator
         .slot_of(target)

@@ -139,7 +139,7 @@ fn install_does_not_invent_topology_or_string_default_birth() {
     }
     let mut root = SimThing::new(SimThingKind::World, 0);
     let mut allocator = SlotAllocator::new();
-    allocator.populate_from_tree(&root);
+    allocator.install_initial_tree(&root);
     let scenario = Scenario {
         name: "no_invent".into(),
         ticks_per_day: 1,

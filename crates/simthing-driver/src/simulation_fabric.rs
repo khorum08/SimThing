@@ -362,7 +362,7 @@ mod tests {
         let mut root = SimThing::new(SimThingKind::Cohort, 0);
         let child = SimThing::new(SimThingKind::Cohort, 0);
         root.add_child(child);
-        alloc.populate_from_tree(&root);
+        alloc.install_initial_tree(&root);
         let n_dims = reg.total_columns as u32;
         (reg, alloc, n_dims)
     }

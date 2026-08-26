@@ -253,7 +253,7 @@ fn run_case(case: Case) -> Result<(), String> {
             let (root, rows) = tree_two_owners("alpha", "beta");
             let mut session = SpecSessionState::new();
             let mut alloc = SlotAllocator::new();
-            alloc.populate_from_tree(&root);
+            alloc.install_initial_tree(&root);
             let pre = alloc.binding_table_snapshot();
             let before = compile_held(&mut session, &root, &rows)?;
             let before_ids = intern_owner_order(

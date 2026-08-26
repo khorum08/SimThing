@@ -154,7 +154,7 @@ fn replay_fingerprint(
 
 /// Live replay executor: apply sealed frame in recorded entry order.
 fn live_replay_apply(snapshot: ReplaySnapshot, frame: ReplayFrame) -> ReplayDriver {
-    let mut driver = ReplayDriver::from_snapshot(snapshot);
+    let mut driver = ReplayDriver::from_snapshot(snapshot).expect("replay snapshot install");
     driver.apply_frame(frame);
     driver
 }
@@ -165,7 +165,7 @@ fn mutant_replay_apply_reversed_entries(
     snapshot: ReplaySnapshot,
     frame: ReplayFrame,
 ) -> ReplayDriver {
-    let mut driver = ReplayDriver::from_snapshot(snapshot);
+    let mut driver = ReplayDriver::from_snapshot(snapshot).expect("replay snapshot install");
     let mut misapplied = frame;
     misapplied.entries.reverse();
     driver.apply_frame(misapplied);

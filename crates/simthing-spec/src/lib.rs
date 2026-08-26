@@ -428,8 +428,8 @@ pub use spec::flow_market::{
     AdmittedSpecializationFlowMarket, ClearingWeightOverrideSpec, ClearingWeightResolutionError,
     ConservedOfferingSpec, DrawAuthorizationError, DrawEnvelopeTemplateSpec,
     FlowMarketAdmissionError, GrantLifecycleError, GrantRelease, GrantReleaseCause, MarketGrantKey,
-    MarketGrantRecord, OfferingPriceVectorSpec, OfferingQuantizationError,
-    SpecializationFlowMarketSpec,
+    MarketGrantRecord, MarketGrantResidencyProvenance, OfferingPriceVectorSpec,
+    OfferingQuantizationError, SpecializationFlowMarketSpec,
 };
 pub use spec::game_mode::GameModeSpec;
 pub use spec::install_target::InstallTargetSpec;

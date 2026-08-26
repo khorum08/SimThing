@@ -155,7 +155,7 @@ fn action_fixture() -> ActionFixture {
 
 fn real_crossing(fixture: &ActionFixture, ctx: &GpuContext) -> simthing_gpu::BandCrossingDelta {
     let mut allocator = SlotAllocator::new();
-    allocator.populate_from_tree(&SimThing::new(SimThingKind::GameSession, 0));
+    allocator.install_initial_tree(&SimThing::new(SimThingKind::GameSession, 0));
     let column = fixture.threshold.col;
     let mut previous = vec![0.0; fixture.registry.total_columns];
     let mut current = previous.clone();
@@ -473,7 +473,7 @@ fn run_closure_feedback(
         phase5.tick(ctx, 0).unwrap();
         let emissions = phase5.readback_threshold_emissions(ctx).unwrap();
         let mut allocator = SlotAllocator::new();
-        allocator.populate_from_tree(&SimThing::new(SimThingKind::GameSession, 0));
+        allocator.install_initial_tree(&SimThing::new(SimThingKind::GameSession, 0));
         let deltas = apply_band_crossing_deltas_from_fused_emissions(
             &emissions,
             phase5.threshold_registrations(),
@@ -658,7 +658,7 @@ fn adversarial_fractal_closure_uses_one_intrinsic_overlay_loop() {
         .collect::<Vec<_>>();
 
     let mut allocator = SlotAllocator::new();
-    allocator.populate_from_tree(&target_root);
+    allocator.install_initial_tree(&target_root);
     let mut runtime = SimRuntimeTree::admit(target_root);
     let mut live_registry = registry.clone();
     let mut shadow = vec![0.0; allocator.capacity() * registry.total_columns];
@@ -673,6 +673,7 @@ fn adversarial_fractal_closure_uses_one_intrinsic_overlay_loop() {
         None,
         GenerationStamp::new(7),
         &mut lifecycle,
+        &std::collections::BTreeMap::new(),
     );
     assert_eq!(
         attached.overlays_attached,
@@ -710,6 +711,7 @@ fn adversarial_fractal_closure_uses_one_intrinsic_overlay_loop() {
         None,
         GenerationStamp::new(8),
         &mut lifecycle,
+        &std::collections::BTreeMap::new(),
     );
     assert_eq!(
         activated.overlays_activated,
@@ -836,7 +838,8 @@ fn adversarial_fractal_closure_uses_one_intrinsic_overlay_loop() {
     let mut reader = ReplayReader::new(Cursor::new(bytes));
     let decoded_snapshot = reader.read_snapshot().unwrap();
     let decoded_frame = reader.next_frame().unwrap().unwrap();
-    let mut replay = ReplayDriver::from_snapshot(decoded_snapshot);
+    let mut replay =
+        ReplayDriver::from_snapshot(decoded_snapshot).expect("replay snapshot install");
     replay.apply_frame(decoded_frame);
     assert_eq!(replay.last_band_crossing_deltas, vec![crossing]);
     assert_eq!(replay.shadow_values.as_ref(), Some(&replay_shadow));

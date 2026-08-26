@@ -58,6 +58,8 @@ pub struct MaintainerOutcome {
     pub rejected_unknown_target: u32,
     /// Overlay attaches rejected by destination lifecycle admission.
     pub rejected_overlay_lifecycle: u32,
+    /// Ordinary AddChild candidates that carried no accepted placement product.
+    pub rejected_growth_entitlement: u32,
     /// Requests deferred because they reference state not yet implemented
     /// (everything, currently — see TODO list at module top).
     pub deferred: u32,

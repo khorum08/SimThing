@@ -5,7 +5,7 @@ use std::collections::BTreeSet;
 use simthing_core::owner_channel::OwnerRef;
 use simthing_core::{
     resolve_slot_through_chain, AnchorRemapOperation, AnchoredLocusMap, GenerationStamp,
-    IntegrationSchedule, IntegrationScheduleRowKind, SimThing, SimThingKind,
+    IntegrationSchedule, IntegrationScheduleRowKind, SimThing, SimThingKind, TransformOp,
 };
 use simthing_driver::residency_market::{
     realize_market_grant_residency, relocate_market_grant_residency, ResidencyMarketBridgeError,
@@ -15,9 +15,11 @@ use simthing_gpu::{
     ResidencyPlacementRefusalReason, SlotAllocator,
 };
 use simthing_spec::{
-    admit_specialization_flow_market, AdmittedSpecializationFlowMarket, ConservedOfferingSpec,
-    ConstrainedGrant, DrawEnvelopeTemplateSpec, MarketGrantRecord, OfferingPriceVectorSpec,
-    OwnerChannelScopeKey, ResourceKey, ScopeId, SpecializationFlowMarketSpec,
+    admit_specialization_flow_market, clear_constrained_claims_at_generation,
+    AdmittedSpecializationFlowMarket, AuthoredClearingProgram, ClearingRemainderAuthority,
+    ConservedOfferingSpec, ConstrainedClaim, ConstrainedSupply, DrawEnvelopeTemplateSpec,
+    GrantLifecycleError, MarketGrantRecord, OfferingPriceVectorSpec, OwnerChannelScopeKey,
+    ResourceKey, RuntimeOwnerSiloDemandBucket, ScopeId, SpecializationFlowMarketSpec,
 };
 
 fn admitted_market() -> AdmittedSpecializationFlowMarket {
@@ -58,20 +60,44 @@ fn grant(
         resource_key: ResourceKey::new("residency-slots"),
         scope_id: ScopeId::from_boundary(granter),
     };
+    let demand = RuntimeOwnerSiloDemandBucket {
+        owner_ref: scope.owner_ref.clone(),
+        resource_key: scope.resource_key.clone(),
+        scope_id: scope.scope_id.clone(),
+        requested: quantity,
+        priority: 0,
+        source_simthing_id_raw: Some(grantee.raw()),
+    };
+    let claim = ConstrainedClaim::from_runtime_demand(&demand, 1.0).unwrap();
+    let cleared = clear_constrained_claims_at_generation(
+        &[ConstrainedSupply {
+            scope,
+            available: quantity,
+        }],
+        &[claim],
+        &AuthoredClearingProgram::new(TransformOp::set(1.0)),
+        ClearingRemainderAuthority {
+            granter,
+            generation: GenerationStamp::new(generation),
+        },
+    )
+    .expect("constrained clearing mints the sealed grant");
+    let mut mutated = cleared[0].grants[0].clone();
+    mutated.granted = mutated.granted.saturating_add(1);
+    assert!(matches!(
+        market.record_cleared_grant(
+            granter,
+            "residency-claim",
+            &mutated,
+            GenerationStamp::new(generation),
+        ),
+        Err(GrantLifecycleError::InvalidClearingSeal)
+    ));
     market
         .record_cleared_grant(
             granter,
             "residency-claim",
-            &ConstrainedGrant {
-                scope,
-                source_simthing_id: grantee,
-                requested: quantity,
-                granted: quantity,
-                unresolved: 0,
-                priority: 0,
-                order_weight: 1.0,
-                clearing_score: 1.0,
-            },
+            &cleared[0].grants[0],
             GenerationStamp::new(generation),
         )
         .expect("graduated clearing result mints the only market grant")
@@ -93,7 +119,7 @@ fn cleared_entitlement_places_locally_refuses_to_u_then_revalues_and_relocates()
     root.add_child(granter);
 
     let mut allocator = SlotAllocator::new();
-    allocator.populate_from_tree(&root);
+    allocator.install_initial_tree(&root);
     allocator
         .declare_root_residency_extent(root_id, ResidencyExtent::try_new(0, 16).unwrap())
         .unwrap();

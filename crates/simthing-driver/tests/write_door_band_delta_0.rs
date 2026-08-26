@@ -26,7 +26,7 @@ fn anchored_fixture(n_slots: u32, n_cols: usize) -> (DimensionRegistry, SlotAllo
         root.add_child(SimThing::new(SimThingKind::Location, 0));
     }
     let mut allocator = SlotAllocator::new();
-    allocator.populate_from_tree(&root);
+    allocator.install_initial_tree(&root);
     (registry, allocator)
 }
 
@@ -129,7 +129,7 @@ fn unobserved_exclusion_without_caller_column_filter() {
     let _ = registry.register(dark);
     let root = SimThing::new(SimThingKind::GameSession, 0);
     let mut allocator = SlotAllocator::new();
-    allocator.populate_from_tree(&root);
+    allocator.install_initial_tree(&root);
 
     let regs = [ThresholdRegistration {
         slot: 0,
@@ -343,7 +343,7 @@ fn replay_bit_exact_remaps_and_band_deltas() {
         registry: DimensionRegistry::new(),
         fission_lineage: Vec::new(),
     };
-    let mut driver = ReplayDriver::from_snapshot(snapshot);
+    let mut driver = ReplayDriver::from_snapshot(snapshot).expect("replay snapshot install");
     let entries = vec![
         BoundaryDeltaEntry::AnchorRemapApplied {
             section: section.clone(),
@@ -469,7 +469,7 @@ fn gpu_multi_edge_band_delta_boundary_replay_transport() {
         registry: DimensionRegistry::new(),
         fission_lineage: Vec::new(),
     };
-    let mut driver = ReplayDriver::from_snapshot(snapshot);
+    let mut driver = ReplayDriver::from_snapshot(snapshot).expect("replay snapshot install");
     let entries = vec![BoundaryDeltaEntry::BandCrossingDeltasApplied {
         deltas: gpu_deltas.clone(),
     }];

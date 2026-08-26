@@ -50,7 +50,7 @@ fn gpu_production_decision_is_bit_identical_to_retained_cpu_oracle() {
     });
     let mut oracle_root = root.clone();
     let mut allocator = SlotAllocator::new();
-    allocator.populate_from_tree(&root);
+    allocator.install_initial_tree(&root);
     let n_dims = registry.total_columns as u32;
     let mut state = WorldGpuState::new(ctx, &registry, 1);
     let mut previous = vec![0.0; n_dims as usize];
@@ -131,7 +131,7 @@ fn gpu_production_decision_is_bit_identical_to_retained_cpu_oracle() {
         .snapshot_node(recorded_target)
         .unwrap()
         .overlay_ids[0];
-    let mut replay = ReplayDriver::from_snapshot(snapshot);
+    let mut replay = ReplayDriver::from_snapshot(snapshot).expect("replay snapshot install");
     replay.apply_frame(reader.next_frame().unwrap().unwrap());
     assert!(!replay.root.has_overlay(recorded_target, recorded_overlay));
     assert!(reader.next_frame().unwrap().is_none());
@@ -145,7 +145,7 @@ fn gpu_production_decision_is_bit_identical_to_retained_cpu_oracle() {
     routed_root.add_property(property, registry.property(property).default_value());
     let routed_target = routed_root.id;
     let mut routed_allocator = SlotAllocator::new();
-    routed_allocator.populate_from_tree(&routed_root);
+    routed_allocator.install_initial_tree(&routed_root);
     let mut routed_runtime = SimRuntimeTree::admit(routed_root);
     let mut routed_shadow = vec![0.0; n_dims as usize];
     let mut routed_admission = OverlayLifecycleAdmissionState::default();
@@ -178,6 +178,7 @@ fn gpu_production_decision_is_bit_identical_to_retained_cpu_oracle() {
         None,
         GenerationStamp::new(7),
         &mut routed_admission,
+        &std::collections::BTreeMap::new(),
     );
     assert_eq!(accepted.overlays_attached, vec![(routed_target, routed_id)]);
     assert_eq!(
@@ -210,6 +211,7 @@ fn gpu_production_decision_is_bit_identical_to_retained_cpu_oracle() {
         None,
         GenerationStamp::new(u32::MAX),
         &mut routed_admission,
+        &std::collections::BTreeMap::new(),
     );
     assert_eq!(overflow.rejected_overlay_lifecycle, 1);
     assert!(!routed_runtime.has_overlay(routed_target, overflow_id));
@@ -234,6 +236,7 @@ fn gpu_production_decision_is_bit_identical_to_retained_cpu_oracle() {
         None,
         GenerationStamp::new(7),
         &mut routed_admission,
+        &std::collections::BTreeMap::new(),
     );
     assert_eq!(override_rejected.rejected_overlay_lifecycle, 1);
     assert!(!routed_runtime.has_overlay(routed_target, override_id));
@@ -320,7 +323,7 @@ fn gpu_production_decision_is_bit_identical_to_retained_cpu_oracle() {
         lifecycle,
     };
     let mut boundary_allocator = SlotAllocator::new();
-    boundary_allocator.populate_from_tree(&boundary_root);
+    boundary_allocator.install_initial_tree(&boundary_root);
     let mut protocol = BoundaryProtocol::new(
         SimRuntimeTree::admit(boundary_root),
         registry.clone(),
