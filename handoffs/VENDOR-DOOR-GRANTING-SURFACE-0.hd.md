@@ -15,6 +15,7 @@ stop_conditions: ["exposing generic B requires any new engine state, engine auth
 ---
 ## BUILD
 - Implement **11.2e `VENDOR-DOOR-GRANTING-SURFACE-0` only**. This is the final StemThing-B rung and a facade completion, not a substrate rung. Existing Vendor Door operations are exactly `bind`, `derive`, `overlay`, `populate`, `run`; preserve that five-operation architecture.
+- Treat the existing five `SimFacade` methods/modules as the only top-level dispatch slots; helpers may be added only as module-private or directly delegated implementation detail and must not become a sixth operation.
 - Add only the minimum public facade vocabulary/delegation needed for vendors to author the graduated B grammar. `Populate` owns declaration-shaped authoring (root/descendant granter budgets); `Derive` owns offering/strict-reference/sealed-Draw declaration; `Run` consumes the already-graduated session execution path. Bind/Overlay stay their existing meanings. Direct re-export/delegation is preferred over wrappers; wrappers may not acquire policy or owned state.
 - Surface existing VRAM-residency authored physical vocabulary only where appropriate through those same operations. Never create an allocator/grant verb, facade placement oracle, facade clearing loop, or facade provenance type.
 - Preserve `SimFacade` as zero-sized/stateless (`owns_state()==false`) and keep all engine crates independent of `simthing-embedder`. Every new public facade entry must terminate in an existing graduated engine/spec/driver entry, not a peer implementation.
