@@ -133,6 +133,13 @@ pub enum SlotAllocError {
         requested: SimThingId,
     },
     #[error(
+        "install_initial_tree install-only door requires initial bulk or continuation from admitted root {admitted_root:?}; requested root {requested_root:?} would bypass the verified ordinary attached-growth door"
+    )]
+    InstallInitialTreeAttachedGrowthBypass {
+        admitted_root: SimThingId,
+        requested_root: SimThingId,
+    },
+    #[error(
         "object {object:?} is already resident as {existing:?}, not requested relation {requested:?}"
     )]
     RelationConflict {
@@ -831,23 +838,37 @@ impl SlotAllocator {
             .unwrap_or(false)
     }
 
-    /// Install-only initial bulk realization. The root owns the initial
-    /// extent; this door is not callable for ordinary attached growth.
-    pub fn install_initial_tree(&mut self, root: &SimThing) {
-        assert!(
-            self.relations.is_empty() && self.by_id.is_empty(),
-            "install_initial_tree is a one-shot install-only door"
-        );
+    /// Install-only initial bulk realization (including repeated pre-run
+    /// installation passes over the same admitted root). The allocator may
+    /// already contain rows from an earlier installation pass; root identity,
+    /// not global emptiness, distinguishes that lawful continuation from an
+    /// ordinary attached subtree presented as a second root.
+    ///
+    /// Ordinary attached growth must instead consume a verified entitlement
+    /// and placement commit through [`Self::realize_growth_subtree`].
+    pub fn install_initial_tree(&mut self, root: &SimThing) -> Result<(), SlotAllocError> {
+        if let Some((&admitted_root, _)) = self
+            .relations
+            .iter()
+            .find(|(_, relation)| **relation == ObjectResidencyRelation::Root)
+        {
+            if admitted_root != root.id {
+                return Err(SlotAllocError::InstallInitialTreeAttachedGrowthBypass {
+                    admitted_root,
+                    requested_root: root.id,
+                });
+            }
+        }
         let mut newly_admitted = Vec::new();
-        let result = self.populate_requested_subtree(
+        if let Err(error) = self.populate_requested_subtree(
             root,
             root.root_residency_request(),
             &mut newly_admitted,
-        );
-        if let Err(error) = result {
+        ) {
             self.rollback_population(newly_admitted);
-            panic!("root object residency must admit: {error}");
+            return Err(error);
         }
+        Ok(())
     }
 
     /// Consume a kernel-minted growth commit and realize the exact subtree
@@ -1143,6 +1164,38 @@ mod tests {
         DimensionRegistry, ObjectResidencyRelation, PropertyValue, SimProperty, SimThing,
         SimThingKind, SubFieldRole,
     };
+
+    #[test]
+    fn install_initial_tree_continues_same_root_and_types_attached_growth_bypass() {
+        let mut root = SimThing::new(SimThingKind::World, 0);
+        let mut allocator = SlotAllocator::new();
+        allocator
+            .install_initial_tree(&root)
+            .expect("initial install admits the structural root");
+
+        let install_child = SimThing::new(SimThingKind::Location, 0);
+        let install_child_id = install_child.id;
+        root.add_child(install_child);
+        allocator
+            .install_initial_tree(&root)
+            .expect("install sequencing may continue over the same admitted root");
+        assert!(allocator.slot_of(install_child_id).is_some());
+
+        let ordinary_child = SimThing::new(SimThingKind::Location, 1);
+        let ordinary_child_id = ordinary_child.id;
+        root.add_child(ordinary_child);
+        let error = allocator
+            .install_initial_tree(root.children.last().expect("attached child"))
+            .expect_err("an attached subtree cannot present itself as a new install root");
+        assert_eq!(
+            error,
+            SlotAllocError::InstallInitialTreeAttachedGrowthBypass {
+                admitted_root: root.id,
+                requested_root: ordinary_child_id,
+            }
+        );
+        assert!(allocator.slot_of(ordinary_child_id).is_none());
+    }
 
     #[test]
     fn epoch_rebind_moves_rows_exact_once_and_rebuilds_the_one_table() {

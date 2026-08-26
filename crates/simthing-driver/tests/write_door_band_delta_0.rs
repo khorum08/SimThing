@@ -343,7 +343,7 @@ fn replay_bit_exact_remaps_and_band_deltas() {
         registry: DimensionRegistry::new(),
         fission_lineage: Vec::new(),
     };
-    let mut driver = ReplayDriver::from_snapshot(snapshot);
+    let mut driver = ReplayDriver::from_snapshot(snapshot).expect("replay snapshot install");
     let entries = vec![
         BoundaryDeltaEntry::AnchorRemapApplied {
             section: section.clone(),
@@ -469,7 +469,7 @@ fn gpu_multi_edge_band_delta_boundary_replay_transport() {
         registry: DimensionRegistry::new(),
         fission_lineage: Vec::new(),
     };
-    let mut driver = ReplayDriver::from_snapshot(snapshot);
+    let mut driver = ReplayDriver::from_snapshot(snapshot).expect("replay snapshot install");
     let entries = vec![BoundaryDeltaEntry::BandCrossingDeltasApplied {
         deltas: gpu_deltas.clone(),
     }];

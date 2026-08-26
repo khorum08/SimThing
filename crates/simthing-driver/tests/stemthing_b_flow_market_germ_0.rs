@@ -884,7 +884,8 @@ fn non_residency_market_executes_rf_costband_full_triad_action_and_existing_repl
     let mut reader = ReplayReader::new(Cursor::new(writer.into_inner()));
     let decoded_snapshot = reader.read_snapshot().unwrap();
     let decoded_frame = reader.next_frame().unwrap().unwrap();
-    let mut replay = ReplayDriver::from_snapshot(decoded_snapshot);
+    let mut replay =
+        ReplayDriver::from_snapshot(decoded_snapshot).expect("replay snapshot install");
     replay.apply_frame(decoded_frame);
     assert_eq!(replay.last_band_crossing_deltas, deltas);
     assert_eq!(replay.shadow_values.as_ref(), Some(&field_values));

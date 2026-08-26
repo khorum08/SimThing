@@ -56,7 +56,7 @@ use serde::{Deserialize, Serialize};
 use simthing_core::{
     AnchorRemapSection, DimensionRegistry, OverlayLifecycle, SimThing, SimThingId,
 };
-use simthing_gpu::{BandCrossingDelta, SlotAllocator};
+use simthing_gpu::{BandCrossingDelta, SlotAllocError, SlotAllocator};
 
 use crate::delta_log::BoundaryDeltaEntry;
 use crate::fission::FissionLineageRecord;
@@ -127,6 +127,8 @@ pub enum ReplayError {
     MissingSnapshot,
     #[error("snapshot appears mid-stream after frames have been read")]
     UnexpectedSnapshot,
+    #[error("snapshot slot installation: {0}")]
+    SlotInstall(#[from] SlotAllocError),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
@@ -300,10 +302,10 @@ pub struct ReplayDriver {
 impl ReplayDriver {
     /// Initialize a driver from a snapshot. Allocates slots for every node in
     /// the recorded tree and seeds the fission lineage from the snapshot.
-    pub fn from_snapshot(snapshot: ReplaySnapshot) -> Self {
+    pub fn from_snapshot(snapshot: ReplaySnapshot) -> Result<Self, ReplayError> {
         let mut allocator = SlotAllocator::new();
-        allocator.install_initial_tree(snapshot.root.inner());
-        Self {
+        allocator.install_initial_tree(snapshot.root.inner())?;
+        Ok(Self {
             day: snapshot.day,
             root: snapshot.root,
             registry: snapshot.registry,
@@ -313,7 +315,7 @@ impl ReplayDriver {
             last_anchor_remap: None,
             last_band_crossing_deltas: Vec::new(),
             growth_residency_facts: Vec::new(),
-        }
+        })
     }
 
     /// Planted negative door: replay has no market/clearing input. A caller

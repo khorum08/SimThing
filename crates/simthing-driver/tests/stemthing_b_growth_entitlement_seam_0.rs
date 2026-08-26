@@ -90,7 +90,7 @@ fn implicit_root_market_add_child_refusal_and_replay_use_one_authority_chain() {
     assert_eq!(accepted_fact.entitlement().grantee(), child_id);
     assert_ne!(accepted_fact.entitlement().market_grant_key(), 0);
 
-    let mut replay = ReplayDriver::from_snapshot(replay_snapshot);
+    let mut replay = ReplayDriver::from_snapshot(replay_snapshot).expect("replay snapshot install");
     replay.apply_frame(ReplayFrame {
         day: 0,
         entries: accepted_entries,
@@ -449,7 +449,9 @@ fn oversubscribed_mixed_batch_is_permutation_independent_through_schedule_and_pl
     root.add_child(parent);
     let granter = root.id;
     let mut allocator = SlotAllocator::new();
-    allocator.install_initial_tree(&root);
+    allocator
+        .install_initial_tree(&root)
+        .expect("initial tree install");
     allocator
         .declare_root_residency_extent(granter, ResidencyExtent::try_new(0, 5).unwrap())
         .unwrap();
@@ -507,7 +509,9 @@ fn grantless_ordinary_add_child_is_rejected_at_the_only_structural_door() {
     let child = SimThing::new(SimThingKind::Cohort, 0);
     let child_id = child.id;
     let mut allocator = SlotAllocator::new();
-    allocator.install_initial_tree(&scenario.root);
+    allocator
+        .install_initial_tree(&scenario.root)
+        .expect("initial tree install");
     let mut runtime = simthing_sim::SimRuntimeTree::admit(scenario.root);
     let mut registry = scenario.registry;
     let n_dims = registry.total_columns;

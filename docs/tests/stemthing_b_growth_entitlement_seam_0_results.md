@@ -3,17 +3,19 @@
 - Track: 0.0.8.7 RF arena modernization, rung 11.2c
 - Status: **PROBATION / proof-present / DA-review-pending**
 - Implementation base: `39f98302bb8ca0b856a0c3d44addf30ace8d2f14`
-- DA-remand reviewed head: `78606e7a17d4b9ee00bb88b562ad5bf8e2af363b`
+- DA provenance-remand reviewed head: `e896f07080425f18a88a43fe9a7757521602de67`
 - Remand tested-code checkpoint: `0596dd19a914ca94b3c024cc9a6f3013f405333d`
 - Branch: `codex/stemthing-b-growth-entitlement-seam-0`
 - ORIENT-RECEIPT: `1a6a00162374`
 - orientation_rule_stamp: `9ee3f7649d1fc790`
 - HD-RECEIPT: `7d5052c34f5d`
 - Original handoff: Board comment `5417954669`
-- Remand: Board comment `5419014773`; governing DA ruling `5419004038`
+- Provenance remand: Board comment `5419014773`; governing DA ruling `5419004038`
+- Install-door remand: Board comment `5425378390`; governing DA ruling `5419722895`
 - Expected route: `DA-RESERVE(gate-wiring)` / `DEEP-TREE`
 - Pointer movement: none
-- Structural certificate: owed at graduation because the ordinary tick growth path changed
+- Structural certificate baseline at `e896f070`: 119 suites / 453 passed / 7 failed
+  (three known ClauseThing reds plus four install-door regressions)
 
 ## Pre-edit authority map
 
@@ -25,7 +27,7 @@
 | final structural mutation | existing fission fusion resolver and `apply_structural_mutations` AddChild door |
 | canonical record | existing 6.1 `IntegrationSchedule`, extended by one typed refusal kind, plus existing delta log |
 | authoritative replay | existing replay boundary; recorded growth commits are realized directly and re-clearing is forbidden |
-| initial population | one-shot, empty-allocator-only `install_initial_tree` |
+| initial population | `install_initial_tree` permits initial bulk or continuation over the same admitted structural root; presenting a different subtree/root is a typed attached-growth-bypass refusal |
 
 No mapped link was replaced. The missing node was a typed, consumed product joining
 the graduated grant and placement authorities to the ordinary structural door.
@@ -58,6 +60,25 @@ allocator slot, no committed residency row, no same-generation retry, and an
 explicit next-generation revaluation. This closes only remanded Target 1;
 accepted Targets 2-8 and their semantics remain frozen.
 
+## Install-door bounded remand
+
+The certificate found that global allocator emptiness was not the install law:
+driver admission legitimately performs several pre-run installation passes over
+the same structural root. `install_initial_tree` now checks root identity
+continuity instead. No admitted root means initial bulk; the same admitted root
+means a lawful installation continuation even when prior rows exist; a different
+requested root means an ordinary attached subtree is trying to enter through the
+install exception and returns
+`SlotAllocError::InstallInitialTreeAttachedGrowthBypass`. The error names the
+install-only door, the admitted/requested roots, and the verified ordinary-growth
+precondition. Population failures also roll back and return `SlotAllocError`
+rather than panicking.
+
+The typed result propagates through driver install, session open, and replay
+snapshot construction. Replay's public constructor now returns `ReplayError` and
+its production callers propagate or render that error. No population door,
+manager, mode registry, policy plane, or history surface was added.
+
 ## Landed seam
 
 `GrowthResidencyCommit` carries the structural parent, the real provisional
@@ -81,7 +102,7 @@ there is no default grant or placement bypass.
 | ordinary refusal | partial or zero clear records one refusal fact, preserves U, names the next generation, attaches nothing, and mints no row |
 | real fission | rebellion prepares a candidate before mutation, then clears, places, and resolves with the exact consumed commit |
 | mixed oversubscription | one fission plus one AddChild batch at insufficient capacity yields identical logical grants, refusals, placements, and schedule facts under reversed request order |
-| compile/admission seal | low-level residency execution is crate-private; ordinary mutation accepts only `VerifiedGrowthResidencyCommit`; clearing/grant provenance rejects public-field mutation; the old grantless subtree population entry does not exist; initial install is one-shot; replay is explicitly named |
+| compile/admission seal | low-level residency execution is crate-private; ordinary mutation accepts only `VerifiedGrowthResidencyCommit`; clearing/grant provenance rejects public-field mutation; the old grantless subtree population entry does not exist; initial install permits only initial bulk/same-root continuation and types a different-root bypass; replay is explicitly named |
 | replay | accepted recorded commits realize exact rows without clearing; recorded refusal reproduces exactly; a re-clear attempt returns `ReplayReclearForbidden` |
 
 ## Standing falsifiers
@@ -94,6 +115,7 @@ there is no default grant or placement bypass.
 | `grantless_ordinary_add_child_is_rejected_at_the_only_structural_door` | structural attachment or row residency without the consumed commit |
 | `fabricated_market_grant_key_is_typed_refusal_without_attach_row_or_retry_and_revalues_next_generation` | the exact remanded bare-key path reaching ordinary mutation, duplicate refusal facts, attach/row mint on refusal, same-generation retry, or lost next-generation revaluation |
 | `cleared_entitlement_places_locally_refuses_to_u_then_revalues_and_relocates` | cloned-and-mutated `ConstrainedGrant` minting a market record/provenance, or any accepted 11.2b behavior changing |
+| `install_initial_tree_continues_same_root_and_types_attached_growth_bypass` | global-empty regression, panic-on-door-misuse, failure to continue a legitimate same-root install, or grantless admission of an attached subtree as a second root |
 | kernel rustdoc compile-fail seals | public low-level residency execution or restoration of grantless `populate_subtree` |
 
 ## Authority census
@@ -115,6 +137,10 @@ there is no default grant or placement bypass.
 
 ```text
 cargo test -p simthing-driver --test stemthing_b_growth_entitlement_seam_0
+cargo test -p simthing-clausething --test capability_effect_host_admission_0 -- --nocapture
+cargo test -p simthing-clausething --test capability_prereq_dag_admission_0 -- --nocapture
+cargo test -p simthing-driver --lib install::tests::overlay_effect_host_admission_accepts_and_transforms_correct_host -- --nocapture
+cargo test -p simthing-kernel --lib install_initial_tree_continues_same_root_and_types_attached_growth_bypass
 cargo test -p simthing-driver --test stemthing_b_flow_market_germ_0
 cargo test -p simthing-driver --test stemthing_b_vram_residency_0
 cargo test -p simthing-sim --lib
@@ -130,12 +156,16 @@ bash scripts/ci/agent_scan.sh
 bash scripts/ci/doctrine_scan.sh
 ```
 
-All named commands exit zero locally. The primary witness is `5 passed; 0 failed` on
+All named commands exit zero locally. The four unmodified certificate regressions
+are green: capability-effect host admission is `3 passed; 0 failed`, capability
+prerequisite DAG admission is `2 passed; 0 failed`, and the focused driver-lib
+test is `1 passed; 0 failed`. The direct typed-door falsifier is `1 passed; 0
+failed`. The primary witness is `5 passed; 0 failed` on
 the real GPU path; the existing market germ is `4 passed; 0 failed`; existing
 VRAM residency is `1 passed; 0 failed`; GPU lifecycle parity is `1 passed; 0
 failed`; protected-representative restore is `2 passed; 0 failed`; kernel
 rustdoc is `48 passed; 0 failed`. Kernel, sim, and driver test targets compile;
-core/kernel/feeder/sim library suites pass. Inventory is exact at `1334/1334`,
+core/kernel/feeder/sim library suites pass. Inventory is exact at `1335/1335`,
 and `AGENT-SCAN-VERDICT: PASS` reports zero hard failures and zero inspect flags.
 The standalone whole-tree doctrine census reports its pre-existing heuristic
 `INSPECT` set (`419`, zero hard failures); the required PR-delta doctrine run

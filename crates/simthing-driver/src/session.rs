@@ -60,6 +60,8 @@ pub enum SessionError {
     #[error(transparent)]
     ResidencyPlacement(#[from] simthing_gpu::ResidencyPlacementError),
     #[error(transparent)]
+    SlotAlloc(#[from] simthing_gpu::SlotAllocError),
+    #[error(transparent)]
     ResidencyMarket(#[from] crate::residency_market::ResidencyMarketBridgeError),
     #[error(transparent)]
     GrowthEntitlement(#[from] GrowthEntitlementError),
@@ -603,7 +605,7 @@ impl SimSession {
         let ctx = GpuContext::new_blocking()?;
         let n_dims = scenario.registry.total_columns as u32;
         let mut allocator = simthing_gpu::SlotAllocator::new();
-        allocator.install_initial_tree(&scenario.root);
+        allocator.install_initial_tree(&scenario.root)?;
         let n_slots = scenario.n_slots.max(allocator.capacity() as u32);
         allocator.declare_root_residency_extent(
             scenario.root.id,

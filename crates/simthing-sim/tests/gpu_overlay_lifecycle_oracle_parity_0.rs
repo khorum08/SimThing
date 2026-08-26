@@ -131,7 +131,7 @@ fn gpu_production_decision_is_bit_identical_to_retained_cpu_oracle() {
         .snapshot_node(recorded_target)
         .unwrap()
         .overlay_ids[0];
-    let mut replay = ReplayDriver::from_snapshot(snapshot);
+    let mut replay = ReplayDriver::from_snapshot(snapshot).expect("replay snapshot install");
     replay.apply_frame(reader.next_frame().unwrap().unwrap());
     assert!(!replay.root.has_overlay(recorded_target, recorded_overlay));
     assert!(reader.next_frame().unwrap().is_none());

@@ -763,6 +763,6 @@ pub fn open_replay_with_spec(
     if let Some(ss) = &loaded.spec_snapshot {
         apply_spec_snapshot(&mut session.spec_state, ss)?;
     }
-    let driver = ReplayDriver::from_snapshot(loaded.structural_snapshot);
+    let driver = ReplayDriver::from_snapshot(loaded.structural_snapshot)?;
     Ok((session, driver, loaded.frames))
 }
