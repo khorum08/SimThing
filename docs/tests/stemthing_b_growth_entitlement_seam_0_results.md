@@ -4,7 +4,8 @@
 - Status: **PROBATION / proof-present / DA-review-pending**
 - Implementation base: `39f98302bb8ca0b856a0c3d44addf30ace8d2f14`
 - DA provenance-remand reviewed head: `e896f07080425f18a88a43fe9a7757521602de67`
-- Remand tested-code checkpoint: `0596dd19a914ca94b3c024cc9a6f3013f405333d`
+- Provenance-remand tested-code checkpoint: `0596dd19a914ca94b3c024cc9a6f3013f405333d`
+- Install-door-remand tested-code checkpoint: `82941d5f9a467161256d68633a03e58b7df366f7`
 - Branch: `codex/stemthing-b-growth-entitlement-seam-0`
 - ORIENT-RECEIPT: `1a6a00162374`
 - orientation_rule_stamp: `9ee3f7649d1fc790`
@@ -147,6 +148,7 @@ cargo test -p simthing-sim --lib
 cargo test -p simthing-sim --test gpu_overlay_lifecycle_oracle_parity_0
 cargo test -p simthing-sim --test protected_representative_restore
 cargo test -p simthing-kernel --doc
+cargo check --workspace --all-targets
 cargo check -p simthing-spec
 cargo check -p simthing-driver --tests
 cargo test -p simthing-sim --tests --no-run
@@ -167,7 +169,7 @@ failed`; protected-representative restore is `2 passed; 0 failed`; kernel
 rustdoc is `48 passed; 0 failed`. Kernel, sim, and driver test targets compile;
 core/kernel/feeder/sim library suites pass. Inventory is exact at `1335/1335`,
 and `AGENT-SCAN-VERDICT: PASS` reports zero hard failures and zero inspect flags.
-The standalone whole-tree doctrine census reports its pre-existing heuristic
+The stronger workspace/all-targets check passes. The standalone whole-tree doctrine census reports its pre-existing heuristic
 `INSPECT` set (`419`, zero hard failures); the required PR-delta doctrine run
 inside Agent scan is `PASS` with zero inspect flags at the tested-code SHA.
 Exact tested/head SHAs, PR, and hosted workflow run IDs are carried by the
