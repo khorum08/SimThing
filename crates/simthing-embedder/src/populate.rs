@@ -2,20 +2,22 @@
 
 pub use simthing_core::{
     AccumulatorRole, AccumulatorSpec, ClampBehavior, CostBandAdmissionError,
-    CostBandResourceMarker, DimensionRegistry, LogTier, OwnerBoundaryValidationError, OwnerRef,
-    PropertyValue, SimProperty, SimPropertyId, SimThing, SimThingId, SimThingKind, SubFieldRole,
-    SubFieldSpec, TransformOp,
+    CostBandResourceMarker, DimensionRegistry, GenerationStamp, LogTier,
+    OwnerBoundaryValidationError, OwnerRef, PropertyValue, SimProperty, SimPropertyId, SimThing,
+    SimThingId, SimThingKind, SubFieldRole, SubFieldSpec, TransformOp,
 };
 pub use simthing_driver::Scenario;
-pub use simthing_gpu::SlotAllocator;
+pub use simthing_gpu::{ResidencyExtent, ResidencyExtentError, SlotAllocator};
 pub use simthing_sim::CostBandSemantic;
 pub use simthing_spec::{
-    compile_property, ArenaPressureBindingSpec, ArenaSpec, ExplicitParticipantSpec,
-    FirstSliceCommitmentDirectionSpec, FirstSliceCommitmentSpec, FissionPolicySpec, GameModeSpec,
-    MappingExecutionProfile, PressurePlacementSpec, PressureSourceSpec, PropertyKey, PropertySpec,
+    compile_property, ArenaPressureBindingSpec, ArenaSpec, ConstrainedSupply,
+    ExplicitParticipantSpec, FirstSliceCommitmentDirectionSpec, FirstSliceCommitmentSpec,
+    FissionPolicySpec, GameModeSpec, MappingExecutionProfile, OwnerChannelRfOwnAggregate,
+    OwnerChannelScopeKey, PressurePlacementSpec, PressureSourceSpec, PropertyKey, PropertySpec,
     RegionFieldCadenceSpec, RegionFieldFormulaBindingSpec, RegionFieldGridProfile,
     RegionFieldOperatorSpec, RegionFieldReductionSpec, RegionFieldSourcePolicySpec,
-    RegionFieldSpec, RegionFieldSummaryPolicySpec, ResourceFlowSpec,
+    RegionFieldSpec, RegionFieldSummaryPolicySpec, ResourceFlowSpec, ResourceKey,
+    RuntimeOwnerSiloDemandBucket, ScopeId,
 };
 
 /// Bind a subtree ownership boundary. Descendants inherit by absence.
