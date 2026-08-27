@@ -128,7 +128,7 @@ fn pre_open_overlay_state(
         }
         _ => false,
     };
-    if overlay.kind != OverlayKind::Infrastructure
+    if !overlay.is_infrastructure()
         || overlay.origin != node
         || overlay.affects.as_slice() != [node]
         || overlay.transform.property_id != property_id

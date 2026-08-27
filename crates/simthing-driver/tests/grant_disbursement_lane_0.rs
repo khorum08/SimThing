@@ -617,7 +617,27 @@ fn six_real_doors_publish_conserved_sparse_lanes_and_cross_actionband_without_re
 }
 
 #[test]
-fn generic_direct_write_cannot_mutate_the_schedule_owned_lane() {
+fn singular_schedule_and_lane_authority_reds() {
+    let market = admitted_market();
+    let granter = SimThingId::from_session_raw(98_001);
+    let grantee = SimThingId::from_session_raw(98_002);
+    let clearance = clear_grant(granter, grantee, 2, GenerationStamp::new(4));
+    let mut schedule = IntegrationSchedule::new();
+    market
+        .record_cleared_grant(
+            granter,
+            "lane-capacity",
+            &clearance,
+            GenerationStamp::new(4),
+            &mut schedule,
+        )
+        .unwrap();
+    let duplicate = schedule.entries()[0].grant_lifecycle_fact.clone().unwrap();
+    assert!(matches!(
+        schedule.record_grant_lifecycle(duplicate),
+        Err(GrantLifecycleScheduleError::SecondWriter { generation: 4, .. })
+    ));
+
     let fixture = lane_fixture();
     let session = SimSession::open(fixture.scenario).unwrap();
     let n_dims = session.state.n_dims as usize;
@@ -647,29 +667,6 @@ fn generic_direct_write_cannot_mutate_the_schedule_owned_lane() {
     assert_eq!(stats.protected_grant_lane_write_forbidden, 1);
     assert_eq!(stats.applied_writes, 0);
     assert_eq!(values, before);
-}
-
-#[test]
-fn canonical_schedule_rejects_a_second_lifecycle_writer() {
-    let market = admitted_market();
-    let granter = SimThingId::from_session_raw(98_001);
-    let grantee = SimThingId::from_session_raw(98_002);
-    let clearance = clear_grant(granter, grantee, 2, GenerationStamp::new(4));
-    let mut schedule = IntegrationSchedule::new();
-    market
-        .record_cleared_grant(
-            granter,
-            "lane-capacity",
-            &clearance,
-            GenerationStamp::new(4),
-            &mut schedule,
-        )
-        .unwrap();
-    let duplicate = schedule.entries()[0].grant_lifecycle_fact.clone().unwrap();
-    assert!(matches!(
-        schedule.record_grant_lifecycle(duplicate),
-        Err(GrantLifecycleScheduleError::SecondWriter { generation: 4, .. })
-    ));
 }
 
 #[test]

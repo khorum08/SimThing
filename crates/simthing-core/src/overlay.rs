@@ -148,6 +148,13 @@ pub struct Overlay {
 }
 
 impl Overlay {
+    /// Core-owned classification used by consumers that need the ordinary
+    /// Infrastructure state family without branching on semantic kind below
+    /// the core boundary.
+    pub fn is_infrastructure(&self) -> bool {
+        self.kind == OverlayKind::Infrastructure
+    }
+
     pub fn is_active(&self) -> bool {
         matches!(
             self.lifecycle,
