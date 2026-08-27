@@ -5,7 +5,7 @@
 - Exact implementation base: `54f7e952c2eb9af2f1f5fa73407f9967087d5f91`
 - Branch: `codex/grant-disbursement-lane-0`
 - Pull request: #1852
-- tested_code_sha: `493c3ad5dfdb87b65a63694bd746c6768b96c357`
+- tested_code_sha: `848be5cfc3e734e6846f223e1e150852cc9a74ee`
 - Original dispatch: Board #1332 comment `5434146794`
 - DA A2 / resume: Board #1332 comments `5434301294` and `5434562484`
 - HD-RECEIPT: `29ad3459ddbd`
@@ -136,7 +136,7 @@ paths remain intact.
 
 | Command / battery | Result |
 |---|---|
-| `cargo test -p simthing-driver --test grant_disbursement_lane_0` | PASS — 4/4 |
+| `cargo test -p simthing-driver --test grant_disbursement_lane_0` | PASS — 3/3 |
 | ActionBand GPU execution + overlay actuation | PASS — 5/5 + 2/2 |
 | frozen 11.2a/b/c driver batteries | PASS — 4/4 + 1/1 + 5/5 |
 | frozen 11.2d allocator retirement | PASS — 2/2 |
@@ -146,7 +146,7 @@ paths remain intact.
 | kernel `accumulator_op` focused units | PASS — 4/4 |
 | `cargo check --workspace` | PASS |
 | `cargo fmt --all -- --check` / `git diff --check` | PASS |
-| inventory check / drift check | PASS — exact 1,348/1,348; zero unledgered, stale, or parked rows |
+| inventory check / drift check | PASS — exact 1,347/1,347; zero unledgered, stale, or parked rows |
 | lifecycle `--schema` | PASS — zero expired or audit candidates |
 | Agent/Doctrine scan | PASS — zero hard failures and zero inspect flags |
 
