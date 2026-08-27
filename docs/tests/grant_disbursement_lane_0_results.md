@@ -5,9 +5,10 @@
 - Exact implementation base: `54f7e952c2eb9af2f1f5fa73407f9967087d5f91`
 - Branch: `codex/grant-disbursement-lane-0`
 - Pull request: #1852
-- tested_code_sha: `848be5cfc3e734e6846f223e1e150852cc9a74ee`
+- tested_code_sha: `5b741a199cf1f1a235baddd2ff80a28edebbb6f9`
 - Original dispatch: Board #1332 comment `5434146794`
 - DA A2 / resume: Board #1332 comments `5434301294` and `5434562484`
+- DA remand / ingress-seal repair: Board #1332 comment `5439031875`
 - HD-RECEIPT: `29ad3459ddbd`
 - ORIENT-RECEIPT: `1a6a00162374`
 - orientation_rule_stamp: `9ee3f7649d1fc790`
@@ -38,6 +39,12 @@ one-to-one:
 | `transfer_for_fusion` | Transferred / `GrantTransferred` | every input relationship to one fused relationship in one fact |
 | `terminate` | Released / `GrantReleased` | one relationship `q -> 0`, typed death/dissolution/explicit cause |
 
+Rows are append-only events, not a uniqueness map. Two lawful renewals of the
+same relationship in the same generation therefore retain two ordered
+`GrantRenewed` facts (`2 -> 3`, then `3 -> 4`) with the same provenance. Their
+single N+1 boundary batch aggregates to the exact final lane state while replay
+retains and consumes both facts in recorded order.
+
 The lifecycle signatures gained only the market, generation, and mutable
 `IntegrationSchedule` inputs required to compute and append that canonical
 fact. `SimSession` supplies its existing generation and its one schedule. No
@@ -61,11 +68,16 @@ The only live causal path is:
 The publisher reads the GPU-fresh boundary shadow, rehydrates the existing
 `ResidencyCapacityPartition` exact judge, validates the complete fact batch,
 then replaces the active full-state overlay through ordinary boundary requests.
-It creates no numeric setter and no side ledger. Generic feeder patches,
-player intents, AI intents, and direct `TransformPatcher::apply_one` calls all
-reject this property as schedule-owned. Persistent `Infrastructure` state uses
-`UntilDissolved` and is explicitly suspended by the next canonical fact, so it
-adds no post-open lifecycle-catalogue row and no O(capacity) structure.
+Beside those exact requests it mints a boundary-local, non-public capability
+covering the exact old overlay suspension and exact new overlay attachment.
+The public `apply_structural_mutations` door has an empty capability; only the
+ordinary `BoundaryProtocol` call carrying the schedule publisher's capability
+can consume the protected transitions. It creates no numeric setter and no
+side ledger. Generic feeder patches, player intents, AI intents, public
+`FeederSender::submit_boundary`, and direct `TransformPatcher::apply_one` calls
+all reject this property as schedule-owned. Persistent `Infrastructure` state
+uses `UntilDissolved` and is explicitly suspended by the next canonical fact,
+so it adds no post-open lifecycle-catalogue row and no O(capacity) structure.
 
 ## Exact six-kind conservation proof
 
@@ -104,17 +116,29 @@ weakening occurs.
 
 Each boundary outcome copies the same scheduled fact into a
 `BoundaryDeltaEntry::GrantLifecycleFact` before its ordinary overlay entries.
-`ReplayDriver` realizes that typed fact directly against its snapshot tree and
-then consumes the normal structural entries. An accepted-only prefix reproduces
-`[14, 0, 6, 20]` and the one sealed band-crossing delta; the complete log
-consumes all six facts. Replay never evaluates the market. A `shadow_values`
-checkpoint without delta entries can restore presentation bytes but leaves the
-canonical fact collection empty and therefore cannot mint the causal history.
+`ReplayDriver::try_apply_frame` derives the exact expected lane state and old
+overlay identity from each contiguous fact batch, admits one matching
+System/Infrastructure attachment and suspension, and applies the frame to a
+clone before committing it. A forged protected `OverlayAttached` without its
+fact returns `GrantLaneCausalBypass` with day, facts, base property, and overlay
+count unchanged. An accepted-only prefix reproduces `[14, 0, 6, 20]` and the
+one sealed band-crossing delta; the complete log consumes all six facts. Replay
+never evaluates the market. A `shadow_values` checkpoint without delta entries
+can restore presentation bytes but leaves the canonical fact collection empty
+and therefore cannot mint the causal history.
 
 ## Named REDs and implementation repair
 
-- Second writer/history: appending the same kind/generation/provenance twice to
-  the canonical schedule returns `GrantLifecycleScheduleError::SecondWriter`.
+- Live second writer: an actual public `FeederSender::submit_boundary` carrying
+  a forged protected `AttachOverlay` increments
+  `boundary_grant_lane_authority_rejections` and changes neither lane values nor
+  overlay count. Protected public suspend/activate routes are closed by the same
+  boundary-local capability.
+- Replay second writer: a protected `BoundaryDeltaEntry::OverlayAttached`
+  without a matching fact-derived plan returns `ReplayError::GrantLaneCausalBypass`
+  atomically, with zero mutation.
+- Legitimate multiplicity: two real same-kind, same-generation, same-provenance
+  renewals both append, publish to `[16, 0, 4, 20]`, and replay in exact order.
 - Direct writer: a generic direct patch of the protected property increments
   `protected_grant_lane_write_forbidden`, performs zero writes, and leaves the
   row bit-identical. The same guard covers generic feeder/player/AI ingress.
@@ -137,6 +161,7 @@ paths remain intact.
 | Command / battery | Result |
 |---|---|
 | `cargo test -p simthing-driver --test grant_disbursement_lane_0` | PASS — 3/3 |
+| `cargo test -p simthing-core -p simthing-sim` | PASS — all unit, integration, and doctest harnesses; only pre-existing warnings/ignored perf witness |
 | ActionBand GPU execution + overlay actuation | PASS — 5/5 + 2/2 |
 | frozen 11.2a/b/c driver batteries | PASS — 4/4 + 1/1 + 5/5 |
 | frozen 11.2d allocator retirement | PASS — 2/2 |
@@ -157,7 +182,7 @@ Hosted workflow IDs and the exact final evidence head are returned on Board
 ## Fences retained
 
 - One `IntegrationSchedule`, one `BoundaryDeltaEntry` history, one session
-  generation, and one boundary publication authority.
+  generation, and one schedule-minted boundary-local publication capability.
 - No re-clear during replay, checkpoint-derived fact, direct setter, shadow
   ledger, peer writer, telemetry authority, or ActionBand rebind.
 - 11.2a-e clearing, provenance, two-stage placement, allocator retirement,
