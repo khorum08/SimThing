@@ -7,8 +7,7 @@ use simthing_core::{
     eml_opcode, grant_disbursement_capacity_overlay, grant_disbursement_capacity_property,
     grant_disbursement_capacity_value, DimensionRegistry, Direction, EmitOnThresholdBuffer,
     EmitOnThresholdRegistration, EmlConsumerMask, EmlExecutionClass, EmlExpressionRegistry,
-    EmlFormulaMeta, EmlTreeId, GenerationStamp, GrantLifecycleFactKind,
-    GrantLifecycleScheduleError, IntegrationSchedule, IntegrationScheduleRowKind,
+    EmlFormulaMeta, EmlTreeId, GenerationStamp, GrantLifecycleFactKind, IntegrationScheduleRowKind,
     PropertyTransformDelta, SimProperty, SimThing, SimThingId, SimThingKind, SlotIndex,
     SubFieldRole, ThresholdDirection, TransformOp, GRANT_DISBURSEMENT_NAMESPACE,
     GRANT_DISBURSEMENT_PROPERTY, GRANT_LANE_CAPACITY, GRANT_LANE_FREE, GRANT_LANE_IN_FLIGHT,
@@ -19,11 +18,11 @@ use simthing_driver::{
     CrossingConsequenceBinding, Scenario, SimSession,
 };
 use simthing_feeder::patcher::ShadowFreshness;
-use simthing_feeder::{PatchTransform, PatcherStats, TransformPatcher};
+use simthing_feeder::{BoundaryRequest, PatchTransform, PatcherStats, TransformPatcher};
 use simthing_gpu::{ActionBandEmissionBindingGpu, ActionBandPropertyWrite};
 use simthing_sim::{
-    BoundaryDeltaEntry, CostBandSemantic, ReplayDriver, ReplayFrame, ReplayGrowthError,
-    ThresholdRegistry, VelocityAlertRegistration,
+    BoundaryDeltaEntry, CostBandSemantic, ReplayDriver, ReplayError, ReplayFrame,
+    ReplayGrowthError, ThresholdRegistry, VelocityAlertRegistration,
 };
 use simthing_spec::{
     admit_specialization_flow_market, clear_constrained_claims_at_generation,
@@ -618,26 +617,193 @@ fn six_real_doors_publish_conserved_sparse_lanes_and_cross_actionband_without_re
 
 #[test]
 fn singular_schedule_and_lane_authority_reds() {
-    let market = admitted_market();
-    let granter = SimThingId::from_session_raw(98_001);
-    let grantee = SimThingId::from_session_raw(98_002);
-    let clearance = clear_grant(granter, grantee, 2, GenerationStamp::new(4));
-    let mut schedule = IntegrationSchedule::new();
-    market
-        .record_cleared_grant(
-            granter,
-            "lane-capacity",
-            &clearance,
-            GenerationStamp::new(4),
-            &mut schedule,
-        )
+    // The actual public boundary door cannot forge a protected lane overlay.
+    let live_fixture = lane_fixture();
+    let mut live_session = SimSession::open(live_fixture.scenario).unwrap();
+    let live_before = lane_values(&live_session, live_fixture.source, live_fixture.property_id);
+    let live_overlay_count = live_session
+        .proto
+        .root
+        .overlay_count(live_fixture.source)
         .unwrap();
-    let duplicate = schedule.entries()[0].grant_lifecycle_fact.clone().unwrap();
-    assert!(matches!(
-        schedule.record_grant_lifecycle(duplicate),
-        Err(GrantLifecycleScheduleError::SecondWriter { generation: 4, .. })
-    ));
+    live_session
+        .tx
+        .submit_boundary(BoundaryRequest::AttachOverlay {
+            target: live_fixture.source,
+            overlay: grant_disbursement_capacity_overlay(
+                live_fixture.source,
+                live_fixture.property_id,
+                7,
+            ),
+            source_generation: GenerationStamp::new(0),
+        })
+        .unwrap();
+    let rejected = live_session.run(1).unwrap();
+    assert_eq!(rejected.boundary_grant_lane_authority_rejections, 1);
+    assert_eq!(
+        live_session.proto.root.overlay_count(live_fixture.source),
+        Some(live_overlay_count)
+    );
+    assert_eq!(
+        lane_values(&live_session, live_fixture.source, live_fixture.property_id),
+        live_before
+    );
 
+    // The replay door rejects the same causal bypass before changing either
+    // semantic base state or overlay structure.
+    let replay_fixture = lane_fixture();
+    let replay_snapshot = SimSession::open(replay_fixture.scenario)
+        .unwrap()
+        .proto
+        .snapshot(0);
+    let mut forged_replay = ReplayDriver::from_snapshot(replay_snapshot).unwrap();
+    let replay_before = replay_lane_values(
+        &forged_replay,
+        replay_fixture.source,
+        replay_fixture.property_id,
+    );
+    let replay_overlay_count = forged_replay
+        .root
+        .overlay_count(replay_fixture.source)
+        .unwrap();
+    assert!(matches!(
+        forged_replay.try_apply_frame(ReplayFrame {
+            day: 1,
+            entries: vec![BoundaryDeltaEntry::OverlayAttached {
+                target: replay_fixture.source,
+                overlay: grant_disbursement_capacity_overlay(
+                    replay_fixture.source,
+                    replay_fixture.property_id,
+                    7,
+                ),
+            }],
+            shadow_values: None,
+            spec_entries: Vec::new(),
+            injection_entries: Vec::new(),
+        }),
+        Err(ReplayError::GrantLaneCausalBypass)
+    ));
+    assert_eq!(forged_replay.day, 0);
+    assert!(forged_replay.grant_lifecycle_facts.is_empty());
+    assert_eq!(
+        forged_replay.root.overlay_count(replay_fixture.source),
+        Some(replay_overlay_count)
+    );
+    assert_eq!(
+        replay_lane_values(
+            &forged_replay,
+            replay_fixture.source,
+            replay_fixture.property_id
+        ),
+        replay_before
+    );
+
+    // Two real renewals with the same kind, generation, and provenance are
+    // two ordered facts, not evidence of a second writer.
+    let repeated_fixture = lane_fixture();
+    let market = admitted_market();
+    let mut repeated_session = SimSession::open(repeated_fixture.scenario).unwrap();
+    let repeated_snapshot = repeated_session.proto.snapshot(0);
+    let accepted = clear_grant(
+        repeated_fixture.fused,
+        repeated_fixture.source,
+        2,
+        GenerationStamp::new(0),
+    );
+    let mut grant = repeated_session
+        .record_cleared_market_grant(&market, repeated_fixture.fused, "lane-capacity", &accepted)
+        .unwrap();
+    for _ in 0..2 {
+        let renewal = clear_grant(
+            repeated_fixture.fused,
+            repeated_fixture.source,
+            1,
+            GenerationStamp::new(0),
+        );
+        repeated_session
+            .renew_market_grant(&market, &mut grant, &renewal)
+            .unwrap();
+    }
+    let repeated_facts: Vec<_> = repeated_session
+        .integration_schedule()
+        .entries()
+        .iter()
+        .filter_map(|entry| entry.grant_lifecycle_fact.as_ref())
+        .collect();
+    assert_eq!(repeated_facts.len(), 3);
+    assert_eq!(
+        repeated_facts
+            .iter()
+            .map(|fact| fact.kind)
+            .collect::<Vec<_>>(),
+        vec![
+            GrantLifecycleFactKind::Accepted,
+            GrantLifecycleFactKind::Renewed,
+            GrantLifecycleFactKind::Renewed,
+        ]
+    );
+    assert_eq!(
+        repeated_facts
+            .iter()
+            .map(|fact| {
+                (
+                    fact.before[0].quantity,
+                    fact.after[0].quantity,
+                    fact.generation,
+                    fact.provenance,
+                )
+            })
+            .collect::<Vec<_>>(),
+        vec![
+            (0, 2, GenerationStamp::new(0), repeated_facts[0].provenance,),
+            (2, 3, GenerationStamp::new(0), repeated_facts[0].provenance,),
+            (3, 4, GenerationStamp::new(0), repeated_facts[0].provenance,),
+        ]
+    );
+    repeated_session.run(2).unwrap();
+    assert_eq!(
+        lane_values(
+            &repeated_session,
+            repeated_fixture.source,
+            repeated_fixture.property_id
+        ),
+        [16, 0, 4, 20]
+    );
+    let repeated_delta = repeated_session.proto.delta_log().to_vec();
+    let delta_kinds: Vec<_> = repeated_delta
+        .iter()
+        .filter_map(|entry| match entry {
+            BoundaryDeltaEntry::GrantLifecycleFact { fact } => Some(fact.kind),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        delta_kinds,
+        vec![
+            GrantLifecycleFactKind::Accepted,
+            GrantLifecycleFactKind::Renewed,
+            GrantLifecycleFactKind::Renewed,
+        ]
+    );
+    let mut repeated_replay = ReplayDriver::from_snapshot(repeated_snapshot).unwrap();
+    repeated_replay.apply_frame(ReplayFrame {
+        day: 2,
+        entries: repeated_delta,
+        shadow_values: None,
+        spec_entries: Vec::new(),
+        injection_entries: Vec::new(),
+    });
+    assert_eq!(repeated_replay.grant_lifecycle_facts.len(), 3);
+    assert_eq!(
+        replay_lane_values(
+            &repeated_replay,
+            repeated_fixture.source,
+            repeated_fixture.property_id
+        ),
+        [16, 0, 4, 20]
+    );
+
+    // The generic numeric patcher remains a separate planted negative door.
     let fixture = lane_fixture();
     let session = SimSession::open(fixture.scenario).unwrap();
     let n_dims = session.state.n_dims as usize;

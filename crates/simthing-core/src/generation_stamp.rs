@@ -232,8 +232,8 @@ impl IntegrationSchedule {
     }
 
     /// Append a lifecycle fact to THE canonical integration recorder. The
-    /// parent-side row is due exactly at N+1. A duplicate transition is a
-    /// second-writer attempt and fails closed rather than creating history.
+    /// parent-side row is due exactly at N+1. Multiple lawful transitions of
+    /// the same kind and provenance remain distinct, ordered history rows.
     pub fn record_grant_lifecycle(
         &mut self,
         fact: GrantLifecycleFact,
@@ -245,17 +245,6 @@ impl IntegrationSchedule {
                 .ok_or(GrantLifecycleScheduleError::GenerationOverflow)?,
         );
         let kind = IntegrationScheduleRowKind::for_grant_lifecycle(fact.kind);
-        if self.entries.iter().any(|entry| {
-            entry.kind == kind
-                && entry.parent_generation == parent_generation
-                && entry.child_generation == fact.generation
-                && entry.product_key == fact.provenance
-        }) {
-            return Err(GrantLifecycleScheduleError::SecondWriter {
-                generation: fact.generation.get(),
-                provenance: fact.provenance,
-            });
-        }
         self.entries.push(IntegrationScheduleEntry {
             kind,
             parent_generation,
@@ -302,10 +291,6 @@ impl IntegrationSchedule {
 pub enum GrantLifecycleScheduleError {
     #[error("grant lifecycle fact generation cannot schedule N+1")]
     GenerationOverflow,
-    #[error(
-        "second grant lifecycle writer for generation {generation} and provenance {provenance}"
-    )]
-    SecondWriter { generation: u32, provenance: u64 },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Error)]

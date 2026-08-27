@@ -63,6 +63,7 @@
 //! - Records the property id so the boundary protocol can widen the CPU
 //!   shadow and rebuild `WorldGpuState` before step 9 sync.
 
+use crate::grant_disbursement::{is_protected_grant_overlay, GrantDisbursementBoundaryAuthority};
 use crate::growth_entitlement::VerifiedGrowthResidencyCommit;
 use crate::overlay_lifecycle::OverlayLifecycleAdmissionState;
 use crate::sim_runtime_tree::SimRuntimeTree;
@@ -160,6 +161,36 @@ pub fn apply_structural_mutations(
     lifecycle_admission: &mut OverlayLifecycleAdmissionState,
     growth_commits: &BTreeMap<SimThingId, VerifiedGrowthResidencyCommit>,
 ) -> MaintainerOutcome {
+    let mut grant_authority = GrantDisbursementBoundaryAuthority::default();
+    apply_structural_mutations_with_grant_authority(
+        requests,
+        root,
+        allocator,
+        registry,
+        values_shadow,
+        n_dims,
+        node_paths,
+        destination_generation,
+        lifecycle_admission,
+        growth_commits,
+        &mut grant_authority,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn apply_structural_mutations_with_grant_authority(
+    requests: Vec<BoundaryRequest>,
+    root: &mut SimRuntimeTree,
+    allocator: &mut SlotAllocator,
+    registry: &mut DimensionRegistry,
+    values_shadow: &mut [f32],
+    n_dims: usize,
+    node_paths: Option<&HashMap<SimThingId, Vec<usize>>>,
+    destination_generation: GenerationStamp,
+    lifecycle_admission: &mut OverlayLifecycleAdmissionState,
+    growth_commits: &BTreeMap<SimThingId, VerifiedGrowthResidencyCommit>,
+    grant_authority: &mut GrantDisbursementBoundaryAuthority,
+) -> MaintainerOutcome {
     let mut out = MaintainerOutcome::default();
     let root = root.inner_mut();
 
@@ -199,6 +230,12 @@ pub fn apply_structural_mutations(
                 overlay,
                 source_generation,
             } => {
+                if is_protected_grant_overlay(registry, &overlay)
+                    && !grant_authority.consume_attach(target, &overlay)
+                {
+                    out.rejected_grant_lane_authority += 1;
+                    continue;
+                }
                 let oid = overlay.id;
                 if lifecycle_admission
                     .admit_routed_overlay(
@@ -222,6 +259,17 @@ pub fn apply_structural_mutations(
                 }
             }
             BoundaryRequest::ActivateOverlay { target, overlay_id } => {
+                if lookup_node(root, target, node_paths)
+                    .and_then(|node| {
+                        node.overlays
+                            .iter()
+                            .find(|overlay| overlay.id == overlay_id)
+                    })
+                    .is_some_and(|overlay| is_protected_grant_overlay(registry, overlay))
+                {
+                    out.rejected_grant_lane_authority += 1;
+                    continue;
+                }
                 match activate_overlay(
                     root,
                     target,
@@ -242,6 +290,18 @@ pub fn apply_structural_mutations(
                 }
             }
             BoundaryRequest::SuspendOverlay { target, overlay_id } => {
+                if lookup_node(root, target, node_paths)
+                    .and_then(|node| {
+                        node.overlays
+                            .iter()
+                            .find(|overlay| overlay.id == overlay_id)
+                    })
+                    .is_some_and(|overlay| is_protected_grant_overlay(registry, overlay))
+                    && !grant_authority.consume_suspend(target, overlay_id)
+                {
+                    out.rejected_grant_lane_authority += 1;
+                    continue;
+                }
                 match suspend_overlay(
                     root,
                     target,

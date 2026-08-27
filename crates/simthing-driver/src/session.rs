@@ -197,6 +197,7 @@ pub struct RunSummary {
     pub boundary_final_capacity_ms: f64,
     pub boundary_gpu_sync_ms: f64,
     pub boundary_delta_log_ms: f64,
+    pub boundary_grant_lane_authority_rejections: u64,
     pub boundaries_skipped: u64,
     pub boundary_readback_bytes: u64,
     pub boundary_upload_bytes: u64,
@@ -253,6 +254,7 @@ impl RunSummary {
             boundary_final_capacity_ms: 0.0,
             boundary_gpu_sync_ms: 0.0,
             boundary_delta_log_ms: 0.0,
+            boundary_grant_lane_authority_rejections: 0,
             boundaries_skipped: 0,
             boundary_readback_bytes: 0,
             boundary_upload_bytes: 0,
@@ -283,6 +285,14 @@ fn accumulate_boundary_timing(summary: &mut RunSummary, timing: BoundaryTiming) 
     summary.boundary_final_capacity_ms += timing.final_capacity_ms;
     summary.boundary_gpu_sync_ms += timing.gpu_sync_ms;
     summary.boundary_delta_log_ms += timing.delta_log_ms;
+}
+
+fn accumulate_boundary_authority_rejections(
+    summary: &mut RunSummary,
+    maintainer: &simthing_feeder::MaintainerOutcome,
+) {
+    summary.boundary_grant_lane_authority_rejections +=
+        u64::from(maintainer.rejected_grant_lane_authority);
 }
 
 /// Owns the full tick + boundary loop for one scenario.
@@ -1529,6 +1539,7 @@ impl SimSession {
         summary.boundary_total_ms += boundary_started.elapsed().as_secs_f64() * 1000.0;
         summary.fission_events += outcome.fission.fissions_executed;
         accumulate_boundary_timing(summary, outcome.timing);
+        accumulate_boundary_authority_rejections(summary, &outcome.maintainer);
         summary.boundary_upload_bytes += outcome.gpu_sync.boundary_upload_bytes;
         summary.boundary_value_rows_uploaded += outcome.gpu_sync.value_rows_uploaded as u64;
         if outcome.gpu_sync.full_value_upload {
@@ -1641,6 +1652,7 @@ impl SimSession {
                 summary.boundary_total_ms += boundary_started.elapsed().as_secs_f64() * 1000.0;
                 summary.fission_events += outcome.fission.fissions_executed;
                 accumulate_boundary_timing(&mut summary, outcome.timing);
+                accumulate_boundary_authority_rejections(&mut summary, &outcome.maintainer);
                 summary.boundary_upload_bytes += outcome.gpu_sync.boundary_upload_bytes;
                 summary.boundary_value_rows_uploaded += outcome.gpu_sync.value_rows_uploaded as u64;
                 if outcome.gpu_sync.full_value_upload {

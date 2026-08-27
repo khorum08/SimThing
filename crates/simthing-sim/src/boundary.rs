@@ -85,7 +85,7 @@ use crate::threshold_registry::{
     VelocityAlertEvent, VelocityAlertRegistration,
 };
 use crate::tree_index::{build_node_paths, node_at_path};
-use crate::tree_mutation::apply_structural_mutations;
+use crate::tree_mutation::apply_structural_mutations_with_grant_authority;
 use simthing_core::AnchorRemapSection;
 use simthing_gpu::{apply_band_crossing_deltas_from_threshold_events, BandCrossingDelta};
 use std::collections::{BTreeMap, HashSet};
@@ -441,6 +441,7 @@ impl BoundaryProtocol {
         n_dims: usize,
         destination_generation: u32,
         growth_decisions: &BTreeMap<SimThingId, GrowthEntitlementDecision>,
+        grant_authority: crate::grant_disbursement::GrantDisbursementBoundaryAuthority,
     ) -> (Vec<BoundaryRequest>, u32, Vec<SimThingId>) {
         if !requests.iter().any(|request| {
             matches!(
@@ -455,6 +456,7 @@ impl BoundaryProtocol {
         let mut staged_registry = self.registry.clone();
         let mut staged_shadow = vec![0.0; staged_allocator.capacity() * n_dims];
         let mut staged_admission = self.overlay_lifecycle_admission.clone();
+        let mut staged_grant_authority = grant_authority;
         let (initial_catalogue, _) = derive_overlay_lifecycle_admission_catalog(
             staged_root.inner(),
             &staged_registry,
@@ -473,6 +475,7 @@ impl BoundaryProtocol {
             let mut trial_registry = staged_registry.clone();
             let mut trial_shadow = staged_shadow.clone();
             let mut trial_admission = staged_admission.clone();
+            let mut trial_grant_authority = staged_grant_authority.clone();
             let mut trial_commits = BTreeMap::new();
             let mut scratch_schedule = IntegrationSchedule::new();
             if let BoundaryRequest::AddChild { parent, child } = &request {
@@ -500,7 +503,7 @@ impl BoundaryProtocol {
                 .capacity()
                 .saturating_add(projected_add_child_slots(std::slice::from_ref(&request)));
             trial_shadow.resize(projected_slots * n_dims, 0.0);
-            let trial_outcome = apply_structural_mutations(
+            let trial_outcome = apply_structural_mutations_with_grant_authority(
                 vec![request.clone()],
                 &mut trial_root,
                 &mut trial_allocator,
@@ -511,6 +514,7 @@ impl BoundaryProtocol {
                 GenerationStamp::new(destination_generation),
                 &mut trial_admission,
                 &trial_commits,
+                &mut trial_grant_authority,
             );
             if let BoundaryRequest::AddChild { child, .. } = &request {
                 if trial_commits.contains_key(&child.id)
@@ -546,6 +550,7 @@ impl BoundaryProtocol {
             staged_registry = trial_registry;
             staged_shadow = trial_shadow;
             staged_admission = trial_admission;
+            staged_grant_authority = trial_grant_authority;
             staged_catalogue_rows = catalogue.rows.len();
             admitted_requests.push(request);
         }
@@ -673,7 +678,7 @@ impl BoundaryProtocol {
             GenerationStamp::new(day as u32),
         )
         .map_err(|error| GpuSyncError::GrantDisbursement(error.to_string()))?;
-        let (grant_lifecycle_facts, grant_transitions) =
+        let (grant_lifecycle_facts, grant_transitions, mut grant_authority) =
             crate::grant_disbursement::publish_scheduled_facts(
                 scheduled,
                 self.root.inner(),
@@ -937,7 +942,12 @@ impl BoundaryProtocol {
         // and cannot leave authoritative placement behind.
         let (requests, preflight_rejected_overlay_lifecycle, lifecycle_refused) = self
             .preflight_lifecycle_membership_requests(
-                requests, state, n_dims, day as u32, &decisions,
+                requests,
+                state,
+                n_dims,
+                day as u32,
+                &decisions,
+                grant_authority.clone(),
             );
         for child in lifecycle_refused {
             let Some(GrowthEntitlementDecision::Granted {
@@ -1121,7 +1131,7 @@ impl BoundaryProtocol {
 
         let structural_paths = build_node_paths(self.root.inner());
         let structural_started = Instant::now();
-        out.maintainer = apply_structural_mutations(
+        out.maintainer = apply_structural_mutations_with_grant_authority(
             requests,
             &mut self.root,
             &mut self.allocator,
@@ -1132,6 +1142,7 @@ impl BoundaryProtocol {
             GenerationStamp::new(day as u32),
             &mut self.overlay_lifecycle_admission,
             &growth_commits,
+            &mut grant_authority,
         );
         out.maintainer.rejected_overlay_lifecycle = out
             .maintainer

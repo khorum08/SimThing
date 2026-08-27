@@ -130,6 +130,12 @@ pub enum ReplayError {
     UnexpectedSnapshot,
     #[error("snapshot slot installation: {0}")]
     SlotInstall(#[from] SlotAllocError),
+    #[error("grant lane replay overlay lacks matching canonical lifecycle fact authority")]
+    GrantLaneCausalBypass,
+    #[error("grant lifecycle fact publication is missing its protected overlay transition")]
+    GrantLanePublicationIncomplete,
+    #[error("grant lifecycle fact replay is invalid: {0}")]
+    GrantLifecycle(String),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
@@ -285,7 +291,7 @@ impl<R: BufRead> ReplayReader<R> {
 /// `fission_lineage` mirrors `BoundaryProtocol::fission_lineage` — it grows
 /// and shrinks as `FissionLineageAdded`/`Removed` entries are applied so that
 /// callers can re-register `FusionTrigger` thresholds after replay if needed.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct ReplayDriver {
     pub day: u32,
     pub root: SimRuntimeTree,
@@ -351,21 +357,121 @@ impl ReplayDriver {
     /// - `DimensionAdded`: `registry.restore(property_id)` if in range.
     /// - `VelocityAlert`: observation only, no structural effect.
     pub fn apply_frame(&mut self, frame: ReplayFrame) {
-        for entry in frame.entries {
+        self.try_apply_frame(frame)
+            .expect("canonical replay frame must pass causal grant-lane admission");
+    }
+
+    /// Validate protected grant-lane causality before mutating any replay state.
+    pub fn try_apply_frame(&mut self, frame: ReplayFrame) -> Result<(), ReplayError> {
+        let mut staged = self.clone();
+        staged.apply_frame_checked(frame)?;
+        *self = staged;
+        Ok(())
+    }
+
+    fn apply_frame_checked(&mut self, frame: ReplayFrame) -> Result<(), ReplayError> {
+        let mut entries = frame.entries.into_iter().peekable();
+        let mut grant_plan: Option<crate::grant_disbursement::GrantDisbursementReplayPlan> = None;
+
+        while let Some(entry) = entries.next() {
+            if let BoundaryDeltaEntry::GrantLifecycleFact { fact } = entry {
+                if grant_plan.as_ref().is_some_and(|plan| !plan.is_complete()) {
+                    return Err(ReplayError::GrantLanePublicationIncomplete);
+                }
+                let mut facts = vec![fact];
+                while matches!(
+                    entries.peek(),
+                    Some(BoundaryDeltaEntry::GrantLifecycleFact { .. })
+                ) {
+                    let Some(BoundaryDeltaEntry::GrantLifecycleFact { fact }) = entries.next()
+                    else {
+                        unreachable!("peeked grant lifecycle fact")
+                    };
+                    facts.push(fact);
+                }
+                let plan = crate::grant_disbursement::prepare_replay_plan(
+                    self.root.inner(),
+                    &self.registry,
+                    &facts,
+                )
+                .map_err(|error| ReplayError::GrantLifecycle(error.to_string()))?;
+                plan.realize(self.root.inner_mut(), &self.registry);
+                self.grant_lifecycle_facts.extend(facts);
+                grant_plan = Some(plan);
+                continue;
+            }
+
+            match &entry {
+                BoundaryDeltaEntry::OverlayAttached { target, overlay }
+                    if crate::grant_disbursement::is_protected_grant_overlay(
+                        &self.registry,
+                        overlay,
+                    ) =>
+                {
+                    if !grant_plan
+                        .as_mut()
+                        .is_some_and(|plan| plan.consume_attach(*target, overlay))
+                    {
+                        return Err(ReplayError::GrantLaneCausalBypass);
+                    }
+                }
+                BoundaryDeltaEntry::OverlaySuspended { target, overlay_id }
+                    if self.protected_grant_overlay_id(
+                        *target,
+                        *overlay_id,
+                        grant_plan.as_ref(),
+                    ) =>
+                {
+                    if !grant_plan
+                        .as_mut()
+                        .is_some_and(|plan| plan.consume_suspend(*target, *overlay_id))
+                    {
+                        return Err(ReplayError::GrantLaneCausalBypass);
+                    }
+                }
+                BoundaryDeltaEntry::OverlayActivated { target, overlay_id }
+                | BoundaryDeltaEntry::OverlayDissolved { target, overlay_id }
+                    if self.protected_grant_overlay_id(
+                        *target,
+                        *overlay_id,
+                        grant_plan.as_ref(),
+                    ) =>
+                {
+                    return Err(ReplayError::GrantLaneCausalBypass);
+                }
+                _ => {}
+            }
             self.apply_entry(entry);
+        }
+        if grant_plan.as_ref().is_some_and(|plan| !plan.is_complete()) {
+            return Err(ReplayError::GrantLanePublicationIncomplete);
         }
         self.day = frame.day;
         if frame.shadow_values.is_some() {
             self.shadow_values = frame.shadow_values;
         }
+        Ok(())
+    }
+
+    fn protected_grant_overlay_id(
+        &self,
+        target: SimThingId,
+        overlay_id: simthing_core::OverlayId,
+        plan: Option<&crate::grant_disbursement::GrantDisbursementReplayPlan>,
+    ) -> bool {
+        plan.is_some_and(|plan| plan.protects_overlay(target, overlay_id))
+            || crate::grant_disbursement::is_protected_grant_overlay_id(
+                self.root.inner(),
+                &self.registry,
+                target,
+                overlay_id,
+            )
     }
 
     fn apply_entry(&mut self, entry: BoundaryDeltaEntry) {
         let inner = self.root.inner_mut();
         match entry {
             BoundaryDeltaEntry::GrantLifecycleFact { fact } => {
-                crate::grant_disbursement::realize_replay_fact(inner, &self.registry, &fact)
-                    .expect("recorded grant lifecycle fact must realize without re-clearing");
                 self.grant_lifecycle_facts.push(fact);
             }
             BoundaryDeltaEntry::SimThingAdded {

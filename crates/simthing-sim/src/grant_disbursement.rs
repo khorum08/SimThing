@@ -93,6 +93,131 @@ struct PlannedUpdate {
     active_overlay: Option<OverlayId>,
 }
 
+#[derive(Clone, Debug)]
+struct BoundaryPublication {
+    target: SimThingId,
+    suspended_overlay: OverlayId,
+    attached_overlay: Overlay,
+    suspended_consumed: bool,
+    attached_consumed: bool,
+}
+
+/// Boundary-local capability minted only beside schedule-derived publication.
+#[derive(Clone, Debug, Default)]
+pub(crate) struct GrantDisbursementBoundaryAuthority {
+    publications: Vec<BoundaryPublication>,
+}
+
+impl GrantDisbursementBoundaryAuthority {
+    fn authorize(
+        &mut self,
+        target: SimThingId,
+        suspended_overlay: OverlayId,
+        attached_overlay: Overlay,
+    ) {
+        self.publications.push(BoundaryPublication {
+            target,
+            suspended_overlay,
+            attached_overlay,
+            suspended_consumed: false,
+            attached_consumed: false,
+        });
+    }
+
+    pub(crate) fn consume_suspend(&mut self, target: SimThingId, overlay_id: OverlayId) -> bool {
+        let Some(publication) = self.publications.iter_mut().find(|publication| {
+            !publication.suspended_consumed
+                && publication.target == target
+                && publication.suspended_overlay == overlay_id
+        }) else {
+            return false;
+        };
+        publication.suspended_consumed = true;
+        true
+    }
+
+    pub(crate) fn consume_attach(&mut self, target: SimThingId, overlay: &Overlay) -> bool {
+        let Some(publication) = self.publications.iter_mut().find(|publication| {
+            !publication.attached_consumed
+                && publication.target == target
+                && publication.attached_overlay == *overlay
+        }) else {
+            return false;
+        };
+        publication.attached_consumed = true;
+        true
+    }
+}
+
+#[derive(Debug)]
+struct ReplayPublication {
+    target: SimThingId,
+    suspended_overlay: OverlayId,
+    lanes: LaneState,
+    attached_overlay: Option<OverlayId>,
+    suspended_consumed: bool,
+    attached_consumed: bool,
+}
+
+/// Prevalidated causal publication plan for one replay frame.
+pub(crate) struct GrantDisbursementReplayPlan {
+    property_id: Option<SimPropertyId>,
+    updates: Vec<PlannedUpdate>,
+    publications: Vec<ReplayPublication>,
+}
+
+impl GrantDisbursementReplayPlan {
+    pub(crate) fn consume_attach(&mut self, target: SimThingId, overlay: &Overlay) -> bool {
+        let Some(property_id) = self.property_id else {
+            return false;
+        };
+        let Some(publication) = self.publications.iter_mut().find(|publication| {
+            !publication.attached_consumed
+                && publication.target == target
+                && pre_open_overlay_state(target, property_id, overlay) == Some(publication.lanes)
+        }) else {
+            return false;
+        };
+        publication.attached_overlay = Some(overlay.id);
+        publication.attached_consumed = true;
+        true
+    }
+
+    pub(crate) fn consume_suspend(&mut self, target: SimThingId, overlay_id: OverlayId) -> bool {
+        let Some(publication) = self.publications.iter_mut().find(|publication| {
+            !publication.suspended_consumed
+                && publication.target == target
+                && publication.suspended_overlay == overlay_id
+        }) else {
+            return false;
+        };
+        publication.suspended_consumed = true;
+        true
+    }
+
+    pub(crate) fn protects_overlay(&self, target: SimThingId, overlay_id: OverlayId) -> bool {
+        self.publications.iter().any(|publication| {
+            publication.target == target
+                && (publication.suspended_overlay == overlay_id
+                    || publication.attached_overlay == Some(overlay_id))
+        })
+    }
+
+    pub(crate) fn is_complete(&self) -> bool {
+        self.publications
+            .iter()
+            .all(|publication| publication.suspended_consumed && publication.attached_consumed)
+    }
+
+    pub(crate) fn realize(&self, root: &mut SimThing, registry: &DimensionRegistry) {
+        let Some(property_id) = self.property_id else {
+            return;
+        };
+        let layout = registry.property(property_id).layout.clone();
+        apply_tree_updates(root, property_id, &layout, &self.updates);
+    }
+}
+
 fn role(name: &str) -> SubFieldRole {
     SubFieldRole::Named(name.to_string())
 }
@@ -129,6 +254,7 @@ fn pre_open_overlay_state(
         _ => false,
     };
     if !overlay.is_infrastructure()
+        || overlay.source != OverlaySource::System
         || overlay.origin != node
         || overlay.affects.as_slice() != [node]
         || overlay.transform.property_id != property_id
@@ -367,11 +493,13 @@ fn plan_replay_updates(
             occupied: read_tree_lane(node_id, value, layout, GRANT_LANE_OCCUPIED)?,
             capacity: read_tree_lane(node_id, value, layout, GRANT_LANE_CAPACITY)?,
         };
+        let lanes = validate_transition(node_id, current, delta)?;
+        let active_overlay = active_state_overlay(node, property_id, current)?;
         updates.push(PlannedUpdate {
             node: node_id,
             current,
-            lanes: validate_transition(node_id, current, delta)?,
-            active_overlay: None,
+            lanes,
+            active_overlay: Some(active_overlay),
         });
     }
     Ok(updates)
@@ -408,16 +536,27 @@ pub(crate) fn publish_scheduled_facts(
     allocator: &SlotAllocator,
     shadow: &[f32],
     n_dims: usize,
-) -> Result<(Vec<GrantLifecycleFact>, Vec<BoundaryRequest>), GrantDisbursementError> {
+) -> Result<
+    (
+        Vec<GrantLifecycleFact>,
+        Vec<BoundaryRequest>,
+        GrantDisbursementBoundaryAuthority,
+    ),
+    GrantDisbursementError,
+> {
     if scheduled.is_empty() {
-        return Ok((Vec::new(), Vec::new()));
+        return Ok((Vec::new(), Vec::new(), Default::default()));
     }
     let Some(property_id) =
         registry.id_of(GRANT_DISBURSEMENT_NAMESPACE, GRANT_DISBURSEMENT_PROPERTY)
     else {
         // Inert-by-default: lifecycle facts remain canonical history even when
         // a scenario did not author the optional ordinary lane property.
-        return Ok((scheduled.facts.into_iter().cloned().collect(), Vec::new()));
+        return Ok((
+            scheduled.facts.into_iter().cloned().collect(),
+            Vec::new(),
+            Default::default(),
+        ));
     };
     let updates = plan_live_updates(
         root,
@@ -431,6 +570,7 @@ pub(crate) fn publish_scheduled_facts(
     // Complete-batch validation above precedes every transition. No partial
     // partition/transfer publication can enter the structural request batch.
     let mut transitions = Vec::new();
+    let mut authority = GrantDisbursementBoundaryAuthority::default();
     for update in updates {
         if update.current == update.lanes {
             continue;
@@ -442,31 +582,79 @@ pub(crate) fn publish_scheduled_facts(
             target: update.node,
             overlay_id: active,
         });
+        let overlay = published_state_overlay(update.node, property_id, update.lanes);
+        authority.authorize(update.node, active, overlay.clone());
         transitions.push(BoundaryRequest::AttachOverlay {
             target: update.node,
-            overlay: published_state_overlay(update.node, property_id, update.lanes),
+            overlay,
             source_generation: scheduled.generation,
         });
     }
-    Ok((scheduled.facts.into_iter().cloned().collect(), transitions))
+    Ok((
+        scheduled.facts.into_iter().cloned().collect(),
+        transitions,
+        authority,
+    ))
 }
 
-/// Replay realization from the typed delta entry. It performs no clearing and
-/// cannot write a live shadow or GPU row.
-pub(crate) fn realize_replay_fact(
-    root: &mut SimThing,
+/// Derive the only protected replay writes admitted by this frame's facts.
+/// The returned plan is inert until all matching structural entries validate.
+pub(crate) fn prepare_replay_plan(
+    root: &SimThing,
     registry: &DimensionRegistry,
-    fact: &GrantLifecycleFact,
-) -> Result<(), GrantDisbursementError> {
+    facts: &[GrantLifecycleFact],
+) -> Result<GrantDisbursementReplayPlan, GrantDisbursementError> {
     let Some(property_id) =
         registry.id_of(GRANT_DISBURSEMENT_NAMESPACE, GRANT_DISBURSEMENT_PROPERTY)
     else {
-        return Ok(());
+        return Ok(GrantDisbursementReplayPlan {
+            property_id: None,
+            updates: Vec::new(),
+            publications: Vec::new(),
+        });
     };
     let layout = registry.property(property_id).layout.clone();
-    let updates = plan_replay_updates(root, property_id, &layout, &[fact])?;
-    apply_tree_updates(root, property_id, &layout, &updates);
-    Ok(())
+    let fact_refs: Vec<_> = facts.iter().collect();
+    let updates = plan_replay_updates(root, property_id, &layout, &fact_refs)?;
+    let publications = updates
+        .iter()
+        .filter(|update| update.current != update.lanes)
+        .map(|update| ReplayPublication {
+            target: update.node,
+            suspended_overlay: update
+                .active_overlay
+                .expect("replay plan carries the active state overlay"),
+            lanes: update.lanes,
+            attached_overlay: None,
+            suspended_consumed: false,
+            attached_consumed: false,
+        })
+        .collect();
+    Ok(GrantDisbursementReplayPlan {
+        property_id: Some(property_id),
+        updates,
+        publications,
+    })
+}
+
+pub(crate) fn is_protected_grant_overlay(registry: &DimensionRegistry, overlay: &Overlay) -> bool {
+    registry.id_of(GRANT_DISBURSEMENT_NAMESPACE, GRANT_DISBURSEMENT_PROPERTY)
+        == Some(overlay.transform.property_id)
+}
+
+pub(crate) fn is_protected_grant_overlay_id(
+    root: &SimThing,
+    registry: &DimensionRegistry,
+    target: SimThingId,
+    overlay_id: OverlayId,
+) -> bool {
+    find_node(root, target)
+        .and_then(|node| {
+            node.overlays
+                .iter()
+                .find(|overlay| overlay.id == overlay_id)
+        })
+        .is_some_and(|overlay| is_protected_grant_overlay(registry, overlay))
 }
 
 #[cfg(test)]
