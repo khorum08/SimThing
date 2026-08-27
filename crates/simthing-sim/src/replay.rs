@@ -54,7 +54,8 @@ use std::io::{BufRead, Write};
 
 use serde::{Deserialize, Serialize};
 use simthing_core::{
-    AnchorRemapSection, DimensionRegistry, OverlayLifecycle, SimThing, SimThingId,
+    AnchorRemapSection, DimensionRegistry, GrantLifecycleFact, OverlayLifecycle, SimThing,
+    SimThingId,
 };
 use simthing_gpu::{BandCrossingDelta, SlotAllocError, SlotAllocator};
 
@@ -135,6 +136,8 @@ pub enum ReplayError {
 pub enum ReplayGrowthError {
     #[error("authoritative replay realizes recorded growth facts and never re-clears")]
     ReplayReclearForbidden,
+    #[error("authoritative replay realizes recorded grant lifecycle facts and never re-clears")]
+    GrantLifecycleReclearForbidden,
 }
 
 // ── Writer ────────────────────────────────────────────────────────────────────
@@ -297,6 +300,8 @@ pub struct ReplayDriver {
     pub last_band_crossing_deltas: Vec<BandCrossingDelta>,
     /// Authoritative accepted/refused growth facts consumed in frame order.
     pub growth_residency_facts: Vec<RecordedGrowthResidencyFact>,
+    /// Authoritative grant facts realized from delta entries, never checkpoints.
+    pub grant_lifecycle_facts: Vec<GrantLifecycleFact>,
 }
 
 impl ReplayDriver {
@@ -315,6 +320,7 @@ impl ReplayDriver {
             last_anchor_remap: None,
             last_band_crossing_deltas: Vec::new(),
             growth_residency_facts: Vec::new(),
+            grant_lifecycle_facts: Vec::new(),
         })
     }
 
@@ -322,6 +328,10 @@ impl ReplayDriver {
     /// attempting to revalue a recorded fact receives its own stable reason.
     pub fn attempt_growth_reclear_forbidden(&self) -> Result<(), ReplayGrowthError> {
         Err(ReplayGrowthError::ReplayReclearForbidden)
+    }
+
+    pub fn attempt_grant_lifecycle_reclear_forbidden(&self) -> Result<(), ReplayGrowthError> {
+        Err(ReplayGrowthError::GrantLifecycleReclearForbidden)
     }
 
     /// Apply one frame's entries to the in-memory tree. Each entry is replayed
@@ -353,6 +363,11 @@ impl ReplayDriver {
     fn apply_entry(&mut self, entry: BoundaryDeltaEntry) {
         let inner = self.root.inner_mut();
         match entry {
+            BoundaryDeltaEntry::GrantLifecycleFact { fact } => {
+                crate::grant_disbursement::realize_replay_fact(inner, &self.registry, &fact)
+                    .expect("recorded grant lifecycle fact must realize without re-clearing");
+                self.grant_lifecycle_facts.push(fact);
+            }
             BoundaryDeltaEntry::SimThingAdded {
                 parent,
                 node,

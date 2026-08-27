@@ -953,8 +953,8 @@ fn prove_owning_generation_and_facility_plane_authority_use_the_graduated_gpu_pa
     let ctx =
         GpuContext::new_blocking().expect("7.6a requires a real GPU adapter; skips forbidden");
 
-    // Owning generation occupies the existing final AccumulatorTickParams
-    // word and runs through the sole Phase-5 comparator and emission buffers.
+    // Owning generation occupies its admitted AccumulatorTickParams word and
+    // runs through the sole Phase-5 comparator and emission buffers.
     let registration = ThresholdRegistration {
         slot: 0,
         col: 0,

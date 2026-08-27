@@ -174,12 +174,14 @@ fn recursive_non_residency_grant() -> u32 {
     .expect("Run delegates the existing conserved clear");
     let child_grant = &root_clear[0].grants[0];
     assert_eq!((child_grant.granted, root_clear[0].remaining_after), (6, 2));
+    let mut lifecycle_schedule = derive::IntegrationSchedule::new();
     let accepted_child = market
         .record_cleared_grant(
             root_id,
             "compute-offering",
             child_grant,
             populate::GenerationStamp::new(4),
+            &mut lifecycle_schedule,
         )
         .expect("existing market seals the accepted child grant");
 
@@ -223,6 +225,7 @@ fn recursive_non_residency_grant() -> u32 {
             "compute-offering",
             descendant_grant,
             populate::GenerationStamp::new(5),
+            &mut lifecycle_schedule,
         )
         .expect("same market lifecycle seals the descendant grant");
     let band = market

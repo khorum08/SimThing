@@ -24,10 +24,10 @@
 //! ```
 
 pub use simthing_core::{
-    AuthoredOwnerRefError, DeclaredSpecialization, KindIdentity, OwnerRef, OwnerResolutionError,
-    OwnerSpecializationRow, SpecializationError, SpecializationObservations, SpecializationProfile,
-    SpecializationReport, SpecializationRequirement, PROFILE_OWNER_SEAT, PROFILE_SESSION_ROOT,
-    PROFILE_SPATIAL,
+    AuthoredOwnerRefError, DeclaredSpecialization, IntegrationSchedule, KindIdentity, OwnerRef,
+    OwnerResolutionError, OwnerSpecializationRow, SpecializationError, SpecializationObservations,
+    SpecializationProfile, SpecializationReport, SpecializationRequirement, PROFILE_OWNER_SEAT,
+    PROFILE_SESSION_ROOT, PROFILE_SPATIAL,
 };
 pub use simthing_driver::ComparativeEmitterClass;
 pub use simthing_spec::{

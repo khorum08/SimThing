@@ -44,6 +44,8 @@ pub enum GpuSyncError {
     OverlayProjection(#[from] simthing_gpu::DerivedSpanAdmissionError),
     #[error("ordinary growth entitlement: {0}")]
     GrowthEntitlement(String),
+    #[error("grant disbursement publication: {0}")]
+    GrantDisbursement(String),
 }
 
 fn upload_accumulator_reduction_plan(

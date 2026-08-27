@@ -381,6 +381,7 @@ fn two_markets_draw_clear_costband_and_rotate_exact_ties() {
 #[test]
 fn detached_grant_lifecycle_conserves_and_replays_on_the_existing_stamped_seam() {
     let fixture = clear_two_markets();
+    let mut lifecycle_schedule = IntegrationSchedule::new();
     let initial = fixture
         .market
         .record_cleared_grant(
@@ -388,23 +389,38 @@ fn detached_grant_lifecycle_conserves_and_replays_on_the_existing_stamped_seam()
             "compute-claim",
             &fixture.compute_grant,
             GenerationStamp::new(12),
+            &mut lifecycle_schedule,
         )
         .unwrap();
     assert_eq!(initial.retained_after_detachment(), initial);
 
     let mut renewed = initial.clone();
     renewed
-        .renew_from_clearance(&fixture.compute_grant, GenerationStamp::new(13))
+        .renew_from_clearance(
+            &fixture.market,
+            &fixture.compute_grant,
+            GenerationStamp::new(13),
+            &mut lifecycle_schedule,
+        )
         .unwrap();
     let total_cleared = renewed.quantity();
-    let revoked = renewed.revoke(1).unwrap();
+    let revoked = renewed
+        .revoke(
+            &fixture.market,
+            1,
+            GenerationStamp::new(13),
+            &mut lifecycle_schedule,
+        )
+        .unwrap();
     assert_eq!(revoked.scope, fixture.compute_grant.scope);
     let left = SimThingId::from_session_raw(70_001);
     let right = SimThingId::from_session_raw(70_002);
     let partition = renewed
         .partition_for_fission(
+            &fixture.market,
             &[(left, 3), (right, total_cleared - 4)],
             GenerationStamp::new(14),
+            &mut lifecycle_schedule,
         )
         .unwrap();
     assert_eq!(
@@ -415,18 +431,35 @@ fn detached_grant_lifecycle_conserves_and_replays_on_the_existing_stamped_seam()
         total_cleared - 1
     );
     let fused = MarketGrantRecord::transfer_for_fusion(
+        &fixture.market,
         partition,
         SimThingId::from_session_raw(70_003),
         GenerationStamp::new(15),
+        &mut lifecycle_schedule,
     )
     .unwrap();
     let terminated = fused
         .clone()
-        .terminate(GrantReleaseCause::ExplicitTermination);
+        .terminate(
+            &fixture.market,
+            GrantReleaseCause::ExplicitTermination,
+            GenerationStamp::new(16),
+            &mut lifecycle_schedule,
+        )
+        .unwrap();
     assert_eq!(terminated.scope, fixture.compute_grant.scope);
     assert_eq!(revoked.quantity + terminated.quantity, total_cleared);
     for cause in [GrantReleaseCause::Death, GrantReleaseCause::Dissolution] {
-        let release = fused.clone().terminate(cause);
+        let mut alternative_schedule = IntegrationSchedule::new();
+        let release = fused
+            .clone()
+            .terminate(
+                &fixture.market,
+                cause,
+                GenerationStamp::new(16),
+                &mut alternative_schedule,
+            )
+            .unwrap();
         assert_eq!(release.quantity, fused.quantity());
         assert_eq!(release.cause, cause);
     }
@@ -498,13 +531,20 @@ fn germ_absence_census_and_lifecycle_mutants_red() {
         "FieldSweepRegistration",
         "pub fn clear_",
         "ReplayWriter",
-        "IntegrationSchedule",
     ] {
         assert!(
             !market_source.contains(forbidden),
             "new mechanism/authority reach must RED: {forbidden}"
         );
     }
+    assert_eq!(
+        market_source
+            .matches("integration_schedule: &mut IntegrationSchedule")
+            .count(),
+        6,
+        "the six lifecycle doors must consume the one existing schedule authority"
+    );
+    assert!(!market_source.contains("struct IntegrationSchedule"));
     let clearing_source = include_str!("../../simthing-spec/src/spec/constrained_clearing.rs");
     assert_eq!(
         clearing_source
@@ -515,6 +555,7 @@ fn germ_absence_census_and_lifecycle_mutants_red() {
     );
 
     let fixture = clear_two_markets();
+    let mut lifecycle_schedule = IntegrationSchedule::new();
     let record = fixture
         .market
         .record_cleared_grant(
@@ -522,6 +563,7 @@ fn germ_absence_census_and_lifecycle_mutants_red() {
             "compute-claim",
             &fixture.compute_grant,
             GenerationStamp::new(12),
+            &mut lifecycle_schedule,
         )
         .unwrap();
     assert!(fixture
@@ -531,25 +573,37 @@ fn germ_absence_census_and_lifecycle_mutants_red() {
             "residency-claim",
             &fixture.compute_grant,
             GenerationStamp::new(12),
+            &mut lifecycle_schedule,
         )
         .is_err());
     let mut over_revoke = record.clone();
-    assert!(over_revoke.revoke(record.quantity() + 1).is_err());
+    assert!(over_revoke
+        .revoke(
+            &fixture.market,
+            record.quantity() + 1,
+            GenerationStamp::new(13),
+            &mut lifecycle_schedule,
+        )
+        .is_err());
     assert!(record
         .clone()
         .partition_for_fission(
+            &fixture.market,
             &[(SimThingId::from_session_raw(80_001), record.quantity() - 1)],
             GenerationStamp::new(13),
+            &mut lifecycle_schedule,
         )
         .is_err());
     let duplicate = SimThingId::from_session_raw(80_002);
     assert!(record
         .partition_for_fission(
+            &fixture.market,
             &[
                 (duplicate, 1),
                 (duplicate, fixture.compute_grant.granted - 1)
             ],
             GenerationStamp::new(13),
+            &mut lifecycle_schedule,
         )
         .is_err());
 }

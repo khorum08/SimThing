@@ -405,6 +405,7 @@ fn cmd_replay(args: &[String]) {
 
 fn entry_kind(entry: &BoundaryDeltaEntry) -> &'static str {
     match entry {
+        BoundaryDeltaEntry::GrantLifecycleFact { .. } => "GrantLifecycleFact",
         BoundaryDeltaEntry::OverlayAttached { .. } => "OverlayAttached",
         BoundaryDeltaEntry::OverlayDissolved { .. } => "OverlayDissolved",
         BoundaryDeltaEntry::OverlayActivated { .. } => "OverlayActivated",

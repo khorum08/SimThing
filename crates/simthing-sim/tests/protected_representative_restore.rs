@@ -322,6 +322,7 @@ fn clone_capability_children() {
                     "residency-claim",
                     &cleared[0].grants[0],
                     generation,
+                    &mut schedule,
                 )
                 .expect("sealed clearing grant records");
             let provenance = market

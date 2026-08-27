@@ -9,9 +9,11 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use serde::{Deserialize, Serialize};
+pub use simthing_core::GrantLifecycleReleaseCause as GrantReleaseCause;
 use simthing_core::{
-    cost_band_quantize, CostBandAdmissionError, CostBandDraw, GenerationStamp, SimThing,
-    SimThingId, SpecializationProfile, TransformOp,
+    cost_band_quantize, CostBandAdmissionError, CostBandDraw, GenerationStamp, GrantLifecycleFact,
+    GrantLifecycleFactKind, GrantLifecycleRelationshipState, GrantLifecycleScheduleError,
+    IntegrationSchedule, SimThing, SimThingId, SpecializationProfile, TransformOp,
 };
 use thiserror::Error;
 
@@ -317,6 +319,7 @@ impl AdmittedSpecializationFlowMarket {
         offering_id: &str,
         grant: &ConstrainedGrant,
         generation: GenerationStamp,
+        integration_schedule: &mut IntegrationSchedule,
     ) -> Result<MarketGrantRecord, GrantLifecycleError> {
         if !grant.has_intact_clearance_seal() {
             return Err(GrantLifecycleError::InvalidClearingSeal);
@@ -328,7 +331,20 @@ impl AdmittedSpecializationFlowMarket {
         if grant.scope.resource_key != offering.resource_key {
             return Err(GrantLifecycleError::OfferingResourceMismatch);
         }
-        MarketGrantRecord::from_cleared_offering(granter, offering_id, grant, generation)
+        let record =
+            MarketGrantRecord::from_cleared_offering(granter, offering_id, grant, generation)?;
+        let after = grant_relationship_state(self, &record);
+        let mut before = after.clone();
+        before.quantity = 0;
+        integration_schedule.record_grant_lifecycle(GrantLifecycleFact {
+            kind: GrantLifecycleFactKind::Accepted,
+            generation,
+            provenance: after.stable_key,
+            before: vec![before],
+            after: vec![after],
+            release_cause: None,
+        })?;
+        Ok(record)
     }
 }
 
@@ -454,14 +470,6 @@ impl MarketGrantResidencyProvenance {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum GrantReleaseCause {
-    Death,
-    Dissolution,
-    ExplicitTermination,
-    Revocation,
-}
-
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct GrantRelease {
     pub key: MarketGrantKey,
@@ -492,6 +500,8 @@ pub enum GrantLifecycleError {
     InvalidFissionPartition,
     #[error("fusion inputs are empty or do not share granter, offering, and resource identity")]
     InvalidFusionInputs,
+    #[error(transparent)]
+    Schedule(#[from] GrantLifecycleScheduleError),
 }
 
 impl MarketGrantRecord {
@@ -541,8 +551,10 @@ impl MarketGrantRecord {
     /// Renewal can add only quantity that arrived through another clearance.
     pub fn renew_from_clearance(
         &mut self,
+        market: &AdmittedSpecializationFlowMarket,
         clearance: &ConstrainedGrant,
         generation: GenerationStamp,
+        integration_schedule: &mut IntegrationSchedule,
     ) -> Result<(), GrantLifecycleError> {
         if !clearance.has_intact_clearance_seal() {
             return Err(GrantLifecycleError::InvalidClearingSeal);
@@ -553,19 +565,51 @@ impl MarketGrantRecord {
         if clearance.source_simthing_id != self.key.grantee || clearance.scope != self.scope {
             return Err(GrantLifecycleError::RenewalMismatch);
         }
-        self.quantity = self
+        let quantity = self
             .quantity
             .checked_add(clearance.granted)
             .ok_or(GrantLifecycleError::ArithmeticOverflow)?;
-        self.granted_generation = generation;
+        let before = grant_relationship_state(market, self);
+        let mut after_record = self.clone();
+        after_record.quantity = quantity;
+        after_record.granted_generation = generation;
+        let after = grant_relationship_state(market, &after_record);
+        integration_schedule.record_grant_lifecycle(GrantLifecycleFact {
+            kind: GrantLifecycleFactKind::Renewed,
+            generation,
+            provenance: before.stable_key,
+            before: vec![before],
+            after: vec![after],
+            release_cause: None,
+        })?;
+        *self = after_record;
         Ok(())
     }
 
-    pub fn revoke(&mut self, quantity: u32) -> Result<GrantRelease, GrantLifecycleError> {
+    pub fn revoke(
+        &mut self,
+        market: &AdmittedSpecializationFlowMarket,
+        quantity: u32,
+        generation: GenerationStamp,
+        integration_schedule: &mut IntegrationSchedule,
+    ) -> Result<GrantRelease, GrantLifecycleError> {
         if quantity > self.quantity {
             return Err(GrantLifecycleError::ExcessRevocation);
         }
-        self.quantity -= quantity;
+        let before = grant_relationship_state(market, self);
+        let mut after_record = self.clone();
+        after_record.quantity -= quantity;
+        after_record.granted_generation = generation;
+        let after = grant_relationship_state(market, &after_record);
+        integration_schedule.record_grant_lifecycle(GrantLifecycleFact {
+            kind: GrantLifecycleFactKind::Revoked,
+            generation,
+            provenance: before.stable_key,
+            before: vec![before],
+            after: vec![after],
+            release_cause: Some(GrantReleaseCause::Revocation),
+        })?;
+        *self = after_record;
         Ok(GrantRelease {
             key: self.key.clone(),
             scope: self.scope.clone(),
@@ -574,21 +618,40 @@ impl MarketGrantRecord {
         })
     }
 
-    pub fn terminate(self, cause: GrantReleaseCause) -> GrantRelease {
-        GrantRelease {
+    pub fn terminate(
+        self,
+        market: &AdmittedSpecializationFlowMarket,
+        cause: GrantReleaseCause,
+        generation: GenerationStamp,
+        integration_schedule: &mut IntegrationSchedule,
+    ) -> Result<GrantRelease, GrantLifecycleError> {
+        let before = grant_relationship_state(market, &self);
+        let mut after = before.clone();
+        after.quantity = 0;
+        integration_schedule.record_grant_lifecycle(GrantLifecycleFact {
+            kind: GrantLifecycleFactKind::Released,
+            generation,
+            provenance: before.stable_key,
+            before: vec![before],
+            after: vec![after],
+            release_cause: Some(cause),
+        })?;
+        Ok(GrantRelease {
             key: self.key,
             scope: self.scope,
             quantity: self.quantity,
             cause,
-        }
+        })
     }
 
     /// Partition the entire grant across fission successors. Callers include
     /// the continuing parent in `successors` when it retains a share.
     pub fn partition_for_fission(
         self,
+        market: &AdmittedSpecializationFlowMarket,
         successors: &[(SimThingId, u32)],
         generation: GenerationStamp,
+        integration_schedule: &mut IntegrationSchedule,
     ) -> Result<Vec<Self>, GrantLifecycleError> {
         let mut seen = BTreeSet::new();
         let total = successors.iter().try_fold(0u32, |sum, (id, quantity)| {
@@ -600,7 +663,8 @@ impl MarketGrantRecord {
         if successors.is_empty() || total != Some(self.quantity) {
             return Err(GrantLifecycleError::InvalidFissionPartition);
         }
-        Ok(successors
+        let before = grant_relationship_state(market, &self);
+        let records: Vec<_> = successors
             .iter()
             .map(|(grantee, quantity)| Self {
                 key: MarketGrantKey {
@@ -612,14 +676,29 @@ impl MarketGrantRecord {
                 quantity: *quantity,
                 granted_generation: generation,
             })
-            .collect())
+            .collect();
+        let after = records
+            .iter()
+            .map(|record| grant_relationship_state(market, record))
+            .collect();
+        integration_schedule.record_grant_lifecycle(GrantLifecycleFact {
+            kind: GrantLifecycleFactKind::Partitioned,
+            generation,
+            provenance: before.stable_key,
+            before: vec![before],
+            after,
+            release_cause: None,
+        })?;
+        Ok(records)
     }
 
     /// Transfer and coalesce grants exactly when subtrees fuse.
     pub fn transfer_for_fusion(
+        market: &AdmittedSpecializationFlowMarket,
         records: Vec<Self>,
         fused_grantee: SimThingId,
         generation: GenerationStamp,
+        integration_schedule: &mut IntegrationSchedule,
     ) -> Result<Self, GrantLifecycleError> {
         let Some(first) = records.first() else {
             return Err(GrantLifecycleError::InvalidFusionInputs);
@@ -637,7 +716,11 @@ impl MarketGrantRecord {
         let Some(quantity) = quantity else {
             return Err(GrantLifecycleError::ArithmeticOverflow);
         };
-        Ok(Self {
+        let before: Vec<_> = records
+            .iter()
+            .map(|record| grant_relationship_state(market, record))
+            .collect();
+        let record = Self {
             key: MarketGrantKey {
                 granter: first.key.granter,
                 grantee: fused_grantee,
@@ -646,7 +729,17 @@ impl MarketGrantRecord {
             scope: first.scope.clone(),
             quantity,
             granted_generation: generation,
-        })
+        };
+        let after = grant_relationship_state(market, &record);
+        integration_schedule.record_grant_lifecycle(GrantLifecycleFact {
+            kind: GrantLifecycleFactKind::Transferred,
+            generation,
+            provenance: before[0].stable_key,
+            before,
+            after: vec![after],
+            release_cause: None,
+        })?;
+        Ok(record)
     }
 }
 
@@ -701,4 +794,16 @@ fn market_grant_stable_key(
         }
     }
     hash
+}
+
+fn grant_relationship_state(
+    market: &AdmittedSpecializationFlowMarket,
+    grant: &MarketGrantRecord,
+) -> GrantLifecycleRelationshipState {
+    GrantLifecycleRelationshipState {
+        granter: grant.key.granter,
+        grantee: grant.key.grantee,
+        stable_key: market_grant_stable_key(market, grant),
+        quantity: grant.quantity,
+    }
 }

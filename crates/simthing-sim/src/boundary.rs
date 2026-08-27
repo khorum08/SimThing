@@ -120,6 +120,8 @@ pub struct BoundaryOutcome {
     /// Accepted placement products and ordinary U facts for the complete
     /// pre-mutation fission/AddChild candidate batch.
     pub growth_residency_facts: Vec<RecordedGrowthResidencyFact>,
+    /// Canonical grant lifecycle facts realized by the sole N+1 boundary writer.
+    pub grant_lifecycle_facts: Vec<simthing_core::GrantLifecycleFact>,
     pub maintainer: MaintainerOutcome,
     pub gpu_sync: GpuSyncOutcome,
     /// Typed Anchored-locus remap witness for this boundary's structural encode.
@@ -594,7 +596,7 @@ impl BoundaryProtocol {
             day,
             &mut scratch_schedule,
             hook,
-            |_, _, candidates| {
+            |_, _, candidates, _| {
                 Ok(candidates
                     .iter()
                     .copied()
@@ -626,6 +628,7 @@ impl BoundaryProtocol {
             &SlotAllocator,
             GenerationStamp,
             &[OrdinaryGrowthCandidate],
+            &mut IntegrationSchedule,
         ) -> Result<Vec<GrowthEntitlementDecision>, String>,
     {
         let mut out = BoundaryOutcome {
@@ -660,6 +663,28 @@ impl BoundaryProtocol {
             coord.shadow.resize(needed, 0.0);
         }
         out.timing.value_readback_ms = value_readback_started.elapsed().as_secs_f64() * 1000.0;
+
+        // GRANT-DISBURSEMENT-LANE-0: consume only schedule-recorded facts due
+        // at N+1. Publication releases only schedule-minted feeder carriers;
+        // the existing hot intent pass remains the live lane writer and the
+        // existing threshold pass observes its crossings.
+        let scheduled = crate::grant_disbursement::ScheduledGrantLifecycleFacts::from_schedule(
+            integration_schedule,
+            GenerationStamp::new(day as u32),
+        )
+        .map_err(|error| GpuSyncError::GrantDisbursement(error.to_string()))?;
+        let (grant_lifecycle_facts, grant_transitions) =
+            crate::grant_disbursement::publish_scheduled_facts(
+                scheduled,
+                self.root.inner(),
+                &self.registry,
+                &self.allocator,
+                &coord.shadow,
+                n_dims,
+            )
+            .map_err(|error| GpuSyncError::GrantDisbursement(error.to_string()))?;
+        out.grant_lifecycle_facts = grant_lifecycle_facts;
+        requests.extend(grant_transitions);
 
         // Pre-mutation Anchored loci (authoritative from-endpoints for remaps).
         let pre_anchored_loci =
@@ -856,8 +881,13 @@ impl BoundaryProtocol {
         candidates.sort();
 
         let generation = GenerationStamp::new(day as u32);
-        let decisions = resolve_growth(&self.allocator, generation, &candidates)
-            .map_err(GpuSyncError::GrowthEntitlement)?;
+        let decisions = resolve_growth(
+            &self.allocator,
+            generation,
+            &candidates,
+            integration_schedule,
+        )
+        .map_err(GpuSyncError::GrowthEntitlement)?;
         let mut decisions = validate_decisions(&candidates, decisions)
             .map_err(|error| GpuSyncError::GrowthEntitlement(error.to_string()))?;
 

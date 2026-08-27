@@ -154,6 +154,7 @@ impl GrowthEntitlementMarketBinding {
         allocator: &SlotAllocator,
         generation: GenerationStamp,
         candidates: &[OrdinaryGrowthCandidate],
+        integration_schedule: &mut simthing_core::IntegrationSchedule,
     ) -> Result<Vec<GrowthEntitlementDecision>, GrowthEntitlementError> {
         if candidates.is_empty() {
             return Ok(Vec::new());
@@ -214,7 +215,13 @@ impl GrowthEntitlementMarketBinding {
             if grant.granted == candidate.quantity() {
                 let record = self
                     .market
-                    .record_cleared_grant(self.granter, &self.offering_id, grant, generation)
+                    .record_cleared_grant(
+                        self.granter,
+                        &self.offering_id,
+                        grant,
+                        generation,
+                        integration_schedule,
+                    )
                     .map_err(|error| GrowthEntitlementError::Grant(error.to_string()))?;
                 let (entitlement, provenance) =
                     crate::residency_market::provisional_residency_and_provenance_from_market_grant(
@@ -233,7 +240,13 @@ impl GrowthEntitlementMarketBinding {
                 } else {
                     let record = self
                         .market
-                        .record_cleared_grant(self.granter, &self.offering_id, grant, generation)
+                        .record_cleared_grant(
+                            self.granter,
+                            &self.offering_id,
+                            grant,
+                            generation,
+                            integration_schedule,
+                        )
                         .map_err(|error| GrowthEntitlementError::Grant(error.to_string()))?;
                     Some(
                         crate::residency_market::provisional_residency_from_market_grant(

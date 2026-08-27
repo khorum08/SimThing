@@ -58,6 +58,7 @@ pub mod delta_log;
 pub mod fission;
 pub mod fission_clone_source_view;
 pub mod gpu_sync;
+mod grant_disbursement;
 pub mod growth_entitlement;
 pub mod legacy_oracle;
 pub mod mapping_atlas_scheduler;

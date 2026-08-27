@@ -31,7 +31,8 @@
 
 use serde::{Deserialize, Serialize};
 use simthing_core::{
-    AnchorRemapSection, Overlay, OverlayId, SimPropertyId, SimThing, SimThingId, SubFieldRole,
+    AnchorRemapSection, GrantLifecycleFact, Overlay, OverlayId, SimPropertyId, SimThing,
+    SimThingId, SubFieldRole,
 };
 use simthing_gpu::BandCrossingDelta;
 use std::collections::HashMap;
@@ -50,6 +51,9 @@ use simthing_gpu::GrowthResidencyCommit;
 /// `SimThing` tree without consulting the original sim.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum BoundaryDeltaEntry {
+    /// One complete N+1 grant-lifecycle realization. Replay applies this fact
+    /// directly and never re-clears the originating market claim.
+    GrantLifecycleFact { fact: GrantLifecycleFact },
     /// An overlay was attached to a SimThing (player intent, AI intent, or
     /// structural `AttachOverlay` boundary request). Carries the full
     /// `Overlay` payload so replay can re-attach it without referring back
@@ -185,6 +189,9 @@ pub(crate) fn entries_from_outcome(
 ) -> Vec<BoundaryDeltaEntry> {
     let index = DeltaLogTreeIndex::new(root);
     let mut entries = Vec::with_capacity(estimated_entry_count(outcome));
+    for fact in &outcome.grant_lifecycle_facts {
+        entries.push(BoundaryDeltaEntry::GrantLifecycleFact { fact: fact.clone() });
+    }
     let accepted_growth: HashMap<_, _> = outcome
         .growth_residency_facts
         .iter()
@@ -329,6 +336,7 @@ fn estimated_entry_count(outcome: &BoundaryOutcome) -> usize {
         + outcome.velocity_alerts.len()
         + outcome.aggregate_alerts.len()
         + outcome.growth_residency_facts.len()
+        + outcome.grant_lifecycle_facts.len()
         + 2 // AnchorRemapApplied + BandCrossingDeltasApplied
 }
 

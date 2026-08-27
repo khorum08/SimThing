@@ -46,7 +46,10 @@ use crate::work::{
     AiIntentOverlay, AiReceiver, BoundaryRequest, FeederReceiver, FeederWork, PatchTransform,
     PlayerIntentOverlay,
 };
-use simthing_core::{DimensionRegistry, PropertyTransformDelta};
+use simthing_core::{
+    DimensionRegistry, PropertyTransformDelta, GRANT_DISBURSEMENT_NAMESPACE,
+    GRANT_DISBURSEMENT_PROPERTY,
+};
 use simthing_gpu::{IntentDelta, SlotAllocator};
 use std::collections::{HashMap, HashSet};
 
@@ -74,6 +77,8 @@ pub struct PatcherStats {
     pub applied_writes: u32,
     /// Add/Multiply writes skipped because no GPU row sync was available.
     pub unsafe_rmw_skipped: u32,
+    /// Generic patch/intent attempts against the schedule-owned grant lane.
+    pub protected_grant_lane_write_forbidden: u32,
     /// Boundary requests parked for the Tree Maintainer (not applied here).
     pub boundary_parked: u32,
     /// Player intent overlays parked for attachment at the next boundary.
@@ -194,15 +199,23 @@ impl TransformPatcher {
         for item in feeder_items {
             match item {
                 FeederWork::Patch(p) => {
-                    self.apply_one(
-                        &p, registry, allocator, n_dims, values, &mut stats, freshness,
-                    );
+                    if is_protected_grant_lane(registry, p.delta.property_id) {
+                        stats.protected_grant_lane_write_forbidden += 1;
+                    } else {
+                        self.apply_one(
+                            &p, registry, allocator, n_dims, values, &mut stats, freshness,
+                        );
+                    }
                 }
                 FeederWork::Boundary(b) => {
                     self.pending_boundary.push(b);
                     stats.boundary_parked += 1;
                 }
                 FeederWork::PlayerIntent(pi) => {
+                    if is_protected_grant_lane(registry, pi.overlay.transform.property_id) {
+                        stats.protected_grant_lane_write_forbidden += 1;
+                        continue;
+                    }
                     let patch = PatchTransform {
                         target: pi.target,
                         delta: pi.overlay.transform.clone(),
@@ -217,6 +230,10 @@ impl TransformPatcher {
         }
 
         for ai in ai_items {
+            if is_protected_grant_lane(registry, ai.overlay.transform.property_id) {
+                stats.protected_grant_lane_write_forbidden += 1;
+                continue;
+            }
             let patch = PatchTransform {
                 target: ai.target,
                 delta: ai.overlay.transform.clone(),
@@ -252,20 +269,28 @@ impl TransformPatcher {
         for item in feeder_items {
             match item {
                 FeederWork::Patch(p) => {
-                    fold_patch_as_intents(
-                        &p,
-                        registry,
-                        allocator,
-                        &mut stats,
-                        &mut self.fold_order,
-                        &mut self.fold_accum,
-                    );
+                    if is_protected_grant_lane(registry, p.delta.property_id) {
+                        stats.protected_grant_lane_write_forbidden += 1;
+                    } else {
+                        fold_patch_as_intents(
+                            &p,
+                            registry,
+                            allocator,
+                            &mut stats,
+                            &mut self.fold_order,
+                            &mut self.fold_accum,
+                        );
+                    }
                 }
                 FeederWork::Boundary(b) => {
                     self.pending_boundary.push(b);
                     stats.boundary_parked += 1;
                 }
                 FeederWork::PlayerIntent(pi) => {
+                    if is_protected_grant_lane(registry, pi.overlay.transform.property_id) {
+                        stats.protected_grant_lane_write_forbidden += 1;
+                        continue;
+                    }
                     let patch = PatchTransform {
                         target: pi.target,
                         delta: pi.overlay.transform.clone(),
@@ -285,6 +310,10 @@ impl TransformPatcher {
         }
 
         for ai in ai_items {
+            if is_protected_grant_lane(registry, ai.overlay.transform.property_id) {
+                stats.protected_grant_lane_write_forbidden += 1;
+                continue;
+            }
             let patch = PatchTransform {
                 target: ai.target,
                 delta: ai.overlay.transform.clone(),
@@ -324,6 +353,23 @@ impl TransformPatcher {
     /// going through the channel (e.g., for replaying logs deterministically
     /// in tests).
     pub fn apply_one(
+        &mut self,
+        patch: &PatchTransform,
+        registry: &DimensionRegistry,
+        allocator: &SlotAllocator,
+        n_dims: usize,
+        values: &mut [f32],
+        stats: &mut PatcherStats,
+        freshness: ShadowFreshness,
+    ) {
+        if is_protected_grant_lane(registry, patch.delta.property_id) {
+            stats.protected_grant_lane_write_forbidden += 1;
+            return;
+        }
+        self.apply_one_inner(patch, registry, allocator, n_dims, values, stats, freshness);
+    }
+
+    fn apply_one_inner(
         &mut self,
         patch: &PatchTransform,
         registry: &DimensionRegistry,
@@ -447,6 +493,13 @@ impl TransformPatcher {
 
 fn delta_has_rmw(delta: &PropertyTransformDelta) -> bool {
     delta.sub_field_deltas.iter().any(|(_, op)| op.is_rmw())
+}
+
+fn is_protected_grant_lane(
+    registry: &DimensionRegistry,
+    property_id: simthing_core::SimPropertyId,
+) -> bool {
+    registry.id_of(GRANT_DISBURSEMENT_NAMESPACE, GRANT_DISBURSEMENT_PROPERTY) == Some(property_id)
 }
 
 fn collect_rmw_slot(

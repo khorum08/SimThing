@@ -84,12 +84,14 @@ fn grant(
     .expect("constrained clearing mints the sealed grant");
     let mut mutated = cleared[0].grants[0].clone();
     mutated.granted = mutated.granted.saturating_add(1);
+    let mut lifecycle_schedule = IntegrationSchedule::new();
     assert!(matches!(
         market.record_cleared_grant(
             granter,
             "residency-claim",
             &mutated,
             GenerationStamp::new(generation),
+            &mut lifecycle_schedule,
         ),
         Err(GrantLifecycleError::InvalidClearingSeal)
     ));
@@ -99,6 +101,7 @@ fn grant(
             "residency-claim",
             &cleared[0].grants[0],
             GenerationStamp::new(generation),
+            &mut lifecycle_schedule,
         )
         .expect("graduated clearing result mints the only market grant")
 }
