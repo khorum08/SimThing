@@ -1703,3 +1703,19 @@ date	role	query	anchors_served	hit
 2026-08-26T21:42:10Z	coding	--paths docs/stead_stemthing_unification.md	accumulator-op-v2-invariants,actionband-8x-sequencing,actionband-axis-budget,actionband-binding-laws,actionband-executive,actionband-field-triad-authority,actionband-native-authority-table,actionband-target-forms,core-gpu-residency,core-property-value-model,core-rf-arenas,eml-admission-shapes,eml-integration-plan,eml-triad-integration,evaluation-identity-invariants,intrinsic-constrained-clearing,movement-front-adjudications,overlay-closure-thesis,overlay-promoted-laws,rf-arena-allocation-invariants,rf-arena-substrate,simthing-0087-binding-laws,simthing-0087-pillars,stead-events-are-rf,stead-rejected-shapes,stead-shared-surface-ledger,stead-spatial-contract-core,stemthing-binding-laws,stemthing-lane-not-leg,stemthing-slot-identity-ruling	hit
 2026-08-27T00:12:22Z	coding	--grep orientation-harness-core	orientation-harness-core	hit
 2026-08-27T00:12:22Z	coding	--grep scanner-selftest-delta-gate	scanner-selftest-delta-gate	hit
+2026-08-27T05:09:47Z	coding	--paths docs/stead_stemthing_unification.md	accumulator-op-v2-invariants,actionband-8x-sequencing,actionband-axis-budget,actionband-binding-laws,actionband-executive,actionband-field-triad-authority,actionband-native-authority-table,actionband-target-forms,core-gpu-residency,core-property-value-model,core-rf-arenas,eml-admission-shapes,eml-integration-plan,eml-triad-integration,evaluation-identity-invariants,intrinsic-constrained-clearing,movement-front-adjudications,overlay-closure-thesis,overlay-promoted-laws,rf-arena-allocation-invariants,rf-arena-substrate,simthing-0087-binding-laws,simthing-0087-pillars,stead-events-are-rf,stead-rejected-shapes,stead-shared-surface-ledger,stead-spatial-contract-core,stemthing-binding-laws,stemthing-lane-not-leg,stemthing-slot-identity-ruling	hit
+2026-08-27T05:09:51Z	coding	--grep grant/flow disbursement	none	none
+2026-08-27T05:09:55Z	coding	--grep Granting and specialization grammar	none	none
+2026-08-27T11:35:01Z	coding	--grep grant disbursement	none	none
+2026-08-27T11:35:01Z	coding	--grep free + in_flight + occupied	stemthing-binding-laws	hit
+2026-08-27T11:35:02Z	coding	--grep grantee/granter	none	none
+2026-08-27T11:35:13Z	coding	--grep in_flight	stemthing-binding-laws	hit
+2026-08-27T11:35:13Z	coding	--grep granting-active	none	none
+2026-08-27T11:35:14Z	coding	--grep disbursement	accumulator-op-v2-invariants,actionband-executive,actionband-native-authority-table,founding-ontology-invariants,one-tree-owners-never-spatial,overlay-closure-thesis,stead-events-are-rf,stead-shared-surface-ledger	hit
+2026-08-27T11:46:28Z	coding	--grep GRANT-DISBURSEMENT-LANE-0	none	none
+2026-08-27T11:46:55Z	coding	--grep free + in_flight + occupied	stemthing-binding-laws	hit
+2026-08-27T11:46:55Z	coding	--grep grant/flow disbursement	none	none
+2026-08-27T11:46:55Z	coding	--grep grantee/granter	none	none
+2026-08-27T12:43:04Z	coding	--grep handoff-ingress	none	none
+2026-08-27T12:43:24Z	coding	--grep orientation-harness-core	orientation-harness-core	hit
+2026-08-27T12:43:24Z	coding	--grep scanner-selftest-delta-gate	scanner-selftest-delta-gate	hit

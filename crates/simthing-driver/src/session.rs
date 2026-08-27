@@ -67,6 +67,8 @@ pub enum SessionError {
     GrowthEntitlement(#[from] GrowthEntitlementError),
     #[error(transparent)]
     ActionBandIngress(#[from] ActionBandExecutionIngressError),
+    #[error(transparent)]
+    GrantLifecycle(#[from] simthing_spec::GrantLifecycleError),
 }
 
 /// Typed fail-closed outcomes for the one ordinary ActionBand execution
@@ -195,6 +197,7 @@ pub struct RunSummary {
     pub boundary_final_capacity_ms: f64,
     pub boundary_gpu_sync_ms: f64,
     pub boundary_delta_log_ms: f64,
+    pub boundary_grant_lane_authority_rejections: u64,
     pub boundaries_skipped: u64,
     pub boundary_readback_bytes: u64,
     pub boundary_upload_bytes: u64,
@@ -251,6 +254,7 @@ impl RunSummary {
             boundary_final_capacity_ms: 0.0,
             boundary_gpu_sync_ms: 0.0,
             boundary_delta_log_ms: 0.0,
+            boundary_grant_lane_authority_rejections: 0,
             boundaries_skipped: 0,
             boundary_readback_bytes: 0,
             boundary_upload_bytes: 0,
@@ -281,6 +285,14 @@ fn accumulate_boundary_timing(summary: &mut RunSummary, timing: BoundaryTiming) 
     summary.boundary_final_capacity_ms += timing.final_capacity_ms;
     summary.boundary_gpu_sync_ms += timing.gpu_sync_ms;
     summary.boundary_delta_log_ms += timing.delta_log_ms;
+}
+
+fn accumulate_boundary_authority_rejections(
+    summary: &mut RunSummary,
+    maintainer: &simthing_feeder::MaintainerOutcome,
+) {
+    summary.boundary_grant_lane_authority_rejections +=
+        u64::from(maintainer.rejected_grant_lane_authority);
 }
 
 /// Owns the full tick + boundary loop for one scenario.
@@ -667,6 +679,109 @@ impl SimSession {
     /// Observe the one canonical integration schedule, including physical residency rows.
     pub fn integration_schedule(&self) -> &simthing_core::IntegrationSchedule {
         &self.integration_schedule
+    }
+
+    fn lifecycle_generation(&self) -> Result<simthing_core::GenerationStamp, SessionError> {
+        Ok(simthing_core::GenerationStamp::new(
+            u32::try_from(self.coord.day_index()).map_err(|_| {
+                SessionError::Mapping("session generation exceeds lifecycle stamp range".into())
+            })?,
+        ))
+    }
+
+    /// Record a real accepted grant into this session's canonical schedule.
+    pub fn record_cleared_market_grant(
+        &mut self,
+        market: &simthing_spec::AdmittedSpecializationFlowMarket,
+        granter: simthing_core::SimThingId,
+        offering_id: &str,
+        grant: &simthing_spec::ConstrainedGrant,
+    ) -> Result<simthing_spec::MarketGrantRecord, SessionError> {
+        let generation = self.lifecycle_generation()?;
+        market
+            .record_cleared_grant(
+                granter,
+                offering_id,
+                grant,
+                generation,
+                &mut self.integration_schedule,
+            )
+            .map_err(Into::into)
+    }
+
+    pub fn renew_market_grant(
+        &mut self,
+        market: &simthing_spec::AdmittedSpecializationFlowMarket,
+        record: &mut simthing_spec::MarketGrantRecord,
+        clearance: &simthing_spec::ConstrainedGrant,
+    ) -> Result<(), SessionError> {
+        let generation = self.lifecycle_generation()?;
+        record
+            .renew_from_clearance(
+                market,
+                clearance,
+                generation,
+                &mut self.integration_schedule,
+            )
+            .map_err(Into::into)
+    }
+
+    pub fn revoke_market_grant(
+        &mut self,
+        market: &simthing_spec::AdmittedSpecializationFlowMarket,
+        record: &mut simthing_spec::MarketGrantRecord,
+        quantity: u32,
+    ) -> Result<simthing_spec::GrantRelease, SessionError> {
+        let generation = self.lifecycle_generation()?;
+        record
+            .revoke(market, quantity, generation, &mut self.integration_schedule)
+            .map_err(Into::into)
+    }
+
+    pub fn partition_market_grant(
+        &mut self,
+        market: &simthing_spec::AdmittedSpecializationFlowMarket,
+        record: simthing_spec::MarketGrantRecord,
+        successors: &[(simthing_core::SimThingId, u32)],
+    ) -> Result<Vec<simthing_spec::MarketGrantRecord>, SessionError> {
+        let generation = self.lifecycle_generation()?;
+        record
+            .partition_for_fission(
+                market,
+                successors,
+                generation,
+                &mut self.integration_schedule,
+            )
+            .map_err(Into::into)
+    }
+
+    pub fn transfer_market_grants(
+        &mut self,
+        market: &simthing_spec::AdmittedSpecializationFlowMarket,
+        records: Vec<simthing_spec::MarketGrantRecord>,
+        fused_grantee: simthing_core::SimThingId,
+    ) -> Result<simthing_spec::MarketGrantRecord, SessionError> {
+        let generation = self.lifecycle_generation()?;
+        simthing_spec::MarketGrantRecord::transfer_for_fusion(
+            market,
+            records,
+            fused_grantee,
+            generation,
+            &mut self.integration_schedule,
+        )
+        .map_err(Into::into)
+    }
+
+    pub fn release_market_grant(
+        &mut self,
+        market: &simthing_spec::AdmittedSpecializationFlowMarket,
+        record: simthing_spec::MarketGrantRecord,
+        cause: simthing_spec::GrantReleaseCause,
+    ) -> Result<simthing_spec::GrantRelease, SessionError> {
+        let generation = self.lifecycle_generation()?;
+        record
+            .terminate(market, cause, generation, &mut self.integration_schedule)
+            .map_err(Into::into)
     }
 
     /// Frozen ordinary-growth market input used by the production boundary.
@@ -1385,6 +1500,11 @@ impl SimSession {
         let day = tick.day_index;
         let commitment_effect_submitted = self.submit_commitment_effects(summary)?;
         if !commitment_effect_submitted
+            && self
+                .integration_schedule
+                .grant_lifecycle_facts_due(simthing_core::GenerationStamp::new(day as u32))
+                .next()
+                .is_none()
             && !self
                 .spec_state
                 .requires_boundary_tick(&tick.events, self.proto.threshold_registry())
@@ -1410,15 +1530,16 @@ impl SimSession {
             day,
             &mut self.integration_schedule,
             |ctx| spec_state.run_boundary_handlers(ctx),
-            |allocator, generation, candidates| {
+            |allocator, generation, candidates, integration_schedule| {
                 growth_entitlement
-                    .resolve_batch(allocator, generation, candidates)
+                    .resolve_batch(allocator, generation, candidates, integration_schedule)
                     .map_err(|error| error.to_string())
             },
         )?;
         summary.boundary_total_ms += boundary_started.elapsed().as_secs_f64() * 1000.0;
         summary.fission_events += outcome.fission.fissions_executed;
         accumulate_boundary_timing(summary, outcome.timing);
+        accumulate_boundary_authority_rejections(summary, &outcome.maintainer);
         summary.boundary_upload_bytes += outcome.gpu_sync.boundary_upload_bytes;
         summary.boundary_value_rows_uploaded += outcome.gpu_sync.value_rows_uploaded as u64;
         if outcome.gpu_sync.full_value_upload {
@@ -1482,6 +1603,11 @@ impl SimSession {
                 let day = tick.day_index;
                 let commitment_effect_submitted = self.submit_commitment_effects(&mut summary)?;
                 if !commitment_effect_submitted
+                    && self
+                        .integration_schedule
+                        .grant_lifecycle_facts_due(simthing_core::GenerationStamp::new(day as u32))
+                        .next()
+                        .is_none()
                     && !self
                         .spec_state
                         .requires_boundary_tick(&tick.events, self.proto.threshold_registry())
@@ -1517,15 +1643,16 @@ impl SimSession {
                     day,
                     &mut self.integration_schedule,
                     |ctx| spec_state.run_boundary_handlers(ctx),
-                    |allocator, generation, candidates| {
+                    |allocator, generation, candidates, integration_schedule| {
                         growth_entitlement
-                            .resolve_batch(allocator, generation, candidates)
+                            .resolve_batch(allocator, generation, candidates, integration_schedule)
                             .map_err(|error| error.to_string())
                     },
                 )?;
                 summary.boundary_total_ms += boundary_started.elapsed().as_secs_f64() * 1000.0;
                 summary.fission_events += outcome.fission.fissions_executed;
                 accumulate_boundary_timing(&mut summary, outcome.timing);
+                accumulate_boundary_authority_rejections(&mut summary, &outcome.maintainer);
                 summary.boundary_upload_bytes += outcome.gpu_sync.boundary_upload_bytes;
                 summary.boundary_value_rows_uploaded += outcome.gpu_sync.value_rows_uploaded as u64;
                 if outcome.gpu_sync.full_value_upload {

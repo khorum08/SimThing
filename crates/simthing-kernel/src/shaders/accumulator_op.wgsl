@@ -40,6 +40,10 @@ struct AccumulatorTickParams {
     threshold_emission_capacity: u32,
     dt_bits: u32,
     _pad1: u32,
+    generation: u32,
+    execute_mode: u32,
+    _pad2: u32,
+    _pad3: u32,
 }
 
 struct AccumulatorSummaryParams {
@@ -676,7 +680,7 @@ fn threshold_crossed(prev: f32, curr: f32, threshold: f32, direction: u32) -> bo
 
 fn threshold_operands(op: AccumulatorOpGpu) -> vec2<f32> {
     if (op.source_count == THRESH_BUF_OWNING_GENERATION) {
-        let curr_generation = tick_params._pad1;
+        let curr_generation = tick_params.generation;
         let prev_generation = select(0u, curr_generation - 1u, curr_generation > 0u);
         return vec2<f32>(f32(prev_generation), f32(curr_generation));
     }
@@ -701,7 +705,7 @@ fn project_overlay_lifecycle_crossing(op: AccumulatorOpGpu) {
     let satisfied = prior | condition_mask;
     if ((satisfied & overlay_lifecycle_next[row].required_mask) == overlay_lifecycle_next[row].required_mask) {
         atomicStore(&overlay_lifecycle_next[row].dissolved, 1u);
-        atomicStore(&overlay_lifecycle_next[row].generation, tick_params._pad1);
+        atomicStore(&overlay_lifecycle_next[row].generation, tick_params.generation);
     }
 }
 
@@ -1076,7 +1080,7 @@ fn dispatch_one_op_for_band(op_idx: u32, op: AccumulatorOpGpu, current_band: u32
 @compute @workgroup_size(64)
 fn execute_ops(@builtin(global_invocation_id) gid: vec3<u32>) {
     var op_idx = gid.x;
-    if (tick_params._pad1 == EXECUTE_MODE_COMPACT_VELOCITY) {
+    if (tick_params.execute_mode == EXECUTE_MODE_COMPACT_VELOCITY) {
         let op_count = tick_params.n_ops;
         if (op_count == 0u) {
             return;

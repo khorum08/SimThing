@@ -307,6 +307,25 @@ impl ResidencyCapacityPartition {
         }
     }
 
+    /// Rehydrate the existing exact partition judge from ordinary published
+    /// lanes. This creates no alternate accounting state: malformed lane
+    /// values fail the same conservation check used by every transition.
+    pub fn from_exact_parts(
+        capacity: u64,
+        free: u64,
+        in_flight: u64,
+        occupied: u64,
+    ) -> Result<Self, CapacityPartitionError> {
+        let partition = Self {
+            capacity,
+            free,
+            in_flight,
+            occupied,
+        };
+        partition.verify_exact()?;
+        Ok(partition)
+    }
+
     pub fn capacity(&self) -> u64 {
         self.capacity
     }

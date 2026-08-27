@@ -85,7 +85,14 @@ pub struct AccumulatorTickParams {
     pub threshold_emission_capacity: u32,
     /// C-7: per-tick delta time for IntegrateWithClamp (f32 bit pattern).
     pub dt_bits: u32,
+    /// AO-WGSL-0 band-count sidecar retained for harness reporting.
     pub _pad1: u32,
+    /// Producing-tree generation used by threshold/lifecycle projection.
+    pub generation: u32,
+    /// Execution-path discriminator; never aliases a real generation.
+    pub execute_mode: u32,
+    pub _pad2: u32,
+    pub _pad3: u32,
 }
 
 /// Uniforms for the ANCHOR-TABLE-SURFACE-0 fused GPU writer companion pass.

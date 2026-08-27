@@ -1744,6 +1744,10 @@ impl AccumulatorOpSession {
                 threshold_emission_capacity: self.threshold_emission_readback.capacity(),
                 dt_bits: 0,
                 _pad1: 0,
+                generation: self.generation,
+                execute_mode: 0,
+                _pad2: 0,
+                _pad3: 0,
             };
             let tick_uniform = ctx
                 .device
@@ -1830,6 +1834,10 @@ impl AccumulatorOpSession {
                 threshold_emission_capacity: self.threshold_emission_readback.capacity(),
                 dt_bits: dt.to_bits(),
                 _pad1: 0,
+                generation: self.generation,
+                execute_mode: 0,
+                _pad2: 0,
+                _pad3: 0,
             };
             let tick_uniform = ctx
                 .device
@@ -1926,6 +1934,10 @@ impl AccumulatorOpSession {
                 threshold_emission_capacity: self.threshold_emission_readback.capacity(),
                 dt_bits: dt.to_bits(),
                 _pad1: n_bands,
+                generation: self.generation,
+                execute_mode: 0,
+                _pad2: 0,
+                _pad3: 0,
             };
             let off = (band as u64 * stride) as usize;
             params_bytes[off..off + params_size].copy_from_slice(bytemuck::bytes_of(&tick_params));
@@ -2096,6 +2108,10 @@ impl AccumulatorOpSession {
             threshold_emission_capacity: self.threshold_emission_readback.capacity(),
             dt_bits: 0,
             _pad1: 0,
+            generation: self.generation,
+            execute_mode: 0,
+            _pad2: 0,
+            _pad3: 0,
         };
         let tick_uniform = ctx
             .device
@@ -2157,7 +2173,11 @@ impl AccumulatorOpSession {
                 emission_capacity: self.emission_readback.capacity(),
                 threshold_emission_capacity: self.threshold_emission_readback.capacity(),
                 dt_bits: dt.to_bits(),
-                _pad1: EXECUTE_MODE_COMPACT_VELOCITY,
+                _pad1: 0,
+                generation: self.generation,
+                execute_mode: EXECUTE_MODE_COMPACT_VELOCITY,
+                _pad2: 0,
+                _pad3: 0,
             };
             let tick_uniform = ctx
                 .device
@@ -2215,6 +2235,10 @@ impl AccumulatorOpSession {
             threshold_emission_capacity: self.threshold_emission_readback.capacity(),
             dt_bits: dt.to_bits(),
             _pad1: 0,
+            generation: self.generation,
+            execute_mode: 0,
+            _pad2: 0,
+            _pad3: 0,
         };
         let tick_uniform = ctx
             .device
@@ -2276,6 +2300,10 @@ impl AccumulatorOpSession {
                 threshold_emission_capacity: self.threshold_emission_readback.capacity(),
                 dt_bits: 0,
                 _pad1: 0,
+                generation: self.generation,
+                execute_mode: 0,
+                _pad2: 0,
+                _pad3: 0,
             };
             let tick_uniform = ctx
                 .device
@@ -2335,6 +2363,10 @@ impl AccumulatorOpSession {
             threshold_emission_capacity: self.threshold_emission_readback.capacity(),
             dt_bits: dt.to_bits(),
             _pad1: 0,
+            generation: self.generation,
+            execute_mode: 0,
+            _pad2: 0,
+            _pad3: 0,
         };
         let tick_uniform = ctx
             .device
@@ -2371,9 +2403,11 @@ impl AccumulatorOpSession {
             emission_capacity: self.emission_readback.capacity(),
             threshold_emission_capacity: self.threshold_emission_readback.capacity(),
             dt_bits: 0,
-            // Threshold scans reuse the already-uploaded reserved word for the
-            // owning tree generation. No bind-group entry changes shape.
-            _pad1: self.generation,
+            _pad1: 0,
+            generation: self.generation,
+            execute_mode: 0,
+            _pad2: 0,
+            _pad3: 0,
         };
         ctx.queue
             .write_buffer(&self.tick_uniform, 0, bytemuck::bytes_of(&tick_params));

@@ -784,7 +784,13 @@ pub fn replay_async_owner_channel_rf_seam(
             | IntegrationScheduleRowKind::ResidencyPlacementRefusal
             | IntegrationScheduleRowKind::ResidencyRelocation
             | IntegrationScheduleRowKind::ResidencyCommittedCorruption
-            | IntegrationScheduleRowKind::GrowthEntitlementRefusal => {
+            | IntegrationScheduleRowKind::GrowthEntitlementRefusal
+            | IntegrationScheduleRowKind::GrantAccepted
+            | IntegrationScheduleRowKind::GrantRenewed
+            | IntegrationScheduleRowKind::GrantRevoked
+            | IntegrationScheduleRowKind::GrantPartitioned
+            | IntegrationScheduleRowKind::GrantTransferred
+            | IntegrationScheduleRowKind::GrantReleased => {
                 // The canonical schedule is shared across boundary products. Residency rows
                 // carry no owner-channel RF product and therefore do not participate in this
                 // seam's reduce-up/standing replay.

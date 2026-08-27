@@ -207,11 +207,13 @@ fn fabricated_market_grant_key_is_typed_refusal_without_attach_row_or_retry_and_
     let candidate =
         OrdinaryGrowthCandidate::new(parent_id, child_id, 1, OrdinaryGrowthOrigin::AddChild);
     let binding = session.growth_entitlement_market().clone();
+    let mut grant_schedule = IntegrationSchedule::new();
     let real_decision = binding
         .resolve_batch(
             &session.proto.allocator,
             GenerationStamp::new(0),
             &[candidate],
+            &mut grant_schedule,
         )
         .expect("11.2a clears the candidate")
         .pop()
@@ -279,7 +281,7 @@ fn fabricated_market_grant_key_is_typed_refusal_without_attach_row_or_retry_and_
             0,
             &mut schedule,
             |_| {},
-            |_, _, candidates| {
+            |_, _, candidates, _| {
                 assert_eq!(candidates, &[candidate]);
                 Ok(vec![GrowthEntitlementDecision::granted(
                     candidate, fabricated, provenance,
@@ -355,9 +357,9 @@ fn fabricated_market_grant_key_is_typed_refusal_without_attach_row_or_retry_and_
             1,
             &mut schedule,
             |_| {},
-            |allocator, generation, candidates| {
+            |allocator, generation, candidates, integration_schedule| {
                 binding
-                    .resolve_batch(allocator, generation, candidates)
+                    .resolve_batch(allocator, generation, candidates, integration_schedule)
                     .map_err(|error| error.to_string())
             },
         )
@@ -472,8 +474,9 @@ fn oversubscribed_mixed_batch_is_permutation_independent_through_schedule_and_pl
     let candidates = [fission, add_child];
     let decisions = CANDIDATE_ORDER_CASES.map(|order| {
         let ordered = order.map(|index| candidates[index]);
+        let mut grant_schedule = IntegrationSchedule::new();
         binding
-            .resolve_batch(&allocator, generation, &ordered)
+            .resolve_batch(&allocator, generation, &ordered, &mut grant_schedule)
             .unwrap()
     });
     let [forward, reverse] = decisions;

@@ -17,6 +17,7 @@ pub mod execution_posture;
 pub mod fission_child_spawn;
 pub mod fission_clone_source;
 pub mod generation_stamp;
+pub mod grant_lifecycle;
 pub mod ids;
 pub mod intensity_eml;
 pub mod overlay;
@@ -106,9 +107,17 @@ pub use generation_stamp::{
     admit_dispatch_minted_overlay, dispatch_until_dissolved, integrate_stamped_product,
     integrate_unstamped_product_forbidden, replay_integration_schedule, replay_standing_views,
     AncestorStandingPolicyView, AuthoredSeamStaleness, BackpressurePolicy, DispatchOverlayError,
-    GenerationStamp, GenerationStamped, IntegrateError, IntegrationReceipt, IntegrationSchedule,
-    IntegrationScheduleEntry, IntegrationScheduleRowKind, RingPushOutcome,
-    RoutedGenerationDuration, StampedEgressEntry, StampedEventRing, StandingViewDoubleBuffer,
+    GenerationStamp, GenerationStamped, GrantLifecycleScheduleError, IntegrateError,
+    IntegrationReceipt, IntegrationSchedule, IntegrationScheduleEntry, IntegrationScheduleRowKind,
+    RingPushOutcome, RoutedGenerationDuration, StampedEgressEntry, StampedEventRing,
+    StandingViewDoubleBuffer,
+};
+pub use grant_lifecycle::{
+    grant_disbursement_capacity_overlay, grant_disbursement_capacity_property,
+    grant_disbursement_capacity_value, GrantLifecycleFact, GrantLifecycleFactKind,
+    GrantLifecycleRelationshipState, GrantLifecycleReleaseCause, GRANT_DISBURSEMENT_NAMESPACE,
+    GRANT_DISBURSEMENT_PROPERTY, GRANT_LANE_CAPACITY, GRANT_LANE_FREE, GRANT_LANE_IN_FLIGHT,
+    GRANT_LANE_OCCUPIED,
 };
 pub use ids::{
     advance_simthing_id_allocator_past, OverlayId, SimPropertyId, SimThingId,

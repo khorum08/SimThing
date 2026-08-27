@@ -12,6 +12,7 @@ use thiserror::Error;
 
 use crate::overlay::Overlay;
 use crate::owner_channel::OwnerRef;
+use crate::{GrantLifecycleFact, GrantLifecycleFactKind};
 
 /// Per-tree generation counter value. One authority per tree (per-tree instantiation);
 /// not a global barrier or cross-tree sequence.
@@ -125,6 +126,37 @@ pub enum IntegrationScheduleRowKind {
     /// One ordinary growth claim that remained U before structural attachment
     /// (zero/partial market clearance or a non-placement admission refusal).
     GrowthEntitlementRefusal,
+    GrantAccepted,
+    GrantRenewed,
+    GrantRevoked,
+    GrantPartitioned,
+    GrantTransferred,
+    GrantReleased,
+}
+
+impl IntegrationScheduleRowKind {
+    pub const fn for_grant_lifecycle(kind: GrantLifecycleFactKind) -> Self {
+        match kind {
+            GrantLifecycleFactKind::Accepted => Self::GrantAccepted,
+            GrantLifecycleFactKind::Renewed => Self::GrantRenewed,
+            GrantLifecycleFactKind::Revoked => Self::GrantRevoked,
+            GrantLifecycleFactKind::Partitioned => Self::GrantPartitioned,
+            GrantLifecycleFactKind::Transferred => Self::GrantTransferred,
+            GrantLifecycleFactKind::Released => Self::GrantReleased,
+        }
+    }
+
+    pub const fn is_grant_lifecycle(self) -> bool {
+        matches!(
+            self,
+            Self::GrantAccepted
+                | Self::GrantRenewed
+                | Self::GrantRevoked
+                | Self::GrantPartitioned
+                | Self::GrantTransferred
+                | Self::GrantReleased
+        )
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -140,6 +172,10 @@ pub struct IntegrationScheduleEntry {
     pub child_generation: GenerationStamp,
     /// Stable identity of the product (e.g. reduce-up fingerprint). Not a clock.
     pub product_key: u64,
+    /// Typed payload only for the six grant-lifecycle row kinds. Older schedule
+    /// rows remain wire-compatible and deserialize with no payload.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub grant_lifecycle_fact: Option<GrantLifecycleFact>,
 }
 
 impl IntegrationScheduleEntry {
@@ -191,7 +227,43 @@ impl IntegrationSchedule {
             parent_generation,
             child_generation,
             product_key,
+            grant_lifecycle_fact: None,
         });
+    }
+
+    /// Append a lifecycle fact to THE canonical integration recorder. The
+    /// parent-side row is due exactly at N+1. Multiple lawful transitions of
+    /// the same kind and provenance remain distinct, ordered history rows.
+    pub fn record_grant_lifecycle(
+        &mut self,
+        fact: GrantLifecycleFact,
+    ) -> Result<(), GrantLifecycleScheduleError> {
+        let parent_generation = GenerationStamp(
+            fact.generation
+                .get()
+                .checked_add(1)
+                .ok_or(GrantLifecycleScheduleError::GenerationOverflow)?,
+        );
+        let kind = IntegrationScheduleRowKind::for_grant_lifecycle(fact.kind);
+        self.entries.push(IntegrationScheduleEntry {
+            kind,
+            parent_generation,
+            child_generation: fact.generation,
+            product_key: fact.provenance,
+            grant_lifecycle_fact: Some(fact),
+        });
+        Ok(())
+    }
+
+    pub fn grant_lifecycle_facts_due(
+        &self,
+        generation: GenerationStamp,
+    ) -> impl Iterator<Item = &GrantLifecycleFact> {
+        self.entries.iter().filter_map(move |entry| {
+            (entry.kind.is_grant_lifecycle() && entry.parent_generation == generation)
+                .then_some(entry.grant_lifecycle_fact.as_ref())
+                .flatten()
+        })
     }
 
     pub fn entries(&self) -> &[IntegrationScheduleEntry] {
@@ -213,6 +285,12 @@ impl IntegrationSchedule {
     ) -> impl Iterator<Item = &IntegrationScheduleEntry> {
         self.entries.iter().filter(move |entry| entry.kind == kind)
     }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Error)]
+pub enum GrantLifecycleScheduleError {
+    #[error("grant lifecycle fact generation cannot schedule N+1")]
+    GenerationOverflow,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Error)]
