@@ -1,4 +1,27 @@
-//! **Derive** — specialist and owner-seat data plus the sanctioned query.
+//! **Derive** — specialist, offering, and sealed Draw declarations.
+//!
+//! The graduated offering vector is closed: vendors cannot add per-type
+//! deltas or shadow tiers through this facade.
+//!
+//! ```compile_fail,E0560
+//! use simthing_embedder::derive::OfferingPriceVectorSpec;
+//!
+//! let _ = OfferingPriceVectorSpec {
+//!     unit_cost: 1.0,
+//!     default_clearing_weight: 1.0,
+//!     per_type_delta: 0.5,
+//! };
+//! ```
+//!
+//! ```compile_fail,E0560
+//! use simthing_embedder::derive::OfferingPriceVectorSpec;
+//!
+//! let _ = OfferingPriceVectorSpec {
+//!     unit_cost: 1.0,
+//!     default_clearing_weight: 1.0,
+//!     shadow_tier: 2,
+//! };
+//! ```
 
 pub use simthing_core::{
     AuthoredOwnerRefError, DeclaredSpecialization, KindIdentity, OwnerRef, OwnerResolutionError,
@@ -8,8 +31,13 @@ pub use simthing_core::{
 };
 pub use simthing_driver::ComparativeEmitterClass;
 pub use simthing_spec::{
-    compile_eml_gadget_stack, CompiledEmlGadgetStack, EmlGadgetCompileOptions,
-    EmlGadgetInstanceSpec, EmlGadgetStackSpec,
+    admit_specialization_flow_market, compile_eml_gadget_stack, resolve_effective_clearing_weights,
+    AdmittedSpecializationFlowMarket, ClearingWeightOverrideSpec, ClearingWeightResolutionError,
+    CompiledEmlGadgetStack, ConservedOfferingSpec, DrawAuthorizationError,
+    DrawEnvelopeTemplateSpec, EmlGadgetCompileOptions, EmlGadgetInstanceSpec, EmlGadgetStackSpec,
+    FlowMarketAdmissionError, GrantLifecycleError, MarketGrantKey, MarketGrantRecord,
+    MarketGrantResidencyProvenance, OfferingPriceVectorSpec, OfferingQuantizationError,
+    SpecializationFlowMarketSpec,
 };
 
 /// Author one validated Owner seat using the canonical scenario metadata shape.

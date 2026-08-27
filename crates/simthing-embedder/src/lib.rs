@@ -4,6 +4,12 @@
 //! public entry surface is exactly five verb namespaces: [`derive`],
 //! [`populate`], [`overlay`], [`bind`], and [`run`]. It owns no simulation
 //! state, registry, scheduler, cache, history, evaluator, or runtime authority.
+//!
+//! A sixth allocation or granting operation is deliberately absent:
+//!
+//! ```compile_fail,E0432
+//! use simthing_embedder::grant;
+//! ```
 
 #![forbid(unsafe_code)]
 

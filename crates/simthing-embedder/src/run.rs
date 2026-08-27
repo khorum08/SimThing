@@ -4,8 +4,15 @@ use std::path::Path;
 use thiserror::Error;
 
 pub use simthing_core::ExecutionPosture;
-pub use simthing_driver::{RunSummary, Scenario, SessionError, SimSession, StepOnceOutcome};
-pub use simthing_spec::GameModeSpec;
+pub use simthing_driver::{
+    GrowthEntitlementMarketBinding, RunSummary, Scenario, SessionError, SimSession, StepOnceOutcome,
+};
+pub use simthing_gpu::{ResidencyPlacementDisposition, ResidencyPlacementOutcome};
+pub use simthing_spec::{
+    clear_constrained_claims_at_generation, clear_stamped_owner_channels, AuthoredClearingProgram,
+    ClearingRemainderAuthority, ConstrainedClaim, ConstrainedClearingError,
+    ConstrainedClearingResult, ConstrainedGrant, GameModeSpec,
+};
 
 #[derive(Debug, Error)]
 pub enum InitializeError {
@@ -59,6 +66,26 @@ where
         comparative_bands,
         authored_opt_out_reason,
     )?)
+}
+
+/// Freeze one already-admitted 11.2a market binding into the graduated 11.2c
+/// session path before the first tick.
+pub fn install_growth_entitlement_market(
+    session: &mut SimSession,
+    binding: GrowthEntitlementMarketBinding,
+) -> Result<(), SessionError> {
+    session.install_growth_entitlement_market(binding)
+}
+
+/// Ask the existing session generation authority to realize an already-cleared
+/// grant in caller-authored physical vocabulary.
+pub fn realize_market_grant_residency(
+    session: &mut SimSession,
+    market: &crate::derive::AdmittedSpecializationFlowMarket,
+    grant: &crate::derive::MarketGrantRecord,
+    proposed: crate::populate::ResidencyExtent,
+) -> Result<ResidencyPlacementOutcome, SessionError> {
+    session.realize_market_grant_residency(market, grant, proposed)
 }
 
 /// Start/select paced or continuous scheduling over the same kernel.
