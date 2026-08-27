@@ -1716,3 +1716,6 @@ date	role	query	anchors_served	hit
 2026-08-27T11:46:55Z	coding	--grep free + in_flight + occupied	stemthing-binding-laws	hit
 2026-08-27T11:46:55Z	coding	--grep grant/flow disbursement	none	none
 2026-08-27T11:46:55Z	coding	--grep grantee/granter	none	none
+2026-08-27T12:43:04Z	coding	--grep handoff-ingress	none	none
+2026-08-27T12:43:24Z	coding	--grep orientation-harness-core	orientation-harness-core	hit
+2026-08-27T12:43:24Z	coding	--grep scanner-selftest-delta-gate	scanner-selftest-delta-gate	hit
