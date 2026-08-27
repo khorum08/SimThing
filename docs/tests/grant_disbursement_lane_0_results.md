@@ -148,7 +148,8 @@ paths remain intact.
 | `cargo fmt --all -- --check` / `git diff --check` | PASS |
 | inventory check / drift check | PASS — exact 1,347/1,347; zero unledgered, stale, or parked rows |
 | lifecycle `--schema` | PASS — zero expired or audit candidates |
-| Agent/Doctrine scan | PASS — zero hard failures and zero inspect flags |
+| `agent_scan.sh` exact PR delta | PASS — zero hard failures and zero inspect flags |
+| whole-tree `doctrine_scan.sh` | exit 0 — zero hard failures; 417 pre-existing whole-tree heuristic INSPECT findings, none introduced by this delta |
 
 Hosted workflow IDs and the exact final evidence head are returned on Board
 #1332 after the final probation evidence commit is pushed and all jobs settle.
