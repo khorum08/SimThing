@@ -12,7 +12,7 @@
 - HD-RECEIPT: `29ad3459ddbd`
 - ORIENT-RECEIPT: `1a6a00162374`
 - orientation_rule_stamp: `9ee3f7649d1fc790`
-- orientation_digest_sha: `fd3af7f2803d257945d77841b7c61266f4882bd56009e5259b3e294c4918d350`
+- orientation_digest_sha: `f25bc30add75398ea8e6eaedde5602dac41c4d7b587e750679e10ed17e902089`
 - Expected route: `DA-RESERVE(gate-wiring)`
 - Structural-certificate baseline inherited for DA: 120 suites / 461 passed / 3 failed / 14 ignored
 
