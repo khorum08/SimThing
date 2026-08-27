@@ -4,7 +4,7 @@
 - Status: **PROBATION / proof-present / DA-review-pending**
 - Exact implementation base: `e6cb3be1adbbe5b833f856eecf928d0c16c748ee`
 - Branch: `codex/vendor-door-granting-surface-0`
-- tested_code_sha: pending final implementation checkpoint
+- tested_code_sha: `1df854ef921421651982e22b3ef7c3e44b3910ca`
 - Handoff: Board #1332 comment `5432172782`
 - Governing DA exit/unblock: Board #1332 comment `5432021207`
 - HD-RECEIPT: `732b0263cdd0`
@@ -71,7 +71,8 @@ leaf `simthing-embedder` facade; engine source changes are zero.
 | inventory check / drift check | PASS — exact 1,343/1,343; zero unledgered, stale, or parked rows. |
 | lifecycle `--schema` / `--scheduled` | PASS — zero expired candidates. |
 | anchor check / generated orientation check | PASS; required anchors acknowledged. |
-| Agent/Doctrine scan | PASS — zero hard failures and zero inspect flags; final exact-head rerun owed after checkpoint. |
+| inventory drift / lifecycle prove selftests | PASS — all synthetic and live falsifier cases bit for their named reasons. |
+| Agent/Doctrine scan at `1df854ef` | PASS — exact base-to-checkpoint delta; zero hard failures and zero inspect flags. |
 
 Coverage basis: PASS — facade-only source diff, one non-residency integrated
 market/RF/CostBand/Triad/replay witness, recursive-child conservation witness,
