@@ -1,7 +1,7 @@
 # VENDOR-DOOR-GRANTING-SURFACE-0 results
 
 - Track: 0.0.8.7 RF arena modernization, rung 11.2e
-- Status: **PROBATION / proof-present / DA-review-pending**
+- Status: **COMPLETE — DA-GRADUATED / merged #1847 @ `3c623991`** (Fable deep review, graduation ruling on Board #1332; StemThing-B predecessor arc complete)
 - Exact implementation base: `e6cb3be1adbbe5b833f856eecf928d0c16c748ee`
 - Branch: `codex/vendor-door-granting-surface-0`
 - tested_code_sha: `1df854ef921421651982e22b3ef7c3e44b3910ca`
