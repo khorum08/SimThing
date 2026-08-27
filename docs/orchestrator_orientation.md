@@ -45,7 +45,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 26e025f8b1e76f7f649571aaa4f2da2c82ca722b4d8c549f5ce9d14b4604f3a6 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | 26eab30ec86c97ac8dfd6beef7ae8c5b4d3f18c38fdaa431ec40ccce855396d3 |
-| design_0_0_8_7_rf_arena_modernization.md | f536a10cb83e49cb818524187e88364e6e5e431d134bb3d3efa911da21b1655c |
+| design_0_0_8_7_rf_arena_modernization.md | bb5f581dd1a0c87cd0cd681e43565a4235f0015f7a18ab0528aaa4bef2ac9106 |
 | relay_lint.sh | ae19bdca12e90f6bc988e064f081ff62903034d69bf34b08ffd5c27e352181ba |
 | doctrine_anchors.tsv | 995afa3572d63abf05f214d2c3736f4363d3597f1835f98ef0a2bd2e0f226e59 |
 | execution_status_taxonomy.tsv | 924c086550221dd7136ec0682293900d8d03feb4bc1dae1a6e750a61e65153bc |
@@ -88,7 +88,7 @@ Track state: `open`
 | 11.2c | STEMTHING-B-GROWTH-ENTITLEMENT-SEAM-0 | **SUBSTRATE — DA-minted 2026-08-25 after the SIXTH lawful STOP of the track, fir | **DA-GRADUATED / merged #1841 @ 471821a3 — ordinary growth is entitlement-fed, the credential is unforgeable, and the... |
 | 11.2d | STEMTHING-B-ALLOCATOR-RETIREMENT-0 | **StemThing-B, rung 3 of 4 — the deletion rung, 11.1d shape (Owner R3 confinemen | **DA-GRADUATED / merged #1844 @ e8e00356 — the deletion rung delivered: order-as-authority is GONE from the tree.** `... |
 | 11.2e | VENDOR-DOOR-GRANTING-SURFACE-0 | **StemThing-B, rung 4 of 4 — the Owner-sanctioned facade-only door completion (s | **DA-GRADUATED / merged #1847 @ 3c623991 — the door exposes the market germ, and with this rung the STEMTHING-B PREDE... |
-| 11.2f | GRANT-DISBURSEMENT-LANE-0 | **SUBSTRATE — DA-minted 2026-08-26 after the SEVENTH lawful STOP, the first fire | **COVERS the DA-ruled 2026-08-26 disbursement-publication scope.** An accepted B grant changes the grantee/granter co... |
+| 11.2f | GRANT-DISBURSEMENT-LANE-0 | **SUBSTRATE — DA-minted 2026-08-26 after the SEVENTH lawful STOP, the first fire | **COVERS the DA-ruled scope AS AMENDED A1+A2 — the disbursement link of the SECTION 12 grammar chain is wired to obse... |
 | 11.3 | UNIFIED-FACILITY-CONVERGENCE-WITNESS-0 | **Unified-facility convergence witness — DA-minted 2026-08-17 on Owner direction | **Emergence falsifier in 8.2's shape, not an enumeration.** ONE authored change — data only, **zero code change** — m... |
 | 11.4 | UNIFIED-INGRESS-EXCLUSIVITY-0 | **THE OWNER LAW, MECHANIZED — DA-minted 2026-08-23. 11.3 proves the facilities C | **COVERS the Owner-directed 2026-08-23 single-ingress law.** The gate FAILS a producer graduated without a non-test p... |
 | 12.1 | PORTABILITY-PROOF-0 | Phase 12: a domain unrelated to any shipped scenario through the Vendor Door end | Exemplar-seeded domain simulates + STEAD-observes + serializes untouched. |
