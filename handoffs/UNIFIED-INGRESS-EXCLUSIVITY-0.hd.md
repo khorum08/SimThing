@@ -23,7 +23,7 @@ stop_conditions: ["the Owner single-ingress law cannot be enforced by extending 
 - Census facts are evidence about the production tree. They do not authorize a new runtime dispatcher, manager, executor, admission door, history surface, or telemetry surface.
 - Keep pointer at 11.4 in coding. Do not implement/canonize 12.2.
 
-## EXISTING CONSTITUTIONAL AUTHORITY TO INHERIT
+### EXISTING CONSTITUTIONAL AUTHORITY TO INHERIT
 - `constitutional_surfaces.tsv` is already a closed census consumed by `constitutional_surface_check.sh`; preserve every existing row unless a separately authorized prior-law correction is unavoidable.
 - In particular, preserve the paired closed gadget vocabularies:
   - `EmlGadgetInstanceSpec`: FieldSampler, WeightedAccumulator, SoftStep, VelocityMonitor, Decay, Ema, BoundedFeedback, Hysteresis, Acceleration, PowerLaw.
