@@ -12,6 +12,7 @@ exec "$PYTHON_BIN" - "$ROOT" "${1:---check}" <<'PY'
 from __future__ import annotations
 
 import csv
+import datetime
 import fnmatch
 import pathlib
 import re
@@ -115,6 +116,10 @@ def read_sources(root: pathlib.Path) -> dict[str, str]:
 
 
 def path_matches(path: str, pattern: str) -> bool:
+    if "{" in pattern and "}" in pattern:
+        head, rest = pattern.split("{", 1)
+        choices, tail = rest.split("}", 1)
+        return any(path_matches(path, head + choice + tail) for choice in choices.split(","))
     if pathlib.PurePosixPath(path).match(pattern):
         return True
     if "**" in pattern:
@@ -129,6 +134,369 @@ def registry_rows() -> list[dict[str, str]]:
         return list(csv.DictReader(handle, delimiter="\t"))
 
 
+UNIFIED_SURFACE_ROLES = {
+    "overlay-ingress",
+    "costband-ingress",
+    "actionband-ingress",
+    "mapping-eml-ingress",
+}
+CANONICAL_RF_ROLE = "rf-triad-resolution"
+CANONICAL_EXECUTION_ROLE = "unified-simthing-execution"
+PROOF_RF_ROLE = "proof-only-rf-resolution"
+POSTURES = {"production", "deferred", "guard", "proof", "terminal"}
+FN_RE = re.compile(
+    r"^\s*(?:pub(?:\([^)]*\))?\s+)?(?:async\s+)?fn\s+([A-Za-z_][A-Za-z0-9_]*)\b",
+    re.MULTILINE,
+)
+
+
+def route_for(role: str) -> str:
+    if role in UNIFIED_SURFACE_ROLES:
+        return f"{role}>{CANONICAL_RF_ROLE}>{CANONICAL_EXECUTION_ROLE}"
+    if role == CANONICAL_RF_ROLE:
+        return f"{CANONICAL_RF_ROLE}>{CANONICAL_EXECUTION_ROLE}"
+    if role == CANONICAL_EXECUTION_ROLE:
+        return CANONICAL_EXECUTION_ROLE
+    return ""
+
+
+def function_blocks(text: str) -> list[tuple[str, str]]:
+    """Return Rust function bodies for structural call-site census.
+
+    This is intentionally a brace-aware source harvester rather than a function-name
+    allowlist. Names locate evidence; the law below is stated over the registered
+    semantic role and reachability route.
+    """
+    clean = uncomment(text)
+    found: list[tuple[str, str]] = []
+    for match in FN_RE.finditer(clean):
+        start = clean.find("{", match.end())
+        if start < 0:
+            continue
+        depth = 0
+        for index in range(start, len(clean)):
+            char = clean[index]
+            if char == "{":
+                depth += 1
+            elif char == "}":
+                depth -= 1
+                if depth == 0:
+                    # Include the signature so type-carried surface ingress is
+                    # visible even when the body only forwards an opaque value.
+                    found.append((match.group(1), clean[match.start() : index]))
+                    break
+    return found
+
+
+def function_index(sources: dict[str, str]) -> dict[str, str]:
+    return {
+        f"{rel}::{name}": body
+        for rel, text in sources.items()
+        for name, body in function_blocks(text)
+    }
+
+
+def function_body(block_text: str) -> str:
+    """Exclude the declaration while retaining the complete call-bearing body."""
+    _, separator, body = block_text.partition("{")
+    return body if separator else ""
+
+
+def member_call_forms(block_text: str) -> set[str]:
+    """Derive Rust call syntax from the registered member declaration."""
+    signature = block_text.partition("{")[0]
+    if re.search(r"\bself\b", signature):
+        return {"dot", "qualified"}
+    return {"bare", "qualified"}
+
+
+def called_names(block_text: str) -> set[str]:
+    """Harvest call targets for registry-anchored structural reachability."""
+    body = function_body(block_text)
+    return set(re.findall(r"(?:\.|::)\s*([A-Za-z_][A-Za-z0-9_]*)\s*\(", body)) | set(
+        re.findall(r"(?<![A-Za-z0-9_:.!])([A-Za-z_][A-Za-z0-9_]*)\s*\(", body)
+    )
+
+
+def has_call(block_text: str, name: str, forms: set[str]) -> bool:
+    body = function_body(block_text)
+    escaped = re.escape(name)
+    if "dot" in forms and re.search(rf"\.\s*{escaped}\s*\(", body):
+        return True
+    if "qualified" in forms and re.search(rf"::\s*{escaped}\s*\(", body):
+        return True
+    if "bare" in forms and re.search(
+        rf"(?<![A-Za-z0-9_:.!]){escaped}\s*\(", body
+    ):
+        return True
+    return False
+
+
+def relationship_checks(
+    sources: dict[str, str], rows: list[dict[str, str]], counts: dict[str, int]
+) -> list[str]:
+    errors: list[str] = []
+    row_by_surface = {row["surface_id"]: row for row in rows}
+
+    # The paired vendor-facing and compile-side gadget vocabularies are one
+    # constitutional shape. Exact row checks catch drift on either side; this
+    # additional relation catches a coordinated but non-1:1 edit.
+    instance = row_by_surface.get("EML-GADGET-INSTANCE-VOCABULARY")
+    kind = row_by_surface.get("EML-GADGET-KIND-VOCABULARY")
+    if instance is None or kind is None:
+        errors.append("EML-GADGET-PAIR-CLOSURE: paired census row missing")
+    else:
+        instance_members = {x for x in instance["admitted_members"].split(",") if x}
+        kind_members = {x for x in kind["admitted_members"].split(",") if x}
+        if instance_members != kind_members or len(instance_members) != 10:
+            errors.append(
+                "EML-GADGET-PAIR-CLOSURE: "
+                f"instance={sorted(instance_members)} kind={sorted(kind_members)}"
+            )
+
+    roles_seen: set[str] = set()
+    registered_resolution_callers: dict[str, tuple[str, str]] = {}
+    resolution_members: dict[str, set[str]] = {}
+    proof_members: dict[str, set[str]] = {}
+    canonical_body_members: set[str] = set()
+    terminal_members: set[str] = set()
+    surface_tokens: dict[str, str] = {}
+    functions = function_index(sources)
+
+    for row in rows:
+        surface = row["surface_id"]
+        value = lambda key: "" if (row.get(key) or "") == "n/a" else (row.get(key) or "")
+        posture = value("producer_posture")
+        role = value("semantic_role")
+        consumer_path = value("production_consumer_path")
+        consumer_pattern = value("production_consumer_pattern")
+        route = value("resolution_route")
+        deferral_date = value("deferral_date")
+        deferral_provenance = value("deferral_provenance")
+        deferral_rationale = value("deferral_rationale")
+
+        if posture not in POSTURES:
+            errors.append(f"{surface}: unknown producer_posture {posture!r}")
+            continue
+        if not role:
+            errors.append(f"{surface}: semantic_role is required")
+            continue
+        roles_seen.add(role)
+
+        if posture == "production":
+            production_path = (
+                consumer_path.startswith("crates/")
+                and "/src/" in f"/{consumer_path}"
+                and "/tests/" not in f"/{consumer_path}"
+            )
+            consumer_text = sources.get(consumer_path)
+            found = bool(
+                production_path
+                and consumer_text is not None
+                and consumer_pattern
+                and consumer_pattern in uncomment(consumer_text)
+            )
+            if not found:
+                errors.append(
+                    "GRADUATED-PRODUCER-WITHOUT-PRODUCTION-CONSUMER: "
+                    f"{surface} consumer={consumer_path or 'none'}"
+                )
+            if deferral_date or deferral_provenance or deferral_rationale:
+                errors.append(f"{surface}: production row cannot also claim deferral")
+
+            # A row's exact production-consumer evidence also classifies the
+            # enclosing caller. This is structural: a semantic rename updates
+            # the evidence pattern and remains green without a checker edit.
+            if found and role in {CANONICAL_RF_ROLE, CANONICAL_EXECUTION_ROLE}:
+                for caller, caller_body in function_blocks(consumer_text or ""):
+                    if consumer_pattern in caller_body:
+                        registered_resolution_callers[
+                            f"{consumer_path}::{caller}"
+                        ] = (posture, role)
+        elif posture == "deferred":
+            try:
+                datetime.date.fromisoformat(deferral_date)
+                valid_date = True
+            except ValueError:
+                valid_date = False
+            provenance_path = ROOT / deferral_provenance if deferral_provenance else None
+            provenance_text = (
+                provenance_path.read_text(encoding="utf-8", errors="replace")
+                if provenance_path is not None and provenance_path.is_file()
+                else ""
+            )
+            if (
+                not valid_date
+                or provenance_path is None
+                or not provenance_path.is_file()
+                or deferral_date not in provenance_text
+                or not deferral_rationale.strip()
+            ):
+                errors.append(
+                    "GRADUATED-PRODUCER-WITHOUT-PRODUCTION-CONSUMER: "
+                    f"{surface} invalid-or-undated-deferral"
+                )
+            if consumer_path or consumer_pattern:
+                errors.append(f"{surface}: deferred row cannot claim a production consumer")
+        elif posture == "guard":
+            if consumer_path or consumer_pattern or deferral_date:
+                errors.append(f"{surface}: guard posture cannot claim consumer or deferral")
+        elif posture in {"proof", "terminal"}:
+            if consumer_path or consumer_pattern or deferral_date:
+                errors.append(f"{surface}: {posture} posture cannot claim consumer or deferral")
+
+        expected_route = route_for(role)
+        if expected_route and route != expected_route:
+            reason = (
+                "CONSTITUTIONAL-SURFACE-OUTSIDE-UNIFIED-INGRESS"
+                if role in UNIFIED_SURFACE_ROLES
+                else "SECOND-PRODUCTION-RESOLUTION-PATH"
+            )
+            errors.append(f"{reason}: {surface} route={route or 'none'}")
+        if posture == "production" and route.endswith(f">{CANONICAL_RF_ROLE}"):
+            errors.append(f"SECOND-PRODUCTION-RESOLUTION-PATH: {surface} route={route}")
+
+        declaration = row.get("declaration", "")
+        if role in UNIFIED_SURFACE_ROLES and re.fullmatch(r"[A-Z][A-Za-z0-9_]+", declaration):
+            surface_tokens[declaration] = role
+
+        if role in {CANONICAL_RF_ROLE, CANONICAL_EXECUTION_ROLE, PROOF_RF_ROLE}:
+            for member in (x for x in row["admitted_members"].split(",") if x):
+                registered_resolution_callers[member] = (posture, role)
+                member_body = functions.get(member)
+                if role == CANONICAL_RF_ROLE:
+                    if member_body is not None:
+                        resolution_members[member.rsplit("::", 1)[-1]] = member_call_forms(
+                            member_body
+                        )
+                    member_path = member.rsplit("::", 1)[0]
+                    if member_path == consumer_path:
+                        canonical_body_members.add(member)
+                elif role == PROOF_RF_ROLE:
+                    if member_body is not None:
+                        proof_members[member.rsplit("::", 1)[-1]] = member_call_forms(
+                            member_body
+                        )
+                elif role == CANONICAL_EXECUTION_ROLE:
+                    terminal_members.add(member)
+
+    missing_roles = UNIFIED_SURFACE_ROLES - roles_seen
+    if missing_roles:
+        errors.append(
+            "CONSTITUTIONAL-SURFACE-OUTSIDE-UNIFIED-INGRESS: "
+            f"missing_roles={sorted(missing_roles)}"
+        )
+    if CANONICAL_RF_ROLE not in roles_seen:
+        errors.append("SECOND-PRODUCTION-RESOLUTION-PATH: canonical RF Triad role missing")
+    if CANONICAL_EXECUTION_ROLE not in roles_seen:
+        errors.append("SECOND-PRODUCTION-RESOLUTION-PATH: unified SimThing root missing")
+
+    # Derive lower sinks from canonical registered members whose production
+    # consumer is co-located. Standard result/error adapters are excluded as a
+    # syntax class; no resolution symbol is omitted by spelling. Each harvested
+    # method is recognized in both receiver and UFCS form.
+    adapter_calls = {
+        "and_then",
+        "expect",
+        "map",
+        "map_err",
+        "ok_or",
+        "ok_or_else",
+        "unwrap",
+        "unwrap_or",
+        "unwrap_or_else",
+    }
+    for member in canonical_body_members:
+        for called in called_names(functions[member]) - adapter_calls:
+            if re.search(
+                rf"\.\s*{re.escape(called)}\s*\(", function_body(functions[member])
+            ):
+                resolution_members.setdefault(called, {"dot", "qualified"})
+
+    # Recover the canonical top-level call made by an explicit terminal member:
+    # it must lead through the in-tree call graph to a registered resolution
+    # member. This replaces the former hard-coded hot-cycle spelling.
+    by_name: dict[str, list[str]] = {}
+    for key in functions:
+        by_name.setdefault(key.rsplit("::", 1)[-1], []).append(key)
+    graph: dict[str, set[str]] = {}
+    for name, keys in by_name.items():
+        graph[name] = {
+            called
+            for key in keys
+            for called in called_names(functions[key])
+            if called in by_name
+        }
+    reaches_resolution = set(resolution_members)
+    while True:
+        newly_reaching = {
+            name for name, calls in graph.items() if calls & reaches_resolution
+        } - reaches_resolution
+        if not newly_reaching:
+            break
+        reaches_resolution.update(newly_reaching)
+
+    for member in terminal_members:
+        for called in called_names(functions.get(member, "")):
+            if called in reaches_resolution:
+                resolution_members.setdefault(called, {"bare", "qualified"})
+
+    # Enumerate every in-tree call that reaches a registry-derived resolution
+    # sink. Test files are absent from `sources`; proof helpers under src must be
+    # explicit proof members and cannot confer proof posture transitively.
+    for rel, text in sources.items():
+        for caller, body in function_blocks(text):
+            resolution_hits = sorted(
+                name for name, forms in resolution_members.items() if has_call(body, name, forms)
+            )
+            proof_hits = sorted(
+                name for name, forms in proof_members.items() if has_call(body, name, forms)
+            )
+            if not resolution_hits and not proof_hits:
+                continue
+            key = f"{rel}::{caller}"
+            registered = registered_resolution_callers.get(key)
+            touched_roles = {
+                role for token, role in surface_tokens.items() if re.search(rf"\b{re.escape(token)}\b", body)
+            }
+            if proof_hits and (registered is None or registered[0] != "proof"):
+                errors.append(
+                    "SECOND-PRODUCTION-RESOLUTION-PATH: "
+                    f"unregistered={key} proof_member={proof_hits[0]}"
+                )
+                if touched_roles:
+                    errors.append(
+                        "CONSTITUTIONAL-SURFACE-OUTSIDE-UNIFIED-INGRESS: "
+                        f"caller={key} roles={sorted(touched_roles)}"
+                    )
+                continue
+            if registered is None:
+                errors.append(
+                    "SECOND-PRODUCTION-RESOLUTION-PATH: "
+                    f"unregistered={key} sink={resolution_hits[0]}"
+                )
+                if touched_roles:
+                    errors.append(
+                        "CONSTITUTIONAL-SURFACE-OUTSIDE-UNIFIED-INGRESS: "
+                        f"caller={key} roles={sorted(touched_roles)}"
+                    )
+                continue
+            posture, role = registered
+            if posture == "proof":
+                continue
+            if role not in {CANONICAL_RF_ROLE, CANONICAL_EXECUTION_ROLE}:
+                errors.append(
+                    f"SECOND-PRODUCTION-RESOLUTION-PATH: caller={key} role={role}"
+                )
+            if role == CANONICAL_RF_ROLE and touched_roles:
+                errors.append(
+                    "CONSTITUTIONAL-SURFACE-OUTSIDE-UNIFIED-INGRESS: "
+                    f"caller={key} roles={sorted(touched_roles)}"
+                )
+
+    return errors
+
+
 CROSSING_DECL_RE = re.compile(
     r"^\s*(?:pub(?:\([^)]*\))?\s+)?(?:struct|enum)\s+"
     r"(\w*(?:BandCrossing|ThresholdCrossing|ActionBandCrossing|CrossingConsequence|SaturationListener)\w*)",
@@ -141,10 +509,13 @@ CROSSING_FN_RE = re.compile(
 )
 
 
-def check_sources(sources: dict[str, str]) -> tuple[list[str], dict[str, int]]:
+def check_sources(
+    sources: dict[str, str], rows: list[dict[str, str]] | None = None
+) -> tuple[list[str], dict[str, int]]:
     errors: list[str] = []
     counts: dict[str, int] = {}
-    for row in registry_rows():
+    rows = registry_rows() if rows is None else rows
+    for row in rows:
         surface = row["surface_id"]
         parser = row["parser"]
         path = row["path"]
@@ -223,11 +594,13 @@ def check_sources(sources: dict[str, str]) -> tuple[list[str], dict[str, int]]:
             added = sorted(actual - expected)
             removed = sorted(expected - actual)
             errors.append(f"{surface}: registry drift added={added} removed={removed}")
+    errors.extend(relationship_checks(sources, rows, counts))
     return errors, counts
 
 
 def selftest(sources: dict[str, str]) -> int:
-    baseline, _ = check_sources(sources)
+    rows = registry_rows()
+    baseline, _ = check_sources(sources, rows)
     if baseline:
         print(f"CONSTITUTIONAL-SURFACE-SELFTEST: FAIL(baseline) {baseline}")
         return 1
@@ -239,6 +612,10 @@ def selftest(sources: dict[str, str]) -> int:
         ("crossing-rival", "crates/simthing-sim/src/lib.rs", "\npub struct SecondBandCrossingRecord;\n"),
         ("telemetry-unbound", "crates/simthing-core/src/lib.rs", "\npub struct EmlPerSlotTelemetry;\n"),
         ("root-nullary", "crates/simthing-spec/src/error.rs", "\npub enum Planted { ValidationFailed, }\n"),
+        ("producer-consumer-law", "crates/simthing-driver/src/session.rs", ""),
+        ("resolution-bypass", "crates/simthing-driver/src/lib.rs", ""),
+        ("proof-member-caller", "crates/simthing-driver/src/lib.rs", ""),
+        ("ufcs-resolution-bypass", "crates/simthing-driver/src/lib.rs", ""),
     ]
     failures: list[str] = []
     for label, path, plant in cases:
@@ -258,20 +635,104 @@ def selftest(sources: dict[str, str]) -> int:
                 "    pub emission_binding_count: u32,",
                 "    pub emission_binding_count: u32,\n    pub runtime_axis_growth: u32,",
             )
+        elif label == "producer-consumer-law":
+            mutated[path] = mutated[path].replace(
+                ".dispatch_sealed_and_apply(",
+                ".dispatch_sealed_and_apply_removed(",
+                1,
+            )
+            # A child proof retains the old call spelling. Tests, fixtures, and
+            # proof helpers are intentionally absent from production-consumer
+            # evidence and therefore cannot close the parent obligation.
+            mutated["crates/simthing-driver/tests/child_rung_proof.rs"] = (
+                "fn child_rung_proof_only() { let _ = dispatch.dispatch_sealed_and_apply(); }\n"
+            )
+        elif label == "resolution-bypass":
+            # The planted function uses no canonical ingress/caller spelling.
+            # Its structure is the violation: a censused Overlay reaches the RF
+            # resolution sink from an unregistered production caller.
+            mutated[path] += (
+                "\npub fn opaque_peer(\n"
+                "    state: &mut simthing_gpu::WorldGpuState,\n"
+                "    _surface: &simthing_core::Overlay,\n"
+                ") { state.run_resource_flow_bands(1, 1.0); }\n"
+            )
+        elif label == "proof-member-caller":
+            mutated[path] += (
+                "\npub fn planted_production_proof_caller(\n"
+                "    seed: u64,\n"
+                "    scenario: &simthing_spec::ScenarioSpec,\n"
+                "    layout: &simthing_gpu::GpuFieldLayout,\n"
+                "    limits: simthing_gpu::GpuExecutionLimits,\n"
+                "    steps: u32,\n"
+                ") { let _ = run_flat_star_burn_in(seed, scenario, layout, limits, steps); }\n"
+            )
+        elif label == "ufcs-resolution-bypass":
+            mutated[path] += (
+                "\npub fn planted_ufcs_resolution_bypass(\n"
+                "    state: &mut simthing_gpu::WorldGpuState,\n"
+                ") { simthing_gpu::WorldGpuState::run_resource_flow_bands(state, 1, 1.0); }\n"
+            )
         else:
             mutated[path] = mutated[path] + plant
-        errors, _ = check_sources(mutated)
+        errors, _ = check_sources(mutated, rows)
         if not errors:
             failures.append(label)
+        elif label == "producer-consumer-law" and not any(
+            error.startswith("GRADUATED-PRODUCER-WITHOUT-PRODUCTION-CONSUMER:")
+            for error in errors
+        ):
+            failures.append(f"{label}-wrong-reason")
+        elif label == "resolution-bypass":
+            if not any(
+                error.startswith("SECOND-PRODUCTION-RESOLUTION-PATH:") for error in errors
+            ):
+                failures.append(f"{label}-missing-second-path")
+            if not any(
+                error.startswith("CONSTITUTIONAL-SURFACE-OUTSIDE-UNIFIED-INGRESS:")
+                for error in errors
+            ):
+                failures.append(f"{label}-missing-surface-bypass")
+        elif label == "proof-member-caller" and not any(
+            error.startswith("SECOND-PRODUCTION-RESOLUTION-PATH:")
+            and "proof_member=run_flat_star_burn_in" in error
+            for error in errors
+        ):
+            failures.append(f"{label}-wrong-reason")
+        elif label == "ufcs-resolution-bypass" and not any(
+            error.startswith("SECOND-PRODUCTION-RESOLUTION-PATH:")
+            and "sink=run_resource_flow_bands" in error
+            for error in errors
+        ):
+            failures.append(f"{label}-wrong-reason")
     bound = dict(sources)
     bound_path = "crates/simthing-core/src/lib.rs"
     bound[bound_path] += (
         "\n// EML-TELEMETRY-LIFECYCLE: session-observation-snapshot\n"
         "pub struct EmlPerSlotTelemetry;\n"
     )
-    bound_errors, _ = check_sources(bound)
+    bound_errors, _ = check_sources(bound, rows)
     if any("unbound telemetry" in error for error in bound_errors):
         failures.append("telemetry-valid-binding")
+
+    # Rename-only control: change the source symbol and its evidence locator,
+    # preserving the semantic role and route. Exclusivity must remain green.
+    renamed = dict(sources)
+    old_name = "run_resource_flow_bands_if_active"
+    new_name = "dispatch_primary_rf_lane"
+    renamed_path = "crates/simthing-driver/src/simulation_fabric.rs"
+    renamed[renamed_path] = renamed[renamed_path].replace(old_name, new_name)
+    renamed_rows = [dict(row) for row in rows]
+    for row in renamed_rows:
+        if row["surface_id"] == "RF-TRIAD-RESOURCE-FLOW-RESOLUTION":
+            row["declaration"] = row["declaration"].replace(old_name, new_name)
+            row["admitted_members"] = row["admitted_members"].replace(old_name, new_name)
+            row["production_consumer_pattern"] = row[
+                "production_consumer_pattern"
+            ].replace(old_name, new_name)
+    rename_errors, _ = check_sources(renamed, renamed_rows)
+    if rename_errors:
+        failures.append("semantic-rename-control")
     if failures:
         print(f"CONSTITUTIONAL-SURFACE-SELFTEST: FAIL cases={','.join(failures)}")
         return 1
