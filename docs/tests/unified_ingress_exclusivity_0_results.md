@@ -4,8 +4,9 @@
 - Status: **PROBATION / proof-present / DA-review-pending**
 - Branch: `codex/unified-ingress-exclusivity-0`
 - dispatch_base_sha: `9efed1676d30d2cde556f6166707a552a0eadb4b`
-- tested_code_sha: `9b476a8224e2d3308ed68da3623e1bc897d340ba`
+- tested_code_sha: `26cd9075cdf97dbfa8b4dd419474bf0bf6204e53`
 - final_head_sha: PR/board-relay-bound after the evidence commit; this file does not self-hash
+- remand_binding: Board `5454179550` exact-head battery PASS; implementation bytes unchanged
 - HD-RECEIPT: `cc024d086d95`
 - ORIENT-RECEIPT: `1a6a00162374`
 - role: `coding`
@@ -92,7 +93,7 @@ CONSTITUTIONAL-SURFACE-SELFTEST: PASS planted=9 valid_binding=1
 | `bash scripts/ci/anchor_check.sh --check` | PASS — standing curation inspection retained, no new anchor defect |
 | `bash scripts/ci/doctrine_selftest.sh` | PASS |
 | `bash scripts/ci/doctrine_scan.sh` | INSPECT — 0 hard failures; 417 standing whole-tree heuristic hits (`SIM-KIND-READ` 1, `SPEC-LOWERER-KIND-READ` 416) |
-| `bash scripts/ci/agent_scan.sh --base 9efed167... --head 9b476a82...` | PASS — 0 hard failures, 0 delta inspect findings |
+| `bash scripts/ci/agent_scan.sh --base 9efed167... --head 26cd9075...` | PASS — 0 hard failures, 0 delta inspect findings |
 | `python scripts/ci/exit_proof_coverage_check.sh` | INSPECT — `rows=0`; checker exited 0 |
 | `bash scripts/ci/doc_budget_check.sh --check` | PASS |
 | `git diff --check` | PASS |
