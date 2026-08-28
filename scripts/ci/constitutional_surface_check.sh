@@ -116,6 +116,10 @@ def read_sources(root: pathlib.Path) -> dict[str, str]:
 
 
 def path_matches(path: str, pattern: str) -> bool:
+    if "{" in pattern and "}" in pattern:
+        head, rest = pattern.split("{", 1)
+        choices, tail = rest.split("}", 1)
+        return any(path_matches(path, head + choice + tail) for choice in choices.split(","))
     if pathlib.PurePosixPath(path).match(pattern):
         return True
     if "**" in pattern:
@@ -140,11 +144,6 @@ CANONICAL_RF_ROLE = "rf-triad-resolution"
 CANONICAL_EXECUTION_ROLE = "unified-simthing-execution"
 PROOF_RF_ROLE = "proof-only-rf-resolution"
 POSTURES = {"production", "deferred", "guard", "proof", "terminal"}
-RESOLUTION_CALL_RE = re.compile(
-    r"(?:\.run_resource_flow_bands\s*\(|\.tick_with_commitment_spec\s*\(|"
-    r"(?<!fn )\brun_simulation_fabric_hot_cycle\s*\(|"
-    r"\.execute_with_boundary_hook_and_growth\s*\()"
-)
 FN_RE = re.compile(
     r"^\s*(?:pub(?:\([^)]*\))?\s+)?(?:async\s+)?fn\s+([A-Za-z_][A-Za-z0-9_]*)\b",
     re.MULTILINE,
@@ -189,6 +188,50 @@ def function_blocks(text: str) -> list[tuple[str, str]]:
     return found
 
 
+def function_index(sources: dict[str, str]) -> dict[str, str]:
+    return {
+        f"{rel}::{name}": body
+        for rel, text in sources.items()
+        for name, body in function_blocks(text)
+    }
+
+
+def function_body(block_text: str) -> str:
+    """Exclude the declaration while retaining the complete call-bearing body."""
+    _, separator, body = block_text.partition("{")
+    return body if separator else ""
+
+
+def member_call_forms(block_text: str) -> set[str]:
+    """Derive Rust call syntax from the registered member declaration."""
+    signature = block_text.partition("{")[0]
+    if re.search(r"\bself\b", signature):
+        return {"dot", "qualified"}
+    return {"bare", "qualified"}
+
+
+def called_names(block_text: str) -> set[str]:
+    """Harvest call targets for registry-anchored structural reachability."""
+    body = function_body(block_text)
+    return set(re.findall(r"(?:\.|::)\s*([A-Za-z_][A-Za-z0-9_]*)\s*\(", body)) | set(
+        re.findall(r"(?<![A-Za-z0-9_:.!])([A-Za-z_][A-Za-z0-9_]*)\s*\(", body)
+    )
+
+
+def has_call(block_text: str, name: str, forms: set[str]) -> bool:
+    body = function_body(block_text)
+    escaped = re.escape(name)
+    if "dot" in forms and re.search(rf"\.\s*{escaped}\s*\(", body):
+        return True
+    if "qualified" in forms and re.search(rf"::\s*{escaped}\s*\(", body):
+        return True
+    if "bare" in forms and re.search(
+        rf"(?<![A-Za-z0-9_:.!]){escaped}\s*\(", body
+    ):
+        return True
+    return False
+
+
 def relationship_checks(
     sources: dict[str, str], rows: list[dict[str, str]], counts: dict[str, int]
 ) -> list[str]:
@@ -213,7 +256,12 @@ def relationship_checks(
 
     roles_seen: set[str] = set()
     registered_resolution_callers: dict[str, tuple[str, str]] = {}
+    resolution_members: dict[str, set[str]] = {}
+    proof_members: dict[str, set[str]] = {}
+    canonical_body_members: set[str] = set()
+    terminal_members: set[str] = set()
     surface_tokens: dict[str, str] = {}
+    functions = function_index(sources)
 
     for row in rows:
         surface = row["surface_id"]
@@ -255,6 +303,16 @@ def relationship_checks(
                 )
             if deferral_date or deferral_provenance or deferral_rationale:
                 errors.append(f"{surface}: production row cannot also claim deferral")
+
+            # A row's exact production-consumer evidence also classifies the
+            # enclosing caller. This is structural: a semantic rename updates
+            # the evidence pattern and remains green without a checker edit.
+            if found and role in {CANONICAL_RF_ROLE, CANONICAL_EXECUTION_ROLE}:
+                for caller, caller_body in function_blocks(consumer_text or ""):
+                    if consumer_pattern in caller_body:
+                        registered_resolution_callers[
+                            f"{consumer_path}::{caller}"
+                        ] = (posture, role)
         elif posture == "deferred":
             try:
                 datetime.date.fromisoformat(deferral_date)
@@ -305,6 +363,22 @@ def relationship_checks(
         if role in {CANONICAL_RF_ROLE, CANONICAL_EXECUTION_ROLE, PROOF_RF_ROLE}:
             for member in (x for x in row["admitted_members"].split(",") if x):
                 registered_resolution_callers[member] = (posture, role)
+                member_body = functions.get(member)
+                if role == CANONICAL_RF_ROLE:
+                    if member_body is not None:
+                        resolution_members[member.rsplit("::", 1)[-1]] = member_call_forms(
+                            member_body
+                        )
+                    member_path = member.rsplit("::", 1)[0]
+                    if member_path == consumer_path:
+                        canonical_body_members.add(member)
+                elif role == PROOF_RF_ROLE:
+                    if member_body is not None:
+                        proof_members[member.rsplit("::", 1)[-1]] = member_call_forms(
+                            member_body
+                        )
+                elif role == CANONICAL_EXECUTION_ROLE:
+                    terminal_members.add(member)
 
     missing_roles = UNIFIED_SURFACE_ROLES - roles_seen
     if missing_roles:
@@ -317,20 +391,90 @@ def relationship_checks(
     if CANONICAL_EXECUTION_ROLE not in roles_seen:
         errors.append("SECOND-PRODUCTION-RESOLUTION-PATH: unified SimThing root missing")
 
-    # Enumerate every in-tree call that reaches a resolution sink. Test files are
-    # absent from `sources`; proof helpers under src must be explicitly classified
-    # and therefore cannot silently discharge a production obligation.
+    # Derive lower sinks from canonical registered members whose production
+    # consumer is co-located. Standard result/error adapters are excluded as a
+    # syntax class; no resolution symbol is omitted by spelling. Each harvested
+    # method is recognized in both receiver and UFCS form.
+    adapter_calls = {
+        "and_then",
+        "expect",
+        "map",
+        "map_err",
+        "ok_or",
+        "ok_or_else",
+        "unwrap",
+        "unwrap_or",
+        "unwrap_or_else",
+    }
+    for member in canonical_body_members:
+        for called in called_names(functions[member]) - adapter_calls:
+            if re.search(
+                rf"\.\s*{re.escape(called)}\s*\(", function_body(functions[member])
+            ):
+                resolution_members.setdefault(called, {"dot", "qualified"})
+
+    # Recover the canonical top-level call made by an explicit terminal member:
+    # it must lead through the in-tree call graph to a registered resolution
+    # member. This replaces the former hard-coded hot-cycle spelling.
+    by_name: dict[str, list[str]] = {}
+    for key in functions:
+        by_name.setdefault(key.rsplit("::", 1)[-1], []).append(key)
+    graph: dict[str, set[str]] = {}
+    for name, keys in by_name.items():
+        graph[name] = {
+            called
+            for key in keys
+            for called in called_names(functions[key])
+            if called in by_name
+        }
+    reaches_resolution = set(resolution_members)
+    while True:
+        newly_reaching = {
+            name for name, calls in graph.items() if calls & reaches_resolution
+        } - reaches_resolution
+        if not newly_reaching:
+            break
+        reaches_resolution.update(newly_reaching)
+
+    for member in terminal_members:
+        for called in called_names(functions.get(member, "")):
+            if called in reaches_resolution:
+                resolution_members.setdefault(called, {"bare", "qualified"})
+
+    # Enumerate every in-tree call that reaches a registry-derived resolution
+    # sink. Test files are absent from `sources`; proof helpers under src must be
+    # explicit proof members and cannot confer proof posture transitively.
     for rel, text in sources.items():
         for caller, body in function_blocks(text):
-            if not RESOLUTION_CALL_RE.search(body):
+            resolution_hits = sorted(
+                name for name, forms in resolution_members.items() if has_call(body, name, forms)
+            )
+            proof_hits = sorted(
+                name for name, forms in proof_members.items() if has_call(body, name, forms)
+            )
+            if not resolution_hits and not proof_hits:
                 continue
             key = f"{rel}::{caller}"
             registered = registered_resolution_callers.get(key)
             touched_roles = {
                 role for token, role in surface_tokens.items() if re.search(rf"\b{re.escape(token)}\b", body)
             }
+            if proof_hits and (registered is None or registered[0] != "proof"):
+                errors.append(
+                    "SECOND-PRODUCTION-RESOLUTION-PATH: "
+                    f"unregistered={key} proof_member={proof_hits[0]}"
+                )
+                if touched_roles:
+                    errors.append(
+                        "CONSTITUTIONAL-SURFACE-OUTSIDE-UNIFIED-INGRESS: "
+                        f"caller={key} roles={sorted(touched_roles)}"
+                    )
+                continue
             if registered is None:
-                errors.append(f"SECOND-PRODUCTION-RESOLUTION-PATH: unregistered={key}")
+                errors.append(
+                    "SECOND-PRODUCTION-RESOLUTION-PATH: "
+                    f"unregistered={key} sink={resolution_hits[0]}"
+                )
                 if touched_roles:
                     errors.append(
                         "CONSTITUTIONAL-SURFACE-OUTSIDE-UNIFIED-INGRESS: "
@@ -470,6 +614,8 @@ def selftest(sources: dict[str, str]) -> int:
         ("root-nullary", "crates/simthing-spec/src/error.rs", "\npub enum Planted { ValidationFailed, }\n"),
         ("producer-consumer-law", "crates/simthing-driver/src/session.rs", ""),
         ("resolution-bypass", "crates/simthing-driver/src/lib.rs", ""),
+        ("proof-member-caller", "crates/simthing-driver/src/lib.rs", ""),
+        ("ufcs-resolution-bypass", "crates/simthing-driver/src/lib.rs", ""),
     ]
     failures: list[str] = []
     for label, path, plant in cases:
@@ -511,6 +657,22 @@ def selftest(sources: dict[str, str]) -> int:
                 "    _surface: &simthing_core::Overlay,\n"
                 ") { state.run_resource_flow_bands(1, 1.0); }\n"
             )
+        elif label == "proof-member-caller":
+            mutated[path] += (
+                "\npub fn planted_production_proof_caller(\n"
+                "    seed: u64,\n"
+                "    scenario: &simthing_spec::ScenarioSpec,\n"
+                "    layout: &simthing_gpu::GpuFieldLayout,\n"
+                "    limits: simthing_gpu::GpuExecutionLimits,\n"
+                "    steps: u32,\n"
+                ") { let _ = run_flat_star_burn_in(seed, scenario, layout, limits, steps); }\n"
+            )
+        elif label == "ufcs-resolution-bypass":
+            mutated[path] += (
+                "\npub fn planted_ufcs_resolution_bypass(\n"
+                "    state: &mut simthing_gpu::WorldGpuState,\n"
+                ") { simthing_gpu::WorldGpuState::run_resource_flow_bands(state, 1, 1.0); }\n"
+            )
         else:
             mutated[path] = mutated[path] + plant
         errors, _ = check_sources(mutated, rows)
@@ -531,6 +693,18 @@ def selftest(sources: dict[str, str]) -> int:
                 for error in errors
             ):
                 failures.append(f"{label}-missing-surface-bypass")
+        elif label == "proof-member-caller" and not any(
+            error.startswith("SECOND-PRODUCTION-RESOLUTION-PATH:")
+            and "proof_member=run_flat_star_burn_in" in error
+            for error in errors
+        ):
+            failures.append(f"{label}-wrong-reason")
+        elif label == "ufcs-resolution-bypass" and not any(
+            error.startswith("SECOND-PRODUCTION-RESOLUTION-PATH:")
+            and "sink=run_resource_flow_bands" in error
+            for error in errors
+        ):
+            failures.append(f"{label}-wrong-reason")
     bound = dict(sources)
     bound_path = "crates/simthing-core/src/lib.rs"
     bound[bound_path] += (
