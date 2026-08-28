@@ -118,6 +118,7 @@ not claim or mint it.
 | `scripts/ci/constitutional_surface_check.sh` | Enforce production consumers, dated deferrals, canonical role routes, structural caller reachability, proof-only exclusion, gadget pairing, two law plants, and rename control. |
 | `scripts/ci/anchor_reach_log.tsv` | Orientation-required and archaeology anchor-query receipts. |
 | `docs/sanctioned_surface.md` | Deterministically regenerated digest for the two changed sanctioned gate surfaces. |
+| `docs/orchestrator_orientation.md` | Deterministically regenerated active-rung view after the 11.4 status-row edit; governance rule stamp unchanged. |
 | `docs/tests/unified_ingress_exclusivity_0_results.md` | This evidence packet. |
 | `docs/tests/current_evidence_index.md` | One evidence line. |
 | `docs/design_0_0_8_7_rf_arena_modernization.md` | Rung 11.4 only: TODO -> PROBATION. |
