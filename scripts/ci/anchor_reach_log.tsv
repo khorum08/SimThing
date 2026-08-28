@@ -1719,3 +1719,5 @@ date	role	query	anchors_served	hit
 2026-08-27T12:43:04Z	coding	--grep handoff-ingress	none	none
 2026-08-27T12:43:24Z	coding	--grep orientation-harness-core	orientation-harness-core	hit
 2026-08-27T12:43:24Z	coding	--grep scanner-selftest-delta-gate	scanner-selftest-delta-gate	hit
+2026-08-27T14:52:01Z	coding	--grep orientation-harness-core	orientation-harness-core	hit
+2026-08-27T14:52:02Z	coding	--grep scanner-selftest-delta-gate	scanner-selftest-delta-gate	hit
