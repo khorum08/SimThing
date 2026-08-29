@@ -4,7 +4,7 @@
 - Status: **PROBATION / proof-present / DA-review-pending**
 - Branch: `codex/admission-provenance-typed-0`
 - dispatch_base_sha: `ebd1d5577b453a94739eff531ae944803aa7f51f`
-- tested_code_sha: `7baa3e87a4ca9eac934ee87d77d041bd35474fac`
+- tested_code_sha: `d6734c3f188e65f93d22ae45a12f387bd9593745`
 - final_head_sha: PR/Board-relay-bound after the evidence commit; this file does not self-hash
 - dispatch_binding: Board `5462866469`; orchestration amendment `5462922116`; Phase-13 authority `5462798074`
 - HD-RECEIPT: `fdcb3140ae93`
@@ -139,10 +139,11 @@ registry, workflow, `.sh`, or `.py` file changed.
 | `bash scripts/ci/handoff_dispatch.sh --receipt handoffs/ADMISSION-PROVENANCE-TYPED-0.hd.md` | PASS — `fdcb3140ae93` |
 | `bash scripts/ci/doctrine_selftest.sh` | PASS |
 | `bash scripts/ci/doctrine_scan.sh` | INSPECT — 0 hard failures; 417 standing whole-tree heuristic hits (`SIM-KIND-READ` 1, `SPEC-LOWERER-KIND-READ` 416) |
+| `bash scripts/ci/overlay_germ_archaeology_census_check.sh --check` | PASS — `unclassified=0 open=0`; refusal helper kept domain-neutral and outside the overlay archaeology symbol census |
 | `bash scripts/ci/gen_digest.sh --check` | PASS after deterministic sanctioned-surface regeneration |
 | `bash scripts/ci/doc_budget_check.sh --check` | PASS |
-| `bash scripts/ci/agent_scan.sh --base ebd1d557... --head 7baa3e87...` | PASS — no hard or delta finding |
-| `git diff --check ebd1d557... 7baa3e87...` | PASS |
+| `bash scripts/ci/agent_scan.sh --base ebd1d557... --head d6734c3f...` | PASS — no hard or delta finding |
+| `git diff --check ebd1d557... d6734c3f...` | PASS |
 | `cargo fmt --all -- --check` | PASS |
 
 ### Structural/full-workspace certificate
