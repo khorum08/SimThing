@@ -3,14 +3,13 @@
 > **Status: DESIGN ANCHOR (Owner-directed 2026-08-03; DA-authored, Fable).** This document is the
 > normative anchor for the **StemThing unification** — the refactor phase in which allocation,
 > registration, derivation, and layout cease to be subsystems and become lanes on the one base
-> recursive SimThing. It binds design conversation the way `stead_simthing_automata.md` bound
-> Phase 6 before its rows existed. It does **not** open a rung, alter sequencing, or amend any
+> recursive SimThing. It preserves the design provenance now canonized in
+> `simthing_core_design.md`. It does **not** open a rung, alter sequencing, or amend any
 > phase row; ladder rows are minted by DA amendment under the usual gates, subject to the
 > sequencing constraints in §10. Where this document and the core design conflict, the core design
 > wins and the conflict escalates.
 >
-> Companions: [`simthing_core_design.md`](simthing_core_design.md) (the paradigm),
-> [`stead_simthing_automata.md`](stead_simthing_automata.md) (the four legs; normative for Phase 6),
+> Companions: [`simthing_core_design.md`](simthing_core_design.md) (the paradigm and four-leg germ),
 > [`eml_n4_expansion_digest.md`](eml_n4_expansion_digest.md) (field-sweep provenance),
 > [`stead_spatial_contract.md`](stead_spatial_contract.md) (spatial law; CostBand definition §5).
 >
@@ -580,8 +579,6 @@ Every SimThing carries this germ; SessionThing / NetworkManagementThing / TeamMa
 - [`simthing_core_design.md`](simthing_core_design.md) — §1.2 admission ladder; §2.1 fission and
   velocity-driven pre-allocation; §3 registry discipline; §5 arenas and hard-currency law; §7
   Movement-Front; §9 drift detectors.
-- [`stead_simthing_automata.md`](stead_simthing_automata.md) — the four legs; events-are-RF;
-  Per-Tree Instantiation; resolution sites; governing laws.
 - [`stead_spatial_contract.md`](stead_spatial_contract.md) — §5 CostBand definition; layout vs
   execution-profile admission.
 - [`eml_n4_expansion_digest.md`](eml_n4_expansion_digest.md) — field-sweep IR provenance;

@@ -1735,3 +1735,69 @@ date	role	query	anchors_served	hit
 2026-08-29T01:45:27Z	coding	--grep certificate	admission-ladder-necessity-test,anchor-pending-lifecycle,eml-admission-shapes,exact-numeric-candidate-f,field-sweep-preservation,movement-front,overlay-promoted-laws,spec-fidelity-anti-ceremony,structural-execution-convergence,unified-ingress-exclusivity	hit
 2026-08-29T02:11:29Z	coding	--grep scanner-selftest-delta-gate	scanner-selftest-delta-gate	hit
 2026-08-29T02:11:29Z	coding	--grep orientation-harness-core	orientation-harness-core	hit
+2026-08-29T04:18:09Z	coding	--paths docs/simthing_core_design.md docs/stead_simthing_automata.md scripts/ci/doctrine_anchors.tsv scripts/ci/anchor_reach_log.tsv docs/tests docs/design_0_0_8_7_rf_arena_modernization.md docs/orchestrator_orientation.md	accumulator-exact-vs-soft-semantics,accumulator-op-v2-invariants,actionband-8x-sequencing,actionband-axis-budget,actionband-binding-laws,actionband-executive,actionband-field-triad-authority,actionband-native-authority-table,actionband-target-forms,candidate-f-exhaustive-proof-method,core-overlays,core-property-value-model,core-rf-arenas,drift-detectors-six-line,eml-admission-shapes,eml-integration-plan,eml-triad-integration,evaluation-identity-invariants,exact-numeric-candidate-f,field-policy-time-decisions,intrinsic-constrained-clearing,movement-front,movement-front-adjudications,one-tree-owners-never-spatial,orientation-harness-core,overlay-closure-thesis,overlay-promoted-laws,rf-arena-allocation-invariants,rf-arena-substrate,scanner-selftest-delta-gate,simthing-0087-binding-laws,simthing-0087-pillars,stead-events-are-rf,stead-rejected-shapes,stead-shared-surface-ledger,stead-spatial-contract-core,stemthing-binding-laws,stemthing-lane-not-leg,stemthing-slot-identity-ruling	hit
+2026-08-29T04:18:32Z	coding	--grep accumulator-exact-vs-soft-semantics	accumulator-exact-vs-soft-semantics	hit
+2026-08-29T04:18:32Z	coding	--grep accumulator-op-v2-invariants	accumulator-op-v2-invariants	hit
+2026-08-29T04:18:32Z	coding	--grep actionband-8x-sequencing	actionband-8x-sequencing	hit
+2026-08-29T04:18:32Z	coding	--grep actionband-axis-budget	actionband-axis-budget	hit
+2026-08-29T04:18:32Z	coding	--grep actionband-binding-laws	actionband-binding-laws	hit
+2026-08-29T04:18:32Z	coding	--grep actionband-executive	actionband-executive	hit
+2026-08-29T04:18:33Z	coding	--grep actionband-field-triad-authority	actionband-field-triad-authority	hit
+2026-08-29T04:18:33Z	coding	--grep actionband-native-authority-table	actionband-native-authority-table	hit
+2026-08-29T04:18:33Z	coding	--grep actionband-target-forms	actionband-target-forms	hit
+2026-08-29T04:18:33Z	coding	--grep candidate-f-exhaustive-proof-method	candidate-f-exhaustive-proof-method	hit
+2026-08-29T04:18:39Z	coding	--grep core-overlays	core-overlays	hit
+2026-08-29T04:18:40Z	coding	--grep core-property-value-model	core-property-value-model	hit
+2026-08-29T04:18:40Z	coding	--grep core-rf-arenas	core-rf-arenas	hit
+2026-08-29T04:18:40Z	coding	--grep drift-detectors-six-line	drift-detectors-six-line	hit
+2026-08-29T04:18:40Z	coding	--grep eml-admission-shapes	eml-admission-shapes	hit
+2026-08-29T04:18:40Z	coding	--grep eml-integration-plan	eml-integration-plan	hit
+2026-08-29T04:18:40Z	coding	--grep eml-triad-integration	eml-triad-integration	hit
+2026-08-29T04:18:40Z	coding	--grep evaluation-identity-invariants	evaluation-identity-invariants	hit
+2026-08-29T04:18:41Z	coding	--grep exact-numeric-candidate-f	exact-numeric-candidate-f	hit
+2026-08-29T04:18:41Z	coding	--grep field-policy-time-decisions	field-policy-time-decisions	hit
+2026-08-29T04:18:51Z	coding	--grep eml-admission-shapes	eml-admission-shapes	hit
+2026-08-29T04:18:51Z	coding	--grep drift-detectors-six-line	drift-detectors-six-line	hit
+2026-08-29T04:18:51Z	coding	--grep eml-integration-plan	eml-integration-plan	hit
+2026-08-29T04:18:56Z	coding	--grep evaluation-identity-invariants	evaluation-identity-invariants	hit
+2026-08-29T04:18:56Z	coding	--grep eml-triad-integration	eml-triad-integration	hit
+2026-08-29T04:18:56Z	coding	--grep exact-numeric-candidate-f	exact-numeric-candidate-f	hit
+2026-08-29T04:19:00Z	coding	--grep intrinsic-constrained-clearing	intrinsic-constrained-clearing	hit
+2026-08-29T04:19:01Z	coding	--grep movement-front	clausething-closed-vertical,core-overlays,core-property-value-model,core-rf-arenas,drift-detectors-six-line,exact-numeric-candidate-f,field-policy-time-decisions,movement-front,movement-front-adjudications,spec-fidelity-anti-ceremony	hit
+2026-08-29T04:19:01Z	coding	--grep movement-front-adjudications	movement-front-adjudications	hit
+2026-08-29T04:19:01Z	coding	--grep one-tree-owners-never-spatial	one-tree-owners-never-spatial	hit
+2026-08-29T04:19:01Z	coding	--grep orientation-harness-core	orientation-harness-core	hit
+2026-08-29T04:19:01Z	coding	--grep overlay-closure-thesis	overlay-closure-thesis	hit
+2026-08-29T04:19:01Z	coding	--grep overlay-promoted-laws	overlay-promoted-laws	hit
+2026-08-29T04:19:02Z	coding	--grep rf-arena-allocation-invariants	rf-arena-allocation-invariants	hit
+2026-08-29T04:19:02Z	coding	--grep rf-arena-substrate	rf-arena-substrate	hit
+2026-08-29T04:19:02Z	coding	--grep scanner-selftest-delta-gate	scanner-selftest-delta-gate	hit
+2026-08-29T04:19:14Z	coding	--grep simthing-0087-binding-laws	simthing-0087-binding-laws	hit
+2026-08-29T04:19:14Z	coding	--grep simthing-0087-pillars	simthing-0087-pillars	hit
+2026-08-29T04:19:14Z	coding	--grep stead-events-are-rf	stead-events-are-rf	hit
+2026-08-29T04:19:14Z	coding	--grep stead-rejected-shapes	stead-rejected-shapes	hit
+2026-08-29T04:19:14Z	coding	--grep stead-shared-surface-ledger	stead-shared-surface-ledger	hit
+2026-08-29T04:19:14Z	coding	--grep stead-spatial-contract-core	stead-spatial-contract-core	hit
+2026-08-29T04:19:15Z	coding	--grep stemthing-binding-laws	stemthing-binding-laws	hit
+2026-08-29T04:19:15Z	coding	--grep stemthing-lane-not-leg	stemthing-lane-not-leg	hit
+2026-08-29T04:19:15Z	coding	--grep stemthing-slot-identity-ruling	stemthing-slot-identity-ruling	hit
+2026-08-29T04:19:22Z	coding	--grep simthing-0087-pillars	simthing-0087-pillars	hit
+2026-08-29T04:19:22Z	coding	--grep simthing-0087-binding-laws	simthing-0087-binding-laws	hit
+2026-08-29T04:19:22Z	coding	--grep one-tree-owners-never-spatial	one-tree-owners-never-spatial	hit
+2026-08-29T04:19:26Z	coding	--grep simthing-0087-pillars	simthing-0087-pillars	hit
+2026-08-29T04:29:36Z	coding	--grep Section-12 market grammar	none	none
+2026-08-29T04:29:36Z	coding	--grep install_initial_tree	drift-detectors-six-line	hit
+2026-08-29T04:29:36Z	coding	--grep initial residency	drift-detectors-six-line	hit
+2026-08-29T04:29:36Z	coding	--grep unified ingress exclusivity	stead-events-are-rf,stead-shared-surface-ledger,unified-ingress-exclusivity	hit
+2026-08-29T04:29:36Z	coding	--grep anchor lifecycle	anchor-pending-lifecycle,stead-events-are-rf,stead-shared-surface-ledger,stemthing-b-market-grammar,unified-ingress-exclusivity	hit
+2026-08-29T04:29:36Z	coding	--grep repoint law	anchor-pending-lifecycle,stead-events-are-rf,stead-shared-surface-ledger,stemthing-b-market-grammar,unified-ingress-exclusivity	hit
+2026-08-29T04:29:36Z	coding	--grep door symmetry	door-symmetry,field-policy-time-decisions	hit
+2026-08-29T04:30:18Z	coding	--grep Section-12 market grammar	stead-events-are-rf,stead-shared-surface-ledger,stemthing-b-market-grammar,unified-ingress-exclusivity	hit
+2026-08-29T04:30:19Z	coding	--grep install_initial_tree	drift-detectors-six-line	hit
+2026-08-29T04:30:19Z	coding	--grep initial-residency distinction	none	none
+2026-08-29T04:30:19Z	coding	--grep unified-ingress exclusivity	stead-events-are-rf,stead-shared-surface-ledger,unified-ingress-exclusivity	hit
+2026-08-29T04:30:19Z	coding	--grep anchor lifecycle/repoint law	anchor-pending-lifecycle,stead-events-are-rf,stead-shared-surface-ledger,stemthing-b-market-grammar,unified-ingress-exclusivity	hit
+2026-08-29T04:30:19Z	coding	--grep door symmetry	door-symmetry,field-policy-time-decisions	hit
+2026-08-29T04:30:36Z	coding	--grep install_initial_tree	drift-detectors-six-line,stemthing-lane-not-leg	hit
+2026-08-29T04:30:36Z	coding	--grep initial-residency distinction	stemthing-lane-not-leg	hit
+2026-08-29T04:44:22Z	coding	--grep core-gpu-residency	core-gpu-residency	hit

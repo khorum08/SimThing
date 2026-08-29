@@ -37,7 +37,6 @@
 Primary companions:
 
 - [`../stead_stemthing_unification.md`](../stead_stemthing_unification.md)
-- [`../stead_simthing_automata.md`](../stead_simthing_automata.md)
 - [`../multi-axis-ActionBand-STEAD.md`](../multi-axis-ActionBand-STEAD.md)
 - [`../simthing_core_design.md`](../simthing_core_design.md)
 - [`../stead_spatial_contract.md`](../stead_spatial_contract.md)

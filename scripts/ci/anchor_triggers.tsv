@@ -8,7 +8,6 @@ crates/simthing-mapeditor/**	studio,mapeditor-gpu,mapeditor-session,map-domain,s
 crates/simthing-mapgenerator/**	mapgenerator,map,map-domain,movement-front,clausething-spatial,scenario-candidate-home,core-0087
 crates/simthing-clausething/**	spatial,clausething-spatial,map,scenario-candidate-home,core-0087
 docs/stead_spatial_contract.md	stead,spatial,structural-execution
-docs/stead_simthing_automata.md	stead,overlay,rf,core-0087,threshold-paths
 docs/adr/**	driver-session,feeder-session,mapeditor-session,feeder,capability-paths
 docs/design_0_0_8_3.md	spec-fidelity,exact-numeric,founding-ontology,clausething
 docs/simthing_core_design.md	field-policy,one-tree,property-value,drift-detectors,movement-front
