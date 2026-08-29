@@ -156,11 +156,11 @@ try:
     parts = shlex.split(body)
 except ValueError:
     print("COMMAND: librarian-invalid")
-    print("FORMAT: /librarian staleness | /librarian cull [--confirm] | /librarian catalog [--role coding|orchestrator|da]")
+    print("FORMAT: /librarian staleness | /librarian cull [--confirm] | /librarian pending-anchors [--confirm] | /librarian catalog [--role coding|orchestrator|da]")
     sys.exit(1)
 if not parts or parts[0].lower() != "/librarian" or len(parts) < 2:
     print("COMMAND: librarian-invalid")
-    print("FORMAT: /librarian staleness | /librarian cull [--confirm] | /librarian catalog [--role coding|orchestrator|da]")
+    print("FORMAT: /librarian staleness | /librarian cull [--confirm] | /librarian pending-anchors [--confirm] | /librarian catalog [--role coding|orchestrator|da]")
     sys.exit(1)
 action = parts[1].lower()
 confirm = "false"
@@ -178,6 +178,13 @@ elif action == "cull":
         print("COMMAND: librarian-invalid")
         print("FORMAT: /librarian cull [--confirm]")
         sys.exit(1)
+elif action == "pending-anchors":
+    if rest == ["--confirm"]:
+        confirm = "true"
+    elif rest:
+        print("COMMAND: librarian-invalid")
+        print("FORMAT: /librarian pending-anchors [--confirm]")
+        sys.exit(1)
 elif action == "catalog":
     if not rest:
         role = ""
@@ -189,7 +196,7 @@ elif action == "catalog":
         sys.exit(1)
 else:
     print("COMMAND: librarian-invalid")
-    print("FORMAT: /librarian staleness | /librarian cull [--confirm] | /librarian catalog [--role coding|orchestrator|da]")
+    print("FORMAT: /librarian staleness | /librarian cull [--confirm] | /librarian pending-anchors [--confirm] | /librarian catalog [--role coding|orchestrator|da]")
     sys.exit(1)
 print(f"COMMAND: librarian action={action} confirm={confirm} role={role}")
 PY

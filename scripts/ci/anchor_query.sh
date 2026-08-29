@@ -147,6 +147,9 @@ reach_log = pick("ANCHOR_REACH_LOG_PATH", "anchor_reach_log.tsv")
 if str(reach_log).endswith("anchor_reach_log.tsv") and not reach_log.parent.exists():
     reach_log = repo / "scripts" / "ci" / "anchor_reach_log.tsv"
 
+ANCHOR_HEADER = ["anchor_id", "doc", "section", "trigger_domains", "content_hash", "lifecycle"]
+PENDING_RE = re.compile(r"^pending:[A-Z0-9][A-Z0-9-]*-[0-9]+$")
+
 
 def normalize_text(raw: bytes) -> str:
     if raw.startswith(b"\xef\xbb\xbf"):
@@ -215,9 +218,25 @@ def glob_match(path: str, pattern: str) -> bool:
 def load_anchors():
     rows = []
     with anchors_tsv.open(encoding="utf-8", newline="") as fh:
-        for row in csv.DictReader(fh, delimiter="\t"):
+        reader = csv.DictReader(fh, delimiter="\t")
+        if reader.fieldnames != ANCHOR_HEADER:
+            print("ANCHOR-QUERY-VERDICT: FAIL(anchor-table)")
+            sys.exit(1)
+        seen = set()
+        for row in reader:
             if not row.get("anchor_id"):
                 continue
+            if any(not row.get(key) for key in ANCHOR_HEADER):
+                print("ANCHOR-QUERY-VERDICT: FAIL(anchor-table)")
+                sys.exit(1)
+            if row["anchor_id"] in seen:
+                print("ANCHOR-QUERY-VERDICT: FAIL(anchor-table)")
+                sys.exit(1)
+            seen.add(row["anchor_id"])
+            lifecycle = row["lifecycle"].strip()
+            if lifecycle != "canonical" and not PENDING_RE.fullmatch(lifecycle):
+                print("ANCHOR-QUERY-VERDICT: FAIL(anchor-table)")
+                sys.exit(1)
             domains = [d.strip() for d in (row.get("trigger_domains") or "").split(",") if d.strip()]
             text = extract_text(row["doc"], row["section"])
             rows.append({
@@ -227,6 +246,7 @@ def load_anchors():
                 "domains": domains,
                 "text": text,
                 "hash": hashlib.sha256(text.encode("utf-8")).hexdigest(),
+                "lifecycle": lifecycle,
             })
     return rows
 
@@ -301,6 +321,7 @@ def emit_hits(ids, rows_by_id):
         print(f"doc: {meta['doc']}")
         print(f"section: {meta['section']}")
         print(f"content_hash: {meta['hash']}")
+        print(f"lifecycle: {meta['lifecycle']}")
         print(meta["text"].rstrip())
         print("")
 
@@ -416,22 +437,22 @@ run_selftest() {
   fi
   PATH_ARGS=("crates/simthing-kernel/src/lib.rs")
   out="$(run_query_python paths || true)"
-  if ! printf '%s\n' "$out" | grep -q "seal-residue-cross-crate"; then
-    echo "FAIL query_paths_kernel"; failures=$((failures+1))
+  if ! grep -q "seal-residue-cross-crate" <<<"$out"; then
+    echo "FAIL query_paths_kernel"; echo "  got: $out"; failures=$((failures+1))
   else
     echo "PASS query_paths_kernel"
   fi
   PATH_ARGS=("crates/simthing-gpu/src/shaders/foo.wgsl")
   out="$(run_query_python paths || true)"
-  if ! printf '%s\n' "$out" | grep -qE "field-policy-time-decisions|eml-extension-ladder"; then
-    echo "FAIL query_paths_wgsl"; failures=$((failures+1))
+  if ! grep -qE "field-policy-time-decisions|eml-extension-ladder" <<<"$out"; then
+    echo "FAIL query_paths_wgsl"; echo "  got: $out"; failures=$((failures+1))
   else
     echo "PASS query_paths_wgsl"
   fi
   GREP_ARG="Candidate F"
   out="$(run_query_python grep || true)"
-  if ! printf '%s\n' "$out" | grep -q "exact-numeric-candidate-f"; then
-    echo "FAIL query_grep_hit"; failures=$((failures+1))
+  if ! grep -q "exact-numeric-candidate-f" <<<"$out"; then
+    echo "FAIL query_grep_hit"; echo "  got: $out"; failures=$((failures+1))
   else
     echo "PASS query_grep_hit"
   fi

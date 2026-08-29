@@ -45,9 +45,9 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 26e025f8b1e76f7f649571aaa4f2da2c82ca722b4d8c549f5ce9d14b4604f3a6 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | 26eab30ec86c97ac8dfd6beef7ae8c5b4d3f18c38fdaa431ec40ccce855396d3 |
-| design_0_0_8_7_rf_arena_modernization.md | 40fe27a82769c5740ec8c37de0f7a0eb40dd04bff818ef152342b976574b8358 |
+| design_0_0_8_7_rf_arena_modernization.md | 4518d0a43e4a7f7c5f1d6d603b936ab03bf0990394353f10e9be57c8069fea89 |
 | relay_lint.sh | ae19bdca12e90f6bc988e064f081ff62903034d69bf34b08ffd5c27e352181ba |
-| doctrine_anchors.tsv | 651fa08f84d523aee94e98ba7e430bfae1eed73db4ff1596751ae58f022abfd1 |
+| doctrine_anchors.tsv | 0b6188afbdbc4077e182a13f3da02d6b2debb267d74326c72a9828417189f79d |
 | execution_status_taxonomy.tsv | 924c086550221dd7136ec0682293900d8d03feb4bc1dae1a6e750a61e65153bc |
 | execution_status_mixed_posture.tsv | 1adf05f3ec5fd7b537efe29259d20649a2c6d3a0839590063e5308ff154e8f25 |
 | execution_status_non_execution.tsv | 214c1b557dfd3fc465f0171051e20281ff1dcf6c53128dbb29cba01524f9be02 |
@@ -68,32 +68,16 @@ Dark properties (1): `fixture::dark_reading` (reasons/spans in `property_admissi
 
 Track state: `open`
 
-> Compact view: 58 completed rungs elided; showing all 19 open rungs plus the 3 most recent completions. Full ladder in the design doc.
+> Compact view: 74 completed rungs elided; showing all 3 open rungs plus the 3 most recent completions. Full ladder in the design doc.
 
 | # | rung | deliverable | exit proof |
 | --- | --- | --- | --- |
-| 5.3 | ANCHOR-TABLE-SURFACE-0 | Phase 5: fulcrum 3 — derived GPU anchor table as the SOLE observation surface; c | Studio/telemetry read only the table; no second observation path (grep-proven); populated-fixture + production-sequen... |
-| 5.9d | TP-EXPORT-ERADICATION-0 | **Phase 5 hygiene — Owner-directed 2026-08-01, DA-implemented.** Eliminates TP's | ZERO files matching scenario vocabulary anywhere outside `simthing-clausething`; mapeditor `src` and `tests` build an... |
-| 5.13 | EXACT-CONSUMER-OBLIGATION-0 | **PHASE 5 REOPENED (Owner ruling 2026-08-04) — the exact-primitive door's missin | A consumer declaring exact-bearing WITHOUT a cross-arm digest **hard-errors at admission**, planted-defect proven in ... |
-| 5.14 | EML-ARITHMETIC-SEMANTICS-0 | **Owner-directed 2026-08-05 — finish the language instead of policing it. THE DE | Every rounding-bearing opcode and every contraction-exposed composition has ONE specified arm-independent meaning, wi... |
-| 6.4 | SLOT-LOGICAL-IDENTITY-0 | **Phase 6→7 gap: StemThing-A (anchor: `docs/stead_stemthing_unification.md`; Tie | A forced epoch remap (scrambled physical rows, unchanged logical ids) reproduces a multi-generation run **bit-exactly... |
-| 6.5 | RESIDENCY-TIER-VOCABULARY-0 | **Phase 6→7 gap: StemThing-A.** The residency lane's authored vocabulary, per an | **GRADUATION OBLIGATION (recorded 2026-08-04; clauses landed early in #1628): at this rung's stamp the DA verifies th... |
-| 7.1 | ACTIONBAND-ADMISSION-DOOR-0 | Mint the one `simthing-spec` session-build ActionBand template admission door. B | A depth-1 synthetic ActionBand is admitted and bound to an ordinary anchored threshold; changing the observed value p... |
-| 7.2 | ACTIONBAND-GPU-EXECUTION-0 | Land sparse GPU templates/instances, `StateCurrent/StateNext`, depth-1/2 fast sh | CPU/interpreted/JIT or applicable faithful-lowering parity under existing EML semantics; no CPU evaluator/scheduler/m... |
-| 7.3 | ACTIONBAND-RECURSIVE-COMPOSITION-0 | Land pre-admitted subordinate activation, dependency spans, collapse, concurrent | Parent sets child-next state from a real Phase-5 crossing at generation `t`; children evaluate from distinct Phase-5 ... |
-| 7.4 | ACTIONBAND-SPATIAL-VENDORIZATION-0 | Born-mortal/scenario-neutral spatial witness proving the old useful movement sub | Field/overlay-only changes redirect the spatial ActionBand target-seeking result with zero movement-specific destinat... |
-| 7.5 | ACTIONBAND-SEMANTIC-SHADOW-0 | Bind generic stamped ActionBand crossings/terminal/structural deltas to existing | Same opaque GPU ActionBand run with semantic labels changed produces bit-identical numerical results; generic readbac... |
-| 7.5a | ACTIONBAND-FIELD-TRIAD-PROGRESS-0 | **Gu-Yang remediation, rung 1 of 3 (Owner-directed 2026-08-10; Fable-approved re | A synthetic conserved-channel ActionBand consumes a REAL Gu-Yang / `FieldSweepRegistration` output with **zero Action... |
-| 7.5b | ACTIONBAND-SPATIAL-FLUX-WITNESS-0 | **Gu-Yang remediation, rung 2 of 3.** Prove the generic Field-Triad ActionBand b | Same target and PALMA potential, different Gu-Yang channel capacity ⇒ **same lawful descent identity, different per-g... |
-| 11.2c | STEMTHING-B-GROWTH-ENTITLEMENT-SEAM-0 | **SUBSTRATE — DA-minted 2026-08-25 after the SIXTH lawful STOP of the track, fir | **DA-GRADUATED / merged #1841 @ 471821a3 — ordinary growth is entitlement-fed, the credential is unforgeable, and the... |
-| 11.2d | STEMTHING-B-ALLOCATOR-RETIREMENT-0 | **StemThing-B, rung 3 of 4 — the deletion rung, 11.1d shape (Owner R3 confinemen | **DA-GRADUATED / merged #1844 @ e8e00356 — the deletion rung delivered: order-as-authority is GONE from the tree.** `... |
-| 11.2e | VENDOR-DOOR-GRANTING-SURFACE-0 | **StemThing-B, rung 4 of 4 — the Owner-sanctioned facade-only door completion (s | **DA-GRADUATED / merged #1847 @ 3c623991 — the door exposes the market germ, and with this rung the STEMTHING-B PREDE... |
-| 11.2f | GRANT-DISBURSEMENT-LANE-0 | **SUBSTRATE — DA-minted 2026-08-26 after the SEVENTH lawful STOP, the first fire | **COVERS the DA-ruled scope AS AMENDED A1+A2 — the disbursement link of the SECTION 12 grammar chain is wired to obse... |
-| 11.3 | UNIFIED-FACILITY-CONVERGENCE-WITNESS-0 | **Unified-facility convergence witness — DA-minted 2026-08-17 on Owner direction | **COVERS the emergence-falsifier scope with A1-A3 discharged — the composed whole is now OBSERVED, not asserted, and ... |
-| 11.4 | UNIFIED-INGRESS-EXCLUSIVITY-0 | **THE OWNER LAW, MECHANIZED — DA-minted 2026-08-23. 11.3 proves the facilities C | **COVERS the Owner single-ingress law, MECHANIZED — the census gate stands, and with it the 11.x arc's law is enforce... |
-| 11.5 | ANCHOR-PENDING-LIFECYCLE-0 | **HARNESS — Owner-approved 2026-08-28 (board notice 5453971653), minted with the | Self-testing per the scanner-selftest delta discipline: a planted ORPHAN (pending row whose rung id is absent from th... |
-| 12.1 | PORTABILITY-PROOF-0 | Phase 12: a domain unrelated to any shipped scenario through the Vendor Door end | Exemplar-seeded domain simulates + STEAD-observes + serializes untouched. |
-| 12.2 | CORE-CANONIZATION-0 | Phase 12: object model (P0 Root Contract + cycle + EML-ISA + Triad Doors + overl | Canonized sections land; net-prose discipline; SimThing complete and distinct; the three early-discharged canonizatio... |
+| 11.2f | GRANT-DISBURSEMENT-LANE-0 | **SUBSTRATE — DA-minted 2026-08-26 after the SEVENTH lawful STOP, the first fire | **DA-GRADUATED / merged #1852 @ 6cf11842** — pre-dispatch A1 `5434074501`; eighth STOP + A2 widening `5434301294`; Fa... |
+| 11.3 | UNIFIED-FACILITY-CONVERGENCE-WITNESS-0 | **Unified-facility convergence witness — DA-minted 2026-08-17 on Owner direction | **DA-GRADUATED / merged #1854 @ 117286a2** — STOP scope-narrowing `Q1/Q2/Q3` ruled pre-arc; A1-A3 amendments; Fable d... |
+| 11.4 | UNIFIED-INGRESS-EXCLUSIVITY-0 | **THE OWNER LAW, MECHANIZED — DA-minted 2026-08-23. 11.3 proves the facilities C | **DA-GRADUATED / merged #1858 @ 4f61d1ab** — pre-dispatch `5452730843`; D1/D2 remand `5454411811` (both holes DA-hand... |
+| 11.5 | ANCHOR-PENDING-LIFECYCLE-0 | **HARNESS — Owner-approved 2026-08-28 (board notice 5453971653), minted with the | **PROBATION / proof-present / DA-review-pending** — implementation evidence at docs/tests/anchor_pending_lifecycle_0_... |
+| 12.1 | PORTABILITY-PROOF-0 | Phase 12: a domain unrelated to any shipped scenario through the Vendor Door end | TODO |
+| 12.2 | CORE-CANONIZATION-0 | Phase 12: object model (P0 Root Contract + cycle + EML-ISA + Triad Doors + overl | TODO |
 
 ## Next Rung Pointer
 
@@ -233,7 +217,7 @@ Rule-source edits, including `doctrine_anchors.tsv`, stale `ORIENT-RECEIPT` valu
 
 ## Doctrine Anchors (ANCHOR-ACK)
 
-Table: `scripts/ci/doctrine_anchors.tsv` (`anchor_id | doc | section | trigger_domains | content_hash`).
+Table: `scripts/ci/doctrine_anchors.tsv` (`anchor_id | doc | section | trigger_domains | content_hash | lifecycle`).
 
 ANCHOR-ACK schema: `ANCHOR-ACK: <anchor_id>@<12-char content_hash>`
 
