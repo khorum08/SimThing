@@ -6,7 +6,7 @@
 **Date:** 2026-08-29  
 **Dispatch:** Board `5464509674`  
 **Phase-13 authority:** Board `5462798074`  
-**13.1 graduation authority:** Board `5464215228`  
+**13.1 DA stamp authority:** Board `5464215228`  
 **ORIENT-RECEIPT:** `21e642408895` (`orientation_rule_stamp=263e1a616adf5c77`)  
 **HD-RECEIPT:** `540313f1bb0e`  
 **Base:** `b705df0cc69d1ccefed8fb108bbd14b19079add0`  
