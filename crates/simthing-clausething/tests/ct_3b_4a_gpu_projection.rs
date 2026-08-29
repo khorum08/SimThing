@@ -16,10 +16,8 @@ use simthing_driver::{
     project_arena_pressure_seeds, FirstSliceMappingSession, FirstSliceTickOptions, Scenario,
     SimSession,
 };
-use simthing_gpu::{IndexedScatterOp, SlotAllocator};
-use simthing_spec::{
-    compile_region_field_preview, ExplicitParticipantSpec, GameModeSpec, PressureSourceSpec,
-};
+use simthing_gpu::IndexedScatterOp;
+use simthing_spec::{compile_region_field_preview, PressureSourceSpec};
 
 const HEADLINE_FIXTURE: &str = include_str!("fixtures/ct3b4a_headline.clause");
 
@@ -30,11 +28,7 @@ fn hydrate() -> simthing_clausething::HydratedCategoryEconomyPack {
     hydrate_category_economy_pack(&document).expect("hydrate headline fixture")
 }
 
-fn scenario(game_mode: &GameModeSpec) -> (Scenario, SimThingId) {
-    let mut registry = DimensionRegistry::new();
-    for prop in &game_mode.properties {
-        simthing_spec::compile_property(prop, &mut registry).expect("register scenario property");
-    }
+fn scenario(registry: DimensionRegistry) -> (Scenario, SimThingId) {
     let mut root = SimThing::new(SimThingKind::World, 0);
     let mut farmer = None;
     for i in 0..3 {
@@ -84,21 +78,9 @@ fn gpu_scatter_projection_matches_cpu_oracle_through_commitment() {
     );
 
     // Resource Flow leg (shared by both projection paths).
-    let (scenario, _farmer_id) = scenario(&hydrated.game_mode);
-    let mut game_mode = hydrated.game_mode.clone();
-    let mut alloc = SlotAllocator::new();
-    alloc.install_initial_tree(&scenario.root);
-    let participants: Vec<_> = scenario
-        .root
-        .children
-        .iter()
-        .map(|c| ExplicitParticipantSpec::flat(alloc.slot_of(c.id).unwrap().raw(), c.id.raw()))
-        .collect();
-    for arena in &mut game_mode.resource_flow.as_mut().unwrap().arenas {
-        arena.explicit_participants = participants.clone();
-    }
-    game_mode.properties.clear();
-    let mut session = SimSession::open_from_spec(scenario, &game_mode).expect("open_from_spec");
+    let (scenario, _farmer_id) = scenario(hydrated.scenario_registry.clone());
+    let mut session =
+        SimSession::open_from_spec(scenario, &hydrated.game_mode).expect("open_from_spec");
     let plan = build_execution_plan_from_authoring(
         &session.proto.registry,
         &session.spec_state.arena_registry,

@@ -214,7 +214,11 @@ fn hydrate_field_operator_body(
         source_cap: None,
         source_policy: RegionFieldSourcePolicySpec::CallerManagedOneShotSeedThenZero,
         cadence: RegionFieldCadenceSpec::EveryTick,
-        grid_profile: RegionFieldGridProfile::StandardSquare,
+        grid_profile: if grid_size > 10 {
+            RegionFieldGridProfile::ExtendedSquare
+        } else {
+            RegionFieldGridProfile::StandardSquare
+        },
         reduction: threshold_feedstock
             .as_ref()
             .map(|commitment| RegionFieldReductionSpec {

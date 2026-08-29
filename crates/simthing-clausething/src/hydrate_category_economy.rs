@@ -8,8 +8,8 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use serde::{Deserialize, Serialize};
 use simthing_core::{
-    AccumulatorRole, AccumulatorSpec, ClampBehavior, LogTier, SubFieldRole, SubFieldSpec,
-    TransformOp,
+    AccumulatorRole, AccumulatorSpec, BalanceSpec, ClampBehavior, DimensionRegistry, LogTier,
+    OverlayKind, OverlayLifecycle, OverlaySource, SubFieldRole, SubFieldSpec, TransformOp,
 };
 use simthing_spec::spec::install_target::InstallTargetSpec;
 use simthing_spec::spec::region_field::{
@@ -27,7 +27,10 @@ use simthing_spec::spec::resource_flow::{
     RateFormulaSpec, ResourceFlowSpec,
 };
 use simthing_spec::spec::script::PropertyKey;
-use simthing_spec::{ArenaSpec, FissionPolicySpec, GameModeSpec, PropertySpec, SpecVersion};
+use simthing_spec::{
+    compile_property, ArenaSpec, DomainPackSpec, EnrollmentSelectorSpec, FissionPolicySpec,
+    GameModeSpec, OverlaySpec, PropertySpec, SpecVersion,
+};
 
 use crate::error::HydrateError;
 use crate::raw::{RawDocument, RawProperty, RawValue};
@@ -35,6 +38,10 @@ use crate::raw::{RawDocument, RawProperty, RawValue};
 #[derive(Debug, Clone)]
 pub struct HydratedCategoryEconomyPack {
     pub game_mode: GameModeSpec,
+    /// Native scenario registry compiled at the ClauseThing admission boundary.
+    /// `SimSession::open_from_spec` consumes this as ordinary scenario sizing;
+    /// the game mode then carries only bindings and executable registrations.
+    pub scenario_registry: DimensionRegistry,
     /// Diagnostic mirror of literal `_add` contributions; not consumed by install/session proof.
     pub contributions: Vec<CategoryFlowContribution>,
     pub decoded_modifier_keys: Vec<DecodedEconomicKey>,
@@ -267,8 +274,21 @@ pub fn hydrate_category_economy_pack(
         }
     }
 
-    let (mut properties, arenas): (Vec<_>, Vec<_>) = used_pairs.into_values().unzip();
+    let property_hosts = used_pairs
+        .iter()
+        .map(|((category, _), (property, _))| {
+            build_flow_property_host_overlay(property, &categories[category.as_str()].kind)
+        })
+        .collect::<Vec<_>>();
+    let primary_arena = base_obligations
+        .iter()
+        .find(|obligation| obligation.direction == BaseFlowDirectionSpec::Produce)
+        .map(|obligation| obligation.arena.as_str());
+    let mut flow_pairs = used_pairs.into_values().collect::<Vec<_>>();
+    flow_pairs.sort_by_key(|(_, arena)| usize::from(primary_arena != Some(arena.name.as_str())));
+    let (mut properties, arenas): (Vec<_>, Vec<_>) = flow_pairs.into_iter().unzip();
     properties.extend(trigger_properties);
+    let scenario_registry = compile_scenario_registry(&properties, &arenas, &base_obligations)?;
 
     Ok(HydratedCategoryEconomyPack {
         game_mode: GameModeSpec {
@@ -277,8 +297,16 @@ pub fn hydrate_category_economy_pack(
             description,
             spec_version: SpecVersion::default(),
             metadata: Default::default(),
-            domain_packs: vec![],
-            properties,
+            domain_packs: vec![DomainPackSpec {
+                id: format!("{}::flow_property_hosts", fixture.key.text),
+                display_name: format!("{} flow property hosts", fixture.key.text),
+                metadata: Default::default(),
+                properties: vec![],
+                overlays: property_hosts,
+                capability_trees: vec![],
+                events: vec![],
+            }],
+            properties: vec![],
             overlays: vec![],
             order_weight_classes: vec![],
             capability_trees: vec![],
@@ -295,6 +323,7 @@ pub fn hydrate_category_economy_pack(
             region_fields,
             mapping_execution_profile: mapping_profile,
         },
+        scenario_registry,
         contributions,
         decoded_modifier_keys,
     })
@@ -822,6 +851,7 @@ fn parse_unit_template(
                     let (_, arena_name) = ensure_flow_pair(
                         &decoded.category,
                         &decoded.resource,
+                        categories,
                         resources,
                         arena_defaults,
                         used_pairs,
@@ -863,6 +893,7 @@ fn parse_unit_template(
             let (property_key, arena_name) = ensure_flow_pair(
                 &decoded.category,
                 &decoded.resource,
+                categories,
                 resources,
                 arena_defaults,
                 used_pairs,
@@ -1065,6 +1096,7 @@ fn parse_modifier_folds(
 fn ensure_flow_pair(
     category: &str,
     resource: &str,
+    categories: &BTreeMap<String, CategoryEntry>,
     resources: &BTreeMap<String, ResourceEntry>,
     arena_defaults: &ArenaDefaults,
     used_pairs: &mut BTreeMap<(String, String), (PropertySpec, ArenaSpec)>,
@@ -1081,14 +1113,18 @@ fn ensure_flow_pair(
         let arena = ArenaSpec {
             name: arena_name,
             flow_property: property_key.clone(),
-            balance_property: None,
+            balance_property: Some(property_key.clone()),
             max_participants: arena_defaults.max_participants,
             max_coupling_fanout: arena_defaults.max_coupling_fanout,
             max_orderband_depth: arena_defaults.max_orderband_depth,
             fission_policy: FissionPolicySpec::Reject,
             reserved_orderband_depth: 0,
             explicit_participants: Vec::new(),
-            enrollment: None,
+            enrollment: Some(EnrollmentSelectorSpec::InstallTarget(
+                InstallTargetSpec::AllOfKind {
+                    kind: categories[category].kind.clone(),
+                },
+            )),
             wildcard_admission: None,
         };
         if used_pairs
@@ -1456,8 +1492,13 @@ fn parse_recipe_block(property: &RawProperty) -> Result<ResourceRecipeSpec, Hydr
         target_role: amount_role(),
         target_host_entity: None,
         target_host_span_token: None,
-        output_coefficient: require_field(output_coefficient, "output_coefficient", property)?,
-        order_band: require_field(order_band, "order_band", property)?,
+        // The original ClauseThing daily-economy dialect predates the explicit
+        // coefficient field; its authored unit output lowers to the modern
+        // required representation without a source migration.
+        output_coefficient: output_coefficient.unwrap_or(1.0),
+        // Recipes in the original daily-economy dialect occupy the first
+        // order band unless the author opts into a later band explicitly.
+        order_band: order_band.unwrap_or(0),
         throttle_hint_max_per_tick: require_field(throttle, "throttle", property)?,
     })
 }
@@ -1590,6 +1631,7 @@ fn parse_gated_entry(
     let (_, arena_name) = ensure_flow_pair(
         &decoded.category,
         &decoded.resource,
+        categories,
         resources,
         arena_defaults,
         used_pairs,
@@ -1900,8 +1942,64 @@ fn build_flow_property_spec(
                     arena: arena_name.into(),
                 },
             ),
+            balance_rate_subfield(),
+            balance_subfield(),
         ],
     }
+}
+
+/// A declared property becomes live on every authored category host through the
+/// ordinary standalone-overlay install door. The zero delta is intentionally
+/// semantic-free: the base-flow obligation remains the sole rate authority.
+fn build_flow_property_host_overlay(property: &PropertySpec, kind: &str) -> OverlaySpec {
+    OverlaySpec {
+        id: format!("{}::host", property.id),
+        display_name: format!("{} host", property.display_name),
+        targets_property: format!("{}::{}", property.namespace, property.name),
+        sub_field_deltas: vec![(
+            SubFieldRole::Named("balance_rate".into()),
+            TransformOp::add(0.0),
+        )],
+        lifecycle: OverlayLifecycle::Suspended {
+            when_activated: Box::new(OverlayLifecycle::UntilDissolved),
+        },
+        kind: OverlayKind::Policy,
+        source: OverlaySource::System,
+        install: InstallTargetSpec::AllOfKind { kind: kind.into() },
+        order_weight_class: None,
+        composition_class: None,
+        current_dependency_edges: Vec::new(),
+        next_dependency_edges: Vec::new(),
+        source_span_token: None,
+    }
+}
+
+fn compile_scenario_registry(
+    properties: &[PropertySpec],
+    arenas: &[ArenaSpec],
+    obligations: &[BaseFlowObligationSpec],
+) -> Result<DimensionRegistry, HydrateError> {
+    let primary_flow = obligations
+        .iter()
+        .find(|obligation| obligation.direction == BaseFlowDirectionSpec::Produce)
+        .and_then(|obligation| arenas.iter().find(|arena| arena.name == obligation.arena))
+        .map(|arena| arena.flow_property.clone());
+    let mut ordered = properties.iter().collect::<Vec<_>>();
+    ordered.sort_by_key(|property| {
+        let key = PropertyKey::new(&property.namespace, &property.name);
+        usize::from(primary_flow.as_ref().is_none_or(|primary| *primary != key))
+    });
+
+    let mut registry = DimensionRegistry::new();
+    for property in ordered {
+        compile_property(property, &mut registry).map_err(|error| {
+            HydrateError::new(format!(
+                "category economy property `{}` failed native registry admission: {error}",
+                property.id
+            ))
+        })?;
+    }
+    Ok(registry)
 }
 
 fn amount_subfield(default: f32) -> SubFieldSpec {
@@ -1934,6 +2032,41 @@ fn flow_subfield(name: &str, role: AccumulatorRole) -> SubFieldSpec {
         soft_aggregate_guard: None,
         accumulator_spec: Some(AccumulatorSpec {
             role,
+            log_tier: LogTier::Summary,
+        }),
+    }
+}
+
+fn balance_rate_subfield() -> SubFieldSpec {
+    SubFieldSpec {
+        role: SubFieldRole::Named("balance_rate".into()),
+        width: 1,
+        clamp: ClampBehavior::Unbounded,
+        velocity_max: None,
+        default: 0.0,
+        display_name: "balance_rate".into(),
+        display_range: None,
+        governed_by: None,
+        reduction_override: None,
+        soft_aggregate_guard: None,
+        accumulator_spec: None,
+    }
+}
+
+fn balance_subfield() -> SubFieldSpec {
+    SubFieldSpec {
+        role: SubFieldRole::Named("balance".into()),
+        width: 1,
+        clamp: ClampBehavior::Unbounded,
+        velocity_max: None,
+        default: 0.0,
+        display_name: "balance".into(),
+        display_range: None,
+        governed_by: Some(SubFieldRole::Named("balance_rate".into())),
+        reduction_override: None,
+        soft_aggregate_guard: None,
+        accumulator_spec: Some(AccumulatorSpec {
+            role: AccumulatorRole::Balance(BalanceSpec::default()),
             log_tier: LogTier::Summary,
         }),
     }

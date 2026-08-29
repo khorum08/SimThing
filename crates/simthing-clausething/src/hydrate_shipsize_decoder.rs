@@ -8,8 +8,10 @@
 use std::collections::BTreeMap;
 
 use simthing_core::{
-    eml_nodes, EmlNodeGpu, OverlayKind, OverlayLifecycle, OverlaySource, SubFieldRole, TransformOp,
+    eml_nodes, AccumulatorRole, AccumulatorSpec, ClampBehavior, EmlNodeGpu, LogTier, OverlayKind,
+    OverlayLifecycle, OverlaySource, SubFieldRole, SubFieldSpec, TransformOp,
 };
+use simthing_spec::spec::domain_pack::DomainPackSpec;
 use simthing_spec::spec::install_target::InstallTargetSpec;
 use simthing_spec::spec::resource_flow::{
     GatedRateOpSpec, GatedRateSpec, GatedRateTriggerSpec, RateFormulaOp, RateFormulaOpSpec,
@@ -17,8 +19,8 @@ use simthing_spec::spec::resource_flow::{
 };
 use simthing_spec::spec::script::PropertyKey;
 use simthing_spec::{
-    CapabilityCategorySpec, CapabilitySpec, CapabilityTreeSpec, EventSpec, GameModeSpec,
-    OverlaySpec, PropertySpec, SpecVersion,
+    ArenaSpec, CapabilityCategorySpec, CapabilitySpec, CapabilityTreeSpec, EnrollmentSelectorSpec,
+    EventSpec, FissionPolicySpec, GameModeSpec, OverlaySpec, PropertySpec, SpecVersion,
 };
 use simthing_spec::{EffectSpec, ScopeRef, TriggerDirection, TriggerSpec};
 
@@ -375,6 +377,23 @@ pub fn hydrate_shipsize_decoder_pack(
     for entry in properties.values() {
         game_properties.push(property_spec_from_entry(entry));
     }
+    let (gated_arenas, gated_property_hosts) =
+        build_gated_rate_support(&mut game_properties, &gated_rates, &properties)?;
+    let mut installed_overlays = overlays;
+    installed_overlays.extend(gated_property_hosts);
+    let domain_packs = if installed_overlays.is_empty() && events.is_empty() {
+        vec![]
+    } else {
+        vec![DomainPackSpec {
+            id: format!("{}::gated_rate_hosts", fixture.key.text),
+            display_name: format!("{} gated rate hosts", fixture.key.text),
+            metadata: Default::default(),
+            properties: vec![],
+            overlays: installed_overlays,
+            capability_trees: vec![],
+            events,
+        }]
+    };
 
     Ok(HydratedShipsizeDecoderPack {
         game_mode: GameModeSpec {
@@ -383,17 +402,17 @@ pub fn hydrate_shipsize_decoder_pack(
             description: String::new(),
             spec_version: SpecVersion::default(),
             metadata: Default::default(),
-            domain_packs: vec![],
+            domain_packs,
             properties: game_properties,
-            overlays,
+            overlays: vec![],
             order_weight_classes: vec![],
             capability_trees,
-            events,
+            events: vec![],
             resource_flow: if gated_rates.is_empty() {
                 None
             } else {
                 Some(simthing_spec::ResourceFlowSpec {
-                    arenas: vec![],
+                    arenas: gated_arenas,
                     couplings: vec![],
                     base_obligations: vec![],
                     capacity_budget: None,
@@ -411,6 +430,159 @@ pub fn hydrate_shipsize_decoder_pack(
     })
 }
 
+fn build_gated_rate_support(
+    game_properties: &mut [PropertySpec],
+    gated_rates: &[GatedRateSpec],
+    properties: &BTreeMap<String, ShipPropertyEntry>,
+) -> Result<(Vec<ArenaSpec>, Vec<OverlaySpec>), HydrateError> {
+    let mut arena_inputs = BTreeMap::new();
+    let mut host_inputs = BTreeMap::new();
+
+    for rate in gated_rates {
+        let attribute = rate.arena.strip_prefix("ship_").ok_or_else(|| {
+            HydrateError::new(format!("unsupported generated ship arena `{}`", rate.arena))
+        })?;
+        let entry = properties.get(attribute).ok_or_else(|| {
+            HydrateError::new(format!(
+                "no ship_property registered for gated arena attribute `{attribute}`"
+            ))
+        })?;
+        let flow_key = PropertyKey::new(&entry.namespace, &entry.name);
+        arena_inputs
+            .entry(rate.arena.clone())
+            .or_insert_with(|| (flow_key.clone(), rate.install.clone()));
+
+        let mut hosted = vec![flow_key];
+        if let Some(trigger) = &rate.trigger {
+            hosted.push(trigger.property.clone());
+        }
+        if let Some(formula) = &rate.rate_formula {
+            for op in &formula.ops {
+                if let RateFormulaOperandSpec::Property(property) = &op.operand {
+                    hosted.push(property.clone());
+                }
+            }
+        }
+        let install_key = install_target_key(&rate.install);
+        for property in hosted {
+            host_inputs
+                .entry(format!(
+                    "{install_key}|{}::{}",
+                    property.namespace, property.name
+                ))
+                .or_insert_with(|| (property, rate.install.clone()));
+        }
+    }
+
+    let mut arenas = Vec::new();
+    for (arena, (flow_property, install)) in arena_inputs {
+        let property = game_properties
+            .iter_mut()
+            .find(|property| {
+                property.namespace == flow_property.namespace && property.name == flow_property.name
+            })
+            .ok_or_else(|| {
+                HydrateError::new(format!(
+                    "generated arena `{arena}` flow property is not registered"
+                ))
+            })?;
+        property.sub_fields.extend([
+            ship_flow_subfield("flow", AccumulatorRole::IntrinsicFlow),
+            ship_flow_subfield(
+                "allocated",
+                AccumulatorRole::AllocatedFlow {
+                    arena: arena.clone(),
+                },
+            ),
+            ship_flow_subfield(
+                "weight",
+                AccumulatorRole::AllocatorWeight {
+                    arena: arena.clone(),
+                },
+            ),
+            SubFieldSpec {
+                role: SubFieldRole::Named("rate_base".into()),
+                width: 1,
+                clamp: ClampBehavior::Unbounded,
+                velocity_max: None,
+                default: 0.0,
+                display_name: "rate_base".into(),
+                display_range: None,
+                governed_by: None,
+                reduction_override: None,
+                soft_aggregate_guard: None,
+                accumulator_spec: None,
+            },
+        ]);
+        arenas.push(ArenaSpec {
+            name: arena,
+            flow_property,
+            balance_property: None,
+            max_participants: 256,
+            max_coupling_fanout: 4,
+            max_orderband_depth: 16,
+            fission_policy: FissionPolicySpec::Reject,
+            reserved_orderband_depth: 0,
+            explicit_participants: vec![],
+            enrollment: Some(EnrollmentSelectorSpec::InstallTarget(install)),
+            wildcard_admission: None,
+        });
+    }
+
+    let hosts = host_inputs
+        .into_values()
+        .enumerate()
+        .map(|(index, (property, install))| OverlaySpec {
+            id: format!(
+                "shipsize_gated_host_{index}_{}_{}",
+                property.namespace, property.name
+            ),
+            display_name: format!("{}::{} gated host", property.namespace, property.name),
+            targets_property: format!("{}::{}", property.namespace, property.name),
+            sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::add(0.0))],
+            lifecycle: OverlayLifecycle::Suspended {
+                when_activated: Box::new(OverlayLifecycle::UntilDissolved),
+            },
+            kind: OverlayKind::Policy,
+            source: OverlaySource::System,
+            install,
+            order_weight_class: None,
+            composition_class: None,
+            current_dependency_edges: vec![],
+            next_dependency_edges: vec![],
+            source_span_token: None,
+        })
+        .collect();
+    Ok((arenas, hosts))
+}
+
+fn ship_flow_subfield(name: &str, role: AccumulatorRole) -> SubFieldSpec {
+    SubFieldSpec {
+        role: SubFieldRole::Named(name.into()),
+        width: 1,
+        clamp: ClampBehavior::Unbounded,
+        velocity_max: None,
+        default: 0.0,
+        display_name: name.into(),
+        display_range: None,
+        governed_by: None,
+        reduction_override: None,
+        soft_aggregate_guard: None,
+        accumulator_spec: Some(AccumulatorSpec {
+            role,
+            log_tier: LogTier::Summary,
+        }),
+    }
+}
+
+fn install_target_key(install: &InstallTargetSpec) -> String {
+    match install {
+        InstallTargetSpec::AllOfKind { kind } => format!("kind:{kind}"),
+        InstallTargetSpec::ScenarioListed { target_id } => format!("target:{target_id}"),
+        InstallTargetSpec::SessionRoot => "root".into(),
+    }
+}
+
 fn build_ship_class_capability_tree(
     class: &str,
     entry: &ShipClassEntry,
@@ -424,8 +596,11 @@ fn build_ship_class_capability_tree(
         tree_kind: entry.custom_kind.clone(),
         owner_kind: "Ship".into(),
         categories: vec![CapabilityCategorySpec {
-            property_namespace: hull.namespace.clone(),
-            property_name: hull.name.clone(),
+            // Capability progress is its own registered property. Reusing the
+            // authored ship-stat identity collides with the ship property that
+            // effects target and with every sibling hull-class tree.
+            property_namespace: format!("{}_capability", hull.namespace),
+            property_name: format!("{class}_hull"),
             display_name: format!("{class} hull"),
             tier: 0,
             max_active: None,
@@ -435,7 +610,9 @@ fn build_ship_class_capability_tree(
                 description: String::new(),
                 flavor_text: String::new(),
                 research_cost: 0.0,
-                activation: Default::default(),
+                // Generated hull seeds are explicitly selected capabilities,
+                // not zero-cost threshold registrations.
+                activation: simthing_spec::ActivationMode::PlayerSelection,
                 icon: String::new(),
                 thumbnail: String::new(),
                 card_image: String::new(),

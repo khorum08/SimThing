@@ -7,20 +7,13 @@ use simthing_clausething::{
     decode_economic_modifier_key, hydrate_category_economy_pack, hydrate_daily_economy_game_mode,
     parse_raw_document, EconomicAxis, EconomicOp,
 };
-use simthing_core::{
-    AccumulatorRole, AccumulatorSpec, BalanceSpec, ClampBehavior, DimensionRegistry, LogTier,
-    SimThing, SimThingKind, SlotIndex, SubFieldRole, SubFieldSpec,
-};
+use simthing_core::{DimensionRegistry, SimThing, SimThingKind, SlotIndex};
 use simthing_driver::{
     build_execution_plan, check_conservation, resolve_node_columns_for_property,
     run_arena_allocation_oracle, AllocatorStepObservation, ArenaConservationSnapshot,
     ArenaMemberObservation, ArenaStructuralEvidence, Scenario, SimSession,
 };
-use simthing_gpu::SlotAllocator;
-use simthing_spec::{
-    compile_property, deserialize_game_mode_ron, BaseFlowDirectionSpec, ExplicitParticipantSpec,
-    GameModeSpec,
-};
+use simthing_spec::{deserialize_game_mode_ron, BaseFlowDirectionSpec, GameModeSpec};
 
 const CATEGORY_FIXTURE: &str = include_str!("fixtures/ct2c_categories.clause");
 const CATEGORY_BASELINE: &str = include_str!("fixtures/ct2c_categories_baseline.ron");
@@ -44,20 +37,7 @@ fn canonical_json(game_mode: &GameModeSpec) -> String {
     serde_json::to_string(game_mode).expect("serialize game mode")
 }
 
-fn ct2c_scenario(hosted_count: usize, game_mode: &GameModeSpec) -> Scenario {
-    let mut registry = DimensionRegistry::new();
-    for prop in &game_mode.properties {
-        if prop.name == "settlement_food_flow" {
-            compile_property(prop, &mut registry)
-                .expect("seed scenario registry from hydrated property");
-        }
-    }
-    for prop in &game_mode.properties {
-        if prop.name != "settlement_food_flow" {
-            compile_property(prop, &mut registry)
-                .expect("seed scenario registry from hydrated property");
-        }
-    }
+fn ct2c_scenario(hosted_count: usize, registry: DimensionRegistry) -> Scenario {
     let mut root = SimThing::new(SimThingKind::World, 0);
     let mut farmer_target = None;
     for i in 0..hosted_count {
@@ -85,73 +65,9 @@ fn ct2c_scenario(hosted_count: usize, game_mode: &GameModeSpec) -> Scenario {
     }
 }
 
-fn fill_explicit_participants(game_mode: &mut GameModeSpec, scenario: &Scenario) {
-    let mut alloc = SlotAllocator::new();
-    alloc.install_initial_tree(&scenario.root);
-    let participants: Vec<_> = scenario
-        .root
-        .children
-        .iter()
-        .map(|c| ExplicitParticipantSpec::flat(alloc.slot_of(c.id).unwrap().raw(), c.id.raw()))
-        .collect();
-    for arena in &mut game_mode.resource_flow.as_mut().unwrap().arenas {
-        arena.explicit_participants = participants.clone();
-    }
-}
-
-fn balance_rate_subfield() -> SubFieldSpec {
-    SubFieldSpec {
-        role: SubFieldRole::Named("balance_rate".into()),
-        width: 1,
-        clamp: ClampBehavior::Unbounded,
-        velocity_max: None,
-        default: 0.0,
-        display_name: "balance_rate".into(),
-        display_range: None,
-        governed_by: None,
-        reduction_override: None,
-        soft_aggregate_guard: None,
-        accumulator_spec: None,
-    }
-}
-
-fn balance_subfield() -> SubFieldSpec {
-    SubFieldSpec {
-        role: SubFieldRole::Named("balance".into()),
-        width: 1,
-        clamp: ClampBehavior::Unbounded,
-        velocity_max: None,
-        default: 0.0,
-        display_name: "balance".into(),
-        display_range: None,
-        governed_by: Some(SubFieldRole::Named("balance_rate".into())),
-        reduction_override: None,
-        soft_aggregate_guard: None,
-        accumulator_spec: Some(AccumulatorSpec {
-            role: AccumulatorRole::Balance(BalanceSpec::default()),
-            log_tier: LogTier::Summary,
-        }),
-    }
-}
-
-fn admit_recursive_default_proof(game_mode: &mut GameModeSpec) {
-    let resource_flow = game_mode.resource_flow.as_mut().expect("resource flow");
-    for arena in &mut resource_flow.arenas {
-        arena.balance_property = Some(arena.flow_property.clone());
-    }
-    for property in &mut game_mode.properties {
-        property.sub_fields.push(balance_rate_subfield());
-        property.sub_fields.push(balance_subfield());
-    }
-}
-
 fn open_ct2c_session(hydrated: &simthing_clausething::HydratedCategoryEconomyPack) -> SimSession {
-    let mut game_mode = hydrated.game_mode.clone();
-    admit_recursive_default_proof(&mut game_mode);
-    let scenario = ct2c_scenario(4, &game_mode);
-    fill_explicit_participants(&mut game_mode, &scenario);
-    game_mode.properties.clear();
-    SimSession::open_from_spec(scenario, &game_mode)
+    let scenario = ct2c_scenario(4, hydrated.scenario_registry.clone());
+    SimSession::open_from_spec(scenario, &hydrated.game_mode)
         .expect("ct_2c requires a supported live GPU adapter")
 }
 

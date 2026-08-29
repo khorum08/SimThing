@@ -8,9 +8,12 @@ use simthing_core::{
     AccumulatorRole, AccumulatorSpec, ClampBehavior, LogTier, PropertyAdmissionDisposition,
     SubFieldRole, SubFieldSpec,
 };
+use simthing_spec::spec::install_target::InstallTargetSpec;
 use simthing_spec::spec::resource_flow::ResourceFlowSpec;
 use simthing_spec::spec::script::PropertyKey;
-use simthing_spec::{ArenaSpec, FissionPolicySpec, GameModeSpec, PropertySpec, SpecVersion};
+use simthing_spec::{
+    ArenaSpec, EnrollmentSelectorSpec, FissionPolicySpec, GameModeSpec, PropertySpec, SpecVersion,
+};
 
 use crate::error::HydrateError;
 use crate::raw::{RawDocument, RawProperty, RawValue};
@@ -112,7 +115,11 @@ pub fn hydrate_resource_flow_pack(
             fission_policy: FissionPolicySpec::Reject,
             reserved_orderband_depth: 0,
             explicit_participants: Vec::new(),
-            enrollment: None,
+            enrollment: Some(EnrollmentSelectorSpec::InstallTarget(
+                InstallTargetSpec::AllOfKind {
+                    kind: "Cohort".into(),
+                },
+            )),
             wildcard_admission: None,
         }],
         couplings: vec![],
