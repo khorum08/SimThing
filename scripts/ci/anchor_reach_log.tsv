@@ -1910,3 +1910,4 @@ date	role	query	anchors_served	hit
 2026-08-29T15:32:00Z	coding	--domain receipt-admission	orientation-harness-core	hit
 2026-08-29T15:32:06Z	coding	--domain movement-front	movement-front,movement-front-adjudications	hit
 2026-08-29T15:33:09Z	coding	--domain movement-front	movement-front,movement-front-adjudications	hit
+2026-08-29T18:22:15Z	coding	--grep scanner-selftest-delta-gate	scanner-selftest-delta-gate	hit

@@ -612,6 +612,11 @@ def selftest(sources: dict[str, str]) -> int:
         ("crossing-rival", "crates/simthing-sim/src/lib.rs", "\npub struct SecondBandCrossingRecord;\n"),
         ("telemetry-unbound", "crates/simthing-core/src/lib.rs", "\npub struct EmlPerSlotTelemetry;\n"),
         ("root-nullary", "crates/simthing-spec/src/error.rs", "\npub enum Planted { ValidationFailed, }\n"),
+        (
+            "root-braced",
+            "crates/simthing-driver/src/install.rs",
+            "\npub fn planted_legacy_root_collapse() { let _ = SpecError::ValidationFailedAt { site: \"simthing-driver/install\" }; }\n",
+        ),
         ("producer-consumer-law", "crates/simthing-driver/src/session.rs", ""),
         ("resolution-bypass", "crates/simthing-driver/src/lib.rs", ""),
         ("proof-member-caller", "crates/simthing-driver/src/lib.rs", ""),
@@ -678,6 +683,12 @@ def selftest(sources: dict[str, str]) -> int:
         errors, _ = check_sources(mutated, rows)
         if not errors:
             failures.append(label)
+        elif label == "root-braced" and not any(
+            error.startswith("ROOT-CONTRACT-ADMISSION-ERROR: registry drift")
+            and "crates/simthing-driver/src/install.rs::ValidationFailedAt" in error
+            for error in errors
+        ):
+            failures.append(f"{label}-wrong-reason")
         elif label == "producer-consumer-law" and not any(
             error.startswith("GRADUATED-PRODUCER-WITHOUT-PRODUCTION-CONSUMER:")
             for error in errors

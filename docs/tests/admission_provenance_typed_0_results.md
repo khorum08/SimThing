@@ -4,14 +4,17 @@
 - Status: **PROBATION / proof-present / DA-review-pending**
 - Branch: `codex/admission-provenance-typed-0`
 - dispatch_base_sha: `ebd1d5577b453a94739eff531ae944803aa7f51f`
-- tested_code_sha: `d6734c3f188e65f93d22ae45a12f387bd9593745`
+- implementation_checkpoint_sha: `d6734c3f188e65f93d22ae45a12f387bd9593745`
+- accepted_production_head / structural_tested_sha: `efe9557d2b457387597f1b926ac50ec78a357751`
+- remand_base_sha: `efe9557d2b457387597f1b926ac50ec78a357751`
 - final_head_sha: PR/Board-relay-bound after the evidence commit; this file does not self-hash
 - dispatch_binding: Board `5462866469`; orchestration amendment `5462922116`; Phase-13 authority `5462798074`
+- census_binding_remand: DA ruling `5463464560`; orchestration dispatch `5464053422`
 - HD-RECEIPT: `fdcb3140ae93`
 - ORIENT-RECEIPT: `65d1ff95529f`
 - role: `coding`
 - orientation_rule_stamp: `cf4a20680136ef8f`
-- orientation_digest_sha: `d2e98c6bcf581a4e9367fa19724a7ea0e143b969a35cd6d9abf3c860a25bec06`
+- orientation_digest_sha: `54fffe1fab55b4d2b5e1ae5ed8399e708c581894b93df33cc2207f2087301d1e`
 - expected_route: `DA-RESERVE(binding)`
 
 ## Outcome
@@ -115,9 +118,34 @@ The single existing `ROOT-CONTRACT-ADMISSION-ERROR` row was updated in place.
 | Posture/deferral | Production / none | Production / none |
 
 The row uses the existing `regex-symbol` parser over the spec declaration and
-driver consumer. Its declaration also detects the legacy generic nullary
-shapes, preserving the existing `root-nullary` planted selftest. No checker,
-registry, workflow, `.sh`, or `.py` file changed.
+driver consumer. D1 extends its data declaration to admit only
+`AdmissionRefused` while harvesting both `SpecError::ValidationFailedAt { ... }`
+and the legacy generic nullary shapes as out-of-set symbols. The checker gains
+exactly one DA-authorized selftest plant for the braced constructor; the
+pre-existing `root-nullary` plant remains load-bearing. No sibling checker or
+workflow was added.
+
+### D1 census-binding remand
+
+Final declaration regex:
+
+```regex
+(?:SpecError::(AdmissionRefused|ValidationFailedAt)(?=\s*\{)|\b(?:ValidationFailed|AdmissionFailed|InvalidSpec|InvalidConfiguration|InvalidState)(?=\s*,))
+```
+
+Fable's exact acceptance falsifier was replayed by temporarily adding a fresh
+production `SpecError::ValidationFailedAt { site: "simthing-driver/install" }`
+use to `install.rs`. The checker RED was:
+
+```text
+CONSTITUTIONAL-SURFACE-VERDICT: FAIL errors=1
+  - ROOT-CONTRACT-ADMISSION-ERROR: registry drift added=['crates/simthing-driver/src/install.rs::ValidationFailedAt'] removed=[]
+```
+
+The mutant was restored byte-for-byte before the final head. The old nullary
+plant was also replayed and still REDs the same row with
+`added=['crates/simthing-spec/src/error.rs::None']`; the permanent full
+selftest passes at exactly `planted=12 valid_binding=1`.
 
 ## Local evidence at the tested code identity
 
@@ -129,7 +157,7 @@ registry, workflow, `.sh`, or `.py` file changed.
 | `cargo test -p simthing-driver --test admission_provenance_typed_0 --no-fail-fast -j 1` | PASS — 3 passed |
 | `cargo test -p simthing-embedder --tests --no-fail-fast -j 1` | PASS — 15 passed |
 | `bash scripts/ci/constitutional_surface_check.sh --check` | PASS — `ROOT-CONTRACT-ADMISSION-ERROR=1` |
-| `bash scripts/ci/constitutional_surface_check.sh --selftest` | PASS — `planted=11 valid_binding=1` |
+| `bash scripts/ci/constitutional_surface_check.sh --selftest` | PASS — `planted=12 valid_binding=1` |
 | `bash scripts/ci/test_inventory_check.sh` | PASS — 1,354 discovered / 1,354 ledgered; lifecycle PASS |
 | `bash scripts/ci/test_inventory_drift_check.sh` | PASS — unledgered 0, stale 0 |
 | `bash scripts/ci/anchor_check.sh --check` | PASS — pending/curation PASS; standing coverage INSPECT retained |
@@ -171,9 +199,25 @@ No ClauseThing test, fixture, assertion, golden, lowering, or production file
 was edited. The two named admission reds are the diagnostic witness handed to
 13.2; coding did not make them green or weaken their oracles.
 
+## D1 remand diff census
+
+Exactly six files differ from accepted production head `efe9557d`:
+
+| Path | D1 change |
+|---|---|
+| `scripts/ci/constitutional_surfaces.tsv` | Extend the existing ROOT row's data declaration to harvest the braced legacy constructor. |
+| `scripts/ci/constitutional_surface_check.sh` | Add exactly one authorized braced-root plant and assert the existing named registry-drift reason. |
+| `scripts/ci/anchor_reach_log.tsv` | Append the remand's scanner-selftest anchor query. |
+| `docs/tests/admission_provenance_typed_0_results.md` | Record the D1 falsifiers and inherited certificate posture. |
+| `docs/tests/current_evidence_index.md` | Keep the current evidence summary truthful. |
+| `docs/sanctioned_surface.md` | Regenerate the deterministic checker/data digest. |
+
+There is no Rust production or test-file delta from `efe9557d`; the two
+temporary acceptance mutants were restored byte-for-byte.
+
 ## Exact changed-file census and containment
 
-The final evidence head contains eleven changed files relative to the amended
+The final evidence head contains twelve changed files relative to the amended
 dispatch base:
 
 | Path | Change |
@@ -182,6 +226,7 @@ dispatch base:
 | `crates/simthing-driver/src/install.rs` | Promote exactly five root-admission constructors without changing predicates. |
 | `crates/simthing-driver/tests/admission_provenance_typed_0.rs` | Public open-from-spec negative/positive proof. |
 | `scripts/ci/constitutional_surfaces.tsv` | Update the one existing ROOT row in place. |
+| `scripts/ci/constitutional_surface_check.sh` | Add exactly one DA-authorized braced-root selftest plant and named-reason assertion. |
 | `scripts/ci/test_inventory.tsv` | Ledger the four authored tests. |
 | `scripts/ci/anchor_reach_log.tsv` | Append the exact-base orientation anchor ACKs. |
 | `docs/sanctioned_surface.md` | Deterministically regenerate the digest for the changed constitutional data row. |
@@ -193,8 +238,10 @@ dispatch base:
 There is zero delta in `simthing-core`, `simthing-kernel`, `simthing-gpu`,
 `simthing-sim`, `simthing-clausething`, ClauseThing hydration,
 `Scenario.field_plan_admission`, FieldPlan/comparative/default-birth/triad
-grammar, budgets, Vector CostBand, workflows, or gate code. The active pointer
-remains on 13.1, and the new 13.4-A1 surface is untouched.
+grammar, budgets, Vector CostBand, or workflows. The only checker-code delta is
+the one authorized selftest plant and its named-reason assertion; production
+Rust is byte-identical to accepted head `efe9557d`. The active pointer remains
+on 13.1, and the new 13.4-A1 surface is untouched.
 
 ## Routing
 
