@@ -21,6 +21,7 @@ usage() {
 usage:
   bash scripts/ci/librarian.sh --staleness
   bash scripts/ci/librarian.sh --cull [--confirm]
+  bash scripts/ci/librarian.sh --pending-anchors [--confirm]
   bash scripts/ci/librarian.sh --catalog [--role coding|orchestrator|da]
   bash scripts/ci/librarian.sh --selftest
 EOF
@@ -31,7 +32,7 @@ EOF
 
 MODE="$1"; shift || true
 case "$MODE" in
-  --staleness|--cull|--catalog|--selftest) ;;
+  --staleness|--cull|--pending-anchors|--catalog|--selftest) ;;
   -h|--help) usage ;;
   *) echo "librarian.sh: unknown mode: ${MODE}" >&2; usage ;;
 esac
@@ -43,7 +44,10 @@ LIBRARIAN_BASH="$LIBRARIAN_BASH" \
   exec "$PYTHON_BIN" - "$@" <<'PY'
 import os
 import csv
+import io
+import json
 import pathlib
+import re
 import stat
 import subprocess
 import sys
@@ -65,6 +69,20 @@ ORIENT = pathlib.Path(os.environ.get("LIBRARIAN_ORIENT", SCRIPT_DIR / "orient.sh
 TRACK_CLOSEOUT = pathlib.Path(os.environ.get("LIBRARIAN_TRACK_CLOSEOUT", SCRIPT_DIR / "track_closeout.sh"))
 HANDOFF_PATH = os.environ.get("LIBRARIAN_HANDOFF", "handoffs/HD-LIBRARIAN-0.hd.md")
 SELF = pathlib.Path(os.environ.get("LIBRARIAN_SELF", SCRIPT_DIR / "librarian.sh"))
+DOCTRINE_EXEC_COMMANDS = pathlib.Path(
+    os.environ.get("LIBRARIAN_DOCTRINE_EXEC_COMMANDS", SCRIPT_DIR / "doctrine_exec_commands.sh")
+)
+ANCHORS_TSV = pathlib.Path(
+    os.environ.get("LIBRARIAN_ANCHORS_TSV", SCRIPT_DIR / "doctrine_anchors.tsv")
+)
+AUTHORIZED_DELETIONS = pathlib.Path(
+    os.environ.get("LIBRARIAN_AUTHORIZED_DELETIONS", SCRIPT_DIR / "authorized_deletions.tsv")
+)
+ANCHOR_HEADER = ["anchor_id", "doc", "section", "trigger_domains", "content_hash", "lifecycle"]
+DELETION_HEADER = [
+    "subject", "scope", "path", "name", "kind", "authorizing_ruling", "rung", "hd_receipt",
+]
+DELETION_SUBJECTS = {"test", "anchor"}
 
 
 def script_arg(path: pathlib.Path) -> str:
@@ -137,6 +155,64 @@ def owner_ok(result, allow_inspect=False):
 def read_tsv(path: pathlib.Path):
     with path.open(encoding="utf-8", newline="") as fh:
         return list(csv.DictReader(fh, delimiter="\t"))
+
+
+def read_exact_tsv(path: pathlib.Path, header):
+    with path.open(encoding="utf-8", newline="") as fh:
+        reader = csv.DictReader(fh, delimiter="\t")
+        if reader.fieldnames != header:
+            raise ValueError(f"{path.name} header={reader.fieldnames!r}")
+        return list(reader)
+
+
+def tsv_bytes(header, rows):
+    out = io.StringIO(newline="")
+    writer = csv.DictWriter(out, fieldnames=header, delimiter="\t", lineterminator="\n")
+    writer.writeheader()
+    writer.writerows({key: row.get(key, "") for key in header} for row in rows)
+    return out.getvalue().encode("utf-8")
+
+
+def validate_deletion_rows(rows):
+    for index, row in enumerate(rows, start=2):
+        subject = (row.get("subject") or "").strip()
+        if subject not in DELETION_SUBJECTS:
+            raise ValueError(f"authorized_deletions.tsv row={index} subject={subject!r}")
+        if subject == "anchor":
+            if any(not (row.get(key) or "").strip() for key in DELETION_HEADER):
+                raise ValueError(f"authorized_deletions.tsv row={index} blank-field")
+            if row["scope"].strip() != "doctrine_anchors" or row["kind"].strip() != "orphaned":
+                raise ValueError(f"authorized_deletions.tsv row={index} invalid-anchor-shape")
+
+
+def atomic_anchor_reap(anchor_rows, deletion_rows):
+    anchor_before = ANCHORS_TSV.read_bytes()
+    deletion_before = AUTHORIZED_DELETIONS.read_bytes()
+    anchor_after = tsv_bytes(ANCHOR_HEADER, anchor_rows)
+    deletion_after = tsv_bytes(DELETION_HEADER, deletion_rows)
+    anchor_tmp = None
+    deletion_tmp = None
+    try:
+        with tempfile.NamedTemporaryFile(dir=ANCHORS_TSV.parent, delete=False) as fh:
+            fh.write(anchor_after)
+            anchor_tmp = pathlib.Path(fh.name)
+        with tempfile.NamedTemporaryFile(dir=AUTHORIZED_DELETIONS.parent, delete=False) as fh:
+            fh.write(deletion_after)
+            deletion_tmp = pathlib.Path(fh.name)
+        os.replace(anchor_tmp, ANCHORS_TSV)
+        anchor_tmp = None
+        if os.environ.get("LIBRARIAN_SELFTEST_FAIL_AFTER_ANCHORS") == "1":
+            raise OSError("injected atomicity failure")
+        os.replace(deletion_tmp, AUTHORIZED_DELETIONS)
+        deletion_tmp = None
+    except Exception:
+        ANCHORS_TSV.write_bytes(anchor_before)
+        AUTHORIZED_DELETIONS.write_bytes(deletion_before)
+        raise
+    finally:
+        for path in (anchor_tmp, deletion_tmp):
+            if path is not None:
+                path.unlink(missing_ok=True)
 
 
 def split_csv(value: str):
@@ -281,6 +357,110 @@ def cmd_cull():
     return 0 if ok else 1
 
 
+def parse_pending_report(text: str):
+    rows = []
+    pattern = re.compile(
+        r"^ANCHOR-PENDING: disposition=(PENDING-HEALTHY|ORPHANED|STALE-PENDING) "
+        r"anchor_id=(\S+) rung=(\S+) doc=(\S+) reason=(\S+)$"
+    )
+    for line in clean_lines(text):
+        match = pattern.fullmatch(line)
+        if match:
+            rows.append({
+                "disposition": match.group(1), "anchor_id": match.group(2),
+                "rung": match.group(3), "doc": match.group(4), "reason": match.group(5),
+            })
+    return rows
+
+
+def cmd_pending_anchors():
+    confirm = False
+    for arg in argv:
+        if arg == "--confirm":
+            confirm = True
+        else:
+            print(f"librarian.sh: unexpected --pending-anchors arg: {arg}", file=sys.stderr)
+            return 2
+    report = run_script(ANCHOR_CHECK, "--pending")
+    if report.returncode != 0 or "ANCHOR-PENDING-VERDICT: PASS" not in report.stdout:
+        detail = verdict_line(report.stdout, "ANCHOR-PENDING-VERDICT")
+        print(f"LIBRARIAN-PENDING-ANCHORS-VERDICT: FAIL(anchor-report {detail})")
+        return 1
+    dispositions = parse_pending_report(report.stdout)
+    lines = ["LIBRARIAN PENDING-ANCHORS", f"mode: {'confirm' if confirm else 'list'}"]
+    for row in dispositions:
+        action = "REAP" if row["disposition"] == "ORPHANED" else "REFUSE"
+        if not confirm:
+            action = "LIST"
+        lines.append(
+            f"pending-anchor: {action} disposition={row['disposition']} "
+            f"anchor_id={row['anchor_id']} rung={row['rung']} doc={row['doc']}"
+        )
+    if not dispositions:
+        lines.append("pending-anchor: KEEP reason=no-pending-anchors")
+
+    reaped = [row for row in dispositions if row["disposition"] == "ORPHANED"] if confirm else []
+    trial = lines + [
+        f"LIBRARIAN-PENDING-ANCHORS-VERDICT: {'PASS' if confirm else 'DRY'} "
+        f"pending={len(dispositions)} reaped={len(reaped)}"
+    ]
+    if len(trial) > LINE_CAP:
+        print(
+            f"LIBRARIAN-PENDING-ANCHORS-VERDICT: FAIL(report-line-cap "
+            f"lines={len(trial)} max={LINE_CAP})"
+        )
+        return 1
+
+    if confirm and reaped:
+        ruling = os.environ.get("LIBRARIAN_AUTHORIZING_RULING", "").strip()
+        if not re.fullmatch(r"[0-9]+", ruling):
+            print("LIBRARIAN-PENDING-ANCHORS-VERDICT: FAIL(authorizing-comment-id-required)")
+            return 1
+        try:
+            anchors = read_exact_tsv(ANCHORS_TSV, ANCHOR_HEADER)
+            deletions = read_exact_tsv(AUTHORIZED_DELETIONS, DELETION_HEADER)
+            validate_deletion_rows(deletions)
+        except (OSError, ValueError) as exc:
+            print(f"LIBRARIAN-PENDING-ANCHORS-VERDICT: FAIL(schema {exc})")
+            return 1
+        by_id = {row["anchor_id"]: row for row in anchors}
+        reap_ids = {row["anchor_id"] for row in reaped}
+        if reap_ids - by_id.keys():
+            print("LIBRARIAN-PENDING-ANCHORS-VERDICT: FAIL(anchor-report-drift)")
+            return 1
+        for item in reaped:
+            source = by_id[item["anchor_id"]]
+            if source.get("lifecycle") != f"pending:{item['rung']}" or source.get("doc") != item["doc"]:
+                print("LIBRARIAN-PENDING-ANCHORS-VERDICT: FAIL(anchor-report-drift)")
+                return 1
+            if any(
+                row.get("subject") == "anchor" and row.get("name") == item["anchor_id"]
+                for row in deletions
+            ):
+                print(
+                    "LIBRARIAN-PENDING-ANCHORS-VERDICT: "
+                    f"FAIL(duplicate-anchor-provenance anchor_id={item['anchor_id']})"
+                )
+                return 1
+            deletions.append({
+                "subject": "anchor", "scope": "doctrine_anchors", "path": source["doc"],
+                "name": source["anchor_id"], "kind": "orphaned",
+                "authorizing_ruling": ruling, "rung": item["rung"], "hd_receipt": "n/a",
+            })
+        survivors = [row for row in anchors if row["anchor_id"] not in reap_ids]
+        try:
+            atomic_anchor_reap(survivors, deletions)
+        except OSError as exc:
+            print(f"LIBRARIAN-PENDING-ANCHORS-VERDICT: FAIL(atomic-write {exc})")
+            return 1
+
+    lines.append(
+        f"LIBRARIAN-PENDING-ANCHORS-VERDICT: {'PASS' if confirm else 'DRY'} "
+        f"pending={len(dispositions)} reaped={len(reaped)}"
+    )
+    return emit(lines, "LIBRARIAN-PENDING-ANCHORS-VERDICT")
+
+
 def trigger_domains():
     rows = read_tsv(ROOT / "scripts/ci/anchor_triggers.tsv")
     out = set()
@@ -320,13 +500,20 @@ def catalog_anchor_lines():
     domains = trigger_domains()
     hits, ok = domain_anchor_hits(domains)
     anchor_rows = read_tsv(ROOT / "scripts/ci/doctrine_anchors.tsv")
-    lines = []
+    entries = []
     for row in anchor_rows:
         aid = row.get("anchor_id", "").strip()
         declared = split_csv(row.get("trigger_domains", ""))
         reachable = [domain for domain in declared if aid in hits.get(domain, set())]
         shown = reachable or declared
-        lines.append(f"anchor: {aid} domains={','.join(shown) if shown else 'none'}")
+        entries.append(f"{aid}={','.join(shown) if shown else 'none'}")
+    # The report is comment-transport bounded. Batch the complete catalogue
+    # rather than letting one line per anchor make the action fail as the
+    # canonical library grows.
+    lines = [
+        "anchor-batch: " + ";".join(entries[index:index + 8])
+        for index in range(0, len(entries), 8)
+    ]
     return lines, ok, len(anchor_rows), len(domains)
 
 
@@ -523,6 +710,13 @@ esac
 ''')
     write_exe(fake_dir / "anchor_check.sh", r'''#!/usr/bin/env bash
 set -euo pipefail
+if [[ "${1:-}" == "--pending" ]]; then
+  echo "ANCHOR-PENDING: disposition=PENDING-HEALTHY anchor_id=healthy-anchor rung=HEALTHY-RUNG-0 doc=docs/healthy.md reason=minting-rung-graduated"
+  echo "ANCHOR-PENDING: disposition=ORPHANED anchor_id=orphan-anchor rung=MISSING-RUNG-0 doc=docs/orphan.md reason=minting-rung-absent"
+  echo "ANCHOR-PENDING: disposition=STALE-PENDING anchor_id=stale-anchor rung=STALE-RUNG-0 doc=docs/stale.md reason=canonization-completed"
+  echo "ANCHOR-PENDING-VERDICT: PASS healthy=1 orphaned=1 stale=1"
+  exit 0
+fi
 if [[ "${FAKE_ANCHOR_VERDICT:-orphan}" == "harness-fail" ]]; then
   echo "ANCHOR-CHECK-VERDICT: FAIL(malformed-authority)"
   exit 1
@@ -592,6 +786,15 @@ def run_self_with(fake_dir: pathlib.Path, mode: str, *extra, env=None):
 def run_selftest():
     failures = []
 
+    def parse_command(body: str, root: pathlib.Path):
+        event = root / "event.json"
+        event.write_text(json.dumps({"comment": {"body": body}}), encoding="utf-8")
+        return subprocess.run(
+            [BASH_BIN, script_arg(DOCTRINE_EXEC_COMMANDS)], cwd=ROOT, text=True,
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False,
+            env={**os.environ, "GITHUB_EVENT_NAME": "issue_comment", "GITHUB_EVENT_PATH": str(event)},
+        )
+
     def catalog_report_lines(text: str, role: str):
         for line in clean_lines(text):
             marker = f"LIBRARIAN-CATALOG-VERDICT: PASS role={role} lines="
@@ -623,6 +826,102 @@ def run_selftest():
         else:
             print("FAIL src-path-routes-to-DA")
             failures.append("src-path-routes-to-DA")
+
+        anchors_fixture = tmp / "doctrine_anchors.tsv"
+        deletions_fixture = tmp / "authorized_deletions.tsv"
+        anchor_rows = [
+            {"anchor_id": "healthy-anchor", "doc": "docs/healthy.md", "section": "lines:1-1",
+             "trigger_domains": "healthy", "content_hash": "1" * 64,
+             "lifecycle": "pending:HEALTHY-RUNG-0"},
+            {"anchor_id": "orphan-anchor", "doc": "docs/orphan.md", "section": "lines:1-1",
+             "trigger_domains": "orphan", "content_hash": "2" * 64,
+             "lifecycle": "pending:MISSING-RUNG-0"},
+            {"anchor_id": "stale-anchor", "doc": "docs/stale.md", "section": "lines:1-1",
+             "trigger_domains": "stale", "content_hash": "3" * 64,
+             "lifecycle": "pending:STALE-RUNG-0"},
+        ]
+        test_ledger_row = [{
+            "subject": "test", "scope": "c", "path": "crates/c/tests/t.rs", "name": "t",
+            "kind": "integration", "authorizing_ruling": "1", "rung": "R-0", "hd_receipt": "abc",
+        }]
+        anchors_fixture.write_bytes(tsv_bytes(ANCHOR_HEADER, anchor_rows))
+        deletions_fixture.write_bytes(tsv_bytes(DELETION_HEADER, test_ledger_row))
+        pending_env = {
+            "LIBRARIAN_ANCHORS_TSV": str(anchors_fixture),
+            "LIBRARIAN_AUTHORIZED_DELETIONS": str(deletions_fixture),
+        }
+        pending_before = (anchors_fixture.read_bytes(), deletions_fixture.read_bytes())
+        pending_dry = run_self_with(fake_dir, "--pending-anchors", env=pending_env)
+        if (
+            pending_dry.returncode == 0
+            and pending_before == (anchors_fixture.read_bytes(), deletions_fixture.read_bytes())
+            and "pending-anchor: LIST disposition=ORPHANED anchor_id=orphan-anchor" in pending_dry.stdout
+            and "LIBRARIAN-PENDING-ANCHORS-VERDICT: DRY" in pending_dry.stdout
+        ):
+            print("PASS pending-anchor-list-no-mutation")
+        else:
+            print("FAIL pending-anchor-list-no-mutation")
+            failures.append("pending-anchor-list-no-mutation")
+
+        pending_confirm = run_self_with(
+            fake_dir, "--pending-anchors", "--confirm",
+            env={**pending_env, "LIBRARIAN_AUTHORIZING_RULING": "5459050293"},
+        )
+        post_anchors = read_exact_tsv(anchors_fixture, ANCHOR_HEADER)
+        post_deletions = read_exact_tsv(deletions_fixture, DELETION_HEADER)
+        anchor_provenance = [row for row in post_deletions if row["subject"] == "anchor"]
+        if (
+            pending_confirm.returncode == 0
+            and {row["anchor_id"] for row in post_anchors} == {"healthy-anchor", "stale-anchor"}
+            and len(anchor_provenance) == 1
+            and anchor_provenance[0] == {
+                "subject": "anchor", "scope": "doctrine_anchors", "path": "docs/orphan.md",
+                "name": "orphan-anchor", "kind": "orphaned",
+                "authorizing_ruling": "5459050293", "rung": "MISSING-RUNG-0", "hd_receipt": "n/a",
+            }
+            and "pending-anchor: REFUSE disposition=PENDING-HEALTHY" in pending_confirm.stdout
+            and "pending-anchor: REFUSE disposition=STALE-PENDING" in pending_confirm.stdout
+        ):
+            print("PASS pending-anchor-confirm-orphan-only-one-for-one")
+        else:
+            print("FAIL pending-anchor-confirm-orphan-only-one-for-one")
+            failures.append("pending-anchor-confirm-orphan-only-one-for-one")
+
+        anchors_fixture.write_bytes(pending_before[0])
+        deletions_fixture.write_bytes(pending_before[1])
+        atomic_fail = run_self_with(
+            fake_dir, "--pending-anchors", "--confirm",
+            env={
+                **pending_env, "LIBRARIAN_AUTHORIZING_RULING": "5459050293",
+                "LIBRARIAN_SELFTEST_FAIL_AFTER_ANCHORS": "1",
+            },
+        )
+        if (
+            atomic_fail.returncode != 0
+            and pending_before == (anchors_fixture.read_bytes(), deletions_fixture.read_bytes())
+            and "FAIL(atomic-write" in atomic_fail.stdout
+        ):
+            print("PASS pending-anchor-atomic-rollback")
+        else:
+            print("FAIL pending-anchor-atomic-rollback")
+            failures.append("pending-anchor-atomic-rollback")
+
+        valid_pending = parse_command("/librarian pending-anchors --confirm", tmp)
+        malformed_pending = parse_command("/librarian pending-anchors --confirm extra", tmp)
+        truthful_format = (
+            "/librarian pending-anchors [--confirm]" in malformed_pending.stdout
+        )
+        if (
+            valid_pending.returncode == 0
+            and "COMMAND: librarian action=pending-anchors confirm=true role=" in valid_pending.stdout
+            and malformed_pending.returncode != 0
+            and "COMMAND: librarian-invalid" in malformed_pending.stdout
+            and truthful_format
+        ):
+            print("PASS pending-anchor-command-parser-and-format")
+        else:
+            print("FAIL pending-anchor-command-parser-and-format")
+            failures.append("pending-anchor-command-parser-and-format")
 
         cap = run_self_with(fake_dir, "--staleness", env={"FAKE_DEAD_COUNT": "70"})
         if cap.returncode != 0 and "LIBRARIAN-STALENESS-VERDICT: FAIL(report-line-cap" in cap.stdout:
@@ -758,13 +1057,27 @@ def run_selftest():
         if (
             "LIBRARIAN-OWNER-REVIEW:" in workflow
             and "requested_by=@${requester}" in workflow
-            and "action=/librarian cull --confirm" in workflow
-            and "needs.parse-command.outputs.librarian_action != 'cull' ||" in workflow
+            and "action=/librarian ${{ needs.parse-command.outputs.librarian_action }} --confirm" in workflow
+            and "needs.parse-command.outputs.librarian_action == 'pending-anchors'" in workflow
+            and "needs.parse-command.outputs.librarian_action != 'pending-anchors'" in workflow
         ):
             print("PASS non-owner-confirm-routes-to-owner-review")
         else:
             print("FAIL non-owner-confirm-routes-to-owner-review")
             failures.append("non-owner-confirm-routes-to-owner-review")
+
+        four_site_transport = (
+            "/librarian pending-anchors [--confirm]" in DOCTRINE_EXEC_COMMANDS.read_text(encoding="utf-8")
+            and "/librarian pending-anchors [--confirm]" in workflow
+            and "pending-anchors)" in workflow
+            and "bash scripts/ci/librarian.sh --pending-anchors" in workflow
+            and "needs.parse-command.outputs.librarian_action == 'pending-anchors'" in workflow
+        )
+        if four_site_transport:
+            print("PASS pending-anchor-four-site-transport")
+        else:
+            print("FAIL pending-anchor-four-site-transport")
+            failures.append("pending-anchor-four-site-transport")
 
         if (
             "COMMENT_ID=\"issue_comment-${{ github.event.comment.id }}\"" in workflow
@@ -788,6 +1101,8 @@ if MODE == "--staleness":
     sys.exit(cmd_staleness())
 if MODE == "--cull":
     sys.exit(cmd_cull())
+if MODE == "--pending-anchors":
+    sys.exit(cmd_pending_anchors())
 if MODE == "--catalog":
     sys.exit(cmd_catalog())
 if MODE == "--selftest":

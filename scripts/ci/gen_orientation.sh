@@ -24,6 +24,7 @@ usage() {
 usage:
   bash scripts/ci/gen_orientation.sh
   bash scripts/ci/gen_orientation.sh --check
+  bash scripts/ci/gen_orientation.sh --rung-truth
   bash scripts/ci/gen_orientation.sh --open <track-md>
   bash scripts/ci/gen_orientation.sh --park <track-md>
   bash scripts/ci/gen_orientation.sh --unpark <track-md>
@@ -38,6 +39,7 @@ parse_args() {
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --check) MODE="check"; shift ;;
+      --rung-truth) MODE="rung-truth"; shift ;;
       --open)
         [[ $# -ge 2 ]] || usage
         MODE="open"
@@ -155,8 +157,8 @@ verdict	class	pr	sha	date
 PASS	demo-class	#1	abcdef12	2026-07-08
 EOF
   cat >"${sb}/scripts/ci/doctrine_anchors.tsv" <<'EOF'
-anchor_id	doc	section	trigger_domains	content_hash
-demo	docs/demo.md	§0	fixture	abc123
+anchor_id	doc	section	trigger_domains	content_hash	lifecycle
+demo	docs/demo.md	§0	fixture	abc123	canonical
 EOF
   cat >"${sb}/scripts/ci/test_lifecycle_tracks.tsv" <<'EOF'
 track_id	status	closed_at	source	note
@@ -2230,7 +2232,9 @@ def parse_rungs(design_text: str):
       | Rung | ID | Scope | Exit proof | Tier |
 
     Collects rows from every matching table in the document (multi-phase ladders).
-    Returns list of (num_or_index, rung_id, deliverable_or_scope, exit_proof).
+    Returns list of (num_or_index, rung_id, deliverable_or_scope, completion_cell).
+    A dedicated Status column is the stamp-at-merge machine truth when present;
+    legacy four-column ladders use Exit proof as their completion cell.
 
     Column-count invariant (HC-LADDER-COLUMN-INTEGRITY-0): every data row must have
     exactly the column count its own table header declares. A bare or escaped pipe
@@ -2240,17 +2244,24 @@ def parse_rungs(design_text: str):
     rows = []
     in_table = False
     expected_cols = None
+    completion_index = 3
     for line in design_text.splitlines():
         stripped = line.strip()
         if is_ladder_header(stripped):
             in_table = True
             expected_cols = ladder_header_column_count(stripped)
+            header_parts = ladder_row_parts(stripped)
+            completion_index = next(
+                (index for index, cell in enumerate(header_parts) if cell.lower() == "status"),
+                3,
+            )
             continue
         if not in_table:
             continue
         if not stripped.startswith("|"):
             in_table = False
             expected_cols = None
+            completion_index = 3
             continue
         if stripped.startswith("|---") or re.match(r"^\|[\s\-:|]+\|$", stripped):
             continue
@@ -2263,6 +2274,10 @@ def parse_rungs(design_text: str):
             if c0 in ("#", "rung") and c1 in ("rung", "id", "deliverable"):
                 if expected_cols is not None:
                     expected_cols = len(parts)
+                    completion_index = next(
+                        (index for index, cell in enumerate(parts) if cell.lower() == "status"),
+                        3,
+                    )
                 continue
         if expected_cols is not None and len(parts) != expected_cols:
             label = ladder_row_label(parts)
@@ -2273,7 +2288,7 @@ def parse_rungs(design_text: str):
             )
         if len(parts) < 4:
             continue
-        rows.append((parts[0], parts[1], parts[2], parts[3]))
+        rows.append((parts[0], parts[1], parts[2], parts[completion_index]))
     return rows
 
 
@@ -2536,6 +2551,31 @@ def next_rung_pointer(rungs):
         if rid:
             return rid
     return "none"
+
+
+def emit_rung_truth() -> int:
+    """Expose the existing ladder parser as the sole rung-state authority."""
+    info = active_pointer_for_render(strict=True)
+    design = info.get("design_doc")
+    if design is None or not design.is_file():
+        fail("rung truth requires an active design workplan")
+    rungs = parse_rungs(design.read_text(encoding="utf-8", errors="replace"))
+    seen = set()
+    for _, rung_cell, _, exit_proof in rungs:
+        rung = rung_id_from_cell(rung_cell)
+        if not rung or rung in seen:
+            fail(f"FAIL(duplicate-rung-id): {rung or '<empty>'}")
+        seen.add(rung)
+        raw = (exit_proof or "").lower()
+        if "remedial-superseded" in raw or re.search(r"\breverted\b", raw):
+            state = "superseded"
+        elif is_completed_exit(exit_proof):
+            state = "completed"
+        else:
+            state = "open"
+        print(f"RUNG-TRUTH: id={rung} state={state}")
+    print(f"RUNG-TRUTH-VERDICT: PASS rows={len(rungs)}")
+    return 0
 
 
 def authoritative_active_pointer(design_text: str):
@@ -3085,7 +3125,7 @@ def render_orientation(active_info: dict) -> tuple:
     "",
     "## Doctrine Anchors (ANCHOR-ACK)",
     "",
-    "Table: `scripts/ci/doctrine_anchors.tsv` (`anchor_id | doc | section | trigger_domains | content_hash`).",
+    "Table: `scripts/ci/doctrine_anchors.tsv` (`anchor_id | doc | section | trigger_domains | content_hash | lifecycle`).",
     "",
     "ANCHOR-ACK schema: `ANCHOR-ACK: <anchor_id>@<12-char content_hash>`",
     "",
@@ -4070,6 +4110,8 @@ def open_track() -> int:
 
 if MODE == "check":
     sys.exit(check_orientation())
+if MODE == "rung-truth":
+    sys.exit(emit_rung_truth())
 if MODE == "open":
     sys.exit(open_track())
 if MODE == "park":

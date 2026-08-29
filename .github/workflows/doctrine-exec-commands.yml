@@ -391,13 +391,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh issue comment "${{ needs.parse-command.outputs.issue_number }}" --body "FORMAT: /librarian staleness | /librarian cull [--confirm] | /librarian catalog [--role coding|orchestrator|da]"
+          gh issue comment "${{ needs.parse-command.outputs.issue_number }}" --body "FORMAT: /librarian staleness | /librarian cull [--confirm] | /librarian pending-anchors [--confirm] | /librarian catalog [--role coding|orchestrator|da]"
 
   librarian-owner-review:
     needs: parse-command
     if: |
       needs.parse-command.outputs.command == 'librarian' &&
-      needs.parse-command.outputs.librarian_action == 'cull' &&
+      (needs.parse-command.outputs.librarian_action == 'cull' || needs.parse-command.outputs.librarian_action == 'pending-anchors') &&
       needs.parse-command.outputs.librarian_confirm == 'true' &&
       needs.parse-command.outputs.is_collaborator == 'true' &&
       needs.parse-command.outputs.is_owner != 'true' &&
@@ -415,7 +415,7 @@ jobs:
             requester="unknown"
           fi
           {
-            echo "LIBRARIAN-OWNER-REVIEW: requested_by=@${requester} action=/librarian cull --confirm; OWNER action required. No mutation performed."
+            echo "LIBRARIAN-OWNER-REVIEW: requested_by=@${requester} action=/librarian ${{ needs.parse-command.outputs.librarian_action }} --confirm; OWNER action required. No mutation performed."
           } > librarian-owner-review.txt
           gh issue comment "${{ needs.parse-command.outputs.issue_number }}" --body-file librarian-owner-review.txt
 
@@ -426,7 +426,7 @@ jobs:
       needs.parse-command.outputs.is_collaborator == 'true' &&
       needs.parse-command.outputs.is_fork == 'false' &&
       (
-        needs.parse-command.outputs.librarian_action != 'cull' ||
+        (needs.parse-command.outputs.librarian_action != 'cull' && needs.parse-command.outputs.librarian_action != 'pending-anchors') ||
         needs.parse-command.outputs.librarian_confirm != 'true' ||
         needs.parse-command.outputs.is_owner == 'true'
       )
@@ -472,6 +472,24 @@ jobs:
                 rc=$?
               fi
               ;;
+            pending-anchors)
+              if [[ "${confirm}" == "true" ]]; then
+                if [[ "${{ needs.parse-command.outputs.is_owner }}" != "true" ]]; then
+                  echo "LIBRARIAN-PENDING-ANCHORS-VERDICT: FAIL(owner-required-for-confirm)" >> librarian-report.txt
+                  rc=1
+                elif [[ -z "${{ needs.parse-command.outputs.pr_number }}" ]]; then
+                  echo "LIBRARIAN-PENDING-ANCHORS-VERDICT: FAIL(pr-branch-required-for-confirm)" >> librarian-report.txt
+                  rc=1
+                else
+                  LIBRARIAN_AUTHORIZING_RULING="${{ github.event.comment.id || github.event.review.id }}" \
+                    bash scripts/ci/librarian.sh --pending-anchors --confirm >> librarian-report.txt
+                  rc=$?
+                fi
+              else
+                bash scripts/ci/librarian.sh --pending-anchors >> librarian-report.txt
+                rc=$?
+              fi
+              ;;
             catalog)
               if [[ -n "${role}" ]]; then
                 bash scripts/ci/librarian.sh --catalog --role "${role}" >> librarian-report.txt
@@ -498,9 +516,9 @@ jobs:
           fi
           echo "result=${rc}" >> "$GITHUB_OUTPUT"
 
-      - name: Commit confirmed cull mutation
+      - name: Commit confirmed librarian mutation
         if: |
-          needs.parse-command.outputs.librarian_action == 'cull' &&
+          (needs.parse-command.outputs.librarian_action == 'cull' || needs.parse-command.outputs.librarian_action == 'pending-anchors') &&
           needs.parse-command.outputs.librarian_confirm == 'true' &&
           needs.parse-command.outputs.is_owner == 'true' &&
           needs.parse-command.outputs.pr_number != '' &&
@@ -508,13 +526,13 @@ jobs:
         run: |
           set -euo pipefail
           if git diff --quiet; then
-            echo "No librarian cull mutation to commit."
+            echo "No confirmed librarian mutation to commit."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -A
-          git commit -m "librarian: cull stale rows (HD-LIBRARIAN-0)"
+          git commit -m "librarian: apply confirmed maintenance (HD-LIBRARIAN-0)"
           git push origin "HEAD:${{ needs.parse-command.outputs.head_ref }}"
 
       - name: Post librarian report

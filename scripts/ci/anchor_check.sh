@@ -11,6 +11,11 @@ PYTHON_BIN="${PYTHON_BIN:-python3}"
 if ! command -v "$PYTHON_BIN" >/dev/null 2>&1; then
   PYTHON_BIN="python"
 fi
+if command -v cygpath >/dev/null 2>&1; then
+  ANCHOR_BASH="$(cygpath -w "$(command -v bash)" 2>/dev/null || command -v bash)"
+else
+  ANCHOR_BASH="$(command -v bash)"
+fi
 
 MODE="check"
 FIXTURE_MODE=""
@@ -23,6 +28,7 @@ usage:
   bash scripts/ci/anchor_check.sh --check
   bash scripts/ci/anchor_check.sh --anchor-stamp
   bash scripts/ci/anchor_check.sh --resolve <anchor_id|trigger_domain>
+  bash scripts/ci/anchor_check.sh --pending
   bash scripts/ci/anchor_check.sh --resync [--dry-run]
   bash scripts/ci/anchor_check.sh --selftest
 EOF
@@ -34,6 +40,7 @@ parse_args() {
     case "$1" in
       --check) MODE="check"; shift ;;
       --anchor-stamp) MODE="anchor-stamp"; shift ;;
+      --pending) MODE="pending"; shift ;;
       --resync) MODE="resync"; shift ;;
       --dry-run) ANCHOR_RESYNC_DRY_RUN=1; shift ;;
       --resolve)
@@ -62,12 +69,15 @@ run_python() {
   ANCHOR_MODE="$1" \
   ANCHOR_RESOLVE_ARG="${RESOLVE_ARG:-}" \
   ANCHOR_RESYNC_DRY_RUN="${ANCHOR_RESYNC_DRY_RUN:-0}" \
+  ANCHOR_GEN_ORIENTATION="${ANCHOR_GEN_ORIENTATION:-${SCRIPT_DIR}/gen_orientation.sh}" \
+  ANCHOR_BASH="$ANCHOR_BASH" \
     "$PYTHON_BIN" - <<'PY'
 import csv
 import hashlib
 import os
 import pathlib
 import re
+import subprocess
 import sys
 
 repo = pathlib.Path(os.environ["ANCHOR_REPO_ROOT"])
@@ -76,6 +86,11 @@ mode = os.environ["ANCHOR_MODE"]
 fixture_dir = os.environ.get("ANCHOR_FIXTURE_DIR", "")
 resolve_arg = os.environ.get("ANCHOR_RESOLVE_ARG", "")
 resync_dry_run = os.environ.get("ANCHOR_RESYNC_DRY_RUN", "0") == "1"
+gen_orientation = pathlib.Path(os.environ["ANCHOR_GEN_ORIENTATION"])
+bash_bin = os.environ.get("ANCHOR_BASH", "bash")
+ANCHOR_HEADER = ["anchor_id", "doc", "section", "trigger_domains", "content_hash", "lifecycle"]
+PENDING_RE = re.compile(r"^pending:([A-Z0-9][A-Z0-9-]*-[0-9]+)$")
+CANONIZATION_RUNG = "CORE-CANONIZATION-0"
 
 
 def normalize_text(raw: bytes) -> str:
@@ -96,7 +111,7 @@ def fail(msg):
     elif msg in ("missing-anchor", "orphaned-anchor"):
         remedy = " remedy=repair doctrine_anchors.tsv section target or run bash scripts/ci/anchor_check.sh --resync"
     print(f"ANCHOR-CHECK-VERDICT: FAIL({msg}){remedy}")
-    sys.exit(1 if mode in ("check", "resync") else 0)
+    sys.exit(1 if mode in ("check", "resync", "pending") else 0)
 
 
 def pass_ok(detail=""):
@@ -164,14 +179,21 @@ def load_rows():
     rows = []
     with use.open(encoding="utf-8", newline="") as fh:
         reader = csv.DictReader(fh, delimiter="\t")
-        if not reader.fieldnames or "anchor_id" not in reader.fieldnames:
+        if reader.fieldnames != ANCHOR_HEADER:
             fail("anchor-table")
+        seen = set()
         for row in reader:
             if not row.get("anchor_id"):
                 continue
-            for key in ("anchor_id", "doc", "section", "trigger_domains", "content_hash"):
+            for key in ANCHOR_HEADER:
                 if not row.get(key):
                     fail("anchor-table")
+            if row["anchor_id"] in seen:
+                fail("anchor-table")
+            seen.add(row["anchor_id"])
+            lifecycle = row["lifecycle"].strip()
+            if lifecycle != "canonical" and not PENDING_RE.fullmatch(lifecycle):
+                fail("anchor-table")
             rows.append(row)
     if not rows:
         fail("missing-anchor")
@@ -194,10 +216,72 @@ def live_hashes(rows):
             "doc": row["doc"],
             "section": row["section"],
             "text": text,
+            "lifecycle": row["lifecycle"],
         }
         if live != row["content_hash"].lower():
             fail("anchor-hash-drift")
     return out
+
+
+def load_rung_truth():
+    try:
+        command_path = gen_orientation.relative_to(repo).as_posix()
+    except ValueError:
+        command_path = str(gen_orientation)
+    result = subprocess.run(
+        [bash_bin, command_path, "--rung-truth"],
+        cwd=repo,
+        capture_output=True,
+        text=True,
+        check=False,
+        env=os.environ.copy(),
+    )
+    if result.returncode != 0 or "RUNG-TRUTH-VERDICT: PASS" not in result.stdout:
+        fail("rung-truth")
+    states = {}
+    for line in result.stdout.splitlines():
+        match = re.fullmatch(r"RUNG-TRUTH: id=(\S+) state=(completed|open|superseded)", line.strip())
+        if match:
+            states[match.group(1)] = match.group(2)
+    return states
+
+
+def pending_dispositions(rows):
+    pending = [row for row in rows if row["lifecycle"].startswith("pending:")]
+    if not pending:
+        return []
+    truth = load_rung_truth()
+    canonized = truth.get(CANONIZATION_RUNG) == "completed"
+    out = []
+    for row in pending:
+        rung = row["lifecycle"].split(":", 1)[1]
+        mint_state = truth.get(rung, "absent")
+        if canonized:
+            disposition = "STALE-PENDING"
+            reason = "canonization-completed"
+        elif mint_state == "completed":
+            disposition = "PENDING-HEALTHY"
+            reason = "minting-rung-graduated"
+        else:
+            disposition = "ORPHANED"
+            reason = f"minting-rung-{mint_state}"
+        out.append((row, disposition, rung, reason))
+    return out
+
+
+def emit_pending(dispositions):
+    counts = {"PENDING-HEALTHY": 0, "ORPHANED": 0, "STALE-PENDING": 0}
+    for row, disposition, rung, reason in dispositions:
+        counts[disposition] += 1
+        print(
+            f"ANCHOR-PENDING: disposition={disposition} anchor_id={row['anchor_id']} "
+            f"rung={rung} doc={row['doc']} reason={reason}"
+        )
+    print(
+        "ANCHOR-PENDING-VERDICT: PASS "
+        f"healthy={counts['PENDING-HEALTHY']} orphaned={counts['ORPHANED']} "
+        f"stale={counts['STALE-PENDING']}"
+    )
 
 
 def list_headings(doc_rel: str):
@@ -265,7 +349,7 @@ def cmd_resync(rows):
         with use.open("w", encoding="utf-8", newline="") as fh:
             writer = csv.DictWriter(
                 fh,
-                fieldnames=["anchor_id", "doc", "section", "trigger_domains", "content_hash"],
+                fieldnames=ANCHOR_HEADER,
                 delimiter="\t",
                 lineterminator="\n",
             )
@@ -280,7 +364,9 @@ def cmd_resync(rows):
 
 
 def anchor_stamp(state):
-    joined = "|".join(f"{k}:{state[k]['live_hash']}" for k in sorted(state))
+    joined = "|".join(
+        f"{k}:{state[k]['live_hash']}:{state[k]['lifecycle']}" for k in sorted(state)
+    )
     return hashlib.sha256(joined.encode("utf-8")).hexdigest()[:16]
 
 
@@ -290,6 +376,12 @@ if mode == "resync":
     cmd_resync(rows)
 
 state = live_hashes(rows)
+
+dispositions = pending_dispositions(rows)
+
+if mode == "pending":
+    emit_pending(dispositions)
+    sys.exit(0)
 
 if mode == "anchor-stamp":
     print(anchor_stamp(state))
@@ -316,6 +408,13 @@ if mode == "resolve":
     sys.exit(0)
 
 if mode == "check":
+    emit_pending(dispositions)
+    stale = [row for row, disposition, _, _ in dispositions if disposition == "STALE-PENDING"]
+    orphaned = [row for row, disposition, _, _ in dispositions if disposition == "ORPHANED"]
+    if stale:
+        fail("stale-pending")
+    if orphaned:
+        fail("orphaned-pending")
     # COVERAGE, not integrity. Everything above verifies that rows which EXIST
     # still point at live headings with unchanged hashes. Nothing asked whether
     # doctrine exists that NO row points at -- and the anchor library was a
@@ -406,8 +505,8 @@ Body line one.
 
 Other body.
 EOF
-  printf 'anchor_id\tdoc\tsection\ttrigger_domains\tcontent_hash\n' >"$tmp/doctrine_anchors.tsv"
-  printf 'sample-anchor\tdocs/sample.md\theading:# Architecture Decision Records\ttest-domain\t0000000000000000000000000000000000000000000000000000000000000000\n' >>"$tmp/doctrine_anchors.tsv"
+  printf 'anchor_id\tdoc\tsection\ttrigger_domains\tcontent_hash\tlifecycle\n' >"$tmp/doctrine_anchors.tsv"
+  printf 'sample-anchor\tdocs/sample.md\theading:# Architecture Decision Records\ttest-domain\t0000000000000000000000000000000000000000000000000000000000000000\tcanonical\n' >>"$tmp/doctrine_anchors.tsv"
   FIXTURE_DIR="$tmp"
   export FIXTURE_DIR
   before="$(cat "$tmp/doctrine_anchors.tsv")"
@@ -429,8 +528,8 @@ EOF
     echo "PASS resync_edited_section"
   fi
 
-  printf 'anchor_id\tdoc\tsection\ttrigger_domains\tcontent_hash\n' >"$tmp/doctrine_anchors.tsv"
-  printf 'sample-anchor\tdocs/sample.md\theading:# Missing Title That Moved\ttest-domain\t0000000000000000000000000000000000000000000000000000000000000000\n' >>"$tmp/doctrine_anchors.tsv"
+  printf 'anchor_id\tdoc\tsection\ttrigger_domains\tcontent_hash\tlifecycle\n' >"$tmp/doctrine_anchors.tsv"
+  printf 'sample-anchor\tdocs/sample.md\theading:# Missing Title That Moved\ttest-domain\t0000000000000000000000000000000000000000000000000000000000000000\tcanonical\n' >>"$tmp/doctrine_anchors.tsv"
   out="$(run_python resync 2>&1 || true)"
   if ! printf '%s\n' "$out" | grep -q "ORPHANED sample-anchor"; then
     echo "FAIL resync_orphaned_heading"
@@ -445,6 +544,75 @@ EOF
   fi
   FIXTURE_DIR=""
   unset FIXTURE_DIR
+  rm -rf "$tmp"
+}
+
+run_pending_selftests() {
+  local tmp hash out rc
+  tmp="$(mktemp -d "${TMPDIR:-/tmp}/anchor-pending-XXXXXX")"
+  mkdir -p "$tmp/docs"
+  printf '# Pending anchor\nBody.\n' >"$tmp/docs/sample.md"
+  hash="$("$PYTHON_BIN" -c 'import hashlib; print(hashlib.sha256(b"# Pending anchor\nBody.\n").hexdigest())')"
+
+  write_pending_row() {
+    local anchor_id="$1" rung="$2"
+    printf 'anchor_id\tdoc\tsection\ttrigger_domains\tcontent_hash\tlifecycle\n' >"$tmp/doctrine_anchors.tsv"
+    printf '%s\tdocs/sample.md\tlines:1-2\ttest-domain\t%s\tpending:%s\n' \
+      "$anchor_id" "$hash" "$rung" >>"$tmp/doctrine_anchors.tsv"
+  }
+  write_design() {
+    local mint="$1" canon="$2"
+    printf '# Fixture workplan\n\nProduction track PR ladder.\n\n| # | Rung | Deliverable | Exit proof |\n|---|---|---|---|\n| 1 | `HEALTHY-RUNG-0` | fixture | %s |\n| 2 | `CORE-CANONIZATION-0` | fixture | %s |\n' \
+      "$mint" "$canon" >"$tmp/design.md"
+  }
+
+  FIXTURE_DIR="$tmp"
+  export FIXTURE_DIR
+  export ORIENTATION_DESIGN_DOC="$tmp/design.md"
+
+  write_pending_row healthy-anchor HEALTHY-RUNG-0
+  write_design 'DA-GRADUATED / merged #1 @ abcdef0' 'TODO'
+  out="$(run_python pending 2>&1 || true)"
+  if printf '%s\n' "$out" | grep -q 'disposition=PENDING-HEALTHY anchor_id=healthy-anchor'; then
+    echo "PASS pending_healthy_advisory"
+  else
+    echo "FAIL pending_healthy_advisory"; echo "  got: $out"
+    SELFTEST_FAILURES=$((SELFTEST_FAILURES + 1))
+  fi
+  if out="$(run_python check 2>&1)" && printf '%s\n' "$out" | grep -q 'ANCHOR-CHECK-VERDICT: PASS'; then
+    echo "PASS pending_healthy_check_green"
+  else
+    echo "FAIL pending_healthy_check_green"; echo "  got: $out"
+    SELFTEST_FAILURES=$((SELFTEST_FAILURES + 1))
+  fi
+
+  write_pending_row orphan-anchor MISSING-RUNG-0
+  out="$(run_python pending 2>&1 || true)"
+  if printf '%s\n' "$out" | grep -q 'disposition=ORPHANED anchor_id=orphan-anchor'; then
+    echo "PASS pending_missing_rung_orphaned"
+  else
+    echo "FAIL pending_missing_rung_orphaned"; echo "  got: $out"
+    SELFTEST_FAILURES=$((SELFTEST_FAILURES + 1))
+  fi
+
+  write_pending_row stale-anchor HEALTHY-RUNG-0
+  write_design 'DA-GRADUATED / merged #1 @ abcdef0' 'DA-GRADUATED / merged #2 @ abcdef1'
+  out="$(run_python pending 2>&1 || true)"
+  set +e
+  local check_out
+  check_out="$(run_python check 2>&1)"
+  rc=$?
+  set -e
+  if printf '%s\n' "$out" | grep -q 'disposition=STALE-PENDING anchor_id=stale-anchor' \
+      && [[ "$rc" -ne 0 ]] && printf '%s\n' "$check_out" | grep -q 'FAIL(stale-pending)'; then
+    echo "PASS pending_canonization_live_stale"
+  else
+    echo "FAIL pending_canonization_live_stale"; echo "  got: $out / $check_out"
+    SELFTEST_FAILURES=$((SELFTEST_FAILURES + 1))
+  fi
+
+  FIXTURE_DIR=""
+  unset FIXTURE_DIR ORIENTATION_DESIGN_DOC
   rm -rf "$tmp"
 }
 
@@ -463,7 +631,8 @@ run_selftest() {
     fi
   done
   run_resync_selftests
-  local total=$((${#fixtures[@]} + 2))
+  run_pending_selftests
+  local total=$((${#fixtures[@]} + 7))
   if [[ "$SELFTEST_FAILURES" -eq 0 ]]; then
     echo "ANCHOR-CHECK-SELFTEST: PASS (${total} fixtures)"
     return 0
@@ -499,7 +668,7 @@ run_anchor_selftest_fixture() {
   FIXTURE_DIR="$fix"
   export FIXTURE_DIR
   local got
-  got="$(run_python check 2>&1 | head -n 1 || true)"
+  got="$(run_python check 2>&1 | grep 'ANCHOR-CHECK-VERDICT:' | tail -n 1 || true)"
   FIXTURE_DIR=""
   unset FIXTURE_DIR
   if [[ "$got" == "$expected" ]]; then

@@ -98,6 +98,7 @@ ARTIFACT_LEDGER = SCRIPT_DIR / "closeout_artifacts.tsv"
 PARKED = SCRIPT_DIR / "test_lifecycle_parked.tsv"
 BINDING = SCRIPT_DIR / "binding_conditions.tsv"
 ACTIVE_TRACK = SCRIPT_DIR / "active_track.txt"
+DOCTRINE_ANCHORS = SCRIPT_DIR / "doctrine_anchors.tsv"
 NO_ACTIVE_TRACK = "none"
 ACTIVE_TRACK_COMMENT = "# Active track design doc for orientation Next-Rung pointer. Update on track open/close."
 PARK_BEGIN = "<!-- SIMTHING-PARKED-TRACK:BEGIN agents: read only when executing --unpark -->"
@@ -354,7 +355,11 @@ AUTHORIZED_RENAMES_HEADER = [
 ]
 AUTHORIZED_DELETIONS = SCRIPT_DIR / "authorized_deletions.tsv"
 AUTHORIZED_DELETIONS_HEADER = [
-    "crate", "file", "test_name", "kind", "authorizing_ruling", "rung", "hd_receipt",
+    "subject", "scope", "path", "name", "kind", "authorizing_ruling", "rung", "hd_receipt",
+]
+AUTHORIZED_DELETION_SUBJECTS = {"test", "anchor"}
+DOCTRINE_ANCHORS_HEADER = [
+    "anchor_id", "doc", "section", "trigger_domains", "content_hash", "lifecycle",
 ]
 
 
@@ -536,8 +541,89 @@ def load_authorized_deletions(ref: str) -> list:
     text = git_show_text(ref, "scripts/ci/authorized_deletions.tsv")
     if text is None:
         return []
+    try:
+        rows = parse_authorized_deletions(text)
+    except ValueError as exc:
+        die(f"authorized-deletions-schema: {exc}", 1)
+    # Preserve the original test-deletion guard shape byte-for-byte after the
+    # v2 ledger widening. Anchor provenance is never offered to that guard.
+    return [
+        {
+            "crate": row["scope"],
+            "file": row["path"],
+            "test_name": row["name"],
+            "kind": row["kind"],
+            "authorizing_ruling": row["authorizing_ruling"],
+            "rung": row["rung"],
+            "hd_receipt": row["hd_receipt"],
+        }
+        for row in rows
+        if row["subject"] == "test"
+    ]
+
+
+def parse_authorized_deletions(text: str) -> list:
     reader = csv.DictReader(io.StringIO(text), delimiter="\t")
-    return list(reader)
+    if reader.fieldnames != AUTHORIZED_DELETIONS_HEADER:
+        raise ValueError(f"header={reader.fieldnames!r}")
+    rows = []
+    for index, row in enumerate(reader, start=2):
+        subject = (row.get("subject") or "").strip()
+        if subject not in AUTHORIZED_DELETION_SUBJECTS:
+            raise ValueError(f"row={index} subject={subject!r}")
+        if subject == "anchor":
+            if any(not (row.get(key) or "").strip() for key in AUTHORIZED_DELETIONS_HEADER):
+                raise ValueError(f"row={index} blank-field")
+            if row["scope"].strip() != "doctrine_anchors" or row["kind"].strip() != "orphaned":
+                raise ValueError(f"row={index} invalid-anchor-shape")
+        rows.append(row)
+    return rows
+
+
+def anchor_closeout_failures(
+    anchors_path: pathlib.Path = DOCTRINE_ANCHORS,
+    deletions_path: pathlib.Path = AUTHORIZED_DELETIONS,
+) -> list[str]:
+    """Validate the pending worklist and anchor-reap provenance at closeout."""
+    failures = []
+    if not anchors_path.is_file():
+        return failures  # isolated legacy selftest sandboxes predate anchor authority
+    with anchors_path.open(encoding="utf-8", newline="") as fh:
+        reader = csv.DictReader(fh, delimiter="\t")
+        if reader.fieldnames != DOCTRINE_ANCHORS_HEADER:
+            return [f"ANCHOR-LIFECYCLE-SCHEMA header={reader.fieldnames!r}"]
+        anchors = [row for row in reader if (row.get("anchor_id") or "").strip()]
+    pending = sorted(
+        row["anchor_id"].strip()
+        for row in anchors
+        if (row.get("lifecycle") or "").strip().startswith("pending:")
+    )
+    if pending:
+        failures.append(f"PENDING-ANCHORS-REMAIN count={len(pending)} ids={','.join(pending)}")
+    if not deletions_path.is_file():
+        return failures
+    try:
+        ledger = parse_authorized_deletions(deletions_path.read_text(encoding="utf-8"))
+    except ValueError as exc:
+        failures.append(f"AUTHORIZED-DELETIONS-SCHEMA {exc}")
+        return failures
+    live_ids = {row["anchor_id"].strip() for row in anchors}
+    for row in ledger:
+        if row["subject"] == "anchor" and row["name"].strip() in live_ids:
+            failures.append(
+                f"ANCHOR-DELETION-PROVENANCE-LIVE name={row['name'].strip()}"
+            )
+    return failures
+
+
+def emit_anchor_closeout_failures(prefix: str) -> bool:
+    failures = anchor_closeout_failures()
+    for failure in failures:
+        print(f"  - {failure}", file=sys.stderr)
+    if failures:
+        print(f"{prefix}: FAIL(anchor-lifecycle) count={len(failures)}", file=sys.stderr)
+        return False
+    return True
 
 
 def test_fn_absent_at_head(head: str, file: str, test_name: str) -> bool:
@@ -1224,6 +1310,8 @@ def cmd_check_eval():
 def cmd_apply():
     if not argv:
         die("apply requires a manifest path")
+    if not emit_anchor_closeout_failures("TRACK-CLOSEOUT-APPLY-VERDICT"):
+        return 1
     path = pathlib.Path(argv[0])
     text, meta, fields, rows = load_manifest(path)
     if fields != MANIFEST_HEADER:
@@ -2024,6 +2112,51 @@ def cmd_prove():
     check("doc-bad-archive-target", bool(validate_dispositions(
         [{"asset_kind": "doc", "ref": "d", "file": "docs/track_closeout_protocol.md",
           "disposition": "elevate-code", "owner": "", "target": "docs/tests/track_closeout_protocol.md"}])))
+
+    with tempfile.TemporaryDirectory(prefix="anchor-closeout-proof-") as anchor_raw:
+        anchor_tmp = pathlib.Path(anchor_raw)
+        anchors_fixture = anchor_tmp / "doctrine_anchors.tsv"
+        deletions_fixture = anchor_tmp / "authorized_deletions.tsv"
+        base_anchor = {
+            "anchor_id": "fixture-anchor", "doc": "docs/fixture.md", "section": "lines:1-1",
+            "trigger_domains": "fixture", "content_hash": "0" * 64,
+            "lifecycle": "pending:FIXTURE-RUNG-0",
+        }
+        write_tsv(anchors_fixture, DOCTRINE_ANCHORS_HEADER, [base_anchor])
+        write_tsv(deletions_fixture, AUTHORIZED_DELETIONS_HEADER, [])
+        check(
+            "closeout-rejects-pending-anchor",
+            any("PENDING-ANCHORS-REMAIN" in item for item in anchor_closeout_failures(
+                anchors_fixture, deletions_fixture
+            )),
+        )
+        ledgered = [{
+            "subject": "anchor", "scope": "doctrine_anchors", "path": "docs/fixture.md",
+            "name": "fixture-anchor", "kind": "orphaned", "authorizing_ruling": "12345",
+            "rung": "FIXTURE-RUNG-0", "hd_receipt": "n/a",
+        }]
+        base_anchor["lifecycle"] = "canonical"
+        write_tsv(anchors_fixture, DOCTRINE_ANCHORS_HEADER, [base_anchor])
+        write_tsv(deletions_fixture, AUTHORIZED_DELETIONS_HEADER, ledgered)
+        check(
+            "closeout-rejects-ledgered-anchor-still-present",
+            any("ANCHOR-DELETION-PROVENANCE-LIVE" in item for item in anchor_closeout_failures(
+                anchors_fixture, deletions_fixture
+            )),
+        )
+        write_tsv(anchors_fixture, DOCTRINE_ANCHORS_HEADER, [])
+        check(
+            "closeout-accepts-valid-anchor-reap",
+            not anchor_closeout_failures(anchors_fixture, deletions_fixture),
+        )
+        invalid = "subject\tscope\tpath\tname\tkind\tauthorizing_ruling\trung\thd_receipt\nunknown\tx\ty\tz\tunit\t1\tR\tn/a\n"
+        try:
+            parse_authorized_deletions(invalid)
+            closed_subjects = False
+        except ValueError:
+            closed_subjects = True
+        check("authorized-deletions-subject-vocabulary-closed", closed_subjects)
+
     old_skip = os.environ.get("TRACK_CLOSEOUT_SKIP_CARGO")
     os.environ["TRACK_CLOSEOUT_SKIP_CARGO"] = "1"
     try:
@@ -2776,7 +2909,7 @@ def cmd_prove():
 
         # Authorized deletion via scripts/ci/authorized_deletions.tsv (exact identity; no wildcards).
         deletion_header = [
-            "crate", "file", "test_name", "kind", "authorizing_ruling", "rung", "hd_receipt",
+            "subject", "scope", "path", "name", "kind", "authorizing_ruling", "rung", "hd_receipt",
         ]
         write_tsv(gr / "scripts/ci/test_inventory.tsv", INVENTORY_HEADER, inv0)
         for t in trk:
@@ -2790,7 +2923,7 @@ def cmd_prove():
         base_del = grun("rev-parse", "HEAD").stdout.strip()
 
         del_row = [{
-            "crate": "c", "file": "crates/c/tests/open.rs", "test_name": "open_t",
+            "subject": "test", "scope": "c", "path": "crates/c/tests/open.rs", "name": "open_t",
             "kind": "integration", "authorizing_ruling": "5133877275-DA",
             "rung": "TP-PURGE-0", "hd_receipt": "3555f6da869e",
         }]
@@ -2831,7 +2964,7 @@ def cmd_prove():
         grun("add", "-A"); grun("commit", "-q", "-m", "reset-del-file")
         base_del_file = grun("rev-parse", "HEAD").stdout.strip()
         bad_del = [{
-            "crate": "c", "file": "crates/c/tests/other.rs", "test_name": "open_t",
+            "subject": "test", "scope": "c", "path": "crates/c/tests/other.rs", "name": "open_t",
             "kind": "integration", "authorizing_ruling": "5133877275-DA",
             "rung": "TP-PURGE-0", "hd_receipt": "3555f6da869e",
         }]
@@ -2853,7 +2986,7 @@ def cmd_prove():
         grun("add", "-A"); grun("commit", "-q", "-m", "reset-del-ruling")
         base_del_ruling = grun("rev-parse", "HEAD").stdout.strip()
         blank_ruling = [{
-            "crate": "c", "file": "crates/c/tests/open.rs", "test_name": "open_t",
+            "subject": "test", "scope": "c", "path": "crates/c/tests/open.rs", "name": "open_t",
             "kind": "integration", "authorizing_ruling": "",
             "rung": "TP-PURGE-0", "hd_receipt": "3555f6da869e",
         }]
@@ -2892,7 +3025,7 @@ def cmd_prove():
         grun("add", "-A"); grun("commit", "-q", "-m", "reset-del-unlist")
         base_del_unlist = grun("rev-parse", "HEAD").stdout.strip()
         other_del = [{
-            "crate": "c", "file": "crates/c/tests/open.rs", "test_name": "other_t",
+            "subject": "test", "scope": "c", "path": "crates/c/tests/open.rs", "name": "other_t",
             "kind": "integration", "authorizing_ruling": "5133877275-DA",
             "rung": "TP-PURGE-0", "hd_receipt": "3555f6da869e",
         }]
@@ -3315,6 +3448,8 @@ def cmd_rungclose() -> int:
     rung = args[0].strip()
     workplan, resolve_error = resolve_rungclose_workplan(args)
     failures: list[str] = []
+
+    failures.extend(anchor_closeout_failures())
 
     if resolve_error:
         print(f"RUNGCLOSE-VERDICT: FAIL {resolve_error}")
