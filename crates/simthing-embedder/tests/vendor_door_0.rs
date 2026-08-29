@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use simthing_core::{
     Direction, DissolveCondition, OwnerBoundaryValidationError, OwnerRef, PropertyTransformDelta,
     SimPropertyId, SimThing, SimThingKind, SpecializationObservations, SpecializationProfile,
@@ -306,4 +308,34 @@ fn all_five_verbs_run_observe_and_serialize_through_one_kernel_history() {
     .expect("start continuous");
     let continuous_tick = run::tick(&mut continuous).expect("continuous tick");
     assert_eq!(paced_tick, continuous_tick);
+}
+
+#[test]
+fn run_replay_exports_preserve_lower_authority_type_identity() {
+    type DoorRead = fn(&Path) -> Result<run::LoadedReplay, run::ReplayOpenError>;
+    type DoorOpen = fn(
+        &Path,
+        &run::GameModeSpec,
+        run::Scenario,
+    ) -> Result<
+        (
+            run::SimSession,
+            run::ReplayDriver,
+            Vec<(run::ReplayFrame, Vec<run::SpecDelta>)>,
+        ),
+        run::ReplayOpenError,
+    >;
+
+    let _: DoorRead = simthing_driver::read_spec_replay_file;
+    let _: DoorRead = run::read_spec_replay_file;
+    let _: DoorOpen = simthing_driver::open_replay_with_spec;
+    let _: DoorOpen = run::open_replay_with_spec;
+
+    let _: fn(run::LoadedReplay) -> simthing_driver::LoadedReplay = std::convert::identity;
+    let _: fn(run::ReplayOpenError) -> simthing_driver::ReplayOpenError = std::convert::identity;
+    let _: fn(run::SpecDelta) -> simthing_driver::SpecDelta = std::convert::identity;
+    let _: fn(run::ReplayDriver) -> simthing_sim::ReplayDriver = std::convert::identity;
+    let _: fn(run::ReplayError) -> simthing_sim::ReplayError = std::convert::identity;
+    let _: fn(run::ReplayFrame) -> simthing_sim::ReplayFrame = std::convert::identity;
+    let _: fn(run::ReplaySnapshot) -> simthing_sim::ReplaySnapshot = std::convert::identity;
 }
