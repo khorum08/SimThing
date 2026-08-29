@@ -502,7 +502,7 @@ fn install_standalone_overlay(
     let (template, diag) =
         compile_overlay(overlay_spec, registry, scenario.root.id).map_err(InstallError::Spec)?;
     if !diag.diagnostics.is_empty() {
-        return Err(standalone_overlay_diagnostics_refusal(&overlay_spec.id));
+        return Err(standalone_compile_diagnostics_refusal(&overlay_spec.id));
     }
 
     let owners = resolve_install_target(&overlay_spec.install, scenario, root)?;
@@ -538,7 +538,7 @@ fn install_standalone_overlay(
     Ok(installed_ids)
 }
 
-fn standalone_overlay_diagnostics_refusal(overlay_id: &str) -> InstallError {
+fn standalone_compile_diagnostics_refusal(overlay_id: &str) -> InstallError {
     InstallError::Spec(SpecError::AdmissionRefused {
         law_id: "standalone-overlay-compile-diagnostics-empty",
         element_path: format!("domain_packs.overlays[id={overlay_id:?}]"),
@@ -2021,7 +2021,7 @@ mod tests {
     #[test]
     fn promoted_install_refusals_bind_existing_laws_to_authoritative_elements() {
         assert_admission_refusal(
-            standalone_overlay_diagnostics_refusal("bounded-drag"),
+            standalone_compile_diagnostics_refusal("bounded-drag"),
             "standalone-overlay-compile-diagnostics-empty",
             "domain_packs.overlays[id=\"bounded-drag\"]",
         );
