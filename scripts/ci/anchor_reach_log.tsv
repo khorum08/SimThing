@@ -1800,3 +1800,4 @@ date	role	query	anchors_served	hit
 2026-08-29T04:30:19Z	coding	--grep door symmetry	door-symmetry,field-policy-time-decisions	hit
 2026-08-29T04:30:36Z	coding	--grep install_initial_tree	drift-detectors-six-line,stemthing-lane-not-leg	hit
 2026-08-29T04:30:36Z	coding	--grep initial-residency distinction	stemthing-lane-not-leg	hit
+2026-08-29T04:44:22Z	coding	--grep core-gpu-residency	core-gpu-residency	hit
