@@ -139,6 +139,7 @@ registry, workflow, `.sh`, or `.py` file changed.
 | `bash scripts/ci/handoff_dispatch.sh --receipt handoffs/ADMISSION-PROVENANCE-TYPED-0.hd.md` | PASS — `fdcb3140ae93` |
 | `bash scripts/ci/doctrine_selftest.sh` | PASS |
 | `bash scripts/ci/doctrine_scan.sh` | INSPECT — 0 hard failures; 417 standing whole-tree heuristic hits (`SIM-KIND-READ` 1, `SPEC-LOWERER-KIND-READ` 416) |
+| `bash scripts/ci/gen_digest.sh --check` | PASS after deterministic sanctioned-surface regeneration |
 | `bash scripts/ci/doc_budget_check.sh --check` | PASS |
 | `bash scripts/ci/agent_scan.sh --base ebd1d557... --head 7baa3e87...` | PASS — no hard or delta finding |
 | `git diff --check ebd1d557... 7baa3e87...` | PASS |
@@ -171,7 +172,7 @@ was edited. The two named admission reds are the diagnostic witness handed to
 
 ## Exact changed-file census and containment
 
-The final evidence head contains ten changed files relative to the amended
+The final evidence head contains eleven changed files relative to the amended
 dispatch base:
 
 | Path | Change |
@@ -182,6 +183,7 @@ dispatch base:
 | `scripts/ci/constitutional_surfaces.tsv` | Update the one existing ROOT row in place. |
 | `scripts/ci/test_inventory.tsv` | Ledger the four authored tests. |
 | `scripts/ci/anchor_reach_log.tsv` | Append the exact-base orientation anchor ACKs. |
+| `docs/sanctioned_surface.md` | Deterministically regenerate the digest for the changed constitutional data row. |
 | `docs/tests/admission_provenance_typed_0_results.md` | This evidence packet. |
 | `docs/tests/current_evidence_index.md` | One current-evidence line. |
 | `docs/design_0_0_8_7_rf_arena_modernization.md` | Rung 13.1 only: TODO to PROBATION; pointer unchanged. |
