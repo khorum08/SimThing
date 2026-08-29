@@ -45,7 +45,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 26e025f8b1e76f7f649571aaa4f2da2c82ca722b4d8c549f5ce9d14b4604f3a6 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | 26eab30ec86c97ac8dfd6beef7ae8c5b4d3f18c38fdaa431ec40ccce855396d3 |
-| design_0_0_8_7_rf_arena_modernization.md | b397344dafa48b4ac148cfd8212f36d0d23d2bd9ae291fc91cc57bcff4fd6ea2 |
+| design_0_0_8_7_rf_arena_modernization.md | 5bcb99a1f974720e94939864ac7268891b7127d2c1d36d8d67101f59eae0a556 |
 | relay_lint.sh | ae19bdca12e90f6bc988e064f081ff62903034d69bf34b08ffd5c27e352181ba |
 | doctrine_anchors.tsv | d3837a8a345334d3d41652c35c96d3b29f8b252714861f697bccccc56cea40ee |
 | execution_status_taxonomy.tsv | 924c086550221dd7136ec0682293900d8d03feb4bc1dae1a6e750a61e65153bc |
@@ -68,19 +68,23 @@ Dark properties (1): `fixture::dark_reading` (reasons/spans in `property_admissi
 
 Track state: `open`
 
-> Compact view: showing last 5 of 80 rungs (track `open`); full ladder in the design doc.
+> Compact view: 77 completed rungs elided; showing all 6 open rungs plus the 3 most recent completions. Full ladder in the design doc.
 
 | # | rung | deliverable | exit proof |
 | --- | --- | --- | --- |
-| 11.3 | UNIFIED-FACILITY-CONVERGENCE-WITNESS-0 | **Unified-facility convergence witness — DA-minted 2026-08-17 on Owner direction | **DA-GRADUATED / merged #1854 @ 117286a2** — STOP scope-narrowing `Q1/Q2/Q3` ruled pre-arc; A1-A3 amendments; Fable d... |
-| 11.4 | UNIFIED-INGRESS-EXCLUSIVITY-0 | **THE OWNER LAW, MECHANIZED — DA-minted 2026-08-23. 11.3 proves the facilities C | **DA-GRADUATED / merged #1858 @ 4f61d1ab** — pre-dispatch `5452730843`; D1/D2 remand `5454411811` (both holes DA-hand... |
 | 11.5 | ANCHOR-PENDING-LIFECYCLE-0 | **HARNESS — Owner-approved 2026-08-28 (board notice 5453971653), minted with the | **DA-GRADUATED / merged #1861 @ bad178b5** — transport-shape ruling `5458831930` (four-site map); tenth STOP + ledger... |
 | 12.1 | PORTABILITY-PROOF-0 | Phase 12: a domain unrelated to any shipped scenario through the Vendor Door end | **DA-GRADUATED / merged #1864 @ 56e1b602** — eleventh STOP + A1 fold `5459514102`; Q1/Q2 ACCEPTED; Fable deep review;... |
 | 12.2 | CORE-CANONIZATION-0 | Phase 12: object model (P0 Root Contract + cycle + EML-ISA + Triad Doors + overl | **DA-GRADUATED / merged #1868 @ cfaa5f6a** — canonization inheritance (worklist, door symmetry, binding revalidation,... |
+| 13.1 | ADMISSION-PROVENANCE-TYPED-0 | **PHASE 13 — LEGACY CONVERGENCE ADDENDA (Owner-approved 2026-08-29, pre-closeout | TODO |
+| 13.2 | CLAUSETHING-ADMISSION-CONVERGENCE-0 | **Rung 2: converge ClauseThing hydration onto the unified substrate — IN THE `hy | TODO |
+| 13.3 | STAR-NAMING-GOLDEN-TRUTH-0 | **Rung 3: adjudicate the stale canonical TP star-name golden** (`studio_star_nam | TODO |
+| 13.4 | WORKSHOP-CORPUS-TRIAGE-0 | **Rung 4: replace default-delete with Necessity-Test triage of the reap-slated w | TODO |
+| 13.5 | LEGACY-SURFACE-CONVERGENCE-CENSUS-0 | **Rung 5: the 11.4 discipline applied to the legacy estate — census, NOT refacto | TODO |
+| 13.6 | CLEARING-WEIGHT-SPAN-UNIFICATION-0 | **Rung 6: the arc's cleanest missed unification, promoted from the 2026-08-29 en | TODO |
 
 ## Next Rung Pointer
 
-Active pointer: `none`
+Active pointer: `ADMISSION-PROVENANCE-TYPED-0`
 
 
 ## Cold-Start Spine (constitutional pointers)
