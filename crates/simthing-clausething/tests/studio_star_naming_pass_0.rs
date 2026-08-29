@@ -1,4 +1,22 @@
-//! STUDIO-STAR-NAMING-PASS-0 canonical TP authority proofs.
+//! Canonical TP star-name golden and entity-name derivation witness.
+//!
+//! Production names come from `simthing_mapgenerator::assign_star_names`
+//! (`TP_SEED=770421`, sorted/deduped `gridcell_generated_system_id`s). This
+//! file byte-compares a canonical save of that assignment against
+//! `scenarios/terran_pirate_galaxy.base_disc.json`.
+//!
+//! Blessing procedure (next drift is a decision, not a surprise):
+//! 1. Reproduce the red. Do not re-bless on a red you have not named.
+//! 2. Identify the first later commit after `052cc192` at which this test
+//!    diverges, and the exact derivation-input or canonical-save seam.
+//! 3. If the seam is lawful serialization/input drift and the 1,500 names
+//!    still come from `assign_star_names`, re-bless. If it is a naming
+//!    determinism regression, fix the derivation and keep the truthful golden.
+//! 4. Re-bless only with:
+//!    `UPDATE_STUDIO_STAR_NAMING_GOLDEN=1 cargo test -p simthing-clausething --test studio_star_naming_pass_0 star_naming_canonical_tp_all_systems_have_display_names -- --exact`
+//! 5. Inspect the golden diff. Names must remain 1,500 unique
+//!    `assign_star_names` products; placements/links must be unchanged.
+//!    Record commit/date/reason. Do not weaken the byte-equality oracle.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};

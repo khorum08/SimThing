@@ -1,4 +1,13 @@
-//! Seed-stable star names derived independently from structural generation RNG.
+//! Canonical entity-name derivation for generated star systems.
+//!
+//! `assign_star_names` is the sole name authority for generated system IDs.
+//! Structural MapGen RNG is not consumed: the catalog shuffle uses
+//! `MapGenSeed(seed ^ NAMING_SEED_DOMAIN)` and a deterministic Fisher-Yates
+//! walk over the 4096-entry prefix/core/suffix catalog. Inputs are sorted and
+//! deduplicated before assignment. Future golden drift is a decision, not a
+//! surprise: re-bless only through `UPDATE_STUDIO_STAR_NAMING_GOLDEN` after
+//! naming the first divergent upstream commit. See
+//! `crates/simthing-clausething/tests/studio_star_naming_pass_0.rs`.
 
 use crate::rng::{MapGenRng, MapGenSeed};
 
@@ -20,7 +29,10 @@ pub struct StarNameAssignment {
     pub display_name: String,
 }
 
-/// Assign unique names to sorted, deduplicated system IDs without consuming structural RNG state.
+/// Canonical entity-name derivation: unique names for sorted, deduplicated system IDs.
+///
+/// Does not consume structural generation RNG. Catalog index `i` is stable for a
+/// given seed and sorted ID sequence; catalogue overflow uses a `" {cycle+1}"` suffix.
 pub fn assign_star_names<I>(seed: u64, system_ids: I) -> Vec<StarNameAssignment>
 where
     I: IntoIterator<Item = u32>,
