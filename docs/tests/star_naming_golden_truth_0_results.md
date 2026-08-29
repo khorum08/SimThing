@@ -8,6 +8,7 @@
 **HD-RECEIPT:** `3e2e4cf9f3e0`
 **ORIENT-RECEIPT:** `2557bebcf996` (`orientation_rule_stamp=5eaee638be917b8f`)
 **Dispatch master / base:** `1f921d73b5a016622221d93f667b41c1b1e57b84`
+**tested_code_sha:** `f398263cf5f509ba1ce52c7eee02d95b68e86874`
 
 ## Adjudication
 
