@@ -5,9 +5,12 @@ use thiserror::Error;
 
 pub use simthing_core::ExecutionPosture;
 pub use simthing_driver::{
-    GrowthEntitlementMarketBinding, RunSummary, Scenario, SessionError, SimSession, StepOnceOutcome,
+    apply_spec_delta, apply_spec_snapshot, open_replay_with_spec, read_spec_replay_file,
+    GrowthEntitlementMarketBinding, LoadedReplay, ReplayOpenError, RunSummary, Scenario,
+    SessionError, SimSession, SpecDelta, SpecSnapshot, StepOnceOutcome,
 };
 pub use simthing_gpu::{ResidencyPlacementDisposition, ResidencyPlacementOutcome};
+pub use simthing_sim::{ReplayDriver, ReplayError, ReplayFrame, ReplaySnapshot};
 pub use simthing_spec::{
     clear_constrained_claims_at_generation, clear_stamped_owner_channels, AuthoredClearingProgram,
     ClearingRemainderAuthority, ConstrainedClaim, ConstrainedClearingError,
