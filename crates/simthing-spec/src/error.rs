@@ -21,6 +21,21 @@ pub enum SpecError {
     #[error("Threshold activation requires research_cost > 0 on entry `{0}`")]
     ThresholdRequiresPositiveCost(String),
 
+    /// Domain-neutral refusal at the production admission boundary.
+    ///
+    /// `law_id` names the already-enforced admission law; `element_path`
+    /// identifies the authored or admitted element using identity already
+    /// authoritative at the rejection site. Callers must inspect these fields
+    /// through the typed error chain rather than parse [`std::fmt::Display`].
+    #[error("admission law `{law_id}` refused element `{element_path}`")]
+    AdmissionRefused {
+        law_id: &'static str,
+        element_path: String,
+    },
+
+    // Legacy non-root compilation/reporting callers still carry site-only
+    // provenance. ROOT-CONTRACT-ADMISSION-ERROR excludes this shape from the
+    // production SimSession::open_from_spec admission transaction.
     #[error("validation failed at {site}")]
     ValidationFailedAt { site: &'static str },
 

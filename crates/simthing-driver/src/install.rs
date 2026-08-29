@@ -502,9 +502,7 @@ fn install_standalone_overlay(
     let (template, diag) =
         compile_overlay(overlay_spec, registry, scenario.root.id).map_err(InstallError::Spec)?;
     if !diag.diagnostics.is_empty() {
-        return Err(InstallError::Spec(SpecError::ValidationFailedAt {
-            site: "simthing-driver/install",
-        }));
+        return Err(standalone_compile_diagnostics_refusal(&overlay_spec.id));
     }
 
     let owners = resolve_install_target(&overlay_spec.install, scenario, root)?;
@@ -540,6 +538,13 @@ fn install_standalone_overlay(
     Ok(installed_ids)
 }
 
+fn standalone_compile_diagnostics_refusal(overlay_id: &str) -> InstallError {
+    InstallError::Spec(SpecError::AdmissionRefused {
+        law_id: "standalone-overlay-compile-diagnostics-empty",
+        element_path: format!("domain_packs.overlays[id={overlay_id:?}]"),
+    })
+}
+
 /// Materialize resource-economy property instances onto **explicit** entity hosts.
 ///
 /// Host authority comes only from authored `host_entity` / `*_host_entity` fields
@@ -557,11 +562,7 @@ fn ensure_resource_economy_properties(
         let Some(entity) = placement.host_entity.as_deref() else {
             continue;
         };
-        let property_id = registry
-            .id_of(&placement.key.namespace, &placement.key.name)
-            .ok_or_else(|| SpecError::ValidationFailedAt {
-                site: "simthing-driver/install",
-            })?;
+        let property_id = resource_economy_property_id(registry, placement)?;
         let host_id = resolve_unique_install_host(scenario, entity, placement.host_span)?;
         if let Some(previous_host) = qualified_hosts.insert(property_id, host_id) {
             if previous_host != host_id {
@@ -578,11 +579,7 @@ fn ensure_resource_economy_properties(
     }
 
     for placement in placements {
-        let property_id = registry
-            .id_of(&placement.key.namespace, &placement.key.name)
-            .ok_or_else(|| SpecError::ValidationFailedAt {
-                site: "simthing-driver/install",
-            })?;
+        let property_id = resource_economy_property_id(registry, &placement)?;
         let host_id = match &placement.host_entity {
             Some(entity) => resolve_unique_install_host(scenario, entity, placement.host_span)?,
             None => {
@@ -597,8 +594,13 @@ fn ensure_resource_economy_properties(
             }
         };
         let host = find_simthing_mut(root, host_id).ok_or_else(|| {
-            InstallError::Spec(SpecError::ValidationFailedAt {
-                site: "simthing-driver/install",
+            InstallError::Spec(SpecError::AdmissionRefused {
+                law_id: "resource-economy-property-host-live",
+                element_path: format!(
+                    "simthings[id={}].properties[key={:?}]",
+                    host_id.raw(),
+                    format!("{}::{}", placement.key.namespace, placement.key.name)
+                ),
             })
         })?;
         if !host.properties.contains_key(&property_id) {
@@ -613,6 +615,21 @@ fn ensure_resource_economy_properties(
         }
     }
     Ok(())
+}
+
+fn resource_economy_property_id(
+    registry: &DimensionRegistry,
+    placement: &EconomyPropertyPlacement,
+) -> Result<SimPropertyId, SpecError> {
+    registry
+        .id_of(&placement.key.namespace, &placement.key.name)
+        .ok_or_else(|| SpecError::AdmissionRefused {
+            law_id: "resource-economy-property-registered",
+            element_path: format!(
+                "resource_economy.properties[key={:?}]",
+                format!("{}::{}", placement.key.namespace, placement.key.name)
+            ),
+        })
 }
 
 fn resolve_unique_install_host(
@@ -1098,14 +1115,31 @@ fn seed_base_flow_obligations(
                 });
             };
             let Some(value) = participant_node.properties.get_mut(&flow_property_id) else {
-                return Err(InstallError::Spec(SpecError::ValidationFailedAt {
-                    site: "simthing-driver/install",
-                }));
+                return Err(base_flow_participant_property_refusal(
+                    &obligation.obligation,
+                    &obligation.flow_property,
+                    participant_id,
+                ));
             };
             value.add_lane_at_offset(intrinsic_offset, obligation.signed_rate);
         }
     }
     Ok(())
+}
+
+fn base_flow_participant_property_refusal(
+    obligation: &str,
+    flow_property: &PropertyKey,
+    participant_id: SimThingId,
+) -> InstallError {
+    InstallError::Spec(SpecError::AdmissionRefused {
+        law_id: "base-flow-obligation-participant-property-live",
+        element_path: format!(
+            "resource_flow.base_obligations[id={obligation:?}].participants[id={}].properties[key={:?}]",
+            participant_id.raw(),
+            format!("{}::{}", flow_property.namespace, flow_property.name)
+        ),
+    })
 }
 
 fn resolve_base_flow_property(
@@ -1966,6 +2000,60 @@ mod tests {
                 .get_role(&SubFieldRole::Amount, &layout)
                 .to_bits(),
             6.0_f32.to_bits()
+        );
+    }
+
+    fn assert_admission_refusal(error: InstallError, expected_law: &str, expected_path: &str) {
+        match crate::session::SessionError::from(error) {
+            crate::session::SessionError::Install(InstallError::Spec(
+                SpecError::AdmissionRefused {
+                    law_id,
+                    element_path,
+                },
+            )) => {
+                assert_eq!(law_id, expected_law);
+                assert_eq!(element_path, expected_path);
+            }
+            other => panic!("unexpected install error: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn promoted_install_refusals_bind_existing_laws_to_authoritative_elements() {
+        assert_admission_refusal(
+            standalone_compile_diagnostics_refusal("bounded-drag"),
+            "standalone-overlay-compile-diagnostics-empty",
+            "domain_packs.overlays[id=\"bounded-drag\"]",
+        );
+
+        let placement = EconomyPropertyPlacement {
+            key: PropertyKey {
+                namespace: "typed".into(),
+                name: "stock".into(),
+            },
+            host_entity: None,
+            host_span: None,
+            seed: None,
+        };
+        let error = resource_economy_property_id(&DimensionRegistry::new(), &placement)
+            .expect_err("unregistered property must remain rejected");
+        assert_admission_refusal(
+            InstallError::Spec(error),
+            "resource-economy-property-registered",
+            "resource_economy.properties[key=\"typed::stock\"]",
+        );
+
+        assert_admission_refusal(
+            base_flow_participant_property_refusal(
+                "food-drain",
+                &PropertyKey {
+                    namespace: "typed".into(),
+                    name: "flow".into(),
+                },
+                SimThingId::from_session_raw(41),
+            ),
+            "base-flow-obligation-participant-property-live",
+            "resource_flow.base_obligations[id=\"food-drain\"].participants[id=41].properties[key=\"typed::flow\"]",
         );
     }
 }
