@@ -45,9 +45,9 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 26e025f8b1e76f7f649571aaa4f2da2c82ca722b4d8c549f5ce9d14b4604f3a6 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | 26eab30ec86c97ac8dfd6beef7ae8c5b4d3f18c38fdaa431ec40ccce855396d3 |
-| design_0_0_8_7_rf_arena_modernization.md | 4518d0a43e4a7f7c5f1d6d603b936ab03bf0990394353f10e9be57c8069fea89 |
+| design_0_0_8_7_rf_arena_modernization.md | e0bd40aadb7448f2af810e27adda4e2a539d6a931dce6f522862238d3d5b36e6 |
 | relay_lint.sh | ae19bdca12e90f6bc988e064f081ff62903034d69bf34b08ffd5c27e352181ba |
-| doctrine_anchors.tsv | 0b6188afbdbc4077e182a13f3da02d6b2debb267d74326c72a9828417189f79d |
+| doctrine_anchors.tsv | e4a4bee0533e4d7418d1ce969b7c5da7df5be2cb4a061c3aa58bba83691a169b |
 | execution_status_taxonomy.tsv | 924c086550221dd7136ec0682293900d8d03feb4bc1dae1a6e750a61e65153bc |
 | execution_status_mixed_posture.tsv | 1adf05f3ec5fd7b537efe29259d20649a2c6d3a0839590063e5308ff154e8f25 |
 | execution_status_non_execution.tsv | 214c1b557dfd3fc465f0171051e20281ff1dcf6c53128dbb29cba01524f9be02 |
@@ -68,20 +68,19 @@ Dark properties (1): `fixture::dark_reading` (reasons/spans in `property_admissi
 
 Track state: `open`
 
-> Compact view: 74 completed rungs elided; showing all 3 open rungs plus the 3 most recent completions. Full ladder in the design doc.
+> Compact view: 75 completed rungs elided; showing all 2 open rungs plus the 3 most recent completions. Full ladder in the design doc.
 
 | # | rung | deliverable | exit proof |
 | --- | --- | --- | --- |
-| 11.2f | GRANT-DISBURSEMENT-LANE-0 | **SUBSTRATE — DA-minted 2026-08-26 after the SEVENTH lawful STOP, the first fire | **DA-GRADUATED / merged #1852 @ 6cf11842** — pre-dispatch A1 `5434074501`; eighth STOP + A2 widening `5434301294`; Fa... |
 | 11.3 | UNIFIED-FACILITY-CONVERGENCE-WITNESS-0 | **Unified-facility convergence witness — DA-minted 2026-08-17 on Owner direction | **DA-GRADUATED / merged #1854 @ 117286a2** — STOP scope-narrowing `Q1/Q2/Q3` ruled pre-arc; A1-A3 amendments; Fable d... |
 | 11.4 | UNIFIED-INGRESS-EXCLUSIVITY-0 | **THE OWNER LAW, MECHANIZED — DA-minted 2026-08-23. 11.3 proves the facilities C | **DA-GRADUATED / merged #1858 @ 4f61d1ab** — pre-dispatch `5452730843`; D1/D2 remand `5454411811` (both holes DA-hand... |
-| 11.5 | ANCHOR-PENDING-LIFECYCLE-0 | **HARNESS — Owner-approved 2026-08-28 (board notice 5453971653), minted with the | **PROBATION / proof-present / DA-review-pending** — implementation evidence at docs/tests/anchor_pending_lifecycle_0_... |
+| 11.5 | ANCHOR-PENDING-LIFECYCLE-0 | **HARNESS — Owner-approved 2026-08-28 (board notice 5453971653), minted with the | **DA-GRADUATED / merged #1861 @ bad178b5** — transport-shape ruling `5458831930` (four-site map); tenth STOP + ledger... |
 | 12.1 | PORTABILITY-PROOF-0 | Phase 12: a domain unrelated to any shipped scenario through the Vendor Door end | TODO |
 | 12.2 | CORE-CANONIZATION-0 | Phase 12: object model (P0 Root Contract + cycle + EML-ISA + Triad Doors + overl | TODO |
 
 ## Next Rung Pointer
 
-Active pointer: `ANCHOR-PENDING-LIFECYCLE-0`
+Active pointer: `PORTABILITY-PROOF-0`
 
 
 ## Cold-Start Spine (constitutional pointers)
