@@ -1,37 +1,18 @@
 ---
 rung: CORE-CANONIZATION-0
-track: 0.0.8.7
 kind: rung
+track: 0.0.8.7
+base_sha: 262e0c0e8a591abc7b0e9950ee50e4c2ab5df628
 audience: coding
 model_tier: frontier
-base_sha: ae899072697957834e035275b6bdc7ffe761b4ed
 expected_route: DA-RESERVE(binding)
 owner_approved: true
-orchestrator_receipt: 8c38ab2b2614
-orientation_rule_stamp: 7566ca51068addf6
-required_anchors:
-  - orientation-harness-core
-  - scanner-selftest-delta-gate
-owner_notes:
-  - Final 0.0.8.7 rung before closeout. Canonize only graduated fact; no anticipatory mechanism work.
-  - Binding DA provenance: 11.5 graduation 5459355580; 12.1 A1 door-symmetry ruling 5459514102; 12.1 graduation/Q1-Q2 ruling 5460089932.
-  - Live pending-anchor worklist is exact: unified-ingress-exclusivity, stemthing-b-market-grammar, anchor-pending-lifecycle, door-symmetry.
-stop_conditions:
-  - canonization requires any engine/kernel/GPU/spec/sim/driver implementation edit rather than documentation/anchor reconciliation
-  - any required statement cannot be tied to a graduated rung, merged implementation, or binding Owner/DA ruling
-  - the four pending anchors cannot all be repointed to truthful canonical in-tree sections in the same PR as the prose that absorbs them
-  - retiring docs/stead_simthing_automata.md would orphan normative content or any anchor/reference without a canonical replacement
-  - completing the generic admitted-field-sweep opener debt would require new replay implementation instead of honest disposition
-  - closeout requires Vector CostBand work or repair of the known ClauseThing reds
-forbidden_surfaces:
-  - crates/*/src/** production implementation changes
-  - .github/workflows/** or scripts/ci/**/*.sh or scripts/ci/**/*.py gate-code changes
-  - Vector CostBand work
-  - known ClauseThing baseline-red repair
-  - new facility, authority, lifecycle, replay, EML, RF, overlay, ActionBand, CostBand, PALMA, Gu-Yang, or STEAD semantics
-  - anticipatory 0.1+ architecture not already graduated
+owner_notes: "Final 0.0.8.7 rung before closeout. Canonize graduated fact only. Binding provenance: 11.5 graduation 5459355580; 12.1 door-symmetry A1 5459514102; 12.1 graduation/Q1-Q2 5460089932. Exact live pending worklist at mint: unified-ingress-exclusivity, stemthing-b-market-grammar, anchor-pending-lifecycle, door-symmetry. Post-stamp orchestrator receipt: 8c38ab2b2614; rule stamp: 7566ca51068addf6."
+surfaces: ["docs/simthing_core_design.md", "docs/stead_simthing_automata.md", "scripts/ci/doctrine_anchors.tsv", "scripts/ci/anchor_reach_log.tsv", "docs/tests", "docs/design_0_0_8_7_rf_arena_modernization.md", "docs/orchestrator_orientation.md"]
+forbidden: ["any crates/*/src production implementation edit", "any .github/workflows or scripts/ci gate-code change", "Vector CostBand work", "known ClauseThing baseline-red repair", "new facility, authority, lifecycle, replay, EML, RF, overlay, ActionBand, CostBand, PALMA, Gu-Yang, or STEAD semantics", "anticipatory architecture not already graduated", "track closeout from the coding lane"]
+required_checks: ["before edits render/read this handoff; perform fresh Frontier coding-role orientation on the live dispatch master and ACK every rendered REQUIRED-ANCHOR", "FIRST STEP inventory the four pending anchors, the three anchors targeting docs/stead_simthing_automata.md, the live core-design sections being superseded, and every surviving reference/precedence carve-out for the temporary automata doc", "rewrite simthing_core_design.md from section 1 as one closed recursive stem-cell kernel using graduated fact only; preserve early-discharged owner-channel, finite overlay lifecycle, and sole CostBand law intact", "absorb exact landed automata laws, canonize door symmetry from 5459514102, and revalidate CORE-CANONIZATION-0 as the 11.5 pending-lifecycle consumer without creating a second rung registry", "consume all four live pending anchors in the same PR as their canonical prose: repoint to truthful in-tree core sections, set lifecycle canonical, resync hashes, and do not inflate trigger domains", "retire docs/stead_simthing_automata.md only after normative absorption; repoint its three anchors and remove obsolete references/temporary precedence carve-outs; anchor_check must end with zero orphans", "disposition the admitted-field-sweep generic-opener gap as dated/provenanced debt from 5460089932; do not repair replay implementation in this rung", "run findability queries for the previously missed vocabulary and compare with the 9.1%/8.8% baseline as measurement only; no trigger-domain inflation", "report net prose delta and delete superseded/correction prose rather than stacking it", "run doctrine/anchor/orientation/doc-budget/handoff/agent-delta/diff checks and return exact base, tested/final head, changed-file census, pending before/after table, retired-reference census, hosted Doctrine Scan, fresh clearance, and fresh relay-lint"]
+stop_conditions: ["truthful canonization requires any engine/kernel/GPU/spec/sim/driver implementation edit", "a required normative statement cannot be tied to a graduated rung or binding Owner/DA ruling", "all four pending anchors cannot be repointed truthfully in the same PR as the prose that absorbs them", "retiring docs/stead_simthing_automata.md would orphan normative content, anchors, or references without a canonical replacement", "the generic admitted-field-sweep opener debt requires new replay implementation instead of honest disposition", "completion requires Vector CostBand work or repair of known ClauseThing reds"]
 ---
-
 ## BUILD
 - Rewrite `docs/simthing_core_design.md` so the SimThing is presented first as ONE closed stem-cell simulation kernel, not a subsystem inventory. Section-1 anatomy must home the P0 Root Contract and recursive generation cycle, then current §§2–8 become expressions of that anatomy.
 - Canonize the graduated facilities as parts of the same germ: intrinsic GPU residency/slotting; StemThing-A residency; StemThing-B recursive conserved-resource market/grant grammar; CostBand as THE resource-sink mechanism; ActionBand as the `act` facility; OverlayThing and the four overlay families; complete EML ISA/library including EXP/LN and ExactPrimitiveAdmission; and the STEAD/PALMA/Gu-Yang Field Triad with born observables and the single-ingress law.
