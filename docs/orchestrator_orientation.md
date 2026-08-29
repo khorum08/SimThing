@@ -45,9 +45,9 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 26e025f8b1e76f7f649571aaa4f2da2c82ca722b4d8c549f5ce9d14b4604f3a6 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | 26eab30ec86c97ac8dfd6beef7ae8c5b4d3f18c38fdaa431ec40ccce855396d3 |
-| design_0_0_8_7_rf_arena_modernization.md | 26ca230a52a1b076d88db5d8e8edffb98b1e704d1929b8e3510fcd34a399a276 |
+| design_0_0_8_7_rf_arena_modernization.md | fe47ac6241731994700eb56cd7858b3d05b6df84cde77101282f435fd2a6c1f1 |
 | relay_lint.sh | ae19bdca12e90f6bc988e064f081ff62903034d69bf34b08ffd5c27e352181ba |
-| doctrine_anchors.tsv | 42e9d11b9cc0cb592a1849d58f08f25f1a3e6f09d440732e13df042c4d94975d |
+| doctrine_anchors.tsv | d3837a8a345334d3d41652c35c96d3b29f8b252714861f697bccccc56cea40ee |
 | execution_status_taxonomy.tsv | 924c086550221dd7136ec0682293900d8d03feb4bc1dae1a6e750a61e65153bc |
 | execution_status_mixed_posture.tsv | 1adf05f3ec5fd7b537efe29259d20649a2c6d3a0839590063e5308ff154e8f25 |
 | execution_status_non_execution.tsv | 214c1b557dfd3fc465f0171051e20281ff1dcf6c53128dbb29cba01524f9be02 |
@@ -75,7 +75,7 @@ Track state: `open`
 | 11.4 | UNIFIED-INGRESS-EXCLUSIVITY-0 | **THE OWNER LAW, MECHANIZED — DA-minted 2026-08-23. 11.3 proves the facilities C | **DA-GRADUATED / merged #1858 @ 4f61d1ab** — pre-dispatch `5452730843`; D1/D2 remand `5454411811` (both holes DA-hand... |
 | 11.5 | ANCHOR-PENDING-LIFECYCLE-0 | **HARNESS — Owner-approved 2026-08-28 (board notice 5453971653), minted with the | **DA-GRADUATED / merged #1861 @ bad178b5** — transport-shape ruling `5458831930` (four-site map); tenth STOP + ledger... |
 | 12.1 | PORTABILITY-PROOF-0 | Phase 12: a domain unrelated to any shipped scenario through the Vendor Door end | **DA-GRADUATED / merged #1864 @ 56e1b602** — eleventh STOP + A1 fold `5459514102`; Q1/Q2 ACCEPTED; Fable deep review;... |
-| 12.2 | CORE-CANONIZATION-0 | Phase 12: object model (P0 Root Contract + cycle + EML-ISA + Triad Doors + overl | TODO |
+| 12.2 | CORE-CANONIZATION-0 | Phase 12: object model (P0 Root Contract + cycle + EML-ISA + Triad Doors + overl | **PROBATION / proof-present / DA-review-pending** — canonical core rewrite, pending-anchor consumption, temporary-anc... |
 
 ## Next Rung Pointer
 

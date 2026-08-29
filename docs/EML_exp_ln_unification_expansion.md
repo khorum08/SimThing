@@ -6,7 +6,7 @@
 >
 > Nothing in this document changes the 0.0.8.7 pointer, rung ordering, core constitution, or settled semantics of graduated rungs. It is a design candidate for review and for conversion into a falsifiable workplan only after DA disposition.
 >
-> Governing anchors: [`full_eml_unification.md`](full_eml_unification.md), [`stead_stemthing_unification.md`](stead_stemthing_unification.md), [`stead_spatial_contract.md`](stead_spatial_contract.md), [`stead_simthing_automata.md`](stead_simthing_automata.md), [`eml_n4_expansion_digest.md`](eml_n4_expansion_digest.md), [`simthing_core_design.md`](simthing_core_design.md), and [`design_0_0_8_7_rf_arena_modernization.md`](design_0_0_8_7_rf_arena_modernization.md).
+> Governing anchors: [`full_eml_unification.md`](full_eml_unification.md), [`stead_stemthing_unification.md`](stead_stemthing_unification.md), [`stead_spatial_contract.md`](stead_spatial_contract.md), [`eml_n4_expansion_digest.md`](eml_n4_expansion_digest.md), [`simthing_core_design.md`](simthing_core_design.md), and [`design_0_0_8_7_rf_arena_modernization.md`](design_0_0_8_7_rf_arena_modernization.md).
 
 ---
 

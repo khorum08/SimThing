@@ -13,7 +13,7 @@
 >
 > **ActionBand band crossings are the existing Phase-5 sealed band-crossing/threshold mechanism.** ActionBand does not mint a second crossing detector, listener framework, event comparator, saturation comparator, or parallel threshold state machine. Gu-Yang outputs are ordinary anchored field/property columns and therefore reach ActionBand through the same sealed crossing/observation substrate as other state.
 >
-> Companions: [`simthing_core_design.md`](simthing_core_design.md) (Field-Triad authority and P5), [`stead_spatial_contract.md`](stead_spatial_contract.md) (PALMA/Gu-Yang spatial contract and shared `FieldSweepRegistration`), [`stead_simthing_automata.md`](stead_simthing_automata.md) (four-leg automaton), and [`stead_stemthing_unification.md`](stead_stemthing_unification.md) (StemThing unification).
+> Companions: [`simthing_core_design.md`](simthing_core_design.md) (closed four-leg germ and Field-Triad authority), [`stead_spatial_contract.md`](stead_spatial_contract.md) (PALMA/Gu-Yang spatial contract and shared `FieldSweepRegistration`), and [`stead_stemthing_unification.md`](stead_stemthing_unification.md) (StemThing unification).
 >
 > Physical movement remains a spatial witness and vendorization of ActionBand, never a peer core facility. Local-minimum/adversarial navigation remains fenced; **saturation is not navigation**.
 

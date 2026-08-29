@@ -132,7 +132,7 @@ row, which rules that persistent column layout must key on a stable interned own
 - **Anchor the governing docs.** Both `full_eml_unification.md` and `stead_stemthing_unification.md`
   are declared governing but have **zero rows** in `doctrine_anchors.tsv` and `anchor_triggers.tsv`
   — no content hash, unreachable via `anchor_query.sh`. Anchor them section-wise, as
-  `stead_simthing_automata.md` was (3 anchor rows + 1 trigger row).
+  the now-retired temporary automata anchor was (3 anchor rows + 1 trigger row).
 
 ## 7. Traps this session paid for
 

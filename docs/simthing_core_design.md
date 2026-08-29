@@ -1,1215 +1,534 @@
 # The SimThing Core Design — Paradigm Reference
 
-> **Status: STANDING — effectively permanent, deliberately amendable.** This document is the paradigm
-> itself, not a version of it. It sits *beneath* the versioned constitution (`design_0_0_8_1.md` and
-> successors): the constitution governs process, gating, and the current production track; **this
-> document states the architecture every version, every PR, and every agent must build toward.** It is
-> deliberately self-contained — no link needs to be followed to apply it. If any handoff, PR ladder,
-> status row, or ancillary-service design conflicts with this document, this document wins, and the
-> conflict is escalated to design authority.
+> **Status: STANDING — effectively permanent, deliberately amendable.** This document is the
+> paradigm itself, beneath the versioned constitution. It states the architecture every version,
+> PR, and agent builds toward. If a handoff, ladder row, status record, or ancillary design
+> conflicts with it, stop and escalate to design authority.
 >
-> **Horizon (the Definable Horizon Law, 0.0.8.7 §4): this document claims no permanence.** It is
-> amended when a graduated rung establishes law that contradicts it, and the amendment lands *with
-> that rung* — never as a later cleanup, because an unamended paradigm doc outranks the rung that
-> superseded it and silently re-imposes the retired shape. Amendments are Tier-2,
-> design-authority-only, and by addition or correction — never silent weakening.
->
-> **If you are a low-context agent: hold this file in context for the entire task.** Everything else
-> is detail; this is the spine.
+> **Definable horizon.** This document claims no permanence. A graduated ruling that changes the
+> paradigm amends this document in the same change; canonization consumes temporary anchors rather
+> than leaving them as a second authority.
 
 ---
 
 ## 0. Spatial substrate: STEAD/Mapping is not optional
 
-**Read this before any downstream example.** SimThing is, at its core, a **spatial** simulator. The map
-is not a backdrop or a render artifact — it **is** a grid of gridcell `SimThing`s run as a cellular
-automaton (the **Movement-Front automaton**, §7). A `SimThingKind::Location` **is** a gridcell with an
-intrinsic structural `(col,row)` on the lattice. This is load-bearing, not decorative, and it has
-drifted catastrophically three times — each time by treating the spatial substrate as inert metadata.
-It never is.
+SimThing is a spatial simulator. A Location is a structural gridcell SimThing, and the map is a
+lattice of those cells running the Movement-Front automaton. Spatial identity is intrinsic; it is
+not render metadata or a detachable role.
 
-Eight non-negotiable invariants (full normative form: [`stead_spatial_contract.md`](stead_spatial_contract.md), enforced by `stead_spatial_contract_guards`):
+The spatial contract has eight non-negotiable consequences:
 
-1. A `Location` **is** a structural gridcell; spatial identity is intrinsic, not a detachable role.
-2. The parent grid owns the spatial arena; placements live in `grid_metadata`, never render metadata.
-3. Emitted integer `(col,row)` are **structural** coordinates, honored by the lowerer — not render, not
-   emission-order, not row-major fill.
-4. Unoccupied cells are **ambient field**, not absent ontology; lattices are sparse and may be **vast**
-   (`200×200` is a *small* reference, not a ceiling).
-5. Heatmaps, falloff, fronts, Gu-Yang/SaturatingFlux, PALMA, and RF pressure are **expressions over the
-   structural substrate**, not independent services.
-6. **Layout admission** (budget-based, no fixed edge cap) is separate from **execution-profile
-   admission** (the ≤10/32-per-edge bounded local theater). A vast layout may pass while a dense
-   execution profile **defers to the atlas** — that is not "the map is too large."
-7. Dense bounded-theater caps **cannot** shrink, compact, or invalidate the structural layout.
-8. Candidate F governs exact-magnitude decision gates (constitution §0.7) but **does not** license
-   treating positions as inert — exact sqrt/Euclidean ops route *through* it, they are never *avoided*.
+1. The parent grid owns the arena; placements live in structural grid metadata.
+2. Emitted integer col,row coordinates are honored as structure, never replaced by emission order.
+3. Empty cells are ambient field, not absent ontology; the lattice is sparse and may be vast.
+4. Heatmaps, fronts, falloff, PALMA, Gu-Yang and RF pressure are expressions over this substrate.
+5. Layout admission and bounded execution-profile admission are different judgments.
+6. A dense theater cap never shrinks, compacts, or invalidates structural layout.
+7. Exact Euclidean gates route through Candidate F; exactness never licenses spatial erasure.
+8. Runtime numerical law is translation-invariant and local; absolute coordinates never choose it.
 
-§7 below is the full automaton model; this section is its non-skippable summary. If a change reasons as
-if any of the above is false, the change is wrong.
+The full contract and adjudications remain in
+[stead_spatial_contract.md](stead_spatial_contract.md) and
+[ClauseThingADR.md](adr/ClauseThingADR.md).
 
 ---
 
-## 1. The SimThing Principle — the unitary vision
+## 1. The SimThing Principle — one closed recursive stem-cell kernel
 
-**Everything is a SimThing.** A SimThing is a recursive `{ properties, overlays, children }` node.
-The entire simulation — the game session, factions, the world map, star systems, planets, grid cells,
-fleets, cohorts, buildings, even arena-participant wrappers — is **one recursive tree of SimThings,
-rooted in a single Session SimThing**, resident on the GPU as flat dense matrices.
+**Everything in simulation authority is a SimThing.** The SessionThing is the single admitted root.
+Every descendant is the same recursive germ: logical identity and parentage, sparse Property state,
+intrinsic ownership, overlay state, admitted lanes, children, and the capability to participate,
+act, originate, and receive. Specialization adds admitted data; it does not create a privileged
+runtime kind, manager, or adjacent engine.
 
-The principle exists for exactly one reason: **conflict, opportunity, ambition, and extraction all
-collapse into a single generic, GPU-resident mechanism.** Combat, economy, AI ambition, raiding,
-trade, diplomacy, disruption — each is the *same* loop wearing a different label:
+The closed root contract is:
 
-```
-accumulate → reduce up the tree → mask → disburse down → threshold-crossings fire decisions
-```
+| anatomy | intrinsic meaning |
+|---|---|
+| **participate** | hold and exchange Property and RF state; reduce upward and disburse downward |
+| **act** | resolve admitted ActionBand discrepancies and CostBand crossings |
+| **originate** | own and route attributable OverlayThing state |
+| **receive** | accept deficit-driven, standing, and predicate-broadcast directives |
+| **StemThing-A lane** | stable logical residency, parent slotting, child-row/extent placement |
+| **StemThing-B lane** | recursive conserved-resource markets, Draws, clearing and grants |
+| **expression organ** | the one admitted EML ISA and gadget library |
+| **field organ** | the RF/STEAD/PALMA/Gu-Yang Field Triad |
 
-There is no combat engine, no economy engine, no AI engine, no pathfinding engine. There is one
-`accumulate → reduce → mask → threshold` loop resolving all of them in the same GPU pass over the
-same property columns. **Decisions are GPU-resident threshold crossings over resolved fields — never
-a CPU planner.** The moment any behavior becomes a privileged structural special case (a bespoke node
-shape, a runtime `match kind`, a subsystem beside the tree), it leaves the generic substrate, can no
-longer be resolved as uniform GPU automata, and the unitary vision breaks. That is why conformance is
-non-negotiable: it is not a style preference, it is the **precondition** for the whole simulation
-being one GPU automaton instead of a federation of bespoke subsystems.
+Every row is sparse and inert by default. A population cohort, empty gridcell, owner seat, and
+SessionThing possess the same semantics without allocating active state for unused lanes. The
+kernel is fractal: a provisioned descendant may execute as a subtree while remaining connected to
+its ancestor by the same stamped product and grant seams.
 
-When a design seems to need special-case logic, the correct move is almost always **more SimThing**:
-more properties, more overlays, more `AccumulatorOp` registrations, more CostBands (§5.4) — never a
-new subsystem.
+All conflict, opportunity, ambition, extraction, residency and actuation enter one cycle:
 
-**What the substrate must prove is a closed set — the Invariant Set (0.0.8.7 §4).** Conservation,
-determinism, CPU/GPU parity, boundedness, admission totality, and residency/typing are the *complete*
-proof surface: a mechanism is admitted when it upholds them, and no mechanism earns admission by
-passing a bespoke test invented alongside it. The set is closed so that "prove it works" has a fixed
-meaning rather than one negotiated per feature. Expanding it is an Owner privilege, not a design
-convenience — and a mechanism that seems to need a new invariant is usually a mechanism modelled at
-the wrong tier. Emergence checks are **demonstrations, not gates**: they are what you look at to see
-the substrate behaving, never what a change must satisfy to land.
+    admit and bind
+      → accumulate local state
+      → reduce perception and claims up the tree
+      → resolve ownership, overlays, fields, valuation and constrained clearing
+      → disburse grants and directives down
+      → cross admitted CostBand and ActionBand thresholds
+      → apply the recorded boundary products
+      → advance Current to Next and repeat
 
-**The substrate, not the game, is the product.** This genericity is foundational, not retrofitted:
-from the earliest design (v4: *"semantic labels are read by the CPU semantic layer for display
-only; the simulation never sees them"*) the kernel layer has been guarded against game semantics —
-even the boundary layer is ticks and a monotonic counter, with "day" admitted only as legible
-naming. The grand-strategy game is the engine's **first consumer, not its definition**: SimThing is
-a general-purpose, GPU-resident simulation ontology engine. The same properties the game demanded —
-semantic-free residency, bit-exact determinism, replay-pinned reproducibility, spec-layer ontology
-that compiles away, and dynamics satisfying Anchor A's postulates — make every run a natively
-annotated scientific artifact: **long-horizon field movies** (gradient heatmaps with full causal
-sidecars and legal interventions) that constitute training and evaluation corpora for machine-
-learned world models. This second mission is recorded here as *identity, not authorization* — its
-consumers and current candidate technologies live in `workshop/field_world_model_horizon.md` and
-open only by the normal consumer-pulled gate. Its operational force in this document is simple:
-every binding constraint below now has **two products** depending on it. A semantic leak or a
-determinism break poisons the corpus as surely as it breaks the game.
+There is no combat engine, economy engine, AI planner, allocator service, pathfinder, overlay
+manager, or second clearing path beside that cycle. More behavior means more admitted Property,
+OverlayThing, EML, CostBand, ActionBand, RF, or Field-Triad data on the germ.
 
-### 1.1 The two theoretical anchors
+The Invariant Set is closed: conservation, determinism, CPU/GPU parity, boundedness, admission
+totality, and residency/typing are the complete proof surface. Emergence witnesses demonstrate the
+substrate; they do not mint new invariants.
 
-The paradigm is not folklore; it rests on two published results that every agent should internalize,
-because they explain *why* the engine's constraints generalize where bespoke systems collapse:
+### 1.1 Root identity, residency and recursive generation
 
-**Anchor A — Movement-Front (Wei's *STEAD* concept): the cellular-automaton physics of the map.**
-Zichao Wei, *On the Spatiotemporal Dynamics of Generalization in Neural Networks*
-([arXiv:2602.01651](https://arxiv.org/abs/2602.01651)), derives
-from three physical postulates that any system achieving lossless causal generalization is
-necessarily a cellular automaton of locally-coupled cells iterated to convergence:
+Logical SimThing identity survives physical slot movement. StemThing-A gives the admitted root and
+every child stable logical slot identity plus epoch-rebindable physical placement. The physical row
+is execution geometry, never semantic identity.
 
-- **P1 Locality** — information propagates at finite speed; a cell's next state depends only on its
-  neighborhood (its past light cone). Action-at-a-distance destroys causal structure.
-- **P2 Symmetry** — one shared evolution rule at every cell and every tick; laws never depend on
-  absolute coordinates. Only a translation-invariant rule generalizes beyond what it was tuned on.
-- **P3 Stability** — the dynamics are dissipative: states converge to discrete attractors, so noise
-  is projected back to legal values instead of accumulating; convergence itself signals
-  "computation complete," and computation time adapts to how far the wave must travel.
+The **initial-residency distinction** has one narrow exception. SlotAllocator.install_initial_tree admits initial bulk
+installation, and may continue installing against the **same already admitted structural root**.
+It is not an ordinary growth door. Presenting a different subtree or root is the typed
+InstallInitialTreeAttachedGrowthBypass refusal. After initial residency, attached growth enters
+through the ordinary StemThing-B entitlement, placement, and structural-commit path.
 
-SimThing's **Movement-Front system** (§7) is the engine-native realization of this result: gridcell
-SimThings are the lattice, the one shared stencil kernel is the rule, the horizon-capped band cascade
-is the light cone, and bounded operators + threshold projection are the attractor dynamics. Fronts —
-disruption fronts, threat fronts, supply fronts, suppression waves — propagate, interfere, and settle
-exactly as Wei's traveling waves do. When the constitution bans dense global diffusion, per-cell
-bespoke rules, or unbounded recurrence, it is enforcing P1, P2, and P3 respectively.
+Each tree has one generation authority. Current state is read during generation N; authorized
+Next-state and boundary products participate no earlier than their admitted later generation.
+Generation pacing is the recursion bound: no same-generation receive/originate convergence loop,
+re-clear, retry, or consequence re-entry exists.
 
-**Anchor B — EML: one operator generates all behavior.** Andrzej Odrzywołek,
-*All elementary functions from a single operator* (arXiv:2603.21852), proves that the single binary
-operator `eml(x,y) = exp(x) − ln(y)`, with the constant 1, generates the entire elementary-function
-repertoire — every formula becomes a uniform binary tree of identical nodes under the grammar
-`S → 1 | eml(S,S)`, executable as an opcode stack on a single-instruction machine. This is the
-constitutional justification for the engine's expression discipline: **any scripted interaction,
-however complex, is encodable as an opcode stack over one fixed generic interpreter** (`EvalEML`),
-so behavior is always *data* — postfix programs, gadget trees, column parameters — and never a new
-kernel, opcode, or subsystem. The EML gadget library and the JIT shader compiler (§4) are the two
-production surfaces of this anchor.
+### 1.2 Shared-surface ledger and the one integration schedule
 
-### 1.2 The admission substrate — doctrine as type, not prose
+The closed germ reuses one set of already-authoritative surfaces:
 
-The two anchors above say what the dynamics *must be*. This pillar says how that is **enforced** at the
-scale SimThing is actually built — by low-context agents, where the dangerous failure is not a crash but
-**an agent satisfying the compiler while violating the ontology.** The answer, implicit in SimThing from
-the first design and now made explicit doctrine, is: **encode the paradigm in the type system, not in
-prose an agent must re-read.** Rust is chosen for exactly this. Its compile-time admission — ownership,
-exhaustive `match`, `Send`/`Sync`, `Result`/`Option`, newtypes — is a *total, pre-execution, local*
-verdict that prunes whole classes of invalid program before any tick runs, at zero runtime cost. SimThing's
-spec/hydration admission layer is the same idea for *content*. These two gates — the compiler (admits code)
-and hydration (admits content) — are the substrate's immune system, and **doctrine should live inside them,
-not beside them.** Doctrine encoded as a type is the only doctrine that costs nothing to enforce at scale:
-no agent ever re-reads it, re-cites it, or can quietly drift past it.
+| surface | role in the germ |
+|---|---|
+| Property columns and role registry | resident numerical state and resolved bindings |
+| resolve_owner and owner-keyed RF buckets | inherited identity, local conservation and segregation |
+| reduce-up / disburse-down | perception and consumed directives |
+| OverlayThing + ActionBand | attributable actuation and sealed consequence dispatch |
+| EML programs | valuation, transforms, predicates and field laws |
+| CostBand | the sole sink and continuous-to-discrete quantizer |
+| FieldSweepRegistration | the one map/fold/post execution IR for the Field Triad |
+| BoundaryProtocol | structural mutation at the barrier |
+| IntegrationSchedule + canonical replay deltas | the one history and replay order |
 
-**The admission ladder — every invariant climbs as high as it can:**
+Both asynchronous carrier directions are generation-stamped: upward RF products and downward
+standing/directive products. RoutedOverlayProduct likewise carries the source generation and
+required origin while remaining in slot space inside the closed loop. IntegrationSchedule is the
+single append-only ordering record for products, grants, refusals, remaps, injections and lifecycle
+facts; no facility may mint its own history, clock, retry log, or checkpoint authority.
 
-1. **Type boundary** — the illegal state is *unrepresentable*; the violation does not compile. Zero
-   per-rung cost, total, never re-read. *The runtime tree sees resolved numeric columns and indices — no
-   kind, no semantic name, no game concept — so a `match kind` in a tick path, a hardcoded `data[N]`, or a
-   faction word inside `simthing-sim` should be **uncompilable**, not merely forbidden.*
-2. **Admission hard-error** — illegal *content* is rejected at import / session-build with a spanned
-   diagnostic; the runtime never sees it (unbounded fanout, unmapped category, all-algebraic coupling
-   cycle, perceived→true write, cap overflow).
-3. **Guard test / source scan** — a test or `grep` catches a violation after the fact (the semantic-free
-   scan; the STEAD withdrawn-phrase scan).
-4. **Prose** — the constitution states it and trusts the agent to hold and obey it.
+Staleness is observable state, not host-side truth. The age of a stamped product or field sample is
+represented as an ordinary STEAD field column and may be thresholded like any other observation.
+Observer lag follows the admitted backpressure policy and never waits for or perturbs the sim.
 
-Each rung down is more expensive, more circumventable, and **spends context budget on every rung,
-forever.** A prose invariant that *could* be a type is a latent defect; **a guard test or source scan that
-exists only because a type didn't is a promotion target, not a fixture.** The tell is exact: the rule
-"after hydration, `grep` for the category / faction name in any runtime artifact must come up empty" (§4;
-[`adr/resource_flow_substrate.md`](adr/resource_flow_substrate.md); CT-2c) is a *scan standing in for a
-type boundary* — it exists only because `simthing-sim`'s public types can still **name** a category. Move
-the boundary into the type and the scan is unnecessary.
+### 1.3 Events are RF
 
-**This is already the corpus's deep grain, not a new direction.** Roles resolve to columns at the CPU prep
-pass so the GPU receives only indices (§3 — admission resolution); `simthing-sim` is semantic-free because
-all semantics *compile away before upload* (§4 — the compile-away boundary); `SimThingKind` is a
-spec/driver convenience that behavior never branches on at runtime (§2 — the canonical promotion target);
-admission is the firewall and the runtime is the unconditional last line (the two-layer guardrail). What
-was implicit is now directive.
+Events use the germ's bidirectional RF shape: **reduce-up carries perception; disburse-down carries
+directive.** There are exactly three delivery modes:
 
-**The directive.** When you add or defend an invariant, encode it at the **highest admission rung that can
-express it**, and record why it could not climb higher. When you meet a guard test or a recurring prose
-drift-detector (§9), treat it as backlog: **promote it into a type or an admission hard-error.** Reserve
-prose and DA judgment for the residue types genuinely cannot reach — no-CPU-planner, no-flattening (the
-constitution's Specification-Fidelity law), the GPU/WGSL **trust domain Rust's checker cannot see into**
-(§4 — hence CPU-oracle parity is the *only* admission the shader has), and live ontological conformance.
-That residue is small by design; everything else should fail to compile or fail to admit.
+| mode | trigger and existing home |
+|---|---|
+| **deficit-driven** | a consumer surfaces a command deficit; delivery rides ordinary disbursement |
+| **standing** | a non-consumed value is inherited through the same absence-means-inherit resolution shape |
+| **predicate broadcast** | one bounded tree walk, paid by the initiator, selects matching descendants |
 
-Tests are ladder residue, like scans. A KEEP-class test is admitted only when it names the regression nothing higher on the ladder owns. If a type boundary, admission hard-error, doctrine scan, compile-fail proof, oracle, golden artifact, or required invariant owns the condition, the test must be retired, collapsed, or consolidated. Promotion of an invariant into a higher rung retires redundant tests in the same PR.
+A consumed directive is a conserved resource. A standing directive is a Property read and makes no
+conservation claim. Predicate broadcast is named separately because it is the only mode that does
+not fall out of RF transport.
 
-A test is rung-3/4 ladder residue like a scan. Test admission requires naming the regression nothing higher on the ladder owns. Promotion retires redundant tests in the same PR.
+Overlay.origin is required. It answers which SimThing originated the act; OverlaySource answers
+what kind of will produced it. Spatial provenance is derived from origin through admitted placement
+and StructuralCoord, never stamped as a rival coordinate. Within a tree, routing is origin to common
+ancestor to target so every intermediate policy layer can filter it. The closed loop carries slot
+identity; SimThingId is reattached only at the admitted boundary when required.
 
-**The Necessity Test (standing; supersedes the retired "one representative per boundary" premise).** A test
-is admissible **only if it catches a regression that none of the following already catch:** (1) the compiler
-(a type boundary), (2) a production admission hard-error on a live path, (3) an existing integration or
-canonical path that already exercises the invariant. Restated as the deletion rule: **if deleting a test
-cannot break production and it is not a downstream dependency or required for canonical function, it is
-DELETED** — never kept as a "representative." *"One representative per boundary" is a **retired fossil
-premise** — a pre-substrate assumption (tests are how a boundary gets coverage) that the kernel admission
-substrate made false: coverage is now the type boundary or the production admission hard-error, and a
-per-boundary test is a redundant witness to enforcement that already exists and already fires. Keeping one
-guaranteed the corpus could never shrink below (number of boundaries) regardless of redundancy — a
-compromise of the Rustification mission that admitted fossil reasoning into the kernel era. The correct floor
-is **zero** for any invariant a type or a live admission hard-error already enforces; a test survives only by
-passing the Necessity Test above.* The narrow legitimate keeps: genuine transformation/format behavior a type
-cannot absorb (e.g. a parser rejecting a non-finite string), CPU-oracle/GPU parity, determinism/golden
-byte-exactness, doc-named invariant proofs, escaped-bug regressions, and the CI scanner's own known-bad
-fixtures — each of which catches a regression nothing higher on the ladder would.
+### 1.4 Unified ingress exclusivity
 
-**The Rustified test lifecycle (standing; adopted at Track D closeout 2026-07-04, owner mandate).** A test is
-a **scoped borrow, not a permanent asset**: it is born owned by the PR ladder / track that creates it and is
-**assumed DELETED at that track's closure**. Deletion is free and requires no action — closure performs it.
-Keeping a test past its birth ladder requires a positive, recorded justification and is possible in exactly
-three ways: (1) it carries a **canonical heuristic/notion** with genuine downstream utility — in which case the
-notion is mis-housed as a test and should be **promoted to where canonical truth lives: a `simthing-kernel`
-type/seal (illegal state uncompilable) or an EML opcode-stack construct (the notion executed as production
-behavior)**, which *deletes* the test and drops inventory; (2) it is a **`TIER7` terminal proof class**
-(`compile_fail`/trybuild, CPU-oracle/GPU parity, golden-byte/determinism, seal-proof fixtures, doc-named
-invariants, STEAD-required §8, escaped-bug regressions, active-track live rungs) carrying a `catches:` note; or
-(3) it is a non-runnable **`dependency-floor` helper** imported by a survivor. There is no fourth way, and "it
-might be useful later" is not one of them. This is what prevents the corpus from re-accreting the way it did
-(6,301 → pared to 731). Enforcement is the standing Track D gate set (`test_inventory_check.sh`,
-`test_inventory_drift_check.sh`, `TEST-BUDGET`); the full-workspace test is a
-**one-time closure certificate** per PR ladder, not routine proof. Full regime: CI-scaffolding design §4.1.
+The closed-kernel claim is enforced, not aspirational:
 
-**A corollary on hygiene.** Because the compiler discharges the mechanical-correctness layer, the budget
-it frees must go **entirely** to the two rungs that still pay rent — type/admission boundaries and the
-semantic conformance the compiler cannot check — and **never** to process ceremony (status docs,
-comparison memos, proof batteries, governance artifacts). Ceremony is not a language tax that Rust removes;
-it is non-load-bearing everywhere, and it is the failure mode of an agent discharging uncertainty it could
-not resolve. Executable verification (CPU-oracle parity, admission hard-errors, minimal targeted tests)
-*transfers and remains load-bearing*; ceremony does not. **The CI doctrine-scan is executable verification,
-not ceremony:** its self-test *runs* and proves each scan still catches its known-bad (minimal targeted tests,
-the load-bearing kind), and the scan report is the *output of a running guard*, not a governance artifact
-produced *in place of* one. "Proof batteries" names an enumeration of admission-guaranteed variants, or a
-document standing in for execution — never the self-test that keeps the guard honest. Do not read this
-corollary as licence to skip running the scan or to call a running guard "ceremony" (see constitution §0.6
-binding 6 and `invariants.md` → "The CI doctrine-scan is the primary automated compliance mechanism").
+1. OverlayThing, CostBand, ActionBand and mapping EML EXP/LN are the only unified ingress to
+   RF/Triad resolution.
+2. RF/Triad resolution is the only ingress to domain contention and resolution.
+3. The unified SimThing object is the only execution path for simulation resolution.
 
-**Horizon.** The standing goal is to express ever more SimThing core objects as **type signatures that
-carry this rigor intrinsically** — runtime node types that cannot name a kind or a game concept; channel
-identity, owner reference, scope, and order-band as distinct newtypes (not bare integers); role-indexed
-column access that makes a hardcoded `data[N]` unrepresentable (K2 lit path landed: role → `RoleOffset` →
-`ColumnIndex` via `col_for_role`; residual HEURISTIC `COLUMN-INDEX-MINT` / OC-K2.1 until `ColumnIndex::new`
-is admission-gated); a semantic-free marker on `simthing-sim`'s public surface. Each such move **deletes a
-guard test, shortens the prose constitution, and makes a class of drift impossible rather than merely against
-the rules.**
+A graduated producer must have a non-test production consumer or a structured dated deferral.
+No second production sink may reach resolution, including a renamed, wrapped, or alternate-call-form
+bypass. Composition proves the facilities can work together; unified-ingress exclusivity separately
+proves nothing bypasses them.
 
-### 1.2.1 The kernel crate, the cross-crate seal law, and residue-as-tripwire
+### 1.5 Section-12 market grammar — StemThing-B
 
-The admission substrate has a **home**: `simthing-kernel` is the SimThing rustification embodied as a crate
-— the sole owner of authoritative state and the sole minter of authoritative effects. Every other crate
-either depends on its **read-only view** (to observe) or hands it **registrations / EML data** (which it
-executes); authoritative mutation and decision emission happen only through its sanctioned in-crate doors
-(`dispatch_tick`, `read_*() -> Vec<Sealed>`, `apply_*`). It is the *runtime-authority* layer and **composes
-with — does not replace —** the content-admission layer (hydration/spec), which compiles *down* to kernel
-registrations. (A longer `simthing-kernel` ADR may elaborate; **this section is the load-bearing summary and
-governs.**)
+StemThing-B is the recursive conserved-resource market germ:
 
-**The cross-crate seal law (hard-won; binding on every future authority extraction).** A seal that is
-`pub(crate)`-safe inside one crate becomes **forgeable the moment its type crosses a crate boundary** — Rust
-has no friend-crate visibility, so a `pub` minter/handle one crate can call is one *every* crate can call,
-and `#[doc(hidden)]` is obscurity, not enforcement. Therefore:
+    admitted resource or capacity
+      → descendant claims authorized by sealed Draw templates
+      → recursive RF reduce-up
+      → EML valuation and effective clearing weight
+      → authored constrained clearing
+      → CostBand quantization
+      → grant or flow disbursement
+      → Gu-Yang throughput and saturation
+      → PALMA potential, impedance and opportunity
+      → STEAD observations and bands
+      → ActionBand or OverlayThing response
+      → next-generation state
 
-> **Mint authoritative types in the crate that privately owns their source of truth; never re-seal across a
-> crate boundary with a token.** When sealing is in tension with crate convenience, Doctrine-as-Type wins
-> and the code moves *into* the owning crate — never the other way.
+A Draw is a specialization-profile claim template, not a grant. Its offerings, lifecycle triggers
+and finite quantity envelope seal at admission; instances mint no new Draw vocabulary. Unit price
+and clearing weight are distinct. Oversubscription is ordinary. Equal scores clear proportionally
+unless the author supplies an additional deterministic rank; discrete remainder is
+largest-remainder and exact ties rotate under the granter's generation authority. Unmet demand U is
+revalued next generation and is not CostBand remainder R.
 
-This is why authoritative dispatch/encode/readback live *inside* the kernel: `&Buffer`, the `Queue`/`Device`,
-and any raw write path never cross the boundary; consumers get sealed doors. The same law governs the next
-authority extractions (spec, scenario) — apply it by construction, do not re-derive it through another round
-of cross-boundary leaks.
+Residency entitlement is market-decided, then physical placement fails closed in two stages.
+Ordinary infeasibility keeps the quantity in U and records a typed refusal; committed overlap or
+out-of-bounds placement is an invariant breach. Detachment alone does not release a grant.
+Death/dissolution releases; fission/fusion partition or transfer exactly; termination is explicit.
+No allocator path exists outside a SimThing disbursing admitted capacity through RF.
 
-**CI doctrine-scan — the automated rung-3 guard layer (`0.0.8.4.6`).** The admission ladder's rung 3 (guard
-test / source scan, §1.2) is not left to an agent's memory of the constitution — it is a free, GitHub-side
-grep layer (`scripts/ci/doctrine_scan.sh` + `scripts/ci/scans.tsv` + `scripts/ci/allow/*.txt`) that runs on
-every PR and treats a clean result as **DA-equivalent**, not merely "no error found": a clean **RELIABLE**
-scan (especially the closed-set allowlist scans) is trusted without DA re-verification, the same way a
-compiling program is trusted without re-reading it. `FAIL` on a RELIABLE scan is a HOLD; `INSPECT` (a
-**HEURISTIC** scan, or an inherently-judgment hit) routes to a bounded, cost-symmetric triage tier before it
-ever reaches the scarce DA — it is never a silent pass and never an automatic block. This is executable
-admission friction standing in for a type boundary that does not exist yet, so it inherits the same
-mortality clause as any rung-3 device: **a scan is residue.** When the invariant it guards is promoted to a
-type boundary or an admission hard-error (rung 1 or 2), the now-redundant scan is retired — narrowed or
-deleted — in the *same* PR that lands the promotion, exactly as "a guard test or source scan that exists
-only because a type didn't is a promotion target" already directs. Full contract:
-[`design_0_0_8_4_6_ci_scaffolding.md`](design_0_0_8_4_6_ci_scaffolding.md) (governs); the constitution
-carries the DA-equivalence + triage doctrine forward (`design_0_0_8_3.md` §0.9); every handoff declares
-`seal-residue-risk` and, when it touches a scanned door, whether the scan should retire with it.
+### 1.6 Anchor lifecycle and repoint law
 
-**Residue-as-tripwire.** Doctrine-as-Type never reaches 100%; an irreducible residue remains (the CPU-oracle
-twin, the WGSL shader text Rust cannot see, and inert *utility* ops that are harmless because no authoritative
-handle can be fed to them). That residue is **not a passive gap — it is a named, greppable tripwire
-catalogue.** Each item is admissible only as an **explicit, per-item, justified** entry (provably
-non-authoritative / sanctioned-and-defined / unpairable-to-harm) — **never a categorical wave-through** — and
-routing through it is therefore a *declared, deliberate circumvention*, a red flag the orchestrator and the
-handoff template must surface (`seal-residue-risk`). Its sibling rule: an artifact that merely *looks* like a
-gate but enforces nothing is **deleted, not annotated** (constitution §0.6.6) — appearance is not enforcement.
+A doctrine anchor is an index into in-tree canonical law, not a second constitution. A pending
+anchor binds newly landed vocabulary to the rung that minted it until the declared canonization
+consumer runs. CORE-CANONIZATION-0 is the exact consumer for the 0.0.8.7 pending worklist.
 
-**The breakthrough valve — gated *and* invited, so the ontology can learn without drifting.** The boundary is
-the boundary: ~99% of the time an agent executes within the ontology or escalates, and that is the point of the
-whole constraint system. But a sufficiently capable model will occasionally see a genuine structural win the
-ontology would block, and a system that only ever *suppresses* that never learns it was wrong. The resolution is
-a channel that is **rare and high-certainty by construction**, made of **two mechanisms that must travel
-together** — neither is safe alone:
-- **The gate (asymmetric cost — keeps abuse out, volume near-zero).** An architectural experiment against a
-  sealed boundary is entertained only with **(1)** a *working, compiling, fully conformant baseline delivered
-  first* — no baseline, no experiment (this alone defeats hill-climbing into cheap persuasive prose to dodge a
-  hard compiler puzzle); **(2)** bit-exact CPU-oracle parity with that baseline; **(3)** a *measured* hot-path
-  dividend (run locally — perf lives on the GPU, not the grep CI); **(4)** an adversarial exhaustion of the
-  substrate ladder (D2) by a **decorrelated** reviewer whose default is *"prove this is achievable conformantly
-  with an EML gadget / column remap."* The channel is deliberately **more expensive than conformance**, never a
-  shortcut.
-- **The incentive (risk-free, decoupled, invited — keeps genuine insight from being suppressed).** A
-  closure-seeking agent will otherwise take the conformant path and *bury* the insight, so the experiment must
-  ride **alongside** the already-green conformant rung: it **does not gate the rung's PASS** (the baseline merges
-  regardless), it **cannot jeopardize closure**, and the handoff **explicitly invites and values it**. Closure
-  comes from the baseline; elegance is a separate, downside-free lane, so the two stop competing.
+Canonization and repoint are one atomic change: first home the graduated law in truthful canonical
+prose, then repoint the anchor to that section, set lifecycle canonical, and resync its content hash.
+An orphaned interim anchor is reaped only through the existing authorized-deletion ledger. Track
+closeout admits no pending anchor. This is the exact **anchor lifecycle/repoint law**; it creates no second
+rung registry.
 
-Gate-without-incentive is **sterile** (agents just conform and close); incentive-without-gate is a **loophole**
-(drift by persuasion). The channel stays **owner-gated** (the Admission-Substrate Amendment Valve, kernel-track
-§3A): the agent never self-grants — a proven experiment is *surfaced*, and the owner *decides*.
+### 1.7 The theoretical anchors
+
+Movement-Front applies Wei's locality, symmetry and stability postulates: local finite-speed
+propagation, one translation-invariant rule, and dissipative convergence to admitted attractors.
+Gridcell SimThings are the lattice; field sweeps are the shared rule; bounded operators and threshold
+projection provide stability.
+
+EML applies the single-operator construction eml(x,y) = exp(x) − ln(y). Authoring lowers into the
+one closed opcode-stack interpreter and gadget library, so complex behavior stays data rather than
+becoming a bespoke kernel or opcode.
+
+### 1.8 Admission is part of the anatomy
+
+Every invariant climbs to the highest enforceable rung:
+
+1. type boundary — the illegal state is unrepresentable;
+2. admission hard error — invalid content never reaches runtime;
+3. guard or source scan — executable residue where a higher rung cannot yet express the law;
+4. prose and DA judgment — the irreducible ontology residue.
+
+The compiler admits code; hydration/session build admits content. Runtime receives resolved numeric
+columns, identities and sealed registrations, not game concepts. A recurring detector is a promotion
+target, not a reason to accumulate more tests.
+
+The Necessity Test is exact: retain a test only when it catches a regression not already caught by a
+type boundary, production admission error, or existing canonical integration path. Durable exceptions
+are the narrow terminal classes: compile-fail seals, CPU/GPU parity, deterministic golden artifacts,
+doc-named invariants, escaped bugs, and active-rung live proofs.
+
+### 1.8.1 The kernel crate, the cross-crate seal law, and residue-as-tripwire
+
+The kernel crate owns closed numerical vocabulary, admission proofs, stable identities and sealing
+constructors. Higher crates may compose or present those products but may not forge them. Public raw
+constructors, bare column indices, caller-selected proof tokens, and cross-crate shadow authorities are
+promotion defects.
+
+Rust cannot type-check WGSL, so exact GPU claims retain a bit-exact CPU oracle and per-opcode
+qualification. Source scans remain valid only for the semantic residue that cannot yet be sealed.
 
 ---
 
 ## 2. The one tree: Scenario wrapper, GameSession root, owners, and spatial containment
 
-SimThing has one recursive authority tree, but two root words appear at different layers:
+Scenario is authoring input; SessionThing is the runtime root. Spatial containment answers where a
+thing is. Ownership answers whose policy and RF identity it inherits. The two relations never replace
+one another: owners are not spatial parents, capture is not reparenting, and a container may host
+participants from many owners.
 
-- **`Scenario`** is the save/load authority wrapper. A canonical scenario file has a `Scenario`
-  root and exactly one direct `GameSession` child.
-- **`GameSession`** is the running session root beneath that wrapper. Runtime systems reason from
-  the GameSession subtree; save/load proves the Scenario wrapper around it.
+Owner is the intrinsic sparse Property dimension OWNER_CHANNEL_PROPERTY_ID. Absence means inherit,
+so an inert tree stores no redundant owner copies. resolve_owner returns Result: it is total for
+valid admitted members and fails closed for foreign or malformed identity. The reserved neutral
+unowned owner is a real identity; it is not Option::None and authored content may not collide with it.
+Resolution is pure and never materialized down the subtree.
 
-The canonical production tree is:
+RF bucket identity includes OwnerRef, ResourceKey and ScopeId. Ownership remains singular per
+SimThing while participation is multi-owner; alliance is an authored relation between owners, never
+a second ownership meaning.
 
-```
-Scenario                         (save/load authority wrapper)
-└── GameSession                  (runtime session root)
-    ├── Owner SimThings          (stockpiles, policy, personality, capability, RF ownership state)
-    ├── Species / registries     (identity/metadata siblings, not spatial parents)
-    └── GalaxyMap / WorldStateMap Location
-        └── galaxy gridcell Location children
-            ├── inert / ambient gridcells
-            └── star-system gridcell / local-grid Location
-                └── local spatial gridcell children
-                    ├── inert / receiver local gridcells
-                    └── planet gridcell Location
-                        └── 1×1 surface gridcell Location
-                            └── gameplay children:
-                                cohorts, fleets, buildings, infrastructure, leaders, overlays...
-```
-
-Three laws govern this shape:
-
-1. **The spatial tree expresses physical containment only.** A star-system gridcell is a child of
-   its galaxy grid. A planet gridcell is a child of its local star-system grid. A planet surface
-   gridcell is the child arena beneath the planet gridcell. Gameplay children attach at the
-   Location where they physically participate.
-2. **Owner-entities are never spatial parents.** Owners are GameSession children. Capture,
-   succession, policy capture, ownership change, and RF channel membership are metadata/column/
-   overlay changes, not spatial reparenting. The once-proposed "D=3 ownership node" (a structural
-   faction tier inside the spatial tree) is the canonical rejected design; do not re-derive it.
-   One spatial parent + N owner-columns, always.
-3. **Movement is the only spatial reparenting.** Moving a fleet, cohort, probe, or other mobile
-   SimThing changes its spatial parent. Changing owner, allegiance, supply channel, or policy does
-   not.
-
-`SimThingKind` remains a topology/spec/driver convenience label. **Behavior never branches on kind
-at runtime** — no `match kind` in any simulation path. New entity types are `Location` / `Cohort` /
-`Custom(String)` carrying the right properties and overlays; new `SimThingKind` variants are not the
-answer (the deprecated `StarSystem` / `Station` variants are the cautionary record). When a feature
-appears to require `match kind`, a new subsystem, or a special spatial tier, the correct answer is
-almost always more properties, overlays, children, and accumulator registrations.
-
-### 2.1 Owner-entity fission — policy capture, succession, and civil war
-
-Law 2 covers the capture of *assets*; this section covers the capture of the **owner itself**. The
-owner-entity is a GameSession child (beneath the Scenario wrapper). When the contested object is a
-polity's policy, cohesion, or existence — under **stress** (unrest, defeat, fiscal exhaustion) or
-**inducement** (foreign sponsorship, ideological conversion, bribery) — the generic mechanism is
-**owner-entity fission**, and it is how the engine models civil war, secession, coups, and policy
-capture with zero special cases:
-
-1. **Influence is an ordinary flowing quantity.** Any participant granted the property — domestic
-   cohorts, foreign agents, anything — emits alignment/influence into the assets it touches. It
-   reduces leaf → root like any resource and disburses back down onto the owning faction SimThing.
-   The root round-trip makes the Session the adjudicator and makes **foreign-sponsored capture
-   native**: a rival's influence seeded into your territory aggregates through the shared spatial
-   reduction and lands on you through ordinary disbursement. Lobbying, regulatory capture,
-   ideological conversion, and fifth columns are one flow with different sources.
-2. **The trigger is an ordinary threshold.** Aggregate influence on the owner crosses a registered
-   watch on the owner's post-reduction field (`AggregateAlertRegistration`-class) → `EmitEvent` →
-   `BoundaryRequest`. Rebellion, revolution, separatism, and civil war are **property values
-   crossing thresholds — never discrete flags, never special entity types.**
-3. **The fission is of the owner entity — never the map.** At the boundary, the faction SimThing
-   fissions through the existing `FissionTemplate` machinery (`clone_capability_children` hands the
-   successor its inherited capability subtrees — tech tree, national ideas). The owned assets
-   partition by their **per-asset alignment-intensity vector as a mass owner-column flip**: one new
-   sibling node under the Session root plus N column flips. Per Law 2, no spatial reparenting
-   occurs — the most violent political event in the simulation is structurally one of its cheapest.
-4. **The burst announces itself.** A polity-scale fission re-resolves many memberships in one
-   boundary. The influence **velocity** columns, computed every tick, predict the crossing before
-   it arrives — slot pre-allocation and cascade preparation run on measured growth rates, never
-   heuristics. Each resource-flow arena's declared `FissionPolicy` (`{Inherit, Reevaluate,
-   Reject}`, §5) governs how the split polity's participants re-resolve.
-
-**Provenance (recorded so this is never re-excavated from archives):** assembled across three
-hard-earned workshops — capability-tree v1 (differentiation by intensity threshold; the
-faction-fission inheritance hook), the E-11B reparenting analysis (empire collapse as fission
-cascade; the arena-re-enrollment gap this design *avoids by construction* by keeping capture in
-columns; velocity-driven predictive pre-allocation), and the policy-capture trigger pathway
-(2026-06-10).
-
-**The strategic toolkit this opens:** every participant — and every faction AI reading the fields —
-gains a fourth vector beside fighting, trading, and allying: **subversion**. Emit influence to
-capture a rival's policy weights or split its polity; defend with suppression and counter-influence
-over your own assets; read the influence-velocity field as early warning of your own fracture.
-Because allocation weights and threshold parameters are themselves reachable through this flow,
-**the rules of the simulation are a contested object inside the simulation** — reflexivity is
-endogenous to the substrate, not a bolted-on system.
-
-**Ownership is intrinsic to the node, not a container (rung 6.0).** A SimThing names its owner
-through an ordinary property (`OWNER_CHANNEL_PROPERTY_ID`, `simthing_core::owner_channel`) rather
-than by being *inside* an owner. This is what lets owners never be spatial: the relation is a value
-the node carries, so an Owner SimThing stays a GameSession sibling and the spatial tree is never
-reshaped to express politics. Resolution is total and pure — **absence means inherit**, so an unbound
-node stores nothing and inherits its parent's owner; an explicitly unbound node resolves neutral; a
-foreign or malformed authority fails closed. Because it is one property, `bind_owner` at a subtree
-root re-parents the entire subtree in a single write, and a capture is an ordinary rebind rather than
-a special-cased transition.
+Fission and fusion are ordinary boundary changes. Policy capture and succession emerge from
+Property/RF thresholds and partitioned state; they do not introduce rebellion entities or a civil-war
+subsystem. Stable logical slot and owner identity survive admitted remap and replay.
 
 ---
 
 ## 3. SimProperty → Value: the load-bearing data model
 
-All identity, resources, and state live in properties. This structure is **load-bearing for the
-entire resource-flow accumulator resolution system** — the sub-fields below *are* the GPU columns the
-accumulator reduces, masks, and disburses over, and *are* the cell-state columns the Movement-Front
-automaton evolves. Get this wrong and nothing downstream works.
+SimProperty is typed metadata; Value is the resolved resident numerical state. Properties are sparse
+on SimThings, but admitted layout maps each participating role to a typed ColumnIndex. Runtime
+behavior reads columns and registered roles, never authored names or hardcoded offsets.
 
-```
-SimProperty   = identity (namespace + name — equality is on identity ONLY)
-              + PropertyLayout (an ordered Vec<SubFieldSpec>)
-              + optional behavior (decay, intensity, fission/fusion templates, on_expire)
+Identity has three independent axes:
 
-SubFieldSpec  = role        SubFieldRole: Amount | Velocity | Intensity | Named(String) | Custom(String)
-              + width       1 = scalar, N = vector of N floats
-              + clamp       per-sub-field ClampBehavior (no property-level valid_range)
-              + default
-              + governed_by Option<SubFieldRole>   ← declared integration: this sub-field advances
-                                                     by the governing role's value × dt each tick
-              + reduction_override / soft_aggregate_guard / accumulator_spec (compile-time metadata)
+- logical SimThing identity, stable through physical movement;
+- Property identity and role layout, resolved at admission;
+- physical slot/row, an epoch-bound execution placement.
 
-PropertyValue = { data: Vec<f32> }   ← one flat float vector per (SimThing, property) instance;
-                                       layout defined entirely by the registered SimProperty
-```
+Confusing those axes is a defect. Replay and IntegrationSchedule carry logical identities and remaps;
+physical rows are regenerated through the authoritative binding chain.
 
-The binding rules that make this safe at GPU scale:
-
-- **One home for index arithmetic.** `stride()` is computed, never stored. Local offsets come from
-  `PropertyLayout::offset_of(role)` only; global columns from `PropertyColumnRange::col_for_role`
-  only. **No hardcoded `data[N]` anywhere, ever.** Overlays and transforms reference sub-fields
-  **by role, not by column index**; the CPU prep pass resolves roles → columns; the GPU receives
-  only resolved indices.
-- **Role vocabulary pathway (OC-K-COLUMN-ROLE-0 lit path).** Sealed access is always:
-
-  ```text
-  SubFieldRole::Amount | Velocity | Intensity | Named(_)
-       → PropertyLayout::offset_of(role) → RoleOffset
-       → PropertyValue::{get,set}_role / set_lane_at_offset(RoleOffset)
-       → PropertyColumnRange::col_for_role(role, layout) → ColumnIndex
-  ```
-
-  Forbidden on sealed paths: `property.data[0]`, `property.data[1]`, `type ColumnIndex = usize`.
-  Serialization may use `raw_lanes()` only as an explicit escape hatch.
-- **Integration is declarative.** `governed_by` is the only rate-of-change mechanism: Amount governed
-  by Velocity, position governed by drift, HP governed by regeneration. Saturated values pin the
-  governing rate to zero (no hidden velocity debt). The `Balance` carryforward pattern (below) is
-  built on this same machinery.
-- **Registry discipline.** Properties register once per session; columns are append-only; removal is
-  tombstoning (`active=false`), never mid-generation compaction. **Slot-identity law (Tier-2
-  amendment, 2026-08-04, StemThing §3.1 — shape (a), ruled from the census at
-  `scripts/ci/stemthing_slot_census.tsv`, 61/61 consumers enumerated, zero `BLOCKER`):** a
-  `SlotIndex` is **stable *logical* identity** for the lifetime of its SimThing; **physical row
-  binding is per-epoch**, bound at boundary upload, and rebindable **only at a generation boundary
-  through a recorded remap** — the existing `AnchorLocusRemap` / `AnchorRemapOperation` door
-  (landed 5.2; `SlotCapacityGrow` already records slot movement; epoch compaction extends that
-  vocabulary, never a second mechanism; **granularity proof owed at 6.4**: the door must represent
-  every object-row rebind **exactly once** — including SimThings with zero anchored property loci
-  — inside the one canonical history, or 6.4 STOPS and escalates rather than minting a second log).
-  **An *epoch* is the interval between successive recorded remap events of a tree's physical
-  binding** — opened at session install or at a remap, closed by the next remap. Every remap
-  occurs at a generation boundary; **almost no generation boundary is a remap** (remaps fire only
-  from authored thresholds — capacity growth, compaction — so an epoch typically spans many
-  generations, and "zero indirection between epochs" is a real property, not a per-generation
-  re-upload). Between epochs there is zero indirection: bindings are
-  baked into uploaded artifacts exactly as boundary sync re-uploads registrations today.
-  Two index spaces are distinct and must never conflate: **matrix-row space** (physical, epoch-bound,
-  remappable) and **dense cell space** (`y*width+x` over authored structural coordinates — logical
-  by construction, never remapped). No ordering, fold, or replay key may derive from physical row;
-  order derives from authored/logical keys only (the link compiler's `(row, col, system_id)` sort
-  is the reference shape). Mid-generation relocation remains forbidden absolutely.
-- **Reduction is per-role.** Each sub-field resolves a `ReductionRule` (Sum for resources, Mean /
-  WeightedMean for soft aggregates, etc.). Reduction aggregates **children's column values into the
-  parent's columns** — this is the upward half of resource flow. Exact/conservation paths never use
-  soft-aggregate combine functions; soft aggregates feeding hard thresholds require a guard.
-- **Determinism is bit-exact.** Every exact claim carries CPU-oracle parity compared with
-  `f32::to_bits()`, never approximate equality.
-
-**Resources, identity, AI personality, and cell state are all just sub-fields.** A faction's food
-stockpile, a planet's `faction_id` owner column, a gridcell's threat-front value, an AI's
-`aggression` weight — identical machinery: a role in a layout, a float in a column, addressed only
-through the layout. A Movement-Front gridcell's schema follows the same pattern, splitting its
-columns between **local causal state** (the raw field values the automaton evolves) and **inferred
-dynamics** (velocity/previous-value/pressure columns derived from them) — all ordinary sub-fields,
-no special cell type.
+Sequential value transforms apply in authored order and may be last-wins-capable. Predicate
+selection is a different algebra: restrictions compose conjunctively and monotonically, so a
+descendant cannot loosen an ancestor restriction. Composition class is admission data, never inferred
+from overlay kind or iteration order.
 
 ---
 
-## 4. GPU residency — the tree as dense matrices
+## 4. GPU residency — StemThing-A and the EML expression organ
 
-The recursive tree flattens to **slots × columns**: one slot per SimThing. **StemThing-B
-amendment (Owner-ratified 2026-08-24): residency entitlement — WHO is granted a slot — is decided
-only by the RF arena's authored clearing; free-list order is never grant policy.** The
-`SlotAllocator` and its tombstone free-lists survive strictly as physical realization machinery
-DOWNSTREAM of market-decided entitlement (recycled, never compacted mid-generation; physical
-rows are epoch-rebindable only at a recorded boundary remap per the §3 slot-identity law), one column per
-registered sub-field. A persistent `AccumulatorOpSession` owns the buffers for the whole session —
-**no per-tick device or buffer creation, ever.** The tick is:
+The recursive tree is flattened physically into dense GPU columns while remaining recursive
+semantically. StemThing-A owns stable logical residency, root installation, child allocation,
+extent placement, remap, and binding-table freshness. Capacity is the conserved RF quantity;
+contiguous extent is a kernel-minted placement result. Free-list or buffer mechanics are downstream
+physics, not allocation policy.
 
-```
-Pass 0   Snapshot: copy values → previous_values (hardware DMA, permanent)
-Pass B   AccumulatorOp: the ONE unified gather/combine/gate/scatter kernel,
-         dispatched once per OrderBand in ascending band order. It performs
-         velocity integration, overlay application, all reductions, EML
-         evaluation, transfers, allocation sweeps, and threshold-gated events.
-Pass C   Event readback: GPU atomic counter + compact EmissionRecord buffer.
-         Only structural events (fission, expiry, commitments) reach the CPU;
-         pure numeric resolution never leaves the GPU.
-```
+The slot conservation judge is exact:
 
-**OrderBands are the scheduling primitive**: dependencies between operations are expressed as band
-ordering (reduce in band N, interpret in band N+1), never as bespoke pass graphs. Cross-tree
-propagation advances by later-band cascade.
+    free + in_flight + occupied = capacity
 
-**`simthing-sim` is semantic-free — permanently.** It never learns the words combat, economy, map,
-faction, arena, gadget, or personality. All semantics live at the spec/driver/RON layer and **compile
-away** to flat `AccumulatorOp` / overlay / threshold registrations before upload. Likewise WGSL: the
-shader sees only floats and indices; gameplay concepts never enter shader text. Generic, semantic-free
-substrate extensions are admissible (Tier-2, with CPU-oracle parity); semantic ones never are.
+Extent disjointness and bounds are a separate placement judge. Physical relocation occurs only at
+the owning generation barrier and records the canonical remap. No physical row becomes semantic
+identity and no session silently rebinds a stale admitted plan.
 
-### 4.1 Scripted behavior is an opcode stack: EML gadgets and the JIT compiler
+### 4.1 Complete EML ISA and library
 
-This is the single-operator universality of Anchor B (arXiv:2603.21852) made production-real, and it
-is **the first tool every agent must reach for** when a feature seems to demand new compute:
+All scripted numerical behavior lowers to the one admitted EML expression registry, opcode-stack
+interpreter and grown gadget library. Overlay values have one singular form: an opaque admitted EML
+value. There is no static-versus-computed tag, overlay-local interpreter, second program table, or
+caller-selected evaluation mode.
 
-- **`EvalEML` is the one generic expression interpreter.** Because a single primitive suffices to
-  generate all elementary functions as uniform binary trees, *any* designer formula — urgency,
-  desirability, decay, policy conditionals, personality weighting — compiles to a postfix opcode
-  stack over the **closed, admission-grown** `EvalEML` vocabulary and executes in the same unified
-  kernel *(corrected 2026-08-13: the vocabulary is closed but no longer frozen — exact primitives
-  `EXP` and `LN` were admitted at 5.11/5.12 through the `ExactPrimitiveAdmission` door, and the
-  field-sweep edge context added `TARGET_VALUE`/`NEIGHBOR_VALUE` under the EML growth law)*. The
-  interpreter sees only floats and indices; the formula is data.
-- **The EML gadget library** is the authoring layer over that fact: gadgets (FieldSampler,
-  WeightedAccumulator, SoftStep, VelocityMonitor, Decay/EMA, BoundedFeedback, Hysteresis,
-  Acceleration, …) are spec-layer macros that compile to postfix subgraphs — **no new WGSL, no
-  per-gadget kernel, no new opcode**. Any complex scripted interaction is encoded as a gadget tree:
-  temporal state uses explicit authored columns (current/previous/state/output) with a snapshot copy
-  band, and every recurrent gadget carries a bounded-feedback admission contract (finite decay < 1,
-  explicit clamp, no positive unbounded recurrence) — Anchor A's P3 stability applied to formulas.
-- **The JIT shader compiler** is production, not an escape hatch *(corrected 2026-08-13: the 5.7
-  postfix-IR-to-WGSL SSA JIT, cached by sealed resource class and complete program identity, is an
-  ordinary field-sweep execution form — its generated PALMA kernel measured FASTER than the bespoke
-  shader at worst case; `ProductionKernelRegistryShell` remains the exact-authority door)*. The
-  original principle stands: a validated, semantic-free, straight-line kernel compiled from
-  an expression tree, admitted only with pinned artifacts, exhaustive proof for exact authority
-  (the Candidate-F `sqrt` precedent), and CPU-oracle parity. Approximate outputs never feed
-  exact-authoritative state.
+The complete language includes the admitted EXP and LN primitives. ExactPrimitiveAdmission is their
+sole exact-primitive door: domain proof or an admitted guard precedes execution, the opcode set and
+program cap remain closed, and each CPU, interpreted-GPU and SSA-JIT arm is a faithful lowering of
+one arm-independent arithmetic meaning. ADD, SUB, MUL and DIV carry specified binary32 rounding;
+MIN, MAX and clamps are exact selections; the unique multiply feeding an ADD or SUB is fused, while
+multiple multiply inputs are unfused. EXP and LN retain their certified qualification.
 
-**The extension ladder for future agents, in order:** (1) express it as an EML gadget tree over the
-existing interpreter (authoring surface: [`eml_gadget_library.md`](eml_gadget_library.md)); (2) if a
-genuinely new *generic* primitive is unavoidable, register it through the gate that matches its class:
-ordinary combines via `OpcodeRegistrationGate` → `AdmittedEvalEmlOpcode` / `AdmittedEvalEmlCombine`
-(closed vocab; bit-exact CPU-oracle parity), and **exact transcendental-class primitives via
-`ExactPrimitiveAdmission`** — sealed `PrimitiveDomain`, algorithm-as-spec with append-only semantics,
-exhaustive 2^32 digest per certified toolchain, and the cost key against the primitive's own gadget
-baseline (the door 5.10 built; `EXP` and `LN` are its admitted precedents, with `POW`, stabilized
-`Logistic`/`SoftmaxWeight`, and the literal `eml(x,y)` landed as gadget-library entries) — never a
-raw semantic opcode; (3) a scenario-specific or semantic op is **never** admissible (type-rejected).
-Reaching for a new subsystem before exhausting (1) is the canonical drift this section exists to prevent.
-
-Guardrails are two-layered: the designer/spec admission layer rejects unsafe *authoring* at import
-with good diagnostics; the runtime enforces hard safety unconditionally as the last line. Guardrails
-live there — never as special cases inside the kernel.
+The gadget library is the authoring surface for formulas, including field maps, folds, predicates,
+gates and bounded feedback. A new domain formula adds data to that library; it does not add an opcode,
+shader, evaluator, cache, or evidence architecture.
 
 ---
 
-## 5. Resource flow arenas and channels — one mechanism for everything
+## 5. Resource flow arenas — participate, market, CostBand and ActionBand
 
-All simulation effects resolve through **resource flow**: per-tick values accumulate on participants,
-reduce upward through the tree, settle in parent arenas, disburse downward, and fire threshold
-events only after fields resolve.
+RF is the conserved circulation of the germ. Local values accumulate, owner/resource/scope buckets
+reduce upward, admitted constrained clearing resolves oversubscription, and grants or directives
+disburse downward. Local settlement occurs before bubbling; settling depth is emergent from the one
+tree and authored OrderBand, never a domain special case.
 
-```
-accumulate → reduce up the tree → local channel settlement → mask/disburse down → threshold events
-```
+Resource classes declare their algebra and conservation posture at admission. One homogeneous lane
+has one meaning; no amount/weight/identity conflation, no same-generation re-clear, and no rival
+ledger beside the canonical balance and schedule.
 
-**Both directions carry meaning — events are not RF's exhaust (DIRECTED; the reception half is
-delivered by rung 6.0b).** Reduce-up carries **perception**: what a parent knows about its subtree
-*is* the reduction of that subtree. Disburse-down carries **directive**: an order is partitioned
-downward on the same sweep that partitions budget, because an order nobody can afford is not an
-order. The pipeline above is accurate about ordering — thresholds fire only after fields resolve —
-but it reads as though events were a terminal output stage, and they are not: they are the emission
-face of a channel that already runs in both directions. **A directive that transfers a quantity is a
-resource and conserves; a directive that installs a predicate is a program and has nothing to
-conserve.** Reading a value is not moving it, so a broadcast predicate makes no conservation claim
-and the Invariant Set is unchanged.
+### 5.1 CostBand — the sole resource-sink mechanism
 
-A **resource-flow arena** is the parent `Location` / SimThing context in which participants are
-settled. An arena is spatial when its parent is a Location gridcell, but it is not a bespoke
-combat/economy/trade subsystem. It is one recursive accumulator mechanism with different authored
-columns.
+**CostBand** is the definition of a resource sink, not an optional threshold mode. The threshold C
+is unit cost for available value V:
 
-- **Reduce up:** each parent Sum-reduces its children's flow columns into its own (surplus/deficit),
-  leaf → root, via ordinary reduction OrderBands.
-- **Disburse down:** the GameSession root / owner-silo stockpile partitions budget downward in a
-  reverse-direction OrderBand sweep. Each intermediate SimThing is dual-role — contributes intrinsic
-  flow upward, allocates received budget to its children downward. Writes land on independent
-  per-participant columns: **no shared-slot contention, no GPU hot-pool allocator.**
-- **An arena is the subtree where a masked flow nets to zero.** "Flat" vs "nested" is not a structural
-  fork — a cell-local combat arena is simply the leaf-most settling depth of the one recursive
-  hierarchy. Allocation is *always* recursive; settling depth is emergent.
-- **Allocation policy is overlay weights, never a policy enum.** The allocator kernel reads weight
-  columns; defaults are Demand-proportional; player intent, AI policy, interdiction, and scripted
-  effects all compose as Add/Multiply/Set overlays on the weight columns (EML for conditionals).
-- **`Balance` is the sole carryforward ledger.** Leaf residuals, allocator rounding residuals
-  (O(ε × n_children) per step, deterministic, replay bit-exact), and zero-weight surplus all
-  integrate into `Balance` via standard `governed_by`. No second budget state may exist.
-- **Conservation:** discrete transfers are exact (`SubtractFromSource`; recipes via
-  `MinAcrossInputs + SubtractFromAllInputs`); continuous allocation is approximate-deterministic.
-  Hard currency never routes through continuous flow.
+    N = floor(V / C)
+    R = V - N*C
+    V = N*C + R
 
-### 5.1 Channel identity
+N is the number of units afforded or destroyed and R is carried forward. Every sink is a CostBand;
+no threshold/sink split or rival mechanism exists. Booleans are CostBand depth 1. Direction expresses
+accretion versus depletion; a negative output coefficient remains inadmissible. A crossing with no
+CostBand observes without consuming.
 
-RF does not use owner containment. RF participation is grouped into channels. The minimal channel key is:
+### 5.2 ActionBand — the act facility
 
-```
-(parent_location_id, owner_ref, resource_key, scope_id)
-```
+ActionBand is intrinsic recursive actuation over admitted numerical axes. Target, displacement,
+velocity, stakes, EML payload and bounded subordinate state compile into sparse GPU tables. Semantic
+recursion is physically flattened and generation-paced; activation changes resident state, not the
+ontology or template inventory.
 
-- `parent_location_id` — the current arena / spatial parent where local settlement occurs.
-- `owner_ref` — identifies the owner channel; points to an Owner SimThing but does not make that
-  owner a spatial parent. The Owner SimThing remains a GameSession sibling.
-- `resource_key` — the resource/pressure lane: food, energy, damage, suppression, disruption,
-  influence, supply, etc.
-- `scope_id` — distinguishes scoped variants: local, surface, system, strategic, theater, etc.
-
-RF overlay/property maps stamp channel identity and weights onto spatial participants; the lowerer
-resolves those tags to dense owner/resource/scope columns and row/table surfaces. Runtime code groups
-by resolved channel columns — it never branches on owner containment or faction structure.
-
-### 5.2 Local settlement before bubbling
-
-Within a parent arena, sibling participants settle against each other by channel **before** anything
-bubbles upward:
-
-```
-for each parent_location:
-  for each (owner_ref, resource_key, scope_id):
-    total_surplus = sum(channel surplus from siblings)
-    total_demand  = sum(channel demand from siblings)
-    locally_matched = min(total_surplus, total_demand)
-    net_surplus_or_deficit bubbles to parent in the same channel
-```
-
-This is the critical rule:
-
-- A planet surface arena settles local owner/resource demand before the planet reports net state.
-- A planet settles before the star-system local grid reports net state.
-- A star-system/local grid settles before the galaxy grid reports net state.
-- Owner stockpiles/policy participate as GameSession sibling state; the spatial tree is not
-  reshaped to express ownership.
-
-### 5.3 What counts as RF
-
-Combat, economy, logistics, supply, raiding, disruption, suppression, diplomacy pressure, policy
-capture, civil-war influence, AI ambition, and opportunity gradients are all RF lanes. Names exist
-at the spec/driver layer and compile away to generic `AccumulatorOp` registrations. `simthing-sim`
-never learns the words.
-
-**All conflict is resource flow — and its spatial face is a Movement-Front.** Combat is an HP/Damage
-arena (damage = `SubtractFromSource` transfer; HP recovery = `governed_by`; death = a zero-crossing
-`Threshold` + `EmitEvent` → `BoundaryRequest` removal). Disruption is an accumulating-and-decaying
-property arena whose values reduce up to the starmap as the heatmap — and whose lateral expression
-across the gridcell lattice is a propagating disruption *front* (§7): patrols suppress it, pirates
-feed it, and the contested boundary where suppression and disruption balance is exactly a traveling
-wavefront settling toward an attractor. Trade, diplomacy, raiding, suppression — same law. Endgame
-scale is never solved by prohibiting scale: participant caps are on *concurrent* participants, slots
-recycle through the re-enrollment free-list, and pool growth happens only at boundaries.
-
-### 5.4 CostBand — the sink definition
-
-*(DIRECTED — canonical definition; the mechanic is delivered by rung 6.1b `BAND-QUANTIZED-DRAW-0`.)*
-
-**Observation is the base case; action is observation plus a CostBand.** Every resolved value is
-observable — that falls out of the unified flow and costs nothing extra. A **CostBand** is what makes
-an observed value *act*: the quantized draw that converts accumulated value into completed units.
-Given accumulated value `V` and band cost `C`:
-
-```
-N = floor(V / C)     units completed this step
-R = V − N·C          residue carried forward
-V = N·C + R          exact, by construction
-```
-
-`N` is what the band produces; `R` integrates into `Balance` through the ordinary carryforward, so
-the draw is **exactly conserving rather than approximately** — quantization is where a continuous
-allocation becomes a discrete outcome without leaking.
-
-- **Every sink IS a CostBand — it is the default, not an opt-in mode.** There is no second sink
-  mechanism to choose between.
-- **A boolean property is a CostBand of depth 1** — a build queue with one item. It is not a
-  different mechanism with its own code path; it is the degenerate case of this one.
-- **Direction is carried by the band, never by the sign of the value.** A sink and a source are not
-  distinguished by negating a quantity.
-- CostBand is the **event-steering surface**: thresholds define *when* a band completes, and band
-  completion is what an event reports.
+The target vocabulary is closed and admitted. ActionBand crossings use the one Phase-5 sealed
+crossing surface and existing consequence dispatch. Field-Triad values retain native authority:
+PALMA supplies potential/descent when routing applies; Gu-Yang/RF supplies signed realizable
+throughput and stall; CostBand prices a sink when one is authored. None is reconstructed inside
+ActionBand, and CostBand never becomes route or capacity authority.
 
 ---
 
-## 6. Overlays — the universal modifier
+## 6. Overlays — the intrinsic OverlayThing closure
 
-**Every modifier in the system is an overlay on a SimThing.** An overlay is
-`{ id, kind, source, affects, transform, lifecycle }` whose transform is a `PropertyTransformDelta`:
-a list of `(SubFieldRole, Add|Multiply|Set)` pairs against a property, applied on overlay OrderBands
-in the same unified kernel as everything else. There is no other modification mechanism. Concretely:
+OverlayThing is the germ's sole numerical actuation language. Every active overlay is owned by a
+SimThing; there is no peer manager, service, ActionThing, lifecycle executor, or second dispatch
+path. The four authoring families share this one surface:
 
-| What it looks like in a game | What it actually is |
-|---|---|
-| **Ownership / identity (standing)** | Owner-columns (`faction_id` and friends) on the owned SimThing, plus the **intrinsic owner-ref property** (`OWNER_CHANNEL_PROPERTY_ID`, rung 6.0) binding a node to its owner. **Identity is a property, not an overlay** — a standing relation that is *read*, never re-applied per tick. Absence means inherit, so an unbound node stores nothing; `bind_owner` is ONE write at a subtree root that re-parents the whole subtree. The political map is overlays on the spatial tree, never nodes in it. Capture = column flip + refresh of the *faction* overlay layer; per-relation layers are independent (the species layer persists through capture). Modifier overlays are latched and blockade-immune (knowledge ≠ goods); flow is blockable. |
-| **Policy / governance** | Overlays writing **weight columns** read by the allocation sweep, and Add/Multiply deltas on production/consumption sub-fields. A policy *is* its numeric pressure on the flow. |
-| **AI personality** | Authored personality sub-fields (aggression, risk tolerance…) on the faction SimThing, applied as **EML weighting overlays** over reduced Movement-Front pressure fields. The AI has no other existence. |
-| **User intervention / player controls** | `OverlaySource::Player` overlays — same transform machinery, same bands, same lifecycle. A player edict and an AI policy are structurally identical. |
-| **Capability / tech trees** | Abstract trees that **resolve to modifier overlays + instantiation gates**; unlocking instantiates via gated fission. Capabilities never become runtime branches. |
-| **Crises, events, scripted effects** | Transient overlays with declarative `DissolveCondition`s (property thresholds, tick timers, override), with any complex scripted logic encoded as an EML gadget tree (§4.1) — never bespoke event code. |
+1. **capability bestowal** — admitted template vocabulary a derived descendant may activate;
+2. **standing policy** — ancestor-resident inherited restrictions or parameter shaping;
+3. **lifecycled transient** — bounded active state with explicit dissolution or session horizon;
+4. **operator directive** — attributable Player/AI will entering through the same routing door.
 
-Lifecycle is declarative — `UntilDissolved` / `Transient{dissolution_conditions}` /
-`Suspended{when_activated}` / `AtSessionEnd` — and **no variant claims permanence** (the Definable
-Horizon Law). `UntilDissolved` names an overlay whose dissolution condition is defined but not yet
-met; `AtSessionEnd` names a definable horizon. The retired `Permanent` variant was renamed for
-exactly that reason: permanence is a claim no lifecycle may make, and a variant named `Permanent`
-invites authors to stop asking when a thing ends. Activation and dissolution are boundary-protocol
-work, never mid-tick mutation.
+Overlay.origin is required, OverlaySource remains complementary, and subtree-scoped overlays reside
+once at the lawful ancestor. Equivalent per-leaf stamping is unlawful. Rich source scopes compile
+away into bounded bindings; runtime semantic string dispatch and population-scale CPU walks are not
+admitted.
 
-If a feature proposal cannot be expressed as *properties + overlays + accumulator registrations +
-EML gadget trees*, the proposal is wrong — escalate, don't special-case.
+Overlay lifecycle has exactly UntilDissolved and AtSessionEnd. There is no permanence variant and no
+Never dissolve condition. Activation, suspension, Current/Next state, dissolution and collapse use
+the intrinsic facility and the ordinary generation boundary. A routed duration is rebased against
+the destination tree's generation authority; foreign absolute deadlines are not transported.
 
-**Overlays are the reception surface (DIRECTED — delivered by rung 6.0b, not yet built).** A
-SimThing's `overlays: Vec<Overlay>` is already its inbox: `evaluate_node` folds a node's own overlays
-onto a `TransformStack` inherited from its ancestors, so the composition chain a routed directive
-needs already runs on every evaluation. What is missing is *arrival* — overlays reach a node by
-direct `affects` targeting, which bypasses every intermediate policy layer. 6.0b adds a required
-`Overlay.origin: SimThingId` and routes directives up to the common ancestor and down, so the stack
-filters along the path. Until it graduates, the tuple above is the built shape. See
-[`stead_simthing_automata.md`](stead_simthing_automata.md).
-
-**Intrinsic overlay closure (Owner-adjudicated 2026-08-10; Tier-2 addition).** The overlay is the
-**intrinsic actuation language of the StemThing**: ordinary numerical action resolves by
-activating, parameterizing, suspending, or dissolving an admitted overlay, and the base SimThing
-is the sole owner, emitter, and possessor of overlay lifetime — every disbursing overlay is
-attached to a SimThing up the tree. The closure forbids **peer** executors, never acting
-SimThings: anything that acts — a user seat, a network controller — is itself a SimThing,
-auditable as ordinary columns, API as admitted lanes, STEAD-bound for telemetry.
-[`stemthing_intrinsic_overlay_capability.md`](stemthing_intrinsic_overlay_capability.md) governs
-the actuation semantics (laws §18, probes §23, rungs 7.6–7.9); **full §6 canonization is bound to
-12.2 `CORE-CANONIZATION-0`** — this section's boundary-lifecycle sentences remain true until
-`GPU-OVERLAY-LIFECYCLE-EXTRACTION-0` graduates and are rewritten only then.
+Overlay numerical values use the singular admitted EML form from §4.1. Sequential transforms retain
+authored order. Policy and selector predicates compose conjunctively. Same-generation numerical
+dependencies are an admitted DAG; cyclic behavior crosses explicit Current-to-Next state with bounded
+feedback. Replay-relevant lifecycle facts extend the one schedule and delta history.
 
 ---
 
 ## 7. Mapping — the Movement-Front automaton over gridcell SimThings
 
-> This section is the full model behind §0 ("Spatial substrate: STEAD/Mapping is not optional"). §0 is
-> the non-skippable summary; the eight invariants there are normative and enforced by
-> `stead_spatial_contract_guards`. The binding contract is [`stead_spatial_contract.md`](stead_spatial_contract.md).
+Mapping is the spatial expression of the same germ. Every gridcell is a Location SimThing with
+structural coordinates, sparse Property state, overlays, RF participation and field registrations.
+There is no map service beside the tree.
 
-The map is not a system; it is **more tree, run as a cellular automaton.** This is the
-**Movement-Front system**: the engine-native realization of Anchor A (Wei,
-[arXiv:2602.01651](https://arxiv.org/abs/2602.01651)), in which gridcell/location SimThings surface
-their local conditions as a heat map whose values spill across the lattice as propagating,
-falloff-shaped fronts.
+### 7.1 The Field Triad and born observables
 
-> **Naming.** *Movement-Front* is the engine name — use it in code, spec, and tests. Wei's underlying
-> concept is referred to in prose/design as **STEAD** — *SpatioTemporal Evolution with Attractor
-> Dynamics* ([arXiv:2602.01651](https://arxiv.org/abs/2602.01651)) — deliberately **not** "SEAD",
-> which carries an unrelated military connotation. Never write "SEAD" anywhere in the repo.
+One FieldSweepRegistration map/fold/post IR hosts the complete Triad:
 
-**A `Location` SimThing *is* a gridcell SimThing — the terms are interchangeable, and the spatial
-identity is intrinsic.** Every SimThing of kind `Location` carries a **grid coordinate**: a position in
-its parent's grid map of child cells. Owning that coordinate and participating in the **spatial arena**
-is what `Location` *means* — it is **not** an optional "mapping-role" bolted onto an otherwise-ordinary
-node. "Gridcell," "Location SimThing," and "spatial-arena participant" name the same thing; there is no
-non-spatial `Location`. This is **not a new `SimThingKind`** — `Location` is the kind, and the gridcell
-identity is what that kind already carries. The engine holds no fixed roster of grid kinds; *what* a
-Location is — a star system, a planet-surface tile, a sector — is scenario data, never engine knowledge.
-Future agents: treat "is a `Location`," "is a gridcell," and "occupies a coordinate in the spatial
-arena" as one statement, and never demote a Location to a position-less abstract node.
+- **STEAD** anchors resident fields and exposes magnitude, intensity, velocity, generation and
+  staleness through ordinary band crossings.
+- **PALMA** owns min-plus potential, reach and impedance over admitted GridOffsets or LinkGraph
+  topology. It produces a field, not a route/predecessor object.
+- **Gu-Yang SaturatingFlux** owns signed conservative throughput, saturation and choke behavior under
+  the admitted symmetry and stability certificate.
 
-**The parent owns the grid; its child Locations are the cells; the arena-pressure projection seeds the
-field — this is the load-bearing column formation.** A parent SimThing lays out its child Location
-SimThings positionally as a grid map. Each child Location occupies a `(width, height, col)` slot — a
-**3-axis layout**: the spatial position of the cell (`width × height`) crossed with the per-cell
-**column stack** (`col`) — so the GPU stencil walks neighbors as pure index arithmetic. The hard-won
-integration this formation exists for is the **arena-pressure projection** (`ArenaPressureBindingSpec`):
-a child Location is a resource-flow arena participant; its subtree reduces and disburses into its flow
-columns (§3, §5); and an authored binding projects that resolved flow — `(arena, sub_field) →
-(target_id, row, col)` — **onto the Location's own grid cell** as the RegionField seed. The projection
-is **on-device and GPU-resident — no readback, no side-channel test map**: arena state *shapes the
-field* directly, so the suppression / threat / supply pressure a Location accumulates *is* what seeds
-its cell. The seeded `RegionField` is its own bounded column range (its `source_col` / `target_col`),
-evolved by the Movement-Front stencil — distinct from the arena flow column it is *projected from*, not
-a duplicate of it. The whole `RegionFieldSpec` carries the three-layer model in one struct: **L1** =
-`pressure_binding` (this seed) + operator / horizon / `alpha_self` / `gamma_neighbor` (the falloff);
-**L2** = `reduction` (cell → parent); **L3** = `parent_formula` (`ai_will_do` urgency) + `commitment`
-(threshold → `CommitmentEffectSpec` → `BoundaryRequest`). (The parent also reduces its cells the way
-every parent reduces every child — `SlotRange` over their columns — that L2 half.) Execution is opt-in
-(`MappingExecutionProfile::SparseRegionFieldV1`, default `Disabled`).
+Comparative net flux, gross flux, stall, dominance, margin, contest, border bands and chokepoint
+projections are born as sealed EML projections over co-located anchored Triad columns when their
+admission conditions hold. They are ordinary numerical observables, not optional services or
+host-authored interpretations. The derived anchor table is their sole observation surface.
 
-**Layout scale and execution scale are decoupled — and SimThing models VAST spatial domains.** The
-**gridcell-Location lattice LAYOUT** (each Location's structural `(col,row)`) is integer and sparse, so it
-scales **freely** to far larger than any single reference — **200×200 is a *small* map; vast lattices
-(thousands+ cells per edge) are anticipated** and lay out at full fidelity (occupied cells where the
-scenario places them, unoccupied cells carrying ambient field). The **dense Movement-Front stencil
-EXECUTION**, by contrast, is a **bounded local theater** (the implemented first slice is ≤ 10/32 cells per
-edge — P1: dense-global diffusion over a vast grid is the permanently-rejected pattern). A vast lattice is
-therefore covered by **many bounded theaters** — the multi-theater **atlas** rung — never by one giant
-dense field; strategic awareness across theaters is **hierarchy (Layer 2)**, not a bigger stencil. **Never
-shrink a layout to fit the theater cap, and never grow the theater to cover a vast layout:** the layout is
-authoritative and unbounded; the stencil is a bounded window; the atlas tiles. **Structural gridcell
-layout has NO fixed edge cap** — it scales by explicit **admission budgets and memory constraints**
-(`MapgenStructuralGridBudget`, checked-`u128` capacity), never a magic constant. **200×200 is a small
-reference, not a canonical upper bound**, and `65,535` was a temporary arithmetic ceiling, **not doctrine**
-(removed in STEAD-SCALE-1). Execution profiles may impose bounded-theater limits; **a vast layout may be
-admitted even when a particular dense execution profile defers to atlas scheduling** — that is *layout
-admitted, execution profile requires atlas/tile scheduling*, never "the map is too large." (Lowerer: the
-gridcell `(col,row)` is honored as authoritative layout at any edge — STEAD-PRIVILEGE-0 — admitted by
-`admit_structural_grid` against the budget — STEAD-SCALE-1 — while the Movement-Front front returns a typed
-atlas deferral above the bounded-theater edge.)
+### 7.2 Movement-Front execution
 
-**A cell is shaped by its neighbors — falloff is the spatial arena's flow.** Exactly as a flow-arena
-participant is shaped by the budget disbursed to it, a gridcell Location is **influenced by the falloff
-of nearby gridcell Locations**: the stencil (§7.2; Gu-Yang) spreads each cell's value across its
-bounded neighborhood, so a Location's resolved state is its own seeded value **plus the falloff reaching
-it from neighboring cells**. The moving contour where opposing falloffs meet **is the front**. This is
-the spatial-arena analogue of reduce-up / disburse-down: seed a cell from its subtree, let
-bounded-horizon falloff carry it to its neighbors, and read the resulting gradient as the heat map.
+The shared rule has three layers:
 
-**Base canonical grid dimensions are always square** (P2 symmetry has no preferred axis): the default
-"medium" grid is **200×200**, scaling up — staying square — when cell density demands more than the
-default holds. A grid's cells are occupied as the scenario requires; unoccupied cells carry ambient
-field. (The superseded 200×150 is retired.)
+1. local field sweeps propagate pressure over admitted adjacency;
+2. hierarchy reduction carries strategic perception upward without widening the stencil;
+3. later-band EML interpretation crosses ActionBands and CostBands into ordinary consequences.
 
-### 7.1 The three postulates, enforced as engine law
+The front is the route. Movement descends local PALMA potential, advances only by signed native
+Gu-Yang/RF realizable throughput, consumes CostBand-priced resources where authored, and repeats on
+the next generation until the target condition is satisfied. No route solver, border polygon,
+congestion model, predecessor object, saturation listener, or CPU planner acquires authority.
 
-The Movement-Front discipline is not a performance preference; it is Wei's three postulates as
-binding constraints. Every mapping rule in `invariants.md` is one of them in disguise:
-
-- **P1 Locality — the light cone is the horizon cap.** A cell's next state depends only on its
-  stencil neighborhood; fronts advance at finite speed — H hops per tick within a band, and across
-  cells by **later-band cascade, never same-band chaining**. Dense global diffusion as a
-  strategic-awareness mechanism is **permanently rejected** (measured ~15× over budget): widening
-  the horizon to "see further" is action-at-a-distance, and the cure is hierarchy (Layer 2), not a
-  bigger light cone.
-- **P2 Symmetry — one shared rule, every cell, every tick.** All cells evolve under the **same
-  generic field-sweep interpreter/JIT with the same authored map/fold/post program and weights**
-  (the pre-5.5 `StructuredFieldStencilOp` is a retained test-only referee) — no per-cell bespoke
-  rules, no coordinate-dependent logic, no semantic WGSL. This is what makes a rule learned/tuned on
-  one region valid on every region and at every map scale; a per-cell special case breaks
-  generalization exactly as the paper predicts.
-- **P3 Stability — attractor dynamics, not raw accumulation.** Operators are stability-bounded
-  (`normalized_stencil` / `source_capped_normalized`; raw additive blows up, clamped additive loses
-  the gradient); recurrent formulas carry the bounded-feedback contract (finite decay < 1, explicit
-  clamps); ping-pong buffers keep multi-hop propagation race-free; and **threshold crossings are the
-  discrete projection** — continuous field noise below the threshold is dissipated, and only a real
-  crossing becomes an event. A front *settling* (suppression balancing disruption, a contested
-  boundary stabilizing) is the automaton converging to an attractor — and an unconverged race
-  (production vs attrition still unresolved at tick 100) is simply a wave still traveling.
-
-The automaton is also **adaptive in computation, exactly as the anchor predicts**: cadence tiers and
-dirty macro-region skipping mean compute follows the wavefront — quiet regions cost nothing, and a
-front crossing the whole map takes the ticks it takes. Sources are caller-managed one-shot seeds
-(seed, then zero); horizon is capped (H ≤ 8 tactical, ≤ 16 gated).
-
-### 7.2 The three layers
-
-```
-Layer 1 — the Movement-Front heat map (local, bounded falloff)
-  The generic field sweep (authored map/fold/post; interpreter or JIT) evolves cell field
-  columns (threat, disruption,
-  suppression, supply reach, desirability) across the 2D lattice. Values SPILL
-  ACROSS the map with falloff; the falloff gradient IS the signal, and the
-  moving contour where opposing pressures meet IS the front.
-
-Layer 2 — collection (reduce up)
-  Cell columns Sum-reduce into parent columns (system → planet → faction →
-  session) on an earlier OrderBand. Strategic awareness is hierarchy reduction,
-  never a wider stencil (P1).
-
-Layer 3 — interpretation (EvalEML at the parent)
-  On a LATER band, the parent runs personality-weighted EML gadget trees (§4.1)
-  over its reduced columns: aggression/risk-tolerance sub-fields × pressure →
-  urgency/desirability. Band ordering is binding: reduce before interpret.
-```
-
-One Movement-Front heat map, three consumers — none with its own engine:
-
-- **AI:** faction personality weights overlay the gradient field; commitments (attack, reinforce,
-  withdraw, expand) fire as **`Threshold` + `EmitEvent` crossings** over the Layer-3 pressure
-  columns — the P3 projection applied to strategy. There is no CPU map planner; the AI never
-  traverses the grid. It *reads the front* and acts when a pressure crosses a named threshold.
-- **Pathfinding / movement:** agents steer **proportionally down/up the local gradient** of the
-  desirability/threat front (EML over neighbor cells); movement is column updates and arena
-  re-enrollment, not a route solver. The front *is* the route: a supply front's gradient is the
-  logistics path, a threat front's gradient is the avoidance path. Velocity-of-pressure uses an
-  explicit previous-value column with a copy band (EML has no previous-buffer read) — the inferred-
-  dynamics half of the cell schema (§3).
-- **State:** the resolved field columns *are* the world state — disruption fronts, supply reach,
-  contested boundaries — reduced up for display and strategy alike.
-
-Perception (fog, stale intel, confidence, deception) is per-observer **filter fields over the true
-front** — same machinery, bounded formulas, with a hard write-boundary: perceived columns never write
-back into true columns; only explicit gameplay events through the `BoundaryRequest` path update
-ground truth. Mapping is opt-in, bounded, default-off, and `simthing-sim` remains map-free: it sees
-flat columns and opaque registrations.
-
-### 7.2.1 Production front operators: borders and pathfinding
-
-Gu-Yang/SaturatingFlux and PALMA are not optional background references. They are the production
-Movement-Front vocabulary for borders, chokepoints, reach, and pathfinding:
-
-- **Gu-Yang / SaturatingFlux** evolves owner/supply/threat/suppression/disruption pressure over the
-  grid as a conservative bounded front. Stable borders are contours where opposing fronts settle.
-  Chokepoints are saturation/choke readouts from the same field, not authored border polygons.
-- **PALMA** produces reach/impedance fields over those fronts. Pathfinding consumes local gradients
-  of reach/impedance/desirability/threat. It does not create a route object as simulation authority.
-
-The front is the route. A path polyline, if later rendered for UI, is a presentation artifact derived
-from the field, never a simulation subsystem.
-
-**Production operators — the realized rule (Gu-Yang flux) and the reach utility (PALMA).**
-*(Corrected 2026-08-13 — execution form superseded by the FIELD-SWEEP remodel, 5.4–5.7: both operators
-are now **authored `FieldSweepRegistration` instances over the one generic EML map/fold/post IR** —
-interpreted or JIT-compiled, bit-exact either way — carrying sealed `FieldLawProof`,
-`CanonicalOrderProof`, and for conservative folds the `UndirectedSymmetryCertificate`; the pre-remodel
-bespoke shaders survive only as test-only parity referees pending their 10.1 retirement. Adjacency is a
-registration axis — weighted `GridOffsets` N4/N8/radius-r presets and `LinkGraph` — with per-node
-conductance/χ certificates on graphs; N4 below is the reference instance, not the law.)* Two seated,
-semantic-free field laws give the automaton its production form, neither a new primitive nor a semantic
-engine:
-
-- **Gu-Yang `SaturatingFlux`** — an engineering ansatz *inspired by* Gu & Yang's hydrodynamic-limit
-  results (arXiv:2509.20797), not a literal implementation — is the conservative, state-dependent
-  stencil rule: a symmetric `(C_i + C_j)/2` flux with **zero-*flux*** (not zero-value) boundaries and a
-  CFL cap (χ ≤ 0.25), so a front **saturates and chokes** at bottlenecks instead of blowing up. It is
-  the same kernel, the same authored weights at every cell (P2), stability-bounded (P3) — and it is the
-  operator that makes chokepoints and contested boundaries *emerge from the flow* rather than from a
-  bespoke border service. The optional choke readout is one resident scalar column in the same dispatch.
-- **PALMA** min-plus traversal (tropical algebra, arXiv:2601.17028) is the seated **reach/impedance
-  utility** over the front: `D = W + min(N D)` over the admitted adjacency (N4 reference; N8/radius-r/`LinkGraph` per 5.6) is a *field*, not a route — it realizes "the front is
-  the route" (§7.2) as the reach metric a supply/threat gradient implies. No sqrt, no predecessor, no
-  path object; it is a generic GPU utility a Movement-Front consumer composes (impedance W from choke
-  fields → D), never a pathfinding engine.
-
-### 7.3 Trade-off geometry over the front — the Pareto-knee toolkit (deferred; guidance only)
-
-**Status: not an opcode, not a gadget, not implemented anywhere — deferred under the consumer-pulled
-discipline** (product deferral pre-dating this document; re-adjudicated 2026-06-09, horizon charter
-§1.4: opens no consumer of its own). This section exists so the path is *known*, never re-derived
-or re-excavated, when a consumer names it.
-
-**The concept.** A faction's policy weights (allocation weight columns + threshold biases, §6) span
-a trade-off front over its Layer-3 objectives — the personality-weighted pressure columns (§7.2).
-The **knee** is the operating point of *least maximal change*: where a small reallocation toward
-any objective forces a disproportionate deterioration in another, formalized as the **MCF** — the
-max over objective pairs of sensitivity-norm ratios (Giovannelli/Raimundo/Vicente,
-arXiv:2501.16993). A **knee event** is the front *kinking* — trade-off geometry sharpening past
-threshold — and threshold cascades nucleate exactly at kinks. The internal case is already
-doctrine: owner-entity fission (§2.1) is the intra-faction knee.
-
-**Why it costs no new substrate (expressiveness, not a planted feature):** the objectives already
-exist (Layer-3 reduced columns); the actions already exist (the weight columns overlays modify);
-sensitivities are **measured, never derived analytically** — difference paired counterfactual runs
-(bit-exact replay + one admitted overlay changed) or within-run policy dither; analytic derivatives
-are unavailable regardless, because the dynamics are clamped/gated/nonsmooth, and the interesting
-knees are precisely the nonsmooth ones. Over measured sensitivity columns the **MCF is plain
-ratio/max algebra — an ordinary EML gadget tree** under the existing admission contract
-(CPU-oracle parity, node cap, bounded feedback), and a knee event is an ordinary
-`Threshold` + `EmitEvent` crossing on the MCF column. No new opcode, no new WGSL, no CPU planner.
-
-**How Movement-Front consumers use it (when opened):**
-- **Operating-point preference** — risk tolerance compiles to *distance-from-knee*: a cautious
-  personality hedges toward the knee (the worst-case-protected point); an opportunist deliberately
-  rides the steep face of the front.
-- **Cascade early warning** — a diverging MCF marks where threshold chains will nucleate, pairing
-  with the velocity columns as leading indicators (external betrayal knee / internal fission knee,
-  §2.1).
-- **Label generation** — measured knees are certification-grade labels; any learned estimator over
-  them is `ApproximateDiagnostic` forever.
-
-**What is actually missing (the gate):** the MCF gadget is one spec-layer admission away; the
-**sensitivity-production harness** (paired-run differencing / dither) is the unbuilt part and stays
-gated on a named consumer (intervention/dataset rungs, or a scenario that needs knee-aware policy).
-Full adjudication lives in `workshop/field_world_model_horizon.md` §1.4 — link out, don't restate.
+Per-observer perception is a filter field over truth. Perceived columns never write true columns;
+only admitted boundary products update ground truth.
 
 ---
 
 ## 8. Time, decisions, and the CPU's only job
 
-- **tick** = deterministic GPU substrate advancement; **boundary** = the synchronization point
-  (`day_index` is a monotonic counter, not a calendar); the sim advances only when the host asks.
-- **Decisions are GPU-resident threshold crossings** (`Threshold` + `EmitEvent` → `BoundaryRequest`)
-  over resolved, masked fields — the FIELD_POLICY model, which is Movement-Front P3 applied to
-  agency: a decision is the automaton's projection of continuous pressure onto a discrete attractor
-  state. No CPU planner, no CPU urgency traversal, no CPU commitment emission, ever.
-- **At a boundary the CPU consumes, never recomputes.** It reads resolved summaries, events, and
-  metadata; applies structural results (fission, fusion, expiry, reparenting, re-enrollment) through
-  `BoundaryProtocol`; and reads GPU-integrated values before any lifecycle decision. It must not
-  re-derive economy/threat/urgency and must not scan dense grids by default.
-- Structural change is boundary work: fission/fusion from property thresholds, slot scrubbing on
-  add/remove, tombstoning whole-tree-scoped. The evaluator never mutates the tree.
+A tick advances deterministic resident state. A boundary is the synchronization point requested by
+the host. Decisions are GPU-resident threshold crossings over resolved fields. The CPU consumes
+sealed summaries and applies structural products; it never re-derives threat, economy, urgency,
+clearing, field direction, or actuation.
 
-**This section states the GENERAL model, and the general model is the DEFAULT (the Vendorized Build
-Principle, 0.0.8.7 §4).** The closed loop above — decisions resolved GPU-resident, the CPU consuming
-and never recomputing — is what SimThing *is* when nothing is specialised. A build that moves
-resolution to the CPU is therefore **not a violation of this section; it is an INSTANCE derived from
-it** by relocating the resolution site, and it is admitted only on those terms. The prohibitions
-above ("no CPU planner… ever") forbid a *parallel* CPU system that re-derives what the substrate
-already resolved — a second mechanism competing with the first. They do not forbid a named,
-derived build whose resolution site is declared. **The test is derivation, not location:** if the
-CPU-authoritative path shares the substrate's registrations, invariants, and admission, it is an
-instance; if it reimplements them, it is the bespoke parallel system this document has always
-rejected. See rung 6.2b `RESOLUTION-SITE-SPLIT-0`.
+Structural change—fission, fusion, add/remove, reparent, expiry, remap and re-enrollment—occurs at the
+boundary through the sealed protocol. The evaluator does not mutate tree structure.
 
-**SANCTIONED minting walkthrough (OC-K-DECISION-INGRESS-0) — how you DO mint a decision.**
+The **Vendorized Build Principle** makes the closed loop the general default. A CPU-authoritative build
+is a derived resolution-site instance only when it shares the same registrations, math, invariants,
+admission and history. A parallel CPU implementation competing with the resident substrate is not
+vendorization.
 
-```text
-1. GPU Pass B: AccumulatorOp Threshold + EmitEvent crosses a registered gate
-   → sealed ThresholdEvent (kernel Pass-7 / CPU-oracle twin only; not POD-forgeable)
+### 8.1 Door symmetry
 
-2. Emission stream records the same locus
-   → sealed ThresholdEmission
+**Door symmetry:** a vendor-facing surface that writes a lifecycle artifact must read/reopen that
+artifact through the same surface. The read side re-exports the existing authority and exact types;
+it does not add a sixth verb, facade-owned state, wrapper result, or alternate replay semantic.
 
-3. Tokens (public constructors accept only sealed records):
-   ThresholdCrossingToken::from_sealed_threshold_event(&event)
-   EmissionToken::from_sealed_threshold_emission(&emission)
-   BoundaryEmissionToken::bind(threshold_tok, emission_tok)?   // locus must match
-
-4. StructuralCommitment::mint_from_sealed_path(threshold_tok, emission_tok, boundary_tok)?
-   → authoritative commitment ingress (private fields; no raw POD construction)
-
-Forbidden: CpuDiagnosticDecision / ApproximateDecisionDiagnostic → StructuralCommitment
-(type system; compile_fail). Free BoundaryRequest construction for non-decision structural
-work remains B4 residual (see OC-K-DECISION-INGRESS-0 results).
-```
+The canonical Run read side is the composition of read_spec_replay_file, apply_spec_snapshot,
+apply_spec_delta and ReplayDriver application. The generic open_replay_with_spec entry is also
+reachable through Run, but it does **not** cover admitted-field-sweep domains. That coverage gap is
+accepted dated debt from the 2026-08-29 PORTABILITY-PROOF-0 ruling, Board 5460089932; closeout must
+disposition it. This canonization does not claim or implement the missing generic-opener coverage.
 
 ---
 
 ## 9. The drift detectors — litmus tests for every change
 
-A change is drifting from the paradigm the moment any answer below is "yes." Stop and escalate;
-do not rationalize.
+Stop and escalate when a change does any of the following:
 
-1. Am I adding a **runtime `match` on `SimThingKind`**, or a new kind variant, to get behavior?
-   *(The simulation tick path now enforces this structurally — the runtime view carries no `kind`;
-   `AS-KIND-OUT-OF-TICK-0`, §1.2 promotion. The detector remains as the litmus for all other paths.)*
-2. Am I building a **subsystem beside the tree** (a combat/economy/AI/pathfinding service) instead of
-   properties + overlays + registrations *on* the tree?
-3. Am I making an owner/faction a **spatial parent**, or implementing capture as **reparenting**
-   instead of a column flip?
-4. Am I writing a **CPU planner** — any CPU code that traverses state to *decide* something the GPU
-   should resolve as a threshold crossing?
-5. Am I putting **gameplay semantics into WGSL or `simthing-sim`** (any map/faction/AI/scenario word
-   below the spec layer)?
-6. Am I creating a **second ledger** beside `Balance`, or hardcoding a column index / calling
-   `ColumnIndex::new` outside the role pathway (`col_for_role` / layout-derived constructors only)?
-7. Am I adding a **new policy enum** where an overlay on a weight column is the answer?
-8. Am I violating a **Movement-Front postulate**: widening a stencil horizon or adding global/
-   same-band action-at-a-distance for awareness (P1 — use hierarchy reduction); writing per-cell or
-   coordinate-dependent rules instead of the one shared kernel (P2); or authoring unbounded
-   accumulation/recurrence without decay, clamp, and the bounded-feedback contract (P3)?
-9. Am I proposing a **new opcode, kernel, or scripted-event subsystem** before expressing the
-   behavior as an **EML gadget tree** (§4.1 / `eml_gadget_library.md`), or registering a semantic
-   EvalEML op outside `OpcodeRegistrationGate`?
-10. Am I claiming exactness **without bit-exact CPU-oracle parity**, feeding `ApproximateDiagnostic` /
-    native sqrt into an exact registration (needs `ExactMagnitudeProof` / Candidate F), wiring something
-    **default-on without a gate**, or allocating GPU resources **per tick**?
-11. Am I about to ship a **flattened proxy** for a specified recursive structure without an approved
-    Deviation Record — or claim progress through documents instead of a real reduction under test?
-12. Am I adding a **rebellion / civil-war / coup system, flag, or special entity type** — instead of
-    an influence flow + aggregate threshold + owner-entity fission with an intensity-vector column
-    partition (§2.1)?
-13. Am I minting a **StructuralCommitment** (or other decision effect) outside the sealed ingress
-    `ThresholdCrossingToken → EmissionToken → BoundaryEmissionToken`, or from a CPU/approximate
-    diagnostic?
-14. Am I minting an **overlay manager, overlay service, `ActionThing`, second actuation path, or
-    per-leaf stamps of a subtree-scoped overlay** — instead of the intrinsic germ, the one
-    ancestor-resident instance, and the one actuation door
-    ([`stemthing_intrinsic_overlay_capability.md`](stemthing_intrinsic_overlay_capability.md))?
+1. branches on runtime SimThing kind or gameplay nouns;
+2. builds a manager, planner, allocator, map, overlay, action, combat or economy subsystem beside the tree;
+3. makes an owner a spatial parent or capture a reparent;
+4. lets CPU traversal decide what a resident threshold should resolve;
+5. writes semantic nouns into simthing-sim or WGSL;
+6. creates a rival ledger, schedule, history, generation source, crossing surface or clearing path;
+7. hardcodes a column, physical row, allocation order or authored string as numerical authority;
+8. violates Movement-Front locality, symmetry, stability or bounded feedback;
+9. adds an opcode or kernel before expressing the behavior in admitted EML data;
+10. claims exactness without the exact admission/oracle contract;
+11. flattens a specified recursive structure without an approved deviation;
+12. mints decision effects outside the sealed crossing and consequence ingress;
+13. stamps inherited owner or subtree overlay state onto every descendant;
+14. lets install_initial_tree admit attached growth after initial residency;
+15. bypasses unified ingress or adds a producer with neither a production consumer nor dated deferral;
+16. writes a lifecycle artifact through a vendor door that cannot reopen it.
 
-**Promotion over repetition.** When a detector above keeps firing across rungs, the remedy is **not louder
-prose** — it is to lift the invariant to a higher admission rung: a type boundary that makes the drift
-*uncompilable*, or an admission hard-error that rejects it at import (§1.2). A drift that can be made
-unrepresentable should be; a detector that can be retired into a type has earned its retirement.
+### 9.1 Rejected rival shapes
 
-**The six-line harness** (cite on every track, hold in context on every rung):
+The following shapes are canonically rejected:
 
-1. Everything is a SimThing — new behavior is SimThings + properties + overlays + registrations.
-2. All conflict/opportunity/ambition/extraction is resource flow: accumulate → reduce → mask → threshold.
-3. Allocation is recursive through the one tree; settling depth is emergent, never special-cased.
-4. Decisions are GPU-resident threshold crossings — FIELD_POLICY, never a CPU planner; the map is the
-   Movement-Front automaton (locality, symmetry, stability — arXiv:2602.01651).
-5. `simthing-sim` and WGSL are semantic-free; behavior is EML opcode-stack data over one interpreter
-   (arXiv:2603.21852); exact claims carry bit-exact CPU-oracle parity.
-6. Proven only through a real reduction; opt-in / default-off; documents record progress, never constitute it.
+- opt-in upward event subscriptions copied from CPU handler taxonomies;
+- observation versus sink as a fixed event taxonomy;
+- CostBand as an optional marker or negative coefficient as destruction;
+- an authored cascade-depth limit instead of generation pacing;
+- per-tree parity as a new invariant rather than parity of the executed tree;
+- direct Overlay.affects routing that bypasses intermediate policy;
+- descendant Set/value semantics reused for conjunctive policy selection;
+- flat owner stamps, Option-none ownership, or foreign identity aliasing to unowned;
+- per-leaf materialization of ancestor-resident overlays;
+- an overlay-local EML evaluator, history, clock, lifecycle manager or convergence loop;
+- PALMA route objects, Gu-Yang reconstruction inside ActionBand, or CostBand as throughput authority;
+- a second allocator or grant manager outside the StemThing-B RF market;
+- a producing-side-only vendor lifecycle door.
 
-When the PR ladders descend into allocator details, atlas batching, JIT kernels, spec admission, or
-any other ancillary service — and they will — **this is the document you climb back up to.** Every
-service exists only to keep one recursive, GPU-resident SimThing tree accumulating, reducing,
-masking, crossing thresholds, and propagating Movement-Fronts. Build toward that, or escalate.
+The six-line harness is:
+
+1. Everything is a SimThing: behavior is admitted data on the recursive germ.
+2. Conflict, opportunity, ambition, extraction and residency flow through RF and constrained clearing.
+3. Allocation is recursive through one tree; settling depth is emergent.
+4. Decisions are resident crossings; the map is a local, symmetric, stable Movement-Front automaton.
+5. Runtime numerical code is semantic-free EML and Field-Triad data with exact claims oracle-qualified.
+6. Proof uses a real reduction; documents record graduated truth and never constitute execution.
 
 ---
 
 ## SimThing tools crate — presentation/support services
 
-`crates/simthing-tools` is a **support/presentation crate**, not simulation authority. It houses the
-DA-approved typeface runtime graduated from the closed TYPEFACE-LADDER: TTF font loading/shaping, raster
-atlas, MSDF/SDF atlas, SVG icon ingestion, declarative icon manifest, GPU style rows, deformation/path/warp
-tables, Studio label seam, and LR9 perf harnesses.
-
-The crate may **import, normalize, stage, cache, and render** presentation artifacts. It must **not** become
-a simulation subsystem or introduce gameplay semantics into GPU shaders. CPU work is import/staging/change-time
-only; GPU owns sampling, style effects, deformation, path/warp, and instanced draw composition.
-
-Durable references: **`docs/simthing_tools_typeface_adr.md`** (root ADR, ACCEPTED/CLOSED/DA-APPROVED),
-`docs/tests/current_evidence_index.md` (TYPEFACE rows). Process reports and the original ladder/proposal
-archived under `docs/archive/typeface_track_2026_06/`.
-
-```rust
-// TTF / font / shaping
-pub fn load_font(bytes: &[u8]) -> Result<ProbeFont, TypefaceError>;
-pub struct ProbeFont;
-pub struct GlyphMetrics;
-pub struct ShapingEngine;
-pub struct ShapedRun;
-pub struct ShapedGlyph;
-
-// SVG icons / manifest
-pub struct IconSet;
-pub struct IconVector;
-pub struct IconVectorLayer;
-pub struct IconManifest;
-pub struct IconManifestEntry;
-pub struct IconManifestBake;
-pub fn load_icon_manifest(...);
-pub fn bake_icon_manifest(...);
-pub fn fixture_manifest_path() -> PathBuf;
-
-// Runtime text / atlas / MSDF
-pub struct TextLabel;
-pub enum TextLabelRenderMode;
-pub struct GlyphAtlasCore;
-pub struct DistanceFieldAtlasCore;
-pub struct GlyphInstanceGpu;
-pub struct SimthingToolsTextPlugin;
-
-// Style / deformation / path / warp
-pub struct TextStyleTable;
-pub struct TextDeformTable;
-pub struct TextPathTable;
-pub struct TextWarpTable;
-
-// Studio seam
-pub struct StudioTypefaceLabel;
-pub struct StudioDamageTextEmitter;
-pub struct StudioTypefaceLabelPlugin;
-```
-
-See `crates/simthing-tools/src/lib.rs` for the full export surface; the block above is a high-signal seam
-summary only.
+crates/simthing-tools imports, stages and renders presentation artifacts: fonts, shaping, glyph and
+distance-field atlases, SVG icons, style/deformation/path/warp tables and Studio labels. It is not
+simulation authority and may not introduce gameplay semantics into GPU shaders.
 
 ---
 
 ## References
 
-- Zichao Wei, *On the Spatiotemporal Dynamics of Generalization in Neural Networks*
-  ([arXiv:2602.01651](https://arxiv.org/abs/2602.01651)) — Wei's **STEAD** (*SpatioTemporal Evolution
-  with Attractor Dynamics*) concept; the locality / symmetry / stability postulates and
-  attractor-dynamics cellular-automaton architecture underlying the Movement-Front system (§1.1, §7).
-- Andrzej Odrzywołek, *All elementary functions from a single operator* (arXiv:2603.21852) — the
-  single-operator (`eml(x,y) = exp(x) − ln(y)`) universality result underlying the `EvalEML`
-  interpreter, the gadget library, and the JIT compiler discipline (§1.1, §4.1).
-- Giovannelli, Raimundo, Vicente, *Pareto sensitivity, most-changing sub-fronts, and knee solutions*
-  (arXiv:2501.16993) — the least-maximal-change knee / MCF formalization behind the deferred §7.3
-  toolkit.
-- Gu & Yang, hydrodynamic-limit results (arXiv:2509.20797) — the inspiration for the `SaturatingFlux`
-  conservative-flux stencil ansatz that gives the Movement-Front its saturation/choke dynamics (§7.2).
-- *PALMA: A Lightweight Tropical Algebra Library for ARM-Based Embedded Systems* (arXiv:2601.17028) —
-  the min-plus / tropical-algebra basis for the seated reach/impedance traversal utility over the
-  front (§7.2).
+- Zichao Wei, On the Spatiotemporal Dynamics of Generalization in Neural Networks
+  ([arXiv:2602.01651](https://arxiv.org/abs/2602.01651)).
+- Andrzej Odrzywołek, All elementary functions from a single operator
+  ([arXiv:2603.21852](https://arxiv.org/abs/2603.21852)).
+- [0.0.8.7 RF arena modernization](design_0_0_8_7_rf_arena_modernization.md) — graduated source
+  rulings and rung stamps.
+- [STEAD spatial contract](stead_spatial_contract.md) — spatial and field-sweep invariants.
+- [StemThing unification](stead_stemthing_unification.md) — StemThing-A and Section-12 market grammar
+  provenance.
+- [Full EML unification](full_eml_unification.md) and
+  [EML gadget library](eml_gadget_library.md) — complete ISA, exact admission and library law.
+- [ActionBand STEAD](multi-axis-ActionBand-STEAD.md) — intrinsic actuation and Field-Triad binding.
+- [Intrinsic overlay capability](stemthing_intrinsic_overlay_capability.md) — overlay closure and
+  composition provenance.
