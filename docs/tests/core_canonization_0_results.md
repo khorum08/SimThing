@@ -34,8 +34,8 @@ laws.
 | CostBand as the sole sink | 6.1b BAND-QUANTIZED-DRAW-0 |
 | ActionBand and full Field Triad | graduated 7.x ActionBand/Gu-Yang sequence |
 | StemThing-B market grammar | graduated 11.2a–11.2f sequence |
-| door symmetry | DA ruling 5459514102 and 12.1 graduation 5460089932 |
-| pending-anchor consumer binding | 11.5 graduation 5459355580 |
+| door symmetry | DA ruling Board-comment-5459514102 and accepted 12.1 outcome Board-comment-5460089932 |
+| pending-anchor consumer binding | accepted 11.5 outcome Board-comment-5459355580 |
 
 The early-discharged forms remain exact:
 
