@@ -8,6 +8,7 @@
 **HD-RECEIPT:** `d5ab65c8a047`
 **ORIENT-RECEIPT:** `12660ec6def1` (`orientation_rule_stamp=4660c85703ef2f33`)
 **Dispatch master:** `cf8c3f863d28e16ce30bd9092b3c633774182b5a`
+**tested_code_sha:** `892a092c6678c65e900fbd6ed4af08a95ff0e7d0`
 
 ## Discovery
 
