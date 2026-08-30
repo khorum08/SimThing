@@ -25,7 +25,7 @@ pub(crate) enum DerivedLocusNarrowing {
 /// field: identical state changes invalidate identical work.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub(crate) struct ChangedLocus {
+pub struct ChangedLocus {
     logical_id: SimThingId,
     property_id: SimPropertyId,
     role: SubFieldRole,
@@ -42,7 +42,7 @@ impl ChangedLocus {
         }
     }
 
-    pub fn narrowed(mut self, narrowing: DerivedLocusNarrowing) -> Self {
+    pub(crate) fn narrowed(mut self, narrowing: DerivedLocusNarrowing) -> Self {
         self.narrowing = Some(narrowing);
         self
     }
@@ -59,7 +59,7 @@ impl ChangedLocus {
         &self.role
     }
 
-    pub fn narrowing(&self) -> Option<DerivedLocusNarrowing> {
+    pub(crate) fn narrowing(&self) -> Option<DerivedLocusNarrowing> {
         self.narrowing
     }
 }

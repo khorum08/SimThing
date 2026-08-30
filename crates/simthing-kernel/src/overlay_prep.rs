@@ -17,8 +17,9 @@ use simthing_core::{
     SimPropertyId, SimThing, SimThingId, SubFieldRole,
 };
 
+pub use crate::derived_span_projection::ChangedLocus;
 use crate::derived_span_projection::{
-    ChangedLocus, DerivedDependencyBinding, DerivedDependencyIndex, DerivedInvalidation,
+    DerivedDependencyBinding, DerivedDependencyIndex, DerivedInvalidation,
     DerivedSpanAdmissionError, DerivedSpanProjection, EffectiveProfileId, EffectiveSpanSeed,
     LogicalRowRange, LogicalSubtreeDirectory,
 };
@@ -27,8 +28,8 @@ use crate::wgsl_encode::encode_column;
 use crate::world_state::{OverlayDelta, SlotDeltaRange, OP_ADD, OP_MULTIPLY, OP_SET};
 
 pub use crate::clearing_weight_projection::{
-    resolve_effective_clearing_weights, ClearingWeightOverrideSpec, ClearingWeightResolutionError,
-    ClearingWeightSpanProjection,
+    resolve_effective_clearing_weights, ClearingWeightOverrideSpec,
+    ClearingWeightProjectionRefresh, ClearingWeightResolutionError, ClearingWeightSpanProjection,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]

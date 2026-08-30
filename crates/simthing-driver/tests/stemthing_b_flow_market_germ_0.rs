@@ -37,11 +37,12 @@ use simthing_spec::{
     ActionBandConservedProgressBoundSourceSpec, ActionBandRequirementSemantics,
     ActionBandSessionBuildDoor, ActionBandSessionSpec, ActionBandTargetSpec,
     ActionBandTemplateSpec, AdmittedSpecializationFlowMarket, AsyncOwnerChannelRfSeam,
-    AuthoredClearingProgram, ClearingRemainderAuthority, ClearingWeightOverrideSpec,
+    AuthoredClearingProgram, ChangedLocus, ClearingRemainderAuthority, ClearingWeightOverrideSpec,
     ConservedOfferingSpec, ConstrainedClaim, ConstrainedGrant, ConstrainedSupply,
     DrawAuthorizationError, DrawEnvelopeTemplateSpec, GrantReleaseCause, MarketGrantRecord,
     OfferingPriceVectorSpec, OwnerChannelRfOwnAggregate, ParentRfIntegrationState, ResourceKey,
     RuntimeOwnerSiloDemandBucket, ScalarBoundDirection, ScopeId, SpecializationFlowMarketSpec,
+    OWNER_POLICY_WEIGHT_AUTHORITY_PROPERTY_ID,
 };
 
 static GPU_MUTEX: std::sync::Mutex<()> = std::sync::Mutex::new(());
@@ -180,6 +181,11 @@ fn clear_two_markets() -> ClearedFixture {
 
     let participant_projection =
         OverlaySpanProjection::compile(&root).expect("7.8a participant projection admits");
+    let default_weight_locus = ChangedLocus::new(
+        root.id,
+        OWNER_POLICY_WEIGHT_AUTHORITY_PROPERTY_ID,
+        SubFieldRole::Amount,
+    );
     let compute_weights = resolve_effective_clearing_weights(
         &participant_projection,
         admitted
@@ -187,14 +193,20 @@ fn clear_two_markets() -> ClearedFixture {
             .unwrap()
             .price
             .default_clearing_weight,
+        default_weight_locus,
         &[ClearingWeightOverrideSpec {
+            source_locus: ChangedLocus::new(
+                compute_a_id,
+                OWNER_POLICY_WEIGHT_AUTHORITY_PROPERTY_ID,
+                SubFieldRole::Amount,
+            ),
             simthing_id: compute_a_id,
             value_program: TransformOp::multiply(2.0),
         }],
     )
     .expect("6.0-shaped inherited EML weight resolution");
-    assert_eq!(compute_weights[&compute_a_id], 2.0);
-    assert_eq!(compute_weights[&compute_b_id], 1.0);
+    assert_eq!(compute_weights.effective_weight(compute_a_id), Some(2.0));
+    assert_eq!(compute_weights.effective_weight(compute_b_id), Some(1.0));
 
     let rows = vec![
         own(granter_id, "compute-quanta", 5, 0),
@@ -217,7 +229,7 @@ fn clear_two_markets() -> ClearedFixture {
                 "compute-draw",
                 "compute-claim",
                 demand(scopes["compute-quanta"], compute_a_id, 4),
-                compute_weights[&compute_a_id],
+                compute_weights.effective_weight(compute_a_id).unwrap(),
                 &active_triggers,
             )
             .unwrap(),
@@ -226,7 +238,7 @@ fn clear_two_markets() -> ClearedFixture {
                 "compute-draw",
                 "compute-claim",
                 demand(scopes["compute-quanta"], compute_b_id, 4),
-                compute_weights[&compute_b_id],
+                compute_weights.effective_weight(compute_b_id).unwrap(),
                 &active_triggers,
             )
             .unwrap(),

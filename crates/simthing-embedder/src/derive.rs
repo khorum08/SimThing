@@ -32,12 +32,12 @@ pub use simthing_core::{
 pub use simthing_driver::ComparativeEmitterClass;
 pub use simthing_spec::{
     admit_specialization_flow_market, compile_eml_gadget_stack, resolve_effective_clearing_weights,
-    AdmittedSpecializationFlowMarket, ClearingWeightOverrideSpec, ClearingWeightResolutionError,
-    CompiledEmlGadgetStack, ConservedOfferingSpec, DrawAuthorizationError,
-    DrawEnvelopeTemplateSpec, EmlGadgetCompileOptions, EmlGadgetInstanceSpec, EmlGadgetStackSpec,
-    FlowMarketAdmissionError, GrantLifecycleError, MarketGrantKey, MarketGrantRecord,
-    MarketGrantResidencyProvenance, OfferingPriceVectorSpec, OfferingQuantizationError,
-    SpecializationFlowMarketSpec,
+    AdmittedSpecializationFlowMarket, ChangedLocus, ClearingWeightOverrideSpec,
+    ClearingWeightProjectionRefresh, ClearingWeightResolutionError, CompiledEmlGadgetStack,
+    ConservedOfferingSpec, DrawAuthorizationError, DrawEnvelopeTemplateSpec,
+    EmlGadgetCompileOptions, EmlGadgetInstanceSpec, EmlGadgetStackSpec, FlowMarketAdmissionError,
+    GrantLifecycleError, MarketGrantKey, MarketGrantRecord, MarketGrantResidencyProvenance,
+    OfferingPriceVectorSpec, OfferingQuantizationError, SpecializationFlowMarketSpec,
 };
 
 /// Author one validated Owner seat using the canonical scenario metadata shape.

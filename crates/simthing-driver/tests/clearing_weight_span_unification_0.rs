@@ -3,13 +3,16 @@
 use std::collections::BTreeMap;
 
 use simthing_core::owner_channel::OwnerRef;
-use simthing_core::{GenerationStamp, SimThing, SimThingId, SimThingKind, TransformOp};
+use simthing_core::{
+    GenerationStamp, SimThing, SimThingId, SimThingKind, SubFieldRole, TransformOp,
+};
 use simthing_gpu::OverlaySpanProjection;
 use simthing_spec::{
     clear_constrained_claims_at_generation, resolve_effective_clearing_weights,
-    AuthoredClearingProgram, ClearingRemainderAuthority, ClearingWeightOverrideSpec,
+    AuthoredClearingProgram, ChangedLocus, ClearingRemainderAuthority, ClearingWeightOverrideSpec,
     ClearingWeightResolutionError, ConstrainedClaim, ConstrainedClearingResult, ConstrainedSupply,
     OwnerChannelScopeKey, ResourceKey, RuntimeOwnerSiloDemandBucket, ScopeId,
+    OWNER_POLICY_WEIGHT_AUTHORITY_PROPERTY_ID,
 };
 
 struct Participants {
@@ -44,6 +47,14 @@ fn scope(root: SimThingId) -> OwnerChannelScopeKey {
         resource_key: ResourceKey::new("decimal-commodity-quanta"),
         scope_id: ScopeId::from_boundary(root),
     }
+}
+
+fn weight_locus(id: SimThingId) -> ChangedLocus {
+    ChangedLocus::new(
+        id,
+        OWNER_POLICY_WEIGHT_AUTHORITY_PROPERTY_ID,
+        SubFieldRole::Amount,
+    )
 }
 
 fn claim(
@@ -81,19 +92,28 @@ fn inherited_weight_profiles_are_bit_exact_maximal_and_fail_closed() {
     let one_ulp_above_one = f32::from_bits(1.0f32.to_bits() + 1);
     let overrides = [
         ClearingWeightOverrideSpec {
+            source_locus: weight_locus(fixture.ship),
             simthing_id: fixture.ship,
             value_program: TransformOp::multiply(4.0),
         },
         ClearingWeightOverrideSpec {
+            source_locus: weight_locus(fixture.freighter),
             simthing_id: fixture.freighter,
             value_program: TransformOp::multiply(1.0),
         },
         ClearingWeightOverrideSpec {
+            source_locus: weight_locus(fixture.commodity),
             simthing_id: fixture.commodity,
             value_program: TransformOp::set(one_ulp_above_one),
         },
     ];
-    let weights = resolve_effective_clearing_weights(&projection, 0.5, &overrides).unwrap();
+    let weights = resolve_effective_clearing_weights(
+        &projection,
+        0.5,
+        weight_locus(fixture.root.id),
+        &overrides,
+    )
+    .unwrap();
 
     assert_eq!(
         weights.effective_weight(fixture.root.id).unwrap().to_bits(),
@@ -125,11 +145,21 @@ fn inherited_weight_profiles_are_bit_exact_maximal_and_fail_closed() {
     );
 
     assert!(matches!(
-        resolve_effective_clearing_weights(&projection, f32::NAN, &[]),
+        resolve_effective_clearing_weights(
+            &projection,
+            f32::NAN,
+            weight_locus(fixture.root.id),
+            &[]
+        ),
         Err(ClearingWeightResolutionError::InvalidDefault)
     ));
     assert!(matches!(
-        resolve_effective_clearing_weights(&projection, 1.0, &[overrides[0].clone(), overrides[0].clone()]),
+        resolve_effective_clearing_weights(
+            &projection,
+            1.0,
+            weight_locus(fixture.root.id),
+            &[overrides[0].clone(), overrides[0].clone()]
+        ),
         Err(ClearingWeightResolutionError::DuplicateOverride(id)) if id == fixture.ship
     ));
     let absent = SimThingId::from_session_raw(u32::MAX - 10);
@@ -137,7 +167,9 @@ fn inherited_weight_profiles_are_bit_exact_maximal_and_fail_closed() {
         resolve_effective_clearing_weights(
             &projection,
             1.0,
+            weight_locus(fixture.root.id),
             &[ClearingWeightOverrideSpec {
+                source_locus: weight_locus(fixture.root.id),
                 simthing_id: absent,
                 value_program: TransformOp::set(1.0),
             }],
@@ -148,7 +180,9 @@ fn inherited_weight_profiles_are_bit_exact_maximal_and_fail_closed() {
         resolve_effective_clearing_weights(
             &projection,
             1.0,
+            weight_locus(fixture.root.id),
             &[ClearingWeightOverrideSpec {
+                source_locus: weight_locus(fixture.ship),
                 simthing_id: fixture.ship,
                 value_program: TransformOp::multiply(-1.0),
             }],
@@ -164,12 +198,15 @@ fn ship_commodity_freighter_matrix_preserves_order_ties_decimal_apportionment_an
     let weights = resolve_effective_clearing_weights(
         &projection,
         1.0,
+        weight_locus(fixture.root.id),
         &[
             ClearingWeightOverrideSpec {
+                source_locus: weight_locus(fixture.ship),
                 simthing_id: fixture.ship,
                 value_program: TransformOp::multiply(2.0),
             },
             ClearingWeightOverrideSpec {
+                source_locus: weight_locus(fixture.commodity),
                 simthing_id: fixture.commodity,
                 value_program: TransformOp::set(f32::from_bits(1.0f32.to_bits() + 1)),
             },
@@ -178,9 +215,24 @@ fn ship_commodity_freighter_matrix_preserves_order_ties_decimal_apportionment_an
     .unwrap();
     let scope = scope(fixture.root.id);
     let weighted_claims = vec![
-        claim(&scope, fixture.ship, 3, weights[&fixture.ship]),
-        claim(&scope, fixture.commodity, 3, weights[&fixture.commodity]),
-        claim(&scope, fixture.freighter, 3, weights[&fixture.freighter]),
+        claim(
+            &scope,
+            fixture.ship,
+            3,
+            weights.effective_weight(fixture.ship).unwrap(),
+        ),
+        claim(
+            &scope,
+            fixture.commodity,
+            3,
+            weights.effective_weight(fixture.commodity).unwrap(),
+        ),
+        claim(
+            &scope,
+            fixture.freighter,
+            3,
+            weights.effective_weight(fixture.freighter).unwrap(),
+        ),
     ];
     let supply = [ConstrainedSupply {
         scope: scope.clone(),
@@ -232,9 +284,24 @@ fn ship_commodity_freighter_matrix_preserves_order_ties_decimal_apportionment_an
     // 100:200:300 apportionment of 100 hundredths is 17:33:50, with no float
     // conversion or tolerance in the clearing arithmetic.
     let decimal_claims = vec![
-        claim(&scope, fixture.ship, 100, weights[&fixture.ship]),
-        claim(&scope, fixture.commodity, 200, weights[&fixture.commodity]),
-        claim(&scope, fixture.freighter, 300, weights[&fixture.freighter]),
+        claim(
+            &scope,
+            fixture.ship,
+            100,
+            weights.effective_weight(fixture.ship).unwrap(),
+        ),
+        claim(
+            &scope,
+            fixture.commodity,
+            200,
+            weights.effective_weight(fixture.commodity).unwrap(),
+        ),
+        claim(
+            &scope,
+            fixture.freighter,
+            300,
+            weights.effective_weight(fixture.freighter).unwrap(),
+        ),
     ];
     let decimal = clear_constrained_claims_at_generation(
         &[ConstrainedSupply {
