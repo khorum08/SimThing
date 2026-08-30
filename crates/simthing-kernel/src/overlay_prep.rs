@@ -26,6 +26,11 @@ use crate::slot::SlotAllocator;
 use crate::wgsl_encode::encode_column;
 use crate::world_state::{OverlayDelta, SlotDeltaRange, OP_ADD, OP_MULTIPLY, OP_SET};
 
+pub use crate::clearing_weight_projection::{
+    resolve_effective_clearing_weights, ClearingWeightOverrideSpec, ClearingWeightResolutionError,
+    ClearingWeightSpanProjection,
+};
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 enum OverlayProfileOpKind {
     Add,
@@ -131,6 +136,10 @@ impl OverlaySpanProjection {
 
     pub(crate) fn try_compile(root: &SimThing) -> Result<Self, DerivedSpanAdmissionError> {
         Self::compile_with_dependencies(root, Vec::new())
+    }
+
+    pub(crate) fn logical_directory(&self) -> &LogicalSubtreeDirectory {
+        self.projection.directory()
     }
 
     fn compile_with_dependencies(

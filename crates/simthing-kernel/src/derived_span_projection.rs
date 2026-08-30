@@ -269,6 +269,15 @@ impl<D> EffectiveSpanSeed<D> {
             descriptor,
         }
     }
+
+    pub(crate) fn descriptor(&self) -> &D {
+        &self.descriptor
+    }
+
+    pub(crate) fn extend_to(&mut self, end: u64) -> Result<(), DerivedSpanAdmissionError> {
+        self.range = LogicalRowRange::new(self.range.start(), end - self.range.start())?;
+        Ok(())
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -426,6 +435,15 @@ impl<D: Clone + PartialEq> DerivedSpanProjection<D> {
             .map(|(_, span)| span)
             .filter(|span| span.range.contains(logical_row))
             .map(|span| span.profile_id)
+    }
+
+    pub(crate) fn descriptor_at(&self, logical_row: u64) -> Option<&D> {
+        self.spans
+            .range(..=logical_row)
+            .next_back()
+            .map(|(_, span)| span)
+            .filter(|span| span.range.contains(logical_row))
+            .map(EffectiveSpan::descriptor)
     }
 
     pub fn invalidate(

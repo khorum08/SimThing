@@ -22,7 +22,8 @@ use simthing_driver::{
 use simthing_gpu::{
     apply_band_crossing_deltas_from_fused_emissions, emit_on_threshold_registrations_to_gpu, wgpu,
     AccumulatorOpSession, ActionBandEmissionBindingGpu, ActionBandGpuExecution, FieldSweepSession,
-    GpuContext, PackedAccumulatorUpload, PackedThresholdUpload, SlotAllocator,
+    GpuContext, OverlaySpanProjection, PackedAccumulatorUpload, PackedThresholdUpload,
+    SlotAllocator,
 };
 use simthing_sim::{
     BoundaryDeltaEntry, ReplayDriver, ReplayFrame, ReplayReader, ReplaySnapshot, ReplayWriter,
@@ -177,8 +178,10 @@ fn clear_two_markets() -> ClearedFixture {
     .expect("profile-attached offering/Draw data admits once");
     assert_eq!(admitted.specialization_profile_id(), "session-root");
 
+    let participant_projection =
+        OverlaySpanProjection::compile(&root).expect("7.8a participant projection admits");
     let compute_weights = resolve_effective_clearing_weights(
-        &root,
+        &participant_projection,
         admitted
             .offering("compute-claim")
             .unwrap()

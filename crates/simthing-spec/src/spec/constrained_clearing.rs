@@ -249,30 +249,6 @@ struct ScoredClaim {
     score: f32,
 }
 
-/// Clear bounded supplies against ordinary RF claims.
-///
-/// Input order is never semantic. Score-band order comes from authored EML;
-/// within a band, exact integer proportional shares use stable logical ids for
-/// remainder placement.
-pub fn clear_constrained_claims(
-    supplies: &[ConstrainedSupply],
-    claims: &[ConstrainedClaim],
-    program: &AuthoredClearingProgram,
-) -> Result<Vec<ConstrainedClearingResult>, ConstrainedClearingError> {
-    // Compatibility entry point for pre-market callers. The StemThing-B
-    // market door uses `clear_constrained_claims_at_generation`, which binds
-    // tie rotation to the real granter generation.
-    clear_constrained_claims_at_generation(
-        supplies,
-        claims,
-        program,
-        ClearingRemainderAuthority {
-            granter: SimThingId::from_session_raw(0),
-            generation: GenerationStamp::new(0),
-        },
-    )
-}
-
 /// Clear bounded supplies with work-conserving largest remainder and rotate
 /// exact fractional ties under the owning granter's generation authority.
 pub fn clear_constrained_claims_at_generation(
