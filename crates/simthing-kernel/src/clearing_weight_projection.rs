@@ -5,8 +5,6 @@
 //! sparse override boundaries; it neither walks the tree nor materializes a
 //! participant-id map.
 
-use std::collections::HashMap;
-
 use simthing_core::{GenerationStamp, SimThingId, TransformOp};
 use thiserror::Error;
 
@@ -114,22 +112,13 @@ impl ClearingWeightSpanProjection {
             unaffected_profile_samples(&self.projection, invalidation.affected_ranges.as_slice());
         let mut semantic_spans_rebuilt = 0u64;
         for affected_range in invalidation.affected_ranges.iter().copied() {
-            let mut replacements = HashMap::new();
-            for span in self.projection.spans_in_range(affected_range) {
-                let start = span.range().start().max(affected_range.start());
-                let (weight, profile) = resolved_weight_at(default_weight, &admitted, start)?;
-                replacements.insert(start, (weight, profile));
+            for semantic_window in semantic_windows(affected_range, &admitted)? {
+                let (weight, profile) =
+                    resolved_weight_at(default_weight, &admitted, semantic_window.start())?;
+                self.projection
+                    .remap_range(semantic_window, generation, |_, _, _| (weight, profile))?;
+                semantic_spans_rebuilt += 1;
             }
-            semantic_spans_rebuilt += self.projection.remap_range(
-                affected_range,
-                generation,
-                |range, prior, prior_profile| {
-                    replacements
-                        .get(&range.start())
-                        .copied()
-                        .unwrap_or((*prior, prior_profile))
-                },
-            )?;
         }
 
         let unaffected_profile_identity_changes = unaffected_profiles
@@ -306,40 +295,58 @@ fn override_dependency_shape(
     shape
 }
 
+fn semantic_windows(
+    affected_range: LogicalRowRange,
+    admitted: &[(LogicalRowRange, &ClearingWeightOverrideSpec)],
+) -> Result<Vec<LogicalRowRange>, ClearingWeightResolutionError> {
+    let mut boundaries = vec![affected_range.start(), affected_range.end()];
+    for (override_range, _) in admitted
+        .iter()
+        .filter(|(override_range, _)| override_range.intersects(affected_range))
+    {
+        boundaries.push(override_range.start().max(affected_range.start()));
+        boundaries.push(override_range.end().min(affected_range.end()));
+    }
+    boundaries.sort_unstable();
+    boundaries.dedup();
+
+    boundaries
+        .windows(2)
+        .filter(|window| window[0] < window[1])
+        .map(|window| LogicalRowRange::new(window[0], window[1] - window[0]).map_err(Into::into))
+        .collect()
+}
+
 fn unaffected_profile_samples(
     projection: &DerivedSpanProjection<f32>,
     affected_ranges: &[LogicalRowRange],
 ) -> Vec<(u64, EffectiveProfileId)> {
-    let mut samples = Vec::new();
-    for span in projection.iter_spans() {
-        let mut cursor = span.range().start();
-        for affected in affected_ranges
-            .iter()
-            .copied()
-            .filter(|affected| affected.intersects(span.range()))
-        {
-            let unaffected_end = affected.start().min(span.range().end());
-            if cursor < unaffected_end {
-                samples.push((
-                    cursor,
-                    projection
-                        .effective_profile_at(cursor)
-                        .expect("sample comes from an admitted span"),
-                ));
-            }
-            cursor = cursor.max(affected.end());
-            if cursor >= span.range().end() {
-                break;
-            }
+    let total_rows = projection.directory().total_rows();
+    let mut sample_rows = Vec::with_capacity(affected_ranges.len() * 2);
+    for affected in affected_ranges {
+        if affected.start() > 0 {
+            sample_rows.push(affected.start() - 1);
         }
-        if cursor < span.range().end() {
-            samples.push((
-                cursor,
-                projection
-                    .effective_profile_at(cursor)
-                    .expect("sample comes from an admitted span"),
-            ));
+        if affected.end() < total_rows {
+            sample_rows.push(affected.end());
         }
     }
-    samples
+    sample_rows.sort_unstable();
+    sample_rows.dedup();
+    sample_rows
+        .into_iter()
+        .filter(|row| {
+            !affected_ranges
+                .iter()
+                .any(|affected| affected.contains(*row))
+        })
+        .map(|row| {
+            (
+                row,
+                projection
+                    .effective_profile_at(row)
+                    .expect("neighbour sample comes from an admitted span"),
+            )
+        })
+        .collect()
 }
