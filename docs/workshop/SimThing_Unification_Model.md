@@ -1,596 +1,340 @@
 # SimThing Unification Model
-## Post-graduation architectural guide, Phase-13 remediation map, and engineering review
+## Post-Phase-13 architectural guide and engineering completion review
 
-> **Status: WORKSHOP / NON-NORMATIVE / LIVE SYNTHESIS.**
+> **Status: WORKSHOP / NON-NORMATIVE / POST-PHASE-13 REVIEW.**
 >
-> This document is a readable engineering model of the architecture that graduated through
-> `CORE-CANONIZATION-0` and of the **Phase 13 legacy-convergence addenda now in flight**. The
-> normative paradigm remains [`../simthing_core_design.md`](../simthing_core_design.md), especially
-> §1. This guide does not supersede the ladder, the core design, or DA rulings.
+> This document is the engineering synthesis of the unified SimThing architecture after the
+> 0.0.8.7 core canonization and the completed Phase-13 convergence arc. Normative authority remains
+> [`../simthing_core_design.md`](../simthing_core_design.md), the live workplan, and DA rulings.
 >
-> **State discipline used here:**
+> **Reviewed state:** Phase 13 is complete at **7/7**. 13.6
+> `CLEARING-WEIGHT-SPAN-UNIFICATION-0` graduated in #1891 @ `3766a002`; 13.7
+> `PERFORMANCE-DEBT-LEDGER-COMPLETION-0` graduated in #1893 @ `9cdb46e2`; the track is
+> **PARKED-PENDING-REVIEW** with no active rung. The final structural certificate attached to the
+> last structural implementation rung is **126 suites / 478 passed / 0 failed / 14 ignored**.
 >
-> - **GRADUATED** means landed and DA-graduated before Phase 13.
-> - **PROBATION / IN FLIGHT** means implementation exists on an open review branch but is not yet
->   constitutional fact.
-> - **MINTED / PLANNED** means the rung and exit law exist, but implementation is still future.
+> The review distinguishes four things deliberately:
 >
-> The important correction from the first post-12.2 review is that several findings which looked like
-> post-closeout optimization work have now been promoted into **pre-closeout convergence debts**. The
-> guide therefore separates (a) the closed StemThing semantic kernel, (b) application/legacy surfaces
-> that still need to converge onto it, and (c) physical performance work that remains a later track.
+> 1. **semantic design closure** — whether one uniform StemThing model owns simulation meaning;
+> 2. **repository convergence** — whether application/legacy surfaces point toward that model;
+> 3. **physical execution placement** — whether the closed semantics execute in their ideal CPU/GPU form;
+> 4. **future capability** — things such as Vector CostBand that are not defects in the closed scalar model.
 
 ---
 
-# 0. Executive model
+# 0. Executive verdict
 
-The central architecture remains unchanged:
+The post-Phase-13 tree is materially closer to the intended stem-cell architecture than the post-12.2
+state.
 
-> **A StemThing is a default-inert recursive simulation cell with stable logical identity,
-> homogeneous numerical Property state, intrinsic owner-aware RF participation, one EML expression
-> organ, the STEAD/PALMA/Gu-Yang Field Triad, CostBand sink arithmetic, ActionBand target lifecycle,
-> OverlayThing actuation, StemThing-A residency, and StemThing-B recursive conserved-resource market
-> capability.**
+> **The uniform StemThing design is semantically closed enough to be called the governing runtime
+> architecture. It is not yet physically optimized enough to call execution placement finished, and
+> the repository still contains explicitly censused authoring/legacy residue.**
 
-Specialists such as SessionThing, OwnerThing, GridcellThing, population cohorts, fleet-like things,
-network-management things, and compute-node things derive from the same germ. Specialization adds
-admitted data; it does not create a peer runtime engine.
-
-```text
-                         AUTHORING / EMBEDDING
-             ClauseScript or another front-end / Vendor Door
-                                  │
-                                  ▼
-                      ┌───────────────────────┐
-                      │       STEMTHING       │
-                      │  one recursive germ  │
-                      └───────────┬───────────┘
-                                  │
-             ┌────────────────────┼────────────────────┐
-             │                    │                    │
-             ▼                    ▼                    ▼
-       Properties / RF           EML             Field Triad
-       owner / residency     one numerical      STEAD / PALMA /
-       market state             language           Gu-Yang
-             │                    │                    │
-             └──────────────┬─────┴─────┬──────────────┘
-                            ▼           ▼
-                         CostBand    ActionBand
-                            │           │
-                            └─────┬─────┘
-                                  ▼
-                           Phase-5 crossing
-                                  │
-                                  ▼
-                    CrossingConsequenceBinding
-                    ┌─────────────┼─────────────┐
-                    ▼             ▼             ▼
-              ResidentNext   RoutedOverlay   Structural
-                  Write        Delivery      Authorization
-                    │             │             │
-                    ▼             ▼             ▼
-              facility-local   receive /     BoundaryRequest
-               Current/Next     filter
-                    └─────────────┬─────────────┘
-                                  ▼
-                         generation boundary
-                                  │
-                                  └──────────────► recurse
-```
-
-Compact identity:
+The strongest compact model remains:
 
 ```text
 SimThing
- = recursive state
+ = recursive field-resident state
  + recursive conserved-resource economics
- + propagated fields
- + target-seeking action
- + intrinsic actuation
- + one generation protocol
+ + one EML numerical language
+ + STEAD / PALMA / Gu-Yang field laws
+ + CostBand quantization
+ + ActionBand target lifecycle
+ + OverlayThing actuation
+ + StemThing-A residency
+ + StemThing-B resource-market sovereignty
+ + one generation / replay authority
 ```
 
-Phase 13 does **not** replace this model. Its purpose is to make legacy/application surfaces and one
-newly-landed StemThing-B implementation path conform more completely to it before closeout.
+Phase 13 materially strengthened that statement by making the following formerly transitional shapes
+unrepresentable or non-authoritative:
+
+```text
+site-only root admission errors       -> typed law + element provenance
+ClauseThing test-side admission shims -> application lowerer emits canonical shape
+three permanent workspace reds        -> zero-red certificate law
+folk performance numbers              -> dated measurement / owed-measurement ledger
+uncensused legacy authoring routes     -> one constitutional census
+whole-tree clearing-weight walk       -> 7.8a span/profile projection
+synthetic-generation clearing door     -> deleted
+```
+
+The remaining high-value engineering work is therefore mostly about **where the one model executes**,
+not which model is authoritative.
 
 ---
 
-# 1. What 0.0.8.7 actually closed
+# 1. Uniform StemThing anatomy
 
-## 1.1 Root and authority closure — GRADUATED
+A StemThing is the default-inert recursive simulation germ. Specializations add admitted data; they do
+not add managers or peer simulation engines.
 
-The canonized root contract has four semantic legs:
+```text
+                              STEMTHING
+                                  │
+       ┌──────────────────────────┼──────────────────────────┐
+       │                          │                          │
+       ▼                          ▼                          ▼
+  Properties / RF                EML                    Field organ
+ owner / state / lanes     numerical semantics       STEAD / PALMA /
+       │                          │                     Gu-Yang
+       │                          │                          │
+       ├──────────────┐           │           ┌──────────────┤
+       ▼              ▼           ▼           ▼              ▼
+ StemThing-A      StemThing-B   CostBand   ActionBand     observations
+ residency       flow markets      │           │
+       │              │            └─────┬─────┘
+       └──────────────┴──────────────────▼
+                                  Phase-5 crossing
+                                         │
+                              CrossingConsequenceBinding
+                              ┌──────────┼──────────┐
+                              ▼          ▼          ▼
+                         ResidentNext  Routed    Structural
+                            Write      Overlay   Authorization
+                              │          │          │
+                              └──────┬───┘          ▼
+                                     ▼       BoundaryProtocol
+                              generation barrier
+```
 
-| leg | intrinsic meaning |
+The four semantic legs remain:
+
+| leg | meaning |
 |---|---|
-| `participate` | Property/RF state, reduce-up, disburse-down, Field-Triad participation |
-| `act` | ActionBand discrepancy + CostBand executable work |
-| `originate` | attributable OverlayThing state and ordinary products |
-| `receive` | deficit-driven, standing, predicate-broadcast, routed and seam-delivered state |
+| `participate` | Property/RF/field participation; reduce-up and disburse-down |
+| `act` | CostBand and ActionBand resolution |
+| `originate` | attributable OverlayThing / ordinary products |
+| `receive` | inherited, deficit-driven, predicate and routed input |
 
-StemThing-A and StemThing-B are lanes of this object, not additional legs.
-
-The exclusivity chain is:
-
-```text
-OverlayThing / CostBand / ActionBand / authored EML
-                    │
-                    ▼
-              RF + Field Triad
-                    │
-                    ▼
-       generic contention / resolution
-                    │
-                    ▼
-            ONE SimThing execution path
-```
-
-11.4 mechanized this with a constitutional producer→production-consumer census and second-sink
-falsifiers. Phase 13.5 extends that **same census discipline** to the legacy estate; it does not mint a
-second exclusivity checker.
-
-## 1.2 Composition closure — GRADUATED
-
-11.3 demonstrated a real causal composition:
-
-```text
-residency / grant      N+0
-      ↓
-grant lane publication N+1
-      ↓
-ActionBand crossing + routed consequence N+2
-      ↓
-OverlayThing attachment N+3
-      ↓
-stable terminal state N+4
-```
-
-Each facility could be neutralized independently while the others remained live, and the terminal
-stopped moving. That is the load-bearing proof of composition.
-
-## 1.3 Portability closure — GRADUATED
-
-12.1 proved an unrelated network-saturation domain through the five Vendor Door verbs, real GPU
-Field-Triad execution, serialization, restore and replay without a domain engine.
-
-One read-side ergonomics/completeness debt remains: `open_replay_with_spec` does not directly open the
-special admitted-field-sweep form. Phase 13.2 may fold that repair **only if the ClauseThing convergence
-naturally passes through the same seam**. It is not permission for a second replay authority.
+StemThing-A/B are lanes of the germ, not additional legs.
 
 ---
 
-# 2. Canonical StemThing anatomy
-
-Conceptual pseudostructure only:
-
-```text
-StemThingKernel {
-    // logical ontology
-    SimThingId
-    parent / children
-    specialization profile
-    epoch-local row binding
-
-    // resident numerical state
-    Property lanes
-    anchors
-    owner dimension
-    StemThing-A residency
-    StemThing-B market / grant state
-
-    // recursive economics
-    owner-channel RF
-    seam holding balances
-    constrained claims / clearing
-    CostBand bindings
-
-    // numerical language
-    EML programs
-    exact primitive admission
-    gadget library
-
-    // field organ
-    FieldSweep registrations
-    STEAD
-    PALMA
-    Gu-Yang
-    comparative projections
-
-    // action / actuation
-    ActionBand templates + instances
-    OverlayThing templates + instances
-    facility Current / Next planes
-
-    // shared derivation
-    crossing consequence bindings
-    effective span/profile projection
-    source-blind dependency index
-
-    // boundary + replay
-    generation authority
-    IntegrationSchedule
-    structural authorizations
-    canonical replay state
-}
-```
-
-The implementation should delete conceptual members whenever they can be derived rather than stored.
-Phase 13.6 applies that rule directly to clearing-weight inheritance.
-
----
-
-# 3. One generation — semantic schedule
+# 2. One authority cycle
 
 ```text
 GENERATION N
 
-Current state
+Current resident fields
     │
-    ├─ owner / ancestor effective state
-    ├─ RF accumulation and claims
-    ├─ OverlayThing effective projection
-    └─ field inputs
-    │
-    ▼
-recursive reduce-up
+    ├─ inherited owner / effective state
+    ├─ OverlayThing projection
+    ├─ RF claims / balances
+    └─ field operands
     │
     ▼
-EML valuation + constrained clearing
-    │
-    ├─ grant / unresolved U
-    └─ disbursement
+reduce / accumulate
     │
     ▼
-Field Triad
-    ├─ STEAD observation / urgency
-    ├─ PALMA potential / impedance
-    └─ Gu-Yang signed realizable flux / stall
+EML valuation + constrained clear
+    │
+    ├─ grant
+    └─ unresolved U
     │
     ▼
-canonical write door
+STEAD / PALMA / Gu-Yang
     │
-    └─ Phase-5 BandCrossingDelta
-             │
-             ▼
-       CostBand / ActionBand
-             │
-             ▼
-   CrossingConsequenceBinding
-       /          |          \
-      /           |           \
- ResidentNext   Routed      Structural
-    Write       Delivery   Authorization
-      │           │            │
-      └──────┬────┘            │
-             ▼                 ▼
-         Next planes      BoundaryRequest
-             │                 │
-============= generation barrier =============
-             │
-      swap / apply / record
-             │
-             ▼
+    ▼
+anchored writes + Phase-5 crossings
+    │
+    ▼
+CostBand / ActionBand
+    │
+    ▼
+ResidentNext / RoutedOverlay / StructuralAuthorization
+    │
+================ generation barrier ================
+    │
+Current <- Next; structural commits; schedule/replay record
+    │
+    ▼
 GENERATION N+1
 ```
 
-Generation pacing is the recursion bound. There is no same-generation clear→persist→re-clear,
-receive→emit convergence, or consequence re-entry.
+Generation pacing is still the recursion bound. Same-generation clear→persist→re-clear, receive→emit
+convergence, retry loops, and consequence re-entry are not part of the model.
 
-Phase 13.6 strengthens this by deleting the compatibility clearing form that silently supplied a
-synthetic generation to remainder tie rotation. Once that rung lands, the only ordinary clearing form
-will require real generation authority explicitly.
-
----
-
-# 4. Authoring and ingress boundaries
-
-## 4.1 Vendor Door — GRADUATED
-
-Five verbs, no sixth manager verb:
-
-```text
-Derive    specialization, EML, offerings, Draws, field definitions
-Populate  tree, Properties, owner bindings, resource/capacity budgets
-Overlay   policy / directives / transient actuation
-Bind      CostBands, ActionBands, fields, observations
-Run       initialize, tick, serialize, restore / replay
-```
-
-## 4.2 ClauseScript / ClauseThing boundary — PHASE 13 TARGET
-
-ClauseThing is an **application-layer authoring system**. It is not part of the recursive kernel.
-
-The intended one-way relationship is:
-
-```text
-ClauseScript / ClauseThing vocabulary
-              │
-              ▼
-        hydrate / LOWER
-              │
-              ▼
- modern generic SimThing spec / admitted data
-              │
-              ▼
-        closed StemThing kernel
-```
-
-Phase 13.2 makes this fence load-bearing:
-
-```text
-application converges onto kernel
-
-NOT
-
-kernel grows ClauseThing accommodations
-```
-
-The rung explicitly forbids edits to engine/spec/kernel/GPU/sim/driver/embedder semantics for the
-ClauseThing convergence repair. If the application appears to need a kernel accommodation, the coding
-lane must STOP and name the seam; the starting presumption is that the lowerer is stale.
-
-This is an important interpretation of the three inherited red tests: they are **legacy lowering /
-application-convergence evidence**, not proof that the StemThing germ requires game-specific semantics.
-
-## 4.3 Authoring-ingress set — PHASE 13.5 TARGET
-
-Phase 13.5 will census every way authored content becomes an admitted session, including at least:
-
-```text
-ClauseThing hydration
-canonical JSON/interchange load
-literal install
-programmatic spec construction
-```
-
-Each path must be classified as canonical, interchange-with-stated-contract, or dated-deferred. The
-purpose is to make statements such as “`.clause` reaches admission only through the ClauseThing lowerer”
-mechanically checkable rather than tribal knowledge.
-
-## 4.4 Cross-tree / detached subtree ingress — GRADUATED
-
-A provisioned descendant may execute independently while retaining its grant. Detachment is not
-release.
-
-```text
-ancestor tree                       detached child tree
-     │                                     │
-     │ stamped upward RF product           │
-     ◄─────────────────────────────────────┤
-     │                                     │
-     ├────────────────────────────────────►│
-     │ stamped standing / grant state      │
-     │                                     │
-     ▼                                     ▼
- one IntegrationSchedule / replayed integration relationship
-```
+Phase 13.6 strengthened this law by deleting the last generationless compatibility clearing form. The
+ordinary constrained-clear API now requires the real granter and real `GenerationStamp` used by the
+remainder-rotation law.
 
 ---
 
-# 5. EML — one numerical ISA
+# 3. What Phase 13 actually changed
 
-`TransformOp` is a singular admitted EML program representation. `Set`, `Add`, and `Multiply` are
-degenerate program constructors, not rival value forms.
+## 3.1 13.1 — typed admission provenance
 
-Arithmetic meaning is arm-independent:
-
-- `ADD`, `SUB`, `MUL`, `DIV`: IEEE single-rounding, no reassociation;
-- `MIN`, `MAX`, bounded clamps: exact selections;
-- `EXP`, `LN`: exact admitted primitives over sealed domains;
-- one unique `MUL` feeding `ADD`/`SUB`: fused by definition;
-- multiple `MUL` feeds: unfused.
-
-Physical arms are faithful lowerings:
+Root admission no longer collapses selected failures into a site-only `ValidationFailedAt`. The
+production root path now carries:
 
 ```text
-admitted EML
-    ├─ CPU reference
-    ├─ interpreted WGSL
-    ├─ SSA/JIT
-    └─ recognized fused kernel
-```
-
-`PowerLaw` remains a gadget built from `EXP(k * LN(x))`, not a `POW` opcode.
-
----
-
-# 6. RF + Field Triad
-
-## 6.1 RF
-
-RF is recursive constrained/conserved economics:
-
-```text
-local amounts / deficits
-      ↓ reduce-up
-owner × resource × scope
-      ↓ clearing
-allocation / unresolved U
-      ↓ disburse-down
-local consequences
-```
-
-## 6.2 STEAD
-
-STEAD is non-conserved propagated signal/pressure/urgency. Bands quantize observations, not field
-propagation.
-
-## 6.3 PALMA
-
-PALMA is min-plus potential/impedance/opportunity over admitted topology. `D` is a field, not a route
-object.
-
-## 6.4 Gu-Yang
-
-Gu-Yang is signed conservative throughput, saturation and stall:
-
-```text
-PALMA      → where flow/progress is desirable
-Gu-Yang    → how much conserved flow is realizable
-CostBand   → how much a sink/work quantum costs
-ActionBand → how progress relates to a target lifecycle
-```
-
-`abs(flux)` is not generic progress.
-
-## 6.5 Gu-Yang performance debt — CORRECTED POSTURE
-
-The prior edition of this guide described the historical gather-vs-tiled-stencil slowdown as if its
-number were still current. Phase 13.4 correctly rejects that evidentiary posture.
-
-The old measurement predates substantial kernel movement. Its instrument survives only in archived
-workshop preserves. Therefore the live statement is now:
-
-> **There is a plausible Gu-Yang global-gather locality debt, but its historical ratio is stale until
-> current-head remeasurement succeeds or the archived instrument is formally recorded as stale.**
-
-Phase 13.4 requires one of two ledgered outcomes:
-
-```text
-measured:<date>@<commit> + fresh number
-
-OR
-
-instrument-stale:<date> + remeasurement owed as performance-track first-rung precondition
-```
-
-This becomes a general performance-governance law: an inherited performance debt cannot charter a
-future track without dated current-head measurement or a dated owed-measurement marker.
-
----
-
-# 7. CostBand — singular sink
-
-For available value `V` and unit cost `C`:
-
-\[
-N=\left\lfloor\frac{V}{C}\right\rfloor,\qquad R=V-NC
-\]
-
-with exact accounting `V = NC + R`.
-
-Keep distinct:
-
-```text
-U = requested but ungranted constrained demand
-R = value below the next CostBand quantum
-```
-
-`U != R`.
-
----
-
-# 8. ActionBand — target lifecycle, not planner
-
-ActionBand owns target form, discrepancy, progress state, bounded dependencies, subordinate activation,
-and EML desired consequences.
-
-It does not own routing, physical throughput, sink affordability, claim clearing, overlay lifetime, or
-structural mutation.
-
-```text
-routing             → PALMA
-throughput          → Gu-Yang / RF
-sink affordability  → CostBand
-claim clearing      → constrained clearing
-actuation lifetime  → OverlayThing
-structural mutation → boundary
-```
-
-Current is read-only during the generation; Next is the resident write target.
-
----
-
-# 9. OverlayThing — intrinsic actuation
-
-OverlayThing is the resident actuation/lifecycle facility:
-
-```text
-originate → route / inherit → receive → project → lifecycle → collapse
-```
-
-Subtree-wide policy resides at the lawful ancestor rather than being stamped onto every descendant.
-Fixed-duration state uses deadline generation. There is no `Permanent` or `Never` semantic escape.
-
-Two composition algebras remain distinct:
-
-```text
-value transforms    = sequential authored order
-policy restrictions = conjunctive monotone restriction
-```
-
----
-
-# 10. Crossing consequence ABI
-
-One Phase-5 crossing feeds three consequence classes:
-
-```text
-BandCrossingDelta
-       ↓
-CrossingConsequenceBinding
-       ├─ ResidentNextWrite
-       ├─ RoutedOverlayDelivery
-       └─ StructuralAuthorization → BoundaryRequest
-```
-
-This keeps resident numerical state, cross-node delivery, and topology mutation unified at one seam
-without conflating their authorities.
-
----
-
-# 11. Derived spans and source-blind invalidation
-
-The 7.8a substrate is generic physical machinery:
-
-```text
-semantic state / composed descriptor
-           ↓
-      EffectiveProfile
-           ↓
- logical subtree span → profile id
-```
-
-A changed value is identified by authoritative locus rather than writer identity:
-
-```text
-ChangedLocus {
-    logical SimThing id
-    PropertyId
-    SubFieldRole
-    optional binding/profile narrowing
+SpecError::AdmissionRefused {
+    law_id,
+    element_path,
 }
+    -> InstallError::Spec
+    -> SessionError::Install
+    -> SimSession::open_from_spec caller
 ```
 
-`DerivedDependencyIndex` maps loci to affected spans and derived work. Dense per-row materialization is
-an optional cache.
+This matters architecturally because the admission boundary now reports **which generic law rejected
+which authoritative element** without inventing ClauseThing-specific kernel error vocabulary.
 
-This matters because **Phase 13.6 now promotes clearing-weight span consumption from recommendation to
-workplan obligation**.
+The application can interpret the refusal; the kernel does not learn the application.
+
+## 3.2 13.2 — ClauseThing converges downward only
+
+ClauseThing was proven to be an application-layer authoring system rather than an engine dependency.
+The existing `hydrate_*` layer now emits the modern admitted registry/arena/property/field shape directly.
+Five test-owned pre-open shims fell to zero.
+
+```text
+ClauseScript
+    ↓ parse
+RawDocument
+    ↓ hydrate / lower
+modern generic spec
+    ↓ ordinary admission
+StemThing kernel
+```
+
+The critical containment law is now structural:
+
+```text
+application -> engine        lawful
+engine -> ClauseThing        forbidden
+```
+
+No engine/spec/kernel/GPU/sim/driver/embedder semantic accommodation was needed for the ClauseThing
+repair. This is strong evidence that the unified substrate is genuinely generic rather than merely a
+Stellaris-shaped framework with hidden application dependencies.
+
+## 3.3 13.3 — zero-red becomes the standing baseline
+
+The final inherited star-name red was proven to be serialization-spelling drift, not naming-semantic
+regression. After provenanced re-blessing, the project reached its first recorded zero-failed structural
+certificate.
+
+The important outcome is not the name fix itself. It is the new operational rule:
+
+> **A future structural certificate red is a STOP, not an inherited footnote.**
+
+This removes a dangerous source of architectural ambiguity: a new integration failure can no longer hide
+inside a tolerated red baseline.
+
+## 3.4 13.4 + 13.7 — performance claims become measured debts
+
+Performance work is no longer chartered from remembered ratios or review prose. The workshop corpus is
+leased with named consumers, and production-code debts identified by engineering review have dated ledger
+entries.
+
+Current non-workshop debt rows are:
+
+```text
+constrained_clearing.rs
+    CPU host-shaped BTreeMap/sort/CPU-EML clearing
+
+flow_market.rs
+    authored market strings on hot lookup paths
+
+facility_resident_plane.rs
+    Current->Next carry at target cardinality
+
+derived_span_projection.rs
+    dispatch-elision benefit not yet proven
+```
+
+These are **owed measurements**, not permission to optimize blindly.
+
+The old Gu-Yang gather-vs-tiled number is explicitly stale. Its archived instrument no longer builds
+against the modern typed kernel; remeasurement is therefore a first-rung precondition of the future
+performance track rather than current evidence.
+
+## 3.5 13.5 — the legacy estate is now bounded
+
+The existing constitutional census was extended rather than duplicated. It now records both:
+
+```text
+A. transitional / legacy semantic mediation
+B. authoring ingress routes
+```
+
+Sixteen rows were added, with future actions:
+
+```text
+remove          2
+internalize     5
+preserve        8
+blocked         1
+```
+
+The engine→ClauseThing zero-dependency arrow is mechanically checked, including Cargo table-header
+syntax that initially escaped the parser and caused a DA remand.
+
+This is important epistemically: repository residue remains, but it is no longer unknown residue.
+
+## 3.6 13.6 — clearing-weight inheritance finally becomes fractal physically
+
+Before 13.6:
+
+```text
+SimThing tree
+    ↓ recursive CPU child walk
+BTreeMap<SimThingId, f32>
+    ↓
+claim weights
+```
+
+After 13.6:
+
+```text
+already-admitted OverlaySpanProjection logical directory
+    ↓
+sparse override boundaries
+    ↓
+maximal DerivedSpanProjection<f32>
+    ↓
+interned effective profiles / spans
+    ↓
+claim weight lookup by logical identity
+```
+
+The old resolver is deleted. There is no fallback participant map or second weight path.
+
+This is one of the most important post-canonization improvements because StemThing-B now physically
+reuses the same subtree-profile machinery already justified for OverlayThing rather than carrying a new
+whole-tree semantic projection architecture.
+
+The new dependency direction is also correct:
+
+```text
+simthing-spec -> simthing-kernel    accepted
+simthing-kernel -> simthing-spec    forbidden
+```
+
+The authoring/admission layer may depend on the physical substrate it admits into. Physics must never
+consult authoring at runtime.
 
 ---
 
-# 12. StemThing-B — recursive conserved-resource markets
+# 4. StemThing-B after Phase 13
 
-## 12.1 Identity — GRADUATED
-
-> **StemThing-B is the recursive conserved-resource market germ; VRAM Residency is the distinct
-> engine-native market that first proves it.**
-
-Canonical grammar:
+The market grammar remains:
 
 ```text
-admitted resource / capacity
+admitted conserved resource / capacity
         ↓
 sealed offering + Draw envelope
         ↓
-descendant runtime claim
+descendant claim
         ↓
-recursive RF reduce-up
+RF reduce-up
         ↓
-inherited / EML effective clearing weight
+effective EML clearing weight
         ↓
-authored constrained clearing
+authored constrained clear
         ↓
 CostBand quantization
         ↓
@@ -598,545 +342,451 @@ grant / flow disbursement
         ↓
 Gu-Yang throughput / saturation
         ↓
-PALMA potential / opportunity
+PALMA potential / impedance
         ↓
-STEAD observations / bands
+STEAD observation / bands
         ↓
-ActionBand / OverlayThing response
-        ↓
-next generation
+ActionBand / OverlayThing consequence
 ```
 
-Objective:
+Unit cost and clearing weight remain independent. Equal scores express authored indifference;
+proportional-within-band clearing plus largest remainder and generation-rotated exact ties preserve
+conservation without physical-order bias.
+
+A grant remains an identity-keyed lifecycle relation. Detachment does not imply release. Death /
+dissolution release; fission/fusion partition or transfer exactly.
+
+VRAM residency remains distinct physics:
 
 ```text
-domain management
-      → authored conserved-resource markets
-      → RF + CostBand + Field-Triad dynamics
-      → deterministic replayable corpus
+WHO / WHETHER / HOW MUCH   = StemThing-B market
+WHERE                      = residency placement
 ```
 
-## 12.2 Draws and offerings — GRADUATED
-
-A Draw is an admission-sealed claim envelope. It grants nothing. Unit price and clearing weight are
-orthogonal.
-
-## 12.3 Clearing — GRADUATED SEMANTICS, PHYSICAL REMEDIATION PENDING
-
-Oversubscription is ordinary. Exact equal-score bands clear proportionally; fractional residuals use
-largest remainder; exact remainder ties rotate under the granter's generation authority.
-
-The semantic law is closed. Two implementation details are being remediated by 13.6:
-
-1. inherited effective clearing weights currently use a recursive CPU tree walk + per-node `BTreeMap`;
-2. a compatibility `clear_constrained_claims` form can synthesize granter/generation zero.
-
-Neither represents a second **production** authority today, but both are poor final forms.
-
-## 12.4 Grant lifecycle — GRADUATED
-
-```text
-accept
-renew
-partial revoke / release
-fission partition
-fusion transfer
-terminal release
-```
-
-Detachment is not release. Death/dissolution release; fission/fusion conserve quantity exactly.
-
-## 12.5 Grant publication — GRADUATED
-
-Accepted lifecycle facts publish into ordinary conserved-capacity lanes on the next boundary. Replay
-realizes the recorded fact and never re-clears.
+That distinction survived Phase 13 unchanged.
 
 ---
 
-# 13. VRAM Residency — distinct physical specialization
+# 5. Material conformance to the uniform design
 
-VRAM residency remains engine-native because extents and row placement are kernel physics.
+## 5.1 One-way semantic dependency
 
-```text
-WHO / WHETHER / HOW MUCH → StemThing-B market entitlement
-WHERE                    → residency placement physics
-```
-
-Ordinary placement infeasibility returns typed refusal and preserves `U`; committed overlap/out-of-bounds
-is structural corruption and hard-faults after recording.
-
-Free-range/index structures may survive downstream of entitlement but carry no grant policy.
-
----
-
-# 14. Growth entitlement and structural commitment
-
-Post-initial growth follows:
+The strongest evidence for uniformity is not documentation but dependency direction:
 
 ```text
-candidate claims before attach
-        ↓
-StemThing-B clear
-        ↓
-accepted grant identities
-        ↓
-VRAM placement
-        ↓
-VerifiedGrowthResidencyCommit
-        ↓
-fission / AddChild commit
-        ↓
-schedule record
-```
-
-Replay never re-clears.
-
----
-
-# 15. Replay, schedules, and ML-corpus consequence
-
-There is one history authority:
-
-```text
-GenerationStamp
-IntegrationSchedule
-ReplayFrame / canonical deltas
-structural remap records
-band crossings / lifecycle facts
-```
-
-The market + Field-Triad architecture naturally yields labeled trajectories containing claims, scores,
-grants, `U`, CostBand `R`, flux, stall, potentials, bands, crossings, overlay transitions and structural
-consequences.
-
-Corpus extraction must remain a read-only projection of authoritative history/observation, never a
-second causal telemetry authority.
-
----
-
-# 16. Phase 13 remediation map
-
-Phase 13 was minted after post-canonization reviews found that the semantic kernel was closed but several
-legacy/convergence surfaces were still not in the clean final form expected at track closeout.
-
-## 16.1 13.1 `ADMISSION-PROVENANCE-TYPED-0` — PROBATION / IN FLIGHT
-
-**Problem being fixed:** root admission refusals could collapse to `SpecError::ValidationFailedAt { site }`,
-identifying where rejection happened without telling callers **which law** rejected **which element**.
-This made the inherited ClauseThing reds diagnostically opaque and matched the standing
-`ROOT-CONTRACT-ADMISSION-ERROR` promotion debt.
-
-**Intended repair:** one domain-neutral existing-`SpecError` shape:
-
-```text
-AdmissionRefused {
-    law_id: &'static str,
-    element_path: String,
-}
-```
-
-The current open implementation PR #1875 promotes exactly five root-install rejection sites while
-preserving the existing wrapper chain:
-
-```text
-SpecError
-  → InstallError::Spec
-  → SessionError::Install
-  → SimSession::open_from_spec caller
-```
-
-The proposed laws include registered resource-economy property, live host, live base-obligation
-participant property, and standalone-overlay compile diagnostics. A planted wrong-law-id mutant makes
-the public open-from-spec witness RED.
-
-**Kernel-containment fence:** `law_id + element_path` is domain-neutral. No ClauseThing/Stellaris-specific
-variant is allowed below the application crate.
-
-**Guide posture:** treat this as imminent but not graduated until DA review/merge/stamp.
-
-## 16.2 13.2 `CLAUSETHING-ADMISSION-CONVERGENCE-0` — MINTED / PLANNED
-
-**Problem being fixed:** the two inherited ClauseThing GPU/oracle reds are now understood as lowerer-target
-version skew: ClauseThing hydration still targets retired/changed engine shapes and test-side adaptation glue
-has accumulated between hydration and admission.
-
-**Repair law:** only the ClauseThing `hydrate_*` lowering layer may change. Existing assertion bodies remain
-unmodified. The canonical ClauseScript corpus must parse, hydrate and admit on the modern substrate, while
-negative fixtures continue refusing for the same named reasons.
-
-Standing corpus witness target:
-
-```text
-all .clause files
-    parse
-      ↓
-    hydrate
-      ↓
-    admit modern generic SimThing spec
-```
-
-**Hard fence:** zero kernel/spec/driver/GPU/sim/embedder accommodation. This is one-way application convergence.
-
-**Optional fold:** the admitted-field-sweep generic opener debt may be repaired here only if the same seam is
-naturally involved; otherwise it remains separate debt.
-
-## 16.3 13.3 `STAR-NAMING-GOLDEN-TRUTH-0` — MINTED / PLANNED
-
-**Problem being fixed:** the third inherited red is a stale canonical star-name golden whose truth status is
-unknown.
-
-Two lawful outcomes:
-
-```text
-upstream derivation drift was lawful
-    → re-bless golden with provenance
-
-OR
-
-determinism/source regression
-    → fix implementation
-```
-
-The rung must document the canonical entity-name derivation and future blessing procedure. It may not weaken
-the oracle or invent a new name-source vocabulary.
-
-This is a truth/provenance remediation, not a StemThing semantic facility.
-
-## 16.4 13.4 `WORKSHOP-CORPUS-TRIAGE-0` — MINTED / PLANNED
-
-**Problem being fixed:** closeout would otherwise default-delete workshop/performance artifacts that are the
-only instruments for known future work, while some old benchmark numbers are too stale to justify new tracks.
-
-Every reap-slated asset gets an explicit keep/delete/elevate/lease disposition with named consumer and date.
-The future performance track is a named lease consumer for selected benchmark/replay/contention assets.
-
-The Gu-Yang gather-vs-tiled-stencil debt receives special treatment:
-
-```text
-archived instrument works at current head
-    → remeasure, record number + date + commit
-
-instrument no longer works
-    → record instrument-stale + date
-    → make remeasurement first-rung precondition of performance track
-```
-
-**New governance law:** stale, unmeasured performance folklore cannot charter a track.
-
-## 16.5 13.5 `LEGACY-SURFACE-CONVERGENCE-CENSUS-0` — MINTED / PLANNED
-
-**Problem being fixed:** 11.4 proved exclusivity for the graduated core, but the wider legacy estate still lacks
-one machine-readable map of producers and authoring ingress.
-
-13.5 extends the existing constitutional census to:
-
-```text
-ClauseThing lowerers
-MapGen generators
-Studio scenario surfaces
-all authoring-ingress paths
-application-named vocabulary found in kernel crates
-engine → ClauseThing dependency arrow
-```
-
-Every producer must map to unified ingress or a dated deferral. Every application-vocabulary-in-kernel row is
-queued for later generalize/relocate work rather than normalized into kernel law.
-
-**One gate, not two:** extending `constitutional_surface_check.sh` / `constitutional_surfaces.tsv` is the only
-lawful checker shape.
-
-**Important containment observation:** engine crates currently carry zero ClauseThing dependency; that
-one-way dependency must remain true.
-
-## 16.6 13.6 `CLEARING-WEIGHT-SPAN-UNIFICATION-0` — MINTED / PLANNED
-
-This rung directly promotes two findings from the first engineering review.
-
-### A. Clearing-weight span unification
-
-Current transitional physical shape:
-
-```text
-resolve_effective_clearing_weights
-    recursive CPU SimThing walk
-    + BTreeMap<SimThingId, f32> materialization
-```
-
-Target shape:
-
-```text
-sparse authored default / overrides / EML deformation
-        ↓
-interned effective profile
-        ↓
-logical subtree spans (7.8a)
-        ↓
-source-blind invalidation
-        ↓
-claims consume effective weight without whole-tree rematerialization
-```
-
-Required proof is semantic neutrality: bit-identical weights across default, override, inheritance, and
-EML-deformed cases; predecessor germ/11.2f/11.3 witnesses remain unchanged. The recursive implementation is
-deleted rather than retained as a second path.
-
-### B. Synthetic-generation clearing door deletion
-
-Current compatibility form:
-
-```text
-clear_constrained_claims(...)
-    → clear_constrained_claims_at_generation(...,
-         granter = 0,
-         generation = 0)
-```
-
-DA census found zero production consumers and only four test call sites in one test consumer. Phase 13.6 will
-delete this form and migrate those calls to explicit `clear_constrained_claims_at_generation`.
-
-This is stronger than “document compatibility-only”: the footgun becomes unrepresentable.
-
----
-
-# 17. Revised engineering findings after Phase 13 mint
-
-The earlier review should now be read with these dispositions.
-
-| earlier finding | Phase-13 disposition |
-|---|---|
-| admitted-field-sweep generic opener gap | still real; optional 13.2 fold if same seam, otherwise remains debt |
-| CPU allocation-heavy full constrained clearing | **not** a Phase-13 target; remains future performance track |
-| clearing-weight full-tree materialization | **promoted to 13.6 convergence debt** |
-| authored market strings in hot lookup | remains future performance work |
-| synthetic-generation compatibility clearing entry | **promoted to 13.6 deletion** |
-| Gu-Yang gather/tile old slowdown number | **cannot be cited as current; 13.4 remeasure or mark instrument stale** |
-| source-blind dirtiness not yet guaranteed to skip all field work | future performance track |
-| parallel detached-subtree scheduling | future performance track |
-| prepare-parallel boundary work | future performance track |
-| corpus columnar extraction | future performance track |
-| Vector CostBand | separate capability horizon, unchanged |
-
-This table is important: Phase 13 is a **convergence/closure addendum**, not a general performance campaign.
-
----
-
-# 18. Remaining physical-performance opportunities after Phase 13
-
-## 18.1 GPU/resident constrained clearing
-
-The canonical semantics are correct but the generic executor is host-shaped: maps/sets, per-claim CPU EML
-score evaluation, comparison sorts, score-band scans, fractional remainder arrays and result vectors.
-
-A later faithful lowering can use:
-
-```text
-resident claims keyed by scope
+application authoring
        ↓
-parallel EML scoring
+spec/admission
        ↓
-segmented deterministic ordering
-       ↓
-segmented requested-total reduction
-       ↓
-exact integer base shares
-       ↓
-segmented remainder selection
-       ↓
-tie rotation from real (granter, generation)
-       ↓
-resident grants / U
+kernel / GPU physics
 ```
 
-Phase 13.6 improves this future path by eliminating the synthetic-generation API and by putting effective
-weights on the span substrate first.
+13.2 and 13.5 prove the inverse application dependency is absent. 13.6 further moves runtime-like
+clearing-weight projection *down* into the kernel instead of leaving a spec-owned runtime resolver.
 
-## 18.2 Compact admitted market vocabulary
+That is exactly the direction a stem-cell architecture should evolve.
 
-Human-readable offering/Draw/trigger strings should remain persistence/authoring identity but can intern to
-compact immutable indices for hot execution.
+## 5.2 Shared substrate reuse
 
-## 18.3 FieldSweep locality
-
-After 13.4 establishes a fresh measurement basis, static GridOffsets may justify a tiled workgroup lowering
-with canonical fold order preserved. LinkGraph must remain sparse and should not inherit dense-grid assumptions.
-
-## 18.4 DerivedDependencyIndex → dispatch elision
-
-The dependency index should eventually skip unchanged registrations/regions rather than merely identify them.
-Potential staircase:
+The 13.6 change is architectural evidence because it removed a duplicate physical pattern:
 
 ```text
-unchanged registration → zero dispatch
-local stencil dirtiness → dirty tile/span only
-PALMA dirtiness         → active-region repair
-Gu-Yang dirtiness       → affected conservative theater
+old: StemThing-B-specific recursive inheritance walk
+new: generic 7.8a span/profile projection
 ```
 
-## 18.5 Independent subtree parallelism
+This is stronger than code reuse. It means descendants, overlays, clearing weights and later effective
+subtree values can share one physical description of fractal inheritance.
 
-Detached subtrees already carry the semantic ingredients for physical parallel scheduling: stable identity,
-generation stamps, holding-account conservation and one integration schedule.
+## 5.3 One clearing generation authority
+
+Deletion of `clear_constrained_claims(...)` closes an awkward semantic footgun. There is no longer an
+ordinary form that silently invents granter 0 / generation 0 for tie rotation.
+
+Generation is now explicit at the clearing boundary, matching the one recorded schedule.
+
+## 5.4 Application vocabulary is contained, not eradicated
+
+The repository is **not** yet vocabulary-pure. `simthing-spec::designer_admission` still contains
+ClauseThing/ClauseScript parking terminology and other historical guardrail names. 13.5 deliberately
+censused this instead of silently refactoring it.
+
+That residue does not presently constitute a second runtime engine. But it means the statement
+“everything in the repository is already domain-neutral” would still be false.
+
+The correct statement is:
+
+> **The runtime kernel is domain-neutral; remaining application-named authoring residue is bounded by a
+> checked post-closeout worklist.**
+
+## 5.5 Zero-red integration state
+
+The final structural Phase-13 implementation passed:
 
 ```text
-subtree A N+4 ─┐
-subtree B N+2 ─┼─ stamped products → canonical parent integration
-subtree C N+7 ─┘
+126 suites
+478 passed
+0 failed
+14 ignored
 ```
 
-The physical scheduler cannot become a semantic manager.
-
-## 18.6 Prepare-parallel structural boundary
-
-Level-local residency/granter indexing allows independent placement/remap preparation in parallel while commit
-order and schedule recording remain deterministic and singular.
-
-## 18.7 Current→Next carry remeasurement
-
-The previous 4096-row evidence correctly rejected speculative sparse-active machinery at that scale. It should
-be remeasured rather than extrapolated to very large resident planes.
-
-## 18.8 Offline corpus projection
-
-ML datasets should be columnar/batched projections of canonical replay/anchor state, never simulation-readable
-telemetry unless explicitly authored.
+That does not prove absence of all defects. It does remove the previous ambiguity in which genuine
+integration regressions could be normalized as inherited baseline failures.
 
 ---
 
-# 19. Phase 13 and kernel containment
+# 6. CPU privilege audit
 
-The most important conceptual improvement in Phase 13 is not a new facility. It is a sharper boundary:
+The uniform model does **not** require “no CPU.” It requires that CPU placement not become a peer
+semantic authority.
+
+## 6.1 CPU roles that are architecturally legitimate
+
+These remain appropriate CPU work unless measurements prove another placement better:
 
 ```text
-APPLICATION LAYER
-ClauseThing / MapGen / Studio nouns
-          │
-          │ one-way lowering / interchange
-          ▼
-GENERIC AUTHORING + ADMISSION
-SpecError law/path provenance
-Properties / EML / RF / CostBand / ActionBand / OverlayThing / fields
-          │
-          ▼
-CLOSED STEMTHING KERNEL
-no ClauseThing dependency
-no application-named manager
-no game-specific accommodation
+authoring parse / hydration / admission
+stable identity and semantic labels
+true structural mutation at generation barriers
+VRAM extent bookkeeping / remap commit
+persistence and replay I/O
+read-only presentation / observation
+bit-exact CPU reference oracles
 ```
 
-Phase 13.1's typed admission provenance improves this boundary without naming the application. Phase 13.2
-repairs the ClauseThing lowerer rather than changing the kernel. Phase 13.5 will census any remaining
-application vocabulary that leaked downward and queue it for generalization/relocation.
+Moving these merely to satisfy a GPU-purity aesthetic would make the architecture worse.
 
-This makes the recursive kernel more, not less, domain-agnostic.
+## 6.2 CPU routes that are physically transitional
+
+### Constrained clearing
+
+The canonical executor still performs host-side:
+
+```text
+BTreeMap supply grouping
+BTreeSet duplicate detection
+claim cloning / Vec grouping
+CPU EML scoring
+score sorting
+score-band scans
+largest-remainder arrays and sorting
+grant Vec construction
+```
+
+This is now the clearest remaining numerical CPU privilege. It is semantically lawful because it is the
+**one** clearing authority, but physically it does not resemble the long-term resident GPU model.
+
+Do not optimize it before measurement: 13.7 intentionally made current-head measurement a prerequisite.
+If it is material, the correct future shape is a faithful lowering of the same algorithm using resident
+scope layout, segmented reductions/sorts, exact integer apportionment and the same real generation
+authority.
+
+### Market string identity
+
+Offering/Draw/trigger identities remain human-readable strings through several admitted helper lookups.
+This is probably an admission-interning opportunity rather than a semantic problem. Measure whether these
+lookups survive into generation-scale work before introducing compact indices.
+
+### Current->Next carry
+
+Whole-plane carry was previously measured at small cardinality and deliberately preferred over sparse
+freshness machinery. That decision remains valid at its measured scale. It must be remeasured at target
+cardinality rather than overturned from intuition.
+
+### DerivedDependencyIndex dispatch elision
+
+The repository has precise source-blind dependency knowledge. It has not yet proven that the ordinary
+scheduler consistently converts that knowledge into avoided field work. This is a potentially large
+performance opportunity, but again the newly minted ledger correctly requires measurement first.
 
 ---
 
-# 20. Final distinction table
+# 7. Fresh 13.6 audit findings worth resolving before closeout
+
+These are not currently DA-declared defects. They are questions exposed by reviewing the freshly landed
+code while its context is still hot.
+
+## 7.1 Dynamic clearing-weight invalidation must be explicitly proven
+
+The new `clearing_weight_projection.rs` correctly consumes the 7.8a span representation, but its admitted
+projection is currently constructed with:
+
+```text
+DerivedDependencyIndex::admit(Vec::new())
+```
+
+Therefore 13.6 proves **span/profile representation and static sparse inheritance**, but the new
+specialization itself does not presently register changed-locus dependencies.
+
+This is harmless if the complete runtime law is:
+
+```text
+all operands that can deform effective clearing weight
+    are resolved before projection construction,
+    and any such change reconstructs the projection through an already-authoritative caller
+```
+
+It is a real gap if the intended law is:
+
+```text
+live Property / Overlay / EML operands may change effective clearing weight
+    and 7.8a source-blind invalidation is expected to update only affected spans automatically
+```
+
+Because the Owner design explicitly described clearing weight as dynamically deformable through ordinary
+EML/OverlayThing state, this distinction should be **proved now**, not left to the future performance
+track.
+
+Recommended pre-closeout action: a bounded archaeology/witness decision, not an optimization campaign.
+Either:
+
+1. prove current dynamic deformation enters through an existing rebuild path and document the exact
+   `ChangedLocus -> projection rebuild` chain; or
+2. if that chain is absent, mint one narrow convergence rung to bind clearing-weight dependencies into the
+   existing `DerivedDependencyIndex` without adding a new registry or scheduler.
+
+This is the single strongest “context is fresh” candidate from this review.
+
+## 7.2 The new span builder has sparse-K, not constant, costs
+
+The new resolver eliminates O(descendant-count) traversal, which is the important win. But its current
+construction does several operations quadratic in the number of overrides `K`:
+
+```text
+duplicate detection        scans prior overrides
+for each boundary interval filters all admitted overrides
+per interval               allocates + sorts an active Vec
+```
+
+So the implementation is independent of total descendant count but can approach roughly O(K^2 log K)
+for many overlapping override scopes.
+
+This is not evidence of a current performance problem because `K` is intentionally sparse and unmeasured.
+It is, however, a more accurate complexity statement than “resolution is proportional to override
+boundaries.”
+
+Recommended action now: add this as an owed-measurement sub-debt to the performance ledger, rather than
+silently optimizing it before a realistic override-cardinality workload exists.
+
+## 7.3 Avoid panic-bearing lookup as production vocabulary
+
+`ClearingWeightSpanProjection::effective_weight` is fail-soft (`Option<f32>`), while its public `Index`
+implementation panics for an absent participant.
+
+If the `Index` form is test/harness convenience only, keep production consumers on the typed/optional lookup.
+If a production consumer reaches the panic-bearing form, narrow or remove that surface before closeout.
+A malformed/foreign logical identity should fail at admission or through a typed runtime boundary, not turn
+into a host panic merely because the new representation is dense by construction.
+
+This is a small audit with high leverage because the type has just landed.
+
+---
+
+# 8. Legacy load-bearing code: what matters and what does not
+
+## 8.1 Application-named designer-admission vocabulary
+
+13.5 found real historical vocabulary in the engine authoring layer, including ClauseThing/ClauseScript
+parking codes. These rows are now explicitly marked for later removal.
+
+They are architectural residue, but not currently a performance bottleneck or runtime decision authority.
+Removing them now would improve repository purity, not simulation throughput.
+
+Unless archaeology shows one still controls runtime behavior, this is better left to the bounded legacy
+refactor track rather than reopening the just-completed numerical arc.
+
+## 8.2 Studio / MapGen adapters
+
+Several Studio and MapGen surfaces are classified `internalize` or `preserve-as-compat`. Their risk is
+mainly **authoring truth duplication**, not hot-loop performance.
+
+The key invariant to preserve is that generated or imported content terminates in the same admitted
+StemThing spec and does not create a second scenario/session authority.
+
+## 8.3 CPU reference paths
+
+CPU oracles are intentionally retained for EML/GPU parity. They should not be mistaken for legacy authority.
+Deleting the oracle because production should be GPU-resident would damage the exactness proof architecture.
+
+## 8.4 Structural CPU boundary
+
+Likewise, residency placement and true topology changes remain CPU/kernel boundary physics. The optimization
+opportunity is parallel **preparation**, not moving semantic authorization back onto CPU or inventing GPU
+structural mutation.
+
+---
+
+# 9. Opportunities that should wait for the performance track
+
+The following are important, but Phase 13 deliberately created the measurement law that says **do not act on
+these yet**:
+
+```text
+GPU/resident constrained clearing
+market-id interning
+Current->Next carry alternatives
+DerivedDependencyIndex dispatch elision
+Gu-Yang tiled/static-grid lowering
+PALMA incremental / multiscale repair
+parallel independently executing subtrees
+prepare-parallel structural boundary work
+columnar offline ML-corpus extraction
+```
+
+The right next step is instrumentation and current-head measurement, not speculative implementation.
+
+The performance track should preserve the same semantic fences:
+
+```text
+same bits
+same EML meaning
+same generation authority
+same IntegrationSchedule
+same logical identity
+same clearing rule
+same field law
+```
+
+Optimization is a physical lowering of the one model, never a second fast-path model.
+
+---
+
+# 10. Opportunities potentially worth seizing while this workplan context is fresh
+
+Only three items clear the bar for possible pre-closeout attention.
+
+## 10.1 Prove clearing-weight dynamic-deformation lifecycle
+
+This is the highest-value item because it could distinguish a mere performance omission from an actual
+semantic integration gap. Resolve §7.1 before closeout.
+
+## 10.2 Audit and, if necessary, narrow the panic-bearing clearing-weight `Index` surface
+
+This is local to the freshly landed type and cheap to reason about now.
+
+## 10.3 Add the sparse-override build complexity to the dated performance ledger
+
+Do not optimize it. Merely keep the newly discovered cost from disappearing when context is reaped.
+
+I would **not** reopen the track now for GPU clearing, string interning, tiling, Current/Next compaction or
+legacy Studio/MapGen cleanup. Phase 13 just established the rule that these must be measured or bounded by a
+specific future consumer first.
+
+---
+
+# 11. Does this complete the design?
+
+The answer depends on what “design” means.
+
+### Semantic runtime design: **yes, substantially.**
+
+There is one recursive StemThing model, one numerical expression language, one field family, one RF/clearing
+semantics, one sink law, one action lifecycle, one actuation facility, one residency authority split, one
+history and one generation law. Phase 13 removed several concrete shapes that contradicted or obscured that
+uniformity.
+
+### Repository-wide architectural hygiene: **not completely.**
+
+13.5 deliberately records application-named authoring residue and a bounded remove/internalize worklist. The
+runtime kernel need not wait for that cleanup to be semantically closed, but the repository is not yet a
+perfectly pure expression of the final design.
+
+### Physical execution design: **not complete.**
+
+The most important numerical contention executor is still CPU-shaped. Some field locality and dirty-work
+opportunities remain unmeasured. These are performance-placement questions, not rival semantic architectures.
+
+### Future capability design: **intentionally incomplete.**
+
+Vector CostBand / atomic heterogeneous scarce-lane commitment remains a separate capability horizon and
+should stay separate until a real consumer proves the need.
+
+So the best final statement is:
+
+> **The SimThing semantic architecture is complete enough to close the unification workplan once the fresh
+> clearing-weight dynamic-invalidation audit is resolved. The engine is not “finished”; rather, future work
+> should now be constrained to measured physical lowerings, bounded legacy-authoring convergence, and genuinely
+> new capabilities—without reopening the meaning of SimThing itself.**
+
+---
+
+# 12. Policy/value-field interpretation — non-normative design consequence
+
+One reason this closure matters is that higher-level aggregates need not become peer state machines.
+Everything numerically meaningful can participate in the uniform field substrate, with EML composing
+observable/value projections and PALMA/Gu-Yang giving potential and conserved-flow law where appropriate.
+
+A future policy/value model can therefore use ordinary field dimensions such as employment, income,
+education, security, credit and maintenance to derive ephemeral aggregates such as blight, legitimacy or
+investment attractiveness without storing those aggregates unless they possess independent persistence.
+
+Likewise, intervention discovery can treat non-geographic economic/institutional relations as admitted
+relational topology rather than inventing a policy planner:
+
+```text
+problem discrepancy
+    ↓
+PALMA opportunity / impedance over admitted causal topology
+    ↓
+CostBand / RF / Gu-Yang realizability
+    ↓
+ActionBand target lifecycle
+    ↓
+OverlayThing intervention
+```
+
+This remains brainstorming, not Phase-13 law. Its importance here is architectural: the completed StemThing
+substrate is now coherent enough that such domains can be authored as data and field relations rather than
+requiring another engine.
+
+---
+
+# 13. Final reference distinctions
 
 | do not conflate | distinction |
 |---|---|
-| closed kernel semantics / legacy application convergence | ClauseThing reds can exist while the kernel law remains valid |
-| application lowerer / kernel accommodation | Phase 13.2 permits the former and presumptively forbids the latter |
-| typed admission provenance / new domain error taxonomy | 13.1 extends existing `SpecError` with generic law+element identity |
-| logical identity / physical row | rows rebind; identity does not |
-| observation / sink | crossing is observation; CostBand adds consumption |
-| `U` / CostBand `R` | ungranted demand vs below-quantum value |
+| logical identity / physical row | row may rebind; identity persists |
+| observation / sink | crossing observes; CostBand consumes |
+| unresolved `U` / CostBand `R` | ungranted demand vs below-quantum value |
 | PALMA / route object | potential field vs planner artifact |
 | Gu-Yang / CostBand | realizable throughput vs sink price |
-| grant entitlement / VRAM placement | WHO/HOW-MUCH vs WHERE |
-| detachment / release | topology change does not terminate grant |
-| semantic inheritance / span substrate | combine law vs physical projection |
-| whole-tree weight materialization / weight semantics | 13.6 changes the former, not the latter |
-| synthetic generation compatibility / real granter generation | 13.6 deletes the former |
-| stale benchmark number / current performance debt | 13.4 requires remeasurement or dated instrument-stale status |
-| telemetry / sim state | observation cannot become causal silently |
-| EML gadget / opcode | PowerLaw composes EXP/LN; no POW opcode |
-| contention / domain engine | oversubscription of generic clearing |
-| physical scheduler / semantic manager | parallel execution cannot decide outcomes |
+| grant entitlement / residency placement | WHO/HOW-MUCH vs WHERE |
+| detachment / release | topology change does not terminate a grant |
+| OverlayThing / structural mutation | resident actuation vs boundary topology |
+| semantic inheritance / span projection | combine law vs physical representation |
+| source-blind invalidation / dispatch elision | dependency knowledge vs proven saved work |
+| CPU oracle / CPU authority | reference proof is legitimate; peer resolution is not |
+| application vocabulary / kernel semantics | authoring compatibility may exist above a domain-neutral runtime |
+| performance debt / performance fact | a debt needs dated measurement or owed-measurement provenance |
+| physical lowering / second engine | optimization must preserve one semantic authority |
 
 ---
 
-# 21. Revised engineering sequence
+# 14. Completion synthesis
 
-The earlier post-0.0.8.7 sequence should now be split into **Phase 13 closeout convergence** and a later
-performance track.
+After Phase 13, the architecture is no longer best described as “a collection of facilities that have been
+made compatible.” The stronger description is now supported by both implementation and deletion evidence:
 
-## 21.1 Phase 13 — current workplan
+> **SimThing is one recursive simulation kernel. Its state and observations are field-resident; EML defines
+> numerical meaning; RF carries recursive conserved participation and clearing; STEAD/PALMA/Gu-Yang provide
+> the field-law family; CostBand quantizes sinks; ActionBand resolves target discrepancy; OverlayThing is
+> actuation; StemThing-A binds logical identity to physical residency; StemThing-B gives every descendant the
+> same recursive conserved-resource market germ; and the generation boundary plus IntegrationSchedule is the
+> single temporal authority. Application languages lower into this kernel and never pull application semantics
+> back down into it.**
 
-```text
-13.1 typed root admission provenance
-     ↓
-13.2 ClauseThing lowerer convergence + corpus hydrate/admit witness
-     ↓
-13.3 star-name golden truth adjudication
-     ↓
-13.4 workshop/performance-instrument triage + fresh/stale measurement law
-     ↓
-13.5 legacy producer / authoring-ingress / application-vocabulary census
-     ↓
-13.6 clearing-weight span unification + synthetic-generation clear deletion
-     ↓
-track closeout
-```
-
-## 21.2 Post-closeout performance track — only after dated measurements
-
-Likely candidates, subject to the 13.4 measurement law:
+Phase 13's strongest contribution was to make the repository behave more like that sentence:
 
 ```text
-P0 market hot-path census
-P1 compact/intern admitted market vocabulary
-P2 GPU/resident constrained-clearing lowering
-P3 current-head FieldSweep locality measurements
-P4 tiled static-grid lowering if measurement supports it
-P5 source-blind dirty dispatch / incremental fields
-P6 parallel detached-subtree scheduling
-P7 prepare-parallel structural boundary
-P8 measured PALMA active-set / multiscale research
-P9 offline columnar ML-corpus projection
-P10 Vector CostBand only for a real atomic multi-resource consumer
+less application accommodation
+less duplicate inheritance machinery
+less compatibility authority
+fewer tolerated reds
+more explicit dependency direction
+more measured-performance discipline
 ```
 
-No stale number may be used to skip the measurement gate.
-
----
-
-# 22. Final synthesis
-
-The architecture should now be stated in two layers.
-
-**Graduated kernel statement:**
-
-> **SimThing is a closed recursive simulation kernel. Each StemThing carries homogeneous Property
-> state, intrinsic owner-aware RF participation, the EML numerical ISA, STEAD/PALMA/Gu-Yang fields,
-> CostBand as the sole sink law, ActionBand as target lifecycle, OverlayThing as intrinsic actuation,
-> StemThing-A as logical/physical residency discipline, and StemThing-B as the recursive
-> conserved-resource market germ. Domain contention resolves through authored generic clearing,
-> ordinary action returns through the same crossing/consequence surfaces, and asynchronous recursion
-> is generation-stamped into one replay schedule.**
-
-**Phase-13 closeout statement:**
-
-> **Before calling the track operationally clean, the remaining legacy/application surfaces must
-> converge onto that kernel without teaching the kernel their vocabulary; root admission must expose
-> typed generic law+element provenance; stale ClauseThing lowerings and star-name truth must be
-> repaired/adjudicated; legacy ingress must be censused; performance debts must have dated evidence;
-> and StemThing-B clearing-weight inheritance must consume the already-graduated span substrate while
-> the synthetic-generation compatibility clearing form is deleted.**
-
-The revised target physical form after Phase 13 is therefore:
-
-```text
-fewer application-specific seams
-fewer opaque admission errors
-no synthetic-generation clearing footgun
-no full-tree clearing-weight rematerialization
-better-governed performance evidence
-same bits
-same authority
-same generation law
-same domain-agnostic StemThing germ
-```
-
-That is a stronger closeout than the first post-canonization review envisioned: Phase 13 is not reopening the
-architecture. It is forcing the remaining estate to live up to the architecture that 12.2 canonized.
+If the fresh clearing-weight dynamic-invalidation audit closes without finding a missing semantic edge, I
+would treat the **unification design itself as complete** and resist adding further architecture to this
+workplan. The next gains should come from proving where the one model is expensive and lowering it more
+faithfully onto the hardware—not from inventing another abstraction layer.
