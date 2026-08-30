@@ -109,9 +109,12 @@ def glob_paths(root: pathlib.Path, pattern: str) -> list[pathlib.Path]:
 
 
 def read_sources(root: pathlib.Path) -> dict[str, str]:
+    paths = list(root.glob("crates/*/src/**/*.rs")) + list(
+        root.glob("crates/*/Cargo.toml")
+    )
     return {
         path.relative_to(root).as_posix(): path.read_text(encoding="utf-8", errors="replace")
-        for path in root.glob("crates/*/src/**/*.rs") if path.is_file()
+        for path in paths if path.is_file()
     }
 
 
@@ -144,6 +147,27 @@ CANONICAL_RF_ROLE = "rf-triad-resolution"
 CANONICAL_EXECUTION_ROLE = "unified-simthing-execution"
 PROOF_RF_ROLE = "proof-only-rf-resolution"
 POSTURES = {"production", "deferred", "guard", "proof", "terminal"}
+CENSUS_DIMENSIONS = {"A", "B"}
+CENSUS_CATEGORIES = {
+    "A": {
+        "kernel-vocabulary",
+        "clausething-lowerer",
+        "studio-semantic-branch",
+        "mapgen-semantic-branch",
+        "dependency-arrow",
+    },
+    "B": {
+        "clause-hydration",
+        "canonical-json-load",
+        "literal-install",
+        "programmatic-spec",
+    },
+}
+FUTURE_ACTIONS = {"remove", "internalize", "preserve-as-compat", "blocked"}
+INGRESS_CLASSIFICATIONS = {
+    "A": {"not-applicable"},
+    "B": {"canonical", "interchange-with-stated-contract", "dated-deferred"},
+}
 FN_RE = re.compile(
     r"^\s*(?:pub(?:\([^)]*\))?\s+)?(?:async\s+)?fn\s+([A-Za-z_][A-Za-z0-9_]*)\b",
     re.MULTILINE,
@@ -497,6 +521,85 @@ def relationship_checks(
     return errors
 
 
+def census_schema_checks(
+    rows: list[dict[str, str]], counts: dict[str, int]
+) -> list[str]:
+    errors: list[str] = []
+    census_rows = [row for row in rows if (row.get("census_dimension") or "").strip()]
+    categories_seen: dict[str, set[str]] = {dimension: set() for dimension in CENSUS_DIMENSIONS}
+    ingress_rows: dict[str, int] = {}
+    future_counts = {action: 0 for action in FUTURE_ACTIONS}
+
+    required = (
+        "census_dimension",
+        "census_category",
+        "truth_source",
+        "adapter_mediator",
+        "future_action",
+        "owner_or_blocked_reason",
+        "ingress_classification",
+    )
+    for row in census_rows:
+        surface = row["surface_id"]
+        missing = [field for field in required if not (row.get(field) or "").strip()]
+        if missing:
+            errors.append(f"LEGACY-CENSUS-SCHEMA: {surface} blank={','.join(missing)}")
+            continue
+        dimension = row["census_dimension"]
+        category = row["census_category"]
+        action = row["future_action"]
+        classification = row["ingress_classification"]
+        if dimension not in CENSUS_DIMENSIONS:
+            errors.append(f"LEGACY-CENSUS-SCHEMA: {surface} dimension={dimension}")
+            continue
+        if category not in CENSUS_CATEGORIES[dimension]:
+            errors.append(
+                f"LEGACY-CENSUS-SCHEMA: {surface} category={category} dimension={dimension}"
+            )
+        else:
+            categories_seen[dimension].add(category)
+        if action not in FUTURE_ACTIONS:
+            errors.append(f"LEGACY-CENSUS-DISPOSITION: {surface} future_action={action}")
+        else:
+            future_counts[action] += 1
+        if classification not in INGRESS_CLASSIFICATIONS[dimension]:
+            errors.append(
+                "LEGACY-CENSUS-INGRESS-CLASSIFICATION: "
+                f"{surface} classification={classification} dimension={dimension}"
+            )
+        if action == "blocked" and len(row["owner_or_blocked_reason"].strip()) < 16:
+            errors.append(f"LEGACY-CENSUS-DISPOSITION: {surface} blocked-reason-not-concrete")
+        if dimension == "B":
+            ingress_rows[category] = ingress_rows.get(category, 0) + 1
+
+    for dimension, required_categories in CENSUS_CATEGORIES.items():
+        missing = required_categories - categories_seen[dimension]
+        if missing:
+            errors.append(
+                f"LEGACY-CENSUS-COVERAGE: dimension={dimension} missing={sorted(missing)}"
+            )
+    duplicate_ingress = sorted(
+        category for category, count in ingress_rows.items() if count != 1
+    )
+    if duplicate_ingress:
+        errors.append(
+            f"LEGACY-CENSUS-COVERAGE: ingress-not-unique={duplicate_ingress}"
+        )
+
+    counts["CENSUS-DIMENSION-A"] = sum(
+        row.get("census_dimension") == "A" for row in census_rows
+    )
+    counts["CENSUS-DIMENSION-B"] = sum(
+        row.get("census_dimension") == "B" for row in census_rows
+    )
+    counts["CENSUS-WORKLIST"] = sum(
+        future_counts[action] for action in ("remove", "internalize", "blocked")
+    )
+    for action, count in future_counts.items():
+        counts[f"CENSUS-ACTION-{action.upper()}"] = count
+    return errors
+
+
 CROSSING_DECL_RE = re.compile(
     r"^\s*(?:pub(?:\([^)]*\))?\s+)?(?:struct|enum)\s+"
     r"(\w*(?:BandCrossing|ThresholdCrossing|ActionBandCrossing|CrossingConsequence|SaturationListener)\w*)",
@@ -542,6 +645,43 @@ def check_sources(
                 if not path_matches(rel, path):
                     continue
                 actual.update(f"{rel}::{match.group(1)}" for match in regex.finditer(text))
+        elif parser == "source-token-identities":
+            regex = re.compile(row["declaration"])
+            for rel, text in sources.items():
+                if not path_matches(rel, path):
+                    continue
+                actual.update(
+                    f"{rel}::{match.group(1)}" for match in regex.finditer(uncomment(text))
+                )
+        elif parser == "cargo-zero-arrow":
+            dependency = row["declaration"]
+            arrows: set[str] = set()
+            for rel, text in sources.items():
+                if not path_matches(rel, path):
+                    continue
+                in_dependency_section = False
+                for line in text.splitlines():
+                    section = re.match(r"^\s*\[([^]]+)\]\s*$", line)
+                    if section:
+                        section_name = re.sub(r"\s*\.\s*", ".", section.group(1).strip())
+                        dependency_table_suffix = f".{dependency}"
+                        if section_name.endswith(dependency_table_suffix) and section_name[
+                            : -len(dependency_table_suffix)
+                        ].endswith("dependencies"):
+                            arrows.add(f"{rel}->{dependency}")
+                        in_dependency_section = section_name.endswith("dependencies")
+                        continue
+                    if in_dependency_section and re.match(
+                        rf"^\s*{re.escape(dependency)}\s*=", line
+                    ):
+                        arrows.add(f"{rel}->{dependency}")
+            if arrows:
+                actual = arrows
+                errors.append(
+                    "ENGINE-CLAUSETHING-DEPENDENCY-ARROW: " + ",".join(sorted(arrows))
+                )
+            else:
+                actual = {"ZERO-ENGINE-TO-CLAUSETHING"}
         elif parser == "crossing-symbols":
             for rel, text in sources.items():
                 if "/tests/" in f"/{rel}/":
@@ -594,6 +734,7 @@ def check_sources(
             added = sorted(actual - expected)
             removed = sorted(expected - actual)
             errors.append(f"{surface}: registry drift added={added} removed={removed}")
+    errors.extend(census_schema_checks(rows, counts))
     errors.extend(relationship_checks(sources, rows, counts))
     return errors, counts
 
@@ -744,10 +885,82 @@ def selftest(sources: dict[str, str]) -> int:
     rename_errors, _ = check_sources(renamed, renamed_rows)
     if rename_errors:
         failures.append("semantic-rename-control")
+
+    # Census plants: one explicit lawful disposition, one illegal disposition,
+    # and one missing required ingress family. These mutate ledger facts rather
+    # than production source so the schema/completeness reasons are isolated.
+    valid_census_rows = [dict(row) for row in rows]
+    for row in valid_census_rows:
+        if row["surface_id"] == "LEGACY-KERNEL-DESIGNER-PARKING-VOCABULARY":
+            row["future_action"] = "internalize"
+            row["owner_or_blocked_reason"] = "planted post-closeout convergence owner"
+    valid_census_errors, _ = check_sources(sources, valid_census_rows)
+    if valid_census_errors:
+        failures.append("census-valid-disposition")
+
+    invalid_disposition_rows = [dict(row) for row in rows]
+    for row in invalid_disposition_rows:
+        if row["surface_id"] == "LEGACY-KERNEL-DESIGNER-PARKING-VOCABULARY":
+            row["future_action"] = "eventually"
+    invalid_disposition_errors, _ = check_sources(sources, invalid_disposition_rows)
+    if not any(
+        error.startswith("LEGACY-CENSUS-DISPOSITION:")
+        for error in invalid_disposition_errors
+    ):
+        failures.append("census-invalid-disposition-wrong-reason")
+
+    incomplete_rows = [
+        dict(row)
+        for row in rows
+        if row["surface_id"] != "AUTHORING-INGRESS-LITERAL-INSTALL"
+    ]
+    incomplete_errors, _ = check_sources(sources, incomplete_rows)
+    if not any(
+        error.startswith("LEGACY-CENSUS-COVERAGE:")
+        and "literal-install" in error
+        for error in incomplete_errors
+    ):
+        failures.append("census-incomplete-ingress-wrong-reason")
+
+    # Dependency-arrow plants: unrelated engine dependencies remain green;
+    # an engine -> ClauseThing edge REDs for the named reason.
+    arrow_manifest = "crates/simthing-core/Cargo.toml"
+    clean_arrow = dict(sources)
+    clean_arrow[arrow_manifest] += "\n[dependencies.planted_unrelated]\nversion = \"1\"\n"
+    clean_arrow_errors, _ = check_sources(clean_arrow, rows)
+    if clean_arrow_errors:
+        failures.append("zero-arrow-unrelated-dependency")
+
+    bad_arrow = dict(sources)
+    bad_arrow[arrow_manifest] += (
+        "\n[dependencies]\n"
+        "simthing-clausething = { path = \"../simthing-clausething\" }\n"
+    )
+    bad_arrow_errors, _ = check_sources(bad_arrow, rows)
+    if not any(
+        error.startswith("ENGINE-CLAUSETHING-DEPENDENCY-ARROW:")
+        for error in bad_arrow_errors
+    ):
+        failures.append("zero-arrow-plant-wrong-reason")
+
+    bad_arrow_table = dict(sources)
+    bad_arrow_table[arrow_manifest] += (
+        "\n[dependencies.simthing-clausething]\n"
+        "path = \"../simthing-clausething\"\n"
+    )
+    bad_arrow_table_errors, _ = check_sources(bad_arrow_table, rows)
+    if not any(
+        error.startswith("ENGINE-CLAUSETHING-DEPENDENCY-ARROW:")
+        for error in bad_arrow_table_errors
+    ):
+        failures.append("zero-arrow-table-header-plant-wrong-reason")
     if failures:
         print(f"CONSTITUTIONAL-SURFACE-SELFTEST: FAIL cases={','.join(failures)}")
         return 1
-    print(f"CONSTITUTIONAL-SURFACE-SELFTEST: PASS planted={len(cases)} valid_binding=1")
+    print(
+        "CONSTITUTIONAL-SURFACE-SELFTEST: PASS "
+        f"planted={len(cases)} valid_binding=1 census_plants=3 zero_arrow_plants=3"
+    )
     return 0
 
 
