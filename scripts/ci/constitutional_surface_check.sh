@@ -663,7 +663,13 @@ def check_sources(
                 for line in text.splitlines():
                     section = re.match(r"^\s*\[([^]]+)\]\s*$", line)
                     if section:
-                        in_dependency_section = section.group(1).endswith("dependencies")
+                        section_name = re.sub(r"\s*\.\s*", ".", section.group(1).strip())
+                        dependency_table_suffix = f".{dependency}"
+                        if section_name.endswith(dependency_table_suffix) and section_name[
+                            : -len(dependency_table_suffix)
+                        ].endswith("dependencies"):
+                            arrows.add(f"{rel}->{dependency}")
+                        in_dependency_section = section_name.endswith("dependencies")
                         continue
                     if in_dependency_section and re.match(
                         rf"^\s*{re.escape(dependency)}\s*=", line
@@ -936,12 +942,24 @@ def selftest(sources: dict[str, str]) -> int:
         for error in bad_arrow_errors
     ):
         failures.append("zero-arrow-plant-wrong-reason")
+
+    bad_arrow_table = dict(sources)
+    bad_arrow_table[arrow_manifest] += (
+        "\n[dependencies.simthing-clausething]\n"
+        "path = \"../simthing-clausething\"\n"
+    )
+    bad_arrow_table_errors, _ = check_sources(bad_arrow_table, rows)
+    if not any(
+        error.startswith("ENGINE-CLAUSETHING-DEPENDENCY-ARROW:")
+        for error in bad_arrow_table_errors
+    ):
+        failures.append("zero-arrow-table-header-plant-wrong-reason")
     if failures:
         print(f"CONSTITUTIONAL-SURFACE-SELFTEST: FAIL cases={','.join(failures)}")
         return 1
     print(
         "CONSTITUTIONAL-SURFACE-SELFTEST: PASS "
-        f"planted={len(cases)} valid_binding=1 census_plants=3 zero_arrow_plants=2"
+        f"planted={len(cases)} valid_binding=1 census_plants=3 zero_arrow_plants=3"
     )
     return 0
 
