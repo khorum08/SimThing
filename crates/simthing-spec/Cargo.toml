@@ -7,6 +7,7 @@ authors.workspace = true
 [dependencies]
 simthing-core   = { path = "../simthing-core" }
 simthing-feeder = { path = "../simthing-feeder" }
+simthing-kernel = { path = "../simthing-kernel" }
 serde           = { workspace = true }
 serde_json      = { workspace = true }
 thiserror       = { workspace = true }

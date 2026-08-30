@@ -13,7 +13,11 @@ pub use simthing_core::GrantLifecycleReleaseCause as GrantReleaseCause;
 use simthing_core::{
     cost_band_quantize, CostBandAdmissionError, CostBandDraw, GenerationStamp, GrantLifecycleFact,
     GrantLifecycleFactKind, GrantLifecycleRelationshipState, GrantLifecycleScheduleError,
-    IntegrationSchedule, SimThing, SimThingId, SpecializationProfile, TransformOp,
+    IntegrationSchedule, SimThingId, SpecializationProfile,
+};
+pub use simthing_kernel::overlay_prep::{
+    resolve_effective_clearing_weights, ClearingWeightOverrideSpec, ClearingWeightResolutionError,
+    ClearingWeightSpanProjection,
 };
 use thiserror::Error;
 
@@ -346,73 +350,6 @@ impl AdmittedSpecializationFlowMarket {
         })?;
         Ok(record)
     }
-}
-
-/// One sparse inherited clearing-weight override on the ordinary tree.
-#[derive(Clone, Debug, PartialEq)]
-pub struct ClearingWeightOverrideSpec {
-    pub simthing_id: SimThingId,
-    pub value_program: TransformOp,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Error)]
-pub enum ClearingWeightResolutionError {
-    #[error("default clearing weight must be finite and non-negative")]
-    InvalidDefault,
-    #[error("duplicate clearing-weight override for {0:?}")]
-    DuplicateOverride(SimThingId),
-    #[error("clearing-weight override names absent SimThing {0:?}")]
-    UnknownSimThing(SimThingId),
-    #[error("clearing-weight override at {0:?} produced a non-finite or negative value")]
-    InvalidResolvedWeight(SimThingId),
-}
-
-/// Resolve sparse EML overrides by recursive inheritance, matching the landed
-/// owner-channel tree-resolution shape. Every node receives exactly one value.
-pub fn resolve_effective_clearing_weights(
-    root: &SimThing,
-    default_weight: f32,
-    overrides: &[ClearingWeightOverrideSpec],
-) -> Result<BTreeMap<SimThingId, f32>, ClearingWeightResolutionError> {
-    if !default_weight.is_finite() || default_weight < 0.0 {
-        return Err(ClearingWeightResolutionError::InvalidDefault);
-    }
-    let mut by_id = BTreeMap::new();
-    for row in overrides {
-        if by_id.insert(row.simthing_id, &row.value_program).is_some() {
-            return Err(ClearingWeightResolutionError::DuplicateOverride(
-                row.simthing_id,
-            ));
-        }
-    }
-
-    fn visit(
-        node: &SimThing,
-        inherited: f32,
-        overrides: &BTreeMap<SimThingId, &TransformOp>,
-        resolved: &mut BTreeMap<SimThingId, f32>,
-    ) -> Result<(), ClearingWeightResolutionError> {
-        let value = overrides
-            .get(&node.id)
-            .map_or(inherited, |program| program.apply(inherited));
-        if !value.is_finite() || value < 0.0 {
-            return Err(ClearingWeightResolutionError::InvalidResolvedWeight(
-                node.id,
-            ));
-        }
-        resolved.insert(node.id, if value == 0.0 { 0.0 } else { value });
-        for child in &node.children {
-            visit(child, value, overrides, resolved)?;
-        }
-        Ok(())
-    }
-
-    let mut resolved = BTreeMap::new();
-    visit(root, default_weight, &by_id, &mut resolved)?;
-    if let Some(unknown) = by_id.keys().find(|id| !resolved.contains_key(id)) {
-        return Err(ClearingWeightResolutionError::UnknownSimThing(*unknown));
-    }
-    Ok(resolved)
 }
 
 /// Stable identity of one market relationship.

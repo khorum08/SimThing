@@ -384,7 +384,7 @@ pub use spec::channel_key::{
     OwnerChannelScopeKey, OwnerRef, ParentLocationId, ResourceKey, ScopeId,
 };
 pub use spec::constrained_clearing::{
-    clear_constrained_claims, clear_constrained_claims_at_generation, clear_reduced_owner_channels,
+    clear_constrained_claims_at_generation, clear_reduced_owner_channels,
     clear_reduced_owner_channels_at_generation, clear_stamped_owner_channels,
     fund_unresolved_persistence, is_authored_until_dissolved, AuthoredClaimClearingData,
     AuthoredClearingProgram, AuthoredPersistenceValuation, ClearingRemainderAuthority,
@@ -415,10 +415,10 @@ pub use spec::fleet_presence::{
 pub use spec::flow_market::{
     admit_specialization_flow_market, resolve_effective_clearing_weights,
     AdmittedSpecializationFlowMarket, ClearingWeightOverrideSpec, ClearingWeightResolutionError,
-    ConservedOfferingSpec, DrawAuthorizationError, DrawEnvelopeTemplateSpec,
-    FlowMarketAdmissionError, GrantLifecycleError, GrantRelease, GrantReleaseCause, MarketGrantKey,
-    MarketGrantRecord, MarketGrantResidencyProvenance, OfferingPriceVectorSpec,
-    OfferingQuantizationError, SpecializationFlowMarketSpec,
+    ClearingWeightSpanProjection, ConservedOfferingSpec, DrawAuthorizationError,
+    DrawEnvelopeTemplateSpec, FlowMarketAdmissionError, GrantLifecycleError, GrantRelease,
+    GrantReleaseCause, MarketGrantKey, MarketGrantRecord, MarketGrantResidencyProvenance,
+    OfferingPriceVectorSpec, OfferingQuantizationError, SpecializationFlowMarketSpec,
 };
 pub use spec::game_mode::GameModeSpec;
 pub use spec::install_target::InstallTargetSpec;

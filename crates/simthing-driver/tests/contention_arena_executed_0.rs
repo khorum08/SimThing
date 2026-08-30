@@ -13,12 +13,12 @@ use simthing_core::{
     TransformOp,
 };
 use simthing_spec::{
-    clear_constrained_claims, clear_reduced_owner_channels, fund_unresolved_persistence,
-    is_authored_until_dissolved, judge_conservation, AuthoredClaimClearingData,
-    AuthoredClearingProgram, AuthoredPersistenceValuation, ChannelBound, ConservationJudgeReason,
-    ConservationSnapshot, ConservationVerdict, ConstrainedClaim, ConstrainedClearingResult,
-    ConstrainedSupply, OwnerChannelRfOwnAggregate, OwnerChannelScopeKey,
-    PersistenceConsequenceError, PersistenceOverlayBinding, ResourceKey,
+    clear_constrained_claims_at_generation, clear_reduced_owner_channels,
+    fund_unresolved_persistence, is_authored_until_dissolved, judge_conservation,
+    AuthoredClaimClearingData, AuthoredClearingProgram, AuthoredPersistenceValuation, ChannelBound,
+    ClearingRemainderAuthority, ConservationJudgeReason, ConservationSnapshot, ConservationVerdict,
+    ConstrainedClaim, ConstrainedClearingResult, ConstrainedSupply, OwnerChannelRfOwnAggregate,
+    OwnerChannelScopeKey, PersistenceConsequenceError, PersistenceOverlayBinding, ResourceKey,
     RuntimeOwnerSiloDemandBucket, ScopeId, UnresolvedDemandObservation,
 };
 
@@ -136,6 +136,10 @@ fn generic_constrained_clearing_is_authored_generation_paced_and_conserved() {
     let report = stamped.product();
     assert_eq!(report.buckets.len(), 1);
     let scope = report.buckets[0].scope.clone();
+    let clearing_authority = ClearingRemainderAuthority {
+        granter: supply_id,
+        generation: GenerationStamp::new(10),
+    };
 
     // The priorities here are the existing CommandDeficit landing shape. No
     // clearing-local priority field or constructor exists.
@@ -183,13 +187,14 @@ fn generic_constrained_clearing_is_authored_generation_paced_and_conserved() {
         .iter()
         .map(|row| ConstrainedClaim::from_runtime_demand(&row.demand, row.order_weight).unwrap())
         .collect();
-    let fit = clear_constrained_claims(
+    let fit = clear_constrained_claims_at_generation(
         &[ConstrainedSupply {
             scope: scope.clone(),
             available: 9,
         }],
         &claims,
         &priority_program(),
+        clearing_authority,
     )
     .expect("fitting clearing");
     assert!(!fit[0].is_oversubscribed());
@@ -201,24 +206,26 @@ fn generic_constrained_clearing_is_authored_generation_paced_and_conserved() {
     // Stable logical ids defeat a physical-row policy. The planted mutant is
     // order-sensitive while production is identical under the same shuffle.
     let proportional = AuthoredClearingProgram::new(TransformOp::set(0.0));
-    let lawful_a = clear_constrained_claims(
+    let lawful_a = clear_constrained_claims_at_generation(
         &[ConstrainedSupply {
             scope: scope.clone(),
             available: 6,
         }],
         &claims,
         &proportional,
+        clearing_authority,
     )
     .unwrap();
     let mut shuffled_claims = claims.clone();
     shuffled_claims.reverse();
-    let lawful_b = clear_constrained_claims(
+    let lawful_b = clear_constrained_claims_at_generation(
         &[ConstrainedSupply {
             scope: scope.clone(),
             available: 6,
         }],
         &shuffled_claims,
         &proportional,
+        clearing_authority,
     )
     .unwrap();
     assert_eq!(lawful_a, lawful_b);
@@ -239,7 +246,7 @@ fn generic_constrained_clearing_is_authored_generation_paced_and_conserved() {
     };
     let foreign_id = SimThingId::from_session_raw(901);
     let foreign_demand = demand(&foreign_scope, foreign_id, 5, 0);
-    let segregated = clear_constrained_claims(
+    let segregated = clear_constrained_claims_at_generation(
         &[
             ConstrainedSupply {
                 scope: scope.clone(),
@@ -255,6 +262,7 @@ fn generic_constrained_clearing_is_authored_generation_paced_and_conserved() {
             ConstrainedClaim::from_runtime_demand(&foreign_demand, 1.0).unwrap(),
         ],
         &proportional,
+        clearing_authority,
     )
     .unwrap();
     assert_eq!(segregated.len(), 2);

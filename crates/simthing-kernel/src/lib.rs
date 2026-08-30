@@ -8,6 +8,7 @@
 
 pub mod accumulator_op;
 pub mod candidate_f_magnitude;
+mod clearing_weight_projection;
 pub mod context;
 pub mod cpu_oracle;
 pub mod decision_ingress;
