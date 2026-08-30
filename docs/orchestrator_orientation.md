@@ -45,9 +45,9 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 26e025f8b1e76f7f649571aaa4f2da2c82ca722b4d8c549f5ce9d14b4604f3a6 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | 26eab30ec86c97ac8dfd6beef7ae8c5b4d3f18c38fdaa431ec40ccce855396d3 |
-| design_0_0_8_7_rf_arena_modernization.md | cac22c1efdebb05b6318fe304870643344b48935bf10f01df318482c63b71434 |
+| design_0_0_8_7_rf_arena_modernization.md | 0e249536831a1dace14cc33d6f7f0c7a90115c731f74e6d1f9c42bcebb6ea352 |
 | relay_lint.sh | ae19bdca12e90f6bc988e064f081ff62903034d69bf34b08ffd5c27e352181ba |
-| doctrine_anchors.tsv | f17918fb7688e109196baa01f7304b593d0abe2adfff3542429734e90c220f8e |
+| doctrine_anchors.tsv | 17ad26effc2bded32ef9711a4181c158c2f2096e4fcb490581dcf224bf90dd20 |
 | execution_status_taxonomy.tsv | 924c086550221dd7136ec0682293900d8d03feb4bc1dae1a6e750a61e65153bc |
 | execution_status_mixed_posture.tsv | 1adf05f3ec5fd7b537efe29259d20649a2c6d3a0839590063e5308ff154e8f25 |
 | execution_status_non_execution.tsv | 214c1b557dfd3fc465f0171051e20281ff1dcf6c53128dbb29cba01524f9be02 |
@@ -68,19 +68,18 @@ Dark properties (1): `fixture::dark_reading` (reasons/spans in `property_admissi
 
 Track state: `open`
 
-> Compact view: showing last 5 of 87 rungs (track `open`); full ladder in the design doc.
+> Compact view: 84 completed rungs elided; showing all 1 open rungs plus the 3 most recent completions. Full ladder in the design doc.
 
 | # | rung | deliverable | exit proof |
 | --- | --- | --- | --- |
-| 13.3 | STAR-NAMING-GOLDEN-TRUTH-0 | **Rung 3: adjudicate the stale canonical TP star-name golden** (`studio_star_nam | **DA-GRADUATED / merged #1881 @ a9f0a483** — lawful-drift provenance to `f4fd9910`; golden purity DA-verified; FIRST ... |
-| 13.4 | WORKSHOP-CORPUS-TRIAGE-0 | **Rung 4: replace default-delete with Necessity-Test triage of the reap-slated w | **DA-GRADUATED / merged #1884 @ 22fb4360** — A1 instrument-stale branch adjudicated; check-eval receipt DA-reproduced... |
 | 13.5 | LEGACY-SURFACE-CONVERGENCE-CENSUS-0 | **Rung 5: the 11.4 discipline applied to the legacy estate — census, NOT refacto | **DA-GRADUATED / merged #1888 @ a4b97fd0** — remand `5466688638` (zero-arrow syntax closure); four audit targets adju... |
 | 13.6 | CLEARING-WEIGHT-SPAN-UNIFICATION-0 | **Rung 6: the arc's cleanest missed unification, promoted from the 2026-08-29 en | **DA-GRADUATED / merged #1891 @ 3766a002** — dependency-direction edge adjudicated; A1 deletion verified tree-wide; F... |
 | 13.7 | PERFORMANCE-DEBT-LEDGER-COMPLETION-0 | **PHASE 13 CODA — Owner-directed 2026-08-30, DA-implemented (Fable lane): comple | **DA-GRADUATED / merged #1893 @ 9cdb46e2** — DA-implemented data rung; ledger proofs green (expiry PASS, decommission... |
+| 13.8 | CLEARING-WEIGHT-DEFORMATION-LIFECYCLE-0 | **PHASE 13 FINAL RUNG — Owner-approved 2026-08-30 from the engineering review's  | TODO |
 
 ## Next Rung Pointer
 
-Active pointer: `none`
+Active pointer: `CLEARING-WEIGHT-DEFORMATION-LIFECYCLE-0`
 
 
 ## Cold-Start Spine (constitutional pointers)
