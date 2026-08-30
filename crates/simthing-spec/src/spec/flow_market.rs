@@ -16,8 +16,8 @@ use simthing_core::{
     IntegrationSchedule, SimThingId, SpecializationProfile,
 };
 pub use simthing_kernel::overlay_prep::{
-    resolve_effective_clearing_weights, ClearingWeightOverrideSpec, ClearingWeightResolutionError,
-    ClearingWeightSpanProjection,
+    resolve_effective_clearing_weights, ChangedLocus, ClearingWeightOverrideSpec,
+    ClearingWeightProjectionRefresh, ClearingWeightResolutionError, ClearingWeightSpanProjection,
 };
 use thiserror::Error;
 

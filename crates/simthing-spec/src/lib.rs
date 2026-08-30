@@ -414,11 +414,12 @@ pub use spec::fleet_presence::{
 };
 pub use spec::flow_market::{
     admit_specialization_flow_market, resolve_effective_clearing_weights,
-    AdmittedSpecializationFlowMarket, ClearingWeightOverrideSpec, ClearingWeightResolutionError,
-    ClearingWeightSpanProjection, ConservedOfferingSpec, DrawAuthorizationError,
-    DrawEnvelopeTemplateSpec, FlowMarketAdmissionError, GrantLifecycleError, GrantRelease,
-    GrantReleaseCause, MarketGrantKey, MarketGrantRecord, MarketGrantResidencyProvenance,
-    OfferingPriceVectorSpec, OfferingQuantizationError, SpecializationFlowMarketSpec,
+    AdmittedSpecializationFlowMarket, ChangedLocus, ClearingWeightOverrideSpec,
+    ClearingWeightProjectionRefresh, ClearingWeightResolutionError, ClearingWeightSpanProjection,
+    ConservedOfferingSpec, DrawAuthorizationError, DrawEnvelopeTemplateSpec,
+    FlowMarketAdmissionError, GrantLifecycleError, GrantRelease, GrantReleaseCause, MarketGrantKey,
+    MarketGrantRecord, MarketGrantResidencyProvenance, OfferingPriceVectorSpec,
+    OfferingQuantizationError, SpecializationFlowMarketSpec,
 };
 pub use spec::game_mode::GameModeSpec;
 pub use spec::install_target::InstallTargetSpec;
