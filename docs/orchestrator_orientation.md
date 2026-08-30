@@ -45,9 +45,9 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 26e025f8b1e76f7f649571aaa4f2da2c82ca722b4d8c549f5ce9d14b4604f3a6 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | 26eab30ec86c97ac8dfd6beef7ae8c5b4d3f18c38fdaa431ec40ccce855396d3 |
-| design_0_0_8_7_rf_arena_modernization.md | c1aa7a7dd9b73bded0cef6b7647947410506ed59f181236d9627af1094531282 |
+| design_0_0_8_7_rf_arena_modernization.md | 2e40bcf30f9049ad26f30c13a5fc3c61661b228ee542297c70afd5768479337c |
 | relay_lint.sh | ae19bdca12e90f6bc988e064f081ff62903034d69bf34b08ffd5c27e352181ba |
-| doctrine_anchors.tsv | 7a7fb6c56da0aba65361d38f833fd9fe854096af222b1409da36fa27e97dfcad |
+| doctrine_anchors.tsv | fabba0946338a10fba0f820371a60bb2c160e7c95d020bcdb70a7fa6ef037fd6 |
 | execution_status_taxonomy.tsv | 924c086550221dd7136ec0682293900d8d03feb4bc1dae1a6e750a61e65153bc |
 | execution_status_mixed_posture.tsv | 1adf05f3ec5fd7b537efe29259d20649a2c6d3a0839590063e5308ff154e8f25 |
 | execution_status_non_execution.tsv | 214c1b557dfd3fc465f0171051e20281ff1dcf6c53128dbb29cba01524f9be02 |
@@ -68,21 +68,20 @@ Dark properties (1): `fixture::dark_reading` (reasons/spans in `property_admissi
 
 Track state: `open`
 
-> Compact view: 79 completed rungs elided; showing all 4 open rungs plus the 3 most recent completions. Full ladder in the design doc.
+> Compact view: 80 completed rungs elided; showing all 3 open rungs plus the 3 most recent completions. Full ladder in the design doc.
 
 | # | rung | deliverable | exit proof |
 | --- | --- | --- | --- |
-| 12.2 | CORE-CANONIZATION-0 | Phase 12: object model (P0 Root Contract + cycle + EML-ISA + Triad Doors + overl | **DA-GRADUATED / merged #1868 @ cfaa5f6a** — canonization inheritance (worklist, door symmetry, binding revalidation,... |
 | 13.1 | ADMISSION-PROVENANCE-TYPED-0 | **PHASE 13 — LEGACY CONVERGENCE ADDENDA (Owner-approved 2026-08-29, pre-closeout | **DA-GRADUATED / merged #1875 @ effb8fc0** — remand `5463464560` (census binding, Option B); planted=12; Fable deep r... |
 | 13.2 | CLAUSETHING-ADMISSION-CONVERGENCE-0 | **Rung 2: converge ClauseThing hydration onto the unified substrate — IN THE `hy | **DA-GRADUATED / merged #1878 @ c735cbb4** — five translation hotspots adjudicated; kernel containment verified; Fabl... |
-| 13.3 | STAR-NAMING-GOLDEN-TRUTH-0 | **Rung 3: adjudicate the stale canonical TP star-name golden** (`studio_star_nam | TODO |
+| 13.3 | STAR-NAMING-GOLDEN-TRUTH-0 | **Rung 3: adjudicate the stale canonical TP star-name golden** (`studio_star_nam | **DA-GRADUATED / merged #1881 @ a9f0a483** — lawful-drift provenance to `f4fd9910`; golden purity DA-verified; FIRST ... |
 | 13.4 | WORKSHOP-CORPUS-TRIAGE-0 | **Rung 4: replace default-delete with Necessity-Test triage of the reap-slated w | TODO |
 | 13.5 | LEGACY-SURFACE-CONVERGENCE-CENSUS-0 | **Rung 5: the 11.4 discipline applied to the legacy estate — census, NOT refacto | TODO |
 | 13.6 | CLEARING-WEIGHT-SPAN-UNIFICATION-0 | **Rung 6: the arc's cleanest missed unification, promoted from the 2026-08-29 en | TODO |
 
 ## Next Rung Pointer
 
-Active pointer: `STAR-NAMING-GOLDEN-TRUTH-0`
+Active pointer: `WORKSHOP-CORPUS-TRIAGE-0`
 
 
 ## Cold-Start Spine (constitutional pointers)
