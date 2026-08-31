@@ -323,29 +323,54 @@ fn all_layout_and_budget_failures_precede_gpu_allocation() {
 }
 
 #[test]
-fn canonical_surface_has_no_host_identity_or_frozen_semantic_delta() {
-    let context_source = include_str!("../../simthing-core/src/tree_execution_context.rs");
-    let plan_source = include_str!("../../simthing-kernel/src/resident_clearing_plan.rs");
-    let gpu_source = include_str!("../../simthing-gpu/src/resident_clearing_plan.rs");
-    let workshop_source = include_str!("../src/resident_clearing_plan.rs");
-    let simthing_source = include_str!("../../simthing-core/src/simthing.rs");
-    let id_source = include_str!("../../simthing-core/src/ids.rs");
+fn context_and_plan_fail_closed_on_mismatched_authority() {
+    assert_eq!(std::mem::size_of::<simthing_core::SimThingId>(), 4);
 
-    for source in [context_source, plan_source, gpu_source] {
-        assert!(!source.contains("std::env::"));
-        assert!(!source.contains("std::thread::current"));
-        assert!(!source.contains("SystemTime"));
-        assert!(!source.contains("HashMap"));
-        assert!(!source.contains("OnceLock"));
-        assert!(!source.contains("LazyLock"));
-        assert!(!source.contains("static mut"));
-    }
-    assert!(!gpu_source.contains("dispatch_workgroups"));
-    assert!(!gpu_source.contains("include_str!(\"shaders/"));
-    assert!(!workshop_source.contains("sort_"));
-    assert!(!workshop_source.contains("allocate"));
-    assert!(!simthing_source.contains("TreeRealmId"));
-    assert!(!simthing_source.contains("ExecutionIncarnation"));
-    assert!(!id_source.contains("TreeRealmId"));
-    assert!(!id_source.contains("ExecutionIncarnation"));
+    let tree = loaded_tree(7, 8, 4);
+    let other_tree = loaded_tree(9, 10, 4);
+    let context = TreeExecutionContext::new(
+        TreeRealmId::from_u128(9).unwrap(),
+        ExecutionIncarnation::new(3).unwrap(),
+        tree.id,
+        GenerationStamp::new(4),
+    );
+    let generation = GenerationStamp::new(4);
+    let schedule = IntegrationSchedule::new();
+    let registry = DimensionRegistry::new();
+    let residency = SlotAllocator::new();
+
+    assert!(matches!(
+        context.bind(&other_tree, &generation, &schedule, &registry, &residency),
+        Err(TreeExecutionContextError::RootMismatch { .. })
+    ));
+    assert!(matches!(
+        context.bind(
+            &tree,
+            &GenerationStamp::new(5),
+            &schedule,
+            &registry,
+            &residency
+        ),
+        Err(TreeExecutionContextError::GenerationAuthorityMismatch { .. })
+    ));
+
+    let owner = ResidentOwnerId::new(context.qualify(tree.id));
+    let row = admission(owner, 1, 1, 1);
+    assert!(matches!(
+        ResidentClearingPlan::build(context, [row, row], budgets()),
+        Err(ResidentClearingPlanError::DuplicateAdmission)
+    ));
+    let plan = ResidentClearingPlan::build(context, [row], budgets()).unwrap();
+    assert!(matches!(
+        plan.bind_context(context.at_generation(GenerationStamp::new(5))),
+        Err(ResidentClearingPlanError::ContextMismatch { .. })
+    ));
+
+    assert_eq!(context.canonical_bytes().len(), 32);
+    assert_eq!(
+        SeamFactId::new(context.realm(), 1, context.generation(), 0)
+            .canonical_bytes()
+            .len(),
+        32
+    );
 }
