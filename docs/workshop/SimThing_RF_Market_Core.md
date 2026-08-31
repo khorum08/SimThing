@@ -36,12 +36,13 @@
 > normative physics into the germ. Every §9 candidate remains subordinate to landed semantics,
 > source archaeology, measured performance, and DA/Owner review.
 >
-> **Latest amendment — full recursive-germ conformance pass.** The Owner's self-consumption law does
-> more than forbid a grant→supply adapter. It requires each recursive RF-market port to be closed under
-> its own product vocabulary. Continuous supply, exact constrained supply, upward demand, and
-> unresolved-demand recurrence must each be audited as self-consuming germ products. The law does
-> **not** force every RF concept into one universal Rust type; it forces output/input identity where
-> the same recursive germ facility consumes its own product one level or one generation later.
+> **Latest amendment — DA review closure of recursive-germ residuals.** The full conformance pass is
+> retained, with three sharpenings: role names over a self-consuming product must be aliases or truly
+> conversion-free views rather than paired newtypes bridged by `From`/`Into`; the possible `T_s`/`T_d`
+> collapse is now an explicit signed-RF archaeology candidate rather than an aesthetic suggestion; and
+> detached seams are explicitly falsified if they translate the economic payload. A settled-code
+> recursive-port census is also named as an edict obligation so any newly exposed historical mismatch
+> becomes dated constitutional debt rather than an unscheduled surprise.
 
 ---
 
@@ -146,8 +147,10 @@ UPWARD / TEMPORAL DEMAND CLOSURE
 ```
 
 The law does **not** yet prove `T_s == T_d`. They may be two closed product algebras, or archaeology may
-show that both are projections of one signed RF quantity. That broader unification is a review question,
-not an assumption.
+show that both are projections of one signed RF quantity. The concrete candidate to prove or falsify is
+that the existing signed Gu-Yang/RF flow substrate already carries supply and demand as opposite-signed
+roles of one conserved product. That hypothesis is explicitly subordinate to archaeology and DA/Owner
+review; falsifier 31 forbids collapsing the types merely because the symmetry looks elegant.
 
 ## 0.3 Candidate identity sentence
 
@@ -177,6 +180,7 @@ host descendant-pressure scan
 germ-output → germ-input adapter/converter/projector
 GrantDTO → ChildSupplyDTO economic translation
 U → authored persistence → first-order Need bridge
+role-newtype pair + From/Into bridge for one recursive product
 ```
 
 “Clearinghouse” remains useful in design conversation only as a locator for the exact-settlement
@@ -338,7 +342,9 @@ not automatically the permanent resident product ontology.
 The exact product must preserve every semantic fact that survives the parent→child role transition,
 presumptively including exact resource identity, quantity, commitment state, provenance/lineage,
 lifecycle, and whatever scope identity remains semantically persistent. “Grant” and “supply” may remain
-role names over the same type.
+role names over the same type, but those role names must be aliases or truly conversion-free views.
+A pair of wrapper/newtypes connected by `From`, `Into`, a constructor, or a copy/projection function is
+not self-consumption; it is the forbidden adapter wearing type-safety ceremony.
 
 ## 1.6 Re-enter — exact product becomes child supply
 
@@ -420,7 +426,9 @@ T_d pressure/Need at N+1
 ```
 
 Whether `T_s` and `T_d` are ultimately one signed RF product is an open archaeology/design question.
-Do not force that result merely for aesthetic symmetry.
+The concrete candidate is the already-signed RF/Gu-Yang quantity substrate: supply and demand may prove
+to be opposite-signed projections/roles of one conserved flow product. This candidate must be proven
+from landed semantics and consumers, not inferred from elegance alone.
 
 ---
 
@@ -1257,7 +1265,8 @@ MISSING — STOP FOR OWNER/DA RULING
 | Exact settlement band position | existing RF band layout | **REUSE WITH BINDING** | Settlement is one terminal RF stage, not a peer path |
 | Holding accounts | `free/in_flight/occupied/capacity` | **REUSE AS-IS** | Treat as states of canonical T_s relationship |
 | Recursive grant subdivision | child-as-granter StemThing-B witness | **REUSE AS-IS** | Parent T_s → child T_s → grandchild T_s with no adapter |
-| Settlement-product / supply-intake identity | settlement output vs constrained-supply intake | **REUSE AS-IS** if already one type; otherwise **REHOME** to one type | Any semantic adapter/conversion/projector is **MISSING — STOP** |
+| Settlement-product / supply-intake identity | settlement output vs constrained-supply intake | **REUSE AS-IS** if already one type; otherwise **REHOME** to one type | Any semantic adapter/conversion/projector, including paired newtypes bridged by `From`/`Into`, is **MISSING — STOP** |
+| Detached-seam exact-product identity | source-side exact `T_s` payload vs destination-side exact `T_s` intake | **REUSE AS-IS** if identical payload; otherwise **REHOME** to one payload type | Serialization/realm/stamp envelope is lawful; any economic payload translation is **MISSING — STOP** |
 | Replay/history | one `IntegrationSchedule` + Phase-14 resident head | **REHOME EXISTING AUTHORITY** | Replay wrappers may differ; simulation payload semantics remain canonical |
 
 ## 11.2 Recursive-port census
@@ -1270,16 +1279,23 @@ MISSING — STOP FOR OWNER/DA RULING
 | exact constrained supply | parent exact settlement output `T_s` | child exact-supply intake `T_s` | **IDENTICAL type** |
 | upward demand | child demand output `T_d` | parent reduce-up input `T_d` | **IDENTICAL recursive quantity authority** |
 | unresolved demand across time | unresolved `T_d` at N | first-order pressure/Need `T_d` at N+1 | **IDENTICAL recursive quantity authority** |
+| detached exact supply | source `T_s` payload before seam envelope | destination `T_s` payload after seam envelope | **IDENTICAL economic payload type** |
 
-For each row, enumerate any function, serialization step, projection, role wrapper, or ABI transition
-between producer and consumer. Then classify:
+For each row, enumerate any function, serialization step, projection, role wrapper, newtype, conversion
+trait, or ABI transition between producer and consumer. Then classify:
 
 ```text
-role-only alias/view
+type alias / zero-conversion role name
+    lawful
+
+borrowed/view API over the same underlying T with no construction/copy/projection
     lawful
 
 serialization / realm / stamp envelope preserving payload
     lawful
+
+paired newtypes with From/Into or equivalent conversion
+    STOP
 
 semantic conversion between recursive producer and consumer
     STOP
@@ -1288,7 +1304,43 @@ semantic conversion between recursive producer and consumer
 A runtime validator that checks two different recursive types “match” does not satisfy the law. The
 required seal is type/product identity: **define, don't validate**.
 
-## 11.3 Matrix STOP rule
+## 11.3 Settled-code recursive-port census and dated debt
+
+The edict must name a one-time census of already-settled RF-market-adjacent code whose dated graduation
+predates Germ Self-Consumption. The census is **enumeration before rewrite**, not permission to refactor
+on suspicion. At minimum it must inspect:
+
+```text
+14.2 resident clearing plan ABI while still probationary/unmerged
+resident/host grant disbursement lanes
+grant lifecycle and holding-account rows
+canonized Draw grammar and its runtime quantity authority
+authored unresolved-demand persistence path
+seam payloads that carry constrained grants/supply
+```
+
+Each finding is classified:
+
+```text
+CONFORMING
+    already self-consuming / role-only
+
+IN-FLIGHT FIX
+    current Phase-14 probation surface; repair before graduation
+
+DATED CONSTITUTIONAL DEBT
+    previously graduated surface now inconsistent with the newer law;
+    record exact provenance, named future consumer/rung, and retirement condition
+
+NOT IN SCOPE
+    one-way oracle/replay/observation/structural boundary
+```
+
+A newer law does not retroactively invalidate a dated graduation certificate, but it does prevent a
+known mismatch from remaining untracked. Existing constitutional census/debt machinery should carry
+these rows; no second debt registry is minted.
+
+## 11.4 Matrix STOP rule
 
 No Phase-14 design may add a new persistent field plane, clearing-owned weight, urgency property,
 branch-pressure property, share column, EML formula family, score vocabulary, impairment observer,
@@ -1350,7 +1402,10 @@ Add the surface-reuse matrix **and recursive-port census** and require:
 - proof whether first-order unresolved demand persists directly or currently relies on an authored bridge;
 - classification of tree-vertical PALMA and Gu-Yang bindings;
 - settlement-product / supply-intake type identity under Germ Self-Consumption;
+- compile-time proof that role labels are aliases/conversion-free views, not paired newtypes bridged by `From`/`Into`;
+- detached-seam `T_s` payload identity across lawful realm/stamp/serialization wrappers;
 - plan ABI census proving no separate `GrantRow → ChildSupplyRow` semantic transition is being frozen;
+- settled-code recursive-port census with in-flight fixes or dated constitutional-debt rows for any discovered mismatch;
 - explicit statement that no new math framework is added merely because a research analogy exists;
 - `MISSING` rows route to Owner/DA STOP before graduation.
 
@@ -1409,8 +1464,9 @@ GrantRow
 ChildSupplyRow
 ```
 
-unless both are compile-time role views over one canonical resident product ABI with no semantic
-conversion.
+unless both names are type aliases or zero-conversion views over one canonical resident product ABI.
+Distinct newtypes bridged by `From`/`Into`, constructors, copies, projections, or conversion kernels do
+**not** satisfy this exception.
 
 Preserve wide-integer overflow/refusal semantics and physical-order invariance.
 
@@ -1431,15 +1487,23 @@ great-grandchild / ordinary sink
 At every recursive edge, the emitted exact type is the receiving exact type. The witness must also
 exercise upward demand recursion and temporal unresolved-demand self-consumption.
 
-Add a planted adapter mutant:
+Add two planted adapter mutants:
 
 ```text
+TYPE-CONVERSION MUTANT
 T_s
- ↓ fake conversion
+ ↓ fake conversion / From / Into
 T_s'
+
+SEAM-TRANSLATION MUTANT
+Stamped<RealmQualified<T_s>>
+ ↓ transport integration changes economic payload type
+Stamped<RealmQualified<T_s'>>
 ```
 
-The mutant must fail at compile/admission/type construction level, not through a runtime equality scan.
+Both mutants must fail at compile/admission/type construction level, not through a runtime equality
+scan. The first should specifically use the project's compile-fail pattern—e.g. make the forbidden
+conversion bound or constructor unsatisfiable—so a ceremonially type-safe newtype bridge cannot pass.
 This is the canonical **define-don't-validate** falsifier for Germ Self-Consumption.
 
 Retain the asymmetric-pressure witness:
@@ -1481,8 +1545,9 @@ entitlement entering in_flight before realization
 
 The production census must show no host-built weight/urgency table, CPU PALMA query, CPU Gu-Yang query,
 CPU descendant-pressure scan, clearing-owned field cache, private flux/urgency solver, duplicate market
-feedback path, duplicate settlement/disbursement path, germ output→input economic adapter, or
-synchronous host schedule append before N+1.
+feedback path, duplicate settlement/disbursement path, germ output→input economic adapter, seam economic
+payload translator, paired role-newtype conversion bridge, or synchronous host schedule append before
+N+1.
 
 The resident schedule segment remains the live head of the one schedule. CPU execution remains explicit
 vendorized oracle posture, never automatic fallback.
@@ -1529,7 +1594,8 @@ without invalidating unrelated sections.
 ## 14.6 Recursive Grant-to-Supply Law
 
 > A settled exact constrained product emitted to a child is the child's exact constrained supply for
-> its own descendants. “Grant” and “supply” are at most role names over the same recursive product.
+> its own descendants. “Grant” and “supply” are at most aliases or conversion-free role views over the
+> same recursive product; paired newtypes requiring conversion do not satisfy the law.
 
 ## 14.7 Continuous/Discrete Authority Law
 
@@ -1599,7 +1665,8 @@ canonization.
 > Germ Self-Consumption closes each recursive product port under itself; it does not by itself prove
 > that demand, continuous allocation, exact supply, placement geometry, replay, or observation must
 > all share one universal type. Broader type collapse requires independent semantic proof and DA/Owner
-> review.
+> review. The specific signed-RF `T_s == T_d` possibility is therefore a candidate to prove or falsify,
+> not an implied consequence of 14.15.
 
 ---
 
@@ -1634,10 +1701,13 @@ The draft is falsified or remanded if implementation:
 25. prunes raw U/pressure or impairment visibility merely because a branch is currently choked;
 26. inserts any semantic adapter/conversion/projection between recursive exact output `T_s` and next-level exact intake `T_s`;
 27. routes first-order unresolved demand through an authored persistence/overlay bridge before it can exist again as recursive demand;
-28. uses separate `GrantRow` and `ChildSupplyRow` semantic ABIs requiring conversion rather than role views over one canonical product;
+28. uses separate `GrantRow` and `ChildSupplyRow` semantic ABIs requiring conversion rather than aliases or truly conversion-free views over one canonical product;
 29. validates at runtime that two recursive product types “match” instead of making the mismatch unrepresentable;
 30. silently assumes Draw and Need are one type without proving that Draw is not merely authorization metadata;
-31. silently collapses demand and supply into one universal type without independent semantic proof.
+31. silently collapses demand and supply into one universal type without independent semantic proof;
+32. uses paired role newtypes connected by `From`, `Into`, constructors, copies, or projection kernels to simulate self-consumption while preserving two recursive product types;
+33. changes the economic payload type when exact constrained supply crosses a detached subtree seam, even if serialization/realm/stamp wrappers are otherwise lawful;
+34. discovers a settled-code recursive-port mismatch and leaves it neither fixed in-flight nor recorded as dated constitutional debt with an owner and retirement condition.
 
 ---
 
@@ -1663,9 +1733,10 @@ The draft is falsified or remanded if implementation:
 18. What existing exact type(s) currently stand on each side of settlement output and child supply intake, and what conversions exist between them?
 19. Does `AllocatedFlow` pass from child receipt to child allocator use without a copy/project/retype into separate “available supply” state?
 20. Can upward demand and unresolved-next-generation demand be proven to share one recursive quantity/product authority `T_d`?
-21. **DA/OWNER REVIEW:** are `T_s` and `T_d` intentionally distinct closed product algebras, or does the landed signed-RF substrate already prove they are one conserved product with different signs/roles?
+21. **DA/OWNER REVIEW — signed-RF unification candidate:** does the landed signed RF/Gu-Yang quantity substrate prove that `T_s` and `T_d` are one conserved product with opposite signs/roles, or are they intentionally distinct closed product algebras? Evidence must come from semantics and live consumers; elegance alone is insufficient.
 22. Which wrappers around `T_s` are pure authority/transport envelopes and which currently alter economic payload semantics?
 23. Does the 14.2 resident plan ABI risk freezing separate `ClaimRow`, `SupplyRow`, `GrantRow`, and `ChildSupplyRow` semantic ontologies before the recursive-port census resolves them?
+24. Which previously graduated RF-market-adjacent surfaces fail Germ Self-Consumption today, and for each is the lawful disposition in-flight fix, dated constitutional debt, or not-in-scope one-way boundary?
 
 ---
 
@@ -1681,6 +1752,7 @@ A reviewer should be able to answer **yes** to all of the following before promo
 - hard precedence stays distinct from continuous share;
 - exact settlement is a type-preserving quantizer, not a product translator;
 - exact parent output `T_s` is identical to child supply input `T_s`;
+- grant/supply role names are aliases or truly conversion-free views, never paired newtypes bridged by conversion;
 - first-order unresolved demand self-consumes into later recursive demand without authored bridging;
 - Draw and Need have one quantity authority even if Draw remains authorization metadata;
 - root and leaf are degenerate bindings of the interior germ, not separate market implementations;
@@ -1692,7 +1764,8 @@ A reviewer should be able to answer **yes** to all of the following before promo
 - market transparency is default and occlusion authored;
 - there is no same-generation re-clear loop;
 - async subtree, realm, schedule, and no-CPU-fallback laws remain intact;
-- seam wrappers preserve canonical economic payload type;
+- detached seams preserve the identical `T_s` economic payload under lawful wrappers;
+- any newly exposed settled-code mismatch is scheduled as in-flight repair or dated constitutional debt;
 - the neutral case reproduces the frozen clearing oracle;
 - the implementation deletes more vocabulary than it adds;
 - research math remains advisory until DA/Owner review and measured proof promote it.
@@ -1769,6 +1842,10 @@ parent reduce-up input T_d
 unresolved T_d at N
     ==
 first-order T_d pressure at N+1
+
+seam-wrapped T_s payload at source
+    ==
+seam-unwrapped T_s payload at destination
 ```
 
 That is the Phase-14 design target this workshop draft submits for DA/Owner review.
