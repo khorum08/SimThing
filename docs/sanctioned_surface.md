@@ -11,7 +11,7 @@ This digest is a derived context artifact for low-context agents. If it disagree
 | --- | --- | --- |
 | scripts/ci/allow/sealed_producers.txt | 25 | 6923796f3bacd3b27b29f778d5276c3f82a3a67c3f010c30f10b78de8a1866f6 |
 | scripts/ci/allow/inert_buffer_handles.txt | 2 | 9e2069fa5730f17cacde1c671ebc17beb59f50738d2dcb914bceae13f9b8b3a4 |
-| scripts/ci/allow/kernel_surface.txt | 324 | 4a9514f1fbc69fde180c485822005bb5d4ef5dfd46895c03c6900fbdd149f1c1 |
+| scripts/ci/allow/kernel_surface.txt | 325 | ffac809a72e0c423463c01c3960739ea374c1b22b509e072128a7417b6b254a2 |
 | scripts/ci/allow/sealed_types.txt | 19 | 9d427e3b41a586b06f24ca02cc45f78934237d2229b0c38d46e2a8a6ef5016be |
 | scripts/ci/allow/contention_mechanisms.txt | 9 | 1f9e930b44197d4254f46ea96328f814d9ba0f2dad06881c454aebc01c01d44b |
 | scripts/ci/scans.tsv | 24 | 36bf78ae4a81a9c49b570051a0f53cb10aa88ab5cf57faa0a05d83abfd068e79 |
@@ -372,6 +372,7 @@ This digest is a derived context artifact for low-context agents. If it disagree
 | ResidentClearingPlanError | authority-export | RESIDENT-CLEARING-PLAN-0 typed admission context seam and arithmetic refusal surface | retire when resident plan construction has no external caller | kernel_surface.txt |
 | ResidentClearingRanges | authority-export | RESIDENT-CLEARING-PLAN-0 typed range bundle consumed by the final GPU representation | retire when GPU ABI lowering is wholly kernel-internal | kernel_surface.txt |
 | ResidentClearingReplayEnvelope | authority-export | RESIDENT-CLEARING-PLAN-0 consumer-owned non-serde replay ceilings admitted before any wire-controlled reservation | retire when every replay consumer obtains the envelope through the standard session loader | kernel_surface.txt |
+| ResidentClearingReplayError | authority-export | RESIDENT-CLEARING-PLAN-0 typed transport-versus-plan replay refusal preserving domain variants and fields | retire when every replay consumer lowers through a session-owned transport adapter | kernel_surface.txt |
 | ResidentClearingRow | sealed-export | RESIDENT-CLEARING-PLAN-0 private-field canonical four-axis ordinal row minted only by plan construction | retire when GPU ABI lowering is wholly kernel-internal | kernel_surface.txt |
 | ResidentDrawId | authority-export | RESIDENT-CLEARING-PLAN-0 typed semantic draw identity input | retire when draw identity lowers through a narrower kernel door | kernel_surface.txt |
 | ResidentDrawOrdinal | sealed-export | RESIDENT-CLEARING-PLAN-0 private-constructor destination-local draw ordinal | retire when GPU ABI lowering is wholly kernel-internal | kernel_surface.txt |

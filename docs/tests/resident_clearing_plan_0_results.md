@@ -10,6 +10,7 @@
 **Narrow remand:** Board comment `5480270212` under DA ruling `5480224895`
 **Continuation remand:** Board comment `5481459059` under DA ruling `5481435541`
 **Target C remand:** Board comment `5482524832` under DA ruling `5482369734`
+**Target D remand:** Board comment `5483265699` under DA ruling `5483217338`
 **Exact dispatch master:** `d78334d0fda287c829d4dd63c30b834c88b1f3ed`  
 **Authored handoff base:** `2ba6e28cd4ba83a52a5b0fa99a4a299ca31ae9d6`  
 **pre-remand head:** `545eb3dc09f51b89f72ab7b391784124ad119e37`
@@ -18,6 +19,8 @@
 **continuation A/B source commit:** `6649589388a8e440949638a8ce778999ddc97c31`
 **target C old head:** `3043a89e7ad78889a435604ab5ca0e36e0c88ccf`
 **target C source commit:** `c2e63c3d65a5aa0dac6ba55c89da6828cb05034f`
+**target D old head:** `6b42b2f2f5a957ecab6f3ffc9d07f5ff90902e20`
+**target D source commit:** `77c10b1be5afb869afbb296e321025bd4c439eb3`
 **HD-RECEIPT:** `0417d2e81c96`  
 **ORIENT-RECEIPT:** `abd383d5c8c6`  
 **orientation_rule_stamp:** `6550f3a270f552cc`  
@@ -60,7 +63,7 @@ source edits.
 | Crate | New owned surface | Role |
 |---|---|---|
 | `simthing-core` | `TreeRealmId`, `ExecutionIncarnation`, `TreeGenerationAuthority`, `TreeExecutionAuthority`, opaque `TreeExecutionContext`, `TreeExecutionBinding`, `RealmQualified<T>`, `SeamEmissionOrdinal`, `SeamFactId`, `SeamFact<T>`, typed errors | one private live authority capsule borrowing the real attachments; durable realm/local identity; non-convertible deferred emission ordinal; live-incarnation-checked destination remap |
-| `simthing-kernel` | typed owner/resource/scope/draw ids and ordinals, `DenseOrdinalRange`, admitted budgets, consumer-owned non-serde replay envelope, canonical dictionaries/rows, `ResidentPlanContext`, `SemanticPlanDigest`, `ResidentClearingPlan` and checked binding/errors | concrete reusable deterministic resident economic-resolution plan germ |
+| `simthing-kernel` | typed owner/resource/scope/draw ids and ordinals, `DenseOrdinalRange`, admitted budgets, consumer-owned non-serde replay envelope, typed transport/domain replay error, canonical dictionaries/rows, `ResidentPlanContext`, `SemanticPlanDigest`, `ResidentClearingPlan` and checked binding/errors | concrete reusable deterministic resident economic-resolution plan germ |
 | `simthing-gpu` | stable POD header/owner/id/row types, seven checked descriptors, `ResidentClearingAbi`, tree-bound owner, private `ResidentClearingBuffers`, `ResidentGenerationAdvance`, typed errors | final physical representation, instance-owned storage, and no-allocation transient header advance; no pipeline, shader, encoder, or dispatch |
 | `simthing-workshop` | `ResidentClearingPlanObservation` and one observation function | consumer only; no plan construction, sorting, layout, allocation, or algorithm |
 
@@ -190,7 +193,7 @@ calling the sole public replay door:
 ResidentClearingPlan::replay_with_budget_envelope<'de, D>(
     trusted: ResidentClearingReplayEnvelope,
     deserializer: D,
-) -> Result<ResidentClearingPlan, D::Error>
+) -> Result<ResidentClearingPlan, ResidentClearingReplayError<D::Error>>
 where D: serde::Deserializer<'de>
 ```
 
@@ -238,6 +241,52 @@ packet admitted by a consumer envelope remains byte- and digest-identical.
 The six tiny-budget malformed-tail first-excess tests remain unchanged in
 meaning and now also call the trusted door explicitly.
 
+## Target D typed replay error channel
+
+Serde's private visitor boundary still requires its concrete deserializer
+error while it is walking the packet. A private `RefCell<Option<_>>` slot sits
+beside the seeded visitor and records any plan-domain refusal before returning
+through that boundary. The public door immediately recovers the untouched
+domain value; the internal sentinel text is never exposed as caller authority.
+Failures produced after the wire DTO is complete map directly to the same
+domain arm.
+
+```text
+pub enum ResidentClearingReplayError<E> {
+    Transport(E),
+    Plan(ResidentClearingPlanError),
+}
+```
+
+All domain-producing visitor paths use the slot: trusted-envelope admission,
+bounded-sequence host representation/reservation/exact-capacity checks,
+first-excess count or semantic-byte refusal, and variable payloads appearing
+before budgets. `ResidentClearingPlan::from_wire` errors—including version,
+range, budget, malformed wire, canonical-byte, digest, context, dictionary,
+and ordinary reconstruction errors—map directly to `Plan`. Genuine serde
+syntax/type/field failures with no stashed domain refusal remain
+`Transport(D::Error)`.
+
+The focused witness performs only structural matches for Target D:
+
+- the all-large forged packet returns
+  `Plan(WireBudgetExceedsTrustedEnvelope { field: "max_owners", claimed:
+  1_000_000, admitted: 16 })` before its `BROKEN` tail;
+- all nine componentwise trusted-envelope refusals compare their public
+  variant fields directly;
+- a parsed canonical-byte mutation returns
+  `Plan(CanonicalBytesMismatch)`;
+- rows appearing before budgets return
+  `Plan(MalformedWire { field: "rows_before_budgets" })`;
+- the incomplete JSON payload `{` returns `Transport(serde_json::Error)`;
+- the six first-excess witnesses compare exact `CountBudgetExceeded` or
+  `SemanticPlanBudgetExceeded` values.
+
+No proof recovers identity or fields by parsing `Display`, `Debug`, or English.
+The admitted positive replay still equals the original plan and retains the
+same 308 canonical bytes and digest
+`a61ebfee74156dd1e39bb8c5ec089ca4`.
+
 ## ABI and budget proof
 
 Host admission reserves exactly `max_rows` rows after checked host narrowing,
@@ -282,7 +331,8 @@ corresponding proportional host/GPU allocation.
 | `ResidentClearingRanges` | custom DTO; every range revalidated and canonical zero starts required | overflowing/noncanonical ranges reject |
 | `ResidentClearingBudgets` | custom DTO reconstructed only through `new` | zero and scratch-inconsistent budgets reject |
 | `ResidentClearingReplayEnvelope` | public consumer-constructed outer ceilings; private fields and no serde | all nine wire claims compare against it before any variable sequence reservation |
-| `ResidentClearingPlan` | `Serialize` only; no context-free `Deserialize`; its public replay door requires the trusted envelope and uses a private seeded top-level visitor before the existing bounded visitors and ordinary reconstruction | pinned `compile_fail,E0277`; valid admitted roundtrip; nine componentwise outer-budget refusals; all-large forged budget plus malformed tail refuses at the budget block; six tiny first-excess packets and the prior malformed invariant census remain green |
+| `ResidentClearingReplayError<E>` | public generic `Transport(E)` / `Plan(ResidentClearingPlanError)` split | structural matches preserve exact trusted-envelope fields, canonical mismatch, malformed wire, and first-excess errors while incomplete JSON remains transport-typed |
+| `ResidentClearingPlan` | `Serialize` only; no context-free `Deserialize`; its public replay door requires the trusted envelope and uses a private seeded top-level visitor before the existing bounded visitors and ordinary reconstruction | pinned `compile_fail,E0277`; valid admitted roundtrip; nine structurally matched outer-budget refusals; all-large forged budget plus malformed tail refuses at the budget block; six structurally matched tiny first-excess packets and the prior malformed invariant census remain green |
 
 `ResidentPlanContext`, dictionaries, rows, ordinals, and digest expose no direct
 `Deserialize` derive that could bypass plan reconstruction. Simple authored
@@ -306,7 +356,7 @@ constructors carry no hidden invariant.
   was added.
 - Dispatch surface: no Cargo manifest/lockfile, WGSL, shader include,
   pipeline, command encoder, or `dispatch_workgroups` delta.
-- The governed `kernel_surface.txt` adds only the 21 deliberate 14.2 exports
+- The governed `kernel_surface.txt` adds only the 22 deliberate 14.2 exports
   with named promotion blockers, as required by Agent Scan;
   `docs/sanctioned_surface.md` is the mechanically regenerated digest of those
   same rows.
@@ -352,6 +402,8 @@ Source-versus-evidence commit map:
   `6649589388a8e440949638a8ce778999ddc97c31`
 - target C source and executable witness:
   `c2e63c3d65a5aa0dac6ba55c89da6828cb05034f`
+- target D replay-error source and executable witness:
+  `77c10b1be5afb869afbb296e321025bd4c439eb3`
 - evidence/governance tail and exact final head: carried by the PR relay after
   all local/hosted checks, avoiding a self-referential hash in this file
 

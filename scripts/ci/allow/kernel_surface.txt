@@ -312,6 +312,7 @@ ResidentClearingPlanBinding | sealed-export | RESIDENT-CLEARING-PLAN-0 checked r
 ResidentClearingPlanError | authority-export | RESIDENT-CLEARING-PLAN-0 typed admission context seam and arithmetic refusal surface | retire when resident plan construction has no external caller
 ResidentClearingRanges | authority-export | RESIDENT-CLEARING-PLAN-0 typed range bundle consumed by the final GPU representation | retire when GPU ABI lowering is wholly kernel-internal
 ResidentClearingReplayEnvelope | authority-export | RESIDENT-CLEARING-PLAN-0 consumer-owned non-serde replay ceilings admitted before any wire-controlled reservation | retire when every replay consumer obtains the envelope through the standard session loader
+ResidentClearingReplayError | authority-export | RESIDENT-CLEARING-PLAN-0 typed transport-versus-plan replay refusal preserving domain variants and fields | retire when every replay consumer lowers through a session-owned transport adapter
 ResidentClearingRow | sealed-export | RESIDENT-CLEARING-PLAN-0 private-field canonical four-axis ordinal row minted only by plan construction | retire when GPU ABI lowering is wholly kernel-internal
 ResidentDrawId | authority-export | RESIDENT-CLEARING-PLAN-0 typed semantic draw identity input | retire when draw identity lowers through a narrower kernel door
 ResidentDrawOrdinal | sealed-export | RESIDENT-CLEARING-PLAN-0 private-constructor destination-local draw ordinal | retire when GPU ABI lowering is wholly kernel-internal
