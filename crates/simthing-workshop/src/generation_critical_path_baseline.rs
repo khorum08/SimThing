@@ -189,7 +189,10 @@ pub struct WorkloadReport {
     pub legs: Vec<LegSamples>,
     pub enclosing_clear_ns: LegSamples,
     pub end_to_end_ns: LegSamples,
-    pub unattributed_remainder_ns: i64,
+    /// D6: per-sample residual = end_to_end[i] − Σ accounted_leg[i]. Not clamped.
+    pub observation_overhead_residual: LegSamples,
+    /// D6: median(end_to_end) − Σ median(accounted). Derived figure, not the residual.
+    pub difference_of_medians_ns: i64,
     pub reconciliation_note: String,
     pub isolation_matches_production: bool,
     pub neutrality_clears_identical: bool,
@@ -213,6 +216,7 @@ pub struct BaselinePacket {
     pub d1_signed_remainder_note: String,
     pub d2_envelope_shape: String,
     pub d3_nplus_boundary: String,
+    pub d6_residual_definition: String,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -293,6 +297,10 @@ pub fn leg_definitions() -> Vec<LegDefinition> {
             name: "next_generation_host_reclear",
             boundary: "D3 comparator: full clear_constrained_claims_at_generation of the same supplies/claims at generation+1. Not the N+1 launch delay.",
         },
+        LegDefinition {
+            name: "observation_overhead_residual",
+            boundary: "D6 samplewise residual: residual[i] = end_to_end[i] − Σ(E2E_ACCOUNTED_LEGS[i]). Signed i64; not clamped. Not the difference of medians.",
+        },
     ]
 }
 
@@ -317,6 +325,8 @@ pub fn path_diagram() -> String {
         "  instrument (D2 shape 2; inside e2e, named, not residual):",
         "    nested restatement pass                   [instrument_restatement = grouping+scoring+sorting+apportionment]",
         "    second uninstrumented production clear    [neutrality_reclear]",
+        "  D6 residual[i] = end_to_end[i] - Σ accounted_leg[i]  [observation_overhead_residual]",
+        "  difference_of_medians = median(e2e) - Σ median(accounted)  [derived figure, not residual]",
     ]
     .join("\n")
 }
@@ -419,6 +429,7 @@ pub fn run_generation_critical_path_baseline(
         ),
         d2_envelope_shape: D2_ENVELOPE_SHAPE.into(),
         d3_nplus_boundary: "n_plus_one_launch_delay = grants-available → generation+1 ClearingRemainderAuthority construction (GPU launch 0). next_generation_host_reclear = full ordinary-door re-clear at generation+1. cpu_schedule_replay_recording is not inside the N+1 delay (no overlap; next host clear does not require a schedule append).".into(),
+        d6_residual_definition: "observation_overhead_residual[i] = end_to_end[i] − Σ E2E_ACCOUNTED_LEGS[i] (claim_production_completion, instrument_restatement, enclosing_clear, n_plus_one_launch_delay, next_generation_host_reclear, cpu_schedule_replay_recording, lawful_structural_consequence, neutrality_reclear). Signed i64; not clamped. difference_of_medians_ns is median(e2e) − Σ median(accounted) and is not the residual.".into(),
     })
 }
 
@@ -774,11 +785,17 @@ fn measure_trees(
     let legs = acc.legs();
     let enclosing = acc.leg("enclosing_clear").expect("enclosing samples");
     let e2e = acc.leg("end_to_end").expect("e2e samples");
-    let accounted = E2E_ACCOUNTED_LEGS
+    let accounted_medians = E2E_ACCOUNTED_LEGS
         .iter()
         .map(|name| acc.median(name))
         .sum::<i64>();
-    let unattributed = e2e.median_ns - accounted;
+    let difference_of_medians = e2e.median_ns - accounted_medians;
+    let residual_samples = acc.samplewise_residual(&E2E_ACCOUNTED_LEGS);
+    let observation_overhead_residual = summarize(
+        "observation_overhead_residual",
+        &residual_samples,
+        isolation_note("observation_overhead_residual"),
+    );
     Ok(WorkloadReport {
         cardinalities,
         warm_up_count: warm,
@@ -787,8 +804,9 @@ fn measure_trees(
         legs,
         enclosing_clear_ns: enclosing,
         end_to_end_ns: e2e,
-        unattributed_remainder_ns: unattributed,
-        reconciliation_note: "D2 shape-2: instrument_restatement and neutrality_reclear are named instrument-only legs inside end-to-end. Residual = end_to_end − (claim_production + instrument_restatement + enclosing_clear + n_plus_one_launch_delay + next_generation_host_reclear + cpu_schedule_replay_recording + lawful_structural_consequence + neutrality_reclear). grouping/scoring/sorting/apportionment are components of instrument_restatement, not extra e2e work. grant_result_construction is the signed i64 remainder enclosing − those components (D1: negatives retained, no clamp) and is a partition of enclosing, not extra e2e work. GPU legs are door-absent 0. Residual is observation overhead; arithmetic is not forced-closed.".into(),
+        observation_overhead_residual,
+        difference_of_medians_ns: difference_of_medians,
+        reconciliation_note: "D6: observation_overhead_residual[i] = end_to_end[i] − Σ accounted_leg[i] over E2E_ACCOUNTED_LEGS; signed i64; not clamped; sample count equals workload N. difference_of_medians_ns = median(end_to_end) − Σ median(accounted) is a derived figure and is not the residual. D2 shape-2 accounted set: claim_production_completion, instrument_restatement, enclosing_clear, n_plus_one_launch_delay, next_generation_host_reclear, cpu_schedule_replay_recording, lawful_structural_consequence, neutrality_reclear. grouping/scoring/sorting/apportionment are components of instrument_restatement. grant_result_construction is a partition of enclosing.".into(),
         isolation_matches_production: isolation_ok,
         neutrality_clears_identical: neutrality_ok,
         overlapping_raw_value: overlapping_raw,
@@ -1201,6 +1219,27 @@ impl SampleAcc {
             .filter_map(|name| self.leg(name))
             .collect()
     }
+
+    fn samplewise_residual(&self, accounted: &[&str]) -> Vec<i64> {
+        let e2e = match self.values.get("end_to_end") {
+            Some(v) => v.as_slice(),
+            None => return Vec::new(),
+        };
+        let n = e2e.len();
+        let mut out = Vec::with_capacity(n);
+        for i in 0..n {
+            let mut sum = 0i64;
+            for name in accounted {
+                if let Some(series) = self.values.get(*name) {
+                    if i < series.len() {
+                        sum += series[i];
+                    }
+                }
+            }
+            out.push(e2e[i] - sum);
+        }
+        out
+    }
 }
 
 fn isolation_note(name: &str) -> String {
@@ -1225,6 +1264,9 @@ fn isolation_note(name: &str) -> String {
         }
         "neutrality_reclear" => {
             "D2 shape-2: second uninstrumented production-door clear inside e2e".into()
+        }
+        "observation_overhead_residual" => {
+            "D6 samplewise residual: end_to_end[i] − Σ accounted_leg[i]; signed i64; not clamped; not the difference of medians".into()
         }
         "claim_production_completion" => {
             "ConstrainedClaim::from_runtime_demand (ordinary per-tree admission)".into()

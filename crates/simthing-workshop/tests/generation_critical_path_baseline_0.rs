@@ -12,8 +12,8 @@ use std::sync::OnceLock;
 use simthing_workshop::generation_critical_path_baseline::{
     overlapping_id_fixture_proof, query_gpu_envelope, run_generation_critical_path_baseline,
     uninstrumented_clear_matches_instrumented, BaselinePacket, MeasurementEnvelope,
-    COMPARATOR_LEGS, D2_ENVELOPE_SHAPE, HOST_CLEARING_DOOR_CENSUS, INSTRUMENT_LEGS,
-    OVERLAPPING_RAW, REQUIRED_LEGS,
+    COMPARATOR_LEGS, D2_ENVELOPE_SHAPE, E2E_ACCOUNTED_LEGS, HOST_CLEARING_DOOR_CENSUS,
+    INSTRUMENT_LEGS, OVERLAPPING_RAW, REQUIRED_LEGS,
 };
 
 fn git_head() -> String {
@@ -286,6 +286,54 @@ fn measurement_packet_contains_all_required_legs_envelope_and_workloads() {
         assert!(workload.enclosing_clear_ns.sample_ns.len() == workload.sample_count);
         assert!(workload.end_to_end_ns.sample_ns.len() == workload.sample_count);
         assert!(workload.neutrality_clears_identical);
+        assert_eq!(
+            workload.observation_overhead_residual.sample_ns.len(),
+            workload.sample_count
+        );
+        assert_eq!(
+            workload.residual_accounted_legs,
+            E2E_ACCOUNTED_LEGS
+                .iter()
+                .map(|s| (*s).to_string())
+                .collect::<Vec<_>>()
+        );
+        for i in 0..workload.sample_count {
+            let mut accounted = 0i64;
+            for name in E2E_ACCOUNTED_LEGS {
+                let series = if name == "enclosing_clear" {
+                    &workload.enclosing_clear_ns.sample_ns
+                } else if name == "end_to_end" {
+                    &workload.end_to_end_ns.sample_ns
+                } else {
+                    &workload
+                        .legs
+                        .iter()
+                        .find(|leg| leg.name == name)
+                        .unwrap_or_else(|| panic!("{} missing {name}", workload.cardinalities.name))
+                        .sample_ns
+                };
+                accounted += series[i];
+            }
+            assert_eq!(
+                workload.observation_overhead_residual.sample_ns[i],
+                workload.end_to_end_ns.sample_ns[i] - accounted,
+                "D6 same-sample residual mismatch at {}[{i}]",
+                workload.cardinalities.name
+            );
+        }
+        assert!(
+            !workload
+                .observation_overhead_residual
+                .isolation
+                .contains("difference of medians")
+                || workload
+                    .observation_overhead_residual
+                    .isolation
+                    .contains("not the difference of medians")
+        );
+        assert!(packet
+            .d6_residual_definition
+            .contains("observation_overhead_residual[i]"));
     }
     assert!(
         saw_negative_construction,

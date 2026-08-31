@@ -58,6 +58,10 @@ pub fn format_baseline_report(packet: &BaselinePacket) -> String {
         "## D3 N+1 boundary\n{}\n\n",
         packet.d3_nplus_boundary
     ));
+    out.push_str(&format!(
+        "## D6 samplewise residual\n{}\n\n",
+        packet.d6_residual_definition
+    ));
 
     for workload in &packet.workloads {
         out.push_str(&format_workload(workload));
@@ -109,9 +113,10 @@ fn format_workload(workload: &WorkloadReport) -> String {
     for leg in &workload.legs {
         out.push_str(&format_leg(leg));
     }
+    out.push_str(&format_leg(&workload.observation_overhead_residual));
     out.push_str(&format!(
-        "unattributed_remainder_ns={}\nreconciliation: {}\n",
-        workload.unattributed_remainder_ns, workload.reconciliation_note
+        "difference_of_medians_ns={} (derived figure; not the residual)\nreconciliation: {}\n",
+        workload.difference_of_medians_ns, workload.reconciliation_note
     ));
     if let Some(raw) = workload.overlapping_raw_value {
         out.push_str(&format!(
