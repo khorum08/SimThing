@@ -187,6 +187,26 @@ out-of-bounds placement is an invariant breach. Detachment alone does not releas
 Death/dissolution releases; fission/fusion partition or transfer exactly; termination is explicit.
 No allocator path exists outside a SimThing disbursing admitted capacity through RF.
 
+### 1.5.1 The germ self-consumption law (Owner-ruled 2026-08-31)
+
+A recursive StemCell germ facility is necessarily its own consumer: its emission at one tree level
+IS its intake at the next. Every germ facility is therefore input/output symmetrical in its
+constrained-product vocabulary — the settlement/emission product type is IDENTICAL to the
+supply/intake type, one type under at most two role names. Any adapter, conversion, or projection
+between a germ's output port and its own input port one level down is a STOP-grade defect: an
+adapter at the germ replicates at every level of every tree in every domain. Enforcement is the
+type identity itself, never a guard scan.
+
+Scope: facilities every StemThing carries fractally (the section-12 market germ is the archetype).
+One-way non-germ doors — oracles, replay/persistence, observation egress — have external consumers
+by design and are out of scope. Corollaries: the recursion is the consumer, so the canonical
+witness for a germ facility is recursive self-consumption across at least two tree levels and the
+exact-consumer obligation is discharged intrinsically; the root's intake port binds authored
+supply and the leaf's settlement port binds actuation — same ports everywhere, self-bound in the
+interior; a seam to a detached subtree carries the SAME type, so self-consumption survives
+detachment; a zero-production-consumer posture on a germ candidate is probation scaffolding whose
+consumer of record is the germ itself one level down. Mint record: Board #1332 comment 5483829845.
+
 ### 1.6 Anchor lifecycle and repoint law
 
 A doctrine anchor is an index into in-tree canonical law, not a second constitution. A pending
@@ -546,6 +566,7 @@ Stop and escalate when a change does any of the following:
 19. binds two trees' generation clocks outside a declared common-lineage seam;
 20. adds identity, realm, host, or device weight to base SimThing anatomy;
 21. rides a conserved or simulation-authoritative seam fact on a lossy observer surface.
+22. inserts an adapter between a germ facility's emission and its own intake one level down.
 
 ### 9.1 Rejected rival shapes
 
