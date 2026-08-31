@@ -36,13 +36,14 @@
 > normative physics into the germ. Every §9 candidate remains subordinate to landed semantics,
 > source archaeology, measured performance, and DA/Owner review.
 >
-> **Latest amendment — DA review closure of recursive-germ residuals.** The full conformance pass is
-> retained, with three sharpenings: role names over a self-consuming product must be aliases or truly
-> conversion-free views rather than paired newtypes bridged by `From`/`Into`; the possible `T_s`/`T_d`
-> collapse is now an explicit signed-RF archaeology candidate rather than an aesthetic suggestion; and
-> detached seams are explicitly falsified if they translate the economic payload. A settled-code
-> recursive-port census is also named as an edict obligation so any newly exposed historical mismatch
-> becomes dated constitutional debt rather than an unscheduled surprise.
+> **Latest amendment — DA review closure + neutral-weight Owner resolution.** The full recursive-germ
+> conformance pass and DA addenda remain binding design input: conversion-newtype loopholes are closed,
+> signed-RF `T_s`/`T_d` unification remains a prove-or-falsify candidate, detached seams preserve the
+> same economic payload, and settled-code mismatches become scheduled constitutional debt. The Owner
+> has now also resolved the previously-open neutral pressure→weight question: the neutral transform is
+> identity over the already-resolved commitment-class-appropriate pressure quantity—serviceable
+> pressure `F` for immediately executable flow, raw lawful pressure `P` for entitlement-first flow.
+> Authored policy deforms that baseline; it does not create it.
 
 ---
 
@@ -242,20 +243,36 @@ not a runtime field-kind branch. See
 The mirror closes only when unresolved branch pressure influences the later continuous allocation to
 that branch.
 
-Conceptually:
+The neutral germ does not invent a nonlinear pressure transform. It consumes the already-resolved
+pressure quantity appropriate to the commitment class:
 
 ```math
-W_{p\rightarrow c,N+1}
+W_i^{neutral}
 =
-G\!\left(
-P_{p\rightarrow c,N+1},
-Policy_{p\rightarrow c,N+1},
-Triad_{p\rightarrow c,N+1}
-\right)
+\begin{cases}
+F_i, & \text{immediately executable flow}\\
+P_i, & \text{entitlement then deliver}
+\end{cases}
 ```
 
-where `W` is the already-existing `AllocatorWeight` or a proved equivalent—not a new clearing-owned
-weight.
+where `P_i` is raw lawful branch pressure and `F_i` is the already-born Gu-Yang-serviceable pressure.
+The unauthored transform is therefore identity:
+
+```math
+w_i^{neutral}=P_i^{eligible}.
+```
+
+Authored policy, where present, deforms the baseline rather than creates it:
+
+```math
+w_i
+=
+PolicyTransform\!\left(w_i^{neutral}\right).
+```
+
+This is deliberately downstream of Field-Triad emergence. PALMA impedance and Gu-Yang realizability
+already embodied in `P_i^{eligible}` or the resulting continuous flow are not recomputed or multiplied
+in again by settlement.
 
 The resulting continuous child allocation may retain the existing guarded share form:
 
@@ -267,12 +284,34 @@ S_p
 {\sum_j W_{p\rightarrow j}}
 ```
 
-subject to lawful request, PALMA reach/impedance, and Gu-Yang serviceability or commitment semantics.
+subject to lawful request and the already-resolved commitment/serviceability semantics.
+
+In the ordinary unblocked neutral case:
+
+```math
+F_i=P_i=r_i,
+```
+
+so:
+
+```math
+w_i^{neutral}=r_i
+```
+
+and therefore:
+
+```math
+x_i
+=
+S\frac{r_i}{\sum_j r_j},
+```
+
+which exactly recovers the frozen proportional-by-request neutral clearing law.
 
 The required native behavior is:
 
 ```text
-larger unresolved lawful branch pressure
+larger unresolved lawful eligible branch pressure
         ↓
 stronger later continuous allocation pressure for that branch
         ↓
@@ -547,6 +586,11 @@ weight-sum / child-share / AllocatedFlow
 The implementation must determine whether this already exists as production authority, is wired but
 not default, is proof/preview residue, or is genuinely missing.
 
+The neutral first-order binding is no longer an open transform: absent authored policy, the existing
+weight/share operand receives the commitment-class-appropriate eligible pressure unchanged (`F` for
+immediately executable flow; `P` for entitlement-first flow). If archaeology proves that `AllocatedFlow`
+already embodies this exact interpretation upstream, no additional weight materialization is warranted.
+
 ## 4.5 Grant lifecycle and holding accounts
 
 The current grant-lifecycle substrate already provides exact relationship facts and the conserved
@@ -607,15 +651,19 @@ but may not translate `T_s` into a different economic payload for the destinatio
 For claim `i`, explanatory terms are:
 
 - `r_i`: lawful requested quantity;
-- `a_i`: current serviceable quantity under route/channel constraints;
-- `p_i`: branch-attributed unresolved lawful pressure;
+- `P_i`: raw lawful branch pressure;
+- `F_i`: current Gu-Yang-serviceable pressure for immediately executable flow;
 - `x_i`: continuous provisional allocation emitted by the RF/Triad disbursement program;
 - `g_i`: exact integer quantity carried by the canonical exact constrained product `T_s`.
 
-The intended constraints are:
+For an immediately executable commitment, the eligible pressure is `F_i`; for entitlement-first
+commitment, eligible pressure is `P_i`. The neutral weight is the identity projection of that eligible
+pressure.
+
+The intended constraints for immediately executable flow are:
 
 ```math
-0 \le x_i \le a_i \le r_i
+0 \le x_i \le F_i \le P_i
 ```
 
 and:
@@ -626,10 +674,11 @@ and:
 
 for exact supply `S` at the governing parent.
 
-Holding policy and serviceability equal, native pressure should be monotone in continuous share:
+Holding policy and serviceability equal, native eligible pressure should be monotone in continuous
+share:
 
 ```math
-p_i' > p_i
+P_i^{eligible\,'} > P_i^{eligible}
 \quad\Longrightarrow\quad
 x_i' \ge x_i
 ```
@@ -704,16 +753,24 @@ The hard-precedence authority must be found in existing `OrderBand`, demand prio
 surfaces. The continuous allocation must be found in existing `AllocatedFlow` or a proved existing RF
 post/fold result.
 
-The generalized law must contain the frozen neutral case:
+The generalized law contains the frozen neutral case without a compatibility branch:
 
 ```text
 one neutral precedence class
-continuous share basis = lawful requested quantity
+neutral transform = identity
+eligible pressure = F for immediate-flow, P for entitlement-first
+ordinary unblocked case: F = P = requested quantity
 exact settlement = current proportional-by-request law
 largest remainder + generation-rotated exact ties
 ```
 
-The exact neutral pressure→weight transform remains an Owner ruling (§16).
+Thus in the ordinary unblocked neutral case:
+
+```math
+x_i
+=
+S\frac{r_i}{\sum_j r_j}.
+```
 
 ---
 
@@ -722,22 +779,26 @@ The exact neutral pressure→weight transform remains an Owner ruling (§16).
 ## 7.1 Impaired lawful demand — before settlement
 
 ```math
-U_i^{impairment} = r_i - a_i
+U_i^{impairment} = P_i - F_i
 ```
 
-Lawful demand that cannot currently traverse the admitted route/channel.
+Lawful demand pressure that cannot currently traverse the admitted delivery route/channel for an
+immediately executable commitment. This is not yet a blocked grant.
 
 ## 7.2 Contention shortfall — at settlement
 
+For immediately executable flow, the physically serviceable quantity not receiving exact supply is:
+
 ```math
-U_i^{contention} = a_i - g_i
+U_i^{contention} = F_i - g_i
 ```
 
-Physically serviceable demand that did not receive exact supply.
+For entitlement-first flow, contention is measured against the lawful raw-pressure/request envelope
+admitted for settlement rather than current serviceability.
 
 ## 7.3 Delivery shortfall — after entitlement
 
-For exact grant quantity `g_i` and realized delivery `y_i`:
+For exact entitlement/grant quantity `g_i` and realized delivery `y_i`:
 
 ```math
 B_i^{delivery} = g_i - y_i
@@ -749,12 +810,17 @@ The true blocked legal grant where entitlement may exist before realization.
 
 ```text
 immediately executable flow
+    eligible pressure = F
     exact T_s quantity is capped by current Gu-Yang serviceability
 
 entitlement then deliver
+    eligible pressure = P
     exact T_s may enter in_flight
     Gu-Yang governs later realization
 ```
+
+Raw lawful pressure `P` remains visible in both cases. A downward Gu-Yang choke may drive `F` to zero;
+it must not silence `P` or erase scarcity information.
 
 ---
 
@@ -882,7 +948,8 @@ which yields the normalized share.
 
 **Engineering consequence:** if archaeology confirms `child_share_formula`/`AllocatedFlow` as the live
 continuous authority, the existing RF disbursement already has a standard welfare interpretation.
-Branch pressure can determine or deform `w_i` without inventing a new market solver.
+The neutral germ uses `w_i = P_i^{eligible}`; authored EML/policy may deform that already-existing
+baseline without inventing a new market solver.
 
 The broader alpha-fair family remains a research/policy candidate:
 
@@ -971,6 +1038,12 @@ a_i,
 \right).
 ```
 
+**Neutral-law caveat:** this optimization form is a research oracle, not the neutral germ definition.
+The neutral production law uses identity over already-resolved eligible pressure. If an oracle uses
+`Z_i` or another Triad term explicitly, it must prove that it is modeling an upstream continuous
+resolution not already embodied in `P_i^{eligible}`/`AllocatedFlow`; otherwise it double-counts the
+Triad.
+
 **Cap caveat:** once caps are active, `lambda` is not a claimant-local closed formula; it must be
 solved against the active set. Sort-based water filling is one conventional `O(n log n)` oracle
 realization, **not** a mandated resident algorithm. Active-set selection, monotone root search, or
@@ -1003,8 +1076,8 @@ A conductance-weighted rule such as:
 W_i \propto \frac{P_i}{Z_i}
 ```
 
-is a candidate EML policy only when units and semantics support the analogy. It is not universal
-substrate law.
+is a candidate authored EML policy only when units and semantics support the analogy. It is not the
+neutral germ law.
 
 The literal Ohm relation, where applicable, is:
 
@@ -1202,7 +1275,7 @@ reduce branch-attributed demand T_d upward
     ↓
 resolve continuous fields
     ↓
-map pressure/policy into existing allocation surfaces
+map eligible pressure/policy into existing allocation surfaces
     ↓
 disburse continuous allocation downward
     ↓
@@ -1253,7 +1326,8 @@ MISSING — STOP FOR OWNER/DA RULING
 |---|---|---|---|
 | Upward lawful demand quantity | `IntrinsicFlow`, `Balance`, owner-channel deficit/Need | **REUSE WITH BINDING** | One authoritative recursive quantity/product lane; Draw may authorize it but may not duplicate its quantity authority |
 | Branch-attributed subtree pressure | direct-child RF segment over `Need`/`Balance`/`U` | **REUSE WITH BINDING** or **MISSING — STOP** | One aggregate per direct child branch, zero descendant double count, zero host scan |
-| Branch pressure → continuous allocation | `Need`/`Balance`/`U` → `AllocatorWeight` or existing share operand | **REUSE WITH BINDING** or **MISSING — STOP** | Greater unresolved branch pressure informs later share when policy/serviceability are equal |
+| Neutral pressure→weight binding | raw `P`, Gu-Yang-serviceable `F`, existing `AllocatorWeight`/share operand | **REUSE WITH BINDING** | Identity transform: `F` for immediate-flow, `P` for entitlement-first; no policy required; no double application of PALMA/Gu-Yang |
+| Branch pressure → continuous allocation | `Need`/`Balance`/`U` → `AllocatorWeight` or existing share operand | **REUSE WITH BINDING** or **MISSING — STOP** | Greater eligible branch pressure informs later share when policy/serviceability are equal |
 | Continuous child share | `child_share_formula` + `AllocatedFlow` | **REUSE WITH BINDING** | Prove units, sign, bounds, scope, pressure sensitivity, post-Triad ordering, and direct self-consumption at the next allocator level |
 | PALMA vertical path cost | existing `D`/impedance + tree adjacency | **REUSE AS-IS** or **REUSE WITH BINDING** | Tree-vertical specialization only where unique-path semantics hold |
 | Gu-Yang vertical serviceability | available/realized flux, net/gross/stall/saturation | **REUSE WITH BINDING** | Prove branch-local serviceability and classify directional vs symmetric capacity |
@@ -1399,6 +1473,7 @@ Add the surface-reuse matrix **and recursive-port census** and require:
 - proof whether Draw quantity lowers into or merely authorizes one ordinary demand product;
 - complete leaf → branch → parent allocation trace;
 - proof whether branch pressure informs `AllocatorWeight` or another existing share operand;
+- proof that the neutral pressure→weight binding is identity over commitment-class-appropriate eligible pressure (`F` immediate, `P` entitlement-first) and does not duplicate PALMA/Gu-Yang work;
 - proof whether first-order unresolved demand persists directly or currently relies on an authored bridge;
 - classification of tree-vertical PALMA and Gu-Yang bindings;
 - settlement-product / supply-intake type identity under Germ Self-Consumption;
@@ -1520,13 +1595,14 @@ and prove:
 
 1. A's descendants create greater unresolved lawful pressure.
 2. That pressure reduces once into A's branch aggregate.
-3. A receives a larger continuous share in a later generation under the adjudicated neutral law.
-4. Exact settlement follows that share.
-5. A's exact `T_s` becomes A's supply with no semantic adapter.
-6. A subdivides the same `T_s` vocabulary toward its own children.
-7. Unresolved `T_d` re-enters later demand directly.
-8. No descendant row is double-counted.
-9. No physical row, upload order, claim arrival, CPU table, or adapter determines the result.
+3. A receives a larger continuous share in a later generation under the neutral identity law.
+4. For immediate-flow, the comparison is made on eligible serviceable pressure `F`; for entitlement-first, on raw lawful pressure `P`.
+5. Exact settlement follows that share.
+6. A's exact `T_s` becomes A's supply with no semantic adapter.
+7. A subdivides the same `T_s` vocabulary toward its own children.
+8. Unresolved `T_d` re-enters later demand directly.
+9. No descendant row is double-counted.
+10. No physical row, upload order, claim arrival, CPU table, or adapter determines the result.
 
 Also retain:
 
@@ -1556,9 +1632,9 @@ vendorized oracle posture, never automatic fallback.
 
 # 14. Candidate binding laws
 
-These are workshop integration candidates except where an external Board mint is explicitly named.
-DA/Owner review may narrow wording, move a clause to an existing canonical law, or reject a candidate
-without invalidating unrelated sections.
+These are workshop integration candidates except where an external Board mint or Owner ruling is
+explicitly named. DA/Owner review may narrow wording, move a clause to an existing canonical law, or
+reject a research interpretation without invalidating unrelated sections.
 
 ## 14.1 RF Market Mirror Law
 
@@ -1668,6 +1744,19 @@ canonization.
 > review. The specific signed-RF `T_s == T_d` possibility is therefore a candidate to prove or falsify,
 > not an implied consequence of 14.15.
 
+## 14.17 Neutral Pressure-Weight Law — Owner-resolved workshop binding
+
+> The unauthored continuous-allocation weight is the identity projection of the already-resolved
+> eligible RF pressure. For immediately executable commitments, eligible pressure is current
+> Gu-Yang-serviceable pressure `F`; for entitlement-first commitments, eligible pressure is raw lawful
+> pressure `P`. Authored EML/policy may deform this baseline but is not required to create it. PALMA
+> and Gu-Yang effects already embodied in eligible pressure or `AllocatedFlow` are never recomputed or
+> multiplied into the weight a second time. In the ordinary unblocked neutral case `F = P = requested`,
+> so the law reduces exactly to the frozen proportional-by-request clearing result.
+
+This section records the Owner's explicit design resolution from the current design session. It remains
+workshop wording until the DA folds it into the Phase-14 edict/canonical law.
+
 ---
 
 # 15. Falsifiers and remand conditions
@@ -1707,11 +1796,13 @@ The draft is falsified or remanded if implementation:
 31. silently collapses demand and supply into one universal type without independent semantic proof;
 32. uses paired role newtypes connected by `From`, `Into`, constructors, copies, or projection kernels to simulate self-consumption while preserving two recursive product types;
 33. changes the economic payload type when exact constrained supply crosses a detached subtree seam, even if serialization/realm/stamp wrappers are otherwise lawful;
-34. discovers a settled-code recursive-port mismatch and leaves it neither fixed in-flight nor recorded as dated constitutional debt with an owner and retirement condition.
+34. discovers a settled-code recursive-port mismatch and leaves it neither fixed in-flight nor recorded as dated constitutional debt with an owner and retirement condition;
+35. requires authored policy merely to make lawful pressure influence neutral allocation;
+36. applies PALMA impedance, Gu-Yang serviceability, or another already-resolved Triad factor a second time inside the neutral weight/settlement path.
 
 ---
 
-# 16. Open evidence, Owner rulings, and performance questions
+# 16. Open evidence, resolved Owner rulings, and performance questions
 
 1. Is `AllocatedFlow` the complete continuous settlement input and directly self-consuming at the next allocator level?
 2. Which existing lane owns branch pressure, and which binding maps it into allocation?
@@ -1728,7 +1819,7 @@ The draft is falsified or remanded if implementation:
 13. Does active-segment dispatch pruning outperform dense resident execution after compaction/indirect-dispatch overhead?
 14. Does the proportional-fair interpretation match the exact semantics of the existing `child_share_formula`, including guards, caps, and sign behavior?
 15. Would an alpha-fair or impedance-penalized EML policy improve domain behavior without instability or replay drift?
-16. **OWNER RULING — neutral pressure-to-weight transform:** what is the neutral `w_i(P_i)` when no policy is authored? Native feedback requires a default and therefore defines innate germ behavior. This is not archaeology.
+16. **RESOLVED OWNER RULING — neutral pressure-to-weight transform:** identity over already-resolved eligible pressure. `F` is the neutral basis for immediately executable flow; `P` is the neutral basis for entitlement-first flow. Authored policy deforms the identity baseline; it does not create first-order weight. Archaeology must now prove the landed RF/Triad surfaces can express this without duplicate computation or state.
 17. Is vertical Gu-Yang capacity/conductance symmetric or directionally authored per edge/resource class?
 18. What existing exact type(s) currently stand on each side of settlement output and child supply intake, and what conversions exist between them?
 19. Does `AllocatedFlow` pass from child receipt to child allocator use without a copy/project/retype into separate “available supply” state?
@@ -1737,6 +1828,7 @@ The draft is falsified or remanded if implementation:
 22. Which wrappers around `T_s` are pure authority/transport envelopes and which currently alter economic payload semantics?
 23. Does the 14.2 resident plan ABI risk freezing separate `ClaimRow`, `SupplyRow`, `GrantRow`, and `ChildSupplyRow` semantic ontologies before the recursive-port census resolves them?
 24. Which previously graduated RF-market-adjacent surfaces fail Germ Self-Consumption today, and for each is the lawful disposition in-flight fix, dated constitutional debt, or not-in-scope one-way boundary?
+25. Does the current resident pipeline expose `F` and `P` at the exact stage needed for neutral identity weighting, or is equivalent semantics already embodied in `AllocatedFlow` so no explicit weight assignment should materialize?
 
 ---
 
@@ -1746,6 +1838,8 @@ A reviewer should be able to answer **yes** to all of the following before promo
 
 - one receive/resolve/settle/disburse RF market cycle, not a clearing subsystem;
 - branch pressure is preserved per direct child and influences later allocation;
+- neutral pressure→weight behavior is defined without authored policy: identity over `F` for immediate-flow and `P` for entitlement-first;
+- already-resolved PALMA/Gu-Yang effects are not double-applied in weighting or settlement;
 - no descendant double counting;
 - `AllocatedFlow` is reused or disproven before a replacement is named;
 - continuous RF output self-consumes directly at the next allocator level;
@@ -1798,13 +1892,15 @@ outside recursive self-consumption scope.
 # 19. Proposed final synthesis
 
 > **Every StemThing is an RF market germ. Descendant need, deficit, and unresolved pressure reduce
-> upward with direct-child branch attribution. At each governing parent, that pressure natively
-> informs later continuous allocation through the existing RF/Field-Triad surfaces. Continuous flow
-> disburses downward; exact settlement type-preservingly quantizes that flow into the same exact
-> constrained product the child consumes as its own supply; the child then repeats the identical germ
-> with its descendants. First-order unresolved demand likewise re-enters the same recursive demand
-> authority in later state. Receiving, market guidance, settlement, and disbursement are not peer
-> facilities but stages of one self-consuming recursive market operator.**
+> upward with direct-child branch attribution. At each governing parent, already-resolved eligible
+> pressure natively becomes the neutral continuous allocation weight by identity—serviceable `F` for
+> immediately executable flow, raw lawful `P` for entitlement-first flow—subject only to explicit
+> authored deformation. Continuous flow disburses downward; exact settlement type-preservingly
+> quantizes that flow into the same exact constrained product the child consumes as its own supply;
+> the child then repeats the identical germ with its descendants. First-order unresolved demand
+> likewise re-enters the same recursive demand authority in later state. Receiving, market guidance,
+> settlement, and disbursement are not peer facilities but stages of one self-consuming recursive
+> market operator.**
 
 The research interpretation remains a non-normative scientific gloss:
 
@@ -1817,6 +1913,9 @@ PALMA
 
 Gu-Yang
     feasible capacity envelope
+
+neutral weight
+    identity over already-resolved eligible pressure
 
 existing proportional-fair-shaped RF disbursement
     smooth continuous allocation
