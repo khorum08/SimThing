@@ -33,6 +33,7 @@ pub mod simthing;
 pub mod slot_index;
 pub mod specialization;
 pub mod structural_coord;
+pub mod tree_execution_context;
 
 pub use accumulator_op::{
     AccumulatorOp, AccumulatorOpError, CombineFn, ConsumeMode, GateSpec, InputSpec, ScaleSpec,
@@ -177,3 +178,7 @@ pub use specialization::{
     PROFILE_SPATIAL,
 };
 pub use structural_coord::{RenderCoord, StructuralCoord};
+pub use tree_execution_context::{
+    ExecutionIncarnation, RealmQualified, SeamFact, SeamFactId, TreeExecutionBinding,
+    TreeExecutionContext, TreeExecutionContextError, TreeIdentityError, TreeRealmId,
+};

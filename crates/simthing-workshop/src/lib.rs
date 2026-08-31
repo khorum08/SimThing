@@ -11,6 +11,7 @@ mod overlay_order_report;
 pub mod persistent_bench;
 mod persistent_bench_report;
 mod report;
+pub mod resident_clearing_plan;
 pub mod transfer_contention;
 mod transfer_contention_report;
 pub mod typeface;
