@@ -149,9 +149,9 @@ pub use resident_clearing_plan::{
     DenseOrdinalRange, ResidentClearingAdmission, ResidentClearingBudgets,
     ResidentClearingDictionaries, ResidentClearingPlan, ResidentClearingPlanBinding,
     ResidentClearingPlanError, ResidentClearingRanges, ResidentClearingReplayEnvelope,
-    ResidentClearingRow, ResidentDrawId, ResidentDrawOrdinal, ResidentOwnerId,
-    ResidentOwnerOrdinal, ResidentPlanContext, ResidentResourceId, ResidentResourceOrdinal,
-    ResidentScopeId, ResidentScopeOrdinal, SemanticPlanDigest,
+    ResidentClearingReplayError, ResidentClearingRow, ResidentDrawId, ResidentDrawOrdinal,
+    ResidentOwnerId, ResidentOwnerOrdinal, ResidentPlanContext, ResidentResourceId,
+    ResidentResourceOrdinal, ResidentScopeId, ResidentScopeOrdinal, SemanticPlanDigest,
 };
 pub use resolved::ResolvedGpuBuffers;
 pub use sealed::{

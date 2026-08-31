@@ -4,6 +4,7 @@
 //! intentionally contains no scoring, equality-band, apportionment, grant,
 //! dispatch, or structural-consequence implementation.
 
+use std::cell::RefCell;
 use std::collections::BTreeSet;
 
 use std::fmt;
@@ -365,6 +366,18 @@ pub struct ResidentClearingReplayEnvelope {
     admitted: ResidentClearingBudgets,
 }
 
+/// Typed failure returned by the trusted resident-plan replay door.
+///
+/// Transport syntax and deserializer failures remain distinct from plan-domain
+/// refusals, whose original variant and fields are preserved for callers.
+#[derive(Debug, Error)]
+pub enum ResidentClearingReplayError<E> {
+    #[error("resident clearing replay transport failure: {0}")]
+    Transport(E),
+    #[error(transparent)]
+    Plan(ResidentClearingPlanError),
+}
+
 impl ResidentClearingReplayEnvelope {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
@@ -630,12 +643,26 @@ impl ResidentClearingPlan {
     pub fn replay_with_budget_envelope<'de, D>(
         trusted: ResidentClearingReplayEnvelope,
         deserializer: D,
-    ) -> Result<Self, D::Error>
+    ) -> Result<Self, ResidentClearingReplayError<D::Error>>
     where
         D: Deserializer<'de>,
     {
-        let wire = ResidentClearingPlanWireSeed { trusted }.deserialize(deserializer)?;
-        Self::from_wire(wire).map_err(de::Error::custom)
+        let plan_error = RefCell::new(None);
+        let wire = ResidentClearingPlanWireSeed {
+            trusted,
+            plan_error: &plan_error,
+        }
+        .deserialize(deserializer);
+        let wire = match wire {
+            Ok(wire) => wire,
+            Err(transport) => {
+                return Err(match plan_error.into_inner() {
+                    Some(error) => ResidentClearingReplayError::Plan(error),
+                    None => ResidentClearingReplayError::Transport(transport),
+                });
+            }
+        };
+        Self::from_wire(wire).map_err(ResidentClearingReplayError::Plan)
     }
 
     fn build_from_context(
@@ -996,29 +1023,30 @@ enum WireSequenceLimit {
 }
 
 impl WireSequenceLimit {
-    fn capacity<E: de::Error>(self) -> Result<usize, E> {
+    fn capacity(self) -> Result<usize, ResidentClearingPlanError> {
         match self {
-            Self::Count { admitted, .. } => usize::try_from(admitted)
-                .map_err(|_| E::custom("wire count budget is not host-representable")),
-            Self::CanonicalBytes { admitted } => usize::try_from(admitted)
-                .map_err(|_| E::custom("wire canonical-byte budget is not host-representable")),
+            Self::Count { admitted, axis } => usize::try_from(admitted)
+                .map_err(|_| ResidentClearingPlanError::BudgetArithmeticOverflow { field: axis }),
+            Self::CanonicalBytes { admitted } => usize::try_from(admitted).map_err(|_| {
+                ResidentClearingPlanError::BudgetArithmeticOverflow {
+                    field: "canonical_bytes",
+                }
+            }),
         }
     }
 
-    fn first_excess<E: de::Error>(self) -> E {
+    fn first_excess(self) -> ResidentClearingPlanError {
         match self {
-            Self::Count { axis, admitted } => {
-                E::custom(ResidentClearingPlanError::CountBudgetExceeded {
-                    axis,
-                    observed: u64::from(admitted) + 1,
-                    admitted,
-                })
-            }
+            Self::Count { axis, admitted } => ResidentClearingPlanError::CountBudgetExceeded {
+                axis,
+                observed: u64::from(admitted) + 1,
+                admitted,
+            },
             Self::CanonicalBytes { admitted } => {
-                E::custom(ResidentClearingPlanError::SemanticPlanBudgetExceeded {
+                ResidentClearingPlanError::SemanticPlanBudgetExceeded {
                     required: admitted.saturating_add(1),
                     admitted,
-                })
+                }
             }
         }
     }
@@ -1031,21 +1059,35 @@ impl WireSequenceLimit {
     }
 }
 
-struct BoundedVecSeed<T> {
+fn stash_replay_plan_error<E: de::Error>(
+    slot: &RefCell<Option<ResidentClearingPlanError>>,
+    error: ResidentClearingPlanError,
+) -> E {
+    debug_assert!(slot.borrow().is_none());
+    slot.replace(Some(error));
+    E::custom("resident clearing replay plan-domain refusal")
+}
+
+struct BoundedVecSeed<'a, T> {
     limit: WireSequenceLimit,
+    plan_error: &'a RefCell<Option<ResidentClearingPlanError>>,
     marker: PhantomData<T>,
 }
 
-impl<T> BoundedVecSeed<T> {
-    const fn new(limit: WireSequenceLimit) -> Self {
+impl<'a, T> BoundedVecSeed<'a, T> {
+    const fn new(
+        limit: WireSequenceLimit,
+        plan_error: &'a RefCell<Option<ResidentClearingPlanError>>,
+    ) -> Self {
         Self {
             limit,
+            plan_error,
             marker: PhantomData,
         }
     }
 }
 
-impl<'de, T> DeserializeSeed<'de> for BoundedVecSeed<T>
+impl<'de, T> DeserializeSeed<'de> for BoundedVecSeed<'_, T>
 where
     T: Deserialize<'de>,
 {
@@ -1057,17 +1099,19 @@ where
     {
         deserializer.deserialize_seq(BoundedVecVisitor::<T> {
             limit: self.limit,
+            plan_error: self.plan_error,
             marker: PhantomData,
         })
     }
 }
 
-struct BoundedVecVisitor<T> {
+struct BoundedVecVisitor<'a, T> {
     limit: WireSequenceLimit,
+    plan_error: &'a RefCell<Option<ResidentClearingPlanError>>,
     marker: PhantomData<T>,
 }
 
-impl<'de, T> Visitor<'de> for BoundedVecVisitor<T>
+impl<'de, T> Visitor<'de> for BoundedVecVisitor<'_, T>
 where
     T: Deserialize<'de>,
 {
@@ -1085,22 +1129,29 @@ where
     where
         A: SeqAccess<'de>,
     {
-        let capacity = self.limit.capacity::<A::Error>()?;
+        let capacity = self
+            .limit
+            .capacity()
+            .map_err(|error| stash_replay_plan_error(self.plan_error, error))?;
         let mut values = Vec::new();
         values.try_reserve_exact(capacity).map_err(|_| {
-            de::Error::custom(format_args!(
-                "wire {} capacity {} cannot be reserved",
-                self.limit.label(),
-                capacity
-            ))
+            stash_replay_plan_error(
+                self.plan_error,
+                ResidentClearingPlanError::HostAdmissionCapacityUnavailable {
+                    field: self.limit.label(),
+                    requested: capacity,
+                },
+            )
         })?;
         if values.capacity() != capacity {
-            return Err(de::Error::custom(format_args!(
-                "wire {} reserved capacity {} exceeds exact admitted capacity {}",
-                self.limit.label(),
-                values.capacity(),
-                capacity
-            )));
+            return Err(stash_replay_plan_error(
+                self.plan_error,
+                ResidentClearingPlanError::HostAdmissionCapacityChanged {
+                    field: self.limit.label(),
+                    admitted: capacity,
+                    observed_capacity: values.capacity(),
+                },
+            ));
         }
 
         while values.len() < capacity {
@@ -1110,7 +1161,10 @@ where
             }
         }
         if sequence.next_element::<IgnoredAny>()?.is_some() {
-            return Err(self.limit.first_excess::<A::Error>());
+            return Err(stash_replay_plan_error(
+                self.plan_error,
+                self.limit.first_excess(),
+            ));
         }
         Ok(values)
     }
@@ -1125,11 +1179,12 @@ enum DictionariesWireField {
     Draws,
 }
 
-struct BoundedDictionariesSeed {
+struct BoundedDictionariesSeed<'a> {
     budgets: ResidentClearingBudgets,
+    plan_error: &'a RefCell<Option<ResidentClearingPlanError>>,
 }
 
-impl<'de> DeserializeSeed<'de> for BoundedDictionariesSeed {
+impl<'de> DeserializeSeed<'de> for BoundedDictionariesSeed<'_> {
     type Value = ResidentClearingDictionariesWire;
 
     fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
@@ -1141,16 +1196,18 @@ impl<'de> DeserializeSeed<'de> for BoundedDictionariesSeed {
             &["owners", "resources", "scopes", "draws"],
             BoundedDictionariesVisitor {
                 budgets: self.budgets,
+                plan_error: self.plan_error,
             },
         )
     }
 }
 
-struct BoundedDictionariesVisitor {
+struct BoundedDictionariesVisitor<'a> {
     budgets: ResidentClearingBudgets,
+    plan_error: &'a RefCell<Option<ResidentClearingPlanError>>,
 }
 
-impl<'de> Visitor<'de> for BoundedDictionariesVisitor {
+impl<'de> Visitor<'de> for BoundedDictionariesVisitor<'_> {
     type Value = ResidentClearingDictionariesWire;
 
     fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -1176,6 +1233,7 @@ impl<'de> Visitor<'de> for BoundedDictionariesVisitor {
                             axis: "owners",
                             admitted: self.budgets.max_owners(),
                         },
+                        self.plan_error,
                     ))?);
                 }
                 DictionariesWireField::Resources => {
@@ -1187,6 +1245,7 @@ impl<'de> Visitor<'de> for BoundedDictionariesVisitor {
                             axis: "resources",
                             admitted: self.budgets.max_resources(),
                         },
+                        self.plan_error,
                     ))?);
                 }
                 DictionariesWireField::Scopes => {
@@ -1198,6 +1257,7 @@ impl<'de> Visitor<'de> for BoundedDictionariesVisitor {
                             axis: "scopes",
                             admitted: self.budgets.max_scopes(),
                         },
+                        self.plan_error,
                     ))?);
                 }
                 DictionariesWireField::Draws => {
@@ -1209,6 +1269,7 @@ impl<'de> Visitor<'de> for BoundedDictionariesVisitor {
                             axis: "draws",
                             admitted: self.budgets.max_draws(),
                         },
+                        self.plan_error,
                     ))?);
                 }
             }
@@ -1235,15 +1296,17 @@ enum ResidentClearingPlanWireField {
     CanonicalBytes,
 }
 
-struct ResidentClearingPlanWireSeed {
+struct ResidentClearingPlanWireSeed<'a> {
     trusted: ResidentClearingReplayEnvelope,
+    plan_error: &'a RefCell<Option<ResidentClearingPlanError>>,
 }
 
-struct ResidentClearingPlanWireVisitor {
+struct ResidentClearingPlanWireVisitor<'a> {
     trusted: ResidentClearingReplayEnvelope,
+    plan_error: &'a RefCell<Option<ResidentClearingPlanError>>,
 }
 
-impl<'de> Visitor<'de> for ResidentClearingPlanWireVisitor {
+impl<'de> Visitor<'de> for ResidentClearingPlanWireVisitor<'_> {
     type Value = ResidentClearingPlanWire;
 
     fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -1285,7 +1348,11 @@ impl<'de> Visitor<'de> for ResidentClearingPlanWireVisitor {
                     // The fixed-size wire claim is compared componentwise to
                     // the independently constructed consumer envelope before
                     // any proportional sequence seed can reserve storage.
-                    budgets = Some(self.trusted.admit_wire(wire).map_err(de::Error::custom)?);
+                    budgets = Some(
+                        self.trusted
+                            .admit_wire(wire)
+                            .map_err(|error| stash_replay_plan_error(self.plan_error, error))?,
+                    );
                 }
                 ResidentClearingPlanWireField::Ranges => {
                     if ranges.is_some() {
@@ -1298,23 +1365,36 @@ impl<'de> Visitor<'de> for ResidentClearingPlanWireVisitor {
                         return Err(de::Error::duplicate_field("dictionaries"));
                     }
                     let admitted = budgets.ok_or_else(|| {
-                        de::Error::custom("budgets must precede dictionaries on the wire")
+                        stash_replay_plan_error(
+                            self.plan_error,
+                            ResidentClearingPlanError::MalformedWire {
+                                field: "dictionaries_before_budgets",
+                            },
+                        )
                     })?;
-                    dictionaries =
-                        Some(map.next_value_seed(BoundedDictionariesSeed { budgets: admitted })?);
+                    dictionaries = Some(map.next_value_seed(BoundedDictionariesSeed {
+                        budgets: admitted,
+                        plan_error: self.plan_error,
+                    })?);
                 }
                 ResidentClearingPlanWireField::Rows => {
                     if rows.is_some() {
                         return Err(de::Error::duplicate_field("rows"));
                     }
                     let admitted = budgets.ok_or_else(|| {
-                        de::Error::custom("budgets must precede rows on the wire")
+                        stash_replay_plan_error(
+                            self.plan_error,
+                            ResidentClearingPlanError::MalformedWire {
+                                field: "rows_before_budgets",
+                            },
+                        )
                     })?;
                     rows = Some(map.next_value_seed(BoundedVecSeed::new(
                         WireSequenceLimit::Count {
                             axis: "rows",
                             admitted: admitted.max_rows(),
                         },
+                        self.plan_error,
                     ))?);
                 }
                 ResidentClearingPlanWireField::Digest => {
@@ -1328,12 +1408,18 @@ impl<'de> Visitor<'de> for ResidentClearingPlanWireVisitor {
                         return Err(de::Error::duplicate_field("canonical_bytes"));
                     }
                     let admitted = budgets.ok_or_else(|| {
-                        de::Error::custom("budgets must precede canonical_bytes on the wire")
+                        stash_replay_plan_error(
+                            self.plan_error,
+                            ResidentClearingPlanError::MalformedWire {
+                                field: "canonical_bytes_before_budgets",
+                            },
+                        )
                     })?;
                     canonical_bytes = Some(map.next_value_seed(BoundedVecSeed::new(
                         WireSequenceLimit::CanonicalBytes {
                             admitted: admitted.max_semantic_plan_bytes(),
                         },
+                        self.plan_error,
                     ))?);
                 }
             }
@@ -1354,7 +1440,7 @@ impl<'de> Visitor<'de> for ResidentClearingPlanWireVisitor {
     }
 }
 
-impl<'de> DeserializeSeed<'de> for ResidentClearingPlanWireSeed {
+impl<'de> DeserializeSeed<'de> for ResidentClearingPlanWireSeed<'_> {
     type Value = ResidentClearingPlanWire;
 
     fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
@@ -1375,6 +1461,7 @@ impl<'de> DeserializeSeed<'de> for ResidentClearingPlanWireSeed {
             ],
             ResidentClearingPlanWireVisitor {
                 trusted: self.trusted,
+                plan_error: self.plan_error,
             },
         )
     }

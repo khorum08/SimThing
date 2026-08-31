@@ -12,8 +12,8 @@ use simthing_gpu::{
 };
 use simthing_kernel::{
     DenseOrdinalRange, ResidentClearingAdmission, ResidentClearingBudgets, ResidentClearingPlan,
-    ResidentClearingPlanError, ResidentClearingReplayEnvelope, ResidentDrawId, ResidentOwnerId,
-    ResidentResourceId, ResidentScopeId, SlotAllocator,
+    ResidentClearingPlanError, ResidentClearingReplayEnvelope, ResidentClearingReplayError,
+    ResidentDrawId, ResidentOwnerId, ResidentResourceId, ResidentScopeId, SlotAllocator,
 };
 use simthing_workshop::resident_clearing_plan::observe_resident_clearing_plan;
 
@@ -58,17 +58,19 @@ fn bounded_replay_envelope() -> ResidentClearingReplayEnvelope {
 fn replay_json(
     packet: &str,
     trusted: ResidentClearingReplayEnvelope,
-) -> Result<ResidentClearingPlan, serde_json::Error> {
+) -> Result<ResidentClearingPlan, ResidentClearingReplayError<serde_json::Error>> {
     let mut deserializer = serde_json::Deserializer::from_str(packet);
     let plan = ResidentClearingPlan::replay_with_budget_envelope(trusted, &mut deserializer)?;
-    deserializer.end()?;
+    deserializer
+        .end()
+        .map_err(ResidentClearingReplayError::Transport)?;
     Ok(plan)
 }
 
 fn replay_value(
     packet: Value,
     trusted: ResidentClearingReplayEnvelope,
-) -> Result<ResidentClearingPlan, serde_json::Error> {
+) -> Result<ResidentClearingPlan, ResidentClearingReplayError<serde_json::Error>> {
     ResidentClearingPlan::replay_with_budget_envelope(trusted, packet)
 }
 
@@ -457,14 +459,18 @@ fn bounded_wire_prefix() -> &'static str {
     r#"{"version":2,"context":{"realm":[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"root":7},"budgets":{"max_owners":1,"max_resources":1,"max_scopes":1,"max_draws":1,"max_rows":1,"max_semantic_plan_bytes":2,"max_resident_bytes":1,"max_scratch_bytes":1,"scratch_bytes_per_row":1},"#
 }
 
-fn assert_bounded_wire_first_excess(payload: &str, expected: &str) {
+fn assert_bounded_wire_first_excess(payload: &str, expected: ResidentClearingPlanError) {
     let packet = format!("{}{}", bounded_wire_prefix(), payload);
     let error = replay_json(&packet, bounded_replay_envelope())
-        .expect_err("hostile wire must fail while consuming its first excess element")
-        .to_string();
-    assert!(
-        error.contains(expected),
-        "bounded visitor must win before the deliberately malformed tail: {error}"
+        .expect_err("hostile wire must fail while consuming its first excess element");
+    assert_eq!(
+        match error {
+            ResidentClearingReplayError::Plan(error) => error,
+            ResidentClearingReplayError::Transport(error) => {
+                panic!("plan refusal must win before malformed tail: {error}")
+            }
+        },
+        expected
     );
 }
 
@@ -542,15 +548,20 @@ fn context_and_plan_fail_closed_on_mismatched_authority() {
     for (field, claimed, admitted) in outer_budget_checks {
         let mut wire = serde_json::to_value(&plan).unwrap();
         wire["budgets"][field] = claimed.into();
-        let error = replay_value(wire, replay_envelope())
-            .expect_err("wire budget above the trusted envelope must fail")
-            .to_string();
-        assert!(
-            error.contains(&format!(
-                "wire budget {field} claim {claimed} exceeds trusted replay envelope {admitted}"
-            )),
-            "componentwise trusted-envelope refusal for {field}: {error}"
-        );
+        match replay_value(wire, replay_envelope()) {
+            Err(ResidentClearingReplayError::Plan(
+                ResidentClearingPlanError::WireBudgetExceedsTrustedEnvelope {
+                    field: observed_field,
+                    claimed: observed_claimed,
+                    admitted: observed_admitted,
+                },
+            )) => {
+                assert_eq!(observed_field, field);
+                assert_eq!(observed_claimed, claimed);
+                assert_eq!(observed_admitted, admitted);
+            }
+            other => panic!("expected typed trusted-envelope refusal for {field}: {other:?}"),
+        }
     }
 
     // C3 trust-inversion falsifier: the fixed budget block is internally
@@ -558,14 +569,38 @@ fn context_and_plan_fail_closed_on_mismatched_authority() {
     // A malformed sequence tail follows. The max_owners typed refusal wins at
     // the budget block, before the tail is parsed or any sequence is reserved.
     let forged_large_budget = r#"{"version":2,"context":{"realm":[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"root":7},"budgets":{"max_owners":1000000,"max_resources":1000000,"max_scopes":1000000,"max_draws":1000000,"max_rows":1000000,"max_semantic_plan_bytes":1000000000,"max_resident_bytes":1000000000,"max_scratch_bytes":64000000,"scratch_bytes_per_row":64},"dictionaries":{"owners":[BROKEN"#;
-    let forged_error = replay_json(forged_large_budget, replay_envelope())
-        .expect_err("forged packet must be rejected at its fixed budget block")
-        .to_string();
-    assert!(
-        forged_error
-            .contains("wire budget max_owners claim 1000000 exceeds trusted replay envelope 16"),
-        "trusted envelope must reject before parsing the malformed tail: {forged_error}"
-    );
+    match replay_json(forged_large_budget, replay_envelope()) {
+        Err(ResidentClearingReplayError::Plan(
+            ResidentClearingPlanError::WireBudgetExceedsTrustedEnvelope {
+                field,
+                claimed,
+                admitted,
+            },
+        )) => {
+            assert_eq!(field, "max_owners");
+            assert_eq!(claimed, 1_000_000);
+            assert_eq!(admitted, 16);
+        }
+        other => panic!("expected typed forged-envelope refusal: {other:?}"),
+    }
+
+    // Target D: a plan-domain refusal produced after complete transport parse
+    // survives the same typed domain channel with no prose recovery.
+    let mut canonical_mismatch = serde_json::to_value(&plan).unwrap();
+    canonical_mismatch["canonical_bytes"][0] = 0.into();
+    assert!(matches!(
+        replay_value(canonical_mismatch, replay_envelope()),
+        Err(ResidentClearingReplayError::Plan(
+            ResidentClearingPlanError::CanonicalBytesMismatch
+        ))
+    ));
+
+    // Syntax failure carries the deserializer's concrete error, distinct from
+    // all replay/domain refusals.
+    assert!(matches!(
+        replay_json("{", replay_envelope()),
+        Err(ResidentClearingReplayError::Transport(_))
+    ));
 
     // R5 malformed-wire census: zero realm/root authority, overflowing range,
     // zero/inconsistent budget, malformed dictionary/row, canonical mismatch,
@@ -589,7 +624,6 @@ fn context_and_plan_fail_closed_on_mismatched_authority() {
             .swap(0, 1);
     });
     mutated_plan_rejects(&plan, |wire| wire["rows"][0][0] = 999.into());
-    mutated_plan_rejects(&plan, |wire| wire["canonical_bytes"][0] = 0.into());
     mutated_plan_rejects(&plan, |wire| {
         let low = wire["digest"][0].as_u64().unwrap();
         wire["digest"][0] = (low ^ 1).into();
@@ -602,35 +636,62 @@ fn context_and_plan_fail_closed_on_mismatched_authority() {
     let owner = r#"{"realm":[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"local":1}"#;
     assert_bounded_wire_first_excess(
         &format!(r#""dictionaries":{{"owners":[{owner},{owner},BROKEN"#),
-        "owners count 2 exceeds admitted maximum 1",
+        ResidentClearingPlanError::CountBudgetExceeded {
+            axis: "owners",
+            observed: 2,
+            admitted: 1,
+        },
     );
     assert_bounded_wire_first_excess(
         r#""dictionaries":{"resources":[1,2,BROKEN"#,
-        "resources count 2 exceeds admitted maximum 1",
+        ResidentClearingPlanError::CountBudgetExceeded {
+            axis: "resources",
+            observed: 2,
+            admitted: 1,
+        },
     );
     assert_bounded_wire_first_excess(
         r#""dictionaries":{"scopes":[1,2,BROKEN"#,
-        "scopes count 2 exceeds admitted maximum 1",
+        ResidentClearingPlanError::CountBudgetExceeded {
+            axis: "scopes",
+            observed: 2,
+            admitted: 1,
+        },
     );
     assert_bounded_wire_first_excess(
         r#""dictionaries":{"draws":[1,2,BROKEN"#,
-        "draws count 2 exceeds admitted maximum 1",
+        ResidentClearingPlanError::CountBudgetExceeded {
+            axis: "draws",
+            observed: 2,
+            admitted: 1,
+        },
     );
     assert_bounded_wire_first_excess(
         r#""rows":[[0,0,0,0],[0,0,0,0],BROKEN"#,
-        "rows count 2 exceeds admitted maximum 1",
+        ResidentClearingPlanError::CountBudgetExceeded {
+            axis: "rows",
+            observed: 2,
+            admitted: 1,
+        },
     );
     assert_bounded_wire_first_excess(
         r#""canonical_bytes":[0,0,0,BROKEN"#,
-        "canonical semantic plan requires 3 bytes, admitted 2",
+        ResidentClearingPlanError::SemanticPlanBudgetExceeded {
+            required: 3,
+            admitted: 2,
+        },
     );
 
     let payload_before_budget =
         r#"{"version":2,"context":{"realm":[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"root":7},"rows":[]}"#;
-    assert!(replay_json(payload_before_budget, replay_envelope())
-        .unwrap_err()
-        .to_string()
-        .contains("budgets must precede rows"));
+    assert!(matches!(
+        replay_json(payload_before_budget, replay_envelope()),
+        Err(ResidentClearingReplayError::Plan(
+            ResidentClearingPlanError::MalformedWire {
+                field: "rows_before_budgets"
+            }
+        ))
+    ));
 
     assert!(
         serde_json::from_value::<DenseOrdinalRange>(serde_json::json!({
