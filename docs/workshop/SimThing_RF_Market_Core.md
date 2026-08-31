@@ -1,12 +1,13 @@
 # SimThing RF Market Core
 ## Receive → resolve → settle → disburse, recursively
 
-> **Status: WORKSHOP DRAFT / NON-NORMATIVE / DA+OWNER REVIEW CANDIDATE.**
+> **Status: OWNER-APPROVED DESIGN DOCUMENT / PHASE-14 CONSTRAINED-CLEARING DESIGN AUTHORITY.**
 >
-> This document records the Owner/engineering design-session convergence reached while Phase 14
-> `RESIDENT-CLEARING-*` is held for the RF-market-core ruling. It is deliberately housed under
-> `docs/workshop/` until Owner and DA review approve its laws and bind them into the active 14.x
-> rows. It does not itself amend the ladder, the constitution, or the frozen clearing oracle.
+> This document is the approved design definition of the constrained-clearing mechanism that Phase 14
+> `RESIDENT-CLEARING-*` was chartered to design and implement. It remains a living design document:
+> later Owner/DA amendments may refine its details, but Phase 14 implementation and proof must conform
+> to this mechanism unless that authority is explicitly amended. Its historical location under
+> `docs/workshop/` does not reduce this promoted status.
 >
 > **Current governance boundary:**
 >
@@ -18,14 +19,18 @@
 > - Native-field-clearing design hold: Board
 >   [`5480719752`](https://github.com/khorum08/SimThing/issues/1332#issuecomment-5480719752).
 > - **Germ Self-Consumption Law:** Board
->   [`5483829845`](https://github.com/khorum08/SimThing/issues/1332#issuecomment-5483829845). Its
->   normative home remains that Board mint until canonization; this workshop section is only its
->   engineering integration candidate.
+>   [`5483829845`](https://github.com/khorum08/SimThing/issues/1332#issuecomment-5483829845), now
+>   canonized in the core design through PR #1912. This document applies that law to constrained
+>   clearing and the recursive RF market mechanism.
+> - The Owner has approved this document and its Phase-14 amendment/edict as the constrained-clearing
+>   design authority. DA work may still canonically fold or sharpen its clauses into the active 14.x
+>   rows and constitutional surfaces, but that integration is implementation/governance work rather
+>   than a pending design-approval gate.
 > - Canonical law remains
 >   [`../simthing_core_design.md`](../simthing_core_design.md),
 >   [`../stead_stemthing_unification.md`](../stead_stemthing_unification.md), and the live
->   0.0.8.7 workplan. Where this workshop draft conflicts with those authorities, **STOP and
->   escalate**.
+>   0.0.8.7 workplan. Where later canonical authority explicitly conflicts with this design, **STOP
+>   and escalate for amendment rather than silently diverging.**
 >
 > **Drafting method:** dissolve before inventing. First locate the required value as an already-born
 > RF/Field-Triad surface. Then locate the required function as an already-admitted RF/EML operation.
@@ -348,9 +353,9 @@ branch-attributed Need / Balance / U
 existing pressure-to-weight/share binding
                 ↓
 parent weight sum / available flow
-                ↓ guarded child_share_formula or proved equivalent
-child AllocatedFlow
+                ↓ guarded child_share_formula
                 ↓ downsweep
+child AllocatedFlow
 ```
 
 Under Germ Self-Consumption, `AllocatedFlow` now has an explicit proof obligation: **the continuous
