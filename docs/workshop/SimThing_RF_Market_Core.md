@@ -17,6 +17,10 @@
 >   [`5480224895`](https://github.com/khorum08/SimThing/issues/1332#issuecomment-5480224895).
 > - Native-field-clearing design hold: Board
 >   [`5480719752`](https://github.com/khorum08/SimThing/issues/1332#issuecomment-5480719752).
+> - **Germ Self-Consumption Law:** Board
+>   [`5483829845`](https://github.com/khorum08/SimThing/issues/1332#issuecomment-5483829845). Its
+>   normative home remains that Board mint until canonization; this workshop section is only its
+>   engineering integration candidate.
 > - Canonical law remains
 >   [`../simthing_core_design.md`](../simthing_core_design.md),
 >   [`../stead_stemthing_unification.md`](../stead_stemthing_unification.md), and the live
@@ -26,14 +30,12 @@
 > RF/Field-Triad surface. Then locate the required function as an already-admitted RF/EML operation.
 > Only after both fail may Phase 14 name a new runtime surface.
 >
-> **Latest amendment — mathematical and performance research adjudication.** The vertical-pressure
-> research turn identified real implementation opportunities—unique-path PALMA composition,
-> branch-capacity recursion, prefix/segmented scans, backpressure interpretation, and proportional-
-> fairness structure—but also proposed several duplicate or mathematically over-strong frameworks.
-> This revision records the useful mathematics as proof/performance candidates while preserving the
-> germ rule: PALMA, Gu-Yang, STEAD, RF roles, span layouts, and ChangedLocus remain the presumptive
-> authorities. No electrical solver, tropical subsystem, tree-contraction framework, delta engine,
-> or clearing-owned field is authorized by this document.
+> **Latest amendment — Germ Self-Consumption + research residuals.** The Owner's recursive-germ
+> elegance requirement closes the product-vocabulary seam: a fractal germ consumes its own output one
+> level down, so its settlement/emission type and supply/intake type must be identical. This revision
+> also records the three DA residuals from §9 review: the neutral pressure→weight transform remains an
+> explicit Owner ruling, the capped proportional-fair oracle is not a claimant-local closed form, and
+> vertical Gu-Yang capacity directionality must be classified rather than presumed.
 
 ---
 
@@ -129,6 +131,7 @@ private field solver
 second receive/disbursement engine
 second market history
 host descendant-pressure scan
+germ-output → germ-input adapter/converter/projector
 ```
 
 “Clearinghouse” remains useful in design conversation only as a locator for the exact-settlement
@@ -334,6 +337,12 @@ LEAF:
         → local consumption/holding/action
         → remaining shortfall contributes pressure upward
 ```
+
+**Port identity at every depth:** root, interior, and leaf expose the same recursive germ ports. The
+root intake binds authored/intrinsic supply; the leaf settlement side terminates in ordinary actuation
+or holding because it has no descendants; the interior node is self-bound—the exact product it receives
+from its parent is the same constrained product type it can settle/employ as supply toward its children.
+No adapter is permitted between these levels.
 
 ---
 
@@ -814,6 +823,11 @@ a_i,
 where `lambda` is the common shadow price chosen so total assigned flow fits `S` when enough serviceable
 need exists.
 
+**Cap caveat:** once Gu-Yang caps are active, `lambda` is not a single claimant-local closed formula;
+it must be solved against the active capped set. A sort-based water-filling realization is a
+conventional `O(n log n)` oracle implementation. This note prevents the KKT characterization from being
+mistaken for a required one-line resident algorithm.
+
 **Disposition:** this is a **research oracle / interpretation candidate**, not a new runtime solver.
 If the current RF/Triad path already produces equivalent shares, this mathematics validates it. If a
 missing continuous operation is proven, it belongs in the existing RF/FieldSweep post/fold/disbursement
@@ -942,6 +956,12 @@ raw pressure P_v
 serviceable pressure F_v
     how much can currently cross the vertical cut
 ```
+
+**Directionality note:** this recurrence computes upward feasibility information over edges that the
+actual constrained supply later traverses downward. Archaeology must state explicitly whether the
+relevant `C_edge` is symmetric for both directions or whether directionally authored capacity/
+conductance applies. No symmetry is inferred merely from tree topology, and raw scarcity visibility
+must not be accidentally suppressed by a downward delivery choke.
 
 **Disposition:** this is best understood as a possible **tree lowering of existing Gu-Yang capacity
 authority**, not a new clipping subsystem. If Gu-Yang already emits the necessary branch-local
@@ -1120,8 +1140,10 @@ re-clear in the same generation
 ```
 
 A detached/executing subtree receives its exact grant through the stamped seam and subdivides that
-local supply without synchronous ancestor RPC. The realm/seam/non-foreclosure laws remain those of
-Phase 14 and are not redefined here.
+local supply without synchronous ancestor RPC. **The seam carries the same constrained-product type
+that the source germ emitted and the destination germ consumes; detachment does not authorize an
+adapter or alternate intake vocabulary.** The realm/seam/non-foreclosure laws remain those of Phase 14
+and are not redefined here.
 
 ---
 
@@ -1143,7 +1165,7 @@ MISSING — STOP FOR OWNER RULING
 | Branch pressure → continuous allocation | `Need`/`Balance`/`U` → `AllocatorWeight` or existing share operand | **REUSE WITH BINDING** or **MISSING — STOP** | Greater unresolved branch pressure monotonically informs later share when policy/serviceability are equal |
 | Continuous child share | `child_share_formula` + `AllocatedFlow` | **REUSE WITH BINDING** | Prove units, sign, bounds, scope, pressure sensitivity, and post-Triad ordering |
 | PALMA vertical path cost | existing `D`/impedance column + tree adjacency | **REUSE AS-IS** or **REUSE WITH BINDING** | Prove tree-vertical unique-path specialization where applicable; retain general PALMA for alternate-route LinkGraph |
-| Gu-Yang vertical serviceability | available/realized flux, net/gross/stall/saturation | **REUSE WITH BINDING** | Prove branch-local serviceable-flow/capacity recurrence and commitment-class semantics |
+| Gu-Yang vertical serviceability | available/realized flux, net/gross/stall/saturation | **REUSE WITH BINDING** | Prove branch-local serviceable-flow/capacity recurrence and commitment-class semantics; classify directional vs symmetric capacity |
 | Additive subtree pressure | 7.8a/13.x logical subtree spans + RF reduction | **REUSE WITH BINDING** | Prove segmented/prefix scan shape before considering tree contraction |
 | Dirty vertical state | `ChangedLocus` / `DerivedDependencyIndex` | **REUSE AS-IS** | No duplicate mask/dependency registry; all contributing loci covered |
 | Hard market precedence | existing demand priority, order-weight, or lawful OrderBand use | **MISSING — STOP FOR OWNER RULING** | Determine which existing authority owns economic precedence; do not conflate with stage order |
@@ -1152,6 +1174,7 @@ MISSING — STOP FOR OWNER RULING
 | Exact settlement band position | existing RF band layout | **REUSE WITH BINDING** | Settlement is one terminal RF stage, not a peer execution path |
 | Holding accounts | `free/in_flight/occupied/capacity` | **REUSE AS-IS** | Immediate-flow vs entitlement-first semantics |
 | Recursive grant subdivision | child-as-granter StemThing-B witness | **REUSE AS-IS** | Parent grant → child supply → grandchild allocation end to end |
+| Settlement-product / supply-intake type identity | settlement grant/product type vs constrained-supply/intake type | **REUSE AS-IS** if already one type; otherwise **REHOME EXISTING AUTHORITY** to one type | The exact emitted product at level `n` is the exact intake/supply type at level `n+1`; any adapter/conversion/projection disposition is **MISSING — STOP** |
 | Replay/history | one `IntegrationSchedule` + Phase-14 resident head | **REHOME EXISTING AUTHORITY** | Resident consequences/history commit atomically; host drain is not N+1 gate |
 
 ## 11.1 Matrix STOP rule
@@ -1159,8 +1182,9 @@ MISSING — STOP FOR OWNER RULING
 No Phase-14 design may add a new persistent field plane, clearing-owned weight, urgency property,
 branch-pressure property, share column, EML formula family, score vocabulary, impairment observer,
 market registry, receive facility, disbursement facility, tropical framework, delta engine, tree-
-contraction data structure, or clearing service until the corresponding matrix row proves the
-semantic/physical function missing and the Owner/DA admits it.
+contraction data structure, clearing service, or germ-output→germ-input adapter until the corresponding
+matrix row proves the semantic/physical function missing and the Owner/DA admits it. For recursive germ
+self-consumption, an adapter is not an admissible solution: it is itself the STOP-grade defect.
 
 ---
 
@@ -1182,6 +1206,11 @@ The market mirror implies one of two lawful outcomes:
 A Draw grants nothing. An outcome in which Draw claims form a second independent demand universe beside
 RF pressure requires an explicit Owner ruling.
 
+**Germ Self-Consumption makes this unification compulsory rather than cosmetic.** A recursive germ may
+not emit one constrained-product vocabulary and require another one level down. The matrix must
+adjudicate Draw-claims versus `Need`/`IntrinsicFlow` into one self-consumable type vocabulary; a
+conversion bridge between the two is a live failure of the germ law, not a compatibility layer.
+
 ---
 
 # 13. Phase-14 integration proposal
@@ -1199,8 +1228,14 @@ Add the surface-reuse matrix and require:
 - proof whether branch pressure informs `AllocatorWeight` or another existing share operand;
 - proof whether urgency persistence is native, persistent-only, or authored-only;
 - classification of tree-vertical PALMA and Gu-Yang bindings;
+- settlement-product / supply-intake type identity under Germ Self-Consumption;
 - explicit statement that no new math framework is added merely because a research analogy exists;
 - `MISSING` rows route to Owner/DA STOP before graduation.
+
+The current no-production-consumer posture remains lawful **probation scaffolding only**. Its expiry is
+named now: at resident cutover, the first production consumer of resident clearing is resident clearing
+one level down the same StemThing tree. That consumer obligation is discharged by germ self-consumption,
+not by inventing an external production client.
 
 ## 13.2 14.3 `RESIDENT-CLEARING-SCORE-AND-BANDS-0`
 
@@ -1247,16 +1282,22 @@ root
      └─ lightly constrained grandchildren
 ```
 
+This **≥2-level self-consumption tree is the canonical witness form for recursive germ facilities**.
+The exact settlement product emitted by the root must be consumed directly as the child's constrained
+supply with the identical type, and that child must emit the same type toward the next level. The
+witness therefore intrinsically discharges the exact-consumer obligation; any intermediate adapter,
+conversion, or projection is RED.
+
 With equal authored policy and comparable serviceability, prove:
 
 1. A's descendants create greater unresolved lawful pressure.
 2. That pressure reduces once into A's branch aggregate.
 3. A receives a larger continuous share in a later generation.
 4. Exact settlement follows that share.
-5. A's exact grant becomes supply for its own children.
+5. A's exact grant becomes supply for its own children with type identity preserved.
 6. When A's pressure subsides, its share subsides under the bounded recurrence.
 7. No descendant row is double-counted.
-8. No physical row, upload order, claim arrival, or CPU table determines the result.
+8. No physical row, upload order, claim arrival, CPU table, or adapter determines the result.
 
 Also include:
 
@@ -1278,7 +1319,8 @@ oscillation at the serviceability boundary.
 
 The production census must show no host-built weight/urgency table, CPU PALMA query, CPU Gu-Yang query,
 CPU descendant-pressure scan, clearing-owned field cache, private flux/urgency solver, duplicate market
-feedback path, duplicate settlement/disbursement path, or synchronous host schedule append before N+1.
+feedback path, duplicate settlement/disbursement path, germ output→input adapter, or synchronous host
+schedule append before N+1.
 
 The resident schedule segment remains the live head of the one schedule. CPU execution remains explicit
 vendorized oracle posture, never automatic fallback.
@@ -1371,6 +1413,21 @@ vendorized oracle posture, never automatic fallback.
 > EML deforms persistence; it does not create the baseline. Regardless of physical implementation,
 > Phase 14 may not graduate with branch pressure visible but disconnected from later allocation.
 
+## 14.15 Germ Self-Consumption Law
+
+> A recursive StemCell germ facility is necessarily its own consumer. By the germ's fractal nature,
+> its emission at one tree level is its intake at the next; therefore every germ facility is
+> input/output symmetrical in its constrained-product vocabulary: the settlement/emission product
+> type is identical to the supply/intake type — one type, at most two role names. Any adapter,
+> conversion, or projection between a germ's output port and its own input port one level down is a
+> STOP-grade defect. Scope: facilities every StemThing carries fractally; one-way non-germ doors
+> (oracles, replay/persistence, observation egress) have external consumers by design and are out of
+> scope. Enforcement is the type identity itself (define-don't-validate), never a guard scan.
+
+Normative authority for this law remains Board mint
+[`5483829845`](https://github.com/khorum08/SimThing/issues/1332#issuecomment-5483829845) until DA/Owner
+canonization.
+
 ---
 
 # 15. Falsifiers and remand conditions
@@ -1401,7 +1458,8 @@ The draft is falsified or remanded if implementation:
 22. adds Laplacian/electrical solver machinery for a strict unique-path vertical tree;
 23. adds a separate delta/dirty subsystem beside `ChangedLocus`;
 24. claims epsilon-based skipping as semantics-preserving without an explicit approximation ruling;
-25. prunes raw U/pressure or impairment visibility merely because a branch is currently choked.
+25. prunes raw U/pressure or impairment visibility merely because a branch is currently choked;
+26. inserts any adapter, conversion, or projection between a recursive germ's emitted constrained product and the same germ's intake one level down.
 
 ---
 
@@ -1422,6 +1480,8 @@ The draft is falsified or remanded if implementation:
 13. Does active-segment dispatch pruning outperform dense resident execution after accounting for compaction/indirect-dispatch overhead?
 14. Does the proportional-fair interpretation match the exact semantics of the existing `child_share_formula`, including guards, caps, and sign behavior?
 15. Would an alpha-fair or impedance-penalized EML policy improve domain behavior without creating instability or undermining replay exactness?
+16. **OWNER RULING — neutral pressure-to-weight transform:** what is the neutral `w_i(P_i)` when no policy is authored? Law 14.14 makes first-order pressure feedback native, so a default transform must exist and defines the innate germ behavior. This is not archaeology; it requires Owner adjudication before the edict freezes.
+17. Is vertical Gu-Yang capacity/conductance symmetric across the informational upsweep and delivery downsweep, or directionally authored per edge/resource class?
 
 ---
 
@@ -1436,6 +1496,7 @@ A reviewer should be able to answer **yes** to all of the following before promo
 - hard precedence stays distinct from continuous share;
 - exact settlement remains small and discrete;
 - child grant becomes child supply without a second API;
+- recursive germ output and next-level germ intake are the identical constrained-product type;
 - the same germ applies to root, interior, and leaf;
 - Gu-Yang and PALMA are consumed from born state rather than recomputed in settlement;
 - tree-vertical specializations remain lowerings of PALMA/Gu-Yang, not new frameworks;
@@ -1478,11 +1539,11 @@ simulation truth; atlas and replay are downstream observation/training artifacts
 > upward with direct-child branch attribution. At each governing parent, that pressure natively
 > informs the later continuous allocation to each branch through the existing RF/Field-Triad
 > surfaces. Allocated flow disburses downward; exact settlement turns that resolved flow into
-> discrete identity-bearing possession; the child then repeats the same cycle with its own
-> descendants. Receiving, market guidance, clearing, and disbursement are not peer facilities but
-> stages of one recursive market filter. The exact endpoint receives rather than recomputes: it owns
-> no route, flux, urgency, pressure, weight, or field model—only exact conservation, integer residue,
-> commitment state, provenance, and replay.**
+> discrete identity-bearing possession; the child consumes that exact same constrained-product type
+> as its own supply and repeats the same cycle with its descendants. Receiving, market guidance,
+> clearing, and disbursement are not peer facilities but stages of one recursive market filter. The
+> exact endpoint receives rather than recomputes: it owns no route, flux, urgency, pressure, weight,
+> or field model—only exact conservation, integer residue, commitment state, provenance, and replay.**
 
 The research interpretation now adds one useful scientific gloss without changing that architecture:
 
@@ -1501,6 +1562,14 @@ existing proportional-fair-shaped RF disbursement
 
 exact settlement
     supplies integer possession and replay
+```
+
+The Germ Self-Consumption Law adds the recursive type seal:
+
+```text
+settlement product at level n
+    ==
+supply/intake product at level n+1
 ```
 
 That is the Phase-14 design target this workshop draft submits for review.
