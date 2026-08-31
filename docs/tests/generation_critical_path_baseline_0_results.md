@@ -11,7 +11,7 @@
 **HD-RECEIPT:** `f27b4dbaf650`
 **ORIENT-RECEIPT:** `55747d120d2b` (`orientation_rule_stamp=6e41e33143db01ef`)
 **Dispatch master / measured production door:** `625290768f266276c68240dc88ffbb1db6de35bb`
-**tested_code_sha:** `8d36d0f4c4312ee54b7557f10de92be733d2b431`
+**tested_code_sha:** `80180936d40cde0f32155923d0d7e1e5fd2699e8`
 **ANCHOR-ACK:** `orientation-harness-core@8a365d1c0864`, `scanner-selftest-delta-gate@34fb2662baae`
 
 Lossless artifact: `crates/simthing-workshop/tests/generation_critical_path_baseline_reports.txt`
