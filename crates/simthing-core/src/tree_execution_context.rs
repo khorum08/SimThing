@@ -90,17 +90,26 @@ impl ExecutionIncarnation {
 #[derive(Debug)]
 pub struct TreeGenerationAuthority {
     live: AtomicU32,
+    execution_authority_minted: AtomicBool,
 }
 
 impl TreeGenerationAuthority {
     pub const fn new(initial: GenerationStamp) -> Self {
         Self {
             live: AtomicU32::new(initial.get()),
+            execution_authority_minted: AtomicBool::new(false),
         }
     }
 
     pub fn current(&self) -> GenerationStamp {
         GenerationStamp::new(self.live.load(Ordering::Acquire))
+    }
+
+    fn mint_execution_authority(&self) -> Result<(), TreeExecutionContextError> {
+        self.execution_authority_minted
+            .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
+            .map_err(|_| TreeExecutionContextError::GenerationAuthorityAlreadySealed)?;
+        Ok(())
     }
 
     /// Advance exactly N -> N+1 without rebuilding semantic state.
@@ -295,6 +304,7 @@ impl<'a, TResidency> TreeExecutionAuthority<'a, TResidency> {
         if root.id.raw() == 0 {
             return Err(TreeExecutionContextError::ZeroRootId);
         }
+        generation_authority.mint_execution_authority()?;
         Ok(Self {
             seal: Arc::new(TreeExecutionSeal {
                 realm,
@@ -536,6 +546,8 @@ pub enum TreeExecutionContextError {
     ZeroRootId,
     #[error("this runtime authority capsule has already minted its context")]
     ContextAlreadyMinted,
+    #[error("this tree generation authority has already minted its execution authority capsule")]
+    GenerationAuthorityAlreadySealed,
     #[error("tree execution context belongs to a different runtime authority capsule")]
     AuthorityCapsuleMismatch,
     #[error("migration must change execution incarnation")]

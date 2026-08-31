@@ -6,6 +6,10 @@
 
 use std::collections::BTreeSet;
 
+use std::fmt;
+use std::marker::PhantomData;
+
+use serde::de::{DeserializeSeed, IgnoredAny, MapAccess, SeqAccess, Visitor};
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use simthing_core::{
     GenerationStamp, RealmQualified, SeamFact, SimThingId, TreeExecutionAuthority,
@@ -15,6 +19,10 @@ use thiserror::Error;
 
 const CANONICAL_VERSION: u32 = 2;
 const CANONICAL_DOMAIN: &[u8; 8] = b"STRCP140";
+const CANONICAL_FIXED_BYTES: u64 = 8 + 4 + 16 + 4 + 48 + (5 * 8);
+const OWNER_CANONICAL_BYTES: u64 = 20;
+const SEMANTIC_ID_CANONICAL_BYTES: u64 = 8;
+const ROW_CANONICAL_BYTES: u64 = 16;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ResidentOwnerId(RealmQualified<SimThingId>);
@@ -479,6 +487,14 @@ impl ResidentClearingDictionaries {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct HostAdmissionProof {
+    row_len: u32,
+    row_capacity: u32,
+    row_reallocations: u32,
+    projected_semantic_bytes: u64,
+}
+
 /// Immutable semantic plan whose bytes depend only on admitted semantic
 /// identity and canonical total order.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -489,6 +505,7 @@ pub struct ResidentClearingPlan {
     rows: Vec<ResidentClearingRow>,
     budgets: ResidentClearingBudgets,
     digest: SemanticPlanDigest,
+    host_admission_proof: HostAdmissionProof,
 }
 
 impl ResidentClearingPlan {
@@ -510,42 +527,88 @@ impl ResidentClearingPlan {
         admissions: impl IntoIterator<Item = ResidentClearingAdmission>,
         budgets: ResidentClearingBudgets,
     ) -> Result<Self, ResidentClearingPlanError> {
-        // Never trust iterator size hints and never collect beyond the admitted
-        // row envelope. Axis sets likewise refuse a new distinct value before
-        // inserting beyond their own admitted envelope.
-        let mut admitted_rows = Vec::new();
+        // Narrow first, then reserve exactly the caller-admitted row envelope.
+        // Iterator size hints never participate. The allocation pointer and
+        // logical capacity remain stable while the lawful prefix is consumed.
+        let row_capacity = usize_from_u32(budgets.max_rows(), "max_rows")?;
+        let mut admitted_rows = exact_capacity_vec(row_capacity, "admission_rows")?;
+        let admitted_rows_allocation = admitted_rows.as_ptr();
         let mut owner_set = BTreeSet::new();
         let mut resource_set = BTreeSet::new();
         let mut scope_set = BTreeSet::new();
         let mut draw_set = BTreeSet::new();
+        let mut projected_semantic_bytes = CANONICAL_FIXED_BYTES;
         for admission in admissions {
-            if admitted_rows.len() >= usize_from_u32(budgets.max_rows(), "max_rows")? {
-                return Err(ResidentClearingPlanError::CountBudgetExceeded {
-                    axis: "rows",
+            if admitted_rows.len() >= row_capacity {
+                return Err(ResidentClearingPlanError::RowCountBudgetExceeded {
                     observed: u64::from(budgets.max_rows()) + 1,
                     admitted: budgets.max_rows(),
+                    stored: u32::try_from(admitted_rows.len()).map_err(|_| {
+                        ResidentClearingPlanError::BudgetArithmeticOverflow {
+                            field: "admission_rows_stored",
+                        }
+                    })?,
+                    reserved: u32::try_from(admitted_rows.capacity()).map_err(|_| {
+                        ResidentClearingPlanError::BudgetArithmeticOverflow {
+                            field: "admission_rows_capacity",
+                        }
+                    })?,
+                    reallocations: 0,
                 });
             }
-            admit_axis(
-                &mut owner_set,
+            let owner_count = prospective_axis_count(
+                &owner_set,
                 admission.owner,
                 "owners",
                 budgets.max_owners(),
             )?;
-            admit_axis(
-                &mut resource_set,
+            let resource_count = prospective_axis_count(
+                &resource_set,
                 admission.resource,
                 "resources",
                 budgets.max_resources(),
             )?;
-            admit_axis(
-                &mut scope_set,
+            let scope_count = prospective_axis_count(
+                &scope_set,
                 admission.scope,
                 "scopes",
                 budgets.max_scopes(),
             )?;
-            admit_axis(&mut draw_set, admission.draw, "draws", budgets.max_draws())?;
+            let draw_count =
+                prospective_axis_count(&draw_set, admission.draw, "draws", budgets.max_draws())?;
+            let row_count = u32::try_from(admitted_rows.len() + 1).map_err(|_| {
+                ResidentClearingPlanError::BudgetArithmeticOverflow {
+                    field: "streaming_row_count",
+                }
+            })?;
+            let required = projected_canonical_byte_len(
+                owner_count,
+                resource_count,
+                scope_count,
+                draw_count,
+                row_count,
+            )?;
+            if required > budgets.max_semantic_plan_bytes() {
+                return Err(ResidentClearingPlanError::SemanticPlanBudgetExceeded {
+                    required,
+                    admitted: budgets.max_semantic_plan_bytes(),
+                });
+            }
+
+            owner_set.insert(admission.owner);
+            resource_set.insert(admission.resource);
+            scope_set.insert(admission.scope);
+            draw_set.insert(admission.draw);
             admitted_rows.push(admission);
+            if admitted_rows.capacity() != row_capacity
+                || admitted_rows.as_ptr() != admitted_rows_allocation
+            {
+                return Err(ResidentClearingPlanError::AdmissionRowStorageChanged {
+                    admitted: budgets.max_rows(),
+                    observed_capacity: admitted_rows.capacity(),
+                });
+            }
+            projected_semantic_bytes = required;
         }
         let admissions = admitted_rows;
         if admissions.is_empty() {
@@ -597,8 +660,20 @@ impl ResidentClearingPlan {
             rows,
             budgets,
             digest: SemanticPlanDigest { low: 0, high: 0 },
+            host_admission_proof: HostAdmissionProof {
+                row_len: row_count,
+                row_capacity: budgets.max_rows(),
+                row_reallocations: 0,
+                projected_semantic_bytes,
+            },
         };
         let semantic_bytes = plan.canonical_byte_len()?;
+        if semantic_bytes != projected_semantic_bytes {
+            return Err(ResidentClearingPlanError::StreamingProjectionMismatch {
+                projected: projected_semantic_bytes,
+                canonical: semantic_bytes,
+            });
+        }
         if semantic_bytes > budgets.max_semantic_plan_bytes() {
             return Err(ResidentClearingPlanError::SemanticPlanBudgetExceeded {
                 required: semantic_bytes,
@@ -629,6 +704,21 @@ impl ResidentClearingPlan {
 
     pub const fn digest(&self) -> SemanticPlanDigest {
         self.digest
+    }
+
+    /// Runtime proof that row admission reserved exactly the admitted envelope
+    /// and retained that allocation while consuming the lawful prefix.
+    pub const fn host_admission_row_storage(&self) -> (u32, u32, u32) {
+        (
+            self.host_admission_proof.row_len,
+            self.host_admission_proof.row_capacity,
+            self.host_admission_proof.row_reallocations,
+        )
+    }
+
+    /// Streaming upper bound admitted before canonical dictionaries/rows exist.
+    pub const fn streaming_semantic_bytes(&self) -> u64 {
+        self.host_admission_proof.projected_semantic_bytes
     }
 
     pub fn dictionaries(&self) -> &ResidentClearingDictionaries {
@@ -733,22 +823,16 @@ impl ResidentClearingPlan {
     }
 
     fn canonical_byte_len(&self) -> Result<u64, ResidentClearingPlanError> {
-        // domain/version/realm/root + budgets + five dictionary/row counts.
-        // Generation and incarnation are transient execution authority.
-        let mut bytes = 8_u64
-            .checked_add(4)
-            .and_then(|value| value.checked_add(16))
-            .and_then(|value| value.checked_add(4))
-            .and_then(|value| value.checked_add(48))
-            .and_then(|value| value.checked_add(5 * 8))
-            .ok_or(ResidentClearingPlanError::BudgetArithmeticOverflow {
-                field: "canonical_fixed_bytes",
-            })?;
-        bytes = checked_axis_bytes(bytes, self.ranges.owners.len(), 20, "owner_bytes")?;
-        bytes = checked_axis_bytes(bytes, self.ranges.resources.len(), 8, "resource_bytes")?;
-        bytes = checked_axis_bytes(bytes, self.ranges.scopes.len(), 8, "scope_bytes")?;
-        bytes = checked_axis_bytes(bytes, self.ranges.draws.len(), 8, "draw_bytes")?;
-        checked_axis_bytes(bytes, self.ranges.rows.len(), 16, "row_bytes")
+        // Generation and incarnation are transient execution authority. This
+        // exact calculation remains the final semantic encoding authority;
+        // streaming admission calls the same checked arithmetic as a bound.
+        projected_canonical_byte_len(
+            self.ranges.owners.len(),
+            self.ranges.resources.len(),
+            self.ranges.scopes.len(),
+            self.ranges.draws.len(),
+            self.ranges.rows.len(),
+        )
     }
 }
 
@@ -766,7 +850,7 @@ struct ResidentOwnerWire {
     local: u32,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(deny_unknown_fields)]
 struct ResidentClearingDictionariesWire {
     owners: Vec<ResidentOwnerWire>,
@@ -775,17 +859,396 @@ struct ResidentClearingDictionariesWire {
     draws: Vec<u64>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(deny_unknown_fields)]
 struct ResidentClearingPlanWire {
     version: u32,
     context: ResidentPlanContextWire,
-    dictionaries: ResidentClearingDictionariesWire,
-    ranges: ResidentClearingRangesWire,
-    rows: Vec<[u32; 4]>,
+    // Budgets intentionally precede every variable-length payload on the wire.
     budgets: ResidentClearingBudgetsWire,
+    ranges: ResidentClearingRangesWire,
+    dictionaries: ResidentClearingDictionariesWire,
+    rows: Vec<[u32; 4]>,
     digest: [u64; 2],
     canonical_bytes: Vec<u8>,
+}
+
+#[derive(Clone, Copy)]
+enum WireSequenceLimit {
+    Count { axis: &'static str, admitted: u32 },
+    CanonicalBytes { admitted: u64 },
+}
+
+impl WireSequenceLimit {
+    fn capacity<E: de::Error>(self) -> Result<usize, E> {
+        match self {
+            Self::Count { admitted, .. } => usize::try_from(admitted)
+                .map_err(|_| E::custom("wire count budget is not host-representable")),
+            Self::CanonicalBytes { admitted } => usize::try_from(admitted)
+                .map_err(|_| E::custom("wire canonical-byte budget is not host-representable")),
+        }
+    }
+
+    fn first_excess<E: de::Error>(self) -> E {
+        match self {
+            Self::Count { axis, admitted } => {
+                E::custom(ResidentClearingPlanError::CountBudgetExceeded {
+                    axis,
+                    observed: u64::from(admitted) + 1,
+                    admitted,
+                })
+            }
+            Self::CanonicalBytes { admitted } => {
+                E::custom(ResidentClearingPlanError::SemanticPlanBudgetExceeded {
+                    required: admitted.saturating_add(1),
+                    admitted,
+                })
+            }
+        }
+    }
+
+    fn label(self) -> &'static str {
+        match self {
+            Self::Count { axis, .. } => axis,
+            Self::CanonicalBytes { .. } => "canonical_bytes",
+        }
+    }
+}
+
+struct BoundedVecSeed<T> {
+    limit: WireSequenceLimit,
+    marker: PhantomData<T>,
+}
+
+impl<T> BoundedVecSeed<T> {
+    const fn new(limit: WireSequenceLimit) -> Self {
+        Self {
+            limit,
+            marker: PhantomData,
+        }
+    }
+}
+
+impl<'de, T> DeserializeSeed<'de> for BoundedVecSeed<T>
+where
+    T: Deserialize<'de>,
+{
+    type Value = Vec<T>;
+
+    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_seq(BoundedVecVisitor::<T> {
+            limit: self.limit,
+            marker: PhantomData,
+        })
+    }
+}
+
+struct BoundedVecVisitor<T> {
+    limit: WireSequenceLimit,
+    marker: PhantomData<T>,
+}
+
+impl<'de, T> Visitor<'de> for BoundedVecVisitor<T>
+where
+    T: Deserialize<'de>,
+{
+    type Value = Vec<T>;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            formatter,
+            "a {} sequence within its preceding admitted budget",
+            self.limit.label()
+        )
+    }
+
+    fn visit_seq<A>(self, mut sequence: A) -> Result<Self::Value, A::Error>
+    where
+        A: SeqAccess<'de>,
+    {
+        let capacity = self.limit.capacity::<A::Error>()?;
+        let mut values = Vec::new();
+        values.try_reserve_exact(capacity).map_err(|_| {
+            de::Error::custom(format_args!(
+                "wire {} capacity {} cannot be reserved",
+                self.limit.label(),
+                capacity
+            ))
+        })?;
+        if values.capacity() != capacity {
+            return Err(de::Error::custom(format_args!(
+                "wire {} reserved capacity {} exceeds exact admitted capacity {}",
+                self.limit.label(),
+                values.capacity(),
+                capacity
+            )));
+        }
+
+        while values.len() < capacity {
+            match sequence.next_element()? {
+                Some(value) => values.push(value),
+                None => return Ok(values),
+            }
+        }
+        if sequence.next_element::<IgnoredAny>()?.is_some() {
+            return Err(self.limit.first_excess::<A::Error>());
+        }
+        Ok(values)
+    }
+}
+
+#[derive(Deserialize)]
+#[serde(field_identifier, rename_all = "snake_case")]
+enum DictionariesWireField {
+    Owners,
+    Resources,
+    Scopes,
+    Draws,
+}
+
+struct BoundedDictionariesSeed {
+    budgets: ResidentClearingBudgets,
+}
+
+impl<'de> DeserializeSeed<'de> for BoundedDictionariesSeed {
+    type Value = ResidentClearingDictionariesWire;
+
+    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_struct(
+            "ResidentClearingDictionariesWire",
+            &["owners", "resources", "scopes", "draws"],
+            BoundedDictionariesVisitor {
+                budgets: self.budgets,
+            },
+        )
+    }
+}
+
+struct BoundedDictionariesVisitor {
+    budgets: ResidentClearingBudgets,
+}
+
+impl<'de> Visitor<'de> for BoundedDictionariesVisitor {
+    type Value = ResidentClearingDictionariesWire;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str("resident dictionaries bounded by preceding admitted budgets")
+    }
+
+    fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+    where
+        A: MapAccess<'de>,
+    {
+        let mut owners = None;
+        let mut resources = None;
+        let mut scopes = None;
+        let mut draws = None;
+        while let Some(field) = map.next_key::<DictionariesWireField>()? {
+            match field {
+                DictionariesWireField::Owners => {
+                    if owners.is_some() {
+                        return Err(de::Error::duplicate_field("owners"));
+                    }
+                    owners = Some(map.next_value_seed(BoundedVecSeed::new(
+                        WireSequenceLimit::Count {
+                            axis: "owners",
+                            admitted: self.budgets.max_owners(),
+                        },
+                    ))?);
+                }
+                DictionariesWireField::Resources => {
+                    if resources.is_some() {
+                        return Err(de::Error::duplicate_field("resources"));
+                    }
+                    resources = Some(map.next_value_seed(BoundedVecSeed::new(
+                        WireSequenceLimit::Count {
+                            axis: "resources",
+                            admitted: self.budgets.max_resources(),
+                        },
+                    ))?);
+                }
+                DictionariesWireField::Scopes => {
+                    if scopes.is_some() {
+                        return Err(de::Error::duplicate_field("scopes"));
+                    }
+                    scopes = Some(map.next_value_seed(BoundedVecSeed::new(
+                        WireSequenceLimit::Count {
+                            axis: "scopes",
+                            admitted: self.budgets.max_scopes(),
+                        },
+                    ))?);
+                }
+                DictionariesWireField::Draws => {
+                    if draws.is_some() {
+                        return Err(de::Error::duplicate_field("draws"));
+                    }
+                    draws = Some(map.next_value_seed(BoundedVecSeed::new(
+                        WireSequenceLimit::Count {
+                            axis: "draws",
+                            admitted: self.budgets.max_draws(),
+                        },
+                    ))?);
+                }
+            }
+        }
+        Ok(ResidentClearingDictionariesWire {
+            owners: owners.ok_or_else(|| de::Error::missing_field("owners"))?,
+            resources: resources.ok_or_else(|| de::Error::missing_field("resources"))?,
+            scopes: scopes.ok_or_else(|| de::Error::missing_field("scopes"))?,
+            draws: draws.ok_or_else(|| de::Error::missing_field("draws"))?,
+        })
+    }
+}
+
+#[derive(Deserialize)]
+#[serde(field_identifier, rename_all = "snake_case")]
+enum ResidentClearingPlanWireField {
+    Version,
+    Context,
+    Budgets,
+    Ranges,
+    Dictionaries,
+    Rows,
+    Digest,
+    CanonicalBytes,
+}
+
+struct ResidentClearingPlanWireVisitor;
+
+impl<'de> Visitor<'de> for ResidentClearingPlanWireVisitor {
+    type Value = ResidentClearingPlanWire;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str("a resident plan with budgets preceding all variable payloads")
+    }
+
+    fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+    where
+        A: MapAccess<'de>,
+    {
+        let mut version = None;
+        let mut context = None;
+        let mut budgets = None;
+        let mut ranges = None;
+        let mut dictionaries = None;
+        let mut rows = None;
+        let mut digest = None;
+        let mut canonical_bytes = None;
+
+        while let Some(field) = map.next_key::<ResidentClearingPlanWireField>()? {
+            match field {
+                ResidentClearingPlanWireField::Version => {
+                    if version.is_some() {
+                        return Err(de::Error::duplicate_field("version"));
+                    }
+                    version = Some(map.next_value()?);
+                }
+                ResidentClearingPlanWireField::Context => {
+                    if context.is_some() {
+                        return Err(de::Error::duplicate_field("context"));
+                    }
+                    context = Some(map.next_value()?);
+                }
+                ResidentClearingPlanWireField::Budgets => {
+                    if budgets.is_some() {
+                        return Err(de::Error::duplicate_field("budgets"));
+                    }
+                    let wire: ResidentClearingBudgetsWire = map.next_value()?;
+                    budgets = Some(wire.admit().map_err(de::Error::custom)?);
+                }
+                ResidentClearingPlanWireField::Ranges => {
+                    if ranges.is_some() {
+                        return Err(de::Error::duplicate_field("ranges"));
+                    }
+                    ranges = Some(map.next_value()?);
+                }
+                ResidentClearingPlanWireField::Dictionaries => {
+                    if dictionaries.is_some() {
+                        return Err(de::Error::duplicate_field("dictionaries"));
+                    }
+                    let admitted = budgets.ok_or_else(|| {
+                        de::Error::custom("budgets must precede dictionaries on the wire")
+                    })?;
+                    dictionaries =
+                        Some(map.next_value_seed(BoundedDictionariesSeed { budgets: admitted })?);
+                }
+                ResidentClearingPlanWireField::Rows => {
+                    if rows.is_some() {
+                        return Err(de::Error::duplicate_field("rows"));
+                    }
+                    let admitted = budgets.ok_or_else(|| {
+                        de::Error::custom("budgets must precede rows on the wire")
+                    })?;
+                    rows = Some(map.next_value_seed(BoundedVecSeed::new(
+                        WireSequenceLimit::Count {
+                            axis: "rows",
+                            admitted: admitted.max_rows(),
+                        },
+                    ))?);
+                }
+                ResidentClearingPlanWireField::Digest => {
+                    if digest.is_some() {
+                        return Err(de::Error::duplicate_field("digest"));
+                    }
+                    digest = Some(map.next_value()?);
+                }
+                ResidentClearingPlanWireField::CanonicalBytes => {
+                    if canonical_bytes.is_some() {
+                        return Err(de::Error::duplicate_field("canonical_bytes"));
+                    }
+                    let admitted = budgets.ok_or_else(|| {
+                        de::Error::custom("budgets must precede canonical_bytes on the wire")
+                    })?;
+                    canonical_bytes = Some(map.next_value_seed(BoundedVecSeed::new(
+                        WireSequenceLimit::CanonicalBytes {
+                            admitted: admitted.max_semantic_plan_bytes(),
+                        },
+                    ))?);
+                }
+            }
+        }
+
+        let budgets = budgets.ok_or_else(|| de::Error::missing_field("budgets"))?;
+        Ok(ResidentClearingPlanWire {
+            version: version.ok_or_else(|| de::Error::missing_field("version"))?,
+            context: context.ok_or_else(|| de::Error::missing_field("context"))?,
+            budgets: budgets.into(),
+            ranges: ranges.ok_or_else(|| de::Error::missing_field("ranges"))?,
+            dictionaries: dictionaries.ok_or_else(|| de::Error::missing_field("dictionaries"))?,
+            rows: rows.ok_or_else(|| de::Error::missing_field("rows"))?,
+            digest: digest.ok_or_else(|| de::Error::missing_field("digest"))?,
+            canonical_bytes: canonical_bytes
+                .ok_or_else(|| de::Error::missing_field("canonical_bytes"))?,
+        })
+    }
+}
+
+impl<'de> Deserialize<'de> for ResidentClearingPlanWire {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_struct(
+            "ResidentClearingPlanWire",
+            &[
+                "version",
+                "context",
+                "budgets",
+                "ranges",
+                "dictionaries",
+                "rows",
+                "digest",
+                "canonical_bytes",
+            ],
+            ResidentClearingPlanWireVisitor,
+        )
+    }
 }
 
 impl ResidentClearingPlan {
@@ -867,63 +1330,55 @@ impl ResidentClearingPlan {
         let budgets = wire.budgets.admit()?;
         let supplied_ranges = ResidentClearingRanges::from_wire(wire.ranges)?;
 
-        let owners = wire
-            .dictionaries
-            .owners
-            .into_iter()
-            .map(|owner| {
-                if owner.local == 0 {
-                    return Err(ResidentClearingPlanError::MalformedWire {
-                        field: "dictionaries.owners.local",
-                    });
+        let mut owners = exact_capacity_vec(wire.dictionaries.owners.len(), "wire_typed_owners")?;
+        for owner in wire.dictionaries.owners {
+            if owner.local == 0 {
+                return Err(ResidentClearingPlanError::MalformedWire {
+                    field: "dictionaries.owners.local",
+                });
+            }
+            let realm = TreeRealmId::from_bytes(owner.realm).map_err(|_| {
+                ResidentClearingPlanError::MalformedWire {
+                    field: "dictionaries.owners.realm",
                 }
-                let realm = TreeRealmId::from_bytes(owner.realm).map_err(|_| {
-                    ResidentClearingPlanError::MalformedWire {
-                        field: "dictionaries.owners.realm",
-                    }
-                })?;
-                Ok(ResidentOwnerId::new(RealmQualified::new(
-                    realm,
-                    SimThingId::from_session_raw(owner.local),
-                )))
-            })
-            .collect::<Result<Vec<_>, ResidentClearingPlanError>>()?;
-        let resources = wire
-            .dictionaries
-            .resources
-            .into_iter()
-            .map(ResidentResourceId::new)
-            .collect();
-        let scopes = wire
-            .dictionaries
-            .scopes
-            .into_iter()
-            .map(ResidentScopeId::new)
-            .collect();
-        let draws = wire
-            .dictionaries
-            .draws
-            .into_iter()
-            .map(ResidentDrawId::new)
-            .collect();
+            })?;
+            owners.push(ResidentOwnerId::new(RealmQualified::new(
+                realm,
+                SimThingId::from_session_raw(owner.local),
+            )));
+        }
+        let mut resources =
+            exact_capacity_vec(wire.dictionaries.resources.len(), "wire_typed_resources")?;
+        resources.extend(
+            wire.dictionaries
+                .resources
+                .into_iter()
+                .map(ResidentResourceId::new),
+        );
+        let mut scopes = exact_capacity_vec(wire.dictionaries.scopes.len(), "wire_typed_scopes")?;
+        scopes.extend(
+            wire.dictionaries
+                .scopes
+                .into_iter()
+                .map(ResidentScopeId::new),
+        );
+        let mut draws = exact_capacity_vec(wire.dictionaries.draws.len(), "wire_typed_draws")?;
+        draws.extend(wire.dictionaries.draws.into_iter().map(ResidentDrawId::new));
         let supplied_dictionaries = ResidentClearingDictionaries {
             owners,
             resources,
             scopes,
             draws,
         };
-        let supplied_rows: Vec<_> = wire
-            .rows
-            .into_iter()
-            .map(|row| ResidentClearingRow {
-                owner: ResidentOwnerOrdinal(row[0]),
-                resource: ResidentResourceOrdinal(row[1]),
-                scope: ResidentScopeOrdinal(row[2]),
-                draw: ResidentDrawOrdinal(row[3]),
-            })
-            .collect();
+        let mut supplied_rows = exact_capacity_vec(wire.rows.len(), "wire_typed_rows")?;
+        supplied_rows.extend(wire.rows.into_iter().map(|row| ResidentClearingRow {
+            owner: ResidentOwnerOrdinal(row[0]),
+            resource: ResidentResourceOrdinal(row[1]),
+            scope: ResidentScopeOrdinal(row[2]),
+            draw: ResidentDrawOrdinal(row[3]),
+        }));
 
-        let mut admissions = Vec::new();
+        let mut admissions = exact_capacity_vec(supplied_rows.len(), "wire_admissions")?;
         for row in &supplied_rows {
             let owner = supplied_dictionaries
                 .owners
@@ -1051,6 +1506,42 @@ pub enum ResidentClearingPlanError {
         observed: u64,
         admitted: u32,
     },
+    #[error(
+        "row count {observed} exceeds admitted maximum {admitted}; stored {stored}, reserved {reserved}, reallocations {reallocations}"
+    )]
+    RowCountBudgetExceeded {
+        observed: u64,
+        admitted: u32,
+        stored: u32,
+        reserved: u32,
+        reallocations: u32,
+    },
+    #[error(
+        "host capacity {requested} for {field} could not be reserved within the admitted envelope"
+    )]
+    HostAdmissionCapacityUnavailable {
+        field: &'static str,
+        requested: usize,
+    },
+    #[error(
+        "host capacity for {field} changed from exact admitted {admitted} to {observed_capacity}"
+    )]
+    HostAdmissionCapacityChanged {
+        field: &'static str,
+        admitted: usize,
+        observed_capacity: usize,
+    },
+    #[error(
+        "admission row storage changed after exact reservation {admitted}; observed capacity {observed_capacity}"
+    )]
+    AdmissionRowStorageChanged {
+        admitted: u32,
+        observed_capacity: usize,
+    },
+    #[error(
+        "streaming semantic-byte projection {projected} disagrees with canonical calculation {canonical}"
+    )]
+    StreamingProjectionMismatch { projected: u64, canonical: u64 },
     #[error("dense ordinal range overflow: start {start}, len {len}")]
     OrdinalRangeOverflow { start: u32, len: u32 },
     #[error("canonical semantic plan requires {required} bytes, admitted {admitted}")]
@@ -1079,21 +1570,48 @@ pub enum ResidentClearingPlanError {
     SeamAdmission(#[from] TreeExecutionContextError),
 }
 
-fn admit_axis<T: Copy + Ord>(
-    values: &mut BTreeSet<T>,
+fn prospective_axis_count<T: Copy + Ord>(
+    values: &BTreeSet<T>,
     value: T,
     axis: &'static str,
     admitted: u32,
-) -> Result<(), ResidentClearingPlanError> {
-    if !values.contains(&value) && values.len() >= usize_from_u32(admitted, axis)? {
+) -> Result<u32, ResidentClearingPlanError> {
+    let additional = usize::from(!values.contains(&value));
+    let observed = values
+        .len()
+        .checked_add(additional)
+        .ok_or(ResidentClearingPlanError::BudgetArithmeticOverflow { field: axis })?;
+    if observed > usize_from_u32(admitted, axis)? {
         return Err(ResidentClearingPlanError::CountBudgetExceeded {
             axis,
-            observed: u64::from(admitted) + 1,
+            observed: u64::try_from(observed)
+                .map_err(|_| ResidentClearingPlanError::BudgetArithmeticOverflow { field: axis })?,
             admitted,
         });
     }
-    values.insert(value);
-    Ok(())
+    u32::try_from(observed)
+        .map_err(|_| ResidentClearingPlanError::BudgetArithmeticOverflow { field: axis })
+}
+
+fn exact_capacity_vec<T>(
+    capacity: usize,
+    field: &'static str,
+) -> Result<Vec<T>, ResidentClearingPlanError> {
+    let mut values = Vec::new();
+    values.try_reserve_exact(capacity).map_err(|_| {
+        ResidentClearingPlanError::HostAdmissionCapacityUnavailable {
+            field,
+            requested: capacity,
+        }
+    })?;
+    if values.capacity() != capacity {
+        return Err(ResidentClearingPlanError::HostAdmissionCapacityChanged {
+            field,
+            admitted: capacity,
+            observed_capacity: values.capacity(),
+        });
+    }
+    Ok(values)
 }
 
 fn usize_from_u32(value: u32, field: &'static str) -> Result<usize, ResidentClearingPlanError> {
@@ -1129,6 +1647,30 @@ fn checked_axis_bytes(
         .checked_mul(stride)
         .and_then(|axis_bytes| accumulated.checked_add(axis_bytes))
         .ok_or(ResidentClearingPlanError::BudgetArithmeticOverflow { field })
+}
+
+fn projected_canonical_byte_len(
+    owners: u32,
+    resources: u32,
+    scopes: u32,
+    draws: u32,
+    rows: u32,
+) -> Result<u64, ResidentClearingPlanError> {
+    let mut bytes = checked_axis_bytes(
+        CANONICAL_FIXED_BYTES,
+        owners,
+        OWNER_CANONICAL_BYTES,
+        "owner_bytes",
+    )?;
+    bytes = checked_axis_bytes(
+        bytes,
+        resources,
+        SEMANTIC_ID_CANONICAL_BYTES,
+        "resource_bytes",
+    )?;
+    bytes = checked_axis_bytes(bytes, scopes, SEMANTIC_ID_CANONICAL_BYTES, "scope_bytes")?;
+    bytes = checked_axis_bytes(bytes, draws, SEMANTIC_ID_CANONICAL_BYTES, "draw_bytes")?;
+    checked_axis_bytes(bytes, rows, ROW_CANONICAL_BYTES, "row_bytes")
 }
 
 fn binary_ordinal<T: Ord>(dictionary: &[T], value: T) -> Result<u32, ResidentClearingPlanError> {

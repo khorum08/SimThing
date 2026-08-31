@@ -92,6 +92,20 @@ fn resident_plan_is_canonical_migratable_and_destination_local() {
         &residency_a,
     )
     .unwrap();
+    // Continuation target A falsifier: the unrepeatable wrapper mint belongs
+    // to the one-per-tree generation authority, not to the first wrapper.
+    assert!(matches!(
+        TreeExecutionAuthority::seal(
+            realm_a,
+            ExecutionIncarnation::new(11).unwrap(),
+            &tree_a,
+            &generation_a,
+            &schedule_a,
+            &registry_a,
+            &residency_a,
+        ),
+        Err(TreeExecutionContextError::GenerationAuthorityAlreadySealed)
+    ));
     let authority_b = TreeExecutionAuthority::seal(
         realm_b,
         ExecutionIncarnation::new(22).unwrap(),
@@ -141,6 +155,12 @@ fn resident_plan_is_canonical_migratable_and_destination_local() {
 
     let plan_a = ResidentClearingPlan::build(&binding_a, semantic_rows_a.clone(), budgets())
         .expect("tree A plan");
+    assert_eq!(
+        plan_a.host_admission_row_storage(),
+        (4, 32, 0),
+        "logical admission length is distinct from exact reserved envelope"
+    );
+    assert_eq!(plan_a.streaming_semantic_bytes(), 308);
     let mut reversed = semantic_rows_a.clone();
     reversed.reverse();
     let plan_a_reversed = ResidentClearingPlan::build(&binding_a, reversed, budgets())
@@ -334,9 +354,48 @@ fn all_layout_and_budget_failures_precede_gpu_allocation() {
         .expect("bounded rows budget");
     assert!(matches!(
         ResidentClearingPlan::build(&binding, bounded_rows, row_limited),
-        Err(ResidentClearingPlanError::CountBudgetExceeded { axis: "rows", .. })
+        Err(ResidentClearingPlanError::RowCountBudgetExceeded {
+            observed: 3,
+            admitted: 2,
+            stored: 2,
+            reserved: 2,
+            reallocations: 0,
+        })
     ));
     assert_eq!(pulls.get(), 3, "refusal occurs exactly at max_rows + 1");
+
+    let exactly_admitted = ResidentClearingPlan::build(
+        &binding,
+        rows.clone(),
+        ResidentClearingBudgets::new(2, 2, 2, 2, 2, 4096, 4096, 128, 64).unwrap(),
+    )
+    .expect("lawful rows fill the exact admitted row allocation");
+    assert_eq!(exactly_admitted.host_admission_row_storage(), (2, 2, 0));
+
+    // B2: a large count envelope cannot defer the smaller semantic-byte law
+    // until dictionary/canonical-row materialization. The first projected row
+    // requires 180 bytes and is refused while streaming, after one pull.
+    let semantic_pulls = Rc::new(Cell::new(0));
+    let semantic_rows = PullCountingRows {
+        pulls: Rc::clone(&semantic_pulls),
+        remaining: 1_000,
+        row: admission(owner7, 1, 1, 1),
+    };
+    let streaming_limited =
+        ResidentClearingBudgets::new(128, 128, 128, 128, 128, 179, 65_536, 8_192, 64)
+            .expect("large count envelope with deliberately small byte budget");
+    assert!(matches!(
+        ResidentClearingPlan::build(&binding, semantic_rows, streaming_limited),
+        Err(ResidentClearingPlanError::SemanticPlanBudgetExceeded {
+            required: 180,
+            admitted: 179,
+        })
+    ));
+    assert_eq!(
+        semantic_pulls.get(),
+        1,
+        "semantic bytes refuse first excess projection"
+    );
 
     let owner_limited = ResidentClearingBudgets::new(1, 2, 2, 2, 4, 4096, 4096, 512, 64)
         .expect("internally consistent budget");
@@ -365,6 +424,21 @@ fn mutated_plan_rejects(plan: &ResidentClearingPlan, mutate: impl FnOnce(&mut Va
     let mut wire = serde_json::to_value(plan).unwrap();
     mutate(&mut wire);
     assert!(serde_json::from_value::<ResidentClearingPlan>(wire).is_err());
+}
+
+fn bounded_wire_prefix() -> &'static str {
+    r#"{"version":2,"context":{"realm":[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"root":7},"budgets":{"max_owners":1,"max_resources":1,"max_scopes":1,"max_draws":1,"max_rows":1,"max_semantic_plan_bytes":2,"max_resident_bytes":1,"max_scratch_bytes":1,"scratch_bytes_per_row":1},"#
+}
+
+fn assert_bounded_wire_first_excess(payload: &str, expected: &str) {
+    let packet = format!("{}{}", bounded_wire_prefix(), payload);
+    let error = serde_json::from_str::<ResidentClearingPlan>(&packet)
+        .expect_err("hostile wire must fail while consuming its first excess element")
+        .to_string();
+    assert!(
+        error.contains(expected),
+        "bounded visitor must win before the deliberately malformed tail: {error}"
+    );
 }
 
 #[test]
@@ -451,6 +525,45 @@ fn context_and_plan_fail_closed_on_mismatched_authority() {
         let low = wire["digest"][0].as_u64().unwrap();
         wire["digest"][0] = (low ^ 1).into();
     });
+
+    // Continuation B3: budgets precede all variable payloads. Each packet has
+    // one valid admitted item, the first excess valid item, then deliberately
+    // invalid JSON. The bounded visitor's budget error must win before that
+    // tail can be parsed, proving it never materializes the hostile sequence.
+    let owner = r#"{"realm":[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"local":1}"#;
+    assert_bounded_wire_first_excess(
+        &format!(r#""dictionaries":{{"owners":[{owner},{owner},BROKEN"#),
+        "owners count 2 exceeds admitted maximum 1",
+    );
+    assert_bounded_wire_first_excess(
+        r#""dictionaries":{"resources":[1,2,BROKEN"#,
+        "resources count 2 exceeds admitted maximum 1",
+    );
+    assert_bounded_wire_first_excess(
+        r#""dictionaries":{"scopes":[1,2,BROKEN"#,
+        "scopes count 2 exceeds admitted maximum 1",
+    );
+    assert_bounded_wire_first_excess(
+        r#""dictionaries":{"draws":[1,2,BROKEN"#,
+        "draws count 2 exceeds admitted maximum 1",
+    );
+    assert_bounded_wire_first_excess(
+        r#""rows":[[0,0,0,0],[0,0,0,0],BROKEN"#,
+        "rows count 2 exceeds admitted maximum 1",
+    );
+    assert_bounded_wire_first_excess(
+        r#""canonical_bytes":[0,0,0,BROKEN"#,
+        "canonical semantic plan requires 3 bytes, admitted 2",
+    );
+
+    let payload_before_budget =
+        r#"{"version":2,"context":{"realm":[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"root":7},"rows":[]}"#;
+    assert!(
+        serde_json::from_str::<ResidentClearingPlan>(payload_before_budget)
+            .unwrap_err()
+            .to_string()
+            .contains("budgets must precede rows")
+    );
 
     assert!(
         serde_json::from_value::<DenseOrdinalRange>(serde_json::json!({
