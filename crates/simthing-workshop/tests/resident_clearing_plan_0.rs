@@ -12,8 +12,8 @@ use simthing_gpu::{
 };
 use simthing_kernel::{
     DenseOrdinalRange, ResidentClearingAdmission, ResidentClearingBudgets, ResidentClearingPlan,
-    ResidentClearingPlanError, ResidentDrawId, ResidentOwnerId, ResidentResourceId,
-    ResidentScopeId, SlotAllocator,
+    ResidentClearingPlanError, ResidentClearingReplayEnvelope, ResidentDrawId, ResidentOwnerId,
+    ResidentResourceId, ResidentScopeId, SlotAllocator,
 };
 use simthing_workshop::resident_clearing_plan::observe_resident_clearing_plan;
 
@@ -43,6 +43,33 @@ fn loaded_tree(root_id: u32, child_id: u32, generation: u32) -> SimThing {
 fn budgets() -> ResidentClearingBudgets {
     ResidentClearingBudgets::new(16, 16, 16, 16, 32, 16_384, 65_536, 8_192, 64)
         .expect("admitted fixture budgets")
+}
+
+fn replay_envelope() -> ResidentClearingReplayEnvelope {
+    ResidentClearingReplayEnvelope::new(16, 16, 16, 16, 32, 16_384, 65_536, 8_192, 64)
+        .expect("consumer-owned replay envelope")
+}
+
+fn bounded_replay_envelope() -> ResidentClearingReplayEnvelope {
+    ResidentClearingReplayEnvelope::new(1, 1, 1, 1, 1, 2, 1, 1, 1)
+        .expect("tiny consumer-owned replay envelope")
+}
+
+fn replay_json(
+    packet: &str,
+    trusted: ResidentClearingReplayEnvelope,
+) -> Result<ResidentClearingPlan, serde_json::Error> {
+    let mut deserializer = serde_json::Deserializer::from_str(packet);
+    let plan = ResidentClearingPlan::replay_with_budget_envelope(trusted, &mut deserializer)?;
+    deserializer.end()?;
+    Ok(plan)
+}
+
+fn replay_value(
+    packet: Value,
+    trusted: ResidentClearingReplayEnvelope,
+) -> Result<ResidentClearingPlan, serde_json::Error> {
+    ResidentClearingPlan::replay_with_budget_envelope(trusted, packet)
 }
 
 fn admission(
@@ -171,8 +198,8 @@ fn resident_plan_is_canonical_migratable_and_destination_local() {
         .expect("permuted-admission plan");
     let plan_a_replay = ResidentClearingPlan::build(&binding_a, semantic_rows_a.clone(), budgets())
         .expect("replay reconstruction");
-    let serde_replay: ResidentClearingPlan =
-        serde_json::from_str(&serde_json::to_string(&plan_a).unwrap()).unwrap();
+    let serde_replay =
+        replay_json(&serde_json::to_string(&plan_a).unwrap(), replay_envelope()).unwrap();
 
     assert_eq!(plan_a.dictionaries(), plan_a_reversed.dictionaries());
     assert_eq!(plan_a.ranges(), plan_a_reversed.ranges());
@@ -423,7 +450,7 @@ fn all_layout_and_budget_failures_precede_gpu_allocation() {
 fn mutated_plan_rejects(plan: &ResidentClearingPlan, mutate: impl FnOnce(&mut Value)) {
     let mut wire = serde_json::to_value(plan).unwrap();
     mutate(&mut wire);
-    assert!(serde_json::from_value::<ResidentClearingPlan>(wire).is_err());
+    assert!(replay_value(wire, replay_envelope()).is_err());
 }
 
 fn bounded_wire_prefix() -> &'static str {
@@ -432,7 +459,7 @@ fn bounded_wire_prefix() -> &'static str {
 
 fn assert_bounded_wire_first_excess(payload: &str, expected: &str) {
     let packet = format!("{}{}", bounded_wire_prefix(), payload);
-    let error = serde_json::from_str::<ResidentClearingPlan>(&packet)
+    let error = replay_json(&packet, bounded_replay_envelope())
         .expect_err("hostile wire must fail while consuming its first excess element")
         .to_string();
     assert!(
@@ -493,10 +520,52 @@ fn context_and_plan_fail_closed_on_mismatched_authority() {
     ));
     let plan = ResidentClearingPlan::build(&binding, [row7, row8], budgets()).unwrap();
 
-    // Validated replay succeeds through the same admission constructor.
-    let replay: ResidentClearingPlan =
-        serde_json::from_value(serde_json::to_value(&plan).unwrap()).unwrap();
+    // Validated replay succeeds only through the consumer-owned envelope door
+    // and still reconstructs through the same ordinary admission constructor.
+    let replay = replay_value(serde_json::to_value(&plan).unwrap(), replay_envelope()).unwrap();
     assert_eq!(replay, plan);
+
+    // Target C componentwise trust proof: every fixed-size wire budget claim
+    // is compared to its independently constructed outer ceiling before any
+    // dictionary, row, or canonical-byte sequence visitor can reserve.
+    let outer_budget_checks = [
+        ("max_owners", 17_u64, 16_u64),
+        ("max_resources", 17, 16),
+        ("max_scopes", 17, 16),
+        ("max_draws", 17, 16),
+        ("max_rows", 33, 32),
+        ("max_semantic_plan_bytes", 16_385, 16_384),
+        ("max_resident_bytes", 65_537, 65_536),
+        ("max_scratch_bytes", 8_193, 8_192),
+        ("scratch_bytes_per_row", 65, 64),
+    ];
+    for (field, claimed, admitted) in outer_budget_checks {
+        let mut wire = serde_json::to_value(&plan).unwrap();
+        wire["budgets"][field] = claimed.into();
+        let error = replay_value(wire, replay_envelope())
+            .expect_err("wire budget above the trusted envelope must fail")
+            .to_string();
+        assert!(
+            error.contains(&format!(
+                "wire budget {field} claim {claimed} exceeds trusted replay envelope {admitted}"
+            )),
+            "componentwise trusted-envelope refusal for {field}: {error}"
+        );
+    }
+
+    // C3 trust-inversion falsifier: the fixed budget block is internally
+    // consistent but forges every ceiling far above the consumer envelope.
+    // A malformed sequence tail follows. The max_owners typed refusal wins at
+    // the budget block, before the tail is parsed or any sequence is reserved.
+    let forged_large_budget = r#"{"version":2,"context":{"realm":[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"root":7},"budgets":{"max_owners":1000000,"max_resources":1000000,"max_scopes":1000000,"max_draws":1000000,"max_rows":1000000,"max_semantic_plan_bytes":1000000000,"max_resident_bytes":1000000000,"max_scratch_bytes":64000000,"scratch_bytes_per_row":64},"dictionaries":{"owners":[BROKEN"#;
+    let forged_error = replay_json(forged_large_budget, replay_envelope())
+        .expect_err("forged packet must be rejected at its fixed budget block")
+        .to_string();
+    assert!(
+        forged_error
+            .contains("wire budget max_owners claim 1000000 exceeds trusted replay envelope 16"),
+        "trusted envelope must reject before parsing the malformed tail: {forged_error}"
+    );
 
     // R5 malformed-wire census: zero realm/root authority, overflowing range,
     // zero/inconsistent budget, malformed dictionary/row, canonical mismatch,
@@ -558,12 +627,10 @@ fn context_and_plan_fail_closed_on_mismatched_authority() {
 
     let payload_before_budget =
         r#"{"version":2,"context":{"realm":[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"root":7},"rows":[]}"#;
-    assert!(
-        serde_json::from_str::<ResidentClearingPlan>(payload_before_budget)
-            .unwrap_err()
-            .to_string()
-            .contains("budgets must precede rows")
-    );
+    assert!(replay_json(payload_before_budget, replay_envelope())
+        .unwrap_err()
+        .to_string()
+        .contains("budgets must precede rows"));
 
     assert!(
         serde_json::from_value::<DenseOrdinalRange>(serde_json::json!({

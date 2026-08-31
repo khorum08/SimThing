@@ -148,10 +148,10 @@ pub use residency_placement::{
 pub use resident_clearing_plan::{
     DenseOrdinalRange, ResidentClearingAdmission, ResidentClearingBudgets,
     ResidentClearingDictionaries, ResidentClearingPlan, ResidentClearingPlanBinding,
-    ResidentClearingPlanError, ResidentClearingRanges, ResidentClearingRow, ResidentDrawId,
-    ResidentDrawOrdinal, ResidentOwnerId, ResidentOwnerOrdinal, ResidentPlanContext,
-    ResidentResourceId, ResidentResourceOrdinal, ResidentScopeId, ResidentScopeOrdinal,
-    SemanticPlanDigest,
+    ResidentClearingPlanError, ResidentClearingRanges, ResidentClearingReplayEnvelope,
+    ResidentClearingRow, ResidentDrawId, ResidentDrawOrdinal, ResidentOwnerId,
+    ResidentOwnerOrdinal, ResidentPlanContext, ResidentResourceId, ResidentResourceOrdinal,
+    ResidentScopeId, ResidentScopeOrdinal, SemanticPlanDigest,
 };
 pub use resolved::ResolvedGpuBuffers;
 pub use sealed::{

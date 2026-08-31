@@ -356,6 +356,80 @@ impl ResidentClearingBudgets {
     }
 }
 
+/// Consumer-owned ceilings for admitted resident-plan replay.
+///
+/// This type has no serde implementation: a session, loader, or other trusted
+/// consumer must construct it independently of the bytes being replayed.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ResidentClearingReplayEnvelope {
+    admitted: ResidentClearingBudgets,
+}
+
+impl ResidentClearingReplayEnvelope {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        max_owners: u32,
+        max_resources: u32,
+        max_scopes: u32,
+        max_draws: u32,
+        max_rows: u32,
+        max_semantic_plan_bytes: u64,
+        max_resident_bytes: u64,
+        max_scratch_bytes: u64,
+        scratch_bytes_per_row: u32,
+    ) -> Result<Self, ResidentClearingPlanError> {
+        Ok(Self {
+            admitted: ResidentClearingBudgets::new(
+                max_owners,
+                max_resources,
+                max_scopes,
+                max_draws,
+                max_rows,
+                max_semantic_plan_bytes,
+                max_resident_bytes,
+                max_scratch_bytes,
+                scratch_bytes_per_row,
+            )?,
+        })
+    }
+
+    fn admit_wire(
+        self,
+        wire: ResidentClearingBudgetsWire,
+    ) -> Result<ResidentClearingBudgets, ResidentClearingPlanError> {
+        wire.require_within("max_owners", wire.max_owners, self.admitted.max_owners())?;
+        wire.require_within(
+            "max_resources",
+            wire.max_resources,
+            self.admitted.max_resources(),
+        )?;
+        wire.require_within("max_scopes", wire.max_scopes, self.admitted.max_scopes())?;
+        wire.require_within("max_draws", wire.max_draws, self.admitted.max_draws())?;
+        wire.require_within("max_rows", wire.max_rows, self.admitted.max_rows())?;
+        wire.require_within(
+            "max_semantic_plan_bytes",
+            wire.max_semantic_plan_bytes,
+            self.admitted.max_semantic_plan_bytes(),
+        )?;
+        wire.require_within(
+            "max_resident_bytes",
+            wire.max_resident_bytes,
+            self.admitted.max_resident_bytes(),
+        )?;
+        wire.require_within(
+            "max_scratch_bytes",
+            wire.max_scratch_bytes,
+            self.admitted.max_scratch_bytes(),
+        )?;
+        wire.require_within(
+            "scratch_bytes_per_row",
+            wire.scratch_bytes_per_row,
+            self.admitted.scratch_bytes_per_row(),
+        )?;
+        wire.admit()
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct ResidentClearingBudgetsWire {
@@ -371,6 +445,27 @@ struct ResidentClearingBudgetsWire {
 }
 
 impl ResidentClearingBudgetsWire {
+    fn require_within<T>(
+        self,
+        field: &'static str,
+        claimed: T,
+        admitted: T,
+    ) -> Result<(), ResidentClearingPlanError>
+    where
+        T: Copy + Ord + Into<u64>,
+    {
+        if claimed > admitted {
+            return Err(
+                ResidentClearingPlanError::WireBudgetExceedsTrustedEnvelope {
+                    field,
+                    claimed: claimed.into(),
+                    admitted: admitted.into(),
+                },
+            );
+        }
+        Ok(())
+    }
+
     fn admit(self) -> Result<ResidentClearingBudgets, ResidentClearingPlanError> {
         ResidentClearingBudgets::new(
             self.max_owners,
@@ -520,6 +615,27 @@ impl ResidentClearingPlan {
             admissions,
             budgets,
         )
+    }
+
+    /// Replay a serialized plan only after a trusted consumer supplies the
+    /// outer allocation envelope. Wire-declared ceilings are admitted against
+    /// this envelope before any variable-length wire payload is reserved.
+    ///
+    /// A context-free generic serde door is intentionally unavailable:
+    ///
+    /// ```compile_fail,E0277
+    /// use simthing_kernel::ResidentClearingPlan;
+    /// let _: ResidentClearingPlan = serde_json::from_str("{}").unwrap();
+    /// ```
+    pub fn replay_with_budget_envelope<'de, D>(
+        trusted: ResidentClearingReplayEnvelope,
+        deserializer: D,
+    ) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let wire = ResidentClearingPlanWireSeed { trusted }.deserialize(deserializer)?;
+        Self::from_wire(wire).map_err(de::Error::custom)
     }
 
     fn build_from_context(
@@ -1119,7 +1235,13 @@ enum ResidentClearingPlanWireField {
     CanonicalBytes,
 }
 
-struct ResidentClearingPlanWireVisitor;
+struct ResidentClearingPlanWireSeed {
+    trusted: ResidentClearingReplayEnvelope,
+}
+
+struct ResidentClearingPlanWireVisitor {
+    trusted: ResidentClearingReplayEnvelope,
+}
 
 impl<'de> Visitor<'de> for ResidentClearingPlanWireVisitor {
     type Value = ResidentClearingPlanWire;
@@ -1160,7 +1282,10 @@ impl<'de> Visitor<'de> for ResidentClearingPlanWireVisitor {
                         return Err(de::Error::duplicate_field("budgets"));
                     }
                     let wire: ResidentClearingBudgetsWire = map.next_value()?;
-                    budgets = Some(wire.admit().map_err(de::Error::custom)?);
+                    // The fixed-size wire claim is compared componentwise to
+                    // the independently constructed consumer envelope before
+                    // any proportional sequence seed can reserve storage.
+                    budgets = Some(self.trusted.admit_wire(wire).map_err(de::Error::custom)?);
                 }
                 ResidentClearingPlanWireField::Ranges => {
                     if ranges.is_some() {
@@ -1229,8 +1354,10 @@ impl<'de> Visitor<'de> for ResidentClearingPlanWireVisitor {
     }
 }
 
-impl<'de> Deserialize<'de> for ResidentClearingPlanWire {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+impl<'de> DeserializeSeed<'de> for ResidentClearingPlanWireSeed {
+    type Value = ResidentClearingPlanWire;
+
+    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
     where
         D: Deserializer<'de>,
     {
@@ -1246,7 +1373,9 @@ impl<'de> Deserialize<'de> for ResidentClearingPlanWire {
                 "digest",
                 "canonical_bytes",
             ],
-            ResidentClearingPlanWireVisitor,
+            ResidentClearingPlanWireVisitor {
+                trusted: self.trusted,
+            },
         )
     }
 }
@@ -1455,16 +1584,6 @@ impl Serialize for ResidentClearingPlan {
     }
 }
 
-impl<'de> Deserialize<'de> for ResidentClearingPlan {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        Self::from_wire(ResidentClearingPlanWire::deserialize(deserializer)?)
-            .map_err(de::Error::custom)
-    }
-}
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ResidentClearingPlanBinding {
     realm: TreeRealmId,
@@ -1548,6 +1667,12 @@ pub enum ResidentClearingPlanError {
     SemanticPlanBudgetExceeded { required: u64, admitted: u64 },
     #[error("resident plan wire version {observed} is not supported")]
     WireVersion { observed: u32 },
+    #[error("wire budget {field} claim {claimed} exceeds trusted replay envelope {admitted}")]
+    WireBudgetExceedsTrustedEnvelope {
+        field: &'static str,
+        claimed: u64,
+        admitted: u64,
+    },
     #[error("resident plan wire violates invariant {field}")]
     MalformedWire { field: &'static str },
     #[error("resident plan stored canonical bytes disagree with validated reconstruction")]
