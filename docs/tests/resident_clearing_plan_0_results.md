@@ -9,12 +9,15 @@
 **Owner dispatch:** Board comment `5478901209`  
 **Narrow remand:** Board comment `5480270212` under DA ruling `5480224895`
 **Continuation remand:** Board comment `5481459059` under DA ruling `5481435541`
+**Target C remand:** Board comment `5482524832` under DA ruling `5482369734`
 **Exact dispatch master:** `d78334d0fda287c829d4dd63c30b834c88b1f3ed`  
 **Authored handoff base:** `2ba6e28cd4ba83a52a5b0fa99a4a299ca31ae9d6`  
 **pre-remand head:** `545eb3dc09f51b89f72ab7b391784124ad119e37`
 **remand source commit:** `e9042e40960aace583fb79670080530870cd05c0`
 **continuation old head:** `929713cb33cab979b851f8af2aa3eddce8fb3988`
 **continuation A/B source commit:** `6649589388a8e440949638a8ce778999ddc97c31`
+**target C old head:** `3043a89e7ad78889a435604ab5ca0e36e0c88ccf`
+**target C source commit:** `c2e63c3d65a5aa0dac6ba55c89da6828cb05034f`
 **HD-RECEIPT:** `0417d2e81c96`  
 **ORIENT-RECEIPT:** `abd383d5c8c6`  
 **orientation_rule_stamp:** `6550f3a270f552cc`  
@@ -57,7 +60,7 @@ source edits.
 | Crate | New owned surface | Role |
 |---|---|---|
 | `simthing-core` | `TreeRealmId`, `ExecutionIncarnation`, `TreeGenerationAuthority`, `TreeExecutionAuthority`, opaque `TreeExecutionContext`, `TreeExecutionBinding`, `RealmQualified<T>`, `SeamEmissionOrdinal`, `SeamFactId`, `SeamFact<T>`, typed errors | one private live authority capsule borrowing the real attachments; durable realm/local identity; non-convertible deferred emission ordinal; live-incarnation-checked destination remap |
-| `simthing-kernel` | typed owner/resource/scope/draw ids and ordinals, `DenseOrdinalRange`, admitted budgets, canonical dictionaries/rows, `ResidentPlanContext`, `SemanticPlanDigest`, `ResidentClearingPlan` and checked binding/errors | concrete reusable deterministic resident economic-resolution plan germ |
+| `simthing-kernel` | typed owner/resource/scope/draw ids and ordinals, `DenseOrdinalRange`, admitted budgets, consumer-owned non-serde replay envelope, canonical dictionaries/rows, `ResidentPlanContext`, `SemanticPlanDigest`, `ResidentClearingPlan` and checked binding/errors | concrete reusable deterministic resident economic-resolution plan germ |
 | `simthing-gpu` | stable POD header/owner/id/row types, seven checked descriptors, `ResidentClearingAbi`, tree-bound owner, private `ResidentClearingBuffers`, `ResidentGenerationAdvance`, typed errors | final physical representation, instance-owned storage, and no-allocation transient header advance; no pipeline, shader, encoder, or dispatch |
 | `simthing-workshop` | `ResidentClearingPlanObservation` and one observation function | consumer only; no plan construction, sorting, layout, allocation, or algorithm |
 
@@ -103,9 +106,9 @@ ordinal participates.
 
 The witness constructs the same four admissions in original, reversed, and
 rotated order plus replay reconstruction. Dictionaries, ranges, rows,
-canonical bytes, and digest are byte-identical. Validated serde replay
-reconstructs through the same admission door and verifies stored canonical
-bytes plus recomputed digest. Rebuilding after migration and advancing
+canonical bytes, and digest are byte-identical. Validated replay requires a
+consumer-owned outer envelope, reconstructs through the same admission door,
+and verifies stored canonical bytes plus recomputed digest. Rebuilding after migration and advancing
 generation N to N+1 are also byte-identical because incarnation and generation
 are transient and excluded from semantic plan identity.
 
@@ -175,6 +178,66 @@ The real Vulkan adapter simultaneously allocates both plans. Pointer identity,
 realm, generation, plan bytes, dictionaries, and buffer owners differ; only
 the physical adapter is shared.
 
+## Target C trusted replay envelope
+
+Replay allocation authority now flows from the consumer to the packet, never
+from the packet to itself. `ResidentClearingReplayEnvelope` has private fields
+and no serde implementation. A session, loader, or other trusted consumer must
+construct it independently through the same nine checked budget inputs before
+calling the sole public replay door:
+
+```text
+ResidentClearingPlan::replay_with_budget_envelope<'de, D>(
+    trusted: ResidentClearingReplayEnvelope,
+    deserializer: D,
+) -> Result<ResidentClearingPlan, D::Error>
+where D: serde::Deserializer<'de>
+```
+
+The private `ResidentClearingPlanWireSeed` carries that already-admitted outer
+envelope into the top-level visitor. The visitor reads the fixed-size wire
+budget block and compares every claim componentwise before dictionaries, rows,
+canonical bytes, or any other variable sequence is accepted. Only a narrower
+or equal wire budget is validated internally and handed to the existing
+bounded visitors. Consequently every visitor reservation is bounded by
+`wire claim <= trusted outer envelope`; later typed reconstruction allocates
+only actual already-bounded sequence lengths.
+
+Componentwise executable claims/ceilings are:
+
+| wire field | hostile claim | trusted outer ceiling |
+|---|---:|---:|
+| `max_owners` | 17 | 16 |
+| `max_resources` | 17 | 16 |
+| `max_scopes` | 17 | 16 |
+| `max_draws` | 17 | 16 |
+| `max_rows` | 33 | 32 |
+| `max_semantic_plan_bytes` | 16,385 | 16,384 |
+| `max_resident_bytes` | 65,537 | 65,536 |
+| `max_scratch_bytes` | 8,193 | 8,192 |
+| `scratch_bytes_per_row` | 65 | 64 |
+
+Each returns typed `WireBudgetExceedsTrustedEnvelope { field, claimed,
+admitted }`. The all-large falsifier declares internally consistent million
+count ceilings, billion-byte semantic/resident ceilings, and 64,000,000
+scratch bytes, then places `BROKEN` inside the first owner sequence. At old
+head `3043a89e...`, the packet's own fixed budget block became the visitor
+reservation authority. At Target C source head `c2e63c3d...`, the trusted
+envelope rejects `max_owners=1,000,000 > 16` while still at the fixed budget
+block, before the malformed tail is parsed and before any proportional
+reservation occurs.
+
+`Serialize<ResidentClearingPlan>` remains the canonical replay product, but
+the public context-free `Deserialize<ResidentClearingPlan>` implementation is
+removed. Its wire DTO, visitor, and `DeserializeSeed` are private beneath the
+admitted door. A pinned `compile_fail,E0277` proves
+`serde_json::from_str::<ResidentClearingPlan>` is unavailable; because the
+missing trait is the generic `Deserialize` bound, `from_value` and equivalent
+context-free generic routes are absent by the same type boundary. A valid
+packet admitted by a consumer envelope remains byte- and digest-identical.
+The six tiny-budget malformed-tail first-excess tests remain unchanged in
+meaning and now also call the trusted door explicitly.
+
 ## ABI and budget proof
 
 Host admission reserves exactly `max_rows` rows after checked host narrowing,
@@ -218,7 +281,8 @@ corresponding proportional host/GPU allocation.
 | `DenseOrdinalRange` | custom deserialize through `try_new` | overflowing `start + len` rejects |
 | `ResidentClearingRanges` | custom DTO; every range revalidated and canonical zero starts required | overflowing/noncanonical ranges reject |
 | `ResidentClearingBudgets` | custom DTO reconstructed only through `new` | zero and scratch-inconsistent budgets reject |
-| `ResidentClearingPlan` | custom top-level visitor requires validated budgets before any variable sequence; nested bounded visitors reserve no more than the admitted owners/resources/scopes/draws/rows/canonical-byte limits, consume only the first excess element, then ordinary reconstruction verifies ordering, ranges, canonical bytes, and digest | valid roundtrip succeeds; six hostile packets put malformed syntax after the first excess owner/resource/scope/draw/row/byte and receive the budget error first; zero realm/root, overflow, invalid budgets, reordered dictionaries, out-of-range rows, canonical-byte mutation, and digest mutation also reject |
+| `ResidentClearingReplayEnvelope` | public consumer-constructed outer ceilings; private fields and no serde | all nine wire claims compare against it before any variable sequence reservation |
+| `ResidentClearingPlan` | `Serialize` only; no context-free `Deserialize`; its public replay door requires the trusted envelope and uses a private seeded top-level visitor before the existing bounded visitors and ordinary reconstruction | pinned `compile_fail,E0277`; valid admitted roundtrip; nine componentwise outer-budget refusals; all-large forged budget plus malformed tail refuses at the budget block; six tiny first-excess packets and the prior malformed invariant census remain green |
 
 `ResidentPlanContext`, dictionaries, rows, ordinals, and digest expose no direct
 `Deserialize` derive that could bypass plan reconstruction. Simple authored
@@ -242,7 +306,7 @@ constructors carry no hidden invariant.
   was added.
 - Dispatch surface: no Cargo manifest/lockfile, WGSL, shader include,
   pipeline, command encoder, or `dispatch_workgroups` delta.
-- The governed `kernel_surface.txt` adds only the 20 deliberate 14.2 exports
+- The governed `kernel_surface.txt` adds only the 21 deliberate 14.2 exports
   with named promotion blockers, as required by Agent Scan;
   `docs/sanctioned_surface.md` is the mechanically regenerated digest of those
   same rows.
@@ -286,6 +350,8 @@ Source-versus-evidence commit map:
 - remand source and executable witness: `e9042e40960aace583fb79670080530870cd05c0`
 - continuation A/B source and executable witness:
   `6649589388a8e440949638a8ce778999ddc97c31`
+- target C source and executable witness:
+  `c2e63c3d65a5aa0dac6ba55c89da6828cb05034f`
 - evidence/governance tail and exact final head: carried by the PR relay after
   all local/hosted checks, avoiding a self-referential hash in this file
 
@@ -293,12 +359,13 @@ Source-versus-evidence commit map:
 
 - `cargo check -p simthing-core -p simthing-kernel -p simthing-gpu -p simthing-workshop` — PASS
 - `cargo test -p simthing-workshop --test resident_clearing_plan_0 -- --nocapture` — PASS, 3/3, real adapter
+- `cargo test -p simthing-kernel --doc resident_clearing_plan --offline` — PASS, trusted-door compile-fail 1/1
 - `cargo test -p simthing-core tree_execution_context --offline -- --test-threads=1 --nocapture` — PASS, stale-remap falsifier 1/1
 - `cargo test -p simthing-core --doc tree_execution_context --offline` — PASS, authority-serde compile-fail 1/1
 - `cargo test -p simthing-workshop --test generation_critical_path_baseline_0 --offline -- --test-threads=1 --nocapture` — PASS, 4/4; generated timing packet restored byte-identically because 14.2 must not refresh 14.1 measurements
 - `cargo test -p simthing-driver --test contention_arena_executed_0` — PASS, 1/1
 - `cargo test -p simthing-driver --test clearing_weight_semantic_partition_0` — PASS, 2/2
-- `bash scripts/ci/test_inventory_check.sh` — PASS, 1369 discovered / 1369 inventoried
+- `bash scripts/ci/test_inventory_check.sh` — PASS, 1370 discovered / 1370 inventoried
 - `bash scripts/ci/test_inventory_drift_check.sh` — PASS, unledgered 0 / stale 0
 - `bash scripts/ci/test_lifecycle_expiry_check.sh --schema` — PASS, expired 0 / audit 0
 - `bash scripts/ci/track_closeout.sh --artifact-expiry` — PASS, expired 0 / cruft 0 / malformed 0
