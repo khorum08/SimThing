@@ -4,18 +4,19 @@
 //! intentionally contains no scoring, equality-band, apportionment, grant,
 //! dispatch, or structural-consequence implementation.
 
-use serde::{Deserialize, Serialize};
+use std::collections::BTreeSet;
+
+use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use simthing_core::{
-    GenerationStamp, RealmQualified, SeamFact, SimThingId, TreeExecutionContext,
-    TreeExecutionContextError, TreeRealmId,
+    GenerationStamp, RealmQualified, SeamFact, SimThingId, TreeExecutionAuthority,
+    TreeExecutionBinding, TreeExecutionContext, TreeExecutionContextError, TreeRealmId,
 };
 use thiserror::Error;
 
-const CANONICAL_VERSION: u32 = 1;
+const CANONICAL_VERSION: u32 = 2;
 const CANONICAL_DOMAIN: &[u8; 8] = b"STRCP140";
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-#[serde(transparent)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ResidentOwnerId(RealmQualified<SimThingId>);
 
 impl ResidentOwnerId {
@@ -59,10 +60,7 @@ semantic_id!(ResidentDrawId);
 
 macro_rules! ordinal_id {
     ($name:ident) => {
-        #[derive(
-            Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize,
-        )]
-        #[serde(transparent)]
+        #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
         pub struct $name(u32);
 
         impl $name {
@@ -79,8 +77,7 @@ ordinal_id!(ResidentScopeOrdinal);
 ordinal_id!(ResidentDrawOrdinal);
 
 /// One admitted semantic composition row before dense ordinal assignment.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ResidentClearingAdmission {
     pub owner: ResidentOwnerId,
     pub resource: ResidentResourceId,
@@ -90,8 +87,7 @@ pub struct ResidentClearingAdmission {
 
 /// One canonical dense resident row. The four ordinal axes are deliberately
 /// typed so transposition is uncompilable.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ResidentClearingRow {
     owner: ResidentOwnerOrdinal,
     resource: ResidentResourceOrdinal,
@@ -118,8 +114,7 @@ impl ResidentClearingRow {
 }
 
 /// Checked half-open range in one dense ordinal domain.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct DenseOrdinalRange {
     start: u32,
     len: u32,
@@ -152,6 +147,35 @@ impl DenseOrdinalRange {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+struct DenseOrdinalRangeWire {
+    start: u32,
+    len: u32,
+}
+
+impl Serialize for DenseOrdinalRange {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        DenseOrdinalRangeWire {
+            start: self.start,
+            len: self.len,
+        }
+        .serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for DenseOrdinalRange {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let wire = DenseOrdinalRangeWire::deserialize(deserializer)?;
+        Self::try_new(wire.start, wire.len).map_err(de::Error::custom)
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ResidentClearingRanges {
     pub owners: DenseOrdinalRange,
     pub resources: DenseOrdinalRange,
@@ -160,9 +184,80 @@ pub struct ResidentClearingRanges {
     pub rows: DenseOrdinalRange,
 }
 
-/// Admission budgets checked before any GPU allocation can be requested.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+struct ResidentClearingRangesWire {
+    owners: DenseOrdinalRangeWire,
+    resources: DenseOrdinalRangeWire,
+    scopes: DenseOrdinalRangeWire,
+    draws: DenseOrdinalRangeWire,
+    rows: DenseOrdinalRangeWire,
+}
+
+impl ResidentClearingRanges {
+    fn from_wire(wire: ResidentClearingRangesWire) -> Result<Self, ResidentClearingPlanError> {
+        let ranges = Self {
+            owners: DenseOrdinalRange::try_new(wire.owners.start, wire.owners.len)?,
+            resources: DenseOrdinalRange::try_new(wire.resources.start, wire.resources.len)?,
+            scopes: DenseOrdinalRange::try_new(wire.scopes.start, wire.scopes.len)?,
+            draws: DenseOrdinalRange::try_new(wire.draws.start, wire.draws.len)?,
+            rows: DenseOrdinalRange::try_new(wire.rows.start, wire.rows.len)?,
+        };
+        if [
+            ranges.owners,
+            ranges.resources,
+            ranges.scopes,
+            ranges.draws,
+            ranges.rows,
+        ]
+        .iter()
+        .any(|range| range.start() != 0)
+        {
+            return Err(ResidentClearingPlanError::MalformedWire {
+                field: "ranges.start",
+            });
+        }
+        Ok(ranges)
+    }
+
+    fn to_wire(self) -> ResidentClearingRangesWire {
+        fn one(range: DenseOrdinalRange) -> DenseOrdinalRangeWire {
+            DenseOrdinalRangeWire {
+                start: range.start(),
+                len: range.len(),
+            }
+        }
+        ResidentClearingRangesWire {
+            owners: one(self.owners),
+            resources: one(self.resources),
+            scopes: one(self.scopes),
+            draws: one(self.draws),
+            rows: one(self.rows),
+        }
+    }
+}
+
+impl Serialize for ResidentClearingRanges {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        self.to_wire().serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for ResidentClearingRanges {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        Self::from_wire(ResidentClearingRangesWire::deserialize(deserializer)?)
+            .map_err(de::Error::custom)
+    }
+}
+
+/// Admission budgets checked before any GPU allocation can be requested.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ResidentClearingBudgets {
     max_owners: u32,
     max_resources: u32,
@@ -253,8 +348,73 @@ impl ResidentClearingBudgets {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+struct ResidentClearingBudgetsWire {
+    max_owners: u32,
+    max_resources: u32,
+    max_scopes: u32,
+    max_draws: u32,
+    max_rows: u32,
+    max_semantic_plan_bytes: u64,
+    max_resident_bytes: u64,
+    max_scratch_bytes: u64,
+    scratch_bytes_per_row: u32,
+}
+
+impl ResidentClearingBudgetsWire {
+    fn admit(self) -> Result<ResidentClearingBudgets, ResidentClearingPlanError> {
+        ResidentClearingBudgets::new(
+            self.max_owners,
+            self.max_resources,
+            self.max_scopes,
+            self.max_draws,
+            self.max_rows,
+            self.max_semantic_plan_bytes,
+            self.max_resident_bytes,
+            self.max_scratch_bytes,
+            self.scratch_bytes_per_row,
+        )
+    }
+}
+
+impl From<ResidentClearingBudgets> for ResidentClearingBudgetsWire {
+    fn from(value: ResidentClearingBudgets) -> Self {
+        Self {
+            max_owners: value.max_owners(),
+            max_resources: value.max_resources(),
+            max_scopes: value.max_scopes(),
+            max_draws: value.max_draws(),
+            max_rows: value.max_rows(),
+            max_semantic_plan_bytes: value.max_semantic_plan_bytes(),
+            max_resident_bytes: value.max_resident_bytes(),
+            max_scratch_bytes: value.max_scratch_bytes(),
+            scratch_bytes_per_row: value.scratch_bytes_per_row(),
+        }
+    }
+}
+
+impl Serialize for ResidentClearingBudgets {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        ResidentClearingBudgetsWire::from(*self).serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for ResidentClearingBudgets {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        ResidentClearingBudgetsWire::deserialize(deserializer)?
+            .admit()
+            .map_err(de::Error::custom)
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct SemanticPlanDigest {
     low: u64,
     high: u64,
@@ -274,12 +434,10 @@ impl SemanticPlanDigest {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ResidentPlanContext {
     realm: TreeRealmId,
     root: SimThingId,
-    generation: GenerationStamp,
 }
 
 impl ResidentPlanContext {
@@ -289,23 +447,16 @@ impl ResidentPlanContext {
     pub const fn root(self) -> SimThingId {
         self.root
     }
-    pub const fn generation(self) -> GenerationStamp {
-        self.generation
-    }
-}
-
-impl From<TreeExecutionContext> for ResidentPlanContext {
-    fn from(context: TreeExecutionContext) -> Self {
+    fn from_binding<TResidency>(binding: &TreeExecutionBinding<'_, TResidency>) -> Self {
+        let context = binding.context();
         Self {
             realm: context.realm(),
             root: context.root(),
-            generation: context.generation(),
         }
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ResidentClearingDictionaries {
     owners: Vec<ResidentOwnerId>,
     resources: Vec<ResidentResourceId>,
@@ -330,8 +481,7 @@ impl ResidentClearingDictionaries {
 
 /// Immutable semantic plan whose bytes depend only on admitted semantic
 /// identity and canonical total order.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ResidentClearingPlan {
     context: ResidentPlanContext,
     dictionaries: ResidentClearingDictionaries,
@@ -342,20 +492,70 @@ pub struct ResidentClearingPlan {
 }
 
 impl ResidentClearingPlan {
-    pub fn build(
-        context: TreeExecutionContext,
+    pub fn build<TResidency>(
+        binding: &TreeExecutionBinding<'_, TResidency>,
         admissions: impl IntoIterator<Item = ResidentClearingAdmission>,
         budgets: ResidentClearingBudgets,
     ) -> Result<Self, ResidentClearingPlanError> {
-        let admissions: Vec<_> = admissions.into_iter().collect();
+        binding.validate()?;
+        Self::build_from_context(
+            ResidentPlanContext::from_binding(binding),
+            admissions,
+            budgets,
+        )
+    }
+
+    fn build_from_context(
+        context: ResidentPlanContext,
+        admissions: impl IntoIterator<Item = ResidentClearingAdmission>,
+        budgets: ResidentClearingBudgets,
+    ) -> Result<Self, ResidentClearingPlanError> {
+        // Never trust iterator size hints and never collect beyond the admitted
+        // row envelope. Axis sets likewise refuse a new distinct value before
+        // inserting beyond their own admitted envelope.
+        let mut admitted_rows = Vec::new();
+        let mut owner_set = BTreeSet::new();
+        let mut resource_set = BTreeSet::new();
+        let mut scope_set = BTreeSet::new();
+        let mut draw_set = BTreeSet::new();
+        for admission in admissions {
+            if admitted_rows.len() >= usize_from_u32(budgets.max_rows(), "max_rows")? {
+                return Err(ResidentClearingPlanError::CountBudgetExceeded {
+                    axis: "rows",
+                    observed: u64::from(budgets.max_rows()) + 1,
+                    admitted: budgets.max_rows(),
+                });
+            }
+            admit_axis(
+                &mut owner_set,
+                admission.owner,
+                "owners",
+                budgets.max_owners(),
+            )?;
+            admit_axis(
+                &mut resource_set,
+                admission.resource,
+                "resources",
+                budgets.max_resources(),
+            )?;
+            admit_axis(
+                &mut scope_set,
+                admission.scope,
+                "scopes",
+                budgets.max_scopes(),
+            )?;
+            admit_axis(&mut draw_set, admission.draw, "draws", budgets.max_draws())?;
+            admitted_rows.push(admission);
+        }
+        let admissions = admitted_rows;
         if admissions.is_empty() {
             return Err(ResidentClearingPlanError::EmptyAdmissions);
         }
 
-        let owners = sorted_unique(admissions.iter().map(|row| row.owner));
-        let resources = sorted_unique(admissions.iter().map(|row| row.resource));
-        let scopes = sorted_unique(admissions.iter().map(|row| row.scope));
-        let draws = sorted_unique(admissions.iter().map(|row| row.draw));
+        let owners: Vec<_> = owner_set.into_iter().collect();
+        let resources: Vec<_> = resource_set.into_iter().collect();
+        let scopes: Vec<_> = scope_set.into_iter().collect();
+        let draws: Vec<_> = draw_set.into_iter().collect();
 
         let owner_count = checked_count("owners", owners.len(), budgets.max_owners())?;
         let resource_count = checked_count("resources", resources.len(), budgets.max_resources())?;
@@ -391,7 +591,7 @@ impl ResidentClearingPlan {
             rows: DenseOrdinalRange::try_new(0, row_count)?,
         };
         let mut plan = Self {
-            context: context.into(),
+            context,
             dictionaries,
             ranges,
             rows,
@@ -443,11 +643,13 @@ impl ResidentClearingPlan {
         self.canonical_bytes_without_digest()
     }
 
-    pub fn bind_context(
+    pub fn bind_context<TResidency>(
         &self,
-        context: TreeExecutionContext,
+        binding: &TreeExecutionBinding<'_, TResidency>,
     ) -> Result<ResidentClearingPlanBinding, ResidentClearingPlanError> {
-        let observed = ResidentPlanContext::from(context);
+        binding.validate()?;
+        let context = binding.context();
+        let observed = ResidentPlanContext::from_binding(binding);
         if observed != self.context {
             return Err(ResidentClearingPlanError::ContextMismatch {
                 expected: self.context,
@@ -457,20 +659,22 @@ impl ResidentClearingPlan {
         Ok(ResidentClearingPlanBinding {
             realm: context.realm(),
             incarnation: context.incarnation(),
-            generation: context.generation(),
+            generation: binding.generation(),
             digest: self.digest,
         })
     }
 
     /// Remap a canonical foreign identity into this plan's local owner
     /// ordinal. No API accepts the fact's source ordinal as destination input.
-    pub fn remap_seam_owner(
+    pub fn remap_seam_owner<TResidency>(
         &self,
-        source_context: TreeExecutionContext,
+        source_context: &TreeExecutionContext,
+        source_authority: &TreeExecutionAuthority<'_, TResidency>,
         fact: &SeamFact<SimThingId>,
     ) -> Result<ResidentOwnerOrdinal, ResidentClearingPlanError> {
-        source_context.admit_seam_fact(fact)?;
-        self.owner_ordinal(ResidentOwnerId::new(*fact.subject()))
+        source_context.remap_seam_fact(source_authority, fact, |subject| {
+            self.owner_ordinal(ResidentOwnerId::new(*subject))
+        })?
     }
 
     pub fn owner_ordinal(
@@ -501,7 +705,6 @@ impl ResidentClearingPlan {
         bytes.extend_from_slice(&CANONICAL_VERSION.to_le_bytes());
         bytes.extend_from_slice(&self.context.realm.canonical_bytes());
         bytes.extend_from_slice(&self.context.root.raw().to_le_bytes());
-        bytes.extend_from_slice(&self.context.generation.get().to_le_bytes());
         append_budgets(&mut bytes, self.budgets);
         append_count(&mut bytes, self.ranges.owners.len());
         for owner in &self.dictionaries.owners {
@@ -530,11 +733,11 @@ impl ResidentClearingPlan {
     }
 
     fn canonical_byte_len(&self) -> Result<u64, ResidentClearingPlanError> {
-        // domain/version/context + budgets + five encoded dictionary/row counts
+        // domain/version/realm/root + budgets + five dictionary/row counts.
+        // Generation and incarnation are transient execution authority.
         let mut bytes = 8_u64
             .checked_add(4)
             .and_then(|value| value.checked_add(16))
-            .and_then(|value| value.checked_add(4))
             .and_then(|value| value.checked_add(4))
             .and_then(|value| value.checked_add(48))
             .and_then(|value| value.checked_add(5 * 8))
@@ -546,6 +749,264 @@ impl ResidentClearingPlan {
         bytes = checked_axis_bytes(bytes, self.ranges.scopes.len(), 8, "scope_bytes")?;
         bytes = checked_axis_bytes(bytes, self.ranges.draws.len(), 8, "draw_bytes")?;
         checked_axis_bytes(bytes, self.ranges.rows.len(), 16, "row_bytes")
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ResidentPlanContextWire {
+    realm: [u8; 16],
+    root: u32,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ResidentOwnerWire {
+    realm: [u8; 16],
+    local: u32,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ResidentClearingDictionariesWire {
+    owners: Vec<ResidentOwnerWire>,
+    resources: Vec<u64>,
+    scopes: Vec<u64>,
+    draws: Vec<u64>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ResidentClearingPlanWire {
+    version: u32,
+    context: ResidentPlanContextWire,
+    dictionaries: ResidentClearingDictionariesWire,
+    ranges: ResidentClearingRangesWire,
+    rows: Vec<[u32; 4]>,
+    budgets: ResidentClearingBudgetsWire,
+    digest: [u64; 2],
+    canonical_bytes: Vec<u8>,
+}
+
+impl ResidentClearingPlan {
+    fn to_wire(&self) -> ResidentClearingPlanWire {
+        ResidentClearingPlanWire {
+            version: CANONICAL_VERSION,
+            context: ResidentPlanContextWire {
+                realm: self.context.realm().canonical_bytes(),
+                root: self.context.root().raw(),
+            },
+            dictionaries: ResidentClearingDictionariesWire {
+                owners: self
+                    .dictionaries
+                    .owners()
+                    .iter()
+                    .map(|owner| ResidentOwnerWire {
+                        realm: owner.identity().realm().canonical_bytes(),
+                        local: owner.identity().local().raw(),
+                    })
+                    .collect(),
+                resources: self
+                    .dictionaries
+                    .resources()
+                    .iter()
+                    .map(|id| id.get())
+                    .collect(),
+                scopes: self
+                    .dictionaries
+                    .scopes()
+                    .iter()
+                    .map(|id| id.get())
+                    .collect(),
+                draws: self
+                    .dictionaries
+                    .draws()
+                    .iter()
+                    .map(|id| id.get())
+                    .collect(),
+            },
+            ranges: self.ranges.to_wire(),
+            rows: self
+                .rows
+                .iter()
+                .map(|row| {
+                    [
+                        row.owner().get(),
+                        row.resource().get(),
+                        row.scope().get(),
+                        row.draw().get(),
+                    ]
+                })
+                .collect(),
+            budgets: self.budgets.into(),
+            digest: [self.digest.low(), self.digest.high()],
+            canonical_bytes: self.canonical_bytes(),
+        }
+    }
+
+    fn from_wire(wire: ResidentClearingPlanWire) -> Result<Self, ResidentClearingPlanError> {
+        if wire.version != CANONICAL_VERSION {
+            return Err(ResidentClearingPlanError::WireVersion {
+                observed: wire.version,
+            });
+        }
+        let realm = TreeRealmId::from_bytes(wire.context.realm).map_err(|_| {
+            ResidentClearingPlanError::MalformedWire {
+                field: "context.realm",
+            }
+        })?;
+        if wire.context.root == 0 {
+            return Err(ResidentClearingPlanError::MalformedWire {
+                field: "context.root",
+            });
+        }
+        let context = ResidentPlanContext {
+            realm,
+            root: SimThingId::from_session_raw(wire.context.root),
+        };
+        let budgets = wire.budgets.admit()?;
+        let supplied_ranges = ResidentClearingRanges::from_wire(wire.ranges)?;
+
+        let owners = wire
+            .dictionaries
+            .owners
+            .into_iter()
+            .map(|owner| {
+                if owner.local == 0 {
+                    return Err(ResidentClearingPlanError::MalformedWire {
+                        field: "dictionaries.owners.local",
+                    });
+                }
+                let realm = TreeRealmId::from_bytes(owner.realm).map_err(|_| {
+                    ResidentClearingPlanError::MalformedWire {
+                        field: "dictionaries.owners.realm",
+                    }
+                })?;
+                Ok(ResidentOwnerId::new(RealmQualified::new(
+                    realm,
+                    SimThingId::from_session_raw(owner.local),
+                )))
+            })
+            .collect::<Result<Vec<_>, ResidentClearingPlanError>>()?;
+        let resources = wire
+            .dictionaries
+            .resources
+            .into_iter()
+            .map(ResidentResourceId::new)
+            .collect();
+        let scopes = wire
+            .dictionaries
+            .scopes
+            .into_iter()
+            .map(ResidentScopeId::new)
+            .collect();
+        let draws = wire
+            .dictionaries
+            .draws
+            .into_iter()
+            .map(ResidentDrawId::new)
+            .collect();
+        let supplied_dictionaries = ResidentClearingDictionaries {
+            owners,
+            resources,
+            scopes,
+            draws,
+        };
+        let supplied_rows: Vec<_> = wire
+            .rows
+            .into_iter()
+            .map(|row| ResidentClearingRow {
+                owner: ResidentOwnerOrdinal(row[0]),
+                resource: ResidentResourceOrdinal(row[1]),
+                scope: ResidentScopeOrdinal(row[2]),
+                draw: ResidentDrawOrdinal(row[3]),
+            })
+            .collect();
+
+        let mut admissions = Vec::new();
+        for row in &supplied_rows {
+            let owner = supplied_dictionaries
+                .owners
+                .get(usize_from_u32(row.owner().get(), "wire.owner_ordinal")?)
+                .copied()
+                .ok_or(ResidentClearingPlanError::MalformedWire {
+                    field: "rows.owner",
+                })?;
+            let resource = supplied_dictionaries
+                .resources
+                .get(usize_from_u32(
+                    row.resource().get(),
+                    "wire.resource_ordinal",
+                )?)
+                .copied()
+                .ok_or(ResidentClearingPlanError::MalformedWire {
+                    field: "rows.resource",
+                })?;
+            let scope = supplied_dictionaries
+                .scopes
+                .get(usize_from_u32(row.scope().get(), "wire.scope_ordinal")?)
+                .copied()
+                .ok_or(ResidentClearingPlanError::MalformedWire {
+                    field: "rows.scope",
+                })?;
+            let draw = supplied_dictionaries
+                .draws
+                .get(usize_from_u32(row.draw().get(), "wire.draw_ordinal")?)
+                .copied()
+                .ok_or(ResidentClearingPlanError::MalformedWire { field: "rows.draw" })?;
+            admissions.push(ResidentClearingAdmission {
+                owner,
+                resource,
+                scope,
+                draw,
+            });
+        }
+
+        let rebuilt = Self::build_from_context(context, admissions, budgets)?;
+        if rebuilt.dictionaries != supplied_dictionaries {
+            return Err(ResidentClearingPlanError::MalformedWire {
+                field: "dictionaries",
+            });
+        }
+        if rebuilt.ranges != supplied_ranges {
+            return Err(ResidentClearingPlanError::MalformedWire { field: "ranges" });
+        }
+        if rebuilt.rows != supplied_rows {
+            return Err(ResidentClearingPlanError::MalformedWire { field: "rows" });
+        }
+        if rebuilt.canonical_bytes() != wire.canonical_bytes {
+            return Err(ResidentClearingPlanError::CanonicalBytesMismatch);
+        }
+        let observed_digest = SemanticPlanDigest {
+            low: wire.digest[0],
+            high: wire.digest[1],
+        };
+        if rebuilt.digest != observed_digest {
+            return Err(ResidentClearingPlanError::DigestMismatch {
+                expected: rebuilt.digest,
+                observed: observed_digest,
+            });
+        }
+        Ok(rebuilt)
+    }
+}
+
+impl Serialize for ResidentClearingPlan {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        self.to_wire().serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for ResidentClearingPlan {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        Self::from_wire(ResidentClearingPlanWire::deserialize(deserializer)?)
+            .map_err(de::Error::custom)
     }
 }
 
@@ -594,6 +1055,17 @@ pub enum ResidentClearingPlanError {
     OrdinalRangeOverflow { start: u32, len: u32 },
     #[error("canonical semantic plan requires {required} bytes, admitted {admitted}")]
     SemanticPlanBudgetExceeded { required: u64, admitted: u64 },
+    #[error("resident plan wire version {observed} is not supported")]
+    WireVersion { observed: u32 },
+    #[error("resident plan wire violates invariant {field}")]
+    MalformedWire { field: &'static str },
+    #[error("resident plan stored canonical bytes disagree with validated reconstruction")]
+    CanonicalBytesMismatch,
+    #[error("resident plan digest mismatch: expected {expected:?}, observed {observed:?}")]
+    DigestMismatch {
+        expected: SemanticPlanDigest,
+        observed: SemanticPlanDigest,
+    },
     #[error("resident plan context mismatch: expected {expected:?}, observed {observed:?}")]
     ContextMismatch {
         expected: ResidentPlanContext,
@@ -607,11 +1079,26 @@ pub enum ResidentClearingPlanError {
     SeamAdmission(#[from] TreeExecutionContextError),
 }
 
-fn sorted_unique<T: Ord>(values: impl IntoIterator<Item = T>) -> Vec<T> {
-    let mut values: Vec<_> = values.into_iter().collect();
-    values.sort_unstable();
-    values.dedup();
-    values
+fn admit_axis<T: Copy + Ord>(
+    values: &mut BTreeSet<T>,
+    value: T,
+    axis: &'static str,
+    admitted: u32,
+) -> Result<(), ResidentClearingPlanError> {
+    if !values.contains(&value) && values.len() >= usize_from_u32(admitted, axis)? {
+        return Err(ResidentClearingPlanError::CountBudgetExceeded {
+            axis,
+            observed: u64::from(admitted) + 1,
+            admitted,
+        });
+    }
+    values.insert(value);
+    Ok(())
+}
+
+fn usize_from_u32(value: u32, field: &'static str) -> Result<usize, ResidentClearingPlanError> {
+    usize::try_from(value)
+        .map_err(|_| ResidentClearingPlanError::BudgetArithmeticOverflow { field })
 }
 
 fn checked_count(

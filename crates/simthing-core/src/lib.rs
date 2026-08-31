@@ -179,6 +179,7 @@ pub use specialization::{
 };
 pub use structural_coord::{RenderCoord, StructuralCoord};
 pub use tree_execution_context::{
-    ExecutionIncarnation, RealmQualified, SeamFact, SeamFactId, TreeExecutionBinding,
-    TreeExecutionContext, TreeExecutionContextError, TreeIdentityError, TreeRealmId,
+    ExecutionIncarnation, RealmQualified, SeamEmissionOrdinal, SeamFact, SeamFactId,
+    TreeExecutionAuthority, TreeExecutionBinding, TreeExecutionContext, TreeExecutionContextError,
+    TreeGenerationAuthority, TreeIdentityError, TreeRealmId,
 };

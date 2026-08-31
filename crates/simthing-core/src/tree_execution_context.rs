@@ -1,20 +1,24 @@
-//! Realm-qualified tree identity and the checked execution-context seam.
+//! Realm-qualified tree identity and the sealed execution-authority seam.
 //!
-//! The canonical context is deliberately small and host-agnostic. Runtime
-//! attachments are borrowed through [`TreeExecutionBinding`] and never enter
-//! canonical bytes, persistence, or cross-tree identity.
+//! Runtime authority is deliberately not serde data. A caller-owned
+//! [`TreeExecutionAuthority`] borrows the one real root, generation authority,
+//! schedule, registry, and residency attachment. It mints exactly one opaque
+//! [`TreeExecutionContext`], whose private seal is checked against the live
+//! authority record at every consuming door.
 
-use serde::{Deserialize, Serialize};
+use std::fmt;
+use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering};
+use std::sync::Arc;
+
 use thiserror::Error;
 
 use crate::{DimensionRegistry, GenerationStamp, IntegrationSchedule, SimThing, SimThingId};
 
 /// Durable identity of one independently executing tree.
 ///
-/// A realm survives migration. A speculative fork derives a new realm from
-/// an explicit semantic fork key; no host/process allocator participates.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-#[serde(transparent)]
+/// This runtime authority value intentionally has no serde implementation.
+/// Durable products that carry a realm use their own validated wire form.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct TreeRealmId([u8; 16]);
 
 impl TreeRealmId {
@@ -33,7 +37,7 @@ impl TreeRealmId {
         self.0
     }
 
-    /// Deterministically mint a distinct realm for one semantic fork.
+    /// Deterministically derive a distinct realm for one semantic fork.
     pub fn fork(self, fork_key: u64) -> Result<Self, TreeIdentityError> {
         if fork_key == 0 {
             return Err(TreeIdentityError::ZeroForkKey);
@@ -54,8 +58,9 @@ impl TreeRealmId {
 }
 
 /// One transient execution incarnation of a durable realm.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-#[serde(transparent)]
+///
+/// This authority value intentionally has no serde implementation.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ExecutionIncarnation(u64);
 
 impl ExecutionIncarnation {
@@ -78,9 +83,55 @@ impl ExecutionIncarnation {
     }
 }
 
+/// Caller-owned live generation authority for one executing tree.
+///
+/// Generation is transient execution state. It is intentionally absent from
+/// semantic-plan identity and has no serde implementation.
+#[derive(Debug)]
+pub struct TreeGenerationAuthority {
+    live: AtomicU32,
+}
+
+impl TreeGenerationAuthority {
+    pub const fn new(initial: GenerationStamp) -> Self {
+        Self {
+            live: AtomicU32::new(initial.get()),
+        }
+    }
+
+    pub fn current(&self) -> GenerationStamp {
+        GenerationStamp::new(self.live.load(Ordering::Acquire))
+    }
+
+    /// Advance exactly N -> N+1 without rebuilding semantic state.
+    pub fn advance(
+        &self,
+        next: GenerationStamp,
+    ) -> Result<GenerationStamp, TreeExecutionContextError> {
+        let current = self.live.load(Ordering::Acquire);
+        let expected_next = current
+            .checked_add(1)
+            .ok_or(TreeExecutionContextError::GenerationOverflow)?;
+        if next.get() != expected_next {
+            return Err(TreeExecutionContextError::GenerationAdvanceOutOfSequence {
+                current: GenerationStamp::new(current),
+                requested: next,
+            });
+        }
+        self.live
+            .compare_exchange(current, next.get(), Ordering::AcqRel, Ordering::Acquire)
+            .map_err(
+                |observed| TreeExecutionContextError::GenerationAuthorityChanged {
+                    expected: GenerationStamp::new(current),
+                    observed: GenerationStamp::new(observed),
+                },
+            )?;
+        Ok(next)
+    }
+}
+
 /// A local semantic id qualified by its durable tree realm.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct RealmQualified<TLocalId> {
     realm: TreeRealmId,
     local: TLocalId,
@@ -91,7 +142,7 @@ impl<TLocalId> RealmQualified<TLocalId> {
         Self { realm, local }
     }
 
-    pub const fn realm(&self) -> TreeRealmId {
+    pub fn realm(&self) -> TreeRealmId {
         self.realm
     }
 
@@ -104,25 +155,37 @@ impl<TLocalId> RealmQualified<TLocalId> {
     }
 }
 
-/// Retry identity of one fact crossing an independently executing tree seam.
+/// Source-record ordinal for one immutable seam emission.
 ///
-/// `source_ordinal` is source-local evidence only. Receiving plans never use
-/// it as their destination ordinal; they remap the realm-qualified subject.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
+/// There is deliberately no public raw constructor, `From<u32>`, serde path,
+/// or conversion from a resident dictionary ordinal. The future source
+/// emission recorder is the only component allowed to mint this value.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct SeamEmissionOrdinal(u32);
+
+impl SeamEmissionOrdinal {
+    pub const fn get(self) -> u32 {
+        self.0
+    }
+}
+
+/// Retry identity of one fact crossing an independently executing tree seam.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct SeamFactId {
     source_realm: TreeRealmId,
     seam_id: u64,
     source_generation: GenerationStamp,
-    source_ordinal: u32,
+    source_ordinal: SeamEmissionOrdinal,
 }
 
 impl SeamFactId {
-    pub const fn new(
+    /// Assemble an id from an ordinal already sealed by an immutable source
+    /// emission record. This door cannot mint the ordinal itself.
+    pub const fn from_recorded_emission(
         source_realm: TreeRealmId,
         seam_id: u64,
         source_generation: GenerationStamp,
-        source_ordinal: u32,
+        source_ordinal: SeamEmissionOrdinal,
     ) -> Self {
         Self {
             source_realm,
@@ -144,7 +207,7 @@ impl SeamFactId {
         self.source_generation
     }
 
-    pub const fn source_ordinal(self) -> u32 {
+    pub const fn source_ordinal(self) -> SeamEmissionOrdinal {
         self.source_ordinal
     }
 
@@ -153,15 +216,14 @@ impl SeamFactId {
         bytes[..16].copy_from_slice(&self.source_realm.canonical_bytes());
         bytes[16..24].copy_from_slice(&self.seam_id.to_le_bytes());
         bytes[24..28].copy_from_slice(&self.source_generation.get().to_le_bytes());
-        bytes[28..32].copy_from_slice(&self.source_ordinal.to_le_bytes());
+        bytes[28..32].copy_from_slice(&self.source_ordinal.get().to_le_bytes());
         bytes
     }
 }
 
 /// A canonical cross-tree fact carrying durable subject identity and the
 /// source incarnation that produced it.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SeamFact<TLocalId> {
     id: SeamFactId,
     source_incarnation: ExecutionIncarnation,
@@ -169,7 +231,7 @@ pub struct SeamFact<TLocalId> {
 }
 
 impl<TLocalId> SeamFact<TLocalId> {
-    pub fn new(
+    pub fn from_recorded_emission(
         id: SeamFactId,
         source_incarnation: ExecutionIncarnation,
         subject: RealmQualified<TLocalId>,
@@ -197,113 +259,183 @@ impl<TLocalId> SeamFact<TLocalId> {
     }
 }
 
-/// Canonical, O(1) identity of one tree execution context.
-///
-/// Schedule, registry, residency, device, queue, addresses, and physical rows
-/// are intentionally absent. [`Self::bind`] borrows those existing runtime
-/// authorities without cloning or serializing them.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct TreeExecutionContext {
+#[derive(Debug)]
+struct TreeExecutionSeal {
     realm: TreeRealmId,
-    incarnation: ExecutionIncarnation,
     root: SimThingId,
-    generation: GenerationStamp,
+    live_incarnation: AtomicU64,
+    context_minted: AtomicBool,
+}
+
+/// The one runtime authority capsule for an executing tree.
+///
+/// The capsule borrows, rather than duplicates, every existing authority. Its
+/// private allocation identity is the context seal; equal raw ids or equal
+/// generation values cannot cross-bind two capsules.
+pub struct TreeExecutionAuthority<'a, TResidency> {
+    seal: Arc<TreeExecutionSeal>,
+    root: &'a SimThing,
+    generation_authority: &'a TreeGenerationAuthority,
+    schedule: &'a IntegrationSchedule,
+    registry: &'a DimensionRegistry,
+    residency: &'a TResidency,
+}
+
+impl<'a, TResidency> TreeExecutionAuthority<'a, TResidency> {
+    #[allow(clippy::too_many_arguments)]
+    pub fn seal(
+        realm: TreeRealmId,
+        incarnation: ExecutionIncarnation,
+        root: &'a SimThing,
+        generation_authority: &'a TreeGenerationAuthority,
+        schedule: &'a IntegrationSchedule,
+        registry: &'a DimensionRegistry,
+        residency: &'a TResidency,
+    ) -> Result<Self, TreeExecutionContextError> {
+        if root.id.raw() == 0 {
+            return Err(TreeExecutionContextError::ZeroRootId);
+        }
+        Ok(Self {
+            seal: Arc::new(TreeExecutionSeal {
+                realm,
+                root: root.id,
+                live_incarnation: AtomicU64::new(incarnation.get()),
+                context_minted: AtomicBool::new(false),
+            }),
+            root,
+            generation_authority,
+            schedule,
+            registry,
+            residency,
+        })
+    }
+
+    /// Mint the sole context admitted by this runtime authority capsule.
+    pub fn seal_context(&self) -> Result<TreeExecutionContext, TreeExecutionContextError> {
+        self.seal
+            .context_minted
+            .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
+            .map_err(|_| TreeExecutionContextError::ContextAlreadyMinted)?;
+        Ok(TreeExecutionContext {
+            seal: Arc::clone(&self.seal),
+            incarnation: self.live_incarnation(),
+        })
+    }
+
+    /// Change the live incarnation and return the sole currently-valid context.
+    /// Retained old contexts fail against the updated live record.
+    pub fn migrate_context(
+        &self,
+        context: &TreeExecutionContext,
+        new_incarnation: ExecutionIncarnation,
+    ) -> Result<TreeExecutionContext, TreeExecutionContextError> {
+        context.verify_authority(self)?;
+        if new_incarnation == context.incarnation {
+            return Err(TreeExecutionContextError::MigrationRequiresNewIncarnation);
+        }
+        self.seal
+            .live_incarnation
+            .compare_exchange(
+                context.incarnation.get(),
+                new_incarnation.get(),
+                Ordering::AcqRel,
+                Ordering::Acquire,
+            )
+            .map_err(|observed| TreeExecutionContextError::StaleIncarnation {
+                expected: incarnation_from_live(observed),
+                observed: context.incarnation,
+            })?;
+        Ok(TreeExecutionContext {
+            seal: Arc::clone(&self.seal),
+            incarnation: new_incarnation,
+        })
+    }
+
+    pub fn live_incarnation(&self) -> ExecutionIncarnation {
+        incarnation_from_live(self.seal.live_incarnation.load(Ordering::Acquire))
+    }
+
+    pub fn current_generation(&self) -> GenerationStamp {
+        self.generation_authority.current()
+    }
+
+    pub fn fork_realm(&self, fork_key: u64) -> Result<TreeRealmId, TreeIdentityError> {
+        self.seal.realm.fork(fork_key)
+    }
+}
+
+/// Opaque, non-cloneable authority handle sealed to exactly one live capsule.
+///
+/// There is no public constructor and no serde implementation. Incarnation is
+/// a captured claim only until checked against the authority's live record.
+///
+/// ```compile_fail,E0277
+/// fn requires_deserialize<T: for<'de> serde::Deserialize<'de>>() {}
+/// requires_deserialize::<simthing_core::TreeRealmId>();
+/// requires_deserialize::<simthing_core::ExecutionIncarnation>();
+/// requires_deserialize::<simthing_core::TreeExecutionContext>();
+/// ```
+pub struct TreeExecutionContext {
+    seal: Arc<TreeExecutionSeal>,
+    incarnation: ExecutionIncarnation,
+}
+
+impl fmt::Debug for TreeExecutionContext {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("TreeExecutionContext")
+            .field("realm", &self.realm())
+            .field("incarnation", &self.incarnation)
+            .field("root", &self.root())
+            .finish_non_exhaustive()
+    }
 }
 
 impl TreeExecutionContext {
-    pub const fn new(
-        realm: TreeRealmId,
-        incarnation: ExecutionIncarnation,
-        root: SimThingId,
-        generation: GenerationStamp,
-    ) -> Self {
-        Self {
-            realm,
-            incarnation,
-            root,
-            generation,
-        }
+    pub fn realm(&self) -> TreeRealmId {
+        self.seal.realm
     }
 
-    pub const fn realm(self) -> TreeRealmId {
-        self.realm
-    }
-
-    pub const fn incarnation(self) -> ExecutionIncarnation {
+    pub const fn incarnation(&self) -> ExecutionIncarnation {
         self.incarnation
     }
 
-    pub const fn root(self) -> SimThingId {
-        self.root
+    pub fn root(&self) -> SimThingId {
+        self.seal.root
     }
 
-    pub const fn generation(self) -> GenerationStamp {
-        self.generation
+    pub fn qualify<TLocalId>(&self, local: TLocalId) -> RealmQualified<TLocalId> {
+        RealmQualified::new(self.seal.realm, local)
     }
 
-    pub const fn qualify<TLocalId>(self, local: TLocalId) -> RealmQualified<TLocalId> {
-        RealmQualified::new(self.realm, local)
-    }
-
-    /// Canonical context bytes. No transient attachment or host coordinate is
-    /// representable in this fixed-width form.
-    pub fn canonical_bytes(self) -> [u8; 32] {
-        let mut bytes = [0_u8; 32];
-        bytes[..16].copy_from_slice(&self.realm.canonical_bytes());
-        bytes[16..24].copy_from_slice(&self.incarnation.get().to_le_bytes());
-        bytes[24..28].copy_from_slice(&self.root.raw().to_le_bytes());
-        bytes[28..32].copy_from_slice(&self.generation.get().to_le_bytes());
+    /// Stable semantic binding. Incarnation, generation, and the private
+    /// runtime witness are deliberately excluded.
+    pub fn semantic_plan_binding_bytes(&self) -> [u8; 20] {
+        let mut bytes = [0_u8; 20];
+        bytes[..16].copy_from_slice(&self.realm().canonical_bytes());
+        bytes[16..].copy_from_slice(&self.root().raw().to_le_bytes());
         bytes
     }
 
-    /// Stable semantic plan binding. Incarnation is deliberately excluded so
-    /// migration recreation preserves semantic plan bytes and digest.
-    pub fn semantic_plan_binding_bytes(self) -> [u8; 24] {
-        let mut bytes = [0_u8; 24];
-        bytes[..16].copy_from_slice(&self.realm.canonical_bytes());
-        bytes[16..20].copy_from_slice(&self.root.raw().to_le_bytes());
-        bytes[20..24].copy_from_slice(&self.generation.get().to_le_bytes());
-        bytes
-    }
-
-    pub fn migrate(
-        self,
-        new_incarnation: ExecutionIncarnation,
-    ) -> Result<Self, TreeExecutionContextError> {
-        if new_incarnation == self.incarnation {
-            return Err(TreeExecutionContextError::MigrationRequiresNewIncarnation);
-        }
-        Ok(Self {
-            incarnation: new_incarnation,
-            ..self
+    pub fn bind<'a, TResidency>(
+        &'a self,
+        authority: &'a TreeExecutionAuthority<'a, TResidency>,
+    ) -> Result<TreeExecutionBinding<'a, TResidency>, TreeExecutionContextError> {
+        self.verify_authority(authority)?;
+        Ok(TreeExecutionBinding {
+            context: self,
+            authority,
         })
     }
 
-    pub fn fork(
-        self,
-        fork_key: u64,
-        fork_incarnation: ExecutionIncarnation,
-    ) -> Result<Self, TreeIdentityError> {
-        Ok(Self {
-            realm: self.realm.fork(fork_key)?,
-            incarnation: fork_incarnation,
-            ..self
-        })
-    }
-
-    pub const fn at_generation(self, generation: GenerationStamp) -> Self {
-        Self { generation, ..self }
-    }
-
-    /// Reject a fact from a stale execution incarnation. Generation lag is
-    /// not rejected here: async staleness remains governed by the existing
-    /// authored seam policy.
-    pub fn admit_seam_fact<TLocalId>(
-        self,
+    /// Reject facts from a foreign capsule or stale live incarnation.
+    pub fn admit_seam_fact<TLocalId, TResidency>(
+        &self,
+        authority: &TreeExecutionAuthority<'_, TResidency>,
         fact: &SeamFact<TLocalId>,
     ) -> Result<(), TreeExecutionContextError> {
-        if fact.id().source_realm() != self.realm || fact.subject().realm() != self.realm {
+        self.verify_authority(authority)?;
+        if fact.id().source_realm() != self.realm() || fact.subject().realm() != self.realm() {
             return Err(TreeExecutionContextError::ForeignSourceRealm);
         }
         if fact.source_incarnation() != self.incarnation {
@@ -315,73 +447,74 @@ impl TreeExecutionContext {
         Ok(())
     }
 
-    /// Borrow the one existing runtime root, generation authority, schedule,
-    /// registry, and residency attachment named by this context.
-    pub fn bind<'a, TResidency>(
-        self,
-        root: &'a SimThing,
-        generation_authority: &'a GenerationStamp,
-        schedule: &'a IntegrationSchedule,
-        registry: &'a DimensionRegistry,
-        residency: &'a TResidency,
-    ) -> Result<TreeExecutionBinding<'a, TResidency>, TreeExecutionContextError> {
-        if root.id != self.root {
-            return Err(TreeExecutionContextError::RootMismatch {
-                expected: self.root,
-                observed: root.id,
+    /// Actual destination-remap door: validate the source capsule and live
+    /// incarnation before exposing only the realm-qualified subject to the
+    /// destination's local mapping function.
+    pub fn remap_seam_fact<TLocalId, TOutput, TResidency>(
+        &self,
+        authority: &TreeExecutionAuthority<'_, TResidency>,
+        fact: &SeamFact<TLocalId>,
+        remap: impl FnOnce(&RealmQualified<TLocalId>) -> TOutput,
+    ) -> Result<TOutput, TreeExecutionContextError> {
+        self.admit_seam_fact(authority, fact)?;
+        Ok(remap(fact.subject()))
+    }
+
+    fn verify_authority<TResidency>(
+        &self,
+        authority: &TreeExecutionAuthority<'_, TResidency>,
+    ) -> Result<(), TreeExecutionContextError> {
+        if !Arc::ptr_eq(&self.seal, &authority.seal) {
+            return Err(TreeExecutionContextError::AuthorityCapsuleMismatch);
+        }
+        let live = authority.live_incarnation();
+        if live != self.incarnation {
+            return Err(TreeExecutionContextError::StaleIncarnation {
+                expected: live,
+                observed: self.incarnation,
             });
         }
-        if *generation_authority != self.generation {
-            return Err(TreeExecutionContextError::GenerationAuthorityMismatch {
-                expected: self.generation,
-                observed: *generation_authority,
-            });
-        }
-        Ok(TreeExecutionBinding {
-            context: self,
-            root,
-            generation_authority,
-            schedule,
-            registry,
-            residency,
-        })
+        Ok(())
     }
 }
 
-/// Transient checked attachment of canonical tree identity to existing
-/// caller-owned runtime authorities.
+/// Freshly checked borrowing view of one runtime authority capsule.
 pub struct TreeExecutionBinding<'a, TResidency> {
-    context: TreeExecutionContext,
-    root: &'a SimThing,
-    generation_authority: &'a GenerationStamp,
-    schedule: &'a IntegrationSchedule,
-    registry: &'a DimensionRegistry,
-    residency: &'a TResidency,
+    context: &'a TreeExecutionContext,
+    authority: &'a TreeExecutionAuthority<'a, TResidency>,
 }
 
 impl<'a, TResidency> TreeExecutionBinding<'a, TResidency> {
-    pub const fn context(&self) -> TreeExecutionContext {
+    pub fn validate(&self) -> Result<(), TreeExecutionContextError> {
+        self.context.verify_authority(self.authority)
+    }
+
+    pub const fn context(&self) -> &'a TreeExecutionContext {
         self.context
     }
 
     pub const fn root(&self) -> &'a SimThing {
-        self.root
+        self.authority.root
     }
 
-    pub const fn generation_authority(&self) -> &'a GenerationStamp {
-        self.generation_authority
+    pub fn generation(&self) -> GenerationStamp {
+        self.authority.generation_authority.current()
+    }
+
+    pub const fn generation_authority(&self) -> &'a TreeGenerationAuthority {
+        self.authority.generation_authority
     }
 
     pub const fn schedule(&self) -> &'a IntegrationSchedule {
-        self.schedule
+        self.authority.schedule
     }
 
     pub const fn registry(&self) -> &'a DimensionRegistry {
-        self.registry
+        self.authority.registry
     }
 
     pub const fn residency(&self) -> &'a TResidency {
-        self.residency
+        self.authority.residency
     }
 }
 
@@ -399,16 +532,12 @@ pub enum TreeIdentityError {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Error)]
 pub enum TreeExecutionContextError {
-    #[error("tree execution root mismatch: expected {expected:?}, observed {observed:?}")]
-    RootMismatch {
-        expected: SimThingId,
-        observed: SimThingId,
-    },
-    #[error("tree generation authority mismatch: expected {expected:?}, observed {observed:?}")]
-    GenerationAuthorityMismatch {
-        expected: GenerationStamp,
-        observed: GenerationStamp,
-    },
+    #[error("tree execution root id must be non-zero")]
+    ZeroRootId,
+    #[error("this runtime authority capsule has already minted its context")]
+    ContextAlreadyMinted,
+    #[error("tree execution context belongs to a different runtime authority capsule")]
+    AuthorityCapsuleMismatch,
     #[error("migration must change execution incarnation")]
     MigrationRequiresNewIncarnation,
     #[error("seam fact subject realm does not match its source realm")]
@@ -420,10 +549,87 @@ pub enum TreeExecutionContextError {
         expected: ExecutionIncarnation,
         observed: ExecutionIncarnation,
     },
+    #[error("tree generation authority overflow")]
+    GenerationOverflow,
+    #[error("generation advance must be N -> N+1: current {current:?}, requested {requested:?}")]
+    GenerationAdvanceOutOfSequence {
+        current: GenerationStamp,
+        requested: GenerationStamp,
+    },
+    #[error(
+        "generation authority changed concurrently: expected {expected:?}, observed {observed:?}"
+    )]
+    GenerationAuthorityChanged {
+        expected: GenerationStamp,
+        observed: GenerationStamp,
+    },
+}
+
+fn incarnation_from_live(value: u64) -> ExecutionIncarnation {
+    ExecutionIncarnation::new(value).expect("sealed live incarnation is always non-zero")
 }
 
 fn stable_hash64(seed: u64, bytes: &[u8]) -> u64 {
     bytes.iter().fold(seed, |hash, byte| {
         (hash ^ u64::from(*byte)).wrapping_mul(0x0000_0100_0000_01b3)
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::SimThingKind;
+
+    #[test]
+    fn old_context_and_fact_fail_through_actual_destination_remap_after_migration() {
+        let tree = SimThing::new(SimThingKind::GameSession, 4);
+        let generation = TreeGenerationAuthority::new(GenerationStamp::new(4));
+        let schedule = IntegrationSchedule::new();
+        let registry = DimensionRegistry::new();
+        let residency = ();
+        let authority = TreeExecutionAuthority::seal(
+            TreeRealmId::from_u128(9).unwrap(),
+            ExecutionIncarnation::new(3).unwrap(),
+            &tree,
+            &generation,
+            &schedule,
+            &registry,
+            &residency,
+        )
+        .unwrap();
+        let old_context = authority.seal_context().unwrap();
+
+        // This private construction stands in only for an already-recorded
+        // immutable source emission. No public raw mint exists in 14.2.
+        let emission_ordinal = SeamEmissionOrdinal(0);
+        let id = SeamFactId::from_recorded_emission(
+            old_context.realm(),
+            0xabc,
+            generation.current(),
+            emission_ordinal,
+        );
+        let fact = SeamFact::from_recorded_emission(
+            id,
+            old_context.incarnation(),
+            old_context.qualify(tree.id),
+        )
+        .unwrap();
+        assert_eq!(
+            old_context
+                .remap_seam_fact(&authority, &fact, |subject| *subject.local())
+                .unwrap(),
+            tree.id
+        );
+
+        let _new_context = authority
+            .migrate_context(&old_context, old_context.incarnation().next().unwrap())
+            .unwrap();
+
+        // DA falsifier 2 (verbatim): after B migration, old-B-context +
+        // old-B-fact fails through the actual destination-remap door.
+        assert!(matches!(
+            old_context.remap_seam_fact(&authority, &fact, |subject| *subject.local()),
+            Err(TreeExecutionContextError::StaleIncarnation { .. })
+        ));
+    }
 }

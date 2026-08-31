@@ -60,10 +60,10 @@ pub use min_plus_traversal_d_probe::{
 pub use resident_clearing_plan::{
     ResidentBufferDescriptor, ResidentClearingAbi, ResidentClearingBufferOwner,
     ResidentClearingBuffers, ResidentClearingGpuError, ResidentClearingHeaderGpu,
-    ResidentClearingRowGpu, ResidentOwnerGpu, ResidentSemanticIdGpu, RESIDENT_BUFFER_DRAWS,
-    RESIDENT_BUFFER_HEADER, RESIDENT_BUFFER_OWNERS, RESIDENT_BUFFER_RESOURCES,
-    RESIDENT_BUFFER_ROWS, RESIDENT_BUFFER_SCOPES, RESIDENT_BUFFER_SCRATCH,
-    RESIDENT_CLEARING_ABI_VERSION, RESIDENT_CLEARING_BUFFER_ALIGNMENT,
+    ResidentClearingRowGpu, ResidentGenerationAdvance, ResidentOwnerGpu, ResidentSemanticIdGpu,
+    RESIDENT_BUFFER_DRAWS, RESIDENT_BUFFER_HEADER, RESIDENT_BUFFER_OWNERS,
+    RESIDENT_BUFFER_RESOURCES, RESIDENT_BUFFER_ROWS, RESIDENT_BUFFER_SCOPES,
+    RESIDENT_BUFFER_SCRATCH, RESIDENT_CLEARING_ABI_VERSION, RESIDENT_CLEARING_BUFFER_ALIGNMENT,
 };
 pub use saturating_flux_choke_threshold::{
     cpu_choke_threshold_oracle, pass1_workgroup_count, SaturatingFluxChokeThresholdConfig,

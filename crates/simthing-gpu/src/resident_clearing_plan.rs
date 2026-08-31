@@ -4,7 +4,7 @@
 //! command encoder, dispatch, readback authority, scoring, or apportionment.
 
 use bytemuck::{Pod, Zeroable};
-use simthing_core::{ExecutionIncarnation, GenerationStamp, TreeExecutionContext, TreeRealmId};
+use simthing_core::{ExecutionIncarnation, GenerationStamp, TreeExecutionBinding, TreeRealmId};
 use simthing_kernel::{
     ResidentClearingPlan, ResidentClearingPlanError, ResidentDrawId, ResidentOwnerId,
     ResidentResourceId, ResidentScopeId, SemanticPlanDigest,
@@ -101,25 +101,25 @@ pub struct ResidentClearingAbi {
 impl ResidentClearingAbi {
     /// Finish every count/stride/alignment/byte/scratch/budget check before a
     /// [`wgpu::Buffer`] can be created.
-    pub fn from_plan(
-        context: TreeExecutionContext,
+    pub fn from_plan<TResidency>(
+        binding: &TreeExecutionBinding<'_, TResidency>,
         plan: &ResidentClearingPlan,
     ) -> Result<Self, ResidentClearingGpuError> {
-        let binding = plan.bind_context(context)?;
+        let plan_binding = plan.bind_context(binding)?;
         let ranges = plan.ranges();
         let budgets = plan.budgets();
         let header = ResidentClearingHeaderGpu {
             abi_version: RESIDENT_CLEARING_ABI_VERSION,
-            generation: binding.generation().get(),
+            generation: plan_binding.generation().get(),
             owner_count: ranges.owners.len(),
             resource_count: ranges.resources.len(),
             scope_count: ranges.scopes.len(),
             draw_count: ranges.draws.len(),
             row_count: ranges.rows.len(),
             scratch_bytes_per_row: budgets.scratch_bytes_per_row(),
-            realm_words: realm_words(binding.realm()),
-            incarnation_words: u64_words(binding.incarnation().get()),
-            digest_words: digest_words(binding.digest()),
+            realm_words: realm_words(plan_binding.realm()),
+            incarnation_words: u64_words(plan_binding.incarnation().get()),
+            digest_words: digest_words(plan_binding.digest()),
         };
 
         let scratch_logical = u64::from(ranges.rows.len())
@@ -214,6 +214,26 @@ impl ResidentClearingBufferOwner {
     }
 }
 
+/// Typed proof that only transient resident header state advanced.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ResidentGenerationAdvance {
+    previous: GenerationStamp,
+    current: GenerationStamp,
+    digest: SemanticPlanDigest,
+}
+
+impl ResidentGenerationAdvance {
+    pub const fn previous(self) -> GenerationStamp {
+        self.previous
+    }
+    pub const fn current(self) -> GenerationStamp {
+        self.current
+    }
+    pub const fn digest(self) -> SemanticPlanDigest {
+        self.digest
+    }
+}
+
 /// Per-tree owner of all buffers in one resident clearing plan.
 ///
 /// The buffers are private and the type is neither `Clone` nor globally
@@ -231,13 +251,13 @@ pub struct ResidentClearingBuffers {
 }
 
 impl ResidentClearingBuffers {
-    pub fn allocate(
+    pub fn allocate<TResidency>(
         device: &Device,
-        context: TreeExecutionContext,
+        binding: &TreeExecutionBinding<'_, TResidency>,
         plan: &ResidentClearingPlan,
     ) -> Result<Self, ResidentClearingGpuError> {
         // Binding and all budget/arithmetic checks precede the first allocation.
-        let abi = ResidentClearingAbi::from_plan(context, plan)?;
+        let abi = ResidentClearingAbi::from_plan(binding, plan)?;
         let device_max = device.limits().max_buffer_size;
         if let Some(descriptor) = abi
             .descriptors()
@@ -250,10 +270,11 @@ impl ResidentClearingBuffers {
                 admitted: device_max,
             });
         }
+        let context = binding.context();
         let owner = ResidentClearingBufferOwner {
             realm: context.realm(),
             incarnation: context.incarnation(),
-            generation: context.generation(),
+            generation: binding.generation(),
             digest: plan.digest(),
         };
 
@@ -368,6 +389,44 @@ impl ResidentClearingBuffers {
         })
     }
 
+    /// Advance N -> N+1 in transient owner/header state only.
+    ///
+    /// This method creates no buffer and does not rebuild or upload semantic
+    /// dictionaries. The future 14.3 dispatch path may write the updated POD
+    /// header to the already-owned header buffer.
+    pub fn advance_generation<TResidency>(
+        &mut self,
+        binding: &TreeExecutionBinding<'_, TResidency>,
+        plan: &ResidentClearingPlan,
+    ) -> Result<ResidentGenerationAdvance, ResidentClearingGpuError> {
+        let plan_binding = plan.bind_context(binding)?;
+        if plan_binding.realm() != self.owner.realm
+            || plan_binding.incarnation() != self.owner.incarnation
+            || plan_binding.digest() != self.owner.digest
+        {
+            return Err(ResidentClearingGpuError::ResidentOwnerMismatch);
+        }
+        let previous = self.owner.generation;
+        let expected = previous
+            .get()
+            .checked_add(1)
+            .ok_or(ResidentClearingGpuError::GenerationOverflow)?;
+        let current = plan_binding.generation();
+        if current.get() != expected {
+            return Err(ResidentClearingGpuError::GenerationAdvanceOutOfSequence {
+                previous,
+                observed: current,
+            });
+        }
+        self.owner.generation = current;
+        self.abi.header.generation = current.get();
+        Ok(ResidentGenerationAdvance {
+            previous,
+            current,
+            digest: self.owner.digest,
+        })
+    }
+
     pub const fn owner(&self) -> ResidentClearingBufferOwner {
         self.owner
     }
@@ -419,6 +478,15 @@ pub enum ResidentClearingGpuError {
         required: u64,
         admitted: u64,
     },
+    #[error("resident clearing generation overflow")]
+    GenerationOverflow,
+    #[error("resident generation advance must be N -> N+1: previous {previous:?}, observed {observed:?}")]
+    GenerationAdvanceOutOfSequence {
+        previous: GenerationStamp,
+        observed: GenerationStamp,
+    },
+    #[error("resident clearing generation advance belongs to a different owner")]
+    ResidentOwnerMismatch,
 }
 
 fn descriptor<T>(
