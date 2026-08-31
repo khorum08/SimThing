@@ -6,13 +6,16 @@
 
 **Date:** 2026-08-31  
 **Owner dispatch:** Board comment `5478901209`  
+**Narrow remand:** Board comment `5480270212` under DA ruling `5480224895`
 **Exact dispatch master:** `d78334d0fda287c829d4dd63c30b834c88b1f3ed`  
 **Authored handoff base:** `2ba6e28cd4ba83a52a5b0fa99a4a299ca31ae9d6`  
-**tested_code_sha:** `b4a19ea00a4240e1ff62706d4b840d4258743b0e`  
+**pre-remand head:** `545eb3dc09f51b89f72ab7b391784124ad119e37`
+**remand source commit:** `e9042e40960aace583fb79670080530870cd05c0`
 **HD-RECEIPT:** `0417d2e81c96`  
 **ORIENT-RECEIPT:** `abd383d5c8c6`  
 **orientation_rule_stamp:** `6550f3a270f552cc`  
-**expected route:** `DA-RESERVE(binding)`
+**semantic expected route:** `DA-RESERVE(binding)`; prior mechanical route
+`DA-RESERVE(gate-wiring)` due to governed kernel-surface self-application
 
 The final evidence-tail SHA and hosted workflow/job identifiers are carried by
 the exact-head PR relay so this document does not create a self-referential
@@ -39,7 +42,7 @@ source edits.
 |---|---|---|---|
 | local semantic identity | `simthing-core::SimThingId(u32)`; legacy process-global mint exists but persisted trees carry local raw values | no widening and no process-global uniqueness assumption | core realm qualification wraps, never alters, the local id |
 | physical row identity | core `SlotIndex(u32)` minted by kernel `SlotAllocator` | physical rows and source ordinals never cross as destination identity | destination kernel plan remaps canonical realm-qualified identity |
-| generation | core `GenerationStamp`; caller supplies clearing authority per call | no second clock or generation authority | core context binds the supplied generation reference |
+| generation | core `GenerationStamp`; one caller-owned live per-tree authority record | no second clock, serialized authority, or semantic-plan generation field | sealed core capsule borrows `TreeGenerationAuthority`; GPU header/owner carry its transient value |
 | schedule | caller-owned core `IntegrationSchedule` | no second log, scheduler, barrier, or host lock | transient core binding borrows the existing schedule |
 | registry / residency | core `DimensionRegistry`; kernel `SlotAllocator` and placement books | no global semantic registry or shared mutable residency authority | transient core binding borrows the existing attachments |
 | GPU buffers | instance-owned `wgpu::Buffer` sets | no WGSL or dispatch in 14.2; adapter sharing cannot share semantic state | GPU owns one private buffer set per tree plan |
@@ -49,53 +52,88 @@ source edits.
 
 | Crate | New owned surface | Role |
 |---|---|---|
-| `simthing-core` | `TreeRealmId`, `ExecutionIncarnation`, `RealmQualified<T>`, `SeamFactId`, `SeamFact<T>`, `TreeExecutionContext`, `TreeExecutionBinding`, typed errors | fixed-width durable realm/local identity, transient incarnation, canonical seam retry identity, and a checked borrowing view over the existing root/generation/schedule/registry/residency authorities |
+| `simthing-core` | `TreeRealmId`, `ExecutionIncarnation`, `TreeGenerationAuthority`, `TreeExecutionAuthority`, opaque `TreeExecutionContext`, `TreeExecutionBinding`, `RealmQualified<T>`, `SeamEmissionOrdinal`, `SeamFactId`, `SeamFact<T>`, typed errors | one private live authority capsule borrowing the real attachments; durable realm/local identity; non-convertible deferred emission ordinal; live-incarnation-checked destination remap |
 | `simthing-kernel` | typed owner/resource/scope/draw ids and ordinals, `DenseOrdinalRange`, admitted budgets, canonical dictionaries/rows, `ResidentPlanContext`, `SemanticPlanDigest`, `ResidentClearingPlan` and checked binding/errors | concrete reusable deterministic resident economic-resolution plan germ |
-| `simthing-gpu` | stable POD header/owner/id/row types, seven checked descriptors, `ResidentClearingAbi`, tree-bound owner, private `ResidentClearingBuffers`, typed errors | final physical representation and instance-owned resident storage; no pipeline, shader, encoder, or dispatch |
+| `simthing-gpu` | stable POD header/owner/id/row types, seven checked descriptors, `ResidentClearingAbi`, tree-bound owner, private `ResidentClearingBuffers`, `ResidentGenerationAdvance`, typed errors | final physical representation, instance-owned storage, and no-allocation transient header advance; no pipeline, shader, encoder, or dispatch |
 | `simthing-workshop` | `ResidentClearingPlanObservation` and one observation function | consumer only; no plan construction, sorting, layout, allocation, or algorithm |
 
-`TreeExecutionContext` canonical bytes are 32 bytes
-(`realm[16] + incarnation[8] + root[4] + generation[4]`). `SeamFactId`
-canonical bytes are also 32 bytes
+`TreeExecutionContext` is an O(1), non-`Clone`, non-`Copy`, non-serde opaque
+handle containing a private allocation seal plus captured incarnation. It has no
+public constructor and is not a durable byte product. Its semantic-plan binding
+is only `realm[16] + root[4]`; generation, incarnation, and attachment witness
+identities are runtime-only. `SeamFactId` canonical bytes remain 32 bytes
 (`source realm[16] + seam[8] + generation[4] + ordinal[4]`). These forms
 are O(1), contain no host/device/process/address coordinate, and use no global
 mint. `SimThingId` remains 4 bytes. `git diff` from dispatch is empty for
 `simthing.rs` and `ids.rs`, proving `SimThing` and `SimThingId` layouts were not
 edited.
 
-The checked binding accepts only the context's existing root and generation
-authority, then borrows the caller-owned schedule, registry, and residency.
-The runtime witness rejects wrong-root and wrong-generation bindings.
-Migration preserves realm/root/generation and changes incarnation; fork key
-`77` deterministically produces a distinct realm; stale-incarnation seam facts
-fail closed.
+`TreeExecutionAuthority::seal` captures the exact borrowed root, live
+generation authority, schedule, registry, and residency behind one private
+`Arc` seal. `seal_context` succeeds once. Every binding, plan, GPU, and seam
+door compares the seal by allocation identity and checks the live incarnation;
+equal raw root id and equal generation values cannot cross-bind capsules.
+Migration atomically advances that live record, invalidating retained old
+contexts without caller cooperation. Fork key `77` deterministically produces
+a distinct realm.
 
 ## Deterministic plan and seam proof
 
-The plan derives each typed dictionary by canonical total-order sort plus
-deduplication, maps rows through checked binary-search ordinals, then sorts the
-typed ordinal tuples. No hash map, registration-order enumeration, physical
-row, device coordinate, or foreign ordinal participates.
+Plan admission streams without trusting `size_hint`: before storing each row it
+refuses `max_rows + 1`, and before inserting each new distinct axis value it
+refuses that axis's admitted maximum. The admitted `BTreeSet` values are already
+in canonical total order; rows then map through checked binary-search ordinals
+and sort as typed ordinal tuples. No hash map, registration-order enumeration,
+physical row, device coordinate, or foreign ordinal participates.
 
 The witness constructs the same four admissions in original, reversed, and
 rotated order plus replay reconstruction. Dictionaries, ranges, rows,
-canonical bytes, and digest are byte-identical. Rebuilding after migration is
-also byte-identical because incarnation is transient and excluded from the
-semantic plan binding.
+canonical bytes, and digest are byte-identical. Validated serde replay
+reconstructs through the same admission door and verifies stored canonical
+bytes plus recomputed digest. Rebuilding after migration and advancing
+generation N to N+1 are also byte-identical because incarnation and generation
+are transient and excluded from semantic plan identity.
 
 Canonical fixture:
 
-- bytes: `312`
-- digest: `4050c40a073a0aa83042dec5ee4409cd`
+- bytes: `308`
+- digest: `a61ebfee74156dd1e39bb8c5ec089ca4`
 - dictionaries: owners `3`, resources `2`, scopes `2`, draws `4`
 - rows: `4`
 
-Tree B's realm-qualified local owner `7` has one B-local source ordinal. Tree
-A receives its `SeamFact`, validates B's active incarnation, ignores the
-source ordinal as destination position, and binary-remaps the canonical
-realm-qualified subject to a different A-local ordinal. A retry retains the
-same `SeamFactId`; lawful multiplicity changes `source_ordinal`, so the two ids
-are distinct.
+Tree B's realm-qualified local owner `7` resolves to different B-local and
+A-local dictionary ordinals, proving the destination dictionary never consumes
+a foreign layout ordinal. The actual core destination-remap door validates the
+source capsule's live incarnation before exposing the realm-qualified subject;
+after migration, retained old context plus old fact fails there.
+
+The prior claim that an owner-dictionary ordinal proved retry idempotence or
+lawful multiplicity is withdrawn. `SeamEmissionOrdinal` is now a distinct type
+with no public raw constructor, `From<u32>`, serde path, or conversion from any
+resident ordinal. Its mint plus IntegrationSchedule retry-versus-multiplicity
+proof remains explicitly dated in `ASYNC-RETRY-IDEMPOTENCE-DEBT` for the future
+immutable seam-emission recorder; 14.2 does not fabricate that recorder.
+
+## Narrow-remand falsifiers and generation separation
+
+1. **Cross capsule:** context A plus tree-B's complete authority capsule fails
+   `AuthorityCapsuleMismatch` although both real persisted roots have raw id
+   `7` and B supplies its own schedule, registry, and residency.
+2. **Live migration invalidation:** after migration updates the authority's
+   live incarnation, old context plus old fact fails `StaleIncarnation` through
+   `TreeExecutionContext::remap_seam_fact`, the exact door used by kernel
+   destination remapping.
+3. **One context:** a second `seal_context` call on the same capsule fails
+   `ContextAlreadyMinted`; migration yields a new valid context only after the
+   old one becomes stale against the live record.
+
+Generation N->N+1 changes zero of the 308 semantic bytes and zero of the 128
+digest bits. `TreeGenerationAuthority::advance` changes only the caller-owned
+live generation record; `ResidentClearingBuffers::advance_generation` mutates
+the in-memory transient owner/header POD. The executable witness retains exact
+pointer identity for header, owner, and row `wgpu::Buffer` objects, proving no
+semantic rebuild, buffer recreation, or allocation. Queue/header upload and
+dispatch remain fenced to 14.3.
 
 ## Simultaneous A/B witness
 
@@ -120,10 +158,14 @@ the physical adapter is shared.
 
 ## ABI and budget proof
 
-All counts narrow through checked conversion. Dense end, count-times-stride,
-canonical byte length, scratch bytes, alignment, total resident bytes, host
-allocation representation, and device `max_buffer_size` are checked before the
-first GPU allocation.
+Host admission stores at most `max_rows` rows and at most each admitted axis
+count. The max+1 witness supplies 1,000 rows and an adversarial enormous
+`size_hint`, yet the constructor pulls exactly three items for `max_rows=2`
+and refuses the third before storing it. Only after this bounded input exists
+does canonical dictionary/row materialization occur. Dense end,
+count-times-stride, canonical byte length, scratch bytes, alignment, total
+resident bytes, host allocation representation, and device `max_buffer_size`
+remain checked before the first WGPU allocation.
 
 | Kind | Count | Stride | Logical bytes | Allocated bytes (16-aligned) |
 |---:|---:|---:|---:|---:|
@@ -139,7 +181,25 @@ first GPU allocation.
 Scratch is `rows * scratch_bytes_per_row = 4 * 64 = 256`, within the
 `8,192`-byte admitted scratch budget. Executable negative cases cover dense
 range overflow, inconsistent scratch admission, owner-count excess,
-semantic-plan byte excess, and resident-byte excess before allocation.
+row max+1, semantic-plan byte excess, and resident-byte excess before the
+corresponding proportional host/GPU allocation.
+
+## Serde policy census
+
+| Surface | Policy | Executable proof |
+|---|---|---|
+| `TreeRealmId`, `ExecutionIncarnation`, `TreeExecutionContext` | no `Serialize` or `Deserialize`; authority cannot be forged as data | pinned `compile_fail,E0277` checks all three |
+| `TreeExecutionAuthority`, `TreeGenerationAuthority`, `TreeExecutionBinding` | borrowed/live runtime authority only; no serde | no serde implementation and no public context constructor |
+| `RealmQualified`, `SeamEmissionOrdinal`, `SeamFactId`, `SeamFact` | manual canonical seam bytes where defined; no general serde or raw emission-ordinal decode | type separation plus private-field construction |
+| `DenseOrdinalRange` | custom deserialize through `try_new` | overflowing `start + len` rejects |
+| `ResidentClearingRanges` | custom DTO; every range revalidated and canonical zero starts required | overflowing/noncanonical ranges reject |
+| `ResidentClearingBudgets` | custom DTO reconstructed only through `new` | zero and scratch-inconsistent budgets reject |
+| `ResidentClearingPlan` | private unchecked DTO, then realm/root/budget/range/dictionary/row reconstruction through the same bounded admission path; stored canonical bytes and digest verified | valid roundtrip succeeds; zero realm/root, overflow, zero/inconsistent budgets, reordered dictionaries, out-of-range rows, canonical-byte mutation, and digest mutation all reject |
+
+`ResidentPlanContext`, dictionaries, rows, ordinals, and digest expose no direct
+`Deserialize` derive that could bypass plan reconstruction. Simple authored
+resource/scope/draw ids retain transparent serde because their public raw-value
+constructors carry no hidden invariant.
 
 ## Containment and consumer census
 
@@ -147,8 +207,10 @@ semantic-plan byte excess, and resident-byte excess before allocation.
   and `ResidentClearingBuffers::allocate` are only the focused workshop test;
   the workshop library only observes a borrowed final-home plan.
 - New global semantic state, singleton, lock, allocator, schedule, or
-  generation authority: zero. Agent Scan is clean and the implementation owns
-  only values or per-instance buffers.
+  generation authority: zero. The one live generation record and incarnation
+  seal are caller/per-capsule instance state; the implementation owns only
+  values, one private per-capsule `Arc`, atomics inside that capsule, or
+  per-instance buffers.
 - Frozen clearing semantics: no source changed in `simthing-spec`,
   `simthing-driver`, `simthing-sim`, `simthing-feeder`,
   `simthing-clausething`, or `simthing-mapeditor`; no score, equality-band,
@@ -178,7 +240,7 @@ Production/final-home code and witness (9):
 - `crates/simthing-workshop/src/resident_clearing_plan.rs`
 - `crates/simthing-workshop/tests/resident_clearing_plan_0.rs`
 
-Evidence/governance (7):
+Evidence/governance (8):
 
 - `docs/tests/resident_clearing_plan_0_results.md`
 - `docs/tests/current_evidence_index.md`
@@ -187,19 +249,30 @@ Evidence/governance (7):
 - `scripts/ci/anchor_reach_log.tsv`
 - `scripts/ci/allow/kernel_surface.txt`
 - `docs/sanctioned_surface.md`
+- `scripts/ci/constitutional_surfaces.tsv`
 
-No other file is in the exact dispatch-to-head delta. The allowlist is the
+No other file is in the exact dispatch-to-head delta. The seventeen-file
+envelope is the original sixteen plus the exact remand-authorized constitutional
+debt row. The allowlist is the
 scanner-prescribed record for the new public kernel doors; no CI `.sh` or
 `.py` code changed.
+
+Source-versus-evidence commit map:
+
+- remand source and executable witness: `e9042e40960aace583fb79670080530870cd05c0`
+- evidence/governance tail and exact final head: carried by the PR relay after
+  all local/hosted checks, avoiding a self-referential hash in this file
 
 ## Local certificate
 
 - `cargo check -p simthing-core -p simthing-kernel -p simthing-gpu -p simthing-workshop` — PASS
 - `cargo test -p simthing-workshop --test resident_clearing_plan_0 -- --nocapture` — PASS, 3/3, real adapter
+- `cargo test -p simthing-core tree_execution_context --offline -- --test-threads=1 --nocapture` — PASS, stale-remap falsifier 1/1
+- `cargo test -p simthing-core --doc tree_execution_context --offline` — PASS, authority-serde compile-fail 1/1
 - `cargo test -p simthing-workshop --test generation_critical_path_baseline_0 --offline -- --test-threads=1 --nocapture` — PASS, 4/4; generated timing packet restored byte-identically because 14.2 must not refresh 14.1 measurements
 - `cargo test -p simthing-driver --test contention_arena_executed_0` — PASS, 1/1
 - `cargo test -p simthing-driver --test clearing_weight_semantic_partition_0` — PASS, 2/2
-- `bash scripts/ci/test_inventory_check.sh` — PASS, 1367 discovered / 1367 inventoried
+- `bash scripts/ci/test_inventory_check.sh` — PASS, 1369 discovered / 1369 inventoried
 - `bash scripts/ci/test_inventory_drift_check.sh` — PASS, unledgered 0 / stale 0
 - `bash scripts/ci/test_lifecycle_expiry_check.sh --schema` — PASS, expired 0 / audit 0
 - `bash scripts/ci/track_closeout.sh --artifact-expiry` — PASS, expired 0 / cruft 0 / malformed 0

@@ -11,11 +11,11 @@ This digest is a derived context artifact for low-context agents. If it disagree
 | --- | --- | --- |
 | scripts/ci/allow/sealed_producers.txt | 25 | 6923796f3bacd3b27b29f778d5276c3f82a3a67c3f010c30f10b78de8a1866f6 |
 | scripts/ci/allow/inert_buffer_handles.txt | 2 | 9e2069fa5730f17cacde1c671ebc17beb59f50738d2dcb914bceae13f9b8b3a4 |
-| scripts/ci/allow/kernel_surface.txt | 323 | 72b166336f7df53ef7e95974d5b39b107eaae7aec00b23e362d65920710f4f48 |
+| scripts/ci/allow/kernel_surface.txt | 323 | 0da81671a9aadb9d5f52fcf85b54981c8b84d74e9e9b05a82d97e7e17bb6d1ff |
 | scripts/ci/allow/sealed_types.txt | 19 | 9d427e3b41a586b06f24ca02cc45f78934237d2229b0c38d46e2a8a6ef5016be |
 | scripts/ci/allow/contention_mechanisms.txt | 9 | 1f9e930b44197d4254f46ea96328f814d9ba0f2dad06881c454aebc01c01d44b |
 | scripts/ci/scans.tsv | 24 | 36bf78ae4a81a9c49b570051a0f53cb10aa88ab5cf57faa0a05d83abfd068e79 |
-| scripts/ci/constitutional_surfaces.tsv | 39 | c0f664b71345deda6924589fca1babad00b3e5d636124f221a092933e8f8f750 |
+| scripts/ci/constitutional_surfaces.tsv | 39 | 1f35648d3e4559a7d00b077b9bc771b8c8d2982fea9e696ae97a1bc585131d7b |
 | scripts/ci/constitutional_surface_check.sh | 870 | d0cb347d1ecd5818444a3284d95665d97fd0f3dc96f37a11d36b20d0cb2c9ed5 |
 
 ## Sanctioned Sealed Producers
@@ -376,7 +376,7 @@ This digest is a derived context artifact for low-context agents. If it disagree
 | ResidentDrawOrdinal | sealed-export | RESIDENT-CLEARING-PLAN-0 private-constructor destination-local draw ordinal | retire when GPU ABI lowering is wholly kernel-internal | kernel_surface.txt |
 | ResidentOwnerId | authority-export | RESIDENT-CLEARING-PLAN-0 realm-qualified owner identity input excluding raw foreign ordinals | retire when owner identity lowers through a narrower kernel door | kernel_surface.txt |
 | ResidentOwnerOrdinal | sealed-export | RESIDENT-CLEARING-PLAN-0 private-constructor destination-local owner ordinal | retire when GPU ABI lowering and seam observation are wholly kernel-internal | kernel_surface.txt |
-| ResidentPlanContext | sealed-export | RESIDENT-CLEARING-PLAN-0 incarnation-free semantic realm root generation plan binding | retire when plan context observation is wholly kernel-internal | kernel_surface.txt |
+| ResidentPlanContext | sealed-export | RESIDENT-CLEARING-PLAN-0 generation-independent semantic realm and root plan binding | retire when plan context observation is wholly kernel-internal | kernel_surface.txt |
 | ResidentResourceId | authority-export | RESIDENT-CLEARING-PLAN-0 typed semantic resource identity input | retire when resource identity lowers through a narrower kernel door | kernel_surface.txt |
 | ResidentResourceOrdinal | sealed-export | RESIDENT-CLEARING-PLAN-0 private-constructor destination-local resource ordinal | retire when GPU ABI lowering is wholly kernel-internal | kernel_surface.txt |
 | ResidentScopeId | authority-export | RESIDENT-CLEARING-PLAN-0 typed semantic scope identity input | retire when scope identity lowers through a narrower kernel door | kernel_surface.txt |

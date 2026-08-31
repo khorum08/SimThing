@@ -316,7 +316,7 @@ ResidentDrawId | authority-export | RESIDENT-CLEARING-PLAN-0 typed semantic draw
 ResidentDrawOrdinal | sealed-export | RESIDENT-CLEARING-PLAN-0 private-constructor destination-local draw ordinal | retire when GPU ABI lowering is wholly kernel-internal
 ResidentOwnerId | authority-export | RESIDENT-CLEARING-PLAN-0 realm-qualified owner identity input excluding raw foreign ordinals | retire when owner identity lowers through a narrower kernel door
 ResidentOwnerOrdinal | sealed-export | RESIDENT-CLEARING-PLAN-0 private-constructor destination-local owner ordinal | retire when GPU ABI lowering and seam observation are wholly kernel-internal
-ResidentPlanContext | sealed-export | RESIDENT-CLEARING-PLAN-0 incarnation-free semantic realm root generation plan binding | retire when plan context observation is wholly kernel-internal
+ResidentPlanContext | sealed-export | RESIDENT-CLEARING-PLAN-0 generation-independent semantic realm and root plan binding | retire when plan context observation is wholly kernel-internal
 ResidentResourceId | authority-export | RESIDENT-CLEARING-PLAN-0 typed semantic resource identity input | retire when resource identity lowers through a narrower kernel door
 ResidentResourceOrdinal | sealed-export | RESIDENT-CLEARING-PLAN-0 private-constructor destination-local resource ordinal | retire when GPU ABI lowering is wholly kernel-internal
 ResidentScopeId | authority-export | RESIDENT-CLEARING-PLAN-0 typed semantic scope identity input | retire when scope identity lowers through a narrower kernel door
