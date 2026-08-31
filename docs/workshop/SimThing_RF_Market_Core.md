@@ -179,11 +179,11 @@ receive more of a scarce resource.
 For parent `p` and direct child `c`, the semantic equivalent of the following must be available without
 scanning all descendants at allocation time:
 
-\[
+$$
 P_{p\rightarrow c,N}
 =
 \text{unresolved lawful pressure represented by child }c\text{ and its subtree at }N
-\]
+$$
 
 This does not authorize a new `BranchPressure` column. It requires the existing RF upsweep to preserve
 enough child-segment attribution for the parent's continuous allocation pass.
@@ -213,7 +213,7 @@ that branch.
 
 Conceptually:
 
-\[
+$$
 W_{p\rightarrow c,N+1}
 =
 G\!\left(
@@ -221,20 +221,20 @@ P_{p\rightarrow c,N+1},
 Policy_{p\rightarrow c,N+1},
 Triad_{p\rightarrow c,N+1}
 \right)
-\]
+$$
 
 where `W` is the already-existing `AllocatorWeight` or a proved equivalent—not a new clearing-owned
 weight.
 
 The resulting continuous child allocation may retain the existing guarded share form:
 
-\[
+$$
 X_{p\rightarrow c}
 =
 S_p
 \frac{W_{p\rightarrow c}}
 {\sum_j W_{p\rightarrow j}}
-\]
+$$
 
 subject to lawful request, PALMA reach/impedance, and Gu-Yang serviceability or commitment semantics.
 
@@ -360,11 +360,11 @@ outputs upward:
 
 A conceptual mapping is:
 
-\[
+$$
 \mathcal{M}_v(S_v, \{P_c\}, \Phi_v)
 \rightarrow
 (L_v, \{G_c\}, \{U_c\})
-\]
+$$
 
 where:
 
@@ -654,26 +654,26 @@ For claim `i`, explanatory terms are:
 
 The desired relation is:
 
-\[
+$$
 0 \le x_i \le a_i \le r_i
-\]
+$$
 
 with:
 
-\[
+$$
 \sum_i x_i \le S
-\]
+$$
 
 for exact supply `S` at the clearing/disbursement home.
 
 The continuous allocation should be monotone in native unresolved pressure when policy and
 serviceability are held equal:
 
-\[
+$$
 p_i' > p_i
 \quad\Longrightarrow\quad
 x_i' \ge x_i
-\]
+$$
 
 subject to admitted caps, bounded feedback, competing pressure, and Gu-Yang realizability.
 
@@ -780,9 +780,9 @@ it remains the referee for field-resolved cases, not merely for the neutral case
 
 Explanatory quantity:
 
-\[
+$$
 U_i^{impairment} = r_i - a_i
-\]
+$$
 
 This is lawful demand that cannot currently traverse the admitted route/channel.
 
@@ -802,9 +802,9 @@ This is not yet a blocked grant.
 
 Explanatory quantity:
 
-\[
+$$
 U_i^{contention} = a_i - g_i
-\]
+$$
 
 This is physically serviceable demand that did not receive exact supply under the constrained market.
 
@@ -812,9 +812,9 @@ This is physically serviceable demand that did not receive exact supply under th
 
 For exact grant `g_i` and realized delivery `y_i`:
 
-\[
+$$
 B_i^{delivery} = g_i - y_i
-\]
+$$
 
 This is the true blocked legal grant when the resource model permits entitlement before realization.
 
@@ -906,7 +906,7 @@ It is not lawful to graduate with pressure visible but economically inert.
 If archaeology proves first-order persistence or accumulation missing, the Owner may amend the
 baseline with the semantic equivalent of:
 
-\[
+$$
 P_{c,N+1}
 =
 \mathcal{B}\!\left(
@@ -917,7 +917,7 @@ U_{c,N}^{contention}
 +
 B_{c,N}^{delivery}
 \right)
-\]
+$$
 
 where `B` is the existing bounded Current→Next recurrence or a rehomed equivalent.
 
