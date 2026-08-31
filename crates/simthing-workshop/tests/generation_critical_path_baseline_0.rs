@@ -77,7 +77,7 @@ fn envelope() -> MeasurementEnvelope {
         compiler_toolchain: rustc_version(),
         profile: "cargo-test (optimized+debuginfo)".into(),
         deterministic_seed: simthing_workshop::generation_critical_path_baseline::DETERMINISTIC_SEED,
-        exact_command: "cargo test -p simthing-workshop --test generation_critical_path_baseline_0 -- --nocapture".into(),
+        exact_command: "cargo test -p simthing-workshop --test generation_critical_path_baseline_0 --offline -- --test-threads=1 --nocapture".into(),
     }
 }
 
@@ -219,6 +219,10 @@ fn measurement_packet_contains_all_required_legs_envelope_and_workloads() {
     assert!(!env.compiler_toolchain.is_empty());
     assert!(!env.profile.is_empty());
     assert!(!env.exact_command.is_empty());
+    assert_eq!(
+        env.exact_command,
+        "cargo test -p simthing-workshop --test generation_critical_path_baseline_0 --offline -- --test-threads=1 --nocapture"
+    );
 
     let names: Vec<&str> = packet
         .workloads
