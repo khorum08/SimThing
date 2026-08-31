@@ -157,7 +157,9 @@ semantic-plan byte excess, and resident-byte excess before allocation.
 - Dispatch surface: no Cargo manifest/lockfile, WGSL, shader include,
   pipeline, command encoder, or `dispatch_workgroups` delta.
 - The governed `kernel_surface.txt` adds only the 20 deliberate 14.2 exports
-  with named promotion blockers, as required by Agent Scan.
+  with named promotion blockers, as required by Agent Scan;
+  `docs/sanctioned_surface.md` is the mechanically regenerated digest of those
+  same rows.
 - Closeout ledger adds leases only for the six new 14.2 artifacts. Modified
   module exports, evidence index, reach log, inventory, and governed allowlist
   are not misclassified as new artifacts.
@@ -176,7 +178,7 @@ Production/final-home code and witness (9):
 - `crates/simthing-workshop/src/resident_clearing_plan.rs`
 - `crates/simthing-workshop/tests/resident_clearing_plan_0.rs`
 
-Evidence/governance (6):
+Evidence/governance (7):
 
 - `docs/tests/resident_clearing_plan_0_results.md`
 - `docs/tests/current_evidence_index.md`
@@ -184,6 +186,7 @@ Evidence/governance (6):
 - `scripts/ci/closeout_artifacts.tsv`
 - `scripts/ci/anchor_reach_log.tsv`
 - `scripts/ci/allow/kernel_surface.txt`
+- `docs/sanctioned_surface.md`
 
 No other file is in the exact dispatch-to-head delta. The allowlist is the
 scanner-prescribed record for the new public kernel doors; no CI `.sh` or
@@ -203,6 +206,7 @@ scanner-prescribed record for the new public kernel doors; no CI `.sh` or
 - `bash scripts/ci/agent_scan.sh` — PASS, hard failures 0 / inspect 0
 - `bash scripts/ci/doc_budget_check.sh --check` — PASS
 - `bash scripts/ci/anchor_check.sh --check` — PASS (coverage/curation informational INSPECT only)
+- `bash scripts/ci/gen_digest.sh --check` — PASS
 - `git diff --check` — PASS
 
 Hosted Doctrine Scan/Exec plus fresh exact-head `/clearance` and `/relay-lint`
