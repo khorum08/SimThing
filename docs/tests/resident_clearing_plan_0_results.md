@@ -1,16 +1,20 @@
 # RESIDENT-CLEARING-PLAN-0 results
 
-> **Status: PROBATION / proof-present / DA-review-pending.** Coding lane
+> **Status: PROBATION / proof-present / DA-review-pending / UNMERGED /
+> GRADUATION HELD.** Coding lane
 > only; no merge, graduation, pointer movement, closeout apply, score/band
 > implementation, apportionment, dispatch, cutover, or 14.3+ work.
 
 **Date:** 2026-08-31  
 **Owner dispatch:** Board comment `5478901209`  
 **Narrow remand:** Board comment `5480270212` under DA ruling `5480224895`
+**Continuation remand:** Board comment `5481459059` under DA ruling `5481435541`
 **Exact dispatch master:** `d78334d0fda287c829d4dd63c30b834c88b1f3ed`  
 **Authored handoff base:** `2ba6e28cd4ba83a52a5b0fa99a4a299ca31ae9d6`  
 **pre-remand head:** `545eb3dc09f51b89f72ab7b391784124ad119e37`
 **remand source commit:** `e9042e40960aace583fb79670080530870cd05c0`
+**continuation old head:** `929713cb33cab979b851f8af2aa3eddce8fb3988`
+**continuation A/B source commit:** `6649589388a8e440949638a8ce778999ddc97c31`
 **HD-RECEIPT:** `0417d2e81c96`  
 **ORIENT-RECEIPT:** `abd383d5c8c6`  
 **orientation_rule_stamp:** `6550f3a270f552cc`  
@@ -68,9 +72,14 @@ mint. `SimThingId` remains 4 bytes. `git diff` from dispatch is empty for
 `simthing.rs` and `ids.rs`, proving `SimThing` and `SimThingId` layouts were not
 edited.
 
-`TreeExecutionAuthority::seal` captures the exact borrowed root, live
-generation authority, schedule, registry, and residency behind one private
-`Arc` seal. `seal_context` succeeds once. Every binding, plan, GPU, and seam
+`TreeGenerationAuthority` owns the unrepeatable execution-capsule mint in the
+same caller-owned record as live generation. `TreeExecutionAuthority::seal`
+atomically consumes that token before capturing the exact borrowed root,
+schedule, registry, and residency behind one private `Arc` seal. A second seal
+over the same generation authority fails `GenerationAuthorityAlreadySealed`,
+even when every supplied value/reference is otherwise lawful; a separate tree
+with its own generation authority seals normally. `seal_context` then succeeds
+once inside the admitted wrapper. Every binding, plan, GPU, and seam
 door compares the seal by allocation identity and checks the live incarnation;
 equal raw root id and equal generation values cannot cross-bind capsules.
 Migration atomically advances that live record, invalidating retained old
@@ -79,12 +88,18 @@ a distinct realm.
 
 ## Deterministic plan and seam proof
 
-Plan admission streams without trusting `size_hint`: before storing each row it
-refuses `max_rows + 1`, and before inserting each new distinct axis value it
-refuses that axis's admitted maximum. The admitted `BTreeSet` values are already
-in canonical total order; rows then map through checked binary-search ordinals
-and sort as typed ordinal tuples. No hash map, registration-order enumeration,
-physical row, device coordinate, or foreign ordinal participates.
+Plan admission narrows `max_rows`, reserves exactly that logical row capacity,
+and never trusts `size_hint`. The successful fixture records `(len, capacity,
+reallocations) = (4, 32, 0)`; the exact-fill witness records `(2, 2, 0)`; and
+max+1 returns typed evidence `(stored, reserved, reallocations) = (2, 2, 0)`
+before storing the third row. Before inserting each new distinct axis value it
+also refuses that axis's admitted maximum. A running checked semantic-byte
+projection uses the final canonical length arithmetic and refuses the first
+over-budget row before dictionaries or canonical rows exist. The admitted
+`BTreeSet` values are already in canonical total order; rows then map through
+checked binary-search ordinals and sort as typed ordinal tuples. No hash map,
+registration-order enumeration, physical row, device coordinate, or foreign
+ordinal participates.
 
 The witness constructs the same four admissions in original, reversed, and
 rotated order plus replay reconstruction. Dictionaries, ranges, rows,
@@ -116,14 +131,18 @@ immutable seam-emission recorder; 14.2 does not fabricate that recorder.
 
 ## Narrow-remand falsifiers and generation separation
 
-1. **Cross capsule:** context A plus tree-B's complete authority capsule fails
+1. **One authority wrapper:** sealing twice over tree A's exact real root,
+   generation authority, schedule, registry, and residency fails the second
+   call with `GenerationAuthorityAlreadySealed`. Tree B's separate generation
+   authority remains a positive control and seals beside A.
+2. **Cross capsule:** context A plus tree-B's complete authority capsule fails
    `AuthorityCapsuleMismatch` although both real persisted roots have raw id
    `7` and B supplies its own schedule, registry, and residency.
-2. **Live migration invalidation:** after migration updates the authority's
+3. **Live migration invalidation:** after migration updates the authority's
    live incarnation, old context plus old fact fails `StaleIncarnation` through
    `TreeExecutionContext::remap_seam_fact`, the exact door used by kernel
    destination remapping.
-3. **One context:** a second `seal_context` call on the same capsule fails
+4. **One context:** a second `seal_context` call on the admitted wrapper fails
    `ContextAlreadyMinted`; migration yields a new valid context only after the
    old one becomes stale against the live record.
 
@@ -158,11 +177,16 @@ the physical adapter is shared.
 
 ## ABI and budget proof
 
-Host admission stores at most `max_rows` rows and at most each admitted axis
-count. The max+1 witness supplies 1,000 rows and an adversarial enormous
-`size_hint`, yet the constructor pulls exactly three items for `max_rows=2`
-and refuses the third before storing it. Only after this bounded input exists
-does canonical dictionary/row materialization occur. Dense end,
+Host admission reserves exactly `max_rows` rows after checked host narrowing,
+then stores at most that many rows and at most each admitted axis count. The
+max+1 witness supplies 1,000 rows and an adversarial enormous `size_hint`, yet
+the constructor pulls exactly three items for `max_rows=2` and refuses the
+third with logical length 2, reserved capacity 2, and zero reallocations. The
+large-count/small-byte witness admits 128 rows but only 179 semantic bytes; it
+pulls one row, projects the exact 180-byte first-row requirement, and refuses
+before dictionary vectors, canonical rows, or complete semantic-plan storage
+exist. Only after row, axis, and running-byte admission does canonical
+dictionary/row materialization occur. Dense end,
 count-times-stride, canonical byte length, scratch bytes, alignment, total
 resident bytes, host allocation representation, and device `max_buffer_size`
 remain checked before the first WGPU allocation.
@@ -194,7 +218,7 @@ corresponding proportional host/GPU allocation.
 | `DenseOrdinalRange` | custom deserialize through `try_new` | overflowing `start + len` rejects |
 | `ResidentClearingRanges` | custom DTO; every range revalidated and canonical zero starts required | overflowing/noncanonical ranges reject |
 | `ResidentClearingBudgets` | custom DTO reconstructed only through `new` | zero and scratch-inconsistent budgets reject |
-| `ResidentClearingPlan` | private unchecked DTO, then realm/root/budget/range/dictionary/row reconstruction through the same bounded admission path; stored canonical bytes and digest verified | valid roundtrip succeeds; zero realm/root, overflow, zero/inconsistent budgets, reordered dictionaries, out-of-range rows, canonical-byte mutation, and digest mutation all reject |
+| `ResidentClearingPlan` | custom top-level visitor requires validated budgets before any variable sequence; nested bounded visitors reserve no more than the admitted owners/resources/scopes/draws/rows/canonical-byte limits, consume only the first excess element, then ordinary reconstruction verifies ordering, ranges, canonical bytes, and digest | valid roundtrip succeeds; six hostile packets put malformed syntax after the first excess owner/resource/scope/draw/row/byte and receive the budget error first; zero realm/root, overflow, invalid budgets, reordered dictionaries, out-of-range rows, canonical-byte mutation, and digest mutation also reject |
 
 `ResidentPlanContext`, dictionaries, rows, ordinals, and digest expose no direct
 `Deserialize` derive that could bypass plan reconstruction. Simple authored
@@ -207,10 +231,10 @@ constructors carry no hidden invariant.
   and `ResidentClearingBuffers::allocate` are only the focused workshop test;
   the workshop library only observes a borrowed final-home plan.
 - New global semantic state, singleton, lock, allocator, schedule, or
-  generation authority: zero. The one live generation record and incarnation
-  seal are caller/per-capsule instance state; the implementation owns only
-  values, one private per-capsule `Arc`, atomics inside that capsule, or
-  per-instance buffers.
+  generation authority: zero. The one live caller-owned generation record also
+  owns its once-mint atomic; incarnation state remains per admitted capsule.
+  The implementation owns only values, one private per-capsule `Arc`, atomics
+  inside those caller/per-instance records, or per-instance buffers.
 - Frozen clearing semantics: no source changed in `simthing-spec`,
   `simthing-driver`, `simthing-sim`, `simthing-feeder`,
   `simthing-clausething`, or `simthing-mapeditor`; no score, equality-band,
@@ -260,6 +284,8 @@ scanner-prescribed record for the new public kernel doors; no CI `.sh` or
 Source-versus-evidence commit map:
 
 - remand source and executable witness: `e9042e40960aace583fb79670080530870cd05c0`
+- continuation A/B source and executable witness:
+  `6649589388a8e440949638a8ce778999ddc97c31`
 - evidence/governance tail and exact final head: carried by the PR relay after
   all local/hosted checks, avoiding a self-referential hash in this file
 
@@ -278,7 +304,7 @@ Source-versus-evidence commit map:
 - `bash scripts/ci/track_closeout.sh --artifact-expiry` — PASS, expired 0 / cruft 0 / malformed 0
 - `bash scripts/ci/agent_scan.sh` — PASS, hard failures 0 / inspect 0
 - `bash scripts/ci/doc_budget_check.sh --check` — PASS
-- `bash scripts/ci/anchor_check.sh --check` — PASS (coverage/curation informational INSPECT only)
+- `bash scripts/ci/anchor_check.sh` — PASS (coverage/curation informational INSPECT only)
 - `bash scripts/ci/gen_digest.sh --check` — PASS
 - `git diff --check` — PASS
 
