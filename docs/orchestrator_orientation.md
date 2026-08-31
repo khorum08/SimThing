@@ -45,9 +45,9 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 26e025f8b1e76f7f649571aaa4f2da2c82ca722b4d8c549f5ce9d14b4604f3a6 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | 26eab30ec86c97ac8dfd6beef7ae8c5b4d3f18c38fdaa431ec40ccce855396d3 |
-| design_0_0_8_7_rf_arena_modernization.md | ce5ee731af3bcd5b6455a70b79cb6d4538cfdbaf34919f3a5f460eeab5e92552 |
+| design_0_0_8_7_rf_arena_modernization.md | df6b8c209b04e20f6e604860f13e74d4f1d4fb53c34c1e5c8a1e312d1666263a |
 | relay_lint.sh | ae19bdca12e90f6bc988e064f081ff62903034d69bf34b08ffd5c27e352181ba |
-| doctrine_anchors.tsv | 5c292d491ec0a082be9eff765a261c28c4aee1751e3af8c92ded038dca07479d |
+| doctrine_anchors.tsv | f1c06dff499450ab37145d50cdbc4f5f7fbe7ba745f9ff5162f2de21e22a20f1 |
 | execution_status_taxonomy.tsv | 924c086550221dd7136ec0682293900d8d03feb4bc1dae1a6e750a61e65153bc |
 | execution_status_mixed_posture.tsv | 1adf05f3ec5fd7b537efe29259d20649a2c6d3a0839590063e5308ff154e8f25 |
 | execution_status_non_execution.tsv | 214c1b557dfd3fc465f0171051e20281ff1dcf6c53128dbb29cba01524f9be02 |
@@ -68,14 +68,13 @@ Dark properties (1): `fixture::dark_reading` (reasons/spans in `property_admissi
 
 Track state: `open`
 
-> Compact view: 87 completed rungs elided; showing all 6 open rungs plus the 3 most recent completions. Full ladder in the design doc.
+> Compact view: 88 completed rungs elided; showing all 5 open rungs plus the 3 most recent completions. Full ladder in the design doc.
 
 | # | rung | deliverable | exit proof |
 | --- | --- | --- | --- |
-| 13.8 | CLEARING-WEIGHT-DEFORMATION-LIFECYCLE-0 | **PHASE 13 FINAL RUNG — Owner-approved 2026-08-30 from the engineering review's  | **DA-GRADUATED / merged #1897 @ 8fdf7771** — reviewer proof chain end-to-end; Fable deep review; `HD-RECEIPT: d04e47a... |
 | 13.9 | CLEARING-WEIGHT-SEMANTIC-PARTITION-0 | **REMEDIAL — Owner-approved 2026-08-30 from engineering-review finding S1 (guide | **DA-GRADUATED / merged #1901 @ 7df36050** — S1 DA-reproduced then DA-verified green; three review targets adjudicate... |
 | 14.0 | ASYNC-SUBTREE-NON-FORECLOSURE-0 | **PHASE 14 — RESIDENT CLEARING CONFORMANCE + ASYNC NON-FORECLOSURE (Owner-approv | **DA-GRADUATED / merged #1904 @ 3cc86590** — DA-implemented: core-design secs 1/2 amended, sec 8.2 nine non-foreclosu... |
-| 14.1 | GENERATION-CRITICAL-PATH-BASELINE-0 | Measurement + door census; no production delta. The baseline is a COMPARATOR, ne | TODO |
+| 14.1 | GENERATION-CRITICAL-PATH-BASELINE-0 | Measurement + door census; no production delta. The baseline is a COMPARATOR, ne | **DA-GRADUATED / merged #1907 @ 9a036a44** — remands `5473356953`/`5473560347`/`5474062621` (instrument honesty x3, a... |
 | 14.2 | RESIDENT-CLEARING-PLAN-0 | Candidate built in its FINAL kernel/GPU home (workshop hosts only the parity har | TODO |
 | 14.3 | RESIDENT-CLEARING-SCORE-AND-BANDS-0 | **MANDATORY FIRST-STEP: ordering-law completeness audit** — every ordering the C | TODO |
 | 14.4 | RESIDENT-CLEARING-APPORTIONMENT-0 | Exact integer apportionment resident: base shares, largest-remainder with exact  | TODO |
@@ -84,7 +83,7 @@ Track state: `open`
 
 ## Next Rung Pointer
 
-Active pointer: `GENERATION-CRITICAL-PATH-BASELINE-0`
+Active pointer: `RESIDENT-CLEARING-PLAN-0`
 
 
 ## Cold-Start Spine (constitutional pointers)
