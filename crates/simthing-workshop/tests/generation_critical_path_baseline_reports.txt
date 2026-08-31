@@ -1,0 +1,2722 @@
+GENERATION-CRITICAL-PATH-BASELINE-0
+comparator only; not a go/no-go gate; no portable timing law
+
+## Envelope
+tested_commit: 625290768f266276c68240dc88ffbb1db6de35bb
+utc_date: 2026-08-31T02:39:44Z
+cpu: Intel64 Family 6 Model 183 Stepping 1, GenuineIntel
+gpu: NVIDIA GeForce RTX 4080 Laptop GPU vendor=0x10de device=0x27a0 type=DiscreteGpu
+adapter_backend: Vulkan
+driver: NVIDIA 595.79
+os: windows-x86_64
+compiler_toolchain: rustc 1.95.0 (59807616e 2026-04-14)
+profile: cargo-test (optimized+debuginfo)
+deterministic_seed: 81921
+exact_command: cargo test -p simthing-workshop --test generation_critical_path_baseline_0 -- --nocapture
+
+## Host clearing-door census
+- clear_constrained_claims_at_generation @ crates/simthing-spec/src/spec/constrained_clearing.rs:254 authority=caller-supplied ClearingRemainderAuthority { granter, generation } posture=ordinary production CPU-host clearing door 14.6=narrow behind CpuVendorizedOracle; production migrates to the 14.2+ resident germ reexports=simthing-spec lib.rs + spec/mod.rs; simthing-embedder run.rs callers=production: simthing-driver/src/growth_entitlement.rs; wrapper: clear_reduced_owner_channels_at_generation; tests: contention_arena_executed_0, clearing_weight_span_unification_0, clearing_weight_deformation_lifecycle_0, stemthing_b_flow_market_germ_0, stemthing_b_vram_residency_0, grant_disbursement_lane_0, unified_facility_convergence_witness_0, protected_representative_restore, vendor_door_triad_surface_0
+- clear_reduced_owner_channels @ crates/simthing-spec/src/spec/constrained_clearing.rs:420 authority=generationless compatibility: granter=SimThingId::from_session_raw(0), generation=GenerationStamp::new(0) posture=generationless compatibility shim / test oracle 14.6=DELETE reexports=simthing-spec lib.rs + spec/mod.rs callers=test: simthing-driver/tests/contention_arena_executed_0.rs (priority + price cases); no production caller
+- clear_reduced_owner_channels_at_generation @ crates/simthing-spec/src/spec/constrained_clearing.rs:437 authority=caller-supplied ClearingRemainderAuthority; converts reduce-up buckets through ConstrainedClaim::from_runtime_demand then the ordinary door posture=conversion wrapper over the ordinary at-generation door 14.6=narrow behind CpuVendorizedOracle (or delete once callers are gone) reexports=simthing-spec lib.rs + spec/mod.rs callers=wrappers: clear_reduced_owner_channels (generationless), clear_stamped_owner_channels; no direct production caller
+- clear_stamped_owner_channels @ crates/simthing-spec/src/spec/constrained_clearing.rs:488 authority=generation taken from StampedReduceUpProduct; granter supplied by caller posture=canonical stamped-RF market binding over the ordinary door 14.6=narrow behind CpuVendorizedOracle reexports=simthing-spec lib.rs + spec/mod.rs; simthing-embedder run.rs callers=test/germ: stemthing_b_flow_market_germ_0.rs; no other production caller on this base
+
+## Path diagram
+ordinary generation critical path (CPU-host clearing door; GPU legs door-absent):
+  RuntimeOwnerSiloDemandBucket (per-tree admission)
+    -> ConstrainedClaim::from_runtime_demand  [claim_production_completion]
+    -> (no GPU map/readback in this door)     [gpu_to_host_synchronization_readback = 0 bytes]
+    -> group by OwnerChannelScopeKey          [host_conversion_grouping]
+    -> TransformOp::apply_with_params         [eml_scoring]
+    -> sort score-bits then id; equal-bit bands [score_sorting_banding]
+    -> largest remainder + generation-rotated ties [integer_apportionment]
+    -> ConstrainedGrant::from_clearance + ConstrainedClearingResult [grant_result_construction]
+  enclosing production authority: clear_constrained_claims_at_generation
+    -> (no GPU write_buffer/upload in this door) [host_to_gpu_upload = 0 bytes]
+    -> generation+1 re-clear                  [n_plus_one_launch_delay]
+    -> record_cleared_grant -> IntegrationSchedule [cpu_schedule_replay_recording]
+    -> fund_unresolved_persistence            [lawful_structural_consequence]
+
+## Leg definitions
+- claim_production_completion: ConstrainedClaim::from_runtime_demand over already-built RuntimeOwnerSiloDemandBucket rows (ordinary per-tree admission; uses SimThingId::from_session_raw)
+- gpu_to_host_synchronization_readback: absent on the ordinary CPU-host clearing door; observed transfer is 0 bytes / 0 ns. GPU adapter is queried only for the envelope.
+- host_conversion_grouping: BTreeMap grouping of scored claims by OwnerChannelScopeKey, matching the live door's claims_by_scope insert
+- eml_scoring: AuthoredClearingProgram::score_program().apply_with_params(order_weight, priority) plus the live finite/non-negative/signed-zero canonicalize
+- score_sorting_banding: sort by score.total_cmp descending then source_simthing_id; equal score.to_bits() bands
+- integer_apportionment: workshop-local restatement of the live largest-remainder + generation-rotated exact-tie loop on the same scored/sorted/banded input; production door remains authority; isolation is proven by matching grant.granted
+- grant_result_construction: remainder of enclosing clear_constrained_claims_at_generation after the nested sequential grouping+scoring+sorting+apportionment observations; raw enclosing and component times are both kept; remainder is not forced-closed
+- host_to_gpu_upload: absent on the ordinary CPU-host clearing door; observed transfer is 0 bytes / 0 ns
+- n_plus_one_launch_delay: host re-clear of the same supplies/claims at generation+1 through the ordinary door; GPU kernel launch is door-absent (0 ns, 0 dispatches)
+- cpu_schedule_replay_recording: AdmittedSpecializationFlowMarket::record_cleared_grant into a fresh per-tree IntegrationSchedule for every produced ConstrainedGrant
+- lawful_structural_consequence: UnresolvedDemandObservation::from_grant + fund_unresolved_persistence at observed_generation+1; overlays are dropped after mint so the allocator is observed without retaining the population
+
+## Disclaimer
+Comparator only. Wall-clock values are dated facts about one reproducibility envelope. They are not a go/no-go gate, portable CI threshold, or authority to cancel or narrow Owner-ruled Phase-14 placement.
+
+## Workload scale_1000
+trees=1 claims_per_tree=1000 claims_total=1000 scopes=1 supplies=1 claimants=1000 granters=1 generations=[10] overlapping=false door=
+warm_ups=3 samples=11 setup_allocation_ns=106200 grants_total=1000 unresolved_total=1997
+isolation_matches_production=true neutrality_clears_identical=true
+leg enclosing_clear isolation=production-door observation bytes_read_back=0 bytes_uploaded=0 median_ns=801200 p95_ns=937900 variance_ns2=2894926000.000 min_ns=777700 max_ns=937900 mean_ns=819000.000 samples=[804100, 810200, 784900, 908900, 937900, 782400, 786800, 824800, 801200, 777700, 790100]
+leg end_to_end isolation=production-door observation bytes_read_back=0 bytes_uploaded=0 median_ns=4330000 p95_ns=4854300 variance_ns2=60659290727.273 min_ns=4206500 max_ns=4854300 mean_ns=4442754.545 samples=[4330000, 4762100, 4257100, 4854300, 4757000, 4241800, 4573400, 4206500, 4233000, 4380000, 4275100]
+leg claim_production_completion isolation=ConstrainedClaim::from_runtime_demand (ordinary per-tree admission) bytes_read_back=0 bytes_uploaded=0 median_ns=85000 p95_ns=100400 variance_ns2=153374727.273 min_ns=65200 max_ns=100400 mean_ns=80345.455 samples=[83200, 66500, 65600, 65200, 100400, 85300, 66300, 85000, 87100, 86100, 93100]
+leg gpu_to_host_synchronization_readback isolation=door-absent on CPU-host clearing; 0 bytes / 0 ns observed (no map_async, no write_buffer, no queue submit) bytes_read_back=0 bytes_uploaded=0 median_ns=0 p95_ns=0 variance_ns2=0.000 min_ns=0 max_ns=0 mean_ns=0.000 samples=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+leg host_conversion_grouping isolation=BTreeMap group by OwnerChannelScopeKey bytes_read_back=0 bytes_uploaded=0 median_ns=138700 p95_ns=241000 variance_ns2=1083212909.091 min_ns=117700 max_ns=241000 mean_ns=147490.909 samples=[128000, 241000, 138700, 144700, 156600, 129300, 138300, 117700, 138700, 136200, 153200]
+leg eml_scoring isolation=TransformOp::apply_with_params via AuthoredClearingProgram::score_program bytes_read_back=0 bytes_uploaded=0 median_ns=82700 p95_ns=135600 variance_ns2=416748000.000 min_ns=80800 max_ns=135600 mean_ns=91900.000 samples=[85800, 135600, 82000, 85300, 130400, 81100, 83400, 82700, 82000, 80800, 81800]
+leg score_sorting_banding isolation=score.total_cmp desc then source id; equal to_bits bands bytes_read_back=0 bytes_uploaded=0 median_ns=1700 p95_ns=2500 variance_ns2=136909.091 min_ns=1500 max_ns=2500 mean_ns=1809.091 samples=[1500, 2500, 2500, 1500, 1800, 1700, 1500, 1800, 1700, 1500, 1900]
+leg integer_apportionment isolation=workshop-local restatement of the live largest-remainder + generation-rotated-tie loop; production door remains authority bytes_read_back=0 bytes_uploaded=0 median_ns=407600 p95_ns=582000 variance_ns2=2879787636.364 min_ns=393800 max_ns=582000 mean_ns=425181.818 samples=[407600, 582000, 436100, 409900, 420700, 393800, 398500, 403900, 398100, 399900, 426500]
+leg grant_result_construction isolation=signed remainder of enclosing clear_constrained_claims_at_generation after nested grouping+scoring+sorting+apportionment; not forced-closed bytes_read_back=0 bytes_uploaded=0 median_ns=176500 p95_ns=267500 variance_ns2=4830778545.455 min_ns=0 max_ns=267500 mean_ns=166336.364 samples=[181200, 0, 125600, 267500, 228400, 176500, 165100, 218700, 180700, 159300, 126700]
+leg host_to_gpu_upload isolation=door-absent on CPU-host clearing; 0 bytes / 0 ns observed (no map_async, no write_buffer, no queue submit) bytes_read_back=0 bytes_uploaded=0 median_ns=0 p95_ns=0 variance_ns2=0.000 min_ns=0 max_ns=0 mean_ns=0.000 samples=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+leg n_plus_one_launch_delay isolation=host re-clear at generation+1 through the ordinary door; GPU dispatch count 0 bytes_read_back=0 bytes_uploaded=0 median_ns=678900 p95_ns=812700 variance_ns2=3329212181.818 min_ns=662200 max_ns=812700 mean_ns=708727.273 samples=[698500, 786300, 675700, 812700, 791400, 678900, 680900, 662200, 667600, 665800, 676000]
+leg cpu_schedule_replay_recording isolation=AdmittedSpecializationFlowMarket::record_cleared_grant -> IntegrationSchedule bytes_read_back=0 bytes_uploaded=0 median_ns=214600 p95_ns=290900 variance_ns2=569902727.273 min_ns=210700 max_ns=290900 mean_ns=223845.455 samples=[217300, 215100, 212900, 214600, 241700, 211100, 290900, 210700, 221100, 213900, 213000]
+leg lawful_structural_consequence isolation=UnresolvedDemandObservation::from_grant + fund_unresolved_persistence bytes_read_back=0 bytes_uploaded=0 median_ns=164200 p95_ns=247700 variance_ns2=1113543636.364 min_ns=161100 max_ns=247700 mean_ns=179918.182 samples=[164800, 162400, 167400, 164200, 179000, 163300, 245600, 162000, 161100, 247700, 161600]
+unattributed_remainder_ns=2380100
+reconciliation: Named inner host legs (grouping/scoring/sorting/apportionment) are nested sequential observations on copies of the same input; grant_result_construction is enclosing_clear minus those nested components (signed remainder, not forced-closed). GPU transfer legs are door-absent 0. End-to-end is claim-production + enclosing_clear + n+1 + schedule + structural. Independent named-leg sum may exceed end-to-end because inner legs are also counted inside enclosing_clear; the signed unattributed remainder records that overlap plus observation overhead.
+coupling: simthing_allocator=SimThingId::new uses process-global AtomicU32 NEXT_SIMTHING_ID. This fixture does not call it; claim ids come from from_session_raw via from_runtime_demand. overlay_allocator=OverlayId::new uses a process-global AtomicU32; fund_unresolved_persistence mints through it when CostBand n>0. host_lock=none in constrained_clearing.rs; each clear_constrained_claims_at_generation call is a pure function of its supplies/claims/program/authority. shared_generation=ClearingRemainderAuthority is per call. Divergent-generation trees carry independent GenerationStamp values; nothing in the door couples them. shared_schedule=IntegrationSchedule is caller-owned per tree in this instrument; the door does not hold a host-wide schedule. all_tree_sync=none. Independent trees are cleared sequentially without a barrier. Overlapping raw 7 is interpreted only under each tree's OwnerChannelScopeKey / granter pair.
+
+## Workload scale_10000
+trees=1 claims_per_tree=10000 claims_total=10000 scopes=1 supplies=1 claimants=10000 granters=1 generations=[10] overlapping=false door=
+warm_ups=2 samples=7 setup_allocation_ns=812400 grants_total=10000 unresolved_total=19999
+isolation_matches_production=true neutrality_clears_identical=true
+leg enclosing_clear isolation=production-door observation bytes_read_back=0 bytes_uploaded=0 median_ns=9598000 p95_ns=9813300 variance_ns2=29476152380.952 min_ns=9357000 max_ns=9813300 mean_ns=9578371.429 samples=[9485300, 9357000, 9813300, 9770500, 9598000, 9417500, 9607000]
+leg end_to_end isolation=production-door observation bytes_read_back=0 bytes_uploaded=0 median_ns=53647300 p95_ns=55157500 variance_ns2=2036867705714.286 min_ns=51976200 max_ns=55157500 mean_ns=53548071.429 samples=[53647300, 55052400, 55157500, 54631600, 52212600, 51976200, 52158900]
+leg claim_production_completion isolation=ConstrainedClaim::from_runtime_demand (ordinary per-tree admission) bytes_read_back=0 bytes_uploaded=0 median_ns=841300 p95_ns=897400 variance_ns2=1776109523.810 min_ns=776200 max_ns=897400 mean_ns=828157.143 samples=[897400, 844800, 841300, 848500, 798100, 790800, 776200]
+leg gpu_to_host_synchronization_readback isolation=door-absent on CPU-host clearing; 0 bytes / 0 ns observed (no map_async, no write_buffer, no queue submit) bytes_read_back=0 bytes_uploaded=0 median_ns=0 p95_ns=0 variance_ns2=0.000 min_ns=0 max_ns=0 mean_ns=0.000 samples=[0, 0, 0, 0, 0, 0, 0]
+leg host_conversion_grouping isolation=BTreeMap group by OwnerChannelScopeKey bytes_read_back=0 bytes_uploaded=0 median_ns=1353700 p95_ns=1389100 variance_ns2=233272380.952 min_ns=1341800 max_ns=1389100 mean_ns=1356228.571 samples=[1389100, 1341800, 1356000, 1353700, 1354400, 1347700, 1350900]
+leg eml_scoring isolation=TransformOp::apply_with_params via AuthoredClearingProgram::score_program bytes_read_back=0 bytes_uploaded=0 median_ns=860500 p95_ns=877600 variance_ns2=531670000.000 min_ns=820700 max_ns=877600 mean_ns=853100.000 samples=[820700, 867100, 877100, 877600, 860500, 836600, 832100]
+leg score_sorting_banding isolation=score.total_cmp desc then source id; equal to_bits bands bytes_read_back=0 bytes_uploaded=0 median_ns=44300 p95_ns=49700 variance_ns2=11628095.238 min_ns=40500 max_ns=49700 mean_ns=45185.714 samples=[48900, 40500, 44300, 49700, 46800, 42300, 43800]
+leg integer_apportionment isolation=workshop-local restatement of the live largest-remainder + generation-rotated-tie loop; production door remains authority bytes_read_back=0 bytes_uploaded=0 median_ns=5354100 p95_ns=5547600 variance_ns2=31481298095.238 min_ns=4989700 max_ns=5547600 mean_ns=5319685.714 samples=[4989700, 5209600, 5547600, 5430900, 5362100, 5343800, 5354100]
+leg grant_result_construction isolation=signed remainder of enclosing clear_constrained_claims_at_generation after nested grouping+scoring+sorting+apportionment; not forced-closed bytes_read_back=0 bytes_uploaded=0 median_ns=1988300 p95_ns=2236900 variance_ns2=15783319047.619 min_ns=1847100 max_ns=2236900 mean_ns=2004171.429 samples=[2236900, 1898000, 1988300, 2058600, 1974200, 1847100, 2026100]
+leg host_to_gpu_upload isolation=door-absent on CPU-host clearing; 0 bytes / 0 ns observed (no map_async, no write_buffer, no queue submit) bytes_read_back=0 bytes_uploaded=0 median_ns=0 p95_ns=0 variance_ns2=0.000 min_ns=0 max_ns=0 mean_ns=0.000 samples=[0, 0, 0, 0, 0, 0, 0]
+leg n_plus_one_launch_delay isolation=host re-clear at generation+1 through the ordinary door; GPU dispatch count 0 bytes_read_back=0 bytes_uploaded=0 median_ns=9455400 p95_ns=9753400 variance_ns2=101382962380.952 min_ns=8992700 max_ns=9753400 mean_ns=9377471.429 samples=[9753400, 9157900, 9504500, 9741500, 9455400, 9036900, 8992700]
+leg cpu_schedule_replay_recording isolation=AdmittedSpecializationFlowMarket::record_cleared_grant -> IntegrationSchedule bytes_read_back=0 bytes_uploaded=0 median_ns=2297300 p95_ns=2773600 variance_ns2=59976706666.667 min_ns=2040200 max_ns=2773600 mean_ns=2379000.000 samples=[2286700, 2628100, 2773600, 2355700, 2040200, 2271400, 2297300]
+leg lawful_structural_consequence isolation=UnresolvedDemandObservation::from_grant + fund_unresolved_persistence bytes_read_back=0 bytes_uploaded=0 median_ns=1796200 p95_ns=2464900 variance_ns2=69485189523.810 min_ns=1705800 max_ns=2464900 mean_ns=1879257.143 samples=[1834700, 2464900, 1776500, 1796200, 1705800, 1725600, 1851100]
+unattributed_remainder_ns=29656200
+reconciliation: Named inner host legs (grouping/scoring/sorting/apportionment) are nested sequential observations on copies of the same input; grant_result_construction is enclosing_clear minus those nested components (signed remainder, not forced-closed). GPU transfer legs are door-absent 0. End-to-end is claim-production + enclosing_clear + n+1 + schedule + structural. Independent named-leg sum may exceed end-to-end because inner legs are also counted inside enclosing_clear; the signed unattributed remainder records that overlap plus observation overhead.
+coupling: simthing_allocator=SimThingId::new uses process-global AtomicU32 NEXT_SIMTHING_ID. This fixture does not call it; claim ids come from from_session_raw via from_runtime_demand. overlay_allocator=OverlayId::new uses a process-global AtomicU32; fund_unresolved_persistence mints through it when CostBand n>0. host_lock=none in constrained_clearing.rs; each clear_constrained_claims_at_generation call is a pure function of its supplies/claims/program/authority. shared_generation=ClearingRemainderAuthority is per call. Divergent-generation trees carry independent GenerationStamp values; nothing in the door couples them. shared_schedule=IntegrationSchedule is caller-owned per tree in this instrument; the door does not hold a host-wide schedule. all_tree_sync=none. Independent trees are cleared sequentially without a barrier. Overlapping raw 7 is interpreted only under each tree's OwnerChannelScopeKey / granter pair.
+
+## Workload scale_100000
+trees=1 claims_per_tree=100000 claims_total=100000 scopes=1 supplies=1 claimants=100000 granters=1 generations=[10] overlapping=false door=
+warm_ups=1 samples=5 setup_allocation_ns=8808700 grants_total=100000 unresolved_total=200001
+isolation_matches_production=true neutrality_clears_identical=true
+leg enclosing_clear isolation=production-door observation bytes_read_back=0 bytes_uploaded=0 median_ns=115091600 p95_ns=148846200 variance_ns2=258221599348000.000 min_ns=113201400 max_ns=148846200 mean_ns=125199160.000 samples=[113201400, 113788600, 115091600, 135068000, 148846200]
+leg end_to_end isolation=production-door observation bytes_read_back=0 bytes_uploaded=0 median_ns=661479700 p95_ns=786109800 variance_ns2=5383550900222000.000 min_ns=641426000 max_ns=786109800 mean_ns=703906980.000 samples=[641426000, 661479700, 648870000, 786109800, 781649400]
+leg claim_production_completion isolation=ConstrainedClaim::from_runtime_demand (ordinary per-tree admission) bytes_read_back=0 bytes_uploaded=0 median_ns=8863200 p95_ns=9815300 variance_ns2=280572273000.000 min_ns=8401100 max_ns=9815300 mean_ns=8978640.000 samples=[9087200, 8726400, 8863200, 8401100, 9815300]
+leg gpu_to_host_synchronization_readback isolation=door-absent on CPU-host clearing; 0 bytes / 0 ns observed (no map_async, no write_buffer, no queue submit) bytes_read_back=0 bytes_uploaded=0 median_ns=0 p95_ns=0 variance_ns2=0.000 min_ns=0 max_ns=0 mean_ns=0.000 samples=[0, 0, 0, 0, 0]
+leg host_conversion_grouping isolation=BTreeMap group by OwnerChannelScopeKey bytes_read_back=0 bytes_uploaded=0 median_ns=12796100 p95_ns=23392900 variance_ns2=22487307368000.000 min_ns=12531900 max_ns=23392900 mean_ns=14926560.000 samples=[12616500, 12796100, 13295400, 12531900, 23392900]
+leg eml_scoring isolation=TransformOp::apply_with_params via AuthoredClearingProgram::score_program bytes_read_back=0 bytes_uploaded=0 median_ns=9375700 p95_ns=10728800 variance_ns2=483708153000.000 min_ns=8894600 max_ns=10728800 mean_ns=9593860.000 samples=[8894600, 9693100, 9375700, 9277100, 10728800]
+leg score_sorting_banding isolation=score.total_cmp desc then source id; equal to_bits bands bytes_read_back=0 bytes_uploaded=0 median_ns=487900 p95_ns=598100 variance_ns2=3260237000.000 min_ns=448400 max_ns=598100 mean_ns=507980.000 samples=[487900, 524100, 448400, 598100, 481400]
+leg integer_apportionment isolation=workshop-local restatement of the live largest-remainder + generation-rotated-tie loop; production door remains authority bytes_read_back=0 bytes_uploaded=0 median_ns=72631400 p95_ns=82581800 variance_ns2=52890439340000.000 min_ns=67757600 max_ns=82581800 mean_ns=74836900.000 samples=[68699900, 82513800, 67757600, 72631400, 82581800]
+leg grant_result_construction isolation=signed remainder of enclosing clear_constrained_claims_at_generation after nested grouping+scoring+sorting+apportionment; not forced-closed bytes_read_back=0 bytes_uploaded=0 median_ns=24214500 p95_ns=40029500 variance_ns2=139183343548000.000 min_ns=8261500 max_ns=40029500 mean_ns=25333860.000 samples=[22502500, 8261500, 24214500, 40029500, 31661300]
+leg host_to_gpu_upload isolation=door-absent on CPU-host clearing; 0 bytes / 0 ns observed (no map_async, no write_buffer, no queue submit) bytes_read_back=0 bytes_uploaded=0 median_ns=0 p95_ns=0 variance_ns2=0.000 min_ns=0 max_ns=0 mean_ns=0.000 samples=[0, 0, 0, 0, 0]
+leg n_plus_one_launch_delay isolation=host re-clear at generation+1 through the ordinary door; GPU dispatch count 0 bytes_read_back=0 bytes_uploaded=0 median_ns=113356300 p95_ns=147172300 variance_ns2=238539245207000.000 min_ns=110336400 max_ns=147172300 mean_ns=121167680.000 samples=[113356300, 111466600, 110336400, 147172300, 123506800]
+leg cpu_schedule_replay_recording isolation=AdmittedSpecializationFlowMarket::record_cleared_grant -> IntegrationSchedule bytes_read_back=0 bytes_uploaded=0 median_ns=25433100 p95_ns=37803600 variance_ns2=31280931873000.000 min_ns=24180500 max_ns=37803600 mean_ns=28385540.000 samples=[25322700, 25433100, 24180500, 37803600, 29187800]
+leg lawful_structural_consequence isolation=UnresolvedDemandObservation::from_grant + fund_unresolved_persistence bytes_read_back=0 bytes_uploaded=0 median_ns=17784300 p95_ns=24517100 variance_ns2=10080786098000.000 min_ns=16808700 max_ns=24517100 mean_ns=19356040.000 samples=[17784300, 17388600, 16808700, 24517100, 20281500]
+unattributed_remainder_ns=376537200
+reconciliation: Named inner host legs (grouping/scoring/sorting/apportionment) are nested sequential observations on copies of the same input; grant_result_construction is enclosing_clear minus those nested components (signed remainder, not forced-closed). GPU transfer legs are door-absent 0. End-to-end is claim-production + enclosing_clear + n+1 + schedule + structural. Independent named-leg sum may exceed end-to-end because inner legs are also counted inside enclosing_clear; the signed unattributed remainder records that overlap plus observation overhead.
+coupling: simthing_allocator=SimThingId::new uses process-global AtomicU32 NEXT_SIMTHING_ID. This fixture does not call it; claim ids come from from_session_raw via from_runtime_demand. overlay_allocator=OverlayId::new uses a process-global AtomicU32; fund_unresolved_persistence mints through it when CostBand n>0. host_lock=none in constrained_clearing.rs; each clear_constrained_claims_at_generation call is a pure function of its supplies/claims/program/authority. shared_generation=ClearingRemainderAuthority is per call. Divergent-generation trees carry independent GenerationStamp values; nothing in the door couples them. shared_schedule=IntegrationSchedule is caller-owned per tree in this instrument; the door does not hold a host-wide schedule. all_tree_sync=none. Independent trees are cleared sequentially without a barrier. Overlapping raw 7 is interpreted only under each tree's OwnerChannelScopeKey / granter pair.
+
+## Workload scale_1000000
+trees=1 claims_per_tree=1000000 claims_total=1000000 scopes=1 supplies=1 claimants=1000000 granters=1 generations=[10] overlapping=false door=
+warm_ups=1 samples=3 setup_allocation_ns=100974300 grants_total=1000000 unresolved_total=2000000
+isolation_matches_production=true neutrality_clears_identical=true
+leg enclosing_clear isolation=production-door observation bytes_read_back=0 bytes_uploaded=0 median_ns=1698676500 p95_ns=1754189300 variance_ns2=1396779001813333.500 min_ns=1683084500 max_ns=1754189300 mean_ns=1711983433.333 samples=[1683084500, 1754189300, 1698676500]
+leg end_to_end isolation=production-door observation bytes_read_back=0 bytes_uploaded=0 median_ns=9561292100 p95_ns=9651716800 variance_ns2=7044316860723334.000 min_ns=9484028000 max_ns=9651716800 mean_ns=9565678966.667 samples=[9484028000, 9561292100, 9651716800]
+leg claim_production_completion isolation=ConstrainedClaim::from_runtime_demand (ordinary per-tree admission) bytes_read_back=0 bytes_uploaded=0 median_ns=118803100 p95_ns=122344400 variance_ns2=40053042623333.328 min_ns=110049800 max_ns=122344400 mean_ns=117065766.667 samples=[122344400, 118803100, 110049800]
+leg gpu_to_host_synchronization_readback isolation=door-absent on CPU-host clearing; 0 bytes / 0 ns observed (no map_async, no write_buffer, no queue submit) bytes_read_back=0 bytes_uploaded=0 median_ns=0 p95_ns=0 variance_ns2=0.000 min_ns=0 max_ns=0 mean_ns=0.000 samples=[0, 0, 0]
+leg host_conversion_grouping isolation=BTreeMap group by OwnerChannelScopeKey bytes_read_back=0 bytes_uploaded=0 median_ns=150623600 p95_ns=159062800 variance_ns2=42785086240000.000 min_ns=146186400 max_ns=159062800 mean_ns=151957600.000 samples=[159062800, 150623600, 146186400]
+leg eml_scoring isolation=TransformOp::apply_with_params via AuthoredClearingProgram::score_program bytes_read_back=0 bytes_uploaded=0 median_ns=128578700 p95_ns=129090100 variance_ns2=100430507293333.328 min_ns=111482300 max_ns=129090100 mean_ns=123050366.667 samples=[111482300, 129090100, 128578700]
+leg score_sorting_banding isolation=score.total_cmp desc then source id; equal to_bits bands bytes_read_back=0 bytes_uploaded=0 median_ns=5490500 p95_ns=5709600 variance_ns2=148683910000.000 min_ns=4959700 max_ns=5709600 mean_ns=5386600.000 samples=[5490500, 5709600, 4959700]
+leg integer_apportionment isolation=workshop-local restatement of the live largest-remainder + generation-rotated-tie loop; production door remains authority bytes_read_back=0 bytes_uploaded=0 median_ns=1128329300 p95_ns=1131850700 variance_ns2=103832231970000.000 min_ns=1112706200 max_ns=1131850700 mean_ns=1124295400.000 samples=[1112706200, 1128329300, 1131850700]
+leg grant_result_construction isolation=signed remainder of enclosing clear_constrained_claims_at_generation after nested grouping+scoring+sorting+apportionment; not forced-closed bytes_read_back=0 bytes_uploaded=0 median_ns=294342700 p95_ns=340436700 variance_ns2=836965991563333.375 min_ns=287101000 max_ns=340436700 mean_ns=307293466.667 samples=[294342700, 340436700, 287101000]
+leg host_to_gpu_upload isolation=door-absent on CPU-host clearing; 0 bytes / 0 ns observed (no map_async, no write_buffer, no queue submit) bytes_read_back=0 bytes_uploaded=0 median_ns=0 p95_ns=0 variance_ns2=0.000 min_ns=0 max_ns=0 mean_ns=0.000 samples=[0, 0, 0]
+leg n_plus_one_launch_delay isolation=host re-clear at generation+1 through the ordinary door; GPU dispatch count 0 bytes_read_back=0 bytes_uploaded=0 median_ns=1669563100 p95_ns=1683677100 variance_ns2=112528175803333.328 min_ns=1662902200 max_ns=1683677100 mean_ns=1672047466.667 samples=[1669563100, 1662902200, 1683677100]
+leg cpu_schedule_replay_recording isolation=AdmittedSpecializationFlowMarket::record_cleared_grant -> IntegrationSchedule bytes_read_back=0 bytes_uploaded=0 median_ns=310300500 p95_ns=336342400 variance_ns2=320065263903333.375 min_ns=302071500 max_ns=336342400 mean_ns=316238133.333 samples=[302071500, 310300500, 336342400]
+leg lawful_structural_consequence isolation=UnresolvedDemandObservation::from_grant + fund_unresolved_persistence bytes_read_back=0 bytes_uploaded=0 median_ns=213800700 p95_ns=244373300 variance_ns2=455023241853333.312 min_ns=203317700 max_ns=244373300 mean_ns=220497233.333 samples=[203317700, 213800700, 244373300]
+unattributed_remainder_ns=5541459900
+reconciliation: Named inner host legs (grouping/scoring/sorting/apportionment) are nested sequential observations on copies of the same input; grant_result_construction is enclosing_clear minus those nested components (signed remainder, not forced-closed). GPU transfer legs are door-absent 0. End-to-end is claim-production + enclosing_clear + n+1 + schedule + structural. Independent named-leg sum may exceed end-to-end because inner legs are also counted inside enclosing_clear; the signed unattributed remainder records that overlap plus observation overhead.
+coupling: simthing_allocator=SimThingId::new uses process-global AtomicU32 NEXT_SIMTHING_ID. This fixture does not call it; claim ids come from from_session_raw via from_runtime_demand. overlay_allocator=OverlayId::new uses a process-global AtomicU32; fund_unresolved_persistence mints through it when CostBand n>0. host_lock=none in constrained_clearing.rs; each clear_constrained_claims_at_generation call is a pure function of its supplies/claims/program/authority. shared_generation=ClearingRemainderAuthority is per call. Divergent-generation trees carry independent GenerationStamp values; nothing in the door couples them. shared_schedule=IntegrationSchedule is caller-owned per tree in this instrument; the door does not hold a host-wide schedule. all_tree_sync=none. Independent trees are cleared sequentially without a barrier. Overlapping raw 7 is interpreted only under each tree's OwnerChannelScopeKey / granter pair.
+
+## Workload one_large_tree
+trees=1 claims_per_tree=100000 claims_total=100000 scopes=1 supplies=1 claimants=100000 granters=1 generations=[10] overlapping=false door=
+warm_ups=1 samples=5 setup_allocation_ns=9782900 grants_total=100000 unresolved_total=200001
+isolation_matches_production=true neutrality_clears_identical=true
+leg enclosing_clear isolation=production-door observation bytes_read_back=0 bytes_uploaded=0 median_ns=141790900 p95_ns=146209100 variance_ns2=40653961075000.000 min_ns=132171800 max_ns=146209100 mean_ns=139950900.000 samples=[134337000, 132171800, 141790900, 145245700, 146209100]
+leg end_to_end isolation=production-door observation bytes_read_back=0 bytes_uploaded=0 median_ns=766147200 p95_ns=796642900 variance_ns2=544602461815000.000 min_ns=744184100 max_ns=796642900 mean_ns=770194900.000 samples=[766147200, 752258700, 744184100, 796642900, 791741600]
+leg claim_production_completion isolation=ConstrainedClaim::from_runtime_demand (ordinary per-tree admission) bytes_read_back=0 bytes_uploaded=0 median_ns=9435400 p95_ns=10981900 variance_ns2=1004214977000.000 min_ns=8245700 max_ns=10981900 mean_ns=9590020.000 samples=[9435400, 8245700, 9295200, 9991900, 10981900]
+leg gpu_to_host_synchronization_readback isolation=door-absent on CPU-host clearing; 0 bytes / 0 ns observed (no map_async, no write_buffer, no queue submit) bytes_read_back=0 bytes_uploaded=0 median_ns=0 p95_ns=0 variance_ns2=0.000 min_ns=0 max_ns=0 mean_ns=0.000 samples=[0, 0, 0, 0, 0]
+leg host_conversion_grouping isolation=BTreeMap group by OwnerChannelScopeKey bytes_read_back=0 bytes_uploaded=0 median_ns=15348300 p95_ns=18712200 variance_ns2=3332938308000.000 min_ns=14109600 max_ns=18712200 mean_ns=16076740.000 samples=[15110800, 18712200, 14109600, 17102800, 15348300]
+leg eml_scoring isolation=TransformOp::apply_with_params via AuthoredClearingProgram::score_program bytes_read_back=0 bytes_uploaded=0 median_ns=9451400 p95_ns=10577700 variance_ns2=584905222000.000 min_ns=8547000 max_ns=10577700 mean_ns=9418180.000 samples=[8547000, 9560200, 8954600, 10577700, 9451400]
+leg score_sorting_banding isolation=score.total_cmp desc then source id; equal to_bits bands bytes_read_back=0 bytes_uploaded=0 median_ns=542200 p95_ns=662500 variance_ns2=7050788000.000 min_ns=465900 max_ns=662500 mean_ns=556640.000 samples=[490900, 621700, 662500, 465900, 542200]
+leg integer_apportionment isolation=workshop-local restatement of the live largest-remainder + generation-rotated-tie loop; production door remains authority bytes_read_back=0 bytes_uploaded=0 median_ns=79534300 p95_ns=90245300 variance_ns2=41219768932000.000 min_ns=74524300 max_ns=90245300 mean_ns=81699180.000 samples=[86300900, 74524300, 79534300, 77891100, 90245300]
+leg grant_result_construction isolation=signed remainder of enclosing clear_constrained_claims_at_generation after nested grouping+scoring+sorting+apportionment; not forced-closed bytes_read_back=0 bytes_uploaded=0 median_ns=30621900 p95_ns=39208200 variance_ns2=43162817763000.000 min_ns=23887400 max_ns=39208200 mean_ns=32200160.000 samples=[23887400, 28753400, 38529900, 39208200, 30621900]
+leg host_to_gpu_upload isolation=door-absent on CPU-host clearing; 0 bytes / 0 ns observed (no map_async, no write_buffer, no queue submit) bytes_read_back=0 bytes_uploaded=0 median_ns=0 p95_ns=0 variance_ns2=0.000 min_ns=0 max_ns=0 mean_ns=0.000 samples=[0, 0, 0, 0, 0]
+leg n_plus_one_launch_delay isolation=host re-clear at generation+1 through the ordinary door; GPU dispatch count 0 bytes_read_back=0 bytes_uploaded=0 median_ns=132008000 p95_ns=148744600 variance_ns2=87469111905000.000 min_ns=124187900 max_ns=148744600 mean_ns=133889200.000 samples=[135871000, 128634500, 132008000, 148744600, 124187900]
+leg cpu_schedule_replay_recording isolation=AdmittedSpecializationFlowMarket::record_cleared_grant -> IntegrationSchedule bytes_read_back=0 bytes_uploaded=0 median_ns=31999900 p95_ns=41190400 variance_ns2=22580170585000.000 min_ns=28902500 max_ns=41190400 mean_ns=33037700.000 samples=[30761100, 31999900, 28902500, 41190400, 32334600]
+leg lawful_structural_consequence isolation=UnresolvedDemandObservation::from_grant + fund_unresolved_persistence bytes_read_back=0 bytes_uploaded=0 median_ns=19425200 p95_ns=24666000 variance_ns2=6282776040000.000 min_ns=18577800 max_ns=24666000 mean_ns=20443700.000 samples=[24666000, 20746700, 18577800, 18802800, 19425200]
+unattributed_remainder_ns=437780600
+reconciliation: Named inner host legs (grouping/scoring/sorting/apportionment) are nested sequential observations on copies of the same input; grant_result_construction is enclosing_clear minus those nested components (signed remainder, not forced-closed). GPU transfer legs are door-absent 0. End-to-end is claim-production + enclosing_clear + n+1 + schedule + structural. Independent named-leg sum may exceed end-to-end because inner legs are also counted inside enclosing_clear; the signed unattributed remainder records that overlap plus observation overhead.
+coupling: simthing_allocator=SimThingId::new uses process-global AtomicU32 NEXT_SIMTHING_ID. This fixture does not call it; claim ids come from from_session_raw via from_runtime_demand. overlay_allocator=OverlayId::new uses a process-global AtomicU32; fund_unresolved_persistence mints through it when CostBand n>0. host_lock=none in constrained_clearing.rs; each clear_constrained_claims_at_generation call is a pure function of its supplies/claims/program/authority. shared_generation=ClearingRemainderAuthority is per call. Divergent-generation trees carry independent GenerationStamp values; nothing in the door couples them. shared_schedule=IntegrationSchedule is caller-owned per tree in this instrument; the door does not hold a host-wide schedule. all_tree_sync=none. Independent trees are cleared sequentially without a barrier. Overlapping raw 7 is interpreted only under each tree's OwnerChannelScopeKey / granter pair.
+
+## Workload many_independent_small_trees
+trees=100 claims_per_tree=100 claims_total=10000 scopes=1 supplies=1 claimants=100 granters=1 generations=[10] overlapping=false door=
+warm_ups=1 samples=5 setup_allocation_ns=701400 grants_total=10000 unresolved_total=20200
+isolation_matches_production=true neutrality_clears_identical=true
+leg enclosing_clear isolation=production-door observation bytes_read_back=0 bytes_uploaded=0 median_ns=6869400 p95_ns=9305200 variance_ns2=1371350182000.000 min_ns=6467000 max_ns=9305200 mean_ns=7244380.000 samples=[6869400, 6589100, 9305200, 6467000, 6991200]
+leg end_to_end isolation=production-door observation bytes_read_back=0 bytes_uploaded=0 median_ns=39173400 p95_ns=53925000 variance_ns2=45790953312000.000 min_ns=37633800 max_ns=53925000 mean_ns=41910320.000 samples=[38897000, 39173400, 53925000, 37633800, 39922400]
+leg claim_production_completion isolation=ConstrainedClaim::from_runtime_demand (ordinary per-tree admission) bytes_read_back=0 bytes_uploaded=0 median_ns=934500 p95_ns=1449700 variance_ns2=127686812000.000 min_ns=653900 max_ns=1449700 mean_ns=1057480.000 samples=[934500, 1416100, 833200, 1449700, 653900]
+leg gpu_to_host_synchronization_readback isolation=door-absent on CPU-host clearing; 0 bytes / 0 ns observed (no map_async, no write_buffer, no queue submit) bytes_read_back=0 bytes_uploaded=0 median_ns=0 p95_ns=0 variance_ns2=0.000 min_ns=0 max_ns=0 mean_ns=0.000 samples=[0, 0, 0, 0, 0]
+leg host_conversion_grouping isolation=BTreeMap group by OwnerChannelScopeKey bytes_read_back=0 bytes_uploaded=0 median_ns=1162400 p95_ns=1696900 variance_ns2=59959867000.000 min_ns=1098000 max_ns=1696900 mean_ns=1280980.000 samples=[1303700, 1162400, 1696900, 1143900, 1098000]
+leg eml_scoring isolation=TransformOp::apply_with_params via AuthoredClearingProgram::score_program bytes_read_back=0 bytes_uploaded=0 median_ns=922900 p95_ns=1098300 variance_ns2=19142428000.000 min_ns=790700 max_ns=1098300 mean_ns=929260.000 samples=[922900, 1098300, 1036500, 797900, 790700]
+leg score_sorting_banding isolation=score.total_cmp desc then source id; equal to_bits bands bytes_read_back=0 bytes_uploaded=0 median_ns=24800 p95_ns=31500 variance_ns2=10012000.000 min_ns=24100 max_ns=31500 mean_ns=25880.000 samples=[24800, 24900, 31500, 24100, 24100]
+leg integer_apportionment isolation=workshop-local restatement of the live largest-remainder + generation-rotated-tie loop; production door remains authority bytes_read_back=0 bytes_uploaded=0 median_ns=2867700 p95_ns=4120000 variance_ns2=336878148000.000 min_ns=2760700 max_ns=4120000 mean_ns=3085240.000 samples=[2876100, 2760700, 4120000, 2801700, 2867700]
+leg grant_result_construction isolation=signed remainder of enclosing clear_constrained_claims_at_generation after nested grouping+scoring+sorting+apportionment; not forced-closed bytes_read_back=0 bytes_uploaded=0 median_ns=1741900 p95_ns=2420300 variance_ns2=139356197000.000 min_ns=1542800 max_ns=2420300 mean_ns=1923020.000 samples=[1741900, 1542800, 2420300, 1699400, 2210700]
+leg host_to_gpu_upload isolation=door-absent on CPU-host clearing; 0 bytes / 0 ns observed (no map_async, no write_buffer, no queue submit) bytes_read_back=0 bytes_uploaded=0 median_ns=0 p95_ns=0 variance_ns2=0.000 min_ns=0 max_ns=0 mean_ns=0.000 samples=[0, 0, 0, 0, 0]
+leg n_plus_one_launch_delay isolation=host re-clear at generation+1 through the ordinary door; GPU dispatch count 0 bytes_read_back=0 bytes_uploaded=0 median_ns=6834900 p95_ns=9119200 variance_ns2=1421767317000.000 min_ns=6212100 max_ns=9119200 mean_ns=7116580.000 samples=[6212100, 7180500, 9119200, 6236200, 6834900]
+leg cpu_schedule_replay_recording isolation=AdmittedSpecializationFlowMarket::record_cleared_grant -> IntegrationSchedule bytes_read_back=0 bytes_uploaded=0 median_ns=2420900 p95_ns=3426900 variance_ns2=223526853000.000 min_ns=2279400 max_ns=3426900 mean_ns=2595860.000 samples=[2279400, 2420900, 3426900, 2339300, 2512800]
+leg lawful_structural_consequence isolation=UnresolvedDemandObservation::from_grant + fund_unresolved_persistence bytes_read_back=0 bytes_uploaded=0 median_ns=2279800 p95_ns=2785400 variance_ns2=92931143000.000 min_ns=1994500 max_ns=2785400 mean_ns=2286660.000 samples=[2092900, 2279800, 2785400, 1994500, 2280700]
+unattributed_remainder_ns=19983600
+reconciliation: Named inner host legs (grouping/scoring/sorting/apportionment) are nested sequential observations on copies of the same input; grant_result_construction is enclosing_clear minus those nested components (signed remainder, not forced-closed). GPU transfer legs are door-absent 0. End-to-end is claim-production + enclosing_clear + n+1 + schedule + structural. Independent named-leg sum may exceed end-to-end because inner legs are also counted inside enclosing_clear; the signed unattributed remainder records that overlap plus observation overhead.
+coupling: simthing_allocator=SimThingId::new uses process-global AtomicU32 NEXT_SIMTHING_ID. This fixture does not call it; claim ids come from from_session_raw via from_runtime_demand. overlay_allocator=OverlayId::new uses a process-global AtomicU32; fund_unresolved_persistence mints through it when CostBand n>0. host_lock=none in constrained_clearing.rs; each clear_constrained_claims_at_generation call is a pure function of its supplies/claims/program/authority. shared_generation=ClearingRemainderAuthority is per call. Divergent-generation trees carry independent GenerationStamp values; nothing in the door couples them. shared_schedule=IntegrationSchedule is caller-owned per tree in this instrument; the door does not hold a host-wide schedule. all_tree_sync=none. Independent trees are cleared sequentially without a barrier. Overlapping raw 7 is interpreted only under each tree's OwnerChannelScopeKey / granter pair.
+
+## Workload divergent_generation_trees
+trees=4 claims_per_tree=1000 claims_total=4000 scopes=1 supplies=1 claimants=1000 granters=1 generations=[1, 10, 100, 1000] overlapping=false door=
+warm_ups=1 samples=5 setup_allocation_ns=272800 grants_total=4000 unresolved_total=7988
+isolation_matches_production=true neutrality_clears_identical=true
+leg enclosing_clear isolation=production-door observation bytes_read_back=0 bytes_uploaded=0 median_ns=3695900 p95_ns=4947500 variance_ns2=788207738000.000 min_ns=2790700 max_ns=4947500 mean_ns=3711360.000 samples=[2956400, 4947500, 2790700, 3695900, 4166300]
+leg end_to_end isolation=production-door observation bytes_read_back=0 bytes_uploaded=0 median_ns=20645400 p95_ns=22434600 variance_ns2=2547786365000.000 min_ns=18390300 max_ns=22434600 mean_ns=20246800.000 samples=[20645400, 19006400, 18390300, 22434600, 20757300]
+leg claim_production_completion isolation=ConstrainedClaim::from_runtime_demand (ordinary per-tree admission) bytes_read_back=0 bytes_uploaded=0 median_ns=470800 p95_ns=1477500 variance_ns2=304727335000.000 min_ns=264900 max_ns=1477500 mean_ns=727900.000 samples=[1146800, 264900, 279500, 470800, 1477500]
+leg gpu_to_host_synchronization_readback isolation=door-absent on CPU-host clearing; 0 bytes / 0 ns observed (no map_async, no write_buffer, no queue submit) bytes_read_back=0 bytes_uploaded=0 median_ns=0 p95_ns=0 variance_ns2=0.000 min_ns=0 max_ns=0 mean_ns=0.000 samples=[0, 0, 0, 0, 0]
+leg host_conversion_grouping isolation=BTreeMap group by OwnerChannelScopeKey bytes_read_back=0 bytes_uploaded=0 median_ns=492000 p95_ns=675600 variance_ns2=16237108000.000 min_ns=387800 max_ns=675600 mean_ns=533860.000 samples=[658700, 387800, 455200, 492000, 675600]
+leg eml_scoring isolation=TransformOp::apply_with_params via AuthoredClearingProgram::score_program bytes_read_back=0 bytes_uploaded=0 median_ns=372200 p95_ns=477400 variance_ns2=5238252000.000 min_ns=297200 max_ns=477400 mean_ns=394120.000 samples=[453800, 297200, 372200, 370000, 477400]
+leg score_sorting_banding isolation=score.total_cmp desc then source id; equal to_bits bands bytes_read_back=0 bytes_uploaded=0 median_ns=8900 p95_ns=11800 variance_ns2=3907000.000 min_ns=7800 max_ns=11800 mean_ns=9680.000 samples=[11800, 7800, 8100, 8900, 11800]
+leg integer_apportionment isolation=workshop-local restatement of the live largest-remainder + generation-rotated-tie loop; production door remains authority bytes_read_back=0 bytes_uploaded=0 median_ns=2240900 p95_ns=2535100 variance_ns2=161198158000.000 min_ns=1565700 max_ns=2535100 mean_ns=2086760.000 samples=[2240900, 1565700, 2535100, 1776600, 2315500]
+leg grant_result_construction isolation=signed remainder of enclosing clear_constrained_claims_at_generation after nested grouping+scoring+sorting+apportionment; not forced-closed bytes_read_back=0 bytes_uploaded=0 median_ns=686000 p95_ns=2689000 variance_ns2=1221791512000.000 min_ns=0 max_ns=2689000 mean_ns=884680.000 samples=[0, 2689000, 0, 1048400, 686000]
+leg host_to_gpu_upload isolation=door-absent on CPU-host clearing; 0 bytes / 0 ns observed (no map_async, no write_buffer, no queue submit) bytes_read_back=0 bytes_uploaded=0 median_ns=0 p95_ns=0 variance_ns2=0.000 min_ns=0 max_ns=0 mean_ns=0.000 samples=[0, 0, 0, 0, 0]
+leg n_plus_one_launch_delay isolation=host re-clear at generation+1 through the ordinary door; GPU dispatch count 0 bytes_read_back=0 bytes_uploaded=0 median_ns=2804000 p95_ns=5178700 variance_ns2=1174798533000.000 min_ns=2627800 max_ns=5178700 mean_ns=3249140.000 samples=[2804000, 2627800, 2915900, 5178700, 2719300]
+leg cpu_schedule_replay_recording isolation=AdmittedSpecializationFlowMarket::record_cleared_grant -> IntegrationSchedule bytes_read_back=0 bytes_uploaded=0 median_ns=866400 p95_ns=1612500 variance_ns2=112408098000.000 min_ns=849200 max_ns=1612500 mean_ns=1013460.000 samples=[889400, 866400, 849800, 1612500, 849200]
+leg lawful_structural_consequence isolation=UnresolvedDemandObservation::from_grant + fund_unresolved_persistence bytes_read_back=0 bytes_uploaded=0 median_ns=713100 p95_ns=1098800 variance_ns2=46134682000.000 min_ns=636400 max_ns=1098800 mean_ns=818620.000 samples=[636400, 713100, 998000, 1098800, 646800]
+unattributed_remainder_ns=11991100
+reconciliation: Named inner host legs (grouping/scoring/sorting/apportionment) are nested sequential observations on copies of the same input; grant_result_construction is enclosing_clear minus those nested components (signed remainder, not forced-closed). GPU transfer legs are door-absent 0. End-to-end is claim-production + enclosing_clear + n+1 + schedule + structural. Independent named-leg sum may exceed end-to-end because inner legs are also counted inside enclosing_clear; the signed unattributed remainder records that overlap plus observation overhead.
+coupling: simthing_allocator=SimThingId::new uses process-global AtomicU32 NEXT_SIMTHING_ID. This fixture does not call it; claim ids come from from_session_raw via from_runtime_demand. overlay_allocator=OverlayId::new uses a process-global AtomicU32; fund_unresolved_persistence mints through it when CostBand n>0. host_lock=none in constrained_clearing.rs; each clear_constrained_claims_at_generation call is a pure function of its supplies/claims/program/authority. shared_generation=ClearingRemainderAuthority is per call. Divergent-generation trees carry independent GenerationStamp values; nothing in the door couples them. shared_schedule=IntegrationSchedule is caller-owned per tree in this instrument; the door does not hold a host-wide schedule. all_tree_sync=none. Independent trees are cleared sequentially without a barrier. Overlapping raw 7 is interpreted only under each tree's OwnerChannelScopeKey / granter pair.
+
+## Workload overlapping_local_ids
+trees=2 claims_per_tree=1000 claims_total=2000 scopes=1 supplies=1 claimants=1000 granters=1 generations=[10, 10] overlapping=true door=ConstrainedClaim::from_runtime_demand -> SimThingId::from_session_raw (ordinary production admission; same raw {1..=N} including 7 under distinct owner_ref/scope_id/granter)
+warm_ups=1 samples=7 setup_allocation_ns=119600 grants_total=2000 unresolved_total=4000
+isolation_matches_production=true neutrality_clears_identical=true
+leg enclosing_clear isolation=production-door observation bytes_read_back=0 bytes_uploaded=0 median_ns=1669700 p95_ns=2463300 variance_ns2=158708123333.333 min_ns=1370100 max_ns=2463300 mean_ns=1731500.000 samples=[1669700, 1910700, 2463300, 1906400, 1400100, 1400200, 1370100]
+leg end_to_end isolation=production-door observation bytes_read_back=0 bytes_uploaded=0 median_ns=9649900 p95_ns=11995000 variance_ns2=879131582380.952 min_ns=9365800 max_ns=11995000 mean_ns=10073828.571 samples=[9441700, 11995000, 9365800, 9596200, 9899600, 9649900, 10568600]
+leg claim_production_completion isolation=ConstrainedClaim::from_runtime_demand (ordinary per-tree admission) bytes_read_back=0 bytes_uploaded=0 median_ns=133400 p95_ns=517800 variance_ns2=20922032380.952 min_ns=126100 max_ns=517800 mean_ns=200028.571 samples=[226300, 127500, 142400, 126700, 517800, 126100, 133400]
+leg gpu_to_host_synchronization_readback isolation=door-absent on CPU-host clearing; 0 bytes / 0 ns observed (no map_async, no write_buffer, no queue submit) bytes_read_back=0 bytes_uploaded=0 median_ns=0 p95_ns=0 variance_ns2=0.000 min_ns=0 max_ns=0 mean_ns=0.000 samples=[0, 0, 0, 0, 0, 0, 0]
+leg host_conversion_grouping isolation=BTreeMap group by OwnerChannelScopeKey bytes_read_back=0 bytes_uploaded=0 median_ns=192900 p95_ns=492000 variance_ns2=18603378095.238 min_ns=184900 max_ns=492000 mean_ns=289685.714 samples=[492000, 192400, 192900, 313900, 463100, 184900, 188600]
+leg eml_scoring isolation=TransformOp::apply_with_params via AuthoredClearingProgram::score_program bytes_read_back=0 bytes_uploaded=0 median_ns=135200 p95_ns=497000 variance_ns2=20997666190.476 min_ns=126700 max_ns=497000 mean_ns=212457.143 samples=[497000, 130100, 135200, 144000, 326600, 126700, 127600]
+leg score_sorting_banding isolation=score.total_cmp desc then source id; equal to_bits bands bytes_read_back=0 bytes_uploaded=0 median_ns=3900 p95_ns=7900 variance_ns2=2484761.905 min_ns=3400 max_ns=7900 mean_ns=4385.714 samples=[4100, 3600, 3900, 4200, 7900, 3400, 3600]
+leg integer_apportionment isolation=workshop-local restatement of the live largest-remainder + generation-rotated-tie loop; production door remains authority bytes_read_back=0 bytes_uploaded=0 median_ns=713000 p95_ns=1132300 variance_ns2=32068129523.810 min_ns=688300 max_ns=1132300 mean_ns=833457.143 samples=[982800, 692700, 701800, 923300, 1132300, 688300, 713000]
+leg grant_result_construction isolation=signed remainder of enclosing clear_constrained_claims_at_generation after nested grouping+scoring+sorting+apportionment; not forced-closed bytes_read_back=0 bytes_uploaded=0 median_ns=396900 p95_ns=1429500 variance_ns2=259043256190.476 min_ns=0 max_ns=1429500 mean_ns=510942.857 samples=[0, 891900, 1429500, 521000, 0, 396900, 337300]
+leg host_to_gpu_upload isolation=door-absent on CPU-host clearing; 0 bytes / 0 ns observed (no map_async, no write_buffer, no queue submit) bytes_read_back=0 bytes_uploaded=0 median_ns=0 p95_ns=0 variance_ns2=0.000 min_ns=0 max_ns=0 mean_ns=0.000 samples=[0, 0, 0, 0, 0, 0, 0]
+leg n_plus_one_launch_delay isolation=host re-clear at generation+1 through the ordinary door; GPU dispatch count 0 bytes_read_back=0 bytes_uploaded=0 median_ns=1437200 p95_ns=2561600 variance_ns2=184338780000.000 min_ns=1354400 max_ns=2561600 mean_ns=1631500.000 samples=[1437200, 1430300, 1354400, 1392700, 1742000, 1502300, 2561600]
+leg cpu_schedule_replay_recording isolation=AdmittedSpecializationFlowMarket::record_cleared_grant -> IntegrationSchedule bytes_read_back=0 bytes_uploaded=0 median_ns=435300 p95_ns=540000 variance_ns2=2083359523.810 min_ns=418100 max_ns=540000 mean_ns=456657.143 samples=[424900, 540000, 500500, 435300, 443900, 433900, 418100]
+leg lawful_structural_consequence isolation=UnresolvedDemandObservation::from_grant + fund_unresolved_persistence bytes_read_back=0 bytes_uploaded=0 median_ns=317600 p95_ns=1022700 variance_ns2=68153699047.619 min_ns=303800 max_ns=1022700 mean_ns=439928.571 samples=[307900, 1022700, 312800, 400700, 317600, 414000, 303800]
+unattributed_remainder_ns=5884500
+reconciliation: Named inner host legs (grouping/scoring/sorting/apportionment) are nested sequential observations on copies of the same input; grant_result_construction is enclosing_clear minus those nested components (signed remainder, not forced-closed). GPU transfer legs are door-absent 0. End-to-end is claim-production + enclosing_clear + n+1 + schedule + structural. Independent named-leg sum may exceed end-to-end because inner legs are also counted inside enclosing_clear; the signed unattributed remainder records that overlap plus observation overhead.
+overlapping_raw=7 contexts=["overlap-alpha owner_ref=overlap-alpha granter_raw=1001 scope_boundary=1011", "overlap-beta owner_ref=overlap-beta granter_raw=2001 scope_boundary=2011"]
+coupling: simthing_allocator=SimThingId::new uses process-global AtomicU32 NEXT_SIMTHING_ID. This fixture does not call it; claim ids come from from_session_raw via from_runtime_demand. overlay_allocator=OverlayId::new uses a process-global AtomicU32; fund_unresolved_persistence mints through it when CostBand n>0. host_lock=none in constrained_clearing.rs; each clear_constrained_claims_at_generation call is a pure function of its supplies/claims/program/authority. shared_generation=ClearingRemainderAuthority is per call. Divergent-generation trees carry independent GenerationStamp values; nothing in the door couples them. shared_schedule=IntegrationSchedule is caller-owned per tree in this instrument; the door does not hold a host-wide schedule. all_tree_sync=none. Independent trees are cleared sequentially without a barrier. Overlapping raw 7 is interpreted only under each tree's OwnerChannelScopeKey / granter pair.
+
+## Lossless JSON follows
+{
+  "envelope": {
+    "tested_commit": "625290768f266276c68240dc88ffbb1db6de35bb",
+    "utc_date": "2026-08-31T02:39:44Z",
+    "cpu": "Intel64 Family 6 Model 183 Stepping 1, GenuineIntel",
+    "gpu": "NVIDIA GeForce RTX 4080 Laptop GPU vendor=0x10de device=0x27a0 type=DiscreteGpu",
+    "adapter_backend": "Vulkan",
+    "driver": "NVIDIA 595.79",
+    "os": "windows-x86_64",
+    "compiler_toolchain": "rustc 1.95.0 (59807616e 2026-04-14)",
+    "profile": "cargo-test (optimized+debuginfo)",
+    "deterministic_seed": 81921,
+    "exact_command": "cargo test -p simthing-workshop --test generation_critical_path_baseline_0 -- --nocapture"
+  },
+  "door_census": [
+    {
+      "symbol": "clear_constrained_claims_at_generation",
+      "path": "crates/simthing-spec/src/spec/constrained_clearing.rs",
+      "line": 254,
+      "generation_authority_form": "caller-supplied ClearingRemainderAuthority { granter, generation }",
+      "reexports": "simthing-spec lib.rs + spec/mod.rs; simthing-embedder run.rs",
+      "callers": "production: simthing-driver/src/growth_entitlement.rs; wrapper: clear_reduced_owner_channels_at_generation; tests: contention_arena_executed_0, clearing_weight_span_unification_0, clearing_weight_deformation_lifecycle_0, stemthing_b_flow_market_germ_0, stemthing_b_vram_residency_0, grant_disbursement_lane_0, unified_facility_convergence_witness_0, protected_representative_restore, vendor_door_triad_surface_0",
+      "ordinary_or_oracle_posture": "ordinary production CPU-host clearing door",
+      "disposition_14_6": "narrow behind CpuVendorizedOracle; production migrates to the 14.2+ resident germ"
+    },
+    {
+      "symbol": "clear_reduced_owner_channels",
+      "path": "crates/simthing-spec/src/spec/constrained_clearing.rs",
+      "line": 420,
+      "generation_authority_form": "generationless compatibility: granter=SimThingId::from_session_raw(0), generation=GenerationStamp::new(0)",
+      "reexports": "simthing-spec lib.rs + spec/mod.rs",
+      "callers": "test: simthing-driver/tests/contention_arena_executed_0.rs (priority + price cases); no production caller",
+      "ordinary_or_oracle_posture": "generationless compatibility shim / test oracle",
+      "disposition_14_6": "DELETE"
+    },
+    {
+      "symbol": "clear_reduced_owner_channels_at_generation",
+      "path": "crates/simthing-spec/src/spec/constrained_clearing.rs",
+      "line": 437,
+      "generation_authority_form": "caller-supplied ClearingRemainderAuthority; converts reduce-up buckets through ConstrainedClaim::from_runtime_demand then the ordinary door",
+      "reexports": "simthing-spec lib.rs + spec/mod.rs",
+      "callers": "wrappers: clear_reduced_owner_channels (generationless), clear_stamped_owner_channels; no direct production caller",
+      "ordinary_or_oracle_posture": "conversion wrapper over the ordinary at-generation door",
+      "disposition_14_6": "narrow behind CpuVendorizedOracle (or delete once callers are gone)"
+    },
+    {
+      "symbol": "clear_stamped_owner_channels",
+      "path": "crates/simthing-spec/src/spec/constrained_clearing.rs",
+      "line": 488,
+      "generation_authority_form": "generation taken from StampedReduceUpProduct; granter supplied by caller",
+      "reexports": "simthing-spec lib.rs + spec/mod.rs; simthing-embedder run.rs",
+      "callers": "test/germ: stemthing_b_flow_market_germ_0.rs; no other production caller on this base",
+      "ordinary_or_oracle_posture": "canonical stamped-RF market binding over the ordinary door",
+      "disposition_14_6": "narrow behind CpuVendorizedOracle"
+    }
+  ],
+  "path_diagram": "ordinary generation critical path (CPU-host clearing door; GPU legs door-absent):\n  RuntimeOwnerSiloDemandBucket (per-tree admission)\n    -> ConstrainedClaim::from_runtime_demand  [claim_production_completion]\n    -> (no GPU map/readback in this door)     [gpu_to_host_synchronization_readback = 0 bytes]\n    -> group by OwnerChannelScopeKey          [host_conversion_grouping]\n    -> TransformOp::apply_with_params         [eml_scoring]\n    -> sort score-bits then id; equal-bit bands [score_sorting_banding]\n    -> largest remainder + generation-rotated ties [integer_apportionment]\n    -> ConstrainedGrant::from_clearance + ConstrainedClearingResult [grant_result_construction]\n  enclosing production authority: clear_constrained_claims_at_generation\n    -> (no GPU write_buffer/upload in this door) [host_to_gpu_upload = 0 bytes]\n    -> generation+1 re-clear                  [n_plus_one_launch_delay]\n    -> record_cleared_grant -> IntegrationSchedule [cpu_schedule_replay_recording]\n    -> fund_unresolved_persistence            [lawful_structural_consequence]",
+  "leg_definitions": [
+    {
+      "name": "claim_production_completion",
+      "boundary": "ConstrainedClaim::from_runtime_demand over already-built RuntimeOwnerSiloDemandBucket rows (ordinary per-tree admission; uses SimThingId::from_session_raw)"
+    },
+    {
+      "name": "gpu_to_host_synchronization_readback",
+      "boundary": "absent on the ordinary CPU-host clearing door; observed transfer is 0 bytes / 0 ns. GPU adapter is queried only for the envelope."
+    },
+    {
+      "name": "host_conversion_grouping",
+      "boundary": "BTreeMap grouping of scored claims by OwnerChannelScopeKey, matching the live door's claims_by_scope insert"
+    },
+    {
+      "name": "eml_scoring",
+      "boundary": "AuthoredClearingProgram::score_program().apply_with_params(order_weight, priority) plus the live finite/non-negative/signed-zero canonicalize"
+    },
+    {
+      "name": "score_sorting_banding",
+      "boundary": "sort by score.total_cmp descending then source_simthing_id; equal score.to_bits() bands"
+    },
+    {
+      "name": "integer_apportionment",
+      "boundary": "workshop-local restatement of the live largest-remainder + generation-rotated exact-tie loop on the same scored/sorted/banded input; production door remains authority; isolation is proven by matching grant.granted"
+    },
+    {
+      "name": "grant_result_construction",
+      "boundary": "remainder of enclosing clear_constrained_claims_at_generation after the nested sequential grouping+scoring+sorting+apportionment observations; raw enclosing and component times are both kept; remainder is not forced-closed"
+    },
+    {
+      "name": "host_to_gpu_upload",
+      "boundary": "absent on the ordinary CPU-host clearing door; observed transfer is 0 bytes / 0 ns"
+    },
+    {
+      "name": "n_plus_one_launch_delay",
+      "boundary": "host re-clear of the same supplies/claims at generation+1 through the ordinary door; GPU kernel launch is door-absent (0 ns, 0 dispatches)"
+    },
+    {
+      "name": "cpu_schedule_replay_recording",
+      "boundary": "AdmittedSpecializationFlowMarket::record_cleared_grant into a fresh per-tree IntegrationSchedule for every produced ConstrainedGrant"
+    },
+    {
+      "name": "lawful_structural_consequence",
+      "boundary": "UnresolvedDemandObservation::from_grant + fund_unresolved_persistence at observed_generation+1; overlays are dropped after mint so the allocator is observed without retaining the population"
+    }
+  ],
+  "workloads": [
+    {
+      "cardinalities": {
+        "name": "scale_1000",
+        "tree_count": 1,
+        "claims_per_tree": 1000,
+        "claims_total": 1000,
+        "scopes_per_tree": 1,
+        "supplies_per_tree": 1,
+        "claimants_per_tree": 1000,
+        "granters_per_tree": 1,
+        "generations": [
+          10
+        ],
+        "overlapping_raw_local_ids": false,
+        "overlapping_construction_door": ""
+      },
+      "warm_up_count": 3,
+      "sample_count": 11,
+      "setup_allocation_ns": 106200,
+      "legs": [
+        {
+          "name": "claim_production_completion",
+          "isolation": "ConstrainedClaim::from_runtime_demand (ordinary per-tree admission)",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            83200,
+            66500,
+            65600,
+            65200,
+            100400,
+            85300,
+            66300,
+            85000,
+            87100,
+            86100,
+            93100
+          ],
+          "median_ns": 85000,
+          "p95_ns": 100400,
+          "variance_ns2": 153374727.27272728,
+          "min_ns": 65200,
+          "max_ns": 100400,
+          "mean_ns": 80345.45454545454
+        },
+        {
+          "name": "gpu_to_host_synchronization_readback",
+          "isolation": "door-absent on CPU-host clearing; 0 bytes / 0 ns observed (no map_async, no write_buffer, no queue submit)",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "median_ns": 0,
+          "p95_ns": 0,
+          "variance_ns2": 0.0,
+          "min_ns": 0,
+          "max_ns": 0,
+          "mean_ns": 0.0
+        },
+        {
+          "name": "host_conversion_grouping",
+          "isolation": "BTreeMap group by OwnerChannelScopeKey",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            128000,
+            241000,
+            138700,
+            144700,
+            156600,
+            129300,
+            138300,
+            117700,
+            138700,
+            136200,
+            153200
+          ],
+          "median_ns": 138700,
+          "p95_ns": 241000,
+          "variance_ns2": 1083212909.0909092,
+          "min_ns": 117700,
+          "max_ns": 241000,
+          "mean_ns": 147490.9090909091
+        },
+        {
+          "name": "eml_scoring",
+          "isolation": "TransformOp::apply_with_params via AuthoredClearingProgram::score_program",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            85800,
+            135600,
+            82000,
+            85300,
+            130400,
+            81100,
+            83400,
+            82700,
+            82000,
+            80800,
+            81800
+          ],
+          "median_ns": 82700,
+          "p95_ns": 135600,
+          "variance_ns2": 416748000.0,
+          "min_ns": 80800,
+          "max_ns": 135600,
+          "mean_ns": 91900.0
+        },
+        {
+          "name": "score_sorting_banding",
+          "isolation": "score.total_cmp desc then source id; equal to_bits bands",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            1500,
+            2500,
+            2500,
+            1500,
+            1800,
+            1700,
+            1500,
+            1800,
+            1700,
+            1500,
+            1900
+          ],
+          "median_ns": 1700,
+          "p95_ns": 2500,
+          "variance_ns2": 136909.0909090909,
+          "min_ns": 1500,
+          "max_ns": 2500,
+          "mean_ns": 1809.090909090909
+        },
+        {
+          "name": "integer_apportionment",
+          "isolation": "workshop-local restatement of the live largest-remainder + generation-rotated-tie loop; production door remains authority",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            407600,
+            582000,
+            436100,
+            409900,
+            420700,
+            393800,
+            398500,
+            403900,
+            398100,
+            399900,
+            426500
+          ],
+          "median_ns": 407600,
+          "p95_ns": 582000,
+          "variance_ns2": 2879787636.363637,
+          "min_ns": 393800,
+          "max_ns": 582000,
+          "mean_ns": 425181.8181818182
+        },
+        {
+          "name": "grant_result_construction",
+          "isolation": "signed remainder of enclosing clear_constrained_claims_at_generation after nested grouping+scoring+sorting+apportionment; not forced-closed",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            181200,
+            0,
+            125600,
+            267500,
+            228400,
+            176500,
+            165100,
+            218700,
+            180700,
+            159300,
+            126700
+          ],
+          "median_ns": 176500,
+          "p95_ns": 267500,
+          "variance_ns2": 4830778545.454546,
+          "min_ns": 0,
+          "max_ns": 267500,
+          "mean_ns": 166336.36363636365
+        },
+        {
+          "name": "host_to_gpu_upload",
+          "isolation": "door-absent on CPU-host clearing; 0 bytes / 0 ns observed (no map_async, no write_buffer, no queue submit)",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "median_ns": 0,
+          "p95_ns": 0,
+          "variance_ns2": 0.0,
+          "min_ns": 0,
+          "max_ns": 0,
+          "mean_ns": 0.0
+        },
+        {
+          "name": "n_plus_one_launch_delay",
+          "isolation": "host re-clear at generation+1 through the ordinary door; GPU dispatch count 0",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            698500,
+            786300,
+            675700,
+            812700,
+            791400,
+            678900,
+            680900,
+            662200,
+            667600,
+            665800,
+            676000
+          ],
+          "median_ns": 678900,
+          "p95_ns": 812700,
+          "variance_ns2": 3329212181.818182,
+          "min_ns": 662200,
+          "max_ns": 812700,
+          "mean_ns": 708727.2727272727
+        },
+        {
+          "name": "cpu_schedule_replay_recording",
+          "isolation": "AdmittedSpecializationFlowMarket::record_cleared_grant -> IntegrationSchedule",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            217300,
+            215100,
+            212900,
+            214600,
+            241700,
+            211100,
+            290900,
+            210700,
+            221100,
+            213900,
+            213000
+          ],
+          "median_ns": 214600,
+          "p95_ns": 290900,
+          "variance_ns2": 569902727.2727273,
+          "min_ns": 210700,
+          "max_ns": 290900,
+          "mean_ns": 223845.45454545456
+        },
+        {
+          "name": "lawful_structural_consequence",
+          "isolation": "UnresolvedDemandObservation::from_grant + fund_unresolved_persistence",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            164800,
+            162400,
+            167400,
+            164200,
+            179000,
+            163300,
+            245600,
+            162000,
+            161100,
+            247700,
+            161600
+          ],
+          "median_ns": 164200,
+          "p95_ns": 247700,
+          "variance_ns2": 1113543636.3636365,
+          "min_ns": 161100,
+          "max_ns": 247700,
+          "mean_ns": 179918.18181818182
+        }
+      ],
+      "enclosing_clear_ns": {
+        "name": "enclosing_clear",
+        "isolation": "production-door observation",
+        "bytes_read_back": 0,
+        "bytes_uploaded": 0,
+        "sample_ns": [
+          804100,
+          810200,
+          784900,
+          908900,
+          937900,
+          782400,
+          786800,
+          824800,
+          801200,
+          777700,
+          790100
+        ],
+        "median_ns": 801200,
+        "p95_ns": 937900,
+        "variance_ns2": 2894926000.0,
+        "min_ns": 777700,
+        "max_ns": 937900,
+        "mean_ns": 819000.0
+      },
+      "end_to_end_ns": {
+        "name": "end_to_end",
+        "isolation": "production-door observation",
+        "bytes_read_back": 0,
+        "bytes_uploaded": 0,
+        "sample_ns": [
+          4330000,
+          4762100,
+          4257100,
+          4854300,
+          4757000,
+          4241800,
+          4573400,
+          4206500,
+          4233000,
+          4380000,
+          4275100
+        ],
+        "median_ns": 4330000,
+        "p95_ns": 4854300,
+        "variance_ns2": 60659290727.27273,
+        "min_ns": 4206500,
+        "max_ns": 4854300,
+        "mean_ns": 4442754.545454546
+      },
+      "unattributed_remainder_ns": 2380100,
+      "reconciliation_note": "Named inner host legs (grouping/scoring/sorting/apportionment) are nested sequential observations on copies of the same input; grant_result_construction is enclosing_clear minus those nested components (signed remainder, not forced-closed). GPU transfer legs are door-absent 0. End-to-end is claim-production + enclosing_clear + n+1 + schedule + structural. Independent named-leg sum may exceed end-to-end because inner legs are also counted inside enclosing_clear; the signed unattributed remainder records that overlap plus observation overhead.",
+      "isolation_matches_production": true,
+      "neutrality_clears_identical": true,
+      "overlapping_raw_value": null,
+      "overlapping_tree_contexts": [],
+      "coupling": {
+        "process_global_simthing_allocator": "SimThingId::new uses process-global AtomicU32 NEXT_SIMTHING_ID. This fixture does not call it; claim ids come from from_session_raw via from_runtime_demand.",
+        "process_global_overlay_allocator": "OverlayId::new uses a process-global AtomicU32; fund_unresolved_persistence mints through it when CostBand n>0.",
+        "host_wide_clearing_lock": "none in constrained_clearing.rs; each clear_constrained_claims_at_generation call is a pure function of its supplies/claims/program/authority.",
+        "shared_generation_authority": "ClearingRemainderAuthority is per call. Divergent-generation trees carry independent GenerationStamp values; nothing in the door couples them.",
+        "shared_integration_schedule": "IntegrationSchedule is caller-owned per tree in this instrument; the door does not hold a host-wide schedule.",
+        "all_tree_synchronization": "none. Independent trees are cleared sequentially without a barrier. Overlapping raw 7 is interpreted only under each tree's OwnerChannelScopeKey / granter pair."
+      },
+      "grants_total": 1000,
+      "unresolved_total": 1997
+    },
+    {
+      "cardinalities": {
+        "name": "scale_10000",
+        "tree_count": 1,
+        "claims_per_tree": 10000,
+        "claims_total": 10000,
+        "scopes_per_tree": 1,
+        "supplies_per_tree": 1,
+        "claimants_per_tree": 10000,
+        "granters_per_tree": 1,
+        "generations": [
+          10
+        ],
+        "overlapping_raw_local_ids": false,
+        "overlapping_construction_door": ""
+      },
+      "warm_up_count": 2,
+      "sample_count": 7,
+      "setup_allocation_ns": 812400,
+      "legs": [
+        {
+          "name": "claim_production_completion",
+          "isolation": "ConstrainedClaim::from_runtime_demand (ordinary per-tree admission)",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            897400,
+            844800,
+            841300,
+            848500,
+            798100,
+            790800,
+            776200
+          ],
+          "median_ns": 841300,
+          "p95_ns": 897400,
+          "variance_ns2": 1776109523.8095236,
+          "min_ns": 776200,
+          "max_ns": 897400,
+          "mean_ns": 828157.1428571428
+        },
+        {
+          "name": "gpu_to_host_synchronization_readback",
+          "isolation": "door-absent on CPU-host clearing; 0 bytes / 0 ns observed (no map_async, no write_buffer, no queue submit)",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "median_ns": 0,
+          "p95_ns": 0,
+          "variance_ns2": 0.0,
+          "min_ns": 0,
+          "max_ns": 0,
+          "mean_ns": 0.0
+        },
+        {
+          "name": "host_conversion_grouping",
+          "isolation": "BTreeMap group by OwnerChannelScopeKey",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            1389100,
+            1341800,
+            1356000,
+            1353700,
+            1354400,
+            1347700,
+            1350900
+          ],
+          "median_ns": 1353700,
+          "p95_ns": 1389100,
+          "variance_ns2": 233272380.95238099,
+          "min_ns": 1341800,
+          "max_ns": 1389100,
+          "mean_ns": 1356228.5714285714
+        },
+        {
+          "name": "eml_scoring",
+          "isolation": "TransformOp::apply_with_params via AuthoredClearingProgram::score_program",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            820700,
+            867100,
+            877100,
+            877600,
+            860500,
+            836600,
+            832100
+          ],
+          "median_ns": 860500,
+          "p95_ns": 877600,
+          "variance_ns2": 531670000.0,
+          "min_ns": 820700,
+          "max_ns": 877600,
+          "mean_ns": 853100.0
+        },
+        {
+          "name": "score_sorting_banding",
+          "isolation": "score.total_cmp desc then source id; equal to_bits bands",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            48900,
+            40500,
+            44300,
+            49700,
+            46800,
+            42300,
+            43800
+          ],
+          "median_ns": 44300,
+          "p95_ns": 49700,
+          "variance_ns2": 11628095.238095237,
+          "min_ns": 40500,
+          "max_ns": 49700,
+          "mean_ns": 45185.71428571428
+        },
+        {
+          "name": "integer_apportionment",
+          "isolation": "workshop-local restatement of the live largest-remainder + generation-rotated-tie loop; production door remains authority",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            4989700,
+            5209600,
+            5547600,
+            5430900,
+            5362100,
+            5343800,
+            5354100
+          ],
+          "median_ns": 5354100,
+          "p95_ns": 5547600,
+          "variance_ns2": 31481298095.2381,
+          "min_ns": 4989700,
+          "max_ns": 5547600,
+          "mean_ns": 5319685.714285715
+        },
+        {
+          "name": "grant_result_construction",
+          "isolation": "signed remainder of enclosing clear_constrained_claims_at_generation after nested grouping+scoring+sorting+apportionment; not forced-closed",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            2236900,
+            1898000,
+            1988300,
+            2058600,
+            1974200,
+            1847100,
+            2026100
+          ],
+          "median_ns": 1988300,
+          "p95_ns": 2236900,
+          "variance_ns2": 15783319047.61905,
+          "min_ns": 1847100,
+          "max_ns": 2236900,
+          "mean_ns": 2004171.4285714286
+        },
+        {
+          "name": "host_to_gpu_upload",
+          "isolation": "door-absent on CPU-host clearing; 0 bytes / 0 ns observed (no map_async, no write_buffer, no queue submit)",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "median_ns": 0,
+          "p95_ns": 0,
+          "variance_ns2": 0.0,
+          "min_ns": 0,
+          "max_ns": 0,
+          "mean_ns": 0.0
+        },
+        {
+          "name": "n_plus_one_launch_delay",
+          "isolation": "host re-clear at generation+1 through the ordinary door; GPU dispatch count 0",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            9753400,
+            9157900,
+            9504500,
+            9741500,
+            9455400,
+            9036900,
+            8992700
+          ],
+          "median_ns": 9455400,
+          "p95_ns": 9753400,
+          "variance_ns2": 101382962380.9524,
+          "min_ns": 8992700,
+          "max_ns": 9753400,
+          "mean_ns": 9377471.42857143
+        },
+        {
+          "name": "cpu_schedule_replay_recording",
+          "isolation": "AdmittedSpecializationFlowMarket::record_cleared_grant -> IntegrationSchedule",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            2286700,
+            2628100,
+            2773600,
+            2355700,
+            2040200,
+            2271400,
+            2297300
+          ],
+          "median_ns": 2297300,
+          "p95_ns": 2773600,
+          "variance_ns2": 59976706666.666664,
+          "min_ns": 2040200,
+          "max_ns": 2773600,
+          "mean_ns": 2379000.0
+        },
+        {
+          "name": "lawful_structural_consequence",
+          "isolation": "UnresolvedDemandObservation::from_grant + fund_unresolved_persistence",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            1834700,
+            2464900,
+            1776500,
+            1796200,
+            1705800,
+            1725600,
+            1851100
+          ],
+          "median_ns": 1796200,
+          "p95_ns": 2464900,
+          "variance_ns2": 69485189523.80952,
+          "min_ns": 1705800,
+          "max_ns": 2464900,
+          "mean_ns": 1879257.142857143
+        }
+      ],
+      "enclosing_clear_ns": {
+        "name": "enclosing_clear",
+        "isolation": "production-door observation",
+        "bytes_read_back": 0,
+        "bytes_uploaded": 0,
+        "sample_ns": [
+          9485300,
+          9357000,
+          9813300,
+          9770500,
+          9598000,
+          9417500,
+          9607000
+        ],
+        "median_ns": 9598000,
+        "p95_ns": 9813300,
+        "variance_ns2": 29476152380.95238,
+        "min_ns": 9357000,
+        "max_ns": 9813300,
+        "mean_ns": 9578371.42857143
+      },
+      "end_to_end_ns": {
+        "name": "end_to_end",
+        "isolation": "production-door observation",
+        "bytes_read_back": 0,
+        "bytes_uploaded": 0,
+        "sample_ns": [
+          53647300,
+          55052400,
+          55157500,
+          54631600,
+          52212600,
+          51976200,
+          52158900
+        ],
+        "median_ns": 53647300,
+        "p95_ns": 55157500,
+        "variance_ns2": 2036867705714.286,
+        "min_ns": 51976200,
+        "max_ns": 55157500,
+        "mean_ns": 53548071.428571425
+      },
+      "unattributed_remainder_ns": 29656200,
+      "reconciliation_note": "Named inner host legs (grouping/scoring/sorting/apportionment) are nested sequential observations on copies of the same input; grant_result_construction is enclosing_clear minus those nested components (signed remainder, not forced-closed). GPU transfer legs are door-absent 0. End-to-end is claim-production + enclosing_clear + n+1 + schedule + structural. Independent named-leg sum may exceed end-to-end because inner legs are also counted inside enclosing_clear; the signed unattributed remainder records that overlap plus observation overhead.",
+      "isolation_matches_production": true,
+      "neutrality_clears_identical": true,
+      "overlapping_raw_value": null,
+      "overlapping_tree_contexts": [],
+      "coupling": {
+        "process_global_simthing_allocator": "SimThingId::new uses process-global AtomicU32 NEXT_SIMTHING_ID. This fixture does not call it; claim ids come from from_session_raw via from_runtime_demand.",
+        "process_global_overlay_allocator": "OverlayId::new uses a process-global AtomicU32; fund_unresolved_persistence mints through it when CostBand n>0.",
+        "host_wide_clearing_lock": "none in constrained_clearing.rs; each clear_constrained_claims_at_generation call is a pure function of its supplies/claims/program/authority.",
+        "shared_generation_authority": "ClearingRemainderAuthority is per call. Divergent-generation trees carry independent GenerationStamp values; nothing in the door couples them.",
+        "shared_integration_schedule": "IntegrationSchedule is caller-owned per tree in this instrument; the door does not hold a host-wide schedule.",
+        "all_tree_synchronization": "none. Independent trees are cleared sequentially without a barrier. Overlapping raw 7 is interpreted only under each tree's OwnerChannelScopeKey / granter pair."
+      },
+      "grants_total": 10000,
+      "unresolved_total": 19999
+    },
+    {
+      "cardinalities": {
+        "name": "scale_100000",
+        "tree_count": 1,
+        "claims_per_tree": 100000,
+        "claims_total": 100000,
+        "scopes_per_tree": 1,
+        "supplies_per_tree": 1,
+        "claimants_per_tree": 100000,
+        "granters_per_tree": 1,
+        "generations": [
+          10
+        ],
+        "overlapping_raw_local_ids": false,
+        "overlapping_construction_door": ""
+      },
+      "warm_up_count": 1,
+      "sample_count": 5,
+      "setup_allocation_ns": 8808700,
+      "legs": [
+        {
+          "name": "claim_production_completion",
+          "isolation": "ConstrainedClaim::from_runtime_demand (ordinary per-tree admission)",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            9087200,
+            8726400,
+            8863200,
+            8401100,
+            9815300
+          ],
+          "median_ns": 8863200,
+          "p95_ns": 9815300,
+          "variance_ns2": 280572273000.0,
+          "min_ns": 8401100,
+          "max_ns": 9815300,
+          "mean_ns": 8978640.0
+        },
+        {
+          "name": "gpu_to_host_synchronization_readback",
+          "isolation": "door-absent on CPU-host clearing; 0 bytes / 0 ns observed (no map_async, no write_buffer, no queue submit)",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "median_ns": 0,
+          "p95_ns": 0,
+          "variance_ns2": 0.0,
+          "min_ns": 0,
+          "max_ns": 0,
+          "mean_ns": 0.0
+        },
+        {
+          "name": "host_conversion_grouping",
+          "isolation": "BTreeMap group by OwnerChannelScopeKey",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            12616500,
+            12796100,
+            13295400,
+            12531900,
+            23392900
+          ],
+          "median_ns": 12796100,
+          "p95_ns": 23392900,
+          "variance_ns2": 22487307368000.0,
+          "min_ns": 12531900,
+          "max_ns": 23392900,
+          "mean_ns": 14926560.0
+        },
+        {
+          "name": "eml_scoring",
+          "isolation": "TransformOp::apply_with_params via AuthoredClearingProgram::score_program",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            8894600,
+            9693100,
+            9375700,
+            9277100,
+            10728800
+          ],
+          "median_ns": 9375700,
+          "p95_ns": 10728800,
+          "variance_ns2": 483708153000.0,
+          "min_ns": 8894600,
+          "max_ns": 10728800,
+          "mean_ns": 9593860.0
+        },
+        {
+          "name": "score_sorting_banding",
+          "isolation": "score.total_cmp desc then source id; equal to_bits bands",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            487900,
+            524100,
+            448400,
+            598100,
+            481400
+          ],
+          "median_ns": 487900,
+          "p95_ns": 598100,
+          "variance_ns2": 3260237000.0,
+          "min_ns": 448400,
+          "max_ns": 598100,
+          "mean_ns": 507980.0
+        },
+        {
+          "name": "integer_apportionment",
+          "isolation": "workshop-local restatement of the live largest-remainder + generation-rotated-tie loop; production door remains authority",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            68699900,
+            82513800,
+            67757600,
+            72631400,
+            82581800
+          ],
+          "median_ns": 72631400,
+          "p95_ns": 82581800,
+          "variance_ns2": 52890439340000.0,
+          "min_ns": 67757600,
+          "max_ns": 82581800,
+          "mean_ns": 74836900.0
+        },
+        {
+          "name": "grant_result_construction",
+          "isolation": "signed remainder of enclosing clear_constrained_claims_at_generation after nested grouping+scoring+sorting+apportionment; not forced-closed",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            22502500,
+            8261500,
+            24214500,
+            40029500,
+            31661300
+          ],
+          "median_ns": 24214500,
+          "p95_ns": 40029500,
+          "variance_ns2": 139183343548000.0,
+          "min_ns": 8261500,
+          "max_ns": 40029500,
+          "mean_ns": 25333860.0
+        },
+        {
+          "name": "host_to_gpu_upload",
+          "isolation": "door-absent on CPU-host clearing; 0 bytes / 0 ns observed (no map_async, no write_buffer, no queue submit)",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "median_ns": 0,
+          "p95_ns": 0,
+          "variance_ns2": 0.0,
+          "min_ns": 0,
+          "max_ns": 0,
+          "mean_ns": 0.0
+        },
+        {
+          "name": "n_plus_one_launch_delay",
+          "isolation": "host re-clear at generation+1 through the ordinary door; GPU dispatch count 0",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            113356300,
+            111466600,
+            110336400,
+            147172300,
+            123506800
+          ],
+          "median_ns": 113356300,
+          "p95_ns": 147172300,
+          "variance_ns2": 238539245207000.0,
+          "min_ns": 110336400,
+          "max_ns": 147172300,
+          "mean_ns": 121167680.0
+        },
+        {
+          "name": "cpu_schedule_replay_recording",
+          "isolation": "AdmittedSpecializationFlowMarket::record_cleared_grant -> IntegrationSchedule",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            25322700,
+            25433100,
+            24180500,
+            37803600,
+            29187800
+          ],
+          "median_ns": 25433100,
+          "p95_ns": 37803600,
+          "variance_ns2": 31280931873000.0,
+          "min_ns": 24180500,
+          "max_ns": 37803600,
+          "mean_ns": 28385540.0
+        },
+        {
+          "name": "lawful_structural_consequence",
+          "isolation": "UnresolvedDemandObservation::from_grant + fund_unresolved_persistence",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            17784300,
+            17388600,
+            16808700,
+            24517100,
+            20281500
+          ],
+          "median_ns": 17784300,
+          "p95_ns": 24517100,
+          "variance_ns2": 10080786098000.0,
+          "min_ns": 16808700,
+          "max_ns": 24517100,
+          "mean_ns": 19356040.0
+        }
+      ],
+      "enclosing_clear_ns": {
+        "name": "enclosing_clear",
+        "isolation": "production-door observation",
+        "bytes_read_back": 0,
+        "bytes_uploaded": 0,
+        "sample_ns": [
+          113201400,
+          113788600,
+          115091600,
+          135068000,
+          148846200
+        ],
+        "median_ns": 115091600,
+        "p95_ns": 148846200,
+        "variance_ns2": 258221599348000.0,
+        "min_ns": 113201400,
+        "max_ns": 148846200,
+        "mean_ns": 125199160.0
+      },
+      "end_to_end_ns": {
+        "name": "end_to_end",
+        "isolation": "production-door observation",
+        "bytes_read_back": 0,
+        "bytes_uploaded": 0,
+        "sample_ns": [
+          641426000,
+          661479700,
+          648870000,
+          786109800,
+          781649400
+        ],
+        "median_ns": 661479700,
+        "p95_ns": 786109800,
+        "variance_ns2": 5383550900222000.0,
+        "min_ns": 641426000,
+        "max_ns": 786109800,
+        "mean_ns": 703906980.0
+      },
+      "unattributed_remainder_ns": 376537200,
+      "reconciliation_note": "Named inner host legs (grouping/scoring/sorting/apportionment) are nested sequential observations on copies of the same input; grant_result_construction is enclosing_clear minus those nested components (signed remainder, not forced-closed). GPU transfer legs are door-absent 0. End-to-end is claim-production + enclosing_clear + n+1 + schedule + structural. Independent named-leg sum may exceed end-to-end because inner legs are also counted inside enclosing_clear; the signed unattributed remainder records that overlap plus observation overhead.",
+      "isolation_matches_production": true,
+      "neutrality_clears_identical": true,
+      "overlapping_raw_value": null,
+      "overlapping_tree_contexts": [],
+      "coupling": {
+        "process_global_simthing_allocator": "SimThingId::new uses process-global AtomicU32 NEXT_SIMTHING_ID. This fixture does not call it; claim ids come from from_session_raw via from_runtime_demand.",
+        "process_global_overlay_allocator": "OverlayId::new uses a process-global AtomicU32; fund_unresolved_persistence mints through it when CostBand n>0.",
+        "host_wide_clearing_lock": "none in constrained_clearing.rs; each clear_constrained_claims_at_generation call is a pure function of its supplies/claims/program/authority.",
+        "shared_generation_authority": "ClearingRemainderAuthority is per call. Divergent-generation trees carry independent GenerationStamp values; nothing in the door couples them.",
+        "shared_integration_schedule": "IntegrationSchedule is caller-owned per tree in this instrument; the door does not hold a host-wide schedule.",
+        "all_tree_synchronization": "none. Independent trees are cleared sequentially without a barrier. Overlapping raw 7 is interpreted only under each tree's OwnerChannelScopeKey / granter pair."
+      },
+      "grants_total": 100000,
+      "unresolved_total": 200001
+    },
+    {
+      "cardinalities": {
+        "name": "scale_1000000",
+        "tree_count": 1,
+        "claims_per_tree": 1000000,
+        "claims_total": 1000000,
+        "scopes_per_tree": 1,
+        "supplies_per_tree": 1,
+        "claimants_per_tree": 1000000,
+        "granters_per_tree": 1,
+        "generations": [
+          10
+        ],
+        "overlapping_raw_local_ids": false,
+        "overlapping_construction_door": ""
+      },
+      "warm_up_count": 1,
+      "sample_count": 3,
+      "setup_allocation_ns": 100974300,
+      "legs": [
+        {
+          "name": "claim_production_completion",
+          "isolation": "ConstrainedClaim::from_runtime_demand (ordinary per-tree admission)",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            122344400,
+            118803100,
+            110049800
+          ],
+          "median_ns": 118803100,
+          "p95_ns": 122344400,
+          "variance_ns2": 40053042623333.33,
+          "min_ns": 110049800,
+          "max_ns": 122344400,
+          "mean_ns": 117065766.66666667
+        },
+        {
+          "name": "gpu_to_host_synchronization_readback",
+          "isolation": "door-absent on CPU-host clearing; 0 bytes / 0 ns observed (no map_async, no write_buffer, no queue submit)",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            0,
+            0,
+            0
+          ],
+          "median_ns": 0,
+          "p95_ns": 0,
+          "variance_ns2": 0.0,
+          "min_ns": 0,
+          "max_ns": 0,
+          "mean_ns": 0.0
+        },
+        {
+          "name": "host_conversion_grouping",
+          "isolation": "BTreeMap group by OwnerChannelScopeKey",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            159062800,
+            150623600,
+            146186400
+          ],
+          "median_ns": 150623600,
+          "p95_ns": 159062800,
+          "variance_ns2": 42785086240000.0,
+          "min_ns": 146186400,
+          "max_ns": 159062800,
+          "mean_ns": 151957600.0
+        },
+        {
+          "name": "eml_scoring",
+          "isolation": "TransformOp::apply_with_params via AuthoredClearingProgram::score_program",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            111482300,
+            129090100,
+            128578700
+          ],
+          "median_ns": 128578700,
+          "p95_ns": 129090100,
+          "variance_ns2": 100430507293333.33,
+          "min_ns": 111482300,
+          "max_ns": 129090100,
+          "mean_ns": 123050366.66666667
+        },
+        {
+          "name": "score_sorting_banding",
+          "isolation": "score.total_cmp desc then source id; equal to_bits bands",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            5490500,
+            5709600,
+            4959700
+          ],
+          "median_ns": 5490500,
+          "p95_ns": 5709600,
+          "variance_ns2": 148683910000.0,
+          "min_ns": 4959700,
+          "max_ns": 5709600,
+          "mean_ns": 5386600.0
+        },
+        {
+          "name": "integer_apportionment",
+          "isolation": "workshop-local restatement of the live largest-remainder + generation-rotated-tie loop; production door remains authority",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            1112706200,
+            1128329300,
+            1131850700
+          ],
+          "median_ns": 1128329300,
+          "p95_ns": 1131850700,
+          "variance_ns2": 103832231970000.0,
+          "min_ns": 1112706200,
+          "max_ns": 1131850700,
+          "mean_ns": 1124295400.0
+        },
+        {
+          "name": "grant_result_construction",
+          "isolation": "signed remainder of enclosing clear_constrained_claims_at_generation after nested grouping+scoring+sorting+apportionment; not forced-closed",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            294342700,
+            340436700,
+            287101000
+          ],
+          "median_ns": 294342700,
+          "p95_ns": 340436700,
+          "variance_ns2": 836965991563333.4,
+          "min_ns": 287101000,
+          "max_ns": 340436700,
+          "mean_ns": 307293466.6666667
+        },
+        {
+          "name": "host_to_gpu_upload",
+          "isolation": "door-absent on CPU-host clearing; 0 bytes / 0 ns observed (no map_async, no write_buffer, no queue submit)",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            0,
+            0,
+            0
+          ],
+          "median_ns": 0,
+          "p95_ns": 0,
+          "variance_ns2": 0.0,
+          "min_ns": 0,
+          "max_ns": 0,
+          "mean_ns": 0.0
+        },
+        {
+          "name": "n_plus_one_launch_delay",
+          "isolation": "host re-clear at generation+1 through the ordinary door; GPU dispatch count 0",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            1669563100,
+            1662902200,
+            1683677100
+          ],
+          "median_ns": 1669563100,
+          "p95_ns": 1683677100,
+          "variance_ns2": 112528175803333.33,
+          "min_ns": 1662902200,
+          "max_ns": 1683677100,
+          "mean_ns": 1672047466.6666667
+        },
+        {
+          "name": "cpu_schedule_replay_recording",
+          "isolation": "AdmittedSpecializationFlowMarket::record_cleared_grant -> IntegrationSchedule",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            302071500,
+            310300500,
+            336342400
+          ],
+          "median_ns": 310300500,
+          "p95_ns": 336342400,
+          "variance_ns2": 320065263903333.4,
+          "min_ns": 302071500,
+          "max_ns": 336342400,
+          "mean_ns": 316238133.3333333
+        },
+        {
+          "name": "lawful_structural_consequence",
+          "isolation": "UnresolvedDemandObservation::from_grant + fund_unresolved_persistence",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            203317700,
+            213800700,
+            244373300
+          ],
+          "median_ns": 213800700,
+          "p95_ns": 244373300,
+          "variance_ns2": 455023241853333.3,
+          "min_ns": 203317700,
+          "max_ns": 244373300,
+          "mean_ns": 220497233.33333334
+        }
+      ],
+      "enclosing_clear_ns": {
+        "name": "enclosing_clear",
+        "isolation": "production-door observation",
+        "bytes_read_back": 0,
+        "bytes_uploaded": 0,
+        "sample_ns": [
+          1683084500,
+          1754189300,
+          1698676500
+        ],
+        "median_ns": 1698676500,
+        "p95_ns": 1754189300,
+        "variance_ns2": 1396779001813333.5,
+        "min_ns": 1683084500,
+        "max_ns": 1754189300,
+        "mean_ns": 1711983433.3333333
+      },
+      "end_to_end_ns": {
+        "name": "end_to_end",
+        "isolation": "production-door observation",
+        "bytes_read_back": 0,
+        "bytes_uploaded": 0,
+        "sample_ns": [
+          9484028000,
+          9561292100,
+          9651716800
+        ],
+        "median_ns": 9561292100,
+        "p95_ns": 9651716800,
+        "variance_ns2": 7044316860723334.0,
+        "min_ns": 9484028000,
+        "max_ns": 9651716800,
+        "mean_ns": 9565678966.666666
+      },
+      "unattributed_remainder_ns": 5541459900,
+      "reconciliation_note": "Named inner host legs (grouping/scoring/sorting/apportionment) are nested sequential observations on copies of the same input; grant_result_construction is enclosing_clear minus those nested components (signed remainder, not forced-closed). GPU transfer legs are door-absent 0. End-to-end is claim-production + enclosing_clear + n+1 + schedule + structural. Independent named-leg sum may exceed end-to-end because inner legs are also counted inside enclosing_clear; the signed unattributed remainder records that overlap plus observation overhead.",
+      "isolation_matches_production": true,
+      "neutrality_clears_identical": true,
+      "overlapping_raw_value": null,
+      "overlapping_tree_contexts": [],
+      "coupling": {
+        "process_global_simthing_allocator": "SimThingId::new uses process-global AtomicU32 NEXT_SIMTHING_ID. This fixture does not call it; claim ids come from from_session_raw via from_runtime_demand.",
+        "process_global_overlay_allocator": "OverlayId::new uses a process-global AtomicU32; fund_unresolved_persistence mints through it when CostBand n>0.",
+        "host_wide_clearing_lock": "none in constrained_clearing.rs; each clear_constrained_claims_at_generation call is a pure function of its supplies/claims/program/authority.",
+        "shared_generation_authority": "ClearingRemainderAuthority is per call. Divergent-generation trees carry independent GenerationStamp values; nothing in the door couples them.",
+        "shared_integration_schedule": "IntegrationSchedule is caller-owned per tree in this instrument; the door does not hold a host-wide schedule.",
+        "all_tree_synchronization": "none. Independent trees are cleared sequentially without a barrier. Overlapping raw 7 is interpreted only under each tree's OwnerChannelScopeKey / granter pair."
+      },
+      "grants_total": 1000000,
+      "unresolved_total": 2000000
+    },
+    {
+      "cardinalities": {
+        "name": "one_large_tree",
+        "tree_count": 1,
+        "claims_per_tree": 100000,
+        "claims_total": 100000,
+        "scopes_per_tree": 1,
+        "supplies_per_tree": 1,
+        "claimants_per_tree": 100000,
+        "granters_per_tree": 1,
+        "generations": [
+          10
+        ],
+        "overlapping_raw_local_ids": false,
+        "overlapping_construction_door": ""
+      },
+      "warm_up_count": 1,
+      "sample_count": 5,
+      "setup_allocation_ns": 9782900,
+      "legs": [
+        {
+          "name": "claim_production_completion",
+          "isolation": "ConstrainedClaim::from_runtime_demand (ordinary per-tree admission)",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            9435400,
+            8245700,
+            9295200,
+            9991900,
+            10981900
+          ],
+          "median_ns": 9435400,
+          "p95_ns": 10981900,
+          "variance_ns2": 1004214977000.0,
+          "min_ns": 8245700,
+          "max_ns": 10981900,
+          "mean_ns": 9590020.0
+        },
+        {
+          "name": "gpu_to_host_synchronization_readback",
+          "isolation": "door-absent on CPU-host clearing; 0 bytes / 0 ns observed (no map_async, no write_buffer, no queue submit)",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "median_ns": 0,
+          "p95_ns": 0,
+          "variance_ns2": 0.0,
+          "min_ns": 0,
+          "max_ns": 0,
+          "mean_ns": 0.0
+        },
+        {
+          "name": "host_conversion_grouping",
+          "isolation": "BTreeMap group by OwnerChannelScopeKey",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            15110800,
+            18712200,
+            14109600,
+            17102800,
+            15348300
+          ],
+          "median_ns": 15348300,
+          "p95_ns": 18712200,
+          "variance_ns2": 3332938308000.0,
+          "min_ns": 14109600,
+          "max_ns": 18712200,
+          "mean_ns": 16076740.0
+        },
+        {
+          "name": "eml_scoring",
+          "isolation": "TransformOp::apply_with_params via AuthoredClearingProgram::score_program",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            8547000,
+            9560200,
+            8954600,
+            10577700,
+            9451400
+          ],
+          "median_ns": 9451400,
+          "p95_ns": 10577700,
+          "variance_ns2": 584905222000.0,
+          "min_ns": 8547000,
+          "max_ns": 10577700,
+          "mean_ns": 9418180.0
+        },
+        {
+          "name": "score_sorting_banding",
+          "isolation": "score.total_cmp desc then source id; equal to_bits bands",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            490900,
+            621700,
+            662500,
+            465900,
+            542200
+          ],
+          "median_ns": 542200,
+          "p95_ns": 662500,
+          "variance_ns2": 7050788000.0,
+          "min_ns": 465900,
+          "max_ns": 662500,
+          "mean_ns": 556640.0
+        },
+        {
+          "name": "integer_apportionment",
+          "isolation": "workshop-local restatement of the live largest-remainder + generation-rotated-tie loop; production door remains authority",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            86300900,
+            74524300,
+            79534300,
+            77891100,
+            90245300
+          ],
+          "median_ns": 79534300,
+          "p95_ns": 90245300,
+          "variance_ns2": 41219768932000.0,
+          "min_ns": 74524300,
+          "max_ns": 90245300,
+          "mean_ns": 81699180.0
+        },
+        {
+          "name": "grant_result_construction",
+          "isolation": "signed remainder of enclosing clear_constrained_claims_at_generation after nested grouping+scoring+sorting+apportionment; not forced-closed",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            23887400,
+            28753400,
+            38529900,
+            39208200,
+            30621900
+          ],
+          "median_ns": 30621900,
+          "p95_ns": 39208200,
+          "variance_ns2": 43162817763000.0,
+          "min_ns": 23887400,
+          "max_ns": 39208200,
+          "mean_ns": 32200160.0
+        },
+        {
+          "name": "host_to_gpu_upload",
+          "isolation": "door-absent on CPU-host clearing; 0 bytes / 0 ns observed (no map_async, no write_buffer, no queue submit)",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "median_ns": 0,
+          "p95_ns": 0,
+          "variance_ns2": 0.0,
+          "min_ns": 0,
+          "max_ns": 0,
+          "mean_ns": 0.0
+        },
+        {
+          "name": "n_plus_one_launch_delay",
+          "isolation": "host re-clear at generation+1 through the ordinary door; GPU dispatch count 0",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            135871000,
+            128634500,
+            132008000,
+            148744600,
+            124187900
+          ],
+          "median_ns": 132008000,
+          "p95_ns": 148744600,
+          "variance_ns2": 87469111905000.0,
+          "min_ns": 124187900,
+          "max_ns": 148744600,
+          "mean_ns": 133889200.0
+        },
+        {
+          "name": "cpu_schedule_replay_recording",
+          "isolation": "AdmittedSpecializationFlowMarket::record_cleared_grant -> IntegrationSchedule",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            30761100,
+            31999900,
+            28902500,
+            41190400,
+            32334600
+          ],
+          "median_ns": 31999900,
+          "p95_ns": 41190400,
+          "variance_ns2": 22580170585000.0,
+          "min_ns": 28902500,
+          "max_ns": 41190400,
+          "mean_ns": 33037700.0
+        },
+        {
+          "name": "lawful_structural_consequence",
+          "isolation": "UnresolvedDemandObservation::from_grant + fund_unresolved_persistence",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            24666000,
+            20746700,
+            18577800,
+            18802800,
+            19425200
+          ],
+          "median_ns": 19425200,
+          "p95_ns": 24666000,
+          "variance_ns2": 6282776040000.0,
+          "min_ns": 18577800,
+          "max_ns": 24666000,
+          "mean_ns": 20443700.0
+        }
+      ],
+      "enclosing_clear_ns": {
+        "name": "enclosing_clear",
+        "isolation": "production-door observation",
+        "bytes_read_back": 0,
+        "bytes_uploaded": 0,
+        "sample_ns": [
+          134337000,
+          132171800,
+          141790900,
+          145245700,
+          146209100
+        ],
+        "median_ns": 141790900,
+        "p95_ns": 146209100,
+        "variance_ns2": 40653961075000.0,
+        "min_ns": 132171800,
+        "max_ns": 146209100,
+        "mean_ns": 139950900.0
+      },
+      "end_to_end_ns": {
+        "name": "end_to_end",
+        "isolation": "production-door observation",
+        "bytes_read_back": 0,
+        "bytes_uploaded": 0,
+        "sample_ns": [
+          766147200,
+          752258700,
+          744184100,
+          796642900,
+          791741600
+        ],
+        "median_ns": 766147200,
+        "p95_ns": 796642900,
+        "variance_ns2": 544602461815000.0,
+        "min_ns": 744184100,
+        "max_ns": 796642900,
+        "mean_ns": 770194900.0
+      },
+      "unattributed_remainder_ns": 437780600,
+      "reconciliation_note": "Named inner host legs (grouping/scoring/sorting/apportionment) are nested sequential observations on copies of the same input; grant_result_construction is enclosing_clear minus those nested components (signed remainder, not forced-closed). GPU transfer legs are door-absent 0. End-to-end is claim-production + enclosing_clear + n+1 + schedule + structural. Independent named-leg sum may exceed end-to-end because inner legs are also counted inside enclosing_clear; the signed unattributed remainder records that overlap plus observation overhead.",
+      "isolation_matches_production": true,
+      "neutrality_clears_identical": true,
+      "overlapping_raw_value": null,
+      "overlapping_tree_contexts": [],
+      "coupling": {
+        "process_global_simthing_allocator": "SimThingId::new uses process-global AtomicU32 NEXT_SIMTHING_ID. This fixture does not call it; claim ids come from from_session_raw via from_runtime_demand.",
+        "process_global_overlay_allocator": "OverlayId::new uses a process-global AtomicU32; fund_unresolved_persistence mints through it when CostBand n>0.",
+        "host_wide_clearing_lock": "none in constrained_clearing.rs; each clear_constrained_claims_at_generation call is a pure function of its supplies/claims/program/authority.",
+        "shared_generation_authority": "ClearingRemainderAuthority is per call. Divergent-generation trees carry independent GenerationStamp values; nothing in the door couples them.",
+        "shared_integration_schedule": "IntegrationSchedule is caller-owned per tree in this instrument; the door does not hold a host-wide schedule.",
+        "all_tree_synchronization": "none. Independent trees are cleared sequentially without a barrier. Overlapping raw 7 is interpreted only under each tree's OwnerChannelScopeKey / granter pair."
+      },
+      "grants_total": 100000,
+      "unresolved_total": 200001
+    },
+    {
+      "cardinalities": {
+        "name": "many_independent_small_trees",
+        "tree_count": 100,
+        "claims_per_tree": 100,
+        "claims_total": 10000,
+        "scopes_per_tree": 1,
+        "supplies_per_tree": 1,
+        "claimants_per_tree": 100,
+        "granters_per_tree": 1,
+        "generations": [
+          10
+        ],
+        "overlapping_raw_local_ids": false,
+        "overlapping_construction_door": ""
+      },
+      "warm_up_count": 1,
+      "sample_count": 5,
+      "setup_allocation_ns": 701400,
+      "legs": [
+        {
+          "name": "claim_production_completion",
+          "isolation": "ConstrainedClaim::from_runtime_demand (ordinary per-tree admission)",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            934500,
+            1416100,
+            833200,
+            1449700,
+            653900
+          ],
+          "median_ns": 934500,
+          "p95_ns": 1449700,
+          "variance_ns2": 127686812000.0,
+          "min_ns": 653900,
+          "max_ns": 1449700,
+          "mean_ns": 1057480.0
+        },
+        {
+          "name": "gpu_to_host_synchronization_readback",
+          "isolation": "door-absent on CPU-host clearing; 0 bytes / 0 ns observed (no map_async, no write_buffer, no queue submit)",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "median_ns": 0,
+          "p95_ns": 0,
+          "variance_ns2": 0.0,
+          "min_ns": 0,
+          "max_ns": 0,
+          "mean_ns": 0.0
+        },
+        {
+          "name": "host_conversion_grouping",
+          "isolation": "BTreeMap group by OwnerChannelScopeKey",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            1303700,
+            1162400,
+            1696900,
+            1143900,
+            1098000
+          ],
+          "median_ns": 1162400,
+          "p95_ns": 1696900,
+          "variance_ns2": 59959867000.0,
+          "min_ns": 1098000,
+          "max_ns": 1696900,
+          "mean_ns": 1280980.0
+        },
+        {
+          "name": "eml_scoring",
+          "isolation": "TransformOp::apply_with_params via AuthoredClearingProgram::score_program",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            922900,
+            1098300,
+            1036500,
+            797900,
+            790700
+          ],
+          "median_ns": 922900,
+          "p95_ns": 1098300,
+          "variance_ns2": 19142428000.0,
+          "min_ns": 790700,
+          "max_ns": 1098300,
+          "mean_ns": 929260.0
+        },
+        {
+          "name": "score_sorting_banding",
+          "isolation": "score.total_cmp desc then source id; equal to_bits bands",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            24800,
+            24900,
+            31500,
+            24100,
+            24100
+          ],
+          "median_ns": 24800,
+          "p95_ns": 31500,
+          "variance_ns2": 10012000.0,
+          "min_ns": 24100,
+          "max_ns": 31500,
+          "mean_ns": 25880.0
+        },
+        {
+          "name": "integer_apportionment",
+          "isolation": "workshop-local restatement of the live largest-remainder + generation-rotated-tie loop; production door remains authority",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            2876100,
+            2760700,
+            4120000,
+            2801700,
+            2867700
+          ],
+          "median_ns": 2867700,
+          "p95_ns": 4120000,
+          "variance_ns2": 336878148000.0,
+          "min_ns": 2760700,
+          "max_ns": 4120000,
+          "mean_ns": 3085240.0
+        },
+        {
+          "name": "grant_result_construction",
+          "isolation": "signed remainder of enclosing clear_constrained_claims_at_generation after nested grouping+scoring+sorting+apportionment; not forced-closed",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            1741900,
+            1542800,
+            2420300,
+            1699400,
+            2210700
+          ],
+          "median_ns": 1741900,
+          "p95_ns": 2420300,
+          "variance_ns2": 139356197000.0,
+          "min_ns": 1542800,
+          "max_ns": 2420300,
+          "mean_ns": 1923020.0
+        },
+        {
+          "name": "host_to_gpu_upload",
+          "isolation": "door-absent on CPU-host clearing; 0 bytes / 0 ns observed (no map_async, no write_buffer, no queue submit)",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "median_ns": 0,
+          "p95_ns": 0,
+          "variance_ns2": 0.0,
+          "min_ns": 0,
+          "max_ns": 0,
+          "mean_ns": 0.0
+        },
+        {
+          "name": "n_plus_one_launch_delay",
+          "isolation": "host re-clear at generation+1 through the ordinary door; GPU dispatch count 0",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            6212100,
+            7180500,
+            9119200,
+            6236200,
+            6834900
+          ],
+          "median_ns": 6834900,
+          "p95_ns": 9119200,
+          "variance_ns2": 1421767317000.0,
+          "min_ns": 6212100,
+          "max_ns": 9119200,
+          "mean_ns": 7116580.0
+        },
+        {
+          "name": "cpu_schedule_replay_recording",
+          "isolation": "AdmittedSpecializationFlowMarket::record_cleared_grant -> IntegrationSchedule",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            2279400,
+            2420900,
+            3426900,
+            2339300,
+            2512800
+          ],
+          "median_ns": 2420900,
+          "p95_ns": 3426900,
+          "variance_ns2": 223526853000.0,
+          "min_ns": 2279400,
+          "max_ns": 3426900,
+          "mean_ns": 2595860.0
+        },
+        {
+          "name": "lawful_structural_consequence",
+          "isolation": "UnresolvedDemandObservation::from_grant + fund_unresolved_persistence",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            2092900,
+            2279800,
+            2785400,
+            1994500,
+            2280700
+          ],
+          "median_ns": 2279800,
+          "p95_ns": 2785400,
+          "variance_ns2": 92931143000.0,
+          "min_ns": 1994500,
+          "max_ns": 2785400,
+          "mean_ns": 2286660.0
+        }
+      ],
+      "enclosing_clear_ns": {
+        "name": "enclosing_clear",
+        "isolation": "production-door observation",
+        "bytes_read_back": 0,
+        "bytes_uploaded": 0,
+        "sample_ns": [
+          6869400,
+          6589100,
+          9305200,
+          6467000,
+          6991200
+        ],
+        "median_ns": 6869400,
+        "p95_ns": 9305200,
+        "variance_ns2": 1371350182000.0,
+        "min_ns": 6467000,
+        "max_ns": 9305200,
+        "mean_ns": 7244380.0
+      },
+      "end_to_end_ns": {
+        "name": "end_to_end",
+        "isolation": "production-door observation",
+        "bytes_read_back": 0,
+        "bytes_uploaded": 0,
+        "sample_ns": [
+          38897000,
+          39173400,
+          53925000,
+          37633800,
+          39922400
+        ],
+        "median_ns": 39173400,
+        "p95_ns": 53925000,
+        "variance_ns2": 45790953312000.0,
+        "min_ns": 37633800,
+        "max_ns": 53925000,
+        "mean_ns": 41910320.0
+      },
+      "unattributed_remainder_ns": 19983600,
+      "reconciliation_note": "Named inner host legs (grouping/scoring/sorting/apportionment) are nested sequential observations on copies of the same input; grant_result_construction is enclosing_clear minus those nested components (signed remainder, not forced-closed). GPU transfer legs are door-absent 0. End-to-end is claim-production + enclosing_clear + n+1 + schedule + structural. Independent named-leg sum may exceed end-to-end because inner legs are also counted inside enclosing_clear; the signed unattributed remainder records that overlap plus observation overhead.",
+      "isolation_matches_production": true,
+      "neutrality_clears_identical": true,
+      "overlapping_raw_value": null,
+      "overlapping_tree_contexts": [],
+      "coupling": {
+        "process_global_simthing_allocator": "SimThingId::new uses process-global AtomicU32 NEXT_SIMTHING_ID. This fixture does not call it; claim ids come from from_session_raw via from_runtime_demand.",
+        "process_global_overlay_allocator": "OverlayId::new uses a process-global AtomicU32; fund_unresolved_persistence mints through it when CostBand n>0.",
+        "host_wide_clearing_lock": "none in constrained_clearing.rs; each clear_constrained_claims_at_generation call is a pure function of its supplies/claims/program/authority.",
+        "shared_generation_authority": "ClearingRemainderAuthority is per call. Divergent-generation trees carry independent GenerationStamp values; nothing in the door couples them.",
+        "shared_integration_schedule": "IntegrationSchedule is caller-owned per tree in this instrument; the door does not hold a host-wide schedule.",
+        "all_tree_synchronization": "none. Independent trees are cleared sequentially without a barrier. Overlapping raw 7 is interpreted only under each tree's OwnerChannelScopeKey / granter pair."
+      },
+      "grants_total": 10000,
+      "unresolved_total": 20200
+    },
+    {
+      "cardinalities": {
+        "name": "divergent_generation_trees",
+        "tree_count": 4,
+        "claims_per_tree": 1000,
+        "claims_total": 4000,
+        "scopes_per_tree": 1,
+        "supplies_per_tree": 1,
+        "claimants_per_tree": 1000,
+        "granters_per_tree": 1,
+        "generations": [
+          1,
+          10,
+          100,
+          1000
+        ],
+        "overlapping_raw_local_ids": false,
+        "overlapping_construction_door": ""
+      },
+      "warm_up_count": 1,
+      "sample_count": 5,
+      "setup_allocation_ns": 272800,
+      "legs": [
+        {
+          "name": "claim_production_completion",
+          "isolation": "ConstrainedClaim::from_runtime_demand (ordinary per-tree admission)",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            1146800,
+            264900,
+            279500,
+            470800,
+            1477500
+          ],
+          "median_ns": 470800,
+          "p95_ns": 1477500,
+          "variance_ns2": 304727335000.0,
+          "min_ns": 264900,
+          "max_ns": 1477500,
+          "mean_ns": 727900.0
+        },
+        {
+          "name": "gpu_to_host_synchronization_readback",
+          "isolation": "door-absent on CPU-host clearing; 0 bytes / 0 ns observed (no map_async, no write_buffer, no queue submit)",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "median_ns": 0,
+          "p95_ns": 0,
+          "variance_ns2": 0.0,
+          "min_ns": 0,
+          "max_ns": 0,
+          "mean_ns": 0.0
+        },
+        {
+          "name": "host_conversion_grouping",
+          "isolation": "BTreeMap group by OwnerChannelScopeKey",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            658700,
+            387800,
+            455200,
+            492000,
+            675600
+          ],
+          "median_ns": 492000,
+          "p95_ns": 675600,
+          "variance_ns2": 16237108000.0,
+          "min_ns": 387800,
+          "max_ns": 675600,
+          "mean_ns": 533860.0
+        },
+        {
+          "name": "eml_scoring",
+          "isolation": "TransformOp::apply_with_params via AuthoredClearingProgram::score_program",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            453800,
+            297200,
+            372200,
+            370000,
+            477400
+          ],
+          "median_ns": 372200,
+          "p95_ns": 477400,
+          "variance_ns2": 5238252000.0,
+          "min_ns": 297200,
+          "max_ns": 477400,
+          "mean_ns": 394120.0
+        },
+        {
+          "name": "score_sorting_banding",
+          "isolation": "score.total_cmp desc then source id; equal to_bits bands",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            11800,
+            7800,
+            8100,
+            8900,
+            11800
+          ],
+          "median_ns": 8900,
+          "p95_ns": 11800,
+          "variance_ns2": 3907000.0,
+          "min_ns": 7800,
+          "max_ns": 11800,
+          "mean_ns": 9680.0
+        },
+        {
+          "name": "integer_apportionment",
+          "isolation": "workshop-local restatement of the live largest-remainder + generation-rotated-tie loop; production door remains authority",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            2240900,
+            1565700,
+            2535100,
+            1776600,
+            2315500
+          ],
+          "median_ns": 2240900,
+          "p95_ns": 2535100,
+          "variance_ns2": 161198158000.0,
+          "min_ns": 1565700,
+          "max_ns": 2535100,
+          "mean_ns": 2086760.0
+        },
+        {
+          "name": "grant_result_construction",
+          "isolation": "signed remainder of enclosing clear_constrained_claims_at_generation after nested grouping+scoring+sorting+apportionment; not forced-closed",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            0,
+            2689000,
+            0,
+            1048400,
+            686000
+          ],
+          "median_ns": 686000,
+          "p95_ns": 2689000,
+          "variance_ns2": 1221791512000.0,
+          "min_ns": 0,
+          "max_ns": 2689000,
+          "mean_ns": 884680.0
+        },
+        {
+          "name": "host_to_gpu_upload",
+          "isolation": "door-absent on CPU-host clearing; 0 bytes / 0 ns observed (no map_async, no write_buffer, no queue submit)",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "median_ns": 0,
+          "p95_ns": 0,
+          "variance_ns2": 0.0,
+          "min_ns": 0,
+          "max_ns": 0,
+          "mean_ns": 0.0
+        },
+        {
+          "name": "n_plus_one_launch_delay",
+          "isolation": "host re-clear at generation+1 through the ordinary door; GPU dispatch count 0",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            2804000,
+            2627800,
+            2915900,
+            5178700,
+            2719300
+          ],
+          "median_ns": 2804000,
+          "p95_ns": 5178700,
+          "variance_ns2": 1174798533000.0,
+          "min_ns": 2627800,
+          "max_ns": 5178700,
+          "mean_ns": 3249140.0
+        },
+        {
+          "name": "cpu_schedule_replay_recording",
+          "isolation": "AdmittedSpecializationFlowMarket::record_cleared_grant -> IntegrationSchedule",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            889400,
+            866400,
+            849800,
+            1612500,
+            849200
+          ],
+          "median_ns": 866400,
+          "p95_ns": 1612500,
+          "variance_ns2": 112408098000.0,
+          "min_ns": 849200,
+          "max_ns": 1612500,
+          "mean_ns": 1013460.0
+        },
+        {
+          "name": "lawful_structural_consequence",
+          "isolation": "UnresolvedDemandObservation::from_grant + fund_unresolved_persistence",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            636400,
+            713100,
+            998000,
+            1098800,
+            646800
+          ],
+          "median_ns": 713100,
+          "p95_ns": 1098800,
+          "variance_ns2": 46134682000.0,
+          "min_ns": 636400,
+          "max_ns": 1098800,
+          "mean_ns": 818620.0
+        }
+      ],
+      "enclosing_clear_ns": {
+        "name": "enclosing_clear",
+        "isolation": "production-door observation",
+        "bytes_read_back": 0,
+        "bytes_uploaded": 0,
+        "sample_ns": [
+          2956400,
+          4947500,
+          2790700,
+          3695900,
+          4166300
+        ],
+        "median_ns": 3695900,
+        "p95_ns": 4947500,
+        "variance_ns2": 788207738000.0,
+        "min_ns": 2790700,
+        "max_ns": 4947500,
+        "mean_ns": 3711360.0
+      },
+      "end_to_end_ns": {
+        "name": "end_to_end",
+        "isolation": "production-door observation",
+        "bytes_read_back": 0,
+        "bytes_uploaded": 0,
+        "sample_ns": [
+          20645400,
+          19006400,
+          18390300,
+          22434600,
+          20757300
+        ],
+        "median_ns": 20645400,
+        "p95_ns": 22434600,
+        "variance_ns2": 2547786365000.0,
+        "min_ns": 18390300,
+        "max_ns": 22434600,
+        "mean_ns": 20246800.0
+      },
+      "unattributed_remainder_ns": 11991100,
+      "reconciliation_note": "Named inner host legs (grouping/scoring/sorting/apportionment) are nested sequential observations on copies of the same input; grant_result_construction is enclosing_clear minus those nested components (signed remainder, not forced-closed). GPU transfer legs are door-absent 0. End-to-end is claim-production + enclosing_clear + n+1 + schedule + structural. Independent named-leg sum may exceed end-to-end because inner legs are also counted inside enclosing_clear; the signed unattributed remainder records that overlap plus observation overhead.",
+      "isolation_matches_production": true,
+      "neutrality_clears_identical": true,
+      "overlapping_raw_value": null,
+      "overlapping_tree_contexts": [],
+      "coupling": {
+        "process_global_simthing_allocator": "SimThingId::new uses process-global AtomicU32 NEXT_SIMTHING_ID. This fixture does not call it; claim ids come from from_session_raw via from_runtime_demand.",
+        "process_global_overlay_allocator": "OverlayId::new uses a process-global AtomicU32; fund_unresolved_persistence mints through it when CostBand n>0.",
+        "host_wide_clearing_lock": "none in constrained_clearing.rs; each clear_constrained_claims_at_generation call is a pure function of its supplies/claims/program/authority.",
+        "shared_generation_authority": "ClearingRemainderAuthority is per call. Divergent-generation trees carry independent GenerationStamp values; nothing in the door couples them.",
+        "shared_integration_schedule": "IntegrationSchedule is caller-owned per tree in this instrument; the door does not hold a host-wide schedule.",
+        "all_tree_synchronization": "none. Independent trees are cleared sequentially without a barrier. Overlapping raw 7 is interpreted only under each tree's OwnerChannelScopeKey / granter pair."
+      },
+      "grants_total": 4000,
+      "unresolved_total": 7988
+    },
+    {
+      "cardinalities": {
+        "name": "overlapping_local_ids",
+        "tree_count": 2,
+        "claims_per_tree": 1000,
+        "claims_total": 2000,
+        "scopes_per_tree": 1,
+        "supplies_per_tree": 1,
+        "claimants_per_tree": 1000,
+        "granters_per_tree": 1,
+        "generations": [
+          10,
+          10
+        ],
+        "overlapping_raw_local_ids": true,
+        "overlapping_construction_door": "ConstrainedClaim::from_runtime_demand -> SimThingId::from_session_raw (ordinary production admission; same raw {1..=N} including 7 under distinct owner_ref/scope_id/granter)"
+      },
+      "warm_up_count": 1,
+      "sample_count": 7,
+      "setup_allocation_ns": 119600,
+      "legs": [
+        {
+          "name": "claim_production_completion",
+          "isolation": "ConstrainedClaim::from_runtime_demand (ordinary per-tree admission)",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            226300,
+            127500,
+            142400,
+            126700,
+            517800,
+            126100,
+            133400
+          ],
+          "median_ns": 133400,
+          "p95_ns": 517800,
+          "variance_ns2": 20922032380.95238,
+          "min_ns": 126100,
+          "max_ns": 517800,
+          "mean_ns": 200028.57142857142
+        },
+        {
+          "name": "gpu_to_host_synchronization_readback",
+          "isolation": "door-absent on CPU-host clearing; 0 bytes / 0 ns observed (no map_async, no write_buffer, no queue submit)",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "median_ns": 0,
+          "p95_ns": 0,
+          "variance_ns2": 0.0,
+          "min_ns": 0,
+          "max_ns": 0,
+          "mean_ns": 0.0
+        },
+        {
+          "name": "host_conversion_grouping",
+          "isolation": "BTreeMap group by OwnerChannelScopeKey",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            492000,
+            192400,
+            192900,
+            313900,
+            463100,
+            184900,
+            188600
+          ],
+          "median_ns": 192900,
+          "p95_ns": 492000,
+          "variance_ns2": 18603378095.238094,
+          "min_ns": 184900,
+          "max_ns": 492000,
+          "mean_ns": 289685.71428571426
+        },
+        {
+          "name": "eml_scoring",
+          "isolation": "TransformOp::apply_with_params via AuthoredClearingProgram::score_program",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            497000,
+            130100,
+            135200,
+            144000,
+            326600,
+            126700,
+            127600
+          ],
+          "median_ns": 135200,
+          "p95_ns": 497000,
+          "variance_ns2": 20997666190.476192,
+          "min_ns": 126700,
+          "max_ns": 497000,
+          "mean_ns": 212457.14285714287
+        },
+        {
+          "name": "score_sorting_banding",
+          "isolation": "score.total_cmp desc then source id; equal to_bits bands",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            4100,
+            3600,
+            3900,
+            4200,
+            7900,
+            3400,
+            3600
+          ],
+          "median_ns": 3900,
+          "p95_ns": 7900,
+          "variance_ns2": 2484761.9047619044,
+          "min_ns": 3400,
+          "max_ns": 7900,
+          "mean_ns": 4385.714285714285
+        },
+        {
+          "name": "integer_apportionment",
+          "isolation": "workshop-local restatement of the live largest-remainder + generation-rotated-tie loop; production door remains authority",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            982800,
+            692700,
+            701800,
+            923300,
+            1132300,
+            688300,
+            713000
+          ],
+          "median_ns": 713000,
+          "p95_ns": 1132300,
+          "variance_ns2": 32068129523.80953,
+          "min_ns": 688300,
+          "max_ns": 1132300,
+          "mean_ns": 833457.1428571428
+        },
+        {
+          "name": "grant_result_construction",
+          "isolation": "signed remainder of enclosing clear_constrained_claims_at_generation after nested grouping+scoring+sorting+apportionment; not forced-closed",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            0,
+            891900,
+            1429500,
+            521000,
+            0,
+            396900,
+            337300
+          ],
+          "median_ns": 396900,
+          "p95_ns": 1429500,
+          "variance_ns2": 259043256190.47623,
+          "min_ns": 0,
+          "max_ns": 1429500,
+          "mean_ns": 510942.85714285716
+        },
+        {
+          "name": "host_to_gpu_upload",
+          "isolation": "door-absent on CPU-host clearing; 0 bytes / 0 ns observed (no map_async, no write_buffer, no queue submit)",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "median_ns": 0,
+          "p95_ns": 0,
+          "variance_ns2": 0.0,
+          "min_ns": 0,
+          "max_ns": 0,
+          "mean_ns": 0.0
+        },
+        {
+          "name": "n_plus_one_launch_delay",
+          "isolation": "host re-clear at generation+1 through the ordinary door; GPU dispatch count 0",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            1437200,
+            1430300,
+            1354400,
+            1392700,
+            1742000,
+            1502300,
+            2561600
+          ],
+          "median_ns": 1437200,
+          "p95_ns": 2561600,
+          "variance_ns2": 184338780000.0,
+          "min_ns": 1354400,
+          "max_ns": 2561600,
+          "mean_ns": 1631500.0
+        },
+        {
+          "name": "cpu_schedule_replay_recording",
+          "isolation": "AdmittedSpecializationFlowMarket::record_cleared_grant -> IntegrationSchedule",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            424900,
+            540000,
+            500500,
+            435300,
+            443900,
+            433900,
+            418100
+          ],
+          "median_ns": 435300,
+          "p95_ns": 540000,
+          "variance_ns2": 2083359523.8095238,
+          "min_ns": 418100,
+          "max_ns": 540000,
+          "mean_ns": 456657.14285714284
+        },
+        {
+          "name": "lawful_structural_consequence",
+          "isolation": "UnresolvedDemandObservation::from_grant + fund_unresolved_persistence",
+          "bytes_read_back": 0,
+          "bytes_uploaded": 0,
+          "sample_ns": [
+            307900,
+            1022700,
+            312800,
+            400700,
+            317600,
+            414000,
+            303800
+          ],
+          "median_ns": 317600,
+          "p95_ns": 1022700,
+          "variance_ns2": 68153699047.61906,
+          "min_ns": 303800,
+          "max_ns": 1022700,
+          "mean_ns": 439928.5714285714
+        }
+      ],
+      "enclosing_clear_ns": {
+        "name": "enclosing_clear",
+        "isolation": "production-door observation",
+        "bytes_read_back": 0,
+        "bytes_uploaded": 0,
+        "sample_ns": [
+          1669700,
+          1910700,
+          2463300,
+          1906400,
+          1400100,
+          1400200,
+          1370100
+        ],
+        "median_ns": 1669700,
+        "p95_ns": 2463300,
+        "variance_ns2": 158708123333.33334,
+        "min_ns": 1370100,
+        "max_ns": 2463300,
+        "mean_ns": 1731500.0
+      },
+      "end_to_end_ns": {
+        "name": "end_to_end",
+        "isolation": "production-door observation",
+        "bytes_read_back": 0,
+        "bytes_uploaded": 0,
+        "sample_ns": [
+          9441700,
+          11995000,
+          9365800,
+          9596200,
+          9899600,
+          9649900,
+          10568600
+        ],
+        "median_ns": 9649900,
+        "p95_ns": 11995000,
+        "variance_ns2": 879131582380.9523,
+        "min_ns": 9365800,
+        "max_ns": 11995000,
+        "mean_ns": 10073828.57142857
+      },
+      "unattributed_remainder_ns": 5884500,
+      "reconciliation_note": "Named inner host legs (grouping/scoring/sorting/apportionment) are nested sequential observations on copies of the same input; grant_result_construction is enclosing_clear minus those nested components (signed remainder, not forced-closed). GPU transfer legs are door-absent 0. End-to-end is claim-production + enclosing_clear + n+1 + schedule + structural. Independent named-leg sum may exceed end-to-end because inner legs are also counted inside enclosing_clear; the signed unattributed remainder records that overlap plus observation overhead.",
+      "isolation_matches_production": true,
+      "neutrality_clears_identical": true,
+      "overlapping_raw_value": 7,
+      "overlapping_tree_contexts": [
+        "overlap-alpha owner_ref=overlap-alpha granter_raw=1001 scope_boundary=1011",
+        "overlap-beta owner_ref=overlap-beta granter_raw=2001 scope_boundary=2011"
+      ],
+      "coupling": {
+        "process_global_simthing_allocator": "SimThingId::new uses process-global AtomicU32 NEXT_SIMTHING_ID. This fixture does not call it; claim ids come from from_session_raw via from_runtime_demand.",
+        "process_global_overlay_allocator": "OverlayId::new uses a process-global AtomicU32; fund_unresolved_persistence mints through it when CostBand n>0.",
+        "host_wide_clearing_lock": "none in constrained_clearing.rs; each clear_constrained_claims_at_generation call is a pure function of its supplies/claims/program/authority.",
+        "shared_generation_authority": "ClearingRemainderAuthority is per call. Divergent-generation trees carry independent GenerationStamp values; nothing in the door couples them.",
+        "shared_integration_schedule": "IntegrationSchedule is caller-owned per tree in this instrument; the door does not hold a host-wide schedule.",
+        "all_tree_synchronization": "none. Independent trees are cleared sequentially without a barrier. Overlapping raw 7 is interpreted only under each tree's OwnerChannelScopeKey / granter pair."
+      },
+      "grants_total": 2000,
+      "unresolved_total": 4000
+    }
+  ],
+  "comparator_disclaimer": "Comparator only. Wall-clock values are dated facts about one reproducibility envelope. They are not a go/no-go gate, portable CI threshold, or authority to cancel or narrow Owner-ruled Phase-14 placement."
+}
