@@ -161,11 +161,11 @@ receive more of a scarce resource.
 For parent `p` and direct child `c`, the semantic equivalent of the following must be available without
 scanning all descendants at allocation time:
 
-$$
+```math
 P_{p\rightarrow c,N}
 =
 \text{unresolved lawful pressure represented by child }c\text{ and its subtree at }N
-$$
+```
 
 This does not authorize a new `BranchPressure` column. It requires the existing RF upsweep to preserve
 enough child-segment attribution for the parent's continuous allocation pass.
@@ -192,7 +192,7 @@ that branch.
 
 Conceptually:
 
-$$
+```math
 W_{p\rightarrow c,N+1}
 =
 G\!\left(
@@ -200,20 +200,20 @@ P_{p\rightarrow c,N+1},
 Policy_{p\rightarrow c,N+1},
 Triad_{p\rightarrow c,N+1}
 \right)
-$$
+```
 
 where `W` is the already-existing `AllocatorWeight` or a proved equivalent—not a new clearing-owned
 weight.
 
 The resulting continuous child allocation may retain the existing guarded share form:
 
-$$
+```math
 X_{p\rightarrow c}
 =
 S_p
 \frac{W_{p\rightarrow c}}
 {\sum_j W_{p\rightarrow j}}
-$$
+```
 
 subject to lawful request, PALMA reach/impedance, and Gu-Yang serviceability or commitment semantics.
 
@@ -301,11 +301,11 @@ degenerate case with no upstream granter; a leaf is the degenerate case with no 
 
 For a StemThing node `v`, the market germ can be described abstractly as:
 
-$$
+```math
 \mathcal{M}_v(S_v, \{P_c\}, \Phi_v)
 \rightarrow
 (L_v, \{G_c\}, \{U_c\})
-$$
+```
 
 where:
 
@@ -486,25 +486,25 @@ For claim `i`, explanatory terms are:
 
 The intended constraints are:
 
-$$
+```math
 0 \le x_i \le a_i \le r_i
-$$
+```
 
 and:
 
-$$
+```math
 \sum_i x_i \le S
-$$
+```
 
 for exact supply `S` at the governing parent.
 
 Holding policy and serviceability equal, native pressure should be monotone in continuous share:
 
-$$
+```math
 p_i' > p_i
 \quad\Longrightarrow\quad
 x_i' \ge x_i
-$$
+```
 
 subject to admitted caps, competing pressure, bounded recurrence, and Gu-Yang realizability.
 
@@ -564,17 +564,17 @@ largest remainder + generation-rotated exact ties
 
 ## 7.1 Impaired lawful demand — before settlement
 
-$$
+```math
 U_i^{impairment} = r_i - a_i
-$$
+```
 
 Lawful demand that cannot currently traverse the admitted route/channel.
 
 ## 7.2 Contention shortfall — at settlement
 
-$$
+```math
 U_i^{contention} = a_i - g_i
-$$
+```
 
 Physically serviceable demand that did not receive exact supply.
 
@@ -582,9 +582,9 @@ Physically serviceable demand that did not receive exact supply.
 
 For exact grant `g_i` and realized delivery `y_i`:
 
-$$
+```math
 B_i^{delivery} = g_i - y_i
-$$
+```
 
 The true blocked legal grant where entitlement may exist before realization.
 
@@ -627,7 +627,7 @@ But the Phase-14 outcome is mandatory:
 
 If first-order persistence is missing, the candidate bounded recurrence is:
 
-$$
+```math
 P_{c,N+1}
 =
 \mathcal{B}\!\left(
@@ -638,7 +638,7 @@ U_{c,N}^{contention}
 +
 B_{c,N}^{delivery}
 \right)
-$$
+```
 
 where `B` is the existing bounded Current→Next recurrence or a rehomed equivalent.
 
@@ -662,37 +662,37 @@ optimize the existing RF market surfaces later.
 
 The normalized child-share form:
 
-$$
+```math
 x_i
 =
 S\frac{w_i}{\sum_j w_j}
-$$
+```
 
 is not merely convenient arithmetic. It is the exact optimum of the weighted proportional-fair
 problem:
 
-$$
+```math
 \max_{x_i>0}
 \sum_i w_i\log x_i
-$$
+```
 
 subject to:
 
-$$
+```math
 \sum_i x_i \le S.
-$$
+```
 
 The Lagrangian first-order condition is:
 
-$$
+```math
 \frac{w_i}{x_i}=\lambda,
-$$
+```
 
 which yields:
 
-$$
+```math
 x_i = \frac{w_i}{\lambda}
-$$
+```
 
 and therefore the normalized share above.
 
@@ -703,19 +703,19 @@ natively determine or deform `w_i` without inventing a new market solver.
 
 The broader alpha-fair family remains a research/policy candidate:
 
-$$
+```math
 U_\alpha(x)=
 \begin{cases}
 \log x,&\alpha=1\\
 \frac{x^{1-\alpha}}{1-\alpha},&\alpha\ne1.
 \end{cases}
-$$
+```
 
 For one uncapped parent constraint the optimum has the proportional shape:
 
-$$
+```math
 x_i \propto w_i^{1/\alpha}.
-$$
+```
 
 Interpretation:
 
@@ -753,9 +753,9 @@ AllocatedFlow
 
 A pure MaxWeight objective has the shape:
 
-$$
+```math
 \max_x \sum_i P_i x_i
-$$
+```
 
 subject to the feasible capacity region. That is useful as a stability/urgency lens, but for a single
 parent it can become highly concentrated. The RF market should therefore treat **backpressure as the
@@ -766,22 +766,22 @@ proportional/alpha-fair allocation.
 
 A mathematically clean research oracle is:
 
-$$
+```math
 \max_{\{x_i\}}
 \left[
 \sum_i w_i(P_i)\log x_i
 -
 \eta\sum_i Z_i x_i
 \right]
-$$
+```
 
 subject to:
 
-$$
+```math
 0\le x_i\le a_i,
 \qquad
 \sum_i x_i\le S.
-$$
+```
 
 Here:
 
@@ -794,22 +794,22 @@ Here:
 
 For an uncapped active branch, the KKT condition yields:
 
-$$
+```math
 x_i
 =
 \frac{w_i(P_i)}{\lambda+\eta Z_i},
-$$
+```
 
 and with Gu-Yang caps:
 
-$$
+```math
 x_i
 =
 \min\left(
 a_i,
 \frac{w_i(P_i)}{\lambda+\eta Z_i}
 \right),
-$$
+```
 
 where `lambda` is the common shadow price chosen so total assigned flow fits `S` when enough serviceable
 need exists.
@@ -824,40 +824,40 @@ stage, never in exact settlement.
 On a unique parent→descendant tree, accumulated additive route impedance is exact by simple series
 composition:
 
-$$
+```math
 Z_c = Z_p + z_{p\rightarrow c}.
-$$
+```
 
 If one cumulative root-relative impedance `Z_v` is resident, then for ancestor `p` and descendant `v`:
 
-$$
+```math
 Z_{p\rightarrow v}=Z_v-Z_p.
-$$
+```
 
 This is the useful part of the electrical analogy: **vertical PALMA on a strict unique-path tree does
 not need a general graph solve or iterative relaxation.**
 
 A conductance-weighted rule such as:
 
-$$
+```math
 W_i \propto \frac{P_i}{Z_i}
-$$
+```
 
 may be a useful EML policy when `P` and `Z` have compatible potential/resistance semantics. It is **not
 universal electrical law**, and nonlinear forms such as:
 
-$$
+```math
 W_i \propto \frac{P_i^\gamma}{Z_i^\beta}
-$$
+```
 
 are authored policy families, not substrate physics.
 
 The literal Ohm relation, where applicable, is:
 
-$$
+```math
 I = \frac{\Delta V}{R}=G\Delta V,
 \qquad G=1/R.
-$$
+```
 
 No vertical Laplacian solver, matrix inversion, or QAOA mechanism is implied.
 
@@ -891,16 +891,16 @@ a tree.
 
 The simplistic edge clip:
 
-$$
+```math
 P_c^*=\min(P_c,C_{p\rightarrow c})S_{p\rightarrow c}
-$$
+```
 
 is only valid when `P_c` already represents the recursively feasible demand of the entire child
 subtree and the commitment class requires immediate deliverability.
 
 For a rooted tree, a more exact bottom-up recurrence for immediately executable flow is:
 
-$$
+```math
 F_v
 =
 \min\left(
@@ -909,7 +909,7 @@ d_v^{local}
 +
 \sum_{u\in children(v)}F_u
 \right),
-$$
+```
 
 where:
 
@@ -919,19 +919,19 @@ where:
 
 Retain raw pressure separately:
 
-$$
+```math
 P_v
 =
 d_v^{local}
 +
 \sum_{u\in children(v)}P_u.
-$$
+```
 
 Then pre-settlement impairment is:
 
-$$
+```math
 U_v^{impairment}=P_v-F_v.
-$$
+```
 
 This yields two distinct upward facts:
 
@@ -951,9 +951,9 @@ serviceable flow, reuse it directly.
 
 Replacing conserved branch pressure with a tropical max:
 
-$$
+```math
 P_{parent}=\max_c(P_c+w_c)
-$$
+```
 
 would lose total lawful demand. Double counting is prevented by once-per-edge branch attribution, not
 by changing sum into max.
@@ -961,23 +961,23 @@ by changing sum into max.
 A second peak/hotspot observation can still be useful alongside the conserved sum. A parent may
 conceptually carry:
 
-$$
+```math
 \left(
 \sum_c P_c,
 \max_c q_c
 \right)
-$$
+```
 
 where total pressure drives resource allocation while peak normalized shock can drive an emergency
 ActionBand or hard-precedence policy.
 
 With existing `EXP`/`LN`, a smooth-max research option is log-sum-exp:
 
-$$
+```math
 \operatorname{LSE}_\tau(q)
 =
 \tau\log\sum_i e^{q_i/\tau}.
-$$
+```
 
 This is an optional observation/policy projection, not the conserved pressure lane and not a new
 tropical framework.
@@ -990,11 +990,11 @@ implementation than Miller-Reif rake/compress for additive pressure.
 If `Prefix[k]` is a prefix sum over node-local pressure in a flattened subtree layout, then for a
 contiguous subtree range `[start_v,end_v)`:
 
-$$
+```math
 P_v
 =
 Prefix[end_v]-Prefix[start_v].
-$$
+```
 
 This can produce every additive subtree total from one segmented/prefix-scan family of primitives
 without a contraction forest.
@@ -1002,11 +1002,11 @@ without a contraction forest.
 **Caveat:** nonlinear Gu-Yang serviceability clipping does not generally commute with a raw subtree
 sum:
 
-$$
+```math
 \min\left(\sum_i P_i,C\right)
 \ne
 \sum_i \min(P_i,C_i).
-$$
+```
 
 Therefore the clipped serviceability recurrence may still require depth-bucketed bottom-up dependency.
 Miller-Reif tree contraction remains a dated performance candidate only if measured depth/pathology
@@ -1028,9 +1028,9 @@ relevant source locus changed
 
 An epsilon rule such as:
 
-$$
+```math
 |\Delta P|<\varepsilon \Rightarrow \text{skip}
-$$
+```
 
 is **not** an invisible optimization because it changes outcomes and makes them trajectory-dependent.
 Any nonzero epsilon is authored/qualified approximation policy and requires its own ruling.
