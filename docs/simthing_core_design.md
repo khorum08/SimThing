@@ -55,7 +55,7 @@ The closed root contract is:
 | **expression organ** | the one admitted EML ISA and gadget library |
 | **field organ** | the RF/STEAD/PALMA/Gu-Yang Field Triad |
 
-Every row is sparse and inert by default. A population cohort, empty gridcell, owner seat, and
+Every row is sparse and inert by default. Identity obeys the same law: the base SimThing carries only a compact tree-local id — realm, host, and execution metadata are O(1) per executing tree, never O(population), and higher-order identifiers are derived anatomy on specialized SimThings. The id's internal width is not frozen; widening is an Owner-ruled ABI/schema and migration change. A population cohort, empty gridcell, owner seat, and
 SessionThing possess the same semantics without allocating active state for unused lanes. The
 kernel is fractal: a provisioned descendant may execute as a subtree while remaining connected to
 its ancestor by the same stamped product and grant seams.
@@ -242,7 +242,12 @@ qualification. Source scans remain valid only for the semantic residue that cann
 
 ## 2. The one tree: Scenario wrapper, GameSession root, owners, and spatial containment
 
-Scenario is authoring input; SessionThing is the runtime root. Spatial containment answers where a
+Scenario is authoring input; SessionThing is the runtime root — PER EXECUTING TREE: a
+provisioned subtree, or a sub-leaf tree of one, may itself execute as a root through a
+TreeExecutionContext binding (root binding, realm, generation authority, local schedule, local
+registry/residency context, seam attachment to its ancestor/granter) while remaining
+grant-connected. Rootness is never SimThingKind mutation, semantic reparenting, duplicated owner
+authority, or a second root object. Spatial containment answers where a
 thing is. Ownership answers whose policy and RF identity it inherits. The two relations never replace
 one another: owners are not spatial parents, capture is not reparenting, and a container may host
 participants from many owners.
@@ -456,6 +461,64 @@ reachable through Run, but it does **not** cover admitted-field-sweep domains. T
 accepted dated debt from the 2026-08-29 PORTABILITY-PROOF-0 ruling, Board 5460089932; closeout must
 disposition it. This canonization does not claim or implement the missing generic-opener coverage.
 
+
+### 8.2 Asynchronous subtrees — non-foreclosure laws (Owner-ruled 2026-08-30)
+
+Local asynchronous execution is already law and substrate: generation authority is per executing
+tree and is not a global barrier; integration never waits for a lagging child; determinism is
+relative to each tree's recorded schedule. Remote-host execution is a FUTURE capability; these laws
+exist so nothing built today forecloses it.
+
+1. **Realm is ambient, never carried.** An executing tree holds one TreeRealmId (stable semantic
+   namespace surviving migration and restart), one execution incarnation (the single active writer;
+   a partition or lease law is required for any other arrangement), and transient host-locator
+   metadata that is never semantic. Migration preserves realm and local ids but changes incarnation;
+   a fork, counterfactual branch, or concurrent copy mints a NEW realm; stale-incarnation seam facts
+   fail closed. Host address, process id, thread id, GPU adapter, device, queue, or endpoint never
+   enters base SimThing anatomy.
+2. **Realm qualification lives in seam and durable cross-tree relationship vocabulary** — seam
+   facts and receipts, schedule provenance, foreign grant relationships, foreign overlay
+   origin/provenance, and any durable reference whose referent remains in another tree — for EVERY
+   seam-visible local identity. A foreign reference may lower to a destination-local proxy with its
+   realm-qualified provenance recoverable. Raw local ids never cross, compare, merge, hash, or
+   persist as foreign identity.
+3. **The process-global id allocator is a local-construction implementation, not cross-tree
+   identity law** (remote-allocation debt, dated 2026-08-30 in the constitutional census). No code
+   may rely on raw ids being process- or host-globally unique. A remotely executable tree owns its
+   local-id allocation authority and high-water state; on detachment either a new realm preserves
+   inherited local ids (presumptive) or a same-realm partition uses explicit non-overlapping
+   allocation leases — recorded, not yet chosen.
+4. **Seam recording is never distributed atomic commit.** The source tree records an immutable seam
+   EMISSION at its own generation; transport may retry, delay, or reorder without changing fact
+   identity; the target tree records INTEGRATION at its own generation; both records correlate by
+   one immutable SeamFactId (source realm, seam id, source generation, source ordinal). A content
+   key alone cannot distinguish a transport duplicate from lawful multiplicity.
+5. **Seam delivery classes:** CONSERVED transfer (no loss, no duplicate realization, in-flight and
+   holding-account conservation, retry-idempotent); STANDING VIEW (a newer complete view supersedes,
+   staleness explicit); OBSERVATION (overwrite, throttle, and coalescing lawful, never feeding
+   simulation truth). A conserved or simulation-authoritative fact riding a lossy observer surface
+   is a violation.
+6. **Generation stamps are opaque outside their tree authority.** Cross-tree arithmetic on raw
+   generation values is lawful only across a declared common-lineage, common-cadence seam; other
+   seams carry an admitted temporal relation or destination-observed age. Migration never resets a
+   generation counter. Boundary-synchronized execution remains the opt-in form.
+7. **One clearing home per conserved resource scope per generation.** Cross-tree claims travel to
+   the home as stamped seam products; grants return through the seam; a provisioned child
+   subdivides its already-granted local budget autonomously; moving a clearing home is a recorded
+   structural authority transfer, never concurrent dual clearing.
+8. **No synchronous ancestor RPC in the local hot loop.** An executing subtree advances from
+   resident state and pre-granted resources; missing or late seam input appears as staleness,
+   unavailable capacity, unresolved U, or an authored local refusal, blocking only the dependent
+   operation and never the subtree's unrelated generations.
+9. **Global semantic MUTABLE authority is forbidden; immutable shared artifacts are lawful.**
+   Trees may share a physical device, pipeline cache, or compiled-shader artifact when
+   ABI-compatible; they never share a mutable semantic registry, scheduler, or singleton.
+
+Exit statement of ASYNC-SUBTREE-NON-FORECLOSURE-0: local async support is proven; remote execution
+remains future and is merely not foreclosed; every known blocker above is fenced here or dated in
+the constitutional census; nothing in resident clearing may assume one process, host, device,
+clock, allocator, or schedule.
+
 ---
 
 ## 9. The drift detectors — litmus tests for every change
@@ -478,6 +541,11 @@ Stop and escalate when a change does any of the following:
 14. lets install_initial_tree admit attached growth after initial residency;
 15. bypasses unified ingress or adds a producer with neither a production consumer nor dated deferral;
 16. writes a lifecycle artifact through a vendor door that cannot reopen it.
+17. couples two executing trees by anything other than stamped seam facts;
+18. compares, merges, or hashes raw local ids across executing trees;
+19. binds two trees' generation clocks outside a declared common-lineage seam;
+20. adds identity, realm, host, or device weight to base SimThing anatomy;
+21. rides a conserved or simulation-authoritative seam fact on a lossy observer surface.
 
 ### 9.1 Rejected rival shapes
 
