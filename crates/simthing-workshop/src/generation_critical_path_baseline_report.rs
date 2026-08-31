@@ -46,6 +46,18 @@ pub fn format_baseline_report(packet: &BaselinePacket) -> String {
         "## Disclaimer\n{}\n\n",
         packet.comparator_disclaimer
     ));
+    out.push_str(&format!(
+        "## D1 signed remainder\n{}\n\n",
+        packet.d1_signed_remainder_note
+    ));
+    out.push_str(&format!(
+        "## D2 envelope shape\n{}\n\n",
+        packet.d2_envelope_shape
+    ));
+    out.push_str(&format!(
+        "## D3 N+1 boundary\n{}\n\n",
+        packet.d3_nplus_boundary
+    ));
 
     for workload in &packet.workloads {
         out.push_str(&format_workload(workload));

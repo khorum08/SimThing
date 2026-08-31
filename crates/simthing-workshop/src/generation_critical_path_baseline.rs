@@ -39,6 +39,30 @@ pub const REQUIRED_LEGS: [&str; 11] = [
     "lawful_structural_consequence",
 ];
 
+/// D2 shape 2: known instrument work stays inside end-to-end but is named.
+pub const INSTRUMENT_LEGS: [&str; 2] = ["instrument_restatement", "neutrality_reclear"];
+
+/// D3: full generation+1 host clear, retained as comparator evidence only.
+pub const COMPARATOR_LEGS: [&str; 1] = ["next_generation_host_reclear"];
+
+/// D2 shape chosen for this remand.
+pub const D2_ENVELOPE_SHAPE: &str = "shape-2-instrument-legs-inside-e2e";
+
+/// Legs whose wall time is additional end-to-end work (not a partition of enclosing).
+pub const E2E_ACCOUNTED_LEGS: [&str; 8] = [
+    "claim_production_completion",
+    "instrument_restatement",
+    "enclosing_clear",
+    "n_plus_one_launch_delay",
+    "next_generation_host_reclear",
+    "cpu_schedule_replay_recording",
+    "lawful_structural_consequence",
+    "neutrality_reclear",
+];
+
+/// Prior packet (PR #1907 @ 3d55aba8) clamped a negative remainder to 0.
+pub const D1_BEFORE_CLAMPED_EXAMPLE: &str = "scale_1000 grant_result_construction prior packet min_ns=0 with an explicit 0 sample after `.max(0)` (samples included 166600, 790200, 41100, 153900, 446300, 157200, 252100, 0, ...); the 0 was a clamped negative remainder of enclosing minus nested grouping+scoring+sorting+apportionment";
+
 pub const DETERMINISTIC_SEED: u64 = 0x0001_4001;
 pub const OFFERING_ID: &str = "ore-claim";
 pub const RESOURCE: &str = "ore";
@@ -121,12 +145,13 @@ pub struct LegSamples {
     pub isolation: String,
     pub bytes_read_back: u64,
     pub bytes_uploaded: u64,
-    pub sample_ns: Vec<u64>,
-    pub median_ns: u64,
-    pub p95_ns: u64,
+    /// Signed nanoseconds. Negative values are lawful for derived remainders.
+    pub sample_ns: Vec<i64>,
+    pub median_ns: i64,
+    pub p95_ns: i64,
     pub variance_ns2: f64,
-    pub min_ns: u64,
-    pub max_ns: u64,
+    pub min_ns: i64,
+    pub max_ns: i64,
     pub mean_ns: f64,
 }
 
@@ -173,6 +198,8 @@ pub struct WorkloadReport {
     pub coupling: CouplingObservation,
     pub grants_total: usize,
     pub unresolved_total: u64,
+    pub d2_envelope_shape: String,
+    pub residual_accounted_legs: Vec<String>,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -183,6 +210,9 @@ pub struct BaselinePacket {
     pub leg_definitions: Vec<LegDefinition>,
     pub workloads: Vec<WorkloadReport>,
     pub comparator_disclaimer: String,
+    pub d1_signed_remainder_note: String,
+    pub d2_envelope_shape: String,
+    pub d3_nplus_boundary: String,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -229,11 +259,11 @@ pub fn leg_definitions() -> Vec<LegDefinition> {
         },
         LegDefinition {
             name: "integer_apportionment",
-            boundary: "workshop-local restatement of the live largest-remainder + generation-rotated exact-tie loop on the same scored/sorted/banded input; production door remains authority; isolation is proven by matching grant.granted",
+            boundary: "workshop-local restatement of the live largest-remainder + generation-rotated exact-tie loop on the same scored/sorted/banded input; production door remains authority; isolation is proven by matching grant.granted; this is a component of instrument_restatement, not extra end-to-end work beyond that pass",
         },
         LegDefinition {
             name: "grant_result_construction",
-            boundary: "remainder of enclosing clear_constrained_claims_at_generation after the nested sequential grouping+scoring+sorting+apportionment observations; raw enclosing and component times are both kept; remainder is not forced-closed",
+            boundary: "signed remainder enclosing_clear − (grouping+scoring+sorting+apportionment); i64 samples; negative values are retained (D1: no .max(0) clamp); this is a partition of enclosing_clear, not additional end-to-end work",
         },
         LegDefinition {
             name: "host_to_gpu_upload",
@@ -241,15 +271,27 @@ pub fn leg_definitions() -> Vec<LegDefinition> {
         },
         LegDefinition {
             name: "n_plus_one_launch_delay",
-            boundary: "host re-clear of the same supplies/claims at generation+1 through the ordinary door; GPU kernel launch is door-absent (0 ns, 0 dispatches)",
+            boundary: "grants-available (production door has returned ConstrainedGrant values) → N+1-ready/launch: construct generation+1 ClearingRemainderAuthority. GPU launch is door-absent 0 ns / 0 dispatches. Schedule-append is NOT in this boundary; the next host clear is a pure function of supplies/claims/program/authority and does not require IntegrationSchedule to have been appended. No overlap with cpu_schedule_replay_recording.",
         },
         LegDefinition {
             name: "cpu_schedule_replay_recording",
-            boundary: "AdmittedSpecializationFlowMarket::record_cleared_grant into a fresh per-tree IntegrationSchedule for every produced ConstrainedGrant",
+            boundary: "AdmittedSpecializationFlowMarket::record_cleared_grant into a fresh per-tree IntegrationSchedule for every produced ConstrainedGrant with granted>0. Not a prerequisite for n_plus_one_launch_delay.",
         },
         LegDefinition {
             name: "lawful_structural_consequence",
             boundary: "UnresolvedDemandObservation::from_grant + fund_unresolved_persistence at observed_generation+1; overlays are dropped after mint so the allocator is observed without retaining the population",
+        },
+        LegDefinition {
+            name: "instrument_restatement",
+            boundary: "D2 shape-2 instrument-only: wall time of the workshop-local nested grouping+scoring+sorting+apportionment pass that also publishes those four component legs. Inside the end-to-end envelope.",
+        },
+        LegDefinition {
+            name: "neutrality_reclear",
+            boundary: "D2 shape-2 instrument-only: second uninstrumented clear_constrained_claims_at_generation used only to prove observation neutrality. Inside the end-to-end envelope.",
+        },
+        LegDefinition {
+            name: "next_generation_host_reclear",
+            boundary: "D3 comparator: full clear_constrained_claims_at_generation of the same supplies/claims at generation+1. Not the N+1 launch delay.",
         },
     ]
 }
@@ -267,9 +309,14 @@ pub fn path_diagram() -> String {
         "    -> ConstrainedGrant::from_clearance + ConstrainedClearingResult [grant_result_construction]",
         "  enclosing production authority: clear_constrained_claims_at_generation",
         "    -> (no GPU write_buffer/upload in this door) [host_to_gpu_upload = 0 bytes]",
-        "    -> generation+1 re-clear                  [n_plus_one_launch_delay]",
-        "    -> record_cleared_grant -> IntegrationSchedule [cpu_schedule_replay_recording]",
+        "    -> grants available",
+        "    -> construct generation+1 authority        [n_plus_one_launch_delay; GPU launch = 0]",
+        "    -> (optional comparator) full gen+1 clear  [next_generation_host_reclear]",
+        "    -> record_cleared_grant -> IntegrationSchedule [cpu_schedule_replay_recording; not in N+1 delay]",
         "    -> fund_unresolved_persistence            [lawful_structural_consequence]",
+        "  instrument (D2 shape 2; inside e2e, named, not residual):",
+        "    nested restatement pass                   [instrument_restatement = grouping+scoring+sorting+apportionment]",
+        "    second uninstrumented production clear    [neutrality_reclear]",
     ]
     .join("\n")
 }
@@ -367,6 +414,11 @@ pub fn run_generation_critical_path_baseline(
         leg_definitions: leg_definitions(),
         workloads,
         comparator_disclaimer: "Comparator only. Wall-clock values are dated facts about one reproducibility envelope. They are not a go/no-go gate, portable CI threshold, or authority to cancel or narrow Owner-ruled Phase-14 placement.".into(),
+        d1_signed_remainder_note: format!(
+            "D1: grant_result_construction is i64; `.max(0)` removed. Before/after: {D1_BEFORE_CLAMPED_EXAMPLE}. Corrected samples keep the signed remainder. Serialization boundary: LegSamples.sample_ns/median_ns/p95_ns/min_ns/max_ns are i64."
+        ),
+        d2_envelope_shape: D2_ENVELOPE_SHAPE.into(),
+        d3_nplus_boundary: "n_plus_one_launch_delay = grants-available → generation+1 ClearingRemainderAuthority construction (GPU launch 0). next_generation_host_reclear = full ordinary-door re-clear at generation+1. cpu_schedule_replay_recording is not inside the N+1 delay (no overlap; next host clear does not require a schedule append).".into(),
     })
 }
 
@@ -722,11 +774,11 @@ fn measure_trees(
     let legs = acc.legs();
     let enclosing = acc.leg("enclosing_clear").expect("enclosing samples");
     let e2e = acc.leg("end_to_end").expect("e2e samples");
-    let named_sum = REQUIRED_LEGS
+    let accounted = E2E_ACCOUNTED_LEGS
         .iter()
         .map(|name| acc.median(name))
-        .sum::<u64>();
-    let unattributed = e2e.median_ns as i64 - named_sum as i64;
+        .sum::<i64>();
+    let unattributed = e2e.median_ns - accounted;
     Ok(WorkloadReport {
         cardinalities,
         warm_up_count: warm,
@@ -736,7 +788,7 @@ fn measure_trees(
         enclosing_clear_ns: enclosing,
         end_to_end_ns: e2e,
         unattributed_remainder_ns: unattributed,
-        reconciliation_note: "Named inner host legs (grouping/scoring/sorting/apportionment) are nested sequential observations on copies of the same input; grant_result_construction is enclosing_clear minus those nested components (signed remainder, not forced-closed). GPU transfer legs are door-absent 0. End-to-end is claim-production + enclosing_clear + n+1 + schedule + structural. Independent named-leg sum may exceed end-to-end because inner legs are also counted inside enclosing_clear; the signed unattributed remainder records that overlap plus observation overhead.".into(),
+        reconciliation_note: "D2 shape-2: instrument_restatement and neutrality_reclear are named instrument-only legs inside end-to-end. Residual = end_to_end − (claim_production + instrument_restatement + enclosing_clear + n_plus_one_launch_delay + next_generation_host_reclear + cpu_schedule_replay_recording + lawful_structural_consequence + neutrality_reclear). grouping/scoring/sorting/apportionment are components of instrument_restatement, not extra e2e work. grant_result_construction is the signed i64 remainder enclosing − those components (D1: negatives retained, no clamp) and is a partition of enclosing, not extra e2e work. GPU legs are door-absent 0. Residual is observation overhead; arithmetic is not forced-closed.".into(),
         isolation_matches_production: isolation_ok,
         neutrality_clears_identical: neutrality_ok,
         overlapping_raw_value: overlapping_raw,
@@ -751,6 +803,11 @@ fn measure_trees(
         },
         grants_total,
         unresolved_total,
+        d2_envelope_shape: D2_ENVELOPE_SHAPE.into(),
+        residual_accounted_legs: E2E_ACCOUNTED_LEGS
+            .iter()
+            .map(|s| (*s).to_string())
+            .collect(),
     })
 }
 
@@ -759,7 +816,7 @@ struct SampleTimes {
     neutrality_clears_identical: bool,
     grants_total: usize,
     unresolved_total: u64,
-    ns: BTreeMap<&'static str, u64>,
+    ns: BTreeMap<&'static str, i64>,
 }
 
 fn run_sample(
@@ -767,43 +824,48 @@ fn run_sample(
     market: &AdmittedSpecializationFlowMarket,
     record: bool,
 ) -> Result<SampleTimes> {
-    let mut ns: BTreeMap<&'static str, u64> = BTreeMap::new();
+    let mut ns: BTreeMap<&'static str, i64> = BTreeMap::new();
     let e2e_start = Instant::now();
 
     let mut all_claims: Vec<Vec<ConstrainedClaim>> = Vec::with_capacity(trees.len());
-    let mut claim_ns = 0u64;
+    let mut claim_ns = 0i64;
     for tree in trees {
         let start = Instant::now();
         let mut claims = Vec::with_capacity(tree.demands.len());
         for (demand, weight) in &tree.demands {
             claims.push(ConstrainedClaim::from_runtime_demand(demand, *weight)?);
         }
-        claim_ns += start.elapsed().as_nanos() as u64;
+        claim_ns += start.elapsed().as_nanos() as i64;
         all_claims.push(claims);
     }
     add(&mut ns, "claim_production_completion", claim_ns);
     add(&mut ns, "gpu_to_host_synchronization_readback", 0);
     add(&mut ns, "host_to_gpu_upload", 0);
 
-    let mut grouping_ns = 0u64;
-    let mut scoring_ns = 0u64;
-    let mut sorting_ns = 0u64;
-    let mut apportion_ns = 0u64;
-    let mut enclosing_ns = 0u64;
-    let mut nplus_ns = 0u64;
-    let mut schedule_ns = 0u64;
-    let mut structural_ns = 0u64;
+    let mut grouping_ns = 0i64;
+    let mut scoring_ns = 0i64;
+    let mut sorting_ns = 0i64;
+    let mut apportion_ns = 0i64;
+    let mut restatement_ns = 0i64;
+    let mut enclosing_ns = 0i64;
+    let mut nplus_delay_ns = 0i64;
+    let mut reclear_ns = 0i64;
+    let mut neutrality_ns = 0i64;
+    let mut schedule_ns = 0i64;
+    let mut structural_ns = 0i64;
     let mut isolation_ok = true;
     let mut neutrality_ok = true;
     let mut grants_total = 0usize;
     let mut unresolved_total = 0u64;
     for (tree, claims) in trees.iter().zip(all_claims.iter()) {
+        let restatement_start = Instant::now();
         let nested =
             time_nested_host_components(claims, &tree.supplies, &tree.program, tree.authority)?;
-        grouping_ns += nested.grouping_ns;
-        scoring_ns += nested.scoring_ns;
-        sorting_ns += nested.sorting_ns;
-        apportion_ns += nested.apportion_ns;
+        restatement_ns += restatement_start.elapsed().as_nanos() as i64;
+        grouping_ns += nested.grouping_ns as i64;
+        scoring_ns += nested.scoring_ns as i64;
+        sorting_ns += nested.sorting_ns as i64;
+        apportion_ns += nested.apportion_ns as i64;
 
         let start = Instant::now();
         let production = clear_constrained_claims_at_generation(
@@ -812,31 +874,39 @@ fn run_sample(
             &tree.program,
             tree.authority,
         )?;
-        enclosing_ns += start.elapsed().as_nanos() as u64;
+        enclosing_ns += start.elapsed().as_nanos() as i64;
 
         isolation_ok &= nested.granted == granted_map(&production);
+
+        let neutrality_start = Instant::now();
+        let uninstrumented = clear_constrained_claims_at_generation(
+            &tree.supplies,
+            claims,
+            &tree.program,
+            tree.authority,
+        )?;
+        neutrality_ns += neutrality_start.elapsed().as_nanos() as i64;
         if record {
-            let uninstrumented = clear_constrained_claims_at_generation(
-                &tree.supplies,
-                claims,
-                &tree.program,
-                tree.authority,
-            )?;
             neutrality_ok &= uninstrumented == production;
         }
 
+        // D3: grants are available. True N+1 delay is readiness to launch the
+        // next generation, not the next generation's full clear.
+        let nplus_ready_start = Instant::now();
         let nplus_auth = ClearingRemainderAuthority {
             granter: tree.authority.granter,
             generation: GenerationStamp::new(tree.authority.generation.get().saturating_add(1)),
         };
-        let start = Instant::now();
+        nplus_delay_ns += nplus_ready_start.elapsed().as_nanos() as i64;
+
+        let reclear_start = Instant::now();
         let _next = clear_constrained_claims_at_generation(
             &tree.supplies,
             claims,
             &tree.program,
             nplus_auth,
         )?;
-        nplus_ns += start.elapsed().as_nanos() as u64;
+        reclear_ns += reclear_start.elapsed().as_nanos() as i64;
 
         let mut schedule = IntegrationSchedule::new();
         let start = Instant::now();
@@ -854,7 +924,7 @@ fn run_sample(
                 )?;
             }
         }
-        schedule_ns += start.elapsed().as_nanos() as u64;
+        schedule_ns += start.elapsed().as_nanos() as i64;
 
         let valuation = AuthoredPersistenceValuation::new(TransformOp::multiply(1.0), 2.0)?;
         let binding = PersistenceOverlayBinding {
@@ -883,7 +953,7 @@ fn run_sample(
                 }
             }
         }
-        structural_ns += start.elapsed().as_nanos() as u64;
+        structural_ns += start.elapsed().as_nanos() as i64;
 
         grants_total += production.iter().map(|r| r.grants.len()).sum::<usize>();
         unresolved_total += production
@@ -892,23 +962,21 @@ fn run_sample(
             .sum::<u64>();
     }
 
-    let construction_ns = (enclosing_ns as i64
-        - grouping_ns as i64
-        - scoring_ns as i64
-        - sorting_ns as i64
-        - apportion_ns as i64)
-        .max(0) as u64;
+    let construction_ns = enclosing_ns - grouping_ns - scoring_ns - sorting_ns - apportion_ns;
 
     add(&mut ns, "host_conversion_grouping", grouping_ns);
     add(&mut ns, "eml_scoring", scoring_ns);
     add(&mut ns, "score_sorting_banding", sorting_ns);
     add(&mut ns, "integer_apportionment", apportion_ns);
     add(&mut ns, "grant_result_construction", construction_ns);
-    add(&mut ns, "n_plus_one_launch_delay", nplus_ns);
+    add(&mut ns, "instrument_restatement", restatement_ns);
+    add(&mut ns, "neutrality_reclear", neutrality_ns);
+    add(&mut ns, "n_plus_one_launch_delay", nplus_delay_ns);
+    add(&mut ns, "next_generation_host_reclear", reclear_ns);
     add(&mut ns, "cpu_schedule_replay_recording", schedule_ns);
     add(&mut ns, "lawful_structural_consequence", structural_ns);
     add(&mut ns, "enclosing_clear", enclosing_ns);
-    add(&mut ns, "end_to_end", e2e_start.elapsed().as_nanos() as u64);
+    add(&mut ns, "end_to_end", e2e_start.elapsed().as_nanos() as i64);
 
     Ok(SampleTimes {
         isolation_matches_production: isolation_ok,
@@ -1089,12 +1157,20 @@ fn granted_map(
     out
 }
 
-fn add(ns: &mut BTreeMap<&'static str, u64>, key: &'static str, value: u64) {
+fn add(ns: &mut BTreeMap<&'static str, i64>, key: &'static str, value: i64) {
     ns.insert(key, value);
 }
 
 struct SampleAcc {
-    values: BTreeMap<&'static str, Vec<u64>>,
+    values: BTreeMap<&'static str, Vec<i64>>,
+}
+
+fn published_leg_names() -> Vec<&'static str> {
+    let mut names = Vec::new();
+    names.extend_from_slice(&REQUIRED_LEGS);
+    names.extend_from_slice(&INSTRUMENT_LEGS);
+    names.extend_from_slice(&COMPARATOR_LEGS);
+    names
 }
 
 impl SampleAcc {
@@ -1110,7 +1186,7 @@ impl SampleAcc {
         }
     }
 
-    fn median(&self, name: &str) -> u64 {
+    fn median(&self, name: &str) -> i64 {
         self.values.get(name).map(|s| stats(s).1).unwrap_or(0)
     }
 
@@ -1120,8 +1196,8 @@ impl SampleAcc {
     }
 
     fn legs(&self) -> Vec<LegSamples> {
-        REQUIRED_LEGS
-            .iter()
+        published_leg_names()
+            .into_iter()
             .filter_map(|name| self.leg(name))
             .collect()
     }
@@ -1133,13 +1209,22 @@ fn isolation_note(name: &str) -> String {
             "door-absent on CPU-host clearing; 0 bytes / 0 ns observed (no map_async, no write_buffer, no queue submit)".into()
         }
         "integer_apportionment" => {
-            "workshop-local restatement of the live largest-remainder + generation-rotated-tie loop; production door remains authority".into()
+            "workshop-local restatement of the live largest-remainder + generation-rotated-tie loop; production door remains authority; component of instrument_restatement".into()
         }
         "grant_result_construction" => {
-            "signed remainder of enclosing clear_constrained_claims_at_generation after nested grouping+scoring+sorting+apportionment; not forced-closed".into()
+            "signed i64 remainder of enclosing_clear minus nested grouping+scoring+sorting+apportionment; negatives retained; D1 no .max(0) clamp".into()
         }
         "n_plus_one_launch_delay" => {
-            "host re-clear at generation+1 through the ordinary door; GPU dispatch count 0".into()
+            "grants-available → construct generation+1 ClearingRemainderAuthority; GPU launch 0; schedule-append not in this boundary".into()
+        }
+        "next_generation_host_reclear" => {
+            "full ordinary-door re-clear at generation+1; comparator only; not the N+1 launch delay".into()
+        }
+        "instrument_restatement" => {
+            "D2 shape-2: wall time of nested grouping+scoring+sorting+apportionment pass inside e2e".into()
+        }
+        "neutrality_reclear" => {
+            "D2 shape-2: second uninstrumented production-door clear inside e2e".into()
         }
         "claim_production_completion" => {
             "ConstrainedClaim::from_runtime_demand (ordinary per-tree admission)".into()
@@ -1148,7 +1233,7 @@ fn isolation_note(name: &str) -> String {
         "host_conversion_grouping" => "BTreeMap group by OwnerChannelScopeKey".into(),
         "score_sorting_banding" => "score.total_cmp desc then source id; equal to_bits bands".into(),
         "cpu_schedule_replay_recording" => {
-            "AdmittedSpecializationFlowMarket::record_cleared_grant -> IntegrationSchedule".into()
+            "AdmittedSpecializationFlowMarket::record_cleared_grant -> IntegrationSchedule; not part of n_plus_one_launch_delay".into()
         }
         "lawful_structural_consequence" => {
             "UnresolvedDemandObservation::from_grant + fund_unresolved_persistence".into()
@@ -1157,18 +1242,13 @@ fn isolation_note(name: &str) -> String {
     }
 }
 
-fn summarize(name: &str, samples: &[u64], isolation: String) -> LegSamples {
+fn summarize(name: &str, samples: &[i64], isolation: String) -> LegSamples {
     let (mean, median, p95, variance, min, max) = stats(samples);
-    let (bytes_in, bytes_out) = match name {
-        "gpu_to_host_synchronization_readback" => (0, 0),
-        "host_to_gpu_upload" => (0, 0),
-        _ => (0, 0),
-    };
     LegSamples {
         name: name.into(),
         isolation,
-        bytes_read_back: bytes_in,
-        bytes_uploaded: bytes_out,
+        bytes_read_back: 0,
+        bytes_uploaded: 0,
         sample_ns: samples.to_vec(),
         median_ns: median,
         p95_ns: p95,
@@ -1179,7 +1259,7 @@ fn summarize(name: &str, samples: &[u64], isolation: String) -> LegSamples {
     }
 }
 
-fn stats(samples: &[u64]) -> (f64, u64, u64, f64, u64, u64) {
+fn stats(samples: &[i64]) -> (f64, i64, i64, f64, i64, i64) {
     let mut sorted = samples.to_vec();
     sorted.sort_unstable();
     let n = sorted.len();
@@ -1190,9 +1270,9 @@ fn stats(samples: &[u64]) -> (f64, u64, u64, f64, u64, u64) {
     let median = if n % 2 == 1 {
         sorted[n / 2]
     } else {
-        let a = sorted[n / 2 - 1] as u128;
-        let b = sorted[n / 2] as u128;
-        ((a + b) / 2) as u64
+        let a = sorted[n / 2 - 1] as i128;
+        let b = sorted[n / 2] as i128;
+        ((a + b) / 2) as i64
     };
     let p95_index = ((n as f64 - 1.0) * 0.95).round() as usize;
     let p95 = sorted[p95_index.min(n - 1)];

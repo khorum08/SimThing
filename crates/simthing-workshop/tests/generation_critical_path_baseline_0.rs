@@ -12,7 +12,8 @@ use std::sync::OnceLock;
 use simthing_workshop::generation_critical_path_baseline::{
     overlapping_id_fixture_proof, query_gpu_envelope, run_generation_critical_path_baseline,
     uninstrumented_clear_matches_instrumented, BaselinePacket, MeasurementEnvelope,
-    HOST_CLEARING_DOOR_CENSUS, OVERLAPPING_RAW, REQUIRED_LEGS,
+    COMPARATOR_LEGS, D2_ENVELOPE_SHAPE, HOST_CLEARING_DOOR_CENSUS, INSTRUMENT_LEGS,
+    OVERLAPPING_RAW, REQUIRED_LEGS,
 };
 
 fn git_head() -> String {
@@ -191,13 +192,19 @@ fn observation_layer_is_neutral_vs_uninstrumented_clear() {
 fn measurement_packet_contains_all_required_legs_envelope_and_workloads() {
     let packet = packet();
     assert_eq!(packet.door_census.len(), 4);
-    assert_eq!(packet.leg_definitions.len(), 11);
-    for required in REQUIRED_LEGS {
+    assert_eq!(packet.d2_envelope_shape, D2_ENVELOPE_SHAPE);
+    assert!(packet.d1_signed_remainder_note.contains(".max(0)"));
+    assert!(packet.d3_nplus_boundary.contains("grants-available"));
+    for required in REQUIRED_LEGS
+        .iter()
+        .chain(INSTRUMENT_LEGS.iter())
+        .chain(COMPARATOR_LEGS.iter())
+    {
         assert!(
             packet
                 .leg_definitions
                 .iter()
-                .any(|leg| leg.name == required),
+                .any(|leg| leg.name == *required),
             "missing leg definition {required}"
         );
     }
@@ -231,13 +238,18 @@ fn measurement_packet_contains_all_required_legs_envelope_and_workloads() {
         assert!(names.contains(&required), "missing workload {required}");
     }
 
+    let mut saw_negative_construction = false;
     for workload in &packet.workloads {
-        assert_eq!(workload.legs.len(), 11);
-        for required in REQUIRED_LEGS {
+        assert_eq!(workload.d2_envelope_shape, D2_ENVELOPE_SHAPE);
+        for required in REQUIRED_LEGS
+            .iter()
+            .chain(INSTRUMENT_LEGS.iter())
+            .chain(COMPARATOR_LEGS.iter())
+        {
             let leg = workload
                 .legs
                 .iter()
-                .find(|leg| leg.name == required)
+                .find(|leg| leg.name == *required)
                 .unwrap_or_else(|| {
                     panic!(
                         "workload {} missing {required}",
@@ -246,12 +258,26 @@ fn measurement_packet_contains_all_required_legs_envelope_and_workloads() {
                 });
             assert_eq!(leg.sample_ns.len(), workload.sample_count);
             assert!(!leg.isolation.is_empty());
-            if required == "gpu_to_host_synchronization_readback"
-                || required == "host_to_gpu_upload"
+            if *required == "gpu_to_host_synchronization_readback"
+                || *required == "host_to_gpu_upload"
             {
                 assert_eq!(leg.bytes_read_back, 0);
                 assert_eq!(leg.bytes_uploaded, 0);
                 assert!(leg.sample_ns.iter().all(|v| *v == 0));
+            }
+            if *required == "grant_result_construction" {
+                saw_negative_construction |= leg.sample_ns.iter().any(|v| *v < 0);
+                assert!(
+                    !leg.isolation.contains("forced-closed")
+                        || leg.isolation.contains("no .max(0)")
+                );
+            }
+            if *required == "n_plus_one_launch_delay" {
+                assert!(leg.isolation.contains("grants-available"));
+                assert!(!leg.isolation.contains("full ordinary-door re-clear"));
+            }
+            if *required == "next_generation_host_reclear" {
+                assert!(leg.isolation.contains("full ordinary-door re-clear"));
             }
         }
         assert!(workload.isolation_matches_production);
@@ -261,6 +287,10 @@ fn measurement_packet_contains_all_required_legs_envelope_and_workloads() {
         assert!(workload.end_to_end_ns.sample_ns.len() == workload.sample_count);
         assert!(workload.neutrality_clears_identical);
     }
+    assert!(
+        saw_negative_construction,
+        "D1: at least one grant_result_construction sample must remain negative"
+    );
 
     let million = packet
         .workloads
