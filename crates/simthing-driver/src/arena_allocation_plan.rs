@@ -68,7 +68,6 @@ pub fn plan_arena_allocation(
         }
 
         for depth in 0..d.saturating_sub(1) {
-            let broadcast_band = bands.broadcast_band(depth, d);
             let disburse_band = bands.disburse_band(depth, d);
             for parent in layout.iter_at_depth(depth) {
                 if parent.children.is_empty() {
@@ -81,45 +80,7 @@ pub fn plan_arena_allocation(
                 };
                 let p_ws = parent.cols.weight_sum_col;
                 for child in &parent.children {
-                    ops_cpu.push(broadcast_op(
-                        parent.participant_slot.raw(),
-                        p_if,
-                        child.participant_slot.raw(),
-                        child.cols.propagated_intrinsic_flow_col,
-                        broadcast_band,
-                    ));
-                    if depth == 0 {
-                        ops_cpu.push(const_broadcast_op(
-                            0.0,
-                            child.participant_slot.raw(),
-                            child.cols.propagated_allocated_flow_col,
-                            broadcast_band,
-                        ));
-                    } else {
-                        ops_cpu.push(broadcast_op(
-                            parent.participant_slot.raw(),
-                            parent.cols.allocated_flow_col,
-                            child.participant_slot.raw(),
-                            child.cols.propagated_allocated_flow_col,
-                            broadcast_band,
-                        ));
-                    }
-                    ops_cpu.push(broadcast_op(
-                        parent.participant_slot.raw(),
-                        p_ws,
-                        child.participant_slot.raw(),
-                        child.cols.propagated_weight_sum_col,
-                        broadcast_band,
-                    ));
-                }
-            }
-            for parent in layout.iter_at_depth(depth) {
-                for child in &parent.children {
-                    ops_cpu.push(disburse_op(
-                        child.participant_slot.raw(),
-                        child.cols.allocated_flow_col,
-                        disburse_band,
-                    ));
+                    ops_cpu.push(disburse_op(parent, child, p_if, p_ws, disburse_band));
                 }
             }
         }
@@ -197,7 +158,6 @@ pub(crate) fn append_residual_closure_ops(
 
     let seed_band = layout.band_layout.integration_band - 4;
     let add_allocated_band = seed_band + 1;
-    let negate_children_band = seed_band + 2;
     let sum_children_band = seed_band + 3;
     for parent in layout
         .iter_all()
@@ -230,23 +190,13 @@ pub(crate) fn append_residual_closure_ops(
             ConsumeMode::AddToTarget,
             ScaleSpec::Identity,
         ));
-        for child in &parent.children {
-            ops_cpu.push(slot_value_op(
-                child.participant_slot.raw(),
-                child.cols.allocated_flow_col,
-                child.participant_slot.raw(),
-                child.cols.propagated_allocated_flow_col,
-                negate_children_band,
-                ConsumeMode::ResetTarget,
-                ScaleSpec::Constant(-1.0),
-            ));
-        }
         ops_cpu.extend(sum_accumulation_ops(
             parent,
             parent.participant_slot.raw(),
-            parent.cols.propagated_allocated_flow_col,
+            parent.cols.allocated_flow_col,
             rate_col,
             sum_children_band,
+            ScaleSpec::Constant(-1.0),
         ));
     }
 }
@@ -256,9 +206,6 @@ fn reset_columns(cols: NodeColumnRefs) -> Vec<ColumnIndex> {
         cols.allocated_flow_col,
         cols.intrinsic_flow_sum_col,
         cols.weight_sum_col,
-        cols.propagated_intrinsic_flow_col,
-        cols.propagated_allocated_flow_col,
-        cols.propagated_weight_sum_col,
     ]
 }
 
@@ -318,26 +265,6 @@ fn sum_reduction_ops(
     }]
 }
 
-fn broadcast_op(
-    src_slot: u32,
-    src_col: ColumnIndex,
-    dst_slot: u32,
-    dst_col: ColumnIndex,
-    band: u32,
-) -> AccumulatorOp {
-    AccumulatorOp {
-        source: SourceSpec::SlotValue {
-            slot: SlotIndex::new(src_slot),
-            col: src_col,
-        },
-        combine: CombineFn::Identity,
-        gate: GateSpec::OrderBand(band),
-        scale: ScaleSpec::Identity,
-        consume: ConsumeMode::ResetTarget,
-        targets: vec![(SlotIndex::new(dst_slot), dst_col)],
-    }
-}
-
 fn slot_value_op(
     src_slot: u32,
     src_col: ColumnIndex,
@@ -366,6 +293,7 @@ fn sum_accumulation_ops(
     source_col: ColumnIndex,
     target_col: ColumnIndex,
     band: u32,
+    scale: ScaleSpec,
 ) -> Vec<AccumulatorOp> {
     if children_are_contiguous(parent) {
         let (start, count) = child_range(parent);
@@ -377,7 +305,7 @@ fn sum_accumulation_ops(
             },
             combine: CombineFn::Sum,
             gate: GateSpec::OrderBand(band),
-            scale: ScaleSpec::Identity,
+            scale,
             consume: ConsumeMode::AddToTarget,
             targets: vec![(SlotIndex::new(parent_slot), target_col)],
         }];
@@ -386,7 +314,7 @@ fn sum_accumulation_ops(
         source: sparse_child_input_list(parent, source_col),
         combine: CombineFn::Sum,
         gate: GateSpec::OrderBand(band),
-        scale: ScaleSpec::Identity,
+        scale,
         consume: ConsumeMode::AddToTarget,
         targets: vec![(SlotIndex::new(parent_slot), target_col)],
     }]
@@ -406,25 +334,35 @@ fn sparse_child_input_list(parent: &HierarchyNode, source_col: ColumnIndex) -> S
     }
 }
 
-fn const_broadcast_op(value: f32, dst_slot: u32, dst_col: ColumnIndex, band: u32) -> AccumulatorOp {
+fn disburse_op(
+    parent: &HierarchyNode,
+    child: &HierarchyNode,
+    parent_intrinsic_col: ColumnIndex,
+    parent_weight_sum_col: ColumnIndex,
+    band: u32,
+) -> AccumulatorOp {
     AccumulatorOp {
-        source: SourceSpec::Constant(value),
-        combine: CombineFn::Identity,
-        gate: GateSpec::OrderBand(band),
-        scale: ScaleSpec::Identity,
-        consume: ConsumeMode::ResetTarget,
-        targets: vec![(SlotIndex::new(dst_slot), dst_col)],
-    }
-}
-
-fn disburse_op(child_slot: u32, a_f_col: ColumnIndex, band: u32) -> AccumulatorOp {
-    AccumulatorOp {
-        // EvalEML reads columns from the formula tree; source SlotValue col is
-        // unused wire filler. Reuse the typed target column — never mint via
-        // column_from_wire(<literal>).
-        source: SourceSpec::SlotValue {
-            slot: SlotIndex::new(child_slot),
-            col: a_f_col,
+        // Declared input order is the EML PARAM order. The parent's live
+        // AllocatedFlow is PARAM(1), consumed directly by the same allocator
+        // operation that writes the child level; no propagated copy is read.
+        source: SourceSpec::ConjunctiveCrossing {
+            inputs: vec![
+                InputSpec {
+                    slot: parent.participant_slot,
+                    col: parent_intrinsic_col,
+                    unit_cost: 1.0,
+                },
+                InputSpec {
+                    slot: parent.participant_slot,
+                    col: parent.cols.allocated_flow_col,
+                    unit_cost: 1.0,
+                },
+                InputSpec {
+                    slot: parent.participant_slot,
+                    col: parent_weight_sum_col,
+                    unit_cost: 1.0,
+                },
+            ],
         },
         combine: CombineFn::EvalEML {
             tree_id: child_share_tree_id().0,
@@ -432,7 +370,7 @@ fn disburse_op(child_slot: u32, a_f_col: ColumnIndex, band: u32) -> AccumulatorO
         gate: GateSpec::OrderBand(band),
         scale: ScaleSpec::Identity,
         consume: ConsumeMode::AddToTarget,
-        targets: vec![(SlotIndex::new(child_slot), a_f_col)],
+        targets: vec![(child.participant_slot, child.cols.allocated_flow_col)],
     }
 }
 

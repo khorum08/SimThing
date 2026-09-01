@@ -182,8 +182,18 @@ fn resolve_sparse_input_lists(
         return Ok(());
     }
 
-    let sparse_upload = PackedAccumulatorUpload::from_ops_resolving_input_lists(&sparse_ops)
-        .map_err(|err| ResourceFlowSyncError::SparseInputListEncoding(err.to_string()))?;
+    let sparse_upload = {
+        let uploaded_eml = &state
+            .accumulator_runtime
+            .as_ref()
+            .expect("resource-flow runtime exists after logical upload")
+            .eml_registry;
+        PackedAccumulatorUpload::from_ops_resolving_input_lists_with_eml(
+            &sparse_ops,
+            Some(uploaded_eml),
+        )
+        .map_err(|err| ResourceFlowSyncError::SparseInputListEncoding(err.to_string()))?
+    };
     let mut patched_gpu_ops = state
         .accumulator_runtime
         .as_ref()

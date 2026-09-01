@@ -384,13 +384,13 @@ pub use spec::channel_key::{
     OwnerChannelScopeKey, OwnerRef, ParentLocationId, ResourceKey, ScopeId,
 };
 pub use spec::constrained_clearing::{
-    clear_constrained_claims_at_generation, clear_reduced_owner_channels,
-    clear_reduced_owner_channels_at_generation, clear_stamped_owner_channels,
-    fund_unresolved_persistence, is_authored_until_dissolved, AuthoredClaimClearingData,
-    AuthoredClearingProgram, AuthoredPersistenceValuation, ClearingRemainderAuthority,
-    ConstrainedClaim, ConstrainedClearingError, ConstrainedClearingResult, ConstrainedGrant,
-    ConstrainedSupply, PersistenceConsequence, PersistenceConsequenceError,
-    PersistenceOverlayBinding, UnresolvedDemandObservation,
+    carry_unresolved_demand_to_next_generation, clear_constrained_claims_at_generation,
+    clear_reduced_owner_channels, clear_reduced_owner_channels_at_generation,
+    clear_stamped_owner_channels, fund_unresolved_persistence, is_authored_until_dissolved,
+    AuthoredClaimClearingData, AuthoredClearingProgram, AuthoredPersistenceValuation,
+    ClearingRemainderAuthority, ConstrainedClaim, ConstrainedClearingError,
+    ConstrainedClearingResult, ConstrainedGrant, ConstrainedSupply, PersistenceConsequence,
+    PersistenceConsequenceError, PersistenceOverlayBinding, UnresolvedDemandObservation,
 };
 pub use spec::contention_conservation_judge::{
     judge_conservation, ChannelBound, ConservationJudgeReason, ConservationSnapshot,

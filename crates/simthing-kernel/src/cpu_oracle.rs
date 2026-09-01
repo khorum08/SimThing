@@ -366,14 +366,14 @@ fn gather_and_combine(
                 for offset in 0..*count {
                     sum += values[idx(start.saturating_add(offset).raw(), col.raw_u32(), n_dims)];
                 }
-                Ok(sum)
+                Ok(apply_scale(sum, &op.scale))
             }
             SourceSpec::ConjunctiveCrossing { inputs } => {
                 let mut sum = 0.0f32;
                 for input in inputs {
                     sum += values[idx(input.slot.raw(), input.col.raw_u32(), n_dims)];
                 }
-                Ok(sum)
+                Ok(apply_scale(sum, &op.scale))
             }
             _ => Err(CpuOracleError::Unsupported(
                 "Sum without SlotRange or InputList",

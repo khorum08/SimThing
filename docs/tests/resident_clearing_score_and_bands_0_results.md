@@ -1,7 +1,7 @@
 # RESIDENT-CLEARING-SCORE-AND-BANDS-0 results
 
 > **Status: PROBATION / archaeology-first / ordering-audit-complete /
-> implementation-pending / DA-review-pending / UNMERGED.** Coding lane only;
+> proof-present / DA-review-pending / UNMERGED.** Coding lane only;
 > no merge, graduation, pointer movement, closeout apply, apportionment, cutover,
 > or 14.4+ work.
 
@@ -75,6 +75,129 @@ parity: those are explicitly owned by 14.4 and 14.5 respectively.
 | 8 — additive subtree pressure | Retain `CombineFn::Sum` over the admitted child span/list. No alternate ledger or fold. |
 | 11 — unresolved demand recurrence | Carry `U(N)` by neutral identity exactly once into the same `RuntimeOwnerSiloDemandBucket` at N+1 through existing `GenerationStamped<T>` Current-to-Next transport. No new lane, column, demand type, or authored bridge. |
 
+## Implemented direct resident allocation binding
+
+The resident allocator continues to use the existing `AccumulatorOp`, packed
+`INPUT_LIST`, `EvalEML`, `AllocatorWeight`, and `AllocatedFlow` vocabulary.
+There is no new economic row, column, lane, role newtype, semantic adapter, or
+clearing-owned score layer.
+
+The child-share operation now binds its declared input-list rows as:
+
+```text
+PARAM(0) = parent intrinsic-flow authority
+PARAM(1) = parent AllocatedFlow (the live level-N cell)
+PARAM(2) = parent direct-child weight sum
+SLOT_VALUE(weight_col) = target child's resident AllocatorWeight
+target = child AllocatedFlow (level N+1)
+```
+
+The packed encoder admits at most four `EvalEML` parameter inputs and exactly
+one target eval slot. WGSL reads those cells directly in declared logical order.
+The pre-existing broadcast bands remain as stage indices for ABI/band stability,
+but contain no materialization operations. The three frozen `propagated_*`
+column references remain in `NodeColumnRefs` for frozen layout compatibility and
+have zero read/write use in the allocator plan. Residual closure now applies the
+existing constant scale to the direct child-`AllocatedFlow` sum, eliminating its
+former scratch copy as well.
+
+The live witness is a D3 chain:
+
+```text
+root intrinsic supply 8
+  -> child AllocatedFlow 8
+       -> direct PARAM(1) at the next recursive allocator
+            -> grandchild AllocatedFlow 8
+```
+
+CPU oracle and production GPU output match by `f32::to_bits`. Compact physical
+rows `[0,1,2]` and rebound sparse rows `[129,65,3]` produce the same normalized
+direct-allocation `[8,8]` bits. The same live sessions then sum the child
+`AllocatedFlow` with `ScaleSpec::Constant(-1)` and produce residual input `-8`
+bit-exactly, without a propagated negative cell. A six-chain plan crosses the
+64-invocation workgroup boundary and retains all three bits. Replacing the
+direct parent cell with the old propagated column is a planted defect and
+diverges.
+
+## Row-11 ordinary unresolved-demand recurrence
+
+`carry_unresolved_demand_to_next_generation` consumes an optional
+`UnresolvedDemandObservation`, adds its `u` once to the claimant's independently
+produced `d'`, and returns the **same** `RuntimeOwnerSiloDemandBucket` inside the
+existing `GenerationStamped<T>` carrier at exactly N+1. It checks the observed
+generation, full RF scope, source identity, and checked arithmetic. It has no
+EML, CostBand, Overlay, new column, new demand type, or alternate persistence
+lane. `fund_unresolved_persistence` remains optional secondary deformation.
+
+Five-part falsifier result:
+
+| Requirement | Witness |
+|---|---|
+| `d' + u` without authored path | N demand 10, supply 4 produces `u=6`; independent `d'=2` becomes the ordinary N+1 demand 8 through the neutral function whose signature has no authored program. |
+| exactly once; parent once | N+1 claim `requested=8`; the explicit double-carry mutant would be 14 and REDs. |
+| N unchanged; no same-generation re-clear | original demand remains 10 and grant remains `(requested=10, granted=4, unresolved=6)`; output stamp is 11; an observation/current-generation mismatch refuses. |
+| later supply drains U | N+1 supply 8 grants 8 and yields `unresolved=0`; no further observation is minted. |
+| `u=0` negative control | `None` produces a stamped product equal to the input `RuntimeOwnerSiloDemandBucket` in every field. |
+
+## Physical-order invariance
+
+The canonical clearing witness perturbs all non-authoritative schedule/layout
+inputs before invoking the settled CPU oracle:
+
+| Axis | Perturbation | Result |
+|---|---|---|
+| claim upload | three different arrival permutations | identical canonical snapshots |
+| physical row / epoch rebind | compact and sparse/permuted row addresses | identical D3 CPU/GPU normalized bits |
+| scope segment storage | segment ids permuted; supply vector reversed | identical canonical scope order |
+| workgroup scheduling | simulated legal scheduling widths 16, 32, and 64 change arrival order | identical score bits, equality bands, claimant total order, grants |
+| dispatch partition | 1, 3, and 4 arrival partitions plus actual one-workgroup vs multi-workgroup resident dispatch cardinality | identical canonical snapshots / D3 bits |
+| atomic append tie resolver | planted first-arrival winner over an exact tie | different physical schedules choose different winners: **RED** |
+
+Logical full scope, EML score bits, claimant identity, and granter generation are
+the only clearing authorities. The actual resident `AccumulatorOp` shader has
+one admitted compile-time workgroup size in this rung; 14.3 does not mint a
+second shader/pipeline variant merely to add another physical choice. The
+scheduling-width perturbation proves the economic oracle is independent of any
+future lawful partition shape, while the actual GPU witness covers compact,
+sparse-rebound, and one- versus multi-workgroup dispatch cardinalities.
+
+## File census
+
+| Class | Files | Purpose |
+|---|---|---|
+| direct allocator | `crates/simthing-driver/src/{arena_allocation_plan.rs,arena_allocation_oracle.rs,arena_allocation_sync.rs,child_share_eml.rs}` | direct parent-cell plan, CPU oracle, packed-list sync, parameterized child-share EML |
+| established kernel execution | `crates/simthing-kernel/src/accumulator_op/{encode.rs,packed_session_upload.rs}`, `crates/simthing-kernel/src/{cpu_oracle.rs,shaders/accumulator_op.wgsl}` | bounded input-list parameter admission/upload; scaled sums; direct resident input reads |
+| row-11 law | `crates/simthing-spec/src/spec/constrained_clearing.rs`, re-exports in `spec/mod.rs` and `lib.rs` | same-`T_d` neutral Current-to-Next recurrence |
+| proof | `crates/simthing-workshop/tests/resident_clearing_score_and_bands_0.rs`, `scripts/ci/test_inventory.tsv` | D3 live GPU chain, five-part recurrence, physical-order/mutant falsifiers |
+| evidence | this file, `docs/tests/current_evidence_index.md`, `scripts/ci/anchor_reach_log.tsv` | ordering audit, durable return, doctrine reach |
+
+## Source/evidence split
+
+Production source changes are restricted to the direct allocator binding,
+existing generic packed-EvalEML execution, scaled-sum semantics already named
+by `ScaleSpec`, and the same-demand recurrence. Workshop contains only the
+consumer/referee. Documentation, inventory, and reach logs are evidence only.
+
+## Test evidence
+
+- `cargo test -p simthing-workshop --test resident_clearing_score_and_bands_0`
+  — 3 passed, including live GPU on NVIDIA RTX 4080 Laptop GPU / Vulkan.
+- `cargo test -p simthing-driver --test arena_participant_elimination_0`
+  — 2 passed on the same GPU; existing sparse INPUT_LIST and fission/replay
+  production paths remain bit-exact.
+- `cargo test -p simthing-driver --test cpu_gpu_parity_matrix_0` — 2 passed,
+  including all planted-defect REDs.
+- `cargo test -p simthing-driver --test plan_struct_typing_0` — 4 passed.
+- `cargo test -p simthing-spec --lib` — 14 passed; `cargo test -p
+  simthing-driver --lib` — 17 passed; `cargo test -p simthing-kernel --lib` —
+  42 passed.
+- `bash scripts/ci/test_inventory_check.sh` and `bash
+  scripts/ci/test_inventory_drift_check.sh` — PASS (`1373` discovered,
+  missing/unledgered/stale `0`).
+
+Exact-head clearance, relay lint, and full certification are recorded in the PR
+return rather than hard-coding a self-referential head here.
+
 ## Evidence/source split at first step
 
 Evidence added in this first step:
@@ -82,5 +205,5 @@ Evidence added in this first step:
 - this ordering audit;
 - doctrine reach rows emitted by first-hand anchor queries.
 
-Executable source delta at this checkpoint: **none**.
-
+Executable source delta at that checkpoint: **none**. Commit `f74fa6ad` preserves
+the audit as the first branch commit before all executable edits.

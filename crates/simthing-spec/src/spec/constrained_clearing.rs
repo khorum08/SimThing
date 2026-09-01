@@ -9,8 +9,8 @@ use std::collections::{BTreeMap, BTreeSet};
 use simthing_core::{
     admit_dispatch_minted_overlay, cost_band_quantize, dispatch_until_dissolved,
     CostBandAdmissionError, CostBandDraw, DispatchOverlayError, DissolveCondition, GenerationStamp,
-    Overlay, OverlayId, OverlayKind, OverlayLifecycle, OverlaySource, PropertyTransformDelta,
-    SimThingId, TransformOp,
+    GenerationStamped, Overlay, OverlayId, OverlayKind, OverlayLifecycle, OverlaySource,
+    PropertyTransformDelta, SimThingId, TransformOp,
 };
 use thiserror::Error;
 
@@ -241,6 +241,16 @@ pub enum ConstrainedClearingError {
     DemandDoesNotMatchReducedClaim { source_id: SimThingId },
     #[error("owner-channel clearing arithmetic overflow")]
     ArithmeticOverflow,
+    #[error("current generation cannot advance to the unresolved-demand N+1 plane")]
+    UnresolvedDemandGenerationOverflow,
+    #[error(
+        "unresolved demand observed at generation {observed} cannot recur from current generation {current}"
+    )]
+    UnresolvedDemandGenerationMismatch { observed: u32, current: u32 },
+    #[error("unresolved demand cannot recur into a different owner-channel scope")]
+    UnresolvedDemandScopeMismatch,
+    #[error("unresolved demand cannot recur under a different source SimThing")]
+    UnresolvedDemandSourceMismatch,
 }
 
 #[derive(Clone)]
@@ -520,6 +530,55 @@ impl UnresolvedDemandObservation {
             observed_generation: generation,
         })
     }
+}
+
+/// Carry ordinary unresolved `T_d` from generation N into the same demand
+/// product at N+1 exactly once.
+///
+/// `next_demand` is the claimant's independently produced `d'` for N+1. The
+/// neutral recurrence adds `u` without EML, CostBand, Overlay, a new demand
+/// type, or a side lane, and returns the established generation-stamped
+/// Current-to-Next carrier. Consuming the optional observation in this one
+/// operation makes the ordinary path one addition, while `None` preserves the
+/// next product byte-for-byte.
+pub fn carry_unresolved_demand_to_next_generation(
+    current_generation: GenerationStamp,
+    mut next_demand: RuntimeOwnerSiloDemandBucket,
+    unresolved: Option<UnresolvedDemandObservation>,
+) -> Result<GenerationStamped<RuntimeOwnerSiloDemandBucket>, ConstrainedClearingError> {
+    let next_generation = GenerationStamp::new(
+        current_generation
+            .get()
+            .checked_add(1)
+            .ok_or(ConstrainedClearingError::UnresolvedDemandGenerationOverflow)?,
+    );
+
+    if let Some(unresolved) = unresolved {
+        if unresolved.observed_generation != current_generation {
+            return Err(
+                ConstrainedClearingError::UnresolvedDemandGenerationMismatch {
+                    observed: unresolved.observed_generation.get(),
+                    current: current_generation.get(),
+                },
+            );
+        }
+        if unresolved.scope != next_demand.scope_key() {
+            return Err(ConstrainedClearingError::UnresolvedDemandScopeMismatch);
+        }
+        let next_source = next_demand
+            .source_simthing_id_raw
+            .map(SimThingId::from_session_raw)
+            .ok_or(ConstrainedClearingError::MissingDemandSource)?;
+        if unresolved.source_simthing_id != next_source {
+            return Err(ConstrainedClearingError::UnresolvedDemandSourceMismatch);
+        }
+        next_demand.requested = next_demand
+            .requested
+            .checked_add(unresolved.unresolved)
+            .ok_or(ConstrainedClearingError::ArithmeticOverflow)?;
+    }
+
+    Ok(GenerationStamped::stamp(next_generation, next_demand))
 }
 
 /// Authored EML persistence valuation followed by the ordinary CostBand sink.

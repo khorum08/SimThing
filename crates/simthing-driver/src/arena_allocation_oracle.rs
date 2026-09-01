@@ -51,7 +51,7 @@ pub fn run_arena_allocation_oracle(
 ) -> ArenaAllocationOracleTrace {
     let mut trace = ArenaAllocationOracleTrace::default();
 
-    // Phase 0 — reset allocated_flow and per-tick internal columns.
+    // Phase 0 — reset allocated_flow and per-tick reduction columns.
     for node in layout.iter_all() {
         set(
             values,
@@ -66,24 +66,6 @@ pub fn run_arena_allocation_oracle(
             0.0,
         );
         set(values, node.participant_slot, node.cols.weight_sum_col, 0.0);
-        set(
-            values,
-            node.participant_slot,
-            node.cols.propagated_intrinsic_flow_col,
-            0.0,
-        );
-        set(
-            values,
-            node.participant_slot,
-            node.cols.propagated_allocated_flow_col,
-            0.0,
-        );
-        set(
-            values,
-            node.participant_slot,
-            node.cols.propagated_weight_sum_col,
-            0.0,
-        );
         trace.record_reset(node.participant_slot);
     }
 
@@ -143,55 +125,14 @@ pub fn run_arena_allocation_oracle(
                     parent.cols.intrinsic_flow_sum_col,
                 )
             };
-            let p_af = if depth == 0 {
-                0.0
-            } else {
-                get(
-                    values,
-                    parent.participant_slot,
-                    parent.cols.allocated_flow_col,
-                )
-            };
+            let p_af = get(
+                values,
+                parent.participant_slot,
+                parent.cols.allocated_flow_col,
+            );
             let p_ws = get(values, parent.participant_slot, parent.cols.weight_sum_col);
             for child in &parent.children {
-                set(
-                    values,
-                    child.participant_slot,
-                    child.cols.propagated_intrinsic_flow_col,
-                    p_if,
-                );
-                set(
-                    values,
-                    child.participant_slot,
-                    child.cols.propagated_allocated_flow_col,
-                    p_af,
-                );
-                set(
-                    values,
-                    child.participant_slot,
-                    child.cols.propagated_weight_sum_col,
-                    p_ws,
-                );
-            }
-        }
-        for parent in layout.iter_at_depth(depth) {
-            for child in &parent.children {
-                let p_if = get(
-                    values,
-                    child.participant_slot,
-                    child.cols.propagated_intrinsic_flow_col,
-                );
-                let p_af = get(
-                    values,
-                    child.participant_slot,
-                    child.cols.propagated_allocated_flow_col,
-                );
                 let w = get(values, child.participant_slot, child.cols.weight_col);
-                let p_ws = get(
-                    values,
-                    child.participant_slot,
-                    child.cols.propagated_weight_sum_col,
-                );
                 let share = child_share_cpu(p_if, p_af, w, p_ws);
                 add(
                     values,
