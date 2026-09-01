@@ -149,6 +149,7 @@ if str(reach_log).endswith("anchor_reach_log.tsv") and not reach_log.parent.exis
 
 ANCHOR_HEADER = ["anchor_id", "doc", "section", "trigger_domains", "content_hash", "lifecycle"]
 PENDING_RE = re.compile(r"^pending:[A-Z0-9][A-Z0-9-]*-[0-9]+$")
+UNTIL_RE = re.compile(r"^until:[A-Z0-9][A-Z0-9-]*-[0-9]+$")
 
 
 def normalize_text(raw: bytes) -> str:
@@ -234,7 +235,7 @@ def load_anchors():
                 sys.exit(1)
             seen.add(row["anchor_id"])
             lifecycle = row["lifecycle"].strip()
-            if lifecycle != "canonical" and not PENDING_RE.fullmatch(lifecycle):
+            if lifecycle != "canonical" and not PENDING_RE.fullmatch(lifecycle) and not UNTIL_RE.fullmatch(lifecycle):
                 print("ANCHOR-QUERY-VERDICT: FAIL(anchor-table)")
                 sys.exit(1)
             domains = [d.strip() for d in (row.get("trigger_domains") or "").split(",") if d.strip()]
@@ -463,6 +464,23 @@ run_selftest() {
   else
     echo "PASS query_grep_miss"
   fi
+  out="$(DOMAIN_ARG=rf-market-core run_query_python domain || true)"
+  if ! printf '%s
+' "$out" | grep -q "rf-market"; then
+    echo "FAIL query_domain_until_lifecycle"; echo "  got: $out"; failures=$((failures+1))
+  else
+    echo "PASS query_domain_until_lifecycle"
+  fi
+  printf 'bad-anchor	docs/simthing_core_design.md	heading:## 1. The SimThing Principle — one closed recursive stem-cell kernel	bad-domain	0000000000000000000000000000000000000000000000000000000000000000	expired:NOPE-0
+' >>"$tmp/doctrine_anchors.tsv"
+  out="$(DOMAIN_ARG=gate-wiring run_query_python domain 2>&1 || true)"
+  if ! printf '%s
+' "$out" | grep -q "FAIL(anchor-table)"; then
+    echo "FAIL query_malformed_lifecycle_rejected"; echo "  got: $out"; failures=$((failures+1))
+  else
+    echo "PASS query_malformed_lifecycle_rejected"
+  fi
+  cp "$ANCHORS_TSV" "$tmp/doctrine_anchors.tsv"
   local rows_before rows_after
   rows_before="$(wc -l <"$tmp/anchor_reach_log.tsv" | tr -d ' ')"
   GREP_ARG="Movement-Front"
