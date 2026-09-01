@@ -239,6 +239,17 @@ struct ScoredRow {
     score: f32,
 }
 
+/// D1 seam: the signed remainder is plain i64 subtraction; negatives are retained.
+pub fn signed_construction_remainder_ns(
+    enclosing_ns: i64,
+    grouping_ns: i64,
+    scoring_ns: i64,
+    sorting_ns: i64,
+    apportion_ns: i64,
+) -> i64 {
+    enclosing_ns - grouping_ns - scoring_ns - sorting_ns - apportion_ns
+}
+
 pub fn leg_definitions() -> Vec<LegDefinition> {
     vec![
         LegDefinition {
@@ -980,7 +991,13 @@ fn run_sample(
             .sum::<u64>();
     }
 
-    let construction_ns = enclosing_ns - grouping_ns - scoring_ns - sorting_ns - apportion_ns;
+    let construction_ns = signed_construction_remainder_ns(
+        enclosing_ns,
+        grouping_ns,
+        scoring_ns,
+        sorting_ns,
+        apportion_ns,
+    );
 
     add(&mut ns, "host_conversion_grouping", grouping_ns);
     add(&mut ns, "eml_scoring", scoring_ns);
