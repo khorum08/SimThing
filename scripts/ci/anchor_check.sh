@@ -90,6 +90,7 @@ gen_orientation = pathlib.Path(os.environ["ANCHOR_GEN_ORIENTATION"])
 bash_bin = os.environ.get("ANCHOR_BASH", "bash")
 ANCHOR_HEADER = ["anchor_id", "doc", "section", "trigger_domains", "content_hash", "lifecycle"]
 PENDING_RE = re.compile(r"^pending:([A-Z0-9][A-Z0-9-]*-[0-9]+)$")
+UNTIL_RE = re.compile(r"^until:([A-Z0-9][A-Z0-9-]*-[0-9]+)$")
 CANONIZATION_RUNG = "CORE-CANONIZATION-0"
 
 
@@ -192,7 +193,7 @@ def load_rows():
                 fail("anchor-table")
             seen.add(row["anchor_id"])
             lifecycle = row["lifecycle"].strip()
-            if lifecycle != "canonical" and not PENDING_RE.fullmatch(lifecycle):
+            if lifecycle != "canonical" and not PENDING_RE.fullmatch(lifecycle) and not UNTIL_RE.fullmatch(lifecycle):
                 fail("anchor-table")
             rows.append(row)
     if not rows:
@@ -248,7 +249,8 @@ def load_rung_truth():
 
 def pending_dispositions(rows):
     pending = [row for row in rows if row["lifecycle"].startswith("pending:")]
-    if not pending:
+    until = [row for row in rows if row["lifecycle"].startswith("until:")]
+    if not pending and not until:
         return []
     truth = load_rung_truth()
     canonized = truth.get(CANONIZATION_RUNG) == "completed"
@@ -265,6 +267,19 @@ def pending_dispositions(rows):
         else:
             disposition = "ORPHANED"
             reason = f"minting-rung-{mint_state}"
+        out.append((row, disposition, rung, reason))
+    for row in until:
+        rung = row["lifecycle"].split(":", 1)[1]
+        consumer_state = truth.get(rung, "absent")
+        if consumer_state == "open":
+            disposition = "PENDING-HEALTHY"
+            reason = "consumer-rung-open"
+        elif consumer_state == "completed":
+            disposition = "STALE-PENDING"
+            reason = "consumer-rung-graduated"
+        else:
+            disposition = "ORPHANED"
+            reason = f"consumer-rung-{consumer_state}"
         out.append((row, disposition, rung, reason))
     return out
 
@@ -592,6 +607,55 @@ run_pending_selftests() {
     echo "PASS pending_missing_rung_orphaned"
   else
     echo "FAIL pending_missing_rung_orphaned"; echo "  got: $out"
+    SELFTEST_FAILURES=$((SELFTEST_FAILURES + 1))
+  fi
+
+  write_until_row() {
+    local anchor_id="$1" rung="$2"
+    printf 'anchor_id\tdoc\tsection\ttrigger_domains\tcontent_hash\tlifecycle\n' >"$tmp/doctrine_anchors.tsv"
+    printf '%s\tdocs/sample.md\tlines:1-2\ttest-domain\t%s\tuntil:%s\n' \
+      "$anchor_id" "$hash" "$rung" >>"$tmp/doctrine_anchors.tsv"
+  }
+
+  write_until_row until-healthy-anchor HEALTHY-RUNG-0
+  write_design 'TODO' 'DA-GRADUATED / merged #2 @ abcdef1'
+  out="$(run_python pending 2>&1 || true)"
+  if printf '%s\n' "$out" | grep -q 'disposition=PENDING-HEALTHY anchor_id=until-healthy-anchor rung=HEALTHY-RUNG-0 .*reason=consumer-rung-open'; then
+    echo "PASS until_consumer_open_healthy"
+  else
+    echo "FAIL until_consumer_open_healthy"; echo "  got: $out"
+    SELFTEST_FAILURES=$((SELFTEST_FAILURES + 1))
+  fi
+  if out="$(run_python check 2>&1)" && printf '%s\n' "$out" | grep -q 'ANCHOR-CHECK-VERDICT: PASS'; then
+    echo "PASS until_consumer_open_check_green"
+  else
+    echo "FAIL until_consumer_open_check_green"; echo "  got: $out"
+    SELFTEST_FAILURES=$((SELFTEST_FAILURES + 1))
+  fi
+
+  write_until_row until-stale-anchor HEALTHY-RUNG-0
+  write_design 'DA-GRADUATED / merged #1 @ abcdef0' 'DA-GRADUATED / merged #2 @ abcdef1'
+  set +e
+  out="$(run_python pending 2>&1)"
+  local until_check_out
+  until_check_out="$(run_python check 2>&1)"
+  rc=$?
+  set -e
+  if printf '%s\n' "$out" | grep -q 'disposition=STALE-PENDING anchor_id=until-stale-anchor .*reason=consumer-rung-graduated' \
+      && [[ "$rc" -ne 0 ]] && printf '%s\n' "$until_check_out" | grep -q 'FAIL(stale-pending)'; then
+    echo "PASS until_consumer_graduated_stale"
+  else
+    echo "FAIL until_consumer_graduated_stale"; echo "  got: $out / $until_check_out"
+    SELFTEST_FAILURES=$((SELFTEST_FAILURES + 1))
+  fi
+
+  write_until_row until-orphan-anchor MISSING-RUNG-0
+  write_design 'TODO' 'TODO'
+  out="$(run_python pending 2>&1 || true)"
+  if printf '%s\n' "$out" | grep -q 'disposition=ORPHANED anchor_id=until-orphan-anchor .*reason=consumer-rung-absent'; then
+    echo "PASS until_consumer_missing_orphaned"
+  else
+    echo "FAIL until_consumer_missing_orphaned"; echo "  got: $out"
     SELFTEST_FAILURES=$((SELFTEST_FAILURES + 1))
   fi
 
