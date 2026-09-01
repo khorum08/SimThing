@@ -5,13 +5,13 @@
 > no merge, graduation, pointer movement, closeout apply, apportionment, cutover,
 > or 14.4+ work.
 
-**Date:** 2026-09-01  
-**Owner handoff:** Board issue `#1332`, comment `5494489777`  
-**Exact handoff base:** `8b5740978186d75b080b65e32b77b3d84eef3520`  
+**Date:** 2026-09-01
+**Owner handoff:** Board issue `#1332`, comment `5494489777`
+**Exact handoff base:** `8b5740978186d75b080b65e32b77b3d84eef3520`
 **Prior graduated rung:** `RESIDENT-CLEARING-PLAN-0`, PR `#1911`,
-`217e8fca`  
-**ORIENT-RECEIPT (first-hand):** `26ec91084cea`  
-**orientation_rule_stamp:** `0310b6f6a40140be`  
+`217e8fca`
+**ORIENT-RECEIPT (first-hand):** `26ec91084cea`
+**orientation_rule_stamp:** `0310b6f6a40140be`
 **orientation_digest_sha:**
 `42ba9690ed79d63da4aa524b45883f4bd28c98c7b0e24e1fa1c9d55dd35a3854`
 
