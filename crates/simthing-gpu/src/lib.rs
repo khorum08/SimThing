@@ -11,6 +11,7 @@ pub mod candidate_f_magnitude;
 pub mod field_sweep_instances;
 pub mod min_plus_stencil;
 pub mod min_plus_traversal_d_probe;
+pub mod resident_clearing_plan;
 pub mod saturating_flux_choke_threshold;
 pub mod stress_compose;
 pub mod structural_upload;
@@ -55,6 +56,14 @@ pub use min_plus_stencil::{
 pub use min_plus_traversal_d_probe::{
     cpu_probe_d_at_candidates, MinPlusTraversalDProbeConfig, MinPlusTraversalDProbeError,
     MinPlusTraversalDProbeOp, MinPlusTraversalDProbeResult, TRAVERSAL_D_PROBE_MAX_CANDIDATES,
+};
+pub use resident_clearing_plan::{
+    ResidentBufferDescriptor, ResidentClearingAbi, ResidentClearingBufferOwner,
+    ResidentClearingBuffers, ResidentClearingGpuError, ResidentClearingHeaderGpu,
+    ResidentClearingRowGpu, ResidentGenerationAdvance, ResidentOwnerGpu, ResidentSemanticIdGpu,
+    RESIDENT_BUFFER_DRAWS, RESIDENT_BUFFER_HEADER, RESIDENT_BUFFER_OWNERS,
+    RESIDENT_BUFFER_RESOURCES, RESIDENT_BUFFER_ROWS, RESIDENT_BUFFER_SCOPES,
+    RESIDENT_BUFFER_SCRATCH, RESIDENT_CLEARING_ABI_VERSION, RESIDENT_CLEARING_BUFFER_ALIGNMENT,
 };
 pub use saturating_flux_choke_threshold::{
     cpu_choke_threshold_oracle, pass1_workgroup_count, SaturatingFluxChokeThresholdConfig,

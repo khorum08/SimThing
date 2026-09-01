@@ -35,6 +35,7 @@ pub mod reduction;
 pub mod reduction_orderband;
 pub mod registration;
 mod residency_placement;
+pub mod resident_clearing_plan;
 pub mod resolved;
 pub mod sealed;
 pub mod slot;
@@ -143,6 +144,14 @@ pub use residency_placement::{
     ResidencyExtentError, ResidencyPlacementDisposition, ResidencyPlacementError,
     ResidencyPlacementIdentity, ResidencyPlacementOutcome, ResidencyPlacementRefusal,
     ResidencyPlacementRefusalReason, ResidencyRelocationOutcome, ResidencySessionTermination,
+};
+pub use resident_clearing_plan::{
+    DenseOrdinalRange, ResidentClearingAdmission, ResidentClearingBudgets,
+    ResidentClearingDictionaries, ResidentClearingPlan, ResidentClearingPlanBinding,
+    ResidentClearingPlanError, ResidentClearingRanges, ResidentClearingReplayEnvelope,
+    ResidentClearingReplayError, ResidentClearingRow, ResidentDrawId, ResidentDrawOrdinal,
+    ResidentOwnerId, ResidentOwnerOrdinal, ResidentPlanContext, ResidentResourceId,
+    ResidentResourceOrdinal, ResidentScopeId, ResidentScopeOrdinal, SemanticPlanDigest,
 };
 pub use resolved::ResolvedGpuBuffers;
 pub use sealed::{

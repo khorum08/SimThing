@@ -11,11 +11,11 @@ This digest is a derived context artifact for low-context agents. If it disagree
 | --- | --- | --- |
 | scripts/ci/allow/sealed_producers.txt | 25 | 6923796f3bacd3b27b29f778d5276c3f82a3a67c3f010c30f10b78de8a1866f6 |
 | scripts/ci/allow/inert_buffer_handles.txt | 2 | 9e2069fa5730f17cacde1c671ebc17beb59f50738d2dcb914bceae13f9b8b3a4 |
-| scripts/ci/allow/kernel_surface.txt | 303 | d6bc11a03b392def0fa6161e22bf010ab4024b22d90754e3db9bcdd427c0ed12 |
+| scripts/ci/allow/kernel_surface.txt | 325 | ffac809a72e0c423463c01c3960739ea374c1b22b509e072128a7417b6b254a2 |
 | scripts/ci/allow/sealed_types.txt | 19 | 9d427e3b41a586b06f24ca02cc45f78934237d2229b0c38d46e2a8a6ef5016be |
 | scripts/ci/allow/contention_mechanisms.txt | 9 | 1f9e930b44197d4254f46ea96328f814d9ba0f2dad06881c454aebc01c01d44b |
 | scripts/ci/scans.tsv | 24 | 36bf78ae4a81a9c49b570051a0f53cb10aa88ab5cf57faa0a05d83abfd068e79 |
-| scripts/ci/constitutional_surfaces.tsv | 39 | c0f664b71345deda6924589fca1babad00b3e5d636124f221a092933e8f8f750 |
+| scripts/ci/constitutional_surfaces.tsv | 39 | 1f35648d3e4559a7d00b077b9bc771b8c8d2982fea9e696ae97a1bc585131d7b |
 | scripts/ci/constitutional_surface_check.sh | 870 | d0cb347d1ecd5818444a3284d95665d97fd0f3dc96f37a11d36b20d0cb2c9ed5 |
 
 ## Sanctioned Sealed Producers
@@ -362,6 +362,28 @@ This digest is a derived context artifact for low-context agents. If it disagree
 | eml_ln_qualification | authority-export | EML-LN-PRIMITIVE-0 pinned exhaustive-qualification artifacts and certified roster | retire if qualification pinning becomes wholly kernel-internal | kernel_surface.txt |
 | ln_primitive_domain | authority-export | EML-LN-PRIMITIVE-0 canonical positive-normal LN interval constructor | retire if exact primitive call-site admission becomes wholly kernel-internal | kernel_surface.txt |
 | GrowthResidencyCommit | sealed-export | STEMTHING-B-GROWTH-ENTITLEMENT-SEAM-0 consumed product joining real 11.2a grant provenance to committed 11.2b placement before ordinary structural attachment | retire when the ordinary structural mutation boundary is wholly kernel-internal | kernel_surface.txt |
+| resident_clearing_plan | authority-export | RESIDENT-CLEARING-PLAN-0 final-home deterministic resident economic-resolution plan namespace; no score band apportionment or dispatch semantics | retire when Phase 14 construction and consumption are wholly kernel-internal | kernel_surface.txt |
+| DenseOrdinalRange | authority-export | RESIDENT-CLEARING-PLAN-0 checked half-open dense ordinal range with overflow-refusing construction | retire when resident layout construction is wholly kernel-internal | kernel_surface.txt |
+| ResidentClearingAdmission | authority-export | RESIDENT-CLEARING-PLAN-0 typed semantic owner resource scope draw admission row | retire when all resident plan inputs lower through a narrower kernel door | kernel_surface.txt |
+| ResidentClearingBudgets | authority-export | RESIDENT-CLEARING-PLAN-0 checked count semantic-byte resident-byte and scratch admission envelope | retire when all admitted budgets lower through a narrower kernel door | kernel_surface.txt |
+| ResidentClearingDictionaries | sealed-export | RESIDENT-CLEARING-PLAN-0 read-only canonical total-order dictionary product minted by ResidentClearingPlan | retire when dictionary observation and GPU lowering are wholly kernel-internal | kernel_surface.txt |
+| ResidentClearingPlan | authority-export | RESIDENT-CLEARING-PLAN-0 immutable final-home deterministic plan construction and destination seam-remap door | retire when Phase 14 plan construction is only reachable through the standard simulation lifecycle | kernel_surface.txt |
+| ResidentClearingPlanBinding | sealed-export | RESIDENT-CLEARING-PLAN-0 checked realm incarnation generation and digest binding product | retire when plan-to-GPU binding is wholly kernel-internal | kernel_surface.txt |
+| ResidentClearingPlanError | authority-export | RESIDENT-CLEARING-PLAN-0 typed admission context seam and arithmetic refusal surface | retire when resident plan construction has no external caller | kernel_surface.txt |
+| ResidentClearingRanges | authority-export | RESIDENT-CLEARING-PLAN-0 typed range bundle consumed by the final GPU representation | retire when GPU ABI lowering is wholly kernel-internal | kernel_surface.txt |
+| ResidentClearingReplayEnvelope | authority-export | RESIDENT-CLEARING-PLAN-0 consumer-owned non-serde replay ceilings admitted before any wire-controlled reservation | retire when every replay consumer obtains the envelope through the standard session loader | kernel_surface.txt |
+| ResidentClearingReplayError | authority-export | RESIDENT-CLEARING-PLAN-0 typed transport-versus-plan replay refusal preserving domain variants and fields | retire when every replay consumer lowers through a session-owned transport adapter | kernel_surface.txt |
+| ResidentClearingRow | sealed-export | RESIDENT-CLEARING-PLAN-0 private-field canonical four-axis ordinal row minted only by plan construction | retire when GPU ABI lowering is wholly kernel-internal | kernel_surface.txt |
+| ResidentDrawId | authority-export | RESIDENT-CLEARING-PLAN-0 typed semantic draw identity input | retire when draw identity lowers through a narrower kernel door | kernel_surface.txt |
+| ResidentDrawOrdinal | sealed-export | RESIDENT-CLEARING-PLAN-0 private-constructor destination-local draw ordinal | retire when GPU ABI lowering is wholly kernel-internal | kernel_surface.txt |
+| ResidentOwnerId | authority-export | RESIDENT-CLEARING-PLAN-0 realm-qualified owner identity input excluding raw foreign ordinals | retire when owner identity lowers through a narrower kernel door | kernel_surface.txt |
+| ResidentOwnerOrdinal | sealed-export | RESIDENT-CLEARING-PLAN-0 private-constructor destination-local owner ordinal | retire when GPU ABI lowering and seam observation are wholly kernel-internal | kernel_surface.txt |
+| ResidentPlanContext | sealed-export | RESIDENT-CLEARING-PLAN-0 generation-independent semantic realm and root plan binding | retire when plan context observation is wholly kernel-internal | kernel_surface.txt |
+| ResidentResourceId | authority-export | RESIDENT-CLEARING-PLAN-0 typed semantic resource identity input | retire when resource identity lowers through a narrower kernel door | kernel_surface.txt |
+| ResidentResourceOrdinal | sealed-export | RESIDENT-CLEARING-PLAN-0 private-constructor destination-local resource ordinal | retire when GPU ABI lowering is wholly kernel-internal | kernel_surface.txt |
+| ResidentScopeId | authority-export | RESIDENT-CLEARING-PLAN-0 typed semantic scope identity input | retire when scope identity lowers through a narrower kernel door | kernel_surface.txt |
+| ResidentScopeOrdinal | sealed-export | RESIDENT-CLEARING-PLAN-0 private-constructor destination-local scope ordinal | retire when GPU ABI lowering is wholly kernel-internal | kernel_surface.txt |
+| SemanticPlanDigest | sealed-export | RESIDENT-CLEARING-PLAN-0 canonical semantic plan digest minted from checked deterministic bytes | retire when digest observation and GPU lowering are wholly kernel-internal | kernel_surface.txt |
 
 ## Sealed Types
 
