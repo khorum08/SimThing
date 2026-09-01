@@ -374,7 +374,8 @@ pub use runtime_participant_state_mutation_compile::{
     compile_runtime_participant_state_mutation_plan, RuntimeParticipantStateMutationPlan,
 };
 pub use runtime_rf_tick_compile::{
-    compile_runtime_rf_tick_plan, RuntimeRfTickGpuProofSummary, RuntimeRfTickPlan,
+    compile_runtime_rf_tick_plan, produce_runtime_rf_next_generation_demands_for_tick,
+    RuntimeRfTickGpuProofSummary, RuntimeRfTickPlan,
 };
 pub use runtime_rf_tick_source_compile::{
     compile_runtime_rf_tick_source_comparison_plan,

@@ -6,8 +6,9 @@
 > or 14.4+ work.
 
 **Date:** 2026-09-01
-**Owner handoff:** Board issue `#1332`, comment `5494489777`
+**Owner handoff:** Board issue `#1332`, continuation-remand comment `5495298523`
 **Exact handoff base:** `8b5740978186d75b080b65e32b77b3d84eef3520`
+**Accepted pre-remand head:** `00434713fd974c2a961cca1022cf308b917fbb53`
 **Prior graduated rung:** `RESIDENT-CLEARING-PLAN-0`, PR `#1911`,
 `217e8fca`
 **ORIENT-RECEIPT (first-hand):** `26ec91084cea`
@@ -73,7 +74,7 @@ parity: those are explicitly owned by 14.4 and 14.5 respectively.
 | 4 — pressure to continuous allocation | Reuse `child_share_formula` and the existing allocator columns; the formula reads the admitted direct-child weight and parent aggregate. |
 | 5 — continuous child share | Bind level-N `AllocatedFlow` directly as an input to the same `EvalEML` allocator operation that writes child level N+1 `AllocatedFlow`. Remove the propagated economic copy. |
 | 8 — additive subtree pressure | Retain `CombineFn::Sum` over the admitted child span/list. No alternate ledger or fold. |
-| 11 — unresolved demand recurrence | Carry `U(N)` by neutral identity exactly once into the same `RuntimeOwnerSiloDemandBucket` at N+1 through existing `GenerationStamped<T>` Current-to-Next transport. No new lane, column, demand type, or authored bridge. |
+| 11 — unresolved demand recurrence | The runtime RF Current→Next production door performs the N clear, consumes every resulting `U(N)` by neutral identity exactly once into the same `RuntimeOwnerSiloDemandBucket` at N+1, and returns the existing `GenerationStamped<T>` carrier. No caller-supplied observation/result slice, lane, column, demand type, or authored bridge. |
 
 ## Implemented direct resident allocation binding
 
@@ -121,23 +122,35 @@ diverges.
 
 ## Row-11 ordinary unresolved-demand recurrence
 
-`carry_unresolved_demand_to_next_generation` consumes an optional
-`UnresolvedDemandObservation`, adds its `u` once to the claimant's independently
-produced `d'`, and returns the **same** `RuntimeOwnerSiloDemandBucket` inside the
-existing `GenerationStamped<T>` carrier at exactly N+1. It checks the observed
-generation, full RF scope, source identity, and checked arithmetic. It has no
-EML, CostBand, Overlay, new column, new demand type, or alternate persistence
+`produce_runtime_rf_next_generation_demands_for_tick` is the driver production
+caller for the spec-owned `produce_runtime_rf_next_generation_demands` door.
+The door consumes one non-Clone `RuntimeRfDemandGenerationAuthority` mint,
+performs the generation-N constrained clear itself, derives every unresolved
+observation from its sealed grant, and adds `u` once to the matching claimant's
+independently produced `d'`. Only after all unresolved rows are matched does it
+return the current clear and the **same** `RuntimeOwnerSiloDemandBucket` inside
+the existing `GenerationStamped<T>` carrier at exactly N+1.
+
+There is no caller-supplied `Option<UnresolvedDemandObservation>` and no
+caller-supplied or filterable clearing-result slice. Omitting the matching N+1
+demand typed-refuses without returning either current results or partial next
+products. The internal arithmetic helper is crate-private and has exactly one
+production caller: this door. The authority binds the established
+`ClearingRemainderAuthority` generation and refuses a second full clear-and-carry
+attempt. The observation is constructed and consumed inside that one attempt,
+so it cannot be retained for a second lawful carry. The path has no EML,
+CostBand, Overlay, new column, new demand product, or alternate persistence
 lane. `fund_unresolved_persistence` remains optional secondary deformation.
 
 Five-part falsifier result:
 
 | Requirement | Witness |
 |---|---|
-| `d' + u` without authored path | N demand 10, supply 4 produces `u=6`; independent `d'=2` becomes the ordinary N+1 demand 8 through the neutral function whose signature has no authored program. |
-| exactly once; parent once | N+1 claim `requested=8`; the explicit double-carry mutant would be 14 and REDs. |
-| N unchanged; no same-generation re-clear | original demand remains 10 and grant remains `(requested=10, granted=4, unresolved=6)`; output stamp is 11; an observation/current-generation mismatch refuses. |
-| later supply drains U | N+1 supply 8 grants 8 and yields `unresolved=0`; no further observation is minted. |
-| `u=0` negative control | `None` produces a stamped product equal to the input `RuntimeOwnerSiloDemandBucket` in every field. |
+| `d' + u` without authored recurrence path | The real production door clears N demand 10 against supply 4 to produce `u=6`; independent `d'=2` becomes ordinary N+1 demand 8. The authored program participates only in the established N clear, never in recurrence. |
+| exactly once; parent once | The first real door attempt returns N+1 `requested=8`; a second attempt through the same production door and authority typed-refuses as `DemandCurrentToNextAlreadyProduced`. The observation cannot be supplied or retained separately. |
+| N unchanged; no same-generation re-clear | Original demand remains 10 and the returned N grant remains `(requested=10, granted=4, unresolved=6)`; the recurrent product is stamped 11. The authority owns the N clear and exact N→N+1 boundary. |
+| later supply drains U | N+1 supply 8 grants 8 and yields `unresolved=0`. A separate omission attempt with an empty next-demand set typed-refuses, proving that lawful door use cannot discard owned `u`. |
+| `u=0` negative control | A full-supply N clear traverses the identical production door and returns the N+1 `RuntimeOwnerSiloDemandBucket` equal to independent `d'` in every field. |
 
 ## Physical-order invariance
 
@@ -167,16 +180,20 @@ sparse-rebound, and one- versus multi-workgroup dispatch cardinalities.
 |---|---|---|
 | direct allocator | `crates/simthing-driver/src/{arena_allocation_plan.rs,arena_allocation_oracle.rs,arena_allocation_sync.rs,child_share_eml.rs}` | direct parent-cell plan, CPU oracle, packed-list sync, parameterized child-share EML |
 | established kernel execution | `crates/simthing-kernel/src/accumulator_op/{encode.rs,packed_session_upload.rs}`, `crates/simthing-kernel/src/{cpu_oracle.rs,shaders/accumulator_op.wgsl}` | bounded input-list parameter admission/upload; scaled sums; direct resident input reads |
-| row-11 law | `crates/simthing-spec/src/spec/constrained_clearing.rs`, re-exports in `spec/mod.rs` and `lib.rs` | same-`T_d` neutral Current-to-Next recurrence |
+| row-11 law | `crates/simthing-spec/src/spec/runtime_rf_tick.rs`, `crates/simthing-spec/src/spec/constrained_clearing.rs`, re-exports in `spec/mod.rs` and `lib.rs` | once-authority-owned N clear plus same-`T_d` neutral Current-to-Next recurrence; arithmetic helper is crate-private |
+| production caller | `crates/simthing-driver/src/runtime_rf_tick_compile.rs`, re-export in `crates/simthing-driver/src/lib.rs` | ordinary runtime tick caller exposes no optional observation or clearing-result bypass |
 | proof | `crates/simthing-workshop/tests/resident_clearing_score_and_bands_0.rs`, `scripts/ci/test_inventory.tsv` | D3 live GPU chain, five-part recurrence, physical-order/mutant falsifiers |
 | evidence | this file, `docs/tests/current_evidence_index.md`, `scripts/ci/anchor_reach_log.tsv` | ordering audit, durable return, doctrine reach |
 
 ## Source/evidence split
 
-Production source changes are restricted to the direct allocator binding,
-existing generic packed-EvalEML execution, scaled-sum semantics already named
-by `ScaleSpec`, and the same-demand recurrence. Workshop contains only the
-consumer/referee. Documentation, inventory, and reach logs are evidence only.
+Production source changes are restricted to the accepted direct allocator
+binding, existing generic packed-EvalEML execution, scaled-sum semantics already
+named by `ScaleSpec`, and the same-demand recurrence. The remand delta from
+`00434713fd974c2a961cca1022cf308b917fbb53` touches only the row-11 spec/driver
+production door, its public re-exports, and the private generation seal carried
+by existing `ConstrainedGrant`. Workshop contains only the consumer/referee.
+Documentation, inventory, and reach logs are evidence only.
 
 ## Test evidence
 

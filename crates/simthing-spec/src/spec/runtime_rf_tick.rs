@@ -2,6 +2,16 @@
 //!
 //! Composes participant admission → reduce-up → writeback → disburse-down → local allocation.
 
+use std::collections::{BTreeMap, BTreeSet};
+use std::sync::atomic::{AtomicBool, Ordering};
+
+use simthing_core::{GenerationStamp, GenerationStamped, SimThingId};
+
+use super::constrained_clearing::{
+    carry_unresolved_demand_to_next_generation, clear_constrained_claims_at_generation,
+    AuthoredClearingProgram, ClearingRemainderAuthority, ConstrainedClaim,
+    ConstrainedClearingResult, ConstrainedSupply, UnresolvedDemandObservation,
+};
 use super::legacy_owner_channel_rf::{
     evaluate_planet_child_rf_admission_from_owner_view,
     evaluate_planet_child_rf_reduce_up_from_owner_view, PlanetChildRfAdmissionClassification,
@@ -9,7 +19,8 @@ use super::legacy_owner_channel_rf::{
 };
 use super::owner_channel_admission::{admit_intrinsic_owner_channels, IntrinsicOwnerChannelView};
 use super::owner_silo_disburse_down::{
-    apply_owner_silo_runtime_disburse_down_cpu, owner_silo_demand_buckets_from_owner_view,
+    apply_owner_silo_runtime_disburse_down_cpu, demand_bucket_sort_key,
+    owner_silo_demand_buckets_from_owner_view, RuntimeOwnerSiloDemandBucket,
     RuntimeOwnerSiloDisburseDownResult,
 };
 use super::owner_silo_runtime_writeback::{
@@ -30,6 +41,8 @@ pub enum RuntimeRfTickErrorKind {
     DisburseDownRejected,
     LocalAllocationRejected,
     ArithmeticOverflow,
+    DemandCurrentToNextAlreadyProduced,
+    DemandCurrentToNextRejected,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -85,6 +98,161 @@ pub struct RuntimeRfTickReport {
 
     pub errors: Vec<RuntimeRfTickError>,
     pub deferrals: Vec<RuntimeRfTickDeferral>,
+}
+
+/// The one generation authority allowed to mint ordinary RF demand's N→N+1
+/// production door.
+///
+/// This is transient execution authority, not economic vocabulary. It is
+/// intentionally non-Clone and has no serialization surface. One authority
+/// instance admits one Current→Next production attempt; a second attempt is a
+/// typed refusal even if the caller retained the clearing results.
+#[derive(Debug)]
+pub struct RuntimeRfDemandGenerationAuthority {
+    clearing_authority: ClearingRemainderAuthority,
+    current_to_next_produced: AtomicBool,
+}
+
+impl RuntimeRfDemandGenerationAuthority {
+    pub const fn new(clearing_authority: ClearingRemainderAuthority) -> Self {
+        Self {
+            clearing_authority,
+            current_to_next_produced: AtomicBool::new(false),
+        }
+    }
+
+    pub const fn current_generation(&self) -> GenerationStamp {
+        self.clearing_authority.generation
+    }
+
+    fn mint_current_to_next(&self) -> Result<(), RuntimeRfTickError> {
+        self.current_to_next_produced
+            .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
+            .map_err(|_| demand_current_to_next_already_produced(self.current_generation()))?;
+        Ok(())
+    }
+}
+
+/// Produce the ordinary runtime demand product for N+1.
+///
+/// This is the sole production Current→Next door for `RuntimeOwnerSiloDemandBucket`.
+/// It performs the generation-N clear inside the door, derives unresolved
+/// observations from those sealed results, consumes the authority's one mint
+/// before evaluating caller data, and matches every observation to the same
+/// claimant/full-scope next demand automatically. A caller cannot supply a
+/// filtered clearing-result slice or pass `None` to omit recurrence. Any
+/// unconsumed observation, duplicate next product, malformed clearing result,
+/// or second door attempt is refused without returning partial products. The
+/// returned tuple exposes the current clear only after recurrence was consumed.
+/// `u = 0` traverses this same door and stamps the independently produced demand
+/// byte-for-byte at N+1.
+pub fn produce_runtime_rf_next_generation_demands(
+    authority: &RuntimeRfDemandGenerationAuthority,
+    current_supplies: &[ConstrainedSupply],
+    current_claims: &[ConstrainedClaim],
+    current_program: &AuthoredClearingProgram,
+    mut next_demands: Vec<RuntimeOwnerSiloDemandBucket>,
+) -> Result<
+    (
+        Vec<ConstrainedClearingResult>,
+        Vec<GenerationStamped<RuntimeOwnerSiloDemandBucket>>,
+    ),
+    RuntimeRfTickError,
+> {
+    authority.mint_current_to_next()?;
+    let current_generation = authority.current_generation();
+    current_generation
+        .get()
+        .checked_add(1)
+        .ok_or_else(|| demand_current_to_next_rejected("generation overflow"))?;
+
+    let current_clearing_results = clear_constrained_claims_at_generation(
+        current_supplies,
+        current_claims,
+        current_program,
+        authority.clearing_authority,
+    )
+    .map_err(|error| demand_current_to_next_rejected(&error.to_string()))?;
+
+    let mut unresolved_by_claimant = BTreeMap::new();
+    for result in &current_clearing_results {
+        let unresolved_total = result
+            .grants
+            .iter()
+            .try_fold(0u32, |total, grant| total.checked_add(grant.unresolved));
+        if unresolved_total != Some(result.unresolved_total) {
+            return Err(demand_current_to_next_rejected(
+                "clearing result unresolved total is not intact",
+            ));
+        }
+        for grant in &result.grants {
+            if grant.scope != result.scope || !grant.has_intact_clearance_seal() {
+                return Err(demand_current_to_next_rejected(
+                    "clearing grant seal is not intact",
+                ));
+            }
+            if grant.clearing_generation() != current_generation {
+                return Err(demand_current_to_next_rejected(
+                    "clearing grant generation does not match Current-to-Next authority",
+                ));
+            }
+            let Some(observation) = UnresolvedDemandObservation::from_sealed_grant(grant) else {
+                continue;
+            };
+            let key = (observation.scope.clone(), observation.source_simthing_id);
+            if unresolved_by_claimant.insert(key, observation).is_some() {
+                return Err(demand_current_to_next_rejected(
+                    "duplicate unresolved claimant/full-scope observation",
+                ));
+            }
+        }
+    }
+
+    next_demands.sort_by(demand_bucket_sort_key);
+    let mut seen_next = BTreeSet::new();
+    let mut stamped = Vec::with_capacity(next_demands.len());
+    for next_demand in next_demands {
+        let source = next_demand
+            .source_simthing_id_raw
+            .map(SimThingId::from_session_raw)
+            .ok_or_else(|| demand_current_to_next_rejected("next demand has no source SimThing"))?;
+        let key = (next_demand.scope_key(), source);
+        if !seen_next.insert(key.clone()) {
+            return Err(demand_current_to_next_rejected(
+                "duplicate next demand for claimant/full scope",
+            ));
+        }
+        let unresolved = unresolved_by_claimant.remove(&key);
+        stamped.push(
+            carry_unresolved_demand_to_next_generation(current_generation, next_demand, unresolved)
+                .map_err(|error| demand_current_to_next_rejected(&error.to_string()))?,
+        );
+    }
+
+    if !unresolved_by_claimant.is_empty() {
+        return Err(demand_current_to_next_rejected(
+            "next demand production omitted an unresolved claimant/full scope",
+        ));
+    }
+
+    Ok((current_clearing_results, stamped))
+}
+
+fn demand_current_to_next_already_produced(generation: GenerationStamp) -> RuntimeRfTickError {
+    RuntimeRfTickError {
+        kind: RuntimeRfTickErrorKind::DemandCurrentToNextAlreadyProduced,
+        message: format!(
+            "ordinary RF demand Current-to-Next was already produced from generation {}",
+            generation.get()
+        ),
+    }
+}
+
+fn demand_current_to_next_rejected(message: &str) -> RuntimeRfTickError {
+    RuntimeRfTickError {
+        kind: RuntimeRfTickErrorKind::DemandCurrentToNextRejected,
+        message: message.to_owned(),
+    }
 }
 
 /// Evaluate the full runtime RF tick boundary from Scenario authority input (read-only).

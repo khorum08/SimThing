@@ -7,16 +7,17 @@ use simthing_core::{
     SourceSpec, TransformOp,
 };
 use simthing_driver::{
-    build_custom_layout, plan_arena_allocation, register_child_share_formula,
+    build_custom_layout, plan_arena_allocation,
+    produce_runtime_rf_next_generation_demands_for_tick, register_child_share_formula,
     run_arena_allocation_oracle, ArenaTreeLayout, FissionPolicy, GpuArenaDescriptor, HierarchyNode,
     NodeColumnRefs,
 };
 use simthing_gpu::{AccumulatorOpSession, EmlGpuProgramTable, GpuContext, PackedAccumulatorUpload};
 use simthing_spec::{
-    carry_unresolved_demand_to_next_generation, clear_constrained_claims_at_generation,
-    AuthoredClearingProgram, ClearingRemainderAuthority, ConstrainedClaim,
-    ConstrainedClearingResult, ConstrainedSupply, OwnerChannelScopeKey, OwnerRef, ResourceKey,
-    RuntimeOwnerSiloDemandBucket, ScopeId, UnresolvedDemandObservation,
+    clear_constrained_claims_at_generation, AuthoredClearingProgram, ClearingRemainderAuthority,
+    ConstrainedClaim, ConstrainedClearingResult, ConstrainedSupply, OwnerChannelScopeKey, OwnerRef,
+    ResourceKey, RuntimeOwnerSiloDemandBucket, RuntimeRfDemandGenerationAuthority,
+    RuntimeRfTickErrorKind, ScopeId,
 };
 use std::collections::HashMap;
 
@@ -384,52 +385,75 @@ fn unresolved_demand_recurs_once_at_n_plus_one_and_drains_without_authored_path(
     let n = GenerationStamp::new(10);
     let key = scope("scope/a");
     let current_demand = demand(key.clone(), 41, 10);
-    let current = clear_constrained_claims_at_generation(
-        &[ConstrainedSupply {
-            scope: key.clone(),
-            available: 4,
-        }],
-        &[claim(&current_demand)],
-        &AuthoredClearingProgram::new(TransformOp::set(0.0)),
-        ClearingRemainderAuthority {
-            granter: SimThingId::from_session_raw(7),
-            generation: n,
-        },
+    let current_supplies = [ConstrainedSupply {
+        scope: key.clone(),
+        available: 4,
+    }];
+    let current_claims = [claim(&current_demand)];
+    let program = AuthoredClearingProgram::new(TransformOp::set(0.0));
+    let clearing_authority = ClearingRemainderAuthority {
+        granter: SimThingId::from_session_raw(7),
+        generation: n,
+    };
+    let next_authored = demand(key.clone(), 41, 2);
+    let production_authority = RuntimeRfDemandGenerationAuthority::new(clearing_authority);
+    let (current, carried) = produce_runtime_rf_next_generation_demands_for_tick(
+        &production_authority,
+        &current_supplies,
+        &current_claims,
+        &program,
+        vec![next_authored.clone()],
     )
-    .expect("generation-N clear");
+    .expect("production-owned generation-N clear and neutral Current-to-Next carry");
     let grant = &current[0].grants[0];
     assert_eq!(
         (grant.requested, grant.granted, grant.unresolved),
         (10, 4, 6)
     );
-    let unresolved =
-        UnresolvedDemandObservation::from_grant(grant, n).expect("u>0 ordinary observation");
-
-    let next_authored = demand(key.clone(), 41, 2);
-    let carried = carry_unresolved_demand_to_next_generation(
-        n,
-        next_authored.clone(),
-        Some(unresolved.clone()),
-    )
-    .expect("neutral Current-to-Next carry");
+    assert_eq!(carried.len(), 1);
+    let carried = &carried[0];
     assert_eq!(carried.generation(), GenerationStamp::new(11));
     assert_eq!(carried.product().requested, 8, "d' + u exactly once");
     assert_eq!(current_demand.requested, 10, "generation N is unchanged");
     assert_eq!(grant.unresolved, 6, "generation N is not re-cleared");
     assert_eq!(
         carried.product().requested,
-        next_authored.requested + unresolved.unresolved,
+        next_authored.requested + grant.unresolved,
         "the parent sees the recurrent demand once"
     );
-    assert_ne!(
-        carried.product().requested,
-        next_authored.requested + 2 * unresolved.unresolved,
-        "a double-carry mutant must RED"
+
+    let second_consumption = produce_runtime_rf_next_generation_demands_for_tick(
+        &production_authority,
+        &current_supplies,
+        &current_claims,
+        &program,
+        vec![next_authored.clone()],
+    )
+    .expect_err("the production authority must refuse a second Current-to-Next mint");
+    assert_eq!(
+        second_consumption.kind,
+        RuntimeRfTickErrorKind::DemandCurrentToNextAlreadyProduced,
+        "double consumption must be typed-refused by the real production door"
     );
+
+    let omission_authority = RuntimeRfDemandGenerationAuthority::new(clearing_authority);
+    let omitted = produce_runtime_rf_next_generation_demands_for_tick(
+        &omission_authority,
+        &current_supplies,
+        &current_claims,
+        &program,
+        Vec::new(),
+    )
+    .expect_err("a caller cannot opt out of an owned unresolved row");
+    assert_eq!(
+        omitted.kind,
+        RuntimeRfTickErrorKind::DemandCurrentToNextRejected
+    );
+    assert!(omitted.message.contains("omitted an unresolved"));
 
     let next = clear_constrained_claims_at_generation(
         &[ConstrainedSupply {
-            scope: key,
+            scope: key.clone(),
             available: 8,
         }],
         &[claim(carried.product())],
@@ -441,26 +465,26 @@ fn unresolved_demand_recurs_once_at_n_plus_one_and_drains_without_authored_path(
     )
     .expect("ordinary generation-N+1 clear");
     assert_eq!(next[0].grants[0].unresolved, 0, "new supply drains u");
-    assert!(
-        UnresolvedDemandObservation::from_grant(&next[0].grants[0], carried.generation()).is_none()
-    );
 
-    assert!(
-        carry_unresolved_demand_to_next_generation(
-            GenerationStamp::new(9),
-            next_authored.clone(),
-            Some(unresolved)
-        )
-        .is_err(),
-        "same/incorrect-generation recurrence must fail closed"
-    );
-
-    let zero_control = carry_unresolved_demand_to_next_generation(n, next_authored.clone(), None)
-        .expect("u=0 negative control");
+    let zero_supplies = [ConstrainedSupply {
+        scope: key,
+        available: current_demand.requested,
+    }];
+    let zero_authority = RuntimeRfDemandGenerationAuthority::new(clearing_authority);
+    let (zero_current, zero_control) = produce_runtime_rf_next_generation_demands_for_tick(
+        &zero_authority,
+        &zero_supplies,
+        &current_claims,
+        &program,
+        vec![next_authored.clone()],
+    )
+    .expect("u=0 through the production Current-to-Next door");
+    assert_eq!(zero_current[0].grants[0].unresolved, 0);
+    assert_eq!(zero_control.len(), 1);
     assert_eq!(
-        zero_control.product(),
+        zero_control[0].product(),
         &next_authored,
-        "u=0 leaves the established demand product bit-exact"
+        "u=0 through the same door leaves the established demand product bit-exact"
     );
 }
 

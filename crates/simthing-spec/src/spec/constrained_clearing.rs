@@ -129,6 +129,7 @@ pub struct ConstrainedGrant {
     pub priority: u32,
     pub order_weight: f32,
     pub clearing_score: f32,
+    clearing_generation: GenerationStamp,
     clearance_seal: ConstrainedGrantSeal,
 }
 
@@ -142,6 +143,7 @@ struct ConstrainedGrantSeal {
     priority: u32,
     order_weight_bits: u32,
     clearing_score_bits: u32,
+    clearing_generation: GenerationStamp,
 }
 
 impl ConstrainedGrant {
@@ -155,6 +157,7 @@ impl ConstrainedGrant {
         priority: u32,
         order_weight: f32,
         clearing_score: f32,
+        clearing_generation: GenerationStamp,
     ) -> Self {
         let clearance_seal = ConstrainedGrantSeal {
             scope: scope.clone(),
@@ -165,6 +168,7 @@ impl ConstrainedGrant {
             priority,
             order_weight_bits: order_weight.to_bits(),
             clearing_score_bits: clearing_score.to_bits(),
+            clearing_generation,
         };
         Self {
             scope,
@@ -175,6 +179,7 @@ impl ConstrainedGrant {
             priority,
             order_weight,
             clearing_score,
+            clearing_generation,
             clearance_seal,
         }
     }
@@ -188,6 +193,11 @@ impl ConstrainedGrant {
             && self.clearance_seal.priority == self.priority
             && self.clearance_seal.order_weight_bits == self.order_weight.to_bits()
             && self.clearance_seal.clearing_score_bits == self.clearing_score.to_bits()
+            && self.clearance_seal.clearing_generation == self.clearing_generation
+    }
+
+    pub(crate) const fn clearing_generation(&self) -> GenerationStamp {
+        self.clearing_generation
     }
 }
 
@@ -395,6 +405,7 @@ pub fn clear_constrained_claims_at_generation(
                     row.claim.priority,
                     row.claim.order_weight,
                     row.score,
+                    authority.generation,
                 ));
             }
             remaining = remaining
@@ -530,6 +541,10 @@ impl UnresolvedDemandObservation {
             observed_generation: generation,
         })
     }
+
+    pub(crate) fn from_sealed_grant(grant: &ConstrainedGrant) -> Option<Self> {
+        Self::from_grant(grant, grant.clearing_generation())
+    }
 }
 
 /// Carry ordinary unresolved `T_d` from generation N into the same demand
@@ -541,7 +556,7 @@ impl UnresolvedDemandObservation {
 /// Current-to-Next carrier. Consuming the optional observation in this one
 /// operation makes the ordinary path one addition, while `None` preserves the
 /// next product byte-for-byte.
-pub fn carry_unresolved_demand_to_next_generation(
+pub(crate) fn carry_unresolved_demand_to_next_generation(
     current_generation: GenerationStamp,
     mut next_demand: RuntimeOwnerSiloDemandBucket,
     unresolved: Option<UnresolvedDemandObservation>,

@@ -70,13 +70,13 @@ pub use capability::{
 };
 pub use channel_key::{OwnerChannelScopeKey, OwnerRef, ResourceKey, ScopeId};
 pub use constrained_clearing::{
-    carry_unresolved_demand_to_next_generation, clear_constrained_claims_at_generation,
-    clear_reduced_owner_channels, clear_reduced_owner_channels_at_generation,
-    clear_stamped_owner_channels, fund_unresolved_persistence, is_authored_until_dissolved,
-    AuthoredClaimClearingData, AuthoredClearingProgram, AuthoredPersistenceValuation,
-    ClearingRemainderAuthority, ConstrainedClaim, ConstrainedClearingError,
-    ConstrainedClearingResult, ConstrainedGrant, ConstrainedSupply, PersistenceConsequence,
-    PersistenceConsequenceError, PersistenceOverlayBinding, UnresolvedDemandObservation,
+    clear_constrained_claims_at_generation, clear_reduced_owner_channels,
+    clear_reduced_owner_channels_at_generation, clear_stamped_owner_channels,
+    fund_unresolved_persistence, is_authored_until_dissolved, AuthoredClaimClearingData,
+    AuthoredClearingProgram, AuthoredPersistenceValuation, ClearingRemainderAuthority,
+    ConstrainedClaim, ConstrainedClearingError, ConstrainedClearingResult, ConstrainedGrant,
+    ConstrainedSupply, PersistenceConsequence, PersistenceConsequenceError,
+    PersistenceOverlayBinding, UnresolvedDemandObservation,
 };
 pub use contention_conservation_judge::{
     judge_conservation, ChannelBound, ConservationJudgeReason, ConservationSnapshot,
@@ -253,8 +253,10 @@ pub use runtime_local_allocation::{
     RuntimeLocalAllocationApplicationReport, RuntimeLocalAllocationState,
 };
 pub use runtime_rf_tick::{
-    evaluate_runtime_rf_tick, evaluate_runtime_rf_tick_from_owner_view, RuntimeRfTickDeferral,
-    RuntimeRfTickDeferralKind, RuntimeRfTickError, RuntimeRfTickErrorKind, RuntimeRfTickReport,
+    evaluate_runtime_rf_tick, evaluate_runtime_rf_tick_from_owner_view,
+    produce_runtime_rf_next_generation_demands, RuntimeRfDemandGenerationAuthority,
+    RuntimeRfTickDeferral, RuntimeRfTickDeferralKind, RuntimeRfTickError, RuntimeRfTickErrorKind,
+    RuntimeRfTickReport,
 };
 pub use runtime_tick_history::{
     evaluate_runtime_tick_history_entry, replay_runtime_tick_history, scenario_authority_digest,

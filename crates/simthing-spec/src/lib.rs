@@ -384,13 +384,13 @@ pub use spec::channel_key::{
     OwnerChannelScopeKey, OwnerRef, ParentLocationId, ResourceKey, ScopeId,
 };
 pub use spec::constrained_clearing::{
-    carry_unresolved_demand_to_next_generation, clear_constrained_claims_at_generation,
-    clear_reduced_owner_channels, clear_reduced_owner_channels_at_generation,
-    clear_stamped_owner_channels, fund_unresolved_persistence, is_authored_until_dissolved,
-    AuthoredClaimClearingData, AuthoredClearingProgram, AuthoredPersistenceValuation,
-    ClearingRemainderAuthority, ConstrainedClaim, ConstrainedClearingError,
-    ConstrainedClearingResult, ConstrainedGrant, ConstrainedSupply, PersistenceConsequence,
-    PersistenceConsequenceError, PersistenceOverlayBinding, UnresolvedDemandObservation,
+    clear_constrained_claims_at_generation, clear_reduced_owner_channels,
+    clear_reduced_owner_channels_at_generation, clear_stamped_owner_channels,
+    fund_unresolved_persistence, is_authored_until_dissolved, AuthoredClaimClearingData,
+    AuthoredClearingProgram, AuthoredPersistenceValuation, ClearingRemainderAuthority,
+    ConstrainedClaim, ConstrainedClearingError, ConstrainedClearingResult, ConstrainedGrant,
+    ConstrainedSupply, PersistenceConsequence, PersistenceConsequenceError,
+    PersistenceOverlayBinding, UnresolvedDemandObservation,
 };
 pub use spec::contention_conservation_judge::{
     judge_conservation, ChannelBound, ConservationJudgeReason, ConservationSnapshot,
@@ -616,8 +616,10 @@ pub use spec::runtime_participant_state_mutation::{
     MIN_RUNTIME_PARTICIPANT_STATE_REPLAY_COUNT,
 };
 pub use spec::runtime_rf_tick::{
-    evaluate_runtime_rf_tick, evaluate_runtime_rf_tick_from_owner_view, RuntimeRfTickDeferral,
-    RuntimeRfTickDeferralKind, RuntimeRfTickError, RuntimeRfTickErrorKind, RuntimeRfTickReport,
+    evaluate_runtime_rf_tick, evaluate_runtime_rf_tick_from_owner_view,
+    produce_runtime_rf_next_generation_demands, RuntimeRfDemandGenerationAuthority,
+    RuntimeRfTickDeferral, RuntimeRfTickDeferralKind, RuntimeRfTickError, RuntimeRfTickErrorKind,
+    RuntimeRfTickReport,
 };
 pub use spec::runtime_rf_tick_source::{
     evaluate_runtime_rf_tick_source_comparison, evaluate_runtime_rf_tick_source_preview,
