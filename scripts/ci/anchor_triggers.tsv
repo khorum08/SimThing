@@ -21,3 +21,8 @@ scripts/ci/**	gate-wiring,orientation
 .github/workflows/**	gate-wiring
 docs/stead_stemthing_unification.md	stead,rf,core-0087,kernel-columns
 docs/full_eml_unification.md	kernel-eml,kernel,core-0087,field-sweep-preservation
+crates/simthing-kernel/src/resident_clearing_plan.rs	rf-market-core,constrained-clearing
+crates/simthing-sim/src/grant_disbursement.rs	rf-market-core,constrained-clearing
+crates/simthing-core/src/grant_lifecycle.rs	rf-market-core,constrained-clearing
+crates/simthing-spec/src/spec/flow_market.rs	rf-market-core,constrained-clearing
+crates/simthing-kernel/src/clearing_weight_projection.rs	rf-market-core,constrained-clearing
