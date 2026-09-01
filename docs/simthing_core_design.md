@@ -215,7 +215,9 @@ consumer runs. CORE-CANONIZATION-0 is the exact consumer for the 0.0.8.7 pending
 
 Canonization and repoint are one atomic change: first home the graduated law in truthful canonical
 prose, then repoint the anchor to that section, set lifecycle canonical, and resync its content hash.
-An orphaned interim anchor is reaped only through the existing authorized-deletion ledger. Track
+A post-canonization design-authority anchor uses lifecycle `until:<RUNG-ID>` naming its
+CONSUMING rung: healthy while that rung is open, stale the moment it graduates without the atomic
+repoint, orphaned if the rung is absent or superseded. An orphaned interim anchor is reaped only through the existing authorized-deletion ledger. Track
 closeout admits no pending anchor. This is the exact **anchor lifecycle/repoint law**; it creates no second
 rung registry.
 
