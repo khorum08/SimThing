@@ -45,9 +45,9 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 26e025f8b1e76f7f649571aaa4f2da2c82ca722b4d8c549f5ce9d14b4604f3a6 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | 26eab30ec86c97ac8dfd6beef7ae8c5b4d3f18c38fdaa431ec40ccce855396d3 |
-| design_0_0_8_7_rf_arena_modernization.md | f3d59c5cdba18b78d94a82608c8e5589691aa61fd96f95db8cbbe72bf4642637 |
+| design_0_0_8_7_rf_arena_modernization.md | 013c2501ca642369aa9604ee68e7b409a665313f23c5fe3cf6a31b24dc71aecd |
 | relay_lint.sh | ae19bdca12e90f6bc988e064f081ff62903034d69bf34b08ffd5c27e352181ba |
-| doctrine_anchors.tsv | 7f9b4575c7f85d87fe587849dfffb7644e2573708a15f1f302fc386c8ae1772c |
+| doctrine_anchors.tsv | 736d2ac6feea5b743342ffe10bf706fd996b88a90d0d511e352f63b3e11606ba |
 | execution_status_taxonomy.tsv | 924c086550221dd7136ec0682293900d8d03feb4bc1dae1a6e750a61e65153bc |
 | execution_status_mixed_posture.tsv | 1adf05f3ec5fd7b537efe29259d20649a2c6d3a0839590063e5308ff154e8f25 |
 | execution_status_non_execution.tsv | 214c1b557dfd3fc465f0171051e20281ff1dcf6c53128dbb29cba01524f9be02 |
@@ -68,20 +68,19 @@ Dark properties (1): `fixture::dark_reading` (reasons/spans in `property_admissi
 
 Track state: `open`
 
-> Compact view: 90 completed rungs elided; showing all 3 open rungs plus the 3 most recent completions. Full ladder in the design doc.
+> Compact view: 91 completed rungs elided; showing all 2 open rungs plus the 3 most recent completions. Full ladder in the design doc.
 
 | # | rung | deliverable | exit proof |
 | --- | --- | --- | --- |
-| 14.1 | GENERATION-CRITICAL-PATH-BASELINE-0 | Measurement + door census; no production delta. The baseline is a COMPARATOR, ne | **DA-GRADUATED / merged #1907 @ 9a036a44** — remands `5473356953`/`5473560347`/`5474062621` (instrument honesty x3, a... |
 | 14.2 | RESIDENT-CLEARING-PLAN-0 | Candidate built in its FINAL kernel/GPU home (workshop hosts only the parity har | DA-GRADUATED merged #1911 @ 217e8fca |
 | 14.3 | RESIDENT-CLEARING-SCORE-AND-BANDS-0 | **MANDATORY FIRST-STEP: ordering-law completeness audit** — every ordering the C | DA-GRADUATED merged #1920 @ afde5c90 |
-| 14.4 | RESIDENT-CLEARING-APPORTIONMENT-0 | Exact integer apportionment resident: base shares, largest-remainder with exact  | TODO |
+| 14.4 | RESIDENT-CLEARING-APPORTIONMENT-0 | Exact integer apportionment resident: base shares, largest-remainder with exact  | DA-GRADUATED merged #1925 @ 8176fe68 |
 | 14.5 | RESIDENT-CLEARING-PARITY-0 | Complete parity: the NINE POSITIVE ITEMS (identical EML score bits, equality ban | TODO |
 | 14.6 | RESIDENT-CLEARING-CUTOVER-0 | The conformance rung; structural certificate owed. GPU becomes the PRIMARY clear | TODO |
 
 ## Next Rung Pointer
 
-Active pointer: `RESIDENT-CLEARING-APPORTIONMENT-0`
+Active pointer: `RESIDENT-CLEARING-PARITY-0`
 
 
 ## Cold-Start Spine (constitutional pointers)
