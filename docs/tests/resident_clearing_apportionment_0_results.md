@@ -2,8 +2,8 @@
 
 Status: **PROBATION / proof-present / DA-review-pending / UNMERGED / no 14.5**
 
-Authority: Board handoff `5510249901`, re-dispatch/remand `5511124134`, DA graduation
-authority `5504763991`, owner-approved repository handoff
+Authority: Board handoff `5510249901`, re-dispatch/remand `5511124134`, DA ruling
+`5504763991`, owner-approved repository handoff
 `handoffs/RESIDENT-CLEARING-APPORTIONMENT-0.hd.md`.
 
 - exact live-master base: `35db328de5ddadf9557454b0453a2f42d971b565`
