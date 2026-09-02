@@ -1,13 +1,14 @@
 # RESIDENT-CLEARING-PARITY-0 results
 
-Status: **PROBATION / proof-present / hosted-routing-pending /
-DA-review-pending / UNMERGED / no 14.6**
+Status: **PROBATION / continuation-remand-proof-present /
+hosted-routing-pending / DA-review-pending / UNMERGED / no 14.6**
 
 - exact dispatch/master base: `8f8e1f2e8626253876862771ee1f553327a27c8b`
 - coding ORIENT receipt: `d50e2f5d3aaf`
 - orientation rule stamp: `7369084da1f79d79`
 - HD receipt: `4521aa9c142b`
-- authority: Board handoff `5513827005`, repository handoff
+- authority: Board handoff `5513827005`, DA two-witness ruling `5514824340`,
+  continuation remand `5514898144`, and repository handoff
   `handoffs/RESIDENT-CLEARING-PARITY-0.hd.md`
 
 The tables below were completed before any executable 14.5 edit. They reopen
@@ -23,6 +24,30 @@ append-only reach ledger. The binding subset for this referee is the exact
 numeric/conservation law, Field-Triad/ActionBand authority, recursive RF germ
 and self-consumption law, tree-local identity, physical-order prohibition,
 admission ladder, cross-crate seal residue, and workshop-as-referee boundary.
+
+## DA continuation-remand delta
+
+The DA accepted and froze every prior 14.5 proof except two composition shapes.
+This continuation changes only the terminal referee and its evidence/ledger
+description:
+
+1. Pressure is no longer represented by transcribed 14.3 `AllocatedFlow`
+   constants. The referee runs the same plan-owned
+   `plan_arena_allocation_with_pressure` route, actual Gu-Yang field producer,
+   raw-P reduction producer, child-share EML, and live GPU accumulator execution
+   as the graduated 14.3 referee, then installs the emitted allocation values as
+   the direct input to graduated 14.4 exact settlement. An upstream raw-P
+   perturbation with unchanged requests/supply forces a different downstream
+   grant vector.
+2. The former three sibling settlements are replaced by one witness-driven
+   sequential chain. The literal edge-N `ResidentSettlementOutput` value is
+   passed by the exact `ResidentRecursiveSupplyIntake` alias into the only
+   next-edge settlement helper. The chain declines `T_s(8) -> T_s(6) ->
+   T_s(4)`; each selected product retains `U=2`, and the leaf's literal
+   `(grant=4,U=2)` supplies the already-graduated temporal recurrence door once.
+
+No frozen production semantics changed. In particular, this is still manual
+referee sequencing; it adds no automatic recursive scheduling or 14.6 surface.
 
 ## Pre-edit parity archaeology
 
@@ -89,10 +114,11 @@ become an alternate production bridge.
 ### Implemented referee and narrow conformance repair
 
 - `resident_clearing_parity_0.rs` is the additive terminal-band referee. Its
-  one ledgered terminal referee with four table-style sections covers all nine neutral items, the complete negative/error
-  matrix, a four-level/three-edge exact-`T_s` recursive germ, lawful born-`F`
-  and raw-`P` drift, scale/Q149/physical-shape sweeps, independent overlapping
-  raw-id trees, and exact qualification invalidation.
+  one ledgered terminal referee with four table-style sections covers all nine
+  neutral items, the complete negative/error matrix, a literal
+  four-level/three-edge exact-`T_s` recursive chain, produced born-`F` and raw-`P`
+  drift through the live allocator, scale/Q149/physical-shape sweeps,
+  independent overlapping raw-id trees, and exact qualification invalidation.
 - The graduated 14.4 role-projection compile-fail remains byte-identical. Two
   additive 14.5 fences exercise an actual `ResidentSettlementOutput ->
   From/Into -> ChildSupplyRow -> recursive intake` bridge and an independent
@@ -114,15 +140,26 @@ become an alternate production bridge.
   `400/200/0`, grants `17/33/50`, unresolved `83/167/250`. CPU mirror, resident
   W64, resident W32/partition-2, and replay are identical. Exact ties rotate at
   generations 0/1.
-- Born immediate-flow `F` produces allocated shares `[5.25, 8.75]` and grants
-  `[3, 4]`; entitlement-first raw `P` produces `[9, 5]` and grants `[5, 2]`.
-  That inequality is the required lawful pressure drift; it is not forced back
-  to the neutral oracle.
-- The four-level germ contains three real upward `Sum` edges. Each level emits
-  grant `8` as `ResidentSettlementOutput` and passes that same alias value
-  directly as `ResidentRecursiveSupplyIntake`; no projection exists. At
-  generation 10, `U=6` plus ordinary `d'=2` enters the graduated production
-  door exactly once as demand `8` at generation 11, and the one-mint authority
+- With authored Gu-Yang seeds `[6,3,3,2]`, the real field producer emits born
+  eligible `F ~= [4.8075,3.3675,2.8425,2.1575]`; the live plan-owned reductions
+  emit branch pressure `[8.175,5]`, then `AllocatedFlow ~=
+  [8.686908,5.313093]`. Exact settlement consumes those emitted values and
+  grants `[4,3]`. The entitlement-first traversal consumes actual raw
+  `P=[6,3,3,2]`, emits branch pressure and `AllocatedFlow=[9,5]`, and grants
+  `[5,2]`. No `AllocatedFlow` number is authored in the settlement witness.
+  The stale-intermediate falsifier changes only upstream raw P to `[1,1,8,8]`:
+  the same GPU route emits branch pressure `[2,16]`, `AllocatedFlow ~=
+  [1.555556,12.444445]`, and exact grants `[1,6]` under unchanged requests and
+  supply.
+- The four-level germ contains three real upward `Sum` edges and three literal
+  sequential settlements. Root-authored supply `8` yields selected
+  `T_s=(grant=8,U=2)`; that exact value is consumed as the next intake and the
+  `3:1` live basis yields selected `T_s=(6,2)` plus companion `(2,6)`; that
+  exact six-unit value is consumed by the leaf edge and its `2:1` basis yields
+  selected `T_s=(4,2)` plus companion `(2,4)`. A raw quantity cannot call the
+  typed next-edge helper, and the product fields are private. At generation 10,
+  the literal leaf `U=2` plus ordinary `d'=2` enters the graduated production
+  door exactly once as demand `4` at generation 11; the one-mint authority
   refuses a second mint.
 - The scale corpus sweeps row counts `1,2,31,32,33,64,65,127,128`, seven scopes,
   three precedence bands, exact ties, reverse admission/upload and epoch-rebound
@@ -177,7 +214,7 @@ PASS:
 - `cargo test -p simthing-kernel --doc resident_clearing_apportionment -- --nocapture --test-threads=1` — graduated fence plus both additive `E0308` mutants RED
 - 14.1 door census plus frozen 14.2/14.3/14.4 workshop witnesses — 16/16
 - frozen 13.6/13.9 driver witnesses — 8/8
-- `test_inventory_check.sh` and `test_inventory_drift_check.sh` — 1386/1386, zero missing/extra/stale
+- `test_inventory_check.sh` and `test_inventory_drift_check.sh` — 1384/1384, zero missing/extra/stale
 - `agent_scan.sh` — PASS, zero failures/inspect findings
 
 The first implementation commit is intentionally preceded by archaeology commit

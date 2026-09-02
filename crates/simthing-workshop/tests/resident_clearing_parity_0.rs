@@ -7,19 +7,26 @@ use std::process::Command;
 
 use simthing_core::owner_channel::OwnerRef;
 use simthing_core::{
-    ColumnIndex, CombineFn, DimensionRegistry, ExecutionIncarnation, GenerationStamp,
-    IntegrationSchedule, SimProperty, SimPropertyId, SimThing, SimThingId, SlotIndex, SourceSpec,
-    TransformOp, TreeExecutionAuthority, TreeGenerationAuthority, TreeRealmId,
+    AccumulatorOp, ColumnIndex, CombineFn, CompiledAccumulatorOpPlan, ConsumeMode,
+    DimensionRegistry, EmitOnThresholdBuffer, EmitOnThresholdRegistration, EmlExpressionRegistry,
+    EmlNodeGpu, ExecutionIncarnation, GateSpec, GenerationStamp, IntegrationSchedule, ScaleSpec,
+    SimProperty, SimPropertyId, SimThing, SimThingId, SlotIndex, SourceSpec,
+    StructuralScalarChannel, ThresholdDirection, TransformOp, TreeExecutionAuthority,
+    TreeGenerationAuthority, TreeRealmId,
 };
 use simthing_driver::{
-    build_custom_layout, plan_arena_allocation, plan_resident_exact_apportionment,
-    produce_runtime_rf_next_generation_demands_for_tick, run_arena_allocation_oracle,
-    ArenaTreeLayout, FissionPolicy, GpuArenaDescriptor, HierarchyNode, NodeColumnRefs,
+    build_custom_layout, compile_action_band_gpu_execution_with_native_lanes,
+    compile_gu_yang_n4_field_sweeps, plan_arena_allocation, plan_arena_allocation_with_pressure,
+    plan_resident_exact_apportionment, produce_runtime_rf_next_generation_demands_for_tick,
+    register_child_share_formula, run_arena_allocation_oracle, ActionBandActiveInstance,
+    ActionBandNativeLaneAdmission, ArenaTreeLayout, FissionPolicy, GpuArenaDescriptor,
+    GuYangN4FieldSweepSpec, HierarchyNode, NodeColumnRefs,
 };
 use simthing_gpu::{
-    wgpu, GpuContext, ResidentApportionmentDispatch, ResidentApportionmentSession,
-    ResidentApportionmentWorkgroupSize, ResidentClearingBuffers, ResidentClearingGpuError,
-    WorldGpuState, RESIDENT_CLEARING_ABI_VERSION,
+    wgpu, AccumulatorOpSession, ActionBandEmissionBindingGpu, EmlGpuProgramTable,
+    FieldSweepSession, GpuContext, PackedAccumulatorUpload, ResidentApportionmentDispatch,
+    ResidentApportionmentSession, ResidentApportionmentWorkgroupSize, ResidentClearingBuffers,
+    ResidentClearingGpuError, WorldGpuState, RESIDENT_CLEARING_ABI_VERSION,
 };
 use simthing_kernel::{
     execute_resident_apportionment_cpu, ResidentApportionmentClaim, ResidentApportionmentError,
@@ -27,13 +34,19 @@ use simthing_kernel::{
     ResidentClearingPlan, ResidentConstrainedProduct, ResidentDrawId, ResidentOwnerId,
     ResidentRecursiveSupplyIntake, ResidentResourceId, ResidentScopeId, ResidentSettlementOutput,
 };
+use simthing_sim::ThresholdRegistry;
 use simthing_spec::{
     clear_constrained_claims_at_generation, clear_reduced_owner_channels_at_generation,
-    AuthoredClaimClearingData, AuthoredClearingProgram, ClearingRemainderAuthority,
-    ConstrainedClaim, ConstrainedClearingError, ConstrainedClearingResult, ConstrainedSupply,
-    OwnerChannelRfBucket, OwnerChannelRfOwnAggregate, OwnerChannelRfReduceUpReport,
-    OwnerChannelRfSteadSurface, OwnerChannelScopeKey, ResourceKey, RuntimeOwnerSiloDemandBucket,
-    RuntimeRfDemandGenerationAuthority, RuntimeRfTickErrorKind, ScopeId,
+    ActionBandAdmissionBudgetSpec, ActionBandBandSpec, ActionBandChannelBindingSpec,
+    ActionBandChannelKind, ActionBandConservedProgressBindingSpec,
+    ActionBandConservedProgressBoundSourceSpec, ActionBandRequirementSemantics,
+    ActionBandSessionBuildDoor, ActionBandSessionSpec, ActionBandTargetSpec,
+    ActionBandTemplateSpec, AuthoredClaimClearingData, AuthoredClearingProgram,
+    ClearingRemainderAuthority, ConstrainedClaim, ConstrainedClearingError,
+    ConstrainedClearingResult, ConstrainedSupply, OwnerChannelRfBucket, OwnerChannelRfOwnAggregate,
+    OwnerChannelRfReduceUpReport, OwnerChannelRfSteadSurface, OwnerChannelScopeKey, ResourceKey,
+    RuntimeOwnerSiloDemandBucket, RuntimeRfDemandGenerationAuthority, RuntimeRfTickErrorKind,
+    ScalarBoundDirection, ScopeId,
 };
 
 const QUALIFIED_RECORD_FINGERPRINT: u64 = 0x73ae_5e62_1b3e_5021;
@@ -184,6 +197,351 @@ fn arena_layout() -> ArenaTreeLayout {
         }],
     )
     .unwrap()
+}
+
+fn pressure_cols() -> NodeColumnRefs {
+    NodeColumnRefs {
+        intrinsic_flow_col: col(0),
+        allocated_flow_col: col(1),
+        weight_col: col(2),
+        intrinsic_flow_sum_col: col(3),
+        weight_sum_col: col(4),
+        balance_col: Some(col(5)),
+        balance_governing_col: None,
+        propagated_intrinsic_flow_col: col(6),
+        propagated_allocated_flow_col: col(7),
+        propagated_weight_sum_col: col(8),
+        hosted_simthing_id_col: col(9),
+    }
+}
+
+const GU_YANG_VALUE_COL: usize = 10;
+const GU_YANG_CONDUCTANCE_COL: usize = 11;
+const RF_CLAIM_COL: usize = 12;
+const RF_RESULT_COL: usize = 13;
+const PRESSURE_N_DIMS: u32 = 14;
+
+fn produced_pressure_layout() -> ArenaTreeLayout {
+    let columns = pressure_cols();
+    let leaf = |slot: u32, id: u32| HierarchyNode {
+        participant_slot: SlotIndex::new(slot),
+        hosted_simthing_id: SimThingId::from_session_raw(id),
+        depth: 2,
+        children: vec![],
+        cols: columns,
+    };
+    let branch = |slot: u32, id: u32, children: Vec<HierarchyNode>| HierarchyNode {
+        participant_slot: SlotIndex::new(slot),
+        hosted_simthing_id: SimThingId::from_session_raw(id),
+        depth: 1,
+        children,
+        cols: columns,
+    };
+    build_custom_layout(
+        0,
+        &GpuArenaDescriptor {
+            name: "resident-parity-produced-pressure".into(),
+            flow_property_id: SimPropertyId(1),
+            balance_property_id: None,
+            max_participants: 64,
+            max_coupling_fanout: 4,
+            max_orderband_depth: 16,
+            fission_policy: FissionPolicy::default(),
+            participant_range: (0, 0),
+            wildcard_max_expansion: None,
+            reserved_orderband_depth: 0,
+        },
+        columns,
+        vec![HierarchyNode {
+            participant_slot: SlotIndex::new(0),
+            hosted_simthing_id: SimThingId::from_session_raw(100),
+            depth: 0,
+            children: vec![
+                branch(1, 101, vec![leaf(3, 103), leaf(4, 104)]),
+                branch(2, 102, vec![leaf(5, 105), leaf(6, 106)]),
+            ],
+            cols: columns,
+        }],
+    )
+    .expect("14.3 graduated asymmetric pressure layout")
+}
+
+fn pressure_registry() -> DimensionRegistry {
+    let mut registry = DimensionRegistry::new();
+    for raw in 0..4 {
+        registry.register(SimProperty::simple(
+            "resident-pressure",
+            &format!("column-{raw}"),
+            1,
+        ));
+    }
+    assert!(registry.total_columns >= PRESSURE_N_DIMS as usize);
+    registry
+}
+
+fn pressure_rf_plan() -> CompiledAccumulatorOpPlan {
+    CompiledAccumulatorOpPlan {
+        slot_count: 7,
+        n_dims: PRESSURE_N_DIMS,
+        input_channel: StructuralScalarChannel::new(RF_CLAIM_COL as u32),
+        output_channel: StructuralScalarChannel::new(RF_RESULT_COL as u32),
+        ops: vec![AccumulatorOp {
+            source: SourceSpec::SlotValue {
+                slot: SlotIndex::new(0),
+                col: col(RF_CLAIM_COL),
+            },
+            combine: CombineFn::Identity,
+            gate: GateSpec::Always,
+            scale: ScaleSpec::Identity,
+            consume: ConsumeMode::ResetTarget,
+            targets: vec![(SlotIndex::new(0), col(RF_RESULT_COL))],
+        }],
+    }
+}
+
+fn compiled_gu_yang_pressure_product() -> (
+    simthing_driver::CompiledActionBandConservedProgressBinding,
+    Vec<ActionBandActiveInstance>,
+) {
+    let registry = pressure_registry();
+    let threshold = EmitOnThresholdRegistration {
+        slot: SlotIndex::new(3),
+        col: col(GU_YANG_VALUE_COL),
+        threshold: 0.0,
+        direction: ThresholdDirection::Upward,
+        event_kind: 14_300,
+        buffer: EmitOnThresholdBuffer::Values,
+    };
+    let spec = ActionBandSessionSpec {
+        budget: ActionBandAdmissionBudgetSpec {
+            axis_channel_count: 1,
+            dependency_binding_count: 0,
+            storage_rows: 4,
+            eml_program_count: 0,
+            emission_binding_count: 1,
+        },
+        templates: vec![ActionBandTemplateSpec {
+            id: "resident-pressure".into(),
+            label: None,
+            axis_channels: vec![ActionBandChannelBindingSpec {
+                column: GU_YANG_VALUE_COL as u32,
+                kind: ActionBandChannelKind::Primitive,
+            }],
+            target: ActionBandTargetSpec::ScalarBound {
+                channel: GU_YANG_VALUE_COL as u32,
+                bound: 0.0,
+                direction: ScalarBoundDirection::AtLeast,
+            },
+            velocity: None,
+            bands: vec![ActionBandBandSpec {
+                threshold_registration_index: 0,
+                eml_program: None,
+                emission_binding_indices: vec![0],
+            }],
+            subordinate_template_ids: vec![],
+            max_active_subordinates: 0,
+            reserved_instance_rows: 4,
+            requirement_semantics: ActionBandRequirementSemantics::Ordinary,
+        }],
+    };
+    let conserved = [ActionBandConservedProgressBindingSpec {
+        template_id: "resident-pressure".into(),
+        band_index: 0,
+        emission_binding_index: 0,
+        bound_source: ActionBandConservedProgressBoundSourceSpec::GuYangRealized,
+    }];
+    let eml = EmlExpressionRegistry::new();
+    let mut door = ActionBandSessionBuildDoor::new();
+    let frozen = door
+        .admit_once_with_conserved_progress_at_session_build(
+            &spec,
+            &conserved,
+            &registry,
+            &eml,
+            std::slice::from_ref(&threshold),
+        )
+        .expect("sealed Gu-Yang conserved-pressure admission")
+        .clone();
+    let active = (3..=6)
+        .map(|slot| {
+            ActionBandActiveInstance::new(
+                frozen.templates()[0].index(),
+                SlotIndex::new(slot),
+                [0.0; 4],
+            )
+        })
+        .collect::<Vec<_>>();
+    let rf_plan = pressure_rf_plan();
+    let native = ActionBandNativeLaneAdmission::from_existing_surfaces(
+        &registry,
+        &[],
+        std::slice::from_ref(&rf_plan),
+        &[],
+        &ThresholdRegistry::new(),
+    );
+    let compiled = compile_action_band_gpu_execution_with_native_lanes(
+        &frozen,
+        &eml,
+        &[ActionBandEmissionBindingGpu::rf_claim(RF_CLAIM_COL as u32)],
+        &active,
+        &native,
+    )
+    .expect("typed ActionBand Gu-Yang pressure compile");
+    (compiled.conserved_progress_bindings()[0], active)
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct ProducedPressureTrace {
+    produced_leaf: [f32; 4],
+    branch_pressure: [f32; 2],
+    allocated_flow: [f32; 2],
+}
+
+fn run_live_gpu_pressure_allocation(
+    ctx: &GpuContext,
+    immediate_flow: bool,
+    upstream_leaf_values: [f32; 4],
+) -> ProducedPressureTrace {
+    let layout = produced_pressure_layout();
+    let columns = pressure_cols();
+    let compiled_pressure = immediate_flow.then(compiled_gu_yang_pressure_product);
+    let plan = match &compiled_pressure {
+        Some((binding, active)) => plan_arena_allocation_with_pressure(
+            &layout,
+            &[],
+            7,
+            std::slice::from_ref(binding),
+            active,
+            GenerationStamp::new(10),
+            GenerationStamp::new(11),
+        )
+        .expect("plan-owned born-F pressure route"),
+        None => plan_arena_allocation_with_pressure(
+            &layout,
+            &[],
+            7,
+            &[],
+            &[],
+            GenerationStamp::new(10),
+            GenerationStamp::new(11),
+        )
+        .expect("plan-owned raw-P pressure route"),
+    };
+
+    let born_identity_count = plan
+        .cpu_ops
+        .iter()
+        .filter(|op| {
+            matches!(
+                op.source,
+                SourceSpec::SlotValue { col: source_col, .. }
+                    if source_col == col(GU_YANG_VALUE_COL)
+            ) && op.combine == CombineFn::Identity
+                && op.targets.len() == 1
+                && op.targets[0].1 == columns.weight_col
+        })
+        .count();
+    assert_eq!(born_identity_count, if immediate_flow { 4 } else { 0 });
+
+    let mut eml = EmlExpressionRegistry::new();
+    register_child_share_formula(&mut eml, columns).expect("child-share formula registration");
+    let upload_rows: Vec<_> = eml
+        .formulas_for_gpu_upload()
+        .map(|(id, meta, nodes)| {
+            (
+                id,
+                meta.clone(),
+                nodes
+                    .iter()
+                    .map(|node| EmlNodeGpu {
+                        opcode: node.opcode,
+                        flags: node.flags,
+                        a: node.a,
+                        b: node.b,
+                        c: node.c,
+                        d: node.d,
+                    })
+                    .collect(),
+            )
+        })
+        .collect();
+    let mut table = EmlGpuProgramTable::new(ctx, 64, 4);
+    for (tree_id, range_index) in table
+        .upload_trees(ctx, &upload_rows)
+        .expect("pressure child-share EML upload")
+    {
+        eml.mark_tree_uploaded(tree_id, range_index, table.generation)
+            .expect("uploaded child-share binding");
+    }
+    let upload =
+        PackedAccumulatorUpload::from_ops_resolving_input_lists_with_eml(&plan.cpu_ops, Some(&eml))
+            .expect("packed plan-owned pressure route");
+
+    let index =
+        |slot: u32, column: ColumnIndex| (slot * PRESSURE_N_DIMS + column.raw_u32()) as usize;
+    let produced_leaf = if immediate_flow {
+        let registrations = compile_gu_yang_n4_field_sweeps(GuYangN4FieldSweepSpec {
+            width: 7,
+            height: 1,
+            n_dims: PRESSURE_N_DIMS,
+            value_col: col(GU_YANG_VALUE_COL),
+            conductance_col: col(GU_YANG_CONDUCTANCE_COL),
+            saturation: 10.0,
+            chi: 0.25,
+            dt: 0.25,
+        })
+        .expect("canonical Gu-Yang producer");
+        let mut born_values = vec![0.0; 7 * PRESSURE_N_DIMS as usize];
+        for (offset, slot) in [3, 4, 5, 6].into_iter().enumerate() {
+            born_values[index(slot, col(GU_YANG_VALUE_COL))] = upstream_leaf_values[offset];
+        }
+        let mut field =
+            FieldSweepSession::new(ctx, &registrations[0]).expect("canonical Gu-Yang session");
+        field.upload_values(ctx, &born_values).unwrap();
+        field.dispatch_chain(ctx, &registrations, 1).unwrap();
+        let born = field.readback(ctx).unwrap();
+        assert_eq!(field.registration_dispatches(), 2);
+        [3, 4, 5, 6].map(|slot| born[index(slot, col(GU_YANG_VALUE_COL))])
+    } else {
+        upstream_leaf_values
+    };
+
+    let mut values = vec![0.0f32; 7 * PRESSURE_N_DIMS as usize];
+    values[index(0, columns.intrinsic_flow_col)] = 14.0;
+    for (offset, slot) in [3, 4, 5, 6].into_iter().enumerate() {
+        let pressure = produced_leaf[offset];
+        if immediate_flow {
+            values[index(slot, col(GU_YANG_VALUE_COL))] = pressure;
+        } else {
+            values[index(slot, columns.weight_col)] = pressure;
+        }
+    }
+
+    let mut session = AccumulatorOpSession::new_attached(ctx, 7, PRESSURE_N_DIMS, 128);
+    session.upload_values(ctx, &values);
+    session.copy_values_to_previous(ctx);
+    session
+        .upload_packed_ops(ctx, &upload)
+        .expect("pressure plan upload");
+    for band in 0..plan.n_bands {
+        session
+            .tick_with_eml(ctx, band, Some(&table))
+            .expect("pressure OrderBand dispatch");
+    }
+    let observed = session
+        .readback_full(ctx)
+        .expect("produced pressure readback");
+    ProducedPressureTrace {
+        produced_leaf,
+        branch_pressure: [
+            observed[index(1, columns.weight_col)],
+            observed[index(2, columns.weight_col)],
+        ],
+        allocated_flow: [
+            observed[index(1, columns.allocated_flow_col)],
+            observed[index(2, columns.allocated_flow_col)],
+        ],
+    }
 }
 
 fn world(ctx: GpuContext, n_slots: u32) -> (WorldGpuState, Vec<f32>) {
@@ -460,33 +818,51 @@ fn nine_neutral_items_replay_exactly_and_pressure_lawfully_changes_grants() {
     }
     assert_ne!(tie_winners[0], tie_winners[1]);
 
-    // Graduated 14.3 pressure outcomes: born immediate-flow F=(3,5) gives
-    // AllocatedFlow=(5.25,8.75); entitlement-first raw P=(9,5) gives
-    // AllocatedFlow=(9,5). Exact 14.4 settlement consumes those magnitudes.
+    // One traversal now composes the real graduated 14.3 producer and live-GPU
+    // allocator with the 14.4 exact settlement. No AllocatedFlow intermediate
+    // is installed until it has been emitted by that execution.
     let pressure_requests = [14, 14];
     let (pressure_semantic, pressure_buffers) =
         resident_plan(&state.ctx, 0x1452, 9, 25, 2, 1, false);
-    let mut pressure_outcomes = Vec::new();
-    for allocated in [[5.25, 8.75], [9.0, 5.0]] {
-        set_allocated(&mut values, state.n_dims, 0, allocated[0]);
-        set_allocated(&mut values, state.n_dims, 1, allocated[1]);
-        state.install_resolved_values_at_boundary(&values);
-        let pressure_plan = plan_resident_exact_apportionment(
-            &arena_layout(),
+    let immediate = run_live_gpu_pressure_allocation(&state.ctx, true, [6.0, 3.0, 3.0, 2.0]);
+    let entitlement = run_live_gpu_pressure_allocation(&state.ctx, false, [6.0, 3.0, 3.0, 2.0]);
+    assert_ne!(
+        immediate.produced_leaf,
+        [6.0, 3.0, 3.0, 2.0],
+        "immediate-flow pressure must be the born Gu-Yang F output, not its authored seeds"
+    );
+    assert!(
+        entitlement.branch_pressure[0] > entitlement.branch_pressure[1]
+            && entitlement.allocated_flow[0] > entitlement.allocated_flow[1],
+        "raw P must favor entitlement-first branch A: {entitlement:?}"
+    );
+    assert!(
+        entitlement.branch_pressure[0] > immediate.branch_pressure[0]
+            && entitlement.allocated_flow[0] > immediate.allocated_flow[0]
+            && immediate.allocated_flow[1] > entitlement.allocated_flow[1],
+        "the live born-F and raw-P producers must induce their actual distinct share vectors"
+    );
+
+    let pressure_plan = plan_resident_exact_apportionment(
+        &arena_layout(),
+        &pressure_semantic,
+        exact_claims(
             &pressure_semantic,
-            exact_claims(
-                &pressure_semantic,
-                &pressure_requests,
-                0..2,
-                |_| 7,
-                |_| 0,
-                |index| index,
-            ),
-            granter,
-            generation,
-        )
-        .unwrap();
-        pressure_outcomes.push(product_map(
+            &pressure_requests,
+            0..2,
+            |_| 7,
+            |_| 0,
+            |index| index,
+        ),
+        granter,
+        generation,
+    )
+    .unwrap();
+    let mut settle_produced = |produced: &ProducedPressureTrace| {
+        set_allocated(&mut values, state.n_dims, 0, produced.allocated_flow[0]);
+        set_allocated(&mut values, state.n_dims, 1, produced.allocated_flow[1]);
+        state.install_resolved_values_at_boundary(&values);
+        product_map(
             &run_gpu(
                 &state,
                 &mut session,
@@ -495,13 +871,34 @@ fn nine_neutral_items_replay_exactly_and_pressure_lawfully_changes_grants() {
                 ResidentApportionmentDispatch::single_pass(),
             )
             .unwrap(),
-        ));
-    }
-    assert_eq!(pressure_outcomes[0][&1_000], (3, 11));
-    assert_eq!(pressure_outcomes[0][&1_001], (4, 10));
-    assert_eq!(pressure_outcomes[1][&1_000], (5, 9));
-    assert_eq!(pressure_outcomes[1][&1_001], (2, 12));
-    assert_ne!(pressure_outcomes[0], pressure_outcomes[1]);
+        )
+    };
+    let immediate_outcome = settle_produced(&immediate);
+    let entitlement_outcome = settle_produced(&entitlement);
+    assert_eq!(immediate_outcome[&1_000], (4, 10));
+    assert_eq!(immediate_outcome[&1_001], (3, 11));
+    assert_eq!(entitlement_outcome[&1_000], (5, 9));
+    assert_eq!(entitlement_outcome[&1_001], (2, 12));
+    assert_ne!(immediate_outcome, entitlement_outcome);
+
+    // Stale-intermediate falsifier: requests and supply remain fixed while an
+    // upstream raw-P perturbation crosses the same plan-owned GPU route. The
+    // exact grants must follow the newly emitted AllocatedFlow, not either
+    // previously observed vector.
+    let perturbed_entitlement =
+        run_live_gpu_pressure_allocation(&state.ctx, false, [1.0, 1.0, 8.0, 8.0]);
+    assert_ne!(
+        perturbed_entitlement.allocated_flow,
+        entitlement.allocated_flow
+    );
+    let perturbed_outcome = settle_produced(&perturbed_entitlement);
+    assert_ne!(perturbed_outcome, entitlement_outcome);
+    assert_eq!(perturbed_outcome[&1_000], (1, 13));
+    assert_eq!(perturbed_outcome[&1_001], (6, 8));
+    assert!(
+        perturbed_outcome[&1_001].0 > perturbed_outcome[&1_000].0,
+        "new raw P must reverse the exact downstream grant direction"
+    );
 }
 
 fn reduced_report(
@@ -887,6 +1284,70 @@ fn four_level_layout() -> ArenaTreeLayout {
     .unwrap()
 }
 
+fn chain_product(products: &[ResidentSettlementOutput]) -> ResidentSettlementOutput {
+    products
+        .iter()
+        .copied()
+        .find(|product| product.source_simthing_id().raw() == 1_000)
+        .expect("one canonical chain product")
+}
+
+#[allow(clippy::too_many_arguments)]
+fn settle_literal_recursive_intake(
+    layout: &ArenaTreeLayout,
+    semantic_plan: &ResidentClearingPlan,
+    buffers: &ResidentClearingBuffers,
+    state: &WorldGpuState,
+    values: &mut [f32],
+    session: &mut ResidentApportionmentSession,
+    intake: ResidentRecursiveSupplyIntake,
+    requests: [u32; 2],
+    allocated_flow: [f32; 2],
+) -> Vec<ResidentSettlementOutput> {
+    // The typed intake is the only supply parameter at this recursive witness
+    // door. A raw/copied quantity cannot call it, and the canonical product's
+    // private fields prevent an independently authored equivalent T_s.
+    assert_eq!(intake.generation(), GenerationStamp::new(10));
+    assert_eq!(
+        intake.integration_band(),
+        layout.band_layout.integration_band
+    );
+    for (slot, allocated) in allocated_flow.into_iter().enumerate() {
+        set_allocated(values, state.n_dims, slot as u32, allocated);
+    }
+    state.install_resolved_values_at_boundary(values);
+    let claims = exact_claims(
+        semantic_plan,
+        &requests,
+        0..2,
+        |_| intake.granted(),
+        |_| 0,
+        |index| index,
+    );
+    assert!(
+        claims
+            .iter()
+            .all(|claim| claim.available() == intake.granted()),
+        "the literal prior T_s grant is the next edge's only supply"
+    );
+    let exact = plan_resident_exact_apportionment(
+        layout,
+        semantic_plan,
+        claims,
+        SimThingId::from_session_raw(7),
+        GenerationStamp::new(10),
+    )
+    .unwrap();
+    run_gpu(
+        state,
+        session,
+        buffers,
+        &exact,
+        ResidentApportionmentDispatch::single_pass(),
+    )
+    .unwrap()
+}
+
 fn three_recursive_edges_self_consume_exact_ts_and_u_recurs_once_at_n_plus_one() {
     let layout = four_level_layout();
     let plan = plan_arena_allocation(&layout, &[], 32).unwrap();
@@ -924,51 +1385,103 @@ fn three_recursive_edges_self_consume_exact_ts_and_u_recurs_once_at_n_plus_one()
     );
 
     let ctx = GpuContext::new_blocking().expect("real GPU for recursive T_s referee");
-    let (semantic_plan, buffers) = resident_plan(&ctx, 0x1455, 7, 10, 3, 3, false);
-    let (state, mut values) = world(ctx, 3);
-    for slot in 0..3 {
-        set_allocated(&mut values, state.n_dims, slot, 8.0);
-    }
+    let (semantic_plan, buffers) = resident_plan(&ctx, 0x1455, 7, 10, 2, 1, false);
+    let (state, mut values) = world(ctx, 2);
+    let mut session = ResidentApportionmentSession::new(&state.ctx);
+
+    // Edge 1: the only authored supply in the chain enters at the root. A
+    // zero-request companion preserves the same two-row resident shape without
+    // competing for the root's eight conserved units.
+    set_allocated(&mut values, state.n_dims, 0, 1.0);
+    set_allocated(&mut values, state.n_dims, 1, 0.0);
     state.install_resolved_values_at_boundary(&values);
-    let exact = plan_resident_exact_apportionment(
+    let root_exact = plan_resident_exact_apportionment(
         &layout,
         &semantic_plan,
-        exact_claims(
-            &semantic_plan,
-            &[8, 8, 8],
-            0..3,
-            |_| 8,
-            |_| 0,
-            |index| index,
-        ),
+        exact_claims(&semantic_plan, &[10, 0], 0..2, |_| 8, |_| 0, |index| index),
         SimThingId::from_session_raw(7),
         GenerationStamp::new(10),
     )
     .unwrap();
-    let mut session = ResidentApportionmentSession::new(&state.ctx);
-    let settlements: Vec<ResidentSettlementOutput> = run_gpu(
+    let root_products = run_gpu(
         &state,
         &mut session,
         &buffers,
-        &exact,
+        &root_exact,
         ResidentApportionmentDispatch::single_pass(),
     )
     .unwrap();
-    assert_eq!(settlements.len(), 3);
-    for (edge, settlement) in settlements.into_iter().enumerate() {
-        let intake: ResidentRecursiveSupplyIntake = settlement;
-        assert_eq!(intake.granted(), 8, "edge {edge} exact T_s grant");
-        assert_eq!(intake.unresolved(), 0);
-        assert_eq!(intake.generation(), GenerationStamp::new(10));
-        assert_eq!(
-            intake.integration_band(),
-            layout.band_layout.integration_band
-        );
-    }
+    assert_eq!(
+        product_map(&root_products),
+        BTreeMap::from([(1_000, (8, 2))])
+    );
+    let edge_one_output: ResidentSettlementOutput = chain_product(&root_products);
+
+    // Edge 2 consumes the literal edge-1 product through the exact alias. The
+    // 3:1 live basis spends the eight-unit intake as 6/2; the chain product is
+    // the six-unit row, with its own unresolved two units retained.
+    let edge_two_intake: ResidentRecursiveSupplyIntake = edge_one_output;
+    assert_eq!(edge_two_intake, edge_one_output);
+    let edge_two_products = settle_literal_recursive_intake(
+        &layout,
+        &semantic_plan,
+        &buffers,
+        &state,
+        &mut values,
+        &mut session,
+        edge_two_intake,
+        [8, 8],
+        [3.0, 1.0],
+    );
+    assert_eq!(
+        product_map(&edge_two_products),
+        BTreeMap::from([(1_000, (6, 2)), (1_001, (2, 6))])
+    );
+    let edge_two_output: ResidentSettlementOutput = chain_product(&edge_two_products);
+
+    // Edge 3 likewise consumes the literal six-unit product. Its 2:1 live
+    // basis produces the leaf T_s(4), never an independently authored supply.
+    let edge_three_intake: ResidentRecursiveSupplyIntake = edge_two_output;
+    assert_eq!(edge_three_intake, edge_two_output);
+    let edge_three_products = settle_literal_recursive_intake(
+        &layout,
+        &semantic_plan,
+        &buffers,
+        &state,
+        &mut values,
+        &mut session,
+        edge_three_intake,
+        [6, 6],
+        [2.0, 1.0],
+    );
+    assert_eq!(
+        product_map(&edge_three_products),
+        BTreeMap::from([(1_000, (4, 2)), (1_001, (2, 4))])
+    );
+    let leaf_output: ResidentSettlementOutput = chain_product(&edge_three_products);
+    assert_eq!(
+        [edge_one_output, edge_two_output, leaf_output]
+            .map(|product| (product.granted(), product.unresolved())),
+        [(8, 2), (6, 2), (4, 2)],
+        "literal sequential T_s chain must decline 8 -> 6 -> 4 and retain every U"
+    );
+    assert_ne!(
+        ResidentRecursiveSupplyIntake::default(),
+        edge_two_intake,
+        "the only independently constructible intake cannot replace edge 1's private product"
+    );
 
     let n = GenerationStamp::new(10);
     let key = scope("recursive-u");
-    let current_demand = demand(&key, Some(41), 10);
+    let temporal_intake: ResidentRecursiveSupplyIntake = leaf_output;
+    let current_demand = demand(
+        &key,
+        Some(41),
+        temporal_intake
+            .granted()
+            .checked_add(temporal_intake.unresolved())
+            .unwrap(),
+    );
     let current_claim = ConstrainedClaim::from_runtime_demand(&current_demand, 1.0).unwrap();
     let next_authored = demand(&key, Some(41), 2);
     let clearing_authority = ClearingRemainderAuthority {
@@ -980,16 +1493,23 @@ fn three_recursive_edges_self_consume_exact_ts_and_u_recurs_once_at_n_plus_one()
         &production_authority,
         &[ConstrainedSupply {
             scope: key,
-            available: 4,
+            available: temporal_intake.granted(),
         }],
         &[current_claim],
         &AuthoredClearingProgram::new(TransformOp::set(0.0)),
         vec![next_authored],
     )
     .unwrap();
-    assert_eq!(current[0].grants[0].unresolved, 6);
+    assert_eq!(
+        current[0].grants[0].unresolved,
+        temporal_intake.unresolved(),
+        "leaf T_s unresolved is the temporal N -> N+1 input"
+    );
     assert_eq!(carried[0].generation(), GenerationStamp::new(11));
-    assert_eq!(carried[0].product().requested, 8);
+    assert_eq!(
+        carried[0].product().requested,
+        temporal_intake.unresolved() + 2
+    );
     assert_eq!(
         produce_runtime_rf_next_generation_demands_for_tick(
             &production_authority,
