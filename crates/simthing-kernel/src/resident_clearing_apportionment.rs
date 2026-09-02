@@ -8,7 +8,7 @@
 //! numerator bases; it never uses atomics or physical arrival order.
 //!
 //! Settlement output and recursive supply intake are aliases of one canonical
-//! product. An adapter-shaped role type cannot enter the recursive port:
+//! product. The original role-projection fence remains load-bearing:
 //!
 //! ```compile_fail,E0308
 //! use simthing_kernel::ResidentRecursiveSupplyIntake;
@@ -22,6 +22,49 @@
 //!
 //! let projected = ChildSupplyRow::from(GrantRow(7));
 //! recursive_intake(&[projected]);
+//! ```
+//!
+//! A settlement-specific `From`/`Into` adapter cannot enter that port either:
+//!
+//! ```compile_fail,E0308
+//! use simthing_kernel::{ResidentRecursiveSupplyIntake, ResidentSettlementOutput};
+//!
+//! struct ChildSupplyRow(ResidentSettlementOutput);
+//! impl From<ResidentSettlementOutput> for ChildSupplyRow {
+//!     fn from(row: ResidentSettlementOutput) -> Self { Self(row) }
+//! }
+//! fn recursive_intake(_: &[ResidentRecursiveSupplyIntake]) {}
+//!
+//! fn converted_bridge(settled: ResidentSettlementOutput) {
+//!     let projected: ChildSupplyRow = settled.into();
+//!     recursive_intake(&[projected]);
+//! }
+//! ```
+//!
+//! A seam payload translation is equally inadmissible even when it copies all
+//! currently visible fields. The recursive port accepts the original `T_s`,
+//! never a look-alike payload:
+//!
+//! ```compile_fail,E0308
+//! use simthing_kernel::{ResidentRecursiveSupplyIntake, ResidentSettlementOutput};
+//!
+//! struct SeamPayload {
+//!     semantic_row: u32,
+//!     granted: u32,
+//!     unresolved: u32,
+//! }
+//! fn translate(row: ResidentSettlementOutput) -> SeamPayload {
+//!     SeamPayload {
+//!         semantic_row: row.semantic_row(),
+//!         granted: row.granted(),
+//!         unresolved: row.unresolved(),
+//!     }
+//! }
+//! fn recursive_intake(_: &[ResidentRecursiveSupplyIntake]) {}
+//!
+//! fn translated_bridge(settled: ResidentSettlementOutput) {
+//!     recursive_intake(&[translate(settled)]);
+//! }
 //! ```
 
 use std::cmp::Ordering;
