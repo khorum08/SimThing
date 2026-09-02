@@ -1,24 +1,27 @@
 # RESIDENT-CLEARING-SCORE-AND-BANDS-0 results
 
 > **Status: PROBATION / archaeology-first / ordering-audit-complete /
-> proof-present / DA-review-pending / UNMERGED.** Coding lane only;
+> rows-2-3-8-scope-complete / proof-present / DA-review-pending / UNMERGED.** Coding lane only;
 > no merge, graduation, pointer movement, closeout apply, apportionment, cutover,
 > or 14.4+ work.
 
 **Date:** 2026-09-01
-**Owner handoff:** Board issue `#1332`, continuation-remand comment `5495298523`
-**Exact handoff base:** `8b5740978186d75b080b65e32b77b3d84eef3520`
-**Accepted pre-remand head:** `00434713fd974c2a961cca1022cf308b917fbb53`
+**Owner handoff:** Board issue `#1332`, scope-completion comment `5503079911`
+**Original branch base:** `8b5740978186d75b080b65e32b77b3d84eef3520`
+**Accepted pre-continuation head:** `23482984d0731ae008e3f03fdf815898a871b077`
+**Scope amendment on master:** `ef0a1f36de02b3365697a022cccd1600989c5956`
+**Scope-integration merge:** `d943bcf0058260cf0f159096598d2a14068f47a1`
+**Rows 2/3/8 source/proof head:** `f7ba8e6a1c125d3435a3395e64ef0c6bbb3f7378`
 **Prior graduated rung:** `RESIDENT-CLEARING-PLAN-0`, PR `#1911`,
 `217e8fca`
-**ORIENT-RECEIPT (first-hand):** `26ec91084cea`
-**orientation_rule_stamp:** `0310b6f6a40140be`
+**ORIENT-RECEIPT (first-hand):** `7566036402a4`
+**orientation_rule_stamp:** `94626890b685c1da`
 **orientation_digest_sha:**
-`42ba9690ed79d63da4aa524b45883f4bd28c98c7b0e24e1fa1c9d55dd35a3854`
+`e92da4a12d5695b50d7270f5b7ed71510c4b15710370e9bfc49a3232b3281acc`
 
-The handoff names receipt `58e554dc9bca`; a fresh first-hand coding ingress on
-the exact base emitted `26ec91084cea` with the same rule stamp and digest. This
-record carries the first-hand receipt and does not manufacture an HD receipt.
+The amended ladder clause was merged before the executable continuation. A
+fresh first-hand coding ingress after that merge emitted the receipt above; the
+active pointer remained `RESIDENT-CLEARING-SCORE-AND-BANDS-0` throughout.
 
 ## Required anchor acknowledgements
 
@@ -75,6 +78,46 @@ parity: those are explicitly owned by 14.4 and 14.5 respectively.
 | 5 — continuous child share | Bind level-N `AllocatedFlow` directly as an input to the same `EvalEML` allocator operation that writes child level N+1 `AllocatedFlow`. Remove the propagated economic copy. |
 | 8 — additive subtree pressure | Retain `CombineFn::Sum` over the admitted child span/list. No alternate ledger or fold. |
 | 11 — unresolved demand recurrence | The runtime RF Current→Next production door performs the N clear, consumes every resulting `U(N)` by neutral identity exactly once into the same `RuntimeOwnerSiloDemandBucket` at N+1, and returns the existing `GenerationStamped<T>` carrier. No caller-supplied observation/result slice, lane, column, demand type, or authored bridge. |
+
+## Rows 2/3/8 scope-completion binding
+
+The existing allocator RF recurrence now carries branch pressure without a new
+economic plane. At each leaf-to-root depth band, the one admitted direct-child
+`CombineFn::Sum` publishes its result to the parent's existing `weight_col` and
+existing `weight_sum_col`. When that parent is consumed at the next shallower
+band, its completed `weight_col` is one direct-child contribution. The source is
+the existing contiguous `SlotRange` or ordered sparse input list, so no host
+descendant scan and no descendant recount exists.
+
+The neutral pressure doors consume already-born `ResolvedFullCell` inputs:
+
+| Commitment class | Born basis | Existing destination | Admission |
+|---|---|---|---|
+| immediate flow | Gu-Yang-serviceable `F` | `AllocatorWeight` | identity at exactly N+1 |
+| entitlement first | raw lawful `P` | `AllocatorWeight` | identity at exactly N+1 |
+
+Both operations are `SlotValue` → `CombineFn::Identity` with identity scale.
+They contain no EML requirement, authored policy, PALMA/Gu-Yang/serviceability
+or path-cost solve, private score, or new column/type/lane. The separate named
+entry points keep the F/P basis mechanical while sharing only the neutral
+identity implementation. A generation other than `observed + 1` returns the
+typed `NotNextGeneration` refusal; generation overflow also refuses.
+
+The asymmetric depth-2 witness has two sibling branches and four leaf pressure
+cells. Under equal neutral policy and parent supply `14`:
+
+| Case | Branch A | Branch B | Aggregate | N+1 child allocation |
+|---|---:|---:|---:|---:|
+| immediate-flow born `F` | `2 + 1 = 3` | `3 + 2 = 5` | `8` | `5.25`, `8.75` |
+| entitlement-first raw `P` | `6 + 3 = 9` | `3 + 2 = 5` | `14` | `9`, `5` |
+
+Every logical hierarchy edge is found exactly once in the compiled Sum source;
+the root source list is only its two direct children. CPU oracle and live GPU
+bits agree for both cases. The descendant-recount mutant, same-generation
+binding, private raw-P serviceability surrogate, and arbitrary score-winner
+substitute each diverge or typed-RED as required. The settled continuous
+child-share formula remains the allocator; score-bit precedence remains a
+separate exact-clearing authority and is not reused here.
 
 ## Implemented direct resident allocation binding
 
@@ -178,7 +221,7 @@ sparse-rebound, and one- versus multi-workgroup dispatch cardinalities.
 
 | Class | Files | Purpose |
 |---|---|---|
-| direct allocator | `crates/simthing-driver/src/{arena_allocation_plan.rs,arena_allocation_oracle.rs,arena_allocation_sync.rs,child_share_eml.rs}` | direct parent-cell plan, CPU oracle, packed-list sync, parameterized child-share EML |
+| direct allocator | `crates/simthing-driver/src/{arena_allocation_plan.rs,arena_allocation_oracle.rs,arena_allocation_sync.rs,child_share_eml.rs,need_binding.rs}` | direct-child branch-pressure plan/oracle, neutral F/P identity doors, packed-list sync, parameterized child-share EML |
 | established kernel execution | `crates/simthing-kernel/src/accumulator_op/{encode.rs,packed_session_upload.rs}`, `crates/simthing-kernel/src/{cpu_oracle.rs,shaders/accumulator_op.wgsl}` | bounded input-list parameter admission/upload; scaled sums; direct resident input reads |
 | row-11 law | `crates/simthing-spec/src/spec/runtime_rf_tick.rs`, `crates/simthing-spec/src/spec/constrained_clearing.rs`, re-exports in `spec/mod.rs` and `lib.rs` | once-authority-owned N clear plus same-`T_d` neutral Current-to-Next recurrence; arithmetic helper is crate-private |
 | production caller | `crates/simthing-driver/src/runtime_rf_tick_compile.rs`, re-export in `crates/simthing-driver/src/lib.rs` | ordinary runtime tick caller exposes no optional observation or clearing-result bypass |
@@ -187,18 +230,23 @@ sparse-rebound, and one- versus multi-workgroup dispatch cardinalities.
 
 ## Source/evidence split
 
-Production source changes are restricted to the accepted direct allocator
-binding, existing generic packed-EvalEML execution, scaled-sum semantics already
-named by `ScaleSpec`, and the same-demand recurrence. The remand delta from
-`00434713fd974c2a961cca1022cf308b917fbb53` touches only the row-11 spec/driver
-production door, its public re-exports, and the private generation seal carried
-by existing `ConstrainedGrant`. Workshop contains only the consumer/referee.
-Documentation, inventory, and reach logs are evidence only.
+The rows-2/3/8 executable/proof delta is exactly
+`d943bcf0058260cf0f159096598d2a14068f47a1..f7ba8e6a1c125d3435a3395e64ef0c6bbb3f7378`:
+three driver source files, the existing workshop referee, and its existing test
+inventory row. The scope-integration merge contributes only the amended design,
+orientation, and doctrine-anchor data from master. This result document,
+evidence-index update, and append-only reach log form the evidence tail.
+
+Production changes are restricted to the existing allocator Sum recurrence,
+CPU oracle mirror, and neutral pressure identity builder. Workshop remains only
+the consumer/referee. No accepted row-5, row-11, kernel, WGSL, exact clearing,
+or 14.4 surface was reopened.
 
 ## Test evidence
 
 - `cargo test -p simthing-workshop --test resident_clearing_score_and_bands_0`
-  — 3 passed, including live GPU on NVIDIA RTX 4080 Laptop GPU / Vulkan.
+  — 3 passed, including live GPU on NVIDIA RTX 4080 Laptop GPU / Vulkan; the
+  direct-allocation referee now also proves both asymmetric F/P pressure cases.
 - `cargo test -p simthing-driver --test arena_participant_elimination_0`
   — 2 passed on the same GPU; existing sparse INPUT_LIST and fission/replay
   production paths remain bit-exact.
@@ -211,6 +259,8 @@ Documentation, inventory, and reach logs are evidence only.
 - `bash scripts/ci/test_inventory_check.sh` and `bash
   scripts/ci/test_inventory_drift_check.sh` — PASS (`1373` discovered,
   missing/unledgered/stale `0`).
+- `bash scripts/ci/agent_scan.sh --base 8b574097... --head f7ba8e6a...`
+  — PASS, hard failures `0`, inspect `0`.
 
 Exact-head clearance, relay lint, and full certification are recorded in the PR
 return rather than hard-coding a self-referential head here.
