@@ -8,7 +8,23 @@
 //! numerator bases; it never uses atomics or physical arrival order.
 //!
 //! Settlement output and recursive supply intake are aliases of one canonical
-//! product. An adapter-shaped role type cannot enter the recursive port:
+//! product. The original role-projection fence remains load-bearing:
+//!
+//! ```compile_fail,E0308
+//! use simthing_kernel::ResidentRecursiveSupplyIntake;
+//!
+//! struct GrantRow(u32);
+//! struct ChildSupplyRow(u32);
+//! impl From<GrantRow> for ChildSupplyRow {
+//!     fn from(row: GrantRow) -> Self { Self(row.0) }
+//! }
+//! fn recursive_intake(_: &[ResidentRecursiveSupplyIntake]) {}
+//!
+//! let projected = ChildSupplyRow::from(GrantRow(7));
+//! recursive_intake(&[projected]);
+//! ```
+//!
+//! A settlement-specific `From`/`Into` adapter cannot enter that port either:
 //!
 //! ```compile_fail,E0308
 //! use simthing_kernel::{ResidentRecursiveSupplyIntake, ResidentSettlementOutput};

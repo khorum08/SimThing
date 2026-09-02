@@ -93,10 +93,11 @@ become an alternate production bridge.
   matrix, a four-level/three-edge exact-`T_s` recursive germ, lawful born-`F`
   and raw-`P` drift, scale/Q149/physical-shape sweeps, independent overlapping
   raw-id trees, and exact qualification invalidation.
-- The existing adapter compile-fail was sharpened to exercise an actual
-  `ResidentSettlementOutput -> From/Into -> ChildSupplyRow -> recursive intake`
-  bridge. A second payload-copy translator is independently pinned. Both stop
-  at the recursive intake with `E0308`; neither is a numerical mutant.
+- The graduated 14.4 role-projection compile-fail remains byte-identical. Two
+  additive 14.5 fences exercise an actual `ResidentSettlementOutput ->
+  From/Into -> ChildSupplyRow -> recursive intake` bridge and an independent
+  payload-copy translator. Both stop at recursive intake with `E0308`; neither
+  is a numerical mutant.
 - The mixed-valid/invalid matrix exposed one real ordering defect: an earlier
   row could report derived arithmetic overflow before a later non-finite live
   allocation, unlike the CPU authority's validate-all-inputs-first contract.
@@ -173,7 +174,7 @@ PASS:
 - `cargo check -p simthing-kernel`
 - `cargo check -p simthing-workshop`
 - `cargo test -p simthing-workshop --test resident_clearing_parity_0 -- --nocapture --test-threads=1` — 1/1 terminal referee, four sections
-- `cargo test -p simthing-kernel --doc resident_clearing_apportionment -- --nocapture --test-threads=1` — both `E0308` mutants RED
+- `cargo test -p simthing-kernel --doc resident_clearing_apportionment -- --nocapture --test-threads=1` — graduated fence plus both additive `E0308` mutants RED
 - 14.1 door census plus frozen 14.2/14.3/14.4 workshop witnesses — 16/16
 - frozen 13.6/13.9 driver witnesses — 8/8
 - `test_inventory_check.sh` and `test_inventory_drift_check.sh` — 1386/1386, zero missing/extra/stale
