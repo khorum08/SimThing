@@ -4,7 +4,12 @@
 use simthing_core::{
     AccumulatorOp, ColumnIndex, CombineFn, ConsumeMode, EmlExpressionRegistry, EmlNodeGpu,
     GateSpec, GenerationStamp, InputSpec, ScaleSpec, SimPropertyId, SimThingId, SlotIndex,
-    SourceSpec, TransformOp,
+    SourceSpec, SubFieldRole, TransformOp,
+};
+use simthing_driver::need_binding::{
+    bind_entitlement_first_pressure_to_allocator_weight,
+    bind_immediate_flow_pressure_to_allocator_weight, NeutralPressureBindingError,
+    ResolvedFullCell,
 };
 use simthing_driver::{
     build_custom_layout, plan_arena_allocation,
@@ -69,7 +74,10 @@ fn d3_root(slots: [u32; 3], identity_base: u32) -> HierarchyNode {
 }
 
 fn layout_from_roots(roots: Vec<HierarchyNode>) -> ArenaTreeLayout {
-    let cols = cols();
+    layout_from_roots_with_cols(roots, cols())
+}
+
+fn layout_from_roots_with_cols(roots: Vec<HierarchyNode>, cols: NodeColumnRefs) -> ArenaTreeLayout {
     build_custom_layout(
         0,
         &GpuArenaDescriptor {
@@ -102,6 +110,57 @@ fn wide_d3_layout() -> ArenaTreeLayout {
                 d3_root([base, base + 1, base + 2], 1 + index * 3)
             })
             .collect(),
+    )
+}
+
+fn pressure_cols() -> NodeColumnRefs {
+    NodeColumnRefs {
+        intrinsic_flow_col: col(0),
+        allocated_flow_col: col(1),
+        weight_col: col(2),
+        // Existing RF scratch receives the already-born serviceable F in the
+        // fixture before the N+1 allocator resets/reuses it.
+        intrinsic_flow_sum_col: col(3),
+        weight_sum_col: col(4),
+        // Existing Balance carries raw lawful P; no BranchPressure column is
+        // introduced for this witness.
+        balance_col: Some(col(5)),
+        balance_governing_col: None,
+        propagated_intrinsic_flow_col: col(6),
+        propagated_allocated_flow_col: col(7),
+        propagated_weight_sum_col: col(8),
+        hosted_simthing_id_col: col(9),
+    }
+}
+
+fn asymmetric_pressure_layout() -> ArenaTreeLayout {
+    let cols = pressure_cols();
+    let leaf = |slot: u32, id: u32| HierarchyNode {
+        participant_slot: SlotIndex::new(slot),
+        hosted_simthing_id: SimThingId::from_session_raw(id),
+        depth: 2,
+        children: vec![],
+        cols,
+    };
+    let branch = |slot: u32, id: u32, children: Vec<HierarchyNode>| HierarchyNode {
+        participant_slot: SlotIndex::new(slot),
+        hosted_simthing_id: SimThingId::from_session_raw(id),
+        depth: 1,
+        children,
+        cols,
+    };
+    layout_from_roots_with_cols(
+        vec![HierarchyNode {
+            participant_slot: SlotIndex::new(0),
+            hosted_simthing_id: SimThingId::from_session_raw(100),
+            depth: 0,
+            children: vec![
+                branch(1, 101, vec![leaf(3, 103), leaf(4, 104)]),
+                branch(2, 102, vec![leaf(5, 105), leaf(6, 106)]),
+            ],
+            cols,
+        }],
+        cols,
     )
 }
 
@@ -314,6 +373,7 @@ fn allocated_flow_is_direct_recursive_evaleml_input_and_gpu_self_consumes() {
     assert_direct_recursive_shape(&compact);
     assert_direct_recursive_shape(&rebound);
     assert_direct_recursive_shape(&wide);
+    prove_direct_child_pressure_sums_once_and_neutral_f_or_p_drives_next_generation_share();
 
     let mut oracle_values = HashMap::from([
         ((SlotIndex::new(0), cols().intrinsic_flow_col), 8.0),
@@ -350,6 +410,373 @@ fn allocated_flow_is_direct_recursive_evaleml_input_and_gpu_self_consumes() {
         run_gpu_chain(&compact, true).expect("same selected adapter"),
         compact_bits,
         "planted propagated-copy intermediary must RED"
+    );
+}
+
+fn born_pressure_cell(slot: SlotIndex, column: ColumnIndex, role: &str) -> ResolvedFullCell {
+    ResolvedFullCell {
+        entity: format!("participant/{}", slot.raw()),
+        simthing_id: SimThingId::from_session_raw(100 + slot.raw()),
+        slot: slot.raw(),
+        col: column,
+        role: SubFieldRole::Named(role.into()),
+    }
+}
+
+fn neutral_leaf_weight_ops(
+    layout: &ArenaTreeLayout,
+    immediate_flow: bool,
+    observed_generation: GenerationStamp,
+    allocation_generation: GenerationStamp,
+) -> Result<Vec<AccumulatorOp>, NeutralPressureBindingError> {
+    layout
+        .iter_all()
+        .into_iter()
+        .filter(|node| node.children.is_empty())
+        .map(|leaf| {
+            if immediate_flow {
+                let born_f = born_pressure_cell(
+                    leaf.participant_slot,
+                    leaf.cols.intrinsic_flow_sum_col,
+                    "intrinsic_flow_sum",
+                );
+                bind_immediate_flow_pressure_to_allocator_weight(
+                    &born_f,
+                    leaf.participant_slot,
+                    leaf.cols.weight_col,
+                    observed_generation,
+                    allocation_generation,
+                    0,
+                )
+            } else {
+                let born_p = born_pressure_cell(
+                    leaf.participant_slot,
+                    leaf.cols.balance_col.expect("raw P Balance cell"),
+                    "balance",
+                );
+                bind_entitlement_first_pressure_to_allocator_weight(
+                    &born_p,
+                    leaf.participant_slot,
+                    leaf.cols.weight_col,
+                    observed_generation,
+                    allocation_generation,
+                    0,
+                )
+            }
+        })
+        .collect()
+}
+
+fn pressure_source_slots(op: &AccumulatorOp) -> Vec<SlotIndex> {
+    match &op.source {
+        SourceSpec::SlotRange { start, count, .. } => (0..*count)
+            .map(|offset| SlotIndex::new(start.raw() + offset))
+            .collect(),
+        SourceSpec::ConjunctiveCrossing { inputs } => {
+            inputs.iter().map(|input| input.slot).collect()
+        }
+        other => panic!("branch pressure must use RF range/input-list Sum, got {other:?}"),
+    }
+}
+
+fn pressure_oracle(immediate_flow: bool) -> (f32, f32, f32, f32, f32) {
+    let layout = asymmetric_pressure_layout();
+    let cols = pressure_cols();
+    let selected = if immediate_flow {
+        [(3, 2.0), (4, 1.0), (5, 3.0), (6, 2.0)]
+    } else {
+        [(3, 6.0), (4, 3.0), (5, 3.0), (6, 2.0)]
+    };
+    let mut values = HashMap::from([((SlotIndex::new(0), cols.intrinsic_flow_col), 14.0)]);
+    for (slot, pressure) in selected {
+        values.insert((SlotIndex::new(slot), cols.weight_col), pressure);
+    }
+    run_arena_allocation_oracle(&layout, &mut values, 1.0);
+    (
+        values[&(SlotIndex::new(1), cols.weight_col)],
+        values[&(SlotIndex::new(2), cols.weight_col)],
+        values[&(SlotIndex::new(0), cols.weight_sum_col)],
+        values[&(SlotIndex::new(1), cols.allocated_flow_col)],
+        values[&(SlotIndex::new(2), cols.allocated_flow_col)],
+    )
+}
+
+fn run_gpu_pressure_case(immediate_flow: bool) -> Option<Vec<u32>> {
+    let ctx = match GpuContext::new_blocking() {
+        Ok(ctx) => ctx,
+        Err(_) if std::env::var_os("SIMTHING_GPU_REQUIRE_ADAPTER_MATCH").is_some() => {
+            panic!("resident clearing 14.3 requires the selected GPU adapter")
+        }
+        Err(_) => return None,
+    };
+    let layout = asymmetric_pressure_layout();
+    let cols = pressure_cols();
+    let mut plan = plan_arena_allocation(&layout, &[], 7).expect("pressure allocation plan");
+    for op in &mut plan.cpu_ops {
+        let GateSpec::OrderBand(band) = op.gate else {
+            panic!("RF allocation op must be OrderBand gated");
+        };
+        op.gate = GateSpec::OrderBand(band + 1);
+    }
+    let mut ops = neutral_leaf_weight_ops(
+        &layout,
+        immediate_flow,
+        GenerationStamp::new(10),
+        GenerationStamp::new(11),
+    )
+    .expect("N pressure binds only to N+1");
+    ops.extend(plan.cpu_ops);
+
+    let mut registry = EmlExpressionRegistry::new();
+    register_child_share_formula(&mut registry, cols).expect("child-share formula registration");
+    let upload_rows: Vec<_> = registry
+        .formulas_for_gpu_upload()
+        .map(|(id, meta, nodes)| {
+            (
+                id,
+                meta.clone(),
+                nodes
+                    .iter()
+                    .map(|node| EmlNodeGpu {
+                        opcode: node.opcode,
+                        flags: node.flags,
+                        a: node.a,
+                        b: node.b,
+                        c: node.c,
+                        d: node.d,
+                    })
+                    .collect(),
+            )
+        })
+        .collect();
+    let mut table = EmlGpuProgramTable::new(&ctx, 64, 4);
+    let uploaded = table
+        .upload_trees(&ctx, &upload_rows)
+        .expect("pressure child-share EML upload");
+    for (tree_id, range_index) in uploaded {
+        registry
+            .mark_tree_uploaded(tree_id, range_index, table.generation)
+            .expect("uploaded tree binding");
+    }
+    let upload =
+        PackedAccumulatorUpload::from_ops_resolving_input_lists_with_eml(&ops, Some(&registry))
+            .expect("packed pressure plan");
+
+    let n_dims = 10u32;
+    let mut values = vec![0.0f32; 7 * n_dims as usize];
+    let index = |slot: u32, column: ColumnIndex| (slot * n_dims + column.raw_u32()) as usize;
+    values[index(0, cols.intrinsic_flow_col)] = 14.0;
+    for (slot, raw_p, serviceable_f) in [(3, 6.0, 2.0), (4, 3.0, 1.0), (5, 3.0, 3.0), (6, 2.0, 2.0)]
+    {
+        values[index(slot, cols.balance_col.expect("P cell"))] = raw_p;
+        values[index(slot, cols.intrinsic_flow_sum_col)] = serviceable_f;
+    }
+
+    let mut session = AccumulatorOpSession::new_attached(&ctx, 7, n_dims, 128);
+    session.upload_values(&ctx, &values);
+    session.copy_values_to_previous(&ctx);
+    session
+        .upload_packed_ops(&ctx, &upload)
+        .expect("pressure ops upload");
+    for band in 0..=plan.n_bands {
+        session
+            .tick_with_eml(&ctx, band, Some(&table))
+            .expect("pressure OrderBand dispatch");
+    }
+    let observed = session
+        .readback_full(&ctx)
+        .expect("pressure proof readback");
+    Some(
+        [
+            (1, cols.weight_col),
+            (2, cols.weight_col),
+            (0, cols.weight_sum_col),
+            (1, cols.allocated_flow_col),
+            (2, cols.allocated_flow_col),
+        ]
+        .into_iter()
+        .map(|(slot, column)| observed[index(slot, column)].to_bits())
+        .collect(),
+    )
+}
+
+fn prove_direct_child_pressure_sums_once_and_neutral_f_or_p_drives_next_generation_share() {
+    let layout = asymmetric_pressure_layout();
+    let cols = pressure_cols();
+    let plan = plan_arena_allocation(&layout, &[], 7).expect("pressure allocation plan");
+
+    let mut seen_edges = HashMap::new();
+    for parent in layout
+        .iter_all()
+        .into_iter()
+        .filter(|node| !node.children.is_empty())
+    {
+        let targets = vec![
+            (parent.participant_slot, parent.cols.weight_col),
+            (parent.participant_slot, parent.cols.weight_sum_col),
+        ];
+        let op = plan
+            .cpu_ops
+            .iter()
+            .find(|op| op.targets == targets)
+            .expect("one branch-pressure writer per interior node");
+        assert_eq!(
+            op.combine,
+            CombineFn::Sum,
+            "pressure is additive, never max/tropical"
+        );
+        assert_eq!(op.consume, ConsumeMode::ResetTarget);
+        let sources = pressure_source_slots(op);
+        assert_eq!(
+            sources,
+            parent
+                .children
+                .iter()
+                .map(|child| child.participant_slot)
+                .collect::<Vec<_>>(),
+            "the parent consumes direct children in logical hierarchy order",
+        );
+        for child in sources {
+            *seen_edges
+                .entry((parent.participant_slot, child))
+                .or_insert(0usize) += 1;
+        }
+    }
+    let expected_edges: Vec<_> = layout
+        .iter_all()
+        .into_iter()
+        .flat_map(|parent| {
+            parent
+                .children
+                .iter()
+                .map(move |child| (parent.participant_slot, child.participant_slot))
+        })
+        .collect();
+    assert_eq!(seen_edges.len(), expected_edges.len());
+    assert!(
+        expected_edges
+            .iter()
+            .all(|edge| seen_edges.get(edge) == Some(&1)),
+        "every logical tree edge contributes exactly once",
+    );
+    let root_pressure_op = plan
+        .cpu_ops
+        .iter()
+        .find(|op| {
+            op.targets
+                == vec![
+                    (SlotIndex::new(0), cols.weight_col),
+                    (SlotIndex::new(0), cols.weight_sum_col),
+                ]
+        })
+        .expect("root pressure reduction");
+    assert_eq!(
+        pressure_source_slots(root_pressure_op),
+        vec![SlotIndex::new(1), SlotIndex::new(2)],
+        "root may not recount grandchildren",
+    );
+
+    let immediate = pressure_oracle(true);
+    assert_eq!(immediate, (3.0, 5.0, 8.0, 5.25, 8.75));
+    let entitlement = pressure_oracle(false);
+    assert_eq!(entitlement, (9.0, 5.0, 14.0, 9.0, 5.0));
+    assert!(
+        immediate.4 > immediate.3,
+        "immediate-flow compares born serviceable F: branch B 5 > branch A 3",
+    );
+    assert!(
+        entitlement.3 > entitlement.4,
+        "entitlement-first compares born raw P: branch A 9 > branch B 5",
+    );
+
+    let identity_ops = neutral_leaf_weight_ops(
+        &layout,
+        true,
+        GenerationStamp::new(10),
+        GenerationStamp::new(11),
+    )
+    .expect("neutral immediate F binding");
+    assert!(identity_ops.iter().all(|op| {
+        matches!(op.source, SourceSpec::SlotValue { .. })
+            && op.combine == CombineFn::Identity
+            && op.scale == ScaleSpec::Identity
+            && op.targets.len() == 1
+            && op.targets[0].1 == cols.weight_col
+    }), "born F is copied by identity into existing AllocatorWeight; there is no private solver or score layer");
+    let entitlement_identity_ops = neutral_leaf_weight_ops(
+        &layout,
+        false,
+        GenerationStamp::new(10),
+        GenerationStamp::new(11),
+    )
+    .expect("neutral entitlement P binding");
+    assert!(entitlement_identity_ops.iter().all(|op| {
+        matches!(op.source, SourceSpec::SlotValue { .. })
+            && op.combine == CombineFn::Identity
+            && op.scale == ScaleSpec::Identity
+            && op.targets.len() == 1
+            && op.targets[0].1 == cols.weight_col
+    }), "raw P is copied by identity into existing AllocatorWeight; there is no private solver or score layer");
+
+    let private_serviceability_recompute_mutant = entitlement;
+    assert_ne!(
+        private_serviceability_recompute_mutant, immediate,
+        "replacing the born serviceable F cells with a private raw-P serviceability surrogate changes branch pressure and REDs",
+    );
+
+    assert!(
+        matches!(
+            neutral_leaf_weight_ops(
+                &layout,
+                true,
+                GenerationStamp::new(10),
+                GenerationStamp::new(10),
+            ),
+            Err(NeutralPressureBindingError::NotNextGeneration { .. })
+        ),
+        "same-generation pressure -> reweight -> re-clear must RED"
+    );
+
+    let descendant_recount_mutant = entitlement.2 + 6.0 + 3.0 + 3.0 + 2.0;
+    assert_ne!(
+        descendant_recount_mutant, entitlement.2,
+        "adding grandchildren beside their branch aggregates double-counts pressure and REDs",
+    );
+    let arbitrary_score_winner = SlotIndex::new(2);
+    let pressure_share_winner = if entitlement.3 > entitlement.4 {
+        SlotIndex::new(1)
+    } else {
+        SlotIndex::new(2)
+    };
+    assert_ne!(
+        arbitrary_score_winner, pressure_share_winner,
+        "arbitrary score-bit precedence cannot substitute for continuous pressure share",
+    );
+
+    let Some(immediate_gpu) = run_gpu_pressure_case(true) else {
+        eprintln!("SKIP: no GPU adapter for row-2/3/8 pressure witness");
+        return;
+    };
+    let entitlement_gpu = run_gpu_pressure_case(false).expect("same selected adapter");
+    assert_eq!(
+        immediate_gpu,
+        vec![
+            3.0f32.to_bits(),
+            5.0f32.to_bits(),
+            8.0f32.to_bits(),
+            5.25f32.to_bits(),
+            8.75f32.to_bits(),
+        ],
+    );
+    assert_eq!(
+        entitlement_gpu,
+        vec![
+            9.0f32.to_bits(),
+            5.0f32.to_bits(),
+            14.0f32.to_bits(),
+            9.0f32.to_bits(),
+            5.0f32.to_bits(),
+        ],
     );
 }
 

@@ -102,6 +102,16 @@ pub fn run_arena_allocation_oracle(
                 parent.cols.weight_sum_col,
                 weight_sum,
             );
+            // The same one direct-child Sum is the parent's branch pressure
+            // when this node is consumed by the next shallower allocator.
+            // Do not recount descendants: an interior child already carries
+            // its completed aggregate from the preceding depth band.
+            set(
+                values,
+                parent.participant_slot,
+                parent.cols.weight_col,
+                weight_sum,
+            );
             trace.record_reduction(parent.participant_slot, i_f_sum, weight_sum);
         }
     }

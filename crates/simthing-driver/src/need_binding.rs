@@ -9,8 +9,8 @@ use simthing_core::{
     eml_nodes, rebuild_emit_on_threshold_ops, AccumulatorOp, ColumnIndex, CombineFn, ConsumeMode,
     DimensionRegistry, EmitOnThresholdBuffer, EmitOnThresholdRegistration, EmlConsumerMask,
     EmlExecutionClass, EmlExpressionRegistry, EmlFormulaMeta, EmlNodeGpu, EmlTreeId, GateSpec,
-    ScaleSpec, SimThing, SimThingId, SlotIndex, SourceSpec, SubFieldRole, ThresholdDirection,
-    NEED_STAGE_MAX_PAIRS,
+    GenerationStamp, ScaleSpec, SimThing, SimThingId, SlotIndex, SourceSpec, SubFieldRole,
+    ThresholdDirection, NEED_STAGE_MAX_PAIRS,
 };
 use simthing_spec::{
     EmlGadgetInstanceSpec, NeedBindingSpec, ResourceFlowSpec, SemanticPropertyLocusSpec, SpecError,
@@ -31,6 +31,25 @@ pub const NEED_STAGE_ORDER_BAND: u32 = 0;
 pub const NEED_EVAL_ORDER_BAND: u32 = 1;
 /// How many pre-bands need_binding occupies (stage + eval).
 pub const NEED_BINDING_PRE_BANDS: u32 = 2;
+
+/// Refusal from the neutral pressure-to-weight generation door.
+///
+/// This is execution pacing, not a pressure/commitment vocabulary: the two
+/// lawful bases retain separate named entry points below and both consume an
+/// already-born cell without constructing a private PALMA/Gu-Yang result.
+#[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
+pub enum NeutralPressureBindingError {
+    #[error("eligible pressure generation cannot advance to the N+1 allocation cycle")]
+    GenerationOverflow,
+    #[error(
+        "eligible pressure observed at generation {observed} must bind allocation generation {expected}, got {allocation}"
+    )]
+    NotNextGeneration {
+        observed: u32,
+        expected: u32,
+        allocation: u32,
+    },
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ResolvedFullCell {
@@ -582,6 +601,78 @@ fn project_op(
         consume: ConsumeMode::ResetTarget,
         targets: vec![(SlotIndex::new(dst_slot), dst_col)],
     }
+}
+
+fn neutral_pressure_identity_op(
+    born_pressure: &ResolvedFullCell,
+    participant_slot: SlotIndex,
+    allocator_weight_col: ColumnIndex,
+    observed_generation: GenerationStamp,
+    allocation_generation: GenerationStamp,
+    band: u32,
+) -> Result<AccumulatorOp, NeutralPressureBindingError> {
+    let expected = observed_generation
+        .get()
+        .checked_add(1)
+        .ok_or(NeutralPressureBindingError::GenerationOverflow)?;
+    if allocation_generation.get() != expected {
+        return Err(NeutralPressureBindingError::NotNextGeneration {
+            observed: observed_generation.get(),
+            expected,
+            allocation: allocation_generation.get(),
+        });
+    }
+    Ok(project_op(
+        born_pressure.slot,
+        born_pressure.col,
+        participant_slot.raw(),
+        allocator_weight_col,
+        band,
+    ))
+}
+
+/// Bind a born Gu-Yang-serviceable pressure `F` by identity into the existing
+/// `AllocatorWeight` operand for the following generation's immediate-flow
+/// allocation. No authored EML/policy, route lookup, or serviceability solve
+/// occurs here; the supplied full cell is the authority.
+pub fn bind_immediate_flow_pressure_to_allocator_weight(
+    serviceable_pressure_f: &ResolvedFullCell,
+    participant_slot: SlotIndex,
+    allocator_weight_col: ColumnIndex,
+    observed_generation: GenerationStamp,
+    allocation_generation: GenerationStamp,
+    band: u32,
+) -> Result<AccumulatorOp, NeutralPressureBindingError> {
+    neutral_pressure_identity_op(
+        serviceable_pressure_f,
+        participant_slot,
+        allocator_weight_col,
+        observed_generation,
+        allocation_generation,
+        band,
+    )
+}
+
+/// Bind a born raw lawful pressure `P` by identity into the existing
+/// `AllocatorWeight` operand for the following generation's entitlement-first
+/// allocation. Gu-Yang remains downstream of entitlement realization; this
+/// door neither clips `P` to `F` nor recomputes either quantity.
+pub fn bind_entitlement_first_pressure_to_allocator_weight(
+    raw_pressure_p: &ResolvedFullCell,
+    participant_slot: SlotIndex,
+    allocator_weight_col: ColumnIndex,
+    observed_generation: GenerationStamp,
+    allocation_generation: GenerationStamp,
+    band: u32,
+) -> Result<AccumulatorOp, NeutralPressureBindingError> {
+    neutral_pressure_identity_op(
+        raw_pressure_p,
+        participant_slot,
+        allocator_weight_col,
+        observed_generation,
+        allocation_generation,
+        band,
+    )
 }
 
 /// Build Identity stage projections + EvalEML need write.

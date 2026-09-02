@@ -57,11 +57,19 @@ pub fn plan_arena_allocation(
                     parent.cols.intrinsic_flow_sum_col,
                     band,
                 ));
-                ops_cpu.extend(sum_reduction_ops(
+                // The child's AllocatorWeight is the branch-pressure carrier.
+                // Reduce it exactly once over this parent's direct children,
+                // then publish the one result to both existing allocator
+                // operands. At the next shallower band, this parent's weight
+                // is itself one direct-child contribution; descendants are
+                // never recounted or scanned independently.
+                ops_cpu.extend(sum_reduction_to_targets_ops(
                     parent,
-                    parent.participant_slot.raw(),
                     parent.cols.weight_col,
-                    parent.cols.weight_sum_col,
+                    vec![
+                        (parent.participant_slot, parent.cols.weight_col),
+                        (parent.participant_slot, parent.cols.weight_sum_col),
+                    ],
                     band,
                 ));
             }
@@ -240,6 +248,20 @@ fn sum_reduction_ops(
     target_col: ColumnIndex,
     band: u32,
 ) -> Vec<AccumulatorOp> {
+    sum_reduction_to_targets_ops(
+        parent,
+        source_col,
+        vec![(SlotIndex::new(parent_slot), target_col)],
+        band,
+    )
+}
+
+fn sum_reduction_to_targets_ops(
+    parent: &HierarchyNode,
+    source_col: ColumnIndex,
+    targets: Vec<(SlotIndex, ColumnIndex)>,
+    band: u32,
+) -> Vec<AccumulatorOp> {
     if children_are_contiguous(parent) {
         let (start, count) = child_range(parent);
         return vec![AccumulatorOp {
@@ -252,7 +274,7 @@ fn sum_reduction_ops(
             gate: GateSpec::OrderBand(band),
             scale: ScaleSpec::Identity,
             consume: ConsumeMode::ResetTarget,
-            targets: vec![(SlotIndex::new(parent_slot), target_col)],
+            targets,
         }];
     }
     vec![AccumulatorOp {
@@ -261,7 +283,7 @@ fn sum_reduction_ops(
         gate: GateSpec::OrderBand(band),
         scale: ScaleSpec::Identity,
         consume: ConsumeMode::ResetTarget,
-        targets: vec![(SlotIndex::new(parent_slot), target_col)],
+        targets,
     }]
 }
 
@@ -461,13 +483,17 @@ mod tests {
             .iter()
             .filter(|op| {
                 op.gate == GateSpec::OrderBand(layout.band_layout.upsweep_band(0, 2))
-                    && op.targets == vec![(root_slot, root.cols.weight_sum_col)]
+                    && op.targets
+                        == vec![
+                            (root_slot, root.cols.weight_col),
+                            (root_slot, root.cols.weight_sum_col),
+                        ]
             })
             .collect();
         assert_eq!(
             sparse_weight_sum_ops.len(),
             1,
-            "a sparse reduction target must have exactly one writer in its band"
+            "sparse branch pressure must have exactly one writer to both existing RF targets"
         );
         assert_eq!(sparse_weight_sum_ops[0].combine, CombineFn::Sum);
         assert_eq!(sparse_weight_sum_ops[0].consume, ConsumeMode::ResetTarget);
