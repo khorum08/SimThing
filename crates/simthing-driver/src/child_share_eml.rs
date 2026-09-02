@@ -35,6 +35,17 @@ fn slot(col: ColumnIndex) -> EmlNode {
     }
 }
 
+fn param(index: u32) -> EmlNode {
+    EmlNode {
+        opcode: eml_nodes::opcode::PARAM,
+        flags: 0,
+        a: index,
+        b: 0,
+        c: 0,
+        d: 0,
+    }
+}
+
 fn unary(opcode: u32) -> EmlNode {
     EmlNode {
         opcode,
@@ -47,17 +58,23 @@ fn unary(opcode: u32) -> EmlNode {
 }
 
 /// Postfix tree: `select(pWS > 0, (pIF + pAF) * w / pWS, 0)` — 13 nodes.
+///
+/// The three parent operands arrive directly through the operation's admitted
+/// input list as `PARAM(0..=2)`. `SLOT_VALUE(weight_col)` is evaluated at the
+/// target child slot. In particular, `PARAM(1)` is the parent's live
+/// `AllocatedFlow`; no propagated economic copy exists between recursive
+/// levels.
 pub fn compile_child_share_formula_nodes(cols: NodeColumnRefs) -> Vec<EmlNode> {
     vec![
-        slot(cols.propagated_weight_sum_col),
+        param(2),
         lit(0.0),
         unary(eml_nodes::opcode::CMP_GT),
-        slot(cols.propagated_intrinsic_flow_col),
-        slot(cols.propagated_allocated_flow_col),
+        param(0),
+        param(1),
         unary(eml_nodes::opcode::ADD),
         slot(cols.weight_col),
         unary(eml_nodes::opcode::MUL),
-        slot(cols.propagated_weight_sum_col),
+        param(2),
         EmlNode {
             opcode: eml_nodes::opcode::DIV,
             flags: 1,

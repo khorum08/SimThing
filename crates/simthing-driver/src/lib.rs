@@ -108,11 +108,12 @@ pub use action_band_semantic_shadow::{
 };
 pub use arena_allocation_oracle::{run_arena_allocation_oracle, ArenaAllocationOracleTrace};
 pub use arena_allocation_plan::{
-    max_disbursement_band, plan_arena_allocation, AllocationPlanError, ArenaAllocationPlan,
+    max_disbursement_band, plan_arena_allocation, plan_arena_allocation_with_pressure,
+    AllocationPlanError, ArenaAllocationPlan,
 };
 pub use arena_allocation_sync::{
-    build_plan_for_tests, sync_resource_flow_accumulator, ResourceFlowSyncError,
-    ResourceFlowSyncReport,
+    build_plan_for_tests, sync_resource_flow_accumulator,
+    sync_resource_flow_accumulator_with_pressure, ResourceFlowSyncError, ResourceFlowSyncReport,
 };
 pub use arena_hierarchy::{
     build_custom_layout, build_execution_plan, build_execution_plan_from_authoring,
@@ -374,7 +375,8 @@ pub use runtime_participant_state_mutation_compile::{
     compile_runtime_participant_state_mutation_plan, RuntimeParticipantStateMutationPlan,
 };
 pub use runtime_rf_tick_compile::{
-    compile_runtime_rf_tick_plan, RuntimeRfTickGpuProofSummary, RuntimeRfTickPlan,
+    compile_runtime_rf_tick_plan, produce_runtime_rf_next_generation_demands_for_tick,
+    RuntimeRfTickGpuProofSummary, RuntimeRfTickPlan,
 };
 pub use runtime_rf_tick_source_compile::{
     compile_runtime_rf_tick_source_comparison_plan,

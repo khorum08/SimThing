@@ -9,8 +9,8 @@ use simthing_core::{
     eml_nodes, rebuild_emit_on_threshold_ops, AccumulatorOp, ColumnIndex, CombineFn, ConsumeMode,
     DimensionRegistry, EmitOnThresholdBuffer, EmitOnThresholdRegistration, EmlConsumerMask,
     EmlExecutionClass, EmlExpressionRegistry, EmlFormulaMeta, EmlNodeGpu, EmlTreeId, GateSpec,
-    ScaleSpec, SimThing, SimThingId, SlotIndex, SourceSpec, SubFieldRole, ThresholdDirection,
-    NEED_STAGE_MAX_PAIRS,
+    GenerationStamp, ScaleSpec, SimThing, SimThingId, SlotIndex, SourceSpec, SubFieldRole,
+    ThresholdDirection, NEED_STAGE_MAX_PAIRS,
 };
 use simthing_spec::{
     EmlGadgetInstanceSpec, NeedBindingSpec, ResourceFlowSpec, SemanticPropertyLocusSpec, SpecError,
@@ -23,6 +23,9 @@ use crate::resource_economy_compile::ResourceEconomyRegistry;
 use crate::scenario::Scenario;
 use simthing_gpu::{encode_column, SlotAllocator};
 
+use crate::{ActionBandActiveInstance, CompiledActionBandConservedProgressBinding};
+use simthing_spec::AdmittedActionBandConservedProgressBoundSource;
+
 const NEED_BINDING_TREE_BASE: u32 = 7_300_000;
 
 /// OrderBand for Identity source→stage projections (before EvalEML).
@@ -31,6 +34,38 @@ pub const NEED_STAGE_ORDER_BAND: u32 = 0;
 pub const NEED_EVAL_ORDER_BAND: u32 = 1;
 /// How many pre-bands need_binding occupies (stage + eval).
 pub const NEED_BINDING_PRE_BANDS: u32 = 2;
+
+/// Refusal from the neutral pressure-to-weight generation door.
+///
+/// This is execution pacing, not a pressure/commitment vocabulary: the two
+/// lawful bases retain separate named entry points below and both consume an
+/// already-born cell without constructing a private PALMA/Gu-Yang result.
+#[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
+pub enum NeutralPressureBindingError {
+    #[error("eligible pressure generation cannot advance to the N+1 allocation cycle")]
+    GenerationOverflow,
+    #[error(
+        "eligible pressure observed at generation {observed} must bind allocation generation {expected}, got {allocation}"
+    )]
+    NotNextGeneration {
+        observed: u32,
+        expected: u32,
+        allocation: u32,
+    },
+    #[error(
+        "immediate-flow pressure must be backed by a born Gu-Yang available or realized product"
+    )]
+    ImmediateFlowSourceNotGuYang,
+    #[error("immediate-flow Gu-Yang pressure must belong to the existing RF-claim destination")]
+    ImmediateFlowDestinationNotRfClaim,
+    #[error("immediate-flow pressure binding and active instance belong to different ActionBand templates")]
+    ImmediateFlowTemplateMismatch,
+    #[error("immediate-flow pressure source slot {source_slot} cannot bind participant slot {participant_slot}")]
+    ImmediateFlowParticipantMismatch {
+        source_slot: u32,
+        participant_slot: u32,
+    },
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ResolvedFullCell {
@@ -582,6 +617,108 @@ fn project_op(
         consume: ConsumeMode::ResetTarget,
         targets: vec![(SlotIndex::new(dst_slot), dst_col)],
     }
+}
+
+fn neutral_pressure_identity_op(
+    born_pressure_slot: SlotIndex,
+    born_pressure_col: ColumnIndex,
+    participant_slot: SlotIndex,
+    allocator_weight_col: ColumnIndex,
+    observed_generation: GenerationStamp,
+    allocation_generation: GenerationStamp,
+    band: u32,
+) -> Result<AccumulatorOp, NeutralPressureBindingError> {
+    let expected = observed_generation
+        .get()
+        .checked_add(1)
+        .ok_or(NeutralPressureBindingError::GenerationOverflow)?;
+    if allocation_generation.get() != expected {
+        return Err(NeutralPressureBindingError::NotNextGeneration {
+            observed: observed_generation.get(),
+            expected,
+            allocation: allocation_generation.get(),
+        });
+    }
+    Ok(project_op(
+        born_pressure_slot.raw(),
+        born_pressure_col,
+        participant_slot.raw(),
+        allocator_weight_col,
+        band,
+    ))
+}
+
+/// Bind a born Gu-Yang-serviceable pressure `F` by identity into the existing
+/// `AllocatorWeight` operand for the following generation's immediate-flow
+/// allocation.
+///
+/// The source is the sealed ActionBand compile product, not a caller-resolved
+/// cell. Its private fields prove that the threshold column came from the
+/// frozen `GuYangAvailable`/`GuYangRealized` admission. A generic
+/// [`ResolvedFullCell`] therefore cannot be supplied to this door:
+///
+/// ```compile_fail,E0308
+/// use simthing_core::{ColumnIndex, GenerationStamp, SimThingId, SlotIndex, SubFieldRole};
+/// use simthing_driver::need_binding::{
+///     bind_immediate_flow_pressure_to_allocator_weight, ResolvedFullCell,
+/// };
+/// let fabricated = ResolvedFullCell {
+///     entity: "fabricated".into(),
+///     simthing_id: SimThingId::from_session_raw(1),
+///     slot: 0,
+///     col: ColumnIndex::from_raw_for_oracle_or_rehearsal(0),
+///     role: SubFieldRole::Named("intrinsic_flow_sum".into()),
+/// };
+/// let _ = bind_immediate_flow_pressure_to_allocator_weight(
+///     &fabricated,
+///     todo!(),
+///     SlotIndex::new(0),
+///     ColumnIndex::from_raw_for_oracle_or_rehearsal(1),
+///     GenerationStamp::new(0),
+///     GenerationStamp::new(1),
+///     0,
+/// );
+/// ```
+pub fn bind_immediate_flow_pressure_to_allocator_weight(
+    serviceable_pressure_f: CompiledActionBandConservedProgressBinding,
+    active_instance: ActionBandActiveInstance,
+    participant_slot: SlotIndex,
+    allocator_weight_col: ColumnIndex,
+    observed_generation: GenerationStamp,
+    allocation_generation: GenerationStamp,
+    band: u32,
+) -> Result<AccumulatorOp, NeutralPressureBindingError> {
+    if !matches!(
+        serviceable_pressure_f.bound_source(),
+        AdmittedActionBandConservedProgressBoundSource::GuYangAvailable(_)
+            | AdmittedActionBandConservedProgressBoundSource::GuYangRealized(_)
+    ) {
+        return Err(NeutralPressureBindingError::ImmediateFlowSourceNotGuYang);
+    }
+    if serviceable_pressure_f.destination() != simthing_gpu::ActionBandEmissionDestination::RfClaim
+    {
+        return Err(NeutralPressureBindingError::ImmediateFlowDestinationNotRfClaim);
+    }
+    if serviceable_pressure_f.template() != active_instance.template() {
+        return Err(NeutralPressureBindingError::ImmediateFlowTemplateMismatch);
+    }
+    if active_instance.slot() != participant_slot {
+        return Err(
+            NeutralPressureBindingError::ImmediateFlowParticipantMismatch {
+                source_slot: active_instance.slot().raw(),
+                participant_slot: participant_slot.raw(),
+            },
+        );
+    }
+    neutral_pressure_identity_op(
+        active_instance.slot(),
+        serviceable_pressure_f.threshold_column(),
+        participant_slot,
+        allocator_weight_col,
+        observed_generation,
+        allocation_generation,
+        band,
+    )
 }
 
 /// Build Identity stage projections + EvalEML need write.

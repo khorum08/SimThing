@@ -775,7 +775,7 @@ fn gather_value(op: AccumulatorOpGpu) -> f32 {
         for (var i: u32 = 0u; i < op.source_count; i = i + 1u) {
             sum = sum + atomic_read_f32_at(linear_idx(op.source_slot + i, op.source_col));
         }
-        return sum;
+        return apply_scale(sum, op);
     }
 
     if (op.combine_kind == COMBINE_SUM && op.source_kind == SOURCE_INPUT_LIST) {
@@ -784,7 +784,7 @@ fn gather_value(op: AccumulatorOpGpu) -> f32 {
             let input = input_list[op.source_slot + i];
             sum = sum + atomic_read_f32_at(linear_idx(input.slot, input.col));
         }
-        return sum;
+        return apply_scale(sum, op);
     }
 
     // C-5 intentionally uses linear-loop gather for deterministic soft aggregate
@@ -853,6 +853,22 @@ fn gather_value(op: AccumulatorOpGpu) -> f32 {
     }
 
     if (op.combine_kind == COMBINE_EVAL_EML) {
+        if (op.source_kind == SOURCE_INPUT_LIST) {
+            var params = array<f32, 4>(0.0, 0.0, 0.0, 0.0);
+            for (var i: u32 = 0u; i < op.source_count; i = i + 1u) {
+                let input = input_list[op.source_slot + i];
+                params[i] = atomic_read_f32_at(linear_idx(input.slot, input.col));
+            }
+            let ctx = EmlEvalCtx(
+                op.combine_a,
+                op.target0_slot,
+                params[0],
+                params[1],
+                params[2],
+                params[3],
+            );
+            return eml_eval(ctx);
+        }
         let ctx = EmlEvalCtx(
             op.combine_a,
             op.source_slot,

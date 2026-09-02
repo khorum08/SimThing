@@ -253,8 +253,10 @@ pub use runtime_local_allocation::{
     RuntimeLocalAllocationApplicationReport, RuntimeLocalAllocationState,
 };
 pub use runtime_rf_tick::{
-    evaluate_runtime_rf_tick, evaluate_runtime_rf_tick_from_owner_view, RuntimeRfTickDeferral,
-    RuntimeRfTickDeferralKind, RuntimeRfTickError, RuntimeRfTickErrorKind, RuntimeRfTickReport,
+    evaluate_runtime_rf_tick, evaluate_runtime_rf_tick_from_owner_view,
+    produce_runtime_rf_next_generation_demands, RuntimeRfDemandGenerationAuthority,
+    RuntimeRfTickDeferral, RuntimeRfTickDeferralKind, RuntimeRfTickError, RuntimeRfTickErrorKind,
+    RuntimeRfTickReport,
 };
 pub use runtime_tick_history::{
     evaluate_runtime_tick_history_entry, replay_runtime_tick_history, scenario_authority_digest,

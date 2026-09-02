@@ -1,8 +1,8 @@
 //! E-11 AccumulatorOp planner (memo §2.3).
 
 use simthing_core::{
-    AccumulatorOp, ColumnIndex, CombineFn, ConsumeMode, GateSpec, InputSpec, ScaleSpec, SlotIndex,
-    SourceSpec,
+    AccumulatorOp, ColumnIndex, CombineFn, ConsumeMode, GateSpec, GenerationStamp, InputSpec,
+    ScaleSpec, SlotIndex, SourceSpec,
 };
 use simthing_gpu::{
     column_from_wire, plan_governed_integration_at_band, GovernedPair, PlannerError,
@@ -12,6 +12,7 @@ use thiserror::Error;
 use crate::arena_hierarchy::{ArenaTreeLayout, HierarchyError, HierarchyNode, NodeColumnRefs};
 use crate::arena_registry::SlotId;
 use crate::child_share_eml::child_share_tree_id;
+use crate::{ActionBandActiveInstance, CompiledActionBandConservedProgressBinding};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ArenaAllocationPlan {
@@ -26,12 +27,42 @@ pub enum AllocationPlanError {
     Hierarchy(#[from] HierarchyError),
     #[error(transparent)]
     Integration(#[from] PlannerError),
+    #[error(transparent)]
+    NeutralPressure(#[from] crate::need_binding::NeutralPressureBindingError),
+    #[error("more than one born Gu-Yang pressure product targets arena participant slot {slot}")]
+    DuplicateImmediateFlowPressureTarget { slot: u32 },
 }
 
 pub fn plan_arena_allocation(
     layout: &ArenaTreeLayout,
     governed_pairs: &[GovernedPair],
     n_slots: u32,
+) -> Result<ArenaAllocationPlan, AllocationPlanError> {
+    plan_arena_allocation_with_pressure(
+        layout,
+        governed_pairs,
+        n_slots,
+        &[],
+        &[],
+        GenerationStamp::new(0),
+        GenerationStamp::new(1),
+    )
+}
+
+/// Ordinary arena allocation planner with default-on native market pressure.
+///
+/// Immediate-flow pressure is selected only from sealed ActionBand Gu-Yang
+/// bindings associated with an admitted participant instance. Entitlement-first
+/// raw `P` needs no parallel binding: the rows-2/8 direct-child `Sum` below is
+/// its plan-owned producer and publishes directly to the existing weight lane.
+pub fn plan_arena_allocation_with_pressure(
+    layout: &ArenaTreeLayout,
+    governed_pairs: &[GovernedPair],
+    n_slots: u32,
+    conserved_progress_bindings: &[CompiledActionBandConservedProgressBinding],
+    active_instances: &[ActionBandActiveInstance],
+    observed_generation: GenerationStamp,
+    allocation_generation: GenerationStamp,
 ) -> Result<ArenaAllocationPlan, AllocationPlanError> {
     let mut ops_cpu = Vec::new();
     let bands = layout.band_layout;
@@ -43,6 +74,16 @@ pub fn plan_arena_allocation(
                 ops_cpu.push(reset_op(node.participant_slot.raw(), col, bands.reset_band));
             }
         }
+
+        append_immediate_flow_pressure_ops(
+            layout,
+            conserved_progress_bindings,
+            active_instances,
+            observed_generation,
+            allocation_generation,
+            bands.reset_band,
+            &mut ops_cpu,
+        )?;
 
         for depth in (0..d.saturating_sub(1)).rev() {
             let band = bands.upsweep_band(depth, d);
@@ -57,18 +98,25 @@ pub fn plan_arena_allocation(
                     parent.cols.intrinsic_flow_sum_col,
                     band,
                 ));
-                ops_cpu.extend(sum_reduction_ops(
+                // The child's AllocatorWeight is the branch-pressure carrier.
+                // Reduce it exactly once over this parent's direct children,
+                // then publish the one result to both existing allocator
+                // operands. At the next shallower band, this parent's weight
+                // is itself one direct-child contribution; descendants are
+                // never recounted or scanned independently.
+                ops_cpu.extend(sum_reduction_to_targets_ops(
                     parent,
-                    parent.participant_slot.raw(),
                     parent.cols.weight_col,
-                    parent.cols.weight_sum_col,
+                    vec![
+                        (parent.participant_slot, parent.cols.weight_col),
+                        (parent.participant_slot, parent.cols.weight_sum_col),
+                    ],
                     band,
                 ));
             }
         }
 
         for depth in 0..d.saturating_sub(1) {
-            let broadcast_band = bands.broadcast_band(depth, d);
             let disburse_band = bands.disburse_band(depth, d);
             for parent in layout.iter_at_depth(depth) {
                 if parent.children.is_empty() {
@@ -81,45 +129,7 @@ pub fn plan_arena_allocation(
                 };
                 let p_ws = parent.cols.weight_sum_col;
                 for child in &parent.children {
-                    ops_cpu.push(broadcast_op(
-                        parent.participant_slot.raw(),
-                        p_if,
-                        child.participant_slot.raw(),
-                        child.cols.propagated_intrinsic_flow_col,
-                        broadcast_band,
-                    ));
-                    if depth == 0 {
-                        ops_cpu.push(const_broadcast_op(
-                            0.0,
-                            child.participant_slot.raw(),
-                            child.cols.propagated_allocated_flow_col,
-                            broadcast_band,
-                        ));
-                    } else {
-                        ops_cpu.push(broadcast_op(
-                            parent.participant_slot.raw(),
-                            parent.cols.allocated_flow_col,
-                            child.participant_slot.raw(),
-                            child.cols.propagated_allocated_flow_col,
-                            broadcast_band,
-                        ));
-                    }
-                    ops_cpu.push(broadcast_op(
-                        parent.participant_slot.raw(),
-                        p_ws,
-                        child.participant_slot.raw(),
-                        child.cols.propagated_weight_sum_col,
-                        broadcast_band,
-                    ));
-                }
-            }
-            for parent in layout.iter_at_depth(depth) {
-                for child in &parent.children {
-                    ops_cpu.push(disburse_op(
-                        child.participant_slot.raw(),
-                        child.cols.allocated_flow_col,
-                        disburse_band,
-                    ));
+                    ops_cpu.push(disburse_op(parent, child, p_if, p_ws, disburse_band));
                 }
             }
         }
@@ -150,6 +160,65 @@ pub fn plan_arena_allocation(
         n_bands: bands.total_bands_used,
         integration_band: bands.integration_band,
     })
+}
+
+fn append_immediate_flow_pressure_ops(
+    layout: &ArenaTreeLayout,
+    conserved_progress_bindings: &[CompiledActionBandConservedProgressBinding],
+    active_instances: &[ActionBandActiveInstance],
+    observed_generation: GenerationStamp,
+    allocation_generation: GenerationStamp,
+    band: u32,
+    ops: &mut Vec<AccumulatorOp>,
+) -> Result<(), AllocationPlanError> {
+    use simthing_spec::AdmittedActionBandConservedProgressBoundSource;
+    use std::collections::HashSet;
+
+    let leaves = layout
+        .iter_all()
+        .into_iter()
+        .filter(|node| node.children.is_empty())
+        .map(|node| (node.participant_slot, node.cols.weight_col))
+        .collect::<std::collections::HashMap<_, _>>();
+    let mut targeted = HashSet::new();
+    for binding in conserved_progress_bindings
+        .iter()
+        .copied()
+        .filter(|binding| {
+            matches!(
+                binding.bound_source(),
+                AdmittedActionBandConservedProgressBoundSource::GuYangAvailable(_)
+                    | AdmittedActionBandConservedProgressBoundSource::GuYangRealized(_)
+            ) && binding.destination() == simthing_gpu::ActionBandEmissionDestination::RfClaim
+        })
+    {
+        for instance in active_instances
+            .iter()
+            .copied()
+            .filter(|instance| instance.template() == binding.template())
+        {
+            let Some(&weight_col) = leaves.get(&instance.slot()) else {
+                continue;
+            };
+            if !targeted.insert(instance.slot()) {
+                return Err(AllocationPlanError::DuplicateImmediateFlowPressureTarget {
+                    slot: instance.slot().raw(),
+                });
+            }
+            ops.push(
+                crate::need_binding::bind_immediate_flow_pressure_to_allocator_weight(
+                    binding,
+                    instance,
+                    instance.slot(),
+                    weight_col,
+                    observed_generation,
+                    allocation_generation,
+                    band,
+                )?,
+            );
+        }
+    }
+    Ok(())
 }
 
 fn cpu_op_from_integration_gpu(gpu: &simthing_gpu::AccumulatorOpGpu) -> AccumulatorOp {
@@ -197,7 +266,6 @@ pub(crate) fn append_residual_closure_ops(
 
     let seed_band = layout.band_layout.integration_band - 4;
     let add_allocated_band = seed_band + 1;
-    let negate_children_band = seed_band + 2;
     let sum_children_band = seed_band + 3;
     for parent in layout
         .iter_all()
@@ -230,23 +298,13 @@ pub(crate) fn append_residual_closure_ops(
             ConsumeMode::AddToTarget,
             ScaleSpec::Identity,
         ));
-        for child in &parent.children {
-            ops_cpu.push(slot_value_op(
-                child.participant_slot.raw(),
-                child.cols.allocated_flow_col,
-                child.participant_slot.raw(),
-                child.cols.propagated_allocated_flow_col,
-                negate_children_band,
-                ConsumeMode::ResetTarget,
-                ScaleSpec::Constant(-1.0),
-            ));
-        }
         ops_cpu.extend(sum_accumulation_ops(
             parent,
             parent.participant_slot.raw(),
-            parent.cols.propagated_allocated_flow_col,
+            parent.cols.allocated_flow_col,
             rate_col,
             sum_children_band,
+            ScaleSpec::Constant(-1.0),
         ));
     }
 }
@@ -256,9 +314,6 @@ fn reset_columns(cols: NodeColumnRefs) -> Vec<ColumnIndex> {
         cols.allocated_flow_col,
         cols.intrinsic_flow_sum_col,
         cols.weight_sum_col,
-        cols.propagated_intrinsic_flow_col,
-        cols.propagated_allocated_flow_col,
-        cols.propagated_weight_sum_col,
     ]
 }
 
@@ -293,6 +348,20 @@ fn sum_reduction_ops(
     target_col: ColumnIndex,
     band: u32,
 ) -> Vec<AccumulatorOp> {
+    sum_reduction_to_targets_ops(
+        parent,
+        source_col,
+        vec![(SlotIndex::new(parent_slot), target_col)],
+        band,
+    )
+}
+
+fn sum_reduction_to_targets_ops(
+    parent: &HierarchyNode,
+    source_col: ColumnIndex,
+    targets: Vec<(SlotIndex, ColumnIndex)>,
+    band: u32,
+) -> Vec<AccumulatorOp> {
     if children_are_contiguous(parent) {
         let (start, count) = child_range(parent);
         return vec![AccumulatorOp {
@@ -305,7 +374,7 @@ fn sum_reduction_ops(
             gate: GateSpec::OrderBand(band),
             scale: ScaleSpec::Identity,
             consume: ConsumeMode::ResetTarget,
-            targets: vec![(SlotIndex::new(parent_slot), target_col)],
+            targets,
         }];
     }
     vec![AccumulatorOp {
@@ -314,28 +383,8 @@ fn sum_reduction_ops(
         gate: GateSpec::OrderBand(band),
         scale: ScaleSpec::Identity,
         consume: ConsumeMode::ResetTarget,
-        targets: vec![(SlotIndex::new(parent_slot), target_col)],
+        targets,
     }]
-}
-
-fn broadcast_op(
-    src_slot: u32,
-    src_col: ColumnIndex,
-    dst_slot: u32,
-    dst_col: ColumnIndex,
-    band: u32,
-) -> AccumulatorOp {
-    AccumulatorOp {
-        source: SourceSpec::SlotValue {
-            slot: SlotIndex::new(src_slot),
-            col: src_col,
-        },
-        combine: CombineFn::Identity,
-        gate: GateSpec::OrderBand(band),
-        scale: ScaleSpec::Identity,
-        consume: ConsumeMode::ResetTarget,
-        targets: vec![(SlotIndex::new(dst_slot), dst_col)],
-    }
 }
 
 fn slot_value_op(
@@ -366,6 +415,7 @@ fn sum_accumulation_ops(
     source_col: ColumnIndex,
     target_col: ColumnIndex,
     band: u32,
+    scale: ScaleSpec,
 ) -> Vec<AccumulatorOp> {
     if children_are_contiguous(parent) {
         let (start, count) = child_range(parent);
@@ -377,7 +427,7 @@ fn sum_accumulation_ops(
             },
             combine: CombineFn::Sum,
             gate: GateSpec::OrderBand(band),
-            scale: ScaleSpec::Identity,
+            scale,
             consume: ConsumeMode::AddToTarget,
             targets: vec![(SlotIndex::new(parent_slot), target_col)],
         }];
@@ -386,7 +436,7 @@ fn sum_accumulation_ops(
         source: sparse_child_input_list(parent, source_col),
         combine: CombineFn::Sum,
         gate: GateSpec::OrderBand(band),
-        scale: ScaleSpec::Identity,
+        scale,
         consume: ConsumeMode::AddToTarget,
         targets: vec![(SlotIndex::new(parent_slot), target_col)],
     }]
@@ -406,25 +456,35 @@ fn sparse_child_input_list(parent: &HierarchyNode, source_col: ColumnIndex) -> S
     }
 }
 
-fn const_broadcast_op(value: f32, dst_slot: u32, dst_col: ColumnIndex, band: u32) -> AccumulatorOp {
+fn disburse_op(
+    parent: &HierarchyNode,
+    child: &HierarchyNode,
+    parent_intrinsic_col: ColumnIndex,
+    parent_weight_sum_col: ColumnIndex,
+    band: u32,
+) -> AccumulatorOp {
     AccumulatorOp {
-        source: SourceSpec::Constant(value),
-        combine: CombineFn::Identity,
-        gate: GateSpec::OrderBand(band),
-        scale: ScaleSpec::Identity,
-        consume: ConsumeMode::ResetTarget,
-        targets: vec![(SlotIndex::new(dst_slot), dst_col)],
-    }
-}
-
-fn disburse_op(child_slot: u32, a_f_col: ColumnIndex, band: u32) -> AccumulatorOp {
-    AccumulatorOp {
-        // EvalEML reads columns from the formula tree; source SlotValue col is
-        // unused wire filler. Reuse the typed target column — never mint via
-        // column_from_wire(<literal>).
-        source: SourceSpec::SlotValue {
-            slot: SlotIndex::new(child_slot),
-            col: a_f_col,
+        // Declared input order is the EML PARAM order. The parent's live
+        // AllocatedFlow is PARAM(1), consumed directly by the same allocator
+        // operation that writes the child level; no propagated copy is read.
+        source: SourceSpec::ConjunctiveCrossing {
+            inputs: vec![
+                InputSpec {
+                    slot: parent.participant_slot,
+                    col: parent_intrinsic_col,
+                    unit_cost: 1.0,
+                },
+                InputSpec {
+                    slot: parent.participant_slot,
+                    col: parent.cols.allocated_flow_col,
+                    unit_cost: 1.0,
+                },
+                InputSpec {
+                    slot: parent.participant_slot,
+                    col: parent_weight_sum_col,
+                    unit_cost: 1.0,
+                },
+            ],
         },
         combine: CombineFn::EvalEML {
             tree_id: child_share_tree_id().0,
@@ -432,7 +492,7 @@ fn disburse_op(child_slot: u32, a_f_col: ColumnIndex, band: u32) -> AccumulatorO
         gate: GateSpec::OrderBand(band),
         scale: ScaleSpec::Identity,
         consume: ConsumeMode::AddToTarget,
-        targets: vec![(SlotIndex::new(child_slot), a_f_col)],
+        targets: vec![(child.participant_slot, child.cols.allocated_flow_col)],
     }
 }
 
@@ -523,13 +583,17 @@ mod tests {
             .iter()
             .filter(|op| {
                 op.gate == GateSpec::OrderBand(layout.band_layout.upsweep_band(0, 2))
-                    && op.targets == vec![(root_slot, root.cols.weight_sum_col)]
+                    && op.targets
+                        == vec![
+                            (root_slot, root.cols.weight_col),
+                            (root_slot, root.cols.weight_sum_col),
+                        ]
             })
             .collect();
         assert_eq!(
             sparse_weight_sum_ops.len(),
             1,
-            "a sparse reduction target must have exactly one writer in its band"
+            "sparse branch pressure must have exactly one writer to both existing RF targets"
         );
         assert_eq!(sparse_weight_sum_ops[0].combine, CombineFn::Sum);
         assert_eq!(sparse_weight_sum_ops[0].consume, ConsumeMode::ResetTarget);

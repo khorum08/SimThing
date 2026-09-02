@@ -128,6 +128,13 @@ impl PackedAccumulatorUpload {
     }
 
     pub fn from_ops_resolving_input_lists(ops: &[AccumulatorOp]) -> Result<Self, EncodeError> {
+        Self::from_ops_resolving_input_lists_with_eml(ops, None)
+    }
+
+    pub fn from_ops_resolving_input_lists_with_eml(
+        ops: &[AccumulatorOp],
+        eml: Option<&EmlExpressionRegistry>,
+    ) -> Result<Self, EncodeError> {
         let mut flat_inputs = Vec::new();
         let mut gpu_ops = Vec::with_capacity(ops.len());
         for op in ops {
@@ -150,9 +157,11 @@ impl PackedAccumulatorUpload {
                     offset,
                     count: inputs.len() as u32,
                 };
-                gpu_ops.push(AccumulatorOpGpu::from_op_with_input_list(op, range)?);
+                gpu_ops.push(AccumulatorOpGpu::from_op_with_input_list_and_eml(
+                    op, range, eml,
+                )?);
             } else {
-                gpu_ops.push(AccumulatorOpGpu::from_op(op)?);
+                gpu_ops.push(AccumulatorOpGpu::from_op_with_eml(op, eml)?);
             }
         }
         validate_no_contention(&gpu_ops)?;

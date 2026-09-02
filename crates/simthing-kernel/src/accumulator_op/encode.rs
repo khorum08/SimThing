@@ -113,7 +113,15 @@ impl AccumulatorOpGpu {
         op: &AccumulatorOp,
         range: InputListRange,
     ) -> Result<Self, EncodeError> {
-        let mut gpu = Self::from_op(op)?;
+        Self::from_op_with_input_list_and_eml(op, range, None)
+    }
+
+    pub fn from_op_with_input_list_and_eml(
+        op: &AccumulatorOp,
+        range: InputListRange,
+        eml: Option<&EmlExpressionRegistry>,
+    ) -> Result<Self, EncodeError> {
+        let mut gpu = Self::from_op_with_eml(op, eml)?;
         gpu.source_kind = source_kind::INPUT_LIST;
         gpu.source_slot = range.offset;
         gpu.source_col = 0;
@@ -336,6 +344,20 @@ fn validate_threshold_op(op: &AccumulatorOp) -> Result<(), EncodeError> {
 fn validate_bootstrap_op(op: &AccumulatorOp) -> Result<(), EncodeError> {
     if matches!(&op.gate, GateSpec::Threshold { .. }) {
         return validate_threshold_op(op);
+    }
+    if let (SourceSpec::ConjunctiveCrossing { inputs }, CombineFn::EvalEML { .. }) =
+        (&op.source, &op.combine)
+    {
+        if inputs.len() > 4 {
+            return Err(EncodeError::Unsupported(
+                "EvalEML input-list PARAM binding admits at most four inputs",
+            ));
+        }
+        if op.targets.len() != 1 {
+            return Err(EncodeError::Unsupported(
+                "EvalEML input-list PARAM binding requires exactly one target eval slot",
+            ));
+        }
     }
     if op.consume == ConsumeMode::SubtractFromSource {
         match (&op.source, &op.scale) {

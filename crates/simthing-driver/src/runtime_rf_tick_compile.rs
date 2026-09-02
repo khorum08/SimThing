@@ -1,7 +1,11 @@
 //! RUNTIME-RF-TICK-INTEGRATION-0 — compose RF stage plans into one runtime tick boundary.
 
+use simthing_core::GenerationStamped;
 use simthing_spec::{
-    admit_intrinsic_owner_channels, evaluate_runtime_rf_tick_from_owner_view, RuntimeRfTickReport,
+    admit_intrinsic_owner_channels, evaluate_runtime_rf_tick_from_owner_view,
+    produce_runtime_rf_next_generation_demands, AuthoredClearingProgram, ConstrainedClaim,
+    ConstrainedClearingResult, ConstrainedSupply, RuntimeOwnerSiloDemandBucket,
+    RuntimeRfDemandGenerationAuthority, RuntimeRfTickError, RuntimeRfTickReport,
     SimThingScenarioSpec, SpecError,
 };
 
@@ -38,6 +42,33 @@ pub struct RuntimeRfTickPlan {
     pub economy_execution_deferred: bool,
     pub scenario_authority_mutation_deferred: bool,
     pub local_effect_application_deferred: bool,
+}
+
+/// Driver-owned production caller for ordinary demand's N→N+1 door.
+///
+/// The driver cannot accept a caller-supplied optional unresolved row or a
+/// filtered clearing-result slice. The spec boundary performs the current clear
+/// and consumes every resulting unresolved observation before exposing results.
+pub fn produce_runtime_rf_next_generation_demands_for_tick(
+    authority: &RuntimeRfDemandGenerationAuthority,
+    current_supplies: &[ConstrainedSupply],
+    current_claims: &[ConstrainedClaim],
+    current_program: &AuthoredClearingProgram,
+    next_demands: Vec<RuntimeOwnerSiloDemandBucket>,
+) -> Result<
+    (
+        Vec<ConstrainedClearingResult>,
+        Vec<GenerationStamped<RuntimeOwnerSiloDemandBucket>>,
+    ),
+    RuntimeRfTickError,
+> {
+    produce_runtime_rf_next_generation_demands(
+        authority,
+        current_supplies,
+        current_claims,
+        current_program,
+        next_demands,
+    )
 }
 
 /// Compile all RF stage plans and evaluate the composed runtime tick report.
