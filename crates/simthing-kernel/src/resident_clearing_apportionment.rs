@@ -3,8 +3,9 @@
 //! This is the integer residue stage over the existing resident
 //! `AllocatedFlow` authority. It owns no score, pressure, or scheduling law:
 //! the caller binds already-admitted semantic rows and the existing arena
-//! integration band. The GPU implementation uses software `u64` pairs and
-//! never uses atomics or physical arrival order.
+//! integration band. The GPU implementation preserves the frozen software
+//! `u64` pairs and adds an exact common-Q149 representation for binary32
+//! numerator bases; it never uses atomics or physical arrival order.
 //!
 //! Settlement output and recursive supply intake are aliases of one canonical
 //! product. An adapter-shaped role type cannot enter the recursive port:
@@ -23,6 +24,7 @@
 //! recursive_intake(&[projected]);
 //! ```
 
+use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::mpsc;
 
@@ -350,15 +352,292 @@ impl ResidentApportionmentPlan {
     }
 }
 
-/// Exact CPU mirror of the resident residue stage. The production settlement
-/// law remains `clear_constrained_claims_at_generation`; this function is the
-/// shader equivalence oracle over its already-segmented input.
+const EXACT_BASIS_LIMBS: usize = 7;
+const EXACT_BASIS_FRACTION_BITS: u32 = 149;
+type ExactBasis = [u32; EXACT_BASIS_LIMBS];
+
+fn exact_cmp(left: &ExactBasis, right: &ExactBasis) -> Ordering {
+    for limb in (0..EXACT_BASIS_LIMBS).rev() {
+        match left[limb].cmp(&right[limb]) {
+            Ordering::Equal => {}
+            ordering => return ordering,
+        }
+    }
+    Ordering::Equal
+}
+
+fn exact_is_zero(value: &ExactBasis) -> bool {
+    value.iter().all(|&limb| limb == 0)
+}
+
+fn exact_shifted_u32(value: u32, shift: u32) -> ExactBasis {
+    let mut result = [0; EXACT_BASIS_LIMBS];
+    if value == 0 {
+        return result;
+    }
+    let limb = (shift / 32) as usize;
+    let offset = shift % 32;
+    result[limb] = value << offset;
+    if offset != 0 && limb + 1 < EXACT_BASIS_LIMBS {
+        result[limb + 1] = value >> (32 - offset);
+    }
+    result
+}
+
+/// Converts one non-negative finite binary32 allocation into an exact common
+/// Q149 numerator and applies the lawful integer request cap without a float
+/// conversion. Every finite binary32 value is an integer multiple of 2^-149,
+/// so this is an identity representation, not a settlement rounding rule.
+fn exact_capped_basis(allocated: f32, requested: u32) -> ExactBasis {
+    let cap = exact_shifted_u32(requested, EXACT_BASIS_FRACTION_BITS);
+    let bits = allocated.to_bits();
+    let exponent = (bits >> 23) & 0xff;
+    let fraction = bits & 0x007f_ffff;
+    if exponent == 0 {
+        let subnormal = exact_shifted_u32(fraction, 0);
+        return if exact_cmp(&subnormal, &cap).is_gt() {
+            cap
+        } else {
+            subnormal
+        };
+    }
+    // exponent >= 159 means the finite value is at least 2^32 and therefore
+    // exceeds every admitted u32 request.
+    if exponent >= 159 {
+        return cap;
+    }
+    let significand = 0x0080_0000 | fraction;
+    let exact = exact_shifted_u32(significand, exponent - 1);
+    if exact_cmp(&exact, &cap).is_gt() {
+        cap
+    } else {
+        exact
+    }
+}
+
+fn exact_checked_add(
+    left: &ExactBasis,
+    right: &ExactBasis,
+) -> Result<ExactBasis, ResidentApportionmentError> {
+    let mut result = [0; EXACT_BASIS_LIMBS];
+    let mut carry = 0u32;
+    for limb in 0..EXACT_BASIS_LIMBS {
+        let (partial, overflow0) = left[limb].overflowing_add(right[limb]);
+        let (sum, overflow1) = partial.overflowing_add(carry);
+        result[limb] = sum;
+        carry = u32::from(overflow0 || overflow1);
+    }
+    if carry != 0 {
+        return Err(ResidentApportionmentError::ArithmeticOverflow);
+    }
+    Ok(result)
+}
+
+fn exact_shl1(value: &ExactBasis) -> Result<ExactBasis, ResidentApportionmentError> {
+    if value[EXACT_BASIS_LIMBS - 1] >> 31 != 0 {
+        return Err(ResidentApportionmentError::ArithmeticOverflow);
+    }
+    let mut result = [0; EXACT_BASIS_LIMBS];
+    let mut carry = 0u32;
+    for limb in 0..EXACT_BASIS_LIMBS {
+        result[limb] = (value[limb] << 1) | carry;
+        carry = value[limb] >> 31;
+    }
+    Ok(result)
+}
+
+fn exact_sub(left: &ExactBasis, right: &ExactBasis) -> ExactBasis {
+    debug_assert!(!exact_cmp(left, right).is_lt());
+    let mut result = [0; EXACT_BASIS_LIMBS];
+    let mut borrow = 0u32;
+    for limb in 0..EXACT_BASIS_LIMBS {
+        let (partial, borrow0) = left[limb].overflowing_sub(right[limb]);
+        let (difference, borrow1) = partial.overflowing_sub(borrow);
+        result[limb] = difference;
+        borrow = u32::from(borrow0 || borrow1);
+    }
+    debug_assert_eq!(borrow, 0);
+    result
+}
+
+fn exact_mul_u32(
+    value: &ExactBasis,
+    multiplier: u32,
+) -> Result<ExactBasis, ResidentApportionmentError> {
+    let mut result = [0; EXACT_BASIS_LIMBS];
+    let mut addend = *value;
+    let mut remaining = multiplier;
+    for bit in 0..32 {
+        if remaining & 1 != 0 {
+            result = exact_checked_add(&result, &addend)?;
+        }
+        remaining >>= 1;
+        if bit != 31 {
+            addend = exact_shl1(&addend)?;
+        }
+    }
+    Ok(result)
+}
+
+fn exact_divmod_u32(
+    numerator: &ExactBasis,
+    denominator: &ExactBasis,
+) -> Result<(u32, ExactBasis), ResidentApportionmentError> {
+    debug_assert!(!exact_is_zero(denominator));
+    let mut quotient = 0u32;
+    let mut remainder = [0; EXACT_BASIS_LIMBS];
+    for bit_index in (0..(EXACT_BASIS_LIMBS * 32)).rev() {
+        remainder = exact_shl1(&remainder)?;
+        remainder[0] |= (numerator[bit_index / 32] >> (bit_index % 32)) & 1;
+        if !exact_cmp(&remainder, denominator).is_lt() {
+            remainder = exact_sub(&remainder, denominator);
+            if bit_index >= 32 {
+                return Err(ResidentApportionmentError::ArithmeticOverflow);
+            }
+            quotient |= 1u32 << bit_index;
+        }
+    }
+    Ok((quotient, remainder))
+}
+
+fn settle_resident_apportionment_over_share_vector(
+    plan: &ResidentApportionmentPlan,
+    bases: &[ExactBasis],
+) -> Result<Vec<ResidentConstrainedProduct>, ResidentApportionmentError> {
+    debug_assert_eq!(plan.claims.len(), bases.len());
+    let mut products = Vec::with_capacity(plan.claims.len());
+    for (claim_index, claim) in plan.claims.iter().enumerate() {
+        let row = plan.semantic_rows[claim.semantic_row as usize];
+        let key = scope_key(row);
+        let group: Vec<_> = plan
+            .claims
+            .iter()
+            .enumerate()
+            .filter(|(_, other)| scope_key(plan.semantic_rows[other.semantic_row as usize]) == key)
+            .collect();
+        let total_requested = group
+            .iter()
+            .try_fold(0u64, |sum, (_, other)| {
+                sum.checked_add(u64::from(other.requested))
+            })
+            .ok_or(ResidentApportionmentError::ArithmeticOverflow)?;
+        let unresolved_total = total_requested.saturating_sub(u64::from(claim.available));
+        if unresolved_total > u64::from(u32::MAX) {
+            return Err(ResidentApportionmentError::ArithmeticOverflow);
+        }
+        let prior_requested = group
+            .iter()
+            .filter(|(_, other)| other.precedence < claim.precedence)
+            .try_fold(0u64, |sum, (_, other)| {
+                sum.checked_add(u64::from(other.requested))
+            })
+            .ok_or(ResidentApportionmentError::ArithmeticOverflow)?;
+        let band: Vec<_> = group
+            .into_iter()
+            .filter(|(_, other)| other.precedence == claim.precedence)
+            .collect();
+        let requested_total = band
+            .iter()
+            .try_fold(0u64, |sum, (_, other)| {
+                sum.checked_add(u64::from(other.requested))
+            })
+            .ok_or(ResidentApportionmentError::ArithmeticOverflow)?;
+        let remaining = u64::from(claim.available).saturating_sub(prior_requested);
+        let available_for_band = u32::try_from(remaining.min(requested_total))
+            .map_err(|_| ResidentApportionmentError::ArithmeticOverflow)?;
+        let basis_total = band
+            .iter()
+            .try_fold([0; EXACT_BASIS_LIMBS], |sum, (index, _)| {
+                exact_checked_add(&sum, &bases[*index])
+            })?;
+
+        let granted = if exact_is_zero(&basis_total) {
+            0
+        } else {
+            let mut base_total = 0u64;
+            let mut remainders = Vec::with_capacity(band.len());
+            let mut base_grants = Vec::with_capacity(band.len());
+            for (index, _) in &band {
+                let numerator = exact_mul_u32(&bases[*index], available_for_band)?;
+                let (base, remainder) = exact_divmod_u32(&numerator, &basis_total)?;
+                base_total = base_total
+                    .checked_add(u64::from(base))
+                    .ok_or(ResidentApportionmentError::ArithmeticOverflow)?;
+                base_grants.push(base);
+                remainders.push(remainder);
+            }
+            let leftover = u64::from(available_for_band)
+                .checked_sub(base_total)
+                .ok_or(ResidentApportionmentError::ArithmeticOverflow)?
+                as usize;
+            let mut order: Vec<usize> = (0..band.len()).collect();
+            order.sort_by(|&left, &right| {
+                exact_cmp(&remainders[right], &remainders[left]).then_with(|| {
+                    band[left]
+                        .1
+                        .source_simthing_id
+                        .cmp(&band[right].1.source_simthing_id)
+                })
+            });
+            let mut tie_start = 0usize;
+            while tie_start < order.len() {
+                let remainder = remainders[order[tie_start]];
+                let mut tie_end = tie_start + 1;
+                while tie_end < order.len() && remainders[order[tie_end]] == remainder {
+                    tie_end += 1;
+                }
+                let tie_len = tie_end - tie_start;
+                let rotation = (u64::from(plan.authority_granter.raw())
+                    + u64::from(plan.generation.get()))
+                    % tie_len as u64;
+                order[tie_start..tie_end].rotate_left(rotation as usize);
+                tie_start = tie_end;
+            }
+            let band_index = band
+                .iter()
+                .position(|(index, _)| *index == claim_index)
+                .expect("the current claim is in its equality band");
+            let grant = u64::from(base_grants[band_index])
+                + u64::from(
+                    order
+                        .iter()
+                        .take(leftover)
+                        .any(|&winner| winner == band_index),
+                );
+            let grant =
+                u32::try_from(grant).map_err(|_| ResidentApportionmentError::ArithmeticOverflow)?;
+            if grant > claim.requested {
+                return Err(ResidentApportionmentError::ArithmeticOverflow);
+            }
+            grant
+        };
+        products.push(ResidentConstrainedProduct::successful(
+            claim.semantic_row,
+            claim.source_simthing_id,
+            granted,
+            claim.requested - granted,
+            plan.generation,
+            plan.integration_band,
+        ));
+    }
+    products.sort_by_key(|product| {
+        (
+            scope_key(plan.semantic_rows[product.semantic_row as usize]),
+            product.source_simthing_id_raw,
+        )
+    });
+    Ok(products)
+}
+
+/// Exact CPU oracle over the resident continuous share vector. Each live
+/// binary32 magnitude is represented exactly in common Q149 units before the
+/// frozen integer quotient/remainder, tie, cap, and unresolved laws run.
 pub fn execute_resident_apportionment_cpu(
     plan: &ResidentApportionmentPlan,
     values: &[f32],
     n_dims: u32,
 ) -> Result<Vec<ResidentConstrainedProduct>, ResidentApportionmentError> {
-    let mut products = Vec::with_capacity(plan.claims.len());
+    let mut bases = Vec::with_capacity(plan.claims.len());
     for claim in &plan.claims {
         let value_index = claim
             .allocated_flow_slot
@@ -379,104 +658,9 @@ pub fn execute_resident_apportionment_cpu(
                 source_id: claim.source_simthing_id,
             });
         }
-
-        let row = plan.semantic_rows[claim.semantic_row as usize];
-        let key = scope_key(row);
-        let group = plan
-            .claims
-            .iter()
-            .filter(|other| scope_key(plan.semantic_rows[other.semantic_row as usize]) == key);
-        let total_requested = group
-            .clone()
-            .try_fold(0u64, |sum, other| {
-                sum.checked_add(u64::from(other.requested))
-            })
-            .ok_or(ResidentApportionmentError::ArithmeticOverflow)?;
-        let unresolved_total = total_requested.saturating_sub(u64::from(claim.available));
-        if unresolved_total > u64::from(u32::MAX) {
-            return Err(ResidentApportionmentError::ArithmeticOverflow);
-        }
-        let prior_requested = group
-            .clone()
-            .filter(|other| other.precedence < claim.precedence)
-            .try_fold(0u64, |sum, other| {
-                sum.checked_add(u64::from(other.requested))
-            })
-            .ok_or(ResidentApportionmentError::ArithmeticOverflow)?;
-        let band: Vec<_> = group
-            .filter(|other| other.precedence == claim.precedence)
-            .collect();
-        let requested_total = band
-            .iter()
-            .try_fold(0u64, |sum, other| {
-                sum.checked_add(u64::from(other.requested))
-            })
-            .ok_or(ResidentApportionmentError::ArithmeticOverflow)?;
-        let remaining = u64::from(claim.available).saturating_sub(prior_requested);
-        let available_for_band = remaining.min(requested_total);
-        let mut base_total = 0u64;
-        let mut remainders = Vec::with_capacity(band.len());
-        let mut bases = Vec::with_capacity(band.len());
-        for other in &band {
-            let numerator = available_for_band
-                .checked_mul(u64::from(other.requested))
-                .ok_or(ResidentApportionmentError::ArithmeticOverflow)?;
-            let base = numerator / requested_total;
-            base_total = base_total
-                .checked_add(base)
-                .ok_or(ResidentApportionmentError::ArithmeticOverflow)?;
-            bases.push(base);
-            remainders.push(numerator % requested_total);
-        }
-        let leftover = available_for_band
-            .checked_sub(base_total)
-            .ok_or(ResidentApportionmentError::ArithmeticOverflow)? as usize;
-        let mut order: Vec<usize> = (0..band.len()).collect();
-        order.sort_by(|&left, &right| {
-            remainders[right].cmp(&remainders[left]).then_with(|| {
-                band[left]
-                    .source_simthing_id
-                    .cmp(&band[right].source_simthing_id)
-            })
-        });
-        let mut tie_start = 0usize;
-        while tie_start < order.len() {
-            let remainder = remainders[order[tie_start]];
-            let mut tie_end = tie_start + 1;
-            while tie_end < order.len() && remainders[order[tie_end]] == remainder {
-                tie_end += 1;
-            }
-            let tie_len = tie_end - tie_start;
-            let rotation = (u64::from(plan.authority_granter.raw())
-                + u64::from(plan.generation.get()))
-                % tie_len as u64;
-            order[tie_start..tie_end].rotate_left(rotation as usize);
-            tie_start = tie_end;
-        }
-        let index = band
-            .iter()
-            .position(|other| other.semantic_row == claim.semantic_row)
-            .expect("the current claim is in its equality band");
-        let granted =
-            bases[index] + u64::from(order.iter().take(leftover).any(|&winner| winner == index));
-        let granted =
-            u32::try_from(granted).map_err(|_| ResidentApportionmentError::ArithmeticOverflow)?;
-        products.push(ResidentConstrainedProduct::successful(
-            claim.semantic_row,
-            claim.source_simthing_id,
-            granted,
-            claim.requested - granted,
-            plan.generation,
-            plan.integration_band,
-        ));
+        bases.push(exact_capped_basis(allocated, claim.requested));
     }
-    products.sort_by_key(|product| {
-        (
-            scope_key(plan.semantic_rows[product.semantic_row as usize]),
-            product.source_simthing_id_raw,
-        )
-    });
-    Ok(products)
+    settle_resident_apportionment_over_share_vector(plan, &bases)
 }
 
 #[repr(C)]

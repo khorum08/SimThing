@@ -280,10 +280,10 @@ fn oracle(
 }
 
 #[test]
-fn exact_residue_matches_frozen_cpu_law_across_canonical_and_boundary_cases() {
+fn neutral_continuous_shares_match_frozen_cpu_law_across_boundary_cases() {
     let ctx = GpuContext::new_blocking().expect("real GPU for resident exact witness");
     let (semantic_plan, buffers) = resident_plan(&ctx, 3, false, false);
-    let (state, values) = world(ctx, 3);
+    let (state, mut values) = world(ctx, 3);
     let mut session = ResidentApportionmentSession::new(&state.ctx);
     let layout = arena_layout();
     let granter = SimThingId::from_session_raw(u32::MAX);
@@ -298,6 +298,11 @@ fn exact_residue_matches_frozen_cpu_law_across_canonical_and_boundary_cases() {
     ];
 
     for &(requests, available, label) in cases {
+        values.fill(0.0);
+        for (slot, &requested) in requests.iter().enumerate() {
+            values[slot * state.n_dims as usize] = requested as f32;
+        }
+        state.install_resolved_values_at_boundary(&values);
         let claims = exact_claims(
             &semantic_plan,
             requests,
@@ -362,6 +367,103 @@ fn exact_residue_matches_frozen_cpu_law_across_canonical_and_boundary_cases() {
         ),
         "sealed live allocation refusal: {invalid_result:?}"
     );
+}
+
+#[test]
+fn finite_allocated_flow_proportions_are_the_exact_numerator_basis() {
+    let ctx = GpuContext::new_blocking().expect("real GPU for continuous-authority falsifier");
+    let (semantic_plan, buffers) = resident_plan(&ctx, 2, false, false);
+    let (state, mut values) = world(ctx, 2);
+    let mut session = ResidentApportionmentSession::new(&state.ctx);
+    let plan = plan_resident_exact_apportionment(
+        &arena_layout(),
+        &semantic_plan,
+        exact_claims(&semantic_plan, &[100, 100], 8, 0..2, false),
+        SimThingId::from_session_raw(0),
+        GenerationStamp::new(0),
+    )
+    .unwrap();
+
+    let mut outcomes = Vec::new();
+    for shares in [
+        [0.75, 0.25],
+        [0.25, 0.75],
+        [f32::from_bits(1), f32::from_bits(3)],
+    ] {
+        values[0] = shares[0];
+        values[state.n_dims as usize] = shares[1];
+        state.install_resolved_values_at_boundary(&values);
+        let cpu = execute_resident_apportionment_cpu(&plan, &values, state.n_dims).unwrap();
+        let gpu = run_gpu(
+            &state,
+            &mut session,
+            &buffers,
+            &plan,
+            ResidentApportionmentDispatch::single_pass(),
+        )
+        .unwrap();
+        assert_eq!(gpu, cpu);
+        outcomes.push(product_map(&gpu));
+    }
+
+    assert_eq!(outcomes[0][&source(0)], (6, 94));
+    assert_eq!(outcomes[0][&source(1)], (2, 98));
+    assert_eq!(outcomes[1][&source(0)], (2, 98));
+    assert_eq!(outcomes[1][&source(1)], (6, 94));
+    assert_eq!(outcomes[2][&source(0)], (2, 98));
+    assert_eq!(outcomes[2][&source(1)], (6, 94));
+    assert_ne!(
+        outcomes[0], outcomes[1],
+        "fixed requests/supply/precedence must not mask changed AllocatedFlow proportions"
+    );
+}
+
+#[test]
+fn continuous_basis_obeys_request_caps_and_zero_routes_full_unresolved_u() {
+    let ctx = GpuContext::new_blocking().expect("real GPU for cap/zero falsifier");
+    let (semantic_plan, buffers) = resident_plan(&ctx, 2, false, false);
+    let (state, mut values) = world(ctx, 2);
+    let mut session = ResidentApportionmentSession::new(&state.ctx);
+    let plan = plan_resident_exact_apportionment(
+        &arena_layout(),
+        &semantic_plan,
+        exact_claims(&semantic_plan, &[5, 5], 5, 0..2, false),
+        SimThingId::from_session_raw(0),
+        GenerationStamp::new(0),
+    )
+    .unwrap();
+
+    values[0] = f32::MAX;
+    values[state.n_dims as usize] = 0.0;
+    state.install_resolved_values_at_boundary(&values);
+    let cpu = execute_resident_apportionment_cpu(&plan, &values, state.n_dims).unwrap();
+    let gpu = run_gpu(
+        &state,
+        &mut session,
+        &buffers,
+        &plan,
+        ResidentApportionmentDispatch::single_pass(),
+    )
+    .unwrap();
+    assert_eq!(gpu, cpu);
+    let capped = product_map(&gpu);
+    assert_eq!(capped[&source(0)], (5, 0));
+    assert_eq!(capped[&source(1)], (0, 5));
+
+    values.fill(0.0);
+    state.install_resolved_values_at_boundary(&values);
+    let cpu = execute_resident_apportionment_cpu(&plan, &values, state.n_dims).unwrap();
+    let gpu = run_gpu(
+        &state,
+        &mut session,
+        &buffers,
+        &plan,
+        ResidentApportionmentDispatch::single_pass(),
+    )
+    .unwrap();
+    assert_eq!(gpu, cpu);
+    assert_eq!(product_map(&gpu)[&source(0)], (0, 5));
+    assert_eq!(product_map(&gpu)[&source(1)], (0, 5));
 }
 
 #[test]
@@ -541,6 +643,9 @@ fn canonical_product_is_recursive_intake_without_adapter_or_legacy_bridge() {
     assert!(!legacy_market.contains("    pub fn from_cleared_offering("));
     assert!(shader.contains("fn wide_mul_u32"));
     assert!(shader.contains("fn wide_divmod"));
+    assert!(shader.contains("fn exact_capped_basis"));
+    assert!(shader.contains("fn exact_divmod"));
+    assert!(exact_source.contains("EXACT_BASIS_FRACTION_BITS: u32 = 149"));
     assert!(shader.contains("vec2<u32>"));
     assert!(shader.contains("@workgroup_size(32)"));
     assert!(shader.contains("@workgroup_size(64)"));

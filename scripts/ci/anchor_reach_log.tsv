@@ -2362,3 +2362,19 @@ date	role	query	anchors_served	hit
 2026-09-02T15:51:40Z	coding	--domain movement-front	movement-front,movement-front-adjudications	hit
 2026-09-02T15:51:53Z	coding	--domain gate-wiring	orientation-harness-core,scanner-selftest-delta-gate	hit
 2026-09-02T15:51:53Z	coding	--domain receipt-admission	orientation-harness-core	hit
+2026-09-02T16:38:37Z	coding	--grep intrinsic-constrained-clearing	intrinsic-constrained-clearing	hit
+2026-09-02T16:38:37Z	coding	--grep germ-self-consumption	germ-self-consumption	hit
+2026-09-02T16:38:37Z	coding	--grep rf-arena-allocation-invariants	rf-arena-allocation-invariants	hit
+2026-09-02T16:38:37Z	coding	--grep continuous pressure-informed allocation	none	none
+2026-09-02T16:38:38Z	coding	--grep settlement-over-share-vector	none	none
+2026-09-02T16:38:38Z	coding	--grep neutral degeneration	none	none
+2026-09-02T16:39:33Z	coding	--paths docs/workshop/SimThing_RF_Market_Core.md	none	none
+2026-09-02T16:39:43Z	coding	--grep terminal stage converts	none	none
+2026-09-02T16:39:43Z	coding	--grep continuous pressure-informed allocation/share	none	none
+2026-09-02T16:39:43Z	coding	--grep largest remainder	none	none
+2026-09-02T16:39:44Z	coding	--grep 16.7	overlay-designer-closure	hit
+2026-09-02T16:39:44Z	coding	--grep numerator basis	none	none
+2026-09-02T16:56:52Z	coding	--grep rf-market-mirror-cycle	rf-market-mirror-cycle	hit
+2026-09-02T16:56:52Z	coding	--grep rf-market-receive-not-recompute	rf-market-receive-not-recompute	hit
+2026-09-02T16:56:53Z	coding	--grep rf-market-candidate-laws	rf-market-candidate-laws	hit
+2026-09-02T16:56:53Z	coding	--grep rf-market-falsifiers	rf-market-falsifiers	hit

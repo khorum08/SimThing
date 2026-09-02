@@ -36,6 +36,24 @@ struct DivMod64 {
     remainder: vec2<u32>,
 };
 
+alias ExactBasis = array<u32, 7>;
+
+struct ExactAdd {
+    value: ExactBasis,
+    overflow: u32,
+};
+
+struct ExactShift {
+    value: ExactBasis,
+    overflow: u32,
+};
+
+struct ExactDivMod {
+    quotient: u32,
+    remainder: ExactBasis,
+    overflow: u32,
+};
+
 @group(0) @binding(0) var<uniform> params: Params;
 @group(0) @binding(1) var<storage, read> semantic_rows: array<SemanticRow>;
 @group(0) @binding(2) var<storage, read> values: array<f32>;
@@ -123,6 +141,155 @@ fn wide_divmod(numerator: vec2<u32>, denominator: vec2<u32>) -> DivMod64 {
     return DivMod64(quotient, remainder);
 }
 
+fn exact_zero() -> ExactBasis {
+    return array<u32, 7>(0u, 0u, 0u, 0u, 0u, 0u, 0u);
+}
+
+fn exact_is_zero(value: ExactBasis) -> bool {
+    var materialized = value;
+    var result = true;
+    for (var limb = 0u; limb < 7u; limb = limb + 1u) {
+        result = result && materialized[limb] == 0u;
+    }
+    return result;
+}
+
+fn exact_cmp(left: ExactBasis, right: ExactBasis) -> i32 {
+    var materialized_left = left;
+    var materialized_right = right;
+    for (var cursor = 7u; cursor > 0u; cursor = cursor - 1u) {
+        let limb = cursor - 1u;
+        if (materialized_left[limb] < materialized_right[limb]) { return -1; }
+        if (materialized_left[limb] > materialized_right[limb]) { return 1; }
+    }
+    return 0;
+}
+
+fn exact_shifted_u32(value: u32, shift: u32) -> ExactBasis {
+    var result = exact_zero();
+    if (value == 0u) { return result; }
+    let limb = shift / 32u;
+    let offset = shift % 32u;
+    result[limb] = value << offset;
+    if (offset != 0u && limb + 1u < 7u) {
+        result[limb + 1u] = value >> (32u - offset);
+    }
+    return result;
+}
+
+// Every finite binary32 is an integer multiple of 2^-149. Representing each
+// allocation in common Q149 units makes the float-to-exact boundary lossless;
+// request is applied as an exact u32 cap in that same representation.
+fn exact_capped_basis(continuous: f32, requested: u32) -> ExactBasis {
+    let cap = exact_shifted_u32(requested, 149u);
+    let bits = bitcast<u32>(continuous);
+    let exponent = (bits >> 23u) & 0xffu;
+    let fraction = bits & 0x007fffffu;
+    if (exponent == 0u) {
+        let subnormal = exact_shifted_u32(fraction, 0u);
+        if (exact_cmp(subnormal, cap) > 0) { return cap; }
+        return subnormal;
+    }
+    if (exponent >= 159u) {
+        return cap;
+    }
+    let significand = 0x00800000u | fraction;
+    let exact = exact_shifted_u32(significand, exponent - 1u);
+    if (exact_cmp(exact, cap) > 0) { return cap; }
+    return exact;
+}
+
+fn exact_add(left: ExactBasis, right: ExactBasis) -> ExactAdd {
+    var materialized_left = left;
+    var materialized_right = right;
+    var result = exact_zero();
+    var carry = 0u;
+    for (var limb = 0u; limb < 7u; limb = limb + 1u) {
+        let partial = materialized_left[limb] + materialized_right[limb];
+        let overflow0 = partial < materialized_left[limb];
+        let sum = partial + carry;
+        let overflow1 = sum < partial;
+        result[limb] = sum;
+        carry = select(0u, 1u, overflow0 || overflow1);
+    }
+    return ExactAdd(result, carry);
+}
+
+fn exact_shl1(value: ExactBasis) -> ExactShift {
+    var materialized = value;
+    var result = exact_zero();
+    var carry = 0u;
+    for (var limb = 0u; limb < 7u; limb = limb + 1u) {
+        result[limb] = (materialized[limb] << 1u) | carry;
+        carry = materialized[limb] >> 31u;
+    }
+    return ExactShift(result, carry);
+}
+
+fn exact_sub(left: ExactBasis, right: ExactBasis) -> ExactBasis {
+    var materialized_left = left;
+    var materialized_right = right;
+    var result = exact_zero();
+    var borrow = 0u;
+    for (var limb = 0u; limb < 7u; limb = limb + 1u) {
+        let partial = materialized_left[limb] - materialized_right[limb];
+        let borrow0 = materialized_left[limb] < materialized_right[limb];
+        let difference = partial - borrow;
+        let borrow1 = partial < borrow;
+        result[limb] = difference;
+        borrow = select(0u, 1u, borrow0 || borrow1);
+    }
+    return result;
+}
+
+fn exact_mul_u32(value: ExactBasis, multiplier: u32) -> ExactAdd {
+    var result = exact_zero();
+    var addend = value;
+    var remaining = multiplier;
+    var overflow = 0u;
+    for (var bit = 0u; bit < 32u; bit = bit + 1u) {
+        if ((remaining & 1u) != 0u) {
+            let sum = exact_add(result, addend);
+            result = sum.value;
+            overflow = overflow | sum.overflow;
+        }
+        remaining = remaining >> 1u;
+        if (bit != 31u) {
+            let shifted = exact_shl1(addend);
+            addend = shifted.value;
+            overflow = overflow | shifted.overflow;
+        }
+    }
+    return ExactAdd(result, overflow);
+}
+
+// Restoring division over the exact 224-bit Q149 numerator. The quotient is
+// bounded by available_for_band (u32); any higher quotient bit is a refusal.
+fn exact_divmod(numerator: ExactBasis, denominator: ExactBasis) -> ExactDivMod {
+    var materialized_numerator = numerator;
+    var quotient = 0u;
+    var remainder = exact_zero();
+    var overflow = 0u;
+    for (var cursor = 224u; cursor > 0u; cursor = cursor - 1u) {
+        let bit_index = cursor - 1u;
+        let shifted = exact_shl1(remainder);
+        remainder = shifted.value;
+        overflow = overflow | shifted.overflow;
+        let limb = bit_index / 32u;
+        let offset = bit_index % 32u;
+        remainder[0] = remainder[0] | ((materialized_numerator[limb] >> offset) & 1u);
+        if (exact_cmp(remainder, denominator) >= 0) {
+            remainder = exact_sub(remainder, denominator);
+            if (bit_index >= 32u) {
+                overflow = 1u;
+            } else {
+                quotient = quotient | (1u << bit_index);
+            }
+        }
+    }
+    return ExactDivMod(quotient, remainder, overflow);
+}
+
 fn read_claim(index: u32) -> ClaimInput {
     let base = index * 16u;
     // Only the immutable input half is loaded. Concurrent invocations write
@@ -179,7 +346,8 @@ fn settle_partition(local: u32) {
 
     var scope_total = vec2<u32>(0u, 0u);
     var prior_total = vec2<u32>(0u, 0u);
-    var band_total = vec2<u32>(0u, 0u);
+    var band_requested_total = vec2<u32>(0u, 0u);
+    var basis_total = exact_zero();
     var overflow = false;
     for (var other_index = 0u; other_index < params.row_count; other_index = other_index + 1u) {
         let other = read_claim(other_index);
@@ -193,12 +361,25 @@ fn settle_partition(local: u32) {
             overflow = overflow || sum.z != 0u;
         }
         if (other.precedence == current.precedence) {
-            sum = wide_add(band_total, wide_from_u32(other.requested));
-            band_total = sum.xy;
+            sum = wide_add(band_requested_total, wide_from_u32(other.requested));
+            band_requested_total = sum.xy;
             overflow = overflow || sum.z != 0u;
+            let other_value_index = other.allocated_flow_slot * params.n_dims
+                + other.allocated_flow_col;
+            let other_continuous = values[other_value_index];
+            let other_bits = bitcast<u32>(other_continuous);
+            let other_not_finite = (other_bits & 0x7f800000u) == 0x7f800000u;
+            if (!other_not_finite && !(other_continuous < 0.0)) {
+                let basis_sum = exact_add(
+                    basis_total,
+                    exact_capped_basis(other_continuous, other.requested),
+                );
+                basis_total = basis_sum.value;
+                overflow = overflow || basis_sum.overflow != 0u;
+            }
         }
     }
-    if (overflow || wide_is_zero(band_total)) {
+    if (overflow || wide_is_zero(band_requested_total)) {
         write_product(current, 0u, 0u, STATUS_ARITHMETIC_OVERFLOW);
         return;
     }
@@ -217,35 +398,42 @@ fn settle_partition(local: u32) {
         remaining = wide_sub(supply, prior_total);
     }
     var available_for_band = remaining;
-    if (wide_cmp(band_total, remaining) < 0) {
-        available_for_band = band_total;
+    if (wide_cmp(band_requested_total, remaining) < 0) {
+        available_for_band = band_requested_total;
     }
     if (available_for_band.y != 0u) {
         write_product(current, 0u, 0u, STATUS_ARITHMETIC_OVERFLOW);
         return;
     }
+    if (exact_is_zero(basis_total)) {
+        write_product(current, 0u, current.requested, STATUS_OK);
+        return;
+    }
 
     var base_total = vec2<u32>(0u, 0u);
     var current_base = 0u;
-    var current_remainder = vec2<u32>(0u, 0u);
+    var current_remainder = exact_zero();
     for (var other_index = 0u; other_index < params.row_count; other_index = other_index + 1u) {
         let other = read_claim(other_index);
         if (other.input_active == 0u || !same_scope(current, other)
             || other.precedence != current.precedence) { continue; }
-        let numerator = wide_mul_u32(available_for_band.x, other.requested);
-        let divided = wide_divmod(numerator, band_total);
-        if (divided.quotient.y != 0u) {
+        let other_value_index = other.allocated_flow_slot * params.n_dims
+            + other.allocated_flow_col;
+        let other_basis = exact_capped_basis(values[other_value_index], other.requested);
+        let numerator = exact_mul_u32(other_basis, available_for_band.x);
+        let divided = exact_divmod(numerator.value, basis_total);
+        if (numerator.overflow != 0u || divided.overflow != 0u) {
             write_product(current, 0u, 0u, STATUS_ARITHMETIC_OVERFLOW);
             return;
         }
-        let sum = wide_add(base_total, divided.quotient);
+        let sum = wide_add(base_total, wide_from_u32(divided.quotient));
         base_total = sum.xy;
         if (sum.z != 0u) {
             write_product(current, 0u, 0u, STATUS_ARITHMETIC_OVERFLOW);
             return;
         }
         if (other.semantic_row == current.semantic_row) {
-            current_base = divided.quotient.x;
+            current_base = divided.quotient;
             current_remainder = divided.remainder;
         }
     }
@@ -267,9 +455,16 @@ fn settle_partition(local: u32) {
         let other = read_claim(other_index);
         if (other.input_active == 0u || !same_scope(current, other)
             || other.precedence != current.precedence) { continue; }
-        let numerator = wide_mul_u32(available_for_band.x, other.requested);
-        let remainder = wide_divmod(numerator, band_total).remainder;
-        let comparison = wide_cmp(remainder, current_remainder);
+        let other_value_index = other.allocated_flow_slot * params.n_dims
+            + other.allocated_flow_col;
+        let other_basis = exact_capped_basis(values[other_value_index], other.requested);
+        let numerator = exact_mul_u32(other_basis, available_for_band.x);
+        let divided = exact_divmod(numerator.value, basis_total);
+        if (numerator.overflow != 0u || divided.overflow != 0u) {
+            write_product(current, 0u, 0u, STATUS_ARITHMETIC_OVERFLOW);
+            return;
+        }
+        let comparison = exact_cmp(divided.remainder, current_remainder);
         if (comparison > 0) {
             higher_remainders = higher_remainders + 1u;
         } else if (comparison == 0) {
