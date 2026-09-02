@@ -7,8 +7,8 @@ struct Params {
     integration_band: u32,
     dispatch_base: u32,
     dispatch_count: u32,
-    _pad0: u32,
-    _pad1: u32,
+    recursive_intake_mode: u32,
+    recursive_intake_count: u32,
     _pad2: u32,
     _pad3: u32,
 };
@@ -58,6 +58,10 @@ struct ExactDivMod {
 @group(0) @binding(1) var<storage, read> semantic_rows: array<SemanticRow>;
 @group(0) @binding(2) var<storage, read> values: array<f32>;
 @group(0) @binding(3) var<storage, read_write> scratch_words: array<u32>;
+// Canonical ResidentConstrainedProduct words. Root dispatch binds an inert
+// one-product buffer here and leaves recursive_intake_mode=0; interior dispatch
+// binds the byte-identical T_s intake buffer directly.
+@group(0) @binding(4) var<storage, read> recursive_intake_words: array<u32>;
 
 const STATUS_OK: u32 = 0u;
 const STATUS_INVALID_CONTINUOUS: u32 = 1u;
@@ -290,10 +294,51 @@ fn exact_divmod(numerator: ExactBasis, denominator: ExactBasis) -> ExactDivMod {
     return ExactDivMod(quotient, remainder, overflow);
 }
 
-fn read_claim(index: u32) -> ClaimInput {
+fn same_semantic_scope(left_row: u32, right_row: u32) -> bool {
+    let left = semantic_rows[left_row];
+    let right = semantic_rows[right_row];
+    return left.owner_ordinal == right.owner_ordinal
+        && left.resource_ordinal == right.resource_ordinal
+        && left.scope_ordinal == right.scope_ordinal;
+}
+
+fn recursive_scope_supply(semantic_row: u32) -> vec2<u32> {
+    var supply = vec2<u32>(0u, 0u);
+    for (var index = 0u; index < params.recursive_intake_count; index = index + 1u) {
+        let product_base = index * 8u;
+        let product_row = recursive_intake_words[product_base];
+        let product_status = recursive_intake_words[product_base + 5u];
+        if (product_status == STATUS_OK && product_row < params.row_count
+            && same_semantic_scope(semantic_row, product_row)) {
+            supply = wide_add(
+                supply,
+                wide_from_u32(recursive_intake_words[product_base + 2u]),
+            ).xy;
+        }
+    }
+    return supply;
+}
+
+fn read_claim(index: u32, recursive_supply: u32) -> ClaimInput {
     let base = index * 16u;
     // Only the immutable input half is loaded. Concurrent invocations write
     // the disjoint output half, so no whole-struct read races those stores.
+    if (params.recursive_intake_mode != 0u && index < params.recursive_intake_count) {
+        let product_base = index * 8u;
+        let product_status = recursive_intake_words[product_base + 5u];
+        let granted = recursive_intake_words[product_base + 2u];
+        let unresolved = recursive_intake_words[product_base + 3u];
+        return ClaimInput(
+            recursive_intake_words[product_base],
+            recursive_intake_words[product_base + 1u],
+            granted + unresolved,
+            recursive_supply,
+            scratch_words[base + 4u],
+            scratch_words[base + 5u],
+            scratch_words[base + 6u],
+            select(0u, scratch_words[base + 7u], product_status == STATUS_OK),
+        );
+    }
     return ClaimInput(
         scratch_words[base],
         scratch_words[base + 1u],
@@ -344,7 +389,13 @@ fn settle_partition(local: u32) {
     if (local >= params.dispatch_count) { return; }
     let physical = params.dispatch_base + local;
     if (physical >= params.row_count) { return; }
-    let current = read_claim(physical);
+    let seed = read_claim(physical, 0u);
+    let recursive_supply = recursive_scope_supply(seed.semantic_row);
+    if (recursive_supply.y != 0u) {
+        write_failure(seed, seed.source_simthing_id, STATUS_ARITHMETIC_OVERFLOW);
+        return;
+    }
+    let current = read_claim(physical, recursive_supply.x);
     if (current.input_active == 0u || current.semantic_row >= params.row_count) { return; }
 
     // Match the CPU mirror's fail-before-settlement contract. Every invocation
@@ -354,7 +405,7 @@ fn settle_partition(local: u32) {
     var invalid_source = 0u;
     var invalid_continuous = false;
     for (var validation_index = 0u; validation_index < params.row_count; validation_index = validation_index + 1u) {
-        let validation = read_claim(validation_index);
+        let validation = read_claim(validation_index, recursive_supply.x);
         if (validation.input_active == 0u) { continue; }
         let validation_value_index = validation.allocated_flow_slot * params.n_dims
             + validation.allocated_flow_col;
@@ -378,7 +429,7 @@ fn settle_partition(local: u32) {
     var basis_total = exact_zero();
     var overflow = false;
     for (var other_index = 0u; other_index < params.row_count; other_index = other_index + 1u) {
-        let other = read_claim(other_index);
+        let other = read_claim(other_index, recursive_supply.x);
         if (other.input_active == 0u || !same_scope(current, other)) { continue; }
         var sum = wide_add(scope_total, wide_from_u32(other.requested));
         scope_total = sum.xy;
@@ -442,7 +493,7 @@ fn settle_partition(local: u32) {
     var current_base = 0u;
     var current_remainder = exact_zero();
     for (var other_index = 0u; other_index < params.row_count; other_index = other_index + 1u) {
-        let other = read_claim(other_index);
+        let other = read_claim(other_index, recursive_supply.x);
         if (other.input_active == 0u || !same_scope(current, other)
             || other.precedence != current.precedence) { continue; }
         let other_value_index = other.allocated_flow_slot * params.n_dims
@@ -480,7 +531,7 @@ fn settle_partition(local: u32) {
     var tie_len = 0u;
     var canonical_tie_index = 0u;
     for (var other_index = 0u; other_index < params.row_count; other_index = other_index + 1u) {
-        let other = read_claim(other_index);
+        let other = read_claim(other_index, recursive_supply.x);
         if (other.input_active == 0u || !same_scope(current, other)
             || other.precedence != current.precedence) { continue; }
         let other_value_index = other.allocated_flow_slot * params.n_dims

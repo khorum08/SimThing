@@ -321,18 +321,25 @@ impl GrowthEntitlementMarketBinding {
                     requested: candidate.quantity(),
                     available,
                     precedence: 0,
-                    // The qualified neutral profile's identity allocation is
-                    // its exact lawful request. This is resident claim ingress,
-                    // not a host-computed policy weight or field query.
-                    allocated_flow: candidate.quantity() as f32,
+                    // Neutral eligible pressure binds at the real graduated
+                    // AllocatorWeight port. AllocatedFlow is emitted later by
+                    // the child-share EML; settlement cannot manufacture it.
+                    continuous_weight: candidate.quantity() as f32,
                 }
             })
             .collect();
-        let ticket = runtime
-            .dispatch(integration_schedule, self.granter, generation, &rows)
+        let root_ticket = runtime
+            .dispatch(integration_schedule, self.granter, generation, Some(&rows))
+            .map_err(|error| GrowthEntitlementError::Resident(error.to_string()))?;
+        let next_generation = root_ticket.submission().intake_generation();
+        let next_ticket = runtime
+            .dispatch(integration_schedule, self.granter, next_generation, None)
             .map_err(|error| GrowthEntitlementError::Resident(error.to_string()))?;
         let products = runtime
-            .materialize(integration_schedule, ticket)
+            .materialize(integration_schedule, root_ticket)
+            .map_err(|error| GrowthEntitlementError::Resident(error.to_string()))?;
+        runtime
+            .materialize(integration_schedule, next_ticket)
             .map_err(|error| GrowthEntitlementError::Resident(error.to_string()))?;
         let mut decisions = Vec::with_capacity(ordered.len());
         for candidate in ordered {

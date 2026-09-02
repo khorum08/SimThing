@@ -399,6 +399,17 @@ impl ResidentApportionmentPlan {
     pub const fn integration_band(&self) -> u32 {
         self.integration_band
     }
+
+    /// Retain only the admitted claim shape for an interior generation. The
+    /// recursive kernel does not treat the cloned request, supply, or source
+    /// fields as economic input: it replaces those fields directly from the
+    /// bound canonical `T_s` products. Keeping the physical binding template
+    /// avoids any host product projection or translated recursive payload.
+    pub fn for_recursive_intake_generation(&self, generation: GenerationStamp) -> Self {
+        let mut recursive = self.clone();
+        recursive.generation = generation;
+        recursive
+    }
 }
 
 const EXACT_BASIS_LIMBS: usize = 7;
@@ -737,8 +748,8 @@ struct ResidentApportionmentParamsGpu {
     integration_band: u32,
     dispatch_base: u32,
     dispatch_count: u32,
-    _pad0: u32,
-    _pad1: u32,
+    recursive_intake_mode: u32,
+    recursive_intake_count: u32,
     _pad2: u32,
     _pad3: u32,
 }
@@ -749,6 +760,7 @@ pub struct ResidentApportionmentSession {
     layout: wgpu::BindGroupLayout,
     pipeline_32: ComputePipeline,
     pipeline_64: ComputePipeline,
+    recursive_intake_dummy: Buffer,
 }
 
 impl ResidentApportionmentSession {
@@ -762,6 +774,7 @@ impl ResidentApportionmentSession {
                     storage_layout_entry(1, true),
                     storage_layout_entry(2, true),
                     storage_layout_entry(3, false),
+                    storage_layout_entry(4, true),
                 ],
             });
         let shader = ctx.device.create_shader_module(ShaderModuleDescriptor {
@@ -792,6 +805,13 @@ impl ResidentApportionmentSession {
             layout,
             pipeline_32: pipeline("resident_apportionment_pipeline_w32", "settle_exact_w32"),
             pipeline_64: pipeline("resident_apportionment_pipeline_w64", "settle_exact_w64"),
+            recursive_intake_dummy: ctx.device.create_buffer(&BufferDescriptor {
+                label: Some("resident_recursive_intake_dummy"),
+                size: u64::try_from(std::mem::size_of::<ResidentConstrainedProduct>())
+                    .expect("resident product byte size fits u64"),
+                usage: BufferUsages::STORAGE,
+                mapped_at_creation: false,
+            }),
         }
     }
 
@@ -807,6 +827,76 @@ impl ResidentApportionmentSession {
         n_dims: u32,
         plan: &ResidentApportionmentPlan,
         dispatch: ResidentApportionmentDispatch,
+    ) -> Result<(), ResidentApportionmentError> {
+        self.encode_at_integration_band_with_dispatch_and_intake(
+            ctx,
+            encoder,
+            values,
+            semantic_rows,
+            scratch,
+            n_slots,
+            n_dims,
+            plan,
+            dispatch,
+            None,
+        )
+    }
+
+    /// Bind the canonical exact `T_s` buffer directly as the recursive supply
+    /// intake for the same apportionment kernel. The product is never copied
+    /// into a role-specific host or GPU payload: the shader reads its exact
+    /// fields and the immutable claim metadata only supplies the existing
+    /// AllocatedFlow location and hard precedence.
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn encode_from_recursive_intake_at_integration_band_with_dispatch(
+        &mut self,
+        ctx: &GpuContext,
+        encoder: &mut CommandEncoder,
+        values: &Buffer,
+        semantic_rows: &Buffer,
+        scratch: &Buffer,
+        recursive_intake: &Buffer,
+        recursive_intake_count: u32,
+        n_slots: u32,
+        n_dims: u32,
+        plan: &ResidentApportionmentPlan,
+        dispatch: ResidentApportionmentDispatch,
+    ) -> Result<(), ResidentApportionmentError> {
+        let expected = u32::try_from(plan.claims.len())
+            .map_err(|_| ResidentApportionmentError::RowCountNarrowing)?;
+        if recursive_intake_count != expected {
+            return Err(ResidentApportionmentError::RecursiveIntakeCountMismatch {
+                expected,
+                observed: recursive_intake_count,
+            });
+        }
+        self.encode_at_integration_band_with_dispatch_and_intake(
+            ctx,
+            encoder,
+            values,
+            semantic_rows,
+            scratch,
+            n_slots,
+            n_dims,
+            plan,
+            dispatch,
+            Some((recursive_intake, recursive_intake_count)),
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn encode_at_integration_band_with_dispatch_and_intake(
+        &mut self,
+        ctx: &GpuContext,
+        encoder: &mut CommandEncoder,
+        values: &Buffer,
+        semantic_rows: &Buffer,
+        scratch: &Buffer,
+        n_slots: u32,
+        n_dims: u32,
+        plan: &ResidentApportionmentPlan,
+        dispatch: ResidentApportionmentDispatch,
+        recursive_intake: Option<(&Buffer, u32)>,
     ) -> Result<(), ResidentApportionmentError> {
         for claim in &plan.claims {
             if claim.allocated_flow_slot.raw() >= n_slots
@@ -875,8 +965,8 @@ impl ResidentApportionmentSession {
                 integration_band: plan.integration_band,
                 dispatch_base,
                 dispatch_count,
-                _pad0: 0,
-                _pad1: 0,
+                recursive_intake_mode: u32::from(recursive_intake.is_some()),
+                recursive_intake_count: recursive_intake.map_or(0, |(_, count)| count),
                 _pad2: 0,
                 _pad3: 0,
             };
@@ -906,6 +996,13 @@ impl ResidentApportionmentSession {
                     BindGroupEntry {
                         binding: 3,
                         resource: scratch.as_entire_binding(),
+                    },
+                    BindGroupEntry {
+                        binding: 4,
+                        resource: recursive_intake.map_or_else(
+                            || self.recursive_intake_dummy.as_entire_binding(),
+                            |(buffer, _)| buffer.as_entire_binding(),
+                        ),
                     },
                 ],
             });
@@ -1069,4 +1166,6 @@ pub enum ResidentApportionmentError {
     ZeroDispatchPartition,
     #[error("resident apportionment produced {observed} products, expected {expected}")]
     IncompleteGpuOutput { expected: usize, observed: usize },
+    #[error("resident recursive intake has {observed} products, expected {expected}")]
+    RecursiveIntakeCountMismatch { expected: u32, observed: u32 },
 }

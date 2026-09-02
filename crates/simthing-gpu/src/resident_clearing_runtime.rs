@@ -11,14 +11,15 @@ use std::sync::mpsc;
 use bytemuck::Pod;
 use simthing_core::ResidentScheduleReservation;
 use simthing_kernel::{
-    GpuContext, ResidentApportionmentPlan, ResidentConstrainedProduct,
-    RESIDENT_APPORTIONMENT_SCRATCH_BYTES_PER_ROW,
+    GpuContext, ResidentApportionmentDispatch, ResidentApportionmentError,
+    ResidentApportionmentPlan, ResidentApportionmentSession, ResidentConstrainedProduct,
+    WorldGpuState, RESIDENT_APPORTIONMENT_SCRATCH_BYTES_PER_ROW,
 };
 use thiserror::Error;
 use wgpu::{Buffer, BufferDescriptor, BufferUsages, CommandEncoder, MapMode};
 
 const PRODUCT_BYTES: u64 = std::mem::size_of::<ResidentConstrainedProduct>() as u64;
-pub const QUALIFIED_RESIDENT_CLEARING_FINGERPRINT: u64 = 0x73ae_5e62_1b3e_5021;
+pub const QUALIFIED_RESIDENT_CLEARING_FINGERPRINT: u64 = 0x1c3c_a3cf_8e62_5e48;
 
 /// Exact adapter/compiler/ABI record inherited from the graduated 14.5
 /// certificate. A changed tuple must be separately qualified; it never
@@ -236,6 +237,49 @@ impl ResidentClearingLiveHead {
         })
     }
 
+    /// Execute generation N+1 with the prior generation's canonical `T_s`
+    /// buffer bound directly to the graduated exact kernel. The buffer handle
+    /// stays encapsulated by this per-tree owner; callers can neither replace
+    /// the economic payload nor interpose a translated representation.
+    #[allow(clippy::too_many_arguments)]
+    pub fn encode_recursive_apportionment(
+        &self,
+        state: &WorldGpuState,
+        session: &mut ResidentApportionmentSession,
+        encoder: &mut CommandEncoder,
+        semantic_rows: &Buffer,
+        scratch: &Buffer,
+        plan: &ResidentApportionmentPlan,
+        intake: ResidentNPlusOneSubmission,
+    ) -> Result<(), ResidentLiveHeadError> {
+        if plan.generation() != intake.intake_generation {
+            return Err(ResidentLiveHeadError::IntakeGenerationMismatch {
+                expected: intake.intake_generation,
+                observed: plan.generation(),
+            });
+        }
+        let claims = u32::try_from(plan.claims().len())
+            .map_err(|_| ResidentLiveHeadError::ArithmeticOverflow)?;
+        if claims != intake.product_count {
+            return Err(ResidentLiveHeadError::IntakeCountMismatch {
+                expected: intake.product_count,
+                observed: claims,
+            });
+        }
+        state
+            .encode_resident_apportionment_from_recursive_intake_with_dispatch_into(
+                session,
+                encoder,
+                semantic_rows,
+                scratch,
+                &self.next_intake,
+                intake.product_count,
+                plan,
+                ResidentApportionmentDispatch::single_pass(),
+            )
+            .map_err(ResidentLiveHeadError::RecursiveApportionment)
+    }
+
     /// Proof/observer readback. Production calls this only after the queue has
     /// already received the resident N+1 intake copy.
     pub fn readback_segment(
@@ -341,6 +385,13 @@ pub enum ResidentLiveHeadError {
     ArithmeticOverflow,
     #[error("resident recursive intake generation overflow")]
     GenerationOverflow,
+    #[error("resident recursive intake generation is {expected:?}, observed {observed:?}")]
+    IntakeGenerationMismatch {
+        expected: simthing_core::GenerationStamp,
+        observed: simthing_core::GenerationStamp,
+    },
+    #[error("resident recursive intake has {expected} products, observed {observed} claims")]
+    IntakeCountMismatch { expected: u32, observed: u32 },
     #[error("resident schedule reservation {start}+{rows} exceeds admitted capacity {capacity}")]
     ReservationOutOfBounds {
         start: u32,
@@ -357,6 +408,8 @@ pub enum ResidentLiveHeadError {
         "resident clearing adapter is not qualified: required {required:016x}, observed {observed:016x}"
     )]
     UnqualifiedAdapter { required: u64, observed: u64 },
+    #[error("resident recursive exact settlement failed: {0}")]
+    RecursiveApportionment(#[source] ResidentApportionmentError),
 }
 
 #[cfg(test)]

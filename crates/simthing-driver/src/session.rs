@@ -747,8 +747,11 @@ impl SimSession {
         let mut integration_schedule = simthing_core::IntegrationSchedule::new();
         let resident_clearing = match clearing_execution_posture {
             simthing_core::ClearingExecutionPosture::ResidentRequired => {
+                let resident_live_head_capacity = n_slots.checked_mul(2).ok_or_else(|| {
+                    SessionError::Mapping("resident live-head capacity overflow".into())
+                })?;
                 integration_schedule
-                    .admit_resident_live_head(n_slots)
+                    .admit_resident_live_head(resident_live_head_capacity)
                     .map_err(|error| SessionError::Mapping(error.to_string()))?;
                 Some(
                     crate::resident_clearing_runtime::ResidentClearingRuntime::admit(
@@ -1007,8 +1010,11 @@ impl SimSession {
             }
             if self.resident_clearing.is_none() {
                 let capacity = self.state.n_slots.max(1);
+                let resident_live_head_capacity = capacity.checked_mul(2).ok_or_else(|| {
+                    SessionError::Mapping("resident live-head capacity overflow".into())
+                })?;
                 self.integration_schedule
-                    .admit_resident_live_head(capacity)
+                    .admit_resident_live_head(resident_live_head_capacity)
                     .map_err(|error| SessionError::Mapping(error.to_string()))?;
                 self.resident_clearing = Some(
                     crate::resident_clearing_runtime::ResidentClearingRuntime::admit(
