@@ -109,7 +109,7 @@ pub use action_band_semantic_shadow::{
 pub use arena_allocation_oracle::{run_arena_allocation_oracle, ArenaAllocationOracleTrace};
 pub use arena_allocation_plan::{
     max_disbursement_band, plan_arena_allocation, plan_arena_allocation_with_pressure,
-    AllocationPlanError, ArenaAllocationPlan,
+    plan_resident_exact_apportionment, AllocationPlanError, ArenaAllocationPlan,
 };
 pub use arena_allocation_sync::{
     build_plan_for_tests, sync_resource_flow_accumulator,

@@ -614,6 +614,55 @@ impl WorldGpuState {
         }
     }
 
+    /// Encode the exact constrained product directly after the resident RF
+    /// integration band in the caller's existing command encoder.
+    ///
+    /// The resolved values buffer stays sealed: the apportioner receives the
+    /// live `AllocatedFlow` cells without a host readback or copied economic
+    /// intermediary. The plan's band is minted by the arena planner.
+    pub fn encode_resident_apportionment_into(
+        &self,
+        session: &mut crate::ResidentApportionmentSession,
+        encoder: &mut wgpu::CommandEncoder,
+        semantic_rows: &wgpu::Buffer,
+        scratch: &wgpu::Buffer,
+        plan: &crate::ResidentApportionmentPlan,
+    ) -> Result<(), crate::ResidentApportionmentError> {
+        self.encode_resident_apportionment_with_dispatch_into(
+            session,
+            encoder,
+            semantic_rows,
+            scratch,
+            plan,
+            crate::ResidentApportionmentDispatch::single_pass(),
+        )
+    }
+
+    /// Same sealed resident path with a caller-selected physical dispatch
+    /// shape. This exists for the binding physical-order proof; dispatch shape
+    /// is not carried in the semantic plan or canonical product.
+    pub fn encode_resident_apportionment_with_dispatch_into(
+        &self,
+        session: &mut crate::ResidentApportionmentSession,
+        encoder: &mut wgpu::CommandEncoder,
+        semantic_rows: &wgpu::Buffer,
+        scratch: &wgpu::Buffer,
+        plan: &crate::ResidentApportionmentPlan,
+        dispatch: crate::ResidentApportionmentDispatch,
+    ) -> Result<(), crate::ResidentApportionmentError> {
+        session.encode_at_integration_band_with_dispatch(
+            &self.ctx,
+            encoder,
+            self.resolved.values(),
+            semantic_rows,
+            scratch,
+            self.n_slots,
+            self.n_dims,
+            plan,
+            dispatch,
+        )
+    }
+
     pub fn new(ctx: GpuContext, registry: &DimensionRegistry, n_slots: u32) -> Self {
         assert!(n_slots > 0, "n_slots must be > 0");
         assert!(registry.total_columns > 0, "registry has no columns");
