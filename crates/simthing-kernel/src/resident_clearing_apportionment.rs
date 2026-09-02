@@ -196,6 +196,12 @@ impl ResidentConstrainedProduct {
         self.integration_band
     }
 
+    /// Observer validation for a product copied directly from the graduated
+    /// resident output port. Production never reconstructs this status on CPU.
+    pub const fn is_successful(self) -> bool {
+        self.status == STATUS_OK
+    }
+
     fn successful(
         semantic_row: u32,
         source_simthing_id: SimThingId,

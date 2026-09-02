@@ -12,6 +12,7 @@ pub mod field_sweep_instances;
 pub mod min_plus_stencil;
 pub mod min_plus_traversal_d_probe;
 pub mod resident_clearing_plan;
+pub mod resident_clearing_runtime;
 pub mod saturating_flux_choke_threshold;
 pub mod stress_compose;
 pub mod structural_upload;
@@ -64,6 +65,10 @@ pub use resident_clearing_plan::{
     RESIDENT_BUFFER_DRAWS, RESIDENT_BUFFER_HEADER, RESIDENT_BUFFER_OWNERS,
     RESIDENT_BUFFER_RESOURCES, RESIDENT_BUFFER_ROWS, RESIDENT_BUFFER_SCOPES,
     RESIDENT_BUFFER_SCRATCH, RESIDENT_CLEARING_ABI_VERSION, RESIDENT_CLEARING_BUFFER_ALIGNMENT,
+};
+pub use resident_clearing_runtime::{
+    ResidentClearingLiveHead, ResidentClearingQualification, ResidentLiveHeadError,
+    ResidentNPlusOneSubmission, QUALIFIED_RESIDENT_CLEARING_FINGERPRINT,
 };
 pub use saturating_flux_choke_threshold::{
     cpu_choke_threshold_oracle, pass1_workgroup_count, SaturatingFluxChokeThresholdConfig,
@@ -124,15 +129,17 @@ pub use simthing_kernel::{
     ResidencyPlacementOutcome, ResidencyPlacementRefusal, ResidencyPlacementRefusalReason,
     ResidencyRelocationOutcome, ResidencySessionTermination, ResidentApportionmentClaim,
     ResidentApportionmentDispatch, ResidentApportionmentError, ResidentApportionmentPlan,
-    ResidentApportionmentSession, ResidentApportionmentWorkgroupSize, ResidentClearingPlan,
-    ResidentConstrainedProduct, ResidentRecursiveSupplyIntake, ResidentSettlementOutput,
-    ResolvedWriteAuthority, ScatterEntry, SlotAllocError, SlotAllocator, SlotDeltaRange,
-    SlotSummary, StructuralCommitment, StructuralGridPlacement, ThresholdEmission,
-    ThresholdEmissionGpu, ThresholdEvent, ThresholdEventGpu, ThresholdRegistration, Topology,
-    TopologyState, TransferInputRef, TransferOpPlanSignature, TransferPlan, TransferPlanError,
-    TransferRegistration, TransferSyncError, UndirectedSymmetryCertificate,
-    VelocityAccumulatorPlan, WorldAccumulatorRuntime, WorldGpuState, WorldSummaryRuntime,
-    AO_WGSL0_ENTRY_POINT, CLAMP_BOUNDED, CLAMP_FLOORED, CLAMP_UNBOUNDED, DEFAULT_EML_NODE_CAPACITY,
+    ResidentApportionmentSession, ResidentApportionmentWorkgroupSize, ResidentClearingAdmission,
+    ResidentClearingBudgets, ResidentClearingPlan, ResidentClearingPlanError,
+    ResidentConstrainedProduct, ResidentDrawId, ResidentOwnerId, ResidentRecursiveSupplyIntake,
+    ResidentResourceId, ResidentScopeId, ResidentSettlementOutput, ResolvedWriteAuthority,
+    ScatterEntry, SlotAllocError, SlotAllocator, SlotDeltaRange, SlotSummary, StructuralCommitment,
+    StructuralGridPlacement, ThresholdEmission, ThresholdEmissionGpu, ThresholdEvent,
+    ThresholdEventGpu, ThresholdRegistration, Topology, TopologyState, TransferInputRef,
+    TransferOpPlanSignature, TransferPlan, TransferPlanError, TransferRegistration,
+    TransferSyncError, UndirectedSymmetryCertificate, VelocityAccumulatorPlan,
+    WorldAccumulatorRuntime, WorldGpuState, WorldSummaryRuntime, AO_WGSL0_ENTRY_POINT,
+    CLAMP_BOUNDED, CLAMP_FLOORED, CLAMP_UNBOUNDED, DEFAULT_EML_NODE_CAPACITY,
     DEFAULT_EML_TREE_CAPACITY, DEFAULT_INPUT_LIST_CAPACITY, DEFAULT_THRESHOLD_EMISSION_CAPACITY,
     DIR_DOWNWARD, DIR_EITHER, DIR_UPWARD, FIELD_SWEEP_LEGACY_PROGRAM_NODES,
     FIELD_SWEEP_LEGACY_STACK_SLOTS, FIELD_SWEEP_WORKGROUP_SIZE, FORMULA_KIND_CONSTANT,

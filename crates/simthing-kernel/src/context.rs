@@ -1,4 +1,7 @@
-//! GPU device/queue lifecycle. One `GpuContext` per session.
+//! GPU device/queue lifecycle. Tree-local contexts may share immutable device
+//! facilities while retaining independently owned semantic buffers.
+
+use std::sync::Arc;
 
 use thiserror::Error;
 use wgpu::{
@@ -15,10 +18,10 @@ pub enum GpuInitError {
 }
 
 pub struct GpuContext {
-    pub instance: Instance,
-    pub adapter: Adapter,
-    pub device: Device,
-    pub queue: Queue,
+    pub instance: Arc<Instance>,
+    pub adapter: Arc<Adapter>,
+    pub device: Arc<Device>,
+    pub queue: Arc<Queue>,
     timestamp_supported: bool,
     encoder_timestamp_supported: bool,
     timestamp_period_ns: f32,
@@ -90,14 +93,29 @@ impl GpuContext {
         let timestamp_period_ns = queue.get_timestamp_period();
 
         Ok(Self {
-            instance,
-            adapter,
-            device,
-            queue,
+            instance: Arc::new(instance),
+            adapter: Arc::new(adapter),
+            device: Arc::new(device),
+            queue: Arc::new(queue),
             timestamp_supported,
             encoder_timestamp_supported,
             timestamp_period_ns,
         })
+    }
+
+    /// Share the same physical adapter/device/queue for another tree-local
+    /// execution context. Only immutable pipeline/device facilities are
+    /// shared; every semantic buffer and schedule remains separately owned.
+    pub fn shared_device_context(&self) -> Self {
+        Self {
+            instance: self.instance.clone(),
+            adapter: self.adapter.clone(),
+            device: self.device.clone(),
+            queue: self.queue.clone(),
+            timestamp_supported: self.timestamp_supported,
+            encoder_timestamp_supported: self.encoder_timestamp_supported,
+            timestamp_period_ns: self.timestamp_period_ns,
+        }
     }
 
     pub fn timestamp_supported(&self) -> bool {

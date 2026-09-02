@@ -541,6 +541,100 @@ remains future and is merely not foreclosed; every known blocker above is fenced
 the constitutional census; nothing in resident clearing may assume one process, host, device,
 clock, allocator, or schedule.
 
+### 8.3 Resident RF market clearing — Phase-14 closure
+
+Phase 14 closes the RF market as one recursively self-consuming operator, not as a clearing
+subsystem beside RF. Each StemThing receives descendant demand, reduces branch-attributed pressure,
+binds already-resolved eligible continuous flow, settles exact constrained supply, disburses it, and
+repeats the same germ at the next level and generation. Roots and leaves are degenerate bindings of
+that interior germ. There is one market, one generation-relative schedule, one exact settlement
+authority in production, and no peer clearinghouse, feedback manager, or second quantity universe.
+
+#### 8.3.1 The mirror cycle and identical recursive ports
+
+Continuous output at level `n` is direct continuous intake at level `n+1`. Exact settlement output
+`T_s` is the identical exact recursive supply intake `T_s`: role names may be aliases or
+conversion-free views only. The canonical product carries logical semantic-row identity, claimant,
+exact granted quantity, exact unresolved `U`, generation, and integration band. It does not acquire
+physical row, device handle, host location, or a role-specific payload copy. Detached seams may add
+realm, incarnation, generation, retry, and transport envelopes, but must preserve the original
+economic payload byte-for-byte.
+
+Unresolved `U` at `N` re-enters the same first-order recursive demand authority at `N+1`; it is not
+CostBand `R`, impairment, contention shortfall, or delivery shortfall, and it does not require an
+authored persistence overlay to exist. Demand/Draw authorization metadata may remain distinct from
+the demand quantity, but must not mint a second quantity authority. No same-generation reweight and
+re-clear convergence loop is lawful.
+
+#### 8.3.2 Receive, do not recompute
+
+Exact settlement receives lawful request/cap, the existing resident `AllocatedFlow` (or a proved
+equivalent), exact available `T_s`, generation and claimant authority, integration band, commitment
+semantics, and the existing hard-precedence decision. Settlement never walks descendants, evaluates
+policy, queries routes or congestion, runs STEAD/PALMA/Gu-Yang, estimates private flux or urgency,
+or owns a clearing-specific field plane, cache, weight table, solver, registration, or pressure
+state. Upstream RF allocation owns branch pressure and authored deformation; already-resolved PALMA
+and Gu-Yang effects are consumed, never applied again. Hard precedence remains distinct from
+continuous share, and physical order, atomics, workgroup shape, or floating comparison outside the
+admitted exact law never decide an exact grant.
+
+#### 8.3.3 Surface-reuse and settled-code census
+
+Before any RF-market binding is added, every proposed role receives exactly one disposition:
+`REUSE AS-IS`, `REUSE WITH BINDING`, `REHOME EXISTING AUTHORITY`, or `MISSING — STOP`. A semantic
+`MISSING` requires Owner/DA ruling; it is not permission to invent an adapter. Already-settled
+market-adjacent code is classified `CONFORMING`, `IN-FLIGHT FIX`, `DATED CONSTITUTIONAL DEBT`, or
+`NOT IN SCOPE` (one-way oracle, replay, observation, or structural boundary). Any debt records its
+provenance, owner, future consumer, and retirement condition in the existing constitutional census,
+never a sibling registry.
+
+The census mechanically protects the recursive ABI, resident/host disbursement, grant lifecycle and
+holding-account history, Draw quantity authority, unresolved recurrence, and seam carriage. A
+`GrantRow -> ChildSupplyRow` adapter, paired role newtypes joined by `From`/`Into`, runtime
+shape-matching, or a seam economic translator is a constitutional failure even if all currently
+visible fields happen to be copied.
+
+#### 8.3.4 Resident authority, replay live head, and CPU division
+
+`ClearingExecutionPosture` is orthogonal to scheduling `ExecutionPosture`; paced and continuous
+scheduling each admit either `ResidentRequired` or explicit `CpuVendorizedOracle` without changing
+market semantics. `ResidentRequired` is the ordinary production default. Its complete
+adapter/backend, driver, feature, compiler, shader/compiler, dependency-lock, workgroup,
+subgroup-independence, and ABI tuple is qualified at admission; a mismatch fails typed before
+execution and never falls back to CPU.
+
+The graduated resident exact result is appended on-device to an admission-bounded segment that is
+the authoritative live head of the one `IntegrationSchedule`, then the identical `T_s` bytes enter
+the N+1 recursive intake in queue order. Both happen before host readback, CPU grant reconstruction,
+vector append, replay drain, or structural handling. The host `Vec` is asynchronous durable/replay
+materialization of that same schedule, not a second live history. A live reservation is never
+dropped, coalesced, overwritten, or redirected; capacity exhaustion is the typed
+`ReplayEgressExhausted` session fault unless an explicitly admitted synchronous-durability posture
+exists. While admitted capacity remains, replay egress cannot make N+1 wait.
+
+The existing CPU clearer is the vendorized oracle: the same registrations, math, invariants,
+admission, generation/history semantics, and exact products, selected explicitly for diagnostics,
+tests, and vendorization proof. It has no hidden ordinary-session caller and no fallback edge from
+resident admission or execution. CPU responsibility in production remains asynchronous observation,
+replay/persistence materialization, and genuine structural consequences. Only an exact grant that
+authorizes such a consequence may project to a sparse sealed `BoundaryRequest`; ordinary economic
+continuation stays resident.
+
+#### 8.3.5 Binding falsifiers
+
+The binding is RED if it creates a peer market/settlement/feedback path; recomputes field or policy
+state in clearing; makes authored policy necessary for neutral lawful pressure; double-applies
+PALMA/Gu-Yang; replaces additive pressure by max/tropical pressure; double-counts branch aggregate
+and descendants; lets physical placement decide grants; creates a second history, demand universe,
+generation source, or live head; changes `T_s` across a seam; translates settlement output into a
+second recursive type; hides or conflates `U`; requires synchronous ancestor RPC or all-tree
+barriers; assumes raw ids are globally unique; shares mutable clearing authority across trees; lets
+host materialization delay admitted N+1 work; silently falls back to CPU; or moves structural tree
+mutation onto the GPU. These are binding failures, not optimization opportunities.
+
+This section is the durable Phase-14 home for the RF Market Core workshop laws. Section 1.5.1 remains
+the germ seal; sections 1.2 and 8.2 remain the one-schedule and asynchronous-tree authorities.
+
 ---
 
 ## 9. The drift detectors — litmus tests for every change

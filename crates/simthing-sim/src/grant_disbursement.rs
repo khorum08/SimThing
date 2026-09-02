@@ -692,7 +692,9 @@ mod tests {
                 child_generation: GenerationStamp::new(4),
                 product_key: fact.provenance,
                 grant_lifecycle_fact: Some(fact),
+                resident_clearing_fact: None,
             }],
+            ..IntegrationSchedule::new()
         };
         assert!(matches!(
             ScheduledGrantLifecycleFacts::from_schedule(

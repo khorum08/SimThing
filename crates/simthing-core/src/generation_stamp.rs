@@ -126,6 +126,9 @@ pub enum IntegrationScheduleRowKind {
     /// One ordinary growth claim that remained U before structural attachment
     /// (zero/partial market clearance or a non-placement admission refusal).
     GrowthEntitlementRefusal,
+    /// One exact resident constrained product asynchronously materialized
+    /// from the bounded live-head segment.
+    ResidentClearingProduct,
     GrantAccepted,
     GrantRenewed,
     GrantRevoked,
@@ -176,6 +179,11 @@ pub struct IntegrationScheduleEntry {
     /// rows remain wire-compatible and deserialize with no payload.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub grant_lifecycle_fact: Option<GrantLifecycleFact>,
+    /// Typed payload only for a resident-clearing materialization row. The
+    /// exact product remains authoritative in the resident live head until
+    /// this observer append completes.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub resident_clearing_fact: Option<ResidentClearingScheduleFact>,
 }
 
 impl IntegrationScheduleEntry {
@@ -191,6 +199,70 @@ impl IntegrationScheduleEntry {
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct IntegrationSchedule {
     pub entries: Vec<IntegrationScheduleEntry>,
+    /// Admission-bounded metadata for the authoritative resident live head.
+    /// The device buffer itself is owned by the resident executor and is
+    /// intentionally absent from serde. A deserialized historical schedule
+    /// must explicitly admit a new live head before execution resumes.
+    #[serde(skip)]
+    resident_live_head: Option<ResidentScheduleLiveHead>,
+}
+
+/// Serializable observer form of the canonical exact resident product.
+/// This is replay/persistence egress, not a recursive economic port.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ResidentClearingScheduleFact {
+    pub semantic_row: u32,
+    pub source_simthing_id_raw: u32,
+    pub granted: u32,
+    pub unresolved: u32,
+    pub generation: GenerationStamp,
+    pub integration_band: u32,
+}
+
+/// Opaque reservation in the bounded resident live head.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ResidentScheduleReservation {
+    start: u32,
+    len: u32,
+    first_sequence: u64,
+}
+
+impl ResidentScheduleReservation {
+    pub const fn start(self) -> u32 {
+        self.start
+    }
+
+    pub const fn len(self) -> u32 {
+        self.len
+    }
+
+    pub const fn first_sequence(self) -> u64 {
+        self.first_sequence
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct ResidentScheduleLiveHead {
+    capacity: u32,
+    occupied: u32,
+    next_sequence: u64,
+    pending: Vec<ResidentScheduleReservation>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Error)]
+pub enum ResidentScheduleError {
+    #[error("resident replay-egress capacity must be at least one row")]
+    ZeroCapacity,
+    #[error("resident replay egress exhausted: requested {requested} rows, admitted {capacity}")]
+    ReplayEgressExhausted { requested: u32, capacity: u32 },
+    #[error("resident materialization does not match the live-head reservation")]
+    ReservationMismatch,
+    #[error("resident materialization row count differs from its reservation")]
+    MaterializationCountMismatch,
+    #[error("resident schedule sequence overflow")]
+    SequenceOverflow,
+    #[error("resident product generation cannot schedule N+1")]
+    GenerationOverflow,
 }
 
 impl IntegrationSchedule {
@@ -228,6 +300,7 @@ impl IntegrationSchedule {
             child_generation,
             product_key,
             grant_lifecycle_fact: None,
+            resident_clearing_fact: None,
         });
     }
 
@@ -251,7 +324,131 @@ impl IntegrationSchedule {
             child_generation: fact.generation,
             product_key: fact.provenance,
             grant_lifecycle_fact: Some(fact),
+            resident_clearing_fact: None,
         });
+        Ok(())
+    }
+
+    /// Admit the one bounded device-resident live head. This is session-build
+    /// policy and cannot be resized while execution is live.
+    pub fn admit_resident_live_head(&mut self, capacity: u32) -> Result<(), ResidentScheduleError> {
+        if capacity == 0 {
+            return Err(ResidentScheduleError::ZeroCapacity);
+        }
+        let next_sequence = u64::try_from(
+            self.entries
+                .iter()
+                .filter(|entry| entry.kind == IntegrationScheduleRowKind::ResidentClearingProduct)
+                .count(),
+        )
+        .map_err(|_| ResidentScheduleError::SequenceOverflow)?;
+        self.resident_live_head = Some(ResidentScheduleLiveHead {
+            capacity,
+            occupied: 0,
+            next_sequence,
+            pending: Vec::new(),
+        });
+        Ok(())
+    }
+
+    pub fn resident_live_head_capacity(&self) -> Option<u32> {
+        self.resident_live_head.as_ref().map(|head| head.capacity)
+    }
+
+    pub fn resident_materialization_pending(&self) -> bool {
+        self.resident_live_head
+            .as_ref()
+            .is_some_and(|head| !head.pending.is_empty())
+    }
+
+    pub fn resident_live_head_occupied_rows(&self) -> u32 {
+        self.resident_live_head
+            .as_ref()
+            .map_or(0, |head| head.occupied)
+    }
+
+    /// Reserve exact rows before resident dispatch. Batches append while
+    /// admitted capacity remains; an epoch recycles only after every pending
+    /// observer materialization, so no live row is overwritten, dropped,
+    /// coalesced, or silently redirected to CPU.
+    pub fn reserve_resident_rows(
+        &mut self,
+        count: u32,
+    ) -> Result<ResidentScheduleReservation, ResidentScheduleError> {
+        let head = self
+            .resident_live_head
+            .as_mut()
+            .ok_or(ResidentScheduleError::ZeroCapacity)?;
+        let requested = head
+            .occupied
+            .checked_add(count)
+            .ok_or(ResidentScheduleError::SequenceOverflow)?;
+        if requested > head.capacity {
+            return Err(ResidentScheduleError::ReplayEgressExhausted {
+                requested,
+                capacity: head.capacity,
+            });
+        }
+        let next_sequence = head
+            .next_sequence
+            .checked_add(u64::from(count))
+            .ok_or(ResidentScheduleError::SequenceOverflow)?;
+        let reservation = ResidentScheduleReservation {
+            start: head.occupied,
+            len: count,
+            first_sequence: head.next_sequence,
+        };
+        head.occupied = requested;
+        head.next_sequence = next_sequence;
+        head.pending.push(reservation);
+        Ok(reservation)
+    }
+
+    /// Append an asynchronously observed resident batch to the CPU/vector
+    /// history of this same schedule. The live-head reservation remains the
+    /// authority until every row is appended successfully.
+    pub fn materialize_resident_rows(
+        &mut self,
+        reservation: ResidentScheduleReservation,
+        facts: &[ResidentClearingScheduleFact],
+    ) -> Result<(), ResidentScheduleError> {
+        let head = self
+            .resident_live_head
+            .as_mut()
+            .ok_or(ResidentScheduleError::ZeroCapacity)?;
+        if head.pending.first().copied() != Some(reservation) {
+            return Err(ResidentScheduleError::ReservationMismatch);
+        }
+        if facts.len() != reservation.len as usize {
+            return Err(ResidentScheduleError::MaterializationCountMismatch);
+        }
+        let mut rows = Vec::with_capacity(facts.len());
+        for (offset, fact) in facts.iter().copied().enumerate() {
+            let parent_generation = fact
+                .generation
+                .get()
+                .checked_add(1)
+                .map(GenerationStamp::new)
+                .ok_or(ResidentScheduleError::GenerationOverflow)?;
+            let sequence = reservation
+                .first_sequence
+                .checked_add(offset as u64)
+                .ok_or(ResidentScheduleError::SequenceOverflow)?;
+            rows.push(IntegrationScheduleEntry {
+                kind: IntegrationScheduleRowKind::ResidentClearingProduct,
+                parent_generation,
+                child_generation: fact.generation,
+                product_key: resident_product_key(sequence, fact),
+                grant_lifecycle_fact: None,
+                resident_clearing_fact: Some(fact),
+            });
+        }
+        self.entries.extend(rows);
+        head.pending.remove(0);
+        if head.pending.is_empty() {
+            // Only a fully materialized epoch may recycle its live segment.
+            head.occupied = 0;
+        }
         Ok(())
     }
 
@@ -285,6 +482,24 @@ impl IntegrationSchedule {
     ) -> impl Iterator<Item = &IntegrationScheduleEntry> {
         self.entries.iter().filter(move |entry| entry.kind == kind)
     }
+}
+
+fn resident_product_key(sequence: u64, fact: ResidentClearingScheduleFact) -> u64 {
+    let mut hash = 0xcbf2_9ce4_8422_2325_u64;
+    for byte in sequence
+        .to_le_bytes()
+        .into_iter()
+        .chain(fact.semantic_row.to_le_bytes())
+        .chain(fact.source_simthing_id_raw.to_le_bytes())
+        .chain(fact.granted.to_le_bytes())
+        .chain(fact.unresolved.to_le_bytes())
+        .chain(fact.generation.get().to_le_bytes())
+        .chain(fact.integration_band.to_le_bytes())
+    {
+        hash ^= u64::from(byte);
+        hash = hash.wrapping_mul(0x0000_0100_0000_01b3);
+    }
+    hash
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Error)]

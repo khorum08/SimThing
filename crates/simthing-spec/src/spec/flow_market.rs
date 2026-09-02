@@ -19,6 +19,7 @@ pub use simthing_kernel::overlay_prep::{
     resolve_effective_clearing_weights, ChangedLocus, ClearingWeightOverrideSpec,
     ClearingWeightProjectionRefresh, ClearingWeightResolutionError, ClearingWeightSpanProjection,
 };
+use simthing_kernel::ResidentConstrainedProduct;
 use thiserror::Error;
 
 use super::{
@@ -350,6 +351,60 @@ impl AdmittedSpecializationFlowMarket {
         })?;
         Ok(record)
     }
+
+    /// Project a resident exact product only into the CPU-owned structural
+    /// boundary lifecycle. This is not a recursive market port: economic N+1
+    /// already consumed the identical `ResidentConstrainedProduct` on device
+    /// before this sparse observer can run.
+    #[allow(clippy::too_many_arguments)]
+    pub fn record_resident_structural_grant(
+        &self,
+        granter: SimThingId,
+        offering_id: &str,
+        scope: &OwnerChannelScopeKey,
+        requested: u32,
+        product: ResidentConstrainedProduct,
+        generation: GenerationStamp,
+        integration_schedule: &mut IntegrationSchedule,
+    ) -> Result<MarketGrantRecord, GrantLifecycleError> {
+        if product.generation() != generation
+            || product.granted().checked_add(product.unresolved()) != Some(requested)
+        {
+            return Err(GrantLifecycleError::ResidentProductMismatch);
+        }
+        let offering = self
+            .offerings
+            .get(offering_id)
+            .ok_or_else(|| GrantLifecycleError::UnknownOffering(offering_id.to_string()))?;
+        if scope.resource_key != offering.resource_key {
+            return Err(GrantLifecycleError::OfferingResourceMismatch);
+        }
+        if product.granted() == 0 {
+            return Err(GrantLifecycleError::ZeroGrant);
+        }
+        let record = MarketGrantRecord {
+            key: MarketGrantKey {
+                granter,
+                grantee: product.source_simthing_id(),
+                offering_id: offering_id.to_string(),
+            },
+            scope: scope.clone(),
+            quantity: product.granted(),
+            granted_generation: generation,
+        };
+        let after = grant_relationship_state(self, &record);
+        let mut before = after.clone();
+        before.quantity = 0;
+        integration_schedule.record_grant_lifecycle(GrantLifecycleFact {
+            kind: GrantLifecycleFactKind::Accepted,
+            generation,
+            provenance: after.stable_key,
+            before: vec![before],
+            after: vec![after],
+            release_cause: None,
+        })?;
+        Ok(record)
+    }
 }
 
 /// Stable identity of one market relationship.
@@ -419,6 +474,8 @@ pub struct GrantRelease {
 pub enum GrantLifecycleError {
     #[error("clearing grant was not minted intact by constrained clearing")]
     InvalidClearingSeal,
+    #[error("resident exact product does not match the structural grant request/generation")]
+    ResidentProductMismatch,
     #[error("unknown offering `{0}`")]
     UnknownOffering(String),
     #[error("clearing grant resource does not match its offering")]

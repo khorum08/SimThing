@@ -2450,3 +2450,14 @@ date	role	query	anchors_served	hit
 2026-09-02T19:25:57Z	coding	--grep 13.9	admission-provenance,clausescript-compatibility,clearing-weight-spans,generation-critical-path,legacy-convergence-census,performance-debt-ledger,semantic-partition-law,star-naming-derivation,weight-deformation-lifecycle	hit
 2026-09-02T19:26:11Z	coding	--grep 13.6	admission-provenance,clausescript-compatibility,clearing-weight-spans,generation-critical-path,legacy-convergence-census,performance-debt-ledger,semantic-partition-law,star-naming-derivation,weight-deformation-lifecycle	hit
 2026-09-02T19:27:09Z	coding	--paths crates/simthing-workshop/tests/resident_clearing_parity_0.rs docs/tests/resident_clearing_parity_0_results.md docs/tests/current_evidence_index.md scripts/ci/test_inventory.tsv scripts/ci/anchor_reach_log.tsv	orientation-harness-core,scanner-selftest-delta-gate	hit
+2026-09-02T20:30:34Z	coding	--grep until:RESIDENT-CLEARING-CUTOVER-0	none	none
+2026-09-02T20:30:34Z	coding	--domain rf-market	none	none
+2026-09-02T20:30:34Z	coding	--grep resident schedule segment	admission-provenance,clausescript-compatibility,clearing-weight-spans,generation-critical-path,legacy-convergence-census,performance-debt-ledger,semantic-partition-law,star-naming-derivation,weight-deformation-lifecycle	hit
+2026-09-02T20:32:02Z	coding	--domain rf-market-core	rf-market-candidate-laws,rf-market-falsifiers,rf-market-mirror-cycle,rf-market-port-census,rf-market-receive-not-recompute,rf-market-settled-code-census	hit
+2026-09-02T20:32:16Z	coding	--domain gpu	actionband-axis-budget,actionband-crossing-surface,actionband-determinism-lifecycle,actionband-field-triad-authority,actionband-gpu-physical-model,actionband-native-authority-table,actionband-performance-model,core-gpu-residency,seal-residue-cross-crate,structural-execution-convergence	hit
+2026-09-02T20:32:16Z	coding	--domain async	async-non-foreclosure	hit
+2026-09-02T20:32:22Z	coding	--domain sim-clock	field-policy-time-decisions	hit
+2026-09-02T20:32:22Z	coding	--domain door-symmetry	door-symmetry	hit
+2026-09-02T20:32:22Z	coding	--domain clearing	stemthing-b-market-grammar	hit
+2026-09-02T20:56:51Z	coding	--domain rf-market-core	rf-market-candidate-laws,rf-market-falsifiers,rf-market-mirror-cycle,rf-market-port-census,rf-market-receive-not-recompute,rf-market-settled-code-census	hit
+2026-09-02T21:08:01Z	coding	--domain rf-market-core	rf-market-candidate-laws,rf-market-falsifiers,rf-market-mirror-cycle,rf-market-port-census,rf-market-receive-not-recompute,rf-market-settled-code-census	hit
