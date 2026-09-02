@@ -663,6 +663,37 @@ impl WorldGpuState {
         )
     }
 
+    /// Execute the same exact settlement kernel with its economic request and
+    /// supply intake read directly from canonical resident `T_s` products.
+    /// AllocatedFlow remains the live sealed value-plane input; no host copy or
+    /// role-specific recursive payload is introduced.
+    #[allow(clippy::too_many_arguments)]
+    pub fn encode_resident_apportionment_from_recursive_intake_with_dispatch_into(
+        &self,
+        session: &mut crate::ResidentApportionmentSession,
+        encoder: &mut wgpu::CommandEncoder,
+        semantic_rows: &wgpu::Buffer,
+        scratch: &wgpu::Buffer,
+        recursive_intake: &wgpu::Buffer,
+        recursive_intake_count: u32,
+        plan: &crate::ResidentApportionmentPlan,
+        dispatch: crate::ResidentApportionmentDispatch,
+    ) -> Result<(), crate::ResidentApportionmentError> {
+        session.encode_from_recursive_intake_at_integration_band_with_dispatch(
+            &self.ctx,
+            encoder,
+            self.resolved.values(),
+            semantic_rows,
+            scratch,
+            recursive_intake,
+            recursive_intake_count,
+            self.n_slots,
+            self.n_dims,
+            plan,
+            dispatch,
+        )
+    }
+
     pub fn new(ctx: GpuContext, registry: &DimensionRegistry, n_slots: u32) -> Self {
         assert!(n_slots > 0, "n_slots must be > 0");
         assert!(registry.total_columns > 0, "registry has no columns");

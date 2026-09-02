@@ -29,6 +29,34 @@ type FieldSweepCompilerResult =
     Result<Vec<simthing_gpu::FieldSweepRegistration>, simthing_gpu::FieldSweepAdmissionError>;
 type FieldSweepCompilerFn = fn(u32) -> FieldSweepCompilerResult;
 
+/// Derive the default realm from authored semantic identity rather than a
+/// process-global allocator, pointer, row, or device handle. A restored or
+/// forked runtime with an already durable realm uses `open_in_realm` instead.
+fn derive_default_tree_realm(
+    scenario: &Scenario,
+) -> Result<simthing_core::TreeRealmId, SessionError> {
+    let tree = serde_json::to_vec(&scenario.root)
+        .map_err(|error| SessionError::Mapping(error.to_string()))?;
+    let mut left = 0xcbf2_9ce4_8422_2325_u64;
+    let mut right = 0x8422_2325_cbf2_9ce4_u64;
+    for byte in scenario
+        .name
+        .as_bytes()
+        .iter()
+        .copied()
+        .chain([0])
+        .chain(tree)
+    {
+        left ^= u64::from(byte);
+        left = left.wrapping_mul(0x0000_0100_0000_01b3);
+        right ^= u64::from(byte.rotate_left(1));
+        right = right.wrapping_mul(0x0000_0100_0000_01b3);
+    }
+    let value = (u128::from(right) << 64) | u128::from(left);
+    simthing_core::TreeRealmId::from_u128(value)
+        .map_err(|error| SessionError::Mapping(error.to_string()))
+}
+
 #[derive(Debug, Error)]
 pub enum SessionError {
     #[error("gpu init: {0}")]
@@ -59,6 +87,8 @@ pub enum SessionError {
     PlayerIntentAdmission(String),
     #[error("execution posture: {0}")]
     ExecutionPosture(String),
+    #[error("resident clearing admission/execution: {0}")]
+    ResidentClearing(#[from] crate::resident_clearing_runtime::ResidentClearingRuntimeError),
     #[error(transparent)]
     ResidencyPlacement(#[from] simthing_gpu::ResidencyPlacementError),
     #[error(transparent)]
@@ -312,6 +342,14 @@ pub struct SimSession {
     integration_schedule: simthing_core::IntegrationSchedule,
     /// One admitted 11.2a input for all ordinary fission/AddChild growth.
     growth_entitlement: GrowthEntitlementMarketBinding,
+    /// Durable per-tree namespace; physical device and raw local ids never
+    /// become cross-tree economic identity.
+    tree_realm: simthing_core::TreeRealmId,
+    /// Clearing backend authority, independent of scheduling posture.
+    clearing_execution_posture: simthing_core::ClearingExecutionPosture,
+    /// Present for the resident-primary posture. This is one per-tree owner;
+    /// there is no process-global clearer or shared mutable schedule.
+    resident_clearing: Option<crate::resident_clearing_runtime::ResidentClearingRuntime>,
     /// Last boundary dynamic Resource Flow fission enrollment report (E-2B-5R).
     pub last_resource_flow_dynamic_enrollment_report:
         Option<crate::resource_flow_fission_enrollment::DynamicFissionEnrollmentReport>,
@@ -640,6 +678,27 @@ impl SimSession {
     }
 
     pub fn open(scenario: Scenario) -> Result<Self, SessionError> {
+        Self::open_with_clearing_posture(
+            scenario,
+            simthing_core::ClearingExecutionPosture::ResidentRequired,
+        )
+    }
+
+    pub fn open_with_clearing_posture(
+        scenario: Scenario,
+        posture: simthing_core::ClearingExecutionPosture,
+    ) -> Result<Self, SessionError> {
+        let realm = derive_default_tree_realm(&scenario)?;
+        Self::open_in_realm(scenario, posture, realm)
+    }
+
+    /// Explicit realm-bearing session door used by migration/recreation and
+    /// async-tree executors. Ordinary callers use [`Self::open`].
+    pub fn open_in_realm(
+        scenario: Scenario,
+        clearing_execution_posture: simthing_core::ClearingExecutionPosture,
+        tree_realm: simthing_core::TreeRealmId,
+    ) -> Result<Self, SessionError> {
         // Admit the semantic projection before the slot allocator, whose
         // residency contract assumes unique logical identities. Malformed
         // trees therefore fail through the typed session door rather than an
@@ -685,6 +744,31 @@ impl SimSession {
         );
         proto.initial_gpu_sync(&coord, &mut state)?;
 
+        let mut integration_schedule = simthing_core::IntegrationSchedule::new();
+        let resident_clearing = match clearing_execution_posture {
+            simthing_core::ClearingExecutionPosture::ResidentRequired => {
+                let resident_live_head_capacity = n_slots.checked_mul(2).ok_or_else(|| {
+                    SessionError::Mapping("resident live-head capacity overflow".into())
+                })?;
+                integration_schedule
+                    .admit_resident_live_head(resident_live_head_capacity)
+                    .map_err(|error| SessionError::Mapping(error.to_string()))?;
+                Some(
+                    crate::resident_clearing_runtime::ResidentClearingRuntime::admit(
+                        &state.ctx,
+                        tree_realm,
+                        &scenario.root,
+                        &scenario.registry,
+                        &proto.allocator,
+                        &integration_schedule,
+                        simthing_core::GenerationStamp::new(0),
+                        n_slots,
+                    )?,
+                )
+            }
+            simthing_core::ClearingExecutionPosture::CpuVendorizedOracle => None,
+        };
+
         Ok(Self {
             scenario,
             proto,
@@ -695,8 +779,11 @@ impl SimSession {
             rx,
             tx,
             spec_state: SpecSessionState::new(),
-            integration_schedule: simthing_core::IntegrationSchedule::new(),
+            integration_schedule,
             growth_entitlement,
+            tree_realm,
+            clearing_execution_posture,
+            resident_clearing,
             last_resource_flow_dynamic_enrollment_report: None,
             mapping: None,
             mapping_commitments: Vec::new(),
@@ -712,6 +799,14 @@ impl SimSession {
     /// Observe the one canonical integration schedule, including physical residency rows.
     pub fn integration_schedule(&self) -> &simthing_core::IntegrationSchedule {
         &self.integration_schedule
+    }
+
+    pub fn tree_realm(&self) -> simthing_core::TreeRealmId {
+        self.tree_realm
+    }
+
+    pub fn clearing_execution_posture(&self) -> simthing_core::ClearingExecutionPosture {
+        self.clearing_execution_posture
     }
 
     fn lifecycle_generation(&self) -> Result<simthing_core::GenerationStamp, SessionError> {
@@ -842,6 +937,13 @@ impl SimSession {
                 GrowthEntitlementError::UnresidentGranter(binding.granter()),
             ));
         }
+        if self.clearing_execution_posture.is_resident_required()
+            && !binding.is_resident_qualified()
+        {
+            return Err(SessionError::GrowthEntitlement(
+                GrowthEntitlementError::ResidentProfileUnqualified,
+            ));
+        }
         self.growth_entitlement = binding;
         Ok(())
     }
@@ -886,6 +988,49 @@ impl SimSession {
             .ensure_admitted()
             .map_err(|e| SessionError::ExecutionPosture(e.to_string()))?;
         self.execution_posture = posture;
+        Ok(())
+    }
+
+    /// Select the clearing backend before execution starts. This never occurs
+    /// as recovery from a dispatch failure and therefore cannot be a fallback.
+    pub fn set_clearing_execution_posture(
+        &mut self,
+        posture: simthing_core::ClearingExecutionPosture,
+    ) -> Result<(), SessionError> {
+        if self.coord.tick_index() != 0 || self.coord.day_index() != 0 {
+            return Err(SessionError::ExecutionPosture(
+                "clearing execution posture freezes before the first tick".into(),
+            ));
+        }
+        if posture.is_resident_required() {
+            if !self.growth_entitlement.is_resident_qualified() {
+                return Err(SessionError::GrowthEntitlement(
+                    GrowthEntitlementError::ResidentProfileUnqualified,
+                ));
+            }
+            if self.resident_clearing.is_none() {
+                let capacity = self.state.n_slots.max(1);
+                let resident_live_head_capacity = capacity.checked_mul(2).ok_or_else(|| {
+                    SessionError::Mapping("resident live-head capacity overflow".into())
+                })?;
+                self.integration_schedule
+                    .admit_resident_live_head(resident_live_head_capacity)
+                    .map_err(|error| SessionError::Mapping(error.to_string()))?;
+                self.resident_clearing = Some(
+                    crate::resident_clearing_runtime::ResidentClearingRuntime::admit(
+                        &self.state.ctx,
+                        self.tree_realm,
+                        &self.scenario.root,
+                        &self.scenario.registry,
+                        &self.proto.allocator,
+                        &self.integration_schedule,
+                        simthing_core::GenerationStamp::new(0),
+                        capacity,
+                    )?,
+                );
+            }
+        }
+        self.clearing_execution_posture = posture;
         Ok(())
     }
 
@@ -1598,6 +1743,8 @@ impl SimSession {
         let boundary_started = Instant::now();
         let spec_state = &mut self.spec_state;
         let growth_entitlement = &self.growth_entitlement;
+        let clearing_execution_posture = self.clearing_execution_posture;
+        let resident_clearing = &mut self.resident_clearing;
         let outcome = self.proto.execute_with_boundary_hook_and_growth(
             tick.events,
             &mut self.patcher,
@@ -1607,9 +1754,29 @@ impl SimSession {
             &mut self.integration_schedule,
             |ctx| spec_state.run_boundary_handlers(ctx),
             |allocator, generation, candidates, integration_schedule| {
-                growth_entitlement
-                    .resolve_batch(allocator, generation, candidates, integration_schedule)
-                    .map_err(|error| error.to_string())
+                match clearing_execution_posture {
+                    simthing_core::ClearingExecutionPosture::ResidentRequired => {
+                        let runtime = resident_clearing.as_mut().ok_or_else(|| {
+                            "ResidentRequired session has no admitted resident executor".to_string()
+                        })?;
+                        growth_entitlement.resolve_batch_resident(
+                            runtime,
+                            allocator,
+                            generation,
+                            candidates,
+                            integration_schedule,
+                        )
+                    }
+                    simthing_core::ClearingExecutionPosture::CpuVendorizedOracle => {
+                        growth_entitlement.resolve_batch_cpu_vendorized_oracle(
+                            allocator,
+                            generation,
+                            candidates,
+                            integration_schedule,
+                        )
+                    }
+                }
+                .map_err(|error| error.to_string())
             },
         )?;
         summary.boundary_total_ms += boundary_started.elapsed().as_secs_f64() * 1000.0;
@@ -1711,6 +1878,8 @@ impl SimSession {
                 let pre_spec = self.spec_state.pre_boundary_snapshot();
                 let spec_state = &mut self.spec_state;
                 let growth_entitlement = &self.growth_entitlement;
+                let clearing_execution_posture = self.clearing_execution_posture;
+                let resident_clearing = &mut self.resident_clearing;
                 let outcome = self.proto.execute_with_boundary_hook_and_growth(
                     tick.events,
                     &mut self.patcher,
@@ -1720,9 +1889,30 @@ impl SimSession {
                     &mut self.integration_schedule,
                     |ctx| spec_state.run_boundary_handlers(ctx),
                     |allocator, generation, candidates, integration_schedule| {
-                        growth_entitlement
-                            .resolve_batch(allocator, generation, candidates, integration_schedule)
-                            .map_err(|error| error.to_string())
+                        match clearing_execution_posture {
+                            simthing_core::ClearingExecutionPosture::ResidentRequired => {
+                                let runtime = resident_clearing.as_mut().ok_or_else(|| {
+                                    "ResidentRequired session has no admitted resident executor"
+                                        .to_string()
+                                })?;
+                                growth_entitlement.resolve_batch_resident(
+                                    runtime,
+                                    allocator,
+                                    generation,
+                                    candidates,
+                                    integration_schedule,
+                                )
+                            }
+                            simthing_core::ClearingExecutionPosture::CpuVendorizedOracle => {
+                                growth_entitlement.resolve_batch_cpu_vendorized_oracle(
+                                    allocator,
+                                    generation,
+                                    candidates,
+                                    integration_schedule,
+                                )
+                            }
+                        }
+                        .map_err(|error| error.to_string())
                     },
                 )?;
                 summary.boundary_total_ms += boundary_started.elapsed().as_secs_f64() * 1000.0;

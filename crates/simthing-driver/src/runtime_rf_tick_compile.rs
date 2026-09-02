@@ -44,11 +44,12 @@ pub struct RuntimeRfTickPlan {
     pub local_effect_application_deferred: bool,
 }
 
-/// Driver-owned production caller for ordinary demand's N→N+1 door.
+/// Driver-owned vendorized CPU-oracle caller for ordinary demand's N→N+1 door.
 ///
 /// The driver cannot accept a caller-supplied optional unresolved row or a
 /// filtered clearing-result slice. The spec boundary performs the current clear
 /// and consumes every resulting unresolved observation before exposing results.
+/// It has no ordinary session caller after `RESIDENT-CLEARING-CUTOVER-0`.
 pub fn produce_runtime_rf_next_generation_demands_for_tick(
     authority: &RuntimeRfDemandGenerationAuthority,
     current_supplies: &[ConstrainedSupply],

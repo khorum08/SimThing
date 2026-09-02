@@ -96,7 +96,7 @@ pub use eml_registry::{
     MAX_EML_TREE_NODES, WHITELISTED_FORMULA_CLASSES,
 };
 pub use evaluate::{RoutedPredicate, RoutedPredicateComparison, TransformStack};
-pub use execution_posture::{ExecutionPosture, ExecutionPostureError};
+pub use execution_posture::{ClearingExecutionPosture, ExecutionPosture, ExecutionPostureError};
 pub use fission_child_spawn::ResolvedFissionChildBlueprint;
 pub use fission_clone_source::{
     fission_clone_source_container_kinds_for_registry, fission_clone_source_label,
@@ -110,6 +110,7 @@ pub use generation_stamp::{
     AncestorStandingPolicyView, AuthoredSeamStaleness, BackpressurePolicy, DispatchOverlayError,
     GenerationStamp, GenerationStamped, GrantLifecycleScheduleError, IntegrateError,
     IntegrationReceipt, IntegrationSchedule, IntegrationScheduleEntry, IntegrationScheduleRowKind,
+    ResidentClearingScheduleFact, ResidentScheduleError, ResidentScheduleReservation,
     RingPushOutcome, RoutedGenerationDuration, StampedEgressEntry, StampedEventRing,
     StandingViewDoubleBuffer,
 };

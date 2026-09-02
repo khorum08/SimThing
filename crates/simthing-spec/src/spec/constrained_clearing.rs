@@ -269,8 +269,12 @@ struct ScoredClaim {
     score: f32,
 }
 
-/// Clear bounded supplies with work-conserving largest remainder and rotate
-/// exact fractional ties under the owning granter's generation authority.
+/// Vendorized CPU oracle for bounded-supply clearing.
+///
+/// This is the frozen mathematical/reference authority used by explicit
+/// `CpuVendorizedOracle` sessions and proof tooling. Ordinary production
+/// reaches the resident executor; adapter or dispatch failure must never call
+/// this door as fallback.
 pub fn clear_constrained_claims_at_generation(
     supplies: &[ConstrainedSupply],
     claims: &[ConstrainedClaim],
@@ -434,7 +438,7 @@ pub fn clear_constrained_claims_at_generation(
     Ok(results)
 }
 
-/// Bind the existing owner-channel reduce-up product to generic clearing.
+/// Generationless compatibility door for the vendorized CPU oracle.
 ///
 /// Each bucket's `OwnerChannelScopeKey` is consumed directly. No ownership
 /// resolution or reconstruction is performed in this layer.
@@ -454,7 +458,7 @@ pub fn clear_reduced_owner_channels(
     )
 }
 
-/// Bind stamped owner-channel RF to generation-authoritative market clearing.
+/// Generation-authoritative owner-channel binding for the vendorized CPU oracle.
 pub fn clear_reduced_owner_channels_at_generation(
     report: &OwnerChannelRfReduceUpReport,
     authored: &[AuthoredClaimClearingData],
@@ -504,8 +508,9 @@ pub fn clear_reduced_owner_channels_at_generation(
     clear_constrained_claims_at_generation(&supplies, &claims, program, authority)
 }
 
-/// Canonical market binding: derive remainder rotation from the stamped RF
-/// product itself, so a caller cannot pair claims with a different generation.
+/// Stamped owner-channel binding for the vendorized CPU oracle. It derives
+/// remainder rotation from the stamped RF product itself, so proof callers
+/// cannot pair claims with a different generation.
 pub fn clear_stamped_owner_channels(
     stamped: &StampedReduceUpProduct,
     authored: &[AuthoredClaimClearingData],

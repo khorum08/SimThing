@@ -42,6 +42,10 @@ pub enum GrowthEntitlementError {
     LateInstall { tick: u64, generation: u64 },
     #[error("ordinary growth granter {0:?} has no resident row")]
     UnresidentGranter(SimThingId),
+    #[error("ordinary growth market is not qualified for resident clearing")]
+    ResidentProfileUnqualified,
+    #[error("ordinary growth resident clearing failed: {0}")]
+    Resident(String),
 }
 
 /// Frozen session binding for one standing granter. Authored sessions may
@@ -59,6 +63,7 @@ pub struct GrowthEntitlementMarketBinding {
     effective_weight: f32,
     priority: u32,
     implicit_root_standing: bool,
+    resident_qualified: bool,
 }
 
 impl GrowthEntitlementMarketBinding {
@@ -85,6 +90,7 @@ impl GrowthEntitlementMarketBinding {
             effective_weight,
             priority,
             implicit_root_standing: false,
+            resident_qualified: false,
         }
     }
 
@@ -138,6 +144,7 @@ impl GrowthEntitlementMarketBinding {
             effective_weight: 1.0,
             priority: 0,
             implicit_root_standing: true,
+            resident_qualified: true,
         })
     }
 
@@ -149,6 +156,25 @@ impl GrowthEntitlementMarketBinding {
         self.implicit_root_standing
     }
 
+    pub fn is_resident_qualified(&self) -> bool {
+        self.resident_qualified
+    }
+
+    /// Explicit vendorized CPU oracle. Ordinary production selects this door
+    /// only under `ClearingExecutionPosture::CpuVendorizedOracle`; adapter or
+    /// resident dispatch failure never reaches it.
+    pub fn resolve_batch_cpu_vendorized_oracle(
+        &self,
+        allocator: &SlotAllocator,
+        generation: GenerationStamp,
+        candidates: &[OrdinaryGrowthCandidate],
+        integration_schedule: &mut simthing_core::IntegrationSchedule,
+    ) -> Result<Vec<GrowthEntitlementDecision>, GrowthEntitlementError> {
+        self.resolve_batch(allocator, generation, candidates, integration_schedule)
+    }
+
+    /// Compatibility name retained for the frozen CPU-oracle witnesses. There
+    /// is no production caller after RESIDENT-CLEARING-CUTOVER-0.
     pub fn resolve_batch(
         &self,
         allocator: &SlotAllocator,
@@ -260,6 +286,122 @@ impl GrowthEntitlementMarketBinding {
                 decisions.push(GrowthEntitlementDecision::refused(
                     *candidate,
                     grant.granted,
+                    key,
+                ));
+            }
+        }
+        Ok(decisions)
+    }
+
+    /// Production resident authority for the already-qualified standing-root
+    /// growth profile. Economic N+1 and the live schedule head are submitted
+    /// before this structural boundary materializes the sparse result.
+    pub fn resolve_batch_resident(
+        &self,
+        runtime: &mut crate::resident_clearing_runtime::ResidentClearingRuntime,
+        allocator: &SlotAllocator,
+        generation: GenerationStamp,
+        candidates: &[OrdinaryGrowthCandidate],
+        integration_schedule: &mut simthing_core::IntegrationSchedule,
+    ) -> Result<Vec<GrowthEntitlementDecision>, GrowthEntitlementError> {
+        if !self.resident_qualified {
+            return Err(GrowthEntitlementError::ResidentProfileUnqualified);
+        }
+        if candidates.is_empty() {
+            return Ok(Vec::new());
+        }
+        let available = allocator.growth_capacity_available(self.granter);
+        let mut ordered = candidates.to_vec();
+        ordered.sort_by_key(|candidate| candidate.grantee());
+        let rows: Vec<_> = ordered
+            .iter()
+            .map(|candidate| {
+                crate::resident_clearing_runtime::ResidentClearingBatchBinding {
+                    source_simthing_id: candidate.grantee(),
+                    requested: candidate.quantity(),
+                    available,
+                    precedence: 0,
+                    // Neutral eligible pressure binds at the real graduated
+                    // AllocatorWeight port. AllocatedFlow is emitted later by
+                    // the child-share EML; settlement cannot manufacture it.
+                    continuous_weight: candidate.quantity() as f32,
+                }
+            })
+            .collect();
+        let root_ticket = runtime
+            .dispatch(integration_schedule, self.granter, generation, Some(&rows))
+            .map_err(|error| GrowthEntitlementError::Resident(error.to_string()))?;
+        let next_generation = root_ticket.submission().intake_generation();
+        let next_ticket = runtime
+            .dispatch(integration_schedule, self.granter, next_generation, None)
+            .map_err(|error| GrowthEntitlementError::Resident(error.to_string()))?;
+        let products = runtime
+            .materialize(integration_schedule, root_ticket)
+            .map_err(|error| GrowthEntitlementError::Resident(error.to_string()))?;
+        runtime
+            .materialize(integration_schedule, next_ticket)
+            .map_err(|error| GrowthEntitlementError::Resident(error.to_string()))?;
+        let mut decisions = Vec::with_capacity(ordered.len());
+        for candidate in ordered {
+            let product = products
+                .iter()
+                .copied()
+                .find(|product| product.source_simthing_id() == candidate.grantee())
+                .ok_or(GrowthEntitlementError::MissingCandidate(
+                    candidate.grantee(),
+                ))?;
+            if product.granted() == candidate.quantity() {
+                let record = self
+                    .market
+                    .record_resident_structural_grant(
+                        self.granter,
+                        &self.offering_id,
+                        &self.scope,
+                        candidate.quantity(),
+                        product,
+                        generation,
+                        integration_schedule,
+                    )
+                    .map_err(|error| GrowthEntitlementError::Grant(error.to_string()))?;
+                let (entitlement, provenance) =
+                    crate::residency_market::provisional_residency_and_provenance_from_market_grant(
+                        &self.market,
+                        &record,
+                    )
+                    .map_err(|error| GrowthEntitlementError::Bridge(error.to_string()))?;
+                decisions.push(GrowthEntitlementDecision::granted(
+                    candidate,
+                    entitlement,
+                    provenance,
+                ));
+            } else {
+                let key = if product.granted() == 0 {
+                    None
+                } else {
+                    let record = self
+                        .market
+                        .record_resident_structural_grant(
+                            self.granter,
+                            &self.offering_id,
+                            &self.scope,
+                            candidate.quantity(),
+                            product,
+                            generation,
+                            integration_schedule,
+                        )
+                        .map_err(|error| GrowthEntitlementError::Grant(error.to_string()))?;
+                    Some(
+                        crate::residency_market::provisional_residency_from_market_grant(
+                            &self.market,
+                            &record,
+                        )
+                        .map_err(|error| GrowthEntitlementError::Bridge(error.to_string()))?
+                        .market_grant_key(),
+                    )
+                };
+                decisions.push(GrowthEntitlementDecision::refused(
+                    candidate,
+                    product.granted(),
                     key,
                 ));
             }

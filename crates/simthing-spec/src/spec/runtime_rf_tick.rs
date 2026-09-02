@@ -133,9 +133,11 @@ impl RuntimeRfDemandGenerationAuthority {
     }
 }
 
-/// Produce the ordinary runtime demand product for N+1.
+/// Vendorized CPU-oracle proof of the ordinary demand product for N+1.
 ///
-/// This is the sole production Current→Next door for `RuntimeOwnerSiloDemandBucket`.
+/// This is the frozen host-reference Current→Next door for
+/// `RuntimeOwnerSiloDemandBucket`; resident production carries the identical
+/// `T_s` bytes directly into its N+1 intake.
 /// It performs the generation-N clear inside the door, derives unresolved
 /// observations from those sealed results, consumes the authority's one mint
 /// before evaluating caller data, and matches every observation to the same

@@ -40,6 +40,33 @@ pub enum ExecutionPostureError {
     ZeroContinuousBatch,
 }
 
+/// Authority selected for constrained market clearing.
+///
+/// This is deliberately orthogonal to [`ExecutionPosture`]: paced and
+/// continuous scheduling both run either the resident authority or the
+/// explicit vendorized CPU oracle without changing generation semantics.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ClearingExecutionPosture {
+    /// The qualified GPU-resident market is the production authority.
+    /// Qualification failure is an admission error; this posture never falls
+    /// back to CPU at execution time.
+    #[default]
+    ResidentRequired,
+    /// Explicit diagnostic/tooling posture over the frozen bit-exact oracle.
+    /// It is never selected implicitly by adapter or dispatch failure.
+    CpuVendorizedOracle,
+}
+
+impl ClearingExecutionPosture {
+    pub const fn is_resident_required(self) -> bool {
+        matches!(self, Self::ResidentRequired)
+    }
+
+    pub const fn is_cpu_vendorized_oracle(self) -> bool {
+        matches!(self, Self::CpuVendorizedOracle)
+    }
+}
+
 impl ExecutionPosture {
     /// Admit a continuous batch size. Zero fails closed.
     pub const fn admit_continuous(batch_generations: u32) -> Result<Self, ExecutionPostureError> {
@@ -105,5 +132,25 @@ mod admit_proof {
         let ok = ExecutionPosture::continuous(3).expect("nonzero admits");
         assert!(ok.ensure_admitted().is_ok());
         assert_eq!(ok.generations_per_schedule(), 3);
+    }
+
+    #[test]
+    fn scheduling_and_clearing_postures_form_four_independent_combinations() {
+        let scheduling = [
+            ExecutionPosture::Paced,
+            ExecutionPosture::continuous(2).unwrap(),
+        ];
+        let clearing = [
+            ClearingExecutionPosture::ResidentRequired,
+            ClearingExecutionPosture::CpuVendorizedOracle,
+        ];
+        let combinations: Vec<_> = scheduling
+            .into_iter()
+            .flat_map(|schedule| clearing.into_iter().map(move |clear| (schedule, clear)))
+            .collect();
+        assert_eq!(combinations.len(), 4);
+        assert!(combinations
+            .iter()
+            .all(|(schedule, _)| schedule.ensure_admitted().is_ok()));
     }
 }
