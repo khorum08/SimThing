@@ -1,6 +1,6 @@
 # RESIDENT-CLEARING-PARITY-0 results
 
-Status: **PROBATION / archaeology-complete / implementation-in-progress /
+Status: **PROBATION / proof-present / hosted-routing-pending /
 DA-review-pending / UNMERGED / no 14.6**
 
 - exact dispatch/master base: `8f8e1f2e8626253876862771ee1f553327a27c8b`
@@ -86,6 +86,100 @@ become an alternate production bridge.
 
 ## Implementation and verification
 
-Pending. This section will be replaced with exact-head artifacts, commands,
-qualification record, hosted workflow IDs, and routing evidence after the
-additive referee is complete.
+### Implemented referee and narrow conformance repair
+
+- `resident_clearing_parity_0.rs` is the additive terminal-band referee. Its
+  one ledgered terminal referee with four table-style sections covers all nine neutral items, the complete negative/error
+  matrix, a four-level/three-edge exact-`T_s` recursive germ, lawful born-`F`
+  and raw-`P` drift, scale/Q149/physical-shape sweeps, independent overlapping
+  raw-id trees, and exact qualification invalidation.
+- The existing adapter compile-fail was sharpened to exercise an actual
+  `ResidentSettlementOutput -> From/Into -> ChildSupplyRow -> recursive intake`
+  bridge. A second payload-copy translator is independently pinned. Both stop
+  at the recursive intake with `E0308`; neither is a numerical mutant.
+- The mixed-valid/invalid matrix exposed one real ordering defect: an earlier
+  row could report derived arithmetic overflow before a later non-finite live
+  allocation, unlike the CPU authority's validate-all-inputs-first contract.
+  The resident shader now prevalidates the immutable active claim vector before
+  settlement and writes only the existing `InvalidContinuousAllocation`
+  status. It adds no ontology, normalization, clamp, fallback, or semantic lane;
+  failed scratch stays private and the next valid dispatch on the same session
+  proves clean recovery.
+
+### Canonical transcripts
+
+- Neutral requests `[100, 200, 300]`, available `100`, one canonical `+0.0`
+  score-bit band: requested total `600`, bases `16/33/50`, exact remainders
+  `400/200/0`, grants `17/33/50`, unresolved `83/167/250`. CPU mirror, resident
+  W64, resident W32/partition-2, and replay are identical. Exact ties rotate at
+  generations 0/1.
+- Born immediate-flow `F` produces allocated shares `[5.25, 8.75]` and grants
+  `[3, 4]`; entitlement-first raw `P` produces `[9, 5]` and grants `[5, 2]`.
+  That inequality is the required lawful pressure drift; it is not forced back
+  to the neutral oracle.
+- The four-level germ contains three real upward `Sum` edges. Each level emits
+  grant `8` as `ResidentSettlementOutput` and passes that same alias value
+  directly as `ResidentRecursiveSupplyIntake`; no projection exists. At
+  generation 10, `U=6` plus ordinary `d'=2` enters the graduated production
+  door exactly once as demand `8` at generation 11, and the one-mint authority
+  refuses a second mint.
+- The scale corpus sweeps row counts `1,2,31,32,33,64,65,127,128`, seven scopes,
+  three precedence bands, exact ties, reverse admission/upload and epoch-rebound
+  slots, W32/W64, and partition sizes 1/7/full. Q149 pairs include minimum
+  subnormal, maximum-subnormal/minimum-normal, `1.0`, and `f32::MAX`. Two
+  independent Vulkan contexts use realms `0xaaa/0xbbb`, generations `3/97`,
+  overlapping root raw id `7`, overlapping claimant ids, and opposite
+  admission/interleaving order without coupling.
+
+### Negative/error disposition
+
+Every enumerated row is now mechanically witnessed as one of: the same typed
+CPU/resident refusal, unrepresentable after sealed resident construction, or
+sealed-unreachable upstream. Covered rows are duplicate/missing supply and
+claim, invalid score, NaN/+inf/-inf/negative allocation, duplicate/missing
+authored data, missing demand source, demand mismatch, overflow, zero-request
+omission, signed-zero identity, canonical ordering, failure recovery/no exposed
+partial vector, and foreign plan/buffer provenance. No fallback or repair path
+exists.
+
+### Exact resident qualification certificate
+
+- backend / adapter: `Vulkan` / `NVIDIA GeForce RTX 4080 Laptop GPU`
+- vendor / device / class: `4318` / `10144` / `DiscreteGpu`
+- driver/runtime: `NVIDIA 595.79`
+- rustc: `1.95.0 (59807616e 2026-04-14)`, host
+  `x86_64-pc-windows-msvc`, LLVM `22.1.2`
+- shader compiler: `wgpu 22.1.0 / naga 22.1.0`
+- Cargo.lock stable hash: `15914195291354800303`
+- exact resident shader source hash: `1926870378133776485`
+- workgroups / subgroup assumption: `[32,64]` /
+  `subgroup-independent:no-subgroup-builtins-or-size-authority`
+- resident-clearing ABI: `1`
+- full adapter feature string: bound verbatim by the test record through
+  `adapter.features()`; it includes the reported Vulkan feature set and is an
+  equality input, not an advisory note
+- certificate fingerprint: `0x73ae5e621b3e5021`
+
+The referee clones the record, changes each field in turn (including the exact
+feature string, compiler identities, hashes, workgroups, subgroup assumption,
+and ABI), and requires every mutant fingerprint to differ. The certificate is
+therefore exact to this tested adapter/runtime and cannot silently inherit a
+different qualification.
+
+### Local verification
+
+PASS:
+
+- `cargo check -p simthing-kernel`
+- `cargo check -p simthing-workshop`
+- `cargo test -p simthing-workshop --test resident_clearing_parity_0 -- --nocapture --test-threads=1` — 1/1 terminal referee, four sections
+- `cargo test -p simthing-kernel --doc resident_clearing_apportionment -- --nocapture --test-threads=1` — both `E0308` mutants RED
+- 14.1 door census plus frozen 14.2/14.3/14.4 workshop witnesses — 16/16
+- frozen 13.6/13.9 driver witnesses — 8/8
+- `test_inventory_check.sh` and `test_inventory_drift_check.sh` — 1386/1386, zero missing/extra/stale
+- `agent_scan.sh` — PASS, zero failures/inspect findings
+
+The first implementation commit is intentionally preceded by archaeology commit
+`5bde766a`. Exact-head hosted Doctrine Scan/Exec, clearance, relay lint, PR, and
+Board comment identifiers are routing evidence and will be reported without
+mutating this proof after the final branch head is pushed.

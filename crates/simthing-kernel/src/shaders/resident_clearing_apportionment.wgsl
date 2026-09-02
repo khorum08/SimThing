@@ -328,6 +328,18 @@ fn write_product(input: ClaimInput, granted: u32, unresolved: u32, status: u32) 
     scratch_words[output_base + 7u] = 0u;
 }
 
+fn write_failure(input: ClaimInput, source_simthing_id: u32, status: u32) {
+    let output_base = input.semantic_row * 16u + 8u;
+    scratch_words[output_base] = input.semantic_row;
+    scratch_words[output_base + 1u] = source_simthing_id;
+    scratch_words[output_base + 2u] = 0u;
+    scratch_words[output_base + 3u] = 0u;
+    scratch_words[output_base + 4u] = params.generation;
+    scratch_words[output_base + 5u] = status;
+    scratch_words[output_base + 6u] = params.integration_band;
+    scratch_words[output_base + 7u] = 0u;
+}
+
 fn settle_partition(local: u32) {
     if (local >= params.dispatch_count) { return; }
     let physical = params.dispatch_base + local;
@@ -335,12 +347,28 @@ fn settle_partition(local: u32) {
     let current = read_claim(physical);
     if (current.input_active == 0u || current.semantic_row >= params.row_count) { return; }
 
-    let value_index = current.allocated_flow_slot * params.n_dims + current.allocated_flow_col;
-    let continuous = values[value_index];
-    let continuous_bits = bitcast<u32>(continuous);
-    let continuous_not_finite = (continuous_bits & 0x7f800000u) == 0x7f800000u;
-    if (continuous_not_finite || continuous < 0.0) {
-        write_product(current, 0u, 0u, STATUS_INVALID_CONTINUOUS);
+    // Match the CPU mirror's fail-before-settlement contract. Every invocation
+    // validates the immutable claim vector in its admitted order before any
+    // row performs arithmetic, so a later invalid allocation cannot be masked
+    // by an earlier row's derived overflow or leave a partial semantic clear.
+    var invalid_source = 0u;
+    var invalid_continuous = false;
+    for (var validation_index = 0u; validation_index < params.row_count; validation_index = validation_index + 1u) {
+        let validation = read_claim(validation_index);
+        if (validation.input_active == 0u) { continue; }
+        let validation_value_index = validation.allocated_flow_slot * params.n_dims
+            + validation.allocated_flow_col;
+        let validation_value = values[validation_value_index];
+        let validation_bits = bitcast<u32>(validation_value);
+        let validation_not_finite = (validation_bits & 0x7f800000u) == 0x7f800000u;
+        if (validation_not_finite || validation_value < 0.0) {
+            invalid_source = validation.source_simthing_id;
+            invalid_continuous = true;
+            break;
+        }
+    }
+    if (invalid_continuous) {
+        write_failure(current, invalid_source, STATUS_INVALID_CONTINUOUS);
         return;
     }
 

@@ -11,17 +11,44 @@
 //! product. An adapter-shaped role type cannot enter the recursive port:
 //!
 //! ```compile_fail,E0308
-//! use simthing_kernel::ResidentRecursiveSupplyIntake;
+//! use simthing_kernel::{ResidentRecursiveSupplyIntake, ResidentSettlementOutput};
 //!
-//! struct GrantRow(u32);
-//! struct ChildSupplyRow(u32);
-//! impl From<GrantRow> for ChildSupplyRow {
-//!     fn from(row: GrantRow) -> Self { Self(row.0) }
+//! struct ChildSupplyRow(ResidentSettlementOutput);
+//! impl From<ResidentSettlementOutput> for ChildSupplyRow {
+//!     fn from(row: ResidentSettlementOutput) -> Self { Self(row) }
 //! }
 //! fn recursive_intake(_: &[ResidentRecursiveSupplyIntake]) {}
 //!
-//! let projected = ChildSupplyRow::from(GrantRow(7));
-//! recursive_intake(&[projected]);
+//! fn converted_bridge(settled: ResidentSettlementOutput) {
+//!     let projected: ChildSupplyRow = settled.into();
+//!     recursive_intake(&[projected]);
+//! }
+//! ```
+//!
+//! A seam payload translation is equally inadmissible even when it copies all
+//! currently visible fields. The recursive port accepts the original `T_s`,
+//! never a look-alike payload:
+//!
+//! ```compile_fail,E0308
+//! use simthing_kernel::{ResidentRecursiveSupplyIntake, ResidentSettlementOutput};
+//!
+//! struct SeamPayload {
+//!     semantic_row: u32,
+//!     granted: u32,
+//!     unresolved: u32,
+//! }
+//! fn translate(row: ResidentSettlementOutput) -> SeamPayload {
+//!     SeamPayload {
+//!         semantic_row: row.semantic_row(),
+//!         granted: row.granted(),
+//!         unresolved: row.unresolved(),
+//!     }
+//! }
+//! fn recursive_intake(_: &[ResidentRecursiveSupplyIntake]) {}
+//!
+//! fn translated_bridge(settled: ResidentSettlementOutput) {
+//!     recursive_intake(&[translate(settled)]);
+//! }
 //! ```
 
 use std::cmp::Ordering;
