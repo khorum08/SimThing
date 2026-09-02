@@ -1,10 +1,11 @@
 //! E-11 boundary/session sync for resource-flow AccumulatorOp planning.
 
-use simthing_core::{DimensionRegistry, EmlExpressionRegistry, SourceSpec};
+use simthing_core::{DimensionRegistry, EmlExpressionRegistry, GenerationStamp, SourceSpec};
 use simthing_gpu::{build_governed_pairs, PackedAccumulatorUpload, WorldGpuState};
 
 use crate::arena_allocation_plan::{
-    append_residual_closure_ops, plan_arena_allocation, ArenaAllocationPlan,
+    append_residual_closure_ops, plan_arena_allocation, plan_arena_allocation_with_pressure,
+    AllocationPlanError, ArenaAllocationPlan,
 };
 use crate::arena_hierarchy::{
     build_execution_plan, resolve_node_columns_for_property, ArenaExecutionPlan, HierarchyError,
@@ -28,6 +29,8 @@ pub enum ResourceFlowSyncError {
     OpUpload(#[from] simthing_gpu::AccumulatorOpSessionError),
     #[error("resource-flow sparse input-list encoding failed: {0}")]
     SparseInputListEncoding(String),
+    #[error(transparent)]
+    Allocation(#[from] AllocationPlanError),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -67,12 +70,43 @@ pub fn sync_resource_flow_accumulator(
     gated_rates: &[crate::gated_rates::ResolvedGatedRate],
     need_bindings: &[crate::need_binding::ResolvedNeedBinding],
 ) -> Result<ResourceFlowSyncReport, ResourceFlowSyncError> {
+    sync_resource_flow_accumulator_with_pressure(
+        state,
+        registry,
+        arena_registry,
+        gated_rates,
+        need_bindings,
+        &[],
+        &[],
+        GenerationStamp::new(0),
+        GenerationStamp::new(1),
+    )
+}
+
+/// Sole production sync with the existing typed ActionBand pressure products.
+/// The caller supplies the session's current generation only so the binding
+/// door can enforce N -> N+1; the recurring OrderBand plan owns no clock.
+pub fn sync_resource_flow_accumulator_with_pressure(
+    state: &mut WorldGpuState,
+    registry: &DimensionRegistry,
+    arena_registry: &ArenaRegistry,
+    gated_rates: &[crate::gated_rates::ResolvedGatedRate],
+    need_bindings: &[crate::need_binding::ResolvedNeedBinding],
+    conserved_progress_bindings: &[crate::CompiledActionBandConservedProgressBinding],
+    active_instances: &[crate::ActionBandActiveInstance],
+    observed_generation: GenerationStamp,
+    allocation_generation: GenerationStamp,
+) -> Result<ResourceFlowSyncReport, ResourceFlowSyncError> {
     sync_resource_flow_accumulator_with_options(
         state,
         registry,
         arena_registry,
         gated_rates,
         need_bindings,
+        conserved_progress_bindings,
+        active_instances,
+        observed_generation,
+        allocation_generation,
         true,
     )
 }
@@ -84,6 +118,10 @@ pub(crate) fn sync_resource_flow_accumulator_with_options(
     arena_registry: &ArenaRegistry,
     gated_rates: &[crate::gated_rates::ResolvedGatedRate],
     need_bindings: &[crate::need_binding::ResolvedNeedBinding],
+    conserved_progress_bindings: &[crate::CompiledActionBandConservedProgressBinding],
+    active_instances: &[crate::ActionBandActiveInstance],
+    observed_generation: GenerationStamp,
+    allocation_generation: GenerationStamp,
     include_need_stage_projections: bool,
 ) -> Result<ResourceFlowSyncReport, ResourceFlowSyncError> {
     if arena_registry.arenas.is_empty() {
@@ -107,13 +145,19 @@ pub(crate) fn sync_resource_flow_accumulator_with_options(
     let mut combined_cpu = Vec::new();
     let mut max_bands = 0u32;
     for arena in &plan.arenas {
-        let mut alloc =
-            plan_arena_allocation(arena, &governed, state.n_slots).map_err(|e| match e {
-                crate::arena_allocation_plan::AllocationPlanError::Hierarchy(h) => h,
-                _ => HierarchyError::EmptyParticipants {
-                    arena: arena_registry.arenas[arena.arena_idx as usize].name.clone(),
-                },
-            })?;
+        let mut alloc = plan_arena_allocation_with_pressure(
+            arena,
+            &governed,
+            state.n_slots,
+            conserved_progress_bindings,
+            active_instances,
+            observed_generation,
+            allocation_generation,
+        )
+        .map_err(|error| match error {
+            AllocationPlanError::Hierarchy(error) => ResourceFlowSyncError::Hierarchy(error),
+            error => ResourceFlowSyncError::Allocation(error),
+        })?;
         append_residual_closure_ops(arena, &mut alloc.cpu_ops);
         max_bands = max_bands.max(alloc.n_bands);
         combined_cpu.extend(alloc.cpu_ops);

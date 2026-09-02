@@ -23,6 +23,9 @@ use crate::resource_economy_compile::ResourceEconomyRegistry;
 use crate::scenario::Scenario;
 use simthing_gpu::{encode_column, SlotAllocator};
 
+use crate::{ActionBandActiveInstance, CompiledActionBandConservedProgressBinding};
+use simthing_spec::AdmittedActionBandConservedProgressBoundSource;
+
 const NEED_BINDING_TREE_BASE: u32 = 7_300_000;
 
 /// OrderBand for Identity source→stage projections (before EvalEML).
@@ -48,6 +51,19 @@ pub enum NeutralPressureBindingError {
         observed: u32,
         expected: u32,
         allocation: u32,
+    },
+    #[error(
+        "immediate-flow pressure must be backed by a born Gu-Yang available or realized product"
+    )]
+    ImmediateFlowSourceNotGuYang,
+    #[error("immediate-flow Gu-Yang pressure must belong to the existing RF-claim destination")]
+    ImmediateFlowDestinationNotRfClaim,
+    #[error("immediate-flow pressure binding and active instance belong to different ActionBand templates")]
+    ImmediateFlowTemplateMismatch,
+    #[error("immediate-flow pressure source slot {source_slot} cannot bind participant slot {participant_slot}")]
+    ImmediateFlowParticipantMismatch {
+        source_slot: u32,
+        participant_slot: u32,
     },
 }
 
@@ -604,7 +620,8 @@ fn project_op(
 }
 
 fn neutral_pressure_identity_op(
-    born_pressure: &ResolvedFullCell,
+    born_pressure_slot: SlotIndex,
+    born_pressure_col: ColumnIndex,
     participant_slot: SlotIndex,
     allocator_weight_col: ColumnIndex,
     observed_generation: GenerationStamp,
@@ -623,8 +640,8 @@ fn neutral_pressure_identity_op(
         });
     }
     Ok(project_op(
-        born_pressure.slot,
-        born_pressure.col,
+        born_pressure_slot.raw(),
+        born_pressure_col,
         participant_slot.raw(),
         allocator_weight_col,
         band,
@@ -633,40 +650,69 @@ fn neutral_pressure_identity_op(
 
 /// Bind a born Gu-Yang-serviceable pressure `F` by identity into the existing
 /// `AllocatorWeight` operand for the following generation's immediate-flow
-/// allocation. No authored EML/policy, route lookup, or serviceability solve
-/// occurs here; the supplied full cell is the authority.
+/// allocation.
+///
+/// The source is the sealed ActionBand compile product, not a caller-resolved
+/// cell. Its private fields prove that the threshold column came from the
+/// frozen `GuYangAvailable`/`GuYangRealized` admission. A generic
+/// [`ResolvedFullCell`] therefore cannot be supplied to this door:
+///
+/// ```compile_fail,E0308
+/// use simthing_core::{ColumnIndex, GenerationStamp, SimThingId, SlotIndex, SubFieldRole};
+/// use simthing_driver::need_binding::{
+///     bind_immediate_flow_pressure_to_allocator_weight, ResolvedFullCell,
+/// };
+/// let fabricated = ResolvedFullCell {
+///     entity: "fabricated".into(),
+///     simthing_id: SimThingId::from_session_raw(1),
+///     slot: 0,
+///     col: ColumnIndex::from_raw_for_oracle_or_rehearsal(0),
+///     role: SubFieldRole::Named("intrinsic_flow_sum".into()),
+/// };
+/// let _ = bind_immediate_flow_pressure_to_allocator_weight(
+///     &fabricated,
+///     todo!(),
+///     SlotIndex::new(0),
+///     ColumnIndex::from_raw_for_oracle_or_rehearsal(1),
+///     GenerationStamp::new(0),
+///     GenerationStamp::new(1),
+///     0,
+/// );
+/// ```
 pub fn bind_immediate_flow_pressure_to_allocator_weight(
-    serviceable_pressure_f: &ResolvedFullCell,
+    serviceable_pressure_f: CompiledActionBandConservedProgressBinding,
+    active_instance: ActionBandActiveInstance,
     participant_slot: SlotIndex,
     allocator_weight_col: ColumnIndex,
     observed_generation: GenerationStamp,
     allocation_generation: GenerationStamp,
     band: u32,
 ) -> Result<AccumulatorOp, NeutralPressureBindingError> {
+    if !matches!(
+        serviceable_pressure_f.bound_source(),
+        AdmittedActionBandConservedProgressBoundSource::GuYangAvailable(_)
+            | AdmittedActionBandConservedProgressBoundSource::GuYangRealized(_)
+    ) {
+        return Err(NeutralPressureBindingError::ImmediateFlowSourceNotGuYang);
+    }
+    if serviceable_pressure_f.destination() != simthing_gpu::ActionBandEmissionDestination::RfClaim
+    {
+        return Err(NeutralPressureBindingError::ImmediateFlowDestinationNotRfClaim);
+    }
+    if serviceable_pressure_f.template() != active_instance.template() {
+        return Err(NeutralPressureBindingError::ImmediateFlowTemplateMismatch);
+    }
+    if active_instance.slot() != participant_slot {
+        return Err(
+            NeutralPressureBindingError::ImmediateFlowParticipantMismatch {
+                source_slot: active_instance.slot().raw(),
+                participant_slot: participant_slot.raw(),
+            },
+        );
+    }
     neutral_pressure_identity_op(
-        serviceable_pressure_f,
-        participant_slot,
-        allocator_weight_col,
-        observed_generation,
-        allocation_generation,
-        band,
-    )
-}
-
-/// Bind a born raw lawful pressure `P` by identity into the existing
-/// `AllocatorWeight` operand for the following generation's entitlement-first
-/// allocation. Gu-Yang remains downstream of entitlement realization; this
-/// door neither clips `P` to `F` nor recomputes either quantity.
-pub fn bind_entitlement_first_pressure_to_allocator_weight(
-    raw_pressure_p: &ResolvedFullCell,
-    participant_slot: SlotIndex,
-    allocator_weight_col: ColumnIndex,
-    observed_generation: GenerationStamp,
-    allocation_generation: GenerationStamp,
-    band: u32,
-) -> Result<AccumulatorOp, NeutralPressureBindingError> {
-    neutral_pressure_identity_op(
-        raw_pressure_p,
+        active_instance.slot(),
+        serviceable_pressure_f.threshold_column(),
         participant_slot,
         allocator_weight_col,
         observed_generation,

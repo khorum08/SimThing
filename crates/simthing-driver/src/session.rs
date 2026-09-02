@@ -43,6 +43,8 @@ pub enum SessionError {
     Install(#[from] InstallError),
     #[error("resource flow sync: {0}")]
     ResourceFlow(#[from] crate::arena_allocation_sync::ResourceFlowSyncError),
+    #[error(transparent)]
+    NeutralPressure(#[from] crate::need_binding::NeutralPressureBindingError),
     #[error("resource economy sync: {0}")]
     ResourceEconomy(#[from] crate::resource_economy_sync::ResourceEconomySyncError),
     #[error("GPU boundary sync: {0}")]
@@ -336,6 +338,8 @@ pub struct SimSession {
 struct SessionActionBandExecution {
     dispatch: crate::CrossingConsequenceDispatch,
     admitted_shape: ActionBandIngressShape,
+    conserved_progress_bindings: Vec<crate::CompiledActionBandConservedProgressBinding>,
+    active_instances: Vec<crate::ActionBandActiveInstance>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -506,12 +510,41 @@ impl SimSession {
             }
             .into());
         }
+        let conserved_progress_bindings = commitments
+            .compiled()
+            .conserved_progress_bindings()
+            .to_vec();
+        let active_instances = commitments.active_instances().to_vec();
         let dispatch = commitments
             .bind_dispatch(&self.state.ctx, &self.coord.shadow)
             .map_err(ActionBandExecutionIngressError::from)?;
+        let admitted_shape = self.current_action_band_ingress_shape();
+        let observed_generation =
+            simthing_core::GenerationStamp::new(u32::try_from(self.coord.day_index()).map_err(
+                |_| crate::need_binding::NeutralPressureBindingError::GenerationOverflow,
+            )?);
+        let allocation_generation = simthing_core::GenerationStamp::new(
+            observed_generation
+                .get()
+                .checked_add(1)
+                .ok_or(crate::need_binding::NeutralPressureBindingError::GenerationOverflow)?,
+        );
+        crate::arena_allocation_sync::sync_resource_flow_accumulator_with_pressure(
+            &mut self.state,
+            &self.proto.registry,
+            &self.spec_state.arena_registry,
+            &self.spec_state.resolved_gated_rates,
+            &self.spec_state.resolved_need_bindings,
+            &conserved_progress_bindings,
+            &active_instances,
+            observed_generation,
+            allocation_generation,
+        )?;
         self.action_band_execution = Some(SessionActionBandExecution {
             dispatch,
-            admitted_shape: self.current_action_band_ingress_shape(),
+            admitted_shape,
+            conserved_progress_bindings,
+            active_instances,
         });
         Ok(())
     }
@@ -930,12 +963,36 @@ impl SimSession {
     pub fn sync_resource_flow(&mut self) -> Result<(), SessionError> {
         // Production always includes stage projections. DISCONNECT harness uses
         // `harness_resync_resource_flow_without_need_stage_projections`.
-        crate::arena_allocation_sync::sync_resource_flow_accumulator(
+        let (conserved_progress_bindings, active_instances) = self
+            .action_band_execution
+            .as_ref()
+            .map(|installed| {
+                (
+                    installed.conserved_progress_bindings.as_slice(),
+                    installed.active_instances.as_slice(),
+                )
+            })
+            .unwrap_or((&[], &[]));
+        let observed_generation =
+            simthing_core::GenerationStamp::new(u32::try_from(self.coord.day_index()).map_err(
+                |_| crate::need_binding::NeutralPressureBindingError::GenerationOverflow,
+            )?);
+        let allocation_generation = simthing_core::GenerationStamp::new(
+            observed_generation
+                .get()
+                .checked_add(1)
+                .ok_or(crate::need_binding::NeutralPressureBindingError::GenerationOverflow)?,
+        );
+        crate::arena_allocation_sync::sync_resource_flow_accumulator_with_pressure(
             &mut self.state,
             &self.proto.registry,
             &self.spec_state.arena_registry,
             &self.spec_state.resolved_gated_rates,
             &self.spec_state.resolved_need_bindings,
+            conserved_progress_bindings,
+            active_instances,
+            observed_generation,
+            allocation_generation,
         )?;
         Ok(())
     }
@@ -953,6 +1010,25 @@ impl SimSession {
             &self.spec_state.arena_registry,
             &self.spec_state.resolved_gated_rates,
             &self.spec_state.resolved_need_bindings,
+            self.action_band_execution
+                .as_ref()
+                .map(|installed| installed.conserved_progress_bindings.as_slice())
+                .unwrap_or(&[]),
+            self.action_band_execution
+                .as_ref()
+                .map(|installed| installed.active_instances.as_slice())
+                .unwrap_or(&[]),
+            simthing_core::GenerationStamp::new(u32::try_from(self.coord.day_index()).map_err(
+                |_| crate::need_binding::NeutralPressureBindingError::GenerationOverflow,
+            )?),
+            simthing_core::GenerationStamp::new(
+                u32::try_from(self.coord.day_index())
+                    .map_err(|_| {
+                        crate::need_binding::NeutralPressureBindingError::GenerationOverflow
+                    })?
+                    .checked_add(1)
+                    .ok_or(crate::need_binding::NeutralPressureBindingError::GenerationOverflow)?,
+            ),
             false,
         )?;
         Ok(())

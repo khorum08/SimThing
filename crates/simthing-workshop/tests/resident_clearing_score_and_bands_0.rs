@@ -2,27 +2,36 @@
 //! row-11 recurrence, and physical-order invariance witnesses.
 
 use simthing_core::{
-    AccumulatorOp, ColumnIndex, CombineFn, ConsumeMode, EmlExpressionRegistry, EmlNodeGpu,
-    GateSpec, GenerationStamp, InputSpec, ScaleSpec, SimPropertyId, SimThingId, SlotIndex,
-    SourceSpec, SubFieldRole, TransformOp,
+    AccumulatorOp, ColumnIndex, CombineFn, CompiledAccumulatorOpPlan, ConsumeMode,
+    DimensionRegistry, EmitOnThresholdBuffer, EmitOnThresholdRegistration, EmlExpressionRegistry,
+    EmlNodeGpu, GateSpec, GenerationStamp, InputSpec, ScaleSpec, SimProperty, SimPropertyId,
+    SimThingId, SlotIndex, SourceSpec, StructuralScalarChannel, ThresholdDirection, TransformOp,
 };
 use simthing_driver::need_binding::{
-    bind_entitlement_first_pressure_to_allocator_weight,
     bind_immediate_flow_pressure_to_allocator_weight, NeutralPressureBindingError,
-    ResolvedFullCell,
 };
 use simthing_driver::{
-    build_custom_layout, plan_arena_allocation,
+    build_custom_layout, child_share_cpu, compile_action_band_gpu_execution_with_native_lanes,
+    compile_gu_yang_n4_field_sweeps, plan_arena_allocation, plan_arena_allocation_with_pressure,
     produce_runtime_rf_next_generation_demands_for_tick, register_child_share_formula,
-    run_arena_allocation_oracle, ArenaTreeLayout, FissionPolicy, GpuArenaDescriptor, HierarchyNode,
+    run_arena_allocation_oracle, ActionBandActiveInstance, ActionBandNativeLaneAdmission,
+    ArenaTreeLayout, FissionPolicy, GpuArenaDescriptor, GuYangN4FieldSweepSpec, HierarchyNode,
     NodeColumnRefs,
 };
-use simthing_gpu::{AccumulatorOpSession, EmlGpuProgramTable, GpuContext, PackedAccumulatorUpload};
+use simthing_gpu::{
+    AccumulatorOpSession, ActionBandEmissionBindingGpu, EmlGpuProgramTable, FieldSweepSession,
+    GpuContext, PackedAccumulatorUpload,
+};
+use simthing_sim::ThresholdRegistry;
 use simthing_spec::{
-    clear_constrained_claims_at_generation, AuthoredClearingProgram, ClearingRemainderAuthority,
-    ConstrainedClaim, ConstrainedClearingResult, ConstrainedSupply, OwnerChannelScopeKey, OwnerRef,
-    ResourceKey, RuntimeOwnerSiloDemandBucket, RuntimeRfDemandGenerationAuthority,
-    RuntimeRfTickErrorKind, ScopeId,
+    clear_constrained_claims_at_generation, ActionBandAdmissionBudgetSpec, ActionBandBandSpec,
+    ActionBandChannelBindingSpec, ActionBandChannelKind, ActionBandConservedProgressBindingSpec,
+    ActionBandConservedProgressBoundSourceSpec, ActionBandRequirementSemantics,
+    ActionBandSessionBuildDoor, ActionBandSessionSpec, ActionBandTargetSpec,
+    ActionBandTemplateSpec, AuthoredClearingProgram, ClearingRemainderAuthority, ConstrainedClaim,
+    ConstrainedClearingResult, ConstrainedSupply, OwnerChannelScopeKey, OwnerRef, ResourceKey,
+    RuntimeOwnerSiloDemandBucket, RuntimeRfDemandGenerationAuthority, RuntimeRfTickErrorKind,
+    ScalarBoundDirection, ScopeId,
 };
 use std::collections::HashMap;
 
@@ -118,12 +127,8 @@ fn pressure_cols() -> NodeColumnRefs {
         intrinsic_flow_col: col(0),
         allocated_flow_col: col(1),
         weight_col: col(2),
-        // Existing RF scratch receives the already-born serviceable F in the
-        // fixture before the N+1 allocator resets/reuses it.
         intrinsic_flow_sum_col: col(3),
         weight_sum_col: col(4),
-        // Existing Balance carries raw lawful P; no BranchPressure column is
-        // introduced for this witness.
         balance_col: Some(col(5)),
         balance_governing_col: None,
         propagated_intrinsic_flow_col: col(6),
@@ -132,6 +137,12 @@ fn pressure_cols() -> NodeColumnRefs {
         hosted_simthing_id_col: col(9),
     }
 }
+
+const GU_YANG_VALUE_COL: usize = 10;
+const GU_YANG_CONDUCTANCE_COL: usize = 11;
+const RF_CLAIM_COL: usize = 12;
+const RF_RESULT_COL: usize = 13;
+const PRESSURE_N_DIMS: u32 = 14;
 
 fn asymmetric_pressure_layout() -> ArenaTreeLayout {
     let cols = pressure_cols();
@@ -413,58 +424,130 @@ fn allocated_flow_is_direct_recursive_evaleml_input_and_gpu_self_consumes() {
     );
 }
 
-fn born_pressure_cell(slot: SlotIndex, column: ColumnIndex, role: &str) -> ResolvedFullCell {
-    ResolvedFullCell {
-        entity: format!("participant/{}", slot.raw()),
-        simthing_id: SimThingId::from_session_raw(100 + slot.raw()),
-        slot: slot.raw(),
-        col: column,
-        role: SubFieldRole::Named(role.into()),
+fn pressure_registry() -> DimensionRegistry {
+    let mut registry = DimensionRegistry::new();
+    for raw in 0..4 {
+        registry.register(SimProperty::simple(
+            "resident-pressure",
+            &format!("column-{raw}"),
+            1,
+        ));
+    }
+    assert!(registry.total_columns >= PRESSURE_N_DIMS as usize);
+    registry
+}
+
+fn pressure_rf_plan() -> CompiledAccumulatorOpPlan {
+    CompiledAccumulatorOpPlan {
+        slot_count: 7,
+        n_dims: PRESSURE_N_DIMS,
+        input_channel: StructuralScalarChannel::new(RF_CLAIM_COL as u32),
+        output_channel: StructuralScalarChannel::new(RF_RESULT_COL as u32),
+        ops: vec![AccumulatorOp {
+            source: SourceSpec::SlotValue {
+                slot: SlotIndex::new(0),
+                col: col(RF_CLAIM_COL),
+            },
+            combine: CombineFn::Identity,
+            gate: GateSpec::Always,
+            scale: ScaleSpec::Identity,
+            consume: ConsumeMode::ResetTarget,
+            targets: vec![(SlotIndex::new(0), col(RF_RESULT_COL))],
+        }],
     }
 }
 
-fn neutral_leaf_weight_ops(
-    layout: &ArenaTreeLayout,
-    immediate_flow: bool,
-    observed_generation: GenerationStamp,
-    allocation_generation: GenerationStamp,
-) -> Result<Vec<AccumulatorOp>, NeutralPressureBindingError> {
-    layout
-        .iter_all()
-        .into_iter()
-        .filter(|node| node.children.is_empty())
-        .map(|leaf| {
-            if immediate_flow {
-                let born_f = born_pressure_cell(
-                    leaf.participant_slot,
-                    leaf.cols.intrinsic_flow_sum_col,
-                    "intrinsic_flow_sum",
-                );
-                bind_immediate_flow_pressure_to_allocator_weight(
-                    &born_f,
-                    leaf.participant_slot,
-                    leaf.cols.weight_col,
-                    observed_generation,
-                    allocation_generation,
-                    0,
-                )
-            } else {
-                let born_p = born_pressure_cell(
-                    leaf.participant_slot,
-                    leaf.cols.balance_col.expect("raw P Balance cell"),
-                    "balance",
-                );
-                bind_entitlement_first_pressure_to_allocator_weight(
-                    &born_p,
-                    leaf.participant_slot,
-                    leaf.cols.weight_col,
-                    observed_generation,
-                    allocation_generation,
-                    0,
-                )
-            }
+fn compiled_pressure_product(
+    source: ActionBandConservedProgressBoundSourceSpec,
+) -> (
+    simthing_driver::CompiledActionBandConservedProgressBinding,
+    Vec<ActionBandActiveInstance>,
+) {
+    let registry = pressure_registry();
+    let threshold = EmitOnThresholdRegistration {
+        slot: SlotIndex::new(3),
+        col: col(GU_YANG_VALUE_COL),
+        threshold: 0.0,
+        direction: ThresholdDirection::Upward,
+        event_kind: 14_300,
+        buffer: EmitOnThresholdBuffer::Values,
+    };
+    let spec = ActionBandSessionSpec {
+        budget: ActionBandAdmissionBudgetSpec {
+            axis_channel_count: 1,
+            dependency_binding_count: 0,
+            storage_rows: 4,
+            eml_program_count: 0,
+            emission_binding_count: 1,
+        },
+        templates: vec![ActionBandTemplateSpec {
+            id: "resident-pressure".into(),
+            label: None,
+            axis_channels: vec![ActionBandChannelBindingSpec {
+                column: GU_YANG_VALUE_COL as u32,
+                kind: ActionBandChannelKind::Primitive,
+            }],
+            target: ActionBandTargetSpec::ScalarBound {
+                channel: GU_YANG_VALUE_COL as u32,
+                bound: 0.0,
+                direction: ScalarBoundDirection::AtLeast,
+            },
+            velocity: None,
+            bands: vec![ActionBandBandSpec {
+                threshold_registration_index: 0,
+                eml_program: None,
+                emission_binding_indices: vec![0],
+            }],
+            subordinate_template_ids: vec![],
+            max_active_subordinates: 0,
+            reserved_instance_rows: 4,
+            requirement_semantics: ActionBandRequirementSemantics::Ordinary,
+        }],
+    };
+    let conserved = [ActionBandConservedProgressBindingSpec {
+        template_id: "resident-pressure".into(),
+        band_index: 0,
+        emission_binding_index: 0,
+        bound_source: source,
+    }];
+    let eml = EmlExpressionRegistry::new();
+    let mut door = ActionBandSessionBuildDoor::new();
+    let frozen = door
+        .admit_once_with_conserved_progress_at_session_build(
+            &spec,
+            &conserved,
+            &registry,
+            &eml,
+            std::slice::from_ref(&threshold),
+        )
+        .expect("sealed conserved-pressure admission")
+        .clone();
+    let active = (3..=6)
+        .map(|slot| {
+            ActionBandActiveInstance::new(
+                frozen.templates()[0].index(),
+                SlotIndex::new(slot),
+                [0.0; 4],
+            )
         })
-        .collect()
+        .collect::<Vec<_>>();
+    let rf_plan = pressure_rf_plan();
+    let native = ActionBandNativeLaneAdmission::from_existing_surfaces(
+        &registry,
+        &[],
+        std::slice::from_ref(&rf_plan),
+        &[],
+        &ThresholdRegistry::new(),
+    );
+    let compiled = compile_action_band_gpu_execution_with_native_lanes(
+        &frozen,
+        &eml,
+        &[ActionBandEmissionBindingGpu::rf_claim(RF_CLAIM_COL as u32)],
+        &active,
+        &native,
+    )
+    .expect("typed ActionBand pressure compile");
+    (compiled.conserved_progress_bindings()[0], active)
 }
 
 fn pressure_source_slots(op: &AccumulatorOp) -> Vec<SlotIndex> {
@@ -511,21 +594,23 @@ fn run_gpu_pressure_case(immediate_flow: bool) -> Option<Vec<u32>> {
     };
     let layout = asymmetric_pressure_layout();
     let cols = pressure_cols();
-    let mut plan = plan_arena_allocation(&layout, &[], 7).expect("pressure allocation plan");
-    for op in &mut plan.cpu_ops {
-        let GateSpec::OrderBand(band) = op.gate else {
-            panic!("RF allocation op must be OrderBand gated");
-        };
-        op.gate = GateSpec::OrderBand(band + 1);
-    }
-    let mut ops = neutral_leaf_weight_ops(
-        &layout,
-        immediate_flow,
-        GenerationStamp::new(10),
-        GenerationStamp::new(11),
-    )
-    .expect("N pressure binds only to N+1");
-    ops.extend(plan.cpu_ops);
+    let (gu_yang_binding, active) =
+        compiled_pressure_product(ActionBandConservedProgressBoundSourceSpec::GuYangRealized);
+    let plan = if immediate_flow {
+        plan_arena_allocation_with_pressure(
+            &layout,
+            &[],
+            7,
+            std::slice::from_ref(&gu_yang_binding),
+            &active,
+            GenerationStamp::new(10),
+            GenerationStamp::new(11),
+        )
+        .expect("ordinary plan inserts born F for N+1")
+    } else {
+        plan_arena_allocation(&layout, &[], 7).expect("raw-P allocation plan")
+    };
+    let ops = plan.cpu_ops.clone();
 
     let mut registry = EmlExpressionRegistry::new();
     register_child_share_formula(&mut registry, cols).expect("child-share formula registration");
@@ -562,14 +647,45 @@ fn run_gpu_pressure_case(immediate_flow: bool) -> Option<Vec<u32>> {
         PackedAccumulatorUpload::from_ops_resolving_input_lists_with_eml(&ops, Some(&registry))
             .expect("packed pressure plan");
 
-    let n_dims = 10u32;
+    let n_dims = PRESSURE_N_DIMS;
     let mut values = vec![0.0f32; 7 * n_dims as usize];
     let index = |slot: u32, column: ColumnIndex| (slot * n_dims + column.raw_u32()) as usize;
     values[index(0, cols.intrinsic_flow_col)] = 14.0;
-    for (slot, raw_p, serviceable_f) in [(3, 6.0, 2.0), (4, 3.0, 1.0), (5, 3.0, 3.0), (6, 2.0, 2.0)]
-    {
-        values[index(slot, cols.balance_col.expect("P cell"))] = raw_p;
-        values[index(slot, cols.intrinsic_flow_sum_col)] = serviceable_f;
+    let source_pressures = if immediate_flow {
+        let registrations = compile_gu_yang_n4_field_sweeps(GuYangN4FieldSweepSpec {
+            width: 7,
+            height: 1,
+            n_dims,
+            value_col: col(GU_YANG_VALUE_COL),
+            conductance_col: col(GU_YANG_CONDUCTANCE_COL),
+            saturation: 10.0,
+            chi: 0.25,
+            dt: 0.25,
+        })
+        .expect("canonical Gu-Yang field producer");
+        let mut born_values = vec![0.0; 7 * n_dims as usize];
+        for (slot, seed) in [(3, 6.0), (4, 3.0), (5, 3.0), (6, 2.0)] {
+            born_values[index(slot, col(GU_YANG_VALUE_COL))] = seed;
+        }
+        let mut field =
+            FieldSweepSession::new(&ctx, &registrations[0]).expect("canonical Gu-Yang session");
+        field.upload_values(&ctx, &born_values).unwrap();
+        field.dispatch_chain(&ctx, &registrations, 1).unwrap();
+        let born = field.readback(&ctx).unwrap();
+        assert_eq!(field.registration_dispatches(), 2);
+        [3, 4, 5, 6].map(|slot| born[index(slot, col(GU_YANG_VALUE_COL))])
+    } else {
+        [6.0, 3.0, 3.0, 2.0]
+    };
+    for (offset, slot) in [3, 4, 5, 6].into_iter().enumerate() {
+        let pressure = source_pressures[offset];
+        if immediate_flow {
+            values[index(slot, col(GU_YANG_VALUE_COL))] = pressure;
+        } else {
+            // These are the lawful leaf inputs. The only branch-level raw P
+            // products are the plan's rows-2/8 direct-child Sum publications.
+            values[index(slot, cols.weight_col)] = pressure;
+        }
     }
 
     let mut session = AccumulatorOpSession::new_attached(&ctx, 7, n_dims, 128);
@@ -578,7 +694,7 @@ fn run_gpu_pressure_case(immediate_flow: bool) -> Option<Vec<u32>> {
     session
         .upload_packed_ops(&ctx, &upload)
         .expect("pressure ops upload");
-    for band in 0..=plan.n_bands {
+    for band in 0..plan.n_bands {
         session
             .tick_with_eml(&ctx, band, Some(&table))
             .expect("pressure OrderBand dispatch");
@@ -586,18 +702,41 @@ fn run_gpu_pressure_case(immediate_flow: bool) -> Option<Vec<u32>> {
     let observed = session
         .readback_full(&ctx)
         .expect("pressure proof readback");
-    Some(
-        [
-            (1, cols.weight_col),
-            (2, cols.weight_col),
-            (0, cols.weight_sum_col),
-            (1, cols.allocated_flow_col),
-            (2, cols.allocated_flow_col),
-        ]
-        .into_iter()
-        .map(|(slot, column)| observed[index(slot, column)].to_bits())
-        .collect(),
-    )
+    let observed_bits = [
+        (1, cols.weight_col),
+        (2, cols.weight_col),
+        (0, cols.weight_sum_col),
+        (1, cols.allocated_flow_col),
+        (2, cols.allocated_flow_col),
+    ]
+    .into_iter()
+    .map(|(slot, column)| observed[index(slot, column)].to_bits())
+    .collect::<Vec<_>>();
+    let branch_a = source_pressures[0] + source_pressures[1];
+    let branch_b = source_pressures[2] + source_pressures[3];
+    let total = branch_a + branch_b;
+    let expected = [
+        branch_a,
+        branch_b,
+        total,
+        child_share_cpu(14.0, 0.0, branch_a, total),
+        child_share_cpu(14.0, 0.0, branch_b, total),
+    ]
+    .map(f32::to_bits)
+    .to_vec();
+    assert_eq!(
+        &observed_bits[..3],
+        &expected[..3],
+        "born pressure and both direct-child Sum products are bit-exact"
+    );
+    assert!(
+        observed_bits[3..]
+            .iter()
+            .zip(&expected[3..])
+            .all(|(gpu, cpu)| gpu.abs_diff(*cpu) <= 1),
+        "real born Gu-Yang F / rows-2/8 raw P must traverse native weight and child share within the admitted GPU arithmetic ULP"
+    );
+    Some(observed_bits)
 }
 
 fn prove_direct_child_pressure_sums_once_and_neutral_f_or_p_drives_next_generation_share() {
@@ -689,13 +828,34 @@ fn prove_direct_child_pressure_sums_once_and_neutral_f_or_p_drives_next_generati
         "entitlement-first compares born raw P: branch A 9 > branch B 5",
     );
 
-    let identity_ops = neutral_leaf_weight_ops(
+    let (gu_yang_binding, active) =
+        compiled_pressure_product(ActionBandConservedProgressBoundSourceSpec::GuYangRealized);
+    let pressure_plan = plan_arena_allocation_with_pressure(
         &layout,
-        true,
+        &[],
+        7,
+        std::slice::from_ref(&gu_yang_binding),
+        &active,
         GenerationStamp::new(10),
         GenerationStamp::new(11),
     )
-    .expect("neutral immediate F binding");
+    .expect("ordinary allocator plan owns typed Gu-Yang insertion");
+    let identity_ops = pressure_plan
+        .cpu_ops
+        .iter()
+        .filter(|op| {
+            matches!(
+                op.source,
+                SourceSpec::SlotValue { col: source_col, .. }
+                    if source_col == col(GU_YANG_VALUE_COL)
+            )
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(
+        identity_ops.len(),
+        4,
+        "all relevant admitted leaf products are inserted without caller-built ops"
+    );
     assert!(identity_ops.iter().all(|op| {
         matches!(op.source, SourceSpec::SlotValue { .. })
             && op.combine == CombineFn::Identity
@@ -703,20 +863,28 @@ fn prove_direct_child_pressure_sums_once_and_neutral_f_or_p_drives_next_generati
             && op.targets.len() == 1
             && op.targets[0].1 == cols.weight_col
     }), "born F is copied by identity into existing AllocatorWeight; there is no private solver or score layer");
-    let entitlement_identity_ops = neutral_leaf_weight_ops(
+    let no_pressure_plan = plan_arena_allocation_with_pressure(
         &layout,
-        false,
+        &[],
+        7,
+        &[],
+        &[],
         GenerationStamp::new(10),
         GenerationStamp::new(11),
     )
-    .expect("neutral entitlement P binding");
-    assert!(entitlement_identity_ops.iter().all(|op| {
-        matches!(op.source, SourceSpec::SlotValue { .. })
-            && op.combine == CombineFn::Identity
-            && op.scale == ScaleSpec::Identity
-            && op.targets.len() == 1
-            && op.targets[0].1 == cols.weight_col
-    }), "raw P is copied by identity into existing AllocatorWeight; there is no private solver or score layer");
+    .expect("empty typed-pressure set");
+    assert_eq!(
+        no_pressure_plan, plan,
+        "no-pressure ordinary plan remains bit-exact"
+    );
+    assert!(
+        no_pressure_plan.cpu_ops.iter().all(|op| !matches!(
+            op.source,
+            SourceSpec::SlotValue { col: source_col, .. }
+                if source_col == col(GU_YANG_VALUE_COL)
+        )),
+        "entitlement-first has no ad hoc cell projection; raw P is the rows-2/8 Sum product"
+    );
 
     let private_serviceability_recompute_mutant = entitlement;
     assert_ne!(
@@ -726,16 +894,35 @@ fn prove_direct_child_pressure_sums_once_and_neutral_f_or_p_drives_next_generati
 
     assert!(
         matches!(
-            neutral_leaf_weight_ops(
+            plan_arena_allocation_with_pressure(
                 &layout,
-                true,
+                &[],
+                7,
+                std::slice::from_ref(&gu_yang_binding),
+                &active,
                 GenerationStamp::new(10),
                 GenerationStamp::new(10),
             ),
-            Err(NeutralPressureBindingError::NotNextGeneration { .. })
+            Err(simthing_driver::AllocationPlanError::NeutralPressure(
+                NeutralPressureBindingError::NotNextGeneration { .. }
+            ))
         ),
         "same-generation pressure -> reweight -> re-clear must RED"
     );
+    let (wrong_role, wrong_role_active) =
+        compiled_pressure_product(ActionBandConservedProgressBoundSourceSpec::RfGrant);
+    assert!(matches!(
+        bind_immediate_flow_pressure_to_allocator_weight(
+            wrong_role,
+            wrong_role_active[0],
+            wrong_role_active[0].slot(),
+            cols.weight_col,
+            GenerationStamp::new(10),
+            GenerationStamp::new(11),
+            0,
+        ),
+        Err(NeutralPressureBindingError::ImmediateFlowSourceNotGuYang)
+    ), "a real compiled wrong-role product is typed-refused; a fabricated ResolvedFullCell cannot type-check at this door");
 
     let descendant_recount_mutant = entitlement.2 + 6.0 + 3.0 + 3.0 + 2.0;
     assert_ne!(
@@ -759,16 +946,6 @@ fn prove_direct_child_pressure_sums_once_and_neutral_f_or_p_drives_next_generati
     };
     let entitlement_gpu = run_gpu_pressure_case(false).expect("same selected adapter");
     assert_eq!(
-        immediate_gpu,
-        vec![
-            3.0f32.to_bits(),
-            5.0f32.to_bits(),
-            8.0f32.to_bits(),
-            5.25f32.to_bits(),
-            8.75f32.to_bits(),
-        ],
-    );
-    assert_eq!(
         entitlement_gpu,
         vec![
             9.0f32.to_bits(),
@@ -777,6 +954,10 @@ fn prove_direct_child_pressure_sums_once_and_neutral_f_or_p_drives_next_generati
             9.0f32.to_bits(),
             5.0f32.to_bits(),
         ],
+    );
+    assert_ne!(
+        immediate_gpu, entitlement_gpu,
+        "live born Gu-Yang F may lawfully drift from raw-P entitlement pressure"
     );
 }
 

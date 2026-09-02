@@ -316,12 +316,17 @@ impl GenerationBoundCrossingDedupe {
 #[derive(Debug)]
 pub struct CrossingConsequenceSession {
     compiled: CompiledActionBandGpuExecution,
+    active_instances: Vec<ActionBandActiveInstance>,
     frozen: FrozenConsequences,
 }
 
 impl CrossingConsequenceSession {
     pub fn compiled(&self) -> &CompiledActionBandGpuExecution {
         &self.compiled
+    }
+
+    pub fn active_instances(&self) -> &[ActionBandActiveInstance] {
+        &self.active_instances
     }
 
     pub fn binding_for_event_kind(&self, event_kind: u32) -> Option<&CrossingConsequenceBinding> {
@@ -452,6 +457,7 @@ pub fn compile_crossing_consequence_session(
             by_event_kind,
         },
         compiled,
+        active_instances: active_instances.to_vec(),
     })
 }
 

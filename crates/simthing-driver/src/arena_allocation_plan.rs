@@ -1,8 +1,8 @@
 //! E-11 AccumulatorOp planner (memo §2.3).
 
 use simthing_core::{
-    AccumulatorOp, ColumnIndex, CombineFn, ConsumeMode, GateSpec, InputSpec, ScaleSpec, SlotIndex,
-    SourceSpec,
+    AccumulatorOp, ColumnIndex, CombineFn, ConsumeMode, GateSpec, GenerationStamp, InputSpec,
+    ScaleSpec, SlotIndex, SourceSpec,
 };
 use simthing_gpu::{
     column_from_wire, plan_governed_integration_at_band, GovernedPair, PlannerError,
@@ -12,6 +12,7 @@ use thiserror::Error;
 use crate::arena_hierarchy::{ArenaTreeLayout, HierarchyError, HierarchyNode, NodeColumnRefs};
 use crate::arena_registry::SlotId;
 use crate::child_share_eml::child_share_tree_id;
+use crate::{ActionBandActiveInstance, CompiledActionBandConservedProgressBinding};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ArenaAllocationPlan {
@@ -26,12 +27,42 @@ pub enum AllocationPlanError {
     Hierarchy(#[from] HierarchyError),
     #[error(transparent)]
     Integration(#[from] PlannerError),
+    #[error(transparent)]
+    NeutralPressure(#[from] crate::need_binding::NeutralPressureBindingError),
+    #[error("more than one born Gu-Yang pressure product targets arena participant slot {slot}")]
+    DuplicateImmediateFlowPressureTarget { slot: u32 },
 }
 
 pub fn plan_arena_allocation(
     layout: &ArenaTreeLayout,
     governed_pairs: &[GovernedPair],
     n_slots: u32,
+) -> Result<ArenaAllocationPlan, AllocationPlanError> {
+    plan_arena_allocation_with_pressure(
+        layout,
+        governed_pairs,
+        n_slots,
+        &[],
+        &[],
+        GenerationStamp::new(0),
+        GenerationStamp::new(1),
+    )
+}
+
+/// Ordinary arena allocation planner with default-on native market pressure.
+///
+/// Immediate-flow pressure is selected only from sealed ActionBand Gu-Yang
+/// bindings associated with an admitted participant instance. Entitlement-first
+/// raw `P` needs no parallel binding: the rows-2/8 direct-child `Sum` below is
+/// its plan-owned producer and publishes directly to the existing weight lane.
+pub fn plan_arena_allocation_with_pressure(
+    layout: &ArenaTreeLayout,
+    governed_pairs: &[GovernedPair],
+    n_slots: u32,
+    conserved_progress_bindings: &[CompiledActionBandConservedProgressBinding],
+    active_instances: &[ActionBandActiveInstance],
+    observed_generation: GenerationStamp,
+    allocation_generation: GenerationStamp,
 ) -> Result<ArenaAllocationPlan, AllocationPlanError> {
     let mut ops_cpu = Vec::new();
     let bands = layout.band_layout;
@@ -43,6 +74,16 @@ pub fn plan_arena_allocation(
                 ops_cpu.push(reset_op(node.participant_slot.raw(), col, bands.reset_band));
             }
         }
+
+        append_immediate_flow_pressure_ops(
+            layout,
+            conserved_progress_bindings,
+            active_instances,
+            observed_generation,
+            allocation_generation,
+            bands.reset_band,
+            &mut ops_cpu,
+        )?;
 
         for depth in (0..d.saturating_sub(1)).rev() {
             let band = bands.upsweep_band(depth, d);
@@ -119,6 +160,65 @@ pub fn plan_arena_allocation(
         n_bands: bands.total_bands_used,
         integration_band: bands.integration_band,
     })
+}
+
+fn append_immediate_flow_pressure_ops(
+    layout: &ArenaTreeLayout,
+    conserved_progress_bindings: &[CompiledActionBandConservedProgressBinding],
+    active_instances: &[ActionBandActiveInstance],
+    observed_generation: GenerationStamp,
+    allocation_generation: GenerationStamp,
+    band: u32,
+    ops: &mut Vec<AccumulatorOp>,
+) -> Result<(), AllocationPlanError> {
+    use simthing_spec::AdmittedActionBandConservedProgressBoundSource;
+    use std::collections::HashSet;
+
+    let leaves = layout
+        .iter_all()
+        .into_iter()
+        .filter(|node| node.children.is_empty())
+        .map(|node| (node.participant_slot, node.cols.weight_col))
+        .collect::<std::collections::HashMap<_, _>>();
+    let mut targeted = HashSet::new();
+    for binding in conserved_progress_bindings
+        .iter()
+        .copied()
+        .filter(|binding| {
+            matches!(
+                binding.bound_source(),
+                AdmittedActionBandConservedProgressBoundSource::GuYangAvailable(_)
+                    | AdmittedActionBandConservedProgressBoundSource::GuYangRealized(_)
+            ) && binding.destination() == simthing_gpu::ActionBandEmissionDestination::RfClaim
+        })
+    {
+        for instance in active_instances
+            .iter()
+            .copied()
+            .filter(|instance| instance.template() == binding.template())
+        {
+            let Some(&weight_col) = leaves.get(&instance.slot()) else {
+                continue;
+            };
+            if !targeted.insert(instance.slot()) {
+                return Err(AllocationPlanError::DuplicateImmediateFlowPressureTarget {
+                    slot: instance.slot().raw(),
+                });
+            }
+            ops.push(
+                crate::need_binding::bind_immediate_flow_pressure_to_allocator_weight(
+                    binding,
+                    instance,
+                    instance.slot(),
+                    weight_col,
+                    observed_generation,
+                    allocation_generation,
+                    band,
+                )?,
+            );
+        }
+    }
+    Ok(())
 }
 
 fn cpu_op_from_integration_gpu(gpu: &simthing_gpu::AccumulatorOpGpu) -> AccumulatorOp {
