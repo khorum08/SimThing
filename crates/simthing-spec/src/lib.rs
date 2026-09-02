@@ -392,6 +392,12 @@ pub use spec::constrained_clearing::{
     ConstrainedSupply, PersistenceConsequence, PersistenceConsequenceError,
     PersistenceOverlayBinding, UnresolvedDemandObservation,
 };
+// The resident settlement/emission product and recursive supply intake are
+// aliases of one kernel-owned exact type. The CPU clearing structs above stay
+// the frozen vendorized oracle surface; no role adapter connects the germ.
+pub use simthing_kernel::{
+    ResidentConstrainedProduct, ResidentRecursiveSupplyIntake, ResidentSettlementOutput,
+};
 pub use spec::contention_conservation_judge::{
     judge_conservation, ChannelBound, ConservationJudgeReason, ConservationSnapshot,
     ConservationVerdict, QuantizedChannelObservation, SeamObservation,

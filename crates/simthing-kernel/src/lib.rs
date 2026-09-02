@@ -35,6 +35,7 @@ pub mod reduction;
 pub mod reduction_orderband;
 pub mod registration;
 mod residency_placement;
+pub mod resident_clearing_apportionment;
 pub mod resident_clearing_plan;
 pub mod resolved;
 pub mod sealed;
@@ -144,6 +145,13 @@ pub use residency_placement::{
     ResidencyExtentError, ResidencyPlacementDisposition, ResidencyPlacementError,
     ResidencyPlacementIdentity, ResidencyPlacementOutcome, ResidencyPlacementRefusal,
     ResidencyPlacementRefusalReason, ResidencyRelocationOutcome, ResidencySessionTermination,
+};
+pub use resident_clearing_apportionment::{
+    execute_resident_apportionment_cpu, ResidentApportionmentClaim, ResidentApportionmentDispatch,
+    ResidentApportionmentError, ResidentApportionmentPlan, ResidentApportionmentSession,
+    ResidentApportionmentWorkgroupSize, ResidentConstrainedProduct, ResidentRecursiveSupplyIntake,
+    ResidentSettlementOutput, RESIDENT_APPORTIONMENT_SCRATCH_BYTES_PER_ROW,
+    RESIDENT_APPORTIONMENT_WORKGROUP_SIZE,
 };
 pub use resident_clearing_plan::{
     DenseOrdinalRange, ResidentClearingAdmission, ResidentClearingBudgets,

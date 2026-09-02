@@ -11,7 +11,7 @@ This digest is a derived context artifact for low-context agents. If it disagree
 | --- | --- | --- |
 | scripts/ci/allow/sealed_producers.txt | 25 | 6923796f3bacd3b27b29f778d5276c3f82a3a67c3f010c30f10b78de8a1866f6 |
 | scripts/ci/allow/inert_buffer_handles.txt | 2 | 9e2069fa5730f17cacde1c671ebc17beb59f50738d2dcb914bceae13f9b8b3a4 |
-| scripts/ci/allow/kernel_surface.txt | 325 | ffac809a72e0c423463c01c3960739ea374c1b22b509e072128a7417b6b254a2 |
+| scripts/ci/allow/kernel_surface.txt | 338 | a5a12f7907d808326f43317db75393bd690d6cebad5e4820d68d2e4ec74ed0b5 |
 | scripts/ci/allow/sealed_types.txt | 19 | 9d427e3b41a586b06f24ca02cc45f78934237d2229b0c38d46e2a8a6ef5016be |
 | scripts/ci/allow/contention_mechanisms.txt | 9 | 1f9e930b44197d4254f46ea96328f814d9ba0f2dad06881c454aebc01c01d44b |
 | scripts/ci/scans.tsv | 24 | 36bf78ae4a81a9c49b570051a0f53cb10aa88ab5cf57faa0a05d83abfd068e79 |
@@ -384,6 +384,19 @@ This digest is a derived context artifact for low-context agents. If it disagree
 | ResidentScopeId | authority-export | RESIDENT-CLEARING-PLAN-0 typed semantic scope identity input | retire when scope identity lowers through a narrower kernel door | kernel_surface.txt |
 | ResidentScopeOrdinal | sealed-export | RESIDENT-CLEARING-PLAN-0 private-constructor destination-local scope ordinal | retire when GPU ABI lowering is wholly kernel-internal | kernel_surface.txt |
 | SemanticPlanDigest | sealed-export | RESIDENT-CLEARING-PLAN-0 canonical semantic plan digest minted from checked deterministic bytes | retire when digest observation and GPU lowering are wholly kernel-internal | kernel_surface.txt |
+| resident_clearing_apportionment | authority-export | RESIDENT-CLEARING-APPORTIONMENT-0 exact integer residue namespace over the admitted resident AllocatedFlow authority | retire when resident exact settlement is reachable only through the standard simulation lifecycle | kernel_surface.txt |
+| execute_resident_apportionment_cpu | authority-export | RESIDENT-CLEARING-APPORTIONMENT-0 frozen-law CPU referee for exact resident GPU settlement | retire only if another independent full-domain exact referee replaces it | kernel_surface.txt |
+| ResidentApportionmentClaim | authority-export | RESIDENT-CLEARING-APPORTIONMENT-0 typed request and live AllocatedFlow address bound to a canonical resident semantic row | retire when all exact claims lower through a narrower driver-owned door | kernel_surface.txt |
+| ResidentApportionmentDispatch | authority-export | RESIDENT-CLEARING-APPORTIONMENT-0 physical-only workgroup and partition proof shape with no economic authority | retire when physical-order invariance is intrinsic in a private session | kernel_surface.txt |
+| ResidentApportionmentError | authority-export | RESIDENT-CLEARING-APPORTIONMENT-0 typed admission arithmetic live-input and GPU refusal surface | retire when exact settlement has no external caller | kernel_surface.txt |
+| ResidentApportionmentPlan | authority-export | RESIDENT-CLEARING-APPORTIONMENT-0 immutable exact-residue plan bound to the canonical semantic plan and terminal band | retire when construction is reachable only through the standard simulation lifecycle | kernel_surface.txt |
+| ResidentApportionmentSession | authority-export | RESIDENT-CLEARING-APPORTIONMENT-0 kernel-owned exact settlement residency dispatch and proof readback session | retire when session construction and observation are wholly lifecycle-internal | kernel_surface.txt |
+| ResidentApportionmentWorkgroupSize | authority-export | RESIDENT-CLEARING-APPORTIONMENT-0 closed physical dispatch-width proof vocabulary with no semantic effect | retire after workgroup-shape invariance is intrinsic and the proof surface closes | kernel_surface.txt |
+| ResidentConstrainedProduct | sealed-export | RESIDENT-CLEARING-APPORTIONMENT-0 canonical private-field exact constrained product T_s minted only by exact settlement | retire when product observation and recursive intake are wholly lifecycle-internal | kernel_surface.txt |
+| ResidentRecursiveSupplyIntake | sealed-export | RESIDENT-CLEARING-APPORTIONMENT-0 zero-conversion role alias for canonical T_s at recursive supply intake | retire when recursive intake naming is wholly lifecycle-internal | kernel_surface.txt |
+| ResidentSettlementOutput | sealed-export | RESIDENT-CLEARING-APPORTIONMENT-0 zero-conversion role alias for canonical T_s at settlement emission | retire when settlement output naming is wholly lifecycle-internal | kernel_surface.txt |
+| RESIDENT_APPORTIONMENT_SCRATCH_BYTES_PER_ROW | surface-inert | RESIDENT-CLEARING-APPORTIONMENT-0 fixed exact software-wide scratch ABI extent | retire when exact session allocation is wholly kernel-private | kernel_surface.txt |
+| RESIDENT_APPORTIONMENT_WORKGROUP_SIZE | surface-inert | RESIDENT-CLEARING-APPORTIONMENT-0 canonical physical dispatch width without semantic authority | retire when exact session dispatch geometry is wholly kernel-private | kernel_surface.txt |
 
 ## Sealed Types
 

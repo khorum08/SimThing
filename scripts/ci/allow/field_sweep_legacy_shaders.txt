@@ -7,3 +7,4 @@ crates/simthing-gpu/src/shaders/stress_compose.wgsl | legacy field composition o
 crates/simthing-gpu/src/shaders/structured_field_stencil.wgsl | Gu-Yang migration oracle retained unmodified | delete at DOCTRINE-CI-RECONCILE-0 after Phase 9 migration
 crates/simthing-gpu/src/shaders/structured_field_stencil_atlas_mask.wgsl | legacy atlas field oracle retained during migration | delete at DOCTRINE-CI-RECONCILE-0 after atlas migration
 crates/simthing-gpu/src/shaders/w_impedance_compose.wgsl | PALMA W projection oracle retained during migration | delete at DOCTRINE-CI-RECONCILE-0 after EML projection migration
+crates/simthing-kernel/src/shaders/resident_clearing_apportionment.wgsl | RESIDENT-CLEARING-APPORTIONMENT-0 exact integer settlement compute kernel is not a field solver; path-wide WGSL census false-positive | remove when FIELD-SWEEP-SINGLE-PATH-SHADERS classifies exact non-field compute kernels semantically

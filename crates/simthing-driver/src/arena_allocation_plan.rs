@@ -31,6 +31,30 @@ pub enum AllocationPlanError {
     NeutralPressure(#[from] crate::need_binding::NeutralPressureBindingError),
     #[error("more than one born Gu-Yang pressure product targets arena participant slot {slot}")]
     DuplicateImmediateFlowPressureTarget { slot: u32 },
+    #[error(transparent)]
+    ExactApportionment(#[from] simthing_gpu::ResidentApportionmentError),
+}
+
+/// Bind the exact constrained-product stage to the arena's one terminal band.
+///
+/// The caller supplies already-admitted exact claims whose live inputs are the
+/// existing `AllocatedFlow` cells. No second terminal band or host post-pass is
+/// created: `ResidentApportionmentPlan::integration_band()` is minted directly
+/// from [`ArenaBandLayout`](crate::arena_hierarchy::ArenaBandLayout).
+pub fn plan_resident_exact_apportionment(
+    layout: &ArenaTreeLayout,
+    semantic_plan: &simthing_gpu::ResidentClearingPlan,
+    claims: Vec<simthing_gpu::ResidentApportionmentClaim>,
+    authority_granter: simthing_core::SimThingId,
+    generation: GenerationStamp,
+) -> Result<simthing_gpu::ResidentApportionmentPlan, AllocationPlanError> {
+    Ok(simthing_gpu::ResidentApportionmentPlan::build(
+        semantic_plan,
+        claims,
+        authority_granter,
+        generation,
+        layout.band_layout.integration_band,
+    )?)
 }
 
 pub fn plan_arena_allocation(

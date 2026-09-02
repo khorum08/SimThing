@@ -6,8 +6,8 @@
 use bytemuck::{Pod, Zeroable};
 use simthing_core::{ExecutionIncarnation, GenerationStamp, TreeExecutionBinding, TreeRealmId};
 use simthing_kernel::{
-    ResidentClearingPlan, ResidentClearingPlanError, ResidentDrawId, ResidentOwnerId,
-    ResidentResourceId, ResidentScopeId, SemanticPlanDigest,
+    ResidentApportionmentPlan, ResidentClearingPlan, ResidentClearingPlanError, ResidentDrawId,
+    ResidentOwnerId, ResidentResourceId, ResidentScopeId, SemanticPlanDigest,
 };
 use thiserror::Error;
 use wgpu::util::DeviceExt;
@@ -456,6 +456,27 @@ impl ResidentClearingBuffers {
     pub const fn scratch_buffer(&self) -> &Buffer {
         &self.scratch
     }
+
+    /// Borrow the immutable semantic-row table and admitted scratch for one
+    /// exact-apportionment plan. This is a buffer-ownership check, not an
+    /// economic adapter: the canonical product is written directly in scratch.
+    pub fn apportionment_buffers(
+        &self,
+        plan: &ResidentApportionmentPlan,
+    ) -> Result<(&Buffer, &Buffer), ResidentClearingGpuError> {
+        if plan.semantic_digest() != self.owner.digest {
+            return Err(ResidentClearingGpuError::ApportionmentPlanDigestMismatch);
+        }
+        if plan.row_count() != self.abi.header.row_count {
+            return Err(
+                ResidentClearingGpuError::ApportionmentPlanRowCountMismatch {
+                    plan: plan.row_count(),
+                    resident: self.abi.header.row_count,
+                },
+            );
+        }
+        Ok((&self.rows, &self.scratch))
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Error)]
@@ -487,6 +508,10 @@ pub enum ResidentClearingGpuError {
     },
     #[error("resident clearing generation advance belongs to a different owner")]
     ResidentOwnerMismatch,
+    #[error("resident exact-apportionment plan belongs to a different semantic plan")]
+    ApportionmentPlanDigestMismatch,
+    #[error("resident exact-apportionment row count {plan} differs from resident rows {resident}")]
+    ApportionmentPlanRowCountMismatch { plan: u32, resident: u32 },
 }
 
 fn descriptor<T>(
