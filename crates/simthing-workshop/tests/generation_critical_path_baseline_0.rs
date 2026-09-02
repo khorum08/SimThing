@@ -108,24 +108,25 @@ fn spec_source() -> String {
 
 #[test]
 fn host_clearing_door_census_covers_generationless_and_ordinary_doors() {
-    let src = spec_source();
-    let lines: Vec<&str> = src.lines().collect();
     for door in &HOST_CLEARING_DOOR_CENSUS {
-        let idx = (door.line as usize).saturating_sub(1);
+        let door_src = fs::read_to_string(
+            PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("../..")
+                .join(door.path),
+        )
+        .unwrap_or_else(|_| panic!("census path unreadable: {}", door.path));
+        // Symbol-keyed: the door must exist in its recorded file. Line numbers in
+        // the census are informational metadata, never asserted — a line-keyed
+        // assertion reds on any unrelated edit above the door (positional-identity
+        // defect class; struck at the 14.3 certificate).
         assert!(
-            idx < lines.len(),
-            "{} line {} out of range",
+            door_src.contains(&format!("pub fn {}(", door.symbol)),
+            "door {} missing from {}",
             door.symbol,
-            door.line
-        );
-        assert!(
-            lines[idx].contains(&format!("pub fn {}(", door.symbol)),
-            "door {} missing at {}:{}",
-            door.symbol,
-            door.path,
-            door.line
+            door.path
         );
     }
+    let src = spec_source();
     assert!(src.contains("granter: SimThingId::from_session_raw(0)"));
     assert!(src.contains("generation: GenerationStamp::new(0)"));
 
@@ -163,7 +164,7 @@ fn host_clearing_door_census_covers_generationless_and_ordinary_doors() {
         .iter()
         .find(|d| d.symbol == "clear_reduced_owner_channels")
         .expect("generationless door");
-    assert_eq!(generationless.line, 420);
+    // line is informational metadata (symbol-keyed existence is asserted above).
     assert!(generationless.disposition_14_6.contains("DELETE"));
 }
 
@@ -191,7 +192,7 @@ fn observation_layer_is_neutral_vs_uninstrumented_clear() {
 #[test]
 fn measurement_packet_contains_all_required_legs_envelope_and_workloads() {
     let packet = packet();
-    assert_eq!(packet.door_census.len(), 4);
+    assert_eq!(packet.door_census.len(), 5);
     assert_eq!(packet.d2_envelope_shape, D2_ENVELOPE_SHAPE);
     assert!(packet.d1_signed_remainder_note.contains(".max(0)"));
     assert!(packet.d3_nplus_boundary.contains("grants-available"));

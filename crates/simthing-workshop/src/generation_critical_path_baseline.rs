@@ -69,11 +69,11 @@ pub const RESOURCE: &str = "ore";
 pub const OVERLAPPING_RAW: u32 = 7;
 
 /// Mechanically sourced host-clearing-door census at dispatch base `62529076`.
-pub const HOST_CLEARING_DOOR_CENSUS: [ClearingDoorCensusRow; 4] = [
+pub const HOST_CLEARING_DOOR_CENSUS: [ClearingDoorCensusRow; 5] = [
     ClearingDoorCensusRow {
         symbol: "clear_constrained_claims_at_generation",
         path: "crates/simthing-spec/src/spec/constrained_clearing.rs",
-        line: 254,
+        line: 274,
         generation_authority_form: "caller-supplied ClearingRemainderAuthority { granter, generation }",
         reexports: "simthing-spec lib.rs + spec/mod.rs; simthing-embedder run.rs",
         callers: "production: simthing-driver/src/growth_entitlement.rs; wrapper: clear_reduced_owner_channels_at_generation; tests: contention_arena_executed_0, clearing_weight_span_unification_0, clearing_weight_deformation_lifecycle_0, stemthing_b_flow_market_germ_0, stemthing_b_vram_residency_0, grant_disbursement_lane_0, unified_facility_convergence_witness_0, protected_representative_restore, vendor_door_triad_surface_0",
@@ -83,7 +83,7 @@ pub const HOST_CLEARING_DOOR_CENSUS: [ClearingDoorCensusRow; 4] = [
     ClearingDoorCensusRow {
         symbol: "clear_reduced_owner_channels",
         path: "crates/simthing-spec/src/spec/constrained_clearing.rs",
-        line: 420,
+        line: 441,
         generation_authority_form: "generationless compatibility: granter=SimThingId::from_session_raw(0), generation=GenerationStamp::new(0)",
         reexports: "simthing-spec lib.rs + spec/mod.rs",
         callers: "test: simthing-driver/tests/contention_arena_executed_0.rs (priority + price cases); no production caller",
@@ -93,7 +93,7 @@ pub const HOST_CLEARING_DOOR_CENSUS: [ClearingDoorCensusRow; 4] = [
     ClearingDoorCensusRow {
         symbol: "clear_reduced_owner_channels_at_generation",
         path: "crates/simthing-spec/src/spec/constrained_clearing.rs",
-        line: 437,
+        line: 458,
         generation_authority_form: "caller-supplied ClearingRemainderAuthority; converts reduce-up buckets through ConstrainedClaim::from_runtime_demand then the ordinary door",
         reexports: "simthing-spec lib.rs + spec/mod.rs",
         callers: "wrappers: clear_reduced_owner_channels (generationless), clear_stamped_owner_channels; no direct production caller",
@@ -103,12 +103,22 @@ pub const HOST_CLEARING_DOOR_CENSUS: [ClearingDoorCensusRow; 4] = [
     ClearingDoorCensusRow {
         symbol: "clear_stamped_owner_channels",
         path: "crates/simthing-spec/src/spec/constrained_clearing.rs",
-        line: 488,
+        line: 509,
         generation_authority_form: "generation taken from StampedReduceUpProduct; granter supplied by caller",
         reexports: "simthing-spec lib.rs + spec/mod.rs; simthing-embedder run.rs",
         callers: "test/germ: stemthing_b_flow_market_germ_0.rs; no other production caller on this base",
         ordinary_or_oracle_posture: "canonical stamped-RF market binding over the ordinary door",
         disposition_14_6: "narrow behind CpuVendorizedOracle",
+    },
+    ClearingDoorCensusRow {
+        symbol: "produce_runtime_rf_next_generation_demands",
+        path: "crates/simthing-spec/src/spec/runtime_rf_tick.rs",
+        line: 149,
+        generation_authority_form: "RuntimeRfDemandGenerationAuthority once-mint over caller ClearingRemainderAuthority; performs the generation-N clear inside the door",
+        reexports: "simthing-spec lib.rs + spec/mod.rs; driver wrapper produce_runtime_rf_next_generation_demands_for_tick",
+        callers: "production: simthing-driver runtime_rf_tick_compile; witness: resident_clearing_score_and_bands_0",
+        ordinary_or_oracle_posture: "ordinary production Current->Next demand door (14.3 row-11 substrate recurrence, DA ruling 5488315659)",
+        disposition_14_6: "narrow behind CpuVendorizedOracle; recurrence migrates with the resident germ at cutover",
     },
 ];
 
