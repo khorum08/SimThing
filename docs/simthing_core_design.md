@@ -163,15 +163,17 @@ StemThing-B is the recursive conserved-resource market germ:
 
     admitted resource or capacity
       → descendant claims authorized by sealed Draw templates
-      → recursive RF reduce-up
-      → EML valuation and effective clearing weight
-      → authored constrained clearing
-      → CostBand quantization
-      → grant or flow disbursement
-      → Gu-Yang throughput and saturation
-      → PALMA potential, impedance and opportunity
+      → recursive RF reduce-up (branch-attributed pressure, once per edge)
+      → typed eligible pressure — raw P or born Gu-Yang serviceable F —
+        selected once into AllocatorWeight (neutral identity law)
+      → child-share EML on live parent columns → AllocatedFlow
+      → exact quantization Q at the terminal integration band → canonical T_s
+      → the child consumes that same T_s as its own supply
+      → unresolved U → optional sealed deformation → next-generation demand
+      → Gu-Yang throughput/saturation and PALMA potential/impedance/opportunity
+        observed on the executed flow (born field authorities, applied once)
       → STEAD observations and bands
-      → ActionBand or OverlayThing response
+      → ActionBand, CostBand-funded, or OverlayThing consequence
       → next-generation state
 
 A Draw is a specialization-profile claim template, not a grant. Its offerings, lifecycle triggers
@@ -612,7 +614,7 @@ dropped, coalesced, overwritten, or redirected; capacity exhaustion is the typed
 `ReplayEgressExhausted` session fault unless an explicitly admitted synchronous-durability posture
 exists. While admitted capacity remains, replay egress cannot make N+1 wait.
 
-The existing CPU clearer is the vendorized oracle: the same registrations, math, invariants,
+The existing CPU filter oracle is the vendorized form: the same registrations, math, invariants,
 admission, generation/history semantics, and exact products, selected explicitly for diagnostics,
 tests, and vendorization proof. It has no hidden ordinary-session caller and no fallback edge from
 resident admission or execution. CPU responsibility in production remains asynchronous observation,

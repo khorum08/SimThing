@@ -188,14 +188,16 @@ superseded anatomy; capabilities stranded without ingress. Four findings:
    ClauseScript consequence-authoring ingress (the natural companion of the 15.2
    port, one small rung) or an explicit down-classification to
    instrument/oracle-only vocabulary. Engineering should choose which.
-3. **The embedder still calls a quarantined door** (`clear_stamped_owner_channels`
-   in `simthing-embedder/src/run.rs`). Likely lawful (the Vendor Door is host-side
-   by design) but the door census's caller rows should CLASSIFY the embedder's
-   posture explicitly so the quarantine law ("no ordinary resident caller") is
-   checkable against it rather than assumed. DISPOSITION: one census row amendment.
-4. **One noun residue**: canon line ~615 still says "the existing CPU clearer is the
-   vendorized oracle." Post-15.1 vocabulary: the CPU FILTER ORACLE. DISPOSITION:
-   one-word amendment riding the §1.5 rewrite.
+3. **The embedder RE-EXPORTS two quarantined doors as ordinary vendor-door API**
+   (`pub use ... clear_constrained_claims_at_generation, clear_stamped_owner_channels`
+   in `simthing-embedder/src/run.rs` — a re-export, not a call; the door census's
+   reexports field was truthful, and this sweep's first published form of this
+   finding said "calls": corrected here). An external embedder can therefore reach
+   quarantined oracle vocabulary as first-class embedding API, contradicting
+   "cease to define the architecture." DISPOSITION: rung 15.4 rehomes the
+   re-export under explicitly named oracle vocabulary or removes it.
+4. **One noun residue** (canon ~615 "CPU clearer"): CORRECTED 2026-09-03 alongside
+   the §1.5 rewrite (finding 1 likewise APPLIED; both landed in the remediation PR).
 
 No finding contradicts a graduated witness; all four are prose/wiring/classification
 residue of the kind this review exists to catch before canonization freezes them.
