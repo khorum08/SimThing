@@ -639,6 +639,18 @@ the germ seal; sections 1.2 and 8.2 remain the one-schedule and asynchronous-tre
 
 ### 8.4 Recursive constrained-resource filter — Phase-15 closure
 
+> **KNOWN REMAND (2026-09-03, engineering cross-rung review; DA notice — this block is a
+> truth marker, not replacement semantics).** Sections 8.4.1-8.4.3 contain graduated
+> explanatory claims presently under `RECURSION-AXIS-CONFORMANCE-0` /
+> `RESIDENT-FILTER-SUBSTRATE-BINDING-0` correction: exact settlement is an exact
+> CONSTRAINED PROJECTION (feasible set = actual conserved supply + request caps +
+> precedence), not a mere quantization of the downward flow, and the resident spatial
+> recursion is NOT yet literal (the current interior intake is a same-scope loopback
+> under one granter). Use the ACTIVE LADDER rows 15.5-15.7 plus the unification review
+> (docs/0_0_8_7_SimThing_Unification.md sec 7) for implementation truth until the
+> corrective rows graduate, at which point this block is deleted and the sections
+> rewritten.
+
 Phase 15 closes the explanatory gap left by the graduated RF market without adding a runtime
 quantity, response program, settlement rule, or execution authority. The market is the resident
 recursive filter already admitted by section 8.3. Its continuous projection and frozen exact
