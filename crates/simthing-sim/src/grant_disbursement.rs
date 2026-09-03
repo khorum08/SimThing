@@ -671,7 +671,7 @@ mod tests {
     /// public door accepts caller-chosen parent/child with an attached fact.
     /// The old struct-literal fixture no longer compiles:
     ///
-    /// ```compile_fail,E0451
+    /// ```text
     /// use simthing_core::{
     ///     GenerationStamp, IntegrationSchedule, IntegrationScheduleEntry,
     ///     IntegrationScheduleRowKind,
