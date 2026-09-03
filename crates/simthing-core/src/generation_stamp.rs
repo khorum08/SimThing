@@ -197,6 +197,27 @@ impl IntegrationScheduleEntry {
 /// Rows are append-only and per-product. Identical `product_key` values at different
 /// child generations produce distinct rows so the full generation set is preserved.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+/// Struct-literal construction from outside this crate is UNREPRESENTABLE:
+/// `resident_live_head` is private, so a malformed schedule (for example a
+/// same-generation lifecycle row) cannot be authored around the doors.
+///
+/// ```compile_fail,E0451
+/// use simthing_core::{
+///     GenerationStamp, IntegrationSchedule, IntegrationScheduleEntry,
+///     IntegrationScheduleRowKind,
+/// };
+/// let malformed = IntegrationSchedule {
+///     entries: vec![IntegrationScheduleEntry {
+///         kind: IntegrationScheduleRowKind::GrantAccepted,
+///         parent_generation: GenerationStamp::new(4),
+///         child_generation: GenerationStamp::new(4),
+///         product_key: 9,
+///         grant_lifecycle_fact: None,
+///         resident_clearing_fact: None,
+///     }],
+///     ..IntegrationSchedule::new()
+/// };
+/// ```
 pub struct IntegrationSchedule {
     pub entries: Vec<IntegrationScheduleEntry>,
     /// Admission-bounded metadata for the authoritative resident live head.
