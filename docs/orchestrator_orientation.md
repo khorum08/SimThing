@@ -45,9 +45,9 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 26e025f8b1e76f7f649571aaa4f2da2c82ca722b4d8c549f5ce9d14b4604f3a6 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | 26eab30ec86c97ac8dfd6beef7ae8c5b4d3f18c38fdaa431ec40ccce855396d3 |
-| design_0_0_8_7_rf_arena_modernization.md | 6c5fc8c2c35cb9456c5ae8a0065bfefa80cfb335b5329550401e84cbdee6d871 |
+| design_0_0_8_7_rf_arena_modernization.md | 8c95f3a089a9761331c15b8a5eea3cb46074e4428acad0359a3acc56743c898b |
 | relay_lint.sh | ae19bdca12e90f6bc988e064f081ff62903034d69bf34b08ffd5c27e352181ba |
-| doctrine_anchors.tsv | d342192db0a81303de2642f398a0754b9460349be5741c08ad526644aebf1f0d |
+| doctrine_anchors.tsv | 37e2817a9857356f8ebd212878acd7af7822858c4969c46600259d424df7b750 |
 | execution_status_taxonomy.tsv | 924c086550221dd7136ec0682293900d8d03feb4bc1dae1a6e750a61e65153bc |
 | execution_status_mixed_posture.tsv | 1adf05f3ec5fd7b537efe29259d20649a2c6d3a0839590063e5308ff154e8f25 |
 | execution_status_non_execution.tsv | 214c1b557dfd3fc465f0171051e20281ff1dcf6c53128dbb29cba01524f9be02 |
@@ -68,20 +68,19 @@ Dark properties (1): `fixture::dark_reading` (reasons/spans in `property_admissi
 
 Track state: `open`
 
-> Compact view: 93 completed rungs elided; showing all 3 open rungs plus the 3 most recent completions. Full ladder in the design doc.
+> Compact view: 94 completed rungs elided; showing all 2 open rungs plus the 3 most recent completions. Full ladder in the design doc.
 
 | # | rung | deliverable | exit proof |
 | --- | --- | --- | --- |
-| 14.4 | RESIDENT-CLEARING-APPORTIONMENT-0 | Exact integer apportionment resident: base shares, largest-remainder with exact  | DA-GRADUATED merged #1925 @ 8176fe68 |
 | 14.5 | RESIDENT-CLEARING-PARITY-0 | Complete parity: the NINE POSITIVE ITEMS (identical EML score bits, equality ban | DA-GRADUATED merged #1928 @ ceb7f634 |
 | 14.6 | RESIDENT-CLEARING-CUTOVER-0 | The conformance rung; structural certificate owed. GPU becomes the PRIMARY clear | DA-GRADUATED merged #1931 @ a75e43c3 |
-| 15.0 | RECURSIVE-RESOURCE-FILTER-FORMALIZATION-0 | **PHASE 15 — RECURSIVE RESOURCE FILTER UNIFICATION (Owner-approved 2026-09-03; O | TODO |
+| 15.0 | RECURSIVE-RESOURCE-FILTER-FORMALIZATION-0 | **PHASE 15 — RECURSIVE RESOURCE FILTER UNIFICATION (Owner-approved 2026-09-03; O | DA-GRADUATED merged #1939 @ 68360709 |
 | 15.1 | RECURSIVE-RESOURCE-FILTER-UNIFICATION-0 | Corrective simplification: production code/API/canonical language express the si | TODO |
 | 15.2 | PERSISTENCE-DEFORMATION-PORT-0 | **Owner-approved 2026-09-03 (remedy for the row-11 demotion's expressiveness reg | TODO |
 
 ## Next Rung Pointer
 
-Active pointer: `RECURSIVE-RESOURCE-FILTER-FORMALIZATION-0`
+Active pointer: `PERSISTENCE-DEFORMATION-PORT-0`
 
 
 ## Cold-Start Spine (constitutional pointers)
