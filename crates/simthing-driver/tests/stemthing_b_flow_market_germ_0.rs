@@ -556,8 +556,8 @@ fn germ_absence_census_and_lifecycle_mutants_red() {
         market_source
             .matches("integration_schedule: &mut IntegrationSchedule")
             .count(),
-        6,
-        "the six lifecycle doors must consume the one existing schedule authority"
+        7,
+        "the seven lifecycle doors must consume the one existing schedule authority (six 11.2f grant-lifecycle doors + the 14.6 resident recursive-intake door)"
     );
     assert!(!market_source.contains("struct IntegrationSchedule"));
     let clearing_source = include_str!("../../simthing-spec/src/spec/constrained_clearing.rs");

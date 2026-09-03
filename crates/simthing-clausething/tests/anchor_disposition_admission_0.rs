@@ -439,12 +439,18 @@ fn board_and_orientation_render_property_admission_inventory() {
     let design =
         std::fs::read_to_string(repo_root().join("docs/design_0_0_8_7_rf_arena_modernization.md"))
             .expect("read active design doc");
-    let expected_pointer = design
+    let pointer_row = design
         .lines()
         .find(|line| line.starts_with("| Active open rung |"))
-        .and_then(|line| line.split('`').nth(1))
-        .expect("design doc names an active open rung")
-        .to_string();
+        .expect("design doc carries the active-open-rung row");
+    // A completed track lawfully names no rung (e.g. "NONE — Phase 14
+    // COMPLETE"); the Board renders that state as "none". Only a
+    // backtick-quoted rung id is an open pointer.
+    let expected_pointer = pointer_row
+        .split('`')
+        .nth(1)
+        .map(str::to_string)
+        .unwrap_or_else(|| "none".to_string());
     assert_eq!(
         board["active_pointer"],
         serde_json::json!(expected_pointer),
