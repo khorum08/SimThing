@@ -1,0 +1,36 @@
+---
+rung: PERSISTENCE-DEFORMATION-PORT-0
+kind: rung
+track: 0.0.8.7
+base_sha: 74552d80c818353778ef369f205ea4f79368bb93
+audience: coding
+model_tier: frontier
+expected_route: DA-RESERVE(binding)
+owner_approved: true
+owner_notes: "15.0 graduated by DA ruling 5520215583; pointer is 15.2. Harness-fix hold lifted by DA notice 5520359273 after PR #1941 @ 74552d80. Binding scope is the exact 15.2 ladder row plus Phase-15 charter sec 9. 15.0 census found DEMAND-RE-INJECTION=0, so this rung restores authored persistence capability without migration burden: authored deforms; substrate creates. 15.1 follows 15.2."
+surfaces: ["crates/simthing-spec/src/**", "crates/simthing-driver/src/**", "crates/simthing-kernel/src/**", "crates/simthing-clausething/src/**", "crates/simthing-workshop/tests/**", "docs/tests/**", "scripts/ci/test_inventory.tsv", "scripts/ci/anchor_reach_log.tsv"]
+forbidden: ["any second carry path, persistence market, ShadowPersistence lane, peer demand reinjection authority, or same-generation persistence effect", "any change to graduated Q, canonical T_s ABI, 15.0 R theorem/minimality result, 14.5 parity law, 14.6 resident self-consumption, or frozen 14.1 comparator", "any unbounded deformation state, non-finite output, silent clamp, implicit fallback, or output outside admitted 0..cap envelope", "any new PALMA/Gu-Yang solve, descendant walk, field cache, market feedback path, clearer/disburser authority, or economic adapter/newtype/seam translator", "any conversion of the lawful authored consequence chain into the carry authority; consequence machinery remains beside the port", "any 15.1 unification/rename/deletion work, RESOURCE-RESPONSE-COMPRESSION-0 work, pointer movement, graduation, or track closeout", "any coding edit to .github/workflows/**, scripts/ci/**/*.sh, or scripts/ci/**/*.py; repaired harness is consumed, not modified"]
+required_checks: ["render/read this handoff first; carry machine HD-RECEIPT plus fresh coding ORIENT under the current rule stamp and ACK all rendered REQUIRED-ANCHORS", "ARCHAEOLOGY FIRST: map the single Current->Next once-mint authority, its native unconditional U carry, CpuVendorizedOracle mirror, ordinary EML admission/lowering, ClauseScript modifier-chain lowering vehicle, and the separate consequence-only persistence chain found by 15.0", "implement exactly one optional sealed EML deformation binding per admitted scope/claimant class INSIDE the existing once-mint: d_effective(N+1)=d_authored(N+1)+deform(U(N)); absent program must be identity bit-for-bit", "the deformation program is ordinary admitted EML, bounded and typed at admission; prove 0 <= deform(u) <= admitted cap and typed refusal for non-finite/unbounded/escalation-beyond-cap results; no silent clamp", "preserve generation law: deformation happens only during N->N+1 mint, never same-generation; the existing second-mint refusal must remain the structural double-carry fence", "make CpuVendorizedOracle execute the identical deformation contract through the same admitted program semantics; no forked policy or approximation", "prove ClauseScript long modifier chains lower through the same existing application-layer vehicle into this port; kernel remains scenario-vocabulary-free and detachability intact", "retain the existing authored valuation/CostBand/Overlay chain as CONSEQUENCE-ONLY beside the port; 15.0 census says DEMAND-RE-INJECTION=0 and unmigrated=0, so do not invent a migration path", "positive witnesses: absent-program identity across frozen row-11/14.6 cases; authored decay across at least N->N+1->N+2 via the real production door; saturation/expiry or equivalent bounded authored policy; oracle parity", "negative witnesses: escalation beyond admitted cap typed-refuses; non-finite result typed-refuses; second carry structurally refused; second deformation path/ShadowPersistence lane mechanically RED; no partial demand publication on failure", "rerun frozen 15.0 theorem/minimality referee, 14.5 parity, 14.6 causal/self-consumption, generation pacing, physical/tree invariance, and constitutional authority census", "run touched-package checks, focused 15.2 referee, inventory/drift, doctrine anchors, detachability if ClauseScript surfaces change, Agent Scan under the repaired inner-loop prohibition tier, hosted Doctrine Scan/Exec, then fresh exact-head /clearance and /relay-lint", "return PROBATION / proof-present / DA-review-pending / UNMERGED with exact base/head, HD/ORIENT receipts, archaeology map, port type/admission contract, production call graph, ClauseScript lowering proof, identity/decay/boundedness/oracle transcripts, negative matrix, unchanged consequence-chain census, changed-file census, FULL structural ZERO-RED certificate, hosted IDs, clearance and relay-lint"]
+stop_conditions: ["the existing Current->Next authority cannot host deformation inside the once-mint without creating a second carry path", "ordinary admitted EML cannot express bounded persistence deformation without inventing a new runtime program family or scenario-specific kernel vocabulary", "identity-absent behavior is not bit-exact to graduated row-11/14.6 witnesses", "bounded refusal cannot be enforced before publication or requires silent clamp/partial write", "CpuVendorizedOracle parity requires a divergent policy or second semantic implementation", "ClauseScript lowering requires engine dependency on clausething or another detachability violation", "any required frozen referee, repaired harness scan, doctrine check, inventory, hosted gate, clearance, or relay lint is red"]
+---
+
+## BUILD
+
+This is a narrow capability-restoration rung. The substrate already owns unresolved-demand persistence; authored policy only deforms the substrate-created U during the single Current->Next mint. Do not create a persistence subsystem.
+
+Implement the optional sealed EML program as a parameter/binding of the existing mint authority. Identity when absent is constitutional and must be bit-exact. The admitted envelope is bounded and typed. Decay, expiry-to-zero, saturation, and escalation-to-cap are policy examples, not new engine operators.
+
+The ClauseScript path must reuse the existing EML modifier-chain lowering vehicle. Scenario vocabulary stays above the engine boundary. The CpuVendorizedOracle uses the same port contract.
+
+## FENCES
+
+- authored deforms; substrate creates.
+- one Current->Next mint, one carry, one deformation location.
+- consequence-only valuation/CostBand/Overlay machinery remains separate.
+- no same-generation persistence, no second lane, no new market authority.
+- 15.0 and all Phase-14 semantics remain frozen.
+- 15.1 is not in flight.
+
+## EXIT-PROOF
+
+The real production Current->Next door accepts an optional sealed EML deformation program. No program is bit-identical identity. Authored multi-generation decay runs causally through the same once-mint; bounded violations and non-finite results typed-refuse without partial publication; second carry is structurally impossible; CpuVendorizedOracle is exact; ClauseScript lowers through the existing vehicle; the consequence chain remains consequence-only; and the FULL structural certificate is ZERO-RED. Coding stops unmerged for DA review and does not begin 15.1.
