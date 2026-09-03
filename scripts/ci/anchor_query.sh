@@ -148,8 +148,8 @@ if str(reach_log).endswith("anchor_reach_log.tsv") and not reach_log.parent.exis
     reach_log = repo / "scripts" / "ci" / "anchor_reach_log.tsv"
 
 ANCHOR_HEADER = ["anchor_id", "doc", "section", "trigger_domains", "content_hash", "lifecycle"]
-PENDING_RE = re.compile(r"^pending:[A-Z0-9][A-Z0-9-]*-[0-9]+$")
-UNTIL_RE = re.compile(r"^until:[A-Z0-9][A-Z0-9-]*-[0-9]+$")
+sys.path.insert(0, str(pathlib.Path(os.environ["ANCHOR_REPO_ROOT"]) / "scripts/ci"))
+from anchor_lifecycle import PENDING_RE, UNTIL_RE, lifecycle_is_valid  # noqa: E402
 
 
 def normalize_text(raw: bytes) -> str:
@@ -235,7 +235,7 @@ def load_anchors():
                 sys.exit(1)
             seen.add(row["anchor_id"])
             lifecycle = row["lifecycle"].strip()
-            if lifecycle != "canonical" and not PENDING_RE.fullmatch(lifecycle) and not UNTIL_RE.fullmatch(lifecycle):
+            if not lifecycle_is_valid(lifecycle):
                 print("ANCHOR-QUERY-VERDICT: FAIL(anchor-table)")
                 sys.exit(1)
             domains = [d.strip() for d in (row.get("trigger_domains") or "").split(",") if d.strip()]

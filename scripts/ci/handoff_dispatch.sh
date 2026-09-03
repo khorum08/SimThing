@@ -787,6 +787,12 @@ def render_board_markdown(data):
         lines.append("")
     lines.append(f"- track: `{data.get('track', '')}`")
     lines.append(f"- active_pointer: `{data.get('active_pointer', '')}`")
+    pointer_value = str(data.get("active_pointer", "") or "")
+    if pointer_value not in ("", "none") and not data.get("handoff"):
+        # Dispatch window: the pointer names an open rung whose handoff has not
+        # merged yet. This is a lawful WAITING state, never an error (harness fix
+        # session 2026-09-03; the old handoff-status job hard-failed here).
+        lines.append(f"- status: WAITING — dispatch window; `{pointer_value}` awaits its handoff merge")
     lines.append(f"- master_head: `{str(data.get('master_head', ''))[:12]}`")
     est = data.get("execution_status") or {}
     if est:
@@ -859,7 +865,14 @@ def render_board_markdown(data):
     lines.extend(["", "### Leases"])
     leases = (data.get("leases") or {}).get("leases") or []
     if leases:
-        for item in leases:
+        # Clip like the ladder: an unclipped lease ledger (91 rows, 2026-09-03)
+        # blew the 60-line board cap and broke owner-status for every window.
+        lease_tail = leases[:6]
+        if len(leases) > len(lease_tail):
+            lines.append(
+                f"_showing {len(lease_tail)} of {len(leases)} leases; full ledger in closeout_artifacts.tsv._"
+            )
+        for item in lease_tail:
             lines.append(f"- `{item.get('path', '')}` age_days={item.get('age_days')}")
     else:
         lines.append("- none")
