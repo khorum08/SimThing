@@ -665,8 +665,34 @@ mod tests {
         IntegrationScheduleRowKind,
     };
 
+    /// Same-generation publication is UNREPRESENTABLE from outside the core
+    /// crate since 14.6 privatized `IntegrationSchedule.resident_live_head`:
+    /// `record_grant_lifecycle` derives parent = fact.generation + 1 and no
+    /// public door accepts caller-chosen parent/child with an attached fact.
+    /// The old struct-literal fixture no longer compiles:
+    ///
+    /// ```text
+    /// use simthing_core::{
+    ///     GenerationStamp, IntegrationSchedule, IntegrationScheduleEntry,
+    ///     IntegrationScheduleRowKind,
+    /// };
+    /// let malformed = IntegrationSchedule {
+    ///     entries: vec![IntegrationScheduleEntry {
+    ///         kind: IntegrationScheduleRowKind::GrantAccepted,
+    ///         parent_generation: GenerationStamp::new(4),
+    ///         child_generation: GenerationStamp::new(4),
+    ///         product_key: 9,
+    ///         grant_lifecycle_fact: None,
+    ///         resident_clearing_fact: None,
+    ///     }],
+    ///     ..IntegrationSchedule::new()
+    /// };
+    /// ```
+    ///
+    /// The runtime refusal in `from_schedule` stays as in-crate defense; the
+    /// lawful lifecycle door is witnessed to place the fact at N+1.
     #[test]
-    fn same_generation_publication_is_a_named_negative() {
+    fn same_generation_publication_is_unrepresentable_and_lawful_door_lands_at_n_plus_one() {
         let fact = GrantLifecycleFact {
             kind: GrantLifecycleFactKind::Accepted,
             generation: GenerationStamp::new(4),
@@ -685,26 +711,16 @@ mod tests {
             }],
             release_cause: None,
         };
-        let malformed_same_generation_schedule = IntegrationSchedule {
-            entries: vec![IntegrationScheduleEntry {
-                kind: IntegrationScheduleRowKind::GrantAccepted,
-                parent_generation: GenerationStamp::new(4),
-                child_generation: GenerationStamp::new(4),
-                product_key: fact.provenance,
-                grant_lifecycle_fact: Some(fact),
-                resident_clearing_fact: None,
-            }],
-            ..IntegrationSchedule::new()
-        };
-        assert!(matches!(
-            ScheduledGrantLifecycleFacts::from_schedule(
-                &malformed_same_generation_schedule,
-                GenerationStamp::new(4)
-            ),
-            Err(GrantDisbursementError::SameGenerationPublicationForbidden {
-                fact_generation: 4,
-                boundary_generation: 4
-            })
-        ));
+        let mut schedule = IntegrationSchedule::new();
+        schedule
+            .record_grant_lifecycle(fact)
+            .expect("lawful lifecycle recording");
+        let entry = &schedule.entries()[0];
+        assert_eq!(entry.kind, IntegrationScheduleRowKind::GrantAccepted);
+        assert_eq!(entry.parent_generation, GenerationStamp::new(5));
+        assert_eq!(entry.child_generation, GenerationStamp::new(4));
+        let due = ScheduledGrantLifecycleFacts::from_schedule(&schedule, GenerationStamp::new(5))
+            .expect("fact is due exactly at N+1");
+        assert!(!due.is_empty());
     }
 }
