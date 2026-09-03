@@ -471,6 +471,18 @@ pub fn eval_overlay_eml(nodes: &[crate::eml_nodes::EmlNode], current: f32, n: f3
                 stack[sp - 2] = lhs * rhs;
                 sp -= 1;
             }
+            opcode::MIN => {
+                let rhs = stack[sp - 1];
+                let lhs = stack[sp - 2];
+                stack[sp - 2] = lhs.min(rhs);
+                sp -= 1;
+            }
+            opcode::MAX => {
+                let rhs = stack[sp - 1];
+                let lhs = stack[sp - 2];
+                stack[sp - 2] = lhs.max(rhs);
+                sp -= 1;
+            }
             opcode::CMP_GE => {
                 let rhs = stack[sp - 1];
                 let lhs = stack[sp - 2];

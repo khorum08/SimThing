@@ -36,6 +36,7 @@ pub mod owner_silo_accumulator_compile;
 pub mod owner_silo_disburse_down_compile;
 pub mod owner_silo_recursive_source_compile;
 pub mod owner_silo_runtime_writeback_compile;
+pub mod persistence_consequence_ingress;
 pub mod planet_child_rf_accumulator_compile;
 pub mod planet_child_rf_reduce_up_compile;
 pub mod production_path_0080_0;
@@ -269,6 +270,9 @@ pub use owner_silo_runtime_writeback_compile::{
     owner_silo_writeback_aggregate_slot, owner_silo_writeback_aggregate_surplus_tick_inputs,
     OwnerSiloRuntimeWritebackPlan, OwnerSiloWritebackAggregateProofPlan,
 };
+pub use persistence_consequence_ingress::{
+    submit_authored_persistence_consequence, PersistenceConsequenceIngressError,
+};
 pub use planet_child_rf_accumulator_compile::{
     compile_planet_child_rf_gpu_tick_plan, planet_child_rf_aggregate_slot,
     planet_child_rf_deficit_tick_inputs, planet_child_rf_participant_deficit_total,
@@ -442,6 +446,7 @@ pub use session_resource_flow_silos::{
     OwnerSiloFlowMaterializationReport,
 };
 pub use simthing_core::StructuralCoord;
+pub use simthing_feeder::FeederSender;
 pub use simthing_gpu::SlotAllocError;
 pub use simulation_fabric::{
     run_mapping_hot_dispatch, run_simulation_fabric_hot_cycle, run_simulation_fabric_hot_step,

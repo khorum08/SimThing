@@ -20,8 +20,9 @@ use simthing_spec::spec::resource_flow::{
 };
 use simthing_spec::spec::script::PropertyKey;
 use simthing_spec::{
-    ArenaSpec, CapabilityCategorySpec, CapabilitySpec, CapabilityTreeSpec, EnrollmentSelectorSpec,
-    EventSpec, FissionPolicySpec, GameModeSpec, OverlaySpec, PropertySpec, SpecVersion,
+    ArenaSpec, AuthoredPersistenceValuation, CapabilityCategorySpec, CapabilitySpec,
+    CapabilityTreeSpec, EnrollmentSelectorSpec, EventSpec, FissionPolicySpec, GameModeSpec,
+    OverlaySpec, PropertySpec, SpecVersion,
 };
 use simthing_spec::{EffectSpec, ScopeRef, TriggerDirection, TriggerSpec};
 
@@ -1092,13 +1093,21 @@ pub fn compile_persistence_deformation_eml(
     formula: &RateFormulaSpec,
     cap: u32,
 ) -> Result<PersistenceDeformationProgram, HydrateError> {
+    let value_program = compile_persistence_value_program(formula)?;
+    PersistenceDeformationProgram::admit(value_program, cap)
+        .map_err(|error| HydrateError::new(error.to_string()))
+}
+
+fn compile_persistence_value_program(
+    formula: &RateFormulaSpec,
+) -> Result<TransformOp, HydrateError> {
     if formula
         .ops
         .iter()
         .any(|op| matches!(op.operand, RateFormulaOperandSpec::Property(_)))
     {
         return Err(HydrateError::new(
-            "persistence deformation script_value admits literal modifiers only",
+            "persistence script_value admits literal modifiers only",
         ));
     }
     let mut nodes = vec![
@@ -1115,9 +1124,7 @@ pub fn compile_persistence_deformation_eml(
     ];
     append_value_formula_ops(&mut nodes, &formula.ops);
     nodes.push(op_node(eml_nodes::opcode::RETURN_TOP));
-    let value_program = TransformOp::admit_eml(nodes, EmlPerProgramCap::DEFAULT)
-        .map_err(|error| HydrateError::new(error.to_string()))?;
-    PersistenceDeformationProgram::admit(value_program, cap)
+    TransformOp::admit_eml(nodes, EmlPerProgramCap::DEFAULT)
         .map_err(|error| HydrateError::new(error.to_string()))
 }
 
@@ -1130,6 +1137,21 @@ pub fn compile_persistence_deformation_script_value(
     let (id, formula) = parse_script_value(property)?;
     let program = compile_persistence_deformation_eml(&formula, cap)?;
     Ok((id, program))
+}
+
+/// Parse one ordinary ClauseScript `script_value` block and lower the same
+/// ordered modifier chain into the existing consequence valuation. The
+/// resulting type can only value an already-created unresolved observation;
+/// it carries neither a demand product nor the 15.2 deformation-port type.
+pub fn compile_persistence_consequence_script_value(
+    property: &RawProperty,
+    unit_cost: f32,
+) -> Result<(String, AuthoredPersistenceValuation), HydrateError> {
+    let (id, formula) = parse_script_value(property)?;
+    let value_program = compile_persistence_value_program(&formula)?;
+    let valuation = AuthoredPersistenceValuation::new(value_program, unit_cost)
+        .map_err(|error| HydrateError::new(error.to_string()))?;
+    Ok((id, valuation))
 }
 
 fn append_value_formula_ops(nodes: &mut Vec<EmlNodeGpu>, ops: &[RateFormulaOpSpec]) {

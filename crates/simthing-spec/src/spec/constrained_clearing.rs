@@ -690,6 +690,23 @@ pub(crate) fn carry_unresolved_demand_to_next_generation(
 }
 
 /// Authored EML persistence valuation followed by the ordinary CostBand sink.
+///
+/// It cannot substitute for the ordinary demand product:
+///
+/// ```compile_fail,E0308
+/// use simthing_spec::{AuthoredPersistenceValuation, RuntimeOwnerSiloDemandBucket};
+/// fn demand(_: RuntimeOwnerSiloDemandBucket) {}
+/// fn consequence_only(value: AuthoredPersistenceValuation) { demand(value); }
+/// ```
+///
+/// Nor can it enter the separately sealed 15.2 deformation port:
+///
+/// ```compile_fail,E0308
+/// use simthing_core::PersistenceDeformationProgram;
+/// use simthing_spec::AuthoredPersistenceValuation;
+/// fn deform(_: PersistenceDeformationProgram) {}
+/// fn consequence_only(value: AuthoredPersistenceValuation) { deform(value); }
+/// ```
 #[derive(Clone, Debug, PartialEq)]
 pub struct AuthoredPersistenceValuation {
     value_program: TransformOp,
