@@ -9,3 +9,4 @@ compile_fail_line_273	compile_fail_E0451_a7d531a32f9e	crates/simthing-kernel/src
 compile_fail_line_29	compile_fail_E0616_7204f7c296e0	crates/simthing-kernel/src/sealed/band_crossing_delta.rs	5365284584-DA	DOCTRINE-CI-RECONCILE-0
 compile_fail_line_10	compile_fail_E0308_9d8510b2d814	crates/simthing-kernel/src/field_sweep.rs	5365284584-DA	DOCTRINE-CI-RECONCILE-0
 compile_fail_line_20	compile_fail_E0308_8299a8bc0cb1	crates/simthing-kernel/src/field_sweep.rs	5365284584-DA	DOCTRINE-CI-RECONCILE-0
+same_generation_publication_is_a_named_negative	same_generation_publication_is_unrepresentable_and_lawful_door_lands_at_n_plus_one	crates/simthing-sim/src/grant_disbursement.rs	5517298799-DA	RESIDENT-CLEARING-CUTOVER-0
