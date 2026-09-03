@@ -44,6 +44,19 @@ fn add(values: &mut HashMap<CellKey, f32>, slot: SlotId, col: ColumnIndex, delta
     *cell += delta;
 }
 
+/// Executable CPU-oracle form of the recursive resource filter `R_v`.
+///
+/// The up-sweep publishes each subtree's direct-child pressure `P_up`; the
+/// down-sweep emits continuous edge flow `x_(v->c)` through the same child
+/// share law at every depth. The caller-owned cells are the born eligible
+/// state: any PALMA impedance or Gu-Yang serviceability influence has already
+/// entered there and is not solved again by this operator.
+///
+/// Exact possession is deliberately outside `R_v`. Consumers project the
+/// emitted `AllocatedFlow` through the frozen resident quantizer `Q` to obtain
+/// canonical `T_s`; temporal unresolved demand likewise remains on the single
+/// Current-to-Next boundary. No lambda, response curve, or scarcity plane is
+/// represented here: normalized share is implicit in `(weight, weight_sum)`.
 pub fn run_arena_allocation_oracle(
     layout: &ArenaTreeLayout,
     values: &mut HashMap<CellKey, f32>,
