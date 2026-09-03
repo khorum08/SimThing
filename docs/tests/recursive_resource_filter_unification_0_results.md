@@ -8,8 +8,9 @@ Implementation base: `073c82c1226b97c0c694e724cabfc4639c52e115`.
 Initial coding ingress: `ORIENT-RECEIPT a54d4b41439e`, rule stamp `6ecf0749606e5905`, orientation
 digest `910ccc6a8ce02bd3818cbb256006634423b1d7cc6eabd3fe313fa07ced3c0412`.
 After the canonical anchor mutation, fresh coding ingress is `ORIENT-RECEIPT 190e0178bcad`, rule
-stamp `238baeafe1f2f0da`, with the same orientation digest. The immutable Board/PR packet carries this
-fresh receipt.
+stamp `238baeafe1f2f0da`, with regenerated orientation digest
+`2d86845dacf7d4a80f8989db71e0426c1179daa056c587bb31e13adb183521ec`. The immutable Board/PR
+packet carries this fresh receipt.
 
 ## Outcome
 
@@ -179,6 +180,7 @@ healthy canonical pointers with zero orphaned or stale lifecycle pointers.
 - `scripts/ci/doctrine_anchors.tsv`: four lifecycle repoints and hash resync for affected canonical sections.
 - `scripts/ci/constitutional_surfaces.tsv`: exact after-state peer-authority residue row.
 - `docs/sanctioned_surface.md`: generated constitutional surface refresh.
+- `docs/orchestrator_orientation.md`: generated doctrine-anchor source-stamp refresh.
 - `scripts/ci/test_inventory.tsv`, `docs/tests/current_evidence_index.md`, this report, and append-only anchor reach log: evidence registration.
 
 No `.github/workflows/**`, CI shell/Python, exact shader, frozen 14.1 comparator, frozen 14.4/14.5/14.6
@@ -200,6 +202,7 @@ test, frozen 15.0/15.2 proof, Q arithmetic, T_s ABI, workplan pointer, or handof
 | test inventory / drift / lifecycle schema | PASS — 1399/1399; missing 0; extra 0; unledgered 0; stale 0; expired 0 |
 | doctrine anchors | PASS — four Phase-15 anchors canonical; healthy pending 0; orphaned 0; stale 0; curation 88 |
 | sanctioned-surface freshness | PASS |
+| orientation digest freshness | PASS after generated source-stamp refresh |
 | Agent Scan | PASS — doctrine failures 0; doctrine inspect 0; three expected gate-wiring notices for the anchor/surface data ledgers |
 | detachability | N/A — no ClauseThing surface or dependency changed |
 
