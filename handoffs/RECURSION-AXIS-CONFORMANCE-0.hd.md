@@ -26,22 +26,11 @@ Preparation is not execution. N+1 buffers may be prepared resident-side before h
 
 E6 is a semantic STOP. Plant the zero-basis-high-band and mixed-band stranding falsifiers FIRST. After they establish the current behavior, STOP and return the exact result for Owner choice per commitment class. Do not encode DA's lean or any engineering default.
 
-## BINDING 5529092629 — HD-15.5
+**Binding 5529092629 — HD-15.5:** The changed-granter spatial witness must change SEMANTIC SCOPE, not merely the granter argument. Lawful child intake: read immutable G as the exact child budget, retain provenance, and clear child v's OWN market over v's OWN semantic rows and descendants. A planted mutant is REQUIRED: parent grantee v and v's descendant claimant w carry DIFFERENT semantic-row/source identities, and copying the parent's claim identity into v's child market REDs — closing the rename-the-loopback escape.
 
-The changed-granter spatial witness must change SEMANTIC SCOPE, not merely the granter argument. Lawful child intake: read immutable G as the exact child budget, retain provenance, and clear child v's OWN market over v's OWN semantic rows and descendants. A planted mutant is REQUIRED: parent grantee v and v's descendant claimant w carry DIFFERENT semantic-row/source identities, and copying the parent's claim identity into v's child market REDs — closing the rename-the-loopback escape.
+**Required mutants:** (1) temporal recurrence `d(N+1) = G(N) + f(U(N))` RED; (2) spatial T_s intake increments generation RED; (3) spatial child market retains parent granter RED; (4) temporal deformation mutates a T_s-typed payload and calls it recursive supply RED; (5) semantic-scope mutant copying parent claim identity into child market RED; (6) prepared-vs-executes mutant where N+1 result ignores a datum authoritative only at N+1 RED.
 
-## REQUIRED MUTANTS
-
-1. Temporal recurrence `d(N+1) = G(N) + f(U(N))` — RED.
-2. Spatial T_s intake increments generation — RED.
-3. Spatial child market retains parent granter — RED.
-4. Temporal deformation mutates a T_s-typed payload and calls it recursive supply — RED.
-5. Semantic-scope mutant copying parent claim identity into child market — RED.
-6. Prepared-vs-executes mutant: N+1 result ignores a datum authoritative only at N+1 — RED.
-
-## CANONICAL REFEREE
-
-Cross-product witness: nonzero G + nonzero U + nonzero authored N+1 demand + changed child granter + changed semantic scope + production resident runtime. Include CPU/resident temporal parity for 10 requested / 4 granted -> U=6; authored N+1 demand 2 -> effective demand 8; with admitted f(U)=U/2 -> effective demand 5.
+**Canonical referee:** cross-product witness with nonzero G + nonzero U + nonzero authored N+1 demand + changed child granter + changed semantic scope + production resident runtime. Include CPU/resident temporal parity for 10 requested / 4 granted -> U=6; authored N+1 demand 2 -> effective demand 8; with admitted f(U)=U/2 -> effective demand 5.
 
 ## FENCES
 
