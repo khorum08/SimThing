@@ -461,9 +461,8 @@ pub use spec::loaded_scenario_studio_session_envelope::{
 pub use spec::local_allocation_recursive_rf_source::{
     evaluate_runtime_local_allocation_with_rf_source,
     prove_local_allocation_recursive_source_preserves_authority,
-    runtime_local_allocation_from_owner_silo_disburse_report, LocalAllocationRecursiveSourceError,
-    LocalAllocationRecursiveSourceErrorKind, LocalAllocationRfSourceMode,
-    LocalAllocationRfSourceSelection, RuntimeLocalAllocationReport,
+    LocalAllocationRecursiveSourceError, LocalAllocationRecursiveSourceErrorKind,
+    LocalAllocationRfSourceMode, LocalAllocationRfSourceSelection, RuntimeLocalAllocationReport,
     RuntimeLocalAllocationRfSourceReport,
 };
 pub use spec::local_effect_application::{

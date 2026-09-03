@@ -143,6 +143,11 @@ pub struct ResidentClearingRuntime {
     intake_transform_session: Option<ResidentRecursiveIntakeTransformSession>,
 }
 
+/// Canonical Phase-15 API name for the existing resident R->Q executor.
+/// Type identity is deliberate: filter vocabulary adds no adapter, storage,
+/// arithmetic, or second runtime authority.
+pub type RecursiveResourceFilterRuntime = ResidentClearingRuntime;
+
 impl ResidentClearingRuntime {
     #[allow(clippy::too_many_arguments)]
     pub fn admit(

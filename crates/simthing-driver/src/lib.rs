@@ -107,7 +107,10 @@ pub use action_band_semantic_shadow::{
     BoundObservableIdentity, FieldNeutralityGate, SealedActionBandAuthority, SemanticShadowError,
     SemanticallySealedProduction, FIELD_NEUTRALITY_OUTCOME,
 };
-pub use arena_allocation_oracle::{run_arena_allocation_oracle, ArenaAllocationOracleTrace};
+pub use arena_allocation_oracle::{
+    evaluate_recursive_resource_filter_oracle, run_arena_allocation_oracle,
+    ArenaAllocationOracleTrace,
+};
 pub use arena_allocation_plan::{
     max_disbursement_band, plan_arena_allocation, plan_arena_allocation_with_pressure,
     plan_resident_exact_apportionment, AllocationPlanError, ArenaAllocationPlan,
@@ -253,7 +256,7 @@ pub use owner_silo_accumulator_compile::{
     owner_silo_surplus_tick_inputs, OwnerSiloGpuTickPlan,
 };
 pub use owner_silo_disburse_down_compile::{
-    compile_owner_silo_disburse_down_plan, owner_silo_disburse_down_cpu_demand_aggregate_total,
+    owner_silo_disburse_down_cpu_demand_aggregate_total,
     owner_silo_disburse_down_demand_aggregate_slot,
     owner_silo_disburse_down_demand_aggregate_tick_inputs, OwnerSiloDemandAggregateProofPlan,
     OwnerSiloDisburseDownPlan,

@@ -298,7 +298,7 @@ impl GrowthEntitlementMarketBinding {
     /// before this structural boundary materializes the sparse result.
     pub fn resolve_batch_resident(
         &self,
-        runtime: &mut crate::resident_clearing_runtime::ResidentClearingRuntime,
+        runtime: &mut crate::resident_clearing_runtime::RecursiveResourceFilterRuntime,
         allocator: &SlotAllocator,
         generation: GenerationStamp,
         candidates: &[OrdinaryGrowthCandidate],
