@@ -106,3 +106,15 @@ the horizon stays deleted. Its absence is a decision, not an omission.
 
 Sequencing: the held harness fix session (positional identity x2, dispatch-window
 handoff-status, lifecycle grammar in two parsers) is recommended between 15.0 and 15.1.
+
+## 9. Addendum (Owner-approved 2026-09-03) — the persistence deformation port
+
+The row-11 demotion preserved the authored EML/CostBand/Overlay chain but installed no
+deformation hook on the native carry: authored persistence POLICY (decay, expiry,
+saturation) became inexpressible. Remedy rung `PERSISTENCE-DEFORMATION-PORT-0` (15.2):
+the Current->Next door admits an optional sealed EML deformation program applied to the
+carried u inside the single once-mint — absent program = identity, bit-exact; bounded and
+typed; authored through ordinary EML so ClauseScript modifier chains regain persistence
+policy via the same lowering vehicle. 15.0 gains the authored-persistence census
+(consequence-only vs demand-re-injection); re-injection programs migrate to the port.
+The law is unchanged: authored deforms; the substrate creates.
