@@ -24,10 +24,17 @@ implementation. The anatomy, as landed:
   trees as identity (canon §8.2).
 - **The market germ**: one recursively composable constrained-resource filter
 
-      R_v : (S_v, Φ_v, {P_c, F_c, U_c, …}) → (P_up, {x_{v→c}}, U_v)
+      R_{v,N} : (B_{v,N}, Φ_{v,N}, {e_{c,N}}) → (E_{v,N}, {b_{v→c,N}})
 
+  B is the continuous normalization budget, e_c the once-selected P/F eligible
+  scalar, E the direct-child aggregate response, b the continuous AllocatedFlow
+  BASIS — raw U appears NOWHERE in R's same-generation inputs (it is PRODUCED by
+  the exact stage and enters only the temporal mint; engineering amendment 3).
+  Then (T_s, U) = Pi_exact_C(b), and only afterward the temporal law runs.
   Upward projection = the subtree's sufficient response to scarcity. Downward
-  projection = the continuous allocation BASIS/preference measure. The exact stage
+  projection = the continuous allocation BASIS/preference measure — b is never
+  the conserved exact supply; S^exact_{v,N} = G_{p->v,N} is a DIFFERENT symbol
+  by law. The exact stage
   is an **exact constrained projection**, not a mere quantizer (engineering remand,
   adopted):
 
@@ -51,7 +58,8 @@ implementation. The anatomy, as landed:
     substrate creates.** The FORBIDDEN equation is d(N+1) = G(N) + f(U(N)) —
     grants are supply-axis facts and may never manufacture next demand. The two
     axes share one T_s record but are consumed through two conversion-free
-    PROJECTIONS of meaning (G -> child supply; U -> temporal carry); no equation
+    CONSUMERS/VIEWS of one immutable record (G -> child supply; U -> temporal
+    carry — "projection" is reserved by the germ-adapter law); no equation
     ever identifies the axes with each other. **STATUS: the resident
     `dispatch(None)` intake currently violates this (sec 7 E1, STOP; rung 15.5).**
 - **The sufficient statistic** is born state, not new state: typed eligibility selects
@@ -276,7 +284,8 @@ Findings 1-4 above stand; 15.3/15.4 remain correct, orthogonal, and in flight.
 ## 9. Adoption mechanics — **BLOCKED (engineering remand upheld 2026-09-03)**
 
 Adoption and track closeout are BLOCKED until rungs 15.5 (E1/E6), 15.6 (E3/E5/E7),
-and 15.7 (E4/E8) graduate and this document's claims are re-verified against the
+and 15.7 (E4/E8) graduate — sequenced 15.3 -> 15.4 -> 15.5 -> 15.6 -> 15.7 per the
+engineering-approved order — and this document's claims are re-verified against the
 corrected substrate — including the CROSS-PRODUCT witness the remand identified.
 Then: engineering re-review, Owner ruling, one DA flight applying the sec-8
 dispositions (dissolve or anchor). The compression horizon stays unminted; the
