@@ -6,8 +6,10 @@
 > 512 pass / zero red @ `18b99513`). It is presented for engineering review before
 > adoption. On adoption it either DISSOLVES into `simthing_core_design.md` (superseding
 > the sections named in §8) or stands as the anchored unification ADR. Nothing here is
-> aspiration: every claim below is implemented, witnessed, and stamped; the four
-> deviations found by the closing deep-tree review are listed in §7 with dispositions.
+> aspiration EXCEPT where sec 7 says otherwise: the 2026-09-03 engineering remand
+> (cross-rung source review) found the strong claim false in three places and this
+> revision corrects the mathematics accordingly. **ADOPTION AND CLOSEOUT ARE BLOCKED
+> pending rungs 15.5-15.7 (sec 7, findings E1-E9).**
 > Until adoption, canonical law remains `simthing_core_design.md`.
 
 ## 1. The object
@@ -25,10 +27,19 @@ implementation. The anatomy, as landed:
       R_v : (S_v, Φ_v, {P_c, F_c, U_c, …}) → (P_up, {x_{v→c}}, U_v)
 
   Upward projection = the subtree's sufficient response to scarcity. Downward
-  projection = resource flow per child edge. **exact market = Q ∘ R** — exact
-  settlement is the deterministic quantization Q of the filter's downward flow into
-  canonical identity-bearing possession (`T_s`); it is not a second market. There is
-  no clearer. There is no disburser. (Canon §8.4; proven executable, 15.0.)
+  projection = the continuous allocation BASIS/preference measure. The exact stage
+  is an **exact constrained projection**, not a mere quantizer (engineering remand,
+  adopted):
+
+      F_v = Pi_exact_{C(S,r,h)} compose R_v
+
+  where C is the feasible set imposed by ACTUAL conserved supply S, request caps r,
+  and hard precedence h, and Pi_exact is the frozen Q149 + largest-remainder
+  projection (basis_i = min(AllocatedFlow_i, requested_i)). One composition; still
+  no second market; no clearer; no disburser. The prior "Q quantizes the downward
+  flow" phrasing over-claimed: the continuous normalization budget S_R and the
+  conserved supply S_Q are DISTINCT quantities and are never silently identified.
+  (Canon sec 8.4 requires the matching correction at adoption.)
 - **Two recursion axes, both substrate law**:
   - SPATIAL: `x_{p→v} = S_v` at both strata — continuous (the parent's live
     `AllocatedFlow` IS the child allocator's input; no propagated copies) and exact
@@ -37,7 +48,12 @@ implementation. The anatomy, as landed:
     once, inside the single once-mint, where `deform` is an optional sealed EML
     program (absent = identity, bit-exact) whose admission makes `f(0)≠0`
     unrepresentable (`MayCreateWithoutUnresolved`). **Authored deforms; the
-    substrate creates.**
+    substrate creates.** The FORBIDDEN equation is d(N+1) = G(N) + f(U(N)) —
+    grants are supply-axis facts and may never manufacture next demand. The two
+    axes share one T_s record but are consumed through two conversion-free
+    PROJECTIONS of meaning (G -> child supply; U -> temporal carry); no equation
+    ever identifies the axes with each other. **STATUS: the resident
+    `dispatch(None)` intake currently violates this (sec 7 E1, STOP; rung 15.5).**
 - **The sufficient statistic** is born state, not new state: typed eligibility selects
   raw lawful pressure P (entitlement-first) or sealed Gu-Yang serviceable F
   (immediate flow) ONCE into the existing `AllocatorWeight`; λ is implicit in the
@@ -61,7 +77,8 @@ implementation. The anatomy, as landed:
       → born Triad state (STEAD/PALMA/Gu-Yang; admitted field sweeps)
       → typed eligible pressure (P or F, per commitment class) → AllocatorWeight
       → child-share EML on live parent columns → AllocatedFlow      [R downward]
-      → exact quantization Q at ArenaBandLayout::integration_band
+      → exact constrained projection Pi at ArenaBandLayout::integration_band
+          (feasible set = ACTUAL supply + request caps + precedence bands)
           basis = min(AllocatedFlow_i, requested_i), lossless Q149 limbs,
           largest remainder, generation-rotated exact ties, typed refusals
       → canonical T_s appended to the resident live head (bounded, typed egress)
@@ -199,8 +216,51 @@ superseded anatomy; capabilities stranded without ingress. Four findings:
 4. **One noun residue** (canon ~615 "CPU clearer"): CORRECTED 2026-09-03 alongside
    the §1.5 rewrite (finding 1 likewise APPLIED; both landed in the remediation PR).
 
-No finding contradicts a graduated witness; all four are prose/wiring/classification
-residue of the kind this review exists to catch before canonization freezes them.
+**Engineering remand findings (2026-09-03, cross-rung source review; every claim
+below DA-VERIFIED IN SOURCE before acceptance). Core lesson: no single graduated
+witness was false — the defect lived in WITNESS SUBSTITUTION across rungs, and the
+missing object is the cross-product witness (nonzero G + nonzero U + nonzero
+authored next demand + changed child granter + production resident runtime).**
+
+- **E1 (STOP — rung 15.5): the recursion axes are conflated at the resident exact
+  port.** `dispatch(None)` reconstructs next demand as `granted + unresolved` (WGSL
+  read_claim ~334) with scope supply = sum of grants — a same-scope steady-state
+  loopback that is neither the temporal law (`d_auth + f(U)`; the CPU once-mint
+  door implements this CORRECTLY — the two production halves disagree) nor spatial
+  child-market recursion (a changed granter typed-refuses: RecursiveGranterMismatch).
+  Masked because the 15.2 resident witness runs `available: 0` (G = 0 collapses
+  G + f(U) onto f(U)).
+- **E2 (canon; adopted in this revision, code-neutral): Pi_exact, not Q** — sec 1.
+- **E3 (HIGH — rung 15.6): the production resident runtime is a one-resource
+  synthetic flat-star specialization** (hardcoded 1/1/1 budgets, private continuous
+  plane beside the session's real RF state, host-manufactured weights, per-batch
+  plan recompile/upload; authored markets hardcode resident_qualified = false).
+  Lawful as the first specialization; NOT the universal germ this document claimed.
+- **E4 (HIGH — rung 15.7): execution authority sealed at admission, then DROPPED**
+  (drop(binding/context/authority); dispatch takes raw granter+generation with no
+  permit; incarnation hardcoded 1; deterministic default realm gives a
+  clone-collision hazard on (realm, incarnation)).
+- **E5 (HIGH falsifier — rung 15.6): u32->f32 neutral-weight collapse above 2^24**
+  (candidate.quantity() as f32): plant r1=16777217 / r2=16777216 / S=1 — resident R
+  ties where the frozen oracle does not. Falsifier FIRST; the remedy (narrowed
+  claimed domain / exact integer neutral basis / sealed exact path) is an Owner/DA
+  choice AFTER it runs.
+- **E6 (Owner ruling — via 15.5): zero-basis precedence stranding** — lower-band
+  remaining supply subtracts prior REQUESTED, so a zero-basis higher band strands
+  capacity. Reservation law vs work-conserving fallthrough is a semantic decision;
+  DA lean = work-conserving for immediate flow (reservation is entitlement-first
+  territory); the falsifier lands before the ruling.
+- **E7 (HIGH — rung 15.6): resident capacity/shape frozen at open** while the
+  session lawfully grows slots later; witness growth-above-capacity through a
+  lawful rebind, or prove such growth unrepresentable at admission. No middle state.
+- **E8 (rung 15.7): qualification gaps** — the 15.2 deformation shader is OUTSIDE
+  the fingerprint (mutating it does not invalidate qualification), and compiler
+  identity shells out to `rustc -Vv` AT RUNTIME (verified resident_clearing_runtime.rs:49);
+  build-time provenance is required for shipped binaries.
+- **E9 (perf ledger, non-blocking): per-dispatch rebuild of immutable deformation
+  data + the O(n^2 * m) validation shader — dated rows for the performance track.**
+
+Findings 1-4 above stand; 15.3/15.4 remain correct, orthogonal, and in flight.
 
 ## 8. Document disposition map (proposed)
 
@@ -213,9 +273,11 @@ residue of the kind this review exists to catch before canonization freezes them
 | `docs/workshop/SimThing_Unification_Model.md` | superseded as description by this document; retain as the engineering-review record |
 | stead/overlay/EML constitutional docs | untouched; this document cites, never duplicates |
 
-## 9. Adoption mechanics
+## 9. Adoption mechanics — **BLOCKED (engineering remand upheld 2026-09-03)**
 
-Engineering review → Owner ruling → one DA flight: apply §7 dispositions 1/3/4,
-land the §8 status demotions, and either dissolve §§1–6 into core design or anchor
-this document canonical. The closeout ceremony then reaps under the standing
-Owner-gated hold with zero pending anchors, as the lifecycle law requires.
+Adoption and track closeout are BLOCKED until rungs 15.5 (E1/E6), 15.6 (E3/E5/E7),
+and 15.7 (E4/E8) graduate and this document's claims are re-verified against the
+corrected substrate — including the CROSS-PRODUCT witness the remand identified.
+Then: engineering re-review, Owner ruling, one DA flight applying the sec-8
+dispositions (dissolve or anchor). The compression horizon stays unminted; the
+remand strengthens the delete-and-bind-before-adding case.
