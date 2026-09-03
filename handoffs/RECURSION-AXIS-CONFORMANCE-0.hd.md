@@ -1,0 +1,57 @@
+---
+rung: RECURSION-AXIS-CONFORMANCE-0
+kind: rung
+track: 0.0.8.7
+base_sha: 3b0086cee592eb90d812196e787942a9c2bee920
+audience: coding
+model_tier: frontier
+expected_route: DA-RESERVE(binding)
+owner_approved: true
+owner_notes: "DA graduation ruling 5532331425 graduated 15.4 and opened 15.5. Binding scope is the exact 15.5 ladder row, docs/0_0_8_7_SimThing_Unification.md sec 7 findings E1/E6, the simthing_core_design.md sec 8.4 KNOWN REMAND truth marker, and DA acceptance requirements 5529092629. 15.6/15.7 remain fenced."
+surfaces: ["crates/simthing-driver/src/**", "crates/simthing-gpu/src/**", "crates/simthing-spec/src/**", "crates/simthing-core/src/**", "crates/simthing-sim/src/**", "crates/simthing-workshop/tests/**", "docs/tests/**", "scripts/ci/test_inventory.tsv", "scripts/ci/anchor_reach_log.tsv", "scripts/ci/constitutional_surfaces.tsv"]
+forbidden: ["d(N+1) = G(N) + f(U(N)) or any temporal recurrence using grant G as demand carry", "spatial T_s consumption that increments generation", "spatial consumption retaining the parent granter", "temporal policy mutating a T_s-typed payload and treating it as recursive supply", "evaluating N+1 economics before sealed Current N+1, authored N+1 demand, and born N+1 state exist", "host readback as a prerequisite to lawful resident continuation", "any adapter between T_s and child supply or between U and next-generation demand", "second market, second clearer/disburser, second persistence lane, second Current-to-Next mint, or same-generation re-clear", "changing exact constrained projection mechanics, 15.2 admission laws, 15.3 consequence-only law, or any 14.x frozen witness", "implementing 15.6 ResidentMarketQualification/substrate binding, 15.7 authority lifetime, canon rewrite/adoption, compression, pointer movement, graduation, or closeout", "any coding edit to .github/workflows/**, scripts/ci/**/*.sh, or scripts/ci/**/*.py"]
+required_checks: ["render/read this handoff first; carry machine HD-RECEIPT plus fresh coding ORIENT under the current rule stamp and ACK every rendered REQUIRED-ANCHOR", "ARCHAEOLOGY FIRST: map the resident dispatch(None) spatial intake, canonical immutable T_s production, CPU Current-to-Next once-mint, 15.2 persistence deformation port, child granter/scope identity, prepared N+1 inputs, and E6 precedence accounting before changing source", "separate the axes exactly: spatial recursion consumes immutable T_s.G as child supply at the SAME generation N under a CHANGED child granter; temporal recursion alone advances to N+1 as d_effective(N+1)=d_authored(N+1)+f(U(N)) through the existing once-mint", "the 15.2 deformation must consume the U FIELD of immutable T_s inside the once-mint and emit ordinary demand; never mutate/copy T_s into a pseudo-T_s with modified U", "PREPARED-VS-EXECUTES law: preparing N+1 resident inputs during N is lawful, evaluating N+1 economics is not; plant a datum authoritative only at N+1 and prove changing it changes the N+1 result", "resident/CPU temporal parity must be bit-for-bit against the already-correct CPU once-mint door", "plant all four forbidden-shape mutants and prove RED: G+f(U) temporal recurrence; generation-incrementing spatial T_s consumption; parent-granter retention in child market; mutated T_s as temporal recursive supply", "BOUND ACCEPTANCE REQUIREMENT 5529092629 VERBATIM: the changed-granter spatial witness must change SEMANTIC SCOPE, not merely the granter argument. Lawful child intake: read immutable G as the exact child budget, retain provenance, and clear child v's OWN market over v's OWN semantic rows and descendants. A planted mutant is REQUIRED: parent grantee v and v's descendant claimant w carry DIFFERENT semantic-row/source identities, and copying the parent's claim identity into v's child market REDs — closing the rename-the-loopback escape.", "CROSS-PRODUCT CANONICAL REFEREE: nonzero G + nonzero U + nonzero authored N+1 demand + changed child granter + production resident runtime; include temporal 10/4 -> U6, authored2 -> demand8 and deformed temporal f=U/2 -> demand5 on resident AND CPU", "E6 FIRST: plant zero-basis-high-band and mixed-band stranding falsifiers before any remedy; once the falsifiers establish current behavior, STOP for Owner ruling on commitment-class law. Do not choose work-conserving vs entitlement-first semantics yourself", "preserve the sec 8.4 KNOWN REMAND block as implementation-truth routing; do not rewrite canon in this rung", "rerun frozen 14.5 parity, 14.6 resident causal/self-consumption/tree-isolation, 15.0 theorem/census, 15.1 filter closure, 15.2 persistence witnesses, 15.3 consequence ingress, 15.4 oracle quarantine, generation pacing, qualification tuple, and authority census", "run focused 15.5 referee, touched-package checks, full structural battery, inventory/drift, constitutional/census selftests, anchor/lifecycle/sanctioned-surface checks, detachability, Agent Scan, hosted Doctrine Scan/Exec, then fresh exact-head /clearance and /relay-lint", "return PROBATION / proof-present / DA-review-pending / UNMERGED with exact base/head, HD/ORIENT receipts, archaeology map, spatial and temporal call graphs, canonical cross-product transcript, prepared-vs-executes witness, four-mutant matrix, semantic-scope mutant proof, resident/CPU parity transcript, E6 falsifier transcript and explicit Owner-STOP posture, changed-file census, FULL ZERO-RED certificate, hosted IDs, clearance and relay-lint"]
+stop_conditions: ["any of the four forbidden-shape mutants cannot be made mechanically RED", "resident temporal semantics cannot be aligned to the CPU once-mint without changing frozen exact settlement or 15.2 admission law", "literal spatial recursion requires an adapter or copied economic payload rather than immutable T_s identity", "the changed-child-granter witness does not also change semantic scope/row identity", "the N+1-authoritative-datum falsifier shows N+1 economics execute before the authoritative datum exists", "E6 falsifiers do not reproduce the documented stranding behavior; stop and return contradiction", "after E6 falsifiers run, coding attempts to select the commitment-class semantic law instead of stopping for Owner ruling", "any required frozen witness, structural certificate, doctrine/anchor/inventory check, hosted gate, clearance, or relay lint is red"]
+---
+
+## BUILD
+
+This is the closeout-blocking deep remediation. The defect is cross-rung witness substitution, not a failed isolated witness. Two recursion axes must be disentangled at the resident exact port while preserving ONE immutable canonical T_s and ZERO adapters.
+
+Spatial law at generation N: the parent's canonical T_s edge product is immutable; its granted quantity G is the child's exact budget at the SAME generation, under a CHANGED child granter and child semantic scope. The child clears its OWN market over its OWN semantic rows/descendants. Provenance is retained; economic identity is not copied from the parent claim.
+
+Temporal law alone advances generations: U(N) crosses the existing Current-to-Next once-mint into ordinary N+1 demand as d_authored(N+1)+f(U(N)). The 15.2 policy deforms U inside that mint. It must never turn T_s into a mutable pseudo-product.
+
+Preparation is not execution. N+1 buffers may be prepared resident-side before host materialization, but N+1 economics cannot run until sealed Current N+1, authored N+1 demand, and born N+1 state exist.
+
+E6 is a semantic STOP. Plant the zero-basis-high-band and mixed-band stranding falsifiers FIRST. After they establish the current behavior, STOP and return the exact result for Owner choice per commitment class. Do not encode DA's lean or any engineering default.
+
+## BINDING 5529092629 — HD-15.5
+
+The changed-granter spatial witness must change SEMANTIC SCOPE, not merely the granter argument. Lawful child intake: read immutable G as the exact child budget, retain provenance, and clear child v's OWN market over v's OWN semantic rows and descendants. A planted mutant is REQUIRED: parent grantee v and v's descendant claimant w carry DIFFERENT semantic-row/source identities, and copying the parent's claim identity into v's child market REDs — closing the rename-the-loopback escape.
+
+## REQUIRED MUTANTS
+
+1. Temporal recurrence `d(N+1) = G(N) + f(U(N))` — RED.
+2. Spatial T_s intake increments generation — RED.
+3. Spatial child market retains parent granter — RED.
+4. Temporal deformation mutates a T_s-typed payload and calls it recursive supply — RED.
+5. Semantic-scope mutant copying parent claim identity into child market — RED.
+6. Prepared-vs-executes mutant: N+1 result ignores a datum authoritative only at N+1 — RED.
+
+## CANONICAL REFEREE
+
+Cross-product witness: nonzero G + nonzero U + nonzero authored N+1 demand + changed child granter + changed semantic scope + production resident runtime. Include CPU/resident temporal parity for 10 requested / 4 granted -> U=6; authored N+1 demand 2 -> effective demand 8; with admitted f(U)=U/2 -> effective demand 5.
+
+## FENCES
+
+- one immutable T_s; two consumers/views: same-generation spatial child budget and temporal U field into the once-mint.
+- spatial recursion changes granter and semantic scope; temporal recursion changes generation.
+- no adapter, pseudo-T_s, second demand universe, second carry, or same-generation economic loop.
+- exact projection mechanics and all graduated 14.x/15.0-15.4 laws remain frozen.
+- 15.6/15.7 and canon adoption are not in flight.
+- coding does not merge, graduate, move pointer, or close the track.
+
+## EXIT-PROOF
+
+Before E6 adjudication: all spatial/temporal conformance work and falsifiers are proof-present and ZERO-RED, including the cross-product referee, semantic-scope mutant, prepared-vs-executes witness, four forbidden-shape mutants, and resident/CPU temporal parity. Then E6 falsifiers run. If they reproduce the documented stranding defect, coding STOPS unmerged for the Owner's commitment-class ruling before any E6 semantic remedy. After Owner ruling, the same branch/rung may continue only under that explicit decision and must return the full exact-head proof packet for DA graduation.
