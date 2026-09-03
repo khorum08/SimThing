@@ -80,10 +80,10 @@ included where they are part of the authority posture. Definitions are not count
 | `ResidentRecursiveSupplyIntake` | resident recursive intake and frozen proofs | child supply role view of the same T_s | **REHOME/ALIAS** already conversion-free |
 | `ResidentClearingBatchBinding` | `resolve_batch_resident`; resident admission tests | root physical/claim binding into the same operator | **KEEP-CANONICAL**; not an economic translator |
 | `ResidentClearingReplayEnvelope` | resident live-head transport and 14.6 seam proof | replay/transport envelope | **KEEP-CANONICAL** non-economic transport |
-| `clear_constrained_claims_at_generation` | driver `growth_entitlement`; spec `runtime_rf_tick`; embedder `run`; proof corpus | primary generalized CPU compatibility door | **KEEP-ORACLE-QUARANTINED** |
+| `clear_constrained_claims_at_generation` | driver `growth_entitlement`; spec `runtime_rf_tick`; explicit embedder `run::cpu_filter_oracle`; proof corpus | primary generalized CPU compatibility door | **KEEP-ORACLE-QUARANTINED** |
 | `clear_reduced_owner_channels` | 11.2f proof and frozen 14.1 comparator | generationless compatibility door | **KEEP-ORACLE-QUARANTINED** |
 | `clear_reduced_owner_channels_at_generation` | frozen 14.1/14.5 proofs | generation-aware compatibility door | **KEEP-ORACLE-QUARANTINED** |
-| `clear_stamped_owner_channels` | driver germ proof, embedder vendor door, frozen comparator | stamped compatibility door | **KEEP-ORACLE-QUARANTINED** |
+| `clear_stamped_owner_channels` | driver germ proof and frozen comparator; no embedder re-export after 15.4 | stamped compatibility door | **KEEP-ORACLE-QUARANTINED** |
 | `produce_runtime_rf_next_generation_demands` | driver `runtime_rf_tick_compile`; frozen comparator | CPU Current->Next reference door | **KEEP-ORACLE-QUARANTINED**; 15.2 semantics frozen |
 | `produce_runtime_rf_next_generation_demands_for_tick` | frozen 15.0, 15.2, 14.5 and 14.3 witnesses | driver wrapper over the one temporal reference door | **KEEP-ORACLE-QUARANTINED** |
 | `apply_owner_silo_runtime_disburse_down_cpu` | automaton reception, driver compile plan, legacy spec/report/scenario paths, proof tests | pre-cutover CPU disburser/reference | **KEEP-ORACLE-QUARANTINED**; still-required compatibility witness, counted after |
@@ -122,10 +122,10 @@ public/runtime nouns were removed and two aliases added: the literal noun budget
 
 | Symbol | Runtime/source callers after | Current role | Quarantine mechanism | Architecture status after |
 |---|---|---|---|---|
-| `clear_constrained_claims_at_generation` | driver `growth_entitlement`; spec `runtime_rf_tick`; embedder vendor route; proofs | primary generalized CPU clearer | `CPU-CLEARING-ORACLE-DOORS=5`; explicit CPU posture/caller census | reference Q-side compatibility; not architecture |
+| `clear_constrained_claims_at_generation` | driver `growth_entitlement`; spec `runtime_rf_tick`; explicit embedder `run::cpu_filter_oracle`; proofs | primary generalized CPU clearer | `CPU-CLEARING-ORACLE-DOORS=5`; explicit CPU posture/caller/re-export census | reference Q-side compatibility; not architecture |
 | `clear_reduced_owner_channels` | proof/comparator only | generationless reduced-channel bridge | same five-door row; no ordinary driver caller | compatibility proof only; not architecture |
 | `clear_reduced_owner_channels_at_generation` | proof/comparator only | generation-aware reduced-channel bridge | same five-door row; no ordinary driver caller | compatibility proof only; not architecture |
-| `clear_stamped_owner_channels` | embedder vendor route and proof/comparator | stamped reduced-channel bridge | same five-door row; no ordinary driver caller | compatibility proof only; not architecture |
+| `clear_stamped_owner_channels` | proof/comparator only; no embedder re-export after 15.4 | stamped reduced-channel bridge | same five-door row; no ordinary driver caller | compatibility proof only; not architecture |
 | `produce_runtime_rf_next_generation_demands` | driver `runtime_rf_tick_compile`; proof comparator | CPU temporal recurrence reference | five-door row plus `CPU-CLEARING-ORACLE-CALL-SITES=2` | reference Current->Next door; not a second filter |
 
 The row remains exactly five; the driver caller census remains exactly the two already-authorized

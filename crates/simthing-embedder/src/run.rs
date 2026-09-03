@@ -1,4 +1,16 @@
 //! **Run** — one initialize/start/tick/serialize lifecycle.
+//!
+//! CPU clearing remains reference-oracle vocabulary, not ordinary embedding
+//! architecture. The one retained Vendor Door oracle view is explicitly named
+//! [`cpu_filter_oracle`]; the former unqualified paths are sealed absent:
+//!
+//! ```compile_fail,E0432
+//! use simthing_embedder::run::clear_constrained_claims_at_generation;
+//! ```
+//!
+//! ```compile_fail,E0432
+//! use simthing_embedder::run::clear_stamped_owner_channels;
+//! ```
 
 use std::path::Path;
 use thiserror::Error;
@@ -12,10 +24,17 @@ pub use simthing_driver::{
 pub use simthing_gpu::{ResidencyPlacementDisposition, ResidencyPlacementOutcome};
 pub use simthing_sim::{ReplayDriver, ReplayError, ReplayFrame, ReplaySnapshot};
 pub use simthing_spec::{
-    clear_constrained_claims_at_generation, clear_stamped_owner_channels, AuthoredClearingProgram,
-    ClearingRemainderAuthority, ConstrainedClaim, ConstrainedClearingError,
-    ConstrainedClearingResult, ConstrainedGrant, GameModeSpec,
+    AuthoredClearingProgram, ClearingRemainderAuthority, ConstrainedClaim,
+    ConstrainedClearingError, ConstrainedClearingResult, ConstrainedGrant, GameModeSpec,
 };
+
+/// Explicit reference-oracle vocabulary for embedding proofs.
+///
+/// This is a conversion-free item alias. It owns no clearing semantics, state,
+/// adapter, wrapper, or runtime authority.
+pub mod cpu_filter_oracle {
+    pub use simthing_spec::clear_constrained_claims_at_generation;
+}
 
 #[derive(Debug, Error)]
 pub enum InitializeError {

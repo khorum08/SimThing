@@ -117,10 +117,10 @@ base `62529076`. 14.6 dispositions are recorded, not performed.
 
 | Symbol | Path | Generation authority | Posture | Callers | 14.6 |
 |---|---|---|---|---|---|
-| `clear_constrained_claims_at_generation` | `crates/simthing-spec/src/spec/constrained_clearing.rs:254` | caller `ClearingRemainderAuthority` | ordinary production CPU-host door | production `growth_entitlement.rs`; wrapper `clear_reduced_owner_channels_at_generation`; tests listed in the census artifact; re-export spec + embedder `run.rs` | narrow behind `CpuVendorizedOracle` |
+| `clear_constrained_claims_at_generation` | `crates/simthing-spec/src/spec/constrained_clearing.rs:254` | caller `ClearingRemainderAuthority` | ordinary production CPU-host door | production `growth_entitlement.rs`; wrapper `clear_reduced_owner_channels_at_generation`; tests listed in the census artifact; re-export spec + explicit embedder `run::cpu_filter_oracle` alias | narrow behind `CpuVendorizedOracle` |
 | `clear_reduced_owner_channels` | `crates/simthing-spec/src/spec/constrained_clearing.rs:420` | generationless: granter raw 0, generation 0 | compatibility shim / test oracle | test `contention_arena_executed_0.rs`; re-export spec lib.rs + spec/mod.rs | **DELETE** |
 | `clear_reduced_owner_channels_at_generation` | `crates/simthing-spec/src/spec/constrained_clearing.rs:437` | caller authority; converts reduce-up via `from_runtime_demand` then the ordinary door | conversion wrapper | generationless shim + `clear_stamped_owner_channels` | narrow behind `CpuVendorizedOracle` (or delete once callers are gone) |
-| `clear_stamped_owner_channels` | `crates/simthing-spec/src/spec/constrained_clearing.rs:488` | generation from `StampedReduceUpProduct` | canonical stamped-RF market binding | germ `stemthing_b_flow_market_germ_0.rs`; re-export spec + embedder `run.rs` | narrow behind `CpuVendorizedOracle` |
+| `clear_stamped_owner_channels` | `crates/simthing-spec/src/spec/constrained_clearing.rs:488` | generation from `StampedReduceUpProduct` | canonical stamped-RF market binding | germ `stemthing_b_flow_market_germ_0.rs`; re-export spec only; unused embedder re-export removed at 15.4 | narrow behind `CpuVendorizedOracle` |
 
 No additional public `clear_*` host-clearing entry exists on this base.
 
