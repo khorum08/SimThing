@@ -163,7 +163,10 @@ def discovered_items(base: pathlib.Path) -> tuple[set[tuple[str, str, str, str]]
                     continue
                 items.add((crate_for(rel), norm(rel), identity, "compile_fail"))
             if "trybuild::TestCases" in line or ".compile_fail(" in line:
-                items.add((crate_for(rel), norm(rel), f"trybuild_line_{index + 1}", "trybuild"))
+                # Content-hash identity, never line-keyed (positional-identity
+                # defect class; harness fix session 2026-09-03).
+                tb_digest = hashlib.sha256(line.strip().encode("utf-8")).hexdigest()[:12]
+                items.add((crate_for(rel), norm(rel), f"trybuild_{tb_digest}", "trybuild"))
     fixtures = sorted((base / "scripts/ci/fixtures").glob("**/*"))
     for path in fixtures:
         if path.is_file():

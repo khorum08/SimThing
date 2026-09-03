@@ -89,8 +89,8 @@ resync_dry_run = os.environ.get("ANCHOR_RESYNC_DRY_RUN", "0") == "1"
 gen_orientation = pathlib.Path(os.environ["ANCHOR_GEN_ORIENTATION"])
 bash_bin = os.environ.get("ANCHOR_BASH", "bash")
 ANCHOR_HEADER = ["anchor_id", "doc", "section", "trigger_domains", "content_hash", "lifecycle"]
-PENDING_RE = re.compile(r"^pending:([A-Z0-9][A-Z0-9-]*-[0-9]+)$")
-UNTIL_RE = re.compile(r"^until:([A-Z0-9][A-Z0-9-]*-[0-9]+)$")
+sys.path.insert(0, str(pathlib.Path(os.environ["ANCHOR_REPO_ROOT"]) / "scripts/ci"))
+from anchor_lifecycle import PENDING_RE, UNTIL_RE, lifecycle_is_valid  # noqa: E402
 CANONIZATION_RUNG = "CORE-CANONIZATION-0"
 
 
@@ -193,7 +193,7 @@ def load_rows():
                 fail("anchor-table")
             seen.add(row["anchor_id"])
             lifecycle = row["lifecycle"].strip()
-            if lifecycle != "canonical" and not PENDING_RE.fullmatch(lifecycle) and not UNTIL_RE.fullmatch(lifecycle):
+            if not lifecycle_is_valid(lifecycle):
                 fail("anchor-table")
             rows.append(row)
     if not rows:

@@ -9,6 +9,8 @@ readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 readonly SCAN_SH="${SCRIPT_DIR}/doctrine_scan.sh"
 readonly FIXTURES_ROOT="${SCRIPT_DIR}/fixtures/agent_scan"
+PYTHON_BIN="${PYTHON_BIN:-python}"
+command -v "$PYTHON_BIN" >/dev/null 2>&1 || PYTHON_BIN=python3
 
 usage() {
   cat <<'EOF'
@@ -104,6 +106,83 @@ run_agent_scan() {
   # Nonzero scanner exit forces FAIL even if parse missed.
   if [[ "$exit_code" -ne 0 ]]; then
     agent_verdict="FAIL"
+  fi
+
+  # Edit-tier envelope check (harness fix session 2026-09-03): the same
+  # class_predicates.tsv forbidden_globs and gate_wiring_paths.txt data that
+  # clearance enforces at ROUTING time, surfaced here at EDIT time so a coder
+  # never spends a flight on an envelope the gate would reserve. glob_match is
+  # copied verbatim from clearance_check.sh's generic engine (semantic parity).
+  local envelope_out forbidden_edits gate_edits
+  envelope_out="$("$PYTHON_BIN" - "$SCRIPT_DIR/class_predicates.tsv" "$SCRIPT_DIR/gate_wiring_paths.txt" "$(git -C "$REPO_ROOT" diff --name-only "$base_sha" "$head_sha" | tr -d '\r')" <<'PY'
+import csv
+import fnmatch
+import sys
+from pathlib import PurePosixPath
+
+predicates_tsv, gate_file, files_blob = sys.argv[1], sys.argv[2], sys.argv[3]
+files = [f.strip().replace("\\", "/") for f in files_blob.splitlines() if f.strip()]
+
+
+def glob_match(path: str, pattern: str) -> bool:
+    p = PurePosixPath(path)
+    if p.match(pattern):
+        return True
+    if "**" in pattern:
+        prefix = pattern.split("**", 1)[0]
+        if prefix and path.startswith(prefix):
+            return True
+    return fnmatch.fnmatch(path, pattern.replace("**", "*"))
+
+
+def any_glob(path, globs):
+    return any(glob_match(path, g) for g in globs)
+
+
+rows = []
+try:
+    with open(predicates_tsv, encoding="utf-8", newline="") as fh:
+        for row in csv.reader(fh, delimiter="\t"):
+            if not row or row[0] == "class_id" or len(row) < 6:
+                continue
+            rows.append(
+                {
+                    "class_id": row[0],
+                    "match": [g.strip() for g in row[1].split("|") if g.strip()],
+                    "forbidden": [g.strip() for g in row[3].split("|") if g.strip()],
+                }
+            )
+except OSError:
+    rows = []
+
+for pred in rows:
+    if not any(any_glob(f, pred["match"]) for f in files):
+        continue
+    for f in files:
+        if any_glob(f, pred["forbidden"]):
+            print(f"FORBIDDEN-EDIT class={pred['class_id']} file={f}")
+
+gate_paths = []
+try:
+    with open(gate_file, encoding="utf-8") as fh:
+        gate_paths = [l.strip() for l in fh if l.strip() and not l.startswith("#")]
+except OSError:
+    gate_paths = []
+for f in files:
+    if f in gate_paths:
+        print(f"GATE-WIRING-EDIT file={f}")
+PY
+)"
+  forbidden_edits="$(printf '%s\n' "$envelope_out" | grep -c '^FORBIDDEN-EDIT' || true)"
+  gate_edits="$(printf '%s\n' "$envelope_out" | grep -c '^GATE-WIRING-EDIT' || true)"
+  if [[ -n "$envelope_out" ]]; then
+    printf '%s\n' "$envelope_out" | sed 's/^FORBIDDEN-EDIT/AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time):/; s/^GATE-WIRING-EDIT/AGENT-SCAN GATE-WIRING NOTICE (DA lane required; clearance will DA-RESERVE):/'
+  fi
+  if [[ "$forbidden_edits" -gt 0 ]]; then
+    agent_verdict="FAIL"
+  fi
+  if [[ "$gate_edits" -gt 0 ]]; then
+    inspect=$((inspect + gate_edits))
   fi
 
   printf 'AGENT-SCAN-VERDICT: %s delta_inspect=%s elapsed=%ss\n' \

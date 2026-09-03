@@ -11,51 +11,12 @@ if ! command -v "$PYTHON_BIN" >/dev/null 2>&1; then
   PYTHON_BIN="python"
 fi
 
-GATE_WIRING_PATHS=(
-  "scripts/ci/clearance_check.sh"
-  "scripts/ci/track_closeout.sh"
-  "scripts/ci/artifact_provenance_check.py"
-  "scripts/ci/scenario_residue_check.sh"
-  "scripts/ci/detachability_check.sh"
-  "scripts/ci/compile_fail_error_identity_check.sh"
-  "scripts/ci/constitutional_surface_check.sh"
-  "scripts/ci/constitutional_surfaces.tsv"
-  "scripts/ci/allow/contention_mechanisms.txt"
-  "scripts/ci/allow/kernel_surface.txt"
-  "scripts/ci/allow/sealed_types.txt"
-  "scripts/ci/allow/sealed_producers.txt"
-  "scripts/ci/librarian.sh"
-  "scripts/ci/precedented_classes.tsv"
-  "scripts/ci/class_predicates.tsv"
-  "scripts/ci/binding_conditions.tsv"
-  "scripts/ci/clearance_ledger.tsv"
-  "scripts/ci/doctrine_anchors.tsv"
-  "scripts/ci/anchor_triggers.tsv"
-  "scripts/ci/anchor_reach_log.tsv"
-  "scripts/ci/anchor_query.sh"
-  "scripts/ci/anchor_check.sh"
-  "scripts/ci/scans.tsv"
-  ".github/workflows/doctrine-exec-commands.yml"
-  ".github/workflows/clearance.yml"
-  "scripts/ci/doctrine_exec_commands.sh"
-  "scripts/ci/doctrine_exec_clearance.sh"
-  "scripts/ci/doctrine_exec_clearance_comment.sh"
-  "scripts/ci/doctrine_exec_triage.sh"
-  "scripts/ci/clearance_comment.sh"
-  "scripts/ci/triage_log_check.sh"
-  "scripts/ci/doc_budget_check.sh"
-  "scripts/ci/doc_budget_baseline.tsv"
-  "scripts/ci/rule_expiry_check.sh"
-  "scripts/ci/agents_stub_check.sh"
-  "scripts/ci/da_treeverify.sh"
-  "scripts/ci/da_treeverify_lib.py"
-  "scripts/ci/da_review_profile.tsv"
-  "scripts/ci/agent_scan.sh"
-  "scripts/ci/relay_lint.sh"
-  "docs/handoff_template.md"
-  "docs/agent_onboarding.md"
-  "AGENTS.md"
-)
+GATE_WIRING_PATHS_FILE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/gate_wiring_paths.txt"
+GATE_WIRING_PATHS=()
+while IFS= read -r _gw_line; do
+  [[ -z "$_gw_line" || "$_gw_line" == \#* ]] && continue
+  GATE_WIRING_PATHS+=("$_gw_line")
+done < "$GATE_WIRING_PATHS_FILE"
 
 ENGINE_CRATE_PREFIXES=(
   "crates/simthing-kernel/"

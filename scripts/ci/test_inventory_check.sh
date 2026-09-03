@@ -274,7 +274,10 @@ def discovered_items() -> set[tuple[str, str, str, str]]:
                     continue
                 items.add((crate_for(rel), norm(rel), identity, "compile_fail"))
             if "trybuild::TestCases" in line or ".compile_fail(" in line:
-                items.add((crate_for(rel), norm(rel), f"trybuild_line_{index + 1}", "trybuild"))
+                # Content-hash identity, never line-keyed (positional-identity
+                # defect class; harness fix session 2026-09-03).
+                tb_digest = hashlib.sha256(line.strip().encode("utf-8")).hexdigest()[:12]
+                items.add((crate_for(rel), norm(rel), f"trybuild_{tb_digest}", "trybuild"))
     fixtures = sorted((root / "scripts/ci/fixtures").glob("**/*"))
     for path in fixtures:
         if path.is_file():
@@ -301,6 +304,11 @@ else:
             errors.append(f"line {line_no}: duplicate inventory key {key}")
         seen.add(key)
         inventory_by_key[key] = row
+        if re.search(r"_line_\d+$", row["test_name"]):
+            errors.append(
+                f"line {line_no}: line-keyed test identity {row['test_name']} refused"
+                " (positional-identity class; use symbol or content-hash identity)"
+            )
         if row["kind"] not in allowed_kind:
             errors.append(f"line {line_no}: invalid kind {row['kind']}")
         if row["class"] not in allowed_class:
