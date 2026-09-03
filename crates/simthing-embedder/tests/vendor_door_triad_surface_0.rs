@@ -159,7 +159,7 @@ fn recursive_non_residency_grant() -> u32 {
         run::ConstrainedClaim::from_runtime_demand(&child_draw.demand, child_draw.order_weight)
             .expect("graduated constrained claim");
     let program = run::AuthoredClearingProgram::new(TransformOp::set(1.0));
-    let root_clear = run::clear_constrained_claims_at_generation(
+    let root_clear = run::cpu_filter_oracle::clear_constrained_claims_at_generation(
         &[populate::ConstrainedSupply {
             scope: root_scope,
             available: 8,
@@ -171,7 +171,7 @@ fn recursive_non_residency_grant() -> u32 {
             generation: populate::GenerationStamp::new(4),
         },
     )
-    .expect("Run delegates the existing conserved clear");
+    .expect("Run's explicit CPU filter oracle delegates the existing conserved clear");
     let child_grant = &root_clear[0].grants[0];
     assert_eq!((child_grant.granted, root_clear[0].remaining_after), (6, 2));
     let mut lifecycle_schedule = derive::IntegrationSchedule::new();
@@ -200,7 +200,7 @@ fn recursive_non_residency_grant() -> u32 {
         descendant_draw.order_weight,
     )
     .expect("same constrained claim grammar");
-    let descendant_clear = run::clear_constrained_claims_at_generation(
+    let descendant_clear = run::cpu_filter_oracle::clear_constrained_claims_at_generation(
         &[populate::ConstrainedSupply {
             scope: child_scope,
             available: accepted_child.quantity(),

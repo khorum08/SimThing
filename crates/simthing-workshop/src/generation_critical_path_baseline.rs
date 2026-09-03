@@ -69,13 +69,14 @@ pub const RESOURCE: &str = "ore";
 pub const OVERLAPPING_RAW: u32 = 7;
 
 /// Mechanically sourced host-clearing-door census at dispatch base `62529076`.
+/// Re-export fields carry the live 15.4 quarantine disposition.
 pub const HOST_CLEARING_DOOR_CENSUS: [ClearingDoorCensusRow; 5] = [
     ClearingDoorCensusRow {
         symbol: "clear_constrained_claims_at_generation",
         path: "crates/simthing-spec/src/spec/constrained_clearing.rs",
         line: 274,
         generation_authority_form: "caller-supplied ClearingRemainderAuthority { granter, generation }",
-        reexports: "simthing-spec lib.rs + spec/mod.rs; simthing-embedder run.rs",
+        reexports: "simthing-spec lib.rs + spec/mod.rs; simthing-embedder run::cpu_filter_oracle",
         callers: "production: simthing-driver/src/growth_entitlement.rs; wrapper: clear_reduced_owner_channels_at_generation; tests: contention_arena_executed_0, clearing_weight_span_unification_0, clearing_weight_deformation_lifecycle_0, stemthing_b_flow_market_germ_0, stemthing_b_vram_residency_0, grant_disbursement_lane_0, unified_facility_convergence_witness_0, protected_representative_restore, vendor_door_triad_surface_0",
         ordinary_or_oracle_posture: "ordinary production CPU-host clearing door",
         disposition_14_6: "narrow behind CpuVendorizedOracle; production migrates to the 14.2+ resident germ",
@@ -105,7 +106,7 @@ pub const HOST_CLEARING_DOOR_CENSUS: [ClearingDoorCensusRow; 5] = [
         path: "crates/simthing-spec/src/spec/constrained_clearing.rs",
         line: 509,
         generation_authority_form: "generation taken from StampedReduceUpProduct; granter supplied by caller",
-        reexports: "simthing-spec lib.rs + spec/mod.rs; simthing-embedder run.rs",
+        reexports: "simthing-spec lib.rs + spec/mod.rs",
         callers: "test/germ: stemthing_b_flow_market_germ_0.rs; no other production caller on this base",
         ordinary_or_oracle_posture: "canonical stamped-RF market binding over the ordinary door",
         disposition_14_6: "narrow behind CpuVendorizedOracle",
