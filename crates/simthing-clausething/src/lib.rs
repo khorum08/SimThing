@@ -87,10 +87,11 @@ pub use hydrate_scenario::{
     PR4_MAX_SCENARIO_FIELD_OPERATORS,
 };
 pub use hydrate_shipsize_decoder::{
-    compile_persistence_deformation_eml, compile_persistence_deformation_script_value,
-    compile_value_formula_eml, decode_ship_modifier_key, decode_ship_modifier_key_spanned,
-    hydrate_shipsize_decoder_pack, DecodedShipModifierKey, HydratedShipsizeDecoderPack,
-    ShipModifierFamily, ShipModifierOp, MAX_SHIP_EML_NODES, SHIP_MODIFIER_ATTRIBUTES,
+    compile_persistence_consequence_script_value, compile_persistence_deformation_eml,
+    compile_persistence_deformation_script_value, compile_value_formula_eml,
+    decode_ship_modifier_key, decode_ship_modifier_key_spanned, hydrate_shipsize_decoder_pack,
+    DecodedShipModifierKey, HydratedShipsizeDecoderPack, ShipModifierFamily, ShipModifierOp,
+    MAX_SHIP_EML_NODES, SHIP_MODIFIER_ATTRIBUTES,
 };
 pub mod clause_scenario_projection;
 pub use clause_scenario_projection::{

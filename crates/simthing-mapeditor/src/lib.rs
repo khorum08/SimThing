@@ -4,6 +4,7 @@
 //! render/UI metatable. Bevy transforms and visual z-height are render-only — never structural truth.
 
 pub mod camera_control;
+pub mod clause_persistence_consequence;
 pub mod clause_scenario_ingest;
 pub mod clause_scenario_picker;
 pub mod dialog;
@@ -71,6 +72,9 @@ pub fn run() {
     std::process::exit(1);
 }
 
+pub use clause_persistence_consequence::{
+    submit_clause_persistence_consequence_script_value, ClausePersistenceConsequenceError,
+};
 pub use clause_scenario_ingest::{
     ingest_clause_scenario_bytes, ingest_clause_scenario_path,
     load_clause_studio_session_from_path, load_studio_session_from_clause_ingest_result,
