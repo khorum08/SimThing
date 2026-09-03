@@ -8,8 +8,9 @@
 use std::collections::BTreeMap;
 
 use simthing_core::{
-    eml_nodes, AccumulatorRole, AccumulatorSpec, ClampBehavior, EmlNodeGpu, LogTier, OverlayKind,
-    OverlayLifecycle, OverlaySource, SubFieldRole, SubFieldSpec, TransformOp,
+    eml_nodes, AccumulatorRole, AccumulatorSpec, ClampBehavior, EmlNodeGpu, EmlPerProgramCap,
+    LogTier, OverlayKind, OverlayLifecycle, OverlaySource, PersistenceDeformationProgram,
+    SubFieldRole, SubFieldSpec, TransformOp,
 };
 use simthing_spec::spec::domain_pack::DomainPackSpec;
 use simthing_spec::spec::install_target::InstallTargetSpec;
@@ -1074,8 +1075,66 @@ fn record_eml_nodes(nodes: &[EmlNodeGpu], counts: &mut Vec<usize>) -> Result<(),
 /// Compile a flat `value:` formula to `ExactDeterministic` EML nodes (test + hydration).
 pub fn compile_value_formula_eml(formula: &RateFormulaSpec, negate: bool) -> Vec<EmlNodeGpu> {
     let mut nodes = vec![literal_node(formula.base)];
-    for op in &formula.ops {
-        push_operand(&mut nodes, &op.operand);
+    append_value_formula_ops(&mut nodes, &formula.ops);
+    if negate {
+        nodes.push(op_node(eml_nodes::opcode::NEG));
+    }
+    nodes.push(op_node(eml_nodes::opcode::RETURN_TOP));
+    nodes
+}
+
+/// Lower ClauseScript's existing flat `script_value` modifier-chain vehicle
+/// into the persistence port. `base` is the coefficient applied to U and each
+/// following literal add/mult/floor_at/ceil_at modifier retains authored order.
+/// Column operands are refused because persistence policy has only PARAM(0)=U;
+/// it cannot introduce a field cache or descendant query.
+pub fn compile_persistence_deformation_eml(
+    formula: &RateFormulaSpec,
+    cap: u32,
+) -> Result<PersistenceDeformationProgram, HydrateError> {
+    if formula
+        .ops
+        .iter()
+        .any(|op| matches!(op.operand, RateFormulaOperandSpec::Property(_)))
+    {
+        return Err(HydrateError::new(
+            "persistence deformation script_value admits literal modifiers only",
+        ));
+    }
+    let mut nodes = vec![
+        EmlNodeGpu {
+            opcode: eml_nodes::opcode::PARAM,
+            flags: 0,
+            a: 0,
+            b: 0,
+            c: 0,
+            d: 0,
+        },
+        literal_node(formula.base),
+        op_node(eml_nodes::opcode::MUL),
+    ];
+    append_value_formula_ops(&mut nodes, &formula.ops);
+    nodes.push(op_node(eml_nodes::opcode::RETURN_TOP));
+    let value_program = TransformOp::admit_eml(nodes, EmlPerProgramCap::DEFAULT)
+        .map_err(|error| HydrateError::new(error.to_string()))?;
+    PersistenceDeformationProgram::admit(value_program, cap)
+        .map_err(|error| HydrateError::new(error.to_string()))
+}
+
+/// Parse one ClauseScript `script_value` block and lower it directly through
+/// the shared modifier-chain compiler into the persistence deformation port.
+pub fn compile_persistence_deformation_script_value(
+    property: &RawProperty,
+    cap: u32,
+) -> Result<(String, PersistenceDeformationProgram), HydrateError> {
+    let (id, formula) = parse_script_value(property)?;
+    let program = compile_persistence_deformation_eml(&formula, cap)?;
+    Ok((id, program))
+}
+
+fn append_value_formula_ops(nodes: &mut Vec<EmlNodeGpu>, ops: &[RateFormulaOpSpec]) {
+    for op in ops {
+        push_operand(nodes, &op.operand);
         nodes.push(op_node(match op.op {
             RateFormulaOp::Add => eml_nodes::opcode::ADD,
             RateFormulaOp::Mult => eml_nodes::opcode::MUL,
@@ -1083,11 +1142,6 @@ pub fn compile_value_formula_eml(formula: &RateFormulaSpec, negate: bool) -> Vec
             RateFormulaOp::CeilAt => eml_nodes::opcode::MIN,
         }));
     }
-    if negate {
-        nodes.push(op_node(eml_nodes::opcode::NEG));
-    }
-    nodes.push(op_node(eml_nodes::opcode::RETURN_TOP));
-    nodes
 }
 
 fn literal_node(value: f32) -> EmlNodeGpu {

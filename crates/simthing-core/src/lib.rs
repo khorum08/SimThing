@@ -23,6 +23,7 @@ pub mod intensity_eml;
 pub mod overlay;
 pub mod overlay_lifecycle_deadline;
 pub mod owner_channel;
+pub mod persistence_deformation;
 pub mod placed_participant;
 pub mod property;
 pub mod reduction;
@@ -142,6 +143,10 @@ pub use owner_channel::{
     unbind_owner, unowned, validate_owner_binding_boundaries, AuthoredOwnerRefError,
     OwnerBoundaryValidationError, OwnerInternError, OwnerInterner, OwnerLayoutId, OwnerRef,
     OwnerResolutionError, OWNER_CHANNEL_PROPERTY_ID, UNOWNED_OWNER_REF,
+};
+pub use persistence_deformation::{
+    PersistenceDeformationAdmissionError, PersistenceDeformationError,
+    PersistenceDeformationProgram, MAX_EXACT_PERSISTENCE_DEFORMATION_CAP,
 };
 pub use placed_participant::{
     validate_and_mint_placed_participants_by_location_id,

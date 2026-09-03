@@ -10,7 +10,8 @@ use simthing_core::{GenerationStamp, GenerationStamped, SimThingId};
 use super::constrained_clearing::{
     carry_unresolved_demand_to_next_generation, clear_constrained_claims_at_generation,
     AuthoredClearingProgram, ClearingRemainderAuthority, ConstrainedClaim,
-    ConstrainedClearingResult, ConstrainedSupply, UnresolvedDemandObservation,
+    ConstrainedClearingResult, ConstrainedSupply, PersistenceDeformationBindings,
+    UnresolvedDemandObservation,
 };
 use super::legacy_owner_channel_rf::{
     evaluate_planet_child_rf_admission_from_owner_view,
@@ -110,13 +111,25 @@ pub struct RuntimeRfTickReport {
 #[derive(Debug)]
 pub struct RuntimeRfDemandGenerationAuthority {
     clearing_authority: ClearingRemainderAuthority,
+    persistence_deformations: PersistenceDeformationBindings,
     current_to_next_produced: AtomicBool,
 }
 
 impl RuntimeRfDemandGenerationAuthority {
-    pub const fn new(clearing_authority: ClearingRemainderAuthority) -> Self {
+    pub fn new(clearing_authority: ClearingRemainderAuthority) -> Self {
+        Self::with_persistence_deformations(
+            clearing_authority,
+            PersistenceDeformationBindings::default(),
+        )
+    }
+
+    pub fn with_persistence_deformations(
+        clearing_authority: ClearingRemainderAuthority,
+        persistence_deformations: PersistenceDeformationBindings,
+    ) -> Self {
         Self {
             clearing_authority,
+            persistence_deformations,
             current_to_next_produced: AtomicBool::new(false),
         }
     }
@@ -225,9 +238,17 @@ pub fn produce_runtime_rf_next_generation_demands(
             ));
         }
         let unresolved = unresolved_by_claimant.remove(&key);
+        let deformation = authority
+            .persistence_deformations
+            .program_for(&key.0, key.1);
         stamped.push(
-            carry_unresolved_demand_to_next_generation(current_generation, next_demand, unresolved)
-                .map_err(|error| demand_current_to_next_rejected(&error.to_string()))?,
+            carry_unresolved_demand_to_next_generation(
+                current_generation,
+                next_demand,
+                unresolved,
+                deformation,
+            )
+            .map_err(|error| demand_current_to_next_rejected(&error.to_string()))?,
         );
     }
 

@@ -13,7 +13,8 @@ use simthing_core::ResidentScheduleReservation;
 use simthing_kernel::{
     GpuContext, ResidentApportionmentDispatch, ResidentApportionmentError,
     ResidentApportionmentPlan, ResidentApportionmentSession, ResidentConstrainedProduct,
-    WorldGpuState, RESIDENT_APPORTIONMENT_SCRATCH_BYTES_PER_ROW,
+    ResidentRecursiveIntakeTransformError, ResidentRecursiveIntakeTransformSession, WorldGpuState,
+    RESIDENT_APPORTIONMENT_SCRATCH_BYTES_PER_ROW,
 };
 use thiserror::Error;
 use wgpu::{Buffer, BufferDescriptor, BufferUsages, CommandEncoder, MapMode};
@@ -188,6 +189,50 @@ impl ResidentClearingLiveHead {
         plan: &ResidentApportionmentPlan,
         reservation: ResidentScheduleReservation,
     ) -> Result<ResidentNPlusOneSubmission, ResidentLiveHeadError> {
+        let submission = self.encode_append(encoder, scratch, plan, reservation)?;
+        let source = u64::from(reservation.start())
+            .checked_mul(PRODUCT_BYTES)
+            .ok_or(ResidentLiveHeadError::ArithmeticOverflow)?;
+        let bytes = u64::from(submission.product_count)
+            .checked_mul(PRODUCT_BYTES)
+            .ok_or(ResidentLiveHeadError::ArithmeticOverflow)?;
+        if bytes != 0 {
+            encoder.copy_buffer_to_buffer(&self.segment, source, &self.next_intake, 0, bytes);
+        }
+        Ok(submission)
+    }
+
+    /// Encode the same one mint with an admitted row-local EML deformation of
+    /// U. The schedule still receives canonical `T_s`; only its private N+1
+    /// intake copy is transformed, without a host projection or second lane.
+    pub fn encode_append_and_n_plus_one_with_deformation(
+        &self,
+        ctx: &GpuContext,
+        transform: &ResidentRecursiveIntakeTransformSession,
+        encoder: &mut CommandEncoder,
+        scratch: &Buffer,
+        plan: &ResidentApportionmentPlan,
+        reservation: ResidentScheduleReservation,
+    ) -> Result<ResidentNPlusOneSubmission, ResidentLiveHeadError> {
+        let submission = self.encode_append(encoder, scratch, plan, reservation)?;
+        transform.encode(
+            ctx,
+            encoder,
+            &self.segment,
+            reservation.start(),
+            &self.next_intake,
+            plan,
+        )?;
+        Ok(submission)
+    }
+
+    fn encode_append(
+        &self,
+        encoder: &mut CommandEncoder,
+        scratch: &Buffer,
+        plan: &ResidentApportionmentPlan,
+        reservation: ResidentScheduleReservation,
+    ) -> Result<ResidentNPlusOneSubmission, ResidentLiveHeadError> {
         let claim_count = u32::try_from(plan.claims().len())
             .map_err(|_| ResidentLiveHeadError::ArithmeticOverflow)?;
         if reservation.len() != claim_count
@@ -214,15 +259,6 @@ impl ResidentClearingLiveHead {
                 .checked_mul(PRODUCT_BYTES)
                 .ok_or(ResidentLiveHeadError::ArithmeticOverflow)?;
             encoder.copy_buffer_to_buffer(scratch, source, &self.segment, target, PRODUCT_BYTES);
-        }
-        let source = u64::from(reservation.start())
-            .checked_mul(PRODUCT_BYTES)
-            .ok_or(ResidentLiveHeadError::ArithmeticOverflow)?;
-        let bytes = u64::from(claim_count)
-            .checked_mul(PRODUCT_BYTES)
-            .ok_or(ResidentLiveHeadError::ArithmeticOverflow)?;
-        if bytes != 0 {
-            encoder.copy_buffer_to_buffer(&self.segment, source, &self.next_intake, 0, bytes);
         }
         let intake_generation = plan
             .generation()
@@ -410,6 +446,8 @@ pub enum ResidentLiveHeadError {
     UnqualifiedAdapter { required: u64, observed: u64 },
     #[error("resident recursive exact settlement failed: {0}")]
     RecursiveApportionment(#[source] ResidentApportionmentError),
+    #[error("resident recursive intake deformation failed: {0}")]
+    RecursiveIntakeTransform(#[from] ResidentRecursiveIntakeTransformError),
 }
 
 #[cfg(test)]
