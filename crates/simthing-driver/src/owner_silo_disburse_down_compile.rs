@@ -2,10 +2,9 @@
 
 use simthing_core::{CompiledAccumulatorOpPlan, StructuralScalarChannel};
 use simthing_spec::{
-    admit_intrinsic_owner_channels, apply_owner_silo_runtime_disburse_down_cpu,
-    owner_silo_demand_aggregate_totals, owner_silo_demand_buckets_from_owner_view,
-    IntrinsicOwnerChannelView, OwnerRef, ResourceKey, RuntimeOwnerSiloDemandBucket,
-    RuntimeOwnerSiloDisburseDownResult, SimThingScenarioSpec, SpecError,
+    apply_owner_silo_runtime_disburse_down_cpu, owner_silo_demand_aggregate_totals,
+    owner_silo_demand_buckets_from_owner_view, IntrinsicOwnerChannelView, OwnerRef, ResourceKey,
+    RuntimeOwnerSiloDemandBucket, RuntimeOwnerSiloDisburseDownResult, SpecError,
 };
 
 use crate::owner_silo_accumulator_compile::compile_participant_channel_sum_plan;
@@ -33,18 +32,7 @@ pub struct OwnerSiloDisburseDownPlan {
     pub scenario_authority_mutation_deferred: bool,
 }
 
-/// Compile writeback plan and demand buckets into disburse-down allocation with CPU oracle and GPU demand aggregate proof.
-pub fn compile_owner_silo_disburse_down_plan(
-    scenario: &SimThingScenarioSpec,
-) -> Result<OwnerSiloDisburseDownPlan, SpecError> {
-    let owner_view =
-        admit_intrinsic_owner_channels(scenario).map_err(|_| SpecError::ValidationFailedAt {
-            site: "simthing-driver/owner_silo_disburse_down_compile",
-        })?;
-    compile_owner_silo_disburse_down_plan_from_owner_view(&owner_view)
-}
-
-pub fn compile_owner_silo_disburse_down_plan_from_owner_view(
+pub(crate) fn compile_owner_silo_disburse_down_plan_from_owner_view(
     owner_view: &IntrinsicOwnerChannelView,
 ) -> Result<OwnerSiloDisburseDownPlan, SpecError> {
     let writeback_plan = compile_owner_silo_runtime_writeback_plan_from_owner_view(owner_view)?;

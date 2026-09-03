@@ -71,7 +71,7 @@ pub struct RuntimeLocalAllocationRfSourceReport {
 }
 
 /// Map owner-silo disburse-down report rows into runtime local allocation report.
-pub fn runtime_local_allocation_from_owner_silo_disburse_report(
+fn runtime_local_allocation_from_owner_silo_disburse_report(
     disburse_report: &OwnerSiloDisburseDownReport,
 ) -> Result<RuntimeLocalAllocationReport, LocalAllocationRecursiveSourceError> {
     apply_runtime_local_allocations_from_disburse_down(&disburse_report.disburse_down_results)

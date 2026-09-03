@@ -635,6 +635,90 @@ mutation onto the GPU. These are binding failures, not optimization opportunitie
 This section is the durable Phase-14 home for the RF Market Core workshop laws. Section 1.5.1 remains
 the germ seal; sections 1.2 and 8.2 remain the one-schedule and asynchronous-tree authorities.
 
+### 8.4 Recursive constrained-resource filter — Phase-15 closure
+
+Phase 15 closes the explanatory gap left by the graduated RF market without adding a runtime
+quantity, response program, settlement rule, or execution authority. The market is the resident
+recursive filter already admitted by section 8.3. Its continuous projection and frozen exact
+projection are distinct stages of one operator, not peer markets.
+
+#### 8.4.1 One recursively composable filter
+
+A StemThing evaluates one recursively composable constrained-resource filter. Its upward projection
+is the sufficient response of its subtree to scarcity. Its downward projection is the resource flow
+allocated over each child edge. The child consumes that same edge resource as its own supply. Exact
+settlement is the deterministic quantization Q of that flow into canonical identity-bearing
+possession; it is not a second market.
+
+`RecursiveResourceFilterRuntime` is a conversion-free type alias for the existing
+`ResidentClearingRuntime`, which remains the sole ordinary production R->Q executor.
+`evaluate_recursive_resource_filter_oracle` is an item alias for the existing generalized
+`run_arena_allocation_oracle`; it is the CPU reference view of R and contains no wrapper arithmetic.
+The frozen exact CPU oracle remains Q. An alias or view is lawful only when Rust type/function
+identity and every output bit are unchanged; it cannot allocate storage, translate an economic
+payload, select policy, or become a callable peer authority.
+
+#### 8.4.2 Spatial and temporal recursion axes
+
+Spatial continuous recursion is literal edge identity:
+`x_(p->v) = AllocatedFlow[v] = S_v`. The parent emits `x` and the child reads that same resident cell
+as its incoming supply; no disbursement report, copied role payload, or host intermediary belongs
+between the two. Spatial exact recursion is likewise literal identity:
+`Q(x_(p->v)) = T_s(p->v) = ResidentRecursiveSupplyIntake[v]`. The settlement and intake names remain
+conversion-free views of the canonical identity-bearing product.
+
+Temporal recursion remains exactly
+`d_effective(v,N+1) = d_authored(v,N+1) + U(v,N)`. It crosses the single Current-to-Next mint once;
+same-generation clear/reweight/re-clear is forbidden. An admitted persistence deformation may
+transform U only inside that mint under the section 8.3 generation authority: authored policy
+deforms and the substrate creates. The valuation -> CostBand -> Overlay consequence chain remains
+beside the mint, never feeds demand, and cannot become a persistence market, carry lane, or
+migration adapter.
+
+#### 8.4.3 Born sufficient statistic
+
+The sufficient-statistic presumption is closed as a theorem. Before R, the already-authoritative
+eligibility projection selects the lawful pressure or serviceable-flow source exactly once and
+binds one scalar `AllocatorWeight`; simultaneous `(P,F)` response storage would duplicate upstream
+provenance. The upward statistic is the existing direct-child `weight_sum/P_up`. The downward state
+is the incoming `AllocatedFlow`, that sum, and each direct child's eligible weight. A subtree query
+is answered from this born statistic; it never authorizes a host descendant walk or reconstruction.
+
+Normalized scarcity response is implicit in `weight/weight_sum`: scaling all eligible weights by a
+common positive scalar preserves the emitted flow bits. For exact Q, the existing request cap,
+`AllocatedFlow`, hard precedence, identity, supply, and generation are necessary and sufficient.
+There is no runtime lambda, response curve, shadow price, scarcity column, or richer response tuple.
+For each frozen admitted program family the resident representation is O(1) per node; recursion
+changes row count, not the number of response fields or operators.
+
+PALMA route/impedance and Gu-Yang serviceability influence a causal quantity upstream once; R
+consumes the sealed born eligibility value and never solves either field. RF execution-stage order,
+hard precedence, smooth continuous share, and exact residue are four distinct authorities and may
+not be encoded into one another. Physical row placement, workgroup shape, dispatch partition,
+epoch, realm, host scheduling, and observation timing cannot alter R, Q, or T_s.
+
+#### 8.4.4 Peer-authority deletion census
+
+Phase-15 closure uses a symbol-keyed public/runtime census, not prose disappearance. The audited
+pre-cutover peer set contained five symbols:
+`apply_owner_silo_runtime_disburse_down_cpu`, `compile_owner_silo_disburse_down_plan`,
+`compile_owner_silo_disburse_down_plan_from_owner_view`,
+`evaluate_owner_silo_disburse_down_with_rf_source`, and
+`runtime_local_allocation_from_owner_silo_disburse_report`. Closure deletes the unused scenario
+compiler wrapper and internalizes the owner-view compiler plus report-to-local-allocation helper.
+The two still-required public report/oracle witnesses remain quarantined compatibility proof
+surfaces, so `N_peer_runtime_authorities` decreases from 5 to 2. Two conversion-free canonical
+aliases were added, three public/runtime nouns were removed, and `N_new_economic_authorities = 0`.
+
+The separately frozen CPU compatibility doors remain exactly
+`clear_constrained_claims_at_generation`, `clear_reduced_owner_channels`,
+`clear_reduced_owner_channels_at_generation`, `clear_stamped_owner_channels`, and
+`produce_runtime_rf_next_generation_demands`. Their constitutional census and caller census are
+the retirement mechanism. They are vendorized oracle vocabulary, do not define the architecture,
+and may not acquire an ordinary resident caller, fallback edge, or sixth door. Structural grant
+recorders remain one-way consequence authorities after Q and are excluded from the peer-market
+metric; they cannot translate or reinject an economic product.
+
 ---
 
 ## 9. The drift detectors — litmus tests for every change

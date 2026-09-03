@@ -172,6 +172,11 @@ pub fn run_arena_allocation_oracle(
     trace
 }
 
+/// Conversion-free Phase-15 vocabulary for the generalized CPU reference
+/// implementation of the recursive resource filter. This is an item alias,
+/// not a wrapper or a second economic operator.
+pub use run_arena_allocation_oracle as evaluate_recursive_resource_filter_oracle;
+
 fn integrate_balance(layout: &ArenaTreeLayout, values: &mut HashMap<CellKey, f32>, dt: f32) {
     for node in layout.iter_all() {
         if let Some(balance_col) = node.cols.balance_col {
