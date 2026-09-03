@@ -72,7 +72,9 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::sync::mpsc;
 
 use bytemuck::{Pod, Zeroable};
-use simthing_core::{ColumnIndex, GenerationStamp, SimThingId, SlotIndex};
+use simthing_core::{
+    ColumnIndex, GenerationStamp, PersistenceDeformationProgram, SimThingId, SlotIndex,
+};
 use thiserror::Error;
 use wgpu::util::DeviceExt;
 use wgpu::{
@@ -294,6 +296,7 @@ fn scope_key(row: ResidentClearingRow) -> ScopeKey {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ResidentApportionmentPlan {
     claims: Vec<ResidentApportionmentClaim>,
+    persistence_deformations: BTreeMap<u32, PersistenceDeformationProgram>,
     semantic_rows: Vec<ResidentClearingRow>,
     semantic_digest: SemanticPlanDigest,
     row_count: u32,
@@ -372,6 +375,7 @@ impl ResidentApportionmentPlan {
 
         Ok(Self {
             claims,
+            persistence_deformations: BTreeMap::new(),
             semantic_rows: semantic_plan.rows().to_vec(),
             semantic_digest: semantic_plan.digest(),
             row_count,
@@ -383,6 +387,49 @@ impl ResidentApportionmentPlan {
 
     pub fn claims(&self) -> &[ResidentApportionmentClaim] {
         &self.claims
+    }
+
+    /// Bind admitted policy to existing claim rows. The binding travels with
+    /// the recursive plan template; it is not another intake or demand path.
+    pub fn with_persistence_deformations(
+        mut self,
+        bindings: impl IntoIterator<Item = (u32, PersistenceDeformationProgram)>,
+    ) -> Result<Self, ResidentApportionmentError> {
+        for (semantic_row, program) in bindings {
+            let claim = self
+                .claims
+                .iter()
+                .find(|claim| claim.semantic_row == semantic_row)
+                .ok_or(ResidentApportionmentError::DeformationWithoutClaim { semantic_row })?;
+            if claim.requested > program.cap() {
+                return Err(ResidentApportionmentError::DeformationInputCapTooSmall {
+                    source_id: claim.source_simthing_id,
+                    requested: claim.requested,
+                    cap: program.cap(),
+                });
+            }
+            if self
+                .persistence_deformations
+                .insert(semantic_row, program)
+                .is_some()
+            {
+                return Err(ResidentApportionmentError::DuplicateDeformationBinding {
+                    semantic_row,
+                });
+            }
+        }
+        Ok(self)
+    }
+
+    pub fn persistence_deformation(
+        &self,
+        semantic_row: u32,
+    ) -> Option<&PersistenceDeformationProgram> {
+        self.persistence_deformations.get(&semantic_row)
+    }
+
+    pub fn has_persistence_deformations(&self) -> bool {
+        !self.persistence_deformations.is_empty()
     }
     pub const fn semantic_digest(&self) -> SemanticPlanDigest {
         self.semantic_digest
@@ -1168,4 +1215,16 @@ pub enum ResidentApportionmentError {
     IncompleteGpuOutput { expected: usize, observed: usize },
     #[error("resident recursive intake has {observed} products, expected {expected}")]
     RecursiveIntakeCountMismatch { expected: u32, observed: u32 },
+    #[error("persistence deformation targets semantic row {semantic_row} without a claim")]
+    DeformationWithoutClaim { semantic_row: u32 },
+    #[error("more than one persistence deformation targets semantic row {semantic_row}")]
+    DuplicateDeformationBinding { semantic_row: u32 },
+    #[error(
+        "persistence deformation cap {cap} cannot admit request {requested} for {source_id:?}"
+    )]
+    DeformationInputCapTooSmall {
+        source_id: SimThingId,
+        requested: u32,
+        cap: u32,
+    },
 }

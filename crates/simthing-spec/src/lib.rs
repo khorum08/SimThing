@@ -390,7 +390,8 @@ pub use spec::constrained_clearing::{
     AuthoredClearingProgram, AuthoredPersistenceValuation, ClearingRemainderAuthority,
     ConstrainedClaim, ConstrainedClearingError, ConstrainedClearingResult, ConstrainedGrant,
     ConstrainedSupply, PersistenceConsequence, PersistenceConsequenceError,
-    PersistenceOverlayBinding, UnresolvedDemandObservation,
+    PersistenceDeformationBinding, PersistenceDeformationBindingError,
+    PersistenceDeformationBindings, PersistenceOverlayBinding, UnresolvedDemandObservation,
 };
 // The resident settlement/emission product and recursive supply intake are
 // aliases of one kernel-owned exact type. The CPU clearing structs above stay

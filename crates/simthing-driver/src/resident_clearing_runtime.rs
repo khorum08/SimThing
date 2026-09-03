@@ -5,12 +5,15 @@
 //! N+1 product intake. It adds no score, pressure, remainder, or recurrence
 //! law; `CpuVendorizedOracle` remains a separately selected diagnostic route.
 
+use std::collections::BTreeMap;
+
 use simthing_core::{
     expand_arena_internal_columns, AccumulatorRole, AccumulatorSpec, ClampBehavior,
     DimensionRegistry, EmlExpressionRegistry, ExecutionIncarnation, GenerationStamp,
-    IntegrationSchedule, LogTier, PropertyLayout, ResidentClearingScheduleFact,
-    ResidentScheduleError, SimProperty, SimPropertyId, SimThing, SimThingId, SlotIndex,
-    SubFieldRole, SubFieldSpec, TreeExecutionAuthority, TreeGenerationAuthority, TreeRealmId,
+    IntegrationSchedule, LogTier, PersistenceDeformationProgram, PropertyLayout,
+    ResidentClearingScheduleFact, ResidentScheduleError, SimProperty, SimPropertyId, SimThing,
+    SimThingId, SlotIndex, SubFieldRole, SubFieldSpec, TreeExecutionAuthority,
+    TreeGenerationAuthority, TreeRealmId,
 };
 use simthing_gpu::{
     AccumulatorOpSession, EmlGpuProgramTable, GpuContext, PackedAccumulatorUpload,
@@ -20,7 +23,8 @@ use simthing_gpu::{
     ResidentClearingGpuError, ResidentClearingLiveHead, ResidentClearingPlan,
     ResidentClearingPlanError, ResidentClearingQualification, ResidentConstrainedProduct,
     ResidentDrawId, ResidentLiveHeadError, ResidentNPlusOneSubmission, ResidentOwnerId,
-    ResidentResourceId, ResidentScopeId, SlotAllocator, WorldGpuState,
+    ResidentRecursiveIntakeTransformSession, ResidentResourceId, ResidentScopeId, SlotAllocator,
+    WorldGpuState,
 };
 use thiserror::Error;
 
@@ -93,6 +97,15 @@ pub struct ResidentClearingBatchBinding {
     pub continuous_weight: f32,
 }
 
+/// Application-layer policy binding for the one resident semantic scope.
+/// Claimant identity selects an already-admitted EML program; the binding
+/// carries no demand quantity and cannot create another recursive intake.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ResidentPersistenceDeformationBinding {
+    pub source_simthing_id: SimThingId,
+    pub program: PersistenceDeformationProgram,
+}
+
 pub struct ResidentClearingDispatchTicket {
     submission: ResidentNPlusOneSubmission,
     consumed_resident_intake: bool,
@@ -126,6 +139,8 @@ pub struct ResidentClearingRuntime {
     lane_capacity: u32,
     pending_intake: Option<ResidentNPlusOneSubmission>,
     recursive_plan_template: Option<ResidentApportionmentPlan>,
+    persistence_deformations: BTreeMap<SimThingId, PersistenceDeformationProgram>,
+    intake_transform_session: Option<ResidentRecursiveIntakeTransformSession>,
 }
 
 impl ResidentClearingRuntime {
@@ -140,10 +155,56 @@ impl ResidentClearingRuntime {
         generation: GenerationStamp,
         lane_capacity: u32,
     ) -> Result<Self, ResidentClearingRuntimeError> {
+        Self::admit_with_persistence_deformations(
+            ctx,
+            realm,
+            root,
+            registry,
+            residency,
+            schedule,
+            generation,
+            lane_capacity,
+            &[],
+        )
+    }
+
+    /// Admit the same production executor with optional sealed policy. The
+    /// map is immutable for the executor lifetime and is consumed only while
+    /// the existing recursive plan is minted.
+    #[allow(clippy::too_many_arguments)]
+    pub fn admit_with_persistence_deformations(
+        ctx: &GpuContext,
+        realm: TreeRealmId,
+        root: &SimThing,
+        registry: &DimensionRegistry,
+        residency: &SlotAllocator,
+        schedule: &IntegrationSchedule,
+        generation: GenerationStamp,
+        lane_capacity: u32,
+        deformation_bindings: &[ResidentPersistenceDeformationBinding],
+    ) -> Result<Self, ResidentClearingRuntimeError> {
         if lane_capacity == 0 {
             return Err(ResidentClearingRuntimeError::ZeroLaneCapacity);
         }
+        let mut persistence_deformations = BTreeMap::new();
+        for binding in deformation_bindings {
+            if persistence_deformations
+                .insert(binding.source_simthing_id, binding.program.clone())
+                .is_some()
+            {
+                return Err(
+                    ResidentClearingRuntimeError::DuplicatePersistenceDeformation {
+                        source_id: binding.source_simthing_id,
+                    },
+                );
+            }
+        }
         let qualification = ResidentClearingQualification::admit(ctx)?;
+        let intake_transform_session = if persistence_deformations.is_empty() {
+            None
+        } else {
+            Some(ResidentRecursiveIntakeTransformSession::new(ctx))
+        };
         let generation_authority = TreeGenerationAuthority::new(generation);
         let authority = TreeExecutionAuthority::seal(
             realm,
@@ -276,6 +337,8 @@ impl ResidentClearingRuntime {
             lane_capacity,
             pending_intake: None,
             recursive_plan_template: None,
+            persistence_deformations,
+            intake_transform_session,
         })
     }
 
@@ -334,7 +397,16 @@ impl ResidentClearingRuntime {
                 granter,
                 generation,
                 continuous_plan.integration_band,
-            )?;
+            )?
+            .with_persistence_deformations(rows.iter().enumerate().filter_map(|(lane, row)| {
+                if row.requested == 0 {
+                    return None;
+                }
+                self.persistence_deformations
+                    .get(&row.source_simthing_id)
+                    .cloned()
+                    .map(|program| (self.semantic_row_for_lane(lane as u32), program))
+            }))?;
             (plan, Some(continuous_plan), None)
         } else {
             let prior_submission = self
@@ -394,12 +466,26 @@ impl ResidentClearingRuntime {
                 prior_submission.expect("recursive dispatch proved a pending intake"),
             )?;
         }
-        let submission = self.live_head.encode_append_and_n_plus_one(
-            &mut encoder,
-            scratch,
-            &plan,
-            reservation,
-        )?;
+        let submission = if plan.has_persistence_deformations() {
+            self.live_head
+                .encode_append_and_n_plus_one_with_deformation(
+                    &self.continuous_plane.ctx,
+                    self.intake_transform_session
+                        .as_ref()
+                        .expect("admitted deformation has one resident mint session"),
+                    &mut encoder,
+                    scratch,
+                    &plan,
+                    reservation,
+                )?
+        } else {
+            self.live_head.encode_append_and_n_plus_one(
+                &mut encoder,
+                scratch,
+                &plan,
+                reservation,
+            )?
+        };
         self.continuous_plane
             .ctx
             .queue
@@ -612,6 +698,8 @@ pub enum ResidentClearingRuntimeError {
     NonCanonicalClaimOrder,
     #[error("resident continuous weight for {source_id:?} is non-finite or negative")]
     InvalidContinuousWeight { source_id: SimThingId },
+    #[error("duplicate resident persistence deformation for claimant {source_id:?}")]
+    DuplicatePersistenceDeformation { source_id: SimThingId },
     #[error("resident continuous allocation failed: {0}")]
     ContinuousAllocation(String),
     #[error("resident exact output reported a typed GPU product failure")]

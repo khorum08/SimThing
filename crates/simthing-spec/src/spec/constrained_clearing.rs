@@ -10,7 +10,8 @@ use simthing_core::{
     admit_dispatch_minted_overlay, cost_band_quantize, dispatch_until_dissolved,
     CostBandAdmissionError, CostBandDraw, DispatchOverlayError, DissolveCondition, GenerationStamp,
     GenerationStamped, Overlay, OverlayId, OverlayKind, OverlayLifecycle, OverlaySource,
-    PropertyTransformDelta, SimThingId, TransformOp,
+    PersistenceDeformationError, PersistenceDeformationProgram, PropertyTransformDelta, SimThingId,
+    TransformOp,
 };
 use thiserror::Error;
 
@@ -261,6 +262,8 @@ pub enum ConstrainedClearingError {
     UnresolvedDemandScopeMismatch,
     #[error("unresolved demand cannot recur under a different source SimThing")]
     UnresolvedDemandSourceMismatch,
+    #[error(transparent)]
+    PersistenceDeformation(#[from] PersistenceDeformationError),
 }
 
 #[derive(Clone)]
@@ -552,19 +555,100 @@ impl UnresolvedDemandObservation {
     }
 }
 
+/// One authored policy binding in the native claimant/full-scope key space.
+///
+/// The program can deform an already-created unresolved quantity but cannot
+/// mint an observation, select a generation, or name a second demand lane.
+#[derive(Clone, Debug, PartialEq)]
+pub struct PersistenceDeformationBinding {
+    scope: OwnerChannelScopeKey,
+    source_simthing_id: SimThingId,
+    program: PersistenceDeformationProgram,
+}
+
+impl PersistenceDeformationBinding {
+    pub fn new(
+        scope: OwnerChannelScopeKey,
+        source_simthing_id: SimThingId,
+        program: PersistenceDeformationProgram,
+    ) -> Self {
+        Self {
+            scope,
+            source_simthing_id,
+            program,
+        }
+    }
+
+    pub fn scope(&self) -> &OwnerChannelScopeKey {
+        &self.scope
+    }
+
+    pub const fn source_simthing_id(&self) -> SimThingId {
+        self.source_simthing_id
+    }
+
+    pub fn program(&self) -> &PersistenceDeformationProgram {
+        &self.program
+    }
+}
+
+/// Sealed optional deformation table consumed only by the one N→N+1 mint.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct PersistenceDeformationBindings {
+    by_claimant: BTreeMap<(OwnerChannelScopeKey, SimThingId), PersistenceDeformationProgram>,
+}
+
+impl PersistenceDeformationBindings {
+    pub fn admit(
+        bindings: impl IntoIterator<Item = PersistenceDeformationBinding>,
+    ) -> Result<Self, PersistenceDeformationBindingError> {
+        let mut by_claimant = BTreeMap::new();
+        for binding in bindings {
+            let key = (binding.scope, binding.source_simthing_id);
+            if by_claimant.insert(key, binding.program).is_some() {
+                return Err(PersistenceDeformationBindingError::DuplicateClaimantBinding);
+            }
+        }
+        Ok(Self { by_claimant })
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.by_claimant.is_empty()
+    }
+
+    pub fn len(&self) -> usize {
+        self.by_claimant.len()
+    }
+
+    pub(crate) fn program_for(
+        &self,
+        scope: &OwnerChannelScopeKey,
+        source_simthing_id: SimThingId,
+    ) -> Option<&PersistenceDeformationProgram> {
+        self.by_claimant.get(&(scope.clone(), source_simthing_id))
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Error)]
+pub enum PersistenceDeformationBindingError {
+    #[error("duplicate persistence deformation for one claimant/full scope")]
+    DuplicateClaimantBinding,
+}
+
 /// Carry ordinary unresolved `T_d` from generation N into the same demand
 /// product at N+1 exactly once.
 ///
 /// `next_demand` is the claimant's independently produced `d'` for N+1. The
-/// neutral recurrence adds `u` without EML, CostBand, Overlay, a new demand
-/// type, or a side lane, and returns the established generation-stamped
-/// Current-to-Next carrier. Consuming the optional observation in this one
-/// operation makes the ordinary path one addition, while `None` preserves the
-/// next product byte-for-byte.
+/// recurrence adds either neutral `u` or the one admitted `deform(u)` without
+/// CostBand, Overlay, a new demand type, or a side lane, and returns the
+/// established generation-stamped Current-to-Next carrier. Consuming the
+/// optional observation in this one operation makes the ordinary path one
+/// addition, while `None` preserves the next product byte-for-byte.
 pub(crate) fn carry_unresolved_demand_to_next_generation(
     current_generation: GenerationStamp,
     mut next_demand: RuntimeOwnerSiloDemandBucket,
     unresolved: Option<UnresolvedDemandObservation>,
+    deformation: Option<&PersistenceDeformationProgram>,
 ) -> Result<GenerationStamped<RuntimeOwnerSiloDemandBucket>, ConstrainedClearingError> {
     let next_generation = GenerationStamp::new(
         current_generation
@@ -592,9 +676,13 @@ pub(crate) fn carry_unresolved_demand_to_next_generation(
         if unresolved.source_simthing_id != next_source {
             return Err(ConstrainedClearingError::UnresolvedDemandSourceMismatch);
         }
+        let carried = match deformation {
+            Some(program) => program.deform(unresolved.unresolved)?,
+            None => unresolved.unresolved,
+        };
         next_demand.requested = next_demand
             .requested
-            .checked_add(unresolved.unresolved)
+            .checked_add(carried)
             .ok_or(ConstrainedClearingError::ArithmeticOverflow)?;
     }
 

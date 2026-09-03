@@ -37,6 +37,7 @@ pub mod registration;
 mod residency_placement;
 pub mod resident_clearing_apportionment;
 pub mod resident_clearing_plan;
+mod resident_recursive_intake_transform;
 pub mod resolved;
 pub mod sealed;
 pub mod slot;
@@ -160,6 +161,9 @@ pub use resident_clearing_plan::{
     ResidentClearingReplayError, ResidentClearingRow, ResidentDrawId, ResidentDrawOrdinal,
     ResidentOwnerId, ResidentOwnerOrdinal, ResidentPlanContext, ResidentResourceId,
     ResidentResourceOrdinal, ResidentScopeId, ResidentScopeOrdinal, SemanticPlanDigest,
+};
+pub use resident_recursive_intake_transform::{
+    ResidentRecursiveIntakeTransformError, ResidentRecursiveIntakeTransformSession,
 };
 pub use resolved::ResolvedGpuBuffers;
 pub use sealed::{

@@ -76,7 +76,8 @@ pub use constrained_clearing::{
     AuthoredClearingProgram, AuthoredPersistenceValuation, ClearingRemainderAuthority,
     ConstrainedClaim, ConstrainedClearingError, ConstrainedClearingResult, ConstrainedGrant,
     ConstrainedSupply, PersistenceConsequence, PersistenceConsequenceError,
-    PersistenceOverlayBinding, UnresolvedDemandObservation,
+    PersistenceDeformationBinding, PersistenceDeformationBindingError,
+    PersistenceDeformationBindings, PersistenceOverlayBinding, UnresolvedDemandObservation,
 };
 pub use contention_conservation_judge::{
     judge_conservation, ChannelBound, ConservationJudgeReason, ConservationSnapshot,
