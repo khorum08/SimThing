@@ -236,13 +236,42 @@ fn two_branch_rows() -> [ResidentClearingBatchBinding; 2] {
     ]
 }
 
+#[derive(Clone, Copy)]
+struct ExactBasisProductionCase {
+    label: &'static str,
+    exact_basis_identity: ResidentExactBasisIdentity,
+    left_allocated_flow: f32,
+    expected_grants: [u32; 2],
+}
+
+const EXACT_BASIS_PRODUCTION_CASES: [ExactBasisProductionCase; 3] = [
+    ExactBasisProductionCase {
+        label: "neutral",
+        exact_basis_identity: ResidentExactBasisIdentity::NeutralRequest,
+        left_allocated_flow: 16_777_216.0,
+        expected_grants: [1, 0],
+    },
+    ExactBasisProductionCase {
+        label: "genuine-below-cap",
+        exact_basis_identity: ResidentExactBasisIdentity::LiveAllocatedFlow,
+        left_allocated_flow: 16_777_216.0,
+        expected_grants: [0, 1],
+    },
+    ExactBasisProductionCase {
+        label: "genuine-above-cap",
+        exact_basis_identity: ResidentExactBasisIdentity::LiveAllocatedFlow,
+        left_allocated_flow: 33_554_432.0,
+        expected_grants: [1, 0],
+    },
+];
+
 #[test]
 fn exact_basis_identity_is_qualification_bound_not_dispatch_authority() {
     let gpu = GpuContext::new_blocking().expect("qualified resident adapter");
     let mut fixture = RealArenaFixture::new(&gpu);
     fixture.install_allocated_flows(16_777_216.0, 16_777_216.0);
     let mut schedule = RealArenaFixture::schedule();
-    let mut live_runtime = fixture
+    let live_runtime = fixture
         .admit(
             &gpu,
             &schedule,
@@ -310,72 +339,42 @@ fn exact_basis_identity_is_qualification_bound_not_dispatch_authority() {
         Err(ResidentClearingRuntimeError::StaleMarketQualification)
     ));
 
-    let neutral_ticket = neutral_runtime
-        .dispatch(
-            &fixture.state,
-            &neutral_qualification,
-            &mut schedule,
-            id(ROOT),
-            GenerationStamp::new(30),
-            &rows,
-        )
-        .unwrap();
-    let neutral = neutral_runtime
-        .materialize(
-            &fixture.state,
-            &neutral_qualification,
-            &mut schedule,
-            neutral_ticket,
-        )
-        .unwrap();
     let grants = |products: &[simthing_gpu::ResidentConstrainedProduct]| {
         products
             .iter()
             .map(|product| product.granted())
             .collect::<Vec<_>>()
     };
-    assert_eq!(grants(&neutral), [1, 0]);
-
-    let below_cap_ticket = live_runtime
-        .dispatch(
-            &fixture.state,
-            &live_qualification,
-            &mut schedule,
-            id(ROOT),
-            GenerationStamp::new(30),
-            &rows,
-        )
-        .unwrap();
-    let below_cap = live_runtime
-        .materialize(
-            &fixture.state,
-            &live_qualification,
-            &mut schedule,
-            below_cap_ticket,
-        )
-        .unwrap();
-    assert_eq!(grants(&below_cap), [0, 1]);
-
-    fixture.install_allocated_flows(33_554_432.0, 16_777_216.0);
-    let above_cap_ticket = live_runtime
-        .dispatch(
-            &fixture.state,
-            &live_qualification,
-            &mut schedule,
-            id(ROOT),
-            GenerationStamp::new(30),
-            &rows,
-        )
-        .unwrap();
-    let above_cap = live_runtime
-        .materialize(
-            &fixture.state,
-            &live_qualification,
-            &mut schedule,
-            above_cap_ticket,
-        )
-        .unwrap();
-    assert_eq!(grants(&above_cap), [1, 0]);
+    for case in EXACT_BASIS_PRODUCTION_CASES {
+        fixture.install_allocated_flows(case.left_allocated_flow, 16_777_216.0);
+        let mut runtime = fixture
+            .admit(
+                &gpu,
+                &schedule,
+                authored_market_with_basis(
+                    "authored::draw/e5-production-table",
+                    case.exact_basis_identity,
+                ),
+                &[],
+                2,
+            )
+            .unwrap();
+        let qualification = runtime.market_qualification();
+        let ticket = runtime
+            .dispatch(
+                &fixture.state,
+                &qualification,
+                &mut schedule,
+                id(ROOT),
+                GenerationStamp::new(30),
+                &rows,
+            )
+            .unwrap();
+        let products = runtime
+            .materialize(&fixture.state, &qualification, &mut schedule, ticket)
+            .unwrap();
+        assert_eq!(grants(&products), case.expected_grants, "{}", case.label);
+    }
 
     println!(
         "15.6 E5 PRODUCTION PASS dispatch-tag=ABSENT cross-basis-token=TYPED-REFUSAL neutral=source-8 below-cap=source-9 above-cap=source-8"
