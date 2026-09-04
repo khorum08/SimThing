@@ -14,7 +14,7 @@ use simthing_driver::resident_clearing_runtime::{
 use simthing_driver::{
     resolve_node_columns_for_property, sync_resource_flow_accumulator, ArenaRegistry,
 };
-use simthing_gpu::{GpuContext, SlotAllocator, WorldGpuState};
+use simthing_gpu::{GpuContext, ResidentExactBasisIdentity, SlotAllocator, WorldGpuState};
 
 const ROOT: u32 = 7;
 const LEFT: u32 = 8;
@@ -201,6 +201,7 @@ fn two_branch_rows() -> [ResidentClearingBatchBinding; 2] {
             requested: 10,
             available: 1,
             precedence: 0,
+            exact_basis_identity: ResidentExactBasisIdentity::LiveAllocatedFlow,
         },
         ResidentClearingBatchBinding {
             source_simthing_id: id(RIGHT),
@@ -208,6 +209,7 @@ fn two_branch_rows() -> [ResidentClearingBatchBinding; 2] {
             requested: 10,
             available: 1,
             precedence: 0,
+            exact_basis_identity: ResidentExactBasisIdentity::LiveAllocatedFlow,
         },
     ]
 }
@@ -365,6 +367,7 @@ fn topology_growth_rebind_preserves_identity_live_head_and_pending_provenance() 
                 requested: 10,
                 available: 0,
                 precedence: 0,
+                exact_basis_identity: ResidentExactBasisIdentity::LiveAllocatedFlow,
             }],
         )
         .unwrap();
@@ -469,6 +472,7 @@ fn topology_growth_rebind_preserves_identity_live_head_and_pending_provenance() 
                 requested: 1,
                 available: 1,
                 precedence: 0,
+                exact_basis_identity: ResidentExactBasisIdentity::LiveAllocatedFlow,
             }],
         )
         .unwrap();
@@ -499,6 +503,7 @@ fn topology_growth_rebind_preserves_identity_live_head_and_pending_provenance() 
                 requested: 10,
                 available: 0,
                 precedence: 0,
+                exact_basis_identity: ResidentExactBasisIdentity::LiveAllocatedFlow,
             }],
         )
         .unwrap();

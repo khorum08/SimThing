@@ -20,9 +20,9 @@ use simthing_gpu::{
 use simthing_kernel::{
     execute_resident_apportionment_cpu, ResidentApportionmentClaim, ResidentApportionmentError,
     ResidentApportionmentPlan, ResidentClearingAdmission, ResidentClearingBudgets,
-    ResidentClearingPlan, ResidentConstrainedProduct, ResidentDrawId, ResidentOwnerId,
-    ResidentRecursiveSupplyIntake, ResidentResourceId, ResidentScopeId, ResidentSettlementOutput,
-    RESIDENT_APPORTIONMENT_SCRATCH_BYTES_PER_ROW,
+    ResidentClearingPlan, ResidentConstrainedProduct, ResidentDrawId, ResidentExactBasisIdentity,
+    ResidentOwnerId, ResidentRecursiveSupplyIntake, ResidentResourceId, ResidentScopeId,
+    ResidentSettlementOutput, RESIDENT_APPORTIONMENT_SCRATCH_BYTES_PER_ROW,
 };
 use simthing_spec::{
     clear_constrained_claims_at_generation, AuthoredClearingProgram, ClearingRemainderAuthority,
@@ -119,6 +119,24 @@ fn exact_claims(
     order: impl IntoIterator<Item = u32>,
     rebound_slots: bool,
 ) -> Vec<ResidentApportionmentClaim> {
+    exact_claims_with_identity(
+        semantic_plan,
+        requests,
+        available,
+        order,
+        rebound_slots,
+        |_| ResidentExactBasisIdentity::LiveAllocatedFlow,
+    )
+}
+
+fn exact_claims_with_identity(
+    semantic_plan: &ResidentClearingPlan,
+    requests: &[u32],
+    available: u32,
+    order: impl IntoIterator<Item = u32>,
+    rebound_slots: bool,
+    identity: impl Fn(u32) -> ResidentExactBasisIdentity,
+) -> Vec<ResidentApportionmentClaim> {
     order
         .into_iter()
         .map(|index| {
@@ -135,6 +153,7 @@ fn exact_claims(
                 0,
                 SlotIndex::new(slot),
                 col(0),
+                identity(index),
             )
         })
         .collect()
@@ -300,10 +319,12 @@ fn e5_integer_exact_neutral_basis_preserves_the_u32_winner() {
         "the pre-fix binary32 collapse remains mechanically represented"
     );
     state.install_resolved_values_at_boundary(&values);
-    let plan = plan_resident_exact_apportionment(
+    let neutral_plan = plan_resident_exact_apportionment(
         &arena_layout(),
         &semantic_plan,
-        exact_claims(&semantic_plan, &requests, available, 0..2, false),
+        exact_claims_with_identity(&semantic_plan, &requests, available, 0..2, false, |_| {
+            ResidentExactBasisIdentity::NeutralRequest
+        }),
         granter,
         generation,
     )
@@ -313,23 +334,82 @@ fn e5_integer_exact_neutral_basis_preserves_the_u32_winner() {
         BTreeMap::from([(source(0), (0, 16_777_217)), (source(1), (1, 16_777_215))]);
     assert_ne!(legacy_float_tie, exact, "the planted pre-fix path is RED");
 
-    let cpu =
-        product_map(&execute_resident_apportionment_cpu(&plan, &values, state.n_dims).unwrap());
-    let resident = product_map(
+    let neutral_cpu = product_map(
+        &execute_resident_apportionment_cpu(&neutral_plan, &values, state.n_dims).unwrap(),
+    );
+    let neutral_gpu = product_map(
         &run_gpu(
             &state,
             &mut session,
             &buffers,
-            &plan,
+            &neutral_plan,
             ResidentApportionmentDispatch::single_pass(),
         )
         .unwrap(),
     );
     assert_eq!(
-        cpu, exact,
-        "CPU resident mirror retains exact request identity"
+        neutral_cpu, exact,
+        "CPU resident mirror recovers the carried exact neutral request"
     );
-    assert_eq!(resident, exact, "resident Q retains exact request identity");
+    assert_eq!(
+        neutral_gpu, exact,
+        "resident GPU recovers the carried exact neutral request"
+    );
+
+    // Remand 5540959678: these same binary32 cells can instead be the genuine
+    // result of a non-neutral policy allocating one less than source 0 asked.
+    // The carried live identity must preserve that case without fabricating
+    // the request unit lost before the policy result reached Q.
+    let below_cap_plan = plan_resident_exact_apportionment(
+        &arena_layout(),
+        &semantic_plan,
+        exact_claims(&semantic_plan, &requests, available, 0..2, false),
+        granter,
+        generation,
+    )
+    .unwrap();
+    let below_cap_expected = legacy_float_tie;
+    let below_cap_cpu = product_map(
+        &execute_resident_apportionment_cpu(&below_cap_plan, &values, state.n_dims).unwrap(),
+    );
+    let below_cap_gpu = product_map(
+        &run_gpu(
+            &state,
+            &mut session,
+            &buffers,
+            &below_cap_plan,
+            ResidentApportionmentDispatch::single_pass(),
+        )
+        .unwrap(),
+    );
+    assert_eq!(
+        below_cap_cpu, below_cap_expected,
+        "a genuinely below-request live policy result must not fabricate the missing unit"
+    );
+    assert_eq!(
+        below_cap_gpu, below_cap_expected,
+        "resident GPU must preserve a genuinely below-request live allocation"
+    );
+
+    // A genuinely above-request policy result uses the same live identity;
+    // the exact Q149 comparison caps it at the exact admitted integer request.
+    values[0] = 33_554_432.0;
+    state.install_resolved_values_at_boundary(&values);
+    let above_cap_cpu = product_map(
+        &execute_resident_apportionment_cpu(&below_cap_plan, &values, state.n_dims).unwrap(),
+    );
+    let above_cap_gpu = product_map(
+        &run_gpu(
+            &state,
+            &mut session,
+            &buffers,
+            &below_cap_plan,
+            ResidentApportionmentDispatch::single_pass(),
+        )
+        .unwrap(),
+    );
+    assert_eq!(above_cap_cpu, exact, "CPU exact cap retains the u32 winner");
+    assert_eq!(above_cap_gpu, exact, "GPU exact cap retains the u32 winner");
 }
 
 #[test]
@@ -410,6 +490,7 @@ fn neutral_continuous_shares_match_frozen_cpu_law_across_boundary_cases() {
                 mixed_precedences[index as usize],
                 SlotIndex::new(index),
                 col(0),
+                ResidentExactBasisIdentity::LiveAllocatedFlow,
             )
         })
         .collect();
@@ -739,6 +820,8 @@ fn canonical_product_is_recursive_intake_without_adapter_or_legacy_bridge() {
     assert!(shader.contains("fn wide_mul_u32"));
     assert!(shader.contains("fn wide_divmod"));
     assert!(shader.contains("fn exact_capped_basis"));
+    assert!(!exact_source.contains("requested as f32"));
+    assert!(!shader.contains("f32(requested)"));
     assert!(shader.contains("fn exact_divmod"));
     assert!(exact_source.contains("EXACT_BASIS_FRACTION_BITS: u32 = 149"));
     assert!(shader.contains("vec2<u32>"));

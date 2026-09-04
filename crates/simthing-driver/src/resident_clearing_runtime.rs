@@ -36,7 +36,8 @@ use crate::arena_registry::{
 pub const RESIDENT_MARKET_RF_NAMESPACE: &str = "simthing";
 pub const RESIDENT_MARKET_RF_PROPERTY: &str = "residency-row-capacity";
 pub const RESIDENT_MARKET_RF_ARENA: &str = "residency-row-capacity";
-const RESIDENT_EXACT_PROJECTION_ABI: &str = "resident-q/u32-request+live-allocated-flow/v2";
+const RESIDENT_EXACT_PROJECTION_ABI: &str =
+    "resident-q/u32-request+live-allocated-flow+exact-basis-identity/v3";
 const RESIDENT_CONTINUOUS_POLICY_EML: &str = "child-share-eml/e11-0001";
 
 /// Install the canonical RF substrate used by the implicit resident market.
@@ -606,6 +607,7 @@ pub struct ResidentClearingBatchBinding {
     pub requested: u32,
     pub available: u32,
     pub precedence: u32,
+    pub exact_basis_identity: simthing_gpu::ResidentExactBasisIdentity,
 }
 
 /// One descendant claim in a same-generation child market. Supply is absent
@@ -616,6 +618,7 @@ pub struct ResidentSpatialClaimBinding {
     pub rf_participant: SimThingId,
     pub requested: u32,
     pub precedence: u32,
+    pub exact_basis_identity: simthing_gpu::ResidentExactBasisIdentity,
 }
 
 /// Authored portion of one ordinary N+1 demand row.
@@ -633,6 +636,7 @@ pub struct ResidentTemporalExecutionBinding {
     pub rf_participant: SimThingId,
     pub available: u32,
     pub precedence: u32,
+    pub exact_basis_identity: simthing_gpu::ResidentExactBasisIdentity,
 }
 
 /// Application-layer policy binding for the one resident semantic scope.
@@ -1056,6 +1060,7 @@ impl ResidentClearingRuntime {
                 requested: row.requested,
                 available: 0,
                 precedence: row.precedence,
+                exact_basis_identity: row.exact_basis_identity,
             })
             .collect();
         self.dispatch_market(
@@ -1151,6 +1156,7 @@ impl ResidentClearingRuntime {
                 requested: 1,
                 available: row.available,
                 precedence: row.precedence,
+                exact_basis_identity: row.exact_basis_identity,
             })
             .collect();
         self.dispatch_market(
@@ -1193,6 +1199,7 @@ impl ResidentClearingRuntime {
                     row.precedence,
                     self.arena_binding.participant_slot(row.rf_participant)?,
                     self.arena_binding.columns.allocated_flow_col,
+                    row.exact_basis_identity,
                 ))
             })
             .collect::<Result<Vec<_>, ResidentClearingRuntimeError>>()?;

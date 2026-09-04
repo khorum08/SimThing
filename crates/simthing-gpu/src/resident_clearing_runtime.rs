@@ -20,7 +20,7 @@ use thiserror::Error;
 use wgpu::{Buffer, BufferDescriptor, BufferUsages, CommandEncoder, MapMode};
 
 const PRODUCT_BYTES: u64 = std::mem::size_of::<ResidentConstrainedProduct>() as u64;
-pub const QUALIFIED_RESIDENT_CLEARING_FINGERPRINT: u64 = 0x3ec8_e877_25b6_6e75;
+pub const QUALIFIED_RESIDENT_CLEARING_FINGERPRINT: u64 = 0x8104_18ff_57aa_9b08;
 
 /// Exact adapter/compiler/ABI record inherited from the graduated 14.5
 /// certificate. A changed tuple must be separately qualified; it never

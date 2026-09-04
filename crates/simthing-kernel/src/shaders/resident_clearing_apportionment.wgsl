@@ -28,7 +28,7 @@ struct ClaimInput {
     precedence: u32,
     allocated_flow_slot: u32,
     allocated_flow_col: u32,
-    input_active: u32,
+    exact_basis_identity: u32,
 };
 
 struct DivMod64 {
@@ -183,21 +183,24 @@ fn exact_shifted_u32(value: u32, shift: u32) -> ExactBasis {
 
 // Every finite binary32 is an integer multiple of 2^-149. Representing each
 // allocation in common Q149 units makes the float-to-exact boundary lossless.
-// The cap boundary is this Draw's projected neutral request, but the returned
-// cap is its original u32. No comparison between policy cells can create an
-// exact equality band.
-fn exact_capped_basis(continuous: f32, requested: u32) -> ExactBasis {
+// A producer-carried exact identity recovers a neutral request; otherwise the
+// continuous value and request cap are compared only in exact Q149 space.
+fn exact_capped_basis(continuous: f32, requested: u32, basis_identity: u32) -> ExactBasis {
     let cap = exact_shifted_u32(requested, 149u);
     if (requested == 0u) { return exact_zero(); }
-    if (continuous >= f32(requested)) { return cap; }
+    if (basis_identity == 2u) { return cap; }
     let bits = bitcast<u32>(continuous);
     let exponent = (bits >> 23u) & 0xffu;
     let fraction = bits & 0x007fffffu;
     if (exponent == 0u) {
         return exact_shifted_u32(fraction, 0u);
     }
+    // Biased exponent 159 starts at 2^32, strictly above every u32 cap.
+    // This exact bit classification never projects or compares the request as f32.
+    if (exponent >= 159u) { return cap; }
     let significand = 0x00800000u | fraction;
     let exact = exact_shifted_u32(significand, exponent - 1u);
+    if (exact_cmp(exact, cap) >= 0) { return cap; }
     return exact;
 }
 
@@ -340,7 +343,7 @@ fn read_claim(index: u32, spatial_supply: u32) -> ClaimInput {
             scratch_words[base + 4u],
             scratch_words[base + 5u],
             scratch_words[base + 6u],
-            select(0u, 1u, demand_active),
+            select(0u, scratch_words[base + 7u], demand_active),
         );
     }
     return ClaimInput(
@@ -400,7 +403,7 @@ fn settle_partition(local: u32) {
         return;
     }
     let current = read_claim(physical, spatial_supply.x);
-    if (current.input_active == 0u || current.semantic_row >= params.row_count) { return; }
+    if (current.exact_basis_identity == 0u || current.semantic_row >= params.row_count) { return; }
 
     // Match the CPU mirror's fail-before-settlement contract. Every invocation
     // validates the immutable claim vector in its admitted order before any
@@ -410,7 +413,7 @@ fn settle_partition(local: u32) {
     var invalid_continuous = false;
     for (var validation_index = 0u; validation_index < params.row_count; validation_index = validation_index + 1u) {
         let validation = read_claim(validation_index, spatial_supply.x);
-        if (validation.input_active == 0u) { continue; }
+        if (validation.exact_basis_identity == 0u) { continue; }
         let validation_value_index = validation.allocated_flow_slot * params.n_dims
             + validation.allocated_flow_col;
         let validation_value = values[validation_value_index];
@@ -435,7 +438,7 @@ fn settle_partition(local: u32) {
     var overflow = false;
     for (var other_index = 0u; other_index < params.row_count; other_index = other_index + 1u) {
         let other = read_claim(other_index, spatial_supply.x);
-        if (other.input_active == 0u || !same_scope(current, other)) { continue; }
+        if (other.exact_basis_identity == 0u || !same_scope(current, other)) { continue; }
         var sum = wide_add(scope_total, wide_from_u32(other.requested));
         scope_total = sum.xy;
         overflow = overflow || sum.z != 0u;
@@ -445,7 +448,7 @@ fn settle_partition(local: u32) {
             // equality-band grant ceiling and therefore cannot reserve.
             let other_value_index = other.allocated_flow_slot * params.n_dims
                 + other.allocated_flow_col;
-            let other_basis = exact_capped_basis(values[other_value_index], other.requested);
+            let other_basis = exact_capped_basis(values[other_value_index], other.requested, other.exact_basis_identity);
             if (!exact_is_zero(other_basis)) {
                 sum = wide_add(prior_grant_ceiling, wide_from_u32(other.requested));
                 prior_grant_ceiling = sum.xy;
@@ -462,7 +465,7 @@ fn settle_partition(local: u32) {
             let other_bits = bitcast<u32>(other_continuous);
             let other_not_finite = (other_bits & 0x7f800000u) == 0x7f800000u;
             if (!other_not_finite && !(other_continuous < 0.0)) {
-                let other_basis = exact_capped_basis(other_continuous, other.requested);
+                let other_basis = exact_capped_basis(other_continuous, other.requested, other.exact_basis_identity);
                 let basis_sum = exact_add(
                     basis_total,
                     other_basis,
@@ -517,11 +520,11 @@ fn settle_partition(local: u32) {
     var current_remainder = exact_zero();
     for (var other_index = 0u; other_index < params.row_count; other_index = other_index + 1u) {
         let other = read_claim(other_index, spatial_supply.x);
-        if (other.input_active == 0u || !same_scope(current, other)
+        if (other.exact_basis_identity == 0u || !same_scope(current, other)
             || other.precedence != current.precedence) { continue; }
         let other_value_index = other.allocated_flow_slot * params.n_dims
             + other.allocated_flow_col;
-        let other_basis = exact_capped_basis(values[other_value_index], other.requested);
+        let other_basis = exact_capped_basis(values[other_value_index], other.requested, other.exact_basis_identity);
         let numerator = exact_mul_u32(other_basis, available_for_band.x);
         let divided = exact_divmod(numerator.value, basis_total);
         if (numerator.overflow != 0u || divided.overflow != 0u) {
@@ -555,11 +558,11 @@ fn settle_partition(local: u32) {
     var canonical_tie_index = 0u;
     for (var other_index = 0u; other_index < params.row_count; other_index = other_index + 1u) {
         let other = read_claim(other_index, spatial_supply.x);
-        if (other.input_active == 0u || !same_scope(current, other)
+        if (other.exact_basis_identity == 0u || !same_scope(current, other)
             || other.precedence != current.precedence) { continue; }
         let other_value_index = other.allocated_flow_slot * params.n_dims
             + other.allocated_flow_col;
-        let other_basis = exact_capped_basis(values[other_value_index], other.requested);
+        let other_basis = exact_capped_basis(values[other_value_index], other.requested, other.exact_basis_identity);
         let numerator = exact_mul_u32(other_basis, available_for_band.x);
         let divided = exact_divmod(numerator.value, basis_total);
         if (numerator.overflow != 0u || divided.overflow != 0u) {

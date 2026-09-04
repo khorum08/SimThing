@@ -17,8 +17,8 @@ use simthing_driver::{
 };
 use simthing_gpu::{
     GpuContext, ResidentClearingAdmission, ResidentClearingBudgets, ResidentClearingPlan,
-    ResidentDrawId, ResidentOwnerId, ResidentResourceId, ResidentScopeId, SlotAllocator,
-    WorldGpuState, QUALIFIED_RESIDENT_CLEARING_FINGERPRINT,
+    ResidentDrawId, ResidentExactBasisIdentity, ResidentOwnerId, ResidentResourceId,
+    ResidentScopeId, SlotAllocator, WorldGpuState, QUALIFIED_RESIDENT_CLEARING_FINGERPRINT,
 };
 use simthing_kernel::ResidentClearingReplayEnvelope;
 
@@ -69,6 +69,7 @@ fn resident_rows() -> Vec<ResidentClearingBatchBinding> {
             requested: 1,
             available: 1,
             precedence: 0,
+            exact_basis_identity: ResidentExactBasisIdentity::LiveAllocatedFlow,
         },
         ResidentClearingBatchBinding {
             source_simthing_id: simthing_core::SimThingId::from_session_raw(8),
@@ -76,6 +77,7 @@ fn resident_rows() -> Vec<ResidentClearingBatchBinding> {
             requested: 1,
             available: 1,
             precedence: 0,
+            exact_basis_identity: ResidentExactBasisIdentity::LiveAllocatedFlow,
         },
     ]
 }
@@ -280,6 +282,7 @@ fn run_causal_allocation_case(
             requested: 17,
             available,
             precedence: 0,
+            exact_basis_identity: ResidentExactBasisIdentity::LiveAllocatedFlow,
         },
         ResidentClearingBatchBinding {
             source_simthing_id: simthing_core::SimThingId::from_session_raw(8),
@@ -287,6 +290,7 @@ fn run_causal_allocation_case(
             requested: 33,
             available,
             precedence: 0,
+            exact_basis_identity: ResidentExactBasisIdentity::LiveAllocatedFlow,
         },
     ];
     runtime.run_rf_with_weights(
@@ -317,6 +321,7 @@ fn run_causal_allocation_case(
                 rf_participant: simthing_core::SimThingId::from_session_raw(8),
                 requested: 33,
                 precedence: 0,
+                exact_basis_identity: ResidentExactBasisIdentity::LiveAllocatedFlow,
             }],
         )
         .expect("same-generation child consumes immutable parent T_s.G");
@@ -459,6 +464,7 @@ fn production_executor_is_async_tree_local_and_spatially_causal() {
                 rf_participant: simthing_core::SimThingId::from_session_raw(8),
                 requested: 1,
                 precedence: 0,
+                exact_basis_identity: ResidentExactBasisIdentity::LiveAllocatedFlow,
             }],
         )
         .expect("tree A child consumes parent T_s while tree B remains isolated");

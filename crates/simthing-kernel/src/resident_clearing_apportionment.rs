@@ -226,6 +226,19 @@ impl ResidentConstrainedProduct {
     }
 }
 
+/// Exact semantic identity of the basis presented to resident Q.
+///
+/// This fact is carried by the producer; it is never inferred from a rounded
+/// binary32 magnitude. `NeutralRequest` means that the continuous policy
+/// result is exactly the admitted integer request even when its binary32
+/// representation cannot retain every `u32` unit.
+#[repr(u32)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ResidentExactBasisIdentity {
+    LiveAllocatedFlow = 1,
+    NeutralRequest = 2,
+}
+
 /// One exact request bound to an existing semantic row and live
 /// `AllocatedFlow` cell. `precedence` is the already-decided hard economic
 /// band order; smaller values clear first.
@@ -238,6 +251,7 @@ pub struct ResidentApportionmentClaim {
     precedence: u32,
     allocated_flow_slot: SlotIndex,
     allocated_flow_col: ColumnIndex,
+    exact_basis_identity: ResidentExactBasisIdentity,
 }
 
 impl ResidentApportionmentClaim {
@@ -250,6 +264,7 @@ impl ResidentApportionmentClaim {
         precedence: u32,
         allocated_flow_slot: SlotIndex,
         allocated_flow_col: ColumnIndex,
+        exact_basis_identity: ResidentExactBasisIdentity,
     ) -> Self {
         Self {
             semantic_row,
@@ -259,6 +274,7 @@ impl ResidentApportionmentClaim {
             precedence,
             allocated_flow_slot,
             allocated_flow_col,
+            exact_basis_identity,
         }
     }
 
@@ -282,6 +298,9 @@ impl ResidentApportionmentClaim {
     }
     pub const fn allocated_flow_col(self) -> ColumnIndex {
         self.allocated_flow_col
+    }
+    pub const fn exact_basis_identity(self) -> ResidentExactBasisIdentity {
+        self.exact_basis_identity
     }
 }
 
@@ -482,21 +501,21 @@ fn exact_shifted_u32(value: u32, shift: u32) -> ExactBasis {
 }
 
 /// Converts one non-negative finite binary32 allocation into an exact common
-/// Q149 numerator while preserving the canonical integer request at its own
-/// neutral boundary. Every finite binary32 value is an integer multiple of
-/// 2^-149, so this is an identity representation, not a settlement rounding
-/// rule.
-///
-/// The comparison is per Draw against that Draw's projected neutral request;
-/// it never compares two policy cells and therefore cannot manufacture an
-/// exact equality band. At and above that boundary the exact admitted `u32`,
-/// not its rounded binary32 projection, is Q's capped basis.
-fn exact_capped_basis(allocated: f32, requested: u32) -> ExactBasis {
+/// Q149 numerator while preserving an explicitly carried neutral request.
+/// Every finite binary32 value is an integer multiple of 2^-149, so this is
+/// an identity representation, not a settlement rounding rule. The cap is
+/// compared in exact integer/Q149 space; no rounded float projection of the
+/// request participates in the decision.
+fn exact_capped_basis(
+    allocated: f32,
+    requested: u32,
+    identity: ResidentExactBasisIdentity,
+) -> ExactBasis {
     let cap = exact_shifted_u32(requested, EXACT_BASIS_FRACTION_BITS);
     if requested == 0 {
         return [0; EXACT_BASIS_LIMBS];
     }
-    if allocated >= requested as f32 {
+    if identity == ResidentExactBasisIdentity::NeutralRequest {
         return cap;
     }
     let bits = allocated.to_bits();
@@ -505,11 +524,19 @@ fn exact_capped_basis(allocated: f32, requested: u32) -> ExactBasis {
     if exponent == 0 {
         return exact_shifted_u32(fraction, 0);
     }
-    debug_assert!(exponent < 159);
+    // Every normal value with biased exponent 159 or greater is at least
+    // 2^32, strictly above every possible u32 request. This is an exact bit
+    // classification, not a rounded float/request comparison.
+    if exponent >= 159 {
+        return cap;
+    }
     let significand = 0x0080_0000 | fraction;
     let exact = exact_shifted_u32(significand, exponent - 1);
-    debug_assert!(exact_cmp(&exact, &cap).is_lt());
-    exact
+    if exact_cmp(&exact, &cap).is_ge() {
+        cap
+    } else {
+        exact
+    }
 }
 
 fn exact_checked_add(
@@ -781,7 +808,11 @@ pub fn execute_resident_apportionment_cpu(
                 source_id: claim.source_simthing_id,
             });
         }
-        bases.push(exact_capped_basis(allocated, claim.requested));
+        bases.push(exact_capped_basis(
+            allocated,
+            claim.requested,
+            claim.exact_basis_identity,
+        ));
     }
     settle_resident_apportionment_over_share_vector(plan, &bases)
 }
@@ -796,7 +827,7 @@ struct ResidentApportionmentScratchRowGpu {
     precedence: u32,
     allocated_flow_slot: u32,
     allocated_flow_col: u32,
-    active: u32,
+    exact_basis_identity: u32,
     product: ResidentConstrainedProduct,
 }
 
@@ -1057,7 +1088,7 @@ impl ResidentApportionmentSession {
                 precedence: claim.precedence,
                 allocated_flow_slot: claim.allocated_flow_slot.raw(),
                 allocated_flow_col: claim.allocated_flow_col.raw_u32(),
-                active: 1,
+                exact_basis_identity: claim.exact_basis_identity as u32,
                 product: ResidentConstrainedProduct {
                     status: STATUS_INACTIVE,
                     ..ResidentConstrainedProduct::default()

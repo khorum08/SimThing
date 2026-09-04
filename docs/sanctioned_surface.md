@@ -11,7 +11,7 @@ This digest is a derived context artifact for low-context agents. If it disagree
 | --- | --- | --- |
 | scripts/ci/allow/sealed_producers.txt | 25 | 6923796f3bacd3b27b29f778d5276c3f82a3a67c3f010c30f10b78de8a1866f6 |
 | scripts/ci/allow/inert_buffer_handles.txt | 2 | 9e2069fa5730f17cacde1c671ebc17beb59f50738d2dcb914bceae13f9b8b3a4 |
-| scripts/ci/allow/kernel_surface.txt | 341 | ef42194e1c100e45052d035f7abcd7d015330d9f60ae3e2a5f8ec929bd9fb1d6 |
+| scripts/ci/allow/kernel_surface.txt | 342 | 8022c76a58da44db88f2d7867208029a98b391dfa6c24eda0174fe8eab5a6136 |
 | scripts/ci/allow/sealed_types.txt | 19 | 9d427e3b41a586b06f24ca02cc45f78934237d2229b0c38d46e2a8a6ef5016be |
 | scripts/ci/allow/contention_mechanisms.txt | 9 | 1f9e930b44197d4254f46ea96328f814d9ba0f2dad06881c454aebc01c01d44b |
 | scripts/ci/scans.tsv | 24 | 36bf78ae4a81a9c49b570051a0f53cb10aa88ab5cf57faa0a05d83abfd068e79 |
@@ -387,6 +387,7 @@ This digest is a derived context artifact for low-context agents. If it disagree
 | resident_clearing_apportionment | authority-export | RESIDENT-CLEARING-APPORTIONMENT-0 exact integer residue namespace over the admitted resident AllocatedFlow authority | retire when resident exact settlement is reachable only through the standard simulation lifecycle | kernel_surface.txt |
 | execute_resident_apportionment_cpu | authority-export | RESIDENT-CLEARING-APPORTIONMENT-0 frozen-law CPU referee for exact resident GPU settlement | retire only if another independent full-domain exact referee replaces it | kernel_surface.txt |
 | ResidentApportionmentClaim | authority-export | RESIDENT-CLEARING-APPORTIONMENT-0 typed request and live AllocatedFlow address bound to a canonical resident semantic row | retire when all exact claims lower through a narrower driver-owned door | kernel_surface.txt |
+| ResidentExactBasisIdentity | authority-export | RESIDENT-FILTER-SUBSTRATE-BINDING-0 closed producer-carried exact distinction between a neutral integer request basis and an ordinary live AllocatedFlow basis | retire when every neutral basis fact is minted and consumed wholly inside the resident lifecycle | kernel_surface.txt |
 | ResidentApportionmentDispatch | authority-export | RESIDENT-CLEARING-APPORTIONMENT-0 physical-only workgroup and partition proof shape with no economic authority | retire when physical-order invariance is intrinsic in a private session | kernel_surface.txt |
 | ResidentApportionmentError | authority-export | RESIDENT-CLEARING-APPORTIONMENT-0 typed admission arithmetic live-input and GPU refusal surface | retire when exact settlement has no external caller | kernel_surface.txt |
 | ResidentApportionmentPlan | authority-export | RESIDENT-CLEARING-APPORTIONMENT-0 immutable exact-residue plan bound to the canonical semantic plan and terminal band | retire when construction is reachable only through the standard simulation lifecycle | kernel_surface.txt |

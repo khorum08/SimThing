@@ -370,6 +370,8 @@ impl GrowthEntitlementMarketBinding {
                     requested: candidate.quantity(),
                     available,
                     precedence: 0,
+                    exact_basis_identity:
+                        simthing_gpu::ResidentExactBasisIdentity::LiveAllocatedFlow,
                 },
             )
             .collect();
