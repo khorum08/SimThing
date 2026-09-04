@@ -1,7 +1,7 @@
 struct Params {
     row_count: u32,
     input_start_row: u32,
-    _pad0: u32,
+    demand_generation: u32,
     _pad1: u32,
 };
 
@@ -26,13 +26,20 @@ struct TransformResult {
     status: u32,
 };
 
+struct AuthoredDemand {
+    source_simthing_id: u32,
+    quantity: u32,
+};
+
 @group(0) @binding(0) var<uniform> params: Params;
 @group(0) @binding(1) var<storage, read> input_words: array<u32>;
 @group(0) @binding(2) var<storage, read_write> output_words: array<u32>;
 @group(0) @binding(3) var<storage, read> transform_bindings: array<TransformBinding>;
 @group(0) @binding(4) var<storage, read> transform_nodes: array<EmlNode>;
+@group(0) @binding(5) var<storage, read> authored_demands: array<AuthoredDemand>;
 
 const PRODUCT_WORDS: u32 = 8u;
+const DEMAND_WORDS: u32 = 4u;
 const STATUS_OK: u32 = 0u;
 const STATUS_INVALID_TRANSFORM: u32 = 3u;
 
@@ -138,7 +145,7 @@ fn eval_transform(row: u32, unresolved: u32) -> TransformResult {
 }
 
 @compute @workgroup_size(64)
-fn mint_recursive_intake(@builtin(global_invocation_id) gid: vec3<u32>) {
+fn mint_temporal_demand(@builtin(global_invocation_id) gid: vec3<u32>) {
     let row = gid.x;
     if (row >= params.row_count) { return; }
 
@@ -150,16 +157,21 @@ fn mint_recursive_intake(@builtin(global_invocation_id) gid: vec3<u32>) {
     }
 
     let input_base = (params.input_start_row + row) * PRODUCT_WORDS;
-    let output_base = row * PRODUCT_WORDS;
-    for (var word = 0u; word < PRODUCT_WORDS; word = word + 1u) {
-        output_words[output_base + word] = input_words[input_base + word];
-    }
-    if (invalid) {
-        output_words[output_base + 2u] = 0u;
-        output_words[output_base + 3u] = 0u;
-        output_words[output_base + 5u] = STATUS_INVALID_TRANSFORM;
+    let output_base = row * DEMAND_WORDS;
+    let authored = authored_demands[row];
+    output_words[output_base] = authored.source_simthing_id;
+    output_words[output_base + 1u] = 0u;
+    output_words[output_base + 2u] = params.demand_generation;
+    output_words[output_base + 3u] = STATUS_OK;
+    if (invalid || authored.source_simthing_id != input_words[input_base + 1u]) {
+        output_words[output_base + 3u] = STATUS_INVALID_TRANSFORM;
         return;
     }
     let result = eval_transform(row, input_words[input_base + 3u]);
-    output_words[output_base + 3u] = result.output;
+    let effective = authored.quantity + result.output;
+    if (effective < authored.quantity || result.status != STATUS_OK) {
+        output_words[output_base + 3u] = STATUS_INVALID_TRANSFORM;
+        return;
+    }
+    output_words[output_base + 1u] = effective;
 }

@@ -1,56 +1,108 @@
-# RECURSION-AXIS-CONFORMANCE-0 — E6 Owner-stop evidence
+# RECURSION-AXIS-CONFORMANCE-0 — full remediation evidence
 
-Status: **PROBATION / E6-OWNER-DECISION-PENDING / UNMERGED / NO SEMANTIC REMEDY / NO 15.6**.
+Status: **PROBATION / proof-present / DA-review-pending / UNMERGED / NO 15.6**.
 
-Authority: Board handoff `5532779733`, binding clarification `5529092629`, and `handoffs/RECURSION-AXIS-CONFORMANCE-0.hd.md` (`HD-RECEIPT: bbecf03b4d88`). Coding orientation is `ORIENT-RECEIPT: 4266e4870c67` under rule stamp `240c816e9fe71dc1`.
+Authority: dispatch `5532779733`, semantic-scope binding `5529092629`, E6 Owner-stop packet `5533226409`, binding Owner ruling `5533372979`, and resume remand `5533564241`. The handoff is `handoffs/RECURSION-AXIS-CONFORMANCE-0.hd.md` (`HD-RECEIPT: bbecf03b4d88`). Coding orientation is `ORIENT-RECEIPT: 4266e4870c67` under rule stamp `240c816e9fe71dc1`.
 
-## Stop verdict
+## Result
 
-The two mandatory E6 falsifiers were planted before any production change. Both reproduce the documented request-reserved stranding behavior on the production `ResidentClearingRuntime`, so the handoff's **E6 OWNER STOP** is active. This branch deliberately does not select work-conserving fallthrough, entitlement-first reservation, or a shared answer for both commitment classes.
+The production resident port now implements two distinct views of one immutable canonical `T_s`:
+
+- Spatial recursion reads exactly parent `T_s.G` as child supply at the same generation, then clears under a changed child granter and the child's separately admitted semantic-row bank over actual descendants.
+- Temporal recursion reads exactly parent `T_s.U` inside the existing Current-to-Next once-mint, combines it with independently authored N+1 demand as `d_effective(N+1) = d_authored(N+1) + f(U(N))`, and emits ordinary demand rather than a product-shaped pseudo-`T_s`.
+
+Immediate flow is work-conserving under the Owner's E6 ruling. Precedence orders feasible work but consumes no capacity on a zero basis. Later bands subtract exact prior commitments/grants, never prior requests. Reservation is supplied only through the existing conserved `ResidencyCapacityPartition` in-flight holding lifecycle; there is still one exact projection.
+
+## Production call graphs
+
+Spatial:
+
+```text
+dispatch(root, N)
+  -> one continuous AllocatedFlow producer
+  -> one exact resident apportionment
+  -> immutable T_s append
+dispatch_spatial(parent_ticket, child_granter=v, N, scope=v)
+  -> validate v is a parent product and each claim is a descendant of v
+  -> exact shader reads parent product G directly from the resident segment
+  -> child exact apportionment over v's separately admitted semantic rows
+  -> immutable child T_s append
+```
+
+Temporal:
+
+```text
+immutable T_s(N)
+  -> prepare_temporal_demands(N+1, authored demand)
+  -> one resident demand mint reads U, evaluates optional admitted f(U), and emits 4-word ordinary demand
+sealed/authored/born N+1 datum arrives
+  -> dispatch_temporal(prepared demand, N+1 supply/precedence/weight)
+  -> the same exact resident apportionment
+  -> immutable T_s(N+1) append
+```
+
+Preparation submits no N+1 economics. The N+1 execution API requires the prepared demand ticket and separately supplied N+1-authoritative execution data.
+
+## Canonical cross-product and parity transcripts
+
+The production real-GPU referee constructs `T_s(N=50)` from request 10 and supply 4, producing `G=4, U=6`. A child market at the same generation changes granter/scope from root 7 to child 8; descendant source 9 receives exact supply 4 from the immutable parent product and produces its own semantic identity. Temporal preparation adds authored demand 2 to U 6 and emits ordinary demand 8. N+1 execution with N+1-authoritative supply 5 produces `G=5, U=3`.
+
+```text
+15.5 CROSS-PRODUCT PASS T_s=(G4,U6,N50)
+child=(granter8,source9,G4,N50)
+authored_N1=2 effective_N1=8 executes_with_N1_supply=5
+```
+
+The CPU once-mint and resident demand mint are bit-exact for both mandatory cases:
+
+| Case | T_s input | Authored N+1 | Effective CPU demand | Effective resident demand |
+|---|---:|---:|---:|---:|
+| identity | `G=4, U=6` | 2 | 8 | 8 |
+| admitted half deformation | `G=4, U=6`, `f(U)=U/2` | 2 | 5 | 5 |
+
+The frozen 15.2 production decay referee also remains green through explicit prepare/execute phases: `100 -> 80 -> 64` without host reinjection.
 
 ## E6 transcript
 
-| Falsifier | Input | Observed production-resident result | Stranded feasible supply |
-|---|---|---|---:|
-| zero-basis high band | available 4; source 8 requests 4 at precedence 0 with exact basis 0 | `(source=8, G=0, U=4)` | 4 |
-| mixed bands | available 4; source 8 requests 4 at precedence 0 with basis 0; source 9 requests 4 at precedence 1 with nonzero basis | `(8, G=0, U=4), (9, G=0, U=4)` | 4 despite a serviceable lower band |
-
-Focused execution:
+With total supply 4, a precedence-0 request of 4 with exact basis 0 consumes zero capacity; the later precedence-1 serviceable claim receives all 4. Supplying an actual conserved in-flight holding of 3 reduces free supply to 1, so the later claim receives 1. Both CPU and resident exact projections follow `S_(k+1) = S_k - sum(G_i)`.
 
 ```text
-running 2 tests
-E6 mixed-band stranding reproduced: available=4 products=[(8, 0, 4), (9, 0, 4)] stranded=4 despite serviceable lower band
-E6 zero-basis-high-band reproduced: available=4 products=[(8, 0, 4)] stranded=4
-test result: ok. 2 passed; 0 failed
+E6 PASS
+no-commitment=[(8,G0,U4),(9,G4,U0)]
+in_flight=3 reserved=[(8,G0,U4),(9,G1,U3)]
+law=S_next=S-sum(G)
 ```
 
-## Archaeology map
+No request, precedence integer, or class label acts as reservation authority.
 
-| Surface | Current source truth | 15.5 disposition before Owner ruling |
+## Mutant matrix
+
+| Planted forbidden shape | Mechanical RED boundary |
+|---|---|
+| temporal `G + f(U)` | ordinary demand layout has no G field; canonical referee expects 8/5, not 12/9 |
+| spatial generation increment | `dispatch_spatial` returns typed `SpatialGenerationMismatch` unless child generation equals parent generation |
+| spatial parent-granter retention | resident live head returns typed `SpatialGranterRetained` unless the child granter changes |
+| temporal mutable pseudo-`T_s` | temporal mint output is a distinct 4-word `ResidentTemporalDemand`, not the 8-word product ABI; structural source assertions pin the absence of product copy/write paths |
+| copied parent claim identity in child market | descendant membership rejects source 8 in scope 8; lawful child source 9 occupies a distinct semantic row and product identity |
+| prepared input executes early | changing only N+1-authoritative supply from 1 to 6 changes the eventual result from `(G=1,U=7)` to `(G=6,U=2)`; preparation precedes and cannot observe either value |
+
+Focused execution is 5/5 green, including all RED-mutant assertions.
+
+## Archaeology and changed authority
+
+| Surface | Before remediation | Bound result |
 |---|---|---|
-| root continuous preparation | `ResidentClearingRuntime::prepare_root_continuous_allocation` installs total requested quantity as root flow and claimant pressure as `AllocatorWeight` | observed only; no change |
-| CPU exact precedence | `settle_resident_apportionment_over_share_vector` computes `remaining = available - prior_requested` | E6 defect reproduced; no remedy selected |
-| resident exact precedence | `resident_clearing_apportionment.wgsl::settle_partition` computes `remaining = supply - prior_total`, where `prior_total` sums requests | same E6 defect reproduced on the real GPU path; no remedy selected |
-| canonical product | `ResidentConstrainedProduct` carries semantic row, claimant, G, U, generation, and integration band; settlement output and recursive intake remain type aliases | immutable ABI observed; no adapter added |
-| spatial `dispatch(None)` | requires the template's original granter, advances via `for_recursive_intake_generation`, matches the prior semantic scope, and reuses product claimant/row identity | confirms E1 remediation remains outstanding; no source change |
-| resident temporal path | the intake transform copies the whole `T_s` record, replaces its U field with `f(U)`, then recursive `read_claim` treats `G + f(U)` as the next request | confirms the forbidden pseudo-`T_s`/`G+f(U)` shape remains outstanding; no source change |
-| CPU temporal authority | `produce_runtime_rf_next_generation_demands` consumes its one mint and adds optional `f(U)` to independently authored N+1 demand | already-correct reference remains untouched |
-| prepared versus executes | resident `dispatch(None)` immediately evaluates the next economic clear from the pending intake/template without an N+1-authored datum | falsifier/remediation remains outstanding after Owner E6 ruling |
+| CPU/WGSL exact precedence | later capacity subtracted prior requested quantity | subtracts exact prior committed/granted quantity; zero-basis immediate work falls through |
+| reservation | request-shaped behavior was implicit in precedence arithmetic | only actual `ResidencyCapacityPartition.in_flight` reduces free supply before the one exact path |
+| spatial recursive intake | retained parent granter/scope/claim identity and advanced generation | same-generation product-G view, changed granter, changed semantic scope, own descendants/rows |
+| temporal recursive intake | copied product, modified U, then interpreted `G+f(U)` as a new request | once-mint reads immutable U and emits independently typed ordinary N+1 demand |
+| N+1 lifecycle | recursive dispatch both prepared and executed using an N template | preparation and execution are separate; execution requires N+1-authoritative data |
+| continuous row storage | market lanes shared cells across scopes | every admitted semantic scope owns distinct continuous and exact rows |
 
-## Scope ledger
+## Scope ledger and conformance
 
-Changed scope is proof/evidence only: one new workshop integration referee, its two inventory rows, this report, the current-evidence row, the append-only anchor reach log, and the regenerated sanctioned-surface digest if required by freshness. There is no production Rust, WGSL, exact-Q, canonical `T_s`, persistence, consequence, qualification, canon, workflow, CI implementation, pointer, handoff, graduation, 15.6, 15.7, compression, or closeout change.
+The implementation changes the existing resident clearing runtime, exact CPU/resident precedence construction, resident shaders, world-state forwarding, and the existing temporal-intake module in place. It updates the production growth-entitlement caller, the 14.6/15.2 frozen witnesses, the 15.5 referee, qualification fingerprint, inventory ledger, this report, the current-evidence row, and append-only anchor reach records.
 
-## Validation
+There is one immutable product ABI, one continuous allocation producer, one exact apportionment, one Current-to-Next mint, and one demand vocabulary. No adapter, second carry, second exact path, canon rewrite, workflow/CI implementation edit, pointer movement, 15.6/15.7 work, graduation, merge, compression, or closeout is present.
 
-- `cargo test -p simthing-workshop --test recursion_axis_conformance_0 -- --nocapture`: PASS, 2 passed on the real GPU resident path.
-- `cargo test --workspace --all-targets --no-fail-fast -j 1 --quiet`: PASS.
-- `cargo check -p simthing-workshop --all-targets`: PASS.
-- `rustfmt --edition 2021 --check crates/simthing-workshop/tests/recursion_axis_conformance_0.rs`: PASS.
-- anchor integrity, sanctioned-surface digest freshness, detachability, test inventory, lifecycle schema, and inventory drift checks: PASS.
-
-The branch is based on exact admitted master `0796a95e2080c8ece6428685f971e9f8d60e859f`. These green checks establish the evidence packet; they do not discharge the active Owner decision or the remaining 15.5 proof obligations.
-
-## Decision required
-
-The Owner must rule commitment-class semantics for E6: whether immediate-flow work is work-conserving across an unserviceable higher band, whether explicit entitlement commitments reserve that capacity, and whether the two classes intentionally differ. Only an explicit Owner ruling can release this branch to implement E6 and complete the remaining 15.5 cross-product, semantic-scope, prepared-vs-executes, forbidden-shape, and parity proofs.
+The production qualification tuple is pinned at `0xc71e1ae26c1c7f99` after the exact shader change. Frozen resident causal/tree-isolation, persistence, exact parity, theorem/census, filter closure, consequence ingress, oracle quarantine, pacing, qualification, authority, inventory, lifecycle, anchor, detachability, Agent Scan, and hosted Doctrine evidence are recorded in the exact-head PR relay.

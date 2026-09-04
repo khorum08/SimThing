@@ -7,8 +7,9 @@
 //! `u64` pairs and adds an exact common-Q149 representation for binary32
 //! numerator bases; it never uses atomics or physical arrival order.
 //!
-//! Settlement output and recursive supply intake are aliases of one canonical
-//! product. The original role-projection fence remains load-bearing:
+//! Settlement output and same-generation spatial supply intake are aliases of
+//! one immutable canonical product. The role-projection fence remains
+//! load-bearing:
 //!
 //! ```compile_fail,E0308
 //! use simthing_kernel::ResidentRecursiveSupplyIntake;
@@ -42,7 +43,7 @@
 //! ```
 //!
 //! A seam payload translation is equally inadmissible even when it copies all
-//! currently visible fields. The recursive port accepts the original `T_s`,
+//! currently visible fields. The spatial port accepts the original `T_s`,
 //! never a look-alike payload:
 //!
 //! ```compile_fail,E0308
@@ -170,7 +171,7 @@ pub struct ResidentConstrainedProduct {
 
 /// Role name for the exact settlement/emission port.
 pub type ResidentSettlementOutput = ResidentConstrainedProduct;
-/// Role name for the same product at the next recursive level's intake port.
+/// Role name for the same product at a same-generation spatial child port.
 pub type ResidentRecursiveSupplyIntake = ResidentConstrainedProduct;
 
 impl ResidentConstrainedProduct {
@@ -389,8 +390,8 @@ impl ResidentApportionmentPlan {
         &self.claims
     }
 
-    /// Bind admitted policy to existing claim rows. The binding travels with
-    /// the recursive plan template; it is not another intake or demand path.
+    /// Bind admitted temporal policy to existing claim rows. The policy reads
+    /// immutable U only when the ordinary Current-to-Next demand is minted.
     pub fn with_persistence_deformations(
         mut self,
         bindings: impl IntoIterator<Item = (u32, PersistenceDeformationProgram)>,
@@ -445,17 +446,6 @@ impl ResidentApportionmentPlan {
     }
     pub const fn integration_band(&self) -> u32 {
         self.integration_band
-    }
-
-    /// Retain only the admitted claim shape for an interior generation. The
-    /// recursive kernel does not treat the cloned request, supply, or source
-    /// fields as economic input: it replaces those fields directly from the
-    /// bound canonical `T_s` products. Keeping the physical binding template
-    /// avoids any host product projection or translated recursive payload.
-    pub fn for_recursive_intake_generation(&self, generation: GenerationStamp) -> Self {
-        let mut recursive = self.clone();
-        recursive.generation = generation;
-        recursive
     }
 }
 
@@ -632,13 +622,43 @@ fn settle_resident_apportionment_over_share_vector(
         if unresolved_total > u64::from(u32::MAX) {
             return Err(ResidentApportionmentError::ArithmeticOverflow);
         }
-        let prior_requested = group
-            .iter()
-            .filter(|(_, other)| other.precedence < claim.precedence)
-            .try_fold(0u64, |sum, (_, other)| {
-                sum.checked_add(u64::from(other.requested))
-            })
-            .ok_or(ResidentApportionmentError::ArithmeticOverflow)?;
+        // Precedence orders feasible work; it does not reserve supply.  A
+        // prior band consumes capacity only when the one exact projection has
+        // a non-zero basis for that band.  In that case the band commits its
+        // exact available quantity; a wholly unserviceable band commits zero
+        // and free supply falls through.
+        let mut prior_committed = 0u64;
+        let mut prior_precedences = BTreeSet::new();
+        for (_, other) in &group {
+            if other.precedence < claim.precedence {
+                prior_precedences.insert(other.precedence);
+            }
+        }
+        for precedence in prior_precedences {
+            let prior_band: Vec<_> = group
+                .iter()
+                .copied()
+                .filter(|(_, other)| other.precedence == precedence)
+                .collect();
+            let prior_basis_total = prior_band
+                .iter()
+                .try_fold([0; EXACT_BASIS_LIMBS], |sum, (index, _)| {
+                    exact_checked_add(&sum, &bases[*index])
+                })?;
+            if exact_is_zero(&prior_basis_total) {
+                continue;
+            }
+            let prior_requested = prior_band
+                .iter()
+                .try_fold(0u64, |sum, (_, other)| {
+                    sum.checked_add(u64::from(other.requested))
+                })
+                .ok_or(ResidentApportionmentError::ArithmeticOverflow)?;
+            let remaining = u64::from(claim.available).saturating_sub(prior_committed);
+            prior_committed = prior_committed
+                .checked_add(remaining.min(prior_requested))
+                .ok_or(ResidentApportionmentError::ArithmeticOverflow)?;
+        }
         let band: Vec<_> = group
             .into_iter()
             .filter(|(_, other)| other.precedence == claim.precedence)
@@ -649,7 +669,7 @@ fn settle_resident_apportionment_over_share_vector(
                 sum.checked_add(u64::from(other.requested))
             })
             .ok_or(ResidentApportionmentError::ArithmeticOverflow)?;
-        let remaining = u64::from(claim.available).saturating_sub(prior_requested);
+        let remaining = u64::from(claim.available).saturating_sub(prior_committed);
         let available_for_band = u32::try_from(remaining.min(requested_total))
             .map_err(|_| ResidentApportionmentError::ArithmeticOverflow)?;
         let basis_total = band
@@ -795,10 +815,24 @@ struct ResidentApportionmentParamsGpu {
     integration_band: u32,
     dispatch_base: u32,
     dispatch_count: u32,
-    recursive_intake_mode: u32,
-    recursive_intake_count: u32,
-    _pad2: u32,
+    resident_input_mode: u32,
+    resident_input_count: u32,
+    resident_input_start: u32,
     _pad3: u32,
+}
+
+#[derive(Clone, Copy)]
+enum ResidentInputMode {
+    SpatialSupply = 1,
+    TemporalDemand = 2,
+}
+
+#[derive(Clone, Copy)]
+struct ResidentInput<'a> {
+    buffer: &'a Buffer,
+    mode: ResidentInputMode,
+    start: u32,
+    count: u32,
 }
 
 /// GPU executor for the exact residue stage. It writes canonical product slots
@@ -807,7 +841,7 @@ pub struct ResidentApportionmentSession {
     layout: wgpu::BindGroupLayout,
     pipeline_32: ComputePipeline,
     pipeline_64: ComputePipeline,
-    recursive_intake_dummy: Buffer,
+    resident_input_dummy: Buffer,
 }
 
 impl ResidentApportionmentSession {
@@ -852,8 +886,8 @@ impl ResidentApportionmentSession {
             layout,
             pipeline_32: pipeline("resident_apportionment_pipeline_w32", "settle_exact_w32"),
             pipeline_64: pipeline("resident_apportionment_pipeline_w64", "settle_exact_w64"),
-            recursive_intake_dummy: ctx.device.create_buffer(&BufferDescriptor {
-                label: Some("resident_recursive_intake_dummy"),
+            resident_input_dummy: ctx.device.create_buffer(&BufferDescriptor {
+                label: Some("resident_input_dummy"),
                 size: u64::try_from(std::mem::size_of::<ResidentConstrainedProduct>())
                     .expect("resident product byte size fits u64"),
                 usage: BufferUsages::STORAGE,
@@ -889,21 +923,57 @@ impl ResidentApportionmentSession {
         )
     }
 
-    /// Bind the canonical exact `T_s` buffer directly as the recursive supply
-    /// intake for the same apportionment kernel. The product is never copied
-    /// into a role-specific host or GPU payload: the shader reads its exact
-    /// fields and the immutable claim metadata only supplies the existing
-    /// AllocatedFlow location and hard precedence.
+    /// Bind immutable parent `T_s` products as same-generation child supply.
+    /// Only the exact G field matching the changed child granter is visible to
+    /// the one projection; child requests retain their own semantic rows.
     #[allow(clippy::too_many_arguments)]
-    pub(crate) fn encode_from_recursive_intake_at_integration_band_with_dispatch(
+    pub(crate) fn encode_from_spatial_products_at_integration_band_with_dispatch(
         &mut self,
         ctx: &GpuContext,
         encoder: &mut CommandEncoder,
         values: &Buffer,
         semantic_rows: &Buffer,
         scratch: &Buffer,
-        recursive_intake: &Buffer,
-        recursive_intake_count: u32,
+        products: &Buffer,
+        product_start: u32,
+        product_count: u32,
+        n_slots: u32,
+        n_dims: u32,
+        plan: &ResidentApportionmentPlan,
+        dispatch: ResidentApportionmentDispatch,
+    ) -> Result<(), ResidentApportionmentError> {
+        self.encode_at_integration_band_with_dispatch_and_intake(
+            ctx,
+            encoder,
+            values,
+            semantic_rows,
+            scratch,
+            n_slots,
+            n_dims,
+            plan,
+            dispatch,
+            Some(ResidentInput {
+                buffer: products,
+                mode: ResidentInputMode::SpatialSupply,
+                start: product_start,
+                count: product_count,
+            }),
+        )
+    }
+
+    /// Bind ordinary once-minted N+1 demands. The demand buffer may replace
+    /// only request quantity/input activity; N+1 supply, precedence, semantic
+    /// scope, and AllocatedFlow remain newly prepared execution inputs.
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn encode_from_temporal_demands_at_integration_band_with_dispatch(
+        &mut self,
+        ctx: &GpuContext,
+        encoder: &mut CommandEncoder,
+        values: &Buffer,
+        semantic_rows: &Buffer,
+        scratch: &Buffer,
+        demands: &Buffer,
+        demand_count: u32,
         n_slots: u32,
         n_dims: u32,
         plan: &ResidentApportionmentPlan,
@@ -911,10 +981,10 @@ impl ResidentApportionmentSession {
     ) -> Result<(), ResidentApportionmentError> {
         let expected = u32::try_from(plan.claims.len())
             .map_err(|_| ResidentApportionmentError::RowCountNarrowing)?;
-        if recursive_intake_count != expected {
-            return Err(ResidentApportionmentError::RecursiveIntakeCountMismatch {
+        if demand_count != expected {
+            return Err(ResidentApportionmentError::ResidentInputCountMismatch {
                 expected,
-                observed: recursive_intake_count,
+                observed: demand_count,
             });
         }
         self.encode_at_integration_band_with_dispatch_and_intake(
@@ -927,7 +997,12 @@ impl ResidentApportionmentSession {
             n_dims,
             plan,
             dispatch,
-            Some((recursive_intake, recursive_intake_count)),
+            Some(ResidentInput {
+                buffer: demands,
+                mode: ResidentInputMode::TemporalDemand,
+                start: 0,
+                count: demand_count,
+            }),
         )
     }
 
@@ -943,7 +1018,7 @@ impl ResidentApportionmentSession {
         n_dims: u32,
         plan: &ResidentApportionmentPlan,
         dispatch: ResidentApportionmentDispatch,
-        recursive_intake: Option<(&Buffer, u32)>,
+        resident_input: Option<ResidentInput<'_>>,
     ) -> Result<(), ResidentApportionmentError> {
         for claim in &plan.claims {
             if claim.allocated_flow_slot.raw() >= n_slots
@@ -1012,9 +1087,9 @@ impl ResidentApportionmentSession {
                 integration_band: plan.integration_band,
                 dispatch_base,
                 dispatch_count,
-                recursive_intake_mode: u32::from(recursive_intake.is_some()),
-                recursive_intake_count: recursive_intake.map_or(0, |(_, count)| count),
-                _pad2: 0,
+                resident_input_mode: resident_input.map_or(0, |input| input.mode as u32),
+                resident_input_count: resident_input.map_or(0, |input| input.count),
+                resident_input_start: resident_input.map_or(0, |input| input.start),
                 _pad3: 0,
             };
             let params_buffer = ctx
@@ -1046,9 +1121,9 @@ impl ResidentApportionmentSession {
                     },
                     BindGroupEntry {
                         binding: 4,
-                        resource: recursive_intake.map_or_else(
-                            || self.recursive_intake_dummy.as_entire_binding(),
-                            |(buffer, _)| buffer.as_entire_binding(),
+                        resource: resident_input.map_or_else(
+                            || self.resident_input_dummy.as_entire_binding(),
+                            |input| input.buffer.as_entire_binding(),
                         ),
                     },
                 ],
@@ -1213,8 +1288,8 @@ pub enum ResidentApportionmentError {
     ZeroDispatchPartition,
     #[error("resident apportionment produced {observed} products, expected {expected}")]
     IncompleteGpuOutput { expected: usize, observed: usize },
-    #[error("resident recursive intake has {observed} products, expected {expected}")]
-    RecursiveIntakeCountMismatch { expected: u32, observed: u32 },
+    #[error("resident input has {observed} rows, expected {expected}")]
+    ResidentInputCountMismatch { expected: u32, observed: u32 },
     #[error("persistence deformation targets semantic row {semantic_row} without a claim")]
     DeformationWithoutClaim { semantic_row: u32 },
     #[error("more than one persistence deformation targets semantic row {semantic_row}")]

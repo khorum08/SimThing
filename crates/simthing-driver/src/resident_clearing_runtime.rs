@@ -11,9 +11,9 @@ use simthing_core::{
     expand_arena_internal_columns, AccumulatorRole, AccumulatorSpec, ClampBehavior,
     DimensionRegistry, EmlExpressionRegistry, ExecutionIncarnation, GenerationStamp,
     IntegrationSchedule, LogTier, PersistenceDeformationProgram, PropertyLayout,
-    ResidentClearingScheduleFact, ResidentScheduleError, SimProperty, SimPropertyId, SimThing,
-    SimThingId, SlotIndex, SubFieldRole, SubFieldSpec, TreeExecutionAuthority,
-    TreeGenerationAuthority, TreeRealmId,
+    ResidencyCapacityPartition, ResidentClearingScheduleFact, ResidentScheduleError, SimProperty,
+    SimPropertyId, SimThing, SimThingId, SlotIndex, SubFieldRole, SubFieldSpec,
+    TreeExecutionAuthority, TreeGenerationAuthority, TreeRealmId,
 };
 use simthing_gpu::{
     AccumulatorOpSession, EmlGpuProgramTable, GpuContext, PackedAccumulatorUpload,
@@ -21,10 +21,10 @@ use simthing_gpu::{
     ResidentApportionmentPlan, ResidentApportionmentSession, ResidentClearingAdmission,
     ResidentClearingBudgets, ResidentClearingBufferOwner, ResidentClearingBuffers,
     ResidentClearingGpuError, ResidentClearingLiveHead, ResidentClearingPlan,
-    ResidentClearingPlanError, ResidentClearingQualification, ResidentConstrainedProduct,
-    ResidentDrawId, ResidentLiveHeadError, ResidentNPlusOneSubmission, ResidentOwnerId,
-    ResidentRecursiveIntakeTransformSession, ResidentResourceId, ResidentScopeId, SlotAllocator,
-    WorldGpuState,
+    ResidentClearingPlanError, ResidentClearingQualification, ResidentClearingSubmission,
+    ResidentConstrainedProduct, ResidentDrawId, ResidentLiveHeadError, ResidentOwnerId,
+    ResidentResourceId, ResidentScopeId, ResidentTemporalDemand, ResidentTemporalDemandMintSession,
+    ResidentTemporalDemandSubmission, SlotAllocator, WorldGpuState,
 };
 use thiserror::Error;
 
@@ -35,6 +35,30 @@ const RESIDENT_RESOURCE: u64 = 0x5246_434c_4541_5200;
 const RESIDENT_SCOPE: u64 = 0x5246_5343_4f50_4500;
 const RESIDENT_DRAW_BASE: u64 = 0x5246_4452_4157_0000;
 const RESIDENT_ALLOCATION_ARENA: &str = "resident-clearing-continuous-allocation";
+
+fn resident_scope_id(owner: SimThingId) -> ResidentScopeId {
+    ResidentScopeId::new(RESIDENT_SCOPE ^ u64::from(owner.raw()))
+}
+
+fn collect_subtree_ids(node: &SimThing, ids: &mut Vec<SimThingId>) {
+    ids.push(node.id);
+    for child in &node.children {
+        collect_subtree_ids(child, ids);
+    }
+}
+
+fn collect_descendant_sets(
+    node: &SimThing,
+    sets: &mut BTreeMap<SimThingId, std::collections::BTreeSet<SimThingId>>,
+) -> std::collections::BTreeSet<SimThingId> {
+    let mut descendants = std::collections::BTreeSet::new();
+    for child in &node.children {
+        descendants.insert(child.id);
+        descendants.extend(collect_descendant_sets(child, sets));
+    }
+    sets.insert(node.id, descendants.clone());
+    descendants
+}
 
 fn resident_continuous_registry(
 ) -> Result<(DimensionRegistry, SimPropertyId, NodeColumnRefs), ResidentClearingRuntimeError> {
@@ -97,9 +121,36 @@ pub struct ResidentClearingBatchBinding {
     pub continuous_weight: f32,
 }
 
+/// One descendant claim in a same-generation child market. Supply is absent
+/// by construction because it comes only from immutable parent `T_s.G`.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ResidentSpatialClaimBinding {
+    pub source_simthing_id: SimThingId,
+    pub requested: u32,
+    pub precedence: u32,
+    pub continuous_weight: f32,
+}
+
+/// Authored portion of one ordinary N+1 demand row.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ResidentAuthoredDemand {
+    pub source_simthing_id: SimThingId,
+    pub quantity: u32,
+}
+
+/// Inputs that become authoritative only when N+1 executes. Demand quantity
+/// is absent because the once-minted resident demand buffer owns it.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ResidentTemporalExecutionBinding {
+    pub source_simthing_id: SimThingId,
+    pub available: u32,
+    pub precedence: u32,
+    pub continuous_weight: f32,
+}
+
 /// Application-layer policy binding for the one resident semantic scope.
 /// Claimant identity selects an already-admitted EML program; the binding
-/// carries no demand quantity and cannot create another recursive intake.
+/// carries no authored demand quantity and cannot create another mint.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ResidentPersistenceDeformationBinding {
     pub source_simthing_id: SimThingId,
@@ -107,17 +158,38 @@ pub struct ResidentPersistenceDeformationBinding {
 }
 
 pub struct ResidentClearingDispatchTicket {
-    submission: ResidentNPlusOneSubmission,
-    consumed_resident_intake: bool,
+    submission: ResidentClearingSubmission,
+    plan: ResidentApportionmentPlan,
+    semantic_scope_owner: SimThingId,
 }
 
 impl ResidentClearingDispatchTicket {
-    pub const fn submission(&self) -> ResidentNPlusOneSubmission {
+    pub const fn submission(&self) -> ResidentClearingSubmission {
         self.submission
     }
 
-    pub const fn consumed_resident_intake(&self) -> bool {
-        self.consumed_resident_intake
+    pub const fn semantic_scope_owner(&self) -> SimThingId {
+        self.semantic_scope_owner
+    }
+}
+
+pub struct ResidentTemporalDemandTicket {
+    submission: ResidentTemporalDemandSubmission,
+    sources: Vec<SimThingId>,
+    authority_granter: SimThingId,
+    semantic_scope_owner: SimThingId,
+}
+
+#[derive(Clone, Copy)]
+enum ResidentDispatchInput {
+    Immediate,
+    Spatial(ResidentClearingSubmission),
+    Temporal(ResidentTemporalDemandSubmission),
+}
+
+impl ResidentTemporalDemandTicket {
+    pub const fn submission(&self) -> ResidentTemporalDemandSubmission {
+        self.submission
     }
 }
 
@@ -137,10 +209,11 @@ pub struct ResidentClearingRuntime {
     continuous_values: Vec<f32>,
     live_head: ResidentClearingLiveHead,
     lane_capacity: u32,
-    pending_intake: Option<ResidentNPlusOneSubmission>,
-    recursive_plan_template: Option<ResidentApportionmentPlan>,
+    root_scope_owner: SimThingId,
+    admitted_scope_owners: std::collections::BTreeSet<SimThingId>,
+    descendants_by_scope_owner: BTreeMap<SimThingId, std::collections::BTreeSet<SimThingId>>,
     persistence_deformations: BTreeMap<SimThingId, PersistenceDeformationProgram>,
-    intake_transform_session: Option<ResidentRecursiveIntakeTransformSession>,
+    temporal_mint_session: ResidentTemporalDemandMintSession,
 }
 
 /// Canonical Phase-15 API name for the existing resident R->Q executor.
@@ -174,8 +247,8 @@ impl ResidentClearingRuntime {
     }
 
     /// Admit the same production executor with optional sealed policy. The
-    /// map is immutable for the executor lifetime and is consumed only while
-    /// the existing recursive plan is minted.
+    /// map is immutable for the executor lifetime and is consumed only by the
+    /// one Current-to-Next demand mint.
     #[allow(clippy::too_many_arguments)]
     pub fn admit_with_persistence_deformations(
         ctx: &GpuContext,
@@ -205,11 +278,7 @@ impl ResidentClearingRuntime {
             }
         }
         let qualification = ResidentClearingQualification::admit(ctx)?;
-        let intake_transform_session = if persistence_deformations.is_empty() {
-            None
-        } else {
-            Some(ResidentRecursiveIntakeTransformSession::new(ctx))
-        };
+        let temporal_mint_session = ResidentTemporalDemandMintSession::new(ctx);
         let generation_authority = TreeGenerationAuthority::new(generation);
         let authority = TreeExecutionAuthority::seal(
             realm,
@@ -228,30 +297,46 @@ impl ResidentClearingRuntime {
         let binding = context
             .bind(&authority)
             .map_err(|error| ResidentClearingRuntimeError::Identity(error.to_string()))?;
-        let owner = ResidentOwnerId::new(context.qualify(root.id));
-        let admissions = (0..lane_capacity).map(|lane| ResidentClearingAdmission {
-            owner,
-            resource: ResidentResourceId::new(RESIDENT_RESOURCE),
-            scope: ResidentScopeId::new(RESIDENT_SCOPE),
-            draw: ResidentDrawId::new(RESIDENT_DRAW_BASE + u64::from(lane)),
+        let mut scope_owners = Vec::new();
+        collect_subtree_ids(root, &mut scope_owners);
+        scope_owners.sort_unstable();
+        scope_owners.dedup();
+        let admitted_scope_owners: std::collections::BTreeSet<_> =
+            scope_owners.iter().copied().collect();
+        let mut descendants_by_scope_owner = BTreeMap::new();
+        collect_descendant_sets(root, &mut descendants_by_scope_owner);
+        let semantic_row_count = u32::try_from(scope_owners.len())
+            .ok()
+            .and_then(|owners| owners.checked_mul(lane_capacity))
+            .ok_or(ResidentClearingRuntimeError::ArithmeticOverflow)?;
+        let admissions = scope_owners.iter().flat_map(|scope_owner| {
+            let owner = ResidentOwnerId::new(context.qualify(*scope_owner));
+            (0..lane_capacity).map(move |lane| ResidentClearingAdmission {
+                owner,
+                resource: ResidentResourceId::new(RESIDENT_RESOURCE),
+                scope: resident_scope_id(*scope_owner),
+                draw: ResidentDrawId::new(RESIDENT_DRAW_BASE + u64::from(lane)),
+            })
         });
-        let scratch_bytes = u64::from(lane_capacity)
+        let scratch_bytes = u64::from(semantic_row_count)
             .checked_mul(64)
             .ok_or(ResidentClearingRuntimeError::ArithmeticOverflow)?;
-        let semantic_bytes = u64::from(lane_capacity)
+        let semantic_bytes = u64::from(semantic_row_count)
             .checked_mul(128)
             .and_then(|bytes| bytes.checked_add(4096))
             .ok_or(ResidentClearingRuntimeError::ArithmeticOverflow)?;
-        let resident_bytes = u64::from(lane_capacity)
+        let resident_bytes = u64::from(semantic_row_count)
             .checked_mul(192)
             .and_then(|bytes| bytes.checked_add(4096))
             .ok_or(ResidentClearingRuntimeError::ArithmeticOverflow)?;
         let budgets = ResidentClearingBudgets::new(
+            u32::try_from(scope_owners.len())
+                .map_err(|_| ResidentClearingRuntimeError::ArithmeticOverflow)?,
             1,
-            1,
-            1,
+            u32::try_from(scope_owners.len())
+                .map_err(|_| ResidentClearingRuntimeError::ArithmeticOverflow)?,
             lane_capacity,
-            lane_capacity,
+            semantic_row_count,
             semantic_bytes,
             resident_bytes,
             scratch_bytes,
@@ -265,7 +350,7 @@ impl ResidentClearingRuntime {
 
         let (continuous_registry, continuous_property, continuous_cols) =
             resident_continuous_registry()?;
-        let continuous_slots = lane_capacity
+        let continuous_slots = semantic_row_count
             .checked_add(1)
             .ok_or(ResidentClearingRuntimeError::ArithmeticOverflow)?;
         let continuous_plane = WorldGpuState::new(
@@ -340,10 +425,11 @@ impl ResidentClearingRuntime {
             continuous_values,
             live_head,
             lane_capacity,
-            pending_intake: None,
-            recursive_plan_template: None,
+            root_scope_owner: root.id,
+            admitted_scope_owners,
+            descendants_by_scope_owner,
             persistence_deformations,
-            intake_transform_session,
+            temporal_mint_session,
         })
     }
 
@@ -365,74 +451,277 @@ impl ResidentClearingRuntime {
         self.buffers.owner()
     }
 
-    /// Submit resident exact settlement, schedule append, and identical N+1
-    /// intake in queue order. This returns before any host readback or vector
-    /// IntegrationSchedule append. `Some(rows)` is the lawful root intake;
-    /// `None` advances an interior generation directly from the prior resident
-    /// `T_s` and refuses when no such intake is pending.
+    /// Submit one immediate-flow market. Precedence orders feasible work and
+    /// no request reserves capacity.
     pub fn dispatch(
         &mut self,
         schedule: &mut IntegrationSchedule,
         granter: SimThingId,
         generation: GenerationStamp,
-        root_rows: Option<&[ResidentClearingBatchBinding]>,
+        rows: &[ResidentClearingBatchBinding],
     ) -> Result<ResidentClearingDispatchTicket, ResidentClearingRuntimeError> {
-        let consumed_resident_intake = root_rows.is_none();
-        let (plan, continuous_plan, prior_submission) = if let Some(rows) = root_rows {
-            self.validate_root_rows(rows)?;
-            let continuous_plan = self.prepare_root_continuous_allocation(granter, rows)?;
-            let claims = rows
+        self.dispatch_market(
+            schedule,
+            granter,
+            generation,
+            self.root_scope_owner,
+            rows,
+            ResidentDispatchInput::Immediate,
+            false,
+        )
+    }
+
+    /// Immediate flow with free supply derived from the existing conserved
+    /// `free + in_flight + occupied = capacity` lifecycle. Only the exact
+    /// in-flight holding reserves; no class, request, or precedence can do so.
+    pub fn dispatch_with_commitment_partition(
+        &mut self,
+        schedule: &mut IntegrationSchedule,
+        granter: SimThingId,
+        generation: GenerationStamp,
+        rows: &[ResidentClearingBatchBinding],
+        commitment: &ResidencyCapacityPartition,
+    ) -> Result<ResidentClearingDispatchTicket, ResidentClearingRuntimeError> {
+        let allocatable_total = commitment
+            .free()
+            .checked_add(commitment.in_flight())
+            .ok_or(ResidentClearingRuntimeError::ArithmeticOverflow)?;
+        let free = u32::try_from(commitment.free())
+            .map_err(|_| ResidentClearingRuntimeError::ArithmeticOverflow)?;
+        let mut effective = rows.to_vec();
+        for row in &mut effective {
+            if u64::from(row.available) != allocatable_total {
+                return Err(ResidentClearingRuntimeError::CommitmentSupplyMismatch {
+                    market: row.available,
+                    lifecycle: allocatable_total,
+                });
+            }
+            row.available = free;
+        }
+        self.dispatch_market(
+            schedule,
+            granter,
+            generation,
+            self.root_scope_owner,
+            &effective,
+            ResidentDispatchInput::Immediate,
+            false,
+        )
+    }
+
+    /// Clear a child's own market directly from immutable parent `T_s.G` at
+    /// the same generation. No host supply field exists on the child claims.
+    pub fn dispatch_spatial(
+        &mut self,
+        schedule: &mut IntegrationSchedule,
+        parent: &ResidentClearingDispatchTicket,
+        child_granter: SimThingId,
+        generation: GenerationStamp,
+        rows: &[ResidentSpatialClaimBinding],
+    ) -> Result<ResidentClearingDispatchTicket, ResidentClearingRuntimeError> {
+        if !self.admitted_scope_owners.contains(&child_granter) {
+            return Err(ResidentClearingRuntimeError::UnadmittedSemanticScope {
+                owner: child_granter,
+            });
+        }
+        if !parent
+            .plan
+            .claims()
+            .iter()
+            .any(|claim| claim.source_simthing_id() == child_granter)
+        {
+            return Err(
+                ResidentClearingRuntimeError::SpatialGranterHasNoParentProduct {
+                    granter: child_granter,
+                },
+            );
+        }
+        let descendants = self
+            .descendants_by_scope_owner
+            .get(&child_granter)
+            .expect("admitted scope owner has a descendant set");
+        if let Some(row) = rows
+            .iter()
+            .find(|row| !descendants.contains(&row.source_simthing_id))
+        {
+            return Err(
+                ResidentClearingRuntimeError::SpatialClaimOutsideChildScope {
+                    granter: child_granter,
+                    claimant: row.source_simthing_id,
+                },
+            );
+        }
+        let rows: Vec<_> = rows
+            .iter()
+            .map(|row| ResidentClearingBatchBinding {
+                source_simthing_id: row.source_simthing_id,
+                requested: row.requested,
+                available: 0,
+                precedence: row.precedence,
+                continuous_weight: row.continuous_weight,
+            })
+            .collect();
+        self.dispatch_market(
+            schedule,
+            child_granter,
+            generation,
+            child_granter,
+            &rows,
+            ResidentDispatchInput::Spatial(parent.submission),
+            false,
+        )
+    }
+
+    /// Prepare, but do not execute, generation N+1 demand from immutable U.
+    pub fn prepare_temporal_demands(
+        &mut self,
+        products: &ResidentClearingDispatchTicket,
+        demand_generation: GenerationStamp,
+        authored: &[ResidentAuthoredDemand],
+    ) -> Result<ResidentTemporalDemandTicket, ResidentClearingRuntimeError> {
+        let sources: Vec<_> = products
+            .plan
+            .claims()
+            .iter()
+            .map(|claim| claim.source_simthing_id())
+            .collect();
+        if authored.len() != sources.len()
+            || authored
                 .iter()
-                .enumerate()
-                .map(|(lane, row)| {
-                    ResidentApportionmentClaim::new(
-                        self.semantic_row_for_lane(lane as u32),
-                        row.source_simthing_id,
-                        row.requested,
-                        row.available,
-                        row.precedence,
-                        SlotIndex::new(lane as u32 + 1),
-                        self.continuous_cols.allocated_flow_col,
-                    )
-                })
-                .collect();
-            let plan = ResidentApportionmentPlan::build(
-                &self.semantic_plan,
-                claims,
-                granter,
-                generation,
-                continuous_plan.integration_band,
-            )?
-            .with_persistence_deformations(rows.iter().enumerate().filter_map(|(lane, row)| {
+                .zip(&sources)
+                .any(|(row, source)| row.source_simthing_id != *source)
+        {
+            return Err(ResidentClearingRuntimeError::TemporalSourceMismatch);
+        }
+        let quantities: Vec<_> = authored.iter().map(|row| row.quantity).collect();
+        let mut encoder = self.continuous_plane.ctx.device.create_command_encoder(
+            &simthing_gpu::wgpu::CommandEncoderDescriptor {
+                label: Some("resident_temporal_demand_prepare"),
+            },
+        );
+        let submission = self.live_head.encode_temporal_demand_mint(
+            &self.continuous_plane.ctx,
+            &self.temporal_mint_session,
+            &mut encoder,
+            &products.plan,
+            products.submission,
+            &quantities,
+            demand_generation,
+        )?;
+        self.continuous_plane
+            .ctx
+            .queue
+            .submit(Some(encoder.finish()));
+        Ok(ResidentTemporalDemandTicket {
+            submission,
+            sources,
+            authority_granter: products.submission.authority_granter(),
+            semantic_scope_owner: products.semantic_scope_owner,
+        })
+    }
+
+    /// Execute generation N+1 from a prepared ordinary demand and inputs that
+    /// are authoritative only at N+1.
+    pub fn dispatch_temporal(
+        &mut self,
+        schedule: &mut IntegrationSchedule,
+        demands: &ResidentTemporalDemandTicket,
+        granter: SimThingId,
+        generation: GenerationStamp,
+        rows: &[ResidentTemporalExecutionBinding],
+    ) -> Result<ResidentClearingDispatchTicket, ResidentClearingRuntimeError> {
+        if generation != demands.submission.generation()
+            || granter != demands.authority_granter
+            || rows.len() != demands.sources.len()
+            || rows
+                .iter()
+                .zip(&demands.sources)
+                .any(|(row, source)| row.source_simthing_id != *source)
+        {
+            return Err(ResidentClearingRuntimeError::TemporalExecutionMismatch);
+        }
+        let rows: Vec<_> = rows
+            .iter()
+            .map(|row| ResidentClearingBatchBinding {
+                source_simthing_id: row.source_simthing_id,
+                // The plan needs an active physical row; the resident demand
+                // buffer replaces this sentinel before exact settlement.
+                requested: 1,
+                available: row.available,
+                precedence: row.precedence,
+                continuous_weight: row.continuous_weight,
+            })
+            .collect();
+        self.dispatch_market(
+            schedule,
+            granter,
+            generation,
+            demands.semantic_scope_owner,
+            &rows,
+            ResidentDispatchInput::Temporal(demands.submission),
+            true,
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn dispatch_market(
+        &mut self,
+        schedule: &mut IntegrationSchedule,
+        granter: SimThingId,
+        generation: GenerationStamp,
+        semantic_scope_owner: SimThingId,
+        rows: &[ResidentClearingBatchBinding],
+        input: ResidentDispatchInput,
+        weights_are_allocated_flow: bool,
+    ) -> Result<ResidentClearingDispatchTicket, ResidentClearingRuntimeError> {
+        self.validate_root_rows(rows)?;
+        let continuous_plan = self.prepare_continuous_allocation(
+            granter,
+            semantic_scope_owner,
+            rows,
+            weights_are_allocated_flow,
+        )?;
+        let claims = rows
+            .iter()
+            .enumerate()
+            .map(|(lane, row)| {
+                Ok(ResidentApportionmentClaim::new(
+                    self.semantic_row_for_market_lane(semantic_scope_owner, lane as u32)?,
+                    row.source_simthing_id,
+                    row.requested,
+                    row.available,
+                    row.precedence,
+                    SlotIndex::new(
+                        self.semantic_row_for_market_lane(semantic_scope_owner, lane as u32)? + 1,
+                    ),
+                    self.continuous_cols.allocated_flow_col,
+                ))
+            })
+            .collect::<Result<Vec<_>, ResidentClearingRuntimeError>>()?;
+        let mut plan = ResidentApportionmentPlan::build(
+            &self.semantic_plan,
+            claims,
+            granter,
+            generation,
+            continuous_plan.integration_band,
+        )?;
+        plan = plan.with_persistence_deformations(rows.iter().enumerate().filter_map(
+            |(lane, row)| {
                 if row.requested == 0 {
                     return None;
                 }
                 self.persistence_deformations
                     .get(&row.source_simthing_id)
                     .cloned()
-                    .map(|program| (self.semantic_row_for_lane(lane as u32), program))
-            }))?;
-            (plan, Some(continuous_plan), None)
-        } else {
-            let prior_submission = self
-                .pending_intake
-                .ok_or(ResidentClearingRuntimeError::MissingResidentIntake)?;
-            let template = self
-                .recursive_plan_template
-                .as_ref()
-                .ok_or(ResidentClearingRuntimeError::MissingResidentIntake)?;
-            if template.authority_granter() != granter {
-                return Err(ResidentClearingRuntimeError::RecursiveGranterMismatch {
-                    expected: template.authority_granter(),
-                    observed: granter,
-                });
-            }
-            (
-                template.for_recursive_intake_generation(generation),
-                None,
-                Some(prior_submission),
-            )
-        };
+                    .map(|program| {
+                        (
+                            self.semantic_row_for_market_lane(semantic_scope_owner, lane as u32)
+                                .expect("validated admitted market row"),
+                            program,
+                        )
+                    })
+            },
+        ))?;
         let count = u32::try_from(plan.claims().len())
             .map_err(|_| ResidentClearingRuntimeError::ArithmeticOverflow)?;
         let reservation = schedule.reserve_resident_rows(count)?;
@@ -442,66 +731,63 @@ impl ResidentClearingRuntime {
                 label: Some("resident_clearing_production_dispatch"),
             },
         );
-        if let Some(continuous_plan) = continuous_plan.as_ref() {
-            self.continuous_plane.encode_accumulator_orderband_into(
-                &mut self.continuous_session,
-                &mut encoder,
-                continuous_plan.n_bands,
-                0.0,
-                Some(&self.continuous_eml_table),
-                false,
-            );
-            self.continuous_plane
-                .encode_resident_apportionment_with_dispatch_into(
-                    &mut self.exact_session,
-                    &mut encoder,
-                    semantic_rows,
-                    scratch,
-                    &plan,
-                    ResidentApportionmentDispatch::single_pass(),
-                )?;
-        } else {
-            self.live_head.encode_recursive_apportionment(
+        self.continuous_plane.encode_accumulator_orderband_into(
+            &mut self.continuous_session,
+            &mut encoder,
+            continuous_plan.n_bands,
+            0.0,
+            Some(&self.continuous_eml_table),
+            false,
+        );
+        match input {
+            ResidentDispatchInput::Immediate => {
+                self.continuous_plane
+                    .encode_resident_apportionment_with_dispatch_into(
+                        &mut self.exact_session,
+                        &mut encoder,
+                        semantic_rows,
+                        scratch,
+                        &plan,
+                        ResidentApportionmentDispatch::single_pass(),
+                    )?;
+            }
+            ResidentDispatchInput::Spatial(parent) => self.live_head.encode_spatial_apportionment(
                 &self.continuous_plane,
                 &mut self.exact_session,
                 &mut encoder,
                 semantic_rows,
                 scratch,
                 &plan,
-                prior_submission.expect("recursive dispatch proved a pending intake"),
-            )?;
-        }
-        let submission = if plan.has_persistence_deformations() {
-            self.live_head
-                .encode_append_and_n_plus_one_with_deformation(
-                    &self.continuous_plane.ctx,
-                    self.intake_transform_session
-                        .as_ref()
-                        .expect("admitted deformation has one resident mint session"),
+                parent,
+                semantic_scope_owner,
+            )?,
+            ResidentDispatchInput::Temporal(demands) => {
+                self.live_head.encode_temporal_apportionment(
+                    &self.continuous_plane,
+                    &mut self.exact_session,
                     &mut encoder,
+                    semantic_rows,
                     scratch,
                     &plan,
-                    reservation,
-                )?
-        } else {
-            self.live_head.encode_append_and_n_plus_one(
-                &mut encoder,
-                scratch,
-                &plan,
-                reservation,
-            )?
-        };
+                    demands,
+                )?;
+            }
+        }
+        let submission = self.live_head.encode_append(
+            &mut encoder,
+            scratch,
+            &plan,
+            reservation,
+            semantic_scope_owner,
+        )?;
         self.continuous_plane
             .ctx
             .queue
             .submit(Some(encoder.finish()));
-        if !consumed_resident_intake {
-            self.recursive_plan_template = Some(plan.clone());
-        }
-        self.pending_intake = Some(submission);
         Ok(ResidentClearingDispatchTicket {
             submission,
-            consumed_resident_intake,
+            plan,
+            semantic_scope_owner,
         })
     }
 
@@ -535,27 +821,33 @@ impl ResidentClearingRuntime {
         Ok(())
     }
 
-    fn prepare_root_continuous_allocation(
+    fn prepare_continuous_allocation(
         &mut self,
         granter: SimThingId,
+        semantic_scope_owner: SimThingId,
         rows: &[ResidentClearingBatchBinding],
+        weights_are_allocated_flow: bool,
     ) -> Result<crate::ArenaAllocationPlan, ResidentClearingRuntimeError> {
         let children = rows
             .iter()
             .enumerate()
-            .map(|(lane, row)| HierarchyNode {
-                participant_slot: SlotIndex::new(lane as u32 + 1),
-                hosted_simthing_id: row.source_simthing_id,
-                depth: 1,
-                children: Vec::new(),
-                cols: self.continuous_cols,
+            .map(|(lane, row)| {
+                Ok(HierarchyNode {
+                    participant_slot: SlotIndex::new(
+                        self.semantic_row_for_market_lane(semantic_scope_owner, lane as u32)? + 1,
+                    ),
+                    hosted_simthing_id: row.source_simthing_id,
+                    depth: 1,
+                    children: Vec::new(),
+                    cols: self.continuous_cols,
+                })
             })
-            .collect();
+            .collect::<Result<Vec<_>, ResidentClearingRuntimeError>>()?;
         let descriptor = GpuArenaDescriptor {
             name: RESIDENT_ALLOCATION_ARENA.into(),
             flow_property_id: self.continuous_property,
             balance_property_id: None,
-            max_participants: self.lane_capacity.saturating_add(1),
+            max_participants: self.continuous_plane.n_slots,
             max_coupling_fanout: 0,
             max_orderband_depth: 16,
             fission_policy: FissionPolicy::default(),
@@ -598,26 +890,40 @@ impl ResidentClearingRuntime {
             })?;
 
         self.continuous_values.fill(0.0);
-        let requested_total = rows.iter().try_fold(0u64, |total, row| {
-            total
-                .checked_add(u64::from(row.requested))
-                .ok_or(ResidentClearingRuntimeError::ArithmeticOverflow)
-        })?;
+        let requested_total = if weights_are_allocated_flow {
+            rows.iter().try_fold(0.0f32, |total, row| {
+                let next = total + row.continuous_weight;
+                next.is_finite()
+                    .then_some(next)
+                    .ok_or(ResidentClearingRuntimeError::ArithmeticOverflow)
+            })?
+        } else {
+            rows.iter().try_fold(0u64, |total, row| {
+                total
+                    .checked_add(u64::from(row.requested))
+                    .ok_or(ResidentClearingRuntimeError::ArithmeticOverflow)
+            })? as f32
+        };
         let n_dims = self.continuous_plane.n_dims as usize;
-        self.continuous_values[self.continuous_cols.intrinsic_flow_col.raw()] =
-            requested_total as f32;
+        self.continuous_values[self.continuous_cols.intrinsic_flow_col.raw()] = requested_total;
+        self.continuous_plane
+            .install_resolved_value_rows_at_boundary(0, &self.continuous_values[..n_dims]);
         for (lane, row) in rows.iter().enumerate() {
-            let slot = lane + 1;
+            let slot =
+                self.semantic_row_for_market_lane(semantic_scope_owner, lane as u32)? as usize + 1;
             self.continuous_values[slot * n_dims + self.continuous_cols.weight_col.raw()] =
                 row.continuous_weight;
+            self.continuous_plane
+                .install_resolved_value_rows_at_boundary(
+                    slot as u32,
+                    &self.continuous_values[slot * n_dims..(slot + 1) * n_dims],
+                );
         }
-        self.continuous_plane
-            .install_resolved_values_at_boundary(&self.continuous_values);
         Ok(plan)
     }
 
-    /// Asynchronous observer/materializer. The dispatch ticket proves N+1 was
-    /// already submitted before this method can map either buffer.
+    /// Asynchronous observer/materializer. Economic dispatch and immutable
+    /// live-head append are already submitted before this maps the segment.
     pub fn materialize(
         &mut self,
         schedule: &mut IntegrationSchedule,
@@ -645,13 +951,13 @@ impl ResidentClearingRuntime {
         Ok(resident)
     }
 
-    pub fn readback_next_intake_for_proof(
+    pub fn readback_temporal_demands_for_proof(
         &self,
-        ticket: &ResidentClearingDispatchTicket,
-    ) -> Result<Vec<ResidentConstrainedProduct>, ResidentClearingRuntimeError> {
+        ticket: &ResidentTemporalDemandTicket,
+    ) -> Result<Vec<ResidentTemporalDemand>, ResidentClearingRuntimeError> {
         Ok(self
             .live_head
-            .readback_next_intake_for_proof(&self.continuous_plane.ctx, ticket.submission)?)
+            .readback_temporal_demands_for_proof(&self.continuous_plane.ctx, ticket.submission)?)
     }
 
     /// Referee-only observation of values already emitted by the production
@@ -662,21 +968,36 @@ impl ResidentClearingRuntime {
         let n_dims = self.continuous_plane.n_dims as usize;
         (0..count.min(self.lane_capacity))
             .map(|lane| {
-                values[(lane as usize + 1) * n_dims + self.continuous_cols.allocated_flow_col.raw()]
+                let semantic_row = self
+                    .semantic_row_for_market_lane(self.root_scope_owner, lane)
+                    .expect("root semantic scope was admitted");
+                values[(semantic_row as usize + 1) * n_dims
+                    + self.continuous_cols.allocated_flow_col.raw()]
             })
             .collect()
     }
 
-    fn semantic_row_for_lane(&self, lane: u32) -> u32 {
+    fn semantic_row_for_market_lane(
+        &self,
+        scope_owner: SimThingId,
+        lane: u32,
+    ) -> Result<u32, ResidentClearingRuntimeError> {
         let draw = RESIDENT_DRAW_BASE + u64::from(lane);
         self.semantic_plan
             .rows()
             .iter()
             .position(|row| {
-                self.semantic_plan.dictionaries().draws()[row.draw().get() as usize].get() == draw
+                let dictionaries = self.semantic_plan.dictionaries();
+                dictionaries.draws()[row.draw().get() as usize].get() == draw
+                    && dictionaries.scopes()[row.scope().get() as usize]
+                        == resident_scope_id(scope_owner)
+                    && dictionaries.owners()[row.owner().get() as usize]
+                        .identity()
+                        .local()
+                        == &scope_owner
             })
             .and_then(|index| u32::try_from(index).ok())
-            .expect("admitted resident lane has one canonical semantic row")
+            .ok_or(ResidentClearingRuntimeError::UnadmittedSemanticScope { owner: scope_owner })
     }
 }
 
@@ -692,13 +1013,21 @@ pub enum ResidentClearingRuntimeError {
     ClaimCapacityExceeded { claims: usize, admitted: u32 },
     #[error("resident clearing dispatch requires at least one claim")]
     ZeroClaimBatch,
-    #[error("resident interior dispatch has no prior canonical T_s intake")]
-    MissingResidentIntake,
-    #[error("resident recursive granter is {observed:?}, expected root authority {expected:?}")]
-    RecursiveGranterMismatch {
-        expected: SimThingId,
-        observed: SimThingId,
+    #[error("resident semantic scope owner {owner:?} was not admitted from the tree")]
+    UnadmittedSemanticScope { owner: SimThingId },
+    #[error("resident child granter {granter:?} has no parent T_s product")]
+    SpatialGranterHasNoParentProduct { granter: SimThingId },
+    #[error("resident child claim {claimant:?} is outside granter {granter:?}'s semantic subtree")]
+    SpatialClaimOutsideChildScope {
+        granter: SimThingId,
+        claimant: SimThingId,
     },
+    #[error("resident temporal authored-demand sources do not match immutable T_s sources")]
+    TemporalSourceMismatch,
+    #[error("resident N+1 execution does not match its prepared demand authority")]
+    TemporalExecutionMismatch,
+    #[error("resident market supply {market} differs from conserved free+in_flight {lifecycle}")]
+    CommitmentSupplyMismatch { market: u32, lifecycle: u64 },
     #[error("resident claims must arrive in strict logical SimThing-id order")]
     NonCanonicalClaimOrder,
     #[error("resident continuous weight for {source_id:?} is non-finite or negative")]

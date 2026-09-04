@@ -7,9 +7,9 @@ struct Params {
     integration_band: u32,
     dispatch_base: u32,
     dispatch_count: u32,
-    recursive_intake_mode: u32,
-    recursive_intake_count: u32,
-    _pad2: u32,
+    resident_input_mode: u32,
+    resident_input_count: u32,
+    resident_input_start: u32,
     _pad3: u32,
 };
 
@@ -58,10 +58,10 @@ struct ExactDivMod {
 @group(0) @binding(1) var<storage, read> semantic_rows: array<SemanticRow>;
 @group(0) @binding(2) var<storage, read> values: array<f32>;
 @group(0) @binding(3) var<storage, read_write> scratch_words: array<u32>;
-// Canonical ResidentConstrainedProduct words. Root dispatch binds an inert
-// one-product buffer here and leaves recursive_intake_mode=0; interior dispatch
-// binds the byte-identical T_s intake buffer directly.
-@group(0) @binding(4) var<storage, read> recursive_intake_words: array<u32>;
+// Mode 1 binds immutable ResidentConstrainedProduct (`T_s`) words as spatial
+// child supply. Mode 2 binds ordinary once-minted temporal-demand words.
+// Mode 0 binds an inert buffer.
+@group(0) @binding(4) var<storage, read> resident_input_words: array<u32>;
 
 const STATUS_OK: u32 = 0u;
 const STATUS_INVALID_CONTINUOUS: u32 = 1u;
@@ -302,48 +302,54 @@ fn same_semantic_scope(left_row: u32, right_row: u32) -> bool {
         && left.scope_ordinal == right.scope_ordinal;
 }
 
-fn recursive_scope_supply(semantic_row: u32) -> vec2<u32> {
+fn spatial_child_supply() -> vec2<u32> {
     var supply = vec2<u32>(0u, 0u);
-    for (var index = 0u; index < params.recursive_intake_count; index = index + 1u) {
-        let product_base = index * 8u;
-        let product_row = recursive_intake_words[product_base];
-        let product_status = recursive_intake_words[product_base + 5u];
-        if (product_status == STATUS_OK && product_row < params.row_count
-            && same_semantic_scope(semantic_row, product_row)) {
+    if (params.resident_input_mode != 1u) { return supply; }
+    for (var index = 0u; index < params.resident_input_count; index = index + 1u) {
+        let product_base = (params.resident_input_start + index) * 8u;
+        let product_status = resident_input_words[product_base + 5u];
+        let product_source = resident_input_words[product_base + 1u];
+        let product_generation = resident_input_words[product_base + 4u];
+        if (product_status == STATUS_OK && product_source == params.granter
+            && product_generation == params.generation) {
             supply = wide_add(
                 supply,
-                wide_from_u32(recursive_intake_words[product_base + 2u]),
+                wide_from_u32(resident_input_words[product_base + 2u]),
             ).xy;
         }
     }
     return supply;
 }
 
-fn read_claim(index: u32, recursive_supply: u32) -> ClaimInput {
+fn read_claim(index: u32, spatial_supply: u32) -> ClaimInput {
     let base = index * 16u;
     // Only the immutable input half is loaded. Concurrent invocations write
     // the disjoint output half, so no whole-struct read races those stores.
-    if (params.recursive_intake_mode != 0u && index < params.recursive_intake_count) {
-        let product_base = index * 8u;
-        let product_status = recursive_intake_words[product_base + 5u];
-        let granted = recursive_intake_words[product_base + 2u];
-        let unresolved = recursive_intake_words[product_base + 3u];
+    if (params.resident_input_mode == 2u && index < params.resident_input_count) {
+        let demand_base = (params.resident_input_start + index) * 4u;
+        let demand_source = resident_input_words[demand_base];
+        let demand_generation = resident_input_words[demand_base + 2u];
+        let demand_status = resident_input_words[demand_base + 3u];
+        let demand_active = scratch_words[base + 7u] != 0u
+            && demand_status == STATUS_OK
+            && demand_source == scratch_words[base + 1u]
+            && demand_generation == params.generation;
         return ClaimInput(
-            recursive_intake_words[product_base],
-            recursive_intake_words[product_base + 1u],
-            granted + unresolved,
-            recursive_supply,
+            scratch_words[base],
+            scratch_words[base + 1u],
+            resident_input_words[demand_base + 1u],
+            scratch_words[base + 3u],
             scratch_words[base + 4u],
             scratch_words[base + 5u],
             scratch_words[base + 6u],
-            select(0u, scratch_words[base + 7u], product_status == STATUS_OK),
+            select(0u, 1u, demand_active),
         );
     }
     return ClaimInput(
         scratch_words[base],
         scratch_words[base + 1u],
         scratch_words[base + 2u],
-        scratch_words[base + 3u],
+        select(scratch_words[base + 3u], spatial_supply, params.resident_input_mode == 1u),
         scratch_words[base + 4u],
         scratch_words[base + 5u],
         scratch_words[base + 6u],
@@ -390,12 +396,12 @@ fn settle_partition(local: u32) {
     let physical = params.dispatch_base + local;
     if (physical >= params.row_count) { return; }
     let seed = read_claim(physical, 0u);
-    let recursive_supply = recursive_scope_supply(seed.semantic_row);
-    if (recursive_supply.y != 0u) {
+    let spatial_supply = spatial_child_supply();
+    if (spatial_supply.y != 0u) {
         write_failure(seed, seed.source_simthing_id, STATUS_ARITHMETIC_OVERFLOW);
         return;
     }
-    let current = read_claim(physical, recursive_supply.x);
+    let current = read_claim(physical, spatial_supply.x);
     if (current.input_active == 0u || current.semantic_row >= params.row_count) { return; }
 
     // Match the CPU mirror's fail-before-settlement contract. Every invocation
@@ -405,7 +411,7 @@ fn settle_partition(local: u32) {
     var invalid_source = 0u;
     var invalid_continuous = false;
     for (var validation_index = 0u; validation_index < params.row_count; validation_index = validation_index + 1u) {
-        let validation = read_claim(validation_index, recursive_supply.x);
+        let validation = read_claim(validation_index, spatial_supply.x);
         if (validation.input_active == 0u) { continue; }
         let validation_value_index = validation.allocated_flow_slot * params.n_dims
             + validation.allocated_flow_col;
@@ -424,20 +430,40 @@ fn settle_partition(local: u32) {
     }
 
     var scope_total = vec2<u32>(0u, 0u);
-    var prior_total = vec2<u32>(0u, 0u);
+    var prior_committed = vec2<u32>(0u, 0u);
     var band_requested_total = vec2<u32>(0u, 0u);
     var basis_total = exact_zero();
     var overflow = false;
     for (var other_index = 0u; other_index < params.row_count; other_index = other_index + 1u) {
-        let other = read_claim(other_index, recursive_supply.x);
+        let other = read_claim(other_index, spatial_supply.x);
         if (other.input_active == 0u || !same_scope(current, other)) { continue; }
         var sum = wide_add(scope_total, wide_from_u32(other.requested));
         scope_total = sum.xy;
         overflow = overflow || sum.z != 0u;
         if (other.precedence < current.precedence) {
-            sum = wide_add(prior_total, wide_from_u32(other.requested));
-            prior_total = sum.xy;
-            overflow = overflow || sum.z != 0u;
+            // A prior equality band consumes supply only if that band is
+            // serviceable in the one exact projection.  Precedence and the
+            // request alone never reserve.  Count every request in a
+            // serviceable band because the exact projection commits the
+            // band's available quantity even when an individual row has a
+            // zero basis.
+            var prior_band_serviceable = false;
+            for (var band_index = 0u; band_index < params.row_count; band_index = band_index + 1u) {
+                let band_claim = read_claim(band_index, spatial_supply.x);
+                if (band_claim.input_active == 0u || !same_scope(current, band_claim)
+                    || band_claim.precedence != other.precedence) { continue; }
+                let band_value_index = band_claim.allocated_flow_slot * params.n_dims
+                    + band_claim.allocated_flow_col;
+                let band_value = values[band_value_index];
+                if (!exact_is_zero(exact_capped_basis(band_value, band_claim.requested))) {
+                    prior_band_serviceable = true;
+                }
+            }
+            if (prior_band_serviceable) {
+                sum = wide_add(prior_committed, wide_from_u32(other.requested));
+                prior_committed = sum.xy;
+                overflow = overflow || sum.z != 0u;
+            }
         }
         if (other.precedence == current.precedence) {
             sum = wide_add(band_requested_total, wide_from_u32(other.requested));
@@ -473,8 +499,8 @@ fn settle_partition(local: u32) {
     }
 
     var remaining = vec2<u32>(0u, 0u);
-    if (wide_cmp(supply, prior_total) > 0) {
-        remaining = wide_sub(supply, prior_total);
+    if (wide_cmp(supply, prior_committed) > 0) {
+        remaining = wide_sub(supply, prior_committed);
     }
     var available_for_band = remaining;
     if (wide_cmp(band_requested_total, remaining) < 0) {
@@ -493,7 +519,7 @@ fn settle_partition(local: u32) {
     var current_base = 0u;
     var current_remainder = exact_zero();
     for (var other_index = 0u; other_index < params.row_count; other_index = other_index + 1u) {
-        let other = read_claim(other_index, recursive_supply.x);
+        let other = read_claim(other_index, spatial_supply.x);
         if (other.input_active == 0u || !same_scope(current, other)
             || other.precedence != current.precedence) { continue; }
         let other_value_index = other.allocated_flow_slot * params.n_dims
@@ -531,7 +557,7 @@ fn settle_partition(local: u32) {
     var tie_len = 0u;
     var canonical_tie_index = 0u;
     for (var other_index = 0u; other_index < params.row_count; other_index = other_index + 1u) {
-        let other = read_claim(other_index, recursive_supply.x);
+        let other = read_claim(other_index, spatial_supply.x);
         if (other.input_active == 0u || !same_scope(current, other)
             || other.precedence != current.precedence) { continue; }
         let other_value_index = other.allocated_flow_slot * params.n_dims
