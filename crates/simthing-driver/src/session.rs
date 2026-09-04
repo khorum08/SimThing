@@ -716,6 +716,22 @@ impl SimSession {
             simthing_gpu::ResidencyExtent::try_new(0, n_slots)
                 .map_err(|error| SessionError::Mapping(error.to_string()))?,
         )?;
+        let resident_arena_registry = scenario
+            .registry
+            .id_of(
+                crate::resident_clearing_runtime::RESIDENT_MARKET_RF_NAMESPACE,
+                crate::resident_clearing_runtime::RESIDENT_MARKET_RF_PROPERTY,
+            )
+            .map(|resident_rf_property| {
+                crate::resident_clearing_runtime::build_default_resident_arena_registry(
+                    resident_rf_property,
+                    &scenario.root,
+                    &allocator,
+                    n_slots,
+                )
+            })
+            .transpose()?
+            .unwrap_or_else(crate::arena_registry::ArenaRegistry::empty);
         let growth_entitlement =
             GrowthEntitlementMarketBinding::implicit_root_standing(scenario.root.id)?;
 
@@ -744,32 +760,11 @@ impl SimSession {
         );
         proto.initial_gpu_sync(&coord, &mut state)?;
 
-        let mut integration_schedule = simthing_core::IntegrationSchedule::new();
-        let resident_clearing = match clearing_execution_posture {
-            simthing_core::ClearingExecutionPosture::ResidentRequired => {
-                let resident_live_head_capacity = n_slots.checked_mul(2).ok_or_else(|| {
-                    SessionError::Mapping("resident live-head capacity overflow".into())
-                })?;
-                integration_schedule
-                    .admit_resident_live_head(resident_live_head_capacity)
-                    .map_err(|error| SessionError::Mapping(error.to_string()))?;
-                Some(
-                    crate::resident_clearing_runtime::ResidentClearingRuntime::admit(
-                        &state.ctx,
-                        tree_realm,
-                        &scenario.root,
-                        &scenario.registry,
-                        &proto.allocator,
-                        &integration_schedule,
-                        simthing_core::GenerationStamp::new(0),
-                        n_slots,
-                    )?,
-                )
-            }
-            simthing_core::ClearingExecutionPosture::CpuVendorizedOracle => None,
-        };
-
-        Ok(Self {
+        let integration_schedule = simthing_core::IntegrationSchedule::new();
+        let mut spec_state = SpecSessionState::new();
+        spec_state.arena_registry = resident_arena_registry;
+        spec_state.property_admission = scenario.registry.property_admission_report();
+        let mut session = Self {
             scenario,
             proto,
             coord,
@@ -778,12 +773,12 @@ impl SimSession {
             pipelines,
             rx,
             tx,
-            spec_state: SpecSessionState::new(),
+            spec_state,
             integration_schedule,
             growth_entitlement,
             tree_realm,
             clearing_execution_posture,
-            resident_clearing,
+            resident_clearing: None,
             last_resource_flow_dynamic_enrollment_report: None,
             mapping: None,
             mapping_commitments: Vec::new(),
@@ -793,7 +788,12 @@ impl SimSession {
                 crate::order_directive::OrderDirectiveGateState::default(),
             ),
             order_directive_injection_log: Mutex::new(Vec::new()),
-        })
+        };
+        session.bind_or_rebind_resident_clearing_to_current_arena(
+            simthing_core::GenerationStamp::new(0),
+        )?;
+        session.sync_resource_flow()?;
+        Ok(session)
     }
 
     /// Observe the one canonical integration schedule, including physical residency rows.
@@ -922,7 +922,7 @@ impl SimSession {
     /// growth never switches authorities while a session is live.
     pub fn install_growth_entitlement_market(
         &mut self,
-        binding: GrowthEntitlementMarketBinding,
+        mut binding: GrowthEntitlementMarketBinding,
     ) -> Result<(), SessionError> {
         if self.coord.tick_index() != 0 || self.coord.day_index() != 0 {
             return Err(SessionError::GrowthEntitlement(
@@ -937,12 +937,13 @@ impl SimSession {
                 GrowthEntitlementError::UnresidentGranter(binding.granter()),
             ));
         }
-        if self.clearing_execution_posture.is_resident_required()
-            && !binding.is_resident_qualified()
-        {
-            return Err(SessionError::GrowthEntitlement(
-                GrowthEntitlementError::ResidentProfileUnqualified,
-            ));
+        if self.clearing_execution_posture.is_resident_required() {
+            let runtime = self.admit_resident_clearing_for_market(
+                simthing_core::GenerationStamp::new(0),
+                binding.resident_market_admission(),
+            )?;
+            binding.install_resident_qualification(runtime.market_qualification());
+            self.resident_clearing = Some(runtime);
         }
         self.growth_entitlement = binding;
         Ok(())
@@ -1003,32 +1004,9 @@ impl SimSession {
             ));
         }
         if posture.is_resident_required() {
-            if !self.growth_entitlement.is_resident_qualified() {
-                return Err(SessionError::GrowthEntitlement(
-                    GrowthEntitlementError::ResidentProfileUnqualified,
-                ));
-            }
-            if self.resident_clearing.is_none() {
-                let capacity = self.state.n_slots.max(1);
-                let resident_live_head_capacity = capacity.checked_mul(2).ok_or_else(|| {
-                    SessionError::Mapping("resident live-head capacity overflow".into())
-                })?;
-                self.integration_schedule
-                    .admit_resident_live_head(resident_live_head_capacity)
-                    .map_err(|error| SessionError::Mapping(error.to_string()))?;
-                self.resident_clearing = Some(
-                    crate::resident_clearing_runtime::ResidentClearingRuntime::admit(
-                        &self.state.ctx,
-                        self.tree_realm,
-                        &self.scenario.root,
-                        &self.scenario.registry,
-                        &self.proto.allocator,
-                        &self.integration_schedule,
-                        simthing_core::GenerationStamp::new(0),
-                        capacity,
-                    )?,
-                );
-            }
+            self.bind_or_rebind_resident_clearing_to_current_arena(
+                simthing_core::GenerationStamp::new(0),
+            )?;
         }
         self.clearing_execution_posture = posture;
         Ok(())
@@ -1038,7 +1016,16 @@ impl SimSession {
         if self.action_band_execution.is_some() {
             return Err(ActionBandExecutionIngressError::SpecInstallAfterActionBand.into());
         }
+        let resident_fallback_arena = self.spec_state.arena_registry.clone();
         self.spec_state = spec_state;
+        if self.spec_state.arena_registry.arenas.is_empty() {
+            self.spec_state.arena_registry = resident_fallback_arena;
+        }
+        // Spec installation can replace the RF flow property and therefore the
+        // column-bearing child-share EML registered by the fallback arena.
+        // Rebuild the install-time accumulator sessions so the new arena's
+        // formula cannot inherit stale physical column references.
+        self.state.clear_accumulator_sessions();
         self.resync_gpu_shape_after_spec_install();
         self.reserve_resource_flow_capacity_budget();
         self.sync_spec_threshold_registrations();
@@ -1047,7 +1034,100 @@ impl SimSession {
         // Re-project tree (including entity-hosted Constant PropertyValue seeds)
         // then upload thresholds. No dense install_resolved_values authority.
         self.proto.initial_gpu_sync(&self.coord, &mut self.state)?;
+        self.bind_or_rebind_resident_clearing_to_current_arena(
+            simthing_core::GenerationStamp::new(0),
+        )?;
         self.sync_resource_economy_threshold_ops_at_install()?;
+        Ok(())
+    }
+
+    fn admit_resident_clearing_for_market(
+        &mut self,
+        generation: simthing_core::GenerationStamp,
+        market: crate::resident_clearing_runtime::ResidentMarketAdmission,
+    ) -> Result<crate::resident_clearing_runtime::ResidentClearingRuntime, SessionError> {
+        let capacity = self.state.n_slots.max(1);
+        if self
+            .integration_schedule
+            .resident_live_head_capacity()
+            .is_none()
+        {
+            let resident_live_head_capacity = capacity.checked_mul(2).ok_or_else(|| {
+                SessionError::Mapping("resident live-head capacity overflow".into())
+            })?;
+            self.integration_schedule
+                .admit_resident_live_head(resident_live_head_capacity)
+                .map_err(|error| SessionError::Mapping(error.to_string()))?;
+        }
+        let incarnation = self
+            .resident_clearing
+            .as_ref()
+            .map_or_else(
+                || simthing_core::ExecutionIncarnation::new(1),
+                |runtime| Ok(runtime.incarnation()),
+            )
+            .map_err(|error| SessionError::Mapping(error.to_string()))?;
+        self.proto
+            .with_sealed_tree_execution_binding(
+                self.tree_realm,
+                incarnation,
+                generation,
+                &self.integration_schedule,
+                |binding| {
+                    crate::resident_clearing_runtime::ResidentClearingRuntime::admit_sealed_market_with_persistence_deformations(
+                        &self.state.ctx,
+                        binding,
+                        &self.spec_state.arena_registry,
+                        capacity,
+                        market,
+                        &[],
+                    )
+                },
+            )
+            .map_err(|error| SessionError::Mapping(error.to_string()))?
+            .map_err(Into::into)
+    }
+
+    fn bind_or_rebind_resident_clearing_to_current_arena(
+        &mut self,
+        generation: simthing_core::GenerationStamp,
+    ) -> Result<(), SessionError> {
+        if !self.clearing_execution_posture.is_resident_required()
+            || self.spec_state.arena_registry.arenas.is_empty()
+        {
+            return Ok(());
+        }
+        if self.resident_clearing.is_none() {
+            let runtime = self.admit_resident_clearing_for_market(
+                generation,
+                self.growth_entitlement.resident_market_admission(),
+            )?;
+            self.growth_entitlement
+                .install_resident_qualification(runtime.market_qualification());
+            self.resident_clearing = Some(runtime);
+            return Ok(());
+        }
+        let Some(runtime) = self.resident_clearing.as_mut() else {
+            return Ok(());
+        };
+        let qualification = self
+            .proto
+            .with_sealed_tree_execution_binding(
+                self.tree_realm,
+                runtime.incarnation(),
+                generation,
+                &self.integration_schedule,
+                |binding| {
+                    runtime.rebind_after_topology_change(
+                        &self.state.ctx,
+                        binding,
+                        &self.spec_state.arena_registry,
+                    )
+                },
+            )
+            .map_err(|error| SessionError::Mapping(error.to_string()))??;
+        self.growth_entitlement
+            .install_resident_qualification(qualification);
         Ok(())
     }
 
@@ -1328,6 +1408,39 @@ impl SimSession {
         // just-built `BoundaryProtocol` untouched. See
         // `docs/adr/install_clone_then_commit.md`.
         let mut admitted = session.scenario.root.clone();
+        let authored_replaces_resident_fallback =
+            game_mode.resource_flow.as_ref().is_some_and(|flow| {
+                !flow.arenas.is_empty()
+                    && !flow.arenas.iter().any(|arena| {
+                        arena.name == crate::resident_clearing_runtime::RESIDENT_MARKET_RF_ARENA
+                        || (arena.flow_property.namespace
+                            == crate::resident_clearing_runtime::RESIDENT_MARKET_RF_NAMESPACE
+                            && arena.flow_property.name
+                                == crate::resident_clearing_runtime::RESIDENT_MARKET_RF_PROPERTY)
+                    })
+            });
+        if authored_replaces_resident_fallback {
+            if let Some(property_id) = session.proto.registry.id_of(
+                crate::resident_clearing_runtime::RESIDENT_MARKET_RF_NAMESPACE,
+                crate::resident_clearing_runtime::RESIDENT_MARKET_RF_PROPERTY,
+            ) {
+                fn retire_fallback_roles(
+                    registry: &mut simthing_core::DimensionRegistry,
+                    property_id: simthing_core::SimPropertyId,
+                ) {
+                    for sub_field in &mut registry.properties[property_id.index()].layout.sub_fields
+                    {
+                        sub_field.accumulator_spec = None;
+                    }
+                }
+                // The canonical property remains an admitted column in the
+                // session registry, but an explicitly authored RF arena owns
+                // the live market substrate. Retiring the fallback's RF roles
+                // prevents derivation from inventing a second peer arena.
+                retire_fallback_roles(&mut session.proto.registry, property_id);
+                retire_fallback_roles(&mut session.scenario.registry, property_id);
+            }
+        }
         let mut spec_state = install_atomic(
             game_mode,
             &session.scenario,
@@ -1753,7 +1866,10 @@ impl SimSession {
             day,
             &mut self.integration_schedule,
             |ctx| spec_state.run_boundary_handlers(ctx),
-            |allocator, generation, candidates, integration_schedule| {
+            |allocator, state, generation, candidates, integration_schedule| {
+                if candidates.is_empty() {
+                    return Ok(Vec::new());
+                }
                 match clearing_execution_posture {
                     simthing_core::ClearingExecutionPosture::ResidentRequired => {
                         let runtime = resident_clearing.as_mut().ok_or_else(|| {
@@ -1761,6 +1877,7 @@ impl SimSession {
                         })?;
                         growth_entitlement.resolve_batch_resident(
                             runtime,
+                            state,
                             allocator,
                             generation,
                             candidates,
@@ -1888,7 +2005,10 @@ impl SimSession {
                     day,
                     &mut self.integration_schedule,
                     |ctx| spec_state.run_boundary_handlers(ctx),
-                    |allocator, generation, candidates, integration_schedule| {
+                    |allocator, state, generation, candidates, integration_schedule| {
+                        if candidates.is_empty() {
+                            return Ok(Vec::new());
+                        }
                         match clearing_execution_posture {
                             simthing_core::ClearingExecutionPosture::ResidentRequired => {
                                 let runtime = resident_clearing.as_mut().ok_or_else(|| {
@@ -1897,6 +2017,7 @@ impl SimSession {
                                 })?;
                                 growth_entitlement.resolve_batch_resident(
                                     runtime,
+                                    state,
                                     allocator,
                                     generation,
                                     candidates,
@@ -2129,6 +2250,12 @@ impl SimSession {
         }
         if should_sync {
             self.sync_resource_flow()?;
+            let generation = simthing_core::GenerationStamp::new(
+                u32::try_from(self.coord.day_index()).map_err(|_| {
+                    SessionError::Mapping("resident rebind generation exceeds stamp range".into())
+                })?,
+            );
+            self.bind_or_rebind_resident_clearing_to_current_arena(generation)?;
         }
         Ok(())
     }

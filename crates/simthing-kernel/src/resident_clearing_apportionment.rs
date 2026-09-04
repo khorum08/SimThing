@@ -482,34 +482,34 @@ fn exact_shifted_u32(value: u32, shift: u32) -> ExactBasis {
 }
 
 /// Converts one non-negative finite binary32 allocation into an exact common
-/// Q149 numerator and applies the lawful integer request cap without a float
-/// conversion. Every finite binary32 value is an integer multiple of 2^-149,
-/// so this is an identity representation, not a settlement rounding rule.
+/// Q149 numerator while preserving the canonical integer request at its own
+/// neutral boundary. Every finite binary32 value is an integer multiple of
+/// 2^-149, so this is an identity representation, not a settlement rounding
+/// rule.
+///
+/// The comparison is per Draw against that Draw's projected neutral request;
+/// it never compares two policy cells and therefore cannot manufacture an
+/// exact equality band. At and above that boundary the exact admitted `u32`,
+/// not its rounded binary32 projection, is Q's capped basis.
 fn exact_capped_basis(allocated: f32, requested: u32) -> ExactBasis {
     let cap = exact_shifted_u32(requested, EXACT_BASIS_FRACTION_BITS);
+    if requested == 0 {
+        return [0; EXACT_BASIS_LIMBS];
+    }
+    if allocated >= requested as f32 {
+        return cap;
+    }
     let bits = allocated.to_bits();
     let exponent = (bits >> 23) & 0xff;
     let fraction = bits & 0x007f_ffff;
     if exponent == 0 {
-        let subnormal = exact_shifted_u32(fraction, 0);
-        return if exact_cmp(&subnormal, &cap).is_gt() {
-            cap
-        } else {
-            subnormal
-        };
+        return exact_shifted_u32(fraction, 0);
     }
-    // exponent >= 159 means the finite value is at least 2^32 and therefore
-    // exceeds every admitted u32 request.
-    if exponent >= 159 {
-        return cap;
-    }
+    debug_assert!(exponent < 159);
     let significand = 0x0080_0000 | fraction;
     let exact = exact_shifted_u32(significand, exponent - 1);
-    if exact_cmp(&exact, &cap).is_gt() {
-        cap
-    } else {
-        exact
-    }
+    debug_assert!(exact_cmp(&exact, &cap).is_lt());
+    exact
 }
 
 fn exact_checked_add(

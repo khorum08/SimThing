@@ -1,19 +1,24 @@
 //! RESIDENT-CLEARING-CUTOVER-0 production cutover referee.
 
 use simthing_core::{
-    ClearingExecutionPosture, DimensionRegistry, ExecutionIncarnation, ExecutionPosture,
-    GenerationStamp, IntegrationSchedule, ResidentClearingScheduleFact, ResidentScheduleError,
-    SimProperty, SimThing, SimThingKind, TreeExecutionAuthority, TreeGenerationAuthority,
-    TreeRealmId,
+    ClearingExecutionPosture, ColumnIndex, DimensionRegistry, ExecutionIncarnation,
+    ExecutionPosture, GenerationStamp, IntegrationSchedule, ResidentClearingScheduleFact,
+    ResidentScheduleError, SimProperty, SimThing, SimThingId, SimThingKind, TreeExecutionAuthority,
+    TreeGenerationAuthority, TreeRealmId,
 };
 use simthing_driver::resident_clearing_runtime::{
-    ResidentClearingBatchBinding, ResidentClearingRuntime, ResidentSpatialClaimBinding,
+    build_default_resident_arena_registry, install_default_resident_rf_property,
+    ResidentClearingBatchBinding, ResidentClearingDispatchTicket, ResidentClearingRuntime,
+    ResidentClearingRuntimeError, ResidentMarketQualification, ResidentSpatialClaimBinding,
 };
-use simthing_driver::{Scenario, SimSession};
+use simthing_driver::{
+    resolve_node_columns_for_property, sync_resource_flow_accumulator, ArenaRegistry, Scenario,
+    SimSession,
+};
 use simthing_gpu::{
     GpuContext, ResidentClearingAdmission, ResidentClearingBudgets, ResidentClearingPlan,
     ResidentDrawId, ResidentOwnerId, ResidentResourceId, ResidentScopeId, SlotAllocator,
-    QUALIFIED_RESIDENT_CLEARING_FINGERPRINT,
+    WorldGpuState, QUALIFIED_RESIDENT_CLEARING_FINGERPRINT,
 };
 use simthing_kernel::ResidentClearingReplayEnvelope;
 
@@ -41,6 +46,14 @@ fn loaded_tree(generation: u32) -> SimThing {
                     "spawned_generation": {generation}
                 }}],
                 "spawned_generation": {generation}
+            }}, {{
+                "id": 10,
+                "kind": "Cohort",
+                "properties": [],
+                "resource_parent_edges": [],
+                "overlays": [],
+                "children": [],
+                "spawned_generation": {generation}
             }}],
             "spawned_generation": {generation}
         }}"#
@@ -52,28 +65,128 @@ fn resident_rows() -> Vec<ResidentClearingBatchBinding> {
     vec![
         ResidentClearingBatchBinding {
             source_simthing_id: simthing_core::SimThingId::from_session_raw(7),
+            rf_participant: simthing_core::SimThingId::from_session_raw(8),
             requested: 1,
             available: 1,
             precedence: 0,
-            continuous_weight: 1.0,
         },
         ResidentClearingBatchBinding {
             source_simthing_id: simthing_core::SimThingId::from_session_raw(8),
+            rf_participant: simthing_core::SimThingId::from_session_raw(10),
             requested: 1,
             available: 1,
             precedence: 0,
-            continuous_weight: 1.0,
         },
     ]
+}
+
+struct ResidentHarness {
+    runtime: ResidentClearingRuntime,
+    state: WorldGpuState,
+    qualification: ResidentMarketQualification,
+    arena_registry: ArenaRegistry,
+    intrinsic_flow_col: ColumnIndex,
+    weight_col: ColumnIndex,
+    n_bands: u32,
+}
+
+impl ResidentHarness {
+    fn run_rf_with_weights(&mut self, root_flow: f32, weights: &[(SimThingId, f32)]) {
+        let mut values = self.state.read_values();
+        let n_dims = self.state.n_dims as usize;
+        let root_slot = self
+            .arena_registry
+            .participant_slot(SimThingId::from_session_raw(7), 0)
+            .expect("real RF root row");
+        values[root_slot.raw() as usize * n_dims + self.intrinsic_flow_col.raw()] = root_flow;
+        for (participant, weight) in weights {
+            let slot = self
+                .arena_registry
+                .participant_slot(*participant, 0)
+                .expect("real RF participant row");
+            values[slot.raw() as usize * n_dims + self.weight_col.raw()] = *weight;
+        }
+        self.state.install_resolved_values_at_boundary(&values);
+        self.state.run_resource_flow_bands(self.n_bands, 1.0);
+    }
+
+    fn dispatch(
+        &mut self,
+        schedule: &mut IntegrationSchedule,
+        granter: SimThingId,
+        generation: GenerationStamp,
+        rows: &[ResidentClearingBatchBinding],
+    ) -> Result<ResidentClearingDispatchTicket, ResidentClearingRuntimeError> {
+        self.runtime.dispatch(
+            &self.state,
+            &self.qualification,
+            schedule,
+            granter,
+            generation,
+            rows,
+        )
+    }
+
+    fn dispatch_spatial(
+        &mut self,
+        schedule: &mut IntegrationSchedule,
+        parent: &ResidentClearingDispatchTicket,
+        granter: SimThingId,
+        generation: GenerationStamp,
+        rows: &[ResidentSpatialClaimBinding],
+    ) -> Result<ResidentClearingDispatchTicket, ResidentClearingRuntimeError> {
+        self.runtime.dispatch_spatial(
+            &self.state,
+            &self.qualification,
+            schedule,
+            parent,
+            granter,
+            generation,
+            rows,
+        )
+    }
+
+    fn materialize(
+        &mut self,
+        schedule: &mut IntegrationSchedule,
+        ticket: ResidentClearingDispatchTicket,
+    ) -> Result<Vec<simthing_gpu::ResidentConstrainedProduct>, ResidentClearingRuntimeError> {
+        self.runtime
+            .materialize(&self.state, &self.qualification, schedule, ticket)
+    }
+
+    fn readback_allocated_flow_for_proof(
+        &self,
+        participants: &[SimThingId],
+    ) -> Result<Vec<f32>, ResidentClearingRuntimeError> {
+        self.runtime.readback_allocated_flow_for_proof(
+            &self.state,
+            &self.qualification,
+            participants,
+        )
+    }
+
+    fn qualification(&self) -> &simthing_gpu::ResidentClearingQualification {
+        self.runtime.qualification()
+    }
+
+    fn realm(&self) -> TreeRealmId {
+        self.runtime.realm()
+    }
+
+    fn buffer_owner(&self) -> simthing_gpu::ResidentClearingBufferOwner {
+        self.runtime.buffer_owner()
+    }
 }
 
 fn admit_runtime(
     gpu: &GpuContext,
     realm: TreeRealmId,
     generation: GenerationStamp,
-) -> (ResidentClearingRuntime, IntegrationSchedule) {
-    let tree = loaded_tree(generation.get());
-    let registry = DimensionRegistry::new();
+) -> (ResidentHarness, IntegrationSchedule) {
+    let mut tree = loaded_tree(generation.get());
+    let mut registry = DimensionRegistry::new();
+    let property_id = install_default_resident_rf_property(&mut registry, &mut tree);
     let mut residency = SlotAllocator::new();
     residency
         .install_initial_tree(&tree)
@@ -82,11 +195,52 @@ fn admit_runtime(
     schedule
         .admit_resident_live_head(4)
         .expect("bounded resident live head");
+    let arena_registry = build_default_resident_arena_registry(property_id, &tree, &residency, 8)
+        .expect("real recursive RF arena");
+    let columns = resolve_node_columns_for_property(
+        &registry,
+        property_id,
+        simthing_driver::resident_clearing_runtime::RESIDENT_MARKET_RF_ARENA,
+    )
+    .expect("canonical RF columns");
+    let mut state = WorldGpuState::new(gpu.clone(), &registry, residency.capacity() as u32);
+    let mut projected = vec![0.0; state.values_len()];
+    simthing_gpu::project_tree_to_values(
+        &tree,
+        &registry,
+        &residency,
+        state.n_dims as usize,
+        &mut projected,
+    );
+    state.install_resolved_values_at_boundary(&projected);
+    let flow = sync_resource_flow_accumulator(&mut state, &registry, &arena_registry, &[], &[])
+        .expect("ordinary RF plan upload");
+    state.run_resource_flow_bands(flow.n_bands, 1.0);
     let runtime = ResidentClearingRuntime::admit(
-        gpu, realm, &tree, &registry, &residency, &schedule, generation, 4,
+        gpu,
+        realm,
+        &tree,
+        &registry,
+        &arena_registry,
+        &residency,
+        &schedule,
+        generation,
+        4,
     )
     .expect("qualified production resident executor");
-    (runtime, schedule)
+    let qualification = runtime.market_qualification();
+    (
+        ResidentHarness {
+            runtime,
+            state,
+            qualification,
+            arena_registry,
+            intrinsic_flow_col: columns.intrinsic_flow_col,
+            weight_col: columns.weight_col,
+            n_bands: flow.n_bands,
+        },
+        schedule,
+    )
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -122,19 +276,28 @@ fn run_causal_allocation_case(
     let rows = [
         ResidentClearingBatchBinding {
             source_simthing_id: simthing_core::SimThingId::from_session_raw(7),
+            rf_participant: simthing_core::SimThingId::from_session_raw(8),
             requested: 17,
             available,
             precedence: 0,
-            continuous_weight: weights[0],
         },
         ResidentClearingBatchBinding {
             source_simthing_id: simthing_core::SimThingId::from_session_raw(8),
+            rf_participant: simthing_core::SimThingId::from_session_raw(10),
             requested: 33,
             available,
             precedence: 0,
-            continuous_weight: weights[1],
         },
     ];
+    runtime.run_rf_with_weights(
+        weights.into_iter().sum(),
+        &[
+            // Branch 8 is recursive; its level-N allocator basis is the
+            // reduced weight of leaf 9, not a host-authored branch shortcut.
+            (simthing_core::SimThingId::from_session_raw(9), weights[0]),
+            (simthing_core::SimThingId::from_session_raw(10), weights[1]),
+        ],
+    );
     let generation_n = runtime
         .dispatch(
             &mut schedule,
@@ -151,9 +314,9 @@ fn run_causal_allocation_case(
             GenerationStamp::new(generation),
             &[ResidentSpatialClaimBinding {
                 source_simthing_id: simthing_core::SimThingId::from_session_raw(9),
+                rf_participant: simthing_core::SimThingId::from_session_raw(8),
                 requested: 33,
                 precedence: 0,
-                continuous_weight: 33.0,
             }],
         )
         .expect("same-generation child consumes immutable parent T_s.G");
@@ -162,7 +325,11 @@ fn run_causal_allocation_case(
     // Every observer runs only after both submissions; the child consumed the
     // resident parent product without a host readback.
     let allocated_flow_bits = runtime
-        .readback_allocated_flow_for_proof(2)
+        .readback_allocated_flow_for_proof(&[
+            simthing_core::SimThingId::from_session_raw(8),
+            simthing_core::SimThingId::from_session_raw(10),
+        ])
+        .expect("observe live shared RF cells after both submissions")
         .into_iter()
         .map(f32::to_bits)
         .collect();
@@ -289,9 +456,9 @@ fn production_executor_is_async_tree_local_and_spatially_causal() {
             GenerationStamp::new(11),
             &[ResidentSpatialClaimBinding {
                 source_simthing_id: simthing_core::SimThingId::from_session_raw(9),
+                rf_participant: simthing_core::SimThingId::from_session_raw(8),
                 requested: 1,
                 precedence: 0,
-                continuous_weight: 1.0,
             }],
         )
         .expect("tree A child consumes parent T_s while tree B remains isolated");

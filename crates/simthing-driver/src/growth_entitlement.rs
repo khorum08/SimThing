@@ -63,7 +63,7 @@ pub struct GrowthEntitlementMarketBinding {
     effective_weight: f32,
     priority: u32,
     implicit_root_standing: bool,
-    resident_qualified: bool,
+    resident_qualification: Option<crate::resident_clearing_runtime::ResidentMarketQualification>,
 }
 
 impl GrowthEntitlementMarketBinding {
@@ -90,7 +90,7 @@ impl GrowthEntitlementMarketBinding {
             effective_weight,
             priority,
             implicit_root_standing: false,
-            resident_qualified: false,
+            resident_qualification: None,
         }
     }
 
@@ -144,7 +144,7 @@ impl GrowthEntitlementMarketBinding {
             effective_weight: 1.0,
             priority: 0,
             implicit_root_standing: true,
-            resident_qualified: true,
+            resident_qualification: None,
         })
     }
 
@@ -156,8 +156,54 @@ impl GrowthEntitlementMarketBinding {
         self.implicit_root_standing
     }
 
-    pub fn is_resident_qualified(&self) -> bool {
-        self.resident_qualified
+    pub fn resident_qualification(
+        &self,
+    ) -> Option<&crate::resident_clearing_runtime::ResidentMarketQualification> {
+        self.resident_qualification.as_ref()
+    }
+
+    pub(crate) fn resident_market_admission(
+        &self,
+    ) -> crate::resident_clearing_runtime::ResidentMarketAdmission {
+        let offering = self
+            .market
+            .offering(&self.offering_id)
+            .expect("admitted binding retains its offering");
+        let draw = self
+            .market
+            .draw_envelope(&self.draw_id)
+            .expect("admitted binding retains its Draw");
+        crate::resident_clearing_runtime::ResidentMarketAdmission::new(
+            format!(
+                "{}|{}|{:?}|{:?}",
+                self.market.specialization_profile_id(),
+                self.offering_id,
+                offering,
+                draw
+            ),
+            self.scope.resource_key.as_str(),
+            format!(
+                "{}|{}|{}",
+                self.scope.owner_ref.as_str(),
+                self.scope.resource_key.as_str(),
+                self.scope.scope_id.as_str()
+            ),
+            &self.draw_id,
+            None,
+            format!("hard-precedence/{}", self.priority),
+            format!(
+                "{:?}|effective-weight={:08x}",
+                self.clearing_program.score_program().nodes(),
+                self.effective_weight.to_bits()
+            ),
+        )
+    }
+
+    pub(crate) fn install_resident_qualification(
+        &mut self,
+        qualification: crate::resident_clearing_runtime::ResidentMarketQualification,
+    ) {
+        self.resident_qualification = Some(qualification);
     }
 
     /// Explicit vendorized CPU oracle. Ordinary production selects this door
@@ -299,14 +345,16 @@ impl GrowthEntitlementMarketBinding {
     pub fn resolve_batch_resident(
         &self,
         runtime: &mut crate::resident_clearing_runtime::RecursiveResourceFilterRuntime,
+        state: &simthing_gpu::WorldGpuState,
         allocator: &SlotAllocator,
         generation: GenerationStamp,
         candidates: &[OrdinaryGrowthCandidate],
         integration_schedule: &mut simthing_core::IntegrationSchedule,
     ) -> Result<Vec<GrowthEntitlementDecision>, GrowthEntitlementError> {
-        if !self.resident_qualified {
-            return Err(GrowthEntitlementError::ResidentProfileUnqualified);
-        }
+        let qualification = self
+            .resident_qualification
+            .as_ref()
+            .ok_or(GrowthEntitlementError::ResidentProfileUnqualified)?;
         if candidates.is_empty() {
             return Ok(Vec::new());
         }
@@ -315,24 +363,28 @@ impl GrowthEntitlementMarketBinding {
         ordered.sort_by_key(|candidate| candidate.grantee());
         let rows: Vec<_> = ordered
             .iter()
-            .map(|candidate| {
-                crate::resident_clearing_runtime::ResidentClearingBatchBinding {
+            .map(
+                |candidate| crate::resident_clearing_runtime::ResidentClearingBatchBinding {
                     source_simthing_id: candidate.grantee(),
+                    rf_participant: candidate.structural_parent(),
                     requested: candidate.quantity(),
                     available,
                     precedence: 0,
-                    // Neutral eligible pressure binds at the real graduated
-                    // AllocatorWeight port. AllocatedFlow is emitted later by
-                    // the child-share EML; settlement cannot manufacture it.
-                    continuous_weight: candidate.quantity() as f32,
-                }
-            })
+                },
+            )
             .collect();
         let root_ticket = runtime
-            .dispatch(integration_schedule, self.granter, generation, &rows)
+            .dispatch(
+                state,
+                qualification,
+                integration_schedule,
+                self.granter,
+                generation,
+                &rows,
+            )
             .map_err(|error| GrowthEntitlementError::Resident(error.to_string()))?;
         let products = runtime
-            .materialize(integration_schedule, root_ticket)
+            .materialize(state, qualification, integration_schedule, root_ticket)
             .map_err(|error| GrowthEntitlementError::Resident(error.to_string()))?;
         let mut decisions = Vec::with_capacity(ordered.len());
         for candidate in ordered {

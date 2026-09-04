@@ -666,14 +666,14 @@ fn neutral_pressure_identity_op(
 ///     entity: "fabricated".into(),
 ///     simthing_id: SimThingId::from_session_raw(1),
 ///     slot: 0,
-///     col: ColumnIndex::from_raw_for_oracle_or_rehearsal(0),
+///     col: ColumnIndex::try_from_admitted_authored(0, 2).unwrap(),
 ///     role: SubFieldRole::Named("intrinsic_flow_sum".into()),
 /// };
 /// let _ = bind_immediate_flow_pressure_to_allocator_weight(
 ///     &fabricated,
 ///     todo!(),
 ///     SlotIndex::new(0),
-///     ColumnIndex::from_raw_for_oracle_or_rehearsal(1),
+///     ColumnIndex::try_from_admitted_authored(1, 2).unwrap(),
 ///     GenerationStamp::new(0),
 ///     GenerationStamp::new(1),
 ///     0,

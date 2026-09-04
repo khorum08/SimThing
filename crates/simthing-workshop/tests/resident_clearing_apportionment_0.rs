@@ -280,6 +280,59 @@ fn oracle(
 }
 
 #[test]
+fn e5_integer_exact_neutral_basis_preserves_the_u32_winner() {
+    let ctx = GpuContext::new_blocking().expect("real GPU for 15.6 E5 referee");
+    let (semantic_plan, buffers) = resident_plan(&ctx, 2, false, false);
+    let (state, mut values) = world(ctx, 2);
+    let mut session = ResidentApportionmentSession::new(&state.ctx);
+    let requests = [16_777_217, 16_777_216];
+    let available = 1;
+    let granter = SimThingId::from_session_raw(0);
+    let generation = GenerationStamp::new(1);
+
+    values.fill(0.0);
+    for (slot, &requested) in requests.iter().enumerate() {
+        values[slot * state.n_dims as usize] = requested as f32;
+    }
+    assert_eq!(
+        values[0].to_bits(),
+        values[state.n_dims as usize].to_bits(),
+        "the pre-fix binary32 collapse remains mechanically represented"
+    );
+    state.install_resolved_values_at_boundary(&values);
+    let plan = plan_resident_exact_apportionment(
+        &arena_layout(),
+        &semantic_plan,
+        exact_claims(&semantic_plan, &requests, available, 0..2, false),
+        granter,
+        generation,
+    )
+    .unwrap();
+    let exact = oracle(&requests, available, generation, granter).unwrap();
+    let legacy_float_tie =
+        BTreeMap::from([(source(0), (0, 16_777_217)), (source(1), (1, 16_777_215))]);
+    assert_ne!(legacy_float_tie, exact, "the planted pre-fix path is RED");
+
+    let cpu =
+        product_map(&execute_resident_apportionment_cpu(&plan, &values, state.n_dims).unwrap());
+    let resident = product_map(
+        &run_gpu(
+            &state,
+            &mut session,
+            &buffers,
+            &plan,
+            ResidentApportionmentDispatch::single_pass(),
+        )
+        .unwrap(),
+    );
+    assert_eq!(
+        cpu, exact,
+        "CPU resident mirror retains exact request identity"
+    );
+    assert_eq!(resident, exact, "resident Q retains exact request identity");
+}
+
+#[test]
 fn neutral_continuous_shares_match_frozen_cpu_law_across_boundary_cases() {
     let ctx = GpuContext::new_blocking().expect("real GPU for resident exact witness");
     let (semantic_plan, buffers) = resident_plan(&ctx, 3, false, false);

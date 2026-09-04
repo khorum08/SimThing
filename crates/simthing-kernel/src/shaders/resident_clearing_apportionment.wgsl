@@ -182,24 +182,22 @@ fn exact_shifted_u32(value: u32, shift: u32) -> ExactBasis {
 }
 
 // Every finite binary32 is an integer multiple of 2^-149. Representing each
-// allocation in common Q149 units makes the float-to-exact boundary lossless;
-// request is applied as an exact u32 cap in that same representation.
+// allocation in common Q149 units makes the float-to-exact boundary lossless.
+// The cap boundary is this Draw's projected neutral request, but the returned
+// cap is its original u32. No comparison between policy cells can create an
+// exact equality band.
 fn exact_capped_basis(continuous: f32, requested: u32) -> ExactBasis {
     let cap = exact_shifted_u32(requested, 149u);
+    if (requested == 0u) { return exact_zero(); }
+    if (continuous >= f32(requested)) { return cap; }
     let bits = bitcast<u32>(continuous);
     let exponent = (bits >> 23u) & 0xffu;
     let fraction = bits & 0x007fffffu;
     if (exponent == 0u) {
-        let subnormal = exact_shifted_u32(fraction, 0u);
-        if (exact_cmp(subnormal, cap) > 0) { return cap; }
-        return subnormal;
-    }
-    if (exponent >= 159u) {
-        return cap;
+        return exact_shifted_u32(fraction, 0u);
     }
     let significand = 0x00800000u | fraction;
     let exact = exact_shifted_u32(significand, exponent - 1u);
-    if (exact_cmp(exact, cap) > 0) { return cap; }
     return exact;
 }
 
