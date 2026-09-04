@@ -2,13 +2,13 @@
 
 Status: **PROBATION / proof-present / DA-review-pending / UNMERGED / NO 15.7**.
 
-Authority: handoff `handoffs/RESIDENT-FILTER-SUBSTRATE-BINDING-0.hd.md` (`HD-RECEIPT: d665dff5c374`), resume/remand `5536145216`, binding E5 DA Option B ruling `5536135335`, and exact-basis remand `5540959678`. Coding orientation is `ORIENT-RECEIPT: 39716239b6b2` under rule stamp `a7f6c618858f2ed5`.
+Authority: handoff `handoffs/RESIDENT-FILTER-SUBSTRATE-BINDING-0.hd.md` (`HD-RECEIPT: d665dff5c374`), resume/remand `5536145216`, binding E5 DA Option B ruling `5536135335`, exact-arithmetic remand `5540959678`, and exact-authority remand `5542040712`. Coding orientation is `ORIENT-RECEIPT: 39716239b6b2` under rule stamp `a7f6c618858f2ed5`.
 
 ## Result
 
 The resident exact projection is now homed on the ordinary admitted RF arena. It binds the arena's actual participant topology, property columns, live `AllocatedFlow`, descriptor integration band, and the session's authoritative `WorldGpuState`. The former private continuous world, host market vector, host-authored weight, and per-dispatch allocation-plan compile/upload have been removed from the production executor.
 
-The continuous plane remains smooth policy authority. The admitted binding now carries an integer `ResidentExactBasisIdentity` beside the canonical `u32` request: `NeutralRequest` restores the exact request, while `LiveAllocatedFlow` converts the actual binary32 cell losslessly to Q149 and applies the exact integer cap there. Neither CPU nor WGSL projects `requested` to `f32`, and no comparison between claims or policy cells creates an exact equality band. The production GPU and its CPU mirror continue through the one Q149 projection and emit the one canonical `T_s`.
+The continuous plane remains smooth policy authority. Market admission now carries an integer `ResidentExactBasisIdentity` and seals it into `ResidentMarketQualification`: `NeutralRequest` restores the exact request, while `LiveAllocatedFlow` converts the actual binary32 cell losslessly to Q149 and applies the exact integer cap there. Dispatch rows carry no basis-mode field, so a caller cannot alter Q under an unchanged qualification. Neither CPU nor WGSL projects `requested` to `f32`, and no comparison between claims or policy cells creates an exact equality band. The production GPU and its CPU mirror continue through the one Q149 projection and emit the one canonical `T_s`.
 
 Sessions do not acquire an RF property or extra dimensions merely by opening. A scenario that explicitly carries the canonical RF property gets the default recursive arena; an authored spec gets its compiled arena. First admission and topology rebind both consume a freshly sealed borrowing view of the authoritative runtime tree. Empty growth batches need no executor; an actual growth batch without a completely admitted resident market fails closed.
 
@@ -21,7 +21,7 @@ Sessions do not acquire an RF property or extra dimensions merely by opening. A 
 | `AllocatorWeight` | host `continuous_weight` field | live property column selected from the admitted arena layout |
 | `AllocatedFlow` | private per-market-dispatch output vector | live ordinary RF cell addressed by admitted participant slot and column |
 | precedence | caller integer | unchanged exact claim field; orders feasible work and reserves nothing |
-| exact projection | plan compiled after manufacturing private continuous state | canonical semantic plan compiled only at admission/rebind; dispatch binds live cells plus an exact producer-carried basis identity and submits Q |
+| exact projection | plan compiled after manufacturing private continuous state | canonical semantic plan and exact-basis identity sealed at admission/rebind; dispatch binds live cells and submits Q without selecting basis mode |
 | semantic rows | fixed synthetic resource/scope/Draw constants | digests and dictionaries derived from admitted market identity plus every admitted tree scope/lane |
 | topology identity | absent from consumer token | selected arena, participant topology digest, registry generation, and registry layout digest |
 | plan upload lifetime | every market dispatch | resource-flow plan at install/topology refresh; resident semantic plan at admission/topology rebind |
@@ -33,10 +33,11 @@ Scenario property or authored GameModeSpec
   -> initial_gpu_sync / ordinary RF plan sync
   -> freshly sealed TreeExecutionBinding
   -> ResidentRfArenaBinding (arena layout + participant slots + live columns)
-  -> ResidentMarketQualification + one resident semantic plan
+  -> ResidentMarketQualification + sealed exact-basis identity + one resident semantic plan
 
 generation dispatch
-  -> canonical u32 request + precedence + rf_participant + exact basis identity
+  -> canonical u32 request + precedence + rf_participant (no host basis-mode field)
+  -> exact basis identity recovered from the admitted market lowering
   -> shared WorldGpuState[participant slot, live AllocatedFlow column]
   -> existing resident exact Q149 apportionment
   -> immutable canonical T_s in the one bounded live head
@@ -67,6 +68,7 @@ The deleted production members/routes are `continuous_plane`, `continuous_values
 | `precedence_digest` | bound precedence lowering identity | included in the sealed equality check |
 | `continuous_policy_digest` | authored policy identity plus canonical child-share EML identity | included in the sealed equality check |
 | `exact_projection_abi_digest` | `resident-q/u32-request+live-allocated-flow+exact-basis-identity/v3` | included in the sealed equality check |
+| `exact_basis_identity` | immutable `NeutralRequest` or `LiveAllocatedFlow` selected by admitted market lowering | changing basis mode produces a distinct qualification; cross-mode token use returns `StaleMarketQualification` |
 | private `seal` | digest of all fields above | `has_intact_seal` and exact token equality precede execution |
 
 A genuinely authored non-implicit shipyard market qualifies and executes. Mutating live RF weights from `9:1` to `1:9` after admission flips the exact winner left-to-right, proving live arena cells defeat stale host assumptions. A market preferring an absent arena returns typed `MarketCannotLower` rather than growing a score system or alternate executor.
@@ -76,7 +78,7 @@ A genuinely authored non-implicit shipyard market qualifies and executes. Mutati
 market-mutation=INVALID registry-mutation=INVALID incomplete-lowering=TYPED-REFUSAL
 ```
 
-## E5 Option B and exact-basis remand transcript
+## E5 Option B and exact-basis remand transcripts
 
 The permanent falsifier uses requests `r1=16,777,217`, `r2=16,777,216`, and supply `S=1`. The two binary32 cells have identical bits, mechanically reproducing the boundary collapse. Before remand `5540959678`, a genuinely below-cap `16,777,216f32` for source 1000 was incorrectly raised to its exact request because the request projected to those same bits. The pre-remedy test was RED: CPU produced `{1000:(1,16777216),1001:(0,16777216)}` where the live-below-cap authority required `{1000:(0,16777217),1001:(1,16777215)}`.
 
@@ -89,6 +91,15 @@ After the remand, both the resident GPU and CPU resident mirror consume the same
 | genuine above cap / `LiveAllocatedFlow` | `(1, 16,777,216)` | `(0, 16,777,216)` | exact request cap applied |
 
 Each row is tested through both the CPU mirror and a real GPU dispatch. The full admitted `u32` request domain remains intact. The continuous `f32` plane still owns smooth allocation policy; exact possession/request arithmetic remains integer-exact in the existing single Q/operator with no second clearer or response state.
+
+Remand `5542040712` then exposed an authority defect above that arithmetic: the three public production row bindings still let a dispatch caller choose `LiveAllocatedFlow` or `NeutralRequest`. The demanded pre-remedy same-token mutant held qualification, market, arena, requests, and live cells fixed; flipping only that enum changed the full resident-runtime grant vector from `[0,1]` to `[1,0]`. After remedy, those row fields are absent. Two otherwise-identical admitted markets with different basis identities produce distinct sealed qualifications, and presenting the live token to the neutral runtime returns `StaleMarketQualification` before dispatch.
+
+The focused referee also executes the three cases through `ResidentClearingRuntime`, the real admitted RF arena, and `ResidentMarketQualification`, not only through the low-level kernel session:
+
+```text
+15.6 E5 PRODUCTION PASS dispatch-tag=ABSENT cross-basis-token=TYPED-REFUSAL
+neutral=source-8 below-cap=source-9 above-cap=source-8
+```
 
 ## E7 identity-preserving rebind
 
@@ -126,7 +137,7 @@ The E6 mixed band remains work-conserving at `[0,1,9]`, and only a real conserve
 
 ## Test certificate
 
-- Focused 15.6 referee: 3/3.
+- Focused 15.6 referee: 4/4, including qualification-bound basis identity and the full production real-arena E5 three-way witness.
 - Frozen resident apportionment 14.5: 7/7, including permanent E5.
 - Frozen cutover/causal/tree-isolation 14.6: 3/3; parity terminal: 1/1 with qualification fingerprint `0x810418ff57aa9b08`.
 - Recursive-resource formalization/unification: 1/1 and 2/2.

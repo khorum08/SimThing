@@ -21,10 +21,10 @@ use simthing_gpu::{
     ResidentClearingAdmission, ResidentClearingBudgets, ResidentClearingBufferOwner,
     ResidentClearingBuffers, ResidentClearingGpuError, ResidentClearingLiveHead,
     ResidentClearingPlan, ResidentClearingPlanError, ResidentClearingQualification,
-    ResidentClearingSubmission, ResidentConstrainedProduct, ResidentDrawId, ResidentLiveHeadError,
-    ResidentOwnerId, ResidentResourceId, ResidentScopeId, ResidentTemporalDemand,
-    ResidentTemporalDemandMintSession, ResidentTemporalDemandSubmission, SlotAllocator,
-    WorldGpuState,
+    ResidentClearingSubmission, ResidentConstrainedProduct, ResidentDrawId,
+    ResidentExactBasisIdentity, ResidentLiveHeadError, ResidentOwnerId, ResidentResourceId,
+    ResidentScopeId, ResidentTemporalDemand, ResidentTemporalDemandMintSession,
+    ResidentTemporalDemandSubmission, SlotAllocator, WorldGpuState,
 };
 use thiserror::Error;
 
@@ -187,6 +187,10 @@ pub struct ResidentMarketAdmission {
     preferred_arena: Option<String>,
     precedence_identity: String,
     continuous_policy_identity: String,
+    /// Immutable semantic lowering for the exact projection. Dispatch rows
+    /// cannot override this fact; a different mode requires a different
+    /// admission and therefore a different qualification seal.
+    exact_basis_identity: ResidentExactBasisIdentity,
 }
 
 impl ResidentMarketAdmission {
@@ -198,6 +202,7 @@ impl ResidentMarketAdmission {
         preferred_arena: Option<String>,
         precedence_identity: impl Into<String>,
         continuous_policy_identity: impl Into<String>,
+        exact_basis_identity: ResidentExactBasisIdentity,
     ) -> Self {
         Self {
             market_identity: market_identity.into(),
@@ -207,6 +212,7 @@ impl ResidentMarketAdmission {
             preferred_arena,
             precedence_identity: precedence_identity.into(),
             continuous_policy_identity: continuous_policy_identity.into(),
+            exact_basis_identity,
         }
     }
 
@@ -219,17 +225,20 @@ impl ResidentMarketAdmission {
             None,
             "hard-precedence/u32-ascending",
             RESIDENT_CONTINUOUS_POLICY_EML,
+            ResidentExactBasisIdentity::LiveAllocatedFlow,
         )
     }
 
     fn market_digest(&self) -> u64 {
-        stable_digest_strings([
-            self.market_identity.as_str(),
-            self.resource_identity.as_str(),
-            self.scope_identity.as_str(),
-            self.draw_identity.as_str(),
-            self.precedence_identity.as_str(),
-            self.continuous_policy_identity.as_str(),
+        let exact_basis_identity = (self.exact_basis_identity as u32).to_le_bytes();
+        stable_digest([
+            self.market_identity.as_bytes(),
+            self.resource_identity.as_bytes(),
+            self.scope_identity.as_bytes(),
+            self.draw_identity.as_bytes(),
+            self.precedence_identity.as_bytes(),
+            self.continuous_policy_identity.as_bytes(),
+            exact_basis_identity.as_slice(),
         ])
     }
 }
@@ -247,6 +256,7 @@ pub struct ResidentMarketQualification {
     precedence_digest: u64,
     continuous_policy_digest: u64,
     exact_projection_abi_digest: u64,
+    exact_basis_identity: ResidentExactBasisIdentity,
     seal: u64,
 }
 
@@ -264,6 +274,7 @@ impl ResidentMarketQualification {
             self.precedence_digest,
             self.continuous_policy_digest,
             self.exact_projection_abi_digest,
+            u64::from(self.exact_basis_identity as u32),
         ];
         let bytes = words.map(u64::to_le_bytes);
         stable_digest(bytes.iter().map(|word| word.as_slice()))
@@ -315,6 +326,10 @@ impl ResidentMarketQualification {
 
     pub const fn exact_projection_abi_digest(&self) -> u64 {
         self.exact_projection_abi_digest
+    }
+
+    pub const fn exact_basis_identity(&self) -> ResidentExactBasisIdentity {
+        self.exact_basis_identity
     }
 }
 
@@ -495,6 +510,7 @@ impl ResidentRfArenaBinding {
                 RESIDENT_CONTINUOUS_POLICY_EML,
             ]),
             exact_projection_abi_digest: stable_digest_strings([RESIDENT_EXACT_PROJECTION_ABI]),
+            exact_basis_identity: self.market.exact_basis_identity,
             seal: 0,
         };
         qualification.seal = qualification.seal_components();
@@ -607,7 +623,8 @@ pub struct ResidentClearingBatchBinding {
     pub requested: u32,
     pub available: u32,
     pub precedence: u32,
-    pub exact_basis_identity: simthing_gpu::ResidentExactBasisIdentity,
+    // Exact-basis identity is deliberately absent: Q recovers it from the
+    // qualified admitted market, never from a dispatch-authored row.
 }
 
 /// One descendant claim in a same-generation child market. Supply is absent
@@ -618,7 +635,7 @@ pub struct ResidentSpatialClaimBinding {
     pub rf_participant: SimThingId,
     pub requested: u32,
     pub precedence: u32,
-    pub exact_basis_identity: simthing_gpu::ResidentExactBasisIdentity,
+    // Basis mode remains the parent runtime's admitted market fact.
 }
 
 /// Authored portion of one ordinary N+1 demand row.
@@ -636,7 +653,7 @@ pub struct ResidentTemporalExecutionBinding {
     pub rf_participant: SimThingId,
     pub available: u32,
     pub precedence: u32,
-    pub exact_basis_identity: simthing_gpu::ResidentExactBasisIdentity,
+    // Basis mode remains the runtime's admitted market fact across N -> N+1.
 }
 
 /// Application-layer policy binding for the one resident semantic scope.
@@ -1060,7 +1077,6 @@ impl ResidentClearingRuntime {
                 requested: row.requested,
                 available: 0,
                 precedence: row.precedence,
-                exact_basis_identity: row.exact_basis_identity,
             })
             .collect();
         self.dispatch_market(
@@ -1156,7 +1172,6 @@ impl ResidentClearingRuntime {
                 requested: 1,
                 available: row.available,
                 precedence: row.precedence,
-                exact_basis_identity: row.exact_basis_identity,
             })
             .collect();
         self.dispatch_market(
@@ -1199,7 +1214,7 @@ impl ResidentClearingRuntime {
                     row.precedence,
                     self.arena_binding.participant_slot(row.rf_participant)?,
                     self.arena_binding.columns.allocated_flow_col,
-                    row.exact_basis_identity,
+                    self.arena_binding.market.exact_basis_identity,
                 ))
             })
             .collect::<Result<Vec<_>, ResidentClearingRuntimeError>>()?;

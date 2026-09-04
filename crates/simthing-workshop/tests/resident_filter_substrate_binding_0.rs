@@ -66,6 +66,13 @@ fn loaded_tree() -> SimThing {
 }
 
 fn authored_market(draw: &str) -> ResidentMarketAdmission {
+    authored_market_with_basis(draw, ResidentExactBasisIdentity::LiveAllocatedFlow)
+}
+
+fn authored_market_with_basis(
+    draw: &str,
+    exact_basis_identity: ResidentExactBasisIdentity,
+) -> ResidentMarketAdmission {
     ResidentMarketAdmission::new(
         "authored::shipyard-residency-market",
         "authored::residency-row-capacity",
@@ -74,6 +81,7 @@ fn authored_market(draw: &str) -> ResidentMarketAdmission {
         Some(RESIDENT_MARKET_RF_ARENA.into()),
         "authored::hard-precedence/u32-ascending",
         "authored::child-share-eml/e11-0001",
+        exact_basis_identity,
     )
 }
 
@@ -84,6 +92,7 @@ struct RealArenaFixture {
     arena_registry: ArenaRegistry,
     state: WorldGpuState,
     intrinsic_flow_col: ColumnIndex,
+    allocated_flow_col: ColumnIndex,
     weight_col: ColumnIndex,
     n_bands: u32,
 }
@@ -119,9 +128,24 @@ impl RealArenaFixture {
             arena_registry,
             state,
             intrinsic_flow_col: columns.intrinsic_flow_col,
+            allocated_flow_col: columns.allocated_flow_col,
             weight_col: columns.weight_col,
             n_bands: flow.n_bands,
         }
+    }
+
+    fn install_allocated_flows(&mut self, left: f32, right: f32) {
+        let mut values = self.state.read_values();
+        let n_dims = self.state.n_dims as usize;
+        for (participant, allocated) in [(LEFT, left), (RIGHT, right)] {
+            let slot = self
+                .arena_registry
+                .participant_slot(id(participant), 0)
+                .unwrap()
+                .raw() as usize;
+            values[slot * n_dims + self.allocated_flow_col.raw()] = allocated;
+        }
+        self.state.install_resolved_values_at_boundary(&values);
     }
 
     fn run_rf(&mut self, left_weight: f32, right_weight: f32) {
@@ -201,7 +225,6 @@ fn two_branch_rows() -> [ResidentClearingBatchBinding; 2] {
             requested: 10,
             available: 1,
             precedence: 0,
-            exact_basis_identity: ResidentExactBasisIdentity::LiveAllocatedFlow,
         },
         ResidentClearingBatchBinding {
             source_simthing_id: id(RIGHT),
@@ -209,9 +232,154 @@ fn two_branch_rows() -> [ResidentClearingBatchBinding; 2] {
             requested: 10,
             available: 1,
             precedence: 0,
-            exact_basis_identity: ResidentExactBasisIdentity::LiveAllocatedFlow,
         },
     ]
+}
+
+#[test]
+fn exact_basis_identity_is_qualification_bound_not_dispatch_authority() {
+    let gpu = GpuContext::new_blocking().expect("qualified resident adapter");
+    let mut fixture = RealArenaFixture::new(&gpu);
+    fixture.install_allocated_flows(16_777_216.0, 16_777_216.0);
+    let mut schedule = RealArenaFixture::schedule();
+    let mut live_runtime = fixture
+        .admit(
+            &gpu,
+            &schedule,
+            authored_market("authored::draw/e5-same-token-mutant"),
+            &[],
+            2,
+        )
+        .unwrap();
+    let mut neutral_runtime = fixture
+        .admit(
+            &gpu,
+            &schedule,
+            authored_market_with_basis(
+                "authored::draw/e5-same-token-mutant",
+                ResidentExactBasisIdentity::NeutralRequest,
+            ),
+            &[],
+            2,
+        )
+        .unwrap();
+    let live_qualification = live_runtime.market_qualification();
+    let neutral_qualification = neutral_runtime.market_qualification();
+    assert_eq!(
+        live_qualification.exact_basis_identity(),
+        ResidentExactBasisIdentity::LiveAllocatedFlow
+    );
+    assert_eq!(
+        neutral_qualification.exact_basis_identity(),
+        ResidentExactBasisIdentity::NeutralRequest
+    );
+    assert_ne!(live_qualification, neutral_qualification);
+    assert_ne!(
+        live_qualification.market_semantic_digest(),
+        neutral_qualification.market_semantic_digest()
+    );
+    assert_eq!(
+        live_qualification.exact_projection_abi_digest(),
+        neutral_qualification.exact_projection_abi_digest()
+    );
+    let rows = [
+        ResidentClearingBatchBinding {
+            source_simthing_id: id(LEFT),
+            rf_participant: id(LEFT),
+            requested: 16_777_217,
+            available: 1,
+            precedence: 0,
+        },
+        ResidentClearingBatchBinding {
+            source_simthing_id: id(RIGHT),
+            rf_participant: id(RIGHT),
+            requested: 16_777_216,
+            available: 1,
+            precedence: 0,
+        },
+    ];
+    assert!(matches!(
+        neutral_runtime.dispatch(
+            &fixture.state,
+            &live_qualification,
+            &mut schedule,
+            id(ROOT),
+            GenerationStamp::new(30),
+            &rows,
+        ),
+        Err(ResidentClearingRuntimeError::StaleMarketQualification)
+    ));
+
+    let neutral_ticket = neutral_runtime
+        .dispatch(
+            &fixture.state,
+            &neutral_qualification,
+            &mut schedule,
+            id(ROOT),
+            GenerationStamp::new(30),
+            &rows,
+        )
+        .unwrap();
+    let neutral = neutral_runtime
+        .materialize(
+            &fixture.state,
+            &neutral_qualification,
+            &mut schedule,
+            neutral_ticket,
+        )
+        .unwrap();
+    let grants = |products: &[simthing_gpu::ResidentConstrainedProduct]| {
+        products
+            .iter()
+            .map(|product| product.granted())
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(grants(&neutral), [1, 0]);
+
+    let below_cap_ticket = live_runtime
+        .dispatch(
+            &fixture.state,
+            &live_qualification,
+            &mut schedule,
+            id(ROOT),
+            GenerationStamp::new(30),
+            &rows,
+        )
+        .unwrap();
+    let below_cap = live_runtime
+        .materialize(
+            &fixture.state,
+            &live_qualification,
+            &mut schedule,
+            below_cap_ticket,
+        )
+        .unwrap();
+    assert_eq!(grants(&below_cap), [0, 1]);
+
+    fixture.install_allocated_flows(33_554_432.0, 16_777_216.0);
+    let above_cap_ticket = live_runtime
+        .dispatch(
+            &fixture.state,
+            &live_qualification,
+            &mut schedule,
+            id(ROOT),
+            GenerationStamp::new(30),
+            &rows,
+        )
+        .unwrap();
+    let above_cap = live_runtime
+        .materialize(
+            &fixture.state,
+            &live_qualification,
+            &mut schedule,
+            above_cap_ticket,
+        )
+        .unwrap();
+    assert_eq!(grants(&above_cap), [1, 0]);
+
+    println!(
+        "15.6 E5 PRODUCTION PASS dispatch-tag=ABSENT cross-basis-token=TYPED-REFUSAL neutral=source-8 below-cap=source-9 above-cap=source-8"
+    );
 }
 
 #[test]
@@ -318,6 +486,7 @@ fn authored_market_qualifies_and_live_arena_cells_defeat_stale_host_assumptions(
             Some("absent-arena".into()),
             "authored::precedence",
             "authored::policy",
+            ResidentExactBasisIdentity::LiveAllocatedFlow,
         ),
         &[],
         2,
@@ -367,7 +536,6 @@ fn topology_growth_rebind_preserves_identity_live_head_and_pending_provenance() 
                 requested: 10,
                 available: 0,
                 precedence: 0,
-                exact_basis_identity: ResidentExactBasisIdentity::LiveAllocatedFlow,
             }],
         )
         .unwrap();
@@ -472,7 +640,6 @@ fn topology_growth_rebind_preserves_identity_live_head_and_pending_provenance() 
                 requested: 1,
                 available: 1,
                 precedence: 0,
-                exact_basis_identity: ResidentExactBasisIdentity::LiveAllocatedFlow,
             }],
         )
         .unwrap();
@@ -503,7 +670,6 @@ fn topology_growth_rebind_preserves_identity_live_head_and_pending_provenance() 
                 requested: 10,
                 available: 0,
                 precedence: 0,
-                exact_basis_identity: ResidentExactBasisIdentity::LiveAllocatedFlow,
             }],
         )
         .unwrap();

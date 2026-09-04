@@ -16,7 +16,7 @@ use simthing_driver::resident_clearing_runtime::{
 use simthing_driver::{
     produce_runtime_rf_next_generation_demands_for_tick, sync_resource_flow_accumulator,
 };
-use simthing_gpu::{GpuContext, ResidentExactBasisIdentity, SlotAllocator, WorldGpuState};
+use simthing_gpu::{GpuContext, SlotAllocator, WorldGpuState};
 use simthing_spec::{
     AuthoredClearingProgram, ClearingRemainderAuthority, ConstrainedClaim, ConstrainedSupply,
     OwnerChannelScopeKey, PersistenceDeformationBinding, PersistenceDeformationBindingError,
@@ -278,7 +278,6 @@ fn production_resident_port_matches_cpu_decay_without_readback() {
         requested: 100,
         available: 0,
         precedence: 0,
-        exact_basis_identity: ResidentExactBasisIdentity::LiveAllocatedFlow,
     }];
     let n = runtime
         .dispatch(
@@ -315,7 +314,6 @@ fn production_resident_port_matches_cpu_decay_without_readback() {
                 rf_participant: SimThingId::from_session_raw(7),
                 available: 0,
                 precedence: 0,
-                exact_basis_identity: ResidentExactBasisIdentity::LiveAllocatedFlow,
             }],
         )
         .unwrap();
@@ -348,7 +346,6 @@ fn production_resident_port_matches_cpu_decay_without_readback() {
                 rf_participant: SimThingId::from_session_raw(7),
                 available: 0,
                 precedence: 0,
-                exact_basis_identity: ResidentExactBasisIdentity::LiveAllocatedFlow,
             }],
         )
         .unwrap();

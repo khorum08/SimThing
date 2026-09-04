@@ -17,7 +17,7 @@ use simthing_driver::{
     produce_runtime_rf_next_generation_demands_for_tick, resolve_node_columns_for_property,
     sync_resource_flow_accumulator, ArenaRegistry,
 };
-use simthing_gpu::{GpuContext, ResidentExactBasisIdentity, SlotAllocator, WorldGpuState};
+use simthing_gpu::{GpuContext, SlotAllocator, WorldGpuState};
 use simthing_spec::{
     AuthoredClearingProgram, ClearingRemainderAuthority, ConstrainedClaim, ConstrainedSupply,
     OwnerChannelScopeKey, PersistenceDeformationBinding, PersistenceDeformationBindings,
@@ -305,7 +305,6 @@ fn e6_immediate_flow_is_work_conserving_and_commitment_alone_reserves() {
             requested: 4,
             available: 4,
             precedence: 0,
-            exact_basis_identity: ResidentExactBasisIdentity::LiveAllocatedFlow,
         },
         ResidentClearingBatchBinding {
             source_simthing_id: id(DESCENDANT),
@@ -313,7 +312,6 @@ fn e6_immediate_flow_is_work_conserving_and_commitment_alone_reserves() {
             requested: 4,
             available: 4,
             precedence: 1,
-            exact_basis_identity: ResidentExactBasisIdentity::LiveAllocatedFlow,
         },
     ];
     let work_conserving = run_immediate(
@@ -334,7 +332,6 @@ fn e6_immediate_flow_is_work_conserving_and_commitment_alone_reserves() {
                 requested: 100,
                 available: 10,
                 precedence: 0,
-                exact_basis_identity: ResidentExactBasisIdentity::LiveAllocatedFlow,
             },
             ResidentClearingBatchBinding {
                 source_simthing_id: id(CHILD),
@@ -342,7 +339,6 @@ fn e6_immediate_flow_is_work_conserving_and_commitment_alone_reserves() {
                 requested: 1,
                 available: 10,
                 precedence: 0,
-                exact_basis_identity: ResidentExactBasisIdentity::LiveAllocatedFlow,
             },
             ResidentClearingBatchBinding {
                 source_simthing_id: id(DESCENDANT),
@@ -350,7 +346,6 @@ fn e6_immediate_flow_is_work_conserving_and_commitment_alone_reserves() {
                 requested: 9,
                 available: 10,
                 precedence: 1,
-                exact_basis_identity: ResidentExactBasisIdentity::LiveAllocatedFlow,
             },
         ],
         &[(id(ROOT), 0.0), (id(CHILD), 1.0), (id(DESCENDANT), 9.0)],
@@ -450,7 +445,6 @@ fn canonical_cross_product_separates_spatial_and_temporal_axes() {
                 requested: 10,
                 available: 4,
                 precedence: 0,
-                exact_basis_identity: ResidentExactBasisIdentity::LiveAllocatedFlow,
             }],
         )
         .unwrap();
@@ -465,7 +459,6 @@ fn canonical_cross_product_separates_spatial_and_temporal_axes() {
                 rf_participant: id(DESCENDANT),
                 requested: 4,
                 precedence: 0,
-                exact_basis_identity: ResidentExactBasisIdentity::LiveAllocatedFlow,
             }],
         )
         .unwrap();
@@ -490,7 +483,6 @@ fn canonical_cross_product_separates_spatial_and_temporal_axes() {
                 rf_participant: id(CHILD),
                 available: 5,
                 precedence: 0,
-                exact_basis_identity: ResidentExactBasisIdentity::LiveAllocatedFlow,
             }],
         )
         .unwrap();
@@ -539,7 +531,6 @@ fn deformation_reads_u_inside_once_mint_and_matches_cpu() {
                 requested: 10,
                 available: 4,
                 precedence: 0,
-                exact_basis_identity: ResidentExactBasisIdentity::LiveAllocatedFlow,
             }],
         )
         .unwrap();
@@ -564,7 +555,6 @@ fn deformation_reads_u_inside_once_mint_and_matches_cpu() {
                 rf_participant: id(CHILD),
                 available: 0,
                 precedence: 0,
-                exact_basis_identity: ResidentExactBasisIdentity::LiveAllocatedFlow,
             }],
         )
         .unwrap();
@@ -599,7 +589,6 @@ fn semantic_scope_and_axis_mutants_are_mechanically_red() {
                     requested: 1,
                     available: 2,
                     precedence: 0,
-                    exact_basis_identity: ResidentExactBasisIdentity::LiveAllocatedFlow,
                 },
                 ResidentClearingBatchBinding {
                     source_simthing_id: id(CHILD),
@@ -607,7 +596,6 @@ fn semantic_scope_and_axis_mutants_are_mechanically_red() {
                     requested: 1,
                     available: 2,
                     precedence: 0,
-                    exact_basis_identity: ResidentExactBasisIdentity::LiveAllocatedFlow,
                 },
             ],
         )
@@ -617,7 +605,6 @@ fn semantic_scope_and_axis_mutants_are_mechanically_red() {
         rf_participant: id(DESCENDANT),
         requested: 1,
         precedence: 0,
-        exact_basis_identity: ResidentExactBasisIdentity::LiveAllocatedFlow,
     }];
     assert!(matches!(
         runtime.dispatch_spatial(
@@ -642,7 +629,6 @@ fn semantic_scope_and_axis_mutants_are_mechanically_red() {
                 rf_participant: id(CHILD),
                 requested: 1,
                 precedence: 0,
-                exact_basis_identity: ResidentExactBasisIdentity::LiveAllocatedFlow,
             }],
         ),
         Err(ResidentClearingRuntimeError::LiveHead(
@@ -660,7 +646,6 @@ fn semantic_scope_and_axis_mutants_are_mechanically_red() {
                 rf_participant: id(CHILD),
                 requested: 1,
                 precedence: 0,
-                exact_basis_identity: ResidentExactBasisIdentity::LiveAllocatedFlow,
             }],
         ),
         Err(ResidentClearingRuntimeError::SpatialClaimOutsideChildScope { .. })
@@ -727,7 +712,6 @@ fn prepared_demand_does_not_execute_until_n_plus_one_datum_arrives() {
                     requested: 10,
                     available: 4,
                     precedence: 0,
-                    exact_basis_identity: ResidentExactBasisIdentity::LiveAllocatedFlow,
                 }],
             )
             .unwrap();
@@ -758,7 +742,6 @@ fn prepared_demand_does_not_execute_until_n_plus_one_datum_arrives() {
                     rf_participant: id(CHILD),
                     available: n1_supply,
                     precedence: 0,
-                    exact_basis_identity: ResidentExactBasisIdentity::LiveAllocatedFlow,
                 }],
             )
             .unwrap();

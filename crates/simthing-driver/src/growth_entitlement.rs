@@ -196,6 +196,7 @@ impl GrowthEntitlementMarketBinding {
                 self.clearing_program.score_program().nodes(),
                 self.effective_weight.to_bits()
             ),
+            simthing_gpu::ResidentExactBasisIdentity::LiveAllocatedFlow,
         )
     }
 
@@ -370,8 +371,6 @@ impl GrowthEntitlementMarketBinding {
                     requested: candidate.quantity(),
                     available,
                     precedence: 0,
-                    exact_basis_identity:
-                        simthing_gpu::ResidentExactBasisIdentity::LiveAllocatedFlow,
                 },
             )
             .collect();
