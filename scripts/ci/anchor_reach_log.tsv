@@ -2875,3 +2875,4 @@ date	role	query	anchors_served	hit
 2026-09-03T23:59:08Z	coding	--grep prepared-vs-executes	admission-provenance,clausescript-compatibility,clearing-weight-spans,generation-critical-path,legacy-convergence-census,performance-debt-ledger,semantic-partition-law,star-naming-derivation,weight-deformation-lifecycle	hit
 2026-09-04T00:58:39Z	coding	--paths scripts/ci/allow/kernel_surface.txt docs/sanctioned_surface.md	orientation-harness-core,scanner-selftest-delta-gate	hit
 2026-09-04T01:01:42Z	coding	--paths scripts/ci/triage_log.tsv	orientation-harness-core,scanner-selftest-delta-gate	hit
+2026-09-04T01:05:19Z	coding	--paths scripts/ci/authorized_renames.tsv	orientation-harness-core,scanner-selftest-delta-gate	hit
