@@ -8,12 +8,15 @@ use simthing_core::{
     GenerationStamp, IntegrationSchedule, PersistenceDeformationAdmissionError,
     PersistenceDeformationProgram, SimThing, SimThingId, TransformOp, TreeRealmId,
 };
-use simthing_driver::produce_runtime_rf_next_generation_demands_for_tick;
 use simthing_driver::resident_clearing_runtime::{
+    build_default_resident_arena_registry, install_default_resident_rf_property,
     ResidentAuthoredDemand, ResidentClearingBatchBinding, ResidentClearingRuntime,
     ResidentPersistenceDeformationBinding, ResidentTemporalExecutionBinding,
 };
-use simthing_gpu::{GpuContext, SlotAllocator};
+use simthing_driver::{
+    produce_runtime_rf_next_generation_demands_for_tick, sync_resource_flow_accumulator,
+};
+use simthing_gpu::{GpuContext, SlotAllocator, WorldGpuState};
 use simthing_spec::{
     AuthoredClearingProgram, ClearingRemainderAuthority, ConstrainedClaim, ConstrainedSupply,
     OwnerChannelScopeKey, PersistenceDeformationBinding, PersistenceDeformationBindingError,
@@ -229,10 +232,26 @@ fn cpu_once_mint_identity_decay_and_atomic_refusal() {
 #[test]
 fn production_resident_port_matches_cpu_decay_without_readback() {
     let gpu = GpuContext::new_blocking().expect("qualified resident adapter");
-    let tree = loaded_tree();
-    let registry = simthing_core::DimensionRegistry::new();
+    let mut tree = loaded_tree();
+    let mut registry = simthing_core::DimensionRegistry::new();
+    let property_id = install_default_resident_rf_property(&mut registry, &mut tree);
     let mut residency = SlotAllocator::new();
     residency.install_initial_tree(&tree).unwrap();
+    let arena_registry =
+        build_default_resident_arena_registry(property_id, &tree, &residency, 1).unwrap();
+    let mut state = WorldGpuState::new(gpu.clone(), &registry, residency.capacity() as u32);
+    let mut projected = vec![0.0; state.values_len()];
+    simthing_gpu::project_tree_to_values(
+        &tree,
+        &registry,
+        &residency,
+        state.n_dims as usize,
+        &mut projected,
+    );
+    state.install_resolved_values_at_boundary(&projected);
+    let flow = sync_resource_flow_accumulator(&mut state, &registry, &arena_registry, &[], &[])
+        .expect("ordinary RF plan upload");
+    state.run_resource_flow_bands(flow.n_bands, 1.0);
     let mut schedule = IntegrationSchedule::new();
     schedule.admit_resident_live_head(4).unwrap();
     let program = clause_long_chain();
@@ -241,6 +260,7 @@ fn production_resident_port_matches_cpu_decay_without_readback() {
         TreeRealmId::from_u128(0x15_02).unwrap(),
         &tree,
         &registry,
+        &arena_registry,
         &residency,
         &schedule,
         GenerationStamp::new(30),
@@ -251,15 +271,18 @@ fn production_resident_port_matches_cpu_decay_without_readback() {
         }],
     )
     .expect("resident deformation admission");
+    let qualification = runtime.market_qualification();
     let rows = [ResidentClearingBatchBinding {
         source_simthing_id: SimThingId::from_session_raw(SOURCE),
+        rf_participant: SimThingId::from_session_raw(7),
         requested: 100,
         available: 0,
         precedence: 0,
-        continuous_weight: 100.0,
     }];
     let n = runtime
         .dispatch(
+            &state,
+            &qualification,
             &mut schedule,
             SimThingId::from_session_raw(7),
             GenerationStamp::new(30),
@@ -268,6 +291,8 @@ fn production_resident_port_matches_cpu_decay_without_readback() {
         .unwrap();
     let demand_n1 = runtime
         .prepare_temporal_demands(
+            &state,
+            &qualification,
             &n,
             GenerationStamp::new(31),
             &[ResidentAuthoredDemand {
@@ -278,24 +303,28 @@ fn production_resident_port_matches_cpu_decay_without_readback() {
         .unwrap();
     let n1 = runtime
         .dispatch_temporal(
+            &state,
+            &qualification,
             &mut schedule,
             &demand_n1,
             SimThingId::from_session_raw(7),
             GenerationStamp::new(31),
             &[ResidentTemporalExecutionBinding {
                 source_simthing_id: SimThingId::from_session_raw(SOURCE),
+                rf_participant: SimThingId::from_session_raw(7),
                 available: 0,
                 precedence: 0,
-                continuous_weight: 80.0,
             }],
         )
         .unwrap();
     let minted_n1 = runtime
-        .readback_temporal_demands_for_proof(&demand_n1)
+        .readback_temporal_demands_for_proof(&state, &qualification, &demand_n1)
         .unwrap();
     assert_eq!(minted_n1[0].quantity(), 80);
     let demand_n2 = runtime
         .prepare_temporal_demands(
+            &state,
+            &qualification,
             &n1,
             GenerationStamp::new(32),
             &[ResidentAuthoredDemand {
@@ -306,15 +335,17 @@ fn production_resident_port_matches_cpu_decay_without_readback() {
         .unwrap();
     let n2 = runtime
         .dispatch_temporal(
+            &state,
+            &qualification,
             &mut schedule,
             &demand_n2,
             SimThingId::from_session_raw(7),
             GenerationStamp::new(32),
             &[ResidentTemporalExecutionBinding {
                 source_simthing_id: SimThingId::from_session_raw(SOURCE),
+                rf_participant: SimThingId::from_session_raw(7),
                 available: 0,
                 precedence: 0,
-                continuous_weight: 64.0,
             }],
         )
         .unwrap();
@@ -324,7 +355,11 @@ fn production_resident_port_matches_cpu_decay_without_readback() {
     // a byte. Each advance used the ordinary resident once-mint.
     let products = [n, n1, n2]
         .into_iter()
-        .map(|ticket| runtime.materialize(&mut schedule, ticket).unwrap())
+        .map(|ticket| {
+            runtime
+                .materialize(&state, &qualification, &mut schedule, ticket)
+                .unwrap()
+        })
         .collect::<Vec<_>>();
     assert_eq!(
         products

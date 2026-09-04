@@ -17,6 +17,7 @@ pub enum GpuInitError {
     RequestDevice(#[from] wgpu::RequestDeviceError),
 }
 
+#[derive(Clone)]
 pub struct GpuContext {
     pub instance: Arc<Instance>,
     pub adapter: Arc<Adapter>,

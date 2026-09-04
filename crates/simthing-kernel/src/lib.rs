@@ -150,9 +150,9 @@ pub use residency_placement::{
 pub use resident_clearing_apportionment::{
     execute_resident_apportionment_cpu, ResidentApportionmentClaim, ResidentApportionmentDispatch,
     ResidentApportionmentError, ResidentApportionmentPlan, ResidentApportionmentSession,
-    ResidentApportionmentWorkgroupSize, ResidentConstrainedProduct, ResidentRecursiveSupplyIntake,
-    ResidentSettlementOutput, RESIDENT_APPORTIONMENT_SCRATCH_BYTES_PER_ROW,
-    RESIDENT_APPORTIONMENT_WORKGROUP_SIZE,
+    ResidentApportionmentWorkgroupSize, ResidentConstrainedProduct, ResidentExactBasisIdentity,
+    ResidentRecursiveSupplyIntake, ResidentSettlementOutput,
+    RESIDENT_APPORTIONMENT_SCRATCH_BYTES_PER_ROW, RESIDENT_APPORTIONMENT_WORKGROUP_SIZE,
 };
 pub use resident_clearing_plan::{
     DenseOrdinalRange, ResidentClearingAdmission, ResidentClearingBudgets,

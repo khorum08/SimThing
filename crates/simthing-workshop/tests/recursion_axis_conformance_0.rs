@@ -2,16 +2,22 @@
 
 use simthing_core::owner_channel::OwnerRef;
 use simthing_core::{
-    DimensionRegistry, GenerationStamp, IntegrationSchedule, PersistenceDeformationProgram,
-    ResidencyCapacityPartition, SimThing, SimThingId, TransformOp, TreeRealmId,
+    ColumnIndex, DimensionRegistry, GenerationStamp, IntegrationSchedule,
+    PersistenceDeformationProgram, ResidencyCapacityPartition, SimThing, SimThingId, TransformOp,
+    TreeRealmId,
 };
-use simthing_driver::produce_runtime_rf_next_generation_demands_for_tick;
 use simthing_driver::resident_clearing_runtime::{
-    ResidentAuthoredDemand, ResidentClearingBatchBinding, ResidentClearingRuntime,
-    ResidentClearingRuntimeError, ResidentPersistenceDeformationBinding,
-    ResidentSpatialClaimBinding, ResidentTemporalExecutionBinding,
+    build_default_resident_arena_registry, install_default_resident_rf_property,
+    ResidentAuthoredDemand, ResidentClearingBatchBinding, ResidentClearingDispatchTicket,
+    ResidentClearingRuntime, ResidentClearingRuntimeError, ResidentMarketQualification,
+    ResidentPersistenceDeformationBinding, ResidentSpatialClaimBinding,
+    ResidentTemporalDemandTicket, ResidentTemporalExecutionBinding,
 };
-use simthing_gpu::{GpuContext, SlotAllocator};
+use simthing_driver::{
+    produce_runtime_rf_next_generation_demands_for_tick, resolve_node_columns_for_property,
+    sync_resource_flow_accumulator, ArenaRegistry,
+};
+use simthing_gpu::{GpuContext, SlotAllocator, WorldGpuState};
 use simthing_spec::{
     AuthoredClearingProgram, ClearingRemainderAuthority, ConstrainedClaim, ConstrainedSupply,
     OwnerChannelScopeKey, PersistenceDeformationBinding, PersistenceDeformationBindings,
@@ -57,15 +63,146 @@ fn loaded_tree(generation: u32) -> SimThing {
     .expect("persisted resident fixture")
 }
 
+struct ResidentHarness {
+    runtime: ResidentClearingRuntime,
+    state: WorldGpuState,
+    qualification: ResidentMarketQualification,
+    arena_registry: ArenaRegistry,
+    allocated_flow_col: ColumnIndex,
+}
+
+impl ResidentHarness {
+    fn set_allocated_flows(&self, flows: &[(SimThingId, f32)]) {
+        let mut values = self.state.read_values();
+        for (participant, flow) in flows {
+            let slot = self
+                .arena_registry
+                .participant_slot(*participant, 0)
+                .expect("participant has one real arena row");
+            let index =
+                slot.raw() as usize * self.state.n_dims as usize + self.allocated_flow_col.raw();
+            values[index] = *flow;
+        }
+        self.state.install_resolved_values_at_boundary(&values);
+    }
+
+    fn dispatch(
+        &mut self,
+        schedule: &mut IntegrationSchedule,
+        granter: SimThingId,
+        generation: GenerationStamp,
+        rows: &[ResidentClearingBatchBinding],
+    ) -> Result<ResidentClearingDispatchTicket, ResidentClearingRuntimeError> {
+        self.runtime.dispatch(
+            &self.state,
+            &self.qualification,
+            schedule,
+            granter,
+            generation,
+            rows,
+        )
+    }
+
+    fn dispatch_with_commitment_partition(
+        &mut self,
+        schedule: &mut IntegrationSchedule,
+        granter: SimThingId,
+        generation: GenerationStamp,
+        rows: &[ResidentClearingBatchBinding],
+        commitment: &ResidencyCapacityPartition,
+    ) -> Result<ResidentClearingDispatchTicket, ResidentClearingRuntimeError> {
+        self.runtime.dispatch_with_commitment_partition(
+            &self.state,
+            &self.qualification,
+            schedule,
+            granter,
+            generation,
+            rows,
+            commitment,
+        )
+    }
+
+    fn dispatch_spatial(
+        &mut self,
+        schedule: &mut IntegrationSchedule,
+        parent: &ResidentClearingDispatchTicket,
+        granter: SimThingId,
+        generation: GenerationStamp,
+        rows: &[ResidentSpatialClaimBinding],
+    ) -> Result<ResidentClearingDispatchTicket, ResidentClearingRuntimeError> {
+        self.runtime.dispatch_spatial(
+            &self.state,
+            &self.qualification,
+            schedule,
+            parent,
+            granter,
+            generation,
+            rows,
+        )
+    }
+
+    fn prepare_temporal_demands(
+        &mut self,
+        products: &ResidentClearingDispatchTicket,
+        generation: GenerationStamp,
+        authored: &[ResidentAuthoredDemand],
+    ) -> Result<ResidentTemporalDemandTicket, ResidentClearingRuntimeError> {
+        self.runtime.prepare_temporal_demands(
+            &self.state,
+            &self.qualification,
+            products,
+            generation,
+            authored,
+        )
+    }
+
+    fn dispatch_temporal(
+        &mut self,
+        schedule: &mut IntegrationSchedule,
+        demands: &ResidentTemporalDemandTicket,
+        granter: SimThingId,
+        generation: GenerationStamp,
+        rows: &[ResidentTemporalExecutionBinding],
+    ) -> Result<ResidentClearingDispatchTicket, ResidentClearingRuntimeError> {
+        self.runtime.dispatch_temporal(
+            &self.state,
+            &self.qualification,
+            schedule,
+            demands,
+            granter,
+            generation,
+            rows,
+        )
+    }
+
+    fn materialize(
+        &mut self,
+        schedule: &mut IntegrationSchedule,
+        ticket: ResidentClearingDispatchTicket,
+    ) -> Result<Vec<simthing_gpu::ResidentConstrainedProduct>, ResidentClearingRuntimeError> {
+        self.runtime
+            .materialize(&self.state, &self.qualification, schedule, ticket)
+    }
+
+    fn readback_temporal_demands_for_proof(
+        &self,
+        ticket: &ResidentTemporalDemandTicket,
+    ) -> Result<Vec<simthing_gpu::ResidentTemporalDemand>, ResidentClearingRuntimeError> {
+        self.runtime
+            .readback_temporal_demands_for_proof(&self.state, &self.qualification, ticket)
+    }
+}
+
 fn admit_runtime(
     gpu: &GpuContext,
     realm: u128,
     generation: u32,
     lane_capacity: u32,
     deformation: Option<PersistenceDeformationProgram>,
-) -> (ResidentClearingRuntime, IntegrationSchedule) {
-    let tree = loaded_tree(generation);
-    let registry = DimensionRegistry::new();
+) -> (ResidentHarness, IntegrationSchedule) {
+    let mut tree = loaded_tree(generation);
+    let mut registry = DimensionRegistry::new();
+    let property_id = install_default_resident_rf_property(&mut registry, &mut tree);
     let mut residency = SlotAllocator::new();
     residency
         .install_initial_tree(&tree)
@@ -74,6 +211,28 @@ fn admit_runtime(
     schedule
         .admit_resident_live_head(16)
         .expect("bounded resident live head");
+    let arena_registry =
+        build_default_resident_arena_registry(property_id, &tree, &residency, lane_capacity.max(3))
+            .expect("real recursive RF arena");
+    let columns = resolve_node_columns_for_property(
+        &registry,
+        property_id,
+        simthing_driver::resident_clearing_runtime::RESIDENT_MARKET_RF_ARENA,
+    )
+    .expect("canonical RF columns");
+    let mut state = WorldGpuState::new(gpu.clone(), &registry, residency.capacity() as u32);
+    let mut projected = vec![0.0; state.values_len()];
+    simthing_gpu::project_tree_to_values(
+        &tree,
+        &registry,
+        &residency,
+        state.n_dims as usize,
+        &mut projected,
+    );
+    state.install_resolved_values_at_boundary(&projected);
+    let flow = sync_resource_flow_accumulator(&mut state, &registry, &arena_registry, &[], &[])
+        .expect("ordinary RF plan upload");
+    state.run_resource_flow_bands(flow.n_bands, 1.0);
     let bindings = deformation
         .map(|program| {
             vec![ResidentPersistenceDeformationBinding {
@@ -87,6 +246,7 @@ fn admit_runtime(
         TreeRealmId::from_u128(realm).expect("nonzero realm"),
         &tree,
         &registry,
+        &arena_registry,
         &residency,
         &schedule,
         GenerationStamp::new(generation),
@@ -94,7 +254,17 @@ fn admit_runtime(
         &bindings,
     )
     .expect("qualified production resident executor");
-    (runtime, schedule)
+    let qualification = runtime.market_qualification();
+    (
+        ResidentHarness {
+            runtime,
+            state,
+            qualification,
+            arena_registry,
+            allocated_flow_col: columns.allocated_flow_col,
+        },
+        schedule,
+    )
 }
 
 fn economic(products: Vec<simthing_gpu::ResidentConstrainedProduct>) -> Vec<(u32, u32, u32, u32)> {
@@ -115,8 +285,10 @@ fn run_immediate(
     gpu: &GpuContext,
     realm: u128,
     rows: &[ResidentClearingBatchBinding],
+    flows: &[(SimThingId, f32)],
 ) -> Vec<(u32, u32, u32, u32)> {
     let (mut runtime, mut schedule) = admit_runtime(gpu, realm, 41, rows.len() as u32, None);
+    runtime.set_allocated_flows(flows);
     let ticket = runtime
         .dispatch(&mut schedule, id(ROOT), GenerationStamp::new(41), rows)
         .expect("production resident immediate dispatch");
@@ -129,20 +301,25 @@ fn e6_immediate_flow_is_work_conserving_and_commitment_alone_reserves() {
     let rows = [
         ResidentClearingBatchBinding {
             source_simthing_id: id(CHILD),
+            rf_participant: id(CHILD),
             requested: 4,
             available: 4,
             precedence: 0,
-            continuous_weight: 0.0,
         },
         ResidentClearingBatchBinding {
             source_simthing_id: id(DESCENDANT),
+            rf_participant: id(DESCENDANT),
             requested: 4,
             available: 4,
             precedence: 1,
-            continuous_weight: 1.0,
         },
     ];
-    let work_conserving = run_immediate(&gpu, 0x15_05_e6_01, &rows);
+    let work_conserving = run_immediate(
+        &gpu,
+        0x15_05_e6_01,
+        &rows,
+        &[(id(CHILD), 0.0), (id(DESCENDANT), 1.0)],
+    );
     assert_eq!(work_conserving, vec![(8, 0, 4, 41), (9, 4, 0, 41)]);
 
     let mixed_band = run_immediate(
@@ -151,26 +328,27 @@ fn e6_immediate_flow_is_work_conserving_and_commitment_alone_reserves() {
         &[
             ResidentClearingBatchBinding {
                 source_simthing_id: id(ROOT),
+                rf_participant: id(ROOT),
                 requested: 100,
                 available: 10,
                 precedence: 0,
-                continuous_weight: 0.0,
             },
             ResidentClearingBatchBinding {
                 source_simthing_id: id(CHILD),
+                rf_participant: id(CHILD),
                 requested: 1,
                 available: 10,
                 precedence: 0,
-                continuous_weight: 1.0,
             },
             ResidentClearingBatchBinding {
                 source_simthing_id: id(DESCENDANT),
+                rf_participant: id(DESCENDANT),
                 requested: 9,
                 available: 10,
                 precedence: 1,
-                continuous_weight: 9.0,
             },
         ],
+        &[(id(ROOT), 0.0), (id(CHILD), 1.0), (id(DESCENDANT), 9.0)],
     );
     assert_eq!(
         mixed_band,
@@ -179,6 +357,7 @@ fn e6_immediate_flow_is_work_conserving_and_commitment_alone_reserves() {
     );
 
     let (mut runtime, mut schedule) = admit_runtime(&gpu, 0x15_05_e6_02, 41, 2, None);
+    runtime.set_allocated_flows(&[(id(CHILD), 0.0), (id(DESCENDANT), 1.0)]);
     let mut commitment = ResidencyCapacityPartition::new(4);
     commitment.issue(3).expect("exact in-flight commitment");
     let reserved = runtime
@@ -262,10 +441,10 @@ fn canonical_cross_product_separates_spatial_and_temporal_axes() {
             GenerationStamp::new(50),
             &[ResidentClearingBatchBinding {
                 source_simthing_id: id(CHILD),
+                rf_participant: id(CHILD),
                 requested: 10,
                 available: 4,
                 precedence: 0,
-                continuous_weight: 10.0,
             }],
         )
         .unwrap();
@@ -277,9 +456,9 @@ fn canonical_cross_product_separates_spatial_and_temporal_axes() {
             GenerationStamp::new(50),
             &[ResidentSpatialClaimBinding {
                 source_simthing_id: id(DESCENDANT),
+                rf_participant: id(DESCENDANT),
                 requested: 4,
                 precedence: 0,
-                continuous_weight: 4.0,
             }],
         )
         .unwrap();
@@ -301,9 +480,9 @@ fn canonical_cross_product_separates_spatial_and_temporal_axes() {
             GenerationStamp::new(51),
             &[ResidentTemporalExecutionBinding {
                 source_simthing_id: id(CHILD),
+                rf_participant: id(CHILD),
                 available: 5,
                 precedence: 0,
-                continuous_weight: 8.0,
             }],
         )
         .unwrap();
@@ -348,10 +527,10 @@ fn deformation_reads_u_inside_once_mint_and_matches_cpu() {
             GenerationStamp::new(50),
             &[ResidentClearingBatchBinding {
                 source_simthing_id: id(CHILD),
+                rf_participant: id(CHILD),
                 requested: 10,
                 available: 4,
                 precedence: 0,
-                continuous_weight: 10.0,
             }],
         )
         .unwrap();
@@ -373,9 +552,9 @@ fn deformation_reads_u_inside_once_mint_and_matches_cpu() {
             GenerationStamp::new(51),
             &[ResidentTemporalExecutionBinding {
                 source_simthing_id: id(CHILD),
+                rf_participant: id(CHILD),
                 available: 0,
                 precedence: 0,
-                continuous_weight: 5.0,
             }],
         )
         .unwrap();
@@ -406,26 +585,26 @@ fn semantic_scope_and_axis_mutants_are_mechanically_red() {
             &[
                 ResidentClearingBatchBinding {
                     source_simthing_id: id(ROOT),
+                    rf_participant: id(ROOT),
                     requested: 1,
                     available: 2,
                     precedence: 0,
-                    continuous_weight: 1.0,
                 },
                 ResidentClearingBatchBinding {
                     source_simthing_id: id(CHILD),
+                    rf_participant: id(CHILD),
                     requested: 1,
                     available: 2,
                     precedence: 0,
-                    continuous_weight: 1.0,
                 },
             ],
         )
         .unwrap();
     let descendant = [ResidentSpatialClaimBinding {
         source_simthing_id: id(DESCENDANT),
+        rf_participant: id(DESCENDANT),
         requested: 1,
         precedence: 0,
-        continuous_weight: 1.0,
     }];
     assert!(matches!(
         runtime.dispatch_spatial(
@@ -447,9 +626,9 @@ fn semantic_scope_and_axis_mutants_are_mechanically_red() {
             GenerationStamp::new(60),
             &[ResidentSpatialClaimBinding {
                 source_simthing_id: id(CHILD),
+                rf_participant: id(CHILD),
                 requested: 1,
                 precedence: 0,
-                continuous_weight: 1.0,
             }],
         ),
         Err(ResidentClearingRuntimeError::LiveHead(
@@ -464,9 +643,9 @@ fn semantic_scope_and_axis_mutants_are_mechanically_red() {
             GenerationStamp::new(60),
             &[ResidentSpatialClaimBinding {
                 source_simthing_id: id(CHILD),
+                rf_participant: id(CHILD),
                 requested: 1,
                 precedence: 0,
-                continuous_weight: 1.0,
             }],
         ),
         Err(ResidentClearingRuntimeError::SpatialClaimOutsideChildScope { .. })
@@ -529,10 +708,10 @@ fn prepared_demand_does_not_execute_until_n_plus_one_datum_arrives() {
                 GenerationStamp::new(70),
                 &[ResidentClearingBatchBinding {
                     source_simthing_id: id(CHILD),
+                    rf_participant: id(CHILD),
                     requested: 10,
                     available: 4,
                     precedence: 0,
-                    continuous_weight: 10.0,
                 }],
             )
             .unwrap();
@@ -560,9 +739,9 @@ fn prepared_demand_does_not_execute_until_n_plus_one_datum_arrives() {
                 GenerationStamp::new(71),
                 &[ResidentTemporalExecutionBinding {
                     source_simthing_id: id(CHILD),
+                    rf_participant: id(CHILD),
                     available: n1_supply,
                     precedence: 0,
-                    continuous_weight: 8.0,
                 }],
             )
             .unwrap();

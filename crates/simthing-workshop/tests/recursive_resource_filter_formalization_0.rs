@@ -200,6 +200,7 @@ fn claims(
                 precedence[index as usize],
                 SlotIndex::new(2 + index),
                 cols().allocated_flow_col,
+                simthing_kernel::ResidentExactBasisIdentity::LiveAllocatedFlow,
             )
         })
         .collect()

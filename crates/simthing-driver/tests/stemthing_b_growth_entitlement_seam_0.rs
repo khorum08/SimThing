@@ -22,6 +22,10 @@ fn add_child_scenario(n_slots: u32) -> (Scenario, simthing_core::SimThingId) {
     let parent_id = parent.id;
     let mut root = SimThing::new(SimThingKind::World, 0);
     root.add_child(parent);
+    simthing_driver::resident_clearing_runtime::install_default_resident_rf_property(
+        &mut registry,
+        &mut root,
+    );
     (
         Scenario {
             name: "growth-entitlement-add-child".into(),
@@ -173,7 +177,11 @@ fn implicit_root_market_add_child_refusal_and_replay_use_one_authority_chain() {
 
 #[test]
 fn real_fission_clears_places_then_attaches_through_the_implicit_market() {
-    let scenario = Scenario::rebellion_demo("growth-entitlement-fission".into(), 1, 1, 1.0, 8);
+    let mut scenario = Scenario::rebellion_demo("growth-entitlement-fission".into(), 1, 1, 1.0, 8);
+    simthing_driver::resident_clearing_runtime::install_default_resident_rf_property(
+        &mut scenario.registry,
+        &mut scenario.root,
+    );
     let location_id = scenario.root.children[0].id;
     let parent_id = scenario.root.children[0].children[0].id;
     let mut session = SimSession::open(scenario).expect("GPU session opens");
@@ -281,7 +289,7 @@ fn fabricated_market_grant_key_is_typed_refusal_without_attach_row_or_retry_and_
             0,
             &mut schedule,
             |_| {},
-            |_, _, candidates, _| {
+            |_, _, _, candidates, _| {
                 assert_eq!(candidates, &[candidate]);
                 Ok(vec![GrowthEntitlementDecision::granted(
                     candidate, fabricated, provenance,
@@ -357,7 +365,7 @@ fn fabricated_market_grant_key_is_typed_refusal_without_attach_row_or_retry_and_
             1,
             &mut schedule,
             |_| {},
-            |allocator, generation, candidates, integration_schedule| {
+            |allocator, _, generation, candidates, integration_schedule| {
                 binding
                     .resolve_batch(allocator, generation, candidates, integration_schedule)
                     .map_err(|error| error.to_string())

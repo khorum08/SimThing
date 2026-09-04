@@ -312,6 +312,32 @@ impl BoundaryProtocol {
         self.resolution_site
     }
 
+    /// Invoke one consumer while holding a freshly sealed borrowing view of
+    /// the authoritative runtime tree. This is the topology-rebind door: the
+    /// raw tree and residency authorities cannot escape the callback.
+    pub fn with_sealed_tree_execution_binding<R>(
+        &self,
+        realm: simthing_core::TreeRealmId,
+        incarnation: simthing_core::ExecutionIncarnation,
+        generation: GenerationStamp,
+        schedule: &IntegrationSchedule,
+        consume: impl FnOnce(&simthing_core::TreeExecutionBinding<'_, SlotAllocator>) -> R,
+    ) -> Result<R, simthing_core::TreeExecutionContextError> {
+        let generation_authority = simthing_core::TreeGenerationAuthority::new(generation);
+        let authority = simthing_core::TreeExecutionAuthority::seal(
+            realm,
+            incarnation,
+            self.root.inner(),
+            &generation_authority,
+            schedule,
+            &self.registry,
+            &self.allocator,
+        )?;
+        let context = authority.seal_context()?;
+        let binding = context.bind(&authority)?;
+        Ok(consume(&binding))
+    }
+
     /// Select the resolution-site placement. Placement changes WHERE identity
     /// attaches to converted resolution products; it never changes semantics,
     /// crossing selection, or barrier allocation.
@@ -601,7 +627,7 @@ impl BoundaryProtocol {
             day,
             &mut scratch_schedule,
             hook,
-            |_, _, candidates, _| {
+            |_, _, _, candidates, _| {
                 Ok(candidates
                     .iter()
                     .copied()
@@ -631,6 +657,7 @@ impl BoundaryProtocol {
         F: FnMut(&mut BoundaryHookContext<'_>),
         G: FnMut(
             &SlotAllocator,
+            &WorldGpuState,
             GenerationStamp,
             &[OrdinaryGrowthCandidate],
             &mut IntegrationSchedule,
@@ -888,6 +915,7 @@ impl BoundaryProtocol {
         let generation = GenerationStamp::new(day as u32);
         let decisions = resolve_growth(
             &self.allocator,
+            state,
             generation,
             &candidates,
             integration_schedule,

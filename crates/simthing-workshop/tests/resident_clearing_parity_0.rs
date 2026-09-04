@@ -49,7 +49,7 @@ use simthing_spec::{
     ScalarBoundDirection, ScopeId,
 };
 
-const QUALIFIED_RECORD_FINGERPRINT: u64 = 0xbfc8_db39_1f8c_d256;
+const QUALIFIED_RECORD_FINGERPRINT: u64 = 0x8104_18ff_57aa_9b08;
 
 fn col(raw: usize) -> ColumnIndex {
     ColumnIndex::from_raw_for_oracle_or_rehearsal(raw)
@@ -167,6 +167,7 @@ fn exact_claims(
                 precedence(index),
                 SlotIndex::new(slot(index)),
                 col(0),
+                simthing_kernel::ResidentExactBasisIdentity::LiveAllocatedFlow,
             )
         })
         .collect()
@@ -1057,8 +1058,26 @@ fn negative_error_matrix_is_typed_unrepresentable_or_sealed_without_partial_prod
     let ctx = GpuContext::new_blocking().expect("real GPU for negative parity matrix");
     let (semantic_plan, buffers) = resident_plan(&ctx, 0x1453, 10, 26, 3, 1, false);
     let duplicate_target = vec![
-        ResidentApportionmentClaim::new(0, source(0), 1, 1, 0, SlotIndex::new(0), col(0)),
-        ResidentApportionmentClaim::new(0, source(1), 1, 1, 0, SlotIndex::new(1), col(0)),
+        ResidentApportionmentClaim::new(
+            0,
+            source(0),
+            1,
+            1,
+            0,
+            SlotIndex::new(0),
+            col(0),
+            simthing_kernel::ResidentExactBasisIdentity::LiveAllocatedFlow,
+        ),
+        ResidentApportionmentClaim::new(
+            0,
+            source(1),
+            1,
+            1,
+            0,
+            SlotIndex::new(1),
+            col(0),
+            simthing_kernel::ResidentExactBasisIdentity::LiveAllocatedFlow,
+        ),
     ];
     assert!(matches!(
         ResidentApportionmentPlan::build(
@@ -1072,8 +1091,26 @@ fn negative_error_matrix_is_typed_unrepresentable_or_sealed_without_partial_prod
             | Err(ResidentApportionmentError::DuplicateSemanticTarget { .. })
     ));
     let inconsistent = vec![
-        ResidentApportionmentClaim::new(0, source(0), 1, 1, 0, SlotIndex::new(0), col(0)),
-        ResidentApportionmentClaim::new(1, source(1), 1, 2, 0, SlotIndex::new(1), col(0)),
+        ResidentApportionmentClaim::new(
+            0,
+            source(0),
+            1,
+            1,
+            0,
+            SlotIndex::new(0),
+            col(0),
+            simthing_kernel::ResidentExactBasisIdentity::LiveAllocatedFlow,
+        ),
+        ResidentApportionmentClaim::new(
+            1,
+            source(1),
+            1,
+            2,
+            0,
+            SlotIndex::new(1),
+            col(0),
+            simthing_kernel::ResidentExactBasisIdentity::LiveAllocatedFlow,
+        ),
     ];
     assert!(matches!(
         ResidentApportionmentPlan::build(
