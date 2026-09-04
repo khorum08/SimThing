@@ -7,7 +7,7 @@ use simthing_core::{
     TreeRealmId,
 };
 use simthing_driver::resident_clearing_runtime::{
-    ResidentClearingBatchBinding, ResidentClearingRuntime,
+    ResidentClearingBatchBinding, ResidentClearingRuntime, ResidentSpatialClaimBinding,
 };
 use simthing_driver::{Scenario, SimSession};
 use simthing_gpu::{
@@ -31,7 +31,15 @@ fn loaded_tree(generation: u32) -> SimThing {
                 "properties": [],
                 "resource_parent_edges": [],
                 "overlays": [],
-                "children": [],
+                "children": [{{
+                    "id": 9,
+                    "kind": "Cohort",
+                    "properties": [],
+                    "resource_parent_edges": [],
+                    "overlays": [],
+                    "children": [],
+                    "spawned_generation": {generation}
+                }}],
                 "spawned_generation": {generation}
             }}],
             "spawned_generation": {generation}
@@ -85,7 +93,7 @@ fn admit_runtime(
 struct CausalAllocationCase {
     allocated_flow_bits: Vec<u32>,
     generation_n: Vec<(u32, u32, u32)>,
-    generation_n1: Vec<(u32, u32, u32)>,
+    child_same_generation: Vec<(u32, u32, u32)>,
 }
 
 fn economic_products(
@@ -132,23 +140,27 @@ fn run_causal_allocation_case(
             &mut schedule,
             simthing_core::SimThingId::from_session_raw(0),
             GenerationStamp::new(generation),
-            Some(&rows),
+            &rows,
         )
         .expect("generation N production continuous allocation");
-    let generation_n1 = runtime
-        .dispatch(
+    let child_same_generation = runtime
+        .dispatch_spatial(
             &mut schedule,
-            simthing_core::SimThingId::from_session_raw(0),
-            GenerationStamp::new(generation + 1),
-            None,
+            &generation_n,
+            simthing_core::SimThingId::from_session_raw(8),
+            GenerationStamp::new(generation),
+            &[ResidentSpatialClaimBinding {
+                source_simthing_id: simthing_core::SimThingId::from_session_raw(9),
+                requested: 33,
+                precedence: 0,
+                continuous_weight: 33.0,
+            }],
         )
-        .expect("generation N+1 directly consumes resident generation N T_s");
-    assert!(generation_n1.consumed_resident_intake());
+        .expect("same-generation child consumes immutable parent T_s.G");
     assert!(schedule.entries().is_empty());
 
-    // Every observer runs only after both submissions. In particular, neither
-    // the continuous plane nor generation N's canonical product can cross the
-    // host before N+1 has consumed that exact resident T_s buffer.
+    // Every observer runs only after both submissions; the child consumed the
+    // resident parent product without a host readback.
     let allocated_flow_bits = runtime
         .readback_allocated_flow_for_proof(2)
         .into_iter()
@@ -157,18 +169,18 @@ fn run_causal_allocation_case(
     let generation_n = runtime
         .materialize(&mut schedule, generation_n)
         .expect("materialize generation N after N+1 submission");
-    let generation_n1 = runtime
-        .materialize(&mut schedule, generation_n1)
-        .expect("materialize generation N+1 after its resident consumption");
+    let child_same_generation = runtime
+        .materialize(&mut schedule, child_same_generation)
+        .expect("materialize child market after resident spatial consumption");
 
     CausalAllocationCase {
         allocated_flow_bits,
         generation_n: economic_products(&generation_n),
-        generation_n1: economic_products(&generation_n1),
+        child_same_generation: economic_products(&child_same_generation),
     }
 }
 
-fn prove_continuous_pressure_and_recursive_intake_are_causal(gpu: &GpuContext) {
+fn prove_continuous_pressure_and_spatial_intake_are_causal(gpu: &GpuContext) {
     let neutral = run_causal_allocation_case(
         gpu,
         TreeRealmId::from_u128(0x14_06_c01).unwrap(),
@@ -199,34 +211,34 @@ fn prove_continuous_pressure_and_recursive_intake_are_causal(gpu: &GpuContext) {
         vec![17.0f32.to_bits(), 33.0f32.to_bits()]
     );
     assert_eq!(neutral.generation_n, vec![(7, 6, 11), (8, 13, 20)]);
-    assert_eq!(neutral.generation_n1, neutral.generation_n);
+    assert_eq!(neutral.child_same_generation, vec![(9, 13, 20)]);
 
     // Only the generation-N upstream pressure changes. The real child-share
     // EML emits different AllocatedFlow bits, exact settlement changes, and
-    // the unauthored N+1 generation preserves that changed causal history.
+    // the same-generation child budget preserves that changed causal history.
     assert_eq!(
         pressured.allocated_flow_bits,
         vec![1.0f32.to_bits(), 49.0f32.to_bits()]
     );
     assert_eq!(pressured.generation_n, vec![(7, 1, 16), (8, 18, 15)]);
-    assert_eq!(pressured.generation_n1, pressured.generation_n);
+    assert_eq!(pressured.child_same_generation, vec![(9, 18, 15)]);
     assert_ne!(pressured.allocated_flow_bits, neutral.allocated_flow_bits);
     assert_ne!(pressured.generation_n, neutral.generation_n);
 
     // This falsifier holds the emitted continuous shares bit-identical and
     // changes only generation N's upstream available supply. N's T_s changes,
-    // then the unauthored N+1 grant vector changes with it.
+    // then the child grant changes with immutable G.
     assert_eq!(
         supply_perturbed.allocated_flow_bits,
         neutral.allocated_flow_bits
     );
     assert_eq!(supply_perturbed.generation_n, vec![(7, 2, 15), (8, 5, 28)]);
-    assert_eq!(
-        supply_perturbed.generation_n1,
-        supply_perturbed.generation_n
-    );
+    assert_eq!(supply_perturbed.child_same_generation, vec![(9, 5, 28)]);
     assert_ne!(supply_perturbed.generation_n, neutral.generation_n);
-    assert_ne!(supply_perturbed.generation_n1, neutral.generation_n1);
+    assert_ne!(
+        supply_perturbed.child_same_generation,
+        neutral.child_same_generation
+    );
 
     println!(
         "RESIDENT-CLEARING-CUTOVER causal=PASS neutral={neutral:?} pressured={pressured:?} supply_perturbed={supply_perturbed:?}"
@@ -234,9 +246,9 @@ fn prove_continuous_pressure_and_recursive_intake_are_causal(gpu: &GpuContext) {
 }
 
 #[test]
-fn production_executor_is_async_tree_local_and_n_plus_one_first() {
+fn production_executor_is_async_tree_local_and_spatially_causal() {
     let gpu = GpuContext::new_blocking().expect("real cutover adapter");
-    prove_continuous_pressure_and_recursive_intake_are_causal(&gpu);
+    prove_continuous_pressure_and_spatial_intake_are_causal(&gpu);
     let realm_a = TreeRealmId::from_u128(0x14_06_a).unwrap();
     let realm_b = TreeRealmId::from_u128(0x14_06_b).unwrap();
     let (mut runtime_a, mut schedule_a) = admit_runtime(&gpu, realm_a, GenerationStamp::new(11));
@@ -258,7 +270,7 @@ fn production_executor_is_async_tree_local_and_n_plus_one_first() {
             &mut schedule_b,
             simthing_core::SimThingId::from_session_raw(0),
             GenerationStamp::new(29),
-            Some(&resident_rows()),
+            &resident_rows(),
         )
         .expect("tree B resident dispatch");
     let ticket_a = runtime_a
@@ -266,55 +278,53 @@ fn production_executor_is_async_tree_local_and_n_plus_one_first() {
             &mut schedule_a,
             simthing_core::SimThingId::from_session_raw(0),
             GenerationStamp::new(11),
-            Some(&resident_rows()),
+            &resident_rows(),
         )
         .expect("tree A resident dispatch");
-    let ticket_a_n1 = runtime_a
-        .dispatch(
+    let ticket_a_child = runtime_a
+        .dispatch_spatial(
             &mut schedule_a,
-            simthing_core::SimThingId::from_session_raw(0),
-            GenerationStamp::new(12),
-            None,
+            &ticket_a,
+            simthing_core::SimThingId::from_session_raw(8),
+            GenerationStamp::new(11),
+            &[ResidentSpatialClaimBinding {
+                source_simthing_id: simthing_core::SimThingId::from_session_raw(9),
+                requested: 1,
+                precedence: 0,
+                continuous_weight: 1.0,
+            }],
         )
-        .expect("tree A advances again while prior replay rows remain resident");
+        .expect("tree A child consumes parent T_s while tree B remains isolated");
+    assert_eq!(ticket_a.submission().generation(), GenerationStamp::new(11));
+    assert_eq!(ticket_b.submission().generation(), GenerationStamp::new(29));
     assert_eq!(
-        ticket_a.submission().intake_generation(),
-        GenerationStamp::new(12)
+        ticket_a_child.submission().generation(),
+        GenerationStamp::new(11)
     );
     assert_eq!(
-        ticket_b.submission().intake_generation(),
-        GenerationStamp::new(30)
+        ticket_a_child.submission().authority_granter(),
+        simthing_core::SimThingId::from_session_raw(8)
     );
-    assert_eq!(
-        ticket_a_n1.submission().intake_generation(),
-        GenerationStamp::new(13)
+    assert_ne!(
+        ticket_a.semantic_scope_owner(),
+        ticket_a_child.semantic_scope_owner()
     );
-    assert!(ticket_a_n1.consumed_resident_intake());
     assert!(schedule_a.entries().is_empty());
     assert!(schedule_b.entries().is_empty());
     assert!(schedule_a.resident_materialization_pending());
     assert!(schedule_b.resident_materialization_pending());
 
-    // The canonical T_s bytes have already entered the N+1 port before either
-    // asynchronous host schedule materialization begins.
-    let n1_a = runtime_a
-        .readback_next_intake_for_proof(&ticket_a_n1)
-        .expect("referee observes latest already-submitted N+1 intake");
-    let n1_b = runtime_b
-        .readback_next_intake_for_proof(&ticket_b)
-        .expect("referee observes already-submitted N+1 intake");
-    println!("resident N+1 A={n1_a:?} B={n1_b:?}");
+    // No observer is needed before the child submission.
     let products_a_first = runtime_a
         .materialize(&mut schedule_a, ticket_a)
         .expect("tree A first asynchronous history materialization");
     let products_a = runtime_a
-        .materialize(&mut schedule_a, ticket_a_n1)
-        .expect("tree A second asynchronous history materialization");
+        .materialize(&mut schedule_a, ticket_a_child)
+        .expect("tree A child asynchronous history materialization");
     let products_b = runtime_b
         .materialize(&mut schedule_b, ticket_b)
         .expect("tree B asynchronous history materialization");
-    assert_eq!(n1_a, products_a);
-    assert_eq!(n1_b, products_b);
+    assert_eq!(economic_products(&products_a), vec![(9, 1, 0)]);
     assert_eq!(
         schedule_a.entries().len(),
         products_a_first.len() + products_a.len()
@@ -367,7 +377,7 @@ fn production_executor_is_async_tree_local_and_n_plus_one_first() {
     );
 
     println!(
-        "RESIDENT-CLEARING-CUTOVER two_tree=PASS realms={:?}/{:?} generations=A:11,12/B:29 n1=A:12,13/B:30 live_head_capacity=4 materialized={}/{}",
+        "RESIDENT-CLEARING-CUTOVER two_tree=PASS realms={:?}/{:?} generations=A:11/B:29 spatial_child=A:11 live_head_capacity=4 materialized={}/{}",
         realm_a,
         realm_b,
         products_a_first.len() + products_a.len(),

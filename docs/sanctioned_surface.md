@@ -11,7 +11,7 @@ This digest is a derived context artifact for low-context agents. If it disagree
 | --- | --- | --- |
 | scripts/ci/allow/sealed_producers.txt | 25 | 6923796f3bacd3b27b29f778d5276c3f82a3a67c3f010c30f10b78de8a1866f6 |
 | scripts/ci/allow/inert_buffer_handles.txt | 2 | 9e2069fa5730f17cacde1c671ebc17beb59f50738d2dcb914bceae13f9b8b3a4 |
-| scripts/ci/allow/kernel_surface.txt | 340 | f6b822ca7a449e32647f69e7d2e7cd1617d519d8022af806a0425fb33a88ff2a |
+| scripts/ci/allow/kernel_surface.txt | 341 | ef42194e1c100e45052d035f7abcd7d015330d9f60ae3e2a5f8ec929bd9fb1d6 |
 | scripts/ci/allow/sealed_types.txt | 19 | 9d427e3b41a586b06f24ca02cc45f78934237d2229b0c38d46e2a8a6ef5016be |
 | scripts/ci/allow/contention_mechanisms.txt | 9 | 1f9e930b44197d4254f46ea96328f814d9ba0f2dad06881c454aebc01c01d44b |
 | scripts/ci/scans.tsv | 24 | 36bf78ae4a81a9c49b570051a0f53cb10aa88ab5cf57faa0a05d83abfd068e79 |
@@ -397,8 +397,9 @@ This digest is a derived context artifact for low-context agents. If it disagree
 | ResidentSettlementOutput | sealed-export | RESIDENT-CLEARING-APPORTIONMENT-0 zero-conversion role alias for canonical T_s at settlement emission | retire when settlement output naming is wholly lifecycle-internal | kernel_surface.txt |
 | RESIDENT_APPORTIONMENT_SCRATCH_BYTES_PER_ROW | surface-inert | RESIDENT-CLEARING-APPORTIONMENT-0 fixed exact software-wide scratch ABI extent | retire when exact session allocation is wholly kernel-private | kernel_surface.txt |
 | RESIDENT_APPORTIONMENT_WORKGROUP_SIZE | surface-inert | RESIDENT-CLEARING-APPORTIONMENT-0 canonical physical dispatch width without semantic authority | retire when exact session dispatch geometry is wholly kernel-private | kernel_surface.txt |
-| ResidentRecursiveIntakeTransformError | authority-export | PERSISTENCE-DEFORMATION-PORT-0 typed buffer and resource-envelope refusal for the optional bounded EML copy inside the existing resident Current-to-Next mint | retire when the resident live-head mint and transform encoder share one private crate boundary | kernel_surface.txt |
-| ResidentRecursiveIntakeTransformSession | authority-export | PERSISTENCE-DEFORMATION-PORT-0 stateless scenario-free EML encoder for the optional bounded U transform inside the existing resident Current-to-Next mint | retire when the resident live-head mint and transform encoder share one private crate boundary | kernel_surface.txt |
+| ResidentTemporalDemand | sealed-export | RECURSION-AXIS-CONFORMANCE-0 ordinary four-word N+1 demand product minted from authored demand plus immutable T_s.U without copying or impersonating T_s | retire when temporal demand preparation is wholly private to the resident market lifecycle | kernel_surface.txt |
+| ResidentTemporalDemandMintError | authority-export | RECURSION-AXIS-CONFORMANCE-0 typed resource-envelope and arithmetic refusal for the ordinary temporal demand mint | retire when temporal demand preparation is wholly private to the resident market lifecycle | kernel_surface.txt |
+| ResidentTemporalDemandMintSession | authority-export | RECURSION-AXIS-CONFORMANCE-0 scenario-free EML encoder that prepares ordinary N+1 demand from authored demand plus immutable T_s.U | retire when temporal demand preparation is wholly private to the resident market lifecycle | kernel_surface.txt |
 
 ## Sealed Types
 

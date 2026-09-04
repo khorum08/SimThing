@@ -1,9 +1,9 @@
 //! Production ownership for the bounded resident clearing live head.
 //!
 //! Exact settlement remains the graduated kernel implementation. This module
-//! only wires its canonical `T_s` bytes into the one admission-bounded
-//! IntegrationSchedule segment and then into the identical N+1 intake buffer
-//! before any host mapping is requested.
+//! wires canonical `T_s` bytes into the admission-bounded IntegrationSchedule
+//! segment. Spatial consumers read immutable G there at the same generation;
+//! the separate Current-to-Next mint reads immutable U into ordinary demand.
 
 use std::process::Command;
 use std::sync::mpsc;
@@ -13,14 +13,14 @@ use simthing_core::ResidentScheduleReservation;
 use simthing_kernel::{
     GpuContext, ResidentApportionmentDispatch, ResidentApportionmentError,
     ResidentApportionmentPlan, ResidentApportionmentSession, ResidentConstrainedProduct,
-    ResidentRecursiveIntakeTransformError, ResidentRecursiveIntakeTransformSession, WorldGpuState,
-    RESIDENT_APPORTIONMENT_SCRATCH_BYTES_PER_ROW,
+    ResidentTemporalDemand, ResidentTemporalDemandMintError, ResidentTemporalDemandMintSession,
+    WorldGpuState, RESIDENT_APPORTIONMENT_SCRATCH_BYTES_PER_ROW,
 };
 use thiserror::Error;
 use wgpu::{Buffer, BufferDescriptor, BufferUsages, CommandEncoder, MapMode};
 
 const PRODUCT_BYTES: u64 = std::mem::size_of::<ResidentConstrainedProduct>() as u64;
-pub const QUALIFIED_RESIDENT_CLEARING_FINGERPRINT: u64 = 0x1c3c_a3cf_8e62_5e48;
+pub const QUALIFIED_RESIDENT_CLEARING_FINGERPRINT: u64 = 0xbfc8_db39_1f8c_d256;
 
 /// Exact adapter/compiler/ABI record inherited from the graduated 14.5
 /// certificate. A changed tuple must be separately qualified; it never
@@ -143,12 +143,12 @@ fn stable_hash(mut state: u64, bytes: &[u8]) -> u64 {
     state
 }
 
-/// Per-tree device buffers for the authoritative schedule head and the direct
-/// recursive N+1 intake. No registry, global queue, or host identity exists.
+/// Per-tree device buffers for the authoritative immutable schedule head and
+/// the ordinary Current-to-Next demand mint.
 pub struct ResidentClearingLiveHead {
     capacity: u32,
     segment: Buffer,
-    next_intake: Buffer,
+    next_demands: Buffer,
 }
 
 impl ResidentClearingLiveHead {
@@ -159,7 +159,7 @@ impl ResidentClearingLiveHead {
         let bytes = u64::from(capacity)
             .checked_mul(PRODUCT_BYTES)
             .ok_or(ResidentLiveHeadError::ArithmeticOverflow)?;
-        let buffer = |label| {
+        let product_buffer = |label| {
             ctx.device.create_buffer(&BufferDescriptor {
                 label: Some(label),
                 size: bytes,
@@ -169,8 +169,15 @@ impl ResidentClearingLiveHead {
         };
         Ok(Self {
             capacity,
-            segment: buffer("resident_clearing_schedule_live_head"),
-            next_intake: buffer("resident_clearing_next_generation_intake"),
+            segment: product_buffer("resident_clearing_schedule_live_head"),
+            next_demands: ctx.device.create_buffer(&BufferDescriptor {
+                label: Some("resident_temporal_demands"),
+                size: u64::from(capacity)
+                    .checked_mul(std::mem::size_of::<ResidentTemporalDemand>() as u64)
+                    .ok_or(ResidentLiveHeadError::ArithmeticOverflow)?,
+                usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC | BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            }),
         })
     }
 
@@ -178,61 +185,16 @@ impl ResidentClearingLiveHead {
         self.capacity
     }
 
-    /// Encode only byte-identical GPU copies from the graduated exact output.
-    /// The first copy appends to the bounded live head; the second binds that
-    /// same product representation as the recursive N+1 intake. Both execute
-    /// in queue order before any subsequent readback command.
-    pub fn encode_append_and_n_plus_one(
+    /// Append one exact product set to the immutable live-head segment. No
+    /// temporal payload is minted implicitly.
+    pub fn encode_append(
         &self,
         encoder: &mut CommandEncoder,
         scratch: &Buffer,
         plan: &ResidentApportionmentPlan,
         reservation: ResidentScheduleReservation,
-    ) -> Result<ResidentNPlusOneSubmission, ResidentLiveHeadError> {
-        let submission = self.encode_append(encoder, scratch, plan, reservation)?;
-        let source = u64::from(reservation.start())
-            .checked_mul(PRODUCT_BYTES)
-            .ok_or(ResidentLiveHeadError::ArithmeticOverflow)?;
-        let bytes = u64::from(submission.product_count)
-            .checked_mul(PRODUCT_BYTES)
-            .ok_or(ResidentLiveHeadError::ArithmeticOverflow)?;
-        if bytes != 0 {
-            encoder.copy_buffer_to_buffer(&self.segment, source, &self.next_intake, 0, bytes);
-        }
-        Ok(submission)
-    }
-
-    /// Encode the same one mint with an admitted row-local EML deformation of
-    /// U. The schedule still receives canonical `T_s`; only its private N+1
-    /// intake copy is transformed, without a host projection or second lane.
-    pub fn encode_append_and_n_plus_one_with_deformation(
-        &self,
-        ctx: &GpuContext,
-        transform: &ResidentRecursiveIntakeTransformSession,
-        encoder: &mut CommandEncoder,
-        scratch: &Buffer,
-        plan: &ResidentApportionmentPlan,
-        reservation: ResidentScheduleReservation,
-    ) -> Result<ResidentNPlusOneSubmission, ResidentLiveHeadError> {
-        let submission = self.encode_append(encoder, scratch, plan, reservation)?;
-        transform.encode(
-            ctx,
-            encoder,
-            &self.segment,
-            reservation.start(),
-            &self.next_intake,
-            plan,
-        )?;
-        Ok(submission)
-    }
-
-    fn encode_append(
-        &self,
-        encoder: &mut CommandEncoder,
-        scratch: &Buffer,
-        plan: &ResidentApportionmentPlan,
-        reservation: ResidentScheduleReservation,
-    ) -> Result<ResidentNPlusOneSubmission, ResidentLiveHeadError> {
+        semantic_scope_owner: simthing_core::SimThingId,
+    ) -> Result<ResidentClearingSubmission, ResidentLiveHeadError> {
         let claim_count = u32::try_from(plan.claims().len())
             .map_err(|_| ResidentLiveHeadError::ArithmeticOverflow)?;
         if reservation.len() != claim_count
@@ -260,25 +222,19 @@ impl ResidentClearingLiveHead {
                 .ok_or(ResidentLiveHeadError::ArithmeticOverflow)?;
             encoder.copy_buffer_to_buffer(scratch, source, &self.segment, target, PRODUCT_BYTES);
         }
-        let intake_generation = plan
-            .generation()
-            .get()
-            .checked_add(1)
-            .map(simthing_core::GenerationStamp::new)
-            .ok_or(ResidentLiveHeadError::GenerationOverflow)?;
-        Ok(ResidentNPlusOneSubmission {
+        Ok(ResidentClearingSubmission {
             reservation,
-            intake_generation,
+            generation: plan.generation(),
             product_count: claim_count,
+            authority_granter: plan.authority_granter(),
+            semantic_scope_owner,
         })
     }
 
-    /// Execute generation N+1 with the prior generation's canonical `T_s`
-    /// buffer bound directly to the graduated exact kernel. The buffer handle
-    /// stays encapsulated by this per-tree owner; callers can neither replace
-    /// the economic payload nor interpose a translated representation.
+    /// Execute a child market from immutable parent `T_s.G` at the same
+    /// generation. Both granter and semantic-scope owner must change.
     #[allow(clippy::too_many_arguments)]
-    pub fn encode_recursive_apportionment(
+    pub fn encode_spatial_apportionment(
         &self,
         state: &WorldGpuState,
         session: &mut ResidentApportionmentSession,
@@ -286,34 +242,112 @@ impl ResidentClearingLiveHead {
         semantic_rows: &Buffer,
         scratch: &Buffer,
         plan: &ResidentApportionmentPlan,
-        intake: ResidentNPlusOneSubmission,
+        parent: ResidentClearingSubmission,
+        semantic_scope_owner: simthing_core::SimThingId,
     ) -> Result<(), ResidentLiveHeadError> {
-        if plan.generation() != intake.intake_generation {
-            return Err(ResidentLiveHeadError::IntakeGenerationMismatch {
-                expected: intake.intake_generation,
+        if plan.generation() != parent.generation {
+            return Err(ResidentLiveHeadError::SpatialGenerationMismatch {
+                expected: parent.generation,
                 observed: plan.generation(),
             });
         }
-        let claims = u32::try_from(plan.claims().len())
-            .map_err(|_| ResidentLiveHeadError::ArithmeticOverflow)?;
-        if claims != intake.product_count {
-            return Err(ResidentLiveHeadError::IntakeCountMismatch {
-                expected: intake.product_count,
-                observed: claims,
+        if plan.authority_granter() == parent.authority_granter {
+            return Err(ResidentLiveHeadError::SpatialGranterRetained {
+                granter: plan.authority_granter(),
             });
         }
+        if semantic_scope_owner == parent.semantic_scope_owner
+            || semantic_scope_owner != plan.authority_granter()
+        {
+            return Err(ResidentLiveHeadError::SpatialScopeRetained);
+        }
         state
-            .encode_resident_apportionment_from_recursive_intake_with_dispatch_into(
+            .encode_resident_apportionment_from_spatial_products_with_dispatch_into(
                 session,
                 encoder,
                 semantic_rows,
                 scratch,
-                &self.next_intake,
-                intake.product_count,
+                &self.segment,
+                parent.reservation.start(),
+                parent.product_count,
                 plan,
                 ResidentApportionmentDispatch::single_pass(),
             )
-            .map_err(ResidentLiveHeadError::RecursiveApportionment)
+            .map_err(ResidentLiveHeadError::ResidentApportionment)
+    }
+
+    /// Prepare the ordinary N+1 demand buffer from immutable `T_s.U`. This is
+    /// the sole generation-advancing mint and performs no N+1 settlement.
+    #[allow(clippy::too_many_arguments)]
+    pub fn encode_temporal_demand_mint(
+        &self,
+        ctx: &GpuContext,
+        mint: &ResidentTemporalDemandMintSession,
+        encoder: &mut CommandEncoder,
+        plan: &ResidentApportionmentPlan,
+        products: ResidentClearingSubmission,
+        authored_demands: &[u32],
+        demand_generation: simthing_core::GenerationStamp,
+    ) -> Result<ResidentTemporalDemandSubmission, ResidentLiveHeadError> {
+        if plan.generation() != products.generation {
+            return Err(ResidentLiveHeadError::TemporalSourceGenerationMismatch {
+                expected: products.generation,
+                observed: plan.generation(),
+            });
+        }
+        if plan.claims().len() != products.product_count as usize {
+            return Err(ResidentLiveHeadError::ProductCountMismatch {
+                expected: products.product_count,
+                observed: plan.claims().len() as u32,
+            });
+        }
+        mint.encode(
+            ctx,
+            encoder,
+            &self.segment,
+            products.reservation.start(),
+            &self.next_demands,
+            plan,
+            authored_demands,
+            demand_generation,
+        )?;
+        Ok(ResidentTemporalDemandSubmission {
+            generation: demand_generation,
+            demand_count: products.product_count,
+        })
+    }
+
+    /// Execute N+1 only from an already-prepared ordinary demand buffer and a
+    /// newly prepared N+1 exact plan.
+    #[allow(clippy::too_many_arguments)]
+    pub fn encode_temporal_apportionment(
+        &self,
+        state: &WorldGpuState,
+        session: &mut ResidentApportionmentSession,
+        encoder: &mut CommandEncoder,
+        semantic_rows: &Buffer,
+        scratch: &Buffer,
+        plan: &ResidentApportionmentPlan,
+        demands: ResidentTemporalDemandSubmission,
+    ) -> Result<(), ResidentLiveHeadError> {
+        if plan.generation() != demands.generation {
+            return Err(ResidentLiveHeadError::TemporalExecutionGenerationMismatch {
+                expected: demands.generation,
+                observed: plan.generation(),
+            });
+        }
+        state
+            .encode_resident_apportionment_from_temporal_demands_with_dispatch_into(
+                session,
+                encoder,
+                semantic_rows,
+                scratch,
+                &self.next_demands,
+                demands.demand_count,
+                plan,
+                ResidentApportionmentDispatch::single_pass(),
+            )
+            .map_err(ResidentLiveHeadError::ResidentApportionment)
     }
 
     /// Proof/observer readback. Production calls this only after the queue has
@@ -321,7 +355,7 @@ impl ResidentClearingLiveHead {
     pub fn readback_segment(
         &self,
         ctx: &GpuContext,
-        submission: ResidentNPlusOneSubmission,
+        submission: ResidentClearingSubmission,
     ) -> Result<Vec<ResidentConstrainedProduct>, ResidentLiveHeadError> {
         readback_products(
             ctx,
@@ -332,41 +366,66 @@ impl ResidentClearingLiveHead {
         )
     }
 
-    /// Referee-only observation of the direct N+1 port. It has the identical
-    /// canonical product type; there is no translated seam or role newtype.
-    pub fn readback_next_intake_for_proof(
+    /// Referee-only observation of the ordinary Current-to-Next demand port.
+    pub fn readback_temporal_demands_for_proof(
         &self,
         ctx: &GpuContext,
-        submission: ResidentNPlusOneSubmission,
-    ) -> Result<Vec<ResidentConstrainedProduct>, ResidentLiveHeadError> {
+        submission: ResidentTemporalDemandSubmission,
+    ) -> Result<Vec<ResidentTemporalDemand>, ResidentLiveHeadError> {
         readback_products(
             ctx,
-            &self.next_intake,
+            &self.next_demands,
             0,
-            submission.product_count,
-            "resident_clearing_next_intake_proof",
+            submission.demand_count,
+            "resident_temporal_demand_proof",
         )
     }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct ResidentNPlusOneSubmission {
+pub struct ResidentClearingSubmission {
     reservation: ResidentScheduleReservation,
-    intake_generation: simthing_core::GenerationStamp,
+    generation: simthing_core::GenerationStamp,
     product_count: u32,
+    authority_granter: simthing_core::SimThingId,
+    semantic_scope_owner: simthing_core::SimThingId,
 }
 
-impl ResidentNPlusOneSubmission {
+impl ResidentClearingSubmission {
     pub const fn reservation(self) -> ResidentScheduleReservation {
         self.reservation
     }
 
-    pub const fn intake_generation(self) -> simthing_core::GenerationStamp {
-        self.intake_generation
+    pub const fn generation(self) -> simthing_core::GenerationStamp {
+        self.generation
     }
 
     pub const fn product_count(self) -> u32 {
         self.product_count
+    }
+
+    pub const fn authority_granter(self) -> simthing_core::SimThingId {
+        self.authority_granter
+    }
+
+    pub const fn semantic_scope_owner(self) -> simthing_core::SimThingId {
+        self.semantic_scope_owner
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ResidentTemporalDemandSubmission {
+    generation: simthing_core::GenerationStamp,
+    demand_count: u32,
+}
+
+impl ResidentTemporalDemandSubmission {
+    pub const fn generation(self) -> simthing_core::GenerationStamp {
+        self.generation
+    }
+
+    pub const fn demand_count(self) -> u32 {
+        self.demand_count
     }
 }
 
@@ -377,11 +436,12 @@ fn readback_products<T: Pod>(
     count: u32,
     label: &'static str,
 ) -> Result<Vec<T>, ResidentLiveHeadError> {
+    let element_bytes = std::mem::size_of::<T>() as u64;
     let offset = u64::from(start)
-        .checked_mul(PRODUCT_BYTES)
+        .checked_mul(element_bytes)
         .ok_or(ResidentLiveHeadError::ArithmeticOverflow)?;
     let bytes = u64::from(count)
-        .checked_mul(PRODUCT_BYTES)
+        .checked_mul(element_bytes)
         .ok_or(ResidentLiveHeadError::ArithmeticOverflow)?;
     if bytes == 0 {
         return Ok(Vec::new());
@@ -419,15 +479,27 @@ pub enum ResidentLiveHeadError {
     ZeroCapacity,
     #[error("resident clearing live-head arithmetic overflow")]
     ArithmeticOverflow,
-    #[error("resident recursive intake generation overflow")]
-    GenerationOverflow,
-    #[error("resident recursive intake generation is {expected:?}, observed {observed:?}")]
-    IntakeGenerationMismatch {
+    #[error("spatial child generation is {observed:?}, expected parent generation {expected:?}")]
+    SpatialGenerationMismatch {
         expected: simthing_core::GenerationStamp,
         observed: simthing_core::GenerationStamp,
     },
-    #[error("resident recursive intake has {expected} products, observed {observed} claims")]
-    IntakeCountMismatch { expected: u32, observed: u32 },
+    #[error("spatial child retained parent granter {granter:?}")]
+    SpatialGranterRetained { granter: simthing_core::SimThingId },
+    #[error("spatial child retained parent semantic scope or scope/granter diverged")]
+    SpatialScopeRetained,
+    #[error("temporal mint source generation is {observed:?}, expected {expected:?}")]
+    TemporalSourceGenerationMismatch {
+        expected: simthing_core::GenerationStamp,
+        observed: simthing_core::GenerationStamp,
+    },
+    #[error("temporal execution generation is {observed:?}, expected {expected:?}")]
+    TemporalExecutionGenerationMismatch {
+        expected: simthing_core::GenerationStamp,
+        observed: simthing_core::GenerationStamp,
+    },
+    #[error("resident product set has {expected} products, observed {observed} plan claims")]
+    ProductCountMismatch { expected: u32, observed: u32 },
     #[error("resident schedule reservation {start}+{rows} exceeds admitted capacity {capacity}")]
     ReservationOutOfBounds {
         start: u32,
@@ -444,10 +516,10 @@ pub enum ResidentLiveHeadError {
         "resident clearing adapter is not qualified: required {required:016x}, observed {observed:016x}"
     )]
     UnqualifiedAdapter { required: u64, observed: u64 },
-    #[error("resident recursive exact settlement failed: {0}")]
-    RecursiveApportionment(#[source] ResidentApportionmentError),
-    #[error("resident recursive intake deformation failed: {0}")]
-    RecursiveIntakeTransform(#[from] ResidentRecursiveIntakeTransformError),
+    #[error("resident exact settlement failed: {0}")]
+    ResidentApportionment(#[source] ResidentApportionmentError),
+    #[error("resident temporal demand mint failed: {0}")]
+    TemporalDemandMint(#[from] ResidentTemporalDemandMintError),
 }
 
 #[cfg(test)]

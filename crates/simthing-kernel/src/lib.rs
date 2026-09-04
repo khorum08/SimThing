@@ -163,7 +163,7 @@ pub use resident_clearing_plan::{
     ResidentResourceOrdinal, ResidentScopeId, ResidentScopeOrdinal, SemanticPlanDigest,
 };
 pub use resident_recursive_intake_transform::{
-    ResidentRecursiveIntakeTransformError, ResidentRecursiveIntakeTransformSession,
+    ResidentTemporalDemand, ResidentTemporalDemandMintError, ResidentTemporalDemandMintSession,
 };
 pub use resolved::ResolvedGpuBuffers;
 pub use sealed::{

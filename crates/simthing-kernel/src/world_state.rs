@@ -663,30 +663,59 @@ impl WorldGpuState {
         )
     }
 
-    /// Execute the same exact settlement kernel with its economic request and
-    /// supply intake read directly from canonical resident `T_s` products.
-    /// AllocatedFlow remains the live sealed value-plane input; no host copy or
-    /// role-specific recursive payload is introduced.
+    /// Execute the same exact settlement kernel with same-generation child
+    /// supply read directly from immutable parent `T_s.G`.
     #[allow(clippy::too_many_arguments)]
-    pub fn encode_resident_apportionment_from_recursive_intake_with_dispatch_into(
+    pub fn encode_resident_apportionment_from_spatial_products_with_dispatch_into(
         &self,
         session: &mut crate::ResidentApportionmentSession,
         encoder: &mut wgpu::CommandEncoder,
         semantic_rows: &wgpu::Buffer,
         scratch: &wgpu::Buffer,
-        recursive_intake: &wgpu::Buffer,
-        recursive_intake_count: u32,
+        products: &wgpu::Buffer,
+        product_start: u32,
+        product_count: u32,
         plan: &crate::ResidentApportionmentPlan,
         dispatch: crate::ResidentApportionmentDispatch,
     ) -> Result<(), crate::ResidentApportionmentError> {
-        session.encode_from_recursive_intake_at_integration_band_with_dispatch(
+        session.encode_from_spatial_products_at_integration_band_with_dispatch(
             &self.ctx,
             encoder,
             self.resolved.values(),
             semantic_rows,
             scratch,
-            recursive_intake,
-            recursive_intake_count,
+            products,
+            product_start,
+            product_count,
+            self.n_slots,
+            self.n_dims,
+            plan,
+            dispatch,
+        )
+    }
+
+    /// Execute generation N+1 through the same exact settlement kernel with
+    /// request quantities read from the ordinary resident demand mint.
+    #[allow(clippy::too_many_arguments)]
+    pub fn encode_resident_apportionment_from_temporal_demands_with_dispatch_into(
+        &self,
+        session: &mut crate::ResidentApportionmentSession,
+        encoder: &mut wgpu::CommandEncoder,
+        semantic_rows: &wgpu::Buffer,
+        scratch: &wgpu::Buffer,
+        demands: &wgpu::Buffer,
+        demand_count: u32,
+        plan: &crate::ResidentApportionmentPlan,
+        dispatch: crate::ResidentApportionmentDispatch,
+    ) -> Result<(), crate::ResidentApportionmentError> {
+        session.encode_from_temporal_demands_at_integration_band_with_dispatch(
+            &self.ctx,
+            encoder,
+            self.resolved.values(),
+            semantic_rows,
+            scratch,
+            demands,
+            demand_count,
             self.n_slots,
             self.n_dims,
             plan,

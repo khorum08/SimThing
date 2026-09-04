@@ -10,7 +10,8 @@ use simthing_core::{
 };
 use simthing_driver::produce_runtime_rf_next_generation_demands_for_tick;
 use simthing_driver::resident_clearing_runtime::{
-    ResidentClearingBatchBinding, ResidentClearingRuntime, ResidentPersistenceDeformationBinding,
+    ResidentAuthoredDemand, ResidentClearingBatchBinding, ResidentClearingRuntime,
+    ResidentPersistenceDeformationBinding, ResidentTemporalExecutionBinding,
 };
 use simthing_gpu::{GpuContext, SlotAllocator};
 use simthing_spec::{
@@ -262,29 +263,65 @@ fn production_resident_port_matches_cpu_decay_without_readback() {
             &mut schedule,
             SimThingId::from_session_raw(7),
             GenerationStamp::new(30),
-            Some(&rows),
+            &rows,
+        )
+        .unwrap();
+    let demand_n1 = runtime
+        .prepare_temporal_demands(
+            &n,
+            GenerationStamp::new(31),
+            &[ResidentAuthoredDemand {
+                source_simthing_id: SimThingId::from_session_raw(SOURCE),
+                quantity: 0,
+            }],
         )
         .unwrap();
     let n1 = runtime
-        .dispatch(
+        .dispatch_temporal(
             &mut schedule,
+            &demand_n1,
             SimThingId::from_session_raw(7),
             GenerationStamp::new(31),
-            None,
+            &[ResidentTemporalExecutionBinding {
+                source_simthing_id: SimThingId::from_session_raw(SOURCE),
+                available: 0,
+                precedence: 0,
+                continuous_weight: 80.0,
+            }],
+        )
+        .unwrap();
+    let minted_n1 = runtime
+        .readback_temporal_demands_for_proof(&demand_n1)
+        .unwrap();
+    assert_eq!(minted_n1[0].quantity(), 80);
+    let demand_n2 = runtime
+        .prepare_temporal_demands(
+            &n1,
+            GenerationStamp::new(32),
+            &[ResidentAuthoredDemand {
+                source_simthing_id: SimThingId::from_session_raw(SOURCE),
+                quantity: 0,
+            }],
         )
         .unwrap();
     let n2 = runtime
-        .dispatch(
+        .dispatch_temporal(
             &mut schedule,
+            &demand_n2,
             SimThingId::from_session_raw(7),
             GenerationStamp::new(32),
-            None,
+            &[ResidentTemporalExecutionBinding {
+                source_simthing_id: SimThingId::from_session_raw(SOURCE),
+                available: 0,
+                precedence: 0,
+                continuous_weight: 64.0,
+            }],
         )
         .unwrap();
     assert!(schedule.entries().is_empty());
 
-    // All three generations were submitted before the first observer maps a
-    // byte. This is the production once-mint, not an oracle-side reinjection.
+    // All three generations were submitted before the first T_s observer maps
+    // a byte. Each advance used the ordinary resident once-mint.
     let products = [n, n1, n2]
         .into_iter()
         .map(|ticket| runtime.materialize(&mut schedule, ticket).unwrap())

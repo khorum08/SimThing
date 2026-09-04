@@ -294,8 +294,8 @@ impl GrowthEntitlementMarketBinding {
     }
 
     /// Production resident authority for the already-qualified standing-root
-    /// growth profile. Economic N+1 and the live schedule head are submitted
-    /// before this structural boundary materializes the sparse result.
+    /// growth profile. This boundary executes only its current generation;
+    /// temporal demand may be prepared separately once N+1 inputs exist.
     pub fn resolve_batch_resident(
         &self,
         runtime: &mut crate::resident_clearing_runtime::RecursiveResourceFilterRuntime,
@@ -329,17 +329,10 @@ impl GrowthEntitlementMarketBinding {
             })
             .collect();
         let root_ticket = runtime
-            .dispatch(integration_schedule, self.granter, generation, Some(&rows))
-            .map_err(|error| GrowthEntitlementError::Resident(error.to_string()))?;
-        let next_generation = root_ticket.submission().intake_generation();
-        let next_ticket = runtime
-            .dispatch(integration_schedule, self.granter, next_generation, None)
+            .dispatch(integration_schedule, self.granter, generation, &rows)
             .map_err(|error| GrowthEntitlementError::Resident(error.to_string()))?;
         let products = runtime
             .materialize(integration_schedule, root_ticket)
-            .map_err(|error| GrowthEntitlementError::Resident(error.to_string()))?;
-        runtime
-            .materialize(integration_schedule, next_ticket)
             .map_err(|error| GrowthEntitlementError::Resident(error.to_string()))?;
         let mut decisions = Vec::with_capacity(ordered.len());
         for candidate in ordered {

@@ -6,6 +6,10 @@ Authority: Board handoff `5510249901`, re-dispatch `5511124134`, continuous-auth
 remand `5512913574`, DA ruling `5512807494`, owner-approved repository handoff
 `handoffs/RESIDENT-CLEARING-APPORTIONMENT-0.hd.md`.
 
+The 15.5 E6 Owner ruling `5533372979` and mixed-equality-band remand `5534307164`
+subsequently tightened precedence feasible-set construction without changing the
+Q149 quotient/remainder, tie, cap, product, or recursive-intake arithmetic.
+
 - exact live-master base: `35db328de5ddadf9557454b0453a2f42d971b565`
 - coding ORIENT receipt: `b9535319b9be`
 - orientation rule stamp: `52aa2c585b39f3d5`
@@ -39,7 +43,7 @@ ontology.
 | canonical scope grouping | canonical resident owner/resource/scope ordinals | alternating-scope and permuted-admission witness |
 | score-band sequence already decided upstream | admitted hard `precedence`; no `f32` score-bit synthesis | no score or normalized-weight field exists in the resident executor |
 | `requested_total: u64` checked sum | `vec2<u32>` low/high sum with explicit carry | max-domain argument and live boundary vectors |
-| `available_for_band = min(remaining, requested_total)` | exact pair compare/subtract/min | zero, full, and short supply witnesses |
+| precedence advances by exact prior grants; `available_for_band = min(remaining, requested_total_with_nonzero_basis)` | exact pair compare/subtract/min; zero-basis requests never enlarge a band's executable ceiling | zero, full, short, all-zero, and mixed-equality-band supply witnesses |
 | generalized `basis_i = min(AllocatedFlow_i, requested_i)` | exact binary32 decode into common Q149 limbs and exact u32 cap | fractional, subnormal, zero, and `f32::MAX` live GPU/CPU vectors |
 | `basis_total = Σ basis_i` | checked seven-u32-limb accumulation | full-domain bound is below 2^213; 224 bits admits it without narrowing |
 | checked `available_for_band * basis_i` | 32-step shift/add over the exact Q149 limbs | fractional/subnormal vectors and capped `u32::MAX` neutral boundary |
@@ -84,8 +88,9 @@ supply, identity, or generation range was narrowed.
 Enumerated live vectors: neutral `17:33:50`, zero supply, full supply, short supply,
 `u32::MAX × u32::MAX`, `granter=u32::MAX + generation=u32::MAX`, zero request,
 successive exact ties, unresolved-total overflow/refusal, fractional `0.75:0.25`,
-minimum-subnormal `1:3`, `f32::MAX` request capping, claimant-zero, and all-zero
-`basis_total`.
+minimum-subnormal `1:3`, `f32::MAX` request capping, claimant-zero, all-zero
+`basis_total`, and mixed equality band `(request,basis,precedence) =
+[(100,0,0),(1,1,0),(9,9,1)]` producing grants `[0,1,9]` on both CPU and GPU.
 
 ## Integration-band and product proof
 
