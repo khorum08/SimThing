@@ -430,8 +430,9 @@ fn settle_partition(local: u32) {
     }
 
     var scope_total = vec2<u32>(0u, 0u);
-    var prior_committed = vec2<u32>(0u, 0u);
+    var prior_grant_ceiling = vec2<u32>(0u, 0u);
     var band_requested_total = vec2<u32>(0u, 0u);
+    var band_grant_ceiling = vec2<u32>(0u, 0u);
     var basis_total = exact_zero();
     var overflow = false;
     for (var other_index = 0u; other_index < params.row_count; other_index = other_index + 1u) {
@@ -441,27 +442,15 @@ fn settle_partition(local: u32) {
         scope_total = sum.xy;
         overflow = overflow || sum.z != 0u;
         if (other.precedence < current.precedence) {
-            // A prior equality band consumes supply only if that band is
-            // serviceable in the one exact projection.  Precedence and the
-            // request alone never reserve.  Count every request in a
-            // serviceable band because the exact projection commits the
-            // band's available quantity even when an individual row has a
-            // zero basis.
-            var prior_band_serviceable = false;
-            for (var band_index = 0u; band_index < params.row_count; band_index = band_index + 1u) {
-                let band_claim = read_claim(band_index, spatial_supply.x);
-                if (band_claim.input_active == 0u || !same_scope(current, band_claim)
-                    || band_claim.precedence != other.precedence) { continue; }
-                let band_value_index = band_claim.allocated_flow_slot * params.n_dims
-                    + band_claim.allocated_flow_col;
-                let band_value = values[band_value_index];
-                if (!exact_is_zero(exact_capped_basis(band_value, band_claim.requested))) {
-                    prior_band_serviceable = true;
-                }
-            }
-            if (prior_band_serviceable) {
-                sum = wide_add(prior_committed, wide_from_u32(other.requested));
-                prior_committed = sum.xy;
+            // Only a row with a non-zero exact basis can contribute G. A
+            // zero-basis request cannot enlarge a serviceable sibling's
+            // equality-band grant ceiling and therefore cannot reserve.
+            let other_value_index = other.allocated_flow_slot * params.n_dims
+                + other.allocated_flow_col;
+            let other_basis = exact_capped_basis(values[other_value_index], other.requested);
+            if (!exact_is_zero(other_basis)) {
+                sum = wide_add(prior_grant_ceiling, wide_from_u32(other.requested));
+                prior_grant_ceiling = sum.xy;
                 overflow = overflow || sum.z != 0u;
             }
         }
@@ -475,12 +464,18 @@ fn settle_partition(local: u32) {
             let other_bits = bitcast<u32>(other_continuous);
             let other_not_finite = (other_bits & 0x7f800000u) == 0x7f800000u;
             if (!other_not_finite && !(other_continuous < 0.0)) {
+                let other_basis = exact_capped_basis(other_continuous, other.requested);
                 let basis_sum = exact_add(
                     basis_total,
-                    exact_capped_basis(other_continuous, other.requested),
+                    other_basis,
                 );
                 basis_total = basis_sum.value;
                 overflow = overflow || basis_sum.overflow != 0u;
+                if (!exact_is_zero(other_basis)) {
+                    sum = wide_add(band_grant_ceiling, wide_from_u32(other.requested));
+                    band_grant_ceiling = sum.xy;
+                    overflow = overflow || sum.z != 0u;
+                }
             }
         }
     }
@@ -498,13 +493,17 @@ fn settle_partition(local: u32) {
         }
     }
 
-    var remaining = vec2<u32>(0u, 0u);
-    if (wide_cmp(supply, prior_committed) > 0) {
-        remaining = wide_sub(supply, prior_committed);
+    // Every non-empty exact band conserves all of its bounded available
+    // quantity, so this minimum is exactly the sum of prior G, not a request
+    // reservation surrogate.
+    var prior_granted = supply;
+    if (wide_cmp(prior_grant_ceiling, supply) < 0) {
+        prior_granted = prior_grant_ceiling;
     }
+    let remaining = wide_sub(supply, prior_granted);
     var available_for_band = remaining;
-    if (wide_cmp(band_requested_total, remaining) < 0) {
-        available_for_band = band_requested_total;
+    if (wide_cmp(band_grant_ceiling, remaining) < 0) {
+        available_for_band = band_grant_ceiling;
     }
     if (available_for_band.y != 0u) {
         write_product(current, 0u, 0u, STATUS_ARITHMETIC_OVERFLOW);

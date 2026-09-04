@@ -341,6 +341,48 @@ fn neutral_continuous_shares_match_frozen_cpu_law_across_boundary_cases() {
     assert_eq!(canonical[&source(1)].0, 33);
     assert_eq!(canonical[&source(2)].0, 50);
 
+    let mixed_requests = [100, 1, 9];
+    let mixed_precedences = [0, 0, 1];
+    values.fill(0.0);
+    values[state.n_dims as usize] = 1.0;
+    values[2 * state.n_dims as usize] = 9.0;
+    state.install_resolved_values_at_boundary(&values);
+    let mixed_claims = (0..3)
+        .map(|index| {
+            ResidentApportionmentClaim::new(
+                semantic_row_for_draw(&semantic_plan, u64::from(1_000 + index)),
+                source(index),
+                mixed_requests[index as usize],
+                10,
+                mixed_precedences[index as usize],
+                SlotIndex::new(index),
+                col(0),
+            )
+        })
+        .collect();
+    let mixed_plan = plan_resident_exact_apportionment(
+        &layout,
+        &semantic_plan,
+        mixed_claims,
+        granter,
+        generation,
+    )
+    .unwrap();
+    let mixed_cpu = execute_resident_apportionment_cpu(&mixed_plan, &values, state.n_dims).unwrap();
+    let mixed_gpu = run_gpu(
+        &state,
+        &mut session,
+        &buffers,
+        &mixed_plan,
+        ResidentApportionmentDispatch::single_pass(),
+    )
+    .unwrap();
+    assert_eq!(mixed_gpu, mixed_cpu);
+    let mixed = product_map(&mixed_gpu);
+    assert_eq!(mixed[&source(0)], (0, 100));
+    assert_eq!(mixed[&source(1)], (1, 0));
+    assert_eq!(mixed[&source(2)], (9, 0));
+
     let sealed_input_plan = plan_resident_exact_apportionment(
         &layout,
         &semantic_plan,

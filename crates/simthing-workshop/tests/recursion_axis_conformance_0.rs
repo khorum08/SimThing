@@ -145,6 +145,39 @@ fn e6_immediate_flow_is_work_conserving_and_commitment_alone_reserves() {
     let work_conserving = run_immediate(&gpu, 0x15_05_e6_01, &rows);
     assert_eq!(work_conserving, vec![(8, 0, 4, 41), (9, 4, 0, 41)]);
 
+    let mixed_band = run_immediate(
+        &gpu,
+        0x15_05_e6_03,
+        &[
+            ResidentClearingBatchBinding {
+                source_simthing_id: id(ROOT),
+                requested: 100,
+                available: 10,
+                precedence: 0,
+                continuous_weight: 0.0,
+            },
+            ResidentClearingBatchBinding {
+                source_simthing_id: id(CHILD),
+                requested: 1,
+                available: 10,
+                precedence: 0,
+                continuous_weight: 1.0,
+            },
+            ResidentClearingBatchBinding {
+                source_simthing_id: id(DESCENDANT),
+                requested: 9,
+                available: 10,
+                precedence: 1,
+                continuous_weight: 9.0,
+            },
+        ],
+    );
+    assert_eq!(
+        mixed_band,
+        vec![(7, 0, 100, 41), (8, 1, 0, 41), (9, 9, 0, 41)],
+        "a zero-basis sibling's request cannot reserve inside a serviceable equality band"
+    );
+
     let (mut runtime, mut schedule) = admit_runtime(&gpu, 0x15_05_e6_02, 41, 2, None);
     let mut commitment = ResidencyCapacityPartition::new(4);
     commitment.issue(3).expect("exact in-flight commitment");
@@ -161,7 +194,7 @@ fn e6_immediate_flow_is_work_conserving_and_commitment_alone_reserves() {
     assert_eq!(reserved, vec![(8, 0, 4, 41), (9, 1, 3, 41)]);
 
     println!(
-        "E6 PASS no-commitment={work_conserving:?} in_flight=3 reserved={reserved:?} law=S_next=S-sum(G)"
+        "E6 PASS no-commitment={work_conserving:?} mixed-band={mixed_band:?} in_flight=3 reserved={reserved:?} law=S_next=S-sum(G)"
     );
 }
 

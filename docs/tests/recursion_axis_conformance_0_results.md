@@ -2,7 +2,7 @@
 
 Status: **PROBATION / proof-present / DA-review-pending / UNMERGED / NO 15.6**.
 
-Authority: dispatch `5532779733`, semantic-scope binding `5529092629`, E6 Owner-stop packet `5533226409`, binding Owner ruling `5533372979`, and resume remand `5533564241`. The handoff is `handoffs/RECURSION-AXIS-CONFORMANCE-0.hd.md` (`HD-RECEIPT: bbecf03b4d88`). Coding orientation is `ORIENT-RECEIPT: 4266e4870c67` under rule stamp `240c816e9fe71dc1`.
+Authority: dispatch `5532779733`, semantic-scope binding `5529092629`, E6 Owner-stop packet `5533226409`, binding Owner ruling `5533372979`, resume remand `5533564241`, and mixed-equality-band remand `5534307164`. The handoff is `handoffs/RECURSION-AXIS-CONFORMANCE-0.hd.md` (`HD-RECEIPT: bbecf03b4d88`). Coding orientation is `ORIENT-RECEIPT: 4266e4870c67` under rule stamp `240c816e9fe71dc1`.
 
 ## Result
 
@@ -11,7 +11,7 @@ The production resident port now implements two distinct views of one immutable 
 - Spatial recursion reads exactly parent `T_s.G` as child supply at the same generation, then clears under a changed child granter and the child's separately admitted semantic-row bank over actual descendants.
 - Temporal recursion reads exactly parent `T_s.U` inside the existing Current-to-Next once-mint, combines it with independently authored N+1 demand as `d_effective(N+1) = d_authored(N+1) + f(U(N))`, and emits ordinary demand rather than a product-shaped pseudo-`T_s`.
 
-Immediate flow is work-conserving under the Owner's E6 ruling. Precedence orders feasible work but consumes no capacity on a zero basis. Later bands subtract exact prior commitments/grants, never prior requests. Reservation is supplied only through the existing conserved `ResidencyCapacityPartition` in-flight holding lifecycle; there is still one exact projection.
+Immediate flow is work-conserving under the Owner's E6 ruling. Precedence orders feasible work but consumes no capacity on a zero basis, including when a zero-basis request shares an equality band with a serviceable sibling. Each band's executable ceiling includes only non-zero-basis rows, and later bands subtract the resulting exact prior grants, never all requests in a band. Reservation is supplied only through the existing conserved `ResidencyCapacityPartition` in-flight holding lifecycle; there is still one exact projection.
 
 ## Production call graphs
 
@@ -64,11 +64,12 @@ The frozen 15.2 production decay referee also remains green through explicit pre
 
 ## E6 transcript
 
-With total supply 4, a precedence-0 request of 4 with exact basis 0 consumes zero capacity; the later precedence-1 serviceable claim receives all 4. Supplying an actual conserved in-flight holding of 3 reduces free supply to 1, so the later claim receives 1. Both CPU and resident exact projections follow `S_(k+1) = S_k - sum(G_i)`.
+With total supply 4, a precedence-0 request of 4 with exact basis 0 consumes zero capacity; the later precedence-1 serviceable claim receives all 4. The remand's mixed-band falsifier was planted before the remedy and produced `ResidentProductFailure`: with supply 10, precedence-0 A asks 100 at basis 0, precedence-0 B asks 1 at positive basis, and precedence-1 C asks 9 at positive basis. After the remedy, the equality band grants exactly 1 to B, A grants 0, and all remaining 9 fall through to C. Supplying an actual conserved in-flight holding of 3 reduces free supply to 1 in the original two-row case, so the later claim receives 1. CPU and resident settlement are bit-identical on the mixed band and follow `S_(k+1) = S_k - sum(G_i)`.
 
 ```text
 E6 PASS
 no-commitment=[(8,G0,U4),(9,G4,U0)]
+mixed-band=[(7,G0,U100),(8,G1,U0),(9,G9,U0)]
 in_flight=3 reserved=[(8,G0,U4),(9,G1,U3)]
 law=S_next=S-sum(G)
 ```
@@ -92,7 +93,7 @@ Focused execution is 5/5 green, including all RED-mutant assertions.
 
 | Surface | Before remediation | Bound result |
 |---|---|---|
-| CPU/WGSL exact precedence | later capacity subtracted prior requested quantity | subtracts exact prior committed/granted quantity; zero-basis immediate work falls through |
+| CPU/WGSL exact precedence | later capacity subtracted prior requested quantity, then the first E6 remedy still counted zero-basis requests inside a partially serviceable equality band | each equality band bounds execution by non-zero-basis rows and carries forward its exact granted total; the 100@basis0 sibling consumes zero while the 1@positive-basis sibling grants 1 and 9 falls through |
 | reservation | request-shaped behavior was implicit in precedence arithmetic | only actual `ResidencyCapacityPartition.in_flight` reduces free supply before the one exact path |
 | spatial recursive intake | retained parent granter/scope/claim identity and advanced generation | same-generation product-G view, changed granter, changed semantic scope, own descendants/rows |
 | temporal recursive intake | copied product, modified U, then interpreted `G+f(U)` as a new request | once-mint reads immutable U and emits independently typed ordinary N+1 demand |
@@ -105,4 +106,4 @@ The implementation changes the existing resident clearing runtime, exact CPU/res
 
 There is one immutable product ABI, one continuous allocation producer, one exact apportionment, one Current-to-Next mint, and one demand vocabulary. No adapter, second carry, second exact path, canon rewrite, workflow/CI implementation edit, pointer movement, 15.6/15.7 work, graduation, merge, compression, or closeout is present.
 
-The production qualification tuple is pinned at `0xc71e1ae26c1c7f99` after the exact shader change. Frozen resident causal/tree-isolation, persistence, exact parity, theorem/census, filter closure, consequence ingress, oracle quarantine, pacing, qualification, authority, inventory, lifecycle, anchor, detachability, Agent Scan, and hosted Doctrine evidence are recorded in the exact-head PR relay.
+The production qualification tuple is pinned at `0xbfc8db391f8cd256` after the remanded exact shader change. The full `cargo test --workspace --all-targets --no-fail-fast -j 1 --quiet` suite passes with the mixed-band remedy present. Frozen resident causal/tree-isolation, persistence, exact parity, theorem/census, filter closure, consequence ingress, oracle quarantine, pacing, qualification, authority, inventory, lifecycle, anchor, detachability, Agent Scan, and hosted Doctrine evidence are recorded in the exact-head PR relay.

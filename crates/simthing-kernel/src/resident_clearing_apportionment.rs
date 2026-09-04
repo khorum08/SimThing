@@ -622,12 +622,11 @@ fn settle_resident_apportionment_over_share_vector(
         if unresolved_total > u64::from(u32::MAX) {
             return Err(ResidentApportionmentError::ArithmeticOverflow);
         }
-        // Precedence orders feasible work; it does not reserve supply.  A
-        // prior band consumes capacity only when the one exact projection has
-        // a non-zero basis for that band.  In that case the band commits its
-        // exact available quantity; a wholly unserviceable band commits zero
-        // and free supply falls through.
-        let mut prior_committed = 0u64;
+        // Precedence orders feasible work; it does not reserve supply. Each
+        // prior equality band consumes only the exact quantity that its
+        // non-zero-basis rows can actually receive. A zero-basis request does
+        // not enlarge that ceiling merely because a sibling is serviceable.
+        let mut prior_granted = 0u64;
         let mut prior_precedences = BTreeSet::new();
         for (_, other) in &group {
             if other.precedence < claim.precedence {
@@ -640,37 +639,34 @@ fn settle_resident_apportionment_over_share_vector(
                 .copied()
                 .filter(|(_, other)| other.precedence == precedence)
                 .collect();
-            let prior_basis_total = prior_band
-                .iter()
-                .try_fold([0; EXACT_BASIS_LIMBS], |sum, (index, _)| {
-                    exact_checked_add(&sum, &bases[*index])
-                })?;
-            if exact_is_zero(&prior_basis_total) {
-                continue;
-            }
-            let prior_requested = prior_band
-                .iter()
-                .try_fold(0u64, |sum, (_, other)| {
+            let prior_grant_ceiling = prior_band.iter().try_fold(0u64, |sum, (index, other)| {
+                if exact_is_zero(&bases[*index]) {
+                    Ok(sum)
+                } else {
                     sum.checked_add(u64::from(other.requested))
-                })
-                .ok_or(ResidentApportionmentError::ArithmeticOverflow)?;
-            let remaining = u64::from(claim.available).saturating_sub(prior_committed);
-            prior_committed = prior_committed
-                .checked_add(remaining.min(prior_requested))
+                        .ok_or(ResidentApportionmentError::ArithmeticOverflow)
+                }
+            })?;
+            let remaining = u64::from(claim.available).saturating_sub(prior_granted);
+            let band_granted = remaining.min(prior_grant_ceiling);
+            prior_granted = prior_granted
+                .checked_add(band_granted)
                 .ok_or(ResidentApportionmentError::ArithmeticOverflow)?;
         }
         let band: Vec<_> = group
             .into_iter()
             .filter(|(_, other)| other.precedence == claim.precedence)
             .collect();
-        let requested_total = band
-            .iter()
-            .try_fold(0u64, |sum, (_, other)| {
+        let grant_ceiling = band.iter().try_fold(0u64, |sum, (index, other)| {
+            if exact_is_zero(&bases[*index]) {
+                Ok(sum)
+            } else {
                 sum.checked_add(u64::from(other.requested))
-            })
-            .ok_or(ResidentApportionmentError::ArithmeticOverflow)?;
-        let remaining = u64::from(claim.available).saturating_sub(prior_committed);
-        let available_for_band = u32::try_from(remaining.min(requested_total))
+                    .ok_or(ResidentApportionmentError::ArithmeticOverflow)
+            }
+        })?;
+        let remaining = u64::from(claim.available).saturating_sub(prior_granted);
+        let available_for_band = u32::try_from(remaining.min(grant_ceiling))
             .map_err(|_| ResidentApportionmentError::ArithmeticOverflow)?;
         let basis_total = band
             .iter()
