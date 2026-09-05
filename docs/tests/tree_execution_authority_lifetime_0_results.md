@@ -107,7 +107,7 @@ Test-first compilation initially failed on the absent lease/permit APIs and perm
 - `cargo test --workspace --all-targets --no-fail-fast -j 1 --quiet`: exit 0, every emitted test-result group green;
 - inventory: 1426 discovered / 1426 registered, zero missing or extra;
 - inventory drift prove, constitutional check and 12-fixture selftest, lifecycle schema/prove, sanctioned-surface digest, detachability and four-fixture selftest, anchor integrity and 12-fixture selftest, plan-typing, observation-bypass, slot, and overlay-germ censuses: PASS;
-- Agent Scan: PASS, zero hard failures and zero inspect flags.
+- committed-delta Agent Scan: zero hard failures; two expected inspect routes (the handoff-required four-test referee budget and the anchor-ledger DA wiring notice), with the test-budget rationale enrolled in `triage_log.tsv`; expected route remains `DA-RESERVE(binding)`.
 
 The full all-target run also exercises ordinary session generation pacing and replay-recording boundaries with the lease/permit layer active. All required mutants are red for their named reason; all required positive and frozen economic witnesses are green: **FULL ZERO-RED**.
 
