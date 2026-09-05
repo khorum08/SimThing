@@ -392,6 +392,16 @@ fn write_failure(input: ClaimInput, source_simthing_id: u32, status: u32) {
     scratch_words[output_base + 7u] = 0u;
 }
 
+// Exact rational quota > request, before any u32 quotient is formed. The
+// scope guard bounds sum(requests) < 2^33, hence Q149 B * cap < 2^214.
+// Frozen rows may have an unrepresentable notional quotient at the final ratio.
+fn exact_quota_exceeds_cap(basis: ExactBasis, available: u32, total: ExactBasis, cap: u32) -> vec2<u32> {
+    let numerator = exact_mul_u32(basis, available);
+    let threshold = exact_mul_u32(total, cap);
+    return vec2<u32>(select(0u, 1u, exact_cmp(numerator.value, threshold.value) > 0),
+        numerator.overflow | threshold.overflow);
+}
+
 fn settle_partition(local: u32) {
     if (local >= params.dispatch_count) { return; }
     let physical = params.dispatch_base + local;
@@ -515,6 +525,70 @@ fn settle_partition(local: u32) {
         return;
     }
 
+    let original_supply = available_for_band.x;
+    let original_basis = basis_total;
+    var frozen_count = 0u;
+    var converged = false;
+    // S/B increases whenever below-ratio caps are removed. Reclassifying
+    // immutable inputs therefore recovers the monotone frozen set without
+    // cross-invocation flags or reads from another row's output. Each nonfinal
+    // scan freezes at least one row; at least one positive basis stays active.
+    for (var iteration = 0u; iteration < params.row_count; iteration = iteration + 1u) {
+        var next_count = 0u;
+        var frozen_caps = vec2<u32>(0u, 0u);
+        var frozen_basis = exact_zero();
+        for (var other_index = 0u; other_index < params.row_count; other_index = other_index + 1u) {
+            let other = read_claim(other_index, spatial_supply.x);
+            if (other.exact_basis_identity == 0u || !same_scope(current, other)
+                || other.precedence != current.precedence) { continue; }
+            let other_value_index = other.allocated_flow_slot * params.n_dims + other.allocated_flow_col;
+            let other_basis = exact_capped_basis(values[other_value_index], other.requested, other.exact_basis_identity);
+            let capped = exact_quota_exceeds_cap(other_basis, available_for_band.x, basis_total, other.requested);
+            if (capped.y != 0u) {
+                write_product(current, 0u, 0u, STATUS_ARITHMETIC_OVERFLOW);
+                return;
+            }
+            if (capped.x != 0u) {
+                next_count = next_count + 1u;
+                let cap_sum = wide_add(frozen_caps, wide_from_u32(other.requested));
+                let basis_sum = exact_add(frozen_basis, other_basis);
+                if (cap_sum.z != 0u || basis_sum.overflow != 0u) {
+                    write_product(current, 0u, 0u, STATUS_ARITHMETIC_OVERFLOW);
+                    return;
+                }
+                frozen_caps = cap_sum.xy;
+                frozen_basis = basis_sum.value;
+            }
+        }
+        if (next_count == frozen_count) {
+            converged = true;
+            break;
+        }
+        if (next_count < frozen_count || exact_cmp(frozen_basis, original_basis) >= 0
+            || wide_cmp(frozen_caps, wide_from_u32(original_supply)) > 0) {
+            write_product(current, 0u, 0u, STATUS_ARITHMETIC_OVERFLOW);
+            return;
+        }
+        frozen_count = next_count;
+        available_for_band = wide_sub(wide_from_u32(original_supply), frozen_caps);
+        basis_total = exact_sub(original_basis, frozen_basis);
+    }
+    if (!converged) {
+        write_product(current, 0u, 0u, STATUS_ARITHMETIC_OVERFLOW);
+        return;
+    }
+    let current_value_index = current.allocated_flow_slot * params.n_dims + current.allocated_flow_col;
+    let current_basis = exact_capped_basis(values[current_value_index], current.requested, current.exact_basis_identity);
+    let current_capped = exact_quota_exceeds_cap(current_basis, available_for_band.x, basis_total, current.requested);
+    if (current_capped.y != 0u) {
+        write_product(current, 0u, 0u, STATUS_ARITHMETIC_OVERFLOW);
+        return;
+    }
+    if (current_capped.x != 0u) {
+        write_product(current, current.requested, 0u, STATUS_OK);
+        return;
+    }
+
     var base_total = vec2<u32>(0u, 0u);
     var current_base = 0u;
     var current_remainder = exact_zero();
@@ -525,6 +599,12 @@ fn settle_partition(local: u32) {
         let other_value_index = other.allocated_flow_slot * params.n_dims
             + other.allocated_flow_col;
         let other_basis = exact_capped_basis(values[other_value_index], other.requested, other.exact_basis_identity);
+        let capped = exact_quota_exceeds_cap(other_basis, available_for_band.x, basis_total, other.requested);
+        if (capped.y != 0u) {
+            write_product(current, 0u, 0u, STATUS_ARITHMETIC_OVERFLOW);
+            return;
+        }
+        if (capped.x != 0u) { continue; }
         let numerator = exact_mul_u32(other_basis, available_for_band.x);
         let divided = exact_divmod(numerator.value, basis_total);
         if (numerator.overflow != 0u || divided.overflow != 0u) {
@@ -563,6 +643,12 @@ fn settle_partition(local: u32) {
         let other_value_index = other.allocated_flow_slot * params.n_dims
             + other.allocated_flow_col;
         let other_basis = exact_capped_basis(values[other_value_index], other.requested, other.exact_basis_identity);
+        let capped = exact_quota_exceeds_cap(other_basis, available_for_band.x, basis_total, other.requested);
+        if (capped.y != 0u) {
+            write_product(current, 0u, 0u, STATUS_ARITHMETIC_OVERFLOW);
+            return;
+        }
+        if (capped.x != 0u) { continue; }
         let numerator = exact_mul_u32(other_basis, available_for_band.x);
         let divided = exact_divmod(numerator.value, basis_total);
         if (numerator.overflow != 0u || divided.overflow != 0u) {

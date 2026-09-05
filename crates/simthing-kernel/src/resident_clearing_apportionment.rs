@@ -624,6 +624,21 @@ fn exact_divmod_u32(
     Ok((quotient, remainder))
 }
 
+// Compare the rational quota with its cap before division: a frozen row's
+// notional quotient can exceed u32 after the active denominator shrinks.
+// The scope overflow guard bounds sum(requests) by S + u32::MAX < 2^33.
+// Thus B < 2^182 in Q149 and B * cap < 2^214, within the existing 224 bits.
+fn exact_quota_exceeds_cap(
+    basis: &ExactBasis,
+    available: u32,
+    total: &ExactBasis,
+    cap: u32,
+) -> Result<bool, ResidentApportionmentError> {
+    let numerator = exact_mul_u32(basis, available)?;
+    let threshold = exact_mul_u32(total, cap)?;
+    Ok(exact_cmp(&numerator, &threshold).is_gt())
+}
+
 fn settle_resident_apportionment_over_share_vector(
     plan: &ResidentApportionmentPlan,
     bases: &[ExactBasis],
@@ -704,62 +719,118 @@ fn settle_resident_apportionment_over_share_vector(
         let granted = if exact_is_zero(&basis_total) {
             0
         } else {
-            let mut base_total = 0u64;
-            let mut remainders = Vec::with_capacity(band.len());
-            let mut base_grants = Vec::with_capacity(band.len());
-            for (index, _) in &band {
-                let numerator = exact_mul_u32(&bases[*index], available_for_band)?;
-                let (base, remainder) = exact_divmod_u32(&numerator, &basis_total)?;
-                base_total = base_total
-                    .checked_add(u64::from(base))
-                    .ok_or(ResidentApportionmentError::ArithmeticOverflow)?;
-                base_grants.push(base);
-                remainders.push(remainder);
-            }
-            let leftover = u64::from(available_for_band)
-                .checked_sub(base_total)
-                .ok_or(ResidentApportionmentError::ArithmeticOverflow)?
-                as usize;
-            let mut order: Vec<usize> = (0..band.len()).collect();
-            order.sort_by(|&left, &right| {
-                exact_cmp(&remainders[right], &remainders[left]).then_with(|| {
-                    band[left]
-                        .1
-                        .source_simthing_id
-                        .cmp(&band[right].1.source_simthing_id)
-                })
-            });
-            let mut tie_start = 0usize;
-            while tie_start < order.len() {
-                let remainder = remainders[order[tie_start]];
-                let mut tie_end = tie_start + 1;
-                while tie_end < order.len() && remainders[order[tie_end]] == remainder {
-                    tie_end += 1;
+            let mut active_supply = available_for_band;
+            let mut active_basis = basis_total;
+            let mut frozen_count = 0;
+            let mut converged = false;
+            // Removing below-ratio caps only increases S/B, so the frozen
+            // set is monotone. Reclassify immutable rows at that ratio instead
+            // of storing shared flags; WGSL uses the same bounded scan.
+            for _ in 0..band.len() {
+                let mut next_count = 0;
+                let mut frozen_caps = 0u32;
+                let mut frozen_basis = [0; EXACT_BASIS_LIMBS];
+                for (index, other) in &band {
+                    if exact_quota_exceeds_cap(
+                        &bases[*index],
+                        active_supply,
+                        &active_basis,
+                        other.requested,
+                    )? {
+                        next_count += 1;
+                        frozen_caps = frozen_caps
+                            .checked_add(other.requested)
+                            .ok_or(ResidentApportionmentError::ArithmeticOverflow)?;
+                        frozen_basis = exact_checked_add(&frozen_basis, &bases[*index])?;
+                    }
                 }
-                let tie_len = tie_end - tie_start;
-                let rotation = (u64::from(plan.authority_granter.raw())
-                    + u64::from(plan.generation.get()))
-                    % tie_len as u64;
-                order[tie_start..tie_end].rotate_left(rotation as usize);
-                tie_start = tie_end;
+                if next_count == frozen_count {
+                    converged = true;
+                    break;
+                }
+                if next_count < frozen_count || exact_cmp(&frozen_basis, &basis_total).is_ge() {
+                    return Err(ResidentApportionmentError::ArithmeticOverflow);
+                }
+                frozen_count = next_count;
+                active_supply = available_for_band
+                    .checked_sub(frozen_caps)
+                    .ok_or(ResidentApportionmentError::ArithmeticOverflow)?;
+                active_basis = exact_sub(&basis_total, &frozen_basis);
             }
-            let band_index = band
-                .iter()
-                .position(|(index, _)| *index == claim_index)
-                .expect("the current claim is in its equality band");
-            let grant = u64::from(base_grants[band_index])
-                + u64::from(
-                    order
-                        .iter()
-                        .take(leftover)
-                        .any(|&winner| winner == band_index),
-                );
-            let grant =
-                u32::try_from(grant).map_err(|_| ResidentApportionmentError::ArithmeticOverflow)?;
-            if grant > claim.requested {
+            if !converged {
                 return Err(ResidentApportionmentError::ArithmeticOverflow);
             }
-            grant
+            let mut active_band = Vec::with_capacity(band.len());
+            for (index, other) in &band {
+                if !exact_quota_exceeds_cap(
+                    &bases[*index],
+                    active_supply,
+                    &active_basis,
+                    other.requested,
+                )? {
+                    active_band.push((*index, *other));
+                }
+            }
+            if let Some(band_index) = active_band
+                .iter()
+                .position(|(index, _)| *index == claim_index)
+            {
+                let band = active_band;
+                let mut base_total = 0u64;
+                let mut remainders = Vec::with_capacity(band.len());
+                let mut base_grants = Vec::with_capacity(band.len());
+                for (index, _) in &band {
+                    let numerator = exact_mul_u32(&bases[*index], active_supply)?;
+                    let (base, remainder) = exact_divmod_u32(&numerator, &active_basis)?;
+                    base_total = base_total
+                        .checked_add(u64::from(base))
+                        .ok_or(ResidentApportionmentError::ArithmeticOverflow)?;
+                    base_grants.push(base);
+                    remainders.push(remainder);
+                }
+                let leftover = u64::from(active_supply)
+                    .checked_sub(base_total)
+                    .ok_or(ResidentApportionmentError::ArithmeticOverflow)?
+                    as usize;
+                let mut order: Vec<usize> = (0..band.len()).collect();
+                order.sort_by(|&left, &right| {
+                    exact_cmp(&remainders[right], &remainders[left]).then_with(|| {
+                        band[left]
+                            .1
+                            .source_simthing_id
+                            .cmp(&band[right].1.source_simthing_id)
+                    })
+                });
+                let mut tie_start = 0usize;
+                while tie_start < order.len() {
+                    let remainder = remainders[order[tie_start]];
+                    let mut tie_end = tie_start + 1;
+                    while tie_end < order.len() && remainders[order[tie_end]] == remainder {
+                        tie_end += 1;
+                    }
+                    let tie_len = tie_end - tie_start;
+                    let rotation = (u64::from(plan.authority_granter.raw())
+                        + u64::from(plan.generation.get()))
+                        % tie_len as u64;
+                    order[tie_start..tie_end].rotate_left(rotation as usize);
+                    tie_start = tie_end;
+                }
+                let grant = u64::from(base_grants[band_index])
+                    + u64::from(
+                        order
+                            .iter()
+                            .take(leftover)
+                            .any(|&winner| winner == band_index),
+                    );
+                let grant = u32::try_from(grant)
+                    .map_err(|_| ResidentApportionmentError::ArithmeticOverflow)?;
+                if grant > claim.requested {
+                    return Err(ResidentApportionmentError::ArithmeticOverflow);
+                }
+                grant
+            } else {
+                claim.requested
+            }
         };
         products.push(ResidentConstrainedProduct::successful(
             claim.semantic_row,

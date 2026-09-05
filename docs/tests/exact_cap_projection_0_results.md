@@ -1,84 +1,123 @@
-# EXACT-CAP-PROJECTION-0 — ingress and falsification evidence
+# EXACT-CAP-PROJECTION-0 — implementation evidence
 
-Status: **PROBATION / proof-present / DA-review-pending / STOP / OPEN / UNMERGED**. The Owner falsifier is planted and RED. No production remedy has been applied; this is a scope-adjudication packet, not a 15.9 exit certificate.
+Status: **PROBATION / proof-present / DA-review-pending / OPEN / UNMERGED**. CAP COLLISION = SATURATE AND REDISTRIBUTE is implemented in the existing CPU reference and production WGSL authority. The immutable PR/board return binds this document to the tested implementation head and hosted run IDs; orchestration owns final triage and graduation routing.
 
-- Dispatch: board comment 5552404418.
-- Branch: `codex/exact-cap-projection-0`.
-- Base: `be7c0f688051d7e31ec21c4e7f069dd6bc77de8d`.
+- Dispatch: [5552404418](https://github.com/khorum08/SimThing/issues/1332#issuecomment-5552404418).
+- Scope supplement: DA [5553053933](https://github.com/khorum08/SimThing/issues/1332#issuecomment-5553053933); resume [5555445244](https://github.com/khorum08/SimThing/issues/1332#issuecomment-5555445244).
+- Branch / draft PR: `codex/exact-cap-projection-0` / #1978.
+- Dispatched base: `be7c0f688051d7e31ec21c4e7f069dd6bc77de8d`.
+- Preserved RED packet head: `a204573387da0a16924b7b1a30f37037df2a4c69`.
 - HD-RECEIPT: 4b4c679f6cae
 - ORIENT-RECEIPT: 468c464f975d
 - orientation_rule_stamp: 53a4ada59778a8b5
 - orientation_digest_sha: 783eb156251784906c84cc866fc7a38c6e3eecaefca571a365143276412b83c9
 
-The handoff was rendered first, fresh coding orientation obtained as dispatched, and all 49 REQUIRED-ANCHORS retrieved through `anchor_query.sh`. Their hashes match the already-read session anchors; the new orientation receipt replaces the 15.8 receipt.
+The handoff was rendered first, fresh coding orientation obtained as dispatched, and all 49 REQUIRED-ANCHORS retrieved through `anchor_query.sh`. The comment-only DA supplement expressly retains the HD and orientation receipts. The conforming scope STOP returned in 5552619019 is resolved by admitting exactly the two fixed qualification pin literals. Neither the HD nor the bundle component list changes.
 
-## Binding STOP: qualification companion lies outside the admitted surfaces
+## Archaeology before implementation
 
-Dispatch [5552404418](https://github.com/khorum08/SimThing/issues/1332#issuecomment-5552404418) and the rendered HD explicitly require:
+| Existing surface | Caller / consumer and disposition |
+|---|---|
+| `crates/simthing-kernel/src/resident_clearing_apportionment.rs` public `execute_resident_apportionment_cpu` | Existing workshop callers: `resident_clearing_apportionment_0.rs`, `resident_clearing_parity_0.rs`, `recursive_resource_filter_formalization_0.rs`. The new `exact_cap_projection_0.rs` adds a test caller only. No ordinary production CPU numerical caller was found. |
+| Same file, private `settle_resident_apportionment_over_share_vector` | Sole private CPU exact clearer, called only by that public reference. Existing scope / hard-precedence grouping, Q149 inputs, canonical products, Hamilton and tie rotation remain here. Old post-share cap guard returned `ArithmeticOverflow`; the new active set precedes the same final rounding. |
+| `crates/simthing-driver/src/resident_clearing_runtime.rs`, `dispatch_market` | Ordinary qualified session: immediate inputs reach `WorldGpuState::encode_resident_apportionment_with_dispatch_into`; spatial and temporal inputs reach the existing live-head exact encode methods. No host projection or new caller. |
+| `crates/simthing-gpu/src/resident_clearing_runtime.rs` live head | `encode_spatial_apportionment` and `encode_temporal_apportionment` use existing WorldGpuState wrappers. All immediate / spatial / temporal variants reach the same kernel executor. Only the separately admitted qualification literal changes in this file. |
+| `crates/simthing-kernel/src/shaders/resident_clearing_apportionment.wgsl`, `settle_partition` | Existing session pipelines invoke W32/W64 entry points. The same exact active set runs from immutable admitted input rows and live values for every physical dispatch shape. The output ABI and status codes are unchanged. |
+| Kernel `ResidentApportionmentSession::readback_products` | Existing typed status-to-error conversion rejects failed vectors. No partial-success readback or new error/retry semantics. |
+| Driver materialization / GPU live head | Existing canonical product success checks remain the only downstream error consumers. 15.10 failure/retry/rollback remains fenced. |
+| Driver admission -> GPU `ResidentClearingQualification::admit` | The fixed fingerprint comparison occurs before creating the exact executor. The changed semantic bundle must pass this existing production gate. |
 
-> implementation requires another production surface or gate-code edit; STOP with exact source/consumer reason before broadening
+`plan_resident_exact_apportionment` still plans the admitted exact inputs. `clearing_weight_projection.rs` is not the cap-settlement authority and is unchanged. The product constructor, semantic sorting, scratch layout, bindings, entry points and production dispatch wrappers are unchanged.
 
-Both permitted apportionment files are already named components of the graduated 15.7 complete semantic kernel bundle. `simthing-gpu/build.rs` hashes their bytes into `SEMANTIC_KERNEL_BUNDLE_HASH`; `ResidentClearingQualification::capture` includes that hash in the qualification record. `ensure_production_qualified` compares the record's fingerprint against the fixed `QUALIFIED_RESIDENT_CLEARING_FINGERPRINT`. Ordinary `ResidentClearingRuntime::admit_sealed_market_with_persistence_deformations` calls this admission before creating the exact executor. Consequently, changing the permitted CPU/WGSL semantics invalidates the existing production qualification, as E8 requires.
+## Preserved falsifier-first RED
 
-The exact-source census found two necessary companion locations outside every entry in the HD `surfaces` list:
-
-| Location | Existing binding | Required companion scope |
-|---|---|---|
-| `crates/simthing-gpu/src/resident_clearing_runtime.rs:22` | `QUALIFIED_RESIDENT_CLEARING_FINGERPRINT = 0x1c26_d4ee_5861_ec68` | After the new algorithm passes qualification on the real adapter, update only this pin to the observed qualified tuple |
-| `crates/simthing-workshop/tests/resident_clearing_parity_0.rs:52` | Independent `QUALIFIED_RECORD_FINGERPRINT` asserted by the frozen parity terminal referee | Update only its matching qualification pin, preserving every numerical golden, assertion, and refusal witness |
-
-**Requested orchestration/DA scope decision:** admit those two exact pin locations as mandatory E8 companions, contingent on actual amended-source qualification, or identify an already-admitted way to requalify that preserves the fixed seal. No build-script expansion is needed: both target files are already in the component list. No gate edit is needed. The HD and both pins remain unchanged. No new fingerprint is guessed, no qualified tuple is bypassed, and no weakened assertion is proposed.
-
-The Owner RED ran before any production edit. Coding stopped before implementing or broadening the remedy once this source/consumer dependency was established. Existing source remains byte-identical to the dispatched base. The new test deliberately continues to fail; it is neither ignored nor inverted to bless the old refusal.
-
-## Current caller archaeology and error propagation
-
-| Surface | Current caller / consumer | Cap/error behavior |
-|---|---|---|
-| Kernel `execute_resident_apportionment_cpu` | Existing workshop `resident_clearing_apportionment_0`, `resident_clearing_parity_0`, `recursive_resource_filter_formalization_0`; the new Owner falsifier adds one test caller | Reads admitted live bases, converts to exact common Q149 via `exact_capped_basis`, calls the one private `settle_resident_apportionment_over_share_vector` |
-| Private CPU settlement | Called only by that public kernel reference entry | Scope grouping, earlier-band executable grant ceilings, exact band quotient/remainder, Hamilton and tie rotation; post-share `grant > claim.requested` returns `ResidentApportionmentError::ArithmeticOverflow` |
-| Driver `ResidentClearingRuntime::dispatch_market` (immediate input) | Ordinary qualified session binding calls `WorldGpuState::encode_resident_apportionment_with_dispatch_into` | Dispatches the existing `ResidentApportionmentSession`; no host projection |
-| GPU live head `encode_spatial_apportionment` / `encode_temporal_apportionment` | Same driver dispatch switch, through the existing live head | Calls the existing spatial-product / temporal-demand variants on `WorldGpuState`; both reach the same exact WGSL executor |
-| `WorldGpuState` exact encode methods | Immediate, spatial and temporal wrappers | Pass the real resident values and canonical buffers to the corresponding existing session encode methods |
-| WGSL `settle_partition`, W32/W64 entry points | Existing `ResidentApportionmentSession` pipelines and partition dispatch | Mirrors Q149, precedence, exact quotients/remainders and tie ranking; `granted > current.requested` writes `STATUS_ARITHMETIC_OVERFLOW` |
-| Kernel `ResidentApportionmentSession::readback_products` | Direct exact GPU referees | Any error status returns the corresponding typed error; it does not return a partial success vector |
-| Driver materialization / GPU live head | Production schedule observation and subsequent consumers | Failed canonical products are rejected by existing product-success checks; this rung adds no alternate status, recovery, or retry semantics |
-| Production admission | Driver admission -> `ResidentClearingQualification::admit` -> fixed fingerprint comparison | A changed semantic bundle requires requalification at the out-of-scope pin before this production consumer can admit it |
-
-The driver plans exact inputs via `plan_resident_exact_apportionment`; `clearing_weight_projection.rs` is not a caller or alternate settlement authority. `ResidentApportionmentSession::new` loads `shaders/resident_clearing_apportionment.wgsl`; immediate, spatial and temporal input variants share it. The CPU reference has no ordinary production numerical caller in this census. Its three existing workshop caller files remain unchanged.
-
-## Falsifier-first transcript
-
-Command on stamped production source at `be7c0f688051d7e31ec21c4e7f069dd6bc77de8d`, with the new unignored test:
+Before any production edit, including at committed packet head `a204573387da0a16924b7b1a30f37037df2a4c69`:
 
 ```text
 cargo test -p simthing-workshop --test exact_cap_projection_0 -- --nocapture --test-threads=1
-requests=[1,100], admitted live bases=[1,1], same scope/equality band, S=101
+requests=[1,100], live bases=[1,1], one scope/equality band, S=101
 CPU=Err(ArithmeticOverflow)
-GPU W32 rows_per_dispatch=1: Err(ArithmeticOverflow)
-GPU W32 rows_per_dispatch=4294967295: Err(ArithmeticOverflow)
-GPU W64 rows_per_dispatch=1: Err(ArithmeticOverflow)
-GPU W64 rows_per_dispatch=4294967295: Err(ArithmeticOverflow)
-FAILED: feasible cap collision must saturate and redistribute to (1,100): ArithmeticOverflow
-0 passed; 1 failed; 0 ignored; shell nonzero / cargo test failure
+GPU W32 partition1 / single: Err(ArithmeticOverflow), Err(ArithmeticOverflow)
+GPU W64 partition1 / single: Err(ArithmeticOverflow), Err(ArithmeticOverflow)
+FAILED: feasible cap collision must saturate and redistribute to (1,100)
+0 passed; 1 failed; 0 ignored
 ```
 
-The fixture uses existing `TreeExecutionAuthority`, semantic-plan admission, canonical rows/buffers, `ResidentApportionmentPlan::build`, CPU reference, real resident values, and the production WGSL exact executor. It adds no solver or alternative economic input type. Both bases are exactly 1 after the existing cap-to-request basis conversion. The old share is 101/2 for each row before the frozen Hamilton step, so the row capped at request 1 fails the post-share guard. All four GPU dispatch shapes exercise that same failure. The assertion still requires exact successful products `(G1,U0)` and `(G100,U0)` and byte-for-byte CPU/GPU equality.
+Local transcripts: `.git/159-owner-red.log`, `.git/159-owner-red-head.log`. The original Owner assertion is retained without ignore, inversion, new semantics, or expected-error substitution. The fixture uses admitted TreeExecutionAuthority, resident semantic plan/buffers, existing exact plan, real GPU values and the production shader.
 
-## Checks and proof limits
+## One exact active-set algorithm
+
+For one hard-precedence equality band, let `S0=min(remaining supply,sum positive-basis request caps)` and `B0=sum exact Q149 bases`. The existing E6 zero-basis ceiling and prior-band accounting remain unchanged. A zero total basis still grants zero.
+
+1. Start `S=S0`, `B=B0`, frozen count zero.
+2. Scan the immutable original band. A row is frozen precisely when `b_i*S > B*r_i`, an exact integer cross-product comparison. Sum all currently frozen caps and bases.
+3. If the frozen count is unchanged, the active set is final. Otherwise subtract the total frozen caps from S0 and the total frozen bases from B0, and repeat.
+4. Frozen rows receive their request exactly. Only nonfrozen rows enter the pre-existing exact quotient/remainder, Hamilton largest-remainder and `(granter+generation)` tie rotation. Construct and sort the same canonical products, with `U=request-G` and status OK.
+
+CPU and WGSL have the same `exact_quota_exceeds_cap` comparison and scan/subtract/fixed-point order. CPU retains a local final-active list; WGSL reclassifies immutable rows in its two existing final quotient/remainder scans. Neither reads another invocation's output or stores shared frozen flags. WGSL keeps the original W32/W64 entry points, input/output halves and partition machinery. There is no float lambda, alternate rounding, host solver, or cross-band redistribution.
+
+Termination and safety: removing rows whose cap/basis ratio is strictly below S/B strictly raises the active ratio. Therefore a frozen row stays frozen; any nonfinal pass increases the frozen count by at least one. Since S0 is no larger than the executable cap sum, at least one positive-basis row remains active. At most n-1 freezes plus one final scan are possible. CPU bounds scans by the band length; WGSL uses the enclosing admitted row count, an upper bound. Progress, denominator and checked arithmetic guards remain typed failures for violated invariants.
+
+The existing scope overflow guard requires `sum(requests)-supply <= u32::MAX` when positive. As supply is u32, the request sum is below 2^33. Capped Q149 bases therefore sum below 2^182, and multiplying that sum by any u32 cap is below 2^214, fitting the existing 224-bit machinery. The individual numerator fits too. Cap classification runs before division: a previously frozen row can have a final notional quotient above u32 without making a lawful band overflow. No error is swallowed to classify that row.
+
+Final active quotas are at or below integer caps; a fractional quota's Hamilton increment cannot exceed its cap, and an integral capped quota has zero residue. Frozen caps plus final active grants total S0 exactly. Prior precedence bands therefore consume their executable amount without reserving zero-basis requests, and only remaining supply reaches later bands.
+
+## GREEN and no-collision certificates
+
+`cargo test -p simthing-workshop --test exact_cap_projection_0 -- --nocapture --test-threads=1`: **3 passed / 0 failed / 0 ignored**. Transcript `.git/159-green-unqualified.log` was obtained through the existing lower-level CPU/GPU exact referees before changing the qualification pins.
+
+| Witness | Exact grants and distinguishing obligation |
+|---|---|
+| Owner `[1,100]`, bases `[1,1]`, S101 | `[1,100]`, U `[0,0]`, CPU and W32/W64 x single/partition1 |
+| Three-row `[1,2,100]`, bases `[1,2,1]`, S103 | `[1,2,100]`; two caps freeze in the first pass |
+| `[1,4,100]`, equal bases, S10 | Initial ratio 10/3 freezes cap1; ratio 9/2 freezes cap4; remaining row gets5. Two nonfinal iterations. |
+| Same `[1,4,100]` with equal minimum subnormals | `[1,4,5]`; common Q149 unit survives both freezes |
+| `[1,100]`, bases `[1,min-subnormal]`, S101 | `[1,100]`; frozen row's final notional quotient exceeds u32, but its exact cap classification succeeds |
+| `[1,100,100]`, bases `[1,0.3125,7]`, S12 | `[1,0,11]`; strict rational cap collision is resolved before integer rounding |
+| `[1,100,100,9]`, bases `[1,1,0,9]`, precedences `[0,0,0,1]`, S110 | `[1,100,0,9]`; zero-basis request receives U100 and does not strand later-band supply |
+| `[1,100,100,100]`, equal bases, S6, six generations | Freeze cap1; Hamilton gives the remaining five units only to the final three-row active tie, with the unchanged rotation |
+
+The combined 12-case cap matrix runs every row permutation, both admission orders, both original/rotated physical slot layouts and all four GPU dispatch shapes: **3,104 GPU runs**, each compared with fixed expected G/U and the canonical full CPU product vector. Admission/slot changes cannot select economics.
+
+Before production edits, the new no-collision corpus ran on the byte-unchanged dispatched solver: **338 cases**, CPU/GPU equality and FNV-1a digest **`05cb01d96dc69dbe`** over every byte of every canonical CPU product. That observed value was then fixed in the test before editing the two algorithm sources. The amended solver returns the same digest. The corpus covers zero/mixed bases, bounded integer bases/supplies, all six canonical product fields plus status/reserved bytes, neutral requests at 2^24, minimum subnormals, wide caps/extreme finite allocations, precedence/E6 and eight tie generations. Transcript `.git/159-no-collision-master.log` preserves the pre-edit observation. Existing numerical goldens are unchanged.
+
+Mechanically, if no rational quota breaches a cap, the first scan terminates with original S/B and the complete original band. The existing quotient/remainder, source ordering and tie rotation then receive the identical inputs. Every no-collision product bit is preserved; the cap-collision fixtures above are outside that condition.
+
+## E8 old-pin refusal and observed requalification
+
+After final algorithm edits, with both old pins still `1c26d4ee5861ec68`, ordinary production session admission was exercised:
+
+```text
+cargo test -p simthing-workshop --test resident_session_integration_conformance_0 ordinary_session_identity_half_and_registry_permutation_cross_real_generations -- --nocapture --test-threads=1
+ResidentClearing(LiveHead(UnqualifiedAdapter {
+  required: 2028542802327104616,
+  observed: 9297387406934488982
+}))
+0 passed; 1 failed; 0 ignored; 5 filtered out
+```
+
+The failure is at ordinary admission before economics, through the existing fixed comparison. Transcript `.git/159-e8-old-pin-refusal.log`. The observed integer is **`0x8106_f496_4185_3796`**. Both admitted literals are transcribed to that value in the same implementation commit; their diffs contain one literal replacement each. No dynamic pin, comparator/record change or build-script change.
+
+The unchanged parity referee subsequently prints `RESIDENT-CLEARING-QUALIFICATION-FINGERPRINT: 8106f49641853796` and passes; ordinary production sessions and all frozen cross-rung referees also pass. Provenance: Vulkan; NVIDIA GeForce RTX 4080 Laptop GPU; vendor4318/device10144; NVIDIA595.79; rustc1.95.0 `(59807616e)`, x86_64-pc-windows-msvc, LLVM22.1.2; EML_RESOURCE_PROFILING; wgpu22.1.0/naga22.1.0; dependency lock hash2005979115394712535; semantic bundle hash4510924765333878963; workgroups32/64; existing subgroup-independent assumption; ABI1. The full record is preserved in `.git/159-final-frozen.log`.
+
+## Validation and unchanged authority
 
 - `cargo check -p simthing-kernel`: PASS.
-- Frozen exact corpus and cross-rung referees: **28 passed / 0 failed**: apportionment (7), parity (1), formalization (1), 15.5 (5), 15.6 (4), 15.7 (4), 15.8 (6). Existing Q149/neutral-request, deterministic tie, hard precedence, E6, canonical ordering, row/workgroup/partition, recursion, E5/E7, permit, actual-session and provenance assertions are unchanged.
-- GPU qualification unit matrix with `--features eml-resource-profiling`: **4 passed**. Existing ABI, child-share, planner and temporal component mutation witnesses remain load-bearing. Production pin remains `1c26d4ee5861ec68`.
-- Authority census remains unchanged: one resident production authority, five CPU oracle doors, two CPU call-site families, two pre-existing peer residues; duplicate settlement, economic adapter, global coupling and private solver counts all zero.
-- Exact structural, inventory, committed Agent Scan and hosted Scan/Exec results are recorded with the immutable packet head in the PR/board return. Hosted smoke/structural success does not turn this intentional Owner RED into an implementation PASS.
-- **Not claimed:** GREEN cap products, three-row/multiple-freeze proof, amended CPU/WGSL algorithm correspondence, termination proof, amended no-collision bit-identity certificate, full zero-red implementation certificate, or graduation readiness. These require implementing and qualifying the remedy after the scope STOP is resolved.
+- Frozen workshop apportionment7, parity1, recursive formalization1, recursion-axis5, substrate-binding4, authority-lifetime4 and ordinary-session6: **28 passed / 0 failed**. Q149/neutral-request, invalid/nonfinite and real overflow refusals, Hamilton/tie, hard precedence, E6, canonical ordering, E5/E7, recursion, permits and live provenance assertions are unchanged.
+- Qualification unit matrix (`cargo test -p simthing-gpu --features eml-resource-profiling resident_clearing_runtime -- --nocapture --test-threads=1`): **4 passed / 0 failed**. Existing ABI, child-share, planner and temporal mutation witnesses remain unchanged and distinguishing.
+- Structural battery: **15 checks pass**: inventory1435/discovered1435/missing0/extra0, drift prove, constitutional check/selftest, lifecycle schema/prove, sanctioned digest, detachability check/selftest, anchor check/selftest, plan typing, observation, slot and overlay censuses. Logs `.git/159-final-*.log` and `.git/159-final-gate-exits.txt`.
+- Full workspace, structural battery, inventory/drift, Agent Scan and hosted Scan/Exec certificates are bound to the exact implementation head in the final immutable PR/board return. No hosted smoke result substitutes for the local real-GPU tests.
+- Authority census: one resident production exact authority; five CPU oracle doors; two CPU call-site families; two pre-existing peer residues; duplicate settlement, economic adapter, global coupling and private solver all zero. Final scanner evidence is attached to the return.
 
-Changed-file ledger: only this results doc, `crates/simthing-workshop/tests/exact_cap_projection_0.rs`, its `scripts/ci/test_inventory.tsv` row, and the append-only `scripts/ci/anchor_reach_log.tsv` receipt. Zero production, gate, HD, canon, pointer, golden, or qualification-pin edits. 15.10 and departing-stream disposal remain fenced.
+## Changed-file ledger and routing
 
-## Routing
+Algorithm: `crates/simthing-kernel/src/resident_clearing_apportionment.rs` and `crates/simthing-kernel/src/shaders/resident_clearing_apportionment.wgsl`.
 
-Return this exact scope dependency to orchestration/DA. Preserve the current HD receipt and fresh coding receipt until an authoritative HD amendment changes the former. Coding does not amend the HD, merge, graduate, run final clearance/relay on orchestration's behalf, or treat the existing qualification seal as optional.
+DA-admitted pin-only companions: `crates/simthing-gpu/src/resident_clearing_runtime.rs` and `crates/simthing-workshop/tests/resident_clearing_parity_0.rs`.
+
+Proof surfaces: `crates/simthing-workshop/tests/exact_cap_projection_0.rs`, this results document, `scripts/ci/test_inventory.tsv` (three inventoried 15.9 tests), and the existing append-only `scripts/ci/anchor_reach_log.tsv` ingress receipt. Exactly eight changed paths against dispatched base. No new kernel test file was needed.
+
+No build-script, workflow/gate-code, HD, canon, pointer, product ABI, qualification record/comparator or numerical-golden edit. 15.10 and departing-stream disposal remain fenced. Return PROBATION / proof-present / DA-review-pending / OPEN / UNMERGED for orchestration's INSPECT triage, final exact-head clearance, relay-lint and DA review. Coding does not merge or self-graduate.
 
 ## Required anchor acknowledgments
 
