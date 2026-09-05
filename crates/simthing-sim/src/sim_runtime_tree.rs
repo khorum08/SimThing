@@ -187,6 +187,22 @@ impl SimRuntimeTree {
         find_node(&self.inner, id).is_some()
     }
 
+    /// Read authored data without exposing semantic kinds or a mutable tree.
+    pub fn property_on_node(
+        &self,
+        id: SimThingId,
+        property: SimPropertyId,
+    ) -> Option<&PropertyValue> {
+        find_node(&self.inner, id)?.properties.get(&property)
+    }
+
+    pub fn owner_of(
+        &self,
+        id: SimThingId,
+    ) -> Result<simthing_core::OwnerRef, simthing_core::OwnerResolutionError> {
+        simthing_core::resolve_owner(&self.inner, id)
+    }
+
     /// Query one node without exposing raw `SimThing` or `.kind`.
     pub fn snapshot_node(&self, id: SimThingId) -> Option<RuntimeNodeSnapshot> {
         let node = find_node(&self.inner, id)?;

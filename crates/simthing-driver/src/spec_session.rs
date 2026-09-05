@@ -91,6 +91,8 @@ pub struct SpecSessionState {
     pub handler_errors: Vec<String>,
     /// Resource Flow arena participation registry (E-9). Driver/spec artifact only.
     pub arena_registry: ArenaRegistry,
+    /// Authored, ClauseThing-compiled policies in the existing claimant/full-scope vocabulary.
+    pub persistence_deformations: simthing_spec::PersistenceDeformationBindings,
     /// Inspectable admission provenance for property/topology-derived arenas.
     pub resource_flow_derivation: crate::resource_flow_derivation::ResourceFlowDerivationReport,
     /// P0(e) report projected from the canonical live DimensionRegistry.

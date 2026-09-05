@@ -627,6 +627,18 @@ impl PersistenceDeformationBindings {
     ) -> Option<&PersistenceDeformationProgram> {
         self.by_claimant.get(&(scope.clone(), source_simthing_id))
     }
+
+    /// Read the admitted policies for one market without creating another policy table.
+    pub fn for_scope<'a>(
+        &'a self,
+        scope: &'a OwnerChannelScopeKey,
+    ) -> impl Iterator<Item = (SimThingId, &'a PersistenceDeformationProgram)> + 'a {
+        self.by_claimant
+            .iter()
+            .filter_map(move |((key, source), program)| {
+                (key == scope).then_some((*source, program))
+            })
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Error)]
