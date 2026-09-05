@@ -6,7 +6,11 @@
 > suites / 535 pass / zero red @ `c4d1b7a8`). Every claim below is implemented and
 > witnessed unless explicitly marked OPEN; §9 is the per-rung proof ledger. Presented to
 > the engineering cross-rung re-review of 15.5–15.7 together with the arc itself.
-> **Adoption is gated on that re-review**, after which this document either dissolves
+> **RE-REVIEW COMPLETE 2026-09-05: REMAND** — the scoped 15.5-15.7 results stand, but
+> one STOP integration hole (ordinary-session temporal ingress), two semantic defects
+> (cap-collision completion; arena-ambiguity), and one abort-safety falsifier gate
+> adoption; sec 8 carries the remediation sequence. After remediation and a fresh
+> narrow re-review, this document either dissolves
 > into `simthing_core_design.md` or stands as the anchored unification ADR. Until
 > adoption, canonical law remains `simthing_core_design.md` (whose §8.4 carries a
 > KNOWN-REMAND marker scheduled for deletion in the post-re-review canon rewrite).
@@ -139,6 +143,9 @@ EML programs, never by adding parallel machinery.
            changed granter/scope — dispatch_spatial)
       → TEMPORAL: U → optional sealed deformation → ResidentTemporalDemand for N+1
            (once-mint; second mint typed-refused; prepared ≠ executed)
+           **[OPEN: the resident temporal doors are proven but the ORDINARY
+           SimSession does not yet invoke them — remediation rung chartered;
+           the CPU once-mint door is likewise oracle-posture only]**
       → consequence consumers (valuation/CostBand/Overlay; observation; CausalBand)
       → N+1 proceeds from resident grants/U BEFORE any host materialization
 
@@ -255,20 +262,32 @@ per-edge generation permits; runtime toolchain probing; adapters between germ po
   Phase-15-derived composite T_R metric (the 14.1 comparator stays frozen).
 - **Cross-vendor adapter qualification**: dated follow-on to the fingerprint law.
 
-## 8. Open items (truth as of 2026-09-05)
+## 8. Open items (truth as of 2026-09-05 — re-review COMPLETE: REMAND)
 
-1. **Engineering cross-rung re-review of 15.5–15.7** — mandated, next. This document
-   is an input to it.
-2. **Cap-collision law** — parked FOR that review: today a proportional grant
-   exceeding a row's request typed-refuses the whole vector (fail-closed, lawful);
-   refuse-vs-redistribute needs an explicit ruling with the two-row falsifier.
-3. **Canon rewrite** — post-re-review: delete the §8.4 KNOWN-REMAND marker, rewrite
-   §8.4.1–8.4.3 to this document's mathematics, and apply the disposition map:
-   RF Market Core and the Phase-15 charter demote to historical records; the workshop
-   unification model is superseded; this document dissolves or anchors canonical.
-4. **Track closeout** — Owner-gated behind all of the above; ceremony obligations as
-   recorded (reap first, final certificate, orientation amendments, dated debt
-   dispositions, CLOSEOUT-RECEIPT).
+1. **STOP — ordinary-session temporal ingress**: the resident temporal doors and the
+   authored persistence port have NO SimSession production caller (session admission
+   passes empty deformations; the cross-product referee drives the runtime directly).
+   Remediation rung chartered: real-session cross-product through actual permit
+   boundaries, authored deformation admission, and the adjudicated answer to WHEN
+   d_authored(N+1) becomes authoritative (U stays resident; never force early
+   authoring to fit a helper shape).
+2. **Cap collision**: engineering recommends SATURATE-AND-REDISTRIBUTE (bounded
+   active-set water-filling: g_i = min(r_i, λ·b_i); freeze capped rows; repeat;
+   Hamilton on the final active set; all no-collision results bit-identical) —
+   Owner ruling pending; a feasible vector must never fail-close.
+3. **Arena ambiguity**: `preferred_arena = None → arena[0]` is order-dependent
+   economic binding in production — resolve-or-typed-refuse; folded into the
+   session-integration rung.
+4. **Generation-abort safety (falsifier first)**: permit Drop reopens the generation
+   after economic side effects may have committed; plant the failure-after-dispatch
+   falsifier; expected law = touched/faulted seal state with fail-stop poisoning,
+   no same-generation replay without explicit recovery.
+5. **Canon rewrite** — after remediation + fresh narrow re-review: delete the §8.4
+   KNOWN-REMAND marker, land the corrected Π/R mathematics, correct the Gu-Yang
+   lineage (Gu-Yang = the conservative-relaxation / cancellation-front insight;
+   SaturatingFlux is the generic transport primitive, capacity saturation is not the
+   definition), and apply the historical-docs disposition map.
+6. **Track closeout** — Owner-gated behind all of the above.
 
 ## 9. Proof ledger — what is proven, where (the unified review)
 
