@@ -344,3 +344,58 @@ fn both_postures_exercise_the_same_draw_envelope_at_the_current_boundary() {
         println!("15.8 posture={posture:?} authored10/max9: {error}");
     }
 }
+
+#[test]
+fn departing_last_flow_claimant_refuses_before_silently_discarding_continuation() {
+    for posture in [
+        simthing_core::ClearingExecutionPosture::ResidentRequired,
+        simthing_core::ClearingExecutionPosture::CpuVendorizedOracle,
+    ] {
+        for established in [false, true] {
+            let (scenario, claimant) = scenario();
+            let mut session = SimSession::open(scenario).unwrap();
+            install(&mut session, claimant, None, false);
+            session.set_clearing_execution_posture(posture).unwrap();
+            if established {
+                session.step_once().unwrap();
+            }
+            let before = facts(&session, claimant);
+            if established && posture.is_resident_required() {
+                assert_eq!(before, [(1, 4, 6)]);
+            }
+
+            // Authored ownership fission removes this bearer from the admitted scope.
+            // Its demand stays 10: departure must not be represented by a zero row.
+            let mut authored = SimThing::new(SimThingKind::Cohort, 0);
+            bind_owner(&mut authored, &OwnerRef::new("owner/departed"));
+            assert!(session.proto.root.add_property_to_node(
+                claimant,
+                simthing_core::OWNER_CHANNEL_PROPERTY_ID,
+                authored
+                    .property(simthing_core::OWNER_CHANNEL_PROPERTY_ID)
+                    .unwrap()
+                    .clone(),
+            ));
+            assert_eq!(
+                session.proto.root.owner_of(claimant).unwrap(),
+                OwnerRef::new("owner/departed")
+            );
+            assert_eq!(
+                session.proto.root.property_on_node(claimant, OWNER_FLOW_DEMAND_PROPERTY_ID),
+                Some(&scenario_metadata_u32_value(10)),
+            );
+            let outcome = session.step_once();
+            println!("15.8 R1 departure: posture={posture:?}; established={established}; N authored10/supply4; outcome={outcome:?}; facts={:?}", facts(&session, claimant));
+            assert_eq!(facts(&session, claimant), before, "no departed demand product");
+            if established {
+                assert!(
+                    outcome.as_ref().is_err_and(|error| error.to_string().contains("departing ordinary flow")),
+                    "live stream departed without consequence disposition or explicit STOP: {outcome:?}"
+                );
+            } else {
+                assert_eq!(session.coord.day_index(), 1);
+                assert!(outcome.unwrap().boundary_reached);
+            }
+        }
+    }
+}

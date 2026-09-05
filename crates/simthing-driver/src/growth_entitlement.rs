@@ -46,6 +46,8 @@ pub enum GrowthEntitlementError {
     ResidentProfileUnqualified,
     #[error("ordinary growth resident clearing failed: {0}")]
     Resident(String),
+    #[error("departing ordinary flow requires consequence-only disposition; STOP for DA adjudication")]
+    DepartingFlowDispositionRequired,
 }
 
 /// Frozen session binding for one standing granter. Authored sessions may
@@ -220,7 +222,12 @@ impl GrowthEntitlementMarketBinding {
             ResidentAuthoredDemand, ResidentClearingBatchBinding, ResidentTemporalExecutionBinding,
         };
         if claims.is_empty() {
-            *continuation = OrdinaryFlowContinuation::Empty;
+            // Ruling 6 does not authorize silently terminating a live stream.
+            // Keep its opaque provenance intact and refuse before mint/append;
+            // the existing consequence ingress has no resident-ticket input.
+            if !matches!(continuation, OrdinaryFlowContinuation::Empty) {
+                return Err(GrowthEntitlementError::DepartingFlowDispositionRequired);
+            }
             if candidates.is_empty() {
                 return Ok(Vec::new());
             }

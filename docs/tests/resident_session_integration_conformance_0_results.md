@@ -2,6 +2,58 @@
 
 Status: **PROBATION / proof-present / DA-review-pending / OPEN / UNMERGED**. This is the coding return, not a graduation or pointer change. Hosted identifiers and the immutable return head are recorded in the PR/board relay.
 
+## Remand R1/R2 — refusal proved; disposal composition STOP
+
+Remand [5549975689](https://github.com/khorum08/SimThing/issues/1332#issuecomment-5549975689) is handled on the same branch/HD/session. Orchestration's triage-only commit `9b5c85e71a1a798183bc1545aa33ee758ce1bc97` is preserved. **PROBATION / proof-present / DA-review-pending / OPEN / UNMERGED; binding STOP for consequence-disposal composition.** The safety guard closes the silent-drop branch; it does not implement stream termination or claim a consequence was delivered.
+
+### R1 falsifier first
+
+Before any production edit, the new actual-session departure falsifier ran on `9b5c85e7`. N clears authored demand 10 against supply 4 to resident G4/U6. Before N+1, an ordinary authored owner binding changes that same persistent claimant to `owner/departed`, outside the admitted `owner/15.8` scope. Its demand property remains 10; no zero datum is authored.
+
+```text
+RED before (cargo exit 101; shell nonzero):
+N: facts=[(1,4,6)]
+N+1: Ok(StepOnceOutcome { ticks_run: 1, boundaries_run: 1, boundary_reached: true })
+facts=[(1,4,6)]
+live stream departed without consequence disposition or explicit STOP
+```
+
+The production branch had assigned `OrdinaryFlowContinuation::Empty` without inspecting its prior Resident/CpuOracle value. There was no consequence call on that branch. The falsifier therefore observes the successful boundary, while source inspection identifies the lost continuation and absent disposition.
+
+The amended branch inspects the prior variant by reference. A live variant returns `GrowthEntitlementError::DepartingFlowDispositionRequired` before `mem::take`, temporal mint, structural settlement, or exact append at this consumer. The opaque resident ticket (or CPU oracle inputs in that posture) remains in the session. Empty + empty claims retains the previous no-stream path.
+
+```text
+GREEN after — refusal, NOT disposal:
+ResidentRequired, established=false: Ok(boundary_reached=true), claimant facts=[]
+ResidentRequired, established=true: Err(GpuSync(GrowthEntitlement(
+  "departing ordinary flow requires consequence-only disposition; STOP for DA adjudication")))
+claimant facts=[(1,4,6)]
+CpuVendorizedOracle: the same no-stream success / established-stream refusal split
+```
+
+The regression preserves the initial red assertion and additionally checks both postures, the no-stream case, unchanged authored demand 10, actual owner departure, and absence of a new claimant product. The session boundary currently erases inner typed errors into its existing string-bearing `GpuSync::GrowthEntitlement` wrapper; this remand does not add another error route. The hot cycle advances the coordinator before this boundary callback; no rollback, safe retry, or poisoned-generation claim is made. 15.10 remains fenced. The original five 15.8 tests and the frozen 15.5/15.6/15.7 tests are unchanged.
+
+### Exact source/consumer edge requiring DA adjudication
+
+| Existing surface | What it accepts / does | Missing composition |
+|---|---|---|
+| `OrdinaryFlowContinuation::Resident` / `ResidentClearingDispatchTicket` | Opaque submission, plan, semantic-scope provenance; U remains in the resident canonical product | No consequence-disposal consumer for that ticket |
+| `ResidentClearingRuntime::prepare_temporal_demands` | Complete ordered 1:1 authored claimant list; reads U through the existing once-mint | An empty or partial next list cannot be reinterpreted as disposal; matcher remains untouched |
+| Driver `submit_authored_persistence_consequence` | `&UnresolvedDemandObservation`, later generation, authored valuation, fixed overlay binding, feeder | No resident-ticket input; no ordinary-session departure valuation/target/lifecycle binding |
+| Spec `fund_unresolved_persistence` | Reads host `observation.unresolved: u32`, applies valuation on CPU, quantizes CostBand, constructs an Overlay | Calling this from a resident ticket would require promoting host U into economic input or adding a newly admitted resident consequence composition |
+
+The existing consequence witness constructs its observation from a CPU `ConstrainedGrant`; it does not provide a resident product disposal bridge. The 15.2 deformation binding is a different, sealed vocabulary and cannot be reused as an authored consequence valuation or destination. Even a default/no-overlay disposition would select new disposal semantics without an authored binding. None is invented.
+
+**DA decision requested by the STOP:** identify/admit the lawful consumer of the retained resident U on final claimant departure, including its consequence valuation/destination authority and completion semantics, or explicitly rule the present fail-closed boundary sufficient for this rung's scope. Coding has not selected either law. Partial claimant mismatch remains the graduated `TemporalSourceMismatch`; no entrant/departure matching subsystem is added. No N+1 tombstone, host U reconstruction, new demand plane, retry manager, peer market, or second persistence lane appears.
+
+### R2 mechanical ingress repair and verification
+
+The normal parser requires exactly one standalone `Rung: RESIDENT-SESSION-INTEGRATION-CONFORMANCE-0` line. The PR previously named the rung only inside prose. Its PR metadata now carries that line plus standalone HD/ORIENT receipts and the existing expected route. Local `handoff_dispatch.sh --resolve-handoff` resolves `handoffs/RESIDENT-SESSION-INTEGRATION-CONFORMANCE-0.hd.md`; `--render-ingress 1974` emits `HD-RECEIPT: cdb03115f4b9`. The HD object and gate scripts are unchanged. The automatic hosted sticky and its run identity are recorded in the exact-head board return after push.
+
+The guard changes a component of the already admitted qualification bundle. The old production fingerprint correctly refused (`required=d27a075cc02c67c4`, `observed=1c26d4ee5861ec68`) before economics. Only the production and independent parity pins follow the observed amended bundle; `gpu/build.rs` is unchanged by this remand and remains prior explicit DA review residue. The new departure test is registered in the existing inventory. Full exact-head structural, focused, workspace, qualification, and hosted receipts are recorded in the PR/board certificate; a green refusal certificate does not discharge the binding disposal STOP.
+
+The following sections describe the accepted continuous-claimant implementation; prior fingerprint/test counts are historical where superseded by the remand certificate.
+
 ## Authority and ingress
 
 - Base: `79f0f6c84a5b0d66367edf9d253c6e7b9904e5fc`.
