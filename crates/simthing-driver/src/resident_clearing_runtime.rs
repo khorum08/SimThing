@@ -13,7 +13,8 @@ use simthing_core::{
     PersistenceDeformationProgram, PropertyLayout, ResidencyCapacityPartition,
     ResidentClearingScheduleFact, ResidentScheduleError, SimProperty, SimPropertyId, SimThing,
     SimThingId, SlotIndex, SubFieldRole, SubFieldSpec, TreeExecutionAuthority,
-    TreeExecutionBinding, TreeGenerationAuthority, TreeRealmId,
+    TreeExecutionBinding, TreeExecutionContextError, TreeExecutionLease,
+    TreeExecutionLeaseVerifier, TreeGenerationAuthority, TreeGenerationPermit, TreeRealmId,
 };
 use simthing_gpu::{
     GpuContext, ResidentApportionmentClaim, ResidentApportionmentDispatch,
@@ -705,6 +706,11 @@ impl ResidentTemporalDemandTicket {
 pub struct ResidentClearingRuntime {
     realm: TreeRealmId,
     incarnation: ExecutionIncarnation,
+    execution_lease_verifier: TreeExecutionLeaseVerifier,
+    /// Standalone/proof constructors retain their own lease. Ordinary
+    /// `SimSession` construction owns the lease and supplies only its
+    /// non-minting verifier to this executor.
+    owned_execution_lease: Option<TreeExecutionLease>,
     executor_qualification: ResidentClearingQualification,
     arena_binding: ResidentRfArenaBinding,
     semantic_plan: ResidentClearingPlan,
@@ -810,20 +816,23 @@ impl ResidentClearingRuntime {
             residency,
         )
         .map_err(|error| ResidentClearingRuntimeError::Identity(error.to_string()))?;
-        let context = authority
-            .seal_context()
+        let lease = authority
+            .seal_lease()
             .map_err(|error| ResidentClearingRuntimeError::Identity(error.to_string()))?;
-        let binding = context
-            .bind(&authority)
+        let binding = lease
+            .bind(root, schedule, registry, residency)
             .map_err(|error| ResidentClearingRuntimeError::Identity(error.to_string()))?;
-        Self::admit_sealed_market_with_persistence_deformations(
+        let mut runtime = Self::admit_sealed_market_with_persistence_deformations(
             ctx,
             &binding,
             arena_registry,
             lane_capacity,
             market,
             deformation_bindings,
-        )
+        )?;
+        drop(binding);
+        runtime.owned_execution_lease = Some(lease);
+        Ok(runtime)
     }
 
     /// Admit the executor from the boundary's one freshly sealed view of the
@@ -868,9 +877,14 @@ impl ResidentClearingRuntime {
             .resident_live_head_capacity()
             .ok_or(ResidentClearingRuntimeError::ZeroLaneCapacity)?;
         let live_head = ResidentClearingLiveHead::admit(ctx, live_head_capacity)?;
+        let execution_lease_verifier = binding
+            .lease_verifier()
+            .map_err(|error| ResidentClearingRuntimeError::Identity(error.to_string()))?;
         Ok(Self {
             realm: binding.context().realm(),
             incarnation: binding.context().incarnation(),
+            execution_lease_verifier,
+            owned_execution_lease: None,
             executor_qualification,
             arena_binding: projection.arena_binding,
             semantic_plan: projection.semantic_plan,
@@ -902,6 +916,43 @@ impl ResidentClearingRuntime {
 
     pub const fn incarnation(&self) -> ExecutionIncarnation {
         self.incarnation
+    }
+
+    /// Mint a whole-generation permit for a standalone/proof runtime. The
+    /// ordinary session path owns the lease above this executor and mints the
+    /// same capability at the session boundary instead.
+    pub fn begin_generation(
+        &self,
+        generation: GenerationStamp,
+    ) -> Result<TreeGenerationPermit, ResidentClearingRuntimeError> {
+        self.owned_execution_lease
+            .as_ref()
+            .ok_or(ResidentClearingRuntimeError::SessionOwnsGenerationAuthority)?
+            .begin_generation(generation)
+            .map_err(ResidentClearingRuntimeError::ExecutionAuthority)
+    }
+
+    /// Consume a standalone/proof runtime's permit exactly once at N -> N+1.
+    pub fn finish_generation(
+        &self,
+        permit: &mut TreeGenerationPermit,
+        next: GenerationStamp,
+    ) -> Result<GenerationStamp, ResidentClearingRuntimeError> {
+        self.owned_execution_lease
+            .as_ref()
+            .ok_or(ResidentClearingRuntimeError::SessionOwnsGenerationAuthority)?
+            .finish_generation(permit, next)
+            .map_err(ResidentClearingRuntimeError::ExecutionAuthority)
+    }
+
+    fn validate_generation_permit(
+        &self,
+        permit: &TreeGenerationPermit,
+        generation: GenerationStamp,
+    ) -> Result<(), ResidentClearingRuntimeError> {
+        self.execution_lease_verifier
+            .validate_generation(permit, generation)
+            .map_err(ResidentClearingRuntimeError::ExecutionAuthority)
     }
 
     /// Re-seal only the topology-dependent projection after an admitted
@@ -965,6 +1016,7 @@ impl ResidentClearingRuntime {
         &mut self,
         state: &WorldGpuState,
         qualification: &ResidentMarketQualification,
+        permit: &TreeGenerationPermit,
         schedule: &mut IntegrationSchedule,
         granter: SimThingId,
         generation: GenerationStamp,
@@ -973,6 +1025,7 @@ impl ResidentClearingRuntime {
         self.dispatch_market(
             state,
             qualification,
+            permit,
             schedule,
             granter,
             generation,
@@ -990,12 +1043,14 @@ impl ResidentClearingRuntime {
         &mut self,
         state: &WorldGpuState,
         qualification: &ResidentMarketQualification,
+        permit: &TreeGenerationPermit,
         schedule: &mut IntegrationSchedule,
         granter: SimThingId,
         generation: GenerationStamp,
         rows: &[ResidentClearingBatchBinding],
         commitment: &ResidencyCapacityPartition,
     ) -> Result<ResidentClearingDispatchTicket, ResidentClearingRuntimeError> {
+        self.validate_generation_permit(permit, generation)?;
         let allocatable_total = commitment
             .free()
             .checked_add(commitment.in_flight())
@@ -1015,6 +1070,7 @@ impl ResidentClearingRuntime {
         self.dispatch_market(
             state,
             qualification,
+            permit,
             schedule,
             granter,
             generation,
@@ -1031,12 +1087,14 @@ impl ResidentClearingRuntime {
         &mut self,
         state: &WorldGpuState,
         qualification: &ResidentMarketQualification,
+        permit: &TreeGenerationPermit,
         schedule: &mut IntegrationSchedule,
         parent: &ResidentClearingDispatchTicket,
         child_granter: SimThingId,
         generation: GenerationStamp,
         rows: &[ResidentSpatialClaimBinding],
     ) -> Result<ResidentClearingDispatchTicket, ResidentClearingRuntimeError> {
+        self.validate_generation_permit(permit, generation)?;
         if !self.admitted_scope_owners.contains(&child_granter) {
             return Err(ResidentClearingRuntimeError::UnadmittedSemanticScope {
                 owner: child_granter,
@@ -1082,6 +1140,7 @@ impl ResidentClearingRuntime {
         self.dispatch_market(
             state,
             qualification,
+            permit,
             schedule,
             child_granter,
             generation,
@@ -1097,10 +1156,12 @@ impl ResidentClearingRuntime {
         &mut self,
         state: &WorldGpuState,
         qualification: &ResidentMarketQualification,
+        permit: &TreeGenerationPermit,
         products: &ResidentClearingDispatchTicket,
         demand_generation: GenerationStamp,
         authored: &[ResidentAuthoredDemand],
     ) -> Result<ResidentTemporalDemandTicket, ResidentClearingRuntimeError> {
+        self.validate_generation_permit(permit, products.plan.generation())?;
         self.ensure_market_qualification(qualification)?;
         let sources: Vec<_> = products
             .plan
@@ -1146,12 +1207,14 @@ impl ResidentClearingRuntime {
         &mut self,
         state: &WorldGpuState,
         qualification: &ResidentMarketQualification,
+        permit: &TreeGenerationPermit,
         schedule: &mut IntegrationSchedule,
         demands: &ResidentTemporalDemandTicket,
         granter: SimThingId,
         generation: GenerationStamp,
         rows: &[ResidentTemporalExecutionBinding],
     ) -> Result<ResidentClearingDispatchTicket, ResidentClearingRuntimeError> {
+        self.validate_generation_permit(permit, generation)?;
         if generation != demands.submission.generation()
             || granter != demands.authority_granter
             || rows.len() != demands.sources.len()
@@ -1177,6 +1240,7 @@ impl ResidentClearingRuntime {
         self.dispatch_market(
             state,
             qualification,
+            permit,
             schedule,
             granter,
             generation,
@@ -1192,6 +1256,7 @@ impl ResidentClearingRuntime {
         &mut self,
         state: &WorldGpuState,
         qualification: &ResidentMarketQualification,
+        permit: &TreeGenerationPermit,
         schedule: &mut IntegrationSchedule,
         granter: SimThingId,
         generation: GenerationStamp,
@@ -1200,6 +1265,7 @@ impl ResidentClearingRuntime {
         input: ResidentDispatchInput,
         _weights_are_allocated_flow: bool,
     ) -> Result<ResidentClearingDispatchTicket, ResidentClearingRuntimeError> {
+        self.validate_generation_permit(permit, generation)?;
         self.ensure_market_qualification(qualification)?;
         self.validate_root_rows(rows)?;
         let claims = rows
@@ -1431,6 +1497,10 @@ pub enum ResidentClearingRuntimeError {
     ZeroLaneCapacity,
     #[error("resident clearing identity admission failed: {0}")]
     Identity(String),
+    #[error("resident execution authority refused: {0}")]
+    ExecutionAuthority(#[source] TreeExecutionContextError),
+    #[error("the enclosing session owns this runtime's generation authority")]
+    SessionOwnsGenerationAuthority,
     #[error("resident clearing arithmetic overflow")]
     ArithmeticOverflow,
     #[error("resident clear has {claims} claims, admitted {admitted}")]

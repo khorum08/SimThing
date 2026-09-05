@@ -3,7 +3,6 @@
 //! adapter-qualification referee.
 
 use std::collections::{BTreeMap, BTreeSet, HashMap};
-use std::process::Command;
 
 use simthing_core::owner_channel::OwnerRef;
 use simthing_core::{
@@ -26,7 +25,8 @@ use simthing_gpu::{
     wgpu, AccumulatorOpSession, ActionBandEmissionBindingGpu, EmlGpuProgramTable,
     FieldSweepSession, GpuContext, PackedAccumulatorUpload, ResidentApportionmentDispatch,
     ResidentApportionmentSession, ResidentApportionmentWorkgroupSize, ResidentClearingBuffers,
-    ResidentClearingGpuError, WorldGpuState, RESIDENT_CLEARING_ABI_VERSION,
+    ResidentClearingGpuError, ResidentClearingQualification, WorldGpuState,
+    RESIDENT_CLEARING_ABI_VERSION,
 };
 use simthing_kernel::{
     execute_resident_apportionment_cpu, ResidentApportionmentClaim, ResidentApportionmentError,
@@ -49,7 +49,7 @@ use simthing_spec::{
     ScalarBoundDirection, ScopeId,
 };
 
-const QUALIFIED_RECORD_FINGERPRINT: u64 = 0x8104_18ff_57aa_9b08;
+const QUALIFIED_RECORD_FINGERPRINT: u64 = 0xbea9_102e_b252_a3ca;
 
 fn col(raw: usize) -> ColumnIndex {
     ColumnIndex::from_raw_for_oracle_or_rehearsal(raw)
@@ -1579,9 +1579,10 @@ struct ResidentQualificationRecord {
     driver_runtime: String,
     features: String,
     compiler: String,
+    cargo_features: String,
     shader_compiler: String,
     cargo_lock_hash: u64,
-    shader_source_hash: u64,
+    semantic_kernel_bundle_hash: u64,
     workgroups: [u32; 2],
     subgroup_assumption: String,
     abi_version: u32,
@@ -1590,16 +1591,6 @@ struct ResidentQualificationRecord {
 impl ResidentQualificationRecord {
     fn capture(ctx: &GpuContext) -> Self {
         let info = ctx.adapter.get_info();
-        let compiler = Command::new("rustc")
-            .arg("-Vv")
-            .output()
-            .expect("rustc identity for exact qualification");
-        assert!(compiler.status.success());
-        let compiler = String::from_utf8(compiler.stdout)
-            .unwrap()
-            .replace("\r\n", "\n")
-            .trim()
-            .to_owned();
         Self {
             backend: format!("{:?}", info.backend),
             adapter: info.name,
@@ -1608,17 +1599,11 @@ impl ResidentQualificationRecord {
             device_class: format!("{:?}", info.device_type),
             driver_runtime: format!("{} {}", info.driver, info.driver_info),
             features: format!("{:?}", ctx.adapter.features()),
-            compiler,
+            compiler: ResidentClearingQualification::build_compiler_provenance().into(),
+            cargo_features: ResidentClearingQualification::build_cargo_features().into(),
             shader_compiler: "wgpu 22.1.0 / naga 22.1.0".into(),
-            cargo_lock_hash: stable_hash(
-                0xcbf2_9ce4_8422_2325,
-                include_bytes!("../../../Cargo.lock"),
-            ),
-            shader_source_hash: stable_hash(
-                0xcbf2_9ce4_8422_2325,
-                include_bytes!(
-                    "../../simthing-kernel/src/shaders/resident_clearing_apportionment.wgsl"
-                ),
+            cargo_lock_hash: ResidentClearingQualification::dependency_lock_hash(),
+            semantic_kernel_bundle_hash: ResidentClearingQualification::semantic_kernel_bundle_hash(
             ),
             workgroups: [32, 64],
             subgroup_assumption: "subgroup-independent:no-subgroup-builtins-or-size-authority"
@@ -1636,6 +1621,7 @@ impl ResidentQualificationRecord {
             self.driver_runtime.as_bytes(),
             self.features.as_bytes(),
             self.compiler.as_bytes(),
+            self.cargo_features.as_bytes(),
             self.shader_compiler.as_bytes(),
             self.subgroup_assumption.as_bytes(),
         ] {
@@ -1646,7 +1632,7 @@ impl ResidentQualificationRecord {
             u64::from(self.vendor),
             u64::from(self.device),
             self.cargo_lock_hash,
-            self.shader_source_hash,
+            self.semantic_kernel_bundle_hash,
             u64::from(self.workgroups[0]),
             u64::from(self.workgroups[1]),
             u64::from(self.abi_version),
@@ -1682,9 +1668,13 @@ fn scale_multitree_physical_invariance_and_exact_qualification_hold() {
     mutate!(driver_runtime, format!("{}-drift", record.driver_runtime));
     mutate!(features, format!("{}-drift", record.features));
     mutate!(compiler, format!("{}-drift", record.compiler));
+    mutate!(cargo_features, format!("{}-drift", record.cargo_features));
     mutate!(shader_compiler, "wgpu/naga-drift".into());
     mutate!(cargo_lock_hash, record.cargo_lock_hash ^ 1);
-    mutate!(shader_source_hash, record.shader_source_hash ^ 1);
+    mutate!(
+        semantic_kernel_bundle_hash,
+        record.semantic_kernel_bundle_hash ^ 1
+    );
     mutate!(workgroups, [16, 64]);
     mutate!(subgroup_assumption, "subgroup-size-is-authority".into());
     mutate!(abi_version, record.abi_version + 1);

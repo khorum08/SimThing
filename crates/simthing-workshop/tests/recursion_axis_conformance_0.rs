@@ -4,7 +4,7 @@ use simthing_core::owner_channel::OwnerRef;
 use simthing_core::{
     ColumnIndex, DimensionRegistry, GenerationStamp, IntegrationSchedule,
     PersistenceDeformationProgram, ResidencyCapacityPartition, SimThing, SimThingId, TransformOp,
-    TreeRealmId,
+    TreeExecutionContextError, TreeGenerationPermit, TreeRealmId,
 };
 use simthing_driver::resident_clearing_runtime::{
     build_default_resident_arena_registry, install_default_resident_rf_property,
@@ -69,9 +69,28 @@ struct ResidentHarness {
     qualification: ResidentMarketQualification,
     arena_registry: ArenaRegistry,
     allocated_flow_col: ColumnIndex,
+    permit: Option<TreeGenerationPermit>,
 }
 
 impl ResidentHarness {
+    fn advance_generation(
+        &mut self,
+        generation: GenerationStamp,
+    ) -> Result<(), ResidentClearingRuntimeError> {
+        if self
+            .permit
+            .as_ref()
+            .is_some_and(|permit| permit.generation() == generation)
+        {
+            return Ok(());
+        }
+        if let Some(mut permit) = self.permit.take() {
+            self.runtime.finish_generation(&mut permit, generation)?;
+        }
+        self.permit = Some(self.runtime.begin_generation(generation)?);
+        Ok(())
+    }
+
     fn set_allocated_flows(&self, flows: &[(SimThingId, f32)]) {
         let mut values = self.state.read_values();
         for (participant, flow) in flows {
@@ -96,6 +115,7 @@ impl ResidentHarness {
         self.runtime.dispatch(
             &self.state,
             &self.qualification,
+            self.permit.as_ref().unwrap(),
             schedule,
             granter,
             generation,
@@ -114,6 +134,7 @@ impl ResidentHarness {
         self.runtime.dispatch_with_commitment_partition(
             &self.state,
             &self.qualification,
+            self.permit.as_ref().unwrap(),
             schedule,
             granter,
             generation,
@@ -133,6 +154,7 @@ impl ResidentHarness {
         self.runtime.dispatch_spatial(
             &self.state,
             &self.qualification,
+            self.permit.as_ref().unwrap(),
             schedule,
             parent,
             granter,
@@ -150,6 +172,9 @@ impl ResidentHarness {
         self.runtime.prepare_temporal_demands(
             &self.state,
             &self.qualification,
+            self.permit
+                .as_ref()
+                .expect("products were dispatched under a permit"),
             products,
             generation,
             authored,
@@ -164,9 +189,11 @@ impl ResidentHarness {
         generation: GenerationStamp,
         rows: &[ResidentTemporalExecutionBinding],
     ) -> Result<ResidentClearingDispatchTicket, ResidentClearingRuntimeError> {
+        self.advance_generation(generation)?;
         self.runtime.dispatch_temporal(
             &self.state,
             &self.qualification,
+            self.permit.as_ref().unwrap(),
             schedule,
             demands,
             granter,
@@ -255,6 +282,11 @@ fn admit_runtime(
     )
     .expect("qualified production resident executor");
     let qualification = runtime.market_qualification();
+    let permit = Some(
+        runtime
+            .begin_generation(GenerationStamp::new(generation))
+            .unwrap(),
+    );
     (
         ResidentHarness {
             runtime,
@@ -262,6 +294,7 @@ fn admit_runtime(
             qualification,
             arena_registry,
             allocated_flow_col: columns.allocated_flow_col,
+            permit,
         },
         schedule,
     )
@@ -614,8 +647,8 @@ fn semantic_scope_and_axis_mutants_are_mechanically_red() {
             GenerationStamp::new(61),
             &descendant,
         ),
-        Err(ResidentClearingRuntimeError::LiveHead(
-            simthing_gpu::ResidentLiveHeadError::SpatialGenerationMismatch { .. }
+        Err(ResidentClearingRuntimeError::ExecutionAuthority(
+            TreeExecutionContextError::PermitGenerationMismatch { .. }
         ))
     ));
     assert!(matches!(

@@ -4,7 +4,7 @@ use simthing_core::{
     ClearingExecutionPosture, ColumnIndex, DimensionRegistry, ExecutionIncarnation,
     ExecutionPosture, GenerationStamp, IntegrationSchedule, ResidentClearingScheduleFact,
     ResidentScheduleError, SimProperty, SimThing, SimThingId, SimThingKind, TreeExecutionAuthority,
-    TreeGenerationAuthority, TreeRealmId,
+    TreeGenerationAuthority, TreeGenerationPermit, TreeRealmId,
 };
 use simthing_driver::resident_clearing_runtime::{
     build_default_resident_arena_registry, install_default_resident_rf_property,
@@ -88,6 +88,7 @@ struct ResidentHarness {
     intrinsic_flow_col: ColumnIndex,
     weight_col: ColumnIndex,
     n_bands: u32,
+    permit: Option<TreeGenerationPermit>,
 }
 
 impl ResidentHarness {
@@ -120,6 +121,7 @@ impl ResidentHarness {
         self.runtime.dispatch(
             &self.state,
             &self.qualification,
+            self.permit.as_ref().unwrap(),
             schedule,
             granter,
             generation,
@@ -138,6 +140,7 @@ impl ResidentHarness {
         self.runtime.dispatch_spatial(
             &self.state,
             &self.qualification,
+            self.permit.as_ref().unwrap(),
             schedule,
             parent,
             granter,
@@ -229,6 +232,7 @@ fn admit_runtime(
     )
     .expect("qualified production resident executor");
     let qualification = runtime.market_qualification();
+    let permit = Some(runtime.begin_generation(generation).unwrap());
     (
         ResidentHarness {
             runtime,
@@ -238,6 +242,7 @@ fn admit_runtime(
             intrinsic_flow_col: columns.intrinsic_flow_col,
             weight_col: columns.weight_col,
             n_bands: flow.n_bands,
+            permit,
         },
         schedule,
     )

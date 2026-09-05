@@ -348,6 +348,7 @@ impl GrowthEntitlementMarketBinding {
         runtime: &mut crate::resident_clearing_runtime::RecursiveResourceFilterRuntime,
         state: &simthing_gpu::WorldGpuState,
         allocator: &SlotAllocator,
+        permit: &simthing_core::TreeGenerationPermit,
         generation: GenerationStamp,
         candidates: &[OrdinaryGrowthCandidate],
         integration_schedule: &mut simthing_core::IntegrationSchedule,
@@ -378,6 +379,7 @@ impl GrowthEntitlementMarketBinding {
             .dispatch(
                 state,
                 qualification,
+                permit,
                 integration_schedule,
                 self.granter,
                 generation,

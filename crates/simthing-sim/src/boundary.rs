@@ -312,19 +312,19 @@ impl BoundaryProtocol {
         self.resolution_site
     }
 
-    /// Invoke one consumer while holding a freshly sealed borrowing view of
-    /// the authoritative runtime tree. This is the topology-rebind door: the
-    /// raw tree and residency authorities cannot escape the callback.
-    pub fn with_sealed_tree_execution_binding<R>(
+    /// Seal the opaque execution authority exactly once at session admission.
+    /// The returned lease owns no borrow of this protocol; later topology
+    /// rebinds can therefore borrow the current tree without replacing the
+    /// authority capsule.
+    pub fn seal_tree_execution_lease(
         &self,
         realm: simthing_core::TreeRealmId,
         incarnation: simthing_core::ExecutionIncarnation,
-        generation: GenerationStamp,
+        initial_generation: simthing_core::GenerationStamp,
         schedule: &IntegrationSchedule,
-        consume: impl FnOnce(&simthing_core::TreeExecutionBinding<'_, SlotAllocator>) -> R,
-    ) -> Result<R, simthing_core::TreeExecutionContextError> {
-        let generation_authority = simthing_core::TreeGenerationAuthority::new(generation);
-        let authority = simthing_core::TreeExecutionAuthority::seal(
+    ) -> Result<simthing_core::TreeExecutionLease, simthing_core::TreeExecutionContextError> {
+        let generation_authority = simthing_core::TreeGenerationAuthority::new(initial_generation);
+        simthing_core::TreeExecutionAuthority::seal(
             realm,
             incarnation,
             self.root.inner(),
@@ -332,9 +332,21 @@ impl BoundaryProtocol {
             schedule,
             &self.registry,
             &self.allocator,
-        )?;
-        let context = authority.seal_context()?;
-        let binding = context.bind(&authority)?;
+        )?
+        .seal_lease()
+    }
+
+    /// Invoke one consumer while holding a transient borrowing view minted
+    /// from the session's already-owned lifetime lease. This is the
+    /// topology-rebind door: raw semantic state cannot escape the callback,
+    /// and no replacement authority capsule is minted here.
+    pub fn with_sealed_tree_execution_binding<R>(
+        &self,
+        lease: &simthing_core::TreeExecutionLease,
+        schedule: &IntegrationSchedule,
+        consume: impl FnOnce(&simthing_core::TreeExecutionBinding<'_, SlotAllocator>) -> R,
+    ) -> Result<R, simthing_core::TreeExecutionContextError> {
+        let binding = lease.bind(self.root.inner(), schedule, &self.registry, &self.allocator)?;
         Ok(consume(&binding))
     }
 
