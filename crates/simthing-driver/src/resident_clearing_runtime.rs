@@ -441,20 +441,29 @@ impl ResidentRfArenaBinding {
     ) -> Result<Self, ResidentClearingRuntimeError> {
         let execution = build_execution_plan(registry, arena_registry)
             .map_err(|error| ResidentClearingRuntimeError::ArenaBinding(error.to_string()))?;
-        let selected = match market.preferred_arena.as_deref() {
-            Some(expected) => arena_registry
-                .arenas
-                .iter()
-                .position(|arena| arena.name == expected),
-            None => (!arena_registry.arenas.is_empty()).then_some(0),
-        }
-        .ok_or_else(|| ResidentClearingRuntimeError::MarketCannotLower {
-            reason: market
-                .preferred_arena
-                .as_deref()
-                .map(|arena| format!("RF arena `{arena}` is not admitted"))
-                .unwrap_or_else(|| "no RF arena is admitted".into()),
-        })? as ArenaIdx;
+        let matches: Vec<_> = arena_registry
+            .arenas
+            .iter()
+            .enumerate()
+            .filter(|(_, arena)| match market.preferred_arena.as_deref() {
+                Some(expected) => arena.name == expected,
+                None => {
+                    let property = registry.property(arena.flow_property_id);
+                    format!("{}::{}", property.namespace, property.name) == market.resource_identity
+                }
+            })
+            .map(|(index, _)| index)
+            .collect();
+        let [selected] = matches.as_slice() else {
+            return Err(ResidentClearingRuntimeError::MarketCannotLower {
+                reason: format!(
+                    "market resource `{}` resolves to {} RF arenas; exactly one is required",
+                    market.resource_identity,
+                    matches.len()
+                ),
+            });
+        };
+        let selected = *selected as ArenaIdx;
         let layout = execution
             .arenas
             .iter()
@@ -1161,7 +1170,15 @@ impl ResidentClearingRuntime {
         demand_generation: GenerationStamp,
         authored: &[ResidentAuthoredDemand],
     ) -> Result<ResidentTemporalDemandTicket, ResidentClearingRuntimeError> {
-        self.validate_generation_permit(permit, products.plan.generation())?;
+        // Ordinary sessions discover authored demand at Current N+1. The
+        // existing direct-runtime preparation-at-N witnesses remain valid;
+        // the N product ticket carries provenance independently of the permit.
+        let permit_generation = if permit.generation() == products.plan.generation() {
+            products.plan.generation()
+        } else {
+            demand_generation
+        };
+        self.validate_generation_permit(permit, permit_generation)?;
         self.ensure_market_qualification(qualification)?;
         let sources: Vec<_> = products
             .plan
@@ -1409,9 +1426,10 @@ impl ResidentClearingRuntime {
         state: &WorldGpuState,
         qualification: &ResidentMarketQualification,
         schedule: &mut IntegrationSchedule,
-        ticket: ResidentClearingDispatchTicket,
+        ticket: impl std::borrow::Borrow<ResidentClearingDispatchTicket>,
     ) -> Result<Vec<ResidentConstrainedProduct>, ResidentClearingRuntimeError> {
         self.ensure_market_qualification(qualification)?;
+        let ticket = ticket.borrow();
         let resident = self
             .live_head
             .readback_segment(&state.ctx, ticket.submission)?;

@@ -26,6 +26,16 @@ const COMPONENTS: &[&str] = &[
     "crates/simthing-kernel/src/shaders/resident_recursive_intake_transform.wgsl",
     "crates/simthing-gpu/src/resident_clearing_plan.rs",
     "crates/simthing-driver/src/resident_clearing_runtime.rs",
+    "crates/simthing-driver/src/session.rs",
+    "crates/simthing-driver/src/growth_entitlement.rs",
+    "crates/simthing-driver/src/spec_session.rs",
+    "crates/simthing-sim/src/boundary.rs",
+    "crates/simthing-sim/src/sim_runtime_tree.rs",
+    "crates/simthing-spec/src/spec/flow_market.rs",
+    "crates/simthing-spec/src/spec/constrained_clearing.rs",
+    "crates/simthing-spec/src/spec/scenario.rs",
+    "crates/simthing-core/src/owner_channel.rs",
+    "crates/simthing-clausething/src/hydrate_shipsize_decoder.rs",
 ];
 
 fn hash(mut state: u64, bytes: &[u8]) -> u64 {

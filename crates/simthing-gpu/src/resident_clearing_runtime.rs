@@ -19,7 +19,7 @@ use thiserror::Error;
 use wgpu::{Buffer, BufferDescriptor, BufferUsages, CommandEncoder, MapMode};
 
 const PRODUCT_BYTES: u64 = std::mem::size_of::<ResidentConstrainedProduct>() as u64;
-pub const QUALIFIED_RESIDENT_CLEARING_FINGERPRINT: u64 = 0xbea9_102e_b252_a3ca;
+pub const QUALIFIED_RESIDENT_CLEARING_FINGERPRINT: u64 = 0x1c26_d4ee_5861_ec68;
 
 mod build_provenance {
     include!(concat!(
@@ -641,6 +641,47 @@ mod tests {
             (
                 "crates/simthing-driver/src/resident_clearing_runtime.rs",
                 include_bytes!("../../simthing-driver/src/resident_clearing_runtime.rs").to_vec(),
+            ),
+            (
+                "crates/simthing-driver/src/session.rs",
+                include_bytes!("../../simthing-driver/src/session.rs").to_vec(),
+            ),
+            (
+                "crates/simthing-driver/src/growth_entitlement.rs",
+                include_bytes!("../../simthing-driver/src/growth_entitlement.rs").to_vec(),
+            ),
+            (
+                "crates/simthing-driver/src/spec_session.rs",
+                include_bytes!("../../simthing-driver/src/spec_session.rs").to_vec(),
+            ),
+            (
+                "crates/simthing-sim/src/boundary.rs",
+                include_bytes!("../../simthing-sim/src/boundary.rs").to_vec(),
+            ),
+            (
+                "crates/simthing-sim/src/sim_runtime_tree.rs",
+                include_bytes!("../../simthing-sim/src/sim_runtime_tree.rs").to_vec(),
+            ),
+            (
+                "crates/simthing-spec/src/spec/flow_market.rs",
+                include_bytes!("../../simthing-spec/src/spec/flow_market.rs").to_vec(),
+            ),
+            (
+                "crates/simthing-spec/src/spec/constrained_clearing.rs",
+                include_bytes!("../../simthing-spec/src/spec/constrained_clearing.rs").to_vec(),
+            ),
+            (
+                "crates/simthing-spec/src/spec/scenario.rs",
+                include_bytes!("../../simthing-spec/src/spec/scenario.rs").to_vec(),
+            ),
+            (
+                "crates/simthing-core/src/owner_channel.rs",
+                include_bytes!("../../simthing-core/src/owner_channel.rs").to_vec(),
+            ),
+            (
+                "crates/simthing-clausething/src/hydrate_shipsize_decoder.rs",
+                include_bytes!("../../simthing-clausething/src/hydrate_shipsize_decoder.rs")
+                    .to_vec(),
             ),
         ]
     }

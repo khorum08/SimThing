@@ -46,6 +46,8 @@ pub enum GrowthEntitlementError {
     ResidentProfileUnqualified,
     #[error("ordinary growth resident clearing failed: {0}")]
     Resident(String),
+    #[error("departing ordinary flow requires consequence-only disposition; STOP for DA adjudication")]
+    DepartingFlowDispositionRequired,
 }
 
 /// Frozen session binding for one standing granter. Authored sessions may
@@ -66,7 +68,350 @@ pub struct GrowthEntitlementMarketBinding {
     resident_qualification: Option<crate::resident_clearing_runtime::ResidentMarketQualification>,
 }
 
+/// Only provenance crosses the ordinary boundary on the resident posture.
+/// Oracle replay inputs remain confined to the explicitly selected CPU posture.
+#[derive(Default)]
+pub(crate) enum OrdinaryFlowContinuation {
+    #[default]
+    Empty,
+    Resident(crate::resident_clearing_runtime::ResidentClearingDispatchTicket),
+    CpuOracle {
+        authority: simthing_spec::RuntimeRfDemandGenerationAuthority,
+        supply: ConstrainedSupply,
+        claims: Vec<ConstrainedClaim>,
+    },
+}
+
 impl GrowthEntitlementMarketBinding {
+    pub(crate) fn persistence_deformations(
+        &self,
+        bindings: &simthing_spec::PersistenceDeformationBindings,
+    ) -> Vec<crate::resident_clearing_runtime::ResidentPersistenceDeformationBinding> {
+        bindings
+            .for_scope(&self.scope)
+            .map(|(source_simthing_id, program)| {
+                crate::resident_clearing_runtime::ResidentPersistenceDeformationBinding {
+                    source_simthing_id,
+                    program: program.clone(),
+                }
+            })
+            .collect()
+    }
+
+    fn clear_cpu_oracle(
+        &self,
+        supply: &ConstrainedSupply,
+        claims: &[ConstrainedClaim],
+        generation: GenerationStamp,
+    ) -> Result<Vec<simthing_spec::ConstrainedClearingResult>, GrowthEntitlementError> {
+        clear_constrained_claims_at_generation(
+            std::slice::from_ref(supply),
+            claims,
+            &self.clearing_program,
+            ClearingRemainderAuthority {
+                granter: self.granter,
+                generation,
+            },
+        )
+        .map_err(|error| GrowthEntitlementError::Clearing(error.to_string()))
+    }
+
+    fn authorize_demand(
+        &self,
+        demand: RuntimeOwnerSiloDemandBucket,
+    ) -> Result<ConstrainedClaim, GrowthEntitlementError> {
+        let authored = self
+            .market
+            .authorize_draw(
+                &self.draw_id,
+                &self.offering_id,
+                demand,
+                self.effective_weight,
+                &self.active_lifecycle_triggers,
+            )
+            .map_err(|error| GrowthEntitlementError::Draw(error.to_string()))?;
+        ConstrainedClaim::from_runtime_demand(&authored.demand, authored.order_weight)
+            .map_err(|error| GrowthEntitlementError::Clearing(error.to_string()))
+    }
+
+    /// Read Current's authored owner-flow datum at the ordinary boundary seal.
+    /// The admitted market supplies the full scope; the tree supplies claimant
+    /// identity, inherited ownership, demand, priority, and owner-silo supply.
+    pub(crate) fn authorize_current_flow(
+        &self,
+        tree: &simthing_sim::SimRuntimeTree,
+    ) -> Result<(Vec<ConstrainedClaim>, u32), GrowthEntitlementError> {
+        if self.implicit_root_standing {
+            return Ok((Vec::new(), 0));
+        }
+        let mut pending = vec![(tree.id(), false)];
+        let mut claims = Vec::new();
+        while let Some((id, in_scope)) = pending.pop() {
+            let in_scope = in_scope || ScopeId::from_boundary(id) == self.scope.scope_id;
+            let node = tree
+                .snapshot_node(id)
+                .ok_or(GrowthEntitlementError::MissingCandidate(id))?;
+            pending.extend(node.children.into_iter().map(|child| (child, in_scope)));
+            if !in_scope
+                || tree
+                    .owner_of(id)
+                    .map_err(|e| GrowthEntitlementError::Draw(e.to_string()))?
+                    != self.scope.owner_ref
+            {
+                continue;
+            }
+            let Some(value) =
+                tree.property_on_node(id, simthing_spec::OWNER_FLOW_DEMAND_PROPERTY_ID)
+            else {
+                continue;
+            };
+            let requested = simthing_spec::property_u32(value).ok_or_else(|| {
+                GrowthEntitlementError::Draw(
+                    "owner-flow demand must be an exact nonnegative integer".into(),
+                )
+            })?;
+            let priority = tree
+                .property_on_node(id, simthing_spec::OWNER_FLOW_PRIORITY_PROPERTY_ID)
+                .map(simthing_spec::property_u32)
+                .unwrap_or(Some(simthing_spec::OWNER_FLOW_DEFAULT_PRIORITY))
+                .ok_or_else(|| {
+                    GrowthEntitlementError::Draw(
+                        "owner-flow priority must be an exact nonnegative integer".into(),
+                    )
+                })?;
+            claims.push(self.authorize_demand(RuntimeOwnerSiloDemandBucket {
+                owner_ref: self.scope.owner_ref.clone(),
+                resource_key: self.scope.resource_key.clone(),
+                scope_id: self.scope.scope_id.clone(),
+                requested,
+                priority,
+                source_simthing_id_raw: Some(id.raw()),
+            })?);
+        }
+        claims.sort_by_key(ConstrainedClaim::source_simthing_id);
+        if claims.is_empty() {
+            return Ok((claims, 0));
+        }
+        let available = tree
+            .property_on_node(self.granter, simthing_spec::OWNER_SILO_CURRENT_PROPERTY_ID)
+            .and_then(simthing_spec::property_u32)
+            .ok_or_else(|| {
+                GrowthEntitlementError::Draw(
+                    "ordinary flow granter has no exact authored owner-silo current".into(),
+                )
+            })?;
+        Ok((claims, available))
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn settle_boundary_claims(
+        &self,
+        runtime: Option<&mut crate::resident_clearing_runtime::ResidentClearingRuntime>,
+        continuation: &mut OrdinaryFlowContinuation,
+        state: &simthing_gpu::WorldGpuState,
+        permit: &simthing_core::TreeGenerationPermit,
+        schedule: &mut simthing_core::IntegrationSchedule,
+        mut claims: Vec<ConstrainedClaim>,
+        available: u32,
+        posture: simthing_core::ClearingExecutionPosture,
+        deformations: &simthing_spec::PersistenceDeformationBindings,
+        allocator: &SlotAllocator,
+        candidates: &[OrdinaryGrowthCandidate],
+    ) -> Result<Vec<GrowthEntitlementDecision>, GrowthEntitlementError> {
+        use crate::resident_clearing_runtime::{
+            ResidentAuthoredDemand, ResidentClearingBatchBinding, ResidentTemporalExecutionBinding,
+        };
+        if claims.is_empty() {
+            // Ruling 6 does not authorize silently terminating a live stream.
+            // Keep its opaque provenance intact and refuse before mint/append;
+            // the existing consequence ingress has no resident-ticket input.
+            if !matches!(continuation, OrdinaryFlowContinuation::Empty) {
+                return Err(GrowthEntitlementError::DepartingFlowDispositionRequired);
+            }
+            if candidates.is_empty() {
+                return Ok(Vec::new());
+            }
+            return if posture.is_resident_required() {
+                self.resolve_batch_resident(
+                    runtime.ok_or(GrowthEntitlementError::ResidentProfileUnqualified)?,
+                    state,
+                    allocator,
+                    permit,
+                    permit.generation(),
+                    candidates,
+                    schedule,
+                )
+            } else {
+                self.resolve_batch_cpu_vendorized_oracle(
+                    allocator,
+                    permit.generation(),
+                    candidates,
+                    schedule,
+                )
+            };
+        }
+        let generation = permit.generation();
+        let previous = std::mem::take(continuation);
+        if posture.is_resident_required() {
+            let runtime = runtime.ok_or(GrowthEntitlementError::ResidentProfileUnqualified)?;
+            let qualification = self
+                .resident_qualification
+                .as_ref()
+                .ok_or(GrowthEntitlementError::ResidentProfileUnqualified)?;
+            let demands = match previous {
+                OrdinaryFlowContinuation::Resident(previous) => {
+                    let authored: Vec<_> = claims
+                        .iter()
+                        .map(|claim| ResidentAuthoredDemand {
+                            source_simthing_id: claim.source_simthing_id(),
+                            quantity: claim.requested(),
+                        })
+                        .collect();
+                    Some(
+                        runtime
+                            .prepare_temporal_demands(
+                                state,
+                                qualification,
+                                permit,
+                                &previous,
+                                generation,
+                                &authored,
+                            )
+                            .map_err(|e| GrowthEntitlementError::Resident(e.to_string()))?,
+                    )
+                }
+                OrdinaryFlowContinuation::Empty => None,
+                OrdinaryFlowContinuation::CpuOracle { .. } => {
+                    unreachable!("posture freezes before execution")
+                }
+            };
+            // The mint above reads retained U before any append can reuse the
+            // observed live-head reservation. Structural quantities stay separate.
+            let decisions = self.resolve_batch_resident(
+                runtime, state, allocator, permit, generation, candidates, schedule,
+            )?;
+            let ticket = if let Some(demands) = demands {
+                let rows: Vec<_> = claims
+                    .iter()
+                    .map(|claim| ResidentTemporalExecutionBinding {
+                        source_simthing_id: claim.source_simthing_id(),
+                        rf_participant: claim.source_simthing_id(),
+                        available,
+                        precedence: claim.priority(),
+                    })
+                    .collect();
+                runtime.dispatch_temporal(
+                    state,
+                    qualification,
+                    permit,
+                    schedule,
+                    &demands,
+                    self.granter,
+                    generation,
+                    &rows,
+                )
+            } else {
+                let rows: Vec<_> = claims
+                    .iter()
+                    .map(|claim| ResidentClearingBatchBinding {
+                        source_simthing_id: claim.source_simthing_id(),
+                        rf_participant: claim.source_simthing_id(),
+                        requested: claim.requested(),
+                        available,
+                        precedence: claim.priority(),
+                    })
+                    .collect();
+                runtime.dispatch(
+                    state,
+                    qualification,
+                    permit,
+                    schedule,
+                    self.granter,
+                    generation,
+                    &rows,
+                )
+            }
+            .map_err(|e| GrowthEntitlementError::Resident(e.to_string()))?;
+            // Observer only: no materialized G/U feeds demand, supply, or RF policy.
+            runtime
+                .materialize(state, qualification, schedule, &ticket)
+                .map_err(|e| GrowthEntitlementError::Resident(e.to_string()))?;
+            *continuation = OrdinaryFlowContinuation::Resident(ticket);
+            Ok(decisions)
+        } else {
+            if let OrdinaryFlowContinuation::CpuOracle {
+                authority,
+                supply,
+                claims: previous,
+            } = previous
+            {
+                let next = claims
+                    .iter()
+                    .map(|claim| RuntimeOwnerSiloDemandBucket {
+                        owner_ref: self.scope.owner_ref.clone(),
+                        resource_key: self.scope.resource_key.clone(),
+                        scope_id: self.scope.scope_id.clone(),
+                        requested: claim.requested(),
+                        priority: claim.priority(),
+                        source_simthing_id_raw: Some(claim.source_simthing_id().raw()),
+                    })
+                    .collect();
+                let (_, effective) = crate::runtime_rf_tick_compile::produce_runtime_rf_next_generation_demands_for_tick(
+                    &authority,
+                    &[supply],
+                    &previous,
+                    &self.clearing_program,
+                    next,
+                )
+                .map_err(|e| GrowthEntitlementError::Clearing(e.message))?;
+                claims = effective
+                    .iter()
+                    .map(|demand| {
+                        ConstrainedClaim::from_runtime_demand(
+                            demand.product(),
+                            self.effective_weight,
+                        )
+                    })
+                    .collect::<Result<_, _>>()
+                    .map_err(|e| GrowthEntitlementError::Clearing(e.to_string()))?;
+            }
+            let decisions = self
+                .resolve_batch_cpu_vendorized_oracle(allocator, generation, candidates, schedule)?;
+            let supply = ConstrainedSupply {
+                scope: self.scope.clone(),
+                available,
+            };
+            let results = self.clear_cpu_oracle(&supply, &claims, generation)?;
+            for grant in results
+                .iter()
+                .flat_map(|result| &result.grants)
+                .filter(|grant| grant.granted > 0)
+            {
+                self.market
+                    .record_cleared_grant(
+                        self.granter,
+                        &self.offering_id,
+                        grant,
+                        generation,
+                        schedule,
+                    )
+                    .map_err(|e| GrowthEntitlementError::Grant(e.to_string()))?;
+            }
+            *continuation = OrdinaryFlowContinuation::CpuOracle {
+                authority:
+                    simthing_spec::RuntimeRfDemandGenerationAuthority::with_persistence_deformations(
+                        ClearingRemainderAuthority {
+                            granter: self.granter,
+                            generation,
+                        },
+                        deformations.clone(),
+                    ),
+                supply,
+                claims,
+            };
+            Ok(decisions)
+        }
+    }
     #[allow(clippy::too_many_arguments)]
     pub fn from_admitted_market(
         market: AdmittedSpecializationFlowMarket,
@@ -243,35 +588,17 @@ impl GrowthEntitlementMarketBinding {
                 priority: self.priority,
                 source_simthing_id_raw: Some(candidate.grantee().raw()),
             };
-            let authored = self
-                .market
-                .authorize_draw(
-                    &self.draw_id,
-                    &self.offering_id,
-                    demand,
-                    self.effective_weight,
-                    &self.active_lifecycle_triggers,
-                )
-                .map_err(|error| GrowthEntitlementError::Draw(error.to_string()))?;
-            claims.push(
-                ConstrainedClaim::from_runtime_demand(&authored.demand, authored.order_weight)
-                    .map_err(|error| GrowthEntitlementError::Clearing(error.to_string()))?,
-            );
+            claims.push(self.authorize_demand(demand)?);
         }
 
-        let results = clear_constrained_claims_at_generation(
-            &[ConstrainedSupply {
+        let results = self.clear_cpu_oracle(
+            &ConstrainedSupply {
                 scope: self.scope.clone(),
                 available: allocator.growth_capacity_available(self.granter),
-            }],
-            &claims,
-            &self.clearing_program,
-            ClearingRemainderAuthority {
-                granter: self.granter,
-                generation,
             },
-        )
-        .map_err(|error| GrowthEntitlementError::Clearing(error.to_string()))?;
+            &claims,
+            generation,
+        )?;
         let grants = &results
             .first()
             .ok_or_else(|| GrowthEntitlementError::Clearing("missing scope result".into()))?

@@ -146,6 +146,7 @@ pub struct BoundaryOutcome {
 /// only sim/core/feeder/gpu concepts so `simthing-sim` stays independent of
 /// `simthing-spec`.
 pub struct BoundaryHookContext<'a> {
+    pub tree: &'a SimRuntimeTree,
     pub events: &'a [ThresholdEvent],
     pub threshold_registry: &'a ThresholdRegistry,
     pub registry: &'a DimensionRegistry,
@@ -799,6 +800,7 @@ impl BoundaryProtocol {
 
         {
             let mut hook_ctx = BoundaryHookContext {
+                tree: &self.root,
                 events: &events,
                 threshold_registry: &self.cpu_threshold_registry,
                 registry: &self.registry,

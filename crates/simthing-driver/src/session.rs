@@ -348,6 +348,7 @@ pub struct SimSession {
     /// Present for the resident-primary posture. This is one per-tree owner;
     /// there is no process-global clearer or shared mutable schedule.
     resident_clearing: Option<crate::resident_clearing_runtime::ResidentClearingRuntime>,
+    ordinary_flow_continuation: crate::growth_entitlement::OrdinaryFlowContinuation,
     /// Last boundary dynamic Resource Flow fission enrollment report (E-2B-5R).
     pub last_resource_flow_dynamic_enrollment_report:
         Option<crate::resource_flow_fission_enrollment::DynamicFissionEnrollmentReport>,
@@ -826,6 +827,7 @@ impl SimSession {
             execution_lease,
             clearing_execution_posture,
             resident_clearing: None,
+            ordinary_flow_continuation: Default::default(),
             last_resource_flow_dynamic_enrollment_report: None,
             mapping: None,
             mapping_commitments: Vec::new(),
@@ -991,8 +993,10 @@ impl SimSession {
             ));
         }
         if self.clearing_execution_posture.is_resident_required() {
-            let runtime =
-                self.admit_resident_clearing_for_market(binding.resident_market_admission())?;
+            let runtime = self.admit_resident_clearing_for_market(
+                binding.resident_market_admission(),
+                binding.persistence_deformations(&self.spec_state.persistence_deformations),
+            )?;
             binding.install_resident_qualification(runtime.market_qualification());
             self.resident_clearing = Some(runtime);
         }
@@ -1062,6 +1066,13 @@ impl SimSession {
     }
 
     pub fn install_spec_state(&mut self, spec_state: SpecSessionState) -> Result<(), SessionError> {
+        if self.coord.tick_index() != 0
+            && spec_state.persistence_deformations != self.spec_state.persistence_deformations
+        {
+            return Err(SessionError::Mapping(
+                "persistence policy freezes before execution".into(),
+            ));
+        }
         if self.action_band_execution.is_some() {
             return Err(ActionBandExecutionIngressError::SpecInstallAfterActionBand.into());
         }
@@ -1083,6 +1094,9 @@ impl SimSession {
         // Re-project tree (including entity-hosted Constant PropertyValue seeds)
         // then upload thresholds. No dense install_resolved_values authority.
         self.proto.initial_gpu_sync(&self.coord, &mut self.state)?;
+        if self.coord.tick_index() == 0 {
+            self.resident_clearing = None;
+        }
         self.bind_or_rebind_resident_clearing_to_current_arena()?;
         self.sync_resource_economy_threshold_ops_at_install()?;
         Ok(())
@@ -1091,6 +1105,7 @@ impl SimSession {
     fn admit_resident_clearing_for_market(
         &mut self,
         market: crate::resident_clearing_runtime::ResidentMarketAdmission,
+        deformations: Vec<crate::resident_clearing_runtime::ResidentPersistenceDeformationBinding>,
     ) -> Result<crate::resident_clearing_runtime::ResidentClearingRuntime, SessionError> {
         let capacity = self.state.n_slots.max(1);
         if self
@@ -1116,7 +1131,7 @@ impl SimSession {
                         &self.spec_state.arena_registry,
                         capacity,
                         market,
-                        &[],
+                        &deformations,
                     )
                 },
             )
@@ -1131,8 +1146,25 @@ impl SimSession {
             return Ok(());
         }
         if self.resident_clearing.is_none() {
+            // RF-only sessions need not author a residency-capacity market.
+            // Leave the unused implicit growth binding unqualified when its
+            // resource is absent; an actual structural request still refuses.
+            // Explicit authored markets always pass through strict admission.
+            if self.growth_entitlement.is_implicit_root_standing()
+                && !self.spec_state.arena_registry.arenas.iter().any(|arena| {
+                    let property = self.proto.registry.property(arena.flow_property_id);
+                    property.namespace
+                        == crate::resident_clearing_runtime::RESIDENT_MARKET_RF_NAMESPACE
+                        && property.name
+                            == crate::resident_clearing_runtime::RESIDENT_MARKET_RF_PROPERTY
+                })
+            {
+                return Ok(());
+            }
             let runtime = self.admit_resident_clearing_for_market(
                 self.growth_entitlement.resident_market_admission(),
+                self.growth_entitlement
+                    .persistence_deformations(&self.spec_state.persistence_deformations),
             )?;
             self.growth_entitlement
                 .install_resident_qualification(runtime.market_qualification());
@@ -1869,7 +1901,8 @@ impl SimSession {
             .begin_generation(generation)
             .map_err(|error| SessionError::ExecutionIdentity(error.to_string()))?;
         let commitment_effect_submitted = self.submit_commitment_effects(summary)?;
-        if !commitment_effect_submitted
+        if self.growth_entitlement.is_implicit_root_standing()
+            && !commitment_effect_submitted
             && self
                 .integration_schedule
                 .grant_lifecycle_facts_due(simthing_core::GenerationStamp::new(day as u32))
@@ -1897,6 +1930,9 @@ impl SimSession {
         let growth_entitlement = &self.growth_entitlement;
         let clearing_execution_posture = self.clearing_execution_posture;
         let resident_clearing = &mut self.resident_clearing;
+        let continuation = &mut self.ordinary_flow_continuation;
+        let flow_deformations = spec_state.persistence_deformations.clone();
+        let current_flow = std::cell::RefCell::new(Ok((Vec::new(), 0)));
         let outcome = self.proto.execute_with_boundary_hook_and_growth(
             tick.events,
             &mut self.patcher,
@@ -1904,36 +1940,29 @@ impl SimSession {
             &mut self.state,
             day,
             &mut self.integration_schedule,
-            |ctx| spec_state.run_boundary_handlers(ctx),
-            |allocator, state, generation, candidates, integration_schedule| {
-                if candidates.is_empty() {
-                    return Ok(Vec::new());
-                }
-                match clearing_execution_posture {
-                    simthing_core::ClearingExecutionPosture::ResidentRequired => {
-                        let runtime = resident_clearing.as_mut().ok_or_else(|| {
-                            "ResidentRequired session has no admitted resident executor".to_string()
-                        })?;
-                        growth_entitlement.resolve_batch_resident(
-                            runtime,
-                            state,
-                            allocator,
-                            &generation_permit,
-                            generation,
-                            candidates,
-                            integration_schedule,
-                        )
-                    }
-                    simthing_core::ClearingExecutionPosture::CpuVendorizedOracle => {
-                        growth_entitlement.resolve_batch_cpu_vendorized_oracle(
-                            allocator,
-                            generation,
-                            candidates,
-                            integration_schedule,
-                        )
-                    }
-                }
-                .map_err(|error| error.to_string())
+            |ctx| {
+                spec_state.run_boundary_handlers(ctx);
+                *current_flow.borrow_mut() = growth_entitlement.authorize_current_flow(ctx.tree);
+            },
+            |allocator, state, _generation, candidates, integration_schedule| {
+                let (claims, available) = current_flow
+                    .replace(Ok((Vec::new(), 0)))
+                    .map_err(|e| e.to_string())?;
+                growth_entitlement
+                    .settle_boundary_claims(
+                        resident_clearing.as_mut(),
+                        continuation,
+                        state,
+                        &generation_permit,
+                        integration_schedule,
+                        claims,
+                        available,
+                        clearing_execution_posture,
+                        &flow_deformations,
+                        allocator,
+                        candidates,
+                    )
+                    .map_err(|error| error.to_string())
             },
         )?;
         summary.boundary_total_ms += boundary_started.elapsed().as_secs_f64() * 1000.0;
@@ -2012,7 +2041,8 @@ impl SimSession {
                     .begin_generation(generation)
                     .map_err(|error| SessionError::ExecutionIdentity(error.to_string()))?;
                 let commitment_effect_submitted = self.submit_commitment_effects(&mut summary)?;
-                if !commitment_effect_submitted
+                if self.growth_entitlement.is_implicit_root_standing()
+                    && !commitment_effect_submitted
                     && self
                         .integration_schedule
                         .grant_lifecycle_facts_due(simthing_core::GenerationStamp::new(day as u32))
@@ -2050,6 +2080,9 @@ impl SimSession {
                 let growth_entitlement = &self.growth_entitlement;
                 let clearing_execution_posture = self.clearing_execution_posture;
                 let resident_clearing = &mut self.resident_clearing;
+                let continuation = &mut self.ordinary_flow_continuation;
+                let flow_deformations = spec_state.persistence_deformations.clone();
+                let current_flow = std::cell::RefCell::new(Ok((Vec::new(), 0)));
                 let outcome = self.proto.execute_with_boundary_hook_and_growth(
                     tick.events,
                     &mut self.patcher,
@@ -2057,37 +2090,30 @@ impl SimSession {
                     &mut self.state,
                     day,
                     &mut self.integration_schedule,
-                    |ctx| spec_state.run_boundary_handlers(ctx),
-                    |allocator, state, generation, candidates, integration_schedule| {
-                        if candidates.is_empty() {
-                            return Ok(Vec::new());
-                        }
-                        match clearing_execution_posture {
-                            simthing_core::ClearingExecutionPosture::ResidentRequired => {
-                                let runtime = resident_clearing.as_mut().ok_or_else(|| {
-                                    "ResidentRequired session has no admitted resident executor"
-                                        .to_string()
-                                })?;
-                                growth_entitlement.resolve_batch_resident(
-                                    runtime,
-                                    state,
-                                    allocator,
-                                    &generation_permit,
-                                    generation,
-                                    candidates,
-                                    integration_schedule,
-                                )
-                            }
-                            simthing_core::ClearingExecutionPosture::CpuVendorizedOracle => {
-                                growth_entitlement.resolve_batch_cpu_vendorized_oracle(
-                                    allocator,
-                                    generation,
-                                    candidates,
-                                    integration_schedule,
-                                )
-                            }
-                        }
-                        .map_err(|error| error.to_string())
+                    |ctx| {
+                        spec_state.run_boundary_handlers(ctx);
+                        *current_flow.borrow_mut() =
+                            growth_entitlement.authorize_current_flow(ctx.tree);
+                    },
+                    |allocator, state, _generation, candidates, integration_schedule| {
+                        let (claims, available) = current_flow
+                            .replace(Ok((Vec::new(), 0)))
+                            .map_err(|e| e.to_string())?;
+                        growth_entitlement
+                            .settle_boundary_claims(
+                                resident_clearing.as_mut(),
+                                continuation,
+                                state,
+                                &generation_permit,
+                                integration_schedule,
+                                claims,
+                                available,
+                                clearing_execution_posture,
+                                &flow_deformations,
+                                allocator,
+                                candidates,
+                            )
+                            .map_err(|error| error.to_string())
                     },
                 )?;
                 summary.boundary_total_ms += boundary_started.elapsed().as_secs_f64() * 1000.0;
