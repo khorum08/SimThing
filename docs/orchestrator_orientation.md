@@ -45,9 +45,9 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 26e025f8b1e76f7f649571aaa4f2da2c82ca722b4d8c549f5ce9d14b4604f3a6 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | 26eab30ec86c97ac8dfd6beef7ae8c5b4d3f18c38fdaa431ec40ccce855396d3 |
-| design_0_0_8_7_rf_arena_modernization.md | 3eef33f079cca23fa80f87ab6a362806fc29c47cd1cbe95da437ac18a4b3a1d1 |
+| design_0_0_8_7_rf_arena_modernization.md | c52a42d9c607a4ab1e9095206164f9ceeae28294e6f88550578c5dfffa11e680 |
 | relay_lint.sh | ae19bdca12e90f6bc988e064f081ff62903034d69bf34b08ffd5c27e352181ba |
-| doctrine_anchors.tsv | 8729c9848ca10d401828fae75242daeb8aa50a82265c3bc274170514a8ad101a |
+| doctrine_anchors.tsv | 9da8e1cc3b568d5269f27ac3afbc5e77933ae466a475fab51e1bfef54f937d89 |
 | execution_status_taxonomy.tsv | 924c086550221dd7136ec0682293900d8d03feb4bc1dae1a6e750a61e65153bc |
 | execution_status_mixed_posture.tsv | 1adf05f3ec5fd7b537efe29259d20649a2c6d3a0839590063e5308ff154e8f25 |
 | execution_status_non_execution.tsv | 214c1b557dfd3fc465f0171051e20281ff1dcf6c53128dbb29cba01524f9be02 |
@@ -68,18 +68,19 @@ Dark properties (1): `fixture::dark_reading` (reasons/spans in `property_admissi
 
 Track state: `open`
 
-> Compact view: 100 completed rungs elided; showing all 1 open rungs plus the 3 most recent completions. Full ladder in the design doc.
+> Compact view: showing last 5 of 104 rungs (track `open`); full ladder in the design doc.
 
 | # | rung | deliverable | exit proof |
 | --- | --- | --- | --- |
+| 15.3 | CONSEQUENCE-INGRESS-0 | **FALSEHOOD REMEDIATION (Owner-commissioned 2026-09-03; unification doc sec 7 fi | DA-GRADUATED merged #1954 @ 2b9fddef |
 | 15.4 | ORACLE-SURFACE-QUARANTINE-0 | **FALSEHOOD REMEDIATION (unification doc sec 7 finding 3, corrected form): the v | DA-GRADUATED merged #1957 @ 2b51f8f9 |
 | 15.5 | RECURSION-AXIS-CONFORMANCE-0 | **STOP REMEDIATION (engineering remand E1/E6, DA-verified in source; engineering | DA-GRADUATED merged #1961 @ 1237b209 |
 | 15.6 | RESIDENT-FILTER-SUBSTRATE-BINDING-0 | **HIGH REMEDIATION (E3/E5/E7; engineering amendments 6/7/8/9 folded).** The synt | DA-GRADUATED merged #1965 @ 246d4117 |
-| 15.7 | TREE-EXECUTION-AUTHORITY-LIFETIME-0 | **HIGH REMEDIATION (E4/E8; engineering amendments 10/11 folded).** The 14.0 auth | TODO |
+| 15.7 | TREE-EXECUTION-AUTHORITY-LIFETIME-0 | **HIGH REMEDIATION (E4/E8; engineering amendments 10/11 folded).** The 14.0 auth | DA-GRADUATED merged #1968 @ c4d1b7a8 |
 
 ## Next Rung Pointer
 
-Active pointer: `TREE-EXECUTION-AUTHORITY-LIFETIME-0`
+Active pointer: `none`
 
 
 ## Cold-Start Spine (constitutional pointers)
