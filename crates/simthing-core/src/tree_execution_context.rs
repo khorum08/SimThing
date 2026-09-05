@@ -10,6 +10,7 @@ use std::fmt;
 use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering};
 use std::sync::Arc;
 
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::{DimensionRegistry, GenerationStamp, IntegrationSchedule, SimThing, SimThingId};
@@ -80,6 +81,70 @@ impl ExecutionIncarnation {
             .checked_add(1)
             .ok_or(TreeIdentityError::IncarnationOverflow)
             .and_then(Self::new)
+    }
+}
+
+/// Validated wire-facing record for one durable execution identity.
+///
+/// `TreeRealmId` and `ExecutionIncarnation` remain non-serde authority
+/// values. Save/replay code persists this inert record and must revalidate it
+/// through [`realm`](Self::realm) and [`incarnation`](Self::incarnation)
+/// before an execution lease can be minted.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PersistedTreeExecutionIdentity {
+    realm_bytes: [u8; 16],
+    incarnation: u64,
+}
+
+impl PersistedTreeExecutionIdentity {
+    pub fn new(realm: TreeRealmId, incarnation: ExecutionIncarnation) -> Self {
+        Self {
+            realm_bytes: realm.canonical_bytes(),
+            incarnation: incarnation.get(),
+        }
+    }
+
+    pub fn realm(self) -> Result<TreeRealmId, TreeIdentityError> {
+        TreeRealmId::from_bytes(self.realm_bytes)
+    }
+
+    pub fn incarnation(self) -> Result<ExecutionIncarnation, TreeIdentityError> {
+        ExecutionIncarnation::new(self.incarnation)
+    }
+
+    /// Reopen the same durable realm under a strictly newer incarnation.
+    pub fn restored(self) -> Result<Self, TreeIdentityError> {
+        Ok(Self::new(self.realm()?, self.incarnation()?.next()?))
+    }
+
+    /// Derive a new realm from an already-recorded semantic fork identity.
+    pub fn semantic_fork(self, fork: RecordedTreeForkIdentity) -> Result<Self, TreeIdentityError> {
+        let fork = RecordedTreeForkIdentity::new(fork.get())?;
+        Ok(Self::new(
+            self.realm()?.fork(fork.get())?,
+            ExecutionIncarnation::new(1)?,
+        ))
+    }
+}
+
+/// Durable identity of one recorded semantic-fork operation.
+///
+/// This is not a content digest, path, clone address, or process-global
+/// sequence. The persistence/replay layer records it before requesting the
+/// fork, making repeated replay of the same fork identity deterministic.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RecordedTreeForkIdentity(u64);
+
+impl RecordedTreeForkIdentity {
+    pub fn new(value: u64) -> Result<Self, TreeIdentityError> {
+        if value == 0 {
+            return Err(TreeIdentityError::ZeroForkKey);
+        }
+        Ok(Self(value))
+    }
+
+    pub const fn get(self) -> u64 {
+        self.0
     }
 }
 
@@ -274,6 +339,8 @@ struct TreeExecutionSeal {
     root: SimThingId,
     live_incarnation: AtomicU64,
     context_minted: AtomicBool,
+    live_generation: AtomicU32,
+    generation_permit_outstanding: AtomicBool,
 }
 
 /// The one runtime authority capsule for an executing tree.
@@ -311,6 +378,8 @@ impl<'a, TResidency> TreeExecutionAuthority<'a, TResidency> {
                 root: root.id,
                 live_incarnation: AtomicU64::new(incarnation.get()),
                 context_minted: AtomicBool::new(false),
+                live_generation: AtomicU32::new(generation_authority.current().get()),
+                generation_permit_outstanding: AtomicBool::new(false),
             }),
             root,
             generation_authority,
@@ -330,6 +399,15 @@ impl<'a, TResidency> TreeExecutionAuthority<'a, TResidency> {
             seal: Arc::clone(&self.seal),
             incarnation: self.live_incarnation(),
         })
+    }
+
+    /// Consume this borrowed admission capsule into the sole owned lifetime
+    /// lease. The lease retains only the private seal and live
+    /// realm/incarnation/generation authority; none of the borrowed semantic
+    /// tree, schedule, registry, or residency state can escape in it.
+    pub fn seal_lease(&self) -> Result<TreeExecutionLease, TreeExecutionContextError> {
+        self.seal_context()
+            .map(|context| TreeExecutionLease { context })
     }
 
     /// Change the live incarnation and return the sole currently-valid context.
@@ -374,6 +452,281 @@ impl<'a, TResidency> TreeExecutionAuthority<'a, TResidency> {
     }
 }
 
+/// Owned, opaque execution authority retained for the runtime lifetime.
+///
+/// The lease is deliberately neither `Clone` nor serde data. It holds no
+/// reference to semantic tree state; callers create short borrowing bindings
+/// only while admitting/rebinding a concrete runtime projection.
+pub struct TreeExecutionLease {
+    context: TreeExecutionContext,
+}
+
+impl fmt::Debug for TreeExecutionLease {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("TreeExecutionLease")
+            .field("realm", &self.realm())
+            .field("incarnation", &self.incarnation())
+            .field("generation", &self.current_generation())
+            .finish_non_exhaustive()
+    }
+}
+
+impl TreeExecutionLease {
+    pub fn realm(&self) -> TreeRealmId {
+        self.context.realm()
+    }
+
+    pub const fn incarnation(&self) -> ExecutionIncarnation {
+        self.context.incarnation()
+    }
+
+    pub fn root(&self) -> SimThingId {
+        self.context.root()
+    }
+
+    pub fn current_generation(&self) -> GenerationStamp {
+        GenerationStamp::new(self.context.seal.live_generation.load(Ordering::Acquire))
+    }
+
+    pub fn persisted_identity(&self) -> PersistedTreeExecutionIdentity {
+        PersistedTreeExecutionIdentity::new(self.realm(), self.incarnation())
+    }
+
+    /// Return the proof-only half of the private seal. A verifier can reject
+    /// foreign/stale permits but cannot mint or advance one.
+    pub fn verifier(&self) -> TreeExecutionLeaseVerifier {
+        TreeExecutionLeaseVerifier {
+            seal: Arc::clone(&self.context.seal),
+            incarnation: self.incarnation(),
+        }
+    }
+
+    /// Create one transient borrowing view over the current semantic state.
+    pub fn bind<'a, TResidency>(
+        &'a self,
+        root: &'a SimThing,
+        schedule: &'a IntegrationSchedule,
+        registry: &'a DimensionRegistry,
+        residency: &'a TResidency,
+    ) -> Result<TreeExecutionBinding<'a, TResidency>, TreeExecutionContextError> {
+        self.context.verify_live()?;
+        if root.id != self.root() {
+            return Err(TreeExecutionContextError::ExecutionRootMismatch {
+                expected: self.root(),
+                observed: root.id,
+            });
+        }
+        Ok(TreeExecutionBinding {
+            context: &self.context,
+            authority: None,
+            lease: Some(self),
+            root,
+            schedule,
+            registry,
+            residency,
+        })
+    }
+
+    /// Mint the sole permit for one whole tree generation. All recursive
+    /// edges, exact sealing, and temporal preparation borrow this same value.
+    pub fn begin_generation(
+        &self,
+        generation: GenerationStamp,
+    ) -> Result<TreeGenerationPermit, TreeExecutionContextError> {
+        self.context.verify_live()?;
+        let live = self.current_generation();
+        if generation != live {
+            return Err(TreeExecutionContextError::PermitGenerationMismatch {
+                expected: live,
+                observed: generation,
+            });
+        }
+        self.context
+            .seal
+            .generation_permit_outstanding
+            .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
+            .map_err(
+                |_| TreeExecutionContextError::GenerationPermitAlreadyOutstanding { generation },
+            )?;
+        Ok(TreeGenerationPermit {
+            seal: Arc::clone(&self.context.seal),
+            incarnation: self.incarnation(),
+            generation,
+            consumed: false,
+        })
+    }
+
+    /// Atomically consume the whole-generation permit and advance N -> N+1.
+    pub fn finish_generation(
+        &self,
+        permit: &mut TreeGenerationPermit,
+        next: GenerationStamp,
+    ) -> Result<GenerationStamp, TreeExecutionContextError> {
+        self.verifier().finish_generation(permit, next)
+    }
+
+    /// Mint the next live incarnation while leaving this retained lease stale.
+    /// This is the in-process migration witness; durable restore mints a new
+    /// capsule from [`PersistedTreeExecutionIdentity`] instead.
+    pub fn migrate(
+        &self,
+        new_incarnation: ExecutionIncarnation,
+    ) -> Result<Self, TreeExecutionContextError> {
+        self.context.verify_live()?;
+        if new_incarnation == self.incarnation() {
+            return Err(TreeExecutionContextError::MigrationRequiresNewIncarnation);
+        }
+        self.context
+            .seal
+            .live_incarnation
+            .compare_exchange(
+                self.incarnation().get(),
+                new_incarnation.get(),
+                Ordering::AcqRel,
+                Ordering::Acquire,
+            )
+            .map_err(|observed| TreeExecutionContextError::StaleIncarnation {
+                expected: incarnation_from_live(observed),
+                observed: self.incarnation(),
+            })?;
+        Ok(Self {
+            context: TreeExecutionContext {
+                seal: Arc::clone(&self.context.seal),
+                incarnation: new_incarnation,
+            },
+        })
+    }
+}
+
+/// Opaque verifier retained by a concrete executor that does not itself own
+/// the session's generation authority.
+pub struct TreeExecutionLeaseVerifier {
+    seal: Arc<TreeExecutionSeal>,
+    incarnation: ExecutionIncarnation,
+}
+
+impl TreeExecutionLeaseVerifier {
+    pub fn validate_generation(
+        &self,
+        permit: &TreeGenerationPermit,
+        generation: GenerationStamp,
+    ) -> Result<(), TreeExecutionContextError> {
+        permit.validate(self, generation)
+    }
+
+    pub fn realm(&self) -> TreeRealmId {
+        self.seal.realm
+    }
+
+    pub const fn incarnation(&self) -> ExecutionIncarnation {
+        self.incarnation
+    }
+
+    fn finish_generation(
+        &self,
+        permit: &mut TreeGenerationPermit,
+        next: GenerationStamp,
+    ) -> Result<GenerationStamp, TreeExecutionContextError> {
+        permit.validate(self, permit.generation)?;
+        let expected = permit
+            .generation
+            .get()
+            .checked_add(1)
+            .ok_or(TreeExecutionContextError::GenerationOverflow)?;
+        if next.get() != expected {
+            return Err(TreeExecutionContextError::GenerationAdvanceOutOfSequence {
+                current: permit.generation,
+                requested: next,
+            });
+        }
+        self.seal
+            .live_generation
+            .compare_exchange(
+                permit.generation.get(),
+                next.get(),
+                Ordering::AcqRel,
+                Ordering::Acquire,
+            )
+            .map_err(
+                |observed| TreeExecutionContextError::GenerationAuthorityChanged {
+                    expected: permit.generation,
+                    observed: GenerationStamp::new(observed),
+                },
+            )?;
+        permit.consumed = true;
+        self.seal
+            .generation_permit_outstanding
+            .store(false, Ordering::Release);
+        Ok(next)
+    }
+}
+
+/// One-use capability authorizing all work in exactly one tree generation.
+///
+/// It is intentionally shared by reference across recursive edges and then
+/// consumed once at the generation barrier. Dropping an unfinished permit
+/// releases the reservation without advancing authority, permitting a
+/// fail-closed retry after no generation commit occurred.
+pub struct TreeGenerationPermit {
+    seal: Arc<TreeExecutionSeal>,
+    incarnation: ExecutionIncarnation,
+    generation: GenerationStamp,
+    consumed: bool,
+}
+
+impl TreeGenerationPermit {
+    pub const fn generation(&self) -> GenerationStamp {
+        self.generation
+    }
+
+    pub const fn is_consumed(&self) -> bool {
+        self.consumed
+    }
+
+    fn validate(
+        &self,
+        verifier: &TreeExecutionLeaseVerifier,
+        generation: GenerationStamp,
+    ) -> Result<(), TreeExecutionContextError> {
+        if self.consumed {
+            return Err(TreeExecutionContextError::GenerationPermitAlreadyConsumed {
+                generation: self.generation,
+            });
+        }
+        if !Arc::ptr_eq(&self.seal, &verifier.seal) {
+            return Err(TreeExecutionContextError::AuthorityCapsuleMismatch);
+        }
+        let live_incarnation =
+            incarnation_from_live(self.seal.live_incarnation.load(Ordering::Acquire));
+        if self.incarnation != verifier.incarnation || self.incarnation != live_incarnation {
+            return Err(TreeExecutionContextError::StaleIncarnation {
+                expected: live_incarnation,
+                observed: self.incarnation,
+            });
+        }
+        let live_generation =
+            GenerationStamp::new(self.seal.live_generation.load(Ordering::Acquire));
+        if self.generation != live_generation || generation != self.generation {
+            return Err(TreeExecutionContextError::PermitGenerationMismatch {
+                expected: self.generation,
+                observed: generation,
+            });
+        }
+        Ok(())
+    }
+}
+
+impl Drop for TreeGenerationPermit {
+    fn drop(&mut self) {
+        if !self.consumed {
+            self.seal
+                .generation_permit_outstanding
+                .store(false, Ordering::Release);
+        }
+    }
+}
+
 /// Opaque, non-cloneable authority handle sealed to exactly one live capsule.
 ///
 /// There is no public constructor and no serde implementation. Incarnation is
@@ -384,6 +737,8 @@ impl<'a, TResidency> TreeExecutionAuthority<'a, TResidency> {
 /// requires_deserialize::<simthing_core::TreeRealmId>();
 /// requires_deserialize::<simthing_core::ExecutionIncarnation>();
 /// requires_deserialize::<simthing_core::TreeExecutionContext>();
+/// requires_deserialize::<simthing_core::TreeExecutionLease>();
+/// requires_deserialize::<simthing_core::TreeGenerationPermit>();
 /// ```
 pub struct TreeExecutionContext {
     seal: Arc<TreeExecutionSeal>,
@@ -434,7 +789,12 @@ impl TreeExecutionContext {
         self.verify_authority(authority)?;
         Ok(TreeExecutionBinding {
             context: self,
-            authority,
+            authority: Some(authority),
+            lease: None,
+            root: authority.root,
+            schedule: authority.schedule,
+            registry: authority.registry,
+            residency: authority.residency,
         })
     }
 
@@ -486,17 +846,37 @@ impl TreeExecutionContext {
         }
         Ok(())
     }
+
+    fn verify_live(&self) -> Result<(), TreeExecutionContextError> {
+        let live = incarnation_from_live(self.seal.live_incarnation.load(Ordering::Acquire));
+        if live != self.incarnation {
+            return Err(TreeExecutionContextError::StaleIncarnation {
+                expected: live,
+                observed: self.incarnation,
+            });
+        }
+        Ok(())
+    }
 }
 
 /// Freshly checked borrowing view of one runtime authority capsule.
 pub struct TreeExecutionBinding<'a, TResidency> {
     context: &'a TreeExecutionContext,
-    authority: &'a TreeExecutionAuthority<'a, TResidency>,
+    authority: Option<&'a TreeExecutionAuthority<'a, TResidency>>,
+    lease: Option<&'a TreeExecutionLease>,
+    root: &'a SimThing,
+    schedule: &'a IntegrationSchedule,
+    registry: &'a DimensionRegistry,
+    residency: &'a TResidency,
 }
 
 impl<'a, TResidency> TreeExecutionBinding<'a, TResidency> {
     pub fn validate(&self) -> Result<(), TreeExecutionContextError> {
-        self.context.verify_authority(self.authority)
+        match (self.authority, self.lease) {
+            (Some(authority), None) => self.context.verify_authority(authority),
+            (None, Some(_)) => self.context.verify_live(),
+            _ => Err(TreeExecutionContextError::InvalidExecutionBinding),
+        }
     }
 
     pub const fn context(&self) -> &'a TreeExecutionContext {
@@ -504,27 +884,41 @@ impl<'a, TResidency> TreeExecutionBinding<'a, TResidency> {
     }
 
     pub const fn root(&self) -> &'a SimThing {
-        self.authority.root
+        self.root
     }
 
     pub fn generation(&self) -> GenerationStamp {
-        self.authority.generation_authority.current()
+        match (self.authority, self.lease) {
+            (Some(authority), None) => authority.generation_authority.current(),
+            (None, Some(lease)) => lease.current_generation(),
+            _ => GenerationStamp::new(u32::MAX),
+        }
     }
 
-    pub const fn generation_authority(&self) -> &'a TreeGenerationAuthority {
-        self.authority.generation_authority
+    pub fn generation_authority(
+        &self,
+    ) -> Result<&'a TreeGenerationAuthority, TreeExecutionContextError> {
+        self.authority
+            .map(|authority| authority.generation_authority)
+            .ok_or(TreeExecutionContextError::BorrowedGenerationAuthorityUnavailable)
     }
 
     pub const fn schedule(&self) -> &'a IntegrationSchedule {
-        self.authority.schedule
+        self.schedule
     }
 
     pub const fn registry(&self) -> &'a DimensionRegistry {
-        self.authority.registry
+        self.registry
     }
 
     pub const fn residency(&self) -> &'a TResidency {
-        self.authority.residency
+        self.residency
+    }
+
+    pub fn lease_verifier(&self) -> Result<TreeExecutionLeaseVerifier, TreeExecutionContextError> {
+        self.lease
+            .map(TreeExecutionLease::verifier)
+            .ok_or(TreeExecutionContextError::LifetimeLeaseUnavailable)
     }
 }
 
@@ -544,12 +938,23 @@ pub enum TreeIdentityError {
 pub enum TreeExecutionContextError {
     #[error("tree execution root id must be non-zero")]
     ZeroRootId,
+    #[error("tree execution binding root mismatch: expected {expected:?}, observed {observed:?}")]
+    ExecutionRootMismatch {
+        expected: SimThingId,
+        observed: SimThingId,
+    },
     #[error("this runtime authority capsule has already minted its context")]
     ContextAlreadyMinted,
     #[error("this tree generation authority has already minted its execution authority capsule")]
     GenerationAuthorityAlreadySealed,
     #[error("tree execution context belongs to a different runtime authority capsule")]
     AuthorityCapsuleMismatch,
+    #[error("tree execution binding has no single authority source")]
+    InvalidExecutionBinding,
+    #[error("borrowed generation authority is unavailable from an owned lifetime lease")]
+    BorrowedGenerationAuthorityUnavailable,
+    #[error("owned lifetime lease is unavailable from a compatibility context binding")]
+    LifetimeLeaseUnavailable,
     #[error("migration must change execution incarnation")]
     MigrationRequiresNewIncarnation,
     #[error("seam fact subject realm does not match its source realm")]
@@ -572,6 +977,15 @@ pub enum TreeExecutionContextError {
         "generation authority changed concurrently: expected {expected:?}, observed {observed:?}"
     )]
     GenerationAuthorityChanged {
+        expected: GenerationStamp,
+        observed: GenerationStamp,
+    },
+    #[error("generation {generation:?} already has an outstanding whole-tree permit")]
+    GenerationPermitAlreadyOutstanding { generation: GenerationStamp },
+    #[error("generation permit for {generation:?} has already been consumed")]
+    GenerationPermitAlreadyConsumed { generation: GenerationStamp },
+    #[error("generation permit mismatch: expected {expected:?}, observed {observed:?}")]
+    PermitGenerationMismatch {
         expected: GenerationStamp,
         observed: GenerationStamp,
     },
@@ -641,6 +1055,113 @@ mod tests {
         // old-B-fact fails through the actual destination-remap door.
         assert!(matches!(
             old_context.remap_seam_fact(&authority, &fact, |subject| *subject.local()),
+            Err(TreeExecutionContextError::StaleIncarnation { .. })
+        ));
+    }
+
+    #[test]
+    fn one_permit_is_shared_for_n_then_consumed_once_at_n_plus_one() {
+        let tree = SimThing::new(SimThingKind::GameSession, 4);
+        let generation = TreeGenerationAuthority::new(GenerationStamp::new(7));
+        let schedule = IntegrationSchedule::new();
+        let registry = DimensionRegistry::new();
+        let residency = ();
+        let authority = TreeExecutionAuthority::seal(
+            TreeRealmId::from_u128(9).unwrap(),
+            ExecutionIncarnation::new(3).unwrap(),
+            &tree,
+            &generation,
+            &schedule,
+            &registry,
+            &residency,
+        )
+        .unwrap();
+        let lease = authority.seal_lease().unwrap();
+        let verifier = lease.verifier();
+        let mut permit = lease.begin_generation(GenerationStamp::new(7)).unwrap();
+
+        verifier
+            .validate_generation(&permit, GenerationStamp::new(7))
+            .unwrap();
+        verifier
+            .validate_generation(&permit, GenerationStamp::new(7))
+            .unwrap();
+        assert!(matches!(
+            lease.begin_generation(GenerationStamp::new(7)),
+            Err(TreeExecutionContextError::GenerationPermitAlreadyOutstanding { .. })
+        ));
+        assert!(matches!(
+            verifier.validate_generation(&permit, GenerationStamp::new(8)),
+            Err(TreeExecutionContextError::PermitGenerationMismatch { .. })
+        ));
+
+        lease
+            .finish_generation(&mut permit, GenerationStamp::new(8))
+            .unwrap();
+        assert!(permit.is_consumed());
+        assert!(matches!(
+            lease.finish_generation(&mut permit, GenerationStamp::new(8)),
+            Err(TreeExecutionContextError::GenerationPermitAlreadyConsumed { .. })
+        ));
+        assert!(matches!(
+            verifier.validate_generation(&permit, GenerationStamp::new(7)),
+            Err(TreeExecutionContextError::GenerationPermitAlreadyConsumed { .. })
+        ));
+        assert!(matches!(
+            lease.begin_generation(GenerationStamp::new(7)),
+            Err(TreeExecutionContextError::PermitGenerationMismatch { .. })
+        ));
+        lease.begin_generation(GenerationStamp::new(8)).unwrap();
+    }
+
+    #[test]
+    fn foreign_capsule_and_stale_incarnation_permits_fail_closed() {
+        let tree_a = SimThing::new(SimThingKind::GameSession, 4);
+        let tree_b = SimThing::new(SimThingKind::GameSession, 5);
+        let generation_a = TreeGenerationAuthority::new(GenerationStamp::new(4));
+        let generation_b = TreeGenerationAuthority::new(GenerationStamp::new(4));
+        let schedule_a = IntegrationSchedule::new();
+        let schedule_b = IntegrationSchedule::new();
+        let registry_a = DimensionRegistry::new();
+        let registry_b = DimensionRegistry::new();
+        let authority_a = TreeExecutionAuthority::seal(
+            TreeRealmId::from_u128(11).unwrap(),
+            ExecutionIncarnation::new(1).unwrap(),
+            &tree_a,
+            &generation_a,
+            &schedule_a,
+            &registry_a,
+            &(),
+        )
+        .unwrap();
+        let authority_b = TreeExecutionAuthority::seal(
+            TreeRealmId::from_u128(11).unwrap(),
+            ExecutionIncarnation::new(1).unwrap(),
+            &tree_b,
+            &generation_b,
+            &schedule_b,
+            &registry_b,
+            &(),
+        )
+        .unwrap();
+        let lease_a = authority_a.seal_lease().unwrap();
+        let lease_b = authority_b.seal_lease().unwrap();
+        let permit_a = lease_a.begin_generation(GenerationStamp::new(4)).unwrap();
+
+        assert_eq!(
+            lease_b
+                .verifier()
+                .validate_generation(&permit_a, GenerationStamp::new(4)),
+            Err(TreeExecutionContextError::AuthorityCapsuleMismatch)
+        );
+
+        let migrated = lease_a
+            .migrate(ExecutionIncarnation::new(2).unwrap())
+            .unwrap();
+        assert!(matches!(
+            migrated
+                .verifier()
+                .validate_generation(&permit_a, GenerationStamp::new(4)),
             Err(TreeExecutionContextError::StaleIncarnation { .. })
         ));
     }

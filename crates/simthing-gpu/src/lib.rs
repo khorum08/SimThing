@@ -67,8 +67,8 @@ pub use resident_clearing_plan::{
     RESIDENT_BUFFER_SCRATCH, RESIDENT_CLEARING_ABI_VERSION, RESIDENT_CLEARING_BUFFER_ALIGNMENT,
 };
 pub use resident_clearing_runtime::{
-    ResidentClearingLiveHead, ResidentClearingQualification, ResidentClearingSubmission,
-    ResidentLiveHeadError, ResidentTemporalDemandSubmission,
+    semantic_kernel_bundle_fingerprint, ResidentClearingLiveHead, ResidentClearingQualification,
+    ResidentClearingSubmission, ResidentLiveHeadError, ResidentTemporalDemandSubmission,
     QUALIFIED_RESIDENT_CLEARING_FINGERPRINT,
 };
 pub use saturating_flux_choke_threshold::{

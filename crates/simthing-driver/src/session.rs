@@ -29,32 +29,25 @@ type FieldSweepCompilerResult =
     Result<Vec<simthing_gpu::FieldSweepRegistration>, simthing_gpu::FieldSweepAdmissionError>;
 type FieldSweepCompilerFn = fn(u32) -> FieldSweepCompilerResult;
 
-/// Derive the default realm from authored semantic identity rather than a
-/// process-global allocator, pointer, row, or device handle. A restored or
-/// forked runtime with an already durable realm uses `open_in_realm` instead.
-fn derive_default_tree_realm(
-    scenario: &Scenario,
-) -> Result<simthing_core::TreeRealmId, SessionError> {
-    let tree = serde_json::to_vec(&scenario.root)
-        .map_err(|error| SessionError::Mapping(error.to_string()))?;
-    let mut left = 0xcbf2_9ce4_8422_2325_u64;
-    let mut right = 0x8422_2325_cbf2_9ce4_u64;
-    for byte in scenario
-        .name
-        .as_bytes()
-        .iter()
-        .copied()
-        .chain([0])
-        .chain(tree)
-    {
-        left ^= u64::from(byte);
-        left = left.wrapping_mul(0x0000_0100_0000_01b3);
-        right ^= u64::from(byte.rotate_left(1));
-        right = right.wrapping_mul(0x0000_0100_0000_01b3);
+/// Mint one durable identity from operating-system entropy. Scenario bytes,
+/// paths, clone addresses, process-global counters, and physical device facts
+/// never participate.
+fn mint_fresh_execution_identity(
+) -> Result<simthing_core::PersistedTreeExecutionIdentity, SessionError> {
+    let mut realm_bytes = [0_u8; 16];
+    getrandom::fill(&mut realm_bytes)
+        .map_err(|error| SessionError::ExecutionIdentity(error.to_string()))?;
+    if realm_bytes == [0; 16] {
+        realm_bytes[0] = 1;
     }
-    let value = (u128::from(right) << 64) | u128::from(left);
-    simthing_core::TreeRealmId::from_u128(value)
-        .map_err(|error| SessionError::Mapping(error.to_string()))
+    let realm = simthing_core::TreeRealmId::from_bytes(realm_bytes)
+        .map_err(|error| SessionError::ExecutionIdentity(error.to_string()))?;
+    let incarnation = simthing_core::ExecutionIncarnation::new(1)
+        .map_err(|error| SessionError::ExecutionIdentity(error.to_string()))?;
+    Ok(simthing_core::PersistedTreeExecutionIdentity::new(
+        realm,
+        incarnation,
+    ))
 }
 
 #[derive(Debug, Error)]
@@ -79,6 +72,8 @@ pub enum SessionError {
     GpuSync(#[from] simthing_sim::GpuSyncError),
     #[error("session mapping: {0}")]
     Mapping(String),
+    #[error("tree execution identity: {0}")]
+    ExecutionIdentity(String),
     #[error("resource flow admission: {0}")]
     ResourceFlowAdmission(String),
     #[error("threshold install: {0}")]
@@ -342,9 +337,12 @@ pub struct SimSession {
     integration_schedule: simthing_core::IntegrationSchedule,
     /// One admitted 11.2a input for all ordinary fission/AddChild growth.
     growth_entitlement: GrowthEntitlementMarketBinding,
-    /// Durable per-tree namespace; physical device and raw local ids never
-    /// become cross-tree economic identity.
-    tree_realm: simthing_core::TreeRealmId,
+    /// Validated save/replay identity. Fresh, restore, and semantic-fork doors
+    /// are explicit and never infer this record from scenario content.
+    execution_identity: simthing_core::PersistedTreeExecutionIdentity,
+    /// Owned opaque authority retained for the complete session lifetime.
+    /// It carries no borrowed semantic tree state.
+    execution_lease: simthing_core::TreeExecutionLease,
     /// Clearing backend authority, independent of scheduling posture.
     clearing_execution_posture: simthing_core::ClearingExecutionPosture,
     /// Present for the resident-primary posture. This is one per-tree owner;
@@ -688,17 +686,54 @@ impl SimSession {
         scenario: Scenario,
         posture: simthing_core::ClearingExecutionPosture,
     ) -> Result<Self, SessionError> {
-        let realm = derive_default_tree_realm(&scenario)?;
-        Self::open_in_realm(scenario, posture, realm)
+        let identity = mint_fresh_execution_identity()?;
+        Self::open_in_execution_identity(scenario, posture, identity)
     }
 
-    /// Explicit realm-bearing session door used by migration/recreation and
-    /// async-tree executors. Ordinary callers use [`Self::open`].
-    pub fn open_in_realm(
+    /// Restore one persisted execution: same durable realm, strictly newer
+    /// incarnation, and therefore no authority reuse from the prior runtime.
+    pub fn open_restored(
+        scenario: Scenario,
+        persisted: simthing_core::PersistedTreeExecutionIdentity,
+    ) -> Result<Self, SessionError> {
+        let restored = persisted
+            .restored()
+            .map_err(|error| SessionError::ExecutionIdentity(error.to_string()))?;
+        Self::open_in_execution_identity(
+            scenario,
+            simthing_core::ClearingExecutionPosture::ResidentRequired,
+            restored,
+        )
+    }
+
+    /// Open a recorded semantic fork: deterministic new realm, fresh first
+    /// incarnation. The fork id is persisted operation identity, not content.
+    pub fn open_semantic_fork(
+        scenario: Scenario,
+        source: simthing_core::PersistedTreeExecutionIdentity,
+        fork: simthing_core::RecordedTreeForkIdentity,
+    ) -> Result<Self, SessionError> {
+        let forked = source
+            .semantic_fork(fork)
+            .map_err(|error| SessionError::ExecutionIdentity(error.to_string()))?;
+        Self::open_in_execution_identity(
+            scenario,
+            simthing_core::ClearingExecutionPosture::ResidentRequired,
+            forked,
+        )
+    }
+
+    fn open_in_execution_identity(
         scenario: Scenario,
         clearing_execution_posture: simthing_core::ClearingExecutionPosture,
-        tree_realm: simthing_core::TreeRealmId,
+        execution_identity: simthing_core::PersistedTreeExecutionIdentity,
     ) -> Result<Self, SessionError> {
+        let tree_realm = execution_identity
+            .realm()
+            .map_err(|error| SessionError::ExecutionIdentity(error.to_string()))?;
+        let execution_incarnation = execution_identity
+            .incarnation()
+            .map_err(|error| SessionError::ExecutionIdentity(error.to_string()))?;
         // Admit the semantic projection before the slot allocator, whose
         // residency contract assumes unique logical identities. Malformed
         // trees therefore fail through the typed session door rather than an
@@ -761,6 +796,17 @@ impl SimSession {
         proto.initial_gpu_sync(&coord, &mut state)?;
 
         let integration_schedule = simthing_core::IntegrationSchedule::new();
+        // The first completed boundary is generation one. The borrowed
+        // capsule exists only for this mint; the stored lease below contains
+        // no reference to `proto` or `integration_schedule`.
+        let execution_lease = proto
+            .seal_tree_execution_lease(
+                tree_realm,
+                execution_incarnation,
+                simthing_core::GenerationStamp::new(1),
+                &integration_schedule,
+            )
+            .map_err(|error| SessionError::ExecutionIdentity(error.to_string()))?;
         let mut spec_state = SpecSessionState::new();
         spec_state.arena_registry = resident_arena_registry;
         spec_state.property_admission = scenario.registry.property_admission_report();
@@ -776,7 +822,8 @@ impl SimSession {
             spec_state,
             integration_schedule,
             growth_entitlement,
-            tree_realm,
+            execution_identity,
+            execution_lease,
             clearing_execution_posture,
             resident_clearing: None,
             last_resource_flow_dynamic_enrollment_report: None,
@@ -789,9 +836,7 @@ impl SimSession {
             ),
             order_directive_injection_log: Mutex::new(Vec::new()),
         };
-        session.bind_or_rebind_resident_clearing_to_current_arena(
-            simthing_core::GenerationStamp::new(0),
-        )?;
+        session.bind_or_rebind_resident_clearing_to_current_arena()?;
         session.sync_resource_flow()?;
         Ok(session)
     }
@@ -802,7 +847,15 @@ impl SimSession {
     }
 
     pub fn tree_realm(&self) -> simthing_core::TreeRealmId {
-        self.tree_realm
+        self.execution_lease.realm()
+    }
+
+    pub fn execution_incarnation(&self) -> simthing_core::ExecutionIncarnation {
+        self.execution_lease.incarnation()
+    }
+
+    pub fn persisted_execution_identity(&self) -> simthing_core::PersistedTreeExecutionIdentity {
+        self.execution_identity
     }
 
     pub fn clearing_execution_posture(&self) -> simthing_core::ClearingExecutionPosture {
@@ -938,10 +991,8 @@ impl SimSession {
             ));
         }
         if self.clearing_execution_posture.is_resident_required() {
-            let runtime = self.admit_resident_clearing_for_market(
-                simthing_core::GenerationStamp::new(0),
-                binding.resident_market_admission(),
-            )?;
+            let runtime =
+                self.admit_resident_clearing_for_market(binding.resident_market_admission())?;
             binding.install_resident_qualification(runtime.market_qualification());
             self.resident_clearing = Some(runtime);
         }
@@ -1004,9 +1055,7 @@ impl SimSession {
             ));
         }
         if posture.is_resident_required() {
-            self.bind_or_rebind_resident_clearing_to_current_arena(
-                simthing_core::GenerationStamp::new(0),
-            )?;
+            self.bind_or_rebind_resident_clearing_to_current_arena()?;
         }
         self.clearing_execution_posture = posture;
         Ok(())
@@ -1034,16 +1083,13 @@ impl SimSession {
         // Re-project tree (including entity-hosted Constant PropertyValue seeds)
         // then upload thresholds. No dense install_resolved_values authority.
         self.proto.initial_gpu_sync(&self.coord, &mut self.state)?;
-        self.bind_or_rebind_resident_clearing_to_current_arena(
-            simthing_core::GenerationStamp::new(0),
-        )?;
+        self.bind_or_rebind_resident_clearing_to_current_arena()?;
         self.sync_resource_economy_threshold_ops_at_install()?;
         Ok(())
     }
 
     fn admit_resident_clearing_for_market(
         &mut self,
-        generation: simthing_core::GenerationStamp,
         market: crate::resident_clearing_runtime::ResidentMarketAdmission,
     ) -> Result<crate::resident_clearing_runtime::ResidentClearingRuntime, SessionError> {
         let capacity = self.state.n_slots.max(1);
@@ -1059,19 +1105,9 @@ impl SimSession {
                 .admit_resident_live_head(resident_live_head_capacity)
                 .map_err(|error| SessionError::Mapping(error.to_string()))?;
         }
-        let incarnation = self
-            .resident_clearing
-            .as_ref()
-            .map_or_else(
-                || simthing_core::ExecutionIncarnation::new(1),
-                |runtime| Ok(runtime.incarnation()),
-            )
-            .map_err(|error| SessionError::Mapping(error.to_string()))?;
         self.proto
             .with_sealed_tree_execution_binding(
-                self.tree_realm,
-                incarnation,
-                generation,
+                &self.execution_lease,
                 &self.integration_schedule,
                 |binding| {
                     crate::resident_clearing_runtime::ResidentClearingRuntime::admit_sealed_market_with_persistence_deformations(
@@ -1088,10 +1124,7 @@ impl SimSession {
             .map_err(Into::into)
     }
 
-    fn bind_or_rebind_resident_clearing_to_current_arena(
-        &mut self,
-        generation: simthing_core::GenerationStamp,
-    ) -> Result<(), SessionError> {
+    fn bind_or_rebind_resident_clearing_to_current_arena(&mut self) -> Result<(), SessionError> {
         if !self.clearing_execution_posture.is_resident_required()
             || self.spec_state.arena_registry.arenas.is_empty()
         {
@@ -1099,7 +1132,6 @@ impl SimSession {
         }
         if self.resident_clearing.is_none() {
             let runtime = self.admit_resident_clearing_for_market(
-                generation,
                 self.growth_entitlement.resident_market_admission(),
             )?;
             self.growth_entitlement
@@ -1113,9 +1145,7 @@ impl SimSession {
         let qualification = self
             .proto
             .with_sealed_tree_execution_binding(
-                self.tree_realm,
-                runtime.incarnation(),
-                generation,
+                &self.execution_lease,
                 &self.integration_schedule,
                 |binding| {
                     runtime.rebind_after_topology_change(
@@ -1832,6 +1862,12 @@ impl SimSession {
         }
 
         let day = tick.day_index;
+        let generation = simthing_core::GenerationStamp::new(day as u32);
+        let next_generation = simthing_core::GenerationStamp::new((day as u32).saturating_add(1));
+        let mut generation_permit = self
+            .execution_lease
+            .begin_generation(generation)
+            .map_err(|error| SessionError::ExecutionIdentity(error.to_string()))?;
         let commitment_effect_submitted = self.submit_commitment_effects(summary)?;
         if !commitment_effect_submitted
             && self
@@ -1846,6 +1882,9 @@ impl SimSession {
                 .proto
                 .can_skip_empty_boundary(&tick.events, &self.patcher)
         {
+            self.execution_lease
+                .finish_generation(&mut generation_permit, next_generation)
+                .map_err(|error| SessionError::ExecutionIdentity(error.to_string()))?;
             summary.boundaries_skipped += 1;
             summary.boundaries_run += 1;
             self.state
@@ -1879,6 +1918,7 @@ impl SimSession {
                             runtime,
                             state,
                             allocator,
+                            &generation_permit,
                             generation,
                             candidates,
                             integration_schedule,
@@ -1918,6 +1958,9 @@ impl SimSession {
         self.react_to_fission_clones(&outcome);
         self.react_to_fission_resource_flow_enrollment(&outcome)?;
         self.sync_resource_economy()?;
+        self.execution_lease
+            .finish_generation(&mut generation_permit, next_generation)
+            .map_err(|error| SessionError::ExecutionIdentity(error.to_string()))?;
         // Next day's fused scans stamp the upcoming day index.
         self.state
             .bind_production_generation((day as u32).saturating_add(1));
@@ -1961,6 +2004,13 @@ impl SimSession {
             let tick = cycle.hot.tick;
             if tick.boundary_reached {
                 let day = tick.day_index;
+                let generation = simthing_core::GenerationStamp::new(day as u32);
+                let next_generation =
+                    simthing_core::GenerationStamp::new((day as u32).saturating_add(1));
+                let mut generation_permit = self
+                    .execution_lease
+                    .begin_generation(generation)
+                    .map_err(|error| SessionError::ExecutionIdentity(error.to_string()))?;
                 let commitment_effect_submitted = self.submit_commitment_effects(&mut summary)?;
                 if !commitment_effect_submitted
                     && self
@@ -1975,6 +2025,9 @@ impl SimSession {
                         .proto
                         .can_skip_empty_boundary(&tick.events, &self.patcher)
                 {
+                    self.execution_lease
+                        .finish_generation(&mut generation_permit, next_generation)
+                        .map_err(|error| SessionError::ExecutionIdentity(error.to_string()))?;
                     let frame = ReplayFrame {
                         day: day as u32,
                         entries: Vec::new(),
@@ -2019,6 +2072,7 @@ impl SimSession {
                                     runtime,
                                     state,
                                     allocator,
+                                    &generation_permit,
                                     generation,
                                     candidates,
                                     integration_schedule,
@@ -2077,6 +2131,9 @@ impl SimSession {
                 self.react_to_fission_clones(&outcome);
                 self.react_to_fission_resource_flow_enrollment(&outcome)?;
                 self.sync_resource_economy()?;
+                self.execution_lease
+                    .finish_generation(&mut generation_permit, next_generation)
+                    .map_err(|error| SessionError::ExecutionIdentity(error.to_string()))?;
             }
         }
 
@@ -2250,12 +2307,7 @@ impl SimSession {
         }
         if should_sync {
             self.sync_resource_flow()?;
-            let generation = simthing_core::GenerationStamp::new(
-                u32::try_from(self.coord.day_index()).map_err(|_| {
-                    SessionError::Mapping("resident rebind generation exceeds stamp range".into())
-                })?,
-            );
-            self.bind_or_rebind_resident_clearing_to_current_arena(generation)?;
+            self.bind_or_rebind_resident_clearing_to_current_arena()?;
         }
         Ok(())
     }

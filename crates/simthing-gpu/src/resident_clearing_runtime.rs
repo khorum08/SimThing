@@ -5,7 +5,6 @@
 //! segment. Spatial consumers read immutable G there at the same generation;
 //! the separate Current-to-Next mint reads immutable U into ordinary demand.
 
-use std::process::Command;
 use std::sync::mpsc;
 
 use bytemuck::Pod;
@@ -20,7 +19,14 @@ use thiserror::Error;
 use wgpu::{Buffer, BufferDescriptor, BufferUsages, CommandEncoder, MapMode};
 
 const PRODUCT_BYTES: u64 = std::mem::size_of::<ResidentConstrainedProduct>() as u64;
-pub const QUALIFIED_RESIDENT_CLEARING_FINGERPRINT: u64 = 0x8104_18ff_57aa_9b08;
+pub const QUALIFIED_RESIDENT_CLEARING_FINGERPRINT: u64 = 0xbea9_102e_b252_a3ca;
+
+mod build_provenance {
+    include!(concat!(
+        env!("OUT_DIR"),
+        "/resident_clearing_build_provenance.rs"
+    ));
+}
 
 /// Exact adapter/compiler/ABI record inherited from the graduated 14.5
 /// certificate. A changed tuple must be separately qualified; it never
@@ -35,9 +41,10 @@ pub struct ResidentClearingQualification {
     driver_runtime: String,
     features: String,
     compiler: String,
+    cargo_features: String,
     shader_compiler: String,
     cargo_lock_hash: u64,
-    shader_source_hash: u64,
+    semantic_kernel_bundle_hash: u64,
     workgroups: [u32; 2],
     subgroup_assumption: String,
     abi_version: u32,
@@ -46,20 +53,6 @@ pub struct ResidentClearingQualification {
 impl ResidentClearingQualification {
     pub fn capture(ctx: &GpuContext) -> Result<Self, ResidentLiveHeadError> {
         let info = ctx.adapter.get_info();
-        let compiler = Command::new("rustc")
-            .arg("-Vv")
-            .output()
-            .map_err(|error| ResidentLiveHeadError::QualificationProbe(error.to_string()))?;
-        if !compiler.status.success() {
-            return Err(ResidentLiveHeadError::QualificationProbe(
-                "rustc -Vv returned a non-success status".into(),
-            ));
-        }
-        let compiler = String::from_utf8(compiler.stdout)
-            .map_err(|error| ResidentLiveHeadError::QualificationProbe(error.to_string()))?
-            .replace("\r\n", "\n")
-            .trim()
-            .to_owned();
         Ok(Self {
             backend: format!("{:?}", info.backend),
             adapter: info.name,
@@ -68,18 +61,11 @@ impl ResidentClearingQualification {
             device_class: format!("{:?}", info.device_type),
             driver_runtime: format!("{} {}", info.driver, info.driver_info),
             features: format!("{:?}", ctx.adapter.features()),
-            compiler,
+            compiler: build_provenance::BUILD_RUSTC_PROVENANCE.into(),
+            cargo_features: build_provenance::BUILD_CARGO_FEATURES.into(),
             shader_compiler: "wgpu 22.1.0 / naga 22.1.0".into(),
-            cargo_lock_hash: stable_hash(
-                0xcbf2_9ce4_8422_2325,
-                include_bytes!("../../../Cargo.lock"),
-            ),
-            shader_source_hash: stable_hash(
-                0xcbf2_9ce4_8422_2325,
-                include_bytes!(
-                    "../../simthing-kernel/src/shaders/resident_clearing_apportionment.wgsl"
-                ),
-            ),
+            cargo_lock_hash: build_provenance::DEPENDENCY_LOCK_HASH,
+            semantic_kernel_bundle_hash: build_provenance::SEMANTIC_KERNEL_BUNDLE_HASH,
             workgroups: [32, 64],
             subgroup_assumption: "subgroup-independent:no-subgroup-builtins-or-size-authority"
                 .into(),
@@ -114,6 +100,7 @@ impl ResidentClearingQualification {
             self.driver_runtime.as_bytes(),
             self.features.as_bytes(),
             self.compiler.as_bytes(),
+            self.cargo_features.as_bytes(),
             self.shader_compiler.as_bytes(),
             self.subgroup_assumption.as_bytes(),
         ] {
@@ -124,7 +111,7 @@ impl ResidentClearingQualification {
             u64::from(self.vendor),
             u64::from(self.device),
             self.cargo_lock_hash,
-            self.shader_source_hash,
+            self.semantic_kernel_bundle_hash,
             u64::from(self.workgroups[0]),
             u64::from(self.workgroups[1]),
             u64::from(self.abi_version),
@@ -133,6 +120,40 @@ impl ResidentClearingQualification {
         }
         state
     }
+
+    pub fn build_compiler_provenance() -> &'static str {
+        build_provenance::BUILD_RUSTC_PROVENANCE
+    }
+
+    pub fn build_cargo_features() -> &'static str {
+        build_provenance::BUILD_CARGO_FEATURES
+    }
+
+    pub const fn dependency_lock_hash() -> u64 {
+        build_provenance::DEPENDENCY_LOCK_HASH
+    }
+
+    pub const fn semantic_kernel_bundle_hash() -> u64 {
+        build_provenance::SEMANTIC_KERNEL_BUNDLE_HASH
+    }
+
+    pub const fn semantic_kernel_components() -> &'static [(&'static str, u64)] {
+        build_provenance::SEMANTIC_KERNEL_COMPONENTS
+    }
+}
+
+/// Compute the qualification digest for a complete named semantic component
+/// bundle. This proof surface lets tests independently mutate one component;
+/// production uses the same algorithm at build time over the canonical files.
+pub fn semantic_kernel_bundle_fingerprint(components: &[(&str, &[u8])]) -> u64 {
+    components
+        .iter()
+        .fold(0xcbf2_9ce4_8422_2325, |mut state, (name, bytes)| {
+            state = stable_hash(state, &(name.len() as u64).to_le_bytes());
+            state = stable_hash(state, name.as_bytes());
+            state = stable_hash(state, &(bytes.len() as u64).to_le_bytes());
+            stable_hash(state, bytes)
+        })
 }
 
 fn stable_hash(mut state: u64, bytes: &[u8]) -> u64 {
@@ -526,14 +547,184 @@ pub enum ResidentLiveHeadError {
 mod tests {
     use super::*;
 
+    fn qualification_components() -> Vec<(&'static str, Vec<u8>)> {
+        vec![
+            ("Cargo.lock", include_bytes!("../../../Cargo.lock").to_vec()),
+            (
+                "crates/simthing-driver/src/child_share_eml.rs",
+                include_bytes!("../../simthing-driver/src/child_share_eml.rs").to_vec(),
+            ),
+            (
+                "crates/simthing-core/src/eml_nodes.rs",
+                include_bytes!("../../simthing-core/src/eml_nodes.rs").to_vec(),
+            ),
+            (
+                "crates/simthing-core/src/accumulator_op.rs",
+                include_bytes!("../../simthing-core/src/accumulator_op.rs").to_vec(),
+            ),
+            (
+                "crates/simthing-core/src/accumulator_op_builder.rs",
+                include_bytes!("../../simthing-core/src/accumulator_op_builder.rs").to_vec(),
+            ),
+            (
+                "crates/simthing-driver/src/arena_allocation_plan.rs",
+                include_bytes!("../../simthing-driver/src/arena_allocation_plan.rs").to_vec(),
+            ),
+            (
+                "crates/simthing-driver/src/arena_allocation_sync.rs",
+                include_bytes!("../../simthing-driver/src/arena_allocation_sync.rs").to_vec(),
+            ),
+            (
+                "crates/simthing-driver/src/arena_hierarchy.rs",
+                include_bytes!("../../simthing-driver/src/arena_hierarchy.rs").to_vec(),
+            ),
+            (
+                "crates/simthing-kernel/src/accumulator_op/mod.rs",
+                include_bytes!("../../simthing-kernel/src/accumulator_op/mod.rs").to_vec(),
+            ),
+            (
+                "crates/simthing-kernel/src/accumulator_op/types.rs",
+                include_bytes!("../../simthing-kernel/src/accumulator_op/types.rs").to_vec(),
+            ),
+            (
+                "crates/simthing-kernel/src/accumulator_op/encode.rs",
+                include_bytes!("../../simthing-kernel/src/accumulator_op/encode.rs").to_vec(),
+            ),
+            (
+                "crates/simthing-kernel/src/accumulator_op/cpu_oracle.rs",
+                include_bytes!("../../simthing-kernel/src/accumulator_op/cpu_oracle.rs").to_vec(),
+            ),
+            (
+                "crates/simthing-kernel/src/accumulator_op/session.rs",
+                include_bytes!("../../simthing-kernel/src/accumulator_op/session.rs").to_vec(),
+            ),
+            (
+                "crates/simthing-kernel/src/shaders/accumulator_op.wgsl",
+                include_bytes!("../../simthing-kernel/src/shaders/accumulator_op.wgsl").to_vec(),
+            ),
+            (
+                "crates/simthing-kernel/src/resident_clearing_plan.rs",
+                include_bytes!("../../simthing-kernel/src/resident_clearing_plan.rs").to_vec(),
+            ),
+            (
+                "crates/simthing-core/src/persistence_deformation.rs",
+                include_bytes!("../../simthing-core/src/persistence_deformation.rs").to_vec(),
+            ),
+            (
+                "crates/simthing-kernel/src/resident_clearing_apportionment.rs",
+                include_bytes!("../../simthing-kernel/src/resident_clearing_apportionment.rs")
+                    .to_vec(),
+            ),
+            (
+                "crates/simthing-kernel/src/shaders/resident_clearing_apportionment.wgsl",
+                include_bytes!(
+                    "../../simthing-kernel/src/shaders/resident_clearing_apportionment.wgsl"
+                )
+                .to_vec(),
+            ),
+            (
+                "crates/simthing-kernel/src/resident_recursive_intake_transform.rs",
+                include_bytes!("../../simthing-kernel/src/resident_recursive_intake_transform.rs")
+                    .to_vec(),
+            ),
+            (
+                "crates/simthing-kernel/src/shaders/resident_recursive_intake_transform.wgsl",
+                include_bytes!(
+                    "../../simthing-kernel/src/shaders/resident_recursive_intake_transform.wgsl"
+                )
+                .to_vec(),
+            ),
+            (
+                "crates/simthing-gpu/src/resident_clearing_plan.rs",
+                include_bytes!("resident_clearing_plan.rs").to_vec(),
+            ),
+            (
+                "crates/simthing-driver/src/resident_clearing_runtime.rs",
+                include_bytes!("../../simthing-driver/src/resident_clearing_runtime.rs").to_vec(),
+            ),
+        ]
+    }
+
+    fn component_views<'a>(
+        components: &'a [(&'static str, Vec<u8>)],
+    ) -> Vec<(&'static str, &'a [u8])> {
+        components
+            .iter()
+            .map(|(name, bytes)| (*name, bytes.as_slice()))
+            .collect()
+    }
+
     #[test]
     fn changed_qualification_tuple_fails_typed_before_execution() {
         let ctx = GpuContext::new_blocking().expect("qualification fixture adapter");
         let mut record = ResidentClearingQualification::capture(&ctx).expect("capture tuple");
+        let qualified = record.fingerprint();
         record.abi_version ^= 1;
+        eprintln!(
+            "E8 ABI MUTANT qualified={qualified:016x} mutant={:016x}",
+            record.fingerprint()
+        );
         assert!(matches!(
             record.ensure_production_qualified(),
             Err(ResidentLiveHeadError::UnqualifiedAdapter { .. })
         ));
+    }
+
+    #[test]
+    fn child_share_semantics_are_independently_bound_into_qualification() {
+        let mut components = qualification_components();
+        let qualified = semantic_kernel_bundle_fingerprint(&component_views(&components));
+        assert_eq!(
+            qualified,
+            ResidentClearingQualification::semantic_kernel_bundle_hash()
+        );
+        let (_, bytes) = components
+            .iter_mut()
+            .find(|(name, _)| *name == "crates/simthing-driver/src/child_share_eml.rs")
+            .unwrap();
+        bytes[0] ^= 1;
+        let mutant = semantic_kernel_bundle_fingerprint(&component_views(&components));
+        eprintln!("E8 CHILD-SHARE MUTANT qualified={qualified:016x} mutant={mutant:016x}");
+        assert_ne!(
+            mutant,
+            ResidentClearingQualification::semantic_kernel_bundle_hash()
+        );
+    }
+
+    #[test]
+    fn temporal_15_2_semantics_are_independently_bound_into_qualification() {
+        let mut components = qualification_components();
+        let qualified = semantic_kernel_bundle_fingerprint(&component_views(&components));
+        let (_, bytes) = components
+            .iter_mut()
+            .find(|(name, _)| {
+                *name
+                    == "crates/simthing-kernel/src/shaders/resident_recursive_intake_transform.wgsl"
+            })
+            .unwrap();
+        bytes[0] ^= 1;
+        let mutant = semantic_kernel_bundle_fingerprint(&component_views(&components));
+        eprintln!("E8 TEMPORAL-15.2 MUTANT qualified={qualified:016x} mutant={mutant:016x}");
+        assert_ne!(
+            mutant,
+            ResidentClearingQualification::semantic_kernel_bundle_hash()
+        );
+    }
+
+    #[test]
+    fn production_planner_semantics_are_independently_bound_into_qualification() {
+        let mut components = qualification_components();
+        let qualified = semantic_kernel_bundle_fingerprint(&component_views(&components));
+        let (_, bytes) = components
+            .iter_mut()
+            .find(|(name, _)| *name == "crates/simthing-driver/src/arena_allocation_plan.rs")
+            .unwrap();
+        bytes[0] ^= 1;
+        let mutant = semantic_kernel_bundle_fingerprint(&component_views(&components));
+        eprintln!("E8 PLANNER MUTANT qualified={qualified:016x} mutant={mutant:016x}");
+        assert_ne!(
+            mutant,
+            ResidentClearingQualification::semantic_kernel_bundle_hash()
+        );
     }
 }

@@ -32,6 +32,7 @@ wgpu        = { version = "22" }
 bytemuck    = { version = "1",   features = ["derive"] }
 pollster    = { version = "0.3" }
 anyhow      = { version = "1" }
+getrandom   = { version = "0.3" }
 
 [profile.dev]
 opt-level = 1

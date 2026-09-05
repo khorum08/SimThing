@@ -279,10 +279,12 @@ fn production_resident_port_matches_cpu_decay_without_readback() {
         available: 0,
         precedence: 0,
     }];
+    let mut permit = runtime.begin_generation(GenerationStamp::new(30)).unwrap();
     let n = runtime
         .dispatch(
             &state,
             &qualification,
+            &permit,
             &mut schedule,
             SimThingId::from_session_raw(7),
             GenerationStamp::new(30),
@@ -293,6 +295,7 @@ fn production_resident_port_matches_cpu_decay_without_readback() {
         .prepare_temporal_demands(
             &state,
             &qualification,
+            &permit,
             &n,
             GenerationStamp::new(31),
             &[ResidentAuthoredDemand {
@@ -301,10 +304,15 @@ fn production_resident_port_matches_cpu_decay_without_readback() {
             }],
         )
         .unwrap();
+    runtime
+        .finish_generation(&mut permit, GenerationStamp::new(31))
+        .unwrap();
+    let mut permit = runtime.begin_generation(GenerationStamp::new(31)).unwrap();
     let n1 = runtime
         .dispatch_temporal(
             &state,
             &qualification,
+            &permit,
             &mut schedule,
             &demand_n1,
             SimThingId::from_session_raw(7),
@@ -325,6 +333,7 @@ fn production_resident_port_matches_cpu_decay_without_readback() {
         .prepare_temporal_demands(
             &state,
             &qualification,
+            &permit,
             &n1,
             GenerationStamp::new(32),
             &[ResidentAuthoredDemand {
@@ -333,10 +342,15 @@ fn production_resident_port_matches_cpu_decay_without_readback() {
             }],
         )
         .unwrap();
+    runtime
+        .finish_generation(&mut permit, GenerationStamp::new(32))
+        .unwrap();
+    let permit = runtime.begin_generation(GenerationStamp::new(32)).unwrap();
     let n2 = runtime
         .dispatch_temporal(
             &state,
             &qualification,
+            &permit,
             &mut schedule,
             &demand_n2,
             SimThingId::from_session_raw(7),

@@ -294,6 +294,9 @@ fn exact_basis_identity_is_qualification_bound_not_dispatch_authority() {
         .unwrap();
     let live_qualification = live_runtime.market_qualification();
     let neutral_qualification = neutral_runtime.market_qualification();
+    let neutral_permit = neutral_runtime
+        .begin_generation(GenerationStamp::new(30))
+        .unwrap();
     assert_eq!(
         live_qualification.exact_basis_identity(),
         ResidentExactBasisIdentity::LiveAllocatedFlow
@@ -331,6 +334,7 @@ fn exact_basis_identity_is_qualification_bound_not_dispatch_authority() {
         neutral_runtime.dispatch(
             &fixture.state,
             &live_qualification,
+            &neutral_permit,
             &mut schedule,
             id(ROOT),
             GenerationStamp::new(30),
@@ -360,10 +364,12 @@ fn exact_basis_identity_is_qualification_bound_not_dispatch_authority() {
             )
             .unwrap();
         let qualification = runtime.market_qualification();
+        let permit = runtime.begin_generation(GenerationStamp::new(30)).unwrap();
         let ticket = runtime
             .dispatch(
                 &fixture.state,
                 &qualification,
+                &permit,
                 &mut schedule,
                 id(ROOT),
                 GenerationStamp::new(30),
@@ -396,6 +402,7 @@ fn authored_market_qualifies_and_live_arena_cells_defeat_stale_host_assumptions(
         )
         .expect("genuinely authored non-implicit market lowers completely");
     let qualification = runtime.market_qualification();
+    let permit = runtime.begin_generation(GenerationStamp::new(30)).unwrap();
     assert!(qualification.has_intact_seal());
     assert_ne!(qualification.market_semantic_digest(), 0);
     assert_ne!(qualification.resource_shape_digest(), 0);
@@ -412,6 +419,7 @@ fn authored_market_qualifies_and_live_arena_cells_defeat_stale_host_assumptions(
         .dispatch(
             &fixture.state,
             &qualification,
+            &permit,
             &mut schedule,
             id(ROOT),
             GenerationStamp::new(30),
@@ -423,6 +431,7 @@ fn authored_market_qualifies_and_live_arena_cells_defeat_stale_host_assumptions(
         .dispatch(
             &fixture.state,
             &qualification,
+            &permit,
             &mut schedule,
             id(ROOT),
             GenerationStamp::new(30),
@@ -522,10 +531,12 @@ fn topology_growth_rebind_preserves_identity_live_head_and_pending_provenance() 
     let old_qualification = runtime.market_qualification();
     let realm = runtime.realm();
     let incarnation = runtime.incarnation();
+    let permit = runtime.begin_generation(GenerationStamp::new(30)).unwrap();
     let pending = runtime
         .dispatch(
             &fixture.state,
             &old_qualification,
+            &permit,
             &mut schedule,
             id(ROOT),
             GenerationStamp::new(30),
@@ -607,6 +618,7 @@ fn topology_growth_rebind_preserves_identity_live_head_and_pending_provenance() 
         runtime.dispatch(
             &fixture.state,
             &old_qualification,
+            &permit,
             &mut schedule,
             id(ROOT),
             GenerationStamp::new(30),
@@ -630,6 +642,7 @@ fn topology_growth_rebind_preserves_identity_live_head_and_pending_provenance() 
         .dispatch(
             &fixture.state,
             &new_qualification,
+            &permit,
             &mut schedule,
             id(ROOT),
             GenerationStamp::new(30),
@@ -660,6 +673,7 @@ fn topology_growth_rebind_preserves_identity_live_head_and_pending_provenance() 
         .dispatch(
             &fixture.state,
             &new_qualification,
+            &permit,
             &mut schedule,
             id(ROOT),
             GenerationStamp::new(30),
@@ -676,6 +690,7 @@ fn topology_growth_rebind_preserves_identity_live_head_and_pending_provenance() 
         .prepare_temporal_demands(
             &fixture.state,
             &new_qualification,
+            &permit,
             &persistent,
             GenerationStamp::new(31),
             &[ResidentAuthoredDemand {
