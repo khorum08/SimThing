@@ -48,6 +48,8 @@ PersistedTreeExecutionIdentity {
 
 `TreeRealmId`, `ExecutionIncarnation`, `TreeExecutionContext`, `TreeExecutionLease`, and `TreeGenerationPermit` remain non-serde authority values. Deserialized record fields are inert until `realm()` and `incarnation()` validate nonzero values.
 
+Expanding the inherited non-serde compile-fail block changed its content-addressed inventory identity from `compile_fail_E0277_0621aabbcf8e` to `compile_fail_E0277_3bc295abf31c`; `authorized_renames.tsv` records that exact proof-identity migration under dispatch `5547692843`.
+
 | Operation | Realm law | Incarnation law | Witness |
 |---|---|---|---|
 | ordinary open A | fresh OS-entropy realm A | `1` | focused double-open test |
