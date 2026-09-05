@@ -45,9 +45,9 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 26e025f8b1e76f7f649571aaa4f2da2c82ca722b4d8c549f5ce9d14b4604f3a6 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | 26eab30ec86c97ac8dfd6beef7ae8c5b4d3f18c38fdaa431ec40ccce855396d3 |
-| design_0_0_8_7_rf_arena_modernization.md | d94eab4e3ae2044597d59b44572c34f81ff1c3244f87e841d64a812d07db9efa |
+| design_0_0_8_7_rf_arena_modernization.md | 6124b054b1690ea2fa3db85ff3e2cbd6bed9940af6ad6515e7f2b81578c3d0a1 |
 | relay_lint.sh | ae19bdca12e90f6bc988e064f081ff62903034d69bf34b08ffd5c27e352181ba |
-| doctrine_anchors.tsv | 257c3f9ed2b311bb0e1af3eed1dc61af861e23724764b6c98abe15cb91eb7555 |
+| doctrine_anchors.tsv | e68d961e34c7a2e03f84df7fe4808f42e3eb32bf40444b48a629924e6124f5fe |
 | execution_status_taxonomy.tsv | 924c086550221dd7136ec0682293900d8d03feb4bc1dae1a6e750a61e65153bc |
 | execution_status_mixed_posture.tsv | 1adf05f3ec5fd7b537efe29259d20649a2c6d3a0839590063e5308ff154e8f25 |
 | execution_status_non_execution.tsv | 214c1b557dfd3fc465f0171051e20281ff1dcf6c53128dbb29cba01524f9be02 |
@@ -68,20 +68,19 @@ Dark properties (1): `fixture::dark_reading` (reasons/spans in `property_admissi
 
 Track state: `open`
 
-> Compact view: 101 completed rungs elided; showing all 3 open rungs plus the 3 most recent completions. Full ladder in the design doc.
+> Compact view: 102 completed rungs elided; showing all 2 open rungs plus the 3 most recent completions. Full ladder in the design doc.
 
 | # | rung | deliverable | exit proof |
 | --- | --- | --- | --- |
-| 15.5 | RECURSION-AXIS-CONFORMANCE-0 | **STOP REMEDIATION (engineering remand E1/E6, DA-verified in source; engineering | DA-GRADUATED merged #1961 @ 1237b209 |
 | 15.6 | RESIDENT-FILTER-SUBSTRATE-BINDING-0 | **HIGH REMEDIATION (E3/E5/E7; engineering amendments 6/7/8/9 folded).** The synt | DA-GRADUATED merged #1965 @ 246d4117 |
 | 15.7 | TREE-EXECUTION-AUTHORITY-LIFETIME-0 | **HIGH REMEDIATION (E4/E8; engineering amendments 10/11 folded).** The 14.0 auth | DA-GRADUATED merged #1968 @ c4d1b7a8 |
-| 15.8 | RESIDENT-SESSION-INTEGRATION-CONFORMANCE-0 | **STOP REMEDIATION (cross-rung re-review 2026-09-05, Owner-approved; adjudicatio | TODO |
+| 15.8 | RESIDENT-SESSION-INTEGRATION-CONFORMANCE-0 | **STOP REMEDIATION (cross-rung re-review 2026-09-05, Owner-approved; adjudicatio | DA-GRADUATED merged #1974 @ 4027d390 |
 | 15.9 | EXACT-CAP-PROJECTION-0 | **OWNER LAW (2026-09-05): CAP COLLISION = SATURATE AND REDISTRIBUTE.** A feasibl | TODO |
 | 15.10 | GENERATION-ABORT-SAFETY-0 | **FALSIFIER FIRST (closeout-blocking; one-pass-per-generation is constitutional) | TODO |
 
 ## Next Rung Pointer
 
-Active pointer: `RESIDENT-SESSION-INTEGRATION-CONFORMANCE-0`
+Active pointer: `EXACT-CAP-PROJECTION-0`
 
 
 ## Cold-Start Spine (constitutional pointers)
