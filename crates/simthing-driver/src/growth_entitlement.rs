@@ -96,6 +96,24 @@ impl GrowthEntitlementMarketBinding {
             .collect()
     }
 
+    fn clear_cpu_oracle(
+        &self,
+        supply: &ConstrainedSupply,
+        claims: &[ConstrainedClaim],
+        generation: GenerationStamp,
+    ) -> Result<Vec<simthing_spec::ConstrainedClearingResult>, GrowthEntitlementError> {
+        clear_constrained_claims_at_generation(
+            std::slice::from_ref(supply),
+            claims,
+            &self.clearing_program,
+            ClearingRemainderAuthority {
+                granter: self.granter,
+                generation,
+            },
+        )
+        .map_err(|error| GrowthEntitlementError::Clearing(error.to_string()))
+    }
+
     fn authorize_demand(
         &self,
         demand: RuntimeOwnerSiloDemandBucket,
@@ -356,16 +374,7 @@ impl GrowthEntitlementMarketBinding {
                 scope: self.scope.clone(),
                 available,
             };
-            let results = clear_constrained_claims_at_generation(
-                &[supply.clone()],
-                &claims,
-                &self.clearing_program,
-                ClearingRemainderAuthority {
-                    granter: self.granter,
-                    generation,
-                },
-            )
-            .map_err(|e| GrowthEntitlementError::Clearing(e.to_string()))?;
+            let results = self.clear_cpu_oracle(&supply, &claims, generation)?;
             for grant in results
                 .iter()
                 .flat_map(|result| &result.grants)
@@ -575,19 +584,14 @@ impl GrowthEntitlementMarketBinding {
             claims.push(self.authorize_demand(demand)?);
         }
 
-        let results = clear_constrained_claims_at_generation(
-            &[ConstrainedSupply {
+        let results = self.clear_cpu_oracle(
+            &ConstrainedSupply {
                 scope: self.scope.clone(),
                 available: allocator.growth_capacity_available(self.granter),
-            }],
-            &claims,
-            &self.clearing_program,
-            ClearingRemainderAuthority {
-                granter: self.granter,
-                generation,
             },
-        )
-        .map_err(|error| GrowthEntitlementError::Clearing(error.to_string()))?;
+            &claims,
+            generation,
+        )?;
         let grants = &results
             .first()
             .ok_or_else(|| GrowthEntitlementError::Clearing("missing scope result".into()))?

@@ -164,6 +164,24 @@ fn install(session: &mut SimSession, claimant: SimThingId, policy: Option<f32>, 
     session
         .install_growth_entitlement_market(market(session.scenario.root.id, RESOURCE, 100))
         .unwrap();
+    let qualification = session
+        .growth_entitlement_market()
+        .resident_qualification()
+        .unwrap();
+    assert_eq!(
+        qualification.flow_property_id(),
+        session
+            .proto
+            .registry
+            .id_of("simthing", "residency-row-capacity")
+            .unwrap()
+    );
+    assert_eq!(qualification.arena_idx(), u32::from(reverse));
+    println!(
+        "15.8 semantic arena=residency-row-capacity property={:?} physical_index={}",
+        qualification.flow_property_id(),
+        qualification.arena_idx()
+    );
 }
 
 fn facts(session: &SimSession, claimant: SimThingId) -> Vec<(u32, u32, u32)> {

@@ -1146,6 +1146,21 @@ impl SimSession {
             return Ok(());
         }
         if self.resident_clearing.is_none() {
+            // RF-only sessions need not author a residency-capacity market.
+            // Leave the unused implicit growth binding unqualified when its
+            // resource is absent; an actual structural request still refuses.
+            // Explicit authored markets always pass through strict admission.
+            if self.growth_entitlement.is_implicit_root_standing()
+                && !self.spec_state.arena_registry.arenas.iter().any(|arena| {
+                    let property = self.proto.registry.property(arena.flow_property_id);
+                    property.namespace
+                        == crate::resident_clearing_runtime::RESIDENT_MARKET_RF_NAMESPACE
+                        && property.name
+                            == crate::resident_clearing_runtime::RESIDENT_MARKET_RF_PROPERTY
+                })
+            {
+                return Ok(());
+            }
             let runtime = self.admit_resident_clearing_for_market(
                 self.growth_entitlement.resident_market_admission(),
                 self.growth_entitlement
