@@ -384,14 +384,8 @@ impl ResidentApportionmentPlan {
             }
         }
 
-        // The frozen CPU authority performs identity/supply admission above,
-        // then silently omits zero-request rows before apportionment. Preserve
-        // that full u32 request domain rather than rejecting or materializing
-        // a zero grant.
-        let claims = claims
-            .into_iter()
-            .filter(|claim| claim.requested != 0)
-            .collect();
+        // Admission above applies to every identity, including requested zero.
+        // Retain those members for the executors' canonical G0/U0 result.
 
         Ok(Self {
             claims,
