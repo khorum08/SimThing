@@ -1,6 +1,6 @@
 # NEUTRAL-STREAM-TERMINATION-0 — falsifier-first evidence
 
-Status: PROBATION / proof-present / DA-review-pending / OPEN / UNMERGED. Initial RED packet; no production edits.
+Status: **STOP / scope amendment required / falsifier-only / OPEN / UNMERGED**. Owner selected return to orchestration when the compiler exposed an omitted Spec consumer. No production implementation is committed; the candidate diff is retained locally.
 
 Base: 164c80158e224d8b9daa52176b232d435a3f640f. Dispatch5561439851 / Owner law5561338557.
 HD-RECEIPT: dd5a7548635d
@@ -13,6 +13,43 @@ Rendered HD before fresh authorized coding orientation. All55 required anchors r
 Archaeology: authorize_current_flow visits only the admitted scope/owner with a demand property; requested zero is passed through Draw without filtering. Thus claims empty means membership empty or a typed admission refusal, never an admitted-zero tombstone. Both session loops authorize current flow in their boundary hook, then share settle_boundary_claims. Its initial claims-empty branch currently refuses a nonempty continuation before temporal mint or structural resolution. Resident continuation retains its opaque ticket and existing materialization appends canonical G/U to IntegrationSchedule. CPU continuation retains authority/supply/claims; its already-born clear result contains final per-claimant G/U, while grant lifecycle history records only accepted grants. Termination must observe that prior provenance, not recompute it at departure. Resident temporal preparation validates canonical source identities before mint; partial change remains fail-closed.
 
 The existing actual-session final-claimant witness is flipped to boundary success, exactly one neutral termination fact with final G4/U6 and semantic claimant identity, and no appended departed product. A never-established stream is the no-fact control. No helper/runtime substitute or new failpoint.
+
+## Scope-gap return (Owner-directed)
+
+Preserved RED commit: `ac824e2a7e046fd540b6e3c3519bd69d27a1d526`. Actual cargo exit101 before any production edit:
+
+```text
+ResidentRequired; established=false: boundary succeeds, no facts
+ResidentRequired; established=true: prior facts=[(1,4,6)]
+departure: Err(GpuSync(GrowthEntitlement("departing ordinary flow requires consequence-only disposition; STOP for DA adjudication")))
+FAILED: Owner 15.11 neutral departure must complete the boundary
+0 passed; 1 failed; 5 filtered out
+```
+
+The narrow candidate adds a typed NeutralStreamTermination row/payload to the existing IntegrationSchedule. Resident provenance references the exact already-materialized history span; CPU provenance retains the already-born final product observations in its existing continuation. It deletes the superseded refusal. No second history or fresh resident readback is needed.
+
+However, touched-package compilation fails in an existing exhaustive downstream consumer:
+
+```text
+error[E0004]: non-exhaustive patterns:
+  IntegrationScheduleRowKind::NeutralStreamTermination not covered
+crates/simthing-spec/src/spec/owner_channel_rf.rs:724:15
+match entry.row_kind()
+```
+
+That Spec file is absent from the merged HD's eleven declared surfaces. Its existing match at783-798 excludes residency, resident-clearing and grant lifecycle history from RF reduce-up/standing replay. The concrete requested companion is one additional alternative in that same no-op group:
+
+```diff
+             | IntegrationScheduleRowKind::ResidentClearingProduct
++            | IntegrationScheduleRowKind::NeutralStreamTermination
+             | IntegrationScheduleRowKind::GrantAccepted
+```
+
+The Owner was asked whether to authorize exactly that line or return the gap, and chose **Return the scope gap to orchestration**. The Spec file was not changed. Orchestration should seek an amended HD admitting this exact consumer companion, or supply a different authorized representation. Neutral termination should not be mislabeled as a reduce-up, standing, grant, or resident-economic row merely to avoid the exhaustive match.
+
+The three-file candidate implementation diff is preserved locally in `.git/1511-in-progress-implementation.patch`; the proposed unexecuted one-line companion is `.git/1511-scope-companion.patch`. The tracked production files were restored to the dispatched base. The RED transcript is `.git/1511-owner-red.log`; compiler evidence is `.git/1511-check.log`.
+
+Current committed scope is only the flipped actual-session witness, its inventory ownership update, this results packet and one append-only anchor reach row. All55 required ACKs remain below. No new production failpoint, Spec mutation, E8 pin roll, gate-code change, final implementation proof, full workspace certificate, hosted implementation certificate, clearance/relay or graduation is claimed. Departure/zero/partial-set/re-entry matrices and final E8/frozen/full validation remain required after the scope gap is resolved.
 
 ## Required anchor acknowledgments
 
