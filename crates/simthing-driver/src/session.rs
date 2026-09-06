@@ -343,6 +343,9 @@ pub struct SimSession {
     /// Owned opaque authority retained for the complete session lifetime.
     /// It carries no borrowed semantic tree state.
     execution_lease: simthing_core::TreeExecutionLease,
+    /// The same sealed whole-generation permit spans non-boundary hot cycles.
+    /// Taking it into an executing call makes every error drop it immediately.
+    generation_permit: Option<simthing_core::TreeGenerationPermit>,
     /// Clearing backend authority, independent of scheduling posture.
     clearing_execution_posture: simthing_core::ClearingExecutionPosture,
     /// Present for the resident-primary posture. This is one per-tree owner;
@@ -624,9 +627,21 @@ impl SimSession {
     }
 
     /// Hot-path cycle — pre-tick enqueue + ordinary tick + RF bands + mapping dispatch.
-    fn run_hot_cycle(&mut self) -> Result<FabricHotCycleOutcome, SessionError> {
+    fn run_hot_cycle(
+        &mut self,
+        permit: &simthing_core::TreeGenerationPermit,
+    ) -> Result<FabricHotCycleOutcome, SessionError> {
+        self.execution_lease
+            .verifier()
+            .validate_generation(permit, self.execution_lease.current_generation())
+            .map_err(|error| SessionError::ExecutionIdentity(error.to_string()))?;
         self.proto.allocator.ensure_residency_placement_active()?;
         self.ensure_action_band_ingress_current()?;
+        // The ordinary hot path writes intents, GPU values/RF/mapping and the
+        // coordinator before the boundary. Authorize before any of those effects.
+        permit
+            .authorize_economics()
+            .map_err(|error| SessionError::ExecutionIdentity(error.to_string()))?;
         // EVENT-GENERATION-STAMP-0: generation authority is the tree day/generation
         // counter. Bind it into sealed emission/threshold mint at the ordinary
         // production step boundary (not an optional side setter).
@@ -825,6 +840,7 @@ impl SimSession {
             growth_entitlement,
             execution_identity,
             execution_lease,
+            generation_permit: None,
             clearing_execution_posture,
             resident_clearing: None,
             ordinary_flow_continuation: Default::default(),
@@ -1881,7 +1897,8 @@ impl SimSession {
 
     /// Shared hot-cycle + optional boundary body for [`Self::run`] / [`Self::step_once`].
     fn step_once_into_summary(&mut self, summary: &mut RunSummary) -> Result<bool, SessionError> {
-        let cycle = self.run_hot_cycle()?;
+        let mut generation_permit = self.take_generation_permit()?;
+        let cycle = self.run_hot_cycle(&generation_permit)?;
         summary.submit_tick_patches_ms += cycle.pre_tick_enqueue_ms;
         accumulate_tick_outcome(summary, &cycle.hot, cycle.hot_step_ms);
         if let Some(mapping) = &cycle.hot.mapping {
@@ -1890,15 +1907,16 @@ impl SimSession {
 
         let tick = cycle.hot.tick;
         if !tick.boundary_reached {
+            self.generation_permit = Some(generation_permit);
             return Ok(false);
         }
 
         let day = tick.day_index;
         let generation = simthing_core::GenerationStamp::new(day as u32);
         let next_generation = simthing_core::GenerationStamp::new((day as u32).saturating_add(1));
-        let mut generation_permit = self
-            .execution_lease
-            .begin_generation(generation)
+        self.execution_lease
+            .verifier()
+            .validate_generation(&generation_permit, generation)
             .map_err(|error| SessionError::ExecutionIdentity(error.to_string()))?;
         let commitment_effect_submitted = self.submit_commitment_effects(summary)?;
         if self.growth_entitlement.is_implicit_root_standing()
@@ -1996,6 +2014,18 @@ impl SimSession {
         Ok(true)
     }
 
+    fn take_generation_permit(
+        &mut self,
+    ) -> Result<simthing_core::TreeGenerationPermit, SessionError> {
+        match self.generation_permit.take() {
+            Some(permit) => Ok(permit),
+            None => self
+                .execution_lease
+                .begin_generation(self.execution_lease.current_generation())
+                .map_err(|error| SessionError::ExecutionIdentity(error.to_string())),
+        }
+    }
+
     /// Run a session and write LDJSON replay (snapshot + one frame per boundary).
     pub fn record_to_path(
         &mut self,
@@ -2019,7 +2049,8 @@ impl SimSession {
         }
 
         while summary.boundaries_run < cap as u64 {
-            let cycle = self.run_hot_cycle()?;
+            let mut generation_permit = self.take_generation_permit()?;
+            let cycle = self.run_hot_cycle(&generation_permit)?;
             summary.submit_tick_patches_ms += cycle.pre_tick_enqueue_ms;
             accumulate_tick_outcome(&mut summary, &cycle.hot, cycle.hot_step_ms);
             if let Some(mapping) = &cycle.hot.mapping {
@@ -2036,9 +2067,9 @@ impl SimSession {
                 let generation = simthing_core::GenerationStamp::new(day as u32);
                 let next_generation =
                     simthing_core::GenerationStamp::new((day as u32).saturating_add(1));
-                let mut generation_permit = self
-                    .execution_lease
-                    .begin_generation(generation)
+                self.execution_lease
+                    .verifier()
+                    .validate_generation(&generation_permit, generation)
                     .map_err(|error| SessionError::ExecutionIdentity(error.to_string()))?;
                 let commitment_effect_submitted = self.submit_commitment_effects(&mut summary)?;
                 if self.growth_entitlement.is_implicit_root_standing()
@@ -2160,6 +2191,8 @@ impl SimSession {
                 self.execution_lease
                     .finish_generation(&mut generation_permit, next_generation)
                     .map_err(|error| SessionError::ExecutionIdentity(error.to_string()))?;
+            } else {
+                self.generation_permit = Some(generation_permit);
             }
         }
 
