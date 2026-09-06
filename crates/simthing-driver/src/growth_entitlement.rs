@@ -46,7 +46,9 @@ pub enum GrowthEntitlementError {
     ResidentProfileUnqualified,
     #[error("ordinary growth resident clearing failed: {0}")]
     Resident(String),
-    #[error("departing ordinary flow requires consequence-only disposition; STOP for DA adjudication")]
+    #[error(
+        "departing ordinary flow requires consequence-only disposition; STOP for DA adjudication"
+    )]
     DepartingFlowDispositionRequired,
 }
 
@@ -231,6 +233,9 @@ impl GrowthEntitlementMarketBinding {
             if candidates.is_empty() {
                 return Ok(Vec::new());
             }
+            permit
+                .authorize_economics()
+                .map_err(|error| GrowthEntitlementError::Resident(error.to_string()))?;
             return if posture.is_resident_required() {
                 self.resolve_batch_resident(
                     runtime.ok_or(GrowthEntitlementError::ResidentProfileUnqualified)?,
@@ -251,6 +256,11 @@ impl GrowthEntitlementMarketBinding {
             };
         }
         let generation = permit.generation();
+        // Taking the continuation and CPU/vendorized grant publication are
+        // effects too; the same seal protects both execution postures.
+        permit
+            .authorize_economics()
+            .map_err(|error| GrowthEntitlementError::Resident(error.to_string()))?;
         let previous = std::mem::take(continuation);
         if posture.is_resident_required() {
             let runtime = runtime.ok_or(GrowthEntitlementError::ResidentProfileUnqualified)?;

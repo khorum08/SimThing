@@ -1195,6 +1195,9 @@ impl ResidentClearingRuntime {
             return Err(ResidentClearingRuntimeError::TemporalSourceMismatch);
         }
         let quantities: Vec<_> = authored.iter().map(|row| row.quantity).collect();
+        permit
+            .authorize_economics()
+            .map_err(ResidentClearingRuntimeError::ExecutionAuthority)?;
         let mut encoder = state.ctx.device.create_command_encoder(
             &simthing_gpu::wgpu::CommandEncoderDescriptor {
                 label: Some("resident_temporal_demand_prepare"),
@@ -1327,6 +1330,11 @@ impl ResidentClearingRuntime {
         ))?;
         let count = u32::try_from(plan.claims().len())
             .map_err(|_| ResidentClearingRuntimeError::ArithmeticOverflow)?;
+        // Reservation and append bookkeeping are not rolled back on later
+        // encoding/submission failure. Touch the one seal before reserving.
+        permit
+            .authorize_economics()
+            .map_err(ResidentClearingRuntimeError::ExecutionAuthority)?;
         let reservation = schedule.reserve_resident_rows(count)?;
         let (semantic_rows, scratch) = self.buffers.apportionment_buffers(&plan)?;
         let mut encoder = state.ctx.device.create_command_encoder(

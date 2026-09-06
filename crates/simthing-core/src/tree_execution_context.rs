@@ -340,8 +340,14 @@ struct TreeExecutionSeal {
     live_incarnation: AtomicU64,
     context_minted: AtomicBool,
     live_generation: AtomicU32,
-    generation_permit_outstanding: AtomicBool,
+    generation_state: AtomicU32,
 }
+
+// One private state machine on the lifetime seal. No scenario/replay state.
+const GENERATION_READY: u32 = 0;
+const GENERATION_UNTOUCHED: u32 = 1;
+const GENERATION_TOUCHED: u32 = 2;
+const GENERATION_FAULTED: u32 = 3;
 
 /// The one runtime authority capsule for an executing tree.
 ///
@@ -379,7 +385,7 @@ impl<'a, TResidency> TreeExecutionAuthority<'a, TResidency> {
                 live_incarnation: AtomicU64::new(incarnation.get()),
                 context_minted: AtomicBool::new(false),
                 live_generation: AtomicU32::new(generation_authority.current().get()),
-                generation_permit_outstanding: AtomicBool::new(false),
+                generation_state: AtomicU32::new(GENERATION_READY),
             }),
             root,
             generation_authority,
@@ -536,6 +542,7 @@ impl TreeExecutionLease {
     ) -> Result<TreeGenerationPermit, TreeExecutionContextError> {
         self.context.verify_live()?;
         let live = self.current_generation();
+        self.context.seal.ensure_generation_not_faulted()?;
         if generation != live {
             return Err(TreeExecutionContextError::PermitGenerationMismatch {
                 expected: live,
@@ -544,11 +551,20 @@ impl TreeExecutionLease {
         }
         self.context
             .seal
-            .generation_permit_outstanding
-            .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
-            .map_err(
-                |_| TreeExecutionContextError::GenerationPermitAlreadyOutstanding { generation },
-            )?;
+            .generation_state
+            .compare_exchange(
+                GENERATION_READY,
+                GENERATION_UNTOUCHED,
+                Ordering::AcqRel,
+                Ordering::Acquire,
+            )
+            .map_err(|state| {
+                if state == GENERATION_FAULTED {
+                    TreeExecutionContextError::GenerationFaulted { generation }
+                } else {
+                    TreeExecutionContextError::GenerationPermitAlreadyOutstanding { generation }
+                }
+            })?;
         Ok(TreeGenerationPermit {
             seal: Arc::clone(&self.context.seal),
             incarnation: self.incarnation(),
@@ -656,8 +672,8 @@ impl TreeExecutionLeaseVerifier {
             )?;
         permit.consumed = true;
         self.seal
-            .generation_permit_outstanding
-            .store(false, Ordering::Release);
+            .generation_state
+            .store(GENERATION_READY, Ordering::Release);
         Ok(next)
     }
 }
@@ -665,9 +681,9 @@ impl TreeExecutionLeaseVerifier {
 /// One-use capability authorizing all work in exactly one tree generation.
 ///
 /// It is intentionally shared by reference across recursive edges and then
-/// consumed once at the generation barrier. Dropping an unfinished permit
-/// releases the reservation without advancing authority, permitting a
-/// fail-closed retry after no generation commit occurred.
+/// consumed once at the generation barrier. Untouched Drop releases the
+/// reservation; after economic authorization, unfinished Drop faults the
+/// generation. Only successful finish advances and clears the next generation.
 pub struct TreeGenerationPermit {
     seal: Arc<TreeExecutionSeal>,
     incarnation: ExecutionIncarnation,
@@ -682,6 +698,52 @@ impl TreeGenerationPermit {
 
     pub const fn is_consumed(&self) -> bool {
         self.consumed
+    }
+
+    /// Authorize the first non-rollback-proven effect before performing it.
+    /// Repeated economic doors borrow the same permit and retain touched state.
+    /// This does not mint, advance, recover, or replace any authority.
+    pub fn authorize_economics(&self) -> Result<(), TreeExecutionContextError> {
+        self.validate_live()?;
+        match self.seal.generation_state.compare_exchange(
+            GENERATION_UNTOUCHED,
+            GENERATION_TOUCHED,
+            Ordering::AcqRel,
+            Ordering::Acquire,
+        ) {
+            Ok(_) | Err(GENERATION_TOUCHED) => Ok(()),
+            Err(GENERATION_FAULTED) => Err(TreeExecutionContextError::GenerationFaulted {
+                generation: self.generation,
+            }),
+            Err(_) => Err(TreeExecutionContextError::GenerationPermitAlreadyConsumed {
+                generation: self.generation,
+            }),
+        }
+    }
+
+    fn validate_live(&self) -> Result<(), TreeExecutionContextError> {
+        if self.consumed {
+            return Err(TreeExecutionContextError::GenerationPermitAlreadyConsumed {
+                generation: self.generation,
+            });
+        }
+        let live_incarnation =
+            incarnation_from_live(self.seal.live_incarnation.load(Ordering::Acquire));
+        if self.incarnation != live_incarnation {
+            return Err(TreeExecutionContextError::StaleIncarnation {
+                expected: live_incarnation,
+                observed: self.incarnation,
+            });
+        }
+        self.seal.ensure_generation_not_faulted()?;
+        let live = GenerationStamp::new(self.seal.live_generation.load(Ordering::Acquire));
+        if self.generation != live {
+            return Err(TreeExecutionContextError::PermitGenerationMismatch {
+                expected: self.generation,
+                observed: live,
+            });
+        }
+        Ok(())
     }
 
     fn validate(
@@ -713,6 +775,7 @@ impl TreeGenerationPermit {
                 observed: generation,
             });
         }
+        self.seal.ensure_generation_not_faulted()?;
         Ok(())
     }
 }
@@ -720,10 +783,29 @@ impl TreeGenerationPermit {
 impl Drop for TreeGenerationPermit {
     fn drop(&mut self) {
         if !self.consumed {
-            self.seal
-                .generation_permit_outstanding
-                .store(false, Ordering::Release);
+            // Migration shares this same seal: it cannot launder effects from
+            // an unfinished old-incarnation permit into a retryable generation.
+            let _ = self.seal.generation_state.fetch_update(
+                Ordering::AcqRel,
+                Ordering::Acquire,
+                |state| match state {
+                    GENERATION_UNTOUCHED => Some(GENERATION_READY),
+                    GENERATION_TOUCHED => Some(GENERATION_FAULTED),
+                    _ => None,
+                },
+            );
         }
+    }
+}
+
+impl TreeExecutionSeal {
+    fn ensure_generation_not_faulted(&self) -> Result<(), TreeExecutionContextError> {
+        if self.generation_state.load(Ordering::Acquire) == GENERATION_FAULTED {
+            return Err(TreeExecutionContextError::GenerationFaulted {
+                generation: GenerationStamp::new(self.live_generation.load(Ordering::Acquire)),
+            });
+        }
+        Ok(())
     }
 }
 
@@ -982,6 +1064,8 @@ pub enum TreeExecutionContextError {
     },
     #[error("generation {generation:?} already has an outstanding whole-tree permit")]
     GenerationPermitAlreadyOutstanding { generation: GenerationStamp },
+    #[error("generation {generation:?} is faulted after an unfinished economic authorization")]
+    GenerationFaulted { generation: GenerationStamp },
     #[error("generation permit for {generation:?} has already been consumed")]
     GenerationPermitAlreadyConsumed { generation: GenerationStamp },
     #[error("generation permit mismatch: expected {expected:?}, observed {observed:?}")]
