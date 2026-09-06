@@ -346,7 +346,7 @@ fn both_postures_exercise_the_same_draw_envelope_at_the_current_boundary() {
 }
 
 #[test]
-fn departing_last_flow_claimant_refuses_before_silently_discarding_continuation() {
+fn departing_last_flow_claimant_terminates_neutrally() {
     for posture in [
         simthing_core::ClearingExecutionPosture::ResidentRequired,
         simthing_core::ClearingExecutionPosture::CpuVendorizedOracle,
@@ -387,14 +387,17 @@ fn departing_last_flow_claimant_refuses_before_silently_discarding_continuation(
             let outcome = session.step_once();
             println!("15.8 R1 departure: posture={posture:?}; established={established}; N authored10/supply4; outcome={outcome:?}; facts={:?}", facts(&session, claimant));
             assert_eq!(facts(&session, claimant), before, "no departed demand product");
+            assert!(outcome.as_ref().is_ok_and(|step| step.boundary_reached),
+                "Owner 15.11 neutral departure must complete the boundary: {outcome:?}");
+            let history = serde_json::to_value(session.integration_schedule()).unwrap();
+            let terminations: Vec<_> = history["entries"].as_array().unwrap().iter()
+                .filter_map(|entry| entry.get("neutral_stream_termination_fact"))
+                .collect();
+            assert_eq!(terminations.len(), usize::from(established), "one fact for the retired stream; none for a never-started stream");
             if established {
-                assert!(
-                    outcome.as_ref().is_err_and(|error| error.to_string().contains("departing ordinary flow")),
-                    "live stream departed without consequence disposition or explicit STOP: {outcome:?}"
-                );
-            } else {
-                assert_eq!(session.coord.day_index(), 1);
-                assert!(outcome.unwrap().boundary_reached);
+                assert_eq!(terminations[0]["final_products"][0]["granted"], 4);
+                assert_eq!(terminations[0]["final_products"][0]["unresolved"], 6);
+                assert_eq!(terminations[0]["final_products"][0]["source_simthing_id"], claimant.raw());
             }
         }
     }
