@@ -37,13 +37,34 @@ fn market_with_minimum(
     max_quantity: u32,
 ) -> GrowthEntitlementMarketBinding {
     let triggers = BTreeSet::from(["current-boundary".into()]);
-    let admitted = admit_specialization_flow_market(
+    let admitted = admit_market_fixture(resource, min_quantity, max_quantity, &triggers).unwrap();
+    GrowthEntitlementMarketBinding::from_admitted_market(
+        admitted,
+        root,
+        "offering",
+        "draw",
+        scope(root, resource),
+        triggers,
+        AuthoredClearingProgram::new(TransformOp::set(1.0)),
+        1.0,
+        100,
+    )
+}
+
+fn admit_market_fixture(
+    resource: &str,
+    min_quantity: u32,
+    max_quantity: u32,
+    triggers: &BTreeSet<String>,
+) -> Result<simthing_spec::AdmittedSpecializationFlowMarket, simthing_spec::FlowMarketAdmissionError>
+{
+    admit_specialization_flow_market(
         &[SpecializationProfile {
             id: "ordinary-flow".into(),
             description: "persistent ordinary owner-flow claimant".into(),
             requirements: Vec::new(),
         }],
-        &triggers,
+        triggers,
         SpecializationFlowMarketSpec {
             specialization_profile_id: "ordinary-flow".into(),
             offerings: vec![ConservedOfferingSpec {
@@ -62,18 +83,6 @@ fn market_with_minimum(
                 max_quantity,
             }],
         },
-    )
-    .unwrap();
-    GrowthEntitlementMarketBinding::from_admitted_market(
-        admitted,
-        root,
-        "offering",
-        "draw",
-        scope(root, resource),
-        triggers,
-        AuthoredClearingProgram::new(TransformOp::set(1.0)),
-        1.0,
-        100,
     )
 }
 
@@ -644,10 +653,68 @@ fn departing_last_flow_claimant_terminates_neutrally() {
 }
 
 #[test]
+fn draw_bounds_admit_zero_inclusively_and_refuse_reversed_bounds() {
+    use simthing_spec::{
+        DrawAuthorizationError, FlowMarketAdmissionError, RuntimeOwnerSiloDemandBucket,
+    };
+    let triggers = BTreeSet::from(["current-boundary".into()]);
+    let (scenario, claimant) = scenario();
+    for (min, max) in [(0, 0), (0, 100), (1, 100)] {
+        let market = admit_market_fixture(RESOURCE, min, max, &triggers).unwrap();
+        let draw = market.draw_envelope("draw").unwrap();
+        assert_eq!((draw.min_quantity, draw.max_quantity), (min, max));
+        for requested in [0, min, max, max + 1] {
+            let key = scope(scenario.root.id, RESOURCE);
+            let outcome = market.authorize_draw(
+                "draw",
+                "offering",
+                RuntimeOwnerSiloDemandBucket {
+                    owner_ref: key.owner_ref,
+                    resource_key: key.resource_key,
+                    scope_id: key.scope_id,
+                    requested,
+                    priority: 100,
+                    source_simthing_id_raw: Some(claimant.raw()),
+                },
+                1.0,
+                &triggers,
+            );
+            if (min..=max).contains(&requested) {
+                assert_eq!(outcome.unwrap().demand.requested, requested);
+            } else {
+                assert_eq!(
+                    outcome.unwrap_err(),
+                    DrawAuthorizationError::QuantityOutsideEnvelope {
+                        draw: "draw".into(),
+                        requested,
+                        min,
+                        max,
+                    }
+                );
+            }
+        }
+        println!("15.11 Draw [{min},{max}] admitted; existing inclusive authorization exact");
+    }
+    for (min, max) in [(1, 0), (101, 100)] {
+        let error = admit_market_fixture(RESOURCE, min, max, &triggers).unwrap_err();
+        assert_eq!(
+            error,
+            FlowMarketAdmissionError::InvalidDrawBounds {
+                draw: "draw".into()
+            }
+        );
+        assert!(error
+            .to_string()
+            .contains("0 <= min_quantity <= max_quantity"));
+        println!("15.11 reversed Draw [{min},{max}] rejected: {error}");
+    }
+}
+
+#[test]
 fn authored_zero_continues_the_stream_or_refuses_at_draw() {
     use simthing_core::ClearingExecutionPosture::{CpuVendorizedOracle, ResidentRequired};
     // Refusal remains an ordinary Draw result in both postures, independently
-    // of the zero-capable admission witness that currently exposes the HD gap.
+    // of the admitted-zero execution and final-product provenance matrix.
     for posture in [ResidentRequired, CpuVendorizedOracle] {
         let (scenario, claimant) = scenario();
         let mut session = SimSession::open(scenario).unwrap();
@@ -666,9 +733,11 @@ fn authored_zero_continues_the_stream_or_refuses_at_draw() {
         assert!(terminations(&session).is_empty());
         println!("15.11 refused zero posture={posture:?}: {error}");
     }
-    for posture in [ResidentRequired, CpuVendorizedOracle] {
-        for zero_generations in [1, 2] {
-            let (scenario, claimant) = scenario();
+    let mut failures = Vec::new();
+    for zero_generations in [1, 2, 3] {
+        let fixture = scenario();
+        'posture: for posture in [ResidentRequired, CpuVendorizedOracle] {
+            let (scenario, claimant) = fixture.clone();
             let root = scenario.root.id;
             let mut session = SimSession::open(scenario).unwrap();
             install(&mut session, claimant, None, false);
@@ -683,29 +752,53 @@ fn authored_zero_continues_the_stream_or_refuses_at_draw() {
                 scenario_metadata_u32_value(0),
             ));
             for _ in 0..zero_generations {
-                advance(&mut session, SessionLoop::Step);
+                let generation = session.coord.day_index() + 1;
+                match session.step_once() {
+                    Ok(outcome) => {
+                        assert!(outcome.boundary_reached);
+                        assert_eq!(session.coord.day_index(), generation);
+                    }
+                    Err(error) => {
+                        assert!(terminations(&session).is_empty());
+                        let failure = format!("{posture:?} N{generation} authored0: {error:?}; already-born resident facts={:?}; no termination", facts(&session, claimant));
+                        println!("15.11 zero runtime FAILURE: {failure}");
+                        failures.push(failure);
+                        continue 'posture;
+                    }
+                }
             }
             assert!(
                 terminations(&session).is_empty(),
                 "zero is membership, not departure"
             );
             if posture.is_resident_required() {
-                let expected = if zero_generations == 1 {
-                    vec![(1, 4, 6), (2, 4, 2)]
-                } else {
-                    vec![(1, 4, 6), (2, 4, 2), (3, 2, 0)]
-                };
-                assert_eq!(facts(&session, claimant), expected);
+                let expected = [(1, 4, 6), (2, 4, 2), (3, 2, 0), (4, 0, 0)];
+                assert_eq!(
+                    facts(&session, claimant),
+                    expected[..zero_generations as usize + 1]
+                );
             }
             depart(&mut session, claimant, Departure::Property);
             advance(&mut session, SessionLoop::Step);
             let retired = terminations(&session);
             assert_eq!(retired.len(), 1);
-            let (g, u) = if zero_generations == 1 {
-                (4, 2)
-            } else {
-                (2, 0)
+            let (g, u) = match zero_generations {
+                1 => (4, 2),
+                2 => (2, 0),
+                3 => (0, 0),
+                _ => unreachable!(),
             };
+            println!("15.11 zero provenance posture={posture:?}: zero generations={zero_generations}; expected N{} G{g}/U{u}; actual termination={:?}", zero_generations + 1, retired[0]);
+            let expected = simthing_core::NeutralStreamFinalProduct {
+                source_simthing_id: claimant,
+                granted: g,
+                unresolved: u,
+                generation: simthing_core::GenerationStamp::new(zero_generations + 1),
+            };
+            if retired[0].final_products != [expected.clone()] {
+                failures.push(format!("{posture:?} termination N{} lost final product: expected {expected:?}, actual {:?}", zero_generations + 2, retired[0].final_products));
+                continue;
+            }
             assert_final_product(
                 &retired[0],
                 root,
@@ -718,6 +811,10 @@ fn authored_zero_continues_the_stream_or_refuses_at_draw() {
             println!("15.11 admitted zero posture={posture:?}: zero generations={zero_generations}, final G{g}/U{u}, no termination until property removal");
         }
     }
+    assert!(
+        failures.is_empty(),
+        "admitted-zero lifecycle failures: {failures:#?}"
+    );
 }
 
 #[test]
