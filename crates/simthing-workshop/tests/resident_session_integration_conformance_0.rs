@@ -818,6 +818,70 @@ fn authored_zero_continues_the_stream_or_refuses_at_draw() {
 }
 
 #[test]
+fn initial_zero_members_produce_same_canonical_result_in_both_postures() {
+    use simthing_core::ClearingExecutionPosture::{CpuVendorizedOracle, ResidentRequired};
+    let mut failures = Vec::new();
+    for max in [0, 100] {
+        let fixture = scenario();
+        for posture in [ResidentRequired, CpuVendorizedOracle] {
+            let (mut scenario, claimant) = fixture.clone();
+            let root = scenario.root.id;
+            scenario.root.children[0].add_property(
+                OWNER_FLOW_DEMAND_PROPERTY_ID,
+                scenario_metadata_u32_value(0),
+            );
+            let mut session = SimSession::open(scenario).unwrap();
+            install(&mut session, claimant, None, false);
+            session.set_clearing_execution_posture(posture).unwrap();
+            session
+                .install_growth_entitlement_market(market_with_minimum(root, RESOURCE, 0, max))
+                .unwrap();
+            let outcome = session.step_once();
+            println!("15.11 initial zero [{},{max}] posture={posture:?}: {outcome:?}; resident facts={:?}", 0, facts(&session, claimant));
+            assert!(terminations(&session).is_empty(), "zero is not departure");
+            if !outcome.as_ref().is_ok_and(|step| step.boundary_reached) {
+                failures.push(format!("initial zero [0,{max}] {posture:?}: {outcome:?}"));
+                continue;
+            }
+            if posture.is_resident_required() && facts(&session, claimant) != [(1, 0, 0)] {
+                failures.push(format!(
+                    "initial zero [0,{max}] resident lost canonical G0/U0@1: {:?}",
+                    facts(&session, claimant)
+                ));
+            }
+            // No positive lifecycle relation is allowed for the zero result.
+            assert!(session
+                .integration_schedule()
+                .entries()
+                .iter()
+                .all(|entry| entry.grant_lifecycle_fact.is_none()));
+            depart(&mut session, claimant, Departure::Property);
+            advance(&mut session, SessionLoop::Step);
+            let retired = terminations(&session);
+            assert_eq!(retired.len(), 1);
+            let expected = simthing_core::NeutralStreamFinalProduct {
+                source_simthing_id: claimant,
+                granted: 0,
+                unresolved: 0,
+                generation: simthing_core::GenerationStamp::new(1),
+            };
+            if retired[0].final_products != [expected] {
+                failures.push(format!(
+                    "initial zero [0,{max}] {posture:?} departure lost provenance: {:?}",
+                    retired[0]
+                ));
+            } else {
+                assert_final_product(&retired[0], root, claimant, 2, 1, 0, 0);
+            }
+        }
+    }
+    assert!(
+        failures.is_empty(),
+        "initial zero member failures: {failures:#?}"
+    );
+}
+
+#[test]
 fn partial_departure_stays_fail_closed_and_empty_set_cannot_launder_fault() {
     use simthing_core::ClearingExecutionPosture::{CpuVendorizedOracle, ResidentRequired};
     for posture in [ResidentRequired, CpuVendorizedOracle] {

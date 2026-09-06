@@ -307,9 +307,6 @@ pub fn clear_constrained_claims_at_generation(
                 source_id: claim.source_simthing_id,
             });
         }
-        if claim.requested == 0 {
-            continue;
-        }
         claims_by_scope
             .entry(claim.scope.clone())
             .or_default()
@@ -332,6 +329,26 @@ pub fn clear_constrained_claims_at_generation(
 
         let mut remaining = available_before;
         let mut grants = Vec::with_capacity(scored.len());
+        // A live zero member retains the ordinary scored/sealed result, but
+        // never enters allocation or its denominators/tie rotation. Removing
+        // only these rows leaves every positive-demand band bit-identical.
+        scored.retain(|row| {
+            if row.claim.requested != 0 {
+                return true;
+            }
+            grants.push(ConstrainedGrant::from_clearance(
+                row.claim.scope.clone(),
+                row.claim.source_simthing_id,
+                0,
+                0,
+                0,
+                row.claim.priority,
+                row.claim.order_weight,
+                row.score,
+                authority.generation,
+            ));
+            false
+        });
         let mut cursor = 0usize;
         while cursor < scored.len() {
             let score_bits = scored[cursor].score.to_bits();

@@ -49,7 +49,7 @@ use simthing_spec::{
     ScalarBoundDirection, ScopeId,
 };
 
-const QUALIFIED_RECORD_FINGERPRINT: u64 = 0xfec0_1813_55ab_7bec;
+const QUALIFIED_RECORD_FINGERPRINT: u64 = 0xbbbc_92b8_bd32_845e;
 
 fn col(raw: usize) -> ColumnIndex {
     ColumnIndex::from_raw_for_oracle_or_rehearsal(raw)
