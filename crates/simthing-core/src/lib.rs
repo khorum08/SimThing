@@ -111,7 +111,8 @@ pub use generation_stamp::{
     AncestorStandingPolicyView, AuthoredSeamStaleness, BackpressurePolicy, DispatchOverlayError,
     GenerationStamp, GenerationStamped, GrantLifecycleScheduleError, IntegrateError,
     IntegrationReceipt, IntegrationSchedule, IntegrationScheduleEntry, IntegrationScheduleRowKind,
-    ResidentClearingScheduleFact, ResidentScheduleError, ResidentScheduleReservation,
+    NeutralStreamFinalProduct, NeutralStreamTerminationFact, ResidentClearingScheduleFact,
+    ResidentScheduleError, ResidentScheduleReservation,
     RingPushOutcome, RoutedGenerationDuration, StampedEgressEntry, StampedEventRing,
     StandingViewDoubleBuffer,
 };

@@ -129,6 +129,8 @@ pub enum IntegrationScheduleRowKind {
     /// One exact resident constrained product asynchronously materialized
     /// from the bounded live-head segment.
     ResidentClearingProduct,
+    /// Final recurring-flow membership ended; prior U extinguishes neutrally.
+    NeutralStreamTermination,
     GrantAccepted,
     GrantRenewed,
     GrantRevoked,
@@ -184,6 +186,9 @@ pub struct IntegrationScheduleEntry {
     /// this observer append completes.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub resident_clearing_fact: Option<ResidentClearingScheduleFact>,
+    /// Observation of a retired stream, never an economic carry input.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub neutral_stream_termination_fact: Option<NeutralStreamTerminationFact>,
 }
 
 impl IntegrationScheduleEntry {
@@ -214,6 +219,7 @@ impl IntegrationScheduleEntry {
 ///         product_key: 9,
 ///         grant_lifecycle_fact: None,
 ///         resident_clearing_fact: None,
+///         neutral_stream_termination_fact: None,
 ///     }],
 ///     ..IntegrationSchedule::new()
 /// };
@@ -238,6 +244,28 @@ pub struct ResidentClearingScheduleFact {
     pub unresolved: u32,
     pub generation: GenerationStamp,
     pub integration_band: u32,
+}
+
+/// Already-born final product observation. No policy or future demand is minted.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct NeutralStreamFinalProduct {
+    pub source_simthing_id: crate::SimThingId,
+    pub granted: u32,
+    pub unresolved: u32,
+    pub generation: GenerationStamp,
+}
+
+/// One neutral termination in the existing history, with semantic scope data.
+/// Strings carry the admitted resource/scope names across the core/spec boundary;
+/// they are observations, not another scope registry or authority.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct NeutralStreamTerminationFact {
+    pub granter: crate::SimThingId,
+    pub owner_ref: OwnerRef,
+    pub resource_key: String,
+    pub scope_id: String,
+    pub termination_generation: GenerationStamp,
+    pub final_products: Vec<NeutralStreamFinalProduct>,
 }
 
 /// Opaque reservation in the bounded resident live head.
@@ -322,6 +350,7 @@ impl IntegrationSchedule {
             product_key,
             grant_lifecycle_fact: None,
             resident_clearing_fact: None,
+            neutral_stream_termination_fact: None,
         });
     }
 
@@ -346,8 +375,47 @@ impl IntegrationSchedule {
             product_key: fact.provenance,
             grant_lifecycle_fact: Some(fact),
             resident_clearing_fact: None,
+            neutral_stream_termination_fact: None,
         });
         Ok(())
+    }
+
+    /// Append the final observation to this same canonical recorder. Sorting
+    /// uses semantic claimant identity; physical row/arena order is irrelevant.
+    pub fn record_neutral_stream_termination(&mut self, mut fact: NeutralStreamTerminationFact) {
+        fact.final_products
+            .sort_by_key(|product| product.source_simthing_id);
+        let mut bytes = b"neutral-stream-termination-v1".to_vec();
+        bytes.extend_from_slice(&fact.granter.raw().to_le_bytes());
+        bytes.extend_from_slice(&fact.termination_generation.get().to_le_bytes());
+        for name in [fact.owner_ref.as_str(), &fact.resource_key, &fact.scope_id] {
+            bytes.extend_from_slice(&(name.len() as u64).to_le_bytes());
+            bytes.extend_from_slice(name.as_bytes());
+        }
+        for product in &fact.final_products {
+            for value in [
+                product.source_simthing_id.raw(),
+                product.granted,
+                product.unresolved,
+                product.generation.get(),
+            ] {
+                bytes.extend_from_slice(&value.to_le_bytes());
+            }
+        }
+        let child_generation = fact
+            .final_products
+            .first()
+            .map(|product| product.generation)
+            .unwrap_or(fact.termination_generation);
+        self.entries.push(IntegrationScheduleEntry {
+            kind: IntegrationScheduleRowKind::NeutralStreamTermination,
+            parent_generation: fact.termination_generation,
+            child_generation,
+            product_key: stable_bytes_key(&bytes),
+            grant_lifecycle_fact: None,
+            resident_clearing_fact: None,
+            neutral_stream_termination_fact: Some(fact),
+        });
     }
 
     /// Admit the one bounded device-resident live head. This is session-build
@@ -462,6 +530,7 @@ impl IntegrationSchedule {
                 product_key: resident_product_key(sequence, fact),
                 grant_lifecycle_fact: None,
                 resident_clearing_fact: Some(fact),
+                neutral_stream_termination_fact: None,
             });
         }
         self.entries.extend(rows);

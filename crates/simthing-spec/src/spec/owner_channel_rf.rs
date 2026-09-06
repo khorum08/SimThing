@@ -786,6 +786,7 @@ pub fn replay_async_owner_channel_rf_seam(
             | IntegrationScheduleRowKind::ResidencyCommittedCorruption
             | IntegrationScheduleRowKind::GrowthEntitlementRefusal
             | IntegrationScheduleRowKind::ResidentClearingProduct
+            | IntegrationScheduleRowKind::NeutralStreamTermination
             | IntegrationScheduleRowKind::GrantAccepted
             | IntegrationScheduleRowKind::GrantRenewed
             | IntegrationScheduleRowKind::GrantRevoked
