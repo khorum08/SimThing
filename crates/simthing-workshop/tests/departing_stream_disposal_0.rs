@@ -239,3 +239,58 @@ fn authored_departure_binding_reaches_the_existing_consequence_ingress() {
         "authored departure binding cannot reach ordinary admission: {authoring_failures:#?}"
     );
 }
+
+#[test]
+fn established_partial_departure_terminates_before_survivor_carry() {
+    let mut refused = Vec::new();
+    for posture in [
+        ClearingExecutionPosture::ResidentRequired,
+        ClearingExecutionPosture::CpuVendorizedOracle,
+    ] {
+        for supply in [4, 40] {
+            let (scenario, sources, _) = scenario(&[10, 10], supply);
+            let mut session = SimSession::open(scenario).unwrap();
+            install(&mut session, posture);
+            assert!(session.step_once().unwrap().boundary_reached);
+            assert!(terminations(&session).is_empty());
+            let before = session.integration_schedule().entries().to_vec();
+            remove_demand(&mut session, sources[0]);
+            match session.step_once() {
+                Err(error) => {
+                    let text = error.to_string();
+                    assert!(text.contains(&simthing_driver::resident_clearing_runtime::ResidentClearingRuntimeError::TemporalSourceMismatch.to_string()), "unexpected refusal: {error:?}");
+                    assert_eq!(session.integration_schedule().entries(), before.as_slice());
+                    assert!(terminations(&session).is_empty());
+                    println!("15.12 RED-B {posture:?} supply={supply}: actual established two-claimant stream loses one property; {error}; no departing fact or survivor carry");
+                    refused.push(format!("{posture:?} supply={supply}: {text}"));
+                }
+                Ok(step) => {
+                    assert!(step.boundary_reached);
+                    let facts = terminations(&session);
+                    assert_eq!(facts.len(), 1);
+                    assert_eq!(facts[0].termination_generation, GenerationStamp::new(2));
+                    assert_eq!(facts[0].final_products.len(), 1);
+                    let departed = &facts[0].final_products[0];
+                    assert_eq!(departed.source_simthing_id, sources[0]);
+                    assert_eq!(departed.generation, GenerationStamp::new(1));
+                    assert_eq!(
+                        (departed.granted, departed.unresolved),
+                        if supply == 4 { (2, 8) } else { (10, 0) }
+                    );
+                    remove_demand(&mut session, sources[1]);
+                    assert!(session.step_once().unwrap().boundary_reached);
+                    let facts = terminations(&session);
+                    assert_eq!(facts.len(), 2);
+                    let survivor = &facts[1].final_products[0];
+                    assert_eq!(survivor.source_simthing_id, sources[1]);
+                    assert_eq!(survivor.generation, GenerationStamp::new(2));
+                    assert_eq!(
+                        (survivor.granted, survivor.unresolved),
+                        if supply == 4 { (4, 14) } else { (10, 0) }
+                    );
+                }
+            }
+        }
+    }
+    assert!(refused.is_empty(), "lawful fact-authorized partial departure refuses instead of carrying the survivor: {refused:#?}");
+}

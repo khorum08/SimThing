@@ -49,5 +49,20 @@ authoring refusal, not a source-string absence or compile-failure seam.
 
 Command: `cargo test -p simthing-workshop --test departing_stream_disposal_0 authored_departure_binding_reaches_the_existing_consequence_ingress -- --exact --nocapture --test-threads=1`.
 Result: exit 101; 0 passed, 1 failed; both real-session and ingress controls pass.
-The first RED commit contains this witness before any remedy. RED-B and remedies
-remain pending at this evidence stage.
+Preserved RED-A commit: `f724c465`. No production source was changed.
+
+## Preserved RED-B — real partial-membership boundary
+
+`established_partial_departure_terminates_before_survivor_carry` establishes two
+ordinary claimants requesting 10 each. After N1 it removes only one claimant's
+demand property. Both ResidentRequired and CpuVendorizedOracle reject N2 with
+`TemporalSourceMismatch`, leave the complete history unchanged, and emit no
+termination or survivor carry. This repeats with supply 4 (both prior U8) and 40
+(both prior U0). The four baseline refusals fail the final positive assertion.
+The desired path additionally checks a single N2 departing fact and the survivor's
+N2 canonical product on N3 termination: G4/U14 with supply 4, G10/U0 with supply 40.
+
+Command: `cargo test -p simthing-workshop --test departing_stream_disposal_0 established_partial_departure_terminates_before_survivor_carry -- --exact --nocapture --test-threads=1`.
+Result: exit 101; 0 passed, 1 failed, 1 filtered; four actual session refusals.
+The separate RED-B commit precedes all production remedies, independently of
+RED-A. No new testing seam or production source was introduced for either RED.
