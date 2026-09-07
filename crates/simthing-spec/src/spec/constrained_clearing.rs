@@ -5,6 +5,7 @@
 //! has no domain taxonomy, owner reconstruction, or physical-row policy.
 
 use std::collections::{BTreeMap, BTreeSet};
+use std::sync::Arc;
 
 use simthing_core::{
     admit_dispatch_minted_overlay, cost_band_quantize, dispatch_until_dissolved,
@@ -37,6 +38,14 @@ pub struct ConstrainedClaim {
     requested: u32,
     priority: u32,
     order_weight: f32,
+    resident_oracle: Option<Arc<ResidentOracleInput>>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+struct ResidentOracleInput {
+    plan: simthing_kernel::ResidentApportionmentPlan,
+    values: Vec<f32>,
+    n_dims: u32,
 }
 
 impl ConstrainedClaim {
@@ -54,7 +63,60 @@ impl ConstrainedClaim {
             requested: demand.requested,
             priority: demand.priority,
             order_weight,
+            resident_oracle: None,
         })
+    }
+
+    /// Bind an explicit CPU reference batch to the already-admitted resident
+    /// plan and its observed continuous allocation. No economics runs here.
+    /// The immutable batch input also makes a later oracle mint replay the
+    /// same generation's basis rather than current or request-derived values.
+    pub fn bind_resident_oracle(
+        claims: &mut [Self],
+        semantic_plan: &simthing_kernel::ResidentClearingPlan,
+        plan: simthing_kernel::ResidentApportionmentPlan,
+        values: Vec<f32>,
+        n_dims: u32,
+    ) -> Result<(), ConstrainedClearingError> {
+        let inputs: BTreeMap<_, _> = claims
+            .iter()
+            .map(|claim| (claim.source_simthing_id, claim.requested))
+            .collect();
+        let semantic_scopes: BTreeSet<_> = plan
+            .claims()
+            .iter()
+            .filter_map(|claim| {
+                semantic_plan
+                    .rows()
+                    .get(claim.semantic_row() as usize)
+                    .map(|row| (row.owner().get(), row.resource().get(), row.scope().get()))
+            })
+            .collect();
+        if plan.semantic_digest() != semantic_plan.digest()
+            || (!claims.is_empty() && semantic_scopes.len() != 1)
+            || inputs.len() != claims.len()
+            || inputs.len() != plan.claims().len()
+            || plan
+                .claims()
+                .iter()
+                .any(|row| inputs.get(&row.source_simthing_id()) != Some(&row.requested()))
+            || claims
+                .first()
+                .is_some_and(|first| claims.iter().any(|claim| claim.scope != first.scope))
+        {
+            return Err(ConstrainedClearingError::ResidentBasis(
+                "claim/plan mismatch".into(),
+            ));
+        }
+        let input = Arc::new(ResidentOracleInput {
+            plan,
+            values,
+            n_dims,
+        });
+        for claim in claims {
+            claim.resident_oracle = Some(input.clone());
+        }
+        Ok(())
     }
 
     pub fn scope(&self) -> &OwnerChannelScopeKey {
@@ -250,6 +312,8 @@ pub enum ConstrainedClearingError {
     MissingAuthoredData { source_id: SimThingId },
     #[error("runtime demand for source {source_id:?} does not match its reduced RF claim")]
     DemandDoesNotMatchReducedClaim { source_id: SimThingId },
+    #[error("resident CPU reference input: {0}")]
+    ResidentBasis(String),
     #[error("owner-channel clearing arithmetic overflow")]
     ArithmeticOverflow,
     #[error("current generation cannot advance to the unresolved-demand N+1 plane")]
@@ -264,6 +328,108 @@ pub enum ConstrainedClearingError {
     UnresolvedDemandSourceMismatch,
     #[error(transparent)]
     PersistenceDeformation(#[from] PersistenceDeformationError),
+}
+
+// The generic CPU clearer receives the exact same admitted plan/share vector
+// as the resident executor. Quantization remains the existing Kernel reference;
+// this code validates composition and seals its results, never solves allocation.
+fn clear_resident_oracle_input(
+    supplies: &[ConstrainedSupply],
+    claims: &[ConstrainedClaim],
+    program: &AuthoredClearingProgram,
+    authority: ClearingRemainderAuthority,
+) -> Result<Vec<ConstrainedClearingResult>, ConstrainedClearingError> {
+    let reject =
+        || ConstrainedClearingError::ResidentBasis("scope/generation/batch mismatch".into());
+    let first = claims.first().ok_or_else(reject)?;
+    let input = first.resident_oracle.as_ref().ok_or_else(reject)?;
+    if supplies.len() != 1
+        || supplies[0].scope != first.scope
+        || input.plan.authority_granter() != authority.granter
+        || input.plan.generation() != authority.generation
+        || claims.len() != input.plan.claims().len()
+        || claims.iter().any(|claim| {
+            claim.scope != first.scope
+                || !claim
+                    .resident_oracle
+                    .as_ref()
+                    .is_some_and(|other| Arc::ptr_eq(input, other))
+        })
+    {
+        return Err(reject());
+    }
+    let mut seen = BTreeSet::new();
+    let mut scores = BTreeMap::new();
+    for claim in claims {
+        if !seen.insert(claim.source_simthing_id) {
+            return Err(reject());
+        }
+        let row = input
+            .plan
+            .claims()
+            .iter()
+            .find(|row| row.source_simthing_id() == claim.source_simthing_id)
+            .ok_or_else(reject)?;
+        if row.requested() != claim.requested || row.available() != supplies[0].available {
+            return Err(reject());
+        }
+        scores.insert(claim.source_simthing_id, program.score(claim)?);
+    }
+    // The admission's precedence is the same score-band ordering. A caller
+    // cannot bind a plan that reverses or splits its authored equality bands.
+    for left in input.plan.claims() {
+        for right in input.plan.claims() {
+            if scores[&left.source_simthing_id()].total_cmp(&scores[&right.source_simthing_id()])
+                != right.precedence().cmp(&left.precedence())
+            {
+                return Err(reject());
+            }
+        }
+    }
+    let products = simthing_kernel::execute_resident_apportionment_cpu(
+        &input.plan,
+        &input.values,
+        input.n_dims,
+    )
+    .map_err(|error| ConstrainedClearingError::ResidentBasis(error.to_string()))?;
+    let mut grants = Vec::with_capacity(claims.len());
+    let mut granted_total = 0u32;
+    let mut unresolved_total = 0u32;
+    for product in products {
+        let claim = claims
+            .iter()
+            .find(|claim| claim.source_simthing_id == product.source_simthing_id())
+            .ok_or_else(reject)?;
+        granted_total = granted_total
+            .checked_add(product.granted())
+            .ok_or(ConstrainedClearingError::ArithmeticOverflow)?;
+        unresolved_total = unresolved_total
+            .checked_add(product.unresolved())
+            .ok_or(ConstrainedClearingError::ArithmeticOverflow)?;
+        grants.push(ConstrainedGrant::from_clearance(
+            claim.scope.clone(),
+            claim.source_simthing_id,
+            claim.requested,
+            product.granted(),
+            product.unresolved(),
+            claim.priority,
+            claim.order_weight,
+            scores[&claim.source_simthing_id],
+            authority.generation,
+        ));
+    }
+    grants.sort_by_key(|grant| grant.source_simthing_id);
+    Ok(vec![ConstrainedClearingResult {
+        scope: first.scope.clone(),
+        available_before: supplies[0].available,
+        granted_total,
+        remaining_after: supplies[0]
+            .available
+            .checked_sub(granted_total)
+            .ok_or(ConstrainedClearingError::ArithmeticOverflow)?,
+        unresolved_total,
+        grants,
+    }])
 }
 
 #[derive(Clone)]
@@ -284,6 +450,9 @@ pub fn clear_constrained_claims_at_generation(
     program: &AuthoredClearingProgram,
     authority: ClearingRemainderAuthority,
 ) -> Result<Vec<ConstrainedClearingResult>, ConstrainedClearingError> {
+    if claims.iter().any(|claim| claim.resident_oracle.is_some()) {
+        return clear_resident_oracle_input(supplies, claims, program, authority);
+    }
     let mut supply_by_scope = BTreeMap::new();
     for supply in supplies {
         if supply_by_scope

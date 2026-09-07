@@ -1,9 +1,16 @@
 # DEPARTING-STREAM-DISPOSAL-0 — implementation evidence
 
-Status: STOP / PROBATION / partial proof present / DA-review-pending / OPEN / UNMERGED.
+Current status: PROBATION / remand validation in progress / DA-review-pending / OPEN / UNMERGED.
 
-The candidate does not satisfy the zero-RED exit proof. The post-roll failures and
-scope gap below require orchestration/DA disposition before implementation resumes.
+Current dispatch: 5572663219; DA adjudication: 5572589566; amended
+HD-RECEIPT: a5570e1fb2fe. Live master `8a547b84a49115e1b7c961f90fe51a4eb606cfb4`
+was normally merged into the same branch. `orient.sh --role=coding --since=a9d2086a0dd2`
+reports CURRENT, with unchanged rule stamp/digest and the same 63 required anchor
+ACKs carried below. The initial STOP evidence is retained as historical context;
+the remand section at the end describes its authorized remedies.
+
+The initial candidate did not satisfy the zero-RED exit proof. DA adjudication
+5572589566 supplied the four remedies for the historical failures below.
 
 Dispatch: Board comment 5569664053; Owner mint 5569511979. Canonical handoff:
 `handoffs/DEPARTING-STREAM-DISPOSAL-0.hd.md`. Implementation base:
@@ -275,3 +282,61 @@ Return this head to orchestration/DA with all failures intact.
 - `scripts/ci/anchor_reach_log.tsv`
 - `scripts/ci/constitutional_surfaces.tsv`
 - `scripts/ci/test_inventory.tsv`
+
+## DA remand 5572589566 — CPU live-basis convergence
+
+The resident result is lawful: prior10/10, supply4, survivor effective18 and fresh
+entrant5 with equal live allocation bases settle to survivor G2/U16 and entrant
+G2/U3. The mixed test now asserts that ruled result for both postures. This is the
+only superseded numerical expectation; fixtures, executors and other assertions
+were not changed. No pre-15.12 expectation has been amended.
+
+The existing market binding retains a CPU-only projection of the same admitted
+resident semantic plan and RF participant/column mapping. It is derived through
+the existing sealed tree-binding and resident projection admission, without an
+executor, history, continuation, generation authority or U. CPU sessions observe
+Current's live allocation cells and bind their exact claims to this plan. Qualified
+legacy calls without Current live-basis inputs refuse; they cannot silently use
+request-proportional numerators. Unqualified mathematical-reference claims retain
+the original neutral law.
+
+The existing Spec `clear_constrained_claims_at_generation` validates the bound
+scope, source set, generation, supply and score-band ordering, calls the unchanged
+Kernel `execute_resident_apportionment_cpu`, and seals its returned products as
+ordinary ConstrainedGrants. There is no new apportionment implementation. Kernel's
+existing Q149 min(AllocatedFlow,request), caps, saturation/redistribution, Hamilton,
+precedence and rotation are unchanged. The CPU continuation retains immutable
+claim inputs for the existing prior-generation replay; survivors mint from the
+same canonical prior G/U, and entrants receive a fresh current-generation binding.
+Resident economics has no new readback or dispatch.
+
+The ordinary and survivor wrappers in `runtime_rf_tick.rs` now invoke one private
+forwarder. It owns the sole callsite to the existing recurrence. The recurrence
+body and atomic mint body are byte-identical, and the frozen single-port test
+(including both planted mutants) passes with its entire file byte-identical.
+
+The two governance companions are exact: two `# RESIDUE` admission/query rows in
+the existing Overlay census classify only the named hits as existing-authority
+GENUINELY-STRUCTURAL/keep; the generated sanctioned digest changes only the
+constitutional ledger hash. No universe, checker, route law or doctrine prose
+was modified. All 15 structural checks passed before the final source freeze.
+
+Before the fifth roll, the exact existing CPU membership/all-depart helpers passed
+36 mixed cases and 27 all-depart cases through real sessions. The temporary
+CPU-only test wrapper was removed and is not a new permanent testing seam.
+The new inventoried `departure_live_basis_convergence_0` referee passed 900 complete
+ConstrainedClearingResult equality comparisons against the unchanged neutral
+reference and 10 nondegenerate live-basis/cap/zero/order controls. Those comparisons
+include G/U, totals, stamps, score/priority and clearance seals; basis is proportional
+to requests in the neutral corpus, including f32 scaling and u32 edge controls.
+
+Frozen-source certificate against STOP0365e493: complete Kernel exact-apportionment
+Rust and WGSL, complete Kernel temporal-transform Rust, complete frozen
+`persistence_deformation_port_0.rs`, the Spec recurrence and atomic mint bodies,
+and Driver original/subset mint and temporal/market dispatch bodies are byte-identical.
+Their SHA256 certificate is retained with the owner-local validation artifacts.
+
+The final fifth E8 refusal/pin/mutants and completed focused/frozen/workspace/hosted
+results will be recorded on the final-head PR and Board return. No sixth roll is
+authorized. The first REDs, initial semantic candidate, first E8 roll, both STOP
+return commits and governance merge remain in branch history.

@@ -1017,6 +1017,9 @@ impl SimSession {
             self.resident_clearing = Some(runtime);
         }
         self.growth_entitlement = binding;
+        if !self.clearing_execution_posture.is_resident_required() {
+            self.bind_or_rebind_resident_clearing_to_current_arena()?;
+        }
         Ok(())
     }
 
@@ -1074,10 +1077,12 @@ impl SimSession {
                 "clearing execution posture freezes before the first tick".into(),
             ));
         }
-        if posture.is_resident_required() {
-            self.bind_or_rebind_resident_clearing_to_current_arena()?;
-        }
+        let previous = self.clearing_execution_posture;
         self.clearing_execution_posture = posture;
+        if let Err(error) = self.bind_or_rebind_resident_clearing_to_current_arena() {
+            self.clearing_execution_posture = previous;
+            return Err(error);
+        }
         Ok(())
     }
 
@@ -1216,9 +1221,39 @@ impl SimSession {
     }
 
     fn bind_or_rebind_resident_clearing_to_current_arena(&mut self) -> Result<(), SessionError> {
-        if !self.clearing_execution_posture.is_resident_required()
-            || self.spec_state.arena_registry.arenas.is_empty()
-        {
+        if self.spec_state.arena_registry.arenas.is_empty() {
+            return Ok(());
+        }
+        if !self.clearing_execution_posture.is_resident_required() {
+            if self.growth_entitlement.is_implicit_root_standing()
+                && !self.spec_state.arena_registry.arenas.iter().any(|arena| {
+                    let property = self.proto.registry.property(arena.flow_property_id);
+                    property.namespace
+                        == crate::resident_clearing_runtime::RESIDENT_MARKET_RF_NAMESPACE
+                        && property.name
+                            == crate::resident_clearing_runtime::RESIDENT_MARKET_RF_PROPERTY
+                })
+            {
+                return Ok(());
+            }
+            let market = self.growth_entitlement.resident_market_admission();
+            let projection = self
+                .proto
+                .with_sealed_tree_execution_binding(
+                    &self.execution_lease,
+                    &self.integration_schedule,
+                    |binding| {
+                        crate::resident_clearing_runtime::CpuOracleProjection::admit(
+                            &self.state.ctx,
+                            binding,
+                            &self.spec_state.arena_registry,
+                            self.state.n_slots.max(1),
+                            market,
+                        )
+                    },
+                )
+                .map_err(|error| SessionError::Mapping(error.to_string()))??;
+            self.growth_entitlement.oracle_projection = Some(projection);
             return Ok(());
         }
         if self.resident_clearing.is_none() {

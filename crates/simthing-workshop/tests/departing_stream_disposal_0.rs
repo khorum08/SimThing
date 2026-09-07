@@ -518,7 +518,9 @@ fn membership_matrix(posture: ClearingExecutionPosture) {
                 } else if expected_demand == 0 {
                     0
                 } else {
-                    3
+                    // DA 5572589566: the admitted equal live bases govern
+                    // both postures; effective demand is only the cap.
+                    2
                 };
                 assert_eq!(
                     survivor.granted, survivor_g,

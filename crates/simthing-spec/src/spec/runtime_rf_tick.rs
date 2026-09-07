@@ -242,13 +242,8 @@ pub fn produce_runtime_rf_next_generation_demands(
             .persistence_deformations
             .program_for(&key.0, key.1);
         stamped.push(
-            carry_unresolved_demand_to_next_generation(
-                current_generation,
-                next_demand,
-                unresolved,
-                deformation,
-            )
-            .map_err(|error| demand_current_to_next_rejected(&error.to_string()))?,
+            carry_oracle_demand(current_generation, next_demand, unresolved, deformation)
+                .map_err(|error| demand_current_to_next_rejected(&error.to_string()))?,
         );
     }
 
@@ -369,7 +364,7 @@ pub fn produce_runtime_rf_survivor_demands(
             return Err(demand_current_to_next_rejected("TemporalSourceMismatch"));
         }
         stamped.push(
-            carry_unresolved_demand_to_next_generation(
+            carry_oracle_demand(
                 authority.current_generation(),
                 demand,
                 observations.remove(&(scope.clone(), source)),
@@ -386,6 +381,18 @@ pub fn produce_runtime_rf_survivor_demands(
         ));
     }
     Ok(stamped)
+}
+
+fn carry_oracle_demand(
+    generation: GenerationStamp,
+    demand: RuntimeOwnerSiloDemandBucket,
+    observation: Option<UnresolvedDemandObservation>,
+    deformation: Option<&simthing_core::PersistenceDeformationProgram>,
+) -> Result<
+    GenerationStamped<RuntimeOwnerSiloDemandBucket>,
+    super::constrained_clearing::ConstrainedClearingError,
+> {
+    carry_unresolved_demand_to_next_generation(generation, demand, observation, deformation)
 }
 
 fn demand_current_to_next_already_produced(generation: GenerationStamp) -> RuntimeRfTickError {

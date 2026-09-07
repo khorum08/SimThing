@@ -64,6 +64,7 @@ pub struct GrowthEntitlementMarketBinding {
     priority: u32,
     implicit_root_standing: bool,
     resident_qualification: Option<crate::resident_clearing_runtime::ResidentMarketQualification>,
+    pub(crate) oracle_projection: Option<crate::resident_clearing_runtime::CpuOracleProjection>,
 }
 
 /// Only provenance crosses the ordinary boundary on the resident posture.
@@ -581,8 +582,31 @@ impl GrowthEntitlementMarketBinding {
                     // Only a proved entrant can remain the fresh authored claim.
                 }
             }
-            let decisions = self
-                .resolve_batch_cpu_vendorized_oracle(allocator, generation, candidates, schedule)?;
+            let projection = self
+                .oracle_projection
+                .as_ref()
+                .ok_or(GrowthEntitlementError::ResidentProfileUnqualified)?;
+            let decisions = self.resolve_batch_with_basis(
+                allocator,
+                generation,
+                candidates,
+                schedule,
+                Some(state),
+            )?;
+            let participants: Vec<_> = claims
+                .iter()
+                .map(|claim| (claim.source_simthing_id(), claim.source_simthing_id()))
+                .collect();
+            projection
+                .bind_claims(
+                    state,
+                    self.granter,
+                    generation,
+                    available,
+                    &mut claims,
+                    &participants,
+                )
+                .map_err(|error| GrowthEntitlementError::Clearing(error.to_string()))?;
             let supply = ConstrainedSupply {
                 scope: self.scope.clone(),
                 available,
@@ -652,6 +676,7 @@ impl GrowthEntitlementMarketBinding {
             priority,
             implicit_root_standing: false,
             resident_qualification: None,
+            oracle_projection: None,
         }
     }
 
@@ -706,6 +731,7 @@ impl GrowthEntitlementMarketBinding {
             priority: 0,
             implicit_root_standing: true,
             resident_qualification: None,
+            oracle_projection: None,
         })
     }
 
@@ -790,8 +816,33 @@ impl GrowthEntitlementMarketBinding {
         candidates: &[OrdinaryGrowthCandidate],
         integration_schedule: &mut simthing_core::IntegrationSchedule,
     ) -> Result<Vec<GrowthEntitlementDecision>, GrowthEntitlementError> {
+        self.resolve_batch_with_basis(
+            allocator,
+            generation,
+            candidates,
+            integration_schedule,
+            None,
+        )
+    }
+
+    fn resolve_batch_with_basis(
+        &self,
+        allocator: &SlotAllocator,
+        generation: GenerationStamp,
+        candidates: &[OrdinaryGrowthCandidate],
+        integration_schedule: &mut simthing_core::IntegrationSchedule,
+        oracle_state: Option<&simthing_gpu::WorldGpuState>,
+    ) -> Result<Vec<GrowthEntitlementDecision>, GrowthEntitlementError> {
         if candidates.is_empty() {
             return Ok(Vec::new());
+        }
+
+        if oracle_state.is_none()
+            && (self.oracle_projection.is_some() || self.resident_qualification.is_some())
+        {
+            return Err(GrowthEntitlementError::Clearing(
+                "qualified CPU oracle requires Current live-basis input".into(),
+            ));
         }
 
         let mut claims = Vec::with_capacity(candidates.len());
@@ -807,6 +858,24 @@ impl GrowthEntitlementMarketBinding {
             claims.push(self.authorize_demand(demand)?);
         }
 
+        if let Some(state) = oracle_state {
+            let participants: Vec<_> = candidates
+                .iter()
+                .map(|candidate| (candidate.grantee(), candidate.structural_parent()))
+                .collect();
+            self.oracle_projection
+                .as_ref()
+                .ok_or(GrowthEntitlementError::ResidentProfileUnqualified)?
+                .bind_claims(
+                    state,
+                    self.granter,
+                    generation,
+                    allocator.growth_capacity_available(self.granter),
+                    &mut claims,
+                    &participants,
+                )
+                .map_err(|error| GrowthEntitlementError::Clearing(error.to_string()))?;
+        }
         let results = self.clear_cpu_oracle(
             &ConstrainedSupply {
                 scope: self.scope.clone(),
