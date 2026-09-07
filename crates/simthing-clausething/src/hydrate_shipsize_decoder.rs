@@ -1154,6 +1154,121 @@ pub fn compile_persistence_consequence_script_value(
     Ok((id, valuation))
 }
 
+/// Lower an ordinary value formula with authored scope/claimant and Overlay
+/// metadata. The executable is the existing consequence EML family and ingress.
+pub fn compile_departure_disposition_script_value(
+    property: &RawProperty,
+    registry: &simthing_core::DimensionRegistry,
+) -> Result<(String, simthing_spec::DepartureDispositionBinding), HydrateError> {
+    let RawValue::Block(block) = &property.value else {
+        return Err(HydrateError::new("script_value must be a block"));
+    };
+    let departures: Vec<_> = block
+        .properties
+        .iter()
+        .filter(|field| field.key.text == "departure")
+        .collect();
+    if departures.len() != 1 {
+        return Err(HydrateError::new(
+            "script_value requires exactly one authored departure binding",
+        ));
+    }
+    let RawValue::Block(metadata) = &departures[0].value else {
+        return Err(HydrateError::new("departure must be a metadata block"));
+    };
+    let mut fields = BTreeMap::new();
+    for field in &metadata.properties {
+        if ![
+            "owner",
+            "resource",
+            "scope",
+            "claimant",
+            "origin",
+            "target",
+            "property",
+            "add",
+            "unit_cost",
+            "after_ticks",
+        ]
+        .contains(&field.key.text.as_str())
+            || fields.insert(field.key.text.as_str(), field).is_some()
+        {
+            return Err(HydrateError::new_spanned(
+                "unknown or duplicate departure metadata",
+                Some(field.key.span.clone()),
+            ));
+        }
+    }
+    let field = |key: &str| {
+        fields
+            .get(key)
+            .copied()
+            .ok_or_else(|| HydrateError::new(format!("departure requires authored {key}")))
+    };
+    let text = |key: &str| read_scalar_text(field(key)?, key);
+    let integer = |key: &str| {
+        text(key)?
+            .parse::<u32>()
+            .map_err(|_| HydrateError::new(format!("departure {key} requires an exact u32")))
+    };
+    let scalar = |key: &str| read_scalar_f32(field(key)?, key);
+    let property_name = text("property")?;
+    let (namespace, name) = property_name
+        .split_once("::")
+        .ok_or_else(|| HydrateError::new("departure property requires namespace::name"))?;
+    let property_id = registry
+        .id_of(namespace, name)
+        .ok_or_else(|| HydrateError::new("departure property is not admitted"))?;
+    if !registry
+        .property(property_id)
+        .layout
+        .sub_fields
+        .iter()
+        .any(|field| field.role == SubFieldRole::Amount)
+    {
+        return Err(HydrateError::new(
+            "departure target property has no Amount sub-field",
+        ));
+    }
+    let after_ticks = integer("after_ticks")?;
+    let add = scalar("add")?;
+    if after_ticks == 0 || !add.is_finite() {
+        return Err(HydrateError::new(
+            "departure requires positive lifecycle duration and finite transform",
+        ));
+    }
+    let mut formula = property.clone();
+    let RawValue::Block(formula_block) = &mut formula.value else {
+        unreachable!()
+    };
+    formula_block
+        .properties
+        .retain(|field| field.key.text != "departure");
+    let (id, valuation) =
+        compile_persistence_consequence_script_value(&formula, scalar("unit_cost")?)?;
+    let binding = simthing_spec::DepartureDispositionBinding::new(
+        simthing_spec::OwnerChannelScopeKey {
+            owner_ref: simthing_core::OwnerRef::new(text("owner")?),
+            resource_key: simthing_spec::ResourceKey::new(text("resource")?),
+            scope_id: simthing_spec::ScopeId::new(text("scope")?),
+        },
+        simthing_core::SimThingId::from_session_raw(integer("claimant")?),
+        valuation,
+        simthing_spec::PersistenceOverlayBinding {
+            origin: simthing_core::SimThingId::from_session_raw(integer("origin")?),
+            target: simthing_core::SimThingId::from_session_raw(integer("target")?),
+            transform: simthing_core::PropertyTransformDelta {
+                property_id,
+                sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::add(add))],
+            },
+            dissolution_conditions: vec![simthing_core::DissolveCondition::AfterTicks {
+                remaining: after_ticks,
+            }],
+        },
+    );
+    Ok((id, binding))
+}
+
 fn append_value_formula_ops(nodes: &mut Vec<EmlNodeGpu>, ops: &[RateFormulaOpSpec]) {
     for op in ops {
         push_operand(nodes, &op.operand);

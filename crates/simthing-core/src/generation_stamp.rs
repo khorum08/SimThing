@@ -131,6 +131,8 @@ pub enum IntegrationScheduleRowKind {
     ResidentClearingProduct,
     /// Final recurring-flow membership ended; prior U extinguishes neutrally.
     NeutralStreamTermination,
+    /// Authored consequence of an earlier recorded termination; history only.
+    DepartureConsequence,
     GrantAccepted,
     GrantRenewed,
     GrantRevoked,
@@ -189,6 +191,8 @@ pub struct IntegrationScheduleEntry {
     /// Observation of a retired stream, never an economic carry input.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub neutral_stream_termination_fact: Option<NeutralStreamTerminationFact>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub departure_consequence_fact: Option<DepartureConsequenceFact>,
 }
 
 impl IntegrationScheduleEntry {
@@ -220,6 +224,7 @@ impl IntegrationScheduleEntry {
 ///         grant_lifecycle_fact: None,
 ///         resident_clearing_fact: None,
 ///         neutral_stream_termination_fact: None,
+///         departure_consequence_fact: None,
 ///     }],
 ///     ..IntegrationSchedule::new()
 /// };
@@ -267,6 +272,23 @@ pub struct NeutralStreamTerminationFact {
     pub termination_generation: GenerationStamp,
     pub final_products: Vec<NeutralStreamFinalProduct>,
 }
+
+/// Observation of the existing CostBand/Overlay ingress, never a demand port.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DepartureConsequenceFact {
+    pub termination_product_key: u64,
+    pub termination: NeutralStreamTerminationFact,
+    pub consequence_generation: GenerationStamp,
+    pub value_bits: u32,
+    pub unit_cost_bits: u32,
+    pub units: u32,
+    pub remainder_bits: u32,
+    pub overlay_id: Option<crate::OverlayId>,
+}
+
+#[derive(Debug, Error)]
+#[error("departure consequence requires one recorded per-claimant termination and cannot be recorded twice")]
+pub struct DepartureConsequenceRecordError;
 
 /// Opaque reservation in the bounded resident live head.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -351,6 +373,7 @@ impl IntegrationSchedule {
             grant_lifecycle_fact: None,
             resident_clearing_fact: None,
             neutral_stream_termination_fact: None,
+            departure_consequence_fact: None,
         });
     }
 
@@ -376,6 +399,7 @@ impl IntegrationSchedule {
             grant_lifecycle_fact: Some(fact),
             resident_clearing_fact: None,
             neutral_stream_termination_fact: None,
+            departure_consequence_fact: None,
         });
         Ok(())
     }
@@ -415,7 +439,57 @@ impl IntegrationSchedule {
             grant_lifecycle_fact: None,
             resident_clearing_fact: None,
             neutral_stream_termination_fact: Some(fact),
+            departure_consequence_fact: None,
         });
+    }
+
+    /// Append consequence provenance without mutating its preceding neutral
+    /// fact or making either observation a reduce-up/standing product.
+    pub fn record_departure_consequence(
+        &mut self,
+        fact: DepartureConsequenceFact,
+    ) -> Result<(), DepartureConsequenceRecordError> {
+        if fact.termination.final_products.len() != 1
+            || fact.consequence_generation != fact.termination.termination_generation
+            || !self.entries.iter().any(|entry| {
+                entry.product_key == fact.termination_product_key
+                    && entry.neutral_stream_termination_fact.as_ref() == Some(&fact.termination)
+            })
+            || self.entries.iter().any(|entry| {
+                entry
+                    .departure_consequence_fact
+                    .as_ref()
+                    .is_some_and(|prior| {
+                        prior.termination_product_key == fact.termination_product_key
+                    })
+            })
+        {
+            return Err(DepartureConsequenceRecordError);
+        }
+        let mut bytes = b"authored-departure-consequence-v1".to_vec();
+        bytes.extend_from_slice(&fact.termination_product_key.to_le_bytes());
+        for word in [
+            fact.consequence_generation.get(),
+            fact.value_bits,
+            fact.unit_cost_bits,
+            fact.units,
+            fact.remainder_bits,
+        ] {
+            bytes.extend_from_slice(&word.to_le_bytes());
+        }
+        // Overlay identity is already present in the typed proof, whose full
+        // provenance is retained independently of this stable economic key.
+        self.entries.push(IntegrationScheduleEntry {
+            kind: IntegrationScheduleRowKind::DepartureConsequence,
+            parent_generation: fact.consequence_generation,
+            child_generation: fact.termination.final_products[0].generation,
+            product_key: stable_bytes_key(&bytes),
+            grant_lifecycle_fact: None,
+            resident_clearing_fact: None,
+            neutral_stream_termination_fact: None,
+            departure_consequence_fact: Some(fact),
+        });
+        Ok(())
     }
 
     /// Admit the one bounded device-resident live head. This is session-build
@@ -531,6 +605,7 @@ impl IntegrationSchedule {
                 grant_lifecycle_fact: None,
                 resident_clearing_fact: Some(fact),
                 neutral_stream_termination_fact: None,
+                departure_consequence_fact: None,
             });
         }
         self.entries.extend(rows);

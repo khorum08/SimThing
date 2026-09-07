@@ -1221,6 +1221,100 @@ impl ResidentClearingRuntime {
         })
     }
 
+    /// Consume a prior batch once through the fact-authorized membership
+    /// extension. The complete-source-set preparation door above is unchanged.
+    pub fn prepare_membership_demands(
+        &mut self,
+        state: &WorldGpuState,
+        qualification: &ResidentMarketQualification,
+        permit: &TreeGenerationPermit,
+        products: ResidentClearingDispatchTicket,
+        permission: Option<&simthing_core::SurvivorSubsetPermission>,
+        authored: &[ResidentAuthoredDemand],
+    ) -> Result<ResidentTemporalDemandTicket, ResidentClearingRuntimeError> {
+        self.validate_generation_permit(permit, permit.generation())?;
+        self.ensure_market_qualification(qualification)?;
+        let permission = permission.ok_or(ResidentClearingRuntimeError::TemporalSourceMismatch)?;
+        let prior: Vec<_> = products
+            .plan
+            .claims()
+            .iter()
+            .map(|claim| claim.source_simthing_id())
+            .collect();
+        let current: Vec<_> = authored
+            .iter()
+            .map(|claim| claim.source_simthing_id)
+            .collect();
+        if prior != permission.prior_sources()
+            || current != permission.current_sources()
+            || permit.generation() != permission.generation()
+            || products.submission.authority_granter() != permission.granter()
+            || self.arena_binding.market.scope_identity != permission.scope_identity()
+        {
+            return Err(ResidentClearingRuntimeError::TemporalSourceMismatch);
+        }
+        let selected: Vec<_> = products
+            .plan
+            .claims()
+            .iter()
+            .copied()
+            .filter(|claim| current.contains(&claim.source_simthing_id()))
+            .collect();
+        let survivor_plan = if selected.is_empty() {
+            None
+        } else {
+            let policies: Vec<_> = selected
+                .iter()
+                .filter_map(|claim| {
+                    products
+                        .plan
+                        .persistence_deformation(claim.semantic_row())
+                        .cloned()
+                        .map(|program| (claim.semantic_row(), program))
+                })
+                .collect();
+            Some(
+                ResidentApportionmentPlan::build(
+                    &self.semantic_plan,
+                    selected,
+                    products.plan.authority_granter(),
+                    products.plan.generation(),
+                    products.plan.integration_band(),
+                )?
+                .with_persistence_deformations(policies)?,
+            )
+        };
+        permit
+            .authorize_economics()
+            .map_err(ResidentClearingRuntimeError::ExecutionAuthority)?;
+        let mut encoder = state.ctx.device.create_command_encoder(
+            &simthing_gpu::wgpu::CommandEncoderDescriptor {
+                label: Some("resident_membership_demand_prepare"),
+            },
+        );
+        let authored: Vec<_> = authored
+            .iter()
+            .map(|row| (row.source_simthing_id, row.quantity))
+            .collect();
+        let submission = self.live_head.encode_membership_demands(
+            &state.ctx,
+            &self.temporal_mint_session,
+            &mut encoder,
+            &products.plan,
+            survivor_plan.as_ref(),
+            products.submission,
+            permission,
+            &authored,
+        )?;
+        state.ctx.queue.submit(Some(encoder.finish()));
+        Ok(ResidentTemporalDemandTicket {
+            submission,
+            sources: current,
+            authority_granter: products.submission.authority_granter(),
+            semantic_scope_owner: products.semantic_scope_owner,
+        })
+    }
+
     /// Execute generation N+1 from a prepared ordinary demand and inputs that
     /// are authoritative only at N+1.
     pub fn dispatch_temporal(

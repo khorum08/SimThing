@@ -1081,6 +1081,65 @@ impl SimSession {
         Ok(())
     }
 
+    fn admit_departure_lifecycle_catalogue(&mut self) -> Result<(), SessionError> {
+        if self
+            .spec_state
+            .persistence_deformations
+            .departure_dispositions()
+            .next()
+            .is_some()
+        {
+            // The existing catalogue derives from a semantic shadow; authored
+            // templates reserve lifecycle shapes without a live Overlay or cost.
+            let mut shadow = self
+                .proto
+                .with_sealed_tree_execution_binding(
+                    &self.execution_lease,
+                    &self.integration_schedule,
+                    |binding| binding.root().clone(),
+                )
+                .map_err(|error| SessionError::Mapping(error.to_string()))?;
+            for disposition in self
+                .spec_state
+                .persistence_deformations
+                .departure_dispositions()
+            {
+                let binding = disposition.overlay();
+                let lifecycle =
+                    simthing_core::dispatch_until_dissolved(binding.dissolution_conditions.clone())
+                        .map_err(|error| SessionError::Mapping(error.to_string()))?;
+                let template = simthing_core::Overlay {
+                    id: simthing_core::OverlayId::new(),
+                    kind: simthing_core::OverlayKind::Instruction,
+                    source: simthing_core::OverlaySource::System,
+                    origin: binding.origin,
+                    affects: vec![binding.target],
+                    transform: binding.transform.clone(),
+                    lifecycle,
+                };
+                simthing_core::deliver_routed_overlay(&mut shadow, binding.target, template)
+                    .map_err(|error| SessionError::Mapping(error.to_string()))?;
+            }
+            let (catalogue, registrations) =
+                simthing_sim::overlay_lifecycle::derive_overlay_lifecycle_admission_catalog(
+                    &shadow,
+                    &self.proto.registry,
+                    &self.proto.allocator,
+                    simthing_core::GenerationStamp::new(0),
+                    &Default::default(),
+                );
+            self.state.ensure_threshold_accumulator(
+                self.state
+                    .n_thresholds
+                    .max(simthing_gpu::DEFAULT_THRESHOLD_EMISSION_CAPACITY),
+            );
+            self.state
+                .freeze_overlay_lifecycle_admission(&catalogue, &registrations)
+                .map_err(|error| SessionError::Mapping(error.to_string()))?;
+        }
+        Ok(())
+    }
+
     pub fn install_spec_state(&mut self, spec_state: SpecSessionState) -> Result<(), SessionError> {
         if self.coord.tick_index() != 0
             && spec_state.persistence_deformations != self.spec_state.persistence_deformations
@@ -1107,6 +1166,7 @@ impl SimSession {
         self.sync_spec_threshold_registrations();
         self.sync_resource_flow()?;
         self.sync_resource_economy_at_install()?;
+        self.admit_departure_lifecycle_catalogue()?;
         // Re-project tree (including entity-hosted Constant PropertyValue seeds)
         // then upload thresholds. No dense install_resolved_values authority.
         self.proto.initial_gpu_sync(&self.coord, &mut self.state)?;
@@ -1950,6 +2010,7 @@ impl SimSession {
         let resident_clearing = &mut self.resident_clearing;
         let continuation = &mut self.ordinary_flow_continuation;
         let flow_deformations = spec_state.persistence_deformations.clone();
+        let consequence_boundary = self.tx.clone();
         let current_flow = std::cell::RefCell::new(Ok((Vec::new(), 0)));
         let outcome = self.proto.execute_with_boundary_hook_and_growth(
             tick.events,
@@ -1977,6 +2038,7 @@ impl SimSession {
                         available,
                         clearing_execution_posture,
                         &flow_deformations,
+                        &consequence_boundary,
                         allocator,
                         candidates,
                     )
@@ -2113,6 +2175,7 @@ impl SimSession {
                 let resident_clearing = &mut self.resident_clearing;
                 let continuation = &mut self.ordinary_flow_continuation;
                 let flow_deformations = spec_state.persistence_deformations.clone();
+                let consequence_boundary = self.tx.clone();
                 let current_flow = std::cell::RefCell::new(Ok((Vec::new(), 0)));
                 let outcome = self.proto.execute_with_boundary_hook_and_growth(
                     tick.events,
@@ -2141,6 +2204,7 @@ impl SimSession {
                                 available,
                                 clearing_execution_posture,
                                 &flow_deformations,
+                                &consequence_boundary,
                                 allocator,
                                 candidates,
                             )

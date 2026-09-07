@@ -66,3 +66,70 @@ Command: `cargo test -p simthing-workshop --test departing_stream_disposal_0 est
 Result: exit 101; 0 passed, 1 failed, 1 filtered; four actual session refusals.
 The separate RED-B commit precedes all production remedies, independently of
 RED-A. No new testing seam or production source was introduced for either RED.
+
+Preserved RED-B commit: `1d2aaf26`.
+
+## Implementation candidate before E8
+
+The new ClauseThing metadata lowerer delegates its value formula to the unchanged
+15.3 compiler. `DepartureDispositionBinding` seals the claimant/full-scope key,
+existing `AuthoredPersistenceValuation`, destination transform and lifecycle.
+`PersistenceDeformationBindings::with_departure_dispositions` admits these values
+in the existing session binding vehicle; the deformation iterator cannot expose
+them. Existing `install_spec_state` admits their lifecycle shapes into the existing
+frozen catalogue after install-time accumulator rebuilding. Its semantic shadow
+creates no live Overlay or funded consequence.
+
+The ordinary session compares authorized membership with its one continuation.
+It records missing claimants from the already-born history before minting. The
+unbound all-depart case keeps the exact graduated aggregate neutral row. Partial
+departure and all-depart with authored bindings record per-claimant neutral rows;
+only explicitly bound claimants call the unchanged consequence ingress. The
+result appends a separate `DepartureConsequence` observation to the same schedule,
+carrying the complete originating fact and key, CostBand bits, generation and
+Overlay identity. The neutral row remains immutable. Both history row kinds are
+excluded from RF reduce-up and standing replay. All new optional serialization
+fields disappear when absent; canonical product/status ABI is unchanged.
+
+`SurvivorSubsetPermission` carries identities and full scope, never U. It requires
+exact same-generation per-claimant termination facts for every missing source;
+wrong scope/source/generation and duplicates refuse. The resident extension
+consumes its non-Clone batch ticket, copies survivor products device-to-device,
+calls the unchanged 1:1 mint on those selected rows, and combines its output with
+fresh entrant rows before one existing exact clear. Selection and policy checks
+live in the already-bundled Kernel temporal-transform component; the GPU wrapper
+only passes its existing buffers. The permission implementation lives in the
+already-bundled Core persistence component. No shader, executable component,
+component-list entry or build-script change was introduced.
+
+The CPU extension uses the existing atomic mint authority and full prior clear;
+only survivor observations enter the unchanged recurrence. Entrants cannot enter
+that door. Missing effective outputs can remain fresh only for explicitly proved
+entrants, never by an inferred missing match. Both ordinary session loop bodies
+use the same preparation and existing feeder.
+
+Exact function-body comparison against the live base confirms five frozen doors
+are byte-unchanged: Driver `prepare_temporal_demands`, Kernel temporal `encode`,
+Spec `produce_runtime_rf_next_generation_demands`, Spec
+`clear_constrained_claims_at_generation`, and Driver
+`submit_authored_persistence_consequence`. The exact-apportionment Rust/WGSL and
+temporal WGSL are unchanged. E8's two literals have not yet been rolled at this
+candidate stage.
+
+Owner-local prequalification CPU runs exercised 36 mixed cases (3 loops, 2 real
+arena/source orders, 6 positive/zero/deformation cases), 27 all-depart cases
+(3 loops, 3 authored-binding counts, positive U / satisfied U0 / canonical G0U0),
+and 3 actual post-disposition late-refresh failures. Existing lifecycle publication
+attaches at N3 and observes dissolution at N7 for authored AfterTicks=3. The
+no-fact CPU door refuses before consuming authority; exact recorded permission
+then admits survivor demand 18, and a repeated attempt refuses the second mint.
+These are preparatory observations, not the final resident/workspace certificate.
+
+The preserved 15.11 partial-departure test keeps its inventory identity. Its
+Owner-superseded partial refusal is replaced by successful per-claimant termination;
+its invalid Draw and subsequent empty-set fault fence remain actual-session
+checks at the next generation. A new direct resident-axis witness separately
+exercises both the frozen complete-set door and new subset door without a fact.
+
+Final E8, both-posture focused, frozen, full-workspace, structural, committed-head
+scan and hosted certificates remain pending at this candidate stage.

@@ -338,6 +338,40 @@ impl ResidentClearingLiveHead {
         })
     }
 
+    /// Fact-authorized membership extension. Select immutable survivor rows
+    /// with device copies, use the unchanged 1:1 mint, then interleave its output
+    /// with independent fresh entrant rows for one ordinary exact clear.
+    #[allow(clippy::too_many_arguments)]
+    pub fn encode_membership_demands(
+        &self,
+        ctx: &GpuContext,
+        mint: &ResidentTemporalDemandMintSession,
+        encoder: &mut CommandEncoder,
+        prior_plan: &ResidentApportionmentPlan,
+        survivor_plan: Option<&ResidentApportionmentPlan>,
+        products: ResidentClearingSubmission,
+        permission: &simthing_core::SurvivorSubsetPermission,
+        authored: &[(simthing_core::SimThingId, u32)],
+    ) -> Result<ResidentTemporalDemandSubmission, ResidentLiveHeadError> {
+        mint.encode_membership(
+            ctx,
+            encoder,
+            &self.segment,
+            products.reservation.start(),
+            &self.next_demands,
+            prior_plan,
+            survivor_plan,
+            products.generation,
+            products.product_count,
+            permission,
+            authored,
+        )?;
+        Ok(ResidentTemporalDemandSubmission {
+            generation: permission.generation(),
+            demand_count: authored.len() as u32,
+        })
+    }
+
     /// Execute N+1 only from an already-prepared ordinary demand buffer and a
     /// newly prepared N+1 exact plan.
     #[allow(clippy::too_many_arguments)]

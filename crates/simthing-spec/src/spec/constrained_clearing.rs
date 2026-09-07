@@ -613,6 +613,7 @@ impl PersistenceDeformationBinding {
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct PersistenceDeformationBindings {
     by_claimant: BTreeMap<(OwnerChannelScopeKey, SimThingId), PersistenceDeformationProgram>,
+    departures: BTreeMap<(OwnerChannelScopeKey, SimThingId), DepartureDispositionBinding>,
 }
 
 impl PersistenceDeformationBindings {
@@ -626,15 +627,48 @@ impl PersistenceDeformationBindings {
                 return Err(PersistenceDeformationBindingError::DuplicateClaimantBinding);
             }
         }
-        Ok(Self { by_claimant })
+        Ok(Self {
+            by_claimant,
+            departures: BTreeMap::new(),
+        })
+    }
+
+    /// Admit consequence-only metadata in the existing session-frozen binding
+    /// vehicle. It is never exposed by the deformation policy iterator.
+    pub fn with_departure_dispositions(
+        mut self,
+        bindings: impl IntoIterator<Item = DepartureDispositionBinding>,
+    ) -> Result<Self, PersistenceDeformationBindingError> {
+        for binding in bindings {
+            let key = (binding.scope.clone(), binding.source_simthing_id);
+            if self.departures.insert(key, binding).is_some() {
+                return Err(PersistenceDeformationBindingError::DuplicateClaimantBinding);
+            }
+        }
+        Ok(self)
+    }
+
+    pub fn departure_for(
+        &self,
+        scope: &OwnerChannelScopeKey,
+        source: SimThingId,
+    ) -> Option<&DepartureDispositionBinding> {
+        self.departures.get(&(scope.clone(), source))
+    }
+    pub fn departure_dispositions(&self) -> impl Iterator<Item = &DepartureDispositionBinding> {
+        self.departures.values()
     }
 
     pub fn is_empty(&self) -> bool {
-        self.by_claimant.is_empty()
+        self.by_claimant.is_empty() && self.departures.is_empty()
     }
 
     pub fn len(&self) -> usize {
-        self.by_claimant.len()
+        self.by_claimant
+            .keys()
+            .chain(self.departures.keys())
+            .collect::<std::collections::BTreeSet<_>>()
+            .len()
     }
 
     pub(crate) fn program_for(
@@ -764,6 +798,79 @@ pub struct PersistenceOverlayBinding {
     pub target: SimThingId,
     pub transform: PropertyTransformDelta,
     pub dissolution_conditions: Vec<DissolveCondition>,
+}
+
+/// Ordinary authored valuation and Overlay metadata bound to one departing
+/// claimant. This type has no demand or deformation conversion.
+///
+/// ```compile_fail,E0308
+/// use simthing_spec::{DepartureDispositionBinding, RuntimeOwnerSiloDemandBucket};
+/// fn demand(_: RuntimeOwnerSiloDemandBucket) {}
+/// fn consequence_only(binding: DepartureDispositionBinding) { demand(binding); }
+/// ```
+/// ```compile_fail,E0308
+/// use simthing_core::PersistenceDeformationProgram;
+/// use simthing_spec::DepartureDispositionBinding;
+/// fn deformation(_: PersistenceDeformationProgram) {}
+/// fn consequence_only(binding: DepartureDispositionBinding) { deformation(binding); }
+/// ```
+#[derive(Clone, Debug, PartialEq)]
+pub struct DepartureDispositionBinding {
+    scope: OwnerChannelScopeKey,
+    source_simthing_id: SimThingId,
+    valuation: AuthoredPersistenceValuation,
+    overlay: PersistenceOverlayBinding,
+}
+
+impl DepartureDispositionBinding {
+    pub fn new(
+        scope: OwnerChannelScopeKey,
+        source_simthing_id: SimThingId,
+        valuation: AuthoredPersistenceValuation,
+        overlay: PersistenceOverlayBinding,
+    ) -> Self {
+        Self {
+            scope,
+            source_simthing_id,
+            valuation,
+            overlay,
+        }
+    }
+    pub fn scope(&self) -> &OwnerChannelScopeKey {
+        &self.scope
+    }
+    pub const fn source_simthing_id(&self) -> SimThingId {
+        self.source_simthing_id
+    }
+    pub fn valuation(&self) -> &AuthoredPersistenceValuation {
+        &self.valuation
+    }
+    pub fn overlay(&self) -> &PersistenceOverlayBinding {
+        &self.overlay
+    }
+    /// A recorded per-claimant termination supplies observation only. Full
+    /// provenance remains on the same history row beside the consequence proof.
+    pub fn observation(
+        &self,
+        fact: &simthing_core::NeutralStreamTerminationFact,
+    ) -> Option<UnresolvedDemandObservation> {
+        if fact.owner_ref != self.scope.owner_ref
+            || fact.resource_key != self.scope.resource_key.as_str()
+            || fact.scope_id != self.scope.scope_id.as_str()
+            || fact.final_products.len() != 1
+        {
+            return None;
+        }
+        let product = &fact.final_products[0];
+        (product.source_simthing_id == self.source_simthing_id
+            && product.generation < fact.termination_generation)
+            .then(|| UnresolvedDemandObservation {
+                scope: self.scope.clone(),
+                source_simthing_id: self.source_simthing_id,
+                unresolved: product.unresolved,
+                observed_generation: product.generation,
+            })
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]

@@ -885,7 +885,8 @@ fn initial_zero_members_produce_same_canonical_result_in_both_postures() {
 fn partial_departure_stays_fail_closed_and_empty_set_cannot_launder_fault() {
     use simthing_core::ClearingExecutionPosture::{CpuVendorizedOracle, ResidentRequired};
     for posture in [ResidentRequired, CpuVendorizedOracle] {
-        // U>0 and U=0 both retain immutable source-set identity.
+        // 15.12 supersedes only the lawful partial-membership refusal. The
+        // established identity and post-touch empty-set fault fence remain.
         for supply in [4, 40] {
             let (mut scenario, claimant) = scenario();
             scenario.root.add_property(
@@ -900,18 +901,27 @@ fn partial_departure_stays_fail_closed_and_empty_set_cannot_launder_fault() {
             install(&mut session, claimant, None, false);
             session.set_clearing_execution_posture(posture).unwrap();
             advance(&mut session, SessionLoop::Step);
-            let before = session.integration_schedule().entries().to_vec();
             depart(&mut session, claimant, Departure::Property);
-            let error = session.step_once().unwrap_err();
-            assert!(
-                error
-                    .to_string()
-                    .contains(&ResidentClearingRuntimeError::TemporalSourceMismatch.to_string()),
-                "{error:?}"
+            advance(&mut session, SessionLoop::Step);
+            assert_eq!(terminations(&session).len(), 1);
+            assert_eq!(terminations(&session)[0].final_products.len(), 1);
+            assert_eq!(
+                terminations(&session)[0].final_products[0].source_simthing_id,
+                claimant
             );
+            // The existing positive-minimum Draw still refuses an authored zero
+            // on the surviving stream; this touched refusal cannot be laundered.
+            assert!(session.proto.root.add_property_to_node(
+                survivor,
+                OWNER_FLOW_DEMAND_PROPERTY_ID,
+                scenario_metadata_u32_value(0)
+            ));
+            let before = session.integration_schedule().entries().to_vec();
+            let error = session.step_once().unwrap_err();
+            assert!(error.to_string().contains("Draw"), "{error:?}");
             assert_eq!(session.integration_schedule().entries(), before.as_slice());
-            assert!(terminations(&session).is_empty());
-            // The partial attempt touched this generation. Even total departure
+            assert_eq!(terminations(&session).len(), 1);
+            // The refused Draw touched this generation. Even total departure
             // afterwards cannot reset it, publish a termination, or run a hot tick.
             depart(&mut session, survivor, Departure::Property);
             let day = session.coord.day_index();
@@ -919,7 +929,7 @@ fn partial_departure_stays_fail_closed_and_empty_set_cannot_launder_fault() {
             let identity = session.persisted_execution_identity();
             let refused = session.step_once().unwrap_err();
             let expected = simthing_core::TreeExecutionContextError::GenerationFaulted {
-                generation: simthing_core::GenerationStamp::new(2),
+                generation: simthing_core::GenerationStamp::new(3),
             }
             .to_string();
             assert!(
@@ -932,7 +942,7 @@ fn partial_departure_stays_fail_closed_and_empty_set_cannot_launder_fault() {
             assert_eq!(session.persisted_execution_identity(), identity);
             assert_eq!(session.state.read_values(), cells);
             assert_eq!(session.integration_schedule().entries(), before.as_slice());
-            println!("15.11 partial posture={posture:?} supply={supply}: {error}; then empty set: {refused}; no termination/no retry effects");
+            println!("15.12 partial admitted, invalid Draw refused posture={posture:?} supply={supply}: {error}; then empty set: {refused}; no duplicate termination/no retry effects");
         }
     }
 }

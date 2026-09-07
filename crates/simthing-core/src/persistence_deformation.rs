@@ -11,6 +11,7 @@
 //! ```
 
 use crate::{eml_opcode as opcode, TransformOp, EML_STACK_MAX};
+use crate::{GenerationStamp, IntegrationSchedule, OwnerRef};
 use thiserror::Error;
 
 /// Largest integer domain that ordinary binary32 EML can represent exactly.
@@ -109,6 +110,102 @@ impl PersistenceDeformationProgram {
             });
         }
         Ok(output.floor() as u32)
+    }
+}
+
+/// A scope-bound proof that every omitted prior claimant has exactly one
+/// same-generation recorded termination. It carries identities, never U.
+#[derive(Debug)]
+pub struct SurvivorSubsetPermission {
+    prior: Vec<crate::SimThingId>,
+    current: Vec<crate::SimThingId>,
+    granter: crate::SimThingId,
+    generation: GenerationStamp,
+    owner: OwnerRef,
+    resource: String,
+    scope: String,
+}
+
+impl SurvivorSubsetPermission {
+    #[allow(clippy::too_many_arguments)]
+    pub fn from_recorded_terminations(
+        schedule: &IntegrationSchedule,
+        prior: &[crate::SimThingId],
+        current: &[crate::SimThingId],
+        granter: crate::SimThingId,
+        owner: &OwnerRef,
+        resource: &str,
+        scope: &str,
+        prior_generation: GenerationStamp,
+        generation: GenerationStamp,
+    ) -> Option<Self> {
+        use std::collections::BTreeSet;
+        let prior_set: BTreeSet<_> = prior.iter().copied().collect();
+        let current_set: BTreeSet<_> = current.iter().copied().collect();
+        if prior_set.len() != prior.len()
+            || current_set.len() != current.len()
+            || prior_generation.get().checked_add(1) != Some(generation.get())
+        {
+            return None;
+        }
+        let mut recorded = BTreeSet::new();
+        for fact in schedule
+            .entries()
+            .iter()
+            .filter(|entry| {
+                entry.kind == crate::IntegrationScheduleRowKind::NeutralStreamTermination
+            })
+            .filter_map(|entry| entry.neutral_stream_termination_fact.as_ref())
+            .filter(|fact| {
+                fact.granter == granter
+                    && fact.owner_ref == *owner
+                    && fact.resource_key == resource
+                    && fact.scope_id == scope
+                    && fact.termination_generation == generation
+            })
+        {
+            if fact.final_products.len() != 1 {
+                return None;
+            }
+            let product = &fact.final_products[0];
+            if product.generation != prior_generation
+                || !prior_set.contains(&product.source_simthing_id)
+                || current_set.contains(&product.source_simthing_id)
+                || !recorded.insert(product.source_simthing_id)
+            {
+                return None;
+            }
+        }
+        if recorded != prior_set.difference(&current_set).copied().collect() {
+            return None;
+        }
+        Some(Self {
+            prior: prior.to_vec(),
+            current: current.to_vec(),
+            granter,
+            generation,
+            owner: owner.clone(),
+            resource: resource.to_owned(),
+            scope: scope.to_owned(),
+        })
+    }
+    pub fn prior_sources(&self) -> &[crate::SimThingId] {
+        &self.prior
+    }
+    pub fn current_sources(&self) -> &[crate::SimThingId] {
+        &self.current
+    }
+    pub const fn granter(&self) -> crate::SimThingId {
+        self.granter
+    }
+    pub const fn generation(&self) -> GenerationStamp {
+        self.generation
+    }
+    pub fn matches_scope(&self, owner: &OwnerRef, resource: &str, scope: &str) -> bool {
+        self.owner == *owner && self.resource == resource && self.scope == scope
+    }
+    pub fn scope_identity(&self) -> String {
+        format!("{}|{}|{}", self.owner.as_str(), self.resource, self.scope)
     }
 }
 
