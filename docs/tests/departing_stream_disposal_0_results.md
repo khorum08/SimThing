@@ -184,6 +184,17 @@ admitted constitutional census data. There was no second pin roll.
    classification is for orchestration/DA; no census row, exception, checker,
    universe pin or source name was changed to bypass the finding.
 
+4. **Generated digest scope gap.** After the permitted constitutional census
+   update, `gen_digest.sh --check` fails because `docs/sanctioned_surface.md`
+   still contains the old ledger hash. Its expected diff is one generated hash:
+   `86d0e9a8d38665fa0a89bba1acd4cad874e84898d0644dc25ab9716b722db028`
+   to `b7041f54ae6649090a36b3c830a5e18789f08b57174a22c351f570ac3f2b4e3b`.
+   This generated file is also outside HD surfaces. Hosted Doctrine Scan run
+   `34125622770` fails its actual sanctioned-surface freshness step; all later
+   doctrine scan/census steps are skipped, so it provides no passing scan proof.
+   The uploaded `doctrine-scan-reports` artifact contains the same digest refusal.
+   No generated doctrine file was edited outside scope.
+
 The explicitly allowed `constitutional_surfaces.tsv` was updated only to admit the
 new ordinary ClauseThing lowerer in `LEGACY-CLAUSETHING-HYDRATOR-SURFACES`. All other
 columns and restrictions remain unchanged. This resolves the independent registry
@@ -204,13 +215,19 @@ addition failure; constitutional check and planted selftest both pass.
   integration tests, generation fault/seal and execution identity tests pass.
 - Spec consequence-only compile-fail docs: 4/4 PASS, including both new binding
   E0308 negatives. Core private schedule construction: 1/1 compile-fail PASS.
-- Structural gates: 14/15 PASS after the admitted constitutional ledger update.
-  Inventory/drift, constitutional check/selftest, lifecycle schema/prove, digest,
+- Structural gates: 13/15 PASS after the admitted constitutional ledger update.
+  Inventory/drift, constitutional check/selftest, lifecycle schema/prove,
   detachability/check selftest, anchors/check selftest, plan/observation/slot
-  censuses pass. Overlay archaeology census remains RED as above.
+  censuses pass. Overlay archaeology and generated digest freshness remain RED
+  as above. The earlier pre-ledger digest PASS is superseded by the final check.
 - Full workspace/all-targets is also run with `--no-fail-fast -j 1 --quiet`;
   its completed totals and hosted step/artifact results are recorded against the
   final commit in the Board return and PR packet. Zero-RED is not claimed.
+- Hosted Doctrine Exec run `34125622893` executes the `ci-b-webchat-smoke`
+  profile successfully; actual execution and stale-report steps both pass, with
+  plan-only mode skipped. This smoke result does not exercise the failing GPU
+  matrix or replace the full workspace certificate. Final-head run bindings are
+  carried in the Board/PR packet after the documentation update.
 - Committed candidate Agent Scan at `f02e2176`: reliable hard failures0,
   `TEST-BUDGET` INSPECT for seven new test functions; anchor-reach gate-wiring
   notice. This is not final-head clearance. Final-head and hosted reports belong
