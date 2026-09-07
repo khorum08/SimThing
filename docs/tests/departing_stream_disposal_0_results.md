@@ -330,7 +330,9 @@ The two governance companions are exact: two `# RESIDUE` admission/query rows in
 the existing Overlay census classify only the named hits as existing-authority
 GENUINELY-STRUCTURAL/keep; the generated sanctioned digest changes only the
 constitutional ledger hash. No universe, checker, route law or doctrine prose
-was modified. All 15 structural checks passed before the final source freeze.
+was modified. The earlier structural summary used zero exit codes; the inventory INSPECT and
+fixture-only drift proof were not a repository-drift PASS. The corrected actual
+checks and inventory bookkeeping are recorded below.
 
 Before the fifth roll, the exact existing CPU membership/all-depart helpers passed
 36 mixed cases and 27 all-depart cases through real sessions. The temporary
@@ -396,7 +398,7 @@ subsequent process isolation commit is test-only; no sixth roll was performed.
 | Frozen ten-target suite | 38 passed, 0 failed, 0 ignored |
 | Spec/Core compile-fail controls | 4/4 and 1/1 passed |
 | Full workspace/all-targets | 559 passed, 1 failed, 14 ignored; 147 reported groups; exit 101 |
-| Structural gates | 15/15 passed; final harness inventory/drift recheck passed |
+| Structural gates | Final 15/15 required checks plus drift checker fixture proof pass; earlier exit-code-only summary superseded below |
 
 The focused suite now passes in one complete invocation. The complete full-workspace
 run has one non-superseded compatibility failure with default test concurrency
@@ -472,3 +474,35 @@ The final return must carry committed-head Agent Scan and hosted Doctrine Scan/
 Doctrine Exec step conclusions and artifact bindings. Every scan-id-bearing
 INSPECT belongs to orchestration/DA triage. Coding performs no merge, clearance,
 relay-lint, graduation/pointer movement, closeout or engineering re-review.
+
+
+## Inventory bookkeeping correction after hosted scan
+
+Hosted Doctrine Scan run `34142018959` on reporting head `fdb7d7bc` reached the
+actual PR-delta scan and failed `TEST-INVENTORY-DRIFT`: three unledgered compile-fail
+identities and one stale identity. The same failure reproduced locally. This was
+not a platform difference: the earlier inventory command returned exit 0 with an
+INSPECT verdict, and `test_inventory_drift_check.sh --prove` exercised its fixtures
+without checking repository drift. The previous structural PASS summaries based
+only on exit codes are superseded by the actual checks after this correction.
+
+Only the already-admitted `scripts/ci/test_inventory.tsv` changes:
+
+- The existing Core E0451 schedule-seal identity is refreshed from
+  `1b3ea2eca564` to `2225ad054abe`, reflecting the already-tested strengthened
+  private schedule construction snippet. The existing classification is preserved.
+- New Spec E0308 departure-binding seal proofs are inventoried as
+  `c3a22260cf2b` (cannot enter demand) and `192b8059a57a` (cannot enter deformation),
+  with this rung's seal-proof classification and existing lifecycle track.
+
+No Rust source, snippet, test executor, checker or E8 literal changed. The actual
+inventory and repository drift commands now pass with 1453 rows, 1453 discovered,
+zero missing/unledgered and zero extra/stale. The drift fixture proof also passes.
+The final structural run includes all 15 required checks plus that separate proof.
+The first hosted failure is preserved; final hosted step and artifact results are
+bound in the Board/PR packet. The independent Driver compatibility STOP remains.
+
+Full-workspace source and tests were exercised in the process-isolation state
+`6a12339003b8f14d53ae68822f7c9e0bb0d01f4d`; subsequent commits change only this
+results document and the inventory ledger. No additional production/test behavior
+is claimed between that completed run and the final reporting head.
