@@ -1,179 +1,165 @@
-# NEUTRAL-STREAM-TERMINATION-0 — planner retention and zero-omission referee STOP
+# NEUTRAL-STREAM-TERMINATION-0 — admitted referee corrections and recursive-root STOP
 
 Status: **STOP / PROBATION / partial proof-present / DA-review-pending / OPEN / UNMERGED**.
-The admitted planner companion is implemented. Initial-zero and established-zero actual-session matrices pass in both postures, and the unchanged frozen resident apportionment referee is green through Rust and GPU. Two other referee contracts remain red: the15.9 aggregate byte digest includes the formerly omitted zero row, and the resident parity negative matrix explicitly requires zero-row omission. No assertion or expected digest was edited. This is a test-contract/surface disposition return, not a newly identified production defect or a graduation certificate.
+Both referee corrections admitted by DA 5563027436 are GREEN. The terminal parity referee now reaches one later recursive-root assertion that still omits a lawful zero companion. That later block is explicitly outside the remand's semantic-edit allowance and remains unchanged. Production and both E8 pins are unchanged. The return requests admission to correct this remaining test contract.
 
 ## Binding state and preserved history
 
 - Branch: codex/neutral-stream-termination-0.
-- Current amended-master comparison base: c5d7d1de28d183087862f00cfacf7bb9341b9e84 (PR #1988).
-- HD-declared base: 27aa7060a39f410879b82f212a21fc9989ae04a0.
+- Amended-master comparison base: 369358733df35c1f556fe4c8844df20223dd776d (PR #1989).
+- HD-declared base: c5d7d1de28d183087862f00cfacf7bb9341b9e84.
 - Original production base: 164c80158e224d8b9daa52176b232d435a3f640f.
-- Owner law5561338557; current dispatch5562717383; DA planner ruling5562607392.
+- Owner neutral-departure law5561338557; current dispatch5563145290; DA referee ruling5563027436.
 - Preserved before-production RED: ac824e2a7e046fd540b6e3c3519bd69d27a1d526.
-- First STOP: d02a352cfb1abd436e2407e43ea30487db42fe82 / Board5561504810; DA replay companion5561543289; normal master merge b5cad3d9.
-- Second STOP: 08b9e9668547ea6d77bf034867eca9d7a5be7a86 / Board5561780100; DA Draw companion5561871558; normal master merge35c0c4fe.
-- Third STOP: a553f4419d1f688d20bb976e44becd8a50172919 / Board5562050572; DA canonical-zero companions5562198662; normal master merge51ff290e.
-- Fourth STOP: d634130fec8f226cecf13596e38a546f72ca5e1c / Board5562461195.
-- Current normal master merge: a1357473. No RED/STOP/merge rewritten, replanted, rebased or squashed.
-- HD-RECEIPT: accde9f346a7 (supersedes1d07d4437e91).
+- STOP1: d02a352cfb1abd436e2407e43ea30487db42fe82 / Board5561504810; DA replay companion5561543289; normal master merge b5cad3d9.
+- STOP2: 08b9e9668547ea6d77bf034867eca9d7a5be7a86 / Board5561780100; DA Draw companion5561871558; normal master merge35c0c4fe.
+- STOP3: a553f4419d1f688d20bb976e44becd8a50172919 / Board5562050572; DA canonical-zero companions5562198662; normal master merge51ff290e.
+- STOP4: d634130fec8f226cecf13596e38a546f72ca5e1c / Board5562461195; DA planner companion5562607392; normal master mergea1357473.
+- STOP5: 7d4b3b38a2f4309a8fa376b429ffd103b04d7a2a / Board5562855342.
+- Current normal master merge: 5e50997f. No RED/STOP/merge rewritten, replanted, rebased or squashed.
+- HD-RECEIPT: 252edc08cfb2 (supersedes accde9f346a7).
 - ORIENT-RECEIPT: 8e5e945a589b
 - orientation_rule_stamp: bf0f2eeec6f51a1f
 - orientation_digest_sha: b63c8c4b90c8b83f3dcae5673f37ec2bbfd5cef7807fd1a06a1733ccf0cc1887
 
-Rendered/read the current coding projection and DA ruling. The same63 required anchor ACKs carry forward with no new reach row or anchor delta; rule-source files are unchanged from the prior oriented candidate. No reorientation. Exact tested/committed head and its Agent Scan are bound in the Board return.
+Rendered/read the current coding projection and DA ruling. All 63 previously queried anchor ACKs carry forward unchanged, with no new reach row or anchor delta. Rule-source files are unchanged; no reorientation. Exact tested/committed head and fresh Agent Scan are bound in the Board return.
 
-## Planner companion completed
+## Admitted dual-digest contract GREEN
 
-ResidentApportionmentPlan::build now retains the original admitted claims vector by deleting only its post-admission requested!=0 filter and replacing the stale omission comment. Every semantic-row/source/supply/duplicate check, full-u32 request admission, row identity and persistence-deformation binding is unchanged. The entire Rust exact executor is byte-identical; the already-remedied WGSL remains unchanged in this resume. No arithmetic, projection, Q149, cap, Hamilton, tie, precedence, status/ABI/product shape, scorer, market, history or authority change.
+`no_collision_products_remain_bit_identical_to_dispatched_master` retains the identical 338 fixtures, case count, planner/executor path and per-case CPU/GPU equality assertions. Every product remains in the full canonical digest. A second digest covers products whose admitted claim has a nonzero request, including G0/U-positive results.
 
-The only other source changes this resume are the two observed E8 pin literals. Both workshop zero-member test matrices remain byte-for-byte identical to the fourth STOP, as do the frozen exact-cap and resident-apportionment test files. No new tests or inventory rows were added this resume.
+Both assertions are live and permanent:
 
-## Initial-zero matrix GREEN
+~~~text
+cases=338
+historical-positive-request-digest=05cb01d96dc69dbe
+retained-canonical-digest=f967436fc86a9690
+retained-zero-rows=1
+~~~
 
-The unchanged `initial_zero_members_produce_same_canonical_result_in_both_postures` referee uses real admitted Draw[0,0] and Draw[0,100], each in ResidentRequired and CpuVendorizedOracle:
+The sole zero-request row is explicitly constrained to case 325, source 1000, semantic row 0, requested 0/G0/U0, generation 4, STATUS_OK and integration band 3. That case must have exactly two products; positive source 1001 remains G3/U2. The historical positive byte digest binds all positive-request outputs, and the retained-stream digest additionally binds the zero row's bytes and position. The original historical digest was not replaced or weakened. Exact-cap target: 3/3, including 12 active-set cases across 3104 GPU physical runs and the Owner cap-collision CPU/GPU/workgroup/partition witness.
 
-1. N1 starts with authored/effective0 as a live member and reaches the boundary.
-2. Resident history contains claimant-bearing G0/U0@generation1; CPU retains the same already-born result in its existing continuation.
-3. No termination while live and no positive grant-lifecycle relation from the zero result.
-4. Actual demand-property removal atN2 emits exactly one termination with full claimant/owner/resource/scope/granter identity and G0/U0@generation1 provenance.
+The prior STOP's independent scratch diagnostic reproduced the old digest exactly with the old plan filter and proved all positive product bytes identical across 338 cases. The admitted test now carries both contracts permanently without any alternate production solver or fixture mutation.
 
-The two resident cases previously returned success with resident facts=[] and empty final_products on departure. They now report resident facts=[(1,0,0)] and pass exact termination provenance. CPU cases remain green. No private-field construction, positive placeholder request or alternate admission path.
+## Admitted parity zero block GREEN
 
-## Established-zero and termination matrices GREEN
+Only the [0,1,1]/supply 2 assertion block changes semantically. The plan and GPU result each contain 3 identities. The plan retains source 0 with requested 0; CPU/GPU canonical vectors compare equal. The complete result map is source 0 G0/U0, source 1 G1/U0, source 2 G1/U0. The zero product retains its admitted semantic row; all products retain generation 0, integration band 1 and STATUS_OK. Total grant is 2, consumed entirely by the two positive members.
 
-The unchanged `authored_zero_continues_the_stream_or_refuses_at_draw` uses one real admitted Draw[0,100] stream per posture, persistent claimant and supply4:
+~~~text
+15.11 parity retained-zero block:
+ source1000 G0/U0; source1001 G1/U0; source1002 G1/U0
+ generation0 / integration_band1 / STATUS_OK / total grant2
+~~~
 
-| Boundary | Authored demand / membership | Observed in both postures |
+All following invalid-value, failed-dispatch recovery, signed-zero and overflow assertions in the negative matrix execute unchanged and pass before the later recursive-root failure. The independent pin remains0x64c8_2fb4_de76_90ac. Source comparison verifies that everything before and after the admitted zero block is byte-for-byte unchanged from STOP5, including the entire recursive and final qualification functions.
+
+## Remaining recursive-root assertion — STOP before editing
+
+Exact locus at this candidate: `crates/simthing-workshop/tests/resident_clearing_parity_0.rs:1488-1491`, inside `three_recursive_edges_self_consume_exact_ts_and_u_recurs_once_at_n_plus_one` (the equivalent assertion was at line 1451 before the admitted block grew).
+
+The unchanged root fixture deliberately uses requests [10,0], supply 8 and generation 10. Its comment says the zero-request companion preserves the same two-row resident shape without competing for the eight conserved units. The old result-map assertion nevertheless requires only source 1000 G8/U2:
+
+~~~text
+assertion left == right failed at1488
+ actual: {1000: (8,2), 1001: (0,0)}
+expected: {1000: (8,2)}
+resident_clearing_parity_terminal_referee:0 passed;1 failed;exit101
+~~~
+
+The result now retains the lawful zero companion. Positive source1000 remains G8/U2. The assertion must be reconciled with the canonical zero-member law, but HD252edc08cfb2 admits semantic changes only inside the earlier [0,1,1] block and explicitly requires all later recursive logic to remain unchanged. It also requires STOP while a non-superseded witness remains red after the correction. **Return this root-result map assertion for bounded DA test-contract admission.** No production change, E8 roll, fixture mutation, source suppression, supply/carry change or official later-assertion edit was made.
+
+The official terminal referee stops here. Its later recursive edges and final qualification phase cannot be claimed as a passing whole-referee certificate.
+
+## Separate diagnostic of the unexecuted tail
+
+To make the scope return concrete and check for another hidden failure, an untracked .git diagnostic reuses the current fixture source and already-built candidate libraries. It does not write the official referee or production source.
+
+- One diagnostic invokes the final `scale_multitree_physical_invariance_and_exact_qualification_hold` function unchanged. All its scale/physical-shape/multitree checks and qualification tuple mutants pass; its independent record reports64c82fb4de7690ac.
+- A scratch copy of the recursive function changes only the root map expectation to include source1001 G0/U0 and adds stronger root assertions for requested0, semantic-row identity, STATUS_OK, generation10, integration band10 and total grant8. Every subsequent recursive/temporal assertion remains unchanged. The literal chain G8/U2 -> G6/U2 -> G4/U2 passes; N10->N11 produces authored2+U2 and the once-mint refusal passes.
+
+~~~text
+DIAGNOSTIC ROOT:
+ source1000 G8/U2; source1001 G0/U0; generation10; band10; STATUS_OK; total grant8
+DIAGNOSTIC recursive tail PASS:
+ unchanged literal chain G8/U2 -> G6/U2 -> G4/U2;
+ N10->N11 authored2+U2; once-mint refusal
+RESIDENT-CLEARING-QUALIFICATION-FINGERPRINT:64c82fb4de7690ac
+DIAGNOSTIC unchanged final scale/multitree/qualification function PASS
+2 passed;0 failed;1 official test filtered;3.74s;exit0
+~~~
+
+This is bounded diagnostic evidence for the requested correction, not an assertion that the official terminal referee passed. No new permanent test or alternate production arithmetic was introduced. The Board packet includes the reproduction helper and labels the scratch-only expected-map correction explicitly.
+
+## Preserved session, zero-member and frozen proofs
+
+The unchanged initial-zero matrix uses real Draw[0,0] and Draw[0,100] in both ResidentRequired and CpuVendorizedOracle. N1 authored/effective0 is a live member with canonical claimant-bearing G0/U0@generation1; there is no termination or positive grant-lifecycle relation. Actual property removal atN2 emits exactly one termination with full claimant/scope/granter identity and G0/U0@N1 provenance. Resident history reports[(1,0,0)]; CPU already-born provenance agrees.
+
+The unchanged established-zero matrix uses real Draw[0,100], one persistent member and supply4 in both postures:
+
+| Boundary | Demand/membership | Result |
 | --- | --- | --- |
-| N1 | 10, live | G4/U6 |
-| N2 | 0, live, priorU6 | G4/U2; no termination |
-| N3 | 0, live, priorU2 | G2/U0; no termination |
-| N4 | 0, live, priorU0 | claimant-bearing G0/U0; no termination |
-| N5 | actual demand-property removal | one termination carrying full scope and G0/U0@generation4 |
+| N1 | authored10, live | G4/U6 |
+| N2 | authored0 + priorU6, live | G4/U2; no termination |
+| N3 | authored0 + priorU2, live | G2/U0; no termination |
+| N4 | authored0 + priorU0, live | canonical G0/U0; no termination |
+| N5 | actual property removal | one termination carrying G0/U0@generation4 |
 
-Separate retirement cases after N2/N3 retain exact G4/U2@generation2 and G2/U0@generation3. Positive-minimum Draw[1,100] requested0 still returns QuantityOutsideEnvelope before termination/history append in both postures.
+Separate retirement after N2/N3 retains exact G4/U2@generation2 and G2/U0@generation3. Real Draw[1,100] requested0 still returns QuantityOutsideEnvelope before history append in both postures. Draw admission/authorization also proves [0,0], [0,100], [1,100], inclusive endpoints, max+1 refusal, and typed InvalidDrawBounds for [1,0]/[101,100].
 
-`departing_last_flow_claimant_terminates_neutrally` passes18 established sessions: owner change/property removal/node removal x step/run/record x both postures, plus two never-started controls. Each establishes G4/U6 atN1, appends exactly one neutral fact and no other history atN2, leaves all history unchanged atN3/N4, re-enters the same ID with pure authored2 -> G2/U0 atN5, then observes that fresh product on departureN6. Recorded cases reverse two real RF arenas. Canonical rows/keys match across postures, and actual history roundtrips to identical JSON bytes.
+All18 established departure sessions pass: owner change/property removal/node removal x step/run/record x both postures, plus two never-started controls. Each establishes G4/U6 atN1, appends one neutral fact and no other history atN2, leaves history unchanged atN3/N4, re-enters the same ID with pure authored2 -> G2/U0 atN5, then observes that fresh product on departureN6. Recorded cases reverse two real RF arenas. Canonical rows/keys match across postures and history roundtrips to identical JSON bytes.
 
-`partial_departure_stays_fail_closed_and_empty_set_cannot_launder_fault` preserves TemporalSourceMismatch for both postures with supply4/U-positive and supply40/U0. Removing the last member after that touched failure returns GenerationFaulted at2 before another hot tick; day, identity, GPU values and history remain unchanged. Authored membership mutation uses the existing admitted-tree swap; no session/coordinator/lease/buffer/history reconstruction.
+Both-posture partial-set controls preserve TemporalSourceMismatch with U-positive and U0. Subsequent total departure after the touched failure returns GenerationFaulted at2 before another hot tick; day, identity, GPU values and history remain unchanged. Real RF reduce-up state (count1/surplus3/deficit7) and a published standing view replay identically with/without actual termination. Authored membership mutation uses the existing admitted-tree swap, without session/lease/buffer/history reconstruction.
 
-Real nonzero RF reduce-up state (count1/surplus3/deficit7) and a published standing view replay identically with/without the actual termination row. The Spec replay companion remains one history-only alternative. Real Draw admission passes [0,0], [0,100], [1,100], inclusive endpoints and max+1/positive-minimum-zero refusal, with typed InvalidDrawBounds for [1,0]/[101,100].
+`resident_clearing_apportionment_0.rs` remains byte-for-byte unchanged and passes7/7. Its [0,5]/supply3 case passes Rust mirror and GPU assertions with source0 G0/U0 and source1 G3/U2. All initial/established/termination/partial/fault session matrices are unchanged from the preserved production candidate; session integration10/10.
 
-## Required frozen apportionment witness GREEN unchanged
+## Production and E8 remain unchanged
 
-`neutral_continuous_shares_match_frozen_cpu_law_across_boundary_cases` passes all its statements, including requests[0,5]/supply3 through both the Rust mirror and GPU assertion: source1000 G0/U0, source1001 G3/U2. The former fourth-STOP mismatch is gone. The entire resident_clearing_apportionment_0.rs file is byte-for-byte unchanged from amended master; target7/7.
+No production or sealed source changed in this resume. The existing implementation separates membership presence from Draw quantity, terminates an empty established stream before temporal remint, and observes only already-born resident-history spans or CPU results in the existing continuation. One IntegrationSchedule records deterministic typed final claimant/G/U/generation provenance; observer U never feeds economics. Zero clearing results use the ordinary scorer/seal, consume no supply and do not participate in positive allocation; positive lifecycle publication and zero-grant rejection remain unchanged. The resident shader retains its one classification correction; the planner retains admitted zero identities; all positive allocation and15.10 permit arithmetic/lifecycle remain frozen.
 
-The exact-cap active-set corpus also passes12 cases across3104 GPU physical runs, and the Owner cap-collision witness passes CPU and both workgroup/partition shapes. Real overflow refusal, generation ties, basis exactness, recursive intake, slot/upload/workgroup/partition permutation and realm/incarnation/permit controls remain green in the selected corpus.
+Authority census remains **one Draw / one resident clearer / one IntegrationSchedule and history / one continuation lane / one TreeExecutionLease and private seal**.
 
-## Remaining frozen 15.9 digest conflict — STOP before any referee edit
-
-Exact locus: `crates/simthing-workshop/tests/exact_cap_projection_0.rs:303-364`, `no_collision_products_remain_bit_identical_to_dispatched_master`.
-
-Its338-case corpus includes requests[0,5], bases[0,5], supply3 at source line326 (case index325). The test hashes every byte of every returned canonical CPU product, including identity-bearing zero products; it first compares CPU and GPU for each case.
-
-Observed after the planner fix:
+The final fourth E8 roll remains at **0x64c8_2fb4_de76_90ac** in both fixed literals. Preserved actual SimSession::open refusal before economics:
 
 ~~~text
-15.9 dispatched-master no-collision corpus:
- cases=338 canonical-product-byte-digest=f967436fc86a9690
-assertion left == right failed at exact_cap_projection_0.rs:363
- left: 17971406985428113040  (0xf967_436f_c86a_9690)
-right:   417429423823166910  (0x05cb_01d9_6dc6_9dbe)
-exact-cap target: 2 passed; 1 failed; cargo exit101
+old required:13527848702859969630 =0xbbbc_92b8_bd32_845e
+observed:7262106853007855788 =0x64c8_2fb4_de76_90ac
+UnqualifiedAdapter;0 passed/1 failed/9 filtered;exit101
 ~~~
 
-All338 CPU/GPU equality assertions and the case-count assertion completed successfully before the fixed historical digest assertion. The prior candidate's same test passed the historical digest before the planner admitted the zero source. The corpus has one requested-zero input case; the unchanged mixed-zero apportionment referee independently proves its new G0/U0 plus unchanged positive G3/U2 output. The retention-only diff leaves positive-only plans and the exact executor unchanged. These facts explain the aggregate-contract conflict; this packet does not invent a new historical positive-only digest or claim that the failed aggregate assertion passed.
-
-An additional temporary diagnostic under .git reuses the unchanged frozen fixture and338-case construction with the already-built candidate libraries. It runs the same unchanged Rust executor on (a) the retained plan and (b) a control plan recreating exactly the old post-admission requested!=0 filter. For every case it byte-compares all positive retained products to the control output and compares candidate CPU/GPU products. It hashes both complete streams and verifies every added zero row. Actual output:
-
-~~~text
-ADDED ZERO case=325:
- semantic_row=0 source=1000 G0/U0 generation=4 status=0 integration_band=3 reserved=0
-DIAGNOSTIC PASS: 338 CPU/GPU pairs; all positive canonical bytes identical;
- exactly1 added G0/U0 row;
- legacy=05cb01d96dc69dbe; retained=f967436fc86a9690
-1 passed; 0 failed; 3 filtered;5.74s; exit0
-~~~
-
-Thus the historical digest is reproduced exactly by the old filtered control, and the entire difference is the required canonical zero row. The diagnostic is an untracked analysis harness, not a new permanent test, second production solver or substitute for the official referee; it uses no hand-coded apportionment. Both official frozen source files remain untouched, and the official aggregate assertion is still RED. Reproduction helper .git/1511-plan-digest-diagnostic.py and its output are included in the Board packet.
-
-The exact-cap referee is outside the HD's editable surfaces. Its expected digest remains unchanged. HDaccde9f346a7 requires STOP while a non-superseded15.9 witness remains red and forbids positive-demand law changes. **Return the aggregate digest's zero-row inclusion and its historical compatibility contract to orchestration/DA for bounded disposition, together with the parity matrix below.** No new production locus is requested, no production rollback that drops canonical zero members, no blind golden update, and no weakening of the frozen resident apportionment referee that now passes.
-
-## Second remaining referee contract — explicit zero omission in resident parity
-
-`crates/simthing-workshop/tests/resident_clearing_parity_0.rs` is admitted only for its independent E8 pin literal. Its negative matrix, lines1138-1170, constructs requests[0,1,1]/supply2 then asserts plan length2, GPU product length2 and exclusion of source0. The first assertion at1153 fails with actual3/expected2. The following two omission assertions and the later negative/recursive/qualification portions of the terminal referee are not reached and cannot be certified.
-
-This reproduces in both the selected corpus and the full workspace run:
-
-~~~text
-resident_clearing_parity_terminal_referee FAILED at1153
-assert_eq!(zero_request_plan.claims().len(), 2)
- left:3
-right:2
-0 passed;1 failed;exit101
-~~~
-
-The admitted retention law requires three identities, including source0 G0/U0. The source remains unchanged except for the already-authorized independent pin literal; none of the omission assertions was edited. Return this exact assertion block alongside the historical digest for bounded test-semantic admission. The initial-zero session proofs and unchanged mixed-zero apportionment witness already demonstrate lawful zero retention, but do not substitute for the blocked remainder of this terminal referee. Earlier provisional commentary undercounted the selected failures; the authoritative selected count is36pass/2fail, and the full-workspace count below includes the same two failures.
-
-## Preserved neutral termination implementation and authority census
-
-The before-production REDac824e2a remains the real-session falsifier: never-started departure succeeds without a fact, but established G4/U6 departure returned the Owner-superseded DepartingFlowDispositionRequired (0pass/1fail/5filtered, exit101). The four STOPs respectively preserve the exhaustive replay E0004, zero-Draw admission refusal, N4/N5 runtime/provenance failures, and initial-zero resident omission. Their later admitted remedies do not rewrite that evidence.
-
-Current authorize_current_flow uses semantic scope/owner plus demand-property presence, admits quantities including0 through the sole Draw authority, and sorts claims by persistent identity. Empty membership with prior continuation terminates before temporal remint/new flow dispatch; never-started emptiness appends nothing. The one IntegrationSchedule receives typed granter/owner/resource/scope, termination generation and final claimant/G/U/source-generation data. Resident provenance reads only its exact already-materialized history span; CPU provenance retains already-born results in the same continuation. No observer U feeds economics. Canonical sorting and deterministic keying remain in the existing history.
-
-CPU zero results use the ordinary authored scorer and existing ConstrainedGrant seal, with scope/source/priority/order-weight/score/generation and requested0/G0/U0. They are excluded from positive allocation arithmetic and denominators; no supply is consumed. Positive lifecycle publication remains filtered to granted>0; grant-lifecycle zero-grant rejection is unchanged. The WGSL companion remains its one all-zero-band classification condition, retaining real overflow refusal and existing STATUS_OK zero-basis execution.
-
-Both ordinary loops retain the15.10 existing permit and sole finish_generation commit. Authority census remains **one Draw / one resident clearer / one IntegrationSchedule and history / one continuation lane / one TreeExecutionLease and private seal**. No new partial matcher, registry, authority, structural-growth coupling or authored disposal mechanism.
-
-## E8 final-source-state evidence for this candidate
-
-After the planner retention edit reached its intended source state, the old pin0xbbbc_92b8_bd32_845e refused actual SimSession::open before economics:
-
-~~~text
-UnqualifiedAdapter {
- required: 13527848702859969630,
- observed: 7262106853007855788
-}
-0 passed; 1 failed; 9 filtered; cargo exit101
-~~~
-
-Observed7262106853007855788 = **0x64c8_2fb4_de76_90ac**. Only QUALIFIED_RESIDENT_CLEARING_FINGERPRINT and independent QUALIFIED_RECORD_FINGERPRINT were rolled to this identical value, in the same source-state commit as the planner retention edit. No sealed-source edit afterward. Qualification ABI/child-share/planner/temporal mutation matrix4/4 PASS; actual session admission accepts the observed pin. The independent parity file compiles the identical literal but its terminal referee stops at the stale zero-omission assertion before its final qualification report, so no whole-referee PASS or final independent report is claimed. No build.rs/component-list/comparator/record/ABI/golden/dynamic-pin change. Any future sealed-source edit would require the existing refusal/observed two-literal process again.
+The two literals were rolled together with the final planner edit at STOP5; no sealed-source edit followed. No fifth roll occurred for this test-only remand. Qualification ABI/child-share/planner/temporal mutation matrix4/4 passes again. The separate unchanged final-phase diagnostic confirms the independent record; the official whole parity referee remains blocked as described above. No build.rs/component-list/comparator/record/ABI/dynamic-pin change.
 
 ## Validation and limits
 
 - Six touched packages/tests check PASS: core, kernel, GPU, Spec, driver, workshop.
-- Selected9-target corpus: **36 passed /2 failed /0 ignored**,102.34s. Session integration10/10; resident apportionment7/7; exact-cap2/3 for the aggregate digest; resident parity0/1 for explicit zero omission. Seven whole targets pass.
-- Other selected groups: generation-abort3/3; recursion-axis5/5; recursive RF1/1; substrate-binding4/4; execution-lifetime4/4.
-- Qualification4/4; core execution-authority3/3; actual private IntegrationSchedule compile-fail1/1 (E0451).
+- Selected9-target corpus: **37 passed /1 failed /0 ignored**,88.14s, exit101 only for the later recursive-root map assertion. Exact-cap3/3, session integration10/10, frozen apportionment7/7, generation-abort3/3, recursion-axis5/5, recursive RF1/1, substrate-binding4/4, execution-lifetime4/4; terminal parity0/1. Every admitted correction passes.
+- Qualification4/4; core execution-authority3/3; actual private IntegrationSchedule compile-fail1/1 (E0451). Separate scratch-tail diagnostics2/2 are not counted in the official corpus or inventory.
 - Structural15/15 exit0: inventory1442/1442 missing0/extra0, drift prove, constitutional check/selftest, lifecycle schema/prove, digest, detachability/selftest, anchor check/selftest, plan/observation/slot/overlay censuses. Expected planted failures were caught by passing selftests. Existing anchor-coverage advisory remains INSPECT unanchored40/59 with final PASS.
-- Full workspace/all-targets: **145 reported test groups /549 passed /2 failed /14 ignored**. Command: cargo test --workspace --all-targets --no-fail-fast -j 1 --quiet. 101 (907.81s) (exit and elapsed). The failure details and any incomplete groups are explicitly carried in the Board return.
-- Source audit:14 changed paths relative to amended master, all within HD surfaces; planner retention-only; exact executor/admission, frozen exact-cap/apportionment referees, driver session/resident-runtime and core private-seal surfaces unchanged. RED/four-STOP ancestry and unchanged63-anchor ingress mechanically checked. Test-generated tracked output restored after the workspace run.
+- Full workspace/all-targets: **145 groups /550 passed /1 failed /14 ignored**. Command: cargo test --workspace --all-targets --no-fail-fast -j 1 --quiet. Exit/elapsed: 101 (219.09s). The sole failure is the unchanged recursive-root map in the terminal parity referee.
+- Source audit:15 changed paths relative to amended master, all in HD. This resume changes only the dual-digest function and allowed parity zero block plus this results packet. Fixtures/executors/case count, all later parity source, frozen apportionment and session matrices, production and both pins remain unchanged. All63 anchor ACKs and RED/five-STOP ancestry are preserved. Generated baseline output restored after the workspace run.
 
-No green full-workspace or hosted implementation certificate is claimed while the two zero-omission referee contracts remain red. No implementation PR, triage mutation, clearance, relay-lint, graduation, PR merge, pointer/canon/closeout/gate edit. Fresh committed-head Agent Scan and every scan-id-bearing INSPECT are bound in the Board return; final implementation-head triage remains orchestration's responsibility.
+No green full-workspace or hosted implementation certificate is claimed at this explicit later-assertion STOP. No implementation PR, triage mutation, clearance, relay-lint, graduation, merge, pointer/canon/closeout/gate edit. Fresh committed-head Agent Scan and every scan-id-bearing INSPECT are bound in the Board return; final implementation-head triage remains orchestration-owned.
 
-Logs: .git/1511-plan-handoff.txt, plan-e8-refusal.log, plan-check.log, plan-frozen.log, plan-qualification.log, plan-permit.log, plan-compilefail.log, plan-workspace.log, plan-final-*.log, plan-audit.log, plan-digest-diagnostic.log, plan-agent-scan.log (all plan-prefixed names expand under .git/1511-).
+Logs: .git/1511-referee-handoff.txt, referee-check.log, referee-frozen.log, referee-qualification.log, referee-permit.log, referee-compilefail.log, referee-workspace.log, referee-final-*.log, referee-audit.log, referee-tail-diagnostic.log, referee-agent-scan.log (all referee-prefixed names expand under .git/1511-). Prior refusal: .git/1511-plan-e8-refusal.log.
 
 ## Changed-file ledger relative to amended master
 
 | Path | Owned purpose |
 | --- | --- |
-| crates/simthing-core/src/generation_stamp.rs | Typed neutral observation and one canonical recorder; entry default fields and existing doctest literal. |
-| crates/simthing-core/src/lib.rs | Re-export existing-history observation types. |
-| crates/simthing-driver/src/growth_entitlement.rs | Membership/Draw separation, pre-remint neutral termination, existing continuation observations and complete-set CPU fail-close. |
-| crates/simthing-gpu/src/resident_clearing_runtime.rs | Observed production pin literal only. |
+| crates/simthing-core/src/generation_stamp.rs | Typed neutral observation and one canonical recorder; entry defaults and existing doctest literal. |
+| crates/simthing-core/src/lib.rs | Existing-history observation re-exports. |
+| crates/simthing-driver/src/growth_entitlement.rs | Membership/Draw separation, pre-remint termination, existing provenance and complete-set CPU fail-close. |
+| crates/simthing-gpu/src/resident_clearing_runtime.rs | Final observed production pin literal only; unchanged this resume. |
 | crates/simthing-spec/src/spec/owner_channel_rf.rs | One history-only replay alternative. |
-| crates/simthing-spec/src/spec/flow_market.rs | DA-admitted bound guard/error text, two lines. |
+| crates/simthing-spec/src/spec/flow_market.rs | Admitted zero-capable bound guard/error text, two lines. |
 | crates/simthing-spec/src/spec/constrained_clearing.rs | Canonical zero results from ordinary scorer/seal, excluded from allocation arithmetic. |
 | crates/simthing-kernel/src/shaders/resident_clearing_apportionment.wgsl | One all-zero-band classification condition. |
-| crates/simthing-kernel/src/resident_clearing_apportionment.rs | Remove only post-admission zero-request omission; retain admitted identities. |
-| crates/simthing-workshop/tests/resident_session_integration_conformance_0.rs | Departure/zero/bounds/partial/fault/replay matrices; unchanged in this resume. |
-| crates/simthing-workshop/tests/resident_clearing_parity_0.rs | Independent observed pin literal only. |
-| docs/tests/neutral_stream_termination_0_results.md | Consolidated proof/remaining digest STOP and63 ACKs. |
-| scripts/ci/test_inventory.tsv | Preserved departure ownership/rename, four proof rows and existing doctest hash update; no new row this resume. |
-| scripts/ci/anchor_reach_log.tsv | Three preserved prior ingress reach rows; no new row this resume. |
-
-Admitted driver session.rs and resident_clearing_runtime.rs remain unchanged. Both frozen referee files remain unchanged. Normal master merges bring landed HD governance only.
+| crates/simthing-kernel/src/resident_clearing_apportionment.rs | Remove post-admission zero omission; retain admitted identities. |
+| crates/simthing-workshop/tests/resident_session_integration_conformance_0.rs | Preserved departure/zero/bounds/partial/fault/replay matrices. |
+| crates/simthing-workshop/tests/exact_cap_projection_0.rs | Admitted dual-digest function only; unchanged338 fixtures and executor path. |
+| crates/simthing-workshop/tests/resident_clearing_parity_0.rs | Final independent pin plus admitted [0,1,1] zero block only; recursive-root assertion untouched. |
+| docs/tests/neutral_stream_termination_0_results.md | Consolidated admitted proofs, remaining root-map STOP,63 ACKs. |
+| scripts/ci/test_inventory.tsv | Preserved departure ownership/rename, four proof rows, doctest hash; no new row this resume. |
+| scripts/ci/anchor_reach_log.tsv | Three preserved ingress reach rows; no new row this resume. |
 
 ## Required anchor acknowledgments
 

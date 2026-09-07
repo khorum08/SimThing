@@ -346,21 +346,55 @@ fn no_collision_products_remain_bit_identical_to_dispatched_master() {
     cases.push(neutral);
 
     let mut digest = 0xcbf2_9ce4_8422_2325u64;
+    let mut positive_request_digest = 0xcbf2_9ce4_8422_2325u64;
+    let mut retained_zero_rows = 0;
     for (index, case) in cases.iter().enumerate() {
         let order: Vec<_> = (0..case.requests.len()).collect();
         let (plan, values) = fixture.prepare(case, &order, false);
         let cpu = execute_resident_apportionment_cpu(&plan, &values, fixture.state.n_dims).unwrap();
         let gpu = fixture.gpu(&plan, ResidentApportionmentDispatch::single_pass());
         assert_eq!(gpu, cpu, "no-collision case {index}");
+        for product in &cpu {
+            let claim = plan
+                .claims()
+                .iter()
+                .find(|claim| claim.source_simthing_id() == product.source_simthing_id())
+                .expect("canonical product retains an admitted identity");
+            if claim.requested() == 0 {
+                retained_zero_rows += 1;
+                assert_eq!(index, 325, "only this fixture has a zero request");
+                assert_eq!(product.source_simthing_id().raw(), 1_000);
+                assert_eq!(product.semantic_row(), 0);
+                assert_eq!((product.granted(), product.unresolved()), (0, 0));
+                assert_eq!(product.generation(), GenerationStamp::new(4));
+                assert_eq!(product.integration_band(), 3);
+                assert!(product.is_successful());
+                assert_eq!(cpu.len(), 2);
+                let positive = cpu
+                    .iter()
+                    .find(|row| row.source_simthing_id().raw() == 1_001)
+                    .unwrap();
+                assert_eq!((positive.granted(), positive.unresolved()), (3, 2));
+            } else {
+                // Preserve every historical positive-request product byte,
+                // including G0/U-positive results. Zero grants are not omitted.
+                for byte in bytemuck::cast_slice::<_, u8>(std::slice::from_ref(product)) {
+                    positive_request_digest ^= u64::from(*byte);
+                    positive_request_digest = positive_request_digest.wrapping_mul(0x100_0000_01b3);
+                }
+            }
+        }
         for byte in bytemuck::cast_slice::<_, u8>(&cpu) {
             digest ^= u64::from(*byte);
             digest = digest.wrapping_mul(0x100_0000_01b3);
         }
     }
-    println!("15.9 dispatched-master no-collision corpus: cases={} canonical-product-byte-digest={digest:016x}", cases.len());
-    // Captured from the unchanged dispatched solver before production edits.
+    println!("15.9/15.11 no-collision corpus: cases={} historical-positive-request-digest={positive_request_digest:016x} retained-canonical-digest={digest:016x} retained-zero-rows={retained_zero_rows}", cases.len());
     assert_eq!(cases.len(), 338);
-    assert_eq!(digest, 0x05cb_01d9_6dc6_9dbe);
+    // Permanent dispatched-master compatibility and full zero-retention law.
+    assert_eq!(positive_request_digest, 0x05cb_01d9_6dc6_9dbe);
+    assert_eq!(digest, 0xf967_436f_c86a_9690);
+    assert_eq!(retained_zero_rows, 1);
 }
 
 #[test]
