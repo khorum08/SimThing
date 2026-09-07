@@ -1,6 +1,9 @@
 # DEPARTING-STREAM-DISPOSAL-0 — implementation evidence
 
-Status: PROBATION / proof-in-progress / DA-review-pending / OPEN / UNMERGED.
+Status: STOP / PROBATION / partial proof present / DA-review-pending / OPEN / UNMERGED.
+
+The candidate does not satisfy the zero-RED exit proof. The post-roll failures and
+scope gap below require orchestration/DA disposition before implementation resumes.
 
 Dispatch: Board comment 5569664053; Owner mint 5569511979. Canonical handoff:
 `handoffs/DEPARTING-STREAM-DISPOSAL-0.hd.md`. Implementation base:
@@ -69,7 +72,7 @@ RED-A. No new testing seam or production source was introduced for either RED.
 
 Preserved RED-B commit: `1d2aaf26`.
 
-## Implementation candidate before E8
+## Implementation candidate
 
 The new ClauseThing metadata lowerer delegates its value formula to the unchanged
 15.3 compiler. `DepartureDispositionBinding` seals the claimant/full-scope key,
@@ -113,8 +116,8 @@ are byte-unchanged: Driver `prepare_temporal_demands`, Kernel temporal `encode`,
 Spec `produce_runtime_rf_next_generation_demands`, Spec
 `clear_constrained_claims_at_generation`, and Driver
 `submit_authored_persistence_consequence`. The exact-apportionment Rust/WGSL and
-temporal WGSL are unchanged. E8's two literals have not yet been rolled at this
-candidate stage.
+temporal WGSL are unchanged. Semantic commit `f02e217619dff463df5edda3aa43c6c1005e2dda`
+precedes final E8 commit `b86dea52050f44f95ca67add69ebf6e4799e727f`.
 
 Owner-local prequalification CPU runs exercised 36 mixed cases (3 loops, 2 real
 arena/source orders, 6 positive/zero/deformation cases), 27 all-depart cases
@@ -131,5 +134,127 @@ its invalid Draw and subsequent empty-set fault fence remain actual-session
 checks at the next generation. A new direct resident-axis witness separately
 exercises both the frozen complete-set door and new subset door without a fact.
 
-Final E8, both-posture focused, frozen, full-workspace, structural, committed-head
-scan and hosted certificates remain pending at this candidate stage.
+## Final E8 evidence and source freeze
+
+The old fixed pin `0x64c8_2fb4_de76_90ac` refused the final semantic candidate at
+`SimSession::open`, before a hot/economic cycle, with `UnqualifiedAdapter`:
+required `7262106853007855788`, observed `6628835086103067003`.
+
+Commit `b86dea52050f44f95ca67add69ebf6e4799e727f` changes exactly the existing GPU
+qualification literal and workshop parity literal to `0x5bfe_5a63_c5d1_b97b`.
+No source, shader, component list or `build.rs` changed in that commit.
+The four qualification mutants pass: ABI `3d03935abae26f5a`, child-share
+`943734a4e965fa10`, planner `f9802e5b7220eca4`, temporal `7cb0e0e031825516`;
+semantic bundle hash `9d5e270534c8f08f`.
+
+No sealed source was edited after the roll. Subsequent work is limited to results,
+a diagnostic assertion message in the new workshop witness, and the expressly
+admitted constitutional census data. There was no second pin roll.
+
+## STOP findings
+
+1. **Mixed membership numerical disagreement.** The first resident mixed case
+   (Step, normal source/arena order, supply4, departed10, survivor10, factor1,
+   fresh entrant5) records the expected departure and passes the effective-demand
+   assertions: survivor G+U=18 and entrant G+U=5. It then fails the unchanged
+   grant assertion: resident survivor G=2, expected G=3. Preparatory CPU execution
+   passed all 36 matrix cases with that expectation. The focused run stops this
+   matrix at its first resident case; it does not establish the remaining resident
+   cases or current-head CPU parity. The cause has not been adjudicated as fixture,
+   substrate basis, or membership implementation. No arithmetic or golden was
+   changed to erase the failure. A production correction would reopen sealed
+   source after the final E8 roll and requires a remedial dispatch.
+2. **Frozen single-port census.** Existing
+   `persistence_deformation_port_0::structural_census_has_no_second_lane_or_consequence_reinjection`
+   fails at line418. Its `single_port` predicate requires one call to
+   `carry_unresolved_demand_to_next_generation` in `runtime_rf_tick.rs`; the unchanged
+   ordinary door at line245 and the new typed survivor extension at line372 now
+   produce two calls. The recurrence implementation is still singular, and both
+   original recurrence/mint bodies are byte-unchanged, but this is a real frozen
+   witness failure. Neither its count nor planted second-lane mutant was weakened.
+   DA must adjudicate whether to restructure the extension or explicitly amend the
+   witness while preserving the no-second-lane law.
+3. **Overlay census scope gap.** `overlay_germ_archaeology_census_check.sh` fails:
+   `UNJUSTIFIED-BROAD: driver:session.rs:admit_departure_lifecycle_catalogue spec:spec/constrained_clearing.rs:overlay`.
+   Reconciliation reports routes77/discovery73/residue87/unclassified0/open0 before
+   these two unclassified broad hits. The existing checker expects classification
+   in `scripts/ci/overlay_germ_archaeology_census.tsv`, which the HD surface list
+   omits. The first symbol admits existing lifecycle shapes during install; the
+   second is a read-only accessor for the sealed authored Overlay binding. Their
+   classification is for orchestration/DA; no census row, exception, checker,
+   universe pin or source name was changed to bypass the finding.
+
+The explicitly allowed `constitutional_surfaces.tsv` was updated only to admit the
+new ordinary ClauseThing lowerer in `LEGACY-CLAUSETHING-HYDRATOR-SURFACES`. All other
+columns and restrictions remain unchanged. This resolves the independent registry
+addition failure; constitutional check and planted selftest both pass.
+
+## Validation on the frozen semantic candidate
+
+- All seven touched packages plus tests: `cargo check` PASS.
+- E8: actual old-pin refusal, final two-literal commit, mutation4/4 PASS.
+- Focused new referee: 6 passed / 1 failed. Authored binding/real consequence,
+  established partial U-positive/U-zero, reinjection rejection, exact no-fact
+  refusal, 54 all-depart cases, and 6 post-effect fault/retry cases pass. Mixed
+  membership remains RED. Existing/new recursion-axis tests: 6/6 PASS.
+- Frozen ten-target run: 37 passed / 1 failed. The only failure is the single-port
+  census above. Actual persistence deformation identity/decay/saturation/expiry,
+  exact cap dual digest, 338 no-collision cases, 3104 capped physical runs,
+  apportionment, parity/zero retention, resident filter binding, all ten session
+  integration tests, generation fault/seal and execution identity tests pass.
+- Spec consequence-only compile-fail docs: 4/4 PASS, including both new binding
+  E0308 negatives. Core private schedule construction: 1/1 compile-fail PASS.
+- Structural gates: 14/15 PASS after the admitted constitutional ledger update.
+  Inventory/drift, constitutional check/selftest, lifecycle schema/prove, digest,
+  detachability/check selftest, anchors/check selftest, plan/observation/slot
+  censuses pass. Overlay archaeology census remains RED as above.
+- Full workspace/all-targets is also run with `--no-fail-fast -j 1 --quiet`;
+  its completed totals and hosted step/artifact results are recorded against the
+  final commit in the Board return and PR packet. Zero-RED is not claimed.
+- Committed candidate Agent Scan at `f02e2176`: reliable hard failures0,
+  `TEST-BUDGET` INSPECT for seven new test functions; anchor-reach gate-wiring
+  notice. This is not final-head clearance. Final-head and hosted reports belong
+  in the Board return and PR packet; no scan-id-bearing finding is self-triaged.
+
+## Authority census and return boundary
+
+One existing Draw authority admits the current claims. One resident constrained
+clearer settles them. One `IntegrationSchedule` stores existing canonical history,
+neutral terminations and optional consequence proofs. One continuation enum/lane
+holds each stream. One `TreeExecutionLease` and private generation permit protects
+termination, disposition, mint and clear. One unchanged consequence ingress funds
+CostBand and routes the authored Overlay. The typed membership permission contains
+identities and provenance permission only, not economic U or another executor.
+The frozen single-port census and Overlay classification failures are unresolved
+limits of this candidate, not a passed authority certificate.
+
+No merge, self-triage, clearance/relay-lint, graduation/pointer movement, closeout,
+engineering re-review, canon/Unification update or successor work was performed.
+Return this head to orchestration/DA with all failures intact.
+
+
+## Changed-file ledger
+
+- `crates/simthing-clausething/src/hydrate_shipsize_decoder.rs`
+- `crates/simthing-clausething/src/lib.rs`
+- `crates/simthing-core/src/generation_stamp.rs`
+- `crates/simthing-core/src/lib.rs`
+- `crates/simthing-core/src/persistence_deformation.rs`
+- `crates/simthing-driver/src/growth_entitlement.rs`
+- `crates/simthing-driver/src/resident_clearing_runtime.rs`
+- `crates/simthing-driver/src/session.rs`
+- `crates/simthing-gpu/src/resident_clearing_runtime.rs`
+- `crates/simthing-kernel/src/resident_recursive_intake_transform.rs`
+- `crates/simthing-spec/src/lib.rs`
+- `crates/simthing-spec/src/spec/constrained_clearing.rs`
+- `crates/simthing-spec/src/spec/mod.rs`
+- `crates/simthing-spec/src/spec/owner_channel_rf.rs`
+- `crates/simthing-spec/src/spec/runtime_rf_tick.rs`
+- `crates/simthing-workshop/tests/departing_stream_disposal_0.rs`
+- `crates/simthing-workshop/tests/recursion_axis_conformance_0.rs`
+- `crates/simthing-workshop/tests/resident_clearing_parity_0.rs`
+- `crates/simthing-workshop/tests/resident_session_integration_conformance_0.rs`
+- `docs/tests/departing_stream_disposal_0_results.md`
+- `scripts/ci/anchor_reach_log.tsv`
+- `scripts/ci/constitutional_surfaces.tsv`
+- `scripts/ci/test_inventory.tsv`

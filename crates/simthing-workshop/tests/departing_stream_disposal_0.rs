@@ -520,7 +520,11 @@ fn membership_matrix(posture: ClearingExecutionPosture) {
                 } else {
                     3
                 };
-                assert_eq!(survivor.granted, survivor_g);
+                assert_eq!(
+                    survivor.granted, survivor_g,
+                    "{posture:?}/{path:?}/reverse={reverse}: supply={supply}, departing={departing}, surviving={surviving}, factor={factor}; survivor G/U={}/{}, entrant G/U={}/{}",
+                    survivor.granted, survivor.unresolved, entrant.granted, entrant.unresolved
+                );
                 assert_eq!(entrant.granted, (supply - survivor_g).min(5));
                 assert!(consequence_facts(&session).is_empty());
                 let history = session.integration_schedule().clone();
