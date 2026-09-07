@@ -1487,9 +1487,48 @@ fn three_recursive_edges_self_consume_exact_ts_and_u_recurs_once_at_n_plus_one()
     .unwrap();
     assert_eq!(
         product_map(&root_products),
-        BTreeMap::from([(1_000, (8, 2))])
+        BTreeMap::from([(1_000, (8, 2)), (1_001, (0, 0))])
+    );
+    assert_eq!(root_exact.claims().len(), 2);
+    assert_eq!(root_products.len(), 2);
+    let zero_claim = root_exact
+        .claims()
+        .iter()
+        .find(|claim| claim.source_simthing_id().raw() == 1_001)
+        .unwrap();
+    assert_eq!(zero_claim.requested(), 0);
+    let zero_product = root_products
+        .iter()
+        .find(|product| product.source_simthing_id().raw() == 1_001)
+        .unwrap();
+    assert_eq!(zero_product.semantic_row(), zero_claim.semantic_row());
+    assert_eq!((zero_product.granted(), zero_product.unresolved()), (0, 0));
+    assert_eq!(zero_product.generation(), GenerationStamp::new(10));
+    assert_eq!(zero_product.integration_band(), 10);
+    assert_eq!(
+        zero_product.integration_band(),
+        root_exact.integration_band()
+    );
+    assert!(zero_product.is_successful());
+    assert_eq!(
+        root_products
+            .iter()
+            .map(|product| product.granted())
+            .sum::<u32>(),
+        8,
+        "source1000 alone supplies the root chain's eight conserved units"
     );
     let edge_one_output: ResidentSettlementOutput = chain_product(&root_products);
+    let positive_product = root_products
+        .iter()
+        .find(|product| product.source_simthing_id().raw() == 1_000)
+        .unwrap();
+    assert_eq!(edge_one_output, *positive_product);
+    assert_eq!(
+        (edge_one_output.granted(), edge_one_output.unresolved()),
+        (8, 2)
+    );
+    println!("15.11 recursive-root retained-zero proof: source1000 G8/U2 remains the chain product; source1001 requested0/G0/U0; generation10/band10/STATUS_OK; total grant8: {root_products:?}");
 
     // Edge 2 consumes the literal edge-1 product through the exact alias. The
     // 3:1 live basis spends the eight-unit intake as 6/2; the chain product is
