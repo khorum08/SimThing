@@ -275,12 +275,15 @@ Return this head to orchestration/DA with all failures intact.
 - `crates/simthing-spec/src/spec/owner_channel_rf.rs`
 - `crates/simthing-spec/src/spec/runtime_rf_tick.rs`
 - `crates/simthing-workshop/tests/departing_stream_disposal_0.rs`
+- `crates/simthing-workshop/tests/departure_live_basis_convergence_0.rs`
 - `crates/simthing-workshop/tests/recursion_axis_conformance_0.rs`
 - `crates/simthing-workshop/tests/resident_clearing_parity_0.rs`
 - `crates/simthing-workshop/tests/resident_session_integration_conformance_0.rs`
+- `docs/sanctioned_surface.md`
 - `docs/tests/departing_stream_disposal_0_results.md`
 - `scripts/ci/anchor_reach_log.tsv`
 - `scripts/ci/constitutional_surfaces.tsv`
+- `scripts/ci/overlay_germ_archaeology_census.tsv`
 - `scripts/ci/test_inventory.tsv`
 
 ## DA remand 5572589566 — CPU live-basis convergence
@@ -340,3 +343,23 @@ The final fifth E8 refusal/pin/mutants and completed focused/frozen/workspace/ho
 results will be recorded on the final-head PR and Board return. No sixth roll is
 authorized. The first REDs, initial semantic candidate, first E8 roll, both STOP
 return commits and governance merge remain in branch history.
+
+
+## Post-roll test process isolation
+
+The first combined focused run reached 66 successful mixed cases, then failed
+opening another device with `RequestDeviceError::DeviceLost`. No grant or
+continuation assertion failed. The unchanged complete 72-case mixed matrix then
+passed alone in a fresh process (147.59 seconds). During that diagnostic run the
+process reached 13,009,252,352 bytes of private memory, consistent with accumulated
+native device allocations across many session creations.
+
+The two large 15.12 matrix entrypoints now run each posture/loop block in its own
+fresh test process. Every existing case, scenario, loop executor and assertion is
+preserved: six workers run all 72 mixed cases and six run all 54 all-depart cases.
+Each child failure fails the parent and includes its output; there is no retry,
+skip or swallowed failure. This changes only the test runner's process lifetime,
+not frozen referees, fixtures or production. The original failing log and the
+unmodified-matrix diagnostic PASS are retained with the validation artifacts.
+
+This test-only change follows the fifth E8 roll and touches no sealed source.

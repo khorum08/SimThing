@@ -411,8 +411,63 @@ fn consequence_facts(session: &SimSession) -> Vec<simthing_core::DepartureConseq
         .collect()
 }
 
+// Each case opens a real device. Keep native driver allocations bounded by
+// running each posture/loop block in a fresh process, with all cases and
+// assertions unchanged. Child failures propagate; there is no retry or skip.
+fn matrix_loops() -> Vec<Loop> {
+    let selected = std::env::var("SIMTHING_1512_MATRIX_WORKER")
+        .ok()
+        .map(|worker| worker.rsplit('/').next().unwrap().parse::<usize>().unwrap());
+    [Loop::Step, Loop::Run, Loop::Record]
+        .into_iter()
+        .enumerate()
+        .filter(|(index, _)| selected.is_none_or(|selected| selected == *index))
+        .map(|(_, path)| path)
+        .collect()
+}
+
+fn isolated_matrix(name: &str, matrix: fn(ClearingExecutionPosture)) {
+    let postures = [
+        ClearingExecutionPosture::ResidentRequired,
+        ClearingExecutionPosture::CpuVendorizedOracle,
+    ];
+    if let Ok(worker) = std::env::var("SIMTHING_1512_MATRIX_WORKER") {
+        let parts: Vec<_> = worker.split('/').collect();
+        assert_eq!(parts.len(), 3);
+        assert_eq!(parts[0], name);
+        let posture: usize = parts[1].parse().unwrap();
+        let path: usize = parts[2].parse().unwrap();
+        assert!(posture < postures.len() && path < 3);
+        matrix(postures[posture]);
+        return;
+    }
+    for posture in 0..postures.len() {
+        for path in 0..3 {
+            let output = std::process::Command::new(std::env::current_exe().unwrap())
+                .args(["--exact", name, "--nocapture", "--test-threads=1"])
+                .env(
+                    "SIMTHING_1512_MATRIX_WORKER",
+                    format!("{name}/{posture}/{path}"),
+                )
+                .output()
+                .unwrap();
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            assert!(
+                output.status.success(),
+                "matrix worker {name}/{posture}/{path}:\n{stdout}\n{}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+            for line in stdout.lines() {
+                if let Some(start) = line.find("15.12 ") {
+                    println!("{}", &line[start..]);
+                }
+            }
+        }
+    }
+}
+
 fn membership_matrix(posture: ClearingExecutionPosture) {
-    for path in [Loop::Step, Loop::Run, Loop::Record] {
+    for path in matrix_loops() {
         for reverse in [false, true] {
             for (supply, departing, surviving, factor) in [
                 (4, 10, 10, 1.0),
@@ -560,16 +615,14 @@ fn membership_matrix(posture: ClearingExecutionPosture) {
 
 #[test]
 fn mixed_membership_order_zero_and_reentry_matrix() {
-    for posture in [
-        ClearingExecutionPosture::ResidentRequired,
-        ClearingExecutionPosture::CpuVendorizedOracle,
-    ] {
-        membership_matrix(posture);
-    }
+    isolated_matrix(
+        "mixed_membership_order_zero_and_reentry_matrix",
+        membership_matrix,
+    );
 }
 
 fn authored_all_depart_matrix(posture: ClearingExecutionPosture) {
-    for path in [Loop::Step, Loop::Run, Loop::Record] {
+    for path in matrix_loops() {
         for (request, supply) in [(10, 4), (10, 40), (0, 4)] {
             for count in 0..=2 {
                 let (scenario, sources, _) = scenario(&[request, request], supply);
@@ -656,12 +709,10 @@ fn authored_all_depart_matrix(posture: ClearingExecutionPosture) {
 
 #[test]
 fn per_claimant_authored_all_depart_and_neutral_default_matrix() {
-    for posture in [
-        ClearingExecutionPosture::ResidentRequired,
-        ClearingExecutionPosture::CpuVendorizedOracle,
-    ] {
-        authored_all_depart_matrix(posture);
-    }
+    isolated_matrix(
+        "per_claimant_authored_all_depart_and_neutral_default_matrix",
+        authored_all_depart_matrix,
+    );
 }
 
 fn fault_matrix(posture: ClearingExecutionPosture) {
