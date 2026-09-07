@@ -1,13 +1,21 @@
 # DEPARTING-STREAM-DISPOSAL-0 — implementation evidence
 
-Current status: PROBATION / remand validation in progress / DA-review-pending / OPEN / UNMERGED.
+Current status: STOP / PROBATION / partial proof present / DA-review-pending / OPEN / UNMERGED.
+
+The new STOP is the unchanged Driver grant-key compatibility witness: the
+qualified public CPU-oracle door has no Current-state input and the new guard
+refuses its setup grant. Full workspace therefore has one failure. Sealed source
+and the frozen witness remain unchanged after this discovery; further remedy
+requires orchestration/DA authority under the fifth-roll freeze.
 
 Current dispatch: 5572663219; DA adjudication: 5572589566; amended
 HD-RECEIPT: a5570e1fb2fe. Live master `8a547b84a49115e1b7c961f90fe51a4eb606cfb4`
 was normally merged into the same branch. `orient.sh --role=coding --since=a9d2086a0dd2`
 reports CURRENT, with unchanged rule stamp/digest and the same 63 required anchor
-ACKs carried below. The initial STOP evidence is retained as historical context;
-the remand section at the end describes its authorized remedies.
+ACKs carried in the Board/PR packet. The initial STOP evidence is retained as historical context;
+the remand sections at the end describe the completed remedies and the new compatibility STOP.
+Final-head Agent Scan and actual hosted step/artifact results are bound to the
+committed head in the PR and Board return; this document claims no clearance.
 
 The initial candidate did not satisfy the zero-RED exit proof. DA adjudication
 5572589566 supplied the four remedies for the historical failures below.
@@ -339,9 +347,9 @@ Rust and WGSL, complete Kernel temporal-transform Rust, complete frozen
 and Driver original/subset mint and temporal/market dispatch bodies are byte-identical.
 Their SHA256 certificate is retained with the owner-local validation artifacts.
 
-The final fifth E8 refusal/pin/mutants and completed focused/frozen/workspace/hosted
-results will be recorded on the final-head PR and Board return. No sixth roll is
-authorized. The first REDs, initial semantic candidate, first E8 roll, both STOP
+The fifth E8 and completed local results are recorded below; final-head Agent Scan
+and actual hosted results are carried in the PR and Board return. No sixth roll is
+authorized. The first REDs, initial semantic candidate, fourth E8 roll, both STOP
 return commits and governance merge remain in branch history.
 
 
@@ -363,3 +371,104 @@ not frozen referees, fixtures or production. The original failing log and the
 unmodified-matrix diagnostic PASS are retained with the validation artifacts.
 
 This test-only change follows the fifth E8 roll and touches no sealed source.
+
+
+## Completed remand validation and compatibility STOP
+
+All sealed semantic edits end at `d4c9bb7733d62c5bcdc5111e090380281fc894cb`.
+The old E8 pin `0x5bfe_5a63_c5d1_b97b` refused at session open before economics:
+required 6628835086103067003, observed 1528885755714777159. The authorized fifth
+roll `9e6decb40e2690c4fd8e1367747db499d096cb74` changes exactly the production and
+independent workshop fixed literals to `0x1537_b17e_9388_b047`. Qualification is
+4/4 PASS. Mutant fingerprints: ABI `f63cea7588996626`, child-share
+`d46b9fa8bc07c158`, planner `34c0d7a897145fd4`, temporal `d6881ec8314ef2da`;
+semantic bundle `94b8c7b853a6af15`. No sealed source changed afterward. The
+subsequent process isolation commit is test-only; no sixth roll was performed.
+
+| Validation | Completed result |
+| --- | --- |
+| Touched Driver/Spec packages and tests | PASS |
+| Fifth E8 qualification | 4 passed, 0 failed |
+| Focused disposal / neutral degeneration / recursion axes | 7 + 1 + 6 passed, 0 failed |
+| Mixed membership matrix | 72/72 passed; both postures and all three loops/orders |
+| Per-claimant all-depart matrix | 54/54 passed; both postures, all loops/binding/zero controls |
+| Late failure/retry matrix | 6/6 passed; no duplicated effects or hot cycle |
+| Frozen ten-target suite | 38 passed, 0 failed, 0 ignored |
+| Spec/Core compile-fail controls | 4/4 and 1/1 passed |
+| Full workspace/all-targets | 559 passed, 1 failed, 14 ignored; 147 reported groups; exit 101 |
+| Structural gates | 15/15 passed; final harness inventory/drift recheck passed |
+
+The focused suite now passes in one complete invocation. The complete full-workspace
+run has one non-superseded compatibility failure with default test concurrency
+and all existing ignore markers unchanged. It is not a zero-RED certificate. The earlier device-allocation failure remains in the diagnostic record;
+no child failure is retried, skipped or suppressed by the matrix isolation.
+
+The frozen suite includes the initial/established zero-member matrices, neutral
+departure/reentry and history replay; all ten resident-session conformance tests;
+generation fault/seal and execution identity; unchanged persistence single-port
+census/mutants; resident filter binding; positive exact-apportionment and parity
+zero-row retention. Exact-cap proof retains 338 no-collision cases with positive
+request digest `05cb01d96dc69dbe`, canonical digest `f967436fc86a9690` and the one
+retained zero row. The cap/redistribution corpus passes 3104 GPU physical runs.
+
+The 15 structural checks are inventory/drift, constitutional/check+selftest,
+lifecycle/schema+prove, sanctioned digest, detachability/check+selftest,
+anchors/check+selftest, and plan/observation/slot/Overlay censuses. Overlay census
+reports routes77, discovery73, residue89, unclassified0 and open0. The two narrowly
+admitted companions close the historical census/digest failures. No checker,
+universe, route-law, doctrine-prose or triage/justification change was made.
+
+Reproduction commands (raw logs retained in owner-local `.git/1512r-*`):
+
+```text
+cargo test -p simthing-workshop --test departing_stream_disposal_0 --test departure_live_basis_convergence_0 --test recursion_axis_conformance_0 --no-fail-fast -- --nocapture --test-threads=1
+cargo test -p simthing-workshop --test resident_session_integration_conformance_0 --test generation_abort_safety_0 --test tree_execution_authority_lifetime_0 --test exact_cap_projection_0 --test resident_clearing_parity_0 --test resident_clearing_apportionment_0 --test resident_filter_substrate_binding_0 --test recursive_resource_filter_formalization_0 --test persistence_deformation_port_0 --test consequence_ingress_0 --no-fail-fast -- --nocapture --test-threads=1
+cargo test -p simthing-spec --doc constrained_clearing -- --nocapture
+cargo test -p simthing-core --doc generation_stamp -- --nocapture
+cargo test --workspace --all-targets --no-fail-fast -j 2 --quiet
+```
+
+The frozen-source SHA256 certificate includes:
+
+```text
+crates/simthing-spec/src/spec/constrained_clearing.rs::carry_unresolved_demand_to_next_generation: True; sha256=f9e4f323d8365ad83b1dfd0cd22197fbcb694551bb5b07738b104ac50a0e4895
+crates/simthing-spec/src/spec/runtime_rf_tick.rs::mint_current_to_next: True; sha256=032bf1bd1411786543833ba243f94034791cf8b211fd0d57270b963c28f1047c
+crates/simthing-driver/src/resident_clearing_runtime.rs::prepare_temporal_demands: True; sha256=ff0029c083c267e4b89cb2444bd8bdce21141402e91f18cd7f1218896cc81b1b
+crates/simthing-driver/src/resident_clearing_runtime.rs::prepare_membership_demands: True; sha256=6aa11735813b09b8c2847a4683090f76b1687dae06b34673dd100431bacf5560
+crates/simthing-driver/src/resident_clearing_runtime.rs::dispatch_temporal: True; sha256=332cf5b81347bafd8837dc3d68223f9ddbc8e18071c0a69f300eedadb2fdad12
+crates/simthing-driver/src/resident_clearing_runtime.rs::dispatch_market: True; sha256=3955ea3b475a8c48dc0e70bf3b89d7749b8541ce9bf979dd6491cc6f35e6a264
+crates/simthing-kernel/src/resident_clearing_apportionment.rs: byte-identical; sha256=27d4562d279656373403e2a6d5aa4f5b89b44ab20a630f1828e3c08f2ca24112
+crates/simthing-kernel/src/shaders/resident_clearing_apportionment.wgsl: byte-identical; sha256=1232875ef68f136772de86a7b10a9b6e792546a53e8a0b0d8444591efd8c4f5c
+crates/simthing-kernel/src/resident_recursive_intake_transform.rs: byte-identical; sha256=24926733afeb06978e48e1ab7c071221d9be230797fae3d6a502911e2de3acb9
+crates/simthing-workshop/tests/persistence_deformation_port_0.rs: byte-identical; sha256=9017364277cc2b96aff28f36a31f6406b393efbe0c19966f8feb9a41f4c1a453
+crates/simthing-driver/src/persistence_consequence_ingress.rs: byte-identical to amended master; sha256=2c3125418cf328888361437e1b4fda00beb7a2921bcbe81d51d991d922ff2a29
+```
+
+The full-workspace failure is
+`fabricated_market_grant_key_is_typed_refusal_without_attach_row_or_retry_and_revalues_next_generation`
+in `crates/simthing-driver/tests/stemthing_b_growth_entitlement_seam_0.rs:226`:
+`11.2a clears the candidate: Clearing("qualified CPU oracle requires Current live-basis input")`.
+The existing test clones the session's qualified market binding and calls public
+`resolve_batch` to obtain a real entitlement/provenance credential before testing
+a forged key. That compatibility API has no Current-state parameter; it forwards
+`None` to the new private `resolve_batch_with_basis`, whose guard at
+`growth_entitlement.rs:840-845` refuses qualified input without Current live basis.
+The intended credential-negative/revaluation proof is not reached.
+
+The Driver referee is byte-identical to amended master (SHA256
+`cc69b5dc9f8dbd4c633765b252327688ffd1159febada1f19fdadb3c072fc808`). This is a
+compatibility regression, not a superseded request-proportional numeric expectation.
+The file is also outside the HD driver/src-only surface. No fixture, executor or
+expectation was changed to hide the failure.
+
+DA/orchestration must settle lawful access to actual Current live inputs for this
+existing compatibility proof and issue any necessary sealed-source/E8 authority.
+HD a5570e1fb2fe forbids sealed edits after the fifth roll and any sixth application.
+No neutral fallback, test weakening, further production edit or pin roll was
+attempted. All passing proofs above stand, while full-workspace ZERO-RED remains
+unfulfilled.
+
+The final return must carry committed-head Agent Scan and hosted Doctrine Scan/
+Doctrine Exec step conclusions and artifact bindings. Every scan-id-bearing
+INSPECT belongs to orchestration/DA triage. Coding performs no merge, clearance,
+relay-lint, graduation/pointer movement, closeout or engineering re-review.
