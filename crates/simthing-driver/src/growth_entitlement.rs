@@ -46,10 +46,6 @@ pub enum GrowthEntitlementError {
     ResidentProfileUnqualified,
     #[error("ordinary growth resident clearing failed: {0}")]
     Resident(String),
-    #[error(
-        "departing ordinary flow requires consequence-only disposition; STOP for DA adjudication"
-    )]
-    DepartingFlowDispositionRequired,
 }
 
 /// Frozen session binding for one standing granter. Authored sessions may
@@ -76,11 +72,18 @@ pub struct GrowthEntitlementMarketBinding {
 pub(crate) enum OrdinaryFlowContinuation {
     #[default]
     Empty,
-    Resident(crate::resident_clearing_runtime::ResidentClearingDispatchTicket),
+    Resident {
+        ticket: crate::resident_clearing_runtime::ResidentClearingDispatchTicket,
+        // Exact span of the already-materialized batch in the one history.
+        // No host G/U is retained or supplied to resident temporal economics.
+        history: std::ops::Range<usize>,
+    },
     CpuOracle {
         authority: simthing_spec::RuntimeRfDemandGenerationAuthority,
         supply: ConstrainedSupply,
         claims: Vec<ConstrainedClaim>,
+        // Already-born oracle products, observation only at neutral departure.
+        final_products: Vec<simthing_core::NeutralStreamFinalProduct>,
     },
 }
 
@@ -181,6 +184,8 @@ impl GrowthEntitlementMarketBinding {
                         "owner-flow priority must be an exact nonnegative integer".into(),
                     )
                 })?;
+            // Membership is property presence in this owner/scope, not quantity.
+            // Admitted zero remains a claim; a rejected zero returns Draw here.
             claims.push(self.authorize_demand(RuntimeOwnerSiloDemandBucket {
                 owner_ref: self.scope.owner_ref.clone(),
                 resource_key: self.scope.resource_key.clone(),
@@ -224,11 +229,46 @@ impl GrowthEntitlementMarketBinding {
             ResidentAuthoredDemand, ResidentClearingBatchBinding, ResidentTemporalExecutionBinding,
         };
         if claims.is_empty() {
-            // Ruling 6 does not authorize silently terminating a live stream.
-            // Keep its opaque provenance intact and refuse before mint/append;
-            // the existing consequence ingress has no resident-ticket input.
+            // Authorization retains admitted-zero bearers, so an empty set
+            // means membership loss. Terminate before temporal mint or append.
             if !matches!(continuation, OrdinaryFlowContinuation::Empty) {
-                return Err(GrowthEntitlementError::DepartingFlowDispositionRequired);
+                permit
+                    .authorize_economics()
+                    .map_err(|error| GrowthEntitlementError::Resident(error.to_string()))?;
+                let final_products = match continuation {
+                    OrdinaryFlowContinuation::Resident { history, .. } => schedule.entries()
+                        [history.clone()]
+                    .iter()
+                    .map(|entry| {
+                        let fact = entry
+                            .resident_clearing_fact
+                            .expect("completed resident materialization span");
+                        simthing_core::NeutralStreamFinalProduct {
+                            source_simthing_id: SimThingId::from_session_raw(
+                                fact.source_simthing_id_raw,
+                            ),
+                            granted: fact.granted,
+                            unresolved: fact.unresolved,
+                            generation: fact.generation,
+                        }
+                    })
+                    .collect(),
+                    OrdinaryFlowContinuation::CpuOracle { final_products, .. } => {
+                        std::mem::take(final_products)
+                    }
+                    OrdinaryFlowContinuation::Empty => unreachable!(),
+                };
+                schedule.record_neutral_stream_termination(
+                    simthing_core::NeutralStreamTerminationFact {
+                        granter: self.granter,
+                        owner_ref: self.scope.owner_ref.clone(),
+                        resource_key: self.scope.resource_key.as_str().to_owned(),
+                        scope_id: self.scope.scope_id.as_str().to_owned(),
+                        termination_generation: permit.generation(),
+                        final_products,
+                    },
+                );
+                *continuation = OrdinaryFlowContinuation::Empty;
             }
             if candidates.is_empty() {
                 return Ok(Vec::new());
@@ -269,7 +309,9 @@ impl GrowthEntitlementMarketBinding {
                 .as_ref()
                 .ok_or(GrowthEntitlementError::ResidentProfileUnqualified)?;
             let demands = match previous {
-                OrdinaryFlowContinuation::Resident(previous) => {
+                OrdinaryFlowContinuation::Resident {
+                    ticket: previous, ..
+                } => {
                     let authored: Vec<_> = claims
                         .iter()
                         .map(|claim| ResidentAuthoredDemand {
@@ -343,18 +385,34 @@ impl GrowthEntitlementMarketBinding {
             }
             .map_err(|e| GrowthEntitlementError::Resident(e.to_string()))?;
             // Observer only: no materialized G/U feeds demand, supply, or RF policy.
+            let start = schedule.entries().len();
             runtime
                 .materialize(state, qualification, schedule, &ticket)
                 .map_err(|e| GrowthEntitlementError::Resident(e.to_string()))?;
-            *continuation = OrdinaryFlowContinuation::Resident(ticket);
+            *continuation = OrdinaryFlowContinuation::Resident {
+                ticket,
+                history: start..schedule.entries().len(),
+            };
             Ok(decisions)
         } else {
             if let OrdinaryFlowContinuation::CpuOracle {
                 authority,
                 supply,
                 claims: previous,
+                ..
             } = previous
             {
+                // The same complete source-set contract as resident temporal
+                // preparation. No subset matching or partial retirement.
+                if !previous
+                    .iter()
+                    .map(ConstrainedClaim::source_simthing_id)
+                    .eq(claims.iter().map(ConstrainedClaim::source_simthing_id))
+                {
+                    return Err(GrowthEntitlementError::Resident(
+                        crate::resident_clearing_runtime::ResidentClearingRuntimeError::TemporalSourceMismatch.to_string(),
+                    ));
+                }
                 let next = claims
                     .iter()
                     .map(|claim| RuntimeOwnerSiloDemandBucket {
@@ -408,6 +466,16 @@ impl GrowthEntitlementMarketBinding {
                     .map_err(|e| GrowthEntitlementError::Grant(e.to_string()))?;
             }
             *continuation = OrdinaryFlowContinuation::CpuOracle {
+                final_products: results
+                    .iter()
+                    .flat_map(|result| &result.grants)
+                    .map(|grant| simthing_core::NeutralStreamFinalProduct {
+                        source_simthing_id: grant.source_simthing_id,
+                        granted: grant.granted,
+                        unresolved: grant.unresolved,
+                        generation,
+                    })
+                    .collect(),
                 authority:
                     simthing_spec::RuntimeRfDemandGenerationAuthority::with_persistence_deformations(
                         ClearingRemainderAuthority {

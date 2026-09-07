@@ -490,7 +490,7 @@ fn settle_partition(local: u32) {
             }
         }
     }
-    if (overflow || wide_is_zero(band_requested_total)) {
+    if (overflow) {
         write_product(current, 0u, 0u, STATUS_ARITHMETIC_OVERFLOW);
         return;
     }

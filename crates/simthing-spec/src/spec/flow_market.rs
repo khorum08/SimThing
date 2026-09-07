@@ -91,7 +91,7 @@ pub enum FlowMarketAdmissionError {
     InvalidUnitCost { offering: String },
     #[error("offering `{offering}` has an invalid default clearing weight")]
     InvalidClearingWeight { offering: String },
-    #[error("Draw envelope `{draw}` must have 0 < min_quantity <= max_quantity")]
+    #[error("Draw envelope `{draw}` must have 0 <= min_quantity <= max_quantity")]
     InvalidDrawBounds { draw: String },
     #[error("Draw envelope `{draw}` repeats offering reference `{offering}`")]
     DuplicateOfferingReference { draw: String, offering: String },
@@ -182,7 +182,7 @@ pub fn admit_specialization_flow_market(
         {
             return Err(FlowMarketAdmissionError::EmptyIdentifier);
         }
-        if draw.min_quantity == 0 || draw.min_quantity > draw.max_quantity {
+        if draw.min_quantity > draw.max_quantity {
             return Err(FlowMarketAdmissionError::InvalidDrawBounds { draw: draw.id });
         }
         let mut seen_refs = BTreeSet::new();

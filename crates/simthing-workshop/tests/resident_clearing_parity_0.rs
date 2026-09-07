@@ -49,7 +49,7 @@ use simthing_spec::{
     ScalarBoundDirection, ScopeId,
 };
 
-const QUALIFIED_RECORD_FINGERPRINT: u64 = 0xf12f_7455_8d8b_dab5;
+const QUALIFIED_RECORD_FINGERPRINT: u64 = 0x64c8_2fb4_de76_90ac;
 
 fn col(raw: usize) -> ColumnIndex {
     ColumnIndex::from_raw_for_oracle_or_rehearsal(raw)
@@ -1150,7 +1150,13 @@ fn negative_error_matrix_is_typed_unrepresentable_or_sealed_without_partial_prod
         GenerationStamp::new(0),
     )
     .unwrap();
-    assert_eq!(zero_request_plan.claims().len(), 2);
+    assert_eq!(zero_request_plan.claims().len(), 3);
+    let zero_claim = zero_request_plan
+        .claims()
+        .iter()
+        .find(|claim| claim.source_simthing_id() == source(0))
+        .unwrap();
+    assert_eq!(zero_claim.requested(), 0);
     values.fill(0.0);
     set_allocated(&mut values, state.n_dims, 1, 1.0);
     set_allocated(&mut values, state.n_dims, 2, 1.0);
@@ -1163,10 +1169,41 @@ fn negative_error_matrix_is_typed_unrepresentable_or_sealed_without_partial_prod
         ResidentApportionmentDispatch::single_pass(),
     )
     .unwrap();
-    assert_eq!(zero_request_products.len(), 2);
-    assert!(zero_request_products
+    assert_eq!(zero_request_products.len(), 3);
+    assert_eq!(
+        zero_request_products,
+        execute_resident_apportionment_cpu(&zero_request_plan, &values, state.n_dims).unwrap()
+    );
+    assert_eq!(
+        product_map(&zero_request_products),
+        BTreeMap::from([
+            (source(0).raw(), (0, 0)),
+            (source(1).raw(), (1, 0)),
+            (source(2).raw(), (1, 0)),
+        ])
+    );
+    let zero_product = zero_request_products
         .iter()
-        .all(|product| product.source_simthing_id() != source(0)));
+        .find(|product| product.source_simthing_id() == source(0))
+        .unwrap();
+    assert_eq!(zero_product.semantic_row(), zero_claim.semantic_row());
+    for product in &zero_request_products {
+        assert!(product.is_successful());
+        assert_eq!(product.generation(), zero_request_plan.generation());
+        assert_eq!(
+            product.integration_band(),
+            zero_request_plan.integration_band()
+        );
+    }
+    assert_eq!(
+        zero_request_products
+            .iter()
+            .map(|row| row.granted())
+            .sum::<u32>(),
+        2,
+        "the two positive members alone consume the supply"
+    );
+    println!("15.11 parity retained-zero block: requested0/G0/U0, two positive G1/U0, total grant2, generation/band preserved: {zero_request_products:?}");
 
     for invalid in [f32::NAN, f32::INFINITY, f32::NEG_INFINITY, -1.0] {
         values.fill(0.0);
@@ -1450,9 +1487,48 @@ fn three_recursive_edges_self_consume_exact_ts_and_u_recurs_once_at_n_plus_one()
     .unwrap();
     assert_eq!(
         product_map(&root_products),
-        BTreeMap::from([(1_000, (8, 2))])
+        BTreeMap::from([(1_000, (8, 2)), (1_001, (0, 0))])
+    );
+    assert_eq!(root_exact.claims().len(), 2);
+    assert_eq!(root_products.len(), 2);
+    let zero_claim = root_exact
+        .claims()
+        .iter()
+        .find(|claim| claim.source_simthing_id().raw() == 1_001)
+        .unwrap();
+    assert_eq!(zero_claim.requested(), 0);
+    let zero_product = root_products
+        .iter()
+        .find(|product| product.source_simthing_id().raw() == 1_001)
+        .unwrap();
+    assert_eq!(zero_product.semantic_row(), zero_claim.semantic_row());
+    assert_eq!((zero_product.granted(), zero_product.unresolved()), (0, 0));
+    assert_eq!(zero_product.generation(), GenerationStamp::new(10));
+    assert_eq!(zero_product.integration_band(), 10);
+    assert_eq!(
+        zero_product.integration_band(),
+        root_exact.integration_band()
+    );
+    assert!(zero_product.is_successful());
+    assert_eq!(
+        root_products
+            .iter()
+            .map(|product| product.granted())
+            .sum::<u32>(),
+        8,
+        "source1000 alone supplies the root chain's eight conserved units"
     );
     let edge_one_output: ResidentSettlementOutput = chain_product(&root_products);
+    let positive_product = root_products
+        .iter()
+        .find(|product| product.source_simthing_id().raw() == 1_000)
+        .unwrap();
+    assert_eq!(edge_one_output, *positive_product);
+    assert_eq!(
+        (edge_one_output.granted(), edge_one_output.unresolved()),
+        (8, 2)
+    );
+    println!("15.11 recursive-root retained-zero proof: source1000 G8/U2 remains the chain product; source1001 requested0/G0/U0; generation10/band10/STATUS_OK; total grant8: {root_products:?}");
 
     // Edge 2 consumes the literal edge-1 product through the exact alias. The
     // 3:1 live basis spends the eight-unit intake as 6/2; the chain product is
