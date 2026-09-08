@@ -249,3 +249,73 @@ fn priority_score_preserves_resident_precedence_in_both_postures() {
     println!("15.13 F2: authored scores={scores:?}; canonical priorities=[0,1]");
     policy_matrix("F2 priority-sensitive", program);
 }
+
+#[test]
+fn saturated_cap_products_recur_once_through_the_ordinary_session() {
+    let (fixture, ids) = scenario([1, 100], [0, 0], 51);
+    for reverse in [false, true] {
+        for path in [Loop::Step, Loop::Run, Loop::Record] {
+            for posture in [
+                ClearingExecutionPosture::ResidentRequired,
+                ClearingExecutionPosture::CpuVendorizedOracle,
+            ] {
+                let mut permuted = fixture.clone();
+                if reverse {
+                    permuted.root.children.reverse();
+                }
+                let mut session = open(permuted, posture, TransformOp::set(1.0));
+                let slots = ids.map(|id| session.proto.allocator.slot_of(id).unwrap().raw());
+                assert_eq!(slots[0] < slots[1], !reverse);
+                let identity = session.persisted_execution_identity();
+                let expected = [
+                    [(1, 0), (50, 50)],
+                    [(2, 0), (49, 4)],
+                    [(0, 0), (4, 0)],
+                    [(0, 0), (0, 0)],
+                ];
+                let authored = [[1, 100], [2, 3], [0, 0], [0, 0]];
+                let mut previous_u = [0, 0];
+                for index in 0..expected.len() {
+                    let generation = index as u32 + 1;
+                    if index != 0 {
+                        for (id, demand) in ids.into_iter().zip(authored[index]) {
+                            assert!(session.proto.root.add_property_to_node(
+                                id,
+                                OWNER_FLOW_DEMAND_PROPERTY_ID,
+                                scenario_metadata_u32_value(demand),
+                            ));
+                        }
+                    }
+                    advance(&mut session, path).unwrap();
+                    assert_live_basis(&session, ids);
+                    assert_eq!(session.coord.day_index(), u64::from(generation));
+                    assert_eq!(session.persisted_execution_identity(), identity);
+                    let actual = products(&session, ids, generation);
+                    assert_eq!(actual, expected[index]);
+                    let effective =
+                        std::array::from_fn::<_, 2, _>(|i| authored[index][i] + previous_u[i]);
+                    assert_eq!(
+                        actual.iter().map(|(g, u)| g + u).collect::<Vec<_>>(),
+                        effective,
+                        "canonical G+U equals authored demand plus one identity carry",
+                    );
+                    assert!(actual.iter().map(|(g, _)| *g).sum::<u32>() <= 51);
+                    for prior in 0..index {
+                        assert_eq!(products(&session, ids, prior as u32 + 1), expected[prior]);
+                    }
+                    println!("15.13 F3 {posture:?}/{path:?}/reverse={reverse} slots={slots:?} N={generation}: authored={:?} prior_U={previous_u:?} effective={effective:?} G/U={actual:?}; actual bases=[1,1]", authored[index]);
+                    previous_u = [actual[0].1, actual[1].1];
+                }
+                assert!(!session
+                    .integration_schedule()
+                    .entries()
+                    .iter()
+                    .any(|entry| {
+                        matches!(entry.row_kind(),
+                        simthing_core::IntegrationScheduleRowKind::GrowthEntitlementRefusal
+                        | simthing_core::IntegrationScheduleRowKind::ResidencyPlacementCommit)
+                    }));
+            }
+        }
+    }
+}
