@@ -3285,7 +3285,11 @@ def cmd_prove():
     # never runs. These cases pin the declaration as the only source and pin the
     # absence of any guess-based fallback.
     global ACTIVE_TRACK
-    declared = read_active_track_pointer().get("path", "")
+    # Self-contained fixture: the selftest must not depend on live repo state.
+    # The live pointer is lawfully `none` after a track closeout, which made
+    # these cases mis-fire on every closed-track state (2026-09-08 ceremony).
+    _fixture_docs = sorted((ROOT / "docs").glob("design_0_0_*.md"), key=lambda q: q.name)
+    declared = _fixture_docs[0].relative_to(ROOT).as_posix() if _fixture_docs else ""
     saved_active_track = ACTIVE_TRACK
     rungclose_dir = pathlib.Path(tempfile.mkdtemp(prefix="rungclose-workplan-"))
     try:
