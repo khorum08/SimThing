@@ -1017,6 +1017,9 @@ impl SimSession {
             self.resident_clearing = Some(runtime);
         }
         self.growth_entitlement = binding;
+        if !self.clearing_execution_posture.is_resident_required() {
+            self.bind_or_rebind_resident_clearing_to_current_arena()?;
+        }
         Ok(())
     }
 
@@ -1074,10 +1077,71 @@ impl SimSession {
                 "clearing execution posture freezes before the first tick".into(),
             ));
         }
-        if posture.is_resident_required() {
-            self.bind_or_rebind_resident_clearing_to_current_arena()?;
-        }
+        let previous = self.clearing_execution_posture;
         self.clearing_execution_posture = posture;
+        if let Err(error) = self.bind_or_rebind_resident_clearing_to_current_arena() {
+            self.clearing_execution_posture = previous;
+            return Err(error);
+        }
+        Ok(())
+    }
+
+    fn admit_departure_lifecycle_catalogue(&mut self) -> Result<(), SessionError> {
+        if self
+            .spec_state
+            .persistence_deformations
+            .departure_dispositions()
+            .next()
+            .is_some()
+        {
+            // The existing catalogue derives from a semantic shadow; authored
+            // templates reserve lifecycle shapes without a live Overlay or cost.
+            let mut shadow = self
+                .proto
+                .with_sealed_tree_execution_binding(
+                    &self.execution_lease,
+                    &self.integration_schedule,
+                    |binding| binding.root().clone(),
+                )
+                .map_err(|error| SessionError::Mapping(error.to_string()))?;
+            for disposition in self
+                .spec_state
+                .persistence_deformations
+                .departure_dispositions()
+            {
+                let binding = disposition.overlay();
+                let lifecycle =
+                    simthing_core::dispatch_until_dissolved(binding.dissolution_conditions.clone())
+                        .map_err(|error| SessionError::Mapping(error.to_string()))?;
+                let template = simthing_core::Overlay {
+                    id: simthing_core::OverlayId::new(),
+                    kind: simthing_core::OverlayKind::Instruction,
+                    source: simthing_core::OverlaySource::System,
+                    origin: binding.origin,
+                    affects: vec![binding.target],
+                    transform: binding.transform.clone(),
+                    lifecycle,
+                };
+                simthing_core::deliver_routed_overlay(&mut shadow, binding.target, template)
+                    .map_err(|error| SessionError::Mapping(error.to_string()))?;
+            }
+            let (catalogue, registrations) =
+                simthing_sim::overlay_lifecycle::derive_overlay_lifecycle_admission_catalog(
+                    &shadow,
+                    &self.proto.registry,
+                    &self.proto.allocator,
+                    simthing_core::GenerationStamp::new(0),
+                    &Default::default(),
+                );
+            self.state.ensure_threshold_accumulator(
+                self.state
+                    .n_thresholds
+                    .max(simthing_gpu::DEFAULT_THRESHOLD_EMISSION_CAPACITY),
+            );
+            self.state
+                .freeze_overlay_lifecycle_admission(&catalogue, &registrations)
+                .map_err(|error| SessionError::Mapping(error.to_string()))?;
+        }
         Ok(())
     }
 
@@ -1107,6 +1171,7 @@ impl SimSession {
         self.sync_spec_threshold_registrations();
         self.sync_resource_flow()?;
         self.sync_resource_economy_at_install()?;
+        self.admit_departure_lifecycle_catalogue()?;
         // Re-project tree (including entity-hosted Constant PropertyValue seeds)
         // then upload thresholds. No dense install_resolved_values authority.
         self.proto.initial_gpu_sync(&self.coord, &mut self.state)?;
@@ -1156,9 +1221,39 @@ impl SimSession {
     }
 
     fn bind_or_rebind_resident_clearing_to_current_arena(&mut self) -> Result<(), SessionError> {
-        if !self.clearing_execution_posture.is_resident_required()
-            || self.spec_state.arena_registry.arenas.is_empty()
-        {
+        if self.spec_state.arena_registry.arenas.is_empty() {
+            return Ok(());
+        }
+        if !self.clearing_execution_posture.is_resident_required() {
+            if self.growth_entitlement.is_implicit_root_standing()
+                && !self.spec_state.arena_registry.arenas.iter().any(|arena| {
+                    let property = self.proto.registry.property(arena.flow_property_id);
+                    property.namespace
+                        == crate::resident_clearing_runtime::RESIDENT_MARKET_RF_NAMESPACE
+                        && property.name
+                            == crate::resident_clearing_runtime::RESIDENT_MARKET_RF_PROPERTY
+                })
+            {
+                return Ok(());
+            }
+            let market = self.growth_entitlement.resident_market_admission();
+            let projection = self
+                .proto
+                .with_sealed_tree_execution_binding(
+                    &self.execution_lease,
+                    &self.integration_schedule,
+                    |binding| {
+                        crate::resident_clearing_runtime::CpuOracleProjection::admit(
+                            &self.state.ctx,
+                            binding,
+                            &self.spec_state.arena_registry,
+                            self.state.n_slots.max(1),
+                            market,
+                        )
+                    },
+                )
+                .map_err(|error| SessionError::Mapping(error.to_string()))??;
+            self.growth_entitlement.oracle_projection = Some(projection);
             return Ok(());
         }
         if self.resident_clearing.is_none() {
@@ -1950,6 +2045,7 @@ impl SimSession {
         let resident_clearing = &mut self.resident_clearing;
         let continuation = &mut self.ordinary_flow_continuation;
         let flow_deformations = spec_state.persistence_deformations.clone();
+        let consequence_boundary = self.tx.clone();
         let current_flow = std::cell::RefCell::new(Ok((Vec::new(), 0)));
         let outcome = self.proto.execute_with_boundary_hook_and_growth(
             tick.events,
@@ -1977,6 +2073,7 @@ impl SimSession {
                         available,
                         clearing_execution_posture,
                         &flow_deformations,
+                        &consequence_boundary,
                         allocator,
                         candidates,
                     )
@@ -2113,6 +2210,7 @@ impl SimSession {
                 let resident_clearing = &mut self.resident_clearing;
                 let continuation = &mut self.ordinary_flow_continuation;
                 let flow_deformations = spec_state.persistence_deformations.clone();
+                let consequence_boundary = self.tx.clone();
                 let current_flow = std::cell::RefCell::new(Ok((Vec::new(), 0)));
                 let outcome = self.proto.execute_with_boundary_hook_and_growth(
                     tick.events,
@@ -2141,6 +2239,7 @@ impl SimSession {
                                 available,
                                 clearing_execution_posture,
                                 &flow_deformations,
+                                &consequence_boundary,
                                 allocator,
                                 candidates,
                             )

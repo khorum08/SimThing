@@ -15,7 +15,7 @@ This digest is a derived context artifact for low-context agents. If it disagree
 | scripts/ci/allow/sealed_types.txt | 19 | 9d427e3b41a586b06f24ca02cc45f78934237d2229b0c38d46e2a8a6ef5016be |
 | scripts/ci/allow/contention_mechanisms.txt | 9 | 1f9e930b44197d4254f46ea96328f814d9ba0f2dad06881c454aebc01c01d44b |
 | scripts/ci/scans.tsv | 24 | 36bf78ae4a81a9c49b570051a0f53cb10aa88ab5cf57faa0a05d83abfd068e79 |
-| scripts/ci/constitutional_surfaces.tsv | 49 | 86d0e9a8d38665fa0a89bba1acd4cad874e84898d0644dc25ab9716b722db028 |
+| scripts/ci/constitutional_surfaces.tsv | 49 | b7041f54ae6649090a36b3c830a5e18789f08b57174a22c351f570ac3f2b4e3b |
 | scripts/ci/constitutional_surface_check.sh | 870 | d0cb347d1ecd5818444a3284d95665d97fd0f3dc96f37a11d36b20d0cb2c9ed5 |
 
 ## Sanctioned Sealed Producers

@@ -108,13 +108,13 @@ pub use fission_clone_source::{
 pub use generation_stamp::{
     admit_dispatch_minted_overlay, dispatch_until_dissolved, integrate_stamped_product,
     integrate_unstamped_product_forbidden, replay_integration_schedule, replay_standing_views,
-    AncestorStandingPolicyView, AuthoredSeamStaleness, BackpressurePolicy, DispatchOverlayError,
-    GenerationStamp, GenerationStamped, GrantLifecycleScheduleError, IntegrateError,
-    IntegrationReceipt, IntegrationSchedule, IntegrationScheduleEntry, IntegrationScheduleRowKind,
-    NeutralStreamFinalProduct, NeutralStreamTerminationFact, ResidentClearingScheduleFact,
-    ResidentScheduleError, ResidentScheduleReservation,
-    RingPushOutcome, RoutedGenerationDuration, StampedEgressEntry, StampedEventRing,
-    StandingViewDoubleBuffer,
+    AncestorStandingPolicyView, AuthoredSeamStaleness, BackpressurePolicy,
+    DepartureConsequenceFact, DispatchOverlayError, GenerationStamp, GenerationStamped,
+    GrantLifecycleScheduleError, IntegrateError, IntegrationReceipt, IntegrationSchedule,
+    IntegrationScheduleEntry, IntegrationScheduleRowKind, NeutralStreamFinalProduct,
+    NeutralStreamTerminationFact, ResidentClearingScheduleFact, ResidentScheduleError,
+    ResidentScheduleReservation, RingPushOutcome, RoutedGenerationDuration, StampedEgressEntry,
+    StampedEventRing, StandingViewDoubleBuffer,
 };
 pub use grant_lifecycle::{
     grant_disbursement_capacity_overlay, grant_disbursement_capacity_property,
@@ -147,7 +147,7 @@ pub use owner_channel::{
 };
 pub use persistence_deformation::{
     PersistenceDeformationAdmissionError, PersistenceDeformationError,
-    PersistenceDeformationProgram, MAX_EXACT_PERSISTENCE_DEFORMATION_CAP,
+    PersistenceDeformationProgram, SurvivorSubsetPermission, MAX_EXACT_PERSISTENCE_DEFORMATION_CAP,
 };
 pub use placed_participant::{
     validate_and_mint_placed_participants_by_location_id,

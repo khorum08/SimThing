@@ -242,13 +242,8 @@ pub fn produce_runtime_rf_next_generation_demands(
             .persistence_deformations
             .program_for(&key.0, key.1);
         stamped.push(
-            carry_unresolved_demand_to_next_generation(
-                current_generation,
-                next_demand,
-                unresolved,
-                deformation,
-            )
-            .map_err(|error| demand_current_to_next_rejected(&error.to_string()))?,
+            carry_oracle_demand(current_generation, next_demand, unresolved, deformation)
+                .map_err(|error| demand_current_to_next_rejected(&error.to_string()))?,
         );
     }
 
@@ -259,6 +254,145 @@ pub fn produce_runtime_rf_next_generation_demands(
     }
 
     Ok((current_clearing_results, stamped))
+}
+
+/// Fact-authorized extension of the existing oracle mint. The complete prior
+/// clear is unchanged; only surviving observations enter the same recurrence.
+/// Entrants are independent fresh products and cannot be supplied to this door.
+pub fn produce_runtime_rf_survivor_demands(
+    authority: &RuntimeRfDemandGenerationAuthority,
+    current_supplies: &[ConstrainedSupply],
+    current_claims: &[ConstrainedClaim],
+    current_program: &AuthoredClearingProgram,
+    permission: Option<&simthing_core::SurvivorSubsetPermission>,
+    mut next_demands: Vec<RuntimeOwnerSiloDemandBucket>,
+) -> Result<Vec<GenerationStamped<RuntimeOwnerSiloDemandBucket>>, RuntimeRfTickError> {
+    let permission =
+        permission.ok_or_else(|| demand_current_to_next_rejected("TemporalSourceMismatch"))?;
+    let prior: Vec<_> = current_claims
+        .iter()
+        .map(ConstrainedClaim::source_simthing_id)
+        .collect();
+    let survivors: BTreeSet<_> = permission
+        .current_sources()
+        .iter()
+        .copied()
+        .filter(|source| prior.contains(source))
+        .collect();
+    let next: BTreeSet<_> = next_demands
+        .iter()
+        .filter_map(|demand| {
+            demand
+                .source_simthing_id_raw
+                .map(SimThingId::from_session_raw)
+        })
+        .collect();
+    if prior != permission.prior_sources()
+        || next != survivors
+        || next.len() != next_demands.len()
+        || permission.granter() != authority.clearing_authority.granter
+        || authority.current_generation().get().checked_add(1)
+            != Some(permission.generation().get())
+        || current_claims.iter().any(|claim| {
+            !permission.matches_scope(
+                &claim.scope().owner_ref,
+                claim.scope().resource_key.as_str(),
+                claim.scope().scope_id.as_str(),
+            )
+        })
+    {
+        return Err(demand_current_to_next_rejected("TemporalSourceMismatch"));
+    }
+    authority.mint_current_to_next()?;
+    let results = clear_constrained_claims_at_generation(
+        current_supplies,
+        current_claims,
+        current_program,
+        authority.clearing_authority,
+    )
+    .map_err(|error| demand_current_to_next_rejected(&error.to_string()))?;
+    let mut observations = BTreeMap::new();
+    for result in &results {
+        if result
+            .grants
+            .iter()
+            .try_fold(0u32, |total, grant| total.checked_add(grant.unresolved))
+            != Some(result.unresolved_total)
+        {
+            return Err(demand_current_to_next_rejected(
+                "clearing result unresolved total is not intact",
+            ));
+        }
+        for grant in &result.grants {
+            if grant.scope != result.scope
+                || !grant.has_intact_clearance_seal()
+                || grant.clearing_generation() != authority.current_generation()
+            {
+                return Err(demand_current_to_next_rejected(
+                    "clearing grant seal is not intact",
+                ));
+            }
+            if !survivors.contains(&grant.source_simthing_id) {
+                continue;
+            }
+            if let Some(observation) = UnresolvedDemandObservation::from_sealed_grant(grant) {
+                if observations
+                    .insert(
+                        (observation.scope.clone(), observation.source_simthing_id),
+                        observation,
+                    )
+                    .is_some()
+                {
+                    return Err(demand_current_to_next_rejected(
+                        "duplicate survivor observation",
+                    ));
+                }
+            }
+        }
+    }
+    next_demands.sort_by(demand_bucket_sort_key);
+    let mut stamped = Vec::with_capacity(next_demands.len());
+    for demand in next_demands {
+        let scope = demand.scope_key();
+        let source =
+            SimThingId::from_session_raw(demand.source_simthing_id_raw.expect("validated source"));
+        if !permission.matches_scope(
+            &scope.owner_ref,
+            scope.resource_key.as_str(),
+            scope.scope_id.as_str(),
+        ) {
+            return Err(demand_current_to_next_rejected("TemporalSourceMismatch"));
+        }
+        stamped.push(
+            carry_oracle_demand(
+                authority.current_generation(),
+                demand,
+                observations.remove(&(scope.clone(), source)),
+                authority
+                    .persistence_deformations
+                    .program_for(&scope, source),
+            )
+            .map_err(|error| demand_current_to_next_rejected(&error.to_string()))?,
+        );
+    }
+    if !observations.is_empty() {
+        return Err(demand_current_to_next_rejected(
+            "omitted survivor observation",
+        ));
+    }
+    Ok(stamped)
+}
+
+fn carry_oracle_demand(
+    generation: GenerationStamp,
+    demand: RuntimeOwnerSiloDemandBucket,
+    observation: Option<UnresolvedDemandObservation>,
+    deformation: Option<&simthing_core::PersistenceDeformationProgram>,
+) -> Result<
+    GenerationStamped<RuntimeOwnerSiloDemandBucket>,
+    super::constrained_clearing::ConstrainedClearingError,
+> {
+    carry_unresolved_demand_to_next_generation(generation, demand, observation, deformation)
 }
 
 fn demand_current_to_next_already_produced(generation: GenerationStamp) -> RuntimeRfTickError {

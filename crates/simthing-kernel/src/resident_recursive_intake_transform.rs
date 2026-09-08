@@ -59,6 +59,22 @@ pub struct ResidentTemporalDemand {
 }
 
 impl ResidentTemporalDemand {
+    /// Fresh entering demand is excluded from the survivor mint. Permission
+    /// proves this source has no prior product from which U could be carried.
+    pub fn fresh_entry(
+        permission: &simthing_core::SurvivorSubsetPermission,
+        source: simthing_core::SimThingId,
+        quantity: u32,
+    ) -> Option<Self> {
+        (permission.current_sources().contains(&source)
+            && !permission.prior_sources().contains(&source))
+        .then_some(Self {
+            source_simthing_id_raw: source.raw(),
+            quantity,
+            generation: permission.generation().get(),
+            status: DEMAND_STATUS_OK,
+        })
+    }
     pub fn source_simthing_id(self) -> simthing_core::SimThingId {
         simthing_core::SimThingId::from_session_raw(self.source_simthing_id_raw)
     }
@@ -284,6 +300,148 @@ impl ResidentTemporalDemandMintSession {
         pass.dispatch_workgroups(row_count.div_ceil(WORKGROUP_SIZE), 1, 1);
         Ok(())
     }
+    /// Fact-authorized survivor selection composes the unchanged 1:1 mint
+    /// with fresh entrant rows, entirely within this already-sealed component.
+    #[allow(clippy::too_many_arguments)]
+    pub fn encode_membership(
+        &self,
+        ctx: &GpuContext,
+        encoder: &mut CommandEncoder,
+        input: &Buffer,
+        input_start_row: u32,
+        output: &Buffer,
+        prior_plan: &ResidentApportionmentPlan,
+        survivor_plan: Option<&ResidentApportionmentPlan>,
+        source_generation: simthing_core::GenerationStamp,
+        source_count: u32,
+        permission: &simthing_core::SurvivorSubsetPermission,
+        authored: &[(simthing_core::SimThingId, u32)],
+    ) -> Result<(), ResidentTemporalDemandMintError> {
+        use wgpu::util::DeviceExt;
+        use wgpu::BufferDescriptor;
+        let prior: Vec<_> = prior_plan
+            .claims()
+            .iter()
+            .map(|claim| claim.source_simthing_id())
+            .collect();
+        let current: Vec<_> = authored.iter().map(|(source, _)| *source).collect();
+        let selected: Vec<_> = prior_plan
+            .claims()
+            .iter()
+            .enumerate()
+            .filter(|(_, claim)| current.contains(&claim.source_simthing_id()))
+            .collect();
+        if prior != permission.prior_sources()
+            || current != permission.current_sources()
+            || source_generation != prior_plan.generation()
+            || prior_plan.generation().get().checked_add(1) != Some(permission.generation().get())
+            || prior_plan.authority_granter() != permission.granter()
+            || prior.len() != source_count as usize
+            || current.len() > u32::MAX as usize
+            || survivor_plan.is_some_and(|plan| {
+                plan.generation() != prior_plan.generation()
+                    || plan.authority_granter() != prior_plan.authority_granter()
+                    || plan.integration_band() != prior_plan.integration_band()
+                    || plan.claims().iter().any(|claim| {
+                        plan.persistence_deformation(claim.semantic_row())
+                            != prior_plan.persistence_deformation(claim.semantic_row())
+                    })
+            })
+            || survivor_plan.map(|plan| plan.claims())
+                != (!selected.is_empty())
+                    .then(|| {
+                        selected
+                            .iter()
+                            .map(|(_, claim)| **claim)
+                            .collect::<Vec<_>>()
+                    })
+                    .as_deref()
+        {
+            return Err(ResidentTemporalDemandMintError::TemporalSourceMismatch);
+        }
+        let product_bytes = PRODUCT_WORDS * 4;
+        if input.size() < (input_start_row as u64 + prior.len() as u64) * product_bytes
+            || output.size() < current.len() as u64 * DEMAND_WORDS * 4
+        {
+            return Err(ResidentTemporalDemandMintError::TemporalSourceMismatch);
+        }
+        let demand_bytes = std::mem::size_of::<ResidentTemporalDemand>() as u64;
+        let selected_products = ctx.device.create_buffer(&BufferDescriptor {
+            label: Some("survivor_product_selection"),
+            size: (selected.len().max(1) as u64) * product_bytes,
+            usage: BufferUsages::STORAGE | BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        let selected_demands = ctx.device.create_buffer(&BufferDescriptor {
+            label: Some("survivor_mint_output"),
+            size: (selected.len().max(1) as u64) * demand_bytes,
+            usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC,
+            mapped_at_creation: false,
+        });
+        for (destination, (physical, _)) in selected.iter().enumerate() {
+            encoder.copy_buffer_to_buffer(
+                input,
+                (input_start_row as u64 + *physical as u64) * product_bytes,
+                &selected_products,
+                destination as u64 * product_bytes,
+                product_bytes,
+            );
+        }
+        if let Some(plan) = survivor_plan {
+            let quantities: Vec<_> = selected
+                .iter()
+                .map(|(_, claim)| {
+                    authored
+                        .iter()
+                        .find(|(source, _)| *source == claim.source_simthing_id())
+                        .expect("selected current source")
+                        .1
+                })
+                .collect();
+            self.encode(
+                ctx,
+                encoder,
+                &selected_products,
+                0,
+                &selected_demands,
+                plan,
+                &quantities,
+                permission.generation(),
+            )?;
+        }
+        for (destination, (source, quantity)) in authored.iter().enumerate() {
+            if let Some(physical) = selected
+                .iter()
+                .position(|(_, claim)| claim.source_simthing_id() == *source)
+            {
+                encoder.copy_buffer_to_buffer(
+                    &selected_demands,
+                    physical as u64 * demand_bytes,
+                    output,
+                    destination as u64 * demand_bytes,
+                    demand_bytes,
+                );
+            } else {
+                let fresh = ResidentTemporalDemand::fresh_entry(permission, *source, *quantity)
+                    .ok_or(ResidentTemporalDemandMintError::TemporalSourceMismatch)?;
+                let buffer = ctx
+                    .device
+                    .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                        label: Some("fresh_entering_authored_demand"),
+                        contents: bytemuck::bytes_of(&fresh),
+                        usage: BufferUsages::COPY_SRC,
+                    });
+                encoder.copy_buffer_to_buffer(
+                    &buffer,
+                    0,
+                    output,
+                    destination as u64 * demand_bytes,
+                    demand_bytes,
+                );
+            }
+        }
+        Ok(())
+    }
 }
 
 fn uniform_layout_entry(binding: u32) -> BindGroupLayoutEntry {
@@ -314,6 +472,8 @@ fn storage_layout_entry(binding: u32, read_only: bool) -> BindGroupLayoutEntry {
 
 #[derive(Clone, Debug, PartialEq, Eq, Error)]
 pub enum ResidentTemporalDemandMintError {
+    #[error("resident membership demands lack exact same-generation termination permission")]
+    TemporalSourceMismatch,
     #[error("resident temporal demand row count cannot narrow to u32")]
     RowCountNarrowing,
     #[error("resident temporal mint has {observed} authored rows, expected {expected}")]

@@ -548,6 +548,118 @@ struct ResidentProjection {
     semantic_scope_draw_shape_digest: u64,
 }
 
+/// CPU-reference projection retained in the existing admitted market binding.
+/// It owns no executor, continuation, history, generation authority or U.
+#[derive(Clone, Debug)]
+pub(crate) struct CpuOracleProjection {
+    arena_binding: ResidentRfArenaBinding,
+    semantic_plan: ResidentClearingPlan,
+    root_scope_owner: SimThingId,
+}
+
+impl CpuOracleProjection {
+    pub(crate) fn admit(
+        ctx: &GpuContext,
+        binding: &TreeExecutionBinding<'_, SlotAllocator>,
+        arenas: &ArenaRegistry,
+        capacity: u32,
+        market: ResidentMarketAdmission,
+    ) -> Result<Self, ResidentClearingRuntimeError> {
+        binding
+            .validate()
+            .map_err(|error| ResidentClearingRuntimeError::Identity(error.to_string()))?;
+        let arena = ResidentRfArenaBinding::admit(binding.registry(), arenas, market)?;
+        let projection = build_resident_projection(ctx, binding, arena, capacity)?;
+        Ok(Self {
+            arena_binding: projection.arena_binding,
+            semantic_plan: projection.semantic_plan,
+            root_scope_owner: projection.root_scope_owner,
+        })
+    }
+
+    pub(crate) fn bind_claims(
+        &self,
+        state: &WorldGpuState,
+        granter: SimThingId,
+        generation: GenerationStamp,
+        available: u32,
+        claims: &mut [simthing_spec::ConstrainedClaim],
+        participants: &[(SimThingId, SimThingId)],
+    ) -> Result<(), ResidentClearingRuntimeError> {
+        if claims.is_empty() {
+            return Ok(());
+        }
+        let scope = claims[0].scope();
+        if self.arena_binding.market.scope_identity
+            != format!(
+                "{}|{}|{}",
+                scope.owner_ref.as_str(),
+                scope.resource_key.as_str(),
+                scope.scope_id.as_str()
+            )
+        {
+            return Err(ResidentClearingRuntimeError::TemporalSourceMismatch);
+        }
+        let rows = claims
+            .iter()
+            .enumerate()
+            .map(|(lane, claim)| {
+                let dictionaries = self.semantic_plan.dictionaries();
+                let row = self
+                    .semantic_plan
+                    .rows()
+                    .iter()
+                    .position(|row| {
+                        dictionaries.draws()[row.draw().get() as usize]
+                            == resident_draw_id(&self.arena_binding.market, lane as u32)
+                            && dictionaries.scopes()[row.scope().get() as usize]
+                                == resident_scope_id(
+                                    &self.arena_binding.market,
+                                    self.root_scope_owner,
+                                )
+                            && dictionaries.owners()[row.owner().get() as usize]
+                                .identity()
+                                .local()
+                                == &self.root_scope_owner
+                    })
+                    .ok_or(ResidentClearingRuntimeError::UnadmittedSemanticScope {
+                        owner: self.root_scope_owner,
+                    })?;
+                let participant = participants
+                    .iter()
+                    .find(|(source, _)| *source == claim.source_simthing_id())
+                    .map(|(_, participant)| *participant)
+                    .ok_or(ResidentClearingRuntimeError::TemporalSourceMismatch)?;
+                Ok(ResidentApportionmentClaim::new(
+                    row as u32,
+                    claim.source_simthing_id(),
+                    claim.requested(),
+                    available,
+                    claim.priority(),
+                    self.arena_binding.participant_slot(participant)?,
+                    self.arena_binding.columns.allocated_flow_col,
+                    self.arena_binding.market.exact_basis_identity,
+                ))
+            })
+            .collect::<Result<Vec<_>, ResidentClearingRuntimeError>>()?;
+        let plan = ResidentApportionmentPlan::build(
+            &self.semantic_plan,
+            rows,
+            granter,
+            generation,
+            self.arena_binding.layout.band_layout.integration_band,
+        )?;
+        simthing_spec::ConstrainedClaim::bind_resident_oracle(
+            claims,
+            &self.semantic_plan,
+            plan,
+            state.read_values(),
+            state.n_dims,
+        )
+        .map_err(|error| ResidentClearingRuntimeError::Identity(error.to_string()))
+    }
+}
+
 fn build_resident_projection(
     ctx: &GpuContext,
     binding: &TreeExecutionBinding<'_, SlotAllocator>,
@@ -1216,6 +1328,100 @@ impl ResidentClearingRuntime {
         Ok(ResidentTemporalDemandTicket {
             submission,
             sources,
+            authority_granter: products.submission.authority_granter(),
+            semantic_scope_owner: products.semantic_scope_owner,
+        })
+    }
+
+    /// Consume a prior batch once through the fact-authorized membership
+    /// extension. The complete-source-set preparation door above is unchanged.
+    pub fn prepare_membership_demands(
+        &mut self,
+        state: &WorldGpuState,
+        qualification: &ResidentMarketQualification,
+        permit: &TreeGenerationPermit,
+        products: ResidentClearingDispatchTicket,
+        permission: Option<&simthing_core::SurvivorSubsetPermission>,
+        authored: &[ResidentAuthoredDemand],
+    ) -> Result<ResidentTemporalDemandTicket, ResidentClearingRuntimeError> {
+        self.validate_generation_permit(permit, permit.generation())?;
+        self.ensure_market_qualification(qualification)?;
+        let permission = permission.ok_or(ResidentClearingRuntimeError::TemporalSourceMismatch)?;
+        let prior: Vec<_> = products
+            .plan
+            .claims()
+            .iter()
+            .map(|claim| claim.source_simthing_id())
+            .collect();
+        let current: Vec<_> = authored
+            .iter()
+            .map(|claim| claim.source_simthing_id)
+            .collect();
+        if prior != permission.prior_sources()
+            || current != permission.current_sources()
+            || permit.generation() != permission.generation()
+            || products.submission.authority_granter() != permission.granter()
+            || self.arena_binding.market.scope_identity != permission.scope_identity()
+        {
+            return Err(ResidentClearingRuntimeError::TemporalSourceMismatch);
+        }
+        let selected: Vec<_> = products
+            .plan
+            .claims()
+            .iter()
+            .copied()
+            .filter(|claim| current.contains(&claim.source_simthing_id()))
+            .collect();
+        let survivor_plan = if selected.is_empty() {
+            None
+        } else {
+            let policies: Vec<_> = selected
+                .iter()
+                .filter_map(|claim| {
+                    products
+                        .plan
+                        .persistence_deformation(claim.semantic_row())
+                        .cloned()
+                        .map(|program| (claim.semantic_row(), program))
+                })
+                .collect();
+            Some(
+                ResidentApportionmentPlan::build(
+                    &self.semantic_plan,
+                    selected,
+                    products.plan.authority_granter(),
+                    products.plan.generation(),
+                    products.plan.integration_band(),
+                )?
+                .with_persistence_deformations(policies)?,
+            )
+        };
+        permit
+            .authorize_economics()
+            .map_err(ResidentClearingRuntimeError::ExecutionAuthority)?;
+        let mut encoder = state.ctx.device.create_command_encoder(
+            &simthing_gpu::wgpu::CommandEncoderDescriptor {
+                label: Some("resident_membership_demand_prepare"),
+            },
+        );
+        let authored: Vec<_> = authored
+            .iter()
+            .map(|row| (row.source_simthing_id, row.quantity))
+            .collect();
+        let submission = self.live_head.encode_membership_demands(
+            &state.ctx,
+            &self.temporal_mint_session,
+            &mut encoder,
+            &products.plan,
+            survivor_plan.as_ref(),
+            products.submission,
+            permission,
+            &authored,
+        )?;
+        state.ctx.queue.submit(Some(encoder.finish()));
+        Ok(ResidentTemporalDemandTicket {
+            submission,
+            sources: current,
             authority_granter: products.submission.authority_granter(),
             semantic_scope_owner: products.semantic_scope_owner,
         })

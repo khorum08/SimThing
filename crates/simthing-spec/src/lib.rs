@@ -389,8 +389,8 @@ pub use spec::constrained_clearing::{
     fund_unresolved_persistence, is_authored_until_dissolved, AuthoredClaimClearingData,
     AuthoredClearingProgram, AuthoredPersistenceValuation, ClearingRemainderAuthority,
     ConstrainedClaim, ConstrainedClearingError, ConstrainedClearingResult, ConstrainedGrant,
-    ConstrainedSupply, PersistenceConsequence, PersistenceConsequenceError,
-    PersistenceDeformationBinding, PersistenceDeformationBindingError,
+    ConstrainedSupply, DepartureDispositionBinding, PersistenceConsequence,
+    PersistenceConsequenceError, PersistenceDeformationBinding, PersistenceDeformationBindingError,
     PersistenceDeformationBindings, PersistenceOverlayBinding, UnresolvedDemandObservation,
 };
 // The resident settlement/emission product and recursive supply intake are
@@ -623,9 +623,9 @@ pub use spec::runtime_participant_state_mutation::{
 };
 pub use spec::runtime_rf_tick::{
     evaluate_runtime_rf_tick, evaluate_runtime_rf_tick_from_owner_view,
-    produce_runtime_rf_next_generation_demands, RuntimeRfDemandGenerationAuthority,
-    RuntimeRfTickDeferral, RuntimeRfTickDeferralKind, RuntimeRfTickError, RuntimeRfTickErrorKind,
-    RuntimeRfTickReport,
+    produce_runtime_rf_next_generation_demands, produce_runtime_rf_survivor_demands,
+    RuntimeRfDemandGenerationAuthority, RuntimeRfTickDeferral, RuntimeRfTickDeferralKind,
+    RuntimeRfTickError, RuntimeRfTickErrorKind, RuntimeRfTickReport,
 };
 pub use spec::runtime_rf_tick_source::{
     evaluate_runtime_rf_tick_source_comparison, evaluate_runtime_rf_tick_source_preview,

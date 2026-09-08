@@ -75,8 +75,8 @@ pub use constrained_clearing::{
     fund_unresolved_persistence, is_authored_until_dissolved, AuthoredClaimClearingData,
     AuthoredClearingProgram, AuthoredPersistenceValuation, ClearingRemainderAuthority,
     ConstrainedClaim, ConstrainedClearingError, ConstrainedClearingResult, ConstrainedGrant,
-    ConstrainedSupply, PersistenceConsequence, PersistenceConsequenceError,
-    PersistenceDeformationBinding, PersistenceDeformationBindingError,
+    ConstrainedSupply, DepartureDispositionBinding, PersistenceConsequence,
+    PersistenceConsequenceError, PersistenceDeformationBinding, PersistenceDeformationBindingError,
     PersistenceDeformationBindings, PersistenceOverlayBinding, UnresolvedDemandObservation,
 };
 pub use contention_conservation_judge::{
@@ -254,9 +254,9 @@ pub use runtime_local_allocation::{
 };
 pub use runtime_rf_tick::{
     evaluate_runtime_rf_tick, evaluate_runtime_rf_tick_from_owner_view,
-    produce_runtime_rf_next_generation_demands, RuntimeRfDemandGenerationAuthority,
-    RuntimeRfTickDeferral, RuntimeRfTickDeferralKind, RuntimeRfTickError, RuntimeRfTickErrorKind,
-    RuntimeRfTickReport,
+    produce_runtime_rf_next_generation_demands, produce_runtime_rf_survivor_demands,
+    RuntimeRfDemandGenerationAuthority, RuntimeRfTickDeferral, RuntimeRfTickDeferralKind,
+    RuntimeRfTickError, RuntimeRfTickErrorKind, RuntimeRfTickReport,
 };
 pub use runtime_tick_history::{
     evaluate_runtime_tick_history_entry, replay_runtime_tick_history, scenario_authority_digest,

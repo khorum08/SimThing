@@ -19,7 +19,7 @@ use thiserror::Error;
 use wgpu::{Buffer, BufferDescriptor, BufferUsages, CommandEncoder, MapMode};
 
 const PRODUCT_BYTES: u64 = std::mem::size_of::<ResidentConstrainedProduct>() as u64;
-pub const QUALIFIED_RESIDENT_CLEARING_FINGERPRINT: u64 = 0x64c8_2fb4_de76_90ac;
+pub const QUALIFIED_RESIDENT_CLEARING_FINGERPRINT: u64 = 0x1537_b17e_9388_b047;
 
 mod build_provenance {
     include!(concat!(
@@ -335,6 +335,40 @@ impl ResidentClearingLiveHead {
         Ok(ResidentTemporalDemandSubmission {
             generation: demand_generation,
             demand_count: products.product_count,
+        })
+    }
+
+    /// Fact-authorized membership extension. Select immutable survivor rows
+    /// with device copies, use the unchanged 1:1 mint, then interleave its output
+    /// with independent fresh entrant rows for one ordinary exact clear.
+    #[allow(clippy::too_many_arguments)]
+    pub fn encode_membership_demands(
+        &self,
+        ctx: &GpuContext,
+        mint: &ResidentTemporalDemandMintSession,
+        encoder: &mut CommandEncoder,
+        prior_plan: &ResidentApportionmentPlan,
+        survivor_plan: Option<&ResidentApportionmentPlan>,
+        products: ResidentClearingSubmission,
+        permission: &simthing_core::SurvivorSubsetPermission,
+        authored: &[(simthing_core::SimThingId, u32)],
+    ) -> Result<ResidentTemporalDemandSubmission, ResidentLiveHeadError> {
+        mint.encode_membership(
+            ctx,
+            encoder,
+            &self.segment,
+            products.reservation.start(),
+            &self.next_demands,
+            prior_plan,
+            survivor_plan,
+            products.generation,
+            products.product_count,
+            permission,
+            authored,
+        )?;
+        Ok(ResidentTemporalDemandSubmission {
+            generation: permission.generation(),
+            demand_count: authored.len() as u32,
         })
     }
 

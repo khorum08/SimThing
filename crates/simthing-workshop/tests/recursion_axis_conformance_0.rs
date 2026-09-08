@@ -786,3 +786,79 @@ fn prepared_demand_does_not_execute_until_n_plus_one_datum_arrives() {
     assert_eq!(run(&gpu, 0x15_05_a1, 1), (1, 7));
     assert_eq!(run(&gpu, 0x15_05_a2, 6), (6, 2));
 }
+
+#[test]
+fn subset_without_termination_permission_retains_default_refusal() {
+    let gpu = GpuContext::new_blocking().unwrap();
+    let (mut harness, mut schedule) = admit_runtime(&gpu, 0x1512_0fac, 50, 2, None);
+    harness.set_allocated_flows(&[(id(CHILD), 10.0), (id(DESCENDANT), 10.0)]);
+    let rows: Vec<_> = [id(CHILD), id(DESCENDANT)]
+        .into_iter()
+        .map(|source| ResidentClearingBatchBinding {
+            source_simthing_id: source,
+            rf_participant: source,
+            requested: 10,
+            available: 4,
+            precedence: 0,
+        })
+        .collect();
+    let ticket = harness
+        .dispatch(&mut schedule, id(ROOT), GenerationStamp::new(50), &rows)
+        .unwrap();
+    harness
+        .runtime
+        .materialize(
+            &harness.state,
+            &harness.qualification,
+            &mut schedule,
+            &ticket,
+        )
+        .unwrap();
+    let subset = [ResidentAuthoredDemand {
+        source_simthing_id: id(DESCENDANT),
+        quantity: 10,
+    }];
+    let old = harness.prepare_temporal_demands(&ticket, GenerationStamp::new(51), &subset);
+    assert!(matches!(
+        old,
+        Err(ResidentClearingRuntimeError::TemporalSourceMismatch)
+    ));
+    harness
+        .advance_generation(GenerationStamp::new(51))
+        .unwrap();
+    let history = schedule.clone();
+    let values = harness.state.read_values();
+    let extension = harness.runtime.prepare_membership_demands(
+        &harness.state,
+        &harness.qualification,
+        harness.permit.as_ref().unwrap(),
+        ticket,
+        None,
+        &subset,
+    );
+    assert!(matches!(
+        extension,
+        Err(ResidentClearingRuntimeError::TemporalSourceMismatch)
+    ));
+    assert_eq!(schedule, history);
+    assert_eq!(harness.state.read_values(), values);
+    // No effect was authorized: dropping the untouched N51 permit permits an
+    // ordinary fresh retry through the same execution lease.
+    drop(harness.permit.take());
+    harness.permit = Some(
+        harness
+            .runtime
+            .begin_generation(GenerationStamp::new(51))
+            .unwrap(),
+    );
+    let fresh = harness
+        .dispatch(
+            &mut schedule,
+            id(ROOT),
+            GenerationStamp::new(51),
+            &rows[1..],
+        )
+        .unwrap();
+    let products = harness.materialize(&mut schedule, fresh).unwrap();
+    assert_eq!(economic(products), vec![(DESCENDANT, 4, 6, 51)]);
+}

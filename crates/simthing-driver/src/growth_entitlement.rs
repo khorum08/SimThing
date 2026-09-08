@@ -64,6 +64,7 @@ pub struct GrowthEntitlementMarketBinding {
     priority: u32,
     implicit_root_standing: bool,
     resident_qualification: Option<crate::resident_clearing_runtime::ResidentMarketQualification>,
+    pub(crate) oracle_projection: Option<crate::resident_clearing_runtime::CpuOracleProjection>,
 }
 
 /// Only provenance crosses the ordinary boundary on the resident posture.
@@ -222,42 +223,89 @@ impl GrowthEntitlementMarketBinding {
         available: u32,
         posture: simthing_core::ClearingExecutionPosture,
         deformations: &simthing_spec::PersistenceDeformationBindings,
+        consequence_boundary: &simthing_feeder::FeederSender,
         allocator: &SlotAllocator,
         candidates: &[OrdinaryGrowthCandidate],
     ) -> Result<Vec<GrowthEntitlementDecision>, GrowthEntitlementError> {
         use crate::resident_clearing_runtime::{
             ResidentAuthoredDemand, ResidentClearingBatchBinding, ResidentTemporalExecutionBinding,
         };
-        if claims.is_empty() {
-            // Authorization retains admitted-zero bearers, so an empty set
-            // means membership loss. Terminate before temporal mint or append.
-            if !matches!(continuation, OrdinaryFlowContinuation::Empty) {
-                permit
-                    .authorize_economics()
-                    .map_err(|error| GrowthEntitlementError::Resident(error.to_string()))?;
-                let final_products = match continuation {
-                    OrdinaryFlowContinuation::Resident { history, .. } => schedule.entries()
-                        [history.clone()]
-                    .iter()
-                    .map(|entry| {
-                        let fact = entry
-                            .resident_clearing_fact
-                            .expect("completed resident materialization span");
-                        simthing_core::NeutralStreamFinalProduct {
-                            source_simthing_id: SimThingId::from_session_raw(
-                                fact.source_simthing_id_raw,
-                            ),
+        let current_sources: Vec<_> = claims
+            .iter()
+            .map(ConstrainedClaim::source_simthing_id)
+            .collect();
+        let prior_sources: Vec<_> = match continuation {
+            OrdinaryFlowContinuation::Resident { history, .. } => schedule.entries()
+                [history.clone()]
+            .iter()
+            .map(|entry| {
+                SimThingId::from_session_raw(
+                    entry
+                        .resident_clearing_fact
+                        .expect("completed resident history")
+                        .source_simthing_id_raw,
+                )
+            })
+            .collect(),
+            OrdinaryFlowContinuation::CpuOracle { claims, .. } => claims
+                .iter()
+                .map(ConstrainedClaim::source_simthing_id)
+                .collect(),
+            OrdinaryFlowContinuation::Empty => Vec::new(),
+        };
+        let departed: BTreeSet<_> = prior_sources
+            .iter()
+            .copied()
+            .filter(|source| !current_sources.contains(source))
+            .collect();
+        if !departed.is_empty() {
+            permit
+                .authorize_economics()
+                .map_err(|error| GrowthEntitlementError::Resident(error.to_string()))?;
+            let final_products: Vec<_> = match continuation {
+                OrdinaryFlowContinuation::Resident { history, .. } => schedule.entries()
+                    [history.clone()]
+                .iter()
+                .filter_map(|entry| {
+                    let fact = entry
+                        .resident_clearing_fact
+                        .expect("completed resident history");
+                    let source = SimThingId::from_session_raw(fact.source_simthing_id_raw);
+                    departed
+                        .contains(&source)
+                        .then_some(simthing_core::NeutralStreamFinalProduct {
+                            source_simthing_id: source,
                             granted: fact.granted,
                             unresolved: fact.unresolved,
                             generation: fact.generation,
-                        }
-                    })
+                        })
+                })
+                .collect(),
+                OrdinaryFlowContinuation::CpuOracle { final_products, .. } => final_products
+                    .iter()
+                    .filter(|product| departed.contains(&product.source_simthing_id))
+                    .cloned()
                     .collect(),
-                    OrdinaryFlowContinuation::CpuOracle { final_products, .. } => {
-                        std::mem::take(final_products)
-                    }
-                    OrdinaryFlowContinuation::Empty => unreachable!(),
-                };
+                OrdinaryFlowContinuation::Empty => unreachable!(),
+            };
+            // The unbound all-depart case retains the exact graduated aggregate
+            // row. Partial membership and authored disposal use claimant facts.
+            let per_claimant = !claims.is_empty()
+                || final_products.iter().any(|product| {
+                    deformations
+                        .departure_for(&self.scope, product.source_simthing_id)
+                        .is_some()
+                });
+            let groups = if per_claimant {
+                final_products
+                    .into_iter()
+                    .map(|product| vec![product])
+                    .collect::<Vec<_>>()
+            } else {
+                vec![final_products]
+            };
+            for final_products in groups {
+                let index = schedule.entries().len();
                 schedule.record_neutral_stream_termination(
                     simthing_core::NeutralStreamTerminationFact {
                         granter: self.granter,
@@ -268,8 +316,55 @@ impl GrowthEntitlementMarketBinding {
                         final_products,
                     },
                 );
-                *continuation = OrdinaryFlowContinuation::Empty;
+                let recorded = schedule.entries()[index]
+                    .neutral_stream_termination_fact
+                    .as_ref()
+                    .expect("just recorded");
+                if recorded.final_products.len() == 1 {
+                    if let Some(binding) = deformations
+                        .departure_for(&self.scope, recorded.final_products[0].source_simthing_id)
+                    {
+                        let observation = binding.observation(recorded).ok_or_else(|| {
+                            GrowthEntitlementError::Resident(
+                                "departure binding provenance mismatch".into(),
+                            )
+                        })?;
+                        let consequence = crate::submit_authored_persistence_consequence(
+                            &observation,
+                            recorded.termination_generation,
+                            binding.valuation(),
+                            binding.overlay(),
+                            consequence_boundary,
+                        )
+                        .map_err(|error| GrowthEntitlementError::Resident(error.to_string()))?;
+                        let proof = simthing_core::DepartureConsequenceFact {
+                            termination_product_key: schedule.entries()[index].product_key,
+                            termination: recorded.clone(),
+                            consequence_generation: consequence.consequence_generation,
+                            value_bits: consequence.cost_band.v.to_bits(),
+                            unit_cost_bits: consequence.cost_band.c.to_bits(),
+                            units: consequence.cost_band.n,
+                            remainder_bits: consequence.cost_band.r.to_bits(),
+                            overlay_id: consequence.overlay.map(|overlay| overlay.id),
+                        };
+                        schedule
+                            .record_departure_consequence(proof)
+                            .map_err(|error| GrowthEntitlementError::Resident(error.to_string()))?;
+                    }
+                }
             }
+        }
+        let membership_permission = if !prior_sources.is_empty()
+            && !claims.is_empty()
+            && prior_sources != current_sources
+        {
+            Some(simthing_core::SurvivorSubsetPermission::from_recorded_terminations(schedule, &prior_sources, &current_sources, self.granter, &self.scope.owner_ref, self.scope.resource_key.as_str(), self.scope.scope_id.as_str(), GenerationStamp::new(permit.generation().get() - 1), permit.generation()).ok_or_else(|| GrowthEntitlementError::Resident(crate::resident_clearing_runtime::ResidentClearingRuntimeError::TemporalSourceMismatch.to_string()))?)
+        } else {
+            None
+        };
+        if claims.is_empty() {
+            // Termination above is already recorded before retirement.
+            *continuation = OrdinaryFlowContinuation::Empty;
             if candidates.is_empty() {
                 return Ok(Vec::new());
             }
@@ -319,7 +414,18 @@ impl GrowthEntitlementMarketBinding {
                             quantity: claim.requested(),
                         })
                         .collect();
-                    Some(
+                    Some(if let Some(permission) = membership_permission.as_ref() {
+                        runtime
+                            .prepare_membership_demands(
+                                state,
+                                qualification,
+                                permit,
+                                previous,
+                                Some(permission),
+                                &authored,
+                            )
+                            .map_err(|e| GrowthEntitlementError::Resident(e.to_string()))?
+                    } else {
                         runtime
                             .prepare_temporal_demands(
                                 state,
@@ -329,8 +435,8 @@ impl GrowthEntitlementMarketBinding {
                                 generation,
                                 &authored,
                             )
-                            .map_err(|e| GrowthEntitlementError::Resident(e.to_string()))?,
-                    )
+                            .map_err(|e| GrowthEntitlementError::Resident(e.to_string()))?
+                    })
                 }
                 OrdinaryFlowContinuation::Empty => None,
                 OrdinaryFlowContinuation::CpuOracle { .. } => {
@@ -402,18 +508,19 @@ impl GrowthEntitlementMarketBinding {
                 ..
             } = previous
             {
-                // The same complete source-set contract as resident temporal
-                // preparation. No subset matching or partial retirement.
-                if !previous
-                    .iter()
-                    .map(ConstrainedClaim::source_simthing_id)
-                    .eq(claims.iter().map(ConstrainedClaim::source_simthing_id))
+                // Keep the complete-set refusal unless the typed permission
+                // already accounts for every departing claimant.
+                if membership_permission.is_none()
+                    && !previous
+                        .iter()
+                        .map(ConstrainedClaim::source_simthing_id)
+                        .eq(claims.iter().map(ConstrainedClaim::source_simthing_id))
                 {
                     return Err(GrowthEntitlementError::Resident(
                         crate::resident_clearing_runtime::ResidentClearingRuntimeError::TemporalSourceMismatch.to_string(),
                     ));
                 }
-                let next = claims
+                let next: Vec<_> = claims
                     .iter()
                     .map(|claim| RuntimeOwnerSiloDemandBucket {
                         owner_ref: self.scope.owner_ref.clone(),
@@ -424,27 +531,82 @@ impl GrowthEntitlementMarketBinding {
                         source_simthing_id_raw: Some(claim.source_simthing_id().raw()),
                     })
                     .collect();
-                let (_, effective) = crate::runtime_rf_tick_compile::produce_runtime_rf_next_generation_demands_for_tick(
+                let effective = if let Some(permission) = membership_permission.as_ref() {
+                    let survivors =
+                        next.into_iter()
+                            .filter(|demand| {
+                                permission.prior_sources().iter().any(|source| {
+                                    Some(source.raw()) == demand.source_simthing_id_raw
+                                })
+                            })
+                            .collect();
+                    simthing_spec::produce_runtime_rf_survivor_demands(
+                        &authority,
+                        &[supply],
+                        &previous,
+                        &self.clearing_program,
+                        Some(permission),
+                        survivors,
+                    )
+                    .map_err(|e| GrowthEntitlementError::Clearing(e.message))?
+                } else {
+                    crate::runtime_rf_tick_compile::produce_runtime_rf_next_generation_demands_for_tick(
                     &authority,
                     &[supply],
                     &previous,
                     &self.clearing_program,
                     next,
                 )
-                .map_err(|e| GrowthEntitlementError::Clearing(e.message))?;
-                claims = effective
-                    .iter()
-                    .map(|demand| {
-                        ConstrainedClaim::from_runtime_demand(
+                .map_err(|e| GrowthEntitlementError::Clearing(e.message))?.1
+                };
+                for claim in &mut claims {
+                    if let Some(demand) = effective.iter().find(|demand| {
+                        demand.product().source_simthing_id_raw
+                            == Some(claim.source_simthing_id().raw())
+                    }) {
+                        *claim = ConstrainedClaim::from_runtime_demand(
                             demand.product(),
                             self.effective_weight,
                         )
-                    })
-                    .collect::<Result<_, _>>()
-                    .map_err(|e| GrowthEntitlementError::Clearing(e.to_string()))?;
+                        .map_err(|error| GrowthEntitlementError::Clearing(error.to_string()))?;
+                    } else if !membership_permission.as_ref().is_some_and(|permission| {
+                        permission
+                            .current_sources()
+                            .contains(&claim.source_simthing_id())
+                            && !permission
+                                .prior_sources()
+                                .contains(&claim.source_simthing_id())
+                    }) {
+                        return Err(GrowthEntitlementError::Resident(crate::resident_clearing_runtime::ResidentClearingRuntimeError::TemporalSourceMismatch.to_string()));
+                    }
+                    // Only a proved entrant can remain the fresh authored claim.
+                }
             }
-            let decisions = self
-                .resolve_batch_cpu_vendorized_oracle(allocator, generation, candidates, schedule)?;
+            let projection = self
+                .oracle_projection
+                .as_ref()
+                .ok_or(GrowthEntitlementError::ResidentProfileUnqualified)?;
+            let decisions = self.resolve_batch_with_basis(
+                allocator,
+                generation,
+                candidates,
+                schedule,
+                Some(state),
+            )?;
+            let participants: Vec<_> = claims
+                .iter()
+                .map(|claim| (claim.source_simthing_id(), claim.source_simthing_id()))
+                .collect();
+            projection
+                .bind_claims(
+                    state,
+                    self.granter,
+                    generation,
+                    available,
+                    &mut claims,
+                    &participants,
+                )
+                .map_err(|error| GrowthEntitlementError::Clearing(error.to_string()))?;
             let supply = ConstrainedSupply {
                 scope: self.scope.clone(),
                 available,
@@ -514,6 +676,7 @@ impl GrowthEntitlementMarketBinding {
             priority,
             implicit_root_standing: false,
             resident_qualification: None,
+            oracle_projection: None,
         }
     }
 
@@ -568,6 +731,7 @@ impl GrowthEntitlementMarketBinding {
             priority: 0,
             implicit_root_standing: true,
             resident_qualification: None,
+            oracle_projection: None,
         })
     }
 
@@ -652,8 +816,33 @@ impl GrowthEntitlementMarketBinding {
         candidates: &[OrdinaryGrowthCandidate],
         integration_schedule: &mut simthing_core::IntegrationSchedule,
     ) -> Result<Vec<GrowthEntitlementDecision>, GrowthEntitlementError> {
+        self.resolve_batch_with_basis(
+            allocator,
+            generation,
+            candidates,
+            integration_schedule,
+            None,
+        )
+    }
+
+    fn resolve_batch_with_basis(
+        &self,
+        allocator: &SlotAllocator,
+        generation: GenerationStamp,
+        candidates: &[OrdinaryGrowthCandidate],
+        integration_schedule: &mut simthing_core::IntegrationSchedule,
+        oracle_state: Option<&simthing_gpu::WorldGpuState>,
+    ) -> Result<Vec<GrowthEntitlementDecision>, GrowthEntitlementError> {
         if candidates.is_empty() {
             return Ok(Vec::new());
+        }
+
+        if oracle_state.is_none()
+            && (self.oracle_projection.is_some() || self.resident_qualification.is_some())
+        {
+            return Err(GrowthEntitlementError::Clearing(
+                "qualified CPU oracle requires Current live-basis input".into(),
+            ));
         }
 
         let mut claims = Vec::with_capacity(candidates.len());
@@ -669,6 +858,24 @@ impl GrowthEntitlementMarketBinding {
             claims.push(self.authorize_demand(demand)?);
         }
 
+        if let Some(state) = oracle_state {
+            let participants: Vec<_> = candidates
+                .iter()
+                .map(|candidate| (candidate.grantee(), candidate.structural_parent()))
+                .collect();
+            self.oracle_projection
+                .as_ref()
+                .ok_or(GrowthEntitlementError::ResidentProfileUnqualified)?
+                .bind_claims(
+                    state,
+                    self.granter,
+                    generation,
+                    allocator.growth_capacity_available(self.granter),
+                    &mut claims,
+                    &participants,
+                )
+                .map_err(|error| GrowthEntitlementError::Clearing(error.to_string()))?;
+        }
         let results = self.clear_cpu_oracle(
             &ConstrainedSupply {
                 scope: self.scope.clone(),
