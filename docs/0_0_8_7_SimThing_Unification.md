@@ -1,19 +1,16 @@
 # SimThing Unification — the recursive RF-Triad stem cell
 
-> **Status: REVIEW CANDIDATE v3 (DA-authored 2026-09-05, Owner-commissioned) — the ingress
-> point, API reference, and ADR for the unified SimThing object.** Rewritten after the
-> complete Phase-15 corrective arc (15.0–15.7 all DA-graduated; final certificate 142
-> suites / 535 pass / zero red @ `c4d1b7a8`). Every claim below is implemented and
-> witnessed unless explicitly marked OPEN; §9 is the per-rung proof ledger. Presented to
-> the engineering cross-rung re-review of 15.5–15.7 together with the arc itself.
-> **RE-REVIEW COMPLETE 2026-09-05: REMAND** — the scoped 15.5-15.7 results stand, but
-> one STOP integration hole (ordinary-session temporal ingress), two semantic defects
-> (cap-collision completion; arena-ambiguity), and one abort-safety falsifier gate
-> adoption; sec 8 carries the remediation sequence. After remediation and a fresh
-> narrow re-review, this document either dissolves
-> into `simthing_core_design.md` or stands as the anchored unification ADR. Until
-> adoption, canonical law remains `simthing_core_design.md` (whose §8.4 carries a
-> KNOWN-REMAND marker scheduled for deletion in the post-re-review canon rewrite).
+> **Status: ANCHORED IMPLEMENTATION/API ADR (v4, DA-authored truth pass 2026-09-08) —
+> the ingress point, API reference, and ADR for the unified SimThing object, current
+> through 15.13.** The complete Phase-15 arc (15.0–15.13) is DA-graduated: the 2026-09-05
+> engineering REMAND's STOP hole and defects were remediated by rows 15.8–15.10, the
+> stream-membership lifecycle completed by 15.11–15.12 (Owner departure and no-deferral
+> laws), and the bound-posture policy singularity closed by 15.13; the post-15.13 narrow
+> engineering re-review PASSED (`5591451353`). Every claim below is implemented and
+> witnessed; §8 is the closed remediation record and §9 the per-rung proof ledger.
+> Constitutional law lives in `simthing_core_design.md` (§8.4 now final, its
+> KNOWN-REMAND marker discharged); this document stands as the anchored unification
+> ADR — the cold path, the doors, and the proof map — and does not dissolve.
 
 ## 0. What SimThing is (start here if you are new)
 
@@ -141,11 +138,14 @@ EML programs, never by adding parallel machinery.
       → canonical T_s appended to the resident live head (bounded, typed egress)
       → SPATIAL: child market consumes literal T_s.G as its supply (same N,
            changed granter/scope — dispatch_spatial)
-      → TEMPORAL: U → optional sealed deformation → ResidentTemporalDemand for N+1
-           (once-mint; second mint typed-refused; prepared ≠ executed)
-           **[OPEN: the resident temporal doors are proven but the ORDINARY
-           SimSession does not yet invoke them — remediation rung chartered;
-           the CPU once-mint door is likewise oracle-posture only]**
+      → TEMPORAL: U stays resident → the boundary sealing Current N+1 reads the
+           authored owner-flow datum (Draw authorization) → once-mint under the
+           N+1 permit: d_effective = d_authored + f(U)   [15.8: the ordinary
+           SimSession IS the caller, both postures; kernel pins N+1 adjacency]
+      → MEMBERSHIP: departed claimants terminate FIRST (typed facts, per-claimant);
+           the recorded facts ARE the permission for survivor-subset minting;
+           entrants dispatch fresh; zero-demand members settle G0/U0 and remain
+           in provenance                                    [15.11/15.12 law]
       → consequence consumers (valuation/CostBand/Overlay; observation; CausalBand)
       → N+1 proceeds from resident grants/U BEFORE any host materialization
 
@@ -211,8 +211,11 @@ operator, degenerate parameters — never a second one.
    adapters fail admission typed; the resident schedule segment is the authoritative
    live head with typed bounded egress.
 3. **`exact market = Π^exact_C ∘ R`** — an exact constrained projection over free
-   supply, caps, and precedence; not a second market, and not a mere quantizer. The
-   neutral field degenerates bit-exact to the frozen request-proportional oracle.
+   supply, caps, and precedence; not a second market, and not a mere quantizer. Cap
+   collisions close by saturate-and-redistribute (exact rational breach test, bounded
+   active-set refinement, Hamilton on the final set); a feasible vector never
+   fail-closes. The neutral field degenerates bit-exact to the frozen
+   request-proportional oracle.
 4. **Authored deforms; the substrate creates** — persistence, pressure, feedback, and
    consequences are substrate ports; authored EML only shapes them, bounded and sealed.
 5. **The five authorities are distinct**: pressure asks, precedence orders, allocation
@@ -237,7 +240,20 @@ operator, degenerate parameters — never a second one.
 11. **Process law**: stamps at merge are machine truth; zero-red certificates at
     structural graduations; falsifiers BEFORE remedies; cross-product witnesses at
     unification reviews (witness substitution is the known blind spot); define once,
-    consume everywhere.
+    consume everywhere; capabilities complete their lifecycle in the rung that opens
+    them, never deferred past the reaping of their proofs (Owner no-deferral law).
+12. **The stream-membership lifecycle is complete law** (canon §8.4.5): membership is
+    datum presence, never quantity; zero-demand members settle canonical G0/U0 and
+    stay in provenance; departure terminates neutrally by default with one typed fact
+    from born history; authored per-claimant dispositions layer above through the one
+    consequence ingress; recorded termination facts are the ONLY permission for
+    survivor-subset minting; entrants are fresh; faults poison the generation
+    (fail-stop); re-entry starts pure.
+13. **One market, one verdict** (canon §8.4.6): both postures execute the same
+    admitted plan — precedence from the Current claim, share from live AllocatedFlow;
+    the legacy authored score is post-settlement observation on the bound contract,
+    never authority. E8 seals the resident-adapter bundle (never a whole-program
+    hash), and every pin roll carries a clean-checkout reproducibility proof.
 
 ## 6. Forbidden shapes (each RED by plant, census, or type)
 
@@ -262,32 +278,32 @@ per-edge generation permits; runtime toolchain probing; adapters between germ po
   Phase-15-derived composite T_R metric (the 14.1 comparator stays frozen).
 - **Cross-vendor adapter qualification**: dated follow-on to the fingerprint law.
 
-## 8. Open items (truth as of 2026-09-05 — re-review COMPLETE: REMAND)
+## 8. Remediation record — CLOSED (the 2026-09-05 REMAND, discharged by 15.8–15.13)
 
-1. **STOP — ordinary-session temporal ingress**: the resident temporal doors and the
-   authored persistence port have NO SimSession production caller (session admission
-   passes empty deformations; the cross-product referee drives the runtime directly).
-   Remediation rung chartered: real-session cross-product through actual permit
-   boundaries, authored deformation admission, and the adjudicated answer to WHEN
-   d_authored(N+1) becomes authoritative (U stays resident; never force early
-   authoring to fit a helper shape).
-2. **Cap collision**: engineering recommends SATURATE-AND-REDISTRIBUTE (bounded
-   active-set water-filling: g_i = min(r_i, λ·b_i); freeze capped rows; repeat;
-   Hamilton on the final active set; all no-collision results bit-identical) —
-   Owner ruling pending; a feasible vector must never fail-close.
-3. **Arena ambiguity**: `preferred_arena = None → arena[0]` is order-dependent
-   economic binding in production — resolve-or-typed-refuse; folded into the
-   session-integration rung.
-4. **Generation-abort safety (falsifier first)**: permit Drop reopens the generation
-   after economic side effects may have committed; plant the failure-after-dispatch
-   falsifier; expected law = touched/faulted seal state with fail-stop poisoning,
-   no same-generation replay without explicit recovery.
-5. **Canon rewrite** — after remediation + fresh narrow re-review: delete the §8.4
-   KNOWN-REMAND marker, land the corrected Π/R mathematics, correct the Gu-Yang
-   lineage (Gu-Yang = the conservative-relaxation / cancellation-front insight;
-   SaturatingFlux is the generic transport primitive, capacity saturation is not the
-   definition), and apply the historical-docs disposition map.
-6. **Track closeout** — Owner-gated behind all of the above.
+Every open item from the 2026-09-05 engineering re-review is remediated, graduated, and
+re-reviewed (narrow re-review `5591451353`: PASS). The record, kept for provenance:
+
+1. **Ordinary-session temporal ingress (STOP)** → **15.8**: the SimSession is the
+   caller — Draw authorization over the authored owner-flow datum at the seal of
+   Current N+1; U resident; once-mint under Permit(N+1); authored persistence admitted
+   through the real session; arena resolve-or-refuse (item 3 folded in).
+2. **Cap collision** → Owner law + **15.9**: SATURATE-AND-REDISTRIBUTE, exact and
+   division-free, no-collision corpus bit-identical; later composed with real temporal
+   carry by the 15.13 S=51 witness.
+3. **Arena ambiguity** → closed inside 15.8 (semantic resource-identity resolution,
+   exactly-one-or-refuse, permutation falsifier).
+4. **Generation-abort safety** → **15.10**: the observed RED falsified rollback; the
+   `Ready→Untouched→Touched→Faulted` seal landed with authorize-before-effect at every
+   economic door and one permit spanning the whole generation.
+5. **Successor findings closed in the same arc**: 15.11 neutral termination + the
+   canonical zero-member law (Owner base-default); 15.12 authored per-claimant
+   dispositions + fact-authorized partial membership (Owner no-deferral law) + the
+   mixed-posture live-basis convergence; 15.13 bound-posture policy singularity (the
+   score veto deleted; one market, one verdict) + the E8 clean-checkout
+   reproducibility standing law (the non-reproducible fifth pin repaired at `5R`).
+6. **Canon rewrite** → done with this truth pass: §8.4 final (KNOWN-REMAND deleted),
+   corrected Π/R mathematics, §8.4.5/§8.4.6 lifecycle and posture law, Gu-Yang lineage
+   restored in §7. **Track closeout** remains Owner-gated, the only step left.
 
 ## 9. Proof ledger — what is proven, where (the unified review)
 
@@ -302,10 +318,18 @@ per-edge generation permits; runtime toolchain probing; adapters between germ po
 | Real-substrate homing; sealed qualification; u32 exactness; E7 rebind | 15.6 `5547526204` + E5 `5536135335` | flat-star symbols deleted; live-weight flip flips winner; 2^24 pair = oracle winner in full production; cross-product rerun on real arena |
 | Lifetime authority; entropy identity; permits; semantic-bundle qualification | 15.7 `5548610281` | double-open distinct realms; permit refusal matrix; four bundle-mutation referees; zero runtime rustc |
 | Foundational Phase-14 substrate (plan/pressure/apportionment/parity/cutover) | 14.2–14.6 rulings (`5489390011`, `5504763991`, `5513743095`, `5515763386`, `5518579252`) | typed replay trust chain; neutral identity binding; Q149; nine-item parity; causal N→N+1 cutover |
+| Ordinary session composes the graduated semantics; demand authority = Draw over the authored datum at the N+1 seal | 15.8 `5552278732` (+ adjudications `5549583264`, `5552022763`) | actual-SimSession 10→(G4,U6)→2→8/5 cross-product; kernel N+1 adjacency; arena permutation; departure fail-close falsifier |
+| Cap collision = saturate-and-redistribute, exact and division-free | 15.9 `5560458205` (+ E8 companion `5553053933`) | Owner falsifier `[1,100]`/S=101 RED→GREEN all shapes; 3,104-run cross-product; 338-case no-collision digest |
+| One-pass-per-generation is mechanical (fail-stop poisoning) | 15.10 `5561192190` | observed second-hot-cycle RED falsified rollback; 8 shapes × 24 retries all `GenerationFaulted`; untouched retry preserved |
+| Zero is membership; neutral termination is the base departure default | 15.11 `5568916333` (Owner law `5561338557`) | six conforming STOPs; zero-member law at all four sites; termination fact with born provenance; dual-digest referee contract |
+| Complete membership lifecycle: authored dispositions + fact-authorized partial departure | 15.12 `5579490425` (Owner no-deferral law) | `SurvivorSubsetPermission` from recorded facts; disposition → consequence with proof row; mixed live-basis 72/72; 900-comparison degeneration proof |
+| One market, one verdict; E8 clean-checkout reproducibility | 15.13 `5591082945` (+ E8 baseline ruling `5588539713`) | score veto deleted, F1/F2 RED→GREEN both postures; S=51 cap→temporal three-generation carry; 5R + sixth roll each with fresh-checkout admission proof |
 
-Eight consecutive first-run-clean structural certificates (15.2→15.7 inclusive) stand
-behind the arc; every remand in Phases 14–15 was one law applied to successive ports:
-**the substrate owns the act; callers and payloads merely request it.**
+Fourteen consecutive first-run-clean structural certificates (15.2→15.13 inclusive)
+stand behind the arc; every remand in Phases 14–15 was one law applied to successive
+ports: **the substrate owns the act; callers and payloads merely request it.** The
+post-15.13 narrow engineering re-review (`5591451353`) closed the corpus: PASS, no
+further remediation rung required.
 
 ## 10. Glossary
 
@@ -322,3 +346,8 @@ impedance, opportunity; capacity and realized flux. **Realm / incarnation / perm
 durable execution identity; transient execution of it; one generation's license.
 **Live head** — the resident, admission-bounded authoritative head of the one
 integration schedule. **BoundaryRequest** — the only door to structural CPU work.
+**NeutralStreamTerminationFact** — the typed record of a stream's end: claimant, full
+scope, final G/U/generation from born history; the observation bridge for authored
+dispositions and the permission substrate for survivor-subset minting.
+**SurvivorSubsetPermission** — constructed only from recorded same-generation
+termination facts; the sole lawful entry to a partial once-mint.
