@@ -1,14 +1,19 @@
-# DEPARTING-STREAM-DISPOSAL-0 — implementation evidence
+# DEPARTING-STREAM-DISPOSAL-0 — historical implementation evidence
 
-Current status: STOP / PROBATION / partial proof present / DA-review-pending / OPEN / UNMERGED.
+Historical intermediate status: STOP / PROBATION / partial proof present / DA-review-pending / OPEN / UNMERGED.
 
-The new STOP is the unchanged Driver grant-key compatibility witness: the
+15.12 subsequently graduated; the final closure is
+[DA ruling 5579490425](https://github.com/khorum08/SimThing/issues/1332#issuecomment-5579490425),
+merged PR #1995 at `a30e7ac0` and stamped at `4792f4fb`. The STOPs and
+then-current receipts below are retained as historical proof, not current status.
+
+The intermediate STOP was the unchanged Driver grant-key compatibility witness: the
 qualified public CPU-oracle door has no Current-state input and the new guard
 refuses its setup grant. Full workspace therefore has one failure. Sealed source
 and the frozen witness remain unchanged after this discovery; further remedy
 requires orchestration/DA authority under the fifth-roll freeze.
 
-Current dispatch: 5572663219; DA adjudication: 5572589566; amended
+Historical dispatch: 5572663219; DA adjudication: 5572589566; amended
 HD-RECEIPT: a5570e1fb2fe. Live master `8a547b84a49115e1b7c961f90fe51a4eb606cfb4`
 was normally merged into the same branch. `orient.sh --role=coding --since=a9d2086a0dd2`
 reports CURRENT, with unchanged rule stamp/digest and the same 63 required anchor

@@ -359,7 +359,6 @@ fn clear_resident_oracle_input(
         return Err(reject());
     }
     let mut seen = BTreeSet::new();
-    let mut scores = BTreeMap::new();
     for claim in claims {
         if !seen.insert(claim.source_simthing_id) {
             return Err(reject());
@@ -373,19 +372,9 @@ fn clear_resident_oracle_input(
         if row.requested() != claim.requested || row.available() != supplies[0].available {
             return Err(reject());
         }
-        scores.insert(claim.source_simthing_id, program.score(claim)?);
     }
-    // The admission's precedence is the same score-band ordering. A caller
-    // cannot bind a plan that reverses or splits its authored equality bands.
-    for left in input.plan.claims() {
-        for right in input.plan.claims() {
-            if scores[&left.source_simthing_id()].total_cmp(&scores[&right.source_simthing_id()])
-                != right.precedence().cmp(&left.precedence())
-            {
-                return Err(reject());
-            }
-        }
-    }
+    // The admitted plan owns precedence; its Current allocation owns smooth
+    // share. The authored score cannot gate or alter this bound execution.
     let products = simthing_kernel::execute_resident_apportionment_cpu(
         &input.plan,
         &input.values,
@@ -406,6 +395,11 @@ fn clear_resident_oracle_input(
         unresolved_total = unresolved_total
             .checked_add(product.unresolved())
             .ok_or(ConstrainedClearingError::ArithmeticOverflow)?;
+        // Observe the legacy program only after the resident plan has settled.
+        // Its unqualified score validity/banding law does not apply here.
+        let score = program
+            .score_program
+            .apply_with_params(claim.order_weight, claim.priority as f32);
         grants.push(ConstrainedGrant::from_clearance(
             claim.scope.clone(),
             claim.source_simthing_id,
@@ -414,7 +408,7 @@ fn clear_resident_oracle_input(
             product.unresolved(),
             claim.priority,
             claim.order_weight,
-            scores[&claim.source_simthing_id],
+            if score == 0.0 { 0.0 } else { score },
             authority.generation,
         ));
     }
