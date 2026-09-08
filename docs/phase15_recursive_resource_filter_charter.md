@@ -1,6 +1,13 @@
 # Phase 15 charter — recursive resource filter unification
 
-> **Status: OWNER-APPROVED PHASE CHARTER (2026-09-03).** Owner authorization reopens the
+> **Status: HISTORICAL RECORD (demoted 2026-09-08, post-15.13 truth pass; the phase it
+> chartered is COMPLETE — rows 15.0–15.13 all DA-graduated, narrow re-review
+> `5591451353` PASS).** Live law is `simthing_core_design.md` §8.4 (note in particular:
+> exact settlement is the exact constrained projection `Π^exact_C ∘ R`, superseding this
+> charter's "Q compose R" quantizer formulation). Retained as the phase's rationale and
+> provenance, not authority. Original charter text follows.
+>
+> **Original status: OWNER-APPROVED PHASE CHARTER (2026-09-03).** Owner authorization reopens the
 > 0.0.8.7 pointer from NONE into successor Phase 15 of the still-unclosed track. No Phase-14
 > graduation fact is altered. Authority: the Owner post-14 handoff as corrected by engineering's
 > four dispositions (accept: numbering, temporal recursion, executable oracle-side R,

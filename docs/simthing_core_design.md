@@ -433,7 +433,12 @@ One FieldSweepRegistration map/fold/post IR hosts the complete Triad:
 - **PALMA** owns min-plus potential, reach and impedance over admitted GridOffsets or LinkGraph
   topology. It produces a field, not a route/predecessor object.
 - **Gu-Yang SaturatingFlux** owns signed conservative throughput, saturation and choke behavior under
-  the admitted symmetry and stability certificate.
+  the admitted symmetry and stability certificate. The name records its lineage: SimThing's Gu-Yang
+  usage is the engineering adaptation of Gu/Yang's conservative non-gradient relaxation with
+  centered-flux spatial cancellation, in which opposed fluxes cancel to surface emergent fronts.
+  `SaturatingFlux` is the generic conservative transport primitive; capacity saturation is an admitted
+  behavior, not the definition — a non-saturating opposed-flux front is equally Gu-Yang, and no future
+  document may collapse Gu-Yang into a congestion-only mechanism.
 
 Comparative net flux, gross flux, stall, dominance, margin, contest, border bands and chokepoint
 projections are born as sealed EML projections over co-located anchored Triad columns when their
@@ -639,38 +644,48 @@ the germ seal; sections 1.2 and 8.2 remain the one-schedule and asynchronous-tre
 
 ### 8.4 Recursive constrained-resource filter — Phase-15 closure
 
-> **KNOWN REMAND (2026-09-03, engineering cross-rung review; DA notice — this block is a
-> truth marker, not replacement semantics).** Sections 8.4.1-8.4.3 contain graduated
-> explanatory claims presently under `RECURSION-AXIS-CONFORMANCE-0` /
-> `RESIDENT-FILTER-SUBSTRATE-BINDING-0` correction: exact settlement is an exact
-> CONSTRAINED PROJECTION (feasible set = actual conserved supply + request caps +
-> precedence), not a mere quantization of the downward flow, and the resident spatial
-> recursion is NOT yet literal (the current interior intake is a same-scope loopback
-> under one granter). Use the ACTIVE LADDER rows 15.5-15.7 plus the unification review
-> (docs/0_0_8_7_SimThing_Unification.md sec 7) for implementation truth until the
-> corrective rows graduate, at which point this block is deleted and the sections
-> rewritten.
-
-Phase 15 closes the explanatory gap left by the graduated RF market without adding a runtime
-quantity, response program, settlement rule, or execution authority. The market is the resident
-recursive filter already admitted by section 8.3. Its continuous projection and frozen exact
-projection are distinct stages of one operator, not peer markets.
+Phase 15 closed the explanatory gap left by the graduated RF market without adding a runtime
+quantity, response program, settlement rule, or execution authority — and then closed the
+composition gaps its own reviews surfaced (rows 15.0-15.13, all DA-graduated; engineering
+cross-rung review `5579833018` remanded once and the narrow re-review `5591451353` PASSED the
+remediation). The market is the resident recursive filter already admitted by section 8.3. Its
+continuous projection and frozen exact projection are distinct stages of one operator, not peer
+markets. This section is final law; the earlier KNOWN-REMAND marker is discharged and deleted.
 
 #### 8.4.1 One recursively composable filter
 
 A StemThing evaluates one recursively composable constrained-resource filter. Its upward projection
 is the sufficient response of its subtree to scarcity. Its downward projection is the resource flow
 allocated over each child edge. The child consumes that same edge resource as its own supply. Exact
-settlement is the deterministic quantization Q of that flow into canonical identity-bearing
-possession; it is not a second market.
+settlement is the deterministic exact CONSTRAINED PROJECTION of that flow into canonical
+identity-bearing possession; it is not a second market and not a mere quantizer:
+
+    exact market = Pi^exact_C . R
+
+`R` is the continuous stage: born Triad state selects the typed eligible scalar exactly once into
+`AllocatorWeight`; the child-share program emits live `AllocatedFlow` over each edge. `Pi^exact_C`
+is the frozen exact stage, a projection onto the feasible set `C` composed of: conserved FREE
+supply (`S_free = S_total - S_reserved`, reservations existing only as explicit commitments in the
+conserved `in_flight` holding lifecycle — a request never reserves, a precedence integer never
+reserves); full-u32 request caps with integer-exact request identity (no float ever decides exact
+ownership); and hard-precedence bands in which a zero-basis claim consumes no capacity
+(work-conserving immediate flow). The numerator basis is the live allocation,
+`b_i = min(AllocatedFlow_i, requested_i)`, decoded losslessly (Q149 integer limbs). Cap collisions
+close by SATURATE-AND-REDISTRIBUTE: a bounded active-set refinement whose breach test is the exact
+rational comparison `b_i*S > B*r_i` (never a formed quotient), freezing breaching rows at their
+request and redistributing the remaining supply and basis until the active set is stable; Hamilton
+largest-remainder with generation-rotated exact ties then settles the final active set. A feasible
+vector never fail-closes. Every no-collision result is bit-identical to the pre-closure law, and
+the neutral field (basis proportional to request) degenerates bit-exact to the frozen
+request-proportional oracle — old truth is the degenerate case of the new law, never a casualty.
 
 `RecursiveResourceFilterRuntime` is a conversion-free type alias for the existing
-`ResidentClearingRuntime`, which remains the sole ordinary production R->Q executor.
+`ResidentClearingRuntime`, which remains the sole ordinary production executor of both stages.
 `evaluate_recursive_resource_filter_oracle` is an item alias for the existing generalized
 `run_arena_allocation_oracle`; it is the CPU reference view of R and contains no wrapper arithmetic.
-The frozen exact CPU oracle remains Q. An alias or view is lawful only when Rust type/function
-identity and every output bit are unchanged; it cannot allocate storage, translate an economic
-payload, select policy, or become a callable peer authority.
+An alias or view is lawful only when Rust type/function identity and every output bit are
+unchanged; it cannot allocate storage, translate an economic payload, select policy, or become a
+callable peer authority.
 
 #### 8.4.2 Spatial and temporal recursion axes
 
@@ -678,16 +693,22 @@ Spatial continuous recursion is literal edge identity:
 `x_(p->v) = AllocatedFlow[v] = S_v`. The parent emits `x` and the child reads that same resident cell
 as its incoming supply; no disbursement report, copied role payload, or host intermediary belongs
 between the two. Spatial exact recursion is likewise literal identity:
-`Q(x_(p->v)) = T_s(p->v) = ResidentRecursiveSupplyIntake[v]`. The settlement and intake names remain
+`Pi(x_(p->v)) = T_s(p->v) = ResidentRecursiveSupplyIntake[v]`, consumed at the SAME generation by a
+CHANGED granter over the child's own market and scope. The settlement and intake names remain
 conversion-free views of the canonical identity-bearing product.
 
-Temporal recursion remains exactly
-`d_effective(v,N+1) = d_authored(v,N+1) + U(v,N)`. It crosses the single Current-to-Next mint once;
-same-generation clear/reweight/re-clear is forbidden. An admitted persistence deformation may
-transform U only inside that mint under the section 8.3 generation authority: authored policy
-deforms and the substrate creates. The valuation -> CostBand -> Overlay consequence chain remains
-beside the mint, never feeds demand, and cannot become a persistence market, carry lane, or
-migration adapter.
+Temporal recursion is exactly
+`d_effective(v,N+1) = d_authored(v,N+1) + f(U(v,N))`, and it alone advances the generation. In the
+ordinary session, `d_authored(N+1)` is the Draw-authorized demand read from the authored owner-flow
+datum at the boundary that seals Current N+1 — authoring earlier is ordinary; READING is at the
+seal, and future demand is never forced early to fit a helper shape. U remains resident end to end;
+the once-mint executes under the N+1 whole-generation permit, and the kernel refuses any
+demand generation other than the product generation plus one. Same-generation
+clear/reweight/re-clear is forbidden, as is the mutant-guarded equation `d(N+1) = G(N) + f(U(N))`.
+An admitted persistence deformation `f` may transform U only inside that mint (`f(0)=0` by
+admission): authored policy deforms and the substrate creates. The valuation -> CostBand -> Overlay
+consequence chain remains beside the mint, never feeds demand, and cannot become a persistence
+market, carry lane, or migration adapter.
 
 #### 8.4.3 Born sufficient statistic
 
@@ -699,7 +720,7 @@ is the incoming `AllocatedFlow`, that sum, and each direct child's eligible weig
 is answered from this born statistic; it never authorizes a host descendant walk or reconstruction.
 
 Normalized scarcity response is implicit in `weight/weight_sum`: scaling all eligible weights by a
-common positive scalar preserves the emitted flow bits. For exact Q, the existing request cap,
+common positive scalar preserves the emitted flow bits. For the exact projection, the request cap,
 `AllocatedFlow`, hard precedence, identity, supply, and generation are necessary and sufficient.
 There is no runtime lambda, response curve, shadow price, scarcity column, or richer response tuple.
 For each frozen admitted program family the resident representation is O(1) per node; recursion
@@ -730,8 +751,71 @@ The separately frozen CPU compatibility doors remain exactly
 `produce_runtime_rf_next_generation_demands`. Their constitutional census and caller census are
 the retirement mechanism. They are vendorized oracle vocabulary, do not define the architecture,
 and may not acquire an ordinary resident caller, fallback edge, or sixth door. Structural grant
-recorders remain one-way consequence authorities after Q and are excluded from the peer-market
-metric; they cannot translate or reinject an economic product.
+recorders remain one-way consequence authorities after exact settlement and are excluded from the
+peer-market metric; they cannot translate or reinject an economic product.
+
+#### 8.4.5 The recurring stream-membership lifecycle
+
+Membership in a recurring-flow market is presence of the authored demand datum within the admitted
+owner/scope — never a quantity. A live member with authored or effective demand ZERO produces a
+canonical identity-bearing exact result `G0/U0` for that generation: it consumes no supply, takes no
+part in positive-demand allocation, and remains present in canonical result and history provenance
+until membership actually ends. Zero is not departure and not arithmetic failure, at every tier —
+Draw envelopes admit `0 <= min_quantity <= max_quantity` (a positive minimum still refuses zero),
+the clearers seal zero rows outside positive arithmetic, and the resident planner retains admitted
+zero identities.
+
+Entry is fresh authored demand and never carries. Departure — ownership or scope change, demand
+datum removal, or node removal — terminates the stream NEUTRALLY by default: exactly one typed
+`NeutralStreamTermination` fact lands in the one `IntegrationSchedule`, carrying claimant, full
+semantic scope, granter, and the final G/U/generation drawn from already-born history; U
+extinguishes with no cost and no carry. Domains layer authored PER-CLAIMANT departure dispositions
+above that base: a sealed binding (valuation, destination, lifecycle) authored through ordinary
+ClauseScript/EML, consuming the recorded termination fact — the typed observation bridge — through
+the one existing consequence ingress (valuation -> CostBand -> Overlay), with the resulting
+`DepartureConsequence` proof recorded in the same history. Disposal is not continuation: a departed
+stream's U is lawful post-economics consequence input and can never re-enter demand. Absent an
+authored disposition, the neutral base applies bit-unchanged; the substrate never invents a cost.
+
+Partial membership change composes through typed permission, never through matching heuristics.
+When the authorized set at N+1 is a strict subset of the prior batch's sources, each missing
+claimant terminates FIRST, per-claimant, and the recorded same-generation termination facts ARE the
+permission for minting the survivor subset through the once-mint; an absent source without its fact
+remains a typed `TemporalSourceMismatch`. Entering claimants dispatch as fresh claims in the same
+generation and never enter the prior once-mint. A later same-identity re-entry starts from pure
+authored demand and a fresh product.
+
+Generation execution is one authority interval: a single whole-tree permit spans the hot cycles and
+the boundary, on one private seal with states `Ready -> Untouched -> Touched -> Faulted`. Every
+non-rollback-proven economic door authorizes BEFORE its first effect; dropping an unconsumed
+touched permit FAULTS the generation (typed fail-stop — no same-generation replay, no second hot
+cycle, no duplicate fact or consequence), while an untouched drop remains retryable. Incarnation
+migration cannot launder a fault; only a successful finish advances the generation.
+
+#### 8.4.6 Posture singularity and the adapter seal
+
+One resident-qualified authored market receives ONE admission and execution verdict across
+`ResidentRequired` and `CpuVendorizedOracle`. The bound CPU reference is a projection of the
+already-admitted arena and semantic plan — it consumes the resident plan's own hard precedence
+(the admitted Current claim's priority) and the same Current `AllocatedFlow` live basis, and it
+calls the same exact kernel reference. The bound contract has exactly two policy axes — hard
+precedence and smooth share — and no third: the legacy `AuthoredClearingProgram` score on the bound
+contract is OBSERVATIONAL metadata evaluated only after settlement (the `clearing_score` field
+records observation identity, never policy authority, and no future consumer may re-derive
+authority from that noun). The explicitly unqualified legacy CPU oracle retains its score-band
+semantics as quarantined oracle vocabulary. `ResidentExactBasisIdentity::NeutralRequest` is
+legacy/proof neutral-degeneration vocabulary, not an ordinary qualified lowering; the ordinary
+market admission seals `LiveAllocatedFlow`.
+
+The E8 qualification seal covers the RESIDENT-ADAPTER SEMANTIC BUNDLE and its adapter, compiler,
+and runtime tuple — it is not, and must never be described as, a whole-program or repository hash.
+The fixed two-literal pin is the ordinary admission authority; there is no dynamic or self-updating
+qualification route. Every roll of the pin carries: the current pin's refusal of the amended bundle
+before economics, the actually observed replacement fingerprint, exactly the two literals changed
+in one final-source-state commit, the qualification mutation matrix, and a CLEAN-CHECKOUT
+REPRODUCIBILITY PROOF — a fresh checkout of the roll commit observes the pinned fingerprint and
+admits a frozen qualified session under the required feature and compiler tuple. A pin reachable
+only from uncommitted working-tree bytes seals nothing.
 
 ---
 

@@ -1,7 +1,13 @@
 # SimThing RF Market Core
 ## Receive → resolve → settle → disburse, recursively
 
-> **Status: OWNER-APPROVED DESIGN DOCUMENT / PHASE-14 CONSTRAINED-CLEARING DESIGN AUTHORITY.**
+> **Status: HISTORICAL RECORD (demoted 2026-09-08, post-15.13 truth pass; was the
+> Owner-approved Phase-14 constrained-clearing design authority).** Live constitutional
+> law is `simthing_core_design.md` §8.3–§8.4; the anchored implementation/API ADR is
+> `0_0_8_7_SimThing_Unification.md`. Where this document's formulations differ from the
+> graduated law (e.g. "quantization Q" vs the exact constrained projection
+> `Π^exact_C ∘ R`, request-proportional clearing vs the live-allocation basis), the
+> canon governs. Retained as design provenance, not authority.
 >
 > This document is the approved design definition of the constrained-clearing mechanism that Phase 14
 > `RESIDENT-CLEARING-*` was chartered to design and implement. It remains a living design document:
