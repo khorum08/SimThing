@@ -215,5 +215,9 @@ fn policy_matrix(label: &str, program: TransformOp) {
 
 #[test]
 fn constant_score_preserves_resident_precedence_in_both_postures() {
-    policy_matrix("F1 constant", TransformOp::set(1.0));
+    let program = TransformOp::set(1.0);
+    let scores = [0, 1].map(|priority| program.apply_with_params(1.0, priority as f32));
+    assert_eq!(scores, [1.0, 1.0]);
+    println!("15.13 F1: authored scores={scores:?}; canonical priorities=[0,1]");
+    policy_matrix("F1 constant", program);
 }
