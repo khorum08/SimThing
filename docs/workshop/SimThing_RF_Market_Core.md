@@ -7,15 +7,19 @@
 > `0_0_8_7_SimThing_Unification.md`. Where this document's formulations differ from the
 > graduated law (e.g. "quantization Q" vs the exact constrained projection
 > `Π^exact_C ∘ R`, request-proportional clearing vs the live-allocation basis), the
-> canon governs. Retained as design provenance, not authority.
+> canon governs. Retained as design provenance, not authority. Everything below this
+> banner — including every "approved", "living", "must conform", and governance-boundary
+> statement — is the ORIGINAL Phase-14-era text, preserved verbatim as history; none of
+> it grants or retains authority.
 >
-> This document is the approved design definition of the constrained-clearing mechanism that Phase 14
+> **Original status (historical):** This document is the approved design definition of the
+> constrained-clearing mechanism that Phase 14
 > `RESIDENT-CLEARING-*` was chartered to design and implement. It remains a living design document:
 > later Owner/DA amendments may refine its details, but Phase 14 implementation and proof must conform
 > to this mechanism unless that authority is explicitly amended. Its historical location under
 > `docs/workshop/` does not reduce this promoted status.
 >
-> **Current governance boundary:**
+> **Original governance boundary (historical):**
 >
 > - Phase-14 proposal and Owner Germ Mandate: Board
 >   [`5471915320`](https://github.com/khorum08/SimThing/issues/1332#issuecomment-5471915320)

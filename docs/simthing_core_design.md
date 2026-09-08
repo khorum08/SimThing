@@ -167,7 +167,8 @@ StemThing-B is the recursive conserved-resource market germ:
       → typed eligible pressure — raw P or born Gu-Yang serviceable F —
         selected once into AllocatorWeight (neutral identity law)
       → child-share EML on live parent columns → AllocatedFlow
-      → exact quantization Q at the terminal integration band → canonical T_s
+      → exact constrained projection Pi^exact_C at the terminal integration
+        band (section 8.4.1) → canonical T_s
       → the child consumes that same T_s as its own supply
       → unresolved U → optional sealed deformation → next-generation demand
       → Gu-Yang throughput/saturation and PALMA potential/impedance/opportunity
@@ -177,11 +178,14 @@ StemThing-B is the recursive conserved-resource market germ:
       → next-generation state
 
 A Draw is a specialization-profile claim template, not a grant. Its offerings, lifecycle triggers
-and finite quantity envelope seal at admission; instances mint no new Draw vocabulary. Unit price
-and clearing weight are distinct. Oversubscription is ordinary. Equal scores clear proportionally
-unless the author supplies an additional deterministic rank; discrete remainder is
-largest-remainder and exact ties rotate under the granter's generation authority. Unmet demand U is
-revalued next generation and is not CostBand remainder R.
+and finite quantity envelope seal at admission (`0 <= min_quantity <= max_quantity` — a zero-capable
+envelope is lawful membership vocabulary); instances mint no new Draw vocabulary. Unit price and
+clearing weight are distinct. Oversubscription is ordinary. On the bound resident-qualified
+contract the only policy authorities are hard precedence from the admitted Current claim and smooth
+share from live `AllocatedFlow` (section 8.4.6); the authored score never orders, gates, or clears
+bound economics. Within an equality band, claims clear proportionally to the live basis; discrete
+remainder is largest-remainder and exact ties rotate under the granter's generation authority.
+Unmet demand U is revalued next generation and is not CostBand remainder R.
 
 Residency entitlement is market-decided, then physical placement fails closed in two stages.
 Ordinary infeasibility keeps the quantity in U and records a typed refusal; committed overlap or
