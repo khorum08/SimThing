@@ -71,7 +71,7 @@ fn scenario(requests: [u32; 2], priorities: [u32; 2], supply: u32) -> (Scenario,
 }
 
 fn open(scenario: Scenario, posture: ClearingExecutionPosture, program: TransformOp) -> SimSession {
-    let mut session = SimSession::open_with_clearing_posture(scenario, posture).unwrap();
+    let mut session = SimSession::open(scenario).unwrap();
     let triggers = BTreeSet::from(["current-boundary".to_owned()]);
     let market = admit_specialization_flow_market(
         &[SpecializationProfile {
@@ -121,6 +121,7 @@ fn open(scenario: Scenario, posture: ClearingExecutionPosture, program: Transfor
             .exact_basis_identity(),
         simthing_gpu::ResidentExactBasisIdentity::LiveAllocatedFlow
     );
+    session.set_clearing_execution_posture(posture).unwrap();
     session
 }
 
