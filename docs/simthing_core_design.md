@@ -1,9 +1,12 @@
 # The SimThing Core Design — Paradigm Reference
 
 > **Status: STANDING — effectively permanent, deliberately amendable.** This document is the
-> paradigm itself, beneath the versioned constitution. It states the architecture every version,
-> PR, and agent builds toward. If a handoff, ladder row, status record, or ancillary design
-> conflicts with it, stop and escalate to design authority.
+> paradigm itself and the HIGHEST doctrinal tier: the versioned constitution sits below it,
+> track/rung law below that, and records are non-binding (Owner-ruled 2026-09-08: the latest
+> unified SimThing laws supersede all older laws). It states the architecture every version,
+> PR, and agent builds toward. A graduated change may alter the paradigm only by amending this
+> document atomically in that same change; if a handoff, ladder row, status record, or ancillary
+> design conflicts with it unamended, stop and escalate to design authority.
 >
 > **Definable horizon.** This document claims no permanence. A graduated ruling that changes the
 > paradigm amends this document in the same change; canonization consumes temporary anchors rather
@@ -615,8 +618,11 @@ subgroup-independence, and ABI tuple is qualified at admission; a mismatch fails
 execution and never falls back to CPU.
 
 The graduated resident exact result is appended on-device to an admission-bounded segment that is
-the authoritative live head of the one `IntegrationSchedule`, then the identical `T_s` bytes enter
-the N+1 recursive intake in queue order. Both happen before host readback, CPU grant reconstruction,
+the authoritative live head of the one `IntegrationSchedule`. The two components of the identical
+`T_s` bytes then feed their DISTINCT consumers: `T_s.G` enters the changed-child SPATIAL intake at
+the SAME generation (section 8.4.2), while `T_s.U` remains resident and is consumed only by the
+N+1 TEMPORAL demand once-mint — undifferentiated `T_s` never "enters an N+1 intake". Both
+consumptions happen before host readback, CPU grant reconstruction,
 vector append, replay drain, or structural handling. The host `Vec` is asynchronous durable/replay
 materialization of that same schedule, not a second live history. A live reservation is never
 dropped, coalesced, overwritten, or redirected; capacity exhaustion is the typed

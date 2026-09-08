@@ -18,7 +18,8 @@ Gadgets are not new WGSL kernels. `EvalEML` is already one generic postfix stack
 
 - **No new semantic WGSL; one generic interpreter stays.** Gadgets compile to postfix node
   templates over the existing opcodes (`LITERAL_F32, SLOT_VALUE, PARAM(dt), ADD, SUB, MUL, NEG, DIV,
-  MIN, MAX, CLAMP_BOUNDED, CLAMP_FLOORED, ABS, CMP_*, SELECT, RETURN_TOP`).
+  MIN, MAX, CLAMP_BOUNDED, CLAMP_FLOORED, ABS, CMP_*, SELECT, RETURN_TOP`, plus the separately
+  admitted exact transcendental primitives `EXP`/`LN` — core §4.1 `ExactPrimitiveAdmission`).
 - **Registry/composition lives in `simthing-spec`.** `simthing-gpu` keeps only the interpreter and
   the opcode set. The gadget library, RON authoring, flatten-to-nodes compiler, and CPU oracles are
   spec/importer-layer concerns. `simthing-sim` never sees "personality" or "gadget".
@@ -130,8 +131,11 @@ RON authoring defines an ordered list of gadget instances; the compiler resolves
 
 - No per-gadget WGSL kernel.
 - No new GPU pass per gadget.
-- No new EML opcode, including transcendental, without a separate explicit substrate gate.
-- No transcendental inside an `ExactDeterministic` gadget.
+- No new EML opcode, including transcendental, without a separate explicit substrate gate
+  (`ExactPrimitiveAdmission` is that gate; `EXP`/`LN` passed it).
+- No UNADMITTED transcendental inside an `ExactDeterministic` gadget. Admitted `EXP`/`LN` may
+  participate only under their sealed domain/guard and the qualified-arithmetic contract
+  (core §4.1); gadget-stack use remains a separate authoring choice.
 - Temporal-memory columns stay Layer-3 scoped by default.
 - Self-referential feedback must be bounded or admission rejects it.
 - Default-off; opt-in only.

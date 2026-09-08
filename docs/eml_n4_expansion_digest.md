@@ -129,8 +129,12 @@ steps.**
    is specialisation or JIT — never abandonment. Interpreted tree = specification; compiled kernel = its form.
 9. **No eighth bespoke stencil, ever.** A new hand-written field kernel is a regression regardless of its
    benchmark.
-10. **Emergence is the exit proof.** The same authored map/fold on different adjacency must produce
-    qualitatively distinct *unscripted* geometry. Mechanism sound + dynamics inert = rung FAIL on green checks.
+10. **Emergence is the authored acceptance demonstration.** The same authored map/fold on different
+    adjacency must produce qualitatively distinct *unscripted* geometry WHERE a named rung's
+    Owner/DA-authored product-acceptance criterion requires it; under such a criterion, mechanism
+    sound + dynamics inert = that rung FAILS on green checks. The demonstration never mints a
+    generic invariant or a reusable scenario-shaped referee — generic substrate correctness remains
+    the closed invariant set (final three-part disposition: P-pillar emergence law, 2026-09-08).
 
 ## 6. Why the seven shaders retire — Owner-directed record
 
