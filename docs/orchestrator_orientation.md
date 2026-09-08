@@ -45,9 +45,9 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 26e025f8b1e76f7f649571aaa4f2da2c82ca722b4d8c549f5ce9d14b4604f3a6 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | 26eab30ec86c97ac8dfd6beef7ae8c5b4d3f18c38fdaa431ec40ccce855396d3 |
-| design_0_0_8_7_rf_arena_modernization.md | c884fd1a3d48168cf30f3b9ee5759bc03cdc7a6b2333a92b5719ea7325ea7125 |
+| design_0_0_8_7_rf_arena_modernization.md | e742c01e686a685468b4c6b3efb44369ff01b16309f320769f39e7fbfe391725 |
 | relay_lint.sh | ae19bdca12e90f6bc988e064f081ff62903034d69bf34b08ffd5c27e352181ba |
-| doctrine_anchors.tsv | 81209e7b53fc5396ddfebec544db34c81ecb60e14bc031c5636dc4d4f6b1eea4 |
+| doctrine_anchors.tsv | ce5c6b90113d530a6da73beb80fe2c1d3656a6a8dfa9952c13531656d8cf2f68 |
 | execution_status_taxonomy.tsv | 924c086550221dd7136ec0682293900d8d03feb4bc1dae1a6e750a61e65153bc |
 | execution_status_mixed_posture.tsv | 1adf05f3ec5fd7b537efe29259d20649a2c6d3a0839590063e5308ff154e8f25 |
 | execution_status_non_execution.tsv | 214c1b557dfd3fc465f0171051e20281ff1dcf6c53128dbb29cba01524f9be02 |
@@ -68,18 +68,19 @@ Dark properties (1): `fixture::dark_reading` (reasons/spans in `property_admissi
 
 Track state: `open`
 
-> Compact view: 105 completed rungs elided; showing all 1 open rungs plus the 3 most recent completions. Full ladder in the design doc.
+> Compact view: showing last 5 of 109 rungs (track `open`); full ladder in the design doc.
 
 | # | rung | deliverable | exit proof |
 | --- | --- | --- | --- |
+| 15.8 | RESIDENT-SESSION-INTEGRATION-CONFORMANCE-0 | **STOP REMEDIATION (cross-rung re-review 2026-09-05, Owner-approved; adjudicatio | DA-GRADUATED merged #1974 @ 4027d390 |
 | 15.9 | EXACT-CAP-PROJECTION-0 | **OWNER LAW (2026-09-05): CAP COLLISION = SATURATE AND REDISTRIBUTE.** A feasibl | DA-GRADUATED merged #1978 @ b047cd60 |
 | 15.10 | GENERATION-ABORT-SAFETY-0 | **FALSIFIER FIRST (closeout-blocking; one-pass-per-generation is constitutional) | DA-GRADUATED merged #1981 @ 8f0a243d |
 | 15.11 | NEUTRAL-STREAM-TERMINATION-0 | **OWNER LAW (2026-09-06): NEUTRAL TERMINATION IS THE BASE DEPARTURE DEFAULT — do | DA-GRADUATED merged #1991 @ f48adae1 |
-| 15.12 | DEPARTING-STREAM-DISPOSAL-0 | **THE COMPLETE STREAM-MEMBERSHIP LIFECYCLE (Owner-ordered mint 2026-09-07; Owner | TODO |
+| 15.12 | DEPARTING-STREAM-DISPOSAL-0 | **THE COMPLETE STREAM-MEMBERSHIP LIFECYCLE (Owner-ordered mint 2026-09-07; Owner | DA-GRADUATED merged #1995 @ a30e7ac0 |
 
 ## Next Rung Pointer
 
-Active pointer: `DEPARTING-STREAM-DISPOSAL-0`
+Active pointer: `none`
 
 
 ## Cold-Start Spine (constitutional pointers)
