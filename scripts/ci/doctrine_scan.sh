@@ -548,6 +548,8 @@ load_pr_delta_line_map() {
     line="${line//$'\r'/}"
     if [[ "$line" =~ ^\+\+\+\ b/(.+)$ ]]; then
       current_file="${BASH_REMATCH[1]}"
+      # Git terminates unquoted paths containing spaces with a tab delimiter.
+      current_file="${current_file%$'\t'}"
       current_file="$(normalize_match_path "$current_file")"
     elif [[ "$line" =~ ^@@\ .*\+([0-9]+)(,([0-9]+))?\ @@ ]]; then
       local start="${BASH_REMATCH[1]}"
@@ -959,8 +961,8 @@ run_test_budget_scan() {
   local key file line text
   # Bash associative arrays iterate in HASH order, not insertion order, so an
   # unsorted walk makes PR-delta findings vary run-to-run on identical input.
-  for key in $(printf '%s
-' "${!PR_DELTA_ADDED_LINE_TEXT[@]}" | sort); do
+  while IFS= read -r key; do
+    [[ -z "$key" ]] && continue
     file="${key%:*}"
     text="${PR_DELTA_ADDED_LINE_TEXT[$key]}"
     [[ "$file" == *.rs ]] || continue
@@ -971,10 +973,10 @@ run_test_budget_scan() {
     if [[ "$text" =~ ^[[:space:]]*#\[[[:space:]]*((tokio|async_std)::)?test(\(|\]) ]]; then
       added_counts["$file"]=$(( ${added_counts["$file"]:-0} + 1 ))
     fi
-  done
+  done < <(printf '%s\n' "${!PR_DELTA_ADDED_LINE_TEXT[@]}" | sort)
 
-  for file in $(printf '%s
-' "${!added_counts[@]}" | sort); do
+  while IFS= read -r file; do
+    [[ -z "$file" ]] && continue
     if [[ "${added_counts[$file]}" -le 3 ]]; then
       continue
     fi
@@ -982,7 +984,7 @@ run_test_budget_scan() {
       continue
     fi
     _matches_out+=("${file}: added ${added_counts[$file]} #[test] functions without table-driven form")
-  done
+  done < <(printf '%s\n' "${!added_counts[@]}" | sort)
 }
 
 run_require_scan() {
