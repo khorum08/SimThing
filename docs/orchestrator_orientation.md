@@ -42,10 +42,9 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | source | sha256 |
 | --- | --- |
 | precedented_classes.tsv | 19105ec83b268a5e48a1e14bc5befd389139f100fc10cdbe8e9285a7cd773032 |
-| binding_conditions.tsv | 26e025f8b1e76f7f649571aaa4f2da2c82ca722b4d8c549f5ce9d14b4604f3a6 |
+| binding_conditions.tsv | 211b860c2a424d0386a01a2dc93d5c563abfd1411c1f58ec55c7b69d97426cb8 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
-| active_track.txt | 26eab30ec86c97ac8dfd6beef7ae8c5b4d3f18c38fdaa431ec40ccce855396d3 |
-| design_0_0_8_7_rf_arena_modernization.md | 3bb04b2ef9eb7a215eb778be53f3aecd371589172e2afb230e3976ca1a37df97 |
+| active_track.txt | 17fb2e1e3b331fb68580e486431596c9f111b99f4b9de9699d57bf604f37a20c |
 | relay_lint.sh | ae19bdca12e90f6bc988e064f081ff62903034d69bf34b08ffd5c27e352181ba |
 | doctrine_anchors.tsv | 7af0a7bc5f51f4ff73463fc85fa681dcf0e19806327b6843a4652ddfc500f568 |
 | execution_status_taxonomy.tsv | 924c086550221dd7136ec0682293900d8d03feb4bc1dae1a6e750a61e65153bc |
@@ -64,19 +63,17 @@ Specialization citizens: spatial=2 owner-seat=2 session-root=1 (SpecSessionState
 Property admission: anchored=1 unobserved=1 total=2 (SpecSessionState.property_admission; source `property_admission_inventory.tsv`).
 Dark properties (1): `fixture::dark_reading` (reasons/spans in `property_admission_inventory.tsv`).
 
-## Active Track / Rung Summary (`design_0_0_8_7_rf_arena_modernization.md`)
+## Active Track / Rung Summary
 
-Track state: `open`
+No active production track is set.
 
-> Compact view: showing last 5 of 110 rungs (track `open`); full ladder in the design doc.
+Run:
 
-| # | rung | deliverable | exit proof |
-| --- | --- | --- | --- |
-| 15.9 | EXACT-CAP-PROJECTION-0 | **OWNER LAW (2026-09-05): CAP COLLISION = SATURATE AND REDISTRIBUTE.** A feasibl | DA-GRADUATED merged #1978 @ b047cd60 |
-| 15.10 | GENERATION-ABORT-SAFETY-0 | **FALSIFIER FIRST (closeout-blocking; one-pass-per-generation is constitutional) | DA-GRADUATED merged #1981 @ 8f0a243d |
-| 15.11 | NEUTRAL-STREAM-TERMINATION-0 | **OWNER LAW (2026-09-06): NEUTRAL TERMINATION IS THE BASE DEPARTURE DEFAULT — do | DA-GRADUATED merged #1991 @ f48adae1 |
-| 15.12 | DEPARTING-STREAM-DISPOSAL-0 | **THE COMPLETE STREAM-MEMBERSHIP LIFECYCLE (Owner-ordered mint 2026-09-07; Owner | DA-GRADUATED merged #1995 @ a30e7ac0 |
-| 15.13 | BOUND-MARKET-POLICY-SINGULARITY-0 | **RE-REVIEW REMAND P1 (engineering `5579833018`; DA adjudication `5579882520`; O | DA-GRADUATED merged #2001 @ 896df086 |
+```bash
+bash scripts/ci/gen_orientation.sh --open docs/<track>.md
+```
+
+to open or create a production track before assigning coding work.
 
 ## Next Rung Pointer
 
@@ -144,8 +141,6 @@ Without `novelty_basis`, clearance fails. Empty-class diffs with a valid admitte
 
 | rung | condition | set_by | status | promotion_blocker |
 | --- | --- | --- | --- | --- |
-| GPU-OVERLAY-LIFECYCLE-EXTRACTION-0 | DissolveCondition::OverrideReceived passes admission as a bounded lifecycle but evaluates false every generation; 7.7 must either implement override-replacement in the germ or reject the variant at admission | DA ruling 5289831443 (7.6 AN-OVERRIDE archaeology) | discharged | no |
-| ACTIONBAND-OVERLAY-ACTUATION-0 | 7.7 proved overlay-local-EML-surface absence and durable-row-capture avoidance by audited assertion, not by a planted falsifier; 7.8 authors CrossingConsequenceBinding/ResidentNextWrite and durable binding targets, where both become constructible: plant each and RED it, or report it unrepresentable at a type boundary with citation | DA ruling on 7.7 graduation (relay 5298234855) | discharged | no |
 
 ## Clearance Ledger (recent)
 
