@@ -1179,7 +1179,33 @@ run_test_budget_proof() {
     git commit -q -m baseline
   )
   base="$(git -C "$root" rev-parse HEAD)"
+  # Git appends a tab to an unquoted +++ path containing spaces. A docs-only
+  # delta must not crash the Rust test-budget rule or invent a finding.
+  mkdir -p "${root}/docs/workshop"
+  printf '# Workplan proposal\n' >"${root}/docs/workshop/Workplan with spaces.md"
+  (
+    cd "$root" &&
+    git add . &&
+    git commit -q -m docs-with-spaces
+  )
+  head="$(git -C "$root" rev-parse HEAD)"
+  out="${root}/scan-docs.out"
+  set +e
+  (cd "$root" && DOCTRINE_SCAN_SKIP_DRIFT=1 DOCTRINE_SCAN_ONLY_TEST_BUDGET=1 bash "scripts/ci/doctrine_scan.sh" --pr-delta "$base" "$head") >"$out" 2>&1
+  exit_code=$?
+  set -e
+  read -r verdict hard inspect <<<"$(parse_footer_verdict "$out")"
+  read -r sv count <<<"$(scan_line_verdict "$out" "TEST-BUDGET")"
+  if [[ "$hard" -ne 0 || "$sv" != "PASS" || "$count" -ne 0 || "$exit_code" -ne 0 ]]; then
+    test_budget_result="FAIL (spaced docs verdict=${verdict} scan=${sv} count=${count} exit=${exit_code})"
+    fail_selftest
+    rm -rf "$root"
+    return
+  fi
+
+  rm -f "$out"
   cp "${FIXTURES}/test_budget/enumeration_burst.rs" "${root}/crates/simthing-spec/tests/budget.rs"
+  cp "${FIXTURES}/test_budget/enumeration_burst.rs" "${root}/crates/simthing-spec/tests/budget with spaces.rs"
   (
     cd "$root" &&
     git add . &&
@@ -1193,7 +1219,9 @@ run_test_budget_proof() {
   set -e
   read -r verdict hard inspect <<<"$(parse_footer_verdict "$out")"
   read -r sv count <<<"$(scan_line_verdict "$out" "TEST-BUDGET")"
-  if [[ "$verdict" != "INSPECT" || "$sv" != "INSPECT" || "$count" -le 0 || "$exit_code" -ne 0 ]]; then
+  if [[ "$verdict" != "INSPECT" || "$sv" != "INSPECT" || "$count" -ne 2 || "$exit_code" -ne 0 ]] \
+    || ! grep -Fq 'crates/simthing-spec/tests/budget with spaces.rs: added' "$out" \
+    || ! grep -Fq 'crates/simthing-spec/tests/budget.rs: added' "$out"; then
     test_budget_result="FAIL (enumeration burst verdict=${verdict} scan=${sv} count=${count} exit=${exit_code})"
     fail_selftest
     rm -rf "$root"
@@ -1214,7 +1242,7 @@ run_test_budget_proof() {
     git commit -q -m baseline
   )
   base="$(git -C "$root" rev-parse HEAD)"
-  cp "${FIXTURES}/test_budget/table_driven_trap.rs" "${root}/crates/simthing-spec/tests/budget.rs"
+  cp "${FIXTURES}/test_budget/table_driven_trap.rs" "${root}/crates/simthing-spec/tests/budget with spaces.rs"
   (
     cd "$root" &&
     git add . &&
