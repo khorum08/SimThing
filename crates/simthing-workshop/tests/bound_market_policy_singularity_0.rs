@@ -1,7 +1,7 @@
 //! 15.13: one bound market uses resident precedence and live allocation in both postures.
 use simthing_core::{
     bind_owner, ClearingExecutionPosture, DimensionRegistry, OwnerRef, SimThing, SimThingId,
-    SimThingKind, SpecializationProfile, TransformOp,
+    SimThingKind, SpecializationProfile, SubFieldRole, TransformOp,
 };
 use simthing_driver::resident_clearing_runtime::install_default_resident_rf_property;
 use simthing_driver::{GrowthEntitlementMarketBinding, Scenario, SimSession};
@@ -45,7 +45,14 @@ fn scenario(requests: [u32; 2], priorities: [u32; 2], supply: u32) -> (Scenario,
         root.add_child(child);
         id
     });
-    install_default_resident_rf_property(&mut registry, &mut root);
+    let property = install_default_resident_rf_property(&mut registry, &mut root);
+    let mut root_flow = registry.property(property).default_value();
+    root_flow.set_role(
+        &SubFieldRole::Named("intrinsic-flow".into()),
+        &registry.property(property).layout,
+        2.0,
+    );
+    root.add_property(property, root_flow);
     (
         Scenario {
             name: "15.13 bound market".into(),
