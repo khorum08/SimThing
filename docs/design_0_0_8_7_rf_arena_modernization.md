@@ -429,8 +429,11 @@ closed. (6) **Residency/typing** — illegal states are unrepresentable at the t
 NEW invariant.** A rung is done when the invariant set still holds and the new capability is
 exercised *by that set*; a rung that needs a bespoke referee has revealed a capability the
 invariant language cannot express, which is a design signal, not a testing gap. Corollary:
-**emergence checks are DEMONSTRATIONS, not gates** — they are what you look at to see the
-mechanism is alive, and gating on them invites making-the-referee-pass pressure. Corollary:
+**generic emergence checks are DEMONSTRATIONS, not gates** — they are what you look at to see the
+mechanism is alive, they never mint a generic invariant or reusable referee, and gating on them
+generically invites making-the-referee-pass pressure. The ONE exception is explicit: a NAMED
+Owner/DA-authored product-acceptance criterion for a specific rung/phase may gate on demonstrated
+emergence (the final three-part emergence disposition, 2026-09-08). Corollary:
 generated input buys *coverage* (a fuzzer) and *measurement* (performance curves); it never
 buys validity. This law is the standing answer to per-rung proof accretion: 13 rungs produced
 123 lifecycle rows because rungs, not invariants, were the unit of proof.

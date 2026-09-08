@@ -16,13 +16,13 @@ clausething-closed-vertical	docs/design_0_0_8_3.md	heading:## A. Closeout addend
 structural-execution-convergence	docs/stead_spatial_contract.md	heading:## 10. Structural execution convergence (Studio → GPU horizon)	gpu,driver,mapeditor-gpu,studio,structural-execution	6b4cedec482b9b256619a8a66642442637bb26d4bcedc1e33037096c0d75c277	canonical
 session-lifecycle-adr-family	docs/adr/README.md	heading:# Architecture Decision Records	driver-session,feeder-session,mapeditor-session	d73fe5a83f25055d741a542c270d40849cbda207d6417983b000f9f068a7f844	canonical
 peripheral-scope-adrs	docs/adr/capability_effect_target_scope.md	heading:## Context	feeder,capability-paths	954120316f9e598bb5fc420150c2afec797204458a39045f852cc44ebc433ab5	canonical
-founding-ontology-invariants	docs/design_0_0_8_3.md	lines:100-129	founding-ontology	463307204ce9c9d20dd7debd617485bbbbdbaf551b340f34225cac19141a7752	canonical
+founding-ontology-invariants	docs/design_0_0_8_3.md	lines:95-135	founding-ontology	1f06499427879b2132c6bf3a783fa17cc886debd9b25672b61196557db2910e3	canonical
 orientation-harness-core	docs/design_0_0_8_4_7_orchestration_harness.md	heading:## 1. Root cause this track closes	orientation,gate-wiring,receipt-admission	8a365d1c086487ee32150d457754df35becc4ad93465874253fc7d40baf2582f	canonical
 scanner-selftest-delta-gate	docs/ci_screening_surface.md	heading:### Scanner selftest delta gate	scanner-selftest-gate,gate-wiring	34fb2662baae168aade990530e837bf633a91e9e08956ecbd15caad50efba737	canonical
 movement-front	docs/simthing_core_design.md	heading:## 7. Mapping — the Movement-Front automaton over gridcell SimThings	movement-front,map-domain	c91ec957fe0b4933976f2c9a2bb338843f2166b12431afef7cd5ffd6fdc44e27	canonical
 workshop-candidate-homing	docs/ci_screening_surface.md	heading:## 12. Workshop is the scenario candidate-code sandbox (owner ruling, 2026-07-04)	scenario-candidate-home	3e584f0ad1754a23a0a7fa841cc5f56ec8ffd4ed8fbc4bc7e0e2e2faf671e848	canonical
 simthing-0087-pillars	docs/design_0_0_8_7_rf_arena_modernization.md	heading:## 2. Pillars (Owner requirements, binding at commitment)	core-0087	9de152b04122c3020794c96911cd35b3117e99fe3915e9944a738cbd35be87b7	canonical
-simthing-0087-binding-laws	docs/design_0_0_8_7_rf_arena_modernization.md	heading:## 4. Binding laws (carry from day one)	core-0087	784b7c052cc46ca891613928cdfd267abf66454beb3413cc357a5137b0953fdd	canonical
+simthing-0087-binding-laws	docs/design_0_0_8_7_rf_arena_modernization.md	heading:## 4. Binding laws (carry from day one)	core-0087	a9ca63357da636f2697e0b3625af094c339dc662181ba013a823387a9ed7d978	canonical
 rf-arena-substrate	docs/adr/resource_flow_substrate.md	heading:# ADR: Resource Flow Substrate	core-0087	66f2ad02585bf600fbe86f96072ace3ab3cdb87deb7027f11ad4f7a7bcc307e4	canonical
 field-sweep-preservation	docs/eml_n4_expansion_digest.md	heading:## 5. Preservation invariants	field-sweep-preservation	ac36e6fb3aea36475ed511b61077585793fd6cf350b6ead45614de0226b239c9	canonical
 stead-events-are-rf	docs/simthing_core_design.md	heading:### 1.3 Events are RF	rf,overlay,stead,threshold-paths	ade7fc9140553635dcb2bb72028ba760fdbfafd48c618801d8d3a98630b3b6b9	canonical
