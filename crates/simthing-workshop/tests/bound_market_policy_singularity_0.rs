@@ -229,3 +229,23 @@ fn constant_score_preserves_resident_precedence_in_both_postures() {
     println!("15.13 F1: authored scores={scores:?}; canonical priorities=[0,1]");
     policy_matrix("F1 constant", program);
 }
+
+#[test]
+fn priority_score_preserves_resident_precedence_in_both_postures() {
+    let program = TransformOp::admit_eml(
+        vec![simthing_core::eml_nodes::EmlNode {
+            opcode: simthing_core::eml_nodes::opcode::PARAM,
+            flags: 0,
+            a: 1,
+            b: 0,
+            c: 0,
+            d: 0,
+        }],
+        simthing_core::EmlPerProgramCap::DEFAULT,
+    )
+    .unwrap();
+    let scores = [0, 1].map(|priority| program.apply_with_params(1.0, priority as f32));
+    assert_eq!(scores, [0.0, 1.0]);
+    println!("15.13 F2: authored scores={scores:?}; canonical priorities=[0,1]");
+    policy_matrix("F2 priority-sensitive", program);
+}
