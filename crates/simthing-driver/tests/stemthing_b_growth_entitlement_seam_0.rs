@@ -209,19 +209,119 @@ fn fabricated_market_grant_key_is_typed_refusal_without_attach_row_or_retry_and_
 ) {
     let (scenario, parent_id) = add_child_scenario(5);
     let root_id = scenario.root.id;
-    let mut session = SimSession::open(scenario).expect("GPU session opens");
+    // Keep the real session-installed tree, RF arena and Current GPU state.
+    // Drop the enclosing session (and its private lease/executor) before the
+    // existing Current-backed resident door takes sole execution ownership.
+    let (
+        mut proto,
+        mut coord,
+        mut patcher,
+        mut state,
+        rx,
+        tx,
+        binding,
+        arena,
+        realm,
+        incarnation,
+        mut schedule,
+    ) = {
+        let session = SimSession::open(scenario).expect("GPU session opens");
+        let binding = session.growth_entitlement_market().clone();
+        let realm = session.tree_realm();
+        let incarnation = session.execution_incarnation();
+        let schedule = session.integration_schedule().clone();
+        (
+            session.proto,
+            session.coord,
+            session.patcher,
+            session.state,
+            session.rx,
+            session.tx,
+            binding,
+            session.spec_state.arena_registry,
+            realm,
+            incarnation,
+            schedule,
+        )
+    };
+    let flow = simthing_driver::sync_resource_flow_accumulator(
+        &mut state,
+        &proto.registry,
+        &arena,
+        &[],
+        &[],
+    )
+    .expect("the existing session RF plan binds Current");
+    state.run_resource_flow_bands(flow.n_bands, 1.0);
+    let lease = proto
+        .seal_tree_execution_lease(realm, incarnation, GenerationStamp::new(0), &schedule)
+        .expect("one existing boundary execution lease over the actual Current tree");
+    // Describe the same implicit standing market through the existing public
+    // admission input. The qualification equality below checks this fixture's
+    // descriptor against the actual session binding, including LiveAllocatedFlow.
+    let resource = simthing_spec::ResourceKey::new("simthing::residency-row-capacity");
+    let offering = simthing_spec::ConservedOfferingSpec {
+        id: "simthing::ordinary-growth-residency".into(),
+        resource_key: resource.clone(),
+        price: simthing_spec::OfferingPriceVectorSpec {
+            unit_cost: 1.0,
+            default_clearing_weight: 1.0,
+        },
+    };
+    let draw = simthing_spec::DrawEnvelopeTemplateSpec {
+        id: "simthing::ordinary-growth-draw".into(),
+        offering_refs: vec![offering.id.clone()],
+        lifecycle_trigger_refs: vec!["simthing::ordinary-growth-boundary".into()],
+        min_quantity: 1,
+        max_quantity: u32::MAX,
+    };
+    let program = simthing_spec::AuthoredClearingProgram::new(simthing_core::TransformOp::set(1.0));
+    let market = simthing_driver::resident_clearing_runtime::ResidentMarketAdmission::new(
+        format!(
+            "simthing::implicit-root-standing-growth|{}|{offering:?}|{draw:?}",
+            offering.id
+        ),
+        resource.as_str(),
+        format!(
+            "standing-root/{}|{}|{}",
+            root_id.raw(),
+            resource.as_str(),
+            simthing_spec::ScopeId::from_boundary(root_id).as_str()
+        ),
+        &draw.id,
+        None,
+        "hard-precedence/0",
+        format!(
+            "{:?}|effective-weight={:08x}",
+            program.score_program().nodes(),
+            1.0_f32.to_bits()
+        ),
+        simthing_gpu::ResidentExactBasisIdentity::LiveAllocatedFlow,
+    );
+    let mut runtime = proto.with_sealed_tree_execution_binding(&lease, &schedule, |current| {
+        simthing_driver::resident_clearing_runtime::ResidentClearingRuntime::admit_sealed_market_with_persistence_deformations(
+            &state.ctx, current, &arena, state.n_slots.max(1),
+            market, &[],
+        )
+    }).expect("the existing boundary seals Current").expect("the existing resident grant path binds Current");
+    assert_eq!(
+        binding.resident_qualification(),
+        Some(&runtime.market_qualification())
+    );
+    let mut permit = lease.begin_generation(GenerationStamp::new(0)).unwrap();
     let child = SimThing::new(SimThingKind::Cohort, 1);
     let child_id = child.id;
     let candidate =
         OrdinaryGrowthCandidate::new(parent_id, child_id, 1, OrdinaryGrowthOrigin::AddChild);
-    let binding = session.growth_entitlement_market().clone();
-    let mut grant_schedule = IntegrationSchedule::new();
     let real_decision = binding
-        .resolve_batch(
-            &session.proto.allocator,
+        .resolve_batch_resident(
+            &mut runtime,
+            &state,
+            &proto.allocator,
+            &permit,
             GenerationStamp::new(0),
             &[candidate],
-            &mut grant_schedule,
+            &mut schedule,
         )
         .expect("11.2a clears the candidate")
         .pop()
@@ -247,7 +347,7 @@ fn fabricated_market_grant_key_is_typed_refusal_without_attach_row_or_retry_and_
     // Reproduce the DA falsifier through the raw kernel placement bridge. A
     // fabricated entitlement can still obtain a raw commit, but that commit is
     // not the ordinary-mutation capability introduced by the provenance seal.
-    let mut forged_allocator = session.proto.allocator.clone();
+    let mut forged_allocator = proto.allocator.clone();
     let mut forged_schedule = IntegrationSchedule::new();
     let forged_commit = forged_allocator
         .realize_unattached_growth_residency(
@@ -262,30 +362,26 @@ fn fabricated_market_grant_key_is_typed_refusal_without_attach_row_or_retry_and_
         fabricated_key
     );
 
-    session
-        .tx
-        .submit_boundary(BoundaryRequest::AddChild {
-            parent: parent_id,
-            child: child.clone(),
-        })
-        .unwrap();
-    let n_dims = session.proto.registry.total_columns;
-    session.patcher.drain(
-        &session.rx,
-        &session.proto.registry,
-        &session.proto.allocator,
+    tx.submit_boundary(BoundaryRequest::AddChild {
+        parent: parent_id,
+        child: child.clone(),
+    })
+    .unwrap();
+    let n_dims = proto.registry.total_columns;
+    patcher.drain(
+        &rx,
+        &proto.registry,
+        &proto.allocator,
         n_dims,
-        &mut session.coord.shadow,
+        &mut coord.shadow,
         None,
     );
-    let mut schedule = IntegrationSchedule::new();
-    let refused = session
-        .proto
+    let refused = proto
         .execute_with_boundary_hook_and_growth(
             Vec::new(),
-            &mut session.patcher,
-            &mut session.coord,
-            &mut session.state,
+            &mut patcher,
+            &mut coord,
+            &mut state,
             0,
             &mut schedule,
             |_| {},
@@ -298,10 +394,9 @@ fn fabricated_market_grant_key_is_typed_refusal_without_attach_row_or_retry_and_
         )
         .expect("fabricated credential is an ordinary typed refusal");
 
-    assert!(!session.proto.root.contains_id(child_id));
-    assert!(session.proto.allocator.slot_of(child_id).is_none());
-    assert!(session
-        .proto
+    assert!(!proto.root.contains_id(child_id));
+    assert!(proto.allocator.slot_of(child_id).is_none());
+    assert!(proto
         .allocator
         .committed_residency_placement(root_id, child_id)
         .is_none());
@@ -338,44 +433,56 @@ fn fabricated_market_grant_key_is_typed_refusal_without_attach_row_or_retry_and_
         "provenance refusal mints no authoritative residency row"
     );
 
+    lease
+        .finish_generation(&mut permit, GenerationStamp::new(1))
+        .unwrap();
+    assert!(permit.is_consumed());
+    drop(permit);
+    let mut permit = lease.begin_generation(GenerationStamp::new(1)).unwrap();
+    state.run_resource_flow_bands(flow.n_bands, 1.0);
+
     // The retained U candidate is eligible for ordinary revaluation only at
     // the next generation. The real market path then admits and attaches it.
-    session
-        .tx
-        .submit_boundary(BoundaryRequest::AddChild {
-            parent: parent_id,
-            child,
-        })
-        .unwrap();
-    session.patcher.drain(
-        &session.rx,
-        &session.proto.registry,
-        &session.proto.allocator,
+    tx.submit_boundary(BoundaryRequest::AddChild {
+        parent: parent_id,
+        child,
+    })
+    .unwrap();
+    patcher.drain(
+        &rx,
+        &proto.registry,
+        &proto.allocator,
         n_dims,
-        &mut session.coord.shadow,
+        &mut coord.shadow,
         None,
     );
-    let accepted = session
-        .proto
+    let accepted = proto
         .execute_with_boundary_hook_and_growth(
             Vec::new(),
-            &mut session.patcher,
-            &mut session.coord,
-            &mut session.state,
+            &mut patcher,
+            &mut coord,
+            &mut state,
             1,
             &mut schedule,
             |_| {},
-            |allocator, _, generation, candidates, integration_schedule| {
+            |allocator, current, generation, candidates, integration_schedule| {
                 binding
-                    .resolve_batch(allocator, generation, candidates, integration_schedule)
+                    .resolve_batch_resident(
+                        &mut runtime,
+                        current,
+                        allocator,
+                        &permit,
+                        generation,
+                        candidates,
+                        integration_schedule,
+                    )
                     .map_err(|error| error.to_string())
             },
         )
         .expect("next-generation real grant revalues and attaches");
-    assert!(session.proto.root.contains_id(child_id));
-    assert!(session.proto.allocator.slot_of(child_id).is_some());
-    assert!(session
-        .proto
+    assert!(proto.root.contains_id(child_id));
+    assert!(proto.allocator.slot_of(child_id).is_some());
+    assert!(proto
         .allocator
         .committed_residency_placement(root_id, child_id)
         .is_some());
@@ -383,6 +490,11 @@ fn fabricated_market_grant_key_is_typed_refusal_without_attach_row_or_retry_and_
         accepted.growth_residency_facts.as_slice(),
         [RecordedGrowthResidencyFact::Accepted(_)]
     ));
+    lease
+        .finish_generation(&mut permit, GenerationStamp::new(2))
+        .unwrap();
+    assert!(permit.is_consumed());
+    println!("15.12 Route A: actual Current-backed N0 credential; one-bit key mutant; raw commit only; one typed refusal/zero placement/no retry; N1 Current-backed revaluation attaches");
 }
 
 fn normalized_decisions(decisions: &[GrowthEntitlementDecision]) -> Vec<(u32, u32, Option<u64>)> {
