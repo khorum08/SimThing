@@ -116,12 +116,15 @@ EML programs, never by adding parallel machinery.
   minimal exact tuple is `(requested, AllocatedFlow)`. No ShadowPrice, DemandCurve,
   or response plane exists (15.0 minimality theorem).
 - **The Field Triad** (STEAD observation/bands; PALMA potential/impedance/opportunity;
-  Gu-Yang capacity/flux) are upstream born authorities; each influences a causal
-  quantity EXACTLY ONCE, inside born eligible state — never re-derived by the filter.
-- **Hard precedence** is orthogonal (priority/order-weight/score bands); continuous
-  curvature never becomes exact winner-take-all; RF stage order / precedence /
-  continuous share / exact residue are four distinct authorities (plus commitment —
-  five with reservation).
+  Gu-Yang conservative relaxation — see the glossary for the lineage) are upstream born
+  authorities; each influences a causal quantity EXACTLY ONCE, inside born eligible
+  state — never re-derived by the filter.
+- **Hard precedence** is orthogonal, and on the bound contract it comes from the
+  admitted Current claim's priority ALONE (canon §8.4.6: the authored score is
+  post-settlement observation, never bound authority); continuous curvature never
+  becomes exact winner-take-all; RF stage order / precedence / continuous share /
+  exact residue are four distinct authorities (plus commitment — five with
+  reservation).
 - **Overlays and consequences** are lawful CONSUMERS of the filter's outputs, never
   peer market authorities. **Structural consequences** (placement, fission/fusion,
   remap) remain sparse CPU boundary products via `BoundaryRequest`.
@@ -342,7 +345,11 @@ further remediation rung required.
 **Draw** — sealed claim template (authorization metadata, never a grant or quantity).
 **EML** — the one closed opcode policy language every authored behavior lowers into.
 **STEAD / PALMA / Gu-Yang** — the born field Triad: observation/bands; potential,
-impedance, opportunity; capacity and realized flux. **Realm / incarnation / permit** —
+impedance, opportunity; and Gu-Yang — SimThing's engineering adaptation of Gu/Yang's
+conservative non-gradient relaxation with centered-flux spatial cancellation, in which
+opposed fluxes cancel to surface emergent fronts. `SaturatingFlux` is the generic
+conservative transport primitive; capacity saturation is an admitted behavior, not the
+definition — a non-saturating opposed-flux front is equally Gu-Yang. **Realm / incarnation / permit** —
 durable execution identity; transient execution of it; one generation's license.
 **Live head** — the resident, admission-bounded authoritative head of the one
 integration schedule. **BoundaryRequest** — the only door to structural CPU work.
